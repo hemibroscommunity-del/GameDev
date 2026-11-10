@@ -17,7 +17,7 @@ import { shopBus } from '../ui/mobile/shopBus.js';   /* v2.3.2050 */
 import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js'; /* v2.3.2618 */
 import { capeStatusBus } from '../ui/mobile/capeStatusBus.js'; /* v2.3.2118 */
 import { storeToastBus } from '../ui/mobile/storeToastBus.js'; /* v2.3.2476 */
-import { BT_AUDIO, ZONES, TILE, ARENA_CHAMPION_REWARD, ARENA_WIN_REWARD, CLAN_WAR_REWARDS, createDefaultCompStats, recalcDerived, DEATH_GOLD_PENALTY, PVP_THREAT_CONSENT_MS, updateZoneDimensions, generateZoneMap, trainDefense, getGuildRank, SKILL_GUILDS } from '@/data/index.js';
+import { BT_AUDIO, ZONES, TILE, ARENA_CHAMPION_REWARD, ARENA_WIN_REWARD, CLAN_WAR_REWARDS, createDefaultCompStats, recalcDerived, PVP_THREAT_CONSENT_MS, updateZoneDimensions, generateZoneMap, trainDefense, getGuildRank, SKILL_GUILDS } from '@/data/index.js';
 import { MONSTER_VARIANTS, maybeTransformMonster, isRemnantSkull, xpMultFor } from '@/data/monsterVariants.js';
 import { toDisplayDamage, toDisplayHitDamage, GS_OUTER_RADIUS, GS_FORWARD_ARC } from '@/data/gameSystems.js'; /* v2.3.2520: the display damage scale (§5.8 D1); v2.3.2730: + a peer's swing reach */
 import { prog3Live } from '@/data/prog3.js'; /* v2.3.1727: the kill-XP popup is a legacy number under prog3 */
@@ -25,6 +25,8 @@ import { prog3Live } from '@/data/prog3.js'; /* v2.3.1727: the kill-XP popup is 
    monster objects (the server owns statuses and never syncs them) — see
    the element_nova case. */
 import { ELEMENTS } from '@/data/elements.js';
+import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.4363: the one stand-up */
+import { refillPools } from '@/game/phoneDeath.js'; /* v2.3.4363 */
 import { STATUS_DEFS, applyStatus, STAFF_LIFE /* v2.3.2387 */, COLLISION_TABLE /* v2.3.3264: a collision on a player, by its name */ } from '@/data/gameSystems.js';
 import { rollMonsterShard } from '@/data/shards.js';
 import { shotStyleOf } from '@/data/monsterShots.js'; /* v2.3.3343: a monster's throw sounds like its ball */
@@ -3696,9 +3698,8 @@ export function processGameEvent(type, payload, S, deps) {
                    dead pose at our last position. */
                 if (S.channel) S.channel.send({ type: 'broadcast', event: 'move', payload: { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 } });
                 if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_died_to_monster', payload: { id: S.myId, x: S.player.x, y: S.player.y } });
-                /* Gold penalty */
-                var goldLost2 = Math.floor(R2.coins * DEATH_GOLD_PENALTY);
-                R2.coins = Math.max(0, R2.coins - goldLost2);
+                /* v2.3.4363: no gold taken -- it was 10% off the gold SHOWN; the
+                   worker never takes it (the 2026-11-03 sweep, V2 U1-2) */
                 /* Death particles */
                 for (var dp2 = 0; dp2 < 25; dp2++) {
                   var dpA2 = dp2 / 25 * Math.PI * 2;
@@ -3711,31 +3712,24 @@ export function processGameEvent(type, payload, S, deps) {
                 }
                 S.screenShake = 10;
                 pushDmgPopup(S, S.player.x, S.player.y - 40, 'YOU DIED', '#ff5e6c');
-                if (goldLost2 > 0) pushDmgPopup(S, S.player.x, S.player.y - 55, '-' + goldLost2 + 'G', '#fbbf24');
                 BT_AUDIO.deathBoom();
                 /* Respawn in town after delay */
                 var respawnDelay = 5000;
                 setTimeout(function() {
-                  R2.hp = R2.maxHp;
-                  R2.stamina = R2.maxStamina;
-                  R2.mana = R2.maxMana;
-                  S.currentZone = 'town';
-                  updateZoneDimensions('town');
-                  BT_AUDIO.startZoneAmbient('town');
-                  S.map = generateZoneMap('town');
-                  S.monsters = []; /* Town has no monsters */
-                  S.gatherNodes = []; /* and no harvestable resources -- clear stale entries from the previous zone */
-                  S.player.x = 24 * TILE;
-                  S.player.y = 24 * TILE;
-                  S.respawnTimer = Date.now() + 3000;
-                  S._deathStart = 0;
-                  S._dying = false;
-                  /* Server learns dead=false + new zone via this move;
-                     other clients clear our _isDead via the broadcast. */
-                  if (S.channel) S.channel.send({ type: 'broadcast', event: 'move', payload: { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 } });
-                  if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_respawned', payload: { id: S.myId } });
+                  /* v2.3.4363: a stand-up already done (the worker's, the
+                     watchdog's) is never done twice */
+                  if (!S._dying) return;
+                  refillPools(R2);
+                  /* v2.3.4363: the ONE stand-up (game/respawn.js).  This copy
+                     skipped the zone's art, the npc list, the dungeon flags,
+                     the lock, the trip to the Wheel's BroTown, the cue and the
+                     chat line, and landed on today's town's tile 24,24.  Its
+                     reach (the sweep, V2): a blow still in flight as you walk
+                     out of a Wheel dungeon's door, after _serverMonsters went
+                     off.  It sends the move and player_respawned, and saves
+                     bt_rpg. */
+                  applyLocalRespawn(S, 'town');
                   setRpgState(_objectSpread({}, R2));
-                  try { localStorage.setItem('bt_rpg', JSON.stringify(R2)); } catch(e) {}
                 }, respawnDelay);
               }
               setRpgState(_objectSpread({}, R2));
