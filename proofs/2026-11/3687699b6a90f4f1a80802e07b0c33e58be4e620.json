@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "3687699b6a90f4f1a80802e07b0c33e58be4e620",
+  "tree": "29b5d7f24800a8629030f4885cbe7d8fa42964d8",
+  "committedAt": "2026-11-09T23:41:05-08:00",
+  "subject": "Merge pull request #1454 from hemibroscommunity-del/claude/dreamy-goodall-aycaci",
+  "files": 7908,
+  "bytes": 966133431,
+  "listingSha256": "da53dff1822e3ae14bce9018098abff57f776ab103e14c400df29435dadda2ce",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
