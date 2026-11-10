@@ -440,7 +440,7 @@ fight simulator (18), then the "After the judges" list.
 
 ## 9. Waiting for usage (added 2026-11-06)
 
-- **On a computer the map loads in pieces (many squares not drawn); phones are fine** (owner, 2026-11-05 playtest). Not looked into yet: needs a computer-sized look at how the world's squares load and draw.
+- **On a computer the map loads in pieces (many squares not drawn); phones are fine** (owner, 2026-11-05 playtest). DONE, v2.3.4400: it was a first visit on a slow line with a busy processor, not the computer's size (a returning phone reads the ground's pictures from its own cache). `docs/specs/slow-line-ground.md`; the rest of that list is `docs/STATE-MACHINES.md`.
 
 ## 10. The state-machine fixes (added 2026-11-10, v2.3.4381)
 

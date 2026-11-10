@@ -58,12 +58,12 @@ for (const [dir, want] of Object.entries(MONSTERS)) {
     && ['tools/art/cut_water_frog.py', 'tools/art/cut_storm_eye.py', 'tools/art/sheet_rows.py'].every((f) => /'strip256\.mjs'\), '--shared', /.test(src(f))));
   const pn = src('src/rendering/picsNumbers.js'), zt = src('src/rendering/zoneTextures.js');
   check('the game holds such a strip as colour numbers by default (?picnumbers=0 the way out), a bundle\'s strips on rows of 256 colours',
-    /const WANTED = !\/\[\?&\]picnumbers=0\\b\/\.test\(_q\)/.test(pn) && /if \(r\.n \+ fresh <= 256\) return r;/.test(pn) && /let numSrc = packed \? stripAsNumbers\(bundle, packed\.canvas, url\) : null;/.test(zt));
+    /const WANTED = !\/\[\?&\]picnumbers=0\\b\/\.test\(_q\)/.test(pn) && /if \(r\.n \+ fresh <= 256\) return r;/.test(pn) && /let numSrc = packed \? stripAsNumbers\(bundle, packed\.canvas, url, read\) : null;/.test(zt));   /* v2.3.4400: + `read` (the numbers already read, when a strip is unpacked in play) */
   /* ...AND A STRIP THE PACKER LEAVES WHOLE (its art fills its cells: the
      frog's death, 5.2 MB as a plain picture): drawn whole and read into its
      numbers the same way, the canvas emptied if that is refused */
   check('...a strip the packer declines too: drawn whole on a canvas and read into its numbers, never left a plain picture for being full',
-    /if \(!packed && picNumbersOn\(\)\) \{/.test(zt) && /whole\.width = n \* fw; whole\.height = fh;/.test(zt) && /numSrc = stripAsNumbers\(bundle, whole, url\);/.test(zt)
+    /if \(!packed && picNumbersOn\(\)\) \{/.test(zt) && /whole\.width = n \* fw; whole\.height = fh;/.test(zt) && /numSrc = stripAsNumbers\(bundle, whole, url, wholeCv \? read : undefined\);/.test(zt)
     && /if \(!numSrc && whole\) \{ try \{ whole\.width = 0; whole\.height = 0; \}/.test(zt)
     && /const src = numSrc \|\| Texture\.from\(packed \? packed\.canvas : img\)\.source;/.test(zt));
 }

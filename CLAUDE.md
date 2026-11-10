@@ -72,7 +72,8 @@ spec. Add a line here only for a new RULE every session must follow.
     `docs/FUN-SOCIAL-PLAN.md`, `docs/specs/SPECIES-PLAN.md`,
     `docs/BALANCE-PLAN.md`, `docs/OPTIMIZATION-ROADMAP.md`,
     `docs/REBUILD-PLAN.md`, `docs/STATE-MACHINES.md` (the 2026-11-03 sweep:
-    what shipped, what is left, where its files are);
+    what shipped, what is left, where its files are; and the smooth-play
+    items A to A3);
   - the world: `docs/WORLD-MAP-PIPELINE.md` (its studios and bakes),
     `docs/WORLD-BIBLE.md` (a draft: plan.js wins), `docs/ART-ASSET-PHASES.md`;
   - the server's future: `docs/WORLD-ARCHITECTURE.md` (§11 costs),
@@ -230,7 +231,8 @@ spec. Add a line here only for a new RULE every session must follow.
 - Capacity: `tools/qa/load/load.mjs` (after a change to the tick, moves or the
   Wheel's monsters). Bots: `tools/qa/load/bot-lab.mjs` (after a change to a
   harvest, cook, move or hit path). Writes: `tools/qa/load/cost-audit.mjs`. A
-  phone's frame: the Test panel's Speed test, `mp-phoneframe`.
+  phone's frame: the Test panel's Speed test, `mp-phoneframe`. A computer's
+  world on a slow line and a slowed page: `mp-desksmooth` (TRAPS §279).
 
 ## 7. The laws
 

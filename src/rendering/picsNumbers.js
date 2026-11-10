@@ -74,9 +74,12 @@ function rowFor(bundle, colours) {
  *  bundle's row -- or null (more than 256 colours, no room, or not drawn this
  *  way here): the caller keeps the canvas, as before.  On success the canvas
  *  is emptied. */
-export function stripAsNumbers(bundle, canvas, label) {
+export function stripAsNumbers(bundle, canvas, label, read) {
   if (!picNumbersOn() || !canvas) return null;
-  const nums = numbersOf(canvas);
+  /* v2.3.4400: `read`, the canvas's numbers already read a band at a time
+     (heldNumbers.js numbersOfSliced; `false`: read, and more than 256
+     colours) -- the same numbers numbersOf gives */
+  const nums = read === undefined ? numbersOf(canvas) : (read || null);
   if (!nums) { _stats.many++; return null; }
   const { w, h, idx, pal } = nums;
   const r = rowFor(bundle, pal);

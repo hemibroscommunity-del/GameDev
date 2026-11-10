@@ -86,6 +86,33 @@ if (typeof window !== 'undefined') {
     }
   };
 }
+/* v2.3.4400: QA -- how much of the view is laid NOW, a piece at a time
+   (mp-desksmooth: a computer's wide view against a phone's).  `inView` the
+   pieces the view touches, `laid` those drawn from their own picture, `far`
+   the missing ones that touch the view's outer ring (a piece's width in from
+   each edge), `asked` those being laid now, `short` those laid without one of
+   their pictures (flat colour where it goes, until it comes).  Read by a test, never by the
+   game: it walks the pieces only when called. */
+if (typeof window !== 'undefined') {
+  window.__btGroundCover = () => {
+    const G = _liveGround, info = wheelInfo();
+    if (!G || G.dead || !info || G._qw == null) return null;
+    const cs = info.chunk.gamePx, C = info.chunk.cols, R = info.chunk.rows;
+    const cl = (v, n) => Math.max(0, Math.min(n - 1, v));
+    const i0 = cl(Math.floor(G._qx / cs), C), i1 = cl(Math.floor((G._qx + G._qw) / cs), C);
+    const j0 = cl(Math.floor(G._qy / cs), R), j1 = cl(Math.floor((G._qy + G._qh) / cs), R);
+    let inView = 0, laid = 0, far = 0, asked = 0, short = 0;
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+      inView++;
+      const rec = G.pieces.get(i + ',' + j);
+      if (rec && rec.ready && rec.sprite && !rec.sprite.destroyed) { laid++; if (rec.lacking) short++; continue; }
+      if (rec) asked++;
+      if (i === i0 || i === i1 || j === j0 || j === j1) far++;
+    }
+    return { inView, laid, missing: inView - laid, far, asked, short, cols: i1 - i0 + 1, rows: j1 - j0 + 1,
+      view: [Math.round(G._qw), Math.round(G._qh)], inFlight: G.inFlight, held: G.pieces.size, under: !!(G.under && G.under.visible) };
+  };
+}
 /* Ahead of a moving camera: lay the ground where it will be AHEAD_MS from
    now (never more than AHEAD_MAX game px on), as well as round where it is.
    A fast run crosses a 192 px piece in half a second; a margin the same all
@@ -217,6 +244,7 @@ export class WheelGround {
       this._vy += ((cy - this._lastCy) / dt - this._vy) * k;
     }
     this._lastCx = cx; this._lastCy = cy; this._lastT = now;
+    this._qx = cx; this._qy = cy; this._qw = viewW; this._qh = viewH;   /* v2.3.4400: QA, the view this frame (__btGroundCover) */
     this._placeUnder(info);
     if (this.water) this.water.tick(now);
     const cs = info.chunk.gamePx, C = info.chunk.cols, R = info.chunk.rows;
@@ -334,6 +362,16 @@ export class WheelGround {
       rec.ready = true;
       if (this.water) this.water.set(key, i, j, m.wf, info, rec.sprite.texture, rec.sprite);
       this._short(rec, m);
+      /* ═══ v2.3.4400: LAID SHORT BEHIND THE LOADING SCREEN, LAID AGAIN ONCE ═══
+         A piece the zone gate laid ahead (`warm`) was laid before this ground
+         existed, so any picture it went without that came while the loading
+         screen was still up said so ('got') to nobody: its ground stayed
+         plain until you walked away and back (mp-desksmooth, the page slowed
+         and the line thin together: 8 of the view's 50 pieces still plain a
+         minute after the lift).  So such a piece is due once, now: laid
+         again with whatever has come since, and from here on this ground
+         hears of the rest (wheelOnGot, the constructor). */
+      if (warm && rec.lacking) rec.due = true;
     }).catch(() => {
       if (!warm) this.inFlight--;
       if (this.pieces.get(key) === rec) this.pieces.delete(key);

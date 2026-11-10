@@ -87,7 +87,7 @@ import { getSpeciesBuild, preloadSpeciesArt } from '../traits/speciesArt.js';   
 import { getColoredEyeStyleTextures, coloredEyeStyleReady } from '../traits/eyeStyleColorCatalog.js';   /* v2.3.2645; v2.3.4368 + ready */
 import { getHair, HAIR_CATALOG } from '../traits/hairCatalog.js';
 import { getLookShirtFrame } from '../lookShirtFrame.js';   /* v2.3.3751: the tee from the look palette */
-import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt, getFishFrame, MIRRORED_SOURCE_DIRS, getLookBodyFrame, getLookBodyEntries } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo; v2.3.2854: + the inked fish frame; v2.3.3716: + the look-palette frame */
+import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt, getFishFrame, MIRRORED_SOURCE_DIRS, getLookBodyFrame, getLookBodyEntries, awaitBodyBuilds, lookBodyRefused } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo; v2.3.2854: + the inked fish frame; v2.3.3716: + the look-palette frame */
 import { lookPaletteWanted, lookPaletteOn } from '../lookPalette.js';   /* v2.3.3716: on unless `?lookpalette=0`; v2.3.3809: + drawing now */
 import { lookFolkOn, folkFaceOverride } from '../lookFolk.js';   /* v2.3.3809: the townsfolk drawn live */
 import { folkWorkPose, folkWorkFrame, folkStandFacing } from '../folkPose.js';   /* v2.3.4058: the townsfolk at work */
@@ -2290,6 +2290,29 @@ function _shirtLook(front, back, patternStr, tint) {
 /* v2.3.2863: the same answer for effectsRenderer, whose peer SWING and BOW
    stand-ins bake their own sheets and never asked for the drawings. */
 export function remoteBodyArt(other, mirror) { return _remoteBodyArt(other, mirror); }
+/* ═══ v2.3.4400: THE TOWNSFOLK'S BAKED BODIES, BEHIND THE LOADING SCREEN ═══
+   `jobs`: [{ name, pose, facing }], every pose a townsperson can be drawn in,
+   on his route or off it (game/townsfolkWalk.js folkBakeJobs).  For each that the shared
+   colour numbers refuse for HIS look (an eye style, a pattern on the
+   trousers: playerSkins.js lookBodyRefused), the sheet is asked for exactly
+   as _drawFolk will ask (the same call, so the same key), and the returned
+   promise waits for the bakes -- behind the world's loading screen
+   (worldTrial.js preloadWheel), where they were 80 to 250 ms frozen frames
+   the first time he was met.  Resolves with how many were baked; 0 where
+   the townsfolk are not drawn live (their photographs: nothing to bake). */
+export function prewarmFolkBodies(jobs) {
+  if (!lookFolkOn() || !jobs || !jobs.length) return Promise.resolve(0);
+  return awaitBodyBuilds(() => {
+    for (const j of jobs) {
+      const look = npcLookAsPeer(npcLookByName(j.name));
+      if (!look) continue;
+      const { dir, mirror } = resolveDirection(j.facing);
+      const art = _remoteBodyArt(look, mirror);
+      if (!lookBodyRefused(j.pose, dir, art, look.eyeStyle)) continue;   /* drawn from the numbers: nothing to bake */
+      getBodyFrame(look.skin, look.pants, look.shoes, j.pose, dir, 0, null, 'none', look.eyeColor, art, look.eyeStyle);
+    }
+  });
+}
 function _remoteBodyArt(other, mirror) {
   const p = sanitizeShirtArt(other.pantsArt), t = sanitizeShirtArt(other.tattooArt);
   /* v2.3.1949: face and arm tattoos ride the same sanitiser -- a peer string

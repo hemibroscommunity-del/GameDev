@@ -39,7 +39,7 @@ function check(name, cond, detail) {
 }
 
 const src = readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8');
-const loopAt = src.indexOf('var _gameLoop = function gameLoop()');
+const loopAt = src.indexOf('var _gameLoop = function gameLoop(');   /* v2.3.4400: the loop takes its animation frame's timestamp (game/framePacer.js) */
 const a = src.indexOf('/* Initialize pet position */', loopAt);
 const b = src.indexOf('/* AUTO-LOOT', a);
 const cut = (loopAt > 0 && a > 0 && b > a) ? src.slice(a, b) : '';
