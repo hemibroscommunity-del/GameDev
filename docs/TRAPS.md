@@ -8709,3 +8709,23 @@ look on the full-set figure is split at the jog frame's waist in its shader
 **Receipt:** mp-armorgrade's eight-facing jog (plain over elite, rare over
 elite; main drew no grade on six facings); docs/specs/armor-grade-look.md
 "A soft glow outside the armour, on every facing".
+
+## 262. "A blocked player's new request: add an isBlockedId check to its handler" (v2.3.4365)
+
+**The trap.** Every social message's case in `processGameEvent` asking the
+block list for itself. That is how the game's own Duel button
+(`duel_wager_request`) and a friend request's chime were missed: only the
+older `duel_request` asked (the state-machine sweep, 2026-11-03, V6 N2-18).
+
+**Do instead.** Add one row to `src/game/blockedAsks.js` `BLOCKED_SOCIAL`
+(the type and the payload field naming its sender), or to `NOT_BLOCKED` with
+why. The switch asks the table once, before its cases.
+`blocked-asks.test.mjs` fails a social case in neither table.
+
+**The same for writing the list.** Never `localStorage.setItem('bt_blocked',
+...)` from a panel's copy: go through `chatMute.js` `setBlockedId` (or
+friendsModel's helpers). A copy written back erases every block made
+elsewhere since it was read (V12 P2-19).
+
+**Receipt:** docs/specs/block-list.md; `blocked-asks.test` §1, §3;
+`mp-blockasks` §5.

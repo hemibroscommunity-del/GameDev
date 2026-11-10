@@ -8,6 +8,8 @@
    — the client is the archive.  Unread counts persist too
    ('bt_dm_unread') so a reload doesn't silently zero the badge. */
 
+import { isBlockedId } from '../../../game/chatMute.js'; /* v2.3.4365 */
+
 const THREAD_MAX = 50;
 const listeners = new Set();
 const emit = () => { for (const fn of listeners) fn(); };
@@ -33,7 +35,10 @@ export const friendsSrv = {
     emit();
   },
 
-  requestsIn() { return doc ? Object.keys(doc.reqIn) : []; },
+  /* v2.3.4365: a blocked player's friend request is not shown or counted
+     (the badge, the Requests tab): the card promises "no ... requests from
+     them".  It stays on the worker; unblocked, it shows again. */
+  requestsIn() { return doc ? Object.keys(doc.reqIn).filter((fid) => !isBlockedId(fid)) : []; },
   serverList() { return doc ? doc.list : null; },
 
   thread(fid) { return readJson('bt_dm:' + fid, []); },

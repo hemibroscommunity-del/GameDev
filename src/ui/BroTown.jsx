@@ -420,7 +420,7 @@ function holdZoneMusicAtGate(gate) {
 }
 /* v2.3.767: chat send + chat/emote handlers extracted behavior-frozen (REBUILD-PLAN Phase 2). */
 import { sendChatMessage, setChatMoveSender } from '@/game/chat.js';   /* v2.3.3392: + /wave, /sit, /dance are moves */
-import { subscribeMutes } from '@/game/chatMute.js'; /* v2.3.1981 */
+import { subscribeMutes, subscribeBlocks } from '@/game/chatMute.js'; /* v2.3.1981; v2.3.4365: + subscribeBlocks */
 /* v2.3.787: zone transitions (town exits, tile-9 return, dungeon entrance/exit)
    extracted behavior-frozen (REBUILD-PLAN Phase 6). */
 import { handleZoneTransitions } from '@/game/zoneTransitions.js';
@@ -2184,6 +2184,13 @@ export var BroTown = function BroTown(_ref0) {
      point of moving it off the device. */
   useEffect(function () {
     return subscribeMutes(function (list) { setMutedList(list); });
+  }, []);
+  /* v2.3.4365: and the block list, for the same reason: every Block and
+     Unblock (the Friends page, the player card) goes through chatMute.js
+     setBlockedId, and this copy follows the stored list (the sweep's V12
+     P2-19: the card used to write this load-time copy back over it). */
+  useEffect(function () {
+    return subscribeBlocks(function (list) { setBlockedList(list); });
   }, []);
   var _useState169 = useState(false),
     _useState170 = _slicedToArray(_useState169, 2),
