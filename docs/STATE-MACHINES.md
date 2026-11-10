@@ -92,6 +92,17 @@ player never loses items, gold or a fight to a phase that stuck.
     Metal path and builds it in under a second: try `?lookpalette=1&perf=1`
     there); on Windows the program must shrink (TRAPS §259) or the bake move
     to a worker.
+    **A lead that needs no computer** (measured on the test box, v2.3.4355,
+    `mp-townride`'s "as before" page): a bake's time is its sheet's frames. A
+    stand is one frame of 256 px and bakes in 3 to 5 ms; a jog sheet is 23
+    to 28 frames (`jog-east.png`: 28) and bakes in 45 to 147 ms, about 3 ms
+    a frame, in ONE go on the page (`playerSkins.js buildBodySheet`). So the
+    freeze is not the bake but that it is not split: baked a few frames a
+    turn (a jog's drawings are steadied across the whole strip, so that pass
+    stays whole: `recolorBodyToCanvas` `steadyArt`), no job would hold the
+    page past a few ms on any machine, for any look, with no memory added.
+    `window.__btMade` already times it, so `mp-townride`'s `?folkbake=0`
+    page is the failing test.
   - **None of it can be measured on the test box**, which draws in software.
     So first a capture from a real computer: the Test panel's Speed test and
     a screenshot of its card, with the computer (Windows or Mac), the browser
