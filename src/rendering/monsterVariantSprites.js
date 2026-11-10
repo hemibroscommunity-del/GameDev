@@ -53,21 +53,63 @@ import {
   getRemnantsTexture as skRemnants,
 } from './skeletonSprites.js';
 
+/* v2.3.4357: the rotcap -- the Poison Forest's two monsters (keys `mireWisp`
+   and `bogLurker`).  The old fishman pictures the bog lurker wore, and their
+   module, went with it: nothing draws them any more. */
 import {
-  loadFishmanSprites,
-  unloadFishmanSprites,
-  getFrame as fhWalkFrame,
-  hasFrames as fhHasWalk,
-  frameCount as fhWalkCount,
-} from './fishmanSprites.js';
+  loadRotcapSprites,
+  unloadRotcapSprites,
+  getFrame as rcFrame,
+  hasFrames as rcHas,
+  frameCount as rcCount,
+  getDeathFrame as rcDeathFrame,
+  hasDeathFrames as rcHasDeath,
+  deathFrameCount as rcDeathCount,
+} from './rotcapSprites.js';
 
+/* v2.3.4355: the water frog -- the Water Caves' monster (key `fishman`) */
 import {
-  loadRockmonsterSprites,
-  unloadRockmonsterSprites,
-  getFrame as rmWalkFrame,
-  hasFrames as rmHasWalk,
-  frameCount as rmWalkCount,
-} from './rockmonsterSprites.js';
+  loadWaterFrogSprites,
+  unloadWaterFrogSprites,
+  getFrame as wfHopFrame,
+  hasFrames as wfHasHop,
+  frameCount as wfHopCount,
+  getIdleFrame as wfIdleFrame,
+  hasIdleFrames as wfHasIdle,
+  idleFrameCount as wfIdleCount,
+  getAttackFrame as wfAttackFrame,
+  hasAttackFrames as wfHasAttack,
+  attackFrameCount as wfAttackCount,
+  getDeathFrame as wfDeathFrame,
+  hasDeathFrames as wfHasDeath,
+  deathFrameCount as wfDeathCount,
+} from './waterFrogSprites.js';
+
+/* v2.3.4358: the rock golem -- the Stone Hollows' monster (key
+   `rockmonster`; the thorn shambler's key wears it in moss green).  The old
+   one-pose rock monster's pictures and module went with it. */
+import {
+  loadRockGolemSprites,
+  unloadRockGolemSprites,
+  getFrame as rgFrame,
+  hasFrames as rgHas,
+  frameCount as rgCount,
+  getDeathFrame as rgDeathFrame,
+  hasDeathFrames as rgHasDeath,
+  deathFrameCount as rgDeathCount,
+} from './rockGolemSprites.js';
+
+/* v2.3.4356: the storm eye -- the Electric Foundry's monster */
+import {
+  loadStormEyeSprites,
+  unloadStormEyeSprites,
+  getFrame as seFrame,
+  hasFrames as seHas,
+  frameCount as seCount,
+  getDeathFrame as seDeathFrame,
+  hasDeathFrames as seHasDeath,
+  deathFrameCount as seDeathCount,
+} from './stormEyeSprites.js';
 
 export const VARIANT_SPRITES = {
   fireGoblin: {
@@ -112,36 +154,79 @@ export const VARIANT_SPRITES = {
        through to the slime splat. */
     remnants: { get: skRemnants },
   },
+  /* v2.3.4355: THE WATER FROG (the owner: "I want to replace the fish man
+     monster").  The key stays `fishman` -- the worker's and every saved
+     codex's name for the Water Caves' brute -- and the pictures are the
+     frog's: a hop for its walk, a breath for standing still (`idle`, the
+     first variant with one), a wind-up and recovery for its blows, and its
+     own death (waterFrogSprites.js; MONSTER_VARIANTS.fishman has the pace
+     of each). */
   fishman: {
-    load: loadFishmanSprites,
-    unload: unloadFishmanSprites,
-    /* Single still pose; renderer dwells on the only frame while the
-       entity translates around the map.  No attack/hit/death sheets --
-       falls through to the brute generic paths. */
-    walk: { get: fhWalkFrame, has: fhHasWalk, count: fhWalkCount },
+    load: loadWaterFrogSprites,
+    unload: unloadWaterFrogSprites,
+    walk:   { get: wfHopFrame,    has: wfHasHop,    count: wfHopCount    },
+    idle:   { get: wfIdleFrame,   has: wfHasIdle,   count: wfIdleCount   },
+    attack: { get: wfAttackFrame, has: wfHasAttack, count: wfAttackCount },
+    death:  { get: wfDeathFrame,  has: wfHasDeath,  count: wfDeathCount  },
   },
+  /* v2.3.4356: THE STORM EYE (the owner: "add this electric eyeball monster
+     instead of the stand-in electric slime").  One still picture a side
+     (`walk`: the renderer hovers it, MONSTER_VARIANTS.stormEye) and its own
+     death; no attack, hit or idle strips -- its electricity is drawn in
+     code (stormSparksFx.js). */
+  stormEye: {
+    load: loadStormEyeSprites,
+    unload: unloadStormEyeSprites,
+    walk:  { get: seFrame,      has: seHas,      count: seCount      },
+    death: { get: seDeathFrame, has: seHasDeath, count: seDeathCount },
+  },
+  /* v2.3.4358: THE ROCK GOLEM (the owner: "Also this to replace the rock
+     monster that's there now").  The key stays `rockmonster`; the pictures
+     are the golem's: four frames of it grinding along a side, the same four
+     standing still (`idle`), and its own death. */
   rockmonster: {
-    load: loadRockmonsterSprites,
-    unload: unloadRockmonsterSprites,
-    /* Same still-pose pattern as fishman -- one frame per direction,
-       no attack/hit/death sheets, falls through to brute generic. */
-    walk: { get: rmWalkFrame, has: rmHasWalk, count: rmWalkCount },
+    load: loadRockGolemSprites,
+    unload: unloadRockGolemSprites,
+    walk:  { get: rgFrame,      has: rgHas,      count: rgCount      },
+    idle:  { get: rgFrame,      has: rgHas,      count: rgCount      },
+    death: { get: rgDeathFrame, has: rgHasDeath, count: rgDeathCount },
   },
   /* v2.3.1147: verdant/mist brute reskins -- SAME loaders as their
      source variants (loaders cache internally, so the textures are
      shared; the recolor is a per-sprite Pixi tint from
-     MONSTER_VARIANTS[key].tint applied in entityRenderer).  The two
-     fodder reskins (mossSlime/mireWisp) deliberately have NO entry
+     MONSTER_VARIANTS[key].tint applied in entityRenderer).  The
+     slime reskins (mossSlime, blueSlime) deliberately have NO entry
      here: useSlimeSheets routes them through the slime state branch. */
+  /* (v2.3.4358: so the thorn shambler is the rock golem in moss green) */
   thornShambler: {
-    load: loadRockmonsterSprites,
-    unload: unloadRockmonsterSprites,
-    walk: { get: rmWalkFrame, has: rmHasWalk, count: rmWalkCount },
+    load: loadRockGolemSprites,
+    unload: unloadRockGolemSprites,
+    walk:  { get: rgFrame,      has: rgHas,      count: rgCount      },
+    idle:  { get: rgFrame,      has: rgHas,      count: rgCount      },
+    death: { get: rgDeathFrame, has: rgHasDeath, count: rgDeathCount },
+  },
+  /* ═══ v2.3.4357: THE ROTCAP, TWICE ═══
+     The owner: "Also this for poison land" -- "Both".  The Poison Forest's
+     two monsters are one mushroom at two sizes: the mire wisp's key is the
+     ordinary one that spits (it was the slime's sheets in violet, with no
+     entry here), the bog lurker's the big dark one that slams (it was the
+     old fishman pictures).  ONE module for both keys, as the rock monster
+     and the thorn shambler share theirs: the walk is its shuffle, standing
+     still plays the same four frames by the clock (`idle`), and the death is
+     its own. */
+  mireWisp: {
+    load: loadRotcapSprites,
+    unload: unloadRotcapSprites,
+    walk:  { get: rcFrame,      has: rcHas,      count: rcCount      },
+    idle:  { get: rcFrame,      has: rcHas,      count: rcCount      },
+    death: { get: rcDeathFrame, has: rcHasDeath, count: rcDeathCount },
   },
   bogLurker: {
-    load: loadFishmanSprites,
-    unload: unloadFishmanSprites,
-    walk: { get: fhWalkFrame, has: fhHasWalk, count: fhWalkCount },
+    load: loadRotcapSprites,
+    unload: unloadRotcapSprites,
+    walk:  { get: rcFrame,      has: rcHas,      count: rcCount      },
+    idle:  { get: rcFrame,      has: rcHas,      count: rcCount      },
+    death: { get: rcDeathFrame, has: rcHasDeath, count: rcDeathCount },
   },
 };
 
@@ -191,8 +276,8 @@ export function variantSpritesFor(variantKey) {
  *
  * DEDUPED BY LOADER, NOT BY KEY, and that is the whole reason this helper
  * exists rather than a loop at the call site.  thornShambler and rockmonster
- * are two variant keys over ONE sprite module (as are bogLurker and fishman --
- * v2.3.1147's reskins share their source's sheets), so freeing by key would
+ * are two variant keys over ONE sprite module (v2.3.1147's reskins share
+ * their source's sheets), so freeing by key would
  * tear the art out from under a variant that is still in the zone being walked
  * into, and would try to free the same module twice.
  *

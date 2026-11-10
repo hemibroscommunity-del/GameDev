@@ -135,7 +135,7 @@ const src = (p) => readFileSync(new URL('../../' + p, import.meta.url), 'utf8');
   const k = (archetype, boss = 1) => bossSizeK({ archetype, boss });
   const tall = (a) => Math.round(2 * monsterBodyOffsetY(a) * k(a));
   check(`4: every boss stands about twice the bro's height (${BOSS_STAND_H} world px): a slime x${k('blueSlime').toFixed(2)} (${tall('blueSlime')} px), a golem x${k('rockmonster').toFixed(2)}, a mummy x${k('mummy').toFixed(2)}`,
-    BOSS_STAND_H === 211 && Math.abs(k('blueSlime') - 211 / 46) < 0.01 && Math.abs(k('mummy') - 211 / 96) < 0.01 && Math.abs(k('rockmonster') - 211 / 96) < 0.01
+    BOSS_STAND_H === 211 && Math.abs(k('blueSlime') - 211 / 46) < 0.01 && Math.abs(k('mummy') - 211 / 96) < 0.01 && Math.abs(k('rockmonster') - 211 / 108) < 0.01   /* v2.3.4358: the rock golem's cell is drawn at 108 */
       && tall('blueSlime') === 211 && tall('mummy') === 211,
     { slime: k('blueSlime'), golem: k('rockmonster'), mummy: k('mummy') });
   check(`4: ...held between x${BOSS_SIZE_MIN} and x${BOSS_SIZE_MAX} (a snowman would be x5.6), and 1 for anything not the boss`,

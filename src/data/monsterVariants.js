@@ -257,20 +257,141 @@ export const MONSTER_VARIANTS = {
        receipt because goblins take 3-4 hits vs slimes' 1 hit. */
     xpMult: 2,
   },
-  /* Fishman -- Tidal Caves brute skin.  Single still pose, no walk
-     cycle; the renderer dwells on the only frame while the entity
-     translates around the map. */
+  /* ═══ v2.3.4355: THE WATER FROG -- the Water Caves' brute ═══
+     The owner: "I added new monster (water frog) ... I want to replace the
+     fish man monster."  The key stays `fishman` (the worker's name for this
+     monster, on the wire and in every saved codex); what it is drawn from is
+     the frog (rendering/waterFrogSprites.js, cut from the owner's videos by
+     tools/art/cut_water_frog.py), the first brute with strips for all it does:
+       hopWalk            its walk is a hop: one that is interrupted is played
+                          out to its landing, never held in the air
+       hopAirFrom         the first hop frame it is off the ground on (0-2
+                          are its crouch: stopped there, it waits)
+       walkDistPerFrame   12 frames a hop, 1.2 px of travel a frame: a hop
+                          every ~14 px (v2.3.4382, below: it was 2.4)
+       idleFrameMs        8 frames of breath, ~0.7 s a breath (it was the
+                          video's 1.4 s)
+       attackRecoverFrames  the last 3 frames of an attack strip play after
+                          the blow; the 12 before them are spread over the
+                          last attackWindShare of the worker's warning (a
+                          swing's 600 ms, a slam's 900)
+       attackWindShare    0.5: the wind-up is played over the last half of
+                          the warning, the blow still as the blow lands; it
+                          breathes through the first half
+       v2.3.4382, the owner, having played it: "The frog animation frames
+       play too slowly. It needs to be sped up by 2x . And maybe 3x for
+       death animation".  So every strip of it goes by twice as fast --
+       the breath (170 -> 85 ms a frame), the hop (2.4 -> 1.2 px a frame,
+       and 55 -> 28 ms a frame when it finishes one standing), the attack
+       (its wind-up over half the warning, its recovery 70 -> 35 ms a
+       frame) -- and the death three times (1700 -> 570 ms).  The same
+       frames, none dropped.
+       telegraphAttack    its specials' warnings (the slam, the tier moves)
+                          play the attack strip too, not only its swings
+       blowFx             'water': the water its blow throws is drawn in
+                          code as the warning ends (the owner: "I intend
+                          for you to draw the water attacks in code"; no
+                          strip shows water leaving it): a spray the way it
+                          faces, a ring for a slam (rendering/waterAttackFx.js)
+       deathStripOnly     its death is its own animation on every kill: the
+                          sac spins up and bursts (20 frames over deathMs: 570 ms)
+       deathScalePx / deathOffsetY   the death strip is cut at its own scale
+                          (the burst is three frogs wide): these draw it at
+                          the living frog's size, its feet where they were
+                          (the numbers the cutting tool prints)
+       liveScalePx        120, as the skeleton's: a heavy toad about a bro
+                          tall and half again as wide (at the brutes' 96 it
+                          read smaller than the townsfolk)
+       headTopPx          where its head is at rest, in liveScalePx's measure
+                          up from the cell's bottom: its cell has room above
+                          it for the hop, and its bar and name sit on its
+                          head, not on the top of that room
+     Client-visual only: nothing on the server or the wire reads these (`spd`
+     is the mirrored one, and it is untouched). */
   fishman: {
     baseArchetype: 'brute',
-    liveScalePx: 96,
+    liveScalePx: 120,
+    headTopPx: 80,
     spd: 0.5,
+    hopWalk: true,
+    walkDistPerFrame: 1.2,
+    hopFinishFrameMs: 28,
+    hopAirFrom: 3,
+    idleFrameMs: 85,
+    attackFrameMs: 35,
+    attackRecoverFrames: 3,
+    attackWindShare: 0.5,
+    telegraphAttack: true,
+    blowFx: 'water',
+    deathStripOnly: true,
+    deathMs: 570,
+    deathScalePx: 138,
+    deathOffsetY: 20,
   },
-  /* Rockmonster -- Deep Hollows brute skin.  Same still-pose pattern
-     as fishman. */
+  /* ═══ v2.3.4356: THE STORM EYE -- the Electric Foundry's monster ═══
+     The owner: "Also add this electric eyeball monster instead of the
+     stand-in electric slime. You'll use code to make the electric effects".
+     The Foundry's monsters were the plain green slime, standing in.  This is
+     their look now: the same monster to the worker in every way (a `fodder`
+     of the storm element: its health, its spit, its lunge, its drops -- the
+     map below is the phone's alone, as the Water Caves' and the Stone
+     Hollows' are), drawn as an eye on tentacles (rendering/stormEyeSprites.js,
+     cut from the owner's sheet by tools/art/cut_storm_eye.py): one still
+     picture a side and its own death.
+       hover          it floats: its sprite lifted `px` and bobbing `bob`
+                      every `ms` (in liveScalePx's measure; only the picture
+                      moves, never where the worker has it)
+       sparks         arcs jump over its body, and round its shots, drawn in
+                      code (rendering/stormSparksFx.js)
+       blowFx         'storm': lightning is thrown off it as a blow of its
+                      lands (the end of the worker's warning)
+       telegraphAttack  ...its lunge's and its tier moves' warnings too
+       shotColor      its spit is the slime's glob in the pale blue of its
+                      lightning: with the arcs round it, a ball of it
+       deathStripOnly its death is its own 12 frames on every kill: it
+                      cracks, tips over and breaks up
+       noFodderRemnants  no green splat under what it drops
+     liveScalePx 72 puts the ball of it about 50 px across and the whole of
+     it, tentacles and all, about 75 tall: bigger than the slime it replaces,
+     under a bro.  No `spd`: it moves at the slime's pace, the worker's. */
+  stormEye: {
+    baseArchetype: 'fodder',
+    liveScalePx: 72,
+    headTopPx: 60,
+    hover: { px: 5, bob: 2.5, ms: 1700 },
+    sparks: true,
+    blowFx: 'storm',
+    telegraphAttack: true,
+    shotColor: 0x9fe3ff,
+    projectileScalePx: 26,
+    deathStripOnly: true,
+    deathMs: 900,
+    noFodderRemnants: true,
+  },
+  /* ═══ v2.3.4358: THE ROCK GOLEM -- the Stone Hollows' brute ═══
+     The owner: "Also this to replace the rock monster that's there now."
+     The key stays `rockmonster` (the worker's name for it, on the wire and
+     in every saved codex); what it is drawn from is the owner's golem
+     (rendering/rockGolemSprites.js, cut by tools/art/cut_rock_golem.py): four
+     frames of it grinding along a side, the same four standing still, and
+     its own death on every kill -- its eyes go out, it cracks and falls to
+     rubble (`deathStripOnly`).  To the worker it is exactly the monster it
+     was.  liveScalePx 108 puts it about 124 px across and 80 tall: a low
+     wide heap of boulders where the old one was a tall egg.
+     deathScalePx / deathOffsetY: the sheet draws the dying golem a little
+     bigger than the walking one (its first frame 212 px wide against 196):
+     these draw it at the living one's size, its base where it stood. */
   rockmonster: {
     baseArchetype: 'brute',
-    liveScalePx: 96,
+    liveScalePx: 108,
+    headTopPx: 66,
     spd: 0.5,
+    walkDistPerFrame: 4,
+    idleFrameMs: 280,
+    deathStripOnly: true,
+    deathMs: 1100,
+    deathScalePx: 100,
+    deathOffsetY: -1,
   },
   /* ═══ v2.3.1147: verdant + mist reskins (the L22-40 zones spawned
      NOTHING -- the mid-band content hole).  All four are TINTED reuses
@@ -328,22 +449,66 @@ export const MONSTER_VARIANTS = {
        have least time to read. */
     projectileScalePx: 32,
   },
+  /* ═══ v2.3.4357: THE ROTCAP -- the Poison Forest's two monsters ═══
+     The owner: "Also this for poison land", and which of the land's two
+     stand-ins it replaces: "Both".  The keys stay (`mireWisp`, `bogLurker`:
+     the worker's names for the land's fodder and brute, on the wire, in every
+     saved codex and pet); what they are drawn from is the owner's mushroom
+     (rendering/rotcapSprites.js, cut by tools/art/cut_rotcap.py), at two
+     sizes.  Both shuffle (a 4-frame walk, the same four standing still),
+     and die their own death on every kill (`deathStripOnly`).
+     To the worker each is exactly the monster it was. */
+  /* the ordinary one: it spits, as the violet slime did, in the sick green
+     of its own spots (`shotColor`: no longer a slime, so it says).  66 puts
+     it about 68 px across: a little bigger than the slime it replaces. */
   mireWisp: {
     baseArchetype: 'fodder',
-    useSlimeSheets: true,
-    tint: 0x7a5fa8, /* toxic violet (mist = venom zone) */
+    liveScalePx: 66,
+    headTopPx: 44,
+    walkDistPerFrame: 3.2,
+    idleFrameMs: 230,
+    shotColor: 0x9bd43f,
+    projectileScalePx: 26,
+    deathStripOnly: true,
+    deathMs: 900,
+    /* v2.3.4358: the sheet draws the dying mushroom smaller than the walking
+       one (its first frame 156 px wide against 176): these draw it at the
+       living one's size, its base where it stood (as the frog's and the
+       golem's deaths are put back) */
+    deathScalePx: 74,
+    deathOffsetY: -1,
+    noFodderRemnants: true,
   },
+  /* (v2.3.4358: the rock golem's pictures in moss green, as it was the old
+     rock monster's: the same size, shuffle and death) */
   thornShambler: {
     baseArchetype: 'brute',
-    liveScalePx: 96,
+    liveScalePx: 108,
+    headTopPx: 66,
     spd: 0.5,        /* mirrored in server _variantSpeed */
-    tint: 0x4f9a3f,  /* moss-covered rockmonster */
+    tint: 0x4f9a3f,  /* moss-covered rock golem */
+    walkDistPerFrame: 4,
+    idleFrameMs: 280,
+    deathStripOnly: true,
+    deathMs: 1100,
+    deathScalePx: 100,
+    deathOffsetY: -1,
   },
+  /* the big dark one: it walks up and slams, as the bog lurker did.  104
+     puts it about 107 px across, half again the ordinary one; its `tint`
+     takes it down to the colour of old rot. */
   bogLurker: {
     baseArchetype: 'brute',
-    liveScalePx: 96,
+    liveScalePx: 104,
+    headTopPx: 68,
     spd: 0.5,        /* mirrored in server _variantSpeed */
-    tint: 0x5f7a5a,  /* murky fishman */
+    tint: 0x8f86a8,
+    walkDistPerFrame: 3.6,
+    idleFrameMs: 260,
+    deathStripOnly: true,
+    deathMs: 1100,
+    deathScalePx: 117,   /* v2.3.4358: as the ordinary one's, at its size */
+    deathOffsetY: -2,
   },
 };
 
@@ -353,6 +518,10 @@ export const MONSTER_VARIANTS = {
 export const ZONE_VARIANT_MAP = {
   ember: { fodder: 'fireGoblin' },
   tidal: { brute: 'fishman' },
+  /* v2.3.4356: the Electric Foundry's slimes are the storm eye.  The phone's
+     alone, as tidal's and hollows' are: the worker has no entry (its remains
+     and kill keys are the slime's), and mirror-audit §9 holds that. */
+  thunder: { fodder: 'stormEye' },
   hollows: { brute: 'rockmonster' },
   /* v2.3.1147: keep in sync with server _variantForArchInZone. */
   /* v2.3.1675 (owner: "make the slimes in verdant wilds blue"): the zone-wide
@@ -483,9 +652,10 @@ const HIT_MATERIALS = {
   fodder:        { kind: 'goo',   tint: 0x3dd497, fxTint: 0x5ca84c /* v2.3.2843: the slime sheet's own green, sampled */, decal: '#1f7a55' },
   mossSlime:     { kind: 'goo',   tint: 0x4cbf6b, decal: '#2a6e3e' },
   blueSlime:     { kind: 'goo',   tint: 0x4c9fdc, decal: '#28567e' },
-  mireWisp:      { kind: 'goo',   tint: 0x7fd0c9, decal: '#3d6f6a' },
-  bogLurker:     { kind: 'goo',   sound: 'mud', tint: 0x5e7a52, decal: '#37482f' },   /* v2.3.3001: a bog's mud */
+  mireWisp:      { kind: 'goo',   tint: 0x7d4a9c, decal: '#3f2a52' },   /* v2.3.4357: the rotcap: soft and wet, in its cap's purple */
+  bogLurker:     { kind: 'goo',   sound: 'mud', tint: 0x5b4470, decal: '#2f2440' },   /* v2.3.3001: a bog's mud; v2.3.4357: the great rotcap's dark purple */
   fishman:       { kind: 'goo',   sound: 'wet', tint: 0x62b8c7, decal: '#2f6570' },   /* v2.3.3001: a wet slap */
+  stormEye:      { kind: 'goo',   sound: 'wet', tint: 0xd9c8e8, decal: '#6f5a86' },   /* v2.3.4356: an eye: wet, in its own pale lilac */
   swarm:         { kind: 'goo',   tint: 0x8a6dc0, decal: '#4c3a70' },
   volatile:      { kind: 'ember', tint: 0xf59e0b, decal: '#78350f' },
   stalker:       { kind: 'goo',   tint: 0x94a3b8, decal: '#475569' },

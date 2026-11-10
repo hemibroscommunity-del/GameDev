@@ -26,7 +26,7 @@
  * `walk-sw` file and its west attack `attack-sw` (fireGoblinSprites.js), the
  * snowman's south-west strips face left unmirrored (snowmanSprites.js). */
 
-const SN = '?v=2.1.14', FG = '?v=2.3.26', MU = '?v=2.3.58', SK = '?v=2.3.63', FI = '?v=2.3.135', RM = '?v=2.3.137';
+const SN = '?v=2.1.14', FG = '?v=2.3.26', MU = '?v=2.3.58', SK = '?v=2.3.63', FI = '?v=2.3.135', WF = '?v=2.3.4359', SE = '?v=2.3.4359', RC = '?v=2.3.4359', RG = '?v=2.3.4359';
 
 export const CODEX_LOOKS = Object.freeze({
   slime: Object.freeze({
@@ -75,13 +75,57 @@ export const CODEX_LOOKS = Object.freeze({
       run: { url: '/sprites/monsters/skeleton/run-w.png' + SK, n: 8, ms: 600, ground: 230 },
     }),
   }),
-  rockmonster: Object.freeze({
-    cell: 256, x0: 4, x1: 251, artRows: 247, artH: 96,
-    strips: Object.freeze({ idle: { url: '/sprites/monsters/rockmonster/walk-west.png' + RM, n: 1, ms: 0, ground: 248 } }),
+  /* v2.3.4358: the rock golem, the Stone Hollows' monster
+     (rockGolemSprites.js): its front-left row, which faces your character,
+     as a strip of its own -- grinding along, standing and walking -- and its
+     death.  (The old rock monster's one still picture went with it.) */
+  rockGolem: Object.freeze({
+    cell: 256, x0: 34, x1: 222, artRows: 128, artH: 66,
+    strips: Object.freeze({
+      idle: { url: '/sprites/monsters/rock-golem/codex-walk.png' + RG, n: 4, ms: 1120, ground: 229 },
+      walk: { url: '/sprites/monsters/rock-golem/codex-walk.png' + RG, n: 4, ms: 640, ground: 229 },
+      death: { url: '/sprites/monsters/rock-golem/death.png' + RG, n: 13, ms: 1100, ground: 231 },
+    }),
   }),
-  fishman: Object.freeze({
-    cell: 256, x0: 7, x1: 249, artRows: 247, artH: 96,
-    strips: Object.freeze({ idle: { url: '/sprites/monsters/fishman/walk-west.png' + FI, n: 1, ms: 0, ground: 252 } }),
+  /* v2.3.4357: the rotcap, the Poison Forest's two (rotcapSprites.js): its
+     front-left row, which faces your character, as a strip of its own -- its
+     shuffle standing and walking -- and its death.  The great one is the
+     same picture in its dark tint (CODEX_STAGE lurkling).
+     (The old fishman's look went with its picture.) */
+  rotcap: Object.freeze({
+    cell: 256, x0: 44, x1: 210, artRows: 127, artH: 54,
+    strips: Object.freeze({
+      idle: { url: '/sprites/monsters/rotcap/codex-walk.png' + RC, n: 4, ms: 920, ground: 231 },
+      walk: { url: '/sprites/monsters/rotcap/codex-walk.png' + RC, n: 4, ms: 560, ground: 231 },
+      death: { url: '/sprites/monsters/rotcap/death.png' + RC, n: 12, ms: 900, ground: 230 },
+    }),
+    shot: { color: '#9bd43f', px: 15 },
+  }),
+  /* v2.3.4356: the storm eye, the Electric Foundry's monster
+     (stormEyeSprites.js): one still picture, its front-left view (cell 2 of
+     views.png, which faces your character) cut out as a strip of its own for
+     the stage, which plays whole strips; and its death.  It throws a ball of
+     its lightning's pale blue. */
+  stormEye: Object.freeze({
+    cell: 256, x0: 60, x1: 191, artRows: 176, artH: 70,
+    strips: Object.freeze({
+      idle: { url: '/sprites/monsters/storm-eye/codex-idle.png' + SE, n: 1, ms: 0, ground: 232 },
+      death: { url: '/sprites/monsters/storm-eye/death.png' + SE, n: 12, ms: 900, ground: 229 },
+    }),
+    shot: { color: '#9fe3ff', px: 15 },
+  }),
+  /* v2.3.4355: the water frog, the Water Caves' monster (waterFrogSprites.js)
+     -- its front-left strips, which face your character unmirrored: its
+     breath, its hop for the walk in and back, its wind-up for the swing.
+     artRows is from the top of its hop (row 44) to its feet (231); at rest it
+     is 140 of them, 64 px on the stage: a squat toad beside the golem's 96. */
+  waterFrog: Object.freeze({
+    cell: 256, x0: 48, x1: 208, artRows: 188, artH: 86,
+    strips: Object.freeze({
+      idle: { url: '/sprites/monsters/water-frog/idle-sw.png' + WF, n: 8, ms: 1360, ground: 231 },
+      walk: { url: '/sprites/monsters/water-frog/hop-sw.png' + WF, n: 12, ms: 700, ground: 231 },
+      attack: { url: '/sprites/monsters/water-frog/attack-sw.png' + WF, n: 15, ms: 260, ground: 232 },
+    }),
   }),
 });
 
@@ -99,11 +143,11 @@ export const CODEX_STAGE = Object.freeze({
   snowling: Object.freeze({ look: 'snowman', elderTint: 0x8fc8ff, hit: 'throw', special: 'burrow' }),
   gobling: Object.freeze({ look: 'fireGoblin', elderTint: 0x8c8c9c, hit: 'throw', special: 'lunge' }),
   mumling: Object.freeze({ look: 'mummy', elderTint: 0xffd27a, hit: 'swing', special: 'unwrap' }),
-  pebbling: Object.freeze({ look: 'rockmonster', elderTint: 0xc8a0ff, hit: 'swing', special: 'slam' }),
-  sparklet: Object.freeze({ look: 'slime', elderTint: 0x60c0ff, hit: 'throw', special: 'lunge' }),
-  finling: Object.freeze({ look: 'fishman', elderTint: 0xffb070, hit: 'swing', special: 'slam' }),
-  wisplet: Object.freeze({ look: 'slime', tint: 0x7a5fa8, elderTint: 0x70e8ff, hit: 'throw', special: 'lunge', shotColor: '#2c3f32' }),
-  lurkling: Object.freeze({ look: 'fishman', tint: 0x5f7a5a, elderTint: 0xc090ff, hit: 'swing', special: 'slam' }),
+  pebbling: Object.freeze({ look: 'rockGolem', elderTint: 0xc8a0ff, hit: 'swing', special: 'slam' }),   /* v2.3.4358: the rock golem */
+  sparklet: Object.freeze({ look: 'stormEye', elderTint: 0x60c0ff, hit: 'throw', special: 'lunge', shotColor: '#9fe3ff' }),   /* v2.3.4356: the storm eye */
+  finling: Object.freeze({ look: 'waterFrog', elderTint: 0xffb070, hit: 'swing', special: 'slam' }),   /* v2.3.4355: the water frog */
+  wisplet: Object.freeze({ look: 'rotcap', elderTint: 0x70e8ff, hit: 'throw', special: 'lunge', shotColor: '#9bd43f' }),   /* v2.3.4357: the rotcap */
+  lurkling: Object.freeze({ look: 'rotcap', tint: 0x8f86a8, elderTint: 0xc090ff, hit: 'swing', special: 'slam' }),   /* v2.3.4357: the great rotcap */
   dewdrop: Object.freeze({ look: 'slime', recolor: [58, 122, 208], elderTint: 0x9cffb0, hit: 'throw', special: 'burst', shotColor: '#3a7ad0' }),
 });
 

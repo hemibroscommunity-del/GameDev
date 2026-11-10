@@ -640,13 +640,15 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
 }
 
 // ── 9. Variant map: server _variantForArchInZone vs client
-// ZONE_VARIANT_MAP.  Two documented exemptions where the server
+// ZONE_VARIANT_MAP.  Documented exemptions (v2.3.4356: + thunder.fodder,
+// the storm eye -- a look of the phone's alone over the worker's plain
+// slime, whose remains and kill keys stay the slime's) where the server
 // deliberately has NO entry (legacy tidal/hollows brutes predate the
 // server-side variant resolution; their remains keys were never
 // variant-scoped).  Each exemption asserts the server STILL returns
 // null so it self-prunes when someone closes the gap. ──
 {
-  const EXEMPT = new Set(['tidal.brute', 'hollows.brute']);
+  const EXEMPT = new Set(['tidal.brute', 'hollows.brute', 'thunder.fodder']);
   const bad = [];
   for (const [zone, m] of Object.entries(ZONE_VARIANT_MAP)) {
     for (const [arch, variant] of Object.entries(m)) {

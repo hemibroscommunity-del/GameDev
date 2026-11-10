@@ -47,10 +47,25 @@ BASES = [
     dict(name='snowman', front='snowman/snowman-s.png', ffw=128, side='snowman/snowman-e.png', sfw=128, faces='e'),
     dict(name='fireGoblin', front='fire-goblin/walk-s.png', ffw=256, side='fire-goblin/walk-e.png', sfw=256, faces='e'),
     dict(name='mummy', front='mummy/walk-s.png', ffw=256, side='mummy/walk-w.png', sfw=256, faces='w'),
-    dict(name='rockmonster', front='rockmonster/walk-south.png', ffw=256, side='rockmonster/walk-west.png', sfw=256, faces='w'),
-    dict(name='fishman', front='fishman/walk-south.png', ffw=256, side='fishman/walk-west.png', sfw=256, faces='w'),
-    dict(name='slime', front='slime-idle-v5.png', ffw=128, side=None, sfw=128, faces=None, pick=SLIME_BOUNCE),
     dict(name='blueSlime', front='slime-idle-v5.png', ffw=128, side=None, sfw=128, faces=None, pick=SLIME_BOUNCE, recolor=(58, 122, 208)),
+    # v2.3.4355: the water frog (the Water Caves' monster since then).  ONE frame a side, sitting:
+    # its own hop rises a frog's height and would shrink it to fit a cell, and
+    # a one-pose pet is carried by the renderer's own little hop -- a frog's.
+    # Last, so no earlier row moves.
+    dict(name='waterFrog', front='water-frog/idle-s.png', ffw=256, side='water-frog/idle-e.png', sfw=256, faces='e', pick=[0]),
+    # v2.3.4356: the storm eye (the Electric Foundry's monster since; the
+    # Sparklet's row).  Its
+    # one still picture a side: cells 0 (facing you) and 1 (side on, facing
+    # right) of its views strip.  A one-pose pet: carried by the renderer's hop.
+    dict(name='stormEye', front='storm-eye/views.png', ffw=256, side='storm-eye/views.png', sfw=256, faces='e', pick=[0], side_pick=[1]),
+    # v2.3.4357: the rotcap (the Poison Forest's two: the Sporeling, and the
+    # Capling in the great one's dark tint).  Its shuffle facing you (cells
+    # 0-3 of its walk strip) and side on, facing right (4-7).
+    # The `fishman` and plain `slime` rows went with it: no pet wears them
+    # any more (the Froglet, the Sparklet and these two took their places).
+    dict(name='rotcap', front='rotcap/walk.png', ffw=256, side='rotcap/walk.png', sfw=256, faces='e', pick=[0, 1, 2, 3], side_pick=[4, 5, 6, 7]),    # v2.3.4358: the rock golem (the Stone Hollows' monster since; the
+    # Pebbling's row -- the old one-pose `rockmonster` row went with it).
+    dict(name='rockGolem', front='rock-golem/walk.png', ffw=256, side='rock-golem/walk.png', sfw=256, faces='e', pick=[0, 1, 2, 3], side_pick=[4, 5, 6, 7]),
 ]
 
 
@@ -127,7 +142,7 @@ def main():
     for b in BASES:
         name, faces, recolor = b['name'], b['faces'], b.get('recolor')
         front = frames_of(load_rgba(b['front']), b['ffw'], FRAMES, b.get('pick'))
-        side = frames_of(load_rgba(b['side']), b['sfw'], FRAMES, b.get('pick')) if b['side'] else []
+        side = frames_of(load_rgba(b['side']), b['sfw'], FRAMES, b.get('side_pick') or b.get('pick')) if b['side'] else []
         if recolor:
             both = retint(front + side, recolor)
             front, side = both[:len(front)], both[len(front):]

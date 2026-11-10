@@ -446,6 +446,7 @@ import { updateVisualSystems } from '@/game/visualSystems.js';
 import { updateStateCleanup } from '@/game/stateCleanup.js';
 /* v2.3.816: render dispatch + sim/render perf split extracted behavior-frozen (REBUILD-PLAN Phase 8, slice 8). */
 import { renderFrame } from '@/game/renderFrame.js';
+import { runAfterFrame } from '@/ui/afterFrame.js';   /* v2.3.4360 */
 import { worldViewport } from '@/game/worldViewport.js'; /* v2.3.1768b */
 /* v2.3.817: §5.8 contextual dodge/lunge/retreat cluster extracted behavior-frozen. */
 import { triggerContextualDodge, dodgeWindowMs } from '@/game/dodge.js';   /* v2.3.2916: + the roll window, shared with the broadcast */
@@ -8447,6 +8448,10 @@ export var BroTown = function BroTown(_ref0) {
            Frame-timing values (_perfNow/_perfDelta) computed at loop top
            are passed in; perfTracker recording lives in the module now. */
         renderFrame(S, { pixiRef: pixiRef, canvas: canvas, nfts: nfts, perfNow: _perfNow, perfDelta: _perfDelta });
+        /* v2.3.4360: the page's marks on things IN the world (the first
+           steps' box and arrow on Mayor Bro) are moved now, from the camera
+           this frame was drawn with (ui/afterFrame.js) */
+        runAfterFrame(S);
       } catch (gameLoopErr) {
         console.error('GameLoop error:', gameLoopErr.message, gameLoopErr.stack);
       }
