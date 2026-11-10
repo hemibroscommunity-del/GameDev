@@ -569,12 +569,18 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
   check('traffic: walk up to the Flame Fields and its six come in whole, moving or not',
     emberIds.every((id) => he.has(id)) && whole.every((m) => typeof m.x === 'number' && typeof m.y === 'number' && typeof m.hp === 'number' && 'alive' in m),
     { heard: [...he], sample: whole[0] });
-  /* out of the Wheel and back: what it had heard is forgotten, and comes in whole again */
+  /* out of the Wheel and back: what it had heard is forgotten, and comes in whole again.
+     v2.3.4565: out from the safe ground, where the honest ways out are
+     (zonejudge.js): home to the square first, and back in there -- then set
+     where they stand at the six again, as above */
+  const sq = room._wheelArrival();
+  room.playerState.hf.x = sq.x; room.playerState.hf.y = sq.y;
   await room.webSocketMessage(wsF, JSON.stringify({ type: 'move', x: 1000, y: 1000, z: 'town' }));
   await run(2);
   const sess = room.sessions.get(wsF);
   check('traffic: leaving the Wheel forgets what you heard there', !sess._wheelSeen, sess._wheelSeen && [...sess._wheelSeen]);
-  await room.webSocketMessage(wsF, JSON.stringify({ type: 'move', x: e.x, y: e.y + 60, z: WHEEL_ZONE }));
+  await room.webSocketMessage(wsF, JSON.stringify({ type: 'move', x: sq.x, y: sq.y, z: WHEEL_ZONE }));
+  room.playerState.hf.x = e.x; room.playerState.hf.y = e.y + 60;
   wsF.sent.length = 0;
   await run(3);
   check('traffic: ...so coming back, the six come in whole again', emberIds.every((id) => heard(wsF).has(id)), [...heard(wsF)]);

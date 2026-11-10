@@ -234,6 +234,7 @@ import { pvpBalanceMethods } from './pvpbalance.js'; /* v2.3.3260: PvP hits roll
 import { lingerMethods } from './linger.js'; /* v2.3.3260: leaving in the middle of a fight -- the body stays */
 import { bodyTakeMethods } from './bodytake.js'; /* v2.3.4455: a second login mid-fight takes the body over where it stands */
 import { lastPlaceMethods } from './lastplace.js'; /* v2.3.3327: a reconnect starts where the server last had you */
+import { zoneJudgeMethods } from './zonejudge.js'; /* v2.3.4565: the worker judges a change of place */
 import { hitProofMethods } from './hitproof.js'; /* v2.3.3334: a hit on a monster needs its weapon, its reach, a paid special */
 import { testModeMethods } from './testmode.js'; /* v2.3.3430: test mode -- the owner's own characters without the honesty checks */
 import { deviceLockMethods } from './devicelock.js'; /* v2.3.3344: a character's login key works on the devices it is played on */
@@ -6894,6 +6895,7 @@ Object.assign(GameRoom.prototype, pvpBalanceMethods); /* v2.3.3260 */
 Object.assign(GameRoom.prototype, lingerMethods); /* v2.3.3260: leaving mid-fight, the body stays */
 Object.assign(GameRoom.prototype, bodyTakeMethods); /* v2.3.4455: ...and a second login takes it over */
 Object.assign(GameRoom.prototype, lastPlaceMethods); /* v2.3.3327: a reconnect starts where the server last had you */
+Object.assign(GameRoom.prototype, zoneJudgeMethods); /* v2.3.4565: the worker judges a change of place (zonejudge.js) */
 Object.assign(GameRoom.prototype, hitProofMethods); /* v2.3.3334: a hit on a monster needs its weapon, its reach, a paid special */
 Object.assign(GameRoom.prototype, testModeMethods); /* v2.3.3430: test mode (testmode.js) */
 Object.assign(GameRoom.prototype, deviceLockMethods); /* v2.3.3344: a character's login key works on the devices it is played on */

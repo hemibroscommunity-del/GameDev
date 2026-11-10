@@ -140,8 +140,14 @@ room._liveFlags = {};
 let Z = null;
 {
   H.z = 'town'; H.x = 1000; H.y = 1000; H.level = 10;
+  /* v2.3.4565: a second player comes into a run by its dungeon_started --
+     the leader's pull -- and no other way (zonejudge.js): V is in H's party,
+     beside H as the run opens */
+  V.z = 'town'; V.x = 1010; V.y = 1000;
+  room._partyOf = (pid) => (['bp_dl_h', 'bp_dl_v'].includes(pid) ? { leader: 'bp_dl_h', members: ['bp_dl_h', 'bp_dl_v'] } : null);
   WS.bp_dl_h.sent.length = 0;
   await room.webSocketMessage(WS.bp_dl_h, JSON.stringify({ type: 'dungeon_start', payload: { config: { waves: 2, monsterLevel: 5, hasBoss: false } } }));
+  delete room._partyOf;
   const st = sentOf(WS.bp_dl_h, 'dungeon_started')[0];
   Z = st && st.payload && st.payload.zone;
   check('3a. (setup) a real start opens a run', typeof Z === 'string' && Z.startsWith('dungeon:') && room._dungeons.has(Z.slice(8)), st);
@@ -154,7 +160,7 @@ let Z = null;
   check('3e. moves inside the run are taken', await move('bp_dl_h', Z, 140, 100) && H.x === 140);
   heal();
   const vIn = await move('bp_dl_v', Z, 120, 100);
-  check('3f. another player may walk into the LIVE run (shared by design)', vIn && V.z === Z);
+  check('3f. another player may walk into the LIVE run (shared by design: the party\'s pull)', vIn && V.z === Z);
   await move('bp_dl_v', 'wheel', M.x + 3000, M.y + 3000);
   check('3g. ...and walk back out', V.z === 'wheel');
 
@@ -176,8 +182,11 @@ let Z = null;
   check('3k. ...and the respawn puts them in town', !H2.dying && H2.z === 'town', { z: H2.z, dying: H2.dying });
 
   /* the way back out of a live run, by its exit */
-  await move('bp_dl_h', Z, 100, 100);
-  check('3l. (setup) back into the live run', H2.z === Z);
+  /* v2.3.4565: the worker puts H back in it -- a death comes back to the
+     Wheel's arrival, and the run's pass was used by the first step in
+     (zonejudge.js) */
+  H2.z = Z; H2.x = 100; H2.y = 100;
+  check('3l. (setup) back in the live run', H2.z === Z);
   check('3m. the way out is taken', await move('bp_dl_h', 'wheel', M.x + 3000, M.y + 3000) && H2.z === 'wheel');
 }
 
@@ -185,7 +194,7 @@ let Z = null;
 room._liveFlags = {};
 {
   const H2 = room.playerState.bp_dl_h;
-  await move('bp_dl_h', Z, 100, 100);
+  H2.z = Z; H2.x = 100; H2.y = 100;   /* v2.3.4565: placed, as 3l */
   check('4a. (setup) in the live run', H2.z === Z);
   room._dungeonCleanup(room._dungeons.get(Z.slice(8)));    /* swept with them inside */
   check('4b. (setup) the run is gone, and its lists', !room._dungeons.has(Z.slice(8)) && !hasKeys(Z));
@@ -215,8 +224,13 @@ heal();
   const FAKE = 'dungeon:old_way';
   V.z = 'wheel'; V._zoneEntryGraceUntil = 0;
   V._entryGraceAt = 0;   /* v2.3.4454: no grace given in the last 10 s (movement.js _entryGraceGive) */
+  /* v2.3.4565: a step into any run needs the pass its dungeon_started gave
+     (zonejudge.js), and an invented one has none: this switch alone no
+     longer opens it.  The way before both is both switches thrown. */
+  check('5a0. `dungeonlive: false` alone: the invented dungeon is still refused (no pass: zonejudge)', !(await move('bp_dl_v', FAKE)) && V.z === 'wheel', { z: V.z });
+  room._liveFlags = { dungeonlive: false, zonejudge: false };
   const inOk = await move('bp_dl_v', FAKE);
-  check('5a. `dungeonlive: false`: the invented dungeon is taken on its shape again', inOk && V.z === FAKE, { z: V.z });
+  check('5a. `dungeonlive: false` (and `zonejudge: false`): the invented dungeon is taken on its shape again', inOk && V.z === FAKE, { z: V.z });
   check('5b. ...with the grace stamped', V._zoneEntryGraceUntil > T);
   check('5c. ...and its lists made, as before', hasKeys(FAKE));
   check('5d. the flag name is lower case', 'dungeonlive' === 'dungeonlive'.toLowerCase());
