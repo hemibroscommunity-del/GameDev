@@ -8203,7 +8203,7 @@ html[data-orient="landscape"] .bt-fish-card{top:calc(env(safe-area-inset-top,0px
 @keyframes bt-rank-shine{0%,58%{transform:translateX(-160%) skewX(-20deg)}100%{transform:translateX(360%) skewX(-20deg)}}
 @keyframes bt-rank-spark{0%,62%,100%{opacity:0;transform:scale(0) rotate(0deg)}74%{opacity:1;transform:scale(1.25) rotate(25deg)}86%{opacity:0;transform:scale(.3) rotate(45deg)}}
 
-/* ═══ v2.3.4550: THE TIMING BAR (ui/panels/TimingBar.jsx; the free-swing
+/* ═══ v2.3.4590: THE TIMING BAR (ui/panels/TimingBar.jsx; the free-swing
    trial) ═══  Every moving part is a transform or an opacity: the fill is a
    window sliding in over a full silhouette sliding the other way (the reveal
    stays on the shape), the glint a narrow window doing the same across a

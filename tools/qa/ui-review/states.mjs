@@ -299,7 +299,7 @@ async function sparCloneId(P, timeout = 9000) {
    (harness equipWeapon); the shield the bag's way (ItemDetailPopup
    onEquipStashShield: off the stash onto the arm, and the worker told which,
    as shieldWear.js syncShieldWorn tells it). */
-/* v2.3.4550: the timing bar's pictures.  The review's one page joined off
+/* v2.3.4590: the timing bar's pictures.  The review's one page joined off
    the trial, so it is put on it the way `?manual=3` does at load
    (window.__btManual.set; the worker is not asked, and judges nothing here);
    two attacks a cycle apart are made by the swing clock alone (no blow is
@@ -1505,7 +1505,7 @@ export const STATES = [
     },
     after: async ({ P }) => { await evalIn(P, () => { const S = window._gameState.current; if (S) S.lockedTarget = null; }).catch(() => {}); await wait(P, 300); },
   },
-  /* v2.3.4550: THE TIMING BAR, the free-swing trial's (ui/panels/TimingBar.jsx;
+  /* v2.3.4590: THE TIMING BAR, the free-swing trial's (ui/panels/TimingBar.jsx;
      the owner's design, docs/UI-DESIGN-NOTES.md "The timing bar") */
   timingBarState('timing-bar', 'sword', 'The timing bar: a swing struck in the glint (the free-swing trial)',
     'On the free-swing trial (`?manual=3`) only: a sword lying on its side north of the attack disc (upright between Sprint and Special; sideways beside the disc\'s top, under Sprint, the minimap being over it; on a computer where the disc would be).  It fills with brass from the hilt over your swing\'s cycle and glints when full for the perfect strike\'s window.  Here you have just swung in the glint: the frozen copy of the full bar, in the glint\'s warm white, fades over the fill, which has already restarted from the hilt.  Not touchable; no number, no words.',

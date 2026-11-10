@@ -28,7 +28,7 @@
  *      `?swingbonus=1`; a sword on it swings at once, no sooner than
  *      FREE_GAP_MS, only with caps.freeSwing; the join asks; a lighter
  *      swing's number and sound are lighter; and the wiring.
- *  14. v2.3.4550: THE TIMING BAR AND THE PERFECT STRIKE (the worker's half is
+ *  14. v2.3.4590: THE TIMING BAR AND THE PERFECT STRIKE (the worker's half is
  *      perfect-strike.test): `?swingbonus` on by default on the trial and
  *      `?timingbar=0`; which bar a hand shows (a sword, a bow, never a
  *      staff, only on the trial against caps.perfectStrike); the bar's
@@ -241,14 +241,14 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
   check('13a `?manual=3` is the free-swing trial, remembered; `?manual=1` comes back and forgets', manualMode('?manual=3', ls) === 3 && ls.getItem(MANUAL.KEY) === '3' && manualMode('', ls) === 3 && manualCombatWanted('', ls) === true
     && manualMode('?manual=1', ls) === 1 && ls.getItem(MANUAL.KEY) === null);
   const lb = store();
-  /* v2.3.4550: the bonus (the perfect strike's) is ON by default on the trial now */
-  check('13b v2.3.4550: the bonus is asked by default; `?swingbonus=0` asks without it and is remembered; `?swingbonus=1` comes back',
+  /* v2.3.4590: the bonus (the perfect strike's) is ON by default on the trial now */
+  check('13b v2.3.4590: the bonus is asked by default; `?swingbonus=0` asks without it and is remembered; `?swingbonus=1` comes back',
     swingBonusWanted('', store()) === true && swingBonusWanted('?swingbonus=0', lb) === false && lb.getItem(MANUAL.BONUS_KEY) === '0' && swingBonusWanted('', lb) === false
     && swingBonusWanted('?swingbonus=1', lb) === true && lb.getItem(MANUAL.BONUS_KEY) === null && swingBonusWanted('', lb) === true && swingBonusWanted('?swingbonus=10', store()) === true);
   setManualCombat(true);
   check('13c the join asks nothing off the trial (`?manual=1`), even with the bonus remembered', freeSwingAsk('?swingbonus=1', store()) === 0 && manualFreeSwing() === false);
   setManualCombat(3);
-  check('13d on it the join asks 2 (the bonus: v2.3.4550, the default), or 1 with `?swingbonus=0`; it is manual combat (a bow still flicks, no slingshot)',
+  check('13d on it the join asks 2 (the bonus: v2.3.4590, the default), or 1 with `?swingbonus=0`; it is manual combat (a bow still flicks, no slingshot)',
     freeSwingAsk('', store()) === 2 && freeSwingAsk('?swingbonus=0', store()) === 1 && manualOn() && manualFreeSwing() && !manualSling() && mcSwipes(bow()) && mcShoots(bow()));
   const Sw = sword(10000), B = bow(), St = { rpg: { activeSlot: 'staff' }, swingTimer: 0 };
   check('13e without caps.freeSwing (an old worker, or `freeswing: false`) a sword is the untried swipe: too soon is no, a moment early is kept',
@@ -286,7 +286,7 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
   setManualCombat(false);
 }
 
-// ── 14. v2.3.4550: the timing bar and the perfect strike ──
+// ── 14. v2.3.4590: the timing bar and the perfect strike ──
 {
   const lt = store();
   check('14a the bar is shown by default; `?timingbar=0` hides it and is remembered; `?timingbar=1` comes back',

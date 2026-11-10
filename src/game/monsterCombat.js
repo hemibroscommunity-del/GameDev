@@ -2567,7 +2567,7 @@ export function updateMonsterCombat(S, deps) {
                    stone takes the pickaxe -- the snowman included, his
                    snowball thud the body of his ('snow'), so he is no longer
                    the one monster skipped here. */
-                monsterHitSfx(m, 0.55 * mcHitVol(S), 'melee', undefined, mcHitPitch(S, Date.now()));   /* v2.3.4520: lighter for a light free swing; v2.3.4550: higher for a quick one (the trial) */
+                monsterHitSfx(m, 0.55 * mcHitVol(S), 'melee', undefined, mcHitPitch(S, Date.now()));   /* v2.3.4520: lighter for a light free swing; v2.3.4590: higher for a quick one (the trial) */
 
                 /* §19.1 Quest tracking — combat flags */
                 if (!_R6._questFlags) _R6._questFlags = {};

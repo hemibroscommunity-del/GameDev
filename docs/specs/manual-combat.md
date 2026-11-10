@@ -214,7 +214,7 @@ everything written before it. Moving the old scenarios over is not done.
 ## Nothing is drawn for it
 
 There is no gauge, bar or ring. The one thing on the screen is the special's
-button reading ON while armed. (v2.3.4550: the free-swing trial, `?manual=3`,
+button reading ON while armed. (v2.3.4590: the free-swing trial, `?manual=3`,
 draws the owner's own timing bar: below, "The timing bar and the perfect
 strike".)
 
@@ -253,7 +253,7 @@ has not asked for it meets nothing new.
   remembered (`bt_manual` '3', as `?manual=2` is). **`?manual=1`** comes back
   to the game's own swipes and forgets.
 - **`?swingbonus=1`** adds the full-swing bonus (below), remembered in
-  `bt_swingbonus`; **`?swingbonus=0`** forgets it. (v2.3.4550: the bonus is
+  `bt_swingbonus`; **`?swingbonus=0`** forgets it. (v2.3.4590: the bonus is
   the perfect strike's now and ON by default on the trial; `?swingbonus=0`
   turns it off, remembered: "The timing bar and the perfect strike".)
 - The phone asks the worker in its join (`fs: 1`, or `fs: 2` with the bonus:
@@ -292,7 +292,7 @@ has not asked for it meets nothing new.
    player. Every target of one swing takes that swing's share, each once.
 6. **The bonus (a second switch to compare).** With `?swingbonus=1`, a swing
    after a full cycle (`f = 1`) is `FULL_SWING_BONUS` (0.12) harder, on a
-   monster only. (v2.3.4550: only a PERFECT strike's now, a swing timed to
+   monster only. (v2.3.4590: only a PERFECT strike's now, a swing timed to
    the full cycle; see "The timing bar and the perfect strike".) Nothing is held and nothing is shown: it is not a charge
    attack. Against a player there is no bonus.
 7. **A paid special swing is counted as a swing.** Its own hit is untouched,
@@ -306,7 +306,7 @@ sooner than that is dropped there, and that costs nothing either.
 
 ### On the screen
 
-**Nothing new is drawn** (v2.3.4550: but the timing bar, below). A light swing's damage number is smaller, sized by
+**Nothing new is drawn** (v2.3.4590: but the timing bar, below). A light swing's damage number is smaller, sized by
 the share the worker sends (`pw` on `monster_hit` and `pvp_hit`:
 `mcNumberScale`, a quarter swing 0.7 of the size). A full swing's number is
 as today. A light swing's hit sound is the same sample, quieter
@@ -324,7 +324,7 @@ The constants are `FREE_SWING` in `server/src/freeswing.js`
 `MANUAL.FREE_GAP_MS`. The state lives on the player and is never saved
 (`ps._fs`). It goes when the player leaves.
 
-## The timing bar and the perfect strike (v2.3.4550)
+## The timing bar and the perfect strike (v2.3.4590)
 
 > The owner, 2026-11-10: *"Yeah rising pitch on quick hits and something that
 > benefits the player if they swipe just around the time their swing is back
@@ -431,7 +431,7 @@ whole trial, the bar with it (`caps.perfectStrike` goes with `freeSwing`).
 - `server/test/free-swing.test.mjs` (v2.3.4520): the trial on the real
   GameRoom (its header lists the checks); `manual-combat.test.mjs` §13 its
   phone rules and wiring.
-- `server/test/perfect-strike.test.mjs` (v2.3.4550): the perfect strike on
+- `server/test/perfect-strike.test.mjs` (v2.3.4590): the perfect strike on
   the real GameRoom, the bow's arrows through the real router (its header
   lists the checks); `manual-combat.test.mjs` §14 the bar's numbers, the
   freeze, the pitch and the wiring; `node tools/qa/mp/run.mjs timingbar`

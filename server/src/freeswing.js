@@ -28,7 +28,7 @@
  * told, `free_swing`), `freeswingbonus: false` (never the bonus).
  * NOTHING IS PERSISTED (handoff rule 1): `_fs` lives on the player state.
  *
- * ═══ v2.3.4550: THE PERFECT STRIKE -- THE BONUS IS FOR TIMING, NOT WAITING ═══
+ * ═══ v2.3.4590: THE PERFECT STRIKE -- THE BONUS IS FOR TIMING, NOT WAITING ═══
  * The owner, 2026-11-10: "something that benefits the player if they swipe
  * just around the time their swing is back to full again"; of the timing
  * bar: "During this glinting must attack to get the bonus.  Same with the
@@ -46,8 +46,8 @@
  * the perfect strike".
  */
 import { PROG3, prog3StatValue } from './prog3.js';
-import { AMULET_TIER_POWER } from './data.js';   /* v2.3.4550: the storm amulet's speed, for the bow's cycle */
-import { blockSize } from './abilities.js';     /* v2.3.4550: the special's cost, for PERFECT_MANA */
+import { AMULET_TIER_POWER } from './data.js';   /* v2.3.4590: the storm amulet's speed, for the bow's cycle */
+import { blockSize } from './abilities.js';     /* v2.3.4590: the special's cost, for PERFECT_MANA */
 
 export const FREE_SWING = Object.freeze({
   /* the share a swing needs to carry the extras (the shove, the gem's status,
@@ -69,17 +69,17 @@ export const FREE_SWING = Object.freeze({
   SWING_SPAN_MS: 1000,
   /* targets one swing may take: a whirlwind pulls 16 (HIT_PROOF.MELEE_SPECIAL_MAX) */
   SWING_TARGETS: 24,
-  /* v2.3.4550: THE PERFECT STRIKE'S WINDOW, around the full cycle (MIRROR:
+  /* v2.3.4590: THE PERFECT STRIKE'S WINDOW, around the full cycle (MIRROR:
      src/game/manualCombat.js MANUAL.PERFECT_EARLY_MS / PERFECT_LATE_MS, the
      timing bar's glint).  60 early: the network's wobble on two claims;
      300 late: a thumb's reaction to a glint it sees */
   PERFECT_EARLY_MS: 60,
   PERFECT_LATE_MS: 300,
-  /* v2.3.4550: a perfect strike's mana, a share of the special's cost (one
+  /* v2.3.4590: a perfect strike's mana, a share of the special's cost (one
      mana block, abilities.js blockSize: 20 of a new character's 100): an
      eighth, the fraction carried -- eight perfect strikes pay one special */
   PERFECT_MANA: 0.125,
-  /* v2.3.4550: THE FLICKED BOW'S CYCLE, the phone's own (monsterCombat.js:
+  /* v2.3.4590: THE FLICKED BOW'S CYCLE, the phone's own (monsterCombat.js:
      max(SHOT_FLOOR_MS, 600 x Speed's cut x BOW_SWING_MULT / the storm
      amulet), then manualCombat.js mcBowInterval: x BOW_FASTER, never under
      BOW_MIN_MS) -- 371 ms for a new character.  MIRRORS, pinned by
@@ -91,12 +91,12 @@ export const FREE_SWING = Object.freeze({
   BOW_MIN_MS: 215,
   STORM_ATKSPD_BASE: 2,
   STORM_ATKSPD_PER: 1.5,
-  /* v2.3.4550: an arrow's claims come within this of its shot (it flies
+  /* v2.3.4590: an arrow's claims come within this of its shot (it flies
      0.47 s at most; hitproof.js ARROW_RUN_S), and one shot takes this many
      monsters at most (an arrow and its Piercing, 3 at most) */
   SHOT_SPAN_MS: 1500,
   SHOT_TARGETS: 4,
-  /* v2.3.4550: the shots kept to judge their claims by: a flicked bow's next
+  /* v2.3.4590: the shots kept to judge their claims by: a flicked bow's next
      shot (371 ms) leaves before the last one lands (up to 470) */
   SHOTS_KEPT: 4,
 });
@@ -113,7 +113,7 @@ export const freeSwingMethods = {
     const f = this._liveFlags;
     return !(f && typeof f === 'object' && own(f, 'freeswingbonus') && !f.freeswingbonus);
   },
-  /* v2.3.4550: the bow's perfect strike (`perfectbow: false`: the bow as
+  /* v2.3.4590: the bow's perfect strike (`perfectbow: false`: the bow as
      before it, the sword's unchanged) */
   _perfectBowOn() {
     const f = this._liveFlags;
@@ -142,7 +142,7 @@ export const freeSwingMethods = {
   _fsState(ps) {
     return ps._fs || (ps._fs = { at: 0, sw: null, f: 1, ids: null, c: 0, sc: 0, p: 0 });
   },
-  /* v2.3.4550: is `el` ms since the last counted attack inside the perfect
+  /* v2.3.4590: is `el` ms since the last counted attack inside the perfect
      window round a `cycle` ms cycle? */
   _pfIn(el, cycle) {
     return el >= cycle - FREE_SWING.PERFECT_EARLY_MS && el <= cycle + FREE_SWING.PERFECT_LATE_MS;
@@ -165,7 +165,7 @@ export const freeSwingMethods = {
     if (now - fs.at < FREE_SWING.MIN_SWING_GAP_MS) return null;
     const cyc = this._fsCycleMs(ps);
     fs.f = Math.min(1, (now - fs.at) / cyc);
-    fs.p = this._pfIn(now - fs.at, cyc) ? 1 : 0;   /* v2.3.4550: a perfect strike (1: its mana not paid yet) */
+    fs.p = this._pfIn(now - fs.at, cyc) ? 1 : 0;   /* v2.3.4590: a perfect strike (1: its mana not paid yet) */
     fs.at = now;
     fs.sw = swk;
     fs.ids = new Set([key]);
@@ -186,7 +186,7 @@ export const freeSwingMethods = {
     return out;
   },
 
-  /* ═══ v2.3.4550: THE PERFECT STRIKE (header) ═══ */
+  /* ═══ v2.3.4590: THE PERFECT STRIKE (header) ═══ */
   /* Does this session get the perfect strike's bonus (it asked, `fs: 2`, and
      `freeswingbonus` is on)?  The trial itself is the caller's to ask. */
   _pfAsked(session) {

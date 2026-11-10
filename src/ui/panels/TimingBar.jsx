@@ -1,4 +1,4 @@
-/* ═══ v2.3.4550: THE TIMING BAR -- THE OWNER'S OWN DESIGN ═══
+/* ═══ v2.3.4590: THE TIMING BAR -- THE OWNER'S OWN DESIGN ═══
  *
  * The owner, 2026-11-10: "a sword silhouette laying horizontally that refills
  * as a bar and once the bar reaches the top it glints.  During this glinting
