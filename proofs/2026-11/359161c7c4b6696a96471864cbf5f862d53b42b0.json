@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "359161c7c4b6696a96471864cbf5f862d53b42b0",
+  "tree": "8be1d206cf0dfd818d05baa7144a516211eaca0f",
+  "committedAt": "2026-11-10T07:27:56-08:00",
+  "subject": "Merge pull request #1505 from hemibroscommunity-del/claude/sm-loader-retries",
+  "files": 7936,
+  "bytes": 966453326,
+  "listingSha256": "50bb1991701d673265b175c22a5618d7ffaed4bdb7d3d90136236a9db4af40ed",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
