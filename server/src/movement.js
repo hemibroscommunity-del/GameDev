@@ -143,7 +143,7 @@ export const MOVE_BUDGET = Object.freeze({
   BURST_S: 3,
 });
 
-/* v2.3.4453: the zone-entry grace is given at most once in this long
+/* v2.3.4454: the zone-entry grace is given at most once in this long
    (_entryGraceGive below) -- no honest walk changes place twice in it */
 export const ENTRY_GRACE_GAP_MS = 10000;
 
@@ -367,7 +367,7 @@ export const movementMethods = {
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'serverdead') && !f.serverdead);
   },
 
-  /* ═══ v2.3.4453: THE ZONE-ENTRY HALF SECOND IS NOT A SHIELD ═══
+  /* ═══ v2.3.4454: THE ZONE-ENTRY HALF SECOND IS NOT A SHIELD ═══
      Every change into a non-hub zone stamps ZONE_ENTRY_GRACE_MS of no
      damage (_applyDamage).  v2.3.4423 refused it for invented dungeon ids,
      but a modified phone could still hop between two REAL places it may
@@ -894,7 +894,7 @@ export const movementMethods = {
         // 0 dodge while it's in the future, so monsters can
         // walk/swing as normal but the player has a moment to
         // orient before hits land.
-        /* v2.3.4453: ...not mid-fight, nor twice in 10 s (_entryGraceGive) */
+        /* v2.3.4454: ...not mid-fight, nor twice in 10 s (_entryGraceGive) */
         const _gNow = Date.now();
         if (this._entryGraceGive(session.id, ps, _gNow)) {
           ps._zoneEntryGraceUntil = _gNow + this.ZONE_ENTRY_GRACE_MS;

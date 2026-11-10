@@ -194,7 +194,7 @@ The minnow keeps the owner's 100.
   how the phone starts, so it is a later step. Until then the waiting
   screen is the answer.
 
-### 6b. The zone-entry half second is not a shield (v2.3.4453)
+### 6b. The zone-entry half second is not a shield (v2.3.4454)
 
 - Every change into a place with monsters gives half a second of no damage,
   so an arriving player can see what is around them (`ZONE_ENTRY_GRACE_MS`,
@@ -258,7 +258,7 @@ staff bolt.
 | `pvpbalance: false` | the worker's roll in player fights: the old claim x 0.5 path, exactly (also un-advertises `caps.pvpbalance`) |
 | `fishheal: false` | the fish ladder: the old 92 + 8 x level, with the old Recovery bonus on top (also un-advertises `caps.fishheal`) |
 | `linger: false` | the body staying: every leaver leaves at once again |
-| `entrygrace: false` | the zone-entry half second's two limits (mid-fight, once in 10 s): every entry graced again, as before v2.3.4453 |
+| `entrygrace: false` | the zone-entry half second's two limits (mid-fight, once in 10 s): every entry graced again, as before v2.3.4454 |
 | `takeoverlinger: false` | a second login mid-fight counting as a leave: it takes the session over and starts afresh where the phone says, as before v2.3.4432 |
 
 ## Deploy order

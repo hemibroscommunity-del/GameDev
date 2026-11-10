@@ -214,7 +214,7 @@ heal();
 {
   const FAKE = 'dungeon:old_way';
   V.z = 'wheel'; V._zoneEntryGraceUntil = 0;
-  V._entryGraceAt = 0;   /* v2.3.4453: no grace given in the last 10 s (movement.js _entryGraceGive) */
+  V._entryGraceAt = 0;   /* v2.3.4454: no grace given in the last 10 s (movement.js _entryGraceGive) */
   const inOk = await move('bp_dl_v', FAKE);
   check('5a. `dungeonlive: false`: the invented dungeon is taken on its shape again', inOk && V.z === FAKE, { z: V.z });
   check('5b. ...with the grace stamped', V._zoneEntryGraceUntil > T);
