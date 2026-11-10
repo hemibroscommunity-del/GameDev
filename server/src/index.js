@@ -4278,8 +4278,29 @@ export class GameRoom {
          clocks as time LEFT, so a phone whose own clock is off still opens
          it, flashes it and lets it go when the worker does; absent on every
          other pile, so their wire is byte-identical */
-      ...(p.dropped ? this._dropWire(p) : {}),
+      ...(p.dropped ? this._dropWire(p) : (p.isDeathDrop && !this._pileLeftOff() ? this._deathLeftWire(p) : {})),
     };
+  }
+
+  /* v2.3.4383: A DEATH PILE'S WINDOWS GO AS TIME LEFT TOO, in the dropped
+     item's own shape (`openLeft`, `left`).  v2.3.4364 put the worker's times
+     on the phone's clock from the pings, but a phone that has not had its
+     first ping yet (the first 3 s after joining) read them on its own clock:
+     2 minutes fast, its own bag was cut on its first frame (sweep
+     2026-11-03, V22; review R3: "the time-left wire is the real cure").
+     Additive: an old phone ignores them; `ownerOnlyUntil` / `expiry` still
+     go.  `pileleft: false` in the live flags (lower case) stops them. */
+  _deathLeftWire(p) {
+    const now = Date.now();
+    const out = {};
+    if (typeof p.ownerOnlyUntil === 'number') out.openLeft = Math.max(0, p.ownerOnlyUntil - now);
+    if (typeof p.expiry === 'number') out.left = Math.max(0, p.expiry - now);
+    return out;
+  }
+
+  _pileLeftOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'pileleft') && !f.pileleft);
   }
 
   /* v2.3.3473: a drop's own fields on the wire (itemdrop.js) */
@@ -4516,7 +4537,8 @@ export class GameRoom {
       try {
         ws.send(JSON.stringify({
           type: 'loot_pickup_rejected',
-          payload: { lootId: (payload && payload.lootId) || null, zone: (payload && payload.zone) || null, reason, ...(extra || {}) },
+          /* v2.3.4383: `viaPet` echoed, so the phone knows whose ask it was */
+          payload: { lootId: (payload && payload.lootId) || null, zone: (payload && payload.zone) || null, reason, ...(payload && payload.viaPet ? { viaPet: true } : {}), ...(extra || {}) },
         }));
       } catch (e) {}
     };

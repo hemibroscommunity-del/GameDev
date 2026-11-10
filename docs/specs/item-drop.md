@@ -168,14 +168,26 @@ refused whatever its move said.
 
 - Gear (weapons, armour, shields): see above. It would need the worker to
   move a piece's receipt to whoever picks it up.
-- ~~A death pile's clocks are the worker's own times~~ (v2.3.4364): still
-  sent as the worker's own times, but the phone now puts every pile's `ts`,
-  `ownerOnlyUntil` and `expiry` on its own clock as they arrive, by the
-  worker's clock read from the ping's `ts` (`src/game/workerClock.js`), so a
-  phone whose clock is off agrees with the worker to within a ping's trip.
-  An early 'not-recipient' on a death pile is asked once more just after its
-  minute, never dropped at once (`src/game/lootAsk.js`). Time left on the wire
-  (the drop's shape) is still the fuller cure (server work, not done).
-- Other places that ask only `ps.dead` were not changed here; one is a kill's
-  share (combat.js: a player whose damage is on a monster that dies in the
-  five seconds after their death is still counted for a share).
+- ~~A death pile's clocks are the worker's own times~~ (v2.3.4364, then
+  v2.3.4383): v2.3.4364 put every pile's `ts`, `ownerOnlyUntil` and `expiry`
+  on the phone's clock as they arrive, by the worker's clock read from the
+  ping's `ts` (`src/game/workerClock.js`). That left the first seconds after a
+  join, before the first ping, on the phone's own clock: a phone 2 minutes
+  fast still cut its own bag on its first frame. Since v2.3.4383 a death pile
+  carries its minute and its end as time left too, in the drop's own shape
+  (`openLeft`, `left`; `index.js` `_deathLeftWire`), on every road it is sent
+  by (its `loot_drop`, a join's `state_sync`, every zone list), and the phone
+  puts them on its own clock as the pile arrives (`_buildServerPile`, the
+  drop's `_dropAt`), so no ping is needed; the rebase then moves only its `ts`
+  (`_leftWire`). The worker's own times still go, for an older phone.
+  `pileleft: false` in the live flags stops the new fields (the phone falls
+  back on the ping's clock). An early 'not-recipient' on a death pile is still
+  asked once more just after its minute (`src/game/lootAsk.js`), and a
+  refusal of a pet's ask says so (`viaPet`), so the pet's out-of-range no
+  longer re-arms the hand. Suite: `pile-left.test.mjs`. A monster's pile still
+  goes as the worker's times (its 30 s on the phone is its own question).
+- Other places that ask only `ps.dead`: since v2.3.4373 the phone no longer
+  writes `ps.dead` (`docs/specs/server-dead.md`); it is true exactly while the
+  worker runs a death, so those places read the server's death too. A kill's
+  share (combat.js) is one: a player who died in the five seconds before the
+  monster did is no longer counted for a share (it said they still were).
