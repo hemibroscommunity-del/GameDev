@@ -56,7 +56,7 @@ import { HAT_COLOR_CATALOG } from './hatColorCatalog.js';
 import { recolorEnabled } from './recolorOptions.js';
 import { segmentMaterials, mainMaterial } from './traitMaterials.js';
 import { loadTraitImg } from './traitImg.js';   /* v2.3.3689: a stalled picture is asked for again */
-import { headLookTextures } from './headLook.js';   /* v2.3.3753: drawn from the shared numbers */
+import { headLookTextures, headLookReady } from './headLook.js';   /* v2.3.3753: drawn from the shared numbers */
 
 /* ONE palette, shared with hats on purpose.  A second copy of the same twelve
    swatches would drift the first time either is retuned, and "the blue on my
@@ -209,24 +209,50 @@ function _capCache() {
   }
 }
 
+/* v2.3.4368: each build's promise while it runs (coloredEyewearReady), as the
+   hat's, hair's and beard's have had since v2.3.3520 */
+const _building = Object.create(null);
 function build(id, colorId) {
   const target = eyewearColorTarget(colorId, id);
   const key = id + '/' + colorId;
   _cache[key] = 'loading';
   const tex = {};
-  Promise.all(dirsFor(id).map((dir) =>
+  _building[key] = Promise.all(dirsFor(id).map((dir) =>
     loadImg(`/sprites/traits/eyewear/${id}/${dir}.png?v=${TRAIT_VER}`).then((img) => ({ dir, img })).catch(() => ({ dir, img: null }))
   )).then((loaded) => {
-    const prof = _refCache[id] || (_refCache[id] = _pooledProfile(loaded.map((l) => l.img), id));
+    /* v2.3.4368: the shared reference in a try too (a throw here sank every
+       facing); without one each facing is recoloured on its own, as hair is */
+    let prof;
+    try { prof = _refCache[id] || (_refCache[id] = _pooledProfile(loaded.map((l) => l.img), id)); } catch (e) { prof = undefined; }
     for (const { dir, img } of loaded) {
       if (!img) continue;   /* dir missing -> the renderer falls back to native art */
-      const cv = recolorHairToCanvas(img, target, prof);
-      const t = Texture.from(cv);
-      if (t && t.source) { t.source.scaleMode = 'linear'; t.source.autoGenerateMipmaps = true; keepAsImage(t.source, Cache); }   /* v2.3.3606: kept as an image of itself (keepAsImage.js) */
-      tex[dir] = t;
+      /* v2.3.4368: a try per facing, as hair and beard have: one facing that
+         throws (iOS refusing a canvas) left the key 'loading' for the visit,
+         never rebuilt or evicted, every facing in its native colour (sweep
+         V18 R8-11) */
+      try {
+        const cv = recolorHairToCanvas(img, target, prof);
+        const t = Texture.from(cv);
+        if (t && t.source) { t.source.scaleMode = 'linear'; t.source.autoGenerateMipmaps = true; keepAsImage(t.source, Cache); }   /* v2.3.3606: kept as an image of itself (keepAsImage.js) */
+        tex[dir] = t;
+      } catch (e) { /* that facing falls back to native art */ }
     }
     _cache[key] = tex;
     _capCache();
+    delete _building[key];
+  });
+}
+
+/** v2.3.4368: settles once (id, colorId)'s recolour is made (at once when
+ *  there is none to make, or it is made) -- the loading screen waits for the
+ *  local player's own eyewear colour (preloadTraits), which until now was first
+ *  baked by the draw and showed native for its first frames (sweep V18 R8-11;
+ *  the PRELOADING law, CLAUDE.md section 7). */
+export function coloredEyewearReady(id, colorId) {
+  return headLookReady().then(() => {
+    getColoredEyewearTextures(id, colorId);
+    const p = _building[id + '/' + colorId];
+    return p ? p.catch(() => {}) : undefined;
   });
 }
 
