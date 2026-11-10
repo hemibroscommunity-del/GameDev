@@ -144,10 +144,7 @@ export const duelMethods = {
     // duel_accept: fromId = accepter, target = challenger.
     const chal = this._duelChallenges.get(target + '>' + fromId);
     this._duelChallenges.delete(target + '>' + fromId);
-    if (!chal || now - chal.ts > DUEL.CHALLENGE_TTL) return null; // forged/replayed/expired
-    if (this._duelFor(fromId) || this._duelFor(target)) return null; // one duel at a time
     const a = target, b = fromId;
-    const psA = this.playerState[a], psB = this.playerState[b];
     const declineBoth = () => {
       // Existing client UX: duel_decline shows "Duel declined" to its
       // target.  Send one to each side.
@@ -155,6 +152,25 @@ export const duelMethods = {
       this.eventBuffer.push({ type: 'duel_decline', from: a, payload: { from: a, target: b } });
       return null;
     };
+    /* v2.3.4442: the two drops below were silent, so the accepter's phone
+       (v2.3.4361's pending duel) sat on "DUEL!" for its whole 8-second wait
+       with no word.  Now each answers with the decline every other refusal
+       here sends.
+       - No live challenge (forged, replayed, or older than CHALLENGE_TTL):
+         the ACCEPTER alone is told.  Nothing proves the named challenger
+         ever asked, so a decline to them would let one socket raise
+         "Duel declined" popups on any player it names; and an honest
+         challenger whose card simply expired has nothing waiting.
+       - Either side already in a duel: a real challenge existed and both
+         pressed a button, so both are told (declineBoth).  The accepter's
+         own live duel, if it is the busy one, is untouched: the phone puts
+         it back when its pending one is declined (duelPending.js `prev`). */
+    if (!chal || now - chal.ts > DUEL.CHALLENGE_TTL) { // forged/replayed/expired
+      this.eventBuffer.push({ type: 'duel_decline', from: a, payload: { from: a, target: b } });
+      return null;
+    }
+    if (this._duelFor(fromId) || this._duelFor(target)) return declineBoth(); // one duel at a time
+    const psA = this.playerState[a], psB = this.playerState[b];
     if (!psA || !psB || psA.dying || psB.dying) return declineBoth();
     /* ═══ v2.3.1973: A DUEL NEEDS BOTH OF YOU IN THE SAME PLACE ═══
      * Nothing checked the zone, and the handshake relay is not zone-scoped

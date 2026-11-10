@@ -110,5 +110,49 @@ const fn = (n) => typeof A[n] === 'function';
   check('6. storeApi post() goes through postWithin', /postWithin\(/.test(p) && !/catch \(e\) \{\s*return \{ ok: false, error/.test(p), p.slice(0, 200));
 }
 
+// ── 7. v2.3.4442: the listing lock stays with the item, not the card ──
+// Closing the card and opening the SAME stack again reset the card's lock
+// while the answer was out: a second tap listed it twice.
+{
+  const ok = fn('sellLockKey') && fn('claimSell') && fn('releaseSell');
+  check('7. the item lock rules exist', ok, Object.keys(A));
+  if (ok) {
+    const t = 1000000;
+    const stack = A.sellLockKey({ kind: 'item', invKey: 'wood', qty: 3, price: 5 });
+    const stackAgain = A.sellLockKey({ kind: 'item', invKey: 'wood', qty: 1, price: 9 });   /* reopened: another qty and price */
+    const other = A.sellLockKey({ kind: 'item', invKey: 'fish', qty: 1, price: 5 });
+    check('7. the same stack has the same key whatever the qty or price', stack && stack === stackAgain, [stack, stackAgain]);
+    check('7. the first tap claims it', A.claimSell(stack, t) === true);
+    check('7. a tap on a reopened card for the same stack, answer still out, is held', A.claimSell(stackAgain, t + 2000) === false);
+    check('7. a different item is never held by it', A.claimSell(other, t + 2000) === true);
+    A.releaseSell(other);
+    A.releaseSell(stack);
+    check('7. once its answer came the stack is free again', A.claimSell(stack, t + 3000) === true);
+    check('7. ...and if no answer ever came, the time limit frees it',
+      A.claimSell(stack, t + 3000 + A.STORE_POST_LIMIT_MS) === false && A.claimSell(stack, t + 3000 + A.STORE_POST_LIMIT_MS + 1001) === true);
+    A.releaseSell(stack);
+    const w0 = A.sellLockKey({ kind: 'weapon', stashIndex: 0, price: 5 });
+    const w1 = A.sellLockKey({ kind: 'weapon', stashIndex: 1, price: 5 });
+    const g1 = A.sellLockKey({ kind: 'gear', field: 'armorStash', sel: { id: 'plate', q: 2 }, hint: 0, price: 5 });
+    const g2 = A.sellLockKey({ kind: 'gear', field: 'armorStash', sel: { id: 'plate', q: 2 }, hint: 1, price: 5 });
+    const gid = A.sellLockKey({ kind: 'gear', field: 'armorStash', gid: 'g_1', price: 5 });
+    const gid2 = A.sellLockKey({ kind: 'gear', field: 'armorStash', gid: 'g_2', price: 5 });
+    check('7. two weapons, two identical pieces in two places, two ids: all different keys',
+      new Set([w0, w1, g1, g2, gid, gid2, stack]).size === 7, [w0, w1, g1, g2, gid, gid2]);
+  }
+  const src = readFileSync(new URL('../../src/ui/mobile/dash/ItemDetailPopup.jsx', import.meta.url), 'utf8');
+  const start = src.indexOf('const onSellConfirm');
+  const body = src.slice(start, src.indexOf('const onClose', start));
+  const iClaim = body.indexOf('claimSell(');
+  const iLock = body.indexOf('sellInFlight.current = true');
+  const iList = body.indexOf('await storeList(');
+  const iRel = body.indexOf('releaseSell(', iList);
+  const iAns = body.indexOf('cardAnswer(', iList);
+  check('7. the card claims the item before it sends', iClaim > 0 && iClaim < iLock && iLock < iList, { iClaim, iLock, iList });
+  check('7. ...shows the not-sure words when held, and sends nothing',
+    /if \(!claimSell\(lockKey, Date\.now\(\)\)\) \{ setSellErr\(deskWords\(STORE_UNSURE_WORDS\)\); return; \}/.test(body));
+  check('7. ...and frees the item when ANY answer comes (before the unsure return)', iRel > iList && iRel < iAns, { iRel, iAns });
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
