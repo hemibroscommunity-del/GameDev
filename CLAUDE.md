@@ -102,6 +102,8 @@ spec. Add a line here only for a new RULE every session must follow.
   plain `{}` silently no-ops on `'__proto__'`).
 - Before a review, or a "fix" of old behaviour: `/repo-review` and
   `docs/TRAPS.md`.
+- A fix never turns on something nobody has seen (a dormant effect, sound or
+  screen it finds broken): that is the owner's question (TRAPS §305).
 - **Agents and workflows die silently** (2026-09-10): never infer liveness from
   output (check the `.jsonl` file's mtime; 15 quiet minutes is dead); long
   investigations write findings to a file as they go; run ONE heavy browser
@@ -170,6 +172,9 @@ spec. Add a line here only for a new RULE every session must follow.
   or a client can forge it, and the client handles it in `wsClient.js`'s DIRECT
   switch. A phone's relay reaches others only if its type is in `RELAY.TYPES`
   (`server/src/relay.js`), rebuilt in the sender's name.
+- **A reconnect**: the phone clears its copy of a worker session (a duel, a
+  trade, the party) at `state_sync` only together with the worker's re-send:
+  a row in `REJOIN_SLOTS` (`src/game/rejoinSlots.js`; TRAPS §278).
 - **A bundle's parts each finish before the next**: every case in
   `_onMessage` awaits its handler (quiet-phone §8-9, TRAPS #182).
 - **One write**: a payment, its stamp and both sides of a swap are ONE

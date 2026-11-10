@@ -63,9 +63,19 @@ export const lingerMethods = {
     return !!c && now - (c.pvpAt || 0) < PVP_HEAL.WINDOW_MS;
   },
 
-  /* webSocketClose: should this leaver's body stay?  If so it is marked and
-     kept, and the close does only what does not touch the body. */
-  _lingerOnClose(session, now) {
+  /* v2.3.4432: `takeoverlinger: false` in the live flags -- a second login
+     takes over a body in a fight as it did before (join.js), the body
+     rebuilt where the new phone says.  Protects the OTHER player: never asks
+     _testMode. */
+  _takeoverLingerOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && own(f, 'takeoverlinger') && !f.takeoverlinger);
+  },
+
+  /* Should this leaver's body stay?  The ONE test: the close asks it
+     (_lingerOnClose), and so does a second login taking the session over
+     (join.js, v2.3.4432) -- asked of a live session, it marks nothing. */
+  _lingerWouldStay(session, now) {
     const t = typeof now === 'number' ? now : Date.now();
     const id = session && session.id;
     const ps = id ? this.playerState[id] : null;
@@ -81,7 +91,16 @@ export const lingerMethods = {
        still in the map) */
     let others = 0;
     for (const [, s] of this.sessions) if (s && s.id && s.id !== id) others++;
-    if (others === 0) return false;
+    return others > 0;
+  },
+
+  /* webSocketClose: should this leaver's body stay?  If so it is marked and
+     kept, and the close does only what does not touch the body. */
+  _lingerOnClose(session, now) {
+    const t = typeof now === 'number' ? now : Date.now();
+    if (!this._lingerWouldStay(session, t)) return false;
+    const id = session.id;
+    const ps = this.playerState[id];
     ps.lingering = true;
     ps._lingerUntil = t + LINGER.MS;
     ps._lingerZ = ps.z;

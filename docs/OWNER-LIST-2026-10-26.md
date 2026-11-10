@@ -445,3 +445,62 @@ fight simulator (18), then the "After the judges" list.
 ## 10. The state-machine fixes (added 2026-11-10, v2.3.4381)
 
 - **Twenty fixes from the 2026-11-03 sweep are in the game** (#1457 to #1476): duels, trades, deaths, the connection, looks, the store, parties and more, nine of them with a kill switch. What was done, what is still to do, and the questions that wait on your answers (a second tab mid-fight, the dungeon's loading screen, a death pile across a restart, and others) are in `docs/STATE-MACHINES.md`.
+- **Twenty-one more fixes are in the game** (#1478 to #1500, v2.3.4433 notes): your live duel and trade come back after a reconnect, a death bag survives a server update, Rare armour no longer vanishes after a reconnect, a refused quest, harvest or bet no longer shows as done, a monster's next life starts clean, the shield shows real hits, a mute in a Wi-Fi blip is kept, and more. The list, with each fix's off switch, is in `docs/STATE-MACHINES.md`.
+
+### Decided (2026-11-10)
+
+- **Save a dead player's bag across a server update?** Yes: built (v2.3.4384).
+- **The colour fade between places** (written long ago, never shown): stays OFF for now.
+- **A second login during a fight with another player:** it takes over the body where it stands (being built as v2.3.4432).
+- **The Auction House money fix** (an offer refund or raise caught by a server restart in the split second between two saves): waits until after the judges.
+- **The half second of no damage when you move between real places:** stays as it is for now.
+
+### Your questions from these fixes (each a yes or no; my recommendation after the dash)
+
+**The shield**
+1. When holding the shield runs your stamina out, the server drops your guard for 3 s, but your screen still shows it up. Should the screen show it drop, with a 3 s countdown? — The pull request recommends nothing yet; this one decides 3 and 4 below.
+2. Should the guard come back up by itself after those 3 s (rather than wait for your next tap)? — Your choice; it goes with 1.
+3. Should being dazed or frozen also stop raising the shield on the server? — Wait for your answer to 1 (alone it would draw a shield that blocks nothing).
+4. Fix the shield's cooldown number (2 s on the phone, 3 s on the server)? — Only together with 1; today nothing reads it.
+5. Should a quick shield down-and-up need a short time down before the parry is ready again? — The pull request leaves it to you.
+6. Tapping Block mid-lunge still lets the lunge hit. Keep it? — The reviews disagree; it stays as it is until you say.
+7. After someone joins (or after an update), they see your shield down until you next press it. Fix it at the cost of a tiny bit more data per player? — The pull request calls the cost small.
+
+**Fighting**
+8. Three small combat rules wait on you: when a fight "ends" for the phone, what happens to a queued bow special that runs out, and the two attack cooldowns that disagree (the held attack counts the amulet, the tap does not). — Low impact; the pull request suggests leaving the cooldowns alone for now.
+
+**Monsters**
+9. When a monster dies with its ball in the air, should the ball vanish? — Today it still lands; the fix only stops it hitting you in the monster's next life.
+10. Should the phone stop making its own slime Remains piles in the world (the server already makes the real one)? — The review recommends yes, none in the world; these are the piles from your "dozens in my bag" note.
+11. Should a freeze cancel a monster's wind-up, as a Shield Bash stun does? — Your design call.
+12. A parried monster cast waits 1.5 s before trying again, though the code's note says the full cooldown. Change it to the full cooldown? — Your design call.
+13. A monster's pile lasts 30 s on the phone and 60 s on the server. Make the phone say 60? — The server's 60 is what really happens.
+
+**Quests**
+14. Keep showing a quest reward at once (and take it back if the server says no), rather than wait for the server's yes? — Yes, keep it snappy: the fix works either way and this is today's feel.
+15. The Mayor's third quest (300 gold) is paid with no server check. Build the check (it needs a new kind of objective that counts dungeon clears)? — Yes, but it is design work.
+
+**Friends**
+16. Should a friend request you sent run out (for example after 30 days), with a Cancel button? — Yes: today 25 requests to players who quit block you for good.
+17. Should a direct message show "not delivered" when the server drops it (too fast, 20 unread waiting, or muted)? — Your call; it needs a server answer.
+18. Should a block be kept on the server (every device), and should blocking a friend also unfriend them? — Your call.
+
+**Gear, the amulet and the Arena**
+19. Should the phone sort the weapon bag the way the server does? — Your call: players would see the order change.
+20. Should the server also refuse setting the amulet gem it already holds? — The review prefers yes; the phone already stops it.
+21. After a page reload the Arena forgets your bets. Should the phone load your real bets from the server? — Yes, suggested by the review.
+
+**Dungeons**
+22. For up to 8 s behind a dungeon's loading screen you can still be hit in the world. Protect you there with a server-side "entering" grace? — The other choice is to load once you are inside the arena; both need building.
+23. A party member pulled into a run whose phone takes over 60 s to load, while the run empties and closes, sees an empty arena until they take the exit. Acceptable? — The pull request thinks so (it is what happens today).
+
+**Pictures**
+24. When a monster's pictures fail to download, should it stay invisible until a retry works (instead of a stand-in body)? — Today a failed download quietly counts as "ready"; the memory law says a monster whose look is not ready is not drawn.
+25. If a new screen rebuild starts while another is still being made, throw the older one away? — Yes, the review wants it (it stops two drawing engines living at once).
+26. Clear your own burn or chill picture at a death, a respawn and a change of place? — Cosmetic; yes is a small change.
+27. Remake the fishing picture once per outfit instead of every frame when 3 or more players fish? — A design choice for later.
+
+**Sound**
+28. After one silent stretch the game stops streaming music for the session (23-40 MB more memory). Should an iPhone sound rebuild give streaming another chance? — It was a deliberate choice (v2.3.3073); the pull request leaves it to you.
+
+**Still open from the first wave:** whether forging, hardening and equipping count as leaving a fight; the farm's two phone-only workshops; hiding a blocked player's attack warning; a grace period for a trade that loses its server.

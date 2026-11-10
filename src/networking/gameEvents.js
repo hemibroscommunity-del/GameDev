@@ -4985,7 +4985,7 @@ export function processGameEvent(type, payload, S, deps) {
                  accept/decline card (accepting sends trade2_open back,
                  which completes the mutual open server-side). */
               if (!payload || !payload.from) break;
-              if (isBlockedId(payload.from)) break;   /* v2.3.3526: a blocked player's request never reaches you (duel_request) */
+              /* v2.3.4442: a blocked player's invite is dropped before this switch (blockedAsks.js); this case's own block line was a leftover */
               /* v2.3.4362: the worker spoke -- a leave waiting on it stops
                  (game/tradeSlot.js), and the window now shows the invite */
               t2LeaveDrop(S);

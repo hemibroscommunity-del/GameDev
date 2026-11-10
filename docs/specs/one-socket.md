@@ -165,6 +165,18 @@ reset (4005) or a linger (4010); flood.test.mjs §7 pins that, and
 session-exits.test.mjs §1 pins that a failed join is never 4010 (the phone
 read it as "Your bro is still in that fight" and retried every 5 s).
 
+## A second login of the same character
+
+A join for a character the room already holds on another socket (a second
+tab, a relaunch before the old socket closed) replaces it: the old socket
+is closed "superseded by reconnect" (the phone shows "This account
+connected from another window") and the join goes on. One exception runs
+the old socket's real close first: a character in a fight with another
+player (v2.3.4432, `docs/specs/pvp-fights.md` §6: the body stays, and the
+new join waits with 4010 unless it comes from where the body stands; kill
+switch `takeoverlinger: false`). Every other takeover
+skips the close's duties but its save (`docs/specs/takeover-save.md`).
+
 ## Live flags
 
 | Flag | Default | Range | Meaning |

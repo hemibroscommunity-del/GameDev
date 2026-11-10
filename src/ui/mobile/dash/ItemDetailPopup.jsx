@@ -37,7 +37,7 @@ import { unequipArmorDirect, unequipLegsDirect, syncArmorChange, equipArmorFromS
 import { resolveStashIdx } from './equipActions.js';   /* v2.3.4151: moved there, with the three equips */
 import { weaponBlocked, weaponBagFull } from './equipActions.js';   /* v2.3.4386: the worker's two weapon refusals, asked first */
 import { itemActionList, runItemAction } from './itemActions.js';   /* v2.3.4151: the one action list, shared with the Gear tab */
-import { cardAnswer, STORE_UNSURE_WORDS } from '@/game/storeAnswer.js';   /* v2.3.4412: "not sure" keeps the card locked; a late answer stays on its card */
+import { cardAnswer, STORE_UNSURE_WORDS, sellLockKey, claimSell, releaseSell } from '@/game/storeAnswer.js';   /* v2.3.4412: "not sure" keeps the card locked; a late answer stays on its card; v2.3.4442: the lock stays with the item */
 import { deskWords } from '@/game/deskWords.js';
 import { revealCardFor } from '@/game/revealBag.js'; /* v2.3.4012: a mystery piece's card */
 import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx'; /* v2.3.4012: its "?" */
@@ -1563,10 +1563,16 @@ export const ItemDetailPopup = () => {
       const qty = Math.max(1, Math.min(sellMax, Math.floor(Number(sellQty) || 1)));
       body = { kind: 'item', invKey: target.key, qty, price };
     }
+    /* v2.3.4442: the same item reopened on a fresh card while its listing
+       answer is still out: the card's own lock was reset by the reopen, the
+       item's is not.  Send nothing; say "not sure" as the timed-out card does. */
+    const lockKey = sellLockKey(body);
+    if (!claimSell(lockKey, Date.now())) { setSellErr(deskWords(STORE_UNSURE_WORDS)); return; }
     sellInFlight.current = true;
     setSellBusy(true); setSellErr('');
     const sentCard = sellCard.current;
     const r = await storeList(body);
+    releaseSell(lockKey);   /* v2.3.4442: answered (or not sure): the item is free */
     /* v2.3.4412: no answer is "not sure", never "no": the card STAYS LOCKED
        (the worker may have taken it, and a second tap would list it twice --
        the v2.3.2507 double listing).  An answer for a card that is no longer

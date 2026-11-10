@@ -42,7 +42,10 @@ exported for the wrangler binding, the marketplace.js precedent).
   would make town fights unendable; HP only, stamina/mana still
   regen so blocking works), `eat_request`, shop `healFish`, and the cook
   heal buff are gated in index.js. Lifesteal needs no gate in v1 (town
-  spawns no monsters).
+  spawns no monsters). Since v2.3.4413 the eating gates (`cooking.js`) also
+  ask the duel itself (`gladiator.js` `_arenaInMatch`), so a fighter back
+  from a reload inside the 15 s grace still cannot eat (live flag
+  `arenaeatgate`; `session-exits.test` §4).
 - **Venue v1**: town + consent pairs — no new zone, no teleport (the
   server has no push-teleport and the anti-teleport gate rejects
   same-zone jumps). A dedicated non-lawless arena zone with zone-change

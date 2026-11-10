@@ -1071,7 +1071,13 @@ export const QUEST_REWARDS = {
 
       mayor_1:    {gold:50,  xp:10,  next:'mayor_2'},
       mayor_2:    {gold:100, xp:28,  next:'mayor_3', objective:{type:'kill', arch:null, count:5}},
-      mayor_3:    {gold:300, xp:70, next:null},
+      /* v2.3.4441: "Clear any dungeon" is CHECKED (quests.js
+         _questObjectiveMet, `dungeon_clear`): a clear the worker itself
+         recorded in lifeSkills.dungeonClears (dungeon.js _dungeonComplete;
+         the join takes no claim to it).  It was paid on the game's word:
+         300 g for one message once mayor_2 was in.  Kill switch
+         `disable_mayor3_check` (live flags) pays it on the word again. */
+      mayor_3:    {gold:300, xp:70, next:null, objective:{type:'dungeon_clear', count:1}},
       trader_1:   {gold:25,  xp:8,  next:'trader_2'},
       trader_2:   {gold:75,  xp:18,  next:'trader_3', objective:{type:'gather', count:3}},
       trader_3:   {gold:150, xp:35, next:null},
@@ -1119,7 +1125,8 @@ export const QUEST_DORMANT = Object.freeze([
 ]);
 
 /* v2.3.3179: the first quest, and the one the worker can check that opens
- * the ones it can't.  A quest with no `objective` (mayor_1, mayor_3) is paid
+ * the ones it can't.  A quest with no `objective` (mayor_1; mayor_3 until
+ * v2.3.4441) is paid
  * on the game's word, so it waits until this one is handed in -- the Mayor
  * never offers them before it anyway (the game's getNpcQuest goes down his
  * line in order).  The daily quests wait on the same quest

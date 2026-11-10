@@ -63,7 +63,9 @@ move that receipt to whoever picks it up.
   opens, flashes and ends it when the worker does. A `loot_drop` of a drop a
   phone already holds refreshes its clocks (gameEvents.js): the reveal reaches
   its dropper too.
-- **Nothing is stored**: like every pile it lives in the room's memory
+- **Nothing is stored**: like every pile but a death pile (which has its own
+  row since v2.3.4384, `docs/specs/death-pile-saved.md`; v2.3.4433 note) it
+  lives in the room's memory
   (handoff rule 11). A room restart in those two minutes loses the pile, and
   the bag's save has already left the item out, so nothing is ever in two
   places.
