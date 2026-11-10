@@ -8,8 +8,8 @@ import { trackedQuestId, setTrackedQuest } from '@/game/trackedQuest.js';
 import { questJournalList, questJournalPage, journalCtx } from '../sheet/questJournalModel.js';   /* v2.3.3944: the journal */
 import { apTotalText } from '@/game/questJournal.js';
 import { QuestJournalPage, useJournalTap, npcPortrait } from './QuestJournalPage.jsx';
-import { useBoxSize, sideBySide, FOOT_FADE, railHeading } from './railKit.js';   /* v2.3.4382: a list beside what it opens */
-import { QUEST_PIN, OWNER_ICON } from '@/data/ownerIcons.js';   /* v2.3.4382: the givers' own pins, on the list's pills; the prize wheel on Daily */
+import { useBoxSize, sideBySide, FOOT_FADE, railHeading } from './railKit.js';   /* v2.3.4390: a list beside what it opens */
+import { QUEST_PIN, OWNER_ICON } from '@/data/ownerIcons.js';   /* v2.3.4390: the givers' own pins, on the list's pills; the prize wheel on Daily */
 import { dailyRewardsBus, questsLive, spinLive } from '@/game/dailyRewards.js';
 
 /* v2.3.1265: Quests — read-only quest log (accepting/turning-in stays
@@ -36,7 +36,7 @@ import { dailyRewardsBus, questsLive, spinLive } from '@/game/dailyRewards.js';
    opens that quest's own page (QuestDetailPanel), as before.
    The words are game/questJournal.js's (docs/specs/quest-journal.md). */
 
-/* ═══ v2.3.4382: A MENU, NOT A SCROLL ═══
+/* ═══ v2.3.4390: A MENU, NOT A SCROLL ═══
    The owner, 2026-11-09: "The quests page actually needs to be reorganized as
    a useful menu interface.  Right now everything scrolls too long and it's
    not a good quest management system.  It needs to be able to help you
@@ -48,7 +48,7 @@ import { dailyRewardsBus, questsLive, spinLive } from '@/game/dailyRewards.js';
    Active, Available and Done lists -- in a band about 190 px tall.  To reach
    your second quest you scrolled past all of the first.
 
-   NOW it is the Leaderboards' shape (v2.3.4381, the owner: "This is looking
+   NOW it is the Leaderboards' shape (v2.3.4389, the owner: "This is looking
    good"): YOUR QUESTS ARE A LIST of pills down the left, and the one that is
    lit is OPEN beside it.
      the list   Active (the giver's grey "?" pin, his gold ring and tick once
@@ -159,7 +159,7 @@ let lastPick = null;
    ones over heads and on the maps, behind the loading screen already), a
    brass star on the one you track, a green tick for Done, the prize wheel
    for the daily rewards */
-/* ═══ v2.3.4382: THE GIVER'S FACE ON HIS QUEST ═══
+/* ═══ v2.3.4390: THE GIVER'S FACE ON HIS QUEST ═══
    The owner: "it would be a nice touch to display the profile picture of each
    NPC beside the quest."  A quest's pill wears its giver's portrait (the head
    the dialogue and the journal's WHO already show: QuestJournalPage

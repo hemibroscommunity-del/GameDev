@@ -167,7 +167,7 @@ export function questJournalList(S, ctx) {
       const n = journalCount(quest, R);
       if (n) line += ' (' + countText(quest, n) + ')';
     } else line = 'Ready: hand it in to ' + folkDisplayName(quest.npc);
-    return { id: quest.id, title: quest.title, npc: quest.npc || '', ready, tracked: quest.id === tracked, line };   /* v2.3.4382: + the giver, for his face on the list's pill */
+    return { id: quest.id, title: quest.title, npc: quest.npc || '', ready, tracked: quest.id === tracked, line };   /* v2.3.4390: + the giver, for his face on the list's pill */
   });
   /* the worker's order, so "newest" is the last one taken */
   const order = inHandIds(R).filter((k) => rows.some((r) => r.id === k));

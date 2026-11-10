@@ -41,7 +41,7 @@ export function FishWeighCard() {
   const records = () => {
     wantFishBoard(info.sp);
     closeFishWeighCard();
-    try { dashboardPanelBus.open('leaderboard'); } catch (_e) { /* the page is a tap away */ }   /* v2.3.4381: the Leaderboards' own button on the row */
+    try { dashboardPanelBus.open('leaderboard'); } catch (_e) { /* the page is a tap away */ }   /* v2.3.4389: the Leaderboards' own button on the row */
   };
   return (
     <div data-fish-weigh-layer="" style={{ position: 'fixed', inset: 0, zIndex: 58, pointerEvents: 'none', overflow: 'hidden' }}>

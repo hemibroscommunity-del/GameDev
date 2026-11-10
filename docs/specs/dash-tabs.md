@@ -1,6 +1,6 @@
 # Five dashboard buttons: Gear, Bro, Quests, Codex, More (v2.3.4172)
 
-> **v2.3.4381: six.** The owner, 2026-11-09: "make room for a new
+> **v2.3.4389: six.** The owner, 2026-11-09: "make room for a new
 > 'leaderboards' button on the dashboard (I think this is already in the
 > 'more' button)."  Ranks (id `leaderboard`, key U) stands between Quests and
 > the Codex; More has eleven tiles.  `RAIL_COUNT` 6: 48 px at 390, 45 at 375,

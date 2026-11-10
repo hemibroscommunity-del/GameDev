@@ -1,4 +1,4 @@
-/* ═══ v2.3.4381: THE LEADERBOARDS, WITH FACES ═══
+/* ═══ v2.3.4389: THE LEADERBOARDS, WITH FACES ═══
  *
  * The owner, 2026-11-09: "the leaderboards should be expanded and easier to
  * navigate from mobile and include the character profile pic and level next

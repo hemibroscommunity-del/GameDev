@@ -161,11 +161,11 @@ const headerGeom = (P) => P.page.evaluate(() => {
 const PHONES = [
   /* v2.3.4172: five buttons and no CLOSE pill (the grip is on the band's
      edge): the row is theirs, 70 at 390 and 64 at 360 */
-  /* v2.3.4381: six buttons beside CLOSE: 48 at 390, 44 at 360 */
+  /* v2.3.4389: six buttons beside CLOSE: 48 at 390, 44 at 360 */
   { width: 390, height: 844, tag: 'iPhone 13/14/15', minW: 48 },
   { width: 360, height: 780, tag: 'small Android', minW: 44 },
 ];
-const RAIL_N = 6;   /* v2.3.4172: Gear, Bro, Quests, Codex, More; v2.3.4381: + Ranks (the Leaderboards) */
+const RAIL_N = 6;   /* v2.3.4172: Gear, Bro, Quests, Codex, More; v2.3.4389: + Ranks (the Leaderboards) */
 
 export async function run({ browser, wsPort, webPort, rec }) {
   for (const ph of PHONES) await onePhone({ browser, wsPort, webPort, rec }, ph);

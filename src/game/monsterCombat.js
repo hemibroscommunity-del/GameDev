@@ -59,7 +59,7 @@ import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, f
 import { isWheelSwimming } from '@/game/wheelSwim.js'; /* v2.3.3003: no fighting while you swim */
 import { jumpAirborne } from '@/game/jump.js'; /* v2.3.3017: nor in the air */
 import { tapAttackWaiting, tapAttackDone, tapSwingAim } from '@/game/tapJump.js'; /* v2.3.3712: a tap on the right stick asks for one attack */
-import { manualOn, mcFrame, mcFireWaiting, mcFireDone, mcTakeArmed, mcBowInterval } from '@/game/manualCombat.js'; /* v2.3.4383: manual combat (`?manual=1`) -- a bow or a staff shoots once for each flick, never because the stick is held */
+import { manualOn, mcFrame, mcFireWaiting, mcFireDone, mcTakeArmed, mcBowInterval } from '@/game/manualCombat.js'; /* v2.3.4391: manual combat (`?manual=1`) -- a bow or a staff shoots once for each flick, never because the stick is held */
 import { isDazed } from '@/game/elemHits.js'; /* v2.3.3014: nor while a rock monster has you dazed */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the shield hold */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
@@ -1346,7 +1346,7 @@ export function updateMonsterCombat(S, deps) {
           /* v2.3.212: no weapon in active slot -> auto-attack disabled.
              Slot fallback to melee mirrors getActiveWeapon's default. */
           var _aSlot = (S.rpg && S.rpg.activeSlot) || 'melee';
-          /* ═══ v2.3.4383: MANUAL COMBAT (`?manual=1`, game/manualCombat.js) ═══
+          /* ═══ v2.3.4391: MANUAL COMBAT (`?manual=1`, game/manualCombat.js) ═══
              The loop says each frame how long this weapon's interval is --
              the number the held attack fired on, so a flick can never shoot
              sooner than a held shot did -- and a sword's, the interval its
@@ -1629,7 +1629,7 @@ export function updateMonsterCombat(S, deps) {
              (game/tapJump.js requestTapAttack): taken here like a held thumb,
              through every gate below, and marked done by what leaves. */
           var _tapAtkNow = tapAttackWaiting(S, Date.now());
-          /* ═══ v2.3.4383: MANUAL COMBAT -- THE LOOP FIRES ONLY WHAT A HAND ASKED FOR ═══
+          /* ═══ v2.3.4391: MANUAL COMBAT -- THE LOOP FIRES ONLY WHAT A HAND ASKED FOR ═══
              With `?manual=1` a held thumb fires nothing by itself (it still
              aims, and steers a staff's bolt):
                a bow              one shot for each FLICK (mcFireWaiting: the
@@ -1806,7 +1806,7 @@ export function updateMonsterCombat(S, deps) {
                     _mayLoose = false;         /* the special IS this beat's shot */
                     try { specialAttack(S); } catch (e) { /* refusals float their own popup */ }
                   } else if (!_sightOn && !_mcFire) {
-                    /* v2.3.4383: ...but a FLICK is an arrow, on a line or not: the hand asked
+                    /* v2.3.4391: ...but a FLICK is an arrow, on a line or not: the hand asked
                        for this one shot, and "I flicked and nothing happened" is worse than
                        a miss (the held bow waited for its line; a flick cannot) */
                     _mayLoose = false;         /* no line, no arrow, and no spent cadence */
@@ -1816,7 +1816,7 @@ export function updateMonsterCombat(S, deps) {
                      only at something, a press of the disc no differently) */
                   if (_tapAtkNow && !_mayLoose) tapAttackDone(S, Date.now(), _sightOn ? 'special' : 'empty');
                 }
-                /* v2.3.4383: manual combat -- this frame took the flick's shot,
+                /* v2.3.4391: manual combat -- this frame took the flick's shot,
                    whatever comes of it; and a special ARMED by its button is
                    this attack: if specialAttack went (it stamps _lastSwipe)
                    or queued itself for the bow's next line, the ordinary

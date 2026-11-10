@@ -3,10 +3,10 @@ import { COL, panelStyle, getState } from './common.js';
 import { BT_API_BASE } from '@/networking/index.js';
 import { FishBoard } from './FishBoard.jsx';   /* v2.3.4036: the Biggest fish board (server fishlog.js) */
 import { takeFishBoardWant, subscribeFishWeigh, fishWeighLive } from '@/game/fishWeigh.js';
-import { BoardRow, BoardEmpty, useBoardFaces } from './BoardRow.jsx';   /* v2.3.4381: the face, the level, the record */
+import { BoardRow, BoardEmpty, useBoardFaces } from './BoardRow.jsx';   /* v2.3.4389: the face, the level, the record */
 import { askSpinBoard, subscribeSpinBoard, spinBoardLive, spinRowLine } from '@/game/spinBoard.js';
 import { aceFlipBus } from '../aceFlipBus.js';
-import { useBoxSize, railHeading } from './railKit.js';   /* v2.3.4382: the measuring and the headings this page and the Quests page share */
+import { useBoxSize, railHeading } from './railKit.js';   /* v2.3.4390: the measuring and the headings this page and the Quests page share */
 
 /* v2.3.1671: a TRADITIONAL HISCORES BOARD — one ranking per skill.
    Owner: "a traditional high scores system that ranks each skill... I want
@@ -28,7 +28,7 @@ import { useBoxSize, railHeading } from './railKit.js';   /* v2.3.4382: the meas
       list for exactly that reason; the legacy endpoints still serve it for
       the old desktop panel. */
 
-/* ═══ v2.3.4381: THE LEADERBOARDS, EASIER TO GET AROUND, WITH FACES ═══
+/* ═══ v2.3.4389: THE LEADERBOARDS, EASIER TO GET AROUND, WITH FACES ═══
    The owner, 2026-11-09: "the leaderboards should be expanded and easier to
    navigate from mobile and include the character profile pic and level next
    to each record.  Also I want to have the 'daily spin' biggest wins and
@@ -58,7 +58,7 @@ import { useBoxSize, railHeading } from './railKit.js';   /* v2.3.4382: the meas
    AP (v2.3.3527) is the worker's own number against a worker that says
    caps.achievements; its rows carry `ap`, not `value`, and a 0 is left off,
    as the per-skill boards leave off a skill nobody trained. */
-/* ═══ v2.3.4381: EVERY BOARD A PILL WITH ITS OWN PICTURE ═══
+/* ═══ v2.3.4389: EVERY BOARD A PILL WITH ITS OWN PICTURE ═══
    The owner: "Also make each record category a pill shaped button and add
    icons that represent each category on them."  Each board in the list is a
    pill (the dashboard's own button: a quiet well, a brass rim and brass word
@@ -346,7 +346,7 @@ export const LeaderboardPanel = () => {
         maskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)',
       }}>
         {list.map((b, bi) => (b.sec ? (
-          /* v2.3.4382: a heading headlines its section (railKit railHeading) */
+          /* v2.3.4390: a heading headlines its section (railKit railHeading) */
           <div key={'s:' + b.sec} data-lb-sec={b.sec} role="presentation" style={railHeading(false, bi === 0)}>{b.sec}</div>
         ) : (
           /* the button is the 44 px target; the pill inside it is what is seen

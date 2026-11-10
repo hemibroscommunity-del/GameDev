@@ -9,7 +9,7 @@ export const questDetailBus = {
   selected() { return id; },
 };
 
-/* v2.3.4382: QA's handle on a quest's own page (the UI review's
+/* v2.3.4390: QA's handle on a quest's own page (the UI review's
    dash-quest-detail): the pinned quest card's road (ui/QuestCard.jsx: select,
    then the drill), since the Quests page opens a quest beside its list now */
 if (typeof window !== 'undefined') {

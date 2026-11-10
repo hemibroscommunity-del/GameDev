@@ -6,7 +6,7 @@
 // ═══════════════════════════════════════
 //  LEADERBOARD — Global persistent rankings
 // ═══════════════════════════════════════
-import { boardFace, goneId } from './boards.js';   /* v2.3.4381: a face on each row, and the deleted stand-ins */
+import { boardFace, goneId } from './boards.js';   /* v2.3.4389: a face on each row, and the deleted stand-ins */
 
 /* a player not seen for this long is off the boards (and a deleted
    character's stand-in, counted from the day it was deleted) */
@@ -27,7 +27,7 @@ export class Leaderboard {
         return new Response(JSON.stringify({ ok: true }), { headers: H });
       }
 
-      /* v2.3.4381: a character deleted for good (boards.js _boardsGone, over
+      /* v2.3.4389: a character deleted for good (boards.js _boardsGone, over
          the object binding only: the public route is read-only, index.js) */
       if (request.method === 'POST' && path.startsWith('/gone')) {
         const body = await request.json();
@@ -51,7 +51,7 @@ export class Leaderboard {
   async updatePlayer(data) {
     const { playerId, name, color, level, rpgData, ts, series } = data;
     if (!playerId) return;
-    /* v2.3.4381: the face, as a look (boards.js FACE_KEYS: short ids, never
+    /* v2.3.4389: the face, as a look (boards.js FACE_KEYS: short ids, never
        an image) -- left off a row whose report carried none */
     const look = boardFace(data.look);
     await this.state.storage.put('player:' + playerId, JSON.stringify({
@@ -70,7 +70,7 @@ export class Leaderboard {
     }));
   }
 
-  /* ═══ v2.3.4381: A DELETED CHARACTER'S STAND-IN ═══
+  /* ═══ v2.3.4389: A DELETED CHARACTER'S STAND-IN ═══
      The owner: "is it possible to have stand-in (deleted character) rows if
      the record was made by a deleted character?  Maybe still include their
      profile pic and level but just grayed out with the deleted label over
@@ -143,13 +143,13 @@ export class Leaderboard {
   async getTop(category, limit) {
     const entries = await this.state.storage.list({ prefix: 'player:' });
     const players = []; const now = Date.now(); const STALE = STALE_MS;
-    /* v2.3.4381: `lv`, the level on the name plate -- the highest of the
+    /* v2.3.4389: `lv`, the level on the name plate -- the highest of the
        three combat levels (seriesValue's 'combat'), the stored level for a
        row from before the series -- so every board can print it beside the
        face, whatever it ranks */
     const withLv = (p) => { p.lv = Leaderboard.seriesValue(p, 'combat') || Math.max(1, Math.floor(Number(p.level) || 1)); return p; };
     for (const [, raw] of entries) { try { const p = JSON.parse(raw); if (now - (p.lastSeen || 0) < STALE) players.push(withLv(p)); } catch {} }
-    /* v2.3.4381: and the deleted characters' stand-ins (markGone) -- on the
+    /* v2.3.4389: and the deleted characters' stand-ins (markGone) -- on the
        boards the Leaderboards page shows (the series and AP) only.  The
        legacy columns keep to live characters: `level` is what the contest
        draw reads its entrants from (public/tools/draw.html), and a deleted

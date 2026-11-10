@@ -1,4 +1,4 @@
-/* ═══ THE LEADERBOARDS, WITH FACES, ON A PHONE (v2.3.4381, docs/specs/leaderboards.md) ═══
+/* ═══ THE LEADERBOARDS, WITH FACES, ON A PHONE (v2.3.4389, docs/specs/leaderboards.md) ═══
  *
  * The owner, 2026-11-09: "make room for a new 'leaderboards' button on the
  * dashboard ... the leaderboards should be expanded and easier to navigate
