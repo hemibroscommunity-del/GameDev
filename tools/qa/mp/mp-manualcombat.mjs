@@ -142,8 +142,8 @@ async function phone({ browser, wsPort, webPort, rec, OUT }) {
     await installTouch(P);
 
     /* ── 1 ── */
-    const on = await P.page.evaluate(() => ({ on: !!(window.__btManual && window.__btManual.on()), stored: localStorage.getItem('bt_manual'), gauge: !!document.querySelector('[data-manual-gauge]') }));
-    rec.ok('1 `?manual=1` turns manual combat on and remembers it; nothing is drawn for it (no gauge)', on.on && on.stored === '1' && !on.gauge, on);
+    const on = await P.page.evaluate(() => ({ on: !!(window.__btManual && window.__btManual.on()), sling: window.__btManual.sling(), stored: localStorage.getItem('bt_manual'), gauge: !!document.querySelector('[data-manual-gauge]') }));
+    rec.ok('1 `?manual=1` is the game\'s own combat (nothing to remember); nothing is drawn for it (no gauge)', on.on && !on.sling && on.stored === null && !on.gauge, on);
 
     const armed = await arm(P, 'ranged');
     const hall = await standUnderHall(P, rec, 'phone ');
@@ -180,6 +180,29 @@ async function phone({ browser, wsPort, webPort, rec, OUT }) {
     await wait(P, 1200);
     const n4 = await shotsNow(P);
     rec.ok(`4 a tap and a 14 px nudge shoot nothing (${n4})`, n4 === 0, { n4 });
+
+    /* ── 4b ── v2.3.4396: the old way, made while the attack button is up for a fight, is answered with
+       the new one over the bro's head ("Flick to shoot"); a real flick is not.  The button's "up for a
+       fight" is the resolver's own word each frame (S._rBtnShown), said here for the one task. */
+    await P.page.evaluate(() => window.__ready(60));
+    const teachBow = await P.page.evaluate(({ X, Y }) => {
+      const S = window._gameState.current, z = window.__zone();
+      const n = () => S._mcTeachN || 0;
+      S._mcTeachAt = 0; S._rBtnShown = true;
+      const n0 = n();
+      window.__touch(z, 'touchstart', X, Y, 71); window.__touch(z, 'touchend', X, Y, 71);     /* a tap */
+      const afterTap = n();
+      S._mcTeachAt = 0; S._rBtnShown = true;
+      window.__flick(z, X, Y, 0, -50, 72);                                                     /* a flick */
+      const afterFlick = n();
+      S._mcTeachAt = 0; S._rBtnShown = false;
+      window.__touch(z, 'touchstart', X, Y, 73); window.__touch(z, 'touchend', X, Y, 73);     /* a tap with no fight on */
+      return { n0, afterTap, afterFlick, afterQuiet: n() };
+    }, { X, Y });
+    rec.ok('4b a bow tapped the old way with a fight on is told "Flick to shoot" (once); a flick is told nothing; a tap with no fight on, nothing',
+      teachBow.afterTap === teachBow.n0 + 1 && teachBow.afterFlick === teachBow.afterTap && teachBow.afterQuiet === teachBow.afterFlick, teachBow);
+    await settleShots(P, 1);
+    await resetShots(P);
 
     /* ── 5 ── out, back to the centre, lift: no shot */
     await P.page.evaluate(({ X, Y }) => { const z = window.__zone(); window.__touch(z, 'touchstart', X, Y, 34); window.__touch(z, 'touchmove', X, Y - 60, 34); window.__touch(z, 'touchmove', X + 3, Y - 2, 34); window.__touch(z, 'touchend', X + 3, Y - 2, 34); }, { X, Y });
@@ -290,9 +313,12 @@ async function phone({ browser, wsPort, webPort, rec, OUT }) {
         if (b) { const q = b.getBoundingClientRect(); window.__touch(b, 'touchstart', q.left + q.width / 2, q.top + q.height / 2, 40); window.__touch(b, 'touchend', q.left + q.width / 2, q.top + q.height / 2, 40); }
       }
       const need = st().meleeNeed, e0 = st().early, armed0 = st().armed, ls0 = S._lastSwipe || 0, sw0 = S.swingTimer;
-      /* a tap */
+      /* a tap -- and, the button up for a fight, it is told "Swipe to swing" (v2.3.4396) */
+      S._mcTeachAt = 0; S._rBtnShown = true;
+      const tn0 = S._mcTeachN || 0;
       window.__touch(d, 'touchstart', x, y, 41); window.__touch(d, 'touchend', x, y, 41);
-      const tap = { sw: S.swingTimer };
+      const tap = { sw: S.swingTimer, taught: (S._mcTeachN || 0) - tn0 };
+      S._mcTeachAt = 0; S._rBtnShown = true;
       /* a stroke across the disc: the special it was armed with, or a swing */
       window.__touch(d, 'touchstart', x - 15, y, 42);
       window.__touch(d, 'touchmove', x + 15, y, 42);
@@ -307,6 +333,7 @@ async function phone({ browser, wsPort, webPort, rec, OUT }) {
       window.__touch(d, 'touchmove', x - 15, y, 42);
       const three = { sw: S.swingTimer };
       window.__touch(d, 'touchend', x - 15, y, 42);
+      const strokeTaught = (S._mcTeachN || 0) - tn0 - tap.taught;
       /* a thumb that drifts 30 px over 0.7 s is not a stroke */
       window.__spin(S.swingTimer + need + 30);
       const T3 = S.swingTimer;
@@ -322,10 +349,10 @@ async function phone({ browser, wsPort, webPort, rec, OUT }) {
       window.__touch(z, 'touchmove', 300, 400, 44);
       const side = { sw: S.swingTimer };
       window.__touch(z, 'touchend', 300, 400, 44);
-      return { need, e0, armed0, ls0, sw0, tap, T, one, two, follow, three, drift, side };
+      return { need, e0, armed0, ls0, sw0, tap, strokeTaught, T, one, two, follow, three, drift, side };
     });
     await wait(P, 400);
-    rec.ok('8a a sword\'s tap swings nothing', sw.wpn === 'greatsword' && sword.tap.sw === sword.sw0, { sw0: sword.sw0, tap: sword.tap });
+    rec.ok('8a a sword\'s tap swings nothing, and with a fight on it is told "Swipe to swing"; a press that stroked is told nothing', sw.wpn === 'greatsword' && sword.tap.sw === sword.sw0 && sword.tap.taught === 1 && sword.strokeTaught === 0, { sw0: sword.sw0, tap: sword.tap, strokeTaught: sword.strokeTaught });
     rec.ok('8b a STROKE across the disc swings', sword.T > sword.sw0, { sw0: sword.sw0, T: sword.T });
     rec.ok('7c ...and that stroke took the special armed for it (its own attack, or its refusal and a swing): armed no longer',
       sword.armed0 === true && sword.one.armed === false, { armed0: sword.armed0, one: sword.one, ls0: sword.ls0 });
@@ -343,7 +370,8 @@ async function phone({ browser, wsPort, webPort, rec, OUT }) {
 }
 
 async function desk({ browser, wsPort, webPort, rec, OUT }) {
-  const P = await H.newPlayer(browser, { name: 'Drawdesk', wsPort, webPort, viewport: WIDE, wide: true, world: 'wheel', query: `manual=1&repairms=${REPAIR_MS}` });
+  /* v2.3.4396: `manual=default` names no combat, so this page plays what the game gives a new player */
+  const P = await H.newPlayer(browser, { name: 'Drawdesk', wsPort, webPort, viewport: WIDE, wide: true, world: 'wheel', query: `manual=default&repairms=${REPAIR_MS}` });
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   const stop = H.keepAlive(P);
@@ -355,6 +383,8 @@ async function desk({ browser, wsPort, webPort, rec, OUT }) {
     await wait(P, 2000);
     await P.page.addStyleTag({ content: '.bt-quest-banner, .bt-quest-plate, [data-coach-card], [data-coach-ring], *:has(> [data-coach-dismiss]) { visibility: hidden !important; }' }).catch(() => {});
     await installTouch(P);   /* its helpers (__ready): no touch is made here */
+    const dOn = await P.page.evaluate(() => ({ on: window.__btManual.on(), sling: window.__btManual.sling(), stored: localStorage.getItem('bt_manual'), search: location.search }));
+    rec.ok('10z a computer with no combat named in its address plays the new combat: it is the DEFAULT (v2.3.4396)', dOn.on === true && dOn.sling === false && dOn.stored === null && !/manual=[012]/.test(dOn.search), dOn);
     await arm(P, 'ranged');
     const hall = await standUnderHall(P, rec, 'computer ');
     if (!hall) return;

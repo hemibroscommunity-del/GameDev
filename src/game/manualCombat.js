@@ -43,9 +43,16 @@
  *             bolt is steered by the held thumb, as ever;
  *   NO LOCK a player chose, for all three.
  *
- * BEHIND A SWITCH while it is new: `?manual=1` in the address turns it on for
- * this phone or computer (and it stays on: localStorage `bt_manual`);
- * `?manual=0` turns it off again.  Without it combat is exactly as it was.
+ * IT IS THE GAME'S COMBAT (v2.3.4396).  Asked whether to switch it on for
+ * everyone, the owner, 2026-11-10: "Yes do the new combat".  It was behind
+ * `?manual=1` while it was being found (v2.3.4395); now it is ON unless a
+ * phone or computer says otherwise: `?manual=0` in the address is the old
+ * combat for that device (and it stays: localStorage `bt_manual` '0');
+ * `?manual=1` comes back to this; `?manual=2` is the slingshot bow.  The
+ * same shape as a memory saver's off-ramp (CLAUDE.md: on by default, with a
+ * `?name=0` for one phone).  The phone tests play the old combat unless they
+ * ask (tools/qa/mp/harness.mjs adds `manual=0`): hundreds of them drive the
+ * held attack and the tap lock directly, and those are still in the game.
  *
  * THE RULES (this file: no imports, so node tests it --
  * server/test/manual-combat.test.mjs; BroTown.jsx and monsterCombat.js call
@@ -129,10 +136,11 @@ export var MANUAL = {
   KEY: 'bt_manual',
 };
 
-/** Which manual combat is wanted on this device: 0 none, 1 swipes (version
- *  A), 2 swipes with the SLINGSHOT BOW.  `?manual=1` / `?manual=2` turn it on
- *  and are remembered; `?manual=0` turns it off and forgets.  `search` and
- *  `store` are for tests (location.search, localStorage). */
+/** Which combat this device plays: 1 swipes (the game's own, and the answer
+ *  when nothing says otherwise), 2 swipes with the SLINGSHOT BOW, 0 the old
+ *  held attack and tap lock.  `?manual=0` / `?manual=2` choose one and are
+ *  remembered; `?manual=1` comes back to the game's own and forgets.
+ *  `search` and `store` are for tests (location.search, localStorage). */
 export function manualMode(search, store) {
   var q = search;
   if (q == null) { try { q = typeof location !== 'undefined' ? location.search : ''; } catch (e) { q = ''; } }
@@ -140,12 +148,12 @@ export function manualMode(search, store) {
   if (ls === undefined) { try { ls = typeof localStorage !== 'undefined' ? localStorage : null; } catch (e) { ls = null; } }
   var m = /(?:^|[?&])manual=([012])(?:&|$)/.exec(String(q || ''));
   if (m) {
-    try { if (ls) { if (m[1] === '0') ls.removeItem(MANUAL.KEY); else ls.setItem(MANUAL.KEY, m[1]); } } catch (e) { /* a private window: the address still decides this visit */ }
+    try { if (ls) { if (m[1] === '1') ls.removeItem(MANUAL.KEY); else ls.setItem(MANUAL.KEY, m[1]); } } catch (e) { /* a private window: the address still decides this visit */ }
     return +m[1];
   }
-  try { var v = ls ? ls.getItem(MANUAL.KEY) : null; return v === '1' ? 1 : v === '2' ? 2 : 0; } catch (e) { return 0; }
+  try { var v = ls ? ls.getItem(MANUAL.KEY) : null; return v === '0' ? 0 : v === '2' ? 2 : 1; } catch (e) { return 1; }
 }
-/** Is manual combat wanted on this device (either kind)? */
+/** Is manual combat wanted on this device (either kind)?  Yes, unless it chose the old one. */
 export function manualCombatWanted(search, store) { return manualMode(search, store) > 0; }
 
 var _mode = null;
@@ -213,6 +221,7 @@ export function mcSwipeStart(S, now, x, y) {
   var m = st(S);
   if (!m) return;
   m.down = true; m.ox = x; m.oy = y; m.ot = now; m.ax = x; m.ay = y; m.at = now;
+  m.strokes = 0; m.far = 0;   /* what this press has made so far (mcPressIdle) */
 }
 
 /** The thumb moved to (x, y).  A SWORD: 'swing' each time it has gone
@@ -221,11 +230,15 @@ export function mcSwipeStart(S, now, x, y) {
  *  counted.  A bow: 'none' -- its shot is the lift.  A staff: 'none'. */
 export function mcSwipeMove(S, now, x, y) {
   var m = st(S);
-  if (!m || !m.down || !strokes(S)) return 'none';
+  if (!m || !m.down) return 'none';
+  var fx = x - m.ox, fy = y - m.oy, f2 = fx * fx + fy * fy;
+  if (f2 > (m.far || 0)) m.far = f2;   /* the farthest this thumb has been from where it touched */
+  if (!strokes(S)) return 'none';
   if (now - m.at > MANUAL.SWIPE_MS) { m.ax = x; m.ay = y; m.at = now; return 'none'; }
   var dx = x - m.ax, dy = y - m.ay;
   if (dx * dx + dy * dy < MANUAL.SWIPE_PX * MANUAL.SWIPE_PX) return 'none';
   m.ax = x; m.ay = y; m.at = now;
+  m.strokes = (m.strokes || 0) + 1;
   return 'swing';
 }
 
@@ -243,6 +256,17 @@ export function mcSwipeEnd(S, now, x, y) {
   var dx = x - m.ox, dy = y - m.oy, d2 = dx * dx + dy * dy;
   if (d2 < MANUAL.SWIPE_PX * MANUAL.SWIPE_PX) return d2 <= MANUAL.CENTRE_PX * MANUAL.CENTRE_PX ? 'cancel' : 'none';
   return mcAskShot(S, now);
+}
+/** Did the press that just ended make NO attack gesture at all -- a tap or a
+ *  hold, the old combat's way?  A sword: no stroke.  A bow: the thumb never
+ *  went a flick's length from where it touched (a pull brought back to cancel
+ *  is a gesture; a still thumb is not).  The caller teaches the new way
+ *  ("Swipe to swing", "Flick to shoot").  Never for a staff. */
+export function mcPressIdle(S) {
+  var m = S && S._mc;
+  if (!m || slotOf(S) === 'staff') return false;
+  if (mcShoots(S)) return (m.far || 0) < MANUAL.SWIPE_PX * MANUAL.SWIPE_PX;
+  return !(m.strokes > 0);
 }
 /** Was the press that just ended a quick flick (helped: mcAssist), not a
  *  drag that took its time (left as aimed)? */

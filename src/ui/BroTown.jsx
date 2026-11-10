@@ -465,7 +465,7 @@ import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the s
 import { climbBegin, climbSteer, climbSpeed, climbTick, riseSolidAt } from '@/game/climbActions.js';   /* v2.3.3994: the lagoon's climb and its faces (`?climb=1`) */
 import { tickJump, landJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick -- v2.3.3712: no longer, so triggerJump is the button's alone) */
 import { rightTapBusy, tapFreeMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress, requestTapAttack } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one; v2.3.3712: it attacks once now, never jumps */
-import { manualOn, mcSwipes, mcBowSling, mcShotAngle, mcSwipeStart, mcSwipeMove, mcSwipeEnd, mcWasQuick, mcAssist, mcAskShot, mcAbort, mcMeleeAsk, mcSwingWaiting, mcSwingDone, mcReadyIn, mcTakeArmed, mcArmToggle, mcArmed, mcShoots } from '@/game/manualCombat.js';   /* v2.3.4395: manual combat (`?manual=1`): every attack is a swipe, no chosen lock */
+import { manualOn, mcSwipes, mcPressIdle, mcBowSling, mcShotAngle, mcSwipeStart, mcSwipeMove, mcSwipeEnd, mcWasQuick, mcAssist, mcAskShot, mcAbort, mcMeleeAsk, mcSwingWaiting, mcSwingDone, mcReadyIn, mcTakeArmed, mcArmToggle, mcArmed, mcShoots } from '@/game/manualCombat.js';   /* v2.3.4395: manual combat (`?manual=1`): every attack is a swipe, no chosen lock */
 import { BOW_RANGE_PX as MC_BOW_RANGE_PX, bowRangeMult as mcBowRangeMult } from '@/data/gameSystems.js';   /* v2.3.4395: how far a quick flick's help reaches */
 import { lockShotPoint as mcShotPoint } from '@/game/combatHelpers.js';
 import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here; v2.3.4105: talkBeforeDoor retired (E never talks) */
@@ -9515,6 +9515,26 @@ export var BroTown = function BroTown(_ref0) {
     S._mcEarly = (S._mcEarly || 0) + 1;
     return false;
   }, []);
+  /* ═══ v2.3.4396: THE OLD WAY, MADE NEAR A MONSTER, IS ANSWERED WITH THE NEW ═══
+     The swipes are the game's combat now, and a player who learned the held
+     attack (or a new one who simply presses the button) would see nothing
+     happen and not know why.  So a press that ended having made no attack
+     gesture at all (mcPressIdle: a tap, a hold) while the attack button is up
+     for a fight says the gesture over the bro's head, no oftener than every
+     2.5 s.  Not for a staff (it fires as it always did), not over a harvest's
+     button.  A computer never comes here: only the two touch lifts call it
+     (a click attacks), so no "is this a computer" is asked -- that flag is
+     true on a touch page with a mouse too. */
+  var mcTeach = useCallback(function () {
+    var S = stateRef.current;
+    if (!S || !S.rpg || !S.player || !mcSwipes(S) || !S._rBtnShown || S._btnHarvest || S._extraction) return;
+    if (!mcPressIdle(S)) return;
+    var now = Date.now();
+    if (now - (S._mcTeachAt || 0) < 2500) return;
+    S._mcTeachAt = now;
+    S._mcTeachN = (S._mcTeachN || 0) + 1;
+    try { pushDmgPopup(S, S.player.x, S.player.y - 30, mcShoots(S) ? (mcBowSling(S) ? 'Pull back and let go' : 'Flick to shoot') : 'Swipe to swing', '#FFE23A'); } catch (e) { /* display-only */ }
+  }, []);
   /* A BOW'S OR A STAFF'S FLICK ENDS (the stick's and the disc's lifts): the
      rules say whether it is a shot (mcSwipeEnd); if it is, the shot leaves
      the way the thumb went from where it touched -- written here as the
@@ -11556,7 +11576,7 @@ export var BroTown = function BroTown(_ref0) {
          thumb lifted 24 px or more from where it touched is one shot, that
          way; brought back to where it started, none; a tap, none
          (game/manualCombat.js mcSwipeEnd, mcFlickEnd above). */
-      if (manualOn() && stateRef.current) mcFlickEnd(t.clientX, t.clientY);
+      if (manualOn() && stateRef.current) { mcFlickEnd(t.clientX, t.clientY); mcTeach(); }
       /* v2.3.2258: the stick lets go -- auto-attack off, aim released, rod and
          knob back to centre.  Before the tap-forward below, so a tap that locks
          a monster is not also left holding the attack down. */
@@ -11927,7 +11947,7 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.4395: manual combat -- a flick off the disc is a bow's or a
          staff's shot, the way it went (mcFlickEnd writes the aim: the disc
          does not), and no special is flicked */
-      if (stateRef.current && mcSwipes(stateRef.current)) { mcFlickEnd(t.clientX, t.clientY); isFlick = false; }
+      if (stateRef.current && mcSwipes(stateRef.current)) { mcFlickEnd(t.clientX, t.clientY); mcTeach(); isFlick = false; }
       if (isFlick) {
         var Sfk = stateRef.current;
         Sfk._hasUsedSwipe = true;

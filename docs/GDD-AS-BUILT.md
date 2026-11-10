@@ -375,6 +375,20 @@ Chat opens by tapping your own bro; the emote picker is the chat box's smiley; t
 
 Every number that matters in a fight is rolled on the server. The phone sends an intent ("I swung at monster X with slot Y, special or not") and the worker rolls the hit, applies the target's defences, writes the HP, and tells every phone nearby. The phone's own damage popups are predictions that the server's answer overwrites. HP and damage are shown to players **divided by 5** (a 250-HP new character shows "50"); this document uses the server's numbers unless it says "on screen".
 
+### 5.0 How an attack is made (v2.3.4396)
+
+Every attack is made by the player's hand (`docs/specs/manual-combat.md`; the owner, 2026-11-09: "only making an attack after manual input is better than auto-attacking at precisely the correct interval"). This is the phone's side only; the worker rolls every hit as before.
+
+| Weapon | A phone | A computer |
+|---|---|---|
+| Great Sword | each swipe of the right thumb is one swing; it turns to the nearest monster by itself | each click is one swing |
+| Bow | each flick is one shot the way it was flicked; the next shot may leave after three quarters of the old interval (495 ms becomes 371 ms) | each click is one shot at the cursor |
+| Staff | hold the right stick in a direction and it fires by itself; the bolt is steered by the held thumb | it fires while the button is held |
+
+- No weapon locks on to a monster a player taps or clicks. A duel keeps no lock either.
+- A sword's or a bow's special is armed by its button, then made by the next attack. A staff's button is the special itself.
+- `?manual=0` is the old combat (the held attack, the tap lock) for one device.
+
 ### 5.1 Three weapons, three skills
 
 | Weapon | Trained skill (shown as) | Base damage | Per-hit variance band | Role as tuned |

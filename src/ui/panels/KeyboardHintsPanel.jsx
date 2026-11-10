@@ -1,5 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
+import { manualOn } from '@/game/manualCombat.js';   /* v2.3.4396 */
 import { deskKeyRows, deskKeyGroups, deskKeyStamp } from '@/game/deskKeyList.js';   /* v2.3.3687: the keys that work now */
 import { deskWideActive, DESK_KEYS_W, DESK_KEYS_FOLDED_W } from '@/ui/deskWide.js';   /* v2.3.3687: a computer playing wide */
 import { abilityUnlocked, isAbilitiesEnabled } from '@/data/abilities.js';
@@ -62,6 +63,7 @@ export function deskKeyHave(S) {
   try { trap = trappingOn(S) && trapsHeld(S) > 0; } catch (_e) { /* no traps */ }
   return {
     sprint: sprintSupported(S),
+    lock: !manualOn(),   /* v2.3.4396: a double click locks on only in the old combat */
     shield: !!R.shield,
     bash: !!R.shield && on('bash'),
     whirl: sword && on('whirl'),
