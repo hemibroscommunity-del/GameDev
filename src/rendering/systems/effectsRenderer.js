@@ -341,7 +341,7 @@ import { getFrame as getSlimeFrame, hasState as hasSlimeState, SLIME_BASE_ROW, S
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
 import { getRemnantsTexture as getSnowmanRemnantsTex, getSnowballTexture } from '../snowmanSprites.js'; /* v2.3.2217 */
 import { variantSpritesFor } from '../monsterVariantSprites.js';
-import { MONSTER_VARIANTS, ZONE_VARIANT_MAP, hitMaterialOf, hitFxTintOf /* v2.3.2923 */, isIntangible /* v2.3.3499: the whirlwind's catch is what it can hit */ } from '../../data/monsterVariants.js';
+import { MONSTER_VARIANTS, ZONE_VARIANT_MAP, hitMaterialOf, hitFxTintOf /* v2.3.2923 */, isIntangible /* v2.3.3499: the whirlwind's catch is what it can hit */, lookFeetPad /* v2.3.4495 */ } from '../../data/monsterVariants.js';
 import { drawArrowWound, drawArrowWoundLip, StuckArrowBaker } from '../arrowWound.js';
 import { pinnedArrow, arrowPinStats, arrowPinOnArt } from '../arrowPin.js';   /* v2.3.2930: stuck arrows pinned to the art, carried with the animation */   /* v2.3.2923: the puncture round a stuck shaft */
 import { ZONE_SHARDS } from '../../data/shards.js';
@@ -8321,7 +8321,11 @@ export class EffectsRenderer {
           const c = _tc[i];
           if (!c || !Number.isFinite(c.x) || !Number.isFinite(c.y)) continue;
           const mx = (c.m && (c.m.renderX != null ? c.m.renderX : c.m.x));
-          const my = (c.m && (c.m.renderY != null ? c.m.renderY : c.m.y));
+          /* v2.3.4495: on a look's FEET, which for the water frog (and the rock golem and the rotcap) are
+             24 rows of its picture above its place: the ring sat 17 px south of the frog, a pale oval
+             apart from it -- the owner: "The water frog shadow is too far south of the sprite" */
+          const _arch = c.m && (c.m.archetype || c.m.type);
+          const my = (c.m && (c.m.renderY != null ? c.m.renderY : c.m.y)) - lookFeetPad(_arch) * MONSTER_SIZE_MULT * bossSizeK(c.m);
           if (!Number.isFinite(mx) || !Number.isFinite(my)) continue;
           const rx = (monsterMeleeHitRadius(c.m && (c.m.arch || c.m.archetype || c.m.type)) || 24) * bossSizeK(c.m) + 10;   /* v2.3.3556: x a boss's size */
           const ry = rx * 0.38;

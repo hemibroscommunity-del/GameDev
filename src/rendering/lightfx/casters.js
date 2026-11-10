@@ -181,7 +181,10 @@ export function collectCasters(S, er, fx, zone) {
          its hit circle are where they were. */
       const v = d._variantKey ? MONSTER_VARIANTS[d._variantKey] : null;
       const pad = v && v.feetRow > 0 && v.feetRow < MONSTER_CELL ? (MONSTER_CELL - v.feetRow) * Math.abs(b.scale.y) * d.scale.y : 0;
-      out.push({ key: 'm:' + id, px: g.x, py: g.y - pad, sprites: [b], alive: true });
+      /* v2.3.4495: ...and a squat look's shadow is its footprint (`shadowFlat`), not cast like a standing
+         figure's: the owner, of the frog's once it hung from the feet, "The water frog shadow is too
+         far south of the sprite" (shadows.js) */
+      out.push({ key: 'm:' + id, px: g.x, py: g.y - pad, sprites: [b], alive: true, flat: v && v.shadowFlat ? v.shadowFlat : null });
     }
   }
 

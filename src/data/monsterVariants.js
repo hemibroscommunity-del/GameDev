@@ -313,6 +313,12 @@ export const MONSTER_VARIANTS = {
                           its shadow hung from there: "floating shadows"
                           (the owner).  lightfx/casters.js hangs it from
                           this row.
+       shadowFlat         (v2.3.4495) a squat look's shadow is its footprint:
+                          { s: the share of its picture that is the ground
+                          it covers, lift: how high its body stands, px }.
+                          Cast as a standing figure's, the frog's whole 97 px
+                          was height and its shadow fell "too far south of
+                          the sprite" (the owner).  lightfx/shadows.js.
      Client-visual only: nothing on the server or the wire reads these (`spd`
      is the mirrored one, and it is untouched). */
   fishman: {
@@ -320,6 +326,7 @@ export const MONSTER_VARIANTS = {
     liveScalePx: 120,
     headTopPx: 80,
     feetRow: 232,
+    shadowFlat: Object.freeze({ s: 0.45, lift: 14 }),
     spd: 0.5,
     hopWalk: true,
     walkDistPerFrame: 1.2,
@@ -566,6 +573,16 @@ export const ZONE_VARIANT_MAP = {
    scaling paths. */
 export function variantForArchetype(arch) {
   return (arch && MONSTER_VARIANTS[arch]) || null;
+}
+
+/* v2.3.4495: how far above its place (the bottom of its cell, where the body hangs) a look's feet are,
+   in its own measure (liveScalePx): its `feetRow`'s empty rows, scaled.  0 for a look standing on its
+   cell's bottom row.  The renderer multiplies by MONSTER_SIZE_MULT and a boss's size.  Read by the
+   ring under a monster in reach (effectsRenderer), which sat as far below the frog's feet as its
+   shadow had ("The water frog shadow is too far south of the sprite"). */
+export function lookFeetPad(arch) {
+  const v = arch && MONSTER_VARIANTS[arch];
+  return v && v.feetRow > 0 && v.feetRow < 256 ? (256 - v.feetRow) / 256 * (v.liveScalePx || 64) : 0;
 }
 
 /* Returns the base archetype an arch behaves like for AI purposes.

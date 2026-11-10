@@ -738,7 +738,21 @@ export class ShadowSystem {
       const px = cs.px, py = cs.py;
       if (!Number.isFinite(px) || !Number.isFinite(py)) continue;
       /* the ground projection about this figure's feet (see header) */
-      P.set(1, 0, -lx, -ly, lx * py, py * (1 + ly));
+      const fl = cs.flat;
+      if (fl && fl.s > 0 && fl.s < 1) {
+        /* ═══ v2.3.4495: A SQUAT FIGURE'S SHADOW IS ITS FOOTPRINT ═══
+           The owner, of the water frog's: "The water frog shadow is too far south of the sprite."
+           Cast as a standing figure's, the whole picture is height: a frog 97 px tall on the screen,
+           most of it its back seen from above, threw a shadow reaching 33 px south and 48 east of its
+           feet, wholly south of them (a cast shadow can only fall away from the feet line).  A squat
+           creature's shadow is the ground it covers: its own outline squashed onto the ground UNDER
+           it (`s`: the share of its picture that is ground, kept above the feet line, not flipped
+           below it), pushed along the sun by how high its body stands (`lift` px).  Most of it is
+           then under the creature, and what shows is a dark edge on the side away from the light. */
+        P.set(1, 0, 0, fl.s, lx * fl.lift, py * (1 - fl.s) + ly * fl.lift);
+      } else {
+        P.set(1, 0, -lx, -ly, lx * py, py * (1 + ly));
+      }
       let placed = 0;
       /* v2.3.3000: a caster that never vanishes for a moment (the Wheel's
          objects: drawn or gone) keeps nothing to hold -- a hundred of them
@@ -766,7 +780,7 @@ export class ShadowSystem {
         if (items) this._held.set(cs.key, { t: now, items });
         st.casters++; st.pieces += placed; st.keys.push(cs.key);
         if (cs.key === 'self') st.self = { px, py, pieces: placed, held: false, standIns: cs.standIns || 0 };
-        if (st.list.length < 16) st.list.push({ key: cs.key, px, py, pieces: placed });
+        if (st.list.length < 16) st.list.push({ key: cs.key, px, py, pieces: placed, flat: fl ? fl.s : 0 });   /* v2.3.4495: + flat */
         continue;
       }
       /* nothing visible: hold the last shadow for a moment if the owner is
