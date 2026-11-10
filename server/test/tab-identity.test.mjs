@@ -1,4 +1,4 @@
-/* ═══ v2.3.4521: WHICH CHARACTER A TAB PLAYS (the sweep's V5) ═══
+/* ═══ v2.3.4560: WHICH CHARACTER A TAB PLAYS (the sweep's V5) ═══
  * (src/game/tabIdentity.js) Two tabs of one browser share one Login Key slot.
  * Tab 1 plays A, tab 2 switches to B; tab 1's next join read the slot afresh,
  * became B (putting tab 2 out, A's spare armour folded into B) or, with an
@@ -161,7 +161,7 @@ const reset = () => store.clear();
   check('8a A\'s cache is not B\'s', has && T.ownedBy(raw, idB) === false);
   check('8b ...so B\'s join seeds none of A\'s spare armour', !(forB.armorStash && forB.armorStash.length), forB);
   check('8c A reads its own', has && T.ownedBy(raw, idA) === true);
-  check('8d a cache written before v2.3.4521 (no stamp) is read as before', has && T.ownedBy({ power: 1 }, idB) === true);
+  check('8d a cache written before v2.3.4560 (no stamp) is read as before', has && T.ownedBy({ power: 1 }, idB) === true);
   check('8e nothing is nobody\'s', has && T.ownedBy(null, idA) === false);
   check('8f a guest tab\'s save is never read as the player\'s', has && T.ownedBy(T.stampOwner({ power: 1 }, 'k2j3h4ab'), idA) === false);
   const snapA = has ? T.stampOwner({ t: Date.now(), name: 'Ann', traits: { hair: 3 } }, idA) : null;

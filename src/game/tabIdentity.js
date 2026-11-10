@@ -1,4 +1,4 @@
-/* ═══ v2.3.4521: WHICH CHARACTER A TAB PLAYS ═══
+/* ═══ v2.3.4560: WHICH CHARACTER A TAB PLAYS ═══
  *
  * The 2026-11-03 sweep's V5.  A browser keeps the character it plays in ONE
  * slot every tab shares (`bt_passphrase`, the Login Key), and each tab fixes
@@ -151,7 +151,7 @@ export function rowKey(tab, slot, inList) {
 
 /** Is this cached copy (bt_rpg, the resume snapshot) this character's?  One
  *  stamped with another id is not; an unstamped one (written before
- *  v2.3.4521) is taken as before, so nobody's first load after this ships
+ *  v2.3.4560) is taken as before, so nobody's first load after this ships
  *  starts cold. */
 export function ownedBy(obj, id) {
   if (!obj || typeof obj !== 'object') return false;
