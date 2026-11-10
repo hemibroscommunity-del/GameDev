@@ -307,7 +307,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (ace) await goTo(P, ace.x, ace.y + 70, 1500);
       await hold('sword');
       await P.page.waitForTimeout(500);
-      /* v2.3.4493: aimed at where Ace IS, read at the click.  He walks his
+      /* v2.3.4498: aimed at where Ace IS, read at the click.  He walks his
          day's loop (game/townsfolkDay.js, v2.3.4058: four stops up to ~150 px
          apart, by the clock), and the spot read above is from before the
          walk to him, ~12 s on this box: by the click he had walked up to
