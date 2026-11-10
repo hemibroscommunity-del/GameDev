@@ -670,8 +670,28 @@ export const storeMethods = {
       }
       qty = Math.floor(Number(body.qty) || 0);
       if (!(qty >= 1 && qty <= STORE.MAX_QTY)) return { ok: false, settled: true, error: 'Invalid quantity' };
-      const took = await this._escrowTakeItem(playerId, k, qty, escrowOp);
-      if (!took.ok) return { ok: false, settled: true, error: 'You do not have that' };
+      /* ═══ v2.3.4500: THE STACK AND ITS LISTING IN ONE WRITE ═══
+         _escrowTakeItem took the stack and stamped it in a write of its own,
+         awaited, and the listing went out in the next: a restart between
+         (every merge touching server/ restarts the room) left the seller
+         short, and nothing named the goods (the `:esc` stamp is read by
+         nothing; the state-machine sweep's V8a S6-5).  A weapon, a piece and
+         a pet were always taken in the same run as their listing (the
+         branches below); a stack now is too.  It leaves the live bag here,
+         synchronously, and nothing awaits before the listing's put at the
+         end, so the bag and the listing commit together, or neither does.
+         No stamp: the listing is the record of the take, and its id is new.
+         Kill switch: `ahonewrite: false` (_ahOneWrite) puts back the old way. */
+      if (this._ahOneWrite()) {
+        if (this._invCount(ps, k) < qty) return { ok: false, settled: true, error: 'You do not have that' };
+        ps.inventory[k] = this._invCount(ps, k) - qty;
+        if (ps.inventory[k] <= 0) delete ps.inventory[k];
+        this._saveRpg(playerId, ps);
+        this._queuePlayerStateFlush(playerId);
+      } else {
+        const took = await this._escrowTakeItem(playerId, k, qty, escrowOp);
+        if (!took.ok) return { ok: false, settled: true, error: 'You do not have that' };
+      }
       invKey = k;
     } else if (kind === 'weapon') {
       /* v2.3.2531: `else if`, not `else`.  It was a bare `else` when
@@ -824,16 +844,40 @@ export const storeMethods = {
     if (!ps) return { ok: false, settled: true, error: 'Not in game' };
     if ((ps.coins || 0) < rec.askPrice) return { ok: false, settled: true, error: 'Not enough gold' };
 
-    // Intent first (see the header): the record names the buyer BEFORE any
-    // money moves, so a restart mid-sale finishes it instead of losing it.
-    rec.sale = { buyerId, buyerName: this._stNameOf(buyerId) || 'Someone', price: rec.askPrice, paid: false, bidSeq: null, at: Date.now() };
-    await this.state.storage.put('store_listing:' + rec.id, rec);
-
-    const paid = await this._escrowDebitGold(buyerId, rec.askPrice, 'store:' + rec.id + ':pay');
-    if (!paid.ok) {
-      rec.sale = null;
+    /* ═══ v2.3.4500: THE SALE MARKED PAID IN THE SAME WRITE AS THE PAYMENT ═══
+       Below, the marker goes out first with `paid: false`, then the debit and
+       its stamp in a write of their own, and `paid: true` was never written:
+       the only proof the buyer paid was the `:pay` stamp, pruned after 48 h,
+       so a restart after the debit and a shop nobody opened for two days put
+       the listing back on the shelf, and the buyer's gold was gone (the
+       state-machine sweep's V8a S6-4; TRAPS §146: the oplog is not the
+       record).  The buyer is in the room, so the gold is taken in memory, and
+       the purse, its stamp and the listing marked `paid: true` go out in ONE
+       synchronous run (_escrowDebitGoldTogether): the sale is paid and says
+       so, or nothing happened.  The wake finishes a paid sale (_stConverge),
+       as it always did an accepted bid's.  Kill switch: `ahonewrite: false`
+       (_ahOneWrite) puts back the old order. */
+    if (this._ahOneWrite()) {
+      rec.sale = { buyerId, buyerName: this._stNameOf(buyerId) || 'Someone', price: rec.askPrice, paid: true, bidSeq: null, at: Date.now() };
+      const took = await this._escrowDebitGoldTogether(
+        [{ id: buyerId, amount: rec.askPrice, opId: 'store:' + rec.id + ':pay' }],
+        [['store_listing:' + rec.id, rec]]);
+      if (!took.ok) {
+        rec.sale = null;   /* nothing was written */
+        return { ok: false, settled: true, error: 'Not enough gold' };
+      }
+    } else {
+      // Intent first (see the header): the record names the buyer BEFORE any
+      // money moves, so a restart mid-sale finishes it instead of losing it.
+      rec.sale = { buyerId, buyerName: this._stNameOf(buyerId) || 'Someone', price: rec.askPrice, paid: false, bidSeq: null, at: Date.now() };
       await this.state.storage.put('store_listing:' + rec.id, rec);
-      return { ok: false, settled: true, error: 'Not enough gold' };
+
+      const paid = await this._escrowDebitGold(buyerId, rec.askPrice, 'store:' + rec.id + ':pay');
+      if (!paid.ok) {
+        rec.sale = null;
+        await this.state.storage.put('store_listing:' + rec.id, rec);
+        return { ok: false, settled: true, error: 'Not enough gold' };
+      }
     }
 
     const price = rec.sale.price;
@@ -1091,5 +1135,16 @@ export const storeMethods = {
       if (rec.sale || rec.releasing || this._stIndex.get(String(rec.id)) !== rec) continue;
       await this._soSweepRec(rec, now);
     }
+  },
+
+  /* v2.3.4500: the Auction House's money in one write -- an offer's refund
+     and its raise (storeoffer.js), a stack's listing and a buy-now (above):
+     each moves the gold or goods and writes the listing in ONE synchronous
+     run (store-onewrite.test).  On unless the live flags say
+     `ahonewrite: false`, which puts back the old order of writes, its
+     restart holes and all. */
+  _ahOneWrite() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'ahonewrite') && !f.ahonewrite);
   },
 };

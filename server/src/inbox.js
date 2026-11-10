@@ -516,7 +516,7 @@ export const inboxMethods = {
      box -- this, and the join's drain -- waits its turn (_inboxSerial), and
      `opId`, when given, is stamped in the SAME synchronous run as the box's
      write (_creditPlayer's header). */
-  async _inboxAppend(playerId, entry, opId) {
+  async _inboxAppend(playerId, entry, opId, also) {
     const key = 'inbox:' + playerId;
     return this._inboxSerial(key, async () => {
       const box = (await this.state.storage.get(key)) || [];
@@ -543,6 +543,8 @@ export const inboxMethods = {
       if (!merged) box.push({ opId: entry.opId, ts: Date.now(), source: entry.source || '', kind: entry.kind, payload: entry.payload, note: entry.note || '' });
       const writes = [this.state.storage.put(key, box)];
       if (opId) writes.push(this._opStamp(opId));
+      /* v2.3.4500: ...and the caller's own record, in the same run (_creditWith) */
+      if (typeof also === 'function') writes.push(...(also() || []));
       await Promise.all(writes);
     });
   },
@@ -709,5 +711,56 @@ export const inboxMethods = {
     await saved;
     await stampedOff;
     return { ok: true };
+  },
+
+  /* ═══ v2.3.4500: A CREDIT AND THE RECORD IT SETTLES, IN ONE WRITE ═══
+     _creditPlayer pays and stamps in one run, but a caller holding an escrow
+     record wrote that record in a run of its own, before or after the credit.
+     The Auction House's offer refund wrote the listing without the offer and
+     paid after it: a restart between (every merge touching server/ restarts
+     the room) and the gold was gone.  Its raise paid first and wrote after: a
+     restart between left an offer with no gold behind it, and the seller's Yes
+     paid it out (the state-machine sweep's V8a S6-6).
+     This is the same credit with the caller's writes in its run (handoff rules
+     5 and 7, TRAPS §184).  Everything is READ first: the stamp, and an absent
+     player's mailbox in its turn (_inboxAppend).  Then `also()` makes the
+     caller's change to its record and returns that record's write(s), and the
+     payment and its stamp go out in the SAME synchronous run, so the record
+     and the money commit together, or neither does.  A stamp already on file
+     proves the payment landed (a leftover of the old order): only `also()` is
+     written, and nothing is paid twice.  Answers 'delivered' | 'inboxed' |
+     'dup', as _creditPlayer does.
+     Gold and stackable items only, the kinds that always land (a weapon, a
+     piece or a pet may have to wait in the mail for room): any other kind
+     answers null and does nothing.  _creditPlayer is unchanged for its other
+     callers. */
+  async _creditWith(playerId, entry, also) {
+    if (!entry || (entry.kind !== 'gold' && entry.kind !== 'item') || typeof also !== 'function') return null;
+    const opId = entry.opId;
+    if (opId) {
+      if (!this._opInFlight) this._opInFlight = new Set();
+      if (this._opInFlight.has(opId)) return 'dup';
+      this._opInFlight.add(opId);
+    }
+    try {
+      if (await this._opSeen(opId)) {
+        await Promise.all(also() || []);
+        return 'dup';
+      }
+      const ps = this.playerState[playerId];
+      if (ps) {
+        const writes = [...(also() || [])];
+        this._applyCreditToPs(ps, entry, playerId);
+        writes.push(this._saveRpg(playerId, ps), this._opStamp(opId));
+        this._queuePlayerStateFlush(playerId);
+        this._sendInboxDelivered(playerId, [entry], 0);
+        await Promise.all(writes);
+        return 'delivered';
+      }
+      await this._inboxAppend(playerId, entry, opId, also);
+      return 'inboxed';
+    } finally {
+      if (opId) this._opInFlight.delete(opId);
+    }
   },
 };

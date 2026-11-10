@@ -94,10 +94,18 @@ shelf it could never fill.
   own `item` field is ignored). If the record write throws, the goods are
   returned through `_creditPlayer` (`store:<id>:unwind`) — escrow that
   cannot be written never existed (market.js's v2.3.1971 incident).
+  v2.3.4500: a stack now leaves the live bag in the same synchronous run as
+  the record's write, as a weapon, a piece and a pet always did; before, the
+  take and its `:esc` stamp were a write of their own and a restart before
+  the record lost the goods (V8a S6-5). Kill switch `ahonewrite: false`.
 - **Buy now** — the buyer's gold is debited (`store:<id>:pay`), then the
   goods are credited to the buyer (`store:<id>:goods`), then the seller is
   paid (`store:<id>:gold`), then the record is deleted. Goods first: it is
   the irreplaceable half of the trade (v2.3.1184's reasoning).
+  v2.3.4500: the debit, its stamp and the record marked `sale.paid: true`
+  are ONE write (`_escrowDebitGoldTogether`); before, the marker went first
+  with `paid: false` and only the 48-hour `:pay` stamp said the buyer had
+  paid (V8a S6-4). Kill switch `ahonewrite: false`.
 - **Bid** — gold at rest, so it escrows at placement
   (`store:<id>:bid:<seq>`) and the player it outbids is refunded in the
   same event (`store:<id>:bidref:<seq>`). A bid that reaches the ask is
