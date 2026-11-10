@@ -1,4 +1,5 @@
 import { keptQuery } from '../ui/keepSwitches.js';   /* v2.3.3888: the address's switches kept through the door */
+import { CHAR_CACHE_KEYS, CHAR_SESSION_KEYS } from '../game/tabIdentity.js';   /* v2.3.4521: the one list of a character's caches */
 /* ═══ MULTIPLAYER SERVER — Cloudflare Durable Objects ═══ */
 
 /* Server URLs.
@@ -226,9 +227,14 @@ export function applyAccountLogin(phrase, id) {
     /* v2.3.3355: a new key with the id the door said it belongs to */
     setActiveKey(phrase, id);
     /* Stale per-character caches; bt_device stays (per-device nonce). */
-    localStorage.removeItem('bt_rpg');
-    localStorage.removeItem('bt_stats');
+    /* v2.3.4521: ALL of them, as the list's pick clears them (charRoster.js
+       activateChar), and this tab's own resume copy: a typed key cleared two
+       of the seven, so the next character showed the last one's bestiary,
+       materials and zones, and its straight-in reload took the last one's
+       name and look from the snapshot (the sweep's V5, U2-3) */
+    CHAR_CACHE_KEYS.forEach(function (k) { try { localStorage.removeItem(k); } catch (e2) { /* the next */ } });
   } catch (e) {}
+  try { CHAR_SESSION_KEYS.forEach(function (k) { sessionStorage.removeItem(k); }); } catch (e) { /* private mode */ }
   /* ═══ v2.3.1869: LAND IN THE GAME, NOT BACK ON THE DOOR ═══
      reload() keeps the query string, and the login door is most often reached
      BY LOGGING OUT — which navigates to `/?noresume=1&login=1` (v2.3.1840).
