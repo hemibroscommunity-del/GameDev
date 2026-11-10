@@ -5926,6 +5926,13 @@ harvest and cook caps from ever binding.
 forfeits, cancels), or the reconnect path must merge rather than overwrite
 live state with stored state.
 
+The takeover in join.js ("superseded by reconnect") is one of those ways, and
+it does not run `webSocketClose`. Since v2.3.4377 it does the close's SAVE
+duties (the `_regenDirty` flush, kill switch `takeoversave`; the bot summary
+since v2.3.3174), and it deliberately skips the linger, the duel's away clock
+and the trade's cancel (§278). A new close duty that saves something goes in
+the takeover too, or a second tab gives it back (docs/specs/takeover-save.md).
+
 ## 163. "Leaving is refused mid-war, so the roster is safe" (v2.3.3175)
 
 **The plausible move.** v2.3.2301 refuses leaving a clan mid-war because a
@@ -7853,7 +7860,10 @@ existed.
 **The rule.** A gate on being dead asks `ps.dying` (set only by the worker,
 cleared only by its respawn) as well as `ps.dead` -- the full preamble §150
 names, which combat.js (v2.3.1628) and abilities.js already use. Treat
-anything a move writes as the phone's claim, not the worker's fact. And a
+anything a move writes as the phone's claim, not the worker's fact. Since
+v2.3.4373 the move no longer writes `ps.dead` (`serverdead: false` brings it
+back), so `ps.dead` is the worker's word and equals `ps.dying`. A corpse gate
+still asks both: with the switch off, `dead` is the phone's again. And a
 corpse's phone asks for nothing (groundLoot.js stands still while `S._dying`).
 
 **Receipt:** combat-lifecycle §5 "the corpse on it takes nothing while dying,
@@ -8734,3 +8744,305 @@ the screen only while the opening is still its own.
 
 **Receipt:** server/test/zone-entry.test.mjs §1-2; the sweep's V11 and its
 reviews (storage branch `claude/state-machine-sweep`, never merged).
+
+## 263. "A blocked player's new request: add an isBlockedId check to its handler" (v2.3.4365)
+
+**The move.** Every social message's case in `processGameEvent` asks the
+block list for itself, and a Block button writes the list it was handed.
+
+**Why it is wrong.** That is how the game's own Duel button
+(`duel_wager_request`) and a friend request's chime were missed: only the
+older `duel_request` asked (the state-machine sweep, 2026-11-03, V6 N2-18).
+And the player card wrote back the copy BroTown read at page load, so a block
+made on the Friends page was erased by the next Block or Unblock of anybody
+(V12 P2-19).
+
+**The rule.** A social message the phone reacts to is one row in
+`src/game/blockedAsks.js` `BLOCKED_SOCIAL` (its type and the field naming its
+sender), or a row in `NOT_BLOCKED` saying why; the switch asks the table once,
+before its cases. The list has one writer: `chatMute.js` `setBlockedId` (or
+friendsModel's helpers), never `localStorage.setItem('bt_blocked', ...)` from a
+panel's copy. (Lane A5 wrote this section and took it back out so the lanes
+merged cleanly; it lands here, v2.3.4381.)
+
+**Receipt:** docs/specs/block-list.md; `blocked-asks.test` §1, §3;
+`mp-blockasks` §5.
+
+## 264. "The socket handler reads `ws`, so it acts for the live line" (v2.3.4367)
+
+**The move.** A socket's open, message, close and error handlers read the
+module's `ws`, and a new line is made wherever a screen wants to try again
+("Try now", the full-world timer, the lockout wait, coming back to the tab).
+
+**Why it is wrong.** `ws` is a variable `connect()` reassigns. A handler left
+on a replaced line acted on the live world: a stray close painted "connected
+from another window" over a joined world, or started a reconnect that knocked
+the live line off; a "Try now" tapped while the automatic try was connecting
+made two lines (sweep V4 N1-2).
+
+**The rule.** Only `connect()` makes a line. It retires the old one with
+`retireSocket` (`src/game/socketLine.js`): handlers off BEFORE the close,
+because the close event can arrive seconds later. Every handler starts with
+`if (sock !== ws) return;`. Never add a `new WebSocket` anywhere else, and
+never close a line with its handlers still attached.
+
+**Receipt:** `server/test/socket-one.test.mjs` (17 of 30 fail on the old
+code); docs/specs/socket-one-line.md.
+
+## 265. "Remember the picked weapon by its place in the stash" (v2.3.4369)
+
+**The move.** The General Store's "List for Sale" names the pick by its place
+in the stash ("the 1st weapon"), clears it on a sale, and needs no lock
+because a tap is quick.
+
+**Why it is wrong.** The bag under a place moves. A double tap sent two orders,
+and the second listed whatever weapon had moved into that place under the
+first one's name (sold on the spot if a buyer waited); a double tap on a buy
+order took the gold twice. After a refusal, an error or a close and reopen,
+the old pick stayed lit over a changed bag.
+
+**The rule.** Never name a sale by a stash place across an await, and never
+leave a pick lit past its answer. One tap at a time: the lock is
+`claimPlace(S)` on the game state (`src/game/storeSellTap.js`), not a panel
+ref, so a close and reopen can't open a second door. Never add a timeout that
+reads as a refusal (players list twice, v2.3.2507): a timeout says "not sure,
+check My orders" with the button still locked. This is a stop-gap; the cure is
+the server naming a sold weapon by its id.
+
+**Receipt:** `server/test/store-sell-tap.test.mjs`; docs/specs/marketplace.md.
+
+## 266. "The retry is scheduled, so the loading screen waits for it" (v2.3.4368)
+
+**The move.** A picture that fails to download is tried again with
+`setTimeout(retry, ms); return;` inside its `.catch`, and the loading screen
+awaits the picture's promise.
+
+**Why it is wrong.** That `.catch` resolves the promise at the FIRST failure.
+`preloadBodyAll` (and anything that gathers it) let the loading screen through
+while the body was still being fetched again, so a first jog or hit showed the
+plain default body for 2-8 s (the preloading law, CLAUDE.md §7).
+
+**The rule.** A retry on a loading screen's road returns its next try's
+promise: `return new Promise(r => setTimeout(r, ms)).then(retry)`
+(playerSkins.js `_buildPickupHeadSheet` since v2.3.1398, `buildBodySheet` since
+v2.3.4368).
+
+**Receipt:** `server/test/look-load.test.mjs`; docs/specs/retry-looks.md.
+
+## 267. "The guard spells the cache key out by hand" (v2.3.4368)
+
+**The move.** `_pickupHeadCap`'s "never evict your own heads" guard matches the
+head pictures by a prefix it writes itself, the way the key looked when it was
+written.
+
+**Why it is wrong.** v2.3.3658 took trousers and boots out of `_headSheetKey`,
+but the guard still spelt them in, and silently stopped guarding 111 of 112
+players: in busy BroTown your own head was thrown out and re-made mid-play.
+
+**The rule.** A cache key and anything that matches against it share one
+builder: both call `_headComboPrefix` (playerSkins.js, v2.3.4368).
+
+**Receipt:** `look-load.test` §1; docs/specs/garment-specks.md.
+
+## 268. "Start the helper once and keep the promise" (v2.3.4370)
+
+**The move.** The world's ground helper (`wheelTrial.js` `_initP`) is a
+load-once latch: one cached start promise, its start downloads with no time
+limit.
+
+**Why it is wrong.** The latch kept its rejection, so the first Wi-Fi blip as
+the world opened lasted the whole page: flat sea, no ground, buildings, doors
+or Mayor Bro until a reload. A download that hung did the same until the
+browser gave up.
+
+**The rule.** A load-once latch drops a failure and tries again after a wait
+(2 s doubling to 30 s), never with no wait: the Wheel's ground asks every
+frame. A start download gets a time limit for the HANG, not the slow line:
+`objects.bin` is about 0.7 MB, so 20 s a try (`startFetch.js`).
+
+**Receipt:** `server/test/ground-start.test.mjs`;
+docs/specs/ground-start-retry.md.
+
+## 269. "No phone uses the gift, so it needs none of the bag's rules" (v2.3.4375)
+
+**The move.** The old one-way gift (`trade_offer`) is a leftover the trade
+window replaced, so a new rule for "every road out of the bag" skips it.
+
+**Why it is wrong.** The server still took it, and v2.3.3183's fight lock
+missed it: a modified phone losing a fight to a player gifted its whole bag
+and gold to a friend in the last seconds, and the winner found an empty pile.
+Decline did not cancel a gift either, so Accept still took it. The road no
+honest phone uses is the one a modified phone takes.
+
+**The rule.** The gift is the trade window's fallback only (`trade.js`
+`_giftClosed`): closed while `trade2` is advertised, open under `trade2: false`
+so players can still trade. Do not "restore" it on its own, and do not remove
+the fallback. A rule added to every road out of the bag goes on the gift's
+offer AND accept too. Kill switch `giftclosed`.
+
+**Receipt:** `trade.test` §10 (v1 and v2 phones); docs/OPERATIONS.md.
+
+## 270. "The disconnect clock covers a duellist who zones out" (v2.3.4371)
+
+**The move.** The duel's accept comment says a duel under way "survives one
+side zoning out, which is what the disconnect/forfeit clocks are for".
+
+**Why it is wrong.** Only a disconnect ever started that clock. A dueller who
+walked into a dungeon or onto the farm locked both players in the duel for up
+to 10 minutes (no regen, a locked bag), and in a duel with gold a cheater could
+land one hit, hide, and win the pot on the clock's health count.
+
+**The rule.** A rule about WHERE a player is hangs on every place the code
+changes that position, not on the road you have in mind. The server changes a
+zone in four places (a walk, the join, the respawn, the sparring clones); each
+calls `_duelZoneMoved` (duel.js), and a dungeon start, a party pull and the
+farm trip are walks the phone sends. Kill switch `duelzone`.
+
+**Receipt:** `duel-zone.test` §7 scans `server/src` for every place that
+changes a zone; docs/specs/duels.md "Leaving the zone".
+
+## 271. "A record at 0 health is a stuck state: let the sweep kill it" (v2.3.4374)
+
+**The move.** A join loads a save at 0 health with nothing dying, and the
+stuck-at-zero sweep runs the death, as it does for any player stuck at 0.
+
+**Why it is wrong.** The dying 5 seconds live only in the server's memory and
+the save says 0. A player who closed the game in those 5 seconds (or lost
+signal, or met a deploy) was killed a second time on the next launch, and the
+bag a dungeon death or a lost duel had promised to keep was emptied; a
+red-skulled player lost everything to nobody.
+
+**The rule.** A record at 0 health with nothing dying is a death the close cut
+short. Stand it up at the join (full health, in town; `join.js`, kill switch
+`joinstandup`); never "restore" the second death. The sweep stays for every
+other way to reach 0.
+
+**Receipt:** `server/test/join-stands-up.test.mjs`;
+docs/specs/join-stands-up.md.
+
+## 272. "Only joined players reach gated code, so the switches are loaded" (v2.3.4376)
+
+**The move.** The live flags load when a phone opens its game connection, and
+every web route is assumed to come after one.
+
+**Why it is wrong.** The login door, the character list's restart, the admin
+overview and the market and store reads are plain web requests. A freshly
+started room (after a deploy, or an empty room waking) answered them with
+`this._liveFlags` unset, so every thrown switch read as not thrown: with
+`devicelock: false` thrown, an old Login Key on a new phone was still refused.
+
+**The rule.** The switches load at the top of `GameRoom.fetch` (one read for
+the room's life; a failed read still answers and is tried again). A new route
+is no proof the switches are loaded. This change has no kill switch on purpose:
+it is the loading of the kill switches.
+
+**Receipt:** `server/test/cold-flags.test.mjs`; docs/specs/liveops.md
+"Loaded before any request".
+
+## 273. "The phone stopped training the old skills, so the old rules are dead" (v2.3.4380)
+
+**The move.** Under prog3 the phone no longer trains the old weapon and
+defence levels, so the v2.3.1414 "full restore on a skill level-up" can stay.
+
+**Why it is wrong.** Only the readers that compute from the old track moved to
+prog3, not the rules that listen to it. A modified page reporting "sword went
+up by one" bought a full heal, about 400 a character, mid-duel or in No man's
+land. A test fixture that joined on prog3 pinned the reward as if intended.
+
+**The rule.** When a system moves to the server, grep for every rule keyed on
+the old client track. A prog3 character's reported `weaponSkills` /
+`defenseSkill` is ignored, neither healed on nor saved (grids.js
+`_handleStatsUpdate`, kill switch `skillfreeze`): a saved forged climb waits for
+a rollback or `prog3FromLegacy` to turn it into power.
+
+**Receipt:** `grids.test` (the prog3 block); docs/specs/build-skill-progression.md.
+
+## 274. "`seen > 0 &&` skips the members we know nothing about" (v2.3.4378)
+
+**The move.** The party's 7-day leader clock counts only leaders seen at least
+once; `seen: 0` (written at the clan conversion for an offline member) means
+"not known", so skip it.
+
+**Why it is wrong.** "Skip" here means "never". A leader who never came back
+after the conversion kept the party forever: nobody could kick, rename,
+declare war or take it into a dungeon.
+
+**The rule.** A field written as 0 to mean "not known" is read by every clock
+that uses it, and each clock says what a 0 counts from: here `seen || at || ts`
+(party.js, kill switch `leaderidleat`). Still lazy, on a member's join, never a
+sweep (handoff rule 12).
+
+**Receipt:** `party-keep.test` §10b; docs/specs/party.md "A leader never seen".
+
+## 275. "The record was read at the join, so the cache can drop it" (v2.3.4379)
+
+**The move.** The anti-bot record cache (128 players) drops its oldest record
+when full; the record is in storage anyway.
+
+**Why it is wrong.** Storage is read only at the join. A live player's next
+cook, harvest or hit built a blank record, and its first save replaced
+`botstat:<id>`: on a busy day the owner's flags, the score and the hour caps
+were lost, and a script past the cook cap got a fresh hour (sweep S8-21). The
+oldest-first order looked only at harvests, so bots that cook or fight went
+first.
+
+**The rule.** A cache in front of a stored record that only the join reads
+never evicts an online player's record (botfp.js `_botfpRecord`, kill switch
+`botrecordkeep`; `MAX_PLAYERS` 120 under the cap of 128 leaves room). Spare the
+live records, or re-read before the first write.
+
+**Receipt:** `server/test/botfp-evict.test.mjs`; docs/specs/anticheat-botfp.md.
+
+## 276. "Stamp the limit on `ps`" (v2.3.4372)
+
+**The move.** The free points reset's once-a-minute limit is a stamp on the
+player's live state.
+
+**Why it is wrong.** Every join rebuilds `ps`, so a rejoin forgot the minute.
+One reset and a respend at level 16 is 91 saved rows; with up to 20 joins a
+minute from one address, a script could write about 20 times the
+once-a-minute rate, against a free plan of 100,000 rows a day for the whole
+game.
+
+**The rule.** A "once every N" limit stamped on `ps` lasts one connection. A
+limit meant for the character keeps its stamp where a join does not reach: a
+room `Map` keyed by player id (as `lastplace.js` keeps `_lastPlaces`), capped
+and pruned (`_pointsResetAts`, kill switch `pointsresetroom`), or the record
+if it must survive a deploy. A test that fakes the time passing moves that
+stamp too.
+
+**Receipt:** `points-reset` §8; docs/specs/points-reset.md.
+
+## 277. "This fix is phone-only, so merging it disconnects nobody" (v2.3.4381)
+
+**The move.** A pull request changes only the phone's code and adds its test
+under `server/test/`, and its body says the merge deploys nothing.
+
+**Why it is wrong.** `.github/workflows/deploy-worker.yml` runs on any push to
+`main` touching `server/**`, and a test file is under `server/`. On 2026-11-10
+each of the twenty state-machine merges (#1457-#1476) was a deploy trigger,
+the "phone-only" ones included, and each deploy briefly disconnects players.
+
+**The rule.** A pull request with any file under `server/` deploys the worker
+when it merges: say "this deploys" in its body. The deploy queue keeps only the
+newest waiting run (its `concurrency` group), so merge a batch together, in a
+quiet hour, and players are dropped once or twice, not twenty times.
+
+## 278. "Clear the phone's copy at state_sync" (v2.3.4381)
+
+**The move.** A window the server owns (the trade window, a duel) can outlive
+a dropped line, so the phone clears it at every `state_sync`: a fresh join,
+a fresh start.
+
+**Why it is wrong.** Lane A2's first cut (v2.3.4362) cleared the trade window
+on every reconnect. But a rejoin usually replaces a socket the server still
+holds, without `webSocketClose` (server/src/join.js, "superseded by
+reconnect"; §162), so the server usually still holds the trade: the phone hid
+a live trade. The orchestrator's own brief asked for it; the reviewer caught
+it in the diff.
+
+**The rule.** The phone clears its copy at `state_sync` only together with the
+server re-sending what is still live. The party is the pattern: the phone
+clears, and the join re-sends the roster right after `state_sync` (join.js,
+v2.3.1185). Until a live duel and trade are re-sent (v2.3.4382, in flight on
+2026-11-10), a reconnect keeps the phone's window.

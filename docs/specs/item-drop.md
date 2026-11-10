@@ -178,4 +178,7 @@ refused whatever its move said.
   (the drop's shape) is still the fuller cure (server work, not done).
 - Other places that ask only `ps.dead` were not changed here; one is a kill's
   share (combat.js: a player whose damage is on a monster that dies in the
-  five seconds after their death is still counted for a share).
+  five seconds after their death is still counted for a share). Since v2.3.4373
+  that matters less: the move no longer writes `ps.dead` (kill switch
+  `serverdead`), so those places read the server's death too
+  (docs/specs/server-dead.md; TRAPS §233).
