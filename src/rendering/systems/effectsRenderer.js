@@ -777,6 +777,7 @@ import { StormSparksFx } from '../stormSparksFx.js';   /* v2.3.4356: the storm e
 import { WaterAttackFx } from '../waterAttackFx.js';   /* v2.3.4355: the water frog's attack, drawn in code */
 import { ElemWindupFx } from '../elemWindup.js';   /* v2.3.3619: a monster's element, seen as it winds up */
 import { SootMarks } from '../sootMarks.js';   /* v2.3.3679: a slime's blast leaves soot */
+import { mcNumberScale } from '@/game/manualCombat.js';   /* v2.3.4520: a light free swing's number is smaller */
 
 /* v2.3.1713: the firemaking strip's frame box, shared by the body bake, the
    gear layers, the trait crowns and the remote stand-in — they all slice the
@@ -6502,7 +6503,9 @@ export class EffectsRenderer {
         const isDmg = isDamagePopup(dmg, t);
         const oldFontSize = dmg.crit ? DMG_CRIT_FONT_PX : DMG_FONT_PX;
         const baseFontSize = isDmg ? oldFontSize : DMG_FONT_PX;
-        const k = DMG_SCALE;
+        /* v2.3.4520: a light free swing's number is smaller, by the share the
+           worker said (`pw`; manualCombat.js mcNumberScale) -- a full one as ever */
+        const k = DMG_SCALE * (isDmg ? mcNumberScale(dmg.pw) : 1);
         const fontSize = baseFontSize * k;
         dmg._k = k;
         dmg._fs = fontSize;

@@ -56,6 +56,8 @@ const ctx = vm.createContext({
   SWING_COOLDOWN: 500, swingCooldownMult: () => 1, weaponSwingMult: () => 1,
   clearSwingHitFlags: () => {}, meleeSwingSfx: () => 'swordSwing',
   getActiveWeapon: (R) => (R.activeSlot === 'ranged' ? R.rangedWeapon : R.weapon),
+  /* v2.3.4520: the free-swing trial's two (manualCombat.js), as they are off it */
+  mcSwingGapMs: () => null, mcNoteSwing: () => {},
 });
 vm.runInContext(swingSrc + '\nthis.swingAttack = swingAttack;\n'
   + 'this.sweep = function (S, baseAngle) { ' + relaySrc + ' };', ctx);
