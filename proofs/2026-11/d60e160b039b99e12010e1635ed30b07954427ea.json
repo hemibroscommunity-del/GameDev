@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d60e160b039b99e12010e1635ed30b07954427ea",
+  "tree": "67f358e3d4c3defeb5baec4dfa90ff5452883d8f",
+  "committedAt": "2026-11-10T07:11:50-08:00",
+  "subject": "Merge pull request #1504 from hemibroscommunity-del/claude/sm-leftovers",
+  "files": 7935,
+  "bytes": 966410079,
+  "listingSha256": "849b072beafd6b0ca16b734ea07722a1b0c81fbaff3743cfb2fe6c33f010416b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
