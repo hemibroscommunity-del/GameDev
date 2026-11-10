@@ -59,6 +59,20 @@
  * Whether the page's heap should grow over a long session at all is the
  * soak's question (docs/specs/long-play-soak.md: 7-14 MB an hour of play).
  *
+ * v2.3.4483, main's own code at the line again: `heap` 37.5 -> 38.5 -- RAISED.
+ * The Town Bluff's redraw (a change to how the ground WORKER paints: nothing
+ * of it is on the page's heap) failed this line at 37.7 MB once main's
+ * v2.3.4482 was merged into it, having passed the run before.  Three more
+ * readings that day, 2026-11-10, on this box: main alone (081eebff) 37.7 --
+ * over its own line; the Bluff's branch 37.1; and CI's 37.7.  So main reads
+ * 37.1 to 37.7 run to run and the line stood inside that: any PR failed it
+ * by the luck of the run.  The line was set at 37.5 on 2026-11-03 with main
+ * at 35.8: about 1.5 MB has come since, a little with each of ~400 changes
+ * (no one of them measured here).  38.5 is main's highest reading and 0.8.
+ * NOT a saving given up for the Bluff: what should be looked at is where
+ * that 1.5 MB went (docs/specs/heap-trim-2026-11-03.md has the method), and
+ * the line lowered again when it is found.
+ *
  * v2.3.4080, the trim v2.3.4005 promised: `heap` 38 -> 37.5 -- LOWERED, the
  * saving locked in (docs/specs/heap-trim-2026-11-03.md).  What grew it: the
  * 13 merges of ~02:40 UTC added ~0.4 MB on arrival (bisected, three readings
@@ -196,7 +210,7 @@ export const MEMORY_BUDGET = {
     what: 'pictures the game draws itself, held in 2D canvases (every one still reachable)' },
   sound: { name: 'decoded sound', mb: 29, measured: 27.0,   /* v2.3.3664: 30 -> 32; v2.3.3706: 32 -> 29, see the header */
     what: 'sound decoded into memory (music streams from its file and is not in it, v2.3.3073)' },
-  heap: { name: 'the page\'s JavaScript objects', mb: 37.5, measured: 35.8,   /* v2.3.3595: 32 -> 33; v2.3.3657: 33 -> 34; v2.3.3807: 34 -> 36; v2.3.4005: 36 -> 38; v2.3.4080: 38 -> 37.5, see the header */
+  heap: { name: 'the page\'s JavaScript objects', mb: 38.5, measured: 37.7,   /* v2.3.3595: 32 -> 33; v2.3.3657: 33 -> 34; v2.3.3807: 34 -> 36; v2.3.4005: 36 -> 38; v2.3.4080: 38 -> 37.5; v2.3.4483: 37.5 -> 38.5, see the header */
     what: 'the page\'s JavaScript objects' },
   buffers: { name: 'the page\'s raw data buffers', mb: 22, measured: 20.4,   /* v2.3.3703: 24 -> 22, see the header */
     what: 'the page\'s raw data buffers (ArrayBuffers), and the text of its scripts, which the same reading counts (v2.3.3703)' },
