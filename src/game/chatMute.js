@@ -74,6 +74,48 @@ export function isBlockedId(id) {
   return !!id && readBlockedIds().indexOf(id) >= 0;
 }
 
+/* ═══ v2.3.4365: ONE WRITER OF THE BLOCK LIST ═══
+   The state-machine sweep (2026-11-03, V12 P2-19): the list had two copies on
+   the phone.  BroTown read `bt_blocked` once at load into React state and the
+   player card wrote THAT copy back, plus or minus one id, on every Block and
+   Unblock -- so a block made on the Friends page since the load was silently
+   erased by the next Block or Unblock of anybody on a player card, and that
+   player's chat, emotes and requests came through again.  Now every writer
+   (the Friends page through friendsModel.js, the player card, the old Social
+   panel) comes here: it reads the stored list fresh, changes the one id and
+   leaves every other entry as it was saved (both shapes), then tells the
+   subscribers, so BroTown's copy follows the stored list instead of
+   overwriting it.  A new entry is saved as `{ id, name }`. */
+var _blockSubs = [];
+export function setBlockedId(id, on, name) {
+  if (typeof id !== 'string' || !id) return readBlockedIds();
+  var raw;
+  try {
+    raw = JSON.parse(localStorage.getItem('bt_blocked') || '[]');
+  } catch (e) { raw = []; }
+  if (!Array.isArray(raw)) raw = [];
+  var has = raw.some(function (b) { return blockedIdOf(b) === id; });
+  var next = raw;
+  if (on && !has) next = raw.concat([{ id: id, name: typeof name === 'string' ? name : '' }]);
+  else if (!on && has) next = raw.filter(function (b) { return blockedIdOf(b) !== id; });
+  if (next !== raw) {
+    try { localStorage.setItem('bt_blocked', JSON.stringify(next)); } catch (e) {}
+    for (var i = 0; i < _blockSubs.length; i++) {
+      try { _blockSubs[i](next.slice()); } catch (e) {}
+    }
+  }
+  return next;
+}
+/* BroTown keeps its `blockedList` state in step with this (as subscribeMutes
+   does for mutes).  Returns an unsubscribe. */
+export function subscribeBlocks(fn) {
+  _blockSubs.push(fn);
+  return function () {
+    var i = _blockSubs.indexOf(fn);
+    if (i >= 0) _blockSubs.splice(i, 1);
+  };
+}
+
 /* Subscribe to list changes (BroTown keeps `mutedList` React state in
    sync with this so the Social panel and the inspect card agree with the
    server rather than with whatever this browser last remembered).

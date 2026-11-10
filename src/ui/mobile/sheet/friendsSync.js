@@ -8,6 +8,8 @@
    — the client is the archive.  Unread counts persist too
    ('bt_dm_unread') so a reload doesn't silently zero the badge. */
 
+import { isBlockedId } from '../../../game/chatMute.js'; /* v2.3.4365 */
+
 const THREAD_MAX = 50;
 const listeners = new Set();
 const emit = () => { for (const fn of listeners) fn(); };
@@ -33,12 +35,18 @@ export const friendsSrv = {
     emit();
   },
 
-  requestsIn() { return doc ? Object.keys(doc.reqIn) : []; },
+  /* v2.3.4365: a blocked player's friend request is not shown or counted
+     (the badge, the Requests tab): the card promises "no ... requests from
+     them".  It stays on the worker; unblocked, it shows again. */
+  requestsIn() { return doc ? Object.keys(doc.reqIn).filter((fid) => !isBlockedId(fid)) : []; },
   serverList() { return doc ? doc.list : null; },
 
-  thread(fid) { return readJson('bt_dm:' + fid, []); },
+  /* v2.3.4365: the owner, 2026-11-10: "Block also stops direct messages".
+     A blocked player's thread reads empty and counts no unread while they
+     are blocked; the saved archive is kept, so unblocking shows it again. */
+  thread(fid) { return isBlockedId(fid) ? [] : readJson('bt_dm:' + fid, []); },
   appendDm(fid, msg, mine) {
-    const t = this.thread(fid);
+    const t = readJson('bt_dm:' + fid, []);   /* the saved archive, never the filtered view */
     t.push({ from: msg.from, fromName: msg.fromName, text: msg.text, ts: msg.ts || Date.now(), mine: !!mine });
     if (t.length > THREAD_MAX) t.splice(0, t.length - THREAD_MAX);
     try { localStorage.setItem('bt_dm:' + fid, JSON.stringify(t)); } catch (_e) {}
@@ -49,10 +57,10 @@ export const friendsSrv = {
     }
     emit();
   },
-  unreadOf(fid) { return readJson('bt_dm_unread', {})[fid] || 0; },
+  unreadOf(fid) { return isBlockedId(fid) ? 0 : (readJson('bt_dm_unread', {})[fid] || 0); },
   unreadTotal() {
     const u = readJson('bt_dm_unread', {});
-    return Object.keys(u).reduce((n, k) => n + (u[k] || 0), 0);
+    return Object.keys(u).reduce((n, k) => n + (isBlockedId(k) ? 0 : (u[k] || 0)), 0);
   },
   setOpenThread(fid) {
     openThread = fid;

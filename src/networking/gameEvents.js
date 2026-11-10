@@ -70,6 +70,7 @@ import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifes
 import { dropShield, noteShieldThreat } from '@/game/shieldToggle.js'; /* v2.3.2242: a landed block lowers the shield; v2.3.3260: and faces who hit you */
 import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent, handleAreaChatEvent, handleWhisperEvent, handleWhisperErrorEvent, handleDiceEvent } from '@/game/chat.js'; /* v2.3.2136: the @area / @user lanes; v2.3.3393: + a /roll or /flip */
 import { applyServerMuteList, isBlockedId } from '@/game/chatMute.js'; /* v2.3.1981; v2.3.3526: a block stops requests */
+import { dropAsBlocked, withoutBlockedRows } from '@/game/blockedAsks.js'; /* v2.3.4365: one block check, one table */
 import { pushAbilityRings, BASH_POSE_MS } from '@/game/abilities.js'; /* v2.3.1735: a peer's bash draws the caster's own shockwave; v2.3.2920 + its pose window */
 import { depthK } from '@/data/zones.js'; /* v2.3.2824: a peer's whirlwind is as wide as its (depth-scaled) hit */
 import { friendsSrv } from '@/ui/mobile/sheet/friendsSync.js'; /* v2.3.1324 */
@@ -283,6 +284,13 @@ export function processGameEvent(type, payload, S, deps) {
     setArenaBets = deps.setArenaBets,
     setClanData = deps.setClanData, /* v2.3.1611 */
     _buildServerPile = deps._buildServerPile;
+        /* v2.3.4365: a blocked player's chat, emotes and requests stop HERE,
+           once, for every social type in one table (src/game/blockedAsks.js),
+           not handler by handler: the per-handler checks missed the game's
+           own Duel button (duel_wager_request) and the friend request's
+           chime (the state-machine sweep, V6 N2-18, V12 M4-9). */
+        if (dropAsBlocked(type, payload, isBlockedId)) return;
+        payload = withoutBlockedRows(type, payload, isBlockedId);   /* the DM backlog: a blocked player's rows */
         switch (type) {
           case 'loot_drop':
             {
@@ -4701,8 +4709,9 @@ export function processGameEvent(type, payload, S, deps) {
                  card's own clock; trade: trade2.js's invite TTL; party:
                  PARTY.INVITE_TTL), so nothing tells them they are blocked.
                  The block list is this device's (bt_blocked), as it always
-                 was; Mute is the one the worker keeps. */
-              if (isBlockedId(payload.from)) break;
+                 was; Mute is the one the worker keeps.
+                 v2.3.4365: the check moved to the top of this switch, one
+                 table for every social type (src/game/blockedAsks.js). */
               if (payload.target === S.myId) {
                 setDuelRequest({
                   fromId: payload.from,
@@ -5089,7 +5098,7 @@ export function processGameEvent(type, payload, S, deps) {
                  (accepting sends party_accept, validated against the
                  inviter's own recorded invite server-side). */
               if (!payload || !payload.from) break;
-              if (isBlockedId(payload.from)) break;   /* v2.3.3526: a blocked player's request never reaches you (duel_request) */
+              /* v2.3.3526: a blocked player's request never reaches you; v2.3.4365: checked at the top of this switch (blockedAsks.js) */
               var _piTs = Date.now();
               if (setParty) setParty({ invite: true, from: payload.from, fromName: payload.fromName || 'Someone', partySize: payload.partySize || 1, ts: _piTs });
               pushDmgPopup(S, S.player.x, S.player.y - 40, '🎪 ' + (payload.fromName || 'Someone') + ' invites you to a party!', '#fbbf24');

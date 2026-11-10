@@ -123,7 +123,7 @@ export const SocialPanel = () => {
   /* v2.3.1324: server friends — requests, DMs, mutual removes. */
   const capsFriends = !!(S && S._serverCaps && S._serverCaps.friends);
   const doc = capsFriends ? friendsSrv.doc() : null;
-  const reqIn = doc ? Object.keys(doc.reqIn) : [];
+  const reqIn = doc ? friendsSrv.requestsIn() : [];   /* v2.3.4365: without a blocked player's (friendsSync) */
   const reqOut = doc ? Object.keys(doc.reqOut) : [];
 
   const sendFriend = (event, payload) => {
