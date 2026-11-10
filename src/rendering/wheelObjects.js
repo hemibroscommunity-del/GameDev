@@ -58,7 +58,7 @@ import { playerGroundDy } from './systems/entityRenderer.js';   /* v2.3.2999: wh
 import { releaseShadowTextures } from './lightfx/shadows.js';   /* v2.3.3000: a freed sheet leaves no shadow behind */
 import { WHEEL_SUN } from './lightfx/zoneLight.js';             /* v2.3.3000: how far a shadow reaches */
 import { SHADE } from './formShade.js';                         /* v2.3.3000: shaded toward the ground, as the old props */
-import { noteMade } from '../debug/madeLog.js';   /* v2.3.4355 */
+import { noteMade } from '../debug/madeLog.js';   /* v2.3.4395 */
 import { readArtBottoms } from './propGround.js';               /* v2.3.3028: where each column of a picture meets the ground */
 import { drawSourceRect } from './paletteDraw.js';              /* v2.3.3190: a page kept as colour numbers, read on the CPU */
 import { paletteOn, makePaletteSource, paletteStats } from './paletteTex.js';   /* v2.3.3190: ...and drawn so */
@@ -293,7 +293,7 @@ async function loadPalettePage(url) {
    all 183 frames of the 41 sheets read the same as from the old way's own
    picture.  (A picture that will not decode leaves its frames to
    readArtBottoms on the numbers, a near match.) */
-const BASES_SLICE_MS = 3;   /* v2.3.4355: this long reading a page's bases, then the frame gets its turn */
+const BASES_SLICE_MS = 3;   /* v2.3.4395: this long reading a page's bases, then the frame gets its turn */
 async function readPageBottoms(sheet, bytes) {
   if (typeof Image === 'undefined' || typeof URL === 'undefined' || !URL.createObjectURL) return;
   let url = null;
@@ -304,7 +304,7 @@ async function readPageBottoms(sheet, bytes) {
     await img.decode();
     const res = sheet.textureSource.resolution || 1;
     const pic = { source: { resource: img, pixelWidth: img.naturalWidth, width: img.naturalWidth / res } };
-    /* ═══ v2.3.4355: A FEW MS OF THEM AT A TIME ═══
+    /* ═══ v2.3.4395: A FEW MS OF THEM AT A TIME ═══
        Every frame of the page was read in one go, the moment the page came:
        on a ride through the town a page comes every second or so, and its
        reads held the page 8 ms each on the test box, 20 at worst (a phone's

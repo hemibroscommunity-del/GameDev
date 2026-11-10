@@ -107,7 +107,10 @@ console.log('3. want(): a prefetch made urgent starts while a line is free');
   const w = src(WORKER);
   const code = slice(w, 'function want(k, urgent)', '/* A picture some piece went without');
   const started = [];
+  /* v2.3.4395 (merged with this suite's v2.3.4370): the worker's pump starts fetched-ahead pictures DL_QUIET at a
+     time and never beside one a piece is waiting for (its `dlNow`), so the stand-ins carry both */
   const make = new Function('DL_PARALLEL', 'started', `
+    const DL_QUIET = 2, dlNow = new Set();
     const files = new Map(), dlJobs = new Map(), dlLine = [], dlRetry = new Map(), owed = new Set(), everFetched = new Set();
     const diet = { refetches: 0 }; const FILES_KEEP = 32, DL_RETRY_MS = 3000, DL_RETRY_MAX_MS = 30000;
     let dlActive = 0, dlFails = 0;
@@ -117,13 +120,14 @@ console.log('3. want(): a prefetch made urgent starts while a line is free');
     return { want, line: () => dlLine.map((j) => j.k), active: () => dlActive };
   `);
   const q = make(4, started);
-  /* three prefetches: two start (one line kept free for the wanted-now ones), one waits */
+  /* four prefetches: two start (v2.3.4395: two at a time, the other lines kept for the wanted-now ones), two wait */
   q.want('p1|A', false); q.want('p2|A', false); q.want('p3|A', false); q.want('p4|A', false);
   const before = started.slice(), waiting = q.line();
   /* a piece now needs p4: moved to the front -- and started, a line being free */
   q.want('p4|A', true);
-  check('3a. the setup: three prefetches started, one waiting', before.length === 3 && waiting.length === 1 && waiting[0] === 'p4|A', { before, waiting });
-  check('3b. the promoted prefetch started at once (a line was free)', started.includes('p4|A') && q.active() === 4, { started, active: q.active(), line: q.line() });
+  check('3a. the setup: two prefetches started, two waiting', before.length === 2 && waiting.length === 2 && waiting[1] === 'p4|A', { before, waiting });
+  check('3b. the promoted prefetch started at once (a line was free)', started.includes('p4|A') && q.active() === 3, { started, active: q.active(), line: q.line() });
+  check('3c. ...and the prefetch still waiting does not start beside it (v2.3.4395)', !started.includes('p3|A') && q.line().length === 1 && q.line()[0] === 'p3|A', { started, line: q.line() });
 }
 
 /* ── 4. prefetchRound skips the unreadable ── */

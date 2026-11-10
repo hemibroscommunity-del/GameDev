@@ -1,4 +1,4 @@
-/* ═══ v2.3.4355: A STEADY RATE ON A SCREEN THE GAME CANNOT KEEP UP WITH ═══
+/* ═══ v2.3.4395: A STEADY RATE ON A SCREEN THE GAME CANNOT KEEP UP WITH ═══
  *
  * The owner, 2026-11-10, an iPhone 14 Pro Max with Safari's "Prefer Page
  * Rendering Updates near 60fps" turned off (so the page is offered the

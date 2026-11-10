@@ -1,4 +1,4 @@
-# A steady step on a steady screen (v2.3.4355)
+# A steady step on a steady screen (v2.3.4395)
 
 > The owner, 2026-11-09, on an iPhone 14 Pro Max in Safari: "the performance
 > on mobile ... is gritty framerate while on skateboard riding through town.
@@ -106,7 +106,7 @@ phone's strip (`?perf=1`) tells them apart since this change:
   own smoothing; this is your own step and so the world's scroll under you.
 - A screen the device cannot keep up with shows frames for unequal times,
   and a steady step is then an unsteady speed: `docs/specs/frame-pacer.md`
-  (v2.3.4355, the same version) draws on a whole number of refreshes on a
+  (v2.3.4395, the same version) draws on a whole number of refreshes on a
   fast screen.
 - A frame the screen really drops (the chip running out of time) is still a
   dropped frame. The owner's third ride read 46 frames a second for a moment

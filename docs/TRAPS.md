@@ -8735,7 +8735,7 @@ the screen only while the opening is still its own.
 **Receipt:** server/test/zone-entry.test.mjs §1-2; the sweep's V11 and its
 reviews (storage branch `claude/state-machine-sweep`, never merged).
 
-## 263. "The test box loads it in a blink, so nobody waits for it" (v2.3.4355)
+## 263. "The test box loads it in a blink, so nobody waits for it" (v2.3.4395)
 
 **The move.** Judge a load by how it behaves here: the test page server reads
 `dist/` off its own disk and answers in a millisecond, so every picture is
@@ -8773,7 +8773,7 @@ cache. "Phones are fine" was a cache, not a screen size.
 **Receipt:** `mp-desksmooth`; the `ground-late` and `zone-gate` suites;
 docs/specs/slow-line-ground.md.
 
-## 264. "The meter says 60 frames a second, so the motion is smooth" (v2.3.4355)
+## 264. "The meter says 60 frames a second, so the motion is smooth" (v2.3.4395)
 
 **The move.** Chase a "gritty" or "not smooth" report as a frame-rate problem:
 profile the frame, cut pixels, cut passes, pool textures. Or the reverse: read
@@ -8804,7 +8804,7 @@ frame and a third too little on the next: sixty uneven steps a second.
 
 **Receipt:** `mp-steadystep`, the `frame-clock` suite, docs/specs/steady-step.md.
 
-## 265. "He is drawn from the shared numbers, so nothing is baked" (v2.3.4355)
+## 265. "He is drawn from the shared numbers, so nothing is baked" (v2.3.4395)
 
 **The move.** Put a character on screen in a pose the look palette holds as
 colour numbers and call it free: no bake, no new memory, no work on first
@@ -8844,7 +8844,7 @@ time.
 
 **Receipt:** `mp-townride`, the `folk-bakes` suite, docs/specs/living-town.md.
 
-## 266. "It is running at 51 frames a second" (v2.3.4355)
+## 266. "It is running at 51 frames a second" (v2.3.4395)
 
 **The move.** Read an average frame rate between two of the screen's whole
 rates (51 on a 120 screen, 45 on a 60 one) as a rate, and go looking for the

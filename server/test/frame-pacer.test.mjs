@@ -1,4 +1,4 @@
-/* ═══ v2.3.4355: A STEADY RATE ON A SCREEN THE GAME CANNOT KEEP UP WITH ═══
+/* ═══ v2.3.4395: A STEADY RATE ON A SCREEN THE GAME CANNOT KEEP UP WITH ═══
  *
  * The owner's iPhone 14 Pro Max, Safari offering the page the screen's own
  * 120 a second, twenty-four minutes into a session: "Still performance

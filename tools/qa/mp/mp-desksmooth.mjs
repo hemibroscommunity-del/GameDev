@@ -1,4 +1,4 @@
-/* ═══ A COMPUTER'S WORLD, WHOLE AND SMOOTH (v2.3.4355) ═══
+/* ═══ A COMPUTER'S WORLD, WHOLE AND SMOOTH (v2.3.4395) ═══
  *
  * The owner, of the expo of 2026-11-05, where the judges played on computers
  * while live-streaming: "The game was not smooth, and patches of texture like

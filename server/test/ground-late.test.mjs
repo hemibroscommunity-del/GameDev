@@ -1,4 +1,4 @@
-/* ═══ v2.3.4355: A GROUND PICTURE THAT IS LATE IS NOT A GROUND NOBODY MADE ═══
+/* ═══ v2.3.4395: A GROUND PICTURE THAT IS LATE IS NOT A GROUND NOBODY MADE ═══
  *
  * The owner, of the expo of 2026-11-05 (the judges on computers that had
  * never opened the game, on the venue's line): "patches of texture like a
@@ -148,11 +148,11 @@ const fn = (name) => { const a = gw.indexOf('function ' + name + '('); if (a < 0
     /const quiet = now - Math\.max\(dlByteAt, gateSince\) >= GATE_STALL_MS;\s*if \(quiet && gateUntil > now\) gateUntil = now;/.test(gwait)
     && /sayArriving\(value \? value\.length : 0\);/.test(fn('fetchFile')) && num('GATE_WAIT_MS') >= 20000 && num('GATE_STALL_MS') >= 2000 && num('GATE_STALL_MS') <= 5000,
     { GATE_WAIT_MS: num('GATE_WAIT_MS'), GATE_STALL_MS: num('GATE_STALL_MS') });
-  /* past the shared wait a picture only now wanted still gets a moment (the review of v2.3.4355: it got none, and a
+  /* past the shared wait a picture only now wanted still gets a moment (the review of v2.3.4395: it got none, and a
      picture a few ms away in the browser's cache put a plain square on the screen) -- short, so a dead line costs little */
   check('5g2. ...and past it a picture only now wanted still gets a short grace, never no wait', num('GATE_GRACE_MS') >= 200 && num('GATE_GRACE_MS') <= 1000, num('GATE_GRACE_MS'));
   check('5h. ...its quiet shorter than the zone gate\'s, so the wait is never taken for a hung load', num('GATE_WAIT_MS') > num('PIECE_WAIT_MS') && num('GATE_STALL_MS') < GATE_QUIET_MS, { GATE_STALL_MS: num('GATE_STALL_MS'), GATE_QUIET_MS });
-  /* 6: found by the review of v2.3.4355, each reproduced or traced before it was fixed */
+  /* 6: found by the review of v2.3.4395, each reproduced or traced before it was fixed */
   const chase = fn('chase');
   check('6. the next try of a picture the screen is short of is a waiting piece\'s, never a quiet one (it would stand aside for every picture fetched ahead)',
     /want\(k, true\);\s*\}\s*$/.test(chase) && !/want\(k, false\)/.test(chase));

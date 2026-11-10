@@ -86,7 +86,7 @@ if (typeof window !== 'undefined') {
     }
   };
 }
-/* v2.3.4355: QA -- how much of the view is laid NOW, a piece at a time
+/* v2.3.4395: QA -- how much of the view is laid NOW, a piece at a time
    (mp-desksmooth: a computer's wide view against a phone's).  `inView` the
    pieces the view touches, `laid` those drawn from their own picture, `far`
    the missing ones that touch the view's outer ring (a piece's width in from
@@ -244,7 +244,7 @@ export class WheelGround {
       this._vy += ((cy - this._lastCy) / dt - this._vy) * k;
     }
     this._lastCx = cx; this._lastCy = cy; this._lastT = now;
-    this._qx = cx; this._qy = cy; this._qw = viewW; this._qh = viewH;   /* v2.3.4355: QA, the view this frame (__btGroundCover) */
+    this._qx = cx; this._qy = cy; this._qw = viewW; this._qh = viewH;   /* v2.3.4395: QA, the view this frame (__btGroundCover) */
     this._placeUnder(info);
     if (this.water) this.water.tick(now);
     const cs = info.chunk.gamePx, C = info.chunk.cols, R = info.chunk.rows;
@@ -362,7 +362,7 @@ export class WheelGround {
       rec.ready = true;
       if (this.water) this.water.set(key, i, j, m.wf, info, rec.sprite.texture, rec.sprite);
       this._short(rec, m);
-      /* ═══ v2.3.4355: LAID SHORT BEHIND THE LOADING SCREEN, LAID AGAIN ONCE ═══
+      /* ═══ v2.3.4395: LAID SHORT BEHIND THE LOADING SCREEN, LAID AGAIN ONCE ═══
          A piece the zone gate laid ahead (`warm`) was laid before this ground
          existed, so any picture it went without that came while the loading
          screen was still up said so ('got') to nobody: its ground stayed

@@ -454,9 +454,9 @@ import { updateWheelSwim, isWheelSwimming, wheelSwimMult, swimGlide, swimNote, S
 import { quietOn, keepaliveDue } from '@/game/quietPhone.js';   /* v2.3.3254: the quiet phone -- keepalives and the harvest heartbeat only when needed */
 import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust, sprintOutBreathTurn, stopSprint } from '@/game/sprint.js';
 import { rideMult, rideCheck, isRiding } from '@/game/ride.js';   /* v2.3.3776: the skateboard (server/src/ride.js) */
-import { makeFrameClock, frameSmoothOn } from '@/game/frameClock.js';   /* v2.3.4355: a steady step on a steady screen */
-import { framePaceOn, makeFramePacer } from '@/game/framePacer.js';   /* v2.3.4355: a steady rate on a screen the game cannot keep up with */
-import { noteMade } from '@/debug/madeLog.js';   /* v2.3.4355: a job between frames says its name and its time */
+import { makeFrameClock, frameSmoothOn } from '@/game/frameClock.js';   /* v2.3.4395: a steady step on a steady screen */
+import { framePaceOn, makeFramePacer } from '@/game/framePacer.js';   /* v2.3.4395: a steady rate on a screen the game cannot keep up with */
+import { noteMade } from '@/debug/madeLog.js';   /* v2.3.4395: a job between frames says its name and its time */
 import { rideGround } from '@/game/rideGround.js';   /* v2.3.3776: where a board rolls */   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust; v2.3.3475: + the run-out's grunt/breath turn */
 import { updateMonsterNoises } from '@/game/monsterNoises.js';   /* v2.3.3340: the monsters chasing you call now and then */
 import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the speed test */
@@ -4850,10 +4850,10 @@ export var BroTown = function BroTown(_ref0) {
       return { phase: F ? F.phase : null, lootId: F ? F.lootId : null, runs: F ? F.runs : 0, got: F ? F.got : 0, credited: F && F.credited ? F.credited.slice() : [], closest: F && F.closest < 1e9 ? F.closest : null, goSteps: F ? F.goSteps || 0 : 0, pace: F ? F.pace || 0 : 0, skip: F ? Array.from(F.skip.keys()) : [], why: F ? F.why : null, on: !!(S._serverCaps && S._serverCaps.petfetch && S._serverCaps.petLoot), dt: S._dtScale || 1,
         x: S._petX, y: S._petY, px: S.player ? S.player.x : null, py: S.player ? S.player.y : null };
     };
-    /* v2.3.4355: the steady step (game/frameClock.js); none with `?dtsmooth=0` */
+    /* v2.3.4395: the steady step (game/frameClock.js); none with `?dtsmooth=0` */
     var _frameClock = null;
     try { if (frameSmoothOn(window.location.search || '')) _frameClock = makeFrameClock(); } catch (e) { _frameClock = null; }
-    /* ═══ v2.3.4355: A STEADY RATE ON A FAST SCREEN (game/framePacer.js) ═══
+    /* ═══ v2.3.4395: A STEADY RATE ON A FAST SCREEN (game/framePacer.js) ═══
        The owner's iPhone, Safari offering it the screen's own 120 a second,
        twenty-four minutes in: "Still performance issues", "fps ~51  frame
        avg 19.6 p95 26.0 max 32.0" -- frames on the glass for two refreshes,
@@ -4902,7 +4902,7 @@ export var BroTown = function BroTown(_ref0) {
            collision is tested per step, so an unbounded step tunnels — and it
            keeps the step inside the worker's move cap.  The floor stops a zero
            or negative delta (first frame, clock skew) from freezing movement. */
-        /* ═══ v2.3.4355: A STEADY STEP ON A STEADY SCREEN (game/frameClock.js) ═══
+        /* ═══ v2.3.4395: A STEADY STEP ON A STEADY SCREEN (game/frameClock.js) ═══
            The owner's iPhone, on the skateboard: "it was saying 60fps but the
            screen looked gritty like it was 30fps or worse".  The step was this
            frame's own measured length, which wobbles a few ms round the
@@ -4916,7 +4916,7 @@ export var BroTown = function BroTown(_ref0) {
         /* v2.3.3017: and how long the frame really was -- past the 3-frame cap a
            step covers less ground than the clock moved, and a jump's crossing
            rule must count what it covers (propFeetBlocked).
-           v2.3.4355: up to the cap, the length the step was made from (the
+           v2.3.4395: up to the cap, the length the step was made from (the
            mean), so a step is still 0.06 px a ms of it; past it, the frame's
            own, as before. */
         S._frameMs = _stepMs > 0 ? _stepMs : 16.667;
@@ -8768,7 +8768,7 @@ export var BroTown = function BroTown(_ref0) {
         var p = -1;
         var _tO = performance.now();
         try { p = _litPct(_wdThumbImage(cv)); } catch (eI) { p = -1; }
-        noteMade('screen check (copy)', performance.now() - _tO);   /* v2.3.4355 */
+        noteMade('screen check (copy)', performance.now() - _tO);   /* v2.3.4395 */
         done(p);
       };
       var job = null;
@@ -8777,7 +8777,7 @@ export var BroTown = function BroTown(_ref0) {
       var frames = 0;
       var poll = function () {
         var px = null;
-        /* v2.3.4355: the read waits for the graphics side to work through what the page has sent it (162 ms on the
+        /* v2.3.4395: the read waits for the graphics side to work through what the page has sent it (162 ms on the
            QA box with a second page open, mp-peerarrive): it says so to the frame meter (debug/madeLog.js) */
         var _tC = performance.now();
         try { px = _wdThumbCollect(job); } catch (eC) { px = false; _wdOffGl = job.T.gl; }

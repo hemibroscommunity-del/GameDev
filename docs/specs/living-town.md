@@ -143,7 +143,7 @@ screen. So `tools/qa/mp/memory-budget.mjs` raises `gpu` 105 -> 115 and `heap`
 36 -> 38, said there. mp-wheelfolk: no photograph fetched or held (0 MB), as
 before.
 
-## The looks the numbers refuse: baked behind the loading screen (v2.3.4355)
+## The looks the numbers refuse: baked behind the loading screen (v2.3.4395)
 
 > The owner's iPhone 14 Pro Max on the skateboard through the town, its frame
 > meter (`?perf=1`) reading "late frames 10 in 10s", "worst 170.0 = game 40.0

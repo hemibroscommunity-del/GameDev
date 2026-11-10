@@ -1,4 +1,4 @@
-/* ═══ v2.3.4355: THE TOWNSFOLK'S BAKED BODIES ARE MADE BEHIND THE LOADING SCREEN ═══
+/* ═══ v2.3.4395: THE TOWNSFOLK'S BAKED BODIES ARE MADE BEHIND THE LOADING SCREEN ═══
  *
  * The owner's iPhone on the skateboard through the town: "late frames 10 in
  * 10s", "worst 170.0 = game 40.0 + outside 130.0".  Four of the townsfolk

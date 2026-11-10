@@ -1,4 +1,4 @@
-/* ═══ v2.3.4355: THE ZONE GATE'S WAIT, AND THE ORDER ITS GROUND IS LAID ═══
+/* ═══ v2.3.4395: THE ZONE GATE'S WAIT, AND THE ORDER ITS GROUND IS LAID ═══
  *
  * src/game/zoneGate.js.  At the expo of 2026-11-05 the judges' computers
  * showed the world with squares of its ground not drawn.  One cause was the

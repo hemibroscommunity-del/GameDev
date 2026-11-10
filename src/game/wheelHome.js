@@ -69,7 +69,7 @@ const TRIP_VEIL_MS = 30000;
 /** Is the trip to the Wheel's Brotown wanted, from today's town, now? */
 export function wheelTripVeiled(S) {
   if (!(S && S._spawnToWheel && S.currentZone === 'town')) return false;
-  /* v2.3.4355: ...and for as long as the stairs' gate into the world is up.
+  /* v2.3.4395: ...and for as long as the stairs' gate into the world is up.
      The gate may now wait up to 45 s for a way in that is still arriving
      (zoneGate.js gateCap; it was a flat 15), longer than this veil's 30 s,
      which also run from an earlier moment (the worker's first word): the

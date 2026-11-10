@@ -1,4 +1,4 @@
-/* ═══ v2.3.4355: A STEADY STEP ON A STEADY SCREEN ═══
+/* ═══ v2.3.4395: A STEADY STEP ON A STEADY SCREEN ═══
  *
  * src/game/frameClock.js.  The owner's iPhone 14 Pro Max, riding the
  * skateboard with the frame meter on: "it was saying 60fps but the screen

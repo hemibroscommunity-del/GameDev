@@ -2286,7 +2286,7 @@ function _shirtLook(front, back, patternStr, tint) {
 /* v2.3.2863: the same answer for effectsRenderer, whose peer SWING and BOW
    stand-ins bake their own sheets and never asked for the drawings. */
 export function remoteBodyArt(other, mirror) { return _remoteBodyArt(other, mirror); }
-/* ═══ v2.3.4355: THE TOWNSFOLK'S BAKED BODIES, BEHIND THE LOADING SCREEN ═══
+/* ═══ v2.3.4395: THE TOWNSFOLK'S BAKED BODIES, BEHIND THE LOADING SCREEN ═══
    `jobs`: [{ name, pose, facing }], every pose a townsperson can be drawn in,
    on his route or off it (game/townsfolkWalk.js folkBakeJobs).  For each that the shared
    colour numbers refuse for HIS look (an eye style, a pattern on the

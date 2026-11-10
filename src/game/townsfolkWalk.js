@@ -172,7 +172,7 @@ export function folkAt(stops, seed, nowMs) {
 /* the eight facings, in the renderer's names (entityRenderer NPC_DIRS_8) */
 const DIRS8 = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
 
-/* ═══ v2.3.4355: EVERY POSE A DAY CAN SHOW HIM IN, KNOWN AHEAD ═══
+/* ═══ v2.3.4395: EVERY POSE A DAY CAN SHOW HIM IN, KNOWN AHEAD ═══
    The owner's iPhone on the skateboard through the town, its meter reading
    "late frames 10 in 10s", "worst 170.0 = game 40.0 + outside 130.0".  The
    living town was built to bake nothing (rendering/folkPose.js), but four of
