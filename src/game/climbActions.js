@@ -31,7 +31,7 @@ import { wheelRises } from '@/game/wheelTrial.js';
 import { jumpActive } from '@/game/jump.js';
 import { cue } from '@/game/eventSounds.js';
 import {
-  CLIMB_MULT, CLIMB_NOTE, CHEST_NOTE, FEET_HS,
+  CLIMB_MULT, CLIMB_NOTE, CHEST_NOTE, CHEST_WORDS, chestPrizeNote, FEET_HS,
   riseCellAt, riseShuts, feetInBand, faceEntry, faceLanding, footOf, climbStartAt, climbWay, climbOut, CLIMB_REACH,
   startDrop, dropAt, atChest,
 } from '@/game/climb.js';
@@ -227,9 +227,12 @@ export function climbTick(S, now, gdy, popup) {
      6 px further off a wall than a phone's, and the chest never opened walking into it there */
 }
 
-/** Open the chest you stand at.  This PR's chest is empty: it says the
-    reward comes next (the worker's once-a-character check is the next PR:
-    docs/ELEVATION-PLAN.md).  True when there was one to open. */
+/** Open the chest you stand at.  v2.3.4438: the worker pays its prize, once
+    a character, to feet at it (server/src/risechest.js): the ask goes
+    (`rise_chest_open`), and its answer says the prize or why not
+    (onRiseChest).  Against a worker that does not say `risechest` (an older
+    one, or the switch thrown) the chest is empty, as it was.  True when
+    there was one to open. */
 export function openRiseChest(S, popup) {
   const r = S && S._nearChest;
   if (!r) return false;
@@ -238,9 +241,38 @@ export function openRiseChest(S, popup) {
   climbStats.chestAt = now;
   climbStats.chestOpens++;
   const c = r.chest;
-  if (popup) popup((c.x0 + c.x1) / 2, c.y0 - 40, CHEST_NOTE);
-  try { cue('discovery', 0.6); } catch (e) { /* sound only */ }
+  const say = (words) => { if (popup) popup((c.x0 + c.x1) / 2, c.y0 - 40, words); };
+  const pays = !!(S._serverCaps && S._serverCaps.risechest === true);
+  if (!pays) { say(CHEST_NOTE); try { cue('discovery', 0.6); } catch (e) { /* sound only */ } return true; }
+  if (S._riseChestGot && S._riseChestGot[r.id]) { say(CHEST_WORDS.got); return true; }
+  S._riseChestAsk = { id: r.id, x: (c.x0 + c.x1) / 2, y: c.y0 - 40, at: now };
+  climbStats.chestAsks = (climbStats.chestAsks || 0) + 1;
+  try { S.channel.send({ type: 'rise_chest_open', payload: { id: r.id } }); } catch (e) { say(CHEST_NOTE); }
   return true;
+}
+
+/** The worker's answer to an opened chest (wsClient's direct switch):
+    `{id, ok: true, coins}` or `{id, ok: false, why}`.  Said over the chest
+    (where the ask was made), and a chest this character has had is
+    remembered so the next tap does not ask again.  The coins themselves
+    arrive by the game's own delivery (the worker's credit): this is the word. */
+export function onRiseChest(S, p, popup) {
+  if (!S || !p || typeof p !== 'object') return;
+  const ask = S._riseChestAsk;
+  S._riseChestAsk = null;
+  const id = typeof p.id === 'string' ? p.id : (ask && ask.id) || '';
+  if (p.ok || p.why === 'got') {
+    if (!S._riseChestGot) S._riseChestGot = Object.create(null);
+    if (id) S._riseChestGot[id] = 1;
+  }
+  climbStats.chestAnswer = p.ok ? 'ok' : String(p.why || 'no');
+  climbStats.chestCoins = p.ok ? Math.floor(Number(p.coins) || 0) : 0;
+  const words = p.ok ? chestPrizeNote(p.coins) : (CHEST_WORDS[p.why] || CHEST_NOTE);
+  climbStats.chestSaid = words;   /* QA: the words over the chest (a popup is gone in a second) */
+  let x = ask ? ask.x : null, y = ask ? ask.y : null;
+  if (x == null && S.player) { x = S.player.x; y = S.player.y - 40; }
+  try { if (popup && x != null) popup(x, y, words, p.ok ? '#FFE23A' : undefined); } catch (e) { /* display only */ }
+  if (p.ok) { try { cue('discovery', 0.9); } catch (e) { /* sound only */ } }
 }
 
 /** Is a figure whose feet are at (x, fy) on a strip of vines?  Another

@@ -74,6 +74,9 @@ export const DROP_MIN_MS = 180;
 /* the chest: how near its front your feet must be to open it (px) */
 export const CHEST_REACH = 36;
 export const CHEST_NOTE = 'Empty for now: the reward comes next';
+/* v2.3.4438: the worker's answers to an opened chest (server/src/risechest.js), in a player's words */
+export const CHEST_WORDS = { got: 'Already opened', far: 'Step up to the chest', off: CHEST_NOTE, none: CHEST_NOTE };
+export function chestPrizeNote(coins) { return '+' + Math.max(0, Math.floor(coins || 0)) + ' coins!'; }
 export const CLIMB_NOTE = 'Climbing!';
 
 /** The rise cell at game px (x, y): { kind, r } ('face', 'rim', 'climb',

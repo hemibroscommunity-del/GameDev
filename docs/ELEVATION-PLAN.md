@@ -287,6 +287,22 @@ cell over the islet's sand. Collision comes from the plan, never the picture.
 - The chest is **once per character** (next PR).
 - **BroTown on a hill comes after** this challenge.
 
+### v2.3.4438: the islet is open to everyone, and its chest pays
+
+`docs/specs/rise-chest.md`. The owner, asked where the first public obstacle
+area goes and what its prize is: "Go recommended."
+
+- The rises are laid for everyone (`?climb=0` is one phone's way back).
+- (b) below is built: the Lagoon Ledge's chest pays 300 coins, once a
+  character, to feet at it (`server/src/risechest.js`, the baked
+  `server/src/wheelfaces.js`, the cap `risechest`, the kill switch
+  `risechest: false`).
+- (a) below is NOT built, on purpose: the worker never moves a phone back and
+  the jump is the phone's own word, so a movement clip would cost honest
+  players and stop nobody who meant it. The spec says why in full. It becomes
+  worth building when a rise goes where monsters fight.
+- Next: a jump course near BroTown, then (d).
+
 ### The next PRs
 
 **(a) The worker learns the faces.** Today the walls are the phone's, like the

@@ -638,9 +638,15 @@ function blocksIn(m) {
    without a re-bake still build the whole Wheel for their objects and
    overview, as before -- and lay their ground from blocks like the rest. */
 
-/* v2.3.3994: `climb=1` in the address -- the rises (core/rises.js) */
+/* v2.3.3994: `climb=1` in the address -- the rises (core/rises.js).
+   v2.3.4438: FOR EVERYONE NOW (the owner, asked where the first public obstacle
+   area goes: "Go recommended" -- the Lagoon Islet).  The rises are laid unless
+   the address says `climb=0` (or off, false): one phone's way back, as a
+   memory saver's is.  They cost a piece nothing it loads (the faces are
+   painted in code) and exist only on the long Wheel (riseLayout is null on
+   the short one). */
 function climbOn(search) {
-  return /(^|[?&])climb=(1|on|true)(&|$)/.test(search || '');
+  return !/(^|[?&])climb=(0|off|false)(&|$)/.test(search || '');
 }
 
 async function init(m) {
