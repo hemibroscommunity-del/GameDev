@@ -14,8 +14,11 @@
  *      respawn's trip (veilWheelTrip), so today's town showed with the trip
  *      still marked veiled.  It lifts below that check now, and there only
  *      when no other way holds the screen.
- *   4. THE ZONE WIPE.  Every writer stores Date.now(); both readers read `.ts`,
- *      so the wipe was never drawn and the flag never cleared.
+ *   4. THE ZONE WIPE.  Every writer stores Date.now(); the clearer read `.ts`,
+ *      so the flag never cleared.  It clears now.  The renderer is left as
+ *      it is: the wipe has never drawn, and turning it on (a full-screen
+ *      fade on every change of place) is the owner's call, so this pins that
+ *      it still draws nothing.
  *   5. THE WHEEL'S "LOADED".  A preloadWheel that ended after you had left
  *      still wrote `_ready = true`; it writes only for the way in it began for.
  * The code under test is cut from src/ and run here with stubs.
@@ -169,7 +172,7 @@ const ge = src('src/networking/gameEvents.js');
   const run = new Function('S', 'gfx', 'now', 'viewW', 'viewH', 'ZONES', 'ELEMENTS', 'cssToHex', draw);
   const now = Date.now();
   run({ _zoneWipe: now - 300, currentZone: 'farm_home' }, gfx, now, 400, 800, { farm_home: {} }, {}, () => 0);
-  check('4e a wipe stored as a number is drawn', rects[0] === 'rect' && rects[1] > 0, rects);
+  check('4e ...and the renderer still draws no wipe stored as a number (turning it on is the owner\'s call)', rects.length === 0, rects);
 }
 
 /* ── 5. the Wheel's "loaded" ── */

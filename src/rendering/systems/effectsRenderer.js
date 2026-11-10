@@ -6845,10 +6845,7 @@ export class EffectsRenderer {
       gfx.fill({ color: 0x000000, alpha: (1 - age) * 0.6 });
     }
     if (S._zoneWipe) {
-      /* v2.3.4414: the writers store Date.now() (gameEvents, zoneTransitions,
-         farmTrip...), so `w.ts` was undefined, the age NaN and the wipe never
-         drawn on any zone change (sweep VA, G5): a number is its start */
-      const w = typeof S._zoneWipe === 'number' ? { ts: S._zoneWipe } : S._zoneWipe;
+      const w = S._zoneWipe;
       const age = (now - w.ts) / (w.duration || 800);
       if (age < 1) {
         const alpha = age < 0.5 ? age * 2 : (1 - age) * 2;
