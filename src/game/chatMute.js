@@ -135,6 +135,36 @@ export function chatMuteSettled(S) {
   return !!(S && S._serverCaps && S._serverCaps.chatMute && S.channel);
 }
 
+/* ═══ v2.3.4402: A MUTE TAPPED WHILE THE CONNECTION IS DOWN IS KEPT ═══
+   The state-machine sweep (2026-11-03, VA "chat mute during reconnect";
+   PLAN cause 5).  During a blip or a deploy the caps and S.channel survive,
+   so setMuted sent -- and the channel dropped the message on the floor
+   (wsClient.js channelShim: the socket is not OPEN) without a word.  The
+   card said "Muted" from the local list, then the rejoin's chat_mute_list
+   REPLACED the local list with the worker's, which had never heard of it:
+   the harasser's chat was back, silently.  Mute is a safety tool.
+
+   KEPT, not refused: this module already treats the local list as the
+   prediction and the worker's echo as the truth, so the honest move is to
+   keep the prediction until the worker can be told.  The channel now says
+   whether a message went (false: dropped); a dropped mute or unmute is kept
+   here, the LAST tap per player winning, and applyServerMuteList (the
+   rejoin's echo, the first thing a rejoin hears from the worker) sends it
+   once and lays it over the worker's list until an echo agrees.  A kept
+   change the worker already agrees with (muted on another device, or muted
+   and unmuted in the same gap) is dropped unsent.  Memory only: a reload
+   during the gap starts from the worker's list, as before. */
+var _kept = new Map();   /* targetId -> { on, name, sent } */
+
+function _sendMute(S, targetId, on, name) {
+  try {
+    return S.channel.send({
+      type: 'broadcast', event: 'chat_mute',
+      payload: { target: targetId, on: !!on, name: name || '' },
+    }) === true;
+  } catch (e) { return false; }
+}
+
 /* Mute or unmute. The local list is written either way (prediction, and
    the whole feature against an old worker); the send is caps-gated. */
 export function setMuted(S, targetId, on, name) {
@@ -145,12 +175,8 @@ export function setMuted(S, targetId, on, name) {
   else if (!on && has) list = list.filter(function (m) { return m !== targetId; });
   _write(list);
   if (chatMuteSettled(S)) {
-    try {
-      S.channel.send({
-        type: 'broadcast', event: 'chat_mute',
-        payload: { target: targetId, on: !!on, name: name || '' },
-      });
-    } catch (e) {}
+    if (_sendMute(S, targetId, on, name)) _kept.delete(targetId);
+    else _kept.set(targetId, { on: !!on, name: name || '', sent: false });
   }
   return list;
 }
@@ -190,6 +216,14 @@ export function applyServerMuteList(payload, S) {
     S._serverMutes = ids.slice();
     S._serverMuteNames = rows;
   }
+  /* v2.3.4402: the kept taps (above).  Agreed (or refused: list-full) ones
+     are done; the rest are sent once and shown until an echo agrees. */
+  _kept.forEach(function (k, kid) {
+    if (!!byId[kid] === k.on || (k.sent && payload && payload.error)) { _kept.delete(kid); return; }
+    if (!k.sent && chatMuteSettled(S)) k.sent = _sendMute(S, kid, k.on, k.name);
+    if (k.on) { byId[kid] = true; ids.push(kid); }
+    else { byId[kid] = false; ids = ids.filter(function (m) { return m !== kid; }); }
+  });
   var migrated = false;
   try { migrated = !!localStorage.getItem(MIGRATED_KEY); } catch (e) { migrated = true; }
   if (!migrated && chatMuteSettled(S)) {
