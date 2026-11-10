@@ -107,7 +107,7 @@ decision below); the loaders' retries (`claude/sm-loader-retries`).
 
 **Not started, no decision needed:**
 - the rest of the silent refusals: harvest strikes, cooking, the gear swap
-  of armour (V9a, V9b; TRAPS §284);
+  of armour (V9a, V9b; TRAPS §309);
 - `stats_update` and the quest taps ignore the channel's `false` (TRAPS §287);
 - the player's trail reads the same unset `now` the pet did (TRAPS §294);
 - nine places still change zone by hand, five on the retired old map
@@ -345,6 +345,16 @@ size?): **YES**. "Dead" is the server's word since v2.3.4373 (above).
     This is also the likeliest answer to the unexplained 378 ms freeze above
     (a look loading: each strip's job is now named on the strip, "between
     frames: strip ..."). Waits on the owner's eye.
+  - **"I thought fire goblin strips were converted into 256 color art like
+    everything should be"** (the owner, told the above; then "make sure
+    that's a system going forward"). They were, and held as numbers: the
+    waste was the way in. v2.3.4450 reads a strip's own numbers from its
+    file off the page's thread (`stripRead.js`, `stripPack.js`): the page's
+    work for the fire goblin's look 198 ms before, 20 ms now, the picture the
+    same. Eight snowman strips that were NOT 256-colour files are converted.
+    `server/test/strip-door.test.mjs` holds it: every monster picture a
+    256-colour file, one door, a closed list of callers of the page's
+    packers (CLAUDE.md's memory law; TRAPS §309).
   - **Still to do, for A2**: another PLAYER with an eye style or a drawing
     is baked on the page when first met, the same freeze, in any crowd.
   - **The cause**: not the frame rate. The owner's captures (`?perf=1`,

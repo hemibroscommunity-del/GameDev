@@ -5,9 +5,10 @@
  * pixels are a frame's art, how a crop is padded and snapped, how the crops
  * are laid out, when packing is not worth it -- live here, with no canvas
  * and no import, so that:
- *   - packTrimmed and packTrimmedSliced (the same pack a cell at a time, for
- *     a look that loads while you play: zoneTextures.js) follow the very
- *     same rules and cannot drift;
+ *   - packTrimmed, packTrimmedSliced (the same pack a cell at a time) and
+ *     stripPack.js (the same pack of a 256-colour file's own numbers, off
+ *     the page's thread: v2.3.4450) follow the very same rules and cannot
+ *     drift;
  *   - node can test them (server/test/strip-slices.test.mjs).
  * The numbers are gearSheets' own: PAD 4 px round the art, every edge
  * snapped out to ALIGN 8 (the mip-alignment argument there), GAP 8 between
@@ -26,6 +27,25 @@ export function trimScanCell(data, stride, ox, fw, fh) {
     const row = y * stride;
     for (let x = 0; x < fw; x++) {
       const a = data[(row + ox + x) * 4 + 3];
+      if (a !== 0) {
+        if (x < x0) x0 = x; if (x > x1) x1 = x;
+        if (y < y0) y0 = y; if (y > y1) y1 = y;
+        if (sx < 0 && a >= 128) { sx = x; sy = y; }
+      }
+    }
+  }
+  return { x0, y0, x1, y1, sx, sy };
+}
+/** The same scan of a cell of colour NUMBERS (`idx`, a byte a pixel, `stride`
+ *  a row; `alpha[number]` each colour's alpha), for a strip read straight
+ *  from its 256-colour file (stripPack.js, v2.3.4450).  A pixel is art where
+ *  its colour's alpha is not 0, exactly as trimScanCell reads RGBA bytes. */
+export function trimScanCellIdx(idx, stride, ox, fw, fh, alpha) {
+  let x0 = fw, y0 = fh, x1 = -1, y1 = -1, sx = -1, sy = -1;
+  for (let y = 0; y < fh; y++) {
+    const row = y * stride + ox;
+    for (let x = 0; x < fw; x++) {
+      const a = alpha[idx[row + x]];
       if (a !== 0) {
         if (x < x0) x0 = x; if (x > x1) x1 = x;
         if (y < y0) y0 = y; if (y > y1) y1 = y;

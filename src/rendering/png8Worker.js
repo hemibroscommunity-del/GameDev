@@ -18,8 +18,18 @@
  *
  *   { id, png }  -> { id, ok: true, w, h, stride, n, idx, rgb, alpha }
  *                   or { id, ok: false, error } -- loaded as a picture then
+ *
+ * v2.3.4450: and a STRIP of frames (a monster's: zoneTextures.js
+ * loadTrackedStrip, stripRead.js) -- read as its numbers and cropped and
+ * packed here too (stripPack.js), so the page's share of a strip that loads
+ * while you play is making its texture:
+ *
+ *   { id, strip, fw, fh, n } -> { id, ok: true, w, h, idx, pal, cells, n,
+ *                   fileW, fileH } or { id, ok: false, error } -- unpacked on
+ *                   the page then, as before
  */
 import { decodePng8 } from './png8Decode.js';
+import { packStripNumbers } from './stripPack.js';   /* v2.3.4450: a monster's strip, cropped and packed from its own numbers */
 
 function imageUrlOf(sheetUrl, image) {
   const base = new URL(sheetUrl, self.location.href);
@@ -31,6 +41,17 @@ function imageUrlOf(sheetUrl, image) {
 self.onmessage = async (ev) => {
   const m = ev.data || {};
   try {
+    if (m.strip) {
+      const pr = await fetch(new URL(m.strip, self.location.href).href);
+      if (!pr.ok) throw new Error('strip ' + pr.status);
+      const dec = await decodePng8(new Uint8Array(await pr.arrayBuffer()), undefined, 1);
+      if (!dec) throw new Error('not a palette PNG');
+      const out = packStripNumbers(dec, m.fw, m.fh, m.n || 0);
+      if (!out) throw new Error('not a strip of ' + m.fw + ' x ' + m.fh + ' frames');
+      self.postMessage({ id: m.id, ok: true, w: out.w, h: out.h, idx: out.idx, pal: out.pal, cells: out.cells, n: out.n, fileW: dec.w, fileH: dec.h },
+        [out.idx.buffer, out.pal.buffer]);
+      return;
+    }
     if (m.png) {
       const pr = await fetch(new URL(m.png, self.location.href).href);
       if (!pr.ok) throw new Error('picture ' + pr.status);

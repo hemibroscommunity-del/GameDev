@@ -46,9 +46,10 @@
  */
 import { Assets, Cache, Rectangle, Texture } from 'pixi.js';
 import { packTrimmed, packTrimmedSliced } from './gearSheets.js';   /* v2.3.2870: monster strips load cropped; v2.3.4400: a few ms at a time in play */
-import { holdOnceDrawn, forgetHeld, numbersOfSliced } from './heldNumbers.js';   /* v2.3.3699: held once drawn, as colour numbers */
+import { holdOnceDrawn, forgetHeld, numbersOfSliced, numbersOf } from './heldNumbers.js';   /* v2.3.3699: held once drawn, as colour numbers */
 import { stripAsNumbers, releaseBundleNumbers, picNumbersOn } from './picsNumbers.js';   /* v2.3.3715: ?picnumbers, colour numbers on the chip */
 import { noteMade } from '../debug/madeLog.js';   /* v2.3.4400: a strip packed on the page says its name and its time */
+import { readStrip, stripReadOn } from './stripRead.js';   /* v2.3.4450: a strip read from its 256-colour file's own numbers, off the page's thread */
 
 /* bundle name -> the set of URLs loaded under it.  A Set, so a re-entered zone
    re-registering the same sheet costs one entry rather than a growing list. */
@@ -96,6 +97,105 @@ export function loadTracked(bundle, url) {
  * of its colour numbers where they are on, see below). */
 export function loadTrackedStrip(bundle, url, fw, fh) {
   const gen = _gen.get(bundle) || 0;
+  /* ═══ v2.3.4450: FIRST, FROM THE FILE'S OWN NUMBERS, OFF THE PAGE'S THREAD ═══
+     The owner: "I thought fire goblin strips were converted into 256 color
+     art like everything should be."  They are, and they are held as colour
+     numbers; but the way in unpacked each file to full colour, cropped and
+     packed it on a canvas, and read every pixel back to find the numbers the
+     file had held all along (13 to 39 ms a strip of the page's time; a few
+     ms a frame since v2.3.4400).  Now the reader's worker reads the numbers
+     from the file, crops and packs them there (stripRead.js, stripPack.js),
+     and the page makes the texture: about a ms a strip.  A strip that cannot
+     be read so (not a 256-colour PNG, no worker, numbers off on this device)
+     is unpacked on the page, exactly as before (_stripByImage). */
+  /* (never while QA compares a strip's numbers with its packed canvas: __btPicNumVerify, mp-picsonce -- the reader
+     makes no canvas) */
+  if (stripReadOn() && picNumbersOn() && !(typeof window !== 'undefined' && window.__btPicNumVerify === true)) {
+    return readStrip(url, fw, fh).then((m) => {
+      if ((_gen.get(bundle) || 0) !== gen) return [];   /* its zone was left while it was read */
+      if (!m) return _stripByImage(bundle, url, fw, fh, gen);
+      /* in play, one strip's texture a slice (the same line and clock as the strips unpacked gently) */
+      if (stripFrameMs() > 0) return _inLine(async () => { await stripTurn(); return _stripOfNumbers(bundle, url, fw, fh, gen, m); });
+      return _stripOfNumbers(bundle, url, fw, fh, gen, m);
+    }).catch(() => []);
+  }
+  return _stripByImage(bundle, url, fw, fh, gen);
+}
+/* the strip's texture and frames from the numbers the worker read (packed, or whole when its art fills its cells) --
+   or, when the bundle's rows of colours have no room for it, the page's own way */
+function _stripOfNumbers(bundle, url, fw, fh, gen, m) {
+  if ((_gen.get(bundle) || 0) !== gen) return [];
+  const _madeT0 = performance.now();
+  const numSrc = stripAsNumbers(bundle, null, url, { w: m.w, h: m.h, idx: m.idx, pal: m.pal });
+  if (!numSrc) return _stripByImage(bundle, url, fw, fh, gen);
+  let set = _crops.get(bundle);
+  if (!set) { set = new Set(); _crops.set(bundle, set); }
+  set.add(numSrc);
+  const n = m.n;
+  _stripStats.push({ bundle, url, fullBytes: (m.fileW || n * fw) * (m.fileH || fh) * 4, packedBytes: m.w * m.h * 4, numbers: true, read: true });
+  const frames = [];
+  for (let i = 0; i < n; i++) {
+    let t;
+    if (m.cells) {
+      const c = m.cells[i];
+      t = new Texture({ source: numSrc, frame: new Rectangle(c.ax, c.ay, c.w, c.h),
+        orig: new Rectangle(0, 0, fw, fh), trim: new Rectangle(c.tx, c.ty, c.w, c.h) });
+    } else {
+      t = new Texture({ source: numSrc, frame: new Rectangle(i * fw, 0, fw, fh) });
+    }
+    t.__btIx = i; t.__btN = n;
+    frames.push(t);
+  }
+  _readStats.strips++;
+  const ms = performance.now() - _madeT0;
+  if (ms > _readStats.longest) _readStats.longest = ms;
+  noteMade('strip made', ms, 'strip made ' + url);
+  return frames;
+}
+const _readStats = { strips: 0, longest: 0 };
+/* QA (mp-stripgentle, strip-door's phone half): ONE strip both ways, in this browser -- cropped and packed on a
+   canvas and read back (the page's way), and read from its file's own numbers on the worker -- and how they differ:
+   the size, the cells, and pixel by pixel (see-through or not; a solid pixel's colour; a partly see-through
+   pixel's colour as it is drawn, premultiplied).  Nothing is kept. */
+if (typeof window !== 'undefined') {
+  window.__btStripCompare = async (url, fw, fh) => {
+    const img = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = url; });
+    const W = img.naturalWidth || img.width;
+    const n = Math.max(1, Math.floor(W / fw));
+    const packed = packTrimmed(img, fw, fh, n);
+    let a = null;
+    if (packed) { a = numbersOf(packed.canvas); if (a) a.cells = packed.cells; packed.canvas.width = 0; packed.canvas.height = 0; }
+    else {
+      const whole = document.createElement('canvas');
+      whole.width = n * fw; whole.height = fh;
+      const wctx = whole.getContext('2d', { willReadFrequently: true });
+      wctx.imageSmoothingEnabled = false;
+      wctx.drawImage(img, 0, 0);
+      a = numbersOf(whole);
+      if (a) a.cells = null;
+      whole.width = 0; whole.height = 0;
+    }
+    const b = await readStrip(url, fw, fh);
+    if (!a || !b) return { ok: false, page: !!a, read: !!b };
+    const cellsOf = (c) => (c ? c.map((x) => [x.ax, x.ay, x.tx, x.ty, x.w, x.h, x.blank ? 1 : 0].join(',')).join(';') : 'whole');
+    const out = { ok: true, w: [a.w, b.w], h: [a.h, b.h], sameSize: a.w === b.w && a.h === b.h, sameCells: cellsOf(a.cells) === cellsOf(b.cells),
+      colours: [a.pal.length, b.pal.length], px: a.w * a.h, alphaDiffers: 0, solidDiffers: 0, partly: 0, partlyDrawnMax: 0 };
+    if (!out.sameSize) return out;
+    const pm = (c, sh) => Math.round(((c >>> sh) & 255) * (c >>> 24) / 255);
+    for (let i = 0; i < out.px; i++) {
+      const ca = a.pal[a.idx[i]], cb = b.pal[b.idx[i]];
+      if (ca === cb) continue;
+      const aa = ca >>> 24, ab = cb >>> 24;
+      if (aa !== ab) { out.alphaDiffers++; continue; }
+      if (aa === 255) { out.solidDiffers++; continue; }
+      out.partly++;
+      const d = Math.max(Math.abs(pm(ca, 0) - pm(cb, 0)), Math.abs(pm(ca, 8) - pm(cb, 8)), Math.abs(pm(ca, 16) - pm(cb, 16)));
+      if (d > out.partlyDrawnMax) out.partlyDrawnMax = d;
+    }
+    return out;
+  };
+}
+function _stripByImage(bundle, url, fw, fh, gen) {
   return new Promise((res, rej) => {
     const im = new Image();
     im.onload = () => res(im); im.onerror = rej; im.src = url;
@@ -208,7 +308,7 @@ async function _stripGently(bundle, url, fw, fh, gen, img) {
   _slices.strips++;
   return _stripFrames(bundle, url, fw, fh, img, n, packed, read, whole);
 }
-if (typeof window !== 'undefined') window.__btStripSlices = () => ({ ..._slices, on: !_gentleOff, fixed: _sliceFixed, frameMs: stripFrameMs() });
+if (typeof window !== 'undefined') window.__btStripSlices = () => ({ ..._slices, on: !_gentleOff, fixed: _sliceFixed, frameMs: stripFrameMs(), read: { ..._readStats } });
 
 /* the strip's texture and frames from its packed canvas (or the image whole): `read` its colour numbers when they
    were read already (gently: the packed canvas's, or the whole canvas `whole`'s; false: more than 256 colours) */

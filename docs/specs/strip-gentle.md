@@ -1,7 +1,18 @@
-# A look that loads as you ride is unpacked between frames (v2.3.4400)
+# A look that loads as you ride costs the page almost nothing (v2.3.4400, v2.3.4450)
 
 > The owner, 2026-11-10, an iPhone 14 Pro Max: "It noticeably slowed when I
 > rode by the blacksmith hammering."
+
+## In one paragraph
+
+A monster's look loads as you walk toward it. Each of its strips is a
+256-colour file and is held as colour numbers, but the way between the two
+unpacked the file to full colour and worked the numbers out again on the
+page. **v2.3.4400** spread that work over many frames. **v2.3.4450** removes
+it: the file's own numbers are read, cropped and packed off the page's
+thread, and the page only makes the texture. A guard
+(`server/test/strip-door.test.mjs`) keeps it so. The sections below are in
+that order.
 
 ## What was wrong
 
@@ -72,6 +83,77 @@ is not drawn, as before.
   whole; more than 256 colours refused either way; the wiring.
 - `mp-monstertrim` and `mp-picsonce` (every cropped frame against the served
   file; the numbers against the canvas) pass on the refactored packer.
+
+## v2.3.4450: read from the file's own numbers, off the page's thread
+
+> The owner, told the above: "I thought fire goblin strips were converted
+> into 256 color art like everything should be", and then: "Yes go
+> recommended and make sure that's a system going forward so it doesn't
+> happen again."
+
+They were converted, and held as numbers. The waste was the way in: a
+browser that loads a 256-colour file as a picture unpacks it to full colour,
+and the page then found the numbers again pixel by pixel. So:
+
+- **The door.** `zoneTextures.js loadTrackedStrip` first asks the reader's
+  worker for the strip (`stripRead.js` -> `png8Worker.js`, the worker the
+  Wheel's object sheets and the farm's pictures are read on). The worker
+  reads the file as its numbers (`png8Decode.js`) and crops and packs them
+  there (`stripPack.js`: the page's packer's own rules, `trimRules.js`, on
+  numbers, with no canvas). The page puts the numbers on the bundle's row of
+  colours and makes the texture: about a millisecond a strip, in the same
+  one-at-a-time line as before while the world is in play.
+- **The fallback** is everything above: a strip the reader cannot read (not
+  a 256-colour PNG, no worker, pictures not held as numbers on this device)
+  is unpacked on the page, a few ms a frame in play. `?stripworker=0` is
+  that way for one tab.
+- **One strip at a time** is asked of the worker: a strip's unpacked bytes
+  sit on its side while it is read (up to 2 MB), and a phone's memory counts
+  the worker's. The worker is let go four seconds after its last strip.
+- **The same picture.** Cells, layout and size are the page's packer's own.
+  Every solid and every see-through pixel is the same. A partly see-through
+  pixel keeps the file's own colour, where a canvas gave back that colour
+  rounded through its store; drawn, they are the same (measured: 165,362
+  such pixels in the fire goblin's fourteen strips, drawn 0 of 255 apart).
+- **Everything was not everything.** Eight of the snowman's strips (its five
+  attacks, its burrow, pile and emerge) were still full-colour files of
+  24,000 to 42,000 colours each, held four bytes a pixel and unpacked on the
+  page. They are on one shared list of 256 colours now
+  (`tools/art/strip256.mjs --shared`; 149 to 224 KB a file down to 33 to
+  55), looked at side by side before and after.
+
+### The system (so it does not happen again)
+
+`server/test/strip-door.test.mjs` fails when:
+
+- a picture under `public/sprites/monsters` is not a 256-colour file (two
+  effects' pictures are listed as not yet: the snowball and its burst, which
+  Pixi's own loader loads whole and whose 256-colour twins are the effects'
+  own switch, `p256.js`; the list can only shrink);
+- a monster's strips are loaded round the door;
+- the door stops asking the reader first;
+- anything NEW calls the page's own packers (`packTrimmed`,
+  `stripAsNumbers`, `numbersOf` and their sliced twins): their callers are a
+  closed list.
+
+CLAUDE.md carries the rule (the memory law) and a row in the same-change
+checklist; TRAPS §309 has the lesson. And a strip that misses the door says
+so on a phone: the meter names it ("between frames: strip ...").
+
+### What was proved
+
+| Riding up to the Blacksmith (`mp-stripgentle`) | All at once | A few ms a frame (v2.3.4400) | Read off the page (v2.3.4450) |
+|---|---|---|---|
+| Strips unpacked on the page in one job | 14, the longest 25 ms | 0 | **0** |
+| Slices on the page | | 42, the longest 15 ms | **0** |
+| The page's own work for the whole look | 198 ms | 215 ms | **20 ms** (14 textures, the longest 3 ms) |
+| The look at the end | | the same | the same |
+
+- `mp-stripgentle` also loads each strip both ways in one browser
+  (`window.__btStripCompare`) and compares them pixel by pixel.
+- `strip-door` (31 checks) packs made-up strips and the fire goblin's real
+  ones from their numbers and compares each pixel with the page's packer's
+  rules on the same picture.
 
 ## What it does not do
 

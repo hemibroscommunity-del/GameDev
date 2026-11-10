@@ -9518,3 +9518,43 @@ held in escrow. **The rule.** Drop only a still-waiting bet
 (`_serverStake && !_placed`), matched by `targetId`, and nothing on
 `already-staked` (`src/game/arenaStakes.js`). **Receipt:**
 `silent-refusals.test` §2.
+
+## 309. "The art is 256 colours and the game holds it as numbers, so loading it is cheap" (v2.3.4450)
+
+**The move.** A picture is a 256-colour file on disk and one byte a pixel in
+memory (colour numbers), so you take the way between them for granted: load
+it like any picture and let the game turn it into numbers.
+
+**Why it is wrong.** The owner, told the fire goblin's look held his page as
+it loaded: "I thought fire goblin strips were converted into 256 color art
+like everything should be." They were. But a browser that loads a 256-colour
+file as a picture unpacks it to full colour; the page then cropped and packed
+that on a canvas and read every pixel back to find the numbers the file had
+held all along: 13 to 39 ms a strip of the page's own time, fourteen strips a
+look. Both ends were right and the middle threw the saving away. And
+"everything" was not everything: eight of the snowman's strips were still
+full-colour files of 24,000 to 42,000 colours, which nothing checked.
+
+**The rule** (the owner: "make sure that's a system going forward"):
+- A picture's FORM is three things, each checked: its file (256 colours),
+  its way in (read as numbers, off the page's thread), and how it is held
+  (numbers). `server/test/strip-door.test.mjs` holds all three for the
+  monsters: every picture under `public/sprites/monsters` is a palette PNG
+  (a list of two effects' pictures that can only shrink); strips of frames
+  come in through one door (`zoneTextures.js loadTrackedStrip` ->
+  `stripRead.js` -> `png8Worker.js` -> `stripPack.js`); and the page's own
+  packers have a closed list of callers, so a new job on the page's thread
+  cannot arrive unnoticed.
+- New monster art: `node tools/art/strip256.mjs --shared <dir> <dir>
+  <names...>` (one list of 256 colours for all of a monster's strips: its
+  bundle then takes one row of colours), bump the module's
+  `SPRITE_VERSION`, and the suite tells you if a file was missed.
+- A partly see-through pixel read from the file keeps the file's own colour;
+  a canvas gave back that colour rounded through its store. Drawn they are
+  the same (the atlas keeps colours premultiplied): compare them AS DRAWN,
+  never the stored bytes (`window.__btStripCompare`).
+- The page's way is still there for what the reader cannot read, a few ms a
+  frame (§283), and says its name to the meter when it runs: "between
+  frames: strip ..." on a phone means a picture missed the door.
+
+**Receipt:** `strip-door` suite, `mp-stripgentle`, docs/specs/strip-gentle.md.

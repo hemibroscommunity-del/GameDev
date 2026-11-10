@@ -273,6 +273,11 @@ spec. Add a line here only for a new RULE every session must follow.
   - pictures on 256 colours or fewer are colour numbers (`paletteTex.js`):
     never read their `source.resource` on the CPU (`drawSourceRect`; TRAPS §166,
     §165);
+  - art that LOADS while the world is in play (a monster's strips) is a
+    256-colour file, loaded through `zoneTextures.js loadTrackedStrip`, which
+    reads the file's own numbers off the page's thread (`stripRead.js`). The
+    page's own packers have a closed list of callers (`strip-door.test`;
+    TRAPS §309);
   - music and any long sound stream through the music deck, never
     `SFX_MANIFEST`; read a decoded sound with `copyFromChannel`, never
     `getChannelData`;
@@ -340,6 +345,7 @@ spec. Add a line here only for a new RULE every session must follow.
 | a screen or window | `states.mjs` and `UI-DESIGN-NOTES.md`; `data-esc` on its ✕; any key in `deskKeys.js` |
 | a phone test | `world: 'wheel'` (and `wide: true` on a computer); its line in run.mjs |
 | a picture made on a canvas | `keepOnGpuOnly`, `keepAsImage` or colour numbers (the memory law) |
+| a monster, or any art that loads as you walk | 256-colour palette PNGs (`tools/art/strip256.mjs --shared`), loaded through `loadTrackedStrip` (`strip-door.test`) |
 | a stored look key | its restore and its blank (precheck `look-parity`, `look-blank`) |
 | a domain players use | `ORIGINS` (wrangler.toml: the owner approves) |
 | a change to the Wheel's plan or objects | a re-bake of both Wheels |

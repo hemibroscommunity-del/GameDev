@@ -23,7 +23,7 @@ const FRAME_H = 128;
    edge cache) hold the previous PNG by URL, so swapping bytes alone
    isn't enough — the URL has to change.  Append as ?v=… so the file
    on disk keeps its pretty name. */
-const SPRITE_VERSION = '2.1.14';   /* v2.3.2215: attack sheets added */
+const SPRITE_VERSION = '2.3.4450';   /* v2.3.2215: attack sheets added; v2.3.4450: the attack, burrow, pile and emerge strips on one shared list of 256 colours (they were the last monster strips still full-colour files: strip-door.test) */
 
 const SOURCE_DIRS = ['south', 'southwest', 'east', 'north', 'northeast'];
 
