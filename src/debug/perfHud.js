@@ -19,10 +19,10 @@
  *   counts       monsters / others / projectiles / particles + zone
  */
 import { perfTracker } from './perfTracker.js';
-import { frameSmoothOn } from '../game/frameClock.js';   /* v2.3.4395: which step this tab moves by */
-import { startBusyBeat, busyIn } from './busyBeat.js';   /* v2.3.4395: was the page busy, or waiting? */
+import { frameSmoothOn } from '../game/frameClock.js';   /* v2.3.4400: which step this tab moves by */
+import { startBusyBeat, busyIn } from './busyBeat.js';   /* v2.3.4400: was the page busy, or waiting? */
 
-/* ═══ v2.3.4395: THE HITCHES THE AVERAGES HIDE, AND THE THUMB ═══
+/* ═══ v2.3.4400: THE HITCHES THE AVERAGES HIDE, AND THE THUMB ═══
    The owner's iPhone on the skateboard, after the step was made steady: "a
    little smoother but it's still gritty looking", the strip reading "fps ~59
    frame avg 16.8 p95 17.0 max 38.0".  Nineteen frames in twenty were on
@@ -123,7 +123,7 @@ const tick = () => {
     })() + hitchLines(all);
 };
 
-/* v2.3.4395: WHAT IS DRAWING IT -- so one screenshot from any computer says
+/* v2.3.4400: WHAT IS DRAWING IT -- so one screenshot from any computer says
    which machine it was: the graphics chip as the browser names it, the
    canvas's own pixels, and whether characters' looks are drawn from the
    shared colour numbers (`palette`) or baked one by one (`baked`, and why:
@@ -157,7 +157,7 @@ const machineLine = () => {
   } catch (e) { return ''; }
 };
 
-/* v2.3.4395: THE SCREEN'S RATE AND THE GAME'S (game/framePacer.js): the
+/* v2.3.4400: THE SCREEN'S RATE AND THE GAME'S (game/framePacer.js): the
    refresh the browser offers, every how many of them a frame is drawn, and
    how the last ten seconds' frames were shared out between whole numbers of
    refreshes -- "17 ms 62%  25 ms 33%" is an uneven 51 a second, however the
@@ -183,7 +183,7 @@ const paceLines = (win) => {
   } catch (e) { return ''; }
 };
 
-/* v2.3.4395: of the time outside the game's frames, how much the page was
+/* v2.3.4400: of the time outside the game's frames, how much the page was
    BUSY (something ran: debug/busyBeat.js) and how much it was WAITING to be
    called (the graphics chip, the phone).  For one frame: `at` is its sample,
    `prev` the one before (whose own work opens the gap). */
@@ -197,7 +197,7 @@ const outsideSplit = (x, prev) => {
   return { busy: b, wait: Math.max(0, outside - b) };
 };
 
-/* v2.3.4395: see THE HITCHES THE AVERAGES HIDE, above.  Short lines: a phone
+/* v2.3.4400: see THE HITCHES THE AVERAGES HIDE, above.  Short lines: a phone
    shows about sixty characters. */
 const hitchLines = (all) => {
   let out = '';

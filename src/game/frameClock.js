@@ -1,4 +1,4 @@
-/* ═══ v2.3.4395: A STEADY STEP ON A STEADY SCREEN ═══
+/* ═══ v2.3.4400: A STEADY STEP ON A STEADY SCREEN ═══
  *
  * The owner, 2026-11-09, on an iPhone 14 Pro Max in Safari, riding the
  * skateboard through the town with the frame meter on (`?perf=1`): "it was

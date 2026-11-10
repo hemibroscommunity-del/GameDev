@@ -1,4 +1,4 @@
-/* ═══ WHAT HOLDS YOUR PAGE WHEN ANOTHER PLAYER RIDES UP (v2.3.4395) ═══
+/* ═══ WHAT HOLDS YOUR PAGE WHEN ANOTHER PLAYER RIDES UP (v2.3.4400) ═══
  *
  * The owner's iPhone 14 Pro Max, the townsfolk's bakes already behind the
  * loading screen: "Still performance issues", the frame strip reading "worst

@@ -19,7 +19,7 @@
  */
 
 import { laterRounds } from './retryLooks.js';   /* v2.3.3882 */
-import { noteMade } from '../debug/madeLog.js';   /* v2.3.4395: a first-sight bake says how long it held the page */
+import { noteMade } from '../debug/madeLog.js';   /* v2.3.4400: a first-sight bake says how long it held the page */
 import { Rectangle, Texture } from 'pixi.js';
 import { getFrame, SPRITE_VERSION, stripDetachedComponents, frameCount as playerFrameCount } from './playerSprites.js';   /* v2.3.3716: + frameCount, the look probe's */
 import { upscaleToFrameHeight, bakeDisplayCanvas, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1108: normalize downscaled sheets to the 256px frame before recolour; v2.3.1120: downscale the final DISPLAY texture for VRAM; v2.3.1237: bakeDisplayCanvas smooths nearest-upscaled sheets at DISPLAY_DS=1 (jog-shimmer fix) */
@@ -981,7 +981,7 @@ let _bakeTag = '';
    costs ink rather than steadying it -- measured, on sword-south-torso. */
 /* v2.3.3671: `toolWood` -- a mining sheet: its pickaxe keeps its own colours
    (toolWood.js says which pixels it is, read off the ORIGINAL art below). */
-/* ═══ v2.3.4395: A BAKE'S CANVAS IS READ BACK, SO IT STAYS ON THE PAGE'S SIDE ═══
+/* ═══ v2.3.4400: A BAKE'S CANVAS IS READ BACK, SO IT STAYS ON THE PAGE'S SIDE ═══
    A look's bake draws a whole body sheet onto a canvas (a jog: 6144 x 256)
    and at once reads every pixel back to recolour it.  On a real graphics
    chip a 2D canvas this size lives ON the chip: the read stops the page until
@@ -1010,7 +1010,7 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
   if (targetH) img = upscaleToFrameHeight(img, targetH);
   const cv = document.createElement('canvas');
   cv.width = img.width; cv.height = img.height;
-  const ctx = bakeReadCtx(cv);   /* v2.3.4395: read back at once (below): a canvas kept on the page's side */
+  const ctx = bakeReadCtx(cv);   /* v2.3.4400: read back at once (below): a canvas kept on the page's side */
   ctx.drawImage(img, 0, 0);
   const imgData = ctx.getImageData(0, 0, cv.width, cv.height);
   const d = imgData.data;
@@ -1327,7 +1327,7 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
                invisible, so the count is not the answer -- WHERE it is, is. */
             const _c2 = document.createElement('canvas');
             _c2.width = cv.width; _c2.height = cv.height;
-            const _g2 = bakeReadCtx(_c2);   /* v2.3.4395 */
+            const _g2 = bakeReadCtx(_c2);   /* v2.3.4400 */
             _g2.drawImage(cv, 0, 0);
             const _id = _g2.getImageData(0, 0, _c2.width, _c2.height);
             const _dd = _id.data;
@@ -1473,7 +1473,7 @@ function _standInBake(img, skinT, targetH, opts, apart) {
   const cv = document.createElement('canvas');
   cv.width = img.naturalWidth || img.width;
   cv.height = img.naturalHeight || img.height;
-  const ctx = bakeReadCtx(cv);   /* v2.3.4395: read back below (a stand-in's recolour) */
+  const ctx = bakeReadCtx(cv);   /* v2.3.4400: read back below (a stand-in's recolour) */
   ctx.drawImage(img, 0, 0);
   /* v2.3.2855: `opts.art` + `opts.regions` -- the player's drawings, on a
      stand-in whose face/torso/arms were fitted by hand (standInInk.js).  Only
@@ -2019,7 +2019,7 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT
   /* Returns an always-resolving promise so a full preload can await it. */
   const bust = (attempt > 0 ? `&r=${attempt}` : '') + (round > 0 ? `&g=${round}` : '');   /* v2.3.3882: + the later round */
   return loadImg(`/sprites/player/${pose}-${dir}.png?v=${SPRITE_VERSION}${bust}`).then(img => {
-    const _madeT0 = performance.now();   /* v2.3.4395: how long this bake holds the page (debug/madeLog.js) */
+    const _madeT0 = performance.now();   /* v2.3.4400: how long this bake holds the page (debug/madeLog.js) */
     /* body poses are 256px frames; restore if stored smaller on disk.  Recolour
        runs at full 256 (exact skin/pants/shoes pixel thresholds). */
     _bakeTag = `${pose}-${dir}`;
@@ -2103,7 +2103,7 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT
        the 4x-smaller texture. */
     src.autoGenerateMipmaps = true;
     _bodySheets[sheetKey] = out;
-    noteMade(`body ${pose}-${dir}`, performance.now() - _madeT0, `body ${sheetKey}`);   /* v2.3.4395 */
+    noteMade(`body ${pose}-${dir}`, performance.now() - _madeT0, `body ${sheetKey}`);   /* v2.3.4400 */
   }).catch(() => {
     if (attempt < _BODY_RETRY_MS.length) {
       /* stays 'loading' during the backoff.  v2.3.4368: the retry CHAINS into
@@ -2341,7 +2341,7 @@ export function getBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shir
    face round each eye), no atlas row free.  The caller then asks getBodyFrame,
    exactly as before.  Only for a body drawn as it is: a frame that is masked
    under armour or cut into bands reads its pixels, and those are numbers. */
-/* ═══ v2.3.4395: BAKES ASKED FOR AHEAD, AND WAITED FOR ═══
+/* ═══ v2.3.4400: BAKES ASKED FOR AHEAD, AND WAITED FOR ═══
    getBodyFrame bakes a look's sheet the first time it is asked for and hands
    back the plain frame meanwhile: right for a stranger walking up, a frozen
    frame for the townsfolk, whose poses are known before the world opens

@@ -1,4 +1,4 @@
-# A steady rate on a screen the game cannot keep up with (v2.3.4395)
+# A steady rate on a screen the game cannot keep up with (v2.3.4400)
 
 > The owner, 2026-11-10, an iPhone 14 Pro Max, Safari's "Prefer Page
 > Rendering Updates near 60fps" turned off, twenty-four minutes into a

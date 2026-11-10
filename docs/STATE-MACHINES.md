@@ -1,4 +1,4 @@
-# STATE-MACHINES: the working list (v2.3.4395)
+# STATE-MACHINES: the working list (v2.3.4400)
 
 One line an item. A session takes the first OPEN line, proves it is real on
 today's main, fixes it with a test that failed first, and ticks it here in the
@@ -26,7 +26,7 @@ player never loses items, gold or a fight to a phase that stuck.
 ## A. The computer faults from the expo (2026-11-05)
 
 - [x] **A. Patches like a checker pattern round the edge of the view, and
-  "not smooth", on the judges' computers.** DONE, v2.3.4395.
+  "not smooth", on the judges' computers.** DONE, v2.3.4400.
   - **The cause was not the computer's size or its graphics chip.** It was a
     computer that had never opened the game, on a slow line, with its
     processor busy. Three faults, each reproduced on the test box first:
@@ -70,7 +70,7 @@ player never loses items, gold or a fight to a phase that stuck.
        that is also encoding a stream;
     3. Windows and a Mac draw every look the old way
        (`src/game/lookPaletteChoice.js`).
-  - **Prepared without a computer** (v2.3.4395), all of which reach a
+  - **Prepared without a computer** (v2.3.4400), all of which reach a
     computer too:
     - the steady step (A3): the same uneven movement was on every screen;
     - the townsfolk's bakes and the object pages' reads moved off the ride;
@@ -97,7 +97,7 @@ player never loses items, gold or a fight to a phase that stuck.
     Metal path and builds it in under a second: try `?lookpalette=1&perf=1`
     there); on Windows the program must shrink (TRAPS §259) or the bake move
     to a worker.
-    **A lead that needs no computer** (measured on the test box, v2.3.4395,
+    **A lead that needs no computer** (measured on the test box, v2.3.4400,
     `mp-townride`'s "as before" page): a bake's time is its sheet's frames. A
     stand is one frame of 256 px and bakes in 3 to 5 ms; a jog sheet is 23
     to 28 frames (`jog-east.png`: 28) and bakes in 45 to 147 ms, about 3 ms
@@ -118,7 +118,7 @@ player never loses items, gold or a fight to a phase that stuck.
     safe for phones (they are under it).
 
 - [ ] **A3. The skateboard on an iPhone: "gritty framerate ... riding through
-  town".** PART DONE, v2.3.4395; still OPEN. The owner, on the fix below:
+  town".** PART DONE, v2.3.4400; still OPEN. The owner, on the fix below:
   "I think it looks a little smoother but it's still gritty looking."
   - **What is left to tell apart** (the phone's strip, `?perf=1`, now says
     each): (1) real late frames: the strip read "p95 17.0 max 38.0", one

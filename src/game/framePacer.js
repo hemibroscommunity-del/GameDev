@@ -1,4 +1,4 @@
-/* ═══ v2.3.4395: A STEADY RATE ON A SCREEN THE GAME CANNOT KEEP UP WITH ═══
+/* ═══ v2.3.4400: A STEADY RATE ON A SCREEN THE GAME CANNOT KEEP UP WITH ═══
  *
  * The owner, 2026-11-10, an iPhone 14 Pro Max with Safari's "Prefer Page
  * Rendering Updates near 60fps" turned off (so the page is offered the
@@ -183,7 +183,7 @@ export function makeFramePacer() {
   };
 }
 
-/* ═══ v2.3.4395: WHOEVER READS THE CANVAS READS A REFRESH THE GAME DREW ═══
+/* ═══ v2.3.4400: WHOEVER READS THE CANVAS READS A REFRESH THE GAME DREW ═══
    A WebGL canvas keeps its picture only until it is shown: on a refresh the
    pacer passes, the canvas READS as empty.  The black-screen watchdog
    (BroTown.jsx _sampleLit) samples "in an animation frame after the

@@ -1,4 +1,4 @@
-/* ═══ v2.3.4395: THE ZONE GATE'S WAIT -- for a load that is still arriving ═══
+/* ═══ v2.3.4400: THE ZONE GATE'S WAIT -- for a load that is still arriving ═══
  *
  * The owner, at the expo of 2026-11-05, where the judges played on computers
  * while live-streaming: "patches ... showed all round the outer ring of the

@@ -375,7 +375,7 @@ export async function preloadWorldTrial() {
   worldTrialStats.bytes += (m.meanChunkBytes || 0) * (urls.length - 1);
 }
 
-/* v2.3.4395: how far the Wheel's way in has got, as one number that changes
+/* v2.3.4400: how far the Wheel's way in has got, as one number that changes
    each time something of it comes -- the worker's plan, a piece of ground
    laid, a sheet of objects loaded, more bytes of a ground picture.  The zone
    gate reads it to tell a slow load from a hung one (zoneGate.js gateCap). */
@@ -448,7 +448,7 @@ async function preloadWheel() {
       const ns = await import('../rendering/npcSprites.js');
       await Promise.all([wheelObjectsOn() ? wo.wheelObjectsWarm(at.x, at.y, objX, objY) : null, ns.loadWheelNpcArt()]);
     } catch (e) { /* no objects: the ground alone, as before */ }
-    /* ═══ v2.3.4395: AND THE TOWNSFOLK'S BODIES THAT HAVE TO BE BAKED ═══
+    /* ═══ v2.3.4400: AND THE TOWNSFOLK'S BODIES THAT HAVE TO BE BAKED ═══
        Four of the townsfolk have a look the shared colour numbers refuse (an
        eye style, patterned trousers), and each pose and direction of theirs
        was baked on the page the first time you met it -- 80 to 250 ms, a
@@ -492,10 +492,10 @@ async function preloadWheel() {
    one dirt step until the owner says otherwise.  Over water or ground not
    laid yet, the last sound heard. */
 const STEPS_WAIT_MS = 5000;
-const FOLK_BAKE_WAIT_MS = 8000;   /* v2.3.4395: the townsfolk's bakes hold the loading screen this long at most (preloadWheel) */
+const FOLK_BAKE_WAIT_MS = 8000;   /* v2.3.4400: the townsfolk's bakes hold the loading screen this long at most (preloadWheel) */
 /* v2.3.4370: how long into the way in a failed ground worker is still
    started again behind the loading screen (preloadWheel) -- the screen's
-   cap is 15 s at the least (zoneGate.js gateCap, v2.3.4395: longer only
+   cap is 15 s at the least (zoneGate.js gateCap, v2.3.4400: longer only
    while the world is still arriving), and a start takes a second or two */
 const START_TRIES_MS = 10000;
 /* v2.3.2975: how far round the arrival (game px either way, and up from

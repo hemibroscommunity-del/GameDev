@@ -255,13 +255,13 @@ export async function serveDist(port) {
         s.end(body.subarray(a, b + 1));
         return;
       }
-      /* v2.3.4395: the ground's pictures may be kept, as the real host says
+      /* v2.3.4400: the ground's pictures may be kept, as the real host says
          (public/_headers: a year, immutable -- the worker asks for each at
          ?v=<its manifest's date> and lets go of the file itself after a few,
          counting on the browser's own cache to hand it back).  Without this
          every picture let go was downloaded AGAIN here, which no phone does. */
       const keep = p.startsWith('/world/ground/') && /\.png$/.test(p) ? { 'cache-control': 'public, max-age=31536000, immutable' } : null;
-      /* v2.3.4395: a thin connection for some of the files (slowSend below) */
+      /* v2.3.4400: a thin connection for some of the files (slowSend below) */
       if (_slow && p.startsWith(_slow.prefix)) {
         s.writeHead(200, { 'content-type': type, 'content-length': body.length, ...keep });
         slowSend(s, body);
@@ -275,7 +275,7 @@ export async function serveDist(port) {
   return srv;
 }
 
-/* ═══ v2.3.4395: A THIN CONNECTION, FOR THE FILES A VISITOR HAS NEVER SEEN ═══
+/* ═══ v2.3.4400: A THIN CONNECTION, FOR THE FILES A VISITOR HAS NEVER SEEN ═══
  * The judges at the expo played on computers that had never opened the game,
  * on the venue's one connection: every ground picture (0.25-0.5 MB) came down
  * that line the first time it was walked onto, where the owner's own phone
