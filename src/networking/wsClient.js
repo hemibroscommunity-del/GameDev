@@ -196,6 +196,8 @@ import { wheelStageName } from '@/data/wheelStageLooks.js'; /* v2.3.3817: ...wit
 import { nmlJoinFromBys } from '@/game/nmlAsk.js'; /* v2.3.3530: one who chose to attack you joins a fight you chose */
 import { applySalvageResult, applyEssenceResult } from '@/game/salvage.js'; /* v2.3.3141: salvage and essences */
 import { applyItemDropResult } from '@/game/itemDrop.js'; /* v2.3.3473: Drop's answer */
+import { workerClock, rebasePiles } from '@/game/workerClock.js';   /* v2.3.4364: a pile's times on the worker's clock */
+import { notRecipientRetry } from '@/game/lootAsk.js';   /* v2.3.4364: an early 'not-recipient' on a death pile, asked once more */
 import { applyItemReveal, afterReveal } from '@/game/revealBag.js'; /* v2.3.4012: a mystery piece opened in the bag */
 import { onPointsResetResult } from '@/game/pointsReset.js'; /* v2.3.3541: the free points reset's answer */
 import { applyShieldGemResult, adoptShieldGem } from '@/game/shieldGem.js'; /* v2.3.3187: the shield's gem, put in by the worker */
@@ -206,8 +208,6 @@ import { deathVol } from '@/game/hitSounds.js'; /* v2.3.3248: a far monster's de
 import { applyOnlineList, onlineListFresh, parkMissing, presence2On } from '@/game/presence2.js'; /* v2.3.3250: presence v2, the online list, far copies parked */
 import { saveRpgSoon, cancelRpgSave } from '@/game/rpgSave.js'; /* v2.3.2330: the player_state echo goes through the debouncer; v2.3.2336: and the wipes cancel it */
 import { noteMoveCaps } from '@/game/monsterMoves.js';   /* v2.3.4011 */
-import { workerClock, rebasePiles } from '@/game/workerClock.js';   /* v2.3.4364: a pile's times on the worker's clock */
-import { notRecipientRetry } from '@/game/lootAsk.js';   /* v2.3.4364: an early 'not-recipient' on a death pile, asked once more */
 /* v2.3.3689: what your head wears and its colours, as one string -- the
    state_sync record apply tells BroTown when it changed (the 'bt-own-look'
    event: the new pieces prepared, the veil waiting for them) */

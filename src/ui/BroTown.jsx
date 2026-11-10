@@ -587,12 +587,12 @@ import { resolveDashSide, screenAngle } from '../game/dashSidePref.js'; /* v2.3.
 import { dashMinBus } from './mobile/dashMinBus.js'; /* v2.3.2119: folded band = identity row only */
 import { stampSheetH } from './mobile/sheetStamp.js'; /* v2.3.2197: --sheet-h joins --dash-h under resize() + the watchdog */
 import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
+import { mayAsk } from '@/game/lootAsk.js';   /* v2.3.4364: the hand's "may I ask", the pet's too */
 import { buildingPropNear, zoneBlockers } from '@/data/worldProps.js'; /* v2.3.1778: building doors; v2.3.2748: + the footprints your feet stop at */
 import { isWheelTrialZone, footstepSurface, setWheelArrival } from '@/game/worldTrial.js';   /* v2.3.2975: Mayor Bro in the Wheel's Brotown; v2.3.3574: + the spot a recovery reload puts you back on */
 import { wheelDoorAt, enterWheelDungeon, wheelDungeonDoorLine } from '@/game/wheelDungeons.js';   /* v2.3.3016: the Wheel's dungeons, at its landmarks; v2.3.3573: + a party dungeon's line */
 import { wheelObjectsInfo, wheelWaterAt } from '@/game/wheelTrial.js';
 import { PET_FETCH, petFetchStep, petFetchState, petFetchHolds } from '@/game/petFetch.js';   /* v2.3.3806: the pet's fetch */
-import { mayAsk } from '@/game/lootAsk.js';   /* v2.3.4364: the hand's "may I ask", the pet's too */
 import { wheelTownDoorAt, wheelTownDoors, rememberFarmTrip } from '@/game/wheelTownDoors.js';
 import { noticeboardAt, noticeboardAtCss } from '@/game/wheelNoticeboard.js';   /* v2.3.3899: the town board is on the square's noticeboard */
 import { mayorSaysNext } from '@/game/mayorTalk.js';   /* v2.3.3899: Mayor Bro always talks */
