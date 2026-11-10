@@ -37,7 +37,7 @@ export var BLOCKED_SOCIAL = table({
   /* requests: "Blocked: no chat, emotes or requests from them" (the card) */
   duel_request: 'from',
   duel_wager_request: 'from',   /* the game's own Duel button (InspectPlayerPanel) */
-  trade2_invite: 'from',
+  trade2_invite: 'from',        /* its case still asks isBlockedId too (a harmless second filter): remove that line once lane A2's trade2_invite change (#1459) is in */
   trade_offer: 'from',
   party_invited: 'from',
   clan_invite: 'from',

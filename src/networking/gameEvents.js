@@ -4920,7 +4920,7 @@ export function processGameEvent(type, payload, S, deps) {
                  accept/decline card (accepting sends trade2_open back,
                  which completes the mutual open server-side). */
               if (!payload || !payload.from) break;
-              /* v2.3.3526: a blocked player's request never reaches you; v2.3.4365: checked at the top of this switch (blockedAsks.js) */
+              if (isBlockedId(payload.from)) break;   /* v2.3.3526: a blocked player's request never reaches you (duel_request) */
               if (setTrade2) setTrade2({ invite: true, from: payload.from, fromName: payload.fromName || 'Someone', ts: Date.now() });
               pushDmgPopup(S, S.player.x, S.player.y - 40, '🤝 ' + (payload.fromName || 'Someone') + ' wants to trade!', '#3dd497');
               cue('tradeAsk');   /* v2.3.3434: two coins' clink (a beep(), silent) */

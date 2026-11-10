@@ -44,13 +44,20 @@ sound; the request runs out on the sender's side as an unanswered one does.
 - `pvp_threat`: a warning that an attack is coming; hiding it would not stop
   the attack.
 
-`chat.js`'s handlers still ask `isBlockedId` themselves (a second filter, kept
+`trade2_invite`'s case still asks `isBlockedId` itself too, until lane A2's change beside it is merged. `chat.js`'s handlers still ask `isBlockedId` themselves (a second filter, kept
 for their own tests). Before v2.3.4365 the requests were checked handler by
 handler and `duel_wager_request` was missed (V6 N2-18).
 
 The friend Requests tab and its badges read `friendsSync.js`
 `friendsSrv.requestsIn()`, which leaves a blocked player's request out; it
 stays on the worker and shows again when they are unblocked.
+
+## The trap
+
+Never add an `isBlockedId` check to one handler for a new social message: add
+a row to `BLOCKED_SOCIAL` (or to `NOT_BLOCKED`, with why). Never write
+`bt_blocked` from a panel's copy: go through `setBlockedId`. A copy written
+back erases every block made elsewhere since it was read.
 
 ## Tests
 

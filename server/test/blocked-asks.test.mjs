@@ -111,7 +111,11 @@ const { friendsSrv } = await import('../../src/ui/mobile/sheet/friendsSync.js');
   const head = ge.slice(start, sw);
   check('3a processGameEvent asks dropAsBlocked once, before its switch', /if \(dropAsBlocked\(type, payload, isBlockedId\)\) return;/.test(head));
   const body = ge.slice(sw);
-  check('3b no case asks the block list by itself any more (the drift that missed duel_wager_request)', !/isBlockedId\(/.test(body));
+  /* trade2_invite keeps its own line for now (a second filter, merged with
+     lane A2's change beside it); no other case asks */
+  const own = (body.match(/isBlockedId\(/g) || []).length;
+  const tradeOwn = /case 'trade2_invite':[\s\S]{0,600}?if \(isBlockedId\(payload\.from\)\) break;/.test(body);
+  check('3b no case but trade2_invite asks the block list by itself (the drift that missed duel_wager_request)', own === (tradeOwn ? 1 : 0), { own, tradeOwn });
   /* the switch's own cases sit at ten spaces; a run of cases with nothing
      but space between them shares one body */
   const re = /^ {10}case '([^']+)':/gm;
