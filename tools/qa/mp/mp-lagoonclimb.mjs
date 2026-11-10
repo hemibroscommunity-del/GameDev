@@ -41,7 +41,7 @@ const DESK = { width: 1280, height: 800 };
 const HS = 10;
 const AIR_MS = 2600;
 
-const st = (P) => P.page.evaluate(() => {
+export const st = (P) => P.page.evaluate(() => {
   const S = window._gameState.current, c = window.__btClimb ? window.__btClimb() : null, sw = S._wheelSwim;
   return { x: S.player.x, y: S.player.y, vx: S.player.vx || 0, vy: S.player.vy || 0, swim: !!(sw && sw.on), facing: S._renderFacing || null,
     climb: c, jump: !!S._jump, jumpWhy: S._jumpWhy || null, zone: S.currentZone };
@@ -49,7 +49,7 @@ const st = (P) => P.page.evaluate(() => {
 
 /* hold keys, sampling, for `ms` or until `until(samples)` */
 const wait = (P, ms) => P.page.waitForTimeout(ms);
-async function hold(P, keys, ms, until) {
+export async function hold(P, keys, ms, until) {
   const out = [];
   const t0 = Date.now();
   for (const k of keys) await P.page.keyboard.down(k);
@@ -68,7 +68,7 @@ async function hold(P, keys, ms, until) {
 
 /* a jump north from inside the page (Space), sprinting, the flip pressed at
    phase `flipAt` (or none); resolves once he has landed and any drop is over */
-const jumpNorth = (P, flipAt) => P.page.evaluate(async ({ flipAt }) => {
+export const jumpNorth = (P, flipAt) => P.page.evaluate(async ({ flipAt }) => {
   const S = window._gameState.current;
   const key = (t) => window.dispatchEvent(new KeyboardEvent(t, { code: 'Space', key: ' ', bubbles: true }));
   const from = { x: S.player.x, y: S.player.y };
@@ -127,7 +127,7 @@ export async function play({ browser, wsPort, webPort, rec }, desk) {
     /* v2.3.4453: his coins before any of it (the flip up the ledge may carry him into the chest) */
     const coinsStart = await P.page.evaluate(() => { const S = window._gameState.current; return (S.rpg && typeof S.rpg.coins === 'number') ? S.rpg.coins : null; });
     rec.ok('the ground worker sent the rises with nothing asked in the address (v2.3.4453: for everyone): the terrace (72 px face, vines) and the ledge (144 px, a chest)',
-      !!c0 && c0.on && c0.rises.length === 2 && c0.rises[0].h === 72 && !!c0.rises[0].climb && c0.rises[1].h === 144 && !!c0.rises[1].chest, c0 && c0.rises);
+      !!c0 && c0.on && c0.rises.length >= 2 /* v2.3.4454: the Town Bluff's two follow */ && c0.rises[0].id === 'lagoon-terrace' && c0.rises[1].id === 'lagoon-ledge' && c0.rises[0].h === 72 && !!c0.rises[0].climb && c0.rises[1].h === 144 && !!c0.rises[1].chest, c0 && c0.rises);
 
     /* ── 2. swim to it ── */
     /* the row through the terrace's middle: the islet's land begins at its

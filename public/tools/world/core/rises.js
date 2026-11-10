@@ -57,18 +57,26 @@ export function riseLayout(plan) {
   const cellG = F.S * plan.worldPxPerArtPx;   /* game px a cell (24) */
   const list = [];
   for (const rs of plan.rises || []) {
-    const I = F.islets.find((il) => il.id === rs.islet);
-    if (!I) continue;
-    const x0 = I.x0 + rs.box[0], y0 = I.y0 + rs.box[1], x1 = I.x0 + rs.box[2], y1 = I.y0 + rs.box[3];
+    /* where its box is counted from: an islet's corner -- or, v2.3.4454, `at`:
+       cells from the Wheel's centre cell (the town's middle), for a rise on
+       plain land (the Town Bluff, on the commons).  `long: true` keeps such a
+       rise to the long Wheel, as an islet's own flag does: the short Wheel's
+       centre cell is elsewhere and its commons a fifth the room. */
+    let ox, oy, where = null;
+    if (rs.islet) {
+      const I = F.islets.find((il) => il.id === rs.islet);
+      if (!I) continue;
+      ox = I.x0; oy = I.y0; where = I.id;
+    } else if (rs.at) {
+      if (rs.long && !(plan.wheel.tierZones > 1)) continue;
+      ox = Math.floor(F.cellX(F.g.cx)) + rs.at[0]; oy = Math.floor(F.cellY(F.g.cy)) + rs.at[1];
+    } else continue;
+    const x0 = ox + rs.box[0], y0 = oy + rs.box[1], x1 = ox + rs.box[2], y1 = oy + rs.box[3];
     const face = rs.face | 0;
-    list.push({
-      id: rs.id, name: rs.name || rs.id, islet: I.id, k: list.length,
-      x0, y0, x1, y1, faceY0: y1 - face, face,
-      /* how tall the face is drawn, game px: one cell a row */
-      h: face * cellG,
-      climb: rs.climb ? { x0: I.x0 + rs.climb[0], x1: I.x0 + rs.climb[1] } : null,
-      chest: rs.chest ? { x0: I.x0 + rs.chest[0], y0: I.y0 + rs.chest[1], x1: I.x0 + rs.chest[2], y1: I.y0 + rs.chest[3] } : null,
-    });
+    list.push({ id: rs.id, name: rs.name || rs.id, islet: where, look: rs.look || null, keepOut: rs.keepOut | 0, k: list.length,
+      x0, y0, x1, y1, faceY0: y1 - face, face, h: face * cellG,
+      climb: rs.climb ? { x0: ox + rs.climb[0], x1: ox + rs.climb[1] } : null,
+      chest: rs.chest ? { x0: ox + rs.chest[0], y0: oy + rs.chest[1], x1: ox + rs.chest[2], y1: oy + rs.chest[3] } : null });
   }
   let out = null;
   if (list.length) {
@@ -165,6 +173,14 @@ export function risePaint(plan, data, ow, oh, X0, Y0, K, opts = {}) {
   const gxb = gxa + (ow / K) * wpa, gyb = gya + (oh / K) * wpa;
   const LIFT = 34;   /* the chest and the lip draw a little above their cells */
   if (gxb < L.x0 * c || gxa > (L.x0 + L.w) * c || gyb < L.y0 * c - LIFT || gya > (L.y0 + L.h) * c) return 0;
+  /* v2.3.4454: ...and near one rise in particular -- the grid is ONE box over every rise, and with a
+     rise by the town and two on the islet that box is a strip a quarter of the Wheel long: a piece in it
+     but near no rise has nothing to paint, and must not ask every pixel */
+  let near = false;
+  for (const r of L.list) {
+    if (gxb >= r.x0 * c && gxa <= r.x1 * c && gyb >= r.y0 * c - LIFT && gya <= r.y1 * c) { near = true; break; }
+  }
+  if (!near) return 0;
   let n = 0;
   const set = (o, rgb) => { data[o] = rgb[0]; data[o + 1] = rgb[1]; data[o + 2] = rgb[2]; data[o + 3] = 255; n++; };
   const step = wpa / K;   /* game px a picture pixel (0.5) */
@@ -234,7 +250,8 @@ function faceColour(r, c, gx, gy, top, foot, lip, seed) {
     if (v) return v;
   }
   /* a cave mouth at the foot now and then, glowing teal inside */
-  const cave = caveColour(r, c, gx, gy, foot, seed);
+  /* v2.3.4454: not on a `look: 'hill'` rise (the Town Bluff stands in grass, not the sea) */
+  const cave = r.look === 'hill' ? null : caveColour(r, c, gx, gy, foot, seed);
   if (cave) return cave;
   /* the rock: rough strata, cracks and patches of moss */
   const depth = (gy - top) / Math.max(1, foot - top);
@@ -249,7 +266,7 @@ function faceColour(r, c, gx, gy, top, foot, lip, seed) {
   const moss = valueNoise(gx * 0.06, gy * 0.06, seed + 27) + 0.6 * (1 - depth) - 0.55;
   if (moss > 0.12) return pick(RISE_PALETTE.moss, 0.15 + 0.5 * grain * 0.5 + 0.25 * (1 - depth));
   /* barnacles low down, where the sea reaches */
-  if (depth > 0.7 && hash2(Math.floor(gx), Math.floor(gy * 2), seed + 29) > 0.985) return pick(RISE_PALETTE.barnacle, grain * 0.5 + 0.5);
+  if (r.look !== 'hill' && depth > 0.7 && hash2(Math.floor(gx), Math.floor(gy * 2), seed + 29) > 0.985) return pick(RISE_PALETTE.barnacle, grain * 0.5 + 0.5);
   return pick(RISE_PALETTE.rock, shade);
 }
 const RISE_PALETTE_EDGE = RISE_PALETTE.edge;

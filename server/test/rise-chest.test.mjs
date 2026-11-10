@@ -85,7 +85,10 @@ async function setup(opts = {}) {
 
 // ── 1. the baked table ──
 {
-  check('1a the long Wheel\'s rises are baked for the worker: two, one with a chest', WHEEL_FACES_LONG === 5 && WHEEL_FACES.length === 2 && WHEEL_FACES.filter((r) => r.chest).length === 1, WHEEL_FACES.map((r) => r.id));
+  /* v2.3.4454: the Town Bluff's two follow the islet's two */
+  check('1a the long Wheel\'s rises are baked for the worker: the islet\'s two, then the Town Bluff\'s two; a chest on each ledge', WHEEL_FACES_LONG === 5 && WHEEL_FACES.length === 4 && WHEEL_FACES.filter((r) => r.chest).length === 2
+    && WHEEL_FACES.map((r) => r.id).join() === 'lagoon-terrace,lagoon-ledge,bluff-terrace,bluff-ledge' && WHEEL_FACES.every((r, i) => r.k === i), WHEEL_FACES.map((r) => r.id));
+  check('1a2 every ledge with a chest is the taller rise that takes the flip, on a terrace with vines', WHEEL_FACES.filter((r) => r.chest).every((r) => r.h > 85 && !r.climb) && WHEEL_FACES.filter((r) => !r.chest).every((r) => r.h <= 85 && !!r.climb));
   check('1b the chest is on the rise taller than a plain jump clears (85 px): it takes the flip', !!LEDGE && LEDGE.h > 85 && !!TERRACE && TERRACE.h <= 85 && !!TERRACE.climb && !LEDGE.climb, { ledge: LEDGE && LEDGE.h, terrace: TERRACE && TERRACE.h });
   check('1c the chest stands on its rise\'s top, north of its face', LEDGE.chest[0] >= LEDGE.box[0] && LEDGE.chest[2] <= LEDGE.box[2] && LEDGE.chest[1] >= LEDGE.box[1] && LEDGE.chest[3] <= LEDGE.face[1]);
   check('1d every chest has a prize, and a rise with none has none', WHEEL_FACES.every((r) => (!!r.chest) === (RISE_CHEST.COINS[r.id] > 0)) && riseWithChest(LEDGE.id) === LEDGE && riseWithChest(TERRACE.id) === null && riseWithChest('nope') === null && riseWithChest('__proto__') === null);
@@ -160,6 +163,24 @@ async function setup(opts = {}) {
   ]);
   const both = d.ws.sent.slice(n0).filter((m) => m.type === 'rise_chest').map((m) => m.payload);
   check('4d two asks at once pay once', both.length === 2 && both.filter((r) => r.ok).length === 1 && both.filter((r) => r.why === 'got').length === 1 && (d.ps.coins || 0) === cd + RISE_CHEST.COINS[LEDGE.id], both);
+}
+
+// ── 4b. v2.3.4454: the Town Bluff's chest is its own -- its own prize, its own once ──
+{
+  const BL = WHEEL_FACES.find((r) => r.id === 'bluff-ledge');
+  const AT_BLUFF = body(mid(BL.chest[0], BL.chest[2]), BL.chest[3] + 20);
+  const a = await setup();
+  const c0 = a.ps.coins || 0;
+  a.put(AT_CHEST);
+  const wrong = await a.open(BL.id);
+  check('4e the Bluff\'s chest is not paid to feet at the islet\'s', wrong.ok === false && wrong.why === 'far' && (a.ps.coins || 0) === c0, wrong);
+  a.put(AT_BLUFF);
+  const bluff = await a.open(BL.id);
+  check(`4f feet at the Bluff's chest are paid its own ${RISE_CHEST.COINS[BL.id]} coins (the small one: it is a minute from the square)`, bluff.ok === true && bluff.coins === RISE_CHEST.COINS[BL.id] && RISE_CHEST.COINS[BL.id] < RISE_CHEST.COINS[LEDGE.id] && (a.ps.coins || 0) === c0 + RISE_CHEST.COINS[BL.id], bluff);
+  const again = await a.open(BL.id);
+  a.put(AT_CHEST);
+  const islet = await a.open(LEDGE.id);
+  check('4g once each: the Bluff\'s again is "got", and the islet\'s is still his to have', again.why === 'got' && islet.ok === true && (a.ps.coins || 0) === c0 + RISE_CHEST.COINS[BL.id] + RISE_CHEST.COINS[LEDGE.id], { again, islet });
 }
 
 // ── 5. the switch ──

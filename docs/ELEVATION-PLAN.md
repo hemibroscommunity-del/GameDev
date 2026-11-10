@@ -301,7 +301,10 @@ area goes and what its prize is: "Go recommended."
   the jump is the phone's own word, so a movement clip would cost honest
   players and stop nobody who meant it. The spec says why in full. It becomes
   worth building when a rise goes where monsters fight.
-- Next: a jump course near BroTown, then (d).
+- v2.3.4454: the jump course near BroTown is built -- the Town Bluff, on the
+  commons north-east of town (`docs/specs/rise-chest.md`). It is drawn in the
+  islet's rock; the `face-commons` and `steps` pictures above would make it a
+  hill. Next: (d).
 
 ### The next PRs
 
