@@ -135,7 +135,7 @@ export function chatMuteSettled(S) {
   return !!(S && S._serverCaps && S._serverCaps.chatMute && S.channel);
 }
 
-/* ═══ v2.3.4390: A MUTE TAPPED WHILE THE CONNECTION IS DOWN IS KEPT ═══
+/* ═══ v2.3.4402: A MUTE TAPPED WHILE THE CONNECTION IS DOWN IS KEPT ═══
    The state-machine sweep (2026-11-03, VA "chat mute during reconnect";
    PLAN cause 5).  During a blip or a deploy the caps and S.channel survive,
    so setMuted sent -- and the channel dropped the message on the floor
@@ -216,7 +216,7 @@ export function applyServerMuteList(payload, S) {
     S._serverMutes = ids.slice();
     S._serverMuteNames = rows;
   }
-  /* v2.3.4390: the kept taps (above).  Agreed (or refused: list-full) ones
+  /* v2.3.4402: the kept taps (above).  Agreed (or refused: list-full) ones
      are done; the rest are sent once and shown until an echo agrees. */
   _kept.forEach(function (k, kid) {
     if (!!byId[kid] === k.on || (k.sent && payload && payload.error)) { _kept.delete(kid); return; }

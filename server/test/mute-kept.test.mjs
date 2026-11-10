@@ -1,4 +1,4 @@
-/* A mute tapped while the connection is down is kept -- v2.3.4390 (the
+/* A mute tapped while the connection is down is kept -- v2.3.4402 (the
  * state-machine sweep, 2026-11-03: VA "chat mute during reconnect"; PLAN
  * cause 5; review R3 item 18).
  *
