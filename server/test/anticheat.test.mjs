@@ -234,6 +234,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
 
   // Blocking victim takes zero.
   psB.blocking = true;
+  psB.ba = Math.PI;   /* v2.3.4605: facing the attacker, as every phone's raised shield says (moveclaims.js `blockarc`) */
   room.eventBuffer.length = 0;
   room._pvpHitLanes = new Map(); // v2.3.1306: cadence floor would drop this back-to-back hit
   room._resolvePvPAttack(room.sessions.get(wsA), { range: 250, arc: 3, angle: 0, dmgBase: 50, critChance: 0 });
@@ -250,8 +251,9 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
      pb (angle π).  These run through the current-state fallback
      (stateHistory.pb was emptied above), which is the same record shape the
      rewound history entries now carry (tick.js snapshots ba per tick).
-     The blocked test just above ran with ba UNSET and must keep passing —
-     that is the old-client fail-open, same pin as the monster suite. */
+     v2.3.4605: a guard with no `ba` is no old phone any more; it covers the
+     front of its facing, and `blockarc: false` is the old OMNI fail-open,
+     pinned below as the switch's way back, same pin as the monster suite. */
   psB.ba = Math.PI;             // shield faces west — toward the attacker
   room.eventBuffer.length = 0;
   room._pvpHitLanes = new Map();
@@ -273,9 +275,11 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   psB.ba = null;                // sanitised junk facing = unknown, not off
   room.eventBuffer.length = 0;
   room._pvpHitLanes = new Map();
-  room._resolvePvPAttack(room.sessions.get(wsA), { range: 250, arc: 3, angle: 0, dmgBase: 50, critChance: 0 });
+  { const was = room._liveFlags; room._liveFlags = { blockarc: false };   /* v2.3.4605 */
+    room._resolvePvPAttack(room.sessions.get(wsA), { range: 250, arc: 3, angle: 0, dmgBase: 50, critChance: 0 });
+    room._liveFlags = was; }
   const arcNull = room.eventBuffer.find((e) => e.type === 'pvp_hit');
-  check('pvp arc: a null facing keeps the OMNI block (old client)',
+  check('pvp arc: a null facing keeps the OMNI block under `blockarc: false` (the old client\'s)',
     !!arcNull && arcNull.payload.blocked === true && arcNull.payload.dmgTaken === 0,
     arcNull && arcNull.payload);
   delete psB.ba;
