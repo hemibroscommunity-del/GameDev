@@ -194,6 +194,30 @@ The minnow keeps the owner's 100.
   how the phone starts, so it is a later step. Until then the waiting
   screen is the answer.
 
+### 6b. The zone-entry half second is not a shield (v2.3.4453)
+
+- Every change into a place with monsters gives half a second of no damage,
+  so an arriving player can see what is around them (`ZONE_ENTRY_GRACE_MS`,
+  `server/src/combat.js _applyDamage`). v2.3.4423 stopped it for invented
+  dungeon ids, but a modified phone could still hop between two REAL places
+  (the Wheel and town) again and again and never be hurt, by monsters or by
+  the other player in No man's land.
+- Now the half second is NOT given (`server/src/movement.js
+  _entryGraceGive`):
+  - while the player is in a fight with another player, by the linger's
+    own test (a hit between players in the last 10 s, section 6);
+  - again within 10 s of the last one that player was given
+    (`ENTRY_GRACE_GAP_MS`).
+- An honest entry keeps it exactly as before; nothing else about changing
+  place changes. It protects the other player, so test mode does not skip it.
+- Kill switch: `entrygrace: false` (every entry graced again).
+  `server/test/fight-dodges.test.mjs` (31 checks; 8 failed before).
+- "I'm dead": a phone whose move said `dead: true` used to turn the linger
+  off, so the loser could say so, close the game and leave no body. Closed
+  since v2.3.4373 (`serverdead`: `dead` is the worker's word); the same
+  suite pins it (a body left that way can be killed and drops the bag).
+  Throwing `serverdead: false` reopens it.
+
 ### 7. The shield against a player
 
 - With no lock, a shield raised in a fight with a player pointed at the
@@ -234,6 +258,7 @@ staff bolt.
 | `pvpbalance: false` | the worker's roll in player fights: the old claim x 0.5 path, exactly (also un-advertises `caps.pvpbalance`) |
 | `fishheal: false` | the fish ladder: the old 92 + 8 x level, with the old Recovery bonus on top (also un-advertises `caps.fishheal`) |
 | `linger: false` | the body staying: every leaver leaves at once again |
+| `entrygrace: false` | the zone-entry half second's two limits (mid-fight, once in 10 s): every entry graced again, as before v2.3.4453 |
 | `takeoverlinger: false` | a second login mid-fight counting as a leave: it takes the session over and starts afresh where the phone says, as before v2.3.4432 |
 
 ## Deploy order
