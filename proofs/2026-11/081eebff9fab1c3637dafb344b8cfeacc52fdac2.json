@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "081eebff9fab1c3637dafb344b8cfeacc52fdac2",
+  "tree": "71166416aab1f54b21a0fb3b201f6599e929e83e",
+  "committedAt": "2026-11-10T12:13:28-08:00",
+  "subject": "Merge pull request #1513 from hemibroscommunity-del/claude/perf-resume-once",
+  "files": 7971,
+  "bytes": 966177455,
+  "listingSha256": "4421684482b12979c089a3e5433a0637e02f5ef3051293d1f0ff88a8a5f7193b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
