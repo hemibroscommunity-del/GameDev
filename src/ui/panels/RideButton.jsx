@@ -1,6 +1,6 @@
 import React from 'react';
 import { ctlColumn, ctlBottom, CTL_SLOT } from './ShieldButton.jsx';
-import { rideSupported, rideButtonWanted, isRiding, toggleRide, rideOffLine, ASK_MS } from '@/game/ride.js';
+import { rideSupported, rideButtonWanted, isRiding, toggleRide, rideOffLine, rideFightHides, ASK_MS } from '@/game/ride.js';
 import { rideGround } from '@/game/rideGround.js';
 import { shieldButtonLive } from '@/game/shieldToggle.js';
 import { TARGET_PERIMETER_PX } from '@/data/index.js';
@@ -23,15 +23,24 @@ import { RIDE_ICON_URL } from '@/rendering/rideFx.js';
  *
  * WHEN: only against a worker that carries boards (caps.ride), in the Wheel
  * on its safe ground -- BroTown and its commons -- alive and dry
- * (rideButtonWanted).  And NEVER while a fight is near: the shield up, the
- * Block button live, or a monster targeted.  That is what lets it share a
- * place with the fight's buttons without ever lying on one:
+ * (rideButtonWanted).  On foot, NEVER while a fight is near: the shield up,
+ * the Block button live, or a monster targeted.  v2.3.4411: ON THE BOARD only
+ * the shield up hides it (game/ride.js rideFightHides): a locked monster or a
+ * monster near does not step a rider off (rideCheck), so hiding the button
+ * then left a rider rolling with no way off (the state-machine sweep, P3-8).
+ * Keep it so.  That is what lets it share a place with the fight's buttons
+ * without ever lying on one:
  *
  * WHERE: Shield Bash's place (ctlColumn, CTL_SLOT.bash) -- upright beside
  * Sprint, up and left of the attack disc (v2.3.3740), sideways and on a
  * computer beside the disc, level with its middle.  Bash shows only with the
- * shield up, TRAP only with a monster targeted, Block only with a fight near;
- * this only with none of them.  Nothing else is ever drawn there.
+ * shield up, TRAP only with a monster targeted (its own place, CTL_SLOT.trap),
+ * Block only with a fight near (its own place, below and left of the disc).
+ * The only button ever drawn HERE besides this one is Bash, and Bash needs the
+ * shield up -- exactly when this hides, on foot or riding (and the shield
+ * steps a rider off that same frame).  So a rider's button kept beside a
+ * TRAP or a Block button never lies on either.  Nothing else is ever drawn
+ * there.
  *
  * IT MUST SWALLOW ITS OWN TOUCHES (SprintButton's way): it lies on
  * [data-joyzone="R"], where a touch begins an attack; every touch is stopped
@@ -49,9 +58,9 @@ export function rideButtonView(S) {
   if (!S || !S.rpg || !rideSupported(S)) return null;
   var g = rideGround(S);
   if (!rideButtonWanted(S, g)) return null;
-  /* a fight near: the fight's buttons have this place */
-  if (S._shieldUp || (S.lockedTarget && S.lockedTarget.type === 'monster')) return null;
-  if (shieldButtonLive(S, TARGET_PERIMETER_PX)) return null;
+  /* a fight near: the fight's buttons have this place -- v2.3.4411: but a
+     rider keeps it (rideFightHides; a lock does not step you off) */
+  if (rideFightHides(S, !isRiding(S) && shieldButtonLive(S, TARGET_PERIMETER_PX))) return null;
   var on = isRiding(S);
   var r = S._ride;
   var asking = !!(r && r.asked && Date.now() - r.asked < ASK_MS);

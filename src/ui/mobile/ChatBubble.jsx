@@ -3,6 +3,7 @@ import { guardActive, onGuardChange } from './modalGuardBus.js'; /* v2.3.2145 */
 import { chatBubbleBus } from './chatBubbleBus.js';
 import { chatLogBus } from './chatLogBus.js';
 import { sendChatMessage } from '../../game/chat.js';
+import { dictationClose, dictationOwns } from '../../game/dictation.js';   /* v2.3.4411: the mic closes with the box */
 /* v2.3.2139: the channel picker.  The chips only set a mode — the line is
    composed inside sendChatMessage, so this composer stays ignorant of how
    a lane is spelled (see chatChannel.js on why that matters here). */
@@ -184,9 +185,7 @@ export const ChatBubble = () => {
   /* Stop the recogniser if the composer closes mid-sentence. Without this the
      browser keeps the mic hot and iOS shows the recording indicator over a
      game the player has already gone back to. */
-  useEffect(() => () => {
-    try { if (recRef.current) recRef.current.abort(); } catch (e) { /* already gone */ }
-  }, []);
+  useEffect(() => () => { dictationClose(recRef); }, []);
 
   useEffect(() => chatBubbleBus.subscribe(() => force(v => v + 1)), []);
 
@@ -221,6 +220,9 @@ export const ChatBubble = () => {
       requestAnimationFrame(() => { try { inputRef.current?.focus(); } catch {} });
     } else {
       setVal('');
+      /* v2.3.4411: and the microphone closes with the box (game/dictation.js:
+         the component stays mounted, so the abort above never ran on a close) */
+      if (dictationClose(recRef)) setMicState('idle');
     }
   }, [chatBubbleBus.open]);
 
@@ -291,6 +293,7 @@ export const ChatBubble = () => {
     rec.continuous = false;
     rec.maxAlternatives = 1;
     rec.onresult = (ev) => {
+      if (!dictationOwns(recRef, rec)) return;   /* v2.3.4411: a box closed since */
       let said = '';
       try { said = ((ev.results[0] || [])[0] || {}).transcript || ''; } catch (e) { said = ''; }
       said = said.trim();
@@ -307,17 +310,17 @@ export const ChatBubble = () => {
        may skip speechend entirely. Setting the same state from either is
        idempotent, and missing it would leave the button lit through the wait
        -- the exact state this change exists to remove. */
-    rec.onspeechend = () => setMicState((m) => (m === 'listening' ? 'thinking' : m));
-    rec.onaudioend  = () => setMicState((m) => (m === 'listening' ? 'thinking' : m));
+    rec.onspeechend = () => { if (dictationOwns(recRef, rec)) setMicState((m) => (m === 'listening' ? 'thinking' : m)); };
+    rec.onaudioend  = () => { if (dictationOwns(recRef, rec)) setMicState((m) => (m === 'listening' ? 'thinking' : m)); };
     /* ...and ends here, at `end` rather than at `result`: `end` is the one
        event guaranteed to arrive on every path, including the ones where no
        result ever comes (silence, a refused permission, a dropped network).
        Spinning forever because the words never arrived would be worse than
        the flat button this replaces. */
-    rec.onend = () => { setMicState('idle'); recRef.current = null; };
+    rec.onend = () => { if (!dictationOwns(recRef, rec)) return; setMicState('idle'); recRef.current = null; };
     /* Permission refused, no network, no speech heard -- all land here, and
        all mean the same thing to the player: the button is no longer busy. */
-    rec.onerror = () => { setMicState('idle'); };
+    rec.onerror = () => { if (dictationOwns(recRef, rec)) setMicState('idle'); };
     try { rec.start(); setMicState('listening'); } catch (e) { setMicState('idle'); }
   };
 
