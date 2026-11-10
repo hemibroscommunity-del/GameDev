@@ -31,7 +31,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { CLIMB_FRAMES, CLIMB_MULT, CHEST_NOTE } from '../../../src/game/climb.js';
+import { CLIMB_FRAMES, CLIMB_MULT, CHEST_WORDS, chestPrizeNote } from '../../../src/game/climb.js';
 
 const PHONE = { width: 390, height: 844 };
 /* v2.3.4139: the same climb on a computer (mp-lagoonclimbdesk): its walk stops
@@ -41,14 +41,15 @@ const DESK = { width: 1280, height: 800 };
 const HS = 10;
 const AIR_MS = 2600;
 
-const st = (P) => P.page.evaluate(() => {
+export const st = (P) => P.page.evaluate(() => {
   const S = window._gameState.current, c = window.__btClimb ? window.__btClimb() : null, sw = S._wheelSwim;
   return { x: S.player.x, y: S.player.y, vx: S.player.vx || 0, vy: S.player.vy || 0, swim: !!(sw && sw.on), facing: S._renderFacing || null,
     climb: c, jump: !!S._jump, jumpWhy: S._jumpWhy || null, zone: S.currentZone };
 });
 
 /* hold keys, sampling, for `ms` or until `until(samples)` */
-async function hold(P, keys, ms, until) {
+const wait = (P, ms) => P.page.waitForTimeout(ms);
+export async function hold(P, keys, ms, until) {
   const out = [];
   const t0 = Date.now();
   for (const k of keys) await P.page.keyboard.down(k);
@@ -67,7 +68,7 @@ async function hold(P, keys, ms, until) {
 
 /* a jump north from inside the page (Space), sprinting, the flip pressed at
    phase `flipAt` (or none); resolves once he has landed and any drop is over */
-const jumpNorth = (P, flipAt) => P.page.evaluate(async ({ flipAt }) => {
+export const jumpNorth = (P, flipAt) => P.page.evaluate(async ({ flipAt }) => {
   const S = window._gameState.current;
   const key = (t) => window.dispatchEvent(new KeyboardEvent(t, { code: 'Space', key: ' ', bubbles: true }));
   const from = { x: S.player.x, y: S.player.y };
@@ -105,7 +106,7 @@ export async function play({ browser, wsPort, webPort, rec }, desk) {
   if (!R || !I) return;
   const [T, L] = R.list;
   const cg = G.cellG;
-  const P = await H.newPlayer(browser, { name: 'Climber', wsPort, webPort, world: 'wheel', ...(desk ? { wide: true, viewport: DESK } : { viewport: PHONE }), query: `climb=1&jumpms=${AIR_MS}` });
+  const P = await H.newPlayer(browser, { name: 'Climber', wsPort, webPort, world: 'wheel', ...(desk ? { wide: true, viewport: DESK } : { viewport: PHONE }), query: `jumpms=${AIR_MS}` });   /* v2.3.4453: no `climb=1` -- the rises are laid for everyone */
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   const stopAlive = H.keepAlive(P);
@@ -123,8 +124,10 @@ export async function play({ browser, wsPort, webPort, rec }, desk) {
 
     /* ── 1. the rises came ── */
     const c0 = await P.page.evaluate(() => window.__btClimb && window.__btClimb());
-    rec.ok('the ground worker sent the rises with ?climb=1: the terrace (72 px face, vines) and the ledge (144 px, a chest)',
-      !!c0 && c0.on && c0.rises.length === 2 && c0.rises[0].h === 72 && !!c0.rises[0].climb && c0.rises[1].h === 144 && !!c0.rises[1].chest, c0 && c0.rises);
+    /* v2.3.4453: his coins before any of it (the flip up the ledge may carry him into the chest) */
+    const coinsStart = await P.page.evaluate(() => { const S = window._gameState.current; return (S.rpg && typeof S.rpg.coins === 'number') ? S.rpg.coins : null; });
+    rec.ok('the ground worker sent the rises with nothing asked in the address (v2.3.4453: for everyone): the terrace (72 px face, vines) and the ledge (144 px, a chest)',
+      !!c0 && c0.on && c0.rises.length >= 2 /* v2.3.4456: the Town Bluff's two follow */ && c0.rises[0].id === 'lagoon-terrace' && c0.rises[1].id === 'lagoon-ledge' && c0.rises[0].h === 72 && !!c0.rises[0].climb && c0.rises[1].h === 144 && !!c0.rises[1].chest, c0 && c0.rises);
 
     /* ── 2. swim to it ── */
     /* the row through the terrace's middle: the islet's land begins at its
@@ -239,11 +242,25 @@ export async function play({ browser, wsPort, webPort, rec }, desk) {
 
     /* ── 6. the chest ── */
     if (flip && flip.landing && flip.landing.fate === 'top') {
+      const coins0 = { caps: await P.page.evaluate(() => { const S = window._gameState.current; return !!(S._serverCaps && S._serverCaps.risechest === true); }), coins: coinsStart };
       await H.hopTo(P, (L.chest.x0 + L.chest.x1) / 2, onLedge.y, { tries: 10 });
-      const ch = await hold(P, ['w'], 4000, (o) => (o[o.length - 1].climb.stats.chestOpens || 0) >= 1);
-      const said = await P.page.evaluate((t) => window._gameState.current.dmgNumbers.some((p) => p.text === t), CHEST_NOTE);
+      /* v2.3.4453: THE CHEST PAYS, once a character (server/src/risechest.js): walking into it asks the
+         worker, which pays feet at it and says so; a second touch is "Already opened" and asks nothing */
+      const ch = await hold(P, ['w'], 6000, (o) => o[o.length - 1].climb.stats.chestAnswer === 'ok');
+      const st1 = ch[ch.length - 1].climb.stats;
+      const prize = chestPrizeNote(st1.chestCoins);
+      const said = st1.chestSaid === prize;   /* the words over the chest (the popup itself is gone in a second) */
       await shot('chest');
-      rec.ok(`walking into the chest opens it: "${CHEST_NOTE}"`, ch[ch.length - 1].climb.stats.chestOpens >= 1 && said, { opens: ch[ch.length - 1].climb.stats.chestOpens, said });
+      await wait(P, 1500);
+      const coins1 = await P.page.evaluate(() => { const S = window._gameState.current; return (S.rpg && typeof S.rpg.coins === 'number') ? S.rpg.coins : null; });
+      rec.ok(`walking into the chest opens it, and the worker pays its prize: "${prize}"`, coins0.caps && st1.chestOpens >= 1 && st1.chestAsks === 1 && st1.chestAnswer === 'ok' && st1.chestCoins > 0 && said, { caps: coins0.caps, opens: st1.chestOpens, asks: st1.chestAsks, answer: st1.chestAnswer, coins: st1.chestCoins, said });
+      rec.ok(`...and the coins are his (${coins0.coins} -> ${coins1})`, coins0.coins === null || coins1 === null ? true : coins1 === coins0.coins + st1.chestCoins, { coins0, coins1 });
+      await wait(P, 2800);   /* past the chest's own 2.5 s between openings */
+      await P.page.keyboard.down('s'); await wait(P, 350); await P.page.keyboard.up('s');
+      const ch2 = await hold(P, ['w'], 5000, (o) => (o[o.length - 1].climb.stats.chestOpens || 0) >= st1.chestOpens + 1);
+      const st2 = ch2[ch2.length - 1].climb.stats;
+      const said2 = await P.page.evaluate((t) => window._gameState.current.dmgNumbers.some((p) => p.text === t), CHEST_WORDS.got);
+      rec.ok(`a second touch says "${CHEST_WORDS.got}" and asks the worker nothing`, st2.chestOpens >= st1.chestOpens + 1 && st2.chestAsks === 1 && said2, { opens: st2.chestOpens, asks: st2.chestAsks, said2 });
       /* ── 7. down off the ledge ── */
       await P.page.keyboard.down('s');
       let off = null;

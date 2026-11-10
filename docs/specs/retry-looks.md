@@ -121,3 +121,37 @@ rounds, all on the phone, all visual (`server/test/look-load.test.mjs`):
 promise (`return new Promise(r => setTimeout(r, ms)).then(retry)`); a
 `setTimeout` and a bare `return` lets the gate through on the first failure.**
 
+## v2.3.4452: a download that never answers, and the loaders that did not ask again
+
+The sweep's VC-1: a loader that kept its promise, or a `'loading'` mark, until
+the download answered held the slot for the visit when the request stalled,
+and one that reset its memo only on a failure waited for the next loading
+screen. Every loader below now follows this file's rule, with TRAPS §257's
+time limit: a stall past its limit counts as a failure; it is asked again at
+5, 10, 20, 40 s and then every minute, ten rounds at most, only while drawn;
+a late answer is kept only while the slot is empty (a second copy is freed);
+the loading screen still waits for each first try, never past the limit.
+
+The helpers: `timeLimit` in `retryLooks.js`; `start()` (the loading screen's
+wait) and `took` in `loadSetLater.js`.
+
+| Loader | Off-ramp (one phone) |
+|---|---|
+| capes and their hoods | `?caperetry=0` |
+| weapons | `?weaponretry=0` |
+| shields | `?shieldretry=0` |
+| the badges, the threat skull, the talk bubble and the quest pins over heads | `?iconretry=0` |
+| armour during a swing, bow shot, chop, cook or fire | `?gearretry=0` |
+| the memory saver's restore of a picture it let go | `?picsretry=0` |
+| a hat's hair clip, and the head-piece placement tables | `?traitretry=0` |
+| all of the above | `?retrylooks=0` |
+
+Two on purpose: the head-piece placement tables get only the 15 s limit and
+keep their endless 20 s rounds (v2.3.3689; nothing on a head is placed
+without them); the Bro badge still reports `rejected` on a failed first load
+(`__btPreloadReport.broBadge`, read by mp-brobadge) and retries after. The
+look-palette sets get only a 60 s limit: a stalled set falls back to the
+older drawing method, as a failed one did, and is not asked for again (left
+until after the judges).
+
+Test: `server/test/loader-retries.test.mjs`; TRAPS §315.

@@ -447,6 +447,21 @@ const BASE_PLAN = {
   rises: [
     { id: 'lagoon-terrace', name: 'the Lagoon Terrace', islet: 'lagoon-islet', box: [3, 2, 15, 22], face: 3, climb: [8, 10] },
     { id: 'lagoon-ledge', name: 'the Lagoon Ledge', islet: 'lagoon-islet', box: [5, 2, 13, 13], face: 6, chest: [8, 3, 10, 4] },
+    /* ═══ v2.3.4456: THE TOWN BLUFF -- a jump course a minute from the town square ═══
+       The owner: "it would be cool to have some elevation and obstacle areas
+       where [the double jump] can be put to use", and, asked where the first
+       public ones go, "Go recommended": the islet (above, v2.3.4453), then a
+       course near BroTown.  On the commons' grass north-east of town, in the
+       safe ground (no monster comes): the same two steps as the islet, its
+       face looking south at the town -- a terrace a sprinting jump or its
+       vines get you up, and on it a ledge only the flip reaches, a chest on
+       top (server/src/risechest.js: once a character).
+       `at`: cells from the Wheel's centre cell (rises.js); `long`: the long
+       Wheel only; `look: 'hill'`: no sea caves, no barnacles; `keepOut`: the
+       cells round it nothing is placed in (placing.js islBoxes).  LISTED
+       AFTER THE LAGOON'S, so those keep their numbers (k 0 and 1). */
+    { id: 'bluff-terrace', name: 'the Town Bluff', at: [38, -98], long: true, look: 'hill', keepOut: 3, box: [0, 0, 14, 22], face: 3, climb: [6, 8] },
+    { id: 'bluff-ledge', name: 'the Bluff\'s Ledge', at: [38, -98], long: true, look: 'hill', box: [3, 1, 11, 12], face: 6, chest: [6, 2, 8, 3] },
   ],
 
   /* ── PLACES: empty plots for sprites added later ──

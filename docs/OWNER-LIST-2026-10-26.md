@@ -446,14 +446,35 @@ fight simulator (18), then the "After the judges" list.
 
 - **Twenty fixes from the 2026-11-03 sweep are in the game** (#1457 to #1476): duels, trades, deaths, the connection, looks, the store, parties and more, nine of them with a kill switch. What was done, what is still to do, and the questions that wait on your answers (a second tab mid-fight, the dungeon's loading screen, a death pile across a restart, and others) are in `docs/STATE-MACHINES.md`.
 - **Twenty-one more fixes are in the game** (#1478 to #1500, v2.3.4433 notes): your live duel and trade come back after a reconnect, a death bag survives a server update, Rare armour no longer vanishes after a reconnect, a refused quest, harvest or bet no longer shows as done, a monster's next life starts clean, the shield shows real hits, a mute in a Wi-Fi blip is kept, and more. The list, with each fix's off switch, is in `docs/STATE-MACHINES.md`.
+- **Six more are in the game** (#1502 to #1509, v2.3.4461 notes): opening the game again mid-fight puts you back in your body where it stands (no more escaping a lost fight with a second tab); hopping between places is no longer a shield; the Mayor's "Clear any dungeon" is paid only for a real clear; a refused duel is answered at once; a stack can't be listed twice; pictures that fail to load are tried again. The list is in `docs/STATE-MACHINES.md`.
+
+### Your standing instructions (2026-11-10, in your words)
+
+- *"treat it as a standing rule that you just push to main when you're done"*
+- *"This codebase is yours: what it's for and how it's built are your call, and you'll keep building on it."*
+
+### Decided by the building session, 2026-11-10: say so to change it
+
+Made under your second instruction above. Each is one line with its reason; tell any session to change one.
+
+- **Two characters in two tabs:** no. One character per browser; a second tab takes the session over (in a fight it takes the body). The identity fixes that hold either way wait until after the judges, because they touch login keys.
+- **A second login during a fight with another player:** the full takeover is built (v2.3.4455): you land back in your body. v2.3.4432's "still in that fight" wait screen is the fallback for a game that cannot be placed (an old copy).
+- **The half second of no damage on entering a place:** kept for an honest entry, so you can see what is around you; not given mid-fight, nor twice within 10 seconds (v2.3.4454), so it can't be used as a shield.
+- **The colour fade between places:** stays off. Nobody has seen it; look again after the judges, with a picture.
+- **The Auction House's refund-and-raise money fix, forging or equipping mid-fight (one fight-lock table), and the plan's larger "one door per system" work:** after the judges. Each touches every purchase or every fight.
+- **A quest reward shown at once, taken back if the server says no:** kept (today's feel). This answers question 14 below.
+- **The retired Mayor quest ("Welcome Home") still worth 50 gold once on old saves:** left alone. It is tiny, retired, and once per old character.
+- **The loader retries (v2.3.4452):** merged on their tests and the memory budget check. The hour-long memory walk (mp-memledger with a rejoin, a farm leave and a dungeon recovery added) was not run: it is offered, say so to run it.
+- **The player's trail that reads an unset clock (TRAPS 294):** not fixed, because fixing it may turn on something nobody has seen (CLAUDE.md section 3).
+- **Pictures:** a look-palette set that failed is not asked for again (that visit draws the older way, about 5.8 MB more a look), and a missing picture shows nothing rather than a stand-in. Both left as they are until after the judges. This answers question 24 below.
 
 ### Decided (2026-11-10)
 
 - **Save a dead player's bag across a server update?** Yes: built (v2.3.4384).
 - **The colour fade between places** (written long ago, never shown): stays OFF for now.
-- **A second login during a fight with another player:** it takes over the body where it stands (being built as v2.3.4432).
+- **A second login during a fight with another player:** it takes over the body where it stands. Built: v2.3.4432 (a relaunch waits on the "still in that fight" screen), then v2.3.4455 (the full takeover; both merged).
 - **The Auction House money fix** (an offer refund or raise caught by a server restart in the split second between two saves): waits until after the judges.
-- **The half second of no damage when you move between real places:** stays as it is for now.
+- **The half second of no damage when you move between real places:** stays, but since v2.3.4454 not mid-fight nor twice within 10 seconds (above).
 
 ### Your questions from these fixes (each a yes or no; my recommendation after the dash)
 
@@ -477,8 +498,8 @@ fight simulator (18), then the "After the judges" list.
 13. A monster's pile lasts 30 s on the phone and 60 s on the server. Make the phone say 60? — The server's 60 is what really happens.
 
 **Quests**
-14. Keep showing a quest reward at once (and take it back if the server says no), rather than wait for the server's yes? — Yes, keep it snappy: the fix works either way and this is today's feel.
-15. The Mayor's third quest (300 gold) is paid with no server check. Build the check (it needs a new kind of objective that counts dungeon clears)? — Yes, but it is design work.
+14. ~~Keep showing a quest reward at once?~~ Decided: kept (above).
+15. ~~The Mayor's third quest is paid with no server check?~~ Built: v2.3.4441 checks a dungeon clear on the server's own record.
 
 **Friends**
 16. Should a friend request you sent run out (for example after 30 days), with a Cancel button? — Yes: today 25 requests to players who quit block you for good.
@@ -495,7 +516,7 @@ fight simulator (18), then the "After the judges" list.
 23. A party member pulled into a run whose phone takes over 60 s to load, while the run empties and closes, sees an empty arena until they take the exit. Acceptable? — The pull request thinks so (it is what happens today).
 
 **Pictures**
-24. When a monster's pictures fail to download, should it stay invisible until a retry works (instead of a stand-in body)? — Today a failed download quietly counts as "ready"; the memory law says a monster whose look is not ready is not drawn.
+24. ~~When a monster's pictures fail to download, invisible or a stand-in?~~ Decided: left as it is until after the judges (above).
 25. If a new screen rebuild starts while another is still being made, throw the older one away? — Yes, the review wants it (it stops two drawing engines living at once).
 26. Clear your own burn or chill picture at a death, a respawn and a change of place? — Cosmetic; yes is a small change.
 27. Remake the fishing picture once per outfit instead of every frame when 3 or more players fish? — A design choice for later.
@@ -503,4 +524,8 @@ fight simulator (18), then the "After the judges" list.
 **Sound**
 28. After one silent stretch the game stops streaming music for the session (23-40 MB more memory). Should an iPhone sound rebuild give streaming another chance? — It was a deliberate choice (v2.3.3073); the pull request leaves it to you.
 
-**Still open from the first wave:** whether forging, hardening and equipping count as leaving a fight; the farm's two phone-only workshops; hiding a blocked player's attack warning; a grace period for a trade that loses its server.
+**Memory and the owner-only tools (from #1505)**
+29. The stat scene keeps about 1.8 MB on purpose (M3-18). Keep it and give it its line in the memory map, or let it go? — The pull request leaves it to you; keeping it changes nothing you see.
+30. Fix three bugs in your Ground and Object Studios (one unreadable saved picture stops the page before Download and Restore work; a restore resets the "made from" stamps and replaces sound and name choices; the Object Studio's stage draws about 1.36 times too big)? — Yes, but low priority: only you use them, so after the judges.
+
+**Still open from the first wave:** the farm's two phone-only workshops; hiding a blocked player's attack warning; a grace period for a trade that loses its server. (Forging, hardening and equipping mid-fight: decided above, after the judges.) Question 22 (a dungeon's loading screen) is still open: #1508 left the "entering" half second while a dungeon loads for it.

@@ -165,7 +165,9 @@ spec. Add a line here only for a new RULE every session must follow.
 - **Either side ships first.** The worker lists what it can do in
   `state_sync.caps`, and the client gates every new path on its cap. A new cap
   goes in `CAP_GATES` (precheck `cap-registry`); a cap that grows (rows, crops)
-  gates by its count (TRAPS §9). Every new server behaviour has a kill switch in
+  gates by its count (TRAPS §9). A new cap goes on its OWN new line in
+  join.js's `caps` and in `CAP_GATES`, never first on the old long line
+  (TRAPS §316). Every new server behaviour has a kill switch in
   the live flags (`liveops.js`), named in lower case (`liveops.test` §8).
 - **Deny by default.** A new client-to-server message is handled on purpose.
   Every type the server SENDS is in `PRIVILEGED_EVENTS` (`server/src/index.js`)
@@ -280,7 +282,7 @@ spec. Add a line here only for a new RULE every session must follow.
     256-colour file, loaded through `zoneTextures.js loadTrackedStrip`, which
     reads the file's own numbers off the page's thread (`stripRead.js`). The
     page's own packers have a closed list of callers (`strip-door.test`;
-    TRAPS §309);
+    TRAPS §317);
   - music and any long sound stream through the music deck, never
     `SFX_MANIFEST`; read a decoded sound with `copyFromChannel`, never
     `getChannelData`;
@@ -298,7 +300,7 @@ spec. Add a line here only for a new RULE every session must follow.
   more than 12 ms outside the frame, and no frame runs more than 16 ms of the
   game's own code (`tools/qa/mp/held-budget.mjs`: what is over is LISTED
   there with why; never raise a line silently). `mp-heldsweep` plays the
-  whole game with a profiler and names what holds it (TRAPS §310,
+  whole game with a profiler and names what holds it (TRAPS §318,
   `docs/specs/held-sweep.md`):
   - work on pixels goes, in this order, to the PALETTE (`retintPalette.js`,
     a look's row), OFFLINE once for every look (`tools/art/role-bake.mjs`),

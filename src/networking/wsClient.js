@@ -35,6 +35,7 @@ import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } fr
 import { onCodexState, onCodexKill } from '@/game/monsterCodex.js'; /* v2.3.3209: the monster codex's counts (server/src/codex.js) */
 import { onAchvState, noteServerAp } from '@/game/achievements.js'; /* v2.3.3527: the achievements the worker granted (server/src/achievements.js) */
 import { onFishWeight, onFishBoard } from '@/game/fishWeigh.js'; /* v2.3.4036: a weigh-in and the biggest-fish boards (server/src/fishlog.js) */
+import { onRiseChest } from '@/game/climbActions.js'; /* v2.3.4453: the chest on a rise answers (server/src/risechest.js) */
 import { onSpinBoard } from '@/game/spinBoard.js'; /* v2.3.4393: the daily spin's biggest wins and losses (server/src/boards.js) */
 import { fishCatchWords } from '@/data/fishVariants.js'; /* v2.3.4036: "An albino Trout!" */
 import { onRaceState, onRaceCheckpoint, onRaceEnd } from '@/game/race.js'; /* v2.3.3525: Lil Bro's race (server/src/race.js) */
@@ -216,6 +217,7 @@ function _rescueDisplacedArmor(S, slot, stashKey, incoming) {
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822 */
 import { applyGatherHits } from '@/game/lifeSkillRewards.js'; /* v2.3.2956: the worker's gathering hits */
 import { applyNmlSkull, applyNmlLoss, applyNmlTake, nmlPeerSkull, applyNmlLock, nmlLockAskShow } from '@/game/noMansLand.js'; /* v2.3.3058: No man's land; v2.3.3316: + what your kill took */
+import { canBePlaced, onBodyPlace, bodyPlaceDue } from '@/game/bodyPlace.js'; /* v2.3.4455: a relaunch mid-fight lands at the body */
 import { noteDeath, noteDeathLoss } from '@/game/deathCard.js'; /* v2.3.3817: the death card (ui/mobile/DeathCard.jsx) */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.3817: the killer's name, as its plate reads */
 import { wheelStageName } from '@/data/wheelStageLooks.js'; /* v2.3.3817: ...with its stage ("Glacier Snowman") */
@@ -681,6 +683,11 @@ export function setupWebSocket(ctx) {
              rare-or-better pickup unrevealed only for a phone that says so
              (server/src/revealbag.js).  Old workers ignore it. */
           rb: 1,
+          /* v2.3.4455: this tab can be put back in its body where it stands,
+             if the worker finds it in a fight with another player
+             (game/bodyPlace.js, server/src/bodytake.js).  Old workers ignore
+             it. */
+          tb: canBePlaced() ? 1 : undefined,
           /* v2.3.1178: declare we attach the per-session state_sync
              token (x-bt-auth header) to mutating economy POSTs, so the
              worker ENFORCES it for this session. Old workers ignore
@@ -1594,6 +1601,7 @@ export function setupWebSocket(ctx) {
               S._serverCaps = msg.caps || {};
               _capsHere = true;
               setWeaponStashMax(S._serverCaps.bagWeapons);   /* v2.3.4224: the weapon bag's size follows the worker (caps.bagWeapons; absent = 8) */
+              bodyPlaceDue(S, msg);   /* v2.3.4455: a body_place follows: the trip waits for it (game/bodyPlace.js) */
               noteMoveCaps(S._serverCaps);   /* v2.3.4011: the monster moves' warnings and enrage, against a worker that has them (caps.monstermoves) */
               /* v2.3.3776: a fresh join is off the board (the worker forgot it
                  too: ride.js stores nothing) */
@@ -2005,6 +2013,13 @@ export function setupWebSocket(ctx) {
           /* v2.3.3770: the lock after a red skull's death (nomansland.js
              _nmlLockSet): who you may not attack and who may not attack you,
              and the "?" over the head of one asking you for a rematch */
+          /* v2.3.4455: where the body this join took over stands (bodytake.js):
+             the trip down the stairs lands there (game/bodyPlace.js) */
+          case 'body_place':
+            {
+              if (!msg.from && S._serverCaps && S._serverCaps.bodyTake) onBodyPlace(S, msg.payload);
+              break;
+            }
           case 'nml_lock':
             {
               if (msg.payload) applyNmlLock(S, msg.payload);
@@ -2218,6 +2233,10 @@ export function setupWebSocket(ctx) {
              (`from`) is never taken. */
           case 'spin_board':
             { if (msg.from) break; try { onSpinBoard(S, msg.payload); } catch (_se) { /* display only */ } break; }
+          /* v2.3.4453: the chest on a rise (server risechest.js): its prize, or why not.  Private and
+             PRIVILEGED there; a relayed copy (`from`) is never taken. */
+          case 'rise_chest':
+            { if (msg.from) break; try { onRiseChest(S, msg.payload, function (x, y, t, col) { pushDmgPopup(S, x, y, t, col || '#FFF6D6'); }); } catch (_re) { /* display only */ } break; }
           case 'make_traps_result':
             { try { onMakeTrapsResult(S, msg.payload); } catch (_te) { /* display only */ } break; }
           /* ═══ v2.3.3525: LIL BRO'S RACE (server/src/race.js) ═══
@@ -5857,6 +5876,11 @@ export function setupWebSocket(ctx) {
         /* v2.3.4393: the daily spin's records (game/spinBoard.js) -> boards.js.
            TRAPS #18: without this the ask never leaves the browser. */
         if (msg.type === 'spin_board_request') {
+          wsOut(msg);
+          return;
+        }
+        /* v2.3.4453: the chest's ask (game/climbActions.js openRiseChest) -> risechest.js.  TRAPS #18. */
+        if (msg.type === 'rise_chest_open') {
           wsOut(msg);
           return;
         }

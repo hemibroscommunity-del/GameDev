@@ -232,8 +232,9 @@ untargeted player attack: a bystander hit, a red skull.
 - **A `duel_decline` from that challenger** (declineBoth) drops a pending duel
   at once. A settled duel is never ended by a decline.
 
-Not changed (the worker; left for later): the silent drops in `duel.js` still
-answer nothing (the phone's clock covers them), and a duel that ENDS while the
+Not changed then (the worker; left for later): the silent drops in `duel.js`
+still answered nothing (the phone's clock covered them; answered since
+v2.3.4442, below), and a duel that ENDS while the
 phone is away or a deploy wipes the worker's duels is still kept by the phone
 until a reload: clearing a settled duel at state_sync must ship with the
 worker re-sending a live duel, or every network blip would lose one. The
@@ -292,3 +293,17 @@ but still lands in melee reach, 950 ranged cap intact, def-0
 scale-only case), and since v2.3.3168 no hidden or switched stake (§15)
 and no war point or bounty from a duel kill, driven through
 `_handlePlayerDeath` (§16).
+
+## v2.3.4442: a refused accept is answered
+
+The two silent drops in `duel.js`'s accept now send `duel_decline`, so the
+accepter's card closes at once instead of after `DUEL_PENDING.SETTLE_MS`:
+
+- **One side already in a duel:** a real challenge exists and both pressed a
+  button, so both are told (`declineBoth`). The running duel is untouched.
+- **No live challenge** (older than `CHALLENGE_TTL`, 2 min, or never real):
+  only the accepter is told. Nothing proves the named player challenged, so
+  telling them would let a tampered phone send "Duel declined" to anyone it
+  names (TRAPS §313).
+
+Test: `server/test/duel-drops.test.mjs`.

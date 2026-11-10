@@ -616,6 +616,16 @@ the next render, and on a phone the normal way to press something once is
 to press it twice — two pointerups in one frame would otherwise both reach
 the worker and escrow the goods twice.
 
+**One listing per item while its answer is out (v2.3.4442).** The card's
+`sellInFlight` is reset every time the card opens, so closing and reopening
+it before the answer let a second tap list the same stack again. The lock is
+now the item's: `src/game/storeAnswer.js` `claimSell(key)` /
+`releaseSell(key)`, keyed by the exact item (a gear piece by its `gid`), held
+until the store answers (yes, no, or "not sure" at the 15 s limit) with a time
+limit as a safety net. A second tap in that window sends nothing and shows
+the "not sure, look in My Listings" words. Test: `store-answer.test` §7;
+TRAPS §314.
+
 **Selling never mutates locally — except where nothing would redraw.**
 The Sell sheet posts a key (or a stash index) and a price; a stackable or
 a weapon leaves the bag on the worker's side and the client redraws off

@@ -9519,7 +9519,145 @@ held in escrow. **The rule.** Drop only a still-waiting bet
 `already-staked` (`src/game/arenaStakes.js`). **Receipt:**
 `silent-refusals.test` §2.
 
-## 309. "The art is 256 colours and the game holds it as numbers, so loading it is cheap" (v2.3.4460)
+## 309. "A second login is a takeover: build the character afresh where the new phone says" (v2.3.4432)
+
+**Tempting:** a join for a character whose old socket is still open replaces
+that socket and rebuilds the player where the new phone asks to start, as
+every takeover always did. **Wrong:** a fresh launch always asks for town, so
+a loser in No man's land opened a second tab (or relaunched before the server
+saw the close) and stood in BroTown with the whole bag; the winner got
+nothing. Closing the app was already a leave (the body stays 20 s); the
+takeover skipped that rule. **The rule.** A second login whose old socket
+passes `_lingerWouldStay` (`linger.js`: within 10 s of a hit between players,
+in the world, not in a duel) runs the real `webSocketClose` first, so the
+body lingers, and the join is judged by `_lingerOnJoin`: from within
+`RESUME_PX` (300 px) it resumes, otherwise `linger_wait` / 4010. One test
+decides whether a body stays: never write a second copy of it. A test whose
+rejoin comes right after a player hit now waits: end the fight first
+(`_pvpHealClocks.delete(id)`, as `nomansland.test`'s helper does), never
+"fix" the wait. Outside a fight a takeover still skips the close's other
+duties on purpose (TRAPS §162), so a reconnect does not cancel a trade.
+**Receipt:** `takeover-linger.test`; switch `takeoverlinger`.
+
+## 310. "The body is taken over, so rebuild it from the save like any join" (v2.3.4455)
+
+**Tempting:** when a relaunch takes over a body mid-fight, run the join's
+usual rebuild and placing, then tell the phone where it is. **Wrong:** the
+rebuild reads the saved record over the live one (health, bag and fight clock
+go back in time), `_placeOnJoin` moves it, and the phone's first step from
+the loading screen into town is taken, so the body walks out of the fight.
+**The rule.** A join with `tb: 1` (the phone says it can be placed, and
+`caps.bodyTake` is on) taking over a session that passes `_lingerWouldStay`,
+or a living lingering body (`_bodyTakeLingering`), KEEPS the player state
+object: the rebuild block is skipped (`if (!_body)` in `join.js`), nothing
+is placed or saved over it, and `body_place {z, x, y, d}` follows
+`state_sync`. Until the phone's first move within `RESUME_PX` of the body,
+`_handleMove` drops its moves (`ps._bodyWait`, one field, set and cleared in
+`bodytake.js` only); after 60 s, or a landing elsewhere, it falls back to the
+linger and its wait screen. The phone lands through the dungeon-mouth door,
+never by writing its own position. Never "restore" the rebuild for this
+join. A scenario that needs the wait screen sets `bodytake: false`
+(`mp-linger` does). **Receipt:** `body-take.test`, `body-place.test`,
+`mp-bodytake`; switch `bodytake`.
+
+## 311. "It is only half a second of safety on entering a place" (v2.3.4454)
+
+**Tempting:** give every entry into a place with monsters its half second of
+no damage (`ZONE_ENTRY_GRACE_MS`); v2.3.4423 already stopped made-up dungeon
+names (§307). **Wrong:** a modified phone hopped between two REAL places it
+may stand in, a few times a second, and every entry bought a fresh half
+second: it was never hurt, by monsters or by the other player in No man's
+land. **The rule.** A grace is a shield if it can be asked for again.
+Anything that gives "no damage for a moment" on an event the phone starts (a
+change of place, a respawn, a join) is given at most so often and never
+mid-fight. The entry grace (`movement.js` `_entryGraceGive`) is not given
+within 10 s of a hit between players (the linger's own `_lingerFightRecent`,
+no second copy) nor within `ENTRY_GRACE_GAP_MS` (10 s) of the last one given.
+The record is memory only (`ps._entryGraceAt`). A test that enters places
+back to back and expects a grace each time clears `ps._entryGraceAt` first
+(`dungeon-live.test` 5b does). It protects the other player, so it never
+asks `_testMode`. **Receipt:** `fight-dodges.test`; switch `entrygrace`.
+
+## 312. "The phone shows Claim only after a clear, so the quest is checked" (v2.3.4441)
+
+**Tempting:** a quest whose button the phone hides until it is done needs no
+check on the server. **Wrong:** the Mayor's "Dungeon Delver" (`mayor_3`, 300
+gold) was paid to any hand-in message for months: a modified phone, or a
+message typed by hand, was paid without a dungeon. Its proof
+(`lifeSkills.dungeonClears`) had moved to the server in v2.3.3540 and nobody
+wired the check. **The rule.** A quest in `QUEST_REWARDS` without an
+`objective` is paid on the phone's word. Before adding one, find a server
+record that proves it and give it an objective read by
+`_questObjectiveMet` (`quests.js`). Do not "simplify" `mayor_3`'s
+`dungeon_clear` away; its off-ramp is the flag `disable_mayor3_check` (set to
+turn the check OFF). Test mode skips only the quest ORDER, never a goal.
+The one quest still paid on the word is the retired `mayor_1` on old saves
+(50 gold, once; left alone by decision). **Receipt:** `mayor-dungeon.test`.
+
+## 313. "A refused duel accept: tell both players" (v2.3.4442)
+
+**Tempting:** answer every refused `duel_accept` with `duel_decline` to both
+names, as the other refusals do (`declineBoth`). **Wrong** one way, and
+silence wrong the other: the silent drops left the accepter's card on
+"DUEL!" for 8 s; but when there is no live challenge, nothing proves the
+named player ever challenged, so telling them lets one tampered phone send
+"Duel declined" popups to anyone it names. **The rule.** A refused accept is
+always answered. One side already in a duel: a real challenge exists, both
+are told (`declineBoth`), the running duel untouched. No live challenge
+(expired after 2 minutes, or never real): only the accepter is told. This is
+§284's rule ("answer the refusal") with a forged name in mind: an answer
+goes only to a player the server knows took part. **Receipt:**
+`duel-drops.test`.
+
+## 314. "The sell card's one-tap lock stops a double listing" (v2.3.4442)
+
+**Tempting:** the Auction House sell card's `sellInFlight` lock is enough.
+**Wrong:** it is reset every time the card opens, so tap "Put it up", close
+the card, reopen it before the answer, and a second tap listed the same stack
+twice. **The rule.** A listing's in-flight lock belongs to the ITEM, not the
+card that sent it: `src/game/storeAnswer.js` `claimSell(key)` /
+`releaseSell(key)`, held until the store's answer (yes, no or "not sure", the
+last at the 15 s limit at the latest) with a time limit as a safety net. A
+second tap of the same item in that window sends nothing and shows the "not
+sure, look in My Listings" words (§288: no answer is not a no). The key is
+the exact item (a gear piece by its `gid`), so another stack or a twin piece
+elsewhere is never held. **Receipt:** `store-answer.test` §7.
+
+## 315. "A load kept until it answers" (v2.3.4452)
+
+**Tempting:** a loader that keeps its promise, or a `'loading'` marker, until
+the download answers, and resets only on a failure. **Wrong:** a request that
+never answers (patchy Wi-Fi, a site update mid-play) holds the slot for the
+whole visit: the cape, a weapon, the shield, the badges over heads, the
+armour mid-swing, the hat's hair clip, the head-piece tables, a picture the
+memory saver let go. And a memo reset only on failure waits for the next
+loading screen: a player who never rejoins never gets the picture back
+(§302 is the failure half; this is the stall). **The rule.** Wrap the
+download in `retryLooks.timeLimit` (a stall counts as a failure), or use
+`loadSetLater` with `start()` for the loading screen's wait and `ensure()`
+where it is drawn; ask again only while it is drawn (5, 10, 20, 40 s, then a
+minute, ten rounds); keep a late answer only while the slot is empty and free
+a second copy. Two cautions on an older loader: do not cap a recovery it
+already had (the head-piece tables keep their endless 20 s rounds), and do
+not hide a failure its preload report could already see (reject after the
+settle, as the Bro badge does). Each loader has its `?...retry=0` off-ramp;
+`?retrylooks=0` turns them all off. **Receipt:** `loader-retries.test`.
+
+## 316. "Put the new cap first on the caps line" (v2.3.4455)
+
+**Tempting:** add a new cap at the front of the one long `caps: { ... }`
+line in `join.js`'s `state_sync`, and at the front of `CAP_GATES`
+(`src/ui/panels/DevPanel.jsx`): it is the easiest place to find. **Wrong:**
+two pull requests each did that on the same day (#1507's `risechest` and
+#1509's `bodyTake`), so both changed the same first line in both files and
+conflicted on merge twice, and each merge had to be hand-joined
+(`b5356c74`, "Both caps kept"). Parallel sessions all add caps. **The rule.**
+A new cap goes on its OWN new line in both places, with its version comment,
+so two new caps never touch the same line. Do not reflow the old long line
+while you are there (that conflicts with everyone). **Receipt:** precheck
+`cap-registry` holds that the two lists agree; the line rule is review's.
+
+## 317. "The art is 256 colours and the game holds it as numbers, so loading it is cheap" (v2.3.4460)
 
 **The move.** A picture is a 256-colour file on disk and one byte a pixel in
 memory (colour numbers), so you take the way between them for granted: load
@@ -9559,7 +9697,7 @@ full-colour files of 24,000 to 42,000 colours, which nothing checked.
 
 **Receipt:** `strip-door` suite, `mp-stripgentle`, docs/specs/strip-gentle.md.
 
-## 310. "Each hitch has its fix, so the game is smooth" (v2.3.4460)
+## 318. "Each hitch has its fix, so the game is smooth" (v2.3.4460)
 
 Four reports in a row from the owner's iPhone were one kind of fault found one
 at a time: the townsfolk's bakes, the Blacksmith's fire goblin, a page of

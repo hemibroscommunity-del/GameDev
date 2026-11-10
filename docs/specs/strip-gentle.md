@@ -137,7 +137,7 @@ and the page then found the numbers again pixel by pixel. So:
   closed list.
 
 CLAUDE.md carries the rule (the memory law) and a row in the same-change
-checklist; TRAPS §309 has the lesson. And a strip that misses the door says
+checklist; TRAPS §317 has the lesson. And a strip that misses the door says
 so on a phone: the meter names it ("between frames: strip ...").
 
 ### What was proved

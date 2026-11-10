@@ -105,6 +105,7 @@ import { petbookMethods } from './petbook.js';
 import { codexMethods } from './codex.js';
 import { deathPileMethods } from './deathpile.js';   /* v2.3.4384: a dead player's pile survives a restart */
 import { fishlogMethods } from './fishlog.js';   /* v2.3.4036: the rare fish, weighed, with records */
+import { riseChestMethods } from './risechest.js';   /* v2.3.4453: the chest on a rise pays, once a character */
 import { boardMethods, boardFace } from './boards.js';   /* v2.3.4393: the daily spin's records, a face and a level on every board, the deleted stand-ins */
 import { achievementMethods } from './achievements.js';   /* v2.3.3527 */
 import { killRollMethods } from './killroll.js';   /* v2.3.3209: one roll a kill, each drop its own numbers */
@@ -231,6 +232,7 @@ import { wheelTableMethods } from './wheeltables.js'; /* v2.3.3315: which Wheel 
 import { noMansLandMethods } from './nomansland.js'; /* v2.3.3058: No man's land */
 import { pvpBalanceMethods } from './pvpbalance.js'; /* v2.3.3260: PvP hits rolled by the worker, and tuned */
 import { lingerMethods } from './linger.js'; /* v2.3.3260: leaving in the middle of a fight -- the body stays */
+import { bodyTakeMethods } from './bodytake.js'; /* v2.3.4455: a second login mid-fight takes the body over where it stands */
 import { lastPlaceMethods } from './lastplace.js'; /* v2.3.3327: a reconnect starts where the server last had you */
 import { hitProofMethods } from './hitproof.js'; /* v2.3.3334: a hit on a monster needs its weapon, its reach, a paid special */
 import { testModeMethods } from './testmode.js'; /* v2.3.3430: test mode -- the owner's own characters without the honesty checks */
@@ -656,6 +658,7 @@ export const PRIVILEGED_EVENTS = new Set([
      (linger.js) -- server-emitted only; a forged one would tell every phone
      in the room to wait out a countdown it never earned. */
   'linger_wait',
+  'body_place',   /* v2.3.4455: where a kept body stands, after a takeover mid-fight (bodytake.js) */
   /* v2.3.2101: the contest's public state (is it running, how many of the
      three are left, the rate the worker will actually roll). Server-EMITTED,
      so it MUST be here or a client could forge it -- and a forged "0 left"
@@ -722,6 +725,7 @@ export const PRIVILEGED_EVENTS = new Set([
      and gold on a public record, so a forged one would write the board a
      phone shows. */
   'spin_board',
+  'rise_chest',   /* v2.3.4453: the chest's answer (risechest.js) */
   /* v2.3.3265: the sparring clones of the test panel (spar.js), to their
      owner only.  Forged, it would make a phone take any player for a clone
      it may aim at -- the worker still refuses every such hit (_sparPair) --
@@ -6154,6 +6158,10 @@ export class GameRoom {
       case 'fish_board_request':
         if (session.id) await this._handleFishBoardRequest(session);
         break;
+      /* v2.3.4453: the chest on a rise (risechest.js): paid once, to feet at it */
+      case 'rise_chest_open':
+        if (session.id) await this._handleRiseChest(session, msg);
+        break;
       /* v2.3.4393: the daily spin's biggest wins and losses (boards.js) */
       case 'spin_board_request':
         if (session.id) await this._handleSpinBoardRequest(session);
@@ -6775,6 +6783,7 @@ Object.assign(GameRoom.prototype, codexMethods); /* v2.3.3209 */
 Object.assign(GameRoom.prototype, deathPileMethods); /* v2.3.4384 */
 Object.assign(GameRoom.prototype, fishlogMethods); /* v2.3.4036 */
 Object.assign(GameRoom.prototype, boardMethods); /* v2.3.4393 */
+Object.assign(GameRoom.prototype, riseChestMethods); /* v2.3.4453 */
 Object.assign(GameRoom.prototype, achievementMethods); /* v2.3.3527 */
 Object.assign(GameRoom.prototype, killRollMethods); /* v2.3.3209: the kill's one roll (killroll.js) */
 // v2.3.1131 (PR15): quality + hardening -- see hardening.js.
@@ -6875,6 +6884,7 @@ Object.assign(GameRoom.prototype, floodMethods); /* v2.3.3274: one socket cannot
 Object.assign(GameRoom.prototype, verifyMethods); /* v2.3.3275: the account check */
 Object.assign(GameRoom.prototype, pvpBalanceMethods); /* v2.3.3260 */
 Object.assign(GameRoom.prototype, lingerMethods); /* v2.3.3260: leaving mid-fight, the body stays */
+Object.assign(GameRoom.prototype, bodyTakeMethods); /* v2.3.4455: ...and a second login takes it over */
 Object.assign(GameRoom.prototype, lastPlaceMethods); /* v2.3.3327: a reconnect starts where the server last had you */
 Object.assign(GameRoom.prototype, hitProofMethods); /* v2.3.3334: a hit on a monster needs its weapon, its reach, a paid special */
 Object.assign(GameRoom.prototype, testModeMethods); /* v2.3.3430: test mode (testmode.js) */

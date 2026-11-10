@@ -452,6 +452,12 @@ await req('DELETE', '/api/admin/flags?name=disable_threats');
   check('8s. `serverdead` is a name POST /flags takes', flagNameOk('serverdead'));
   { const was = room._liveFlags; room._liveFlags = { serverdead: false }; const off = room._serverDeadOff(); room._liveFlags = {}; const on = room._serverDeadOff(); room._liveFlags = was;
     check('8s. `serverdead: false` trusts the phone again, and nothing set leaves the worker\'s word', off === true && on === false); }
+  // 8t. v2.3.4453: the chest on a rise pays (risechest.js _riseChestOff,
+  //     rise-chest.test) -- `risechest: false` un-advertises the cap and
+  //     answers an ask 'off'; off only when written false
+  check('8t. `risechest` is a name POST /flags takes', flagNameOk('risechest'));
+  { const was = room._liveFlags; room._liveFlags = { risechest: false }; const off = room._riseChestOff(); room._liveFlags = {}; const on = room._riseChestOff(); room._liveFlags = was;
+    check('8t. `risechest: false` empties the chest again, and nothing set leaves it paying', off === true && on === false); }
   // 8m. v2.3.3981: the one-to-one's switch (smelting.js _oneToOneOff) -- one
   //     ore a bar and one log a hardened wood; off only when written false,
   //     which brings back five on both sides (smelting / hardenedwood suites)
