@@ -66,8 +66,9 @@ near BroTown).
 - **Where**: on the commons' grass north-east of town, about 2,400 game px
   from where a player arrives (a short walk), in the safe ground: no monster
   comes. Its face looks south, at the town.
-- **What**: the islet's two steps again. A terrace (72 px) its vines or a
-  sprinting jump get you up, and on it a ledge (144 px) only the flip reaches,
+- **What**: the islet's two steps again. A terrace (72 px) its ramp
+  (v2.3.4471; it was vines) or a sprinting jump gets you up, and on it a
+  ledge (144 px) only the flip reaches,
   with a chest: **100 coins, once a character** ("the small one": a new
   character starts with 50 and this is a minute from the square).
 - **In the plan** (`plan.js` `rises`): `bluff-terrace` and `bluff-ledge`,
@@ -88,20 +89,44 @@ near BroTown).
   fingerprints: the plan's text changed), `server/src/wheelfaces.js` (two
   more rows). `wheelspawns.js` and `wheelspawns1.js` came out byte for byte
   the same: no monster's place and no resource moved.
-- **Drawn as a hill** (v2.3.4462; `rises.js` `hillFace`, `hillRim`). It first
-  shipped in the islet's sea rock: a grey stone outline on the grass. A rise
-  with `look: 'hill'` is now:
-  - its **face** a bank of packed earth, darker toward its foot, with stones
-    set in it and a tuft of grass here and there, under a lip of the commons'
-    own green grass hanging raggedly over it;
-  - its **rim** (the top's back and sides, which stay solid) only the bank's
-    thin earth edge: the top's own grass runs right to it, so the top reads
-    as raised ground, not a walled plot;
-  - a little **shade** on the ground at its foot, thinning out.
-  All painted in code in `RISE_PALETTE`'s colours (earth, stone, grass and
-  shade were added); nothing is loaded. The islet's rises are untouched.
-  `ELEVATION-PLAN.md`'s `face-commons` and `steps` pictures are still not
-  made; a drawn bank would be richer than a painted one.
+- **Drawn as a grass ledge, with a ramp** (v2.3.4471; `rises.js` `hillFace`,
+  `hillRim`, `boulderColour`, `hillEdge`). It first shipped in the islet's sea
+  rock (a grey outline on the grass), then as a flat earth bank (v2.3.4462).
+  The owner sent a reference sheet ("Terrain Elevation - Tile Set", its grass
+  ledge row) and the brief with it: "a raised piece of the existing world
+  rather than a brown rectangle placed on top of it ... Keep the grass on top
+  of the elevation identical to the surrounding grass tiles ... a single-height
+  grassy bluff with a visible southern cliff face, irregular rocky edges, and
+  one grassy ramp." A rise with `look: 'hill'` is now:
+  - its **top** nothing painted: the ground as laid, the same grass as round it;
+  - its **face** a cliff of rounded brown boulders (lit from the upper left,
+    dark in the gaps, darker toward the foot) under a thick **cap** of grass
+    whose blades hang 10 to 21 px over it, the ground's own tufts standing in
+    front of its foot, and its **shade** on the grass below;
+  - its **sides** the same cliff nearly edge-on: a wall 5 px wide at the back
+    and 13 where it meets the face (west lit, east in shadow);
+  - its **outline** wandering 1 to 9 px and stepping stone to stone, its two
+    back corners a wide curve. `round: N` in the plan cuts those corners on
+    the diagonal (N cells deep) and makes those cells rim, so nobody walks
+    outside the drawn curve. All of it is inside cells that were already
+    solid: the walk grid is still whole cells.
+  - **A ramp** (`ramp: [x0, x1]` in the plan, kind 5 `ramp`): a strip of the
+    face you WALK up, where the islet has vines you climb. The walk grid
+    leaves it open (`wheelTrial.js` `lazyGrid`), and the game's two rules that
+    read the face's band know it (`climb.js` `onRamp`): a jump that comes down
+    on it is not dropped back, and feet on it are not "rescued" to the foot.
+    Drawn as the ground itself with lines of darker grass across it (the
+    slope's steps), between the cliff's cut ends, which lean in and cast more
+    shade toward the foot. The Bluff's terrace has one (3 cells, east of the
+    middle) and no vines; a sprinting jump still clears its face.
+  The sheet is a design reference, not an atlas ("not a precisely aligned,
+  seamless game-ready tile atlas"), so nothing is cut from it and nothing is
+  loaded: it is painted in code in `RISE_PALETTE` (`boulder`, `grass`,
+  `grassEdge`, `shade`). The islet's rises keep their sea rock.
+  `server/src/wheelfaces.js` gained a `ramp` box a row (re-baked: this change
+  deploys the worker, though the worker reads only the chests).
+  The sheet's other rows (dirt, stone, snow, sand, lava ledges; stairs; two
+  heights of ramp) are not built: one look, one ramp, to start.
 - **Cost**: the rises' grid is one box over every rise, so with a rise by the
   town and two on the islet it is 45 x 627 cells: about 28 KB in the ground
   worker's first message to each phone (it was 240 bytes). `risePaint` now
@@ -109,7 +134,8 @@ near BroTown).
   rise pay for it.
 - **Tests**: `node tools/qa/mp/run.mjs townbluff` (`mp-townbluff.mjs`): the
   rises came (four, the Bluff's after the islet's); nothing placed stands on
-  it; it is near the arrival; the face stops a walk; the vines take him up;
+  it; it is near the arrival; the face stops a walk; a walk takes him up the
+  ramp, whose sides are walls;
   the flip lands him on the ledge; the chest pays 100 (50 to 150).
   `rise-chest.test` 1a, 4e to 4g (its own prize, its own once; a character can
   have both chests).

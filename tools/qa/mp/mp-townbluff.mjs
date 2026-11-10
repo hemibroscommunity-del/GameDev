@@ -4,14 +4,14 @@
  * [the double jump] can be put to use", and, asked where the first public ones
  * go, "Go recommended": the Lagoon Islet (v2.3.4453), then a course near
  * BroTown.  This is the course: on the commons' grass north-east of town, a
- * terrace its vines (or a sprinting jump) get you up, and on it a ledge only
+ * terrace its ramp (or a sprinting jump) gets you up, and on it a ledge only
  * the flip reaches, a chest on top.
  *
  * One phone in the world against a real worker, nothing asked in its address:
  *   1. the rises came, the Bluff's two among them, AFTER the islet's;
  *   2. nothing the world places stands on it (the keep-out);
  *   3. he walks from where a player arrives to its foot (it is near);
- *   4. the terrace's face stops him; its vines take him up;
+ *   4. the terrace's face stops him; he walks up its ramp (v2.3.4471: was vines), whose sides are walls;
  *   5. the flip lands him on the ledge;
  *   6. the chest pays its 100 coins, once.
  * Pictures: tools/qa/mp/out/townbluff-*.png.
@@ -52,9 +52,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const c0 = await P.page.evaluate(() => window.__btClimb && window.__btClimb());
     const T = c0 && c0.rises.find((r) => r.id === 'bluff-terrace');
     const L = c0 && c0.rises.find((r) => r.id === 'bluff-ledge');
-    rec.ok('the Town Bluff\'s two rises came with the world, after the islet\'s two: a terrace (72 px face, vines) and on it a ledge (144 px, a chest)',
+    rec.ok('the Town Bluff\'s two rises came with the world, after the islet\'s two: a terrace (72 px face, a ramp up it) and on it a ledge (144 px, a chest)',
       !!c0 && c0.on && c0.rises.length === 4 && c0.rises[0].id === 'lagoon-terrace' && c0.rises[1].id === 'lagoon-ledge'
-      && !!T && T.h === 72 && !!T.climb && !!L && L.h === 144 && !!L.chest && L.box.x0 > T.box.x0 && L.box.x1 < T.box.x1 && L.box.y1 <= T.face.y0, c0 && c0.rises.map((r) => r.id));
+      && !!T && T.h === 72 && !T.climb && !!T.ramp && T.ramp.x1 - T.ramp.x0 === 72 && T.ramp.y0 === T.face.y0 && T.ramp.y1 === T.face.y1 && !!L && L.h === 144 && !!L.chest && L.box.x0 > T.box.x0 && L.box.x1 < T.box.x1 && L.box.y1 <= T.face.y0, c0 && c0.rises.map((r) => r.id));
     if (!T || !L) return;
     const far = Math.round(Math.hypot((T.box.x0 + T.box.x1) / 2 - start.x, T.face.y1 - start.y));
     rec.ok(`it is near where a player arrives (${far} px: about ${Math.round(far / 150 / 10) * 10 || 10} s at a walk), with the caps said`, far < 3500 && await P.page.evaluate(() => { const S = window._gameState.current; return !!(S._serverCaps && S._serverCaps.risechest === true); }), { far });
@@ -70,24 +70,40 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('no resource, monster or townsperson stands on it', onIt.length === 0, onIt);
 
     /* ── 3. to its foot ── */
-    const vx = (T.climb.x0 + T.climb.x1) / 2;
+    const vx = (T.ramp.x0 + T.ramp.x1) / 2;   /* v2.3.4471: the ramp's middle (was the vines') */
     const footFeet = T.face.y1 + HS + 24;
-    await H.hopTo(P, vx - 70, footFeet + 60 - feetDy, { tries: 80 });
+    await H.hopTo(P, vx - 90, footFeet + 60 - feetDy, { tries: 80 });
     await P.page.waitForTimeout(2500);
     await shot('1-foot');
-    /* ── 4. the face stops him; the vines take him up ── */
+    /* ── 4. the face stops him; the ramp is walked up ── */
     await hold(P, ['w'], 3000, (o) => o.length > 4 && Math.abs(o[o.length - 1].y - o[o.length - 3].y) < 0.3);
     const atFace = await st(P);
-    rec.ok('the terrace\'s face stops him at its foot, walking (beside the vines)', atFace.y + feetDy - HS - T.face.y1 >= -0.5 && atFace.y + feetDy - HS - T.face.y1 < 8 /* a walk stops a few px off a wall */, { feet: atFace.y + feetDy, foot: T.face.y1 });
+    rec.ok('the terrace\'s face stops him at its foot, walking (beside the ramp)', atFace.y + feetDy - HS - T.face.y1 >= -0.5 && atFace.y + feetDy - HS - T.face.y1 < 8 /* a walk stops a few px off a wall */, { feet: atFace.y + feetDy, foot: T.face.y1 });
+    /* v2.3.4471: the ramp (was the vines): a plain walk north takes him up the face's band -- no
+       climb, no jump, nothing dropping him back or "rescuing" him out of it -- and its sides are walls */
     await H.hopTo(P, vx, footFeet - feetDy, { tries: 30 });
     await P.page.waitForTimeout(700);
-    const climbS = await hold(P, ['w'], 30000, (o) => {
-      const s = o[o.length - 1];
-      return o.some((q) => q.climb && q.climb.climbing) && !(s.climb && s.climb.climbing);
-    });
+    const before = await st(P);
+    const walkS = await hold(P, ['w'], 20000, (o) => o[o.length - 1].y + feetDy + HS <= T.face.y0 - 4);
     const up = await st(P);
     await shot('2-terrace');
-    rec.ok('its vines take him up on to the terrace', climbS.some((s) => s.climb && s.climb.climbing) && up.y + feetDy + HS <= T.face.y0 + 0.5 && up.y + feetDy > T.box.y0, { feet: up.y + feetDy, top: T.face.y0 });
+    const s4 = up.climb.stats, s40 = before.climb.stats;
+    rec.ok('a walk north takes him up its ramp on to the terrace: no climbing, no jump, never dropped back or put at its foot',
+      up.y + feetDy + HS <= T.face.y0 + 0.5 && up.y + feetDy > T.box.y0 && !walkS.some((q) => q.climb && q.climb.climbing)
+      && s4.climbs === s40.climbs && s4.drops === s40.drops && s4.rescues === s40.rescues, { feet: up.y + feetDy, top: T.face.y0, stats: { climbs: s4.climbs, drops: s4.drops, rescues: s4.rescues } });
+    /* half way up it (put there: this box's clock is too coarse to stop a walk on a line): he stands, and the
+       cliff either side is a wall */
+    const midFeet = (T.face.y0 + T.face.y1) / 2;
+    await H.hopTo(P, vx, midFeet - feetDy, { tries: 20 });
+    await P.page.waitForTimeout(900);
+    const stood = await st(P);
+    await shot('2-ramp');
+    const side = await hold(P, ['a'], 4000, (o) => o.length > 5 && Math.abs(o[o.length - 1].x - o[o.length - 3].x) < 0.3);
+    const atSide = side[side.length - 1];
+    rec.ok('...half way up he stands on it (nothing puts him at its foot), and the cliff either side is a wall (walking west stops him inside the ramp)',
+      Math.abs(stood.y + feetDy - midFeet) < 6 && stood.climb.stats.rescues === s40.rescues
+      && atSide.x - HS >= T.ramp.x0 - 0.5 && atSide.x - HS < T.ramp.x0 + 8 && Math.abs(atSide.y + feetDy - midFeet) < 6, { stood: stood.y + feetDy, midFeet, x: atSide.x, rampX0: T.ramp.x0 });
+    await hold(P, ['w'], 20000, (o) => o[o.length - 1].y + feetDy + HS <= T.face.y0 - 4);
 
     /* ── 5. the flip gets him up the ledge ── */
     const lx = (L.face.x0 + L.face.x1) / 2 + 30;

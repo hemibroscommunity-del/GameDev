@@ -669,12 +669,13 @@ function lazyGrid(cols, rows, B, swimOn, rises) {
         r[b.x + x] = !(bits[k >> 3] & m) || !!(swim && (swim[k >> 3] & m)) ? 1 : 0;
       }
     }
-    /* v2.3.3994: the rises' walls (their kinds 1-4: face, rim, climb, chest) */
+    /* v2.3.3994: the rises' walls (their kinds 1-4: face, rim, climb, chest)
+       v2.3.4471: kind 5, a ramp, is no wall: the grassy slope you walk up a face by */
     if (rises && rises.cells && y >= rises.y0 && y < rises.y0 + rises.h) {
       const o = (y - rises.y0) * rises.w;
       for (let x = 0; x < rises.w; x++) {
         const v = rises.cells[o + x];
-        if (v && (v & 7) !== 0 && rises.x0 + x >= 0 && rises.x0 + x < cols) r[rises.x0 + x] = 0;
+        if (v && (v & 7) !== 0 && (v & 7) !== 5 && rises.x0 + x >= 0 && rises.x0 + x < cols) r[rises.x0 + x] = 0;
       }
     }
     made.set(y, r);

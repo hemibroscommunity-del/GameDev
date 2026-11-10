@@ -456,12 +456,16 @@ const BASE_PLAN = {
        face looking south at the town -- a terrace a sprinting jump or its
        vines get you up, and on it a ledge only the flip reaches, a chest on
        top (server/src/risechest.js: once a character).
+       v2.3.4471: its vines are a RAMP now (`ramp`: a strip of the face you walk up, a grassy slope:
+       the owner's reference sheet, "one grassy ramp"), east of the middle so the walk up does not
+       line up with the jump at the ledge.  `round`: its two back corners cut on the diagonal, that
+       many cells deep, so its outline is a curve and not a box's (rises.js kindOf, hillRim).
        `at`: cells from the Wheel's centre cell (rises.js); `long`: the long
        Wheel only; `look: 'hill'`: no sea caves, no barnacles; `keepOut`: the
        cells round it nothing is placed in (placing.js islBoxes).  LISTED
        AFTER THE LAGOON'S, so those keep their numbers (k 0 and 1). */
-    { id: 'bluff-terrace', name: 'the Town Bluff', at: [38, -98], long: true, look: 'hill', keepOut: 3, box: [0, 0, 14, 22], face: 3, climb: [6, 8] },
-    { id: 'bluff-ledge', name: 'the Bluff\'s Ledge', at: [38, -98], long: true, look: 'hill', box: [3, 1, 11, 12], face: 6, chest: [6, 2, 8, 3] },
+    { id: 'bluff-terrace', name: 'the Town Bluff', at: [38, -98], long: true, look: 'hill', keepOut: 3, round: 3, box: [0, 0, 14, 22], face: 3, ramp: [8, 11] },
+    { id: 'bluff-ledge', name: 'the Bluff\'s Ledge', at: [38, -98], long: true, look: 'hill', round: 2, box: [3, 1, 11, 12], face: 6, chest: [6, 2, 8, 3] },
   ],
 
   /* ── PLACES: empty plots for sprites added later ──
