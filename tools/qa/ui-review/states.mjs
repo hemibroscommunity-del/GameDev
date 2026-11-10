@@ -709,20 +709,22 @@ export const STATES = [
      default: it is off unless `?hemiface=1` (docs/specs/hemi-portrait.md) */
   /* v2.3.3944: the quest journal (dash/QuestsPanel.jsx): it opens on the
      quest you are on (a run has taken Into the Blue at quest-accepted) */
-  dash('quests', 'Quests', 'The quest journal: the achievement points quests have paid, then the quest you are on in full (NOW with its count and bar, WHERE with Show on map, WHO you talked to, GIVEN TO YOU, REWARD with +5 Achievement Points, NEXT), then the log: Active with a Track star each, Available (who has one and where), Done with each quest\'s +5 AP.  The daily rewards card above.'),
+  dash('quests', 'Quests', 'The Quests page (v2.3.4356: a menu): your quests as a list of pills down the left (Active, Available, then Done with its count and Daily), each with its giver\'s pin; the open quest beside it: its title and status with Map and Track, what to do NOW with its count and bar, WHERE; then, a scroll below, WHO you talked to, GIVEN TO YOU, REWARD with +5 Achievement Points, NEXT.'),
   {
     id: 'dash-quest-detail', group: 'Dashboard', title: 'A quest in detail',
-    about: 'One quest opened from the journal\'s list: the same six parts (NOW, WHERE, WHO with each step ticked, GIVEN TO YOU, REWARD, NEXT) and Track this quest.',
+    about: 'One quest\'s own page, as the pinned quest card in the world opens it (v2.3.4356: the Quests page itself opens a quest beside its list): the six parts (NOW, WHERE, WHO with each step ticked, GIVEN TO YOU, REWARD, NEXT) and Track this quest.',
     /* v2.3.3944: a row of the list by its own mark (an Active row, else an
        Available one), scrolled into view under the page it opens on */
     run: async ({ P }) => {
       await bus(P, 'open', 'quests');
       await wait(P, 600);
       const sel = (await has(P, '[data-quest-row]')) ? '[data-quest-row]' : '[data-quest-offer-row]';
-      await evalIn(P, (s0) => { const el = document.querySelector(s0); if (el) el.scrollIntoView({ block: 'center' }); }, sel);
-      await wait(P, 300);
-      const e = await tapSel(P, sel);
-      if (e) return 'no quest row to open (' + e + ')';
+      /* v2.3.4356: a pill of the list opens its quest beside it; the quest's
+         own page is the pinned card's road (questDetailBus, then the drill) */
+      const qid = await evalIn(P, (s0) => { const el = document.querySelector(s0); return el ? (el.getAttribute('data-quest-row') || el.getAttribute('data-quest-offer-row')) : null; }, sel);
+      if (!qid) return 'no quest in the list to open';
+      const ok = await evalIn(P, (q) => { if (!window.__btQuestDetail) return false; window.__btQuestDetail.open(q); return true; }, qid);
+      if (!ok) return 'no quest-detail probe';
       await wait(P, 500);
       if (!(await has(P, '[data-journal-page]')) || (await has(P, '[data-journal-focus]'))) return 'the quest\'s page did not open';
     },

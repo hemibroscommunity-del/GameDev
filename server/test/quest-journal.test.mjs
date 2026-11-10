@@ -207,10 +207,14 @@ const after1 = { npc: 'Blacksmith Bro', title: QUEST_CHAINS.smith_1.title, meet:
   check('the lands\' ways are read from the world at run time, never written in (CLAUDE.md: no Wheel coordinate in code)',
     /z\.lands/.test(model) && !/\b1\d{4}\b|\b2\d{4}\b/.test(model));
   const list = read('../../src/ui/mobile/dash/QuestsPanel.jsx');
-  check('the list: the points at the top, the page it opens on, Active rows (data-quest-row) with a Track star, Available, Done with +AP',
-    /data-journal-ap=/.test(list) && /<QuestJournalPage page=\{focus\}/.test(list) && /data-quest-row=\{r\.id/.test(list)
-      && /data-quest-row-track=/.test(list) && /data-quest-offer-row=/.test(list) && /data-quest-done-ap=/.test(list));
+  /* v2.3.4356: the Quests page is a list of pills beside the quest that is open */
+  check('the Quests page: a list of pills (Active with data-quest-row and its track mark, Available, Done, Daily) beside the open quest, drawn `brief` with Track; Done with the points and +AP',
+    /data-journal-ap=/.test(list) && /<QuestJournalPage page=\{page\} brief track=/.test(list) && /'data-quest-row': r\.id/.test(list)
+      && /'data-quest-row-track':/.test(list) && /'data-quest-offer-row': r\.id/.test(list) && /data-quest-done-ap=/.test(list)
+      && /data-quest-rail=/.test(list) && /data-quest-detail=/.test(list) && /'data-quest-nav': 'done'/.test(list));
   check('the list keeps the daily rewards card and the quest path switch', /<DailyRewardsCard \/>/.test(list) && /GROUND_PATH && <PathSwitch \/>/.test(list));
+  check('the list\'s pills are never components made in the render (a redraw each second would take a button from under a finger)',
+    !/const (Pill|Sec) = \(/.test(list) && /const pill = \(/.test(list));
   const detail = read('../../src/ui/mobile/dash/QuestDetailPanel.jsx');
   check('a quest\'s page keeps Track (data-quest-track, data-quest-track-note) and the questDetailBus',
     /data-quest-track=\{tracked \? 'on' : 'off'\}/.test(detail) && /data-quest-track-note=/.test(detail) && /questDetailBus\.selected\(\)/.test(detail));
@@ -220,7 +224,10 @@ const after1 = { npc: 'Blacksmith Bro', title: QUEST_CHAINS.smith_1.title, meet:
     /import \{ openWorldMap \} from '\.\.\/\.\.\/WorldMapOverlay\.jsx'/.test(page) && /setTrackedQuest\(page\.id\)/.test(page) && /return openWorldMap\(\)/.test(page));
   check('the page says "click" on a computer (deskWords on NOW, WHERE, the steps and NEXT)',
     (page.match(/deskWords\(/g) || []).length >= 5);
-  check('the page is laid out from its own measured box (a ResizeObserver), never the window', /ResizeObserver/.test(page) && !/innerWidth/.test(page + list));
+  const kit = read('../../src/ui/mobile/dash/railKit.js');
+  check('the page is laid out from its own measured box (a ResizeObserver), never the window', /ResizeObserver/.test(page) && /ResizeObserver/.test(kit) && /useBoxSize\(\)/.test(list) && !/innerWidth/.test(page + list + kit));
+  check('the brief page: MAP and TRACK in the head (data-journal-map, data-quest-track), then NOW and WHERE, and what tracking does (data-quest-track-note)',
+    /data-journal-brief=/.test(page) && /aria-label="Show on map"/.test(page) && /data-quest-track=\{tracked \? 'on' : 'off'\}/.test(page) && /data-quest-track-note=/.test(page));
   check('a tap that replaces the page swallows the click that follows (TRAPS §247)', /swallowTapClick\(e\)/.test(page));
   const sizes = (page + list).match(/fontSize: (\d+(?:\.\d+)?)/g).map((s) => Number(s.split(': ')[1]));
   check(`readable on a phone: no text under 13 px on the journal (smallest ${Math.min(...sizes)})`, Math.min(...sizes) >= 13, sizes);

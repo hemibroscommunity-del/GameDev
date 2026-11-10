@@ -6,6 +6,7 @@ import { takeFishBoardWant, subscribeFishWeigh, fishWeighLive } from '@/game/fis
 import { BoardRow, BoardEmpty, useBoardFaces } from './BoardRow.jsx';   /* v2.3.4355: the face, the level, the record */
 import { askSpinBoard, subscribeSpinBoard, spinBoardLive, spinRowLine } from '@/game/spinBoard.js';
 import { aceFlipBus } from '../aceFlipBus.js';
+import { useBoxSize } from './railKit.js';   /* v2.3.4356: the measuring this page and the Quests page share */
 
 /* v2.3.1671: a TRADITIONAL HISCORES BOARD — one ranking per skill.
    Owner: "a traditional high scores system that ranks each skill... I want
@@ -161,26 +162,6 @@ const chip = (active) => ({
 const RAIL_W = 122;
 const SIDE_BY_SIDE = 330;
 const LIST_MIN_H = 140;
-
-/* the page's box, measured: [ref, width, height] */
-function useBoxSize() {
-  const [el, ref] = useState(null);
-  const [size, setSize] = useState([0, 0]);
-  useEffect(() => {
-    if (!el) return undefined;
-    const read = () => {
-      const r = el.getBoundingClientRect();
-      setSize((old) => (Math.abs(old[0] - r.width) < 1 && Math.abs(old[1] - r.height) < 1 ? old : [Math.round(r.width), Math.round(r.height)]));
-    };
-    read();
-    let ro = null;
-    try { ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(read) : null; } catch (_e) { ro = null; }
-    if (ro) ro.observe(el);
-    else window.addEventListener('resize', read);
-    return () => { if (ro) ro.disconnect(); else window.removeEventListener('resize', read); };
-  }, [el]);
-  return [ref, size[0], size[1]];
-}
 
 /* the board you last looked at, kept while the game is open: closing the
    page to fight and coming back lands where you were */

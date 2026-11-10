@@ -16,6 +16,62 @@ Client only: no message, no cap, no kill switch, no storage key. Taking and
 handing in a quest stays with its giver in the world and the worker (no
 Accept, no Turn In on these pages: v2.3.1704, v2.3.2195).
 
+## v2.3.4356: the Quests page is a menu
+
+Owner, 2026-11-09:
+
+> The quests page actually needs to be reorganized as a useful menu
+> interface. Right now everything scrolls too long and it's not a good quest
+> management system. It needs to be able to help you navigate active quests,
+> next steps, locations, etc easily on a mobile device.
+
+The page below ("The Quests page") was one column about 1,000 px long in a
+band about 190 px tall. It is now a list beside what it opens, the
+Leaderboards' shape (`docs/specs/leaderboards.md`):
+
+- **The list** (`[data-quest-rail]`, 136 px, scrolls by itself): pills, each a
+  44 px target.
+  - **Active**: one a quest in hand (`data-quest-row`, `data-quest-row-ready`,
+    `data-quest-row-track`), the tracked one first. Its picture is the giver's
+    pin (`ownerIcons.js` `QUEST_PIN`: the grey "?" waiting, the ring and tick
+    ready), or a brass star on the one you track.
+  - **Available**: one an offer (`data-quest-offer-row`), the gold "!".
+  - **More**: **Done** with its count (`data-quest-nav="done"`), and **Daily**
+    (`data-quest-nav="daily"`, the prize wheel) against a worker with the
+    daily rewards.
+- **The open quest** (`[data-quest-detail]`, scrolls by itself):
+  `QuestJournalPage` with `brief`:
+  - the head: the title (`data-journal-title`) and the status, then **Map**
+    (`data-journal-map`, "Show on map" its spoken name) and **Track**
+    (`data-quest-track`), 50 x 44 px each;
+  - NOW with no heading: the step, the objective, the count and its bar on
+    one line (`data-journal-now`, `data-journal-count`);
+  - WHERE as one line (`data-journal-where`), and under it, once tracked,
+    "Your map's gold star follows this quest." (`data-quest-track-note`);
+  - then WHO, GIVEN TO YOU, REWARD and NEXT as before.
+  On a 390 px phone the head, NOW and WHERE are inside the pane without a
+  scroll.
+- **Done** (`data-quest-pane="done"`): "Achievement Points from quests: N"
+  (`data-journal-ap`), then each quest handed in with its +5 AP
+  (`data-quest-done-row`, `data-quest-done-ap`). A tap opens it;
+  "◂ Done quests" (`data-quest-back`) comes back.
+- **Daily** (`data-quest-pane="daily"`): the Daily rewards card.
+- **Which quest is open**: the one you are on (`focusQuestId`, as before)
+  unless you picked one; a pick is kept while the game is open and dropped
+  when that quest changes hands (taken, handed in), so after a hand-in the
+  page is back on what is next.
+- **Narrow or short** (under 340 px wide or 140 px tall: a phone on its side,
+  the old side column): the pills are one row over the quest
+  (`data-quests-page="chips"`).
+- The pills are plain functions called in the render (`pill`, `sec`), never
+  components made there: the page redraws every second, and a button that was
+  a new component each time would be taken from under a finger.
+- `src/ui/mobile/dash/railKit.js`: `useBoxSize`, `sideBySide`, `FOOT_FADE`,
+  shared with the Leaderboards.
+- A quest's own page (`QuestDetailPanel`, the pinned quest card's tap) is as
+  it was; QA opens it with `window.__btQuestDetail.open(qid)`.
+- Nothing under 13 px, the list included.
+
 ## Where it lives
 
 | File | Job |
@@ -27,7 +83,7 @@ Accept, no Turn In on these pages: v2.3.1704, v2.3.2195).
 | `src/ui/mobile/dash/QuestDetailPanel.jsx` | A quest's own page (`questDetail`, chosen through `questDetailBus`), and Track. |
 | `src/ui/mobile/sheet/questModel.js` | `deriveQuestOffers(S)`: every giver's offer, untrimmed (`deriveQuestLog` still trims it for its other readers). |
 
-## The Quests page
+## The Quests page (until v2.3.4356; the parts and their words are unchanged)
 
 Top to bottom:
 
