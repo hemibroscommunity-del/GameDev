@@ -112,6 +112,7 @@ import { showLingerWait, hideLingerWait } from '@/ui/LingerScreen.js';   /* v2.3
 import { showOriginScreen } from '@/ui/OriginScreen.js';   /* v2.3.3312: a copy on another site is sent to the real game */
 import { showDeviceScreen } from '@/ui/DeviceScreen.js';   /* v2.3.3344: a character's key on a device it was never played on */
 import { markServerReady, resetServerReady, serverReadyReason } from '@/networking/serverReady.js'; /* v2.3.2439: the world waits for the server */
+import { retireSocket } from '@/game/socketLine.js'; /* v2.3.4367: one line at a time */
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { noteEatRefused, pvpHealWaitText } from '@/game/fightFood.js'; /* v2.3.3133: the worker's word on a bite it held back */
@@ -495,14 +496,28 @@ export function setupWebSocket(ctx) {
         });
         return;
       }
+      /* ═══ v2.3.4367: ONE LINE AT A TIME ═══
+         Every road that connects comes through here (the room-full timer and
+         its Try now, the linger and lockout waits, the key door-ask, the
+         account check's token, a tab return, the backoff), and only some
+         retired the old line first: Try now during the automatic try's
+         handshake left a stray that later knocked the live line off (the
+         sweep's V4 N1-2).  So connect() retires the line it replaces itself
+         (handlers off, then closed: game/socketLine.js), and each handler
+         below acts only while its own socket is still the current one. */
+      var _prevWs = ws;
+      ws = null;
+      retireSocket(_prevWs, 1000, 'replaced');
+      var sock;
       try {
-        ws = new WebSocket(WS_URL);
+        sock = ws = new WebSocket(WS_URL);
         _connectAt = Date.now();   /* v2.3.3496: a connect that never finishes is retried (_aliveTimer) */
       } catch (e) {
         scheduleReconnect();
         return;
       }
       ws.onopen = function () {
+        if (sock !== ws) return;   /* v2.3.4367: a line that has been replaced does nothing */
         var _S$rpg, _S$rpg2, _S$rpg3, _S$rpgC, _S$rpgI, _S$rpgL, _S$rpgLV, _S$rpgXP, _S$rpgUT;
         /* v2.3.1982: a refused joiner now gets a REAL upgraded socket that
            the worker closes a beat later (join.js _roomFullRefusal), so
@@ -839,6 +854,7 @@ export function setupWebSocket(ctx) {
         setChatLog(_toConsumableArray(S.chatLog));
       };
       ws.onmessage = function (evt) {
+        if (sock !== ws) return;   /* v2.3.4367: a replaced line's frames are not this world's */
         /* v2.3.3034: any frame at all says the pipe is alive (_aliveTimer) */
         _lastInboundAt = Date.now();
         _settleSentAt = 0;
@@ -1579,6 +1595,11 @@ export function setupWebSocket(ctx) {
               /* v2.3.3260: ...and so is "your bro is still in that fight" */
               _lgPending = null;
               hideLingerWait();
+              /* v2.3.4367: ...and the line is connected.  onopen was the one
+                 'connected' write, so a 'superseded' a stray line stamped over
+                 a live one stuck until the next open: the dot red, Friends
+                 "Reconnecting...", the dead-pipe watch off (V4 N1-2 stuck). */
+              S._realtimeStatus = 'connected';
               /* v2.3.3034: we are in again -- an idle or superseded banner is
                  no longer true, and a strike that had no socket to carry it
                  goes now (_holdForRejoin).  Only into a world the game will
@@ -4491,6 +4512,7 @@ export function setupWebSocket(ctx) {
 
 
       ws.onclose = function (event) {
+        if (sock !== ws) return;   /* v2.3.4367: a replaced line's close re-arms nothing */
         S._realtimeStatus = 'disconnected';
         /* v2.3.771: close-reason evidence.
            v2.3.2615: the note that used to sit here said "src/networking/
@@ -4684,6 +4706,7 @@ export function setupWebSocket(ctx) {
         scheduleReconnect();
       };
       ws.onerror = function () {
+        if (sock !== ws) return;   /* v2.3.4367 */
         S._realtimeStatus = 'disconnected';
       };
     }
@@ -6242,11 +6265,11 @@ export function setupWebSocket(ctx) {
       clearInterval(_aliveTimer); /* v2.3.778 resync heartbeat */
       clearInterval(_riderTimer); /* v2.3.3254: the quiet phone's riders */
       _disarmComeBack();   /* v2.3.3034 */
-      if (ws) {
-        try {
-          ws.close();
-        } catch (e) {}
-      }
+      /* v2.3.4367: handlers off before the close, as connect() does: a closed
+         effect's socket must not run the ordinary drop and reconnect */
+      var _lastWs = ws;
+      ws = null;
+      retireSocket(_lastWs, 1000, 'teardown');
       S.channel = null;
       S._realtimeStatus = 'disconnected';
     };
