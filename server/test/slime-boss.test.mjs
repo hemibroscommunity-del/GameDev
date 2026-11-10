@@ -335,6 +335,12 @@ const t0 = Date.now();
     split._burstUntil === undefined && split._burstFrom === undefined && split._burstScale === undefined && split._fxWasAlive === true, split);
   const slime = carryMonsterState({ id: 's', alive: true, hp: 0 }, { id: 's', alive: true, hp: 0, _burstFrom: 5, _burstUntil: 6, _burstScale: 3.5 });
   check('phone: ...and a blue slime mid-burst (no bs) keeps its swell, as it must', slime._burstUntil === 6 && slime._burstScale === 3.5, slime);
+  /* v2.3.4403: one that went off, died and came back inside a gap is alive in
+     both lists too; the wire's hp (sent every time) is what tells the lives
+     apart.  Kept, it was drawn huge and could not be hit (the sweep's V7). */
+  const reborn = carryMonsterState({ id: 's', alive: true, hp: 30 }, { id: 's', alive: true, hp: 0, _burstFrom: 5, _burstUntil: 6, _burstScale: 3.5, renderX: 7 });
+  check('phone: ...but a blue slime that came back since (hp above 0, no bs) holds no swell; the rest of the carry stays',
+    reborn._burstUntil === undefined && reborn._burstFrom === undefined && reborn._burstScale === undefined && reborn.renderX === 7, reborn);
   check('phone: the two lists name only the phone\'s own fields (never one the wire sends)',
     [...CARRY_ALIVE, ...CARRY_DEAD].every((k) => typeof k === 'string' && (k[0] === '_' || k === 'renderX' || k === 'renderY')));
 }
