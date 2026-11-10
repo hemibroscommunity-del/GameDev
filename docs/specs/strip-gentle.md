@@ -61,8 +61,8 @@ is not drawn, as before.
 
 | | The old way (`?stripgentle=0`) | Now |
 |---|---|---|
-| Riding up to the Blacksmith (`mp-stripgentle`, a phone's 4 ms slice): strips unpacked in one job each | 14, the longest 25 to 31 ms | **0** |
-| ...the page held, a piece at a time | 137 to 198 ms in 14 pieces | 37 to 38 slices, the longest 10 to 11 ms |
+| Riding up to the Blacksmith (`mp-stripgentle`, a phone's 4 ms slice): strips unpacked in one job each | 14, the longest 25 to 36 ms | **0** |
+| ...the page held, a piece at a time | 137 to 200 ms in 14 pieces | 37 to 43 slices, the longest 10 to 15 ms |
 | ...the look at the end | | every strip the same size and the same pixels |
 
 - **`node tools/qa/mp/run.mjs stripgentle`**: the ride, twice.
@@ -77,7 +77,7 @@ is not drawn, as before.
 
 - It cannot be SEEN here: the test box draws a few frames a second.
 - The longest slice is the budget plus one piece of work that cannot be cut
-  (a band's read, the strip's last step): 10 to 11 ms on the test box at a
+  (a band's read, the strip's last step): 10 to 15 ms on the test box at a
   4 ms slice. A 120-a-second screen can still lose a frame to one.
 - A monster's RECOLOUR (`monsterRecolor.js`) and a gear or stand-in sheet met
   for the first time are still unpacked in one go: the next ones to look at

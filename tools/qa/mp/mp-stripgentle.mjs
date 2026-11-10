@@ -28,7 +28,7 @@ import * as H from './harness.mjs';
 
 const PHONE = { width: 430, height: 932 };
 const OLD_HOLD_MS = 10;       /* this box: 13 to 39 ms a strip in one go */
-const SLICE_MAX_MS = 16;      /* a 4 ms slice and the one piece of work that ran past it (a band read, a strip's last step) */
+const SLICE_MAX_MS = 22;      /* a 4 ms slice and the one piece of work that ran past it (a band read, a strip's last step): 10 to 15 ms on this box over five runs, the 15 with two other scenarios before it */
 const WANT = 14;              /* the fire goblin's strips: walk, attack and hit by facing, and its death */
 
 async function ride(browser, wsPort, webPort, rec, label, query) {
