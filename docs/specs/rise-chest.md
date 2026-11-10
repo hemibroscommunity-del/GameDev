@@ -88,10 +88,20 @@ near BroTown).
   fingerprints: the plan's text changed), `server/src/wheelfaces.js` (two
   more rows). `wheelspawns.js` and `wheelspawns1.js` came out byte for byte
   the same: no monster's place and no resource moved.
-- **Drawn** by the same code as the islet's rises (rock and moss, a rim round
-  the terrace's top). It has no picture of its own. `ELEVATION-PLAN.md`'s
-  `face-commons` and `steps` pictures (a grassy bank, stone steps) are not
-  made; with them it would look like a hill, not a rock terrace.
+- **Drawn as a hill** (v2.3.4462; `rises.js` `hillFace`, `hillRim`). It first
+  shipped in the islet's sea rock: a grey stone outline on the grass. A rise
+  with `look: 'hill'` is now:
+  - its **face** a bank of packed earth, darker toward its foot, with stones
+    set in it and a tuft of grass here and there, under a lip of the commons'
+    own green grass hanging raggedly over it;
+  - its **rim** (the top's back and sides, which stay solid) only the bank's
+    thin earth edge: the top's own grass runs right to it, so the top reads
+    as raised ground, not a walled plot;
+  - a little **shade** on the ground at its foot, thinning out.
+  All painted in code in `RISE_PALETTE`'s colours (earth, stone, grass and
+  shade were added); nothing is loaded. The islet's rises are untouched.
+  `ELEVATION-PLAN.md`'s `face-commons` and `steps` pictures are still not
+  made; a drawn bank would be richer than a painted one.
 - **Cost**: the rises' grid is one box over every rise, so with a rise by the
   town and two on the islet it is 45 x 627 cells: about 28 KB in the ground
   worker's first message to each phone (it was 240 bytes). `risePaint` now
