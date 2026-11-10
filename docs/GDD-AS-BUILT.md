@@ -509,7 +509,7 @@ A whiff still costs the block and the cooldown and floats "Missed!". There is no
 
 **Held or dazed**: a rock monster's daze (0.5 s of no walk, swing, roll or shield, then 2.5 s immune) and a blue slime's hold (0.7 s, then 2 s immune) are the two "lock-down" lengths in the game, and the same two lengths cap any gem's freeze or root on a player.
 
-**Death**: at 0 HP you respawn after 5 s on BroTown's stairs. Everything in the bag except tools, quest items, worn gear, shields, outfits and gold drops as a pile only you may take for 60 s, then anyone, gone at 120 s. Items picked up within 1 s of a pickup are shielded from a second death.
+**Death**: at 0 HP you respawn after 5 s on BroTown's stairs. Everything in the bag except tools, quest items, worn gear, shields, outfits and gold drops as a pile only you may take for 60 s, then anyone, gone at 120 s. Items picked up within 1 s of a pickup are shielded from a second death. Closing the game (or losing signal, or a deploy) inside the 5 s comes back standing in BroTown at full health, with nothing taken twice (v2.3.4374, `joinstandup`; docs/specs/join-stands-up.md).
 
 ### 5.7 The one door for monster hits
 
