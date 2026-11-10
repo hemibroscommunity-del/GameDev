@@ -2,7 +2,8 @@ import React from 'react';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { dashMinBus } from '../dashMinBus.js';
 import { swallowTapClick } from '../../swallowTapClick.js';
-import { BAND_CLOSE_W } from '../sheet/sheetGeometry.js';   /* v2.3.4172: CLOSE's width, kept by the row */
+import { bandCloseW } from '../sheet/sheetGeometry.js';   /* v2.3.4172: CLOSE's width, kept by the row; v2.3.4393: 48 under 375 px */
+import { playVw } from '../playViewport.js';
 
 /* ═══ v2.3.4172: THE SLIM HANDLE ON THE BAND'S TOP EDGE ═══
    The owner adopted this from the review of his dashboard: "remove the large
@@ -140,7 +141,7 @@ export const BandClose = ({ min, expanded, h }) => (
     }}
     style={{
       flex: 'none',
-      width: BAND_CLOSE_W,
+      width: bandCloseW(playVw()),
       height: h || 44,
       padding: 0,
       margin: 0,

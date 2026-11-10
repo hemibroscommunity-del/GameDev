@@ -178,7 +178,7 @@ async function assembly(P, tag, tab, rec) {
   const a = await assemblyBoxes(P);
   const box = tab === 'gear' ? a.cols : a.page;
   const want = a.dash ? Math.min(a.maxW, a.dash.w) : 0;
-  const ok = !!a.nav && !!box && !!a.dash && !!a.close && !!a.last && a.n === 5 && a.maxW > 0
+  const ok = !!a.nav && !!box && !!a.dash && !!a.close && !!a.last && a.n === 6 /* v2.3.4393: the Leaderboards' button */ && a.maxW > 0
     && Math.abs(a.nav.l - box.l) <= 1 && Math.abs(a.nav.r - box.r) <= 1
     && Math.abs(box.w - want) <= 1
     && Math.abs((box.l - a.dash.l) - (a.dash.r - box.r)) <= 1

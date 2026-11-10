@@ -60,9 +60,10 @@ export const TILES = [
      where it has to, and only there (sideways the tile is wide enough). */
   { id: 'achievements', src: ACHV_MEDAL_SRC,                               label: 'Achievements', soft: 'Achieve\u00ADments', glyph: '🏆', group: 'Progress', iconScale: 1 },
   { id: 'encyclopedia', src: '/icons/ui/panel-encyclopedia.webp?v=2.3.1224', label: 'Codex',  glyph: '📚', group: 'Progress',  iconScale: 1 },
-  /* v2.3.4172: "Leaderboards", the owner's More list's word, broken
-     "Leader-boards" where six across has no room (Achievements' v2.3.3527 way) */
-  { id: 'leaderboard', src: '/icons/ui/panel-leaderboard.webp?v=2.3.1224', label: 'Leaderboards', soft: 'Leader\u00ADboards', glyph: '🏆', group: 'Progress',  iconScale: 1 },
+  /* v2.3.4393: the Leaderboards' tile is gone -- they have a button of their
+     own on the dashboard's row (BottomDashboard RAIL_ORDER: the owner's "make
+     room for a new 'leaderboards' button on the dashboard"), as Quests and the
+     Codex left when they got theirs (v2.3.4172). */
   /* v2.3.4172: "Social", the owner's word for More's friends row (the page is
      your friends and their messages; the party is its Party tile beside it) */
   { id: 'social',      src: '/icons/ui/nav-friends.webp?v=2.3.1224',      label: 'Social',   glyph: '👥', group: 'Community', iconScale: 1 },
@@ -140,7 +141,6 @@ function statusFor(id, S) {
       if (fresh > 0) return `${fresh} new in the codex`;
       return met > 0 ? `${met} of ${CODEX_KINDS.length} monsters met` : 'Learn about the monsters you defeat';
     }
-    case 'leaderboard': return 'View the leaderboards';
     /* v2.3.1641: same rule as every line above — real state only. */
     case 'quests': {
       const ready = readyQuestCount(S);
@@ -375,8 +375,12 @@ export const MorePanel = () => {
             the Guild and Journey stay, having no other door.  Twelve: two
             full rows of six upright, six rows of two sideways and on a
             computer, as before. */}
+        {/* v2.3.4393: eleven -- the Leaderboards left for their own button on
+            the row.  Six and five upright (the twelfth cell empty at the
+            end, the tiles the size they were); sideways and on a computer
+            five rows of two and one more. */}
         {['map', 'social', 'clan', 'guild', 'pets', 'journey',
-          'leaderboard', 'settings', 'account', 'notifications', 'feedback', 'about'].map(id => {
+          'settings', 'account', 'notifications', 'feedback', 'about'].map(id => {
           const t = tile(id);
           if (!t) return null;
           /* v2.3.4172: the bell's unread count rides its tile, as on the More

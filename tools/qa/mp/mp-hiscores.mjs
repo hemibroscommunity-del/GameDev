@@ -34,17 +34,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
      for a timer to elapse. */
   await A.page.waitForTimeout(2000);
 
-  /* The More tile is labelled "Ranks", not "Leaderboard" — the panel title
-     and the tile caption differ, which is exactly the sort of thing only a
-     real DOM walk catches. */
-  await H.openDest(A, 'Ranks');
+  /* v2.3.4393: the Leaderboards have a button of their own on the row (its
+     word "Ranks", its name "Leaderboards"); the boards are a list of buttons
+     beside the board, each row BoardRow (docs/specs/leaderboards.md).  The
+     page's own phone test is mp-boards; this one keeps the v2.3.1671 guard. */
+  await H.openDest(A, 'Leaderboards');
   await A.page.waitForTimeout(1500);
 
   const chips = await H.buttonTexts(A);
   rec.ok('the board offers a ranking per combat type',
     ['Melee', 'Bow', 'Magic'].every((c) => chips.includes(c)), chips.slice(0, 24));
   rec.ok('the board offers a ranking for every life skill',
-    ['Woodcutting', 'Fishing', 'Mining', 'Farming', 'Cooking', 'Blacksmithing',
+    ['Woodcutting', 'Fishing', 'Mining', 'Farming', 'Cooking', 'Smithing',
       'Woodworking', 'Gem Cutting', 'Enchanting', 'Trapping'].every((c) => chips.includes(c)),
     chips.slice(0, 24));
 
@@ -58,15 +59,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
      rendered a single row.  That false positive cost a debugging round: three
      assertions "passed" against a board that was returning zero results.
      A row is `#N | name | value`, so match on the rank column. */
-  const rows = () => A.page.evaluate(() => [...document.querySelectorAll('div')]
-    .filter((d) => {
-      const sp = [...d.children].filter((c) => c.tagName === 'SPAN');
-      return sp.length === 3 && /^#\d+$/.test((sp[0].textContent || '').trim());
-    })
-    .map((d) => {
-      const sp = [...d.children];
-      return { rank: sp[0].textContent.trim(), name: sp[1].textContent.trim(), value: sp[2].textContent.trim() };
-    }));
+  const rows = () => A.page.evaluate(() => [...document.querySelectorAll('[data-board-row]')]
+    .map((d) => ({
+      rank: '#' + d.dataset.boardRow,
+      name: ((d.querySelector('[data-board-name]') || {}).textContent || '').trim(),
+      value: ((d.querySelector('[data-lb-value]') || {}).textContent || '').trim(),
+    })));
 
   const got = await H.waitFor(A, () => [...document.querySelectorAll('span')]
     .some((sp) => /^#1$/.test((sp.textContent || '').trim())), (v) => v === true,
@@ -77,14 +75,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('both live players appear on the combat board',
     combat.some((r) => r.name === 'Hiscore') && combat.some((r) => r.name === 'Rival'), combat);
   /* v2.3.3481: a level board's number says so, "Lv 3" */
-  rec.ok('the row shows the ranked value (fresh character = 3 trained levels)',
-    combat.length > 0 && combat[0].rank === '#1' && combat[0].value === 'Lv 3', combat);
+  /* v2.3.3538: one level -- a fresh character is level 1 */
+  rec.ok('the row shows the ranked value (a fresh character is level 1)',
+    combat.length > 0 && combat[0].rank === '#1' && combat[0].value === 'Lv 1', combat);
 
   /* Switching category must trigger a NEW fetch.  Nobody has fished, so the
      honest answer is an empty board — and the copy has to distinguish "we
      asked and nobody qualifies" from the old "we never asked", or this panel
      silently regresses to its previous state without any test noticing. */
-  await H.clickText(A, 'Fishing').catch(() => {});
+  await A.page.evaluate(() => { const b = document.querySelector('[data-lb-cat="fishing"]'); if (b) b.click(); });
   await A.page.waitForTimeout(2000);
   rec.ok('an untrained skill reports nobody trained it, not missing data',
     /Nobody has trained this yet\./.test(await H.bodyText(A)));
@@ -92,7 +91,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* Back to a populated board: proves the switch is a real re-fetch in both
      directions, not a one-way latch. */
-  await H.clickText(A, 'Combat').catch(() => {});
+  await A.page.evaluate(() => { const b = document.querySelector('[data-lb-cat="combat"]'); if (b) b.click(); });
   await A.page.waitForTimeout(2000);
   rec.ok('switching back re-fetches the populated board', (await rows()).length >= 2, await rows());
 

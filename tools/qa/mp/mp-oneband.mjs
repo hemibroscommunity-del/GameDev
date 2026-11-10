@@ -371,8 +371,8 @@ async function oneBandChecks(P, rec, { label, viewport, upright, computer }) {
       !!g.desk && g.desk.on === true && g.desk.active === false && !g.keysStrip,
       { desk: g.desk, keysStrip: g.keysStrip });
     /* v2.3.4172: five buttons (Life Skills went inside Bro: L opens its page) */
-    rec.ok(`${label}: the nav buttons keep their key caps (I P J K O)`,
-      ['dashboard', 'hero', 'quests', 'encyclopedia', 'more'].every((id) => (g.navs.find((n) => n.id === id) || {}).key),
+    rec.ok(`${label}: the nav buttons keep their key caps (I P J U K O)`,
+      ['dashboard', 'hero', 'quests', 'leaderboard', 'encyclopedia', 'more'].every((id) => (g.navs.find((n) => n.id === id) || {}).key),
       g.navs.map((n) => ({ id: n.id, key: n.key })));
     /* v2.3.4152: every page key opens its page inside the band, and Esc
        closes it (deskKeys.js; the key each button wears is the key it obeys) */
