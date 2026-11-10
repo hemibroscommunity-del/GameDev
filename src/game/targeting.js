@@ -40,6 +40,7 @@ import { isPlayerDead } from '@/game/combatHelpers.js'; /* v2.3.2251: a corpse a
 import { chosenNear, isLiveClone, isLiveFighter, clonePos } from '@/game/sparTargets.js'; /* v2.3.3267: your sparring clones, monsters to your weapons; v2.3.3268: and the players you chose to attack */
 import { zoneHomes } from '@/data/zones.js';   /* v2.3.3499: the Wheel's far cull, which a lock may not outlive */
 import { keepDuelLock } from '@/game/duelLock.js';   /* v2.3.3713: a player lock follows its peer; an arena match locks on sight */
+import { manualOn, mcLockAllowed } from './manualCombat.js';   /* v2.3.4357: manual combat keeps no chosen lock */
 
 function monPos(m) {
   const x = (typeof m.renderX === 'number' && isFinite(m.renderX)) ? m.renderX : m.x;
@@ -499,7 +500,16 @@ export function updateTargeting(S) {
   /* First, so every early return below still leaves the flag current. */
   _updateEngagement(S);
   /* v2.3.3713: before the rule below returns early on a player lock */
-  keepDuelLock(S);
+  /* ═══ v2.3.4357: MANUAL COMBAT KEEPS NO LOCK A PLAYER CHOSE ═══
+     The owner: "Remove the tap to target system for now.  All combat types
+     (melee, bow, staff) will no longer be able to tap and lock on monster",
+     and of duels, "Yes duels lose tap lock."  The writers are guarded where
+     they are (BroTown's taps and clicks), and this is the one place every
+     lock passes each frame: with `?manual=1` only the rule's own automatic
+     lock (`src: 'auto'`: the sword facing the nearest) is left standing. */
+  if (manualOn()) {
+    if (S.lockedTarget && !mcLockAllowed(S.lockedTarget)) S.lockedTarget = null;
+  } else keepDuelLock(S);
   /* v2.3.3267: your sparring clones are candidates too, for the sword, the
      nearest first among the monsters (sparTargets.js clonesNear: the same
      perimeter, the same {m, x, y, d2} shape, `spar: true`).  v2.3.3268: and

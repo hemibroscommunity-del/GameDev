@@ -62,6 +62,7 @@ import { startBuildWatch } from '@/game/buildWatch.js';
 import { onTrackedQuest } from '@/game/trackedQuest.js';   /* v2.3.3522: the pinned quest card shows the quest you track (v2.3.3918: QuestCard.jsx reads it) */
 import { treeGeom, treeTrunkEllipse, treeReachBox } from '@/game/tierTrees.js';   /* v2.3.3345: each wood its own tree -- its box, its trunk and where you chop it from */
 import { oreGeom, oreBlockEllipse } from '@/game/tierOre.js';   /* v2.3.3345: each metal its own rock -- its box and its body */
+import { ManualGauge } from './panels/ManualGauge.jsx';   /* v2.3.4357: manual combat's build-up, on the right button (`?manual=1`) */
 import { TouchControls, RKNOB_TRAVEL } from './panels/TouchControls.jsx'; /* v2.3.2264: the disc's resting vs combat wash; v2.3.3018: the wash went with the sprite (game.css data-rstate), and the knob carries the picture */
 import { weaponDiscIcon } from './panels/controlSkin.jsx'; /* v2.3.3105: the attack disc wears the weapon in your hand */
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
@@ -459,6 +460,7 @@ import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the s
 import { climbBegin, climbSteer, climbSpeed, climbTick, riseSolidAt } from '@/game/climbActions.js';   /* v2.3.3994: the lagoon's climb and its faces (`?climb=1`) */
 import { tickJump, landJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick -- v2.3.3712: no longer, so triggerJump is the button's alone) */
 import { rightTapBusy, tapFreeMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress, requestTapAttack } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one; v2.3.3712: it attacks once now, never jumps */
+import { manualOn, mcPress, mcLift, mcAbort, mcMeleeMay, mcTakeArmed, mcArmToggle, mcArmed, mcFrac, mcReady, mcDraws, MANUAL } from '@/game/manualCombat.js';   /* v2.3.4357: manual combat (`?manual=1`): a draw let go, a tap when ready, no chosen lock */
 import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here; v2.3.4105: talkBeforeDoor retired (E never talks) */
 import { jumpAirborne, overLow, jumpLatched, jumpLatch, landedOver, flipBoost } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears; v2.3.3499: a crossing once begun stays begun */
 import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land's badge (v2.3.3629: beside the minimap's name plate) */
@@ -9385,6 +9387,25 @@ export var BroTown = function BroTown(_ref0) {
   var doSpecialAttack = useCallback(function () {
     specialAttack(stateRef.current);
   }, []);
+  /* ═══ v2.3.4357: MANUAL COMBAT -- A SWORD'S TAP (game/manualCombat.js) ═══
+     The owner: "the sword will be an icon on the button and need to build up
+     before you tap the button to attack", and "Tapping early does nothing.
+     You need to tap once it's ready."  So: not ready, nothing (the tap is
+     not kept); ready and the special armed, the special is this attack (if
+     it refuses -- its 1.5 s, no mana -- the ordinary swing is made); else
+     one swing.  True when an attack was made. */
+  var mcMeleeTap = useCallback(function () {
+    var S = stateRef.current;
+    if (!S || !S.rpg) return false;
+    if (!mcMeleeMay(S, Date.now())) { S._mcEarly = (S._mcEarly || 0) + 1; return false; }
+    if (mcTakeArmed(S)) {
+      var before = S._lastSwipe;
+      specialAttack(S);
+      if (S._lastSwipe !== before) return true;
+    }
+    swingAttack(S);
+    return true;
+  }, []);
 
   /* v2.3.1733: the two stamina abilities (PR 5).  Thin wrappers over
      castAbility, matching how every other action in this component is
@@ -10319,7 +10340,12 @@ export var BroTown = function BroTown(_ref0) {
        at RBTN_DBL_MS's grave.  The shield BUTTON is the bow and staff's guard
        now, on purpose. */
     var _lt = S.lockedTarget;
-    if (_lt && _lt.ref && _lt.type === 'monster' && _lt.src !== 'tap') {
+    /* v2.3.4357: manual combat (`?manual=1`) keeps no chosen lock, so the
+       press promotes none; and a draw starts under this thumb (a bow, a
+       staff: game/manualCombat.js mcPress) */
+    var _mcP = manualOn();
+    if (_mcP) mcPress(S, Date.now());
+    if (!_mcP && _lt && _lt.ref && _lt.type === 'monster' && _lt.src !== 'tap') {
       /* v2.3.3499: `near` -- an auto lock is only ever made inside the 220 px
          perimeter, so the promoted tap has been there: without the latch a
          press made with the monster 220-275 px off gave a sword a tap lock
@@ -10348,6 +10374,10 @@ export var BroTown = function BroTown(_ref0) {
        skips its ordinary swing, because castAbility has already stamped the
        swing window and the worker will bill this hit at the ability's numbers.
        Melee only, off cooldown, shield down -- see maybeSwordDash. */
+    /* v2.3.4357: manual combat -- the lunge is an attack like any other: not
+       before the sword is ready ("Tapping early does nothing"), and not in
+       place of a special armed for this attack (mcMeleeTap makes that one) */
+    if (_mcP && (!mcMeleeMay(S, Date.now()) || mcArmed(S))) return false;
     try { return maybeSwordDash(S); } catch (e) { return false; }
   }, []);
   /* ═══ v2.3.2258: THE AIM, IN ONE PLACE ═══
@@ -10460,6 +10490,11 @@ export var BroTown = function BroTown(_ref0) {
     S._atkPressAt = 0;
     S._atkHoldUntil = 0;   /* v2.3.3105 */
     S._atkPending = false;   /* v2.3.3145: a tap's press never becomes the attack */
+    /* v2.3.4357: manual combat -- a thumb's own lift has been judged already
+       (rE, bE, the mouse's up: mcLift, before this); any other end of the
+       press (the button gone from under it, a slide on to the shield) drops
+       the draw and fires nothing */
+    if (manualOn()) mcAbort(S);
     S.autoAttack = false;
     setAutoAttack(false);
     S._aiming = false;
@@ -10736,6 +10771,12 @@ export var BroTown = function BroTown(_ref0) {
        about them (mp-nomansland). */
     if (!hit && otherPlayerAtCss(cssX, cssY)) return false;
     var lt = S.lockedTarget;
+    /* v2.3.4357: manual combat keeps no chosen lock (a click on a monster is
+       a press like any other: the sword lunges at what it faces by itself) */
+    if (manualOn()) {
+      if (!mcMeleeMay(S, Date.now()) || mcArmed(S)) return false;
+      try { return maybeSwordDash(S) === true; } catch (_e2) { return false; }
+    }
     if (hit) {
       if (!lt || lt.ref !== hit) S.lockedTarget = { type: 'monster', id: hit.id, ref: hit, src: 'tap' };
       else if (lt.src !== 'tap') S.lockedTarget = { type: 'monster', id: lt.id, ref: lt.ref, src: 'tap', near: true };
@@ -10812,6 +10853,7 @@ export var BroTown = function BroTown(_ref0) {
     /* v2.3.4323 (owner): the right click is the weapon's SPECIAL again, always -- the shield is Q's now
        (_desktopShieldToggle); its level gate and refusal words are doSpecialAttack's, as Q had them */
     if (!S || !S.rpg) return null;
+    if (manualOn()) { mcArmToggle(S); return 'armed'; }   /* v2.3.4357: manual combat ARMS it (again: disarms) */
     if (S._mouseAimAngle != null) S._aimAngle = S._mouseAimAngle;
     doSpecialAttack();
     return 'special';
@@ -11364,6 +11406,17 @@ export var BroTown = function BroTown(_ref0) {
       var t = findT(e.changedTouches, rTouchId.current);
       if (!t) return;
       rTouchId.current = null;
+      /* ═══ v2.3.4357: MANUAL COMBAT -- THE LIFT IS THE SHOT ═══
+         Before the release below (which only tidies).  A full draw let go
+         shoots; one brought back to where the thumb first touched (within
+         the stick's own 8 px dead zone, after having left it) is CANCELLED;
+         a lift before full is a slip unless the thumb is back in 100 ms
+         (game/manualCombat.js mcLift). */
+      if (manualOn() && stateRef.current) {
+        var _mcT = rTapState.current;
+        var _mcDx = t.clientX - _mcT.startX, _mcDy = t.clientY - _mcT.startY;
+        mcLift(stateRef.current, Date.now(), !!_mcT.moved && (_mcDx * _mcDx + _mcDy * _mcDy) <= MANUAL.CENTRE_PX * MANUAL.CENTRE_PX);
+      }
       /* v2.3.2258: the stick lets go -- auto-attack off, aim released, rod and
          knob back to centre.  Before the tap-forward below, so a tap that locks
          a monster is not also left holding the attack down. */
@@ -11400,7 +11453,9 @@ export var BroTown = function BroTown(_ref0) {
         var _rtDur = endT - rts3.startAt;
         var _rFlick = (_rdist / Math.max(_rdur, 1) > 0.15 && _rdist > 8 && _rdur < 400)
           || (_rtDist / Math.max(_rtDur, 1) > 0.2 && _rtDist > 15 && _rtDur < 500);
-        if (_rFlick) { doSpecialAttack(); return; }
+        /* v2.3.4357: manual combat -- a special is ARMED by its button, never
+           flicked: a quick lift after aiming is the shot's own gesture */
+        if (_rFlick && !manualOn()) { doSpecialAttack(); return; }
       }
       /* v2.3.1287: self-tap on the aim side opens chat -- no lock-on click.
          Its own 400ms ceiling (SELF_TAP_MAX_MS): opening chat is not a
@@ -11483,7 +11538,10 @@ export var BroTown = function BroTown(_ref0) {
                arrow or one bolt the way you face, taken by the auto-attack
                loop as a press of the disc is (game/tapJump.js
                requestTapAttack); the JUMP button and Space jump (X until v2.3.3844). */
-            try { requestTapAttack(_tjS, endT); } catch (err) { /* an attack is never worth a broken tap */ }
+            /* v2.3.4357: manual combat -- a sword's tap swings if it is
+               ready (mcMeleeTap); a bow's or a staff's tap is a draw let go
+               at once, which is nothing */
+            try { if (manualOn()) { if (!mcDraws(_tjS)) mcMeleeTap(); } else requestTapAttack(_tjS, endT); } catch (err) { /* an attack is never worth a broken tap */ }
           }
         }
       }
@@ -11578,6 +11636,10 @@ export var BroTown = function BroTown(_ref0) {
          fires -- both would bill the same thumb twice, and castAbility has
          already set the swing window and the animation. */
       if (handleRBtnPress() === true) return;
+      /* v2.3.4357: manual combat -- the disc's press is the sword's tap (it
+         swings only when ready); for a bow or a staff the press began the
+         draw (handleRBtnPress) and the lift will judge it */
+      if (manualOn()) { if (!mcDraws(stateRef.current)) mcMeleeTap(); return; }
       doSwing();
     };
     var bM = function bM(e) {
@@ -11711,6 +11773,10 @@ export var BroTown = function BroTown(_ref0) {
       var totalSpd = totalDist / Math.max(totalDur, 1);
       var isFlick = (spd > 0.15 && dist > 8 && dur < 400)
         || (totalSpd > 0.2 && totalDist > 15 && totalDur < 500);
+      /* v2.3.4357: manual combat -- the disc's lift is the shot's (no cancel
+         here: the disc does not aim, so there is no centre to come back to),
+         and no special is flicked */
+      if (manualOn() && stateRef.current) { mcLift(stateRef.current, Date.now(), false); isFlick = false; }
       if (isFlick) {
         var Sfk = stateRef.current;
         Sfk._hasUsedSwipe = true;
@@ -12956,7 +13022,9 @@ export var BroTown = function BroTown(_ref0) {
                    the automatic rule rather than leaving you with no target;
                    with acquisition automatic, `null` here means "resume", not
                    "nothing", and the next frame re-points at the nearest. */
-                if (_S.lockedTarget && _S.lockedTarget.ref === _closest) {
+                if (manualOn()) {
+                  /* v2.3.4357: manual combat keeps no chosen lock */
+                } else if (_S.lockedTarget && _S.lockedTarget.ref === _closest) {
                   _S.lockedTarget = null;
                 } else {
                   _S.lockedTarget = { type: 'monster', id: _closest.id, ref: _closest, src: 'tap' };
@@ -13104,6 +13172,17 @@ export var BroTown = function BroTown(_ref0) {
         S.autoAttack = true;
         setAutoAttack(true);
         S._aiming = true;
+        /* ═══ v2.3.4357: MANUAL COMBAT ON A COMPUTER (`?manual=1`) ═══
+           The owner, asked whether it is "hold the mouse to draw and release
+           to fire at the cursor": "Yes for computer controls."  The press
+           starts the draw of a bow or a staff (the up judges it); a sword's
+           click is its tap: a lunge or a swing if it is ready, nothing if it
+           is not.  No lock is taken (_deskLungePress). */
+        if (manualOn()) {
+          mcPress(S, Date.now());
+          if (!mcDraws(S) && !_deskLungePress(S, e.clientX - _pr.left, e.clientY - _pr.top)) mcMeleeTap();
+          return;
+        }
         /* ═══ v2.3.3694: A SWORD'S PRESS LUNGES ON A COMPUTER TOO ═══
            The owner, on the desktop version: "The melee needs the "zoom to
            attack monster" behavior that exists on phones when you get close
@@ -13128,6 +13207,13 @@ export var BroTown = function BroTown(_ref0) {
     onMouseUp: function onMouseUp(e) {
       if (!stateRef.current._isDesktop) return;
       if (e.button === 0) {
+        /* v2.3.4357: manual combat -- the button's up is the shot's (the
+           shot leaves the way the cursor last pointed: S._lastAimAngle) */
+        if (manualOn()) {
+          var _mcS = stateRef.current;
+          if (_mcS._mouseAimAngle != null) { _mcS._aimAngle = _mcS._mouseAimAngle; _mcS._lastAimAngle = _mcS._mouseAimAngle; }
+          mcLift(_mcS, Date.now(), false);
+        }
         stateRef.current.autoAttack = false;
         setAutoAttack(false);
         stateRef.current._aiming = false;
@@ -13162,6 +13248,7 @@ export var BroTown = function BroTown(_ref0) {
       var rect = e.currentTarget.getBoundingClientRect();
       var m = monsterAtCss(e.clientX - rect.left, e.clientY - rect.top);
       if (!m) return;
+      if (manualOn()) return;   /* v2.3.4357: manual combat keeps no chosen lock, and a double click is two presses */
       S.lockedTarget = { type: 'monster', id: m.id, ref: m, src: 'tap' };
       var dashed = false;
       try { dashed = maybeSwordDash(S) === true; } catch (_e) { dashed = false; }
@@ -13248,7 +13335,9 @@ export var BroTown = function BroTown(_ref0) {
         /* v2.3.3470: the scan is monsterAtCss, shared with the press's own
            question (_deskPressTarget) so the two cannot disagree */
         var closest = monsterAtCss(cssX, cssY);
-        if (closest) {
+        /* v2.3.4357: manual combat keeps no chosen lock -- a tap or a click on
+           a monster is a tap like any other (the sword's swing, if ready) */
+        if (closest && !manualOn()) {
           /* Toggle lock: tap same = unlock, tap new = lock */
           if (S.lockedTarget && S.lockedTarget.ref === closest) {
             /* v2.3.3711: ...but the SECOND click of a double click is the
@@ -15802,6 +15891,8 @@ export var BroTown = function BroTown(_ref0) {
      and z-index 6 so they sit over the world canvas but under all HUD
      (z>=20).  bt-desktop-hide drops them on desktop so the mouse reaches the
      canvas. */
+  /* v2.3.4357: manual combat's build-up ring and weapon badge (nothing without `?manual=1`) */
+  /*#__PURE__*/React.createElement(ManualGauge, { stateRef: stateRef }),
   /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rBodyRef: rBodyRef, rLabelRef: rLabelRef, rRingRef: rRingRef, rHintRef: rHintRef, rStickRef: rStickRef, rKnobRef: rKnobRef, lWrapRef: lWrapRef, rWrapRef: rWrapRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until the worker advertises caps.abil (AbilityButtons.jsx; v2.3.2662: no level gate -- the milestone ladder is gone). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2242: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2542: ...and the Special button orbits the ATTACK disc, a second trigger for the flick (SpecialButton.jsx). */ /*#__PURE__*/React.createElement(SpecialButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.4130: the weapon pill, centred at the foot of the world on a phone and a computer alike -- a tap or click on a weapon runs the same swap as the double tap and the keys (WeaponPill.jsx; it was v2.3.3921's triangle). */ /*#__PURE__*/React.createElement(WeaponPill, { stateRef: stateRef, onCycle: _desktopCycleWeapon, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
      Not a style choice — a hard requirement this cost a round of QA to
      find.  .brotown-wrap is position:fixed, and Chrome treats that as its
