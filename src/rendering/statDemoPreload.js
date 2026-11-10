@@ -53,7 +53,19 @@ const _held = [];
    first-use hitch the preloading law names.  Two strips (idle for the swell,
    death for the burst), encoded once and kept for the session; a failure
    leaves the scene on the green sheets and never fails the gate. */
+/* ═══ v2.3.4452: ONCE A PAGE, NOT ONCE A JOIN ═══
+   Back to the menu and joining again runs the loading screen again, and this
+   baked the two strips again under new blob URLs (the old ones never
+   revoked) and held another set of warmed <img>s: about 2.4 MB a rejoin,
+   for the page (state-machine sweep VC-2, R5-9).  Now a bake that worked is
+   kept (`_blueBaked`), and a URL already warmed is not warmed again (`_warm`,
+   its promise).  A bake or warm that FAILED is still tried by the next
+   loading screen, as before. */
+let _blueBaked = null, _blueBaking = null;
+const _warm = new Map();   /* url -> the promise of its held <img> (a failed one is dropped) */
 function bakeBlueSlime() {
+  if (_blueBaked) return _blueBaked;
+  if (_blueBaking) return _blueBaking;   /* (two loading screens at once: one bake) */
   const v = MONSTER_VARIANTS && MONSTER_VARIANTS.blueSlime;
   const rgb = v && v.recolor;
   if (!rgb || typeof document === 'undefined') return Promise.resolve(null);
@@ -69,18 +81,27 @@ function bakeBlueSlime() {
     img.onerror = () => resolve(null);
     img.src = SLIME[state].url;
   });
-  return Promise.all([one('idle'), one('death')]).then(([idle, death]) => {
-    if (!idle || !death) return null;
+  _blueBaking = Promise.all([one('idle'), one('death')]).then(([idle, death]) => {
+    _blueBaking = null;
+    if (!idle || !death) {
+      /* v2.3.4452: half a bake is let go of (it is made again next time) */
+      for (const u of [idle, death]) if (u) { try { URL.revokeObjectURL(u); } catch (e) { /* gone */ } }
+      return null;
+    }
     setBlueSlimeSheets({ idle, death });
     /* ...and decoded and held like every other scene asset, so the first
        swell paints a bitmap that is already there */
-    return Promise.all([warm(idle), warm(death)]);
+    const p = Promise.all([warm(idle), warm(death)]);
+    _blueBaked = p;   /* v2.3.4452: kept for the page (above) */
+    return p;
   });
+  return _blueBaking;
 }
 
 function warm(url) {
   if (typeof Image === 'undefined') return Promise.resolve(null);
-  return new Promise((resolve) => {
+  if (_warm.has(url)) return _warm.get(url);   /* v2.3.4452: warmed already */
+  const p = new Promise((resolve) => {
     const img = new Image();
     img.decoding = 'async';
     img.onload = () => {
@@ -91,9 +112,11 @@ function warm(url) {
     /* A failed warm must never fail the gate: the intro overlay lifting is
        worth more than an explainer icon, and the <img> falls back to an
        ordinary fetch when the scene actually runs. */
-    img.onerror = () => resolve(null);
+    img.onerror = () => { _warm.delete(url); resolve(null); };
     img.src = url;
   });
+  _warm.set(url, p);
+  return p;
 }
 
 export function preloadStatDemo() {

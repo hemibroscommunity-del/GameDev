@@ -9,6 +9,7 @@
  */
 
 import { Assets } from 'pixi.js';
+import { loadSetLater } from './loadSetLater.js';   /* v2.3.4452: a shield view that failed once is asked for again */
 
 const SPRITE_VERSION = '2.3.1875'; /* v2.3.1875: halo peel — bumped so a cached
    shield with the grey rim is not served over the cleaned art (see BlockRing).
@@ -22,19 +23,21 @@ const SHEETS = {
 
 let loadPromise = null;
 
-async function loadOne(view) {
-  const entry = SHEETS[view];
-  try {
-    const tex = await Assets.load(entry.url);
-    if (tex) entry.tex = tex;
-  } catch {
-    /* missing — caller falls back to the procedural arc */
-  }
-}
-
+/* v2.3.4452: each view was one Assets.load behind a promise kept for the
+   page, so one failed or stalled request drew the procedural arc for the
+   visit (state-machine sweep VC-1, R8-5).  Now a loadSetLater set: a time
+   limit, then retryLooks.js's rounds (ten at most), asked only while a shield
+   is drawn (getShieldFrame).  `?shieldretry=0` (or `?retrylooks=0`) is the
+   game as it was. */
+let _set = null;
+const _got = Object.create(null);
 export function loadShieldSprites() {
   if (loadPromise) return loadPromise;
-  loadPromise = Promise.all(Object.keys(SHEETS).map(loadOne));
+  const files = Object.create(null);
+  for (const view of Object.keys(SHEETS)) files[view] = SHEETS[view].url;
+  _set = loadSetLater({ files, into: _got, load: (u) => Assets.load(u), unload: (u) => Assets.unload(u),
+    took: (view, tex) => { if (!SHEETS[view].tex) SHEETS[view].tex = tex; }, switchName: 'shieldretry' });
+  loadPromise = _set.start();
   return loadPromise;
 }
 
@@ -58,6 +61,7 @@ export function getShieldArt(angle) {
 }
 
 export function getShieldFrame(angle) {
+  if (_set) _set.ensure();   /* v2.3.4452 */
   const front = SHEETS.front.tex;
   if (!front) return null;
   const TAU = Math.PI * 2;
