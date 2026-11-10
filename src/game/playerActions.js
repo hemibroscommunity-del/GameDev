@@ -21,6 +21,7 @@ import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead, lockShotPo
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the hold */
 import { cue, cueLater } from '@/game/eventSounds.js'; /* v2.3.3343: the specials' and the burst's own sounds; v2.3.3523: + cueLater, the volley's arrows */
 import { brewMulNow } from '@/game/fightFood.js'; /* v2.3.3133: a special carries the damage brew too */
+import { mcSwingGapMs, mcNoteSwing } from '@/game/manualCombat.js'; /* v2.3.4520: the free-swing trial's gap and share */
 
 export function swingAttack(S) {
     /* v2.3.1473: a corpse doesn't swing (see isPlayerDead). */
@@ -61,7 +62,10 @@ export function swingAttack(S) {
     /* v2.3.1134: the manual tap gate honors Tempo like the auto-attack loop
        does, else tap-attackers get no benefit from the channel.  (The amulet
        atkSpd bonus was never applied here — unchanged, out of scope.) */
-    if (!S.rpg || Date.now() - S.swingTimer < SWING_COOLDOWN * swingCooldownMult(S.rpg) * weaponSwingMult(S.rpg && S.rpg.activeSlot)) return;   /* v2.3.2265: the bow's 25% */
+    /* v2.3.4520: on the free-swing trial (`?manual=3`, caps.freeSwing) a
+       sword's gap is MANUAL.FREE_GAP_MS: the worker gives each swing its share */
+    var _fsGap = mcSwingGapMs(S);
+    if (!S.rpg || Date.now() - S.swingTimer < (_fsGap != null ? _fsGap : SWING_COOLDOWN * swingCooldownMult(S.rpg) * weaponSwingMult(S.rpg && S.rpg.activeSlot))) return;   /* v2.3.2265: the bow's 25% */
     if (S._playerStunUntil && Date.now() < S._playerStunUntil) return;
     var slot = S.rpg.activeSlot || 'melee';
     /* Ranged/staff: let the auto-attack loop fire the projectile on the
@@ -81,6 +85,7 @@ export function swingAttack(S) {
        and are gated in the loop.  S.rpg.weapon mirrors what getActiveWeapon
        resolves for the melee slot. */
     if (!S.rpg.weapon) return;
+    mcNoteSwing(S, S.swingTimer, Date.now());   /* v2.3.4520: this swing's share, for its sound */
     S.swingTimer = Date.now();
     S.isSwinging = true;
     S._specialAttack = false;

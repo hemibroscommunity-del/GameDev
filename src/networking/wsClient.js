@@ -219,6 +219,7 @@ import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822 */
 import { applyGatherHits } from '@/game/lifeSkillRewards.js'; /* v2.3.2956: the worker's gathering hits */
 import { applyNmlSkull, applyNmlLoss, applyNmlTake, nmlPeerSkull, applyNmlLock, nmlLockAskShow } from '@/game/noMansLand.js'; /* v2.3.3058: No man's land; v2.3.3316: + what your kill took */
 import { canBePlaced, onBodyPlace, bodyPlaceDue } from '@/game/bodyPlace.js'; /* v2.3.4455: a relaunch mid-fight lands at the body */
+import { freeSwingAsk } from '@/game/manualCombat.js'; /* v2.3.4520: the free-swing trial, asked for in the join */
 import { noteDeath, noteDeathLoss } from '@/game/deathCard.js'; /* v2.3.3817: the death card (ui/mobile/DeathCard.jsx) */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.3817: the killer's name, as its plate reads */
 import { wheelStageName } from '@/data/wheelStageLooks.js'; /* v2.3.3817: ...with its stage ("Glacier Snowman") */
@@ -694,6 +695,10 @@ export function setupWebSocket(ctx) {
              worker ENFORCES it for this session. Old workers ignore
              the field. */
           httpAuth: true,
+          /* v2.3.4520: this device tries the free-swing trial with its sword
+             (`?manual=3`; 2 with `?swingbonus=1`: game/manualCombat.js,
+             server/src/freeswing.js).  Old workers ignore it. */
+          fs: freeSwingAsk() || undefined,
           data: {
             x: S.player.x,
             y: S.player.y,
@@ -1991,6 +1996,14 @@ export function setupWebSocket(ctx) {
           case 'move_path':
             {
               if (S._serverCaps) { S._serverCaps.movepath = !!msg.on; S._serverCaps.pathall = !!msg.all; }
+              break;
+            }
+          /* v2.3.4520: the free-swing trial's switch, changed live (server
+             freeswing.js): a sword on the trial goes back to the untried
+             swipes at once, or comes back to it (game/manualCombat.js mcFreeSwing) */
+          case 'free_swing':
+            {
+              if (S._serverCaps) S._serverCaps.freeSwing = msg.on ? 1 : 0;
               break;
             }
           /* v2.3.3058: No man's land (server/src/nomansland.js; the game's half,

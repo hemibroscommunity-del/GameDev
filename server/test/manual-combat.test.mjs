@@ -22,10 +22,15 @@
  *      as before); a flicked bow is a quarter sooner.
  *  10. THE WIRING: the loop, the handlers, targeting and the special's
  *      button read this file; without the switch the loop's gate is what it
- *      was; this file never writes the aim (a staff bolt's steering). */
+ *      was; this file never writes the aim (a staff bolt's steering).
+ *  13. v2.3.4520: THE FREE-SWING TRIAL (`?manual=3`, server/src/freeswing.js;
+ *      the worker's half is free-swing.test): remembered, its bonus asked by
+ *      `?swingbonus=1`; a sword on it swings at once, no sooner than
+ *      FREE_GAP_MS, only with caps.freeSwing; the join asks; a lighter
+ *      swing's number and sound are lighter; and the wiring. */
 import fs from 'node:fs';
 import {
-  MANUAL, manualCombatWanted, manualMode, manualSling, mcBowSling, mcShotAngle, mcSwipes, mcBowInterval, setManualCombat, manualOn, mcFrame, mcSwipeStart, mcSwipeMove, mcSwipeEnd, mcWasQuick, mcPressIdle, mcAbort, mcAskShot,
+  MANUAL, manualCombatWanted, manualMode, manualFreeSwing, swingBonusWanted, freeSwingAsk, mcFreeSwing, mcSwingGapMs, mcNoteSwing, mcHitVol, mcNumberScale, mcLightHit, manualSling, mcBowSling, mcShotAngle, mcSwipes, mcBowInterval, setManualCombat, manualOn, mcFrame, mcSwipeStart, mcSwipeMove, mcSwipeEnd, mcWasQuick, mcPressIdle, mcAbort, mcAskShot,
   mcFireWaiting, mcFireDone, mcReady, mcReadyIn, mcMeleeAsk, mcSwingWaiting, mcSwingDone, mcAssist, mcArmToggle, mcArmed, mcTakeArmed, mcLockAllowed, mcShoots,
 } from '../../src/game/manualCombat.js';
 
@@ -51,7 +56,7 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
   /* the slingshot bow's variation: `?manual=2` */
   const l2 = store();
   check('1g `?manual=2` is manual combat with the slingshot bow, and is remembered as that', manualMode('?manual=2', l2) === 2 && manualCombatWanted('', l2) === true && l2.getItem(MANUAL.KEY) === '2' && manualMode('', l2) === 2);
-  check('1h `?manual=1` after it is the plain swipes again; `?manual=0` after that is the old combat', manualMode('?manual=1', l2) === 1 && manualMode('', l2) === 1 && manualMode('?manual=0', l2) === 0 && manualMode('', l2) === 0 && manualMode('?manual=3', store()) === 1);
+  check('1h `?manual=1` after it is the plain swipes again; `?manual=0` after that is the old combat', manualMode('?manual=1', l2) === 1 && manualMode('', l2) === 1 && manualMode('?manual=0', l2) === 0 && manualMode('', l2) === 0 && manualMode('?manual=4', store()) === 1);   /* v2.3.4520: 3 is the free-swing trial (13) */
   const B = bow(), St = { rpg: { activeSlot: 'staff' } }, Sw = sword();
   setManualCombat(2);
   check('1i the slingshot is the BOW\'s only: a staff stays a flick, a sword a stroke', manualOn() && manualSling() && mcBowSling(B) && !mcBowSling(St) && !mcBowSling(Sw));
@@ -220,6 +225,56 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
   check('12f a bow pulled out and brought back to cancel did (it knows the gesture)', mcPressIdle(B) === false);
   const St = { rpg: { activeSlot: 'staff' } }; mcSwipeStart(St, t, 0, 0); mcSwipeEnd(St, t + 50, 0, 0);
   check('12g a staff is never told: its hold and its tap attack as they always did', mcPressIdle(St) === false && mcPressIdle(null) === false && mcPressIdle({}) === false);
+}
+
+// ── 13. v2.3.4520: the free-swing trial ──
+{
+  const ls = store();
+  check('13a `?manual=3` is the free-swing trial, remembered; `?manual=1` comes back and forgets', manualMode('?manual=3', ls) === 3 && ls.getItem(MANUAL.KEY) === '3' && manualMode('', ls) === 3 && manualCombatWanted('', ls) === true
+    && manualMode('?manual=1', ls) === 1 && ls.getItem(MANUAL.KEY) === null);
+  const lb = store();
+  check('13b `?swingbonus=1` asks for the bonus and is remembered; `?swingbonus=0` forgets; nothing asks nothing',
+    swingBonusWanted('', store()) === false && swingBonusWanted('?swingbonus=1', lb) === true && swingBonusWanted('', lb) === true
+    && swingBonusWanted('?swingbonus=0', lb) === false && swingBonusWanted('', lb) === false && swingBonusWanted('?swingbonus=10', store()) === false);
+  setManualCombat(true);
+  check('13c the join asks nothing off the trial (`?manual=1`), even with the bonus remembered', freeSwingAsk('?swingbonus=1', store()) === 0 && manualFreeSwing() === false);
+  setManualCombat(3);
+  check('13d on it the join asks 1, or 2 with the bonus; it is manual combat (a bow still flicks, no slingshot)',
+    freeSwingAsk('', store()) === 1 && freeSwingAsk('?swingbonus=1', store()) === 2 && manualOn() && manualFreeSwing() && !manualSling() && mcSwipes(bow()) && mcShoots(bow()));
+  const Sw = sword(10000), B = bow(), St = { rpg: { activeSlot: 'staff' }, swingTimer: 0 };
+  check('13e without caps.freeSwing (an old worker, or `freeswing: false`) a sword is the untried swipe: too soon is no, a moment early is kept',
+    !mcFreeSwing(Sw) && mcSwingGapMs(Sw) === null && (mcFrame(Sw, 10000, 600, 600), mcMeleeAsk(Sw, 10200)) === 'no' && mcMeleeAsk(Sw, 10500) === 'soon');
+  Sw._serverCaps = { freeSwing: 1 }; Sw._mc = null; B._serverCaps = { freeSwing: 1 }; St._serverCaps = { freeSwing: 1 };
+  mcFrame(Sw, 10000, 600, 600);
+  check('13f with it a sword is on the trial; a bow and a staff never are', mcFreeSwing(Sw) && !mcFreeSwing(B) && !mcFreeSwing(St) && mcSwingGapMs(Sw) === MANUAL.FREE_GAP_MS && mcSwingGapMs(B) === null);
+  check('13g FREE_GAP_MS is 150 (the blade lands 120 ms in, the worker counts one swing a 100 ms)', MANUAL.FREE_GAP_MS === 150);
+  check('13h a stroke swings at once from FREE_GAP_MS on, never kept for later; sooner it swings nothing',
+    mcMeleeAsk(Sw, 10149) === 'no' && mcMeleeAsk(Sw, 10150) === 'yes' && mcMeleeAsk(Sw, 10300) === 'yes' && !mcSwingWaiting(Sw, 10600));
+  mcNoteSwing(Sw, 10000, 10150);
+  const v1 = mcHitVol(Sw);
+  mcNoteSwing(Sw, 10000, 10600);
+  check('13i a quarter swing\'s hit sound is lower (0.55), a full one as ever', Math.abs(v1 - 0.55) < 1e-9 && mcHitVol(Sw) === 1, v1);
+  check('13j a hit\'s number: a quarter swing 0.7 of its size, a full one (no share, or the bonus\'s 1.12) as ever',
+    Math.abs(mcNumberScale(0.25) - 0.7) < 1e-9 && mcNumberScale(undefined) === 1 && mcNumberScale(1.12) === 1 && mcNumberScale(0) === 0.6);
+  check('13k a light hit (under FULL_SWING_SHARE, the worker\'s 0.8) rings no crit; a full one, or no share, does',
+    MANUAL.FULL_SWING_SHARE === 0.8 && mcLightHit(0.79) && !mcLightHit(0.8) && !mcLightHit(undefined) && !mcLightHit(1.12));
+  const srvFs = read('../src/freeswing.js');
+  check('13l MIRROR: FULL_SWING_SHARE is the worker\'s own', /FULL_SWING_SHARE: 0\.8,/.test(srvFs));
+  /* the wiring */
+  const pa = read('../../src/game/playerActions.js');
+  check('13m swingAttack holds a sword on the trial to FREE_GAP_MS, else to its own interval, and notes the swing\'s share',
+    /var _fsGap = mcSwingGapMs\(S\);\s*\n\s*if \(!S\.rpg \|\| Date\.now\(\) - S\.swingTimer < \(_fsGap != null \? _fsGap : SWING_COOLDOWN \* swingCooldownMult/.test(pa)
+    && /mcNoteSwing\(S, S\.swingTimer, Date\.now\(\)\);[^\n]*\n\s*S\.swingTimer = Date\.now\(\);/.test(pa));
+  const mc = read('../../src/game/monsterCombat.js');
+  check('13n a sword\'s monster_damage names its swing on the trial; its hit sound is the light swing\'s',
+    /sw: mcFreeSwing\(S\) \? S\.swingTimer : undefined/.test(mc) && /monsterHitSfx\(m, 0\.55 \* mcHitVol\(S\), 'melee'\)/.test(mc));
+  const ws = read('../../src/networking/wsClient.js');
+  check('13o the join asks (`fs`), and the live switch (free_swing) sets caps.freeSwing',
+    /fs: freeSwingAsk\(\) \|\| undefined,/.test(ws) && /case 'free_swing':\s*\n\s*\{\s*\n\s*if \(S\._serverCaps\) S\._serverCaps\.freeSwing = msg\.on \? 1 : 0;/.test(ws));
+  const ge = read('../../src/networking/gameEvents.js'), fx = read('../../src/rendering/systems/effectsRenderer.js');
+  check('13p the number is sized by the worker\'s share (own, a peer\'s, on a player), and nothing new is drawn',
+    (ge.match(/pw: payload\.pw/g) || []).length === 3 && /const k = DMG_SCALE \* \(isDmg \? mcNumberScale\(dmg\.pw\) : 1\);/.test(fx));
+  setManualCombat(false);
 }
 
 // ── 10. the wiring ──

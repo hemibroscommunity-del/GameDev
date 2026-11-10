@@ -104,6 +104,15 @@
  * than its floors (combat.js, hitproof.js), and nothing here attacks faster
  * than the held attack did.  Reading the spacing and the shape of those
  * swipes as a sign of a script is the worker's next step, in its own change.
+ *
+ * ═══ v2.3.4520: THE FREE-SWING TRIAL (`?manual=3`) ═══
+ * The owner, 2026-11-10: "What if the attack speed was uncapped ... but the
+ * DPS is prorated by the time elapsed relative to the full swing cycle?"
+ * One device: `?manual=3` (remembered; `?manual=1` comes back), and
+ * `?swingbonus=1` for the bonus.  The worker does the rest
+ * (server/src/freeswing.js); here a sword with caps.freeSwing swings at once,
+ * no sooner than FREE_GAP_MS, and a lighter swing's number and sound are
+ * lighter.  docs/specs/manual-combat.md "The free-swing trial".
  */
 
 export var MANUAL = {
@@ -134,6 +143,17 @@ export var MANUAL = {
   /* the interval when the loop has not said yet (the first frame of a session) */
   NEED_DEFAULT_MS: 600,
   KEY: 'bt_manual',
+  /* v2.3.4520: the free-swing trial (`?manual=3`): a sword swings no sooner
+     than this after its last swing.  The blade lands MELEE_CONTACT_MS (120)
+     into its swing, and a swing begun sooner would restart it before it
+     landed; the worker counts one swing a FREE_SWING.MIN_SWING_GAP_MS (100),
+     and the 50 ms between is the network's wobble */
+  FREE_GAP_MS: 150,
+  /* MIRROR: server/src/freeswing.js FREE_SWING.FULL_SWING_SHARE (the
+     free-swing suite pins it): a swing under it is a light one */
+  FULL_SWING_SHARE: 0.8,
+  /* `?swingbonus=1`, remembered */
+  BONUS_KEY: 'bt_swingbonus',
 };
 
 /** Which combat this device plays: 1 swipes (the game's own, and the answer
@@ -146,12 +166,12 @@ export function manualMode(search, store) {
   if (q == null) { try { q = typeof location !== 'undefined' ? location.search : ''; } catch (e) { q = ''; } }
   var ls = store;
   if (ls === undefined) { try { ls = typeof localStorage !== 'undefined' ? localStorage : null; } catch (e) { ls = null; } }
-  var m = /(?:^|[?&])manual=([012])(?:&|$)/.exec(String(q || ''));
+  var m = /(?:^|[?&])manual=([0123])(?:&|$)/.exec(String(q || ''));   /* v2.3.4520: + 3, the free-swing trial */
   if (m) {
     try { if (ls) { if (m[1] === '1') ls.removeItem(MANUAL.KEY); else ls.setItem(MANUAL.KEY, m[1]); } } catch (e) { /* a private window: the address still decides this visit */ }
     return +m[1];
   }
-  try { var v = ls ? ls.getItem(MANUAL.KEY) : null; return v === '0' ? 0 : v === '2' ? 2 : 1; } catch (e) { return 1; }
+  try { var v = ls ? ls.getItem(MANUAL.KEY) : null; return v === '0' ? 0 : v === '2' ? 2 : v === '3' ? 3 : 1; } catch (e) { return 1; }
 }
 /** Is manual combat wanted on this device (either kind)?  Yes, unless it chose the old one. */
 export function manualCombatWanted(search, store) { return manualMode(search, store) > 0; }
@@ -165,7 +185,30 @@ export function manualOn() {
 }
 /** The slingshot bow's variation (`?manual=2`). */
 export function manualSling() { return manualOn() && _mode === 2; }
-export function setManualCombat(v) { _mode = v === 2 ? 2 : (v ? 1 : 0); }
+/** v2.3.4520: the free-swing trial (`?manual=3`). */
+export function manualFreeSwing() { return manualOn() && _mode === 3; }
+export function setManualCombat(v) { _mode = v === 2 ? 2 : v === 3 ? 3 : (v ? 1 : 0); }
+
+/** v2.3.4520: does this device ask for the full-swing bonus too?
+ *  `?swingbonus=1` asks and is remembered, `?swingbonus=0` forgets. */
+export function swingBonusWanted(search, store) {
+  var q = search;
+  if (q == null) { try { q = typeof location !== 'undefined' ? location.search : ''; } catch (e) { q = ''; } }
+  var ls = store;
+  if (ls === undefined) { try { ls = typeof localStorage !== 'undefined' ? localStorage : null; } catch (e) { ls = null; } }
+  var m = /(?:^|[?&])swingbonus=([01])(?:&|$)/.exec(String(q || ''));
+  if (m) {
+    try { if (ls) { if (m[1] === '1') ls.setItem(MANUAL.BONUS_KEY, '1'); else ls.removeItem(MANUAL.BONUS_KEY); } } catch (e) { /* the address still decides this visit */ }
+    return m[1] === '1';
+  }
+  try { return !!ls && ls.getItem(MANUAL.BONUS_KEY) === '1'; } catch (e) { return false; }
+}
+/** v2.3.4520: what the join asks the worker (`fs`): 0 nothing, 1 the trial,
+ *  2 the trial with the bonus.  An old worker ignores it. */
+export function freeSwingAsk(search, store) {
+  if (!manualFreeSwing()) return 0;
+  return swingBonusWanted(search, store) ? 2 : 1;
+}
 
 function st(S) {
   if (!S) return null;
@@ -189,6 +232,40 @@ function strokes(S) { var s = slotOf(S); return s !== 'ranged' && s !== 'staff';
  *  False for a staff -- and false without the switch.  The handlers ask this
  *  where a staff must be left exactly as it was. */
 export function mcSwipes(S) { return manualOn() && slotOf(S) !== 'staff'; }
+/** v2.3.4520: is this sword on the free-swing trial now -- the device asked
+ *  (`?manual=3`) AND the worker says it can (caps.freeSwing; `freeswing:
+ *  false` takes it back, live)?  A bow, a staff: never. */
+export function mcFreeSwing(S) {
+  return manualFreeSwing() && strokes(S) && !!(S && S._serverCaps && S._serverCaps.freeSwing);
+}
+/** v2.3.4520: the gap swingAttack holds a sword to on the trial (null: its
+ *  own interval, as ever). */
+export function mcSwingGapMs(S) { return mcFreeSwing(S) ? MANUAL.FREE_GAP_MS : null; }
+/** v2.3.4520: a swing begins (swingAttack, before it stamps S.swingTimer):
+ *  its share of a full one on this phone's clock, for its sound only -- the
+ *  worker's own clock decides the damage. */
+export function mcNoteSwing(S, prev, now) {
+  if (!mcFreeSwing(S)) return;
+  var m = st(S);
+  m.share = prev > 0 ? Math.max(0, Math.min(1, (now - prev) / (m.meleeNeed || MANUAL.NEED_DEFAULT_MS))) : 1;
+}
+/** v2.3.4520: the volume of a swing's hit sound: a light swing's is lower
+ *  (1 off the trial, and for a full swing). */
+export function mcHitVol(S) {
+  if (!mcFreeSwing(S)) return 1;
+  var sh = S && S._mc && typeof S._mc.share === 'number' ? S._mc.share : 1;
+  return sh >= 1 ? 1 : 0.4 + 0.6 * sh;
+}
+/** v2.3.4520: how big a hit's number is drawn, from the share the worker said
+ *  (`pw` on monster_hit / pvp_hit): a full swing (none, or the bonus's 1.12)
+ *  as ever, a quarter swing 0.7 of it. */
+export function mcNumberScale(pw) {
+  return (typeof pw === 'number' && pw >= 0 && pw < 1) ? 0.6 + 0.4 * pw : 1;
+}
+/** v2.3.4520: was it a light swing (no crit ring for it: a crit's extras are
+ *  a full swing's)? */
+export function mcLightHit(pw) { return typeof pw === 'number' && pw < MANUAL.FULL_SWING_SHARE; }
+
 /** A flicked bow's interval, from the held bow's. */
 export function mcBowInterval(heldMs) { return Math.max(MANUAL.BOW_MIN_MS, Math.floor(heldMs * MANUAL.BOW_FASTER)); }
 
@@ -300,6 +377,12 @@ export function mcFireDone(S) { var m = S && S._mc; if (m) { m.fireAt = 0; m.fir
 export function mcMeleeAsk(S, now) {
   if (!S || !strokes(S)) return 'no';
   var m = st(S);
+  /* v2.3.4520: the free-swing trial: at once, never kept for later -- only
+     not sooner than FREE_GAP_MS after the last swing */
+  if (mcFreeSwing(S)) {
+    if (now - ((S && S.swingTimer) || 0) < MANUAL.FREE_GAP_MS) { m.early += 1; return 'no'; }
+    return 'yes';
+  }
   var wait = mcReadyIn(S, now);
   if (wait === 0) return 'yes';
   if (wait <= MANUAL.EARLY_MS) { m.swingUntil = now + wait + MANUAL.FIRE_HOLD_MS; return 'soon'; }
@@ -348,6 +431,7 @@ if (typeof window !== 'undefined') {
     window.__btManual = {
       on: function () { return manualOn(); },
       sling: function () { return manualSling(); },
+      free: function () { return manualFreeSwing(); },   /* v2.3.4520 */
       state: function () {
         var S = window._gameState && window._gameState.current;
         var m = S && S._mc;

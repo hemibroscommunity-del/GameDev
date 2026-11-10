@@ -65,8 +65,16 @@ const clientSrc = join(here, '..', '..', 'src');
 const advertised = new Map(); // flag -> [file:line]
 {
   const lines = readFileSync(join(serverSrc, 'join.js'), 'utf8').split('\n');
+  /* v2.3.4520: and the literal's own lines after that one, to its closing
+     `},` -- TRAPS §316: a new cap goes on its OWN line, never on the long one */
+  let inCaps = false;
   lines.forEach((line, i) => {
-    const m0 = line.match(/\bcaps:\s*\{(.*)/);
+    let m0 = line.match(/\bcaps:\s*\{(.*)/);
+    if (m0) inCaps = !/\}\s*,?\s*$/.test(line);
+    else if (inCaps) {
+      if (/^\s*\}\s*,?\s*$/.test(line)) { inCaps = false; return; }
+      m0 = [line, line];
+    }
     if (!m0) return;
     /* v2.3.3130: or the COUNT of a server table (`cookRows:
        COOKING_RECIPES.length`): a capability that is a number -- how many

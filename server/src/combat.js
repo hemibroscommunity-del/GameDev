@@ -157,6 +157,7 @@ import { LIVEOPS } from './liveops.js';
 import { PROG3 } from './prog3.js'; // v2.3.1659: the trained-skill combat rebuild config
 import { WHEEL_ZONE, WHEEL } from './wheelzone.js'; /* v2.3.2978 */
 import { ONE_FORMULA, specialMultFor } from './oneformula.js'; /* v2.3.3260: one formula for every fight */
+import { FREE_SWING } from './freeswing.js'; /* v2.3.4520: the free-swing trial */
 
 export const combatMethods = {
   /* ═══ v2.3.2221: THE ONE DAMAGE-DENIAL GATE ═══
@@ -420,6 +421,9 @@ export const combatMethods = {
   _applyDamage(ps, rawDmg, isBlock, opts) {
     if (!ps) return { dmgTaken: 0, dodged: false, graced: false };
     const r = Math.max(1, Math.round(rawDmg || 0));
+    /* v2.3.4520: a free swing's share of the hit (freeswing.js; only its
+       claim on a player passes one), applied at the end, after every cut */
+    const _fsShare = (opts && opts.carry && opts.share >= 0 && opts.share < 1) ? opts.share : null;
     // Zone-entry damage immunity (replaces the prior monster-shove on
     // zone entry).  Short grace window after the player drops into a
     // combat zone so they can orient before hits land.  Returns
@@ -428,7 +432,7 @@ export const combatMethods = {
     // before any hits register and lifesteal silently produces
     // reason:'no-this-mon' on the kill.
     if (ps._zoneEntryGraceUntil && Date.now() < ps._zoneEntryGraceUntil) {
-      return { dmgTaken: 0, dodged: false, graced: true, dmgIntent: r };
+      return { dmgTaken: 0, dodged: false, graced: true, dmgIntent: _fsShare === null ? r : r * _fsShare };   /* v2.3.4520 */
     }
     /* ═══ v2.3.2240: OPERATOR GOD MODE (server/src/devtools.js) ═══
        Deliberately the SAME shape as the zone-entry grace directly above,
@@ -443,7 +447,7 @@ export const combatMethods = {
        up in a save file. Set only through the ADMIN_KEY-gated HTTP surface;
        no websocket message can reach it. */
     if (ps._godUntil && Date.now() < ps._godUntil) {
-      return { dmgTaken: 0, dodged: false, graced: true, dmgIntent: r };
+      return { dmgTaken: 0, dodged: false, graced: true, dmgIntent: _fsShare === null ? r : r * _fsShare };   /* v2.3.4520 */
     }
     if (isBlock) {
       ps.lastDamageAt = Date.now();
@@ -582,6 +586,11 @@ export const combatMethods = {
     if (_resil > 0 && dmgTaken > 0.20 * ps.maxHp) {
       dmgTaken = Math.max(1, Math.round(dmgTaken - this._t2Flat(ps, 'hp', 'resilience'))); // v2.3.1451: bench-locked banked soak on big hits (was t2Accel)
     }
+    /* v2.3.4520: THE FREE-SWING TRIAL's share -- here, after every cut and
+       each one's floor of 1, so a light swing lands its share of the hit a
+       full one would and mashing never farms those floors; the fraction is
+       carried on the attacker's own state to their next light hit */
+    if (_fsShare !== null) dmgTaken = this._fsTake(opts.carry, 'c', dmgTaken, _fsShare);
     // v2.3.1314: LAST STAND (HP grid, owner-named 5th category) — a
     // killing blow leaves the player at exactly 1 HP instead, once per
     // internal cooldown (120s, -0.5s/pt, floor 70s).  Fires BEFORE the
@@ -1338,6 +1347,9 @@ export const combatMethods = {
        said, `_orbs` below is what the lane lets it be worth. */
     const _bigBolt = isSpecial && _effSlot === 'staff' && _orbsWire > 1;
     let _orbs = _bigBolt ? Math.min(3, _orbsWire) : 1;
+    /* v2.3.4520: the free-swing trial (freeswing.js): a sword's swing from a
+       phone that asked keeps its own floor and share below, not the 210 ms lane */
+    const _fsOn = _effSlot === 'melee' && this._freeSwingFor(session);
 
     // v2.3.1134: HIT-CADENCE FLOOR.  Until now damage-per-hit was capped
     // but hit FREQUENCY was not -- a hacked client could spam
@@ -1376,7 +1388,7 @@ export const combatMethods = {
            more than the lane has left. */
         _orbs = Math.min(_orbs, 3 - cad.s.length);
         for (let k = 0; k < _orbs; k++) cad.s.push(nowTs);
-      } else {
+      } else if (!_fsOn) {   /* v2.3.4520: the trial's own floor is below */
         if (nowTs - cad.n < 210) return; // v2.3.1343: 335 -> 210 (Tempo cap -50%)
         cad.n = nowTs;
       }
@@ -1388,6 +1400,21 @@ export const combatMethods = {
         }
       }
     }
+    /* v2.3.4520: THE FREE-SWING TRIAL (freeswing.js) -- an ordinary swing's
+       share of a full one (null: sooner than its floor, dropped quietly), a
+       full one x FULL_SWING_BONUS for a phone that asked; a paid special
+       swing is counted as a swing and rolls as it always has.  `_fsLight`: a
+       swing under FULL_SWING_SHARE carries none of the extras below. */
+    let _fsK = null;
+    if (_fsOn) {
+      if (isSpecial) this._fsStamp(attackerPs, Date.now());
+      else {
+        const _f = this._fsSwing(attackerPs, payload.sw, 'm:' + monsterId, Date.now());
+        if (_f === null) return;
+        _fsK = (_f >= 1 && session.freeSwing === 2 && this._freeSwingBonusOn()) ? 1 + FREE_SWING.FULL_SWING_BONUS : _f;
+      }
+    }
+    const _fsLight = _fsK !== null && _fsK < FREE_SWING.FULL_SWING_SHARE;
 
     // Server computes the actual damage from server-tracked stats +
     // weapon + the client's intent (slot/special).  _maxDmgForAttacker
@@ -1454,7 +1481,11 @@ export const combatMethods = {
        _hitElement's fallback to the claim under `weapongem: false`: there a
        modified phone could claim the winning element on every hit. */
     const _up = this._elemUpMult(m, _gemEl ? _gemEl.element : null);
-    const rawDmg = Math.max(1, Math.round(_cappedDmg * this._fractureDmgMult(m) * _up));
+    /* v2.3.4520: a free swing's share of the full hit, the fraction carried
+       (freeswing.js); a full one with no bonus is this line as it was */
+    const rawDmg = (_fsK !== null && _fsK !== 1)
+      ? this._fsTake(attackerPs._fs, 'c', Math.max(1, Math.round(_cappedDmg * this._fractureDmgMult(m) * _up)), _fsK)
+      : Math.max(1, Math.round(_cappedDmg * this._fractureDmgMult(m) * _up));
     /* v2.3.3558: ...and never past a splitting boss's next mark: it splits
        there (_monsterHpFloor, above; 0 for every other monster) */
     const actualDmg = Math.min(rawDmg, Math.max(0, m.hp - this._monsterHpFloor(m)));
@@ -1511,7 +1542,8 @@ export const combatMethods = {
     // different-element status already on the monster.
     /* v2.3.3513: ...and the element is the WORKER'S now (weapongem.js) --
        _hitElement, worked out above the roll since v2.3.3518 (UP reads it). */
-    if (m.hp > 0 && _hitElement && Object.prototype.hasOwnProperty.call(ELEMENT_STATUS, _hitElement) && attackerPs) {
+    if (m.hp > 0 && _hitElement && Object.prototype.hasOwnProperty.call(ELEMENT_STATUS, _hitElement) && attackerPs
+        && !_fsLight /* v2.3.4520: a light free swing carries no status, collision or mana */) {
       const _now = Date.now();
       /* v2.3.2199: the snapshot prices the whole DoT (burn/root ticks and
          the thorn recoil read st.power) — prog3 players snapshot their
@@ -1608,7 +1640,7 @@ export const combatMethods = {
        drew is where the blow lands, and a sword's shoves had pushed every
        combo out of reach of the player chasing it (measured: the first cut's
        tier 2 took LESS damage than tier 1) */
-    if (attackerPs && payload.noKb !== true && !(this._moveBraced && this._moveBraced(m))) {
+    if (attackerPs && payload.noKb !== true && !_fsLight /* v2.3.4520: nor a shove */ && !(this._moveBraced && this._moveBraced(m))) {
       /* v2.3.2790: x the zone's depth at the monster's feet -- a mummy drawn
          at 0.42 on Wind Dunes' north edge is shoved 0.42 as far, so the hit
          reads as the same shove on screen (1 on every other zone).  The
@@ -1632,12 +1664,17 @@ export const combatMethods = {
     this._markMonsterDirty(zone, m.id);
 
     // Push damage event for all clients to see
-    this.eventBuffer.push({
+    /* v2.3.4520: a light free swing that took nothing this time (its share
+       carried) sends no "-0" */
+    if (_fsK === null || rawDmg > 0) this.eventBuffer.push({
       type: 'monster_hit',
       payload: {
         monsterId: m.id,
         zone,
         dmg: actualDmg,
+        /* v2.3.4520: a free swing's share (freeswing.js), when it is not a
+           plain full one: the phone sizes the number by it.  Display only */
+        ...(_fsK !== null && _fsK !== 1 ? { pw: Math.round(_fsK * 100) / 100 } : null),
         /* ═══ v2.3.2481: THE KILLING BLOW SHOWS WHAT IT ACTUALLY HIT FOR ═══
            Owner ask: the last hit on a monster always printed a small
            number — 3 on a 40-damage swing — because `dmg` is the CREDITED
@@ -1683,7 +1720,7 @@ export const combatMethods = {
        impact point, as the splash below); after the hit's own event, so the
        numbers arrive in the order they happened, and before the kill check
        (the splash's rule). */
-    if (_wasShocked) this._shockSpark(zone, m, _impactX, _impactY, session.id, attackerPs, rawDmg, _effSlot);
+    if (_wasShocked && !_fsLight /* v2.3.4520: nor a spark (its floor of 1 would farm) */) this._shockSpark(zone, m, _impactX, _impactY, session.id, attackerPs, rawDmg, _effSlot);
 
     /* v2.3.2481: THE SPLASH.  Basic staff bolts only — a special is already
        a three-bolt cone with its own cadence lane, and the owner's ask was
@@ -2324,6 +2361,9 @@ export const combatMethods = {
     /* v2.3.3264: the monster-only extras on players (pvpextras.js) -- only on
        the one formula's path, and off with `pvpextras: false` */
     const _xtra = _bal && typeof this._pvpExtrasOn === 'function' && this._pvpExtrasOn();
+    /* v2.3.4520: the free-swing trial (freeswing.js), a sword's claim from a
+       phone that asked */
+    const _fsPvp = kind === 'melee' && this._freeSwingFor(attackerSession);
 
     // Check all players in room for hits
     for (const [targetId, targetPs] of Object.entries(this.playerState)) {
@@ -2386,6 +2426,20 @@ export const combatMethods = {
           lane.lastTs = now;
         }
       }
+      /* v2.3.4520: THE FREE-SWING TRIAL -- after the lane, so a claim it
+         drops costs nothing: the swing's share of a full one (null: sooner
+         than the floor, dropped quietly).  No bonus against a player: damage
+         a second stays the untried sword's, a fair fight either way.  A paid
+         special swing is counted as a swing. */
+      let _fsK = null;
+      if (_fsPvp) {
+        if (_special) this._fsStamp(attackerPs, Date.now());
+        else {
+          _fsK = this._fsSwing(attackerPs, payload.sw, 'p:' + targetId, Date.now());
+          if (_fsK === null) continue;
+        }
+      }
+      const _fsShare = _fsK !== null && _fsK < 1;
 
       // §16.12 — Resolve dodge/block against historical state
       /* v2.3.3262: ...unless the worker has them dazed -- a dazed player cannot
@@ -2432,7 +2486,9 @@ export const combatMethods = {
       const _parried = !!(blocked && _xtra && this._parryOpen(targetPs, Date.now()));
       if (_parried) this._pvpParry(attackerId, attackerPs, targetId, targetPs, Date.now());
       if (blocked && !_parried && BLOCK_COSTS_STAMINA && typeof targetPs.stamina === 'number') {
-        const _cost = Math.max(1, Math.round(BLOCK_STAMINA_COST * this._blockStaminaMult(targetPs)));
+        const _cost0 = Math.max(1, Math.round(BLOCK_STAMINA_COST * this._blockStaminaMult(targetPs)));
+        /* v2.3.4520: a free swing's share of it, the fraction carried */
+        const _cost = _fsShare ? this._fsTake(attackerPs._fs, 'sc', _cost0, _fsK) : _cost0;
         targetPs.stamina = Math.max(0, targetPs.stamina - _cost);
         _blockDrain = _cost;
         if (targetPs.stamina <= 0) {
@@ -2488,8 +2544,10 @@ export const combatMethods = {
          the target's Dodge, Defense and Resist read the edge against the
          attacker's level as an opponent, as they read a monster's
          (oneformula.js "the level edge both ways").  The old path keeps 1. */
+      const _adOpts = _bal ? { attackerLevel: this._prog3OpponentLevel(attackerPs) } : undefined;
+      /* v2.3.4520: a free swing lands its share, after every cut (combat's _applyDamage) */
       const dmgResult = this._applyDamage(targetPs, rawDmg, blocked,
-        _bal ? { attackerLevel: this._prog3OpponentLevel(attackerPs) } : undefined);
+        _fsShare ? Object.assign(_adOpts || {}, { share: _fsK, carry: attackerPs._fs }) : _adOpts);
       const dmgTaken = dmgResult.dmgTaken;
       if (_bal && _special) _specialLanded = true;
       /* ═══ v2.3.3264: WHAT THE BLOW CARRIES, AS ON A MONSTER ═══
@@ -2507,6 +2565,8 @@ export const combatMethods = {
         const _ab = this._pvpAfterBlow(attackerId, attackerPs, targetId, targetPs, dmgResult, {
           slot: kind, cat: kind === 'ranged' ? 'bow' : kind === 'staff' ? 'staff' : 'sword',
           ...(_el ? { element: _el.element, volatile: !!_el.w.isVolatile } : null),
+          /* v2.3.4520: a light free swing carries no status, collision or mana */
+          ...(_fsK !== null && _fsK < FREE_SWING.FULL_SWING_SHARE ? { noStatus: true } : null),
         }, Date.now());
         _xw = _ab.wire; _xcol = _ab.col;
         this._notePvpEngage(attackerId, targetId, Date.now());
@@ -2538,6 +2598,8 @@ export const combatMethods = {
           staminaDrain: _blockDrain > 0 ? _blockDrain : undefined,
           /* v2.3.3264: a parried blow (pvpextras.js) */
           ...(_parried ? { parried: true } : null),
+          /* v2.3.4520: a free swing's share (freeswing.js), display only */
+          ...(_fsShare ? { pw: Math.round(_fsK * 100) / 100 } : null),
           dmgBase: _hitBase,   /* v2.3.3260: the worker's roll on the new path */
           dmgTaken,
           isCrit: isCrit,
