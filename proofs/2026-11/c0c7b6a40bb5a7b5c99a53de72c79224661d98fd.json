@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c0c7b6a40bb5a7b5c99a53de72c79224661d98fd",
+  "tree": "17e3f5deeb983c461ffe712d8bbe3a89f7d9b9fb",
+  "committedAt": "2026-11-09T22:04:00-08:00",
+  "subject": "Merge pull request #1455 from hemibroscommunity-del/claude/fervent-goldberg-3v705h",
+  "files": 7860,
+  "bytes": 962008504,
+  "listingSha256": "d7c6be4c38071a8c7406ee829f9cfa662248e3b46cd475eaecce55c70e55cc42",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
