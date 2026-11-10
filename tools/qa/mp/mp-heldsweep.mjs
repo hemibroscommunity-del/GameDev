@@ -54,7 +54,7 @@ const WANT = (process.env.BT_HS_STATIONS || STATION_NAMES.join(',')).split(',').
 
 /* ── the families: whose work a stack is.  First match wins; `key` is what the budget lists. ── */
 const FAMILIES = [
-  ['body-bake', "a body or head sheet recoloured on the page for one look (another player's, a townsperson's)", /\bbuildBodySheet\b|\brecolorBodyToCanvas\b/],
+  ['body-bake', "a body or head sheet recoloured on the page for one look (another player's, a townsperson's)", /\bbuildBodySheet\b|\brecolorBodyToCanvas\b|\bsolidTool\b|\btoolKeyMask\b/],   /* v2.3.4484: + the pickaxe made solid in the same bake (a mining body; the crowd tour caught it as its own top) */
   ['standin-bake', 'a swing, bow or tool stand-in recoloured on the page', /\brecolorStandInSkin\b|\bbuildStandIn\w*|\b_bakeStandIn\w*/],
   ['gear-sheet', 'a gear or shirt sheet built on the page', /\bbuildSheet\b|\bcomposeShirt\b|\b_gearStripFrame\b|\bloadCroppedStrip\b/],
   ['head-piece', 'a head piece (hair, hat, beard, eyes) coloured or cut', /\b_buildPickupHeadSheet\b|\brecolorTrait\w*|\bbuildHead\w*|\b_bakeHair\w*/],
@@ -66,7 +66,7 @@ const FAMILIES = [
   ['object-bases', "an object page's ground lines read", /\breadPageBottoms\b/],
   ['object-page', 'an object page loaded or placed', /\bwheelObjects\b|\b_placePage\b|\bloadPage\b/],
   ['screen-check', 'the black-screen check reading the canvas', /\b_wdThumbCollect\b|\b_sampleLit\b|\b_wdThumbAsk\b|\b_wdThumbImage\b/],
-  ['portrait', 'a portrait drawn', /\bcharacterPortrait\b|\brenderPortrait\w*|\bportrait\w*\b/i],
+  ['portrait', 'a portrait drawn', /\b(?:draw)?[cC]haracterPortrait\b|\brenderPortrait\w*|\bportrait\w*\b/i],
   ['map', 'the World map redrawn', /\bpaletteThumb\b|\bMapPanel\b|\bWorldMapOverlay\b|\bdrawWorldMap\w*/],
   ['codex', "the Codex's stage", /\bCodexStage\b|\bcodexStage\w*/],
   ['ground', 'the ground laid or uploaded', /\bwheelGround\b|\bcomposeGround\b|\b_onChunk\b|\bwheelChunk\b/],
@@ -87,7 +87,8 @@ function familyOf(names) {
 }
 
 /* ── the profile ── */
-function analyse(profile) {
+/* v2.3.4484: exported, with makeStation below -- mp-crowdsweep plays its crowd with this same meter */
+export function analyse(profile) {
   const byId = new Map();
   for (const n of profile.nodes) byId.set(n.id, n);
   const parent = new Map();
@@ -171,6 +172,33 @@ function analyse(profile) {
       }) } };
 }
 
+/* ── a station: the profiler on for one stretch of play, its holds named (v2.3.4484: shared with mp-crowdsweep) ── */
+export function makeStation(A, cdp, report, want) {
+  return async (name, label, drive) => {
+    if (want && !want.includes(name)) return;
+    await A.page.evaluate(() => { window.__btMade = []; });
+    await cdp.send('Profiler.start');
+    const t0 = Date.now();
+    let note = null;
+    try { note = await drive(); } catch (e) { note = { error: String((e && e.message) || e).slice(0, 200) }; }
+    const prof = (await cdp.send('Profiler.stop')).profile;
+    const an = analyse(prof);
+    const made = await A.page.evaluate(() => (window.__btMade || []).slice()).catch(() => []);
+    const named = [];
+    for (let i = 0; i < made.length; i += 2) named.push([String(made[i]).replace(/^(\w+ ?\w*) .*\/sprites\//, '$1 ').slice(0, 60), Math.round(made[i + 1])]);
+    const held = an.held.filter((s) => s.ms >= 4).sort((a, b) => b.ms - a.ms);
+    const row = { name, label, secs: Math.round((Date.now() - t0) / 1000), note, readable: an.sawLoop, held, frames: an.frames,
+      heldSum: Math.round(an.held.reduce((t, s) => t + s.ms, 0)), named: named.sort((a, b) => b[1] - a[1]).slice(0, 12) };
+    report.stations.push(row);
+    console.log(`\n  ── ${label} (${row.secs} s)${note ? ' ' + JSON.stringify(note).slice(0, 160) : ''}`);
+    console.log(`     outside the frame: ${row.heldSum} ms in all; holds of 4 ms or more: ${held.length}, the longest ${held[0] ? held[0].ms : 0} ms`);
+    for (const s of held.slice(0, 8)) console.log(`       ${String(s.ms).padStart(6)} ms  [${s.key}] ${s.what}   (${s.in})  via ${s.via}`);
+    console.log(`     in the frame: ${an.frames.n} frames, the middle one ${an.frames.medJs} ms of the game's own code; long ones: ${an.frames.long.length}`);
+    for (const f of an.frames.long.sort((a, b) => b.ms - a.ms).slice(0, 6)) console.log(`       ${String(f.ms).padStart(6)} ms  [${f.key}]   (${f.in})  via ${f.via}`);
+    return row;
+  };
+}
+
 /* ── small helpers of the tour ── */
 const tapSel = (P, sel, id, fx = 0.5, fy = 0.5) => P.page.evaluate(({ sel, id, fx, fy }) => {
   const el = document.querySelector(sel);
@@ -251,29 +279,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await cdp.send('Profiler.enable');
     await cdp.send('Profiler.setSamplingInterval', { interval: 400 });
 
-    const station = async (name, label, drive) => {
-      if (!WANT.includes(name)) return;
-      await A.page.evaluate(() => { window.__btMade = []; });
-      await cdp.send('Profiler.start');
-      const t0 = Date.now();
-      let note = null;
-      try { note = await drive(); } catch (e) { note = { error: String((e && e.message) || e).slice(0, 200) }; }
-      const prof = (await cdp.send('Profiler.stop')).profile;
-      const an = analyse(prof);
-      const made = await A.page.evaluate(() => (window.__btMade || []).slice()).catch(() => []);
-      const named = [];
-      for (let i = 0; i < made.length; i += 2) named.push([String(made[i]).replace(/^(\w+ ?\w*) .*\/sprites\//, '$1 ').slice(0, 60), Math.round(made[i + 1])]);
-      const held = an.held.filter((s) => s.ms >= 4).sort((a, b) => b.ms - a.ms);
-      const row = { name, label, secs: Math.round((Date.now() - t0) / 1000), note, readable: an.sawLoop, held, frames: an.frames,
-        heldSum: Math.round(an.held.reduce((t, s) => t + s.ms, 0)), named: named.sort((a, b) => b[1] - a[1]).slice(0, 12) };
-      report.stations.push(row);
-      console.log(`\n  ── ${label} (${row.secs} s)${note ? ' ' + JSON.stringify(note).slice(0, 160) : ''}`);
-      console.log(`     outside the frame: ${row.heldSum} ms in all; holds of 4 ms or more: ${held.length}, the longest ${held[0] ? held[0].ms : 0} ms`);
-      for (const s of held.slice(0, 8)) console.log(`       ${String(s.ms).padStart(6)} ms  [${s.key}] ${s.what}   (${s.in})  via ${s.via}`);
-      console.log(`     in the frame: ${an.frames.n} frames, the middle one ${an.frames.medJs} ms of the game's own code; long ones: ${an.frames.long.length}`);
-      for (const f of an.frames.long.sort((a, b) => b.ms - a.ms).slice(0, 6)) console.log(`       ${String(f.ms).padStart(6)} ms  [${f.key}]   (${f.in})  via ${f.via}`);
-      return row;
-    };
+    const station = makeStation(A, cdp, report, WANT);
 
     await station('stand', 'standing in the town', async () => { await A.page.waitForTimeout(10000); });
 
