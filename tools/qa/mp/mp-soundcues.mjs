@@ -307,8 +307,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     deaths.fireGoblin.cue === 'dieGoblin' && deaths.rockmonster.cue === 'dieRock' && deaths.thornShambler.cue === 'dieRock'
       && deaths.fishman.cue === 'dieFish' && deaths.bogLurker.cue === 'dieLurker' && deaths.mummy.cue === 'monster-death'
       && deaths.fireGoblin.asked.join() === 'monster-hit,pan-sizzle', deaths);
-  rec.ok('3h. ...and the Blue Slime and the Mire Wisp play nothing here: the renderer plays their splat (they died twice over)',
-    deaths.blueSlime.cue === null && deaths.blueSlime.asked.length === 0 && deaths.mireWisp.cue === null && deaths.mireWisp.asked.length === 0, deaths);
+  /* v2.3.4492: the Mire Wisp left the slime's sheets in v2.3.4357 (#1455):
+     it is the Rotcap now, with its own death (DEATH_CUES: the bog's
+     squelch, as its big one has).  Only the Blue Slime still leaves its
+     death to the renderer's splat */
+  rec.ok('3h. ...the Blue Slime plays nothing here (the renderer plays its splat; it died twice over), and the Mire Wisp, the Rotcap now, plays its own squelch',
+    deaths.blueSlime.cue === null && deaths.blueSlime.asked.length === 0 && deaths.mireWisp.cue === 'dieLurker', deaths);
 
   /* ── 4. the friend ── */
   const me = await H.readState(P, (S) => ({ x: Math.round(S.player.x), y: Math.round(S.player.y) }));
