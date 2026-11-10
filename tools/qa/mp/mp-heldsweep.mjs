@@ -54,7 +54,7 @@ const WANT = (process.env.BT_HS_STATIONS || STATION_NAMES.join(',')).split(',').
 
 /* ── the families: whose work a stack is.  First match wins; `key` is what the budget lists. ── */
 const FAMILIES = [
-  ['body-bake', "a body or head sheet recoloured on the page for one look (another player's, a townsperson's)", /\bbuildBodySheet\b|\brecolorBodyToCanvas\b|\bsolidTool\b|\btoolKeyMask\b/],   /* v2.3.4484: + the pickaxe made solid in the same bake (a mining body; the crowd tour caught it as its own top) */
+  ['body-bake', "a body or head sheet recoloured on the page for one look (another player's, a townsperson's)", /\bbuildBodySheet\b|\brecolorBodyToCanvas\b|\bsolidTool\b|\btoolKeyMask\b/],   /* v2.3.4494: + the pickaxe made solid in the same bake (a mining body; the crowd tour caught it as its own top) */
   ['standin-bake', 'a swing, bow or tool stand-in recoloured on the page', /\brecolorStandInSkin\b|\bbuildStandIn\w*|\b_bakeStandIn\w*/],
   ['gear-sheet', 'a gear or shirt sheet built on the page', /\bbuildSheet\b|\bcomposeShirt\b|\b_gearStripFrame\b|\bloadCroppedStrip\b/],
   ['head-piece', 'a head piece (hair, hat, beard, eyes) coloured or cut', /\b_buildPickupHeadSheet\b|\brecolorTrait\w*|\bbuildHead\w*|\b_bakeHair\w*/],
@@ -87,7 +87,7 @@ function familyOf(names) {
 }
 
 /* ── the profile ── */
-/* v2.3.4484: exported, with makeStation below -- mp-crowdsweep plays its crowd with this same meter */
+/* v2.3.4494: exported, with makeStation below -- mp-crowdsweep plays its crowd with this same meter */
 export function analyse(profile) {
   const byId = new Map();
   for (const n of profile.nodes) byId.set(n.id, n);
@@ -172,7 +172,7 @@ export function analyse(profile) {
       }) } };
 }
 
-/* ── a station: the profiler on for one stretch of play, its holds named (v2.3.4484: shared with mp-crowdsweep) ── */
+/* ── a station: the profiler on for one stretch of play, its holds named (v2.3.4494: shared with mp-crowdsweep) ── */
 export function makeStation(A, cdp, report, want) {
   return async (name, label, drive) => {
     if (want && !want.includes(name)) return;

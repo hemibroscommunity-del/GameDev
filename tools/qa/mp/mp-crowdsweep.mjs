@@ -1,4 +1,4 @@
-/* ═══ THE CROWD TOUR: WHAT A CROWD OF DIFFERENTLY-DRESSED PLAYERS HOLDS THE PAGE FOR (v2.3.4484) ═══
+/* ═══ THE CROWD TOUR: WHAT A CROWD OF DIFFERENTLY-DRESSED PLAYERS HOLDS THE PAGE FOR (v2.3.4494) ═══
  *
  * The owner, 2026-11-10: "I keep catching performance issues piecemeal" --
  * and then asked for the PATTERN to be used to see the next ones coming.  The
