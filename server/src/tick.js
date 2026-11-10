@@ -360,6 +360,7 @@ export const tickMethods = {
       // v2.3.3260: a body left in a fight goes when its time is up, or once
       // it has died and come back (linger.js).  Cheap: an empty Map most ticks.
       guard('linger', () => this._lingerSweep(Date.now()));
+      guard('bodytake', () => this._bodyTakeSweep(Date.now()));   /* v2.3.4455 */
 
       // v2.3.1121: duel housekeeping — expire stale challenges, enforce
       // the 15s reconnect-grace forfeit.  Cheap map walks.
