@@ -6,7 +6,8 @@
  * tests through the night on memory fixes/improvements".
  *
  * A monster's strips (zoneTextures.js loadTrackedStrip: every pose of the fire
- * goblin, the mummy, the skeleton, the snowman, the rock monster, the fishman)
+ * goblin, the mummy, the skeleton, the snowman, the rock monster, the fishman --
+ * v2.3.4355: the water frog)
  * are cut to their art and packed onto a canvas, and once drawn each is held
  * twice: the canvas in the page, and its copy on the graphics chip, which is
  * what is drawn.  At a Flame Fields fight that is 22 MB of the page

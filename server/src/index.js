@@ -103,7 +103,9 @@ import { petbookMethods } from './petbook.js';
 /* v2.3.3209: the monster codex -- what each kill teaches you, codex:<pid>
    (codex.js).  docs/specs/monster-codex.md. */
 import { codexMethods } from './codex.js';
+import { deathPileMethods } from './deathpile.js';   /* v2.3.4384: a dead player's pile survives a restart */
 import { fishlogMethods } from './fishlog.js';   /* v2.3.4036: the rare fish, weighed, with records */
+import { boardMethods, boardFace } from './boards.js';   /* v2.3.4393: the daily spin's records, a face and a level on every board, the deleted stand-ins */
 import { achievementMethods } from './achievements.js';   /* v2.3.3527 */
 import { killRollMethods } from './killroll.js';   /* v2.3.3209: one roll a kill, each drop its own numbers */
 // v2.3.1131 (PR15): quality grades + hardening v1 -- the §4.6b/§4.6c
@@ -127,6 +129,7 @@ import { liveopsMethods } from './liveops.js';
 // sessions on the validate-at-commit core (the gift handshake in
 // trade.js stays untouched for old clients; see trade2.js header).
 import { trade2Methods } from './trade2.js';
+import { rejoinResendMethods } from './rejoinresend.js';   /* v2.3.4382: a rejoin is told its live duel and trade again */
 // v2.3.1143: account-login pre-flight -- read-only Login Key check so
 // the client can validate a typed key before switching identity.
 import { accountMethods } from './account.js';
@@ -715,6 +718,10 @@ export const PRIVILEGED_EVENTS = new Set([
      server-sent and private.  Forged, `fish_weight` would show a weight the
      worker never rolled and `fish_board` names and kilos on a public record. */
   'fish_weight', 'fish_board',
+  /* v2.3.4393: the daily spin's biggest wins and losses (boards.js) -- names
+     and gold on a public record, so a forged one would write the board a
+     phone shows. */
+  'spin_board',
   /* v2.3.3265: the sparring clones of the test panel (spar.js), to their
      owner only.  Forged, it would make a phone take any player for a clone
      it may aim at -- the worker still refuses every such hit (_sparPair) --
@@ -746,6 +753,9 @@ export const PRIVILEGED_EVENTS = new Set([
   'client_off',
   // v2.3.1132: two-sided trade session echoes (server-truth renderer).
   'trade2_state', 'trade2_invite',
+  // v2.3.4382: a rejoin's live duel, said again (rejoinresend.js) -- forged,
+  // it would put a phone in a duel that is not on
+  'duel_resume',
   // v2.3.1185: party roster echoes (server-truth HUD renderer) + the
   // private invite/error notices.  Forging party_state would paint fake
   // rosters; forging party_invited is popup-spam surface.
@@ -3479,6 +3489,11 @@ export class GameRoom {
          bag, tools, ores and cooked fish too (`all`, nomansland.js -- the
          owner: everything but what you wear); Diego sells a tool back. */
       ps.inventory = this._wipeInventoryOnDeath(ps, !!(_nml && _nml.pile && _nml.pile.all));
+      /* v2.3.4384: the pile's own row, put in the same synchronous run as
+         this wipe's save below (_saveRpg, no await between): one write, so a
+         restart finds the bag in the record or on the ground, never both,
+         never neither (deathpile.js; `deathpilesave: false` writes none) */
+      if (_pile) _hook('deathPileSave', () => this._deathPileSave(_pile, playerId, ps));
       /* v2.3.3316: the killer is told what they took, and where it lies */
       if (_nml && _nml.to) _hook('nmlTell', () => this._nmlTellKiller(_nml, playerId, _pile));
     }
@@ -4278,8 +4293,29 @@ export class GameRoom {
          clocks as time LEFT, so a phone whose own clock is off still opens
          it, flashes it and lets it go when the worker does; absent on every
          other pile, so their wire is byte-identical */
-      ...(p.dropped ? this._dropWire(p) : {}),
+      ...(p.dropped ? this._dropWire(p) : (p.isDeathDrop && !this._pileLeftOff() ? this._deathLeftWire(p) : {})),
     };
+  }
+
+  /* v2.3.4383: A DEATH PILE'S WINDOWS GO AS TIME LEFT TOO, in the dropped
+     item's own shape (`openLeft`, `left`).  v2.3.4364 put the worker's times
+     on the phone's clock from the pings, but a phone that has not had its
+     first ping yet (the first 3 s after joining) read them on its own clock:
+     2 minutes fast, its own bag was cut on its first frame (sweep
+     2026-11-03, V22; review R3: "the time-left wire is the real cure").
+     Additive: an old phone ignores them; `ownerOnlyUntil` / `expiry` still
+     go.  `pileleft: false` in the live flags (lower case) stops them. */
+  _deathLeftWire(p) {
+    const now = Date.now();
+    const out = {};
+    if (typeof p.ownerOnlyUntil === 'number') out.openLeft = Math.max(0, p.ownerOnlyUntil - now);
+    if (typeof p.expiry === 'number') out.left = Math.max(0, p.expiry - now);
+    return out;
+  }
+
+  _pileLeftOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'pileleft') && !f.pileleft);
   }
 
   /* v2.3.3473: a drop's own fields on the wire (itemdrop.js) */
@@ -4495,6 +4531,8 @@ export class GameRoom {
           : (now - p.ts > this.LOOT_EXPIRY_MS);
         if (expired) {
           list.splice(i, 1);
+          /* v2.3.4384: a saved death pile's row goes with it (deathpile.js) */
+          if (p._saved) this._deathPileGone(p);
           this.eventBuffer.push({
             type: 'loot_despawn',
             payload: { lootId: p.lootId, zone: zoneId },
@@ -4516,7 +4554,8 @@ export class GameRoom {
       try {
         ws.send(JSON.stringify({
           type: 'loot_pickup_rejected',
-          payload: { lootId: (payload && payload.lootId) || null, zone: (payload && payload.zone) || null, reason, ...(extra || {}) },
+          /* v2.3.4383: `viaPet` echoed, so the phone knows whose ask it was */
+          payload: { lootId: (payload && payload.lootId) || null, zone: (payload && payload.zone) || null, reason, ...(payload && payload.viaPet ? { viaPet: true } : {}), ...(extra || {}) },
         }));
       } catch (e) {}
     };
@@ -4611,6 +4650,11 @@ export class GameRoom {
       this._stampLootRecovered(ps, itemsForMe);
       pile.claimedBy[session.id] = true;
       pile.inventoryClaimed = true;
+      /* v2.3.4384: a saved death pile's row goes in the SAME run as the
+         save that puts its items in this bag (no await between): the
+         delete is the credit's stamp, so a restart neither brings the pile
+         back to a bag that has it nor loses it (deathpile.js) */
+      this._deathPileGone(pile);
       this._saveRpg(session.id, ps);
       const ws = this._wsBySessionId(session.id);
       if (ws) {
@@ -5846,7 +5890,7 @@ export class GameRoom {
         if (session.id) await this._handleTrade2Confirm(session);
         break;
       case 'trade2_cancel':
-        if (session.id) this._handleTrade2Cancel(session);
+        if (session.id) this._handleTrade2Cancel(session, msg.payload);   /* v2.3.4382: + the leave's trade id */
         break;
       case 'trade2_stage_weapon':
         // v2.3.1213: weapon lane -- escrow a stash weapon into the live
@@ -6090,6 +6134,10 @@ export class GameRoom {
         break;
       case 'fish_board_request':
         if (session.id) await this._handleFishBoardRequest(session);
+        break;
+      /* v2.3.4393: the daily spin's biggest wins and losses (boards.js) */
+      case 'spin_board_request':
+        if (session.id) await this._handleSpinBoardRequest(session);
         break;
 
       case 'ace_board_request':
@@ -6489,6 +6537,10 @@ export class GameRoom {
   async reportToLeaderboard(session, force) {
     try {
       if (!session || !session.id) return;
+      /* v2.3.4393: a character being deleted reports no more (boards.js
+         _boardsGone): its row has just been retired, and a `track` let in
+         while that was written would put the old life straight back */
+      if (session._lbGone) return;
       /* ═══ v2.3.3242: THE CLOCK BEFORE THE WORK ═══
          Every `track` (every player, every 2 s) calls this, and it built the
          Leaderboard stub, the whole chain-score series (_chainScoreSeries:
@@ -6562,8 +6614,13 @@ export class GameRoom {
          (the join path can report before `ps` exists), which just means the
          row carries no skill columns until the next report. */
       const series = lbPs ? this._chainScoreSeries(lbPs) : {};
+      /* v2.3.4393: the face beside the row, as a look (boards.js boardFace:
+         the short ids a bust is drawn from, off the character record, which
+         is written once -- so it never moves the signature by itself) */
+      const look = this._boardsOff() ? null : boardFace(session.char && session.char.look);
 
       const sig = JSON.stringify([
+        look,
         name, color, lbLevel,
         rpgData.lifeTotal || 0, rpgData.ap || 0, rpgData.kills || 0,
         rpgData.dungeons || 0, rpgData.goldEarned || 0, rpgData.playtime || 0,
@@ -6587,6 +6644,7 @@ export class GameRoom {
         body: JSON.stringify({
           playerId: session.id, name, color, level: lbLevel,
           rpgData, series, ts: now,
+          ...(look ? { look } : {}),
         }),
       }));
     } catch {}
@@ -6695,7 +6753,9 @@ Object.assign(GameRoom.prototype, raceMethods); /* v2.3.3525 */
 Object.assign(GameRoom.prototype, rideMethods); /* v2.3.3776 */
 Object.assign(GameRoom.prototype, petbookMethods); /* v2.3.3120 */
 Object.assign(GameRoom.prototype, codexMethods); /* v2.3.3209 */
+Object.assign(GameRoom.prototype, deathPileMethods); /* v2.3.4384 */
 Object.assign(GameRoom.prototype, fishlogMethods); /* v2.3.4036 */
+Object.assign(GameRoom.prototype, boardMethods); /* v2.3.4393 */
 Object.assign(GameRoom.prototype, achievementMethods); /* v2.3.3527 */
 Object.assign(GameRoom.prototype, killRollMethods); /* v2.3.3209: the kill's one roll (killroll.js) */
 // v2.3.1131 (PR15): quality + hardening -- see hardening.js.
@@ -6703,6 +6763,7 @@ Object.assign(GameRoom.prototype, hardeningMethods);
 Object.assign(GameRoom.prototype, forgeLadderMethods); /* v2.3.3524 */
 // v2.3.1132 (PR16): two-sided trade window -- see trade2.js.
 Object.assign(GameRoom.prototype, trade2Methods);
+Object.assign(GameRoom.prototype, rejoinResendMethods);   /* v2.3.4382 (rejoinresend.js) */
 // v2.3.1143: account-login pre-flight -- see account.js.
 Object.assign(GameRoom.prototype, accountMethods);
 // v2.3.1146: behavioral anti-bot for life skills (flag-only) -- see botfp.js.

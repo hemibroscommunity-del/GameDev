@@ -1,29 +1,133 @@
-# STATE-MACHINES: the working list (v2.3.4400)
+# The state-machine sweep (2026-11-03) and its fixes (v2.3.4381)
 
-One line an item. A session takes the first OPEN line, proves it is real on
-today's main, fixes it with a test that failed first, and ticks it here in the
-same PR. A claim that turns out wrong is marked REFUTED with the evidence:
-that is a finished item too.
+## What it was
 
-**Where this came from.** A read-through on 2026-11-03 found 964 places where
-something moves through phases ("implicit state machines") and checked the 149
-that looked risky. Its raw notes are NOT in this repo's `docs/`: they are on
-the branch `claude/state-machine-sweep` (draft PR #1415, never to be merged),
-under `docs/state-machine-sweep-2026-11-03/`. Read one file at a time with
-`git show origin/claude/state-machine-sweep:docs/state-machine-sweep-2026-11-03/PLAN.md`
-(the detail of each cluster is `verified/V*.md`). By the run's own count 18%
-of the claims it checked were wrong, so **every line below is a lead until its
-turn comes**. Do not re-sweep the repo: it cost a third of a week's usage.
+A "state machine" here is anything in the game that goes through steps: a
+duel (asked, accepted, fighting, over), a trade window, a death (dying, dead,
+standing up), a socket (connecting, joined, dropped). Many of these were
+never written as one list of steps. They were spread over several true/false
+fields set in different places, so two places could disagree about which step
+you were in. That is where bugs hide: a duel the phone thinks is on and the
+server does not, a trade window nobody can close.
 
-**What "explicit" means here** (owner, 2026-11-09): a phase lives in one
-field, one function changes it, and a test fails any other writer, the way
-`hit-door.test` does. Not a rewrite of all 964: most are harmless.
+On 2026-11-03 a sweep went through the code looking for these, checked each
+finding, and had three reviewers read the result. It wrote a fix plan.
 
-**What the owner wants from it**: the game smooth on every device; a modified
-client cannot cheat (the server decides, the phone only asks); an honest
-player never loses items, gold or a fight to a phase that stuck.
+## Where its files are
 
-## A. The computer faults from the expo (2026-11-05)
+Not on `main`. They live on the storage branch `claude/state-machine-sweep`
+(pull request #1415, never to be merged), in the folder
+`docs/state-machine-sweep-2026-11-03/`:
+
+- `README.md`: what the sweep is and how its files fit together;
+- `PLAN.md`: the fix plan, one item a system;
+- `verified/<V>.md`: each system's checked findings (V1, V2, ... VA, VB, VC);
+- `reviews/R1.md`, `R2.md`, `R3.md`: the three reviews.
+
+The owner's readable copy is the doc "Implicit State Machines in BroTown"
+(https://claude.ai/artifact/PrspeJRdJWG6ciAYtRspen).
+
+## How to use them
+
+Before you fix an item, read its `verified/<V>.md` and the item's bullets in
+all three reviews. Then **confirm each claim in today's code first**: about 1
+claim in 5 was wrong when the lanes checked, and the code has moved since.
+A fix starts with a test that fails on today's code.
+
+## What shipped (2026-11-10, pull requests #1457 to #1476)
+
+| PR | Tag | What | Kill switch |
+|----|-----|------|-------------|
+| #1458 | v2.3.4361 | phantom duel: an accept waits for the server's word; a duel swing names its foe | |
+| #1459 | v2.3.4362 | trade window: Leave never waits forever; a reconnect keeps a live window | |
+| #1457 | v2.3.4363 | the phone never plays a death on its own; one stand-up | |
+| #1460 | v2.3.4364 | loot piles on the server's clock (`workerClock.js`); one mayAsk for hand and pet | |
+| #1462 | v2.3.4365 | block list: one writer, one table (`blockedAsks.js`); Block stops direct messages | |
+| #1461 | v2.3.4366 | dungeon opening ignores a second Enter; one farm trip (`farmTrip.js`) | |
+| #1463 | v2.3.4367 | one socket at a time (`socketLine.js`); the "Reconnecting" cover re-checks under the loading screen | |
+| #1465 | v2.3.4368 | looks: one head-key builder; chained body retry; eyewear and eye-style "ready" | |
+| #1464 | v2.3.4369 | General Store sell tap: one at a time, no old pick (a stop-gap) | |
+| #1466 | v2.3.4370 | the ground helper: a failed start retries (`startFetch.js`) | |
+| #1468 | v2.3.4371 | a dueller who leaves the zone forfeits after 15 s | `duelzone` |
+| #1476 | v2.3.4372 | the points reset's minute survives a rejoin | `pointsresetroom` |
+| #1470 | v2.3.4373 | "dead" is the server's word | `serverdead` |
+| #1469 | v2.3.4374 | a join at 0 health stands up in BroTown | `joinstandup` |
+| #1467 | v2.3.4375 | the old gift trade is closed while the trade window is on | `giftclosed` |
+| #1471 | v2.3.4376 | the kill switches load before any web request | (none, on purpose) |
+| #1472 | v2.3.4377 | a takeover saves what a close would save | `takeoversave` |
+| #1474 | v2.3.4378 | a never-seen party leader's idle clock | `leaderidleat` |
+| #1475 | v2.3.4379 | the anti-bot record of a live player is never evicted | `botrecordkeep` |
+| #1473 | v2.3.4380 | old skill tracks frozen under prog3: no heal on a forged rise | `skillfreeze` |
+
+A kill switch is a live flag: setting it to `false` brings back the old
+behaviour without a deploy. The lessons are in `docs/TRAPS.md` §262-278.
+
+## What is left
+
+This is a list, not a promise. The plan is `PLAN.md` on the storage branch.
+
+**In flight on 2026-11-10:** the rejoin re-sending a live duel and trade
+(v2.3.4382); a death pile's windows sent as time left (v2.3.4383).
+
+**Not started, no decision needed:** rare armour lost on the phone after a
+reconnect (V9b); quest and gear predictions the server refuses without a word
+(V9a, V9b); friend requests (V12); a monster's life across deaths (V7); the
+shield's kept parts (V10); art loads and the renderer's rebuilds (V17a,
+V17b); the small-bugs bundles (VA, VB, VC); the General Store's request
+timeout (V8a); the feedback board's typed id (VA); dungeon ids made up on the
+phone (V1, V6); the money-in-one-write items (V8a, V8b).
+
+**Waiting on the owner:**
+- a second tab in the middle of a fight, and two characters in two tabs (V3, V5);
+- whether forging, hardening and equipping count as leaving a fight (V21);
+- the farm's two phone-only workshops (V9c);
+- a server-side "entering" grace for the dungeon's loading screen (V11; TRAPS §262);
+- showing the guard break on the phone (V10);
+- a death pile surviving a server restart (V22);
+- a monster's pile: 30 or 60 seconds;
+- hiding a blocked player's attack warning;
+- a grace period for a trade that loses its server.
+
+**Already red on `main`, not the lanes' doing (2026-11-10):**
+- `node tools/world/test-world-core.mjs --check` fails 2 of 540 (the Town
+  Hall window, the forge room's stage);
+- `mp-farmmusic` step 4 (the frost land's music after the farm gate);
+- `node tools/art/head-bake.mjs --check` listed 49 stale head sheets on the
+  orchestrator's machine, the same on `main` before any lane. Unconfirmed: it
+  may be that machine's picture encoder.
+
+## How the lanes were run (for the next orchestrator)
+
+1. **One system a lane, one pull request.** The brief points at
+   `verified/<V>.md` and the item's review bullets instead of pasting them,
+   and the lane confirms each claim before fixing it.
+2. **A test that fails before and passes after.** Node tests in
+   `server/test/`, not phone scenarios, wherever node can reach the code.
+3. **Lanes never collide.** They never append to `docs/TRAPS.md` or
+   `server/test/liveops.test.mjs` (each put its lesson under "For TRAPS" in
+   its pull request body), never put a new import in the middle of a block,
+   and are told which lines sibling lanes touch. Before anything merges, the
+   orchestrator merges every open lane branch together, in both orders, in a
+   scratch `git worktree`, and runs precheck and the server suite on the
+   result.
+4. **Lanes do not message the orchestrator.** It checks each wave once.
+5. **The reviewer reads every diff.** It caught a brief of the orchestrator's
+   own that would have hidden live trades on a reconnect (TRAPS §278).
+
+And: every merge with a file under `server/` deploys the worker, a test
+included (TRAPS §277). Merge a batch together, in a quiet hour.
+
+## Smooth on every device: items A, A2, A3 (v2.3.4400)
+
+The owner's first goal for this work (2026-11-09): "the game runs smoothly on
+whatever device or browser, computers included". These three are not from the
+sweep's plan: they are the judges' computers at the expo (2026-11-05) and the
+owner's own iPhone, each found from a capture of the frame meter (`?perf=1`).
+One line an item, ticked when done; a session takes the first open one.
+
+Also from that day, the owner's answer to the plan's question 4 (should the
+server stop believing the phone about dead, guard, cooking, zone and world
+size?): **YES**. "Dead" is the server's word since v2.3.4373 (above).
 
 - [x] **A. Patches like a checker pattern round the edge of the view, and
   "not smooth", on the judges' computers.** DONE, v2.3.4400.
@@ -49,7 +153,7 @@ player never loses items, gold or a fight to a phase that stuck.
     Only a line under about 80 KB a second, or one gone silent, still starts
     in plain colours.
 
-- [ ] **A2. How a computer DRAWS the game.** OPEN: next, ahead of B, by the
+- [ ] **A2. How a computer DRAWS the game.** OPEN: next, by the
   owner's word of 2026-11-09: "It's just unoptimized for desktop. Can you fix
   how the game gets processed when used on desktop? It's all been focused on
   mobile performance."
@@ -196,97 +300,3 @@ player never loses items, gold or a fight to a phase that stuck.
     made no difference and the meter shows the chip keeping up.
   - The same uneven step is on computers too, so this is part of A2's "not
     smooth". A2 stays open for what a computer's graphics chip costs.
-
-## B. Cheap closes against a modified client
-
-From PLAN.md, "the cheap closes for modified phones".
-
-- [ ] **B1. The `dead` gate.** Target gates ask `ps.dying`; a phone that
-  never says it is dead cannot be hit ("god mode"). OPEN: first of B.
-- [ ] **B2. Minted `dungeon:` ids** grow the room's memory (about 100 MB an
-  hour against a 128 MB room). OPEN.
-- [ ] **B3. A points-reset loop** can write about 131,000 rows a day, past
-  the free plan's 100,000. OPEN.
-- [ ] **B4. The feedback board trusts any typed id.** OPEN.
-
-## C. Wave 1: honest players' harms, in PLAN.md's order
-
-- [ ] **C1. The phantom duel (V6)**: a red skull, and worn gear lost to a
-  player kill. OPEN. Needs owner decision 2 for the zone-change rule.
-- [ ] **C2. Undone blocks (V12).** OPEN. Needs owner decision 3.
-- [ ] **C3. Bag losses**: the dying window (V2) and death piles (V22). OPEN.
-  Needs owner decision 6.
-- [ ] **C4. The guard break shown on the phone (V10).** OPEN.
-- [x] **C5. The pond memory leak (V17b, R1-8).** On main as v2.3.4157 ("a
-  fishing overlay pushed out of its cache is freed for good"), by the commit
-  log; not re-checked.
-- [ ] **C6. The bag lost behind the dungeon's loading screen (V11).** OPEN.
-  Do not add a movement freeze: holding a player still and blind while
-  monsters hit them makes it worse.
-- [ ] **C7. The frozen trade window (V8b).** OPEN.
-- [ ] **C8. The Rare armour lost on the phone after a reconnect (V9b)**:
-  match by gid. OPEN.
-
-## D. Wave 2: the five causes, then "keep it fixed"
-
-- [ ] **D1. The server decides the player's phases itself**: dead, guard,
-  zone flips, world size, cooking. The phone's fields become requests, as
-  v2.3.3292 did for dodging. OPEN. **Owner decision 4: YES** (2026-11-09).
-- [ ] **D2. One fight-lock table in the router**: every message that moves
-  gold or items names its gate; a test sends each during a player fight and
-  checks nothing moved. OPEN. Needs owner decision 7.
-- [ ] **D3. Phone copies of server sessions** (the duel, the trade window,
-  the held pose, the arena) cleared at every rejoin and sent again by the
-  worker, as the party already is. OPEN.
-- [ ] **D4. One server clock on the phone**, from the ping, for every server
-  timestamp (loot piles, the trade countdown, buffs). OPEN.
-- [ ] **D5. Two habits**: a dropped send is never stamped as sent; a cache
-  never evicts what this frame draws. OPEN.
-- [ ] **D6. Money**: each payment, its stamp and the record's "paid" phase
-  in one synchronous run, a phase per escrow record that the wake finishes.
-  OPEN.
-- [ ] **K1. A "one door" test per machine**, as `hit-door.test`. OPEN.
-- [ ] **K2. Chaos tests**, node first: a second tab mid-fight, a deploy
-  mid-trade, a restart between two saves, an app switch, a black-screen
-  rebuild, a wrong phone clock. OPEN.
-- [ ] **K3. A precheck rule** against any load with no time limit or retry.
-  OPEN.
-- [ ] **K4. Two CLAUDE.md lines**: "a phase lives in one field with one
-  transition function"; "the server never takes a phase from the phone's
-  move". OPEN (the owner approves CLAUDE.md's rules).
-
-**Order notes from PLAN.md**: the cold-flags fix (V13) before the HTTP-route
-changes; the shared loader helper before the "load once, never retry" fixes;
-move mp-remnant off the retired map before relying on it; the second-tab
-takeover (V3) and two-tab identity (V5) ship under one answer; the duel's
-rejoin clear only ships with the worker's re-send.
-
-## Already on main from the sweep (by the commit log)
-
-- v2.3.4154: the 1/2/3 keys take up only a weapon you hold (VB, G2-17).
-- v2.3.4155: "Your map" is never refused for its size (V15, M1-1).
-- v2.3.4156: a full crash ring still uploads a new crash (VA, N2-1).
-- v2.3.4157: the pond memory leak (C5 above).
-
-## Small leads not yet in a wave (PLAN.md, "optional")
-
-- [ ] Monsters drawn as a generic body after a short walk (V17b, R6-5).
-- [ ] The Wheel's ground helper retrying after a Wi-Fi blip (V11, G3-4,
-  T1-12). Partly touched by item A (a download is no longer cut for being
-  slow); the helper's own start is not checked.
-- [ ] A computer-only raise of the dressed-shirt cap (V18, R7-3). Unmeasured:
-  measure with `lookpalette=0` first.
-
-## The owner's decisions (PLAN.md's numbers)
-
-| # | Question | Answer |
-|---|---|---|
-| 1 | The expo's per-address limits | Past (v2.3.4158's Test panel switch) |
-| 2 | A zone change mid-duel: forfeit after 15 s, or doors refuse duellers? Should a challenge time out on the phone? (V6) | OPEN |
-| 3 | Blocks kept by the server, also stopping DMs and requests, and unfriending? (V12) | OPEN |
-| 4 | Should the server stop believing the phone about dead, guard, cooking, zone and world size? (V1) | **YES** (2026-11-09) |
-| 5 | Two characters in two tabs, and a second tab mid-fight: allowed? (V5, V3) | OPEN |
-| 6 | A death pile across a deploy, and the dying window across a closed app (V22, V2) | OPEN |
-| 7 | The fight lock: do forging, hardening, gems and equipping count? (V21) | OPEN |
-| 8 | The farm's two phone-only workshops: remove or rebuild? (V9c) | OPEN |
-| 9 | Smaller: a monster pile 30 s or 60 s; a failed monster look invisible or a stand-in; the guard break shown, and whether the guard comes back by itself | OPEN |

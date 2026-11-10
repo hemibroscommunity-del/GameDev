@@ -98,6 +98,15 @@ export function swingAttack(S) {
        shield in the same frame can still cancel it. */
     S._swingSfxKey = meleeSwingSfx(S.rpg);
     S._swingSfxPending = true;
+    /* v2.3.4387: ...and the others see it.  monsterCombat's sweep relays a
+       swing to the other players (player_swing, one message a swing) on the
+       first frame it runs, but only when this flag is up, and until now only
+       the held loop raised it: a TAPPED or CLICKED swing hit the monster and
+       the players beside you saw you stand still (sweep 2026-11-03, VB-1
+       G1-5).  The loop cannot send a second one for this swing: the stamp
+       above holds its gate shut for the cooldown, and its own melee start
+       waits on !isSwinging. */
+    S._swingBcastPending = true;
 }
 
 export function specialAttack(S) {

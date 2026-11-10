@@ -53,7 +53,9 @@
  * THE BOARDS `fish_board` (one GameRoom key, the Ace board's way, gamble.js:
  * never the Leaderboard DO, which ranks skills every 5 minutes and forgets a
  * player after 7 days): one board a species, the ten heaviest, ONE row a
- * player (their best), `{pid, name, g, v?, at}`.  A weigh-in that beats a
+ * player (their best), `{pid, name, g, v?, at}` (v2.3.4393: and `lv`, `look`,
+ * the level and the face it was weighed with, and `gone` on the stand-in of
+ * a character since deleted: boards.js).  A weigh-in that beats a
  * board's tenth enters it, written at once in the weigh-in's run.  Read once
  * a worker's life (the only writer is this room); a newer `v`, or a failed
  * read, locks it -- shown as it was read, never written.  Ties keep the
@@ -81,6 +83,7 @@
  *
  * Suite: server/test/fish-variants.test.mjs. */
 import { FISH_TIERS } from './data.js';
+import { boardFace, retireRows, BOARDS } from './boards.js';   /* v2.3.4393: a face and a level on each row, and the deleted stand-ins */
 
 export const FISHLOG_KEY = (playerId) => 'fishlog:' + playerId;
 
@@ -203,6 +206,13 @@ export function normalizeFishBoard(raw) {
       seen.add(e.pid);
       const row = { pid: e.pid, name: String(e.name || 'Bro').slice(0, FISHLOG.NAME_MAX), g, at: Math.floor(Number(e.at) || 0) };
       if (e.v === 'albino' || e.v === 'large') row.v = e.v;
+      /* v2.3.4393: the level and the face the row was set with, and a
+         deleted character's stand-in (boards.js) */
+      const lv = Math.floor(Number(e.lv) || 0);
+      if (lv > 0) row.lv = Math.min(BOARDS.LV_MAX, lv);
+      const look = boardFace(e.look);
+      if (look) row.look = look;
+      if (e.gone) row.gone = Math.floor(Number(e.gone) || 0) || 1;
       rows.push(row);
     }
     rows.sort((x, y) => (y.g - x.g) || (x.at - y.at));
@@ -217,7 +227,7 @@ export function normalizeFishBoard(raw) {
 const plainLog = (rec) => ({ v: rec.v, u: { ...rec.u }, b: { ...rec.b } });
 const plainBoards = (boards) => {
   const b = {};
-  for (const sp of SPECIES) b[sp] = (boards && boards[sp] ? boards[sp] : []).map((e) => ({ ...e }));
+  for (const sp of SPECIES) b[sp] = (boards && boards[sp] ? boards[sp] : []).map((e) => (e.look ? { ...e, look: { ...e.look } } : { ...e }));
   return b;
 };
 
@@ -355,18 +365,37 @@ export const fishlogMethods = {
   _fishBoardEnter(book, pid, name, sp, g, v, at) {
     if (!book || book.locked || !book.boards) return 0;
     const list = book.boards[sp] || [];
-    const mine = list.find((e) => e.pid === pid);
+    /* v2.3.4393: a deleted character's row (`gone`) is nobody's: the next
+       life's catch is a row of its own beside it */
+    const mine = list.find((e) => e.pid === pid && !e.gone);
     if (mine && mine.g >= g) return 0;
     if (!mine && list.length >= FISHLOG.BOARD_SIZE && g <= list[list.length - 1].g) return 0;
     const row = { pid, name: String(name || 'Bro').slice(0, FISHLOG.NAME_MAX), g, at };
     if (v) row.v = v;
-    const next = list.filter((e) => e.pid !== pid);
+    /* v2.3.4393: the level and the face it was weighed with (boards.js) */
+    const who = this._boardsOff && !this._boardsOff() && this._boardWho ? this._boardWho(pid) : null;
+    if (who && who.lv > 0) row.lv = who.lv;
+    if (who && who.look) row.look = who.look;
+    const next = list.filter((e) => e.pid !== pid || e.gone);
     next.push(row);
     next.sort((x, y) => (y.g - x.g) || (x.at - y.at));
     book.boards[sp] = next.slice(0, FISHLOG.BOARD_SIZE);
     try { this.state.storage.put(FISHLOG.BOARD_KEY, { v: FISHLOG.BOARD_V, b: plainBoards(book.boards) }); } catch (e) { /* fire-and-forget */ }
     const idx = book.boards[sp].indexOf(row);
     return idx >= 0 ? idx + 1 : 0;
+  },
+
+  /* v2.3.4393: a character deleted for good (boards.js _boardsGone): its
+     rows stay, retired -- the stand-in the phone draws grey */
+  _fishBoardRetire(book, pid, at) {
+    if (!book || book.locked || !book.boards) return 0;
+    let n = 0;
+    for (const sp of SPECIES) {
+      const r = retireRows(book.boards[sp], pid, at);
+      if (r.n) { book.boards[sp] = r.rows; n += r.n; }
+    }
+    if (n) { try { this.state.storage.put(FISHLOG.BOARD_KEY, { v: FISHLOG.BOARD_V, b: plainBoards(book.boards) }); } catch (e) { /* fire-and-forget */ } }
+    return n;
   },
 
   /* ═══ fish_inspect {key} (index.js's router) ═══ */

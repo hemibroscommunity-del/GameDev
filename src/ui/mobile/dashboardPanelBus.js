@@ -83,6 +83,14 @@ const landSafe = (id) => {
    on top of that page, so the back chip steps back to it. */
 const BRO_PAGES = { skills: 1, achievements: 1 };
 const broPage = (id) => Object.prototype.hasOwnProperty.call(BRO_PAGES, id);
+/* ═══ v2.3.4393: THE LEADERBOARDS HAVE THEIR OWN BUTTON ═══
+   They were a drill under More (open('more') then push('leaderboard')); now
+   they are a destination on the row (BottomDashboard RAIL_ORDER).  Every old
+   road that still pushes them -- the Town Board's row, a weigh-in card's
+   Records, a profile's button, a test -- lands on that one page, its button
+   lit, never a second copy under More with a back chip to it. */
+const OWN_PAGES = { leaderboard: 1 };
+const ownPage = (id) => Object.prototype.hasOwnProperty.call(OWN_PAGES, id);
 
 export const dashboardPanelBus = {
   state: { stack: ['bag'], mode: 'bar' },
@@ -202,6 +210,8 @@ export const dashboardPanelBus = {
        (on top of the page there if Bro is the one open) */
     if (broPage(id) && !(this.state.mode === 'expanded' && this.root() === 'hero')) { this.open(id); return; }
     if (broPage(id) && this.current() === id) return;   /* already on it */
+    /* v2.3.4393: a page with its own button opens as that button does */
+    if (ownPage(id)) { if (!(this.state.mode === 'expanded' && this.current() === id)) this.open(id); return; }
     this.state.stack = [...this.state.stack, landSafe(id)];
     this.state.mode = 'expanded';
     emit();

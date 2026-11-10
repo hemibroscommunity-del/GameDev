@@ -69,10 +69,15 @@ const { MONSTER_VARIANTS } = await import('../../src/data/monsterVariants.js');
 /* ── 2. every drawn look has its own death ── */
 {
   const looks = [...Object.keys(MONSTER_VARIANTS), 'snowman', 'fodder'];
-  const none = looks.filter((k) => !Z.deathZoneLook(k));
-  check('2a every monster variant, the snowman and the slime have zones', none.length === 0, none);
+  /* v2.3.4355: but for a look whose death is its own strip on every kill
+     (`deathStripOnly`: the water frog; v2.3.4356: the storm eye), which is
+     never cut into zones */
+  const stripOnly = looks.filter((k) => MONSTER_VARIANTS[k] && MONSTER_VARIANTS[k].deathStripOnly);
+  const none = looks.filter((k) => !Z.deathZoneLook(k) && stripOnly.indexOf(k) < 0);
+  check('2a every monster variant, the snowman and the slime have zones (but the water frog, the storm eye, the two rotcaps, the rock golem and the thorn shambler: their own animations)',
+    none.length === 0 && stripOnly.join() === 'fishman,stormEye,rockmonster,mireWisp,thornShambler,bogLurker' && stripOnly.every((k) => !Z.deathZoneLook(k)), { none, stripOnly });
   check('2b the looks on the slime\'s sheets are cut as the slime (a blob)',
-    ['fodder', 'mossSlime', 'blueSlime', 'mireWisp'].every((k) => Z.deathZoneLook(k) === Z.DEATH_ZONES.slime) && Z.DEATH_ZONES.slime.blob === true);
+    ['fodder', 'mossSlime', 'blueSlime'].every((k) => Z.deathZoneLook(k) === Z.DEATH_ZONES.slime) && Z.DEATH_ZONES.slime.blob === true);
   check('2c a look without zones dies today\'s way (null)', Z.deathZoneLook('brute') === null && Z.deathZoneLook('__proto__') === null && Z.deathZoneLook(null) === null);
   const ids = (zs) => (zs || []).map((z) => z.id).join(',');
   const isView = (k, f, view) => ids(Z.deathZonesFor(k, f)) === ids(Z.DEATH_ZONES[k][view].filter((z) => !z.faces || z.faces.indexOf(f) >= 0));
@@ -92,16 +97,18 @@ const { MONSTER_VARIANTS } = await import('../../src/data/monsterVariants.js');
     && zs('snowman').filter((z) => z.part === 'eyes' && z.off === 'pop').length === 2
     && zs('snowman').filter((z) => z.part === 'arms' && z.off === 'crumble' && Z.bigOff(z) === 'fly' && z.mat === 'wood').length === 2
     && has('snowman', (z) => z.part === 'torso' && z.off === 'slump' && Z.bigOff(z) === 'crumble' && z.mat === 'snow') && has('snowman', (z) => z.part === 'base' && z.off === 'stays'));
-  check('2g a slime splats flat and its goo slops off (flies on a big blow); a bog lurker sinks into a puddle',
+  /* v2.3.4357: the bog lurker's key is the great rotcap, whose death is its
+     own strip: its sinking puddle went with the fishman picture it was cut for */
+  check('2g a slime splats flat and its goo slops off (flies on a big blow); the rotcaps have no zones (their own animation)',
     has('fodder', (z) => z.off === 'slump' && z.squash >= 0.6) && has('fodder', (z) => z.off === 'crumble' && Z.bigOff(z) === 'fly' && z.mat === 'goo')
-    && has('bogLurker', (z) => z.off === 'slump' && z.sink > 0 && Z.bigOff(z) === 'slump') && Z.DEATH_ZONES.bogLurker.puddle === true);
+    && !Z.DEATH_ZONES.bogLurker && Z.deathZonesFor('bogLurker', 'south') == null && Z.deathZonesFor('mireWisp', 'south') == null);
   check('2h a fire goblin drops his torch, crumples and his flame gutters out',
     has('fireGoblin', (z) => z.part === 'prop' && z.mat === 'wood') && has('fireGoblin', (z) => z.mat === 'flame') && has('fireGoblin', (z) => z.part === 'core' && z.off === 'slump'));
-  check('2i a rock monster crumbles into stones; a skeleton\'s bones scatter; a fishman flops; a thorn shambler splinters',
-    zs('rockmonster').filter((z) => z.off === 'crumble' && z.mat === 'stone').length >= 4
-    && zs('skeleton').filter((z) => z.mat === 'bone' && z.off !== 'stays').length >= 6
-    && has('fishman', (z) => z.off === 'hinge' && z.flop >= 2)
-    && zs('thornShambler').filter((z) => z.mat === 'wood' && Z.bigOff(z) === 'fly').length >= 3);
+  /* v2.3.4355: the Water Caves' monster (key `fishman`) is the water frog,
+     whose death is its own strip on every kill: it has no zones */
+  check('2i a skeleton\'s bones scatter; the water frog, the rotcaps, the rock golem and the thorn shambler have no zones (their own animations)',
+    zs('skeleton').filter((z) => z.mat === 'bone' && z.off !== 'stays').length >= 6
+    && ['fishman', 'rockmonster', 'thornShambler'].every((k) => !Z.DEATH_ZONES[k] && Z.deathZonesFor(k, 'south') == null));
 }
 
 /* ── 3. the cuts cut where the zones say ── */
@@ -159,10 +166,6 @@ function readPng(rel) {
     ['skeleton', 'south', 'public/sprites/monsters/skeleton/run-s.png', 256, 0],
     ['skeleton', 'west', 'public/sprites/monsters/skeleton/run-w.png', 256, 0],
     ['mummy', 'south', 'public/sprites/monsters/mummy/walk-s.png', 256, 0],
-    ['fishman', 'south', 'public/sprites/monsters/fishman/walk-south.png', 256, 0],
-    ['bogLurker', 'south', 'public/sprites/monsters/fishman/walk-south.png', 256, 0],
-    ['rockmonster', 'south', 'public/sprites/monsters/rockmonster/walk-south.png', 256, 0],
-    ['thornShambler', 'south', 'public/sprites/monsters/rockmonster/walk-south.png', 256, 0],
   ];
   const thin = [], read = [];
   for (const [look, facing, sheet, fw, fi] of FRAMES) {
@@ -214,13 +217,11 @@ function readPng(rel) {
 /* ── 6. the eyes ── */
 {
   const eyes = (k, f) => (Z.deathZonesFor(k, f) || []).filter((z) => z.part === 'eyes');
-  check('6a the eyes are where the picture shows them: the snowman two facing you and one side on, none from behind; the goblin and the mummy two facing you; the fishman, the bog lurker one, the rock monster and the thorn shambler two, every way; the slime and the skeleton none',
+  check('6a the eyes are where the picture shows them: the snowman two facing you and one side on, none from behind; the goblin and the mummy two facing you; the slime and the skeleton none',
     eyes('snowman', 'south').length === 2 && eyes('snowman', 'southwest').length === 2 && eyes('snowman', 'north').length === 0
     && eyes('snowman', 'east').length === 1 && eyes('snowman', 'west').length === 1
     && eyes('fireGoblin', 'south').length === 2 && eyes('fireGoblin', 'east').length === 0
     && eyes('mummy', 'south').length === 2 && eyes('mummy', 'north').length === 0
-    && ['south', 'north', 'east', 'west'].every((f) => eyes('fishman', f).length === 1 && eyes('bogLurker', f).length === 1
-      && eyes('rockmonster', f).length === 2 && eyes('thornShambler', f).length === 2)
     && eyes('fodder', 'south').length === 0 && eyes('skeleton', 'south').length === 0);
   const bad = [];
   for (const k of Object.keys(Z.DEATH_ZONES)) for (const f of Z.DEATH_FACINGS) for (const z of eyes(k, f)) {
@@ -236,8 +237,15 @@ function readPng(rel) {
   const head = (zs) => zs.find((z) => z.id === 'head');
   check('6c where the eyes are not seen, the head takes their pixels back (no hole, no gap)',
     head(s).cut && head(s).cut.length === 2 && !head(n).cut && Z.zoneHas(head(n), 0.43, 0.23) && !Z.zoneHas(head(s), 0.43, 0.23) && Z.zoneHas(s.find((z) => z.id === 'eyeL'), 0.43, 0.23));
-  const fs = eyes('fishman', 'south')[0], fw = eyes('fishman', 'west')[0];
-  check('6d a facing drawn from a mirrored file (the fishman\'s walk-west) mirrors its zones: the eye moves to the other side',
+  /* (6d, a facing drawn from a mirrored file: no look is any more -- the
+     rock monster's walk-west was the last, v2.3.4358.  The mirroring itself
+     is held on a look made for the test.) */
+  Z.DEATH_ZONES.__qaFlip = { flip: ['west'], front: [
+    { id: 'body', part: 'core', rect: [0, 0, 1, 1], cut: ['eye'], mat: 'goo', off: 'slump', mass: 2, bounce: 0, roll: 0 },
+    { id: 'eye', part: 'eyes', rect: [0.2, 0.3, 0.3, 0.4], mat: 'goo', off: 'pop', mass: 0.2, bounce: 0.45, roll: 0.5 }] };
+  const fs = eyes('__qaFlip', 'south')[0], fw = eyes('__qaFlip', 'west')[0];
+  delete Z.DEATH_ZONES.__qaFlip;
+  check('6d a facing drawn from a mirrored file mirrors its zones: an eye moves to the other side',
     Math.abs(fw.rect[0] - (1 - fs.rect[2])) < 1e-9 && Math.abs(fw.rect[2] - (1 - fs.rect[0])) < 1e-9 && fw.rect[1] === fs.rect[1]);
 }
 
@@ -246,9 +254,9 @@ function readPng(rel) {
   const less = [];
   for (const k of Object.keys(Z.DEATH_ZONES)) for (const f of Z.DEATH_FACINGS) {
     const zs = Z.deathZonesFor(k, f), calm = Z.thrownCount(zs, false), big = Z.thrownCount(zs, true);
-    /* the fishman and the bog lurker are one body and an eye: the big blow
-       throws the body over harder (and splashes), it throws no more pieces */
-    const one = k === 'fishman' || k === 'bogLurker';
+    /* (a look that is one body and an eye throws no more pieces on a big
+       blow, only harder: none since v2.3.4357, the bog lurker was the last) */
+    const one = false;
     if (one ? big < calm : big <= calm) less.push(`${k}@${f}: ${calm} -> ${big}`);
   }
   check('7a a big blow throws more pieces than an ordinary kill, every look and facing (the one-body looks no fewer)', less.length === 0, less);

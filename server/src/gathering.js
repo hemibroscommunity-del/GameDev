@@ -76,6 +76,7 @@
  *          few plans of one node buys a script a few hits, never the 48x the
  *          retired branch did. */
 import { WHEEL_ZONE } from './wheelzone.js'; /* v2.3.3012: the Wheel's baked nodes */
+import { HIT_PROOF } from './hitproof.js'; /* v2.3.4385: a paid volley's window (_volleyChipKeeps) */
 import { xpDecayMult, xpAfterDecay } from './xpdecay.js'; /* v2.3.3251: XP fades 5+ levels below you */
 import { parseGemKey } from './gems.js';   /* v2.3.3516: gems are kept through a death (_keptThroughDeath) */
 
@@ -971,9 +972,12 @@ export const gatheringMethods = {
    *  Deleting the record also correctly restores the timing anticheat, since
    *  the next strike then has no window to be validated against (v2.3.3322:
    *  and is refused, but for the recovery strike -- HARVEST_PROOF). */
-  _endExtraction(playerId) {
+  _endExtraction(playerId, keepRecord) {
     if (!playerId) return;
-    if (this.extractions[playerId]) delete this.extractions[playerId];
+    /* v2.3.4385: `keepRecord` -- a stuck arrow's late chip (_volleyChipKeeps,
+       below) leaves the node's record standing; the cook stamp under it is
+       zeroed as ever */
+    if (!keepRecord && this.extractions[playerId]) delete this.extractions[playerId];
     /* v2.3.1765: the cook/fire branch of _extractionShielded reads ps._exAt,
        not this.extractions, so clearing the record alone would leave a swinging
        cook still shielded — the exact hole this method exists to close, just on
@@ -981,6 +985,47 @@ export const gatheringMethods = {
        edge in movement.js re-arms it. */
     const ps = this.playerState[playerId];
     if (ps) ps._exAt = 0;
+  },
+
+  /* ═══ v2.3.4385: A STUCK ARROW'S LATE CHIP IS NOT A NEW ATTACK ═══
+     The state-machine sweep (V9a S4-28; review R2 W1.14).  A bow volley's
+     arrows stick in a monster and chip it every 500 ms for 2.5 s
+     (projectiles.js stuckIn: monster_damage, special false, noKb true, no
+     `part`), whatever the archer does next -- and the phone lets them start a
+     harvest the moment they stop shooting.  Each chip came through
+     _handleMonsterDamage's _endExtraction, so a harvest begun inside that
+     window lost its record: the strike was paid only as the ten-minute
+     recovery strike, else refused 'no-start' with nothing said, and every
+     refusal counted toward the 'startless' bot flag (botfp.js).
+     So a chip keeps the record when it can only be a leftover: the bow's
+     chip shape, AND a paid bow special's window (hitproof.js _pveSpecialPaid,
+     the worker's own stamp, never the phone's word) opened no later than this
+     harvest began and still open.  A new shot or swing still ends the
+     harvest, as v2.3.1704 meant: a plain arrow and a volley's first arrow in
+     carry no noKb, its other arrows are specials with a `part`, and the
+     chips of a volley fired AFTER the start are not leftovers.  A forged
+     chip shape buys at most what is left of one window (4.5 s), under the
+     rate lane's own grant.  Not an honesty check (it loosens one), so test
+     mode does not ask: a test-mode character keeps its harvest the same way.
+     `volleychip: false` in the live flags ends the harvest on every chip, as
+     before. */
+  _volleyChipOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'volleychip') && !f.volleychip);
+  },
+  _volleyChipKeeps(playerId, payload, now) {
+    if (!payload || payload.slot !== 'ranged' || payload.noKb !== true || payload.special) return false;
+    if (Number(payload.part) > 1 || !this._volleyChipOn()) return false;
+    const e = this.extractions[playerId];
+    const ps = this.playerState[playerId];
+    const L = ps && ps._pveSpec;
+    if (!e || !Array.isArray(L)) return false;
+    const t = typeof now === 'number' ? now : Date.now();
+    for (const w of L) {
+      if (!w || t >= w.until || (w.kind !== null && w.kind !== 'ranged')) continue;
+      if (w.until - HIT_PROOF.SPECIAL_WINDOW_MS <= e.startedAt) return true;
+    }
+    return false;
   },
 
   /** Does this player hold the tool for a gathering skill?  True for any skill

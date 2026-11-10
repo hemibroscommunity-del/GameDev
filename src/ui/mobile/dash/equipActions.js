@@ -15,6 +15,7 @@ import { t1StatsPayload } from '@/game/t1Sync.js'; /* v2.3.1633: one gate, every
 import { GEAR_CATALOG, getEquip, setEquip, syncArmorLayers } from '../../../rendering/gearCatalog.js';
 import { recalcDerived, WEAPON_STASH_MAX, canEquipItem, getEquipReqLabel } from '../../../data/gameSystems.js'; /* v2.3.2664: + the armour Defense gate */
 import { pushDmgPopup } from '@/game/combatHelpers.js'; /* v2.3.2123: say why a refusal happened */
+import { prog3Live } from '@/data/prog3.js'; /* v2.3.4386: the weapon gate asks only whom the worker asks */
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns the arm */
 import { sendReveal, isUnrevealed, pieceOfTarget } from '@/game/revealBag.js'; /* v2.3.4012: a mystery piece's Reveal */
 
@@ -371,6 +372,34 @@ const ACTIVE_FOR = { weapon: 'melee', rangedWeapon: 'ranged', staffWeapon: 'staf
    where it was, unless the hand is EMPTY (an activeSlot pointing at a slot
    with nothing in it -- fists), where the new weapon is taken up so an equip
    never leaves you swinging nothing. */
+/* ═══ v2.3.4386: A WEAPON ABOVE YOUR TRAINED LEVEL STAYS IN THE BAG ═══
+   The state-machine sweep (V9b S7-12): every bag weapon's card offers Equip,
+   and a bought or traded one above your trained level went into your hand
+   here while the worker refused it (gear.js _prog3EquipOk), so the hand
+   showed a weapon the worker was not swinging until the next join.  Asked
+   the worker's way (prog3 only, as _prog3EquipOk passes everyone else) and
+   said out loud, _armorBlocked's posture.  Shared with the Hero page's
+   weapon picker (ItemDetailPopup). */
+export function weaponBlocked(S, R, wpn) {
+  if (!R || !wpn || !prog3Live(R) || canEquipItem(R, wpn, 'weapon')) return false;
+  try {
+    const req = getEquipReqLabel(wpn, 'weapon', R);
+    const P = S && S.player;
+    if (P) pushDmgPopup(S, P.x, P.y - 40, 'NEEDS ' + String((req && req.label) || 'LEVEL').toUpperCase() + ' ' + ((req && req.req) || ''), '#D8A94D');
+  } catch (e) { /* the refusal matters, the popup does not */ }
+  return true;
+}
+/* v2.3.4386: ...and a full weapon bag refuses an unequip, unequipWeaponSlot's
+   v2.3.2123 answer, for the picker that never asked it (V9b M2-1). */
+export function weaponBagFull(S, R) {
+  if (!R || !Array.isArray(R.weaponStash) || R.weaponStash.length < WEAPON_STASH_MAX) return false;
+  try {
+    const P = S && S.player;
+    if (P) pushDmgPopup(S, P.x, P.y - 40, 'WEAPON BAG FULL', '#D8A94D');
+  } catch (e) { /* the refusal matters, the popup does not */ }
+  return true;
+}
+
 export function equipStashWeapon(wpn, hintIdx, opts) {
   const S = getState();
   if (!S || !S.rpg || !wpn) return false;
@@ -379,6 +408,7 @@ export function equipStashWeapon(wpn, hintIdx, opts) {
   if (!R.weaponStash) R.weaponStash = [];
   const idx = resolveStashIdx(R.weaponStash, wpn, hintIdx);
   if (idx < 0) return false;
+  if (weaponBlocked(S, R, R.weaponStash[idx])) return false;   /* v2.3.4386 */
   _equipTick();
   const live = R.weaponStash[idx];
   R.weaponStash.splice(idx, 1);

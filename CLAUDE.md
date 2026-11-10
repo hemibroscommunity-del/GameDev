@@ -71,8 +71,9 @@ spec. Add a line here only for a new RULE every session must follow.
     in), `docs/MEMORY-PLAN.md`, `docs/GEM-PLAN.md`,
     `docs/FUN-SOCIAL-PLAN.md`, `docs/specs/SPECIES-PLAN.md`,
     `docs/BALANCE-PLAN.md`, `docs/OPTIMIZATION-ROADMAP.md`,
-    `docs/REBUILD-PLAN.md`, `docs/STATE-MACHINES.md` (the stuck-phase work
-    list: one item a session);
+    `docs/REBUILD-PLAN.md`, `docs/STATE-MACHINES.md` (the 2026-11-03 sweep:
+    what shipped, what is left, where its files are; and the smooth-play
+    items A to A3);
   - the world: `docs/WORLD-MAP-PIPELINE.md` (its studios and bakes),
     `docs/WORLD-BIBLE.md` (a draft: plan.js wins), `docs/ART-ASSET-PHASES.md`;
   - the server's future: `docs/WORLD-ARCHITECTURE.md` (§11 costs),
@@ -115,6 +116,8 @@ spec. Add a line here only for a new RULE every session must follow.
   preview URL. **Server**: `.github/workflows/deploy-worker.yml` deploys
   `server/` on a merge to main touching `server/**`, once the suite passes on
   that commit (the token from the `production` environment).
+- **Every merge touching `server/**` deploys**, a new file in `server/test/`
+  included (TRAPS §277): merge a batch of them together.
 - **NEVER deploy the worker from a local machine** (2026-06-10: a stale clone
   rolled back three weeks of server work and broke combat).
 - **REPO SAFETY** (`docs/REPO-SAFETY.md`):
@@ -150,6 +153,10 @@ spec. Add a line here only for a new RULE every session must follow.
 - **The server is the authority** for damage, HP, loot, XP, the bag, coins,
   quests and ALL economy (the market, trades, duels, the farm). A client popup
   is a prediction; the server's event is the truth.
+- **A phase lives in one field with one transition function**: a new state is
+  never a second boolean beside the first. The server never takes a phase from
+  the phone's move: a move's field is a request (dodging v2.3.3292, dead
+  v2.3.4373).
 - **Both protocol versions keep working**: v2 (`protocolVersion: 2` in `join`:
   delta `player_state`, per-entity ticks, one merged `zone_state`) and v1 (full
   snapshots). The client keeps its v1 handlers.
@@ -225,7 +232,7 @@ spec. Add a line here only for a new RULE every session must follow.
   Wheel's monsters). Bots: `tools/qa/load/bot-lab.mjs` (after a change to a
   harvest, cook, move or hit path). Writes: `tools/qa/load/cost-audit.mjs`. A
   phone's frame: the Test panel's Speed test, `mp-phoneframe`. A computer's
-  world on a slow line and a slowed page: `mp-desksmooth` (TRAPS §263).
+  world on a slow line and a slowed page: `mp-desksmooth` (TRAPS §279).
 
 ## 7. The laws
 

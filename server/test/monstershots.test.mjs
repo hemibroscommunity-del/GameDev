@@ -51,8 +51,11 @@ const mul = (a, b) => {
   check('a blue slime throws the blue it is recoloured to', gooColorOf('blueSlime', true) === blueHex, { got: hex(gooColorOf('blueSlime', true)), want: hex(blueHex) });
   check('...and while its recolour is still building, the colour its body shows then (green under its fallback tint)',
     gooColorOf('blueSlime', false) === mul(SLIME_BODY_GREEN, MONSTER_VARIANTS.blueSlime.tint), hex(gooColorOf('blueSlime', false)));
-  check('a tinted slime (the mire wisp) throws the green under the same tint -- what it looks like, not a plain green',
-    gooColorOf('mireWisp') === mul(SLIME_BODY_GREEN, MONSTER_VARIANTS.mireWisp.tint) && gooColorOf('mireWisp') !== SLIME_BODY_GREEN, hex(gooColorOf('mireWisp')));
+  /* v2.3.4357: the mire wisp's key is the rotcap now, no slime: like the
+     storm eye (v2.3.4356) it says its shot's colour itself (`shotColor`) */
+  check('a look that is not a slime but throws the slime\'s glob says its colour itself: the rotcap its spots\' green, the storm eye its lightning\'s blue',
+    gooColorOf('mireWisp') === MONSTER_VARIANTS.mireWisp.shotColor && gooColorOf('mireWisp') === 0x9bd43f && gooColorOf('stormEye') === 0x9fe3ff
+    && !MONSTER_VARIANTS.mireWisp.useSlimeSheets, hex(gooColorOf('mireWisp')));
   check('the moss slime likewise', gooColorOf('mossSlime') === mul(SLIME_BODY_GREEN, MONSTER_VARIANTS.mossSlime.tint), hex(gooColorOf('mossSlime')));
   check('an unknown thrower, or a hostile key, is the plain green and does not throw',
     gooColorOf('nope') === SLIME_BODY_GREEN && gooColorOf('__proto__') === SLIME_BODY_GREEN && gooColorOf(null) === SLIME_BODY_GREEN);
@@ -75,7 +78,7 @@ const mul = (a, b) => {
 /* ── 2. style and size ── */
 {
   check('the fire goblin throws fire', shotStyleOf('fireGoblin') === 'fire');
-  check('every slime throws goo', ['fodder', 'blueSlime', 'mossSlime', 'mireWisp'].every((a) => shotStyleOf(a) === 'goo'));
+  check('every slime throws goo (and the rotcap and the storm eye, which throw the slime\'s glob)', ['fodder', 'blueSlime', 'mossSlime', 'mireWisp', 'stormEye'].every((a) => shotStyleOf(a) === 'goo'));
   check('a snowball is a snowball whoever the wire says threw it', shotStyleOf('fireGoblin', 'snowball') === 'snowball' && shotStyleOf('fodder', 'snowball') === 'snowball');
   check('the sizes are the ones the owner tuned: blue slime 32, goblin 40, a plain slime 25.6',
     shotPxOf('blueSlime', 'goo') === 32 && shotPxOf('fireGoblin', 'fire') === 40 && shotPxOf('fodder', 'goo') === GOO_DEFAULT_PX && GOO_DEFAULT_PX === 25.6 && FIRE_DEFAULT_PX === 40,
