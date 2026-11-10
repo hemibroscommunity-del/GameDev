@@ -386,10 +386,13 @@ let on0Tick = 22;
   ps.x = 21000; ps.y = 21000;   /* a lunge, a dash */
   for (let i = 0; i < 5; i++) { NOW += room.TICK_RATE; tickFn(); }
   check('5d. once the worker puts them somewhere itself, the glide stops', ps.x === 21000 && ps.y === 21000 && (!room._mpGliding || !room._mpGliding.has('pc')), { x: ps.x, y: ps.y });
-  /* dead: no glide */
+  /* dead: no glide.  v2.3.4373: the death is the worker's (server-dead.md):
+     the phone's `dead: true` on the move no longer writes ps.dead */
+  ps.dying = true; ps.dead = true; ps.respawnAt = NOW + 60000;
   await send(room, B, Object.assign({ type: 'move', x: 21000, y: 21000, z: 'wheel', vx: 275, vy: 0 }, base, { dead: true }));
   NOW += room.TICK_RATE; tickFn();
   check('5e. a dead player is never glided', ps.x === 21000, { x: ps.x });
+  ps.dying = false; ps.dead = false; ps.respawnAt = 0;
 }
 
 /* ── 6. the switches ───────────────────────────────────────────────── */

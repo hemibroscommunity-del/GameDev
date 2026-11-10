@@ -342,6 +342,27 @@ export const movementMethods = {
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'rollwindow') && !f.rollwindow);
   },
 
+  /* ═══ v2.3.4373: "DEAD" IS THE SERVER'S WORD, NEVER THE PHONE'S ═══
+     The owner (2026-11-10): "The server stops believing a phone that says
+     'I'm dead', behind a kill switch."  Every move carried the phone's
+     `dead` straight into ps.dead, and the target gates ask ps.dead: the
+     monsters' list (index.js), the player-hit loop (combat.js), No man's
+     land, the telegraphs, the burns.  So a page saying `dead: true` while
+     the worker had it alive was hit by nothing while its own blows landed
+     (god mode; in No man's land it took bags), and a corpse whose move
+     still said alive went back on the monsters' list (TRAPS §233).
+     Every worker write of ps.dead pairs it with ps.dying (the death and
+     the respawn in index.js, spar.js's knockout and revive, devtools' heal,
+     the join's fresh record), so with the move's write gone ps.dead is the
+     worker's own death and nothing else; the phone's `dead` is only ever
+     its copy of the hp the worker sent it.  Not test mode's to skip: it
+     protects other players.  `serverdead: false` in the live flags brings
+     back the move's write (docs/specs/server-dead.md). */
+  _serverDeadOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'serverdead') && !f.serverdead);
+  },
+
   /* v2.3.1625: the ONE zone gate.  Every path that lets a client choose
    * ps.z must run this -- `move` and `join` today.  Membership, not
    * shape: an unlisted string never reaches the zone-keyed maps
@@ -793,7 +814,8 @@ export const movementMethods = {
       if (msg.ba !== undefined) {
         ps.ba = (typeof msg.ba === 'number' && Number.isFinite(msg.ba)) ? msg.ba : null;
       }
-      if (msg.dead !== undefined) ps.dead = !!msg.dead;
+      /* v2.3.4373: `dead` is the worker's word (_serverDeadOff below) */
+      if (msg.dead !== undefined && this._serverDeadOff()) ps.dead = !!msg.dead;
       /* v2.3.3392: a held pose ends when the player really moves (poses.js):
          the worker's own word, so a walker is never drawn sitting */
       if (ps.po && this._poseEndsOn(ps, _stepPx, zoneChanged, msg)) ps.po = null;

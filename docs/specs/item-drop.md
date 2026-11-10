@@ -170,6 +170,7 @@ refused whatever its move said.
 - A death pile's clocks are the worker's own times, not time left as a drop's
   are, so a phone whose clock is off sees its minute open and its end that
   much off (as it always has).
-- Other places that ask only `ps.dead` were not changed here; one is a kill's
-  share (combat.js: a player whose damage is on a monster that dies in the
-  five seconds after their death is still counted for a share).
+- Other places that ask only `ps.dead` were not changed here. Since
+  v2.3.4373 the phone no longer writes `ps.dead` (server-dead.md), so they
+  read the worker's death too; a kill's share (combat.js) skips a player in
+  their five seconds dead whatever their move says.
