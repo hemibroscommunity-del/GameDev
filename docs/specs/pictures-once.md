@@ -137,6 +137,17 @@ enough new edge colours to need a row of their own (14 of the 256); a full
 atlas, more than 256 colours, or a device without the program packs the canvas
 exactly as before.
 
+**v2.3.4359: a strip the packer leaves whole is colour numbers too.** The
+packer declines a strip whose art fills its cells (cropping would save
+nothing), and such a strip went up as its image at four bytes a pixel
+whatever its colours: the water frog's death (20 cells of a burst that
+reaches every edge, 5.2 MB) was the one that showed it. `loadTrackedStrip`
+now draws a declined strip whole on a canvas and reads it into its numbers
+the same way (1.3 MB); on a refusal the image goes up as before. And a new
+monster's strips are cut on ONE list of 256 colours between them
+(`tools/art/strip256.mjs --shared`), so the whole monster is one row of the
+atlas, not a row a strip (`server/test/monster-palettes.test.mjs`).
+
 Not covered, and why: the effect strips at the fight are on more than 256
 colours; the townsfolk and icons are not on the chip at the fight; a picture
 from a file on 256 colours or fewer and on the chip is 2.7 MB.

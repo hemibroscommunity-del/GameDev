@@ -36,7 +36,7 @@ const PHONE = { width: 390, height: 844 };
 const HOME = process.env.TRAP_HOME || 'frost';
 /* the kind each land's first monsters become (server petbook.js) */
 const KIND = { frost: 'snowling', ember: 'gobling', thunder: 'sparklet', verdant: 'dewdrop', tidal: 'finling', hollows: 'pebbling', sky: 'mumling', mist: 'wisplet' };
-const KIND_NAME = { frost: 'Snowling', ember: 'Gobling', thunder: 'Sparklet', verdant: 'Dewdrop', tidal: 'Finling', hollows: 'Pebbling', sky: 'Mumling', mist: 'Wisplet|Lurkling' };
+const KIND_NAME = { frost: 'Snowling', ember: 'Gobling', thunder: 'Sparklet', verdant: 'Dewdrop', tidal: 'Froglet', hollows: 'Pebbling', sky: 'Mumling', mist: 'Sporeling|Capling' };
 const shot = (P, name) => P.page.screenshot({ path: `tools/qa/mp/out/trapping-${name}.png` }).catch(() => {});
 
 export async function run({ browser, wsPort, webPort, rec }) {

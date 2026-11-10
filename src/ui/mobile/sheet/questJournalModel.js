@@ -167,7 +167,7 @@ export function questJournalList(S, ctx) {
       const n = journalCount(quest, R);
       if (n) line += ' (' + countText(quest, n) + ')';
     } else line = 'Ready: hand it in to ' + folkDisplayName(quest.npc);
-    return { id: quest.id, title: quest.title, ready, tracked: quest.id === tracked, line };
+    return { id: quest.id, title: quest.title, npc: quest.npc || '', ready, tracked: quest.id === tracked, line };   /* v2.3.4394: + the giver, for his face on the list's pill */
   });
   /* the worker's order, so "newest" is the last one taken */
   const order = inHandIds(R).filter((k) => rows.some((r) => r.id === k));
@@ -179,7 +179,7 @@ export function questJournalList(S, ctx) {
     apTotal: questApTotal(R._quests, QUEST_AP_REWARD, QUEST_CHAINS),
     focusId: focusQuestId(order, tracked) || (offers[0] ? offers[0].id : null),
     active: activeOrder(rows, tracked),
-    available: offers.map((q) => ({ id: q.id, title: q.title, where: offerWhere(q, c) })),
+    available: offers.map((q) => ({ id: q.id, title: q.title, npc: q.npc || '', where: offerWhere(q, c) })),
     done,
   };
 }

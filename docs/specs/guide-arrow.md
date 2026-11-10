@@ -89,3 +89,30 @@ Checks: `server/test/guide-arrow.test.mjs` §7; `node tools/qa/mp/run.mjs
 swaphint` (a fresh character: no lesson with two weapons before the hand-in,
 the arrow at the pill right after a real hand-in, a switch ends it, never again
 after a reload; a computer's words and a key).
+
+## v2.3.4360: the arrow at Mayor Bro is on him every frame
+
+The owner, 2026-11-10: "the reticle around mayor bro is pretty obnoxious with
+movement (the frames are gritty)".
+
+Every other lesson points at a control on the page, which stands still. The
+`mayor` lesson points at someone in the world: on the page he moves whenever
+the camera does, and he strolls about on his own. The arrow looked for him on
+its 250 ms tick and glided 200 ms to where he had been, so it stuttered after
+him as you walked.
+
+- The tick still decides everything: is the lesson owed, is he on top, which
+  side to point from.
+- Between ticks, `followFrame` puts the arrow where he is after every frame
+  the game draws (`src/ui/afterFrame.js`: called by the game's loop after the
+  renderer, so it is the camera that frame was drawn with), on whole device
+  pixels as the camera is, with no glide. Nothing is written on a frame he
+  did not move in.
+- On a page where the game is not drawing frames, the tick alone moves the
+  arrow and it glides as before (`framesRunning`).
+- The other lessons are untouched: they glide to a control that moved.
+
+The gold box and the card over his head follow the same way
+(`docs/specs/quest-coach.md`). Checks: `server/test/after-frame.test.mjs`;
+`node tools/qa/mp/run.mjs mayormark` (a phone and a computer: on every frame
+the camera moved in, the box and the arrow are on him to a pixel and a half).
