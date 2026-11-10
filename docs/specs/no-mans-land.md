@@ -869,10 +869,20 @@ new router case or relayed type that is in neither list.
   fighting member at the mouth; (`fightlockequip`) equip_request, and a
   shield_wear naming a shield the worker does not hold no longer clears the
   arm mid-fight (which took no spare shield at all).
+- **v2.3.4582, `fightlockarmor`**: a spare chest or legs piece put on
+  (`stats_update`, `grids.js _gridsApplyArmor`) and armour, legs, the shield
+  or the amulet taken off (`unequip_request`) are refused in the fight, the
+  worn slots sent back (the phone puts the piece it showed back in the bag,
+  `wsClient.js _rescueDisplacedArmor`). Put on mid-fight, a spare became the
+  piece you wear (kept), and the one it replaced went to the phone's bag,
+  which the worker learns only at the next join: neither was taken. A weapon
+  taken off still goes into the stash the loss takes. **Still open**: a piece
+  that reached the phone's bag this session (a drop, a reward) and was never
+  in the worker's stash is not taken by a loss until the worker learns it at
+  a join (`gearstash.js`); the lock does not change that. There is no road
+  that puts on a spare amulet (the craft is a `fightlocktable` row).
 - **Not gated, and why**: cooking, smelting, salvage and the shop's buying
-  rearrange the bag; eating is the fight; armour and legs are put on through
-  `stats_update`, whose armour list the worker learns only at the join (a
-  piece swapped this session escapes the loss already); a held spare shield
+  rearrange the bag; eating is the fight; a held spare shield
   put on the arm, because the phone owns which shield is worn and would keep
   showing a refused swap.
 - **v2.3.4581, `fightlockreset`**: `character_reset` (Settings) and its HTTP

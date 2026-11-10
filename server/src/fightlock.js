@@ -35,6 +35,9 @@
  *                             report).
  *             fightlockreset  (v2.3.4581) restarting the character, from
  *                             Settings or from the character picker.
+ *             fightlockarmor  (v2.3.4582) putting on spare armour or legs,
+ *                             or taking off armour, legs, the shield or the
+ *                             amulet.
  *   refuse  the router answers the message with its HANDLER'S OWN refusal --
  *           the same type and shape (no new message), or, where the handler
  *           refuses in silence, silence plus a re-send of what the phone may
@@ -213,6 +216,16 @@ export const FIGHT_LOCK = Object.freeze({
      on another device. */
   character_reset: { sw: 'fightlockreset', at: 'persistence.js _handleCharacterReset' },
   'http:/api/account/reset': { sw: 'fightlockreset', at: 'account.js _accountReset' },
+
+  /* ── v2.3.4582: armour put on or taken off (STATE-MACHINES.md, from #1523) ── */
+  /* Armour and legs are put on through stats_update (the phone moves them
+     between its own bag and the slot); the loss leaves what you wear and takes
+     the spares the worker holds, so a spare put on mid-fight was saved, and the
+     piece it replaced went where the worker does not look until the next join.
+     Taking a piece off sent it there too: a red skull's worn armour, shield or
+     amulet left the worker's view.  The rest of stats_update moves no goods. */
+  stats_update: { sw: 'fightlockarmor', at: 'grids.js _gridsApplyArmor' },
+  unequip_request: { sw: 'fightlockarmor', at: 'gear.js _handleUnequipRequest' },
 });
 
 /* What the router may refuse itself: the rows with a `refuse` */
@@ -224,7 +237,7 @@ export const FIGHT_GATED = new Set(Object.keys(FIGHT_LOCK).filter((k) => typeof 
 const OPEN_GROUPS = [
   ['moves no goods', [
     'join', 'pose', 'ride', 'dice', 'move', 'pong', 'track', 'map_watch', 'achv_title', 'points_reset',
-    'stat_allocate', 'prog3_allocate', 'stats_update', 'build_point_earned', 'set_active_slot', 'rest_request',
+    'stat_allocate', 'prog3_allocate', 'build_point_earned', 'set_active_slot', 'rest_request',
     'race_start', 'heap_burn', 'reveal_item', 'feedback', 'shop_list', 'shop_quote', 'farm_open', 'bank_open',
     'cape_equip', 'pet_active', 'pet_name', 'pet_release', 'pet_capture', 'trap_arm', 'fish_inspect',
     'fish_board_request', 'spin_board_request', 'ace_board_request',
@@ -246,7 +259,7 @@ const OPEN_GROUPS = [
     'loot_pickup', 'loginspin_ask', 'loginspin_go', 'loginspin_double', 'loginspin_collect', 'chest_open',
     'rewards_get', 'daily_spin', 'daily_reroll', 'season_claim', 'bank_withdraw', 'guild_quest_turn_in',
     'quest_accept', 'quest_turn_in', 'rise_chest_open', 'trade2_cancel', 'trade2_unstage_weapon',
-    'store_offer_cancel', 'store_offer_reply', 'unequip_request',
+    'store_offer_cancel', 'store_offer_reply',
   ]],
   /* the 2026-10 rule: what only rearranges the bag stays open (no-mans-
      land.md); the loss takes what comes out, and the XP is the craft's */

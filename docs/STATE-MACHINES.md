@@ -185,10 +185,13 @@ so nothing waits on them any more.
   (#1505);
 - the stat scene's memo bit (M3-18, about 1.8 MB, kept on purpose) needs a
   row in `docs/MEMORY-MAP.md` or a decision (#1505);
-- armour, legs and the amulet put on mid-fight are not locked (#1523): the
-  worker learns the armour stash only at join, so a lock would not close
-  it. The fix is keeping the armour stash on the worker. A red skull's
-  `unequip_request` on armour also drops the piece from the worker's view;
+- ~~armour, legs and the amulet put on mid-fight are not locked (#1523)~~:
+  a spare put on and a piece taken off are refused in the fight (v2.3.4582,
+  `fightlockarmor`, `fight-lock.test` §9; there is no road that puts on a
+  spare amulet). Still open: a piece that reached the phone's bag this
+  session and never the worker's stash escapes a loss until the next join,
+  because the worker learns the armour stash only at join. The full fix is
+  keeping the armour stash live on the worker;
 - ~~`character_reset` mid-fight (and its web twin, `_accountReset`) wipes the
   loser's own character: spite, the killer gets nothing (#1523)~~: refused in
   the fight on both roads (v2.3.4581, `fightlockreset`, `fight-lock.test` §8);
