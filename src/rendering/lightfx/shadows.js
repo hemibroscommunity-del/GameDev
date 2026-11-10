@@ -740,7 +740,7 @@ export class ShadowSystem {
       /* the ground projection about this figure's feet (see header) */
       const fl = cs.flat;
       if (fl && fl.s > 0 && fl.s < 1) {
-        /* ═══ v2.3.4499: A SQUAT FIGURE'S SHADOW IS ITS FOOTPRINT ═══
+        /* ═══ v2.3.4511: A SQUAT FIGURE'S SHADOW IS ITS FOOTPRINT ═══
            The owner, of the water frog's: "The water frog shadow is too far south of the sprite."
            Cast as a standing figure's, the whole picture is height: a frog 97 px tall on the screen,
            most of it its back seen from above, threw a shadow reaching 33 px south and 48 east of its
@@ -780,7 +780,7 @@ export class ShadowSystem {
         if (items) this._held.set(cs.key, { t: now, items });
         st.casters++; st.pieces += placed; st.keys.push(cs.key);
         if (cs.key === 'self') st.self = { px, py, pieces: placed, held: false, standIns: cs.standIns || 0 };
-        if (st.list.length < 16) st.list.push({ key: cs.key, px, py, pieces: placed, flat: fl ? fl.s : 0 });   /* v2.3.4499: + flat */
+        if (st.list.length < 16) st.list.push({ key: cs.key, px, py, pieces: placed, flat: fl ? fl.s : 0 });   /* v2.3.4511: + flat */
         continue;
       }
       /* nothing visible: hold the last shadow for a moment if the owner is
