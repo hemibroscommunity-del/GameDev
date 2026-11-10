@@ -72,3 +72,45 @@ export function cardAnswer(r, sentCard, nowCard) {
   const kind = (r && r.ok) ? 'listed' : (r && r.unsure) ? 'unsure' : 'refused';
   return { kind, mine: sentCard === nowCard };
 }
+
+/* ═══ v2.3.4442: THE LISTING LOCK STAYS WITH THE ITEM, NOT THE CARD ═══
+ *
+ * The card's one-tap lock (`sellInFlight`, v2.3.2507) is reset every time the
+ * card opens, so closing the card and opening the SAME stack again while its
+ * listing answer was still out unlocked "Put it up": a second tap listed the
+ * stack twice.  So the item itself is held here, page-wide, from the tap until
+ * its answer comes (postWithin always answers, "not sure" at the latest) or,
+ * as a safety net, until the time limit passes.  Only that item: the key
+ * names exactly what the request names (the stack's key, the stash weapon's
+ * index, the gear piece's id or its fields and place), so a different item is
+ * never held by it. */
+const sellsOut = new Map();   /* lock key -> held until (ms) */
+
+/** The lock key for a listing request's body, or null for one it cannot name. */
+export function sellLockKey(body) {
+  if (!body || typeof body !== 'object') return null;
+  if (body.kind === 'item' && body.invKey != null) return 'item:' + String(body.invKey);
+  if (body.kind === 'weapon' && body.stashIndex != null) return 'weapon:' + String(body.stashIndex);
+  if (body.kind === 'gear') {
+    if (body.gid) return 'gear:' + String(body.field) + ':id:' + String(body.gid);
+    let sel = '';
+    try { sel = JSON.stringify(body.sel); } catch (e) { sel = String(body.sel); }
+    return 'gear:' + String(body.field) + ':' + String(body.hint || 0) + ':' + sel;
+  }
+  return null;
+}
+
+/** The tap: true and the item is held, or false when its listing is still
+ *  out (the caller shows STORE_UNSURE_WORDS and sends nothing). */
+export function claimSell(key, now, ms) {
+  if (key == null) return true;
+  const until = sellsOut.get(key);
+  if (until != null && now < until) return false;
+  sellsOut.set(key, now + (ms > 0 ? ms : STORE_POST_LIMIT_MS) + 1000);
+  return true;
+}
+
+/** The answer came (any of the three): the item is free again. */
+export function releaseSell(key) {
+  if (key != null) sellsOut.delete(key);
+}

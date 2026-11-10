@@ -74,7 +74,8 @@ accept AND the hand-in (an old save may hold a quest active from before):
   `mirror-audit` §5b2 holds the list to `NPC_DATA` both ways: bring a giver
   back and their chain must come off the list in the same change.
 - **`first` — an unchecked quest waits for the first quest.** A quest with
-  no `objective` (today only the Mayor's `mayor_1` and `mayor_3`) is taken
+  no `objective` (today only the Mayor's retired `mayor_1`; `mayor_3` until
+  v2.3.4441) is taken
   and handed in only once `QUEST_FIRST` (`tut_1`, checked) is handed in —
   the same gate as the daily quests. The Mayor never offers them before it
   (the game's `getNpcQuest` goes down his line in order), so nobody playing
@@ -117,6 +118,37 @@ Suite: `server/test/quest-echo.test.mjs` (every refusable quest request, on
 v1 and v2, fails on silence). What a new character can still be paid without the worker
 checking: nothing until `tut_1` is in, then `mayor_1`'s 50 coins.
 
+### The Mayor's "Clear any dungeon" is checked (v2.3.4441)
+
+`mayor_3` (300 g, 70 XP) had no objective, so the worker paid it on the
+phone's word: once `mayor_2` was handed in, one `quest_turn_in` paid it,
+dungeon or no dungeon (#1486's "left for later", S9-1). Its objective is now
+`{type:'dungeon_clear', count:1}`, read in `_questObjectiveMet`
+(`_dungeonClearCount`): the keys of `lifeSkills.dungeonClears` set to
+`true`. Only the worker writes that map (dungeon.js `_dungeonComplete`, on
+every clear, a party's included); a join takes no `rpg*` claim, so a phone
+cannot bring one in. The game's own check reads the same map
+(gameSystems.js `QUEST_CHAINS.mayor_3`), so an honest Claim is paid exactly
+as before; a refused one is answered by v2.3.4401's echo.
+
+- No migration and no clawback: a character already paid keeps the gold and
+  its `turnedIn` mark (the check runs only at a hand-in).
+- Not a test-mode exemption: like every objective, it is checked at the
+  hand-in for a test-mode character too (`_questBarred`'s test-mode skip is
+  the ORDER rules only).
+- Now checked, `mayor_3` leaves the `first` rule (it never needed it: the
+  `order` rule already holds it behind `mayor_2`'s five kills).
+- Kill switch: the live flag `disable_mayor3_check` counts the objective as
+  met, i.e. the old payment on the word.
+- Suite: `server/test/mayor-dungeon.test.mjs` (v1 and v2: refused and
+  answered with no clear; paid once with one; a double tap and a rejoin pay
+  nothing more; the kill switch; a real `_dungeonComplete` opens it; a join
+  cannot carry a clear in; a character paid before keeps it).
+
+The only quest left that a live save can be paid for without a check is
+`mayor_1` (retired, 50 g): a save that still holds it ACTIVE may hand it in
+once `tut_1` is in. Its objective ("visit 3 buildings") has no worker record.
+
 ## Wire surface
 
 | Surface | Change |
@@ -131,7 +163,7 @@ checking: nothing until `tut_1` is in, then `mayor_1`'s 50 coins.
 advertisement, kill increments (and NOT gather/objective-less), harvest
 increments, unmet turn-in refusal, met turn-in pays once + unlocks next,
 replay refusal, and since v2.3.3179 (§5) the three rules above: a new
-character asking for all 23 unchecked quests is paid nothing, a giver who
+character asking for all 22 unchecked quests (23 before v2.3.4441) is paid nothing, a giver who
 is gone closes their quests at the accept and the hand-in, `mayor_1` waits
 for `tut_1` and then pays as before, `mayor_3` and `tut_4` wait for the
 checked step before them, `mayor_2` is still taken with `mayor_1` undone.

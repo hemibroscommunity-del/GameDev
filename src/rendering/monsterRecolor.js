@@ -143,6 +143,11 @@ export function loadMonsterRecolor(family, rgb) {
   entry.promise = Promise.all(Object.keys(urls).map(async (state) => {
     try {
       const img = await loadImg(urls[state]);
+      /* v2.3.4452: freed while it loaded (freeMonsterRecolor deleted the
+         entry: the zone was left): nothing is made, where before the canvas,
+         its Cache entry and its frames were made into an entry nobody owns,
+         held for the page (state-machine sweep VC-2, R9-12) */
+      if (_cache.get(key) !== entry) return;
       const cv = retintToCanvas(img, rgb);
       const base = Texture.from(cv);
       const count = Math.max(1, Math.floor((cv.width || 0) / FRAME_W));

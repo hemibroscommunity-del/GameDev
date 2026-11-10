@@ -10,6 +10,7 @@
  */
 
 import { Assets, Texture } from 'pixi.js';
+import { loadSetLater } from './loadSetLater.js';   /* v2.3.4452: a weapon picture that failed once is asked for again */
 
 /* Bump on every weapon-art change so URL-keyed browser/CDN caches
    refetch instead of serving the previous PNG. */
@@ -171,40 +172,31 @@ function softenBlades() {
 
 let loadPromise = null;
 
-async function loadIcon(type) {
-  const entry = SHEETS[type];
-  if (!entry || entry.tex) return;
-  try {
-    const tex = await Assets.load(entry.url);
-    if (tex) entry.tex = tex;
-  } catch {
-    /* Missing — caller falls back to procedural Graphics. */
-  }
+/* ═══ v2.3.4452: A WEAPON PICTURE THAT FAILED ONCE IS ASKED FOR AGAIN ═══
+   Each sheet was one Assets.load behind a promise kept for the page: one
+   failed or stalled request and that weapon drew its procedural stand-in for
+   the visit (state-machine sweep VC-1, R8-5).  Now the sheets (one load a
+   file: sword and the bare greatsword share one) are a loadSetLater set: a
+   time limit, then retryLooks.js's rounds (ten at most), asked only while a
+   weapon is drawn (getWeaponTexture), each round past the cache; a late
+   sheet is softened as the first ones were.  The loading screen still waits
+   for every first load and never past its failure.  `?weaponretry=0` (or
+   `?retrylooks=0`) is the game as it was. */
+let _set = null, _softened = false;
+const _byUrl = Object.create(null);
+function _tookSheet(url, tex) {
+  for (const type of Object.keys(SHEETS)) if (SHEETS[type].url === url && !SHEETS[type].tex) SHEETS[type].tex = tex;
+  if (_softened) softenBlades();   /* a late one, as the first ones were */
 }
 
 export function loadWeaponSprites() {
   if (loadPromise) return loadPromise;
-  /* sword + greatsword share the same URL — Pixi v8 Assets dedupes
-     by URL so requesting both is cheap. */
-  const seen = new Set();
-  const tasks = [];
-  for (const type of Object.keys(SHEETS)) {
-    if (seen.has(SHEETS[type].url)) continue;
-    seen.add(SHEETS[type].url);
-    tasks.push(loadIcon(type));
-  }
-  /* After the first batch resolves, dedupe types pointing at the same
-     URL get filled in by re-checking each entry. */
-  loadPromise = Promise.all(tasks).then(() => {
-    for (const type of Object.keys(SHEETS)) {
-      if (SHEETS[type].tex) continue;
-      for (const other of Object.keys(SHEETS)) {
-        if (SHEETS[other].url === SHEETS[type].url && SHEETS[other].tex) {
-          SHEETS[type].tex = SHEETS[other].sharp || SHEETS[other].tex;
-          break;
-        }
-      }
-    }
+  const files = Object.create(null);
+  for (const type of Object.keys(SHEETS)) files[SHEETS[type].url] = SHEETS[type].url;
+  _set = loadSetLater({ files, into: _byUrl, load: (u) => Assets.load(u), unload: (u) => Assets.unload(u),
+    took: _tookSheet, switchName: 'weaponretry' });
+  loadPromise = _set.start().then(() => {
+    _softened = true;
     softenBlades();   /* v2.3.2927 */
   });
   return loadPromise;
@@ -216,6 +208,7 @@ export function loadWeaponSprites() {
  *  is registered (e.g. sword:wood -> Bamboo); otherwise falls back to
  *  the bare-type entry. */
 export function getWeaponTexture(type, gearBase, dir) {
+  if (_set) _set.ensure();   /* v2.3.4452: a sheet that failed, asked again when its round comes */
   /* v2.3.942/944: per-facing held art keyed `${type}-${dir}` (greatsword, bow). */
   if (dir && SHEETS[`${type}-${dir}`] && SHEETS[`${type}-${dir}`].tex) {
     return SHEETS[`${type}-${dir}`].tex;

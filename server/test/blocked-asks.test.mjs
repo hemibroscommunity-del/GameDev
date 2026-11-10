@@ -112,11 +112,13 @@ const { friendsSrv } = await import('../../src/ui/mobile/sheet/friendsSync.js');
   const head = ge.slice(start, sw);
   check('3a processGameEvent asks dropAsBlocked once, before its switch', /if \(dropAsBlocked\(type, payload, isBlockedId\)\) return;/.test(head));
   const body = ge.slice(sw);
-  /* trade2_invite keeps its own line for now (a second filter, merged with
-     lane A2's change beside it); no other case asks */
+  /* v2.3.4442: trade2_invite's own line (a second filter kept while lane
+     A2's change beside it landed, #1459) is gone: no case asks */
   const own = (body.match(/isBlockedId\(/g) || []).length;
-  const tradeOwn = /case 'trade2_invite':[\s\S]{0,600}?if \(isBlockedId\(payload\.from\)\) break;/.test(body);
-  check('3b no case but trade2_invite asks the block list by itself (the drift that missed duel_wager_request)', own === (tradeOwn ? 1 : 0), { own, tradeOwn });
+  check('3b no case asks the block list by itself (the drift that missed duel_wager_request)', own === 0, { own });
+  check('3b\' a blocked player\'s trade invite is still dropped, by the shared table, before the switch',
+    dropAsBlocked('trade2_invite', { from: 'bp_pest', fromName: 'Pest' }, isBlockedId) === true
+      && dropAsBlocked('trade2_invite', { from: 'bp_friend', fromName: 'Friend' }, isBlockedId) === false);
   /* the switch's own cases sit at ten spaces; a run of cases with nothing
      but space between them shares one body */
   const re = /^ {10}case '([^']+)':/gm;
