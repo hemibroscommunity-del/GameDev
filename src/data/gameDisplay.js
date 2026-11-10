@@ -2177,6 +2177,12 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     if (this.ctx) {
       this._wakeCtx();
       try { this.loadSfxManifest(); } catch (e) {}
+      /* v2.3.4422: the Wheel's ground steps went with _samples above, and
+         only preloadWheel and the first tap's unlock() ever asked for them:
+         after an iPhone app switch every grass, snow or stone step played
+         dirt until the player left the Wheel and came back (sweep VB-2,
+         D2-11).  Asked again while the Wheel still wants them. */
+      if (this._groundStepsWanted) { try { this.loadGroundSteps(); } catch (e) {} }
     }
   },
   _audioHealthCheck: function _audioHealthCheck() {

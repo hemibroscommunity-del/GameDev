@@ -22,7 +22,25 @@ export function wireSlimeAudio(stateRef, slimeIdleAudioRef) {
         .then(function (buf) { slot.buffer = buf; slot._loading = false; })
         .catch(function () { slot._loading = false; });
     };
+    /* v2.3.4422: an audio rebuild (an iPhone app switch of 2 s or more, then
+       a tap: BT_AUDIO._rebuildContext) closes the context this loop's source
+       and gain were made in, and nothing tells this slot: the source stayed
+       set, so ensureSource never made another and the hum was gone until a
+       reload (sweep VB-2, U1-28).  Nodes of a context that is not the live
+       one are let go, with the buffer decoded in it (the rebuild drops its
+       own decodes the same way), so ONE source and ONE decode are held. */
+    var forgetDeadCtx = function () {
+      if (!slot.ctx || slot.ctx === BT_AUDIO.ctx) return;
+      try { if (slot.source) slot.source.stop(); } catch (e) {}
+      try { if (slot.source) slot.source.disconnect(); } catch (e) {}
+      try { if (slot.gain) slot.gain.disconnect(); } catch (e) {}
+      slot.source = null;
+      slot.gain = null;
+      slot.buffer = null;
+      slot.ctx = null;
+    };
     var ensureSource = function () {
+      forgetDeadCtx();
       if (slot.source || !slot.buffer || !BT_AUDIO.ctx) return;
       try {
         var src = BT_AUDIO.ctx.createBufferSource();
@@ -35,6 +53,7 @@ export function wireSlimeAudio(stateRef, slimeIdleAudioRef) {
         src.start(0);
         slot.source = src;
         slot.gain = gain;
+        slot.ctx = BT_AUDIO.ctx;
       } catch (e) {}
     };
     loadBuffer();
@@ -42,6 +61,7 @@ export function wireSlimeAudio(stateRef, slimeIdleAudioRef) {
       var S = stateRef.current;
       if (!S || !S.player || !S.monsters || BT_AUDIO.muted) return;
       if (!BT_AUDIO.ctx) return;
+      forgetDeadCtx();
       var nearest = Infinity;
       for (var i = 0; i < S.monsters.length; i++) {
         var m = S.monsters[i];
@@ -68,5 +88,6 @@ export function wireSlimeAudio(stateRef, slimeIdleAudioRef) {
       try { if (slot.source) slot.source.stop(); } catch (e) {}
       slot.source = null;
       slot.gain = null;
+      slot.ctx = null;
     };
 }
