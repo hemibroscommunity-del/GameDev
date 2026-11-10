@@ -158,8 +158,22 @@ import { noteEatRefused, pvpHealWaitText } from '@/game/fightFood.js'; /* v2.3.3
  */
 function _armorSame(a, b) {
   if (!a || !b) return false;
+  /* v2.3.4386: TWO PIECES WITH IDS ARE THE SAME ONLY BY THEIR IDS.  The
+     state-machine sweep (V9b M2-2): every grade of a forged piece shares its
+     name and tierMult, so an armour swap made while the socket was closed
+     (dropped: the idle logout keeps you playing) met the rejoin's echo of the
+     worker's Normal Copper Torso, took the Rare one you had put on for "the
+     worker kept it", wrote the Normal over it and left you two Normals: the
+     Rare gone from the phone for good while the worker still held it.  A
+     piece the worker recorded carries its ledger id (gearprov.js), the loot
+     credit's v2.3.2544 cure; one without an id (made before the ledger) is
+     still known by name and tierMult, as before. */
+  if (_gidOf(a) && _gidOf(b)) return _gidOf(a) === _gidOf(b);
   return String(a.name || '') === String(b.name || '')
     && (Number(a.tierMult) || 1) === (Number(b.tierMult) || 1);
+}
+function _gidOf(p) {
+  return p && typeof p.gid === 'string' && p.gid ? p.gid : null;
 }
 
 function _rescueDisplacedArmor(S, slot, stashKey, incoming) {
@@ -179,6 +193,16 @@ function _rescueDisplacedArmor(S, slot, stashKey, incoming) {
       if (_armorSame(R[stashKey][i], worn)) return;
     }
     R[stashKey].push(worn);
+    /* v2.3.4386: ...and the piece the worker says you wear leaves the bag,
+       by its id only (a second piece of the same name is a real second
+       piece): the swap the worker never heard put it there, and without
+       this it showed twice, worn and in the bag (V9b M2-2). */
+    var _inGid = _gidOf(incoming);
+    if (_inGid) {
+      for (var j = R[stashKey].length - 1; j >= 0; j--) {
+        if (_gidOf(R[stashKey][j]) === _inGid) R[stashKey].splice(j, 1);
+      }
+    }
     /* Say so.  A piece that silently comes off is the same mystery as one that
        silently vanishes, and the player needs to know it is still theirs. */
     try {
@@ -211,6 +235,7 @@ import { applyOnlineList, onlineListFresh, parkMissing, presence2On } from '@/ga
 import { saveRpgSoon, cancelRpgSave } from '@/game/rpgSave.js'; /* v2.3.2330: the player_state echo goes through the debouncer; v2.3.2336: and the wipes cancel it */
 import { noteMoveCaps } from '@/game/monsterMoves.js';   /* v2.3.4011 */
 import { t2OnStateSync } from '@/game/tradeSlot.js';   /* v2.3.4362: the trade window never outlives its server */
+import { rejoinClear, duelResume } from '@/game/rejoinSlots.js';   /* v2.3.4382: a rejoin clears the duel and trade the worker says again */
 /* v2.3.3689: what your head wears and its colours, as one string -- the
    state_sync record apply tells BroTown when it changed (the 'bt-own-look'
    event: the new pieces prepared, the veil waiting for them) */
@@ -1682,6 +1707,14 @@ export function setupWebSocket(ctx) {
                  within 3 s of its leave (t2Leave) -- before this its buttons
                  waited forever on a worker with no trade on file (V8b). */
               try { t2OnStateSync(S, setTrade2); } catch (e) {}
+              /* v2.3.4382: and, against a worker that says it re-sends them
+                 right after this (caps.rejoinResend, a count: 1 the duel, 2
+                 the trade; server/src/rejoinresend.js), the duel (_inDuel,
+                 _activeDuel, its lock) and an open trade window too: what is
+                 still live comes straight back, what ended while this phone
+                 was away is gone (game/rejoinSlots.js).  An old worker: as
+                 before, nothing more is cleared. */
+              try { rejoinClear(S, S._serverCaps.rejoinResend, setTrade2); } catch (e) { /* the duel's own end still clears it */ }
               /* v2.3.1154: HP/Endurance grid deploy-order gate.  The
                  pool multipliers only apply while THIS worker claims
                  caps.hpEndGrids — otherwise its player_state echo would
@@ -2194,6 +2227,11 @@ export function setupWebSocket(ctx) {
             { if (!msg.from) { try { onRaceState(S, msg.payload); } catch (_re) { /* display only */ } } break; }
           /* v2.3.3776: the skateboard -- on, off and why (server/src/ride.js),
              here in the direct switch for the race's reason */
+          /* v2.3.4382: a duel still on after a rejoin (server/src/
+             rejoinresend.js, after state_sync), here in the direct switch for
+             the race's reason: a relayed copy carries `from` */
+          case 'duel_resume':
+            { if (!msg.from) { try { duelResume(S, msg.payload); } catch (_de) { /* the next duel message sets it */ } } break; }
           case 'ride_state':
             { if (!msg.from) { try { rideApply(S, msg.payload, Date.now()); } catch (_re) { /* on foot */ } } break; }
           case 'race_cp':
@@ -2497,6 +2535,9 @@ export function setupWebSocket(ctx) {
                      kept on screen meanwhile; a second no drops it as before
                      (game/lootAsk.js; review R1 W1.8: never a loop) */
                   if (msg.payload.reason === 'not-recipient' && !_rjPile._collected && notRecipientRetry(_rjPile, Date.now())) break;
+                  /* v2.3.4383: the pet's out-of-range is the pet's: the hand's
+                     ask and its fast tries are left alone (the pet keeps its 5 s) */
+                  if (msg.payload.viaPet && msg.payload.reason === 'out-of-range') break;
                   if (_rjPermanent) {
                     /* A pile already credited to us is mid-despawn (the
                        0.75 s pickup animation).  A losing race -- our pet's
@@ -3989,9 +4030,11 @@ export function setupWebSocket(ctx) {
          watchers with no share get coins=0 and the renderer falls back
          to the dim "[killer]'s loot" view via the recipients gate. */
       /* v2.3.3473: a drop's time left as a time on this phone's clock (null
-         for any other pile, which carries the worker's own times) */
+         for any other pile, which carries the worker's own times).
+         v2.3.4383: a death pile's too (server _deathLeftWire): right before
+         the first ping, when the worker's clock is not known yet */
       function _dropAt(p, field) {
-        if (!p || !p.dropped) return null;
+        if (!p || !(p.dropped || p.isDeathDrop)) return null;
         var left = Number(p[field]);
         return isFinite(left) && left >= 0 ? Date.now() + left : null;
       }
@@ -4027,6 +4070,8 @@ export function setupWebSocket(ctx) {
           killerName: p.killerName || 'Player',
           ts: _wT(p.ts) || Date.now(),
           _wOff: p.ts ? workerClock.offset() : undefined,
+          /* v2.3.4383: its windows came as time left: the rebase moves its ts only */
+          _leftWire: isDeath && isFinite(Number(p.left)) ? true : undefined,
           inventoryClaimed: !!p.inventoryClaimed,
           /* v2.3.1141: server-minted weapon drop riding the pile.
              Presence + tier + name only -- quality is withheld until

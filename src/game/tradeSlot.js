@@ -59,20 +59,28 @@ export function t2Leave(S, send, end, opts) {
   const now = o.now || Date.now;
   const wait = typeof o.waitMs === 'number' ? o.waitMs : T2_LEAVE_WAIT_MS;
   t2LeaveDrop(S, o.clearTimer);
-  try { send('trade2_cancel'); } catch (e) { /* a dead socket: closing here below */ }
+  /* v2.3.4382: naming the open trade's id, so a worker that no longer holds
+     it answers 'gone' at once (trade2.js _handleTrade2Cancel); an older one
+     ignores the id and the wait below closes the window as before */
+  const id = typeof S._t2Live === 'string' && S._t2Live ? S._t2Live : null;
+  try { if (id) send('trade2_cancel', { id }); else send('trade2_cancel'); } catch (e) { /* a dead socket: closing here below */ }
   const close = () => {
     S._t2Leave = null;
-    S._t2QuietUntil = now() + T2_QUIET_MS;
     end();
+    /* v2.3.4382: hushed AFTER this phone's own close has spoken -- that close
+       says 'gone' too (S._t2LocalEnd), and only the worker's late answer is
+       to be hushed */
+    S._t2QuietUntil = now() + T2_QUIET_MS;
   };
   if (!t2LinkUp(S)) { close(); return; }
   S._t2Leave = setTimer(close, wait);
 }
 
-/* the worker's 'declined' to a leave this phone already closed: say nothing
-   twice.  One-shot. */
+/* the worker's 'declined' (or, v2.3.4382, its 'gone' for a trade it no
+   longer holds) to a leave this phone already closed: say nothing twice.
+   One-shot. */
 export function t2Hushed(S, payload, nowMs) {
-  if (!S || !S._t2QuietUntil || !payload || payload.reason !== 'declined') return false;
+  if (!S || !S._t2QuietUntil || !payload || (payload.reason !== 'declined' && payload.reason !== 'gone')) return false;
   const hush = (nowMs === undefined ? Date.now() : nowMs) < S._t2QuietUntil;
   S._t2QuietUntil = 0;
   return hush;

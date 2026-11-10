@@ -4935,6 +4935,7 @@ export function processGameEvent(type, payload, S, deps) {
               t2LeaveDrop(S);
               S._t2Live = null;
               if (setTrade2) setTrade2({ invite: true, from: payload.from, fromName: payload.fromName || 'Someone', ts: Date.now() });
+              if (payload.rejoin) break;   /* v2.3.4382: the worker saying a live invite again after a rejoin (rejoinresend.js) -- heard once already */
               pushDmgPopup(S, S.player.x, S.player.y - 40, '🤝 ' + (payload.fromName || 'Someone') + ' wants to trade!', '#3dd497');
               cue('tradeAsk');   /* v2.3.3434: two coins' clink (a beep(), silent) */
               break;

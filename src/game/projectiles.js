@@ -1859,7 +1859,12 @@ export function updateArrows(S, deps) {
                 if (_pointD >= _hitRE) { a._renderX = _segHitX; a._renderY = _segHitY; }
                 a.hitIds.add(m.id);
                 if (a.volleyHitIds) a.volleyHitIds.add(m.id);   /* v2.3.1435: claim for the whole cone */
-                var arrowElem = a.isSpecial ? activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element2 : activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element1;
+                /* v2.3.4387: a special's element is the second gem, or the first on a
+                   one-gem weapon, as the sword's (monsterCombat v2.3.3513) and
+                   the worker's (weapongem.js weaponHitElement): read as
+                   element2 alone, a one-gem bow's or staff's special showed no
+                   status here while the worker put one on (VB-1 G1-7) */
+                var arrowElem = a.isSpecial ? activeWpn && (activeWpn.element2 || activeWpn.element1) : activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element1;
                 if (arrowElem) {
                   var _ELEMENTS$arrowElem;
                   var statusId = (_ELEMENTS$arrowElem = ELEMENTS[arrowElem]) === null || _ELEMENTS$arrowElem === void 0 ? void 0 : _ELEMENTS$arrowElem.status;

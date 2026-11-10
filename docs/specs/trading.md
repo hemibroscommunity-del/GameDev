@@ -166,6 +166,22 @@ are opaque blobs at REST in the stage, so they use **escrow-at-stage**
   the worker re-sending a live trade after `state_sync` (then the phone may
   clear the window there, as the party does) and answering `trade2_cancel`
   for a missing trade.
+- v2.3.4382, the server batch (`server/src/rejoinresend.js`): right after
+  `state_sync`, to that socket only, the worker re-sends an open trade as its
+  full `trade2_state` (`rejoin: true`), else the newest live invite: a
+  `trade2_invite` toward you (`rejoin: true`: no second popup or sound) or
+  your own waiting drawer (`trade2_state` 'invited'). Against a worker whose
+  `caps.rejoinResend` is 2 or more the phone now clears an open trade window
+  at `state_sync` too, and the re-send puts it back
+  (`src/game/rejoinSlots.js`), so a trade the worker cancelled while the phone
+  was away is gone on return, and an invite card the worker still holds
+  survives a reconnect. A leave (✕, Cancel, Leave Trade) names the trade's
+  `id` in `trade2_cancel`; a worker with no trade of that id answers
+  `{state: 'cancelled', reason: 'gone'}` at once (an invite's Decline names no
+  id and is answered as before), and the 3 s wait stays for older workers.
+  The kill switch `rejoinresend: false` turns the re-sends and the 'gone'
+  answer off and un-advertises the cap. Tests:
+  `server/test/rejoin-resend.test.mjs`.
 - The atomicity argument: both debits run synchronously inside one
   input-gated event BEFORE any credit; credits are opId-idempotent.
 

@@ -240,6 +240,41 @@ worker re-sending a live duel, or every network blip would lose one. The
 melee `target` above defangs that phantom (no bystander is hit) but does not
 end it. Tests: `server/test/duel-pending.test.mjs`.
 
+## After a rejoin (v2.3.4382)
+
+The follow-up the section above left: the phone kept its duel across a
+reconnect and the worker never said whether it was still on (sweep V6 N2-18
+and "the reverse of the phantom"; review R2 W1.3). Now the party's shape:
+
+- **The worker says it again.** Right after `state_sync`, to the joining
+  socket only, a live social or wagered duel is sent as `duel_resume`
+  `{foe, foeName, wager}` (PRIVILEGED; the phone's direct switch, refused when
+  relayed). An arena match is left to the arena's own `arena_match_start`
+  re-send (`_arenaOnRejoin`). Sends only: no storage write.
+  (`server/src/rejoinresend.js`)
+- **The phone clears at `state_sync`** `_inDuel`, `_activeDuel` and a lock on
+  a player, ONLY when `caps.rejoinResend` is 1 or more; the re-send puts back
+  what is live, silently (it started before). So a duel that ended while the
+  phone was away (the 15 s forfeit, a server update) is gone on return, and a
+  phone back inside the 15 s is in it again. An old worker (no cap): the
+  phone keeps its duel as before. (`src/game/rejoinSlots.js`)
+- **The cap** `rejoinResend` is a COUNT of the slots the worker re-sends (1
+  the duel, 2 the trade), growing as slots join (TRAPS §9). **The kill
+  switch** `rejoinresend: false` in the live flags: no re-sends, the cap
+  un-advertised, so phones clear nothing new.
+- **The registry**: `REJOIN_SLOTS` in `rejoinSlots.js` lists every slot the
+  phone clears at `state_sync` and the worker method that says it again (the
+  party, the ride, the trade's invite, the duel, the arena, the trade window);
+  `REJOIN_NOT_YET` names the ones still left (the held pose, the duel
+  challenge card). `rejoin-resend.test` §6 fails a clear with no row, and a
+  row whose re-send is not called after `state_sync`.
+
+The lesson (for TRAPS): a phone copy of a worker session is cleared at
+`state_sync` only together with a worker re-send after it, gated on the cap
+that says the worker re-sends it; one without the other is either a phantom
+(clear missing) or a lost live session on every network blip (re-send
+missing). Tests: `server/test/rejoin-resend.test.mjs`.
+
 ## Tests
 
 `server/test/duel.test.mjs` (in `npm test`): handshake +

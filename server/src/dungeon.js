@@ -936,6 +936,9 @@ export const dungeonMethods = {
   _dungeonCleanup(inst) {
     this._dungeons.delete(inst.id);
     delete this.monsters[inst.zone];
+    /* v2.3.4384: a saved death pile (a red skull's, in a run) goes with the
+       run, and so does its row (deathpile.js) */
+    for (const p of (this.loot[inst.zone] || [])) if (p && p._saved && this._deathPileGone) this._deathPileGone(p);
     delete this.loot[inst.zone];
     delete this.nodes[inst.zone];
     this.dirtyMonsters.delete(inst.zone);
