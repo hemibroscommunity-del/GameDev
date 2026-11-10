@@ -72,6 +72,13 @@ What tells a player how to attack now says the new way:
   attack" for a sword or a bow.
 - The key list (`deskKeyList.js`): the "2xClick Lock on" row only in the old
   combat.
+- **The old way, made near a monster, is answered with the new one.** A press
+  on a phone that ended having made no attack gesture at all (a tap, a hold:
+  `mcPressIdle`) while the attack button is up for a fight says "Swipe to
+  swing" (a sword) or "Flick to shoot" (a bow) over the bro's head, no
+  oftener than every 2.5 s (`BroTown.jsx` `mcTeach`). Not for a staff, not
+  over a harvest's button. It is the game's own floating words, nothing new
+  drawn.
 - The first-time coach needed nothing: its "Hold to attack" and "A quick
   swipe" lessons were retired long before this (`QuestCoach.jsx` `RETIRED`),
   and the Mayor's first quest is finished by 4 Slime Remains, not a gesture.
@@ -233,9 +240,9 @@ address.
   fingerprint to identify bots"*). That is a worker change of its own. Swipes
   give more to read than a release did: their length, speed and angle.
 - Moving the older phone scenarios to the new combat (above).
-- A first-time lesson that shows the swipe and the flick in the world. The
-  controls tour in Settings says them; nothing walks a new player through
-  them at the first monster.
+- A first-time lesson that SHOWS the swipe and the flick (a moving hand, a
+  picture). A player who presses the old way near a monster is told the new
+  one in words (above), and the controls tour in Settings says them.
 - No monster was changed (the owner: *"Don't do any monster adjustments"*).
 - Not tried: a fight with a real monster on a phone (the tests swipe in the
   safe town); a duel between two players in manual combat.
@@ -250,7 +257,7 @@ address.
   is wired and nothing is drawn.
 - `node tools/qa/mp/run.mjs manualcombat` (`mp-manualcombat.mjs`), a phone and
   a computer in the Wheel (with `manual=default`: what a new player gets), then
-  a second phone with `?manual=2`, 43 checks: holding fires nothing; the lift is one
+  a second phone with `?manual=2`, 44 checks: holding fires nothing; the lift is one
   arrow the way the thumb pointed; a quick flick; a tap and a nudge; the
   cancel; a flick too soon and one kept; the special arms and is the next
   attack; a chosen lock does not last; a sword's tap, stroke, stroke back,

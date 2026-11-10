@@ -25,7 +25,7 @@
  *      was; this file never writes the aim (a staff bolt's steering). */
 import fs from 'node:fs';
 import {
-  MANUAL, manualCombatWanted, manualMode, manualSling, mcBowSling, mcShotAngle, mcSwipes, mcBowInterval, setManualCombat, manualOn, mcFrame, mcSwipeStart, mcSwipeMove, mcSwipeEnd, mcWasQuick, mcAbort, mcAskShot,
+  MANUAL, manualCombatWanted, manualMode, manualSling, mcBowSling, mcShotAngle, mcSwipes, mcBowInterval, setManualCombat, manualOn, mcFrame, mcSwipeStart, mcSwipeMove, mcSwipeEnd, mcWasQuick, mcPressIdle, mcAbort, mcAskShot,
   mcFireWaiting, mcFireDone, mcReady, mcReadyIn, mcMeleeAsk, mcSwingWaiting, mcSwingDone, mcAssist, mcArmToggle, mcArmed, mcTakeArmed, mcLockAllowed, mcShoots,
 } from '../../src/game/manualCombat.js';
 
@@ -201,6 +201,27 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
   check('11e ...and never sooner than the worker will take a hit on the same monster (210 ms)', mcBowInterval(247) === MANUAL.BOW_MIN_MS && mcBowInterval(200) === MANUAL.BOW_MIN_MS && MANUAL.BOW_MIN_MS > 210);
 }
 
+// ── 12. the old way is answered with the new (v2.3.4396) ──
+{
+  const t = 100000;
+  const Sw = sword(); mcFrame(Sw, t, 500, 600);
+  mcSwipeStart(Sw, t, 100, 100); mcSwipeEnd(Sw, t + 80, 100, 100);
+  check('12a a sword tapped (or held still) made no attack gesture', mcPressIdle(Sw) === true);
+  mcSwipeStart(Sw, t + 200, 100, 100); mcSwipeMove(Sw, t + 220, 130, 100); mcSwipeEnd(Sw, t + 240, 130, 100);
+  check('12b a sword that stroked did', mcPressIdle(Sw) === false);
+  mcSwipeStart(Sw, t + 2000, 100, 100); mcSwipeMove(Sw, t + 2400, 110, 100); mcSwipeMove(Sw, t + 2800, 120, 100); mcSwipeMove(Sw, t + 3200, 130, 100); mcSwipeEnd(Sw, t + 3300, 130, 100);
+  check('12c a sword whose thumb only drifted did not', mcPressIdle(Sw) === true);
+  const B = bow(); mcFrame(B, t, 500, 600);
+  mcSwipeStart(B, t, 100, 100); mcSwipeEnd(B, t + 900, 100, 100);
+  check('12d a bow held still and lifted made none', mcPressIdle(B) === true);
+  mcSwipeStart(B, t + 1000, 100, 100); mcSwipeMove(B, t + 1020, 100, 50); mcSwipeEnd(B, t + 1040, 100, 50);
+  check('12e a bow flicked did', mcPressIdle(B) === false);
+  mcSwipeStart(B, t + 2000, 100, 100); mcSwipeMove(B, t + 2100, 100, 40); mcSwipeMove(B, t + 2300, 101, 99); mcSwipeEnd(B, t + 2400, 101, 99);
+  check('12f a bow pulled out and brought back to cancel did (it knows the gesture)', mcPressIdle(B) === false);
+  const St = { rpg: { activeSlot: 'staff' } }; mcSwipeStart(St, t, 0, 0); mcSwipeEnd(St, t + 50, 0, 0);
+  check('12g a staff is never told: its hold and its tap attack as they always did', mcPressIdle(St) === false && mcPressIdle(null) === false && mcPressIdle({}) === false);
+}
+
 // ── 10. the wiring ──
 {
   const rules = read('../../src/game/manualCombat.js');
@@ -241,6 +262,9 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
   check('10r the phone\'s arrow and a computer\'s tips say a sword\'s or a bow\'s special is armed, then made', /'Tap, then attack: your special'/.test(read('../../src/ui/guideArrow.js')) && /mcSwipes\(S\) \? ' Special: then attack<\/span>'/.test(read('../../src/ui/deskTeach.js')));
   check('10s the key list offers the double-click lock only in the old combat', /\['2\\u00d7Click', 'Lock on', 'lock', 'fight'\]/.test(read('../../src/game/deskKeyList.js')) && /lock: !manualOn\(\),/.test(read('../../src/ui/panels/KeyboardHintsPanel.jsx')));
   check('10t the phone tests play the old combat unless they name `manual=` themselves', /const _oldCombat = \(\/\(\?:\^\|&\)manual=\/\.test\(query\) \|\| \/\(\?:\^\|&\)manual=\/\.test\(_env\)\) \? '' : 'manual=0';/.test(read('../../tools/qa/mp/harness.mjs')));
+  check('10u a press that made no attack gesture while the button is up for a fight is told the new way, after either touch lift, never over a harvest',
+    /if \(!S \|\| !S\.rpg \|\| !S\.player \|\| !mcSwipes\(S\) \|\| !S\._rBtnShown \|\| S\._btnHarvest \|\| S\._extraction\) return;\s*\n\s*if \(!mcPressIdle\(S\)\) return;/.test(bro)
+    && (bro.match(/mcFlickEnd\(t\.clientX, t\.clientY\); mcTeach\(\);/g) || []).length === 2 && /'Flick to shoot'\) : 'Swipe to swing'/.test(bro));
   const srv = read('../src/combat.js');
   check('10n the worker\'s own floors are untouched by this change (nothing here attacks faster than the held attack did)', /if \(nowTs - cad\.n < 210\) return;/.test(srv));
 }

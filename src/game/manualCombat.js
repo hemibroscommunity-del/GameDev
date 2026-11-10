@@ -221,6 +221,7 @@ export function mcSwipeStart(S, now, x, y) {
   var m = st(S);
   if (!m) return;
   m.down = true; m.ox = x; m.oy = y; m.ot = now; m.ax = x; m.ay = y; m.at = now;
+  m.strokes = 0; m.far = 0;   /* what this press has made so far (mcPressIdle) */
 }
 
 /** The thumb moved to (x, y).  A SWORD: 'swing' each time it has gone
@@ -229,11 +230,15 @@ export function mcSwipeStart(S, now, x, y) {
  *  counted.  A bow: 'none' -- its shot is the lift.  A staff: 'none'. */
 export function mcSwipeMove(S, now, x, y) {
   var m = st(S);
-  if (!m || !m.down || !strokes(S)) return 'none';
+  if (!m || !m.down) return 'none';
+  var fx = x - m.ox, fy = y - m.oy, f2 = fx * fx + fy * fy;
+  if (f2 > (m.far || 0)) m.far = f2;   /* the farthest this thumb has been from where it touched */
+  if (!strokes(S)) return 'none';
   if (now - m.at > MANUAL.SWIPE_MS) { m.ax = x; m.ay = y; m.at = now; return 'none'; }
   var dx = x - m.ax, dy = y - m.ay;
   if (dx * dx + dy * dy < MANUAL.SWIPE_PX * MANUAL.SWIPE_PX) return 'none';
   m.ax = x; m.ay = y; m.at = now;
+  m.strokes = (m.strokes || 0) + 1;
   return 'swing';
 }
 
@@ -251,6 +256,17 @@ export function mcSwipeEnd(S, now, x, y) {
   var dx = x - m.ox, dy = y - m.oy, d2 = dx * dx + dy * dy;
   if (d2 < MANUAL.SWIPE_PX * MANUAL.SWIPE_PX) return d2 <= MANUAL.CENTRE_PX * MANUAL.CENTRE_PX ? 'cancel' : 'none';
   return mcAskShot(S, now);
+}
+/** Did the press that just ended make NO attack gesture at all -- a tap or a
+ *  hold, the old combat's way?  A sword: no stroke.  A bow: the thumb never
+ *  went a flick's length from where it touched (a pull brought back to cancel
+ *  is a gesture; a still thumb is not).  The caller teaches the new way
+ *  ("Swipe to swing", "Flick to shoot").  Never for a staff. */
+export function mcPressIdle(S) {
+  var m = S && S._mc;
+  if (!m || slotOf(S) === 'staff') return false;
+  if (mcShoots(S)) return (m.far || 0) < MANUAL.SWIPE_PX * MANUAL.SWIPE_PX;
+  return !(m.strokes > 0);
 }
 /** Was the press that just ended a quick flick (helped: mcAssist), not a
  *  drag that took its time (left as aimed)? */
