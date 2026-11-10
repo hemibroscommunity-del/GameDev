@@ -264,9 +264,10 @@ and "the reverse of the phantom"; review R2 W1.3). Now the party's shape:
   un-advertised, so phones clear nothing new.
 - **The registry**: `REJOIN_SLOTS` in `rejoinSlots.js` lists every slot the
   phone clears at `state_sync` and the worker method that says it again (the
-  party, the ride, the trade's invite, the duel, the arena, the trade window);
-  `REJOIN_NOT_YET` names the ones still left (the held pose, the duel
-  challenge card). `rejoin-resend.test` §6 fails a clear with no row, and a
+  party, the ride, the trade's invite, the duel, the arena, the trade window,
+  and since v2.3.4415 your own held pose, cleared at every `state_sync`
+  because no worker keeps one across a join); `REJOIN_NOT_YET` names the ones
+  still left (the duel challenge card). `rejoin-resend.test` §6 fails a clear with no row, and a
   row whose re-send is not called after `state_sync`.
 
 The lesson (for TRAPS): a phone copy of a worker session is cleared at

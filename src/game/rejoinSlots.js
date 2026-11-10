@@ -44,12 +44,15 @@ export const REJOIN_SLOTS = Object.freeze([
   Object.freeze({ slot: 'arena', since: 1, clears: ['rejoinClear'], resend: '_arenaOnRejoin' }),
   /* v2.3.4382: an open trade window (S._t2Live) */
   Object.freeze({ slot: 'trade', since: 2, clears: ['rejoinClear'], resend: '_t2Resend' }),
+  /* v2.3.4415: your own held pose (S._pose; sweep V17b R10-8), against ANY
+     worker: every join makes the player's state afresh (join.js), so no
+     worker keeps a pose across a reconnect or a deploy */
+  Object.freeze({ slot: 'pose', since: 0, clears: ['rejoinClear'], resend: null, why: 'every join makes ps afresh with no po (join.js; poses.js: "a deploy stands everyone up"), so the phone stands up too' }),
 ]);
 
 /* phone copies of a worker session that still outlive a reconnect, each its
    own change (left for later) */
 export const REJOIN_NOT_YET = Object.freeze([
-  'pose (the held pose: V17b R10-8)',
   'duel challenge card (setDuelRequest: the card has no clock of its own)',
 ]);
 
@@ -64,6 +67,12 @@ export function rejoinCount(caps) {
 export function rejoinClear(S, count, setTrade2, clearIv) {
   const done = [];
   if (!S) return done;
+  /* v2.3.4415: the held pose, whatever the count: the worker that answered
+     this join holds none, so a phone still drawing you seated (and the
+     moves' sounds and the townsfolk's reactions reading S._pose) stood
+     alone until you moved.  Cleared, not said again (poses.js: "a deploy
+     stands everyone up"); no word to the worker, which already holds none. */
+  if (S._pose) { done.push('pose'); S._pose = null; }
   const n = rejoinCount({ rejoinResend: count });
   if (n >= 1) {
     if (S._inDuel || S._activeDuel) done.push('duel');

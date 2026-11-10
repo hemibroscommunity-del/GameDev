@@ -439,6 +439,16 @@ export class WheelObjects {
     this._zone = null;
     /* v2.3.2983: the buildings' life (wheelLife.js), unless `?nolife` */
     this.life = wheelLifeOn();
+    /* v2.3.4415: ...and its textures made again when a black screen's rebuild
+       made this renderer (sweep V17a R11-23).  The rebuild keeps the trip
+       entered, so the way in (wheelObjectsWarm) never runs again, and every
+       building stood still for the rest of the visit.  The dead renderer's
+       copies are already gone: its destroy runs wheelObjectsFree, which runs
+       wheelLifeFree, before this one is made -- and wheelLifeWarm makes
+       nothing while a set is held, so there is never a second (~22 KB of
+       canvases, the same set the way in made).  On the way in it is the
+       no-op it always was. */
+    if (this.life && !wheelLifeReady()) wheelLifeWarm();
     this._lifeT = null;
     /* v2.3.2995: hits, breaks and mendings */
     this.shatter = new WheelShatter(layer, this.renderer);   /* v2.3.3698: the chip its heaps' canvases go to */

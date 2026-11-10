@@ -349,7 +349,8 @@ if (Array.isArray(R.REJOIN_SLOTS)) {
     check(`6b ${row.slot}: its re-send ${row.resend} is the worker's and is called after state_sync`, onRoom && called, { onRoom, called });
   }
   check('6c the worker\'s count is the highest slot the phone clears on it', REJOIN.COUNT === Math.max(...R.REJOIN_SLOTS.map((r) => r.since)));
-  check('6d the "not yet" list names the held pose', Array.isArray(R.REJOIN_NOT_YET) && R.REJOIN_NOT_YET.some((s) => /pose/.test(s)));
+  /* v2.3.4415: the held pose left "not yet" for its row (renderer-life.test §4) */
+  check('6d the held pose is a row now, off the "not yet" list', Array.isArray(R.REJOIN_NOT_YET) && !R.REJOIN_NOT_YET.some((s) => /pose/.test(s)) && R.REJOIN_SLOTS.some((r) => r.slot === 'pose'));
   check('6e rejoinCount reads the count', R.rejoinCount({ rejoinResend: 2 }) === 2 && R.rejoinCount({}) === 0 && R.rejoinCount(null) === 0 && R.rejoinCount({ rejoinResend: 'x' }) === 0);
 }
 
