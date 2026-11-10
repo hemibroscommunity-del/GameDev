@@ -398,7 +398,7 @@ export const fishlogMethods = {
     return n;
   },
 
-  /* v2.3.4480: a row entered before a row carried a face (v2.3.4393) gets its own from the character's record
+  /* v2.3.4490: a row entered before a row carried a face (v2.3.4393) gets its own from the character's record
      (boards.js _boardsFaceFill, once a worker's life) -- a record stands until it is beaten, so without this an
      old one would show an initial for good.  A deleted character's row keeps what it had. */
   async _fishBoardFaces(book) {

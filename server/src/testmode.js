@@ -37,7 +37,7 @@
  *     'first' and 'order' rules; a quest nobody can give is still refused);
  *   - the dodge-roll window against a player's blow (movement.js _rollOn,
  *     v2.3.3292): the phone's `dodging` is believed, as before it.
- * And one that asks without being a check (v2.3.4480, accuracy.js
+ * And one that asks without being a check (v2.3.4490, accuracy.js
  * _accDayAdd): a test-mode character's shots and hits are left out of the
  * owner's totals a day -- the owner's testing is not the players' aim.  It
  * turns nothing off: the character's own accuracy is counted as anyone's.

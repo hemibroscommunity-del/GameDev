@@ -1,4 +1,4 @@
-/* ═══ v2.3.4480: WHAT PLAYERS DREW, FOR THE OWNER TO LOOK AT ═══
+/* ═══ v2.3.4490: WHAT PLAYERS DREW, FOR THE OWNER TO LOOK AT ═══
  *
  * The owner, 2026-11-10: "I also need profile pic and character images of
  * other players saved somewhere so I can monitor for anything inappropriate

@@ -268,7 +268,7 @@ export const boardMethods = {
       : { unavailable: true });
   },
 
-  /* ═══ v2.3.4480: THE FACES OF ROWS FROM BEFORE A ROW CARRIED ONE ═══
+  /* ═══ v2.3.4490: THE FACES OF ROWS FROM BEFORE A ROW CARRIED ONE ═══
      The owner, 2026-11-10: "on the leaderboards there only placeholder
      initials for the character profile pic".  A row gets its face when its
      record is set (v2.3.4393), so a row set before that, by a player who

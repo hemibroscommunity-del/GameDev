@@ -3,7 +3,7 @@ import { ART_W, ART_H, artColorAt, isValidArt } from '@/rendering/traits/playerA
 import { useBoardFaces } from '@/ui/mobile/dash/BoardRow.jsx';
 import { accPct } from '@/game/accuracy.js';
 
-/* ═══ v2.3.4480: TWO BOXES OF THE TEST PANEL -- WHAT PLAYERS DREW, AND HOW WELL THEY AIM ═══
+/* ═══ v2.3.4490: TWO BOXES OF THE TEST PANEL -- WHAT PLAYERS DREW, AND HOW WELL THEY AIM ═══
  *
  * The owner, 2026-11-10: "I also need profile pic and character images of
  * other players saved somewhere so I can monitor for anything inappropriate

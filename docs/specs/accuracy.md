@@ -1,4 +1,4 @@
-# Accuracy: how many of your shots hit, a weapon (v2.3.4480)
+# Accuracy: how many of your shots hit, a weapon (v2.3.4490)
 
 The owner, 2026-11-10: *"I want somewhere that stats keep track of 'accuracy'
 (maybe for all 3 weapon types) like the amount of times the projectile hit on

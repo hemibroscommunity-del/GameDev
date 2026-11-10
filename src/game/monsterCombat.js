@@ -43,7 +43,7 @@ import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.22
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
 import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, rangedAimAngle, bowGripPoint /* v2.3.2543 */, BOW_SPECIAL_QUEUE_MS /* v2.3.2473 */, propSwingHit /* v2.3.2730 */, shotGroundDy /* v2.3.3206: a shot's ground is under the boots */ } from '@/game/combatHelpers.js';
-import { accShot, accSn } from './accuracy.js';   /* v2.3.4480: a basic shot is numbered, and its hits claim its number (accuracy) */
+import { accShot, accSn } from './accuracy.js';   /* v2.3.4490: a basic shot is numbered, and its hits claim its number (accuracy) */
 import { updateTargeting } from '@/game/targeting.js'; /* v2.3.2243 */
 import { firstSightHit, shotLowAim, lowAimAlong, arrowSureReachPast, shotAimAt, nmlSightAsk } from '@/game/projectiles.js'; /* v2.3.2473: the bow's on-target gate reads the hit test's own radii; v2.3.3206: + the low thing a shot is aimed at; v2.3.3528: + No man's land's ask on an empty line */
 import { shotTargetId } from '@/game/peerShots.js'; /* v2.3.3266: the player a shot is aimed at, for the others' screens */
@@ -1871,7 +1871,7 @@ export function updateMonsterCombat(S, deps) {
                 }
                 S.arrows.push({
                   ang: arrAngle,
-                  _sn: accShot(S, isStaff ? 'staff' : 'ranged') || undefined,   /* v2.3.4480: this basic shot's number (accuracy.js) */
+                  _sn: accShot(S, isStaff ? 'staff' : 'ranged') || undefined,   /* v2.3.4490: this basic shot's number (accuracy.js) */
                   _shotTs: _shotTs,
                   _lp: _shotLp || undefined,   /* v2.3.3206 */
                   _gf: _shotGf || undefined,   /* v2.3.3501: boots to its target's feet */
@@ -1978,7 +1978,7 @@ export function updateMonsterCombat(S, deps) {
                 S.isSwinging = true;
                 S._specialAttack = false;
                 clearSwingHitFlags(S); /* v2.3.1421: fresh dedup per swing */
-                accShot(S, 'melee');   /* v2.3.4480: a basic swing is a shot (accuracy.js) */
+                accShot(S, 'melee');   /* v2.3.4490: a basic swing is a shot (accuracy.js) */
                 /* v2.3.1011: defer the player_swing broadcast until S._swingAng
                    is computed just below, so peers get the weapon + facing and
                    can render the full stand-in (not just a bare arc). */
@@ -2454,7 +2454,7 @@ export function updateMonsterCombat(S, deps) {
                        skips set_active_slot).  special drives the Mind-
                        scaled 2x special roll on the server. */
                     slot: 'melee', special: !!S._specialAttack,
-                    /* v2.3.4480: the swing this hit belongs to: a swing that catches two monsters is one hit (accuracy.js) */
+                    /* v2.3.4490: the swing this hit belongs to: a swing that catches two monsters is one hit (accuracy.js) */
                     sn: S._specialAttack ? undefined : (accSn(S, 'melee') || undefined)
                   }});
                 }
@@ -3271,7 +3271,7 @@ export function updateMonsterCombat(S, deps) {
                   event: 'player_attack',
                   payload: {
                     id: S.myId,
-                    sn: S._specialAttack ? undefined : (accSn(S, 'melee') || undefined),   /* v2.3.4480: the swing it belongs to (accuracy.js) */
+                    sn: S._specialAttack ? undefined : (accSn(S, 'melee') || undefined),   /* v2.3.4490: the swing it belongs to (accuracy.js) */
                     x: P.x,
                     y: P.y,
                     angle: pvpAngle,

@@ -1,4 +1,4 @@
-/* Accuracy: how many of your shots hit, a weapon -- v2.3.4480
+/* Accuracy: how many of your shots hit, a weapon -- v2.3.4490
  * (server/src/accuracy.js, src/game/accuracy.js, docs/specs/accuracy.md).
  *
  *   1. CAPS AND THE WIRE: caps.accuracy advertised, on a line of its own;

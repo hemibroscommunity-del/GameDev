@@ -56,10 +56,10 @@ From there you can:
 - **Player logins** — let a player's character onto a new device, or lock out
   someone who got into a character (v2.3.3344; "Player logins" below).
 - **Player drawings** — everything players drew in the character creator,
-  newest first, with Remove drawings and Freeze (v2.3.4480; "What players
+  newest first, with Remove drawings and Freeze (v2.3.4490; "What players
   drew" below).
 - **Accuracy (all players)** — how often each weapon's basic attack hits, a
-  day (v2.3.4480; "Accuracy" below).
+  day (v2.3.4490; "Accuracy" below).
 - **Chat reports** — what players reported, with what was said, and Kick,
   Freeze, Unfreeze and Dismiss buttons (v2.3.3398; "Dealing with a griefer or
   cheater" below).
@@ -293,7 +293,7 @@ Who has it on, from a computer:
 curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/dev/testmodes"
 ```
 
-## What players drew: looking for anything inappropriate (v2.3.4480)
+## What players drew: looking for anything inappropriate (v2.3.4490)
 
 Players can draw on their character in the creator (a face tattoo, a shirt
 design and so on). Every drawing is kept on the server with its character, and
@@ -317,7 +317,7 @@ If one is not acceptable:
 
 Names are shown here too, but this page does not change a name.
 
-## Accuracy: how often each weapon hits (v2.3.4480)
+## Accuracy: how often each weapon hits (v2.3.4490)
 
 The game counts every basic attack (a sword swing, an arrow, a staff bolt)
 and whether it hit an enemy. Specials are not counted.

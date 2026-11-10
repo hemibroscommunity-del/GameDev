@@ -37,7 +37,7 @@ import { onAchvState, noteServerAp } from '@/game/achievements.js'; /* v2.3.3527
 import { onFishWeight, onFishBoard } from '@/game/fishWeigh.js'; /* v2.3.4036: a weigh-in and the biggest-fish boards (server/src/fishlog.js) */
 import { onRiseChest } from '@/game/climbActions.js'; /* v2.3.4453: the chest on a rise answers (server/src/risechest.js) */
 import { onSpinBoard } from '@/game/spinBoard.js'; /* v2.3.4393: the daily spin's biggest wins and losses (server/src/boards.js) */
-import { onAccState, accReset } from '@/game/accuracy.js'; /* v2.3.4480: your own accuracy (server/src/accuracy.js) */
+import { onAccState, accReset } from '@/game/accuracy.js'; /* v2.3.4490: your own accuracy (server/src/accuracy.js) */
 import { fishCatchWords } from '@/data/fishVariants.js'; /* v2.3.4036: "An albino Trout!" */
 import { onRaceState, onRaceCheckpoint, onRaceEnd } from '@/game/race.js'; /* v2.3.3525: Lil Bro's race (server/src/race.js) */
 import { onBankState } from '@/game/bank.js'; /* v2.3.3785: the Bank's vault (server/src/bank.js) */
@@ -1600,7 +1600,7 @@ export function setupWebSocket(ctx) {
                  workers advertise what THEY handle (caps.trade etc.);
                  the legacy client-side credit paths stay in place but
                  only run when the server hasn't claimed the job. */
-              accReset(S);   /* v2.3.4480: the shot counts begin again with every state_sync, as the worker's copy does */
+              accReset(S);   /* v2.3.4490: the shot counts begin again with every state_sync, as the worker's copy does */
               S._serverCaps = msg.caps || {};
               _capsHere = true;
               setWeaponStashMax(S._serverCaps.bagWeapons);   /* v2.3.4224: the weapon bag's size follows the worker (caps.bagWeapons; absent = 8) */
@@ -2236,7 +2236,7 @@ export function setupWebSocket(ctx) {
              (`from`) is never taken. */
           case 'spin_board':
             { if (msg.from) break; try { onSpinBoard(S, msg.payload); } catch (_se) { /* display only */ } break; }
-          /* v2.3.4480: your own accuracy (server accuracy.js), for the Journey page.  Private and PRIVILEGED there;
+          /* v2.3.4490: your own accuracy (server accuracy.js), for the Journey page.  Private and PRIVILEGED there;
              a relayed copy (`from`) is never taken. */
           case 'acc_state':
             { if (msg.from) break; try { onAccState(S, msg.payload); } catch (_ae) { /* display only */ } break; }
@@ -5887,7 +5887,7 @@ export function setupWebSocket(ctx) {
           wsOut(msg);
           return;
         }
-        /* v2.3.4480: the Journey page's ask (game/accuracy.js askAccuracy) -> accuracy.js.  TRAPS #18. */
+        /* v2.3.4490: the Journey page's ask (game/accuracy.js askAccuracy) -> accuracy.js.  TRAPS #18. */
         if (msg.type === 'acc_request') {
           wsOut(msg);
           return;

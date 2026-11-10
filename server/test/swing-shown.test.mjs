@@ -55,7 +55,7 @@ const ctx = vm.createContext({
   dropShield: (S) => { S._shieldUp = false; },
   SWING_COOLDOWN: 500, swingCooldownMult: () => 1, weaponSwingMult: () => 1,
   clearSwingHitFlags: () => {}, meleeSwingSfx: () => 'swordSwing',
-  accShot: () => 0,   /* v2.3.4480: a basic swing is numbered for accuracy (game/accuracy.js); not this suite's */
+  accShot: () => 0,   /* v2.3.4490: a basic swing is numbered for accuracy (game/accuracy.js); not this suite's */
   getActiveWeapon: (R) => (R.activeSlot === 'ranged' ? R.rangedWeapon : R.weapon),
 });
 vm.runInContext(swingSrc + '\nthis.swingAttack = swingAttack;\n'

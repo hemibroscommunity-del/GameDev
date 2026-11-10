@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { PlayerDrawings, AccuracyDays } from './DevWatch.jsx';   /* v2.3.4480: what players drew, and every player's accuracy a day */
+import { PlayerDrawings, AccuracyDays } from './DevWatch.jsx';   /* v2.3.4490: what players drew, and every player's accuracy a day */
 import { COL, getState } from '../mobile/dash/common.js';
 import { BT_API_BASE } from '../../networking/index.js';
 import { WORLDVIEW_EXITS } from '../../data/index.js';
@@ -327,7 +327,7 @@ const CAP_GATES = [
   'spar' /* v2.3.3265: the Sparring section below -- clones of you that fight you through the real PvP code (server/src/spar.js) -- lower case, a kill switch */,
   'achievements' /* v2.3.3527: the worker grants achievements and pays their AP (server/src/achievements.js): the Achievements page in More, a big one's banner, the arena's 500 AP on the first win, the AP board -- lower case, a kill switch */,
   'nostatcap' /* v2.3.3578: no cap on how many points a stat holds (server/src/statcap.js): the Points window's [+] stops greying at your level -- lower case, a kill switch */,
-  'accuracy' /* v2.3.4480: shots and hits a weapon (server/src/accuracy.js): the phone numbers its basic shots and the Stats page shows how many hit -- lower case, a kill switch */,
+  'accuracy' /* v2.3.4490: shots and hits a weapon (server/src/accuracy.js): the phone numbers its basic shots and the Stats page shows how many hit -- lower case, a kill switch */,
 ];
 /* v2.3.3732: caps that are OFF by default on purpose -- an opt-in, not a job
    the worker claims -- so "This worker" does not warn the owner about them.
@@ -1646,7 +1646,7 @@ export const DevPanel = ({ onClose }) => {
               </>
             )}
 
-            {/* ═══ v2.3.4480: WHAT PLAYERS DREW, AND HOW WELL THEY AIM (DevWatch.jsx) ═══ */}
+            {/* ═══ v2.3.4490: WHAT PLAYERS DREW, AND HOW WELL THEY AIM (DevWatch.jsx) ═══ */}
             <PlayerDrawings call={call} busy={busy} setMsg={setMsg} COL={COL} btn={btn} chip={chip} label={label} />
             <AccuracyDays call={call} busy={busy} setMsg={setMsg} COL={COL} btn={btn} label={label} />
 

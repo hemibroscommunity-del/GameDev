@@ -9745,7 +9745,7 @@ band redrawing itself whole five times a second.
 **Receipt:** `held-sweep` suite, `mp-heldsweep`, `mp-pagebases`,
 `mp-standinlegs`, docs/specs/held-sweep.md.
 
-## 319. "Put the new stat on the Stats page" (v2.3.4480)
+## 319. "Put the new stat on the Stats page" (v2.3.4490)
 
 **Tempting:** `BottomDashboard`'s table has `stats: { title: 'Stats', Component:
 StatsPanel }`, with Vitals, Attributes and a Record list: the obvious home for
