@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "f384f3e3dfbaa0e0c1e269e708bf5ca7b8f5c0cb",
+  "tree": "b057533022d8e395cd8d963d5ac94255377f10ce",
+  "committedAt": "2026-11-09T21:53:33-08:00",
+  "subject": "Merge pull request #1478 from hemibroscommunity-del/claude/sm-pile-time-left",
+  "files": 7778,
+  "bytes": 952159239,
+  "listingSha256": "f6e94d07494f966ac50f40d63713693c70e6aeae43ba6fdb116e1eb4aadf0f23",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
