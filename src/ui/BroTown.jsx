@@ -594,11 +594,11 @@ import { isWheelTrialZone, footstepSurface, setWheelArrival } from '@/game/world
 import { wheelDoorAt, enterWheelDungeon, wheelDungeonDoorLine } from '@/game/wheelDungeons.js';   /* v2.3.3016: the Wheel's dungeons, at its landmarks; v2.3.3573: + a party dungeon's line */
 import { wheelObjectsInfo, wheelWaterAt } from '@/game/wheelTrial.js';
 import { PET_FETCH, petFetchStep, petFetchState, petFetchHolds } from '@/game/petFetch.js';   /* v2.3.3806: the pet's fetch */
-import { wheelTownDoorAt, wheelTownDoors, rememberFarmTrip } from '@/game/wheelTownDoors.js';
+import { wheelTownDoorAt, wheelTownDoors } from '@/game/wheelTownDoors.js';
 import { noticeboardAt, noticeboardAtCss } from '@/game/wheelNoticeboard.js';   /* v2.3.3899: the town board is on the square's noticeboard */
 import { mayorSaysNext } from '@/game/mayorTalk.js';   /* v2.3.3899: Mayor Bro always talks */
-import { FARM_ARRIVE, FARM_BEDS, FARM_BED_REACH } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
-import { holdFarmUntilReady } from '@/game/farmTrip.js';   /* v2.3.3136: the way onto it waits for it */
+import { FARM_BEDS, FARM_BED_REACH } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
+import { warpToFarm } from '@/game/farmTrip.js';   /* v2.3.3136: the way onto it waits for it; v2.3.4366: the buildings' one warp, which holds */
 import { tickFarmWalk, startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136: a bed worked where it lies */
 import { bedAt, farmExCode } from '@/game/farmWork.js';
 import { FarmBedPrompt } from '@/ui/mobile/FarmBedPrompt.jsx';   /* v2.3.3136 */
@@ -13654,27 +13654,10 @@ export var BroTown = function BroTown(_ref0) {
     onCancel: function onCancel() { return setBuildingPanel(null); },
     onTravel: function onTravel() {
       var S2 = stateRef.current;
-      rememberFarmTrip(S2);   /* v2.3.3032: from the Wheel, the gate leads back out where you stood */
-      S2.currentZone = 'farm_home';
-      updateZoneDimensions('farm_home');   /* v2.3.3136: the farm's own size (this warp never set it) */
-      S2.map = generateZoneMap('farm_home');
-      /* v2.3.3136: in at the farm's gate, held under its loading screen until
-         it is all there (game/farmTrip.js) */
-      S2.player.x = FARM_ARRIVE.x;
-      S2.player.y = FARM_ARRIVE.y;
-      holdFarmUntilReady(S2);
-      S2.monsters = [];
-      S2.gatherNodes = [];
-      S2.npcs = null;
-      S2.groundLoot = [];
-      S2.hitParticles = [];
-      S2.deathExplosions = [];
-      S2.arrows = [];
-      S2._currentDepth = 'shallow';
-      S2._ambientParticles = [];
-      S2._zoneWipe = Date.now();
+      /* v2.3.4366: the buildings' one way onto the farm (game/farmTrip.js);
+         it asked for the town's music here after the farm's, every time */
+      warpToFarm(S2);
       setBuildingPanel(null);
-      BT_AUDIO.startZoneAmbient('town');
       BT_AUDIO.beep(500, 0.08, 0.12, 'sine');
     }
   }))), ((_stateRef$current18 = stateRef.current) === null || _stateRef$current18 === void 0 ? void 0 : _stateRef$current18.currentZone) === 'farm_home' && /*#__PURE__*/React.createElement("div", {

@@ -390,6 +390,11 @@ most 12 s:
 Every way onto the farm goes through it: the Feed & Seed, the Land Office,
 the old FarmPanel, the game-events trip, and the ways back from a Dungeon
 Workshop dungeon (`zoneTransitions.js` and both of `dungeonWaves.js`'s).
+The three buildings' trips (the Feed & Seed, the Land Office, the old
+FarmPanel) are one function since v2.3.4366, `farmTrip.js warpToFarm`: the
+hand copies had drifted, and the Land Office's asked for the town's music
+after the farm's, so the farm played BroTown's track. None of them asks for
+music of its own; `holdFarmUntilReady` asks for the farm's.
 
 **Memory.** Everything is let go on leaving (`freeFarmArt` from
 `freeZoneAssets`, the map by `freeZoneMap`). The farm's map decodes to 22 MB,
