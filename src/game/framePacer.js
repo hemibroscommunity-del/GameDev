@@ -182,3 +182,34 @@ export function makeFramePacer() {
     },
   };
 }
+
+/* ═══ v2.3.4395: WHOEVER READS THE CANVAS READS A REFRESH THE GAME DREW ═══
+   A WebGL canvas keeps its picture only until it is shown: on a refresh the
+   pacer passes, the canvas READS as empty.  The black-screen watchdog
+   (BroTown.jsx _sampleLit) samples "in an animation frame after the
+   world's", which was every frame until there was a pacer; on a passed
+   refresh it read 0% lit, counted a strike, and two strikes rebuild the
+   renderer -- found by mp-steadypace run straight after another scenario
+   (a rebuilt game mid-ride: the board gone, a fresh pacer), its page saying
+   "watchdog-dark screen 0% lit, strike 1".
+   So the loop says which refresh it drew in (noteDrawn, the animation
+   frame's own timestamp: every callback of one frame is handed the same),
+   and a reader asks for one (whenDrawn).  A loop that draws nothing at all
+   for WHEN_DRAWN_TRIES frames is not pacing (it passes five refreshes at
+   the most): the reader is called anyway, as it always was, and reads the
+   dark screen the watchdog exists to find. */
+export const WHEN_DRAWN_TRIES = 12;
+let _drawnAt = null;
+/** The game loop: this animation frame (its timestamp) is one it draws in. */
+export function noteDrawn(ts) { _drawnAt = ts; }
+/** Call fn in an animation frame the game has drawn in, after its draw:
+ *  the next one that is.  `raf` for tests. */
+export function whenDrawn(fn, raf) {
+  const ask = raf || ((cb) => requestAnimationFrame(cb));
+  let tries = WHEN_DRAWN_TRIES;
+  const again = (ts) => {
+    if (ts === _drawnAt || --tries <= 0) { fn(); return; }
+    ask(again);
+  };
+  ask(again);
+}

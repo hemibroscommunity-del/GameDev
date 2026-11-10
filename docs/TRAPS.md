@@ -8870,6 +8870,14 @@ uneven 51, and is less work.
   baked (default)" was asked as the strip first drew, before the palette's
   sheets had loaded, and said so all session on a phone drawing from the
   palette.
+- **A refresh the game does not draw in leaves the canvas EMPTY to read.** A
+  WebGL canvas keeps its picture only until it is shown. Anything that reads
+  it "in an animation frame" (the black-screen watchdog, a screenshot, a
+  probe) must ask for one the game drew in (`framePacer.js whenDrawn`), or
+  it reads a black screen that is not there: the first cut of the pacer made
+  the watchdog rebuild the renderer every few seconds on exactly the phones
+  it was meant to help, and only `mp-steadypace` run straight after another
+  scenario showed it.
 - A new player arriving bakes nothing on the watcher's page when the palette
   draws them (`mp-peerarrive`: Chrome's profiler, the longest stretch outside
   the frame 9 ms apart from the watchdog's screen check). Do not assume a

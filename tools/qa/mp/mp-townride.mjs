@@ -46,6 +46,10 @@ const OLD_HOLD_MS = 50;
 
 async function ride(browser, wsPort, webPort, rec, label, query) {
   const P = await H.newPlayer(browser, { name: 'tr' + (query ? 'old' : 'new'), wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, dpr: 1, query });
+  /* a real keystroke every 20 s: the page logs itself out after two minutes without one (wsClient idleLogout), and
+     this box can take longer than that over the frames below -- it did once, run straight after another scenario:
+     logged out and back in on foot, the loading screen up and down */
+  const stopAlive = H.keepAlive(P);
   try {
     await H.enterWorld(P);
     const ok = await H.waitFor(P, (S) => ({ z: S.currentZone, l: !!S._zoneLoading }), (v) => v.z === 'wheel' && !v.l, { timeout: 120000, label: 'into the Wheel' }).then(() => true).catch(() => false);
@@ -70,6 +74,7 @@ async function ride(browser, wsPort, webPort, rec, label, query) {
     const off = await offLoop(P);
     return { gate, jobs, folk, off };
   } finally {
+    stopAlive();
     await P.ctx.close().catch(() => {});
   }
 }

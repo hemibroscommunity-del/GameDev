@@ -53,6 +53,16 @@ is counted, moved or drawn.
   refreshes says nothing, and nothing is paced on a guess.
 - **Not judged**: behind a loading screen, or across a break (a hidden tab).
 - The steady step's mean starts again when the rate changes.
+- **Whoever reads the canvas reads a refresh the game drew.** A WebGL canvas
+  keeps its picture only until it is shown, so on a refresh the pacer passes
+  it reads as EMPTY. The black-screen watchdog (`BroTown.jsx _sampleLit`)
+  sampled "in an animation frame after the world's", which was every frame
+  until there was a pacer: on a passed refresh it read 0% lit, counted a
+  strike, and two strikes rebuild the renderer. The loop now says which
+  refresh it drew in (`noteDrawn`) and the watchdog's sample, its late copy,
+  the screen probe after a rebuild and QA's sample all ask for one
+  (`whenDrawn`). A loop that draws nothing at all for 12 frames is not
+  pacing, and is read anyway: the dark screen the watchdog exists to find.
 - **`?pace=0`** in the address is the old way for one tab: every refresh the
   browser offers.
 
@@ -68,14 +78,19 @@ is counted, moved or drawn.
   second, so the phone's screen is scripted (as `mp-steadystep` scripts its
   clock): one refresh of a 120 screen for every call the browser makes, and
   after a frame the game drew, that frame's scripted cost rounded up to
-  whole refreshes.
-- **`server/test/frame-pacer.test.mjs`** (34 checks) on a model of a screen
+  whole refreshes. It also takes the watchdog's own sample eight times while
+  two refreshes in three are passed: lit every time, no dark strike. Against
+  the watchdog as it was, the same run counted 3 strikes and the game was
+  rebuilt mid-ride (the board gone, the ground covered 223 game px a second
+  for 297): that is how it was found.
+- **`server/test/frame-pacer.test.mjs`** (40 checks) on a model of a screen
   and a device: the fault; the settle on every third refresh within 7 s; a
   steady 60 for a phone that only just misses 120; never paced when it keeps
   up, on a 60 or 75 screen, on the QA box or on a clock that wobbles; 144
   and 240 screens; the floor; the come-back when the phone cools; a hot
   phone tried 5 times in 16 minutes (43, 86, 162, 323 s apart) with 94% of
-  frames still the same length; a break; a loading screen; the wiring.
+  frames still the same length; a break; a loading screen; a reader of the canvas called only in a drawn
+  refresh; the wiring.
 
 ## What it does not do
 

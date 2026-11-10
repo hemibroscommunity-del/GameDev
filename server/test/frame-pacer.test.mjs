@@ -28,13 +28,18 @@
  *      then 40, then 80...;
  *   9. a break (a hidden tab) is drawn at once and judged by nothing; a
  *      loading screen is not judged;
- *  10. the wiring, read from the source.
+ *  10. the wiring, read from the source;
+ *  11. whoever reads the canvas reads a refresh the game DREW (whenDrawn):
+ *      a WebGL canvas reads as empty on a refresh the pacer passes, and the
+ *      black-screen watchdog counted that as a dark screen (two strikes
+ *      rebuild the renderer) -- found by mp-steadypace, its page saying
+ *      "watchdog-dark screen 0% lit, strike 1".
  * The phone half is tools/qa/mp/mp-steadypace.mjs.
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { framePaceOn, refreshOf, makeFramePacer, PACE_FAST_MS, PACE_FLOOR_MS, UP_WAIT_MS, UP_WAIT_MAX_MS, JUDGE_RUNS } from '../../src/game/framePacer.js';
+import { framePaceOn, refreshOf, makeFramePacer, noteDrawn, whenDrawn, WHEN_DRAWN_TRIES, PACE_FAST_MS, PACE_FLOOR_MS, UP_WAIT_MS, UP_WAIT_MAX_MS, JUDGE_RUNS } from '../../src/game/framePacer.js';
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -215,6 +220,59 @@ check('1. the address: pace=0, off and false are the old way; anything else is o
     && /_frameClock\.reset\(\)/.test(bt));
   check('10d. the meter can read it', /window\.__btPace = /.test(bt) && /__btPace/.test(readFileSync(join(ROOT, 'src/debug/perfHud.js'), 'utf8')));
   check('10e. the numbers: a fast screen is over 70 a second, the floor about 40, a verdict from ' + JUDGE_RUNS + ' frames', PACE_FAST_MS === 14 && PACE_FLOOR_MS === 26 && UP_WAIT_MS === 20000);
+}
+
+/* 11 */
+{
+  /* frames by hand: `loop(ts)` is the game's callback (it runs first, as in the browser: it asked for the frame
+     first), then whoever asked with whenDrawn */
+  let n = 0;                     /* a frame's timestamp never comes twice, here as in a browser */
+  const mk = () => {
+    let q = [];
+    const raf = (cb) => { q.push(cb); };
+    /* one frame: drawn or passed */
+    const frame = (drawn) => { const ts = ++n * 8.33; if (drawn) noteDrawn(ts); const now = q; q = []; for (const cb of now) cb(ts); return ts; };
+    return { raf, frame };
+  };
+  {
+    const { raf, frame } = mk();
+    let at = 0, f = 0;
+    whenDrawn(() => { at = f; }, raf);
+    f = 1; frame(true);
+    check('11. a reader that asks is called in the next frame, when the game draws in it', at === 1, at);
+  }
+  {
+    /* drawn every third refresh: asked during a drawn frame, the next two are passed */
+    const { raf, frame } = mk();
+    const got = [];
+    for (let k = 0; k < 9; k++) {
+      let called = -1, f = 0;
+      whenDrawn(() => { called = f; }, raf);
+      const drawnIn = [];
+      for (let i = 1; i <= 6 && called < 0; i++) { f = i; const d = (k + i) % 3 === 0; if (d) drawnIn.push(i); frame(d); }
+      got.push(called === drawnIn[0]);
+    }
+    check('11b. paced to every third refresh: never in a passed one, always in the first drawn one', got.every(Boolean), got);
+  }
+  {
+    const { raf, frame } = mk();
+    let at = 0, f = 0;
+    whenDrawn(() => { at = f; }, raf);
+    for (let i = 1; i <= WHEN_DRAWN_TRIES + 3 && !at; i++) { f = i; frame(false); }
+    check(`11c. a loop that draws nothing at all is still read, after ${WHEN_DRAWN_TRIES} frames (the dark screen the watchdog exists to find)`, at === WHEN_DRAWN_TRIES, at);
+  }
+  const bt = readFileSync(join(ROOT, 'src/ui/BroTown.jsx'), 'utf8');
+  const loop = bt.slice(bt.indexOf('var _gameLoop = function gameLoop('), bt.indexOf('var _gameLoop = function gameLoop(') + 1800);
+  check('11d. the loop says which refresh it draws in, once the pacer has taken it', /_framePacer\.take\([^\n]*\) return;\s*(\/\*[^*]*\*\/\s*)?noteDrawn\(_rafT\);/.test(loop));
+  const wd = bt.slice(bt.indexOf('function _sampleLit(done)'), bt.indexOf('window.__btWdSample = function'));
+  check('11e. the watchdog asks for a drawn refresh: its sample, its late copy, the screen probe after a rebuild, and QA\'s own sample',
+    /if \(document\.visibilityState === 'visible'\) \{\s*(\/\*[\s\S]{0,260}?\*\/\s*)?whenDrawn\(function \(\) \{/.test(bt)
+    && /_wdThumbDrop\(job\); whenDrawn\(oldWay\); return;/.test(wd)
+    && /superseded by a newer rebuild \*\/\s*try \{\s*(\/\*[^*]*\*\/\s*)?whenDrawn\(function \(\) \{/.test(bt)
+    && /window\.__btWdSample = function \(\) \{\s*return new Promise\(function \(res\) \{\s*whenDrawn\(function \(\) \{/.test(bt));
+  /* nothing reads the game's canvas in an animation frame of its own any more */
+  const own = (bt.match(/requestAnimationFrame\(function \(\) \{[\s\S]{0,400}?drawImage\((canvas|cv), 0, 0, 32, 18\)/g) || []).length;
+  check('11f. ...and no 32 x 18 read of the canvas is left in an animation frame of its own', own === 0, own);
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

@@ -163,6 +163,9 @@ player never loses items, gold or a fight to a phase that stuck.
     third, a steady 40), tries faster after 20 s clean, and never touches a
     60 screen. `mp-steadypace` plays the hot phone to the real game: the
     speed on the glass 33% out for one frame in ten before, 3.3% now.
+    Its first cut made the black-screen watchdog read an empty canvas on the
+    refreshes it passed (a strike each; two rebuild the renderer): caught by
+    that scenario before it reached a phone, and fixed (`whenDrawn`).
     Waits on the owner's eye (warm phone, with and without `?pace=0`).
   - **Not found**: that capture's one freeze ("worst 378.0 = game 16.0 +
     outside 362.0", no job named past 13 ms, another player newly on

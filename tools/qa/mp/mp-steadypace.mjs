@@ -23,7 +23,12 @@
  *   - as it ships: the pacer finds a 120 screen and draws every third
  *     refresh; nine frames in ten are the same 25 ms, and the speed on the
  *     glass is within 6% for nine in ten;
- *   - both cover the same ground a second (nobody is faster or slower).
+ *   - both cover the same ground a second (nobody is faster or slower);
+ *   - the black-screen watchdog, sampling while two refreshes in three are
+ *     passed, reads the lit world every time and counts no dark strike.  (A
+ *     WebGL canvas reads as empty on a refresh nothing was drawn in: the
+ *     first cut's watchdog read 0% lit there, and two strikes rebuild the
+ *     renderer -- this scenario's own page said so.  framePacer.js whenDrawn.)
  *
  *   node tools/qa/mp/run.mjs steadypace
  */
@@ -47,6 +52,14 @@ const q = (a, p) => { const v = [...a].sort((x, y) => x - y); return v[Math.min(
 
 async function ride(browser, wsPort, webPort, rec, label, query, seq) {
   const P = await H.newPlayer(browser, { name: 'pace' + (query ? 'old' : 'new'), wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, dpr: 1, query });
+  /* a real keystroke every 20 s: the page logs itself out after two minutes without one (wsClient idleLogout), and
+     this box can take longer than that over the frames below -- it did once, run straight after another scenario:
+     logged out and back in on foot, the loading screen up and down */
+  const stopAlive = H.keepAlive(P);
+  /* what the page says of itself while it is played (a rebuilt renderer, a lost socket): told with a failure */
+  const said = [];
+  P.page.on('console', (m) => { const t = m.text(); if (/rebuild|context|watchdog|idle|logout|rejoin|reconnect|socket|closed|lost/i.test(t)) said.push(t.slice(0, 160)); });
+  P.page.on('pageerror', (e) => said.push('error: ' + String((e && e.message) || e).slice(0, 160)));
   try {
     await H.enterWorld(P);
     const ok = await H.waitFor(P, (S) => ({ z: S.currentZone, l: !!S._zoneLoading }), (v) => v.z === 'wheel' && !v.l, { timeout: 120000, label: 'into the Wheel' }).then(() => true).catch(() => false);
@@ -91,6 +104,13 @@ async function ride(browser, wsPort, webPort, rec, label, query, seq) {
     const log = await P.page.evaluate(() => window.__btStepLog.slice());
     const pace = await P.page.evaluate(() => (window.__btPace ? window.__btPace() : null));
     await P.page.keyboard.up('d');
+    /* the watchdog's own sample (both its ways), asked eight times at moments of this box's choosing while the game is
+       still paced: asked between frames, it lands in the NEXT one, which is most often a refresh the pacer passes */
+    const lit = [];
+    for (let i = 0; i < 8; i++) {
+      lit.push(await P.page.evaluate(() => window.__btWdSample()).catch(() => null));
+      await P.page.waitForTimeout(137 + i * 61);
+    }
     rec.ok(`${label}: ${SETTLE} frames standing and ${LEAD + FRAMES} ridden on the scripted screen (guard)`, got, { frames: log.length / N });
     if (!got) return null;
     const rows = [];
@@ -99,8 +119,12 @@ async function ride(browser, wsPort, webPort, rec, label, query, seq) {
       rows.push({ raw: log[k], d: Math.hypot(log[k + 2] - log[k + 2 - N], log[k + 3] - log[k + 3 - N]), shown: log[k + N] });
     }
     rows.pace = pace;
+    rows.said = said;
+    rows.lit = lit;
+    rows.state = await P.page.evaluate(() => { const S = window._gameState.current; return { zone: S.currentZone, loading: !!S._zoneLoading, ride: window.__btRideBtn ? window.__btRideBtn() : null, frames: S._frameCount, hold: !!S._netHold }; });
     return rows;
   } finally {
+    stopAlive();
     await P.ctx.close().catch(() => {});
   }
 }
@@ -125,6 +149,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   if (!now || !old) return;
   const a = read(now), b = read(old);
   console.log(`    as it ships: ${JSON.stringify(a)}  the pacer ${JSON.stringify(now.pace)}`);
+  console.log(`    as it ships, the page at the end: ${JSON.stringify(now.state)}; it said: ${JSON.stringify(now.said.slice(0, 12))}`);
   console.log(`    the old way: ${JSON.stringify(b)}  the pacer ${JSON.stringify(old.pace)}`);
   rec.ok(`the game was played the owner's phone -- frames on the glass for two refreshes ${(b.two * 100).toFixed(0)}%, three ${(b.three * 100).toFixed(0)}%, four ${(b.four * 100).toFixed(0)}%, avg ${b.avg} ms (the meter: 19.6) -- and rode every frame (guard)`,
     b.two > 0.5 && b.two < 0.8 && b.three > 0.15 && Math.abs(b.avg - 19.6) < 1.6 && b.moving >= FRAMES - 2 && a.moving >= FRAMES - 2 && old.pace === null, { a, b });
@@ -133,5 +158,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!now.pace && now.pace.hz === 120 && now.pace.every === 3 && now.pace.rate === 40, now.pace);
   rec.ok(`as it ships: ${(a.three * 100).toFixed(0)}% of frames are on the glass the same 25 ms (at least 90%; ${(b.three * 100).toFixed(0)}% before)`, a.three >= 0.9, a);
   rec.ok(`as it ships: the speed on the glass is within ${(a.outP90 * 100).toFixed(1)}% for nine frames in ten (at most 6%; ${(b.outP90 * 100).toFixed(0)}% before)`, a.outP90 <= 0.06, a);
+  const readings = now.lit.filter(Boolean).map((r) => (r.gl == null ? r.image : Math.min(r.gl, r.image)));
+  const strikes = now.said.filter((t) => /watchdog-dark/.test(t));
+  rec.ok(`as it ships: the watchdog's sample, taken ${now.lit.length} times while two refreshes in three are passed, reads the lit world every time (${readings.join(', ')}% lit) and counts no dark strike (${strikes.length})`,
+    readings.length === 8 && readings.every((v) => v >= 20) && strikes.length === 0, { lit: now.lit, strikes });
   rec.ok(`both cover the same ground a second -- ${a.speed} and ${b.speed} game px (within 3%: nobody is faster)`, Math.abs(a.speed - b.speed) / b.speed <= 0.03, { a: a.speed, b: b.speed });
 }
