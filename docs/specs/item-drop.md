@@ -146,7 +146,8 @@ then after the respawn neither. Now:
   §150, §233);
 - the phone asks for nothing while it is dead (`groundLoot.js`: `S._dying`),
   so a death no longer sends a refused `loot_pickup` a second for five
-  seconds.
+  seconds. v2.3.4364: the pet's vacuum asks the same rule (`src/game/lootAsk.js`
+  `mayAsk`, `dying`); it used to ask through those five seconds.
 
 A death costs the bag as it was meant to: the pile lies where you fell for two
 minutes, yours to walk back to for the first one, then anyone's.
@@ -167,9 +168,14 @@ refused whatever its move said.
 
 - Gear (weapons, armour, shields): see above. It would need the worker to
   move a piece's receipt to whoever picks it up.
-- A death pile's clocks are the worker's own times, not time left as a drop's
-  are, so a phone whose clock is off sees its minute open and its end that
-  much off (as it always has).
+- ~~A death pile's clocks are the worker's own times~~ (v2.3.4364): still
+  sent as the worker's own times, but the phone now puts every pile's `ts`,
+  `ownerOnlyUntil` and `expiry` on its own clock as they arrive, by the
+  worker's clock read from the ping's `ts` (`src/game/workerClock.js`), so a
+  phone whose clock is off agrees with the worker to within a ping's trip.
+  An early 'not-recipient' on a death pile is asked once more just after its
+  minute, never dropped at once (`src/game/lootAsk.js`). Time left on the wire
+  (the drop's shape) is still the fuller cure (server work, not done).
 - Other places that ask only `ps.dead` were not changed here; one is a kill's
   share (combat.js: a player whose damage is on a monster that dies in the
   five seconds after their death is still counted for a share).

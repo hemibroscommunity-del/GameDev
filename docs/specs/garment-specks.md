@@ -147,6 +147,14 @@ Fixed in this change:
   sheet takes neither now, so every pair of them baked the same head again, and
   the cache (32 sheets) evicted heads still in use. The key leaves them out
   (`_headSheetKey`).
+  The cap's guard that never evicts *your own* heads (`_pickupHeadCap`) kept
+  spelling the key the old way, so from then on it guarded only a player in
+  default trousers AND default boots (1 roll in 112); everyone else's own
+  heads were thrown out first in a busy BroTown. Fixed in v2.3.4368 (the
+  state-machine sweep, V18 R7-2): the guard and the key are built by one
+  builder, `_headComboPrefix`. **Lesson: a key and anything that matches
+  against it share one builder; never spell a key twice.**
+  (`server/test/look-load.test.mjs` §1.)
 - **The patterns' masks.** The rule kept a speck in the art's own colour, but a
   trouser or boot *pattern* could still be stamped on it. In a torso strip
   (the sword's swing) that meant the waist and the back's outline. The masks

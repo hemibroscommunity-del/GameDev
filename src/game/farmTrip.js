@@ -16,7 +16,9 @@
  * nothing.  docs/specs/farm-walk.md.
  */
 import { ZONES } from '@/data/zones.js';
-import { BT_AUDIO } from '@/data/index.js';
+import { BT_AUDIO, generateZoneMap, updateZoneDimensions } from '@/data/index.js';
+import { FARM_ARRIVE } from '@/data/farmLayout.js';
+import { rememberFarmTrip } from '@/game/wheelTownDoors.js';
 import { showZoneLoadingOverlay, hideZoneLoadingOverlay, releaseLeftZoneArt } from '@/game/zoneTransitions.js';
 import { farmArtReady } from '@/rendering/farmWorld.js';
 import { isZoneMapResident } from '@/rendering/tiledMaps.js';
@@ -29,6 +31,33 @@ let _seq = 0;
  *  moves (v2.3.3439: the hoe, the can, the kneel). */
 export function farmReady() {
   return farmArtReady() && isZoneMapResident('farm_home') && farmFigureReady();
+}
+
+/* ═══ v2.3.4366: THE BUILDINGS' ONE WAY ONTO YOUR FARM ═══
+   The Land Office's "Travel to Farm", the Feed & Seed's "Visit Your Farm" and
+   the old Farm window each made this warp by hand, and the copies had drifted
+   (the sweep, V11 P1-9): only the Land Office set the depth, only the Feed &
+   Seed stopped your feet, and the Land Office asked for the TOWN's music after
+   holdFarmUntilReady had asked for the farm's, so the farm played BroTown's
+   track for the whole visit.  One copy now, every line any of them had; the
+   music is holdFarmUntilReady's alone.  (The Dungeon Workshop's ways home are
+   their own: they leave an arena, not a building.)  zone-entry.test §3. */
+export function warpToFarm(S) {
+  if (!S || !S.player) return false;
+  rememberFarmTrip(S);   /* v2.3.3032: from the Wheel, the gate leads back out where you stood (reads the zone you leave) */
+  S.currentZone = 'farm_home';
+  updateZoneDimensions('farm_home');   /* v2.3.3136: the farm's own size */
+  S.map = generateZoneMap('farm_home');
+  S.monsters = []; S.gatherNodes = []; S.npcs = null;
+  /* v2.3.3136: in at the farm's gate (data/farmLayout.js), still */
+  const P = S.player;
+  P.x = FARM_ARRIVE.x; P.y = FARM_ARRIVE.y; P.vx = 0; P.vy = 0;
+  S.groundLoot = []; S.hitParticles = []; S.deathExplosions = []; S.arrows = []; S._ambientParticles = [];
+  S._currentDepth = 'shallow';
+  S._zoneWipe = Date.now();
+  /* ...under the farm's loading screen until it is all there, its music asked */
+  holdFarmUntilReady(S);
+  return true;
 }
 
 /** Called right after a warp onto the farm. */

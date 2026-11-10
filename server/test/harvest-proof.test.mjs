@@ -82,6 +82,10 @@ async function join(room, id, label) {
 async function setup(liveflags, id) {
   const state = makeState(liveflags);
   const room = new GameRoom(state, env);
+  /* v2.3.4375: a plain fish every time.  A fish strike rolls its variant
+     (fishlog.js: 0.1% large, 1% albino), which goes in the bag under its own
+     key, so bagOf's plain key read 0 about 1 run in 90 (CI, §3) */
+  room._fishDice = () => 0.5;
   const p = await join(room, id || 'bp_hp');
   const nodes = room._ensureZoneNodes(ZONE);
   for (const n of nodes) { n.alive = true; n.respawnAt = 0; }
@@ -219,6 +223,7 @@ const strikeBare = (p, n, accuracy, fp) => { stand(p.ps, n); return p.send('node
   await S.send('extraction_start', { nodeId: t1.id, zone: ZONE, skill: 'woodcutting', hitSeq: 2 });
   S.room._harvestRecoverOk('bp_hp5', T);
   const room2 = new GameRoom(S.state, env);   /* a deploy: the same storage, nothing in memory */
+  room2._fishDice = () => 0.5;   /* v2.3.4375: a plain fish, as above */
   const P = await join(room2, 'bp_hp5', 'after-deploy');
   const nodes2 = room2._ensureZoneNodes(ZONE);
   revive(nodes2);

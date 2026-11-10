@@ -509,7 +509,7 @@ A whiff still costs the block and the cooldown and floats "Missed!". There is no
 
 **Held or dazed**: a rock monster's daze (0.5 s of no walk, swing, roll or shield, then 2.5 s immune) and a blue slime's hold (0.7 s, then 2 s immune) are the two "lock-down" lengths in the game, and the same two lengths cap any gem's freeze or root on a player.
 
-**Death**: at 0 HP you respawn after 5 s on BroTown's stairs. Everything in the bag except tools, quest items, worn gear, shields, outfits and gold drops as a pile only you may take for 60 s, then anyone, gone at 120 s. Items picked up within 1 s of a pickup are shielded from a second death.
+**Death**: at 0 HP you respawn after 5 s on BroTown's stairs. Everything in the bag except tools, quest items, worn gear, shields, outfits and gold drops as a pile only you may take for 60 s, then anyone, gone at 120 s. Items picked up within 1 s of a pickup are shielded from a second death. Closing the game (or losing signal, or a deploy) inside the 5 s comes back standing in BroTown at full health, with nothing taken twice (v2.3.4374, `joinstandup`; docs/specs/join-stands-up.md).
 
 ### 5.7 The one door for monster hits
 
@@ -1035,7 +1035,7 @@ Before the one formula those Lv 12 copper fights were 2.7 / 4.5 / 2.1 s. The bet
 
 ### 10.3 Duels, the arena, sparring
 
-**Duels** start only from another player's card (Duel tile) and are **always no-stakes** (the server supports a wager up to 999,999 escrowed at the accept, but no screen sets one). "Duels are consensual. No wager, no item loss, no reputation penalty." Two minutes to accept, both in the same zone at the accept, one duel at a time, a 10-minute cap decided by the higher HP fraction, a 15 s reconnect grace, healing regen off. A duel kill drops nothing and wipes nothing; dying to a monster mid-duel is a normal death. The "threat" machine (a red-skull countdown, Call Guards fines, bounties) is coded and **off**.
+**Duels** start only from another player's card (Duel tile) and are **always no-stakes** (the server supports a wager up to 999,999 escrowed at the accept, but no screen sets one). "Duels are consensual. No wager, no item loss, no reputation penalty." Two minutes to accept, both in the same zone at the accept, one duel at a time, a 10-minute cap decided by the higher HP fraction, a 15 s reconnect grace, healing regen off. A dueller who leaves the zone (a dungeon, the farm) forfeits after 15 s, as if they had closed the app; back inside the 15 s and the fight goes on (v2.3.4371; live flag `duelzone: false` turns it off; arena matches are not affected). A duel kill drops nothing and wipes nothing; dying to a monster mid-duel is a normal death. The "threat" machine (a red-skull countdown, Call Guards fines, bounties) is coded and **off**.
 
 **The arena** (the Sheriff's Office → "The arena"): 100 gold to enter, escrowed; 60 s to gather; a bracket of up to 8; each match a no-stakes duel with a 3-minute clock, fought **where the two stand** (no arena zone, no teleport), healing off. The champion's prize is 250 gold per gladiator in the bracket (8 → 2,000): the entries plus 150 a gladiator from the house, which pays at most 3,600 gold an hour game-wide. 500 Achievement Points to a character's **first** win only. Spectators may **back a fighter** with 10–5,000 gold, one stake per match: winners share the losing stakes pro rata, the winning fighter keeps 10% of the losing pool, nothing is minted, stakes are private.
 

@@ -2,6 +2,7 @@ import React from 'react';
 /* v2.3.1981: unmuting is a server mutation now (server/src/chatmod.js);
    setMuted keeps writing the localStorage mirror this panel reads. */
 import { setMuted, blockedIdOf } from '@/game/chatMute.js'; /* v2.3.3391: + blockedIdOf */
+import { unblockPlayer } from '../mobile/sheet/friendsModel.js'; /* v2.3.4365: the one writer of the block list */
 
 /* ═══ SocialPanel — friends / muted / blocked lists ═══ */
 /* v2.3.860: moved verbatim from BroTown.jsx's JSX tree (UI-panel
@@ -279,13 +280,10 @@ export function SocialPanel(props) {
         flexShrink: 0
       },
       onClick: function onClick() {
-        var updated = blockedList.filter(function (b) {
-          return blockedIdOf(b) !== bid;   /* v2.3.3391: either shape */
-        });
-        setBlockedList(updated);
-        try {
-          localStorage.setItem('bt_blocked', JSON.stringify(updated));
-        } catch (e) {}
+        /* v2.3.4365: the one writer (friendsModel -> chatMute.js
+           setBlockedId) reads the stored list fresh; writing this panel's
+           copy back erased blocks made elsewhere since the page loaded */
+        setBlockedList(unblockPlayer(null, bid));
       }
     }, "Unblock"));
   }))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {

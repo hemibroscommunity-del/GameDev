@@ -114,6 +114,32 @@ the `_extractionMissing` posture — old clients never punished):
 - Live state (in-memory, rule 11): per-identity record ring (64 fps),
   hRing (64), intervals (32), score — Map capped 128 identities /
   256 devices.
+- **v2.3.4379: the cap never evicts a player who is still playing**
+  (`_botfpRecord`; `botfp-evict.test.mjs`). Before, a busy day (128
+  different players joining since the room started) dropped the oldest
+  record by `lastStrikeAt`, online or not. Only a join reads `botstat:`, so
+  the player's next hit, strike, cook or start recreated the record EMPTY,
+  and its first write (at the latest the forced one at their close)
+  replaced the stored one: the owner's flags, the counters, the score, the
+  signals and the hour's counts gone, and a script past the hour cap given a
+  fresh hour. The ones who cook or fight but never harvest went first (their
+  `lastStrikeAt` stays 0): the very bots the record is for. Found by the
+  state-machine sweep (2026-11-03, S8-21). Now only an OFFLINE player's
+  record is evicted (one whose `playerState` is gone or `disconnected`): it
+  was flushed at their close and is re-read at their next join. The map
+  stays bounded, because online players are capped at `MAX_PLAYERS` (120),
+  under `MAP_CAP`. It costs no storage read or write: the check reads
+  `playerState` in memory, and the eviction's forced puts are the same ones
+  as before (fewer, as online records are no longer written out). Kill
+  switch: `botrecordkeep: false` in the live flags brings back the eviction
+  of anyone. It is not a test-mode check: it keeps the owner's evidence and
+  checks no player, and a test-mode character's strikes and cooks are not
+  scored anyway.
+  - **The lesson** (the TRAPS text, held here while the sibling PRs land):
+    a cache in front of a stored record that only the JOIN reads must never
+    evict a record whose owner is still online, or the next write erases
+    the stored one with a fresh blank. Spare the live ones, or re-read
+    before the first write; never "it was read at the join".
 
 ## Privacy
 

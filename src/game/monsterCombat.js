@@ -65,6 +65,7 @@ import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
 import { brewMulNow, pvpClaim } from '@/game/fightFood.js'; /* v2.3.3133: the brew, read once and claimed right in a duel */
 import { pvpBalanceOn, pvpSwingClaimOk, pvpLockInReach, PVP_SWING } from '@/game/pvpSwing.js'; /* v2.3.3260: one sword claim a swing */
 import { fightersInSwing, isLiveFighter } from '@/game/sparTargets.js'; /* v2.3.3267: every swing lands on the sparring clones in its arc, locked or not; v2.3.3268: and on the players you chose to attack */
+import { duelSwingTarget } from '@/game/duelPending.js';   /* v2.3.4361: a duel's swing names its foe (the phantom duel's red skull) */
 import { nmlSwingAsk } from '@/game/nmlAsk.js'; /* v2.3.3316: a swing at a player you have not chosen asks "Attack <name>?" */
 import { arrowEdgeRoom } from '@/game/arrowEdge.js'; /* v2.3.3489: where an arrow comes down at the screen's edge */
 import { shotAimWire } from '@/game/shotGround.js';   /* v2.3.3501: what a shot is fired at, on the wire */
@@ -3270,6 +3271,12 @@ export function updateMonsterCombat(S, deps) {
                     arc: wpnType.arc || SWING_ARC,
                     ts: Date.now(),
                     inDuel: !!S._inDuel,
+                    /* v2.3.4361: a duel's swing names its foe, so the worker
+                       lands it on them only (combat.js `onlyTarget`) -- never
+                       on a bystander in the cone, which in No man's land gave
+                       the swinger a red skull (the sweep's V6).  Absent outside
+                       a duel: free-fire keeps its cone. */
+                    target: duelSwingTarget(S) || undefined,
                     /* v2.3.3260: which swing (its own clock) -- the worker
                        lands one hit a swing (pvpbalance.js); an older one
                        ignores it */

@@ -3533,7 +3533,11 @@ export class GameRoom {
          respawn, and the client happily keeps sending actions.  Starting
          the flow from the tick closes that for every source at once
          instead of chasing them one at a time.  Guarded on connected,
-         non-dying players so it cannot fire on a corpse mid-respawn. */
+         non-dying players so it cannot fire on a corpse mid-respawn.
+         v2.3.4374: a state restored from storage mid-death no longer comes
+         here -- the join stands it up as this respawn would (join.js,
+         `joinstandup`), so a close in the dying window is not a second
+         death.  The sweep stays for every other road to 0. */
       if (!ps.dying && !ps.disconnected && typeof ps.hp === 'number' && ps.hp <= 0) {
         try { this._handlePlayerDeath(ps, id, 'stuck-at-zero'); } catch (e) {}
       }
@@ -3546,6 +3550,7 @@ export class GameRoom {
       ps.dead = false;
       ps.respawnAt = 0;
       ps.z = 'town';
+      this._duelZoneMoved(id);   /* v2.3.4371: every zone write asks the duel (duel.js) */
       /* v2.3.3325: no place in town to judge the next move from, and no way
          back into the Wheel but its arrival (movement.js _moveRespawned) */
       this._moveRespawned(ps);
@@ -3582,39 +3587,22 @@ export class GameRoom {
       ps.dmgFromMonster = {};
       this._saveRpg(id, ps);
       const ws = this._wsBySessionId(id);
-      /* ═══ v2.3.1822: A RESPAWN NOBODY HEARD STILL HAPPENED ═══
-         Owner: "I died while I was on another tab and my character just got
-         stuck there.  I had to wait for a monster to attack me again and die
-         again while it was my active screen to respawn in town."
-
-         That is this branch.  A backgrounded tab's socket gets suspended or
-         closed by the browser, so five seconds later the respawn runs here
-         with no `ws` to send to, and `player_respawned` is dropped on the
-         floor.  On the client, `S._dying` is cleared by exactly ONE thing —
-         receiving that message (wsClient) — so it stays true forever, and
-         isPlayerDead() keeps the player frozen at the death spot.  Dying
-         again is not a workaround, it is the only path back: the SECOND
-         respawn arrives on a live socket and clears the flag.
-
-         Rejoin does not fix it by itself: join.js resets ps.dying/respawnAt
-         server-side but sends nothing that clears the client's copy, and
-         player_state carries no zone, so it could not teleport them home
-         even if it did.  So mark the respawn as owed and let the join path
-         replay the real message, zone and all.
-         In-memory only (rule 11) — a worker restart drops the debt, which is
-         correct: a restart re-joins everyone from stored state anyway. */
-      if (!ws) { ps._respawnOwed = true; continue; }
+      /* v2.3.1822: a respawn nobody heard (a backgrounded tab's socket) still
+         happened.  v2.3.4374: the debt it left for the next join to replay
+         (`_respawnOwed`) is gone -- it was set on THIS state object, and every
+         join builds a new one (join.js) through an allowlist that cannot
+         carry it, so the replay never ran (state-machine sweep S2-2).  What
+         stands that phone up: a rejoin's full player_state with hp > 0, read
+         by the phone's stuck-dead watchdog (src/game/respawn.js); and a join
+         inside the dying window now stands the player up itself (join.js,
+         `joinstandup`). */
+      if (!ws) continue;
       try {
         ws.send(JSON.stringify({
           type: 'player_respawned',
           payload: { zone: 'town' },
         }));
-      } catch (e) {
-        /* Same reasoning as the missing-ws case: a send that threw did not
-           arrive, so the debt stands.  This was a bare swallow before, which
-           is how the failure could be invisible. */
-        ps._respawnOwed = true;
-      }
+      } catch (e) { /* did not arrive: the rejoin's player_state stands them up */ }
       this._queuePlayerStateFlush(id);
     }
   }
@@ -4867,6 +4855,20 @@ export class GameRoom {
       return new Response(JSON.stringify({ count: this.getPlayerCount() }), {
         headers: { 'Content-Type': 'application/json' },
       });
+    }
+    /* v2.3.4376: THE KILL SWITCHES BEFORE ANY WEB REQUEST.  The live flags
+       were loaded only on the socket path below, so a worker that had just
+       started (a deploy, an idle room woken) answered its first web requests
+       with every thrown switch read as not thrown: the login door and the
+       list's restart refused a new device under `devicelock: false`, the
+       overview showed switches as on, the first market or store read rebuilt
+       under the conversions' switches (docs/specs/liveops.md "Loaded before
+       any request").  One storage read a worker's life: once loaded, nothing
+       here is read again.  A failed read leaves the request as it was before
+       (cold, answered), never thrown away; the next request tries again.
+       After the lobby's count probe, which reads no switch. */
+    if (!this._liveFlags) {
+      try { await this._liveFlagsEnsure(); } catch (e) { console.warn('[liveflags] cold load failed:', e && e.message); }
     }
     // v2.3.1118: marketplace HTTP surface (order book lives in this DO
     // now -- see market.js).  Before the Upgrade check like _room_count.
@@ -6338,7 +6340,8 @@ export class GameRoom {
           // settles them -- the intercept validates at commit, moves the
           // goods, and annotates the accept with settled:true (or drops
           // forged/replayed accepts entirely).  Null means "don't relay".
-          if (msg.type === 'trade_offer' || msg.type === 'trade_accept') {
+          /* v2.3.4375: and a decline, which voids the offer it answers */
+          if (msg.type === 'trade_offer' || msg.type === 'trade_accept' || msg.type === 'trade_reject') {
             msg = await this._interceptTrade(session.id, msg);
             if (!msg) break;
           }

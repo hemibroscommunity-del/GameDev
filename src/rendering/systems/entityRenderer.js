@@ -76,11 +76,11 @@ import { getNftTextures } from '../nftAvatars.js';
 import { getHeadwear, HEADWEAR_CATALOG, headwearUnderHair, headwearBehindBeard } from '../traits/headwearCatalog.js'; /* v2.3.1764: hair over headphones; v2.3.1934: beard over a drape */
 import { getFacialHair, FACIALHAIR_CATALOG } from '../traits/facialHairCatalog.js';
 import { getEyewear, EYEWEAR_CATALOG } from '../traits/eyewearCatalog.js';   /* v2.3.2361: the eyewear slot */
-import { getEyewearColor, getColoredEyewearTextures } from '../traits/eyewearColorCatalog.js';   /* v2.3.2424 */
+import { getEyewearColor, getColoredEyewearTextures, coloredEyewearReady } from '../traits/eyewearColorCatalog.js';   /* v2.3.2424; v2.3.4368 + ready */
 import { getEyeStyle, EYE_STYLE_CATALOG } from '../traits/eyeStyleCatalog.js';   /* v2.3.2643: the eye-style slot */
 import { getSpecies } from '../traits/speciesCatalog.js';   /* v2.3.2682: the species slot */
 import { getSpeciesBuild, preloadSpeciesArt } from '../traits/speciesArt.js';   /* v2.3.2682 */
-import { getColoredEyeStyleTextures } from '../traits/eyeStyleColorCatalog.js';   /* v2.3.2645 */
+import { getColoredEyeStyleTextures, coloredEyeStyleReady } from '../traits/eyeStyleColorCatalog.js';   /* v2.3.2645; v2.3.4368 + ready */
 import { getHair, HAIR_CATALOG } from '../traits/hairCatalog.js';
 import { getLookShirtFrame } from '../lookShirtFrame.js';   /* v2.3.3751: the tee from the look palette */
 import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt, getFishFrame, MIRRORED_SOURCE_DIRS, getLookBodyFrame, getLookBodyEntries } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo; v2.3.2854: + the inked fish frame; v2.3.3716: + the look-palette frame */
@@ -5926,6 +5926,10 @@ export function preloadTraits() {
     own.push(coloredHatReady(getHeadwear(), getHatColor()));
     own.push(coloredHairReady(getHair(), getHairColor()));
     own.push(coloredFacialHairReady(getFacialHair(), getFacialHairColor()));
+    /* v2.3.4368: + your eyewear and eye-style colours, first baked by the draw
+       until now (sweep V18 R8-11); the same pictures the first draw would bake */
+    own.push(coloredEyewearReady(getEyewear(), getEyewearColor()));
+    own.push(coloredEyeStyleReady(getEyeStyle(), getEyeColor()));
     const _mask = _ensureHairMaskLoaded(getHeadwear());
     if (_mask && _mask.ready) own.push(_mask.ready);
     _ensureTraitTextures();

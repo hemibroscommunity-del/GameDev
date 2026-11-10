@@ -18,9 +18,21 @@ via `_liveopsRoutes` just before its final 404. Owner-facing curl guide:
   rejoin, no deploy. A worker deploy wipes memory and simply re-reads.
 - Hot-path reads are **synchronous**: `_flagOn(name)` and
   `_flagNum(name, dflt, lo, hi)` (clamped at read time as the wall, in
-  case storage is ever hand-edited; the write path clamps too). Fail-open
+  case storage is ever hand-edited; the write path clamps too).
+- **Loaded before any request** (v2.3.4376). The old rule here, "fail-open
   before the first cache load is safe because every gated path requires a
-  joined player and the join handler awaits `_liveFlagsEnsure()` first.
+  joined player", was wrong: the login door, the character list's restart,
+  the admin overview and the first market or store read are web requests
+  with no player, and a worker that had just started (a deploy, an idle room
+  woken) answered them before any socket had loaded the cache, so every
+  thrown switch read as not thrown (`devicelock: false` refused a new device
+  at the door; the sweep's V13). `GameRoom.fetch` now loads the cache at its
+  top, after only the lobby's `/_room_count` probe (which reads no switch):
+  one `liveflags` read a worker's life, nothing once loaded. A failed read
+  leaves the request answered cold, as before, and the next request tries
+  again; it is logged `[liveflags] cold load failed`. The socket path's own
+  load stays. There is no kill switch for this: it IS the loading of the
+  kill switches. `server/test/cold-flags.test.mjs` holds it.
 
 ### Kill switches shipped (server-side gates)
 

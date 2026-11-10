@@ -36,11 +36,12 @@
  */
 import { TARGET_PERIMETER_PX, TARGET_HYST } from '@/data/index.js';
 import { isIntangible } from '@/data/monsterVariants.js';
-import { isPlayerDead } from '@/game/combatHelpers.js'; /* v2.3.2251: a corpse acquires nothing */
+import { isPlayerDead, pushDmgPopup } from '@/game/combatHelpers.js'; /* v2.3.2251: a corpse acquires nothing; v2.3.4361: + the dropped duel's word */
 import { chosenNear, isLiveClone, isLiveFighter, clonePos } from '@/game/sparTargets.js'; /* v2.3.3267: your sparring clones, monsters to your weapons; v2.3.3268: and the players you chose to attack */
 import { zoneHomes } from '@/data/zones.js';   /* v2.3.3499: the Wheel's far cull, which a lock may not outlive */
 import { keepDuelLock } from '@/game/duelLock.js';   /* v2.3.3713: a player lock follows its peer; an arena match locks on sight */
 import { manualOn, mcLockAllowed } from './manualCombat.js';   /* v2.3.4357: manual combat keeps no chosen lock */
+import { dropUnsettledDuel } from '@/game/duelPending.js';   /* v2.3.4361: an accept the worker never settled */
 
 function monPos(m) {
   const x = (typeof m.renderX === 'number' && isFinite(m.renderX)) ? m.renderX : m.x;
@@ -499,6 +500,12 @@ export function updateTargeting(S) {
   if (!S || !S.player) return;
   /* First, so every early return below still leaves the flag current. */
   _updateEngagement(S);
+  /* v2.3.4361: a duel this phone accepted that the worker never settled is
+     dropped once its clock runs out (duelPending.js: the phantom duel) --
+     before the lock below follows it */
+  if (dropUnsettledDuel(S, Date.now())) {
+    try { pushDmgPopup(S, S.player.x, S.player.y - 30, 'Duel did not start', '#888'); } catch (e) { /* display-only */ }
+  }
   /* v2.3.3713: before the rule below returns early on a player lock */
   /* ═══ v2.3.4357: MANUAL COMBAT KEEPS NO LOCK A PLAYER CHOSE ═══
      The owner: "Remove the tap to target system for now.  All combat types

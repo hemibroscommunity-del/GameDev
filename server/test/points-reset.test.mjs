@@ -23,7 +23,12 @@
  *      privileged.
  *   7. The page (src/game/pointsReset.js): the button only against a worker
  *      that resets and with a point placed, the worker's count of placed
- *      points, one ask at a time, the answer in words. */
+ *      points, one ask at a time, the answer in words.
+ *   8. v2.3.4372: the minute survives a rejoin (the sweep's V9c M3-14): reset,
+ *      rejoin, reset again inside the minute: refused 'soon', nothing written;
+ *      after the minute: allowed; the room's Map bounded; a level-16
+ *      character's reset-respend-rejoin minute counted (one reset, 91 rows);
+ *      `pointsresetroom: false` brings back the connection's minute. */
 import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
 import { POINTS_RESET, pointsPlaced } from '../src/pointsreset.js';
 import { PROG3, prog3RespecPoints } from '../src/prog3.js';
@@ -89,6 +94,7 @@ const answerOf = (ws) => (ws.sent.find((m) => m.type === 'points_reset_result') 
 function trained(room, P) {
   P.dead = false; P.dying = false;
   P.lastDamageAt = 0; P._lastDealtAt = 0; P._pointsResetAt = 0;
+  if (room._pointsResetAts) roomMinute(room).clear();   /* v2.3.4372: the room's minute too */
   P.prog3.sk.sword.level = 6; P.prog3.sk.bow.level = 3; P.prog3.sk.staff.level = 1;
   prog3RespecPoints(P.prog3, false);
   room._prog3Recompute(P);
@@ -98,6 +104,8 @@ async function place(room, ws, stat, n, cat) {
   for (let i = 0; i < n; i++) await room.webSocketMessage(ws, JSON.stringify({ type: 'prog3_allocate', payload: cat ? { stat, cat } : { stat } }));
   await settle();
 }
+/* v2.3.4372: the room's minute (pointsreset.js _pointsResetAts), made here if the room has none yet */
+const roomMinute = (r) => r._pointsResetAts || (r._pointsResetAts = new Map());
 const pools = (p3) => ({ pool: p3.pool, sword: p3.poolBy.sword, bow: p3.poolBy.bow, staff: p3.poolBy.staff, shared: p3.shared });
 
 const { room, state } = await makeRoom();
@@ -156,6 +164,7 @@ const P = room.playerState.bp_pr_a;
   check('3: a second reset within the minute is refused, with the wait, nothing changed or written',
     !!a && a.ok === false && a.err === 'soon' && a.wait > 0 && a.wait <= POINTS_RESET.GAP_MS && JSON.stringify(P.prog3) === before && state._puts() === puts0, a);
   P._pointsResetAt = Date.now() - POINTS_RESET.GAP_MS - 1;
+  roomMinute(room).set('bp_pr_a', P._pointsResetAt);   /* v2.3.4372: the room's minute passes too */
   P.lastDamageAt = Date.now() - 3000;
   await send(room, ws, 'points_reset', {});
   const f = answerOf(ws);
@@ -172,7 +181,7 @@ const P = room.playerState.bp_pr_a;
   await send(room, ws, 'points_reset', {});
   const ok = answerOf(ws);
   check('3: ...out of the fight a minute on: reset', !!ok && ok.ok === true && pointsPlaced(P.prog3) === 0, ok);
-  P._pointsResetAt = 0;
+  P._pointsResetAt = 0; roomMinute(room).clear();
   const puts1 = state._puts();
   await send(room, ws, 'points_reset', {});
   const none = answerOf(ws);
@@ -181,7 +190,7 @@ const P = room.playerState.bp_pr_a;
 
 // ── 4. worn armour stays worn ──
 {
-  P._pointsResetAt = 0;
+  P._pointsResetAt = 0; roomMinute(room).clear();
   await place(room, ws, 'def', 5);
   P.armor = { name: 'Black Steel Torso', mat: 'steel', slot: 'armor', tierMult: 3, quality: 'normal' };
   await send(room, ws, 'points_reset', {});
@@ -213,10 +222,108 @@ const P = room.playerState.bp_pr_a;
   const s3 = w3.sent.find((m) => m.type === 'state_sync');
   check('5: ...and caps.pointsreset false at the next join', !!s3 && s3.caps && s3.caps.pointsreset === false, s3 && s3.caps && s3.caps.pointsreset);
   r2._liveFlags = { onelevel: false };
-  P2._pointsResetAt = 0;
+  P2._pointsResetAt = 0; if (r2._pointsResetAts) r2._pointsResetAts.clear();
   await send(r2, w2, 'points_reset', {});
   check('5: `onelevel: false`: the shared pool dealt by the old sum (3 a skill level past 1, the three added: 3 x (5 + 2 + 0))',
     (answerOf(w2) || {}).ok === true && P2.prog3.shared === 21 && P2.prog3.poolBy.sword === 15, pools(P2.prog3));
+}
+
+// ── 8. v2.3.4372: the minute survives a rejoin (the sweep's V9c M3-14) ──
+{
+  const { room: r8, state: s8 } = await makeRoom();
+  const id = 'bp_pr_re';
+  let w = fakeWs();
+  await join(r8, w, id);
+  let Q = r8.playerState[id];
+  trained(r8, Q);
+  await place(r8, w, 'hp', 2);
+  await send(r8, w, 'points_reset', {});
+  check('8: a reset', (answerOf(w) || {}).ok === true && pointsPlaced(Q.prog3) === 0);
+  /* rejoin: a new socket for the same id -- the join rebuilds the state */
+  w = fakeWs();
+  await join(r8, w, id);
+  check('8: ...the rejoin rebuilt the player\'s state (the socket\'s stamp gone)', r8.playerState[id] !== Q && !r8.playerState[id]._pointsResetAt);
+  Q = r8.playerState[id];
+  Q.lastDamageAt = 0; Q._lastDealtAt = 0;
+  await place(r8, w, 'def', 3);
+  const before = JSON.stringify(Q.prog3);
+  const puts0 = s8._puts();
+  await send(r8, w, 'points_reset', {});
+  const a = answerOf(w);
+  check('8: reset, rejoin, reset again inside the minute: refused \'soon\' with the wait, nothing changed or written',
+    !!a && a.ok === false && a.err === 'soon' && a.wait > 0 && a.wait <= POINTS_RESET.GAP_MS
+      && JSON.stringify(Q.prog3) === before && s8._puts() === puts0, a);
+  /* the minute passes (both clocks) */
+  roomMinute(r8).set(id, Date.now() - POINTS_RESET.GAP_MS - 1);
+  const puts1 = s8._puts();
+  await send(r8, w, 'points_reset', {});
+  check('8: ...after the minute: allowed, one row', (answerOf(w) || {}).ok === true && pointsPlaced(Q.prog3) === 0 && s8._puts() - puts1 === 1);
+
+  /* bounded: a reset drops the stamps a minute old; never more than RESET_MAX */
+  const m = roomMinute(r8);
+  m.clear();
+  const old = Date.now() - POINTS_RESET.GAP_MS - 5;
+  for (let i = 0; i < 500; i++) m.set('bp_old_' + i, old);
+  Q._pointsResetAt = 0; await place(r8, w, 'hp', 1);
+  await send(r8, w, 'points_reset', {});
+  check('8: the map: a reset drops every stamp a minute old (500 stale -> only its own)', (answerOf(w) || {}).ok === true && m.size === 1 && m.has(id), m.size);
+  m.clear();
+  for (let i = 0; i < POINTS_RESET.RESET_MAX + 300; i++) m.set('bp_new_' + i, Date.now());
+  Q._pointsResetAt = 0; await place(r8, w, 'hp', 1);
+  await send(r8, w, 'points_reset', {});
+  check('8: ...and never holds more than RESET_MAX, the newest kept', m.size === POINTS_RESET.RESET_MAX && m.has(id), m.size);
+  check('8: ...a Map (client ids: never a plain {}), never saved', m instanceof Map && !('_pointsResetAts' in (s8._store.get('rpg:' + id) || {})));
+
+  /* the rows a reset-and-respend minute can write: a level-16 one-weapon
+     character, rejoining as often as it likes, gets ONE reset a minute --
+     the reset's row and a row a point respent */
+  m.clear(); Q._pointsResetAt = 0;
+  Q.prog3.sk.sword.level = 16; Q.prog3.sk.bow.level = 1; Q.prog3.sk.staff.level = 1;
+  prog3RespecPoints(Q.prog3, false); r8._prog3Recompute(Q);
+  const lane = Q.prog3.poolBy.sword, shared = Q.prog3.shared;
+  /* every point respent, as a script would (a stat takes every point: v2.3.3578) */
+  const respend = async () => {
+    await place(r8, w, 'dmg', lane, 'sword');
+    await place(r8, w, 'hp', shared);
+  };
+  await respend();   /* placed once before the minute: the loop starts spent */
+  let resets = 0, spendRows = 0, joinRows = 0, resetRows = 0, spent = 0;
+  for (let round = 0; round < 3; round++) {
+    let p = s8._puts();
+    await send(r8, w, 'points_reset', {});
+    if ((answerOf(w) || {}).ok === true) resets++;
+    resetRows += s8._puts() - p; p = s8._puts();
+    await respend();
+    spendRows += s8._puts() - p; p = s8._puts();
+    if (round === 0) spent = pointsPlaced(Q.prog3);
+    w = fakeWs(); await join(r8, w, id);            /* rejoin, as a script would */
+    joinRows += s8._puts() - p;
+    Q = r8.playerState[id]; Q.lastDamageAt = 0; Q._lastDealtAt = 0;
+  }
+  check('8: a level-16 one-weapon character\'s reset-respend-rejoin minute: ONE reset taken of three, its row and a row a point respent (before the fix: that again every rejoin)',
+    lane === 45 && shared === 45 && resets === 1 && resetRows === 1 && spendRows === spent && spent <= lane + shared,
+    { lane, shared, resets, resetRows, spendRows, spent, joinRows });
+  const rows = resetRows + spendRows;
+  console.log('   (that minute: ' + resetRows + ' reset row + ' + spendRows + ' respend rows = ' + rows + '; the three joins wrote ' + joinRows + ' more)');
+
+  /* the switch: `pointsresetroom: false` -- the socket's minute only, as before */
+  const { room: r9 } = await makeRoom({ pointsresetroom: false });
+  let w9 = fakeWs();
+  await join(r9, w9, 'bp_pr_off');
+  let R = r9.playerState.bp_pr_off;
+  trained(r9, R); await place(r9, w9, 'hp', 2);
+  await send(r9, w9, 'points_reset', {});
+  const okA = (answerOf(w9) || {}).ok === true;
+  w9 = fakeWs(); await join(r9, w9, 'bp_pr_off');
+  R = r9.playerState.bp_pr_off; R.lastDamageAt = 0; R._lastDealtAt = 0;
+  await place(r9, w9, 'hp', 2);
+  await send(r9, w9, 'points_reset', {});
+  check('8: `pointsresetroom: false`: the minute is the socket\'s alone (a rejoin resets again), and the room holds nothing',
+    okA && (answerOf(w9) || {}).ok === true && !(r9._pointsResetAts && r9._pointsResetAts.size));
+  await send(r9, w9, 'points_reset', {});
+  check('8: ...the socket\'s own minute still holds', (answerOf(w9) || {}).err === 'soon');
+  const src = readFileSync(new URL('../src/pointsreset.js', import.meta.url), 'utf8');
+  check('8: ...the switch is lower case and declared beside its code', /`pointsresetroom: false`/.test(src) && /own\(f, 'pointsresetroom'\)/.test(src));
 }
 
 // ── 6. the wire ──
