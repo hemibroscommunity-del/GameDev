@@ -125,10 +125,11 @@ check('an unchecked quest whose giver is not in the world is not paid (trader_1)
   const N = room.playerState['bp_quest_new'];
   const send = (type, questId) => room.webSocketMessage(wsN, JSON.stringify({ type, payload: { questId, xpCat: 'sword' } }));
   const unchecked = Object.keys(QUEST_REWARDS).filter((q) => !QUEST_REWARDS[q].objective);
-  check('setup: 23 quests have no objective the worker can check', unchecked.length === 23, unchecked.length);
+  /* v2.3.4441: 22 -- mayor_3 is checked now (a dungeon clear), and its 300 g left the sum */
+  check('setup: 22 quests have no objective the worker can check', unchecked.length === 22, unchecked.length);
   const coins0 = N.coins, ap0 = N.achievementPoints || 0;
   for (const q of unchecked) { await send('quest_accept', q); await send('quest_turn_in', q); }
-  check('a new character asking for all 23 is paid nothing (was 5,025 coins + 115 AP)', N.coins === coins0 && (N.achievementPoints || 0) === ap0, { coins: N.coins - coins0, ap: (N.achievementPoints || 0) - ap0 });
+  check('a new character asking for all 22 is paid nothing (was 4,725 coins + 110 AP)', N.coins === coins0 && (N.achievementPoints || 0) === ap0, { coins: N.coins - coins0, ap: (N.achievementPoints || 0) - ap0 });
   check('...and none of them is even taken', unchecked.every((q) => !N._quests[q]), N._quests);
 
   // the giver is gone: refused even after the first quest, and at the hand-in
@@ -171,6 +172,8 @@ check('an unchecked quest whose giver is not in the world is not paid (trader_1)
   check('...handing mayor_2 in opens mayor_3', N._quests.mayor_2 === 'turnedIn' && N._quests.mayor_3 === 'available', N._quests);
   const coins3 = N.coins;
   await send('quest_accept', 'mayor_3');
+  /* v2.3.4441: its dungeon cleared on the worker's record (dungeon.js) */
+  N.lifeSkills.dungeonClears = { wheel_verdant: true };
   await send('quest_turn_in', 'mayor_3');
   check('...and mayor_3 is taken and paid as before (300)', N._quests.mayor_3 === 'turnedIn' && N.coins === coins3 + 300, { q: N._quests.mayor_3, coins: N.coins - coins3 });
 }

@@ -979,7 +979,7 @@ The design document that sizes the free spin says "an hour of fighting earns ~1�
 | Bro Ascendant | Mayor Bro | 6 Fire Goblin Remains from the Flame Fields | 400 g, 105 XP | Copper Greaves | tut_3 |
 | A Trapper's Eye | Beastmaster Bro | reach Trapping 6 | 250 g | 10 traps | tut_2 |
 | Your Own Beast | Beastmaster Bro | catch a pet | 500 g | 15 traps | beast_3 |
-| Into the Wild / Dungeon Delver | Mayor Bro | kill 5 monsters / clear a dungeon (the gold road leads to the Goo Grotto, v2.3.3540; a party dungeon since v2.3.3573; "[Lv 10+ recommended]" since v2.3.3924, and below level 10 the Mayor and the road send you to the town's quests first, starting with Woodworker Bro's) | 100 / 300 g | — | the Mayor's legacy line after tut_4 (its first step, Welcome Home, "visit 3 buildings", was retired in v2.3.3550) |
+| Into the Wild / Dungeon Delver | Mayor Bro | kill 5 monsters / clear a dungeon (both checked by the worker: the clear on its own record since v2.3.4441; the gold road leads to the Goo Grotto, v2.3.3540; a party dungeon since v2.3.3573; "[Lv 10+ recommended]" since v2.3.3924, and below level 10 the Mayor and the road send you to the town's quests first, starting with Woodworker Bro's) | 100 / 300 g | — | the Mayor's legacy line after tut_4 (its first step, Welcome Home, "visit 3 buildings", was retired in v2.3.3550) |
 
 Twenty-two quests for seven givers who are not in the world (a trader, an enchantress, a scout, a second blacksmith, a healer, a second beastmaster, a veteran) are dormant in the table. Three old Mayor quests are retired: the tools' two old errands, and Welcome Home (v2.3.3550).
 
