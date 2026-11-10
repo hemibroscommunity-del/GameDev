@@ -35,6 +35,7 @@ import { GEAR_SELL, removeGearLocal } from './gearSellLocal.js'; /* v2.3.2531: w
 import { gearSellCheck, gearSellReasonText, gearSellGid } from './gearSellReason.js'; /* v2.3.2551: and WHY it cannot be sold */
 import { unequipArmorDirect, unequipLegsDirect, syncArmorChange, equipArmorFromStash, equipLegsFromStash } from './equipActions.js'; /* v2.3.1330: shared unequip cores; v2.3.1703 adds the legs twin */
 import { resolveStashIdx } from './equipActions.js';   /* v2.3.4151: moved there, with the three equips */
+import { weaponBlocked, weaponBagFull } from './equipActions.js';   /* v2.3.4386: the worker's two weapon refusals, asked first */
 import { itemActionList, runItemAction } from './itemActions.js';   /* v2.3.4151: the one action list, shared with the Gear tab */
 import { revealCardFor } from '@/game/revealBag.js'; /* v2.3.4012: a mystery piece's card */
 import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx'; /* v2.3.4012: its "?" */
@@ -925,6 +926,10 @@ export const ItemDetailPopup = () => {
               return;
             }
             if (on) {
+              /* v2.3.4386: the bag's lid, as unequipWeaponSlot asks it --
+                 at eight the worker refuses, and the weapon taken off here
+                 vanished from the phone on the next echo (V9b M2-1) */
+              if (weaponBagFull(getState(), R2)) { refresh(); return; }
               R2.weaponStash.push(w); R2[prop] = null;
               /* v2.3.1159: server-sync + active-slot repair (see
                  syncWeaponSlot).  Emptying the ranged/staff slot drops
@@ -952,6 +957,8 @@ export const ItemDetailPopup = () => {
                  about. */
               const i = resolveStashIdx(R2.weaponStash, w, wIdx);
               if (i < 0) { refresh(); return; }
+              /* v2.3.4386: above your trained level the worker refuses it */
+              if (weaponBlocked(getState(), R2, R2.weaponStash[i])) { refresh(); return; }
               const live = R2.weaponStash[i];
               R2.weaponStash.splice(i, 1);
               if (R2[destProp]) R2.weaponStash.push(R2[destProp]);

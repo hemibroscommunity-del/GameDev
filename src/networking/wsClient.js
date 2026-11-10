@@ -157,8 +157,22 @@ import { noteEatRefused, pvpHealWaitText } from '@/game/fightFood.js'; /* v2.3.3
  */
 function _armorSame(a, b) {
   if (!a || !b) return false;
+  /* v2.3.4386: TWO PIECES WITH IDS ARE THE SAME ONLY BY THEIR IDS.  The
+     state-machine sweep (V9b M2-2): every grade of a forged piece shares its
+     name and tierMult, so an armour swap made while the socket was closed
+     (dropped: the idle logout keeps you playing) met the rejoin's echo of the
+     worker's Normal Copper Torso, took the Rare one you had put on for "the
+     worker kept it", wrote the Normal over it and left you two Normals: the
+     Rare gone from the phone for good while the worker still held it.  A
+     piece the worker recorded carries its ledger id (gearprov.js), the loot
+     credit's v2.3.2544 cure; one without an id (made before the ledger) is
+     still known by name and tierMult, as before. */
+  if (_gidOf(a) && _gidOf(b)) return _gidOf(a) === _gidOf(b);
   return String(a.name || '') === String(b.name || '')
     && (Number(a.tierMult) || 1) === (Number(b.tierMult) || 1);
+}
+function _gidOf(p) {
+  return p && typeof p.gid === 'string' && p.gid ? p.gid : null;
 }
 
 function _rescueDisplacedArmor(S, slot, stashKey, incoming) {
@@ -178,6 +192,16 @@ function _rescueDisplacedArmor(S, slot, stashKey, incoming) {
       if (_armorSame(R[stashKey][i], worn)) return;
     }
     R[stashKey].push(worn);
+    /* v2.3.4386: ...and the piece the worker says you wear leaves the bag,
+       by its id only (a second piece of the same name is a real second
+       piece): the swap the worker never heard put it there, and without
+       this it showed twice, worn and in the bag (V9b M2-2). */
+    var _inGid = _gidOf(incoming);
+    if (_inGid) {
+      for (var j = R[stashKey].length - 1; j >= 0; j--) {
+        if (_gidOf(R[stashKey][j]) === _inGid) R[stashKey].splice(j, 1);
+      }
+    }
     /* Say so.  A piece that silently comes off is the same mystery as one that
        silently vanishes, and the player needs to know it is still theirs. */
     try {
