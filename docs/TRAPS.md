@@ -9744,3 +9744,19 @@ band redrawing itself whole five times a second.
 
 **Receipt:** `held-sweep` suite, `mp-heldsweep`, `mp-pagebases`,
 `mp-standinlegs`, docs/specs/held-sweep.md.
+
+## 319. "Put the new stat on the Stats page" (v2.3.4480)
+
+**Tempting:** `BottomDashboard`'s table has `stats: { title: 'Stats', Component:
+StatsPanel }`, with Vitals, Attributes and a Record list: the obvious home for
+a new number about a character. **Wrong:** nothing opens it. No rail button,
+no More tile and no bus call asks for `'stats'` (grep finds only the table's
+own row); it is a page from before the Character sheet. Accuracy was first
+built there and would have shipped where no player could see it; it was the
+phone scenario, which has to OPEN the page it checks, that found out. **The
+rule.** A character's record is on **Journey** (More, Journey:
+`JourneyPanel.jsx`), its sheet on the Bro page. Before adding to a screen,
+find how a player reaches it (a `data-` hook a scenario can tap), and make the
+scenario go there the way a player does. A page nobody can open is the
+owner's to revive or delete, not a place to build (CLAUDE.md: a dormant
+system). **Receipt:** `mp-ownerwatch` opens Journey through the band.

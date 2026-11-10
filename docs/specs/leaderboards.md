@@ -191,3 +191,11 @@
   buttons, the page, faces and levels, the win, the loss, the grey DELETED
   rows, sideways, 375 / 360 / 320 px. Pictures: `docs/shots/leaderboards-*.webp`.
 - UI review states `dash-leaderboard`, `leaderboard-spin`, `fish-board`.
+
+## Rows from before a row carried a face (v2.3.4480)
+
+A row gets its look when its record is set, so a row set before v2.3.4393, by
+a player who had not been back, showed an initial. Once a worker's life the
+room gives the ranks' and the biggest fish's faceless rows the face their
+character's record draws (`boards.js _boardsFaceFill`; char-watch.md has the
+rules). A guest's row keeps its initial.

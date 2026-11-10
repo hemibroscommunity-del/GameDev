@@ -268,6 +268,48 @@ export const boardMethods = {
       : { unavailable: true });
   },
 
+  /* ═══ v2.3.4480: THE FACES OF ROWS FROM BEFORE A ROW CARRIED ONE ═══
+     The owner, 2026-11-10: "on the leaderboards there only placeholder
+     initials for the character profile pic".  A row gets its face when its
+     record is set (v2.3.4393), so a row set before that, by a player who
+     has not been back, showed an initial -- though the worker has held
+     every character's look all along (`char:<pid>`).  Once a worker's
+     life, on the first report to the ranks: the ranks' faceless rows
+     (leaderboard.js /faceless) and the biggest fish's are given the face
+     their character's record draws.  Best-effort, piece by piece; a row
+     whose character has no record (a guest) keeps its initial.  Under
+     `boards2`, like every face. */
+  async _boardsFaceFill() {
+    if (this._faceFilled || this._boardsOff()) return 0;
+    this._faceFilled = true;
+    let filled = 0;
+    try {
+      const stub = this.env.LEADERBOARD.get(this.env.LEADERBOARD.idFromName('global'));
+      const r = await stub.fetch(new Request('https://internal/api/leaderboard/faceless', { method: 'POST' }));
+      const j = await r.json();
+      const faces = Object.create(null);   /* keyed by player ids */
+      let any = false;
+      for (const pid of (j && Array.isArray(j.ids) ? j.ids.slice(0, 200) : [])) {
+        if (typeof pid !== 'string' || !pid) continue;
+        const ch = await this.state.storage.get('char:' + pid);
+        const look = boardFace(ch && ch.look);
+        if (look) { faces[pid] = look; any = true; }
+      }
+      if (any) {
+        const r2 = await stub.fetch(new Request('https://internal/api/leaderboard/faces', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ faces }),
+        }));
+        const j2 = await r2.json();
+        filled += int(j2 && j2.filled, 0, 100000);
+      }
+    } catch (e) { /* the rows keep their initials until their players come back */ }
+    try {
+      const fb = this._fishBoardEnsure ? await this._fishBoardEnsure() : null;
+      if (fb && this._fishBoardFaces) filled += await this._fishBoardFaces(fb);
+    } catch (e) { /* best-effort, as above */ }
+    return filled;
+  },
+
   /* ═══ A CHARACTER DELETED FOR GOOD (persistence.js _resetCharacterData) ═══
      Its rows are retired on every board.  Best-effort, piece by piece: a
      board that cannot be read keeps its row live, which is only a row the
