@@ -3541,6 +3541,7 @@ export class GameRoom {
       ps.dead = false;
       ps.respawnAt = 0;
       ps.z = 'town';
+      this._duelZoneMoved(id);   /* v2.3.4371: every zone write asks the duel (duel.js) */
       /* v2.3.3325: no place in town to judge the next move from, and no way
          back into the Wheel but its arrival (movement.js _moveRespawned) */
       this._moveRespawned(ps);

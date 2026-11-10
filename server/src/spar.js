@@ -581,6 +581,7 @@ export const sparMethods = {
     ps.x = (ownerPs.x || 0) + Math.cos(a) * SPAR.RING_R;
     ps.y = (ownerPs.y || 0) + Math.sin(a) * SPAR.RING_R;
     ps.z = ownerPs.z;
+    this._duelZoneMoved(c.id);   /* v2.3.4371: every zone write asks the duel (duel.js); a clone duels nobody */
     ps.vx = 0; ps.vy = 0;
     ps.lastMoveAt = now;
     if (revive || !(ps.dead || ps.dying)) {

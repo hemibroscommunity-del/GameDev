@@ -719,6 +719,8 @@ export const movementMethods = {
          when it has no facing yet). */
       if (msg.d !== undefined && msg.d !== null) ps.d = msg.d;
       ps.z = newZone;
+      /* v2.3.4371: a duel split across zones starts the away clock (duel.js) */
+      if (zoneChanged) this._duelZoneMoved(session.id);
       ps.vx = msg.vx || 0; ps.vy = msg.vy || 0;
       /* v2.3.840: persist the sender's 8-way facing + live equip so
          the tick can relay them -- peers render the correct jog

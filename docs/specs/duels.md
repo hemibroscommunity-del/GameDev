@@ -57,6 +57,47 @@ the pot — no suiciding out of a losing wager) but is a normal death.
   the sweep refunds only what a record names. `duel.test.mjs` §7b crashes the
   start at every write (inbox-escrow.md "Writes that must commit together").
 
+## Leaving the zone (v2.3.4371)
+
+Owner, 2026-11-10: *"A dueller who walks into a dungeon or onto their farm
+mid-duel forfeits after 15 seconds, the same as closing the app."*
+
+- No blow crosses zones (combat.js walks only the attacker's zone), so a
+  duel split across two zones could only end on the 10-minute clock: both
+  players without HP regen and with the bag fight-locked (no shop, market,
+  trade or ride) all that time, and with a stake, one blow then a hide in an
+  empty `dungeon:` id won the pot on the timeout's HP comparison (state-
+  machine sweep 2026-11-03, S5-2 and S5-13).
+- **The hook**: every server write of a player's zone calls
+  `_duelZoneMoved(pid)` (duel.js) right after it: the `move` handler
+  (movement.js; this is also how a dungeon start, a party pull and the farm
+  trip move a player, since the phone zones in on its own `move`), a join's
+  new playerState (join.js), the respawn (index.js) and the sparring clones
+  (spar.js). `duel-zone.test.mjs` §7 scans `server/src` and fails for a
+  zone writer that does not call it.
+- **The clock is the disconnect's**: `duel.away[pid]` with `GRACE_MS`, so
+  `_tickDuels` forfeits it through the one `_resolveDuel` and a wager pays
+  through the one `duelpot:<id>` opId. There is no second payment path.
+  `duel.awayZone[pid]` (null-prototype, like `away`) marks the clocks a
+  zone started: being in the same zone again clears only those (never a
+  disconnect's), and a rejoin into the other zone keeps the clock running.
+  The player whose move split the duel is the leaver; the foe following
+  them in, or their coming back, clears it. A running clock keeps its
+  deadline (stepping in and out, or closing the app from the dungeon, does
+  not give a fresh 15 s). Both away: the first leaver loses, as with two
+  disconnects.
+- **Arena matches are left alone**: a fighter who changes zone starts no
+  clock; the match is decided by its own 3-minute clock's HP tiebreak, as
+  before (`duel-zone.test` §6).
+- **Kill switch**: live flag `duelzone: false` (`_duelZoneOff`, declared in
+  duel.js): no zone starts a clock, today's behaviour before v2.3.4371; a
+  clock already running is cleared at the next zone write.
+- **The lesson** (would be a TRAPS entry): "the disconnect clock covers a
+  player who leaves" was believed for a year (the accept's own comment said
+  so), and only a disconnect ever started it. A rule about *where a player
+  is* must hang on every write of the place, not on the one road that was
+  in mind; hence the scan in §7.
+
 ## Wire surface (for future UI)
 
 | Message | Direction | Notes |
