@@ -51,7 +51,7 @@ export const RISE_CHEST = {
   TOP_SLACK_PX: 12,
   /* the prize, coins, by the rise's id (a number every player reads in the
      chest's own words, so it is not a hidden setting) */
-  /* v2.3.4454: the Town Bluff's is the small one -- a minute from the square, where a new
+  /* v2.3.4456: the Town Bluff's is the small one -- a minute from the square, where a new
      character starts with 50 */
   COINS: { 'lagoon-ledge': 300, 'bluff-ledge': 100 },
 };

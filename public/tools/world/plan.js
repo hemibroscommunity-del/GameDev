@@ -447,7 +447,7 @@ const BASE_PLAN = {
   rises: [
     { id: 'lagoon-terrace', name: 'the Lagoon Terrace', islet: 'lagoon-islet', box: [3, 2, 15, 22], face: 3, climb: [8, 10] },
     { id: 'lagoon-ledge', name: 'the Lagoon Ledge', islet: 'lagoon-islet', box: [5, 2, 13, 13], face: 6, chest: [8, 3, 10, 4] },
-    /* ═══ v2.3.4454: THE TOWN BLUFF -- a jump course a minute from the town square ═══
+    /* ═══ v2.3.4456: THE TOWN BLUFF -- a jump course a minute from the town square ═══
        The owner: "it would be cool to have some elevation and obstacle areas
        where [the double jump] can be put to use", and, asked where the first
        public ones go, "Go recommended": the islet (above, v2.3.4453), then a

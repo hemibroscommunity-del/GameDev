@@ -1,4 +1,4 @@
-/* ═══ THE TOWN BLUFF: A JUMP COURSE A MINUTE FROM THE SQUARE (v2.3.4454, docs/specs/rise-chest.md) ═══
+/* ═══ THE TOWN BLUFF: A JUMP COURSE A MINUTE FROM THE SQUARE (v2.3.4456, docs/specs/rise-chest.md) ═══
  *
  * The owner: "it would be cool to have some elevation and obstacle areas where
  * [the double jump] can be put to use", and, asked where the first public ones

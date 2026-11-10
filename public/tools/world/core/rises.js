@@ -57,7 +57,7 @@ export function riseLayout(plan) {
   const cellG = F.S * plan.worldPxPerArtPx;   /* game px a cell (24) */
   const list = [];
   for (const rs of plan.rises || []) {
-    /* where its box is counted from: an islet's corner -- or, v2.3.4454, `at`:
+    /* where its box is counted from: an islet's corner -- or, v2.3.4456, `at`:
        cells from the Wheel's centre cell (the town's middle), for a rise on
        plain land (the Town Bluff, on the commons).  `long: true` keeps such a
        rise to the long Wheel, as an islet's own flag does: the short Wheel's
@@ -173,7 +173,7 @@ export function risePaint(plan, data, ow, oh, X0, Y0, K, opts = {}) {
   const gxb = gxa + (ow / K) * wpa, gyb = gya + (oh / K) * wpa;
   const LIFT = 34;   /* the chest and the lip draw a little above their cells */
   if (gxb < L.x0 * c || gxa > (L.x0 + L.w) * c || gyb < L.y0 * c - LIFT || gya > (L.y0 + L.h) * c) return 0;
-  /* v2.3.4454: ...and near one rise in particular -- the grid is ONE box over every rise, and with a
+  /* v2.3.4456: ...and near one rise in particular -- the grid is ONE box over every rise, and with a
      rise by the town and two on the islet that box is a strip a quarter of the Wheel long: a piece in it
      but near no rise has nothing to paint, and must not ask every pixel */
   let near = false;
@@ -250,7 +250,7 @@ function faceColour(r, c, gx, gy, top, foot, lip, seed) {
     if (v) return v;
   }
   /* a cave mouth at the foot now and then, glowing teal inside */
-  /* v2.3.4454: not on a `look: 'hill'` rise (the Town Bluff stands in grass, not the sea) */
+  /* v2.3.4456: not on a `look: 'hill'` rise (the Town Bluff stands in grass, not the sea) */
   const cave = r.look === 'hill' ? null : caveColour(r, c, gx, gy, foot, seed);
   if (cave) return cave;
   /* the rock: rough strata, cracks and patches of moss */

@@ -85,7 +85,7 @@ async function setup(opts = {}) {
 
 // ── 1. the baked table ──
 {
-  /* v2.3.4454: the Town Bluff's two follow the islet's two */
+  /* v2.3.4456: the Town Bluff's two follow the islet's two */
   check('1a the long Wheel\'s rises are baked for the worker: the islet\'s two, then the Town Bluff\'s two; a chest on each ledge', WHEEL_FACES_LONG === 5 && WHEEL_FACES.length === 4 && WHEEL_FACES.filter((r) => r.chest).length === 2
     && WHEEL_FACES.map((r) => r.id).join() === 'lagoon-terrace,lagoon-ledge,bluff-terrace,bluff-ledge' && WHEEL_FACES.every((r, i) => r.k === i), WHEEL_FACES.map((r) => r.id));
   check('1a2 every ledge with a chest is the taller rise that takes the flip, on a terrace with vines', WHEEL_FACES.filter((r) => r.chest).every((r) => r.h > 85 && !r.climb) && WHEEL_FACES.filter((r) => !r.chest).every((r) => r.h <= 85 && !!r.climb));
@@ -165,7 +165,7 @@ async function setup(opts = {}) {
   check('4d two asks at once pay once', both.length === 2 && both.filter((r) => r.ok).length === 1 && both.filter((r) => r.why === 'got').length === 1 && (d.ps.coins || 0) === cd + RISE_CHEST.COINS[LEDGE.id], both);
 }
 
-// ── 4b. v2.3.4454: the Town Bluff's chest is its own -- its own prize, its own once ──
+// ── 4b. v2.3.4456: the Town Bluff's chest is its own -- its own prize, its own once ──
 {
   const BL = WHEEL_FACES.find((r) => r.id === 'bluff-ledge');
   const AT_BLUFF = body(mid(BL.chest[0], BL.chest[2]), BL.chest[3] + 20);

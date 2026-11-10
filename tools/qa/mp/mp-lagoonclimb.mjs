@@ -127,7 +127,7 @@ export async function play({ browser, wsPort, webPort, rec }, desk) {
     /* v2.3.4453: his coins before any of it (the flip up the ledge may carry him into the chest) */
     const coinsStart = await P.page.evaluate(() => { const S = window._gameState.current; return (S.rpg && typeof S.rpg.coins === 'number') ? S.rpg.coins : null; });
     rec.ok('the ground worker sent the rises with nothing asked in the address (v2.3.4453: for everyone): the terrace (72 px face, vines) and the ledge (144 px, a chest)',
-      !!c0 && c0.on && c0.rises.length >= 2 /* v2.3.4454: the Town Bluff's two follow */ && c0.rises[0].id === 'lagoon-terrace' && c0.rises[1].id === 'lagoon-ledge' && c0.rises[0].h === 72 && !!c0.rises[0].climb && c0.rises[1].h === 144 && !!c0.rises[1].chest, c0 && c0.rises);
+      !!c0 && c0.on && c0.rises.length >= 2 /* v2.3.4456: the Town Bluff's two follow */ && c0.rises[0].id === 'lagoon-terrace' && c0.rises[1].id === 'lagoon-ledge' && c0.rises[0].h === 72 && !!c0.rises[0].climb && c0.rises[1].h === 144 && !!c0.rises[1].chest, c0 && c0.rises);
 
     /* ── 2. swim to it ── */
     /* the row through the terrace's middle: the islet's land begins at its

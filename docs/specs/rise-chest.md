@@ -58,7 +58,7 @@ then a jump course near BroTown.
   for the session so the next touch does not ask). `src/game/climb.js`
   `CHEST_WORDS`, `chestPrizeNote`.
 
-## The Town Bluff: a jump course near the square (v2.3.4454)
+## The Town Bluff: a jump course near the square (v2.3.4456)
 
 The second step of the same answer ("Go recommended": the islet, then a course
 near BroTown).
