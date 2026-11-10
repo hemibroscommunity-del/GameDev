@@ -16,7 +16,10 @@ export function updateStateCleanup(S) {
         if (S._levelUpFlash && _now - S._levelUpFlash > 800) S._levelUpFlash = null;
         /* v2.3.1747: the combo grace/decay timers lived here; the chain is gone. */
         if (S._deathFlash && _now - S._deathFlash > 500) S._deathFlash = null;
-        if (S._zoneWipe && _now - S._zoneWipe.ts > 800) S._zoneWipe = null;
+        /* v2.3.4414: every writer stores Date.now(), a number; `.ts` of a
+           number is undefined, so this never cleared it (sweep VA, G5).  Both
+           shapes are read, the renderer's object and the writers' number. */
+        if (S._zoneWipe && _now - (typeof S._zoneWipe === 'number' ? S._zoneWipe : S._zoneWipe.ts) > 800) S._zoneWipe = null;
         if (S.monsters) S.monsters.forEach(function(m) { if (m._telegraphUntil && _now > m._telegraphUntil) m._telegraphUntil = null; });
         Object.keys(S.chatBubbles || {}).forEach(function(pid) {
           if (_now - (S.chatBubbles[pid] || {}).ts > 5000) delete S.chatBubbles[pid];

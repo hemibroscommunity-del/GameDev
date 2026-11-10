@@ -106,12 +106,14 @@ if (warpBody && holdBody) {
   const hold = new Function('BT_AUDIO', 'releaseLeftZoneArt', 'farmReady', 'showZoneLoadingOverlay', 'hideZoneLoadingOverlay', 'ZONES', 'FARM_HOLD_CAP_MS', '_seqBox',
     'let _seq = 0; return function holdFarmUntilReady(S) {' + holdBody.replace(/import\([^)]*\)\.then\([^;]*\);/, 'Promise.resolve();') + '};');
   const holdFn = hold({ startZoneAmbient: (k) => music.push(k) }, (left, to) => order.push('release:' + left + '>' + to), () => true, () => {}, () => {}, {}, 12000);
-  const warp = new Function('rememberFarmTrip', 'updateZoneDimensions', 'generateZoneMap', 'FARM_ARRIVE', 'holdFarmUntilReady', 'return function (S) {' + warpBody + '};')(
+  /* v2.3.4414: + changeZone, the flip and its wipe (zone-leftovers.test) */
+  const warp = new Function('rememberFarmTrip', 'updateZoneDimensions', 'generateZoneMap', 'FARM_ARRIVE', 'holdFarmUntilReady', 'changeZone', 'return function (S) {' + warpBody + '};')(
     (S) => { order.push('remember:' + S.currentZone); S._farmLeaving = S.currentZone; },
     (z) => order.push('dims:' + z),
     (z) => ({ map: z }),
     ARRIVE,
-    (S) => { order.push('hold:' + S.currentZone); holdFn(S); });
+    (S) => { order.push('hold:' + S.currentZone); holdFn(S); },
+    (S, z) => { S.currentZone = z; });
   const S = { currentZone: 'wheel', player: { x: 5, y: 6, vx: 3, vy: -2 }, monsters: [1], gatherNodes: [1], npcs: [1], groundLoot: [1], hitParticles: [1],
     deathExplosions: [1], arrows: [1], _ambientParticles: [1], _currentDepth: 'core', map: null };
   const r = warp(S);

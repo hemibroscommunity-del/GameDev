@@ -121,6 +121,12 @@ let _manifest = null;
 let _manifestP = null;
 let _walkGrid = null;
 let _ready = false;
+/* v2.3.4414: which way in `_ready` belongs to.  A preloadWheel that ended
+   after you had left (worldTrialLeft) or after the worker stopped (5 s away)
+   still wrote `_ready = true`, so the next trip skipped the gate and walked
+   onto ground nobody had laid (sweep V11 G3-4).  Each reset counts one up,
+   and a preload writes only for the count it started under. */
+let _readyGen = 0;
 
 /* Live numbers for the readout; written by chunkGround.js. */
 export const worldTrialStats = {
@@ -156,7 +162,7 @@ export function isWheelTrialZone(zoneId) { return _mode === 'wheel' && isWorldTr
 export function worldTrialReady() { return _ready; }
 /* Leaving frees every piece (chunkGround.destroy), so the next way in has to
    warm the first screen again -- re-arm the zone gate for it. */
-export function worldTrialLeft() { _ready = false; }
+export function worldTrialLeft() { _ready = false; _readyGen++; }
 export function worldTrialManifest() { return _manifest; }
 
 /* Which trial this tab is in: 'world', 'wheel' or null.  The stored value
@@ -381,6 +387,7 @@ export async function preloadWorldTrial() {
    in onto flat sea, with the reason on the readout. */
 async function preloadWheel() {
   const t0 = performance.now();
+  const gen = _readyGen;   /* v2.3.4414: the way in this load is for */
   wheelResetCounts();
   /* v2.3.2967: the grounds' footsteps, behind the same overlay -- but never
      holding it up past STEPS_WAIT_MS: a step whose clip is late plays dirt */
@@ -451,6 +458,7 @@ async function preloadWheel() {
   await wheelWarm(at.x, at.y, warmX, warmY);
   await objects;
   await Promise.race([steps, new Promise((r) => setTimeout(r, STEPS_WAIT_MS))]);
+  if (gen !== _readyGen) return;   /* v2.3.4414: left (or stopped) meanwhile: not this trip's ground */
   _ready = true;
   wheelStats.entryMs = Math.round(performance.now() - t0);
 }
@@ -549,6 +557,7 @@ function syncWheel(S, inTrial, now) {
   try { const A = audio(); if (A && A.dropGroundSteps) A.dropGroundSteps(); } catch (e) { /* no audio here */ }
   _lastSurface = null;
   _ready = false;
+  _readyGen++;   /* v2.3.4414: and a preload still running is not for the next way in */
   if (S._tiledWalkable[WORLD_TRIAL_ZONE] === grid) delete S._tiledWalkable[WORLD_TRIAL_ZONE];
   if (S._tiledWalkable[WHEEL_ZONE] === grid) delete S._tiledWalkable[WHEEL_ZONE];
 }

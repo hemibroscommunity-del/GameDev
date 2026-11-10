@@ -21,7 +21,7 @@
 
 import { BT_AUDIO, ZONES, TILE, generateZoneMap, updateZoneDimensions } from '@/data/index.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the respawn heard */
-import { releaseLeftZoneArt, veilWheelTrip } from '@/game/zoneTransitions.js'; /* v2.3.2328: dying is leaving a zone; v2.3.3025: under one veil */
+import { releaseLeftZoneArt, veilWheelTrip, changeZone } from '@/game/zoneTransitions.js'; /* v2.3.2328: dying is leaving a zone; v2.3.3025: under one veil; v2.3.4414: + the flip and its wipe */
 import { wantWheelSpawn } from '@/game/wheelHome.js'; /* v2.3.2990: and you come back in the Wheel's Brotown */
 import { dropDungeonZone } from '@/game/wheelDungeons.js'; /* v2.3.3016: a dungeon's synthetic zone, dropped after its art is released */
 import { deathLine } from '@/game/deathCard.js'; /* v2.3.3817: the chat's line once you are back */
@@ -61,7 +61,10 @@ export function applyLocalRespawn(S, zone) {
      would have freed it later.  See releaseLeftZoneArt for why both halves are
      deferred here when the walk-out frees the map immediately. */
   var _diedIn = S.currentZone;
-  S.currentZone = zone || 'town';
+  /* v2.3.4414: the flip, and the zone-local leftovers with it (a fire you
+     lit, a lunge in flight, a peer's arrows): this way skipped the list
+     (sweep V11 G3-6) and the trip's stairs wipe came 0.4 s later */
+  changeZone(S, zone || 'town');
   /* v2.3.2990: the npc list belongs to the zone.  Every other zone change
      nulls it, and BroTown spawns the list for the zone you are in once it is
      null.  This one never did, which was harmless while nobody died anywhere

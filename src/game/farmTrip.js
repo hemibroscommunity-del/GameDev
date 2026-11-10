@@ -19,7 +19,7 @@ import { ZONES } from '@/data/zones.js';
 import { BT_AUDIO, generateZoneMap, updateZoneDimensions } from '@/data/index.js';
 import { FARM_ARRIVE } from '@/data/farmLayout.js';
 import { rememberFarmTrip } from '@/game/wheelTownDoors.js';
-import { showZoneLoadingOverlay, hideZoneLoadingOverlay, releaseLeftZoneArt } from '@/game/zoneTransitions.js';
+import { showZoneLoadingOverlay, hideZoneLoadingOverlay, releaseLeftZoneArt, changeZone } from '@/game/zoneTransitions.js';   /* v2.3.4414: + the flip and its wipe */
 import { farmArtReady } from '@/rendering/farmWorld.js';
 import { isZoneMapResident } from '@/rendering/tiledMaps.js';
 import { farmFigureReady } from '@/rendering/standIns.js';
@@ -45,7 +45,7 @@ export function farmReady() {
 export function warpToFarm(S) {
   if (!S || !S.player) return false;
   rememberFarmTrip(S);   /* v2.3.3032: from the Wheel, the gate leads back out where you stood (reads the zone you leave) */
-  S.currentZone = 'farm_home';
+  changeZone(S, 'farm_home');   /* v2.3.4414: and the Wheel's leftovers go: a fire you lit there was a Cook spot on the farm (V11 G3-6) */
   updateZoneDimensions('farm_home');   /* v2.3.3136: the farm's own size */
   S.map = generateZoneMap('farm_home');
   S.monsters = []; S.gatherNodes = []; S.npcs = null;
