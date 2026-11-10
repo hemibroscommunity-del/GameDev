@@ -75,8 +75,8 @@ import { dropAsBlocked, withoutBlockedRows } from '@/game/blockedAsks.js'; /* v2
 import { pushAbilityRings, BASH_POSE_MS } from '@/game/abilities.js'; /* v2.3.1735: a peer's bash draws the caster's own shockwave; v2.3.2920 + its pose window */
 import { depthK } from '@/data/zones.js'; /* v2.3.2824: a peer's whirlwind is as wide as its (depth-scaled) hit */
 import { friendsSrv } from '@/ui/mobile/sheet/friendsSync.js'; /* v2.3.1324 */
-import { friendErrorText, friendErrorFresh } from '@/game/friendErrors.js'; /* v2.3.4392: a refused request says why */
-import { deskWords } from '@/game/deskWords.js'; /* v2.3.4392 */
+import { friendErrorText, friendErrorFresh } from '@/game/friendErrors.js'; /* v2.3.4404: a refused request says why */
+import { deskWords } from '@/game/deskWords.js'; /* v2.3.4404 */
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { storeChatBus } from '@/ui/mobile/storeChatBus.js';   /* v2.3.2621 */
 import { petMailWords } from '@/data/trapping.js';   /* v2.3.3122: a pet in the mail */
@@ -683,7 +683,7 @@ export function processGameEvent(type, payload, S, deps) {
           case 'friend_error':
             {
               friendsSrv.setError(payload || null);
-              /* v2.3.4392: and said, in plain words (src/game/friendErrors.js):
+              /* v2.3.4404: and said, in plain words (src/game/friendErrors.js):
                  nothing ever read the stored error, so a refused request was a
                  tap that did nothing.  The sale notice's toast; the same reason
                  again within a few seconds is one toast (the old-list move

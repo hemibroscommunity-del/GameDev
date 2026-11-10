@@ -1,4 +1,4 @@
-/* ═══ v2.3.4392: A REFUSED FRIEND REQUEST SAYS WHY ═══
+/* ═══ v2.3.4404: A REFUSED FRIEND REQUEST SAYS WHY ═══
    The state-machine sweep, 2026-11-03 (V12 M3-6; reviews R1, R2 and R3 2b):
    the worker answers a refused friend request, or a message to someone who
    is no longer a friend, with `friend_error` (server/src/friends.js), and

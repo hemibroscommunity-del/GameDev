@@ -1,4 +1,4 @@
-/* A refused friend request says why -- v2.3.4392 (the state-machine sweep,
+/* A refused friend request says why -- v2.3.4404 (the state-machine sweep,
  * 2026-11-03: V12 M3-6; reviews R1, R2 W1.2 and R3 2b).
  *
  *   The worker answers a refused request (or a message to someone who is no
