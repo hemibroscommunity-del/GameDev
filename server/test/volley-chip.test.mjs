@@ -191,6 +191,7 @@ const startless = (S, id) => { const r = S.room._botfp && S.room._botfp.get(id);
     payVolley(S);
     T += 300;
     S.ps.ex = kind; S.ps._exAt = T; S.ps._exX = S.ps.x; S.ps._exY = S.ps.y;
+    S.ps._fireLit = { z: S.ps.z, x: S.ps.x, y: S.ps.y, at: T };   /* v2.3.4605: at a fire the worker lit (moveclaims.js `cookshield`) */
     check('4. ' + kind + ': shielded before the chip', S.room._extractionShielded(id, T) === true);
     T += 500; await chip(S);
     check('4. ' + kind + ': a chip zeroes its stamp, as before', S.ps._exAt === 0 && S.room._extractionShielded(id, T) === false);
