@@ -32,8 +32,10 @@ import { playIsLandscape } from '@/ui/mobile/playViewport.js';
     v2.3.4172: five buttons (Gear, Bro, Quests, Codex, More); `skills` keeps
     its L, which opens the Life Skills page under Bro (the owner: "Lifeskills
     move inside Bro"), worn by the Bro card's Life Skills row (data-key). */
+/* v2.3.4393: U the Leaderboards (the sixth button): free, and beside I, O
+   and P on the top row, where the other pages' letters are. */
 export const NAV_KEYS = Object.freeze({
-  dashboard: 'I', hero: 'P', quests: 'J', skills: 'L', encyclopedia: 'K', more: 'O',
+  dashboard: 'I', hero: 'P', quests: 'J', skills: 'L', encyclopedia: 'K', more: 'O', leaderboard: 'U',
 });
 /** The world map (WorldMapOverlay.jsx), from the Wheel's minimap. */
 export const MAP_KEY = 'M';

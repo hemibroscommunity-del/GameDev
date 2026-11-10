@@ -39,7 +39,8 @@ import { join } from 'node:path';
 /* v2.3.4172: FIVE -- Gear, Bro, Quests, Codex, More (the owner's
    consolidation: Life Skills into Bro, the CLOSE pill a grip on the band's
    edge, the freed width the buttons'): 70 px at 390, 64 at 360 */
-const ORDER = ['dashboard', 'hero', 'quests', 'encyclopedia', 'more'];
+/* v2.3.4393: SIX again -- the Leaderboards (Ranks) between Quests and the Codex */
+const ORDER = ['dashboard', 'hero', 'quests', 'leaderboard', 'encyclopedia', 'more'];
 /* what each tab scrolled on main before this change, on the 390 x 844 phone */
 const BEFORE = { list: 331, drops: 482, info: 907, locations: 266 };
 /* the stage's ground strip may sit this far under the sheet's 18 px fade
@@ -130,10 +131,10 @@ const measureTab = (P, keepScroll) => P.page.evaluate((keep) => {
 
 async function portrait(P, rec, OUT, vw, result) {
   const T = vw + 'w: ';
-  const minW = vw >= 390 ? 64 : 60;   /* v2.3.4172: was 44 / 39 with six and the pill */
+  const minW = vw >= 390 ? 48 : 44;   /* v2.3.4172: was 44 / 39 with six and the pill; v2.3.4393: six beside CLOSE, 48 at 390 and 44 at 360 */
 
   const rest = await rail(P);
-  rec.ok(T + `five buttons, the Codex fourth and More last, each ${minW}+ px wide, on screen, apart, each answering at its centre`,
+  rec.ok(T + `six buttons, the Codex fifth and More last, each ${minW}+ px wide, on screen, apart, each answering at its centre`,
     railOk(rest, vw, minW), rest.map((b) => `${b.id}:${b.w}@${b.x}${b.self ? '' : '(covered)'}`));
 
   /* ── the Codex button ── */
@@ -227,7 +228,7 @@ async function portrait(P, rec, OUT, vw, result) {
 /* the drilled screen: the back arrow beside the title, and the row unmoved */
 async function drilled(P, rec, OUT, vw, rest) {
   const T = vw + 'w: ';
-  const minW = vw >= 390 ? 64 : 60;   /* v2.3.4172: was 44 / 39 with six and the pill */
+  const minW = vw >= 390 ? 48 : 44;   /* v2.3.4172: was 44 / 39 with six and the pill; v2.3.4393: six beside CLOSE, 48 at 390 and 44 at 360 */
   await P.page.evaluate(() => window.__broDashPanelBus.open('more'));
   await P.page.waitForTimeout(600);
   await P.page.evaluate(() => { const b = document.querySelector('[data-more-tile="settings"]'); if (b) b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true })); });
@@ -283,8 +284,8 @@ async function landscape({ browser, wsPort, webPort, rec, OUT }) {
       const btns = [...dock.querySelectorAll('[data-nav]')].map((b) => { const r = b.getBoundingClientRect(); return { id: b.dataset.nav, x: Math.round(r.left), r: Math.round(r.right), w: Math.round(r.width) }; });
       return { sheet: { x: Math.round(s.left), r: Math.round(s.right), w: Math.round(s.width) }, dock: { x: Math.round(d.left), r: Math.round(d.right) }, btns };
     });
-    rec.ok('LANDSCAPE: five buttons in the dock (v2.3.4172), the Codex among them, inside the side container',
-      !!m && m.btns.length === 5 && m.btns.some((b) => b.id === 'encyclopedia')
+    rec.ok('LANDSCAPE: six buttons in the dock (v2.3.4393), the Codex among them, inside the side container',
+      !!m && m.btns.length === 6 && m.btns.some((b) => b.id === 'encyclopedia')
         && m.btns.every((b) => b.x >= m.sheet.x - 1 && b.r <= m.sheet.r + 1 && b.w >= 24), m);
     rec.ok(`LANDSCAPE: the container stays in the width it had (${m && m.sheet.w} px, 205-245)`, !!m && m.sheet.w >= 205 && m.sheet.w <= 245, m && m.sheet);
     await tap(P, '.bt-navrail [data-nav="encyclopedia"]');

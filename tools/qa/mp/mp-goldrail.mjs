@@ -161,10 +161,11 @@ const headerGeom = (P) => P.page.evaluate(() => {
 const PHONES = [
   /* v2.3.4172: five buttons and no CLOSE pill (the grip is on the band's
      edge): the row is theirs, 70 at 390 and 64 at 360 */
-  { width: 390, height: 844, tag: 'iPhone 13/14/15', minW: 64 },
-  { width: 360, height: 780, tag: 'small Android', minW: 60 },
+  /* v2.3.4393: six buttons beside CLOSE: 48 at 390, 44 at 360 */
+  { width: 390, height: 844, tag: 'iPhone 13/14/15', minW: 48 },
+  { width: 360, height: 780, tag: 'small Android', minW: 44 },
 ];
-const RAIL_N = 5;   /* v2.3.4172: Gear, Bro, Quests, Codex, More */
+const RAIL_N = 6;   /* v2.3.4172: Gear, Bro, Quests, Codex, More; v2.3.4393: + Ranks (the Leaderboards) */
 
 export async function run({ browser, wsPort, webPort, rec }) {
   for (const ph of PHONES) await onePhone({ browser, wsPort, webPort, rec }, ph);
@@ -193,7 +194,7 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
   rec.ok(T + 'no gold count in the top bar', counts.every((c) => c.where !== 'zone-header'), counts);
 
   const rail = await railGeom(P);
-  rec.ok(T + 'all five nav buttons are there', rail.length === RAIL_N, rail.map((b) => b.id));
+  rec.ok(T + 'all six nav buttons are there', rail.length === RAIL_N, rail.map((b) => b.id));
   /* 44x44 is docs/UI-BIBLE's floor for anything tappable.  The WIDTH is what
      the owner asked for and what this change buys; the height is derived from
      identityRowHeight and is 40 on a <=720-tall phone, which is why only the
