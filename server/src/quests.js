@@ -13,7 +13,7 @@
  * Trust model (unchanged, v2.3.1116 + v2.3.1120): the server validates
  * quest STATE transitions (available -> active -> turnedIn) and the
  * declarative objectives in data.js QUEST_REWARDS (kill / gather /
- * collect / flag).  Quests without an objective remain client-trusted
+ * collect / flag; v2.3.4441 dungeon_clear).  Quests without an objective remain client-trusted
  * on the "actually completed" claim -- see the data.js QUEST_REWARDS
  * header for the whitelist rationale.
  *
@@ -321,6 +321,16 @@ export const questMethods = {
     if (counted) return ((ps._questKills && ps._questKills[questId]) || 0) >= (obj.count || 1);
     if (obj.type === 'collect') return this._collectHeld(ps, obj) >= (obj.count || 1);
     if (obj.type === 'flag') return !!(ps._questFlags && ps._questFlags[obj.flag]);
+    /* v2.3.4441: the Mayor's "Clear any dungeon" (mayor_3) -- a dungeon
+       cleared on the worker's own record (dungeon.js _dungeonComplete writes
+       lifeSkills.dungeonClears; the join takes no rpg* claim, so a phone
+       cannot write one).  The game's own check reads the same map
+       (gameSystems.js QUEST_CHAINS.mayor_3), so an honest Claim is paid as
+       before.  `disable_mayor3_check` (live flags): met on the word again. */
+    if (obj.type === 'dungeon_clear') {
+      if (typeof this._flagOn === 'function' && this._flagOn('disable_mayor3_check')) return true;
+      return this._dungeonClearCount(ps) >= (obj.count || 1);
+    }
     if (obj.type === 'skill') {
       const ls = ps.lifeSkills && typeof ps.lifeSkills === 'object' ? ps.lifeSkills : null;
       const sk = ls && Object.prototype.hasOwnProperty.call(ls, obj.skill) ? ls[obj.skill] : null;
@@ -328,6 +338,18 @@ export const questMethods = {
       return lvl >= (obj.level || 1);
     }
     return false;
+  },
+
+  /* v2.3.4441: how many dungeons this character has cleared on the worker's
+     record -- the keys of lifeSkills.dungeonClears set to true (own keys
+     only: the map came from a stored record) */
+  _dungeonClearCount(ps) {
+    const ls = ps && ps.lifeSkills && typeof ps.lifeSkills === 'object' ? ps.lifeSkills : null;
+    const dc = ls && ls.dungeonClears;
+    if (!dc || typeof dc !== 'object' || Array.isArray(dc)) return 0;
+    let n = 0;
+    for (const k of Object.keys(dc)) if (dc[k] === true) n++;
+    return n;
   },
 
   async _handleQuestTurnIn(session, payload) {
