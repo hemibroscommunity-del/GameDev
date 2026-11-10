@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "306a8351e249185725e29f7d20c64b52c77f9f6d",
+  "tree": "ae7f5059bc87d31402d1039961a1f581f61f9389",
+  "committedAt": "2026-11-10T06:21:06-08:00",
+  "subject": "Merge pull request #1500 from hemibroscommunity-del/claude/sm-silent-refusals",
+  "files": 7930,
+  "bytes": 966309501,
+  "listingSha256": "77e7ff35b892b4610e47ff3e563a3ec114bdb8463d140d230f60059c20971152",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

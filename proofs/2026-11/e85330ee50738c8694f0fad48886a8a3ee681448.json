@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e85330ee50738c8694f0fad48886a8a3ee681448",
+  "tree": "323156633c943bf7889285a13954b050b77f78ad",
+  "committedAt": "2026-11-10T06:21:19-08:00",
+  "subject": "Merge pull request #1498 from hemibroscommunity-del/claude/sm-audio-rebuild",
+  "files": 7931,
+  "bytes": 966317370,
+  "listingSha256": "628887fe0b9d56af8a6216b59c63e72cdc5486aa6d176e8e1772de34a97a7d31",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
