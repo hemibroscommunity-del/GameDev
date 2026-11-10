@@ -267,12 +267,25 @@ export const MONSTER_VARIANTS = {
                           out to its landing, never held in the air
        hopAirFrom         the first hop frame it is off the ground on (0-2
                           are its crouch: stopped there, it waits)
-       walkDistPerFrame   12 frames a hop, 2.4 px of travel a frame: a hop
-                          every ~29 px, a little under a second at its pace
-       idleFrameMs        8 frames of breath, ~1.4 s a breath (the video's)
+       walkDistPerFrame   12 frames a hop, 1.2 px of travel a frame: a hop
+                          every ~14 px (v2.3.4362, below: it was 2.4)
+       idleFrameMs        8 frames of breath, ~0.7 s a breath (it was the
+                          video's 1.4 s)
        attackRecoverFrames  the last 3 frames of an attack strip play after
                           the blow; the 12 before them are spread over the
-                          worker's warning (a swing's 600 ms, a slam's 900)
+                          last attackWindShare of the worker's warning (a
+                          swing's 600 ms, a slam's 900)
+       attackWindShare    0.5: the wind-up is played over the last half of
+                          the warning, the blow still as the blow lands; it
+                          breathes through the first half
+       v2.3.4362, the owner, having played it: "The frog animation frames
+       play too slowly. It needs to be sped up by 2x . And maybe 3x for
+       death animation".  So every strip of it goes by twice as fast --
+       the breath (170 -> 85 ms a frame), the hop (2.4 -> 1.2 px a frame,
+       and 55 -> 28 ms a frame when it finishes one standing), the attack
+       (its wind-up over half the warning, its recovery 70 -> 35 ms a
+       frame) -- and the death three times (1700 -> 570 ms).  The same
+       frames, none dropped.
        telegraphAttack    its specials' warnings (the slam, the tier moves)
                           play the attack strip too, not only its swings
        blowFx             'water': the water its blow throws is drawn in
@@ -281,7 +294,7 @@ export const MONSTER_VARIANTS = {
                           strip shows water leaving it): a spray the way it
                           faces, a ring for a slam (rendering/waterAttackFx.js)
        deathStripOnly     its death is its own animation on every kill: the
-                          sac spins up and bursts (20 frames over deathMs)
+                          sac spins up and bursts (20 frames over deathMs: 570 ms)
        deathScalePx / deathOffsetY   the death strip is cut at its own scale
                           (the burst is three frogs wide): these draw it at
                           the living frog's size, its feet where they were
@@ -301,16 +314,17 @@ export const MONSTER_VARIANTS = {
     headTopPx: 80,
     spd: 0.5,
     hopWalk: true,
-    walkDistPerFrame: 2.4,
-    hopFinishFrameMs: 55,
+    walkDistPerFrame: 1.2,
+    hopFinishFrameMs: 28,
     hopAirFrom: 3,
-    idleFrameMs: 170,
-    attackFrameMs: 70,
+    idleFrameMs: 85,
+    attackFrameMs: 35,
     attackRecoverFrames: 3,
+    attackWindShare: 0.5,
     telegraphAttack: true,
     blowFx: 'water',
     deathStripOnly: true,
-    deathMs: 1700,
+    deathMs: 570,
     deathScalePx: 138,
     deathOffsetY: 20,
   },

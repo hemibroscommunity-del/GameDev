@@ -39,12 +39,17 @@
  *   node tools/qa/mp/run.mjs waterfrog
  */
 import * as H from './harness.mjs';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { MONSTER_VARIANTS } from '../../../src/data/monsterVariants.js';
 
 const PHONE = { width: 390, height: 844 };
 const OUT = `${H.REPO}/tools/qa/mp/out/waterfrog`;
 const DEATH_Y = MONSTER_VARIANTS.fishman.deathOffsetY;
+const DEATH_MS = MONSTER_VARIANTS.fishman.deathMs;   /* v2.3.4362: 570, three times as fast as first cut */
+/* the most frames of a death's strip one drawn frame may skip (the renderer's own) */
+const BURST_MAX_SKIP = Number((/const BURST_MAX_SKIP = (\d+);/.exec(readFileSync(join(H.REPO, 'src/rendering/systems/entityRenderer.js'), 'utf8')) || [])[1]) || 2;
+const WIND_SHARE = MONSTER_VARIANTS.fishman.attackWindShare;   /* v2.3.4362: 0.5, the wind-up over the last half of a warning */
 
 /* the page's own monsters, re-asserted every frame (the worker's set aside) */
 const hold = (P, specs) => P.page.evaluate((specs) => {
@@ -222,6 +227,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`1. ...${(mem.packed / 1048576).toFixed(1)} MB of pictures once cropped (${(mem.full / 1048576).toFixed(1)} MB uncropped): under 24 MB`, mem.packed > 0 && mem.packed < 24 * 1048576, mem);
     await P.page.waitForTimeout(900);
 
+    /* WF_FROM=death: the strips' guard (1), then straight to the deaths (6-7)
+       and the Water Caves (10) -- a quicker look at the death's pace */
+    if (process.env.WF_FROM !== 'death') {
     /* ── 2. the breath ── */
     const breath = live(await watch(P, id, 400, null, 'out.length > 20 && new Set(out.filter(Boolean).map((f) => f.ix)).size >= 8'));
     rec.ok('2. standing still it breathes: all 8 frames of its idle strip, not one held frame',
@@ -254,8 +262,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
          in order, on to the hop's last third, and then the breath) */
       const hop = fr.filter((f) => f.n === 12).map((f) => f.ix);
       const rising = hop.every((v, i) => i === 0 || v >= hop[i - 1] || v === 0);
-      rec.ok('4. stopped in the air, it plays the hop out to its landing (its frames in order to the end), never held there, and then breathes',
-        hop.length > 0 && rising && Math.max(...hop) >= 8 && uniq(hop.filter((v) => v !== 0)).length >= 2 && fr[fr.length - 1].n === 8, { hop: uniq(hop), last: fr[fr.length - 1] });
+      /* v2.3.4362: the rest of a hop is 7 frames at 28 ms now, a fifth of a
+         second -- this box can draw that in one frame or two.  So: in order
+         and ending in its breath always; and where the box drew three frames
+         of it or more, on to the hop's last third (the frame-by-frame rule
+         is the water-frog suite's, `hopFinishPos`) */
+      rec.ok(`4. stopped in the air, it plays the hop out to its landing (its frames in order to the end${hop.length >= 3 ? '' : ': this box drew ' + hop.length + ' of them'}), never held there, and then breathes`,
+        hop.length > 0 && rising && fr[fr.length - 1].n === 8
+        && (hop.length < 3 || (Math.max(...hop) >= 8 && uniq(hop.filter((v) => v !== 0)).length >= 2)), { hop: uniq(hop), last: fr[fr.length - 1] });
     }
 
     /* ── 5. the wind-up, the blow, the recovery ── */
@@ -295,10 +309,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /* (the arithmetic of it, frame by frame, is the water-frog suite's;
          here: the real event starts it, and what is drawn follows the rule
          at whatever pace this box draws) */
-      rec.ok(`5. ${label}'s warning: the wind-up frames spread over it, in order, never a recovery frame before the blow`,
-        wind.length > 0 && inOrder && wind.every((f) => f.ix <= 11) && uniq(wind.map((f) => f.ix)).length >= 3, { wind: wind.map((f) => [f.t, f.ix]) });
+      /* v2.3.4362: the wind-up is played over the LAST HALF of the warning
+         (twice as fast: the owner).  How many of its frames are seen is this
+         box's frame rate; what is held is that every frame drawn is the one
+         the rule gives for its own time (to a frame), that none is drawn in
+         the first half (it breathes), and never a recovery frame early. */
+      const half = ms * WIND_SHARE, from = ms - half;
+      const ruled = (f) => Math.max(0, Math.min(11, Math.floor(((f.t - from) / half) * 12)));
+      const offRule = wind.filter((f) => Math.abs(f.ix - ruled(f)) > 1);
+      const tooSoon = atk.filter((f) => f.t < from - 60);
+      rec.ok(`5. ${label}'s warning: it breathes through the first half, then the wind-up frames over the last half, each the frame its own time gives, in order, never a recovery frame before the blow (${wind.length} drawn)`,
+        wind.length > 0 && inOrder && wind.every((f) => f.ix <= 11) && offRule.length === 0 && tooSoon.length === 0,
+        { wind: wind.map((f) => [f.t, f.ix, ruled(f)]), tooSoon: tooSoon.map((f) => [f.t, f.ix]) });
       const last = wind[wind.length - 1];
-      rec.ok(`5. ...the blow's frames on screen as the warning ends (frame ${last && last.ix} at ${last && last.t} of ${ms} ms)`, !!last && last.ix >= 7, last);
+      /* (a frame drawn in the wind-up's last two fifths is one of the blow's;
+         where this box drew none that late, the rule above has held the one
+         it did draw) */
+      rec.ok(`5. ...the blow's frames on screen as the warning ends (frame ${last && last.ix} at ${last && last.t} of ${ms} ms)`, !!last && (last.ix >= 7 || ms - last.t > half * 0.42), last);
       rec.ok(`5. ...then only the recovery (frames 12-14), and back to its breath`,
         rec3.every((f) => f.ix >= 12) && fr[fr.length - 1].n === 8, { rec: rec3.map((f) => [f.t, f.ix]), last: fr[fr.length - 1] });
       /* its water, drawn in code as the warning ends (the owner: "I intend
@@ -334,6 +361,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok('5. ...and between blows no water is left on screen', wa.lit === 0 && wa.live.length === 0, { lit: wa.lit });
     }
 
+    }
+
     /* ── 6-7. the death ── */
     for (const [label, big, facingWalk] of [['an ordinary kill', false, null], ['a big blow', true, [-1, 0]], ['a third kill', false, [1, -1]]]) {
       await release(P);
@@ -352,15 +381,45 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const step = () => {
           const s = window.__btMonsterSprite(mid), d = window.__btMonsterDeath ? window.__btMonsterDeath(mid) : null;
           out.push(s ? { t: Date.now() - from, ix: s.ix, n: s.n, sx: s.sx, y: s.y, size: s.size, vis: s.visible, cut: !!(d && d.kind && d.kind !== 'normal') } : { t: Date.now() - from, gone: true });
-          if (Date.now() - from > 4200) resolve(out); else requestAnimationFrame(step);
+          /* (until it is gone, by what is drawn: a slow box's death is
+             stretched -- below -- so no clock says when; 20 s at the most) */
+          const last = out[out.length - 1];
+          const over = Date.now() - from > 1500 && (last.gone || last.vis === false);
+          if (over || Date.now() - from > 20000) resolve(out); else requestAnimationFrame(step);
         };
         requestAnimationFrame(step);
       }), [id, big]);
       const dead = fr.filter((f) => !f.gone && f.n === 20 && f.vis);
       const seen = uniq(dead.map((f) => f.ix));
-      rec.ok(`6. ${label}: it plays its own death -- the 20-frame strip, in order, to its last frame, unmirrored`,
-        dead.length > 0 && dead.every((f, i) => i === 0 || f.ix >= dead[i - 1].ix) && Math.max(...seen) === 19 && seen.length >= 10 && dead.every((f) => f.sx > 0),
+      /* v2.3.4362: the death is 570 ms now (three times as fast: the owner),
+         so how many of its 20 frames are SEEN is this box's frame rate; what
+         is held is the pace -- by the frames' own times, it is at its last
+         frame 570 ms after its first (and one frame of this box's), and not
+         before half of that */
+      /* THE RENDERER'S OWN CLOCK FOR A DEATH (entityRenderer `_burstStep`,
+         v2.3.2491): it advances by the real time between two frames it
+         draws, but never by more than BURST_MAX_SKIP frames of the strip --
+         so a phone at 30 or 60 frames a second plays the death in its 570
+         ms, and a machine drawing slower than that sees every other frame
+         of it, stretched, and not a jump to the end.  The same sum here,
+         from the frames' own times, says which frame each drawn frame
+         should be. */
+      const perFrame = DEATH_MS / 20, cap = perFrame * BURST_MAX_SKIP;
+      let clock = 0;
+      const ruled = dead.map((f, i) => { if (i) clock += Math.min(f.t - dead[i - 1].t, cap); return Math.min(19, Math.floor(clock / perFrame)); });
+      const offRule = dead.map((f, i) => [f.t, f.ix, ruled[i]]).filter((r) => Math.abs(r[1] - r[2]) > 1);
+      const gap = dead.reduce((a, f, i) => (i ? Math.max(a, f.t - dead[i - 1].t) : a), 0);
+      const lastAt = (dead.find((f) => f.ix === 19) || {}).t;
+      const t0 = dead.length ? dead[0].t : 0;
+      /* (to its last frame -- unless this box is so slow that the renderer
+         let the body go first: it holds a death two seconds past its length
+         and its start's grace at the most, BURST_MAX_STRETCH_MS) */
+      const heldOut = dead.length > 0 && dead[dead.length - 1].t - dead[0].t > DEATH_MS + 2000;
+      rec.ok(`6. ${label}: it plays its own death -- the 20-frame strip, in order, ${Math.max(...seen) === 19 ? 'to its last frame' : 'as far as this box drew before the body was let go (frame ' + Math.max(...seen) + ')'}, unmirrored (${seen.length} of its frames seen)`,
+        dead.length > 0 && dead.every((f, i) => i === 0 || f.ix >= dead[i - 1].ix) && (Math.max(...seen) === 19 || heldOut) && dead.every((f) => f.sx > 0),
         { seen, frames: dead.length, facingBefore: before && before.facing });
+      rec.ok(`6. ...at its pace: ${DEATH_MS} ms a death, each frame drawn the one the renderer's clock gives for its time (here ${lastAt === undefined ? 'the body was let go before its last frame' : 'its last frame came ' + (lastAt - t0) + ' ms in'}: this box's frames are up to ${gap} ms apart, and a death skips ${BURST_MAX_SKIP} frames of its strip at the most)`,
+        dead.length > 1 && offRule.length === 0, { offRule: offRule.slice(0, 4), frames: dead.map((f, i) => [f.t - t0, f.ix, ruled[i]]).slice(0, 12) });
       rec.ok(`6. ...never a cut or a zone death in its place`, fr.every((f) => !f.cut), fr.filter((f) => f.cut).slice(0, 2));
       rec.ok(`7. ...its feet where they were: the strip hangs ${DEATH_Y} lower, in its cell's own measure (deathOffsetY)`,
         dead.length > 0 && dead.every((f) => Math.abs((f.y - f.size) - DEATH_Y) < 0.01), dead[0] && { y: dead[0].y, size: dead[0].size });

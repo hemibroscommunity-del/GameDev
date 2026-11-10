@@ -149,7 +149,7 @@ writes `docs/art/water-frog-strips.png` (every strip, to look at).
 
 | Strip | Frames | Why that many |
 |---|---|---|
-| idle (4 sides) | 8 | one breath; the video's breath is 32 frames, so every fourth: 170 ms a frame in the game is the video's own pace |
+| idle (4 sides) | 8 | one breath; the video's breath is 32 frames, so every fourth (170 ms a frame would be the video's own pace; the game plays it at 85, below) |
 | hop (3 sides) | 12 | crouch 3, spring 2, the air 4, the landing 3. The video's hop is over 100 frames; these are the ones where the pose changes |
 | attack (4 sides) | 15 | 12 of wind-up, the last of them the blow, then 3 of recovery |
 | death | 20 | at rest, the startle (3), the sac spinning (4), the burst (8, the fastest part, taken closest together), lying in the puddle (4) |
@@ -174,8 +174,26 @@ Caves' brute, on the wire and in every saved codex). Its pace is
 `MONSTER_VARIANTS.fishman`; the three rules are plain arithmetic in
 `src/game/monsterStrips.js`:
 
-- **The hop** (`hopWalk`) is driven by distance like every walk: 2.4 px of
-  travel a frame, a hop about every 29 px. A walk that stops, stops on its
+- **Its pace (v2.3.4362).** The owner, having played it: *"The frog
+  animation frames play too slowly. It needs to be sped up by 2x . And maybe
+  3x for death animation"*. Every strip plays the same frames, none dropped,
+  faster:
+
+  | | first cut (the videos' pace) | now |
+  |---|---|---|
+  | breath | 170 ms a frame, 1.4 s a breath | **85 ms**, 0.7 s |
+  | hop | 2.4 px of travel a frame, a hop every 29 px | **1.2 px**, a hop every 14 px |
+  | finishing a hop when it stops | 55 ms a frame | **28 ms** |
+  | attack wind-up | 12 frames over the whole warning (50 ms each for a swing, 75 for the slam) | **over its last half** (25 and 37 ms), `attackWindShare: 0.5`; it breathes through the first half |
+  | attack recovery | 70 ms a frame | **35 ms** |
+  | death | 1700 ms | **570 ms** |
+
+  The hop is the one with a cost: it is driven by how far the frog has
+  moved, so twice as fast means twice as many hops over the same ground,
+  each half as long. The blow still lands with its frame: the warning's
+  length is the server's and is unchanged.
+- **The hop** (`hopWalk`) is driven by distance like every walk: 1.2 px of
+  travel a frame, a hop about every 14 px. A walk that stops, stops on its
   frame; a hop that stopped would hang in the air, so a hopper that stops
   moving plays the rest of its hop by the clock, down to frame 0, and
   breathes from there. Only once it has left the ground (`hopAirFrom: 3`):
@@ -183,9 +201,9 @@ Caves' brute, on the wire and in every saved codex). Its pace is
   gathers itself over a few steps and springs once, where finishing every
   frame would have it leaping on the spot for each pixel it is moved.
 - **The attack** (`attackRecoverFrames: 3`): the 12 wind-up frames are spread
-  over the server's warning, however long (a swing's 600 ms, the slam's 900),
-  so the blow's frame is on screen as the blow lands; then the 3 recovery
-  frames. Its specials' warnings play it too (`telegraphAttack`). A strip
+  over the last half of the server's warning, however long (a swing's 600 ms,
+  the slam's 900), so the blow's frame is on screen as the blow lands; then
+  the 3 recovery frames. Its specials' warnings play it too (`telegraphAttack`). A strip
   with no recovery frames (the fire goblin's) plays exactly as before.
 - **The death** (`deathStripOnly`) is its own animation on **every** kill.
   The other monsters roll between their strip, a cut (sliced, beheaded) and

@@ -201,6 +201,22 @@ const strips = {};
   check('2d ...then the recovery, a frame every 70 ms, held on the last',
     A(600, 600, 15, 3, 70) === 12 && A(670, 600, 15, 3, 70) === 13 && A(740, 600, 15, 3, 70) === 14 && A(5000, 600, 15, 3, 70) === 14);
   check('2e ...and it plays 3 x 70 ms past the warning', MS.attackRecoverMs(3, 70) === 210 && MS.attackRecoverMs(0, 70) === 0);
+  /* v2.3.4362, the owner: "The frog animation frames play too slowly. It
+     needs to be sped up by 2x".  THE WIND-UP OVER THE LAST HALF OF THE
+     WARNING: it begins half way in (until then the frog breathes), its 12
+     frames go by twice as fast, and the blow is still the frame on screen
+     as the blow lands. */
+  const WD = MS.attackWindDelay;
+  check('2e2 a wind-up played over the last half of a warning begins half way in; with no share (or a share that is not one) at its start',
+    WD(600, 0.5) === 300 && WD(900, 0.5) === 450 && WD(600, 0.25) === 450 && WD(600, undefined) === 0 && WD(600, 1) === 0 && WD(600, 0) === 0 && WD(600, 2) === 0
+    && WD(600, -1) === 0 && WD(600, NaN) === 0 && WD(-5, 0.5) === 0 && WD(undefined, 0.5) === 0);
+  /* as the renderer calls it: from the delay on, over what is left */
+  const late = WD(600, 0.5), half = (t) => A(t - late, 600 - late, 15, 3, 35);
+  const hseq = [];
+  for (let t = 300; t <= 720; t += 5) hseq.push(half(t));
+  check('2e3 ...its frames then go by twice as fast (12 in 300 ms of a swing\'s 600, 25 ms each), in order, the blow (frame 11) on screen as the warning ends, the recovery after',
+    half(300) === 0 && half(324) === 0 && half(325) === 1 && half(449) === 5 && half(450) === 6 && half(599) === 11 && half(600) === 12 && half(635) === 13 && half(670) === 14 && half(5000) === 14
+    && hseq.every((v, i) => i === 0 || v >= hseq[i - 1]) && [...new Set(hseq.slice(0, 60))].length === 12 && MS.attackRecoverMs(3, 35) === 105);
   /* a strip with no recovery frames: the fire goblin's rule, unchanged */
   const old = (elapsed, n, step) => Math.max(0, Math.min(n - 1, Math.floor(elapsed / step)));
   let same = true;
@@ -260,7 +276,19 @@ const strips = {};
   const rec = +(/export const ATTACK_RECOVER = (\d+);/.exec(wf) || [])[1];
   check('3e the variant: a hop for its walk, the recovery frames the strips were cut with, its specials\' warnings on the attack strip, its death its own strip',
     V.baseArchetype === 'brute' && V.hopWalk === true && V.attackRecoverFrames === rec && rec === 3 && V.telegraphAttack === true && V.deathStripOnly === true
-    && V.spd === 0.5 && V.walkDistPerFrame > 0 && V.idleFrameMs > 0 && V.deathMs >= 1200, V);
+    && V.spd === 0.5 && V.walkDistPerFrame > 0 && V.idleFrameMs > 0 && V.deathMs > 0, V);
+  /* v2.3.4362, the owner, having played it: "The frog animation frames play
+     too slowly. It needs to be sped up by 2x . And maybe 3x for death
+     animation".  Each of its paces is half what it was first cut at (the
+     videos': 170 ms a breath frame, 2.4 px a hop frame and 55 ms finishing
+     one, the wind-up over the whole warning, 70 ms a recovery frame), the
+     death a third of its 1700 ms -- the same frames, none dropped. */
+  check('3e2 its paces: everything twice as fast as first cut, its death three times',
+    V.idleFrameMs === 85 && V.walkDistPerFrame === 1.2 && V.hopFinishFrameMs === 28 && V.attackWindShare === 0.5 && V.attackFrameMs === 35
+    && V.deathMs === 570 && Math.abs(V.deathMs - 1700 / 3) < 5,
+    { idle: V.idleFrameMs, hop: V.walkDistPerFrame, finish: V.hopFinishFrameMs, wind: V.attackWindShare, rec: V.attackFrameMs, death: V.deathMs });
+  check('3e3 ...and no other look\'s wind-up is shortened',
+    Object.keys(MONSTER_VARIANTS).filter((k) => MONSTER_VARIANTS[k].attackWindShare !== undefined).join() === 'fishman');
   check('3f ...and no other look hops, plays an attack strip or throws water',
     Object.keys(MONSTER_VARIANTS).filter((k) => MONSTER_VARIANTS[k].hopWalk).join() === 'fishman'
     && Object.keys(MONSTER_VARIANTS).filter((k) => MONSTER_VARIANTS[k].attackRecoverFrames).join() === 'fishman');
@@ -277,7 +305,9 @@ const strips = {};
     /const _dfxStripOnly = !!\(variant && variant\.deathStripOnly\s*&& variantSprites && variantSprites\.death && variantSprites\.death\.has\(\)\);\s*if \(_dfxKey != null && !_dfxStripOnly &&/.test(er)
     && /sb\.y = display\._size \+ \(variant\.deathOffsetY \|\| 0\);/.test(er)
     && /if \(variant\.hopWalk\) \{/.test(er) && /hopFinishPos\(_hPos, _hfc, _hDt, variant\.hopFinishFrameMs, variant\.hopAirFrom\)/.test(er)
-    && /attackStripFrame\(elapsed, m\._shootAnimEnd - m\._shootAnimStart, afc, _atkRec, stepMs\)/.test(er)
+    && /attackStripFrame\(elapsed - _atkLate, \(m\._shootAnimEnd - m\._shootAnimStart\) - _atkLate, afc, _atkRec, stepMs\)/.test(er)
+    && /const _atkLate = \(attackSprites && _atkRec > 0 && m\._shootAnimEnd\) \? attackWindDelay\(m\._shootAnimEnd - m\._shootAnimStart, variant\.attackWindShare\) : 0;/.test(er)
+    && /&& now >= m\._shootAnimStart \+ _atkLate\s*&& now < m\._shootAnimEnd \+ attackRecoverMs\(_atkRec, variant\.attackFrameMs\)/.test(er)
     && /idleStripFrame\(now, ifc, variant\.idleFrameMs,/.test(er));
   check('3k a special\'s warning plays the attack strip for a look that asks (telegraphAttack), for the warning\'s length',
     /if \(_tgV && _tgV\.telegraphAttack\) \{\s*_tgm\._shootAnimStart = Date\.now\(\);\s*_tgm\._shootAnimEnd = Date\.now\(\) \+ Math\.max\(80, Math\.min\(3000, Number\(payload\.ms\) \|\| 800\)\);/.test(ge));

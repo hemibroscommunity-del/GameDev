@@ -31,6 +31,17 @@ export function attackStripFrame(elapsed, windupMs, count, recover, stepMs) {
   return Math.min(n - 1, wind + Math.floor((e - dur) / step));
 }
 
+/** v2.3.4362: how far into a warning of `windupMs` an attack strip's wind-up
+ *  frames BEGIN, when they are played over only the last `share` of it (the
+ *  water frog's: half, so its frames go by twice as fast and the blow is
+ *  still on screen as the blow lands).  Until then the monster does what it
+ *  was doing (the frog breathes).  0 -- the whole warning -- for no share, a
+ *  share of 1 or more, or anything that is not a share. */
+export function attackWindDelay(windupMs, share) {
+  const d = Math.max(0, +windupMs || 0);
+  return share > 0 && share < 1 ? d * (1 - share) : 0;
+}
+
 /** How long an attack strip plays past its warning: its recovery. */
 export function attackRecoverMs(recover, stepMs) {
   return Math.max(0, recover | 0) * (stepMs > 0 ? stepMs : 70);

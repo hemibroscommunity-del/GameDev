@@ -66,7 +66,7 @@ import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { queueStormZap } from '../stormSparksFx.js';   /* v2.3.4356: the storm eye's lightning, drawn in code */
 import { queueWaterBlow } from '../waterAttackFx.js';   /* v2.3.4355: the water frog's attack, drawn in code */
 import { WATER_FX } from '@/data/waterAttack.js';
-import { attackStripFrame, attackRecoverMs, hopFinishPos, hopIsDown, hopInAir, idleStripFrame, hoverLift } from '@/game/monsterStrips.js';   /* v2.3.4355: the water frog's strips */
+import { attackStripFrame, attackRecoverMs, attackWindDelay, hopFinishPos, hopIsDown, hopInAir, idleStripFrame, hoverLift } from '@/game/monsterStrips.js';   /* v2.3.4355: the water frog's strips */
 import { wheelArtTick, wheelArtOn, wheelArtReady, wheelArtWaiting } from '../wheelMonsterArt.js'; /* v2.3.2989: the Wheel's monsters' looks, loaded as you walk toward them */
 import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVariants.js';
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
@@ -10582,7 +10582,14 @@ export class EntityRenderer {
            attackRecoverFrames: the water frog's) plays them AFTER the blow,
            past the wind-up's window, so it does not snap back to standing */
         const _atkRec = attackSprites ? Math.max(0, variant.attackRecoverFrames | 0) : 0;
+        /* v2.3.4362: ...and a strip whose wind-up is played over only the
+           last part of the warning (variant attackWindShare: the frog's, half
+           -- the owner: "the frog animation frames play too slowly. It needs
+           to be sped up by 2x") begins that much into it; until then the
+           monster goes on as it was (the frog breathes) */
+        const _atkLate = (attackSprites && _atkRec > 0 && m._shootAnimEnd) ? attackWindDelay(m._shootAnimEnd - m._shootAnimStart, variant.attackWindShare) : 0;
         const attackNow = !transformingNow && !hitNow && m._shootAnimEnd
+          && now >= m._shootAnimStart + _atkLate
           && now < m._shootAnimEnd + attackRecoverMs(_atkRec, variant.attackFrameMs)
           && attackSprites && attackSprites.has();
         let frame;
@@ -10617,7 +10624,7 @@ export class EntityRenderer {
              a slam's 900), so the last of them -- the blow -- is on screen
              as the blow lands; then the recovery, a frame every stepMs
              (game/monsterStrips.js; with none, exactly the old rule) */
-          const aIdx = attackStripFrame(elapsed, m._shootAnimEnd - m._shootAnimStart, afc, _atkRec, stepMs);
+          const aIdx = attackStripFrame(elapsed - _atkLate, (m._shootAnimEnd - m._shootAnimStart) - _atkLate, afc, _atkRec, stepMs);
           frame = attackSprites.get(facing, aIdx);
         } else if (isIdle) {
           /* v2.3.4355: a look with an idle strip (the water frog's breath)
