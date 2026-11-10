@@ -134,6 +134,7 @@ import { rideLook } from '@/game/ride.js';   /* v2.3.3776: a rider stands sidewa
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
 import { keepAsImage } from '../keepAsImage.js';   /* v2.3.3606: a head piece kept as an image of itself */
 import { TRAIT_LOAD_TIMEOUT_MS } from '../traits/traitImg.js';   /* v2.3.3689: a stalled head piece is asked for again */
+import { loadSetLater } from '../loadSetLater.js';   /* v2.3.4415: the bars over heads asked for again until in */
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
 import { activePet } from '../../game/petBook.js'; /* v2.3.3120: the pet out with you is the record's */
 import { petFrames, petSideFaces, petArtHeight } from '../petSprites.js'; /* v2.3.3120: the pet sheet */
@@ -191,13 +192,15 @@ const NPC_TALK_PX = 28;
    the browser hits the warm cache instead of issuing a fresh request. */
 const HUD_BAR_VER = '2.3.68';
 const _hudBarTex = { hp: null, mp: null, stam: null, barFrame: null, barFull: null, nodeFull: null };
-let _hudBarLoadStarted = false;
-function _ensureHudBarTextures() {
-  if (_hudBarLoadStarted) return;
-  _hudBarLoadStarted = true;
-  Assets.load(`/icons/ui/bar-hp.webp?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.hp = t; }).catch(() => {});
-  Assets.load(`/icons/ui/bar-mp.webp?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.mp = t; }).catch(() => {});
-  Assets.load(`/icons/ui/bar-stam.webp?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.stam = t; }).catch(() => {});
+/* v2.3.4415: the six files, each loaded with a time limit and asked for
+   again later until it is in (loadSetLater.js; sweep V17a R1-3: the latch
+   here was set before the first request, so one failed request hid that bar
+   -- the frame: every health bar -- for the session).  `?barretry=0` is the
+   game as it was. */
+const _HUD_BAR_FILES = {
+  hp: `/icons/ui/bar-hp.webp?v=${HUD_BAR_VER}`,
+  mp: `/icons/ui/bar-mp.webp?v=${HUD_BAR_VER}`,
+  stam: `/icons/ui/bar-stam.webp?v=${HUD_BAR_VER}`,
   /* v2.3.2337: the two HEART loads that used to sit here are gone.
      v2.3.107 loaded /icons/popups/heart.webp as the above-head HP glyph and
      v2.3.214 added heart-white.webp so that glyph could be tinted by HP
@@ -215,13 +218,18 @@ function _ensureHudBarTextures() {
      hp fraction, the standard smooth-bar technique).  Replaces the
      monster heart and the player HP ring visuals; the v2.3.458 ghost-
      drain logic is reused unchanged. */
-  Assets.load('/ui/bars/hp-frame.png?v=2.3.1273').then(t => { _hudBarTex.barFrame = t; }).catch(() => {});
-  Assets.load('/ui/bars/hp-full.png?v=2.3.1273').then(t => { _hudBarTex.barFull = t; }).catch(() => {});
+  barFrame: '/ui/bars/hp-frame.png?v=2.3.1273',
+  barFull: '/ui/bars/hp-full.png?v=2.3.1273',
   /* v2.3.3035: the harvest bar's GREEN fill -- the same art with its red
      turned green (tools/ui/green-node-bar.sh).  Loaded beside the red one, on
      the HUD's first frame, so it is in long before any harvest. */
-  Assets.load('/ui/bars/node-full-green.png?v=2.3.3035').then(t => { _hudBarTex.nodeFull = t; }).catch(() => {});
-}
+  nodeFull: '/ui/bars/node-full-green.png?v=2.3.3035',
+};
+const _hudBarLoads = loadSetLater({
+  files: _HUD_BAR_FILES, into: _hudBarTex, switchName: 'barretry',
+  load: (url) => Assets.load(url), unload: (url) => Assets.unload(url),
+});
+function _ensureHudBarTextures() { _hudBarLoads.ensure(); }
 
 /* v2.3.1273: shared geometry for the owner's bar art.  The red fill
    occupies an inset region of the sprite box (measured on the sheet):

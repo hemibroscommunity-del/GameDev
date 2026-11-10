@@ -30,7 +30,8 @@
  *               first entry to each zone)
  *
  * A settle report lands on window.__btPreloadReport so rigs (and
- * anyone debugging a first-use hitch) can verify coverage. */
+ * anyone debugging a first-use hitch) can verify coverage.  (v2.3.4415: a
+ * group that failed reads "rejected" there now; it read "fulfilled".) */
 
 import { preloadLoginSpin } from './loginSpinPreload.js'; /* v2.3.4295: the login wheel's art */
 import { preloadLootIcons } from './lootIcons.js'; /* v2.3.2771 */
@@ -51,6 +52,7 @@ import { isWorldTrialZone, preloadWorldTrial } from '../game/worldTrial.js'; /* 
 import { townSkippedOnTheWay } from '../game/wheelHome.js'; /* v2.3.3037: today's town is a stop on the way to the Wheel */
 import { effectsAnimationsReady, ensureSnowballBurstTex, freeFrostImpactTex, ensureArrowBlastTex } from './systems/effectsRenderer.js'; /* v2.3.2272: the frost-only sheets get an exit; v2.3.2844: minus the retired snowman plume */
 import { fxStripsReady } from './fxStrips.js'; /* v2.3.1735: stun ring + whirl vortex (preloading is law) */
+import { settleGroups } from './preloadReport.js';   /* v2.3.4415: each group's true ending in __btPreloadReport */
 import { preloadTraits, preloadBroBadge, preloadSmallIconTextures, preloadQuestPinTextures } from './systems/entityRenderer.js'; /* v2.3.2345: + the verified-Bro plate badge; v2.3.3279: + the owner's small icons; v2.3.3481: + their quest pins */
 import { preloadCapes } from './capeSprites.js'; /* v2.3.2023: cosmetic capes are GLOBAL, not per-zone */
 import { preloadFullsetFigures } from './gearSheets.js'; /* v2.3.1376: fullset knight figures */
@@ -525,10 +527,8 @@ export async function preloadWorldAnimations() {
     loginSpin: preloadLoginSpin(),
   };
 
-  const names = Object.keys(groups);
-  const settled = await Promise.allSettled(names.map((n) => Promise.resolve(groups[n]).catch(() => {})));
-  const report = {};
-  names.forEach((n, i) => { report[n] = settled[i].status; });
+  /* v2.3.4415: each group's TRUE ending, "rejected" included (preloadReport.js) */
+  const report = await settleGroups(groups, {});
   /* v2.3.1398 (owner: "make sure all this stuff loads correctly at the
      login loading page"): the fullset knight figures + their head
      overlays are BACK on the blocking gate.  The v2.3.1382 +4s
@@ -544,9 +544,7 @@ export async function preloadWorldAnimations() {
     fullset: preloadFullsetFigures(),
     jogHeads: preloadJogHeadOverlays(),
   };
-  const names2 = Object.keys(wave2);
-  const settled2 = await Promise.allSettled(names2.map((n) => Promise.resolve(wave2[n]).catch(() => {})));
-  names2.forEach((n, i) => { report[n] = settled2[i].status; });
+  await settleGroups(wave2, report);
   try { if (typeof window !== 'undefined') window.__btPreloadReport = report; } catch (e) {}
   return report;
 }
