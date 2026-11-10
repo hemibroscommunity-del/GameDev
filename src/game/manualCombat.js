@@ -56,6 +56,15 @@
  *     comes within EARLY_MS of ready is kept for that moment (a thumb is not
  *     a metronome).
  *
+ *   THE SLINGSHOT BOW, a variation to try beside it (`?manual=2`; the owner,
+ *     2026-11-10: "I'm actually thinking of the pull back and release
+ *     slingshot method.  Try adding that as a variation I can try in a new
+ *     link (just for bow - magic stays as flick)").  Everything above, but a
+ *     BOW's thumb pulls BACK, away from what it shoots at, and the arrow
+ *     leaves the opposite way on the lift (mcShotAngle).  While it pulls the
+ *     bro and his sight point where the arrow will go.  A staff is still a
+ *     flick, a sword still a stroke.
+ *
  *   A SPECIAL is ARMED by its button (a second press disarms), and the next
  *     attack made is the special.  A flick never makes one.
  *
@@ -95,29 +104,35 @@ export var MANUAL = {
   KEY: 'bt_manual',
 };
 
-/** Is manual combat wanted on this device?  `?manual=1` turns it on and is
- *  remembered; `?manual=0` turns it off and forgets.  `search` and `store`
- *  are for tests (location.search, localStorage). */
-export function manualCombatWanted(search, store) {
+/** Which manual combat is wanted on this device: 0 none, 1 swipes (version
+ *  A), 2 swipes with the SLINGSHOT BOW.  `?manual=1` / `?manual=2` turn it on
+ *  and are remembered; `?manual=0` turns it off and forgets.  `search` and
+ *  `store` are for tests (location.search, localStorage). */
+export function manualMode(search, store) {
   var q = search;
   if (q == null) { try { q = typeof location !== 'undefined' ? location.search : ''; } catch (e) { q = ''; } }
   var ls = store;
   if (ls === undefined) { try { ls = typeof localStorage !== 'undefined' ? localStorage : null; } catch (e) { ls = null; } }
-  var m = /(?:^|[?&])manual=([01])(?:&|$)/.exec(String(q || ''));
+  var m = /(?:^|[?&])manual=([012])(?:&|$)/.exec(String(q || ''));
   if (m) {
-    try { if (ls) { if (m[1] === '1') ls.setItem(MANUAL.KEY, '1'); else ls.removeItem(MANUAL.KEY); } } catch (e) { /* a private window: the address still decides this visit */ }
-    return m[1] === '1';
+    try { if (ls) { if (m[1] === '0') ls.removeItem(MANUAL.KEY); else ls.setItem(MANUAL.KEY, m[1]); } } catch (e) { /* a private window: the address still decides this visit */ }
+    return +m[1];
   }
-  try { return !!ls && ls.getItem(MANUAL.KEY) === '1'; } catch (e) { return false; }
+  try { var v = ls ? ls.getItem(MANUAL.KEY) : null; return v === '1' ? 1 : v === '2' ? 2 : 0; } catch (e) { return 0; }
 }
+/** Is manual combat wanted on this device (either kind)? */
+export function manualCombatWanted(search, store) { return manualMode(search, store) > 0; }
 
-var _on = null;
-/** On for this page (read once; `setManualCombat` is QA's and the tests'). */
+var _mode = null;
+/** On for this page (read once; `setManualCombat` is QA's and the tests':
+ *  false, true, or 2 for the slingshot bow). */
 export function manualOn() {
-  if (_on === null) _on = manualCombatWanted();
-  return _on;
+  if (_mode === null) _mode = manualMode();
+  return _mode > 0;
 }
-export function setManualCombat(v) { _on = !!v; }
+/** The slingshot bow's variation (`?manual=2`). */
+export function manualSling() { return manualOn() && _mode === 2; }
+export function setManualCombat(v) { _mode = v === 2 ? 2 : (v ? 1 : 0); }
 
 function st(S) {
   if (!S) return null;
@@ -125,6 +140,13 @@ function st(S) {
   return S._mc;
 }
 function slotOf(S) { return (S && S.rpg && S.rpg.activeSlot) || 'melee'; }
+/** Is this the SLINGSHOT bow (`?manual=2`, a bow in hand)?  Its thumb pulls
+ *  BACK from the target and the arrow leaves the other way.  A staff stays a
+ *  flick, a sword a stroke. */
+export function mcBowSling(S) { return manualSling() && slotOf(S) === 'ranged'; }
+/** The way a shot leaves for a thumb that went `ang` from where it touched:
+ *  that way -- or, for the slingshot bow, the opposite. */
+export function mcShotAngle(S, ang) { return mcBowSling(S) ? Math.atan2(-Math.sin(ang), -Math.cos(ang)) : ang; }
 /** Does this weapon shoot (the bow, the staff)?  A sword does not. */
 export function mcShoots(S) { var s = slotOf(S); return s === 'ranged' || s === 'staff'; }
 
@@ -267,6 +289,7 @@ if (typeof window !== 'undefined') {
   try {
     window.__btManual = {
       on: function () { return manualOn(); },
+      sling: function () { return manualSling(); },
       state: function () {
         var S = window._gameState && window._gameState.current;
         var m = S && S._mc;

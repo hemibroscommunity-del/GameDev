@@ -459,7 +459,7 @@ import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the s
 import { climbBegin, climbSteer, climbSpeed, climbTick, riseSolidAt } from '@/game/climbActions.js';   /* v2.3.3994: the lagoon's climb and its faces (`?climb=1`) */
 import { tickJump, landJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick -- v2.3.3712: no longer, so triggerJump is the button's alone) */
 import { rightTapBusy, tapFreeMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress, requestTapAttack } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one; v2.3.3712: it attacks once now, never jumps */
-import { manualOn, mcSwipeStart, mcSwipeMove, mcSwipeEnd, mcWasQuick, mcAssist, mcAskShot, mcAbort, mcMeleeAsk, mcSwingWaiting, mcSwingDone, mcReadyIn, mcTakeArmed, mcArmToggle, mcArmed, mcShoots } from '@/game/manualCombat.js';   /* v2.3.4357: manual combat (`?manual=1`): every attack is a swipe, no chosen lock */
+import { manualOn, mcBowSling, mcShotAngle, mcSwipeStart, mcSwipeMove, mcSwipeEnd, mcWasQuick, mcAssist, mcAskShot, mcAbort, mcMeleeAsk, mcSwingWaiting, mcSwingDone, mcReadyIn, mcTakeArmed, mcArmToggle, mcArmed, mcShoots } from '@/game/manualCombat.js';   /* v2.3.4357: manual combat (`?manual=1`): every attack is a swipe, no chosen lock */
 import { BOW_RANGE_PX as MC_BOW_RANGE_PX, bowRangeMult as mcBowRangeMult } from '@/data/gameSystems.js';   /* v2.3.4357: how far a quick flick's help reaches */
 import { lockShotPoint as mcShotPoint } from '@/game/combatHelpers.js';
 import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here; v2.3.4105: talkBeforeDoor retired (E never talks) */
@@ -9443,7 +9443,7 @@ export var BroTown = function BroTown(_ref0) {
     var ox = S._mc.ox, oy = S._mc.oy;
     var r = mcSwipeEnd(S, now, x, y);
     if (r !== 'fire') return r;
-    var ang = Math.atan2(y - oy, x - ox);
+    var ang = mcShotAngle(S, Math.atan2(y - oy, x - ox));   /* the slingshot bow: the opposite way */
     if (S.rpg.activeSlot === 'ranged' && mcWasQuick(S, now) && S.player && S.monsters) {
       var pts = [];
       for (var i = 0; i < S.monsters.length; i++) {
@@ -10488,6 +10488,10 @@ export var BroTown = function BroTown(_ref0) {
     var dist = f.dist, angle = f.angle;
     var S = stateRef.current;
     if (!S || dist <= 8) return;
+    /* v2.3.4357: the slingshot bow (`?manual=2`) pulls BACK -- the bro and his
+       sight point where the arrow will go, opposite the thumb (the knob still
+       follows the thumb: rKnobFollow above) */
+    if (manualOn()) angle = mcShotAngle(S, angle);
     var dirs = [['right', 0], ['down', Math.PI / 2], ['left', Math.PI], ['up', -Math.PI / 2]];
     var best = 'right', bestD = 99;
     for (var i = 0; i < dirs.length; i++) {
@@ -11696,6 +11700,18 @@ export var BroTown = function BroTown(_ref0) {
         bSwipe.lx = t.clientX; bSwipe.ly = t.clientY; bSwipe.lt = Date.now();
         /* v2.3.4357: manual combat -- a sword's stroke across the disc is a swing */
         if (manualOn() && stateRef.current && !bSwipe.toShield && !bSwipe.harvest && mcSwipeMove(stateRef.current, bSwipe.lt, t.clientX, t.clientY) === 'swing') mcMeleeSwipe();
+        /* ...and the slingshot bow (`?manual=2`) pulled back off the disc shows where its arrow
+           will go, as a pull on the stick does (rJoyAim): the disc does not aim by itself, and
+           a pull you cannot see the line of is a guess.  handleRBtnRelease lets the aim go. */
+        if (manualOn() && stateRef.current && mcBowSling(stateRef.current) && !bSwipe.toShield && !bSwipe.harvest) {
+          var _slDx = t.clientX - bSwipe.sx, _slDy = t.clientY - bSwipe.sy;
+          if (_slDx * _slDx + _slDy * _slDy > 64) {
+            var _slS = stateRef.current, _slA = mcShotAngle(_slS, Math.atan2(_slDy, _slDx));
+            _slS._aimAngle = _slA; _slS._lastAimAngle = _slA;
+            _slS._facing = Math.abs(Math.cos(_slA)) > Math.abs(Math.sin(_slA)) ? (Math.cos(_slA) > 0 ? 'right' : 'left') : (Math.sin(_slA) > 0 ? 'down' : 'up');
+            _slS._aiming = true; _slS._aimSrc = 'stick';
+          }
+        }
         /* v2.3.2472: and the disc's copy of that steer went with it. */
         /* ═══ v2.3.2254: SLIDE DOWN FROM ATTACK ONTO THE SHIELD ═══
            Owner: "I'd like it if I can just slide my finger down from the

@@ -21,7 +21,7 @@
  *      was; this file never writes the aim (a staff bolt's steering). */
 import fs from 'node:fs';
 import {
-  MANUAL, manualCombatWanted, setManualCombat, manualOn, mcFrame, mcSwipeStart, mcSwipeMove, mcSwipeEnd, mcWasQuick, mcAbort, mcAskShot,
+  MANUAL, manualCombatWanted, manualMode, manualSling, mcBowSling, mcShotAngle, setManualCombat, manualOn, mcFrame, mcSwipeStart, mcSwipeMove, mcSwipeEnd, mcWasQuick, mcAbort, mcAskShot,
   mcFireWaiting, mcFireDone, mcReady, mcReadyIn, mcMeleeAsk, mcSwingWaiting, mcSwingDone, mcAssist, mcArmToggle, mcArmed, mcTakeArmed, mcLockAllowed, mcShoots,
 } from '../../src/game/manualCombat.js';
 
@@ -42,7 +42,19 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
   check('1c `?manual=0` turns it off and forgets', manualCombatWanted('?x=2&manual=0', ls) === false && ls.getItem(MANUAL.KEY) === null && manualCombatWanted('', ls) === false);
   check('1d a look-alike is not the switch', manualCombatWanted('?notmanual=1', store()) === false && manualCombatWanted('?manual=12', store()) === false);
   check('1e no storage (a private window): the address still decides', manualCombatWanted('?manual=1', null) === true && manualCombatWanted('', null) === false);
-  setManualCombat(true); check('1f the page\'s own answer can be set for a test', manualOn() === true); setManualCombat(false);
+  setManualCombat(true); check('1f the page\'s own answer can be set for a test', manualOn() === true && manualSling() === false); setManualCombat(false);
+  /* the slingshot bow's variation: `?manual=2` */
+  const l2 = store();
+  check('1g `?manual=2` is manual combat with the slingshot bow, and is remembered as that', manualMode('?manual=2', l2) === 2 && manualCombatWanted('', l2) === true && l2.getItem(MANUAL.KEY) === '2' && manualMode('', l2) === 2);
+  check('1h `?manual=1` after it is the plain swipes again; `?manual=0` forgets either', manualMode('?manual=1', l2) === 1 && manualMode('', l2) === 1 && manualMode('?manual=0', l2) === 0 && manualMode('', l2) === 0 && manualMode('?manual=3', store()) === 0);
+  const B = bow(), St = { rpg: { activeSlot: 'staff' } }, Sw = sword();
+  setManualCombat(2);
+  check('1i the slingshot is the BOW\'s only: a staff stays a flick, a sword a stroke', manualOn() && manualSling() && mcBowSling(B) && !mcBowSling(St) && !mcBowSling(Sw));
+  const near = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b))) < 1e-9;
+  check('1j a bow pulled DOWN shoots UP, pulled left shoots right; a staff flicked up shoots up', near(mcShotAngle(B, Math.PI / 2), -Math.PI / 2) && near(mcShotAngle(B, Math.PI), 0) && near(mcShotAngle(B, 0.3), 0.3 - Math.PI) && mcShotAngle(St, -Math.PI / 2) === -Math.PI / 2);
+  setManualCombat(true);
+  check('1k without the variation a bow shoots the way it was flicked', !mcBowSling(B) && mcShotAngle(B, 0.7) === 0.7);
+  setManualCombat(false);
 }
 
 // ── 2. a flick (bow, staff) ──
@@ -195,6 +207,8 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
   check('10k targeting keeps no chosen lock, and no duel lock, with the switch', /if \(manualOn\(\)\) \{\s*\n\s*if \(S\.lockedTarget && !mcLockAllowed\(S\.lockedTarget\)\) S\.lockedTarget = null;\s*\n\s*\} else keepDuelLock\(S\);/.test(tg));
   const btn = read('../../src/ui/panels/SpecialButton.jsx');
   check('10l the special\'s button arms (and shows it), and is there whenever a weapon is in hand', /mcArmToggle\(Sm\)/.test(btn) && /if \(manualOn\(\)\) return true;/.test(btn) && /armed \? 'armed'/.test(btn));
+  check('10o the slingshot bow: the stick\'s drag, the disc\'s pull and the lift all turn the shot round through the one rule (mcShotAngle)',
+    /if \(manualOn\(\)\) angle = mcShotAngle\(S, angle\);/.test(bro) && /var ang = mcShotAngle\(S, Math\.atan2\(y - oy, x - ox\)\);/.test(bro) && /mcBowSling\(stateRef\.current\) && !bSwipe\.toShield/.test(bro));
   check('10m nothing is drawn for it: the three indicators are gone', !fs.existsSync(new URL('../../src/ui/panels/ManualGauge.jsx', import.meta.url)) && !/ManualGauge/.test(bro) && !/bt-mc-/.test(read('../../src/styles/game.css')));
   const srv = read('../src/combat.js');
   check('10n the worker\'s own floors are untouched by this change (nothing here attacks faster than the held attack did)', /if \(nowTs - cad\.n < 210\) return;/.test(srv));
