@@ -1,4 +1,4 @@
-# The state-machine sweep (2026-11-03) and its fixes (v2.3.4381, v2.3.4433)
+# The state-machine sweep (2026-11-03) and its fixes (v2.3.4381, v2.3.4433, v2.3.4461)
 
 ## What it was
 
@@ -96,43 +96,100 @@ leftover cleared inside a rule that already existed). Lessons: `docs/TRAPS.md`
 Most live flags here are `false` to go back; the two named `disable_*` are
 `true` to go back. `?barretry=0` is for one phone, in its address.
 
+## What shipped, third wave (2026-11-10, pull requests #1502 to #1509)
+
+Same columns as above. Lessons: `docs/TRAPS.md` §309-316.
+
+| PR | Tag | System | What | Kill switch | Suite |
+|----|-----|--------|------|-------------|-------|
+| #1502 | v2.3.4432 | session exits | a second login (a second tab, a quick relaunch) while your body is in a fight with another player counts as leaving: the body stays 20 s, hittable, and the new login waits on the "still in that fight" screen (or resumes from within 300 px) | `takeoverlinger` (`linger: false` also turns it off) | `takeover-linger` |
+| #1509 | v2.3.4455 | session exits | ...and a game that can be placed goes straight back into that body, where it stands, with its health, bag and fight: the server keeps the live body and sends `body_place` (cap `bodyTake`); until the phone stands at the body its moves are dropped; after 60 s it falls back to the wait | `bodytake` | `body-take`, `body-place`, phone `mp-bodytake` |
+| #1508 | v2.3.4454 | changing place | the half second of no damage on entering a place is not given mid-fight (a hit between players in the last 10 s) nor twice within 10 s, so hopping between places is no shield; a phone's own "I'm dead" still cannot stop the body staying (already closed by v2.3.4373, now tested) | `entrygrace` | `fight-dodges` |
+| #1503 | v2.3.4441 | quests | the Mayor's "Clear any dungeon" (`mayor_3`, 300 gold) is paid only for a clear on the server's own record (`lifeSkills.dungeonClears`); players already paid keep it | `disable_mayor3_check` (set it to turn the check off) | `mayor-dungeon`, `quests` |
+| #1504 | v2.3.4442 | duels; Auction House (phone); blocks (phone) | a refused duel accept is answered at once (both players when one is already in a duel; only the accepter when there is no live challenge); the same stack can no longer be listed twice by closing and reopening the sell card (the lock is on the item); a leftover block check removed | | `duel-drops`, `store-answer` §7, `blocked-asks` |
+| #1505 | v2.3.4452 | art loaders (phone) | a picture whose download failed or never answered is asked for again (capes, weapons, shields, the badges and pins over heads, armour mid-swing, the hat's hair clip, the head-piece tables, the memory saver's restore); four leftovers are freed (the stat scene's slime on a rejoin, a farm picture that lands after you left, a recolour freed mid-load, the dungeon entrance after a black-screen recovery) | phone: `?caperetry=0`, `?weaponretry=0`, `?shieldretry=0`, `?iconretry=0`, `?gearretry=0`, `?picsretry=0`, `?traitretry=0`; `?retrylooks=0` for all | `loader-retries` |
+
+The new message is `body_place` (in `PRIVILEGED_EVENTS`, handled in the
+phone's direct switch) and the new cap `bodyTake` (in `CAP_GATES`). The four
+server switches are `false` to go back except `disable_mayor3_check`, which
+is `true` to go back. The `?...=0` switches are for one phone, in its address.
+
 ## What is left
 
 This is a list, not a promise. The plan is `PLAN.md` on the storage branch.
-Updated v2.3.4433, after the second wave.
-
-**In flight on 2026-11-10:** a second login during a player fight takes over
-the body where it stands (v2.3.4432, `claude/sm-takeover-body`; the owner's
-decision below); the loaders' retries (`claude/sm-loader-retries`).
+Updated v2.3.4461, after the third wave. Nothing is in flight.
 
 **Not started, no decision needed:**
 - the rest of the silent refusals: harvest strikes, cooking, the gear swap
   of armour (V9a, V9b; TRAPS §284);
 - `stats_update` and the quest taps ignore the channel's `false` (TRAPS §287);
-- the player's trail reads the same unset `now` the pet did (TRAPS §294);
 - nine places still change zone by hand, five on the retired old map
   (TRAPS §304);
 - the bigger "one reset for a whole life" of a monster (`m.life`);
-- a stack listing whose card is closed and reopened while its answer is out
-  could go up twice (it needs the money lane's pending note);
 - the duel challenge card has no clock of its own (`REJOIN_NOT_YET`);
-- a phone's own `dead: true` turns the linger off (a modified phone only);
-- the small-bugs bundles' other items (VA, VB, VC); the feedback board's
-  typed id (VA).
+- a test that holds each quest's phone check to the server's goal, so the
+  two cannot drift apart (#1486, #1503);
+- a tab already in the world that reconnects mid-fight gets no `body_place`:
+  its next step decides (beside the body it carries on, far away it waits)
+  (#1509);
+- outside a fight, a takeover still skips the close's other duties (the
+  duel's away clock, the trade's cancel, party "away", PvP consent, the
+  chat-mute list, the daily-quest flush, `player_leave`); mostly on purpose,
+  so a reconnect does not cancel a trade (TRAPS §162, #1502);
+- the other six `*Preload.js` warm-ups push the same image URLs again on a
+  rejoin (likely shared by the browser; only the slime was a proven cost)
+  (#1505);
+- the small-bugs bundles' other items (VA, VB); the feedback board's typed
+  id (VA);
+- VC-3, the owner-only Ground and Object Studios (`public/tools/`, low
+  priority): one unreadable saved picture stops the page before Download and
+  Restore work; a restore resets the "made from" stamps and replaces sound
+  and name choices; the Object Studio's stage draws about 1.36 times too big
+  (#1505);
+- the stat scene's memo bit (M3-18, about 1.8 MB, kept on purpose) needs a
+  row in `docs/MEMORY-MAP.md` or a decision (#1505).
 
-**Decided by the owner (2026-11-10):**
-- a death pile survives a server update: built (v2.3.4384);
-- the colour fade between places stays OFF for now (TRAPS §305);
-- a second login during a player fight takes over the body where it stands
-  (being built as v2.3.4432);
+**Not started, waits until after the judges (decided, see below):**
 - the Auction House's refund-and-raise money fix (one write for the refund
-  and the listing) waits until after the judges;
-- the half second of no damage on a change between real places stays.
+  and the listing);
+- forging, hardening or equipping mid-fight: one fight-lock table;
+- the plan's larger "one door per system" work, including who decides a
+  change of place (the server placing you at the entry instead of taking
+  the phone's word) (#1508);
+- the identity fixes that hold whether or not one character may play in two
+  tabs (they touch login keys).
 
-**Waiting on the owner:** the questions are in plain words, each with its
-recommendation, in `docs/OWNER-LIST-2026-10-26.md` §10 (the shield, the
-dungeon's loading screen, quests, friends, monsters, pictures, sound, the
-Arena and others).
+**Not fixed on purpose:**
+- the player's trail reads the same unset `now` the pet did (TRAPS §294):
+  fixing it may turn on something nobody has seen (CLAUDE.md §3, TRAPS §305);
+- the retired Mayor quest `mayor_1` (50 gold) is still paid on the phone's
+  word, once, on old saves that have it in progress;
+- a look-palette set that failed is not asked for again (that visit draws
+  the older way, about 5.8 MB more a look), and a missing picture shows
+  nothing rather than a stand-in.
+
+**Decided (2026-11-10):**
+- a death pile survives a server update: built (v2.3.4384);
+- the colour fade between places stays OFF (TRAPS §305);
+- a second login during a player fight takes over the body where it stands:
+  built (v2.3.4455); v2.3.4432's wait screen is the fallback for a game that
+  cannot be placed;
+- the half second of no damage on entering a place stays for an honest
+  entry, but is not given mid-fight nor twice within 10 s (v2.3.4454);
+- one character per browser: a second tab takes the session over (in a
+  fight, it takes the body);
+- a quest reward is shown at once and taken back if the server says no;
+- the Mayor's "Clear any dungeon" is checked on the server: built
+  (v2.3.4441).
+
+Who decided what, and the questions still open, are in
+`docs/OWNER-LIST-2026-10-26.md` §10 (the shield, the dungeon's loading
+screen, friends, monsters, pictures, sound, the Arena and others).
+
+**Not measured:** the loaders' retries (v2.3.4452) were merged on their node
+tests and the memory budget check. The hour-long memory walk (`mp-memledger`
+with a rejoin, a farm leave and a dungeon recovery added) was not run: it is
+offered.
 
 **Already red on `main`, not the lanes' doing (2026-11-10):**
 - `node tools/world/test-world-core.mjs --check` fails 4 (the Town Hall
@@ -141,6 +198,9 @@ Arena and others).
 - `mp-farmmusic` step 4 (the frost land's music after the farm gate);
 - `mp-block` 10 of 11 and `mp-pvpshield` (both on the retired old map; the
   shield lane saw the same on `main`);
+- `mp-linger` step 4 (the countdown shows): a fresh browser takes 66 s to
+  start on the test box, longer than the body's 20 s (TRAPS §177); it fails
+  the same way on `main` before v2.3.4455, and now runs with `bodytake` off;
 - `node tools/art/head-bake.mjs --check` listed 49 stale head sheets on the
   orchestrator's machine, the same on `main` before any lane. Unconfirmed: it
   may be that machine's picture encoder.
@@ -158,7 +218,9 @@ Arena and others).
    and are told which lines sibling lanes touch. Before anything merges, the
    orchestrator merges every open lane branch together, in both orders, in a
    scratch `git worktree`, and runs precheck and the server suite on the
-   result.
+   result. A new cap goes on its own new line in `join.js`'s `caps` and
+   in `CAP_GATES` (TRAPS §316: two lanes that both put theirs first
+   conflicted twice in one day).
 4. **Lanes do not message the orchestrator.** It checks each wave once.
 5. **The reviewer reads every diff.** It caught a brief of the orchestrator's
    own that would have hidden live trades on a reconnect (TRAPS §278).

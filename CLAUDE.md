@@ -165,7 +165,9 @@ spec. Add a line here only for a new RULE every session must follow.
 - **Either side ships first.** The worker lists what it can do in
   `state_sync.caps`, and the client gates every new path on its cap. A new cap
   goes in `CAP_GATES` (precheck `cap-registry`); a cap that grows (rows, crops)
-  gates by its count (TRAPS §9). Every new server behaviour has a kill switch in
+  gates by its count (TRAPS §9). A new cap goes on its OWN new line in
+  join.js's `caps` and in `CAP_GATES`, never first on the old long line
+  (TRAPS §316). Every new server behaviour has a kill switch in
   the live flags (`liveops.js`), named in lower case (`liveops.test` §8).
 - **Deny by default.** A new client-to-server message is handled on purpose.
   Every type the server SENDS is in `PRIVILEGED_EVENTS` (`server/src/index.js`)
