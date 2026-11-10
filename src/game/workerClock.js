@@ -74,7 +74,7 @@ export function rebasePiles(piles, clock) {
     const d = off - l._wOff;
     if (Math.abs(d) < WORKER_CLOCK.REBASE_MS) continue;
     if (l.ts) l.ts -= d;
-    if (!l.dropped) {
+    if (!l.dropped && !l._leftWire) {   /* v2.3.4383: windows sent as time left are already this phone's */
       if (l.expiry) l.expiry -= d;
       if (l.ownerOnlyUntil) l.ownerOnlyUntil -= d;
       if (l._askAgainAt) l._askAgainAt -= d;

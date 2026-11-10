@@ -2491,6 +2491,9 @@ export function setupWebSocket(ctx) {
                      kept on screen meanwhile; a second no drops it as before
                      (game/lootAsk.js; review R1 W1.8: never a loop) */
                   if (msg.payload.reason === 'not-recipient' && !_rjPile._collected && notRecipientRetry(_rjPile, Date.now())) break;
+                  /* v2.3.4383: the pet's out-of-range is the pet's: the hand's
+                     ask and its fast tries are left alone (the pet keeps its 5 s) */
+                  if (msg.payload.viaPet && msg.payload.reason === 'out-of-range') break;
                   if (_rjPermanent) {
                     /* A pile already credited to us is mid-despawn (the
                        0.75 s pickup animation).  A losing race -- our pet's
@@ -3983,9 +3986,11 @@ export function setupWebSocket(ctx) {
          watchers with no share get coins=0 and the renderer falls back
          to the dim "[killer]'s loot" view via the recipients gate. */
       /* v2.3.3473: a drop's time left as a time on this phone's clock (null
-         for any other pile, which carries the worker's own times) */
+         for any other pile, which carries the worker's own times).
+         v2.3.4383: a death pile's too (server _deathLeftWire): right before
+         the first ping, when the worker's clock is not known yet */
       function _dropAt(p, field) {
-        if (!p || !p.dropped) return null;
+        if (!p || !(p.dropped || p.isDeathDrop)) return null;
         var left = Number(p[field]);
         return isFinite(left) && left >= 0 ? Date.now() + left : null;
       }
@@ -4021,6 +4026,8 @@ export function setupWebSocket(ctx) {
           killerName: p.killerName || 'Player',
           ts: _wT(p.ts) || Date.now(),
           _wOff: p.ts ? workerClock.offset() : undefined,
+          /* v2.3.4383: its windows came as time left: the rebase moves its ts only */
+          _leftWire: isDeath && isFinite(Number(p.left)) ? true : undefined,
           inventoryClaimed: !!p.inventoryClaimed,
           /* v2.3.1141: server-minted weapon drop riding the pile.
              Presence + tier + name only -- quality is withheld until
