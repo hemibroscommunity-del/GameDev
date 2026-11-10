@@ -755,9 +755,26 @@ export const devToolsMethods = {
       const r = await this._apInfo(new URL(request.url).searchParams.get('name'));
       return json(r, r.ok ? 200 : 404);
     }
+    /* v2.3.4545: WHAT PLAYERS DREW (charwatch.js): every character with a drawing, newest first, a page at a
+       time -- the Test panel's "Player drawings" page.  Read-only. */
+    if (request.method === 'GET' && path === '/dev/looks') {
+      const r = await this._watchLooks(new URL(request.url).searchParams);
+      return json(r, r.ok ? 200 : 500);
+    }
+    /* v2.3.4545: EVERY PLAYER'S ACCURACY, a day (accuracy.js) -- the Test panel's "Accuracy" box.  Read-only. */
+    if (request.method === 'GET' && path === '/dev/accuracy') {
+      const r = await this._accAdminDays(new URL(request.url).searchParams.get('days') || 14);
+      return json(r, r.ok ? 200 : 500);
+    }
     if (request.method !== 'POST') return null;
 
     const body = await request.json().catch(() => ({}));
+    /* v2.3.4545: "I have looked at these" -- the room's mark, not a character's (charwatch.js) */
+    if (path === '/dev/lookseen') {
+      const r = await this._watchSeen();
+      await this._adminLog({ op: 'lookseen', result: r });
+      return json(r, 200);
+    }
     const playerId = body && body.playerId;
     if (!playerId) return json({ ok: false, error: 'playerId required' }, 400);
 
@@ -784,6 +801,7 @@ export const devToolsMethods = {
     else if (path === '/dev/testmode') result = await this._testModeSet(playerId, body.on === true);   /* v2.3.3430: {on} -- the honesty checks off for this character (testmode.js) */
     else if (path === '/dev/dropage') result = this._dropDevAge(playerId, body);   /* v2.3.3473: {ms} -- this player's drops that much older (itemdrop.js) */
     else if (path === '/dev/revealbag') result = this._revealBagDev(playerId, body);   /* v2.3.4012: {grade} the next mystery drop's grade, or {grade, give} a "?" in the bag now (revealbag.js) */
+    else if (path === '/dev/lookwipe') result = await this._watchWipe(playerId);   /* v2.3.4545: a character's drawings removed, for everyone and for good (charwatch.js) */
     else return null;
 
     /* Same audit trail as every other mutating admin op: the owner can see

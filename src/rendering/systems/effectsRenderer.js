@@ -341,7 +341,7 @@ import { getFrame as getSlimeFrame, hasState as hasSlimeState, SLIME_BASE_ROW, S
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
 import { getRemnantsTexture as getSnowmanRemnantsTex, getSnowballTexture } from '../snowmanSprites.js'; /* v2.3.2217 */
 import { variantSpritesFor } from '../monsterVariantSprites.js';
-import { MONSTER_VARIANTS, ZONE_VARIANT_MAP, hitMaterialOf, hitFxTintOf /* v2.3.2923 */, isIntangible /* v2.3.3499: the whirlwind's catch is what it can hit */ } from '../../data/monsterVariants.js';
+import { MONSTER_VARIANTS, ZONE_VARIANT_MAP, hitMaterialOf, hitFxTintOf /* v2.3.2923 */, isIntangible /* v2.3.3499: the whirlwind's catch is what it can hit */, lookFeetPad /* v2.3.4511 */ } from '../../data/monsterVariants.js';
 import { drawArrowWound, drawArrowWoundLip, StuckArrowBaker } from '../arrowWound.js';
 import { pinnedArrow, arrowPinStats, arrowPinOnArt } from '../arrowPin.js';   /* v2.3.2930: stuck arrows pinned to the art, carried with the animation */   /* v2.3.2923: the puncture round a stuck shaft */
 import { ZONE_SHARDS } from '../../data/shards.js';
@@ -777,6 +777,7 @@ import { StormSparksFx } from '../stormSparksFx.js';   /* v2.3.4356: the storm e
 import { WaterAttackFx } from '../waterAttackFx.js';   /* v2.3.4355: the water frog's attack, drawn in code */
 import { ElemWindupFx } from '../elemWindup.js';   /* v2.3.3619: a monster's element, seen as it winds up */
 import { SootMarks } from '../sootMarks.js';   /* v2.3.3679: a slime's blast leaves soot */
+import { mcNumberScale } from '@/game/manualCombat.js';   /* v2.3.4520: a light free swing's number is smaller */
 
 /* v2.3.1713: the firemaking strip's frame box, shared by the body bake, the
    gear layers, the trait crowns and the remote stand-in — they all slice the
@@ -6502,7 +6503,9 @@ export class EffectsRenderer {
         const isDmg = isDamagePopup(dmg, t);
         const oldFontSize = dmg.crit ? DMG_CRIT_FONT_PX : DMG_FONT_PX;
         const baseFontSize = isDmg ? oldFontSize : DMG_FONT_PX;
-        const k = DMG_SCALE;
+        /* v2.3.4520: a light free swing's number is smaller, by the share the
+           worker said (`pw`; manualCombat.js mcNumberScale) -- a full one as ever */
+        const k = DMG_SCALE * (isDmg ? mcNumberScale(dmg.pw) : 1);
         const fontSize = baseFontSize * k;
         dmg._k = k;
         dmg._fs = fontSize;
@@ -8321,7 +8324,11 @@ export class EffectsRenderer {
           const c = _tc[i];
           if (!c || !Number.isFinite(c.x) || !Number.isFinite(c.y)) continue;
           const mx = (c.m && (c.m.renderX != null ? c.m.renderX : c.m.x));
-          const my = (c.m && (c.m.renderY != null ? c.m.renderY : c.m.y));
+          /* v2.3.4511: on a look's FEET, which for the water frog (and the rock golem and the rotcap) are
+             24 rows of its picture above its place: the ring sat 17 px south of the frog, a pale oval
+             apart from it -- the owner: "The water frog shadow is too far south of the sprite" */
+          const _arch = c.m && (c.m.archetype || c.m.type);
+          const my = (c.m && (c.m.renderY != null ? c.m.renderY : c.m.y)) - lookFeetPad(_arch) * MONSTER_SIZE_MULT * bossSizeK(c.m);
           if (!Number.isFinite(mx) || !Number.isFinite(my)) continue;
           const rx = (monsterMeleeHitRadius(c.m && (c.m.arch || c.m.archetype || c.m.type)) || 24) * bossSizeK(c.m) + 10;   /* v2.3.3556: x a boss's size */
           const ry = rx * 0.38;

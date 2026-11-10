@@ -362,6 +362,7 @@ export const liveopsMethods = {
       /* v2.3.3755: a memory saver turned off or on for every phone (clientoff.js) */
       if (name.startsWith('off_') && typeof this._clientOffChanged === 'function') this._clientOffChanged();
       if (name === 'disable_bigbags') this._syncBagCaps();   /* v2.3.4224 */
+      if (name === 'freeswing' && typeof this._freeSwingFlagChanged === 'function') this._freeSwingFlagChanged();   /* v2.3.4520: the free-swing trial, every phone told (freeswing.js) */
       return json({ ok: true, flags });
     }
     if (request.method === 'DELETE' && path === '/flags') {
@@ -376,6 +377,7 @@ export const liveopsMethods = {
         if (name === 'monstermoves' && typeof this._monsterMovesFlagChanged === 'function') this._monsterMovesFlagChanged();   /* v2.3.4011 */
         if (name.startsWith('off_') && typeof this._clientOffChanged === 'function') this._clientOffChanged();   /* v2.3.3755 */
         if (name === 'disable_bigbags') this._syncBagCaps();   /* v2.3.4224 */
+        if (name === 'freeswing' && typeof this._freeSwingFlagChanged === 'function') this._freeSwingFlagChanged();   /* v2.3.4520 */
       }
       return json({ ok: true, flags });
     }

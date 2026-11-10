@@ -81,6 +81,7 @@ import { deskWords } from '@/game/deskWords.js'; /* v2.3.4404 */
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { storeChatBus } from '@/ui/mobile/storeChatBus.js';   /* v2.3.2621 */
 import { petMailWords } from '@/data/trapping.js';   /* v2.3.3122: a pet in the mail */
+import { mcLightHit } from '@/game/manualCombat.js';   /* v2.3.4520: a light free swing rings no crit */
 import { achvMailPhrase } from '@/game/achievements.js';   /* v2.3.3527: an achievement in the mail (the arena's crown) */
 import { markStakePlaced, dropRefusedStake } from '@/game/arenaStakes.js';   /* v2.3.4421: a refused arena bet leaves the screen, a placed one never */
 import { noteWard } from '@/game/trapping.js';   /* v2.3.3123: a hit the pet out with you softened */
@@ -2900,6 +2901,7 @@ export function processGameEvent(type, payload, S, deps) {
                          which is how a crit could read as ordinary depending
                          on which path produced its number. */
                       crit: !!payload.isCrit,
+                      pw: payload.pw,   /* v2.3.4520: a free swing's share sizes its number (effectsRenderer) */
                       /* v2.3.2232: ...and a peer's arrow reads as an arrow.
                          Undefined until the worker names the slot -- better
                          no mark than OUR weapon on THEIR hit.
@@ -2971,12 +2973,13 @@ export function processGameEvent(type, payload, S, deps) {
                            v2.3.2233: ...and that now includes the crit, which
                            carried a bladed burst on bow and staff hits alike. */
                         { crit: !!payload.isCrit, iconKey: dmgIconForSlot(S, payload, true),
-                          special: !!S._ownSpecialRecent });  /* v2.3.2211; v2.3.2220 */
+                          special: !!S._ownSpecialRecent, pw: payload.pw /* v2.3.4520: a free swing's share sizes it */ });  /* v2.3.2211; v2.3.2220 */
                       /* v2.3.3343: your crit RINGS -- the grand slam's own
                          sample over the hit you heard land (it sounded like any
                          other hit; SOUND-GAPS).  The worker's roll, so a round
-                         trip after the contact sound. */
-                      if (payload.isCrit) cue('crit');
+                         trip after the contact sound.  v2.3.4520: not a light
+                         free swing's (a crit's extras are a full swing's) */
+                      if (payload.isCrit && !mcLightHit(payload.pw)) cue('crit');
                     }
                   } else if (payload.thorns) {
                     /* v2.3.1137: Thorns reflect is SERVER-rolled with no
@@ -4225,7 +4228,7 @@ export function processGameEvent(type, payload, S, deps) {
                     pushDmgPopup(S, _pvX, _pvY, 'Blocked', '#607D8B');
                     if (!payload.parried) cue('shieldBlock', 0.55);   /* a parry is the parry event's (the stagger's sound) */
                   } else if (typeof payload.dmgTaken === 'number' && payload.dmgTaken > 0) {
-                    if (payload.isCrit && !payload.collision && !tickKind(payload)) cue('crit');
+                    if (payload.isCrit && !payload.collision && !tickKind(payload) && !mcLightHit(payload.pw)) cue('crit');   /* v2.3.4520: not a light free swing's */
                     /* ═══ v2.3.3263: YOUR HIT ON A PLAYER READS AS YOUR HIT ON A MONSTER ═══
                        Owner: "the numbers for damage between PVP and PVE can be
                        exactly the same for each combat skill type ... Everything
@@ -4256,7 +4259,7 @@ export function processGameEvent(type, payload, S, deps) {
                       _pvDtk
                         ? { iconKey: _pvDlk ? _pvDlk.icon : undefined }
                         : { crit: !!payload.isCrit && !payload.collision, iconKey: payload.collision ? undefined : dmgIconForSlot(S, payload, true),
-                          special: !payload.ability && !!S._ownSpecialRecent });
+                          special: !payload.ability && !!S._ownSpecialRecent, pw: payload.pw /* v2.3.4520 */ });
                   }
                   /* Flash the opponent so a hit reads even off-centre, the same
                      feedback a monster gets -- not for a tick (a burn on them
