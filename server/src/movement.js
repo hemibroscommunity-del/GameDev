@@ -388,6 +388,9 @@ export const movementMethods = {
    * keys in the zone-keyed maps.  Bounded per message, cheap
    * (_ensureZoneMonsters stores an empty array for an unknown zone),
    * and strictly preferable to freezing a paying player.
+   * v2.3.4423: still the shape here; but the move refuses a CHANGE into
+   * a dead id, and no list is kept for one (dungeon.js _dungeonIdDead) --
+   * a phone already in a dead id names no change, so nobody freezes.
    *
    * NOT OWNERSHIP either -- instances carry only {id, zone, ownerId,
    * cfg, ...} with no member list, because they are SHARED by design:
@@ -504,9 +507,13 @@ export const movementMethods = {
        zone — they entered before the gate existed, or their quest was
        abandoned — and the honest answer is to let them walk (and leave),
        not to trap them there. */
+    /* v2.3.4423: ...and so is a CHANGE into a dungeon nobody opened
+       (dungeon.js _dungeonIdDead): no grace stamped, no lists made.  A
+       change only, for the same load-bearing reason as the lock's. */
     const _zoneRejected = (msg.z !== undefined && msg.z !== null
       && (!this._validZone(msg.z)
-          || (msg.z !== ps.z && !this._zoneUnlocked(ps, msg.z))));
+          || (msg.z !== ps.z && !this._zoneUnlocked(ps, msg.z))
+          || (msg.z !== ps.z && this._dungeonIdDead(msg.z))));
     const newZone = (msg.z === undefined || msg.z === null || _zoneRejected) ? ps.z : msg.z;
 
     // ═══ Movement validation (anti-teleport) ═══
