@@ -356,10 +356,10 @@ import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, genera
 /* v2.3.1923: the device's character roster — see src/networking/charRoster.js */
 import { rememberChar, ensureChar, activateChar, inRoster, adoptSharedPhrase, readRoster } from '@/networking/charRoster.js';   /* v2.3.3689: + readRoster, the picked row's look */
 import { applyCharacterRecord } from '@/game/characterRecord.js';   /* v2.3.3689: the picked row's look into the stores before the reload */
-import { ownedBy, stampOwner, rowKey, tabIdOff } from '@/game/tabIdentity.js';   /* v2.3.4560: which character this tab plays (wsClient _tabJoin) */
-/* v2.3.4560: `?tabid=0` -- the old road on this phone (the shared slot's row) */
+import { ownedBy, stampOwner, rowKey, tabIdOff } from '@/game/tabIdentity.js';   /* v2.3.4606: which character this tab plays (wsClient _tabJoin) */
+/* v2.3.4606: `?tabid=0` -- the old road on this phone (the shared slot's row) */
 const TAB_ID_OFF = tabIdOff();
-/* v2.3.4560: the key whose list row THIS tab stamps (its name, level, id): its
+/* v2.3.4606: the key whose list row THIS tab stamps (its name, level, id): its
    own, never the shared slot's -- with another tab switched to B, the slot's
    row was B's, and the 30 s heartbeat wrote A's name, level and id onto it
    (the sweep's V5) */
@@ -1188,7 +1188,7 @@ export var BroTown = function BroTown(_ref0) {
         return Math.random().toString(36).slice(2, 10);
       }
     })(),
-    /* v2.3.4560: the Login Key THIS tab plays, read as it starts (just after
+    /* v2.3.4606: the Login Key THIS tab plays, read as it starts (just after
        the initialiser above, which may have minted it).  Every join sends it,
        never the shared slot as it is later -- another tab may have moved that
        to another character (wsClient.js _tabJoin, game/tabIdentity.js).  It
@@ -4351,7 +4351,7 @@ export var BroTown = function BroTown(_ref0) {
           return null;
         }
       }();
-      /* v2.3.4560: bt_rpg is one slot every tab writes: another character's
+      /* v2.3.4606: bt_rpg is one slot every tab writes: another character's
          copy (another tab's, saved last) is not this one's warm start -- its
          spare armour went out in this join's stash seeds and was folded into
          this character's record (the sweep's V5) */
@@ -4396,7 +4396,7 @@ export var BroTown = function BroTown(_ref0) {
           recalcDerived(S.rpg);
         }
       }
-      stampOwner(S.rpg, S.myId);   /* v2.3.4560: every save of it says whose it is */
+      stampOwner(S.rpg, S.myId);   /* v2.3.4606: every save of it says whose it is */
       if (!S.rpg.inventory) S.rpg.inventory = {};
       if (!S.rpg.lifeSkills) S.rpg.lifeSkills = createDefaultLifeSkills();
       /* Migrate old saves — adds new skills, converts gathering → mining */
@@ -9013,7 +9013,7 @@ export var BroTown = function BroTown(_ref0) {
           try {
             var _rawHb = sessionStorage.getItem('bt_resume') || localStorage.getItem('bt_resume');
             var _snHb = _rawHb ? JSON.parse(_rawHb) : null;
-            /* v2.3.4560: this character's snapshot only -- the device-wide copy
+            /* v2.3.4606: this character's snapshot only -- the device-wide copy
                may be another tab's character, and this tab's look stamped onto
                it went out with the other's name */
             if (_snHb && ownedBy(_snHb, S.myId)) {
@@ -9052,7 +9052,7 @@ export var BroTown = function BroTown(_ref0) {
                throttled to one write per 30s, and the same guest guard
                applies for the same reason. */
             if (!/[?&]guest=1\b/.test(window.location.search)) {
-              var _hbPf = _tabRowKey(S);   /* v2.3.4560: this tab's own row, never the slot's */
+              var _hbPf = _tabRowKey(S);   /* v2.3.4606: this tab's own row, never the slot's */
               /* v2.3.3355: and a new key's id -- only the one a join got in
                  with (wsClient.js `_joinedId`): S.myId on a page that started
                  before it knew the key's id is a guess, and kept beside the
@@ -12476,7 +12476,7 @@ export var BroTown = function BroTown(_ref0) {
         _cachedRpg = JSON.parse(localStorage.getItem('bt_rpg'));
       }
     } catch (e) {}
-    /* v2.3.4560: ...this character's (another tab's saved last is not; its
+    /* v2.3.4606: ...this character's (another tab's saved last is not; its
        spare armour went out in this join's stash seeds -- the sweep's V5) */
     if (_cachedRpg && !ownedBy(_cachedRpg, S.myId)) _cachedRpg = null;
     S.rpg = (_cachedRpg && _cachedRpg.power !== undefined) ? _cachedRpg : createDefaultRpg();
@@ -12523,7 +12523,7 @@ export var BroTown = function BroTown(_ref0) {
        character's row — the row the player later taps to continue. */
     try {
       if (!/[?&]guest=1\b/.test(window.location.search)) {
-        var _rosterPf = _tabRowKey(S);   /* v2.3.4560: this tab's own row */
+        var _rosterPf = _tabRowKey(S);   /* v2.3.4606: this tab's own row */
         /* v2.3.3355: no id here -- the join is not in yet, and S.myId may be
            a guess for a new key (the heartbeat keeps the one it got in with) */
         if (_rosterPf) rememberChar(_rosterPf, { name: S.myName, level: (S.rpg && S.rpg.level) || 0 });
@@ -12547,7 +12547,7 @@ export var BroTown = function BroTown(_ref0) {
     try {
       var _snapJ = JSON.stringify({
         t: Date.now(),
-        _owner: S.myId,   /* v2.3.4560: whose it is (the resume reader refuses another's) */
+        _owner: S.myId,   /* v2.3.4606: whose it is (the resume reader refuses another's) */
         name: S.myName,
         avatar: S.myAvatar,
         bro: S.myBroData,
@@ -12653,7 +12653,7 @@ export var BroTown = function BroTown(_ref0) {
       if (_rawSpot) _spot = JSON.parse(_rawSpot);
       var _rawSnap = sessionStorage.getItem('bt_resume') || localStorage.getItem('bt_resume');
       if (_rawSnap) snap = JSON.parse(_rawSnap);
-      /* v2.3.4560: another character's snapshot (another tab's, or the one
+      /* v2.3.4606: another character's snapshot (another tab's, or the one
          before a switch) never seeds this one's name and look: the ordinary
          straight-in road takes it from the record (the sweep's V5, U2-3) */
       var S0 = stateRef.current;
@@ -12813,7 +12813,7 @@ export var BroTown = function BroTown(_ref0) {
       onPlay: function onPlay(phrase) {
         var switched = false;
         try { switched = activateChar(phrase); } catch (e) { switched = false; }
-        /* v2.3.4560: the slot already names the row (another tab switched to
+        /* v2.3.4606: the slot already names the row (another tab switched to
            it) but THIS page started on another key: it reloads like a switch,
            or its join would be the other character's (wsClient _tabJoin) */
         if (!switched && !TAB_ID_OFF) {

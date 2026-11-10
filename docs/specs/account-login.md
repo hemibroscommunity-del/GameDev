@@ -100,13 +100,13 @@ to touch the stored key. Both deploy orders are safe.
 |---|---|
 | `bt_passphrase` | unchanged — the credential |
 | `bt_passphrase_prev` | NEW — safety stash, written on account switch and on join_rejected regen |
-| `bt_rpg`, `bt_stats` | cleared on account switch (stale caches); v2.3.4560: the whole per-character list the picker clears (`CHAR_CACHE_KEYS`) and the tab's resume copy |
+| `bt_rpg`, `bt_stats` | cleared on account switch (stale caches); v2.3.4606: the whole per-character list the picker clears (`CHAR_CACHE_KEYS`) and the tab's resume copy |
 | `bt_device` | kept on switch (per-device nonce, not per-account) |
 
 Two tabs sharing localStorage: after a switch+reload, an already-open
 second tab still holds the old identity until ITS next reload — the
 same-id eviction semantics are unchanged; no code needed.
-v2.3.4560: that was not so -- every join read the shared key afresh, so the
+v2.3.4606: that was not so -- every join read the shared key afresh, so the
 other tab became the new character or, on an older key, made a level-1 copy
 of its own.  Each tab now joins with the key it started with, and a key moved
 to another character shows the takeover's banner: `docs/specs/tab-identity.md`.

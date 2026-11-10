@@ -1,6 +1,6 @@
 import { passphraseToId, idForKey, isNewKey, rememberKeyId } from './index.js';   /* v2.3.3355: a new key's id is kept */
 import { readShared, writeShared } from './rosterCookie.js';   /* v2.3.2110 */
-import { CHAR_CACHE_KEYS } from '../game/tabIdentity.js';   /* v2.3.4560: the one list */
+import { CHAR_CACHE_KEYS } from '../game/tabIdentity.js';   /* v2.3.4606: the one list */
 
 /* ═══ v2.3.1923: THE DEVICE'S CHARACTER ROSTER ═══
  *
@@ -45,7 +45,7 @@ const KEY = 'bt_chars';
    the reason v2.3.1861 gives: carrying these into another character is how
    someone else's progress shows up wearing your name.  One list, used by both
    activate and forget, because two copies drift.
-   v2.3.4560: the list lives in game/tabIdentity.js now, so the typed key
+   v2.3.4606: the list lives in game/tabIdentity.js now, so the typed key
    (networking/index.js) clears the same seven; exported here as before. */
 export { CHAR_CACHE_KEYS };
 

@@ -1,5 +1,5 @@
 import { keptQuery } from '../ui/keepSwitches.js';   /* v2.3.3888: the address's switches kept through the door */
-import { CHAR_CACHE_KEYS, CHAR_SESSION_KEYS } from '../game/tabIdentity.js';   /* v2.3.4560: the one list of a character's caches */
+import { CHAR_CACHE_KEYS, CHAR_SESSION_KEYS } from '../game/tabIdentity.js';   /* v2.3.4606: the one list of a character's caches */
 /* ═══ MULTIPLAYER SERVER — Cloudflare Durable Objects ═══ */
 
 /* Server URLs.
@@ -227,7 +227,7 @@ export function applyAccountLogin(phrase, id) {
     /* v2.3.3355: a new key with the id the door said it belongs to */
     setActiveKey(phrase, id);
     /* Stale per-character caches; bt_device stays (per-device nonce). */
-    /* v2.3.4560: ALL of them, as the list's pick clears them (charRoster.js
+    /* v2.3.4606: ALL of them, as the list's pick clears them (charRoster.js
        activateChar), and this tab's own resume copy: a typed key cleared two
        of the seven, so the next character showed the last one's bestiary,
        materials and zones, and its straight-in reload took the last one's

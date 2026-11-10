@@ -1,4 +1,4 @@
-# Which character a tab plays (v2.3.4560)
+# Which character a tab plays (v2.3.4606)
 
 The 2026-11-03 state-machine sweep's V5. The owner's decision (2026-11-10,
 OWNER-LIST section 10): **one character per browser; a second tab takes the
@@ -40,7 +40,7 @@ The rules are `src/game/tabIdentity.js` (no imports; node tests them).
 | `key_new` | `keyNewPlan`: the tab plays the new key; the slot takes it only while it still names this character; the roster renames this tab's own row (`swapKey` from the tab's key, never the slot's). |
 | The fallback | `fallbackKey`: an old key of THIS character only (the tab's memory, or the shared `bt_passphrase_old` when its id is this tab's). |
 | List rows | `rowKey`: the heartbeat and joinTown stamp the tab's own key's row, and only while that row is on the device (the slot, or the list): a row another tab removed is not put back. |
-| Caches | `bt_rpg` and the resume snapshot (`bt_resume`) carry `_owner`, the id they belong to (`stampOwner`); their readers (BroTown's state start, joinTown, the heartbeat, the resume effect) refuse another character's (`ownedBy`). One written before v2.3.4560 has no stamp and is read as before. |
+| Caches | `bt_rpg` and the resume snapshot (`bt_resume`) carry `_owner`, the id they belong to (`stampOwner`); their readers (BroTown's state start, joinTown, the heartbeat, the resume effect) refuse another character's (`ownedBy`). One written before v2.3.4606 has no stamp and is read as before. |
 | A typed key | Clears the same per-character list the picker clears (`CHAR_CACHE_KEYS`, one list now, and the tab's session copies). |
 | The picker | A row the slot already names, picked in a page that started on another key, reloads like a switch. |
 

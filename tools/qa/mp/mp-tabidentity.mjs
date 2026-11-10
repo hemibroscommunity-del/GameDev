@@ -1,4 +1,4 @@
-/* ═══ v2.3.4560: WHICH CHARACTER A TAB PLAYS -- TWO TABS, ONE BROWSER ═══
+/* ═══ v2.3.4606: WHICH CHARACTER A TAB PLAYS -- TWO TABS, ONE BROWSER ═══
  *
  * The 2026-11-03 sweep's V5 (src/game/tabIdentity.js).  Two tabs of one
  * browser share one Login Key slot.  Tab 1 plays A; tab 2 presses Create (or
