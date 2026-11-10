@@ -9657,7 +9657,7 @@ so two new caps never touch the same line. Do not reflow the old long line
 while you are there (that conflicts with everyone). **Receipt:** precheck
 `cap-registry` holds that the two lists agree; the line rule is review's.
 
-## 317. "The art is 256 colours and the game holds it as numbers, so loading it is cheap" (v2.3.4460)
+## 317. "The art is 256 colours and the game holds it as numbers, so loading it is cheap" (v2.3.4470)
 
 **The move.** A picture is a 256-colour file on disk and one byte a pixel in
 memory (colour numbers), so you take the way between them for granted: load
@@ -9697,7 +9697,7 @@ full-colour files of 24,000 to 42,000 colours, which nothing checked.
 
 **Receipt:** `strip-door` suite, `mp-stripgentle`, docs/specs/strip-gentle.md.
 
-## 318. "Each hitch has its fix, so the game is smooth" (v2.3.4460)
+## 318. "Each hitch has its fix, so the game is smooth" (v2.3.4470)
 
 Four reports in a row from the owner's iPhone were one kind of fault found one
 at a time: the townsfolk's bakes, the Blacksmith's fire goblin, a page of

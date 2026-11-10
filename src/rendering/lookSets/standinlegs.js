@@ -1,4 +1,4 @@
-/* ═══ v2.3.4460: THE STAND-INS' BODIES UNDER GREAVES, FOR THE ROLE BAKE (tools/art/role-bake.mjs) ═══
+/* ═══ v2.3.4470: THE STAND-INS' BODIES UNDER GREAVES, FOR THE ROLE BAKE (tools/art/role-bake.mjs) ═══
  *
  * The whole-game sweep of what holds the page (tools/qa/mp/mp-heldsweep.mjs,
  * docs/specs/held-sweep.md) found its longest single holds here: the sword's

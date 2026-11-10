@@ -75,7 +75,7 @@ function rowFor(bundle, colours) {
  *  way here): the caller keeps the canvas, as before.  On success the canvas
  *  is emptied. */
 export function stripAsNumbers(bundle, canvas, label, read) {
-  /* v2.3.4460: no canvas at all when the numbers came straight from the
+  /* v2.3.4470: no canvas at all when the numbers came straight from the
      strip's own 256-colour file (stripRead.js): `read` is then the picture */
   if (!picNumbersOn() || (!canvas && !read)) return null;
   /* v2.3.4400: `read`, the canvas's numbers already read a band at a time

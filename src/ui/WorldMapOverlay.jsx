@@ -300,7 +300,7 @@ function WorldMap({ stateRef, onClose }) {
       /* the ring pulses: a few frames a second is plenty */
       /* (v2.3.3057: the bros and monsters move too -- this 120 ms beat
          redraws them with the ring) */
-      /* v2.3.4460: ...and YOUR OWN move is no reason to redraw the whole map every frame.  It was: `pk` changes on
+      /* v2.3.4470: ...and YOUR OWN move is no reason to redraw the whole map every frame.  It was: `pk` changes on
          every frame you walk or ride, so the map was drawn again 60 to 120 times a second while it was open and you
          moved -- the sweep (mp-heldsweep) measured up to 16 ms a draw, the game running under it.  Your marker moves
          a pixel or less a frame at any zoom the map has: MAP_MOVE_MS between redraws is plenty.  A pan, a zoom or a
@@ -741,7 +741,7 @@ function drawMapDetail(g, ov, map, V, k, w, h, X, Y, t) {
 }
 
 /* ── drawing ── */
-/* v2.3.4460: the map's redraws while only you move: at most one every this many ms (ten a second) */
+/* v2.3.4470: the map's redraws while only you move: at most one every this many ms (ten a second) */
 const MAP_MOVE_MS = 100;
 function draw(g, w, h, dpr, map, V, P, facing, t, S) {
   /* v2.3.3315: `z` the map's own zoom, for what lies along the lands; `zr`

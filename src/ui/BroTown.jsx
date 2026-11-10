@@ -4881,7 +4881,7 @@ export var BroTown = function BroTown(_ref0) {
     } catch (e) { /* unpacked at once, as before */ }
     var _gameLoop = function gameLoop(_rafT) {
       frameRef.current = requestAnimationFrame(_gameLoop);
-      /* v2.3.4460: reads that wait for the graphics chip, before anything of this frame is sent to it (framePacer.js) */
+      /* v2.3.4470: reads that wait for the graphics chip, before anything of this frame is sent to it (framePacer.js) */
       runBeforeDraw();
       /* not this refresh (nothing counted, moved or drawn); never judged behind a loading screen */
       if (_framePacer && !_framePacer.take(typeof _rafT === 'number' ? _rafT : performance.now(), !S._zoneLoading && !!S.__introLiftedAt)) return;
@@ -8825,7 +8825,7 @@ export var BroTown = function BroTown(_ref0) {
         if (px === false || ++frames > WD_FENCE_FRAMES) { if (px !== false) _wdThumbDrop(job); whenDrawn(oldWay); return; }
         beforeDraw(poll);
       };
-      /* v2.3.4460: collected at the TOP of a later frame, before its drawing is sent -- after it, the collect waited
+      /* v2.3.4470: collected at the TOP of a later frame, before its drawing is sent -- after it, the collect waited
          for the whole frame just sent (framePacer.js beforeDraw has what this is worth, and where it cannot be shown) */
       beforeDraw(poll);
     }
@@ -8863,7 +8863,7 @@ export var BroTown = function BroTown(_ref0) {
                 glMs: +(askMs + collectMs).toFixed(2), imageMs: +imageMs.toFixed(2), frameWaitMs: +waitMs.toFixed(2), off: !!_wdOffGl });
               return;
             }
-            beforeDraw(poll);   /* v2.3.4460: as the watchdog collects it, at the top of a later frame */
+            beforeDraw(poll);   /* v2.3.4470: as the watchdog collects it, at the top of a later frame */
           };
           poll();
         });

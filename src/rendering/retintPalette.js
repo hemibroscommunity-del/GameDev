@@ -1,4 +1,4 @@
-/* ═══ v2.3.4460: A MONSTER IN ANOTHER COLOUR IS ITS PALETTE IN ANOTHER COLOUR ═══
+/* ═══ v2.3.4470: A MONSTER IN ANOTHER COLOUR IS ITS PALETTE IN ANOTHER COLOUR ═══
  *
  * A colour variant of a monster (the moss slime, the mire wisp:
  * monsterRecolor.js) is the same art retinted by brightness: every solid

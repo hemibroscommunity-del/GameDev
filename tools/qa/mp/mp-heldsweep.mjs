@@ -1,4 +1,4 @@
-/* ═══ THE WHOLE-GAME SWEEP: EVERYTHING THAT HOLDS THE PAGE, BY NAME (v2.3.4460) ═══
+/* ═══ THE WHOLE-GAME SWEEP: EVERYTHING THAT HOLDS THE PAGE, BY NAME (v2.3.4470) ═══
  *
  * The owner, 2026-11-10, after a week of catching them one at a time on his
  * iPhone (the townsfolk's bakes, the Blacksmith's fire goblin, the uneven

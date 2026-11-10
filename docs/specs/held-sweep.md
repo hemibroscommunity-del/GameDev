@@ -1,4 +1,4 @@
-# The whole-game sweep of what holds the page (v2.3.4460)
+# The whole-game sweep of what holds the page (v2.3.4470)
 
 The owner, 2026-11-10: *"You do a sweep of everything because I keep catching
 performance issues piecemeal and I want to make sure the optimizations are

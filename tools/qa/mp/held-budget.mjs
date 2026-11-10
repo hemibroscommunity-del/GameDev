@@ -1,4 +1,4 @@
-/* ═══ THE PAGE-HELD BUDGET (v2.3.4460) ═══
+/* ═══ THE PAGE-HELD BUDGET (v2.3.4470) ═══
  *
  * mp-heldsweep.mjs plays a tour of the game with a profiler on the phone and
  * names every job that holds the page's one thread.  These are its lines, the

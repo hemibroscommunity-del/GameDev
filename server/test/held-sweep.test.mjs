@@ -1,4 +1,4 @@
-/* ═══ v2.3.4460: THE WHOLE-GAME SWEEP OF WHAT HOLDS THE PAGE ═══
+/* ═══ v2.3.4470: THE WHOLE-GAME SWEEP OF WHAT HOLDS THE PAGE ═══
  *
  * The owner, 2026-11-10: "You do a sweep of everything because I keep
  * catching performance issues piecemeal and I want to make sure the

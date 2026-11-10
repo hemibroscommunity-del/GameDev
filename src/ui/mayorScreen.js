@@ -4,7 +4,7 @@
  * big arrow (ui/guideArrow.js) point at him: one sum, here, so the two always
  * agree.  No imports: the DOM and the game state only.
  */
-/* ═══ v2.3.4460: THE CANVAS'S PLACE ON THE PAGE IS REMEMBERED ═══
+/* ═══ v2.3.4470: THE CANVAS'S PLACE ON THE PAGE IS REMEMBERED ═══
    Since v2.3.4360 the Mayor's arrow and the coach's box ask this after EVERY
    frame (ui/afterFrame.js), and each ask searched the page for the canvas and
    measured it: a measurement makes the browser lay the whole page out there

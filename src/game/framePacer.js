@@ -214,7 +214,7 @@ export function whenDrawn(fn, raf) {
   ask(again);
 }
 
-/* ═══ v2.3.4460: A READ THAT WAITS FOR THE GRAPHICS CHIP IS TAKEN BEFORE THE FRAME IS DRAWN ═══
+/* ═══ v2.3.4470: A READ THAT WAITS FOR THE GRAPHICS CHIP IS TAKEN BEFORE THE FRAME IS DRAWN ═══
    The black-screen watchdog collects a 32 x 18 copy of the canvas a few
    frames after asking for it (BroTown.jsx _wdThumbCollect).  The collect is
    one of the few calls that makes the page WAIT -- for the graphics side to

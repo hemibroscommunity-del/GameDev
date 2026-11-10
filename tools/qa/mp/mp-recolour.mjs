@@ -1,4 +1,4 @@
-/* ═══ A MONSTER IN ANOTHER COLOUR IS ITS PALETTE IN ANOTHER COLOUR (v2.3.4460) ═══
+/* ═══ A MONSTER IN ANOTHER COLOUR IS ITS PALETTE IN ANOTHER COLOUR (v2.3.4470) ═══
  *
  * The whole-game sweep (mp-heldsweep, docs/specs/held-sweep.md) found the
  * colour variants of a monster (the blue slime of the Verdant Wilds, the moss

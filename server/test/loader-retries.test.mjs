@@ -466,7 +466,7 @@ await section(11, async () => {
     loadImg: () => new Promise((r) => { land = r; }), retintToCanvas: () => ({ width: 128 }), FRAME_W: 64, FRAME_H: 64,
     Texture: class { constructor() { made++; } static from() { made++; return { source: {} }; } }, Rectangle: class {},
     releaseCanvasSource: () => {},
-    /* v2.3.4460: the recolour asks the strip door first (its palette retinted, read off the page's thread); here
+    /* v2.3.4470: the recolour asks the strip door first (its palette retinted, read off the page's thread); here
        the door has no way in for this sheet (null), so the canvas's way is the one under test.  Letting the colour
        go lets its bundle go too. */
     loadTrackedStripRetinted: () => Promise.resolve(null), unloadBundle: (b) => { unloadedBundles.push(b); },

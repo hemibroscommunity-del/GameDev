@@ -516,7 +516,7 @@ jog-northeast-legs (17), jog-southwest-legs (18).
 (1,314 frames), the old bake and crop against the numbers, through the sharp
 read: at 1:1 worst 15, mean 3.0 levels, none past 16; at half size (how they are drawn) worst 15, mean 2.7, none past 16.
 
-### Under greaves (v2.3.4460)
+### Under greaves (v2.3.4470)
 
 "No greaves" was the one stand-in left to the per-look bake, and the
 whole-game sweep (held-sweep.md) found it the longest hold in the game: 597 ms

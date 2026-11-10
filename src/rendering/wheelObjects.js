@@ -276,7 +276,7 @@ async function loadPalettePage(url) {
   if (!src) return null;
   const sheet = new Spritesheet({ texture: new Texture({ source: src }), data: m.data, cachePrefix: CACHE_PREFIX });
   sheet.parseSync();
-  /* v2.3.4460: each frame's ground line came with the page, worked out on the worker from its numbers
+  /* v2.3.4470: each frame's ground line came with the page, worked out on the worker from its numbers
      (artBottoms.js) -- nothing is read on the page.  `?pagebases=0`: read here off the picture, as before. */
   if (m.bottoms) {
     /* QA (mp-pagebases): both ways, and how they differ */

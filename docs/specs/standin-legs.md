@@ -114,7 +114,7 @@ test.
   peer bake is the same for every facing, and a held clock makes a quiet peer
   look gone to the ghost sweep once it is let go.
 
-## From the numbers, with no bake (v2.3.4460)
+## From the numbers, with no bake (v2.3.4470)
 
 The clamp ran inside the per-look bake, on the page: all eight sheets at once
 when your greaves went on (597 ms on the QA box), and a sheet at a time the

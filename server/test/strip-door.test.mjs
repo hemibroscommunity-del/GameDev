@@ -1,4 +1,4 @@
-/* ═══ v2.3.4460: ONE DOOR FOR ART THAT LOADS WHILE YOU PLAY ═══
+/* ═══ v2.3.4470: ONE DOOR FOR ART THAT LOADS WHILE YOU PLAY ═══
  *
  * The owner, 2026-11-10, of the slowdown by the Blacksmith (the fire goblin's
  * look loading): "I thought fire goblin strips were converted into 256 color
@@ -184,7 +184,7 @@ const MON = join(ROOT, 'public/sprites/monsters');
   const door = zt.slice(zt.indexOf('export function loadTrackedStrip'), zt.indexOf('function _stripByImage'));
   check('4. the door reads the file\'s own numbers off the page\'s thread FIRST, wherever pictures are held as numbers', /if \(stripReadOn\(\) && picNumbersOn\(\) && !\(typeof window !== 'undefined' && window\.__btPicNumVerify === true\)\) \{\s*return readStrip\(url, fw, fh\)\.then\(\(m\) => \{/.test(door));
   check('4b. ...what the reader cannot read is unpacked on the page, as before; a zone left meanwhile keeps nothing', /if \(!m\) return _stripByImage\(bundle, url, fw, fh, gen\);/.test(door) && /if \(\(_gen\.get\(bundle\) \|\| 0\) !== gen\) return \[\];/.test(door)
-    && /return _stripByImage\(bundle, url, fw, fh, gen\);\s*\}\s*$/.test(door.slice(0, door.indexOf('/* ═══ v2.3.4460: THE SAME STRIP IN ANOTHER COLOUR'))));
+    && /return _stripByImage\(bundle, url, fw, fh, gen\);\s*\}\s*$/.test(door.slice(0, door.indexOf('/* ═══ v2.3.4470: THE SAME STRIP IN ANOTHER COLOUR'))));
   check('4c. ...in play, one strip\'s texture a slice, in the same line as the strips unpacked gently', /if \(stripFrameMs\(\) > 0\) return _inLine\(async \(\) => \{ await stripTurn\(\); return _stripOfNumbers\(bundle, url, fw, fh, gen, m\); \}\);/.test(door));
   check('4d. ...and its numbers go on the bundle\'s row of colours with no canvas at all', /const numSrc = stripAsNumbers\(bundle, null, url, \{ w: m\.w, h: m\.h, idx: m\.idx, pal: m\.pal \}\);/.test(door)
     && /if \(!picNumbersOn\(\) \|\| \(!canvas && !read\)\) return null;/.test(src('src/rendering/picsNumbers.js')));

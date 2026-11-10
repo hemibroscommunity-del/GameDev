@@ -37,7 +37,7 @@ const LOOK = `try {
 const LEAK_MAX = 14;
 /* ...and the least a pose's moments show together with the clamp off, for the
    check to mean anything */
-/* v2.3.4460: 15, was 25.  Facing south the two moments show 20 px with the clamp off since the bare stand-ins have
+/* v2.3.4470: 15, was 25.  Facing south the two moments show 20 px with the clamp off since the bare stand-ins have
    been drawn from their 8-bit numbers (v2.3.3757: the classifier here reads fewer of the cut colours as pink or
    blue) -- measured the same with this version's under-greaves sheets and with the old bake (`?legslook=0`), so the
    guard was red on main.  20 against 0 with the clamp on is still a leak seen. */
@@ -331,7 +331,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await letGo(A.page);
       }
     }
-    /* v2.3.4460: clamped by a bake, or drawn from the numbers kept under greaves (lookSets/standinlegs.js: no bake) */
+    /* v2.3.4470: clamped by a bake, or drawn from the numbers kept under greaves (lookSets/standinlegs.js: no bake) */
     const legsNow = await A.page.evaluate(() => { const p = window.__btStandInLegs(); return { clamped: p.clamped, looks: p.looks || [], legsLook: p.legsLook }; });
     const clamped = legsNow.clamped;
     rec.ok(`every sword and bow sheet is clamped under the greaves (${legsNow.looks.length} from the numbers kept under greaves, ${Object.keys(clamped).length} by a bake)`,
@@ -414,7 +414,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
           console.log(`    watcher sword ${facing}: on ${JSON.stringify(on)} off ${JSON.stringify(off)}`);
           rec.ok(`the watcher, the peer's sword ${facing} in greaves: at most ${LEAK_MAX} px of trousers or boots at or below the greaves' top (${on.leak}; ${off.leak} with the clamp off)`,
             on.greavesTop != null && on.leak <= LEAK_MAX && off.leak >= LEAK_SEEN, { on, off });
-          /* v2.3.4460: ...and nothing was baked for it on the watcher's page: the peer's body under greaves is
+          /* v2.3.4470: ...and nothing was baked for it on the watcher's page: the peer's body under greaves is
              their look's row over the numbers kept for it (with `?legslook=0`, the old way: a bake a sheet) */
           const pb = await B.page.evaluate(() => { const p = window.__btStandInLegs(); return { peerBakes: p.peerBakes, legsLook: p.legsLook }; });
           rec.ok(`the watcher baked no body for the peer's swing under greaves (${pb.peerBakes} baked${pb.legsLook ? '' : '; the old way was asked for: one or more'})`,

@@ -7,7 +7,7 @@
  * and no import, so that:
  *   - packTrimmed, packTrimmedSliced (the same pack a cell at a time) and
  *     stripPack.js (the same pack of a 256-colour file's own numbers, off
- *     the page's thread: v2.3.4460) follow the very same rules and cannot
+ *     the page's thread: v2.3.4470) follow the very same rules and cannot
  *     drift;
  *   - node can test them (server/test/strip-slices.test.mjs).
  * The numbers are gearSheets' own: PAD 4 px round the art, every edge
@@ -38,7 +38,7 @@ export function trimScanCell(data, stride, ox, fw, fh) {
 }
 /** The same scan of a cell of colour NUMBERS (`idx`, a byte a pixel, `stride`
  *  a row; `alpha[number]` each colour's alpha), for a strip read straight
- *  from its 256-colour file (stripPack.js, v2.3.4460).  A pixel is art where
+ *  from its 256-colour file (stripPack.js, v2.3.4470).  A pixel is art where
  *  its colour's alpha is not 0, exactly as trimScanCell reads RGBA bytes. */
 export function trimScanCellIdx(idx, stride, ox, fw, fh, alpha) {
   let x0 = fw, y0 = fh, x1 = -1, y1 = -1, sx = -1, sy = -1;

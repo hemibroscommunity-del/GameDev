@@ -410,7 +410,7 @@ size?): **YES**. "Dead" is the server's word since v2.3.4373 (above).
   - **"I thought fire goblin strips were converted into 256 color art like
     everything should be"** (the owner, told the above; then "make sure
     that's a system going forward"). They were, and held as numbers: the
-    waste was the way in. v2.3.4460 reads a strip's own numbers from its
+    waste was the way in. v2.3.4470 reads a strip's own numbers from its
     file off the page's thread (`stripRead.js`, `stripPack.js`): the page's
     work for the fire goblin's look 198 ms before, 20 ms now, the picture the
     same. Eight snowman strips that were NOT 256-colour files are converted.
@@ -435,7 +435,7 @@ size?): **YES**. "Dead" is the server's word since v2.3.4373 (above).
   - The same uneven step is on computers too, so this is part of A2's "not
     smooth". A2 stays open for what a computer's graphics chip costs.
 
-## Smooth on every device: item A4, the whole-game sweep (v2.3.4460)
+## Smooth on every device: item A4, the whole-game sweep (v2.3.4470)
 
 The owner, 2026-11-10: "You do a sweep of everything because I keep catching
 performance issues piecemeal and I want to make sure the optimizations are

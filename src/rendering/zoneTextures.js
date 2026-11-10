@@ -49,8 +49,8 @@ import { packTrimmed, packTrimmedSliced } from './gearSheets.js';   /* v2.3.2870
 import { holdOnceDrawn, forgetHeld, numbersOfSliced, numbersOf } from './heldNumbers.js';   /* v2.3.3699: held once drawn, as colour numbers */
 import { stripAsNumbers, releaseBundleNumbers, picNumbersOn } from './picsNumbers.js';   /* v2.3.3715: ?picnumbers, colour numbers on the chip */
 import { noteMade } from '../debug/madeLog.js';   /* v2.3.4400: a strip packed on the page says its name and its time */
-import { readStrip, stripReadOn } from './stripRead.js';   /* v2.3.4460: a strip read from its 256-colour file's own numbers, off the page's thread */
-import { retintPalette } from './retintPalette.js';   /* v2.3.4460: a strip in another colour is its palette in another colour */
+import { readStrip, stripReadOn } from './stripRead.js';   /* v2.3.4470: a strip read from its 256-colour file's own numbers, off the page's thread */
+import { retintPalette } from './retintPalette.js';   /* v2.3.4470: a strip in another colour is its palette in another colour */
 
 /* bundle name -> the set of URLs loaded under it.  A Set, so a re-entered zone
    re-registering the same sheet costs one entry rather than a growing list. */
@@ -98,7 +98,7 @@ export function loadTracked(bundle, url) {
  * of its colour numbers where they are on, see below). */
 export function loadTrackedStrip(bundle, url, fw, fh) {
   const gen = _gen.get(bundle) || 0;
-  /* ═══ v2.3.4460: FIRST, FROM THE FILE'S OWN NUMBERS, OFF THE PAGE'S THREAD ═══
+  /* ═══ v2.3.4470: FIRST, FROM THE FILE'S OWN NUMBERS, OFF THE PAGE'S THREAD ═══
      The owner: "I thought fire goblin strips were converted into 256 color
      art like everything should be."  They are, and they are held as colour
      numbers; but the way in unpacked each file to full colour, cropped and
@@ -122,7 +122,7 @@ export function loadTrackedStrip(bundle, url, fw, fh) {
   }
   return _stripByImage(bundle, url, fw, fh, gen);
 }
-/* ═══ v2.3.4460: THE SAME STRIP IN ANOTHER COLOUR, STILL FROM ITS NUMBERS ═══
+/* ═══ v2.3.4470: THE SAME STRIP IN ANOTHER COLOUR, STILL FROM ITS NUMBERS ═══
    A colour variant of a monster (monsterRecolor.js: the moss slime, the mire
    wisp) was its sheets unpacked on a canvas on the page, every pixel
    rewritten and the full-colour copy kept: 23 ms a sheet as the look came in

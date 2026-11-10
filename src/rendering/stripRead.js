@@ -1,4 +1,4 @@
-/* ═══ v2.3.4460: A STRIP READ OFF THE PAGE'S THREAD (the page's side) ═══
+/* ═══ v2.3.4470: A STRIP READ OFF THE PAGE'S THREAD (the page's side) ═══
  *
  * stripPack.js has the why.  This asks the reader's worker (png8Worker.js,
  * the one the Wheel's object sheets and the farm's pictures are read on) for
