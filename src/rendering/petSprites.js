@@ -16,7 +16,7 @@
 import { Assets, Rectangle, Texture } from 'pixi.js';
 import { PET_SHEET } from '../data/petSheet.js';
 
-const URL = PET_SHEET.url + '?v=2.3.4358';   /* v2.3.3558: the slime pets' shine mended (tools/mend_slime_shine.py); the two must match */
+const URL = PET_SHEET.url + '?v=2.3.4359';   /* v2.3.3558: the slime pets' shine mended (tools/mend_slime_shine.py); the two must match */
 let _tex = null;
 let _loading = null;
 const _frames = Object.create(null);   /* base + ':' + dir -> Texture[] */

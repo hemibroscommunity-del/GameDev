@@ -158,7 +158,7 @@ def cut_sheet(sheet_path, out_dir, sides, frames, death_frames, plate_x, rest_w,
         for i, c in enumerate(cells):
             s.paste(c, (i * CELL, 0))
         s.save(os.path.join(tmp, name + '.png'))
-    subprocess.check_call(['node', os.path.join(REPO, 'tools', 'art', 'strip256.mjs'), tmp, out_dir] + sorted(made))
+    subprocess.check_call(['node', os.path.join(REPO, 'tools', 'art', 'strip256.mjs'), '--shared', tmp, out_dir] + sorted(made))
     for name in made:
         os.remove(os.path.join(tmp, name + '.png'))
     os.rmdir(tmp)

@@ -25,7 +25,7 @@ import { loadTrackedStrip, unloadBundle } from './zoneTextures.js';
 const FRAME_W = 256;
 const FRAME_H = 256;
 /* Bump on every change to the pictures, so the edge cache serves the new ones. */
-const SPRITE_VERSION = '2.3.4358';
+const SPRITE_VERSION = '2.3.4359';   /* v2.3.4359: re-cut on the monster's one shared list of 256 colours */
 const DIR = '/sprites/monsters/rock-golem';
 const BUNDLE = 'rockGolem';
 

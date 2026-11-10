@@ -14,10 +14,11 @@
  * `g` is the body it is drawn on (world px): R its half-width, H how high
  * its middle is above the point it is given at (an eye: its feet; a shot: 0,
  * the ball itself), k how much bigger its pieces are.  Each piece comes back
- * as an offset from that point (x right, y down), its alpha, its scale (of
- * the look's `size`) and its rotation.
+ * as an offset from that point (x right, y down), its cell of the picture,
+ * whether it is flipped, and how lit.  v2.3.4359: hard pixels -- a piece is
+ * never turned or scaled (the owner: "avoid marking cartoonish shapes").
  */
-import { STORM_LOOKS, STORM_FX } from '../data/stormSparks.js';
+import { STORM_LOOKS, STORM_FX, STORM_WAYS, boltWay } from '../data/stormSparks.js';
 
 const TAU = Math.PI * 2;
 
@@ -33,11 +34,20 @@ export function hash01(a, b) {
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const easeOut = (t) => 1 - (1 - t) * (1 - t);
 
-function put(out, n, shape, dx, dy, a, s, r) {
+/* a piece: which cell of the picture, where, flipped or not (`fx`, `fy`: 1
+   or -1), and lit or not.  Never turned and never scaled (v2.3.4359: hard
+   pixels) -- lightning is ON or half on, it does not fade smoothly. */
+function put(out, n, shape, dx, dy, a, fx, fy) {
   let p = out[n];
-  if (!p) p = out[n] = { shape: '', dx: 0, dy: 0, a: 0, s: 1, r: 0 };
-  p.shape = shape; p.dx = dx; p.dy = dy; p.a = a < 0 ? 0 : a > 1 ? 1 : a; p.s = s; p.r = r;
+  if (!p) p = out[n] = { shape: '', dx: 0, dy: 0, a: 0, fx: 1, fy: 1 };
+  p.shape = shape; p.dx = dx; p.dy = dy; p.a = a < 0.2 ? 0 : a >= 0.75 ? 1 : 0.5; p.fx = fx || 1; p.fy = fy || 1;
   return n + 1;
+}
+/* a bolt or an arc lying along `angle`: its baked cell, and its flips (the
+   second flip is free variety: a number 0..1 says which way up) */
+function lie(kind, angle, h) {
+  const w = boltWay(angle);
+  return [STORM_WAYS[kind][w.way], w.flip, h < 0.5 ? 1 : -1];
 }
 
 /** A crackle's pieces at `now` ms (`kind`: 'aura' on an eye, 'ball' on its
@@ -52,17 +62,20 @@ export function cracklePieces(kind, g, now, seed, out) {
   const slot = Math.floor(t / STORM_FX.SLOT_MS);
   const phase = (t - slot * STORM_FX.SLOT_MS) / STORM_FX.SLOT_MS;
   let n = 0, q = 0;
-  for (const [shape, count, size] of look.pieces) {
+  for (const [kind, count] of look.pieces) {
     for (let i = 0; i < count; i++, q++) {
       const key = (slot * 16 + q) | 0;
       const lit = hash01(seed, key) < look.duty;
       const a = hash01(seed, key + 0x4000) * TAU;
-      const r = g.R * (shape === 'spark' ? 0.9 + 0.5 * hash01(seed, key + 0x8000) : 0.55 + 0.45 * hash01(seed, key + 0x8000));
-      /* an arc lies ACROSS the body where it jumped (turned to the body's
-         edge there), a spark any way up; bright as it jumps, dimmer as it holds */
-      const rot = shape === 'spark' ? a * 2 : a + Math.PI / 2 + (hash01(seed, key + 0xC000) - 0.5) * 0.9;
-      n = put(out, n, shape, Math.cos(a) * r, -g.H + Math.sin(a) * r * 0.92,
-        lit ? (phase < 0.45 ? 1 : 0.55) : 0, (size || 1) * (0.8 + 0.4 * hash01(seed, key + 0x2000)) * k, rot);
+      const h = hash01(seed, key + 0x8000);
+      const r = g.R * (kind === 'spark' ? 0.9 + 0.5 * h : 0.55 + 0.45 * h);
+      /* bright as it jumps, half as it holds */
+      const alpha = lit ? (phase < 0.45 ? 1 : 0.5) : 0;
+      if (kind === 'spark') { n = put(out, n, STORM_WAYS.spark[h < 0.5 ? 0 : 1], Math.cos(a) * r, -g.H + Math.sin(a) * r * 0.92, alpha, 1, 1); continue; }
+      /* an arc lies ACROSS the body where it jumped (along the body's edge
+         there: a quarter turn from the way out) */
+      const [cell, fx, fy] = lie('arc', a + Math.PI / 2, hash01(seed, key + 0xC000));
+      n = put(out, n, cell, Math.cos(a) * r, -g.H + Math.sin(a) * r * 0.92, alpha, fx, fy);
     }
   }
   return n;
@@ -84,21 +97,22 @@ export function zapPieces(g, age, seed, out) {
   const fade = Math.pow(1 - t, 0.8);
   const turn = hash01(seed, 5) * TAU;
   let n = 0, q = 0;
-  for (const [shape, count, size] of look.pieces) {
+  for (const [kind, count] of look.pieces) {
     for (let i = 0; i < count; i++, q++) {
       const h = hash01(seed, q * 3 + 11);
-      const a = turn + (i / count) * TAU + (h - 0.5) * 0.7 + (shape === 'fork' ? 0.5 : 0);
-      if (shape === 'spark') {
+      const a = turn + (i / count) * TAU + (h - 0.5) * 0.5;
+      if (kind === 'spark') {
         /* thrown clear, out past the lightning */
         const d = g.R * 0.5 + (reach * (0.75 + 0.5 * h)) * easeOut(t);
-        n = put(out, n, shape, Math.cos(a) * d, -g.H + Math.sin(a) * d * 0.92, clamp01(1.4 * (1 - t)), (size || 1) * (0.7 + 0.5 * h) * k, a * 3 + t * 6);
+        n = put(out, n, STORM_WAYS.spark[h < 0.5 ? 0 : 1], Math.cos(a) * d, -g.H + Math.sin(a) * d * 0.92, clamp01(1.4 * (1 - t)), 1, 1);
         continue;
       }
-      /* a bolt stands off the body, pointing away from it, and jumps out to
-         its reach in the first third */
-      const d = g.R * 0.55 + (reach - g.R * 0.55) * (shape === 'fork' ? 0.82 : 0.6) * easeOut(clamp01(t / 0.35));
-      const lit = hash01(seed, flick * 32 + q) > 0.3 ? 1 : 0.35;
-      n = put(out, n, shape, Math.cos(a) * d, -g.H + Math.sin(a) * d * 0.92, lit * fade, (size || 1) * (0.85 + 0.35 * h) * k, a - Math.PI / 2);
+      /* a bolt stands off the body, lying along the way out from it, and
+         jumps out to its reach in the first third (every third one further) */
+      const d = g.R * 0.55 + (reach - g.R * 0.55) * (i % 3 === 0 ? 0.82 : 0.6) * easeOut(clamp01(t / 0.35));
+      const lit = hash01(seed, flick * 32 + q) > 0.3 ? 1 : 0.5;
+      const [cell, fx, fy] = lie('bolt', a, h);
+      n = put(out, n, cell, Math.cos(a) * d, -g.H + Math.sin(a) * d * 0.92, fade > 0.25 ? lit : fade > 0.08 ? 0.5 : 0, fx, fy);
     }
   }
   return n;

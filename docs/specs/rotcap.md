@@ -92,10 +92,13 @@ same kind of work.
 ## Memory
 
 The two strips are 32 cells, loaded once for both monsters as you walk toward
-the Poison Forest and let go behind you: 3.5 MB on the graphics chip once
-cropped (measured, `mp-rotcap` section 1). The Poison Forest used to hold the
-old fishman's four pictures (about 1 MB) and the global slime's sheets (held
-everywhere anyway), so this is about 2.5 MB more there. No memory-check line
+the Poison Forest and let go behind you, held as colour numbers: **0.87 MB on
+the graphics chip** (measured, `mp-rotcap` section 1; as plain pictures they
+would be 3.5). Its pictures share one list of 256 colours, which is what lets
+the game hold them that way (`tools/art/strip256.mjs --shared`,
+`docs/specs/water-frog.md` Memory). The Poison Forest used to hold the old
+fishman's four pictures (about 1 MB) and the global slime's sheets (held
+everywhere anyway), so this is no more there than before. No memory-check line
 moved: `mp-membudget` fights at the Flame Fields and reads none of it.
 
 ## Tests

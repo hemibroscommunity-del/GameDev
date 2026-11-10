@@ -17,17 +17,19 @@
  *          (S.slimeProjectiles, by who threw it: monsterShots.js)
  * Nothing new on the wire; the worker decides nothing more.
  *
- * WHERE and HOW: as the element wind-ups and the water attack are: on the
- * projectiles layer, over everything that stands; POOL sprites made once in
- * one Container added once, every one cut from ONE picture drawn in code
- * (stormSparkShapes.js).  A frame only moves pieces, turns them, sizes them
- * and sets their alpha (0 for the ones not used) and their cell of that one
- * picture: nothing is ever added, removed, hidden or re-blended, so the
- * layer's draw list is never rebuilt for it (TRAPS §218).
+ * WHERE and HOW: as the water attack is: on the projectiles layer, over
+ * everything that stands; POOL sprites made once in one Container added once,
+ * every one cut from ONE small picture of HARD PIXELS (v2.3.4359, the owner:
+ * "avoid marking cartoonish shapes ... pixelation similar to how you made the
+ * flame effects": stormSparkShapes.js has the pixels), sampled nearest.  A
+ * frame only places pieces on the pixel grid, flips them and sets their alpha
+ * (0 for the ones not used) and their cell of that one picture: never turned,
+ * never scaled off the grid, nothing ever added, removed, hidden or
+ * re-blended, so the layer's draw list is never rebuilt for it (TRAPS §218).
  *
  * The picture is made on the loading screen (warmStormSparks, in
- * preloadWorldAnimations: the law), 192 x 48 px, ~37 KB, kept for the page as
- * an image of itself (keepAsImage: nothing draws into it again).
+ * preloadWorldAnimations: the law), about 80 x 19 px (6 KB), kept for the
+ * page as an image of itself (keepAsImage: nothing draws into it again).
  *
  * `?nostormfx` leaves it out (the eye alone); `window.__btStormSparks()` is
  * the QA probe.
@@ -37,7 +39,7 @@ import { keepAsImage } from './keepAsImage.js';
 import { STORM_LOOKS, STORM_SHAPES, STORM_FX } from '@/data/stormSparks.js';
 import { cracklePieces, zapPieces, zapOver } from '@/game/stormSparks.js';
 import { seedOfId, windupSizeK } from '@/game/elemWindup.js';
-import { STORM_SHAPE_DRAW } from './stormSparkShapes.js';
+import { STORM_RAMP, STORM_PIXELS } from './stormSparkShapes.js';
 import { MONSTER_VARIANTS } from '@/data/monsterVariants.js';
 import { shotThrowerArch } from '@/data/monsterShots.js';
 import { monsterTorsoY } from '@/data/gameSystems.js';
@@ -45,28 +47,45 @@ import { monsterDrawScale } from '@/game/combatHelpers.js';
 
 let _cells = null;      /* shape -> Texture, cut from one source */
 
-/** The one picture every piece is cut from.  On the loading screen; made
- *  here on first use only if that never ran (a test page). */
+/** The one picture every piece is cut from: each cell's pixels written one by
+ *  one from its map of letters (stormSparkShapes.js), in a row, a clear pixel
+ *  between cells -- and sampled NEAREST, so a pixel drawn bigger is a bigger
+ *  square (campfireFx.js's way).  On the loading screen; made here on first
+ *  use only if that never ran (a test page). */
 export function warmStormSparks() {
   if (_cells || typeof document === 'undefined') return;
   try {
-    const C = STORM_FX.CELL;
+    let W = 1, H = 1;
+    const at = Object.create(null);
+    for (const name of STORM_SHAPES) {
+      const rows = STORM_PIXELS[name];
+      at[name] = { x: W, w: rows[0].length, h: rows.length };
+      W += rows[0].length + 1;
+      H = Math.max(H, rows.length + 2);
+    }
     const cv = document.createElement('canvas');
-    cv.width = C * STORM_SHAPES.length; cv.height = C;
+    cv.width = W; cv.height = H;
     const g = cv.getContext('2d');
-    STORM_SHAPES.forEach((name, i) => {
-      g.save();
-      g.translate(i * C, 0);
-      g.beginPath(); g.rect(0, 0, C, C); g.clip();
-      try { STORM_SHAPE_DRAW[name](g, C); } catch (e) { /* a shape that cannot draw is an empty cell */ }
-      g.restore();
-    });
+    const img = g.createImageData(W, H);
+    for (const name of STORM_SHAPES) {
+      const rows = STORM_PIXELS[name], c = at[name];
+      for (let y = 0; y < c.h; y++) for (let x = 0; x < c.w; x++) {
+        const ink = STORM_RAMP[rows[y][x]];
+        if (!ink) continue;
+        const o = ((y + 1) * W + c.x + x) * 4;
+        img.data[o] = (ink[0] >> 16) & 255; img.data[o + 1] = (ink[0] >> 8) & 255; img.data[o + 2] = ink[0] & 255; img.data[o + 3] = ink[1];
+      }
+    }
+    g.putImageData(img, 0, 0);
     const base = Texture.from(cv);
-    /* made once and never drawn into again: kept as an image of itself
-       (keepAsImage.js, TRAPS §253), so a rebuilt renderer has it back */
-    if (base && base.source) keepAsImage(base.source, Cache);
+    if (base && base.source) {
+      base.source.scaleMode = 'nearest';
+      /* made once and never drawn into again: kept as an image of itself
+         (keepAsImage.js, TRAPS §253), so a rebuilt renderer has it back */
+      keepAsImage(base.source, Cache);
+    }
     const cells = Object.create(null);
-    STORM_SHAPES.forEach((name, i) => { cells[name] = new Texture({ source: base.source, frame: new Rectangle(i * C, 0, C, C) }); });
+    for (const name of STORM_SHAPES) cells[name] = new Texture({ source: base.source, frame: new Rectangle(at[name].x, 1, at[name].w, at[name].h) });
     _cells = cells;
   } catch (e) { _cells = null; }
 }
@@ -141,19 +160,21 @@ export class StormSparksFx {
     return true;
   }
 
-  /* the pieces in the buffer, n of them, drawn at (x, y): how many sprites used */
-  _draw(used, n, x, y, size) {
-    const px = size / STORM_FX.CELL;
+  /* the pieces in the buffer, n of them, drawn at (x, y): how many sprites
+     used.  `k`: an art pixel is PX world px, a whole multiple of it on a big
+     monster; every piece is placed on that grid, never between two pixels,
+     flipped where it says and never turned (v2.3.4359: hard pixels). */
+  _draw(used, n, x, y, k) {
+    const px = STORM_FX.PX * Math.max(1, Math.round(k || 1));
     let lit = 0;
     for (let q = 0; q < n && used < this.pool.length; q++) {
       const p = this._buf[q];
       const sp = this.pool[used++];
       const tex = _cells[p.shape];
       if (tex && sp.texture !== tex) sp.texture = tex;
-      sp.x = x + p.dx;
-      sp.y = y + p.dy;
-      sp.rotation = p.r;
-      sp.scale.set(px * p.s);
+      sp.x = Math.round((x + p.dx) / px) * px;
+      sp.y = Math.round((y + p.dy) / px) * px;
+      sp.scale.set(px * p.fx, px * p.fy);
       sp.alpha = p.a;
       if (p.a > 0.05) lit++;
     }
@@ -215,7 +236,7 @@ export class StormSparksFx {
         const z = zaps[i];
         if (!inView(z.x, z.y)) continue;
         const n = zapPieces(z, (now - z.at) * rate, z.seed, this._buf);
-        used = this._draw(used, n, z.x, z.y, STORM_LOOKS.zap.size);
+        used = this._draw(used, n, z.x, z.y, z.k);
         nz++;
         if (probe && !this._recent.some((r) => r.id === z.id && r.at === z.at)) {
           this._recent.push({ id: z.id, at: z.at, x: Math.round(z.x), y: Math.round(z.y), reach: Math.round(z.reach) });
@@ -229,14 +250,14 @@ export class StormSparksFx {
       const x = typeof m.renderX === 'number' ? m.renderX : m.x;
       const y = typeof m.renderY === 'number' ? m.renderY : m.y;
       const n = cracklePieces('aura', bodyOf(m, zone, m._ssLift), now, m._ssSeed != null ? m._ssSeed : (m._ssSeed = seedOfId(m.id)), this._buf);
-      used = this._draw(used, n, x, y, STORM_LOOKS.aura.size);
+      used = this._draw(used, n, x, y, 1);
     }
     this._live.eyes = cand.length;
     if (cand.length) this._drawn.aura++;
     for (const sp of shots) {
       if (sp._ssSeed == null) sp._ssSeed = seedOfId(sp.id != null ? sp.id : `${sp.ownerId}:${sp.x | 0}`);
       const n = cracklePieces('ball', { R: 13, H: sp._fxLift || 0, k: 1 }, now, sp._ssSeed, this._buf);
-      used = this._draw(used, n, sp.x, sp.y, STORM_LOOKS.ball.size);
+      used = this._draw(used, n, sp.x, sp.y, 1);
     }
     this._live.shots = shots.length;
     if (shots.length) this._drawn.ball++;

@@ -91,18 +91,36 @@ already draw the droplets swirling in as the frog winds up.
 
 | Blow | When | What is drawn | For how long |
 |---|---|---|---|
-| **spray** | its swing, and any move that is not a ring | three lengths of jet out of its mouth the way it faces, nine drops thrown ahead in arcs, two rings spreading where they land and three puffs of foam: 17 pieces, reaching 84 px | 480 ms |
-| **ring** | its slam (and a quake or a stomp) | ten wave crests running out from under it to the worker's own radius (88 px for the slam), ten drops leaping off them, foam at its feet: 24 pieces | 620 ms |
+| **spray** | its swing, and any move that is not a ring | a torrent out of its mouth the way it faces (twelve gouts of water, one on the next, the biggest leading), eight specks of spray thrown off it, and the splash where it comes down: a crown thrown up off the ground, two rings spreading under it, three puffs of foam: 26 pieces, reaching 84 px | 560 ms |
+| **ring** | its slam (and a quake or a stomp) | a wave of 26 gouts running out from under it to the worker's own radius (88 px for the slam), six specks leaping off it: 32 pieces | 620 ms |
 
+- **Pixels, as the flames are** (the owner, 2026-11-10: *"avoid marking
+  cartoonish shapes. Make water effects with pixelation similar to how you
+  made the flame effects"*). The first cut drew smooth outlined shapes and
+  turned and scaled them: cartoons over a pixel world. Now every piece is
+  hard pixels on a five-step ramp of the frog's own sac's colours
+  (`waterAttackShapes.js`), made the way the campfire's flame is: a **gout**
+  is a mass whose edge is broken by uneven lobes, foam white at its heart and
+  the deep step only on its lower right, with no outline, so gouts laid over
+  one another run together into one torrent. A piece is never turned and
+  never scaled: it sits on the world's own 2 px grid, flickers between two
+  cuts of itself, and fades in three steps.
 - **When:** the moment the worker's warning ends, which is the blow. The
   entity renderer queues it once a warning for a frog it drew
   (`MONSTER_VARIANTS.fishman.blowFx: 'water'`); nothing new is on the wire.
-- **Cheaply:** 96 sprites made once with the renderer in one container, every
-  one a cell of one 144 x 96 px picture drawn in code on the loading screen.
-  A frame only moves, turns, sizes and fades them: nothing is added, removed
-  or hidden, so no draw list is rebuilt (TRAPS §218). At most 4 blows at
-  once, the nearest first.
+- **Cheaply:** 128 sprites made once with the renderer in one container,
+  every one a cell of one 282 x 19 px picture written pixel by pixel on the
+  loading screen (21 KB). A frame only places and fades them: nothing is
+  added, removed or hidden, so no draw list is rebuilt (TRAPS §218). At most
+  4 blows at once, the nearest first.
 - **Off:** `?nowaterfx` for one phone. The probe is `window.__btWaterAttack()`.
+
+The spray, from the front and the side, and the slam's ring (a phone in the
+world, `mp-waterfrog`, slowed down for the picture):
+
+![the spray, facing you](img/water-frog/water-spray.png)
+![the spray, side on](img/water-frog/water-spray-side.png)
+![the ring](img/water-frog/water-ring.png)
 
 ## See it
 
@@ -139,7 +157,9 @@ edge (the video's compression smears magenta into the outline), is scaled by
 **its own video's frog at rest** so the frog is one size from every side (140
 rows of a 256 px cell, feet on row 231), keeps only the frog (above), and is
 written on at most **256 colours** with the game's own quantiser
-(`tools/art/strip256.mjs`). The back-right hop's frames 86 to 92 leave the
+(`tools/art/strip256.mjs --shared`): **one list of 256 colours for all 15
+strips**, every pixel of every strip counted together, so the game can hold
+the whole frog as colour numbers on one row of colours (below, Memory). The back-right hop's frames 86 to 92 leave the
 top of the video and are skipped.
 
 ## How the game plays them
@@ -191,18 +211,39 @@ Caves' brute, on the wire and in every saved codex). Its pace is
 
 The look loads as you walk toward the Water Caves and is let go behind you,
 like every land's (`wheelMonsterArt.js`). It is 166 frames where the fishman
-was 4 pictures: 1.6 MB of files and, cropped to the art, **21.9 MB on the
-graphics chip while you are near the Water Caves** (measured, `mp-waterfrog`
-section 1; uncropped it would be 41.5). The fishman was about 1 MB. That is
-about what the fire goblin costs at the Flame Fields, the other monster with
-strips for everything it does. Every strip is on 256 colours, so the page
-keeps its colour numbers, not a second copy (`heldNumbers.js`).
+was 4 pictures: 1.6 MB of files.
+
+**It is held as colour numbers: 5.5 MB on the graphics chip while you are
+near the Water Caves** (measured, `mp-waterfrog` section 1). The 256-colour
+law is what makes that so (the owner, 2026-11-10: *"you're converting the
+pictures into the 256 color framework right? That should be happening as
+part of the process"*). Two things had to be true and at first were not:
+
+- **One list of colours for the whole monster.** The game keeps a monster's
+  strips as one byte a pixel, each byte a place in a row of 256 colours
+  (`picsNumbers.js`), and there are 256 such rows for the whole game. Strips
+  cut each on their own 256 colours take a row each (the frog's 15 strips,
+  15 rows; the fire goblin's 14 take 14), and when the rows run out a strip
+  goes up as a plain picture, four times the size. So the cutting tool now
+  puts all of a monster's strips on 256 colours TOGETHER
+  (`strip256.mjs --shared`): the whole frog is one row
+  (`server/test/monster-palettes.test.mjs` holds all four new monsters to
+  it).
+- **Every strip, the full ones too.** The loader crops each cell to its art
+  and declines a strip that cropping would not shrink: the frog's death,
+  whose burst reaches every edge of its cells. A declined strip went up as
+  its image, four bytes a pixel (5.2 MB on its own). From v2.3.4359 a
+  declined strip is read into its colour numbers whole
+  (`zoneTextures.js loadTrackedStrip`), which also catches any other
+  monster's strip that fills its cells.
+
+As plain pictures the same frames would be 22 MB cropped and 41.5 MB
+uncropped (the "21.9 MB" this spec first gave was that plain-picture size,
+not what the chip held). The fishman was about 1 MB. `?picnumbers=0` is the off-ramp (the
+old way, for one phone).
 
 The memory check (`mp-membudget`) fights at the Flame Fields and reads none
-of it, so no line moved. But it is 21 MB more at one land on a phone that
-dies at about 250, so it is the owner's call: fewer frames would bring it
-down (12 of attack for 15, 6 of breath for 8, 16 of death for 20 is about 4
-MB), at some cost to how smooth it is.
+of it, so no line moved.
 
 ## Tests
 

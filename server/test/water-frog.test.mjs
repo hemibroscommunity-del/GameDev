@@ -339,63 +339,107 @@ const strips = {};
   const WD = await import('../../src/data/waterAttack.js');
   const WA = await import('../../src/game/waterAttack.js');
   const WS = await import('../../src/rendering/waterAttackShapes.js');
-  const { WATER_BLOWS, WATER_SHAPES, WATER_FX } = WD;
+  const { WATER_BLOWS, WATER_SHAPES, WATER_FX, WATER_KINDS } = WD;
   const kinds = Object.keys(WATER_BLOWS);
-  check('5a two blows, a spray and a ring; every piece a shape of the one picture, every shape drawn; a full screen of blows fits the pool',
-    kinds.join() === 'spray,ring' && kinds.every((k) => WATER_BLOWS[k].pieces.every((p) => WATER_SHAPES.indexOf(p[0]) >= 0 && p[1] > 0) && WATER_BLOWS[k].ms >= 300 && WATER_BLOWS[k].ms <= 800)
-    && WATER_SHAPES.every((n) => typeof WS.WATER_SHAPE_DRAW[n] === 'function') && Object.keys(WS.WATER_SHAPE_DRAW).length === WATER_SHAPES.length
+  check('5a two blows, a spray and a ring; every kind of piece is cells of the one picture, every cell has its pixels; a full screen of blows fits the pool',
+    kinds.join() === 'spray,ring' && kinds.every((k) => WATER_BLOWS[k].pieces.every((p) => !!WATER_KINDS[p[0]] && p[1] > 0) && WATER_BLOWS[k].ms >= 300 && WATER_BLOWS[k].ms <= 800)
+    && Object.values(WATER_KINDS).every((cells) => cells.length >= 2 && cells.every((c) => WATER_SHAPES.indexOf(c) >= 0))
+    && WATER_SHAPES.every((n) => Array.isArray(WS.WATER_PIXELS[n])) && Object.keys(WS.WATER_PIXELS).length === WATER_SHAPES.length
     && Math.max(...kinds.map((k) => WD.waterPieceCount(WATER_BLOWS[k]))) * WATER_FX.MAX_BLOWS <= WATER_FX.POOL,
     kinds.map((k) => [k, WD.waterPieceCount(WATER_BLOWS[k])]));
   check('5b a slam, a quake and a stomp throw a ring; a swing, a combo, a charge and anything unknown a spray',
     ['slam', 'quake', 'stomp'].every((a) => WD.waterBlowKind(a) === 'ring') && ['swing', 'combo', 'charge', 'volley', '', undefined, '__proto__', 'constructor'].every((a) => WD.waterBlowKind(a) === 'spray'));
-  /* every shape draws: a stand-in canvas that counts what was painted */
-  const painted = WATER_SHAPES.map((n) => {
-    let fills = 0, strokes = 0;
-    const g = new Proxy({}, { get: (t, k) => (k === 'fill' ? () => { fills++; } : k === 'stroke' ? () => { strokes++; } : (k in t ? t[k] : () => {})), set: (t, k, v) => { t[k] = v; return true; } });
-    WS.WATER_SHAPE_DRAW[n](g, 48);
-    return [n, fills, strokes];
-  });
-  check('5c every shape paints something, and has its dark edge (a stroke)', painted.every((p) => p[1] + p[2] >= 2 && p[2] >= 1), painted);
+  /* HARD PIXELS (the owner: "avoid marking cartoonish shapes. Make water
+     effects with pixelation similar to how you made the flame effects"):
+     every cell is a small map of letters, one a pixel, on a ramp of five
+     steps -- nothing drawn with a curve, nothing see-through but the gaps */
+  const maps = WATER_SHAPES.map((n) => [n, WS.WATER_PIXELS[n]]);
+  const letters = new Set(Object.keys(WS.WATER_RAMP));
+  check('5c every cell is hard pixels: a small map (29 px across at most), every row the same length, every letter a step of the five-step ramp or a gap, every ink solid',
+    maps.every(([, rows]) => rows.length >= 2 && rows.length <= 17 && rows[0].length <= 29 && rows.every((r) => r.length === rows[0].length && [...r].every((ch) => ch === '.' || letters.has(ch))))
+    && letters.size === 5 && Object.values(WS.WATER_RAMP).every((ink) => ink[1] === 255), maps.map(([n, rows]) => [n, rows[0].length, rows.length]));
+  /* A GOUT IS A BROKEN MASS, NEVER A BALL (the first pixel cut, d4..d7, was
+     outlined discs: bubbles).  Its edge is uneven lobes, so it fills well
+     under the disc of its size; it has no outline (the deep step is only on
+     its lower right half), so gouts laid over one another run together. */
+  const inkN = (rows) => rows.join('').replace(/\./g, '').length;
+  const gouts = [5, 9, 13, 17];
+  const lowerRight = (rows, ch) => { let lr = 0, ul = 0; const n = rows.length; rows.forEach((r, y) => [...r].forEach((c, x) => { if (c === ch) { if (x + y >= n - 1) lr++; else ul++; } })); return [lr, ul]; };
+  check('5c2 ...a gout comes in four sizes (5 to 17 px), two cuts of each for its flicker; from 9 px up its edge is broken (it fills well under its disc), its heart foam, its deep step on its lower right alone',
+    gouts.every((n) => ['a', 'b'].every((c) => WS.WATER_PIXELS['g' + n + c].length === n && WS.WATER_PIXELS['g' + n + c][0].length === n) && WS.WATER_PIXELS['g' + n + 'a'].join() !== WS.WATER_PIXELS['g' + n + 'b'].join())
+    && gouts.slice(1).every((n) => ['a', 'b'].every((c) => { const rows = WS.WATER_PIXELS['g' + n + c]; const [lr, ul] = lowerRight(rows, 'O');
+      return inkN(rows) < 0.8 * Math.PI * (n / 2) ** 2 && inkN(rows) > 0.3 * n * n && rows.join('').includes('W') && lr >= 1 && ul === 0; })),
+    gouts.map((n) => [n, inkN(WS.WATER_PIXELS['g' + n + 'a']), Math.round(Math.PI * (n / 2) ** 2)]));
+  const crownTop = (rows) => rows.findIndex((r) => /[^.]/.test(r));
+  check('5c3 ...the splash is a crown in four frames, its foot on its bottom row: rising, at its height (the tallest), then its tips come away; a ring grows from 9 to 21; foam is white',
+    ['k1', 'k2', 'k3', 'k4'].every((n) => WS.WATER_PIXELS[n].length === WS.CROWN_H && WS.WATER_PIXELS[n][0].length === WS.CROWN_W && /[^.]/.test(WS.WATER_PIXELS[n][WS.CROWN_H - 1]))
+    && WS.CROWN_H === WD.WATER_CROWN_H && crownTop(WS.WATER_PIXELS.k2) < crownTop(WS.WATER_PIXELS.k1) && crownTop(WS.WATER_PIXELS.k2) <= 2
+    && inkN(WS.WATER_PIXELS.k4) < inkN(WS.WATER_PIXELS.k2)
+    && ['r1', 'r2', 'r3'].map((n) => WS.WATER_PIXELS[n][0].length).join() === '9,15,21' && WS.WATER_PIXELS.f3.join('').includes('W') && !WS.WATER_PIXELS.f5.join('').includes('O'),
+    ['k1', 'k2', 'k3', 'k4'].map((n) => [crownTop(WS.WATER_PIXELS[n]), inkN(WS.WATER_PIXELS[n])]));
   /* the frog's blow, as the renderer hands it over: facing east */
   const G = (dx, dy, reach) => ({ dx, dy, R: 48, H: 62, k: 1, reach });
+  const D2 = Math.SQRT1_2;
   const at = (kind, g, age, seed = 77) => WA.waterPieceList(kind, g, age, seed);
   const sprayN = WD.waterPieceCount(WATER_BLOWS.spray), ringN = WD.waterPieceCount(WATER_BLOWS.ring);
   const steps = [];
   for (let a = 0; a < WATER_BLOWS.spray.ms; a += 20) steps.push(a);
   check('5d a spray is its whole count of pieces from the blow to its end, and nothing after (or before)',
     steps.every((a) => at('spray', G(1, 0, 84), a).length === sprayN) && at('spray', G(1, 0, 84), WATER_BLOWS.spray.ms).length === 0
-    && at('spray', G(1, 0, 84), -5).length === 0 && at('nope', G(1, 0, 84), 100).length === 0 && WA.waterBlowOver('spray', 480) && !WA.waterBlowOver('spray', 479));
+    && at('spray', G(1, 0, 84), -5).length === 0 && at('nope', G(1, 0, 84), 100).length === 0 && WA.waterBlowOver('spray', WATER_BLOWS.spray.ms) && !WA.waterBlowOver('spray', WATER_BLOWS.spray.ms - 1));
   const vis = (list) => list.filter((p) => p.a > 0.05);
   const allAhead = steps.every((a) => vis(at('spray', G(1, 0, 84), a)).every((p) => p.dx > 0 && p.dx < 48 * 0.55 + 84 * 1.25 && Math.abs(p.dy) < 110));
   check('5e ...out of its mouth the way it faces: facing east, every piece on screen is ahead of it, none past its reach', allAhead);
-  const first = at('spray', G(1, 0, 84), 0), mid = vis(at('spray', G(1, 0, 84), 240)), last = at('spray', G(1, 0, 84), 470);
-  check('5f ...at the blow it is at the mouth (up its body), halfway it has travelled and the splash has started, at the end it has faded',
-    vis(first).length >= 1 && vis(first).every((p) => p.dy < -30 && p.dx < 70) && mid.some((p) => p.shape === 'ripple') && mid.filter((p) => p.shape === 'drop' || p.shape === 'blob').every((p) => p.dx > 40)
-    && Math.max(...last.map((p) => p.a)) < 0.25, { first: vis(first).length, mid: mid.length, lastMax: Math.max(...last.map((p) => p.a)) });
+  const first = at('spray', G(1, 0, 84), 20), mid = vis(at('spray', G(1, 0, 84), 240)), last = at('spray', G(1, 0, 84), WATER_BLOWS.spray.ms - 10);
+  const isDrop = (p) => /^d/.test(p.shape), isRipple = (p) => /^r/.test(p.shape), isGout = (p) => /^g(9|13|17)/.test(p.shape), isFoam = (p) => /^f/.test(p.shape), isCrown = (p) => /^k/.test(p.shape);
+  check('5f ...as the blow lands it is at the mouth (up its body), halfway it has travelled and the splash has started (its crown up, its ring out), at the end it has faded',
+    vis(first).length >= 1 && vis(first).every((p) => p.dy < -30 && p.dx < 70) && mid.some(isRipple) && mid.some(isCrown) && mid.filter(isDrop).every((p) => p.dx > 30)
+    && Math.max(...last.map((p) => p.a)) <= 1 / 3 + 1e-9, { first: vis(first).length, mid: mid.length, lastMax: Math.max(...last.map((p) => p.a)) });
+  /* THE TORRENT IS ONE ROPE OF WATER: while it is in the air its gouts lie
+     over one another (each within its own width of the next: JET_GAP ms
+     apart on one line), the biggest at its head, and each is gone as it
+     comes down -- the crown stands where it did, its foot on the ground */
+  const jetAt = (a) => at('spray', G(1, 0, 84), a).slice(0, 12);
+  const inAir = jetAt(150).filter((p) => p.a > 0);
+  const touch = inAir.every((p, i) => i === 0 || Math.hypot(p.dx - inAir[i - 1].dx, p.dy - inAir[i - 1].dy) < 13 * WATER_FX.PX);
+  const crownAt = at('spray', G(1, 0, 84), 240).find(isCrown), rippleAt = at('spray', G(1, 0, 84), 240).find(isRipple);
+  check('5f2 ...a torrent: its gouts one on the next, the biggest leading, each gone as it lands; the crown where it lands, its foot on the ground',
+    inAir.length >= 8 && touch && /^g17/.test(inAir[0].shape) && /^g(5|9)/.test(jetAt(170)[11].shape) && inAir[0].dx > inAir[inAir.length - 1].dx
+    && jetAt(WA.JET_FLY + 5)[0].a === 0 && jetAt(11 * WA.JET_GAP + WA.JET_FLY + 5).every((p) => p.a === 0)
+    && crownAt.dx === rippleAt.dx && Math.abs((crownAt.dy + (WD.WATER_CROWN_H / 2 - 1) * WATER_FX.PX) - rippleAt.dy) < 1e-9,
+    { inAir: inAir.length, head: inAir[0] && inAir[0].shape });
   /* the same blow facing west is the east one mirrored: one frog, one splash */
   const e = at('spray', G(1, 0, 84), 200), w = at('spray', G(-1, 0, 84), 200);
   /* (the foam's little scatter is its own, either way) */
-  const mir = e.every((p, i) => p.shape === w[i].shape && Math.abs(p.a - w[i].a) < 1e-9 && (p.shape === 'foam' || Math.abs(p.dx + w[i].dx) < 1e-6));
+  const mir = e.every((p, i) => p.shape === w[i].shape && Math.abs(p.a - w[i].a) < 1e-9 && (isFoam(p) || Math.abs(p.dx + w[i].dx) < 1e-6));
   check('5g ...the same every time for one frog and one blow (no randomness), another frog\'s different; facing west it goes west',
     JSON.stringify(at('spray', G(1, 0, 84), 200)) === JSON.stringify(e) && JSON.stringify(at('spray', G(1, 0, 84), 200, 78)) !== JSON.stringify(e)
     && mir && vis(w).every((p) => p.dx < 0), null);
   /* facing south the splash lands below its feet, facing north above */
-  const land = (dx, dy) => at('spray', G(dx, dy, 84), 330).find((p) => p.shape === 'ripple');
+  const land = (dx, dy) => at('spray', G(dx, dy, 84), 330).find(isRipple);
   check('5h ...and its splash comes down on the ground ahead of it: below its feet facing south, above facing north, level facing east',
     land(0, 1).dy > 60 && land(0, -1).dy < -60 && Math.abs(land(1, 0).dy) < 1 && land(1, 0).dx > 90);
   /* the ring */
   const rsteps = [];
   for (let a = 0; a < WATER_BLOWS.ring.ms; a += 20) rsteps.push(a);
-  const radius = (a) => { const cs = at('ring', G(0, 1, 88), a).filter((p) => p.shape === 'crest'); return cs.map((p) => Math.hypot(p.dx, p.dy + 6)); };
+  const isWave = isGout;
+  const radius = (a) => { const cs = at('ring', G(0, 1, 88), a).filter(isWave); return cs.map((p) => Math.hypot(p.dx, p.dy + 6)); };
   const grows = rsteps.every((a, i) => i === 0 || Math.max(...radius(a)) >= Math.max(...radius(rsteps[i - 1])) - 5);
   check('5i a ring is its whole count too; its wave runs out from under it to the worker\'s own radius (88) and never past it',
     rsteps.every((a) => at('ring', G(0, 1, 88), a).length === ringN) && at('ring', G(0, 1, 88), WATER_BLOWS.ring.ms).length === 0 && grows
     && radius(0).every((r) => r < 40) && radius(500).every((r) => r > 80 && r < 96) && rsteps.every((a) => radius(a).every((r) => r < 96)),
     { r0: Math.round(Math.max(...radius(0))), r500: Math.round(Math.max(...radius(500))) });
-  check('5j ...all the way round it (its crests in every quarter), and gone by its end',
-    [[1, 1], [1, -1], [-1, 1], [-1, -1]].every(([sx, sy]) => at('ring', G(0, 1, 88), 300).some((p) => p.shape === 'crest' && p.dx * sx > 0 && (p.dy + 6) * sy > 0))
-    && Math.max(...at('ring', G(0, 1, 88), 610).map((p) => p.a)) < 0.1);
-  check('5k a bigger monster\'s water is bigger, by its reach (a ring at 150: a quake\'s)', radius(0).length === 10 && Math.max(...at('ring', G(0, 1, 150), 500).filter((p) => p.shape === 'crest').map((p) => Math.hypot(p.dx, p.dy + 6))) > 140);
+  check('5j ...all the way round it (its gouts in every quarter, close enough to read as one wave), and gone by its end',
+    [[1, 1], [1, -1], [-1, 1], [-1, -1]].every(([sx, sy]) => at('ring', G(0, 1, 88), 300).some((p) => isWave(p) && p.dx * sx > 0 && (p.dy + 6) * sy > 0))
+    && 2 * Math.PI * 88 / radius(0).length < 13 * WATER_FX.PX
+    && Math.max(...at('ring', G(0, 1, 88), 610).map((p) => p.a)) <= 1 / 3 + 1e-9);
+  check('5k a bigger monster\'s water is bigger, by its reach (a ring at 150: a quake\'s)', radius(0).length === 26 && Math.max(...at('ring', G(0, 1, 150), 500).filter(isWave).map((p) => Math.hypot(p.dx, p.dy + 6))) > 140);
+  /* never turned, never scaled, never faded smoothly */
+  const every = [];
+  for (const a of steps) every.push(...at('spray', G(D2, D2, 84), a));
+  for (const a of rsteps) every.push(...at('ring', G(0, 1, 88), a));
+  check('5k2 a piece is never turned or scaled, and its alpha is one of four steps (gone, a third, two thirds, whole), whichever way it faces',
+    every.length > 500 && every.every((p) => p.r === 0 && p.s === 1 && WATER_SHAPES.indexOf(p.shape) >= 0 && [0, 1 / 3, 2 / 3, 1].some((v) => Math.abs(p.a - v) < 1e-9)));
   /* the wiring */
   const er = src('src/rendering/systems/entityRenderer.js'), ge = src('src/networking/gameEvents.js'), fx = src('src/rendering/systems/effectsRenderer.js');
   const wfx = src('src/rendering/waterAttackFx.js'), pre = src('src/rendering/preloadAnimations.js');
@@ -408,6 +452,9 @@ const strips = {};
     /this\._waterAttack = new WaterAttackFx\(this\.projectileLayer\);/.test(fx) && /this\._waterAttack\.update\(S, now\)/.test(fx) && /this\._waterAttack\.clear\(\)/.test(fx)
     && /waterAttack: Promise\.resolve\(warmWaterAttack\(\)\)/.test(pre) && /keepAsImage\(base\.source, Cache\)/.test(wfx) && /has\('nowaterfx'\)/.test(wfx)
     && /for \(let i = 0; i < WATER_FX\.POOL; i\+\+\)/.test(wfx) && !/removeChild|\.visible = /.test(wfx));
+  check('5n2 its picture is written pixel by pixel and sampled nearest; a piece is placed on its own pixel grid, at a whole multiple of it, and never turned',
+    /base\.source\.scaleMode = 'nearest';/.test(wfx) && /createImageData\(W, H\)/.test(wfx) && !/\.rotation|bezierCurveTo|\.arc\(|quadraticCurveTo/.test(wfx + src('src/rendering/waterAttackShapes.js'))
+    && /sp\.x = Math\.round\(\(b\.x \+ p\.dx\) \/ px\) \* px;/.test(wfx) && /const px = WATER_FX\.PX \* Math\.max\(1, Math\.round\(b\.k\)\);/.test(wfx) && WATER_FX.PX === 2);
   check('5o the list of blows cannot grow (the oldest goes at 12), and a finished one is dropped whether drawn or not',
     /if \(list\.length >= 12\) list\.shift\(\);/.test(wfx) && /if \(waterBlowOver\(list\[i\]\.kind, \(now - list\[i\]\.at\) \* rate\)\) list\.splice\(i, 1\);/.test(wfx));
 }

@@ -9,41 +9,61 @@
  * time alone.  (Its wind-up already had water drawn in code: the droplets
  * swirling in, data/elemWindup.js `water`.)
  *
+ * v2.3.4359, the owner: "avoid marking cartoonish shapes. Make water effects
+ * with pixelation similar to how you made the flame effects".  Every piece is
+ * hard pixels now (rendering/waterAttackShapes.js), never turned or scaled.
+ *
  * The table the renderer draws from and the node suite reads (no imports).
  *
  *   spray   an ordinary blow (its swing, and any move that is not a ring): a
- *           jet out of its mouth the way it faces, drops thrown ahead of it
- *           in an arc, and the splash where they come down
- *   ring    a slam (and the other ring moves): a wave thrown out from under
- *           it to the ring the worker hits in, drops leaping off its crest
+ *           torrent out of its mouth the way it faces -- gouts of water one
+ *           on another, so they run together -- spray thrown off it, and the
+ *           splash where it comes down: a crown thrown up off the ground, a
+ *           ring spreading under it
+ *   ring    a slam (and the other ring moves): a wave of gouts thrown out
+ *           from under it to the ring the worker hits in, spray leaping off it
  *
  *   ms      how long the whole thing is on screen
  *   reach   spray: how far ahead of its mouth the water comes down (world px
  *           on an ordinary monster; the frog's swing reaches about this far)
- *   size    a piece's size in world px
- *   pieces  [shape, how many, its size against `size`] -- each shape a cell
- *           of the one picture made in code (rendering/waterAttackShapes.js)
+ *   pieces  [kind, how many] -- game/waterAttack.js picks each one's cell of
+ *           the picture (a gout's size and cut, the crown's frame)
  *   words   what it is, for the spec, the probe and a test's message
  */
 export const WATER_BLOWS = Object.freeze({
-  /* (size 28: at 22 its drops were specks beside a frog 120 px across,
-     mp-waterfrog's first pictures) */
-  spray: Object.freeze({ ms: 480, reach: 84, size: 28,
-    pieces: [['streak', 3, 1.5], ['drop', 5, 1], ['blob', 4, 0.8], ['ripple', 2, 1.6], ['foam', 3, 0.9]],
-    words: 'a jet of water out of its mouth, and the splash where it lands' }),
-  ring: Object.freeze({ ms: 620, reach: 88, size: 24,
-    pieces: [['crest', 10, 1.5], ['drop', 10, 0.9], ['foam', 4, 1.2]],
-    words: 'a wave thrown out from under it, drops leaping off its crest' }),
+  spray: Object.freeze({ ms: 560, reach: 84,
+    pieces: [['jet', 12], ['drop', 8], ['crown', 1], ['ripple', 2], ['foam', 3]],
+    words: 'a torrent out of its mouth, and the splash thrown up where it lands' }),
+  ring: Object.freeze({ ms: 620, reach: 88,
+    pieces: [['wave', 26], ['drop', 6]],
+    words: 'a wave thrown out from under it, spray leaping off it' }),
 });
 
-/* Every shape a blow may name: the cells of the one picture, in its order. */
-export const WATER_SHAPES = Object.freeze(['drop', 'blob', 'streak', 'crest', 'ripple', 'foam']);
+/* Every cell of the one picture, in its order (rendering/waterAttackShapes.js
+   WATER_PIXELS has each one's pixels). */
+export const WATER_SHAPES = Object.freeze(['d2', 'd3', 'g5a', 'g5b', 'g9a', 'g9b', 'g13a', 'g13b', 'g17a', 'g17b',
+  'k1', 'k2', 'k3', 'k4', 'f3', 'f5', 'r1', 'r2', 'r3']);
+/* the cells each kind of piece may be (a gout's two cuts side by side: a
+   piece flickers between them) */
+export const WATER_KINDS = Object.freeze({
+  jet: Object.freeze(['g5a', 'g5b', 'g9a', 'g9b', 'g13a', 'g13b', 'g17a', 'g17b']),
+  wave: Object.freeze(['g13a', 'g13b', 'g17a', 'g17b']),
+  drop: Object.freeze(['d2', 'd3', 'g5a']), foam: Object.freeze(['f3', 'f5']),
+  crown: Object.freeze(['k1', 'k2', 'k3', 'k4']), ripple: Object.freeze(['r1', 'r2', 'r3']),
+});
+/* a torrent's gouts from its head back: the biggest lead, the last trail off
+   (indexes of WATER_KINDS.jet's sizes: 0 = 5 px, 1 = 9, 2 = 13, 3 = 17) */
+export const JET_SIZES = Object.freeze([3, 3, 2, 3, 2, 3, 2, 2, 1, 2, 1, 0]);
+/* how tall the crown's cell is (rendering/waterAttackShapes.js CROWN_H): its
+   foot is its bottom row, and a piece is placed by its middle */
+export const WATER_CROWN_H = 17;
 
 export const WATER_FX = Object.freeze({
-  POOL: 96,           /* pieces made once with the renderer, never added or removed again (TRAPS §218) */
-  MAX_BLOWS: 4,       /* blows drawn at once: the nearest to you when there are more (4 x 24 pieces) */
+  POOL: 128,          /* pieces made once with the renderer, never added or removed again (TRAPS §218) */
+  MAX_BLOWS: 4,       /* blows drawn at once: the nearest to you when there are more (4 x 32 pieces) */
   VIEW_PAD: 160,      /* world px past the screen's edge still drawn */
-  CELL: 48,           /* a shape's cell in the picture, px */
+  PX: 2,              /* world px an art pixel is drawn at: every piece sits on this grid, never between */
+  ALPHA_STEPS: 3,     /* a piece fades in steps (1, 2/3, 1/3, gone), never smoothly */
   LATE_MS: 400,       /* a blow first seen this long after it landed is not started (it was off screen) */
 });
 

@@ -60,19 +60,29 @@ Built the way the element wind-ups and the water frog's water are.
 | Look | When | What is drawn |
 |---|---|---|
 | **aura** | all the time it is alive and on screen | two arcs and a spark that jump to a new place on its body every 110 ms, each lit about a third of the time: a crackle, never a steady glow |
-| **zap** | the moment a blow of its lands: the end of the server's warning for its spit, its lunge and its other moves | six bolts and three forked ones jumping out from its body to 62 px, flickering, and five sparks thrown clear: 14 pieces over 320 ms |
+| **zap** | the moment a blow of its lands: the end of the server's warning for its spit, its lunge and its other moves | nine bolts jumping out from its body to 62 px, flickering, and five sparks thrown clear: 14 pieces over 320 ms |
 | **ball** | round every shot of its in flight | the same arcs, small, riding the ball |
 
 Its wind-up already crackled in code (the storm element's, `elem-windup.md`),
 so an attack reads: sparks gather, lightning is thrown off it, a ball of it
 flies.
 
+- **Pixels, as the flames are** (the owner, 2026-11-10: *"avoid marking
+  cartoonish shapes ... pixelation similar to how you made the flame
+  effects"*). The first cut drew smooth glowing lines and turned and scaled
+  them. Now a bolt is a jagged line of hard pixels, white at its core and
+  the pale blue of its lightning beside it (`stormSparkShapes.js`), baked
+  three ways (upright, lying, on the slant) and flipped for the rest: never
+  turned, never scaled, on the world's own 2 px grid, and either lit, half
+  lit or out, never faded smoothly.
 - **Cheaply:** 112 sprites made once with the renderer in one container, every
-  one a cell of one 192 x 48 px picture drawn in code on the loading screen. A
-  frame only moves, turns, sizes and fades them: nothing is added, removed or
-  hidden, so no draw list is rebuilt (TRAPS §218). At most 8 eyes crackle at
-  once (the nearest), 4 zaps, 8 shots.
+  one a cell of one 86 x 19 px picture written pixel by pixel on the loading
+  screen (7 KB). A frame only places, flips and lights them: nothing is
+  added, removed or hidden, so no draw list is rebuilt (TRAPS §218). At most
+  8 eyes crackle at once (the nearest), 4 zaps, 8 shots.
 - **Off:** `?nostormfx` for one phone. The probe is `window.__btStormSparks()`.
+
+![a zap, in pixels](img/storm-eye/zap-pixels.png)
 
 ## How it is wired
 
@@ -104,11 +114,14 @@ flies.
 
 ## Memory
 
-The eye's two strips are 17 cells: 1.9 MB on the graphics chip once cropped
-(measured, `mp-stormeye` section 1), while you are near the Foundry. The
+The eye's two strips are 17 cells, held as colour numbers: **0.47 MB on the
+graphics chip** while you are near the Foundry (measured, `mp-stormeye`
+section 1; as plain pictures they would be 1.9). Its three pictures share one
+list of 256 colours, which is what lets the game hold them that way
+(`tools/art/strip256.mjs --shared`, `docs/specs/water-frog.md` Memory). The
 slime it replaces there cost nothing extra (its sheets are the global
-slime's, held everywhere), so this is 1.9 MB more in the Foundry. The
-lightning's picture is 37 KB, the pet's row 0.19 MB. No memory-check line
+slime's, held everywhere), so this is about half a MB more in the Foundry.
+The lightning's picture is 7 KB, the pet's row 0.19 MB. No memory-check line
 moved: `mp-membudget` fights at the Flame Fields and reads none of it.
 
 ## Tests

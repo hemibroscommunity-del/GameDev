@@ -167,20 +167,29 @@ const strips = {};
   const SD = await import('../../src/data/stormSparks.js');
   const SS = await import('../../src/game/stormSparks.js');
   const SH = await import('../../src/rendering/stormSparkShapes.js');
-  const { STORM_LOOKS, STORM_SHAPES, STORM_FX } = SD;
+  const { STORM_LOOKS, STORM_SHAPES, STORM_FX, STORM_WAYS } = SD;
   const n = (k) => SD.stormPieceCount(STORM_LOOKS[k]);
-  check('3a three looks -- the arcs over it, the zap, the arcs round its shot; every piece a shape of the one picture, every shape drawn; a full screen of them fits the pool',
-    Object.keys(STORM_LOOKS).join() === 'aura,zap,ball' && Object.values(STORM_LOOKS).every((l) => l.pieces.every((p) => STORM_SHAPES.indexOf(p[0]) >= 0 && p[1] > 0))
-    && STORM_SHAPES.every((s) => typeof SH.STORM_SHAPE_DRAW[s] === 'function') && Object.keys(SH.STORM_SHAPE_DRAW).length === STORM_SHAPES.length
+  check('3a three looks -- the arcs over it, the zap, the arcs round its shot; every kind of piece is cells of the one picture, every cell has its pixels; a full screen of them fits the pool',
+    Object.keys(STORM_LOOKS).join() === 'aura,zap,ball' && Object.values(STORM_LOOKS).every((l) => l.pieces.every((p) => !!STORM_WAYS[p[0]] && p[1] > 0))
+    && Object.values(STORM_WAYS).every((cells) => cells.every((c) => STORM_SHAPES.indexOf(c) >= 0)) && STORM_WAYS.bolt.length === 3 && STORM_WAYS.arc.length === 3
+    && STORM_SHAPES.every((c) => Array.isArray(SH.STORM_PIXELS[c])) && Object.keys(SH.STORM_PIXELS).length === STORM_SHAPES.length
     && n('aura') * STORM_FX.MAX_EYES + n('zap') * STORM_FX.MAX_ZAPS + n('ball') * STORM_FX.MAX_SHOTS <= STORM_FX.POOL,
     { aura: n('aura'), zap: n('zap'), ball: n('ball'), pool: STORM_FX.POOL });
-  const painted = STORM_SHAPES.map((s) => {
-    let strokes = 0, fills = 0;
-    const g = new Proxy({}, { get: (t, k) => (k === 'fill' ? () => { fills++; } : k === 'stroke' ? () => { strokes++; } : (k in t ? t[k] : () => {})), set: (t, k, v) => { t[k] = v; return true; } });
-    SH.STORM_SHAPE_DRAW[s](g, 48);
-    return [s, strokes, fills];
-  });
-  check('3b every shape paints, with its dark edge under its bright body (three strokes a bolt)', painted.every((p) => p[1] >= 1 && p[1] + p[2] >= 3), painted);
+  /* HARD PIXELS (the owner: "avoid marking cartoonish shapes ... pixelation
+     similar to how you made the flame effects") */
+  const letters = new Set(Object.keys(SH.STORM_RAMP));
+  const maps = STORM_SHAPES.map((c) => [c, SH.STORM_PIXELS[c]]);
+  check('3b every cell is hard pixels: a small map (17 px at most), every row the same length, every letter a step of the ramp or a gap; a bolt a white core in its pale body in its dark edge',
+    maps.every(([, rows]) => rows.length <= 17 && rows[0].length <= 17 && rows.every((r) => r.length === rows[0].length && [...r].every((ch) => ch === '.' || letters.has(ch))))
+    && Object.values(SH.STORM_RAMP).every((ink) => ink[1] === 255) && ['bv', 'bh', 'bd', 'av', 'ah', 'ad'].every((c) => ['O', 'B', 'W'].every((ch) => SH.STORM_PIXELS[c].join('').includes(ch))),
+    maps.map(([c, rows]) => [c, rows[0].length, rows.length]));
+  /* baked three ways: upright is taller than wide, lying is that turned on
+     its side, the slant is square; the rest are flips */
+  const dim = (c) => [SH.STORM_PIXELS[c][0].length, SH.STORM_PIXELS[c].length];
+  const W8 = [0, 1, 2, 3, 4, 5, 6, 7].map((k) => SD.boltWay(k * Math.PI / 4));
+  check('3b2 a bolt is baked three ways -- upright, lying (the upright one on its side), on the slant -- and lies along its own way out by one of them, flipped for the other slant',
+    dim('bv')[1] > dim('bv')[0] && dim('bh')[0] === dim('bv')[1] && dim('bh')[1] === dim('bv')[0] && dim('bd')[0] === dim('bd')[1]
+    && W8.map((w) => w.way).join() === '1,2,0,2,1,2,0,2' && W8[1].flip === 1 && W8[5].flip === 1 && W8[3].flip === -1 && W8[7].flip === -1, W8);
   /* the arcs over an eye */
   const G = { R: 30, H: 48, k: 1 };
   const T0 = 1e12;
@@ -213,20 +222,26 @@ const strips = {};
   /* round its shot: small, on the ball */
   const ball = [];
   for (let s = 0; s < 60; s++) ball.push(...SS.cracklePieceList('ball', { R: 13, H: 20, k: 1 }, T0 + s * 110 + 7, 5).filter((p) => p.a > 0));
-  check('3f the arcs round its shot ride the ball (within 22 px of it, at its height), small', ball.length > 30 && ball.every((p) => Math.hypot(p.dx, p.dy + 20) < 22) && STORM_LOOKS.ball.size < STORM_LOOKS.aura.size);
+  check('3f the arcs round its shot ride the ball (within 22 px of it, at its height)', ball.length > 30 && ball.every((p) => Math.hypot(p.dx, p.dy + 20) < 22) && n('ball') <= n('aura'));
   /* the zap */
   const Z = { R: 30, H: 48, k: 1, reach: 62 };
   const zs = [];
   for (let a = 0; a < STORM_LOOKS.zap.ms; a += 20) zs.push(a);
-  const far = (a) => Math.max(...SS.zapPieceList(Z, a, 7).filter((p) => p.shape !== 'spark').map((p) => Math.hypot(p.dx, p.dy + Z.H)));
+  const isBolt = (p) => /^b/.test(p.shape);
+  const far = (a) => Math.max(...SS.zapPieceList(Z, a, 7).filter(isBolt).map((p) => Math.hypot(p.dx, p.dy + Z.H)));
   check('3g a zap is its whole count from the blow to its end, and nothing after (or before)',
     zs.every((a) => SS.zapPieceList(Z, a, 7).length === n('zap')) && SS.zapPieceList(Z, STORM_LOOKS.zap.ms, 7).length === 0 && SS.zapPieceList(Z, -1, 7).length === 0 && SS.zapOver(320) && !SS.zapOver(319));
-  check('3h ...its lightning jumps out from its body to its reach in the first third and never past it, pointing away, all the way round',
+  check('3h ...its lightning jumps out from its body to its reach in the first third and never past it, each bolt lying along its own way out, all the way round',
     far(0) < 28 && far(140) > 44 && zs.every((a) => far(a) <= 62 + 1e-6)
-    && SS.zapPieceList(Z, 150, 7).filter((p) => p.shape === 'bolt').every((p) => { const a = Math.atan2(p.dy + Z.H, p.dx); let d = Math.abs(((p.r + Math.PI / 2) - a) % (Math.PI * 2)); if (d > Math.PI) d = Math.PI * 2 - d; return d < 0.6; })
+    && SS.zapPieceList(Z, 150, 7).filter(isBolt).every((p) => { const w = SD.boltWay(Math.atan2((p.dy + Z.H) / 0.92, p.dx)); return p.shape === STORM_WAYS.bolt[w.way] && p.fx === w.flip; })
     && [[1, 1], [1, -1], [-1, 1], [-1, -1]].every(([sx, sy]) => SS.zapPieceList(Z, 150, 7).some((p) => p.dx * sx > 0 && (p.dy + Z.H) * sy > 0)), { r0: far(0), r140: far(140) });
   check('3i ...flickering (a bolt is not one brightness throughout) and fading out by its end',
-    new Set(zs.map((a) => SS.zapPieceList(Z, a, 7)[0].a > 0.5 * Math.pow(1 - a / 320, 0.8))).size === 2 && Math.max(...SS.zapPieceList(Z, 310, 7).map((p) => p.a)) < 0.12);
+    new Set(zs.slice(0, 10).map((a) => SS.zapPieceList(Z, a, 7)[0].a)).size === 2 && Math.max(...SS.zapPieceList(Z, 315, 7).map((p) => p.a)) === 0);
+  const all = [];
+  for (const a of zs) all.push(...SS.zapPieceList(Z, a, 7));
+  for (let sl = 0; sl < 80; sl++) all.push(...SS.cracklePieceList('aura', G, T0 + sl * 37, 99));
+  check('3j a piece is never turned or scaled: it is on (whole), half on, or off, and flipped or not',
+    all.length > 300 && all.every((p) => p.r === undefined && p.s === undefined && STORM_SHAPES.indexOf(p.shape) >= 0 && [0, 0.5, 1].indexOf(p.a) >= 0 && Math.abs(p.fx) === 1 && Math.abs(p.fy) === 1));
 }
 
 /* ── 4. the wiring, what players read, its shot ── */
@@ -241,6 +256,9 @@ const strips = {};
     /this\._stormSparks = new StormSparksFx\(this\.projectileLayer\);/.test(fx) && /this\._stormSparks\.update\(S, now\)/.test(fx) && /this\._stormSparks\.clear\(\)/.test(fx)
     && /stormSparks: Promise\.resolve\(warmStormSparks\(\)\)/.test(pre) && /keepAsImage\(base\.source, Cache\)/.test(sfx) && /has\('nostormfx'\)/.test(sfx)
     && /for \(let i = 0; i < STORM_FX\.POOL; i\+\+\)/.test(sfx) && !/removeChild|\.visible = /.test(sfx));
+  check('4b2 its picture is written pixel by pixel and sampled nearest; a piece is placed on its own pixel grid, flipped where it says, and never turned',
+    /base\.source\.scaleMode = 'nearest';/.test(sfx) && /createImageData\(W, H\)/.test(sfx) && !/\.rotation|bezierCurveTo|quadraticCurveTo|lineWidth/.test(sfx + src('src/rendering/stormSparkShapes.js'))
+    && /sp\.x = Math\.round\(\(x \+ p\.dx\) \/ px\) \* px;/.test(sfx) && /sp\.scale\.set\(px \* p\.fx, px \* p\.fy\);/.test(sfx));
   check('4c only eyes drawn this frame crackle (the nearest MAX_EYES), only its own shots, and the list of zaps cannot grow',
     /m\._ssSeen !== now\) continue;/.test(sfx) && /cand\.length = STORM_FX\.MAX_EYES;/.test(sfx) && /sp\._ssStorm = !!\(v && v\.sparks\);/.test(sfx) && /if \(list\.length >= 12\) list\.shift\(\);/.test(sfx));
   const SHOTS = await import('../../src/data/monsterShots.js');

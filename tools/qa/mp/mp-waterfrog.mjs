@@ -154,13 +154,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const waterShot = async (id, name, payload) => {
     await P.page.evaluate(([mid, payload]) => new Promise((resolve) => {
       const S = window._gameState.current;
-      window.__btBlowFxRate = 0.06;
+      window.__btBlowFxRate = 0.02;
       window.__btDispatch({ type: 'monster_ability', payload: Object.assign({ monsterId: mid, zone: S.currentZone, x: S.player.x, y: S.player.y, ax: S.player.x, ay: S.player.y }, payload) });
       let n = 0;
       const step = () => {
         const w = window.__btWaterAttack ? window.__btWaterAttack() : null;
         const b = w && w.live.find((x) => x.id === mid);
-        if ((b && b.age >= 170) || ++n > 900) resolve(!!b); else requestAnimationFrame(step);
+        if ((b && b.age >= 150) || ++n > 2400) resolve(!!b); else requestAnimationFrame(step);
       };
       requestAnimationFrame(step);
     }), [id, payload]);
@@ -198,7 +198,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
        each packed strip): measured at 21.9 MB (v2.3.4355), held to 24, where
        it would be 41.5 uncropped -- about the fire goblin's, the other look
        with strips for all it does */
-    const mem = await P.page.evaluate(() => { const st = window.__btStripTrim().filter((x) => x.bundle === 'waterFrog'); return { packed: st.reduce((a, x) => a + x.packedBytes, 0), full: st.reduce((a, x) => a + x.fullBytes, 0) }; });
+    const mem = await P.page.evaluate(() => { const st = window.__btStripTrim().filter((x) => x.bundle === 'waterFrog'); return { packed: st.reduce((a, x) => a + x.packedBytes, 0), full: st.reduce((a, x) => a + x.fullBytes, 0), n: st.length, numbers: st.filter((x) => x.numbers).length }; });
+    /* v2.3.4359: ...and held as COLOUR NUMBERS, a byte a pixel -- a quarter of
+       that -- every strip of it: they share one list of 256 colours
+       (tools/art/strip256.mjs --shared; src/rendering/picsNumbers.js) */
+    rec.ok(`1. ...every one of its ${mem.n} strips held as colour numbers, a byte a pixel: ${(mem.packed / 4 / 1048576).toFixed(1)} MB on the graphics chip, not ${(mem.packed / 1048576).toFixed(1)}`,
+      mem.n === 15 && mem.numbers === mem.n, mem);
     rec.ok(`1. ...${(mem.packed / 1048576).toFixed(1)} MB of pictures once cropped (${(mem.full / 1048576).toFixed(1)} MB uncropped): under 24 MB`, mem.packed > 0 && mem.packed < 24 * 1048576, mem);
     await P.page.waitForTimeout(900);
 
@@ -271,7 +276,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const mine = wa && wa.mine[wa.mine.length - 1];
       const want = label === 'a swing' ? 'spray' : 'ring';
       rec.ok(`5. ...and as it ends its water is drawn in code: ${label === 'a swing' ? 'a spray the way it faces (south)' : 'a ring at the worker\'s radius (88)'}, once`,
-        !!wa && wa.on && wa.made && wa.pool === 96 && wa.mine.length === blows0 + 1 && !!mine && mine.kind === want
+        !!wa && wa.on && wa.made && wa.pool === 128 && wa.mine.length === blows0 + 1 && !!mine && mine.kind === want
         && (want === 'ring' ? mine.reach === 88 : (mine.dir[0] === 0 && mine.dir[1] === 1)), wa);
       if (label === 'a swing') {
         await watch(P, id, 300, { kind: 'ability', payload: { ability: 'swing', phase: 'windup', ms: 3000 } }, 's.n === 15 && s.ix >= 9');

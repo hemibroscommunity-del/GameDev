@@ -69,10 +69,13 @@ breaks are the picture), and two of its rows are only two lines apart.
 ## Memory
 
 The two strips are 33 cells, loaded once for the golem (and the thorn
-shambler) as you walk toward the Stone Hollows and let go behind you. The old
-rock monster was four still pictures, about 1 MB; the golem is 4.0 MB on the
-graphics chip once cropped (measured, `mp-rockgolem` section 1), so about 3
-MB more in the Stone Hollows. No memory-check line moved: `mp-membudget`
+shambler) as you walk toward the Stone Hollows and let go behind you, held as
+colour numbers: **1.0 MB on the graphics chip** (measured, `mp-rockgolem`
+section 1; as plain pictures they would be 4.0). Its pictures share one list
+of 256 colours, which is what lets the game hold them that way
+(`tools/art/strip256.mjs --shared`, `docs/specs/water-frog.md` Memory). The
+old rock monster was four still pictures, about 1 MB, so the Stone Hollows
+hold no more than before. No memory-check line moved: `mp-membudget`
 fights at the Flame Fields and reads none of it.
 
 ## Tests

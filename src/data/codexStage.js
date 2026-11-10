@@ -26,7 +26,7 @@
  * `walk-sw` file and its west attack `attack-sw` (fireGoblinSprites.js), the
  * snowman's south-west strips face left unmirrored (snowmanSprites.js). */
 
-const SN = '?v=2.1.14', FG = '?v=2.3.26', MU = '?v=2.3.58', SK = '?v=2.3.63', FI = '?v=2.3.135', WF = '?v=2.3.4355', SE = '?v=2.3.4356', RC = '?v=2.3.4357', RG = '?v=2.3.4358';
+const SN = '?v=2.1.14', FG = '?v=2.3.26', MU = '?v=2.3.58', SK = '?v=2.3.63', FI = '?v=2.3.135', WF = '?v=2.3.4359', SE = '?v=2.3.4359', RC = '?v=2.3.4359', RG = '?v=2.3.4359';
 
 export const CODEX_LOOKS = Object.freeze({
   slime: Object.freeze({

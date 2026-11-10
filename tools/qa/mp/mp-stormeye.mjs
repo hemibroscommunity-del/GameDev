@@ -155,6 +155,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('1. ...from the eye\'s two strips, 256 px cells cropped to the art', !!names && names.join() === 'death.png,views.png' && first.texW === 256 && first.trimmed && first.n === 5, { names, first: first && { texW: first.texW, n: first.n } });
     const mb = strips ? strips.reduce((a, x) => a + x.packedBytes, 0) / 1048576 : 0;
     rec.ok(`1. ...${mb.toFixed(2)} MB of pictures once cropped: under 3 MB`, mb > 0 && mb < 3, { mb });
+    /* v2.3.4359: ...and held as COLOUR NUMBERS, a byte a pixel -- a quarter of
+       that -- every strip: they share one list of 256 colours */
+    rec.ok(`1. ...every strip of it held as colour numbers, a byte a pixel: ${(mb / 4).toFixed(2)} MB on the graphics chip, not ${mb.toFixed(2)}`,
+      !!strips && strips.length > 0 && strips.every((x) => x.numbers), strips && strips.map((x) => [x.url.split('/').pop().replace(/\?.*$/, ''), x.numbers]));
     await P.page.waitForTimeout(700);
 
     /* ── 2. the eight ways ── */

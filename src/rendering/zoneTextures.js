@@ -47,7 +47,7 @@
 import { Assets, Cache, Rectangle, Texture } from 'pixi.js';
 import { packTrimmed } from './gearSheets.js';   /* v2.3.2870: monster strips load cropped */
 import { holdOnceDrawn, forgetHeld } from './heldNumbers.js';   /* v2.3.3699: held once drawn, as colour numbers */
-import { stripAsNumbers, releaseBundleNumbers } from './picsNumbers.js';   /* v2.3.3715: ?picnumbers, colour numbers on the chip */
+import { stripAsNumbers, releaseBundleNumbers, picNumbersOn } from './picsNumbers.js';   /* v2.3.3715: ?picnumbers, colour numbers on the chip */
 
 /* bundle name -> the set of URLs loaded under it.  A Set, so a re-entered zone
    re-registering the same sheet costs one entry rather than a growing list. */
@@ -91,7 +91,8 @@ export function loadTracked(bundle, url) {
  * modules counted before) or [] for a missing file.  Frames carry `__btIx` /
  * `__btN` like every cropped frame (TRAPS §106: never recover an index from
  * frame.x / frame.width).  A strip the packer declines (art fills the cells)
- * comes back as plain slices of the uncropped image, still tracked. */
+ * comes back as plain slices of the uncropped image, still tracked (v2.3.4359:
+ * of its colour numbers where they are on, see below). */
 export function loadTrackedStrip(bundle, url, fw, fh) {
   const gen = _gen.get(bundle) || 0;
   return new Promise((res, rej) => {
@@ -106,7 +107,30 @@ export function loadTrackedStrip(bundle, url, fw, fh) {
        now and uploaded as them, its canvas let go of (picsNumbers.js); a strip
        that cannot be is the canvas, as before */
     const packedBytes = packed ? packed.canvas.width * packed.canvas.height * 4 : W * H * 4;
-    const numSrc = packed ? stripAsNumbers(bundle, packed.canvas, url) : null;
+    let numSrc = packed ? stripAsNumbers(bundle, packed.canvas, url) : null;
+    /* v2.3.4359: ...AND A STRIP THE PACKER LEAVES WHOLE.  The owner, of the
+       new monsters: "you're converting the pictures into the 256 color
+       framework right?  That should be happening as part of the process."
+       It was not for every strip: the packer declines one whose art fills its
+       cells (the water frog's death, 20 cells of a burst that reaches every
+       edge: 5.2 MB), and a declined strip went up as its image, four bytes a
+       pixel, whatever its colours.  Cropping saves such a strip nothing, but
+       colour numbers still save three quarters, so it is drawn whole on a
+       canvas and read into its numbers the same way (stripAsNumbers empties
+       the canvas; on a refusal it is emptied here and the image goes up, as
+       before).  Its frames are the plain slices below, on the numbers. */
+    if (!packed && picNumbersOn()) {
+      let whole = null;
+      try {
+        whole = document.createElement('canvas');
+        whole.width = n * fw; whole.height = fh;
+        const wctx = whole.getContext('2d', { willReadFrequently: true });
+        wctx.imageSmoothingEnabled = false;
+        wctx.drawImage(img, 0, 0);
+        numSrc = stripAsNumbers(bundle, whole, url);
+      } catch (e) { numSrc = null; }
+      if (!numSrc && whole) { try { whole.width = 0; whole.height = 0; } catch (e) { /* gone */ } }
+    }
     const src = numSrc || Texture.from(packed ? packed.canvas : img).source;
     /* v2.3.3699: once drawn, the packed canvas is read into its colour numbers
        and emptied -- the picture stays on the graphics chip (heldNumbers.js) */

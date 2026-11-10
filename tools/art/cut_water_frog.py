@@ -347,7 +347,7 @@ def main():
         made[f'attack-{d}'] = [synth(base, *t) for t in ATK_SYNTH]
     for name, cells in made.items():
         strip_of(cells).save(os.path.join(TMP, name + '.png'))
-    subprocess.check_call(['node', os.path.join(REPO, 'tools', 'art', 'strip256.mjs'), TMP, OUT] + sorted(made))
+    subprocess.check_call(['node', os.path.join(REPO, 'tools', 'art', 'strip256.mjs'), '--shared', TMP, OUT] + sorted(made))
     for name in made:
         os.remove(os.path.join(TMP, name + '.png'))
     os.rmdir(TMP)

@@ -17,18 +17,21 @@
  * its pieces placed each frame by game/waterAttack.js from the time alone.
  * A blow is drawn where it was thrown, whatever the frog does next.
  *
- * WHERE and HOW: as the element wind-ups are (elemWindup.js, whose shape this
- * is): on the projectiles layer, over everything that stands; POOL sprites
- * made once in one Container added once, every one cut from ONE picture drawn
- * in code (waterAttackShapes.js).  A frame only moves pieces, turns them,
- * sizes them and sets their alpha (0 for the ones not used) and their cell of
- * that one picture: nothing is ever added, removed, hidden or re-blended, so
- * the layer's draw list is never rebuilt for it (TRAPS §218).  At most
- * MAX_BLOWS at once, the nearest to you first.
+ * WHERE and HOW: on the projectiles layer, over everything that stands; POOL
+ * sprites made once in one Container added once (the element wind-ups' way,
+ * elemWindup.js), every one cut from ONE small picture of HARD PIXELS
+ * (v2.3.4359, the owner: "avoid marking cartoonish shapes. Make water effects
+ * with pixelation similar to how you made the flame effects": the campfire's
+ * way, campfireArt.js -- waterAttackShapes.js has the pixels), sampled
+ * nearest.  A frame only places pieces on the pixel grid and sets their
+ * alpha (0 for the ones not used) and their cell of that one picture: never
+ * turned, never scaled off the grid, nothing ever added, removed, hidden or
+ * re-blended, so the layer's draw list is never rebuilt for it (TRAPS §218).
+ * At most MAX_BLOWS at once, the nearest to you first.
  *
  * The picture is made on the loading screen (warmWaterAttack, in
- * preloadWorldAnimations: the law), 144 x 96 px, ~55 KB, kept for the page as
- * an image of itself (keepAsImage: nothing draws into it again).
+ * preloadWorldAnimations: the law), about 100 x 11 px (4 KB), kept for the
+ * page as an image of itself (keepAsImage: nothing draws into it again).
  *
  * `?nowaterfx` leaves it out (the frog's body alone); `window.
  * __btWaterAttack()` is the QA probe.
@@ -38,38 +41,51 @@ import { keepAsImage } from './keepAsImage.js';
 import { WATER_BLOWS, WATER_SHAPES, WATER_FX, FACING_DIR } from '@/data/waterAttack.js';
 import { waterPieces, waterBlowOver } from '@/game/waterAttack.js';
 import { seedOfId, windupSizeK } from '@/game/elemWindup.js';
-import { WATER_SHAPE_DRAW } from './waterAttackShapes.js';
+import { WATER_RAMP, WATER_PIXELS } from './waterAttackShapes.js';
 import { monsterTorsoY, monsterBodyOffsetY } from '@/data/gameSystems.js';
 import { monsterDrawScale } from '@/game/combatHelpers.js';
 
-const COLS = 3;
 let _cells = null;      /* shape -> Texture, cut from one source */
 
-/** The one picture every piece is cut from.  On the loading screen; made
+/** The one picture every piece is cut from: each cell's pixels written one by
+ *  one from its map of letters (waterAttackShapes.js), in a row, a clear pixel
+ *  between cells -- and sampled NEAREST, so a pixel drawn bigger is a bigger
+ *  square, never a smear (campfireFx.js's way).  On the loading screen; made
  *  here on first use only if that never ran (a test page). */
 export function warmWaterAttack() {
   if (_cells || typeof document === 'undefined') return;
   try {
-    const C = WATER_FX.CELL;
-    const rows = Math.ceil(WATER_SHAPES.length / COLS);
+    let W = 1, H = 1;
+    const at = Object.create(null);
+    for (const name of WATER_SHAPES) {
+      const rows = WATER_PIXELS[name];
+      at[name] = { x: W, w: rows[0].length, h: rows.length };
+      W += rows[0].length + 1;
+      H = Math.max(H, rows.length + 2);
+    }
     const cv = document.createElement('canvas');
-    cv.width = C * COLS; cv.height = C * rows;
+    cv.width = W; cv.height = H;
     const g = cv.getContext('2d');
-    WATER_SHAPES.forEach((name, i) => {
-      g.save();
-      g.translate((i % COLS) * C, Math.floor(i / COLS) * C);
-      g.beginPath(); g.rect(0, 0, C, C); g.clip();
-      try { WATER_SHAPE_DRAW[name](g, C); } catch (e) { /* a shape that cannot draw is an empty cell */ }
-      g.restore();
-    });
+    const img = g.createImageData(W, H);
+    for (const name of WATER_SHAPES) {
+      const rows = WATER_PIXELS[name], c = at[name];
+      for (let y = 0; y < c.h; y++) for (let x = 0; x < c.w; x++) {
+        const ink = WATER_RAMP[rows[y][x]];
+        if (!ink) continue;
+        const o = ((y + 1) * W + c.x + x) * 4;
+        img.data[o] = (ink[0] >> 16) & 255; img.data[o + 1] = (ink[0] >> 8) & 255; img.data[o + 2] = ink[0] & 255; img.data[o + 3] = ink[1];
+      }
+    }
+    g.putImageData(img, 0, 0);
     const base = Texture.from(cv);
-    /* made once and never drawn into again: kept as an image of itself
-       (keepAsImage.js, TRAPS §253), so a rebuilt renderer has it back */
-    if (base && base.source) keepAsImage(base.source, Cache);
+    if (base && base.source) {
+      base.source.scaleMode = 'nearest';
+      /* made once and never drawn into again: kept as an image of itself
+         (keepAsImage.js, TRAPS §253), so a rebuilt renderer has it back */
+      keepAsImage(base.source, Cache);
+    }
     const cells = Object.create(null);
-    WATER_SHAPES.forEach((name, i) => {
-      cells[name] = new Texture({ source: base.source, frame: new Rectangle((i % COLS) * C, Math.floor(i / COLS) * C, C, C) });
-    });
+    for (const name of WATER_SHAPES) cells[name] = new Texture({ source: base.source, frame: new Rectangle(at[name].x, 1, at[name].w, at[name].h) });
     _cells = cells;
   } catch (e) { _cells = null; }
 }
@@ -179,10 +195,11 @@ export class WaterAttackFx {
     if (probe) this._live.length = 0;
     let used = 0;
     for (const b of cand) {
-      const blow = WATER_BLOWS[b.kind];
       const age = (now - b.at) * rate;
       const n = waterPieces(b.kind, b, age, b.seed, this._buf);
-      const px = blow.size * b.k / WATER_FX.CELL;
+      /* an art pixel is PX world px, twice that on a big monster (a boss):
+         always a whole multiple, and every piece on that grid */
+      const px = WATER_FX.PX * Math.max(1, Math.round(b.k));
       const first = used;
       let aMax = 0;
       for (let q = 0; q < n && used < this.pool.length; q++) {
@@ -190,10 +207,11 @@ export class WaterAttackFx {
         const sp = this.pool[used++];
         const tex = _cells[p.shape];
         if (tex && sp.texture !== tex) sp.texture = tex;
-        sp.x = b.x + p.dx;
-        sp.y = b.y + p.dy;
-        sp.rotation = p.r;
-        sp.scale.set(px * p.s);
+        /* placed on the grid of its own pixels, never between two of them,
+           and never turned (v2.3.4359: hard pixels) */
+        sp.x = Math.round((b.x + p.dx) / px) * px;
+        sp.y = Math.round((b.y + p.dy) / px) * px;
+        if (sp.scale.x !== px) sp.scale.set(px);
         sp.alpha = p.a;
         if (p.a > aMax) aMax = p.a;
       }

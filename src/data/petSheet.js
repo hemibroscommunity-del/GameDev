@@ -9,7 +9,7 @@ export const PET_SHEET = Object.freeze({
   "cell": 64,
   "cols": 12,
   "rows": 8,
-  "bytes": 364997,
+  "bytes": 364949,
   "decodedBytes": 1572864,
   "bases": {
     "snowman": {

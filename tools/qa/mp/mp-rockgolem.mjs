@@ -145,6 +145,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('1. the Stone Hollows\' monster is drawn from the golem\'s two strips, 256 px cells cropped to the art (guard)',
       !!(first && first.visible && first.texAlive) && !!names && names.join() === 'death.png,walk.png' && first.texW === 256 && first.trimmed && first.n === 20, { names, first: first && { n: first.n, texW: first.texW } });
     rec.ok(`1. ...${mb.toFixed(2)} MB of pictures once cropped: under 5 MB`, mb > 0 && mb < 5, { mb });
+    /* v2.3.4359: ...and held as COLOUR NUMBERS, a byte a pixel -- a quarter of
+       that -- every strip: they share one list of 256 colours */
+    rec.ok(`1. ...every strip of it held as colour numbers, a byte a pixel: ${(mb / 4).toFixed(2)} MB on the graphics chip, not ${mb.toFixed(2)}`,
+      !!strips && strips.length > 0 && strips.every((x) => x.numbers), strips && strips.map((x) => [x.url.split('/').pop().replace(/\?.*$/, ''), x.numbers]));
     await P.page.waitForTimeout(600);
 
     /* ── 2. the eight ways ── */
