@@ -30,6 +30,7 @@
  */
 import { decodePng8 } from './png8Decode.js';
 import { packStripNumbers } from './stripPack.js';   /* v2.3.4450: a monster's strip, cropped and packed from its own numbers */
+import { bottomsOfNumbers } from './artBottoms.js';   /* v2.3.4450: each frame's ground line, read here from the page's numbers */
 
 function imageUrlOf(sheetUrl, image) {
   const base = new URL(sheetUrl, self.location.href);
@@ -73,6 +74,25 @@ self.onmessage = async (ev) => {
     const dec = await decodePng8(bytes, undefined, 4);
     if (!dec) throw new Error('not a palette PNG');
     const rgb = dec.rgb.slice(), alpha = dec.alpha;
+    /* v2.3.4450: `bases` -- each frame's ground line worked out HERE from the numbers (artBottoms.js), so the page
+       does not decode the file a second time and read every frame back off a canvas (wheelObjects.js).  The file's
+       own bytes then stay here (they were sent only for that read).  A frame laid on its side is left to the page. */
+    if (m.bases) {
+      const bottoms = Object.create(null);
+      let all = true;
+      for (const name of Object.keys(data.frames || {})) {
+        const fr = data.frames[name];
+        const f = fr && fr.frame;
+        if (!f || fr.rotated) { all = false; continue; }
+        bottoms[name] = bottomsOfNumbers(dec.idx, dec.stride, alpha, f.x, f.y, f.w, f.h);
+      }
+      if (all) {
+        self.postMessage({ id: m.id, ok: true, data, image, w: dec.w, h: dec.h, stride: dec.stride, n: dec.n,
+          idx: dec.idx, rgb, alpha, bottoms, bytes: m.bases === 'both' ? bytes : null },
+          m.bases === 'both' ? [dec.idx.buffer, rgb.buffer, alpha.buffer, bytes.buffer] : [dec.idx.buffer, rgb.buffer, alpha.buffer]);
+        return;
+      }
+    }
     self.postMessage({ id: m.id, ok: true, data, image, w: dec.w, h: dec.h, stride: dec.stride, n: dec.n,
       idx: dec.idx, rgb, alpha, bytes }, [dec.idx.buffer, rgb.buffer, alpha.buffer, bytes.buffer]);
   } catch (e) {

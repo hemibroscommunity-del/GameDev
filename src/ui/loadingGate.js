@@ -46,11 +46,23 @@ const qa = { ready: false, ups: 0, held: 0, released: 0, lastReadyAt: 0 };
 function hasDom() { return typeof document !== 'undefined' && !!document.body; }
 
 /* a loading screen in the page now */
+/* v2.3.4450: asked of two LIVE lists the browser keeps (getElementsByClassName), not by a search of the whole page
+   each time.  The search ran ten times a second from the timer below and again for every caller (the coach, the
+   arrow, the star, the achievements: several a frame), 2 to 6 ms each on the QA box with the band's windows in the
+   page -- the whole-game sweep (docs/specs/held-sweep.md) found it in every station.  A live list answers from the
+   browser's own count until the page's elements change, and is always the page as it is: the same answer, never
+   a stale one. */
+let _introList = null, _veilList = null;
 function overlayUp() {
   if (!hasDom()) return false;
   try {
     if (document.body.classList.contains('bt-intro-up')) return true;
-    return !!document.querySelector('.bt-intro, .bt-zone-loading');
+    if (!_introList || !_veilList) {
+      if (typeof document.getElementsByClassName !== 'function') return !!document.querySelector('.bt-intro, .bt-zone-loading');
+      _introList = document.getElementsByClassName('bt-intro');
+      _veilList = document.getElementsByClassName('bt-zone-loading');
+    }
+    return _introList.length > 0 || _veilList.length > 0;
   } catch (e) { return false; }
 }
 

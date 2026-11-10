@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState, startTransition } from 'react';   /* v2.3.4450: + startTransition (the band's beat) */
 /* v2.3.1236: owner feedback r4 §2 — WEAPON_TYPES / calcDisplayDmgRange /
    calcDisplayDps return to this import (r3 §1 had dropped them with the
    DMG/DPS/DEF footer): the readout is reinstated as the icon-based line
@@ -664,6 +664,9 @@ const RAIL_ITEMS = [
    glance views are RETIRED — bar and expanded are the only two nav
    states now (files deleted; git history has them). */
 
+/* v2.3.4450: `?bandbeat=0` -- the band's 200 ms redraw in one piece, as before (see the beat, below) */
+const BAND_BEAT_WHOLE = (() => { try { return /(^|[?&])bandbeat=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+
 export const BottomDashboard = () => {
   /* v2.3.3049: OPEN, then the sword and the shield (then the bow and the
      staff) flash until worn -- the owner's first-quest flashes (gearFlash.js).
@@ -732,8 +735,22 @@ export const BottomDashboard = () => {
   /* v2.3.1025: the BUILD/stats column rect -- the loadout equip picker docks
      over it (to the right of the loadout cells) so switching categories never
      moves the menu or covers the loadout, and it can't exceed the dashboard. */
+  /* ═══ v2.3.4450: THE BAND'S FIVE-A-SECOND REDRAW LETS THE FRAME IN ═══
+     The whole-game sweep of what holds the page (tools/qa/mp/mp-heldsweep.mjs,
+     docs/specs/held-sweep.md) found this beat everywhere it looked: the whole
+     band -- the gear tab and every column under it -- redrawn five times a
+     second for as long as you play, each one 4 to 14 ms of the page's one
+     thread IN ONE PIECE, between two frames (a frame on a 120 Hz screen is
+     8 ms).  The band reads the game's live state, so the beat stays; but as
+     a TRANSITION React draws it in pieces of 5 ms and lets a frame in between
+     them (the root is a concurrent one: main.jsx createRoot).  And not at all
+     while the tab is hidden.  `?bandbeat=0`: in one piece, as before. */
   useEffect(() => {
-    const id = setInterval(() => force(v => v + 1), 200);
+    const id = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      if (BAND_BEAT_WHOLE) force(v => v + 1);
+      else startTransition(() => force(v => v + 1));
+    }, 200);
     return () => clearInterval(id);
   }, []);
   /* v2.3.1235: batch-4 state-correction §2 — an anchored stat tooltip

@@ -50,6 +50,7 @@ import { holdOnceDrawn, forgetHeld, numbersOfSliced, numbersOf } from './heldNum
 import { stripAsNumbers, releaseBundleNumbers, picNumbersOn } from './picsNumbers.js';   /* v2.3.3715: ?picnumbers, colour numbers on the chip */
 import { noteMade } from '../debug/madeLog.js';   /* v2.3.4400: a strip packed on the page says its name and its time */
 import { readStrip, stripReadOn } from './stripRead.js';   /* v2.3.4450: a strip read from its 256-colour file's own numbers, off the page's thread */
+import { retintPalette } from './retintPalette.js';   /* v2.3.4450: a strip in another colour is its palette in another colour */
 
 /* bundle name -> the set of URLs loaded under it.  A Set, so a re-entered zone
    re-registering the same sheet costs one entry rather than a growing list. */
@@ -121,13 +122,35 @@ export function loadTrackedStrip(bundle, url, fw, fh) {
   }
   return _stripByImage(bundle, url, fw, fh, gen);
 }
+/* ═══ v2.3.4450: THE SAME STRIP IN ANOTHER COLOUR, STILL FROM ITS NUMBERS ═══
+   A colour variant of a monster (monsterRecolor.js: the moss slime, the mire
+   wisp) was its sheets unpacked on a canvas on the page, every pixel
+   rewritten and the full-colour copy kept: 23 ms a sheet as the look came in
+   on a ride (the whole-game sweep), four bytes a pixel.  Its art is a
+   256-colour file like every monster's, so the variant is the same numbers
+   with its PALETTE retinted (retintPalette.js): read off the page's thread,
+   one byte a pixel.  Resolves to the frames; or to null when the strip cannot
+   come this way here (the reader off, not a 256-colour file, no row of
+   colours left) -- the caller then recolours on a canvas, as before. */
+export function loadTrackedStripRetinted(bundle, url, fw, fh, rgb) {
+  const gen = _gen.get(bundle) || 0;
+  if (!stripReadOn() || !picNumbersOn() || (typeof window !== 'undefined' && window.__btPicNumVerify === true)) return Promise.resolve(null);
+  return readStrip(url, fw, fh).then((m) => {
+    if ((_gen.get(bundle) || 0) !== gen) return [];
+    if (!m) return null;
+    const m2 = { w: m.w, h: m.h, idx: m.idx, cells: m.cells, n: m.n, fileW: m.fileW, fileH: m.fileH, pal: retintPalette(m.pal, m.idx, rgb) };
+    if (stripFrameMs() > 0) return _inLine(async () => { await stripTurn(); return _stripOfNumbers(bundle, url, fw, fh, gen, m2, true); });
+    return _stripOfNumbers(bundle, url, fw, fh, gen, m2, true);
+  }).catch(() => null);
+}
 /* the strip's texture and frames from the numbers the worker read (packed, or whole when its art fills its cells) --
-   or, when the bundle's rows of colours have no room for it, the page's own way */
-function _stripOfNumbers(bundle, url, fw, fh, gen, m) {
+   or, when the bundle's rows of colours have no room for it, the page's own way (`noImage`: null instead: the
+   caller has its own) */
+function _stripOfNumbers(bundle, url, fw, fh, gen, m, noImage) {
   if ((_gen.get(bundle) || 0) !== gen) return [];
   const _madeT0 = performance.now();
   const numSrc = stripAsNumbers(bundle, null, url, { w: m.w, h: m.h, idx: m.idx, pal: m.pal });
-  if (!numSrc) return _stripByImage(bundle, url, fw, fh, gen);
+  if (!numSrc) return noImage ? null : _stripByImage(bundle, url, fw, fh, gen);
   let set = _crops.get(bundle);
   if (!set) { set = new Set(); _crops.set(bundle, set); }
   set.add(numSrc);

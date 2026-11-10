@@ -52,6 +52,7 @@
 
 import { Rectangle, Texture } from 'pixi.js';
 import { releaseCanvasSource } from './releaseCanvasTexture.js';   /* v2.3.3074 */
+import { loadTrackedStripRetinted, unloadBundle } from './zoneTextures.js';   /* v2.3.4450: the recolour is the PALETTE's, read off the page's thread */
 
 const FRAME_W = 128;
 const FRAME_H = 128;
@@ -139,9 +140,23 @@ export function loadMonsterRecolor(family, rgb) {
   if (!key || !urls) return Promise.resolve();
   const hit = _cache.get(key);
   if (hit) return hit.promise;
-  const entry = { promise: null, frames: Object.create(null) };
+  const entry = { promise: null, frames: Object.create(null), bundle: 'recolor|' + key, byNumbers: 0 };
   entry.promise = Promise.all(Object.keys(urls).map(async (state) => {
     try {
+      /* ═══ v2.3.4450: THE PALETTE RETINTED, NOT THE PIXELS ═══
+         The whole-game sweep (docs/specs/held-sweep.md) found this bake on
+         the ride through the town: 23 ms a sheet of the page's time as a
+         colour variant's look came in, six sheets a colour.  Every monster
+         picture is a 256-colour file (strip-door.test), so the sheet comes
+         through the strip door as its own numbers, read off the page's
+         thread, with its palette in the new colour (zoneTextures.js
+         loadTrackedStripRetinted, retintPalette.js): the same rule, 255
+         multiplications instead of a canvas, and one byte a pixel kept
+         instead of four.  A sheet that cannot come that way here is
+         recoloured on a canvas below, exactly as before. */
+      const byNum = await loadTrackedStripRetinted(entry.bundle, urls[state], FRAME_W, FRAME_H, rgb);
+      if (_cache.get(key) !== entry) return;   /* let go of while it loaded */
+      if (byNum && byNum.length) { entry.frames[state] = byNum; entry.byNumbers++; return; }
       const img = await loadImg(urls[state]);
       const cv = retintToCanvas(img, rgb);
       const base = Texture.from(cv);
@@ -196,9 +211,13 @@ export function freeMonsterRecolor(variant) {
     /* Frames first without their source, then the source once: every frame in
        a state shares one canvas-backed TextureSource. */
     const src = list && list[0] && list[0].source;
+    const numbers = !!(src && src._btPicNum);   /* v2.3.4450: a strip of colour numbers is its bundle's to free (below) */
     for (let i = 0; i < (list ? list.length : 0); i++) { try { list[i].destroy(false); } catch (err) { /* gone */ } }
-    try { if (src) releaseCanvasSource(src); } catch (err) { /* gone */ }   /* v2.3.3074: Cache entry and canvas too -- every look let go of on the Wheel left its canvases behind (TRAPS §139) */
+    try { if (src && !numbers) releaseCanvasSource(src); } catch (err) { /* gone */ }   /* v2.3.3074: Cache entry and canvas too -- every look let go of on the Wheel left its canvases behind (TRAPS §139) */
   }
+  /* v2.3.4450: the sheets that came as numbers: their textures and their rows of colours -- and any still being
+     read is dropped as it arrives (always: one may be on its way with none in yet) */
+  try { unloadBundle(e.bundle); } catch (err) { /* gone */ }
   return true;
 }
 

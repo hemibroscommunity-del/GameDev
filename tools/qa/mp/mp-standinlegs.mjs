@@ -327,8 +327,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await letGo(A.page);
       }
     }
-    const clamped = await A.page.evaluate(() => window.__btStandInLegs().clamped);
-    rec.ok('every sword and bow sheet was clamped under the greaves', Object.keys(clamped).length >= 8, clamped);
+    /* v2.3.4450: clamped by a bake, or drawn from the numbers kept under greaves (lookSets/standinlegs.js: no bake) */
+    const legsNow = await A.page.evaluate(() => { const p = window.__btStandInLegs(); return { clamped: p.clamped, looks: p.looks || [], legsLook: p.legsLook }; });
+    const clamped = legsNow.clamped;
+    rec.ok(`every sword and bow sheet is clamped under the greaves (${legsNow.looks.length} from the numbers kept under greaves, ${Object.keys(clamped).length} by a bake)`,
+      Object.keys(clamped).length + legsNow.looks.length >= 8, legsNow);
 
     /* ── 2. no greaves: the trousers and boots stay ── */
     await wearGreaves(A.page, false);
