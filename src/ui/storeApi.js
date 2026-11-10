@@ -23,6 +23,7 @@
  * server-settled store (handoff rule zero). */
 
 import { BT_API_BASE } from '@/networking/index.js';
+import { postWithin } from '@/game/storeAnswer.js';   /* v2.3.4412: a time limit, and "not sure" is not "no" */
 
 function S() {
   try { return window._gameState && window._gameState.current; } catch (e) { return null; }
@@ -127,16 +128,14 @@ function headers() {
   return h;
 }
 
+/* v2.3.4412: a request the network swallows ends after a time limit, and no
+   answer comes back `unsure`, never a plain refusal (game/storeAnswer.js: a
+   lost answer read as a refusal made players list twice) */
 async function post(path, body) {
-  try {
-    const res = await fetch(BT_API_BASE + '/api/store' + path + '?room=' + room(), {
-      method: 'POST', headers: headers(),
-      body: JSON.stringify({ ...body, playerId: storeMyId() }),
-    });
-    return await res.json();
-  } catch (e) {
-    return { ok: false, error: 'No answer from the store' };
-  }
+  return postWithin((u, i) => fetch(u, i), BT_API_BASE + '/api/store' + path + '?room=' + room(), {
+    method: 'POST', headers: headers(),
+    body: JSON.stringify({ ...body, playerId: storeMyId() }),
+  });
 }
 
 export async function storeBrowse(cat, cursor, limit) {

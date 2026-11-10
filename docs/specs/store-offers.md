@@ -70,6 +70,14 @@ seller who never answered. 48h survives a seller's weekend and is not a week-lon
 loan. Expiry is lazy, on the store's existing sweep (rule 12, no alarms), bounded
 by the same pass.
 
+v2.3.4412: the pass bounds the listings with an offer DUE (at most `SWEEP_MAX`,
+20, refunded a pass; the rest on the next minute's), not every listing it walks.
+Before, it counted every listing and stopped at 20, so on a shelf of more than
+20 an ignored offer past listing 20 was held up to the listing's week (the
+state-machine sweep's V8a S6-6). The walk is memory only; a quiet shelf writes
+nothing. Kill switch: `disable_offer_sweep_all` in the live flags puts back the
+old first-20 pass. Suite: `server/test/store-offer-sweep.test.mjs`.
+
 ## The replies
 
 Enumerated, never free text — `OFFER_REPLIES = ['yes', 'think', 'no']`; the

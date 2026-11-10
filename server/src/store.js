@@ -1058,11 +1058,37 @@ export const storeMethods = {
        Bounded by the same pass: at most MAX_PER_LISTING offers per record and
        at most SWEEP_MAX records looked at, so this cannot become the
        unbounded walk rule 9 warns about. */
-    let looked = 0;
+    /* v2.3.4412: the bound counts listings with an offer DUE, not every
+       listing walked.  It used to count every listing before asking whether
+       it had offers, and stop at 20 with no cursor: on a shelf of more than
+       20 an ignored offer past listing 20 was never reached, and its gold was
+       held up to the listing's week instead of 48 h (the sweep's V8a S6-6).
+       The walk itself is memory only (at most MAX_GLOBAL records, the same
+       walk as the listing pass above); the writes are unchanged -- one put
+       and one credit per offer that IS due, which the old pass also made for
+       the listings it reached, and nothing at all on a quiet shelf.  Gathered
+       first, then refunded, so no await runs inside the index walk.
+       Kill switch: `disable_offer_sweep_all` in the live flags puts back the
+       old first-20 pass. */
+    if (this._flagOn && this._flagOn('disable_offer_sweep_all')) {
+      let looked = 0;
+      for (const rec of this._stIndex.values()) {
+        if (looked++ >= STORE.SWEEP_MAX) break;
+        if (rec.sale || rec.releasing || !rec.offers) continue;
+        if (!Object.keys(rec.offers).length) continue;
+        await this._soSweepRec(rec, now);
+      }
+      return;
+    }
+    const offersDue = [];
     for (const rec of this._stIndex.values()) {
-      if (looked++ >= STORE.SWEEP_MAX) break;
+      if (offersDue.length >= STORE.SWEEP_MAX) break;
       if (rec.sale || rec.releasing || !rec.offers) continue;
-      if (!Object.keys(rec.offers).length) continue;
+      if (this._soHasDue(rec, now)) offersDue.push(rec);
+    }
+    for (const rec of offersDue) {
+      // a buy or an end may have started while an earlier refund awaited
+      if (rec.sale || rec.releasing || this._stIndex.get(String(rec.id)) !== rec) continue;
       await this._soSweepRec(rec, now);
     }
   },

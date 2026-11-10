@@ -37,6 +37,8 @@ import { unequipArmorDirect, unequipLegsDirect, syncArmorChange, equipArmorFromS
 import { resolveStashIdx } from './equipActions.js';   /* v2.3.4151: moved there, with the three equips */
 import { weaponBlocked, weaponBagFull } from './equipActions.js';   /* v2.3.4386: the worker's two weapon refusals, asked first */
 import { itemActionList, runItemAction } from './itemActions.js';   /* v2.3.4151: the one action list, shared with the Gear tab */
+import { cardAnswer, STORE_UNSURE_WORDS } from '@/game/storeAnswer.js';   /* v2.3.4412: "not sure" keeps the card locked; a late answer stays on its card */
+import { deskWords } from '@/game/deskWords.js';
 import { revealCardFor } from '@/game/revealBag.js'; /* v2.3.4012: a mystery piece's card */
 import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx'; /* v2.3.4012: its "?" */
 import { setShirt } from '../../../rendering/traits/shirtCatalog.js';
@@ -782,6 +784,10 @@ export const ItemDetailPopup = () => {
      is lost (each can be taken down) but the seller did not ask for it.
      Raised as finding #3 on PR #615's review, which names this button. */
   const sellInFlight = useRef(false);
+  /* v2.3.4412: which card this is.  The card stays mounted across a close and
+     another open, so a late listing answer checks this before it touches
+     the card (game/storeAnswer.js cardAnswer; the sweep's V8a M2-3). */
+  const sellCard = useRef(0);
   /* v2.3.3473: Drop's own step, in the card like Sell's: how many, then the
      drop.  The ref is the one tap, one drop rule (sellInFlight's reason). */
   const [dropOpen, setDropOpen] = useState(false);
@@ -803,6 +809,7 @@ export const ItemDetailPopup = () => {
     const flow = itemDetailBus.state.open && itemDetailBus.state.target ? itemDetailBus.state.target.flow : null;
     setSellOpen(flow === 'sell'); setSellPrice(''); setSellQty(1); setSellErr(''); setSellBusy(false);
     sellInFlight.current = false;
+    sellCard.current += 1;   /* v2.3.4412: an answer still out belongs to the card before */
     setDropOpen(flow === 'drop'); setDropQty(1); dropInFlight.current = false;   /* v2.3.3473 */
   }, [itemDetailBus.state.open, itemDetailBus.state.target]);
 
@@ -1558,9 +1565,21 @@ export const ItemDetailPopup = () => {
     }
     sellInFlight.current = true;
     setSellBusy(true); setSellErr('');
+    const sentCard = sellCard.current;
     const r = await storeList(body);
-    sellInFlight.current = false;
-    setSellBusy(false);
+    /* v2.3.4412: no answer is "not sure", never "no": the card STAYS LOCKED
+       (the worker may have taken it, and a second tap would list it twice --
+       the v2.3.2507 double listing).  An answer for a card that is no longer
+       open touches no card: only its own item's bag entry, below. */
+    const ans = cardAnswer(r, sentCard, sellCard.current);
+    if (ans.kind === 'unsure') {
+      if (ans.mine) setSellErr(deskWords(STORE_UNSURE_WORDS));
+      return;
+    }
+    if (ans.mine) {
+      sellInFlight.current = false;
+      setSellBusy(false);
+    }
     if (r && r.ok) {
       /* ═══ v2.3.2532: THE BAG STOPS SHOWING WHAT YOU NO LONGER OWN ═══
          v2.3.2531 closed the popup and left the piece on its card, on
@@ -1578,9 +1597,10 @@ export const ItemDetailPopup = () => {
         const R3 = S3 && S3.rpg;
         if (R3 && removeGearLocal(R3, gearSell.field, target[gearSell.prop], target.index)) persist(R3);
       }
+      if (!ans.mine) return;   /* v2.3.4412: another card is open now: leave it be */
       cue('marketList');   /* v2.3.3343: the thing handed to the auction house is heard (the popup closed in silence; SOUND-GAPS) */
       itemDetailBus.close();
-    } else {
+    } else if (ans.mine) {
       /* v2.3.2551: the worker answers a gear refusal with a STABLE reason
          string as well as a sentence.  Prefer this browser's own wording
          for a reason it knows, so the four cards say the same thing before
@@ -1883,7 +1903,7 @@ export const ItemDetailPopup = () => {
             <div style={{ display: 'flex', gap: 6 }}>
               <button onClick={onSellConfirm} disabled={sellBusy}
                 className={buttonClass('primary')} style={{ ...buttonStyle('primary'), opacity: sellBusy ? 0.5 : 1 }}>
-                {sellBusy ? 'Listing…' : 'Put it up'}
+                {sellBusy && !sellErr ? 'Listing…' : 'Put it up'}
               </button>
               <button onClick={() => { setSellOpen(false); setSellErr(''); }} className={buttonClass()} style={buttonStyle()}>Back</button>
             </div>
