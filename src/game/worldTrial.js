@@ -441,9 +441,10 @@ async function preloadWheel() {
        eye style, patterned trousers), and each pose and direction of theirs
        was baked on the page the first time you met it -- 80 to 250 ms, a
        frozen frame, about one a second on a skateboard through the town (the
-       owner's iPhone: "late frames 10 in 10s").  Their days are fixed loops,
-       so every pose is known now (townsfolkWalk.js folkBakeJobs): baked
-       here, behind this loading screen.  Never held up by it past
+       owner's iPhone: "late frames 10 in 10s").  Every pose one can be drawn
+       in is known now (townsfolkWalk.js folkBakeJobs: all eight facings,
+       he leaves his route to turn to you and to walk back): baked here,
+       behind this loading screen.  Never held up by it past
        FOLK_BAKE_WAIT_MS: what is not baked by then bakes as before. */
     try {
       const day = await import('./townsfolkDay.js');

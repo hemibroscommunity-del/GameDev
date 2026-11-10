@@ -169,6 +169,9 @@ export function folkAt(stops, seed, nowMs) {
   return { dx: s0[0], dy: s0[1], walking: false, work: s0[3] || null };
 }
 
+/* the eight facings, in the renderer's names (entityRenderer NPC_DIRS_8) */
+const DIRS8 = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
+
 /* ═══ v2.3.4355: EVERY POSE A DAY CAN SHOW HIM IN, KNOWN AHEAD ═══
    The owner's iPhone on the skateboard through the town, its meter reading
    "late frames 10 in 10s", "worst 170.0 = game 40.0 + outside 130.0".  The
@@ -177,24 +180,26 @@ export function folkAt(stops, seed, nowMs) {
    style, a pattern on the trousers (playerSkins.js getLookBodyFrame) -- and
    the old path baked a copy of the body sheet for each, on the page, the
    first time he was seen in each pose and each direction: 80 to 250 ms a
-   sheet on a ride through the town, each a frozen frame.  A day is a fixed
-   loop, so the poses it can show are known before he takes a step: the jog
-   along each leg, the stand at each stop (facing the way he came, or
-   south), and his jobs (authored facing south).  The renderer bakes those,
-   for the looks that need it, behind the world's loading screen
-   (entityRenderer prewarmFolkBodies; PRELOADING IS LAW). */
-/** [{ pose, facing }] for a loop's stops, each once. */
+   sheet on a ride through the town, each a frozen frame.  What a day can
+   show is known before he takes a step, so the renderer bakes it, for the
+   looks that need it, behind the world's loading screen (entityRenderer
+   prewarmFolkBodies; PRELOADING IS LAW).
+
+   ALL EIGHT FACINGS, standing and walking, not only his loop's own.  The
+   first cut baked the jog along each leg and the stand at each stop, and the
+   owner's next ride read "way better with just a few occasional hiccups",
+   the meter naming one: "between frames: body jog-east 101.0 ms".  He does
+   not keep to his legs: he stops and turns to YOU (townsfolkDay attend: any
+   facing), and after any wait (you, the walkers' cap, a bump) he walks
+   STRAIGHT to where his loop has him now, cutting the corner (folkStep: any
+   facing).  So: stand and jog every way, and each job facing south. */
+/** [{ pose, facing }] a townsperson with these stops can be drawn in. */
 export function folkDayPoses(stops) {
-  const out = [], seen = new Set();
-  const add = (pose, facing) => { const k = pose + '|' + facing; if (!seen.has(k)) { seen.add(k); out.push({ pose, facing }); } };
+  const out = [];
   if (!stops || !stops.length) return out;
-  add('stand', 'south');
-  for (let i = 0; i < stops.length; i++) {
-    const a = stops[i], b = stops[(i + 1) % stops.length];
-    if (a[3]) add(a[3], 'south');
-    const dx = b[0] - a[0], dy = b[1] - a[1];
-    if (Math.hypot(dx, dy) > 0.5) { const f = folkFacing(dx, dy); add('jog', f); add('stand', f); }
-  }
+  for (const facing of DIRS8) { out.push({ pose: 'stand', facing }); out.push({ pose: 'jog', facing }); }
+  const seen = new Set();
+  for (const s of stops) if (s[3] && !seen.has(s[3])) { seen.add(s[3]); out.push({ pose: s[3], facing: 'south' }); }
   return out;
 }
 /** ...for every townsperson with a day, as a quest giver (tethered) and as
@@ -213,9 +218,7 @@ export function folkBakeJobs() {
   return out;
 }
 
-/** The eight facings by a step (dx, dy), +y south -- the renderer's names
- *  (entityRenderer NPC_DIRS_8). */
-const DIRS8 = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
+/** The facing of a step (dx, dy), +y south. */
 export function folkFacing(dx, dy) {
   const oct = Math.round(Math.atan2(dy, dx) / (Math.PI / 4));
   return DIRS8[((oct % 8) + 8) % 8];

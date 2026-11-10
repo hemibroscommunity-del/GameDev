@@ -8801,6 +8801,14 @@ time.
 - Before drawing a fixed cast live, ask `lookBodyRefused(pose, dir, art,
   eyeStyle)` for every pose its script can show, and bake those behind a
   loading screen (`prewarmFolkBodies`; `awaitBodyBuilds` waits for them).
+- "Every pose its script can show" is NOT the script's own list. The first
+  cut baked the facings of each townsperson's route and nothing else, and the
+  owner's next ride read "a few occasional hiccups", "between frames: body
+  jog-east 101.0 ms": a townsperson who stops for you turns to face you, and
+  one who has waited (for you, the walkers' cap, a bump) walks STRAIGHT back
+  to where his route has him now, across its corners. Count what the code
+  that moves him can do (`townsfolkDay.js`: any facing), not what his table
+  says (`folkDayPoses`: all eight, standing and walking).
 - A job that runs on the page the first time something is seen says its name
   and its time (`debug/madeLog.js noteMade`): the phone's strip (`?perf=1`)
   then names it under "between frames", and `window.__btMade` lists them for

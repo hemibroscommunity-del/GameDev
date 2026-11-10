@@ -124,7 +124,17 @@ player never loses items, gold or a fight to a phase that stuck.
     object page was read in one go as it came. Now baked behind the world's
     loading screen, and read a few ms at a time: `mp-townride` (5 bakes on
     the ride, the longest 258 ms, to none, the longest job 18 ms);
-    `docs/specs/living-town.md`. Waits on the owner's eye.
+    `docs/specs/living-town.md`.
+  - **"Way better with just a few occasional hiccups"** (the owner on that,
+    the strip naming one: "between frames: body jog-east 101.0 ms"). The
+    first cut baked the facings of each townsperson's own route. He leaves
+    it: he turns to you, and after any wait he walks straight back across
+    its corners, facing any way (the Blacksmith's route is all diagonals, so
+    east and west were never baked). Now all eight facings, standing and
+    walking: 34 sheets in 2.5 s behind the loading screen on the test box
+    (23 in 1.8 s), and `mp-townride` sets each of the four down off his
+    route in each direction: 7 bakes on the page with the first cut (the
+    Blacksmith's walk east 91 ms), none now. Waits on the owner's eye.
   - **Still to do, for A2**: another PLAYER with an eye style or a drawing
     is baked on the page when first met, the same freeze, in any crowd.
   - **The cause**: not the frame rate. The owner's captures (`?perf=1`,

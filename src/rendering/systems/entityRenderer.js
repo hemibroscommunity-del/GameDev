@@ -2287,8 +2287,8 @@ function _shirtLook(front, back, patternStr, tint) {
    stand-ins bake their own sheets and never asked for the drawings. */
 export function remoteBodyArt(other, mirror) { return _remoteBodyArt(other, mirror); }
 /* ═══ v2.3.4355: THE TOWNSFOLK'S BAKED BODIES, BEHIND THE LOADING SCREEN ═══
-   `jobs`: [{ name, pose, facing }], every pose a townsperson's day can show
-   him in (game/townsfolkWalk.js folkBakeJobs).  For each that the shared
+   `jobs`: [{ name, pose, facing }], every pose a townsperson can be drawn in,
+   on his route or off it (game/townsfolkWalk.js folkBakeJobs).  For each that the shared
    colour numbers refuse for HIS look (an eye style, a pattern on the
    trousers: playerSkins.js lookBodyRefused), the sheet is asked for exactly
    as _drawFolk will ask (the same call, so the same key), and the returned

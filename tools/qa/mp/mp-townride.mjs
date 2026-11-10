@@ -11,7 +11,7 @@
  *   - every frame of an object page was read for its ground line in one go
  *     as the page came.
  * Now the townsfolk's sheets are baked behind the world's loading screen
- * (their days are fixed loops: game/townsfolkWalk.js folkBakeJobs) and a
+ * (every pose they can be drawn in: game/townsfolkWalk.js folkBakeJobs) and a
  * page's reads are a few ms at a time (wheelObjects.js readPageBottoms).
  *
  * A phone in the world rides a loop right through the town on the board,
@@ -23,7 +23,14 @@
  *   - as it ships: the bakes were done behind the loading screen, no moving
  *     body sheet is baked on the ride, and no job holds the page past
  *     HOLD_MAX_MS, nor all of them together past SUM_MAX_MS;
- *   - the four still walk and work (their day is on).
+ *   - the four still walk and work (their day is on);
+ *   - OFF HIS LOOP (the owner's next ride: "way better with just a few
+ *     occasional hiccups", "between frames: body jog-east 101.0 ms"): each of
+ *     the four is set down a few steps off his route in each of the eight
+ *     directions, as a wait leaves him (he stopped for you, the walkers' cap,
+ *     a bump), and walks straight back, facing whichever way that is.  As it
+ *     ships no body sheet is baked for it (all eight facings were, behind the
+ *     loading screen); as before, they are baked on the page.
  *
  *   node tools/qa/mp/run.mjs townride
  */
@@ -60,10 +67,47 @@ async function ride(browser, wsPort, webPort, rec, label, query) {
     const jobs = [];
     for (let i = 0; i < made.length; i += 2) jobs.push({ name: made[i], ms: made[i + 1] });
     const folk = await P.page.evaluate(() => (window._gameState.current.npcs || []).filter((n) => /Blacksmith Bro|Farmer Bro|Beastmaster Bro|Old Man Reel/.test(n.name)).map((n) => ({ name: n.name, day: !!n._folkDay })));
-    return { gate, jobs, folk };
+    const off = await offLoop(P);
+    return { gate, jobs, folk, off };
   } finally {
     await P.ctx.close().catch(() => {});
   }
+}
+
+/* ── off his loop: set down OFF_PX from where his loop has him, each of the eight ways in turn, he walks straight back ──
+   You stand AWAY_PX below him: on the screen, and past a quest giver's reach (townsfolkWalk FOLK_GIVER_NEAR), or he
+   would stand and face you instead.  A step into something solid is refused (townsfolkDay), so a direction can fail to
+   be walked: counted, not asserted (the bakes are what is asserted). */
+const OFF_PX = 44, AWAY_PX = 270, BACK_MS = 6000;
+async function offLoop(P) {
+  const names = ['Blacksmith Bro', 'Farmer Bro', 'Beastmaster Bro', 'Old Man Reel'];
+  const out = { jobs: [], walked: 0, tried: 0 };
+  for (const name of names) {
+    const at = await P.page.evaluate((n) => { const f = (window._gameState.current.npcs || []).find((x) => x.name === n && x._folkDay); return f ? { x: f.x, y: f.y } : null; }, name);
+    if (!at) continue;
+    await H.glideTo(P, at.x, at.y + AWAY_PX, { speed: 300, timeoutMs: 60000 });
+    await P.page.waitForTimeout(1500);
+    await P.page.evaluate(() => { window.__btMade = []; });
+    for (let k = 0; k < 8; k++) {
+      out.tried++;
+      const back = await P.page.evaluate(({ n, k, off, lim }) => new Promise((resolve) => {
+        const f = (window._gameState.current.npcs || []).find((x) => x.name === n && x._folkDay);
+        if (!f) { resolve(false); return; }
+        f.x = f._folkDay.tx + Math.cos(k * Math.PI / 4) * off;
+        f.y = f._folkDay.ty + Math.sin(k * Math.PI / 4) * off;
+        const t0 = performance.now();
+        const iv = setInterval(() => {
+          const d = Math.hypot(f._folkDay.tx - f.x, f._folkDay.ty - f.y);
+          if (d < 2 || performance.now() - t0 > lim) { clearInterval(iv); resolve(d < 2); }
+        }, 100);
+      }), { n: name, k, off: OFF_PX, lim: BACK_MS });
+      if (back) out.walked++;
+      await P.page.waitForTimeout(250);
+    }
+    const made = await P.page.evaluate(() => window.__btMade.slice());
+    for (let i = 0; i < made.length; i += 2) out.jobs.push({ who: name, name: made[i], ms: made[i + 1] });
+  }
+  return out;
 }
 
 /* a body sheet for a pose that MOVES (a stand is one frame, a few ms: the way he turns to face you is not known ahead) */
@@ -89,5 +133,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`as it ships: the ride bakes no moving body sheet (${a.moving}; ${b.moving} before)`, a.moving === 0, a);
   rec.ok(`as it ships: no job holds the page past ${HOLD_MAX_MS} ms (the longest ${a.longest}; ${b.longest} before), nor all ${a.jobs} together past ${SUM_MAX_MS} ms (${a.sum}; ${b.sum} before)`,
     a.longest <= HOLD_MAX_MS && a.sum <= SUM_MAX_MS && a.pages > 0, a);
+  const offBody = (r) => r.off.jobs.filter((j) => /^body /.test(j.name));
+  const oa = offBody(now), ob = offBody(old);
+  const tell = (l) => l.map((j) => `${j.who.split(' ')[0]} ${j.name.split('|')[1]} ${Math.round(j.ms)} ms`).slice(0, 10).join(', ');
+  console.log(`    off his loop, as it ships: walked back ${now.off.walked} of ${now.off.tried}, body sheets baked ${oa.length}${oa.length ? ' (' + tell(oa) + ')' : ''}`);
+  console.log(`    off his loop, as before:   walked back ${old.off.walked} of ${old.off.tried}, body sheets baked ${ob.length}${ob.length ? ' (' + tell(ob) + ')' : ''}`);
+  rec.ok(`off his loop, each of the eight ways: the four walked straight back ${now.off.walked} times of ${now.off.tried} (guard: most of them)`, now.off.walked >= now.off.tried * 0.6 && now.off.tried === 32, now.off);
+  rec.ok(`as before: walking straight back bakes ${ob.filter(moving).length} moving body sheets on the page, the longest ${Math.round(Math.max(0, ...ob.map((j) => j.ms)))} ms (the hiccup the owner's meter named; at least one)`, ob.filter(moving).length >= 1, tell(ob));
+  rec.ok(`as it ships: walking straight back, whichever way, bakes no body sheet on the page (${oa.length}${oa.length ? ': ' + tell(oa) : ''})`, oa.length === 0, tell(oa));
   rec.ok(`the four still have their day -- ${now.folk.map((f) => f.name + (f.day ? '' : ' (none)')).join(', ')}`, now.folk.length === 4 && now.folk.every((f) => f.day), now.folk);
 }
