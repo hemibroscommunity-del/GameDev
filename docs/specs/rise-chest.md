@@ -98,7 +98,15 @@ near BroTown).
   of the elevation identical to the surrounding grass tiles ... a single-height
   grassy bluff with a visible southern cliff face, irregular rocky edges, and
   one grassy ramp." A rise with `look: 'hill'` is now:
-  - its **top** nothing painted: the ground as laid, the same grass as round it;
+  - its **top** the ground as laid (the same grass, its flowers and stones),
+    **lit**: the first cut painted nothing there and the owner said "It looks
+    like it's a transparent on top of the elevated surface. It needs shadowing
+    or something to look like a raised surface." So `risePaint` takes most of
+    the top's grass pixels up a tone (`HILL_LIFT`: 7 blades in 10 on a rise on
+    the ground, nearly all on a rise standing on another), in the grass's own
+    measured tones, and the hill **casts shade** on the lower ground east of
+    it (`hillCast`, up to 26 px) and at its foot (22 px). No colour outside
+    `RISE_PALETTE`, so a piece of ground stays colour numbers;
   - its **face** a cliff of rounded brown boulders (lit from the upper left,
     dark in the gaps, darker toward the foot) under a thick **cap** of grass
     whose blades hang 10 to 21 px over it, the ground's own tufts standing in
