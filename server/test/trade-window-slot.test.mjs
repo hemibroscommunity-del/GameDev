@@ -208,8 +208,11 @@ check('3b a second login evicts the old socket without webSocketClose: that trad
   /this\.sessions\.delete\(oldWs\);\s*try \{ oldWs\.close\(1000, 'superseded by reconnect'\)/.test(jn));
 check('3c ...and every broadcast sends the full state to both, so the partner\'s next action draws it again',
   /_t2Broadcast\(s, extra\) \{\s*const wire = Object\.assign\(this\._t2Wire\(s\), extra \|\| \{\}\);\s*this\._t2Send\(s\.a, 'trade2_state', wire\);\s*this\._t2Send\(s\.b, 'trade2_state', wire\);/.test(t2));
-check('3d ...and the worker still answers nothing to a cancel with no trade on file (why the phone must not wait)',
-  /_handleTrade2Cancel\(session\) \{\s*const s = this\._t2SessionFor\(session\.id\);\s*if \(s\) this\._t2Cancel/.test(t2));
+/* v2.3.4382: the worker now answers a leave that names a trade it no longer
+   holds ('gone'; rejoin-resend.test §3), and an invite's Decline (no id) as
+   before -- an older worker answers nothing, so the phone's wait stays */
+check('3d ...and the worker answers a cancel with no trade on file only when the leave names the trade (why the phone still waits for an older one)',
+  /_handleTrade2Cancel\(session, payload\) \{\s*const s = this\._t2SessionFor\(session\.id\);\s*if \(s\) this\._t2Cancel[\s\S]{0,600}else if \(payload && typeof payload\.id === 'string'/.test(t2));
 
 /* ── 4. the wiring ── */
 const ws = src('src/networking/wsClient.js');
