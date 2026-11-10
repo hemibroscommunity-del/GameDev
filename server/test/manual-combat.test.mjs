@@ -4,7 +4,9 @@
  * interval" -- and, of the draw-and-release it first was, "Try version a":
  * every attack is a swipe.
  *
- *   1. THE SWITCH: off unless `?manual=1`; remembered; `?manual=0` forgets.
+ *   1. THE SWITCH: ON by default (v2.3.4396); `?manual=0` is the old combat
+ *      for one device, remembered; `?manual=1` comes back; `?manual=2` the
+ *      slingshot bow.
  *   2. A BOW'S FLICK (a staff is left as it was: 11): thumb down, moved 24 px or more, lifted =
  *      one shot; a tap, a nudge: none; back to the centre: cancelled.
  *   3. NO FASTER THAN THE WEAPON: a flick too soon shoots nothing and costs
@@ -23,7 +25,7 @@
  *      was; this file never writes the aim (a staff bolt's steering). */
 import fs from 'node:fs';
 import {
-  MANUAL, manualCombatWanted, manualMode, manualSling, mcBowSling, mcShotAngle, mcSwipes, mcBowInterval, setManualCombat, manualOn, mcFrame, mcSwipeStart, mcSwipeMove, mcSwipeEnd, mcWasQuick, mcAbort, mcAskShot,
+  MANUAL, manualCombatWanted, manualMode, manualSling, mcBowSling, mcShotAngle, mcSwipes, mcBowInterval, setManualCombat, manualOn, mcFrame, mcSwipeStart, mcSwipeMove, mcSwipeEnd, mcWasQuick, mcPressIdle, mcAbort, mcAskShot,
   mcFireWaiting, mcFireDone, mcReady, mcReadyIn, mcMeleeAsk, mcSwingWaiting, mcSwingDone, mcAssist, mcArmToggle, mcArmed, mcTakeArmed, mcLockAllowed, mcShoots,
 } from '../../src/game/manualCombat.js';
 
@@ -39,16 +41,17 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
 // ── 1. the switch ──
 {
   const ls = store();
-  check('1a off by default', manualCombatWanted('', ls) === false && manualCombatWanted('?foo=1', ls) === false);
-  check('1b `?manual=1` turns it on and is remembered', manualCombatWanted('?manual=1', ls) === true && ls.getItem(MANUAL.KEY) === '1' && manualCombatWanted('', ls) === true);
-  check('1c `?manual=0` turns it off and forgets', manualCombatWanted('?x=2&manual=0', ls) === false && ls.getItem(MANUAL.KEY) === null && manualCombatWanted('', ls) === false);
-  check('1d a look-alike is not the switch', manualCombatWanted('?notmanual=1', store()) === false && manualCombatWanted('?manual=12', store()) === false);
-  check('1e no storage (a private window): the address still decides', manualCombatWanted('?manual=1', null) === true && manualCombatWanted('', null) === false);
+  /* v2.3.4396 (the owner: "Yes do the new combat"): it is the game's combat -- on unless a device says otherwise */
+  check('1a ON by default: a new player, with nothing in the address and nothing remembered', manualCombatWanted('', ls) === true && manualMode('?foo=1', ls) === 1 && ls.getItem(MANUAL.KEY) === null);
+  check('1b `?manual=0` is the old combat for this device, and is remembered', manualCombatWanted('?x=2&manual=0', ls) === false && ls.getItem(MANUAL.KEY) === '0' && manualCombatWanted('', ls) === false && manualMode('', ls) === 0);
+  check('1c `?manual=1` comes back to the game\'s own, and nothing is left remembered', manualCombatWanted('?manual=1', ls) === true && ls.getItem(MANUAL.KEY) === null && manualCombatWanted('', ls) === true);
+  check('1d a look-alike is not the switch (it chooses nothing: the default stands)', manualMode('?notmanual=0', store()) === 1 && manualMode('?manual=02', store()) === 1 && manualMode('?manual=default', store()) === 1);
+  check('1e no storage (a private window): the address still decides, and with nothing in it the default stands', manualCombatWanted('?manual=0', null) === false && manualCombatWanted('', null) === true);
   setManualCombat(true); check('1f the page\'s own answer can be set for a test', manualOn() === true && manualSling() === false); setManualCombat(false);
   /* the slingshot bow's variation: `?manual=2` */
   const l2 = store();
   check('1g `?manual=2` is manual combat with the slingshot bow, and is remembered as that', manualMode('?manual=2', l2) === 2 && manualCombatWanted('', l2) === true && l2.getItem(MANUAL.KEY) === '2' && manualMode('', l2) === 2);
-  check('1h `?manual=1` after it is the plain swipes again; `?manual=0` forgets either', manualMode('?manual=1', l2) === 1 && manualMode('', l2) === 1 && manualMode('?manual=0', l2) === 0 && manualMode('', l2) === 0 && manualMode('?manual=3', store()) === 0);
+  check('1h `?manual=1` after it is the plain swipes again; `?manual=0` after that is the old combat', manualMode('?manual=1', l2) === 1 && manualMode('', l2) === 1 && manualMode('?manual=0', l2) === 0 && manualMode('', l2) === 0 && manualMode('?manual=3', store()) === 1);
   const B = bow(), St = { rpg: { activeSlot: 'staff' } }, Sw = sword();
   setManualCombat(2);
   check('1i the slingshot is the BOW\'s only: a staff stays a flick, a sword a stroke', manualOn() && manualSling() && mcBowSling(B) && !mcBowSling(St) && !mcBowSling(Sw));
@@ -198,6 +201,27 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
   check('11e ...and never sooner than the worker will take a hit on the same monster (210 ms)', mcBowInterval(247) === MANUAL.BOW_MIN_MS && mcBowInterval(200) === MANUAL.BOW_MIN_MS && MANUAL.BOW_MIN_MS > 210);
 }
 
+// ── 12. the old way is answered with the new (v2.3.4396) ──
+{
+  const t = 100000;
+  const Sw = sword(); mcFrame(Sw, t, 500, 600);
+  mcSwipeStart(Sw, t, 100, 100); mcSwipeEnd(Sw, t + 80, 100, 100);
+  check('12a a sword tapped (or held still) made no attack gesture', mcPressIdle(Sw) === true);
+  mcSwipeStart(Sw, t + 200, 100, 100); mcSwipeMove(Sw, t + 220, 130, 100); mcSwipeEnd(Sw, t + 240, 130, 100);
+  check('12b a sword that stroked did', mcPressIdle(Sw) === false);
+  mcSwipeStart(Sw, t + 2000, 100, 100); mcSwipeMove(Sw, t + 2400, 110, 100); mcSwipeMove(Sw, t + 2800, 120, 100); mcSwipeMove(Sw, t + 3200, 130, 100); mcSwipeEnd(Sw, t + 3300, 130, 100);
+  check('12c a sword whose thumb only drifted did not', mcPressIdle(Sw) === true);
+  const B = bow(); mcFrame(B, t, 500, 600);
+  mcSwipeStart(B, t, 100, 100); mcSwipeEnd(B, t + 900, 100, 100);
+  check('12d a bow held still and lifted made none', mcPressIdle(B) === true);
+  mcSwipeStart(B, t + 1000, 100, 100); mcSwipeMove(B, t + 1020, 100, 50); mcSwipeEnd(B, t + 1040, 100, 50);
+  check('12e a bow flicked did', mcPressIdle(B) === false);
+  mcSwipeStart(B, t + 2000, 100, 100); mcSwipeMove(B, t + 2100, 100, 40); mcSwipeMove(B, t + 2300, 101, 99); mcSwipeEnd(B, t + 2400, 101, 99);
+  check('12f a bow pulled out and brought back to cancel did (it knows the gesture)', mcPressIdle(B) === false);
+  const St = { rpg: { activeSlot: 'staff' } }; mcSwipeStart(St, t, 0, 0); mcSwipeEnd(St, t + 50, 0, 0);
+  check('12g a staff is never told: its hold and its tap attack as they always did', mcPressIdle(St) === false && mcPressIdle(null) === false && mcPressIdle({}) === false);
+}
+
 // ── 10. the wiring ──
 {
   const rules = read('../../src/game/manualCombat.js');
@@ -231,6 +255,16 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
     /var _mcOn = manualOn\(\) && _aSlot !== 'staff';\s*\n\s*var _mcDraws = _mcOn && _aSlot === 'ranged';\s*\n\s*if \(_mcDraws\) effectiveSwingCd = mcBowInterval\(effectiveSwingCd\);/.test(loop)
     && /if \(mcSwipes\(stateRef\.current\)\) \{ if \(stateRef\.current\) mcSwipeStart/.test(bro));
   check('10m nothing is drawn for it: the three indicators are gone', !fs.existsSync(new URL('../../src/ui/panels/ManualGauge.jsx', import.meta.url)) && !/ManualGauge/.test(bro) && !/bt-mc-/.test(read('../../src/styles/game.css')));
+  /* v2.3.4396: the game's combat -- what tells a player how to attack says the new way, and the old
+     scenarios are held to the old combat they were written for */
+  const tour = read('../../src/ui/mobile/ControlsTutorial.jsx');
+  check('10q the controls tour says swipe, flick and hold, and that a special is armed first', /bodyManual: 'Sword: swipe across it/.test(tour) && /tap the Special button first/.test(tour) && /\(manualOn\(\) && cur\.bodyManual\) \|\| cur\.body/.test(tour));
+  check('10r the phone\'s arrow and a computer\'s tips say a sword\'s or a bow\'s special is armed, then made', /'Tap, then attack: your special'/.test(read('../../src/ui/guideArrow.js')) && /mcSwipes\(S\) \? ' Special: then attack<\/span>'/.test(read('../../src/ui/deskTeach.js')));
+  check('10s the key list offers the double-click lock only in the old combat', /\['2\\u00d7Click', 'Lock on', 'lock', 'fight'\]/.test(read('../../src/game/deskKeyList.js')) && /lock: !manualOn\(\),/.test(read('../../src/ui/panels/KeyboardHintsPanel.jsx')));
+  check('10t the phone tests play the old combat unless they name `manual=` themselves', /const _oldCombat = \(\/\(\?:\^\|&\)manual=\/\.test\(query\) \|\| \/\(\?:\^\|&\)manual=\/\.test\(_env\)\) \? '' : 'manual=0';/.test(read('../../tools/qa/mp/harness.mjs')));
+  check('10u a press that made no attack gesture while the button is up for a fight is told the new way, after either touch lift, never over a harvest',
+    /if \(!S \|\| !S\.rpg \|\| !S\.player \|\| !mcSwipes\(S\) \|\| !S\._rBtnShown \|\| S\._btnHarvest \|\| S\._extraction\) return;\s*\n\s*if \(!mcPressIdle\(S\)\) return;/.test(bro)
+    && (bro.match(/mcFlickEnd\(t\.clientX, t\.clientY\); mcTeach\(\);/g) || []).length === 2 && /'Flick to shoot'\) : 'Swipe to swing'/.test(bro));
   const srv = read('../src/combat.js');
   check('10n the worker\'s own floors are untouched by this change (nothing here attacks faster than the held attack did)', /if \(nowTs - cad\.n < 210\) return;/.test(srv));
 }

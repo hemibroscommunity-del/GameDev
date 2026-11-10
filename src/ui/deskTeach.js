@@ -19,6 +19,7 @@
  *      special attack, Q = shield up/down (the phone's is the big arrow).
  * `?guidearrow=0` turns all of it off for one tab.  QA: window.__btDeskTeach. */
 import { onComputer } from '../game/deskWords.js';
+import { mcSwipes } from '../game/manualCombat.js';   /* v2.3.4396: the right click ARMS a sword's or a bow's special */
 import { worldReady } from './loadingGate.js';
 import { questRoutePoint } from '../game/questRoute.js';
 import { HARVEST_TIMES, ATTACK_TIMES, loadTeach, saveTeach, harvestCoachWanted, gestureWanted, killedAny, edgeArrowSpot, overAny } from '../game/deskTeachState.js';
@@ -216,7 +217,7 @@ function tipsTick(S, now, who) {
   _tipsEl.setAttribute('data-desk-teach-tips', '');
   _tipsEl.innerHTML = '<div style="font-weight:900;font-size:13px;letter-spacing:.08em;color:' + GOLD + ';margin-bottom:8px">COMBAT TIPS</div>'
     + '<div style="display:flex;gap:18px;align-items:center;justify-content:center;flex-wrap:wrap">'
-    + '<span style="display:inline-flex;gap:8px;align-items:center">' + cap('Right-click', 36) + ' Special attack</span>'
+    + '<span style="display:inline-flex;gap:8px;align-items:center">' + cap('Right-click', 36) + (mcSwipes(S) ? ' Special: then attack</span>' : ' Special attack</span>')
     + '<span style="display:inline-flex;gap:8px;align-items:center">' + cap('Q', 36) + ' Shield up / down</span></div>';
   qa.tips = true;
 }

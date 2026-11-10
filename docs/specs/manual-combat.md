@@ -46,18 +46,56 @@ shot can fire again). Also for sword keep the new flick mechanism."*
 | staff | **as it was before any of this**: it fires by itself while the thumb is held, and the bolt is steered |
 | all three | no lock a player chose |
 
-## The switch
+## It is the game's combat (v2.3.4396)
 
-**It is OFF unless you turn it on.** Add `?manual=1` to the game's address:
-that phone or computer plays manual combat from then on (it is remembered in
-`localStorage` under `bt_manual`). `?manual=0` turns it off again. Without it
-combat is exactly as it was: every change below sits behind `manualOn()`.
+Asked whether to switch it on for everyone, the owner, 2026-11-10: *"Yes do
+the new combat."*
 
-It is the phone's side only. The worker is not changed (see "The server").
+- **On for everybody.** A phone or computer with nothing in its address and
+  nothing remembered plays it.
+- **`?manual=0`** is the old combat (the held attack, the tap lock) for that
+  one device, remembered in `localStorage` under `bt_manual`. The same shape
+  as a memory saver's off-ramp. **`?manual=1`** comes back to the game's own
+  and forgets. **`?manual=2`** is the slingshot bow (below), remembered.
+- It was behind `?manual=1` while it was being found (v2.3.4395).
+- It is the phone's side only. The worker is not changed (see "The server").
 
-**A second link, `?manual=2`**, is the same thing with the **slingshot bow**
-(below). It is remembered the same way; `?manual=1` goes back to the plain
-swipes and `?manual=0` turns either off.
+What tells a player how to attack now says the new way:
+
+- The controls tour (Settings; `ControlsTutorial.jsx`): "Sword: swipe across
+  it, or anywhere on the right side, for each swing. Bow: flick the way you
+  want to shoot. Staff: hold a direction and it keeps casting." and "Aiming
+  and specials" in place of "Your target" (the tap lock).
+- The phone's arrow at the special's button after a first kill
+  (`guideArrow.js`): "Tap, then attack: your special" for a sword or a bow.
+- A computer's COMBAT TIPS card (`deskTeach.js`): "Right-click  Special: then
+  attack" for a sword or a bow.
+- The key list (`deskKeyList.js`): the "2xClick Lock on" row only in the old
+  combat.
+- **The old way, made near a monster, is answered with the new one.** A press
+  on a phone that ended having made no attack gesture at all (a tap, a hold:
+  `mcPressIdle`) while the attack button is up for a fight says "Swipe to
+  swing" (a sword) or "Flick to shoot" (a bow) over the bro's head, no
+  oftener than every 2.5 s (`BroTown.jsx` `mcTeach`). Not for a staff, not
+  over a harvest's button. It is the game's own floating words, nothing new
+  drawn.
+- The first-time coach needed nothing: its "Hold to attack" and "A quick
+  swipe" lessons were retired long before this (`QuestCoach.jsx` `RETIRED`),
+  and the Mayor's first quest is finished by 4 Slime Remains, not a gesture.
+
+Left as they were, and wrong in the new combat: two lines of older quests'
+talk in `gameSystems.js` ("Auto-attack applies one element, swipe the other",
+"Lock on and tap the trap"). Not checked: whether those quests are offered
+today.
+
+**The phone tests play the old combat unless they ask.** `H.newPlayer` adds
+`manual=0` to every scenario's address that does not name `manual=` itself
+(`tools/qa/mp/harness.mjs`). About 120 scenarios drive the held attack and the
+tap lock directly (`S.autoAttack`, `S.lockedTarget`, a press of the disc), and
+those are still in the game behind the off-ramp. `mp-manualcombat` plays
+`manual=1`, `manual=2` and `manual=default` (what a new player gets). So the
+new combat is tested by its own scenario and its rule test, and the old one by
+everything written before it. Moving the old scenarios over is not done.
 
 ## What a player does
 
@@ -201,9 +239,10 @@ address.
   owner: *"The timing intervals for manual human attacks will give a good
   fingerprint to identify bots"*). That is a worker change of its own. Swipes
   give more to read than a release did: their length, speed and angle.
-- **Making it the default.** Today's combat stays until the owner says.
-- A teaching card for the new controls; the combat tips still describe the
-  old ones.
+- Moving the older phone scenarios to the new combat (above).
+- A first-time lesson that SHOWS the swipe and the flick (a moving hand, a
+  picture). A player who presses the old way near a monster is told the new
+  one in words (above), and the controls tour in Settings says them.
 - No monster was changed (the owner: *"Don't do any monster adjustments"*).
 - Not tried: a fight with a real monster on a phone (the tests swipe in the
   safe town); a duel between two players in manual combat.
@@ -217,7 +256,8 @@ address.
   quick flick's help (the angle, the reach, the seam); and that each caller
   is wired and nothing is drawn.
 - `node tools/qa/mp/run.mjs manualcombat` (`mp-manualcombat.mjs`), a phone and
-  a computer in the Wheel, then a second phone with `?manual=2`, 42 checks: holding fires nothing; the lift is one
+  a computer in the Wheel (with `manual=default`: what a new player gets), then
+  a second phone with `?manual=2`, 44 checks: holding fires nothing; the lift is one
   arrow the way the thumb pointed; a quick flick; a tap and a nudge; the
   cancel; a flick too soon and one kept; the special arms and is the next
   attack; a chosen lock does not last; a sword's tap, stroke, stroke back,
