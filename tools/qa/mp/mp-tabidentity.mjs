@@ -68,16 +68,29 @@ const playing = (page, id, timeout = 60000) => page.waitForFunction((pid) => {
    local worker does not answer leaves the socket CLOSING for good (seen here:
    30 s and more), so after 1.5 s the page is told what a phone's browser
    tells it when the network goes: an abnormal close, 1006 */
-const dropLine = (page) => page.evaluate(async () => {
-  const s = (window.__qaSocks || []).filter((x) => x.readyState === 1).pop();
-  if (!s) return false;
-  s.close();
-  await new Promise((r) => setTimeout(r, 1500));
-  if (s.readyState !== 3 && typeof s.onclose === 'function') {
-    s.onclose(new CloseEvent('close', { code: 1006, reason: '', wasClean: false }));
-  }
-  return true;
-}).catch(() => false);
+const dropLine = async (page) => {
+  /* a page between lines (a reconnect of its own under way) gets 10 s to
+     open one; what it holds is kept, to say why when there is none */
+  const r = await page.evaluate(async () => {
+    const open = () => (window.__qaSocks || []).filter((x) => x.readyState === 1).pop();
+    let s = open();
+    for (let i = 0; !s && i < 40; i++) { await new Promise((q) => setTimeout(q, 250)); s = open(); }
+    const S = window._gameState && window._gameState.current;
+    const why = { socks: (window.__qaSocks || []).map((x) => x.readyState), status: S && S._realtimeStatus,
+      banner: (document.getElementById('bt-resume-banner') || {}).textContent || null, vis: document.visibilityState };
+    if (!s) return { ok: false, why };
+    s.close();
+    await new Promise((q) => setTimeout(q, 1500));
+    if (s.readyState !== 3 && typeof s.onclose === 'function') {
+      s.onclose(new CloseEvent('close', { code: 1006, reason: '', wasClean: false }));
+    }
+    return { ok: true, why };
+  }).catch((e) => ({ ok: false, why: String(e).slice(0, 160) }));
+  page.__qaDropWhy = r.why;
+  /* a page that had already started a reconnect of its own and met the
+     takeover's banner has dropped its line too: the checks after say so */
+  return r.ok || !!(r.why && /connected from another window/.test(r.why.banner || ''));
+};
 
 /* what a tab does after its line drops (the reconnect waits 1-10 s): the
    banner, or a join sent after the drop (`n0` joins before it) */
@@ -143,7 +156,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     && !!(await T2.page.$('input.bt-cc-name')), { kNew: !!kNew, same: kNew === a0.slot });
 
   const na = await joinsNow(A.page);
-  rec.ok('1. tab 1\'s line drops (guard)', await dropLine(A.page));
+  rec.ok('1. tab 1\'s line drops (guard)', await dropLine(A.page), A.page.__qaDropWhy);
   await settle(A.page, na);
   await A.page.waitForTimeout(3000);   /* a mint's second join would come within this */
   const a1 = await state(A.page);
@@ -167,7 +180,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     && a2.joins.every((j) => j.id === a0.id && j.key === a0.slot), { back, id: a2.id === a0.id, slot: a2.slot === a0.slot });
 
   const nb = await joinsNow(T2.page);
-  rec.ok('1. tab 2\'s line drops (guard)', await dropLine(T2.page));
+  rec.ok('1. tab 2\'s line drops (guard)', await dropLine(T2.page), T2.page.__qaDropWhy);
   await settle(T2.page, nb);
   await T2.page.waitForTimeout(2000);
   const b1 = await state(T2.page);
@@ -179,16 +192,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 2. new keys: B's key typed at tab 2's door ── */
   const B = await H.newPlayer(browser, { name: 'Cara', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', init: SPY(false) });
   await H.enterWorld(B);
-  await B.page.waitForFunction((re) => new RegExp(re).test(localStorage.getItem('bt_passphrase') || ''), NEW_KEY.source, { timeout: 20000, polling: 300 }).catch(() => {});
+  /* a new character's key comes a moment after its join is in, which on a
+     loaded box can be well after the world is up: a minute's grace */
+  await B.page.waitForFunction((re) => new RegExp(re).test(localStorage.getItem('bt_passphrase') || ''), NEW_KEY.source, { timeout: 60000, polling: 300 }).catch(() => {});
   const c0 = await state(B.page);
   rec.ok('2. B made on another phone, handed a new key (guard)', NEW_KEY.test(c0.slot || '') && !!c0.id, { id: c0.id });
   await B.ctx.close().catch(() => {});
 
   const D = await H.newPlayer(browser, { name: 'Dina', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', init: SPY(false) });
   await H.enterWorld(D);
+  /* its own new key, usually: but this road is about B's NEW key in the slot,
+     whatever tab 1's own is -- a key_new lost with a line replaced on a slow
+     box is not re-made for this device for a while (loginkeys.js REMINT_MS),
+     and waiting long for it would log tab 1 out for idling */
   await D.page.waitForFunction((re) => new RegExp(re).test(localStorage.getItem('bt_passphrase') || ''), NEW_KEY.source, { timeout: 20000, polling: 300 }).catch(() => {});
   const d0 = await state(D.page);
-  rec.ok('2. tab 1 plays A on its new key (guard)', NEW_KEY.test(d0.slot || '') && d0.tabKey === d0.slot && await playing(D.page, d0.id), { id: d0.id });
+  const dIn = await playing(D.page, d0.id);
+  const dNow = await state(D.page);
+  rec.ok('2. tab 1 plays A, on the key it holds (guard)', !!d0.slot && d0.tabKey === d0.slot && dIn,
+    { id: d0.id, newKey: NEW_KEY.test(d0.slot || ''), tabIsSlot: d0.tabKey === d0.slot, playing: dIn, status: dNow.status, socks: dNow.socks, banner: dNow.banner });
 
   const U2 = await secondTab(D, { wsPort, webPort, old: false });
   rec.ok('2. B\'s key typed at tab 2\'s door (guard)', await typeKeyAtDoor(U2.page, c0.slot));
@@ -197,12 +219,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   const d00 = await state(D.page);
   const n0 = d00.joins.length;   /* its first join came on the key its phone made */
-  rec.ok('2. tab 1\'s line drops (guard)', await dropLine(D.page));
+  rec.ok('2. tab 1\'s line drops (guard)', await dropLine(D.page), D.page.__qaDropWhy);
   await settle(D.page, n0);
   await D.page.waitForTimeout(3000);
   const d1 = await state(D.page);
   const u1 = await state(U2.page);
-  rec.ok('2. tab 1 shows the banner and never joined as B', !!d1.banner && d1.id === d0.id
+  rec.ok('2. tab 1 shows the takeover\'s banner and never joined as B', !!d1.banner && /connected from another window/.test(d1.banner) && d1.id === d0.id
     && d1.joins.every((j) => j.id === d0.id) && d1.joins.slice(n0).every((j) => j.key === d0.slot),
     { banner: d1.banner, ids: d1.joins.map((j) => j.id === d0.id), after: d1.joins.length - n0, status: d1.status, moved: d1.moved, socks: d1.socks, vis: d1.vis, socks0: d00.socks });
   rec.ok('2. ...and tab 2 is still playing B (not put out)', u1.status === 'connected' && !u1.banner && u1.id === c0.id, { status: u1.status, banner: u1.banner });
@@ -211,7 +233,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('2. tab 1\'s Play here (guard)', await pressPlayHere(D.page));
   rec.ok('2. ...plays A again', await playing(D.page, d0.id) && (await state(D.page)).joins.length > nd);
   const d2 = await state(D.page);
-  rec.ok('2. ...with A\'s new key, A has the slot back', d2.slot === d0.slot && d2.joins.every((j) => j.id === d0.id), { slot: d2.slot === d0.slot });
+  rec.ok('2. ...with A\'s own key, A has the slot back', d2.slot === d0.slot && d2.joins.every((j) => j.id === d0.id), { slot: d2.slot === d0.slot });
   await D.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/tabidentity-2.png` }).catch(() => {});
   await D.ctx.close().catch(() => {});
 }
