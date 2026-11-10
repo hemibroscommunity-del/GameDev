@@ -174,6 +174,22 @@ alliance at 20+ (tag, wars, leaderboard), 3. clans retire into it.
   (as before). A leader not seen for `PARTY.LEADER_IDLE_MS` (7 days) hands it
   on at the next join of a member: to the longest-standing member online
   then. Lazy, never on a timer (handoff rule 12).
+- **A leader never seen** (v2.3.4378). The clock is `seen || at || ts`: a
+  leader whose `seen` is 0 counts from when they joined (`at`), else from
+  when the party was made (`ts`). Before, only a `seen` above 0 counted, and
+  a clan turned into a party while its leader was offline (clanparty.js
+  writes `seen: 0` for an offline member) kept that leader for ever, as did
+  a party whose leaver passed the lead to such a member: nobody could kick,
+  rename, declare war or take it into a dungeon. A leader who has joined
+  since has a real `seen` (their join writes it, `ss` being 0), so only a
+  leader who never came back is handed on. Still at a member's join, one
+  party at a time: the first deploy re-leads no party on its own, and one
+  hand-on writes two puts (`party:<id>`, and `ally:<id>` for a former clan;
+  party-keep §10b counts them). Kill switch `leaderidleat: false` in the
+  live flags: the old seen-only clock (`_partyLeaderIdleAtOn`, party.js).
+  The lesson: a field written as 0 meaning "not known" (here, for the
+  alliance's active count) is read by every clock that uses it; a clock
+  over `seen` must say what a 0 counts from.
 - **Dungeons stay 4.** A leader's `dungeon_start` pulls at most
   `DUNGEONS.PARTY_HP_SCALE.length - 1` (3) members, the eligible ones
   nearest the leader (`_dungeonPullPartyMembers`): the boss table is sized
