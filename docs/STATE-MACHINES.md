@@ -94,6 +94,17 @@ player never loses items, gold or a fight to a phase that stuck.
     moves you at a speed that wavers with it (the strip's `stick` line).
   - **Proved steady with steady input** (`mp-steadystep`): your step, the
     camera's slide and your place on the screen, frame to frame.
+  - **The late frames, found** (the owner's next capture: "late frames 10
+    in 10s", "worst 170.0 = game 40.0 + outside 130.0", the stick at 1.00):
+    art made on the page the first time it came on screen. Four townsfolk
+    whose looks the shared colour numbers refuse were baked for each pose and
+    direction when first met (80 to 250 ms a sheet), and every frame of an
+    object page was read in one go as it came. Now baked behind the world's
+    loading screen, and read a few ms at a time: `mp-townride` (5 bakes on
+    the ride, the longest 258 ms, to none, the longest job 18 ms);
+    `docs/specs/living-town.md`. Waits on the owner's eye.
+  - **Still to do, for A2**: another PLAYER with an eye style or a drawing
+    is baked on the page when first met, the same freeze, in any crowd.
   - **The cause**: not the frame rate. The owner's captures (`?perf=1`,
     2026-11-09) read 60 frames a second with the game's work 3.4 to 4.1 ms
     of each, and the ride was as gritty at a lower resolution and with no

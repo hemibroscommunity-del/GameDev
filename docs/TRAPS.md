@@ -8778,3 +8778,35 @@ frame and a third too little on the next: sixty uneven steps a second.
   `performance.now` and animation frame replaced by scripted lengths).
 
 **Receipt:** `mp-steadystep`, the `frame-clock` suite, docs/specs/steady-step.md.
+
+## 264. "He is drawn from the shared numbers, so nothing is baked" (v2.3.4355)
+
+**The move.** Put a character on screen in a pose the look palette holds as
+colour numbers and call it free: no bake, no new memory, no work on first
+sight. The living town was built on exactly that (folkPose.js: "otherwise the
+old path would bake a copy of the sheet for his look ... so he stands
+instead").
+
+**Why it is wrong.** The numbers can refuse the LOOK as well as the pose.
+`getLookBodyFrame` returns nothing for a look with an eye style or a drawing
+on the body (patterned trousers, a tattoo), and `getBodyFrame` then bakes a
+copy of the whole sheet for that look, on the page, the first time it is
+asked for in each pose and each direction, handing back the plain frame
+meanwhile. Nothing fails and nothing looks wrong. Four of the twenty-one
+townsfolk have such a look: riding through the town froze a frame for 80 to
+250 ms about once a second, and the owner's iPhone read "fps ~59" the whole
+time.
+
+**The rule.**
+- Before drawing a fixed cast live, ask `lookBodyRefused(pose, dir, art,
+  eyeStyle)` for every pose its script can show, and bake those behind a
+  loading screen (`prewarmFolkBodies`; `awaitBodyBuilds` waits for them).
+- A job that runs on the page the first time something is seen says its name
+  and its time (`debug/madeLog.js noteMade`): the phone's strip (`?perf=1`)
+  then names it under "between frames", and `window.__btMade` lists them for
+  a test. An average frame time hides a freeze; the count of late frames and
+  the worst one's split do not.
+- A burst of small reads when a file arrives is a few ms at a time, never
+  the whole file in one go (`readPageBottoms`).
+
+**Receipt:** `mp-townride`, the `folk-bakes` suite, docs/specs/living-town.md.

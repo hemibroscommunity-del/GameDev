@@ -436,6 +436,27 @@ async function preloadWheel() {
       const ns = await import('../rendering/npcSprites.js');
       await Promise.all([wheelObjectsOn() ? wo.wheelObjectsWarm(at.x, at.y, objX, objY) : null, ns.loadWheelNpcArt()]);
     } catch (e) { /* no objects: the ground alone, as before */ }
+    /* ═══ v2.3.4355: AND THE TOWNSFOLK'S BODIES THAT HAVE TO BE BAKED ═══
+       Four of the townsfolk have a look the shared colour numbers refuse (an
+       eye style, patterned trousers), and each pose and direction of theirs
+       was baked on the page the first time you met it -- 80 to 250 ms, a
+       frozen frame, about one a second on a skateboard through the town (the
+       owner's iPhone: "late frames 10 in 10s").  Their days are fixed loops,
+       so every pose is known now (townsfolkWalk.js folkBakeJobs): baked
+       here, behind this loading screen.  Never held up by it past
+       FOLK_BAKE_WAIT_MS: what is not baked by then bakes as before. */
+    try {
+      const day = await import('./townsfolkDay.js');
+      /* `?folkbake=0`: baked when first met, as before (mp-townride's comparison) */
+      const ahead = !/(^|[?&])folkbake=0(&|$)/.test((typeof location !== 'undefined' && location.search) || '');
+      if (day.folkWalkWanted() && ahead) {
+        const er = await import('../rendering/systems/entityRenderer.js');
+        const tw = await import('./townsfolkWalk.js');
+        const t1 = performance.now();
+        const baked = er.prewarmFolkBodies(tw.folkBakeJobs()).then((n) => { wheelStats.folkBakes = { n, ms: Math.round(performance.now() - t1) }; });
+        await Promise.race([baked, new Promise((r) => setTimeout(r, FOLK_BAKE_WAIT_MS))]);
+      }
+    } catch (e) { /* baked when first met, as before */ }
     /* v2.3.3019: and the moving water's program, built here, behind the
        overlay, not in the frame the first water comes on screen (a program
        is compiled the first time it is drawn: rendering/wheelWater.js) */
@@ -458,6 +479,7 @@ async function preloadWheel() {
    one dirt step until the owner says otherwise.  Over water or ground not
    laid yet, the last sound heard. */
 const STEPS_WAIT_MS = 5000;
+const FOLK_BAKE_WAIT_MS = 8000;   /* v2.3.4355: the townsfolk's bakes hold the loading screen this long at most (preloadWheel) */
 /* v2.3.2975: how far round the arrival (game px either way, and up from
    below for tall pictures) the objects' sheets are loaded before the
    overlay lifts: a portrait phone shows about 585 x 1270 game px */

@@ -87,8 +87,12 @@ game px) are all steady now (`mp-steadystep`). What is left, and how the
 phone's strip (`?perf=1`) tells them apart since this change:
 
 - **late frames**: the count over ten seconds, the worst one's split into
-  the game's work and the time outside it, and the slowest message handled
-  between frames;
+  the game's work and the time outside it, and the slowest job between
+  frames, by name. The owner's next capture read "late frames 10 in 10s",
+  "worst 170.0 = game 40.0 + outside 130.0", "stick 1.00 to 1.00": art made
+  on the page the first time it came on screen. Found and fixed in the same
+  version: `docs/specs/living-town.md`, "The looks the numbers refuse", and
+  an object page's bases read a few ms at a time (`mp-townride`);
 - **the 60 ceiling**: that phone's screen is 120 Hz and Safari gives a web
   page 60; the strip's `fps` line says which the page is getting;
 - **the thumb**: the stick is analog, and the strip's `stick` line shows

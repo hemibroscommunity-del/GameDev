@@ -143,6 +143,45 @@ screen. So `tools/qa/mp/memory-budget.mjs` raises `gpu` 105 -> 115 and `heap`
 36 -> 38, said there. mp-wheelfolk: no photograph fetched or held (0 MB), as
 before.
 
+## The looks the numbers refuse: baked behind the loading screen (v2.3.4355)
+
+> The owner's iPhone 14 Pro Max on the skateboard through the town, its frame
+> meter (`?perf=1`) reading "late frames 10 in 10s", "worst 170.0 = game 40.0
+> + outside 130.0": "still gritty looking".
+
+"Memory: nothing new" above was true of the POSES and not of every LOOK. The
+shared colour numbers refuse a look with an **eye style** (the body's own
+eyes are blanked for it) or a **pattern on the trousers or boots** (stamped
+on the body): `playerSkins.js getLookBodyFrame` returns nothing, and the old
+path bakes a copy of the body sheet for that look, on the page, the first
+time he is seen in each pose and each direction. Four of the twenty-one have
+such a look (Blacksmith Bro's striped sweatpants; Farmer Bro's, Beastmaster
+Bro's and Old Man Reel's eyes). On a ride through the town that was five
+bakes of 80 to 250 ms each on the test box, each a frozen frame.
+
+A day is a fixed loop, so every pose it can show is known before he takes a
+step (`game/townsfolkWalk.js folkDayPoses`, `folkBakeJobs`: the jog along
+each leg, the stand at each stop, each job facing south). The renderer asks
+for exactly those sheets, with the very call that draws him, only where the
+numbers refuse his look, and waits for the bakes
+(`entityRenderer.js prewarmFolkBodies`), behind the world's loading screen
+(`worldTrial.js preloadWheel`; PRELOADING IS LAW). 23 sheets, 1.9 s on the
+test box. Never held past 8 s (`FOLK_BAKE_WAIT_MS`); `?folkbake=0` is the old
+way. They keep walking and working, and their looks are untouched.
+
+The same memory, sooner: these are the sheets a walk round the town baked one
+by one before. What the memory check reads of them is in the PR's body.
+
+A stand in a direction his day never faces (he turns to you) is still baked
+when met: one frame, 3 to 12 ms. Another PLAYER with an eye style or a
+drawing is still baked when first met, as every pose of a peer's is (the
+preload law's named exception): in a crowd that is the same freeze, and is
+`docs/STATE-MACHINES.md` A2's to fix.
+
+Checked by the `folk-bakes` suite and `mp-townride` (a ride right through
+the town: 5 moving sheets baked on the page before, the longest 258 ms; none
+now, the longest job 18 ms).
+
 ## Where it is off
 
 - **On a computer** (Windows, a Mac) the look palette is not built

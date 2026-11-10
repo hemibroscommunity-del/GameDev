@@ -19,6 +19,7 @@
  */
 
 import { laterRounds } from './retryLooks.js';   /* v2.3.3882 */
+import { noteMade } from '../debug/madeLog.js';   /* v2.3.4355: a first-sight bake says how long it held the page */
 import { Rectangle, Texture } from 'pixi.js';
 import { getFrame, SPRITE_VERSION, stripDetachedComponents, frameCount as playerFrameCount } from './playerSprites.js';   /* v2.3.3716: + frameCount, the look probe's */
 import { upscaleToFrameHeight, bakeDisplayCanvas, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1108: normalize downscaled sheets to the 256px frame before recolour; v2.3.1120: downscale the final DISPLAY texture for VRAM; v2.3.1237: bakeDisplayCanvas smooths nearest-upscaled sheets at DISPLAY_DS=1 (jog-shimmer fix) */
@@ -2000,6 +2001,7 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT
   /* Returns an always-resolving promise so a full preload can await it. */
   const bust = (attempt > 0 ? `&r=${attempt}` : '') + (round > 0 ? `&g=${round}` : '');   /* v2.3.3882: + the later round */
   return loadImg(`/sprites/player/${pose}-${dir}.png?v=${SPRITE_VERSION}${bust}`).then(img => {
+    const _madeT0 = performance.now();   /* v2.3.4355: how long this bake holds the page (debug/madeLog.js) */
     /* body poses are 256px frames; restore if stored smaller on disk.  Recolour
        runs at full 256 (exact skin/pants/shoes pixel thresholds). */
     _bakeTag = `${pose}-${dir}`;
@@ -2083,6 +2085,7 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT
        the 4x-smaller texture. */
     src.autoGenerateMipmaps = true;
     _bodySheets[sheetKey] = out;
+    noteMade(`body ${pose}-${dir}`, performance.now() - _madeT0, `body ${sheetKey}`);   /* v2.3.4355 */
   }).catch(() => {
     if (attempt < _BODY_RETRY_MS.length) {
       setTimeout(() => buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT, art, eyeBlank, attempt + 1, round), _BODY_RETRY_MS[attempt]);
@@ -2299,7 +2302,7 @@ export function getBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shir
   if (!skinT && !pantsT && !shoesT && !shirtT && !eye && !_art && !blank) return getFrame(pose, dir, frameIdx);
   const sheetKey = bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eye && eye.id, pose, dir, _art, blank && blank.id);
   const entry = _bodySheets[sheetKey];
-  if (entry === undefined) { buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eye && eye.t, _art, blank && blank.rects); return getFrame(pose, dir, frameIdx); }
+  if (entry === undefined) { const _bp = buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eye && eye.t, _art, blank && blank.rects); if (_buildSink) _buildSink.push(_bp); return getFrame(pose, dir, frameIdx); }
   if (entry === 'loading' || !entry.length) { if (entry !== 'loading') _bodyLater.due(sheetKey); return getFrame(pose, dir, frameIdx); }   /* v2.3.3882 */
   return entry[((frameIdx % entry.length) + entry.length) % entry.length];
 }
@@ -2314,6 +2317,26 @@ export function getBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shir
    face round each eye), no atlas row free.  The caller then asks getBodyFrame,
    exactly as before.  Only for a body drawn as it is: a frame that is masked
    under armour or cut into bands reads its pixels, and those are numbers. */
+/* ═══ v2.3.4355: BAKES ASKED FOR AHEAD, AND WAITED FOR ═══
+   getBodyFrame bakes a look's sheet the first time it is asked for and hands
+   back the plain frame meanwhile: right for a stranger walking up, a frozen
+   frame for the townsfolk, whose poses are known before the world opens
+   (game/townsfolkWalk.js folkDayPoses).  awaitBodyBuilds(fn) runs `fn`,
+   which asks for the frames exactly as the renderer will, and resolves when
+   every bake that started has landed. */
+let _buildSink = null;
+export function awaitBodyBuilds(fn) {
+  const sink = [];
+  _buildSink = sink;
+  try { fn(); } finally { _buildSink = null; }
+  return Promise.all(sink).then(() => sink.length, () => sink.length);
+}
+/** Do the shared colour numbers refuse this look in this pose and direction
+ *  (getLookBodyFrame's own two refusals), so the old path would bake it? */
+export function lookBodyRefused(pose, dir, art, eyeStyleId) {
+  if (pose === 'fish') return false;   /* no eye style or mirrored drawing on that sheet (getLookBodyFrame) */
+  return !!eyeBlankFor(pose, dir, eyeStyleId) || !!bodyArtSeg(artForFacing(art, dir));
+}
 export function getLookBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shirtT, eyeId, art, eyeStyleId) {
   /* v2.3.3750: every pose the body's manifest has (lookPose).  Fishing asks
      as getFishFrame does: no shirt, eye or eye style on that sheet, its

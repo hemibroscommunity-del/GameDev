@@ -169,6 +169,50 @@ export function folkAt(stops, seed, nowMs) {
   return { dx: s0[0], dy: s0[1], walking: false, work: s0[3] || null };
 }
 
+/* ═══ v2.3.4355: EVERY POSE A DAY CAN SHOW HIM IN, KNOWN AHEAD ═══
+   The owner's iPhone on the skateboard through the town, its meter reading
+   "late frames 10 in 10s", "worst 170.0 = game 40.0 + outside 130.0".  The
+   living town was built to bake nothing (rendering/folkPose.js), but four of
+   its twenty-one have a LOOK the shared colour numbers refuse -- an eye
+   style, a pattern on the trousers (playerSkins.js getLookBodyFrame) -- and
+   the old path baked a copy of the body sheet for each, on the page, the
+   first time he was seen in each pose and each direction: 80 to 250 ms a
+   sheet on a ride through the town, each a frozen frame.  A day is a fixed
+   loop, so the poses it can show are known before he takes a step: the jog
+   along each leg, the stand at each stop (facing the way he came, or
+   south), and his jobs (authored facing south).  The renderer bakes those,
+   for the looks that need it, behind the world's loading screen
+   (entityRenderer prewarmFolkBodies; PRELOADING IS LAW). */
+/** [{ pose, facing }] for a loop's stops, each once. */
+export function folkDayPoses(stops) {
+  const out = [], seen = new Set();
+  const add = (pose, facing) => { const k = pose + '|' + facing; if (!seen.has(k)) { seen.add(k); out.push({ pose, facing }); } };
+  if (!stops || !stops.length) return out;
+  add('stand', 'south');
+  for (let i = 0; i < stops.length; i++) {
+    const a = stops[i], b = stops[(i + 1) % stops.length];
+    if (a[3]) add(a[3], 'south');
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    if (Math.hypot(dx, dy) > 0.5) { const f = folkFacing(dx, dy); add('jog', f); add('stand', f); }
+  }
+  return out;
+}
+/** ...for every townsperson with a day, as a quest giver (tethered) and as
+ *  not: [{ name, pose, facing }]. */
+export function folkBakeJobs() {
+  const out = [];
+  for (const name of Object.keys(FOLK_DAYS)) {
+    const seen = new Set();
+    for (const giver of [false, true]) {
+      for (const p of folkDayPoses(folkStops(name, giver))) {
+        const k = p.pose + '|' + p.facing;
+        if (!seen.has(k)) { seen.add(k); out.push({ name, pose: p.pose, facing: p.facing }); }
+      }
+    }
+  }
+  return out;
+}
+
 /** The eight facings by a step (dx, dy), +y south -- the renderer's names
  *  (entityRenderer NPC_DIRS_8). */
 const DIRS8 = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];

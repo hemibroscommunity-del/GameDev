@@ -29,7 +29,7 @@
  *
  *   QA_DIST=dist-prof node tools/qa/mp/run.mjs phoneframe
  *   BT_PF_QUERY='nopalette' ...    # extra address switches for the page
- *   BT_PF_SCENES=town,fight ...    # only these scenes (town, townwalk, townride, fight, landwalk; townride, the skateboard, only when named)
+ *   BT_PF_SCENES=town,fight ...    # only these scenes (town, townwalk, townride, townacross, fight, landwalk; the two skateboard scenes only when named)
  *   BT_QA_CPU_THROTTLE=4 ...       # a slower phone
  *
  * Writes tools/qa/mp/out/phoneframe.json (every number and the profiles' top
@@ -393,6 +393,20 @@ const drivers = {
       for (const k of keys) await P.page.keyboard.up(k).catch(() => {});
     }
   },
+  /* v2.3.4355: right across the town and back on the board, at its 300 game px a second -- new buildings, trees and
+     townsfolk come on screen the whole way (the owner's iPhone: 10 frames late in 10 s, the worst 170 ms).  Glided,
+     as mp-ridelay's leg is: the same ground laid and the same pictures first drawn, with no wall to stop it. */
+  across: async (P, stop) => {
+    const G = await H.wheelGeom();
+    let east = true;
+    while (!stop()) {
+      const to = { x: G.cx + (east ? 1700 : -1700), y: G.arrival.y };
+      const going = H.glideTo(P, to.x, to.y, { speed: 300, timeoutMs: 60000 }).catch(() => {});
+      for (let t = 0; t < 11500 && !stop(); t += 100) await P.page.waitForTimeout(100).catch(() => {});
+      await going;
+      east = !east;
+    }
+  },
   fight: async (P, stop) => {
     while (!stop()) {
       const s = await near(P).catch(() => null);
@@ -584,6 +598,17 @@ async function measure({ browser, wsPort, webPort, rec, maps, query: q0 }) {
       const on = await H.waitFor(P, () => window.__btRideBtn && window.__btRideBtn(), (v) => v && v.on === true, { timeout: 8000, label: 'on the board' }).then(() => true).catch(() => false);
       rec.ok('on the skateboard for the ride (guard)', on, await P.page.evaluate(() => window.__btRideBtn && window.__btRideBtn()).catch(() => null));
       if (on) await scene('BroTown, riding the skateboard', drivers.ride);
+      await P.page.keyboard.press('z').catch(() => {});
+      await P.page.waitForTimeout(600);
+    }
+    if (WANT.includes('townacross')) {
+      /* v2.3.4355: from the town's west edge, on the board, right across and back */
+      const G0 = await H.wheelGeom();
+      await H.glideTo(P, G0.cx - 1700, G0.arrival.y, { speed: 4000, timeoutMs: 30000 });
+      await P.page.waitForTimeout(4000);
+      await P.page.keyboard.press('z');
+      await H.waitFor(P, () => window.__btRideBtn && window.__btRideBtn(), (v) => v && v.on === true, { timeout: 8000, label: 'on the board' }).catch(() => null);
+      await scene('BroTown, riding right across the town', drivers.across);
       await P.page.keyboard.press('z').catch(() => {});
       await P.page.waitForTimeout(600);
     }
