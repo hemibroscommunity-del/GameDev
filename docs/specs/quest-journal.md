@@ -40,17 +40,29 @@ Leaderboards' shape (`docs/specs/leaderboards.md`):
     (`data-quest-nav="daily"`, the prize wheel) against a worker with the
     daily rewards.
 - **The open quest** (`[data-quest-detail]`, scrolls by itself):
-  `QuestJournalPage` with `brief`:
-  - the head: the title (`data-journal-title`) and the status, then **Map**
-    (`data-journal-map`, "Show on map" its spoken name) and **Track**
-    (`data-quest-track`), 50 x 44 px each;
-  - NOW with no heading: the step, the objective, the count and its bar on
-    one line (`data-journal-now`, `data-journal-count`);
-  - WHERE as one line (`data-journal-where`), and under it, once tracked,
-    "Your map's gold star follows this quest." (`data-quest-track-note`);
-  - then WHO, GIVEN TO YOU, REWARD and NEXT as before.
-  On a 390 px phone the head, NOW and WHERE are inside the pane without a
-  scroll.
+  `QuestJournalPage` with `brief`: a head, then one bordered card an item
+  (`data-journal-card`), 3 px apart, so no two items read as one.
+  - **the head** (`data-journal-head`, 40 px): the giver's face
+    (`data-journal-face`), the title (`data-journal-title`), the status
+    (`data-journal-status-word`), and **Track** (`data-quest-track`, 48 x 44);
+  - **NOW** (`data-journal="now"`): the brass word, the step
+    (`data-journal-now`), the objective under it;
+  - **the count** (`data-journal="progress"`, `data-journal-count`): the
+    count and its bar, a card of its own, green once it is all there;
+  - **WHERE** (`data-journal="where"`): a drawn map pin, the place
+    (`data-journal-where`) and a brass "Map" chip; the whole card is the
+    Show on map button (`data-journal-map`, 44 px tall);
+  - once tracked, "Your map's gold star follows this quest."
+    (`data-quest-track-note`);
+  - then WHO, GIVEN TO YOU, REWARD and NEXT, each a card.
+  On a 390 px phone the head, NOW, the count and WHERE are inside the pane
+  without a scroll (about 177 px; `mp-questjournal` measures it).
+- **The giver's face on his quest**: a pill of the list wears the giver's
+  portrait (`data-quest-pill-face`, `QuestJournalPage` `npcPortrait`), 26 px
+  round, with the quest's state as a 14 px mark on its corner
+  (`data-quest-pill-icon`).
+- **Headings** (`data-quest-sec`): brass, 13 px, heavy, a brass rule under
+  each (`railKit.js` `railHeading`, the Leaderboards' too).
 - **Done** (`data-quest-pane="done"`): "Achievement Points from quests: N"
   (`data-journal-ap`), then each quest handed in with its +5 AP
   (`data-quest-done-row`, `data-quest-done-ap`). A tap opens it;

@@ -25,13 +25,11 @@
  *
  * `brief` is the same page drawn for the pane beside the Quests page's list
  * (QuestsPanel.jsx), so that what you need to carry on is on screen at once:
- *   - one head row: the title and its status, then MAP and TRACK as two 44 px
- *     buttons (the two things you do with a quest), always at the top;
- *   - NOW straight under it, no heading: the step, then its count and bar on
- *     one line;
- *   - WHERE as one line with a pin;
- *   - then, a scroll away, the rest as before, tighter: WHO and the steps,
- *     GIVEN TO YOU, REWARD, NEXT.
+ * a head (the giver's face, the title, who and its status, the Track star)
+ * and then ONE CARD AN ITEM -- NOW, the progress, WHERE (the card is the Show
+ * on map button) -- and, a scroll away, WHO and the steps, GIVEN TO YOU,
+ * REWARD, NEXT.  See the note at `briefHead` below for why each is where it
+ * is.
  * The words, the hooks (data-journal-*) and the rules are the same ones;
  * nothing under 13 px (quest-journal.test, mp-questjournal).
  */
@@ -105,12 +103,30 @@ const Label = ({ children }) => (
   </div>
 );
 
-const Section = ({ name, children, label }) => (
+/* v2.3.4356: one item of the brief page -- its own bordered card, a gap
+   under it, so no two items ever read as one */
+const CARD = {
+  display: 'block', margin: '0 0 3px', padding: '3px 8px 4px', boxSizing: 'border-box',
+  background: COL.raised, border: `1px solid ${COL.border}`, borderRadius: 10, color: COL.text,
+};
+const CardLabel = ({ children }) => (
+  <span style={{
+    display: 'block', fontSize: 13, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase',
+    color: COL.accent, lineHeight: 1.1, margin: 0,
+  }}>{children}</span>
+);
+
+const Section = ({ name, children, label, card }) => (card ? (
+  <section data-journal={name} data-journal-card="" style={{ ...CARD, padding: '6px 8px 8px' }}>
+    <Label>{label}</Label>
+    {children}
+  </section>
+) : (
   <section data-journal={name} style={{ padding: '10px 2px 10px', borderTop: `1px solid ${COL.divider}` }}>
     <Label>{label}</Label>
     {children}
   </section>
-);
+));
 
 /* an item, pictured: the picture in a well, its name beside it */
 const ItemRow = ({ item }) => (
@@ -160,72 +176,115 @@ export function QuestJournalPage({ page, header = true, kicker = '', brief = fal
     </Section>
   );
 
-  /* ── v2.3.4356: the brief page's head, NOW and WHERE (the note above) ── */
+  /* ── v2.3.4356: the brief page -- a head and one CARD an item (the note above) ──
+     The owner, of its first cut: "the quest detail menu is still pretty
+     messy.  I like clean separation between each menu item.  Like the 'make 3
+     box traps at the woodworker' and the '0/3 box traps' line beneath it all
+     run together ... it would be a nice touch to display the profile picture
+     of each NPC beside the quest.  Think of the best way to arrange the
+     layout so that mobile users can see the most pertinent data at a glance."
+     So, top to bottom, each its own bordered card with a gap between:
+       the head   the GIVER'S FACE, the title, "Mayor Bro · In progress", and
+                  the Track star (44 px) -- no card: it is the page's name;
+       NOW        what to do, under its own brass word;
+       PROGRESS   the count and its bar, a card of its own: a number you
+                  glance at is never the tail of a sentence;
+       WHERE      the place, and the whole card is the Show on map button (a
+                  pin and "Map" at its right end say so) -- where and how to
+                  get there are one thing to a player;
+     which is what fits a phone's band at once (the head 40, NOW 58 for two
+     lines, progress 26, WHERE 44, 3 px gaps: about 177 px, measured by
+     mp-questjournal), in the order a player asks: what, how far along, where.  Below, a scroll away, the same
+     cards for WHO and the steps, GIVEN TO YOU, REWARD and NEXT. */
   const inHand = page.status === 'active' || page.status === 'ready';
-  const headBtn = (on) => ({
-    flex: 'none', width: 50, minHeight: 44, padding: '2px 0', boxSizing: 'border-box',
-    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
-    background: on ? COL.accentFill : COL.wellSoft, border: `1px solid ${on ? COL.accent : COL.borderStrong}`, borderRadius: 11,
-    color: on ? COL.accent : COL.text, fontFamily: 'inherit', cursor: 'pointer', touchAction: 'manipulation',
-  });
+  const giver = (who && who.npc) || page.npc || '';
   const briefHead = brief && (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, padding: '4px 0 6px' }}>
+    <div data-journal-head="" style={{ display: 'flex', alignItems: 'center', gap: 8, height: 40, margin: 0 }}>
+      {face ? (
+        <img data-journal-face={page.npc || ''} src={face} alt={giver} title={giver} draggable={false}
+          style={{ width: 38, height: 38, flex: 'none', objectFit: 'contain', imageRendering: 'pixelated',
+            borderRadius: 9, background: COL.well, border: `1px solid ${COL.borderStrong}`, boxSizing: 'border-box' }} />
+      ) : null}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div data-journal-title="" style={{
-          fontSize: 16, fontWeight: 800, color: COL.text, lineHeight: 1.2,
+          fontSize: 16, fontWeight: 800, color: COL.text, lineHeight: 1.15,
           display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
         }}>{page.title}</div>
-        <div style={{ fontSize: 13, fontWeight: 800, color: tone, marginTop: 2, letterSpacing: '.04em', textTransform: 'uppercase' }}>
-          {/* no "★ Tracked" here: the lit TRACK button beside it says so, and the line stays one line */}
+        {/* the status alone: the face beside it says whose quest it is (his
+            name is on WHO below), and "Mayor Bro · In progress" was cut short */}
+        <div data-journal-status-word="" style={{ fontSize: 13, fontWeight: 800, color: tone, marginTop: 2, letterSpacing: '.04em', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {page.statusLabel}
         </div>
       </div>
-      {where && where.map ? (
-        <button type="button" data-journal-map={page.id} aria-label="Show on map" title="Show on map"
-          {...tap(() => showQuestOnMap(page))} style={headBtn(false)}>
-          {/* a map pin, drawn: nothing to load */}
-          <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true" style={{ display: 'block' }}>
-            <path d="M10 1.8a5.6 5.6 0 0 0-5.6 5.6c0 4.1 5.6 10.8 5.6 10.8s5.6-6.7 5.6-10.8A5.6 5.6 0 0 0 10 1.8Z" fill="#D8AA58" stroke="#172126" strokeWidth="1" />
-            <circle cx="10" cy="7.4" r="2.1" fill="#172126" />
-          </svg>
-          <span style={{ fontSize: 13, fontWeight: 800, lineHeight: 1.1 }}>Map</span>
-        </button>
-      ) : null}
       {track && inHand ? (
         <button type="button" data-quest-track={tracked ? 'on' : 'off'} aria-pressed={tracked}
           aria-label={tracked ? 'Tracked: stop tracking this quest' : 'Track this quest'} title={tracked ? 'Stop tracking' : 'Track this quest'}
-          {...tap(() => track.onToggle(page.id))} style={headBtn(tracked)}>
-          <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1 }}>{tracked ? '★' : '☆'}</span>
-          <span style={{ fontSize: 13, fontWeight: 800, lineHeight: 1.1 }}>Track</span>
+          {...tap(() => track.onToggle(page.id))} style={{
+            /* 44 px tall in a 40 px head: it overhangs it by 2 px each way */
+            flex: 'none', width: 48, height: 44, margin: '-2px 0', padding: 0, boxSizing: 'border-box',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 0,
+            background: tracked ? COL.accentFill : COL.wellSoft, border: `1px solid ${tracked ? COL.accent : COL.borderStrong}`, borderRadius: 11,
+            color: tracked ? COL.accent : COL.text, fontFamily: 'inherit', cursor: 'pointer', touchAction: 'manipulation',
+          }}>
+          <span aria-hidden="true" style={{ fontSize: 17, lineHeight: 1 }}>{tracked ? '★' : '☆'}</span>
+          <span style={{ fontSize: 13, fontWeight: 800, lineHeight: 1.15 }}>Track</span>
         </button>
       ) : null}
     </div>
   );
   const briefNow = brief && now && (
-    <section data-journal="now" style={{ padding: '0 0 6px' }}>
-      <div data-journal-now="" style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.3, color: COL.text }}>{deskWords(now.text)}</div>
-      {now.goal ? <div style={{ fontSize: 14, lineHeight: 1.35, color: COL.text2, marginTop: 2 }}>{deskWords(now.goal)}</div> : null}
-      {now.count ? (
-        <div data-journal-count={now.count.have + '/' + now.count.n} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 5 }}>
-          <span style={{ flex: 'none', fontSize: 14, fontWeight: 800, color: now.count.have >= now.count.n ? '#7FD6AC' : COL.text, fontVariantNumeric: 'tabular-nums' }}>
-            {now.count.text}
-          </span>
-          <span style={{ flex: 1, minWidth: 24 }}><Bar frac={now.count.have / now.count.n} flat /></span>
-        </div>
-      ) : null}
+    <section data-journal="now" data-journal-card="" style={CARD}>
+      <CardLabel>Now</CardLabel>
+      <div data-journal-now="" style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.28, color: COL.text }}>{deskWords(now.text)}</div>
+      {now.goal ? <div style={{ fontSize: 14, lineHeight: 1.3, color: COL.text2, marginTop: 2 }}>{deskWords(now.goal)}</div> : null}
     </section>
   );
-  const briefWhere = brief && where && (
-    <section data-journal="where" style={{ display: 'flex', alignItems: 'flex-start', gap: 6, padding: '6px 0', borderTop: `1px solid ${COL.divider}` }}>
-      <span aria-hidden="true" style={{ flex: 'none', fontSize: 13, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: COL.accent, lineHeight: '19px' }}>Where</span>
-      <span style={{ minWidth: 0 }}>
-        <span data-journal-where="" style={{ display: 'block', fontSize: 14.5, lineHeight: 1.3, color: COL.text }}>{deskWords(where.text)}</span>
-        {/* v2.3.3522: what tracking does, said once it is on */}
-        {track && inHand && tracked ? (
-          <span data-quest-track-note="" style={{ display: 'block', fontSize: 13, color: COL.text2, marginTop: 2 }}>Your map's gold star follows this quest.</span>
-        ) : null}
+  const done = !!(now && now.count && now.count.have >= now.count.n);
+  const briefProgress = brief && now && now.count && (
+    <section data-journal="progress" data-journal-card="" data-journal-count={now.count.have + '/' + now.count.n}
+      style={{ ...CARD, display: 'flex', alignItems: 'center', gap: 8, height: 26, padding: '0 8px', borderColor: done ? 'rgba(127, 214, 172, 0.45)' : COL.border }}>
+      <span style={{ flex: 'none', fontSize: 14.5, fontWeight: 800, color: done ? '#7FD6AC' : COL.text, fontVariantNumeric: 'tabular-nums' }}>
+        {now.count.text}
       </span>
+      <span style={{ flex: 1, minWidth: 24 }}><Bar frac={now.count.have / now.count.n} flat /></span>
     </section>
+  );
+  /* WHERE is led by a map pin, not the word: beside "At the Woodworker, in
+     BroTown" and the Map chip the word made the place three lines, and the
+     card would not fit the screen with the rest.  The pin is drawn (nothing
+     to load); the card's spoken name says "Where". */
+  const pin = (px, fill) => (
+    <svg width={px} height={px} viewBox="0 0 20 20" aria-hidden="true" style={{ display: 'block', flex: 'none' }}>
+      <path d="M10 1.8a5.6 5.6 0 0 0-5.6 5.6c0 4.1 5.6 10.8 5.6 10.8s5.6-6.7 5.6-10.8A5.6 5.6 0 0 0 10 1.8Z" fill={fill} stroke="#172126" strokeWidth="1" />
+      <circle cx="10" cy="7.4" r="2.1" fill="#172126" />
+    </svg>
+  );
+  const whereInner = where && (
+    <>
+      {pin(20, '#D8AA58')}
+      <span data-journal-where="" style={{ flex: 1, minWidth: 0, fontSize: 14.5, lineHeight: 1.22, color: COL.text, textAlign: 'left' }}>{deskWords(where.text)}</span>
+    </>
+  );
+  const briefWhere = brief && where && (where.map ? (
+    /* the whole card is Show on map */
+    <button type="button" data-journal="where" data-journal-card="" data-journal-map={page.id} aria-label="Show on map" title={'Where: ' + deskWords(where.text) + '. Show on map'}
+      {...tap(() => showQuestOnMap(page))}
+      style={{ ...CARD, display: 'flex', alignItems: 'center', gap: 7, width: '100%', height: 44, padding: '0 6px 0 7px', overflow: 'hidden',
+        fontFamily: 'inherit', cursor: 'pointer', touchAction: 'manipulation' }}>
+      {whereInner}
+      <span aria-hidden="true" style={{
+        flex: 'none', display: 'flex', alignItems: 'center', height: 30, padding: '0 10px', borderRadius: 999,
+        background: COL.accentFill, border: `1px solid ${COL.accent}`, color: COL.accent, fontSize: 13, fontWeight: 800,
+      }}>Map</span>
+    </button>
+  ) : (
+    <section data-journal="where" data-journal-card="" aria-label={'Where: ' + deskWords(where.text)} style={{ ...CARD, display: 'flex', alignItems: 'center', gap: 7, minHeight: 40, padding: '2px 7px' }}>
+      {whereInner}
+    </section>
+  ));
+  /* v2.3.3522: what tracking does, said once it is on */
+  const briefNote = brief && track && inHand && tracked && (
+    <div data-quest-track-note="" style={{ fontSize: 13, color: COL.text2, padding: '0 4px 6px' }}>Your map's gold star follows this quest.</div>
   );
 
   const wherePart = where && (
@@ -245,7 +304,7 @@ export function QuestJournalPage({ page, header = true, kicker = '', brief = fal
   );
 
   const whoPart = who && (
-    <Section name="who" label="Who">
+    <Section name="who" label="Who" card={brief}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         {face ? (
           <img src={face} alt="" draggable={false}
@@ -280,7 +339,7 @@ export function QuestJournalPage({ page, header = true, kicker = '', brief = fal
   );
 
   const givenPart = given && (
-    <Section name="given" label="Given to you">
+    <Section name="given" label="Given to you" card={brief}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 6 }}>
         {given.items.map((it, i) => <ItemRow key={(it.icon || it.label) + i} item={it} />)}
       </div>
@@ -289,7 +348,7 @@ export function QuestJournalPage({ page, header = true, kicker = '', brief = fal
   );
 
   const rewardPart = reward && (
-    <Section name="reward" label={page.status === 'done' ? 'You got' : 'Reward'}>
+    <Section name="reward" label={page.status === 'done' ? 'You got' : 'Reward'} card={brief}>
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px 16px' }}>
         {reward.gold > 0 ? (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 16, fontWeight: 800, color: COL.gold, fontVariantNumeric: 'tabular-nums' }}>
@@ -311,7 +370,7 @@ export function QuestJournalPage({ page, header = true, kicker = '', brief = fal
   );
 
   const nextPart = next && (
-    <Section name="next" label="Next">
+    <Section name="next" label="Next" card={brief}>
       <div data-journal-next="" style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.4, color: COL.text }}>{deskWords(next.text)}</div>
       {next.more ? <div style={{ fontSize: 14.5, color: COL.text2, marginTop: 3 }}>{moreLine(next.more)}</div> : null}
     </Section>
@@ -320,7 +379,9 @@ export function QuestJournalPage({ page, header = true, kicker = '', brief = fal
   if (brief) {
     return (
       <div ref={ref} data-journal-page={page.id} data-journal-status={page.status} data-journal-brief="">
-        {briefHead}{briefNow}{briefWhere}
+        {briefHead}
+        <div style={{ height: 3 }} />
+        {briefNow}{briefProgress}{briefWhere}{briefNote}
         {whoPart}{givenPart}{rewardPart}{nextPart}
       </div>
     );

@@ -210,6 +210,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const b = (e) => { const r = e.getBoundingClientRect(); return { l: Math.round(r.left), r: Math.round(r.right), t: Math.round(r.top), b: Math.round(r.bottom) }; };
       return {
         secs: [...rail.querySelectorAll('[data-lb-sec]')].map((e) => e.dataset.lbSec),
+        heads: [...rail.querySelectorAll('[data-lb-sec]')].map((e) => { const cs = getComputedStyle(e); return { color: cs.color, px: parseFloat(cs.fontSize), weight: +cs.fontWeight, rule: parseFloat(cs.borderBottomWidth) }; }),
         cats: [...rail.querySelectorAll('[data-lb-cat]')].map((e) => e.dataset.lbCat),
         hits: [...rail.querySelectorAll('[data-lb-cat]')].map((e) => Math.round(e.getBoundingClientRect().height)),
         rail: b(rail), board: b(board), pg: b(pg), vw: innerWidth, vh: innerHeight,
@@ -224,6 +225,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('3b every board in the list is a 44 px target; the list and the board stand side by side inside the screen',
       page.hits.every((h) => h >= 44) && page.rail.l >= 0 && page.rail.r <= page.board.l + 1 && page.board.r <= page.vw && page.pg.b <= page.vh, page);
     rec.ok('3c the list scrolls by itself; the page does not', page.railScrolls && !page.pageScrolls && page.openCat === 'combat', page);
+    rec.ok('3c2 the headings (Ranks, Records, Skills) headline their sections: brass, 13 px, heavy, a rule under each',
+      page.heads.length === 3 && page.heads.every((h) => h.color === 'rgb(216, 170, 88)' && h.px >= 13 && h.weight >= 700 && h.rule >= 1), page.heads);
     /* each board a pill with its own picture */
     const pills = await H.waitFor(A, () => [...document.querySelectorAll('[data-lb-rail] [data-lb-cat]')].map((b) => {
       const pill = b.querySelector('[data-lb-pill]'), img = b.querySelector('[data-lb-icon] img'), word = pill && pill.lastElementChild;

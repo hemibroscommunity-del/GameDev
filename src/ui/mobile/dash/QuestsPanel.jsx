@@ -7,8 +7,8 @@ import { DailyRewardsCard } from './DailyRewardsCard.jsx'; /* v2.3.3140: the way
 import { trackedQuestId, setTrackedQuest } from '@/game/trackedQuest.js';
 import { questJournalList, questJournalPage, journalCtx } from '../sheet/questJournalModel.js';   /* v2.3.3944: the journal */
 import { apTotalText } from '@/game/questJournal.js';
-import { QuestJournalPage, useJournalTap } from './QuestJournalPage.jsx';
-import { useBoxSize, sideBySide, FOOT_FADE } from './railKit.js';   /* v2.3.4356: a list beside what it opens */
+import { QuestJournalPage, useJournalTap, npcPortrait } from './QuestJournalPage.jsx';
+import { useBoxSize, sideBySide, FOOT_FADE, railHeading } from './railKit.js';   /* v2.3.4356: a list beside what it opens */
 import { QUEST_PIN, OWNER_ICON } from '@/data/ownerIcons.js';   /* v2.3.4356: the givers' own pins, on the list's pills; the prize wheel on Daily */
 import { dailyRewardsBus, questsLive, spinLive } from '@/game/dailyRewards.js';
 
@@ -144,10 +144,10 @@ const EmptyLine = ({ text }) => (
   <div style={{ padding: '12px 6px', color: COL.text2, fontSize: 15, lineHeight: 1.45 }}>{text}</div>
 );
 
-/* the list's width (136: a title of fifteen letters whole beside its pin),
-   the least page it stands beside the quest on, and the least height (three
-   pills at once) */
-const RAIL_W = 136;
+/* the list's width (140: a title of about thirteen letters whole beside its
+   giver's face), the least page it stands beside the quest on, and the least
+   height (three pills at once) */
+const RAIL_W = 140;
 const SIDE_MIN_W = 340;
 const SIDE_MIN_H = 140;
 
@@ -159,8 +159,30 @@ let lastPick = null;
    ones over heads and on the maps, behind the loading screen already), a
    brass star on the one you track, a green tick for Done, the prize wheel
    for the daily rewards */
+/* ═══ v2.3.4356: THE GIVER'S FACE ON HIS QUEST ═══
+   The owner: "it would be a nice touch to display the profile picture of each
+   NPC beside the quest."  A quest's pill wears its giver's portrait (the head
+   the dialogue and the journal's WHO already show: QuestJournalPage
+   npcPortrait), with the quest's state as a small mark on its corner -- the
+   pin he wears in the world, or the brass star of the quest you track -- so
+   one glance says whose quest it is and how it stands.  A giver with no
+   portrait keeps the pin alone. */
+const FaceIcon = ({ npc, kind }) => {
+  const face = npc ? npcPortrait(npc) : null;
+  if (!face) return <PinIcon kind={kind} px={18} />;
+  return (
+    <span data-quest-pill-face={npc} style={{ position: 'relative', flex: 'none', width: 26, height: 26, display: 'block' }}>
+      <img src={face} alt="" draggable={false} style={{
+        width: 26, height: 26, display: 'block', objectFit: 'contain', imageRendering: 'pixelated',
+        borderRadius: 13, background: COL.well, border: `1px solid ${COL.borderStrong}`, boxSizing: 'border-box',
+      }} />
+      <span style={{ position: 'absolute', right: -5, bottom: -4, display: 'flex' }}><PinIcon kind={kind} px={14} /></span>
+    </span>
+  );
+};
+
 const PinIcon = ({ kind, px }) => {
-  if (kind === 'tracked') return <span aria-hidden="true" data-quest-pill-icon="tracked" style={{ flex: 'none', width: px, textAlign: 'center', fontSize: px, lineHeight: 1, color: COL.accent }}>★</span>;
+  if (kind === 'tracked') return <span aria-hidden="true" data-quest-pill-icon="tracked" style={{ flex: 'none', width: px, textAlign: 'center', fontSize: Math.max(13, px), lineHeight: 1, color: COL.accent, textShadow: '0 0 2px #0B161B, 0 0 2px #0B161B' }}>★</span>;
   if (kind === 'done') return <span aria-hidden="true" data-quest-pill-icon="done" style={{ flex: 'none', width: px, textAlign: 'center', fontSize: px - 2, lineHeight: 1, fontWeight: 800, color: '#7FD6AC' }}>✓</span>;
   /* the daily rewards wear the owner's prize wheel (the Daily Rewards window's own), never a second star */
   const src = kind === 'daily' ? OWNER_ICON.prizeWheel.src : kind === 'ready' ? QUEST_PIN.ready : kind === 'offer' ? QUEST_PIN.offer : QUEST_PIN.waiting;
@@ -168,7 +190,7 @@ const PinIcon = ({ kind, px }) => {
 };
 
 const pillStyle = (on, warm) => ({
-  display: 'flex', alignItems: 'center', gap: 5, width: '100%', height: 36, padding: '0 8px 0 6px', boxSizing: 'border-box',
+  display: 'flex', alignItems: 'center', gap: 7, width: '100%', height: 36, padding: '0 8px 0 4px', boxSizing: 'border-box',
   borderRadius: 999,
   /* a lit pill is a tint over the same well, never a hole (NavRail, v2.3.2176) */
   background: on ? `linear-gradient(0deg, ${COL.accentFill}, ${COL.accentFill}), ${COL.wellSoft}` : COL.wellSoft,
@@ -179,9 +201,6 @@ const pillHit = (row) => ({
   display: 'flex', alignItems: 'center', minHeight: 44, margin: 0, padding: 0, flex: row ? '0 0 auto' : undefined, width: row ? undefined : '100%',
   background: 'transparent', border: 'none', fontFamily: 'inherit', cursor: 'pointer', touchAction: 'manipulation',
 });
-const secStyle = (row) => (row
-  ? { flex: 'none', fontSize: 13, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: COL.muted, padding: '0 2px 0 6px' }
-  : { padding: '8px 6px 2px', fontSize: 13, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: COL.muted });
 
 export const QuestsPanel = () => {
   const [, force] = useState(0);
@@ -227,26 +246,28 @@ export const QuestsPanel = () => {
      made in this render: the page redraws every second, and a button that
      was a new component each time would be taken away from under a finger
      between its press and its lift) */
-  const pill = ({ id, hook, icon, label, title, count, warm }) => (
+  const pill = ({ id, hook, icon, npc, label, title, count, warm }) => (
     <button key={id} type="button" role="tab" aria-selected={lit === id} data-quest-lit={lit === id ? '1' : undefined} title={title || label}
       {...hook} {...tap(() => (id === '@done' || id === '@daily' ? setPick(id) : pickQuest(id)))} style={pillHit(!side)}>
       <span data-quest-pill="" style={{ ...pillStyle(lit === id, warm), width: side ? '100%' : 'auto', maxWidth: side ? undefined : 220 }}>
-        <PinIcon kind={icon} px={18} />
+        {npc ? <FaceIcon npc={npc} kind={icon} /> : <PinIcon kind={icon} px={18} />}
         <span style={{ minWidth: 0, flex: side ? 1 : undefined, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
         {count != null ? <span style={{ flex: 'none', fontSize: 13, fontWeight: 800, color: lit === id ? COL.accent : COL.text2, fontVariantNumeric: 'tabular-nums' }}>{count}</span> : null}
       </span>
     </button>
   );
-  const sec = (word) => <div key={'s:' + word} data-quest-sec={word} aria-hidden={side ? undefined : 'true'} style={secStyle(!side)}>{word}</div>;
+  /* a heading headlines its section (railKit railHeading: brass, with a rule) */
+  let secN = 0;
+  const sec = (word) => <div key={'s:' + word} data-quest-sec={word} aria-hidden={side ? undefined : 'true'} style={railHeading(!side, secN++ === 0)}>{word}</div>;
   const list = [
     L.active.length ? sec('Active') : null,
     ...L.active.map((r) => pill({
-      id: r.id, label: r.title, title: r.title + ': ' + deskWords(r.line),
+      id: r.id, npc: r.npc, label: r.title, title: r.title + ': ' + deskWords(r.line),
       icon: r.tracked ? 'tracked' : r.ready ? 'ready' : 'waiting', warm: r.ready,
       hook: { 'data-quest-row': r.id /* v2.3.3522: mp-trackquest */, 'data-quest-row-ready': r.ready ? '1' : '0', 'data-quest-row-track': r.tracked ? 'on' : 'off' },
     })),
     L.available.length ? sec('Available') : null,
-    ...L.available.map((r) => pill({ id: r.id, label: r.title, title: r.title + ': ' + r.where, icon: 'offer', hook: { 'data-quest-offer-row': r.id } })),
+    ...L.available.map((r) => pill({ id: r.id, npc: r.npc, label: r.title, title: r.title + ': ' + r.where, icon: 'offer', hook: { 'data-quest-offer-row': r.id } })),
     (L.done.length || dailyOn) ? sec('More') : null,
     L.done.length ? pill({ id: '@done', label: 'Done', count: L.done.length, icon: 'done', hook: { 'data-quest-nav': 'done' } }) : null,
     dailyOn ? pill({ id: '@daily', label: 'Daily', title: 'Daily rewards', icon: 'daily', hook: { 'data-quest-nav': 'daily' } }) : null,
@@ -338,8 +359,10 @@ export const QuestsPanel = () => {
       </div>
       <div data-quest-detail="" role="tabpanel" style={{
         flex: 1, minWidth: 0, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', touchAction: 'pan-y',
-        padding: '0 2px 22px 6px', boxSizing: 'border-box',
-        WebkitMaskImage: FOOT_FADE, maskImage: FOOT_FADE,
+        /* a short fade (8 px, not the list's 18): the WHERE card ends at the
+           pane's foot on a phone, and must not be read through a fade */
+        padding: '2px 2px 12px 6px', boxSizing: 'border-box',   /* 2 px on top: the Track button overhangs its head row by that */
+        WebkitMaskImage: 'linear-gradient(180deg, #000 calc(100% - 8px), transparent)', maskImage: 'linear-gradient(180deg, #000 calc(100% - 8px), transparent)',
       }}>
         {pane}
       </div>

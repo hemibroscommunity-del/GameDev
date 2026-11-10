@@ -24,6 +24,9 @@
   One tap changes board; the list and the board scroll by themselves. On a
   page too narrow or too short for both (a phone on its side) the list is a
   row of chips over the board.
+- **The headings (Ranks, Records, Skills) headline their sections**: brass,
+  13 px, heavy, with a brass rule under each (v2.3.4356; they were small grey
+  captions).
 - **Each board is a pill-shaped button with its own picture**: the level-up
   star, the sword, the bow, the staff, the sword and skull (Kills), the
   achievements' medal (AP), the prize wheel (Daily spin), a gold coin (Coin

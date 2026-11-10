@@ -6,7 +6,7 @@ import { takeFishBoardWant, subscribeFishWeigh, fishWeighLive } from '@/game/fis
 import { BoardRow, BoardEmpty, useBoardFaces } from './BoardRow.jsx';   /* v2.3.4355: the face, the level, the record */
 import { askSpinBoard, subscribeSpinBoard, spinBoardLive, spinRowLine } from '@/game/spinBoard.js';
 import { aceFlipBus } from '../aceFlipBus.js';
-import { useBoxSize } from './railKit.js';   /* v2.3.4356: the measuring this page and the Quests page share */
+import { useBoxSize, railHeading } from './railKit.js';   /* v2.3.4356: the measuring and the headings this page and the Quests page share */
 
 /* v2.3.1671: a TRADITIONAL HISCORES BOARD — one ranking per skill.
    Owner: "a traditional high scores system that ranks each skill... I want
@@ -321,7 +321,7 @@ export const LeaderboardPanel = () => {
       <div ref={boxRef} data-lb-page="chips" data-lb-open={cat} style={panelStyle}>
         <div ref={navRef} data-lb-chips="" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, overflowX: 'auto', padding: '2px 0' }}>
           {list.map((b) => (b.sec ? (
-            <span key={'s:' + b.sec} aria-hidden="true" style={{ flex: 'none', fontSize: 11, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: COL.muted, padding: '0 2px 0 6px' }}>{b.sec}</span>
+            <span key={'s:' + b.sec} aria-hidden="true" style={railHeading(true)}>{b.sec}</span>
           ) : (
             <button key={b.id} type="button" data-lb-cat={b.id} aria-pressed={b.id === cat} title={b.full || b.label} onClick={() => setCat(b.id)} style={chipHit}>
               <span style={{ ...chip(b.id === cat), padding: '0 12px 0 8px' }}><CatIcon icon={b.icon} px={18} dim={b.id !== cat} />{b.label}</span>
@@ -345,10 +345,9 @@ export const LeaderboardPanel = () => {
         WebkitMaskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)',
         maskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)',
       }}>
-        {list.map((b) => (b.sec ? (
-          <div key={'s:' + b.sec} data-lb-sec={b.sec} style={{
-            padding: '8px 6px 2px', fontSize: 11, fontWeight: 800, letterSpacing: '.10em', textTransform: 'uppercase', color: COL.muted,
-          }}>{b.sec}</div>
+        {list.map((b, bi) => (b.sec ? (
+          /* v2.3.4356: a heading headlines its section (railKit railHeading) */
+          <div key={'s:' + b.sec} data-lb-sec={b.sec} role="presentation" style={railHeading(false, bi === 0)}>{b.sec}</div>
         ) : (
           /* the button is the 44 px target; the pill inside it is what is seen
              (the chips' rule, v2.3.1235) */

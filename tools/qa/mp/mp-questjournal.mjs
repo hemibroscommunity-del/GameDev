@@ -11,9 +11,11 @@
  *   1. the first quest, Into the Blue (tut_1), taken (quest_accept, as the
  *      Mayor's offer sends it);
  *   2. the Quests page (v2.3.4356: a menu) opens ON it: your quests a list
- *      of pills down the left, the open one beside it, the page itself not
- *      scrolling; on screen at once, the title, MAP and TRACK, NOW "0/4 Slime
- *      Remains" with its bar and WHERE the Earth Forest; a scroll below, WHO
+ *      of pills down the left (each with its giver's face), under brass
+ *      headings, the open one beside it, the page itself not scrolling; on
+ *      screen at once, each its own card: the giver's face and the title with
+ *      TRACK, NOW, "0/4 Slime Remains" with its bar, and WHERE the Earth
+ *      Forest (the card is Show on map); a scroll below, WHO
  *      "Talked to Mayor Bro ✓", GIVEN TO YOU the sword and the shield, REWARD
  *      with "+5 Achievement Points", NEXT "Then: talk to ..."; plain words
  *      (no "Wheel", no "remnants"), nothing under 13 px;
@@ -113,21 +115,33 @@ async function body({ P, wsPort, rec, OUT }) {
       pageScrolls: !!pg && pg.scrollHeight > pg.clientHeight + 2,
       secs: [...document.querySelectorAll('[data-quest-rail] [data-quest-sec]')].map((e) => e.dataset.questSec),
       pill: pill ? { h: Math.round(pill.getBoundingClientRect().height), lit: pill.getAttribute('aria-selected'), radius: inner ? parseFloat(getComputedStyle(inner).borderTopLeftRadius) : 0,
-        icon: (pill.querySelector('[data-quest-pill-icon]') || { dataset: {} }).dataset.questPillIcon, word: inner ? inner.textContent.trim() : '' } : null,
-      seen: { title: seen('[data-journal-title]'), map: seen('[data-journal-map]'), track: seen('[data-quest-track]'), now: seen('[data-journal-now]'), count: seen('[data-journal-count]'), where: seen('[data-journal-where]') },
+        icon: (pill.querySelector('[data-quest-pill-icon]') || { dataset: {} }).dataset.questPillIcon, word: inner ? inner.textContent.trim() : '',
+        face: (pill.querySelector('[data-quest-pill-face] img') || { getAttribute: () => null }).getAttribute('src') } : null,
+      seen: { face: seen('[data-journal-face]'), title: seen('[data-journal-title]'), map: seen('[data-journal-map]'), track: seen('[data-quest-track]'), now: seen('[data-journal-now]'), count: seen('[data-journal-count]'), where: seen('[data-journal-where]') },
+      headFace: (det && det.querySelector('[data-journal-face]') || { getAttribute: () => null }).getAttribute('src'),
+      /* the cards of the open quest, top to bottom: each its own box, a gap between */
+      cards: det ? [...det.querySelectorAll('[data-journal-card]')].slice(0, 3).map((c) => { const r = c.getBoundingClientRect(), cs = getComputedStyle(c); return { name: c.dataset.journal, t: Math.round(r.top), b: Math.round(r.bottom), border: parseFloat(cs.borderTopWidth), radius: parseFloat(cs.borderTopLeftRadius), bg: cs.backgroundColor }; }) : [],
+      heads: [...document.querySelectorAll('[data-quest-rail] [data-quest-sec]')].map((e) => { const cs = getComputedStyle(e); return { word: e.textContent, color: cs.color, px: parseFloat(cs.fontSize), weight: +cs.fontWeight, rule: parseFloat(cs.borderBottomWidth) }; }),
       btn: ['[data-journal-map]', '[data-quest-track]'].map((s) => { const e = det && det.querySelector(s); const r = e ? e.getBoundingClientRect() : null; return r ? { w: Math.round(r.width), h: Math.round(r.height) } : null; }),
     };
   });
   rec.ok('2. a menu: your quests are a list down the left (Active, More), the quest that is open beside it, inside the screen; the page itself does not scroll',
     lay.mode === 'list' && lay.open === 'tut_1' && !!lay.rail && !!lay.det && lay.rail.l >= 0 && lay.rail.r <= lay.det.l + 1 && lay.det.r <= lay.vw && lay.pg.b <= lay.vh
     && !lay.pageScrolls && lay.secs.includes('Active'), lay);
-  rec.ok(`2. the quest is a pill in the list ("${lay.pill && lay.pill.word}"): a 44 px target, fully rounded, lit, wearing the giver's waiting pin`,
-    !!lay.pill && lay.pill.h >= 44 && lay.pill.radius >= 18 && lay.pill.lit === 'true' && lay.pill.icon === 'waiting' && /Into the Blue/.test(lay.pill.word), lay.pill);
-  rec.ok('2. everything you need to carry on is on screen at once, no scrolling: the title, MAP and TRACK (44 px each), what to do NOW with its count, and WHERE',
-    !!lay.seen && Object.values(lay.seen).every((v) => v === true) && lay.btn.every((b) => !!b && b.w >= 44 && b.h >= 44), { seen: lay.seen, btn: lay.btn });
+  rec.ok(`2. the quest is a pill in the list ("${lay.pill && lay.pill.word}"): a 44 px target, fully rounded, lit, Mayor Bro's face on it with his waiting pin on its corner`,
+    !!lay.pill && lay.pill.h >= 44 && lay.pill.radius >= 18 && lay.pill.lit === 'true' && lay.pill.icon === 'waiting' && /Into the Blue/.test(lay.pill.word)
+    && /mayor-bro-head/.test(lay.pill.face || ''), lay.pill);
+  rec.ok(`2. the list's headings headline their sections: brass, 13 px or more, heavy, a rule under each (${lay.heads.map((h) => h.word).join(', ')})`,
+    lay.heads.length >= 1 && lay.heads.every((h) => h.color === 'rgb(216, 170, 88)' && h.px >= 13 && h.weight >= 700 && h.rule >= 1), lay.heads);
+  rec.ok('2. everything you need to carry on is on screen at once, no scrolling: the giver\'s face, the title, TRACK, what to do NOW, its count, and WHERE with its map (44 px targets)',
+    !!lay.seen && Object.values(lay.seen).every((v) => v === true) && lay.btn.every((b) => !!b && b.w >= 44 && b.h >= 44) && /mayor-bro-head/.test(lay.headFace || ''), { seen: lay.seen, btn: lay.btn, headFace: lay.headFace });
+  rec.ok(`2. each item is its own card, a gap between: ${lay.cards.map((c) => c.name).join(' | ')} -- what to do and the count never run together`,
+    lay.cards.length === 3 && lay.cards.map((c) => c.name).join() === 'now,progress,where'
+    && lay.cards.every((c, i) => c.border >= 1 && c.radius >= 8 && c.bg !== 'rgba(0, 0, 0, 0)' && (i === 0 || c.t - lay.cards[i - 1].b >= 3)), lay.cards);
   const now = await part(P, F, 'now');
-  rec.ok(`2. NOW: "${now}" -- 0/4 Slime Remains, with its bar`, !!now && /0\/4 Slime Remains/.test(now)
-    && !!(await P.page.$(`${F} [data-journal-count="0/4"]`)), now);
+  const prog = await part(P, F, 'progress');
+  rec.ok(`2. NOW: "${now}"; and, a card of its own, "${prog}" with its bar`, !!now && /Slime Remains/.test(now) && !/0\/4/.test(now)
+    && /^0\/4 Slime Remains$/.test(prog || '') && !!(await P.page.$(`${F} [data-journal-count="0/4"]`)), { now, prog });
   const where = await part(P, F, 'where');
   rec.ok(`2. WHERE: "${where}" -- the Earth Forest, which way from BroTown, and Show on map`,
     !!where && /Earth Forest, \w+ of BroTown/.test(where) && !!(await P.page.$(`${F} [data-journal-map="tut_1"][aria-label="Show on map"]`)), where);
@@ -208,7 +222,7 @@ async function body({ P, wsPort, rec, OUT }) {
   await H.grant(wsPort, me, 'item', { invKey: 'slime-remnants', count: 4 });
   await H.waitFor(P, (S) => ((S.rpg && S.rpg.inventory) || {})['slime-remnants'] || 0, (n) => n >= 4, { timeout: 15000, label: 'the remains' }).catch(() => null);
   await P.page.waitForTimeout(1500);
-  const now4 = await part(P, F, 'now');
+  const now4 = ((await part(P, F, 'progress')) || '') + ' / ' + ((await part(P, F, 'now')) || '');
   const ready = await P.page.evaluate(() => { const p = document.querySelector('[data-quest-row="tut_1"]'); return p ? { ready: p.getAttribute('data-quest-row-ready'), status: (document.querySelector('[data-journal-page="tut_1"]') || { dataset: {} }).dataset.journalStatus } : null; });
   rec.ok(`4. with the 4 Remains: "${now4}" -- 4/4 and hand it in; its pill marked ready`, !!now4 && /4\/4 Slime Remains/.test(now4) && /hand it in to Mayor Bro/i.test(now4)
     && !!ready && ready.ready === '1' && ready.status === 'ready', { now4, ready });

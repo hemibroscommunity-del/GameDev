@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { COL } from './common.js';
 
 /* ═══ v2.3.4356: A PAGE THAT IS A LIST BESIDE WHAT IT OPENS ═══
  * The Leaderboards (v2.3.4355) and the Quests page (v2.3.4356) are the same
@@ -41,3 +42,24 @@ export function sideBySide(w, h, minW, minH) {
 /* the foot of a scroller fades over its last 18 px (common.js panelStyle's
    cue that there is more below), for each side of the page */
 export const FOOT_FADE = 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)';
+
+/* ═══ v2.3.4356: A SECTION'S HEADING HEADLINES ITS SECTION ═══
+   The owner, of both lists' first cut: "Why do the menu titles look dark and
+   subtle?  Like in your screenshots 'ranks' and 'records' look like they're
+   peripheral instead of headlining the section below."  They were 11 px
+   capitals in the muted grey (#8D9B98), the colour of a caption.  A heading
+   is brass now (the game's accent, the colour its own section labels wear on
+   every other page), 13 px and heavy, with a brass rule under it across the
+   list and air above it -- the brightest thing in the list after the lit
+   pill, so the eye lands on it and then on what is under it.  `row`: the
+   pills are one row (the narrow page), where a heading is a word between
+   them with no rule. */
+export function railHeading(row, first) {
+  return row
+    ? { flex: 'none', fontSize: 13, fontWeight: 800, letterSpacing: '.10em', textTransform: 'uppercase', color: COL.accent, padding: '0 2px 0 8px' }
+    : {
+      margin: first ? '2px 0 4px' : '10px 0 4px', padding: '0 4px 3px',
+      fontSize: 13, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: COL.accent,
+      borderBottom: `1px solid ${COL.edgeWarm}`,
+    };
+}
