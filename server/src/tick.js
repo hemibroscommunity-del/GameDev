@@ -416,7 +416,10 @@ export const tickMethods = {
            stall and the only time the tick runs at all (rule 12). */
         if (!this._lastHousekeep || nowJp - this._lastHousekeep > HOUSEKEEP_SLOT_MS) {
           this._lastHousekeep = nowJp;
-          this._opPruneMaybe(nowJp).catch(() => {});
+          /* v2.3.4505: the prune waits while the General Store has a sale a
+             restart caught half done (market.js _mktSettleWait): the stamps
+             it would delete are what says which legs were paid */
+          if (!(this._mktSettleWait && this._mktSettleWait())) this._opPruneMaybe(nowJp).catch(() => {});
           this._metricsMaybe(nowJp).catch(() => {});
         }
         /* v2.3.3140: the daily quests' counted progress is written here at
