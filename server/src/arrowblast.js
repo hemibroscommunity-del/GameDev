@@ -100,6 +100,7 @@ export const arrowBlastMethods = {
     if (!ps) return 'no-player';
     if (ps.dead || ps.dying || ps.disconnected) return 'not-alive';
     if (ps.z !== zone) return 'wrong-zone';
+    if (this._wheelSpectator && this._wheelSpectator(ps)) return 'spectator';   /* v2.3.4575: wheeltables.js _wheelSpectator */
     if (typeof x !== 'number' || typeof y !== 'number'
         || !Number.isFinite(x) || !Number.isFinite(y)) return 'bad-point';
     if (ps._arrowBlastCdUntil && now < ps._arrowBlastCdUntil) return 'cooldown';
