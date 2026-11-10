@@ -143,6 +143,10 @@ export const MOVE_BUDGET = Object.freeze({
   BURST_S: 3,
 });
 
+/* v2.3.4454: the zone-entry grace is given at most once in this long
+   (_entryGraceGive below) -- no honest walk changes place twice in it */
+export const ENTRY_GRACE_GAP_MS = 10000;
+
 export const movementMethods = {
   /* v2.3.3325: the kill switch (MOVE_BUDGET above) */
   _moveBudgetOn() {
@@ -363,6 +367,34 @@ export const movementMethods = {
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'serverdead') && !f.serverdead);
   },
 
+  /* ═══ v2.3.4454: THE ZONE-ENTRY HALF SECOND IS NOT A SHIELD ═══
+     Every change into a non-hub zone stamps ZONE_ENTRY_GRACE_MS of no
+     damage (_applyDamage).  v2.3.4423 refused it for invented dungeon ids,
+     but a modified phone could still hop between two REAL places it may
+     enter (the Wheel and town, again and again) and never be hurt: not by a
+     monster, not by the other player in No man's land (state-machine sweep
+     V1, S3-15; PR #1499's first question).  So the grace is given on an
+     honest entry exactly as before, and NOT
+       (a) while the player is in a fight with another player, by the
+           linger's own test (linger.js _lingerFightRecent: the last hit
+           between players, 10 s) -- a fight is not a place to orient in;
+       (b) again within ENTRY_GRACE_GAP_MS of the last grace given -- the
+           hop's whole trick.
+     Nothing else about changing place changes.  Memory only (rule 11): a
+     fresh join starts with no grace on record.  Protects the OTHER player
+     (and the monsters' bite): never asks _testMode.  `entrygrace: false` in
+     the live flags gives the grace on every entry again. */
+  _entryGraceOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'entrygrace') && !f.entrygrace);
+  },
+
+  _entryGraceGive(id, ps, now) {
+    if (this._entryGraceOff()) return true;
+    if (this._lingerFightRecent && this._lingerFightRecent(id, now)) return false;
+    return !(ps._entryGraceAt && now - ps._entryGraceAt < ENTRY_GRACE_GAP_MS);
+  },
+
   /* v2.3.1625: the ONE zone gate.  Every path that lets a client choose
    * ps.z must run this -- `move` and `join` today.  Membership, not
    * shape: an unlisted string never reaches the zone-keyed maps
@@ -446,6 +478,9 @@ export const movementMethods = {
   _handleMove(session, ws, msg) {
     if (!session.id || !this.playerState[session.id]) return;
     const ps = this.playerState[session.id];
+    /* v2.3.4455: a body taken over waits for its phone to stand at it: until
+       then a move moves nothing (bodytake.js) */
+    if (ps._bodyWait && this._bodyTakeMove(session, ps, msg)) return;
     const oldZone = ps.z;
     /* v2.3.1631: an unlisted zone id drops the ZONE, never the whole
        message.
@@ -862,7 +897,12 @@ export const movementMethods = {
         // 0 dodge while it's in the future, so monsters can
         // walk/swing as normal but the player has a moment to
         // orient before hits land.
-        ps._zoneEntryGraceUntil = Date.now() + this.ZONE_ENTRY_GRACE_MS;
+        /* v2.3.4454: ...not mid-fight, nor twice in 10 s (_entryGraceGive) */
+        const _gNow = Date.now();
+        if (this._entryGraceGive(session.id, ps, _gNow)) {
+          ps._zoneEntryGraceUntil = _gNow + this.ZONE_ENTRY_GRACE_MS;
+          ps._entryGraceAt = _gNow;
+        }
         this._ensureZoneNodes(ps.z);
         /* v2.3.1983: re-scale the zone to its NEW population before the
            snapshot is built, so the arriving player's own frame already
