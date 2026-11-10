@@ -1726,6 +1726,10 @@ export const joinMethods = {
     }
     const _joinMonstersAll = _joinInWorld ? (this.monsters[joinZone] || []) : [];
     const zoneNodes = _joinInWorld ? (this.nodes[joinZone] || []) : [];
+    /* v2.3.4384: the first join of a worker's life puts the saved death
+       piles back on the ground before any zone list is built (deathpile.js:
+       one bounded read, never again) */
+    if (this._deathPilesEnsure) await this._deathPilesEnsure();
     const zoneLootForJoin = _joinInWorld ? this._zoneLootForWire(joinZone, session.id) : [];   /* v2.3.3473: their own drops too (itemdrop.js) */
     // v2.3.1150: warm the live-ops flag cache before anything gated
     // can run, and let operator flags OVERRIDE the baked caps

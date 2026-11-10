@@ -34,6 +34,9 @@
  *  12. v2.3.4036: fishing writes the fish log (the catches to weigh) at most
  *      once a SAVE_MS, and tapping Inspect writes no more rows than the fish
  *      caught (fishlog.js) -- a refused one writes nothing;
+ *  13. v2.3.4384: a death outside town writes its pile's row once (one more
+ *      row a death, the owner's "save it"), and the pile's end -- taken or
+ *      run out -- deletes it once (deathpile.js);
  * A line here may move when a feature really needs the rows: say so in the
  * PR, in plain words, as the memory budget asks (CLAUDE.md).
  */
@@ -507,6 +510,39 @@ const FAST = 110;
   const w2 = state.writes.length;
   for (let i = 0; i < 50; i++) { NOW += 9; await send(room, p, { type: 'fish_inspect', payload: { key: 'fish_trout' } }); }
   check('12c. ...and once all are weighed, more taps write nothing', state.writes.length === w2, state.writes.slice(w2));
+}
+
+/* ── 13. v2.3.4384: a dead player's pile, saved (deathpile.js) ──────────── */
+{
+  const { DEATHPILE } = await import('../src/deathpile.js');
+  const { room, state } = await makeRoom();
+  await join(room, 'cg_die');
+  const ps = room.playerState.cg_die;
+  ps.inventory = { wood_pine: 5, fish_trout: 2 };
+  const w0 = state.writes.length;
+  room._handlePlayerDeath(ps, 'cg_die', 'monster');
+  const died = mine(state, 'cg_die', w0);
+  const rowsAtDeath = died.filter((k) => k.startsWith(DEATHPILE.PREFIX)).length;
+  check(`13a. a death writes its pile's row once (${rowsAtDeath}) beside your record (${died.filter((k) => k.startsWith('rpg:')).length}): ${died.length} rows in all, at most 4`,
+    rowsAtDeath === 1 && died.length <= 4, byPrefix(died));
+  const pile = (room.loot[ps.z] || []).find((p) => p.isDeathDrop);
+  /* the owner, stood up, takes it back */
+  ps.dying = false; ps.dead = false; ps.hp = ps.maxHp || 100; ps.x = pile.x; ps.y = pile.y;
+  const sess = [...room.sessions.values()].find((x) => x.id === 'cg_die');
+  const w1 = state.writes.length;
+  room._handleLootPickup(sess, { lootId: pile.lootId, zone: pile.zone });
+  const took = mine(state, 'cg_die', w1);
+  check(`13b. taking it back writes your record once and deletes the row once (${took.length} rows, at most 2)`,
+    took.length <= 2 && took.filter((k) => k.startsWith(DEATHPILE.PREFIX)).length === 1, byPrefix(took));
+  /* another death, left to run out: one delete when it goes */
+  NOW += room.DEATH_REDROP_GRACE_MS + 1000;   /* past the pickup's shield (_deathRecoveryShield) */
+  ps.inventory = { wood_pine: 1 };
+  room._handlePlayerDeath(ps, 'cg_die', 'monster');
+  const w2 = state.writes.length;
+  NOW += room.DEATH_PILE_TOTAL_MS + 1000;
+  room._tickLoot();
+  const ran = mine(state, 'cg_die', w2).filter((k) => k.startsWith(DEATHPILE.PREFIX));
+  check(`13c. a pile left to run out deletes its row once (${ran.length})`, ran.length === 1, ran);
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);
