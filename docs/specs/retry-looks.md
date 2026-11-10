@@ -93,3 +93,31 @@ Results (picture: `docs/shots/retry-looks-monkey.webp`; top row with
 - **With `?retrylooks=0`:** SE and SW (SE draws the south-west pictures
   mirrored) have no muzzle and no shirt.
 - **With the rule on:** every facing passes.
+
+## v2.3.4368: the first rounds wait, and one facing never sinks the rest
+
+The state-machine sweep (2026-11-03, V18) found three gaps around these
+rounds, all on the phone, all visual (`server/test/look-load.test.mjs`):
+
+- **The body's 2 s / 6 s retries did not chain** into the promise
+  `buildBodySheet` returns (R7-1). The head's have since v2.3.1398, so the
+  loading screen (`preloadBodyAll`) waited through a head's backoff but passed
+  at a body sheet's FIRST failed download; the first use then drew the plain
+  base sheet (the wrong skin and trousers) for 2-8 s. Now the body's chain the
+  same way. A failure still never holds the gate past its three tries.
+- **Hat, eyewear and eye style recoloured every facing with no try** (R8-11).
+  One facing that threw (iOS refusing a canvas) left the whole key 'loading'
+  for the visit: never rebuilt, never evicted, the piece in its native colour.
+  Each facing has its own try now, as hair and beard always had, and so does
+  the shared reference all the facings are recoloured against.
+- **Your eyewear and eye-style colours had no "ready" promise** (R8-11), so the
+  loading screen waited for your hat, hair and beard colours but left these two
+  to the first draw (the PRELOADING law). `coloredEyewearReady` and
+  `coloredEyeStyleReady` match the hat's, and `preloadTraits` awaits them. They
+  bake the same pictures the first draw would have, so memory does not grow;
+  on a phone the look palette draws them and nothing is baked at all.
+
+**Lesson: a retry that sits on a loading screen's road returns its next try's
+promise (`return new Promise(r => setTimeout(r, ms)).then(retry)`); a
+`setTimeout` and a bare `return` lets the gate through on the first failure.**
+
