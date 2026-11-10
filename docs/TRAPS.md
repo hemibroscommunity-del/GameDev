@@ -9745,7 +9745,23 @@ band redrawing itself whole five times a second.
 **Receipt:** `held-sweep` suite, `mp-heldsweep`, `mp-pagebases`,
 `mp-standinlegs`, docs/specs/held-sweep.md.
 
-## 319. "The click test went red right after five merges, so one of them broke it" (v2.3.4498)
+## 319. "Put the new stat on the Stats page" (v2.3.4545)
+
+**Tempting:** `BottomDashboard`'s table has `stats: { title: 'Stats', Component:
+StatsPanel }`, with Vitals, Attributes and a Record list: the obvious home for
+a new number about a character. **Wrong:** nothing opens it. No rail button,
+no More tile and no bus call asks for `'stats'` (grep finds only the table's
+own row); it is a page from before the Character sheet. Accuracy was first
+built there and would have shipped where no player could see it; it was the
+phone scenario, which has to OPEN the page it checks, that found out. **The
+rule.** A character's record is on **Journey** (More, Journey:
+`JourneyPanel.jsx`), its sheet on the Bro page. Before adding to a screen,
+find how a player reaches it (a `data-` hook a scenario can tap), and make the
+scenario go there the way a player does. A page nobody can open is the
+owner's to revive or delete, not a place to build (CLAUDE.md: a dormant
+system). **Receipt:** `mp-ownerwatch` opens Journey through the band.
+
+## 320. "The click test went red right after five merges, so one of them broke it" (v2.3.4498)
 
 **Tempting:** `mp-deskclick`'s "a real click on Ace talks to him" went red
 just after #1457 to #1461 merged, so bisect them. **Wrong:** the game was
@@ -9761,7 +9777,7 @@ or waits before clicking is racing his day's walk. Let him stand
 red phone test is a question about the TEST first (§177). Fixed in #1517,
 step 5. **Receipt:** `mp-deskclick` (green twice, 15 of 15).
 
-## 320. "Pay first, then write the record: the stamp makes the retry safe" (v2.3.4500)
+## 321. "Pay first, then write the record: the stamp makes the retry safe" (v2.3.4500)
 
 **Tempting:** an Auction House refund wrote the listing (offer removed) first
 and paid the buyer second, so a restart between them lost the gold: flip the
@@ -9777,7 +9793,7 @@ restarting before every batch. #1521 also lists a stack, takes a raise and
 marks a buy-now `sale.paid` this way. Off-ramp: the flag `ahonewrite: false`
 (the old order, holes included). **Receipt:** `store-onewrite.test`.
 
-## 321. "A leftover with a stamp is done: delete it" (v2.3.4505)
+## 322. "A leftover with a stamp is done: delete it" (v2.3.4505)
 
 **Tempting:** after a restart, a General Store order with a "paid" stamp on
 file was finished, so delete it. **Wrong** for a sale paid in several legs
@@ -9797,7 +9813,7 @@ with its weapon already delivered: one weapon became two. **The rule.**
 A note with a newer shape number is left alone. Fixed in #1522; off-ramp
 `mktsettle: false`. **Receipt:** `market-settle.test`.
 
-## 322. "The fight lock lists the roads out of the bag" (v2.3.4510)
+## 323. "The fight lock lists the roads out of the bag" (v2.3.4510)
 
 **Tempting:** a new handler that spends gold or bag goods (or a new equip or
 zone road) is added with its own refusals, and nobody adds it to the fight
@@ -9819,7 +9835,7 @@ nothing), a red skull killed by a monster. Fixed in #1523; off-ramps
 `fightlocktable`, `fightlockdoor`, `fightlockequip` (and the old `fightlock`,
 which opens everything). **Receipt:** `fight-lock.test`.
 
-## 323. "A cap on its own line is invisible to the caps audit" (v2.3.4520)
+## 324. "A cap on its own line is invisible to the caps audit" (v2.3.4520)
 
 **Tempting:** §316 puts a new cap on its own line of `join.js`'s `caps`
 literal; `caps-audit.test` goes red saying the cap is not advertised, so put
@@ -9829,7 +9845,7 @@ now reads the literal's own lines up to its closing `},` (v2.3.4520, #1525).
 A new cap stays on its own line; if the audit misses one, fix the reader,
 never the line. **Receipt:** `caps-audit.test`.
 
-## 324. "Let the sword swing as often as the player taps" (v2.3.4520)
+## 325. "Let the sword swing as often as the player taps" (v2.3.4520)
 
 **Tempting:** to let a sword swing faster (the free-swing trial), take away
 the phone's early-swipe refusal and start a swing on every tap. **Wrong:**
@@ -9842,7 +9858,7 @@ the worker counts one swing every 100 ms (`MIN_SWING_GAP_MS`); the 50 ms
 between is the network's wobble. **Receipt:** `free-swing.test`,
 `manual-combat.test` §13, `mp-freeswing`.
 
-## 325. "Scale the hit by its share and it is fair" (v2.3.4520)
+## 326. "Scale the hit by its share and it is fair" (v2.3.4520)
 
 **Tempting:** a light swing (the free-swing trial, `?manual=3`) deals its
 share of a full one: multiply the damage by the share where it is rolled.

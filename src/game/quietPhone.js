@@ -93,7 +93,10 @@ export const LOOK_NEWS = Object.freeze({
   LAZY: Object.freeze(['rpgHp', 'rpgMaxHp']),
   LAZY_IN: Object.freeze({ rpgData: Object.freeze(['kills', 'svKills', 'goldEarned', 'playtime']) }),
 });
-const SKIP = new Set([...LOOK_NEWS.RIDE_ALONG, ...LOOK_NEWS.LAZY]);
+/* v2.3.4545: + `ac`, the shot counts that ride the track (game/accuracy.js).  Not a look key and never relayed (the
+   worker reads it on its own: server/src/accuracy.js), so it is not in the mirrored lists above -- but it changes
+   with every shot, and as news it would send a track every 2 s of a fight, which is what the quiet phone is for. */
+const SKIP = new Set([...LOOK_NEWS.RIDE_ALONG, ...LOOK_NEWS.LAZY, 'ac']);
 const LAZY_IN = new Map(Object.entries(LOOK_NEWS.LAZY_IN).map(([k, v]) => [k, new Set(v)]));
 
 /** Does this worker want the quiet phone?  (caps.quiet; `quiet: false` in

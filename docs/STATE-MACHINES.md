@@ -116,7 +116,7 @@ is `true` to go back. The `?...=0` switches are for one phone, in its address.
 
 ## What shipped, fourth wave (2026-11-10, pull requests #1521 to #1525)
 
-Same columns as above. Lessons: `docs/TRAPS.md` §319-325.
+Same columns as above. Lessons: `docs/TRAPS.md` §320-326.
 
 | PR | Tag | System | What | Kill switch | Suite |
 |----|-----|--------|------|-------------|-------|
@@ -132,7 +132,7 @@ are #1525's. All the server switches are `false` to go back.
 
 Tools and documents only, the same day: #1516 (v2.3.4492, two phone tests
 caught up with the game), #1517 (v2.3.4498, `mp-deskclick` aims where Ace
-stands; not a game regression, TRAPS §319), #1518 (v2.3.4499, the crowd tour
+stands; not a game regression, TRAPS §320), #1518 (v2.3.4499, the crowd tour
 `mp-crowdsweep`, findings a to i in `docs/specs/held-sweep.md`).
 
 ## What is left
