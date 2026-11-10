@@ -103,6 +103,7 @@ import { petbookMethods } from './petbook.js';
 /* v2.3.3209: the monster codex -- what each kill teaches you, codex:<pid>
    (codex.js).  docs/specs/monster-codex.md. */
 import { codexMethods } from './codex.js';
+import { deathPileMethods } from './deathpile.js';   /* v2.3.4384: a dead player's pile survives a restart */
 import { fishlogMethods } from './fishlog.js';   /* v2.3.4036: the rare fish, weighed, with records */
 import { achievementMethods } from './achievements.js';   /* v2.3.3527 */
 import { killRollMethods } from './killroll.js';   /* v2.3.3209: one roll a kill, each drop its own numbers */
@@ -3479,6 +3480,11 @@ export class GameRoom {
          bag, tools, ores and cooked fish too (`all`, nomansland.js -- the
          owner: everything but what you wear); Diego sells a tool back. */
       ps.inventory = this._wipeInventoryOnDeath(ps, !!(_nml && _nml.pile && _nml.pile.all));
+      /* v2.3.4384: the pile's own row, put in the same synchronous run as
+         this wipe's save below (_saveRpg, no await between): one write, so a
+         restart finds the bag in the record or on the ground, never both,
+         never neither (deathpile.js; `deathpilesave: false` writes none) */
+      if (_pile) _hook('deathPileSave', () => this._deathPileSave(_pile, playerId, ps));
       /* v2.3.3316: the killer is told what they took, and where it lies */
       if (_nml && _nml.to) _hook('nmlTell', () => this._nmlTellKiller(_nml, playerId, _pile));
     }
@@ -4495,6 +4501,8 @@ export class GameRoom {
           : (now - p.ts > this.LOOT_EXPIRY_MS);
         if (expired) {
           list.splice(i, 1);
+          /* v2.3.4384: a saved death pile's row goes with it (deathpile.js) */
+          if (p._saved) this._deathPileGone(p);
           this.eventBuffer.push({
             type: 'loot_despawn',
             payload: { lootId: p.lootId, zone: zoneId },
@@ -4611,6 +4619,11 @@ export class GameRoom {
       this._stampLootRecovered(ps, itemsForMe);
       pile.claimedBy[session.id] = true;
       pile.inventoryClaimed = true;
+      /* v2.3.4384: a saved death pile's row goes in the SAME run as the
+         save that puts its items in this bag (no await between): the
+         delete is the credit's stamp, so a restart neither brings the pile
+         back to a bag that has it nor loses it (deathpile.js) */
+      this._deathPileGone(pile);
       this._saveRpg(session.id, ps);
       const ws = this._wsBySessionId(session.id);
       if (ws) {
@@ -6695,6 +6708,7 @@ Object.assign(GameRoom.prototype, raceMethods); /* v2.3.3525 */
 Object.assign(GameRoom.prototype, rideMethods); /* v2.3.3776 */
 Object.assign(GameRoom.prototype, petbookMethods); /* v2.3.3120 */
 Object.assign(GameRoom.prototype, codexMethods); /* v2.3.3209 */
+Object.assign(GameRoom.prototype, deathPileMethods); /* v2.3.4384 */
 Object.assign(GameRoom.prototype, fishlogMethods); /* v2.3.4036 */
 Object.assign(GameRoom.prototype, achievementMethods); /* v2.3.3527 */
 Object.assign(GameRoom.prototype, killRollMethods); /* v2.3.3209: the kill's one roll (killroll.js) */
