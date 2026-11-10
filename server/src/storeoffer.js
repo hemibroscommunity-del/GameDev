@@ -291,6 +291,18 @@ export const storeOfferMethods = {
      Lazy, on the store's existing sweep (rule 12). Bounded by the same pass:
      a listing's offers are at most MAX_PER_LISTING, so this cannot become an
      unbounded walk. */
+  /* v2.3.4412: does this listing hold an offer past its 48 h?  Memory only,
+     so the store's sweep can ask it of every listing (store.js _stSweep) */
+  _soHasDue(rec, now) {
+    const offers = rec && rec.offers;
+    if (!offers || typeof offers !== 'object') return false;
+    for (const b of Object.keys(offers)) {
+      const o = offers[b];
+      if (o && (o.at + STORE_OFFER.OFFER_EXPIRY) <= now) return true;
+    }
+    return false;
+  },
+
   async _soSweepRec(rec, now) {
     const offers = this._soOffers(rec);
     const due = Object.keys(offers).filter((b) => (offers[b].at + STORE_OFFER.OFFER_EXPIRY) <= now);
