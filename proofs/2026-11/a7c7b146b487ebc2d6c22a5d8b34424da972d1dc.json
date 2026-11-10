@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "a7c7b146b487ebc2d6c22a5d8b34424da972d1dc",
+  "tree": "8988b72aec3ab9557763e1770ab4babcaf018a9d",
+  "committedAt": "2026-11-09T20:59:21-08:00",
+  "subject": "Merge pull request #1465 from hemibroscommunity-del/claude/sm-looks-load",
+  "files": 7765,
+  "bytes": 951988413,
+  "listingSha256": "b6388310b0e18ce1470aec0b8096b91b9f0cad329ec0dccbaa82bf6bd0676ed7",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

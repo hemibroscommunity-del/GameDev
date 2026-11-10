@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "41b394b31d8c878c1361f8f10d0eb7f99f5617df",
+  "tree": "75c4e5ae268d2f241a6218074e6b85f79a9e8f7d",
+  "committedAt": "2026-11-09T20:59:00-08:00",
+  "subject": "Merge pull request #1463 from hemibroscommunity-del/claude/sm-socket-one",
+  "files": 7762,
+  "bytes": 951955362,
+  "listingSha256": "88d434d1eb2b8db6ca2e3bc49bc7b867f1fa4a8726a4b1bcaa2e9ae1d70b38e4",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

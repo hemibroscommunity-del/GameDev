@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8e81206ee4ef383c06dc36a2e1c95b5e9bd3573e",
+  "tree": "1b6dda52059cd909d8a22bb6736293e7eb7fffae",
+  "committedAt": "2026-11-09T20:58:46-08:00",
+  "subject": "Merge pull request #1462 from hemibroscommunity-del/claude/sm-blocks-phone",
+  "files": 7759,
+  "bytes": 951932937,
+  "listingSha256": "552fca324a877033701332c705889470da120616d1423dd3316251bb67b5ea59",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

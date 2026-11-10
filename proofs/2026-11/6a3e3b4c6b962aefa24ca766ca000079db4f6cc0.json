@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6a3e3b4c6b962aefa24ca766ca000079db4f6cc0",
+  "tree": "70319b4fc1a50604dc92b71412a07af54b10e763",
+  "committedAt": "2026-11-09T20:59:09-08:00",
+  "subject": "Merge pull request #1464 from hemibroscommunity-del/claude/sm-store-sell-tap",
+  "files": 7764,
+  "bytes": 951970063,
+  "listingSha256": "e81d0a9813010c456e56b6c881df19bb92623b1fb1594ea1927619bcf0ad2f33",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
