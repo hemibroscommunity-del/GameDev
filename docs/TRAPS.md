@@ -9656,3 +9656,91 @@ A new cap goes on its OWN new line in both places, with its version comment,
 so two new caps never touch the same line. Do not reflow the old long line
 while you are there (that conflicts with everyone). **Receipt:** precheck
 `cap-registry` holds that the two lists agree; the line rule is review's.
+
+## 317. "The art is 256 colours and the game holds it as numbers, so loading it is cheap" (v2.3.4470)
+
+**The move.** A picture is a 256-colour file on disk and one byte a pixel in
+memory (colour numbers), so you take the way between them for granted: load
+it like any picture and let the game turn it into numbers.
+
+**Why it is wrong.** The owner, told the fire goblin's look held his page as
+it loaded: "I thought fire goblin strips were converted into 256 color art
+like everything should be." They were. But a browser that loads a 256-colour
+file as a picture unpacks it to full colour; the page then cropped and packed
+that on a canvas and read every pixel back to find the numbers the file had
+held all along: 13 to 39 ms a strip of the page's own time, fourteen strips a
+look. Both ends were right and the middle threw the saving away. And
+"everything" was not everything: eight of the snowman's strips were still
+full-colour files of 24,000 to 42,000 colours, which nothing checked.
+
+**The rule** (the owner: "make sure that's a system going forward"):
+- A picture's FORM is three things, each checked: its file (256 colours),
+  its way in (read as numbers, off the page's thread), and how it is held
+  (numbers). `server/test/strip-door.test.mjs` holds all three for the
+  monsters: every picture under `public/sprites/monsters` is a palette PNG
+  (a list of two effects' pictures that can only shrink); strips of frames
+  come in through one door (`zoneTextures.js loadTrackedStrip` ->
+  `stripRead.js` -> `png8Worker.js` -> `stripPack.js`); and the page's own
+  packers have a closed list of callers, so a new job on the page's thread
+  cannot arrive unnoticed.
+- New monster art: `node tools/art/strip256.mjs --shared <dir> <dir>
+  <names...>` (one list of 256 colours for all of a monster's strips: its
+  bundle then takes one row of colours), bump the module's
+  `SPRITE_VERSION`, and the suite tells you if a file was missed.
+- A partly see-through pixel read from the file keeps the file's own colour;
+  a canvas gave back that colour rounded through its store. Drawn they are
+  the same (the atlas keeps colours premultiplied): compare them AS DRAWN,
+  never the stored bytes (`window.__btStripCompare`).
+- The page's way is still there for what the reader cannot read, a few ms a
+  frame (§283), and says its name to the meter when it runs: "between
+  frames: strip ..." on a phone means a picture missed the door.
+
+**Receipt:** `strip-door` suite, `mp-stripgentle`, docs/specs/strip-gentle.md.
+
+## 318. "Each hitch has its fix, so the game is smooth" (v2.3.4470)
+
+Four reports in a row from the owner's iPhone were one kind of fault found one
+at a time: the townsfolk's bakes, the Blacksmith's fire goblin, a page of
+objects, another player riding up. Each was fixed, and each fix was right;
+none of them said anything about the hitch nobody had met yet. The owner:
+"I keep catching performance issues piecemeal and I want to make sure the
+optimizations are everywhere in the game."
+
+Reading the code for "slow things" does not find them. The whole-game sweep's
+longest hold was not a bake at all: the black-screen check, collecting a
+32 x 18 picture in an animation frame of its own, waited for the whole frame
+the game had just sent to the graphics chip (206 ms on the QA box, eighteen
+times a tour). The most frequent was a timer nobody thinks of as work: the
+band redrawing itself whole five times a second.
+
+**The rule:**
+- **Measure the page's one thread, by name, over the whole game.**
+  `mp-heldsweep` plays a tour (the town, every land's edge, a fight, every
+  window, a townsperson, an armoured second player, your own armour) with a
+  profiler on the phone and ranks every job that held the page
+  (docs/specs/held-sweep.md). Run it after a change to anything that bakes,
+  loads, or redraws on a timer.
+- **The lines:** 12 ms for one job outside the frame, 16 ms of the game's own
+  code inside one (`tools/qa/mp/held-budget.mjs`). What is over them today is
+  LISTED there with its own line, why, and what fixes it. Never raise a line
+  silently; a fixed family comes off the list.
+- **Work on pixels does not belong on the page.** In order of preference: do
+  it to the PALETTE (a recolour of 256-colour art is 255 multiplications:
+  `retintPalette.js`, the look palette's rows); do it OFFLINE once for every
+  look when the result does not depend on the look (the bodies under greaves:
+  `lookSets/standinlegs.js`); do it on a WORKER from the file's own numbers
+  (`stripRead.js`, `artBottoms.js`). A canvas on the page, read back, is the
+  last resort and goes a few ms at a time (§283).
+- **A read that waits for the graphics chip goes at the TOP of a frame**
+  (`framePacer.js beforeDraw`), never after the frame's drawing was sent.
+- **A redraw on a timer is a transition** (`startTransition`): React draws it
+  in pieces and lets a frame in. A whole window redrawn in one piece five
+  times a second is a hitch five times a second.
+- **Do not measure the page inside a frame** (`getBoundingClientRect`,
+  `clientWidth`): the browser lays the whole page out there and then.
+  Remember the answer and measure again when something can have changed
+  (`ui/mayorScreen.js`). The play column's own size (`playVw`) is still
+  measured live: too many things move it to cache it safely (the debt list).
+
+**Receipt:** `held-sweep` suite, `mp-heldsweep`, `mp-pagebases`,
+`mp-standinlegs`, docs/specs/held-sweep.md.

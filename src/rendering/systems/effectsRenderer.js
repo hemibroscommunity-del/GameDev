@@ -105,12 +105,28 @@ if (typeof window !== 'undefined') {
    Never for a drawing (stamped per player) or under greaves (the legs are cut
    by their shape). */
 registerLookSheets('standin', '/sprites/look/standin/roles.json');
+/* ═══ v2.3.4470: ...AND UNDER GREAVES TOO (on; `?legslook=0` off) ═══
+   The whole-game sweep of what holds the page (docs/specs/held-sweep.md) found
+   its longest holds in the one stand-in still baked for every look: the
+   sword's and the bow's body under greaves -- 110 to 140 ms a sheet the first
+   time an armoured player swung beside you, 608 ms when your own greaves went
+   on.  The cut under greaves is the same for every look (the greaves' one
+   shape, the art's own legs), so the eight whole-body sheets are kept once
+   more as the bake leaves them under greaves (lookSets/standinlegs.js,
+   public/sprites/look/standinlegs/), and a body under greaves is a look's row
+   like any other.  Still baked the old way: a body with a drawing on it, and
+   any look the palette atlas has no row for. */
+const LEGS_LOOK_OFF = (() => { try { return /(^|[?&])legslook=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+if (!LEGS_LOOK_OFF) registerLookSheets('standinlegs', '/sprites/look/standinlegs/roles.json');
 const _standInSheet = (url) => String(url || '').replace(/^.*\//, '').replace(/\.png.*$/, '');
-function _standInLook(url, skin, pants, shoes) {
+/* `legs`: the body as it is under greaves (the 'standinlegs' set) */
+function _standInLook(url, skin, pants, shoes, legs) {
   if (!lookPaletteWanted()) return null;
-  return getLookPartFrames('standin', _standInSheet(url),
+  return getLookPartFrames(legs ? 'standinlegs' : 'standin', _standInSheet(url),
     [[1, skinTarget(skin) || DEFAULT_SKIN_TARGET], [2, pantsTarget(pants)], [3, shoesTarget(shoes)]]);
 }
+/* is this sheet's body under greaves kept as numbers? */
+const _legsLookHas = (url) => !LEGS_LOOK_OFF && lookPaletteOn() && lookHas('standinlegs', _standInSheet(url));
 
 function _sliceStandIn(cv, fw, fh, n, statKey, keepCanvas) {
   /* QA only (mp-geartrim sets it before the game loads): keep the whole bake
@@ -4294,7 +4310,7 @@ export class EffectsRenderer {
       /* v2.3.3757: a strip kept as numbers is asked for in your look each
          time it is drawn (a look no one asks for in 30 s gives its frames back) */
       if (!a || !a._btLookUrl) return a;
-      const lk = _standInLook(a._btLookUrl, getSkin(), getPants(), getShoes());
+      const lk = _standInLook(a._btLookUrl, getSkin(), getPants(), getShoes(), a._btLookLegs);
       if (lk) return lk;
       /* ...and refused (the palette atlas full: its rows are shared with the
          monsters' pictures, and a crowd fight is when it fills): the old bake
@@ -4400,12 +4416,16 @@ export class EffectsRenderer {
          overwhelming majority -- and recolorBodyToCanvas takes the same early
          exits it always did. */
       const _art = localBodyArt(false);
-      const _legsUnder = this._legsUnderFor(rec);   /* v2.3.3640 */
+      /* v2.3.4470: under greaves, from the numbers kept for it (above, `?legslook=0`): asked before the shape is
+         made into bytes, which only the old bake reads */
+      const _legsLook = !_art && !rec._btNoLook && this._legsWornFor(rec) && _legsLookHas(rec.url);
+      const _legsUnder = _legsLook ? null : this._legsUnderFor(rec);   /* v2.3.3640 */
       /* v2.3.3757: no drawing, no greaves, the numbers in: no bake -- the strip
          is a marker _standInStrip reads in your look as it is drawn */
-      if (!_art && !_legsUnder && !rec._btNoLook && lookPaletteOn() && lookHas('standin', _standInSheet(rec.url))) {
+      if (_legsLook || (!_art && !_legsUnder && !rec._btNoLook && lookPaletteOn() && lookHas('standin', _standInSheet(rec.url)))) {
         const mk = [];
         mk._btLookUrl = rec.url;
+        mk._btLookLegs = !!_legsLook;   /* v2.3.4470 */
         mk._btRec = rec;   /* the record to bake the old way if the look is refused (_standInStrip) */
         rec.target[rec.dir] = mk;
         rec.target[rec.dir + '|m'] = null;
@@ -4596,7 +4616,12 @@ export class EffectsRenderer {
     /* QA: the shapes in, and what each bake under greaves took off */
     if (typeof window !== 'undefined') {
       const probe = () => ({ on: _standInLegsUse, legs: getEquip('legs'),
-        shapes: Object.keys(this._greavesShape || {}), clamped: Object.assign({}, this._legsClampSeen) });
+        shapes: Object.keys(this._greavesShape || {}), clamped: Object.assign({}, this._legsClampSeen),
+        /* v2.3.4470: your strips drawn from the numbers kept under greaves (no bake: nothing in `clamped`) */
+        looks: (this._bodyStrips || []).filter((r) => { const a = r.target[r.dir]; return !!(a && a._btLookLegs); }).map((r) => r.url.replace(/^.*\//, '')),
+        legsLook: !LEGS_LOOK_OFF,
+        /* another player's sword or bow bodies baked on this page for their look (the old way: one a sheet a look) */
+        peerBakes: this._remoteBodyCache ? this._remoteBodyCache.size : 0 });
       probe.set = (on) => { _standInLegsUse = !!on && !STANDIN_LEGS_OFF; this._legsClampSeen = Object.create(null); this._rebakeLegBodies(); return probe(); };
       /* the sword or bow stand-in drawn now -- yours, or a peer's by id: its
          body and greaves sprites (for a page-side check) */
@@ -15253,6 +15278,11 @@ export class EffectsRenderer {
     if (!sword && rec.target !== this._bowBodyFrames) return null;
     return this._greavesUnder(rec.cfg.gearPose || (sword ? 'swing' : 'bowshot'), rec.dir);
   }
+  /* v2.3.4470: the same question without the shape: greaves on, the clamp on, one of the whole-body strips */
+  _legsWornFor(rec) {
+    if (!rec || !_standInLegsUse || getEquip('legs') === 'none') return false;
+    return rec.target === this._swordBodyFrames || rec.target === this._bowBodyFrames;
+  }
   /* again, the bodies a change of greaves (or a shape just in) touches */
   _rebakeLegBodies(pose, dir) {
     if (this._destroyed || !this._bodyStrips) return;
@@ -15276,7 +15306,15 @@ export class EffectsRenderer {
     /* v2.3.3640: a peer in greaves is clamped as you are, once their shape
        is in (the key's |L: before it, the plain bake) */
     const _peq = o.equip || {};
-    const _lu = (_peq.legs && _peq.legs !== 'none') ? this._greavesUnder(cfg.gearPose || 'swing', cfgKey) : null;
+    const _legsOn = !!(_peq.legs && _peq.legs !== 'none');
+    /* v2.3.4470: no drawing, in greaves: their look's strip from the numbers kept for it -- no bake on the page the
+       first time they swing (it was 110 to 140 ms a sheet: docs/specs/held-sweep.md).  Refused (no row left): the
+       old bake below, as before. */
+    if (!_pa.seg && _legsOn && _standInLegsUse && _legsLookHas(cfg.bodyUrl)) {
+      const lkL = _standInLook(cfg.bodyUrl, o.skin, o.pants, o.shoes, true);
+      if (lkL) return lkL;
+    }
+    const _lu = _legsOn ? this._greavesUnder(cfg.gearPose || 'swing', cfgKey) : null;
     /* v2.3.3757: no drawing, no greaves: their look's strip from the numbers */
     if (!_pa.seg && !_lu) { const lk = _standInLook(cfg.bodyUrl, o.skin, o.pants, o.shoes); if (lk) return lk; }
     const key = cfg.bodyUrl + '|' + o.skin + '|' + o.pants + '|' + o.shoes + _pa.seg + (_lu ? '|L' : '');   /* v2.3.2863: the SHEET, not the facing */

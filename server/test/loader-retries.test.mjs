@@ -460,18 +460,25 @@ await section(11, async () => {
   const clock = fakeClock();
   let made = 0;
   let land = null;
+  const unloadedBundles = [];
   const ctx = context(clock, '', {
     SHEET_SETS: { slime: { idle: '/idle.png' } }, keyOf: (f, rgb) => f + rgb.join(','), recolorFamilyOf: () => 'slime',
     loadImg: () => new Promise((r) => { land = r; }), retintToCanvas: () => ({ width: 128 }), FRAME_W: 64, FRAME_H: 64,
     Texture: class { constructor() { made++; } static from() { made++; return { source: {} }; } }, Rectangle: class {},
     releaseCanvasSource: () => {},
+    /* v2.3.4470: the recolour asks the strip door first (its palette retinted, read off the page's thread); here
+       the door has no way in for this sheet (null), so the canvas's way is the one under test.  Letting the colour
+       go lets its bundle go too. */
+    loadTrackedStripRetinted: () => Promise.resolve(null), unloadBundle: (b) => { unloadedBundles.push(b); },
   });
   vm.runInContext('const _cache = new Map();\n' + code + '\n;globalThis.__m = { loadMonsterRecolor, freeMonsterRecolor };', ctx);
   ctx.__m.loadMonsterRecolor('slime', [0, 0, 255]);
+  await flush();   /* the door has answered: the picture is asked for */
   ctx.__m.freeMonsterRecolor({ recolor: [0, 0, 255] });   /* the zone was left */
   land({});
   await flush();
   check('11a a recolour freed while its sheet loaded makes no canvas texture or frames', made === 0, made);
+  check('11b ...and its bundle of numbers is let go with it (a strip still being read is dropped as it arrives)', unloadedBundles.length === 1 && /^recolor\|/.test(unloadedBundles[0]), unloadedBundles);
 });
 
 /* ── 12. the dungeon mouth's picture after a rebuild off the Wheel ── */

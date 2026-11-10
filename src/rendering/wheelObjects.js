@@ -253,7 +253,7 @@ function readSheet(url) {
   const id = ++_pwSeq;
   return new Promise((resolve) => {
     _pwWait.set(id, resolve);
-    try { w.postMessage({ id, url }); } catch (e) { _pwWait.delete(id); resolve(null); }
+    try { w.postMessage({ id, url, bases: _basesWay() }); } catch (e) { _pwWait.delete(id); resolve(null); }
   });
 }
 async function loadPalettePage(url) {
@@ -276,9 +276,68 @@ async function loadPalettePage(url) {
   if (!src) return null;
   const sheet = new Spritesheet({ texture: new Texture({ source: src }), data: m.data, cachePrefix: CACHE_PREFIX });
   sheet.parseSync();
+  /* v2.3.4470: each frame's ground line came with the page, worked out on the worker from its numbers
+     (artBottoms.js) -- nothing is read on the page.  `?pagebases=0`: read here off the picture, as before. */
+  if (m.bottoms) {
+    /* QA (mp-pagebases): both ways, and how they differ */
+    if (m.bytes && _basesWay() === 'both') await _compareBottoms(sheet, m);
+    for (const name of Object.keys(sheet.textures)) {
+      const b = m.bottoms[name];
+      if (b) _bottoms.set(sheet.textures[name], b);
+    }
+    _basesStats.pages++;
+    return sheet;
+  }
   await readPageBottoms(sheet, m.bytes);
   return sheet;
 }
+/* how a page's ground lines are read: true, on the worker (as it ships); false, on the page (`?pagebases=0`);
+   'both' while a test compares them (window.__btBasesVerify, set before the world loads) */
+const _basesOff = (() => { try { return /(^|[?&])pagebases=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+function _basesWay() {
+  if (_basesOff) return false;
+  return (typeof window !== 'undefined' && window.__btBasesVerify === true) ? 'both' : true;
+}
+const _basesStats = { pages: 0, frames: 0, cols: 0, differ: 0, far: 0, worst: 0, emptyDiffers: 0, edge: 0, stray: 0 };
+const _basesWorst = [];   /* QA: the columns the two readings disagree on with no edge beside them to explain it */
+/* QA (mp-pagebases): the worker's line against the page's own canvas reading, column by column.  A browser scales
+   a picture its own way (Chromium: Skia's halved copies, then a coarse blend; Safari: its own), so a column that
+   half covers the EDGE of a post or a wall can fall on either side of it -- the board above one way, the foot the
+   other.  That is the only disagreement there should be: a column more than a row apart counts as `edge` when the
+   worker's reading is the page's reading of the column beside it (or the other way round), and as `stray` when
+   nothing beside it explains it. */
+async function _compareBottoms(sheet, m) {
+  await readPageBottoms(sheet, m.bytes);
+  for (const name of Object.keys(sheet.textures)) {
+    const a = _bottoms.get(sheet.textures[name]), b = m.bottoms[name];
+    if (!a || !b || a.length !== b.length) { _basesStats.stray++; continue; }
+    _basesStats.frames++;
+    /* in rows of the read's own height (the canvas's: up to 256) */
+    const fr = sheet.textures[name].frame, res = sheet.textureSource.resolution || 1;
+    const fw = Math.round(fr.width * res), fh = Math.round(fr.height * res);
+    const H = Math.max(1, Math.min(256, Math.round((fh / fw) * a.length)));
+    const near = (u, v) => ((u < 0) && (v < 0)) || ((u >= 0) && (v >= 0) && Math.round(Math.abs(u - v) * H) <= 1);
+    for (let x = 0; x < a.length; x++) {
+      _basesStats.cols++;
+      const empty = (a[x] < 0) !== (b[x] < 0);
+      const d = empty ? 999 : Math.round(Math.abs(a[x] - b[x]) * H);
+      if (d === 0) continue;
+      _basesStats.differ++;
+      if (d <= 1) continue;
+      _basesStats.far++;
+      if (empty) _basesStats.emptyDiffers++; else if (d > _basesStats.worst) _basesStats.worst = d;
+      let edge = false;
+      for (const o of [-1, 1, -2, 2]) {
+        const y = x + o;
+        const pa = (y < 0 || y >= a.length) ? -1 : a[y], pb = (y < 0 || y >= a.length) ? -1 : b[y];
+        if (near(b[x], pa) || near(a[x], pb)) { edge = true; break; }
+      }
+      if (edge) _basesStats.edge++;
+      else { _basesStats.stray++; if (_basesWorst.length < 40) _basesWorst.push({ name, x, n: a.length, H, page: +a[x].toFixed(4), worker: +b[x].toFixed(4), fw, fh }); }
+    }
+  }
+}
+if (typeof window !== 'undefined') window.__btPageBases = () => ({ ..._basesStats, way: _basesWay(), worstCols: _basesWorst.slice() });
 
 /* ═══ EACH FRAME'S BASE, READ OFF THE PICTURE AS IT ALWAYS WAS ═══
    A low thing casts column by column from where each column of its picture
