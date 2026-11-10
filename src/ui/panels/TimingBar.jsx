@@ -135,5 +135,9 @@ if (typeof window !== 'undefined') {
         last: b && b.last ? Object.assign({}, b.last) : null,
       };
     };
+    /* the loop's own check, run now: mp-timingbar times two strokes on the
+       page's clock in one task (this box draws a frame every few hundred ms;
+       a phone every 16-33, far under the trial's 150 ms between swings) */
+    window.__btTimingBar.tick = function () { const g = window._gameState; timingBarFrame(g && g.current, Date.now()); };
   } catch (e) { /* no window */ }
 }

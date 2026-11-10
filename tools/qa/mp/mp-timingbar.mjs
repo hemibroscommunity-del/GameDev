@@ -59,6 +59,18 @@ const PAGE_TOOLS = `
     }
     return out;
   };
+  /* two strokes \`gap\` ms apart in ONE page task, the bar's own per-frame
+     check run after each (__btTimingBar.tick): this box draws a frame every
+     few hundred ms, longer than the gaps that matter (a phone: 16-33 ms) */
+  window.__tbPair = (gap) => {
+    const a = window.__tbStroke(1);
+    window.__btTimingBar.tick();
+    const seenA = !!(window.__btTimingBar().last && window.__btTimingBar().last.at === a);
+    window.__tbSpin(a + gap);
+    const b = window.__tbStroke(-1);
+    window.__btTimingBar.tick();
+    return { a, b, gap: b - a, seenA, need: window.__btManual.state().meleeNeed };
+  };
   /* how much of the bar a window shows: its visible span, as a share of the bar */
   window.__tbSpan = (sel) => {
     const bar = document.querySelector('.bt-tbar'), w = bar && bar.querySelector(sel);
@@ -118,13 +130,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('2 ...held at half its time it is half full, from the hilt', !!held2.fill && held2.fill.from === 0 && Math.abs(held2.fill.to - 0.5) <= 0.03, held2.fill);
 
     /* ── 3 ── a stroke a cycle later: in the glint */
-    const three = await P.page.evaluate(() => {
-      const S = window._gameState.current, need = window.__btManual.state().meleeNeed;
-      const last = window.__btTimingBar().last;
-      window.__tbSpin(last.at + need + 40);
-      return { at: window.__tbStroke(-1), prev: last.at, need };
-    });
-    const seen3 = await H.waitFor(P, () => window.__btTimingBar(), (v) => v.last && v.last.at === three.at, { timeout: 10000, label: 'the second stroke seen' }).catch(() => null);
+    const three = await P.page.evaluate(() => { window.__tbSpin(Date.now() + 1500); return window.__tbPair(window.__btManual.state().meleeNeed + 40); });
+    const seen3 = await H.waitFor(P, () => window.__btTimingBar(), (v) => v.last && v.last.at === three.b, { timeout: 10000, label: 'the second stroke seen' }).catch(() => null);
     const held3 = await P.page.evaluate(() => {
       const h = window.__tbHold(0, 180, 50);
       return { h, glint: window.__tbSpan('.bt-tbar-glint'), frz: window.__tbSpan('.bt-tbar-frz > .bt-tbar-win'), fill: window.__tbSpan('.bt-tbar-fill'),
@@ -132,23 +139,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
         frzFill: getComputedStyle(document.querySelector('.bt-tbar-froze path')).fill, frzOp: Number(getComputedStyle(document.querySelector('.bt-tbar-frz')).opacity) };
     });
     const gl = (held3.h || []).find((x) => /^btTbGl[AB]$/.test(x.n));
+    rec.ok('3 (guard) the bar saw the first stroke, and the second came inside the window, as the page\'s clock measured it', three.seenA && three.gap >= three.need - 60 && three.gap <= three.need + 300, three);
     rec.ok('3 a stroke a cycle later is in the glint: the frozen copy is the whole bar, in the glint\'s colour, and showing',
       !!seen3 && seen3.last.glint === true && seen3.last.frozen === 1 && held3.g === '1' && /255, 244, 214|#fff4d6/i.test(held3.frzFill) && held3.frzOp > 0.5
-      && !!held3.frz && held3.frz.from === 0 && held3.frz.to === 1, { seen3, held3 });
+      && !!held3.frz && held3.frz.from === 0 && held3.frz.to === 1, { three, seen3, held3 });
     rec.ok('3 ...the glint runs the worker\'s window (from 60 ms before full, 360 ms long) and, held mid-way, crosses the bar',
       !!gl && gl.dur === 360 && Math.abs(gl.delay - (three.need - 60)) <= 120 && !!held3.glint && held3.glint.to - held3.glint.from > 0.2 && held3.glint.from > 0.05 && held3.glint.to < 0.95, { gl, glint: held3.glint, need: three.need });
     rec.ok('3 ...and under the frozen copy the fill restarted from empty at once (nothing waits for the freeze)', !!held3.fill && held3.fill.to <= 0.02, held3.fill);
 
     /* ── 4 ── half a cycle later: half the bar, no glint */
-    const four = await P.page.evaluate(() => {
-      const need = window.__btManual.state().meleeNeed, last = window.__btTimingBar().last;
-      window.__tbSpin(last.at + Math.round(need / 2));
-      return { at: window.__tbStroke(1), need };
-    });
-    const seen4 = await H.waitFor(P, () => window.__btTimingBar(), (v) => v.last && v.last.at === four.at, { timeout: 10000, label: 'the third stroke seen' }).catch(() => null);
+    await P.page.evaluate(() => { for (const a of document.getAnimations()) if (a.playState === 'paused') a.play(); });
+    const four = await P.page.evaluate(() => { window.__tbSpin(Date.now() + 1500); return window.__tbPair(Math.round(window.__btManual.state().meleeNeed / 2)); });
+    const seen4 = await H.waitFor(P, () => window.__btTimingBar(), (v) => v.last && v.last.at === four.b, { timeout: 10000, label: 'the third stroke seen' }).catch(() => null);
     const held4 = await P.page.evaluate(() => { window.__tbHold(0, -1, 50); return { frz: window.__tbSpan('.bt-tbar-frz > .bt-tbar-win'), g: document.querySelector('.bt-tbar').getAttribute('data-g') }; });
-    rec.ok('4 a stroke half a cycle later: the frozen copy is half the bar, not glinting',
-      !!seen4 && !seen4.last.glint && Math.abs(seen4.last.frozen - 0.5) < 0.12 && held4.g === '0' && !!held4.frz && Math.abs(held4.frz.to - seen4.last.frozen) <= 0.03, { seen4, held4 });
+    const want4 = four.gap / four.need;
+    rec.ok('4 (guard) the bar saw the first stroke, and the second came before the window opens', four.seenA && four.gap >= 150 && four.gap < four.need - 60, four);
+    rec.ok('4 a stroke half a cycle later: the frozen copy is that much of the bar (the time between, over the cycle), not glinting',
+      !!seen4 && !seen4.last.glint && Math.abs(seen4.last.frozen - want4) < 0.01 && held4.g === '0' && !!held4.frz && Math.abs(held4.frz.to - want4) <= 0.03, { four, want4, seen4, held4 });
 
     /* ── 5 ── the bow shows the arrow; a staff nothing */
     await P.page.evaluate(() => {
