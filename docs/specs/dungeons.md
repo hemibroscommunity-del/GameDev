@@ -35,6 +35,10 @@ with one core change:
 
 **Membership = zone presence.** Whoever stands in the instance fights;
 whoever is inside at the final kill gets paid. Parties need no roster.
+Since v2.3.4423 a move INTO a `dungeon:` zone is taken only while that run
+is open (`_dungeonIdDead`; live flag `dungeonlive`; `dungeon-live.test`): a
+made-up id no longer buys the entry's half second of safety or leaves lists
+behind. A player already inside a closed run still moves (TRAPS §307).
 
 **State is memory-only** (`this._dungeons` Map). Deliberate: no debited
 value is at risk (unlike duel/market escrow), so a deploy or DO restart
