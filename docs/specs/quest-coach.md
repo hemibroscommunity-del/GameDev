@@ -69,6 +69,41 @@ A brand-new character's first minutes are exactly these, in order, each once:
 `.brotown-wrap`. Tested by `tools/qa/mp/mp-questcoach.mjs` (31
 assertions).
 
+## v2.3.4360: a mark on something in the world follows it every frame
+
+The owner, 2026-11-10: "the reticle around mayor bro is pretty obnoxious with
+movement (the frames are gritty)".
+
+The `mayor` lesson rings Mayor Bro himself (a `worldRect`, as `chatTap` rang
+your bro). He is in the world: on the page he moves whenever the camera does,
+and he strolls about on his own. The ring and the card over his head were
+placed by the walk that picks the lesson, about 12 times a second, each a
+React render, so they stuttered after him over a world drawn at 60.
+
+- **The walk and its renders are as they were.** They say where the rules put
+  the ring and the card, for the rect last measured (`base`).
+- **In between, both are moved** after every frame the game draws
+  (`src/ui/afterFrame.js`, called by the game's loop after the renderer: the
+  camera that frame was drawn with), by how far he now is from `base`, on
+  whole device pixels (`coachFollow`).
+  - The ring sits in a holder of no size (`data-coach-follow`), and the
+    holder is what moves: the ring's own transform is its pulse.
+  - The card is moved by what its own rules give for that much movement:
+    across, kept inside the world's span; up and down, held by the band's and
+    the bro's clearance and the cap at the top. The render hands those sums
+    over (`followRef.current.k`), so the next render lands where the card
+    already is.
+  - Not followed: the card's changes of side (above him to below him as he
+    nears the top of the screen, right of the quest card). Those are jumps
+    the rules make, and the next render makes them, as before.
+- **Nothing is written on a frame he did not move in.** A style written every
+  frame on a layer over the canvas is iPhone's sore spot (v2.3.1808).
+- A lesson on a control (every other one) is untouched: it has no `worldRect`.
+
+The probe: `window.__btCoach().follow` (`dx`, `dy` the ring's move, `cx`,
+`cy` the card's, `frames`). Checks: `server/test/after-frame.test.mjs`;
+`node tools/qa/mp/run.mjs mayormark`.
+
 ## Why it is not ControlsTutorial
 
 `src/ui/mobile/ControlsTutorial.jsx` already exists and stays: a

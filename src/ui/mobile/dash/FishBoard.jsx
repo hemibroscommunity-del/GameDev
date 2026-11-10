@@ -3,6 +3,7 @@ import { COL, getState } from './common.js';
 import { FISH_SPECIES, fishKg } from '@/data/fishVariants.js';
 import { askFishBoard, subscribeFishWeigh } from '@/game/fishWeigh.js';
 import { deskWords } from '@/game/deskWords.js';
+import { BoardRow, BoardEmpty, useBoardFaces } from './BoardRow.jsx';   /* v2.3.4393 */
 
 /* ═══ v2.3.4036: THE BIGGEST FISH -- RANKS' FISH TAB ═══
  * The owner: "Include leaderboards for largest caught types of fish
@@ -40,33 +41,30 @@ export function FishBoard({ initial }) {
   const fb = S && S._fishBoard;
   const rows = fb && fb.boards && Array.isArray(fb.boards[sp]) ? fb.boards[sp] : [];
   const name = (FISH_SPECIES.find((f) => f.id === sp) || {}).name || 'fish';
+  const faces = useBoardFaces(rows);
   return (
     <div data-fish-board={sp}>
       <div style={{ display: 'flex', gap: 6, marginBottom: 4, overflowX: 'auto', padding: '0 0 2px' }}>
         {FISH_SPECIES.map((f) => (
           <button key={f.id} type="button" data-fish-board-sp={f.id} onClick={() => setSp(f.id)} style={chipHit}>
-            <span style={chip(f.id === sp)}>{f.name}</span>
+            {/* v2.3.4393: each kind's own picture on its pill (the bag's fish) */}
+            <span style={{ ...chip(f.id === sp), gap: 5, padding: '0 11px 0 7px' }}>
+              <img src={'/icons/items/fish-' + f.id + '.webp'} alt="" draggable={false} style={{ width: 20, height: 20, objectFit: 'contain', flex: 'none' }} />
+              {f.name}
+            </span>
           </button>
         ))}
       </div>
       {rows.length === 0 ? (
-        <div data-fish-board-empty="" style={{ textAlign: 'center', padding: '14px 8px', fontSize: 13, fontWeight: 700, color: COL.text2 }}>
-          {!fb ? 'Loading…' : fb.off ? 'The scales are closed for now.' : fb.unavailable ? "The records can't be read right now."
-            : deskWords('Nobody has weighed a ' + name + ' yet. Tap a fish in your bag, then Inspect.')}
-        </div>
+        <BoardEmpty text={!fb ? 'Loading…' : fb.off ? 'The scales are closed for now.' : fb.unavailable ? "The records can't be read right now."
+          : deskWords('Nobody has weighed a ' + name + ' yet. Tap a fish in your bag, then Inspect.')} />
       ) : rows.map((r, i) => (
-        <div key={r.pid || i} data-fish-board-row={i + 1} style={{
-          display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '0 8px',
-          borderBottom: `1px solid ${COL.divider}`,
-          background: (meId && r.pid === meId) ? COL.accentFill : 'transparent',
-        }}>
-          <span style={{ width: 36, flex: '0 0 auto', fontSize: 16, fontWeight: 700, color: i < 3 ? COL.accent : COL.muted, fontVariantNumeric: 'tabular-nums' }}>#{i + 1}</span>
-          <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {r.name || 'Bro'}
-            {TAG[r.v] ? <span data-fish-board-tag={r.v} style={{ marginLeft: 6, fontSize: 11, fontWeight: 800, color: TAG[r.v].color }}>{TAG[r.v].word}</span> : null}
-          </span>
-          <span data-lb-value="" style={{ fontSize: 16, fontWeight: 700, color: COL.text, fontVariantNumeric: 'tabular-nums' }}>{fishKg(r.g)}</span>
-        </div>
+        /* v2.3.4393: the one row every board draws (BoardRow): the face and
+           the level it was weighed with, a deleted character's row grey */
+        <BoardRow key={r.pid || i} rank={i + 1} row={r} face={faces[i]} mine={!!meId && r.pid === meId}
+          hook={{ 'data-fish-board-row': i + 1 }}
+          line={TAG[r.v] ? <span data-fish-board-tag={r.v} style={{ fontSize: 12, fontWeight: 800, color: r.gone ? COL.muted : TAG[r.v].color }}>{TAG[r.v].word}</span> : null}
+          value={fishKg(r.g)} />
       ))}
     </div>
   );

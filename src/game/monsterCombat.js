@@ -59,6 +59,7 @@ import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, f
 import { isWheelSwimming } from '@/game/wheelSwim.js'; /* v2.3.3003: no fighting while you swim */
 import { jumpAirborne } from '@/game/jump.js'; /* v2.3.3017: nor in the air */
 import { tapAttackWaiting, tapAttackDone, tapSwingAim } from '@/game/tapJump.js'; /* v2.3.3712: a tap on the right stick asks for one attack */
+import { manualOn, mcFrame, mcFireWaiting, mcFireDone, mcTakeArmed, mcBowInterval } from '@/game/manualCombat.js'; /* v2.3.4395: manual combat (`?manual=1`) -- a bow or a staff shoots once for each flick, never because the stick is held */
 import { isDazed } from '@/game/elemHits.js'; /* v2.3.3014: nor while a rock monster has you dazed */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the shield hold */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
@@ -1345,6 +1346,25 @@ export function updateMonsterCombat(S, deps) {
           /* v2.3.212: no weapon in active slot -> auto-attack disabled.
              Slot fallback to melee mirrors getActiveWeapon's default. */
           var _aSlot = (S.rpg && S.rpg.activeSlot) || 'melee';
+          /* ═══ v2.3.4395: MANUAL COMBAT (`?manual=1`, game/manualCombat.js) ═══
+             The loop says each frame how long this weapon's interval is --
+             the number the held attack fired on, so a flick can never shoot
+             sooner than a held shot did -- and a sword's, the interval its
+             swing has always been held to (playerActions swingAttack's gate,
+             which reads no amulet).  mcFrame also lets go of a shot nobody
+             could take. */
+          /* The owner's decision, 2026-11-10: "Keep the staff the old way (prior to
+             any of these changes) where it keeps auto-attacking as long at the
+             finger is held in whatever direction and you can steer the
+             projectile.  For bow keep this new flick mechanism but make attack
+             speed 25% faster (in terms of when the next shot can fire again)."
+             So a STAFF is not manual here at all (_mcOn false: every line below
+             is what it was), and a flicked BOW's interval is three quarters of
+             the held bow's (mcBowInterval; never under the worker's own floor). */
+          var _mcOn = manualOn() && _aSlot !== 'staff';
+          var _mcDraws = _mcOn && _aSlot === 'ranged';
+          if (_mcDraws) effectiveSwingCd = mcBowInterval(effectiveSwingCd);
+          if (_mcOn) mcFrame(S, Date.now(), effectiveSwingCd + _staffCdExtra, Math.ceil(SWING_COOLDOWN * swingCooldownMult(S.rpg) * weaponSwingMult(_aSlot)));
           var _eqWpn = !S.rpg ? null
                      : _aSlot === 'ranged' ? S.rpg.rangedWeapon
                      : _aSlot === 'staff'  ? S.rpg.staffWeapon
@@ -1609,7 +1629,23 @@ export function updateMonsterCombat(S, deps) {
              (game/tapJump.js requestTapAttack): taken here like a held thumb,
              through every gate below, and marked done by what leaves. */
           var _tapAtkNow = tapAttackWaiting(S, Date.now());
-          if ((S.autoAttack || _engSwing || _tapAtkNow) && !_flickWait && !S._shieldUp && !isWheelSwimming(S) && !isDazed(S, Date.now()) && !jumpAirborne(S) /* v2.3.3017: a held attack waits for the landing */ && S.rpg && _eqWpn && Date.now() - S.swingTimer >= effectiveSwingCd + _staffCdExtra) {
+          /* ═══ v2.3.4395: MANUAL COMBAT -- THE LOOP FIRES ONLY WHAT A HAND ASKED FOR ═══
+             With `?manual=1` a held thumb fires nothing by itself (it still
+             aims, and steers a staff's bolt):
+               a bow              one shot for each FLICK (mcFireWaiting: the
+                                  lift asked, this frame takes it), through
+                                  every refusal below and no sooner than the
+                                  weapon's own interval -- a flick a moment
+                                  early waits here for it;
+               a sword            never from here: its stroke goes to
+                                  swingAttack (BroTown mcMeleeSwipe); the
+                                  engagement's own swing (_engSwing, no button
+                                  held) is off, as is the tap channel;
+               a staff            as without the switch: it fires while held.
+             Without the switch the line is exactly what it was. */
+          var _mcFire = _mcDraws && mcFireWaiting(S, Date.now());
+          var _wantAtk = _mcOn ? _mcFire : (S.autoAttack || _engSwing || _tapAtkNow);
+          if (_wantAtk && (_mcOn || !_flickWait) && !S._shieldUp && !isWheelSwimming(S) && !isDazed(S, Date.now()) && !jumpAirborne(S) /* v2.3.3017: a held attack waits for the landing */ && S.rpg && _eqWpn && Date.now() - S.swingTimer >= effectiveSwingCd + _staffCdExtra) {
             /* Loot pickup freeze suppresses auto-swing — keeps the
                0.5s pickup animation clean instead of mid-swing. */
             var _lootSwingBlock = S._lootFreezeUntil && Date.now() < S._lootFreezeUntil;
@@ -1769,13 +1805,33 @@ export function updateMonsterCombat(S, deps) {
                     S._bowSpecialQueued = 0;
                     _mayLoose = false;         /* the special IS this beat's shot */
                     try { specialAttack(S); } catch (e) { /* refusals float their own popup */ }
-                  } else if (!_sightOn) {
+                  } else if (!_sightOn && !_mcFire) {
+                    /* v2.3.4395: ...but a FLICK is an arrow, on a line or not: the hand asked
+                       for this one shot, and "I flicked and nothing happened" is worse than
+                       a miss (the held bow waited for its line; a flick cannot) */
                     _mayLoose = false;         /* no line, no arrow, and no spent cadence */
                   }
                   /* v2.3.3712: a tap's one attack is had either way -- the
                      special that went, or a line on nothing (the bow looses
                      only at something, a press of the disc no differently) */
                   if (_tapAtkNow && !_mayLoose) tapAttackDone(S, Date.now(), _sightOn ? 'special' : 'empty');
+                }
+                /* v2.3.4395: manual combat -- this frame took the flick's shot,
+                   whatever comes of it; and a special ARMED by its button is
+                   this attack: if specialAttack went (it stamps _lastSwipe)
+                   or queued itself for the bow's next line, the ordinary
+                   shot is not also made.  One it refused (its 1.5 s, no
+                   mana: its own popup says) leaves the ordinary shot. */
+                if (_mcFire) {
+                  mcFireDone(S);
+                  /* a bow's special needs a line (specialAttack would only queue it for a held
+                     bow's next one, which a flick does not have): with none it stays ARMED,
+                     and this flick is an ordinary arrow */
+                  if ((isStaff || _sightOn) && mcTakeArmed(S)) {
+                    var _mcSw = S._lastSwipe, _mcQ = S._bowSpecialQueued;
+                    try { specialAttack(S); } catch (e) { /* refusals float their own popup */ }
+                    if (S._lastSwipe !== _mcSw || (S._bowSpecialQueued && S._bowSpecialQueued !== _mcQ)) _mayLoose = false;
+                  }
                 }
                 if (_mayLoose) {
                 if (!S.arrows) S.arrows = [];

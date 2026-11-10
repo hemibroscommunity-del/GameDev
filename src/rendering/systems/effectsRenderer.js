@@ -755,6 +755,8 @@ import { DEFENSE_POPUP_KEY, DEFENSE_POPUP_SRC } from '@/data/smallIcons.js';   /
 import { halloweenOn } from '@/game/season.js';   /* v2.3.3395: Halloween week's speech bubbles */
 import { BUBBLE_SKINS, bubbleSkinFor } from '@/game/bubbleSkins.js';   /* v2.3.3522: a townsperson's bubble white, a player's dark */
 import { DropLinesFx } from '../dropLines.js';   /* v2.3.3627: each drop a line of words rising over the monster (v2.3.3616's columns before) */
+import { StormSparksFx } from '../stormSparksFx.js';   /* v2.3.4356: the storm eye's electricity, drawn in code */
+import { WaterAttackFx } from '../waterAttackFx.js';   /* v2.3.4355: the water frog's attack, drawn in code */
 import { ElemWindupFx } from '../elemWindup.js';   /* v2.3.3619: a monster's element, seen as it winds up */
 import { SootMarks } from '../sootMarks.js';   /* v2.3.3679: a slime's blast leaves soot */
 
@@ -3543,6 +3545,10 @@ export class EffectsRenderer {
        once, just above the vapour, so its place among the layer's sprites
        never depends on which frame first needed it */
     this._elemWindup = new ElemWindupFx(this.projectileLayer);
+    /* v2.3.4355: the water a frog's blow throws (rendering/waterAttackFx.js):
+       its pool made here too, once, for the same reason */
+    this._waterAttack = new WaterAttackFx(this.projectileLayer);
+    this._stormSparks = new StormSparksFx(this.projectileLayer);   /* v2.3.4356: the storm eye's electricity, the same way */
     /* Flat, index-pooled sprites refilled from zero every frame — the
        v2.3.1825 arrowSprites pattern, for the reason v2.3.2331 converted the
        particle field off polygons: re-tessellation was the single biggest
@@ -5957,6 +5963,8 @@ export class EffectsRenderer {
     try { this._updateWhirlVortex(S, now); } catch (e) { if (typeof window !== 'undefined' && window.__btProbe) window.__btWhirlErr = String(e && e.message); }
     try { this._updateAbilityWindups(S, now); } catch (e) { /* v2.3.2824: ditto */ }
     try { this._elemWindup.update(S, now); } catch (e) { /* v2.3.3619: a look, never the frame */ }
+    try { this._waterAttack.update(S, now); } catch (e) { /* v2.3.4355: ditto */ }
+    try { this._stormSparks.update(S, now); } catch (e) { /* v2.3.4356: ditto */ }
     try { this._updateSmithing(S, now); } catch (e) { /* v2.3.2827: ditto */ }
     try { this._updateElemStatusFx(S, now); } catch (e) { /* v2.3.2996: ditto */ }
     this._updateScreenFlash(S, viewW, viewH, now);
@@ -18636,6 +18644,8 @@ export class EffectsRenderer {
     this.dmgTexts = [];
     if (this._dropLines) this._dropLines.clear();   /* v2.3.3627 */
     if (this._elemWindup) this._elemWindup.clear();   /* v2.3.3619 */
+    if (this._waterAttack) this._waterAttack.clear();   /* v2.3.4355 */
+    if (this._stormSparks) this._stormSparks.clear();   /* v2.3.4356 */
     /* Icons live on dmg entries (dmg._pixiIcon) which are owned by
        game state, not this list. Walking the dmgLayer is the most
        reliable way to drop any orphaned icon Sprites on clear. */

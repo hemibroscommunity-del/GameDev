@@ -136,7 +136,7 @@ function loadLook(k) {
 
 /* Let a look go -- but never a sprite module or a recolour another look
    still kept here draws from (thornShambler and rockmonster share one
-   module, as do bogLurker and fishman: unloadVariantSprites dedupes by
+   module -- as bogLurker and fishman did until v2.3.4355's water frog: unloadVariantSprites dedupes by
    loader, so freeing one by key would tear the other's art out). */
 function freeLook(k, keep) {
   if (k === 'snowman') {
