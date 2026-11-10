@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8d45fee9cd14c44ff465a909cb72cb033b98e56a",
+  "tree": "1814272aeece31a6c5983af30cd44582f2e29047",
+  "committedAt": "2026-11-10T13:54:02-08:00",
+  "subject": "Merge pull request #1518 from hemibroscommunity-del/claude/perf-crowd-tour",
+  "files": 7973,
+  "bytes": 966309379,
+  "listingSha256": "15ad0851a53c707c295b82436dd978ae93b62329dc9048ae43b5fec0f81bb0e4",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

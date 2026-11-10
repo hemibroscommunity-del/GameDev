@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0d29ad2c6e6a6caba1f4f38122e87fe36111bcee",
+  "tree": "023749ff669865aad3aa1b664071892f67703bd5",
+  "committedAt": "2026-11-10T13:54:05-08:00",
+  "subject": "Merge pull request #1521 from hemibroscommunity-del/claude/sm-ah-onewrite",
+  "files": 7974,
+  "bytes": 966345998,
+  "listingSha256": "6c0e588f18464a53e335b60da394bb6b10b8ee6511e0699875ae8705edf8e234",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

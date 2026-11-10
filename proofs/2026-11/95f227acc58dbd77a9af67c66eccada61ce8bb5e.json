@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "95f227acc58dbd77a9af67c66eccada61ce8bb5e",
+  "tree": "b55a2fb211c68858df398d6519356fa2ca06c7ec",
+  "committedAt": "2026-11-10T13:54:08-08:00",
+  "subject": "Merge pull request #1522 from hemibroscommunity-del/claude/sm-gs-crossing",
+  "files": 7975,
+  "bytes": 966389008,
+  "listingSha256": "c2ed3747f7af99cc214cbaf19ef8f6331d9ba576aa4e009cc6a83de4af4257c2",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
