@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "43a804e55662879feda29fa68385becf5dad3cfe",
+  "tree": "4a21ccfc80cd75b528691ff3ec32bda4c678e070",
+  "committedAt": "2026-11-10T06:20:29-08:00",
+  "subject": "Merge pull request #1497 from hemibroscommunity-del/claude/sm-zone-change",
+  "files": 7922,
+  "bytes": 966260405,
+  "listingSha256": "ab3a7225a3e0f8db46a5b8d83ac1b3ce9a3451ea0b9e4c6d31dc89163b85a195",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

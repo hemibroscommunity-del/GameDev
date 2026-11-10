@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b0f639d8bbf5d1b3d58ebdcaeb8bea4dd848413f",
+  "tree": "832da29822980bd3f81345cb4cfdce96ce1e4caf",
+  "committedAt": "2026-11-10T06:20:55-08:00",
+  "subject": "Merge pull request #1494 from hemibroscommunity-del/claude/sm-art-caches",
+  "files": 7927,
+  "bytes": 966293205,
+  "listingSha256": "eff336dce42922ecf8159862d8fc7279f6961bd222e98c9bd6799d6f8966fbee",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

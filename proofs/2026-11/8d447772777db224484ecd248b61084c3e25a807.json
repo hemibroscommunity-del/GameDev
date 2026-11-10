@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8d447772777db224484ecd248b61084c3e25a807",
+  "tree": "47a00b623361d93599957288ac8833659b497bdf",
+  "committedAt": "2026-11-10T06:20:42-08:00",
+  "subject": "Merge pull request #1495 from hemibroscommunity-del/claude/sm-renderer-life",
+  "files": 7925,
+  "bytes": 966280608,
+  "listingSha256": "434dd788f83c4655e7ec90debc05fbc4e5df1777e02b1df61892fe643af03bf0",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
