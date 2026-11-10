@@ -487,12 +487,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
             if (!m || !sp || (m.archetype || m.type) !== 'fishman' || !sp.visible) continue;
             const my = m.renderY != null ? m.renderY : m.y;
             /* a monster's figure is drawn 1.5 times its own measure (entityRenderer MONSTER_SIZE_MULT) */
-            out.push({ id: m.id, lift: +((my + sp.y * 1.5) - c.py).toFixed(1), want: +(24 * Math.abs(sp.sy) * 1.5).toFixed(1) });
+            out.push({ id: m.id, lift: +((my + sp.y * 1.5) - c.py).toFixed(1), want: +(24 * Math.abs(sp.sy) * 1.5).toFixed(1), flat: c.flat });
           }
           return { on: p.on, list: out };
         });
         rec.ok(`10. ...its shadow hangs from its feet: ${sh && sh.list.length ? sh.list[0].lift : '?'} px above the bottom of its picture's cell (the 24 empty rows under its feet are ${sh && sh.list.length ? sh.list[0].want : '?'} px), not from the cell's bottom`,
           !!sh && sh.on && sh.list.length >= 1 && sh.list.filter((f) => Math.abs(f.lift - f.want) <= 4).length >= Math.ceil(sh.list.length * 0.7) && sh.list.every((f) => f.want > 12), sh);
+        /* v2.3.4511: "The water frog shadow is too far south of the sprite": a squat frog's shadow is its
+           footprint, under it (MONSTER_VARIANTS fishman.shadowFlat), not cast south like a bro's */
+        rec.ok('10. ...and it is its footprint (its outline squashed under it, a dark edge showing to the south-east), not cast south of it as a standing bro\'s is',
+          !!sh && sh.list.length >= 1 && sh.list.every((f) => f.flat === 0.45), sh && sh.list.map((f) => f.flat));
       }
       /* stand among them: one comes for you and swings (you are untouchable) */
       if (seen[0]) {

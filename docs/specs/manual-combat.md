@@ -231,7 +231,93 @@ button reading ON while armed.
 Not changed. It already drops a hit that comes sooner than its floors
 (`combat.js`, `hitproof.js`), and nothing here attacks faster than the held
 attack did. So this needs no cap and no kill switch: the switch is the
-address.
+address. (The free-swing trial below is the worker's, with a cap and switches
+of its own.)
+
+## The free-swing trial (`?manual=3`) (v2.3.4520)
+
+> The owner, 2026-11-10: *"What if the attack speed was uncapped (you can
+> swipe as many times as you want to hit) but the DPS is prorated by the time
+> elapsed relative to the full swing cycle? Thinking that might be better."*
+> Then: *"Yes pass it on. I'd like to try."*
+
+**A trial on one device, for the sword only.** A bow, a staff, the opening
+lunge and the armed special are exactly as above. A phone or computer that
+has not asked for it meets nothing new.
+
+### How to try it
+
+- **`?manual=3`** in the address turns it on for that device, and it is
+  remembered (`bt_manual` '3', as `?manual=2` is). **`?manual=1`** comes back
+  to the game's own swipes and forgets.
+- **`?swingbonus=1`** adds the full-swing bonus (below), remembered in
+  `bt_swingbonus`; **`?swingbonus=0`** forgets it.
+- The phone asks the worker in its join (`fs: 1`, or `fs: 2` with the bonus:
+  `freeSwingAsk`), and the trial runs only when the worker advertises
+  **`caps.freeSwing`**. An older worker, or one with the switch off, keeps
+  this device on the untried swipes.
+
+### The rules (the worker's: `server/src/freeswing.js`)
+
+1. **Every swipe swings at once.** No early refusal and no 180 ms hold.
+2. **Each swing's damage is its share of a full one**, `f = min(1, time since
+   this player's last counted sword swing / their full cycle)`, measured on
+   the worker's clock, never the phone's. Waiting a full cycle is a full hit;
+   quicker swings add up to the same damage a second. The cycle is the
+   sword's own: 600 ms x the Speed stat's cut (`prog3.js` aspd; an older
+   character's Tempo), never under 300 ms. It reads no amulet, because the
+   sword's swipe never did.
+3. **Nothing a hit carries multiplies with mashing.** Only a swing with
+   `f >= FULL_SWING_SHARE` (0.8) carries the shove (30 px, a crit's 45),
+   the gem's status, its collision and the mana that returns, and a storm
+   gem's spark. A lighter swing is its damage and nothing else. A crit's
+   damage scales by `f` like the rest. Against a player, a blocker's stamina
+   (10 a blocked hit) scales by `f` too. Fight XP is paid by damage, kill
+   credit is shared by damage, and lifesteal is paid on a kill, so none of
+   them multiplies.
+4. **A quiet floor, and no rounding tricks.** The worker counts one swing at
+   most every `MIN_SWING_GAP_MS` (100). A swing sooner is dropped silently
+   and costs nothing: the clock is not touched, so the next swing's share is
+   larger by it. The phone swings no sooner than `FREE_GAP_MS` (150), because
+   the blade lands 120 ms into its swing. The fraction a light hit leaves is
+   carried to the player's next one. It is never rounded up, and never
+   floored at 1: the roll's floor of 1 applies to the full hit, before its
+   share.
+5. **One swing, several targets.** The swing names itself (`sw`, its own
+   clock) on its `monster_damage`, as it already does on its claim at a
+   player. Every target of one swing takes that swing's share, each once.
+6. **The bonus (a second switch to compare).** With `?swingbonus=1`, a swing
+   after a full cycle (`f = 1`) is `FULL_SWING_BONUS` (0.12) harder, on a
+   monster only. Nothing is held and nothing is shown: it is not a charge
+   attack. Against a player there is no bonus.
+7. **A paid special swing is counted as a swing.** Its own hit is untouched,
+   and the next swing's share runs from it, as the untried sword's interval
+   does.
+
+**Fair against a player who is not trying it.** Damage a second is the same
+however the swings are cut up, and against a player there is no bonus. A
+sword's hits on a player keep their 250 ms lane (`pvpbalance.js`): a swing
+sooner than that is dropped there, and that costs nothing either.
+
+### On the screen
+
+**Nothing new is drawn.** A light swing's damage number is smaller, sized by
+the share the worker sends (`pw` on `monster_hit` and `pvp_hit`:
+`mcNumberScale`, a quarter swing 0.7 of the size). A full swing's number is
+as today. A light swing's hit sound is the same sample, quieter
+(`mcHitVol`). A light crit does not play the crit ring.
+
+### Switches (live flags, lower case)
+
+| flag | what `false` does |
+|---|---|
+| `freeswing` | No device gets the trial: today's sword for everyone. `caps.freeSwing` is un-advertised, and every phone is told at once (`free_swing`, privileged) and goes back to the untried swipes. |
+| `freeswingbonus` | The bonus is never given, even when a device asks for it. |
+
+The constants are `FREE_SWING` in `server/src/freeswing.js`
+(`FULL_SWING_SHARE`, mirrored in `MANUAL.FULL_SWING_SHARE`) and
+`MANUAL.FREE_GAP_MS`. The state lives on the player and is never saved
+(`ps._fs`). It goes when the player leaves.
 
 ## Not built
 
@@ -249,6 +335,9 @@ address.
 
 ## Tests
 
+- `server/test/free-swing.test.mjs` (v2.3.4520): the trial on the real
+  GameRoom (its header lists the checks); `manual-combat.test.mjs` §13 its
+  phone rules and wiring.
 - `server/test/manual-combat.test.mjs`: the switch; a flick, a tap, a nudge,
   the cancel, a slow drag; no faster than the weapon (too soon, kept, the
   window's edges); a forced end; a sword's stroke, back and forth, the pause,

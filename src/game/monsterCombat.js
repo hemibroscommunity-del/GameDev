@@ -43,6 +43,7 @@ import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.22
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
 import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, rangedAimAngle, bowGripPoint /* v2.3.2543 */, BOW_SPECIAL_QUEUE_MS /* v2.3.2473 */, propSwingHit /* v2.3.2730 */, shotGroundDy /* v2.3.3206: a shot's ground is under the boots */ } from '@/game/combatHelpers.js';
+import { accShot, accSn } from './accuracy.js';   /* v2.3.4545: a basic shot is numbered, and its hits claim its number (accuracy) */
 import { updateTargeting } from '@/game/targeting.js'; /* v2.3.2243 */
 import { firstSightHit, shotLowAim, lowAimAlong, arrowSureReachPast, shotAimAt, nmlSightAsk } from '@/game/projectiles.js'; /* v2.3.2473: the bow's on-target gate reads the hit test's own radii; v2.3.3206: + the low thing a shot is aimed at; v2.3.3528: + No man's land's ask on an empty line */
 import { shotTargetId } from '@/game/peerShots.js'; /* v2.3.3266: the player a shot is aimed at, for the others' screens */
@@ -59,7 +60,7 @@ import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, f
 import { isWheelSwimming } from '@/game/wheelSwim.js'; /* v2.3.3003: no fighting while you swim */
 import { jumpAirborne } from '@/game/jump.js'; /* v2.3.3017: nor in the air */
 import { tapAttackWaiting, tapAttackDone, tapSwingAim } from '@/game/tapJump.js'; /* v2.3.3712: a tap on the right stick asks for one attack */
-import { manualOn, mcFrame, mcFireWaiting, mcFireDone, mcTakeArmed, mcBowInterval } from '@/game/manualCombat.js'; /* v2.3.4395: manual combat (`?manual=1`) -- a bow or a staff shoots once for each flick, never because the stick is held */
+import { manualOn, mcFrame, mcFireWaiting, mcFireDone, mcTakeArmed, mcBowInterval, mcFreeSwing, mcHitVol } from '@/game/manualCombat.js'; /* v2.3.4395: manual combat (`?manual=1`) -- a bow or a staff shoots once for each flick, never because the stick is held */
 import { isDazed } from '@/game/elemHits.js'; /* v2.3.3014: nor while a rock monster has you dazed */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the shield hold */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
@@ -1870,6 +1871,7 @@ export function updateMonsterCombat(S, deps) {
                 }
                 S.arrows.push({
                   ang: arrAngle,
+                  _sn: accShot(S, isStaff ? 'staff' : 'ranged') || undefined,   /* v2.3.4545: this basic shot's number (accuracy.js) */
                   _shotTs: _shotTs,
                   _lp: _shotLp || undefined,   /* v2.3.3206 */
                   _gf: _shotGf || undefined,   /* v2.3.3501: boots to its target's feet */
@@ -1976,6 +1978,7 @@ export function updateMonsterCombat(S, deps) {
                 S.isSwinging = true;
                 S._specialAttack = false;
                 clearSwingHitFlags(S); /* v2.3.1421: fresh dedup per swing */
+                accShot(S, 'melee');   /* v2.3.4545: a basic swing is a shot (accuracy.js) */
                 /* v2.3.1011: defer the player_swing broadcast until S._swingAng
                    is computed just below, so peers get the weapon + facing and
                    can render the full stand-in (not just a bare arc). */
@@ -2450,7 +2453,12 @@ export function updateMonsterCombat(S, deps) {
                        the persisted activeSlot drifted (desktop slot UI
                        skips set_active_slot).  special drives the Mind-
                        scaled 2x special roll on the server. */
-                    slot: 'melee', special: !!S._specialAttack
+                    slot: 'melee', special: !!S._specialAttack,
+                    /* v2.3.4545: the swing this hit belongs to: a swing that catches two monsters is one hit (accuracy.js) */
+                    sn: S._specialAttack ? undefined : (accSn(S, 'melee') || undefined),
+                    /* v2.3.4520: the free-swing trial: which swing (its own
+                       clock), so the worker gives its other targets its share */
+                    sw: mcFreeSwing(S) ? S.swingTimer : undefined
                   }});
                 }
 
@@ -2559,7 +2567,7 @@ export function updateMonsterCombat(S, deps) {
                    stone takes the pickaxe -- the snowman included, his
                    snowball thud the body of his ('snow'), so he is no longer
                    the one monster skipped here. */
-                monsterHitSfx(m, 0.55, 'melee');
+                monsterHitSfx(m, 0.55 * mcHitVol(S), 'melee');   /* v2.3.4520: lighter for a light free swing */
 
                 /* §19.1 Quest tracking — combat flags */
                 if (!_R6._questFlags) _R6._questFlags = {};
@@ -3266,6 +3274,7 @@ export function updateMonsterCombat(S, deps) {
                   event: 'player_attack',
                   payload: {
                     id: S.myId,
+                    sn: S._specialAttack ? undefined : (accSn(S, 'melee') || undefined),   /* v2.3.4545: the swing it belongs to (accuracy.js) */
                     x: P.x,
                     y: P.y,
                     angle: pvpAngle,

@@ -213,6 +213,7 @@ const OPEN_GROUPS = [
     'race_start', 'heap_burn', 'reveal_item', 'feedback', 'shop_list', 'shop_quote', 'farm_open', 'bank_open',
     'cape_equip', 'pet_active', 'pet_name', 'pet_release', 'pet_capture', 'trap_arm', 'fish_inspect',
     'fish_board_request', 'spin_board_request', 'ace_board_request',
+    'acc_request',   /* v2.3.4545: your own accuracy, read (accuracy.js) */
   ]],
   ['the fight itself', [
     'player_attack', 'monster_damage', 'extraction_start', 'arrow_blast', 'node_strike', 'ability_use', 'ability',

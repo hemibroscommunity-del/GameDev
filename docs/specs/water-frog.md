@@ -241,7 +241,29 @@ The owner: "the water frogs currently have floating shadows and need fixed."
   and the storm eye (it hovers on purpose).
 - **Test**: `mp-waterfrog` step 10: in the Water Caves, each frog's shadow
   hangs 16.9 px above its cell's bottom, which is its 24 empty rows.
-- Picture: `docs/shots/frog-shadow.webp` (before, after).
+- Picture: `docs/shots/frog-shadow.webp` (v2.3.4511: before that, and now).
+
+**v2.3.4511, "The water frog shadow is too far south of the sprite."** Two
+things were still south of the frog once its shadow hung from its feet:
+
+- **Its shadow fell wholly south of its feet.** A standing figure's shadow is
+  its picture laid along the sun from its feet line: every pixel is height.
+  The frog's 97 px are mostly its back seen from above, so its shadow reached
+  33 px south and 48 east, as a bro's does, and a shadow cast that way can only
+  fall south of the feet. A squat look now says so (`shadowFlat` in
+  `MONSTER_VARIANTS`: `{ s: 0.45, lift: 14 }` on the frog), and its shadow is
+  its **footprint**: its own outline squashed onto the ground under it (0.45 of
+  its height, kept above the feet line) and pushed 14 px along the sun
+  (`lightfx/shadows.js`). Most of it is under the frog; a dark edge shows on its
+  east and south-east side. Other looks and every player are cast as before.
+- **The ring under a monster in reach sat on the bottom of its picture's
+  cell**, 17 px below the frog's feet: a pale oval apart from it. It is now on
+  the feet of any look with a `feetRow` (`lookFeetPad`, `effectsRenderer`'s
+  ring), so the rock golem's and the rotcap's moved up with the frog's.
+- Test: `mp-waterfrog` step 10 checks each frog's shadow is its footprint
+  (`flat` 0.45 in the shadow pass's list). `worldshadow` 19 of 19.
+  `lockrings` fails three checks about the attack button's see-through face,
+  on main too: not this change.
 
 ## What else changed with it
 

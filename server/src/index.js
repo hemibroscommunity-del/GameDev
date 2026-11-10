@@ -107,6 +107,8 @@ import { deathPileMethods } from './deathpile.js';   /* v2.3.4384: a dead player
 import { fishlogMethods } from './fishlog.js';   /* v2.3.4036: the rare fish, weighed, with records */
 import { riseChestMethods } from './risechest.js';   /* v2.3.4453: the chest on a rise pays, once a character */
 import { boardMethods, boardFace } from './boards.js';   /* v2.3.4393: the daily spin's records, a face and a level on every board, the deleted stand-ins */
+import { accuracyMethods } from './accuracy.js';   /* v2.3.4545: how many of your shots hit, a weapon */
+import { charWatchMethods } from './charwatch.js';   /* v2.3.4545: what players drew, for the owner to look at (the Test panel) */
 import { achievementMethods } from './achievements.js';   /* v2.3.3527 */
 import { killRollMethods } from './killroll.js';   /* v2.3.3209: one roll a kill, each drop its own numbers */
 // v2.3.1131 (PR15): quality grades + hardening v1 -- the §4.6b/§4.6c
@@ -235,6 +237,7 @@ import { lingerMethods } from './linger.js'; /* v2.3.3260: leaving in the middle
 import { bodyTakeMethods } from './bodytake.js'; /* v2.3.4455: a second login mid-fight takes the body over where it stands */
 import { lastPlaceMethods } from './lastplace.js'; /* v2.3.3327: a reconnect starts where the server last had you */
 import { hitProofMethods } from './hitproof.js'; /* v2.3.3334: a hit on a monster needs its weapon, its reach, a paid special */
+import { freeSwingMethods } from './freeswing.js'; /* v2.3.4520: the free-swing trial (a phone that asks swings its sword as often as it likes) */
 import { testModeMethods } from './testmode.js'; /* v2.3.3430: test mode -- the owner's own characters without the honesty checks */
 import { deviceLockMethods } from './devicelock.js'; /* v2.3.3344: a character's login key works on the devices it is played on */
 import { loginKeyMethods } from './loginkeys.js'; /* v2.3.3355: new Login Keys, made by the worker */
@@ -727,6 +730,9 @@ export const PRIVILEGED_EVENTS = new Set([
      phone shows. */
   'spin_board',
   'rise_chest',   /* v2.3.4453: the chest's answer (risechest.js) */
+  /* v2.3.4545: your own accuracy (accuracy.js), to you only.  Forged, it
+     would write another player's numbers on your Journey page. */
+  'acc_state',
   /* v2.3.3265: the sparring clones of the test panel (spar.js), to their
      owner only.  Forged, it would make a phone take any player for a clone
      it may aim at -- the worker still refuses every such hit (_sparPair) --
@@ -756,6 +762,10 @@ export const PRIVILEGED_EVENTS = new Set([
   // v2.3.3755: the memory savers turned off for every phone (clientoff.js) --
   // forged, it would switch a phone's savers off or on
   'client_off',
+  // v2.3.4520: the free-swing trial's switch, live (freeswing.js
+  // _freeSwingFlagChanged) -- forged, it would put a phone's sword back on
+  // the untried swipes, or take it off them with no worker behind it
+  'free_swing',
   // v2.3.1132: two-sided trade session echoes (server-truth renderer).
   'trade2_state', 'trade2_invite',
   // v2.3.4382: a rejoin's live duel, said again (rejoinresend.js) -- forged,
@@ -5322,6 +5332,9 @@ export class GameRoom {
           //   - the player_update relay paints peers' screens.
           // Non-object payloads stay a no-op exactly as before.
           if (!msg.data || typeof msg.data !== 'object') break;
+          /* v2.3.4545: the phone's shot counts ride here (accuracy.js) -- read on their own, never a look key:
+             not stored on the player, not relayed */
+          if (msg.data.ac !== undefined) await this._accShots(session, msg.data.ac, Date.now());
           const clean = Object.create(null);
           for (const k of TRACK_COSMETIC_KEYS) {
             if (!Object.prototype.hasOwnProperty.call(msg.data, k)) continue;
@@ -6179,6 +6192,10 @@ export class GameRoom {
       case 'spin_board_request':
         if (session.id) await this._handleSpinBoardRequest(session);
         break;
+      /* v2.3.4545: your own accuracy, for the Journey page (accuracy.js) */
+      case 'acc_request':
+        if (session.id) await this._handleAccRequest(session);
+        break;
 
       case 'ace_board_request':
         // v2.3.2619: the biggest-win / biggest-loss board (gamble.js).
@@ -6469,6 +6486,7 @@ export class GameRoom {
     let _petsLeft = null;   /* v2.3.3120: see below */
     let _codexLeft = null;  /* v2.3.3209: the same, for the codex (codex.js) */
     let _fishLeft = null;   /* v2.3.4036: and the catches to weigh (fishlog.js) */
+    let _accLeft = null;    /* v2.3.4545: and the shots and hits not yet written (accuracy.js) */
     if (session?.id) {
       /* ═══ v2.3.3260: LEAVING IN THE MIDDLE OF A FIGHT, THE BODY STAYS ═══
          A player who leaves within 10 s of a hit between them and another
@@ -6525,6 +6543,8 @@ export class GameRoom {
       /* v2.3.4036: the catches to weigh, the codex's way (fishlog.js) */
       _fishLeft = this._fishlogDirtyCopy(session.id);
       this._fishlogForget(session.id);
+      /* v2.3.4545: the shots and hits counted since the last write, the same way (accuracy.js) */
+      _accLeft = this._accDirtyCopy(session.id);
       /* v2.3.3527: achievements hold nothing unwritten (achievements.js) */
       this._achvForget(session.id);
       delete this.stateHistory[session.id];
@@ -6565,6 +6585,7 @@ export class GameRoom {
     if (_petsLeft) await this._petbookPut(session.id, _petsLeft);
     if (_codexLeft) await this._codexPut(session.id, _codexLeft);
     if (_fishLeft) await this._fishlogPut(session.id, _fishLeft);
+    if (_accLeft) await this._accPut(session.id, _accLeft);
   }
 
   async webSocketError(ws) { this.webSocketClose(ws); }
@@ -6688,6 +6709,8 @@ export class GameRoom {
         }),
       }));
     } catch {}
+    /* v2.3.4545: once a worker's life, the rows from before a row carried a face get theirs (boards.js) */
+    if (!this._faceFilled && this._boardsFaceFill) { try { await this._boardsFaceFill(); } catch { /* best-effort */ } }
   }
 
   broadcastAll(msg) { const s = JSON.stringify(msg); for (const [ws] of this.sessions) { try { ws.send(s); } catch {} } }
@@ -6796,6 +6819,8 @@ Object.assign(GameRoom.prototype, codexMethods); /* v2.3.3209 */
 Object.assign(GameRoom.prototype, deathPileMethods); /* v2.3.4384 */
 Object.assign(GameRoom.prototype, fishlogMethods); /* v2.3.4036 */
 Object.assign(GameRoom.prototype, boardMethods); /* v2.3.4393 */
+Object.assign(GameRoom.prototype, accuracyMethods); /* v2.3.4545 */
+Object.assign(GameRoom.prototype, charWatchMethods); /* v2.3.4545 */
 Object.assign(GameRoom.prototype, riseChestMethods); /* v2.3.4453 */
 Object.assign(GameRoom.prototype, achievementMethods); /* v2.3.3527 */
 Object.assign(GameRoom.prototype, killRollMethods); /* v2.3.3209: the kill's one roll (killroll.js) */
@@ -6900,6 +6925,7 @@ Object.assign(GameRoom.prototype, lingerMethods); /* v2.3.3260: leaving mid-figh
 Object.assign(GameRoom.prototype, bodyTakeMethods); /* v2.3.4455: ...and a second login takes it over */
 Object.assign(GameRoom.prototype, lastPlaceMethods); /* v2.3.3327: a reconnect starts where the server last had you */
 Object.assign(GameRoom.prototype, hitProofMethods); /* v2.3.3334: a hit on a monster needs its weapon, its reach, a paid special */
+Object.assign(GameRoom.prototype, freeSwingMethods); /* v2.3.4520: the free-swing trial (freeswing.js) */
 Object.assign(GameRoom.prototype, testModeMethods); /* v2.3.3430: test mode (testmode.js) */
 Object.assign(GameRoom.prototype, deviceLockMethods); /* v2.3.3344: a character's login key works on the devices it is played on */
 Object.assign(GameRoom.prototype, loginKeyMethods); /* v2.3.3355: new Login Keys, made by the worker */
