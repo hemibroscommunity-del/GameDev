@@ -131,7 +131,9 @@ export const questMethods = {
     if (!session || !session.id) return;
     const ps = this.playerState[session.id];
     if (!ps) return;
-    if (ps.dying || ps.dead || ps.disconnected) return;
+    /* v2.3.4401: the game drew the quest taken before the worker answered;
+       a refusal says so (_questSilentEcho), never nothing */
+    if (ps.dying || ps.dead || ps.disconnected) { this._questSilentEcho(session.id); return; }
     const { questId } = payload || {};
     if (typeof questId !== 'string') return;
     const rewards = this._QUEST_REWARDS_DATA();
@@ -149,7 +151,7 @@ export const questMethods = {
     // Allow accepting from 'available' (chain entry granted) or
     // from missing (first quest in chain).  Reject if already
     // active / turnedIn.
-    if (cur === 'active' || cur === 'turnedIn') return;
+    if (cur === 'active' || cur === 'turnedIn') { this._questSilentEcho(session.id); return; }   /* v2.3.4401 */
     /* v2.3.3179: a quest nobody can give, an unchecked one before the first
        quest, or a step taken ahead of the checked step before it */
     if (this._questBarred(ps, questId, reward, true)) { this._questRefusedEcho(session.id); return; }
@@ -278,7 +280,32 @@ export const questMethods = {
      delta would send nothing back.  Resend what the game drew. */
   _questRefusedEcho(pid) {
     const ws = this._wsBySessionId(pid);
-    if (ws && this._resendPlayerState) this._resendPlayerState(ws, pid, ['_quests', 'coins']);
+    if (!ws || !this._resendPlayerState) return;
+    /* v2.3.4401 (state-machine sweep V9a): the game also adds the quest's XP
+       and +5 achievement points before the worker answers, and the old echo
+       left them standing (the phone adopts the AP only when it is sent).
+       `disable_quest_echo` puts back the old two fields. */
+    this._resendPlayerState(ws, pid, this._questEchoOff() ? ['_quests', 'coins']
+      : ['_quests', 'coins', 'achievementPoints', 'xp', 'prog3']);
+  },
+
+  /* ═══ v2.3.4401: A QUEST TAP THE WORKER REFUSES IS ANSWERED ═══
+     The state-machine sweep (V9a G4-1, S9-1, P2-13): four hand-in refusals
+     (dying or dead, no XP skill named, not active, objective unmet) and two
+     accept refusals (dying or dead, already taken or handed in) sent
+     NOTHING.  The game had already drawn the quest handed in, the gold, the
+     XP, the +5 points and the giver's next quest, and the v2 delta sends
+     nothing when nothing changed -- so the phone kept "Rewards claimed!" and
+     coins the worker never paid until the next join.  Each now sends the
+     worker's own values back (the same echo the barred and trade refusals
+     use).  It writes nothing: a refusal changes no record.
+     Kill switch `disable_quest_echo` (live flags): silent again. */
+  _questEchoOff() {
+    return !!(typeof this._flagOn === 'function' && this._flagOn('disable_quest_echo'));
+  },
+  _questSilentEcho(pid) {
+    if (this._questEchoOff()) return;
+    this._questRefusedEcho(pid);
   },
 
   /* ═══ v2.3.3121: IS THIS QUEST'S OBJECTIVE MET? ═══
@@ -307,7 +334,9 @@ export const questMethods = {
     if (!session || !session.id) return;
     const ps = this.playerState[session.id];
     if (!ps) return;
-    if (ps.dying || ps.dead || ps.disconnected) return;
+    /* v2.3.4401: the game paid the hand-in before the worker answered (gold,
+       XP, +5 points, his next quest); each refusal below says so */
+    if (ps.dying || ps.dead || ps.disconnected) { this._questSilentEcho(session.id); return; }
     const { questId, xpCat, trade } = payload || {};
     if (typeof questId !== 'string') return;
     const rewards = this._QUEST_REWARDS_DATA();
@@ -327,12 +356,12 @@ export const questMethods = {
        which is what would strand the quest in 'turnedIn' with the reward
        unpaid and no way to retry. */
     const _needsCat = !!(ps.prog3 && reward.xp > 0);
-    if (_needsCat && (typeof xpCat !== 'string' || PROG3.SKILLS.indexOf(xpCat) < 0)) return;
+    if (_needsCat && (typeof xpCat !== 'string' || PROG3.SKILLS.indexOf(xpCat) < 0)) { this._questSilentEcho(session.id); return; }   /* v2.3.4401 */
     if (!ps._quests) ps._quests = Object.create(null); // rule 4: client-id-keyed map
     // Must be 'active' to turn in.  This is the spam-defeat:
     // a cheater can't reclaim the reward by spamming the event,
     // and can't claim a quest they never accepted.
-    if (ps._quests[questId] !== 'active') return;
+    if (ps._quests[questId] !== 'active') { this._questSilentEcho(session.id); return; }   /* v2.3.4401 */
     /* v2.3.3179: the accept's rules hold at the hand-in too, for a quest
        accepted before they did (_questBarred) */
     if (this._questBarred(ps, questId, reward, false)) { this._questRefusedEcho(session.id); return; }
@@ -344,7 +373,7 @@ export const questMethods = {
     const _obj = reward.objective;
     /* v2.3.3121: one check for every objective type (_questObjectiveMet) --
        trapping's four came in with Beastmaster Bro */
-    if (_obj && !this._questObjectiveMet(ps, questId, _obj)) return;
+    if (_obj && !this._questObjectiveMet(ps, questId, _obj)) { this._questSilentEcho(session.id); return; }   /* v2.3.4401 */
     /* ═══ v2.3.3525: A TRADE AT THE HAND-IN ═══
        Woodworker Bro's wood_2 (data.js `trade`): "he'll trade you the better
        tier of weapon (after pine) if you turn in a pine one".  Picked HERE,

@@ -90,7 +90,31 @@ accept AND the hand-in (an old save may hold a quest active from before):
 
 A refusal changes nothing and sends `_quests` and `coins` back to the game
 (`_questRefusedEcho`), which drew the quest taken (and paid) before the
-worker answered. What a new character can still be paid without the worker
+worker answered.
+
+### Every refused quest tap is answered (v2.3.4401)
+
+The state-machine sweep (V9a) found six more refusals that sent nothing: a
+hand-in while dying or dead, with no XP skill named, of a quest that is not
+active, or with its objective unmet; an accept while dying or dead, or of a
+quest already taken or handed in. The game had already drawn the hand-in
+paid (gold, XP, +5 achievement points, the giver's next quest), and on
+protocol v2 nothing came later, so the phone kept a reward the worker never
+paid until the next join. Each now sends the worker's own values back
+(`_questSilentEcho`), and every quest echo carries `achievementPoints`, `xp`
+and `prog3` beside `_quests` and `coins` (the old echo left the predicted XP
+and +5 points standing). Nothing is written: a refusal changes no record
+(`cost-guard` §14). Only a junk quest id and a message with no player still
+get no answer.
+
+The server only ever sends its own truth here, so this holds whether the
+game goes on predicting the hand-in (the echo undoes a refused one) or one
+day waits for the worker's yes (the echo then repeats what it shows).
+
+Kill switch: the live flag `disable_quest_echo` makes these six refusals
+silent again and the old echoes send only `_quests` and `coins`.
+Suite: `server/test/quest-echo.test.mjs` (every refusable quest request, on
+v1 and v2, fails on silence). What a new character can still be paid without the worker
 checking: nothing until `tut_1` is in, then `mayor_1`'s 50 coins.
 
 ## Wire surface

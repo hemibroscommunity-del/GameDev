@@ -37,6 +37,7 @@
  *  13. v2.3.4384: a death outside town writes its pile's row once (one more
  *      row a death, the owner's "save it"), and the pile's end -- taken or
  *      run out -- deletes it once (deathpile.js);
+ *  14. v2.3.4401: a refused quest tap (now answered) writes nothing;
  * A line here may move when a feature really needs the rows: say so in the
  * PR, in plain words, as the memory budget asks (CLAUDE.md).
  */
@@ -543,6 +544,22 @@ const FAST = 110;
   room._tickLoot();
   const ran = mine(state, 'cg_die', w2).filter((k) => k.startsWith(DEATHPILE.PREFIX));
   check(`13c. a pile left to run out deletes its row once (${ran.length})`, ran.length === 1, ran);
+}
+
+/* ── 14. v2.3.4401: a refused quest tap is answered, and writes nothing ──── */
+{
+  const { room, state } = await makeRoom();
+  const p = await join(room, 'cg_quest');
+  const ps = room.playerState.cg_quest;
+  ps._quests = Object.assign(Object.create(null), { mayor_2: 'active' });
+  ps._questKills = Object.create(null);
+  const w0 = state.writes.length;
+  for (let i = 0; i < 50; i++) {
+    await send(room, p, { type: 'quest_turn_in', payload: { questId: 'mayor_2', xpCat: 'sword' } });   /* objective unmet */
+    await send(room, p, { type: 'quest_accept', payload: { questId: 'mayor_2' } });                    /* already taken */
+  }
+  const rows = mine(state, 'cg_quest', w0);
+  check(`14. 100 refused quest taps (each answered, quest-echo.test) write nothing (${rows.length})`, rows.length === 0, byPrefix(rows));
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);
