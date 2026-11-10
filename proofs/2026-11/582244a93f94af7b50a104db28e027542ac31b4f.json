@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "582244a93f94af7b50a104db28e027542ac31b4f",
+  "tree": "4e9d4bb10e3a61779e531bba2b864435ef272868",
+  "committedAt": "2026-11-10T15:54:13-08:00",
+  "subject": "Merge pull request #1530 from hemibroscommunity-del/claude/sm-move-claims",
+  "files": 7992,
+  "bytes": 966695154,
+  "listingSha256": "b89b4527524ee6710a12507d6db7990fbb2f4473ef8a5e4aee6b8ba9c6698477",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
