@@ -9,8 +9,8 @@
  * where there is a file). */
 export const PLACED5 = Object.freeze({
   dir: 'placed5',
-  v: '666c88c6',
-  plan: 'bcb96b2a',
+  v: '317a3f7d',
+  plan: '0debb496',
   objects: 'objects.bin',
   n: 63454,
   overview: 'overview.png',
@@ -31,8 +31,8 @@ export const PLACED5 = Object.freeze({
 });
 export const PLACED = Object.freeze({
   dir: 'placed',
-  v: '8fef809c',
-  plan: '2cafb77a',
+  v: '3b74c8bd',
+  plan: 'ca5b7266',
   objects: 'objects.bin',
   n: 12621,
   overview: 'overview.png',

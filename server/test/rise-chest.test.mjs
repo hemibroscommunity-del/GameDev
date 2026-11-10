@@ -88,7 +88,10 @@ async function setup(opts = {}) {
   /* v2.3.4456: the Town Bluff's two follow the islet's two */
   check('1a the long Wheel\'s rises are baked for the worker: the islet\'s two, then the Town Bluff\'s two; a chest on each ledge', WHEEL_FACES_LONG === 5 && WHEEL_FACES.length === 4 && WHEEL_FACES.filter((r) => r.chest).length === 2
     && WHEEL_FACES.map((r) => r.id).join() === 'lagoon-terrace,lagoon-ledge,bluff-terrace,bluff-ledge' && WHEEL_FACES.every((r, i) => r.k === i), WHEEL_FACES.map((r) => r.id));
-  check('1a2 every ledge with a chest is the taller rise that takes the flip, on a terrace with vines', WHEEL_FACES.filter((r) => r.chest).every((r) => r.h > 85 && !r.climb) && WHEEL_FACES.filter((r) => !r.chest).every((r) => r.h <= 85 && !!r.climb));
+  /* v2.3.4483: the Town Bluff's terrace has a RAMP where the islet's has vines (one or the other) */
+  check('1a2 every ledge with a chest is the taller rise that takes the flip, on a terrace with vines or a ramp', WHEEL_FACES.filter((r) => r.chest).every((r) => r.h > 85 && !r.climb && !r.ramp) && WHEEL_FACES.filter((r) => !r.chest).every((r) => r.h <= 85 && (!!r.climb) !== (!!r.ramp)));
+  { const BT = WHEEL_FACES.find((r) => r.id === 'bluff-terrace');
+    check('1a3 the Bluff\'s ramp is a strip of its face (the whole band, inside its ends)', !!BT && !!BT.ramp && !BT.climb && BT.ramp[1] === BT.face[1] && BT.ramp[3] === BT.face[3] && BT.ramp[0] > BT.face[0] && BT.ramp[2] < BT.face[2] && BT.ramp[2] - BT.ramp[0] >= 48, BT && BT.ramp); }
   check('1b the chest is on the rise taller than a plain jump clears (85 px): it takes the flip', !!LEDGE && LEDGE.h > 85 && !!TERRACE && TERRACE.h <= 85 && !!TERRACE.climb && !LEDGE.climb, { ledge: LEDGE && LEDGE.h, terrace: TERRACE && TERRACE.h });
   check('1c the chest stands on its rise\'s top, north of its face', LEDGE.chest[0] >= LEDGE.box[0] && LEDGE.chest[2] <= LEDGE.box[2] && LEDGE.chest[1] >= LEDGE.box[1] && LEDGE.chest[3] <= LEDGE.face[1]);
   check('1d every chest has a prize, and a rise with none has none', WHEEL_FACES.every((r) => (!!r.chest) === (RISE_CHEST.COINS[r.id] > 0)) && riseWithChest(LEDGE.id) === LEDGE && riseWithChest(TERRACE.id) === null && riseWithChest('nope') === null && riseWithChest('__proto__') === null);
