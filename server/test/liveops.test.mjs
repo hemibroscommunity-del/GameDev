@@ -446,6 +446,12 @@ await req('DELETE', '/api/admin/flags?name=disable_threats');
   check('8l. `swordconvert` is a name POST /flags takes', flagNameOk('swordconvert'));
   { const was = room._liveFlags; room._liveFlags = { swordconvert: false }; const off = room._swordConvertOff(); room._liveFlags = {}; const on = room._swordConvertOff(); room._liveFlags = was;
     check('8l. `swordconvert: false` switches the heals off, and nothing set leaves them on', off === true && on === false); }
+  // 8s. v2.3.4373: "dead" is the server's word (movement.js _serverDeadOff,
+  //     server-dead.test) -- `serverdead: false` writes the phone's `dead`
+  //     from the move again; off only when written false
+  check('8s. `serverdead` is a name POST /flags takes', flagNameOk('serverdead'));
+  { const was = room._liveFlags; room._liveFlags = { serverdead: false }; const off = room._serverDeadOff(); room._liveFlags = {}; const on = room._serverDeadOff(); room._liveFlags = was;
+    check('8s. `serverdead: false` trusts the phone again, and nothing set leaves the worker\'s word', off === true && on === false); }
   // 8m. v2.3.3981: the one-to-one's switch (smelting.js _oneToOneOff) -- one
   //     ore a bar and one log a hardened wood; off only when written false,
   //     which brings back five on both sides (smelting / hardenedwood suites)
