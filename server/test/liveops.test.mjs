@@ -429,6 +429,12 @@ await req('DELETE', '/api/admin/flags?name=disable_threats');
   check('8j. `ride` is a name POST /flags takes', flagNameOk('ride'));
   { const was = room._liveFlags; room._liveFlags = { ride: false }; const off = room._rideOff(); room._liveFlags = {}; const on = room._rideOff(); room._liveFlags = was;
     check('8j. `ride: false` switches the board off, and nothing set leaves it on', off === true && on === false); }
+  // 8j2. v2.3.4371: the duel's zone clock (duel.js _duelZoneOff) -- off
+  //      only when written false, which brings back a duel that leaving the
+  //      zone does not end (duel-zone suite §5)
+  check('8j2. `duelzone` is a name POST /flags takes', flagNameOk('duelzone'));
+  { const was = room._liveFlags; room._liveFlags = { duelzone: false }; const off = room._duelZoneOff(); room._liveFlags = {}; const on = room._duelZoneOff(); room._liveFlags = was;
+    check('8j2. `duelzone: false` switches the zone clock off, and nothing set leaves it on', off === true && on === false); }
   // 8k. v2.3.3806: the pet's fetch (pets.js) -- `petfetch: false` puts every
   //     viaPet pickup back on the vacuum's 240
   check('8k. `petfetch` is a name POST /flags takes', flagNameOk('petfetch'));

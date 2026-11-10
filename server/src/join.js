@@ -882,6 +882,9 @@ export const joinMethods = {
     /* memory only, never the wire's (cleanJoinData is an allowlist, and this
        is set after it) and never the rpg blob's (rule 1) */
     this.playerState[msg.id]._testMode = _testMode;
+    /* v2.3.4371: a rejoin into another zone from the duel's foe keeps the
+       away clock running (duel.js _duelZoneMoved; _duelOnRejoin below) */
+    this._duelZoneMoved(msg.id);
     /* v2.3.3315: and the Wheel sizes its phone draws (wheeltables.js _wheelInStep) */
     this.playerState[msg.id]._wheelSizes = session.wheelSizes;
     /* ═══ v2.3.3327: A RECONNECT STARTS WHERE THE SERVER LAST HAD YOU ═══
