@@ -38,6 +38,7 @@ import { applyElemHit, applyHitShove, elemLook, isBurnTick, tickKind } from '@/g
 import { echoHitSfx, heroHitSfx, earVol, deathVol, shotHitMe } from '@/game/hitSounds.js'; /* v2.3.3001: hits nobody here played, heard; a ball's blow not a sword's; v2.3.3248: a far death, slam or blast heard and felt by distance; v2.3.3343: + was a blocked blow the ball */
 import { slimeBlastAftermath } from '@/game/slimeBlast.js'; /* v2.3.3679: a slime's blast breaks the trees near it and leaves soot */
 import { cue, cueAt, peerShare, cuePeer, cueLater } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, from recordings already in the game; v2.3.3523: + cueLater, a peer's shot */
+import { localBlockApplies, applyPeerShieldEdge } from '@/game/shieldCopies.js'; /* v2.3.4393: the fallback block in a server zone; a peer's shield edge in any zone */
 import { hurtGrunt } from '@/game/ownSounds.js'; /* v2.3.3462: your hurt grunt (the owner's recordings) */
 import { peerJump } from '@/game/jump.js'; /* v2.3.3017: another player's jump */
 import { peerShotFlight } from '@/game/peerShots.js'; /* v2.3.3266: another player's shot at their speed and reach */
@@ -2378,15 +2379,14 @@ export function processGameEvent(type, payload, S, deps) {
             }
           case 'player_shield':
             {
-              if (payload.id && _peerInZone(S, payload.id)) {
-                /* v2.3.3343: their shield coming up is heard, softly (it was
-                   silent) -- not going down: a crowd's guards would chatter */
-                if (payload.up && !S.others[payload.id]._shieldUp) {
-                  var _shO = S.others[payload.id];
-                  cuePeer(S, 'peerShield', typeof _shO.renderX === 'number' ? _shO.renderX : _shO.x, typeof _shO.renderY === 'number' ? _shO.renderY : _shO.y);
-                }
-                S.others[payload.id]._shieldUp = payload.up;
-                S.others[payload.id]._shieldTs = Date.now();
+              /* v2.3.4393: the edge is applied whatever their zone (the
+                 worker sends it room-wide for that, TRAPS §176); only the
+                 sound is for a peer here (game/shieldCopies.js) */
+              var _shO = (payload.id && S.others && Object.prototype.hasOwnProperty.call(S.others, payload.id)) ? S.others[payload.id] : null;   /* own keys only: never Object.prototype */
+              /* v2.3.3343: their shield coming up is heard, softly (it was
+                 silent) -- not going down: a crowd's guards would chatter */
+              if (applyPeerShieldEdge(_shO, payload.up, !!payload.id && _peerInZone(S, payload.id), Date.now())) {
+                cuePeer(S, 'peerShield', typeof _shO.renderX === 'number' ? _shO.renderX : _shO.x, typeof _shO.renderY === 'number' ? _shO.renderY : _shO.y);
               }
               break;
             }
@@ -3511,7 +3511,9 @@ export function processGameEvent(type, payload, S, deps) {
                  feet has no direction, so a shield pointed anywhere near
                  it would swallow every tick's popup.  `_srvResolved` means
                  the worker already priced block, parry and mitigation. */
-              if (S._shieldUp && !_srvResolved && isAttackInShieldArc(S, _atkX, _atkY)) {
+              /* v2.3.4393: ...and in a server zone NO landed blow is the
+                 phone's to re-judge (game/shieldCopies.js) */
+              if (S._shieldUp && localBlockApplies(S, _srvResolved) && isAttackInShieldArc(S, _atkX, _atkY)) {
                 /* Full block: no damage through.  (Was partial via
                    calcBlockReduction; user request is "the damage gets
                    blocked.")  In MP the server already skipped the

@@ -1516,7 +1516,9 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
      is one `!_srvResolved` that a future edit to this handler could drop
      without anything else noticing. */
   check('firetrail mirror: the client\'s block fallback yields to a server-resolved hit',
-    /S\._shieldUp && !_srvResolved && isAttackInShieldArc/.test(cliSrc), {});
+    /* v2.3.4393: or through localBlockApplies(S, _srvResolved), which
+       yields to it too (and to every blow in a server zone; shield-guard §2) */
+    /S\._shieldUp && (!_srvResolved|localBlockApplies\(S, _srvResolved\)) && isAttackInShieldArc/.test(cliSrc), {});
 }
 
 /* ═══ 22. v2.3.2240: THE OWNER'S TEST PANEL ═══
