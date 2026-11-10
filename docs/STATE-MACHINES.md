@@ -1,4 +1,4 @@
-# The state-machine sweep (2026-11-03) and its fixes (v2.3.4381, v2.3.4433, v2.3.4461, v2.3.4545)
+# The state-machine sweep (2026-11-03) and its fixes (v2.3.4381, v2.3.4433, v2.3.4461, v2.3.4580)
 
 ## What it was
 
@@ -138,7 +138,7 @@ stands; not a game regression, TRAPS §319), #1518 (v2.3.4499, the crowd tour
 ## What is left
 
 This is a list, not a promise. The plan is `PLAN.md` on the storage branch.
-Updated v2.3.4545, after the fourth wave. The judges have played (owner,
+Updated v2.3.4580, after the fourth wave. The judges have played (owner,
 2026-11-10: "Judges have already played you can do any big repairs now"),
 so nothing waits on them any more.
 
