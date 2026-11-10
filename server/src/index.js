@@ -105,6 +105,7 @@ import { petbookMethods } from './petbook.js';
 import { codexMethods } from './codex.js';
 import { deathPileMethods } from './deathpile.js';   /* v2.3.4384: a dead player's pile survives a restart */
 import { fishlogMethods } from './fishlog.js';   /* v2.3.4036: the rare fish, weighed, with records */
+import { riseChestMethods } from './risechest.js';   /* v2.3.4453: the chest on a rise pays, once a character */
 import { boardMethods, boardFace } from './boards.js';   /* v2.3.4393: the daily spin's records, a face and a level on every board, the deleted stand-ins */
 import { achievementMethods } from './achievements.js';   /* v2.3.3527 */
 import { killRollMethods } from './killroll.js';   /* v2.3.3209: one roll a kill, each drop its own numbers */
@@ -724,6 +725,7 @@ export const PRIVILEGED_EVENTS = new Set([
      and gold on a public record, so a forged one would write the board a
      phone shows. */
   'spin_board',
+  'rise_chest',   /* v2.3.4453: the chest's answer (risechest.js) */
   /* v2.3.3265: the sparring clones of the test panel (spar.js), to their
      owner only.  Forged, it would make a phone take any player for a clone
      it may aim at -- the worker still refuses every such hit (_sparPair) --
@@ -6156,6 +6158,10 @@ export class GameRoom {
       case 'fish_board_request':
         if (session.id) await this._handleFishBoardRequest(session);
         break;
+      /* v2.3.4453: the chest on a rise (risechest.js): paid once, to feet at it */
+      case 'rise_chest_open':
+        if (session.id) await this._handleRiseChest(session, msg);
+        break;
       /* v2.3.4393: the daily spin's biggest wins and losses (boards.js) */
       case 'spin_board_request':
         if (session.id) await this._handleSpinBoardRequest(session);
@@ -6777,6 +6783,7 @@ Object.assign(GameRoom.prototype, codexMethods); /* v2.3.3209 */
 Object.assign(GameRoom.prototype, deathPileMethods); /* v2.3.4384 */
 Object.assign(GameRoom.prototype, fishlogMethods); /* v2.3.4036 */
 Object.assign(GameRoom.prototype, boardMethods); /* v2.3.4393 */
+Object.assign(GameRoom.prototype, riseChestMethods); /* v2.3.4453 */
 Object.assign(GameRoom.prototype, achievementMethods); /* v2.3.3527 */
 Object.assign(GameRoom.prototype, killRollMethods); /* v2.3.3209: the kill's one roll (killroll.js) */
 // v2.3.1131 (PR15): quality + hardening -- see hardening.js.
