@@ -451,7 +451,7 @@ fight simulator (18), then the "After the judges" list.
 
 - **Save a dead player's bag across a server update?** Yes: built (v2.3.4384).
 - **The colour fade between places** (written long ago, never shown): stays OFF for now.
-- **A second login during a fight with another player:** it takes over the body where it stands (being built as v2.3.4432).
+- **A second login during a fight with another player:** it takes over the body where it stands. First step v2.3.4432 (merged): a relaunch waits on the "still in that fight" screen. The full takeover is v2.3.4455 (its own pull request).
 - **The Auction House money fix** (an offer refund or raise caught by a server restart in the split second between two saves): waits until after the judges.
 - **The half second of no damage when you move between real places:** stays as it is for now.
 
