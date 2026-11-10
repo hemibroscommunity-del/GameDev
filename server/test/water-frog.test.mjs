@@ -448,10 +448,21 @@ const strips = {};
     && /if \(variant\.blowFx && m\._shootAnimEnd && now >= m\._shootAnimEnd && m\._wbFor !== m\._shootAnimStart\) \{\s*m\._wbFor = m\._shootAnimStart;\s*if \(now - m\._shootAnimEnd < WATER_FX\.LATE_MS\) \{\s*if \(variant\.blowFx === 'water'\) queueWaterBlow\(S, m, facing, rx, ry, m\._shootAnimEnd\);/.test(er));
   check('5m a swing\'s warning says spray, a special\'s its own kind and the worker\'s radius',
     /_bwM\._blowKind = 'spray'; _bwM\._blowR = 0;/.test(ge) && /_tgm\._blowKind = waterBlowKind\(payload\.ability\);\s*_tgm\._blowR = Number\(payload\.radius\) > 0 \? Number\(payload\.radius\) : 0;/.test(ge));
-  check('5n drawn as the wind-ups are: one pool made once with the renderer, updated every frame, parked on a zone change; its picture made on the loading screen and kept as an image; ?nowaterfx leaves it out',
+  check('5n drawn as the wind-ups are: one pool, updated every frame, parked on a zone change, a piece never hidden or taken out one by one; its picture made on the loading screen and kept as an image; ?nowaterfx leaves it out',
     /this\._waterAttack = new WaterAttackFx\(this\.projectileLayer\);/.test(fx) && /this\._waterAttack\.update\(S, now\)/.test(fx) && /this\._waterAttack\.clear\(\)/.test(fx)
     && /waterAttack: Promise\.resolve\(warmWaterAttack\(\)\)/.test(pre) && /keepAsImage\(base\.source, Cache\)/.test(wfx) && /has\('nowaterfx'\)/.test(wfx)
     && /for \(let i = 0; i < WATER_FX\.POOL; i\+\+\)/.test(wfx) && !/removeChild|\.visible = /.test(wfx));
+  /* v2.3.4361: THE POOL IS THE FROG'S (the memory check's heap line: 128
+     sprites were held in BroTown and every land for a monster of one) --
+     made when its look is loaded, as you walk toward it, destroyed whole
+     when the look is let go; never made with the renderer */
+  const wfs = src('src/rendering/waterFrogSprites.js');
+  const ctor = wfx.slice(wfx.indexOf('constructor(layer) {'), wfx.indexOf('  _make() {'));
+  check('5n1 the pool comes and goes with the frog\'s look: wanted as its strips load, not as they are let go; made when wanted and nothing is drawn, destroyed whole when not; never in the constructor',
+    /export function loadWaterFrogSprites\(\) \{\s*wantWaterAttack\(true\);/.test(wfs) && /export function unloadWaterFrogSprites\(\) \{\s*wantWaterAttack\(false\);/.test(wfs)
+    && /if \(this\.box\) \{ this\._park\(0\); if \(!_wanted\) this\._drop\(\); \}\s*else if \(_wanted && this\.on\) this\._make\(\);/.test(wfx)
+    && /box\.destroy\(\{ children: true \}\);/.test(wfx) && /this\.box = null; this\.pool\.length = 0; this\._lit = 0;/.test(wfx)
+    && ctor.length > 100 && !/_make\(\)/.test(ctor) && /if \(!this\._make\(\)\) return;/.test(wfx));
   check('5n2 its picture is written pixel by pixel and sampled nearest; a piece is placed on its own pixel grid, at a whole multiple of it, and never turned',
     /base\.source\.scaleMode = 'nearest';/.test(wfx) && /createImageData\(W, H\)/.test(wfx) && !/\.rotation|bezierCurveTo|\.arc\(|quadraticCurveTo/.test(wfx + src('src/rendering/waterAttackShapes.js'))
     && /sp\.x = Math\.round\(\(b\.x \+ p\.dx\) \/ px\) \* px;/.test(wfx) && /const px = WATER_FX\.PX \* Math\.max\(1, Math\.round\(b\.k\)\);/.test(wfx) && WATER_FX.PX === 2);

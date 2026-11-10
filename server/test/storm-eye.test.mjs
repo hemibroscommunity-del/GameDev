@@ -252,10 +252,20 @@ const strips = {};
     /const _hov = variant\.hover \? hoverLift\(variant\.hover, now, m\) : 0;\s*if \(spriteBody\.y !== size - _hov\) spriteBody\.y = size - _hov;\s*if \(variant\.sparks\) \{ m\._ssSeen = now; m\._ssLift = _hov \* MONSTER_SIZE_MULT; \}/.test(er)
     && /else if \(variant\.blowFx === 'storm'\) queueStormZap\(S, m, rx, ry, m\._shootAnimEnd, hoverLift\(variant\.hover, now, m\) \* MONSTER_SIZE_MULT\);/.test(er)
     && !/m\.y\s*[-+]?=\s*[^;]*_hov/.test(er));
-  check('4b drawn as the wind-ups are: one pool made once with the renderer, updated every frame, parked on a zone change; its picture made on the loading screen and kept as an image; ?nostormfx leaves it out',
+  check('4b drawn as the wind-ups are: one pool, updated every frame, parked on a zone change, a piece never hidden or taken out one by one; its picture made on the loading screen and kept as an image; ?nostormfx leaves it out',
     /this\._stormSparks = new StormSparksFx\(this\.projectileLayer\);/.test(fx) && /this\._stormSparks\.update\(S, now\)/.test(fx) && /this\._stormSparks\.clear\(\)/.test(fx)
     && /stormSparks: Promise\.resolve\(warmStormSparks\(\)\)/.test(pre) && /keepAsImage\(base\.source, Cache\)/.test(sfx) && /has\('nostormfx'\)/.test(sfx)
     && /for \(let i = 0; i < STORM_FX\.POOL; i\+\+\)/.test(sfx) && !/removeChild|\.visible = /.test(sfx));
+  /* v2.3.4361: THE POOL IS THE EYE'S -- made when its look is loaded,
+     destroyed whole when the look is let go; with no eye's look loaded the
+     frame does not walk the land's monsters and shots for eyes at all */
+  const ses = src('src/rendering/stormEyeSprites.js');
+  const ctor = sfx.slice(sfx.indexOf('constructor(layer) {'), sfx.indexOf('  _make() {'));
+  check('4b1 the pool comes and goes with the eye\'s look: wanted as its strips load, not as they are let go; destroyed whole when not wanted and no zap is left; never in the constructor',
+    /export function loadStormEyeSprites\(\) \{\s*wantStormSparks\(true\);/.test(ses) && /export function unloadStormEyeSprites\(\) \{\s*wantStormSparks\(false\);/.test(ses)
+    && /if \(!_wanted && !\(zaps && zaps\.length\)\) \{ if \(this\.box\) \{ this\._park\(0\); this\._drop\(\); \} return; \}\s*if \(!this\.box\) this\._make\(\);/.test(sfx)
+    && /box\.destroy\(\{ children: true \}\);/.test(sfx) && ctor.length > 100 && !/_make\(\)/.test(ctor)
+    && sfx.indexOf('if (!_wanted && !(zaps && zaps.length))') < sfx.indexOf('const mons = S.monsters;'));
   check('4b2 its picture is written pixel by pixel and sampled nearest; a piece is placed on its own pixel grid, flipped where it says, and never turned',
     /base\.source\.scaleMode = 'nearest';/.test(sfx) && /createImageData\(W, H\)/.test(sfx) && !/\.rotation|bezierCurveTo|quadraticCurveTo|lineWidth/.test(sfx + src('src/rendering/stormSparkShapes.js'))
     && /sp\.x = Math\.round\(\(x \+ p\.dx\) \/ px\) \* px;/.test(sfx) && /sp\.scale\.set\(px \* p\.fx, px \* p\.fy\);/.test(sfx));

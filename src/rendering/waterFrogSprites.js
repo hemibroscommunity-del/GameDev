@@ -33,6 +33,7 @@
  * Lookups give { tex, mirror } or null until the strip has loaded.
  */
 import { loadTrackedStrip, unloadBundle } from './zoneTextures.js';
+import { wantWaterAttack } from './waterAttackFx.js';   /* v2.3.4361: its water's sprites come and go with its look */
 
 const FRAME_W = 256;
 const FRAME_H = 256;
@@ -83,6 +84,7 @@ async function loadStrip(name, into, key) {
 }
 
 export function loadWaterFrogSprites() {
+  wantWaterAttack(true);
   if (loadPromise) return loadPromise;
   const tasks = [];
   for (const d of WATER_FROG_STRIPS.idle) tasks.push(loadStrip(`idle-${d}`, idleSheets, d));
@@ -146,6 +148,7 @@ export function hasDeathFrames() { return deathFrames.length > 0; }
 /* Let it all go (preloadAnimations freeZoneAssets, wheelMonsterArt freeLook):
    the memoised promise cleared too, so the next load is a real one. */
 export function unloadWaterFrogSprites() {
+  wantWaterAttack(false);
   loadPromise = null;
   for (const k in idleSheets) delete idleSheets[k];
   for (const k in hopSheets) delete hopSheets[k];

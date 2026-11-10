@@ -140,6 +140,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await H.devOp(wsPort, 'vitals', me, { heal: true, god: true, godMinutes: 30 }).catch(() => {});
     await P.page.evaluate(() => { for (const el of document.querySelectorAll('button[aria-label="Close"], button[aria-label="Dismiss"]')) try { el.click(); } catch (e) {} });
     await P.page.waitForTimeout(600);
+    /* v2.3.4361: THE LIGHTNING'S SPRITES ARE THE EYE'S.  In BroTown with no
+       eye near, none are held (112 of them were, in every land: the memory
+       check's heap line); they come with its look and go with it. */
+    {
+      const p0 = await P.page.evaluate(() => { const w = window.__btStormSparks ? window.__btStormSparks() : null; return w ? { pool: w.pool, wanted: w.wanted, made: w.made } : null; });
+      rec.ok('0. in BroTown with no eye near, no lightning sprites are held: the picture they are cut from is made (the loading screen), the pool is not',
+        !!p0 && p0.pool === 0 && p0.wanted === false && p0.made === true, p0);
+    }
     const spawn = async (dx = 80, dy = 10) => { const h = await hold(P, [{ id: `se-${Date.now()}`, dx, dy }]); return h.ids ? h.ids[0] : null; };
 
     /* SE_FROM=foundry: only the Electric Foundry's own (8), a quicker look */
@@ -241,7 +249,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const step = () => {
           const s = window.__btMonsterSprite(mid), d = window.__btMonsterDeath ? window.__btMonsterDeath(mid) : null, w = window.__btStormSparks();
           out.push(s ? { t: Date.now() - from, ix: s.ix, n: s.n, sx: s.sx, vis: s.visible, cut: !!(d && d.kind && d.kind !== 'normal'), eyes: w.live.eyes } : { t: Date.now() - from, gone: true, eyes: w.live.eyes });
-          if (Date.now() - from > 3200) resolve(out); else requestAnimationFrame(step);
+          /* (until it is gone, by what is drawn and not by a clock -- this
+             box can draw a frame a second, and the strip's hold is counted in
+             frames: 3.2 s at least, as before, 12 s at the most) */
+          const last = out[out.length - 1];
+          const over = Date.now() - from > 3200 && (last.gone || last.vis === false);
+          if (over || Date.now() - from > 12000) resolve(out); else requestAnimationFrame(step);
         };
         requestAnimationFrame(step);
       }), [id, big]);

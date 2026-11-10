@@ -90,6 +90,13 @@ export function warmStormSparks() {
   } catch (e) { _cells = null; }
 }
 
+/* v2.3.4361: THE POOL IS THE EYE'S -- made when its look is loaded (as you
+   walk toward the Foundry: stormEyeSprites.js), destroyed when the look is
+   let go; it was made with the renderer and held in every land (112 sprites;
+   waterAttackFx.js has the measurement and the why) */
+let _wanted = false;
+export function wantStormSparks(on) { _wanted = !!on; }
+
 function stormOn() {
   try { return !(typeof location !== 'undefined' && new URLSearchParams(location.search).has('nostormfx')); }
   catch (e) { return true; }
@@ -128,13 +135,11 @@ export class StormSparksFx {
     this._live = { eyes: 0, zaps: 0, shots: 0, lit: 0 };   /* the probe's: what was drawn this frame */
     this._drawn = { aura: 0, zap: 0, ball: 0 };            /* the probe's: frames each was drawn */
     this._recent = [];                                     /* the probe's: the last zaps drawn, one a zap */
-    /* the pool now, with the renderer (on the loading screen), never on the
-       frame of the first eye */
-    this._make();
+    /* (v2.3.4361: no pool yet -- it comes with the eye's look, update()) */
     if (typeof window !== 'undefined') {
       const self = this;
       window.__btStormSparks = () => ({
-        on: self.on, made: !!_cells, pool: self.pool.length, lit: self._lit,
+        on: self.on, made: !!_cells, pool: self.pool.length, wanted: _wanted, lit: self._lit,
         live: Object.assign({}, self._live), drawn: Object.assign({}, self._drawn), recent: self._recent.slice(),
       });
     }
@@ -190,6 +195,10 @@ export class StormSparksFx {
     /* the zaps that are over go, whether drawn or not */
     if (zaps) for (let i = zaps.length - 1; i >= 0; i--) if (zapOver((now - zaps[i].at) * rate)) zaps.splice(i, 1);
     if (!this.on || !S || !S.player) { this._park(0); return; }
+    /* v2.3.4361: no eye's look loaded and no zap left to draw -- no pool, and
+       the land's monsters and shots are not walked for eyes there are none of */
+    if (!_wanted && !(zaps && zaps.length)) { if (this.box) { this._park(0); this._drop(); } return; }
+    if (!this.box) this._make();
     const probe = typeof window !== 'undefined' && window.__btProbe;
     const view = (S.camera && S._viewW > 0)
       ? { x0: S.camera.x - STORM_FX.VIEW_PAD, y0: S.camera.y - STORM_FX.VIEW_PAD,
@@ -264,9 +273,21 @@ export class StormSparksFx {
     this._park(used);
   }
 
-  /* every piece past `from` see-through: never hidden or removed */
+  /* v2.3.4361: the eye's look has gone -- the pool with it, whole (its box
+     and every sprite destroyed; the picture they were cut from stays, it is
+     the loading screen's).  Once, as the land is left: never on a frame of
+     play. */
+  _drop() {
+    const box = this.box;
+    if (!box) return;
+    this.box = null; this.pool.length = 0; this._lit = 0;
+    this._live.eyes = 0; this._live.zaps = 0; this._live.shots = 0; this._live.lit = 0;
+    try { box.destroy({ children: true }); } catch (e) { /* gone with the renderer */ }
+  }
+
+  /* every piece past `from` see-through: never hidden or taken out */
   _park(from) {
-    for (let i = from; i < this._lit; i++) this.pool[i].alpha = 0;
+    for (let i = from; i < this._lit && i < this.pool.length; i++) this.pool[i].alpha = 0;
     this._lit = from;
     if (from === 0) { this._live.eyes = 0; this._live.zaps = 0; this._live.shots = 0; this._live.lit = 0; }
   }

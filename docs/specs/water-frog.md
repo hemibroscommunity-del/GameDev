@@ -108,11 +108,15 @@ already draw the droplets swirling in as the frog winds up.
 - **When:** the moment the worker's warning ends, which is the blow. The
   entity renderer queues it once a warning for a frog it drew
   (`MONSTER_VARIANTS.fishman.blowFx: 'water'`); nothing new is on the wire.
-- **Cheaply:** 128 sprites made once with the renderer in one container,
-  every one a cell of one 282 x 19 px picture written pixel by pixel on the
-  loading screen (21 KB). A frame only places and fades them: nothing is
-  added, removed or hidden, so no draw list is rebuilt (TRAPS §218). At most
-  4 blows at once, the nearest first.
+- **Cheaply:** 128 sprites in one container, every one a cell of one
+  282 x 19 px picture written pixel by pixel on the loading screen (21 KB).
+  A frame only places and fades them: nothing is added, removed or hidden,
+  so no draw list is rebuilt (TRAPS §218). At most 4 blows at once, the
+  nearest first.
+- **The sprites are the frog's (v2.3.4361).** They are made when its look is
+  loaded, as you walk toward the Water Caves, and destroyed when the look is
+  let go behind you: never on the frame of the first blow, and never held in
+  a land with no frog (below, Memory).
 - **Off:** `?nowaterfx` for one phone. The probe is `window.__btWaterAttack()`.
 
 The spray, from the front and the side, and the slam's ring (a phone in the
@@ -243,7 +247,26 @@ not what the chip held). The fishman was about 1 MB. `?picnumbers=0` is the off-
 old way, for one phone).
 
 The memory check (`mp-membudget`) fights at the Flame Fields and reads none
-of it, so no line moved.
+of the pictures, so no line moved.
+
+**What it did read, and v2.3.4361 took back out.** The check's `heap` line
+(the page's JavaScript objects, 37.5 MB) failed twice on this branch on
+GitHub's runner, at 37.7 and 38.0, and passed twice. One run each on one
+machine (this box, 2026-11-10), the heap at each stop:
+
+| | on arrival | fight 1 / 2 / 3 | home 1 / 2 / 3 |
+|---|---|---|---|
+| main (9ecff6a9) | 31.5 | 34.1 / 35.5 / 37.3 | 34.8 / 35.9 / 36.4 |
+| the branch before | 31.9 | 34.6 / 35.8 / 36.9 | 35.2 / 36.3 / 37.0 |
+| the branch after | 31.5 | 34.4 / 35.8 / 37.2 | 35.0 / 35.7 / 36.3 |
+
+Main alone reads 37.3 at its third fight, 0.2 MB under the line: the line is
+on main's own readings again, as `tools/qa/mp/memory-budget.mjs` records it
+has been before. The branch added about 0.4 MB on top, the same at every
+stop (so nothing kept growing): the pools of sprites for the water (128) and
+the storm eye's lightning (112), made with the renderer and held in BroTown
+and every land. Now each is made and destroyed with its monster's look, and
+the branch reads what main reads. The line was not raised.
 
 ## Tests
 

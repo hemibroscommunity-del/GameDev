@@ -90,6 +90,26 @@ export function warmWaterAttack() {
   } catch (e) { _cells = null; }
 }
 
+/* ═══ v2.3.4361: THE POOL IS THE FROG'S -- MADE WITH ITS LOOK, LET GO WITH IT ═══
+ *
+ * The memory check read the page's JavaScript objects at 37.7 and 38.0 MB at
+ * its Flame Fields fight on this branch, over a 37.5 line (it fights fire
+ * goblins and never meets a frog).  Measured on one machine, main against
+ * the branch: see docs/specs/water-frog.md, Memory.  The pool was made with
+ * the renderer, for good: 128 sprites here and 112 for the storm eye's
+ * lightning, a few kB of objects each, held in BroTown and in every land for
+ * a monster that lives in one.  "Anything made per land is destroyed when it
+ * goes" (the memory law).
+ *
+ * So the pool is made when the frog's look is loaded (as you walk toward the
+ * Water Caves: wheelMonsterArt.js, waterFrogSprites.js -- never on the frame
+ * of the first blow) and destroyed when the look is let go.  The picture its
+ * pieces are cut from is still made on the loading screen (21 kB).  A blow
+ * with no look loaded (there is none: a frog not drawn throws no water) makes
+ * the pool for as long as it lasts. */
+let _wanted = false;
+export function wantWaterAttack(on) { _wanted = !!on; }
+
 function waterOn() {
   try { return !(typeof location !== 'undefined' && new URLSearchParams(location.search).has('nowaterfx')); }
   catch (e) { return true; }
@@ -133,13 +153,11 @@ export class WaterAttackFx {
     this._live = [];     /* the probe's: what was drawn this frame */
     this._drawn = Object.create(null);   /* the probe's: frames drawn, by kind */
     this._recent = [];   /* the probe's: the last blows drawn, one a blow */
-    /* the pool now, with the renderer (on the loading screen), never on the
-       frame of the first blow */
-    this._make();
+    /* (v2.3.4361: no pool yet -- it comes with the frog's look, update()) */
     if (typeof window !== 'undefined') {
       const self = this;
       window.__btWaterAttack = () => ({
-        on: self.on, made: !!_cells, pool: self.pool.length, lit: self._lit,
+        on: self.on, made: !!_cells, pool: self.pool.length, wanted: _wanted, lit: self._lit,
         live: self._live.slice(), drawn: Object.assign({}, self._drawn), recent: self._recent.slice(),
       });
     }
@@ -167,7 +185,13 @@ export class WaterAttackFx {
 
   update(S, now) {
     const list = S && S._waterBlows;
-    if (!list || !list.length) { this._park(0); return; }
+    if (!list || !list.length) {
+      /* v2.3.4361: nothing to draw -- the pool made if the frog's look has
+         come, let go if it has gone */
+      if (this.box) { this._park(0); if (!_wanted) this._drop(); }
+      else if (_wanted && this.on) this._make();
+      return;
+    }
     /* QA's slow motion (window.__btBlowFxRate, 1 otherwise): a blow is over in
        half a second, and a test's picture of it takes longer than that to
        take (as monsterShotFx's __btShotFxRate is for its films) */
@@ -229,11 +253,22 @@ export class WaterAttackFx {
     this._park(used);
   }
 
-  /* every piece past `from` see-through: never hidden or removed */
+  /* every piece past `from` see-through: never hidden or taken out */
   _park(from) {
-    for (let i = from; i < this._lit; i++) this.pool[i].alpha = 0;
+    for (let i = from; i < this._lit && i < this.pool.length; i++) this.pool[i].alpha = 0;
     this._lit = from;
     if (from === 0 && this._live.length) this._live.length = 0;
+  }
+
+  /* v2.3.4361: the frog's look has gone -- the pool with it, whole (its box
+     and every sprite destroyed; the picture they were cut from stays, it is
+     the loading screen's).  Once, as the land is left: never on a frame of
+     play. */
+  _drop() {
+    const box = this.box;
+    if (!box) return;
+    this.box = null; this.pool.length = 0; this._lit = 0; this._live.length = 0;
+    try { box.destroy({ children: true }); } catch (e) { /* gone with the renderer */ }
   }
 
   /* a zone change: nothing left drawn at the last zone's places (a blow

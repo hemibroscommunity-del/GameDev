@@ -178,6 +178,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.evaluate(() => { for (const el of document.querySelectorAll('button[aria-label="Close"], button[aria-label="Dismiss"]')) try { el.click(); } catch (e) {} });
     await P.page.waitForTimeout(600);
 
+    /* v2.3.4361: THE WATER'S SPRITES ARE THE FROG'S.  In BroTown with no frog
+       near, none are held (128 of them were, in every land: the memory
+       check's heap line); they come with its look and go with it. */
+    const poolNow = () => P.page.evaluate(() => { const w = window.__btWaterAttack ? window.__btWaterAttack() : null; return w ? { pool: w.pool, wanted: w.wanted, made: w.made } : null; });
+    const poolWhen = async (want, ms = 8000) => { let v = null; for (const t0 = Date.now(); Date.now() - t0 < ms;) { v = await poolNow(); if (v && v.pool === want) break; await P.page.waitForTimeout(200); } return v; };
+    {
+      const p0 = await poolNow();
+      rec.ok('0. in BroTown with no frog near, no water sprites are held: the picture they are cut from is made (the loading screen), the pool is not',
+        !!p0 && p0.pool === 0 && p0.wanted === false && p0.made === true, p0);
+    }
+
     /* WF_FROM=caves: only the Water Caves' own (10), a quicker look */
     const cavesOnly = process.env.WF_FROM === 'caves';
     if (!cavesOnly) {
@@ -190,6 +201,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const first = await drawn(P, id);
     const strips = await P.page.evaluate(() => (window.__btStripTrim ? window.__btStripTrim().filter((s) => s.bundle === 'waterFrog').map((s) => s.url.replace(/\?.*$/, '').split('/').pop()) : null));
     rec.ok('1. the Water Caves\' monster is drawn, its look loaded as a monster of the world\'s is (guard)', !!(first && first.visible && first.texAlive), first);
+    {
+      const p1 = await poolWhen(128);
+      rec.ok('1. ...and with its look came its water\'s sprites: the pool of 128, made as the look loads, before any blow', !!p1 && p1.pool === 128 && p1.wanted === true, p1);
+    }
     rec.ok('1. ...from the frog\'s 15 strips: an idle and an attack for five sides, a hop for four, and the death',
       !!(strips && strips.length === 15 && ['idle', 'attack'].every((k) => ['s', 'sw', 'e', 'n', 'ne'].every((d) => strips.indexOf(`${k}-${d}.png`) >= 0))
         && ['s', 'sw', 'n', 'ne'].every((d) => strips.indexOf(`hop-${d}.png`) >= 0) && strips.indexOf('death.png') >= 0), strips);
@@ -245,8 +260,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 5. the wind-up, the blow, the recovery ── */
     for (const [label, payload, ms] of [['a swing', { ability: 'swing', phase: 'windup', ms: 2400 }, 2400], ['the slam', { ability: 'slam', phase: 'telegraph', ms: 2400, radius: 88 }, 2400]]) {
-      const blows0 = await P.page.evaluate((mid) => (window.__btWaterAttack ? window.__btWaterAttack().recent.filter((r) => r.id === mid).length : -1), id);
-      const fr = await P.page.evaluate(([mid, payload, ms]) => new Promise((resolve) => {
+      /* THE BLOW IS DRAWN IF A FRAME SEES IT IN TIME.  The renderer starts a
+         blow only on a frame within WATER_FX.LATE_MS (400 ms) of the warning's
+         end (one first seen later was off screen: it is not started), and it
+         lasts about half a second.  This box can go longer than that between
+         two frames; when it did (the frames' own times say so), the warning
+         is played again -- up to three times -- and it is that try which is
+         held to every check below. */
+      let blows0 = 0, fr = [], stalled = 0;
+      for (let attempt = 0; attempt < 3; attempt++) {
+      blows0 = await P.page.evaluate((mid) => (window.__btWaterAttack ? window.__btWaterAttack().recent.filter((r) => r.id === mid).length : -1), id);
+      fr = await P.page.evaluate(([mid, payload, ms]) => new Promise((resolve) => {
         const S = window._gameState.current;
         const out = [];
         const from = Date.now();
@@ -258,6 +282,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
         };
         requestAnimationFrame(step);
       }), [id, payload, ms]);
+        const firstAfter = fr.find((f) => f.t >= ms);
+        const drew = await P.page.evaluate((mid) => window.__btWaterAttack().recent.filter((r) => r.id === mid).length, id);
+        if (drew > blows0 || !(firstAfter && firstAfter.t - ms > 380) || attempt === 2) break;
+        stalled++;
+        console.log(`    (this box drew no frame for ${firstAfter.t - ms} ms as ${label}'s warning ended: played again)`);
+        await P.page.waitForTimeout(1500);
+      }
       const atk = fr.filter((f) => f.n === 15);
       const wind = atk.filter((f) => f.t < ms), rec3 = atk.filter((f) => f.t >= ms);
       const inOrder = atk.every((f, i) => i === 0 || f.ix >= atk[i - 1].ix);
@@ -275,7 +306,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const wa = await P.page.evaluate((mid) => { const w = window.__btWaterAttack ? window.__btWaterAttack() : null; return w ? { on: w.on, made: w.made, pool: w.pool, mine: w.recent.filter((r) => r.id === mid) } : null; }, id);
       const mine = wa && wa.mine[wa.mine.length - 1];
       const want = label === 'a swing' ? 'spray' : 'ring';
-      rec.ok(`5. ...and as it ends its water is drawn in code: ${label === 'a swing' ? 'a spray the way it faces (south)' : 'a ring at the worker\'s radius (88)'}, once`,
+      rec.ok(`5. ...and as it ends its water is drawn in code: ${label === 'a swing' ? 'a spray the way it faces (south)' : 'a ring at the worker\'s radius (88)'}, once${stalled ? ` (the warning played ${stalled + 1} times: this box stalled across the blow)` : ''}`,
         !!wa && wa.on && wa.made && wa.pool === 128 && wa.mine.length === blows0 + 1 && !!mine && mine.kind === want
         && (want === 'ring' ? mine.reach === 88 : (mine.dir[0] === 0 && mine.dir[1] === 1)), wa);
       if (label === 'a swing') {

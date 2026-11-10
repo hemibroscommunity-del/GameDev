@@ -17,6 +17,7 @@
  * until the strip has loaded.
  */
 import { loadTrackedStrip, unloadBundle } from './zoneTextures.js';
+import { wantStormSparks } from './stormSparksFx.js';   /* v2.3.4361: its lightning's sprites come and go with its look */
 
 const FRAME_W = 256;
 const FRAME_H = 256;
@@ -45,6 +46,7 @@ let deathFrames = [];
 let loadPromise = null;
 
 export function loadStormEyeSprites() {
+  wantStormSparks(true);
   if (loadPromise) return loadPromise;
   const strip = async (name, set) => {
     try {
@@ -82,6 +84,7 @@ export function hasDeathFrames() { return deathFrames.length > 0; }
 /* Let it all go (preloadAnimations freeZoneAssets, wheelMonsterArt freeLook):
    the memoised promise cleared too, so the next load is a real one. */
 export function unloadStormEyeSprites() {
+  wantStormSparks(false);
   loadPromise = null;
   viewFrames = [];
   deathFrames = [];
