@@ -6329,7 +6329,8 @@ export class GameRoom {
           // settles them -- the intercept validates at commit, moves the
           // goods, and annotates the accept with settled:true (or drops
           // forged/replayed accepts entirely).  Null means "don't relay".
-          if (msg.type === 'trade_offer' || msg.type === 'trade_accept') {
+          /* v2.3.4375: and a decline, which voids the offer it answers */
+          if (msg.type === 'trade_offer' || msg.type === 'trade_accept' || msg.type === 'trade_reject') {
             msg = await this._interceptTrade(session.id, msg);
             if (!msg) break;
           }

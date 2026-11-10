@@ -453,6 +453,12 @@ await req('DELETE', '/api/admin/flags?name=disable_threats');
   }
   { const was = room._liveFlags; room._liveFlags = { monstermoves: false }; const off = !room._monsterMovesOn(); room._liveFlags = { monsterslam: false }; const kind = !room._moveKindOn('monsterslam') && room._monsterMovesOn(); room._liveFlags = {}; const on = room._monsterMovesOn() && room._moveKindOn('monsterslam'); room._liveFlags = was;
     check('8n. `monstermoves: false` switches the moves off, `monsterslam: false` one kind, and nothing set leaves them on', off && kind && on); }
+  // 8o. v2.3.4375: the gift's switch (trade.js _giftClosed) -- closed while
+  //     the trade window is on; `giftclosed: false` opens it again, and
+  //     `trade2: false` (the window switched off) opens it as the fallback
+  check('8o. `giftclosed` is a name POST /flags takes', flagNameOk('giftclosed'));
+  { const was = room._liveFlags; room._liveFlags = {}; const closed = room._giftClosed(); room._liveFlags = { giftclosed: false }; const ks = !room._giftClosed(); room._liveFlags = { trade2: false }; const fb = !room._giftClosed(); room._liveFlags = was;
+    check('8o. nothing set closes the gift, `giftclosed: false` and `trade2: false` each open it', closed && ks && fb); }
   // 8h. v2.3.3732: the message diet's two lower-case switches (movepath.js):
   //     v2.3.3744: every phone is on it by default, `pathall: false` leaves
   //     only ?diet=1 phones, `movepath: false` kills it, each through the
