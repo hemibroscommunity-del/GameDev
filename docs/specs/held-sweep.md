@@ -267,7 +267,7 @@ Not on that list because the tour cannot see them:
   in Safari (its canvas, its garbage collector) is not on this list.
 - **Windows and Mac**, where looks are still baked per look.
 
-## The crowd tour (v2.3.4494)
+## The crowd tour (v2.3.4499)
 
 The owner, 2026-11-10, after the sweep: use the PATTERN to see the next ones
 coming. Every freeze found so far (TRAPS 281, 283, 317, 318; the tour above)
