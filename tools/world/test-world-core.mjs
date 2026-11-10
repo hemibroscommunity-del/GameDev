@@ -4739,7 +4739,7 @@ console.log('the lagoon islet (v2.3.3994)');
     if (buf[a] !== buf2[b] || buf[a + 1] !== buf2[b + 1] || buf[a + 2] !== buf2[b + 2] || buf[a + 3] !== buf2[b + 3]) diff++;
   }
   ok(`the faces, rims, vines and chest are drawn in ${used.size} colours, all the rises' own (${pal.size}: a piece stays far under 256), and every pixel the same in two pieces laid apart`,
-    painted > 50000 && off.length === 0 && pal.size <= 40 && used.size >= 20 && diff === 0, { off: off.slice(0, 5), diff });
+    painted > 50000 && off.length === 0 && pal.size <= 60 /* v2.3.4462: + a hill's earth, stones, grass and shade */ && used.size >= 20 && diff === 0, { off: off.slice(0, 5), diff });
   const gw = fs.readFileSync(new URL('../../public/tools/world/core/ground-worker.js', import.meta.url), 'utf8');
   ok('...laid and sent by the ground worker for everyone (v2.3.4453), unless the address says climb=0',
     /climb: climbOn\(search\)/.test(gw) && /rises: W\.climb \? riseMessage\(PLAN\) : null/.test(gw) && /if \(W\.climb\) risePaint\(/.test(gw)

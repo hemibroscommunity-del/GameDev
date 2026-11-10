@@ -152,6 +152,14 @@ export const RISE_PALETTE = Object.freeze({
   woodEdge: [52, 30, 16],
   iron: Object.freeze([[70, 74, 80], [118, 124, 132]]),
   gold: Object.freeze([[196, 150, 52], [240, 204, 96]]),
+  /* v2.3.4462: a `look: 'hill'` rise (the Town Bluff, on the commons' grass): a bank of packed earth
+     with stones set in it, under a lip of the commons' own short green grass (#86b94f), and the
+     shade it throws at its foot -- not the sea's dark rock */
+  earth: Object.freeze([[70, 50, 32], [90, 65, 41], [110, 82, 52], [130, 99, 65], [150, 118, 80]]),
+  earthEdge: [52, 37, 24],
+  stone: Object.freeze([[104, 104, 96], [134, 134, 124], [160, 160, 148]]),
+  grass: Object.freeze([[70, 112, 46], [92, 140, 56], [114, 164, 66], [134, 185, 79], [156, 202, 96]]),
+  shade: Object.freeze([[62, 100, 42], [80, 122, 52]]),
 });
 
 const pick = (arr, v) => arr[Math.max(0, Math.min(arr.length - 1, Math.floor(v * arr.length)))];
@@ -172,13 +180,14 @@ export function risePaint(plan, data, ow, oh, X0, Y0, K, opts = {}) {
   const gxa = (X0 - F.x0) * wpa, gya = (Y0 - F.y0) * wpa;
   const gxb = gxa + (ow / K) * wpa, gyb = gya + (oh / K) * wpa;
   const LIFT = 34;   /* the chest and the lip draw a little above their cells */
-  if (gxb < L.x0 * c || gxa > (L.x0 + L.w) * c || gyb < L.y0 * c - LIFT || gya > (L.y0 + L.h) * c) return 0;
+  const BELOW = 12;   /* v2.3.4462: a hill's shade falls a little below its foot */
+  if (gxb < L.x0 * c || gxa > (L.x0 + L.w) * c || gyb < L.y0 * c - LIFT || gya > (L.y0 + L.h) * c + BELOW) return 0;
   /* v2.3.4456: ...and near one rise in particular -- the grid is ONE box over every rise, and with a
      rise by the town and two on the islet that box is a strip a quarter of the Wheel long: a piece in it
      but near no rise has nothing to paint, and must not ask every pixel */
   let near = false;
   for (const r of L.list) {
-    if (gxb >= r.x0 * c && gxa <= r.x1 * c && gyb >= r.y0 * c - LIFT && gya <= r.y1 * c) { near = true; break; }
+    if (gxb >= r.x0 * c && gxa <= r.x1 * c && gyb >= r.y0 * c - LIFT && gya <= r.y1 * c + BELOW) { near = true; break; }
   }
   if (!near) return 0;
   let n = 0;
@@ -210,14 +219,21 @@ export function riseColour(L, gx, gy, seed) {
      ends on a wandering line, not a cell's edge */
   for (let k = L.list.length - 1; k >= 0; k--) {
     const r = L.list[k];
-    if (gx < r.x0 * c || gx >= r.x1 * c || gy < r.y0 * c - 6 || gy >= r.y1 * c + 5) continue;
+    const hill = r.look === 'hill';
+    if (gx < r.x0 * c || gx >= r.x1 * c || gy < r.y0 * c - 6 || gy >= r.y1 * c + (hill ? 12 : 5)) continue;
     const top = r.faceY0 * c;
     /* the lip's line: wandering 0-4 px over the face's top edge; the foot's,
        0-4 px past the face's last row onto the ground below (rubble), so
        neither is a ruler line (the art law; the walk grid stays on cells) */
     const lip = top - 2 + 2 * valueNoise(gx * 0.07, 3.1, seed + r.k);
     const foot = r.y1 * c + 2 + 2 * valueNoise(gx * 0.09, 5.3, seed + 7 + r.k);
-    if (gy >= lip && gy < foot) return faceColour(r, c, gx, gy, top, foot, lip, seed);
+    if (gy >= lip && gy < foot) return hill ? hillFace(r, c, gx, gy, top, foot, lip, seed) : faceColour(r, c, gx, gy, top, foot, lip, seed);
+    /* v2.3.4462: a hill throws a little shade on the ground at its foot (what makes a bank stand UP on
+       flat grass): 7 px, thinning out, so it ends in the grass and not on a line */
+    if (hill && gy >= foot && gy < foot + 7) {
+      const t = (gy - foot) / 7;
+      return hash2(Math.floor(gx), Math.floor(gy), seed + 41) > t * 0.95 ? RISE_PALETTE.shade[t < 0.45 ? 0 : 1] : null;
+    }
     if (gy >= r.y1 * c) continue;
     if (gy < r.y0 * c) {
       /* above the north rim: the rim's back edge, a hair of rock */
@@ -318,6 +334,7 @@ function caveColour(r, c, gx, gy, foot, seed) {
 
 /* a rim: a low lip of the same rock, mossy on top, its outer edge outlined */
 function rimColour(r, c, gx, gy, seed) {
+  if (r.look === 'hill') return hillRim(r, c, gx, gy, seed);
   const g = valueNoise(gx * 0.27, gy * 0.27, seed + 51);
   const lit = valueNoise(gx * 0.05, gy * 0.05, seed + 53);
   /* the outer edge, one darker pixel: the west, east and north sides */
@@ -325,6 +342,63 @@ function rimColour(r, c, gx, gy, seed) {
   if (ox < 1 || oxe <= 1 || oy < 1) return RISE_PALETTE.edge;
   if (lit + 0.35 * g > 0.35) return pick(RISE_PALETTE.moss, 0.3 + 0.35 * (g * 0.5 + 0.5));
   return pick(RISE_PALETTE.rock, 0.45 + 0.4 * (g * 0.5 + 0.5));
+}
+
+/* ═══ v2.3.4462: A HILL'S OWN LOOK (`look: 'hill'`: the Town Bluff) ═══
+   The owner sees everything, and the Bluff first shipped (v2.3.4456) in the islet's sea rock: a grey
+   stone outline on the commons' grass, "a low stone-rimmed terrace".  A rise on grass is a HILL:
+     its FACE a bank of packed earth, darker toward its foot, with stones set in it and a tuft of
+       grass here and there, under a LIP of the commons' own grass hanging raggedly over it;
+     its RIM (the top's back and sides, which stay solid) nothing but the bank's thin earth edge --
+       the top's own grass runs right to it, so the top reads as ground, raised, not as a walled plot;
+     and the shade at its foot (riseColour).
+   Painted in code like the rest (no picture loaded), in RISE_PALETTE's own colours. */
+function hillFace(r, c, gx, gy, top, foot, lip, seed) {
+  const x0 = r.x0 * c, x1 = r.x1 * c;
+  if (gx < x0 + 1 || gx >= x1 - 1) return RISE_PALETTE.earthEdge;
+  /* the grass lip: its lit edge, then blades hanging 5-10 px over the earth, ragged */
+  const fringe = 5 + 5 * (valueNoise(gx * 0.17, 7.7, seed + 11) * 0.5 + 0.5);
+  if (gy < lip + 1.5) return RISE_PALETTE.grass[4];
+  if (gy < lip + fringe) {
+    const t = (gy - lip) / fringe;
+    const blade = valueNoise(gx * 0.9, gy * 0.22, seed + 13);
+    if (t < 0.55 || blade > 0.05) return pick(RISE_PALETTE.grass, 0.78 - 0.62 * t + 0.1 * blade);
+  }
+  /* the vines, over the climb strip */
+  if (r.climb && gx >= r.climb.x0 * c && gx < r.climb.x1 * c) {
+    const v = vineColour(r, c, gx, gy, lip, foot, seed);
+    if (v) return v;
+  }
+  /* the dark under the lip */
+  if (gy < lip + fringe + 2) return RISE_PALETTE.earth[0];
+  const depth = (gy - top) / Math.max(1, foot - top);
+  /* stones set in the bank: one in about a quarter of an 11 x 8 px grid's cells, each a little off
+     its cell's middle, lit from above, a dark seat under it */
+  const sx = gx / 11, sy = gy / 8, ix = Math.floor(sx), iy = Math.floor(sy);
+  if (hash2(ix, iy, seed + 31) > 0.74) {
+    const mx = ix + 0.5 + (hash2(ix, iy, seed + 33) - 0.5) * 0.4, my = iy + 0.5 + (hash2(ix, iy, seed + 35) - 0.5) * 0.3;
+    const dx = (sx - mx) / 0.42, dy = (sy - my) / 0.38, d = dx * dx + dy * dy;
+    if (d < 1) return d > 0.7 && dy > 0 ? RISE_PALETTE.earth[0] : pick(RISE_PALETTE.stone, 0.72 - 0.5 * (dy * 0.5 + 0.5) + 0.12 * valueNoise(gx * 0.4, gy * 0.4, seed + 37));
+  }
+  /* the earth: packed in rough bands, grainy, darker toward the foot */
+  const strata = valueNoise(gx * 0.03, gy * 0.22, seed + 21);
+  const grain = valueNoise(gx * 0.35, gy * 0.35, seed + 23);
+  /* a tuft of grass that has taken hold, nearer the top */
+  if (valueNoise(gx * 0.08, gy * 0.11, seed + 27) - 0.3 * depth > 0.6 && grain > -0.1) return pick(RISE_PALETTE.grass, 0.2 + 0.3 * (grain * 0.5 + 0.5));
+  return pick(RISE_PALETTE.earth, 0.62 + 0.28 * strata + 0.14 * grain - 0.34 * depth);
+}
+function hillRim(r, c, gx, gy, seed) {
+  const g = valueNoise(gx * 0.27, gy * 0.27, seed + 51);
+  const ox = gx - r.x0 * c, oxe = r.x1 * c - gx, oy = gy - r.y0 * c;
+  const side = ox < 8 || oxe <= 8;
+  /* the outer edge, one darker pixel: the west, east and north sides */
+  if (ox < 1 || oxe <= 1 || oy < 1) return RISE_PALETTE.earthEdge;
+  /* the bank seen edge-on down each side: a strip of earth, then the grass's lit edge */
+  if (side) return pick(RISE_PALETTE.earth, 0.3 + 0.45 * (g * 0.5 + 0.5));
+  if (ox < 9.5 || oxe <= 9.5) return RISE_PALETTE.grass[4];
+  /* the back edge: a line of darker grass where the top ends */
+  if (oy < 4.5) return pick(RISE_PALETTE.grass, 0.1 + 0.2 * (g * 0.5 + 0.5));
+  return null;   /* the rest of the rim's cell is the top's own grass */
 }
 
 /* a small sea chest: oak boards bound in iron, a gold lock -- standing on
