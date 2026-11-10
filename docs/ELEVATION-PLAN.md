@@ -305,7 +305,7 @@ area goes and what its prize is: "Go recommended."
   commons north-east of town (`docs/specs/rise-chest.md`). It is drawn in the
   islet's rock; the `face-commons` and `steps` pictures above would make it a
   hill. Next: (d).
-- v2.3.4471: the Bluff is redrawn from the owner's reference sheet (a grass
+- v2.3.4483: the Bluff is redrawn from the owner's reference sheet (a grass
   ledge: boulder cliffs under a grass cap, side walls, round back corners) and
   its vines are a RAMP you walk up (`ramp`, a new kind of cell). The spec has
   it (`docs/specs/rise-chest.md` "Drawn as a grass ledge").

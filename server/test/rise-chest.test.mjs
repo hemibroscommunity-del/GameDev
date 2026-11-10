@@ -88,7 +88,7 @@ async function setup(opts = {}) {
   /* v2.3.4456: the Town Bluff's two follow the islet's two */
   check('1a the long Wheel\'s rises are baked for the worker: the islet\'s two, then the Town Bluff\'s two; a chest on each ledge', WHEEL_FACES_LONG === 5 && WHEEL_FACES.length === 4 && WHEEL_FACES.filter((r) => r.chest).length === 2
     && WHEEL_FACES.map((r) => r.id).join() === 'lagoon-terrace,lagoon-ledge,bluff-terrace,bluff-ledge' && WHEEL_FACES.every((r, i) => r.k === i), WHEEL_FACES.map((r) => r.id));
-  /* v2.3.4471: the Town Bluff's terrace has a RAMP where the islet's has vines (one or the other) */
+  /* v2.3.4483: the Town Bluff's terrace has a RAMP where the islet's has vines (one or the other) */
   check('1a2 every ledge with a chest is the taller rise that takes the flip, on a terrace with vines or a ramp', WHEEL_FACES.filter((r) => r.chest).every((r) => r.h > 85 && !r.climb && !r.ramp) && WHEEL_FACES.filter((r) => !r.chest).every((r) => r.h <= 85 && (!!r.climb) !== (!!r.ramp)));
   { const BT = WHEEL_FACES.find((r) => r.id === 'bluff-terrace');
     check('1a3 the Bluff\'s ramp is a strip of its face (the whole band, inside its ends)', !!BT && !!BT.ramp && !BT.climb && BT.ramp[1] === BT.face[1] && BT.ramp[3] === BT.face[3] && BT.ramp[0] > BT.face[0] && BT.ramp[2] < BT.face[2] && BT.ramp[2] - BT.ramp[0] >= 48, BT && BT.ramp); }

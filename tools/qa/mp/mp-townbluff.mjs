@@ -11,7 +11,7 @@
  *   1. the rises came, the Bluff's two among them, AFTER the islet's;
  *   2. nothing the world places stands on it (the keep-out);
  *   3. he walks from where a player arrives to its foot (it is near);
- *   4. the terrace's face stops him; he walks up its ramp (v2.3.4471: was vines), whose sides are walls;
+ *   4. the terrace's face stops him; he walks up its ramp (v2.3.4483: was vines), whose sides are walls;
  *   5. the flip lands him on the ledge;
  *   6. the chest pays its 100 coins, once.
  * Pictures: tools/qa/mp/out/townbluff-*.png.
@@ -70,7 +70,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('no resource, monster or townsperson stands on it', onIt.length === 0, onIt);
 
     /* ── 3. to its foot ── */
-    const vx = (T.ramp.x0 + T.ramp.x1) / 2;   /* v2.3.4471: the ramp's middle (was the vines') */
+    const vx = (T.ramp.x0 + T.ramp.x1) / 2;   /* v2.3.4483: the ramp's middle (was the vines') */
     const footFeet = T.face.y1 + HS + 24;
     await H.hopTo(P, vx - 90, footFeet + 60 - feetDy, { tries: 80 });
     await P.page.waitForTimeout(2500);
@@ -79,7 +79,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await hold(P, ['w'], 3000, (o) => o.length > 4 && Math.abs(o[o.length - 1].y - o[o.length - 3].y) < 0.3);
     const atFace = await st(P);
     rec.ok('the terrace\'s face stops him at its foot, walking (beside the ramp)', atFace.y + feetDy - HS - T.face.y1 >= -0.5 && atFace.y + feetDy - HS - T.face.y1 < 8 /* a walk stops a few px off a wall */, { feet: atFace.y + feetDy, foot: T.face.y1 });
-    /* v2.3.4471: the ramp (was the vines): a plain walk north takes him up the face's band -- no
+    /* v2.3.4483: the ramp (was the vines): a plain walk north takes him up the face's band -- no
        climb, no jump, nothing dropping him back or "rescuing" him out of it -- and its sides are walls */
     await H.hopTo(P, vx, footFeet - feetDy, { tries: 30 });
     await P.page.waitForTimeout(700);

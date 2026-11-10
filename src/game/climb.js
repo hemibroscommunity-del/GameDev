@@ -34,7 +34,7 @@
  *             (the 144 px ledge: a well-timed flip covers 175 px walking, 273
  *             sprinting; an early one 94).  Short of it, or too tall for the
  *             jump you made: you drop back where you jumped from.
- *   WALKING   (v2.3.4471) a RAMP (`ramp`) is a strip of a face left open: a
+ *   WALKING   (v2.3.4483) a RAMP (`ramp`) is a strip of a face left open: a
  *             grassy slope you walk up and down at your own pace (onRamp).
  *   DOWN      a jump going south off a top drops you to the face's foot (a
  *             Pokemon ledge); walking into a face from above stops you, so
@@ -101,7 +101,7 @@ export function feetInBand(r, fx, fy, h = FEET_HS) {
   const f = r.face;
   return fx + h > f.x0 && fx - h < f.x1 && fy + h > f.y0 && fy - h < f.y1;
 }
-/** v2.3.4471: are the feet (their middle) on rise r's RAMP -- the strip of its face you walk up (a
+/** v2.3.4483: are the feet (their middle) on rise r's RAMP -- the strip of its face you walk up (a
     grassy slope; core/rises.js `ramp`, kind 'ramp', which the walk grid leaves open)?  In the face's
     band there is no wall under them: nothing to be dropped back from or rescued out of. */
 export function onRamp(r, fx, fy) {
@@ -141,7 +141,7 @@ export function faceKey(r, dir) { return 'face:' + r.id + ':' + dir; }
  */
 export function faceLanding(r, dir, flip, fx, fy, h = FEET_HS) {
   const f = r.face;
-  /* v2.3.4471: come down on its ramp, you are standing on a slope: nothing to judge */
+  /* v2.3.4483: come down on its ramp, you are standing on a slope: nothing to judge */
   const inBand = feetInBand(r, fx, fy, h) && !onRamp(r, fx, fy);
   if (dir === 'S') return inBand ? 'foot' : 'clear';
   const onTop = fy + h <= f.y0 && fx + h > f.x0 && fx - h < f.x1;

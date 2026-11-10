@@ -4739,7 +4739,7 @@ console.log('the lagoon islet (v2.3.3994)');
     if (buf[a] !== buf2[b] || buf[a + 1] !== buf2[b + 1] || buf[a + 2] !== buf2[b + 2] || buf[a + 3] !== buf2[b + 3]) diff++;
   }
   ok(`the faces, rims, vines and chest are drawn in ${used.size} colours, all the rises' own (${pal.size}: a piece stays far under 256), and every pixel the same in two pieces laid apart`,
-    painted > 50000 && off.length === 0 && pal.size <= 60 /* v2.3.4462: + a hill's colours (v2.3.4471: boulders, grass, its edge, shade) */ && used.size >= 20 && diff === 0, { off: off.slice(0, 5), diff });
+    painted > 50000 && off.length === 0 && pal.size <= 60 /* v2.3.4462: + a hill's colours (v2.3.4483: boulders, grass, its edge, shade) */ && used.size >= 20 && diff === 0, { off: off.slice(0, 5), diff });
   const gw = fs.readFileSync(new URL('../../public/tools/world/core/ground-worker.js', import.meta.url), 'utf8');
   ok('...laid and sent by the ground worker for everyone (v2.3.4453), unless the address says climb=0',
     /climb: climbOn\(search\)/.test(gw) && /rises: W\.climb \? riseMessage\(PLAN\) : null/.test(gw) && /if \(W\.climb\) risePaint\(/.test(gw)
@@ -4759,11 +4759,11 @@ console.log('the lagoon islet (v2.3.3994)');
       const BT = L.list.find((r) => r.id === 'bluff-terrace'), BL = L.list.find((r) => r.id === 'bluff-ledge');
       const { islBoxes } = await import('../../public/tools/world/core/placing.js');
       const keep = islBoxes(PLAN5, { ox: 0, oy: 0 }).find((b) => b.id === 'bluff-terrace');
-      ok('the Town Bluff: a terrace with a ramp (v2.3.4471: was vines) and on it a ledge with a chest, listed after the islet\'s, the long Wheel only, its ground kept clear (its box, 3 cells round it, 2 more to the south)',
+      ok('the Town Bluff: a terrace with a ramp (v2.3.4483: was vines) and on it a ledge with a chest, listed after the islet\'s, the long Wheel only, its ground kept clear (its box, 3 cells round it, 2 more to the south)',
         !!BT && !!BL && BT.k === 2 && BL.k === 3 && BT.look === 'hill' && BL.look === 'hill' && !BT.islet && BT.h === 72 && !BT.climb && !!BT.ramp && BL.h === 144 && !!BL.chest
         && BL.x0 > BT.x0 && BL.x1 < BT.x1 && BL.y1 <= BT.faceY0 && riseLayout(PLAN) === null
         && !!keep && keep.x0 === BT.x0 - 3 && keep.y0 === BT.y0 - 3 && keep.x1 === BT.x1 + 3 && keep.y1 === BT.y1 + 5, { BT: BT && [BT.x0, BT.y0, BT.x1, BT.y1], keep });
-      /* v2.3.4471: the ramp's cells are their own kind, which the walk grid leaves open; the back corners are rim on the diagonal */
+      /* v2.3.4483: the ramp's cells are their own kind, which the walk grid leaves open; the back corners are rim on the diagonal */
       const kAt = (x, y) => L.cells[(y - L.y0) * L.w + (x - L.x0)] & 7;
       const CL = await import('../../src/game/climb.js');
       const mr = msg.list.find((r) => r.id === 'bluff-terrace');

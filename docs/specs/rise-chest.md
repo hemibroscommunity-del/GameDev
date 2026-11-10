@@ -67,7 +67,7 @@ near BroTown).
   from where a player arrives (a short walk), in the safe ground: no monster
   comes. Its face looks south, at the town.
 - **What**: the islet's two steps again. A terrace (72 px) its ramp
-  (v2.3.4471; it was vines) or a sprinting jump gets you up, and on it a
+  (v2.3.4483; it was vines) or a sprinting jump gets you up, and on it a
   ledge (144 px) only the flip reaches,
   with a chest: **100 coins, once a character** ("the small one": a new
   character starts with 50 and this is a minute from the square).
@@ -89,7 +89,7 @@ near BroTown).
   fingerprints: the plan's text changed), `server/src/wheelfaces.js` (two
   more rows). `wheelspawns.js` and `wheelspawns1.js` came out byte for byte
   the same: no monster's place and no resource moved.
-- **Drawn as a grass ledge, with a ramp** (v2.3.4471; `rises.js` `hillFace`,
+- **Drawn as a grass ledge, with a ramp** (v2.3.4483; `rises.js` `hillFace`,
   `hillRim`, `boulderColour`, `hillEdge`). It first shipped in the islet's sea
   rock (a grey outline on the grass), then as a flat earth bank (v2.3.4462).
   The owner sent a reference sheet ("Terrain Elevation - Tile Set", its grass

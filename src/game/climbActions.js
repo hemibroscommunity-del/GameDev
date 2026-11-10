@@ -208,7 +208,7 @@ export function climbTick(S, now, gdy, popup) {
     /* feet in a face with no climb, jump or drop to explain it (a login
        there, a teleport): put at its foot */
     for (const r of R.list) {
-      /* v2.3.4471: ...but not walking up its ramp, which is in the band and open */
+      /* v2.3.4483: ...but not walking up its ramp, which is in the band and open */
       if (feetInBand(r, fx, fy, FEET_HS - 1) && !onRamp(r, fx, fy)) {
         const f = footOf(r, fx, FEET_HS);
         S._climbDrop = startDrop(P.x, P.y, f.x, f.y - (gdy || 0), now, 'rescue');

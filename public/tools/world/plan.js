@@ -456,7 +456,7 @@ const BASE_PLAN = {
        face looking south at the town -- a terrace a sprinting jump or its
        vines get you up, and on it a ledge only the flip reaches, a chest on
        top (server/src/risechest.js: once a character).
-       v2.3.4471: its vines are a RAMP now (`ramp`: a strip of the face you walk up, a grassy slope:
+       v2.3.4483: its vines are a RAMP now (`ramp`: a strip of the face you walk up, a grassy slope:
        the owner's reference sheet, "one grassy ramp"), east of the middle so the walk up does not
        line up with the jump at the ledge.  `round`: its two back corners cut on the diagonal, that
        many cells deep, so its outline is a curve and not a box's (rises.js kindOf, hillRim).
