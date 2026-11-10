@@ -1,0 +1,741 @@
+{
+ "v": 2,
+ "version": "v2.3.3737",
+ "set": "standinlegs",
+ "kind": "body",
+ "bits": 8,
+ "mip": false,
+ "refScale": 1,
+ "fw": 128,
+ "fh": 128,
+ "roles": [
+  "keep",
+  "skin",
+  "pants",
+  "boots"
+ ],
+ "roleDefs": [
+  {
+   "name": "skin",
+   "entry": 1,
+   "ref": 149,
+   "under": 0
+  },
+  {
+   "name": "pants",
+   "entry": 2,
+   "ref": 112,
+   "under": 0
+  },
+  {
+   "name": "boots",
+   "entry": 3,
+   "ref": 75,
+   "under": 0
+  }
+ ],
+ "code": "3ada761717e20022",
+ "codeFiles": [
+  "src/rendering/playerSkins.js",
+  "src/rendering/garmentConfine.js",
+  "src/rendering/spriteScale.js",
+  "src/rendering/playerDecal.js",
+  "src/rendering/lookSets/standin.js",
+  "src/rendering/lookSets/standinlegs.js"
+ ],
+ "sheets": {
+  "sword-south-body": {
+   "ds": 1,
+   "frames": 14,
+   "fw": 320,
+   "fh": 320,
+   "w": 1784,
+   "h": 208,
+   "tableRows": 1,
+   "entries": 256,
+   "ends": [
+    84,
+    191,
+    237,
+    256
+   ],
+   "cells": [
+    [
+     0,
+     0,
+     80,
+     72,
+     136,
+     208,
+     0
+    ],
+    [
+     144,
+     0,
+     80,
+     72,
+     136,
+     208,
+     0
+    ],
+    [
+     288,
+     0,
+     88,
+     72,
+     128,
+     208,
+     0
+    ],
+    [
+     424,
+     0,
+     104,
+     72,
+     112,
+     208,
+     0
+    ],
+    [
+     544,
+     0,
+     104,
+     72,
+     112,
+     208,
+     0
+    ],
+    [
+     664,
+     0,
+     104,
+     72,
+     112,
+     208,
+     0
+    ],
+    [
+     784,
+     0,
+     120,
+     72,
+     96,
+     208,
+     0
+    ],
+    [
+     888,
+     0,
+     104,
+     72,
+     112,
+     208,
+     0
+    ],
+    [
+     1008,
+     0,
+     104,
+     72,
+     120,
+     208,
+     0
+    ],
+    [
+     1136,
+     0,
+     104,
+     72,
+     128,
+     208,
+     0
+    ],
+    [
+     1272,
+     0,
+     104,
+     72,
+     128,
+     208,
+     0
+    ],
+    [
+     1408,
+     0,
+     104,
+     72,
+     120,
+     208,
+     0
+    ],
+    [
+     1536,
+     0,
+     104,
+     72,
+     120,
+     208,
+     0
+    ],
+    [
+     1664,
+     0,
+     104,
+     72,
+     120,
+     208,
+     0
+    ]
+   ],
+   "split": 0,
+   "quant": {
+    "from": 15143,
+    "to": 255,
+    "meanMoved": 8.19,
+    "worstMoved": 15,
+    "over": false
+   },
+   "artFiles": [
+    "public/sprites/player/sword-south-body.png",
+    "public/sprites/player/sword-south-body.webp",
+    "public/sprites/gear/legs/steelgreaves/swing-south.png"
+   ],
+   "art": "e50515f18c92533e",
+   "bytes": 39922
+  },
+  "sword-east-body": {
+   "bits": 16,
+   "ds": 1,
+   "frames": 11,
+   "fw": 402,
+   "fh": 246,
+   "w": 536,
+   "h": 584,
+   "tableRows": 42,
+   "entries": 11148,
+   "ends": [
+    2819,
+    7627,
+    10175,
+    11148
+   ],
+   "cells": [
+    [
+     0,
+     0,
+     144,
+     24,
+     112,
+     208,
+     0
+    ],
+    [
+     120,
+     0,
+     128,
+     24,
+     128,
+     208,
+     0
+    ],
+    [
+     256,
+     0,
+     136,
+     32,
+     120,
+     200,
+     0
+    ],
+    [
+     384,
+     0,
+     152,
+     40,
+     104,
+     184,
+     0
+    ],
+    [
+     0,
+     216,
+     168,
+     40,
+     96,
+     184,
+     0
+    ],
+    [
+     104,
+     216,
+     136,
+     48,
+     128,
+     176,
+     0
+    ],
+    [
+     240,
+     216,
+     128,
+     56,
+     144,
+     176,
+     0
+    ],
+    [
+     392,
+     216,
+     128,
+     56,
+     144,
+     176,
+     0
+    ],
+    [
+     0,
+     408,
+     128,
+     56,
+     152,
+     176,
+     0
+    ],
+    [
+     160,
+     408,
+     128,
+     56,
+     152,
+     176,
+     0
+    ],
+    [
+     320,
+     408,
+     128,
+     56,
+     152,
+     176,
+     0
+    ]
+   ],
+   "split": 0,
+   "artFiles": [
+    "public/sprites/player/sword-east-body.png",
+    "public/sprites/player/sword-east-body.webp",
+    "public/sprites/gear/legs/steelgreaves/swing-east.png"
+   ],
+   "art": "3736e824e40facc3",
+   "bytes": 95985
+  },
+  "sword-north-body": {
+   "bits": 16,
+   "ds": 1,
+   "frames": 9,
+   "fw": 340,
+   "fh": 227,
+   "w": 1304,
+   "h": 208,
+   "tableRows": 38,
+   "entries": 24278,
+   "ends": [
+    6594,
+    16584,
+    22870,
+    24278
+   ],
+   "cells": [
+    [
+     0,
+     0,
+     96,
+     16,
+     144,
+     200,
+     0
+    ],
+    [
+     152,
+     0,
+     96,
+     16,
+     144,
+     200,
+     0
+    ],
+    [
+     304,
+     0,
+     104,
+     16,
+     136,
+     200,
+     0
+    ],
+    [
+     448,
+     0,
+     104,
+     16,
+     136,
+     200,
+     0
+    ],
+    [
+     592,
+     0,
+     104,
+     8,
+     136,
+     208,
+     0
+    ],
+    [
+     736,
+     0,
+     104,
+     8,
+     136,
+     208,
+     0
+    ],
+    [
+     880,
+     0,
+     104,
+     8,
+     136,
+     208,
+     0
+    ],
+    [
+     1024,
+     0,
+     104,
+     8,
+     136,
+     208,
+     0
+    ],
+    [
+     1168,
+     0,
+     104,
+     8,
+     136,
+     208,
+     0
+    ]
+   ],
+   "split": 0,
+   "artFiles": [
+    "public/sprites/player/sword-north-body.png",
+    "public/sprites/player/sword-north-body.webp",
+    "public/sprites/gear/legs/steelgreaves/swing-north.png"
+   ],
+   "art": "3bf715523bb601e1",
+   "bytes": 222586
+  },
+  "bow-east-body": {
+   "ds": 1,
+   "frames": 3,
+   "fw": 214,
+   "fh": 241,
+   "w": 502,
+   "h": 200,
+   "tableRows": 2,
+   "entries": 256,
+   "ends": [
+    109,
+    199,
+    237,
+    256
+   ],
+   "cells": [
+    [
+     0,
+     0,
+     56,
+     40,
+     144,
+     200,
+     0
+    ],
+    [
+     152,
+     0,
+     48,
+     40,
+     160,
+     200,
+     0
+    ],
+    [
+     320,
+     0,
+     32,
+     40,
+     182,
+     200,
+     0
+    ]
+   ],
+   "split": 0,
+   "quant": {
+    "from": 6547,
+    "to": 255,
+    "meanMoved": 2.19,
+    "worstMoved": 14,
+    "over": false
+   },
+   "artFiles": [
+    "public/sprites/player/bow-east-body.png",
+    "public/sprites/player/bow-east-body.webp",
+    "public/sprites/gear/legs/steelgreaves/bowshot-east.png"
+   ],
+   "art": "64ad68f13a81cd01",
+   "bytes": 18265
+  },
+  "bow-southwest-body": {
+   "ds": 1,
+   "frames": 3,
+   "fw": 154,
+   "fh": 233,
+   "w": 408,
+   "h": 200,
+   "tableRows": 2,
+   "entries": 256,
+   "ends": [
+    109,
+    208,
+    240,
+    256
+   ],
+   "cells": [
+    [
+     0,
+     0,
+     8,
+     32,
+     120,
+     200,
+     0
+    ],
+    [
+     128,
+     0,
+     8,
+     32,
+     128,
+     200,
+     0
+    ],
+    [
+     264,
+     0,
+     0,
+     32,
+     144,
+     200,
+     0
+    ]
+   ],
+   "split": 0,
+   "quant": {
+    "from": 7853,
+    "to": 255,
+    "meanMoved": 2.64,
+    "worstMoved": 14.4,
+    "over": false
+   },
+   "artFiles": [
+    "public/sprites/player/bow-southwest-body.png",
+    "public/sprites/player/bow-southwest-body.webp",
+    "public/sprites/gear/legs/steelgreaves/bowshot-southwest.png"
+   ],
+   "art": "171e3182efd58b19",
+   "bytes": 17775
+  },
+  "bow-south-body": {
+   "ds": 1,
+   "frames": 3,
+   "fw": 130,
+   "fh": 234,
+   "w": 328,
+   "h": 210,
+   "tableRows": 2,
+   "entries": 256,
+   "ends": [
+    122,
+    198,
+    242,
+    256
+   ],
+   "cells": [
+    [
+     0,
+     0,
+     16,
+     24,
+     96,
+     210,
+     0
+    ],
+    [
+     104,
+     0,
+     8,
+     24,
+     104,
+     210,
+     0
+    ],
+    [
+     216,
+     0,
+     0,
+     24,
+     112,
+     210,
+     0
+    ]
+   ],
+   "split": 0,
+   "quant": {
+    "from": 7446,
+    "to": 255,
+    "meanMoved": 4.67,
+    "worstMoved": 14,
+    "over": false
+   },
+   "artFiles": [
+    "public/sprites/player/bow-south-body.png",
+    "public/sprites/player/bow-south-body.webp",
+    "public/sprites/gear/legs/steelgreaves/bowshot-south.png"
+   ],
+   "art": "dea5878760b2a972",
+   "bytes": 14323
+  },
+  "bow-northwest-body": {
+   "ds": 1,
+   "frames": 3,
+   "fw": 160,
+   "fh": 248,
+   "w": 400,
+   "h": 200,
+   "tableRows": 2,
+   "entries": 256,
+   "ends": [
+    98,
+    188,
+    225,
+    256
+   ],
+   "cells": [
+    [
+     0,
+     0,
+     8,
+     48,
+     128,
+     200,
+     0
+    ],
+    [
+     136,
+     0,
+     8,
+     48,
+     120,
+     200,
+     0
+    ],
+    [
+     264,
+     0,
+     0,
+     48,
+     136,
+     200,
+     0
+    ]
+   ],
+   "split": 0,
+   "quant": {
+    "from": 6191,
+    "to": 255,
+    "meanMoved": 1.89,
+    "worstMoved": 12,
+    "over": false
+   },
+   "artFiles": [
+    "public/sprites/player/bow-northwest-body.png",
+    "public/sprites/player/bow-northwest-body.webp",
+    "public/sprites/gear/legs/steelgreaves/bowshot-northwest.png"
+   ],
+   "art": "986b4b41b76cb4fb",
+   "bytes": 18810
+  },
+  "bow-north-body": {
+   "ds": 1,
+   "frames": 3,
+   "fw": 122,
+   "fh": 260,
+   "w": 280,
+   "h": 204,
+   "tableRows": 2,
+   "entries": 256,
+   "ends": [
+    110,
+    220,
+    239,
+    256
+   ],
+   "cells": [
+    [
+     0,
+     0,
+     32,
+     56,
+     88,
+     204,
+     0
+    ],
+    [
+     96,
+     0,
+     32,
+     56,
+     80,
+     204,
+     0
+    ],
+    [
+     184,
+     0,
+     24,
+     56,
+     96,
+     204,
+     0
+    ]
+   ],
+   "split": 0,
+   "quant": {
+    "from": 5893,
+    "to": 255,
+    "meanMoved": 2.42,
+    "worstMoved": 14.1,
+    "over": false
+   },
+   "artFiles": [
+    "public/sprites/player/bow-north-body.png",
+    "public/sprites/player/bow-north-body.webp",
+    "public/sprites/gear/legs/steelgreaves/bowshot-north.png"
+   ],
+   "art": "e9c1315384b1e477",
+   "bytes": 13918
+  }
+ }
+}

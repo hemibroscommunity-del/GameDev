@@ -18,8 +18,19 @@
  *
  *   { id, png }  -> { id, ok: true, w, h, stride, n, idx, rgb, alpha }
  *                   or { id, ok: false, error } -- loaded as a picture then
+ *
+ * v2.3.4470: and a STRIP of frames (a monster's: zoneTextures.js
+ * loadTrackedStrip, stripRead.js) -- read as its numbers and cropped and
+ * packed here too (stripPack.js), so the page's share of a strip that loads
+ * while you play is making its texture:
+ *
+ *   { id, strip, fw, fh, n } -> { id, ok: true, w, h, idx, pal, cells, n,
+ *                   fileW, fileH } or { id, ok: false, error } -- unpacked on
+ *                   the page then, as before
  */
 import { decodePng8 } from './png8Decode.js';
+import { packStripNumbers } from './stripPack.js';   /* v2.3.4470: a monster's strip, cropped and packed from its own numbers */
+import { bottomsOfNumbers } from './artBottoms.js';   /* v2.3.4470: each frame's ground line, read here from the page's numbers */
 
 function imageUrlOf(sheetUrl, image) {
   const base = new URL(sheetUrl, self.location.href);
@@ -31,6 +42,17 @@ function imageUrlOf(sheetUrl, image) {
 self.onmessage = async (ev) => {
   const m = ev.data || {};
   try {
+    if (m.strip) {
+      const pr = await fetch(new URL(m.strip, self.location.href).href);
+      if (!pr.ok) throw new Error('strip ' + pr.status);
+      const dec = await decodePng8(new Uint8Array(await pr.arrayBuffer()), undefined, 1);
+      if (!dec) throw new Error('not a palette PNG');
+      const out = packStripNumbers(dec, m.fw, m.fh, m.n || 0);
+      if (!out) throw new Error('not a strip of ' + m.fw + ' x ' + m.fh + ' frames');
+      self.postMessage({ id: m.id, ok: true, w: out.w, h: out.h, idx: out.idx, pal: out.pal, cells: out.cells, n: out.n, fileW: dec.w, fileH: dec.h },
+        [out.idx.buffer, out.pal.buffer]);
+      return;
+    }
     if (m.png) {
       const pr = await fetch(new URL(m.png, self.location.href).href);
       if (!pr.ok) throw new Error('picture ' + pr.status);
@@ -52,6 +74,25 @@ self.onmessage = async (ev) => {
     const dec = await decodePng8(bytes, undefined, 4);
     if (!dec) throw new Error('not a palette PNG');
     const rgb = dec.rgb.slice(), alpha = dec.alpha;
+    /* v2.3.4470: `bases` -- each frame's ground line worked out HERE from the numbers (artBottoms.js), so the page
+       does not decode the file a second time and read every frame back off a canvas (wheelObjects.js).  The file's
+       own bytes then stay here (they were sent only for that read).  A frame laid on its side is left to the page. */
+    if (m.bases) {
+      const bottoms = Object.create(null);
+      let all = true;
+      for (const name of Object.keys(data.frames || {})) {
+        const fr = data.frames[name];
+        const f = fr && fr.frame;
+        if (!f || fr.rotated) { all = false; continue; }
+        bottoms[name] = bottomsOfNumbers(dec.idx, dec.stride, alpha, f.x, f.y, f.w, f.h);
+      }
+      if (all) {
+        self.postMessage({ id: m.id, ok: true, data, image, w: dec.w, h: dec.h, stride: dec.stride, n: dec.n,
+          idx: dec.idx, rgb, alpha, bottoms, bytes: m.bases === 'both' ? bytes : null },
+          m.bases === 'both' ? [dec.idx.buffer, rgb.buffer, alpha.buffer, bytes.buffer] : [dec.idx.buffer, rgb.buffer, alpha.buffer]);
+        return;
+      }
+    }
     self.postMessage({ id: m.id, ok: true, data, image, w: dec.w, h: dec.h, stride: dec.stride, n: dec.n,
       idx: dec.idx, rgb, alpha, bytes }, [dec.idx.buffer, rgb.buffer, alpha.buffer, bytes.buffer]);
   } catch (e) {

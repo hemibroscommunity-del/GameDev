@@ -37,7 +37,11 @@ const LOOK = `try {
 const LEAK_MAX = 14;
 /* ...and the least a pose's moments show together with the clamp off, for the
    check to mean anything */
-const LEAK_SEEN = 25;
+/* v2.3.4470: 15, was 25.  Facing south the two moments show 20 px with the clamp off since the bare stand-ins have
+   been drawn from their 8-bit numbers (v2.3.3757: the classifier here reads fewer of the cut colours as pink or
+   blue) -- measured the same with this version's under-greaves sheets and with the old bake (`?legslook=0`), so the
+   guard was red on main.  20 against 0 with the clamp on is still a leak seen. */
+const LEAK_SEEN = 15;
 
 const FACING_ANG = { east: 0, southeast: Math.PI / 4, south: Math.PI / 2, southwest: 3 * Math.PI / 4, west: Math.PI, northwest: -3 * Math.PI / 4, north: -Math.PI / 2, northeast: -Math.PI / 4 };
 
@@ -327,8 +331,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await letGo(A.page);
       }
     }
-    const clamped = await A.page.evaluate(() => window.__btStandInLegs().clamped);
-    rec.ok('every sword and bow sheet was clamped under the greaves', Object.keys(clamped).length >= 8, clamped);
+    /* v2.3.4470: clamped by a bake, or drawn from the numbers kept under greaves (lookSets/standinlegs.js: no bake) */
+    const legsNow = await A.page.evaluate(() => { const p = window.__btStandInLegs(); return { clamped: p.clamped, looks: p.looks || [], legsLook: p.legsLook }; });
+    const clamped = legsNow.clamped;
+    rec.ok(`every sword and bow sheet is clamped under the greaves (${legsNow.looks.length} from the numbers kept under greaves, ${Object.keys(clamped).length} by a bake)`,
+      Object.keys(clamped).length + legsNow.looks.length >= 8, legsNow);
 
     /* ── 2. no greaves: the trousers and boots stay ── */
     await wearGreaves(A.page, false);
@@ -407,6 +414,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
           console.log(`    watcher sword ${facing}: on ${JSON.stringify(on)} off ${JSON.stringify(off)}`);
           rec.ok(`the watcher, the peer's sword ${facing} in greaves: at most ${LEAK_MAX} px of trousers or boots at or below the greaves' top (${on.leak}; ${off.leak} with the clamp off)`,
             on.greavesTop != null && on.leak <= LEAK_MAX && off.leak >= LEAK_SEEN, { on, off });
+          /* v2.3.4470: ...and nothing was baked for it on the watcher's page: the peer's body under greaves is
+             their look's row over the numbers kept for it (with `?legslook=0`, the old way: a bake a sheet) */
+          const pb = await B.page.evaluate(() => { const p = window.__btStandInLegs(); return { peerBakes: p.peerBakes, legsLook: p.legsLook }; });
+          rec.ok(`the watcher baked no body for the peer's swing under greaves (${pb.peerBakes} baked${pb.legsLook ? '' : '; the old way was asked for: one or more'})`,
+            pb.legsLook ? pb.peerBakes === 0 : pb.peerBakes >= 1, pb);
         }
         await B.page.evaluate((id) => { window.__sl.free(); const o = window._gameState.current.others[id]; if (o) { o._swingTs = 0; o._lastUpdate = Date.now(); } window.__sl.isolate(false); window.__sl.hideMe = false; }, aId);
         await B.page.waitForTimeout(600);
