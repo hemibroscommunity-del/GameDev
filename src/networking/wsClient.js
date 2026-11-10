@@ -206,6 +206,8 @@ import { deathVol } from '@/game/hitSounds.js'; /* v2.3.3248: a far monster's de
 import { applyOnlineList, onlineListFresh, parkMissing, presence2On } from '@/game/presence2.js'; /* v2.3.3250: presence v2, the online list, far copies parked */
 import { saveRpgSoon, cancelRpgSave } from '@/game/rpgSave.js'; /* v2.3.2330: the player_state echo goes through the debouncer; v2.3.2336: and the wipes cancel it */
 import { noteMoveCaps } from '@/game/monsterMoves.js';   /* v2.3.4011 */
+import { workerClock, rebasePiles } from '@/game/workerClock.js';   /* v2.3.4364: a pile's times on the worker's clock */
+import { notRecipientRetry } from '@/game/lootAsk.js';   /* v2.3.4364: an early 'not-recipient' on a death pile, asked once more */
 /* v2.3.3689: what your head wears and its colours, as one string -- the
    state_sync record apply tells BroTown when it changed (the 'bt-own-look'
    event: the new pieces prepared, the veil waiting for them) */
@@ -2452,6 +2454,12 @@ export function setupWebSocket(ctx) {
                 for (var _rjI = 0; _rjI < S.groundLoot.length; _rjI++) {
                   var _rjPile = S.groundLoot[_rjI];
                   if (_rjPile.lootId !== msg.payload.lootId) continue;
+                  /* v2.3.4364: a death pile's 'not-recipient' only ever means
+                     "too early" (its minute had not ended on the worker's
+                     clock): ONE more ask just after the minute, the pile
+                     kept on screen meanwhile; a second no drops it as before
+                     (game/lootAsk.js; review R1 W1.8: never a loop) */
+                  if (msg.payload.reason === 'not-recipient' && !_rjPile._collected && notRecipientRetry(_rjPile, Date.now())) break;
                   if (_rjPermanent) {
                     /* A pile already credited to us is mid-despawn (the
                        0.75 s pickup animation).  A losing race -- our pet's
@@ -3904,6 +3912,11 @@ export function setupWebSocket(ctx) {
           case 'ping':
             {
               // §16.12 — Respond to server ping for RTT estimation
+              /* v2.3.4364: the ping's ts is the worker's clock: read the
+                 difference from it (game/workerClock.js), and move any pile
+                 built before the first ping (a join's state_sync comes
+                 first) onto it */
+              if (workerClock.sample(msg.ts, Date.now()) && S && S.groundLoot) rebasePiles(S.groundLoot, workerClock);
               /* v2.3.3254: the quiet phone answers on the next frame it sends
                  anyway, saying how long it waited (game/quietPhone.js) */
               if (_quietNow()) {
@@ -3946,6 +3959,15 @@ export function setupWebSocket(ctx) {
         return isFinite(left) && left >= 0 ? Date.now() + left : null;
       }
       function _buildServerPile(p, myId) {
+        /* v2.3.4364: THE WORKER'S TIMES, PUT ON THIS PHONE'S CLOCK ONCE, HERE.
+           `ts`, a death pile's `ownerOnlyUntil` and `expiry` are the worker's
+           own clock; every reader (the pickup, the pet, the renderer's 30 s
+           and its pulse) compares them with Date.now().  A phone clock a
+           little fast asked for a death pile before its minute ended and hid
+           it on the 'not-recipient'; two minutes fast, it cut its own bag on
+           its first frame (sweep 2026-11-03, V22).  `_wOff` is the estimate
+           used, so a better one later moves the pile (rebasePiles). */
+        var _wT = function (t) { return workerClock.toPhone(t); };
         var myShare = (p.shares && typeof p.shares[myId] === 'number') ? p.shares[myId] : 0;
         var isDeath = !!p.isDeathDrop;
         return {
@@ -3966,7 +3988,8 @@ export function setupWebSocket(ctx) {
              so null lets anyone walk over and trigger pickup. */
           recipients: p.recipients == null ? null : p.recipients,
           killerName: p.killerName || 'Player',
-          ts: p.ts || Date.now(),
+          ts: _wT(p.ts) || Date.now(),
+          _wOff: p.ts ? workerClock.offset() : undefined,
           inventoryClaimed: !!p.inventoryClaimed,
           /* v2.3.1141: server-minted weapon drop riding the pile.
              Presence + tier + name only -- quality is withheld until
@@ -4001,8 +4024,8 @@ export function setupWebSocket(ctx) {
              to free-for-all (anyone in zone can grab) until expiry. */
           isDeathDrop: isDeath,
           deathItems: isDeath ? (p.deathItems || []) : null,
-          expiry: isDeath ? (_dropAt(p, 'left') || p.expiry || null) : null,
-          ownerOnlyUntil: isDeath ? (_dropAt(p, 'openLeft') || p.ownerOnlyUntil || null) : null,
+          expiry: isDeath ? (_dropAt(p, 'left') || _wT(p.expiry) || null) : null,
+          ownerOnlyUntil: isDeath ? (_dropAt(p, 'openLeft') || _wT(p.ownerOnlyUntil) || null) : null,
           /* v2.3.3473: a dropped item (server itemdrop.js): drawn as the item,
              not as a bag of your things; your own left alone until you step
              off it (game/itemDrop.js); flashing from flashAt.  Its clocks
