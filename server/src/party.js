@@ -168,6 +168,14 @@ export const partyMethods = {
     return !(f && typeof f === 'object' && own(f, 'partykeep') && !f.partykeep);
   },
 
+  /* v2.3.4378: the leader's idle clock counts a never-seen leader from
+     their `at` (or the party's `ts`); `leaderidleat: false` counts only a
+     `seen` above 0, as before (_partyOnRejoin) */
+  _partyLeaderIdleAtOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && own(f, 'leaderidleat') && !f.leaderidleat);
+  },
+
   _partyMax() {
     return this._partyKeepOn() ? PARTY.KEEP_MAX : PARTY.MAX_SIZE;
   },
@@ -589,7 +597,17 @@ export const partyMethods = {
          longest-standing member online now (lazy: handoff rule 12) */
       if (p.leader !== playerId && !this.playerState[p.leader]) {
         const lm = p.meta[p.leader] || {};
-        if (+lm.seen > 0 && now - lm.seen > PARTY.LEADER_IDLE_MS) {
+        /* v2.3.4378: a leader never seen (`seen: 0`: a clan turned into a
+           party while they were offline, clanparty.js, or a leaver's lead
+           passed to such a member) is idle from when they joined, else from
+           when the party was made -- the old `seen > 0` test kept them
+           leader for ever, and nobody could kick, rename, declare war or
+           take the party into a dungeon.  Still lazy, at a member's join
+           (one party at a time, never a burst over every party), and the
+           roster write it makes is the one this join may already make.
+           `leaderidleat: false` in the live flags is today's old clock. */
+        const since = this._partyLeaderIdleAtOn() ? (+lm.seen || +lm.at || +p.ts || 0) : +lm.seen;
+        if (since > 0 && now - since > PARTY.LEADER_IDLE_MS) {
           const next = p.members.find((m) => !!this.playerState[m]);
           if (next && next !== p.leader) { p.leader = next; dirty = true; }
         }
