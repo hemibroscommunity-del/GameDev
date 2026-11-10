@@ -1228,8 +1228,11 @@ export const combatMethods = {
        refuses both attack() and specialAttack() while S._extraction is set),
        so this changes nothing for an honest player — it closes the only thing
        the v2.3.1704 state-based shield would otherwise allow, which is parking
-       on a gather node and tanking a pack for free while still attacking. */
-    this._endExtraction(session.id);
+       on a gather node and tanking a pack for free while still attacking.
+       v2.3.4385: ...but a stuck arrow's late chip from a volley fired before
+       the harvest began is no swing: it keeps the node's record
+       (gathering.js _volleyChipKeeps; `volleychip: false` undoes it). */
+    this._endExtraction(session.id, this._volleyChipKeeps(session.id, payload));
     /* Slot resolution mirrors _computeAttackDamage's (and the volatile
        block further down): an unrecognised slot falls back to the
        server's own activeSlot rather than being trusted. */
