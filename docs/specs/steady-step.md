@@ -104,6 +104,10 @@ phone's strip (`?perf=1`) tells them apart since this change:
   looks smooth. The comparison is the preview with and without `?dtsmooth=0`.
 - Other players and monsters are placed from the worker's messages by their
   own smoothing; this is your own step and so the world's scroll under you.
+- A screen the device cannot keep up with shows frames for unequal times,
+  and a steady step is then an unsteady speed: `docs/specs/frame-pacer.md`
+  (v2.3.4355, the same version) draws on a whole number of refreshes on a
+  fast screen.
 - A frame the screen really drops (the chip running out of time) is still a
   dropped frame. The owner's third ride read 46 frames a second for a moment
   with a tutorial card on screen; that is a separate thing to look at if it

@@ -454,6 +454,8 @@ import { quietOn, keepaliveDue } from '@/game/quietPhone.js';   /* v2.3.3254: th
 import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust, sprintOutBreathTurn, stopSprint } from '@/game/sprint.js';
 import { rideMult, rideCheck, isRiding } from '@/game/ride.js';   /* v2.3.3776: the skateboard (server/src/ride.js) */
 import { makeFrameClock, frameSmoothOn } from '@/game/frameClock.js';   /* v2.3.4355: a steady step on a steady screen */
+import { framePaceOn, makeFramePacer } from '@/game/framePacer.js';   /* v2.3.4355: a steady rate on a screen the game cannot keep up with */
+import { noteMade } from '@/debug/madeLog.js';   /* v2.3.4355: a job between frames says its name and its time */
 import { rideGround } from '@/game/rideGround.js';   /* v2.3.3776: where a board rolls */   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust; v2.3.3475: + the run-out's grunt/breath turn */
 import { updateMonsterNoises } from '@/game/monsterNoises.js';   /* v2.3.3340: the monsters chasing you call now and then */
 import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the speed test */
@@ -4839,11 +4841,26 @@ export var BroTown = function BroTown(_ref0) {
     /* v2.3.4355: the steady step (game/frameClock.js); none with `?dtsmooth=0` */
     var _frameClock = null;
     try { if (frameSmoothOn(window.location.search || '')) _frameClock = makeFrameClock(); } catch (e) { _frameClock = null; }
-    var _gameLoop = function gameLoop() {
+    /* ═══ v2.3.4355: A STEADY RATE ON A FAST SCREEN (game/framePacer.js) ═══
+       The owner's iPhone, Safari offering it the screen's own 120 a second,
+       twenty-four minutes in: "Still performance issues", "fps ~51  frame
+       avg 19.6 p95 26.0 max 32.0" -- frames on the glass for two refreshes,
+       then three, then four.  On a screen faster than about 70 a second the
+       game draws on a whole number of refreshes it can keep to; every other
+       screen is every refresh, as ever.  `?pace=0`: the old way. */
+    var _framePacer = null, _paceEvery = 1;
+    try { if (framePaceOn(window.location.search || '')) _framePacer = makeFramePacer(); } catch (e) { _framePacer = null; }
+    /* the frame meter's line and QA (mp-steadypace): the screen's rate, and every how many refreshes a frame is drawn */
+    if (typeof window !== 'undefined') window.__btPace = function () { return _framePacer ? _framePacer.read() : null; };
+    var _gameLoop = function gameLoop(_rafT) {
       frameRef.current = requestAnimationFrame(_gameLoop);
+      /* not this refresh (nothing counted, moved or drawn); never judged behind a loading screen */
+      if (_framePacer && !_framePacer.take(typeof _rafT === 'number' ? _rafT : performance.now(), !S._zoneLoading && !!S.__introLiftedAt)) return;
       try {
         if (!S._frameCount) S._frameCount = 0;
         S._frameCount++;
+        /* the rate changed: the steady step's mean is of the old rate's frames, so it starts again */
+        if (_framePacer) { var _pe = _framePacer.read().every; if (_pe !== _paceEvery) { _paceEvery = _pe; if (_frameClock) _frameClock.reset(); } }
 
         /* ── Slow-frame diagnostic ── flags any frame whose delta from
            the previous one exceeds the 60-fps budget by a meaningful
@@ -8738,7 +8755,9 @@ export var BroTown = function BroTown(_ref0) {
       } catch (eWd) { /* fall through to the pixel sample */ }
       var oldWay = function () {
         var p = -1;
+        var _tO = performance.now();
         try { p = _litPct(_wdThumbImage(cv)); } catch (eI) { p = -1; }
+        noteMade('screen check (copy)', performance.now() - _tO);   /* v2.3.4355 */
         done(p);
       };
       var job = null;
@@ -8747,7 +8766,11 @@ export var BroTown = function BroTown(_ref0) {
       var frames = 0;
       var poll = function () {
         var px = null;
+        /* v2.3.4355: the read waits for the graphics side to work through what the page has sent it (162 ms on the
+           QA box with a second page open, mp-peerarrive): it says so to the frame meter (debug/madeLog.js) */
+        var _tC = performance.now();
         try { px = _wdThumbCollect(job); } catch (eC) { px = false; _wdOffGl = job.T.gl; }
+        noteMade('screen check', performance.now() - _tC);
         if (px) { done(_litPct(px)); return; }
         /* failed, or not done in time: this frame, the old way (in an
            animation frame after the world's, as it always was) */

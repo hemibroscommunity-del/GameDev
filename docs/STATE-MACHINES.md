@@ -82,7 +82,12 @@ player never loses items, gold or a fight to a phase that stuck.
     - the strip (`?perf=1`) names the machine (the chip, the canvas's
       pixels, looks `palette` or `baked` and why), counts late frames,
       splits the worst and names the job between frames, so ONE screenshot
-      from any computer and browser says where its frames go.
+      from any computer and browser says where its frames go;
+    - the pacer (A3, `docs/specs/frame-pacer.md`): a laptop with a 120 or
+      144 screen whose chip cannot keep up draws a steady 60 or 72, not an
+      uneven mix. The strip's `screen` and `frames` lines say what it has,
+      and its `outside` is split into the page busy and the page waiting
+      (waiting is the chip: fewer pixels or fewer frames, not a code hunt).
   - **The biggest thing still open for a computer**: Windows and a Mac do
     not build the look palette (`lookPaletteChoice.js`), so every other
     player's look is baked on the page, per pose and direction, the first
@@ -145,7 +150,32 @@ player never loses items, gold or a fight to a phase that stuck.
     walking: 34 sheets in 2.5 s behind the loading screen on the test box
     (23 in 1.8 s), and `mp-townride` sets each of the four down off his
     route in each direction: 7 bakes on the page with the first cut (the
-    Blacksmith's walk east 91 ms), none now. Waits on the owner's eye.
+    Blacksmith's walk east 91 ms), none now.
+  - **"Still performance issues"** (the owner, 2026-11-10, twenty-four
+    minutes into a session with Safari's 60 flag off: "fps ~51  frame avg
+    19.6 p95 26.0 max 32.0", "work 6.8 ... outside 12.8", where the cool
+    phone read "fps ~106"). Not a freeze this time: a 120 screen the phone
+    could no longer keep up with, its frames on the glass for two, three and
+    four refreshes mixed, so the steady step showed as an unsteady speed.
+    Now a pacer (`src/game/framePacer.js`, `docs/specs/frame-pacer.md`;
+    `?pace=0` the old way): on a screen over about 70 a second the game
+    draws on a whole number of refreshes it can keep to (that phone: every
+    third, a steady 40), tries faster after 20 s clean, and never touches a
+    60 screen. `mp-steadypace` plays the hot phone to the real game: the
+    speed on the glass 33% out for one frame in ten before, 3.3% now.
+    Waits on the owner's eye (warm phone, with and without `?pace=0`).
+  - **Not found**: that capture's one freeze ("worst 378.0 = game 16.0 +
+    outside 362.0", no job named past 13 ms, another player newly on
+    screen). `mp-peerarrive` (Chrome's profiler on a phone as a dressed
+    player rides up, circles and swings) finds nothing a new player makes
+    the watcher's page do outside its frame, apart from the black-screen
+    watchdog's read of the canvas (it waits for the graphics side: 77 to 164
+    ms on the test box with a second page open, now named "screen check" on
+    the strip). The strip now splits "outside" into the page BUSY and the
+    page WAITING (`src/debug/busyBeat.js`), which is what the next capture
+    of a freeze like it will say.
+  - **Why the phone slowed is not proved**: its own work went from 2.7 to
+    6.8 ms a frame with fewer monsters loaded, which reads as heat.
   - **Still to do, for A2**: another PLAYER with an eye style or a drawing
     is baked on the page when first met, the same freeze, in any crowd.
   - **The cause**: not the frame rate. The owner's captures (`?perf=1`,

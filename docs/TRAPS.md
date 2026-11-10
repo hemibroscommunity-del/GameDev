@@ -8818,3 +8818,37 @@ time.
   the whole file in one go (`readPageBottoms`).
 
 **Receipt:** `mp-townride`, the `folk-bakes` suite, docs/specs/living-town.md.
+
+## 265. "It is running at 51 frames a second" (v2.3.4355)
+
+**The move.** Read an average frame rate between two of the screen's whole
+rates (51 on a 120 screen, 45 on a 60 one) as a rate, and go looking for the
+few ms that would lift it.
+
+**Why it is wrong.** A screen shows a frame for a whole number of its
+refreshes. "51 a second" on a 120 screen is frames held for two refreshes,
+then three, then four (16.7, 25, 33 ms) in a mix: the owner's hot iPhone,
+"Still performance issues", read "fps ~51  frame avg 19.6 p95 26.0". The
+step is steady (frameClock.js), so each frame moves you the same distance,
+and shown for unequal times that is an unequal speed on the glass: 33% out
+for one frame in ten (`mp-steadypace`). A steady 40 is smoother than that
+uneven 51, and is less work.
+
+**The rule.**
+- On a screen faster than about 70 a second the game draws on a whole number
+  of refreshes it can keep to (`game/framePacer.js`; `?pace=0` the old way).
+  A 60 screen is never paced: its only step down is 30.
+- Read the meter's `frames` line (the share at each whole refresh), not its
+  `fps`. Read `outside` by its split: BUSY is code to find; WAITING is the
+  chip or the phone, and no code hunt will shorten it.
+- A line the meter asks ONCE must be asked after its subject exists. "looks
+  baked (default)" was asked as the strip first drew, before the palette's
+  sheets had loaded, and said so all session on a phone drawing from the
+  palette.
+- A new player arriving bakes nothing on the watcher's page when the palette
+  draws them (`mp-peerarrive`: Chrome's profiler, the longest stretch outside
+  the frame 9 ms apart from the watchdog's screen check). Do not assume a
+  freeze beside a new player is their look.
+
+**Receipt:** `frame-pacer` suite, `mp-steadypace`, `mp-peerarrive`,
+docs/specs/frame-pacer.md.
