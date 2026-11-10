@@ -1,4 +1,4 @@
-/* ═══ v2.3.4490: ACCURACY, ON THE PHONE ═══
+/* ═══ v2.3.4495: ACCURACY, ON THE PHONE ═══
  *
  * The owner, 2026-11-10: "I want somewhere that stats keep track of
  * 'accuracy' (maybe for all 3 weapon types) like the amount of times the

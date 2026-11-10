@@ -1966,7 +1966,7 @@ export function updateArrows(S, deps) {
                        so no caps gate is needed; old clients keep
                        sending special:false and keep the old lane. */
                     slot: isStaffProj ? 'staff' : 'ranged', special: !!a.isSpecial,
-                    /* v2.3.4490: the shot this hit belongs to (accuracy.js): an arrow through three monsters is one hit */
+                    /* v2.3.4495: the shot this hit belongs to (accuracy.js): an arrow through three monsters is one hit */
                     sn: (!a.isSpecial && a._sn) || undefined,
                     /* v2.3.2848: an arrow of the bow volley is a third of the
                        special (the worker divides its own roll -- combat.js,
@@ -2539,7 +2539,7 @@ export function updateArrows(S, deps) {
                     event: 'player_attack',
                     payload: {
                       id: S.myId,
-                      sn: (!a.isSpecial && a._sn) || undefined,   /* v2.3.4490: the shot it belongs to (accuracy.js) */
+                      sn: (!a.isSpecial && a._sn) || undefined,   /* v2.3.4495: the shot it belongs to (accuracy.js) */
                       x: P.x,
                       y: P.y,
                       /* Exact bearing to the target + a narrow arc: the

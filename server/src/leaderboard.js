@@ -35,7 +35,7 @@ export class Leaderboard {
         return new Response(JSON.stringify({ ok: true, gone }), { headers: H });
       }
 
-      /* v2.3.4490: THE FACES OF ROWS FROM BEFORE A ROW CARRIED ONE (boards.js _boardsFaceFill, over the object
+      /* v2.3.4495: THE FACES OF ROWS FROM BEFORE A ROW CARRIED ONE (boards.js _boardsFaceFill, over the object
          binding only: the public route is read-only).  `/faceless`: the live rows with no look; `/faces`
          {faces: {pid: look}}: each such row given its look -- never one that has a look already, and nothing
          else about the row (its lastSeen least of all: a filled row is not a player who played). */
@@ -60,7 +60,7 @@ export class Leaderboard {
     }
   }
 
-  /* v2.3.4490: the live rows that have no face (set before v2.3.4393, by a player who has not been back) */
+  /* v2.3.4495: the live rows that have no face (set before v2.3.4393, by a player who has not been back) */
   async faceless(limit = 200) {
     const entries = await this.state.storage.list({ prefix: 'player:' });
     const now = Date.now();

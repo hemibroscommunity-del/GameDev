@@ -192,7 +192,7 @@
   rows, sideways, 375 / 360 / 320 px. Pictures: `docs/shots/leaderboards-*.webp`.
 - UI review states `dash-leaderboard`, `leaderboard-spin`, `fish-board`.
 
-## Rows from before a row carried a face (v2.3.4490)
+## Rows from before a row carried a face (v2.3.4495)
 
 A row gets its look when its record is set, so a row set before v2.3.4393, by
 a player who had not been back, showed an initial. Once a worker's life the

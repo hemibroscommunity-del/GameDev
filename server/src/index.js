@@ -107,8 +107,8 @@ import { deathPileMethods } from './deathpile.js';   /* v2.3.4384: a dead player
 import { fishlogMethods } from './fishlog.js';   /* v2.3.4036: the rare fish, weighed, with records */
 import { riseChestMethods } from './risechest.js';   /* v2.3.4453: the chest on a rise pays, once a character */
 import { boardMethods, boardFace } from './boards.js';   /* v2.3.4393: the daily spin's records, a face and a level on every board, the deleted stand-ins */
-import { accuracyMethods } from './accuracy.js';   /* v2.3.4490: how many of your shots hit, a weapon */
-import { charWatchMethods } from './charwatch.js';   /* v2.3.4490: what players drew, for the owner to look at (the Test panel) */
+import { accuracyMethods } from './accuracy.js';   /* v2.3.4495: how many of your shots hit, a weapon */
+import { charWatchMethods } from './charwatch.js';   /* v2.3.4495: what players drew, for the owner to look at (the Test panel) */
 import { achievementMethods } from './achievements.js';   /* v2.3.3527 */
 import { killRollMethods } from './killroll.js';   /* v2.3.3209: one roll a kill, each drop its own numbers */
 // v2.3.1131 (PR15): quality grades + hardening v1 -- the §4.6b/§4.6c
@@ -728,7 +728,7 @@ export const PRIVILEGED_EVENTS = new Set([
      phone shows. */
   'spin_board',
   'rise_chest',   /* v2.3.4453: the chest's answer (risechest.js) */
-  /* v2.3.4490: your own accuracy (accuracy.js), to you only.  Forged, it
+  /* v2.3.4495: your own accuracy (accuracy.js), to you only.  Forged, it
      would write another player's numbers on your Journey page. */
   'acc_state',
   /* v2.3.3265: the sparring clones of the test panel (spar.js), to their
@@ -5314,7 +5314,7 @@ export class GameRoom {
           //   - the player_update relay paints peers' screens.
           // Non-object payloads stay a no-op exactly as before.
           if (!msg.data || typeof msg.data !== 'object') break;
-          /* v2.3.4490: the phone's shot counts ride here (accuracy.js) -- read on their own, never a look key:
+          /* v2.3.4495: the phone's shot counts ride here (accuracy.js) -- read on their own, never a look key:
              not stored on the player, not relayed */
           if (msg.data.ac !== undefined) await this._accShots(session, msg.data.ac, Date.now());
           const clean = Object.create(null);
@@ -6174,7 +6174,7 @@ export class GameRoom {
       case 'spin_board_request':
         if (session.id) await this._handleSpinBoardRequest(session);
         break;
-      /* v2.3.4490: your own accuracy, for the Journey page (accuracy.js) */
+      /* v2.3.4495: your own accuracy, for the Journey page (accuracy.js) */
       case 'acc_request':
         if (session.id) await this._handleAccRequest(session);
         break;
@@ -6468,7 +6468,7 @@ export class GameRoom {
     let _petsLeft = null;   /* v2.3.3120: see below */
     let _codexLeft = null;  /* v2.3.3209: the same, for the codex (codex.js) */
     let _fishLeft = null;   /* v2.3.4036: and the catches to weigh (fishlog.js) */
-    let _accLeft = null;    /* v2.3.4490: and the shots and hits not yet written (accuracy.js) */
+    let _accLeft = null;    /* v2.3.4495: and the shots and hits not yet written (accuracy.js) */
     if (session?.id) {
       /* ═══ v2.3.3260: LEAVING IN THE MIDDLE OF A FIGHT, THE BODY STAYS ═══
          A player who leaves within 10 s of a hit between them and another
@@ -6525,7 +6525,7 @@ export class GameRoom {
       /* v2.3.4036: the catches to weigh, the codex's way (fishlog.js) */
       _fishLeft = this._fishlogDirtyCopy(session.id);
       this._fishlogForget(session.id);
-      /* v2.3.4490: the shots and hits counted since the last write, the same way (accuracy.js) */
+      /* v2.3.4495: the shots and hits counted since the last write, the same way (accuracy.js) */
       _accLeft = this._accDirtyCopy(session.id);
       /* v2.3.3527: achievements hold nothing unwritten (achievements.js) */
       this._achvForget(session.id);
@@ -6691,7 +6691,7 @@ export class GameRoom {
         }),
       }));
     } catch {}
-    /* v2.3.4490: once a worker's life, the rows from before a row carried a face get theirs (boards.js) */
+    /* v2.3.4495: once a worker's life, the rows from before a row carried a face get theirs (boards.js) */
     if (!this._faceFilled && this._boardsFaceFill) { try { await this._boardsFaceFill(); } catch { /* best-effort */ } }
   }
 
@@ -6801,8 +6801,8 @@ Object.assign(GameRoom.prototype, codexMethods); /* v2.3.3209 */
 Object.assign(GameRoom.prototype, deathPileMethods); /* v2.3.4384 */
 Object.assign(GameRoom.prototype, fishlogMethods); /* v2.3.4036 */
 Object.assign(GameRoom.prototype, boardMethods); /* v2.3.4393 */
-Object.assign(GameRoom.prototype, accuracyMethods); /* v2.3.4490 */
-Object.assign(GameRoom.prototype, charWatchMethods); /* v2.3.4490 */
+Object.assign(GameRoom.prototype, accuracyMethods); /* v2.3.4495 */
+Object.assign(GameRoom.prototype, charWatchMethods); /* v2.3.4495 */
 Object.assign(GameRoom.prototype, riseChestMethods); /* v2.3.4453 */
 Object.assign(GameRoom.prototype, achievementMethods); /* v2.3.3527 */
 Object.assign(GameRoom.prototype, killRollMethods); /* v2.3.3209: the kill's one roll (killroll.js) */

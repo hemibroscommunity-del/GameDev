@@ -18,7 +18,7 @@ import { shotAimWire } from '@/game/shotGround.js';   /* v2.3.3501: what a shot 
 import { BOW_VOLLEY, newVolley, volleyDelayMs } from '@/game/bowVolley.js';   /* v2.3.2848 */
 import { SWING_COOLDOWN, weaponSwingMult, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, swingCooldownMult, specialManaCost, burstRefusal, burstWeapon, PROG3, ELEMENTS, LEGACY_BURST_MIN_CHAR_LEVEL } from '@/data/index.js';
 import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead, lockShotPoint, swimRefused /* v2.3.3003 */, dazeRefused /* v2.3.3014 */, staggerRefused /* v2.3.3264 */, airRefused /* v2.3.3017 */, shotGroundDy /* v2.3.3206 */ } from '@/game/combatHelpers.js';   /* v2.3.2845: lockShotPoint, the torso; v2.3.3206: shotGroundDy, a shot's ground under the boots */
-import { accShot } from './accuracy.js';   /* v2.3.4490: a basic swing is a shot (accuracy) */
+import { accShot } from './accuracy.js';   /* v2.3.4495: a basic swing is a shot (accuracy) */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the hold */
 import { cue, cueLater } from '@/game/eventSounds.js'; /* v2.3.3343: the specials' and the burst's own sounds; v2.3.3523: + cueLater, the volley's arrows */
 import { brewMulNow } from '@/game/fightFood.js'; /* v2.3.3133: a special carries the damage brew too */
@@ -86,7 +86,7 @@ export function swingAttack(S) {
     S.isSwinging = true;
     S._specialAttack = false;
     clearSwingHitFlags(S); /* v2.3.1421: fresh dedup per swing (quick re-tap fix) */
-    accShot(S, 'melee');   /* v2.3.4490: a basic swing is a shot (accuracy.js) */
+    accShot(S, 'melee');   /* v2.3.4495: a basic swing is a shot (accuracy.js) */
     /* v2.3.1798: rotate the owner's three swing samples (level-matched in
        BT_AUDIO.swordSwing); bamboo keeps its own.
        v2.3.2450: the whoosh fires on the first tick of the swing, not at
