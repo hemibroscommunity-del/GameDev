@@ -210,6 +210,7 @@ import { applyOnlineList, onlineListFresh, parkMissing, presence2On } from '@/ga
 import { saveRpgSoon, cancelRpgSave } from '@/game/rpgSave.js'; /* v2.3.2330: the player_state echo goes through the debouncer; v2.3.2336: and the wipes cancel it */
 import { noteMoveCaps } from '@/game/monsterMoves.js';   /* v2.3.4011 */
 import { t2OnStateSync } from '@/game/tradeSlot.js';   /* v2.3.4362: the trade window never outlives its server */
+import { rejoinClear, duelResume } from '@/game/rejoinSlots.js';   /* v2.3.4382: a rejoin clears the duel and trade the worker says again */
 /* v2.3.3689: what your head wears and its colours, as one string -- the
    state_sync record apply tells BroTown when it changed (the 'bt-own-look'
    event: the new pieces prepared, the veil waiting for them) */
@@ -1681,6 +1682,14 @@ export function setupWebSocket(ctx) {
                  within 3 s of its leave (t2Leave) -- before this its buttons
                  waited forever on a worker with no trade on file (V8b). */
               try { t2OnStateSync(S, setTrade2); } catch (e) {}
+              /* v2.3.4382: and, against a worker that says it re-sends them
+                 right after this (caps.rejoinResend, a count: 1 the duel, 2
+                 the trade; server/src/rejoinresend.js), the duel (_inDuel,
+                 _activeDuel, its lock) and an open trade window too: what is
+                 still live comes straight back, what ended while this phone
+                 was away is gone (game/rejoinSlots.js).  An old worker: as
+                 before, nothing more is cleared. */
+              try { rejoinClear(S, S._serverCaps.rejoinResend, setTrade2); } catch (e) { /* the duel's own end still clears it */ }
               /* v2.3.1154: HP/Endurance grid deploy-order gate.  The
                  pool multipliers only apply while THIS worker claims
                  caps.hpEndGrids — otherwise its player_state echo would
@@ -2188,6 +2197,11 @@ export function setupWebSocket(ctx) {
             { if (!msg.from) { try { onRaceState(S, msg.payload); } catch (_re) { /* display only */ } } break; }
           /* v2.3.3776: the skateboard -- on, off and why (server/src/ride.js),
              here in the direct switch for the race's reason */
+          /* v2.3.4382: a duel still on after a rejoin (server/src/
+             rejoinresend.js, after state_sync), here in the direct switch for
+             the race's reason: a relayed copy carries `from` */
+          case 'duel_resume':
+            { if (!msg.from) { try { duelResume(S, msg.payload); } catch (_de) { /* the next duel message sets it */ } } break; }
           case 'ride_state':
             { if (!msg.from) { try { rideApply(S, msg.payload, Date.now()); } catch (_re) { /* on foot */ } } break; }
           case 'race_cp':

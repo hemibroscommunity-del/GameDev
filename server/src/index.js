@@ -127,6 +127,7 @@ import { liveopsMethods } from './liveops.js';
 // sessions on the validate-at-commit core (the gift handshake in
 // trade.js stays untouched for old clients; see trade2.js header).
 import { trade2Methods } from './trade2.js';
+import { rejoinResendMethods } from './rejoinresend.js';   /* v2.3.4382: a rejoin is told its live duel and trade again */
 // v2.3.1143: account-login pre-flight -- read-only Login Key check so
 // the client can validate a typed key before switching identity.
 import { accountMethods } from './account.js';
@@ -746,6 +747,9 @@ export const PRIVILEGED_EVENTS = new Set([
   'client_off',
   // v2.3.1132: two-sided trade session echoes (server-truth renderer).
   'trade2_state', 'trade2_invite',
+  // v2.3.4382: a rejoin's live duel, said again (rejoinresend.js) -- forged,
+  // it would put a phone in a duel that is not on
+  'duel_resume',
   // v2.3.1185: party roster echoes (server-truth HUD renderer) + the
   // private invite/error notices.  Forging party_state would paint fake
   // rosters; forging party_invited is popup-spam surface.
@@ -5868,7 +5872,7 @@ export class GameRoom {
         if (session.id) await this._handleTrade2Confirm(session);
         break;
       case 'trade2_cancel':
-        if (session.id) this._handleTrade2Cancel(session);
+        if (session.id) this._handleTrade2Cancel(session, msg.payload);   /* v2.3.4382: + the leave's trade id */
         break;
       case 'trade2_stage_weapon':
         // v2.3.1213: weapon lane -- escrow a stash weapon into the live
@@ -6725,6 +6729,7 @@ Object.assign(GameRoom.prototype, hardeningMethods);
 Object.assign(GameRoom.prototype, forgeLadderMethods); /* v2.3.3524 */
 // v2.3.1132 (PR16): two-sided trade window -- see trade2.js.
 Object.assign(GameRoom.prototype, trade2Methods);
+Object.assign(GameRoom.prototype, rejoinResendMethods);   /* v2.3.4382 (rejoinresend.js) */
 // v2.3.1143: account-login pre-flight -- see account.js.
 Object.assign(GameRoom.prototype, accountMethods);
 // v2.3.1146: behavioral anti-bot for life skills (flag-only) -- see botfp.js.

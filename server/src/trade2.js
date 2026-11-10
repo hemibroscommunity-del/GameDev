@@ -416,9 +416,17 @@ export const trade2Methods = {
     }
   },
 
-  _handleTrade2Cancel(session) {
+  _handleTrade2Cancel(session, payload) {
     const s = this._t2SessionFor(session.id);
     if (s) this._t2Cancel(s, 'declined');
+    /* v2.3.4382: a leave from a window showing a trade the worker no longer
+       holds (it names the trade's id: tradeSlot.js t2Leave) is answered with
+       the cancel the phone already reads, so it closes at once instead of
+       after its own 3 s (V8b P2-1).  An invite's Decline names no id and is
+       answered as before.  Off with `rejoinresend: false`. */
+    else if (payload && typeof payload.id === 'string' && payload.id && !(this._rejoinResendOff && this._rejoinResendOff())) {
+      this._t2Send(session.id, 'trade2_state', { state: 'cancelled', reason: 'gone', id: payload.id.slice(0, 64) });
+    }
     // Also clear any outbound invite so a decline really declines -- and now
     // tells the other end, which is what makes it a decline rather than a
     // disappearance.
