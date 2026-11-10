@@ -1,0 +1,2 @@
+# slice R2: 1 files, 9289 lines (paths relative to /home/user/GameDev)
+src/rendering/systems/entityRenderer.js:9301-18589

@@ -1,0 +1,677 @@
+[
+{
+"id": "G2-1",
+"title": "Ability cooldown clocks and the predicted stamina spend",
+"area": "wire (both)",
+"verdict": "fine",
+"oneLine": "Per-ability ready-at stamps the client predicts and the worker owns, reconciled by ability_rejected and the pool echo.",
+"topConcern": "Both clocks are memory-only; a deploy forgets the worker's cooldowns while the tab keeps its own (deliberate, handoff rule 11).",
+"modes": [
+"persistence"
+],
+"confidence": "low",
+"files": [
+"src/game/abilities.js:37",
+"src/game/abilities.js:445",
+"src/game/abilities.js:694",
+"src/networking/wsClient.js:3670",
+"server/src/abilities.js:609"
+],
+"linked": [
+"G2-2",
+"G2-3",
+"server/src/abilities.js _handleAbility"
+]
+},
+{
+"id": "G2-2",
+"title": "The lunge and the shield bash in flight (dash, deferred strike, swing suppression)",
+"area": "client",
+"verdict": "needs-thought",
+"oneLine": "A dash toward the lock, a sword strike deferred to arrival, and a window suppressing the ordinary swing's damage sweep.",
+"topConcern": "Shield raised mid-lunge is not refused and does not cancel the dash; the strike then lands with blocking:true, the overlap v2.3.2246 forbids.",
+"modes": [
+"combo",
+"race",
+"guard-drift",
+"opacity"
+],
+"confidence": "medium",
+"files": [
+"src/game/abilities.js:549",
+"src/game/abilities.js:606",
+"src/ui/BroTown.jsx:5101",
+"src/game/shieldToggle.js:128",
+"src/networking/wsClient.js:3681"
+],
+"linked": [
+"G2-1",
+"G2-4",
+"G2-9",
+"G2-10",
+"S._inDuel (duel slice)",
+"monsterCombat.js sweep suppression",
+"zoneTransitions.js clearZoneLocalFx"
+]
+},
+{
+"id": "G2-3",
+"title": "The whirlwind windup (armed ring, strike on the tick)",
+"area": "wire (both)",
+"verdict": "fine",
+"oneLine": "A one-second armed whirlwind on both sides, cancelled by death, zone change or refusal, struck from the worker's position.",
+"topConcern": "Worker silently drops a windup on disconnect while the tab plays the full strike look; caps read once at join vs the live kill switch.",
+"modes": [
+"divergence"
+],
+"confidence": "low",
+"files": [
+"src/game/abilities.js:632",
+"src/game/abilities.js:650",
+"server/src/abilities.js:628",
+"server/src/abilities.js:652",
+"src/networking/wsClient.js:3653"
+],
+"linked": [
+"G2-1",
+"G2-2",
+"ability_windup peers",
+"whirlCatch.js"
+]
+},
+{
+"id": "G2-4",
+"title": "The shield guard: the client's toggle against the worker's guard break",
+"area": "wire (both)",
+"verdict": "needs-thought",
+"oneLine": "Guard raised or lowered, sent on every move; the worker drains it, breaks it at zero, latches it 3 s.",
+"topConcern": "Client BLOCK_COSTS_STAMINA=false: the phone never learns of the worker's 3 s guard break, draws a raised shield, walks at half speed, takes full hits.",
+"modes": [
+"divergence",
+"guard-drift",
+"opacity"
+],
+"confidence": "high",
+"files": [
+"src/game/shieldToggle.js:128",
+"src/ui/BroTown.jsx:633",
+"src/ui/BroTown.jsx:8300",
+"server/src/index.js:3749",
+"server/src/movement.js:780"
+],
+"linked": [
+"G2-2",
+"G2-5",
+"G2-7",
+"server/src/data.js BLOCK_COSTS_STAMINA",
+"server/test/blockcost.test.mjs",
+"ShieldButton.jsx"
+]
+},
+{
+"id": "G2-5",
+"title": "Sprint (tapped or Shift-held, a predicted stamina drain)",
+"area": "wire (both)",
+"verdict": "fine",
+"oneLine": "Armed, running or stopped sprint with every exit checked per frame; moves marked sp:1 for the worker to pay.",
+"topConcern": "Worker refuses sprint steps during a guard break the phone cannot see; clearSprint is a dead export with a misplaced comment.",
+"modes": [
+"divergence",
+"opacity"
+],
+"confidence": "low",
+"files": [
+"src/game/sprint.js:92",
+"src/game/sprint.js:187",
+"src/ui/BroTown.jsx:5335",
+"src/networking/wsClient.js:6051",
+"server/src/sprint.js:96"
+],
+"linked": [
+"G2-4",
+"G2-6",
+"G2-7",
+"server/src/sprint.js"
+]
+},
+{
+"id": "G2-6",
+"title": "The jump and the double jump's flip",
+"area": "client",
+"verdict": "fine",
+"oneLine": "One jump or flip record ended by time, death or zone change, with a rest window and a crossing latch.",
+"topConcern": "Three hand-kept 'body held' lists: jumpRefusal and the sprint miss the avatar veil and the race hold that the walk honours.",
+"modes": [
+"guard-drift"
+],
+"confidence": "medium",
+"files": [
+"src/game/jump.js:250",
+"src/game/jumpActions.js:59",
+"src/game/jumpActions.js:154",
+"src/game/jump.js:266",
+"src/ui/BroTown.jsx:5479"
+],
+"linked": [
+"G2-2",
+"G2-9",
+"G2-12",
+"G2-13",
+"G2-22",
+"rendering/jumpFx.js"
+]
+},
+{
+"id": "G2-7",
+"title": "The skateboard ride (ask, worker's answer, the phone's own step-off)",
+"area": "wire (both)",
+"verdict": "fine",
+"oneLine": "Board on/off asked of the worker and answered by ride_state; the phone predicts some exits a step ahead.",
+"topConcern": "Worker-only exits (a landed hit, duel, harvest, pose, trap) are not predicted, so the phone rolls at 2x for one round trip.",
+"modes": [
+"divergence",
+"race"
+],
+"confidence": "low",
+"files": [
+"src/game/ride.js:69",
+"src/game/ride.js:106",
+"src/networking/wsClient.js:2148",
+"server/src/ride.js:115",
+"server/src/ride.js:143"
+],
+"linked": [
+"G2-5",
+"G2-8",
+"server/src/ride.js",
+"tick brd"
+]
+},
+{
+"id": "G2-8",
+"title": "The skateboard's rolling loop (decode, play, quiet, free)",
+"area": "client",
+"verdict": "fine",
+"oneLine": "One looped wheel sound decoded near the board, played while riding, stopped after 1.5 s, freed after 20 s off.",
+"topConcern": "free() does not cancel a decode in flight; a late decode re-holds ~0.45 MB until the next tick frees it.",
+"modes": [
+"leak"
+],
+"confidence": "low",
+"files": [
+"src/game/rideSound.js:48",
+"src/game/rideSound.js:98",
+"src/game/rideSound.js:64"
+],
+"linked": [
+"G2-7",
+"game/ambientBeds.js"
+]
+},
+{
+"id": "G2-9",
+"title": "The dodge roll, the lunge and the retreat shot",
+"area": "wire (both)",
+"verdict": "fine",
+"oneLine": "A timed roll window owned by the frame loop, paid on the worker by ability_use, which opens its i-frame window.",
+"topConcern": "A zone change does not end a roll, so E pressed mid-roll carries the rest of it into the new zone.",
+"modes": [
+"divergence",
+"stuck"
+],
+"confidence": "low",
+"files": [
+"src/game/dodge.js:63",
+"src/game/dodge.js:119",
+"src/ui/BroTown.jsx:5023",
+"server/src/index.js:3251",
+"server/src/movement.js:302"
+],
+"linked": [
+"G2-2",
+"G2-17",
+"server/src/movement.js ROLL"
+]
+},
+{
+"id": "G2-10",
+"title": "The swing, the special and the burst",
+"area": "client",
+"verdict": "fine",
+"oneLine": "Swing cadence clock, 450 ms swing window, 1.5 s special cooldown, queued bow special and the burst's local cooldown stamp.",
+"topConcern": "Burst's local cooldown is never un-stamped on a worker refusal; specials fire before the worker's mana answer.",
+"modes": [
+"divergence",
+"opacity"
+],
+"confidence": "low",
+"files": [
+"src/game/playerActions.js:25",
+"src/game/playerActions.js:103",
+"src/game/playerActions.js:741",
+"src/game/monsterCombat.js:3375",
+"src/game/monsterCombat.js:1757"
+],
+"linked": [
+"G2-4",
+"G2-11",
+"monsterCombat.js auto-attack loop",
+"server ability_use swipe"
+]
+},
+{
+"id": "G2-11",
+"title": "The right control's press: tap, hold or drag",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "A press waits as pending for the tap window, then becomes the held attack, the tap's one attack, or nothing.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"src/game/tapJump.js:126",
+"src/game/tapJump.js:247",
+"src/ui/BroTown.jsx:10225",
+"src/ui/BroTown.jsx:10349",
+"src/game/monsterCombat.js:1609"
+],
+"linked": [
+"G2-10",
+"BroTown rS/rM/rE tap chain"
+]
+},
+{
+"id": "G2-12",
+"title": "Climbing the vines and jumping up a rise's face (dormant behind ?climb=1)",
+"area": "client",
+"verdict": "retired",
+"oneLine": "Climb, face-crossing jump, drop back and chest on rises that only exist with the ?climb=1 URL flag.",
+"topConcern": "When shipped: faces are walls only on the phone, and the chest's opened state is client-only.",
+"modes": [
+"authority",
+"persistence",
+"stuck"
+],
+"confidence": "high",
+"files": [
+"src/game/climbActions.js:58",
+"src/game/climbActions.js:147",
+"src/ui/BroTown.jsx:5574",
+"public/tools/world/core/ground-worker.js:469"
+],
+"linked": [
+"G2-6",
+"docs/ELEVATION-PLAN.md"
+]
+},
+{
+"id": "G2-13",
+"title": "Swimming in the Wheel (in, strokes, out, with hysteresis)",
+"area": "client",
+"verdict": "fine",
+"oneLine": "Swimming decided each frame from five probes round the boots with in/out hysteresis, a flip guard and a teleport rule.",
+"topConcern": "A sprinted flip landing over 200 px from take-off counts as a teleport, so landing in water is silent.",
+"modes": [
+"divergence"
+],
+"confidence": "low",
+"files": [
+"src/game/wheelSwim.js:95",
+"src/game/wheelSwim.js:169",
+"src/ui/BroTown.jsx:5287",
+"src/game/combatHelpers.js:747"
+],
+"linked": [
+"G2-5",
+"G2-6",
+"G2-7",
+"rendering/swimFx.js"
+]
+},
+{
+"id": "G2-14",
+"title": "Element statuses on the player (chill, freeze, hold, daze, wobble, slow, shove, stagger)",
+"area": "wire (both)",
+"verdict": "watch",
+"oneLine": "Time-gated statuses from monster_attack/pvp_hit that slow, hold or bar the player's actions, carried out by the phone.",
+"topConcern": "clearElemStatuses is never called: holds, dazes and a shove ride through a zone change or a respawn (bounded by 5 s).",
+"modes": [
+"stuck",
+"authority"
+],
+"confidence": "medium",
+"files": [
+"src/game/elemHits.js:184",
+"src/game/elemHits.js:245",
+"src/game/elemHits.js:334",
+"src/networking/gameEvents.js:3263",
+"src/ui/BroTown.jsx:5761"
+],
+"linked": [
+"G2-6",
+"G2-9",
+"G2-10",
+"G2-15",
+"server/src/monsterstatus.js",
+"server/src/pvpextras.js"
+]
+},
+{
+"id": "G2-15",
+"title": "Standing back up: the respawn, the stuck-dead watchdog and the death card",
+"area": "wire (both)",
+"verdict": "watch",
+"oneLine": "Death to respawn on the client: the worker's messages, their replay, a 20 s watchdog, and the death card.",
+"topConcern": "Three legacy local stand-up copies remain behind a per-zone !_serverMonsters flag, despite respawn.js's 'one copy' rule.",
+"modes": [
+"guard-drift",
+"persistence",
+"stuck"
+],
+"confidence": "medium",
+"files": [
+"src/game/respawn.js:37",
+"src/ui/BroTown.jsx:5012",
+"src/networking/wsClient.js:3146",
+"src/game/deathCard.js:56",
+"src/ui/BroTown.jsx:4902"
+],
+"linked": [
+"G2-2",
+"G2-3",
+"G2-5",
+"G2-6",
+"G2-7",
+"G2-9",
+"G2-12",
+"G2-14",
+"server/src/index.js _tickPlayerRespawn"
+]
+},
+{
+"id": "G2-16",
+"title": "A monster's killing blow (direction and size, for its death's pieces)",
+"area": "rendering",
+"verdict": "fine",
+"oneLine": "Per-monster last blow with merge and freshness windows, read once when its death animation starts.",
+"topConcern": "_deathBlow is not on monsterCarry's carry lists, so a list replace before the kill drops the blow (visual only).",
+"modes": [
+"persistence"
+],
+"confidence": "low",
+"files": [
+"src/game/deathBlow.js:53",
+"src/game/deathBlow.js:94",
+"src/networking/gameEvents.js:2667",
+"src/game/monsterCarry.js:23"
+],
+"linked": [
+"game/monsterCarry.js",
+"rendering/monsterDeathFx.js"
+]
+},
+{
+"id": "G2-17",
+"title": "A computer's keys: held keys, one-press guards, double tap, wheel step, weapon keys",
+"area": "ui",
+"verdict": "needs-thought",
+"oneLine": "Held-key map, per-key one-press guards, double-tap roll and wheel memories, and the 1/2/3 weapon keys.",
+"topConcern": "Key 2 selects the bow slot with no bow owned (key 3 checks the staff): empty slot, no attacks, persisted on the worker.",
+"modes": [
+"guard-drift",
+"opacity"
+],
+"confidence": "high",
+"files": [
+"src/game/desktopControls.js:407",
+"src/game/desktopControls.js:411",
+"src/ui/BroTown.jsx:9901",
+"src/game/weaponSlots.js:28",
+"server/src/gear.js:779"
+],
+"linked": [
+"G2-4",
+"G2-5",
+"G2-6",
+"G2-7",
+"G2-9",
+"WeaponBar.jsx",
+"weaponSlots.js"
+]
+},
+{
+"id": "G2-18",
+"title": "The Enchanter's gem asks: shield gem, weapon gem, take-out",
+"area": "wire (both)",
+"verdict": "watch",
+"oneLine": "Module-level pending asks that hold the gem buttons for 4 s until the worker's result, with no opId.",
+"topConcern": "A shield-gem answer slower than 4 s lets a second tap spend a second gem, which replaces and loses the first.",
+"modes": [
+"race",
+"divergence"
+],
+"confidence": "low",
+"files": [
+"src/game/shieldGem.js:40",
+"src/game/shieldGem.js:82",
+"src/game/weaponGem.js:88",
+"server/src/shieldgem.js:45"
+],
+"linked": [
+"G2-19",
+"server/src/shieldgem.js",
+"server/src/weapongem.js"
+]
+},
+{
+"id": "G2-19",
+"title": "The arm's shield, reported to the worker (worn or carried)",
+"area": "wire (both)",
+"verdict": "fine",
+"oneLine": "Local equip of the shield reported by id or signature on every change and every join.",
+"topConcern": "A report sent while offline is dropped; the worker treats the old shield as worn until the next join.",
+"modes": [
+"persistence"
+],
+"confidence": "low",
+"files": [
+"src/game/shieldWear.js:34",
+"src/networking/wsClient.js:1635",
+"src/ui/mobile/dash/equipActions.js:124"
+],
+"linked": [
+"G2-18",
+"server/src/shieldwear.js",
+"No man's land loss"
+]
+},
+{
+"id": "G2-20",
+"title": "The one-bite rule in a fight, and the quick-eat pick",
+"area": "wire (both)",
+"verdict": "fine",
+"oneLine": "Page mirror of the worker's one instant heal per 15 s while fighting, synced by eat_refused.",
+"topConcern": "noteEatRefused's fight stamp lasts 10 s while the wait can be 15 s, costing one extra refused round trip.",
+"modes": [
+"divergence"
+],
+"confidence": "low",
+"files": [
+"src/game/fightFood.js:97",
+"src/game/fightFood.js:144",
+"src/game/quickEat.js:83",
+"src/networking/wsClient.js:2239"
+],
+"linked": [
+"server cooking.js _pvpHealWait",
+"mirror-audit PVP_HEAL"
+]
+},
+{
+"id": "G2-21",
+"title": "A kill's XP flying to the bar",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "One-slot rendezvous of a kill and its XP gain, and a token-counted hold on the bar's +N with failsafes.",
+"topConcern": "One waiting slot: a multi-kill before the gains flies a single label.",
+"modes": [
+"race"
+],
+"confidence": "low",
+"files": [
+"src/game/killXp.js:75",
+"src/game/killXp.js:94",
+"src/game/killXp.js:116",
+"src/networking/gameEvents.js:3124"
+],
+"linked": [
+"game/xpBar.js",
+"ui/XpFlyOverlay.jsx"
+]
+},
+{
+"id": "G2-22",
+"title": "The straight-in road's veil while your bro's pictures are made",
+"area": "ui",
+"verdict": "watch",
+"oneLine": "A veil and a pending-wait count holding the world until the avatar's pictures are ready or 20 s pass.",
+"topConcern": "The hold stops the walk but not jumpRefusal's or the sprint's copies of the held list.",
+"modes": [
+"guard-drift",
+"leak"
+],
+"confidence": "medium",
+"files": [
+"src/game/avatarHold.js:56",
+"src/ui/BroTown.jsx:12329",
+"src/ui/BroTown.jsx:5479",
+"src/game/jump.js:266"
+],
+"linked": [
+"G2-5",
+"G2-6",
+"other holds (_zoneLoading, _netHold, _townArtHold, _farmArtHold)"
+]
+},
+{
+"id": "G2-23",
+"title": "Emote moves and held poses: the table that times them",
+"area": "wire (both)",
+"verdict": "fine",
+"oneLine": "The declared move table (kind, length, pops) driving the once/hold pose machine in interactions.js and poses.js.",
+"topConcern": "sendMove's death test reads S.player.dead/S._dead, which nothing writes; the next frame ends the pose anyway.",
+"modes": [
+"guard-drift"
+],
+"confidence": "low",
+"files": [
+"src/game/emoteMoves.js:44",
+"src/game/emoteMoves.js:180",
+"src/game/interactions.js:75",
+"server/src/poses.js:55"
+],
+"linked": [
+"game/interactions.js",
+"server/src/poses.js",
+"G2-7"
+]
+},
+{
+"id": "G2-24",
+"title": "The harvest gesture's display chase",
+"area": "rendering",
+"verdict": "fine",
+"oneLine": "Forward-only pose phase and cook loop count kept on the extraction record, advanced once a frame.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"src/game/gesturePose.js:182",
+"src/game/gesturePose.js:201",
+"src/game/gesturePose.js:232",
+"src/game/gesturePose.js:265"
+],
+"linked": [
+"extraction machine (lifeSkillRewards / ExtractionSwipeLayer)"
+]
+},
+{
+"id": "G2-25",
+"title": "The bow special's three arrows (one shared volley record)",
+"area": "client",
+"verdict": "fine",
+"oneLine": "A volley object electing the burn's owner arrow and the first shove, living with its three arrows.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"src/game/bowVolley.js:94",
+"src/game/bowVolley.js:116",
+"src/game/playerActions.js:347",
+"src/game/projectiles.js:1022"
+],
+"linked": [
+"caps.bowvolley",
+"server combat.js BOW_VOLLEY_WORTH"
+]
+},
+{
+"id": "G2-26",
+"title": "One sword claim per swing against a player",
+"area": "wire (both)",
+"verdict": "fine",
+"oneLine": "Per-swing claim counter keyed by the swing clock, capped at three tries 90 ms apart, per target.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"src/game/pvpSwing.js:47",
+"src/game/monsterCombat.js:3196",
+"src/game/monsterCombat.js:3271"
+],
+"linked": [
+"server/src/pvpbalance.js"
+]
+},
+{
+"id": "G2-27",
+"title": "The legs' pace: the held speed quantum with hysteresis",
+"area": "rendering",
+"verdict": "fine",
+"oneLine": "A held quantised ground speed per figure with a dead band, timing the jog loop to the stride.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"src/game/legSync.js:91",
+"src/game/legSync.js:134",
+"src/rendering/playerSprites.js:466"
+],
+"linked": [
+"?legsync=0",
+"peer spr"
+]
+},
+{
+"id": "G2-28",
+"title": "An ability strike's look: bash pose, whirlwind vortex, rings",
+"area": "rendering",
+"verdict": "fine",
+"oneLine": "Short stamped visual windows for a strike, reaped by their renderers and cleared with the zone-local list.",
+"topConcern": "_whirlFx is reaped only once the vortex sheet has frames; _abilityFx is written and never read.",
+"modes": [
+"leak"
+],
+"confidence": "low",
+"files": [
+"src/game/abilities.js:741",
+"src/game/abilities.js:782",
+"src/rendering/systems/entityRenderer.js:14095",
+"src/rendering/systems/effectsRenderer.js:12828"
+],
+"linked": [
+"G2-2",
+"G2-3"
+]
+}
+]

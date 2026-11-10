@@ -1,0 +1,547 @@
+[
+{
+"id": "M3-1",
+"title": "Bag unseen-pickup registry (write-only)",
+"area": "ui",
+"verdict": "retired",
+"oneLine": "Session set of bag keys picked up but not inspected; still written each pickup, read by nothing since BagCompact went.",
+"topConcern": "Registry grows unbounded and re-renders BottomDashboard per pickup while no badge reads has/count/epoch.",
+"modes": [
+"leak",
+"opacity"
+],
+"confidence": "medium",
+"files": [
+"src/ui/mobile/sheet/bagUnseenModel.js:14",
+"src/ui/mobile/BottomDashboard.jsx:742",
+"src/ui/mobile/BottomDashboard.jsx:763"
+],
+"linked": [
+"M2 bag",
+"bagLife.js"
+]
+},
+{
+"id": "M3-2",
+"title": "Open Hero on a section deep link (heroSectionBus)",
+"area": "ui",
+"verdict": "retired",
+"oneLine": "One-shot pending request Hero consumes during render; no producer calls request() anywhere.",
+"topConcern": "Only live writer of laneClosed/selCat; a future caller revives three half-retired paths and setState-in-render.",
+"modes": [
+"opacity"
+],
+"confidence": "medium",
+"files": [
+"src/ui/mobile/sheet/heroSectionBus.js:18",
+"src/ui/mobile/sheet/HeroExpanded.jsx:279"
+],
+"linked": [
+"M3-12"
+]
+},
+{
+"id": "M3-3",
+"title": "Quest detail selection (questDetailBus)",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Which quest page the drill shows; null or stale ids render Quest not found or the done page.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"src/ui/mobile/sheet/questDetailBus.js:5",
+"src/ui/QuestCard.jsx:63",
+"src/ui/mobile/dash/QuestDetailPanel.jsx:43"
+],
+"linked": [
+"M3-8",
+"src/game/trackedQuest.js"
+]
+},
+{
+"id": "M3-4",
+"title": "Skill detail selection and open epoch (skillDetailBus)",
+"area": "ui",
+"verdict": "retired",
+"oneLine": "Open/consume epoch and persisted last-viewed skill; open() and selected() have no callers, only select() writes.",
+"topConcern": "Header promises a persisted outline and deep link that no longer exist.",
+"modes": [
+"opacity"
+],
+"confidence": "high",
+"files": [
+"src/ui/mobile/sheet/skillDetailBus.js:17",
+"src/ui/mobile/dash/SkillsPanel.jsx:44"
+],
+"linked": [
+"M3-9"
+]
+},
+{
+"id": "M3-5",
+"title": "Friend presence: online, grace, away, offline, last seen",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Per-friend presence from S.others with a 20 s in-memory grace and a localStorage last-seen map.",
+"topConcern": "bt_friendSeen never pruned; grace measured from the last render, not the peer's last tick.",
+"modes": [
+"leak",
+"persistence"
+],
+"confidence": "low",
+"files": [
+"src/ui/mobile/sheet/friendsModel.js:72",
+"src/ui/mobile/sheet/friendsModel.js:104"
+],
+"linked": [
+"M3-6",
+"docs/specs/friends.md"
+]
+},
+{
+"id": "M3-6",
+"title": "Friends client store: doc, DM archive, unread, open thread, error slot, migration",
+"area": "wire (both)",
+"verdict": "needs-thought",
+"oneLine": "Client half of the friend request/accept/DM protocol in module vars and localStorage, archive for a delivered-once backlog.",
+"topConcern": "friend_error is stored but takeError has no caller, so every friend failure is silent; DMs the worker drops show as sent.",
+"modes": [
+"stuck",
+"divergence",
+"persistence",
+"race"
+],
+"confidence": "high",
+"files": [
+"src/ui/mobile/sheet/friendsSync.js:67",
+"src/ui/mobile/sheet/friendsSync.js:40",
+"src/networking/gameEvents.js:627",
+"src/ui/mobile/dash/SocialPanel.jsx:152",
+"server/src/friends.js:212"
+],
+"linked": [
+"server/src/friends.js",
+"M3-5",
+"M3-7",
+"SocialPanel.jsx"
+]
+},
+{
+"id": "M3-7",
+"title": "Friend portrait cache (pending/ready per friend)",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Per-friend {key,url,pending} portrait regenerated when the friend's look key changes.",
+"topConcern": "Unsequenced async race (the class v2.3.1835 fixed for your own portrait) can store an older look; heals next render.",
+"modes": [
+"race",
+"leak"
+],
+"confidence": "low",
+"files": [
+"src/ui/mobile/sheet/friendPortraits.js:29",
+"src/ui/mobile/sheet/friendPortraits.js:31"
+],
+"linked": [
+"M3-25",
+"BottomDashboard.jsx portrait regen"
+]
+},
+{
+"id": "M3-8",
+"title": "Quest log and journal status mirror (offered, active, ready, done)",
+"area": "wire (both)",
+"verdict": "watch",
+"oneLine": "Sheet derives each quest's status from rpg._quests plus the client quest.check; the worker owns the transitions.",
+"topConcern": "Worker's objective refusal returns without _questRefusedEcho (spec says every refusal echoes), so a predicted hand-in stands under v2.",
+"modes": [
+"guard-drift",
+"divergence"
+],
+"confidence": "medium",
+"files": [
+"src/ui/mobile/sheet/questModel.js:57",
+"src/ui/mobile/sheet/questJournalModel.js:62",
+"src/game/quests.js:169",
+"server/src/quests.js:347",
+"server/src/quests.js:279"
+],
+"linked": [
+"server/src/quests.js",
+"src/game/quests.js",
+"docs/specs/quests.md",
+"M3-3"
+]
+},
+{
+"id": "M3-9",
+"title": "Life-skill new level-up dot (seen levels per browser)",
+"area": "ui",
+"verdict": "watch",
+"oneLine": "localStorage per-skill seen level decides the Skills dot; the Skills page marks all seen on mount.",
+"topConcern": "A skill with no stamp counts as seen and nothing seeds the map, so a fresh browser never shows the dot before a first visit.",
+"modes": [
+"stuck",
+"persistence"
+],
+"confidence": "medium",
+"files": [
+"src/ui/mobile/sheet/skillsModel.js:142",
+"src/ui/mobile/sheet/skillsModel.js:156",
+"src/ui/mobile/dash/SkillsPanel.jsx:56"
+],
+"linked": [
+"M3-4",
+"BottomDashboard.jsx:1029"
+]
+},
+{
+"id": "M3-10",
+"title": "Scroll-tap gesture recovery",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Per-component gesture record replaying a browser-cancelled touch as a tap when nothing scrolled and travel is under 44 px.",
+"topConcern": "Any non-scroll pointercancel (long-press callout) also replays as a tap, e.g. arming the points reset.",
+"modes": [
+"combo"
+],
+"confidence": "low",
+"files": [
+"src/ui/mobile/sheet/scrollTap.js:93",
+"src/ui/mobile/sheet/scrollTap.js:125"
+],
+"linked": [
+"M3-15",
+"HeroExpanded.jsx section tabs and [+]"
+]
+},
+{
+"id": "M3-11",
+"title": "Stat caption whole/short with cut hysteresis",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Caption shows the whole stat name or its short form, remembering widths where the browser cut it.",
+"topConcern": "A cut seen in the fallback font is remembered after the web font loads.",
+"modes": [
+"stuck"
+],
+"confidence": "low",
+"files": [
+"src/ui/mobile/sheet/StatCaption.jsx:61",
+"src/ui/mobile/sheet/StatCaption.jsx:85"
+],
+"linked": [
+"HeroExpanded Points grid"
+]
+},
+{
+"id": "M3-12",
+"title": "Points tab lane shown (picked versus held weapon) and dead lane state",
+"area": "ui",
+"verdict": "watch",
+"oneLine": "buildCat = a picked lane, cleared when the held weapon's lane changes; laneClosed/selCat/catCard sit beside it unused.",
+"topConcern": "laneClosed stuck true and selCat/catCard/catGrid unreachable but still computed; rewiring revives code unrun since v2.3.2683.",
+"modes": [
+"opacity"
+],
+"confidence": "medium",
+"files": [
+"src/ui/mobile/sheet/HeroExpanded.jsx:181",
+"src/ui/mobile/sheet/HeroExpanded.jsx:696",
+"src/ui/mobile/sheet/HeroExpanded.jsx:3398"
+],
+"linked": [
+"M3-2",
+"M3-14"
+]
+},
+{
+"id": "M3-13",
+"title": "Hero view state: section tab, selected slot, open stat family",
+"area": "ui",
+"verdict": "watch",
+"oneLine": "Module-persisted section (reset on bar) and stat family (never reset), plus the selected gear slot.",
+"topConcern": "_lastFam survives every close, so later visits open with a family covering the character, unlike the section.",
+"modes": [
+"stuck",
+"guard-drift"
+],
+"confidence": "medium",
+"files": [
+"src/ui/mobile/sheet/HeroExpanded.jsx:123",
+"src/ui/mobile/sheet/HeroExpanded.jsx:125",
+"src/ui/mobile/sheet/HeroExpanded.jsx:259",
+"src/ui/mobile/sheet/HeroExpanded.jsx:1087"
+],
+"linked": [
+"dashboardPanelBus",
+"M3-21"
+]
+},
+{
+"id": "M3-14",
+"title": "Spend points and stay: batch prog3_allocate and the waiting window",
+"area": "wire (both)",
+"verdict": "needs-thought",
+"oneLine": "Confirm window sends n allocations, shows Spending, waits for the echo or 3 s, reopens with what landed.",
+"topConcern": "Each point is an unpaced full blob save plus full player_state on the worker; one tap can be dozens of puts under nostatcap.",
+"modes": [
+"guard-drift",
+"stuck",
+"race",
+"divergence"
+],
+"confidence": "medium",
+"files": [
+"src/ui/mobile/sheet/HeroExpanded.jsx:1801",
+"src/ui/mobile/sheet/HeroExpanded.jsx:1865",
+"src/ui/mobile/sheet/HeroExpanded.jsx:1611",
+"src/ui/mobile/InfoPopup.jsx:108",
+"server/src/prog3.js:1473"
+],
+"linked": [
+"server/src/prog3.js _handleProg3Allocate",
+"server/src/flood.js _saveRpgPaced",
+"InfoPopup.jsx",
+"M3-12"
+]
+},
+{
+"id": "M3-15",
+"title": "Free points reset two-tap arm",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "First tap arms for 4 s, second sends points_reset through a helper with its own dedupe stamp.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"src/ui/mobile/sheet/HeroExpanded.jsx:3413",
+"src/game/pointsReset.js:55"
+],
+"linked": [
+"M3-10",
+"server pointsreset.js"
+]
+},
+{
+"id": "M3-16",
+"title": "Stat explainer scene loop (Now and +n on one clock)",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Timeline of id-guarded steps on setTimeouts, re-run on fresh dice, fully cleared on unmount or input change.",
+"topConcern": "Restarts from t=0 each time an async asset lands (up to four times in the first second).",
+"modes": [
+"opacity"
+],
+"confidence": "low",
+"files": [
+"src/ui/mobile/sheet/StatDemo.jsx:132",
+"src/ui/mobile/sheet/StatDemo.jsx:1063",
+"src/ui/mobile/sheet/StatDemo.jsx:1113"
+],
+"linked": [
+"M3-17",
+"M3-19",
+"M3-14"
+]
+},
+{
+"id": "M3-17",
+"title": "Stat scene asset pipeline (figure, attack, moves, pins, films)",
+"area": "rendering",
+"verdict": "fine",
+"oneLine": "Staged async captures with null/false/ready conventions and live guards, freed with the window.",
+"topConcern": "",
+"modes": [],
+"confidence": "medium",
+"files": [
+"src/ui/mobile/sheet/StatDemo.jsx:893",
+"src/ui/mobile/sheet/StatDemo.jsx:920",
+"src/ui/mobile/sheet/StatDemo.jsx:1011",
+"src/rendering/fighterCapture.js:213"
+],
+"linked": [
+"M3-16",
+"M3-18",
+"M3-23"
+]
+},
+{
+"id": "M3-18",
+"title": "Slime pin strips and per-launch-point keyframes",
+"area": "rendering",
+"verdict": "watch",
+"oneLine": "Strip pixels read once and kept; a pins set and injected style per launch point, never removed.",
+"topConcern": "About 1.8 MB of frame data kept for the session; a style and set per stage width (rotation, resize) never freed.",
+"modes": [
+"leak"
+],
+"confidence": "medium",
+"files": [
+"src/ui/mobile/sheet/slimePins.js:40",
+"src/ui/mobile/sheet/slimePins.js:68",
+"src/ui/mobile/sheet/slimePins.js:128"
+],
+"linked": [
+"M3-17",
+"rendering/arrowPin.js"
+]
+},
+{
+"id": "M3-19",
+"title": "Stat scene fight simulation (worker phases mirrored)",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Pure discrete-event mirror of slime attacks, status ticks, guard drain and kills, held by statsim.test.",
+"topConcern": "Guard pass never shows a break; cannot happen within its two attacks today.",
+"modes": [
+"divergence"
+],
+"confidence": "low",
+"files": [
+"src/ui/mobile/sheet/statSim.js:356",
+"src/ui/mobile/sheet/statSim.js:779",
+"server/test/statsim.test.mjs:337"
+],
+"linked": [
+"server combat.js",
+"elemental.js",
+"_tickPlayerRegen",
+"M3-16"
+]
+},
+{
+"id": "M3-20",
+"title": "Points rule-set mode: legacy blob, prog3 and cap-gated variants",
+"area": "wire (both)",
+"verdict": "needs-thought",
+"oneLine": "Sheet branches on record shape plus eight caps flags set each state_sync; readers pick their own subsets.",
+"topConcern": "Eight flags read ad hoc across five files; a cap gap shows the legacy grid whose T2 spend applies and persists client-side.",
+"modes": [
+"opacity",
+"authority",
+"guard-drift"
+],
+"confidence": "medium",
+"files": [
+"src/data/prog3.js:640",
+"src/networking/wsClient.js:1679",
+"src/ui/mobile/sheet/HeroExpanded.jsx:685",
+"src/ui/mobile/sheet/HeroExpanded.jsx:3446",
+"src/ui/mobile/dash/T2Panel.jsx:84"
+],
+"linked": [
+"server/src/prog3.js",
+"T2Panel.jsx",
+"SpendPointConfirm.jsx",
+"heroModel.js",
+"heroStatPills.js",
+"statPreview.js"
+]
+},
+{
+"id": "M3-21",
+"title": "Equipment slots view (worn, ghost, cape REMOVE)",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Six cells derived from the rpg echo, the localStorage gear store and the worker-fed cape catalog.",
+"topConcern": "A cosmetic-only chest or legs layer lights the cell with no stat piece behind it (documented).",
+"modes": [
+"divergence"
+],
+"confidence": "low",
+"files": [
+"src/ui/mobile/sheet/equipModel.js:143",
+"src/ui/mobile/sheet/equipModel.js:152",
+"src/ui/mobile/sheet/statPreview.js:40"
+],
+"linked": [
+"M2 equip machines",
+"M3-13",
+"gearCatalog.js",
+"capeCatalog.js"
+]
+},
+{
+"id": "M3-22",
+"title": "Band footprint per layout mode",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Pure table from orientation, one band, computer column, folded and sheet kind to band height and world width.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"src/ui/mobile/sheet/sheetGeometry.js:778",
+"src/ui/BroTown.jsx:3746",
+"src/ui/BroTown.jsx:3970"
+],
+"linked": [
+"dashboardPanelBus",
+"dashMinBus",
+"sheetStamp.js"
+]
+},
+{
+"id": "M3-23",
+"title": "Character figure canvas (Equipment tab, stat scene)",
+"area": "rendering",
+"verdict": "watch",
+"oneLine": "Draw-on-change canvas keyed by a wardrobe revision and weapon identity, out-of-order draws dropped by __pseq.",
+"topConcern": "Never redrawn after a parked-tab canvas purge (TRAPS 250) and its 768 px canvases are never emptied; drawn twice per stat window.",
+"modes": [
+"stuck",
+"leak"
+],
+"confidence": "low",
+"files": [
+"src/ui/mobile/sheet/CharacterView.jsx:166",
+"src/rendering/characterPortrait.js:410",
+"src/rendering/characterPortrait.js:1058"
+],
+"linked": [
+"M3-17",
+"M3-25",
+"TRAPS 250"
+]
+},
+{
+"id": "M3-24",
+"title": "Identity strip (retired)",
+"area": "ui",
+"verdict": "retired",
+"oneLine": "Who-am-I row with connection dot and XP strip; band branch returns null and the header branch has no caller.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"src/ui/mobile/sheet/IdentityStrip.jsx:100",
+"src/ui/mobile/sheet/IdentityStrip.jsx:191"
+],
+"linked": [
+"S._realtimeStatus",
+"M3-20"
+]
+},
+{
+"id": "M3-25",
+"title": "Shared portrait handoff (portraitStore)",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "One-value store the dashboard fills with your sequence-guarded bust; readers fall back through one chain.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"src/ui/mobile/sheet/portraitStore.js:8",
+"src/ui/mobile/sheet/portraitStore.js:36",
+"src/ui/mobile/BottomDashboard.jsx:861"
+],
+"linked": [
+"M3-7",
+"M3-23"
+]
+}
+]

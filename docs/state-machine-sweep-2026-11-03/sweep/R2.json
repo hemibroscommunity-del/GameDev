@@ -1,0 +1,612 @@
+[
+ {
+  "id": "R2-1",
+  "title": "The mana and stamina spend bars (show on spend, hold 1 s, fade by 2 s)",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Local MP/stamina block bars: appear on a spend, hold 1 s, fade by 2 s, swept on death.",
+  "topConcern": "",
+  "modes": [
+   "opacity"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:9374",
+   "src/rendering/systems/entityRenderer.js:18262",
+   "src/rendering/systems/entityRenderer.js:9366"
+  ],
+  "linked": [
+   "R2-2",
+   "S._dying writers"
+  ]
+ },
+ {
+  "id": "R2-2",
+  "title": "Your own HP band over your head (event-shown, heal-held, hard swap with your name plate)",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Self HP bar revealed by HP change, held 2.5 s or while healing, plate hidden while it shows.",
+  "topConcern": "HEAL_STALL_MS 9000 must outlast the worker's 6 s regen gap with nothing pinning them; fade steps per frame, slow on slow phones.",
+  "modes": [
+   "divergence",
+   "opacity"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:18381",
+   "src/rendering/systems/entityRenderer.js:16660",
+   "server/src/index.js:1095"
+  ],
+  "linked": [
+   "R2-1",
+   "server/src/safeheal.js",
+   "tools/qa/mp/mp-hpbar.mjs"
+  ]
+ },
+ {
+  "id": "R2-3",
+  "title": "A monster's death on screen (stamp, cut or splat, strip fallback, display kept until DONE)",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Per-life death stamp on the monster, DEATH_NONE/LIVE/DONE decides display survival; reset by two respawn writers.",
+  "topConcern": "Displays destroyed mid-death skip clearMonsterDeath; zone-death state lingers in _live until the next roll prunes it.",
+  "modes": [
+   "leak",
+   "opacity"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:9760",
+   "src/rendering/monsterDeathFx.js:985",
+   "src/networking/wsClient.js:1297",
+   "src/game/monsterCarry.js:22"
+  ],
+  "linked": [
+   "R2-4",
+   "R2-5",
+   "src/rendering/monsterDeathZonesFx.js",
+   "TRAPS §245"
+  ]
+ },
+ {
+  "id": "R2-4",
+  "title": "A monster's arrival flourish (white silhouette that grows in over 620 ms)",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Alive-edge detector stamps _spawnFxAt; white filter, alpha and scale grow in, removed only on the alive path.",
+  "topConcern": "A monster killed in its first ~410 ms keeps the white filter, low alpha and shrunken scale through its whole death.",
+  "modes": [
+   "combo"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:10191",
+   "src/rendering/systems/entityRenderer.js:9707",
+   "src/rendering/systems/entityRenderer.js:9889",
+   "src/rendering/monsterDeathFx.js:590"
+  ],
+  "linked": [
+   "R2-3",
+   "src/game/monsterCarry.js"
+  ]
+ },
+ {
+  "id": "R2-5",
+  "title": "The blue slime's death swell (and the giant slime's split swell): intangible while _burstUntil is set",
+  "area": "wire (both)",
+  "verdict": "needs-thought",
+  "oneLine": "Client copy of a slime's swell; ends only on the execute event; makes the slime intangible and swollen.",
+  "topConcern": "A rejoin after the slime exploded and respawned carries the swell onto the new life: drawn swollen, unhittable, untargetable on that phone.",
+  "modes": [
+   "stuck",
+   "persistence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/game/monsterCarry.js:22",
+   "src/networking/wsClient.js:1806",
+   "src/data/monsterVariants.js:434",
+   "src/networking/gameEvents.js:1385",
+   "src/rendering/systems/entityRenderer.js:10885"
+  ],
+  "linked": [
+   "R2-3",
+   "server/src/telegraph.js _startSlimeBurst",
+   "TRAPS §245",
+   "server/test/slime-boss.test.mjs §8",
+   "src/game/monsterCombat.js:2064",
+   "src/game/targeting.js:52"
+  ]
+ },
+ {
+  "id": "R2-6",
+  "title": "The snowman's burrow on screen (dig, pile, emerge; self-clearing mirror of the worker's phase)",
+  "area": "wire (both)",
+  "verdict": "watch",
+  "oneLine": "Event, tick and renderer self-clear keep a snowman's burrow phase and its client invulnerability flag.",
+  "topConcern": "A phone meeting the pile only via the tick arms 400 ms; renderer clears at 900 ms, tick re-arms: blinking mound and intangibility gaps.",
+  "modes": [
+   "race",
+   "persistence",
+   "guard-drift"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:10741",
+   "src/networking/gameEvents.js:1440",
+   "src/networking/wsClient.js:1290",
+   "server/src/telegraph.js:805"
+  ],
+  "linked": [
+   "R2-8",
+   "server/src/tick.js:787",
+   "src/data/monsterVariants.js isIntangible"
+  ]
+ },
+ {
+  "id": "R2-7",
+  "title": "A monster's wind-up throb (scale pulse that tightens until the strike)",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Wind-up until-stamp from the wire drives a scale throb; renderer self-clears and stamps _tgSeen.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:10236",
+   "src/networking/gameEvents.js:1528",
+   "src/rendering/elemWindup.js:150"
+  ],
+  "linked": [
+   "server/src/telegraph.js",
+   "R2-8"
+  ]
+ },
+ {
+  "id": "R2-8",
+  "title": "A monster's body strip: which animation plays and which way it faces",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Three hand-written animation priority ladders (variant, slime, snowman) over hit/attack/transform stamps; two-sighting facing hysteresis.",
+  "topConcern": "Each new strip adds a rung by hand in three ladders that already disagree on interrupt order; opaque, no live bug found.",
+  "modes": [
+   "opacity"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:10343",
+   "src/rendering/systems/entityRenderer.js:10593",
+   "src/rendering/systems/entityRenderer.js:10680",
+   "src/networking/gameEvents.js:1538"
+  ],
+  "linked": [
+   "R2-6",
+   "R2-7",
+   "src/game/monsterCombat.js"
+  ]
+ },
+ {
+  "id": "R2-9",
+  "title": "A monster's head band: HP bar in a fight, name plate at rest",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "One predicate (locked with intent or hit by you within 3 s) swaps a monster's plate for its HP bar.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:11191",
+   "src/rendering/systems/entityRenderer.js:11277",
+   "src/rendering/systems/entityRenderer.js:11068"
+  ],
+  "linked": [
+   "src/game/targeting.js engagedStance",
+   "R2-5"
+  ]
+ },
+ {
+  "id": "R2-10",
+  "title": "A monster's head marks: the notice !, the stun ring and countdown, the status dots",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Time-gated notice, stun and status marks on one Graphics with a clear-once dirty latch.",
+  "topConcern": "Stun stars compare the worker's epoch with the phone clock; cosmetic skew.",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:11522",
+   "src/networking/wsClient.js:1208",
+   "src/networking/wsClient.js:1259"
+  ],
+  "linked": [
+   "R2-9",
+   "server/src/tick.js w.st"
+  ]
+ },
+ {
+  "id": "R2-11",
+  "title": "The Wheel's no-look-not-drawn gate (renderer half of the walk-in look loader)",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Renderer destroys a Wheel monster's display while its look is not ready; loader frees unneeded looks.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:9740",
+   "src/rendering/wheelMonsterArt.js:117",
+   "src/rendering/wheelMonsterArt.js:220"
+  ],
+  "linked": [
+   "PRELOADING IS LAW",
+   "R2-12"
+  ]
+ },
+ {
+  "id": "R2-12",
+  "title": "Who gets drawn: far cull and crowd cap for monsters, players and their pets",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Per-frame far cull and crowd cap hide displays; per-peer timers only advance while a peer is drawn.",
+  "topConcern": "Corpse self-heal and ask-icon expiry freeze while a peer is culled and resume with the new position as death spot.",
+  "modes": [
+   "stuck"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:10098",
+   "src/rendering/systems/entityRenderer.js:12055",
+   "src/rendering/systems/entityRenderer.js:17153",
+   "src/game/crowdCap.js:51"
+  ],
+  "linked": [
+   "R2-13",
+   "R2-17",
+   "effectsRenderer _peerNotDrawn"
+  ]
+ },
+ {
+  "id": "R2-13",
+  "title": "Another player's corpse (death sprite until player_respawned, or until the corpse walks away)",
+  "area": "wire (both)",
+  "verdict": "watch",
+  "oneLine": "Peer _isDead set and cleared by one-shot events; renderer also clears it after 1.5 s and 24 px of movement.",
+  "topConcern": "A peer culled while dead and missed respawn event is drawn as a corpse at the new place until they walk 24 px.",
+  "modes": [
+   "stuck"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:12245",
+   "src/networking/gameEvents.js:3810",
+   "src/networking/gameEvents.js:3842"
+  ],
+  "linked": [
+   "R2-12",
+   "R2-18",
+   "src/rendering/deathCrumble.js"
+  ]
+ },
+ {
+  "id": "R2-14",
+  "title": "Another player's raised shield (block pose, held shield) from the sticky player_shield relay",
+  "area": "wire (both)",
+  "verdict": "needs-thought",
+  "oneLine": "Peer guard is a sticky boolean set only by the player_shield relay; drives block pose, held shield, hidden weapon.",
+  "topConcern": "Down edge dropped when the peer is in another zone, lost on rejoin, never repeated by tick: observers show a guard up forever or never.",
+  "modes": [
+   "divergence",
+   "persistence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/networking/gameEvents.js:2366",
+   "src/rendering/systems/entityRenderer.js:12438",
+   "src/rendering/systems/entityRenderer.js:13285",
+   "src/game/shieldToggle.js:171",
+   "server/src/eventplace.js:99"
+  ],
+  "linked": [
+   "server/src/tick.js:270 ps.blocking",
+   "R2-19",
+   "effectsRenderer _publishPeerBlockArms"
+  ]
+ },
+ {
+  "id": "R2-15",
+  "title": "Another player's body pose and stride",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Peer copy of the self pose ladder from relayed and ticked fields, with moving hysteresis and stride phase.",
+  "topConcern": "Hand copy of the self ladder: peers lack pickup and smithing poses, so a peer smithing stands still; timed poses end in three files.",
+  "modes": [
+   "divergence",
+   "opacity"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:12570",
+   "src/rendering/systems/entityRenderer.js:12323",
+   "src/rendering/systems/entityRenderer.js:14360",
+   "src/rendering/systems/effectsRenderer.js:6199"
+  ],
+  "linked": [
+   "R2-19",
+   "src/game/smithing.js",
+   "src/rendering/jumpFx.js"
+  ]
+ },
+ {
+  "id": "R2-16",
+  "title": "Another player's HP bar in a fight (8 s after a reported hit, swaps with their plate, band lifted off yours)",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Peer HP bar shown 8 s after each pvp_hit, plate as complement, band eased clear of yours.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:11902",
+   "src/networking/gameEvents.js:4082",
+   "src/rendering/systems/entityRenderer.js:13478"
+  ],
+  "linked": [
+   "R2-2",
+   "R2-12"
+  ]
+ },
+ {
+  "id": "R2-17",
+  "title": "Marks over another player: the PvP threat skull and the no-man's-land duel-ask icon",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Time-gated threat skull with cached phase; duel-ask icon created on demand, destroyed on expiry.",
+  "topConcern": "S._threatMarks may be a plain {} keyed by peer ids (house rule says null-prototype); ids are worker-issued.",
+  "modes": [
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:13541",
+   "src/rendering/systems/entityRenderer.js:13561",
+   "src/networking/gameEvents.js:236",
+   "src/game/noMansLand.js:133"
+  ],
+  "linked": [
+   "R2-12",
+   "TRAPS §192"
+  ]
+ },
+ {
+  "id": "R2-18",
+  "title": "Your own corpse (held 3.5 s or while HP is 0; the renderer seeds the stamp)",
+  "area": "wire (both)",
+  "verdict": "watch",
+  "oneLine": "Self corpse = hp<=0 or within 3.5 s of _deathStart; seven writers in five files; renderer seeds the stamp.",
+  "topConcern": "Corpse path returns early, freezing every stand-in flag _updatePlayer publishes; each reader must re-ask selfCorpseUp.",
+  "modes": [
+   "opacity"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:13814",
+   "src/rendering/systems/entityRenderer.js:6793",
+   "src/rendering/systems/entityRenderer.js:13912",
+   "src/networking/wsClient.js:3149"
+  ],
+  "linked": [
+   "R2-19",
+   "R2-1",
+   "effectsRenderer _selfCorpse"
+  ]
+ },
+ {
+  "id": "R2-19",
+  "title": "Your own pose, facing and the stand-in hand-off",
+  "area": "rendering",
+  "verdict": "needs-thought",
+  "oneLine": "Nine-rung pose and eleven-rung facing ladders; publishes stand-in flags for effectsRenderer and the facing BroTown broadcasts.",
+  "topConcern": "Published flags refresh only inside their own branch and freeze on the corpse; readers hold by convention; renderer's facing goes on the wire.",
+  "modes": [
+   "opacity",
+   "authority",
+   "stuck"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:13956",
+   "src/rendering/systems/entityRenderer.js:14236",
+   "src/rendering/systems/entityRenderer.js:14360",
+   "src/rendering/systems/entityRenderer.js:16428",
+   "src/ui/BroTown.jsx:8034"
+  ],
+  "linked": [
+   "R2-15",
+   "R2-18",
+   "R2-21",
+   "effectsRenderer sword/bow/block stand-ins",
+   "src/game/smithing.js"
+  ]
+ },
+ {
+  "id": "R2-20",
+  "title": "The weapon in your hand (fist hole mask, eased hand position, hand cap and arm clones)",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Inverse stencil fist-hole mask with an on/off latch and eased hand position keyed by facing, pose, type.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:15719",
+   "src/rendering/systems/entityRenderer.js:6118",
+   "src/rendering/systems/entityRenderer.js:15364"
+  ],
+  "linked": [
+   "TRAPS §221",
+   "R2-19"
+  ]
+ },
+ {
+  "id": "R2-21",
+  "title": "The stat scene's photo shoot (capturePoseFrames)",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Swaps in a private player display and runs _updatePlayer on a fake state to photograph roll and jog frames.",
+  "topConcern": "Fake state keeps real _jump/_climb/_ride/_farmWork; module state (_lastWeaponSprite, bake epoch, head watch) not restored.",
+  "modes": [
+   "combo",
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:16814",
+   "src/rendering/systems/entityRenderer.js:16885",
+   "src/rendering/fighterCapture.js:107"
+  ],
+  "linked": [
+   "R2-19",
+   "src/ui/mobile/sheet/StatDemo.jsx"
+  ]
+ },
+ {
+  "id": "R2-22",
+  "title": "Your pet and other players' pets on screen",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Local pet display (follow, fetch run, ward ring) and peer pets eased behind owners, gated on petshow cap.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:16990",
+   "src/rendering/systems/entityRenderer.js:17132",
+   "src/ui/BroTown.jsx:7110"
+  ],
+  "linked": [
+   "R2-12",
+   "BroTown pet AI"
+  ]
+ },
+ {
+  "id": "R2-23",
+  "title": "Scenery props and foreground pieces (texture bound on first sight, dropped on zone change)",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Per-prop sprite texture binding EMPTY to bound to EMPTY, dropping textures the zone change frees.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:17313",
+   "src/rendering/systems/entityRenderer.js:17258",
+   "src/rendering/npcSprites.js:558"
+  ],
+  "linked": [
+   "freeZoneDecor",
+   "mp-zonechurn"
+  ]
+ },
+ {
+  "id": "R2-24",
+  "title": "A townsperson's figure: live from their look near you, a photograph otherwise, nothing when far",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Townsperson display built live near, destroyed far, photo fallback re-binds destroyed textures, marks lifted once.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:17757",
+   "src/rendering/systems/entityRenderer.js:17771",
+   "src/rendering/systems/entityRenderer.js:17887",
+   "src/rendering/npcSprites.js:426"
+  ],
+  "linked": [
+   "lookFolk.js",
+   "wheelObjects.js:423"
+  ]
+ },
+ {
+  "id": "R2-25",
+  "title": "A townsperson's quest mark (offer tag, waiting ?, ready check; else the talk bubble)",
+  "area": "ui",
+  "verdict": "watch",
+  "oneLine": "Quest giver mark computed per frame on the phone from the quest model; renderer caches badge per marker string.",
+  "topConcern": "Ready check is the phone's own predicate over its own bag; can disagree with what the worker accepts at hand-in.",
+  "modes": [
+   "authority"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:18031",
+   "src/ui/BroTown.jsx:7470"
+  ],
+  "linked": [
+   "questModel",
+   "server quest state"
+  ]
+ },
+ {
+  "id": "R2-26",
+  "title": "The harvest stand-in hand-off (body put away while the gathering figure draws)",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Self or peer body hidden only once the chop/cook/fire/farm stand-in exists; corpse paths re-show it.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:13710",
+   "src/rendering/systems/entityRenderer.js:12545",
+   "src/rendering/standIns.js:80"
+  ],
+  "linked": [
+   "R2-18",
+   "R2-13",
+   "effectsRenderer stand-ins"
+  ]
+ },
+ {
+  "id": "R2-27",
+  "title": "The staff's crystal position handed to the cast effects (trusted for 250 ms)",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Renderer stamps staff tip position and behind-ness each drawn frame; cast effects ignore tips older than 250 ms.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:15566",
+   "src/rendering/systems/entityRenderer.js:13124",
+   "src/rendering/staffCastFx.js:396"
+  ],
+  "linked": [
+   "R2-19",
+   "R2-15"
+  ]
+ },
+ {
+  "id": "R2-28",
+  "title": "The resonance streak badge over your head",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Badge shows the client-computed resonance streak count for 10 s after the last resonant combo.",
+  "topConcern": "Badge hard-codes 10000 instead of RESONANCE_STREAK_WINDOW_MS; the streak and its mana bonus are computed on the phone.",
+  "modes": [
+   "guard-drift",
+   "authority"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:16606",
+   "src/data/gameSystems.js:5053",
+   "src/data/gameSystems.js:6446"
+  ],
+  "linked": [
+   "src/game/monsterCombat.js resolveCollision"
+  ]
+ }
+]

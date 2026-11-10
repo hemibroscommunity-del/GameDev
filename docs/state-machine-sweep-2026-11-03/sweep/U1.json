@@ -1,0 +1,653 @@
+[
+ {
+  "id": "U1-1",
+  "title": "The pet's follow, fetch run and loot vacuum",
+  "area": "client",
+  "verdict": "needs-thought",
+  "oneLine": "Your pet's follow / run-to-pile / come-back phases and the per-pile viaPet pickup ask.",
+  "topConcern": "BroTown passes petFetchStep a hoisted, still-undefined `now`, so give-up, way-back, skip and look timers never fire.",
+  "modes": [
+   "race"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/ui/BroTown.jsx:7103",
+   "src/ui/BroTown.jsx:7854",
+   "src/game/petFetch.js:98-176",
+   "src/ui/BroTown.jsx:7146-7206",
+   "docs/specs/pet-fetch.md:18-21"
+  ],
+  "linked": [
+   "server/src/pets.js",
+   "src/game/groundLoot.js",
+   "tools/qa/mp/mp-petfetch.mjs",
+   "server/test/petfetch.test.mjs"
+  ]
+ },
+ {
+  "id": "U1-2",
+  "title": "The local player's death and respawn",
+  "area": "wire (both)",
+  "verdict": "needs-thought",
+  "oneLine": "S._dying / _deathStart / respawnTimer: dead, respawn-invulnerable, alive; server and three legacy local paths.",
+  "topConcern": "Three hand-copied respawn sequences survive beside respawn.js's 'ONE copy', skipping art release, npcs reset, Wheel trip, and still docking gold locally.",
+  "modes": [
+   "divergence",
+   "authority",
+   "race",
+   "stuck"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/ui/BroTown.jsx:4881-4957",
+   "src/ui/BroTown.jsx:4992-5014",
+   "src/game/respawn.js:37-120",
+   "src/networking/wsClient.js:3141-3243",
+   "src/networking/gameEvents.js:3685-3740"
+  ],
+  "linked": [
+   "src/game/monsterCombat.js:1126-1278",
+   "src/ui/mobile/DeathCard.jsx",
+   "server player death/respawn replay (join.js)"
+  ]
+ },
+ {
+  "id": "U1-3",
+  "title": "The renderer's life: init, retry, rebuild window, owed rebuild",
+  "area": "rendering",
+  "verdict": "needs-thought",
+  "oneLine": "Pixi renderer init/fallback/backoff and the GL-loss rebuild via glEpoch, spread over window globals.",
+  "topConcern": "The async init has no superseded check: an epoch bump mid-init can leave pixiRef on a detached canvas and leak a WebGL context.",
+  "modes": [
+   "race",
+   "leak",
+   "opacity",
+   "stuck"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/BroTown.jsx:4001-4126",
+   "src/ui/BroTown.jsx:4138-4215",
+   "src/ui/BroTown.jsx:8401-8422",
+   "src/debug/crashTrap.js:292-312",
+   "src/rendering/pixiRenderer.js:311-358"
+  ],
+  "linked": [
+   "src/networking/wsClient.js:5064-5103",
+   "src/rendering/canvasWitness.js",
+   "black-screen watchdog (BroTown.jsx:8430-8900, U2)",
+   "TRAPS §194, §250"
+  ]
+ },
+ {
+  "id": "U1-4",
+  "title": "The pre-game phase: checking, door, creator, into the world",
+  "area": "ui",
+  "verdict": "needs-thought",
+  "oneLine": "bootPhase checking/login/create/null plus showIntro, gating five effects and the two roads into joinTown.",
+  "topConcern": "The creator road runs joinTown twice: PLAY calls it, then the auto-join effect fires because _autoJoined is only set inside it.",
+  "modes": [
+   "race",
+   "guard-drift"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/ui/BroTown.jsx:2252-2303",
+   "src/ui/BroTown.jsx:12008-12040",
+   "src/ui/BroTown.jsx:12041-12245",
+   "src/ui/panels/NameModal.jsx:1626",
+   "src/ui/GameApp.jsx:715-735"
+  ],
+  "linked": [
+   "LoginScreen.jsx",
+   "resume effect (BroTown.jsx:12246-12335, U2)",
+   "serverReady.js",
+   "wheelHome.js waitForWheelArrival",
+   "U1-20 staleBuild"
+  ]
+ },
+ {
+  "id": "U1-5",
+  "title": "Quest banner queue and the level-up / achievement slots",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Quest banner preempt-or-queue (cap 3) with per-kind holds, held behind the loading gate.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/ui/BroTown.jsx:2182-2230",
+   "src/ui/BroTown.jsx:243-254",
+   "src/ui/BroTown.jsx:9025-9050",
+   "src/ui/loadingGate.js:95-105"
+  ],
+  "linked": [
+   "src/game/quests.js:86",
+   "src/game/welcomeBanner.js:103",
+   "src/networking/wsClient.js:3597",
+   "TimedBanner.jsx"
+  ]
+ },
+ {
+  "id": "U1-6",
+  "title": "Which windows are open: thirty booleans, three lists",
+  "area": "ui",
+  "verdict": "watch",
+  "oneLine": "~30 show* / panel flags, closeAllMenus, _desktopCloseAll and _anyPanelOpen feeding S._uiBusy and uiBusyBus.",
+  "topConcern": "_anyPanelOpen omits clanInvite and every bus-driven window, so the chat feed and burst button stay up over them.",
+  "modes": [
+   "guard-drift",
+   "combo",
+   "opacity"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/BroTown.jsx:3336-3349",
+   "src/ui/BroTown.jsx:1963-1976",
+   "src/ui/BroTown.jsx:9928-9933",
+   "src/ui/BroTown.jsx:3299-3320",
+   "src/game/desktopControls.js:503-532"
+  ],
+  "linked": [
+   "src/ui/mobile/uiBusyBus.js",
+   "WorldChatFeed.jsx",
+   "ElementBurstButton.jsx",
+   "ClanInviteCard.jsx",
+   "shopBus",
+   "aceFlipBus"
+  ]
+ },
+ {
+  "id": "U1-7",
+  "title": "stats_update report-on-change with a last-signature stamp",
+  "area": "wire (both)",
+  "verdict": "watch",
+  "oneLine": "Client reports derived build (armor, skill tracks, grids, seeded T1) when its signature changes.",
+  "topConcern": "The signature is stamped before a send the shim silently drops while reconnecting, so a change made then is lost on rejoin.",
+  "modes": [
+   "persistence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/BroTown.jsx:3384-3525",
+   "src/networking/wsClient.js:5520-5532",
+   "src/networking/wsClient.js:6201-6221",
+   "src/game/t1Sync.js:1-60"
+  ],
+  "linked": [
+   "server/src/grids.js _handleStatsUpdate",
+   "src/ui/mobile/dash/equipActions.js syncArmorChange"
+  ]
+ },
+ {
+  "id": "U1-8",
+  "title": "The local rpg cache (bt_rpg): seed, migrate, overwrite",
+  "area": "client",
+  "verdict": "watch",
+  "oneLine": "bt_rpg loaded and shape-guess migrated into S.rpg before the worker's player_state replaces it.",
+  "topConcern": "The cache carries no shape version; migrations infer old shapes from field presence. The btRpc load road is dead code.",
+  "modes": [
+   "persistence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/BroTown.jsx:4238-4460",
+   "src/ui/BroTown.jsx:12096-12120",
+   "src/networking/charRoster.js:599-614",
+   "src/networking/index.js:28"
+  ],
+  "linked": [
+   "wsClient player_state/state_sync adopt",
+   "docs/specs/migrations.md",
+   "src/game/t1Sync.js"
+  ]
+ },
+ {
+  "id": "U1-9",
+  "title": "May I move this frame: walk-freeze flags and their copies",
+  "area": "client",
+  "verdict": "watch",
+  "oneLine": "Veils, loading, race line, sled, stun, loot freeze and death that zero the stick or the walk.",
+  "topConcern": "Sprint's 'moving' omits _avatarArtHold and raceHeld, so on Lil Bro's start line predicted stamina drains while the worker bills nothing.",
+  "modes": [
+   "guard-drift"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/BroTown.jsx:5479-5482",
+   "src/ui/BroTown.jsx:5335-5347",
+   "src/game/jump.js:266",
+   "src/game/sprint.js:187-227",
+   "server/src/sprint.js:25-37"
+  ],
+  "linked": [
+   "src/game/race.js raceHeld",
+   "src/game/avatarHold.js",
+   "src/networking/serverReady.js",
+   "src/game/zoneTransitions.js",
+   "src/game/farmTrip.js"
+  ]
+ },
+ {
+  "id": "U1-10",
+  "title": "The two touch discs: painted / pressable / lit / hot / ghost",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Per-frame resolver for the right contextual disc and left stick visibility, press-ability and face.",
+  "topConcern": "",
+  "modes": [
+   "stuck"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/BroTown.jsx:6084-6165",
+   "src/ui/BroTown.jsx:6310-6430",
+   "src/ui/BroTown.jsx:6470-6640",
+   "src/ui/BroTown.jsx:10043-10142"
+  ],
+  "linked": [
+   "TouchControls.jsx",
+   "src/game/controlVisibility.js",
+   "src/game/tapJump.js",
+   "U2 joystick handlers"
+  ]
+ },
+ {
+  "id": "U1-11",
+  "title": "A lit campfire: strike, fire, keep-alive, burn out",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "Client-local firemaking and campfire lifecycle, pushed alive while cooking, cleared on zone change.",
+  "topConcern": "",
+  "modes": [
+   "authority"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/BroTown.jsx:6660-6760",
+   "src/ui/BroTown.jsx:9690-9722",
+   "src/game/zoneTransitions.js:392-405",
+   "server/src/cooking.js:195-215"
+  ],
+  "linked": [
+   "campfireFx.js",
+   "server/src/gathering.js:900-920",
+   "gameEvents campfire_lit"
+  ]
+ },
+ {
+  "id": "U1-12",
+  "title": "The harvest in progress (S._extraction) tick and cancels",
+  "area": "client",
+  "verdict": "watch",
+  "oneLine": "Extraction waiting to ready via worker hits or timer; cancelled by stick, reach, node loss or zone change.",
+  "topConcern": "A locked try waits on Infinity until its plan lands; a lost gather_hits leaves WAIT on the disc until you move.",
+  "modes": [
+   "stuck",
+   "opacity"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/BroTown.jsx:6761-6835",
+   "src/game/lifeSkillRewards.js:218-345",
+   "src/game/lifeSkillRewards.js:420-455",
+   "src/game/lifeSkillRewards.js:530-545"
+  ],
+  "linked": [
+   "server/src/gathering.js",
+   "ExtractionSwipeLayer.jsx",
+   "src/game/zoneTransitions.js:405"
+  ]
+ },
+ {
+  "id": "U1-13",
+  "title": "A townsperson's frame: racing, companion, day-walk or wander",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "Per-NPC wander/companion/chat timers and the quest badge derived each frame from quest state.",
+  "topConcern": "",
+  "modes": [
+   "guard-drift"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/BroTown.jsx:7300-7487",
+   "src/ui/BroTown.jsx:243-246",
+   "src/ui/BroTown.jsx:6838-6860",
+   "src/game/monsterCombat.js:3060-3135"
+  ],
+  "linked": [
+   "src/game/townsfolkDay.js",
+   "src/game/townsfolkReact.js",
+   "src/game/race.js",
+   "server quests.js"
+  ]
+ },
+ {
+  "id": "U1-14",
+  "title": "The walk-up dialogue latch (?npcprox only)",
+  "area": "ui",
+  "verdict": "retired",
+  "oneLine": "Proximity opener's {npc, ready} latch with open/clear hysteresis, dormant since tap-only talking.",
+  "topConcern": "",
+  "modes": [
+   "opacity"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/BroTown.jsx:6861-7027",
+   "src/ui/BroTown.jsx:676-683",
+   "src/ui/BroTown.jsx:10519"
+  ],
+  "linked": [
+   "src/game/quests.js:244",
+   "U2 tap handler"
+  ]
+ },
+ {
+  "id": "U1-15",
+  "title": "The clan war's local clock",
+  "area": "wire (both)",
+  "verdict": "watch",
+  "oneLine": "S._activeClanWar active, ended, cleared; ended both by the phone's timer and the worker's clan_war_end.",
+  "topConcern": "With caps.clans the local clock still shows WAR WON and a pay line and can pre-empt or swallow the worker's verdict.",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/BroTown.jsx:7665-7724",
+   "src/networking/gameEvents.js:3906-3970",
+   "src/ui/panels/ClanPanel.jsx:897-911",
+   "server/src/index.js:673-677"
+  ],
+  "linked": [
+   "server clan war referee (clans.js)",
+   "WarBanner.jsx"
+  ]
+ },
+ {
+  "id": "U1-16",
+  "title": "GameApp's sound keeper: unlock, away, re-arm on tap",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "Visibility, pageshow, focus and a late heartbeat arm BT_AUDIO's session reclaim and kick for the next gesture.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "low",
+  "files": [
+   "src/ui/GameApp.jsx:124-175",
+   "src/ui/GameApp.jsx:186-362",
+   "src/data/gameDisplay.js:2032-2176"
+  ],
+  "linked": [
+   "BT_AUDIO (gameDisplay.js)",
+   "wsClient resume probe",
+   "U1-28"
+  ]
+ },
+ {
+  "id": "U1-17",
+  "title": "Small dead or dormant machines in this half",
+  "area": "client",
+  "verdict": "retired",
+  "oneLine": "Tutorial steps, farm-bed sleep, worn-armour toggle, hostile poll, NFT lookup, town music interval.",
+  "topConcern": "Dormant client-authoritative writes (full HP, buffs, free armour art) wake if tile 15 or InventoryPanel returns.",
+  "modes": [
+   "authority",
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/BroTown.jsx:7727-7790",
+   "src/ui/BroTown.jsx:5613-5641",
+   "src/ui/BroTown.jsx:1690-1722",
+   "src/ui/GameApp.jsx:688-706",
+   "src/ui/BroTown.jsx:3031-3138"
+  ],
+  "linked": [
+   "src/game/rest.js",
+   "src/rendering/gearCatalog.js",
+   "src/ui/mobile/blockRingBus.js",
+   "src/game/townMusic.js"
+  ]
+ },
+ {
+  "id": "U1-18",
+  "title": "Per-frame action ticks: roll, lunge, whirlwind, gust, climb, jump latch",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "Nullable in-progress move records ended by arrival, window, death or zone change.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "low",
+  "files": [
+   "src/ui/BroTown.jsx:5025-5056",
+   "src/ui/BroTown.jsx:5093-5225",
+   "src/ui/BroTown.jsx:4701-4742",
+   "src/game/abilities.js:549-618",
+   "src/game/zoneTransitions.js:392-427"
+  ],
+  "linked": [
+   "src/game/dodge.js",
+   "src/game/jump.js",
+   "src/game/climbActions.js",
+   "server ability handling"
+  ]
+ },
+ {
+  "id": "U1-19",
+  "title": "Canvas sizing: resize, watchdog and iOS page lock",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Edge-triggered resize plus a level-triggered watchdog sharing bandFootprint, standing down while typing.",
+  "topConcern": "",
+  "modes": [
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/BroTown.jsx:3580-3880",
+   "src/ui/BroTown.jsx:3936-4000",
+   "src/ui/BroTown.jsx:3194-3282"
+  ],
+  "linked": [
+   "sheetGeometry.js bandFootprint",
+   "sheetStamp.js",
+   "BottomDashboard.jsx"
+  ]
+ },
+ {
+  "id": "U1-20",
+  "title": "A tab left open across a deploy (staleBuild)",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "buildWatch mismatch: reload on a pre-game screen, else the update banner.",
+  "topConcern": "",
+  "modes": [
+   "stuck"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/BroTown.jsx:1586-1617",
+   "src/game/buildWatch.js"
+  ],
+  "linked": [
+   "UpdateBanner.jsx",
+   "U1-4 __btPhase"
+  ]
+ },
+ {
+  "id": "U1-21",
+  "title": "The idle clock and the AWAY flag",
+  "area": "wire (both)",
+  "verdict": "fine",
+  "oneLine": "S._lastInputAt drives the page's idle logout and the aw flag the worker trusts for its sweep.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "low",
+  "files": [
+   "src/ui/BroTown.jsx:636-642",
+   "src/ui/BroTown.jsx:5236-5243",
+   "src/ui/BroTown.jsx:8081-8102",
+   "server/src/index.js:5095-5125"
+  ],
+  "linked": [
+   "server/src/tick.js:170",
+   "wsClient resume banner"
+  ]
+ },
+ {
+  "id": "U1-22",
+  "title": "Who this page plays as: S.myId worked out at mount",
+  "area": "client",
+  "verdict": "watch",
+  "oneLine": "Guest, adopted, minted or corrected identity; every key change otherwise reloads.",
+  "topConcern": "_takeKeyId corrects S.myId in place while other key changes reload; earlier readers can disagree (no live breakage found).",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/BroTown.jsx:1086-1113",
+   "src/ui/BroTown.jsx:11939-11945",
+   "src/ui/BroTown.jsx:12408-12465",
+   "src/networking/charRoster.js:599-614"
+  ],
+  "linked": [
+   "server/src/loginkeys.js",
+   "TRAPS §216",
+   "src/networking/index.js:114-119"
+  ]
+ },
+ {
+  "id": "U1-23",
+  "title": "React mirrors of the loop's 'what is near me'",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Nearest node/door/hall/farm buttons pushed to React on change; one room picture warmed.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "low",
+  "files": [
+   "src/ui/BroTown.jsx:989-992",
+   "src/ui/BroTown.jsx:6045-6048",
+   "src/ui/BroTown.jsx:1653-1817",
+   "src/ui/BroTown.jsx:8924-8960"
+  ],
+  "linked": [
+   "src/game/buildingRooms.js warmRoom",
+   "wheelTownDoors.js",
+   "U2 sync interval"
+  ]
+ },
+ {
+  "id": "U1-24",
+  "title": "Device-local lists and counters (bt_stats, bt_clan, friends)",
+  "area": "client",
+  "verdict": "watch",
+  "oneLine": "Per-device stats, clan cache and social lists restored at mount with no version.",
+  "topConcern": "visitedBuildings returns as an Array (no .size); bt_clan is not a per-character cache key, so a switch shows the old clan until join.",
+  "modes": [
+   "persistence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/BroTown.jsx:1402-1558",
+   "src/ui/BroTown.jsx:2089-2129",
+   "src/ui/BroTown.jsx:9000-9020",
+   "src/game/interactions.js:196-200",
+   "src/networking/charRoster.js:47-50"
+  ],
+  "linked": [
+   "server chatmod.js",
+   "server/src/join.js:1630 clan_state",
+   "gameEvents.js:3875-3878"
+  ]
+ },
+ {
+  "id": "U1-25",
+  "title": "Client-local gather node respawn",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "Harvested nodes revive on respawnAt only while the worker is not authoritative for nodes.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "low",
+  "files": [
+   "src/ui/BroTown.jsx:5974-5993",
+   "src/ui/BroTown.jsx:780-781",
+   "src/networking/wsClient.js:1813-1820"
+  ],
+  "linked": [
+   "server/src/gathering.js",
+   "src/game/lifeSkillRewards.js"
+  ]
+ },
+ {
+  "id": "U1-26",
+  "title": "Character creator's preview states and randomize flair",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Camera framing, facing, drag-rotate and a 3-step randomize interval over store-mirror trait pairs.",
+  "topConcern": "",
+  "modes": [
+   "race"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/BroTown.jsx:2430-2490",
+   "src/ui/BroTown.jsx:2491-2528",
+   "src/ui/BroTown.jsx:2965-2976",
+   "src/ui/BroTown.jsx:2937-2960"
+  ],
+  "linked": [
+   "NameModal.jsx",
+   "characterCreatorEffects.js"
+  ]
+ },
+ {
+  "id": "U1-27",
+  "title": "The chat composer and the log's change bump",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "chatOpen, input value with a ref mirror, send and refocus; one wrapper bumps the feed's bus.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "low",
+  "files": [
+   "src/ui/BroTown.jsx:1560-1583",
+   "src/ui/BroTown.jsx:3150-3169",
+   "src/game/desktopControls.js:503-508"
+  ],
+  "linked": [
+   "src/game/chat.js",
+   "chatLogBus",
+   "WorldChatFeed.jsx",
+   "respawn.js:89-93"
+  ]
+ },
+ {
+  "id": "U1-28",
+  "title": "The slime proximity hum's looping source",
+  "area": "client",
+  "verdict": "needs-thought",
+  "oneLine": "Buffer load, one looping source and a gain following the nearest slime within 250 px.",
+  "topConcern": "After BT_AUDIO rebuilds its AudioContext the slot keeps the closed context's nodes and never recreates them: slimes silent until reload.",
+  "modes": [
+   "stuck",
+   "leak"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/game/slimeAudio.js:11-72",
+   "src/ui/BroTown.jsx:1022",
+   "src/ui/BroTown.jsx:3188-3190",
+   "src/data/gameDisplay.js:2125-2175"
+  ],
+  "linked": [
+   "BT_AUDIO _rebuildContext",
+   "U1-16 GameApp sound keeper"
+  ]
+ }
+]

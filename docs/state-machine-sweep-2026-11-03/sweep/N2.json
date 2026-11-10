@@ -1,0 +1,565 @@
+[
+ {
+  "id": "N2-1",
+  "title": "Crash-report upload debounce",
+  "area": "client",
+  "verdict": "needs-thought",
+  "oneLine": "When the localStorage crash ring is uploaded: slow and fast timers plus a dedupe on the ring's length.",
+  "topConcern": "Once the 16-entry ring is full its length never changes, so after the boot upload no later crash in that page is sent.",
+  "modes": [
+   "stuck"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/debug/crashTrap.js:57",
+   "src/debug/crashTrap.js:137",
+   "src/debug/crashTrap.js:269",
+   "src/debug/crashTrap.js:96",
+   "server/src/feedback.js:78"
+  ],
+  "linked": [
+   "N2-2",
+   "server/src/feedback.js crashReport",
+   "BroTown watchdog markAlive"
+  ]
+ },
+ {
+  "id": "N2-2",
+  "title": "Page alive mark and killed-page detection",
+  "area": "client",
+  "verdict": "watch",
+  "oneLine": "A 5 s alive mark per page, removed on pagehide; the next page pings and reports pages that died open.",
+  "topConcern": "One shared key: with two tabs open the other tab overwrites the mark, so a killed tab usually goes unreported.",
+  "modes": [
+   "divergence",
+   "race"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/debug/crashTrap.js:184",
+   "src/debug/crashTrap.js:197",
+   "src/debug/crashTrap.js:248",
+   "src/ui/BroTown.jsx:8791"
+  ],
+  "linked": [
+   "N2-1",
+   "tools/qa/mp/mp-killedpage.mjs"
+  ]
+ },
+ {
+  "id": "N2-3",
+  "title": "WebGL context-loss escalation",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "A context loss stamps __btGlLostAt and arms a 2.5 s rebuild through BroTown's debounced rebuild door.",
+  "topConcern": "",
+  "modes": [
+   "race"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/debug/crashTrap.js:286",
+   "src/ui/BroTown.jsx:4138",
+   "src/ui/BroTown.jsx:4145",
+   "src/networking/wsClient.js:5085"
+  ],
+  "linked": [
+   "BroTown renderer epoch / owed rebuild",
+   "tools/qa/mp/mp-doubleloss.mjs"
+  ]
+ },
+ {
+  "id": "N2-4",
+  "title": "Debug bus and overlay",
+  "area": "ui",
+  "verdict": "watch",
+  "oneLine": "Debug console enabled and visible flags, permanent console and socket hooks, socket status, activation gesture.",
+  "topConcern": "?debug=1 without ?dev=1 turns full socket and console capture on with no overlay mounted to show or close it.",
+  "modes": [
+   "combo",
+   "persistence",
+   "divergence",
+   "leak"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/debug/debugBus.js:193",
+   "src/debug/debugBus.js:62",
+   "src/ui/GameApp.jsx:780",
+   "src/debug/DebugOverlay.jsx:28",
+   "src/debug/debugBus.js:77"
+  ],
+  "linked": [
+   "N2-5",
+   "src/ui/mobile/dash/SettingsPanel.jsx:163"
+  ]
+ },
+ {
+  "id": "N2-5",
+  "title": "Perf diagnostics (zone stats, spike log, HUD)",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "Per-zone frame-time epochs, a 500 ms spike-log throttle, global timer hooks and the perf HUD interval.",
+  "topConcern": "",
+  "modes": [
+   "race"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/debug/perfTracker.js:138",
+   "src/debug/perfTracker.js:157",
+   "src/debug/perfHud.js:95",
+   "src/game/renderFrame.js:84"
+  ],
+  "linked": [
+   "N2-4",
+   "window.__btBakeStats"
+  ]
+ },
+ {
+  "id": "N2-6",
+  "title": "Gather-node snapshot self-heal",
+  "area": "wire (both)",
+  "verdict": "watch",
+  "oneLine": "Stashes a node snapshot that raced the zone flip; re-sends the move up to four times for an empty zone.",
+  "topConcern": "A stash for an unentered zone lingers; the reclaim re-sends moves the worker never answers with a snapshot.",
+  "modes": [
+   "stuck",
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/networking/nodeSync.js:54",
+   "src/networking/wsClient.js:1833",
+   "src/networking/wsClient.js:4371",
+   "server/src/movement.js:822"
+  ],
+  "linked": [
+   "N2-10",
+   "zoneTransitions.js onZoneEntered callers"
+  ]
+ },
+ {
+  "id": "N2-7",
+  "title": "A peer's look across join and relay roads",
+  "area": "wire (both)",
+  "verdict": "fine",
+  "oneLine": "One rename table maps wire cosmetic keys onto peers: snapshots in full, the 2 s track relay as deltas.",
+  "topConcern": "A pattern or drawing cleared mid-session never clears on peers; documented, and unreachable in the world today.",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/networking/peerCosmetics.js:180",
+   "src/networking/wsClient.js:3827",
+   "src/ui/BroTown.jsx:8118",
+   "server/test/peer-view.test.mjs:99"
+  ],
+  "linked": [
+   "server TRACK_COSMETIC_KEYS / JOIN_COSMETIC_KEYS"
+  ]
+ },
+ {
+  "id": "N2-8",
+  "title": "A ground-loot pile on this phone",
+  "area": "wire (both)",
+  "verdict": "fine",
+  "oneLine": "Local copies of worker piles: dropped, claimed, despawned, expired, with owner-only windows re-based on arrival.",
+  "topConcern": "",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/networking/gameEvents.js:283",
+   "src/networking/gameEvents.js:358",
+   "src/networking/wsClient.js:3923",
+   "src/rendering/systems/effectsRenderer.js:10094"
+  ],
+  "linked": [
+   "wsClient _buildServerPile / loot_credit",
+   "groundLoot.js"
+  ]
+ },
+ {
+  "id": "N2-9",
+  "title": "Other players' campfires and chop targets",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "Relayed peer campfires with capped fuses, extended while they cook, and a peer's chop tree; cleared per zone.",
+  "topConcern": "",
+  "modes": [
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/networking/gameEvents.js:542",
+   "src/networking/gameEvents.js:520",
+   "src/rendering/campfireFx.js:430",
+   "src/game/zoneTransitions.js:399"
+  ],
+  "linked": [
+   "N2-13"
+  ]
+ },
+ {
+  "id": "N2-10",
+  "title": "A dungeon run on this phone",
+  "area": "wire (both)",
+  "verdict": "needs-thought",
+  "oneLine": "Opening, inside, waves, boss, 30 s clear and leaving, across about fifteen S fields and a synthetic zone.",
+  "topConcern": "Three hand-written exits reset different subsets; the Workshop's skip the lock clear, zone fx, art release and delayed zone drop.",
+  "modes": [
+   "divergence",
+   "race",
+   "persistence",
+   "opacity"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/networking/gameEvents.js:825",
+   "src/networking/gameEvents.js:1057",
+   "src/game/wheelDungeons.js:247",
+   "src/game/zoneTransitions.js:1504",
+   "src/game/respawn.js:43"
+  ],
+  "linked": [
+   "server dungeon.js / wheeldungeon.js",
+   "src/game/dungeonClear.js",
+   "N2-6"
+  ]
+ },
+ {
+  "id": "N2-11",
+  "title": "A monster's telegraph and visual phases",
+  "area": "rendering",
+  "verdict": "needs-thought",
+  "oneLine": "Wind-up, swell, burrow, throw, enrage, transform and split stamps per monster, from four families of writers.",
+  "topConcern": "_burstUntil is a truthy flag, not a clock: a missed execute leaves a slime swollen and untouchable, into its next life.",
+  "modes": [
+   "stuck",
+   "divergence",
+   "opacity"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/data/monsterVariants.js:434",
+   "src/networking/gameEvents.js:1369",
+   "src/networking/gameEvents.js:1386",
+   "src/rendering/systems/entityRenderer.js:10885",
+   "src/networking/wsClient.js:1302"
+  ],
+  "linked": [
+   "N2-12",
+   "src/game/monsterCarry.js",
+   "TRAPS §245",
+   "src/networking/monsterMoveEvents.js"
+  ]
+ },
+ {
+  "id": "N2-12",
+  "title": "A monster's life on this phone",
+  "area": "wire (both)",
+  "verdict": "watch",
+  "oneLine": "Alive, dead, respawned mirror of a server monster; kill event and tick both flip it; resets by hand.",
+  "topConcern": "The respawn reset omits the newer moment fields; only the swell sticks (see N2-11).",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/networking/gameEvents.js:2959",
+   "src/networking/wsClient.js:1297",
+   "src/game/monsterCarry.js:23"
+  ],
+  "linked": [
+   "N2-11",
+   "server tick monster respawn"
+  ]
+ },
+ {
+  "id": "N2-13",
+  "title": "Another player's action stand-ins",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Timed stamps for a peer's swing, bash, whirlwind, bow, cast, roll and jump, plus a boolean raised shield.",
+  "topConcern": "A peer's shield is lowered only by a relay that is dropped while they are in another zone, so it can stay up forever.",
+  "modes": [
+   "stuck",
+   "race"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/networking/gameEvents.js:2364",
+   "src/networking/gameEvents.js:2366",
+   "src/rendering/systems/entityRenderer.js:12439",
+   "src/game/shieldToggle.js:171"
+  ],
+  "linked": [
+   "N2-9",
+   "shieldToggle.js"
+  ]
+ },
+ {
+  "id": "N2-14",
+  "title": "A monster's blow on me, as this phone shows it",
+  "area": "wire (both)",
+  "verdict": "needs-thought",
+  "oneLine": "The display verdict per monster_attack: ghost filters, worker block, local fallback block, dodge, death window, defense XP.",
+  "topConcern": "The fallback block re-judges blows the worker landed while the phone's shield is up: number hidden, HP still drops, defense trained.",
+  "modes": [
+   "divergence",
+   "authority",
+   "guard-drift"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/networking/gameEvents.js:3499",
+   "src/networking/gameEvents.js:3348",
+   "src/networking/wsClient.js:6031",
+   "server/src/grids.js:839",
+   "server/src/movement.js:781"
+  ],
+  "linked": [
+   "server hits.js _monsterHit",
+   "shieldToggle.js",
+   "grids.js _handleStatsUpdate",
+   "N2-17"
+  ]
+ },
+ {
+  "id": "N2-15",
+  "title": "Another player's corpse",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "_isDead set by a peer's death relay, cleared by their respawn relay or the renderer's moved-away self-heal.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/networking/gameEvents.js:3788",
+   "src/networking/gameEvents.js:3832",
+   "src/rendering/systems/entityRenderer.js:12246",
+   "server/src/index.js:610"
+  ],
+  "linked": [
+   "server spar.js clone relays"
+  ]
+ },
+ {
+  "id": "N2-16",
+  "title": "Clan invite and clan war on the phone",
+  "area": "wire (both)",
+  "verdict": "retired",
+  "oneLine": "Pending clan invite, the clan data echo and the phone's war record with scores and a 10 s end timer.",
+  "topConcern": "Clans are parties now; the legacy self-score and self-pay paths would mint coins against a worker without caps.clans.",
+  "modes": [
+   "authority"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/networking/gameEvents.js:3848",
+   "src/networking/gameEvents.js:3906",
+   "src/networking/gameEvents.js:4534",
+   "server/src/clanparty.js:10"
+  ],
+  "linked": [
+   "server clans.js / clanparty.js",
+   "N2-22"
+  ]
+ },
+ {
+  "id": "N2-17",
+  "title": "A blow between two players and its bookkeeping",
+  "area": "wire (both)",
+  "verdict": "watch",
+  "oneLine": "pvp_hit drawn on both sides, a 5 s server-resolved stamp, the defender's pvp_confirmed relay, the parry stagger.",
+  "topConcern": "The attacker's KILL! and kill count come only from the defender's relayed pvp_confirmed, though pvp_hit carries the worker's died.",
+  "modes": [
+   "divergence",
+   "authority"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/networking/gameEvents.js:4391",
+   "src/networking/gameEvents.js:4524",
+   "src/networking/gameEvents.js:4130",
+   "server/src/relay.js:61",
+   "docs/specs/duels.md:124"
+  ],
+  "linked": [
+   "server combat.js _resolvePvPAttack",
+   "server pvpextras.js _pvpParry",
+   "N2-18",
+   "N2-14"
+  ]
+ },
+ {
+  "id": "N2-18",
+  "title": "A duel on this phone",
+  "area": "wire (both)",
+  "verdict": "needs-thought",
+  "oneLine": "Challenge card, optimistic accept, in-duel state and lock, arena match, ended; mirrors the worker's duel machine.",
+  "topConcern": "Accept enters the duel before the worker answers; a stale or busy challenge is dropped silently, leaving the phone in a duel.",
+  "modes": [
+   "stuck",
+   "guard-drift"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/ui/panels/DuelRequestPanel.jsx:201",
+   "server/src/duel.js:145",
+   "src/networking/gameEvents.js:5220",
+   "src/networking/gameEvents.js:4772",
+   "src/ui/panels/InspectPlayerPanel.jsx:282"
+  ],
+  "linked": [
+   "server duel.js",
+   "N2-17",
+   "src/game/duelLock.js",
+   "tools/qa/mp/mp-blockasks.mjs"
+  ]
+ },
+ {
+  "id": "N2-19",
+  "title": "Threat skulls from the threat handshake",
+  "area": "wire (both)",
+  "verdict": "retired",
+  "oneLine": "Red and white threat skulls on me and on peers from the pvp_threat handshake, with consent windows.",
+  "topConcern": "Dormant; reviving it gives the skull slots two writers (No man's land nulls them) and a plain-object id map.",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/networking/gameEvents.js:4792",
+   "src/networking/gameEvents.js:236",
+   "src/game/noMansLand.js:262",
+   "src/ui/panels/InspectPlayerPanel.jsx:541"
+  ],
+  "linked": [
+   "src/game/noMansLand.js",
+   "server threat.js"
+  ]
+ },
+ {
+  "id": "N2-20",
+  "title": "The two-sided trade window",
+  "area": "ui",
+  "verdict": "watch",
+  "oneLine": "One window slot driven by worker snapshots: incoming card, waiting invite, open, done receipt, failed, cancelled.",
+  "topConcern": "A cancel names no invite, so an old invite's expiry or decline wipes a newer card or the player's own waiting drawer.",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/networking/gameEvents.js:5022",
+   "server/src/trade2.js:416",
+   "server/src/trade2.js:451",
+   "src/networking/gameEvents.js:4984"
+  ],
+  "linked": [
+   "server trade2.js",
+   "N2-22 (identity check it lacks)"
+  ]
+ },
+ {
+  "id": "N2-21",
+  "title": "The old one-sided trade relay",
+  "area": "wire (both)",
+  "verdict": "retired",
+  "oneLine": "trade_offer card, trade_accept completion, trade_reject, and a local mint for an unsettled accept.",
+  "topConcern": "The unsettled branch credits the giver what they gave; reachable only against a pre-v2.3.1119 worker.",
+  "modes": [
+   "authority"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/networking/gameEvents.js:4021",
+   "server/src/trade.js:186"
+  ],
+  "linked": [
+   "N2-20"
+  ]
+ },
+ {
+  "id": "N2-22",
+  "title": "The party invite card and the roster",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Invite stub cleared by a mirrored 60 s timer with an identity check; roster from worker snapshots.",
+  "topConcern": "PARTY_INVITE_TTL_MS hand-mirrors PARTY.INVITE_TTL with no mirror-audit pin.",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/networking/gameEvents.js:5084",
+   "src/networking/gameEvents.js:220",
+   "server/src/party.js:52"
+  ],
+  "linked": [
+   "server party.js",
+   "alliance"
+  ]
+ },
+ {
+  "id": "N2-23",
+  "title": "Mail arriving: daily toast wait and gear catch-up",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "A bounded 90 s wait to show the daily reward toast; returned gear adopted into the local stash.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "medium",
+  "files": [
+   "src/networking/gameEvents.js:1957",
+   "src/networking/gameEvents.js:1999"
+  ],
+  "linked": [
+   "server inbox.js",
+   "docs/specs/gear-stash.md"
+  ]
+ },
+ {
+  "id": "N2-24",
+  "title": "One-time move of old local friends to the server",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "bt_friendsMigrated flag, set after sending up to 25 friend requests for legacy local follows.",
+  "topConcern": "Follows past the 25th are dropped silently; one shot per device.",
+  "modes": [
+   "persistence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/networking/gameEvents.js:627"
+  ],
+  "linked": [
+   "server friends.js"
+  ]
+ },
+ {
+  "id": "N2-25",
+  "title": "Hazard markers and effect queues",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Telegraph and impact rings, fire trail, shockwaves and blasts as timed, capped queues drained by renderers.",
+  "topConcern": "Telegraph rings carry no zone and the worker's unclamped duration, so one can briefly outlive a zone change.",
+  "modes": [
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/networking/gameEvents.js:1567",
+   "src/networking/gameEvents.js:2473",
+   "src/rendering/systems/effectsRenderer.js:6039",
+   "src/rendering/systems/effectsRenderer.js:12739"
+  ],
+  "linked": [
+   "server telegraph.js / firetrail.js / arrowblast.js"
+  ]
+ }
+]

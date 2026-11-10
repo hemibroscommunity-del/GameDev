@@ -1,0 +1,635 @@
+[
+ {
+  "id": "U2-1",
+  "title": "The black-screen watchdog (pixel strikes, rebuild, reload)",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Samples the world canvas every 5 s; first-join one strike, play two strikes rebuild, four strikes reload.",
+  "topConcern": "A sample asked before a renderer rebuild is collected after it from the old detached canvas, charging a false dark strike.",
+  "modes": [
+   "race",
+   "stuck",
+   "opacity"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/BroTown.jsx:8770",
+   "src/ui/BroTown.jsx:8877",
+   "src/ui/BroTown.jsx:8632",
+   "src/ui/BroTown.jsx:4139",
+   "docs/TRAPS.md:4613"
+  ],
+  "linked": [
+   "U1 renderer rebuild (_rebuildRenderer/glEpoch)",
+   "U2-3 recovery reload",
+   "crashTrap.js markAlive",
+   "mp-glrestore",
+   "mp-wdsample"
+  ]
+ },
+ {
+  "id": "U2-2",
+  "title": "The door: boot phase, auto-join and the address's door words",
+  "area": "ui",
+  "verdict": "needs-thought",
+  "oneLine": "bootPhase checking/login/create/null, the auto-join latch and URL door words route a page to door, creator or world.",
+  "topConcern": "Creator ENTER runs joinTown twice (handler, then auto-join effect); DeviceScreen's Login Key reload drops ?guest=1 and the page's switches.",
+  "modes": [
+   "race",
+   "divergence",
+   "stuck",
+   "opacity"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/ui/BroTown.jsx:12013",
+   "src/ui/BroTown.jsx:11817",
+   "src/ui/BroTown.jsx:2273",
+   "src/ui/DeviceScreen.js:121",
+   "src/ui/keepSwitches.js:17"
+  ],
+  "linked": [
+   "U2-3",
+   "charRoster.activateChar",
+   "networking/index.js applyAccountLogin",
+   "NameModal.jsx:1626",
+   "server/test/keep-switches.test.mjs"
+  ]
+ },
+ {
+  "id": "U2-3",
+  "title": "The straight-in road: resume snapshot, recovery reload and its cap",
+  "area": "ui",
+  "verdict": "needs-thought",
+  "oneLine": "bt_resume snapshot, bt_resume_now/spot and a 2-per-5-minute reload cap carry a tab back into the world after a reload.",
+  "topConcern": "Typing another character's key clears only bt_rpg/bt_stats, so the reload replays the previous character's snapshot into the look stores.",
+  "modes": [
+   "guard-drift",
+   "persistence",
+   "opacity",
+   "stuck"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/ui/BroTown.jsx:12256",
+   "src/networking/index.js:221",
+   "src/networking/charRoster.js:599",
+   "src/ui/BroTown.jsx:8713",
+   "src/ui/BroTown.jsx:12163"
+  ],
+  "linked": [
+   "U2-1",
+   "U2-2",
+   "avatarHold.js",
+   "serverReady installWorldHold",
+   "wsClient _resumeRecover",
+   "server join.js _loadOrCreateCharacter"
+  ]
+ },
+ {
+  "id": "U2-4",
+  "title": "The loading gate: is the world on screen, and its held messages",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "worldIn, up, readyAt and a 24-deep held list decide when world messages may show after a loading screen.",
+  "topConcern": "On ?debug=1 markWorldIn is never called, so every banner and toast is held forever; an older __introLiftedAt gate coexists.",
+  "modes": [
+   "stuck",
+   "divergence",
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/loadingGate.js:114",
+   "src/ui/loadingGate.js:155",
+   "src/ui/onboardingPace.js:106",
+   "src/ui/BroTown.jsx:2205"
+  ],
+  "linked": [
+   "U2-5",
+   "U2-6",
+   "zoneTransitions veil",
+   "serverReady veil",
+   "avatarHold veil",
+   "storeToastBus"
+  ]
+ },
+ {
+  "id": "U2-5",
+  "title": "The onboarding referee: one tutorial voice at a time, and Skip tutorial",
+  "area": "ui",
+  "verdict": "watch",
+  "oneLine": "Module flags pace the welcome plate, coach cards and install card; Skip tutorial silences them per browser.",
+  "topConcern": "QuestCoach's retire path hides a showing card without noteCoach(false), leaving _coachUp true so the install card never shows until reload.",
+  "modes": [
+   "stuck",
+   "persistence",
+   "divergence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/onboardingPace.js:118",
+   "src/ui/onboardingPace.js:154",
+   "src/ui/mobile/QuestCoach.jsx:1318",
+   "src/game/welcomeBanner.js:86"
+  ],
+  "linked": [
+   "U2-4",
+   "U2-6",
+   "QuestCoach.jsx",
+   "InstallHint.jsx",
+   "welcomeBanner.js",
+   "QuestStepNudge.jsx"
+  ]
+ },
+ {
+  "id": "U2-6",
+  "title": "The banner slots: quest plate queue, level-up, collect and achievement toasts",
+  "area": "ui",
+  "verdict": "watch",
+  "oneLine": "React message slots with timed expiry and a 3-deep quest-plate queue promoted by the 500 ms interval.",
+  "topConcern": "questMsgRef updates only on render, so two queued notices in one tick both see the old slot and the second stomps the first.",
+  "modes": [
+   "race",
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/BroTown.jsx:2201",
+   "src/ui/BroTown.jsx:9041",
+   "src/ui/BroTown.jsx:2223",
+   "src/ui/BroTown.jsx:14080"
+  ],
+  "linked": [
+   "welcomeBanner.js",
+   "quests.js",
+   "QuestBannerLayer",
+   "LevelUpBurstStack",
+   "U2-4",
+   "U2-5"
+  ]
+ },
+ {
+  "id": "U2-7",
+  "title": "The move broadcast gate (rest packet, keepalive, quiet phone, shield and gear edges)",
+  "area": "wire (both)",
+  "verdict": "fine",
+  "oneLine": "Ten send-now triggers and a dozen last-sent stamps decide when this player's move, gather_node and track relays go.",
+  "topConcern": "Facing marked sent by the outer gate even when no move went (no channel, quiet-held); healed by the next keepalive.",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/BroTown.jsx:8002",
+   "src/ui/BroTown.jsx:8014",
+   "src/ui/BroTown.jsx:7952",
+   "src/game/quietPhone.js:172"
+  ],
+  "linked": [
+   "server move handler / tick.js roster",
+   "U2-8",
+   "U2-9",
+   "wsClient blocking shim"
+  ]
+ },
+ {
+  "id": "U2-8",
+  "title": "The idle clock: away flag and the client's own idle logout",
+  "area": "wire (both)",
+  "verdict": "fine",
+  "oneLine": "One input timestamp drives the aw flag and a 2-minute client hang-up backed by the worker's packet sweep.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/ui/BroTown.jsx:10899",
+   "src/ui/BroTown.jsx:8084",
+   "src/ui/BroTown.jsx:5243",
+   "src/networking/wsClient.js:6175",
+   "server/src/tick.js:170"
+  ],
+  "linked": [
+   "worker AFK sweep (tick.js)",
+   "U2-7",
+   "wsClient _comeBack"
+  ]
+ },
+ {
+  "id": "U2-9",
+  "title": "Holding the shield: per-frame guard window and the computer's right-button toggle",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "250 ms rolling shieldEnd, mouse/lock steering and the right-click toggle around shieldToggle's raise/drop.",
+  "topConcern": "BLOCK_COSTS_STAMINA is a hand-mirrored client/worker switch; a phone's toggled guard survives the page going away.",
+  "modes": [
+   "divergence",
+   "stuck"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/BroTown.jsx:8240",
+   "src/ui/BroTown.jsx:10699",
+   "src/game/shieldToggle.js:128",
+   "src/game/shieldToggle.js:171"
+  ],
+  "linked": [
+   "shieldToggle.js",
+   "desktopControls.js onBlur",
+   "server ps.blocking via move packets",
+   "U2-7"
+  ]
+ },
+ {
+  "id": "U2-10",
+  "title": "Touch input arbitration: left stick, right zone, the disc, and letting go",
+  "area": "ui",
+  "verdict": "watch",
+  "oneLine": "Three touch surfaces with finger ids, tap/drag/flick classifiers and shared attack flags, released when the page goes away.",
+  "topConcern": "touchcancel runs the same handlers as touchend, so a system-cancelled touch can forward a click, cycle weapons, open chat or cast a special.",
+  "modes": [
+   "race",
+   "combo",
+   "opacity"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/BroTown.jsx:11009",
+   "src/ui/BroTown.jsx:11261",
+   "src/ui/BroTown.jsx:11584",
+   "src/ui/BroTown.jsx:11716",
+   "src/ui/BroTown.jsx:10134"
+  ],
+  "linked": [
+   "U2-11",
+   "tapJump.js",
+   "ExtractionSwipeLayer",
+   "ShieldButton",
+   "monsterCombat first-swing wait"
+  ]
+ },
+ {
+  "id": "U2-11",
+  "title": "Tap-to-lock and the computer's press/click pairing",
+  "area": "ui",
+  "verdict": "watch",
+  "oneLine": "S.lockedTarget tap writers (promote, toggle, double click, duel/NML/party/spar branches) plus press-to-click dedupe stamps.",
+  "topConcern": "Canvas onTouchEnd keeps its own monster hit test with no player branch, and its 600 ms stamp swallows any following click.",
+  "modes": [
+   "guard-drift",
+   "opacity"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/BroTown.jsx:13084",
+   "src/ui/BroTown.jsx:12797",
+   "src/ui/BroTown.jsx:10611",
+   "src/ui/BroTown.jsx:10209"
+  ],
+  "linked": [
+   "targeting.js updateTargeting",
+   "noMansLand/nmlAsk",
+   "duelLock.js",
+   "sparTargets.js",
+   "U2-10"
+  ]
+ },
+ {
+  "id": "U2-12",
+  "title": "The weapon in hand: active slot, the session latch, and the swap preview",
+  "area": "wire (both)",
+  "verdict": "watch",
+  "oneLine": "rpg.activeSlot mirrored with the worker; after any swap a session latch makes the phone ignore the worker's slot.",
+  "topConcern": "The worker's own repair to melee when the active bow/staff is unequipped never reaches a latched phone, which keeps an empty slot.",
+  "modes": [
+   "divergence",
+   "guard-drift"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/BroTown.jsx:9854",
+   "src/networking/wsClient.js:2813",
+   "server/src/gear.js:690",
+   "src/ui/mobile/dash/WeaponBar.jsx:61"
+  ],
+  "linked": [
+   "server gear.js _handleSetActiveSlot",
+   "combat.js slotOverride",
+   "WeaponPill",
+   "equipActions syncWeaponSlot"
+  ]
+ },
+ {
+  "id": "U2-13",
+  "title": "Warps onto the farm: hand-written zone entries beside the zone machine",
+  "area": "client",
+  "verdict": "watch",
+  "oneLine": "Four copied blocks write currentZone='farm_home' with their own clear lists instead of the zone machine's.",
+  "topConcern": "None of the farm warps calls clearZoneLocalFx, so campfire, in-flight light, extraction and peer projectiles survive the trip.",
+  "modes": [
+   "guard-drift",
+   "opacity"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/BroTown.jsx:13545",
+   "src/ui/panels/buildings/FeedSeedPanel.jsx:178",
+   "src/ui/panels/buildings/FarmPanel.jsx:125",
+   "src/game/zoneTransitions.js:392"
+  ],
+  "linked": [
+   "zoneTransitions.js clearZoneLocalFx",
+   "farmTrip.js holdFarmUntilReady",
+   "gameEvents.js:1055 dungeon home",
+   "U2-14"
+  ]
+ },
+ {
+  "id": "U2-14",
+  "title": "Lighting a fire: the in-flight light and the client-only campfire",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "A 700 ms lighting phase then a 45 s zone-stamped client campfire; the log is paid on the worker.",
+  "topConcern": "A refused firemaking_request still plays out and lights a usable local campfire; only the log comes back.",
+  "modes": [
+   "authority"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/BroTown.jsx:9684",
+   "src/ui/BroTown.jsx:6663",
+   "src/game/zoneTransitions.js:403",
+   "server/src/index.js:5769"
+  ],
+  "linked": [
+   "worker _handleFiremakingRequest",
+   "U2-13",
+   "campfireFx.js"
+  ]
+ },
+ {
+  "id": "U2-15",
+  "title": "The arena's background poll and the page's own bet payout",
+  "area": "wire (both)",
+  "verdict": "watch",
+  "oneLine": "An HTTP poll latches involvement and the current match; legacy page bet payouts only without caps.sponsor.",
+  "topConcern": "Out-of-order poll answers can re-set _arenaMatch, which steers the quiet phone's move cadence until the next poll.",
+  "modes": [
+   "race",
+   "persistence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/BroTown.jsx:9052",
+   "src/ui/BroTown.jsx:9098",
+   "src/networking/wsClient.js:5216",
+   "src/game/quietPhone.js:162"
+  ],
+  "linked": [
+   "worker gladiator.js (caps.arena, caps.sponsor)",
+   "PartyPanel poll",
+   "gameEvents.js:4566 legacy result POST"
+  ]
+ },
+ {
+  "id": "U2-16",
+  "title": "Timed effects on the HUD: worker buff timers mirrored, page's own on old workers",
+  "area": "wire (both)",
+  "verdict": "watch",
+  "oneLine": "Absolute buff end-times from the worker drive chips and client math against the phone's own clock.",
+  "topConcern": "No clock-skew correction (unlike farmBus serverNow and dailyRewards _skew): a wrong phone clock shows or drops buffs the worker still applies.",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/networking/wsClient.js:2736",
+   "src/ui/BroTown.jsx:14111",
+   "src/ui/mobile/farmBus.js:55",
+   "src/game/dailyRewards.js:182"
+  ],
+  "linked": [
+   "worker ps._buffs (cooking.js, rest.js)",
+   "CookPanel.jsx legacy",
+   "U2-22"
+  ]
+ },
+ {
+  "id": "U2-17",
+  "title": "The 500 ms mirror of the loop's surroundings into React",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Copies near door/hall/shut door/clan invite/dungeon mouth/farm spots and the player list into React state.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/ui/BroTown.jsx:8924",
+   "src/ui/BroTown.jsx:8944",
+   "src/ui/panels/ClanInviteCard.jsx:22",
+   "src/networking/gameEvents.js:3855"
+  ],
+  "linked": [
+   "worker clans.js invite 120 s",
+   "prompt renders"
+  ]
+ },
+ {
+  "id": "U2-18",
+  "title": "Door and prompt buttons that act on touchstart AND on the click behind it",
+  "area": "ui",
+  "verdict": "needs-thought",
+  "oneLine": "Workshop, Pet House and Wheel dungeon prompts bind both onTouchStart and onClick (TRAPS §131).",
+  "topConcern": "Dungeon Workshop opens on touchstart; the emulated click then lands on its .bt-inspect backdrop and closes it, geometry permitting.",
+  "modes": [
+   "race"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/BroTown.jsx:15062",
+   "src/ui/BroTown.jsx:15132",
+   "src/ui/BroTown.jsx:15088",
+   "src/ui/panels/DungeonCreatorPanel.jsx:92",
+   "docs/TRAPS.md:5223"
+  ],
+  "linked": [
+   "v2.3.2617 building door fix",
+   "v2.3.3407 furniture/sleep fix",
+   "wheelDungeons.js _wheelDoorAskedAt"
+  ]
+ },
+ {
+  "id": "U2-19",
+  "title": "The building card and the one-panel rule (shop drawer, bottom sheet)",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "buildingPanel modal slot; effects close Diego's drawer when any panel or the sheet opens.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/ui/BroTown.jsx:13446",
+   "src/ui/BroTown.jsx:9955",
+   "src/ui/BroTown.jsx:9974",
+   "src/ui/BroTown.jsx:3336"
+  ],
+  "linked": [
+   "uiBusyBus",
+   "shopBus",
+   "dashboardPanelBus",
+   "U2-20"
+  ]
+ },
+ {
+  "id": "U2-20",
+  "title": "Rare windows' code, fetched on first open (lazyPanel)",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Per-window module loader: shared promise, one cache-busting retry, a Couldn't-open card with Reload and Close.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/ui/lazyPanel.js:102",
+   "src/ui/lazyPanel.js:125",
+   "src/ui/lazyPanel.js:155",
+   "src/ui/lazyPanels.js:14"
+  ],
+  "linked": [
+   "mp-lazyfail",
+   "uiBusyBus",
+   "Cloudflare Pages hashed assets"
+  ]
+ },
+ {
+  "id": "U2-21",
+  "title": "Eating from the bag: the predicted bite and the fight's one-bite cooldown",
+  "area": "wire (both)",
+  "verdict": "fine",
+  "oneLine": "Predicted consume and heal plus a client copy of the worker's in-fight bite cooldown, corrected by refusals.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/ui/BroTown.jsx:9737",
+   "src/game/fightFood.js:97",
+   "src/game/fightFood.js:144",
+   "server/src/cooking.js:616"
+  ],
+  "linked": [
+   "worker cooking.js _handleEatRequest/_pvpHealWait"
+  ]
+ },
+ {
+  "id": "U2-22",
+  "title": "Resting: Sleep button and E, the worker's rest, and the page's old one",
+  "area": "wire (both)",
+  "verdict": "retired",
+  "oneLine": "With caps.rest the bed and Hotel ask the worker; the page-side restore and bed-tile sleep bar are legacy.",
+  "topConcern": "Old-worker branch and bed-tile sleep restore bars on the page; unreachable now (caps.rest true, no tile 15 on the farm).",
+  "modes": [
+   "authority"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/BroTown.jsx:9375",
+   "src/ui/BroTown.jsx:13593",
+   "src/ui/BroTown.jsx:5614",
+   "src/data/gameDisplay.js:778"
+  ],
+  "linked": [
+   "worker rest.js",
+   "U2-16"
+  ]
+ },
+ {
+  "id": "U2-23",
+  "title": "The tour prompt and the teach-by-doing step banner",
+  "area": "ui",
+  "verdict": "retired",
+  "oneLine": "Old seven-step tutorial banner and its opt-in prompt; hard-off since v2.3.1593.",
+  "topConcern": "Dormant copy describes the retired map and step 4 fires at once in the Wheel; harmless while off.",
+  "modes": [
+   "opacity"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/ui/BroTown.jsx:2007",
+   "src/ui/BroTown.jsx:12610",
+   "src/ui/BroTown.jsx:13693",
+   "src/ui/BroTown.jsx:7731"
+  ],
+  "linked": [
+   "QuestCoach (live onboarding)",
+   "U2-5",
+   "window._uiPanels.tourPrompt"
+  ]
+ },
+ {
+  "id": "U2-24",
+  "title": "Old lands' zone actions, the endgame portal and the death-scatter timer",
+  "area": "client",
+  "verdict": "retired",
+  "oneLine": "Raft, torch, sled, snow and Dark Sanctum/Light Summit portal on closed old lands; legacy death-scatter countdown.",
+  "topConcern": "Wood spent and zones warped on the page with no worker message, only on retired paths; portal buttons are touchstart-only.",
+  "modes": [
+   "authority"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/BroTown.jsx:14428",
+   "src/ui/BroTown.jsx:14502",
+   "src/ui/BroTown.jsx:15296",
+   "src/ui/BroTown.jsx:15595"
+  ],
+  "linked": [
+   "zoneMechanics.js",
+   "monsterCombat.js:1223 legacy death scatter",
+   "old World View lands (closed)"
+  ]
+ },
+ {
+  "id": "U2-25",
+  "title": "Saving the page's own stats",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "bt_stats written only when changed on the 500 ms tick, bt_update_stats every 600 ticks.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/ui/BroTown.jsx:8999",
+   "src/ui/BroTown.jsx:9013"
+  ],
+  "linked": [
+   "worker achievements (v2.3.3527)"
+  ]
+ },
+ {
+  "id": "U2-26",
+  "title": "The loading screen's way in: showIntro, body.bt-intro-up and its three gates",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "joinTown arms the clip with asset, server and Wheel-arrival gates; IntroVideo lifts it and clears the body mark.",
+  "topConcern": "joinTown throwing after marking the body sends the page to the door with bt-intro-up left on until a veil self-heal.",
+  "modes": [
+   "stuck"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/BroTown.jsx:12223",
+   "src/ui/BroTown.jsx:12239",
+   "src/ui/BroTown.jsx:12582",
+   "src/ui/IntroVideo.jsx:121",
+   "src/game/zoneTransitions.js:223"
+  ],
+  "linked": [
+   "U2-1",
+   "U2-2",
+   "U2-4",
+   "U2-5",
+   "serverReady.js",
+   "wheelHome.js waitForWheelArrival"
+  ]
+ }
+]

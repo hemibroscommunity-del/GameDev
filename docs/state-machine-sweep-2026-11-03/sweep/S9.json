@@ -1,0 +1,447 @@
+[
+ {
+  "id": "S9-1",
+  "title": "A story quest's status (none, offered, taken, handed in) and its objective counter",
+  "area": "wire (both)",
+  "verdict": "needs-thought",
+  "oneLine": "Per-quest status absent/available/active/turnedIn plus counted objectives; server-owned, predicted by the phone before the answer.",
+  "topConcern": "Unmet-objective and not-active hand-ins are refused silently on v2, leaving the phone's predicted gold and turnedIn; mayor_3 still paid on the game's word.",
+  "modes": [
+   "divergence",
+   "authority",
+   "guard-drift",
+   "opacity"
+  ],
+  "confidence": "medium",
+  "files": [
+   "server/src/quests.js:306",
+   "server/src/quests.js:347",
+   "server/src/quests.js:245",
+   "src/game/quests.js:169",
+   "server/src/data.js:1073"
+  ],
+  "linked": [
+   "S9-2",
+   "S9-3",
+   "S9-8",
+   "client getNpcQuest (src/data/gameSystems.js:8417)",
+   "movement.js _zoneUnlocked",
+   "dungeon.js:891 dungeonClears"
+  ]
+ },
+ {
+  "id": "S9-2",
+  "title": "A quest's rewards on their way: granted, overflowed, mailed, or handed to the phone",
+  "area": "server",
+  "verdict": "watch",
+  "oneLine": "Grant pass per accept/hand-in: stash, scratch overflow, inbox credit with opIds, armour announced to the phone.",
+  "topConcern": "Status set, then the unfit-weapon inbox credit awaited, then saved: a restart there can duplicate a weapon; quest armour exists server-side only as a row.",
+  "modes": [
+   "race",
+   "persistence",
+   "stuck"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/quests.js:591",
+   "server/src/quests.js:560",
+   "server/src/quests.js:439",
+   "server/src/quests.js:428",
+   "server/src/prog3.js:1340"
+  ],
+  "linked": [
+   "S9-1",
+   "inbox.js _creditPlayer",
+   "gearstash.js",
+   "gearprov.js",
+   "wsClient.js quest_reward_stashed"
+  ]
+ },
+ {
+  "id": "S9-3",
+  "title": "The achievements record: loaded, locked or forgotten; each achievement earned once (or counted)",
+  "area": "server",
+  "verdict": "watch",
+  "oneLine": "Per-player achv record cache (got/n/dg/t, locked) with grants at every settling site, a join sweep and a title.",
+  "topConcern": "Mail drain writes `got` before an awaited gear row and the rpg save: a restart loses the arena's 500 AP; dev clear re-pays AP.",
+  "modes": [
+   "persistence",
+   "combo",
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/achievements.js:348",
+   "server/src/inbox.js:587",
+   "server/src/achievements.js:523",
+   "server/src/achievements.js:596",
+   "server/src/linger.js:125"
+  ],
+  "linked": [
+   "S9-4",
+   "S9-5",
+   "S9-6",
+   "S9-1",
+   "inbox.js _drainInboxNow",
+   "linger.js _lingerEnd"
+  ]
+ },
+ {
+  "id": "S9-4",
+  "title": "The arena's once-a-character points mark (aponce) and the Gladiator achievement",
+  "area": "server",
+  "verdict": "fine",
+  "oneLine": "aponce mark loaded before mail, set by either road, saved in the rpg blob's own write.",
+  "topConcern": "",
+  "modes": [
+   "persistence"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/inbox.js:63",
+   "server/src/achievements.js:358",
+   "server/src/persistence.js:256",
+   "server/src/gladiator.js:695"
+  ],
+  "linked": [
+   "S9-3",
+   "gladiator.js arena bracket"
+  ]
+ },
+ {
+  "id": "S9-5",
+  "title": "The monster codex record: counted in memory, written on a fact, a timer or the close",
+  "area": "server",
+  "verdict": "fine",
+  "oneLine": "Per-player kill counts per kind with dirty/savedAt flush on the next kill past 60 s and on close.",
+  "topConcern": "No tick flush: dirty counts wait for the next kill or the close, so a pause then a deploy loses them.",
+  "modes": [
+   "persistence"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/codex.js:184",
+   "server/src/codex.js:150",
+   "server/src/codex.js:136",
+   "server/src/index.js:6413"
+  ],
+  "linked": [
+   "S9-3",
+   "S9-6",
+   "combat.js _resolveMonsterKill",
+   "src/data/monsterCodex.js"
+  ]
+ },
+ {
+  "id": "S9-6",
+  "title": "The pets record: loaded, locked, moved in once, written at once or on a timer",
+  "area": "server",
+  "verdict": "watch",
+  "oneLine": "Per-player pets record cache with the one-time old-pet move, dirty journal, xpFrac, rate window, admin look lever.",
+  "topConcern": "Old pets' move: record put unawaited while the rpg blob empties lifeSkills.pets later; a failed record put loses them.",
+  "modes": [
+   "persistence",
+   "leak",
+   "opacity"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/petbook.js:383",
+   "server/src/petbook.js:562",
+   "server/src/petbook.js:699",
+   "server/src/index.js:6409"
+  ],
+  "linked": [
+   "S9-7",
+   "S9-3",
+   "trapping.js",
+   "src/data/trapping.js"
+  ]
+ },
+ {
+  "id": "S9-7",
+  "title": "A pet's life: caught, held a day, out with you or put away, traded, released",
+  "area": "server",
+  "verdict": "fine",
+  "oneLine": "Per pet: trade hold, legacy flag, active or idle, level capped at Trapping, taken and given by trade, store, mail.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "server/src/petbook.js:646",
+   "server/src/petbook.js:666",
+   "server/src/petbook.js:680",
+   "server/src/trade2.js:271"
+  ],
+  "linked": [
+   "S9-6",
+   "trade2.js",
+   "store.js",
+   "inbox.js pet credit"
+  ]
+ },
+ {
+  "id": "S9-8",
+  "title": "The free daily spin's run: ready, spun (a pot at rest), doubled, taken, lost, kept at midnight",
+  "area": "wire (both)",
+  "verdict": "needs-thought",
+  "oneLine": "Daily free spin, bonus spins, an open pot doubled or taken, paid at the day's end, opId per act.",
+  "topConcern": "Pay closes the pot in memory, saved two awaits later; a restart there leaves it open, and after the 48 h prune it pays again.",
+  "modes": [
+   "persistence",
+   "divergence",
+   "stuck"
+  ],
+  "confidence": "medium",
+  "files": [
+   "server/src/dailyrewards.js:583",
+   "server/src/dailyrewards.js:592",
+   "server/src/dailyrewards.js:674",
+   "server/src/inbox.js:37",
+   "src/ui/panels/buildings/DailySpin.jsx:318"
+  ],
+  "linked": [
+   "S9-9",
+   "S9-3",
+   "cadence.js login streak",
+   "DailySpin.jsx wheel phases",
+   "inbox.js _opPruneMaybe",
+   "TRAPS \u00a7146"
+  ]
+ },
+ {
+  "id": "S9-9",
+  "title": "The daily-rewards record cache and the day's turnover (load, dirty, save, forget; midnight online)",
+  "area": "server",
+  "verdict": "watch",
+  "oneLine": "Per-player daily_rewards cache, dirty map, turnover lock, pending news and kept-pot maps, tick flush and midnight turnover.",
+  "topConcern": "Turnover pays and must be saved by every caller; only __drTurning guards _drNewDayOnline, not the acts' own turnovers.",
+  "modes": [
+   "race",
+   "opacity"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/dailyrewards.js:409",
+   "server/src/dailyrewards.js:477",
+   "server/src/dailyrewards.js:541",
+   "server/src/dailyrewards.js:528"
+  ],
+  "linked": [
+   "S9-8",
+   "S9-10",
+   "S9-11",
+   "cadence.js _cadenceLoginReward",
+   "index.js webSocketClose"
+  ]
+ },
+ {
+  "id": "S9-10",
+  "title": "The three daily quests: rolled, counted, done and paid, rerolled once (put away)",
+  "area": "server",
+  "verdict": "retired",
+  "oneLine": "Daily board of three quests, counted signals, paid in one run with the record, one reroll; off unless dailyquests.",
+  "topConcern": "Dormant; a stale-day signal is dropped and a refused reroll answers nothing if it is turned back on.",
+  "modes": [
+   "stuck"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/dailyrewards.js:772",
+   "server/src/dailyrewards.js:811",
+   "server/src/dailyrewards.js:841",
+   "server/src/dailyrewards.js:354"
+  ],
+  "linked": [
+   "S9-9",
+   "S9-11"
+  ]
+ },
+ {
+  "id": "S9-11",
+  "title": "The season track and its streak freezes (dropped: only the drop's mail-out runs)",
+  "area": "server",
+  "verdict": "watch",
+  "oneLine": "Season stars, tiers claimed or mailed, overflow spins; dropped, so each turnover mails reached unclaimed tiers once.",
+  "topConcern": "Freeze grants have no stamp and tier mail-outs rely on 48 h stamps; a restart before the record save can grant them again.",
+  "modes": [
+   "persistence",
+   "stuck",
+   "opacity"
+  ],
+  "confidence": "medium",
+  "files": [
+   "server/src/dailyrewards.js:938",
+   "server/src/dailyrewards.js:925",
+   "server/src/dailyrewards.js:413",
+   "server/src/dailyrewards.js:962"
+  ],
+  "linked": [
+   "S9-9",
+   "S9-8",
+   "cadence.js streak freezes"
+  ]
+ },
+ {
+  "id": "S9-12",
+  "title": "The daily chest in the bag: owned, opened once, prize rolled (legacy drain)",
+  "area": "server",
+  "verdict": "fine",
+  "oneLine": "Opens daily chests already in bags (none minted since v2.3.3140); bag count re-checked after awaits, opId stamped.",
+  "topConcern": "opId stamp awaited before the save: a restart drops the same-opId retry silently; no loss, no double.",
+  "modes": [
+   "persistence",
+   "opacity"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/dailychest.js:99",
+   "server/src/dailychest.js:129",
+   "src/ui/mobile/ChestReveal.jsx:145"
+  ],
+  "linked": [
+   "cadence.js",
+   "S9-3"
+  ]
+ },
+ {
+  "id": "S9-13",
+  "title": "A trained combat skill's XP and level, and the points each level mints (prog3)",
+  "area": "server",
+  "verdict": "watch",
+  "oneLine": "Per-skill XP and level 1-100, lane and shared point minting, character level by best skill or sum.",
+  "topConcern": "Shared points mint by the onelevel flag at each level-up, the re-deal by one-level always, the reset by the flag then; flips mix rules.",
+  "modes": [
+   "divergence",
+   "persistence"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/prog3.js:1281",
+   "server/src/prog3.js:1120",
+   "server/src/prog3.js:731",
+   "server/src/pointsreset.js:91"
+  ],
+  "linked": [
+   "S9-14",
+   "S9-15",
+   "src/data/prog3.js mirror",
+   "S9-3"
+  ]
+ },
+ {
+  "id": "S9-14",
+  "title": "The prog3 block's shape and its one-time stamps (atk split, elem fold, luck fold, ppl, spl, olr, ms)",
+  "area": "server",
+  "verdict": "watch",
+  "oneLine": "Six one-way idempotent folds run by migrations and again by _sanitizeProg3 at each join, held by stamps.",
+  "topConcern": "Any stamp the sanitizer forgets to carry turns a one-time grant or re-deal into one per join.",
+  "modes": [
+   "opacity",
+   "persistence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "server/src/prog3.js:902",
+   "server/src/prog3.js:728",
+   "server/src/prog3.js:750",
+   "server/src/join.js:1458"
+  ],
+  "linked": [
+   "S9-13",
+   "S9-15",
+   "migrations.js v10-v18"
+  ]
+ },
+ {
+  "id": "S9-15",
+  "title": "Spending points and the free reset (pool, lane pools, shared pool; the reset's minute)",
+  "area": "server",
+  "verdict": "watch",
+  "oneLine": "One point a prog3_allocate from lane, shared or spare pools; a free reset refused mid-fight, dead, or within a minute.",
+  "topConcern": "The reset refuses fights and the dead, the spend checks neither; the reset's minute is memory-only and a reconnect skips it.",
+  "modes": [
+   "guard-drift",
+   "persistence",
+   "combo"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/prog3.js:1401",
+   "server/src/pointsreset.js:74",
+   "server/src/prog3.js:703",
+   "server/test/points-reset.test.mjs:139"
+  ],
+  "linked": [
+   "S9-13",
+   "S9-14",
+   "cooking.js _anyFightAt"
+  ]
+ },
+ {
+  "id": "S9-16",
+  "title": "pets.js: the retired capture, and the pet fetch's pickup range",
+  "area": "server",
+  "verdict": "retired",
+  "oneLine": "pet_capture always answers retired; a viaPet pickup range of 600 or 240 px by pile and flag.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "server/src/pets.js:78",
+   "server/src/pets.js:64",
+   "server/src/index.js:5981"
+  ],
+  "linked": [
+   "S9-6",
+   "client pet fetch (docs/specs/pet-fetch.md)"
+  ]
+ },
+ {
+  "id": "S9-17",
+  "title": "The legacy T2 build-point economy (t2Flat accumulator, spend-level pricing)",
+  "area": "server",
+  "verdict": "retired",
+  "oneLine": "Old grid build accumulator, replayed at join and echoed, read as 0 for every prog3 player.",
+  "topConcern": "Dead weight kept for rollback: replayed at every join and echoed on every player_state.",
+  "modes": [
+   "opacity"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/data.js:268",
+   "server/src/join.js:1445",
+   "server/src/grids.js:402",
+   "server/src/persistence.js:712"
+  ],
+  "linked": [
+   "S9-13",
+   "S9-14",
+   "grids.js"
+  ]
+ },
+ {
+  "id": "S9-18",
+  "title": "data.js tables that are the explicit half of machines elsewhere",
+  "area": "server",
+  "verdict": "fine",
+  "oneLine": "QUEST_*, GUILD_QUESTS, DISHES, PVP_HEAL, MANA_SURGE, zone ids: constants that drive other machines.",
+  "topConcern": "GUILD_QUESTS is keyed by array index into stored claim counts; a reorder re-maps every claim.",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/data.js:711",
+   "server/src/data.js:1321",
+   "server/src/data.js:502",
+   "server/src/data.js:538"
+  ],
+  "linked": [
+   "S9-1",
+   "guilds.js",
+   "cooking.js",
+   "dungeon.js"
+  ]
+ }
+]

@@ -1,0 +1,619 @@
+[
+{
+"id": "N1-1",
+"title": "Hemi Bro wallet check: nonce/sign/verify round trip",
+"area": "wire (both)",
+"verdict": "watch",
+"oneLine": "One-at-a-time wallet verification: idle, pending (wallet prompt and chain read), ok, error, with a 90 s timeout.",
+"topConcern": "A timed-out attempt's late signature is sent anyway and its refusal settles the next attempt; answers carry no attempt id.",
+"modes": [
+"race"
+],
+"confidence": "medium",
+"files": [
+"src/networking/broWallet.js:85-158",
+"src/networking/broWallet.js:57-62",
+"server/src/broverify.js:108-160",
+"src/networking/gameEvents.js:2092-2103"
+],
+"linked": [
+"server/src/broverify.js",
+"src/ui/panels/InfoPanel.jsx",
+"N1-15"
+]
+},
+{
+"id": "N1-2",
+"title": "The game socket's lifecycle: connect, open, reconnect, stop, tear down",
+"area": "client",
+"verdict": "needs-thought",
+"oneLine": "One closure `ws` shared by every socket; a 15-value status shadow; reconnect roads that do and don't detach.",
+"topConcern": "Undetached orphan sockets (Retry now, lockout timer, cleanup) later reconnect over the live one; the tab then reads 'superseded' while joined, watchdog off.",
+"modes": [
+"race",
+"stuck",
+"leak",
+"guard-drift",
+"opacity"
+],
+"confidence": "medium",
+"files": [
+"src/networking/wsClient.js:481-518",
+"src/networking/wsClient.js:4468-4663",
+"src/networking/wsClient.js:6203-6222",
+"src/networking/wsClient.js:428-437",
+"src/networking/wsClient.js:4564-4571"
+],
+"linked": [
+"server/src/join.js:770",
+"server/src/tick.js:163-167",
+"server/src/index.js:5077",
+"N1-3",
+"N1-5",
+"N1-6",
+"src/ui/BroTown.jsx:12012-12037"
+]
+},
+{
+"id": "N1-3",
+"title": "Join refusals: a message records why, the following close acts on it",
+"area": "wire (both)",
+"verdict": "needs-thought",
+"oneLine": "Eleven refusal holders set by messages and consumed by onclose in a fixed priority order, also keyed by close code.",
+"topConcern": "Server closes 4010 for both a linger and a thrown join; the client reads every 4010 as linger: wrong screen, fixed 5 s retry forever.",
+"modes": [
+"divergence",
+"stuck"
+],
+"confidence": "high",
+"files": [
+"src/networking/wsClient.js:1380-1535",
+"src/networking/wsClient.js:4468-4660",
+"server/src/index.js:5150-5161",
+"server/src/linger.js:24-48",
+"server/src/join.js:648-728"
+],
+"linked": [
+"docs/specs/login-keys.md",
+"docs/specs/room-full.md",
+"docs/specs/one-socket.md",
+"N1-2",
+"N1-8",
+"N1-10"
+]
+},
+{
+"id": "N1-4",
+"title": "Server-ready gate and the connect veil",
+"area": "client",
+"verdict": "needs-thought",
+"oneLine": "Whether the world may be shown: waiting, ready, not-ready (caps), lost; veil after a grace timer; _netHold freezes movement.",
+"topConcern": "A drop while the loading screen is up skips the veil and never re-arms it; the world shows frozen, unexplained, for the outage.",
+"modes": [
+"stuck",
+"race",
+"divergence"
+],
+"confidence": "medium",
+"files": [
+"src/networking/serverReady.js:61-109",
+"src/networking/serverReady.js:166-187",
+"src/networking/wsClient.js:1559-1570",
+"src/networking/wsClient.js:457-480",
+"src/ui/IntroVideo.jsx:140-171"
+],
+"linked": [
+"src/ui/BroTown.jsx:12229-12233",
+"N1-2",
+"N1-6",
+"precheck ready-caps"
+]
+},
+{
+"id": "N1-5",
+"title": "Dead-pipe and stalled-connect watchdog, strikes held for the rejoin",
+"area": "client",
+"verdict": "watch",
+"oneLine": "1 s heartbeat judging silence, unanswered settled sends, stuck connects and page freezes; replays one unanswered strike after a rejoin.",
+"topConcern": "The first connect's lobby fetch has no timeout and no socket exists meanwhile, so nothing retries while the loading screen says we keep trying.",
+"modes": [
+"stuck",
+"race",
+"divergence",
+"persistence"
+],
+"confidence": "medium",
+"files": [
+"src/networking/wsClient.js:4829-4885",
+"src/networking/wsClient.js:4891-4945",
+"src/networking/wsClient.js:5519-5536",
+"src/networking/wsClient.js:325-339"
+],
+"linked": [
+"docs/specs/dead-connection.md",
+"server/src/tick.js:159-224",
+"N1-2",
+"N1-6"
+]
+},
+{
+"id": "N1-6",
+"title": "Coming back to the tab: resume / resync / graphics-probe ladder",
+"area": "client",
+"verdict": "needs-thought",
+"oneLine": "visibilitychange, pageshow and the heartbeat's thaw all run one recovery: reload, reconnect, force rejoin, renderer rebuild.",
+"topConcern": "Its 'may I reconnect?' exclusion is only superseded/idle, so a tab return rejoins origin, device, key, frozen and fatal-rejected tabs.",
+"modes": [
+"guard-drift",
+"leak"
+],
+"confidence": "medium",
+"files": [
+"src/networking/wsClient.js:4995-5111",
+"src/networking/wsClient.js:5112-5123",
+"src/networking/wsClient.js:4861-4870",
+"src/networking/wsClient.js:6150-6161"
+],
+"linked": [
+"docs/specs/tab-sleep.md",
+"docs/specs/parked-tab.md",
+"server/src/join.js:500",
+"N1-2",
+"N1-3"
+]
+},
+{
+"id": "N1-7",
+"title": "This device's identity: active Login Key, player id, stash and regen",
+"area": "wire (both)",
+"verdict": "needs-thought",
+"oneLine": "Which character the origin boots and joins as: bt_passphrase, its id, the _prev stash, bt_key_ids, bt_device, the auth regen.",
+"topConcern": "The join pairs the tab's in-memory id with the shared stored key; after another tab switches character, a reconnect gets 'auth' and mints new identities.",
+"modes": [
+"race",
+"guard-drift",
+"persistence"
+],
+"confidence": "medium",
+"files": [
+"src/networking/wsClient.js:578-599",
+"src/networking/wsClient.js:1468-1510",
+"src/networking/index.js:66-123",
+"src/networking/index.js:221-254",
+"src/ui/BroTown.jsx:1086-1112"
+],
+"linked": [
+"docs/specs/account-login.md:106-108",
+"server/src/join.js:686-716",
+"src/networking/charRoster.js:43-50",
+"N1-8",
+"N1-9"
+]
+},
+{
+"id": "N1-8",
+"title": "Login-key rotation: key_new, the old key kept, confirm or fall back",
+"area": "wire (both)",
+"verdict": "watch",
+"oneLine": "Eight-word keys handed to a phone; old key kept until a new-key join gets in; door ask and fallback once.",
+"topConcern": "Each origin is its own device, so each origin playing an old key gets its own new key; the mirror shows duplicate rows.",
+"modes": [
+"divergence",
+"race",
+"opacity"
+],
+"confidence": "medium",
+"files": [
+"src/networking/wsClient.js:2244-2264",
+"src/networking/wsClient.js:1551-1555",
+"src/networking/wsClient.js:4517-4561",
+"src/networking/charRoster.js:623-639",
+"server/src/loginkeys.js:113-180"
+],
+"linked": [
+"docs/specs/login-keys.md",
+"N1-7",
+"N1-9"
+]
+},
+{
+"id": "N1-9",
+"title": "The device's character roster and its cross-origin cookie mirror",
+"area": "client",
+"verdict": "needs-thought",
+"oneLine": "Rows of Login Keys with provisional/looked/look flags, merged across localStorage, a shared cookie with tombstones, and bt_key_ids.",
+"topConcern": "A remote tombstone deletes the origin's active row; its 30 s heartbeat re-adds it and strips the tombstone, undoing deletes and resurrecting rotated-out keys.",
+"modes": [
+"divergence",
+"race",
+"guard-drift",
+"persistence",
+"opacity"
+],
+"confidence": "medium",
+"files": [
+"src/networking/charRoster.js:268-401",
+"src/networking/charRoster.js:207-221",
+"src/networking/rosterCookie.js:134-186",
+"src/ui/panels/CharacterPicker.jsx:231-273",
+"src/ui/BroTown.jsx:8852-8859"
+],
+"linked": [
+"tools/qa/roster-mirror.test.mjs",
+"N1-7",
+"N1-8",
+"N1-26"
+]
+},
+{
+"id": "N1-10",
+"title": "Waiting rooms: the world-is-full queue and the linger countdown",
+"area": "ui",
+"verdict": "watch",
+"oneLine": "Two DOM waiting screens retrying on their own cadence through the shared reconnect timer until a state_sync admits the player.",
+"topConcern": "'Retry now' calls connect() without checking a socket already in its handshake, orphaning it.",
+"modes": [
+"race",
+"leak",
+"divergence"
+],
+"confidence": "medium",
+"files": [
+"src/networking/wsClient.js:391-447",
+"src/networking/wsClient.js:4591-4618",
+"src/ui/RoomFullScreen.js",
+"src/ui/LingerScreen.js"
+],
+"linked": [
+"server/src/join.js:296-327",
+"server/src/linger.js",
+"N1-2",
+"N1-3"
+]
+},
+{
+"id": "N1-11",
+"title": "Idle logout and 'I'm back' on the first touch",
+"area": "client",
+"verdict": "fine",
+"oneLine": "Two-state latch: logged out with armed listeners and a banner, back on any touch or the next ready state_sync.",
+"topConcern": "A fallback-timer harvest strike after the logout can bring an abandoned tab back once by itself.",
+"modes": [
+"divergence"
+],
+"confidence": "low",
+"files": [
+"src/networking/wsClient.js:6175-6199",
+"src/networking/wsClient.js:4946-4994",
+"src/networking/wsClient.js:4640-4644",
+"src/ui/BroTown.jsx:8074-8087"
+],
+"linked": [
+"server/src/tick.js:168-219",
+"docs/specs/dead-connection.md",
+"N1-2"
+]
+},
+{
+"id": "N1-12",
+"title": "The account check gate (Turnstile before a character is made)",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "verify refusal -> widget -> spend-once token -> next join; retry button and attempts counter.",
+"topConcern": "A tab return re-joins token-less, is refused, and shows the 'didn't go through' copy though nothing was tried.",
+"modes": [
+"divergence"
+],
+"confidence": "low",
+"files": [
+"src/networking/wsClient.js:4703-4787",
+"src/networking/wsClient.js:1427-1430",
+"src/networking/wsClient.js:604-606"
+],
+"linked": [
+"server/src/verify.js",
+"docs/specs/account-check.md",
+"N1-6"
+]
+},
+{
+"id": "N1-13",
+"title": "The quiet phone's outbox: one frame per turn, riders with deadlines",
+"area": "wire (both)",
+"verdict": "fine",
+"oneLine": "Per-socket outbox and riders gated on this socket's caps; reset each open; due riders go alone or drop.",
+"topConcern": "",
+"modes": [],
+"confidence": "low",
+"files": [
+"src/networking/wsClient.js:5315-5417",
+"src/networking/wsClient.js:3879-3896",
+"src/networking/wsClient.js:6099-6119"
+],
+"linked": [
+"server/src/bundle.js",
+"docs/specs/quiet-phone.md"
+]
+},
+{
+"id": "N1-14",
+"title": "Input batching and move pacing",
+"area": "client",
+"verdict": "fine",
+"oneLine": "Latest-move holder and event buffer drained every 33 ms, with seen/solo/quiet/diet/path rate rules per batch.",
+"topConcern": "A move or event buffered as the socket closed is sent after the next join, which the worker drops before session.id.",
+"modes": [
+"persistence"
+],
+"confidence": "low",
+"files": [
+"src/networking/wsClient.js:5148-5509",
+"src/networking/wsClient.js:6004-6097"
+],
+"linked": [
+"src/game/moveDiet.js",
+"server/src/movepath.js",
+"server/src/steadymovers.js"
+]
+},
+{
+"id": "N1-15",
+"title": "Caps negotiation and the client's deploy-order gates",
+"area": "wire (both)",
+"verdict": "watch",
+"oneLine": "S._serverCaps and ~30 module flags re-derived each state_sync, edited live by client_off and move_path.",
+"topConcern": "Module-level flags hide which worker a number was computed for; between a reconnect's open and state_sync they describe the previous worker.",
+"modes": [
+"opacity",
+"divergence"
+],
+"confidence": "medium",
+"files": [
+"src/networking/wsClient.js:1536-1771",
+"src/networking/wsClient.js:1897-1911",
+"src/networking/serverReady.js:51-72"
+],
+"linked": [
+"server/src/join.js caps",
+"server/src/liveops.js",
+"CAP_GATES",
+"N1-4",
+"N1-13"
+]
+},
+{
+"id": "N1-16",
+"title": "Other players' presence: listed, parked, near, ghost, gone, and the count",
+"area": "wire (both)",
+"verdict": "watch",
+"oneLine": "Peers made by six messages, removed by four, parked by presence v2, swept after 10 s; count has eight writers.",
+"topConcern": "The online count uses four formulas; a leave for a never-held id decrements anyway, drifting below the map until a keys-based write.",
+"modes": [
+"divergence",
+"race"
+],
+"confidence": "low",
+"files": [
+"src/networking/wsClient.js:877-1079",
+"src/networking/wsClient.js:3734-3878",
+"src/networking/wsClient.js:1776-1795",
+"src/game/presence2.js:53-133"
+],
+"linked": [
+"server/src/tick.js slimWire",
+"docs/specs/presence-v2.md",
+"docs/specs/slim-roster.md",
+"src/game/nearJoin.js"
+]
+},
+{
+"id": "N1-17",
+"title": "Server-authority mode flags and zone snapshots (v1 trio and v2 zone_state)",
+"area": "wire (both)",
+"verdict": "watch",
+"oneLine": "_serverMonsters/_serverGatherNodes/_serverLoot flip legacy client paths on and off at state_sync and zone snapshots.",
+"topConcern": "state_sync replaces monsters without the stale-zone check its zone applier has; a rejoin that doesn't hold movement can land the old zone's list.",
+"modes": [
+"guard-drift"
+],
+"confidence": "medium",
+"files": [
+"src/networking/wsClient.js:1796-1862",
+"src/networking/wsClient.js:4309-4397",
+"src/networking/wsClient.js:1870-1879"
+],
+"linked": [
+"src/networking/nodeSync.js",
+"server/src/wheelnear.js",
+"N1-18"
+]
+},
+{
+"id": "N1-18",
+"title": "Per-tick monster mirror: alive/dead/respawn edges and timed phases",
+"area": "wire (both)",
+"verdict": "needs-thought",
+"oneLine": "Server monster deltas turned into edges and timers on the client's copies: death, respawn, stun, swell, burrow, aggro.",
+"topConcern": "The tick's death edge pushes a client-rolled loot pile ungated by _serverLoot; slime-boss pops leave phantom piles credited locally.",
+"modes": [
+"guard-drift",
+"stuck",
+"authority"
+],
+"confidence": "medium",
+"files": [
+"src/networking/wsClient.js:1158-1377",
+"src/networking/gameEvents.js:2972-3040",
+"src/game/monsterCarry.js:15-60",
+"src/data/monsterVariants.js:417-435",
+"server/src/slimeboss.js:244-262"
+],
+"linked": [
+"src/game/groundLoot.js:378-402",
+"src/rendering/systems/entityRenderer.js:10741",
+"server/src/tick.js:734-742",
+"N1-17"
+]
+},
+{
+"id": "N1-19",
+"title": "Adopting the worker's player_state over the client's prediction",
+"area": "wire (both)",
+"verdict": "watch",
+"oneLine": "About 40 fields each adopted by its own rule: present-gated, absent-off, upward-only, latched, or applied last.",
+"topConcern": "After the player cycles slots once, the server's activeSlot is ignored all session, though the worker itself resets it to melee on an unequip.",
+"modes": [
+"divergence",
+"opacity"
+],
+"confidence": "medium",
+"files": [
+"src/networking/wsClient.js:2487-3140",
+"src/ui/BroTown.jsx:9881-9910",
+"server/src/gear.js:680-692"
+],
+"linked": [
+"server/src/persistence.js",
+"docs/WIRE-PROTOCOL.md",
+"N1-20"
+]
+},
+{
+"id": "N1-20",
+"title": "Worn vs in-the-bag gear: rescue, quest stash, drops, shield adoption",
+"area": "wire (both)",
+"verdict": "watch",
+"oneLine": "Worker owns worn slots, client its bag; each echo bags a displaced piece once unless an NML loss is recent.",
+"topConcern": "A lost nml_loss turns a confiscation into a rescue: phantom pieces in the bag that the server refuses on re-offer.",
+"modes": [
+"race"
+],
+"confidence": "low",
+"files": [
+"src/networking/wsClient.js:118-188",
+"src/networking/wsClient.js:2816-2930",
+"src/networking/wsClient.js:3507-3609",
+"src/networking/wsClient.js:4081-4166"
+],
+"linked": [
+"server/src/gearstash.js",
+"server/src/nomansland.js:103-106",
+"src/game/noMansLand.js:300-320"
+]
+},
+{
+"id": "N1-21",
+"title": "The player's own death and respawn (client side)",
+"area": "client",
+"verdict": "fine",
+"oneLine": "_dying set by player_died, cleared by one shared respawn routine from the message or the stuck-dead watchdog.",
+"topConcern": "",
+"modes": [],
+"confidence": "low",
+"files": [
+"src/networking/wsClient.js:3141-3244",
+"src/game/respawn.js:1-60",
+"src/ui/BroTown.jsx:5013"
+],
+"linked": [
+"server _handlePlayerDeath",
+"docs/specs/death-card.md"
+]
+},
+{
+"id": "N1-22",
+"title": "Picking up a ground pile: asked, refused, credited, despawning",
+"area": "wire (both)",
+"verdict": "watch",
+"oneLine": "Per-pile pending flags with watchdogs, three refusal buckets and a fast-retry budget; credit despawns after 500 ms.",
+"topConcern": "Death piles use the worker's wall-clock windows; a phone clock running ahead asks early, gets 'not-recipient', and drops the bag for good.",
+"modes": [
+"divergence"
+],
+"confidence": "low",
+"files": [
+"src/networking/wsClient.js:2350-2486",
+"src/networking/wsClient.js:3916-3992",
+"src/networking/wsClient.js:4004-4267",
+"src/game/groundLoot.js:88-112",
+"src/game/groundLoot.js:262-281"
+],
+"linked": [
+"server/src/index.js:4233-4290",
+"src/ui/BroTown.jsx:7185-7205"
+]
+},
+{
+"id": "N1-23",
+"title": "Other players' per-tick activity edges",
+"area": "rendering",
+"verdict": "fine",
+"oneLine": "Harvest, sprint, board, pose, skull, pet, armour grade and badge edges from each tick entry; slim entries handled deliberately.",
+"topConcern": "",
+"modes": [],
+"confidence": "low",
+"files": [
+"src/networking/wsClient.js:931-1033",
+"src/networking/broWallet.js:196-204"
+],
+"linked": [
+"docs/specs/slim-roster.md",
+"server/src/tick.js:575"
+]
+},
+{
+"id": "N1-24",
+"title": "The worker's refusal of an ability: cooldowns and the swing given back",
+"area": "client",
+"verdict": "fine",
+"oneLine": "Cooldown-until, swing-suppression-until and whirlwind windup corrected to the worker's answer; prediction only.",
+"topConcern": "",
+"modes": [],
+"confidence": "low",
+"files": [
+"src/networking/wsClient.js:3635-3687"
+],
+"linked": [
+"server/src/abilities.js"
+]
+},
+{
+"id": "N1-25",
+"title": "The per-session HTTP token for economy POSTs",
+"area": "wire (both)",
+"verdict": "fine",
+"oneLine": "Token minted per join, rotated on every rejoin, held by the client until the next state_sync.",
+"topConcern": "A POST between a rejoin's open and its state_sync carries the old token and is refused (fails closed).",
+"modes": [
+"race"
+],
+"confidence": "low",
+"files": [
+"src/networking/wsClient.js:1636-1641",
+"server/src/httpauth.js:38-67",
+"src/ui/storeApi.js:126"
+],
+"linked": [
+"N1-2"
+]
+},
+{
+"id": "N1-26",
+"title": "Onboarding seen flags carried across origins on cookies",
+"area": "client",
+"verdict": "fine",
+"oneLine": "Monotone once-per-browser flags (welcome, coach lessons, skip) in localStorage and a shared-domain cookie, read as either.",
+"topConcern": "",
+"modes": [],
+"confidence": "low",
+"files": [
+"src/networking/rosterCookie.js:188-203",
+"src/game/welcomeBanner.js:40-52",
+"src/ui/mobile/QuestCoach.jsx:110-134"
+],
+"linked": [
+"src/ui/onboardingPace.js",
+"N1-9"
+]
+}
+]

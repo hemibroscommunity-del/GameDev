@@ -1,0 +1,664 @@
+[
+ {
+  "id": "M1-1",
+  "title": "The quest coach's lesson walk (first steps, lessons, arming, pacing)",
+  "area": "ui",
+  "verdict": "needs-thought",
+  "oneLine": "Which onboarding card shows when, per-browser lesson record, armed stamps, first-step order, pacing referee.",
+  "topConcern": "Login Key lesson locked out after the tutorial (and on short desktop windows the first steps stall at the minimap, which the size guard refuses).",
+  "modes": [
+   "stuck",
+   "race",
+   "opacity",
+   "persistence"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/ui/mobile/QuestCoach.jsx:1306-1466",
+   "src/ui/mobile/QuestCoach.jsx:1386",
+   "src/ui/mobile/QuestCoach.jsx:160-188",
+   "src/ui/mobile/QuestCoach.jsx:616-641",
+   "src/ui/onboardingPace.js:118-163"
+  ],
+  "linked": [
+   "onboardingPace.js",
+   "loadingGate.js worldReady",
+   "controlVisibility holds",
+   "guideArrow.js",
+   "wheelMiniSize.js",
+   "InstallHint (M1-14)",
+   "gearFlash (M1-5)",
+   "mp-firststeps",
+   "mp-coachdesk"
+  ]
+ },
+ {
+  "id": "M1-2",
+  "title": "The bottom sheet's navigation and the fold (dashboardPanelBus x dashMinBus x interlocks)",
+  "area": "ui",
+  "verdict": "watch",
+  "oneLine": "Bar/expanded mode, drill stack, persisted fold, rotation close, desk open-once, shop/chat interlocks.",
+  "topConcern": "Six differently-worded 'is the bag on screen' tests and ~25 writer files; agree today only because nothing drills over the dashboard page.",
+  "modes": [
+   "guard-drift",
+   "combo",
+   "persistence",
+   "leak",
+   "opacity"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/mobile/dashboardPanelBus.js:72-205",
+   "src/ui/mobile/dashMinBus.js:38-50",
+   "src/ui/mobile/BottomDashboard.jsx:948-1000",
+   "src/ui/mobile/BottomDashboard.jsx:1748-1801",
+   "src/ui/mobile/dash/NavRail.jsx:175-196"
+  ],
+  "linked": [
+   "BroTown resize()/watchdog",
+   "sheetStamp (M1-6)",
+   "QuestCoach _dashShowing",
+   "ShopkeeperPanel openedBag",
+   "deskKeys.js navKey"
+  ]
+ },
+ {
+  "id": "M1-3",
+  "title": "The band's dead tap/swipe button and stat tooltip",
+  "area": "ui",
+  "verdict": "retired",
+  "oneLine": "IconButton pressed/swipe classifier and a 3 s tooltip timer that nothing renders or opens.",
+  "topConcern": "Dead code still described as the live tap/swipe decision; advance/retreat/tapDestination have no callers.",
+  "modes": [
+   "opacity"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/ui/mobile/BottomDashboard.jsx:321-425",
+   "src/ui/mobile/BottomDashboard.jsx:207-212",
+   "src/ui/mobile/dashboardPanelBus.js:88-116"
+  ],
+  "linked": [
+   "NavRail.jsx"
+  ]
+ },
+ {
+  "id": "M1-4",
+  "title": "The band's pickup watcher (bagUnseen + bagLife feed)",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "400 ms bag diff marking new keys unseen and popping or bumping tiles.",
+  "topConcern": "bagUnseen has no reader any more; it only grows and forces re-renders.",
+  "modes": [
+   "leak",
+   "race"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/mobile/BottomDashboard.jsx:723-765",
+   "src/ui/mobile/sheet/bagUnseenModel.js:14-31",
+   "src/ui/mobile/dash/bagLife.js:201-210"
+  ],
+  "linked": [
+   "bagLife.js (M2)",
+   "TRAPS \u00a7109"
+  ]
+ },
+ {
+  "id": "M1-5",
+  "title": "The first quest's gear glow (gearFlash watcher)",
+  "area": "ui",
+  "verdict": "watch",
+  "oneLine": "300 ms DOM poller lighting the fold chip, nav button or gear tiles from tut_1 until tut_2.",
+  "topConcern": "Interval and fold-chip layout reads keep running for the whole session after the phase that needs them ends.",
+  "modes": [
+   "leak",
+   "divergence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/mobile/gearFlash.js:79-123",
+   "src/ui/mobile/gearFlash.js:42-59",
+   "src/ui/mobile/BottomDashboard.jsx:628"
+  ],
+  "linked": [
+   "QuestCoach equip lesson",
+   "dashboard fold (M1-2)"
+  ]
+ },
+ {
+  "id": "M1-6",
+  "title": "The --sheet-h / data-bt-sheet stamp",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "DOM mirror of the sheet's mode and viewport, stamped by the band and BroTown's watchdog, removed on unmount.",
+  "topConcern": "",
+  "modes": [
+   "race"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/mobile/sheetStamp.js:55-124",
+   "src/ui/mobile/BottomDashboard.jsx:773-810",
+   "src/ui/BroTown.jsx:3949"
+  ],
+  "linked": [
+   "dashboardPanelBus",
+   "sheetGeometry bandFootprint",
+   "BroTown watchdog"
+  ]
+ },
+ {
+  "id": "M1-7",
+  "title": "The controls tour (ControlsTutorial)",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "On-demand modal tour: bus open flag, step index, re-measured steps, both discs held while open.",
+  "topConcern": "",
+  "modes": [
+   "race",
+   "combo"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/mobile/ControlsTutorial.jsx:167-235",
+   "src/ui/mobile/controlsTutorialBus.js:4-13",
+   "src/ui/mobile/dash/SettingsPanel.jsx:344"
+  ],
+  "linked": [
+   "QuestCoach",
+   "controlVisibility holds",
+   "mp-ctltut"
+  ]
+ },
+ {
+  "id": "M1-8",
+  "title": "The modal guard (counted screen ownership + notification mute)",
+  "area": "ui",
+  "verdict": "watch",
+  "oneLine": "Reference-counted 'a decision panel owns the screen' that stands the chat composer and feed down.",
+  "topConcern": "Opt-in list of six call sites; other decision windows (Ace's flip, farm, chest) never push, so the composer's dismiss layer is not stood down for them.",
+  "modes": [
+   "guard-drift",
+   "stuck"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/mobile/modalGuardBus.js:28-109",
+   "src/ui/mobile/ChatBubble.jsx:242-274",
+   "src/ui/mobile/WorldChatFeed.jsx:403"
+  ],
+  "linked": [
+   "uiBusyBus (M1-9)",
+   "QuestCoach windowUp",
+   "TRAPS \u00a720, \u00a7220"
+  ]
+ },
+ {
+  "id": "M1-9",
+  "title": "'A panel is open' (uiBusyBus from BroTown's _anyPanelOpen)",
+  "area": "ui",
+  "verdict": "watch",
+  "oneLine": "Boolean published during BroTown's render so chrome outside BroTown's tree stands aside.",
+  "topConcern": "Windows mounted by GameApp (daily rewards, shop drawer, Ace, chest) are not terms of it; a second definition of busy.",
+  "modes": [
+   "guard-drift",
+   "race"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/mobile/uiBusyBus.js:37-49",
+   "src/ui/BroTown.jsx:3336-3349",
+   "src/ui/mobile/ElementBurstButton.jsx:111"
+  ],
+  "linked": [
+   "modal guard (M1-8)",
+   "WorldChatFeed"
+  ]
+ },
+ {
+  "id": "M1-10",
+  "title": "The Element Burst button (eligibility, cooldown, busy)",
+  "area": "ui",
+  "verdict": "watch",
+  "oneLine": "Client-stamped 3 s burst cooldown and eligibility gate, redrawn every frame.",
+  "topConcern": "rAF re-render every frame all session; a server refusal leaves the client cooldown stamp showing a cast that never happened.",
+  "modes": [
+   "divergence",
+   "leak"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/mobile/ElementBurstButton.jsx:75-227",
+   "src/game/playerActions.js:713-760",
+   "server/src/burst.js:121-178"
+  ],
+  "linked": [
+   "server burst.js _burstCdUntil",
+   "ability_rejected",
+   "uiBusyBus"
+  ]
+ },
+ {
+  "id": "M1-11",
+  "title": "The death strip",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Time-gated death record from player_died, cleared at respawn, drawn by a 250 ms poller.",
+  "topConcern": "",
+  "modes": [
+   "stuck"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/mobile/DeathCard.jsx:48-118",
+   "src/game/deathCard.js:56-145",
+   "src/game/respawn.js:83-95"
+  ],
+  "linked": [
+   "wsClient player_died",
+   "server respawnInMs"
+  ]
+ },
+ {
+  "id": "M1-12",
+  "title": "The daily chest's claim window",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Explicit stage string offer/shaking/opening/reveal/error with an 8 s answer timeout.",
+  "topConcern": "",
+  "modes": [
+   "race",
+   "combo"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/mobile/ChestReveal.jsx:34-51",
+   "src/ui/mobile/ChestReveal.jsx:109-216",
+   "server/src/dailychest.js:99-140"
+  ],
+  "linked": [
+   "wsClient chest_opened",
+   "server dailychest.js"
+  ]
+ },
+ {
+  "id": "M1-13",
+  "title": "The daily rewards window",
+  "area": "ui",
+  "verdict": "retired",
+  "oneLine": "Open/tab window over the worker's rewards state; quests, season and the Quests dot are off by caps.",
+  "topConcern": "",
+  "modes": [
+   "race"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/mobile/DailyRewardsWindow.jsx:344-428",
+   "src/game/dailyRewards.js:26-44",
+   "src/game/dailyRewards.js:214-217"
+  ],
+  "linked": [
+   "server dailyrewards/cadence",
+   "modal guard",
+   "storeToastBus"
+  ]
+ },
+ {
+  "id": "M1-14",
+  "title": "The 'PLAY FULL SCREEN' install card",
+  "area": "ui",
+  "verdict": "watch",
+  "oneLine": "Once-per-browser iOS card polling the onboarding referee until the screen is quiet.",
+  "topConcern": "A stale coach-up flag (coach retire skips noteCoach) blocks it for the session; the coach never waits for it.",
+  "modes": [
+   "stuck",
+   "combo"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/mobile/InstallHint.jsx:75-167",
+   "src/ui/onboardingPace.js:154-163",
+   "src/ui/mobile/QuestCoach.jsx:1318-1326"
+  ],
+  "linked": [
+   "QuestCoach (M1-1)",
+   "onboardingPace.js",
+   "SettingsPanel row"
+  ]
+ },
+ {
+  "id": "M1-15",
+  "title": "No man's land's 'Attack <name>?' window",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "One ask about one player: raised, held 10 s, answered or let go with a re-ask cooldown.",
+  "topConcern": "",
+  "modes": [
+   "combo"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/mobile/NmlAskCard.jsx:164-289",
+   "src/game/nmlAsk.js:352-447"
+  ],
+  "linked": [
+   "server nomansland.js",
+   "NmlBadge explainer",
+   "infoPopupBus"
+  ]
+ },
+ {
+  "id": "M1-16",
+  "title": "No man's land's plate tap, red line and explainer hit-close",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "250 ms mirror of NML level and skull into a tap target and red line; HP drop closes the rules.",
+  "topConcern": "",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/mobile/NmlBadge.jsx:287-354",
+   "src/ui/mobile/NmlBadge.jsx:250-283"
+  ],
+  "linked": [
+   "wheelMinimap __btWheelPlate",
+   "plateSafety.js",
+   "server skull clock"
+  ]
+ },
+ {
+  "id": "M1-17",
+  "title": "The top bar's small machines",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Logout confirm, 1.2 s Test panel hold, purse flip, AP rise, XP bar window.",
+  "topConcern": "",
+  "modes": [
+   "race"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/mobile/ZoneHeader.jsx:83-210",
+   "src/ui/mobile/ZoneHeader.jsx:364-412"
+  ],
+  "linked": [
+   "xpBar.js",
+   "apChip.js",
+   "XpTrack (M1-29)"
+  ]
+ },
+ {
+  "id": "M1-18",
+  "title": "The place name latch and the wheel-trip title window",
+  "area": "ui",
+  "verdict": "watch",
+  "oneLine": "Module latch of the last element land (kept over water) and a copy of the 30 s trip-to-BroTown test.",
+  "topConcern": "placeOf ignores wheelHere's 'fresh' flag, so after a respawn the latch can name the land you died in.",
+  "modes": [
+   "race",
+   "guard-drift"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/mobile/placeName.js:17-34",
+   "src/ui/mobile/zoneTitle.js:33-41",
+   "src/game/wheelTrial.js:489-506",
+   "src/game/wheelHome.js:68-79"
+  ],
+  "linked": [
+   "wheelHome wheelTripVeiled",
+   "wheelMusic fresh",
+   "TRAPS \u00a7244"
+  ]
+ },
+ {
+  "id": "M1-19",
+  "title": "Ace's coin flip dialog",
+  "area": "wire (both)",
+  "verdict": "watch",
+  "oneLine": "Request/answer wager machine: open, pending, settled counter, gold and item modes.",
+  "topConcern": "No request id: a late answer settles the wrong spin after close/reopen; the 6 s guess says 'not enough gold' for a slow answer.",
+  "modes": [
+   "race"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/mobile/aceFlipBus.js:19-98",
+   "src/ui/panels/AceFlipPanel.jsx:216-318",
+   "src/networking/gameEvents.js:730-795"
+  ],
+  "linked": [
+   "server gamble.js",
+   "AceFlipPanel"
+  ]
+ },
+ {
+  "id": "M1-20",
+  "title": "The small toasts and the 'Next:' step nudge",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Capped toast list with per-toast clocks deferred behind loading screens; once-per-label step announcer.",
+  "topConcern": "",
+  "modes": [
+   "persistence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/mobile/storeToastBus.js:29-51",
+   "src/ui/mobile/StoreToast.jsx:24-68",
+   "src/ui/mobile/QuestStepNudge.jsx:20-45"
+  ],
+  "linked": [
+   "loadingGate.js",
+   "dailyRewards toastWhenSeen"
+  ]
+ },
+ {
+  "id": "M1-21",
+  "title": "The farm's request/answer bus",
+  "area": "wire (both)",
+  "verdict": "fine",
+  "oneLine": "One farm request at a time with its own timeout, worker clock offset and the order board.",
+  "topConcern": "",
+  "modes": [
+   "persistence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/mobile/farmBus.js:31-147",
+   "src/networking/wsClient.js:2284",
+   "server/src/farm.js:336-340"
+  ],
+  "linked": [
+   "server farm.js/farmorders.js",
+   "FeedSeedPanel",
+   "farmWalk.js"
+  ]
+ },
+ {
+  "id": "M1-22",
+  "title": "The eat and light-a-fire mailboxes",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Single pending-key slot set by a tap and consumed by BroTown's subscriber.",
+  "topConcern": "",
+  "modes": [
+   "stuck"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/mobile/eatBus.js:7-19",
+   "src/ui/mobile/firemakingBus.js:8-20",
+   "src/ui/BroTown.jsx:9685-9742"
+  ],
+  "linked": [
+   "server eat path"
+  ]
+ },
+ {
+  "id": "M1-23",
+  "title": "The block ring bus",
+  "area": "ui",
+  "verdict": "retired",
+  "oneLine": "Dormant parry window plus a display mirror of the shield, hostile-near flag and a persisted block count.",
+  "topConcern": "",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/mobile/blockRingBus.js:15-82",
+   "src/game/shieldToggle.js:152-182"
+  ],
+  "linked": [
+   "S._shieldUp",
+   "server parry",
+   "AbilityButtons"
+  ]
+ },
+ {
+  "id": "M1-24",
+  "title": "The utility wheel bus",
+  "area": "ui",
+  "verdict": "retired",
+  "oneLine": "Open/badges/activations of the retired radial wheel; only the debug console drives it.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/ui/mobile/wheelBus.js:6-51",
+   "src/ui/GameApp.jsx:452-491"
+  ],
+  "linked": [
+   "dashboardPanelBus.openCompact"
+  ]
+ },
+ {
+  "id": "M1-25",
+  "title": "Retired HUD pieces: SpecialChargePie and MasteryNotification",
+  "area": "ui",
+  "verdict": "retired",
+  "oneLine": "Unmounted charge-gauge fade and mastery toast queue with combat hold.",
+  "topConcern": "MasteryNotification's [shown] effect clears its own 4 s timer: a remounted toast would never go by itself.",
+  "modes": [
+   "stuck"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/ui/mobile/MasteryNotification.jsx:33-80",
+   "src/ui/mobile/SpecialChargePie.jsx:41-91",
+   "src/ui/GameApp.jsx:768-772"
+  ],
+  "linked": [
+   "game/mastery.js"
+  ]
+ },
+ {
+  "id": "M1-26",
+  "title": "Two small latches: actionBus and capeStatusBus",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Weapon-handler registration with an only-if-mine unregister; last cape_status payload for late mounts.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/ui/mobile/actionBus.js:14-44",
+   "src/ui/mobile/capeStatusBus.js:26-37"
+  ],
+  "linked": [
+   "BroTown",
+   "WeaponBar",
+   "WorldChatFeed"
+  ]
+ },
+ {
+  "id": "M1-27",
+  "title": "The dungeon clear card",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Face of dungeonClear.js's once-only 30 s leave clock and the boss chest row.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/ui/mobile/DungeonClearHud.jsx:132-164",
+   "src/game/dungeonClear.js:30-78"
+  ],
+  "linked": [
+   "gameEvents dungeon_cleared",
+   "server dungeonreward.js"
+  ]
+ },
+ {
+  "id": "M1-28",
+  "title": "Lil Bro's race HUD",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Face of race.js's explicit phase: asked, count, run, done.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/ui/mobile/RaceHud.jsx:45-130",
+   "src/game/race.js:51-240"
+  ],
+  "linked": [
+   "server race.js"
+  ]
+ },
+ {
+  "id": "M1-29",
+  "title": "The XP bar's fill and count animation",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Snap-then-grow fills, a level-up wrap timer and a self-stopping rAF count.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/ui/mobile/XpTrack.jsx:57-150",
+   "src/game/xpBar.js:127-136"
+  ],
+  "linked": [
+   "ZoneHeader (M1-17)"
+  ]
+ },
+ {
+  "id": "M1-30",
+  "title": "The farm bed prompt",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "150 ms poll of the farm walk's near-bed step and seed choice.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/ui/mobile/FarmBedPrompt.jsx:26-88"
+  ],
+  "linked": [
+   "farmWalk.js",
+   "farmBus (M1-21)"
+  ]
+ },
+ {
+  "id": "M1-31",
+  "title": "The band's portrait regeneration",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Async portrait render where only the newest request may land, stopped on unmount.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/ui/mobile/BottomDashboard.jsx:860-912"
+  ],
+  "linked": [
+   "portraitStore",
+   "CharacterView"
+  ]
+ }
+]

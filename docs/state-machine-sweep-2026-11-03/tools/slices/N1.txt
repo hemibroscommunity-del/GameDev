@@ -1,0 +1,7 @@
+# slice N1: 6 files, 7846 lines (paths relative to /home/user/GameDev)
+src/networking/broWallet.js  (204 lines)
+src/networking/charRoster.js  (651 lines)
+src/networking/index.js  (368 lines)
+src/networking/rosterCookie.js  (210 lines)
+src/networking/serverReady.js  (190 lines)
+src/networking/wsClient.js  (6223 lines)

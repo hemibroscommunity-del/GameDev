@@ -1,0 +1,578 @@
+[
+ {
+  "id": "P4-1",
+  "title": "Sound studio's music preview",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Off / playing(key) preview on its own <audio>, ducking the game's music bus and holding the land-music watch off.",
+  "topConcern": "The duck is a one-shot gain write; a bus rebuilt after an iOS context loss brings zone music back under the preview.",
+  "modes": [
+   "divergence",
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/panels/SoundStudio.jsx:199",
+   "src/ui/panels/SoundStudio.jsx:214",
+   "src/ui/panels/SoundStudio.jsx:228",
+   "src/game/wheelMusic.js:92"
+  ],
+  "linked": [
+   "src/data/gameDisplay.js:1802 _applyBusLevels",
+   "tools/qa/mp/mp-soundstudio.mjs",
+   "P4-23"
+  ]
+ },
+ {
+  "id": "P4-2",
+  "title": "Sound studio's way in (closed, opening, open)",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Module host/root/promise trio lazily mounting the studio once; ?sounds polls until the world is up.",
+  "topConcern": "A close during the lazy import is ignored and the studio mounts anyway (test-only route).",
+  "modes": [
+   "race"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/game/soundStudio.js:115",
+   "src/game/soundStudio.js:132",
+   "src/game/soundStudio.js:151",
+   "src/ui/panels/DevPanel.jsx:841"
+  ],
+  "linked": [
+   "P4-1",
+   "window.__btSoundStudio"
+  ]
+ },
+ {
+  "id": "P4-3",
+  "title": "Design gallery scrim latch and Escape",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Gallery over the paint panel: press-began-on-scrim latch, category filter, capture-phase Escape leaving the editor intact.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "low",
+  "files": [
+   "src/ui/panels/DesignGallery.jsx:90",
+   "src/ui/panels/DesignGallery.jsx:98",
+   "src/ui/panels/DesignGallery.jsx:122"
+  ],
+  "linked": [
+   "P4-15 applyDesign",
+   "src/game/desktopControls.js:589"
+  ]
+ },
+ {
+  "id": "P4-4",
+  "title": "Test panel admin call lifecycle",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Single busy flag, message line and 12 s abort for every admin HTTP call; quiet background refresh touches neither.",
+  "topConcern": "busy is a boolean, not a count: chained calls leave microtask gaps where buttons re-enable and a second action can overlap.",
+  "modes": [
+   "race"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/panels/DevPanel.jsx:429",
+   "src/ui/panels/DevPanel.jsx:109",
+   "src/ui/panels/DevPanel.jsx:494",
+   "src/ui/panels/DevPanel.jsx:1032"
+  ],
+  "linked": [
+   "server/src/devtools.js",
+   "src/ui/mobile/ZoneHeader.jsx:112 hold timer"
+  ]
+ },
+ {
+  "id": "P4-5",
+  "title": "Test panel's copy of server-held toggles",
+  "area": "ui",
+  "verdict": "watch",
+  "oneLine": "Panel snapshot of god mode, test mode and spar state; each toggle sends an absolute value derived from it.",
+  "topConcern": "The snapshot never ticks and replies are unordered, so a stale snapshot (expired god mode, late quiet refresh) sends the wrong direction once.",
+  "modes": [
+   "divergence",
+   "race"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/panels/DevPanel.jsx:494",
+   "src/ui/panels/DevPanel.jsx:940",
+   "src/ui/panels/DevPanel.jsx:1079",
+   "server/src/devtools.js:395"
+  ],
+  "linked": [
+   "server/src/devtools.js _devVitals",
+   "server/src/testmode.js",
+   "P4-4"
+  ]
+ },
+ {
+  "id": "P4-6",
+  "title": "Message diet modes and memory savers as live-flag chains",
+  "area": "wire (both)",
+  "verdict": "watch",
+  "oneLine": "Message-diet modes and memory savers set as chains of live-flag writes with no rollback.",
+  "topConcern": "A chain failing half-way leaves an unpicked mode live: from kill, 'Only ?diet=1' can end with the diet on for every phone.",
+  "modes": [
+   "stuck",
+   "divergence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/panels/DevPanel.jsx:545",
+   "src/ui/panels/DevPanel.jsx:572",
+   "src/ui/panels/DevPanel.jsx:1264",
+   "src/ui/panels/DevPanel.jsx:1284"
+  ],
+  "linked": [
+   "server movepath.js switches",
+   "server clientoff.js",
+   "src/game/clientOff.js",
+   "P4-4"
+  ]
+ },
+ {
+  "id": "P4-7",
+  "title": "Test panel two-tap arms and once-shown key",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Armed latches for Freeze, Forget devices and New key, disarmed by editing the code or acting; new key shown once.",
+  "topConcern": "Arms never expire and Forget/New key can both be armed; both name the target, so no wrong-target case found.",
+  "modes": [
+   "combo"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/panels/DevPanel.jsx:647",
+   "src/ui/panels/DevPanel.jsx:692",
+   "src/ui/panels/DevPanel.jsx:711",
+   "src/ui/panels/DevPanel.jsx:1368"
+  ],
+  "linked": [
+   "server devicelock.js",
+   "server loginkeys.js",
+   "server chatmod freeze"
+  ]
+ },
+ {
+  "id": "P4-8",
+  "title": "Test panel zone warp (S._devWarp)",
+  "area": "client",
+  "verdict": "retired",
+  "oneLine": "S._devWarp destination walked through the old map's hub doors leg by leg by driveDevWarp.",
+  "topConcern": "Retired-map only; the client writes P.x/P.y; the empty Zones section still renders in the world.",
+  "modes": [
+   "authority"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/panels/DevPanel.jsx:751",
+   "src/game/zoneTransitions.js:495",
+   "src/game/worldTrial.js:267",
+   "src/data/zones.js:440"
+  ],
+  "linked": [
+   "tools/qa/mp/oldMap.mjs (devwarp, hitreal, lootzone frozen)",
+   "zoneTransitions hub exits"
+  ]
+ },
+ {
+  "id": "P4-9",
+  "title": "Shared ink/brush tool store",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Module ink/brush pair shared by the creator's inline palette and the editor, mirrored by seed and write-back effects.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "low",
+  "files": [
+   "src/ui/panels/paintTools.js:37",
+   "src/ui/panels/PlayerPaint.jsx:1117",
+   "src/ui/panels/PlayerPaint.jsx:1128",
+   "src/ui/panels/NameModal.jsx:2095"
+  ],
+  "linked": [
+   "P4-13",
+   "P4-15"
+  ]
+ },
+ {
+  "id": "P4-10",
+  "title": "Creator's look: store and React mirrors, species rules, Randomize, Reset",
+  "area": "ui",
+  "verdict": "watch",
+  "oneLine": "Trait picks written to sprite stores and React mirrors by tabs, species rules, Randomize's flair interval and Reset.",
+  "topConcern": "Randomize's 110 ms flair interval is never cancelled: Reset inside 330 ms is overwritten; ENTER snapshots a mid-flair look into bt_resume.",
+  "modes": [
+   "race",
+   "guard-drift",
+   "persistence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/BroTown.jsx:2965",
+   "src/ui/BroTown.jsx:2937",
+   "src/ui/panels/NameModal.jsx:344",
+   "src/ui/panels/NameModal.jsx:533"
+  ],
+  "linked": [
+   "joinTown bt_resume (src/ui/BroTown.jsx:12164)",
+   "src/game/characterRecord.js",
+   "P4-13",
+   "P4-14"
+  ]
+ },
+ {
+  "id": "P4-11",
+  "title": "Name entry and the Enter BroTown gate",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Press latch plus live block reason gating Enter BroTown; iOS keyboard pad from visualViewport.",
+  "topConcern": "The name field's Enter checks length only, so a pinch-zoomed phone gets joinTown's alert instead of the inline reason.",
+  "modes": [
+   "guard-drift",
+   "race"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/panels/NameModal.jsx:931",
+   "src/ui/panels/NameModal.jsx:1626",
+   "src/ui/panels/NameModal.jsx:1327",
+   "src/data/joinGate.js:71"
+  ],
+  "linked": [
+   "joinTown (src/ui/BroTown.jsx:12041)"
+  ]
+ },
+ {
+  "id": "P4-12",
+  "title": "Creator preview drag-to-rotate vs tap-to-zoom",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Pointer machine on the creator preview: 26 px drag steps the facing, a still tap toggles zoom, cue earned once.",
+  "topConcern": "No pointerId tracking: a second finger resets the drag and can toggle the zoom.",
+  "modes": [
+   "combo"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/panels/NameModal.jsx:1139",
+   "src/ui/panels/NameModal.jsx:767",
+   "src/ui/BroTown.jsx:2458"
+  ],
+  "linked": [
+   "BroTown rotatePreview / focusForCat"
+  ]
+ },
+ {
+  "id": "P4-13",
+  "title": "Creator's ink card: which editor is open",
+  "area": "ui",
+  "verdict": "watch",
+  "oneLine": "Which drawing editor is open (showPaint) and the inkRev counter that re-memoises the creator's look.",
+  "topConcern": "PlayerPaint has no key; a keyboard-reached card behind the scrim swaps target without remount, writing one garment's pattern onto another.",
+  "modes": [
+   "combo"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/panels/NameModal.jsx:636",
+   "src/ui/panels/NameModal.jsx:650",
+   "src/ui/panels/NameModal.jsx:2113",
+   "src/ui/panels/PlayerPaint.jsx:1077"
+  ],
+  "linked": [
+   "P4-14",
+   "P4-9"
+  ]
+ },
+ {
+  "id": "P4-14",
+  "title": "Paint editor: canvas being inked, its doc and undo history",
+  "area": "ui",
+  "verdict": "needs-thought",
+  "oneLine": "Which of nine canvases is inked (mode, side, finger) plus its op-list doc, per-canvas undo/redo and persist effect.",
+  "topConcern": "One value lives in five places updated at different moments; five recorded bugs (v2.3.1967 to v2.3.2431) were in this handshake.",
+  "modes": [
+   "opacity",
+   "persistence"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/ui/panels/PlayerPaint.jsx:1060",
+   "src/ui/panels/PlayerPaint.jsx:1259",
+   "src/ui/panels/PlayerPaint.jsx:1437",
+   "src/ui/panels/PlayerPaint.jsx:1492"
+  ],
+  "linked": [
+   "P4-15",
+   "P4-16",
+   "P4-17",
+   "P4-24",
+   "TRAPS §70"
+  ]
+ },
+ {
+  "id": "P4-15",
+  "title": "Paint editor gesture and held piece",
+  "area": "ui",
+  "verdict": "watch",
+  "oneLine": "Stroke, shape drag, pick-up, move and resize gestures, and the held piece's pend record with Place and Cancel.",
+  "topConcern": "Cancel after a layer move unbanks nothing, so the next Undo resurrects the cancelled shape or colour.",
+  "modes": [
+   "combo",
+   "race"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/panels/PlayerPaint.jsx:1833",
+   "src/ui/panels/PlayerPaint.jsx:1776",
+   "src/ui/panels/PlayerPaint.jsx:2009",
+   "src/ui/panels/PlayerPaint.jsx:1193"
+  ],
+  "linked": [
+   "P4-14",
+   "P4-17"
+  ]
+ },
+ {
+  "id": "P4-16",
+  "title": "WornPreview and BodyInk composite loops",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "rAF-coalesced character composites for the worn preview and the inkable body: idle, scheduled, baking, dirty.",
+  "topConcern": "A request made while an older effect's bake awaits images is never re-kicked; the preview stays one change behind.",
+  "modes": [
+   "race",
+   "divergence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/panels/PlayerPaint.jsx:780",
+   "src/ui/panels/BodyInk.jsx:771",
+   "src/ui/panels/BodyInk.jsx:824",
+   "src/rendering/characterPortrait.js:466"
+  ],
+  "linked": [
+   "P4-14",
+   "P4-17",
+   "characterPortrait _imgCache"
+  ]
+ },
+ {
+  "id": "P4-17",
+  "title": "BodyInk pointer machine (draw, pinch, pan, held grab, auto-fit)",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Pointer map, pinch record and per-gesture locked canvas on the body surface, plus pan mode and auto-fit per region.",
+  "topConcern": "Three fingers start a new gesture fed by every pointer, and a stale pinch resumes on the remaining pair.",
+  "modes": [
+   "combo"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/panels/BodyInk.jsx:838",
+   "src/ui/panels/BodyInk.jsx:942",
+   "src/ui/panels/BodyInk.jsx:820",
+   "src/ui/panels/BodyInk.jsx:633"
+  ],
+  "linked": [
+   "P4-15",
+   "P4-14",
+   "P4-16"
+  ]
+ },
+ {
+  "id": "P4-18",
+  "title": "Character picker roster lookup loop",
+  "area": "wire (both)",
+  "verdict": "needs-thought",
+  "oneLine": "Sequential per-row account lookups filling roster names, levels and looks, restarted on every roster change.",
+  "topConcern": "The effect restarts after each answer while the old loop's next fetch is already sent: rows after the first are asked twice against 20/min.",
+  "modes": [
+   "race",
+   "persistence"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/ui/panels/CharacterPicker.jsx:231",
+   "src/ui/panels/CharacterPicker.jsx:262",
+   "src/networking/charRoster.js:152",
+   "server/src/account.js:137"
+  ],
+  "linked": [
+   "P4-19 restart (shared rate budget)",
+   "AccountLoginForm",
+   "src/networking/index.js:144"
+  ]
+ },
+ {
+  "id": "P4-19",
+  "title": "Character picker options road (menu, typed confirm, remove/restart)",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Menu then typed-yes confirm for removing or restarting a roster row; busy blocks every exit while the restart runs.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "low",
+  "files": [
+   "src/ui/panels/CharacterPicker.jsx:211",
+   "src/ui/panels/CharacterPicker.jsx:282",
+   "src/ui/panels/CharacterPicker.jsx:583"
+  ],
+  "linked": [
+   "P4-18",
+   "server account reset"
+  ]
+ },
+ {
+  "id": "P4-20",
+  "title": "Character picker portraits",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Per-row async face raster keyed on the look, discarded when the row unmounts or its look changes.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "low",
+  "files": [
+   "src/ui/panels/CharacterPicker.jsx:155",
+   "src/ui/panels/CharacterPicker.jsx:164"
+  ],
+  "linked": [
+   "characterPortrait portraitDataUrl"
+  ]
+ },
+ {
+  "id": "P4-21",
+  "title": "Dungeon Workshop pack store and saved dungeons",
+  "area": "client",
+  "verdict": "needs-thought",
+  "oneLine": "Dungeon pack purchases and five saved designs held only in the client's rpg copy and the bt_rpg cache.",
+  "topConcern": "Buy subtracts gold on the phone with no server message; the gold returns on the next coin update and the pack stays owned.",
+  "modes": [
+   "authority",
+   "persistence",
+   "guard-drift"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/ui/panels/DungeonCreatorPanel.jsx:652",
+   "src/ui/panels/DungeonCreatorPanel.jsx:845",
+   "src/data/gameSystems.js:2786",
+   "server/src/dungeon.js:253"
+  ],
+  "linked": [
+   "docs/GDD-AS-BUILT.md:709",
+   "src/networking/wsClient.js:2579",
+   "P4-22",
+   "P4-26"
+  ]
+ },
+ {
+  "id": "P4-22",
+  "title": "Dungeon Workshop launch: worker run vs legacy local arena",
+  "area": "wire (both)",
+  "verdict": "retired",
+  "oneLine": "dungeon_start request to the worker's instance, with a legacy client-only arena when caps.dungeon is missing.",
+  "topConcern": "A cap-named 'dungeon: false' flag would send players into a client-only arena; the eleven run flags have two writers.",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/panels/DungeonCreatorPanel.jsx:882",
+   "src/ui/panels/DungeonCreatorPanel.jsx:934",
+   "server/src/dungeon.js:288",
+   "src/networking/gameEvents.js:924"
+  ],
+  "linked": [
+   "src/game/dungeonWaves.js",
+   "src/game/respawn.js:52",
+   "P4-21"
+  ]
+ },
+ {
+  "id": "P4-23",
+  "title": "Sound studio view: tabs, filters, heard ticker",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Tab and filter view state plus a 500 ms re-render ticker alive only on the heard and music tabs.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "low",
+  "files": [
+   "src/ui/panels/SoundStudio.jsx:191",
+   "src/ui/panels/SoundStudio.jsx:231",
+   "src/ui/panels/SoundStudio.jsx:257"
+  ],
+  "linked": [
+   "P4-1",
+   "src/game/soundStudio.js heard ring"
+  ]
+ },
+ {
+  "id": "P4-24",
+  "title": "Editor op-list store (bt-artops)",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "Per-canvas op lists kept in bt-artops beside the art, flattened whenever they stop replaying to the stored drawing.",
+  "topConcern": "No shape number: a newer op kind read by an older client silently loses its shapes (pixels kept).",
+  "modes": [
+   "persistence",
+   "opacity"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/traits/artOps.js:420",
+   "src/rendering/traits/artOps.js:460",
+   "src/rendering/traits/artOps.js:533",
+   "src/ui/panels/PlayerPaint.jsx:1437"
+  ],
+  "linked": [
+   "P4-14",
+   "src/rendering/traits/playerArt.js:336"
+  ]
+ },
+ {
+  "id": "P4-25",
+  "title": "Trait picker 'more below' cues",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Two derived scroll flags re-measured on scroll, tab and pick changes, and by one ResizeObserver.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "low",
+  "files": [
+   "src/ui/panels/NameModal.jsx:719",
+   "src/ui/panels/NameModal.jsx:744"
+  ],
+  "linked": []
+ },
+ {
+  "id": "P4-26",
+  "title": "Dungeon Workshop design being edited",
+  "area": "ui",
+  "verdict": "watch",
+  "oneLine": "In-memory Workshop design and tab; the waves slider shows a clamped value while the stored config keeps the larger one.",
+  "topConcern": "Default 3 waves shows as 2 below level 10 and fails validation, disabling Play with no visible cause.",
+  "modes": [
+   "divergence",
+   "guard-drift"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/panels/DungeonCreatorPanel.jsx:329",
+   "src/data/gameSystems.js:2774",
+   "src/data/gameSystems.js:2835",
+   "server/src/dungeon.js:48"
+  ],
+  "linked": [
+   "P4-21",
+   "P4-22"
+  ]
+ }
+]

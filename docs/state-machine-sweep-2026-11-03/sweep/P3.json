@@ -1,0 +1,497 @@
+[
+{
+"id": "P3-1",
+"title": "Touch-control press feedback and the cooldown-ended flash",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "data-pressed written outside React on every control, plus a per-button {was, at} edge detector for the ready flash.",
+"topConcern": "RideButton, the one control drawn on computers, has no onMouseLeave: a press released elsewhere leaves it pressed and its mouse latch armed.",
+"modes": [
+"stuck",
+"opacity"
+],
+"confidence": "low",
+"files": [
+"src/ui/panels/controlSkin.jsx:222-252",
+"src/ui/panels/AbilityButtons.jsx:104-105",
+"src/ui/panels/RideButton.jsx:129-154",
+"src/styles/game.css:7394-7397"
+],
+"linked": [
+"P3-2..P3-10",
+"TRAPS §131"
+]
+},
+{
+"id": "P3-2",
+"title": "Whirlwind and Shield Bash buttons",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Hidden, cooling, cannot-cast or ready: a 200 ms view of abilityStatus, re-read on every shield edge.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"src/ui/panels/AbilityButtons.jsx:106-119",
+"src/ui/panels/AbilityButtons.jsx:124-161",
+"src/ui/panels/AbilityButtons.jsx:233-264",
+"src/game/abilities.js:357"
+],
+"linked": [
+"G2-1",
+"G2-2",
+"G2-3",
+"blockRingBus"
+]
+},
+{
+"id": "P3-3",
+"title": "Block button: down, UP, cooling",
+"area": "ui",
+"verdict": "needs-thought",
+"oneLine": "The Block button draws the phone's _shieldUp and a 2 s stamina cooldown face.",
+"topConcern": "The worker's 3 s guard break never reaches the phone, so the button stays lit UP; its cooldown face's one writer is switched off.",
+"modes": [
+"divergence",
+"guard-drift"
+],
+"confidence": "high",
+"files": [
+"src/ui/panels/ShieldButton.jsx:818-926",
+"src/ui/panels/ShieldButton.jsx:45",
+"src/ui/BroTown.jsx:633",
+"src/ui/BroTown.jsx:8300-8305",
+"server/src/movement.js:780-783"
+],
+"linked": [
+"G2-4",
+"U2-9",
+"server/src/index.js:1502 GUARD_BREAK_MS"
+]
+},
+{
+"id": "P3-4",
+"title": "Jump button and the html[data-jump-clear] prompt switch",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Ground/air/hidden on an 80 ms key poll, a 700 ms ghost-mouse window, and a page attribute set per commit.",
+"topConcern": "Cleanup removes data-jump-clear but leaves three custom properties on <html>; harmless, every reader is scoped under the attribute.",
+"modes": [
+"leak"
+],
+"confidence": "low",
+"files": [
+"src/ui/panels/JumpButton.jsx:66-93",
+"src/ui/panels/JumpButton.jsx:107-124",
+"src/ui/panels/JumpButton.jsx:150-174",
+"src/styles/game.css:1160-1163"
+],
+"linked": [
+"G2-6",
+"P3-10"
+]
+},
+{
+"id": "P3-5",
+"title": "Sprint button tap detector",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Turns a real tap (14 px, 600 ms) into toggleSprint and shows off/on/running/tired from S._sprint.",
+"topConcern": "A second finger on the button overwrites the pending touch so neither lift toggles; rare, harmless.",
+"modes": [
+"race"
+],
+"confidence": "low",
+"files": [
+"src/ui/panels/SprintButton.jsx:77-96",
+"src/ui/panels/SprintButton.jsx:146-192",
+"src/game/sprint.js:92-124"
+],
+"linked": [
+"G2-5",
+"server/src/sprint.js"
+]
+},
+{
+"id": "P3-6",
+"title": "Special button: normal, cooling, no mana, queued AIM",
+"area": "ui",
+"verdict": "needs-thought",
+"oneLine": "Special's cooldown (_lastSwipe), mana and the bow's queued request (_bowSpecialQueued) drawn as one button face.",
+"topConcern": "A bow special pressed while cooling queues and lights AIM; when the line lands the cooldown refuses silently, losing the special and that arrow.",
+"modes": [
+"race",
+"guard-drift"
+],
+"confidence": "medium",
+"files": [
+"src/ui/panels/SpecialButton.jsx:141-144",
+"src/ui/panels/SpecialButton.jsx:216-250",
+"src/game/playerActions.js:148-190",
+"src/game/monsterCombat.js:1757-1767",
+"src/ui/panels/SpecialButton.jsx:113"
+],
+"linked": [
+"G2-10",
+"server/src/data.js:592 SWIPE_CD_MS"
+]
+},
+{
+"id": "P3-7",
+"title": "TRAP button: ready, setting, armed, grey",
+"area": "wire (both)",
+"verdict": "fine",
+"oneLine": "A keyed 120 ms view of S._trap pending/mark; arm asks the worker, which decides and refreshes one mark.",
+"topConcern": "Dead branch: the grey 'No box traps' row can never show because the view returns null first.",
+"modes": [
+"opacity",
+"race"
+],
+"confidence": "low",
+"files": [
+"src/ui/panels/TrapButton.jsx:63-135",
+"src/game/trapping.js:110-148",
+"src/game/trapping.js:156-200",
+"server/src/trapping.js:302-353"
+],
+"linked": [
+"G4 trapping.js",
+"S7 server trapping.js",
+"P3-21"
+]
+},
+{
+"id": "P3-8",
+"title": "Skateboard button: off, asking, on, hidden",
+"area": "ui",
+"verdict": "watch",
+"oneLine": "Ride toggle button over S._ride, hidden whenever a fight is near or you leave the safe ground.",
+"topConcern": "Riding with a monster locked (or shield-live) hides the button while rideCheck keeps you on the board: a rider loses the only touch off-switch.",
+"modes": [
+"stuck",
+"race"
+],
+"confidence": "medium",
+"files": [
+"src/ui/panels/RideButton.jsx:48-59",
+"src/ui/panels/RideButton.jsx:101-137",
+"src/game/ride.js:60-77",
+"src/ui/BroTown.jsx:5320-5327"
+],
+"linked": [
+"G2-7",
+"P3-3",
+"src/game/shieldToggle.js:233-240"
+]
+},
+{
+"id": "P3-9",
+"title": "Quick-eat button",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Shown with food and missing HP; a press posts the key to eatBus; the one-bite wait drawn as an arc.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"src/ui/panels/QuickEatButton.jsx:45-86",
+"src/game/quickEat.js:83-106",
+"src/ui/mobile/eatBus.js:7-19"
+],
+"linked": [
+"G2-20",
+"U2-21",
+"M1 eatBus.js"
+]
+},
+{
+"id": "P3-10",
+"title": "Weapon pill: in hand, tap to swap, refusal shake, html[data-wpill-shown]",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "A keyed view of R.activeSlot and owned slots, a tap detector calling BroTown's one cycler, and a page attribute.",
+"topConcern": "Five copies of the touch-echo window (800 ms here, 700 elsewhere); every pill tap also latches _userCycledSlot for the session.",
+"modes": [
+"opacity"
+],
+"confidence": "low",
+"files": [
+"src/ui/panels/WeaponPill.jsx:78-105",
+"src/ui/panels/WeaponPill.jsx:149-170",
+"src/ui/panels/WeaponPill.jsx:187-252"
+],
+"linked": [
+"N1-19",
+"U2-12"
+]
+},
+{
+"id": "P3-11",
+"title": "Keyboard controls shown or hidden",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "bt_kb_hints_off: one writer (BroTown), three readers (React state, DeskKeysList, deskKeysW) of localStorage.",
+"topConcern": "With storage refused the state flips but the desk-wide column and world width read storage, so the column never folds.",
+"modes": [
+"divergence"
+],
+"confidence": "low",
+"files": [
+"src/ui/BroTown.jsx:1622-1643",
+"src/ui/panels/KeyboardHintsPanel.jsx:119-155",
+"src/ui/panels/KeyboardHintsPanel.jsx:212-278",
+"src/ui/deskWide.js:61-70"
+],
+"linked": [
+"G2-17",
+"deskKeyList.js"
+]
+},
+{
+"id": "P3-12",
+"title": "The two discs' DOM under BroTown's per-frame stamps",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Render-only: initial opacity/pointerEvents/data-show that BroTown's resolver overwrites every frame.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"src/ui/panels/TouchControls.jsx:130-207",
+"src/ui/panels/TouchControls.jsx:307-367",
+"src/ui/panels/TouchControls.jsx:515-548"
+],
+"linked": [
+"U1-10",
+"U2-10",
+"U2-12"
+]
+},
+{
+"id": "P3-13",
+"title": "Legacy toolbar: one window at a time and the old logout",
+"area": "ui",
+"verdict": "retired",
+"oneLine": "display:none toolbar toggling the show* window flags and an old multi-RPC logout chain.",
+"topConcern": "Its dead logout removes bt_passphrase, today's Login Key, the opposite of the live logout that keeps it.",
+"modes": [
+"opacity"
+],
+"confidence": "low",
+"files": [
+"src/ui/panels/MenuBar.jsx:62-67",
+"src/ui/panels/MenuBar.jsx:137-158",
+"src/ui/panels/MenuBar.jsx:252-362"
+],
+"linked": [
+"U1-6",
+"src/networking/index.js:102-122"
+]
+},
+{
+"id": "P3-14",
+"title": "Legacy modals: old Inventory, Skills, Stats, Info, Encyclopedia",
+"area": "ui",
+"verdict": "retired",
+"oneLine": "Open/close flags reachable only by QA's _uiPanels, with local eat/equip/sell, stat locks and the Bro verify row.",
+"topConcern": "InfoPanel is the only caller of verifyBro and nothing opens it, so the Hemi Bro wallet check is unreachable for players.",
+"modes": [
+"opacity",
+"authority",
+"race"
+],
+"confidence": "medium",
+"files": [
+"src/ui/BroTown.jsx:3299-3303",
+"src/ui/BroTown.jsx:9228-9233",
+"src/ui/panels/InfoPanel.jsx:21-81",
+"src/ui/panels/InventoryPanel.jsx:934-1019",
+"src/ui/panels/StatScreenPanel.jsx:420-430"
+],
+"linked": [
+"N1-1",
+"N1-19",
+"U1-6",
+"M2 itemActions.js"
+]
+},
+{
+"id": "P3-15",
+"title": "Furniture Workshop: crafting paid on the phone alone",
+"area": "ui",
+"verdict": "needs-thought",
+"oneLine": "Live farm-house window that takes coins and wood, grants XP and records furniture only in S.rpg and bt_rpg.",
+"topConcern": "Craft sends nothing: client-only economy; v2 deltas never correct the lowered coins until the worker's coins change; _furniture lives on one device.",
+"modes": [
+"authority",
+"divergence",
+"persistence"
+],
+"confidence": "high",
+"files": [
+"src/ui/panels/FurniturePanel.jsx:167-195",
+"src/ui/BroTown.jsx:15161-15172",
+"server/src/persistence.js:724-745",
+"src/data/gameSystems.js:1594-1621"
+],
+"linked": [
+"N1-19",
+"U1-8",
+"U2-13",
+"ARCHITECTURE-HANDOFF.md:735"
+]
+},
+{
+"id": "P3-16",
+"title": "Old Pet House window (deploy-order fallback)",
+"area": "ui",
+"verdict": "retired",
+"oneLine": "Active pet toggled locally in lifeSkills.pets; opens only when caps.petbook is not advertised.",
+"topConcern": "If shown, the active pet is a phone-only choice kept in bt_rpg, the reason its own header retired Evolve and Enchant.",
+"modes": [
+"authority"
+],
+"confidence": "low",
+"files": [
+"src/ui/panels/PetHousePanel.jsx:7-13",
+"src/ui/panels/PetHousePanel.jsx:185-192",
+"src/ui/BroTown.jsx:15139-15151"
+],
+"linked": [
+"G5 petBook.js",
+"server petbook.js"
+]
+},
+{
+"id": "P3-17",
+"title": "Ace's coin flip dialog",
+"area": "wire (both)",
+"verdict": "needs-thought",
+"oneLine": "Open, staking, pending with a 6 s silent-refusal timeout, settled, closed; results carry no request id.",
+"topConcern": "A reply slower than 6 s reads as a refusal and frees a second stake; a result after closing returns as next visit's stale verdict.",
+"modes": [
+"race",
+"stuck",
+"divergence",
+"leak"
+],
+"confidence": "medium",
+"files": [
+"src/ui/panels/AceFlipPanel.jsx:195-236",
+"src/ui/panels/AceFlipPanel.jsx:270-319",
+"src/ui/mobile/aceFlipBus.js:49-96",
+"src/networking/gameEvents.js:730-777",
+"server/src/index.js:6039-6062"
+],
+"linked": [
+"M1 aceFlipBus.js",
+"server gamble.js"
+]
+},
+{
+"id": "P3-18",
+"title": "Emote picker and its pointerdown dismiss layer",
+"area": "ui",
+"verdict": "watch",
+"oneLine": "Closed/open on Moves or Emoji (remembered in bt_emote_tab), closed by a pointerdown anywhere on a world-wide layer.",
+"topConcern": "Closing on pointerdown lets the tap's click land on what lay underneath: a weapon-pill well swaps, TRAP arms, the canvas locks a monster.",
+"modes": [
+"race"
+],
+"confidence": "medium",
+"files": [
+"src/ui/panels/EmotePanel.jsx:86-95",
+"src/ui/tapDismiss.js:20-27",
+"src/ui/panels/WeaponPill.jsx:248-252",
+"src/ui/BroTown.jsx:9251-9252"
+],
+"linked": [
+"TRAPS §88",
+"TRAPS §247",
+"U2-18"
+]
+},
+{
+"id": "P3-19",
+"title": "Login door: checking, buttons, picker, device-full card",
+"area": "ui",
+"verdict": "watch",
+"oneLine": "Logged-out page: checking, the two doors, the character list, and the full-device card.",
+"topConcern": "The full-device card's scrim closes on pointerdown, so its tap can fall through onto Continue or Create beneath.",
+"modes": [
+"race"
+],
+"confidence": "low",
+"files": [
+"src/ui/panels/LoginScreen.jsx:108-122",
+"src/ui/panels/LoginScreen.jsx:291-313",
+"src/ui/panels/LoginScreen.jsx:316-389"
+],
+"linked": [
+"P4 CharacterPicker.jsx",
+"N1-9",
+"U1-4",
+"U2-2"
+]
+},
+{
+"id": "P3-20",
+"title": "NEW MONSTER card",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "One {kind, at} codex announcement shown 3 s, its clock pushed forward while a loading screen is up.",
+"topConcern": "A UI poll mutates the announcement's clock; held forever only if the loading screen itself never clears.",
+"modes": [
+"opacity"
+],
+"confidence": "low",
+"files": [
+"src/ui/panels/NewMonsterCard.jsx:41-75",
+"src/game/monsterCodex.js:89",
+"src/game/monsterCodex.js:96-115"
+],
+"linked": [
+"G5 monsterCodex.js",
+"U2 loadingGate.js"
+]
+},
+{
+"id": "P3-21",
+"title": "A new pet's card",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "S._trap.card raised when the snap animation ends; a draft name kept per card; Done or a sent name closes it.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"src/ui/panels/TrapCatchCard.jsx:17-48",
+"src/game/trapping.js:273-279"
+],
+"linked": [
+"P3-7",
+"G4 trapping.js",
+"G5 petBook.js"
+]
+},
+{
+"id": "P3-22",
+"title": "Fish weigh-in card",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Weighing, answered, closed after 9 s, ✕ or Records; module-level card re-armed per answer.",
+"topConcern": "A late fish_weight reopens a card the player had already closed, since the answer ignores st.pending.",
+"modes": [
+"race"
+],
+"confidence": "low",
+"files": [
+"src/ui/panels/FishWeighCard.jsx:27-45",
+"src/game/fishWeigh.js:37-61"
+],
+"linked": [
+"G4 fishWeigh.js",
+"server fishlog.js"
+]
+}
+]

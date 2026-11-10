@@ -1,0 +1,2 @@
+# slice R4: 1 files, 9242 lines (paths relative to /home/user/GameDev)
+src/rendering/systems/effectsRenderer.js:9251-18492

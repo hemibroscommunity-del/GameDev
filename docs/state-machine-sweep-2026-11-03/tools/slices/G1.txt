@@ -1,0 +1,5 @@
+# slice G1: 4 files, 8262 lines (paths relative to /home/user/GameDev)
+src/game/combatHelpers.js  (1214 lines)
+src/game/monsterCombat.js  (3398 lines)
+src/game/projectiles.js  (2916 lines)
+src/game/targeting.js  (734 lines)

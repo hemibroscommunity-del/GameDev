@@ -1,0 +1,378 @@
+[
+ {
+  "id": "R7-1",
+  "title": "Recoloured body sheet cache: lazy bake, bounded retry, later rounds, drawing drop",
+  "area": "rendering",
+  "verdict": "needs-thought",
+  "oneLine": "Per-look recoloured body sheets: absent, loading, baked, given up, later round, dropped on a drawing edit.",
+  "topConcern": "buildBodySheet's retry is not chained into its promise, so the loading screen passes with a facing on backoff; drops race in-flight bakes.",
+  "modes": [
+   "guard-drift",
+   "race",
+   "leak",
+   "opacity"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/rendering/playerSkins.js:1996",
+   "src/rendering/playerSkins.js:2086",
+   "src/rendering/playerSkins.js:2284",
+   "src/rendering/playerSkins.js:2857",
+   "src/rendering/playerSkins.js:2666"
+  ],
+  "linked": [
+   "R7-2",
+   "R7-3",
+   "R7-5",
+   "R7-6",
+   "src/rendering/retryLooks.js",
+   "entityRenderer masked-body cache"
+  ]
+ },
+ {
+  "id": "R7-2",
+  "title": "Head-overlay sheet cache with its 32-sheet cap",
+  "area": "rendering",
+  "verdict": "needs-thought",
+  "oneLine": "Pickup/jog/hit/mine head sheets per skin, eye style and face drawing, capped at 32 with local-player protection.",
+  "topConcern": "The cap's local-combo guard still includes trousers/boots that the head key dropped (v2.3.3658), so non-default dressers' own heads are evicted first.",
+  "modes": [
+   "guard-drift",
+   "race",
+   "leak"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/rendering/playerSkins.js:2436",
+   "src/rendering/playerSkins.js:2475",
+   "src/rendering/playerSkins.js:2502",
+   "src/rendering/playerSkins.js:2588",
+   "src/rendering/systems/entityRenderer.js:4652"
+  ],
+  "linked": [
+   "R7-1",
+   "R7-5",
+   "docs/specs/garment-specks.md"
+  ]
+ },
+ {
+  "id": "R7-3",
+  "title": "Gear sheet cache with chained retry, later rounds and the drawn-shirt LRU",
+  "area": "rendering",
+  "verdict": "needs-thought",
+  "oneLine": "Gear and dressed-tee sheets: absent, loading, loaded, given up, later round; dressings evicted by an 8-key LRU.",
+  "topConcern": "Nine dressings on screen cascade the LRU: every frame evicts and rebuilds every dressed tee, releasing sources a sprite is still drawing.",
+  "modes": [
+   "race",
+   "leak",
+   "guard-drift"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/gearSheets.js:814",
+   "src/rendering/gearSheets.js:841",
+   "src/rendering/gearSheets.js:602",
+   "src/rendering/gearSheets.js:136",
+   "src/rendering/systems/entityRenderer.js:2796"
+  ],
+  "linked": [
+   "R7-1",
+   "R7-8",
+   "src/rendering/gearVariants.js",
+   "TRAPS §49",
+   "TRAPS §139"
+  ]
+ },
+ {
+  "id": "R7-4",
+  "title": "The worn armour layer: derived from stat pieces but still written by cosmetic paths",
+  "area": "wire (both)",
+  "verdict": "needs-thought",
+  "oneLine": "Per-slot drawn armour layer in localStorage, meant to mirror the server's worn stat pieces.",
+  "topConcern": "InventoryPanel's Legs Unequip always takes the cosmetic path: art off, stat greaves still worn and mitigating, a costume duplicate saved.",
+  "modes": [
+   "guard-drift",
+   "divergence",
+   "authority",
+   "persistence",
+   "opacity"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/ui/mobile/dash/InventoryPanel.jsx:1055",
+   "src/rendering/gearCatalog.js:186",
+   "src/ui/mobile/dash/equipActions.js:314",
+   "src/networking/wsClient.js:2922",
+   "src/rendering/gearCatalog.js:47"
+  ],
+  "linked": [
+   "server ps.armor/ps.legsArmor",
+   "server/src/movement.js:727",
+   "src/ui/mobile/dash/GearTab.jsx:166",
+   "entityRenderer onEquipChange prewarm"
+  ]
+ },
+ {
+  "id": "R7-5",
+  "title": "Local look stores and the prewarms their changes trigger",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Skin/trousers/boots stores in localStorage, each change prewarming the stand sheets of the new combo.",
+  "topConcern": "Eye colour is in the sheet key but triggers no prewarm; a batch look change bakes every intermediate combo and never frees them.",
+  "modes": [
+   "guard-drift",
+   "leak",
+   "persistence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/playerSkins.js:2837",
+   "src/rendering/playerSkins.js:258",
+   "src/game/characterRecord.js:220",
+   "src/networking/wsClient.js:1613",
+   "src/rendering/playerSkins.js:2632"
+  ],
+  "linked": [
+   "R7-1",
+   "R7-2",
+   "server join.js character record",
+   "effectsRenderer stand-in rebakes"
+  ]
+ },
+ {
+  "id": "R7-6",
+  "title": "The look palette: sets, program link, and each look's atlas row",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Colour-number sheet sets, the shader program per renderer, and per-look palette rows swept after 30 s idle.",
+  "topConcern": "A set that fails once is never retried, so phones draw copies for the visit; a failed set can end half-present.",
+  "modes": [
+   "stuck",
+   "combo",
+   "leak"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/lookPalette.js:235",
+   "src/rendering/lookPalette.js:385",
+   "src/rendering/lookPalette.js:134",
+   "src/rendering/lookPalette.js:913",
+   "src/rendering/lookPalette.js:359"
+  ],
+  "linked": [
+   "R7-1",
+   "R7-7",
+   "R7-8",
+   "R7-12",
+   "src/rendering/paletteTex.js",
+   "src/game/lookPaletteChoice.js"
+  ]
+ },
+ {
+  "id": "R7-7",
+  "title": "Body under armour from the numbers: per-frame decided states, books, mask atlas",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Per (look, worn set, sheet) frame states undecided/asked/decided via worker jobs, plus masked-look rows and books.",
+  "topConcern": "A failed frame (beltPending, gear not loaded) goes back to undecided and is re-asked every draw with no backoff.",
+  "modes": [
+   "race"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/lookArmour.js:297",
+   "src/rendering/lookArmour.js:363",
+   "src/rendering/lookArmour.js:239",
+   "src/rendering/lookArmour.js:105",
+   "src/rendering/systems/entityRenderer.js:3485"
+  ],
+  "linked": [
+   "R7-6",
+   "R7-3",
+   "maskedBake.js",
+   "entityRenderer _maskedBodyCache"
+  ]
+ },
+ {
+  "id": "R7-8",
+  "title": "Dressed tee from the numbers: dressings cache, live switch, fallback chain",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Tee dressings as palette row entries, FIFO-capped, falling back to the old dressed copy.",
+  "topConcern": "",
+  "modes": [
+   "opacity"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/lookShirtFrame.js:72",
+   "src/rendering/lookShirtFrame.js:41",
+   "src/rendering/systems/entityRenderer.js:2782"
+  ],
+  "linked": [
+   "R7-3",
+   "R7-6",
+   "R7-12"
+  ]
+ },
+ {
+  "id": "R7-9",
+  "title": "Townsfolk drawn live or from photographs",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Load-time and per-frame decisions on drawing townsfolk from looks or photographs, with a late photo load.",
+  "topConcern": "",
+  "modes": [
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/lookFolk.js:33",
+   "src/rendering/npcSprites.js:426",
+   "src/rendering/systems/entityRenderer.js:17760"
+  ],
+  "linked": [
+   "R7-6",
+   "src/game/clientOff.js"
+  ]
+ },
+ {
+  "id": "R7-10",
+  "title": "Character portrait: per-canvas draw sequence and never-expiring promise caches",
+  "area": "ui",
+  "verdict": "watch",
+  "oneLine": "Portrait asset promise caches (kept forever, rejections included) and a per-canvas stale-draw counter.",
+  "topConcern": "A flaked body or trait image stays a cached rejection for the visit; the body layer has no catch, so that facing's portraits fail.",
+  "modes": [
+   "stuck",
+   "leak",
+   "race"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/characterPortrait.js:179",
+   "src/rendering/characterPortrait.js:466",
+   "src/rendering/characterPortrait.js:1058",
+   "src/rendering/characterPortrait.js:1071",
+   "src/game/characterCreatorEffects.js:278"
+  ],
+  "linked": [
+   "R7-11",
+   "R7-5",
+   "src/rendering/retryLooks.js",
+   "docs/specs/retry-looks.md"
+  ]
+ },
+ {
+  "id": "R7-11",
+  "title": "Hemi Bro headshot: page choice, atlas load, data-URL LRU",
+  "area": "ui",
+  "verdict": "retired",
+  "oneLine": "Dormant Hemi Bro headshot pipeline behind ?hemiface=1: atlas load with retry and a 24-entry cache.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "low",
+  "files": [
+   "src/rendering/hemiBust.js:94",
+   "src/rendering/hemiBust.js:142",
+   "src/rendering/hemiLook.js:234"
+  ],
+  "linked": [
+   "R7-10"
+  ]
+ },
+ {
+  "id": "R7-12",
+  "title": "Look oracles and the pipeline's QA probes",
+  "area": "tools",
+  "verdict": "fine",
+  "oneLine": "QA-only probes polling the caches until bakes land and comparing old and new look paths texel for texel.",
+  "topConcern": "",
+  "modes": [
+   "stuck",
+   "opacity"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/lookPaletteProbe.js:47",
+   "src/rendering/lookArmourProbe.js:37",
+   "src/rendering/lookShirtProbe.js:25",
+   "src/rendering/playerSkins.js:952"
+  ],
+  "linked": [
+   "R7-1",
+   "R7-6",
+   "R7-7",
+   "R7-8",
+   "R7-13",
+   "mp-lookpalette",
+   "mp-lookarmour",
+   "mp-lookshirts"
+  ]
+ },
+ {
+  "id": "R7-13",
+  "title": "Role bake mirror: offline colour numbers vs the live recolour",
+  "area": "tools",
+  "verdict": "watch",
+  "oneLine": "Baked look sheets must match the live recolour code; precheck fails art changes but only warns on code changes.",
+  "topConcern": "A recolour-rule change only WARNS, so phones (numbers) and computers (live) can ship drawing the same look differently.",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "tools/dev/precheck.mjs:910",
+   "src/rendering/lookSets/body.js:47",
+   "src/rendering/lookSets/standin.js:28",
+   "tools/art/role-bake.mjs:466"
+  ],
+  "linked": [
+   "R7-1",
+   "R7-6",
+   "R7-12",
+   "src/game/lookPaletteChoice.js"
+  ]
+ },
+ {
+  "id": "R7-14",
+  "title": "Base body sheets: load once, chained retry, later rounds",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Shipped body sheet manifest per pose and facing, with awaited retries and later rounds while drawn.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "low",
+  "files": [
+   "src/rendering/playerSprites.js:306",
+   "src/rendering/playerSprites.js:373",
+   "src/rendering/playerSprites.js:417"
+  ],
+  "linked": [
+   "R7-1",
+   "R7-12",
+   "src/game/legSync.js"
+  ]
+ },
+ {
+  "id": "R7-15",
+  "title": "One-shot loaders with no later round: hand anchors, weapon grips, death strip",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "anchors.json/handles.json and the death strip load once; a failure keeps the fallback for the visit.",
+  "topConcern": "A flaked anchors fetch leaves every weapon at the legacy four-way offset, out of the hand, for the whole session.",
+  "modes": [
+   "stuck"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/playerAnchors.js:55",
+   "src/rendering/playerDeathSprites.js:30",
+   "src/rendering/systems/entityRenderer.js:15182"
+  ],
+  "linked": [
+   "src/rendering/retryLooks.js",
+   "docs/specs/retry-looks.md"
+  ]
+ }
+]
