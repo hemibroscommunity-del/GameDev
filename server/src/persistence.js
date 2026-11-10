@@ -562,6 +562,8 @@ export const persistenceMethods = {
        rows", grey with their face and level.  After the state is gone and
        before the socket, so nothing of the old life is reported after it. */
     try { if (this._boardsGone) await this._boardsGone(pid); } catch (e) { /* best-effort, as above */ }
+    /* v2.3.4545: and its accuracy (accuracy.js): the next life starts its own count */
+    try { if (this._accGone) await this._accGone(pid); } catch (e) { /* a count, not a debt */ }
     const ws = this._wsBySessionId(pid);
     if (ws) {
       try { ws.send(JSON.stringify({ type: 'character_reset_done' })); } catch (e) {}

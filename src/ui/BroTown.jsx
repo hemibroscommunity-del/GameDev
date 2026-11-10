@@ -467,6 +467,7 @@ import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust, sprintOutBreath
 import { rideMult, rideCheck, isRiding } from '@/game/ride.js';   /* v2.3.3776: the skateboard (server/src/ride.js) */
 import { makeFrameClock, frameSmoothOn } from '@/game/frameClock.js';   /* v2.3.4400: a steady step on a steady screen */
 import { framePaceOn, makeFramePacer, noteDrawn, whenDrawn, beforeDraw, runBeforeDraw } from '@/game/framePacer.js';   /* v2.3.4400: a steady rate on a screen the game cannot keep up with */
+import { accTrack } from '@/game/accuracy.js';   /* v2.3.4545: the shot counts that ride the track */
 import { noteMade } from '@/debug/madeLog.js';   /* v2.3.4400: a job between frames says its name and its time */
 import { setStripPlay } from '@/rendering/zoneTextures.js';   /* v2.3.4400: a look that loads as you walk is unpacked between frames */
 import { rideGround } from '@/game/rideGround.js';   /* v2.3.3776: where a board rolls */   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust; v2.3.3475: + the run-out's grunt/breath turn */
@@ -8273,6 +8274,7 @@ export var BroTown = function BroTown(_ref0) {
               var _rpg = S.rpg;
               var _aw = getActiveWeapon(_rpg);
               S.channel.track({
+                ac: accTrack(S),   /* v2.3.4545: the basic shots fired since this join, a weapon (game/accuracy.js) */
                 x: P.x,
                 y: P.y,
                 name: S.myName,
