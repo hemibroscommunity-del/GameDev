@@ -143,14 +143,14 @@ Updated v2.3.4580, after the fourth wave. The judges have played (owner,
 so nothing waits on them any more.
 
 **In flight (branches open, not merged yet):**
-- the two-tab identity fixes (`claude/sm-tab-identity`, v2.3.4515);
+- the two-tab identity fixes (`claude/sm-tab-identity`, v2.3.4560);
 - the server judging a change of place, instead of taking the phone's word
-  (`claude/sm-zone-judge`, v2.3.4530); with it, a dungeon's entry pass that
+  (`claude/sm-zone-judge`, v2.3.4565); with it, a dungeon's entry pass that
   lasts 20 s and is not re-checked at the step in;
-- a move's claims (`claude/sm-move-claims`, v2.3.4535): the parry is ready
+- a move's claims (`claude/sm-move-claims`, v2.3.4570): the parry is ready
   again only 400 ms after the shield went down, a block with no facing, a
   swing drops the guard, the cooking shield needs a real fire;
-- which Wheel a player is on (`claude/sm-world-size`, v2.3.4540): the
+- which Wheel a player is on (`claude/sm-world-size`, v2.3.4575): the
   preview pages (`?bigtown`, `?plaintown`, `?placing=2`) become spectators
   in the live room;
 - the timing bar for the owner's sword trial (`claude/timing-glint-bar`,
@@ -236,7 +236,7 @@ so nothing waits on them any more.
 - the General Store writes what it owes before paying, the Auction House's
   way: built (v2.3.4505);
 - shield question 5: YES, the shield must be down 400 ms before a parry is
-  ready again (in flight, v2.3.4535);
+  ready again (in flight, v2.3.4570);
 - the preview pages are spectators in the live room, and a dungeon's entry
   pass lasts 20 s (both in flight, above).
 

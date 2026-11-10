@@ -459,11 +459,11 @@ fight simulator (18), then the "After the judges" list.
 
 Made under your second instruction above. Each is one line with its reason; tell any session to change one.
 
-- **Two characters in two tabs:** no. One character per browser; a second tab takes the session over (in a fight it takes the body). The identity fixes that hold either way are being built now (v2.3.4515).
+- **Two characters in two tabs:** no. One character per browser; a second tab takes the session over (in a fight it takes the body). The identity fixes that hold either way are being built now (v2.3.4560).
 - **A second login during a fight with another player:** the full takeover is built (v2.3.4455): you land back in your body. v2.3.4432's "still in that fight" wait screen is the fallback for a game that cannot be placed (an old copy).
 - **The half second of no damage on entering a place:** kept for an honest entry, so you can see what is around you; not given mid-fight, nor twice within 10 seconds (v2.3.4454), so it can't be used as a shield.
 - **The colour fade between places:** stays off. Nobody has seen it; look again after the judges, with a picture.
-- **The Auction House's refund-and-raise money fix and the fight-lock table:** built after the judges played (v2.3.4500, v2.3.4510). The plan's larger "one door per system" work is next; its first piece, the server judging a change of place, is being built (v2.3.4530).
+- **The Auction House's refund-and-raise money fix and the fight-lock table:** built after the judges played (v2.3.4500, v2.3.4510). The plan's larger "one door per system" work is next; its first piece, the server judging a change of place, is being built (v2.3.4565).
 - **A quest reward shown at once, taken back if the server says no:** kept (today's feel). This answers question 14 below.
 - **The retired Mayor quest ("Welcome Home") still worth 50 gold once on old saves:** left alone. It is tiny, retired, and once per old character.
 - **The loader retries (v2.3.4452):** merged on their tests and the memory budget check. The hour-long memory walk (mp-memledger with a rejoin, a farm leave and a dungeon recovery added) was not run: it is offered, say so to run it.
@@ -475,9 +475,9 @@ Made under your second instruction above. Each is one line with its reason; tell
 - **Putting on a spare weapon mid-fight is locked; armour not yet.** The server keeps the weapon stash, so a refusal is clean. It learns the armour stash only when you join, so a lock would not close the gap: the fix is keeping the armour stash on the server, which is still to do.
 - **A duel with someone else is declined during a No man's land fight with a player.** A duel kill skipped the No man's land loss, so a friend's duel let a losing player keep their bag.
 - **The General Store writes what it owes before paying** (v2.3.4505), the Auction House's way: a restart can then finish the trade instead of losing or doubling it.
-- **Shield question 5: YES.** The shield must be down 400 ms before a parry is ready again (being built, v2.3.4535). Honest players almost never lower and raise it faster than that.
-- **The preview pages (`?bigtown`, `?plaintown`, `?placing=2`) become spectators in the live room** (being built, v2.3.4540): they cannot be hurt and cannot hurt anyone.
-- **A dungeon's entry pass lasts 20 seconds and is not checked again at the step in** (being built, v2.3.4530). An honest player hit during the loading screen must not land in an empty arena.
+- **Shield question 5: YES.** The shield must be down 400 ms before a parry is ready again (being built, v2.3.4570). Honest players almost never lower and raise it faster than that.
+- **The preview pages (`?bigtown`, `?plaintown`, `?placing=2`) become spectators in the live room** (being built, v2.3.4575): they cannot be hurt and cannot hurt anyone.
+- **A dungeon's entry pass lasts 20 seconds and is not checked again at the step in** (being built, v2.3.4565). An honest player hit during the loading screen must not land in an empty arena.
 
 ### Your sword trial (in progress)
 
@@ -506,7 +506,7 @@ What was decided for it: the bonus is +12% damage and a little mana, on monsters
 2. Should the guard come back up by itself after those 3 s (rather than wait for your next tap)? — Your choice; it goes with 1.
 3. Should being dazed or frozen also stop raising the shield on the server? — Wait for your answer to 1 (alone it would draw a shield that blocks nothing).
 4. Fix the shield's cooldown number (2 s on the phone, 3 s on the server)? — Only together with 1; today nothing reads it.
-5. ~~Should a quick shield down-and-up need a short time down before the parry is ready again?~~ Decided: yes, 400 ms (above; being built, v2.3.4535).
+5. ~~Should a quick shield down-and-up need a short time down before the parry is ready again?~~ Decided: yes, 400 ms (above; being built, v2.3.4570).
 6. Tapping Block mid-lunge still lets the lunge hit. Keep it? — The reviews disagree; it stays as it is until you say.
 7. After someone joins (or after an update), they see your shield down until you next press it. Fix it at the cost of a tiny bit more data per player? — The pull request calls the cost small.
 
