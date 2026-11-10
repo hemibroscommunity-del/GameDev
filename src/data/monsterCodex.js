@@ -143,74 +143,83 @@ export const CODEX_ENTRIES = Object.freeze({
     elder: Object.freeze({ name: 'Gilded Mummy', text: 'Deeper in the dunes walk the city\'s nobles, still wrapped in gold leaf. Their bones, when they lose the wrappings, are gilded too.' }),
   }),
   pebbling: Object.freeze({
-    name: 'Rock Monster', home: 'hollows', look: 'rockmonster', element: 'stone', type: 'Beast', dungeon: 'the Great Cave', dungeonLevels: Object.freeze([26, 30]),
-    what: 'A walking boulder: slow, tougher than most, and its hits land like a rockslide.',
+    /* v2.3.4358: the rock golem (the owner: "to replace the rock monster
+       that's there now"); the kind's id and its look's key stay */
+    name: 'Rock Golem', home: 'hollows', look: 'rockmonster', element: 'stone', type: 'Beast', dungeon: 'the Great Cave', dungeonLevels: Object.freeze([26, 30]),
+    what: 'A heap of boulders with a face: slow, tougher than most, and its hits land like a rockslide.',
     special: Object.freeze({
       name: 'Slam',
       text: 'It winds up for almost a second, then slams the ground: double damage to anyone in a ring around it. At most once every five seconds.',
       tip: 'When it winds up, step out of the ring, or face it with your shield raised.',
     }),
     story: [
-      'The rock monsters are the Stone Hollows themselves: bits of cave wall that got up one day to see what all the digging was about, and never sat back down.',
+      'The rock golems are the Stone Hollows themselves: bits of cave wall that got up one day to see what all the digging was about, and never sat back down.',
       'They are not angry, exactly. They are just very, very old, and you are standing where they were going to put their foot. The biggest of them live in the Great Cave and have not been outside in a thousand years. They did not like it then either.',
     ],
     elder: Object.freeze({ name: 'Amethyst Golem', text: 'Past the first pass the hollows run with amethyst, and so do the monsters. Collectors would pay well for one, if anyone had ever brought one home in one piece.' }),
   }),
   sparklet: Object.freeze({
-    name: 'Slime', home: 'thunder', look: 'fodder', element: 'storm', type: 'Ooze', dungeon: 'the Foundry Dome', dungeonLevels: Object.freeze([26, 30]),
-    what: 'Bouncy and quick to anger. From a distance it spits globs of itself at you; up close it throws its whole self.',
+    /* v2.3.4356: the storm eye (the owner: "add this electric eyeball monster
+       instead of the stand-in electric slime"); the kind's id and its look's
+       key are the worker's, and stay -- to the worker it is the same monster */
+    name: 'Storm Eye', home: 'thunder', look: 'fodder', element: 'storm', type: 'Winged', dungeon: 'the Foundry Dome', dungeonLevels: Object.freeze([26, 30]),
+    what: 'An eye the size of your head, floating on its tentacles and crackling. From a distance it spits balls of lightning at you; up close it throws its whole self.',
     special: Object.freeze({
       name: 'The Lunge',
-      text: 'Every so often it winds up for over a second, then lunges at you. Between lunges, a glob flies whenever you are a few steps away.',
+      text: 'Every so often it winds up for over a second, then lunges at you. Between lunges, a ball of lightning flies whenever you are a few steps away.',
       tip: 'Watch for the wind-up: shield up, or step aside.',
     }),
     story: [
-      'The Electric Foundry was built to bottle lightning. The bottles leaked. What leaked out pooled on the floor, sat there humming for a while, and one morning got up and wobbled off on its own.',
-      'The slimes hum when they are happy and crackle when they are not, and they are almost never happy. Foundry workers learned to keep their boots rubber-soled and their friends at arm\'s length, which is good advice anywhere near one.',
+      'The Electric Foundry was built to bottle lightning. The bottles leaked. Something had to keep an eye on the leaks, and nobody would take the job, so after a while the leaks grew eyes of their own.',
+      'They hang in the air on a fistful of tentacles, watching, and they never blink, because every blink is a spark and they have learned what that does in a foundry. Workers keep their boots rubber-soled and their friends at arm\'s length, which is good advice anywhere near one.',
     ],
-    elder: Object.freeze({ name: 'Storm Slime', text: 'Deeper in the foundry the slimes have soaked up so much charge they glow storm-blue. Stand close to a friend near one and you will both find out why.' }),
+    elder: Object.freeze({ name: 'Tempest Eye', text: 'Deeper in the foundry the eyes have soaked up so much charge they have gone storm-blue all through. Stand close to a friend near one and you will both find out why.' }),
   }),
   finling: Object.freeze({
-    name: 'Fishman', home: 'tidal', look: 'fishman', element: 'water', type: 'Aquatic',
-    what: 'Slow out of the water, but tough and heavy-handed. It walks right up to you and hits hard.',
+    /* v2.3.4355: the water frog (the owner: "I want to replace the fish man
+       monster"); the kind's id and its look's key are the worker's, and stay */
+    name: 'Water Frog', home: 'tidal', look: 'fishman', element: 'water', type: 'Aquatic',
+    what: 'A fat toad with a sac of cave water under its chin. Slow and tough: it hops right up to you and hits hard.',
     special: Object.freeze({
       name: 'Slam',
       text: 'It winds up for almost a second, then slams down: double damage to anyone in a ring around it. At most once every five seconds.',
       tip: 'When it winds up, step back out of reach, or block facing it.',
     }),
     story: [
-      'Fishmen came up out of the Water Caves\' deepest pools looking for the surface, found it, and were deeply unimpressed. Too dry. Too bright. Nothing to eat but you.',
-      'They stayed anyway, mostly out of spite, and they have been trying to flood the caves back to how they like them ever since. Every one of them carries a bucket somewhere. Nobody has found where.',
+      'The frogs of the Water Caves found out long ago that the best pools dry up, and decided never to be caught without one again. Each carries its own under its chin, a sac of cave water it tops up at every puddle.',
+      'They are in no hurry and they do not share. Come too close and one will hop over, slowly, with the whole pool sloshing, and land on you. Kill one and stand back: the pool comes out all at once.',
     ],
-    elder: Object.freeze({ name: 'Coral Fishman', text: 'The fishmen of the deep caves are crusted over with coral, orange and spiny. It is armour, it is fashion, and it is very hard to get off your boots.' }),
+    elder: Object.freeze({ name: 'Coral Frog', text: 'The frogs of the deep caves have gone as dark as kelp, with bellies and eyes the orange of the coral they sit on all day. The water they carry has been in there a very long time.' }),
   }),
+  /* v2.3.4357: the rotcap (the owner: "Also this for poison land" -- "Both");
+     the two kinds' ids and their looks' keys are the worker's, and stay */
   wisplet: Object.freeze({
-    name: 'Mire Wisp', home: 'mist', look: 'mireWisp', element: 'venom', type: 'Ooze',
-    what: 'A drifting blob of poisoned light. It spits venom from a distance and flings itself at you up close.',
+    name: 'Rotcap', home: 'mist', look: 'mireWisp', element: 'venom', type: 'Beast',
+    what: 'A toadstool with eyes, shuffling about on its roots. It spits venom from a distance and flings itself at you up close.',
     special: Object.freeze({
       name: 'The Lunge',
       text: 'Every so often it winds up for over a second, then lunges at you. Between lunges it spits a glob whenever you are a few steps away.',
       tip: 'Keep moving sideways: a glob aims where you were.',
     }),
     story: [
-      'Travellers lost in the Poison Forest used to follow the little lights between the trees, hoping they were lanterns. They were not lanterns.',
-      'Nobody knows what the wisps were first. The forest\'s oldest trees say they are the forest\'s own bad dreams, which would explain the smell.',
+      'Travellers lost in the Poison Forest used to sit down on the big purple toadstools to rest. The toadstools did not like it, and after a few hundred years of being sat on they grew eyes to see it coming.',
+      'A rotcap does not chase you far. It does not need to. Everything it spits takes root, and the forest has all the time in the world.',
     ],
-    elder: Object.freeze({ name: 'Spectral Wisp', text: 'Deeper in the forest the wisps burn a pale, see-through cyan, like ghosts of themselves. Their venom is just as real.' }),
+    elder: Object.freeze({ name: 'Spectral Rotcap', text: 'Deeper in the forest the rotcaps glow a pale, see-through cyan, like ghosts of themselves. Their venom is just as real.' }),
   }),
   lurkling: Object.freeze({
-    name: 'Bog Lurker', home: 'mist', look: 'bogLurker', element: 'venom', type: 'Aquatic',
-    what: 'A fishman that stayed far too long in the poisoned bog. Slow and tough, and it hits hard.',
+    name: 'Great Rotcap', home: 'mist', look: 'bogLurker', element: 'venom', type: 'Beast',
+    what: 'A rotcap that was never picked: old, dark and the size of a cart. Slow and tough, and it hits hard.',
     special: Object.freeze({
       name: 'Slam',
       text: 'It winds up for almost a second, then slams down: double damage to anyone in a ring around it. At most once every five seconds.',
       tip: 'When it winds up, step back out of reach, or block facing it.',
     }),
     story: [
-      'A lurker was a fishman once, out of the Water Caves and looking for wetter ground. It found the Poison Forest\'s bog, which was wet enough, and stayed until the bog moved in.',
-      'They do not move much. They lie under the green water with only their eyes showing, waiting for someone to stop for a rest. If you have ever rested in the Poison Forest, there was one watching.',
+      'Leave a rotcap alone in the bog for long enough and it stops spitting and starts growing. The great ones have been sitting in the same puddle since before the forest went bad, and some say they are why it did.',
+      'They do not move much. They sit among the ordinary toadstools and wait for someone to stop for a rest. If you have ever rested in the Poison Forest, one was watching.',
     ],
-    elder: Object.freeze({ name: 'Shade Lurker', text: 'The lurkers of the deep bog have gone violet and shadowy, hard to see even when you know where to look. Look anyway.' }),
+    elder: Object.freeze({ name: 'Shade Rotcap', text: 'The great rotcaps of the deep bog have gone violet and shadowy, hard to see even when you know where to look. Look anyway.' }),
   }),
   dewdrop: Object.freeze({
     name: 'Blue Slime', home: 'verdant', look: 'blueSlime', element: 'flora', type: 'Ooze', dungeon: 'the Goo Grotto', dungeonLevels: Object.freeze([1, 5]),   /* v2.3.3540: the starter dungeon */
