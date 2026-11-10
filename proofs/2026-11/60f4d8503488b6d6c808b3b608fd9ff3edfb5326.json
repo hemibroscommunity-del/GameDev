@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "60f4d8503488b6d6c808b3b608fd9ff3edfb5326",
+  "tree": "9d704a303690e381119f7704ceea8d17b893d117",
+  "committedAt": "2026-11-09T22:26:13-08:00",
+  "subject": "Merge pull request #1456 from hemibroscommunity-del/claude/brotown-elevation-obstacles-6ak97l",
+  "files": 7886,
+  "bytes": 965829549,
+  "listingSha256": "b5cf98ed11adae38903ffd91b50f967d7d690ad2609e19a3ddcd8392d79e5440",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
