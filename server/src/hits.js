@@ -335,6 +335,18 @@ export const hitMethods = {
       : 0;
     if (cost > 0 && typeof ps.stamina === 'number') {
       ps.stamina = Math.max(0, ps.stamina - cost);
+      /* ═══ v2.3.4405: ...AND AT ZERO THE GUARD BREAKS, AS A PLAYER'S BLOW BREAKS IT ═══
+         A monster's blocked blow clamped the bar at 0 and left the shield
+         up, so every blow until the next regen tick (up to ~670 ms) was
+         still stopped for free, while a player's blocked blow at 0 breaks
+         and latches the guard at once (combat.js, pvpextras.js).  One
+         meaning of "no stamina" now: the same three writes as theirs.
+         `monsterguardbreak: false` in the live flags is the way back. */
+      if (ps.stamina <= 0 && !this._monsterGuardBreakOff()) {
+        ps.blocking = false;
+        ps.blockStartT = 0;
+        ps._guardBrokenUntil = Date.now() + this.GUARD_BREAK_MS;   /* the latch reads Date.now() (movement.js) */
+      }
       this._saveRpgPools(pid, ps);   /* coalesced -- see v2.3.1619b; v2.3.3300: the boss's too */
       this._queuePlayerStateFlush(pid);
     }
@@ -351,6 +363,13 @@ export const hitMethods = {
       },
     });
     return 0;
+  },
+
+  /* v2.3.4405: the kill switch of the break above, in `rollwindow`'s style
+     (movement.js _rollWindowOff): only an explicit `false` turns it off. */
+  _monsterGuardBreakOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'monsterguardbreak') && !f.monsterguardbreak);
   },
 
   /* The old Defense grid's thorns: a blocked swing hurts the attacker back.
