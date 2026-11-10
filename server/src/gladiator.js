@@ -418,6 +418,25 @@ export const arenaMethods = {
     try { ws.send(JSON.stringify({ type: 'arena_match_start', payload: { ...this._arenaStartPayload(t, m, playerId), rejoin: true } })); } catch (e) {}
   },
 
+  /* ═══ v2.3.4413: IS THIS FIGHTER IN A MATCH? THE DUEL'S RECORD SAYS ═══
+     `ps._arenaMatch` is written once, when the match starts (above), on the
+     player state of that moment.  A fighter who reloaded or dropped and came
+     back inside the duel's 15 s grace has a NEW player state (join.js builds
+     one) without it -- so the eating gates (cooking.js: a fish, a crop, the
+     Garden Stew, a shop heal) let them eat mid-match, one bite every 15 s,
+     about twelve in a 3-minute match (state-machine sweep V3, S5-3).  The
+     duel record lives on the room and survives the rejoin: its `arenaMatch`
+     tag is the truth.  A refusal that protects the OPPONENT, so it never asks
+     _testMode.  `arenaeatgate: false` in the live flags goes back to the
+     flag alone (arena-eat-gate.test). */
+  _arenaInMatch(pid, ps) {
+    if (ps && ps._arenaMatch) return true;
+    const f = this._liveFlags;
+    if (f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'arenaeatgate') && !f.arenaeatgate) return false;
+    const d = pid && this._duelFor ? this._duelFor(pid) : null;
+    return !!(d && d.arenaMatch);
+  },
+
   // Shot-clock tiebreak: the server owns hp, so no new state is needed.
   _arenaTiebreak(m) {
     const psA = this.playerState[m.a], psB = this.playerState[m.b];

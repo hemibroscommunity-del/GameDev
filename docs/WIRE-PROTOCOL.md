@@ -622,6 +622,10 @@ Summary of the wire-visible changes:
   address past `ip_sockets` places or `ip_joins_min` opens a minute gets
   `room_full` with `reason: 'ip'` and the full room's 4009. The client
   treats 4011 and 4012 as an ordinary drop (reconnect on its backoff).
+- v2.3.4413: a join that THROWS on the server is closed with 4013
+  ('join failed'), a code of its own; it was 4010, the linger's code, so
+  the phone showed "still in that fight". The client knows no 4013: an
+  ordinary drop on its backoff, in either deploy order.
 - v2.3.1913 (AFK): a session with no PLAYER INPUT for
   `IDLE_TIMEOUT_MS` (2 min) is evicted and closed with code 4006,
   reason `idle timeout`; the client shows a resume banner and must NOT

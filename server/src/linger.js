@@ -140,6 +140,11 @@ export const lingerMethods = {
     this._codexForget(id);
     const fish = this._fishlogDirtyCopy(id);   /* v2.3.4036: the catches to weigh (fishlog.js) */
     this._fishlogForget(id);
+    /* v2.3.4413: the achievements' cache, as webSocketClose drops it -- a
+       lingered player who never came back kept theirs for the worker's life
+       (state-machine sweep V3, S1-4).  Kept on a resume (`quiet`): the join
+       that follows reads it back (achievements.js _achvLoadOnJoin). */
+    if (!quiet && this._achvForget) this._achvForget(id);
     delete this.stateHistory[id];
     /* v2.3.3322: the extraction record outlives the body, as it outlives a
        socket (index.js webSocketClose; gathering.js HARVEST_PROOF) */

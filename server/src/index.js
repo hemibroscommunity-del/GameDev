@@ -5220,7 +5220,12 @@ export class GameRoom {
           await this._handleJoin(session, ws, msg);
         } catch (e) {
           try { console.error('[join] threw for ' + (msg && msg.id) + ':', e && e.message); } catch {}
-          try { ws.close(4010, 'join failed'); } catch {}
+          /* v2.3.4413: 4013, a code of its own.  It was 4010 -- the linger's
+             code (linger.js) -- so the phone read a failed join as "Your bro
+             is still in that fight" and retried every 5 s on that screen
+             (state-machine sweep V3).  The phone knows no 4013: an ordinary
+             drop on its backoff, which is what this comment always meant. */
+          try { ws.close(4013, 'join failed'); } catch {}
         }
         // v2.3.1177: the v2.3.1173 hoist dropped this break, so every
         // join fell through into case 'move'.  Benign only because

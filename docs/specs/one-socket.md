@@ -158,9 +158,12 @@ try harder:
 |---|---|---|
 | 4011 | no join within the window, or a second join on the socket | an ordinary reconnect on its backoff (an unknown code) |
 | 4012 | too many messages | the same |
+| 4013 | the join failed on the server (it threw; v2.3.4413, was 4010) | the same |
 
-Neither is one the client reads as idle (4006), frozen (4004), full (4009),
-reset (4005) or a linger (4010); flood.test.mjs §7 pins that.
+None is one the client reads as idle (4006), frozen (4004), full (4009),
+reset (4005) or a linger (4010); flood.test.mjs §7 pins that, and
+session-exits.test.mjs §1 pins that a failed join is never 4010 (the phone
+read it as "Your bro is still in that fight" and retried every 5 s).
 
 ## Live flags
 

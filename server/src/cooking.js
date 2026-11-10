@@ -159,7 +159,7 @@ export const cookingMethods = {
     const ps = this.playerState[session.id];
     if (!ps) return;
     if (ps.dying || ps.dead || ps.disconnected) { refuseEat(); return; }
-    if (ps._arenaMatch) { refuseEat(); return; } // v2.3.1126: no healing during an arena match (GDD §43)
+    if (this._arenaInMatch(session.id, ps)) { refuseEat(); return; } // v2.3.1126: no healing during an arena match (GDD §43); v2.3.4413: asked of the duel's record too
     if (!ps.inventory) ps.inventory = {}; // proto-ok: invKey guarded by startsWith cooked_fish_ above (v2.3.3537: or an own key of farm.js CROP_BY_ITEM)
     if ((ps.inventory[invKey] || 0) <= 0) { refuseEat(); return; }
     if (this._pvpHealHeld(session.id, ps)) { refuseEat(); return; }   /* v2.3.3133: one bite at a time in a fight (v2.3.3260: any fight, _pvpHealWait) */
@@ -694,7 +694,7 @@ export const cookingMethods = {
        no slot. */
     if (dish.slot === 'now') {
       if (dish.buff !== 'heal' || !(Number(dish.power) > 0)) return false;
-      if (ps._arenaMatch) return false;
+      if (this._arenaInMatch(pid, ps)) return false;   /* v2.3.4413: the duel's record too (gladiator.js) */
       if (typeof ps.maxHp !== 'number') ps.maxHp = 100;
       if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
       /* v2.3.3263: a fixed heal, like a fish's -- no Recovery on top unless
@@ -735,7 +735,7 @@ export const cookingMethods = {
          a refusal now rather than refunding inline, so the caller owns the
          coins -- there are two callers since v2.3.2063 and each takes them
          its own way. */
-      if (ps._arenaMatch) return false;
+      if (this._arenaInMatch(pid, ps)) return false;   /* v2.3.4413: the duel's record too (gladiator.js) */
       if (typeof ps.maxHp !== 'number') ps.maxHp = 100;
       if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
       ps.hp = Math.min(ps.maxHp, ps.hp + (item.power || 23));
@@ -851,7 +851,7 @@ export const cookingMethods = {
     /* v2.3.2063: the coins go back if the item refused to apply (an arena
        match blocks healing). The apply half reports rather than refunding,
        because it has two callers now and each holds the purse differently. */
-    if (!this._applyShopItem(ps, item)) { ps.coins += finalCost; return; }
+    if (!this._applyShopItem(ps, item, session.id)) { ps.coins += finalCost; return; }   /* v2.3.4413: the id, for the arena's gate */
     this._saveRpg(session.id, ps);
     const ws = this._wsBySessionId(session.id);
     if (ws) this._sendPlayerState(ws, session.id);

@@ -343,7 +343,12 @@ someone:
 1. List their backups: the `player?id=` command above shows `snapshots`
    (names like `rpgsnap:bp_XXXX:20260703`).
 2. Make sure they're offline (kick them if needed — a live game session
-   would overwrite the restore).
+   would overwrite the restore). Then wait 20 seconds: a player kicked
+   within 10 seconds of a fight with another player leaves their body in
+   the world for up to 20 seconds, and that body saves itself when it goes.
+   Until it has gone the restore answers "player still in the world ... wait
+   20 seconds, then restore again" and changes nothing: just run it again
+   (v2.3.4413).
 3. Restore:
 ```
 curl -X POST -H "Authorization: Bearer YOUR_KEY" \
