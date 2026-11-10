@@ -9760,3 +9760,117 @@ find how a player reaches it (a `data-` hook a scenario can tap), and make the
 scenario go there the way a player does. A page nobody can open is the
 owner's to revive or delete, not a place to build (CLAUDE.md: a dormant
 system). **Receipt:** `mp-ownerwatch` opens Journey through the band.
+
+## 320. "The click test went red right after five merges, so one of them broke it" (v2.3.4498)
+
+**Tempting:** `mp-deskclick`'s "a real click on Ace talks to him" went red
+just after #1457 to #1461 merged, so bisect them. **Wrong:** the game was
+fine. Ace walks a loop round his home spot on a timer from the real clock
+(`townsfolkDay.js`, v2.3.4058: four stops, up to about 150 px apart). The
+test read where he stood, walked the player over (about 12 s on the test
+box), then clicked where he USED to be, past the 44 px click radius, and the
+game rightly took it as a swing. Red or green went by the time of day, on any
+commit, so a bisect lied (the commit from before the five went red too).
+**The rule.** A phone test that reads a townsperson's position and then walks
+or waits before clicking is racing his day's walk. Let him stand
+(`_folkDay.walking` false), read his position again, and click at once. A
+red phone test is a question about the TEST first (§177). Fixed in #1517,
+step 5. **Receipt:** `mp-deskclick` (green twice, 15 of 15).
+
+## 321. "Pay first, then write the record: the stamp makes the retry safe" (v2.3.4500)
+
+**Tempting:** an Auction House refund wrote the listing (offer removed) first
+and paid the buyer second, so a restart between them lost the gold: flip the
+order. **Wrong:** paying first leaves a record that still names gold which
+has already gone home, and anyone who settles off the record (the seller's
+Yes) pays it out again; the stamp protects only a retry of the SAME opId.
+That is exactly how the raised offer minted gold (V8a S6-6; R1 W1.4).
+**The rule.** The record's new phase and the payment go out in ONE
+synchronous run of writes: `_creditWith` (`inbox.js`),
+`_escrowDebitGoldTogether`, `_creditLiveTogether`. Choosing the order of two
+writes is never the fix. Test it on `inbox.test` §8c's batch storage,
+restarting before every batch. #1521 also lists a stack, takes a raise and
+marks a buy-now `sale.paid` this way. Off-ramp: the flag `ahonewrite: false`
+(the old order, holes included). **Receipt:** `store-onewrite.test`.
+
+## 322. "A leftover with a stamp is done: delete it" (v2.3.4505)
+
+**Tempting:** after a restart, a General Store order with a "paid" stamp on
+file was finished, so delete it. **Wrong** for a sale paid in several legs
+(the weapon to the buyer, the gold to the seller, the change back): a stamp
+says ONE leg landed, and deleting on any stamp drops every leg after it. If
+nothing named the taker's escrow before the first payment, it is gone. And a
+leftover found 49 hours later had its stamps pruned, was put back on sale
+with its weapon already delivered: one weapon became two. **The rule.**
+- write what is owed (every leg, to whom, how much: the order's `settle`
+  note, `v: 1`) in the same synchronous run as the escrow that pays for it;
+- finish a leftover by paying each leg that has no stamp, never by deleting
+  it (`_mktSettleHeal`, from the shop's rebuild, the wake scan, a cancel and
+  the sweep);
+- the heal runs BEFORE anything can prune the stamps it reads: the prune
+  waits on `_mktSettleWait()` (the oplog is not the record, §146).
+
+A note with a newer shape number is left alone. Fixed in #1522; off-ramp
+`mktsettle: false`. **Receipt:** `market-settle.test`.
+
+## 323. "The fight lock lists the roads out of the bag" (v2.3.4510)
+
+**Tempting:** a new handler that spends gold or bag goods (or a new equip or
+zone road) is added with its own refusals, and nobody adds it to the fight
+lock. **Wrong:** that is how six guarded roads became thirteen open ones.
+The forge, the jackpot, the gambles, duel and arena stakes, Auction House
+offers and a dungeon mouth each let a losing fighter in No man's land keep
+goods from the killer; a duel kill even skipped the No man's land loss
+altogether, so a 0-gold duel with a friend ended a losing fight with the bag
+kept. **The rule.** Every router case and relayed type is in
+`server/src/fightlock.js`: a row in `FIGHT_LOCK` (its gate and refusal), or
+in `FIGHT_OPEN` with its reason. `fight-lock.test` §1 fails one that is in
+neither. A row answers with its handler's OWN refusal, never a new message.
+"Rearranges the bag" stays open; "turns it into something the loss does not
+take" never does. The lock protects the killer, so it never asks
+`_testMode`. Not yet locked, and why: armour, legs and the amulet put on
+mid-fight (the worker learns the armour stash only at join; the fix is
+keeping it on the worker), `character_reset` (spite: the killer gets
+nothing), a red skull killed by a monster. Fixed in #1523; off-ramps
+`fightlocktable`, `fightlockdoor`, `fightlockequip` (and the old `fightlock`,
+which opens everything). **Receipt:** `fight-lock.test`.
+
+## 324. "A cap on its own line is invisible to the caps audit" (v2.3.4520)
+
+**Tempting:** §316 puts a new cap on its own line of `join.js`'s `caps`
+literal; `caps-audit.test` goes red saying the cap is not advertised, so put
+it back on the long first line. **Wrong:** the audit read only the
+`caps: {` line, so following §316 turned it red. **The rule.** The audit
+now reads the literal's own lines up to its closing `},` (v2.3.4520, #1525).
+A new cap stays on its own line; if the audit misses one, fix the reader,
+never the line. **Receipt:** `caps-audit.test`.
+
+## 325. "Let the sword swing as often as the player taps" (v2.3.4520)
+
+**Tempting:** to let a sword swing faster (the free-swing trial), take away
+the phone's early-swipe refusal and start a swing on every tap. **Wrong:**
+the blade lands 120 ms into its swing (`MELEE_CONTACT_MS`); a swing restarted
+sooner clears its hit flags and restarts its timer (`clearSwingHitFlags`,
+`swingTimer`), so it never reaches its hit test and does nothing. **The
+rule.** Anything that lets a sword swing faster keeps the gap above contact
+plus a frame: the trial's phone swings no sooner than `FREE_GAP_MS` (150 ms);
+the worker counts one swing every 100 ms (`MIN_SWING_GAP_MS`); the 50 ms
+between is the network's wobble. **Receipt:** `free-swing.test`,
+`manual-combat.test` §13, `mp-freeswing`.
+
+## 326. "Scale the hit by its share and it is fair" (v2.3.4520)
+
+**Tempting:** a light swing (the free-swing trial, `?manual=3`) deals its
+share of a full one: multiply the damage by the share where it is rolled.
+**Wrong** two ways. Taken before a floor of 1 (the roll's own, the cuts in
+`_applyDamage`, the shock spark's own `Math.max(1, ...)`), mashing farms the
+floors: a 1-damage sword swung every 100 ms dealt a point a swing. Taken
+before a gate that can drop the hit (the 250 ms lane between players, the
+210 ms one on monsters), a dropped hit still costs the player share.
+**The rule.** A prorated hit takes its share AFTER every floor and AFTER every
+gate that can drop it; the fraction left is carried per player (`ps._fs.c`,
+the blocker's stamina `ps._fs.sc`), never rounded up. Extras that would
+multiply with mashing (the shove, the gem's status, collision mana, the
+spark) come only with a full swing (`FULL_SWING_SHARE` 0.8). Off-ramps
+`freeswing: false`, `freeswingbonus: false`. **Receipt:**
+`free-swing.test` (the damage a second equal at every swipe rate).
