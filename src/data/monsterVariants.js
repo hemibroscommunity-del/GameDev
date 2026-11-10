@@ -306,12 +306,20 @@ export const MONSTER_VARIANTS = {
                           up from the cell's bottom: its cell has room above
                           it for the hop, and its bar and name sit on its
                           head, not on the top of that room
+       feetRow            (v2.3.4493) the row of its 256 px cell its feet stand
+                          on at rest -- the first empty row under them (its
+                          strips: "feet on row 231", so 232).  The body is
+                          anchored at the cell's bottom, 24 rows lower, and
+                          its shadow hung from there: "floating shadows"
+                          (the owner).  lightfx/casters.js hangs it from
+                          this row.
      Client-visual only: nothing on the server or the wire reads these (`spd`
      is the mirrored one, and it is untouched). */
   fishman: {
     baseArchetype: 'brute',
     liveScalePx: 120,
     headTopPx: 80,
+    feetRow: 232,
     spd: 0.5,
     hopWalk: true,
     walkDistPerFrame: 1.2,
@@ -384,6 +392,7 @@ export const MONSTER_VARIANTS = {
   rockmonster: {
     baseArchetype: 'brute',
     liveScalePx: 108,
+    feetRow: 232,    /* v2.3.4493: its strips stand on row 231 too (measured): its shadow hangs from its feet, as the frog's (fishman, above) */
     headTopPx: 66,
     spd: 0.5,
     walkDistPerFrame: 4,
@@ -464,6 +473,7 @@ export const MONSTER_VARIANTS = {
   mireWisp: {
     baseArchetype: 'fodder',
     liveScalePx: 66,
+    feetRow: 232,    /* v2.3.4493: its strips stand on row 231 too (measured): its shadow hangs from its feet, as the frog's (fishman, above) */
     headTopPx: 44,
     walkDistPerFrame: 3.2,
     idleFrameMs: 230,
@@ -484,6 +494,7 @@ export const MONSTER_VARIANTS = {
   thornShambler: {
     baseArchetype: 'brute',
     liveScalePx: 108,
+    feetRow: 232,    /* v2.3.4493: its strips stand on row 231 too (measured): its shadow hangs from its feet, as the frog's (fishman, above) */
     headTopPx: 66,
     spd: 0.5,        /* mirrored in server _variantSpeed */
     tint: 0x4f9a3f,  /* moss-covered rock golem */
@@ -500,6 +511,7 @@ export const MONSTER_VARIANTS = {
   bogLurker: {
     baseArchetype: 'brute',
     liveScalePx: 104,
+    feetRow: 232,    /* v2.3.4493: its strips stand on row 231 too (measured): its shadow hangs from its feet, as the frog's (fishman, above) */
     headTopPx: 68,
     spd: 0.5,        /* mirrored in server _variantSpeed */
     tint: 0x8f86a8,
