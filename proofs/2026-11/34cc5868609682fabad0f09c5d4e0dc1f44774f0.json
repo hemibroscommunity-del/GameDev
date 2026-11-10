@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "34cc5868609682fabad0f09c5d4e0dc1f44774f0",
+  "tree": "d55603e51b57929b92e10174b7c089ed21a68416",
+  "committedAt": "2026-11-09T20:59:57-08:00",
+  "subject": "Merge pull request #1468 from hemibroscommunity-del/claude/sm-duel-zone-forfeit",
+  "files": 7769,
+  "bytes": 952052223,
+  "listingSha256": "66f7e54e14f1436068a3480abadb70dc151363bc1c9663f1c862c2eb62bd8b4d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

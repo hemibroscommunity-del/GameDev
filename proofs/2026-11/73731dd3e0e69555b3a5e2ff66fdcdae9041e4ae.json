@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "73731dd3e0e69555b3a5e2ff66fdcdae9041e4ae",
+  "tree": "1df1e218ad1899f6e3a682f3e5b0f2c765a01c3a",
+  "committedAt": "2026-11-09T21:00:21-08:00",
+  "subject": "Merge pull request #1470 from hemibroscommunity-del/claude/sm-dead-server-word",
+  "files": 7773,
+  "bytes": 952086634,
+  "listingSha256": "e45f5a34be4cf27e5a2efa6f939a9c379601aaf05e762b5f32d3934c34480f16",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

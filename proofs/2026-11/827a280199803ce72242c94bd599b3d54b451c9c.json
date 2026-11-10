@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "827a280199803ce72242c94bd599b3d54b451c9c",
+  "tree": "888dfb99f72a93295b477e2e76fd5511c644ef3c",
+  "committedAt": "2026-11-09T21:00:09-08:00",
+  "subject": "Merge pull request #1469 from hemibroscommunity-del/claude/sm-join-stands-up",
+  "files": 7771,
+  "bytes": 952068358,
+  "listingSha256": "23a5418abbdb29b94bbe02519ed5201b3519d24a89d615e90cb1b470e95a497b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "87b363a5efeca50197814b251f98d31f571fb84d",
+  "tree": "3e989b3f548e9448cffc6f0c307288967bb8e2ab",
+  "committedAt": "2026-11-09T20:59:45-08:00",
+  "subject": "Merge pull request #1467 from hemibroscommunity-del/claude/sm-gift-trade-closed",
+  "files": 7768,
+  "bytes": 952030483,
+  "listingSha256": "339177674023196fc65a8a7bbec881f091a1cd4dcec4bf90ac6e1ba2e4898422",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
