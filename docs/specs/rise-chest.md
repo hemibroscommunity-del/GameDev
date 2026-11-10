@@ -1,4 +1,4 @@
-# The Lagoon Islet is open to everyone, and its chest pays (v2.3.4438)
+# The Lagoon Islet is open to everyone, and its chest pays (v2.3.4453)
 
 > The owner, 2026-11-09: *"I'm thinking of how I can make elevation changes in
 > brotown. ... The character has a 'double jump' feature and I think it would

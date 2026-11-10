@@ -1,4 +1,4 @@
-/* The chest on a rise pays, once a character -- v2.3.4438 (server/src/risechest.js,
+/* The chest on a rise pays, once a character -- v2.3.4453 (server/src/risechest.js,
  * docs/specs/rise-chest.md).  The owner, asked where the first public obstacle
  * area goes and what its prize is: "Go recommended" -- the Lagoon Islet, its
  * chest a real prize.

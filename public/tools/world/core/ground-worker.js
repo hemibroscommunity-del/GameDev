@@ -639,7 +639,7 @@ function blocksIn(m) {
    overview, as before -- and lay their ground from blocks like the rest. */
 
 /* v2.3.3994: `climb=1` in the address -- the rises (core/rises.js).
-   v2.3.4438: FOR EVERYONE NOW (the owner, asked where the first public obstacle
+   v2.3.4453: FOR EVERYONE NOW (the owner, asked where the first public obstacle
    area goes: "Go recommended" -- the Lagoon Islet).  The rises are laid unless
    the address says `climb=0` (or off, false): one phone's way back, as a
    memory saver's is.  They cost a piece nothing it loads (the faces are

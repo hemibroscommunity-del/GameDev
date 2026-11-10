@@ -1,4 +1,4 @@
-/* ═══ v2.3.4438: THE CHEST ON A RISE PAYS, ONCE A CHARACTER (docs/specs/rise-chest.md) ═══
+/* ═══ v2.3.4453: THE CHEST ON A RISE PAYS, ONCE A CHARACTER (docs/specs/rise-chest.md) ═══
  *
  * The owner, 2026-11-09: "I'm thinking of how I can make elevation changes in
  * brotown ... The character has a 'double jump' feature and I think it would

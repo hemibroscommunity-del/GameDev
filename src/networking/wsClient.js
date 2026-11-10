@@ -35,7 +35,7 @@ import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } fr
 import { onCodexState, onCodexKill } from '@/game/monsterCodex.js'; /* v2.3.3209: the monster codex's counts (server/src/codex.js) */
 import { onAchvState, noteServerAp } from '@/game/achievements.js'; /* v2.3.3527: the achievements the worker granted (server/src/achievements.js) */
 import { onFishWeight, onFishBoard } from '@/game/fishWeigh.js'; /* v2.3.4036: a weigh-in and the biggest-fish boards (server/src/fishlog.js) */
-import { onRiseChest } from '@/game/climbActions.js'; /* v2.3.4438: the chest on a rise answers (server/src/risechest.js) */
+import { onRiseChest } from '@/game/climbActions.js'; /* v2.3.4453: the chest on a rise answers (server/src/risechest.js) */
 import { onSpinBoard } from '@/game/spinBoard.js'; /* v2.3.4393: the daily spin's biggest wins and losses (server/src/boards.js) */
 import { fishCatchWords } from '@/data/fishVariants.js'; /* v2.3.4036: "An albino Trout!" */
 import { onRaceState, onRaceCheckpoint, onRaceEnd } from '@/game/race.js'; /* v2.3.3525: Lil Bro's race (server/src/race.js) */
@@ -2219,7 +2219,7 @@ export function setupWebSocket(ctx) {
              (`from`) is never taken. */
           case 'spin_board':
             { if (msg.from) break; try { onSpinBoard(S, msg.payload); } catch (_se) { /* display only */ } break; }
-          /* v2.3.4438: the chest on a rise (server risechest.js): its prize, or why not.  Private and
+          /* v2.3.4453: the chest on a rise (server risechest.js): its prize, or why not.  Private and
              PRIVILEGED there; a relayed copy (`from`) is never taken. */
           case 'rise_chest':
             { if (msg.from) break; try { onRiseChest(S, msg.payload, function (x, y, t, col) { pushDmgPopup(S, x, y, t, col || '#FFF6D6'); }); } catch (_re) { /* display only */ } break; }
@@ -5865,7 +5865,7 @@ export function setupWebSocket(ctx) {
           wsOut(msg);
           return;
         }
-        /* v2.3.4438: the chest's ask (game/climbActions.js openRiseChest) -> risechest.js.  TRAPS #18. */
+        /* v2.3.4453: the chest's ask (game/climbActions.js openRiseChest) -> risechest.js.  TRAPS #18. */
         if (msg.type === 'rise_chest_open') {
           wsOut(msg);
           return;

@@ -227,7 +227,7 @@ export function climbTick(S, now, gdy, popup) {
      6 px further off a wall than a phone's, and the chest never opened walking into it there */
 }
 
-/** Open the chest you stand at.  v2.3.4438: the worker pays its prize, once
+/** Open the chest you stand at.  v2.3.4453: the worker pays its prize, once
     a character, to feet at it (server/src/risechest.js): the ask goes
     (`rise_chest_open`), and its answer says the prize or why not
     (onRiseChest).  Against a worker that does not say `risechest` (an older

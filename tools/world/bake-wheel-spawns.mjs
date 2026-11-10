@@ -42,7 +42,7 @@ import { placeObjects, footprintOf, MOUTH_CLEAR, islBoxes } from '../../public/t
 import { objectCatalog } from '../../public/tools/objects/catalog.js';
 import { materialMap, walkBits, composeGround } from '../../public/tools/world/core/ground.js';   /* v2.3.3012: the game's own walk grid; v2.3.3401: and its drawn shore */
 import { PIXEL } from '../../public/tools/style/bible.js';
-import { riseMessage } from '../../public/tools/world/core/rises.js';   /* v2.3.4438: the rises' boxes, for the worker (wheelfaces.js) */
+import { riseMessage } from '../../public/tools/world/core/rises.js';   /* v2.3.4453: the rises' boxes, for the worker (wheelfaces.js) */
 import { SWIM_PROBES, SWIM_IN } from '../../src/game/wheelSwim.js';
 /* v2.3.3401: each tier's tree and rock as the game draws them (bakeWheelNodes `hidden`) */
 import { treeGeom, treeChopOffset } from '../../src/game/tierTrees.js';
@@ -953,7 +953,7 @@ ${Object.entries(b.doors || {}).map(([id, d]) => `  ${id}: { name: ${JSON.string
 `;
 }
 
-/* ═══ v2.3.4438: THE RISES, FOR THE WORKER (server/src/wheelfaces.js) ═══
+/* ═══ v2.3.4453: THE RISES, FOR THE WORKER (server/src/wheelfaces.js) ═══
    The Lagoon Islet's terrace and ledge (plan.js `rises`, core/rises.js) as the
    worker needs them: each rise's box, its face band, its vines and its chest,
    in GAME px, exactly the boxes the phone is sent (riseMessage).  The worker
@@ -969,7 +969,7 @@ export function wheelFacesSource(plan, long) {
  * (plan ${plan.id} v${plan.version}, \`rises\`) -- do not edit by hand: run the tool
  * again.  tools/world/test-world-core.mjs fails when this is stale.
  *
- * v2.3.4438: the rises of the Wheel ${long} times longer (the live one), in game px:
+ * v2.3.4453: the rises of the Wheel ${long} times longer (the live one), in game px:
  * box, face (the band you cannot walk into), climb (the vines) and chest are
  * [x0, y0, x1, y1).  server/src/risechest.js pays a chest's prize by these. */
 export const WHEEL_FACES_LONG = ${long};
@@ -1007,7 +1007,7 @@ if (isMain) {
       console.log(`-> ${path.relative(ROOT, out)} (${long}x: ${nn} nodes, ${Object.keys(b.doors).length} doors, safe ${b.safeR}, ${Date.now() - t0} ms)`);
     }
   }
-  /* v2.3.4438: the rises' table (the long Wheel's) */
+  /* v2.3.4453: the rises' table (the long Wheel's) */
   if (only !== 1) {
     const src = wheelFacesSource(PLAN5, WHEEL_LONG);
     if (process.argv.includes('--check')) {

@@ -3274,7 +3274,7 @@ console.log('the tap on the right stick (v2.3.3105 jumped; v2.3.3712 attacks)');
         && !TJ.requestTapAttack({}, now) && !TJ.requestTapAttack(null, now));
     const mc = fs.readFileSync(new URL('../../src/game/monsterCombat.js', import.meta.url), 'utf8');
     ok('...the loop takes it through the held attack\'s own gate, and marks it done by the arrow or bolt, the swing, a special, or a bow line on nothing',
-      /* v2.3.4438: the gate's line since manual combat (v2.3.4395): with the swipes a shot is a flick's
+      /* v2.3.4453: the gate's line since manual combat (v2.3.4395): with the swipes a shot is a flick's
          (_mcFire); without them the held attack's own three wants, the tap's among them, as before */
       /var _tapAtkNow = tapAttackWaiting\(S, Date\.now\(\)\);/.test(mc)
         && /var _wantAtk = _mcOn \? _mcFire : \(S\.autoAttack \|\| _engSwing \|\| _tapAtkNow\);\s*if \(_wantAtk && \(_mcOn \|\| !_flickWait\)/.test(mc)
@@ -4740,10 +4740,10 @@ console.log('the lagoon islet (v2.3.3994)');
   ok(`the faces, rims, vines and chest are drawn in ${used.size} colours, all the rises' own (${pal.size}: a piece stays far under 256), and every pixel the same in two pieces laid apart`,
     painted > 50000 && off.length === 0 && pal.size <= 40 && used.size >= 20 && diff === 0, { off: off.slice(0, 5), diff });
   const gw = fs.readFileSync(new URL('../../public/tools/world/core/ground-worker.js', import.meta.url), 'utf8');
-  ok('...laid and sent by the ground worker for everyone (v2.3.4438), unless the address says climb=0',
+  ok('...laid and sent by the ground worker for everyone (v2.3.4453), unless the address says climb=0',
     /climb: climbOn\(search\)/.test(gw) && /rises: W\.climb \? riseMessage\(PLAN\) : null/.test(gw) && /if \(W\.climb\) risePaint\(/.test(gw)
     && /return !\/\(\^\|\[\?&\]\)climb=\(0\|off\|false\)\(&\|\$\)\/\.test\(search \|\| ''\);/.test(gw));
-  /* v2.3.4438: the worker's own table of the rises (server/src/wheelfaces.js) is the plan's, to the
+  /* v2.3.4453: the worker's own table of the rises (server/src/wheelfaces.js) is the plan's, to the
      byte -- the chest's prize is paid by its boxes (server/src/risechest.js) */
   {
     const { wheelFacesSource, OUT_FACES } = await import('./bake-wheel-spawns.mjs');

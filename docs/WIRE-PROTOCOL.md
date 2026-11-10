@@ -186,7 +186,7 @@ Server cases in `GameRoom.webSocketMessage`, `server/src/index.js`
 | `fish_inspect` | v2.3.4036 `{key}` -- a fish in the bag (raw or cooked, `fish_<species>[_albino\|_large]`) weighed: one catch of it, once, under `caps.fishweigh`; answers `fish_weight`. Anything not one of the game's fish is answered with nothing | fishlog.js |
 | `fish_board_request` | v2.3.4036 `{}` -- the biggest-fish boards, under `caps.fishweigh`; answers `fish_board` | fishlog.js |
 | `spin_board_request` | v2.3.4393 `{}` -- the daily spin's biggest wins and losses, under `caps.boards2`; answers `spin_board` | boards.js |
-| `rise_chest_open` | v2.3.4438 `{id}` -- open the chest on a rise (the Lagoon Ledge's), under `caps.risechest`; answers `rise_chest {id, ok: true, coins}` or `{id, ok: false, why: off \| none \| far \| got}` (PRIVILEGED), paid once a character to feet at it | risechest.js |
+| `rise_chest_open` | v2.3.4453 `{id}` -- open the chest on a rise (the Lagoon Ledge's), under `caps.risechest`; answers `rise_chest {id, ok: true, coins}` or `{id, ok: false, why: off \| none \| far \| got}` (PRIVILEGED), paid once a character to feet at it | risechest.js |
 | `shop_purchase` | Buy from vendor | ~3918 |
 | `equip_request` / `unequip_request` | Equip/unequip gear | ~3935 / ~3953 |
 | `sell_weapon` | Sell to vendor | ~3944 |

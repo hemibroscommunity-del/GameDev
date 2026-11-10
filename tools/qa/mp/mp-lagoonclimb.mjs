@@ -106,7 +106,7 @@ export async function play({ browser, wsPort, webPort, rec }, desk) {
   if (!R || !I) return;
   const [T, L] = R.list;
   const cg = G.cellG;
-  const P = await H.newPlayer(browser, { name: 'Climber', wsPort, webPort, world: 'wheel', ...(desk ? { wide: true, viewport: DESK } : { viewport: PHONE }), query: `jumpms=${AIR_MS}` });   /* v2.3.4438: no `climb=1` -- the rises are laid for everyone */
+  const P = await H.newPlayer(browser, { name: 'Climber', wsPort, webPort, world: 'wheel', ...(desk ? { wide: true, viewport: DESK } : { viewport: PHONE }), query: `jumpms=${AIR_MS}` });   /* v2.3.4453: no `climb=1` -- the rises are laid for everyone */
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   const stopAlive = H.keepAlive(P);
@@ -124,9 +124,9 @@ export async function play({ browser, wsPort, webPort, rec }, desk) {
 
     /* ── 1. the rises came ── */
     const c0 = await P.page.evaluate(() => window.__btClimb && window.__btClimb());
-    /* v2.3.4438: his coins before any of it (the flip up the ledge may carry him into the chest) */
+    /* v2.3.4453: his coins before any of it (the flip up the ledge may carry him into the chest) */
     const coinsStart = await P.page.evaluate(() => { const S = window._gameState.current; return (S.rpg && typeof S.rpg.coins === 'number') ? S.rpg.coins : null; });
-    rec.ok('the ground worker sent the rises with nothing asked in the address (v2.3.4438: for everyone): the terrace (72 px face, vines) and the ledge (144 px, a chest)',
+    rec.ok('the ground worker sent the rises with nothing asked in the address (v2.3.4453: for everyone): the terrace (72 px face, vines) and the ledge (144 px, a chest)',
       !!c0 && c0.on && c0.rises.length === 2 && c0.rises[0].h === 72 && !!c0.rises[0].climb && c0.rises[1].h === 144 && !!c0.rises[1].chest, c0 && c0.rises);
 
     /* ── 2. swim to it ── */
@@ -244,7 +244,7 @@ export async function play({ browser, wsPort, webPort, rec }, desk) {
     if (flip && flip.landing && flip.landing.fate === 'top') {
       const coins0 = { caps: await P.page.evaluate(() => { const S = window._gameState.current; return !!(S._serverCaps && S._serverCaps.risechest === true); }), coins: coinsStart };
       await H.hopTo(P, (L.chest.x0 + L.chest.x1) / 2, onLedge.y, { tries: 10 });
-      /* v2.3.4438: THE CHEST PAYS, once a character (server/src/risechest.js): walking into it asks the
+      /* v2.3.4453: THE CHEST PAYS, once a character (server/src/risechest.js): walking into it asks the
          worker, which pays feet at it and says so; a second touch is "Already opened" and asks nothing */
       const ch = await hold(P, ['w'], 6000, (o) => o[o.length - 1].climb.stats.chestAnswer === 'ok');
       const st1 = ch[ch.length - 1].climb.stats;

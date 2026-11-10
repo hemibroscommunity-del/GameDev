@@ -2,7 +2,7 @@
  * (plan brotown-world v3, `rises`) -- do not edit by hand: run the tool
  * again.  tools/world/test-world-core.mjs fails when this is stale.
  *
- * v2.3.4438: the rises of the Wheel 5 times longer (the live one), in game px:
+ * v2.3.4453: the rises of the Wheel 5 times longer (the live one), in game px:
  * box, face (the band you cannot walk into), climb (the vines) and chest are
  * [x0, y0, x1, y1).  server/src/risechest.js pays a chest's prize by these. */
 export const WHEEL_FACES_LONG = 5;

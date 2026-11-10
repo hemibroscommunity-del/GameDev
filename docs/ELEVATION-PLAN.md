@@ -287,7 +287,7 @@ cell over the islet's sand. Collision comes from the plan, never the picture.
 - The chest is **once per character** (next PR).
 - **BroTown on a hill comes after** this challenge.
 
-### v2.3.4438: the islet is open to everyone, and its chest pays
+### v2.3.4453: the islet is open to everyone, and its chest pays
 
 `docs/specs/rise-chest.md`. The owner, asked where the first public obstacle
 area goes and what its prize is: "Go recommended."
