@@ -48,8 +48,12 @@
  *     under the same thumb.
  *
  *   MELEE -- NO HOLD.  The sword builds by itself after each swing (the same
- *     interval), and a TAP swings once it is ready.  A tap before that does
- *     nothing at all: it is not kept for later.
+ *     interval), and a TAP swings once it is ready.  A tap before that swings
+ *     nothing, is not kept for later, and STARTS THE BUILD-UP AGAIN from that
+ *     tap (the owner, 2026-11-10, of his own "Tapping early does nothing":
+ *     "I also changed my mind about early swing penalty.  I think it should
+ *     restart if you tap too early.  Otherwise player just mashes button.
+ *     Plus adds a skill element and tension").
  *
  *   A SPECIAL is ARMED by its button (a second press disarms), before or
  *     during the build-up, and the next attack made is the special.
@@ -106,7 +110,7 @@ export function setManualCombat(v) { _on = !!v; }
 
 function st(S) {
   if (!S) return null;
-  if (!S._mc) S._mc = { drawAt: 0, liftAt: 0, fireAt: 0, armed: false, need: MANUAL.NEED_DEFAULT_MS, meleeNeed: MANUAL.NEED_DEFAULT_MS, slot: null, n: 0 };
+  if (!S._mc) S._mc = { drawAt: 0, liftAt: 0, fireAt: 0, armed: false, need: MANUAL.NEED_DEFAULT_MS, meleeNeed: MANUAL.NEED_DEFAULT_MS, slot: null, n: 0, earlyAt: 0, early: 0 };
   return S._mc;
 }
 function slotOf(S) { return (S && S.rpg && S.rpg.activeSlot) || 'melee'; }
@@ -122,7 +126,7 @@ export function mcFrame(S, now, need, meleeNeed) {
   if (need > 0) m.need = need;
   if (meleeNeed > 0) m.meleeNeed = meleeNeed;
   var slot = slotOf(S);
-  if (m.slot !== slot) { m.slot = slot; m.drawAt = 0; m.liftAt = 0; m.fireAt = 0; }   /* another weapon in hand: its own draw */
+  if (m.slot !== slot) { m.slot = slot; m.drawAt = 0; m.liftAt = 0; m.fireAt = 0; m.earlyAt = 0; }   /* another weapon in hand: its own draw */
   if (m.liftAt && now - m.liftAt > MANUAL.SLIP_MS) { m.drawAt = 0; m.liftAt = 0; }   /* let go for real: the draw is lost */
   if (m.fireAt && now - m.fireAt > MANUAL.FIRE_HOLD_MS) m.fireAt = 0;
 }
@@ -183,17 +187,30 @@ export function mcFrac(S, now) {
     var t = (m.liftAt || now) - m.drawAt;
     return Math.max(0, Math.min(1, t / Math.max(1, m.need)));
   }
-  var since = now - ((S && S.swingTimer) || 0);
+  var since = now - mcMeleeFrom(S);
   return Math.max(0, Math.min(1, since / Math.max(1, m.meleeNeed)));
 }
 /** Full: a lift now would shoot; a tap now would swing. */
 export function mcReady(S, now) { return mcFrac(S, now) >= 1; }
 
-/** A sword's tap: may it swing now?  Early is no: the tap is not kept. */
+/** When the sword's build-up began: its last swing, or a later tap that came
+ *  too early (mcMeleeEarly). */
+export function mcMeleeFrom(S) {
+  var m = S && S._mc;
+  return Math.max((S && S.swingTimer) || 0, (m && m.earlyAt) || 0);
+}
+/** A sword's tap: may it swing now?  (Asking changes nothing.) */
 export function mcMeleeMay(S, now) {
   if (!S || mcDraws(S)) return false;
   var m = st(S);
-  return now - (S.swingTimer || 0) >= m.meleeNeed;
+  return now - mcMeleeFrom(S) >= m.meleeNeed;
+}
+/** A sword's tap came too early: nothing swings, and the build-up starts
+ *  again from this tap -- mashing the button never swings. */
+export function mcMeleeEarly(S, now) {
+  var m = st(S);
+  if (!m || mcDraws(S)) return;
+  m.earlyAt = now; m.early = (m.early || 0) + 1;
 }
 
 /** The special's button: arm it for the next attack, or disarm it. */
@@ -215,7 +232,7 @@ if (typeof window !== 'undefined') {
         var S = window._gameState && window._gameState.current;
         var m = S && S._mc;
         var now = Date.now();
-        return m ? { drawAt: m.drawAt, liftAt: m.liftAt, fireAt: m.fireAt, armed: m.armed, need: m.need, meleeNeed: m.meleeNeed, slot: m.slot, shots: m.n, frac: mcFrac(S, now), ready: mcReady(S, now) } : null;
+        return m ? { drawAt: m.drawAt, liftAt: m.liftAt, fireAt: m.fireAt, armed: m.armed, need: m.need, meleeNeed: m.meleeNeed, slot: m.slot, shots: m.n, early: m.early || 0, earlyAt: m.earlyAt || 0, frac: mcFrac(S, now), ready: mcReady(S, now) } : null;
       },
     };
   } catch (e) { /* no window */ }

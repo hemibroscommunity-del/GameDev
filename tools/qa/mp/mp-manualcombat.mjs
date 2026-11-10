@@ -139,8 +139,8 @@ async function phone({ browser, wsPort, webPort, rec, OUT }) {
     await resetShots(P);
     await wait(P, 300);
     const rest = await mc(P);
-    rec.ok('2z at rest nothing is drawn (the gauge is there only while something builds)',
-      !rest.gauge || rest.gauge.vis === false, rest.gauge);
+    rec.ok('2z at rest the ready bar is empty (or away): nothing has been drawn yet',
+      !rest.gauge || rest.gauge.vis === false || (rest.gauge.frac === 0 && rest.gauge.full === false), rest.gauge);
     await down(P, X, Y);
     await wait(P, 400);
     const mid = await mc(P);
@@ -152,25 +152,32 @@ async function phone({ browser, wsPort, webPort, rec, OUT }) {
     rec.ok('2b the build-up shows on the button: the ring fills, then lights up at full, the bow\'s badge on it',
       !!held.gauge && held.gauge.vis === true && held.gauge.full === true && held.gauge.kind === 'bow' && !!full && full.ready === true
       && !!mid.gauge && mid.gauge.vis === true && mid.gauge.frac > 0 && mid.gauge.frac <= 1, { mid: mid.gauge, held: held.gauge });
-    /* v2.3.4357 (the owner: "The thumb covers the indicator and the indicator itself is too subtle"): the
-       gauge is ROUND THE BRO, big, and nowhere near the disc a thumb sits on */
+    /* v2.3.4357 (the owner: "The thumb covers the indicator and the indicator itself is too subtle", then of a
+       ring round the bro "too obnoxious ... Maybe north of the right joystick can be a ready bar"): a BAR,
+       over the disc, on no other control, off the bro */
     const ring = await P.page.evaluate(() => {
       const g = document.querySelector('[data-manual-gauge]'), d = document.querySelector('.bt-rjoy-base');
-      const a = g.getBoundingClientRect(), b = d ? d.getBoundingClientRect() : null;
+      const a = g.getBoundingClientRect(), b = d.getBoundingClientRect();
       const S = window._gameState.current, cv = document.querySelector('canvas.brotown-canvas') || document.querySelector('canvas'), c = cv.getBoundingClientRect();
       const px = c.left + (S.player.x - S.camera.x) * (S._worldScaleX || 1), py = c.top + (S.player.y - S.camera.y) * (S._worldScaleY || 1);
-      const band = g.querySelectorAll('svg circle')[2], bw = band ? parseFloat(getComputedStyle(band).strokeWidth) * a.width / 100 : 0;
-      const gx = a.left + a.width / 2, gy = a.top + a.height / 2;
+      const SEL = '[data-sprint], [data-ride], [data-quickeat], [data-jump], [data-shield], [data-special], [data-weapon-tri], [data-weapon-pill], [data-ability], .bt-burst-btn, .bt-charge-pie, [data-trap-round]';
+      /* the bar with its badge: everything it draws */
+      let l = a.left, t = a.top, r = a.right, bt = a.bottom;
+      g.querySelectorAll('div').forEach((el) => { if (el.className && /bt-mc-(halo|pop)/.test(el.className)) return; const q = el.getBoundingClientRect(); if (q.width < 2) return; l = Math.min(l, q.left); t = Math.min(t, q.top); r = Math.max(r, q.right); bt = Math.max(bt, q.bottom); });
+      const on = [];
+      document.querySelectorAll(SEL).forEach((el) => { const q = el.getBoundingClientRect(); if (q.width > 8 && q.height > 8 && l < q.right && r > q.left && t < q.bottom && bt > q.top) on.push((el.getAttribute('class') || '') + ' ' + Array.from(el.attributes).filter((x) => /^data-/.test(x.name)).map((x) => x.name).join(',')); });
+      const fill = g.querySelector('[data-mc-fill]'), f = fill.getBoundingClientRect(), halo = g.querySelector('.bt-mc-halo');
       return { full: g.getAttribute('data-mc-full'), kind: g.getAttribute('data-mc-kind'), pe: getComputedStyle(g).pointerEvents,
-        g: [Math.round(a.left), Math.round(a.top), Math.round(a.width), Math.round(a.height)], d: b ? [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)] : null,
-        bro: [Math.round(px), Math.round(py)], bw: Math.round(bw * 10) / 10,
-        round: Math.abs(gx - px) <= 4 && Math.abs(gy - py) <= 12 && a.width >= 100,
-        clear: !b || a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom,
-        lit: (() => { const h = g.querySelector('.bt-mc-halo'); return !!h && h.classList.contains('bt-mc-lit') && parseFloat(getComputedStyle(h).opacity) > 0.2; })(),
-        inside: a.left >= -8 && a.right <= innerWidth + 8 && a.bottom <= innerHeight + 8 };
+        g: [Math.round(a.left), Math.round(a.top), Math.round(a.width), Math.round(a.height)], d: [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)],
+        bro: [Math.round(px), Math.round(py)], on,
+        north: a.bottom <= b.top && Math.abs((a.left + a.width / 2) - (b.left + b.width / 2)) <= 40, above: Math.round(b.top - a.bottom),
+        offBro: px < l - 20 || px > r + 20 || py < t - 40 || py > bt + 40,
+        filled: f.width >= a.width - 6 && getComputedStyle(fill).backgroundColor,
+        lit: !!halo && halo.classList.contains('bt-mc-lit') && parseFloat(getComputedStyle(halo).opacity) > 0.2,
+        inside: l >= 0 && r <= innerWidth && t >= 0 && bt <= innerHeight };
     });
-    rec.ok(`2c ...round the bro (a ${ring.g[2]} px ring, its band ${ring.bw} px thick, lit at full), clear of the attack disc a thumb sits on, taking no touch`,
-      ring.full === '1' && ring.kind === 'bow' && ring.pe === 'none' && ring.round && ring.clear && ring.lit && ring.bw >= 7 && ring.inside, ring);
+    rec.ok(`2c ...a ready bar ${ring.g[2]} x ${ring.g[3]} px NORTH of the attack disc (${ring.above} px over its top), on no other control, off the bro, filled and lit at full, taking no touch`,
+      ring.full === '1' && ring.kind === 'bow' && ring.pe === 'none' && ring.north && ring.on.length === 0 && ring.offBro && !!ring.filled && ring.lit && ring.g[2] >= 100 && ring.g[3] >= 14 && ring.inside, ring);
 
     /* ── 3 ── the lift at full looses one */
     await up(P, X, Y - 60);
@@ -278,6 +285,34 @@ async function phone({ browser, wsPort, webPort, rec, OUT }) {
     const s1 = two.a, s2 = two.b;
     await wait(P, 150);
     const g1 = await mc(P);
+    /* v2.3.4357 (the owner: "it should restart if you tap too early.  Otherwise player just mashes
+       button"): MASHING NEVER SWINGS.  In ONE task, its times held by the clock (this box's timers run
+       late: a 100 ms interval fires every 800): a ready tap swings at T; a tap at T+300 is early and
+       starts the build-up again; at T+700 -- past the T+need it would have been ready at -- it is still
+       not ready and a tap swings nothing (and restarts it again); one whole build-up after THAT, a tap
+       swings. */
+    await wait(P, 900);
+    const mash = await P.page.evaluate(() => {
+      const S = window._gameState.current, d = window.__disc(); const r = d.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2;
+      let id = 40;
+      const tap = () => { id += 1; window.__touch(d, 'touchstart', x, y, id); window.__touch(d, 'touchend', x, y, id); };
+      const spin = (until) => { while (Date.now() < until) { /* the clock, not a timer */ } };
+      const st = () => window.__btManual.state();
+      const need = st().meleeNeed, e0 = st().early, ready0 = st().ready, sw0 = S.swingTimer;
+      tap();
+      const T = S.swingTimer, swung1 = T !== sw0;
+      spin(T + 300); tap();
+      const a = { sw: S.swingTimer, st: st() };
+      spin(T + 700);
+      const b0 = st(); tap();
+      const b = { sw: S.swingTimer, st: st() };
+      spin(b.st.earlyAt + need + 20);
+      const c0 = st(); tap();
+      const c = { sw: S.swingTimer, st: st() };
+      return { need, e0, ready0, swung1, T, a, b0, b, c0, c };
+    });
+    await wait(P, 100);
+    const gMiss = await mc(P);
     /* a HOLD on the disc: its press is a tap (one swing, it is ready by now),
        and holding on swings nothing more */
     await wait(P, 900);
@@ -289,17 +324,23 @@ async function phone({ browser, wsPort, webPort, rec, OUT }) {
     await tapDisc();                 /* ready again by now */
     await wait(P, 60);
     const s4 = await mc(P);
-    /* the picture only: this box takes seconds over a screenshot, longer than the ring stays, so the
+    /* the picture only: this box takes seconds over a screenshot, longer than a build-up, so the
        sword is held part-built for it (every check above is already read) */
     await P.page.evaluate(() => { window.__mcHold = setInterval(() => { window._gameState.current.swingTimer = Date.now() - 380; }, 30); });
     await wait(P, 200);
     await shot('3-sword-building');
     await P.page.evaluate(() => { clearInterval(window.__mcHold); });
     rec.ok('8a a sword\'s tap on the disc swings (it was ready)', sw.wpn === 'greatsword' && s0.st.ready === true && s1.swingTimer > s0.swingTimer, { s0: s0.swingTimer, s1: s1.swingTimer, st: s0.st });
-    rec.ok('8b a tap straight after it does nothing ("Tapping early does nothing")', s2.swingTimer === s1.swingTimer && s2.early === s1.early + 1 && s2.st.ready === false, { s1: s1.swingTimer, s2: s2.swingTimer, early: s2.early, st: s2.st });
-    rec.ok('8c a held thumb is one tap and no more: its press swung once (the early tap before it was not kept), and 2 s of holding swung nothing else',
+    rec.ok('8b a tap straight after it swings nothing, and STARTS THE BUILD-UP AGAIN from that tap (the ready tap before it cost nothing)',
+      s2.swingTimer === s1.swingTimer && s2.early === s1.early + 1 && s2.st.ready === false && s1.st.early === s0.st.early && s2.st.early === s1.st.early + 1 && s2.st.earlyAt >= s1.swingTimer && s2.st.frac < 0.2,
+      { s0: s0.st, s1: s1.st, s2: s2.st });
+    rec.ok(`8f mashing never swings: a tap 300 ms after a swing restarts the ${Math.round(mash.need)} ms build-up, so at 700 ms it is still not ready and that tap swings nothing either; one whole build-up after it, a tap swings`,
+      mash.need < 700 && mash.ready0 && mash.swung1 && mash.a.sw === mash.T && mash.a.st.early === mash.e0 + 1 && mash.b0.ready === false && mash.b.sw === mash.T && mash.b.st.early === mash.e0 + 2
+      && mash.c0.ready === true && mash.c.sw > mash.T, mash);
+    rec.ok('8g the bar counted the early taps (it empties and flashes red on each)', !!gMiss.gauge && gMiss.gauge.missed >= mash.e0 + 2, gMiss.gauge);
+    rec.ok('8c a held thumb is one tap and no more: its press swung once, and 2 s of holding swung nothing else',
       sP > s1.swingTimer && s3.swingTimer === sP && s3.st.ready === true, { s1: s1.swingTimer, sP, s3: s3.swingTimer, st: s3.st });
-    rec.ok('8e the sword\'s ring and badge show round the bro while it builds', !!g1.gauge && g1.gauge.vis === true && g1.gauge.kind === 'sword', g1.gauge);
+    rec.ok('8e the sword\'s bar shows while it builds', !!g1.gauge && g1.gauge.vis === true && g1.gauge.kind === 'sword', g1.gauge);
     rec.ok('8d once ready, a tap swings again', s4.swingTimer > sP, { sP, s4: s4.swingTimer });
 
     rec.ok('11a phone: no page errors', errors.length === 0, errors);
@@ -339,17 +380,21 @@ async function desk({ browser, wsPort, webPort, rec, OUT }) {
     const held = await mc(P);
     const dRing = await P.page.evaluate(() => {
       const g = document.querySelector('[data-manual-gauge]'), a = g.getBoundingClientRect();
-      const S = window._gameState.current, cv = document.querySelector('canvas.brotown-canvas') || document.querySelector('canvas'), c = cv.getBoundingClientRect();
-      const px = c.left + (S.player.x - S.camera.x) * (S._worldScaleX || 1), py = c.top + (S.player.y - S.camera.y) * (S._worldScaleY || 1);
-      return { g: [Math.round(a.left + a.width / 2), Math.round(a.top + a.height / 2), Math.round(a.width)], bro: [Math.round(px), Math.round(py)], canvas: [Math.round(c.left), Math.round(c.top)] };
+      const pill = document.querySelector('[data-weapon-pill]'), p = pill ? pill.getBoundingClientRect() : null;
+      const root = document.getElementById('root').getBoundingClientRect();
+      const dashH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dash-h')) || 0;
+      return { g: [Math.round(a.left), Math.round(a.top), Math.round(a.width), Math.round(a.height)], pill: p ? [Math.round(p.left), Math.round(p.top), Math.round(p.width), Math.round(p.height)] : null,
+        root: [Math.round(root.left), Math.round(root.width)], bandTop: Math.round(innerHeight - dashH),
+        clear: !p || a.left - 16 >= p.right || a.right <= p.left || a.bottom <= p.top || a.top >= p.bottom,
+        over: a.bottom <= innerHeight - dashH && a.top >= innerHeight - dashH - 90, inside: a.left >= root.left && a.right + 12 <= root.right };
     });
     await P.page.screenshot({ path: join(OUT, 'manualcombat-4-computer-full.png') }).catch(() => {});
     await P.page.mouse.up();
     const n = await settleShots(P, 1);
-    rec.ok(`10a a computer: holding the mouse button fires nothing (${held.shots}), the gauge fills round the bro`,
+    rec.ok(`10a a computer: holding the mouse button fires nothing (${held.shots}), the ready bar fills`,
       at.desk && held.shots === 0 && !!held.st && held.st.ready === true && !!held.gauge && held.gauge.vis && held.gauge.full, { at, st: held.st, gauge: held.gauge });
     rec.ok(`10b ...and its release at full looses one arrow (${n})`, n === 1, { n });
-    rec.ok('10d ...and the ring is round the bro on a computer too (its window is not the game\'s box)', Math.abs(dRing.g[0] - dRing.bro[0]) <= 4 && Math.abs(dRing.g[1] - dRing.bro[1]) <= 12 && dRing.g[2] >= 100, dRing);
+    rec.ok('10d ...the bar stands just over the band on a computer, beside the weapon pill and not on it, inside the game\'s box', dRing.clear && dRing.over && dRing.inside && dRing.g[2] >= 100, dRing);
     await wait(P, 600);
     await P.page.mouse.click(at.x, at.y, { button: 'right' });
     await wait(P, 300);

@@ -21,6 +21,10 @@
 > adjustments."* *"Just keep in mind magic uses your finger to control the
 > projectile once launched so none of the new controls should interfere with
 > that."*
+>
+> And on 2026-11-10, after trying it: *"I also changed my mind about early
+> swing penalty. I think it should restart if you tap too early. Otherwise
+> player just mashes button. Plus adds a skill element and tension."*
 
 ## The switch
 
@@ -64,7 +68,11 @@ It is the phone's side only. The worker is not changed (see "The server").
   own interval.
 - **A tap once it is ready swings.** A tap on the right half of the screen or
   on the disc; a click on a computer.
-- **A tap before it is ready does nothing.** It is not kept for later.
+- **A tap before it is ready swings nothing and starts the build-up again**
+  from that tap. It is not kept for later. Mashing the button never swings:
+  every early tap pushes the ready moment a whole interval away. The bar
+  empties and flashes red. (The first cut let an early tap pass without
+  cost; the owner changed that the next day.)
 - A held thumb is one tap: nothing swings by itself, ever.
 - The sword still turns to the nearest monster by itself (the automatic lock,
   `src: 'auto'`, in `targeting.js`).
@@ -90,38 +98,46 @@ It is the phone's side only. The worker is not changed (see "The server").
 
 ## The build-up you can see (`src/ui/panels/ManualGauge.jsx`)
 
-> The owner, on the first cut (the gauge on the attack button): *"Needs
-> improvement. The thumb covers the indicator and the indicator itself is too
-> subtle. Same for bow and staff."*
+A **ready bar north of the right joystick**. It is the third place tried:
 
-It is **round the character**, not on the button. A thumb is on the button for
-the whole of a draw, so nothing on or near it can be the cue, and the eyes are
-on the bro and what he is fighting.
+1. On the attack button. The owner: *"The thumb covers the indicator and the
+   indicator itself is too subtle. Same for bow and staff."*
+2. A ring round the character. The owner: *"It's too obnoxious having it
+   circle the player. Maybe north of the right joystick can be a ready bar."*
+3. The bar.
 
-- **A ring round the bro**, 112 px across, fills clockwise with the build-up:
-  a thick cream band on a wider dark one while it builds (it reads on sand,
-  grass and snow).
-- **At full it lights up**: the band turns bright yellow, a wide soft band
-  breathes behind it, and one ring bursts outward at the moment it fills.
-- **A badge under his feet**, 44 px, the weapon in hand:
+- **The bar**: 124 x 18 px, a dark track with a pale rim, filled left to right
+  with the build-up. Cream while it builds.
+- **At full it lights up**: bright yellow, a soft band breathing round it, and
+  one outline bursting off it at the moment it fills.
+- **The weapon's badge on its left end** (34 px):
   - the **bow**, whose string is pulled back as the draw fills, an arrow on it;
   - the **staff's orb**, which swells;
   - the **sword**, which fills from its hilt to its point.
-
-  It grows a little and takes a gold rim at full.
-- **A small star** beside the badge while a special is armed.
-- It is drawn only while there is something to say: a draw under way, a sword
-  not yet ready and for 1.5 s after it is, a special armed. At rest nothing is
-  drawn.
-- The same on a phone and on a computer.
-- A phone that can buzz (Android) ticks once at full. An iPhone cannot: Safari
-  has no vibration.
-- It is one SVG drawn in code: no picture loaded, no memory kept. It takes no
-  touch. Its own animation frame writes one transform on its own box and an
-  attribute only when a value changes; no React render after the first, no CSS
-  filter. The breathing band and the burst are opacity and transform
-  (`game.css` `.bt-mc-halo`, `.bt-mc-pop`), still under
-  `prefers-reduced-motion`.
+- **A small star on its right end** while a special is armed.
+- **A sword tapped too early**: the bar empties and flashes red.
+- **Where**: the first clear space straight above the attack disc. The Dash
+  button stands directly over the disc, so "above" is found, not assumed:
+  `placeBar` climbs from the disc's top in 4 px steps, trying up to 30 px left
+  and right, until the bar (badge and star included, 5 px of air) touches none
+  of the cluster's controls. On an iPhone that is over the special's button,
+  about 150 px above the disc. Measured twice a second: the disc moves when
+  the phone turns, and the controls round it come and go.
+- **When**: while the attack disc is on the screen for a fight (BroTown's
+  resolver raises it: a monster near, a lock held), and whenever there is
+  something to say (a draw under way, a sword building, a special armed). Not
+  over a harvest's button. A ready sword's bar breathes for 1.5 s, then rests
+  lit and still.
+- **On a computer** (no disc): just over the band, right of the weapon pill,
+  while there is something to say.
+- An Android phone ticks once (a buzz) at full. An iPhone cannot: Safari has
+  no vibration.
+- It is a few boxes and one small SVG drawn in code: no picture loaded, no
+  memory kept. It takes no touch. Its own animation frame writes a transform
+  or an attribute only when a value changes; no React render after the first,
+  no CSS filter. The breath, the burst and the red flash are opacity and
+  transform (`game.css` `.bt-mc-halo`, `.bt-mc-pop`, `.bt-mc-miss`), still
+  under `prefers-reduced-motion`.
 - It sits in its own `position: fixed; inset: 0` layer and is placed with
   `fixedBox(layer)`: on a computer the game's box is not the window's.
 
@@ -129,12 +145,12 @@ on the bro and what he is fighting.
 
 | file | what |
 |---|---|
-| `src/game/manualCombat.js` | The rules, with no imports so node tests them: the switch, `mcPress` / `mcLift` / `mcAbort`, the slip, `mcFrame` (the loop's word each frame: this weapon's interval), `mcFireWaiting` / `mcFireDone`, `mcFrac` / `mcReady`, `mcMeleeMay`, `mcArmToggle` / `mcTakeArmed`, `mcLockAllowed`. State on `S._mc`. |
+| `src/game/manualCombat.js` | The rules, with no imports so node tests them: the switch, `mcPress` / `mcLift` / `mcAbort`, the slip, `mcFrame` (the loop's word each frame: this weapon's interval), `mcFireWaiting` / `mcFireDone`, `mcFrac` / `mcReady`, `mcMeleeMay`, `mcMeleeEarly` / `mcMeleeFrom` (an early tap restarts the sword), `mcArmToggle` / `mcTakeArmed`, `mcLockAllowed`. State on `S._mc`. |
 | `src/game/monsterCombat.js` | The attack gate: in manual combat the loop attacks only when a full draw was just let go (`mcFireWaiting`), never because the stick is held; the armed special is taken there. |
 | `src/game/targeting.js` | Chosen locks dropped each frame; the duel lock not kept. |
 | `src/ui/BroTown.jsx` | The right stick, the disc and the mouse call the rules; `mcMeleeTap` (the sword's tap); no lock on a tap, a click or a double click. |
 | `src/ui/panels/SpecialButton.jsx` | Arms and disarms; "ON". |
-| `src/ui/panels/ManualGauge.jsx` | The ring round the bro, the badge, the star. |
+| `src/ui/panels/ManualGauge.jsx` | The ready bar, its badge, the star; `placeBar`. |
 
 ## The server
 
@@ -163,13 +179,15 @@ switch: the switch is the address.
 - `server/test/manual-combat.test.mjs`: the switch (on, remembered, off); a
   draw to full and its one shot; an early lift loses the draw; the slip;
   cancel; hold as long as you like; a weapon change mid-draw; the sword's
-  early tap; arming; `mcLockAllowed`; and that each caller is wired.
+  early tap and its restart; arming; `mcLockAllowed`; and that each caller is wired.
 - `node tools/qa/mp/run.mjs manualcombat` (`mp-manualcombat.mjs`), a phone and
-  a computer in the Wheel, 27 checks: holding fires nothing; nothing drawn at
-  rest; the ring fills and lights round the bro, 100 px or more across, its
-  band 7 px or more thick, clear of the attack disc; one arrow on the lift at
-  full; none on an early lift; the slip; cancel; the special arms and is the
-  next shot; a chosen lock does not last; the sword's ready tap, early tap,
-  held thumb; the mouse held and released; the ring round the bro on a
-  computer; the right click arms.
+  a computer in the Wheel, 29 checks: holding fires nothing; the bar empty at
+  rest; it fills and lights, north of the attack disc, on no other control,
+  off the bro, 100 x 14 px or more; one arrow on the lift at full; none on an
+  early lift; the slip; cancel; the special arms and is the next shot; a
+  chosen lock does not last; the sword's ready tap; an early tap restarts the
+  build-up; mashing never swings (the times held by the clock: this box's
+  timers run late); the bar counts the early taps; a held thumb; the mouse
+  held and released; the bar over the band on a computer; the right click
+  arms.
 - Pictures: `docs/shots/manual-combat-{full-draw,armed,sword,computer}.webp`.

@@ -62,7 +62,7 @@ import { startBuildWatch } from '@/game/buildWatch.js';
 import { onTrackedQuest } from '@/game/trackedQuest.js';   /* v2.3.3522: the pinned quest card shows the quest you track (v2.3.3918: QuestCard.jsx reads it) */
 import { treeGeom, treeTrunkEllipse, treeReachBox } from '@/game/tierTrees.js';   /* v2.3.3345: each wood its own tree -- its box, its trunk and where you chop it from */
 import { oreGeom, oreBlockEllipse } from '@/game/tierOre.js';   /* v2.3.3345: each metal its own rock -- its box and its body */
-import { ManualGauge } from './panels/ManualGauge.jsx';   /* v2.3.4357: manual combat's build-up, round the bro (`?manual=1`) */
+import { ManualGauge } from './panels/ManualGauge.jsx';   /* v2.3.4357: manual combat's ready bar, north of the right joystick (`?manual=1`) */
 import { TouchControls, RKNOB_TRAVEL } from './panels/TouchControls.jsx'; /* v2.3.2264: the disc's resting vs combat wash; v2.3.3018: the wash went with the sprite (game.css data-rstate), and the knob carries the picture */
 import { weaponDiscIcon } from './panels/controlSkin.jsx'; /* v2.3.3105: the attack disc wears the weapon in your hand */
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
@@ -460,7 +460,7 @@ import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the s
 import { climbBegin, climbSteer, climbSpeed, climbTick, riseSolidAt } from '@/game/climbActions.js';   /* v2.3.3994: the lagoon's climb and its faces (`?climb=1`) */
 import { tickJump, landJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick -- v2.3.3712: no longer, so triggerJump is the button's alone) */
 import { rightTapBusy, tapFreeMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress, requestTapAttack } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one; v2.3.3712: it attacks once now, never jumps */
-import { manualOn, mcPress, mcLift, mcAbort, mcMeleeMay, mcTakeArmed, mcArmToggle, mcArmed, mcFrac, mcReady, mcDraws, MANUAL } from '@/game/manualCombat.js';   /* v2.3.4357: manual combat (`?manual=1`): a draw let go, a tap when ready, no chosen lock */
+import { manualOn, mcPress, mcLift, mcAbort, mcMeleeMay, mcMeleeEarly, mcTakeArmed, mcArmToggle, mcArmed, mcFrac, mcReady, mcDraws, MANUAL } from '@/game/manualCombat.js';   /* v2.3.4357: manual combat (`?manual=1`): a draw let go, a tap when ready, no chosen lock */
 import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here; v2.3.4105: talkBeforeDoor retired (E never talks) */
 import { jumpAirborne, overLow, jumpLatched, jumpLatch, landedOver, flipBoost } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears; v2.3.3499: a crossing once begun stays begun */
 import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land's badge (v2.3.3629: beside the minimap's name plate) */
@@ -9390,14 +9390,16 @@ export var BroTown = function BroTown(_ref0) {
   /* ═══ v2.3.4357: MANUAL COMBAT -- A SWORD'S TAP (game/manualCombat.js) ═══
      The owner: "the sword will be an icon on the button and need to build up
      before you tap the button to attack", and "Tapping early does nothing.
-     You need to tap once it's ready."  So: not ready, nothing (the tap is
-     not kept); ready and the special armed, the special is this attack (if
-     it refuses -- its 1.5 s, no mana -- the ordinary swing is made); else
-     one swing.  True when an attack was made. */
+     You need to tap once it's ready." -- then, the next day: "it should
+     restart if you tap too early.  Otherwise player just mashes button."
+     So: not ready, nothing swings, the tap is not kept, and the build-up
+     starts again from it (mcMeleeEarly); ready and the special armed, the
+     special is this attack (if it refuses -- its 1.5 s, no mana -- the
+     ordinary swing is made); else one swing.  True when an attack was made. */
   var mcMeleeTap = useCallback(function () {
     var S = stateRef.current;
     if (!S || !S.rpg) return false;
-    if (!mcMeleeMay(S, Date.now())) { S._mcEarly = (S._mcEarly || 0) + 1; return false; }
+    if (!mcMeleeMay(S, Date.now())) { S._mcEarly = (S._mcEarly || 0) + 1; mcMeleeEarly(S, Date.now()); return false; }
     if (mcTakeArmed(S)) {
       var before = S._lastSwipe;
       specialAttack(S);

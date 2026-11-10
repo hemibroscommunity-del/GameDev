@@ -10,8 +10,8 @@
  *   3. THE SLIP ALLOWANCE: a thumb back within 100 ms never left.
  *   4. CANCEL: back to the centre, then lift: no shot.
  *   5. A press that ends some other way drops the draw.
- *   6. A SWORD: no draw; ready after its interval; an early tap is refused
- *      and not kept.
+ *   6. A SWORD: no draw; ready after its interval; an early tap is refused,
+ *      not kept, and starts the build-up again from the tap.
  *   7. A SPECIAL is armed and taken once.
  *   8. NO CHOSEN LOCK: only the automatic one is allowed.
  *   9. Changing weapon mid-draw starts again; a shot nobody takes expires.
@@ -21,7 +21,7 @@
 import fs from 'node:fs';
 import {
   MANUAL, manualCombatWanted, setManualCombat, manualOn, mcFrame, mcPress, mcLift, mcAbort, mcFireWaiting, mcFireDone,
-  mcFrac, mcReady, mcMeleeMay, mcArmToggle, mcArmed, mcTakeArmed, mcLockAllowed, mcDraws,
+  mcFrac, mcReady, mcMeleeMay, mcMeleeEarly, mcMeleeFrom, mcArmToggle, mcArmed, mcTakeArmed, mcLockAllowed, mcDraws,
 } from '../../src/game/manualCombat.js';
 
 let failures = 0;
@@ -112,9 +112,25 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
   mcFrame(S, t, 500, 600);
   check('6a a press starts no draw', mcPress(S, t) === 'none' && !S._mc.drawAt);
   check('6b it builds by itself after a swing', mcFrac(S, t + 300) === 0.5 && !mcReady(S, t + 599) && mcReady(S, t + 600));
-  check('6c tapping early does nothing', mcMeleeMay(S, t + 599) === false);
-  check('6d ...and the early tap is not kept: the same question at the right time is asked afresh', mcMeleeMay(S, t + 600) === true && mcMeleeMay(S, t + 5000) === true);
+  check('6c not ready: the question says no', mcMeleeMay(S, t + 599) === false);
+  check('6d ...and asking changes nothing: the same question at the right time says yes', mcMeleeMay(S, t + 600) === true && mcMeleeMay(S, t + 5000) === true);
   check('6e a bow\'s tap is never a sword\'s', mcMeleeMay(bow(), t + 5000) === false);
+  /* v2.3.4357 (the owner, the next day: "it should restart if you tap too early.  Otherwise player just
+     mashes button"): asking changes nothing; an early TAP starts the build-up again from the tap */
+  {
+    const E = sword(t);
+    mcFrame(E, t, 500, 600);
+    mcMeleeEarly(E, t + 400);
+    check('6g a tap too early restarts the build-up: empty at the tap, not ready when it would have been', mcFrac(E, t + 400) === 0 && mcMeleeMay(E, t + 600) === false && mcFrac(E, t + 700) === 0.5);
+    check('6h ...ready one whole interval after the early tap, and it was counted', mcMeleeMay(E, t + 999) === false && mcMeleeMay(E, t + 1000) === true && E._mc.early === 1 && mcMeleeFrom(E) === t + 400);
+    mcMeleeEarly(E, t + 900);
+    check('6i mashing never swings: each early tap starts it again', mcMeleeMay(E, t + 1400) === false && mcMeleeMay(E, t + 1500) === true && E._mc.early === 2);
+    E.swingTimer = t + 1500;
+    check('6j a swing starts the build-up from the swing', mcMeleeFrom(E) === t + 1500 && mcFrac(E, t + 1800) === 0.5);
+    mcMeleeEarly(bow(), t);
+    const B = bow(); mcMeleeEarly(B, t + 50);
+    check('6k a bow has no early tap', !(B._mc && B._mc.early));
+  }
   check('6f a lift means nothing to a sword', mcLift(S, t + 700, false) === 'none' && !mcFireWaiting(S, t + 700));
 }
 
@@ -167,7 +183,7 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
   check('10f the handlers: the press draws, the lift is judged before the release tidies, a forced end drops it',
     /if \(_mcP\) mcPress\(S, Date\.now\(\)\);/.test(bro) && /mcLift\(stateRef\.current, Date\.now\(\), !!_mcT\.moved && /.test(bro) && /if \(manualOn\(\)\) mcAbort\(S\);/.test(bro));
   check('10g no special is flicked, the right click arms', /if \(_rFlick && !manualOn\(\)\)/.test(bro) && /if \(manualOn\(\)\) \{ mcArmToggle\(S\); return 'armed'; \}/.test(bro));
-  check('10h a sword\'s tap goes through mcMeleeTap (early: nothing)', /if \(!mcMeleeMay\(S, Date\.now\(\)\)\) \{ S\._mcEarly/.test(bro) && /if \(!mcDraws\(stateRef\.current\)\) mcMeleeTap\(\); return;/.test(bro));
+  check('10h a sword\'s tap goes through mcMeleeTap (early: nothing swings, and the build-up starts again)', /if \(!mcMeleeMay\(S, Date\.now\(\)\)\) \{ S\._mcEarly = \(S\._mcEarly \|\| 0\) \+ 1; mcMeleeEarly\(S, Date\.now\(\)\); return false; \}/.test(bro) && /if \(!mcDraws\(stateRef\.current\)\) mcMeleeTap\(\); return;/.test(bro));
   check('10i a computer: the press draws and the button\'s up is the shot', /mcPress\(S, Date\.now\(\)\);\s*\n\s*if \(!mcDraws\(S\) && !_deskLungePress/.test(bro) && /mcLift\(_mcS, Date\.now\(\), false\);/.test(bro));
   const tg = read('../../src/game/targeting.js');
   check('10j targeting keeps no chosen lock, and no duel lock, with the switch', /if \(manualOn\(\)\) \{\s*\n\s*if \(S\.lockedTarget && !mcLockAllowed\(S\.lockedTarget\)\) S\.lockedTarget = null;\s*\n\s*\} else keepDuelLock\(S\);/.test(tg));
