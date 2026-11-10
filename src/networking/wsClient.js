@@ -114,6 +114,7 @@ import { showLingerWait, hideLingerWait } from '@/ui/LingerScreen.js';   /* v2.3
 import { showOriginScreen } from '@/ui/OriginScreen.js';   /* v2.3.3312: a copy on another site is sent to the real game */
 import { showDeviceScreen } from '@/ui/DeviceScreen.js';   /* v2.3.3344: a character's key on a device it was never played on */
 import { markServerReady, resetServerReady, serverReadyReason } from '@/networking/serverReady.js'; /* v2.3.2439: the world waits for the server */
+import { armResumeListeners } from '@/game/resumeListeners.js'; /* v2.3.4482: a return to the tab heard once, by the live set-up */
 import { retireSocket } from '@/game/socketLine.js'; /* v2.3.4367: one line at a time */
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -5272,18 +5273,19 @@ export function setupWebSocket(ctx) {
         } catch (e) {}
       }, 600);
     }
-    try {
-      document.addEventListener('visibilitychange', function () {
-        /* v2.3.778: stamp when we go hidden so the resync threshold can
-           use real away-time even when the heartbeat keeps ticking
-           (desktop tab switches don't freeze JS). */
-        if (document.visibilityState === 'hidden') { _hiddenAt = Date.now(); return; }
-        if (document.visibilityState === 'visible') _resumeRecover('visible');
-      });
-      window.addEventListener('pageshow', function (e) {
-        if (e && e.persisted) _resumeRecover('bfcache');
-      });
-    } catch (e) { /* ignore */ }
+    /* v2.3.4482: the pair is taken off by this set-up's teardown (below):
+       it used to stay, one more copy each time the game was entered, every
+       old copy running a torn-down set-up's recovery on each return
+       (game/resumeListeners.js). */
+    var _disarmResume = armResumeListeners(
+      typeof document !== 'undefined' ? document : null,
+      typeof window !== 'undefined' ? window : null,
+      /* v2.3.778: stamp when we go hidden so the resync threshold can
+         use real away-time even when the heartbeat keeps ticking
+         (desktop tab switches don't freeze JS). */
+      function () { _hiddenAt = Date.now(); },
+      function () { _resumeRecover('visible'); },
+      function () { _resumeRecover('bfcache'); });
 
     /* Channel shim — wraps WebSocket with batched input protocol (§16.14)
      * Movement and non-critical events batch at 10Hz (100ms windows).
@@ -6395,6 +6397,7 @@ export function setupWebSocket(ctx) {
       clearInterval(_aliveTimer); /* v2.3.778 resync heartbeat */
       clearInterval(_riderTimer); /* v2.3.3254: the quiet phone's riders */
       _disarmComeBack();   /* v2.3.3034 */
+      _disarmResume();   /* v2.3.4482: the return-to-tab pair goes with its set-up */
       /* v2.3.4367: handlers off before the close, as connect() does: a closed
          effect's socket must not run the ordinary drop and reconnect */
       var _lastWs = ws;
