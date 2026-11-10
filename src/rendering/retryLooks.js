@@ -18,6 +18,24 @@
 export const RETRY_LATER_MS = [5000, 10000, 20000, 40000, 60000];
 export const RETRY_ROUNDS = 10;
 
+/* v2.3.4452: a load with a TIME LIMIT (TRAPS §257): `p` as it is, but one that
+   has not answered in `ms` rejects ('time limit'), so a stalled request comes
+   to its loader's retries like an error.  An answer after that goes to
+   `late(value)` (keep it if the slot is still empty, or let it go), never
+   lost and never held twice.  `ms` 0: no limit (an off switch). */
+export function timeLimit(p, ms, late, setT, clrT) {
+  if (!(ms > 0)) return p;
+  const st = setT || ((fn, t) => setTimeout(fn, t));
+  const ct = clrT || ((h) => clearTimeout(h));
+  return new Promise((res, rej) => {
+    let over = false;
+    const h = st(() => { over = true; rej(new Error('time limit')); }, ms);
+    Promise.resolve(p).then(
+      (v) => { if (over) { if (late) { try { late(v); } catch (e) { /* its own */ } } return; } ct(h); res(v); },
+      (e) => { if (over) return; ct(h); rej(e); });
+  });
+}
+
 /** The rounds of one loader.  `switchName`: its own off switch (`?<name>=0`),
  *  besides the shared `?retrylooks=0`. */
 export function laterRounds(switchName) {
