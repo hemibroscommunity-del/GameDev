@@ -5661,7 +5661,10 @@ export function setupWebSocket(ctx) {
             _holdForRejoin(msg);
             try { channelShim.reconnectNow(); } catch (e) {}
           }
-          return;
+          /* v2.3.4390: and the caller is told it went nowhere (the sweep's
+             cause 5): chatMute.js keeps a mute tapped now and sends it on the
+             rejoin, where it used to stamp it as sent */
+          return false;
         }
         if (msg && SETTLED_SENDS[msg.type] === 1) {
           if (!_settleSentAt) _settleSentAt = Date.now();
@@ -6232,6 +6235,7 @@ export function setupWebSocket(ctx) {
             });
             startBatchTimer();
           }
+          return true;   /* v2.3.4390: on its way (the open socket, or its batch) */
         }
       },
       track: function track(data) {
