@@ -64,6 +64,22 @@ export function rideButtonWanted(S, f) {
   return isRiding(S) || onRideGround(S.player.x, S.player.y, f && f.centre, f && f.safeR);
 }
 
+/* ═══ v2.3.4411: A RIDER IS NEVER LEFT WITHOUT THE BOARD BUTTON ═══
+   The button gives its place to the fight's buttons (a monster targeted, the
+   Block button live; RideButton.jsx) -- but rideCheck steps you off only for
+   the shield, a swing, a bash or a roll, NOT for a locked monster or a
+   monster near.  So a rider who tapped a monster at the safe ground's edge
+   (or rolled up beside one) kept rolling with no button to get off (the
+   state-machine sweep, P3-8).  On the board, only the shield up hides it (its
+   place is then Bash's, and rideCheck steps you off that same frame).
+   `blockLive`: shieldButtonLive's answer, handed in (no imports here). */
+export function rideFightHides(S, blockLive) {
+  if (!S) return true;
+  if (S._shieldUp) return true;
+  if (isRiding(S)) return false;
+  return !!((S.lockedTarget && S.lockedTarget.type === 'monster') || blockLive);
+}
+
 /** A tap: ask to get on (or off).  `send(type, payload)` is the socket's.
     Returns what was asked, or null when nothing was sent. */
 export function toggleRide(S, now, send) {

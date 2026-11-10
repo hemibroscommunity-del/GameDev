@@ -338,3 +338,18 @@ export function clearElemStatuses(S) {
   S._slowUntil = 0; S._fractureUntil = 0; S._fractureStacks = 0; S._thornUntil = 0; S._staggerUntil = 0;   /* v2.3.3264 */
   S._frozenUntil = 0; S._wobbleFrom = 0; S._wobbleUntil = 0;   /* v2.3.3620 */
 }
+
+/* ═══ v2.3.4411: IS ANY STATUS'S LOOK STILL TO DRAW ON THIS FIGURE? ═══
+   effectsRenderer asks this before it draws another player's statuses.  Its
+   own list stopped at v2.3.3264's three, so a peer frozen by a snowman, or
+   wobbling after a rock monster's daze (the wobble starts when the daze
+   ends), was skipped before the draw that knows both (the state-machine
+   sweep, R4-13).  One list, read by both; a wobble still waiting on its
+   start passes here and the draw itself waits for `_wobbleFrom`. */
+export function elemFxLive(R, now, gustMs) {
+  if (!R) return false;
+  return !!(R._chillUntil > now || R._stuckUntil > now || R._burnUntil > now || (R._gustAt && now - R._gustAt < gustMs)
+    || R._dazeUntil > now || R._shockUntil > now || R._soakUntil > now || R._poisonUntil > now
+    || R._slowUntil > now || R._fractureUntil > now || R._thornUntil > now
+    || R._frozenUntil > now || R._wobbleUntil > now);
+}

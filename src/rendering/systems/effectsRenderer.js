@@ -296,7 +296,7 @@ import { propsForZone } from '@/data/worldProps.js'; /* v2.3.2730: marks drawn O
 import { wheelPropRec, wheelPropArt, wheelScorch, freeWheelScorch } from '../wheelObjects.js';   /* v2.3.2995: ...and on the Wheel's objects: arrows, burn marks, the pieces a hit cuts */
 import { isWheelBroken } from '@/game/wheelBreak.js';   /* v2.3.2995: a broken object's marks go with it */
 import { freePropChips } from '../hitMaterialFx.js';    /* v2.3.2995 */
-import { ELEM_ICON_SRC } from '@/game/elemHits.js';   /* v2.3.2996: a monster's element on the number */
+import { ELEM_ICON_SRC, elemFxLive } from '@/game/elemHits.js';   /* v2.3.2996: a monster's element on the number */
 import { emoteKind, EMOTE_POP_MS } from '@/game/emotes.js';   /* v2.3.3391: an emoji over the head */
 import { drawTelegraphShape } from './telegraphShapes.js';   /* v2.3.4011: the monster moves' warnings */
 
@@ -13711,9 +13711,9 @@ export class EffectsRenderer {
         const o = others[id];
         if (!o || o._isDead || (o.zone || o.z || 'town') !== zone) continue;
         if (_peerNotDrawn(S, id)) continue;   /* v2.3.3241 */
-        if (!(o._chillUntil > now || o._stuckUntil > now || o._burnUntil > now || (o._gustAt && now - o._gustAt < GUST_FX_MS)
-          || o._dazeUntil > now || o._shockUntil > now || o._soakUntil > now || o._poisonUntil > now   /* v2.3.3014: + the other four */
-          || o._slowUntil > now || o._fractureUntil > now || o._thornUntil > now)) continue;   /* v2.3.3264: + a player's gem's three */
+        /* v2.3.3014: + the other four; v2.3.3264: + a player's gem's three;
+           v2.3.4411: + the freeze and the wobble -- one list (elemFxLive) */
+        if (!elemFxLive(o, now, GUST_FX_MS)) continue;
         const ox = typeof o.renderX === 'number' ? o.renderX : o.x;
         const oy = typeof o.renderY === 'number' ? o.renderY : o.y;
         if (typeof ox !== 'number' || typeof oy !== 'number') continue;

@@ -1,6 +1,6 @@
 import React from 'react';
 import { ctlColumn, ctlBottom, CTL_SLOT } from './ShieldButton.jsx';
-import { rideSupported, rideButtonWanted, isRiding, toggleRide, rideOffLine, ASK_MS } from '@/game/ride.js';
+import { rideSupported, rideButtonWanted, isRiding, toggleRide, rideOffLine, rideFightHides, ASK_MS } from '@/game/ride.js';
 import { rideGround } from '@/game/rideGround.js';
 import { shieldButtonLive } from '@/game/shieldToggle.js';
 import { TARGET_PERIMETER_PX } from '@/data/index.js';
@@ -49,9 +49,9 @@ export function rideButtonView(S) {
   if (!S || !S.rpg || !rideSupported(S)) return null;
   var g = rideGround(S);
   if (!rideButtonWanted(S, g)) return null;
-  /* a fight near: the fight's buttons have this place */
-  if (S._shieldUp || (S.lockedTarget && S.lockedTarget.type === 'monster')) return null;
-  if (shieldButtonLive(S, TARGET_PERIMETER_PX)) return null;
+  /* a fight near: the fight's buttons have this place -- v2.3.4411: but a
+     rider keeps it (rideFightHides; a lock does not step you off) */
+  if (rideFightHides(S, !isRiding(S) && shieldButtonLive(S, TARGET_PERIMETER_PX))) return null;
   var on = isRiding(S);
   var r = S._ride;
   var asking = !!(r && r.asked && Date.now() - r.asked < ASK_MS);
