@@ -1,4 +1,4 @@
-/* ═══ THE WHOLE-GAME SWEEP: EVERYTHING THAT HOLDS THE PAGE, BY NAME (v2.3.4450) ═══
+/* ═══ THE WHOLE-GAME SWEEP: EVERYTHING THAT HOLDS THE PAGE, BY NAME (v2.3.4460) ═══
  *
  * The owner, 2026-11-10, after a week of catching them one at a time on his
  * iPhone (the townsfolk's bakes, the Blacksmith's fire goblin, the uneven
@@ -46,7 +46,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { HOLD_MAX_MS, FRAME_JS_MAX_MS, KNOWN } from './held-budget.mjs';
+import { HOLD_MAX_MS, FRAME_JS_MAX_MS, WINDOW_MAX_MS, KNOWN, judgeHeld } from './held-budget.mjs';
 
 const PHONE = { width: 430, height: 932 };
 const STATION_NAMES = ['stand', 'town', 'lands', 'fight', 'windows', 'folk', 'peer', 'armour'];
@@ -54,7 +54,7 @@ const WANT = (process.env.BT_HS_STATIONS || STATION_NAMES.join(',')).split(',').
 
 /* ── the families: whose work a stack is.  First match wins; `key` is what the budget lists. ── */
 const FAMILIES = [
-  ['body-bake', "a look's body recoloured on the page (another player's, a townsperson's)", /\bbuildBodySheet\b|\brecolorBodyToCanvas\b/],
+  ['body-bake', "a body or head sheet recoloured on the page for one look (another player's, a townsperson's)", /\bbuildBodySheet\b|\brecolorBodyToCanvas\b/],
   ['standin-bake', 'a swing, bow or tool stand-in recoloured on the page', /\brecolorStandInSkin\b|\bbuildStandIn\w*|\b_bakeStandIn\w*/],
   ['gear-sheet', 'a gear or shirt sheet built on the page', /\bbuildSheet\b|\bcomposeShirt\b|\b_gearStripFrame\b|\bloadCroppedStrip\b/],
   ['head-piece', 'a head piece (hair, hat, beard, eyes) coloured or cut', /\b_buildPickupHeadSheet\b|\brecolorTrait\w*|\bbuildHead\w*|\b_bakeHair\w*/],
@@ -110,12 +110,19 @@ function analyse(profile) {
     if (!own.length) own = stack.slice(0, -1).reverse().filter(lib).map((n) => n.callFrame.functionName);
     /* the path to it, for whoever fixes it: outside the frame the three outermost of the game's own; inside it, the
        three under the loop */
+    /* BT_HS_STACKS=1: the whole path, every named function (for whoever is hunting one hold) */
+    const full = process.env.BT_HS_STACKS ? stack.slice(0, -1).reverse().map((n) => n.callFrame.functionName || '?').filter((x) => !/^\(/.test(x)).slice(-14).join(' > ') : '';
     const li = own.indexOf('gameLoop');
     const chain = (li >= 0 ? own.slice(li + 1, li + 4) : own.slice(0, 3)).join(' > ') || top || '(anonymous)';
     /* (a line written to the console costs this page what the harness makes of it -- Playwright reads every one --
        not what it costs a phone: counted as the browser's own) */
-    v = { idle: top === '(idle)', program: top === '(program)' || /^console\./.test(top), gc: top === '(garbage collector)', inLoop: names.includes('gameLoop'),
-      js: !!leaf.url, fam, from: own.slice(0, 2).join(' > ') || top || '(anonymous)', chain, leaf: top || '(anonymous)' };
+    /* a call that WAITS for the graphics chip (it returns when the chip has worked through all it was sent) holds
+       the page as surely as script does, wherever it runs: counted, though it is the browser's own function.  The
+       first tours missed it inside the frame -- the screen check's collect, moved to the top of the frame, read as
+       gone when it had only moved. */
+    const chipWait = /^(getBufferSubData|readPixels|finish|clientWaitSync|getError)$/.test(top);
+    v = { idle: top === '(idle)', program: top === '(program)' || /^console\./.test(top), chipWait, gc: top === '(garbage collector)', inLoop: names.includes('gameLoop'),
+      js: !!leaf.url, fam, from: own.slice(0, 2).join(' > ') || top || '(anonymous)', chain: full || chain, leaf: top || '(anonymous)' };
     info.set(id, v);
     return v;
   };
@@ -133,7 +140,7 @@ function analyse(profile) {
     if (v.inLoop) {
       cur = null;
       if (!fr) { fr = { js: 0, by: new Map(), leaf: new Map(), chain: new Map() }; frames.push(fr); }
-      if (v.js || v.gc) { fr.js += ms; add(fr.by, v.fam ? v.fam.key : 'the frame itself', ms); add(fr.leaf, v.leaf, ms); add(fr.chain, v.chain, ms); }
+      if (v.js || v.gc || v.chipWait) { fr.js += ms; add(fr.by, v.fam ? v.fam.key : 'the frame itself', ms); add(fr.leaf, v.leaf, ms); add(fr.chain, v.chain, ms); }
     } else {
       fr = null;
       if (!cur) { cur = { ms: 0, by: new Map(), from: new Map(), leaf: new Map(), chain: new Map() }; stretches.push(cur); }
@@ -149,7 +156,13 @@ function analyse(profile) {
   const js = frames.map((f) => f.js).sort((a, b) => a - b);
   const med = js.length ? js[js.length >> 1] : 0;
   return { total: Math.round(total), sawLoop,
-    held: stretches.map((s) => ({ ms: +s.ms.toFixed(1), key: topOf(s.by)[0], what: topOf(s.from)[0], in: top3(s.leaf), via: topOf(s.chain)[0] })),
+    /* a hold is the family's whose work is the most of it; when no one family's is, but the biggest single piece
+       IS a family's (a garbage collection among several small jobs), it is that family's, not "other" under its name */
+    held: stretches.map((s) => {
+      const what = topOf(s.from)[0];
+      const byLabel = FAMILIES.find((f) => f[1] === what);
+      return { ms: +s.ms.toFixed(1), key: byLabel ? byLabel[0] : topOf(s.by)[0], what, in: top3(s.leaf), via: topOf(s.chain)[0] };
+    }),
     frames: { n: frames.length, medJs: +med.toFixed(1),
       /* a long frame is a family's when that family is a third or more of the frame's own code; else the frame's own */
       long: frames.filter((f) => f.js >= Math.max(FRAME_JS_MAX_MS, med * 3)).map((f) => {
@@ -364,19 +377,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return { on };
     });
 
-    /* ── the ranking, and the budget ── */
-    const fam = new Map();
-    const bump = (key, what, ms, where, kind, via) => {
-      const f = fam.get(key) || { key, what, n: 0, sum: 0, longest: 0, where: new Set(), frame: 0, outside: 0, via: '' };
-      f.n++; f.sum += ms; if (ms > f.longest) { f.longest = ms; f.via = via || ''; } f.where.add(where); f[kind]++;
-      fam.set(key, f);
-    };
-    for (const st of report.stations) {
-      for (const s of st.held) bump(s.key === 'other' ? 'other: ' + s.what : s.key, s.what, s.ms, st.name, 'outside', s.via);
-      for (const f of st.frames.long) bump(f.key, f.key, f.ms, st.name, 'frame', f.via);
-    }
-    const ranked = [...fam.values()].sort((a, b) => b.longest - a.longest).map((f) => ({ ...f, sum: Math.round(f.sum), longest: +f.longest.toFixed(1), where: [...f.where].join(', ') }));
+    /* ── the ranking, and the budget (held-budget.mjs judgeHeld: the lines, the debt list, the noise rule) ── */
+    const { ranked, over } = judgeHeld(report.stations);
     report.ranked = ranked;
+    report.over = over;
     writeFileSync(join(OUT, 'heldsweep.json'), JSON.stringify(report, null, 1));
     console.log('\n  ══ EVERYTHING THAT HELD THE PAGE FOR 4 ms OR MORE, WORST FIRST ══');
     console.log('     longest   times   in all   where                          what');
@@ -384,17 +388,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const readable = report.stations.every((s) => s.readable);
     rec.ok(`the profile reads by name (an unminified build: the game's loop found in ${report.stations.filter((s) => s.readable).length} of ${report.stations.length} stations)`, readable && report.stations.length >= 1,
       'build with: npx vite build --minify false --outDir dist-prof, and run with QA_DIST=dist-prof');
-    /* the budget: a family not listed may hold the page HOLD_MAX_MS at most; a listed one, its own line */
-    const over = [];
-    for (const f of ranked) {
-      /* a listed family is held to its own line (held-budget.mjs KNOWN: the debt list); `ui:*` and `other:*` list a
-         whole kind; anything else to the general line for where it ran */
-      const k = KNOWN[f.key] || (f.key.startsWith('ui:') ? KNOWN['ui:*'] : null) || (f.key.startsWith('other: ') ? KNOWN['other:*'] : null);
-      const line = k ? k.ms : (f.frame && !f.outside ? FRAME_JS_MAX_MS : HOLD_MAX_MS);
-      if (f.longest > line) over.push({ key: f.key, longest: f.longest, line, where: f.where, via: f.via });
-    }
-    rec.ok(`the budget: nothing holds the page longer than its line -- ${HOLD_MAX_MS} ms outside the frame, ${FRAME_JS_MAX_MS} ms of the game's own code inside one, or a listed family's own (${over.length} over${over.length ? ': ' + over.slice(0, 6).map((o) => `${o.key} ${o.longest} > ${o.line}`).join('; ') : ''})`,
-      over.length === 0, over);
+    const listed = over.filter((o) => o.listed), fresh = over.filter((o) => !o.listed);
+    const say = (l) => l.slice(0, 6).map((o) => `${o.key} ${o.longest} ms > ${o.line} (${o.where}${o.times > 1 ? ', ' + o.times + ' times' : ''})`).join('; ');
+    rec.ok(`the budget: nothing NEW holds the page past its line -- ${HOLD_MAX_MS} ms a job outside the frame, ${FRAME_JS_MAX_MS} ms of the game's own code inside one, ${WINDOW_MAX_MS} ms at a window (${fresh.length} over${fresh.length ? ': ' + say(fresh) : ''})`,
+      fresh.length === 0, fresh);
+    rec.ok(`...and nothing on the debt list has grown past its own line (${Object.keys(KNOWN).length} listed; ${listed.length} over${listed.length ? ': ' + say(listed) : ''})`,
+      listed.length === 0, listed);
     rec.ok(`every station asked for was played (${report.stations.map((s) => s.name).filter((v, i, a) => a.indexOf(v) === i).join(', ')})`, WANT.every((w) => report.stations.some((s) => s.name === w)), WANT);
   } finally {
     stopA();

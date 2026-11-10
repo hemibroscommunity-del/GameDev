@@ -1,4 +1,4 @@
-/* ═══ v2.3.4450: A STRIP PACKED FROM ITS FILE'S OWN COLOUR NUMBERS ═══
+/* ═══ v2.3.4460: A STRIP PACKED FROM ITS FILE'S OWN COLOUR NUMBERS ═══
  *
  * The owner, 2026-11-10, on the slowdown by the Blacksmith (the fire goblin's
  * look loading: docs/specs/strip-gentle.md): "I thought fire goblin strips

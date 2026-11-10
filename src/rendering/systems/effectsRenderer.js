@@ -105,7 +105,7 @@ if (typeof window !== 'undefined') {
    Never for a drawing (stamped per player) or under greaves (the legs are cut
    by their shape). */
 registerLookSheets('standin', '/sprites/look/standin/roles.json');
-/* ═══ v2.3.4450: ...AND UNDER GREAVES TOO (on; `?legslook=0` off) ═══
+/* ═══ v2.3.4460: ...AND UNDER GREAVES TOO (on; `?legslook=0` off) ═══
    The whole-game sweep of what holds the page (docs/specs/held-sweep.md) found
    its longest holds in the one stand-in still baked for every look: the
    sword's and the bow's body under greaves -- 110 to 140 ms a sheet the first
@@ -4416,7 +4416,7 @@ export class EffectsRenderer {
          overwhelming majority -- and recolorBodyToCanvas takes the same early
          exits it always did. */
       const _art = localBodyArt(false);
-      /* v2.3.4450: under greaves, from the numbers kept for it (above, `?legslook=0`): asked before the shape is
+      /* v2.3.4460: under greaves, from the numbers kept for it (above, `?legslook=0`): asked before the shape is
          made into bytes, which only the old bake reads */
       const _legsLook = !_art && !rec._btNoLook && this._legsWornFor(rec) && _legsLookHas(rec.url);
       const _legsUnder = _legsLook ? null : this._legsUnderFor(rec);   /* v2.3.3640 */
@@ -4425,7 +4425,7 @@ export class EffectsRenderer {
       if (_legsLook || (!_art && !_legsUnder && !rec._btNoLook && lookPaletteOn() && lookHas('standin', _standInSheet(rec.url)))) {
         const mk = [];
         mk._btLookUrl = rec.url;
-        mk._btLookLegs = !!_legsLook;   /* v2.3.4450 */
+        mk._btLookLegs = !!_legsLook;   /* v2.3.4460 */
         mk._btRec = rec;   /* the record to bake the old way if the look is refused (_standInStrip) */
         rec.target[rec.dir] = mk;
         rec.target[rec.dir + '|m'] = null;
@@ -4617,9 +4617,11 @@ export class EffectsRenderer {
     if (typeof window !== 'undefined') {
       const probe = () => ({ on: _standInLegsUse, legs: getEquip('legs'),
         shapes: Object.keys(this._greavesShape || {}), clamped: Object.assign({}, this._legsClampSeen),
-        /* v2.3.4450: your strips drawn from the numbers kept under greaves (no bake: nothing in `clamped`) */
+        /* v2.3.4460: your strips drawn from the numbers kept under greaves (no bake: nothing in `clamped`) */
         looks: (this._bodyStrips || []).filter((r) => { const a = r.target[r.dir]; return !!(a && a._btLookLegs); }).map((r) => r.url.replace(/^.*\//, '')),
-        legsLook: !LEGS_LOOK_OFF });
+        legsLook: !LEGS_LOOK_OFF,
+        /* another player's sword or bow bodies baked on this page for their look (the old way: one a sheet a look) */
+        peerBakes: this._remoteBodyCache ? this._remoteBodyCache.size : 0 });
       probe.set = (on) => { _standInLegsUse = !!on && !STANDIN_LEGS_OFF; this._legsClampSeen = Object.create(null); this._rebakeLegBodies(); return probe(); };
       /* the sword or bow stand-in drawn now -- yours, or a peer's by id: its
          body and greaves sprites (for a page-side check) */
@@ -15276,7 +15278,7 @@ export class EffectsRenderer {
     if (!sword && rec.target !== this._bowBodyFrames) return null;
     return this._greavesUnder(rec.cfg.gearPose || (sword ? 'swing' : 'bowshot'), rec.dir);
   }
-  /* v2.3.4450: the same question without the shape: greaves on, the clamp on, one of the whole-body strips */
+  /* v2.3.4460: the same question without the shape: greaves on, the clamp on, one of the whole-body strips */
   _legsWornFor(rec) {
     if (!rec || !_standInLegsUse || getEquip('legs') === 'none') return false;
     return rec.target === this._swordBodyFrames || rec.target === this._bowBodyFrames;
@@ -15305,7 +15307,7 @@ export class EffectsRenderer {
        is in (the key's |L: before it, the plain bake) */
     const _peq = o.equip || {};
     const _legsOn = !!(_peq.legs && _peq.legs !== 'none');
-    /* v2.3.4450: no drawing, in greaves: their look's strip from the numbers kept for it -- no bake on the page the
+    /* v2.3.4460: no drawing, in greaves: their look's strip from the numbers kept for it -- no bake on the page the
        first time they swing (it was 110 to 140 ms a sheet: docs/specs/held-sweep.md).  Refused (no row left): the
        old bake below, as before. */
     if (!_pa.seg && _legsOn && _standInLegsUse && _legsLookHas(cfg.bodyUrl)) {

@@ -1,4 +1,4 @@
-/* ═══ v2.3.4450: WHERE A PICTURE MEETS THE GROUND, FROM ITS OWN NUMBERS ═══
+/* ═══ v2.3.4460: WHERE A PICTURE MEETS THE GROUND, FROM ITS OWN NUMBERS ═══
  *
  * A low thing in the world casts its shadow column by column from where each
  * column of its picture meets the ground (wheelObjects.js wheelObjectCasters,

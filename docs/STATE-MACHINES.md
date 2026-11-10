@@ -348,7 +348,7 @@ size?): **YES**. "Dead" is the server's word since v2.3.4373 (above).
   - **"I thought fire goblin strips were converted into 256 color art like
     everything should be"** (the owner, told the above; then "make sure
     that's a system going forward"). They were, and held as numbers: the
-    waste was the way in. v2.3.4450 reads a strip's own numbers from its
+    waste was the way in. v2.3.4460 reads a strip's own numbers from its
     file off the page's thread (`stripRead.js`, `stripPack.js`): the page's
     work for the fire goblin's look 198 ms before, 20 ms now, the picture the
     same. Eight snowman strips that were NOT 256-colour files are converted.
@@ -372,3 +372,31 @@ size?): **YES**. "Dead" is the server's word since v2.3.4373 (above).
     made no difference and the meter shows the chip keeping up.
   - The same uneven step is on computers too, so this is part of A2's "not
     smooth". A2 stays open for what a computer's graphics chip costs.
+
+## Smooth on every device: item A4, the whole-game sweep (v2.3.4460)
+
+The owner, 2026-11-10: "You do a sweep of everything because I keep catching
+performance issues piecemeal and I want to make sure the optimizations are
+everywhere in the game."
+
+- [x] **A4. Everything that holds the page, found at once and budgeted.**
+  `mp-heldsweep` plays a tour of the whole game with a profiler on the phone
+  and ranks every job that holds the page's one thread; its lines are in
+  `tools/qa/mp/held-budget.mjs` (12 ms a job outside the frame, 16 ms of the
+  game's own code in one). The full list, the fixes and the debt are in
+  `docs/specs/held-sweep.md`; the rule in TRAPS §310 and CLAUDE.md's laws.
+  - **Fixed in this version**: the black-screen check's wait for the whole
+    frame (206 ms, 18 times a tour); an object page's ground lines read on
+    the page (29 ms, 64 times); the World map redrawn every frame you moved;
+    a body under greaves baked for every look (597 ms on your own greaves,
+    57 to 140 ms a sheet when an armoured player first swings); a colour
+    variant of a monster recoloured pixel by pixel (23 ms a sheet); the band
+    redrawn whole five times a second in one piece; the loading gate's
+    search of the whole page ten times a second; the Mayor's arrow measuring
+    the page after every frame.
+  - **Still to do** (the debt list in `held-budget.mjs`, in rank order): the
+    masked bake that runs on the page when a frame is wanted before the
+    worker has it; gear sheets cropped and packed on the page; windows that
+    draw a portrait as they open; the play column's size measured live;
+    A2's "another player with an eye style or a drawing"; and Windows and
+    Mac, where looks are still baked per look.

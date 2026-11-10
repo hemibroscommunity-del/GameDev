@@ -1,4 +1,4 @@
-# A look that loads as you ride costs the page almost nothing (v2.3.4400, v2.3.4450)
+# A look that loads as you ride costs the page almost nothing (v2.3.4400, v2.3.4460)
 
 > The owner, 2026-11-10, an iPhone 14 Pro Max: "It noticeably slowed when I
 > rode by the blacksmith hammering."
@@ -8,7 +8,7 @@
 A monster's look loads as you walk toward it. Each of its strips is a
 256-colour file and is held as colour numbers, but the way between the two
 unpacked the file to full colour and worked the numbers out again on the
-page. **v2.3.4400** spread that work over many frames. **v2.3.4450** removes
+page. **v2.3.4400** spread that work over many frames. **v2.3.4460** removes
 it: the file's own numbers are read, cropped and packed off the page's
 thread, and the page only makes the texture. A guard
 (`server/test/strip-door.test.mjs`) keeps it so. The sections below are in
@@ -84,7 +84,7 @@ is not drawn, as before.
 - `mp-monstertrim` and `mp-picsonce` (every cropped frame against the served
   file; the numbers against the canvas) pass on the refactored packer.
 
-## v2.3.4450: read from the file's own numbers, off the page's thread
+## v2.3.4460: read from the file's own numbers, off the page's thread
 
 > The owner, told the above: "I thought fire goblin strips were converted
 > into 256 color art like everything should be", and then: "Yes go
@@ -142,7 +142,7 @@ so on a phone: the meter names it ("between frames: strip ...").
 
 ### What was proved
 
-| Riding up to the Blacksmith (`mp-stripgentle`) | All at once | A few ms a frame (v2.3.4400) | Read off the page (v2.3.4450) |
+| Riding up to the Blacksmith (`mp-stripgentle`) | All at once | A few ms a frame (v2.3.4400) | Read off the page (v2.3.4460) |
 |---|---|---|---|
 | Strips unpacked on the page in one job | 14, the longest 25 ms | 0 | **0** |
 | Slices on the page | | 42, the longest 15 ms | **0** |

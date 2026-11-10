@@ -1,4 +1,4 @@
-/* ═══ v2.3.4450: THE WHOLE-GAME SWEEP OF WHAT HOLDS THE PAGE ═══
+/* ═══ v2.3.4460: THE WHOLE-GAME SWEEP OF WHAT HOLDS THE PAGE ═══
  *
  * The owner, 2026-11-10: "You do a sweep of everything because I keep
  * catching performance issues piecemeal and I want to make sure the
@@ -41,7 +41,7 @@ import { bottomsOfNumbers, BOTTOM_COLS, BOTTOM_SOLID } from '../../src/rendering
 import { beforeDraw, runBeforeDraw } from '../../src/game/framePacer.js';
 import { retintPalette, RETINT_ALPHA, RETINT_REF_K } from '../../src/rendering/retintPalette.js';
 import { packStripNumbers } from '../../src/rendering/stripPack.js';
-import { HOLD_MAX_MS, FRAME_JS_MAX_MS, KNOWN } from '../../tools/qa/mp/held-budget.mjs';
+import { HOLD_MAX_MS, FRAME_JS_MAX_MS, WINDOW_MAX_MS, NOISE_K, AT_A_WINDOW, KNOWN, judgeHeld } from '../../tools/qa/mp/held-budget.mjs';
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -205,6 +205,23 @@ const rect = (set, x0, y0, x1, y1, c = 1) => { for (let y = y0; y <= y1; y++) fo
   check(`7b. every listed family has its line, why it is over, and what fixes it (${rows.length} listed)`, bad.length === 0, bad.map(([k]) => k));
   const low = rows.filter(([, v]) => v && v.ms <= HOLD_MAX_MS);
   check('7c. a family under the general line is not listed (a fixed one comes off the list)', low.length === 0, low.map(([k]) => k));
+  /* the judge, on a made-up tour */
+  const hold = (ms, key, what) => ({ ms, key, what: what || key, via: '' });
+  const made = (rows) => rows.map(([name, held, long]) => ({ name, held, frames: { long: long || [] } }));
+  const j1 = judgeHeld(made([['town', [hold(11, 'new-thing'), hold(13, 'noise-once'), hold(30, 'new-bake'), hold(13, 'twice'), hold(14, 'twice')]]]));
+  const o1 = j1.over.map((o) => o.key).sort().join(',');
+  check(`7c2. the judge: under the line passes; one hold just past it is noise (less than ${NOISE_K} x); two are not; one far past is not`,
+    o1 === 'new-bake,twice' && j1.over.every((o) => !o.listed), j1.over);
+  const j2 = judgeHeld(made([[AT_A_WINDOW[0], [hold(40, 'other', 'a window opening'), hold(WINDOW_MAX_MS * 2, 'other', 'too slow even for a window')]], ['town', [hold(40, 'other', 'a window opening')]]]));
+  check(`7c3. ...at a window a tap's own redraw may take ${WINDOW_MAX_MS} ms; the same hold in play may not`,
+    j2.over.length === 2 && j2.over.some((o) => /too slow/.test(o.key)) && j2.over.some((o) => o.where === 'town'), j2.over);
+  const j3 = judgeHeld(made([['peer', [hold(KNOWN['body-bake'].ms - 5, 'body-bake'), hold(15, 'ui:GearTab', 'the GearTab')], [{ ms: 15, key: 'the frame itself', via: '' }, { ms: 30, key: 'new-in-frame', via: '' }]]]));
+  check('7c4. ...a listed family is held to its own line (and a kind of them, `ui:*`, to that kind\'s); a frame to the frame\'s line',
+    j3.over.length === 1 && j3.over[0].key === 'new-in-frame', j3.over);
+  const j4 = judgeHeld(made([['peer', [hold(KNOWN['body-bake'].ms * 2, 'body-bake')]]]));
+  check('7c5. ...and a listed family that GROWS past its own line fails, as listed', j4.over.length === 1 && j4.over[0].listed === true, j4.over);
+  check('7c6. the families come back ranked by their longest hold', j1.ranked[0].key === 'new-bake' && j1.ranked[0].longest === 30 && j1.ranked.find((r) => r.key === 'twice').n === 2, j1.ranked.map((r) => r.key));
+  check(`7c7. the window's line is a tap's, not a licence: no more than ${45} ms`, WINDOW_MAX_MS <= 45 && NOISE_K <= 1.5);
   const run = src('tools/qa/mp/run.mjs');
   check('7d. the tour and the ground-line scenario are registered', /heldsweep/.test(run) && /pagebases/.test(run));
   const tour = src('tools/qa/mp/mp-heldsweep.mjs');

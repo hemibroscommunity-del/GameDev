@@ -236,8 +236,11 @@ spec. Add a line here only for a new RULE every session must follow.
 - Capacity: `tools/qa/load/load.mjs` (after a change to the tick, moves or the
   Wheel's monsters). Bots: `tools/qa/load/bot-lab.mjs` (after a change to a
   harvest, cook, move or hit path). Writes: `tools/qa/load/cost-audit.mjs`. A
-  phone's frame: the Test panel's Speed test, `mp-phoneframe`. A computer's
-  world on a slow line and a slowed page: `mp-desksmooth` (TRAPS §279).
+  phone's frame: the Test panel's Speed test, `mp-phoneframe`. What holds the
+  page: `mp-heldsweep` (after a change to a bake, a load in play, or a
+  timer's redraw; its own unminified build: `docs/specs/held-sweep.md`). A
+  computer's world on a slow line and a slowed page: `mp-desksmooth` (TRAPS
+  §279).
 
 ## 7. The laws
 
@@ -290,6 +293,22 @@ spec. Add a line here only for a new RULE every session must follow.
     body how many MB and why. Lower a line to lock a saving in. Also
     `mp-memledger` (the lands), `mp-longplay` (a long session), `mp-gpuaudit`
     (names what the graphics chip holds).
+- **THE PAGE'S ONE THREAD IS BUDGETED** (owner, 2026-11-10: *"I keep
+  catching performance issues piecemeal"*). In play, no job holds the page
+  more than 12 ms outside the frame, and no frame runs more than 16 ms of the
+  game's own code (`tools/qa/mp/held-budget.mjs`: what is over is LISTED
+  there with why; never raise a line silently). `mp-heldsweep` plays the
+  whole game with a profiler and names what holds it (TRAPS §310,
+  `docs/specs/held-sweep.md`):
+  - work on pixels goes, in this order, to the PALETTE (`retintPalette.js`,
+    a look's row), OFFLINE once for every look (`tools/art/role-bake.mjs`),
+    or a WORKER reading the file's own numbers (`stripRead.js`,
+    `artBottoms.js`); a canvas read back on the page is the last resort, a
+    few ms at a time;
+  - a read that waits for the graphics chip runs at the top of a frame
+    (`framePacer.js beforeDraw`); a redraw on a timer is a `startTransition`;
+    nothing measures the page (`getBoundingClientRect`, `clientWidth`) inside
+    a frame.
 - **Drawing** (a phone's frame is the budget):
   - a structural change (visible, zIndex, add or remove, blend, a texture from
     outside its batch, any change to a small Graphics) rebuilds its layer's
@@ -350,6 +369,7 @@ spec. Add a line here only for a new RULE every session must follow.
 | a domain players use | `ORIGINS` (wrangler.toml: the owner approves) |
 | a change to the Wheel's plan or objects | a re-bake of both Wheels |
 | anything the memory check reads more of | the line raised, with the MB and why in the PR body |
+| a bake, a load in play, or a redraw on a timer | off the page's thread (the palette, offline, a worker; `startTransition`); `mp-heldsweep` within its budget |
 | a server-only number a copier would value | a row in the hidden settings (`hidden.js` `HIDDEN_SPEC`) with a public placeholder |
 
 ## 9. Where things are

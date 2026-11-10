@@ -19,7 +19,7 @@
  *   { id, png }  -> { id, ok: true, w, h, stride, n, idx, rgb, alpha }
  *                   or { id, ok: false, error } -- loaded as a picture then
  *
- * v2.3.4450: and a STRIP of frames (a monster's: zoneTextures.js
+ * v2.3.4460: and a STRIP of frames (a monster's: zoneTextures.js
  * loadTrackedStrip, stripRead.js) -- read as its numbers and cropped and
  * packed here too (stripPack.js), so the page's share of a strip that loads
  * while you play is making its texture:
@@ -29,8 +29,8 @@
  *                   the page then, as before
  */
 import { decodePng8 } from './png8Decode.js';
-import { packStripNumbers } from './stripPack.js';   /* v2.3.4450: a monster's strip, cropped and packed from its own numbers */
-import { bottomsOfNumbers } from './artBottoms.js';   /* v2.3.4450: each frame's ground line, read here from the page's numbers */
+import { packStripNumbers } from './stripPack.js';   /* v2.3.4460: a monster's strip, cropped and packed from its own numbers */
+import { bottomsOfNumbers } from './artBottoms.js';   /* v2.3.4460: each frame's ground line, read here from the page's numbers */
 
 function imageUrlOf(sheetUrl, image) {
   const base = new URL(sheetUrl, self.location.href);
@@ -74,7 +74,7 @@ self.onmessage = async (ev) => {
     const dec = await decodePng8(bytes, undefined, 4);
     if (!dec) throw new Error('not a palette PNG');
     const rgb = dec.rgb.slice(), alpha = dec.alpha;
-    /* v2.3.4450: `bases` -- each frame's ground line worked out HERE from the numbers (artBottoms.js), so the page
+    /* v2.3.4460: `bases` -- each frame's ground line worked out HERE from the numbers (artBottoms.js), so the page
        does not decode the file a second time and read every frame back off a canvas (wheelObjects.js).  The file's
        own bytes then stay here (they were sent only for that read).  A frame laid on its side is left to the page. */
     if (m.bases) {

@@ -52,7 +52,8 @@
 
 import { Rectangle, Texture } from 'pixi.js';
 import { releaseCanvasSource } from './releaseCanvasTexture.js';   /* v2.3.3074 */
-import { loadTrackedStripRetinted, unloadBundle } from './zoneTextures.js';   /* v2.3.4450: the recolour is the PALETTE's, read off the page's thread */
+import { loadTrackedStripRetinted, unloadBundle } from './zoneTextures.js';   /* v2.3.4460: the recolour is the PALETTE's, read off the page's thread */
+import { readSourceRect } from './heldNumbers.js';   /* v2.3.4460: QA reads a frame back, whichever way it is held */
 
 const FRAME_W = 128;
 const FRAME_H = 128;
@@ -143,7 +144,7 @@ export function loadMonsterRecolor(family, rgb) {
   const entry = { promise: null, frames: Object.create(null), bundle: 'recolor|' + key, byNumbers: 0 };
   entry.promise = Promise.all(Object.keys(urls).map(async (state) => {
     try {
-      /* ═══ v2.3.4450: THE PALETTE RETINTED, NOT THE PIXELS ═══
+      /* ═══ v2.3.4460: THE PALETTE RETINTED, NOT THE PIXELS ═══
          The whole-game sweep (docs/specs/held-sweep.md) found this bake on
          the ride through the town: 23 ms a sheet of the page's time as a
          colour variant's look came in, six sheets a colour.  Every monster
@@ -216,11 +217,11 @@ export function freeMonsterRecolor(variant) {
     /* Frames first without their source, then the source once: every frame in
        a state shares one canvas-backed TextureSource. */
     const src = list && list[0] && list[0].source;
-    const numbers = !!(src && src._btPicNum);   /* v2.3.4450: a strip of colour numbers is its bundle's to free (below) */
+    const numbers = !!(src && src._btPicNum);   /* v2.3.4460: a strip of colour numbers is its bundle's to free (below) */
     for (let i = 0; i < (list ? list.length : 0); i++) { try { list[i].destroy(false); } catch (err) { /* gone */ } }
     try { if (src && !numbers) releaseCanvasSource(src); } catch (err) { /* gone */ }   /* v2.3.3074: Cache entry and canvas too -- every look let go of on the Wheel left its canvases behind (TRAPS §139) */
   }
-  /* v2.3.4450: the sheets that came as numbers: their textures and their rows of colours -- and any still being
+  /* v2.3.4460: the sheets that came as numbers: their textures and their rows of colours -- and any still being
      read is dropped as it arrives (always: one may be on its way with none in yet) */
   try { unloadBundle(e.bundle); } catch (err) { /* gone */ }
   return true;
@@ -234,4 +235,37 @@ export function getRecoloredFrame(variant, state, frameIdx) {
   if (!list || !list.length) return null;
   const len = list.length;
   return list[((frameIdx % len) + len) % len];
+}
+
+/* QA (mp-recolour): each colour held, and for each of its sheets how many frames, whether it came as colour numbers
+   with its palette retinted (v2.3.4460) or was recoloured on a canvas, and its first frame read back: how many
+   solid pixels and their mean colour.  Read only when a test asks. */
+if (typeof window !== 'undefined') {
+  window.__btMonsterRecolor = () => {
+    const out = [];
+    for (const [key, e] of _cache) {
+      const states = {};
+      for (const state in e.frames) {
+        const list = e.frames[state];
+        const t = list && list[0];
+        const row = { frames: list ? list.length : 0, numbers: !!(t && t.source && t.source._btPicNum), solid: 0, mean: null };
+        try {
+          const fr = t.frame, w = Math.round(fr.width), h = Math.round(fr.height);
+          const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+          const cx = cv.getContext('2d', { willReadFrequently: true });
+          if (readSourceRect(cx, t.source, fr.x, fr.y, w, h, 0, 0, 'qa')) {
+            const d = cx.getImageData(0, 0, w, h).data;
+            let r = 0, g = 0, b = 0, n = 0;
+            for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 200) { r += d[i]; g += d[i + 1]; b += d[i + 2]; n++; }
+            row.solid = n;
+            row.mean = n ? [Math.round(r / n), Math.round(g / n), Math.round(b / n)] : null;
+          }
+          cv.width = 0; cv.height = 0;
+        } catch (err) { row.error = String(err && err.message); }
+        states[state] = row;
+      }
+      out.push({ key, states });
+    }
+    return out;
+  };
 }

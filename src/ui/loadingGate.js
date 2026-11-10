@@ -46,7 +46,7 @@ const qa = { ready: false, ups: 0, held: 0, released: 0, lastReadyAt: 0 };
 function hasDom() { return typeof document !== 'undefined' && !!document.body; }
 
 /* a loading screen in the page now */
-/* v2.3.4450: asked of two LIVE lists the browser keeps (getElementsByClassName), not by a search of the whole page
+/* v2.3.4460: asked of two LIVE lists the browser keeps (getElementsByClassName), not by a search of the whole page
    each time.  The search ran ten times a second from the timer below and again for every caller (the coach, the
    arrow, the star, the achievements: several a frame), 2 to 6 ms each on the QA box with the band's windows in the
    page -- the whole-game sweep (docs/specs/held-sweep.md) found it in every station.  A live list answers from the

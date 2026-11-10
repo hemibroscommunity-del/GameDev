@@ -114,6 +114,22 @@ test.
   peer bake is the same for every facing, and a held clock makes a quiet peer
   look gone to the ghost sweep once it is let go.
 
+## From the numbers, with no bake (v2.3.4460)
+
+The clamp ran inside the per-look bake, on the page: all eight sheets at once
+when your greaves went on (597 ms on the QA box), and a sheet at a time the
+first time each armoured player swung beside you (57 to 140 ms), which the
+whole-game sweep found to be the longest holds in the game
+(held-sweep.md). What the clamp takes does not depend on the look, so the
+eight sheets are now kept once as the bake leaves them under greaves
+(`lookSets/standinlegs.js`: this very `recolorBodyToCanvas` with this very
+shape, run offline by `tools/art/role-bake.mjs --set standinlegs`) and drawn
+in any look as a row of colours. The bake and the shape stay for what cannot
+come that way: a body with a drawing on it, a look with no row left, a device
+that does not draw looks from numbers, `?legslook=0`. `__btStandInLegs()`
+says which strips are drawn from the numbers (`looks`) and which were baked
+(`clamped`); this scenario counts both.
+
 ## Still to do
 
 - **Specks on the outline.** The anti-aliased outline round the head, arms and

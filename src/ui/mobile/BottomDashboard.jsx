@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState, startTransition } from 'react';   /* v2.3.4450: + startTransition (the band's beat) */
+﻿import React, { useEffect, useRef, useState, startTransition } from 'react';   /* v2.3.4460: + startTransition (the band's beat) */
 /* v2.3.1236: owner feedback r4 §2 — WEAPON_TYPES / calcDisplayDmgRange /
    calcDisplayDps return to this import (r3 §1 had dropped them with the
    DMG/DPS/DEF footer): the readout is reinstated as the icon-based line
@@ -664,7 +664,7 @@ const RAIL_ITEMS = [
    glance views are RETIRED — bar and expanded are the only two nav
    states now (files deleted; git history has them). */
 
-/* v2.3.4450: `?bandbeat=0` -- the band's 200 ms redraw in one piece, as before (see the beat, below) */
+/* v2.3.4460: `?bandbeat=0` -- the band's 200 ms redraw in one piece, as before (see the beat, below) */
 const BAND_BEAT_WHOLE = (() => { try { return /(^|[?&])bandbeat=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
 
 export const BottomDashboard = () => {
@@ -735,7 +735,7 @@ export const BottomDashboard = () => {
   /* v2.3.1025: the BUILD/stats column rect -- the loadout equip picker docks
      over it (to the right of the loadout cells) so switching categories never
      moves the menu or covers the loadout, and it can't exceed the dashboard. */
-  /* ═══ v2.3.4450: THE BAND'S FIVE-A-SECOND REDRAW LETS THE FRAME IN ═══
+  /* ═══ v2.3.4460: THE BAND'S FIVE-A-SECOND REDRAW LETS THE FRAME IN ═══
      The whole-game sweep of what holds the page (tools/qa/mp/mp-heldsweep.mjs,
      docs/specs/held-sweep.md) found this beat everywhere it looked: the whole
      band -- the gear tab and every column under it -- redrawn five times a

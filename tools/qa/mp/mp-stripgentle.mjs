@@ -1,4 +1,4 @@
-/* ═══ A LOOK THAT LOADS AS YOU RIDE COSTS THE PAGE ALMOST NOTHING (v2.3.4400, v2.3.4450) ═══
+/* ═══ A LOOK THAT LOADS AS YOU RIDE COSTS THE PAGE ALMOST NOTHING (v2.3.4400, v2.3.4460) ═══
  *
  * The owner's iPhone 14 Pro Max: "It noticeably slowed when I rode by the
  * blacksmith hammering."  Not the hammer.  The Blacksmith stands on the
@@ -12,7 +12,7 @@
  * going forward so it doesn't happen again."
  *
  * Three ways in, the same ride up to the Blacksmith each time:
- *   - AS IT SHIPS (v2.3.4450): the reader's worker reads the file's own
+ *   - AS IT SHIPS (v2.3.4460): the reader's worker reads the file's own
  *     numbers and crops and packs them (stripRead.js, stripPack.js); the
  *     page makes the texture;
  *   - `?stripworker=0` (v2.3.4400): the page unpacks it, a few ms a frame;
@@ -34,7 +34,7 @@
  *     solid pixel's colour differing, and a partly see-through pixel drawn
  *     within PARTLY_MAX of a step (the file's own colour, where a canvas gave
  *     back that colour rounded through its store);
- *   - the eight snowman strips put on 256 colours in v2.3.4450 read the same
+ *   - the eight snowman strips put on 256 colours in v2.3.4460 read the same
  *     way.
  *
  *   node tools/qa/mp/run.mjs stripgentle
@@ -107,7 +107,7 @@ async function ride(browser, wsPort, webPort, rec, label, query) {
       });
     }
     const read = await P.page.evaluate(() => (window.__btStripRead ? window.__btStripRead() : null));
-    /* ...and the snowman's eight strips put on 256 colours in v2.3.4450 (128 x 128 frames): read by the same worker,
+    /* ...and the snowman's eight strips put on 256 colours in v2.3.4460 (128 x 128 frames): read by the same worker,
        against the page's packer on the same file */
     let snow = null;
     if (!/worker=0/.test(query)) {

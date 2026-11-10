@@ -214,7 +214,7 @@ export function whenDrawn(fn, raf) {
   ask(again);
 }
 
-/* ═══ v2.3.4450: A READ THAT WAITS FOR THE GRAPHICS CHIP IS TAKEN BEFORE THE FRAME IS DRAWN ═══
+/* ═══ v2.3.4460: A READ THAT WAITS FOR THE GRAPHICS CHIP IS TAKEN BEFORE THE FRAME IS DRAWN ═══
    The black-screen watchdog collects a 32 x 18 copy of the canvas a few
    frames after asking for it (BroTown.jsx _wdThumbCollect).  The collect is
    one of the few calls that makes the page WAIT -- for the graphics side to
@@ -222,10 +222,13 @@ export function whenDrawn(fn, raf) {
    frame AFTER the world's, so what it waited for was the whole frame just
    sent: the sweep (mp-heldsweep) found it the second-longest hold in the
    game on the QA box, 110 to 206 ms each, 18 of them on one tour.  Taken at
-   the TOP of the next frame, before that frame's drawing is sent, there is
-   nothing queued to wait for.  The loop runs these first (runBeforeDraw);
-   one not run within `lateMs` (a loop that has stopped) runs by itself, as
-   it always did. */
+   the TOP of the next frame, before that frame's drawing is sent, a chip
+   that keeps up (any phone's) has nothing left to work through.  (The QA
+   box's chip is software and does NOT keep up: there the collect waits as
+   long at the top of the frame, 83 to 165 ms -- this move cannot be proved
+   on it, and the screen check stays on the sweep's debt list.)  The loop
+   runs these first (runBeforeDraw); one not run within `lateMs` (a loop that
+   has stopped) runs by itself, as it always did. */
 const _before = [];
 /** Run `fn` once at the top of the game loop's next animation frame, before
  *  anything of that frame is drawn. */

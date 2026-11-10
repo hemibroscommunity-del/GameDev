@@ -9519,7 +9519,7 @@ held in escrow. **The rule.** Drop only a still-waiting bet
 `already-staked` (`src/game/arenaStakes.js`). **Receipt:**
 `silent-refusals.test` §2.
 
-## 309. "The art is 256 colours and the game holds it as numbers, so loading it is cheap" (v2.3.4450)
+## 309. "The art is 256 colours and the game holds it as numbers, so loading it is cheap" (v2.3.4460)
 
 **The move.** A picture is a 256-colour file on disk and one byte a pixel in
 memory (colour numbers), so you take the way between them for granted: load
@@ -9558,3 +9558,51 @@ full-colour files of 24,000 to 42,000 colours, which nothing checked.
   frames: strip ..." on a phone means a picture missed the door.
 
 **Receipt:** `strip-door` suite, `mp-stripgentle`, docs/specs/strip-gentle.md.
+
+## 310. "Each hitch has its fix, so the game is smooth" (v2.3.4460)
+
+Four reports in a row from the owner's iPhone were one kind of fault found one
+at a time: the townsfolk's bakes, the Blacksmith's fire goblin, a page of
+objects, another player riding up. Each was fixed, and each fix was right;
+none of them said anything about the hitch nobody had met yet. The owner:
+"I keep catching performance issues piecemeal and I want to make sure the
+optimizations are everywhere in the game."
+
+Reading the code for "slow things" does not find them. The whole-game sweep's
+longest hold was not a bake at all: the black-screen check, collecting a
+32 x 18 picture in an animation frame of its own, waited for the whole frame
+the game had just sent to the graphics chip (206 ms on the QA box, eighteen
+times a tour). The most frequent was a timer nobody thinks of as work: the
+band redrawing itself whole five times a second.
+
+**The rule:**
+- **Measure the page's one thread, by name, over the whole game.**
+  `mp-heldsweep` plays a tour (the town, every land's edge, a fight, every
+  window, a townsperson, an armoured second player, your own armour) with a
+  profiler on the phone and ranks every job that held the page
+  (docs/specs/held-sweep.md). Run it after a change to anything that bakes,
+  loads, or redraws on a timer.
+- **The lines:** 12 ms for one job outside the frame, 16 ms of the game's own
+  code inside one (`tools/qa/mp/held-budget.mjs`). What is over them today is
+  LISTED there with its own line, why, and what fixes it. Never raise a line
+  silently; a fixed family comes off the list.
+- **Work on pixels does not belong on the page.** In order of preference: do
+  it to the PALETTE (a recolour of 256-colour art is 255 multiplications:
+  `retintPalette.js`, the look palette's rows); do it OFFLINE once for every
+  look when the result does not depend on the look (the bodies under greaves:
+  `lookSets/standinlegs.js`); do it on a WORKER from the file's own numbers
+  (`stripRead.js`, `artBottoms.js`). A canvas on the page, read back, is the
+  last resort and goes a few ms at a time (§283).
+- **A read that waits for the graphics chip goes at the TOP of a frame**
+  (`framePacer.js beforeDraw`), never after the frame's drawing was sent.
+- **A redraw on a timer is a transition** (`startTransition`): React draws it
+  in pieces and lets a frame in. A whole window redrawn in one piece five
+  times a second is a hitch five times a second.
+- **Do not measure the page inside a frame** (`getBoundingClientRect`,
+  `clientWidth`): the browser lays the whole page out there and then.
+  Remember the answer and measure again when something can have changed
+  (`ui/mayorScreen.js`). The play column's own size (`playVw`) is still
+  measured live: too many things move it to cache it safely (the debt list).
+
+**Receipt:** `held-sweep` suite, `mp-heldsweep`, `mp-pagebases`,
+`mp-standinlegs`, docs/specs/held-sweep.md.
