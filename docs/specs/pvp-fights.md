@@ -175,6 +175,24 @@ The minnow keeps the owner's 100.
 - Not for duels (they have their own 15 s grace, then forfeit), nobody in a
   fight, or the last player in the room.
 - Kill switch: `linger: false`.
+- **A second login while the first is still connected** (a second tab, a
+  quick relaunch before the server has noticed the old one close) counts as
+  leaving (v2.3.4432). Before, it replaced the old connection without the
+  close, so the body never stayed: a fresh launch came in at town with its
+  bag, and the loser of a No man's land fight walked off with what the
+  winner had earned. Now, when the old connection passes the same test the
+  close uses, it gets the real close (the body stays) and the new login is
+  judged as a return to the body: from where it stands it takes it back at
+  once; from anywhere else it waits on the same "still in that fight"
+  screen. The first tab sees what it always saw ("This account connected
+  from another window", with "Play here instead", which is a return from
+  the body's spot). Outside a fight a second login is unchanged. Kill
+  switch: `takeoverlinger: false`
+  (`server/test/takeover-linger.test.mjs`, 41 checks; 13 failed before).
+- The owner chose "take over the body where it stands" for this case; that
+  needs a new message telling the phone where its body is, and a change to
+  how the phone starts, so it is a later step. Until then the waiting
+  screen is the answer.
 
 ### 7. The shield against a player
 
@@ -216,6 +234,7 @@ staff bolt.
 | `pvpbalance: false` | the worker's roll in player fights: the old claim x 0.5 path, exactly (also un-advertises `caps.pvpbalance`) |
 | `fishheal: false` | the fish ladder: the old 92 + 8 x level, with the old Recovery bonus on top (also un-advertises `caps.fishheal`) |
 | `linger: false` | the body staying: every leaver leaves at once again |
+| `takeoverlinger: false` | a second login mid-fight counting as a leave: it takes the session over and starts afresh where the phone says, as before v2.3.4432 |
 
 ## Deploy order
 

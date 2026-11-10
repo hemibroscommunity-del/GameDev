@@ -736,6 +736,27 @@ export const joinMethods = {
        saved first, and this join goes on; coming back from anywhere else (a
        fresh launch starts in town) waits until it has gone -- or the join
        would carry the player out of the fight it was left in. */
+    /* v2.3.4432: ...and a second login while the old socket is still OPEN
+       (a second tab, a quick relaunch) is that same leave.  The eviction
+       below skipped the close, so the linger never ran and this join built
+       the body afresh where the new phone said -- a fresh page says town:
+       the loser of a No man's land fight relaunched and walked off with the
+       bag the winner had earned (state-machine sweep V3, S2-1).  So when the
+       old session passes the linger's OWN test (_lingerWouldStay), it gets
+       the real close now -- its body stays, as any leaver's -- and this join
+       is judged as a return to it, just below: from where the body stands
+       it resumes (a blip), from anywhere else it waits (`linger_wait`,
+       4010).  The old phone hears what it always heard ("superseded").
+       Outside a fight nothing changes.  `takeoverlinger: false` (or
+       `linger: false`) in the live flags: the takeover as before. */
+    if (msg.id && this._lingerWouldStay && !this._takeoverLingerOff()) {
+      for (const [oldWs, oldS] of this.sessions) {
+        if (oldWs === ws || oldS.id !== msg.id || !this._lingerWouldStay(oldS, Date.now())) continue;
+        await this.webSocketClose(oldWs);
+        try { oldWs.close(1000, 'superseded by reconnect'); } catch {}
+        break;
+      }
+    }
     if (msg.id && this._lingerOnJoin) {
       const _lw = await this._lingerOnJoin(msg.id, msg.data, Date.now());
       if (_lw && typeof _lw === 'object' && _lw.wait > 0) {

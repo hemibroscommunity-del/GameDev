@@ -85,6 +85,10 @@ state._store.set('liveflags', { nmlsteps: false });
 const room = new GameRoom(state, mockEnv);
 const baseSession = () => ({ id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
 async function join(ws, id, name, data) {
+  /* v2.3.4432: this suite's rejoins read the records back; a second login
+     inside a fight's 10 s is a leave now and waits for the body
+     (takeover-linger.test), so the fight is let go first */
+  if (room._pvpHealClocks) room._pvpHealClocks.delete(id);
   room.sessions.set(ws, baseSession());
   await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name, phrase: 'p-' + id, ws: [1, 5], data: { x: 0, y: 0, z: 'town', ...(data || {}) } }));
   room.sessions.get(ws).name = name;
