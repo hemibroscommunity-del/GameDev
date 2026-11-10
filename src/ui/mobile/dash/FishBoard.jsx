@@ -3,7 +3,7 @@ import { COL, getState } from './common.js';
 import { FISH_SPECIES, fishKg } from '@/data/fishVariants.js';
 import { askFishBoard, subscribeFishWeigh } from '@/game/fishWeigh.js';
 import { deskWords } from '@/game/deskWords.js';
-import { BoardRow, BoardEmpty, useBoardFaces } from './BoardRow.jsx';   /* v2.3.4389 */
+import { BoardRow, BoardEmpty, useBoardFaces } from './BoardRow.jsx';   /* v2.3.4393 */
 
 /* ═══ v2.3.4036: THE BIGGEST FISH -- RANKS' FISH TAB ═══
  * The owner: "Include leaderboards for largest caught types of fish
@@ -47,7 +47,7 @@ export function FishBoard({ initial }) {
       <div style={{ display: 'flex', gap: 6, marginBottom: 4, overflowX: 'auto', padding: '0 0 2px' }}>
         {FISH_SPECIES.map((f) => (
           <button key={f.id} type="button" data-fish-board-sp={f.id} onClick={() => setSp(f.id)} style={chipHit}>
-            {/* v2.3.4389: each kind's own picture on its pill (the bag's fish) */}
+            {/* v2.3.4393: each kind's own picture on its pill (the bag's fish) */}
             <span style={{ ...chip(f.id === sp), gap: 5, padding: '0 11px 0 7px' }}>
               <img src={'/icons/items/fish-' + f.id + '.webp'} alt="" draggable={false} style={{ width: 20, height: 20, objectFit: 'contain', flex: 'none' }} />
               {f.name}
@@ -59,7 +59,7 @@ export function FishBoard({ initial }) {
         <BoardEmpty text={!fb ? 'Loading…' : fb.off ? 'The scales are closed for now.' : fb.unavailable ? "The records can't be read right now."
           : deskWords('Nobody has weighed a ' + name + ' yet. Tap a fish in your bag, then Inspect.')} />
       ) : rows.map((r, i) => (
-        /* v2.3.4389: the one row every board draws (BoardRow): the face and
+        /* v2.3.4393: the one row every board draws (BoardRow): the face and
            the level it was weighed with, a deleted character's row grey */
         <BoardRow key={r.pid || i} rank={i + 1} row={r} face={faces[i]} mine={!!meId && r.pid === meId}
           hook={{ 'data-fish-board-row': i + 1 }}

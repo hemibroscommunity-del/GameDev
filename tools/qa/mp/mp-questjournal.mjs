@@ -10,7 +10,7 @@
  * A real phone (upright, touch) against a real worker, in the world's BroTown:
  *   1. the first quest, Into the Blue (tut_1), taken (quest_accept, as the
  *      Mayor's offer sends it);
- *   2. the Quests page (v2.3.4390: a menu) opens ON it: your quests a list
+ *   2. the Quests page (v2.3.4394: a menu) opens ON it: your quests a list
  *      of pills down the left (each with its giver's face), under brass
  *      headings, the open one beside it, the page itself not scrolling; on
  *      screen at once, each its own card: the giver's face and the title with
@@ -99,7 +99,7 @@ async function body({ P, wsPort, rec, OUT }) {
   if (q !== 'active') return;
   await P.page.evaluate(() => window.__btTrackedQuest && window.__btTrackedQuest.set(null));
 
-  /* ── 2. the page opens on it: a list beside the quest (v2.3.4390) ── */
+  /* ── 2. the page opens on it: a list beside the quest (v2.3.4394) ── */
   await openQuests(P);
   const F = '[data-journal-focus="tut_1"]';
   const focused = await P.page.waitForSelector(F, { timeout: 8000 }).then(() => true).catch(() => false);

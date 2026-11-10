@@ -1,4 +1,4 @@
-/* ═══ v2.3.4389: THE DAILY SPIN'S RECORDS, ON THE PHONE ═══
+/* ═══ v2.3.4393: THE DAILY SPIN'S RECORDS, ON THE PHONE ═══
  *
  * The owner: "I want to have the 'daily spin' biggest wins and losses
  * records."  The worker keeps them (server boards.js `spin_board`: the ten

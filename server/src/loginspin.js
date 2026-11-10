@@ -17,7 +17,7 @@
  * THE ACCOUNT is the DEVICE: it holds up to ten characters
  * (src/networking/charRoster.js), and the join already carries its id
  * (devicelock.js cleanDevice).  The record `lspin:<acct>` = {day, pid, idx,
- * base, pot, k, open, paid, nm, lv} (v2.3.4389: `nm`, `lv` the spinner's name
+ * base, pot, k, open, paid, nm, lv} (v2.3.4393: `nm`, `lv` the spinner's name
  * and level, for the spin boards' row of a pot paid after they left) says which UTC day (dailyrewards.js dayOf -- the
  * same boundary as every daily thing) was spun, by which character, and the
  * POT the account holds.  The gold goes to the character that spun.  A join
@@ -139,7 +139,7 @@ export const loginSpinMethods = {
     }
     rec.paid = true;
     try { await this._loginSpinSave(acct, rec); } catch (e) { /* the oplog holds the payment */ }
-    /* v2.3.4389: a pot paid is a record (boards.js: the daily spin's biggest
+    /* v2.3.4393: a pot paid is a record (boards.js: the daily spin's biggest
        wins) -- after the gold is the player's, and never allowed to cost it */
     if (rec.pot > 0) { try { if (this._spinBoardRecord) await this._spinBoardRecord(rec.pid, rec.pot, true, rec.k, { name: rec.nm, lv: rec.lv }); } catch (e) { /* a record, never the pot */ } }
     const ws = this._wsBySessionId(rec.pid);
@@ -195,7 +195,7 @@ export const loginSpinMethods = {
     const idx = loginSpinPick(this._loginSpinRand());
     const coins = LOGIN_SPIN.SEGS[idx].coins;
     Object.assign(rec, { day: today, pid, idx, base: coins, pot: coins, k: 0, open: true, paid: false });
-    /* v2.3.4389: who spun, for the record of a pot paid after they left (the
+    /* v2.3.4393: who spun, for the record of a pot paid after they left (the
        idle timer, another character's ask): the spin boards' name and level */
     { const who = this._boardWho ? this._boardWho(pid) : null; if (who) { rec.nm = who.name; rec.lv = who.lv; } }
     try { await this._loginSpinSave(acct, rec); } catch (e) { rec.day = 0; rec.open = false; rec.paid = true; return; }
@@ -225,7 +225,7 @@ export const loginSpinMethods = {
     /* YES (a double) only on safe ground too; NO (collect) is always allowed: the gold is theirs */
     if (!collect && rec.open && !this._loginSpinSafe(ps)) { this._loginSpinSend(session, 'loginspin_state', { avail: false, safe: false, held: true, day: dayOf(this._loginSpinNow()) }); return; }
     let win = null;
-    const before = rec.pot;   /* v2.3.4389: what a lost double loses (the spin boards) */
+    const before = rec.pot;   /* v2.3.4393: what a lost double loses (the spin boards) */
     if (!collect) {
       if (rec.pot * 2 > LOGIN_SPIN.POT_MAX) { this._loginSpinSend(session, 'loginspin_round', { ...this._loginSpinView(rec), replay: true }); return; }
       win = this._loginSpinRand() < 0.5;
@@ -236,7 +236,7 @@ export const loginSpinMethods = {
     const settleNow = collect || !win || rec.pot * 2 > LOGIN_SPIN.POT_MAX;
     try { await this._loginSpinSave(acct, rec); } catch (e) { return; }
     if (settleNow) await this._loginSpinSettle(acct, rec); else this._loginSpinWatch(acct, rec);
-    /* v2.3.4389: a pot lost to a double is a record too (boards.js: the
+    /* v2.3.4393: a pot lost to a double is a record too (boards.js: the
        biggest losses), after the round is saved */
     if (win === false && before > 0) { try { if (this._spinBoardRecord) await this._spinBoardRecord(pid, before, false, rec.k); } catch (e) { /* a record, never the round */ } }
     this._loginSpinSend(session, 'loginspin_round', {

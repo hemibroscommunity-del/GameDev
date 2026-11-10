@@ -35,7 +35,7 @@ import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } fr
 import { onCodexState, onCodexKill } from '@/game/monsterCodex.js'; /* v2.3.3209: the monster codex's counts (server/src/codex.js) */
 import { onAchvState, noteServerAp } from '@/game/achievements.js'; /* v2.3.3527: the achievements the worker granted (server/src/achievements.js) */
 import { onFishWeight, onFishBoard } from '@/game/fishWeigh.js'; /* v2.3.4036: a weigh-in and the biggest-fish boards (server/src/fishlog.js) */
-import { onSpinBoard } from '@/game/spinBoard.js'; /* v2.3.4389: the daily spin's biggest wins and losses (server/src/boards.js) */
+import { onSpinBoard } from '@/game/spinBoard.js'; /* v2.3.4393: the daily spin's biggest wins and losses (server/src/boards.js) */
 import { fishCatchWords } from '@/data/fishVariants.js'; /* v2.3.4036: "An albino Trout!" */
 import { onRaceState, onRaceCheckpoint, onRaceEnd } from '@/game/race.js'; /* v2.3.3525: Lil Bro's race (server/src/race.js) */
 import { onBankState } from '@/game/bank.js'; /* v2.3.3785: the Bank's vault (server/src/bank.js) */
@@ -2208,7 +2208,7 @@ export function setupWebSocket(ctx) {
             { if (msg.from) break; try { onFishWeight(S, msg.payload); } catch (_fe) { /* display only */ } break; }
           case 'fish_board':
             { if (msg.from) break; try { onFishBoard(S, msg.payload); } catch (_fe) { /* display only */ } break; }
-          /* v2.3.4389: the daily spin's records (server boards.js), private and
+          /* v2.3.4393: the daily spin's records (server boards.js), private and
              PRIVILEGED there; here for fish_board's reason, and a relayed copy
              (`from`) is never taken. */
           case 'spin_board':
@@ -5846,7 +5846,7 @@ export function setupWebSocket(ctx) {
           wsOut(msg);
           return;
         }
-        /* v2.3.4389: the daily spin's records (game/spinBoard.js) -> boards.js.
+        /* v2.3.4393: the daily spin's records (game/spinBoard.js) -> boards.js.
            TRAPS #18: without this the ask never leaves the browser. */
         if (msg.type === 'spin_board_request') {
           wsOut(msg);

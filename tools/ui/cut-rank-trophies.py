@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""v2.3.4389: THE OWNER'S RANK TROPHIES, CUT FROM THEIR SHEET.
+"""v2.3.4393: THE OWNER'S RANK TROPHIES, CUT FROM THEIR SHEET.
 
-The owner, 2026-11-09, of the Leaderboards' rows (v2.3.4389): "This is looking
+The owner, 2026-11-09, of the Leaderboards' rows (v2.3.4393): "This is looking
 good. Add these trophies to the left of the ranks. Add a cool code based
 effect for shine or slight sparkling."  One sheet on a see-through ground,
 now assets/icons-source/rank-trophies-2026-11-09/rank-trophies.png, five

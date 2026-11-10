@@ -590,7 +590,7 @@ export const dailyRewardsMethods = {
       note: 'Daily spin' + (why ? ' (' + why + ')' : ''),
     });
     sp.open = 0;
-    /* v2.3.4389: a pot paid is a record (boards.js: the daily spin's biggest
+    /* v2.3.4393: a pot paid is a record (boards.js: the daily spin's biggest
        wins) -- once, not for a 'dup', and never allowed to cost the pay */
     if (r !== 'dup') { try { if (this._spinBoardRecord) await this._spinBoardRecord(pid, amount, true, sp.k); } catch (e) { /* a record, never the pot */ } }
     return r === 'dup' ? 0 : amount;
@@ -664,7 +664,7 @@ export const dailyRewardsMethods = {
       } else {
         news = { kind: 'spin', act, won: false, k: sp.k, lost: sp.pot, pot: 0 };
         sp.open = 0; sp.pot = 0;
-        spinLost = { n: news.lost, k: sp.k + 1 };   /* v2.3.4389: for the record, once the run is saved */
+        spinLost = { n: news.lost, k: sp.k + 1 };   /* v2.3.4393: for the record, once the run is saved */
       }
     } else {
       if (!sp.open || !(sp.pot > 0)) { await this._drSendState(pid, { kind: 'spin', act, refused: 'closed' }); return; }
@@ -678,7 +678,7 @@ export const dailyRewardsMethods = {
     }
     if (opId) await this._opStamp('spinop:' + opId);
     await this._drSave(pid);
-    /* v2.3.4389: a pot lost to a double is a record too (boards.js: the
+    /* v2.3.4393: a pot lost to a double is a record too (boards.js: the
        biggest losses), after the run is saved */
     if (spinLost) { try { if (this._spinBoardRecord) await this._spinBoardRecord(pid, spinLost.n, false, spinLost.k); } catch (e) { /* a record, never the spin */ } }
     await this._drSendState(pid, news);

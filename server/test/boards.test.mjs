@@ -1,4 +1,4 @@
-/* The leaderboards, with faces -- v2.3.4389 (server/src/boards.js,
+/* The leaderboards, with faces -- v2.3.4393 (server/src/boards.js,
  * docs/specs/leaderboards.md).
  *
  *   1. CAPS AND THE WIRE: caps.boards2 advertised; `spin_board` privileged;

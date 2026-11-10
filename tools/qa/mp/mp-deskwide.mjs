@@ -167,7 +167,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         inside: btns.every((r) => r.left >= 0 && r.right <= 392),
         chip: chip ? { text: chip.textContent.trim(), w: Math.round(cr.width), h: Math.round(cr.height), cut: chip.scrollWidth > chip.clientWidth + 1 } : null };
     });
-    /* v2.3.4172: five buttons (Gear, Bro, Quests, Codex, More); v2.3.4389: six, the Leaderboards (Ranks) */
+    /* v2.3.4172: five buttons (Gear, Bro, Quests, Codex, More); v2.3.4393: six, the Leaderboards (Ranks) */
     rec.ok(`the buttons' pictures nearly twice a phone's 24 px (${nav.icons.join(', ')}), all six buttons in the column`,
       nav.icons.length === 6 && nav.icons.every((w) => w >= NAV_ICON - 1) && nav.n === 6 && nav.inside, nav);
     rec.ok(`...and the chip that folds the pages says CLOSE ("${nav.chip && nav.chip.text}"), not an arrow, its word whole`,

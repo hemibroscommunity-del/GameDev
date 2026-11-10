@@ -16,7 +16,7 @@ Client only: no message, no cap, no kill switch, no storage key. Taking and
 handing in a quest stays with its giver in the world and the worker (no
 Accept, no Turn In on these pages: v2.3.1704, v2.3.2195).
 
-## v2.3.4390: the Quests page is a menu
+## v2.3.4394: the Quests page is a menu
 
 Owner, 2026-11-09:
 
@@ -95,7 +95,7 @@ Leaderboards' shape (`docs/specs/leaderboards.md`):
 | `src/ui/mobile/dash/QuestDetailPanel.jsx` | A quest's own page (`questDetail`, chosen through `questDetailBus`), and Track. |
 | `src/ui/mobile/sheet/questModel.js` | `deriveQuestOffers(S)`: every giver's offer, untrimmed (`deriveQuestLog` still trims it for its other readers). |
 
-## The Quests page (until v2.3.4390; the parts and their words are unchanged)
+## The Quests page (until v2.3.4394; the parts and their words are unchanged)
 
 Top to bottom:
 

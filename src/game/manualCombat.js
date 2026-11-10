@@ -1,4 +1,4 @@
-/* ═══ v2.3.4391: MANUAL COMBAT -- an attack is made by your hand, never a timer ═══
+/* ═══ v2.3.4395: MANUAL COMBAT -- an attack is made by your hand, never a timer ═══
  *
  * The owner, 2026-11-09: "I want to make the system more manual.  I think only
  * making an attack after manual input is better than auto-attacking at

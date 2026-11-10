@@ -1,4 +1,4 @@
-/* Manual combat's rules -- v2.3.4391 (src/game/manualCombat.js,
+/* Manual combat's rules -- v2.3.4395 (src/game/manualCombat.js,
  * docs/specs/manual-combat.md).  The owner: "only making an attack after
  * manual input is better than auto-attacking at precisely the correct
  * interval" -- and, of the draw-and-release it first was, "Try version a":

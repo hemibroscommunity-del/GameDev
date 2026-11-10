@@ -1,4 +1,4 @@
-# The Leaderboards: their own button, faces, the daily spin's records, deleted stand-ins (v2.3.4389)
+# The Leaderboards: their own button, faces, the daily spin's records, deleted stand-ins (v2.3.4393)
 
 > The owner, 2026-11-09: *"I want to reorganize the 'quests' section and make
 > room for a new 'leaderboards' button on the dashboard (I think this is
@@ -25,7 +25,7 @@
   page too narrow or too short for both (a phone on its side) the list is a
   row of chips over the board.
 - **The headings (Ranks, Records, Skills) headline their sections**: brass,
-  13 px, heavy, with a brass rule under each (v2.3.4390; they were small grey
+  13 px, heavy, with a brass rule under each (v2.3.4394; they were small grey
   captions).
 - **Each board is a pill-shaped button with its own picture**: the level-up
   star, the sword, the bow, the staff, the sword and skull (Kills), the

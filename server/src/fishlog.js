@@ -53,7 +53,7 @@
  * THE BOARDS `fish_board` (one GameRoom key, the Ace board's way, gamble.js:
  * never the Leaderboard DO, which ranks skills every 5 minutes and forgets a
  * player after 7 days): one board a species, the ten heaviest, ONE row a
- * player (their best), `{pid, name, g, v?, at}` (v2.3.4389: and `lv`, `look`,
+ * player (their best), `{pid, name, g, v?, at}` (v2.3.4393: and `lv`, `look`,
  * the level and the face it was weighed with, and `gone` on the stand-in of
  * a character since deleted: boards.js).  A weigh-in that beats a
  * board's tenth enters it, written at once in the weigh-in's run.  Read once
@@ -83,7 +83,7 @@
  *
  * Suite: server/test/fish-variants.test.mjs. */
 import { FISH_TIERS } from './data.js';
-import { boardFace, retireRows, BOARDS } from './boards.js';   /* v2.3.4389: a face and a level on each row, and the deleted stand-ins */
+import { boardFace, retireRows, BOARDS } from './boards.js';   /* v2.3.4393: a face and a level on each row, and the deleted stand-ins */
 
 export const FISHLOG_KEY = (playerId) => 'fishlog:' + playerId;
 
@@ -206,7 +206,7 @@ export function normalizeFishBoard(raw) {
       seen.add(e.pid);
       const row = { pid: e.pid, name: String(e.name || 'Bro').slice(0, FISHLOG.NAME_MAX), g, at: Math.floor(Number(e.at) || 0) };
       if (e.v === 'albino' || e.v === 'large') row.v = e.v;
-      /* v2.3.4389: the level and the face the row was set with, and a
+      /* v2.3.4393: the level and the face the row was set with, and a
          deleted character's stand-in (boards.js) */
       const lv = Math.floor(Number(e.lv) || 0);
       if (lv > 0) row.lv = Math.min(BOARDS.LV_MAX, lv);
@@ -365,14 +365,14 @@ export const fishlogMethods = {
   _fishBoardEnter(book, pid, name, sp, g, v, at) {
     if (!book || book.locked || !book.boards) return 0;
     const list = book.boards[sp] || [];
-    /* v2.3.4389: a deleted character's row (`gone`) is nobody's: the next
+    /* v2.3.4393: a deleted character's row (`gone`) is nobody's: the next
        life's catch is a row of its own beside it */
     const mine = list.find((e) => e.pid === pid && !e.gone);
     if (mine && mine.g >= g) return 0;
     if (!mine && list.length >= FISHLOG.BOARD_SIZE && g <= list[list.length - 1].g) return 0;
     const row = { pid, name: String(name || 'Bro').slice(0, FISHLOG.NAME_MAX), g, at };
     if (v) row.v = v;
-    /* v2.3.4389: the level and the face it was weighed with (boards.js) */
+    /* v2.3.4393: the level and the face it was weighed with (boards.js) */
     const who = this._boardsOff && !this._boardsOff() && this._boardWho ? this._boardWho(pid) : null;
     if (who && who.lv > 0) row.lv = who.lv;
     if (who && who.look) row.look = who.look;
@@ -385,7 +385,7 @@ export const fishlogMethods = {
     return idx >= 0 ? idx + 1 : 0;
   },
 
-  /* v2.3.4389: a character deleted for good (boards.js _boardsGone): its
+  /* v2.3.4393: a character deleted for good (boards.js _boardsGone): its
      rows stay, retired -- the stand-in the phone draws grey */
   _fishBoardRetire(book, pid, at) {
     if (!book || book.locked || !book.boards) return 0;

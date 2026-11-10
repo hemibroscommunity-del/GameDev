@@ -709,17 +709,17 @@ export const STATES = [
      default: it is off unless `?hemiface=1` (docs/specs/hemi-portrait.md) */
   /* v2.3.3944: the quest journal (dash/QuestsPanel.jsx): it opens on the
      quest you are on (a run has taken Into the Blue at quest-accepted) */
-  dash('quests', 'Quests', 'The Quests page (v2.3.4390: a menu): your quests as a list of pills down the left (Active, Available, then Done with its count and Daily), each with its giver\'s pin; the open quest beside it: its title and status with Map and Track, what to do NOW with its count and bar, WHERE; then, a scroll below, WHO you talked to, GIVEN TO YOU, REWARD with +5 Achievement Points, NEXT.'),
+  dash('quests', 'Quests', 'The Quests page (v2.3.4394: a menu): your quests as a list of pills down the left (Active, Available, then Done with its count and Daily), each with its giver\'s pin; the open quest beside it: its title and status with Map and Track, what to do NOW with its count and bar, WHERE; then, a scroll below, WHO you talked to, GIVEN TO YOU, REWARD with +5 Achievement Points, NEXT.'),
   {
     id: 'dash-quest-detail', group: 'Dashboard', title: 'A quest in detail',
-    about: 'One quest\'s own page, as the pinned quest card in the world opens it (v2.3.4390: the Quests page itself opens a quest beside its list): the six parts (NOW, WHERE, WHO with each step ticked, GIVEN TO YOU, REWARD, NEXT) and Track this quest.',
+    about: 'One quest\'s own page, as the pinned quest card in the world opens it (v2.3.4394: the Quests page itself opens a quest beside its list): the six parts (NOW, WHERE, WHO with each step ticked, GIVEN TO YOU, REWARD, NEXT) and Track this quest.',
     /* v2.3.3944: a row of the list by its own mark (an Active row, else an
        Available one), scrolled into view under the page it opens on */
     run: async ({ P }) => {
       await bus(P, 'open', 'quests');
       await wait(P, 600);
       const sel = (await has(P, '[data-quest-row]')) ? '[data-quest-row]' : '[data-quest-offer-row]';
-      /* v2.3.4390: a pill of the list opens its quest beside it; the quest's
+      /* v2.3.4394: a pill of the list opens its quest beside it; the quest's
          own page is the pinned card's road (questDetailBus, then the drill) */
       const qid = await evalIn(P, (s0) => { const el = document.querySelector(s0); return el ? (el.getAttribute('data-quest-row') || el.getAttribute('data-quest-offer-row')) : null; }, sel);
       if (!qid) return 'no quest in the list to open';
@@ -769,7 +769,7 @@ export const STATES = [
     },
   },
   dash('more', 'More', 'The More page: eleven tiles (map, social, party, guild, pets, journey, settings, account, notifications with its unread count, feedback, about).'),
-  /* v2.3.4389: the Leaderboards have a button of their own on the row
+  /* v2.3.4393: the Leaderboards have a button of their own on the row
      ("Ranks"): the list of boards down the left (Ranks, Records, Skills), the
      board beside it, a face and a level on each row */
   dash('leaderboard', 'Leaderboards', 'The Leaderboards, from the Ranks button on the row: the list of boards down the left (Ranks: Level, Melee, Bow, Magic, Kills, AP; Records: Daily spin, Coin flip, Biggest fish; Skills: the ten life skills), the board beside it. Each row: the rank, the character\'s face, the name, the record ("Lv 1"). Your own row is lit.'),
@@ -1004,7 +1004,7 @@ export const STATES = [
     id: 'fish-board', group: 'Dashboard', title: 'Leaderboards: Biggest fish',
     about: 'Leaderboards, Records, Biggest fish: the ten heaviest of each kind of fish weighed, one row a player, the face, the name and level, and the kilos (an albino or a large one says so).',
     run: async ({ P }) => {
-      /* v2.3.4389: the Leaderboards' own button on the row, no drill under More */
+      /* v2.3.4393: the Leaderboards' own button on the row, no drill under More */
       const e = await bus(P, 'open', 'leaderboard');
       if (e) return e;
       await wait(P, 500);

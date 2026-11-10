@@ -93,7 +93,7 @@ range. Shown as "0.12 kg" under a kilo and "2.4 kg" above.
   a weigh-in needs a catch, so Inspect tapped any number of times writes no
   more rows than fish were caught, and a refused one writes nothing.
 
-> **v2.3.4389:** the boards' rows carry `lv` and `look` (the level and the
+> **v2.3.4393:** the boards' rows carry `lv` and `look` (the level and the
 > face a fish was weighed with), a deleted character's row stays as a `gone`
 > stand-in, and the page they are on has its own button on the row:
 > `docs/specs/leaderboards.md`.

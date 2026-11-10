@@ -60,7 +60,7 @@ export const TILES = [
      where it has to, and only there (sideways the tile is wide enough). */
   { id: 'achievements', src: ACHV_MEDAL_SRC,                               label: 'Achievements', soft: 'Achieve\u00ADments', glyph: '🏆', group: 'Progress', iconScale: 1 },
   { id: 'encyclopedia', src: '/icons/ui/panel-encyclopedia.webp?v=2.3.1224', label: 'Codex',  glyph: '📚', group: 'Progress',  iconScale: 1 },
-  /* v2.3.4389: the Leaderboards' tile is gone -- they have a button of their
+  /* v2.3.4393: the Leaderboards' tile is gone -- they have a button of their
      own on the dashboard's row (BottomDashboard RAIL_ORDER: the owner's "make
      room for a new 'leaderboards' button on the dashboard"), as Quests and the
      Codex left when they got theirs (v2.3.4172). */
@@ -375,7 +375,7 @@ export const MorePanel = () => {
             the Guild and Journey stay, having no other door.  Twelve: two
             full rows of six upright, six rows of two sideways and on a
             computer, as before. */}
-        {/* v2.3.4389: eleven -- the Leaderboards left for their own button on
+        {/* v2.3.4393: eleven -- the Leaderboards left for their own button on
             the row.  Six and five upright (the twelfth cell empty at the
             end, the tiles the size they were); sideways and on a computer
             five rows of two and one more. */}

@@ -23,7 +23,7 @@
 /* v2.3.3173: the golden ticket's key prefix -- the item wager refuses it
    (_handleAceItemFlipRequest). */
 import { TICKET_PREFIX } from './eventcapes.js';
-import { retireRows } from './boards.js';   /* v2.3.4389: the deleted stand-ins */
+import { retireRows } from './boards.js';   /* v2.3.4393: the deleted stand-ins */
 
 /* ═══ v2.3.2618: ACE'S COIN FLIP ═══
  * Owner: "You can triple your money or lose 3x of your bag (you can only bet
@@ -127,7 +127,7 @@ export const gambleMethods = {
     if (!pid || !(amount > 0)) return;
     const board = await this._aceBoardRead();
     const list = won ? board.wins : board.losses;
-    const mine = list.find((e) => e && e.pid === pid && !e.gone);   /* v2.3.4389: a deleted character's row is nobody's */
+    const mine = list.find((e) => e && e.pid === pid && !e.gone);   /* v2.3.4393: a deleted character's row is nobody's */
     if (mine && mine.amount >= amount) return;      // already hold a better one
     if (!mine && list.length >= ACE_BOARD.SIZE
         && amount <= list[list.length - 1].amount) return;
@@ -138,7 +138,7 @@ export const gambleMethods = {
     } catch (e) { /* a board row without a face is still a board row */ }
     const next = list.filter((e) => e && (e.pid !== pid || e.gone));
     const row = { pid, name, amount, kind: kind || 'coin', at: Date.now(), look };
-    /* v2.3.4389: the level the bet was taken at, beside the face (boards.js) */
+    /* v2.3.4393: the level the bet was taken at, beside the face (boards.js) */
     try {
       const who = this._boardsOff && !this._boardsOff() && this._boardWho ? this._boardWho(pid) : null;
       if (who && who.lv > 0) row.lv = who.lv;
@@ -149,7 +149,7 @@ export const gambleMethods = {
     await this.state.storage.put(ACE_BOARD.KEY, board);
   },
 
-  /* v2.3.4389: a character deleted for good (boards.js _boardsGone): its
+  /* v2.3.4393: a character deleted for good (boards.js _boardsGone): its
      rows stay, retired -- the stand-in the phone draws grey */
   async _aceBoardRetire(pid, at) {
     const board = await this._aceBoardRead();

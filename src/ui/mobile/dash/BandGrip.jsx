@@ -2,7 +2,7 @@ import React from 'react';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { dashMinBus } from '../dashMinBus.js';
 import { swallowTapClick } from '../../swallowTapClick.js';
-import { bandCloseW } from '../sheet/sheetGeometry.js';   /* v2.3.4172: CLOSE's width, kept by the row; v2.3.4389: 48 under 375 px */
+import { bandCloseW } from '../sheet/sheetGeometry.js';   /* v2.3.4172: CLOSE's width, kept by the row; v2.3.4393: 48 under 375 px */
 import { playVw } from '../playViewport.js';
 
 /* ═══ v2.3.4172: THE SLIM HANDLE ON THE BAND'S TOP EDGE ═══
