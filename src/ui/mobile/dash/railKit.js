@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { COL } from './common.js';
 
-/* ═══ v2.3.4356: A PAGE THAT IS A LIST BESIDE WHAT IT OPENS ═══
- * The Leaderboards (v2.3.4355) and the Quests page (v2.3.4356) are the same
+/* ═══ v2.3.4382: A PAGE THAT IS A LIST BESIDE WHAT IT OPENS ═══
+ * The Leaderboards (v2.3.4381) and the Quests page (v2.3.4382) are the same
  * shape: a list of pills down the left that scrolls by itself, and what the
  * lit one opens beside it, scrolling by itself too -- or, where the page is
  * too narrow or too short for both (a phone on its side, whose band is ~80
@@ -43,7 +43,7 @@ export function sideBySide(w, h, minW, minH) {
    cue that there is more below), for each side of the page */
 export const FOOT_FADE = 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)';
 
-/* ═══ v2.3.4356: A SECTION'S HEADING HEADLINES ITS SECTION ═══
+/* ═══ v2.3.4382: A SECTION'S HEADING HEADLINES ITS SECTION ═══
    The owner, of both lists' first cut: "Why do the menu titles look dark and
    subtle?  Like in your screenshots 'ranks' and 'records' look like they're
    peripheral instead of headlining the section below."  They were 11 px

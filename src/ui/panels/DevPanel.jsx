@@ -231,7 +231,7 @@ const label = { color: COL.muted, font: '600 11px system-ui, sans-serif', letter
  * the very system the owner is chasing was switched off.
  */
 const CAP_GATES = [
-  'boards2' /* v2.3.4355: the daily spin's records, faces and levels on every board, the deleted stand-ins (boards.js) */, 'loginspin' /* v2.3.4295: the login wheel (loginspin.js) */,  'bagWeapons' /* v2.3.4224: a number, never a switch */, 'fishvariants' /* v2.3.4036: albino and large fish */, 'fishweigh' /* v2.3.4036: Inspect weighs a fish; the Biggest fish boards */,
+  'boards2' /* v2.3.4381: the daily spin's records, faces and levels on every board, the deleted stand-ins (boards.js) */, 'loginspin' /* v2.3.4295: the login wheel (loginspin.js) */,  'bagWeapons' /* v2.3.4224: a number, never a switch */, 'fishvariants' /* v2.3.4036: albino and large fish */, 'fishweigh' /* v2.3.4036: Inspect weighs a fish; the Biggest fish boards */,
   'monstermoves' /* v2.3.4011: the monster moves (monstermoves.js) */, 'abil', 'aceFlip' /* v2.3.2618 */, 'aceItems' /* v2.3.2619 */, 'amuletForge', 'areaChat', 'arena', 'bigorb' /* v2.3.2842; v2.3.2849: lower case, a kill switch */, 'blockScale', 'botfp', 'movepath' /* v2.3.3732: the message diet's path */, 'pathall' /* v2.3.3732: ...for every phone */, 'clientoff' /* v2.3.3755: the memory savers turned off (a list) */, 'broVerify', 'broCount' /* v2.3.3255: the wallet's Hemi Bro count */,
   'charLock', 'chatMute', 'clans', 'dungeon', 'elemBurst', 'eventCapes', 'friends',
   'gamble', 'gearRef' /* v2.3.2535 */, 'gemExtract', 'gems', 'guilds', 'harden', 'hpEndGrids', 'jackpot',

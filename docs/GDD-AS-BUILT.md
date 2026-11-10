@@ -975,7 +975,7 @@ Twenty-two quests for seven givers who are not in the world (a trader, an enchan
 
 **Guild quests** are ladders, not errands: each of the ten skill guilds pays gold and AP at eight level rungs (above); ranks (Novice to Transcendent) are titles.
 
-**The Leaderboards** (v2.3.4355: their own button on the dashboard's row, "Ranks"; `docs/specs/leaderboards.md`) show every board as a list under Ranks, Records and Skills, each row with the character's face and level; Records holds the daily spin's ten biggest wins and ten biggest losses, Ace's coin flip and the biggest fish; a character deleted for good keeps its rows as grey "Deleted" stand-ins (7 days on the ranks, until beaten on the records). **The leaderboard** (the Town Hall) ranks Combat (your level, the best of the three since v2.3.3538), each skill, kills and every life skill from server-counted series, reported at most every 5 minutes and dropping players unseen for 7 days.
+**The Leaderboards** (v2.3.4381: their own button on the dashboard's row, "Ranks"; `docs/specs/leaderboards.md`) show every board as a list under Ranks, Records and Skills, each row with the character's face and level; Records holds the daily spin's ten biggest wins and ten biggest losses, Ace's coin flip and the biggest fish; a character deleted for good keeps its rows as grey "Deleted" stand-ins (7 days on the ranks, until beaten on the records). **The leaderboard** (the Town Hall) ranks Combat (your level, the best of the three since v2.3.3538), each skill, kills and every life skill from server-counted series, reported at most every 5 minutes and dropping players unseen for 7 days.
 
 ### 9.5 Not built, put away, open
 

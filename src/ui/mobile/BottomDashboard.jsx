@@ -559,7 +559,7 @@ const DESTINATIONS = [
      button?"): More's own Codex picture, so what you tapped there and what you
      tap here are the same thing. */
   { id: 'encyclopedia', label: 'Codex', icon: '/icons/ui/panel-encyclopedia.webp?v=2.3.1224' },
-  /* v2.3.4355 (owner: "make room for a new 'leaderboards' button on the
+  /* v2.3.4381 (owner: "make room for a new 'leaderboards' button on the
      dashboard (I think this is already in the 'more' button)"): More's own
      Leaderboards picture.  "Ranks" on the button: "Leaderboards" is twelve
      letters and a phone's button holds six ("Quests", NavRail's badge); the
@@ -645,7 +645,7 @@ const DESTINATIONS = [
    door; the bus puts 'skills' there, and L opens it).  The ids stay what they were -- 'dashboard' is Gear, 'hero' is
    Bro -- because tests, the coach and the guide arrow key on them; only the
    words changed (aria-label and title: the buttons stay icon-only). */
-/* ═══ v2.3.4355: SIX -- GEAR, BRO, QUESTS, RANKS, CODEX, MORE ═══
+/* ═══ v2.3.4381: SIX -- GEAR, BRO, QUESTS, RANKS, CODEX, MORE ═══
    The owner, 2026-11-09: "I want to reorganize the 'quests' section and make
    room for a new 'leaderboards' button on the dashboard (I think this is
    already in the 'more' button)."  The Leaderboards leave More for a button

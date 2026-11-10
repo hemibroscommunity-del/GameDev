@@ -104,7 +104,7 @@ import { petbookMethods } from './petbook.js';
    (codex.js).  docs/specs/monster-codex.md. */
 import { codexMethods } from './codex.js';
 import { fishlogMethods } from './fishlog.js';   /* v2.3.4036: the rare fish, weighed, with records */
-import { boardMethods, boardFace } from './boards.js';   /* v2.3.4355: the daily spin's records, a face and a level on every board, the deleted stand-ins */
+import { boardMethods, boardFace } from './boards.js';   /* v2.3.4381: the daily spin's records, a face and a level on every board, the deleted stand-ins */
 import { achievementMethods } from './achievements.js';   /* v2.3.3527 */
 import { killRollMethods } from './killroll.js';   /* v2.3.3209: one roll a kill, each drop its own numbers */
 // v2.3.1131 (PR15): quality grades + hardening v1 -- the §4.6b/§4.6c
@@ -716,7 +716,7 @@ export const PRIVILEGED_EVENTS = new Set([
      server-sent and private.  Forged, `fish_weight` would show a weight the
      worker never rolled and `fish_board` names and kilos on a public record. */
   'fish_weight', 'fish_board',
-  /* v2.3.4355: the daily spin's biggest wins and losses (boards.js) -- names
+  /* v2.3.4381: the daily spin's biggest wins and losses (boards.js) -- names
      and gold on a public record, so a forged one would write the board a
      phone shows. */
   'spin_board',
@@ -6096,7 +6096,7 @@ export class GameRoom {
       case 'fish_board_request':
         if (session.id) await this._handleFishBoardRequest(session);
         break;
-      /* v2.3.4355: the daily spin's biggest wins and losses (boards.js) */
+      /* v2.3.4381: the daily spin's biggest wins and losses (boards.js) */
       case 'spin_board_request':
         if (session.id) await this._handleSpinBoardRequest(session);
         break;
@@ -6498,7 +6498,7 @@ export class GameRoom {
   async reportToLeaderboard(session, force) {
     try {
       if (!session || !session.id) return;
-      /* v2.3.4355: a character being deleted reports no more (boards.js
+      /* v2.3.4381: a character being deleted reports no more (boards.js
          _boardsGone): its row has just been retired, and a `track` let in
          while that was written would put the old life straight back */
       if (session._lbGone) return;
@@ -6575,7 +6575,7 @@ export class GameRoom {
          (the join path can report before `ps` exists), which just means the
          row carries no skill columns until the next report. */
       const series = lbPs ? this._chainScoreSeries(lbPs) : {};
-      /* v2.3.4355: the face beside the row, as a look (boards.js boardFace:
+      /* v2.3.4381: the face beside the row, as a look (boards.js boardFace:
          the short ids a bust is drawn from, off the character record, which
          is written once -- so it never moves the signature by itself) */
       const look = this._boardsOff() ? null : boardFace(session.char && session.char.look);
@@ -6715,7 +6715,7 @@ Object.assign(GameRoom.prototype, rideMethods); /* v2.3.3776 */
 Object.assign(GameRoom.prototype, petbookMethods); /* v2.3.3120 */
 Object.assign(GameRoom.prototype, codexMethods); /* v2.3.3209 */
 Object.assign(GameRoom.prototype, fishlogMethods); /* v2.3.4036 */
-Object.assign(GameRoom.prototype, boardMethods); /* v2.3.4355 */
+Object.assign(GameRoom.prototype, boardMethods); /* v2.3.4381 */
 Object.assign(GameRoom.prototype, achievementMethods); /* v2.3.3527 */
 Object.assign(GameRoom.prototype, killRollMethods); /* v2.3.3209: the kill's one roll (killroll.js) */
 // v2.3.1131 (PR15): quality + hardening -- see hardening.js.

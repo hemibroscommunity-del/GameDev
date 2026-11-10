@@ -316,7 +316,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.4172: More's tiles as the owner's five buttons left them (Quests,
      Life Skills and the Codex have other doors now: the first and last their
      own buttons, Life Skills a page under Bro) */
-  /* v2.3.4355: the Leaderboards have their own button on the row too */
+  /* v2.3.4381: the Leaderboards have their own button on the row too */
   for (const dest of ['social', 'clan', 'guild', 'journey',
                       'settings', 'account', 'notifications', 'feedback', 'about']) {
     await A.page.evaluate(() => window.__broDashPanelBus.open('more'));

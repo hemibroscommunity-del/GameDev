@@ -1,4 +1,4 @@
-# Manual combat: every attack is a swipe (v2.3.4357)
+# Manual combat: every attack is a swipe (v2.3.4383)
 
 > The owner, 2026-11-09: *"I want to make the system more manual. I think only
 > making an attack after manual input is better than auto-attacking at

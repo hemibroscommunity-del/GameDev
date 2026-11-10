@@ -1,4 +1,4 @@
-/* ═══ MANUAL COMBAT ON A PHONE AND A COMPUTER (v2.3.4357, docs/specs/manual-combat.md) ═══
+/* ═══ MANUAL COMBAT ON A PHONE AND A COMPUTER (v2.3.4383, docs/specs/manual-combat.md) ═══
  *
  * The owner, 2026-11-09: "only making an attack after manual input is better
  * than auto-attacking at precisely the correct interval."  And, 2026-11-10,

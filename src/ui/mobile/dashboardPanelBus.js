@@ -83,7 +83,7 @@ const landSafe = (id) => {
    on top of that page, so the back chip steps back to it. */
 const BRO_PAGES = { skills: 1, achievements: 1 };
 const broPage = (id) => Object.prototype.hasOwnProperty.call(BRO_PAGES, id);
-/* ═══ v2.3.4355: THE LEADERBOARDS HAVE THEIR OWN BUTTON ═══
+/* ═══ v2.3.4381: THE LEADERBOARDS HAVE THEIR OWN BUTTON ═══
    They were a drill under More (open('more') then push('leaderboard')); now
    they are a destination on the row (BottomDashboard RAIL_ORDER).  Every old
    road that still pushes them -- the Town Board's row, a weigh-in card's
@@ -210,7 +210,7 @@ export const dashboardPanelBus = {
        (on top of the page there if Bro is the one open) */
     if (broPage(id) && !(this.state.mode === 'expanded' && this.root() === 'hero')) { this.open(id); return; }
     if (broPage(id) && this.current() === id) return;   /* already on it */
-    /* v2.3.4355: a page with its own button opens as that button does */
+    /* v2.3.4381: a page with its own button opens as that button does */
     if (ownPage(id)) { if (!(this.state.mode === 'expanded' && this.current() === id)) this.open(id); return; }
     this.state.stack = [...this.state.stack, landSafe(id)];
     this.state.mode = 'expanded';

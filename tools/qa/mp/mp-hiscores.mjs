@@ -34,7 +34,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      for a timer to elapse. */
   await A.page.waitForTimeout(2000);
 
-  /* v2.3.4355: the Leaderboards have a button of their own on the row (its
+  /* v2.3.4381: the Leaderboards have a button of their own on the row (its
      word "Ranks", its name "Leaderboards"); the boards are a list of buttons
      beside the board, each row BoardRow (docs/specs/leaderboards.md).  The
      page's own phone test is mp-boards; this one keeps the v2.3.1671 guard. */

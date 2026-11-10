@@ -1,7 +1,7 @@
 import React from 'react';
 import { TARGET_PERIMETER_PX, getActiveWeapon, specialManaCost } from '@/data/index.js';
 import { specialAttack } from '@/game/playerActions.js';
-import { manualOn, mcArmToggle, mcArmed } from '@/game/manualCombat.js'; /* v2.3.4357: manual combat -- this button ARMS the special for the next attack */
+import { manualOn, mcArmToggle, mcArmed } from '@/game/manualCombat.js'; /* v2.3.4383: manual combat -- this button ARMS the special for the next attack */
 import { isWheelSwimming } from '@/game/wheelSwim.js'; /* v2.3.3003: no special in the water */
 import { fightOn } from '@/game/sparTargets.js'; /* v2.3.3267: a spar is a fight, for every weapon; v2.3.3268: and one with a real player in No man's land */
 import { BOW_SPECIAL_QUEUE_MS } from '@/game/combatHelpers.js'; /* v2.3.2543: the queued special's own expiry, so the button and the fire site cannot disagree about how long a request stands */
@@ -153,7 +153,7 @@ export function specialButtonLive(S, perimeterPx) {
   if (S._shieldUp) return false;
   if (S._extraction) return false;
   if (isWheelSwimming(S)) return false;   /* v2.3.3003: only your head is out of the water */
-  /* v2.3.4357: manual combat (`?manual=1`) -- the button is how a special is
+  /* v2.3.4383: manual combat (`?manual=1`) -- the button is how a special is
      made at all (it is armed here, before or during the build-up), so it is
      there whenever a weapon is in hand, not only once a fight has found you */
   if (manualOn()) return true;
@@ -226,7 +226,7 @@ export function SpecialButton(props) {
   /* v2.3.2543: a swipe the bow is holding until its line lands.  See the
      header -- this is where the 'Lining up...' popup went. */
   var queued = specialQueued(S);
-  /* v2.3.4357: armed for the next attack (manual combat): the button's own
+  /* v2.3.4383: armed for the next attack (manual combat): the button's own
      "Ready / Charged" look, the one a held bow special wears */
   var armed = manualOn() && mcArmed(S);
 
@@ -238,7 +238,7 @@ export function SpecialButton(props) {
     e.preventDefault();
     e.stopPropagation();
     pressOn(e);   /* v2.3.3018: the sheet's Pressed, while the finger is down */
-    /* ═══ v2.3.4357: MANUAL COMBAT -- THE PRESS ARMS, THE NEXT ATTACK FIRES ═══
+    /* ═══ v2.3.4383: MANUAL COMBAT -- THE PRESS ARMS, THE NEXT ATTACK FIRES ═══
        The owner: "Special attacks now require you to tap the special attack
        button prior to buildup of the next attack and upon release the
        special attack is active for that attack" (a sword: "you can activate
@@ -321,6 +321,6 @@ export function SpecialButton(props) {
      shot goes the moment the line touches something, so the one useful thing
      the player can do with this information is move the line.  'QUEUED' would
      name the machinery instead, which is what the popup did. */
-  /* v2.3.4357: ON, armed for the next attack (manual combat) */
+  /* v2.3.4383: ON, armed for the next attack (manual combat) */
   queued ? React.createElement(SkinTag, null, 'AIM') : armed ? React.createElement(SkinTag, null, 'ON') : null);
 }

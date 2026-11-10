@@ -3,7 +3,7 @@ import { COL } from './common.js';
 import { portraitDataUrl, portraitOptsFromPeer, portraitHasSubject } from '@/rendering/characterPortrait.js';
 import { peerCosmeticsFromWire } from '@/networking/peerCosmetics.js';
 
-/* ═══ v2.3.4355: ONE ROW FOR EVERY BOARD -- THE FACE, THE LEVEL, THE RECORD ═══
+/* ═══ v2.3.4381: ONE ROW FOR EVERY BOARD -- THE FACE, THE LEVEL, THE RECORD ═══
  * The owner: "include the character profile pic and level next to each
  * record", and "stand-in (deleted character) rows ... still include their
  * profile pic and level but just grayed out with the deleted label over it".
@@ -74,7 +74,7 @@ export function useBoardFaces(rows) {
 
 const FACE_PX = 40;
 
-/* ═══ v2.3.4355: THE FIRST FIVE PLACES WEAR THE OWNER'S TROPHIES ═══
+/* ═══ v2.3.4381: THE FIRST FIVE PLACES WEAR THE OWNER'S TROPHIES ═══
  * The owner, of the first pictures of this page: "This is looking good.  Add
  * these trophies to the left of the ranks.  Add a cool code based effect for
  * shine or slight sparkling."  His sheet: a crowned gold cup (1), a silver

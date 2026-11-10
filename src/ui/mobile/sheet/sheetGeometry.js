@@ -438,7 +438,7 @@ export function identityRowHeight(vw, vh) {
    The owner: "I want to consolidate the dashboard area as much as possible
    (limit lots of buttons to switch between different context)", and asked,
    five buttons: Life Skills moved inside Bro (a page under it). */
-/* ═══ v2.3.4355: SIX -- Gear, Bro, Quests, Ranks, Codex, More ═══
+/* ═══ v2.3.4381: SIX -- Gear, Bro, Quests, Ranks, Codex, More ═══
    The owner: "make room for a new 'leaderboards' button on the dashboard".
    CLOSE keeps its 56 px (48 under 375: bandCloseW) and the row its 4 px
    gaps, so the room comes out of the buttons: 48 px each at 390 (they were
@@ -447,7 +447,7 @@ export function identityRowHeight(vw, vh) {
    since 2016 is that narrow.  Their words stay under their pictures down to
    45 px (NavRail NAV_WORDS_STACK, lowered from 46 for a 375 px iPhone's 45);
    a 360 px phone shows the pictures alone, as a 320 one always has. */
-export const RAIL_COUNT = 6; /* v2.3.1651: Quests; v2.3.1655: Life Skills; v2.3.3215: Codex; v2.3.4172: Life Skills into Bro; v2.3.4355: the Leaderboards */
+export const RAIL_COUNT = 6; /* v2.3.1651: Quests; v2.3.1655: Life Skills; v2.3.3215: Codex; v2.3.4172: Life Skills into Bro; v2.3.4381: the Leaderboards */
 const NAV_GAP = 4;
 /* v2.3.4182: the nav buttons' ceiling (navButtonSize), named for navRowFills */
 export const NAV_BTN_MAX_W = 96;
@@ -630,7 +630,7 @@ export function navRowFills(vw, vh) {
    and one 4 px gap: the five buttons are 58 at 390, 52 at 360, 44 at 320
    (where their words give way to the pictures alone, NavRail navLabelMode). */
 export const BAND_CLOSE_W = 56;
-/* v2.3.4355: with six buttons a phone under 375 px wide gives CLOSE 48 (the
+/* v2.3.4381: with six buttons a phone under 375 px wide gives CLOSE 48 (the
    word is ~40), so a 360 px phone's buttons are the 44 px a thumb needs (they
    would be 43); a 375 px iPhone and wider keep the 56 the owner drew. */
 export const BAND_CLOSE_NARROW_W = 48;
@@ -774,7 +774,7 @@ export function navGroupWidth(vw, vh) {
    26 made, to the pixel -- so landscapeNavGroupW, the sideways column's width
    (landscapeDashColW takes the wider of it and the bag) and the canvas beside
    it stay exactly where they were.  Sideways keeps its fold chip until B3. */
-/* v2.3.4355: 31 -> 26 with the Leaderboards' button: seven slots again (the
+/* v2.3.4381: 31 -> 26 with the Leaderboards' button: seven slots again (the
    fold chip and six), and 7 x 26 + 6 gaps + 8 is the same 214 -- the dock,
    the sideways column and the canvas beside it do not move (v2.3.3215's
    number, for v2.3.4172's reason). */

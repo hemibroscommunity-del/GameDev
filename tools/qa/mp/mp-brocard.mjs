@@ -189,7 +189,7 @@ const popup = (P) => P.page.evaluate(() => {
 });
 
 const ORDER = ['damage', 'dps', 'aspd', 'range', 'crit', 'critDmg', 'special', 'elem', 'def', 'armor', 'dodge', 'eres', 'move'];
-/* v2.3.4355: six -- the Leaderboards' button ("Ranks") between Quests and the Codex */
+/* v2.3.4381: six -- the Leaderboards' button ("Ranks") between Quests and the Codex */
 const FIVE = ['dashboard', 'hero', 'quests', 'leaderboard', 'encyclopedia', 'more'];
 const WORDS = { dashboard: 'Gear', hero: 'Bro', quests: 'Quests', leaderboard: 'Ranks', encyclopedia: 'Codex', more: 'More' };
 
@@ -386,7 +386,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`a 320 x 640 phone: the pictures alone (${r320.words}), each button ${r320.btns.map((b) => b.w + 'x' + b.h).join(' ')}, CLOSE ${r320.close && r320.close.w}`,
       /* 40 tall on a screen 720 or shorter: identityRowHeight's own rule
          (sheetGeometry, "HEIGHT IS NOT 44 EVERYWHERE"), not this change's */
-      /* v2.3.4355: six buttons are 38 px wide here -- the one screen where
+      /* v2.3.4381: six buttons are 38 px wide here -- the one screen where
          six cannot be 44 (sheetGeometry RAIL_COUNT's note); no iPhone since
          2016 is 320 wide */
       r320.words === 'icon' && r320.btns.length === 6 && r320.btns.every((b) => b.h >= 40 && b.w >= 38 && b.r <= r320.vw) && !!r320.close && r320.close.h >= 40 && r320.close.r <= r320.btns[0].l, r320);

@@ -52,7 +52,7 @@ import { NAV_KEYS } from '@/game/deskKeys.js'; /* v2.3.3407: each button's key, 
              the picture alone, the word its aria-label and title.
    The key cap stays on a computer. */
 export const NAV_WORDS_BESIDE = 86;
-/* v2.3.4355: 46 -> 45 with the sixth button: a 375 px iPhone's buttons are 45
+/* v2.3.4381: 46 -> 45 with the sixth button: a 375 px iPhone's buttons are 45
    px, and "Quests", the longest word, is ~41 px in the 11 px badge -- whole
    in a 45 px button's 41, cut by a pixel in a 44 px one (measured by
    mp-boards).  So the words stay on every iPhone; a 360 px phone (44 px
@@ -68,7 +68,7 @@ const NAV_TRIM = {
   'nav-dashboard.png': [28, 2, 234, 255], 'panel-self.webp': [37, 35, 219, 220],
   'panel-quests.webp': [47, 60, 208, 217], 'panel-encyclopedia.webp': [35, 44, 222, 211],
   'nav-more.webp': [53, 62, 203, 218], 'nav-inventory.webp': [40, 32, 216, 217],
-  'panel-leaderboard.webp': [31, 35, 225, 220],   /* v2.3.4355: the Leaderboards' button */
+  'panel-leaderboard.webp': [31, 35, 225, 220],   /* v2.3.4381: the Leaderboards' button */
 };
 const navTrim = (src) => NAV_TRIM[String(src || '').split('?')[0].split('/').pop()] || [0, 0, 256, 256];
 export function navLabelMode(btnW) {
@@ -176,7 +176,7 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
                finding anything and quietly asserts nothing.  That is TRAPS §29,
                and mp-hudface is the fifth scenario it killed. */
             data-nav={d.id}
-            /* v2.3.4355: a button whose word is short for its page ("Ranks")
+            /* v2.3.4381: a button whose word is short for its page ("Ranks")
                is named in full where there is room for it (`title`) */
             role="button" aria-label={d.title || d.label} aria-pressed={on}
             /* ═══ v2.3.3407: ITS KEY IN THE CORNER, ON A COMPUTER ═══

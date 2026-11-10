@@ -8172,7 +8172,7 @@ html[data-orient="landscape"] .bt-fish-card{top:calc(env(safe-area-inset-top,0px
   .bt-card-x[data-gear-card-close]{animation:btCardXPulse .5s ease-in-out 3,btCardXGlow 2.2s ease-in-out 1.5s infinite}
 }
 
-/* ═══ v2.3.4355: THE LEADERBOARDS' TROPHIES SHINE AND SPARKLE ═══
+/* ═══ v2.3.4381: THE LEADERBOARDS' TROPHIES SHINE AND SPARKLE ═══
    The owner, of the first five places' trophies (BoardRow.jsx RankMark): "Add a cool code based effect for
    shine or slight sparkling."  Nothing is drawn or loaded for it:
      .bt-rank-shine   a slanted band of light that crosses the picture, cut to the trophy's own shape (the

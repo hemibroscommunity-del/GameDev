@@ -14,7 +14,7 @@
  * Drawn by the quest list (dash/QuestsPanel.jsx, the quest it opens on) and by
  * a quest's own page (dash/QuestDetailPanel.jsx).
  *
- * ═══ v2.3.4356: `brief`, THE QUESTS PAGE'S OWN LAYOUT ═══
+ * ═══ v2.3.4382: `brief`, THE QUESTS PAGE'S OWN LAYOUT ═══
  * The owner, 2026-11-09: "The quests page actually needs to be reorganized as
  * a useful menu interface.  Right now everything scrolls too long ... It
  * needs to be able to help you navigate active quests, next steps, locations,
@@ -103,7 +103,7 @@ const Label = ({ children }) => (
   </div>
 );
 
-/* v2.3.4356: one item of the brief page -- its own bordered card, a gap
+/* v2.3.4382: one item of the brief page -- its own bordered card, a gap
    under it, so no two items ever read as one */
 const CARD = {
   display: 'block', margin: '0 0 3px', padding: '3px 8px 4px', boxSizing: 'border-box',
@@ -176,7 +176,7 @@ export function QuestJournalPage({ page, header = true, kicker = '', brief = fal
     </Section>
   );
 
-  /* ── v2.3.4356: the brief page -- a head and one CARD an item (the note above) ──
+  /* ── v2.3.4382: the brief page -- a head and one CARD an item (the note above) ──
      The owner, of its first cut: "the quest detail menu is still pretty
      messy.  I like clean separation between each menu item.  Like the 'make 3
      box traps at the woodworker' and the '0/3 box traps' line beneath it all

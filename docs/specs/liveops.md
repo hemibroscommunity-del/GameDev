@@ -42,7 +42,7 @@ via `_liveopsRoutes` just before its final 404. Owner-facing curl guide:
 | `disable_weapon_drops` | `_spawnLootForKill` weapon roll | monsters drop no weapons (gold/XP unaffected); `caps.weaponDrops` stays `true` so clients don't fall back to legacy client-side minting |
 | `disable_dungeons` | `_handleDungeonStart` | `dungeon_error` code `'disabled'` with a player-readable message |
 | `disable_threats` | `_interceptThreat` | returns `null` — the threat is **dropped, not relayed** (rule 15; relaying would trigger legacy client-side threat handling on the receiving end) |
-| `boards2: false` | `_boardsOff` (boards.js, v2.3.4355) | `caps.boards2` un-advertised; no daily-spin record is taken, no face or level is stamped on a new board row or put in the ranks report, a character delete retires no row; `spin_board_request` answers `{off: true}`. What is on the boards stays |
+| `boards2: false` | `_boardsOff` (boards.js, v2.3.4381) | `caps.boards2` un-advertised; no daily-spin record is taken, no face or level is stamped on a new board row or put in the ranks report, a character delete retires no row; `spin_board_request` answers `{off: true}`. What is on the boards stays |
 | `hidden_off` | `_hid` (hidden.js, v2.3.3723) | every hidden setting reads its public placeholder; the stored `hidden_settings` record is untouched and comes back when the flag is cleared (hidden-settings.md) |
 
 ### Value flags
