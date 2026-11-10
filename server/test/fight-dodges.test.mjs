@@ -180,6 +180,22 @@ heal();
   check('5d. the switch put back: the hop has none', !graced());
 }
 
+/* ── 5e. v2.3.4455's body taken over (bodytake.js) gets no grace: its phone's
+   answering move is no change of zone, and a move elsewhere is dropped ── */
+{
+  room._liveFlags = {};
+  freshClock();
+  heal();
+  await move('bp_fd_v', WHEEL_ZONE, HX, HY);
+  V._zoneEntryGraceUntil = 0; V._entryGraceAt = 0;
+  room._bodyTakeStart('bp_fd_v', T);
+  check('5e. (guard) the body waits for its phone', !!V._bodyWait);
+  await move('bp_fd_v', 'town', 1000, 1000);
+  check('5f. ...a move into another place while it waits is dropped, with no grace', V.z === WHEEL_ZONE && !graced() && !!V._bodyWait);
+  const ok = await move('bp_fd_v', WHEEL_ZONE, HX + 10, HY);
+  check('5g. ...the answering move at the body is taken, and stamps no grace', ok && !V._bodyWait && !graced(), { wait: V._bodyWait, grace: V._zoneEntryGraceUntil - T });
+}
+
 /* ── 6. "I'm dead": the body stays (closed by v2.3.4373, pinned here) ── */
 const NML_X = WHEEL_CENTRE[0] + 9000, NML_Y = WHEEL_CENTRE[1];   /* No man's land, a few rings out */
 const K = room.playerState.bp_fd_k, L = room.playerState.bp_fd_l;

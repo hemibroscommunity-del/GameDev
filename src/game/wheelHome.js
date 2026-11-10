@@ -33,6 +33,7 @@ import { TILE, ZONES, TOWN_EXITS } from '../data/index.js';
 import { isWorldViewZone } from '../data/zones.js';
 import { wheelIsHome, wheelWayBack } from './worldTrial.js';
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3462: the gate heard */
+import { bodyPlaceHolds } from './bodyPlace.js';   /* v2.3.4455: the trip waits for a body's place */
 
 /* a beat in the world before the trip, so the arrival settles first */
 const SPAWN_SETTLE_MS = 400;
@@ -155,6 +156,9 @@ export function wheelSpawnTick(S) {
     if (!S._serverCaps) S._spawnAskedAt = Date.now();
     return;
   }
+  /* v2.3.4455: a relaunch mid-fight lands at its body: the trip waits for
+     where (game/bodyPlace.js) */
+  if (bodyPlaceHolds(S)) return;
   const now = Date.now();
   if (!S._spawnSince) { S._spawnSince = now; return; }
   if (now - S._spawnSince < SPAWN_SETTLE_MS) return;

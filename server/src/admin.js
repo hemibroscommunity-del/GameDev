@@ -278,6 +278,7 @@ export const adminMethods = {
                harvestShield  — the record is currently granting immunity
                                 (all of _extractionShielded's clauses hold) */
           live: ps ? { coins: ps.coins, level: ps.level, hp: ps.hp, zone: ps.z, x: ps.x, y: ps.y, dead: !!ps.dead, disconnected: !!ps.disconnected,
+            lingering: !!ps.lingering, bodyWait: ps._bodyWait || 0,   /* v2.3.4455: a body left in a fight (linger.js) or taken over and waiting for its phone (bodytake.js) */
             /* v2.3.3016: stamina, maxStamina and sprint were here AND below (the
                v2.3.3006 sprint's, twice -- esbuild warned on every worker start);
                the copy below, with the stamina pool's own reasoning, is the one */

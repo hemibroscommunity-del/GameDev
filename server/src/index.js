@@ -231,6 +231,7 @@ import { wheelTableMethods } from './wheeltables.js'; /* v2.3.3315: which Wheel 
 import { noMansLandMethods } from './nomansland.js'; /* v2.3.3058: No man's land */
 import { pvpBalanceMethods } from './pvpbalance.js'; /* v2.3.3260: PvP hits rolled by the worker, and tuned */
 import { lingerMethods } from './linger.js'; /* v2.3.3260: leaving in the middle of a fight -- the body stays */
+import { bodyTakeMethods } from './bodytake.js'; /* v2.3.4455: a second login mid-fight takes the body over where it stands */
 import { lastPlaceMethods } from './lastplace.js'; /* v2.3.3327: a reconnect starts where the server last had you */
 import { hitProofMethods } from './hitproof.js'; /* v2.3.3334: a hit on a monster needs its weapon, its reach, a paid special */
 import { testModeMethods } from './testmode.js'; /* v2.3.3430: test mode -- the owner's own characters without the honesty checks */
@@ -656,6 +657,7 @@ export const PRIVILEGED_EVENTS = new Set([
      (linger.js) -- server-emitted only; a forged one would tell every phone
      in the room to wait out a countdown it never earned. */
   'linger_wait',
+  'body_place',   /* v2.3.4455: where a kept body stands, after a takeover mid-fight (bodytake.js) */
   /* v2.3.2101: the contest's public state (is it running, how many of the
      three are left, the rate the worker will actually roll). Server-EMITTED,
      so it MUST be here or a client could forge it -- and a forged "0 left"
@@ -6875,6 +6877,7 @@ Object.assign(GameRoom.prototype, floodMethods); /* v2.3.3274: one socket cannot
 Object.assign(GameRoom.prototype, verifyMethods); /* v2.3.3275: the account check */
 Object.assign(GameRoom.prototype, pvpBalanceMethods); /* v2.3.3260 */
 Object.assign(GameRoom.prototype, lingerMethods); /* v2.3.3260: leaving mid-fight, the body stays */
+Object.assign(GameRoom.prototype, bodyTakeMethods); /* v2.3.4455: ...and a second login takes it over */
 Object.assign(GameRoom.prototype, lastPlaceMethods); /* v2.3.3327: a reconnect starts where the server last had you */
 Object.assign(GameRoom.prototype, hitProofMethods); /* v2.3.3334: a hit on a monster needs its weapon, its reach, a paid special */
 Object.assign(GameRoom.prototype, testModeMethods); /* v2.3.3430: test mode (testmode.js) */

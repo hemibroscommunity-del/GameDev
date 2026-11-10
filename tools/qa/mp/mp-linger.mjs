@@ -18,6 +18,11 @@
  *      up;
  *   6. no page errors.
  * Pictures: tools/qa/mp/out/linger-*.png.
+ *
+ * v2.3.4455: a game that can be placed now takes a lingering body back where
+ * it stands instead of waiting (server/src/bodytake.js; mp-bodytake plays
+ * that).  This scenario plays the wait, the answer for a game that cannot be
+ * placed, so it runs with `bodytake: false` (cleared at the end).
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -78,6 +83,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
   const shot = (P, name) => P.page.screenshot({ path: join(OUT, `linger-${name}.png`) }).catch(() => {});
+  await H.liveFlag(wsPort, 'bodytake', false);   /* v2.3.4455: the wait, not the takeover (see above) */
   const A = await H.newPlayer(browser, { name: 'Raider', wsPort, webPort, world: 'wheel', viewport: VIEW });
   const B = await H.newPlayer(browser, { name: 'Wanderer', wsPort, webPort, world: 'wheel', viewport: VIEW });
   await H.enterWorld(A);
@@ -91,7 +97,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      same phone (a character's key works only on its devices: devicelock.js) */
   const { device: deviceB } = await H.keyAndDevice(B);
   rec.ok('setup: both in the Wheel, the wanderer\'s Login Key known (guard)', okA && okB && !!phraseB, { okA, okB, phrase: !!phraseB });
-  if (!(okA && okB && phraseB)) { await A.ctx.close().catch(() => {}); await B.ctx.close().catch(() => {}); return; }
+  if (!(okA && okB && phraseB)) { await H.liveFlag(wsPort, 'bodytake', null); await A.ctx.close().catch(() => {}); await B.ctx.close().catch(() => {}); return; }
 
   /* real input on a loop on both: a page logs itself out after two minutes
      without any (Control does nothing in the game); B's stops when it closes */
@@ -167,7 +173,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (ok.dry && ok.near === 0) { spot = c; break; }
   }
   rec.ok(`setup: a dry, quiet spot on No man's land 1's ring (${spot ? spot.land : 'none'})`, !!spot, spot);
-  if (!spot) { stopAlive = true; await A.ctx.close().catch(() => {}); await B.ctx.close().catch(() => {}); return; }
+  if (!spot) { stopAlive = true; await H.liveFlag(wsPort, 'bodytake', null); await A.ctx.close().catch(() => {}); await B.ctx.close().catch(() => {}); return; }
   await H.hopTo(B, spot.x + 50, spot.y, { tries: 90 });
   await B.page.waitForTimeout(2500);
 
@@ -283,6 +289,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const errs = errorsA.slice(errorsBefore).filter((l) => /pageerror/.test(l)).concat(B2.logs.filter((l) => /pageerror/.test(l)));
   rec.ok('6. no page errors', errs.length === 0, errs);
   stopAlive = true;
+  await H.liveFlag(wsPort, 'bodytake', null);
   await A.ctx.close().catch(() => {});
   await B2.ctx.close().catch(() => {});
 }

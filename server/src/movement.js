@@ -478,6 +478,9 @@ export const movementMethods = {
   _handleMove(session, ws, msg) {
     if (!session.id || !this.playerState[session.id]) return;
     const ps = this.playerState[session.id];
+    /* v2.3.4455: a body taken over waits for its phone to stand at it: until
+       then a move moves nothing (bodytake.js) */
+    if (ps._bodyWait && this._bodyTakeMove(session, ps, msg)) return;
     const oldZone = ps.z;
     /* v2.3.1631: an unlisted zone id drops the ZONE, never the whole
        message.

@@ -189,10 +189,21 @@ The minnow keeps the owner's 100.
   the body's spot). Outside a fight a second login is unchanged. Kill
   switch: `takeoverlinger: false`
   (`server/test/takeover-linger.test.mjs`, 41 checks; 13 failed before).
-- The owner chose "take over the body where it stands" for this case; that
-  needs a new message telling the phone where its body is, and a change to
-  how the phone starts, so it is a later step. Until then the waiting
-  screen is the answer.
+- **...and a game that can be placed takes the body over where it stands**
+  (v2.3.4455; the owner: "So yes do the take over body message"). Its join
+  says so (`tb: 1`), and then the server keeps the live body (place, zone,
+  health, fight clock, bag; nothing rebuilt or saved over) and tells the
+  game where it stands (`body_place`). The game takes the usual trip into
+  the world behind the loading screen and lands at the body instead of
+  BroTown's square (`src/game/bodyPlace.js`). Until the game's first move
+  from beside the body the body does not move or change zone, and it can be
+  hit the whole time. No such move in 60 s, or a landing far from the body:
+  the waiting screen above, as for a game that cannot be placed. The same
+  for a body already left standing (the app closed, then opened again
+  within the 20 s): a game that can be placed takes it back where it
+  stands instead of waiting; a dying body still waits. Kill switch
+  `bodytake: false` (every game waits). `server/test/body-take.test.mjs`,
+  `body-place.test.mjs`, the phone scenario `mp-bodytake`.
 
 ### 6b. The zone-entry half second is not a shield (v2.3.4454)
 
@@ -211,7 +222,7 @@ The minnow keeps the owner's 100.
 - An honest entry keeps it exactly as before; nothing else about changing
   place changes. It protects the other player, so test mode does not skip it.
 - Kill switch: `entrygrace: false` (every entry graced again).
-  `server/test/fight-dodges.test.mjs` (31 checks; 8 failed before).
+  `server/test/fight-dodges.test.mjs` (34 checks; 8 failed before).
 - "I'm dead": a phone whose move said `dead: true` used to turn the linger
   off, so the loser could say so, close the game and leave no body. Closed
   since v2.3.4373 (`serverdead`: `dead` is the worker's word); the same
@@ -258,6 +269,7 @@ staff bolt.
 | `pvpbalance: false` | the worker's roll in player fights: the old claim x 0.5 path, exactly (also un-advertises `caps.pvpbalance`) |
 | `fishheal: false` | the fish ladder: the old 92 + 8 x level, with the old Recovery bonus on top (also un-advertises `caps.fishheal`) |
 | `linger: false` | the body staying: every leaver leaves at once again |
+| `bodytake: false` | a relaunch mid-fight landing at the body: every game gets the wait instead (v2.3.4432) |
 | `entrygrace: false` | the zone-entry half second's two limits (mid-fight, once in 10 s): every entry graced again, as before v2.3.4454 |
 | `takeoverlinger: false` | a second login mid-fight counting as a leave: it takes the session over and starts afresh where the phone says, as before v2.3.4432 |
 
