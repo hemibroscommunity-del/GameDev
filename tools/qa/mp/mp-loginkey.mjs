@@ -79,8 +79,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
      has stood third since -- so it failed with nothing displaced */
   /* v2.3.4172: the owner's More (map, social, ... settings, account,
      notifications, feedback, about): Account beside Settings, Map first */
+  /* v2.3.4492: eleven tiles, not twelve -- v2.3.4393 (#1456) moved the
+     Leaderboards out of More onto a dashboard button of their own, as the
+     owner asked (MorePanel.jsx).  The rule held is the same: Account
+     beside Settings, Map first */
   rec.ok('...in the owner\'s More, beside Settings',
-    more.order.length === 12 && more.order.indexOf('account') === more.order.indexOf('settings') + 1
+    more.order.length === 11 && more.order.indexOf('account') === more.order.indexOf('settings') + 1
       && more.order[0] === 'map',
     more.order);
 
