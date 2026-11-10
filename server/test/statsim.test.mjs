@@ -351,7 +351,7 @@ for (const b of BUILDS) {
   {
     const sidB = 'sim-guard';
     const chB = makeChar();
-    room.playerState[sidB] = Object.assign(chB, { z: 'meadow', x: 600, y: 600, id: sidB, blocking: true, stamina: 50 });
+    room.playerState[sidB] = Object.assign(chB, { z: 'meadow', x: 600, y: 600, id: sidB, blocking: true, ba: 0 /* v2.3.4605: facing the thrower, as a phone's shield says */, stamina: 50 });
     const mB = { id: 'sim-thrower', arch: 'fodder', level: slime.level, hp: 58, maxHp: 58, dmg: slime.dmg, alive: true,
       x: 760, y: 600, spawnX: 760, spawnY: 600, atkCd: Date.now() + 1e6,
       _projImpactAt: Date.now() - 1, _projTargetId: sidB, _projTx: 600, _projTy: 600, _projFromX: 760, _projFromY: 600 };
@@ -373,7 +373,7 @@ for (const b of BUILDS) {
   {
     const sidS = 'sim-guard-swing';
     const chS = makeChar();
-    room.playerState[sidS] = Object.assign(chS, { z: 'meadow', x: 600, y: 600, id: sidS, blocking: true, blockStartT: 0, stamina: 50 });
+    room.playerState[sidS] = Object.assign(chS, { z: 'meadow', x: 600, y: 600, id: sidS, blocking: true, ba: 0 /* v2.3.4605: facing it */, blockStartT: 0, stamina: 50 });
     const mS = { id: 'sim-swinger', arch: 'fodder', level: slime.level, hp: 58, maxHp: 58, dmg: slime.dmg, alive: true, x: 630, y: 600, spawnX: 630, spawnY: 600 };
     room.monsters.meadow = [mS];
     room.eventBuffer = [];
@@ -407,7 +407,7 @@ for (const b of BUILDS) {
     for (let a = 1; a <= 30; a++) {
       for (let b = 0; b < 30; b++) {
         const ch = makeChar();
-        room.playerState[sidG] = Object.assign(ch, { z: 'meadow', x: 600, y: 600, id: sidG, blocking: true, blockStartT: 0, maxStamina: 100, stamina: 100, lastDamageAt: Date.now() });
+        room.playerState[sidG] = Object.assign(ch, { z: 'meadow', x: 600, y: 600, id: sidG, blocking: true, ba: 0 /* v2.3.4605 */, blockStartT: 0, maxStamina: 100, stamina: 100, lastDamageAt: Date.now() });
         let tick = a * room.TICK_RATE, sw = room.PARRY_WINDOW_MS + b * (room.MONSTER_ATTACK_CD / 30), broke = -1;
         for (let i = 0; i < 400 && broke < 0; i++) {
           if (sw < tick) { room._resolveBasicSwingHit('meadow', mG, sidG, Date.now()); sw += room.MONSTER_ATTACK_CD; }

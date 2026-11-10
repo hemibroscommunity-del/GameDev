@@ -173,6 +173,7 @@ check('attack: cooldown stamped (no machine-gun swings)', m0.atkCd > Date.now(),
 
 // ── 3. blocking victim ──
 ps.hp = 100; ps.stamina = 100; ps.blocking = true;
+ps.ba = Math.PI;   /* v2.3.4605: facing the monster (west), as a phone's raised shield says (moveclaims.js `blockarc`) */
 m0.atkCd = 0; swingOnly();
 clearDirty();
 landSwing();
