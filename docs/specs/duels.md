@@ -57,6 +57,47 @@ the pot — no suiciding out of a losing wager) but is a normal death.
   the sweep refunds only what a record names. `duel.test.mjs` §7b crashes the
   start at every write (inbox-escrow.md "Writes that must commit together").
 
+## Leaving the zone (v2.3.4371)
+
+Owner, 2026-11-10: *"A dueller who walks into a dungeon or onto their farm
+mid-duel forfeits after 15 seconds, the same as closing the app."*
+
+- No blow crosses zones (combat.js walks only the attacker's zone), so a
+  duel split across two zones could only end on the 10-minute clock: both
+  players without HP regen and with the bag fight-locked (no shop, market,
+  trade or ride) all that time, and with a stake, one blow then a hide in an
+  empty `dungeon:` id won the pot on the timeout's HP comparison (state-
+  machine sweep 2026-11-03, S5-2 and S5-13).
+- **The hook**: every server write of a player's zone calls
+  `_duelZoneMoved(pid)` (duel.js) right after it: the `move` handler
+  (movement.js; this is also how a dungeon start, a party pull and the farm
+  trip move a player, since the phone zones in on its own `move`), a join's
+  new playerState (join.js), the respawn (index.js) and the sparring clones
+  (spar.js). `duel-zone.test.mjs` §7 scans `server/src` and fails for a
+  zone writer that does not call it.
+- **The clock is the disconnect's**: `duel.away[pid]` with `GRACE_MS`, so
+  `_tickDuels` forfeits it through the one `_resolveDuel` and a wager pays
+  through the one `duelpot:<id>` opId. There is no second payment path.
+  `duel.awayZone[pid]` (null-prototype, like `away`) marks the clocks a
+  zone started: being in the same zone again clears only those (never a
+  disconnect's), and a rejoin into the other zone keeps the clock running.
+  The player whose move split the duel is the leaver; the foe following
+  them in, or their coming back, clears it. A running clock keeps its
+  deadline (stepping in and out, or closing the app from the dungeon, does
+  not give a fresh 15 s). Both away: the first leaver loses, as with two
+  disconnects.
+- **Arena matches are left alone**: a fighter who changes zone starts no
+  clock; the match is decided by its own 3-minute clock's HP tiebreak, as
+  before (`duel-zone.test` §6).
+- **Kill switch**: live flag `duelzone: false` (`_duelZoneOff`, declared in
+  duel.js): no zone starts a clock, today's behaviour before v2.3.4371; a
+  clock already running is cleared at the next zone write.
+- **The lesson** (would be a TRAPS entry): "the disconnect clock covers a
+  player who leaves" was believed for a year (the accept's own comment said
+  so), and only a disconnect ever started it. A rule about *where a player
+  is* must hang on every write of the place, not on the one road that was
+  in mind; hence the scan in §7.
+
 ## Wire surface (for future UI)
 
 | Message | Direction | Notes |
@@ -167,6 +208,37 @@ in `duel.test.mjs` §15-§16:
   kill (`_duelKill`); a kill by anyone else, or with no duel open, runs
   them as before. Arena matches ride the duel machine, so an arena kill is
   excluded too, as both hooks always intended.
+
+## v2.3.4361: the phantom duel (phone side)
+
+Found by the state-machine sweep (2026-11-03, V6). Tapping Accept marked the
+accepter's phone "in a duel" before the worker agreed, and only `duel_end`
+ever cleared it. A refused accept (the worker's silent drop for a stale or
+busy challenge, or its declineBoth) left the phone in a duel that did not
+exist until a reload, and in No man's land every melee swing of it was an
+untargeted player attack: a bystander hit, a red skull.
+
+- **A duel's melee swing names its foe** as `target` on `player_attack`
+  (`monsterCombat.js`, `duelPending.js duelSwingTarget`), as the bow and staff
+  already did, so the worker lands it on that player only. Outside a duel a
+  swing keeps its cone, as before.
+- **The accepter's duel is pending until its own settled echo.** The tap still
+  shows "DUEL!" and the lock at once (`enterPendingDuel`); the worker's settled
+  `duel_accept` reaches every phone, the accepter's included, on v1 and v2
+  (`duel-pending.test` §1), and settles it (`settleOwnAccept`). Unsettled after
+  `DUEL_PENDING.SETTLE_MS` (8 s), the frame update (`targeting.js`) drops it and
+  its lock and says "Duel did not start". A duel live when a second card was
+  accepted is put back.
+- **A `duel_decline` from that challenger** (declineBoth) drops a pending duel
+  at once. A settled duel is never ended by a decline.
+
+Not changed (the worker; left for later): the silent drops in `duel.js` still
+answer nothing (the phone's clock covers them), and a duel that ENDS while the
+phone is away or a deploy wipes the worker's duels is still kept by the phone
+until a reload: clearing a settled duel at state_sync must ship with the
+worker re-sending a live duel, or every network blip would lose one. The
+melee `target` above defangs that phantom (no bystander is hit) but does not
+end it. Tests: `server/test/duel-pending.test.mjs`.
 
 ## Tests
 

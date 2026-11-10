@@ -1,6 +1,7 @@
 import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
 import { lockOntoDuelOpponent } from '@/game/duelLock.js'; /* v2.3.2145 */
+import { enterPendingDuel } from '@/game/duelPending.js'; /* v2.3.4361: the phantom duel */
 import { createPortal } from 'react-dom';
 import { BT_AUDIO } from '@/data/index.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the duel heard beginning */
@@ -198,12 +199,10 @@ export function DuelRequestPanel(props) {
           wager: duelRequest.wager || 0
         }
       });
-      S2._inDuel = {
-        opponent: duelRequest.fromId,
-        opponentName: duelRequest.fromName,
-        wager: duelRequest.wager || 0,
-        startTime: Date.now()
-      };
+      /* v2.3.4361: PENDING until the worker's settled echo comes back
+         (src/game/duelPending.js): a refused or unanswered accept is dropped
+         after a few seconds instead of leaving a phantom duel */
+      enterPendingDuel(S2, duelRequest.fromId, duelRequest.fromName, duelRequest.wager || 0, Date.now());
       /* v2.3.2145: both sides lock on, or only the challenger gets a block
          button -- the same half-a-fix shape as v2.3.1306's _inDuel gate.
          See src/game/duelLock.js. */

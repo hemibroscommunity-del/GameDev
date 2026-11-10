@@ -63,6 +63,15 @@ const WEAPON_CHANNEL_KEYS = {
 };
 
 export const gridMethods = {
+  /* v2.3.4380: `skillfreeze: false` in the live flags is the way back to
+     storing a prog3 character's reported skill tracks and full-restoring on
+     their rise (the freeze is in _handleStatsUpdate; the rollwindow style,
+     movement.js _rollWindowOff). */
+  _skillFreezeOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'skillfreeze') && !f.skillfreeze);
+  },
+
   /* ═══ v2.3.2535: ONE GATE FOR BOTH EQUIP LANES ═══
      `stats_update` can now say what you are wearing in two ways -- by
      NAMING a recorded piece (`armorRef`) or by DESCRIBING one (`armor`,
@@ -820,8 +829,31 @@ export const gridMethods = {
        sanitizers are MONOTONIC in `level` now, so a decrease cannot land
        and therefore cannot be re-reported as an increase.  The restore
        itself is unchanged.  Pinned in grids.test.mjs. */
+    /* v2.3.4380: UNDER PROG3 THESE TWO TRACKS ARE FROZEN, AND THEIR RISE IS
+       NO LONGER A FULL HEAL.  The honest page stopped training them at
+       v2.3.1660 (awardWeaponXp and awardDefenseXp return early under
+       prog3Live: XP is the worker's own, _prog3AwardXp), so on a prog3
+       character -- every live one -- a reported weapon or defence level one
+       higher is always forged.  It still filled hp, stamina and mana here,
+       at a moment the page chose: up to about 400 free full heals a
+       character (100 levels each of sword, bow, staff and defence), in the
+       middle of a duel or of No man's land.  v2.3.2373 closed the up-down
+       form; this is the climb.  Found by the state-machine sweep
+       (2026-11-03, S3-24).
+       The reported LEVEL is ignored too, not just its heal ("frozen for
+       rollback", as the T1 stats above since v2.3.1659): nothing live reads
+       these tracks under prog3, but a rolled-back worker reads them as the
+       character's power, and prog3FromLegacy (join.js boundary heal) mints
+       trained levels and points from them.  A forged climb stored here
+       would wait for either.  An honest prog3 page re-sends what the
+       worker echoed, so it notices nothing.  Not a _testMode check: the
+       heal mid-duel is a check that protects OTHER players (CLAUDE.md
+       section 5), and the Test panel's level buttons set prog3 levels on
+       the worker, never these tracks.  `skillfreeze: false` in the live
+       flags stores the reports and restores on a rise, as before. */
+    const _skillFrozen = !!ps.prog3 && !this._skillFreezeOff();
     let _skillLeveledUp = false;
-    if (payload.weaponSkills && typeof payload.weaponSkills === 'object') {
+    if (!_skillFrozen && payload.weaponSkills && typeof payload.weaponSkills === 'object') {
       const _oldWs = ps.weaponSkills || {};
       /* v2.3.2373: the stored track is the FLOOR -- see the sanitizer.  Without
          it a reported decrease landed, and the very next report of the original
@@ -836,7 +868,7 @@ export const gridMethods = {
     if (payload.weaponUnspent && typeof payload.weaponUnspent === 'object') {
       ps.weaponUnspent = this._sanitizeWeaponUnspent(payload.weaponUnspent);
     }
-    if (payload.defenseSkill && typeof payload.defenseSkill === 'object') {
+    if (!_skillFrozen && payload.defenseSkill && typeof payload.defenseSkill === 'object') {
       const _oldDl = (ps.defenseSkill && ps.defenseSkill.level) || 0;
       ps.defenseSkill = this._sanitizeDefenseSkill(payload.defenseSkill, ps.defenseSkill); // v2.3.2373: monotonic
       if (((ps.defenseSkill && ps.defenseSkill.level) || 0) > _oldDl) _skillLeveledUp = true;

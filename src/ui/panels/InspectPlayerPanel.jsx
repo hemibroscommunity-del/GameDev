@@ -8,7 +8,8 @@ import { clanPartyOn } from '@/game/alliance.js';   /* v2.3.3321 */
 /* v2.3.1981: server-backed mute + the report send (server/src/chatmod.js).
    setMuted still writes the localStorage list this panel's mutedList prop
    is built from, so nothing here changed shape — it just persists now. */
-import { setMuted, reportPlayer, chatMuteSettled, blockedIdOf } from '@/game/chatMute.js'; /* v2.3.3391: + blockedIdOf */
+import { setMuted, reportPlayer, chatMuteSettled, isBlockedId } from '@/game/chatMute.js'; /* v2.3.3391: + blockedIdOf; v2.3.4365: isBlockedId, the stored list */
+import { setBlock, unblockPlayer } from '../mobile/sheet/friendsModel.js'; /* v2.3.4365: the one writer of the block list */
 /* v2.3.1235: Checkpoint B — real pixel-portrait generator + the color-id →
    RGB target transforms it expects (same set the BottomDashboard player
    card uses). */
@@ -220,7 +221,9 @@ export function InspectPlayerPanel(props) {
   var isMuted = mutedList.includes(inspectPlayer.id);
   /* v2.3.3391: either shape of the block list (chatMute.js): one made from
      the friends list is {id, name} and read as "not blocked" here */
-  var isBlocked = blockedList.some(function (b) { return blockedIdOf(b) === inspectPlayer.id; });
+  /* v2.3.4365: the stored list, read fresh (the one the filters read), not
+     BroTown's copy: a block made on the Friends page shows here at once */
+  var isBlocked = isBlockedId(inspectPlayer.id);
   var isLawless = (_ZONES$stateRef$curre = ZONES[(_stateRef$current39 = stateRef.current) === null || _stateRef$current39 === void 0 ? void 0 : _stateRef$current39.currentZone]) === null || _ZONES$stateRef$curre === void 0 ? void 0 : _ZONES$stateRef$curre.lawless;
   /* v2.3.1743: caps-gated exactly as before (v2.3.1185: an old worker would
      rebroadcast party_invite as an unknown type instead of validating it),
@@ -651,25 +654,19 @@ export function InspectPlayerPanel(props) {
       opacity: !isBlocked && isLawless ? 0.3 : 1
     },
     onClick: function onClick() {
+      /* v2.3.4365: through friendsModel's one writer (chatMute.js
+         setBlockedId), which reads the stored list fresh: writing back this
+         card's copy, as it did, erased every block made on the Friends page
+         since the page loaded (the sweep's V12 P2-19). */
       if (isBlocked) {
-        var updated = blockedList.filter(function (b) {
-          return blockedIdOf(b) !== inspectPlayer.id;   /* v2.3.3391: either shape */
-        });
-        setBlockedList(updated);
-        try {
-          localStorage.setItem('bt_blocked', JSON.stringify(updated));
-        } catch (e) {}
+        setBlockedList(unblockPlayer(stateRef.current, inspectPlayer.id));
         pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Unblocked', '#59BF91');
       } else {
         if (isLawless) {
           pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Can\'t block in lawless zone!', '#D95C54');
           return;
         }
-        var _updated3 = [].concat(_toConsumableArray(blockedList), [inspectPlayer.id]);
-        setBlockedList(_updated3);
-        try {
-          localStorage.setItem('bt_blocked', JSON.stringify(_updated3));
-        } catch (e) {}
+        setBlockedList(setBlock(stateRef.current, inspectPlayer.id, true, inspectPlayer.name));
         /* v2.3.3526: and their duel, trade and party requests (gameEvents.js) */
         pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Blocked: no chat, emotes or requests from them', '#D95C54');
       }

@@ -130,10 +130,14 @@ for (const type of RELAY.TYPES) {
 
 // ── 4. the handshakes the worker settles still work, in the sender's name ──
 {
+  /* v2.3.4375: the gift is the trade window's fallback only (trade.js
+     _giftClosed): relayed while the window is switched off */
+  const flagsWere = room._liveFlags; room._liveFlags = Object.assign({}, flagsWere, { trade2: false });
   const offer = one(await relay({ type: 'trade_offer', payload: { target: B, from: B, fromName: 'Bob', offer: { _gold: 5 } } }), 'trade_offer');
   check('4. a trade offer relays, in the sender\'s name', offer.length === 1 && offer[0].payload.from === A && offer[0].payload.fromName === NAME_A && offer[0].payload.target === B, offer);
   const rec = room._pendingTradeOffers && room._pendingTradeOffers.get(A + '>' + B);
   check('4. ...and the offer the worker keeps names the sender as the worker knows them (a trade\'s note)', !!rec && rec.fromName === NAME_A, rec);
+  room._liveFlags = flagsWere;
   const duel = one(await relay({ type: 'duel_wager_request', payload: { target: B, from: B, fromName: 'Bob', wager: 0 } }), 'duel_wager_request');
   check('4. a duel challenge relays, from the sender (the challenged page answers `from`)',
     duel.length === 1 && duel[0].payload.from === A && duel[0].payload.fromName === NAME_A, duel);

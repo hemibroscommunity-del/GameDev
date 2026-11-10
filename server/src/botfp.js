@@ -292,7 +292,19 @@ export const botfpMethods = {
     if (rec) return rec;
     if (this._botfp.size >= BOTFP.MAP_CAP) {
       // LRU-ish eviction by lastStrikeAt; flush dirty evictees first.
-      const entries = [...this._botfp.entries()].sort((a, b) => a[1].lastStrikeAt - b[1].lastStrikeAt);
+      /* v2.3.4379: never the record of a player who is still playing (the
+         state-machine sweep's S8-21).  Their next hit, strike, cook or start
+         recreated it EMPTY (only a join reads botstat:), and its first write
+         replaced the stored one: the owner's flags, the counters, the score
+         and the hour's counts gone, and a script past the hour cap given a
+         fresh hour.  A busy day (128 joiners since the room started) was
+         enough.  The map stays bounded: online players are capped at
+         MAX_PLAYERS (120) below MAP_CAP, and an offline player's record was
+         flushed at their close and is re-read at their next join.
+         `botrecordkeep: false` in the live flags brings back the old
+         eviction of anyone (docs/specs/anticheat-botfp.md). */
+      const keep = this._botfpKeepOnline() ? (eid) => this._botfpOnline(eid) : () => false;
+      const entries = [...this._botfp.entries()].filter((e) => !keep(e[0])).sort((a, b) => a[1].lastStrikeAt - b[1].lastStrikeAt);
       while (this._botfp.size > BOTFP.MAP_EVICT_TO && entries.length) {
         const [eid, erec] = entries.shift();
         this._botfpMaybePut(eid, erec, true);
@@ -302,6 +314,17 @@ export const botfpMethods = {
     rec = freshRecord(now || now_());
     this._botfp.set(id, rec);
     return rec;
+  },
+
+  /* v2.3.4379: who the eviction above spares, and its switch (synchronous:
+     memory only, no storage on the paths that create a record) */
+  _botfpOnline(id) {
+    const ps = this.playerState ? this.playerState[id] : null;
+    return !!(ps && !ps.disconnected);
+  },
+  _botfpKeepOnline() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'botrecordkeep') && !f.botrecordkeep);
   },
 
   _botfpDecay(rec, now) {

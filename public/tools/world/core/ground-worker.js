@@ -74,6 +74,7 @@ import { gridInfo } from './grid.js';
 /* v2.3.3298: the Wheel a block at a time (worldblocks.js), and what is baked */
 import { wheelBlocks, BLOCK, PIECE_MARGIN, overviewCells, planFingerprint } from './worldblocks.js';
 import { decodePlaced } from './placedfile.js';
+import { startFetch } from './startFetch.js';   /* v2.3.4370: the start lists, a time limit and a retry */
 import { objectCatalog } from '../../objects/catalog.js';   /* v2.3.3315: emptyObjects */
 import { PLACED_SETS } from './placed.js';
 import { materialMap, composeGround, swatchesUnder, overviewPixels, overviewLands, EDGE_CLEAR, edgePiecesOn, blendsOn, blendPair, blendsUnder, waterRivers, wavesOn, calmWater, WATER_SWATCHES } from './ground.js';
@@ -229,13 +230,15 @@ function want(k, urgent) {
   const job = dlJobs.get(k);
   if (job) {
     if (urgent) {
-      const was = job.urgentAt;
       if (job.urgentAt == null) job.urgentAt = performance.now();
       const n = dlLine.indexOf(job);
       if (n > 0) { dlLine.splice(n, 1); dlLine.unshift(job); }
-      /* v2.3.4355: a quiet one a piece now waits for may start at once (a
-         quiet one at the head of the line holds back; a waited one does not) */
-      if (was == null && n >= 0) pump();
+      /* v2.3.4370: and started now if a line is free -- moved to the front
+         and not pumped, it waited for a prefetch to finish (sweep V11 T1-9:
+         asked at 0 ms, started at 1502 ms with a line free).  v2.3.4355
+         found the same from the expo's slow line: a quiet one a piece now
+         waits for may start at once (pump holds back only quiet ones) */
+      pump();
     }
     return job.p;
   }
@@ -375,7 +378,9 @@ function prefetchRound(i, j) {
   for (const id of swatchesUnder(bp, mm, rect)) {
     const s = swatches[id];
     if (!s) continue;
-    for (const v of ['A', 'B', 'E']) if (s.vers[v] && !decoded.has(`${id}|${v}`) && !isCold(`${id}|${v}`)) want(`${id}|${v}`, false);
+    /* v2.3.4370: not one this browser could not unpack (`failed`), as the
+       pieces' own asks skip -- each copy pushed a useful file out (V11 T1-9) */
+    for (const v of ['A', 'B', 'E']) if (s.vers[v] && !decoded.has(`${id}|${v}`) && !failed.has(`${id}|${v}`) && !isCold(`${id}|${v}`)) want(`${id}|${v}`, false);
   }
 }
 
@@ -801,17 +806,20 @@ function emptyObjects(worldW, worldH) {
 /* v2.3.3298: the baked objects and overview (tools/world/bake-wheel-world.mjs),
    at their fingerprint's address -- a new bake is a new address, which
    public/_headers lets the phone keep */
+/* v2.3.4370: each through startFetch -- a time limit and a retry: one blip
+   as the world opened lost every building and door for the visit (V11 T1-12) */
 async function readPlaced(PLACED) {
   const at = (f) => `${PLACED_BASE}${PLACED.dir}/${f}?v=${encodeURIComponent(PLACED.v)}`;
-  const bytes = async (f) => {
-    const r = await fetch(at(f));
+  const bytes = async (f) => startFetch(at(f), async (r) => {
     if (!r.ok) throw new Error(`${f}: ${r.status}`);
     return new Uint8Array(await r.arrayBuffer());
-  };
+  });
   const pixels = async (f) => {
-    const r = await fetch(at(f));
-    if (!r.ok) throw new Error(`${f}: ${r.status}`);
-    const bm = await createImageBitmap(await r.blob(), { colorSpaceConversion: 'none', premultiplyAlpha: 'none' });
+    const blob = await startFetch(at(f), async (r) => {
+      if (!r.ok) throw new Error(`${f}: ${r.status}`);
+      return r.blob();
+    });
+    const bm = await createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none' });
     const c = new OffscreenCanvas(bm.width, bm.height);
     const g2 = c.getContext('2d', { willReadFrequently: true });
     g2.drawImage(bm, 0, 0);
@@ -883,13 +891,17 @@ function whereIs(x, y) {
   return { q: b.mat[c], reg: region, tier, words: whereWords(W.map, region, tier) };
 }
 
+/* v2.3.4370: a list's JSON, or null: not there, or a site's "page not found"
+   HTML (a SyntaxError: no copy yet, not tried again); a body cut by the
+   network throws, and startFetch tries again */
+const jsonOrNull = (r) => (r.ok ? r.json().catch((e) => { if (e instanceof SyntaxError) return null; throw e; }) : null);
+
 /* v2.3.2975: the game's objects manifest -- which pictures there are, and
    on which sprite sheet; null when there is none (nothing is drawn) */
 async function objectsManifest() {
   try {
-    const r = await fetch(OBJECTS_BASE + 'manifest.json?t=' + Date.now(), { cache: 'no-cache' });
-    if (!r.ok) return null;
-    const man = await r.json();
+    /* v2.3.4370: a time limit and a retry (startFetch), a fresh address each try */
+    const man = await startFetch(() => OBJECTS_BASE + 'manifest.json?t=' + Date.now(), jsonOrNull, { init: { cache: 'no-cache' } });
     return man && Array.isArray(man.objects) && Array.isArray(man.atlases) ? man : null;
   } catch (e) { return null; }
 }
@@ -913,9 +925,10 @@ async function findSwatches(mm, pieces, withBlends) {
     /* v2.3.2959: at a fresh address every time -- public/_headers lets the
        phone keep everything under /world/ground/, which must never include
        an old list of what is there */
-    const r = await fetch(GAME_BASE + 'manifest.json?t=' + Date.now(), { cache: 'no-cache' });
-    if (r.ok) {
-      const man = await r.json();          /* throws on a site's "page not found" HTML: no copy yet */
+    /* v2.3.4370: a time limit and a retry (startFetch), a fresh address each try */
+    const man = await startFetch(() => GAME_BASE + 'manifest.json?t=' + Date.now(),
+      jsonOrNull, { init: { cache: 'no-cache' } });   /* null on a site's "page not found" HTML: no copy yet */
+    if (man) {
       const pal = man.palette || null;
       gameSteps = cleanSteps(man.steps, isSwatch);
       /* v2.3.2959: each picture at ?v=<the manifest's date>: a new upload is a

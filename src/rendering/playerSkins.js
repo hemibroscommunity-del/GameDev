@@ -2106,8 +2106,14 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT
     noteMade(`body ${pose}-${dir}`, performance.now() - _madeT0, `body ${sheetKey}`);   /* v2.3.4355 */
   }).catch(() => {
     if (attempt < _BODY_RETRY_MS.length) {
-      setTimeout(() => buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT, art, eyeBlank, attempt + 1, round), _BODY_RETRY_MS[attempt]);
-      return; /* stays 'loading' during the backoff */
+      /* stays 'loading' during the backoff.  v2.3.4368: the retry CHAINS into
+         the returned promise, as the head's has since v2.3.1398, so the
+         loading screen (preloadBodyAll) waits through the backoff; it used to
+         pass at the first failed download and the first use drew the plain
+         base sheet, the wrong skin and trousers, for 2-8 s (sweep V18 R7-1).
+         art0: the bake re-applies artForFacing itself. */
+      return new Promise((res) => setTimeout(res, _BODY_RETRY_MS[attempt]))
+        .then(() => buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT, art0, eyeBlank, attempt + 1, round));
     }
     _bodySheets[sheetKey] = []; /* missing -> caller falls back */
     _bodyLater.gaveUp(sheetKey, (g) => buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT, art0, eyeBlank, 0, g));   /* v2.3.3882 */
@@ -2474,7 +2480,13 @@ function _pickupHeadCap() {
      at the loading screen), so the old oldest-first rule destroyed exactly
      the sheets on screen; the head then vanished until a rebuild+re-evict
      thrash cycle. */
-  const _localPrefix = (_skinStore.get() || 'default') + '/' + (_pantsStore.get() || 'default') + '/' + (_shoesStore.get() || 'default');
+  /* v2.3.4368: through _headComboPrefix, the builder _headSheetKey uses, so
+     the guard and the key cannot be spelt two ways again.  v2.3.3658 took the
+     trousers and boots out of the key but this line still spelt them in, so it
+     guarded only a player in default trousers AND default boots (1 roll in 112)
+     and everyone else's own heads were thrown out in a busy scene (the
+     state-machine sweep, V18 R7-2; docs/specs/garment-specks.md). */
+  const _localPrefix = _headComboPrefix(_skinStore.get(), _pantsStore.get(), _shoesStore.get());
   for (const k of keys) {
     /* v2.3.2862: '|' OR '/es:' after the combo -- an eye style (v2.3.2643)
        puts its segment there, and the old '|'-only prefix left a styled
@@ -2508,13 +2520,19 @@ function _headArtSeg(a) {
      stamp: a symmetric drawing shares one sheet between the two sides. */
   return '#hf' + artHash(a.tattooFace) + ((a.mirror && !artIsSymmetric(a.tattooFace)) ? 'm' : '');
 }
-function _headSheetKey(skinId, pantsId, shoesId, pose, dir, blank, a) {
+/* v2.3.4368: the combo part of a head sheet's key, on its own so the cap's
+   "never evict your own heads" guard (_pickupHeadCap) builds its prefix with
+   the very same words as the key */
+function _headComboPrefix(skinId, pantsId, shoesId) {
   /* v2.3.3658: a head sheet takes no trousers or boots now (_buildPickupHeadSheet),
      so one sheet serves every pair of them -- keyed by them, every pair baked
      the same head again and the 32-sheet cap evicted ones in use (found in
      review) */
   if (!GARMENT_SPECKS_OFF) { pantsId = null; shoesId = null; }
-  return (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default')
+  return (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default');
+}
+function _headSheetKey(skinId, pantsId, shoesId, pose, dir, blank, a) {
+  return _headComboPrefix(skinId, pantsId, shoesId)
     + (blank ? '/es:' + blank.id : '') + '|' + pose + '-' + dir + _headArtSeg(a);
 }
 /* The face drawing on one head sheet, confined to the head's own skin as the

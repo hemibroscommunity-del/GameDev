@@ -77,7 +77,9 @@ export const duelMethods = {
    * owner of the record shape (v2.3.1175, same reasoning); `fields` wins,
    * so the arena's shorter MATCH_MS clock is untouched. */
   _makeDuel(fields) {
-    const d = Object.assign({ status: 'active', away: Object.create(null) }, fields);
+    /* v2.3.4371: `awayZone` -- which of the `away` clocks a zone started
+       (_duelZoneMoved below); null-prototype for the same reason as `away` */
+    const d = Object.assign({ status: 'active', away: Object.create(null), awayZone: Object.create(null) }, fields);
     /* v2.3.3776: a duel (or the arena's) starting puts both off the board
        (ride.js) */
     if (typeof this._rideEnd === 'function' && this.playerState) {
@@ -171,7 +173,9 @@ export const duelMethods = {
      * player who walked through a portal between the challenge and the
      * accept, and a forged cross-zone challenge.  Note it gates only the
      * START: a duel already under way survives one side zoning out, which
-     * is what the disconnect/forfeit clocks are for. */
+     * is what the disconnect/forfeit clocks are for.  (v2.3.4371: they were
+     * not -- only a disconnect started one.  A zone change does now:
+     * _duelZoneMoved below.) */
     if (psA.z !== psB.z) return declineBoth();
     // The accepter's client echoes back the wager it was shown; the
     // CHALLENGE's number is authoritative (an edited accept can't
@@ -264,11 +268,23 @@ export const duelMethods = {
     // erases this player's forfeit clock.  (Lazy init tolerates
     // hand-built records; _makeDuel owns the shape for real ones.)
     if (!duel.away) duel.away = Object.create(null);
-    duel.away[playerId] = Date.now() + DUEL.GRACE_MS;
+    /* v2.3.4371: a clock already running because they were in another zone
+       (_duelZoneMoved below) keeps its deadline -- closing the app from the
+       dungeon is not a fresh fifteen seconds */
+    const _zoneClock = duel.awayZone && duel.awayZone[playerId] && duel.away[playerId] !== undefined;
+    if (!_zoneClock) duel.away[playerId] = Date.now() + DUEL.GRACE_MS;
   },
 
   _duelOnRejoin(playerId) {
     const duel = this._duelFor(playerId);
+    /* v2.3.4371: back on the line but still in another zone from the foe
+       (the join's own _duelZoneMoved, join.js, marked it): the clock is
+       not cleared -- it is the zone's now, and it runs on */
+    if (duel && duel.awayZone && duel.awayZone[playerId]) {
+      if (!this._pvpConsent) this._pvpConsent = new Map();
+      this._pvpConsent.set(this._pvpPairKey(duel.a, duel.b), Date.now() + DUEL.CONSENT_MS);
+      return;
+    }
     if (duel && duel.away && duel.away[playerId] !== undefined) {
       delete duel.away[playerId];
       // Re-register the damage-gate pair: webSocketClose's consent
@@ -276,6 +292,65 @@ export const duelMethods = {
       // resumed duel's hits would all be gated off in safe zones.
       if (!this._pvpConsent) this._pvpConsent = new Map();
       this._pvpConsent.set(this._pvpPairKey(duel.a, duel.b), Date.now() + DUEL.CONSENT_MS);
+    }
+  },
+
+  /* ═══ v2.3.4371: A DUELLER WHO LEAVES THE ZONE FORFEITS AFTER 15 s ═══
+   * Owner, 2026-11-10: "A dueller who walks into a dungeon or onto their
+   * farm mid-duel forfeits after 15 seconds, the same as closing the app."
+   * No blow crosses zones (combat.js walks only the attacker's zone), so a
+   * duel split across two zones could only end on the ten-minute clock:
+   * both locked out of regen, the bag fight-locked -- and, with a stake,
+   * one blow then a hide in an empty `dungeon:` id won the pot on the
+   * timeout's hp comparison (state-machine sweep S5-2, S5-13).
+   *
+   * THE HOOK.  Every server write of a player's zone calls this right after
+   * it (movement.js's move -- which is also how a dungeon start and a party
+   * pull move a player: the phone zones in on dungeon_started --, join.js's
+   * new playerState, the respawn in index.js, spar.js's clones).
+   * duel-zone.test §7 fails for a writer that does not.
+   *
+   * THE CLOCK is the disconnect's: `away[pid]` and GRACE_MS, so the tick
+   * below forfeits it through the one _resolveDuel and the pot pays through
+   * the one opId (handoff rules 4-7: no second payment path).  `awayZone`
+   * marks the clocks a zone started, so being back together clears only
+   * those and never a disconnect's, and a rejoin into the other zone keeps
+   * the clock running.  The mover is the leaver: being together again
+   * clears both.  A clock already running keeps its deadline (no stepping
+   * in and out to stretch it).
+   *
+   * ARENA MATCHES ARE LEFT AS THEY WERE: an arena fighter who changes zone
+   * starts no clock, and the match is decided as before, by its own 3-minute
+   * shot clock's hp tiebreak (duel-zone.test §6).
+   *
+   * THE KILL SWITCH: live flag `duelzone: false` -- no zone starts a clock
+   * (one already running is cleared at the next zone write). */
+  _duelZoneOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'duelzone') && !f.duelzone);
+  },
+
+  _duelZoneMoved(playerId) {
+    if (!this._duels || this._duels.size === 0) return;   /* the common case: nothing to look at */
+    const duel = this._duelFor(playerId);
+    if (!duel || duel.arenaMatch) return;
+    const ps = this.playerState[duel.a], qs = this.playerState[duel.b];
+    /* one of them has closed the app (index.js drops the state): their
+       disconnect's clock is the one that counts, so nothing changes here */
+    if (!ps || !qs) return;
+    if (!duel.away) duel.away = Object.create(null);
+    if (!duel.awayZone) duel.awayZone = Object.create(null);
+    const apart = typeof ps.z === 'string' && typeof qs.z === 'string' && ps.z !== qs.z;
+    if (apart && !this._duelZoneOff()) {
+      duel.awayZone[playerId] = true;
+      if (duel.away[playerId] === undefined) duel.away[playerId] = Date.now() + DUEL.GRACE_MS;
+      return;
+    }
+    for (const pid of [duel.a, duel.b]) {
+      if (!duel.awayZone[pid]) continue;
+      delete duel.awayZone[pid];
+      const p = this.playerState[pid];
+      if (!(p && p.disconnected)) delete duel.away[pid];   /* a disconnect's clock stays */
     }
   },
 

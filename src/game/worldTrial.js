@@ -54,7 +54,7 @@
    Vite alias does not exist. */
 import { ZONES } from '../data/zones.js';
 import { WORLDVIEW_EXITS, WORLDVIEW_ARRIVAL, COMING_SOON_MARKS } from '../data/effects.js';
-import { wheelStart, wheelWarm, wheelStop, wheelRunning, wheelWalkGrid, wheelOverview, wheelHere, wheelMade, wheelEdges, wheelBlends, wheelResetCounts, wheelStats, wheelStepAt, wheelGroundAt, wheelMapInfo, wheelObjectStats, wheelObjectsInfo, wheelObjectsOn, wheelBigTown, wheelBuildingScale } from './wheelTrial.js';
+import { wheelStart, wheelRetryIn, wheelWarm, wheelStop, wheelRunning, wheelWalkGrid, wheelOverview, wheelHere, wheelMade, wheelEdges, wheelBlends, wheelResetCounts, wheelStats, wheelStepAt, wheelGroundAt, wheelMapInfo, wheelObjectStats, wheelObjectsInfo, wheelObjectsOn, wheelBigTown, wheelBuildingScale } from './wheelTrial.js';
 import { swimFeet } from './wheelSwim.js';   /* v2.3.3003: the footstep's ground is at your boots, and the water's while you swim */
 import { setAlwaysDay } from './timeOfDay.js';
 import { setClosedDoorZones, setWheelDoorsOpen } from '../data/gameSystems.js';   /* v2.3.3029: today's town's doors, out of reach with no way back; v2.3.3032: and the Wheel's own */
@@ -397,7 +397,19 @@ async function preloadWheel() {
      built -- one built at the wrong size reloads the page.  The way in waits
      for the caps already (wheelHome.js); a road that did not, 8 s at most */
   await wheelSizeTold(8000);
-  const info = await wheelStart();
+  /* v2.3.4370: a start that failed (a Wi-Fi blip as the world opened) is
+     asked again here, behind this loading screen, while the screen's own
+     15 s cap has time for it (START_TRIES_MS); after that the ground's
+     every-frame ask keeps trying (wheelTrial.js wheelRetryIn) */
+  let info = null;
+  for (;;) {
+    try { info = await wheelStart(); break; } catch (e) {
+      const wait = wheelRetryIn();
+      /* 0: no saved failure to wait out (no workers here, or stopped): as before */
+      if (wait <= 0 || performance.now() - t0 + wait > START_TRIES_MS) throw e;
+      await new Promise((r) => setTimeout(r, wait));
+    }
+  }
   if (info.arrival) setExits(wheelWayBack() ? exitBeside(info.arrival) : null, info.arrival, 'west');   /* v2.3.3025: no way back */
   /* v2.3.3011: as much round the arrival as the view will really show.  The
      box was fixed for a portrait phone's view before VIEW_OUT (about 585 x
@@ -481,6 +493,11 @@ async function preloadWheel() {
    laid yet, the last sound heard. */
 const STEPS_WAIT_MS = 5000;
 const FOLK_BAKE_WAIT_MS = 8000;   /* v2.3.4355: the townsfolk's bakes hold the loading screen this long at most (preloadWheel) */
+/* v2.3.4370: how long into the way in a failed ground worker is still
+   started again behind the loading screen (preloadWheel) -- the screen's
+   cap is 15 s at the least (zoneGate.js gateCap, v2.3.4355: longer only
+   while the world is still arriving), and a start takes a second or two */
+const START_TRIES_MS = 10000;
 /* v2.3.2975: how far round the arrival (game px either way, and up from
    below for tall pictures) the objects' sheets are loaded before the
    overlay lifts: a portrait phone shows about 585 x 1270 game px */

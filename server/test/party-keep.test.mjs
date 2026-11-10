@@ -23,6 +23,10 @@
  *   9. A record of a newer shape is left untouched, its reader unknown.
  *  10. A leader not seen for LEADER_IDLE_MS hands the party on at a member's
  *      join, to the longest-standing member online.
+ *  10b. v2.3.4378: a leader NEVER seen (seen 0: a clan turned into a party
+ *      while they were away) counts from `at`, else the party's `ts`; the
+ *      hand-on writes two puts; the tick writes nothing; `leaderidleat:
+ *      false` puts back the old seen-only clock.
  *  11. A reconnect storm writes nothing; a stale `seen` is written once.
  *  12. A character restart leaves the party, online or not.
  *  13. Dungeons stay four: the leader pulls the three members nearest them.
@@ -275,6 +279,63 @@ check("6. ...the one left told 'disbanded'", lastParty(wb.e) && lastParty(wb.e).
   const wo = fakeWs('o2');
   await join(r2, wo, P('o2'), 'O2');
   check('10. ...but a leader seen a day ago keeps it', lastParty(wo) && lastParty(wo).leader === P('o1'), lastParty(wo) && lastParty(wo).leader);
+}
+
+// ── 10b: v2.3.4378: a leader NEVER seen (`seen: 0`) ──
+// A clan turned into a party while its leader was offline wrote `seen: 0`
+// (clanparty.js); the old `seen > 0` test kept that leader for ever.  The
+// clock is now `seen || at || ts`; `leaderidleat: false` puts the old one back.
+{
+  const old = Date.now() - PARTY.LEADER_IDLE_MS - 3600000;
+  const now0 = Date.now();
+  /* a former clan (an `ally` with clan: 1), its leader never seen since; the
+     joiner's own `seen` is fresh and their name and level match, so this join
+     writes nothing of its own: every write below is the hand-on's */
+  const seed = (flags, leaderMeta, ts) => {
+    const rows = [
+      ['party:pz', { v: PARTY.V, id: 'pz', leader: P('z1'), members: [P('z1'), P('z2'), P('z3')], ts,
+        meta: { [P('z1')]: leaderMeta, [P('z2')]: { name: 'Z2', level: 1, at: old, seen: 0 }, [P('z3')]: { name: 'Z3', level: 1, at: old, seen: now0 - 60000 } },
+        ally: { on: false, since: 0, name: 'Old Clan', tag: 'OLD', renamedAt: 0, clan: 1 } }],
+      ['party_by_player:' + P('z1'), 'pz'], ['party_by_player:' + P('z2'), 'pz'], ['party_by_player:' + P('z3'), 'pz'],
+    ];
+    if (flags) rows.push(['liveflags', flags]);
+    return makeState(rows);
+  };
+  const run = async (flags, leaderMeta, ts) => {
+    const st = seed(flags, leaderMeta, ts);
+    const r = new GameRoom(st, mockEnv);
+    const w = fakeWs('z3');
+    await join(r, w, P('z3'), 'Z3');
+    const writes = st.puts.filter((k) => /^(party|party_by_player|ally):/.test(k));
+    return { st, r, w, lead: lastParty(w) && lastParty(w).leader, stored: st._store.get('party:pz').leader, writes };
+  };
+  const a = await run(null, { name: 'Z1', level: 1, at: old, seen: 0 }, old);
+  check('10b. a leader never seen since the clan became a party (seen 0, joined 7+ days ago) hands it on at a member\'s join',
+    a.lead === P('z3') && a.stored === P('z3'), { lead: a.lead, stored: a.stored });
+  check('10b. ...and one hand-on writes the roster and the alliance\'s row: two puts, nothing else', a.writes.length === 2 && a.writes.includes('party:pz') && a.writes.includes('ally:pz'), a.writes);
+  const b = await run(null, { name: 'Z1', level: 1, at: 0, seen: 0 }, old);
+  check('10b. ...a leader with no `at` either counts from the party\'s `ts`', b.lead === P('z3') && b.stored === P('z3'), { lead: b.lead, stored: b.stored });
+  const c = await run(null, { name: 'Z1', level: 1, at: now0 - 86400000, seen: 0 }, old);
+  check('10b. ...but a never-seen leader who joined a day ago keeps it, and nothing is written', c.lead === P('z1') && c.stored === P('z1') && c.writes.length === 0, { lead: c.lead, writes: c.writes });
+  const d = await run({ leaderidleat: false }, { name: 'Z1', level: 1, at: old, seen: 0 }, old);
+  check('10b. the switch `leaderidleat: false` brings back the old clock: a never-seen leader keeps it, nothing written',
+    d.lead === P('z1') && d.stored === P('z1') && d.writes.length === 0, { lead: d.lead, writes: d.writes });
+  const e = await run({ leaderidleat: false }, { name: 'Z1', level: 1, at: old, seen: old }, old);
+  check('10b. ...and under it a leader seen 7+ days ago still hands it on', e.lead === P('z3'), e.lead);
+  check('10b. the switch is a lower-case name, declared beside the clock (party.js)',
+    /_partyLeaderIdleAtOn\(\)\s*\{[\s\S]{0,200}'leaderidleat'/.test(readFileSync(new URL('../src/party.js', import.meta.url), 'utf8')));
+  /* nothing at the tick: the hand-on waits for a member's join, one party
+     at a time, never a burst over every party after a deploy */
+  const st = seed(null, { name: 'Z1', level: 1, at: old, seen: 0 }, old);
+  const r = new GameRoom(st, mockEnv);
+  const wo = fakeWs('o9');
+  await join(r, wo, P('o9'), 'O9');
+  /* the party is in memory (as after a deploy and a member's earlier visit) */
+  await r._partyLoad(P('z1'));
+  st.puts.length = 0;
+  r._tickParties(Date.now() + 1000);
+  check('10b. the tick hands nothing on and writes nothing (lazy, at a member\'s join)',
+    r._parties.get('pz') && r._parties.get('pz').leader === P('z1') && st.puts.filter((k) => /^(party|ally):/.test(k)).length === 0, st.puts);
 }
 
 // ── 11: what a join writes ──

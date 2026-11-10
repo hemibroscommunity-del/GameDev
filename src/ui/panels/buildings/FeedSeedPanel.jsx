@@ -1,17 +1,15 @@
 import { coinArtFor, COIN_ONE } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
-import { BT_AUDIO, LIFE_SKILL_XP, generateZoneMap, updateZoneDimensions } from '@/data/index.js';
+import { BT_AUDIO, LIFE_SKILL_XP } from '@/data/index.js';
 import { FARM, FARM_CROP_ORDER, FARM_LOOK, farmGrowMs, farmYieldShown, farmTimeLeft,
   farmSeedIcon, farmCropIcon, FARM_COMPOST_ICON } from '@/data/farmCrops.js';   /* v2.3.3281: the owner's bag icons */
 import { farmBus } from '@/ui/mobile/farmBus.js';
 import { FARM_ERR_TEXT, farmItemName } from '@/game/farmFeedback.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
-import { rememberFarmTrip } from '@/game/wheelTownDoors.js';
 import { ITEM_NAMES, iconFor, thumbFor } from '@/ui/mobile/dash/InventoryPanel.jsx';   /* v2.3.3134: the order board names and draws goods as the bag does */
 import { FARM_ART } from '@/data/farmArt.js';   /* v2.3.3136: the owner's farm pictures */
 import { farmArtUrl } from '@/data/farmArtUrl.js';
-import { FARM_ARRIVE } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
-import { holdFarmUntilReady } from '@/game/farmTrip.js';
+import { warpToFarm } from '@/game/farmTrip.js';
 
 /* ═══ v2.3.3127: THE FEED & SEED, A REAL FARM ═══
  *
@@ -178,19 +176,9 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
   const visit = () => {
     const S2 = stateRef.current, P2 = S2 && S2.player;
     if (!S2 || !P2) return;
-    /* The trip FarmPanel always made (v2.3.877 / v2.3.3032), unchanged: the
-       farm map loads behind the warp and the gate leads back to this door. */
-    rememberFarmTrip(S2);
-    S2.currentZone = 'farm_home';
-    updateZoneDimensions('farm_home');
-    S2.map = generateZoneMap('farm_home');
-    S2.monsters = []; S2.gatherNodes = []; S2.npcs = null;
-    /* v2.3.3136: in at the farm's gate (data/farmLayout.js), under the
-       farm's loading screen until it is all there (game/farmTrip.js) */
-    P2.x = FARM_ARRIVE.x; P2.y = FARM_ARRIVE.y; P2.vx = 0; P2.vy = 0;
-    holdFarmUntilReady(S2);
-    S2.groundLoot = []; S2.hitParticles = []; S2.deathExplosions = []; S2.arrows = []; S2._ambientParticles = [];
-    S2._zoneWipe = Date.now();
+    /* The trip FarmPanel always made (v2.3.877 / v2.3.3032 / v2.3.3136):
+       v2.3.4366, the buildings' one copy of it (game/farmTrip.js) */
+    warpToFarm(S2);
     pushDmgPopup(S2, P2.x, P2.y - 40, 'Your Farm', '#59BF91');
     try { BT_AUDIO.beep(500, 0.08, 0.1, 'sine'); } catch (e) { /* sound only */ }
     setBuildingPanel(null);

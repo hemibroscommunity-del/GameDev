@@ -766,6 +766,27 @@ export const joinMethods = {
              up to 30 s of strikes, and one every ~29 s kept the 2,400-an-hour
              caps from ever binding (botfp.test §9b). */
           try { this._botfpFlush(oldS); } catch (e) { /* evidence is best-effort; the join goes on */ }
+          /* v2.3.4377: ...and the record's unsaved part, as a close does
+             (webSocketClose's `_regenDirty` flush).  The join below reads
+             rpg: back from storage over the live state, so damage taken above
+             25% health (coalesced, persistence.js _saveRpgVitals), a paced
+             tap past the burst (flood.js _saveRpgPaced) and up to
+             REGEN_SAVE_MS of regen were given back: a script could reconnect
+             to heal (state-machine sweep V3, S2-13).  The other closes'
+             saves need nothing here: the daily quests, the pets, codex and
+             catches keep their live copy across a join, and the paced lanes
+             are keyed by player, not socket.  Only the SAVE: the linger,
+             the duel's away clock and the trade's cancel are not run on a
+             takeover (an owner's decision; a trade must survive a phone's
+             reconnect).  Awaited, as the close awaits it, so the read below
+             finds it; writes nothing when nothing is dirty (cost-guard).
+             `takeoversave: false` in the live flags skips it (liveops). */
+          const _tf = this._liveFlags;
+          const _tsOff = !!(_tf && typeof _tf === 'object' && Object.prototype.hasOwnProperty.call(_tf, 'takeoversave') && !_tf.takeoversave);
+          const _oldPs = this.playerState[msg.id];
+          if (!_tsOff && _oldPs && _oldPs._regenDirty) {
+            try { await this._saveRpg(msg.id, _oldPs); } catch (e) { /* the join goes on, as before */ }
+          }
           this.sessions.delete(oldWs);
           try { oldWs.close(1000, 'superseded by reconnect'); } catch {}
         }
@@ -882,6 +903,9 @@ export const joinMethods = {
     /* memory only, never the wire's (cleanJoinData is an allowlist, and this
        is set after it) and never the rpg blob's (rule 1) */
     this.playerState[msg.id]._testMode = _testMode;
+    /* v2.3.4371: a rejoin into another zone from the duel's foe keeps the
+       away clock running (duel.js _duelZoneMoved; _duelOnRejoin below) */
+    this._duelZoneMoved(msg.id);
     /* v2.3.3315: and the Wheel sizes its phone draws (wheeltables.js _wheelInStep) */
     this.playerState[msg.id]._wheelSizes = session.wheelSizes;
     /* ═══ v2.3.3327: A RECONNECT STARTS WHERE THE SERVER LAST HAD YOU ═══
@@ -1497,6 +1521,37 @@ export const joinMethods = {
           if (typeof _ps.maxStamina === 'number') _ps.stamina = _ps.maxStamina;
           if (typeof _ps.maxMana === 'number') _ps.mana = _ps.maxMana;
         }
+        /* ═══ v2.3.4374: A JOIN AT 0 HEALTH STANDS YOU UP ═══
+           The owner (2026-11-10): "A player who closes the game in the 5
+           seconds after dying comes back standing in BroTown at full health,
+           and nothing is taken twice."  The dying window lives in memory only
+           (index.js _handlePlayerDeath), and the death saved hp 0.  So a join
+           in it -- the app closed, the signal lost, a deploy -- restored 0
+           with nothing dying, and the stuck-at-zero sweep killed them AGAIN:
+           a second death card, and the respawn wipe took a bag a dungeon
+           death or a lost duel had kept (the keep lives in memory too), with
+           no pile in town.  The death already happened; this is its respawn
+           (index.js _tickPlayerRespawn), done here: full pools, today's town
+           (the phone comes down its stairs to the Wheel's BroTown, whatever
+           place its join named: the arrival judges the way in, lastplace.js),
+           and NO wipe, pile or death -- the first death did all of that.
+           The healed pools ride the save just below (no new write: cost-guard
+           §7) and it goes before the join's player_state (rule 10), full on
+           v1 and v2 alike.  Kill switch `joinstandup: false` in the live
+           flags: the join restores 0 and the sweep kills again, as before
+           (docs/specs/join-stands-up.md). */
+        {
+          const _lf = this._liveFlags;
+          const _standOff = !!(_lf && typeof _lf === 'object' && Object.prototype.hasOwnProperty.call(_lf, 'joinstandup') && !_lf.joinstandup);
+          if (!_standOff && stored && typeof stored.hp === 'number' && !(stored.hp > 0)) {
+            _ps.hp = _ps.maxHp || 100;
+            _ps.stamina = _ps.maxStamina || 100;
+            _ps.mana = _ps.maxMana || 100;
+            _ps.z = 'town';
+            if (cleanJoinData && typeof cleanJoinData === 'object' && typeof cleanJoinData.z === 'string') cleanJoinData.z = 'town';
+            if (typeof this._moveRespawned === 'function') this._moveRespawned(_ps);
+          }
+        }
         this._saveRpg(msg.id, _ps);
       }
     }
@@ -1865,27 +1920,12 @@ export const joinMethods = {
     this._codexSend(msg.id);
     /* v2.3.3527: and the achievements, with what the sweep above granted */
     this._achvSend(msg.id, _achvRetro.length ? { retro: _achvRetro } : null);
-    /* v2.3.1822: replay a respawn the player was never told about.  See
-       _tickPlayerRespawn (index.js) for the incident — a tab backgrounded at
-       the moment of death has no socket to receive `player_respawned`, and
-       the client's death state is cleared by nothing else.  Sent AFTER
-       state_sync + player_state so it lands on a client that already has the
-       world, and carries the zone so the client teleports home rather than
-       standing up wherever it died.
-       Cleared before the send, not after, so a throw here cannot leave the
-       debt to be replayed on every future join. */
-    const _ps = this.playerState[msg.id];
-    if (_ps && _ps._respawnOwed) {
-      delete _ps._respawnOwed;
-      try {
-        ws.send(JSON.stringify({
-          type: 'player_respawned',
-          payload: { zone: _ps.z || 'town' },
-        }));
-      } catch (e) {}
-    }
+    /* v2.3.1822's replay of a respawn the player was never told about stood
+       here.  v2.3.4374: removed -- it read a flag off the state object this
+       join had just built, which never carries it (index.js
+       _tickPlayerRespawn). */
     /* v2.3.3713: an arena match this player is in, said again (gladiator.js
-       _arenaOnRejoin) -- after state_sync, as the respawn above */
+       _arenaOnRejoin) -- after state_sync */
     try { if (this._arenaOnRejoin) this._arenaOnRejoin(msg.id, ws); } catch (e) { /* the window's poll still shows the match */ }
     // v2.3.1185: party roster re-send -- MUST stay after the state_sync
     // send above: clients clear their party HUD on every state_sync

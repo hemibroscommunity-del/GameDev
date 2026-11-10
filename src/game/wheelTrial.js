@@ -279,23 +279,58 @@ function rendererSaid(ms) {
   });
 }
 
+/* v2.3.4370: A FAILED START IS TRIED AGAIN.  A worker whose script or one of
+   its imports did not load (a Wi-Fi blip as the world opened), or whose plan
+   build said 'error', was kept: its rejected start was handed to every later
+   ask, and only a reload brought the ground, the buildings and the doors back
+   (state-machine sweep 2026-11-03, V11 G3-4).  Now the failed worker is
+   stopped and let go, and an ask after START_RETRY_MS (doubling to
+   START_RETRY_MAX_MS while it keeps failing) starts a fresh one; before that
+   the same failure is handed back, so the ground's every-frame ask
+   (rendering/wheelGround.js) is not a new worker a frame.  The way in
+   (worldTrial.js preloadWheel) waits for that and asks again behind its own
+   loading screen; a 'ready' or wheelStop starts the count again. */
+const START_RETRY_MS = 2000, START_RETRY_MAX_MS = 30000;
+let _failP = null, _retryAt = 0, _retryWait = 0;
+/** ms until a failed start may be tried again: 0 when it may now (or none failed) */
+export function wheelRetryIn() { return _failP ? Math.max(0, _retryAt - Date.now()) : 0; }
+function startFailed(p, w, msg) {
+  if (_initP !== p) return;   /* stopped, or already a later start */
+  wheelStats.error = msg;
+  if (w && _w === w) { try { w.terminate(); } catch (e) { /* gone */ } _w = null; }
+  _retryWait = _retryWait ? Math.min(START_RETRY_MAX_MS, _retryWait * 2) : START_RETRY_MS;
+  _retryAt = Date.now() + _retryWait;
+  _failP = p;
+}
+
 /* Start the worker (once) and build the plan.  Resolves with its 'ready'
    message; rejects, and leaves the trial on flat sea, if this browser cannot
    run it. */
 export function wheelStart() {
-  if (_initP) return _initP;
+  if (_initP && !(_initP === _failP && Date.now() >= _retryAt)) return _initP;
   if (typeof Worker === 'undefined') return Promise.reject(new Error('no workers'));
   wheelStats.error = null;
-  _initP = new Promise((resolve, reject) => {
+  _failP = null;
+  /* v2.3.4370: the promise made first, so a failure can name it (startFailed) */
+  let resolve, reject;
+  const p = _initP = new Promise((res, rej) => { resolve = res; reject = rej; });
+  {
     let w;
-    try { w = new Worker(WORKER_URL, { type: 'module' }); } catch (e) { reject(e); return; }
+    /* v2.3.4370: each failure lets the worker go (startFailed) BEFORE the
+       rejection reaches anyone, so an ask made in its catch sees the wait */
+    let settled = false;   /* an error after 'ready' is not a failed start: that worker is kept, as before */
+    const fail = (e) => {
+      if (!settled) { settled = true; startFailed(p, w, String((e && e.message) || e)); }
+      reject(e);
+    };
+    try { w = new Worker(WORKER_URL, { type: 'module' }); } catch (e) { fail(e); p.catch(() => {}); return p; }
     _w = w;
-    w.onmessage = (ev) => onMessage(ev.data, resolve, reject);
+    w.onmessage = (ev) => onMessage(ev.data, (m) => { if (!settled) { settled = true; _retryWait = 0; } resolve(m); }, fail);
     w.onerror = (ev) => {
       const msg = (ev && ev.message) || 'the ground worker failed to start';
       wheelStats.error = msg;
-      reject(new Error(msg));
-      for (const p of _pending.values()) p.reject(new Error(msg));
+      fail(new Error(msg));
+      for (const q of _pending.values()) q.reject(new Error(msg));
       _pending.clear();
     };
     /* v2.3.2948: the address, so `?trial=wheel&edgepieces` can bring back
@@ -321,7 +356,7 @@ export function wheelStart() {
       noteWheelBuilt(size);
       w.postMessage({ type: 'init', search, moving: _waterMoves, palette: _palette, size });
     });
-  });
+  }
   _initP.catch((e) => { wheelStats.error = String((e && e.message) || e); });
   return _initP;
 }
@@ -580,6 +615,7 @@ export function wheelStop() {
   _under.clear();
   _here = null;
   _hereAsked = null;
+  _failP = null; _retryAt = 0; _retryWait = 0;   /* v2.3.4370: the next way in starts afresh */
 }
 
 /* ── the walk grid, a row at a time ── */

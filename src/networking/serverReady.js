@@ -168,13 +168,30 @@ function _apply(st, graceMs) {
   if (st.ready) { if (S) S._netHold = false; _hideVeil(); return; }
   if (S) S._netHold = true;
   if (_veilTimer) clearTimeout(_veilTimer);
-  _veilTimer = setTimeout(() => {
-    _veilTimer = null;
-    if (_state.ready) return;
-    /* The loading screen is its own hold and says its own words. */
-    if (document.querySelector('.bt-intro')) return;
-    _showVeil(_state);
-  }, graceMs);
+  _veilTimer = setTimeout(_veilDue, graceMs);
+}
+
+/* v2.3.4367: how often a veil that is due looks again while the loading
+   screen is still up. */
+const INTRO_RECHECK_MS = 500;
+
+function _veilDue() {
+  _veilTimer = null;
+  if (_state.ready) return;
+  /* The loading screen is its own hold and says its own words... */
+  if (document.querySelector('.bt-intro')) {
+    /* ═══ v2.3.4367: ...BUT ONLY WHILE IT IS UP ═══
+       This used to quit here for good.  The loading screen narrates only
+       the FIRST wait (IntroVideo stops asking once the server was ready),
+       so a line that dropped after the first ready state_sync but before
+       the screen lifted left a frozen world (S._netHold) with no veil and
+       no words through every failed reconnect (the sweep's V4 N1-4).  Look
+       again until the screen is gone; a ready sync clears this timer
+       (_hideVeil), so an ordinary login never shows the veil. */
+    _veilTimer = setTimeout(_veilDue, INTRO_RECHECK_MS);
+    return;
+  }
+  _showVeil(_state);
 }
 
 /* Idempotent.  Called once the game has decided how it is entering the

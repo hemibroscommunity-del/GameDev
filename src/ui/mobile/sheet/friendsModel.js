@@ -11,9 +11,10 @@
 
    Entries: { id, name, color, addedAt } (InspectPlayerPanel shape).
    NOTE: BroTown's legacy friendsList React state re-reads localStorage
-   only on boot, so a Remove/Block here reaches the legacy inspect
-   panel after the next reload — same one-way lag the legacy panels
-   already had toward each other. */
+   only on boot, so a Remove here reaches the legacy inspect panel after
+   the next reload.  v2.3.4365: not a Block any more -- the block list has
+   one writer (chatMute.js setBlockedId) that BroTown follows
+   (docs/specs/block-list.md). */
 
 const read = (key) => {
   try {
@@ -68,6 +69,7 @@ export function lastSeenText(ts) {
    friend_remove instead of the localStorage legacy list.  `away` rides
    the peer's `aw` track flag (2min idle, client-stamped). */
 import { friendsSrv } from './friendsSync.js';
+import { setBlockedId } from '../../../game/chatMute.js'; /* v2.3.4365: the one writer of the block list */
 
 export function getFriendRows(S) {
   const legacy = getFriends(S);
@@ -146,12 +148,22 @@ export function removeFriend(S, fid) {
   return next;
 }
 
+/* v2.3.4365: Block and Unblock go through chatMute.js setBlockedId, the one
+   writer of `bt_blocked` (it reads the stored list fresh, so a block made here
+   is never erased by a write somewhere else).  setBlock is the player card's
+   (it leaves the friend list alone, as the card always did); blockPlayer is
+   the Friends page's (it also drops the old device friend). */
+export function setBlock(S, fid, on, name) {
+  const next = setBlockedId(fid, on, name);
+  if (S) { if (S.blocked) S.blocked = next; if (S._blocked) S._blocked = next; }
+  return next;
+}
+
+export function unblockPlayer(S, fid) {
+  return setBlock(S, fid, false);
+}
+
 export function blockPlayer(S, fid, name) {
-  const list = getBlocked(S);
-  if (!list.some(b => (b.id || b) === fid)) {
-    const next = [...list, { id: fid, name }];
-    try { localStorage.setItem('bt_blocked', JSON.stringify(next)); } catch (_e) {}
-    if (S) { if (S.blocked) S.blocked = next; if (S._blocked) S._blocked = next; }
-  }
+  setBlock(S, fid, true, name);
   removeFriend(S, fid);
 }

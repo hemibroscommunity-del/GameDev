@@ -225,7 +225,7 @@ spec. Add a line here only for a new RULE every session must follow.
   Wheel's monsters). Bots: `tools/qa/load/bot-lab.mjs` (after a change to a
   harvest, cook, move or hit path). Writes: `tools/qa/load/cost-audit.mjs`. A
   phone's frame: the Test panel's Speed test, `mp-phoneframe`. A computer's
-  world on a slow line and a slowed page: `mp-desksmooth` (TRAPS §262).
+  world on a slow line and a slowed page: `mp-desksmooth` (TRAPS §263).
 
 ## 7. The laws
 

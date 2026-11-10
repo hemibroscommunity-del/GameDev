@@ -489,6 +489,22 @@ everyone on one Wi-Fi in" sets both to 0, "Back to normal" clears both. The
 sign-in door's own limit (20 checks a minute per address,
 `server/src/account.js`) has no switch.
 
+**Trading: the trade window and the old gift** (v2.3.4375). Players trade
+through the two-sided trade window. The old one-way gift is closed while the
+window is on (the owner, 2026-11-10). Two switches:
+- `trade2: false` switches the trade window off: phones stop showing it and
+  fall back to the old gift, which then works again, but never for a player
+  in a fight with another player (so a losing fighter cannot hand their bag
+  to a friend). Delete the flag to put the window back; the gift closes again.
+- `giftclosed: false` opens the gift again beside the window, as it was
+  before v2.3.4375 (the fight lock still holds; its own switch is
+  `fightlock: false`). No phone of today offers the gift while the window is
+  on, so this matters only if an old phone turns up needing it.
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" \
+  -d '{"name":"giftclosed","value":false}' "https://WORKER/api/admin/flags"
+```
+
 **A private room** for a playtest: the game only makes the rooms it is told
 to. Add the name to `ROOMS` in `server/wrangler.toml` (comma separated,
 `"brotown-1, playtest-2"`), merge, and `?room=playtest-2` on the game's

@@ -8710,7 +8710,32 @@ look on the full-set figure is split at the jog frame's waist in its shader
 elite; main drew no grade on six facings); docs/specs/armor-grade-look.md
 "A soft glow outside the armour, on every facing".
 
-## 262. "The test box loads it in a blink, so nobody waits for it" (v2.3.4355)
+## 262. "The dungeon's loading screen is up, so hold the player still behind it" (v2.3.4366)
+
+**The move.** A Wheel dungeon's opening (gameEvents.js `dungeon_started`)
+puts its loading screen up for as long as 8 s while the arena's pictures
+load, and the player can walk about blind behind it. Other zone screens hold
+your feet (`S._zoneLoading`, `S._townArtHold`, `S._farmArtHold`), so
+"obviously" `S._wheelDungeonOpening` belongs in BroTown's movement freeze too.
+
+**Why it is wrong.** During the opening the worker still has you in the
+Wheel, and nothing shields you there: monsters at the mouth keep hitting, and
+a death there is a Wheel death, which drops your bag at the mouth
+(server/src/dungeon.js, index.js). The other holds are safe because the
+worker has already moved you somewhere quiet. Held still and blind, you are a
+still target; walking, you can at least step away. All three reviews of the
+2026-11-03 state-machine sweep (V11 G3-9) turned it down for this reason.
+
+**The rule.** No hold during the opening without a worker-side "entering"
+grace (the owner's decision: shield the player while entering, or enter first
+and load behind a screen inside the arena). What the opening DOES refuse is a
+second Enter (wheelDungeons.js `enterWheelDungeon`), and its late finish lifts
+the screen only while the opening is still its own.
+
+**Receipt:** server/test/zone-entry.test.mjs §1-2; the sweep's V11 and its
+reviews (storage branch `claude/state-machine-sweep`, never merged).
+
+## 263. "The test box loads it in a blink, so nobody waits for it" (v2.3.4355)
 
 **The move.** Judge a load by how it behaves here: the test page server reads
 `dist/` off its own disk and answers in a millisecond, so every picture is
@@ -8748,7 +8773,7 @@ cache. "Phones are fine" was a cache, not a screen size.
 **Receipt:** `mp-desksmooth`; the `ground-late` and `zone-gate` suites;
 docs/specs/slow-line-ground.md.
 
-## 263. "The meter says 60 frames a second, so the motion is smooth" (v2.3.4355)
+## 264. "The meter says 60 frames a second, so the motion is smooth" (v2.3.4355)
 
 **The move.** Chase a "gritty" or "not smooth" report as a frame-rate problem:
 profile the frame, cut pixels, cut passes, pool textures. Or the reverse: read
@@ -8779,7 +8804,7 @@ frame and a third too little on the next: sixty uneven steps a second.
 
 **Receipt:** `mp-steadystep`, the `frame-clock` suite, docs/specs/steady-step.md.
 
-## 264. "He is drawn from the shared numbers, so nothing is baked" (v2.3.4355)
+## 265. "He is drawn from the shared numbers, so nothing is baked" (v2.3.4355)
 
 **The move.** Put a character on screen in a pose the look palette holds as
 colour numbers and call it free: no bake, no new memory, no work on first
@@ -8819,7 +8844,7 @@ time.
 
 **Receipt:** `mp-townride`, the `folk-bakes` suite, docs/specs/living-town.md.
 
-## 265. "It is running at 51 frames a second" (v2.3.4355)
+## 266. "It is running at 51 frames a second" (v2.3.4355)
 
 **The move.** Read an average frame rate between two of the screen's whole
 rates (51 on a 120 screen, 45 on a 60 one) as a rate, and go looking for the

@@ -429,6 +429,12 @@ await req('DELETE', '/api/admin/flags?name=disable_threats');
   check('8j. `ride` is a name POST /flags takes', flagNameOk('ride'));
   { const was = room._liveFlags; room._liveFlags = { ride: false }; const off = room._rideOff(); room._liveFlags = {}; const on = room._rideOff(); room._liveFlags = was;
     check('8j. `ride: false` switches the board off, and nothing set leaves it on', off === true && on === false); }
+  // 8j2. v2.3.4371: the duel's zone clock (duel.js _duelZoneOff) -- off
+  //      only when written false, which brings back a duel that leaving the
+  //      zone does not end (duel-zone suite §5)
+  check('8j2. `duelzone` is a name POST /flags takes', flagNameOk('duelzone'));
+  { const was = room._liveFlags; room._liveFlags = { duelzone: false }; const off = room._duelZoneOff(); room._liveFlags = {}; const on = room._duelZoneOff(); room._liveFlags = was;
+    check('8j2. `duelzone: false` switches the zone clock off, and nothing set leaves it on', off === true && on === false); }
   // 8k. v2.3.3806: the pet's fetch (pets.js) -- `petfetch: false` puts every
   //     viaPet pickup back on the vacuum's 240
   check('8k. `petfetch` is a name POST /flags takes', flagNameOk('petfetch'));
@@ -440,6 +446,12 @@ await req('DELETE', '/api/admin/flags?name=disable_threats');
   check('8l. `swordconvert` is a name POST /flags takes', flagNameOk('swordconvert'));
   { const was = room._liveFlags; room._liveFlags = { swordconvert: false }; const off = room._swordConvertOff(); room._liveFlags = {}; const on = room._swordConvertOff(); room._liveFlags = was;
     check('8l. `swordconvert: false` switches the heals off, and nothing set leaves them on', off === true && on === false); }
+  // 8s. v2.3.4373: "dead" is the server's word (movement.js _serverDeadOff,
+  //     server-dead.test) -- `serverdead: false` writes the phone's `dead`
+  //     from the move again; off only when written false
+  check('8s. `serverdead` is a name POST /flags takes', flagNameOk('serverdead'));
+  { const was = room._liveFlags; room._liveFlags = { serverdead: false }; const off = room._serverDeadOff(); room._liveFlags = {}; const on = room._serverDeadOff(); room._liveFlags = was;
+    check('8s. `serverdead: false` trusts the phone again, and nothing set leaves the worker\'s word', off === true && on === false); }
   // 8m. v2.3.3981: the one-to-one's switch (smelting.js _oneToOneOff) -- one
   //     ore a bar and one log a hardened wood; off only when written false,
   //     which brings back five on both sides (smelting / hardenedwood suites)
@@ -453,6 +465,12 @@ await req('DELETE', '/api/admin/flags?name=disable_threats');
   }
   { const was = room._liveFlags; room._liveFlags = { monstermoves: false }; const off = !room._monsterMovesOn(); room._liveFlags = { monsterslam: false }; const kind = !room._moveKindOn('monsterslam') && room._monsterMovesOn(); room._liveFlags = {}; const on = room._monsterMovesOn() && room._moveKindOn('monsterslam'); room._liveFlags = was;
     check('8n. `monstermoves: false` switches the moves off, `monsterslam: false` one kind, and nothing set leaves them on', off && kind && on); }
+  // 8o. v2.3.4375: the gift's switch (trade.js _giftClosed) -- closed while
+  //     the trade window is on; `giftclosed: false` opens it again, and
+  //     `trade2: false` (the window switched off) opens it as the fallback
+  check('8o. `giftclosed` is a name POST /flags takes', flagNameOk('giftclosed'));
+  { const was = room._liveFlags; room._liveFlags = {}; const closed = room._giftClosed(); room._liveFlags = { giftclosed: false }; const ks = !room._giftClosed(); room._liveFlags = { trade2: false }; const fb = !room._giftClosed(); room._liveFlags = was;
+    check('8o. nothing set closes the gift, `giftclosed: false` and `trade2: false` each open it', closed && ks && fb); }
   // 8h. v2.3.3732: the message diet's two lower-case switches (movepath.js):
   //     v2.3.3744: every phone is on it by default, `pathall: false` leaves
   //     only ?diet=1 phones, `movepath: false` kills it, each through the
