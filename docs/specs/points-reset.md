@@ -43,6 +43,8 @@ is that change's own.
   - **within a minute of your last reset** (`POINTS_RESET.GAP_MS`): each reset
     is one saved row (the cost guard), and a minute is nothing when trying a
     build;
+    since v2.3.4372 the minute is the character's, not the connection's: a
+    rejoin keeps it (see "The minute survives a rejoin" below);
   - **nothing placed** to give back.
   - A dead player is answered nothing.
 - **Worn gear stays worn.** A requirement is asked when you put a piece on
@@ -54,6 +56,51 @@ is that change's own.
   - Over your bro: "Points reset!" and "N points to spend", with the points'
     own chime; or "Can't reset in a fight", "You just reset your points",
     "No points to give back".
+
+## The minute survives a rejoin (v2.3.4372)
+
+Found by the state-machine sweep (2026-11-03, V9c, the M3-14 cost addition).
+
+- **What it did.** The minute was kept only on the player's in-memory state
+  (`ps._pointsResetAt`), and every join builds that state again. Rejoining
+  forgot the minute, so a script could reset, spend every point again and
+  rejoin, over and over.
+  - Each reset is one saved row, and each point spent again is one more
+    (`_handleProg3Allocate` saves once a point). For a level-L one-weapon
+    character that is 1 + 6(L-1) rows a reset: 91 at level 16.
+  - The join limits allow up to 20 joins a minute from one address, so the
+    loop could write about 20 times that.
+- **What it does now.** The room also keeps the time of each character's
+  last reset (`_pointsResetAts`, a `Map` keyed by player id), and a join
+  never rebuilds it. A reset is refused (`soon`, with the wait) while either
+  stamp, the connection's or the room's, is under a minute old.
+  - It lives in memory only and is never saved. A worker deploy forgets it
+    (handoff rule 11), which costs one early reset at most.
+  - It stays small. Each reset drops the stamps more than a minute old from
+    the front (the Map is kept in time order), and it never holds more than
+    `POINTS_RESET.RESET_MAX` (2,048).
+- **What a player notices.** Almost always nothing. A player who resets,
+  reconnects within the minute and taps Reset again now gets "You just reset
+  your points" over their bro, as they would have without the reconnect.
+- **What it does not close.** One reset a minute, with every point spent
+  again, still writes 1 + 6(L-1) rows a minute (91 at level 16, about
+  131,000 a day for one script running all day). This change takes away the
+  reconnect's multiplier. A longer wait, paced spends, or one message per
+  spend are the owner's call (the sweep's "points: one message per spend").
+- **Test mode keeps the minute.** It is a cost guard (rows), not an honesty
+  check, and test mode leaves "every save and payment rule" on
+  (`testmode.js`). The Test panel's `/dev/combat deal: true` deals points
+  without a reset.
+- **Kill switch:** `pointsresetroom: false` in the live flags. The room's Map
+  is neither read nor written, and the minute is the connection's alone, as
+  before.
+- **The lesson** (for any "once every N" limit): a stamp on `ps` lasts one
+  connection, because every join rebuilds `ps`. A limit meant for the
+  character keeps its stamp where a join does not reach: a room `Map` keyed
+  by player id (as `lastplace.js` keeps `_lastPlaces`), or the record if it
+  must survive a deploy. A test that fakes "a minute later" by editing
+  `ps._pointsResetAt` must move the room's stamp too (the suite's
+  `roomMinute`).
 
 ## The test lever
 
@@ -75,7 +122,9 @@ they were.
 
 ## Tests
 
-- **`points-reset` suite** (31 checks):
+- **`points-reset` suite** (41 checks; v2.3.4372 added §8, the eleven of the
+  rejoin: refused inside the minute and nothing written, allowed after it,
+  the Map bounded, a level-16 minute counted at 91 rows, the switch):
   - a reset after real spends: nothing placed, the pools what the levels give,
     the max HP gone, levels and XP untouched, saved (one row), echoed and
     answered;
