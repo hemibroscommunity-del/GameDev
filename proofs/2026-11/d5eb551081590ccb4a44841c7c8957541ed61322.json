@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d5eb551081590ccb4a44841c7c8957541ed61322",
+  "tree": "f96e35caaf8bccf466ba8fbde04244d0ea29794a",
+  "committedAt": "2026-11-09T21:04:59-08:00",
+  "subject": "Merge pull request #1476 from hemibroscommunity-del/claude/sm-points-reset-minute",
+  "files": 7777,
+  "bytes": 952144502,
+  "listingSha256": "50458497442cdbf27448f58c7d497fe2778e64cdba5a6a08e7943c803b424545",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

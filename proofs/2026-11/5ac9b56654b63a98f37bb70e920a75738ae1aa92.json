@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "5ac9b56654b63a98f37bb70e920a75738ae1aa92",
+  "tree": "79bbcd940f3cda9d36c8932cd516f21109fa3858",
+  "committedAt": "2026-11-09T21:04:39-08:00",
+  "subject": "Merge pull request #1475 from hemibroscommunity-del/claude/sm-botrecord-evict",
+  "files": 7777,
+  "bytes": 952132370,
+  "listingSha256": "46a288b319ce9fb96ced1b3c34a08a1c5c9ce2937a8103ebffa6835cc6e2ce85",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

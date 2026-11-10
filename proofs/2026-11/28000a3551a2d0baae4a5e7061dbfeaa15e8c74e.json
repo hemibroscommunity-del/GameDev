@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "28000a3551a2d0baae4a5e7061dbfeaa15e8c74e",
+  "tree": "181af08d84232770edcd3f694d64622eb2624687",
+  "committedAt": "2026-11-09T21:03:39-08:00",
+  "subject": "Merge pull request #1472 from hemibroscommunity-del/claude/sm-takeover-save",
+  "files": 7776,
+  "bytes": 952106768,
+  "listingSha256": "95f6f9db6dc27db903f414cae8aef0b35fed0e3be692e587cf134c7bff44668b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

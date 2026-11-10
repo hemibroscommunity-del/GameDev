@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "3862f472ce380160810eb67321cdcee19f3bda45",
+  "tree": "5395b690f55d98048fb916209326d5f6e4bffe24",
+  "committedAt": "2026-11-09T21:04:24-08:00",
+  "subject": "Merge pull request #1474 from hemibroscommunity-del/claude/sm-party-leader-idle",
+  "files": 7776,
+  "bytes": 952120796,
+  "listingSha256": "cc48836f092d59aaf3cf11f7e6f9dce0709aabffd799e3dcc0889540e517000a",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

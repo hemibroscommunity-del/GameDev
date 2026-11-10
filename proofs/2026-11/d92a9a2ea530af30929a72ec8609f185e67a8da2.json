@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d92a9a2ea530af30929a72ec8609f185e67a8da2",
+  "tree": "7a186fd31c56a7ae11946277b03219d21d7cd3ff",
+  "committedAt": "2026-11-09T21:04:05-08:00",
+  "subject": "Merge pull request #1473 from hemibroscommunity-del/claude/sm-skilltrack-heal",
+  "files": 7776,
+  "bytes": 952114114,
+  "listingSha256": "2c491b55fc311e5b80efbbf17a55dfc68de6d2bffc22926e8069d5da5b86bde8",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
