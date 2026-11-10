@@ -10428,7 +10428,11 @@ export class EffectsRenderer {
       const DUR = 2.4;
       if (t >= DUR) {
         l._rareT0 = 0;
-        if (l._pixiRareDrop && !l._pixiRareDrop.destroyed) l._pixiRareDrop.visible = false;
+        /* v2.3.4364: destroyed when it is done, not hidden for the rest of
+           the pile's life (CLAUDE.md §7, TRAPS §192; sweep 2026-11-03 V22) */
+        const _rd = l._pixiRareDrop;
+        if (_rd && !_rd.destroyed) { if (_rd.parent) _rd.parent.removeChild(_rd); _rd.destroy(); }
+        l._pixiRareDrop = null;
       } else {
         if (!l._pixiRareDrop || l._pixiRareDrop.destroyed) {
           l._pixiRareDrop = new Text({ text: 'RARE DROP!', style: {

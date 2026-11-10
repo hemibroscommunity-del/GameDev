@@ -588,6 +588,7 @@ import { resolveDashSide, screenAngle } from '../game/dashSidePref.js'; /* v2.3.
 import { dashMinBus } from './mobile/dashMinBus.js'; /* v2.3.2119: folded band = identity row only */
 import { stampSheetH } from './mobile/sheetStamp.js'; /* v2.3.2197: --sheet-h joins --dash-h under resize() + the watchdog */
 import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
+import { mayAsk } from '@/game/lootAsk.js';   /* v2.3.4364: the hand's "may I ask", the pet's too */
 import { buildingPropNear, zoneBlockers } from '@/data/worldProps.js'; /* v2.3.1778: building doors; v2.3.2748: + the footprints your feet stop at */
 import { isWheelTrialZone, footstepSurface, setWheelArrival } from '@/game/worldTrial.js';   /* v2.3.2975: Mayor Bro in the Wheel's Brotown; v2.3.3574: + the spot a recovery reload puts you back on */
 import { wheelDoorAt, enterWheelDungeon, wheelDungeonDoorLine } from '@/game/wheelDungeons.js';   /* v2.3.3016: the Wheel's dungeons, at its landmarks; v2.3.3573: + a party dungeon's line */
@@ -7235,12 +7236,14 @@ export var BroTown = function BroTown(_ref0) {
                      against one the legacy self-credit path below
                      stays (harmless — stomped, as ever). */
                   if (loot._serverLoot && loot.lootId && S._serverCaps && S._serverCaps.petLoot) {
-                    if (loot._collected) return true; /* credit landed; despawn timer runs */
-                    /* Recipient gate mirrors groundLoot.js — don't spam
-                       the worker with not-recipient rejections for
-                       piles the pet could never claim. */
-                    var _petFFA = loot.isDeathDrop && loot.ownerOnlyUntil && Date.now() > loot.ownerOnlyUntil;
-                    if (!_petFFA && loot.recipients && !loot.recipients.includes(S.myId)) return true;
+                    /* v2.3.4364: THE HAND'S RULE, NOT A COPY OF IT
+                       (game/lootAsk.js mayAsk): collected (the credit landed;
+                       the despawn timer runs), not mine, before an early
+                       refusal's one retry, or -- what the copy lacked -- while
+                       I am dying: it asked for my own death pile at my feet,
+                       was refused 'dead' and asked again every round trip for
+                       the five seconds (sweep 2026-11-03, V22 G4-15). */
+                    if (!mayAsk(loot, S.myId, Date.now(), { dying: !!S._dying })) return true;
                     /* v2.3.3473: never your own drop (game/itemDrop.js) -- you
                        put it down; the pet at your heels would hand it straight
                        back.  Walking onto it still takes it back. */

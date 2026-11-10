@@ -20,6 +20,7 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3462: a pile that is not yours, heard */
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
+import { amLootRecipient, mayAsk } from '@/game/lootAsk.js'; /* v2.3.4364: one "may I ask" for the hand and the pet */
 import { dropWaitsForYou } from '@/game/itemDrop.js'; /* v2.3.3473: your own drop, left alone until you step off it */
 export function updateGroundLootPickup(S, deps) {
   var P = S.player;
@@ -93,8 +94,8 @@ export function updateGroundLootPickup(S, deps) {
                in zone may claim until expiry.  Flip the recipient check
                to true once the free-for-all window opens so non-owners
                get magnetism + skip the bounce-back. */
-            var _deathFFA = loot.isDeathDrop && loot.ownerOnlyUntil && Date.now() > loot.ownerOnlyUntil;
-            var _amPileRecipient = _deathFFA || !loot.recipients || loot.recipients.includes(S.myId);
+            /* v2.3.4364: the rule the pet asks too (game/lootAsk.js) */
+            var _amPileRecipient = amLootRecipient(loot, S.myId, Date.now());
             /* ═══ LOOT MAGNETISM — pull toward player when close ═══ */
             var magnetRange = 50;
             /* v2.3.948: fodder/fireGoblin coins were excluded from magnetism to
@@ -202,7 +203,7 @@ export function updateGroundLootPickup(S, deps) {
                Non-recipients walk over without picking up; the pile stays
                on screen so the rightful owner can come grab it.  Plays a
                soft "not yours" beep once per pile per player. */
-            if (lDist < 20 && !_deathFFA && loot.recipients && !loot.recipients.includes(S.myId)) {
+            if (lDist < 20 && !_amPileRecipient) {
               if (!loot._notYoursBeeped) {
                 loot._notYoursBeeped = true;
                 cue('denied', 0.6);   /* v2.3.3462: the owner's "denied" tick, softly (a beep(), silent since v2.3.1103) */
@@ -271,7 +272,11 @@ export function updateGroundLootPickup(S, deps) {
                  refusal sets (wsClient's loot_pickup_rejected).  Without this
                  the flag cleared but the very next tick re-sent instantly,
                  which is a send loop rather than a retry. */
-              if (!loot._pickupPending && Date.now() >= (loot._pickupRetryAt || 0)) {
+              /* v2.3.4364: ...and the one rule the pet's vacuum asks too
+                 (game/lootAsk.js: not dying, not collected, mine, and not
+                 before an early refusal's one retry) */
+              if (!loot._pickupPending && Date.now() >= (loot._pickupRetryAt || 0) &&
+                  mayAsk(loot, S.myId, Date.now(), { dying: !!S._dying })) {
                 loot._pickupPending = true;
                 loot._pickupSentAt = Date.now();
                 if (S.channel) {
