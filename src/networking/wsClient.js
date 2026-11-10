@@ -206,6 +206,7 @@ import { deathVol } from '@/game/hitSounds.js'; /* v2.3.3248: a far monster's de
 import { applyOnlineList, onlineListFresh, parkMissing, presence2On } from '@/game/presence2.js'; /* v2.3.3250: presence v2, the online list, far copies parked */
 import { saveRpgSoon, cancelRpgSave } from '@/game/rpgSave.js'; /* v2.3.2330: the player_state echo goes through the debouncer; v2.3.2336: and the wipes cancel it */
 import { noteMoveCaps } from '@/game/monsterMoves.js';   /* v2.3.4011 */
+import { t2OnStateSync } from '@/game/tradeSlot.js';   /* v2.3.4362: the trade window never outlives its server */
 /* v2.3.3689: what your head wears and its colours, as one string -- the
    state_sync record apply tells BroTown when it changed (the 'bt-own-look'
    event: the new pieces prepared, the veil waiting for them) */
@@ -1648,6 +1649,15 @@ export function setupWebSocket(ctx) {
                  party_state right after state_sync when the roster
                  survived, so a real party pops straight back. */
               try { if (setParty) setParty(null); S._party = null; } catch (e) {}
+              /* v2.3.4362: and the trade window, its receipt watcher and any
+                 leave waiting on an answer, the same way (game/tradeSlot.js).
+                 A socket the worker saw close cancelled the trade
+                 (webSocketClose -> _trade2OnDisconnect), a deploy wiped it;
+                 the one that lives on, a second login's, is drawn again by the
+                 partner's next action (_t2Broadcast sends both the full state).
+                 Before this a window from the old socket stayed up for good:
+                 its buttons waited on a worker with no trade on file (V8b). */
+              try { t2OnStateSync(S, setTrade2); } catch (e) {}
               /* v2.3.1154: HP/Endurance grid deploy-order gate.  The
                  pool multipliers only apply while THIS worker claims
                  caps.hpEndGrids — otherwise its player_state echo would
@@ -4448,6 +4458,13 @@ export function setupWebSocket(ctx) {
         _buildServerPile: _buildServerPile
       };
       try { window.__btDispatch = function (e) { processGameEvent(e.type, e.payload, S, _gameEventDeps); }; } catch (e) {}
+      /* v2.3.4362: the trade window's own way out when the worker never
+         answers a leave (game/tradeSlot.js t2Leave): the worker's cancel,
+         played here through the real handler, so the window closes with
+         the same sound and chat line as any other ended trade. */
+      S._t2LocalEnd = function (reason) {
+        processGameEvent('trade2_state', { state: 'cancelled', reason: reason || 'gone' }, S, _gameEventDeps);
+      };
       /* v2.3.1924: the same QA/debug seam for the private loot credit, which
          is NOT a game event — it arrives on the socket and is handled in this
          file's own switch, so __btDispatch above cannot reach it.  It is the

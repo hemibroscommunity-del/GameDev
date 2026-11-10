@@ -152,6 +152,17 @@ are opaque blobs at REST in the stage, so they use **escrow-at-stage**
 - Item/gold sessions are memory-only (nothing escrowed; a deploy voids
   them harmlessly). Only the **weapon** stage is storage-backed, because
   it holds escrowed value (rule 11).
+- v2.3.4362: "harmlessly" was true of the goods only: the phone's window
+  stayed up after a deploy or a dropped socket, and its buttons waited on a
+  worker with no trade on file (sweep V8b P2-1). The phone now clears the
+  window at every `state_sync` (like the party), a leave (✕, Cancel, Leave
+  Trade) closes it with "The trade was cancelled" when no answer comes in
+  3 s or the socket is down, and a 'busy' refusal keeps a window showing
+  your own live trade (`src/game/tradeSlot.js`;
+  `server/test/trade-window-slot.test.mjs`). A second login's trade lives
+  on in the worker (the eviction skips webSocketClose); the partner's next
+  action draws it again. Left for the server: answering `trade2_cancel`
+  for a missing trade.
 - The atomicity argument: both debits run synchronously inside one
   input-gated event BEFORE any credit; credits are opId-idempotent.
 

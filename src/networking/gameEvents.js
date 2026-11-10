@@ -195,6 +195,7 @@ import { allyMomentText } from '@/game/alliance.js'; /* v2.3.3313: the alliance'
 import { monsterShed } from '@/game/monsterNoises.js'; /* v2.3.3340: the mummy's bones rattle as it sheds */
 import { noteLootDrop, notePileShine } from '@/game/dropLines.js'; /* v2.3.3627: a kill's drops, a line of words each over the monster */
 import { noteHitBlow } from '@/game/deathBlow.js'; /* v2.3.3985: the killing blow's direction and size, for the monster's own death */
+import { t2LeaveDrop, t2IgnoreBusy, t2Hushed } from '@/game/tradeSlot.js'; /* v2.3.4362: the trade window never outlives its server */
 
 /* v2.3.1107: angle -> 8-way compass, same SECTORS convention as
    entityRenderer (atan2(dy,dx) -> 'east' when dx>0).  Used to reconcile a
@@ -4913,6 +4914,10 @@ export function processGameEvent(type, payload, S, deps) {
                  which completes the mutual open server-side). */
               if (!payload || !payload.from) break;
               if (isBlockedId(payload.from)) break;   /* v2.3.3526: a blocked player's request never reaches you (duel_request) */
+              /* v2.3.4362: the worker spoke -- a leave waiting on it stops
+                 (game/tradeSlot.js), and the window now shows the invite */
+              t2LeaveDrop(S);
+              S._t2Live = null;
               if (setTrade2) setTrade2({ invite: true, from: payload.from, fromName: payload.fromName || 'Someone', ts: Date.now() });
               pushDmgPopup(S, S.player.x, S.player.y - 40, '🤝 ' + (payload.fromName || 'Someone') + ' wants to trade!', '#3dd497');
               cue('tradeAsk');   /* v2.3.3434: two coins' clink (a beep(), silent) */
@@ -4925,6 +4930,14 @@ export function processGameEvent(type, payload, S, deps) {
                  goods from a settled swap arrive via the authoritative
                  player_state echo (coins + inventory adopted). */
               if (!payload || !setTrade2) break;
+              /* v2.3.4362: the worker answered, so a leave waiting on it
+                 stops (game/tradeSlot.js t2Leave closes the window itself
+                 only when nothing comes).  And a 'busy' refusal -- a second
+                 "Open trade" tap, or Trade on another card mid-trade -- is
+                 about the NEW ask: the window showing your own live trade
+                 stays up, and nothing is said (V8b P2-1). */
+              t2LeaveDrop(S);
+              if (t2IgnoreBusy(S, payload)) break;
               /* v2.3.1235: trade-completion receipt — any newer session
                  snapshot supersedes a pending done-reveal watcher (guards
                  a hyper-fast re-open racing the ≤1.5s echo wait below). */
@@ -4934,7 +4947,9 @@ export function processGameEvent(type, payload, S, deps) {
               }
               if (payload.state === 'open' || payload.state === 'invited') {
                 setTrade2(payload);
+                S._t2Live = payload.state === 'open' ? (payload.id || true) : null;   /* v2.3.4362 */
               } else if (payload.state === 'done') {
+                S._t2Live = null;   /* v2.3.4362 */
                 /* v2.3.1235: trade-completion receipt — HOLD the window
                    open and drop the old floating "Trade complete!" world
                    popup (it rendered before the wallet echo and the modal
@@ -5014,6 +5029,11 @@ export function processGameEvent(type, payload, S, deps) {
                    session surviving a failed commit) — out of scope.
                    Every other cancel reason keeps the legacy
                    clear-window + world-popup behavior. */
+                S._t2Live = null;   /* v2.3.4362 */
+                /* v2.3.4362: the worker's late 'declined' to a leave this phone
+                   already closed by itself: the window is gone and the words
+                   were said once (game/tradeSlot.js t2Hushed) */
+                if (t2Hushed(S, payload)) { setTrade2(null); break; }
                 var _t2SettleFail = !!(payload.reason && /^(insufficient|pet-gone|pets-full)/.test(String(payload.reason)));   /* v2.3.3122: + the pet lane's */
                 cue('tradeOff');   /* v2.3.3343: a trade called off or failed is heard closing (it was silent) */
                 if (_t2SettleFail) {
@@ -5024,6 +5044,9 @@ export function processGameEvent(type, payload, S, deps) {
                     'declined': 'Trade declined', 'disconnected': 'They disconnected',
                     'expired': 'Trade expired', 'busy': 'They are already trading',
                     'target-gone': 'Player unavailable', 'party-gone': 'Player unavailable',
+                    /* v2.3.4362: closed on this phone -- the worker never
+                       answered the leave, or the socket was down */
+                    'gone': 'The trade was cancelled',
                   }[payload.reason] || 'Trade cancelled';
                   /* ═══ v2.3.2497: SAY IT IN THE CHAT LANE TOO ═══
                      The popup below is a floating world label over your own
