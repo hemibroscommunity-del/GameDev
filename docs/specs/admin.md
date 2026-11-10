@@ -25,7 +25,7 @@ Routing: `/api/admin/*` → the GameRoom DO, honoring `?room=` (default
 | POST `/kick` | `{playerId, reason?}` | closes the live socket (code 4008) + drops the session |
 | POST `/freeze` | `{playerId, note?}` | writes `frozen:<pid>`; kicks if online (code 4004). Frozen ids are rejected at join with `join_rejected {reason:'frozen'}` |
 | DELETE `/freeze` | `?id=` | clears the gate |
-| POST `/restore` | `{playerId, snapKey}` | 409 while online (kick first — deliberate). Saves the CURRENT blob as `rpgsnap:<pid>:prerestore-<ts>` BEFORE overwriting `rpg:<pid>` with the snapshot — recovery never destroys data. |
+| POST `/restore` | `{playerId, snapKey}` | 409 while online (kick first — deliberate), and (v2.3.4413) 409 while the player is still in the room: a body left in a fight lingers up to 20 s after the kick and would save over the restore (linger.js), so wait 20 s and restore again. Saves the CURRENT blob as `rpgsnap:<pid>:prerestore-<ts>` BEFORE overwriting `rpg:<pid>` with the snapshot — recovery never destroys data. |
 | GET `/log` | — | the capped (100) `admin_log` of mutating ops |
 
 ## Snapshot ring

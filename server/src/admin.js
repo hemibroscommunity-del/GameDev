@@ -405,6 +405,13 @@ export const adminMethods = {
         // kick first, deliberately manual (the operator should know
         // the player is being reverted).
         if (this._wsBySessionId(playerId)) return json({ ok: false, error: 'player online -- kick first' }, 409);
+        /* v2.3.4413: ...and while the player is still IN THE ROOM.  A kick
+           during a fight with another player leaves the body standing for
+           20 s (linger.js), and its end saves that body over the restore --
+           which had answered ok, the prerestore copy holding the broken
+           record (state-machine sweep V3, S2-21).  Refused in plain words;
+           the owner waits and presses Restore again (OPERATIONS.md). */
+        if (this.playerState[playerId]) return json({ ok: false, error: 'player still in the world (a body left in a fight stays up to 20 seconds) -- wait 20 seconds, then restore again' }, 409);
         const snap = await this.state.storage.get(snapKey);
         if (!snap) return json({ ok: false, error: 'snapshot not found' }, 404);
         // NEVER destroy data during recovery: current blob is saved as
