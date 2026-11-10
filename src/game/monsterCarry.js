@@ -34,11 +34,23 @@ export const CARRY_DEAD = [
    not keep the boss swollen and untouchable for ever (monsterVariants.js
    isIntangible reads `_burstUntil`). */
 const SWELL = { _burstFrom: 1, _burstUntil: 1, _burstScale: 1 };
+/* v2.3.4391: and a blue slime's swell ends with its life.  The wire always
+   sends `hp` (tick.js), and a slime swelling to go off stands at 0: one
+   that comes back in the fresh list with hp above 0 died and came back in
+   between (a rejoin over its fuse and respawn), and keeping its swell held
+   it drawn huge and unhittable while it attacked (the sweep's V7).  A boss
+   (`bs` on the wire) swells at its split marks with hp above 0, so its
+   rule stays the `bs` one above. */
+export function endSwell(m) {
+  if (!m) return m;
+  m._burstFrom = 0; m._burstUntil = 0; m._burstScale = 0;
+  return m;
+}
 
 export function carryMonsterState(local, prev) {
   if (!prev || !local || !!prev.alive !== !!local.alive) return local;
   const keys = local.alive ? CARRY_ALIVE : CARRY_DEAD;
-  const swellOver = local.bs !== prev.bs;
+  const swellOver = local.bs !== prev.bs || (local.bs === undefined && local.hp > 0);   /* v2.3.4391 */
   for (let i = 0; i < keys.length; i++) {
     const k = keys[i];
     if (swellOver && SWELL[k] === 1) continue;

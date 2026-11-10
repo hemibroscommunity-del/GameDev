@@ -583,7 +583,7 @@ export function baseArchetypeOf(arch) {
    sweep and the projectile pass cannot drift apart -- a sword that ignores
    the pile and an arrow that stops dead on it would read as a bug in one of
    the two. */
-export function isIntangible(m) {
+export function isIntangible(m, now) {
   if (!m) return false;
   /* v2.3.2226: ...and a slime mid-death-swell.  Owner: "it shows dozens of
      slimes in my bag then fixes the amounts."
@@ -600,8 +600,16 @@ export function isIntangible(m) {
      server already denies all damage during the swell, so the client
      agreeing that there is nothing to hit is what the two should have
      matched on from the start.  A monster mid-death-throes is not a target. */
-  return !!(m._burPhase === 'pile' || m._burstUntil);
+  if (m._burPhase === 'pile') return true;
+  /* v2.3.4391: ...on its own clock.  It read `_burstUntil` for being SET, and
+     only the blast's event zeroes it, so a phone that missed the blast held
+     the slime's next life untouchable (the sweep's V7).  The fuse is 1.6 s;
+     the grace covers the blast's event arriving a little after this phone's
+     clock says the fuse is out (the boss's split's the same way). */
+  if (!m._burstUntil) return false;
+  return (now === undefined ? Date.now() : now) < m._burstUntil + SWELL_GRACE_MS;
 }
+export const SWELL_GRACE_MS = 2000;
 
 export function isFodderLike(arch) {
   return baseArchetypeOf(arch) === 'fodder';

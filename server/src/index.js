@@ -2050,6 +2050,18 @@ export class GameRoom {
                spawn 6-19 s later, half a hit and a 130 px shove.  Found by the
                review of v2.3.3621.  The cooldown stays, as the burrow's. */
             m._tgPhase = null; m._tgUntil = 0; m._tgAim = null; m._tgTarget = null; m._tgRadius = 0;
+            /* v2.3.4391: and a ball still in the air (telegraph.js throw),
+               for the _bwUntil reason above -- a slime or snowman killed
+               with its ball up came back with _projImpactAt long past, so
+               the first tick of its new life landed the old ball on
+               whoever it was thrown at, about 19 s late, nothing drawn
+               (the sweep's V7).  What a ball does when its thrower dies is
+               the owner's question; this only stops it crossing a life.
+               And the knock-back debt (combat.js): a new life does not
+               glide back to where the last one was pushed from. */
+            m._projImpactAt = 0; m._projTargetId = null; m._projTx = 0; m._projTy = 0;
+            m._projFromX = undefined; m._projFromY = undefined;
+            m._kbDebt = 0;
             /* v2.3.4011: and a move (monstermoves.js), for the same reason: a
                fresh life with nothing in flight, nothing cooling, not enraged */
             this._clearMonsterMove(m);

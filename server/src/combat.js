@@ -2007,6 +2007,15 @@ export const combatMethods = {
       } else {
         ({ refund, reason } = this._applyMeleeLifesteal(killerPs, m.id, slot));
       }
+      /* v2.3.4391: this life is over, so is what it dealt.  The ledger is
+         keyed by monster id, and a Wheel monster keeps its id for ever: a
+         bow kill, or a friend's, left the entry for a sword kill of its NEXT
+         life to pay back (the sweep's V7; lifesteal-server.md: a monster
+         that never hit you heals nothing).  Every holder's entry goes. */
+      for (const pid in this.playerState) {
+        const lp = this.playerState[pid];
+        if (lp && lp.dmgFromMonster && lp.dmgFromMonster[m.id]) delete lp.dmgFromMonster[m.id];
+      }
       // Server-authoritative combat XP.  For every contribution-weighted
       // recipient (xpRecipients above), apply their share of m.xp to
       // playerState[id].xp + run the level-up loop.  Emit a private
