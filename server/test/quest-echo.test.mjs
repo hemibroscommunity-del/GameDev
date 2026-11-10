@@ -1,4 +1,4 @@
-/* ═══ v2.3.4389: A QUEST TAP THE WORKER REFUSES IS ANSWERED ═══
+/* ═══ v2.3.4401: A QUEST TAP THE WORKER REFUSES IS ANSWERED ═══
  *
  * The state-machine sweep (V9a G4-1, S9-1, P2-13): the game draws a quest
  * taken, or handed in and paid (gold, XP, +5 achievement points, the giver's

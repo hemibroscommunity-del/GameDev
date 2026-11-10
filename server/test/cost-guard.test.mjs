@@ -37,7 +37,7 @@
  *  13. v2.3.4384: a death outside town writes its pile's row once (one more
  *      row a death, the owner's "save it"), and the pile's end -- taken or
  *      run out -- deletes it once (deathpile.js);
- *  14. v2.3.4389: a refused quest tap (now answered) writes nothing;
+ *  14. v2.3.4401: a refused quest tap (now answered) writes nothing;
  * A line here may move when a feature really needs the rows: say so in the
  * PR, in plain words, as the memory budget asks (CLAUDE.md).
  */
@@ -546,7 +546,7 @@ const FAST = 110;
   check(`13c. a pile left to run out deletes its row once (${ran.length})`, ran.length === 1, ran);
 }
 
-/* ── 14. v2.3.4389: a refused quest tap is answered, and writes nothing ──── */
+/* ── 14. v2.3.4401: a refused quest tap is answered, and writes nothing ──── */
 {
   const { room, state } = await makeRoom();
   const p = await join(room, 'cg_quest');

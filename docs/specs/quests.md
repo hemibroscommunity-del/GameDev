@@ -92,7 +92,7 @@ A refusal changes nothing and sends `_quests` and `coins` back to the game
 (`_questRefusedEcho`), which drew the quest taken (and paid) before the
 worker answered.
 
-### Every refused quest tap is answered (v2.3.4389)
+### Every refused quest tap is answered (v2.3.4401)
 
 The state-machine sweep (V9a) found six more refusals that sent nothing: a
 hand-in while dying or dead, with no XP skill named, of a quest that is not
