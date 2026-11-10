@@ -32,7 +32,7 @@ globalThis.localStorage = {
 const stored = () => JSON.parse(store.get('bt_blocked') || '[]');
 
 const { isBlockedId, setBlockedId, subscribeBlocks, readBlockedIds } = await import('../../src/game/chatMute.js');
-const { BLOCKED_SOCIAL, NOT_BLOCKED, dropAsBlocked, blockedSenderOf } = await import('../../src/game/blockedAsks.js');
+const { BLOCKED_SOCIAL, NOT_BLOCKED, dropAsBlocked, blockedSenderOf, withoutBlockedRows } = await import('../../src/game/blockedAsks.js');
 const FM = await import('../../src/ui/mobile/sheet/friendsModel.js');
 const { friendsSrv } = await import('../../src/ui/mobile/sheet/friendsSync.js');
 
@@ -91,8 +91,9 @@ const { friendsSrv } = await import('../../src/ui/mobile/sheet/friendsSync.js');
   check('2e chat reads its sender from `id` (the worker\'s stamp), a whisper from `from`',
     dropAsBlocked('chat', { id: 'bp_pest', text: 'hi' }, isBlockedId) && dropAsBlocked('whisper', { from: 'bp_pest' }, isBlockedId)
       && !dropAsBlocked('chat', { from: 'bp_pest', id: 'bp_friend' }, isBlockedId));
-  check('2f a DM is NOT dropped (the owner\'s decision, pending)',
-    dropAsBlocked('friend_dm', { from: 'bp_pest', text: 'hi' }, isBlockedId) === false && !!NOT_BLOCKED.friend_dm);
+  check('2f a direct message from a blocked player is dropped (the owner, 2026-11-10: "Block also stops direct messages")',
+    dropAsBlocked('friend_dm', { from: 'bp_pest', text: 'hi' }, isBlockedId) === true
+      && dropAsBlocked('friend_dm', { from: 'bp_friend', text: 'hi' }, isBlockedId) === false && !NOT_BLOCKED.friend_dm);
   check('2g a type outside the table, junk payloads and junk types drop nothing (never throw)',
     !dropAsBlocked('player_move', { id: 'bp_pest' }, isBlockedId) && !dropAsBlocked('duel_request', null, isBlockedId)
       && !dropAsBlocked('duel_request', { from: 7 }, isBlockedId) && !dropAsBlocked('__proto__', { from: 'bp_pest' }, isBlockedId)
@@ -154,6 +155,32 @@ const { friendsSrv } = await import('../../src/ui/mobile/sheet/friendsSync.js');
   store.set('bt_blocked', '[]');
   check('4b unblocked, it shows again (it stayed on the worker)', friendsSrv.requestsIn().length === 2);
   check('4c the Requests tab reads the filtered list', /const reqIn = doc \? friendsSrv\.requestsIn\(\) : \[\];/.test(src('src/ui/mobile/dash/SocialPanel.jsx')));
+}
+
+/* ── 5. direct messages (the owner, 2026-11-10: "Block also stops direct messages") ── */
+{
+  store.clear();
+  store.set('bt_blocked', JSON.stringify(['bp_pest']));
+  const box = { messages: [{ from: 'bp_pest', text: 'a' }, { from: 'bp_ok', text: 'b' }, { from: 'bp_pest', text: 'c' }, null, { text: 'no from' }] };
+  const kept = typeof withoutBlockedRows === 'function' ? withoutBlockedRows('friend_dm_backlog', box, isBlockedId) : box;
+  check('5a the offline backlog keeps every row but a blocked player\'s',
+    Array.isArray(kept.messages) && kept.messages.length === 3 && !kept.messages.some((m) => m && m.from === 'bp_pest'), kept);
+  check('5b ...and leaves the payload it was given as it was (a copy)', box.messages.length === 5);
+  check('5c the backlog event itself is not dropped (many senders)', !dropAsBlocked('friend_dm_backlog', box, isBlockedId)
+    && typeof withoutBlockedRows === 'function' && withoutBlockedRows('chat', box, isBlockedId) === box
+    && withoutBlockedRows('friend_dm_backlog', { messages: 'junk' }, isBlockedId).messages === 'junk');
+  /* a thread and an unread count already saved before the block */
+  store.set('bt_dm:bp_pest', JSON.stringify([{ from: 'bp_pest', text: 'old', ts: 1 }]));
+  store.set('bt_dm:bp_ok', JSON.stringify([{ from: 'bp_ok', text: 'hey', ts: 1 }]));
+  store.set('bt_dm_unread', JSON.stringify({ bp_pest: 4, bp_ok: 1 }));
+  check('5d a blocked player\'s saved thread is not shown', friendsSrv.thread('bp_pest').length === 0 && friendsSrv.thread('bp_ok').length === 1);
+  check('5e ...nor counted in the unread badge', friendsSrv.unreadOf('bp_pest') === 0 && friendsSrv.unreadTotal() === 1,
+    { one: friendsSrv.unreadOf('bp_pest'), total: friendsSrv.unreadTotal() });
+  friendsSrv.appendDm('bp_pest', { from: 'me', text: 'sent before the block landed' }, true);
+  check('5f an append never writes the filtered view back over the archive', JSON.parse(store.get('bt_dm:bp_pest')).length === 2);
+  store.set('bt_blocked', '[]');
+  check('5g unblocked, the thread and its unread show again (kept on this phone)',
+    friendsSrv.thread('bp_pest').length === 2 && friendsSrv.unreadTotal() === 5);
 }
 
 delete globalThis.localStorage;

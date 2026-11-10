@@ -32,14 +32,16 @@ field naming its sender (`id` for the relayed chat, emotes and rolls; `from`
 for the rest): the four chat lanes, emotes, rolls, a duel challenge (both
 `duel_wager_request`, the game's own Duel button, and the older
 `duel_request`), the trade requests (`trade2_invite`, `trade_offer`), party
-and clan invites, and a friend request's chime (`friend_request_in`).
+and clan invites, and a friend request's chime (`friend_request_in`), and a direct message
+(`friend_dm`: the owner, 2026-11-10, "Block also stops direct messages").
 Adding a type is one line. A dropped message shows no card, line, popup or
 sound; the request runs out on the sender's side as an unanswered one does.
 
 `NOT_BLOCKED` lists the social types left out on purpose, each with why:
 
-- `friend_dm`, `friend_dm_backlog`: whether Block stops direct messages is the
-  owner's decision, pending;
+- `friend_dm_backlog`: the offline box, many senders in one event. Its rows
+  are filtered instead (`BLOCKED_ROWS`, `withoutBlockedRows`): every row but
+  a blocked player's is kept;
 - `friend_accepted`: an answer to your own request;
 - `pvp_threat`: a warning that an attack is coming; hiding it would not stop
   the attack.
@@ -52,6 +54,17 @@ The friend Requests tab and its badges read `friendsSync.js`
 `friendsSrv.requestsIn()`, which leaves a blocked player's request out; it
 stays on the worker and shows again when they are unblocked.
 
+## Direct messages
+
+Since v2.3.4365 (the owner, 2026-11-10: "Block also stops direct messages")
+a blocked player's live DM is dropped, and their rows leave the offline
+backlog. `friendsSync.js` shows their saved thread as empty and counts none
+of their unread while they are blocked; the archive (`bt_dm:<fid>`,
+`bt_dm_unread`) is kept, so unblocking shows it again. The worker still
+stores and delivers the message, and the sender's phone still shows it as
+sent: a "not delivered" answer, and whether a block unfriends, are later
+decisions.
+
 ## The trap
 
 Never add an `isBlockedId` check to one handler for a new social message: add
@@ -63,7 +76,9 @@ back erases every block made elsewhere since it was read.
 
 - `server/test/blocked-asks.test.mjs`: the two writers, the table, a scan of
   processGameEvent that fails when a case raising a request card, a chat line,
-  a DM or a request-named type is in neither table, and the Requests rows;
+  a DM or a request-named type is in neither table, the Requests rows, and
+  the direct messages (the live DM, the backlog's rows, the thread and the
+  unread counts);
 - `mp-blockasks`: on a phone in the Wheel, the three request cards from a
   blocked player (both duel types), and a block saved elsewhere surviving
   Block and Unblock of another player on their card.

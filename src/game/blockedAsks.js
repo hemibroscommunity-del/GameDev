@@ -42,12 +42,23 @@ export var BLOCKED_SOCIAL = table({
   party_invited: 'from',
   clan_invite: 'from',
   friend_request_in: 'from',    /* the chime; the Requests rows ask friendsSync */
+  /* v2.3.4365: the owner, 2026-11-10: "Block also stops direct messages".
+     The worker still stores and delivers it; the phone drops it before any
+     line, badge or sound (the thread and unread already saved ask
+     friendsSync, so unblocking shows them again) */
+  friend_dm: 'from',
+});
+
+/* Messages that carry many rows from several senders: the event stays, the
+   rows from a blocked player go.  type -> [the list's field, the sender's
+   field in a row] */
+export var BLOCKED_ROWS = table({
+  friend_dm_backlog: ['messages', 'from'],   /* the offline box, delivered once */
 });
 
 /* Social types left OUT on purpose, each with why (the test reads these). */
 export var NOT_BLOCKED = table({
-  friend_dm: 'whether Block stops direct messages is the owner\'s decision, pending (the sweep, V12)',
-  friend_dm_backlog: 'the same decision as friend_dm',
+  friend_dm_backlog: 'many senders in one event: its rows are filtered instead (BLOCKED_ROWS)',
   friend_accepted: 'an answer to a request you sent yourself',
   pvp_threat: 'a warning that an attack is coming: hiding it would not stop the attack',
 });
@@ -65,4 +76,22 @@ export function blockedSenderOf(type, payload) {
 export function dropAsBlocked(type, payload, isBlocked) {
   var from = blockedSenderOf(type, payload);
   return !!from && typeof isBlocked === 'function' && !!isBlocked(from);
+}
+
+/* The payload with a blocked player's rows taken out (a copy; the same
+   payload when nothing goes).  For a type not in BLOCKED_ROWS, as it came. */
+export function withoutBlockedRows(type, payload, isBlocked) {
+  var spec = typeof type === 'string' ? BLOCKED_ROWS[type] : undefined;
+  if (!spec || !payload || typeof payload !== 'object' || typeof isBlocked !== 'function') return payload;
+  var rows = payload[spec[0]];
+  if (!Array.isArray(rows)) return payload;
+  var kept = rows.filter(function (r) {
+    var id = r && typeof r === 'object' ? r[spec[1]] : '';
+    return !(typeof id === 'string' && id && isBlocked(id));
+  });
+  if (kept.length === rows.length) return payload;
+  var out = {};
+  for (var k in payload) if (Object.prototype.hasOwnProperty.call(payload, k)) out[k] = payload[k];
+  out[spec[0]] = kept;
+  return out;
 }

@@ -67,7 +67,7 @@ import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifes
 import { dropShield, noteShieldThreat } from '@/game/shieldToggle.js'; /* v2.3.2242: a landed block lowers the shield; v2.3.3260: and faces who hit you */
 import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent, handleAreaChatEvent, handleWhisperEvent, handleWhisperErrorEvent, handleDiceEvent } from '@/game/chat.js'; /* v2.3.2136: the @area / @user lanes; v2.3.3393: + a /roll or /flip */
 import { applyServerMuteList, isBlockedId } from '@/game/chatMute.js'; /* v2.3.1981; v2.3.3526: a block stops requests */
-import { dropAsBlocked } from '@/game/blockedAsks.js'; /* v2.3.4365: one block check, one table */
+import { dropAsBlocked, withoutBlockedRows } from '@/game/blockedAsks.js'; /* v2.3.4365: one block check, one table */
 import { pushAbilityRings, BASH_POSE_MS } from '@/game/abilities.js'; /* v2.3.1735: a peer's bash draws the caster's own shockwave; v2.3.2920 + its pose window */
 import { depthK } from '@/data/zones.js'; /* v2.3.2824: a peer's whirlwind is as wide as its (depth-scaled) hit */
 import { friendsSrv } from '@/ui/mobile/sheet/friendsSync.js'; /* v2.3.1324 */
@@ -286,6 +286,7 @@ export function processGameEvent(type, payload, S, deps) {
            own Duel button (duel_wager_request) and the friend request's
            chime (the state-machine sweep, V6 N2-18, V12 M4-9). */
         if (dropAsBlocked(type, payload, isBlockedId)) return;
+        payload = withoutBlockedRows(type, payload, isBlockedId);   /* the DM backlog: a blocked player's rows */
         switch (type) {
           case 'loot_drop':
             {
