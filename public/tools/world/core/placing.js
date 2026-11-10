@@ -51,6 +51,7 @@
  * its picture's game size), worked out where the pictures are known.
  */
 import { C, townPlan, townGates, townSurfaces, townCellBox, TOWN_SURF, planFeatures } from './layout.js';
+import { riseLayout } from './rises.js';   /* v2.3.4456: a rise on plain land keeps its ground clear (islBoxes) */
 import { hash2, fbm } from './rng.js';
 import { gridInfo } from './grid.js';
 import { wheelInfo } from './wheel.js';
@@ -700,12 +701,25 @@ const KEEP_CLEAR = (() => {
 })();
 
 /* v2.3.3994: each islet's keep-out (plan.js `islets`: its box and `keepOut`
-   cells round it), in this blueprint's cells -- empty on a plan with none */
+   cells round it), in this blueprint's cells -- empty on a plan with none.
+   v2.3.4456: and each rise on plain land that asks for one (plan.js `rises`
+   with `at` and `keepOut`: the Town Bluff): its box, `keepOut` cells round it
+   and two rows more to its south, where its face is climbed and jumped from.
+   The one hook both bakes read, so nothing wild, no node and no monster's
+   place lands on it. */
 export function islBoxes(plan, bp) {
-  if (!plan.islets || !plan.islets.length) return [];
-  const F = planFeatures(plan);
   const ox = bp.ox || 0, oy = bp.oy || 0;
-  return F.islets.map((I) => ({ id: I.id, x0: I.x0 - I.keepOut - ox, y0: I.y0 - I.keepOut - oy, x1: I.x1 + I.keepOut - ox, y1: I.y1 + I.keepOut - oy }));
+  const out = [];
+  if (plan.islets && plan.islets.length) {
+    const F = planFeatures(plan);
+    for (const I of F.islets) out.push({ id: I.id, x0: I.x0 - I.keepOut - ox, y0: I.y0 - I.keepOut - oy, x1: I.x1 + I.keepOut - ox, y1: I.y1 + I.keepOut - oy });
+  }
+  const L = riseLayout(plan);
+  if (L) for (const r of L.list) {
+    if (r.islet || !(r.keepOut > 0)) continue;
+    out.push({ id: r.id, x0: r.x0 - r.keepOut - ox, y0: r.y0 - r.keepOut - oy, x1: r.x1 + r.keepOut - ox, y1: r.y1 + r.keepOut + 2 - oy });
+  }
+  return out;
 }
 
 export function placeObjects(plan, bp, opts = {}) {

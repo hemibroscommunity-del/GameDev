@@ -4704,10 +4704,11 @@ console.log('the lagoon islet (v2.3.3994)');
   const L = riseLayout(PLAN5), msg = riseMessage(PLAN5);
   const [T, Lg] = L ? L.list : [];
   ok('two rises: the terrace (a 72 px face, vines down it) and the ledge on its top (a 144 px face, the chest on it)',
-    L && L.list.length === 2 && T.id === 'lagoon-terrace' && T.h === 72 && T.climb && !T.chest && Lg.id === 'lagoon-ledge' && Lg.h === 144 && Lg.chest && !Lg.climb
+    L && L.list.length === 4 /* v2.3.4456: the Town Bluff's two follow, so these keep k 0 and 1 */ && T.id === 'lagoon-terrace' && T.h === 72 && T.climb && !T.chest && Lg.id === 'lagoon-ledge' && Lg.h === 144 && Lg.chest && !Lg.climb
     && Lg.x0 > T.x0 && Lg.x1 < T.x1 && Lg.y1 <= T.faceY0, L && L.list);
   let onLand = true;
-  for (let y = L.y0; y < L.y0 + L.h; y++) for (let x = L.x0; x < L.x0 + L.w; x++) if (L.cells[(y - L.y0) * L.w + x - L.x0] && !F5.onIslet(x, y)) onLand = false;
+  /* v2.3.4456: the ISLET's rises' cells (k 0 and 1); the Town Bluff's stand on the commons */
+  for (let y = L.y0; y < L.y0 + L.h; y++) for (let x = L.x0; x < L.x0 + L.w; x++) { const v = L.cells[(y - L.y0) * L.w + x - L.x0]; if (v && ((v >> 3) - 1) < 2 && !F5.onIslet(x, y)) onLand = false; }
   const kindAt = (x, y) => { const v = L.cells[(y - L.y0) * L.w + x - L.x0]; return v ? v & 7 : -1; };
   const sx = T.climb.x0;
   ok('every rise cell is on the islet\'s land, with the vines\' foot and a beach below the terrace\'s face',
@@ -4752,7 +4753,17 @@ console.log('the lagoon islet (v2.3.3994)');
     ok('the worker\'s table of the rises (server/src/wheelfaces.js) matches the plan: run node tools/world/bake-wheel-spawns.mjs if not', onDisk === wheelFacesSource(PLAN5, _WL));
     const m5 = riseMessage(PLAN5);
     const led = m5.list.find((r) => r.chest);
-    ok('...and the one chest is the Lagoon Ledge\'s, on the rise that needs the flip (taller than a plain jump clears)', !!led && led.id === 'lagoon-ledge' && led.h > 85 && m5.list.filter((r) => r.chest).length === 1, led && { id: led.id, h: led.h });
+    ok('...and each chest is on a rise that needs the flip (taller than a plain jump clears): the Lagoon Ledge\'s, and the Town Bluff\'s (v2.3.4456)', !!led && led.id === 'lagoon-ledge' && m5.list.filter((r) => r.chest).every((r) => r.h > 85) && m5.list.filter((r) => r.chest).map((r) => r.id).join() === 'lagoon-ledge,bluff-ledge', m5.list.map((r) => r.id));
+    /* v2.3.4456: THE TOWN BLUFF -- on the commons' own ground, inside the safe ground, kept clear by the placing */
+    {
+      const BT = L.list.find((r) => r.id === 'bluff-terrace'), BL = L.list.find((r) => r.id === 'bluff-ledge');
+      const { islBoxes } = await import('../../public/tools/world/core/placing.js');
+      const keep = islBoxes(PLAN5, { ox: 0, oy: 0 }).find((b) => b.id === 'bluff-terrace');
+      ok('the Town Bluff: a terrace with vines and on it a ledge with a chest, listed after the islet\'s, the long Wheel only, its ground kept clear (its box, 3 cells round it, 2 more to the south)',
+        !!BT && !!BL && BT.k === 2 && BL.k === 3 && BT.look === 'hill' && BL.look === 'hill' && !BT.islet && BT.h === 72 && !!BT.climb && BL.h === 144 && !!BL.chest
+        && BL.x0 > BT.x0 && BL.x1 < BT.x1 && BL.y1 <= BT.faceY0 && riseLayout(PLAN) === null
+        && !!keep && keep.x0 === BT.x0 - 3 && keep.y0 === BT.y0 - 3 && keep.x1 === BT.x1 + 3 && keep.y1 === BT.y1 + 5, { BT: BT && [BT.x0, BT.y0, BT.x1, BT.y1], keep });
+    }
   }
 }
 

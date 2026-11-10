@@ -58,6 +58,52 @@ then a jump course near BroTown.
   for the session so the next touch does not ask). `src/game/climb.js`
   `CHEST_WORDS`, `chestPrizeNote`.
 
+## The Town Bluff: a jump course near the square (v2.3.4456)
+
+The second step of the same answer ("Go recommended": the islet, then a course
+near BroTown).
+
+- **Where**: on the commons' grass north-east of town, about 2,400 game px
+  from where a player arrives (a short walk), in the safe ground: no monster
+  comes. Its face looks south, at the town.
+- **What**: the islet's two steps again. A terrace (72 px) its vines or a
+  sprinting jump get you up, and on it a ledge (144 px) only the flip reaches,
+  with a chest: **100 coins, once a character** ("the small one": a new
+  character starts with 50 and this is a minute from the square).
+- **In the plan** (`plan.js` `rises`): `bluff-terrace` and `bluff-ledge`,
+  listed AFTER the lagoon's so those keep their numbers. New fields, read by
+  `rises.js`:
+  - `at: [dx, dy]`: cells from the Wheel's centre cell (an islet's rises count
+    from the islet's corner);
+  - `long: true`: the long Wheel only (the short one's commons is a fifth the
+    room and its centre cell elsewhere);
+  - `look: 'hill'`: no sea caves and no barnacles on its faces;
+  - `keepOut: 3`: cells round it kept clear.
+- **Kept clear**: `placing.js` `islBoxes` returns its box, 3 cells round it and
+  2 more to the south (where the face is climbed and jumped from), beside the
+  islet's. Both bakes read that one hook, so nothing wild, no resource and no
+  monster's place lands on it.
+- **Re-baked** (both Wheels, the law): `public/world/placed5/objects.bin` (the
+  long Wheel's objects round it), `public/tools/world/core/placed.js` (both
+  fingerprints: the plan's text changed), `server/src/wheelfaces.js` (two
+  more rows). `wheelspawns.js` and `wheelspawns1.js` came out byte for byte
+  the same: no monster's place and no resource moved.
+- **Drawn** by the same code as the islet's rises (rock and moss, a rim round
+  the terrace's top). It has no picture of its own. `ELEVATION-PLAN.md`'s
+  `face-commons` and `steps` pictures (a grassy bank, stone steps) are not
+  made; with them it would look like a hill, not a rock terrace.
+- **Cost**: the rises' grid is one box over every rise, so with a rise by the
+  town and two on the islet it is 45 x 627 cells: about 28 KB in the ground
+  worker's first message to each phone (it was 240 bytes). `risePaint` now
+  asks each rise's own box before painting a piece, so only pieces near a
+  rise pay for it.
+- **Tests**: `node tools/qa/mp/run.mjs townbluff` (`mp-townbluff.mjs`): the
+  rises came (four, the Bluff's after the islet's); nothing placed stands on
+  it; it is near the arrival; the face stops a walk; the vines take him up;
+  the flip lands him on the ledge; the chest pays 100 (50 to 150).
+  `rise-chest.test` 1a, 4e to 4g (its own prize, its own once; a character can
+  have both chests).
+
 ## What the worker checks, and what it does not
 
 It checks **where you are** and **that it is once**. It does **not** check
@@ -97,7 +143,7 @@ clip is worth building. It is not built.
 - The movement clip (above).
 - The chest drawn open once it has been had (it is a painted cell; today the
   words say it).
-- A jump course near BroTown (the next step), BroTown on a hill, diving.
+- BroTown on a hill, diving. (The jump course near BroTown is the Town Bluff, above.)
 - Monsters on the islet: none, as decided for v1.
 
 ## Tests
