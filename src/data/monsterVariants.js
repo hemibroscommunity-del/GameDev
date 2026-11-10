@@ -313,7 +313,7 @@ export const MONSTER_VARIANTS = {
                           its shadow hung from there: "floating shadows"
                           (the owner).  lightfx/casters.js hangs it from
                           this row.
-       shadowFlat         (v2.3.4495) a squat look's shadow is its footprint:
+       shadowFlat         (v2.3.4499) a squat look's shadow is its footprint:
                           { s: the share of its picture that is the ground
                           it covers, lift: how high its body stands, px }.
                           Cast as a standing figure's, the frog's whole 97 px
@@ -575,7 +575,7 @@ export function variantForArchetype(arch) {
   return (arch && MONSTER_VARIANTS[arch]) || null;
 }
 
-/* v2.3.4495: how far above its place (the bottom of its cell, where the body hangs) a look's feet are,
+/* v2.3.4499: how far above its place (the bottom of its cell, where the body hangs) a look's feet are,
    in its own measure (liveScalePx): its `feetRow`'s empty rows, scaled.  0 for a look standing on its
    cell's bottom row.  The renderer multiplies by MONSTER_SIZE_MULT and a boss's size.  Read by the
    ring under a monster in reach (effectsRenderer), which sat as far below the frog's feet as its

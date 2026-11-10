@@ -241,9 +241,9 @@ The owner: "the water frogs currently have floating shadows and need fixed."
   and the storm eye (it hovers on purpose).
 - **Test**: `mp-waterfrog` step 10: in the Water Caves, each frog's shadow
   hangs 16.9 px above its cell's bottom, which is its 24 empty rows.
-- Picture: `docs/shots/frog-shadow.webp` (v2.3.4495: before that, and now).
+- Picture: `docs/shots/frog-shadow.webp` (v2.3.4499: before that, and now).
 
-**v2.3.4495, "The water frog shadow is too far south of the sprite."** Two
+**v2.3.4499, "The water frog shadow is too far south of the sprite."** Two
 things were still south of the frog once its shadow hung from its feet:
 
 - **Its shadow fell wholly south of its feet.** A standing figure's shadow is
