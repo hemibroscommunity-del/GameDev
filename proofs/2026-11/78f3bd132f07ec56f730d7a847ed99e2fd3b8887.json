@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "78f3bd132f07ec56f730d7a847ed99e2fd3b8887",
+  "tree": "eefb0717c767bbd7603eef0bffc0ef1844f4f6cd",
+  "committedAt": "2026-11-09T21:03:22-08:00",
+  "subject": "Merge pull request #1471 from hemibroscommunity-del/claude/sm-cold-flags",
+  "files": 7774,
+  "bytes": 952094946,
+  "listingSha256": "90cfdd12ca486a9f2176aae06bd402545755063bebabe921129793b28d6981cc",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
