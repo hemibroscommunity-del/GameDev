@@ -37,7 +37,7 @@ import { onAchvState, noteServerAp } from '@/game/achievements.js'; /* v2.3.3527
 import { onFishWeight, onFishBoard } from '@/game/fishWeigh.js'; /* v2.3.4036: a weigh-in and the biggest-fish boards (server/src/fishlog.js) */
 import { onRiseChest } from '@/game/climbActions.js'; /* v2.3.4453: the chest on a rise answers (server/src/risechest.js) */
 import { onSpinBoard } from '@/game/spinBoard.js'; /* v2.3.4393: the daily spin's biggest wins and losses (server/src/boards.js) */
-import { onAccState, accReset } from '@/game/accuracy.js'; /* v2.3.4495: your own accuracy (server/src/accuracy.js) */
+import { onAccState, accReset } from '@/game/accuracy.js'; /* v2.3.4545: your own accuracy (server/src/accuracy.js) */
 import { fishCatchWords } from '@/data/fishVariants.js'; /* v2.3.4036: "An albino Trout!" */
 import { onRaceState, onRaceCheckpoint, onRaceEnd } from '@/game/race.js'; /* v2.3.3525: Lil Bro's race (server/src/race.js) */
 import { onBankState } from '@/game/bank.js'; /* v2.3.3785: the Bank's vault (server/src/bank.js) */
@@ -220,6 +220,7 @@ import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822 */
 import { applyGatherHits } from '@/game/lifeSkillRewards.js'; /* v2.3.2956: the worker's gathering hits */
 import { applyNmlSkull, applyNmlLoss, applyNmlTake, nmlPeerSkull, applyNmlLock, nmlLockAskShow } from '@/game/noMansLand.js'; /* v2.3.3058: No man's land; v2.3.3316: + what your kill took */
 import { canBePlaced, onBodyPlace, bodyPlaceDue } from '@/game/bodyPlace.js'; /* v2.3.4455: a relaunch mid-fight lands at the body */
+import { freeSwingAsk } from '@/game/manualCombat.js'; /* v2.3.4520: the free-swing trial, asked for in the join */
 import { noteDeath, noteDeathLoss } from '@/game/deathCard.js'; /* v2.3.3817: the death card (ui/mobile/DeathCard.jsx) */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.3817: the killer's name, as its plate reads */
 import { wheelStageName } from '@/data/wheelStageLooks.js'; /* v2.3.3817: ...with its stage ("Glacier Snowman") */
@@ -695,6 +696,10 @@ export function setupWebSocket(ctx) {
              worker ENFORCES it for this session. Old workers ignore
              the field. */
           httpAuth: true,
+          /* v2.3.4520: this device tries the free-swing trial with its sword
+             (`?manual=3`; 2 with `?swingbonus=1`: game/manualCombat.js,
+             server/src/freeswing.js).  Old workers ignore it. */
+          fs: freeSwingAsk() || undefined,
           data: {
             x: S.player.x,
             y: S.player.y,
@@ -1600,7 +1605,7 @@ export function setupWebSocket(ctx) {
                  workers advertise what THEY handle (caps.trade etc.);
                  the legacy client-side credit paths stay in place but
                  only run when the server hasn't claimed the job. */
-              accReset(S);   /* v2.3.4495: the shot counts begin again with every state_sync, as the worker's copy does */
+              accReset(S);   /* v2.3.4545: the shot counts begin again with every state_sync, as the worker's copy does */
               S._serverCaps = msg.caps || {};
               _capsHere = true;
               setWeaponStashMax(S._serverCaps.bagWeapons);   /* v2.3.4224: the weapon bag's size follows the worker (caps.bagWeapons; absent = 8) */
@@ -1995,6 +2000,14 @@ export function setupWebSocket(ctx) {
               if (S._serverCaps) { S._serverCaps.movepath = !!msg.on; S._serverCaps.pathall = !!msg.all; }
               break;
             }
+          /* v2.3.4520: the free-swing trial's switch, changed live (server
+             freeswing.js): a sword on the trial goes back to the untried
+             swipes at once, or comes back to it (game/manualCombat.js mcFreeSwing) */
+          case 'free_swing':
+            {
+              if (S._serverCaps) S._serverCaps.freeSwing = msg.on ? 1 : 0;
+              break;
+            }
           /* v2.3.3058: No man's land (server/src/nomansland.js; the game's half,
              src/game/noMansLand.js) -- your own skulls' time left, and what a
              death there took from you */
@@ -2236,7 +2249,7 @@ export function setupWebSocket(ctx) {
              (`from`) is never taken. */
           case 'spin_board':
             { if (msg.from) break; try { onSpinBoard(S, msg.payload); } catch (_se) { /* display only */ } break; }
-          /* v2.3.4495: your own accuracy (server accuracy.js), for the Journey page.  Private and PRIVILEGED there;
+          /* v2.3.4545: your own accuracy (server accuracy.js), for the Journey page.  Private and PRIVILEGED there;
              a relayed copy (`from`) is never taken. */
           case 'acc_state':
             { if (msg.from) break; try { onAccState(S, msg.payload); } catch (_ae) { /* display only */ } break; }
@@ -5887,7 +5900,7 @@ export function setupWebSocket(ctx) {
           wsOut(msg);
           return;
         }
-        /* v2.3.4495: the Journey page's ask (game/accuracy.js askAccuracy) -> accuracy.js.  TRAPS #18. */
+        /* v2.3.4545: the Journey page's ask (game/accuracy.js askAccuracy) -> accuracy.js.  TRAPS #18. */
         if (msg.type === 'acc_request') {
           wsOut(msg);
           return;

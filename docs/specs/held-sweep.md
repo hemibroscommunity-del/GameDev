@@ -216,7 +216,9 @@ rank order:
 
 | family (its key in `KNOWN`) | its line | why it is over | what fixes it |
 |---|---|---|---|
-| `body-bake` | 220 ms | the head an armoured player shows (`<pose>-<dir>-head`) is recoloured on the page for each look the first time it is drawn | key the head sheets by skin alone (they take no trouser or boot colour), then keep them as numbers like the bodies; the same for a body with an eye style or a drawing (STATE-MACHINES A2) |
+| `body-bake` | 220 ms (the crowd's stations: up to 730) | the head an armoured player shows (`<pose>-<dir>-head`) is recoloured on the page for each look the first time it is drawn | key the head sheets by skin alone (they take no trouser or boot colour), then keep them as numbers like the bodies; the same for a body with an eye style or a drawing (STATE-MACHINES A2) |
+| `gear-sheet` | 195 ms | a drawn shirt composed on the page for each pose (the crowd tour) | stamp the drawing on a worker, or draw it as a layer over the plain shirt |
+| `portrait` | 150 ms | the Leaderboards draw a board's faces in one piece (the crowd tour) | a few faces a frame |
 | `masked-bake` | 140 ms | armour cut to the body on the page, inside a frame, when a frame is wanted before the worker has it | draw the bare look until the worker answers; prewarm the poses of what was just put on |
 | `pack-page` | 80 ms | a gear strip cropped and packed on a canvas the first time its pose is drawn | the strip door for gear strips (256-colour files, packed on the worker) |
 | `gc` | 60 ms | the browser's garbage collector | make less garbage a frame (OPTIMIZATION-ROADMAP's pools) |
@@ -264,3 +266,120 @@ Not on that list because the tour cannot see them:
 - **Safari's own costs.** The profiler is Chrome's. A hold that exists only
   in Safari (its canvas, its garbage collector) is not on this list.
 - **Windows and Mac**, where looks are still baked per look.
+
+## The crowd tour (v2.3.4499)
+
+The owner, 2026-11-10, after the sweep: use the PATTERN to see the next ones
+coming. Every freeze found so far (TRAPS 281, 283, 317, 318; the tour above)
+has one shape: **art made on the page the first time it comes on screen.**
+A read of the code said the shape is still open wherever ANOTHER PLAYER
+brings something new on screen, and the sweep's `peer` station is one
+player. So this tour measures a crowd.
+
+### The tool: `mp-crowdsweep`
+
+`tools/qa/mp/mp-crowdsweep.mjs`, with the sweep's own meter
+(`mp-heldsweep.mjs` `makeStation` / `analyse`) and budget
+(`held-budget.mjs`). One real phone watches. Scripted players (plain sockets
+speaking the phone's protocol, as `tools/qa/load/` and `mp-boards` join
+them: `ws: [1, 5]`, `bp_` characters) come in groups, each dressed to test
+one forecast, and stand round the phone. Each turns through the eight
+facings walking, stands, swings twice, is hit twice, rolls, mines and casts a
+line. Then the group waits far off in the world. The phone walks into the
+23 players of groups a to d standing together, and opens the Leaderboards
+and every board. The species group (e) goes LAST, because it buries the page
+(below). The chip's bytes are read after every station.
+
+```
+NODE_OPTIONS=--max-old-space-size=8192 npx vite build --minify false --outDir dist-prof && mv src/dist-prof dist-prof
+QA_DIST=dist-prof node tools/qa/mp/run.mjs crowdsweep
+BT_CS_STATIONS=a-ink,d-prints QA_DIST=dist-prof node tools/qa/mp/run.mjs crowdsweep   # some groups only
+```
+
+About 15 minutes. The report is `tools/qa/mp/out/crowdsweep.json`. It ran
+seven times here. The first three lost groups d and e (see "How it was built"
+below). Runs 4 to 6 played the species before the walk-in and the
+Leaderboards, which then measured only a buried page. Run 7 is the order
+above, and passes its budget. The numbers are the worst of the runs that
+measured each station cleanly.
+
+### What it found
+
+"Hold" means the page's one thread held: no frame is drawn while it lasts.
+A 60 Hz screen draws a frame every 16.7 ms, so a 150 ms hold is about nine
+frames missed.
+
+| | the forecast | predicted | measured | what a player meets | new? | what fixes it |
+|---|---|---|---|---|---|---|
+| a | a player with an eye style or a drawing: each new pose and facing baked on the page | 45 to 147 ms a sheet | **tattoos and a trouser print: 114 to 720 ms a sheet**, a dozen or more for each such player in the first 20 s. The eye style tried (`sleepy`) baked nothing: it erases no eye. A style that erases was not tried | a freeze of a tenth to three quarters of a second each time such a player does something new beside you | on the list as a "next" (`body-bake`), never measured; far worse than predicted | the drawings stamped on a worker, or the body as a row of colours with the drawing over it (STATE-MACHINES A2) |
+| b | another player fishing in a shirt: the 32-frame fish sheet | about 100 ms | **92 to 198 ms, once for each look that fishes**, armour or not. A player of the plain default look bakes nothing | a freeze each time someone new casts a line near you | new | the fish sheet as a row of colours (`lookBodyRefused` already passes it; the bake is the getFishFrame path) |
+| c | an armoured player's first appearance and facings | 57 to 164 ms (heads), 31 to 140 ms (cuts), one peer | **one: 36 to 102 ms (bakes), 24 to 43 ms (cuts in a frame). Eight: 186 to 267 ms (bakes), 41 to 60 ms (cuts)**; walking about after they have shown every pose, still 60 to 112 ms | a few freezes as each armoured player arrives, and a few more as they walk | on the list (`body-bake`, `masked-bake`); eight is worse than one per look | the debt list's own (head sheets keyed by skin, as numbers) |
+| d | printed shirts in poses past standing and jogging; more than 8 prints | unmeasured | **a drawn shirt is composed on the page for each pose: 121 to 192 ms, 8 to 13 times for ten shirts in 25 s.** The 8-print cap was not seen to bake again in turn within the station | a freeze each time a player in a drawn shirt swings, rolls or mines for the first time | new (`gear-sheet`) | stamp the drawing on the worker, or draw it as its own layer over the plain shirt |
+| e | species players, more than 6 species-and-skin pairs | rebuild churn? | **yes, and worse: a leak.** Eight pairs on screen: the oldest build let go of every frame and built again, and what is let go of is freed 30 s later. **566 pictures of 256 x 256 (187 MB) in one minute, 757 to 870 (250 to 287 MB) a few minutes later** (run 7, a faster page: 222, 73 MB, in 75 s). Collections of 20 to 100 ms, the fur recoloured inside the frame (`retintSkinPixels`): frames of 28 to 70 ms. Runs that went on after it: collections of 336 to 698 ms, up to 1076 ms | on an iPhone (about 250 MB in all), **a black screen**, not a hitch. Seven or more monkeys and aliens of different colours near you is enough | new: the worst finding | a cap never under the looks on screen (or a build kept while its player is), and a let-go freed at once when nothing draws it (`speciesArt.js` `_BUILD_CAP`, `_releaseBuild`) |
+| f | walking into twenty players already standing | every figure built in one frame | **did not happen**: 23 players (run 7), the longest hold 20 ms, 143 ms in all. With 13 (runs 1 to 3): 9 to 21 ms. Played after the species churn instead (runs 4 to 6): collections of 336 to 698 ms, and the screen check's old way (below) 465 to 652 ms | nothing on its own | | |
+| g | a window of many unseen faces (the Leaderboards) | about 30 ms a face, back to back | **62 to 149 ms in one hold** (19 boards, boards of 48 to 56 faces) | the Leaderboards freeze as they open | new (`portrait`) | a few faces a frame, the rest plain until their turn; keep the faces a board drew |
+| h | the collector with eight armoured players against one | more garbage per peer each frame | one walking about for 25 s: 0 or 1 collections over 4 ms (at most 31 ms). Eight: 3 to 7 (17 to 29 ms each, 38 to 93 ms in all). The game's own frame 5.2 to 5.9 ms against 5.9 to 6.3 | a little: a short hitch every few seconds in a crowd of armour | measured; small | the pools (OPTIMIZATION-ROADMAP) |
+| i | what the chip holds after the crowd shows every pose | (a before-number) | **before: 80 MB.** After 23 players in tattoos, prints, armour and drawn shirts had shown every pose: 121 to 126 MB. Of the +45 MB: **+24 MB pictures loaded from files** (the poses' art, drawn for the first time), **+20 MB pictures made on the page** (the peers' recoloured sheets: the first group alone +10 MB, of it 64 pictures of 128 x 128; ten drawn shirts' `dressed:` sheets, 4 MB; the armour's masked bodies, `canvas 1336x48` 12 times and `184x240` 15 times, about 5 MB), **+1.8 MB** the looks' mask atlas (`bt-look-mask`). The armour strips' cache (`effectsRenderer.js` `_gearStrips`) is **bounded** by the catalogue (one art set a slot, about 72 keys): about 22 MB when every pose has been seen, shared by every player; the gear files here went 38 -> 42 MB. After the species: 200 MB (run 7) to 312 MB, and 377 to 415 MB a few minutes on | the memory law's line is about 250 MB for everything | measured | the species churn (e); the rest is within the memory budget's reach |
+
+Two more, seen on the way:
+
+- **The screen check's old way.** When the chip is swamped (here, after the
+  species churn), the black-screen check's fenced read is not back within its
+  frames, and it falls back to its OLD way: a copy of the whole canvas that
+  waits for the chip (`BroTown.jsx` `oldWay` > `_wdThumbImage`), 465 to 652
+  ms, a dozen times. The check meant to catch a dying page holds it longest
+  just when it is dying. Skipping a check would be better than copying.
+- **A tap's sound check**, `_audioHealthCheck` and `reclaimIfNeeded`
+  (`gameDisplay.js`), 24 to 48 ms, only on the drowning page.
+
+What the tour, in its order, measures over a line is on the debt list
+(`held-budget.mjs` `KNOWN`) at what was measured: new families at their
+own lines (`gear-sheet`, `portrait`, `other: createObjectURL`, `other:
+wrapped > sweepPicsOnce`), and the listed ones at the crowd's stations by
+a line of their own (`at`), so the main tour's lines stay where they were.
+Each entry's `crowd` says what the crowd tour found. What only a buried page
+showed (the screen check's old way, the sound checks) is here, not on the
+list. None was fixed here.
+
+### Leads the tour cannot measure
+
+Each checked in the code, for whoever takes them:
+
+- **Monster death pieces use a Sprite as a mask** (`monsterDeathFx.js`
+  about line 496: `onBody.mask = alphaMask`, a `new Sprite(sb.texture)`).
+  That is TRAPS 221's filter pass in the middle of the frame, one per cut
+  piece, for the effect's 1.75 s (`DUR_MS`). A kill in a crowd is several.
+- **The player's own weapon redraws its mask shapes every frame**
+  (`entityRenderer.js` about lines 16028 to 16186: `handMask`, `armMask`,
+  `_armShirtMask`, `_apMask`, `_armCapeMask` cleared and drawn again). A
+  change to a small Graphics rebuilds its layer's draw list (TRAPS 218).
+- **Nothing records a long session's drawing.** Draw calls, the number of
+  display objects and the chip's bytes are never sampled over time
+  (`mp-longplay` watches memory only), so a slow rise cannot be told from a
+  hot phone. The owner's capture 24 minutes in: about 51 frames a second
+  against about 106 cool, the game's own work 2.7 -> 6.8 ms a frame.
+- **The "back to the tab" listeners pile up** (lane R2 is fixing them).
+
+### What it could not measure
+
+- **A phone.** As for the main tour: the JavaScript is about a phone's, the
+  drawing is not. The chip numbers are the textures' sizes, the same on any
+  device.
+- **The players are scripted.** They send what a phone sends (the move, the
+  2 s look, the swing, the hit, the roll), not every effect a real phone
+  makes. A crowd of real phones can only cost more.
+- **The eye styles that erase** (the one tried does not), **Windows and Mac**
+  (looks are baked there anyway), and **Safari**.
+
+### How it was built (what the first runs taught)
+
+- A scripted player left waiting in the town's zone, or standing still, is
+  closed by the worker after two minutes (4006, `tick.js`): a move that
+  changes nothing does not count as "awake" (`index.js`); the phone's 2 s
+  look with `aw: 0` does. The players now send it, and each group joins just
+  before its turn.
+- The worker turns away a 17th socket from one address (`flood.js`): the
+  tour raises the room's `ip_sockets` and `ip_joins_min` live flags for its
+  run and clears them after.
+- Played before the walk-in and the Leaderboards, the species group buried
+  the page and those two measured nothing but that: it goes last.

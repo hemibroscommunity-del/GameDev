@@ -22,7 +22,9 @@
  * re-extract it mechanically.
  *
  * Storage keys (GameRoom storage, separate from the rpg blob):
- *   mkt_order:<orderId>   resting order (escrow held server-side)
+ *   mkt_order:<orderId>   resting order (escrow held server-side); v2.3.4505:
+ *                         or a matched one mid-sale, its `settle` note naming
+ *                         every leg still owed (see the crossing below)
  *   mkt_hist:<indexKey>   rolling [{p, ts}] of executed prices, cap 50
  *
  * Owner decisions (2026-07-02): 24h listings (GDD §39 contradicted
@@ -38,6 +40,11 @@ export const MARKET = {
   MAX_ORDERS_PER_PLAYER: 10,
   SWEEP_INTERVAL: 60000,
   PRICE_HIST_CAP: 50,
+  /* v2.3.4505: the shape number of a sale's `settle` note (a newer worker's
+     note is left for it: never paid, listed or deleted here), and the page
+     of the wake scan that finishes the notes a restart left (_mktSettleWait) */
+  SETTLE_V: 1,
+  SCAN_PAGE: 128,
 };
 
 export const marketMethods = {
@@ -89,9 +96,20 @@ export const marketMethods = {
     if (this._mktIndex) return;
     this._mktIndex = new Map();
     this._mktOrderCounts = new Map();
+    const settleOn = !this._mktSettleOff();   /* v2.3.4505 */
     const entries = await this.state.storage.list({ prefix: 'mkt_order:' });
     for (const [k, o] of entries) {
       if (!o || !o.id) continue;
+      /* v2.3.4505: a sale a restart caught half done carries its note: it is
+         FINISHED -- every leg without its stamp paid, then deleted -- never
+         re-listed, and never deleted on ANY stamp (the check below, which
+         lost the legs after the first: the seller's gold, the taker's price
+         improvement).  That check stays for a leftover with no note, from
+         an older worker (or `mktsettle: false`). */
+      if (o.settle && settleOn) {
+        await this._mktSettleHeal(o);
+        continue;
+      }
       // v2.3.1184: converge crash leftovers instead of re-listing them.
       // Settlement and refund now credit BEFORE deleting the record
       // (rule 6 ordering, _duelEscrowSweep shape) -- so a crash between
@@ -119,6 +137,9 @@ export const marketMethods = {
       }
       this._mktAddToIndex(o);
     }
+    /* v2.3.4505: every record has been seen, so the wake scan has nothing
+       left to read (_mktSettleWait) */
+    if (settleOn) this._mktScanned = true;
   },
 
   /* v2.3.3895: one order out of the retired sword, in place; true if it changed */
@@ -361,6 +382,50 @@ export const marketMethods = {
       const sellerId = type === 'buy' ? maker.playerId : playerId;
       const weapon = type === 'buy' ? maker.item : order.item;
       const label = order.tierLabel + ' ' + order.subtype;
+      /* ═══ v2.3.4505: THE SALE'S NOTE GOES OUT WITH THE TAKER'S ESCROW ═══
+         The state-machine sweep (2026-11-03, V8a S6-3).  The taker's escrow
+         was saved above, and the legs below were paid one await at a time,
+         the maker's order deleted last -- every server merge restarts the
+         room, and a restart in between:
+           - before the weapon leg took the taker's gold or weapon, which
+             nothing named, and put the maker's order back on sale;
+           - after it left a record the wake deleted on ANY stamp, so the
+             seller was never paid, and a price improvement was lost the
+             same way.
+         Now the maker's record is rewritten with a `settle` note -- every
+         leg, to whom, how much -- issued in the SAME synchronous run as the
+         taker's escrow save (`_saveRpg` puts before its first await), so
+         the two commit together: both, or neither (handoff rules 5 and 7,
+         TRAPS §184).  Then each leg is paid by an idempotent credit with
+         its own stamp, the same opIds as before (`settle:<makerId>:leg`, so
+         an older worker's rebuild still reads a leg as paid), and the record
+         is deleted once every leg is stamped (_mktSettleRun).  A note found
+         later is finished by _mktSettleHeal, from the book's rebuild, the
+         wake scan the stamp prune waits for, a cancel or the expiry sweep.
+         The Auction House's `rec.sale` is the model (store.js).  The answer
+         is the shape it was.  `mktsettle: false` in the live flags: the old
+         order, below. */
+      if (!this._mktSettleOff()) {
+        const rec = { ...maker, settle: this._mktSettlePlan(order, execPrice, buyerId, sellerId, weapon, label) };
+        try {
+          await this.state.storage.put('mkt_order:' + maker.id, rec);
+        } catch (err) {
+          /* the note never landed, so nothing moved: the maker still rests on
+             disk, and the taker's escrow goes home (v2.3.1971's rule) */
+          this._mktAddToIndex(maker);
+          await this._mktUnwind(order);
+          throw err;
+        }
+        try {
+          await this._mktSettleRun(rec);
+        } catch (err) {
+          /* the note is on disk: the sale is owed, retried by the tick, and
+             the stamp prune waits for it (_mktSettleWait) */
+          this._mktOwe(rec);
+          throw err;
+        }
+        return { ok: true, settled: true, matched: true, execPrice, matchedOrder: maker, newOrder: order };
+      }
       // Seller is paid the execution price; buyer receives the weapon.
       // Taker-buy price improvement (bid > resting ask) refunds the
       // difference -- the buyer escrowed their own bid above.
@@ -408,31 +473,40 @@ export const marketMethods = {
       await this.state.storage.put('mkt_order:' + order.id, order);
     } catch (err) {
       this._mktRemoveFromIndex(order);
-      const back = this.playerState[playerId];
-      if (back) {
-        if (type === 'sell' && item) {
-          if (!Array.isArray(back.weaponStash)) back.weaponStash = [];
-          // Rule 3: never push past the cap -- _saveRpg truncates there and
-          // that would destroy the very weapon this is rescuing.
-          if (back.weaponStash.length < this.WEAPON_STASH_CAP) back.weaponStash.push(item);
-          else await this._creditPlayer(playerId, { opId: 'mktunwind:' + order.id, source: 'market', kind: 'weapon', payload: { weapon: item }, note: 'listing failed' });
-        } else if (type === 'buy') {
-          back.coins = (back.coins || 0) + p;
-        }
-        this._saveRpg(playerId, back);
-        this._queuePlayerStateFlush(playerId);
-      } else {
-        // Offline between the debit and the write: pay it into the mail.
-        await this._creditPlayer(playerId, {
-          opId: 'mktunwind:' + order.id, source: 'market',
-          kind: type === 'sell' ? 'weapon' : 'gold',
-          payload: type === 'sell' ? { weapon: item } : { amount: p },
-          note: 'listing failed',
-        });
-      }
+      await this._mktUnwind(order);
       throw err;
     }
     return { ok: true, settled: true, matched: false, order };
+  },
+
+  /* v2.3.1971's unwind, moved here unchanged by v2.3.4505 so the crossing's
+     note (above) uses it too: an order's escrow, taken from its player but
+     named by no record that landed, goes home. */
+  async _mktUnwind(order) {
+    const { type, playerId, item } = order;
+    const p = order.price;
+    const back = this.playerState[playerId];
+    if (back) {
+      if (type === 'sell' && item) {
+        if (!Array.isArray(back.weaponStash)) back.weaponStash = [];
+        // Rule 3: never push past the cap -- _saveRpg truncates there and
+        // that would destroy the very weapon this is rescuing.
+        if (back.weaponStash.length < this.WEAPON_STASH_CAP) back.weaponStash.push(item);
+        else await this._creditPlayer(playerId, { opId: 'mktunwind:' + order.id, source: 'market', kind: 'weapon', payload: { weapon: item }, note: 'listing failed' });
+      } else if (type === 'buy') {
+        back.coins = (back.coins || 0) + p;
+      }
+      this._saveRpg(playerId, back);
+      this._queuePlayerStateFlush(playerId);
+    } else {
+      // Offline between the debit and the write: pay it into the mail.
+      await this._creditPlayer(playerId, {
+        opId: 'mktunwind:' + order.id, source: 'market',
+        kind: type === 'sell' ? 'weapon' : 'gold',
+        payload: type === 'sell' ? { weapon: item } : { amount: p },
+        note: 'listing failed',
+      });
+    }
   },
 
   async _mktCancelOrder(orderId, playerId) {
@@ -440,6 +514,14 @@ export const marketMethods = {
     const order = await this.state.storage.get('mkt_order:' + orderId);
     if (!order) return { ok: false, error: 'Not found' };
     if (order.playerId !== playerId) return { ok: false, error: 'Not yours' };
+    /* v2.3.4505: an order mid-sale (a crossing a fault stopped in this
+       worker's life) is sold, not cancellable: the sale is finished and the
+       answer is what a sold order's cancel always got.  A refund here would
+       pay its escrow to the maker AND leave the legs owed. */
+    if (order.settle && !this._mktSettleOff()) {
+      await this._mktSettleHeal(order);
+      return { ok: false, error: 'Not found' };
+    }
     this._mktRemoveFromIndex(order);
     // v2.3.1184: refund BEFORE delete (rule 6 ordering) -- the old
     // delete-first order meant a deploy between the two destroyed the
@@ -463,6 +545,8 @@ export const marketMethods = {
     // stamped, delete lost) must not ALSO refund its escrow.
     if ((await this._opSeen('settle:' + order.id + ':item')) ||
         (await this._opSeen('settle:' + order.id + ':gold'))) return;
+    /* v2.3.4505: nor over a sale's note: its escrow is owed to its legs */
+    if (order.settle && !this._mktSettleOff()) return;
     if (order.type === 'buy') {
       await this._creditPlayer(order.playerId, { opId: 'refund:' + order.id, source: 'market', kind: 'gold', payload: { amount: order.price }, note: why });
     } else if (order.item) {
@@ -482,6 +566,9 @@ export const marketMethods = {
     }
     for (const o of expired) {
       this._mktRemoveFromIndex(o);
+      /* v2.3.4505: a noted sale (one `mktsettle: false` put back on sale) is
+         finished, never refunded */
+      if (o.settle && !this._mktSettleOff()) { await this._mktSettleHeal(o); continue; }
       // v2.3.1184: refund before delete, same as cancel.
       await this._mktRefund(o, 'listing expired');
       await this.state.storage.delete('mkt_order:' + o.id);
@@ -494,5 +581,171 @@ export const marketMethods = {
     hist.push({ p: price, ts: Date.now() });
     if (hist.length > MARKET.PRICE_HIST_CAP) hist.splice(0, hist.length - MARKET.PRICE_HIST_CAP);
     await this.state.storage.put(key, hist);
+  },
+
+  /* ═══ v2.3.4505: A SALE'S NOTE, ITS LEGS, AND THE WAKE THAT FINISHES IT ═══
+     (the crossing's comment in _mktPlaceOrder says why).  The note on the
+     maker's `mkt_order:` record:
+       { v, at, taker, takerOrder, takerType, bid, exec, label,
+         legs: [{ leg: 'item', to, weapon }, { leg: 'gold', to, amount },
+                ({ leg: 'diff', to, amount }, a taker buy above the ask)] }
+     The taker's own order is never stored: the legs are where its escrow goes.
+
+     KILL SWITCH (lower case): `mktsettle: false` in the live flags puts back
+     the old order -- no note, the legs one by one, and a leftover converged
+     by the old stamp check (what an older worker does with a note: any leg
+     stamped deletes it, none re-lists the maker; never a second payment). */
+  _mktSettleOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'mktsettle') && !f.mktsettle);
+  },
+
+  _mktSettlePlan(order, execPrice, buyerId, sellerId, weapon, label) {
+    const legs = [
+      { leg: 'item', to: buyerId, weapon },
+      { leg: 'gold', to: sellerId, amount: execPrice },
+    ];
+    if (order.type === 'buy' && order.price > execPrice) legs.push({ leg: 'diff', to: buyerId, amount: order.price - execPrice });
+    return {
+      v: MARKET.SETTLE_V, at: Date.now(),
+      taker: order.playerId, takerOrder: order.id, takerType: order.type, bid: order.price,
+      exec: execPrice, label, legs,
+    };
+  },
+
+  /* a note this worker can finish: its shape number, and every leg whole */
+  _mktSettleOk(s) {
+    if (!s || typeof s !== 'object' || s.v !== MARKET.SETTLE_V) return false;
+    if (typeof s.taker !== 'string' || (s.takerType !== 'buy' && s.takerType !== 'sell') || !(s.bid > 0) || !(s.exec > 0)) return false;
+    const legs = s.legs;
+    if (!Array.isArray(legs) || legs.length < 2 || legs.length > 3) return false;
+    if (!legs[0] || legs[0].leg !== 'item' || !legs[0].weapon) return false;
+    return legs.every((l, i) => l && typeof l.to === 'string' && l.to
+      && (i === 0 || ((l.leg === (i === 1 ? 'gold' : 'diff')) && Number.isFinite(l.amount) && l.amount > 0)));
+  },
+
+  /* one leg's credit (its opId is written at the call, opid-audit) --
+     exactly the entry the old order paid, so a leg it stamped reads as paid
+     here, and the other way */
+  _mktLegPay(rec, leg) {
+    const label = rec.settle.label;
+    if (leg.leg === 'item') return { source: 'market', kind: 'weapon', payload: { weapon: leg.weapon }, note: label + ' bought' };
+    return { source: 'market', kind: 'gold', payload: { amount: leg.amount }, note: leg.leg === 'diff' ? 'price improvement' : label + ' sold' };
+  },
+
+  /* the taker's escrow, whole: what goes home when the maker's already did */
+  _mktBackPay(rec) {
+    const s = rec.settle;
+    if (s.takerType === 'buy') return { source: 'market', kind: 'gold', payload: { amount: s.bid }, note: 'order returned' };
+    return { source: 'market', kind: 'weapon', payload: { weapon: s.legs[0].weapon }, note: 'order returned' };
+  },
+
+  /* Pay every leg (a leg already stamped answers 'dup' and pays nothing:
+     _creditPlayer issues each stamp in the same run as its payment), then
+     delete the record -- only when every leg is stamped -- and keep the price
+     in the history, as the old order did after its delete. */
+  async _mktSettleRun(rec) {
+    for (const leg of rec.settle.legs) {
+      /* a call for this leg already running in this worker: its stamp is not
+         on file yet, so the record is not ours to delete (that call finishes
+         the sale, or owes it).  Asked BEFORE the call, in the same run as
+         _creditPlayer's own check, so any 'dup' below is a stamp on file. */
+      if (this._opInFlight && this._opInFlight.has('settle:' + rec.id + ':' + leg.leg)) return false;
+      await this._creditPlayer(leg.to, { opId: 'settle:' + rec.id + ':' + leg.leg, ...this._mktLegPay(rec, leg) });
+    }
+    await this.state.storage.delete('mkt_order:' + rec.id);
+    if (this._mktOwed) this._mktOwed.delete(rec.id);
+    await this._mktRecordPrice(this._mktIndexKey(rec), rec.settle.exec);
+    return true;
+  },
+
+  /* Finish a note found on disk (the book's rebuild, the wake scan, a cancel,
+     the expiry sweep, a retry).  It reads the record as it is NOW -- a copy
+     read earlier may already be finished -- and never throws: a sale it could
+     not finish is owed (_mktOwed), retried by the tick, and the stamp prune
+     waits for it.  A newer worker's note, or one not whole, is left as it
+     is: not paid, not listed, not deleted. */
+  async _mktSettleHeal(o) {
+    try {
+      const key = 'mkt_order:' + o.id;
+      const rec = await this.state.storage.get(key);
+      if (!rec || !rec.settle) { if (this._mktOwed) this._mktOwed.delete(o.id); return true; }
+      if (!this._mktSettleOk(rec.settle)) return false;
+      this._mktDropFromBook(rec);
+      /* An older worker (or the switch off) re-listed this maker -- its note
+         unread -- and then refunded it, and the restart came before its
+         delete: the maker's escrow went home, so the legs must not be paid
+         (that would pay it twice).  The taker's escrow goes home too.  (One
+         read, here only: the live crossing never needs it.) */
+      if (await this._opSeen('refund:' + rec.id)) {
+        await this._creditPlayer(rec.settle.taker, { opId: 'settle:' + rec.id + ':back', ...this._mktBackPay(rec) });
+        await this.state.storage.delete(key);
+        if (this._mktOwed) this._mktOwed.delete(rec.id);
+        return true;
+      }
+      return await this._mktSettleRun(rec);
+    } catch (e) {
+      this._mktOwe(o);
+      return false;
+    }
+  },
+
+  /* out of the in-memory book, if it is there (only `mktsettle: false` puts
+     a noted record back on sale) -- never a second decrement of the count */
+  _mktDropFromBook(rec) {
+    const b = this._mktIndex && this._mktIndex.get(this._mktIndexKey(rec));
+    const list = b && (rec.type === 'buy' ? b.buys : b.sells);
+    if (list && list.some((x) => x.id === rec.id)) this._mktRemoveFromIndex(rec);
+  },
+
+  _mktOwe(o) {
+    if (!o || !o.id) return;
+    if (!this._mktOwed) this._mktOwed = new Map();
+    this._mktOwed.set(o.id, o);
+  },
+
+  /* ═══ v2.3.4505: THE STAMP PRUNE WAITS FOR A SALE HALF DONE ═══
+     Which legs of a note were paid lives in their oplog stamps, and the
+     oplog prune deletes stamps 48 h old (inbox.js _opPruneMaybe; TRAPS §146:
+     the oplog is not the record).  A note found after its stamps were pruned
+     would read as unpaid: its weapon paid twice.  The book's rebuild finished
+     notes only on the first shop request after a wake, which may never come
+     before the prune.  So the tick's housekeeping slot (tick.js) asks this
+     BEFORE the prune: true while the prune must wait -- this worker's scan
+     of the book has not finished, or a sale is owed -- and it starts the next
+     step (one page of the scan, or the retries) when none is running.  The
+     prune only runs in this slot, and a fresh worker's first slot starts the
+     scan, so no prune ever comes between a restart and its heal.
+     The cost: once a worker's life, the book read a page at a time and
+     nothing written when there is nothing to finish -- and nothing at all
+     when the shop's rebuild has already read it (_mktEnsureIndex). */
+  _mktSettleWait() {
+    if (this._mktSettleOff()) return false;
+    const owed = !!(this._mktOwed && this._mktOwed.size);
+    if (this._mktScanned && !owed) return false;
+    if (!this._mktHealing) {
+      this._mktHealing = true;
+      const step = this._mktScanned ? this._mktRetryOwed() : this._mktScanPage();
+      step.catch(() => {}).then(() => { this._mktHealing = false; });
+    }
+    return true;
+  },
+
+  async _mktScanPage() {
+    const opts = { prefix: 'mkt_order:', limit: MARKET.SCAN_PAGE };
+    if (this._mktScanAfter) opts.startAfter = this._mktScanAfter;
+    const page = await this.state.storage.list(opts);
+    let last = null;
+    for (const [k, o] of page) {
+      last = k;
+      if (o && o.id && o.settle) await this._mktSettleHeal(o);
+    }
+    if (this._mktScanned) return;   /* the shop's rebuild read it all meanwhile */
+    if (page.size < MARKET.SCAN_PAGE || !last) { this._mktScanned = true; this._mktScanAfter = null; }
+    else this._mktScanAfter = last;
+  },
+
+  async _mktRetryOwed() {
+    for (const o of [...this._mktOwed.values()]) await this._mktSettleHeal(o);
   },
 };

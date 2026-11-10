@@ -1,4 +1,4 @@
-/* ═══ WHAT PLAYERS DREW, AND HOW WELL THEY AIM: THE OWNER'S TWO NEW VIEWS (v2.3.4495) ═══
+/* ═══ WHAT PLAYERS DREW, AND HOW WELL THEY AIM: THE OWNER'S TWO NEW VIEWS (v2.3.4545) ═══
  *
  * The owner, 2026-11-10: "I also need profile pic and character images of
  * other players saved somewhere so I can monitor for anything inappropriate

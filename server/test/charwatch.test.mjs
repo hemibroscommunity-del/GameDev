@@ -1,5 +1,5 @@
 /* What players drew, for the owner to look at; and the faces of old
- * leaderboard rows -- v2.3.4495 (server/src/charwatch.js, boards.js
+ * leaderboard rows -- v2.3.4545 (server/src/charwatch.js, boards.js
  * _boardsFaceFill, docs/specs/char-watch.md).
  *
  *   1. THE PAGE (pure): only characters with ink, newest first, a page at a

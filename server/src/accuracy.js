@@ -1,4 +1,4 @@
-/* ═══ v2.3.4495: ACCURACY -- HOW MANY OF YOUR SHOTS HIT, A WEAPON ═══
+/* ═══ v2.3.4545: ACCURACY -- HOW MANY OF YOUR SHOTS HIT, A WEAPON ═══
  *
  * The owner, 2026-11-10: "I want somewhere that stats keep track of
  * 'accuracy' (maybe for all 3 weapon types) like the amount of times the

@@ -4623,7 +4623,7 @@ console.log('the lagoon islet (v2.3.3994)');
   const { PLAN5 } = await import('../../public/tools/world/plan.js');
   const { planFeatures } = await import('../../public/tools/world/core/layout.js');
   const { swimBits } = await import('../../public/tools/world/core/ground.js');
-  const { riseLayout, riseMessage, risePaint, RISE_PALETTE, RISE_KIND } = await import('../../public/tools/world/core/rises.js');
+  const { riseLayout, riseMessage, risePaint, RISE_PALETTE, RISE_KIND, RISE_SHUT } = await import('../../public/tools/world/core/rises.js');
   const { decodePlaced } = await import('../../public/tools/world/core/placedfile.js');
   const { tierAt } = await import('../../public/tools/world/core/wheel.js');
   const F1 = planFeatures(PLAN), F5 = planFeatures(PLAN5);
@@ -4739,7 +4739,7 @@ console.log('the lagoon islet (v2.3.3994)');
     if (buf[a] !== buf2[b] || buf[a + 1] !== buf2[b + 1] || buf[a + 2] !== buf2[b + 2] || buf[a + 3] !== buf2[b + 3]) diff++;
   }
   ok(`the faces, rims, vines and chest are drawn in ${used.size} colours, all the rises' own (${pal.size}: a piece stays far under 256), and every pixel the same in two pieces laid apart`,
-    painted > 50000 && off.length === 0 && pal.size <= 60 /* v2.3.4462: + a hill's earth, stones, grass and shade */ && used.size >= 20 && diff === 0, { off: off.slice(0, 5), diff });
+    painted > 50000 && off.length === 0 && pal.size <= 60 /* v2.3.4462: + a hill's colours (v2.3.4483: boulders, grass, its edge, shade) */ && used.size >= 20 && diff === 0, { off: off.slice(0, 5), diff });
   const gw = fs.readFileSync(new URL('../../public/tools/world/core/ground-worker.js', import.meta.url), 'utf8');
   ok('...laid and sent by the ground worker for everyone (v2.3.4453), unless the address says climb=0',
     /climb: climbOn\(search\)/.test(gw) && /rises: W\.climb \? riseMessage\(PLAN\) : null/.test(gw) && /if \(W\.climb\) risePaint\(/.test(gw)
@@ -4759,10 +4759,20 @@ console.log('the lagoon islet (v2.3.3994)');
       const BT = L.list.find((r) => r.id === 'bluff-terrace'), BL = L.list.find((r) => r.id === 'bluff-ledge');
       const { islBoxes } = await import('../../public/tools/world/core/placing.js');
       const keep = islBoxes(PLAN5, { ox: 0, oy: 0 }).find((b) => b.id === 'bluff-terrace');
-      ok('the Town Bluff: a terrace with vines and on it a ledge with a chest, listed after the islet\'s, the long Wheel only, its ground kept clear (its box, 3 cells round it, 2 more to the south)',
-        !!BT && !!BL && BT.k === 2 && BL.k === 3 && BT.look === 'hill' && BL.look === 'hill' && !BT.islet && BT.h === 72 && !!BT.climb && BL.h === 144 && !!BL.chest
+      ok('the Town Bluff: a terrace with a ramp (v2.3.4483: was vines) and on it a ledge with a chest, listed after the islet\'s, the long Wheel only, its ground kept clear (its box, 3 cells round it, 2 more to the south)',
+        !!BT && !!BL && BT.k === 2 && BL.k === 3 && BT.look === 'hill' && BL.look === 'hill' && !BT.islet && BT.h === 72 && !BT.climb && !!BT.ramp && BL.h === 144 && !!BL.chest
         && BL.x0 > BT.x0 && BL.x1 < BT.x1 && BL.y1 <= BT.faceY0 && riseLayout(PLAN) === null
         && !!keep && keep.x0 === BT.x0 - 3 && keep.y0 === BT.y0 - 3 && keep.x1 === BT.x1 + 3 && keep.y1 === BT.y1 + 5, { BT: BT && [BT.x0, BT.y0, BT.x1, BT.y1], keep });
+      /* v2.3.4483: the ramp's cells are their own kind, which the walk grid leaves open; the back corners are rim on the diagonal */
+      const kAt = (x, y) => L.cells[(y - L.y0) * L.w + (x - L.x0)] & 7;
+      const CL = await import('../../src/game/climb.js');
+      const mr = msg.list.find((r) => r.id === 'bluff-terrace');
+      ok('its ramp is a strip of its face, a kind of its own that shuts nothing (the game walks it: no drop back, no rescue), and its back corners are cut on the diagonal',
+        kAt(BT.ramp.x0, BT.faceY0) === RISE_KIND.ramp && kAt(BT.ramp.x1 - 1, BT.y1 - 1) === RISE_KIND.ramp && kAt(BT.ramp.x0 - 1, BT.faceY0) === RISE_KIND.face && kAt(BT.ramp.x1, BT.faceY0) === RISE_KIND.face
+        && RISE_SHUT[RISE_KIND.ramp] === false && CL.KIND_NAMES[RISE_KIND.ramp] === 'ramp' && !CL.riseShuts('ramp')
+        && mr.ramp.y0 === mr.face.y0 && mr.ramp.y1 === mr.face.y1 && CL.onRamp(mr, (mr.ramp.x0 + mr.ramp.x1) / 2, (mr.face.y0 + mr.face.y1) / 2) && !CL.onRamp(mr, mr.ramp.x0 - 1, (mr.face.y0 + mr.face.y1) / 2)
+        && CL.faceLanding(mr, 'N', false, (mr.ramp.x0 + mr.ramp.x1) / 2, (mr.face.y0 + mr.face.y1) / 2) === 'clear' && CL.faceLanding(mr, 'N', false, mr.face.x0 + 30, (mr.face.y0 + mr.face.y1) / 2) === 'back'
+        && BT.round === 3 && kAt(BT.x0 + 1, BT.y0 + 1) === RISE_KIND.rim && kAt(BT.x0 + 2, BT.y0 + 1) === RISE_KIND.rim && kAt(BT.x1 - 2, BT.y0 + 2) === RISE_KIND.rim && kAt(BT.x0 + 2, BT.y0 + 2) === RISE_KIND.top);
     }
   }
 }

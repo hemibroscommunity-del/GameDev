@@ -243,7 +243,9 @@ export const noMansLandMethods = {
      players never meet it: the shops are in town and a fight is not.  What
      only rearranges the bag (cooking, smelting, salvage) or brings things in
      is untouched; cancelling an order or a listing stays open.  Kill switch:
-     the live flag `fightlock: false`. */
+     the live flag `fightlock: false`.
+     v2.3.4510: every road, these six and the ones found open since, is now
+     one table in fightlock.js (FIGHT_LOCK), which the router asks. */
   _bagLockedByFight(pid, now) {
     if (!pid || typeof pid !== 'string') return false;
     const f = this._liveFlags;

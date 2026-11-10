@@ -100,6 +100,8 @@ aren't listed:
 - **The plan.** Until the character lanes' phase 2 lands, the arena's area
   draws fewer players in full. These points went to the arena lane (C) for
   `docs/specs/arena-area.md` on 2026-10-28.
+- **Measured (v2.3.4499).** A crowd's cost to the page, by what each kind of
+  look brings: `docs/specs/held-sweep.md`, "The crowd tour" (`mp-crowdsweep`).
 
 ### 1d. Faster loading for returning players
 

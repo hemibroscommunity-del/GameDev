@@ -56,10 +56,10 @@ From there you can:
 - **Player logins** — let a player's character onto a new device, or lock out
   someone who got into a character (v2.3.3344; "Player logins" below).
 - **Player drawings** — everything players drew in the character creator,
-  newest first, with Remove drawings and Freeze (v2.3.4495; "What players
+  newest first, with Remove drawings and Freeze (v2.3.4545; "What players
   drew" below).
 - **Accuracy (all players)** — how often each weapon's basic attack hits, a
-  day (v2.3.4495; "Accuracy" below).
+  day (v2.3.4545; "Accuracy" below).
 - **Chat reports** — what players reported, with what was said, and Kick,
   Freeze, Unfreeze and Dismiss buttons (v2.3.3398; "Dealing with a griefer or
   cheater" below).
@@ -293,7 +293,7 @@ Who has it on, from a computer:
 curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/dev/testmodes"
 ```
 
-## What players drew: looking for anything inappropriate (v2.3.4495)
+## What players drew: looking for anything inappropriate (v2.3.4545)
 
 Players can draw on their character in the creator (a face tattoo, a shirt
 design and so on). Every drawing is kept on the server with its character, and
@@ -317,7 +317,7 @@ If one is not acceptable:
 
 Names are shown here too, but this page does not change a name.
 
-## Accuracy: how often each weapon hits (v2.3.4495)
+## Accuracy: how often each weapon hits (v2.3.4545)
 
 The game counts every basic attack (a sword swing, an arrow, a staff bolt)
 and whether it hit an enemy. Specials are not counted.
@@ -557,6 +557,26 @@ window is on (the owner, 2026-11-10). Two switches:
 ```
 curl -X POST -H "Authorization: Bearer YOUR_KEY" \
   -d '{"name":"giftclosed","value":false}' "https://WORKER/api/admin/flags"
+```
+
+**The fight lock in No man's land** (v2.3.4510). A player in a fight with
+another player out in No man's land cannot spend, wager or give away what a
+death there would hand the killer: no forging, gem setting, amulet crafting,
+jackpot, gambling, duels, arena stakes or entry, auction-house offers, trade
+staging, capes or Pet House rooms; no dungeon mouth; no spare weapon put
+on, nor a shield report that would hide the spare shields. Ten seconds after
+the last hit it all opens again, and on the safe ground (the town and the
+commons) it never applies. The list is one file, `server/src/fightlock.js`.
+Four switches, each written `false`:
+- `fightlocktable` opens the counters in town (only a modified phone
+  reaches them mid-fight), duels and trade staging, back to the six roads
+  guarded before v2.3.4510;
+- `fightlockdoor` lets a fighting player through a dungeon mouth again;
+- `fightlockequip` lets a fighting player put on a spare weapon again;
+- `fightlock` (the old one) opens everything, the six old roads too.
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" \
+  -d '{"name":"fightlockdoor","value":false}' "https://WORKER/api/admin/flags"
 ```
 
 **A private room** for a playtest: the game only makes the rooms it is told

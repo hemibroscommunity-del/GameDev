@@ -215,6 +215,56 @@ Caves' brute, on the wire and in every saved codex). Its pace is
   half again as wide; `headTopPx` puts its health bar and name on its head,
   not on the top of the room its cell leaves for the hop.
 
+## Its shadow (v2.3.4493)
+
+The owner: "the water frogs currently have floating shadows and need fixed."
+
+- **Why.** A monster's shadow is its own body drawn again, laid along the sun
+  from a ground point (`lightfx/shadows.js`). For a monster look that point was
+  the body sprite's origin, which is the **bottom of its 256 px cell**
+  (`lightfx/casters.js`, rule 3: "anchored AT their feet"). The frog's strips
+  were cut with its feet on row 231, leaving 24 empty rows under them (room
+  for a hop toward you). At the frog's size that is 17 px of nothing between
+  its feet and the point its shadow hung from, so the shadow lay under the
+  frog and apart from it.
+- **The fix.** A look says where its feet are: `feetRow` in `MONSTER_VARIANTS`
+  (the first empty row under its feet at rest; 232 for the frog). `casters.js`
+  hangs the shadow from that row. The body is not moved: its place, its bar,
+  its hit circle and its target ring are where they were. A hop still lifts
+  the body off its shadow, which stays on the ground: that gap is the height.
+- **The same on four more looks.** The rock golem's pictures (`rockmonster`,
+  `thornShambler`) and the rotcap's (`mireWisp`, `bogLurker`) stand on row 231
+  too (measured: every walk frame's lowest row is 226 to 232), so they got the
+  same `feetRow`. Both were looked at in their own lands (the Stone Hollows,
+  the Poison Forest): each shadow sits at its monster's base.
+- **Not changed**: the fire goblin (its feet row differs by side: 220 to 239)
+  and the storm eye (it hovers on purpose).
+- **Test**: `mp-waterfrog` step 10: in the Water Caves, each frog's shadow
+  hangs 16.9 px above its cell's bottom, which is its 24 empty rows.
+- Picture: `docs/shots/frog-shadow.webp` (v2.3.4511: before that, and now).
+
+**v2.3.4511, "The water frog shadow is too far south of the sprite."** Two
+things were still south of the frog once its shadow hung from its feet:
+
+- **Its shadow fell wholly south of its feet.** A standing figure's shadow is
+  its picture laid along the sun from its feet line: every pixel is height.
+  The frog's 97 px are mostly its back seen from above, so its shadow reached
+  33 px south and 48 east, as a bro's does, and a shadow cast that way can only
+  fall south of the feet. A squat look now says so (`shadowFlat` in
+  `MONSTER_VARIANTS`: `{ s: 0.45, lift: 14 }` on the frog), and its shadow is
+  its **footprint**: its own outline squashed onto the ground under it (0.45 of
+  its height, kept above the feet line) and pushed 14 px along the sun
+  (`lightfx/shadows.js`). Most of it is under the frog; a dark edge shows on its
+  east and south-east side. Other looks and every player are cast as before.
+- **The ring under a monster in reach sat on the bottom of its picture's
+  cell**, 17 px below the frog's feet: a pale oval apart from it. It is now on
+  the feet of any look with a `feetRow` (`lookFeetPad`, `effectsRenderer`'s
+  ring), so the rock golem's and the rotcap's moved up with the frog's.
+- Test: `mp-waterfrog` step 10 checks each frog's shadow is its footprint
+  (`flat` 0.45 in the shadow pass's list). `worldshadow` 19 of 19.
+  `lockrings` fails three checks about the attack button's see-through face,
+  on main too: not this change.
+
 ## What else changed with it
 
 - Names: "Water Frog", "Coral Frog", "Froglet", "Coral Froglet"; its codex

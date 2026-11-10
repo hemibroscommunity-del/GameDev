@@ -30,6 +30,7 @@ import { figureFeetY, figureFeetX } from '../systems/entityRenderer.js';   /* v2
 import { wheelObjectCasters } from '../wheelObjects.js';   /* v2.3.3000: the Wheel's objects cast */
 import { farmCasters } from '../farmWorld.js';   /* v2.3.3136 */
 import { wheelDoorCasters } from '../wheelDoors.js';   /* v2.3.3566: a dungeon mouth's mound */
+import { MONSTER_VARIANTS } from '../../data/monsterVariants.js';   /* v2.3.4493: a look's `feetRow` */
 
 /* The local player's stand-in sprites on the effects renderer.  NOT every
    sprite it owns: `slashSprite` is the sword's arc effect, light rather than
@@ -101,6 +102,7 @@ function selfStandIns(fx, out) {
   for (let i = 0; i < SELF_STAND_IN_SETS.length; i++) walkSet(fx[SELF_STAND_IN_SETS[i]], out, 0);
 }
 
+const MONSTER_CELL = 256;   /* a look's cell (liveScalePx is measured against it) */
 /* A sprite anchored at its own feet: the ground point is where its origin
    lands in the display's parent space. */
 function anchoredFeet(display, spr) {
@@ -167,7 +169,22 @@ export function collectCasters(S, er, fx, zone) {
       const b = d && !d.destroyed && d.visible && d._spriteBody;
       if (!b || !b.visible) continue;
       const g = anchoredFeet(d, b);
-      out.push({ key: 'm:' + id, px: g.x, py: g.y, sprites: [b], alive: true });
+      /* ═══ v2.3.4493: A LOOK WHOSE FEET ARE NOT ON ITS CELL'S BOTTOM ROW ═══
+         The owner: "the water frogs currently have floating shadows and need fixed."  A look's body
+         (MONSTER_VARIANTS) is anchored at the BOTTOM of its 256 px cell, and rule 3 above took that
+         for its feet -- but the frog's strips were cut with "feet on row 231" (docs/specs/
+         water-frog.md: room under them for a hop toward you), 24 empty rows.  At its size that is
+         17 px of nothing between the frog and the point its shadow hangs from: the shadow began
+         under the frog, not at it.  A look says where its feet are (`feetRow`: the first empty row
+         under them at rest), and the ground point is that row -- so the shadow starts at the feet
+         and stays there while a hop lifts the body.  The body is not moved: its place, its bar and
+         its hit circle are where they were. */
+      const v = d._variantKey ? MONSTER_VARIANTS[d._variantKey] : null;
+      const pad = v && v.feetRow > 0 && v.feetRow < MONSTER_CELL ? (MONSTER_CELL - v.feetRow) * Math.abs(b.scale.y) * d.scale.y : 0;
+      /* v2.3.4511: ...and a squat look's shadow is its footprint (`shadowFlat`), not cast like a standing
+         figure's: the owner, of the frog's once it hung from the feet, "The water frog shadow is too
+         far south of the sprite" (shadows.js) */
+      out.push({ key: 'm:' + id, px: g.x, py: g.y - pad, sprites: [b], alive: true, flat: v && v.shadowFlat ? v.shadowFlat : null });
     }
   }
 

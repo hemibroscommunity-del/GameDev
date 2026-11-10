@@ -26,7 +26,8 @@
  *      the bag -- never in the black margin
  *   4. a sword in hand, a real click on a tree in reach starts chopping, no
  *      swing
- *   5. a real click on Ace talks to him (his coin flip), no swing
+ *   5. a real click on Ace, where he stands at the click (he walks his
+ *      day), talks to him (his coin flip), no swing
  *   6. an XP label flies from you to its card inside the game's column (it
  *      was drawn the column's left edge too far right, past it)
  *   7. the farm: a real click on a bed in reach works it (the dig is sent),
@@ -306,7 +307,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (ace) await goTo(P, ace.x, ace.y + 70, 1500);
       await hold('sword');
       await P.page.waitForTimeout(500);
-      const at = ace ? await pagePoint(P, ace.x, ace.y - 20) : null;
+      /* v2.3.4498: aimed at where Ace IS, read at the click.  He walks his
+         day's loop (game/townsfolkDay.js, v2.3.4058: four stops up to ~150 px
+         apart, by the clock), and the spot read above is from before the
+         walk to him, ~12 s on this box: by the click he had walked up to
+         100 px on, past the click's 44 px (npcAtCss), and the click on his
+         old spot swung -- red or green by the hour, on main and on the
+         commit before (the S1 lane, 2026-11-10).  A player clicks the figure
+         they see; the scan reads his live x and y, as the figure does.  He
+         is let stand first (a pause of 4-7 s) so the read and the press
+         meet him in one place; the wait times out to the live read. */
+      if (ace) await H.waitFor(P, (S) => { const n = (S.npcs || []).find((m) => m && m.flip); return n && n._folkDay ? !!n._folkDay.walking || Math.hypot(n._folkDay.tx - n.x, n._folkDay.ty - n.y) > 2 : false; }, (v) => v === false, { timeout: 20000, label: 'Ace stands' }).catch(() => null);
+      const aceNow = ace ? await H.readState(P, (S) => { const n = (S.npcs || []).find((m) => m && m.flip); return n ? { x: n.x, y: n.y } : null; }) : null;
+      const at = aceNow ? await pagePoint(P, aceNow.x, aceNow.y - 20) : null;
       await P.page.evaluate(() => { window.__btNpcTap = null; });
       await watchAttack(P);
       if (at) await P.page.mouse.click(at.x, at.y, { delay: PRESS_MS });

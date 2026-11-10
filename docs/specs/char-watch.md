@@ -1,4 +1,4 @@
-# What players drew, for the owner to look at; and old leaderboard faces (v2.3.4495)
+# What players drew, for the owner to look at; and old leaderboard faces (v2.3.4545)
 
 The owner, 2026-11-10: *"I think each character should have their basic info
 saved somewhere on the server (like profile pic appearance - level - etc) I'm

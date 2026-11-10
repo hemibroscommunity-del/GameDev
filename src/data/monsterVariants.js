@@ -306,12 +306,27 @@ export const MONSTER_VARIANTS = {
                           up from the cell's bottom: its cell has room above
                           it for the hop, and its bar and name sit on its
                           head, not on the top of that room
+       feetRow            (v2.3.4493) the row of its 256 px cell its feet stand
+                          on at rest -- the first empty row under them (its
+                          strips: "feet on row 231", so 232).  The body is
+                          anchored at the cell's bottom, 24 rows lower, and
+                          its shadow hung from there: "floating shadows"
+                          (the owner).  lightfx/casters.js hangs it from
+                          this row.
+       shadowFlat         (v2.3.4511) a squat look's shadow is its footprint:
+                          { s: the share of its picture that is the ground
+                          it covers, lift: how high its body stands, px }.
+                          Cast as a standing figure's, the frog's whole 97 px
+                          was height and its shadow fell "too far south of
+                          the sprite" (the owner).  lightfx/shadows.js.
      Client-visual only: nothing on the server or the wire reads these (`spd`
      is the mirrored one, and it is untouched). */
   fishman: {
     baseArchetype: 'brute',
     liveScalePx: 120,
     headTopPx: 80,
+    feetRow: 232,
+    shadowFlat: Object.freeze({ s: 0.45, lift: 14 }),
     spd: 0.5,
     hopWalk: true,
     walkDistPerFrame: 1.2,
@@ -384,6 +399,7 @@ export const MONSTER_VARIANTS = {
   rockmonster: {
     baseArchetype: 'brute',
     liveScalePx: 108,
+    feetRow: 232,    /* v2.3.4493: its strips stand on row 231 too (measured): its shadow hangs from its feet, as the frog's (fishman, above) */
     headTopPx: 66,
     spd: 0.5,
     walkDistPerFrame: 4,
@@ -464,6 +480,7 @@ export const MONSTER_VARIANTS = {
   mireWisp: {
     baseArchetype: 'fodder',
     liveScalePx: 66,
+    feetRow: 232,    /* v2.3.4493: its strips stand on row 231 too (measured): its shadow hangs from its feet, as the frog's (fishman, above) */
     headTopPx: 44,
     walkDistPerFrame: 3.2,
     idleFrameMs: 230,
@@ -484,6 +501,7 @@ export const MONSTER_VARIANTS = {
   thornShambler: {
     baseArchetype: 'brute',
     liveScalePx: 108,
+    feetRow: 232,    /* v2.3.4493: its strips stand on row 231 too (measured): its shadow hangs from its feet, as the frog's (fishman, above) */
     headTopPx: 66,
     spd: 0.5,        /* mirrored in server _variantSpeed */
     tint: 0x4f9a3f,  /* moss-covered rock golem */
@@ -500,6 +518,7 @@ export const MONSTER_VARIANTS = {
   bogLurker: {
     baseArchetype: 'brute',
     liveScalePx: 104,
+    feetRow: 232,    /* v2.3.4493: its strips stand on row 231 too (measured): its shadow hangs from its feet, as the frog's (fishman, above) */
     headTopPx: 68,
     spd: 0.5,        /* mirrored in server _variantSpeed */
     tint: 0x8f86a8,
@@ -554,6 +573,16 @@ export const ZONE_VARIANT_MAP = {
    scaling paths. */
 export function variantForArchetype(arch) {
   return (arch && MONSTER_VARIANTS[arch]) || null;
+}
+
+/* v2.3.4511: how far above its place (the bottom of its cell, where the body hangs) a look's feet are,
+   in its own measure (liveScalePx): its `feetRow`'s empty rows, scaled.  0 for a look standing on its
+   cell's bottom row.  The renderer multiplies by MONSTER_SIZE_MULT and a boss's size.  Read by the
+   ring under a monster in reach (effectsRenderer), which sat as far below the frog's feet as its
+   shadow had ("The water frog shadow is too far south of the sprite"). */
+export function lookFeetPad(arch) {
+  const v = arch && MONSTER_VARIANTS[arch];
+  return v && v.feetRow > 0 && v.feetRow < 256 ? (256 - v.feetRow) / 256 * (v.liveScalePx || 64) : 0;
 }
 
 /* Returns the base archetype an arch behaves like for AI purposes.

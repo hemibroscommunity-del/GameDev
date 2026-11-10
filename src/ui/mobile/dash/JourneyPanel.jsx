@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
 import { playIsLandscape } from '../playViewport.js';   /* v2.3.2171: the sideways pane stacks */
 import { deskWords } from '@/game/deskWords.js';        /* v2.3.3773: "Tap" reads "Click" on a computer */
-import { ACC_SLOTS, ACC_NAMES, accLive, accPct, askAccuracy, subscribeAccuracy } from '@/game/accuracy.js';   /* v2.3.4495: how many of your shots hit */
+import { ACC_SLOTS, ACC_NAMES, accLive, accPct, askAccuracy, subscribeAccuracy } from '@/game/accuracy.js';   /* v2.3.4545: how many of your shots hit */
 
 /* ═══ v2.3.3773: JOURNEY IS ITS OWN PAGE, UNDER MORE ═══
    The owner: "I also think I want 'journey' to be put as its own icon in the
@@ -37,7 +37,7 @@ export const JourneyPanel = () => {
   const cs = R._compStats || {};
   const landPane = playIsLandscape();
 
-  /* ═══ v2.3.4495: ACCURACY ═══
+  /* ═══ v2.3.4545: ACCURACY ═══
      The owner: "I want somewhere that stats keep track of 'accuracy' (maybe
      for all 3 weapon types) like the amount of times the projectile hit on
      target."  Here, with the rest of a character's record (the page players
@@ -152,7 +152,7 @@ export const JourneyPanel = () => {
             </div>
           );})}
         </div>
-        {/* v2.3.4495: accuracy, a weapon -- three cells in the record cards' own dress (no icon: the number
+        {/* v2.3.4545: accuracy, a weapon -- three cells in the record cards' own dress (no icon: the number
             is the picture), one column sideways as the cards are */}
         {acc && (
           <div data-journey-acc="" style={{ marginTop: 8 }}>
