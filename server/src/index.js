@@ -4851,6 +4851,20 @@ export class GameRoom {
         headers: { 'Content-Type': 'application/json' },
       });
     }
+    /* v2.3.4376: THE KILL SWITCHES BEFORE ANY WEB REQUEST.  The live flags
+       were loaded only on the socket path below, so a worker that had just
+       started (a deploy, an idle room woken) answered its first web requests
+       with every thrown switch read as not thrown: the login door and the
+       list's restart refused a new device under `devicelock: false`, the
+       overview showed switches as on, the first market or store read rebuilt
+       under the conversions' switches (docs/specs/liveops.md "Loaded before
+       any request").  One storage read a worker's life: once loaded, nothing
+       here is read again.  A failed read leaves the request as it was before
+       (cold, answered), never thrown away; the next request tries again.
+       After the lobby's count probe, which reads no switch. */
+    if (!this._liveFlags) {
+      try { await this._liveFlagsEnsure(); } catch (e) { console.warn('[liveflags] cold load failed:', e && e.message); }
+    }
     // v2.3.1118: marketplace HTTP surface (order book lives in this DO
     // now -- see market.js).  Before the Upgrade check like _room_count.
     if (url.pathname.startsWith('/api/market')) {
