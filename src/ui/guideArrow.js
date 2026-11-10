@@ -44,6 +44,7 @@ import { ownedWeaponSlots } from '../game/weaponSlots.js';   /* v2.3.4130: the s
 import { mayorScreenRect } from './mayorScreen.js';   /* v2.3.4106: the first steps' Mayor */
 import { harvestCoachWanted, gestureWanted, killedAny } from '../game/deskTeachState.js';   /* v2.3.4343 */
 import { worldReady } from './loadingGate.js';   /* v2.3.4136: nothing while a loading screen is up */
+import { onAfterFrame, framesRunning, onDevicePx } from './afterFrame.js';   /* v2.3.4360: the Mayor's arrow follows him every frame */
 /* v2.3.4106: the pacing referee's answers (onboardingPace.js: is a plate up,
    was the tutorial skipped) are handed in by the coach that starts this --
    that module imports through '@/', which node (the server's test) cannot */
@@ -359,11 +360,53 @@ function hide() {
   sweepStrays();
   qa.lesson = null; qa.sel = null; qa.side = null; qa.rect = null; qa.target = null;
 }
+/* where the arrow's corner goes to point at r from `side` (CSS px) */
+function spotOf(r, side) {
+  const cx = r.left + r.width / 2;
+  const vw = window.innerWidth || 0;
+  return {
+    left: side === 'left' ? r.left - GAP - SIZE : Math.max(2, Math.min(vw - SIZE - 2, cx - SIZE / 2)),
+    top: side === 'left' ? r.top + r.height / 2 - SIZE / 2 : side === 'above' ? r.top - GAP - SIZE : r.top + r.height + GAP,
+  };
+}
+/* ═══ v2.3.4360: THE MAYOR'S ARROW IS ON HIM EVERY FRAME ═══
+   The owner: "the reticle around mayor bro is pretty obnoxious with movement
+   (the frames are gritty)".  Mayor Bro stands in the WORLD, so on the page he
+   moves whenever the camera does; the arrow found him on its 250 ms tick and
+   glided for 200 ms to where he had been, a stutter after him all the way
+   there.  The tick still decides everything (is the lesson owed, is he on
+   top, which side to point from); between ticks the arrow is put where he is
+   after each frame is drawn (ui/afterFrame.js), on whole device pixels as
+   the camera is, with no glide -- and nothing is written on a frame he did
+   not move in. */
+let _followS = null;      /* the game state's getter, while the arrow points at him */
+let _followAt = { left: NaN, top: NaN };
+function followFrame() {
+  if (!_followS || !_el || !_side || qa.lesson !== 'mayor') return;
+  let S = null;
+  try { S = _followS(); } catch (e) { S = null; }
+  const mr = S ? mayorScreenRect(S) : null;
+  if (!mr) return;   /* off the screen: the tick takes the arrow down */
+  const at = spotOf(mr, _side);
+  const left = onDevicePx(at.left), top = onDevicePx(at.top);
+  if (left === _followAt.left && top === _followAt.top) return;
+  _followAt.left = left; _followAt.top = top;
+  _el.style.left = left + 'px'; _el.style.top = top + 'px';
+  qa.rect = { left, top, w: SIZE, h: SIZE };
+  qa.frames = (qa.frames || 0) + 1;
+}
+let _stopFollow = null;
+
 /* point at rect r from above (down), or from below (up) when there is no room
    above; v2.3.4106: or from its LEFT (pointing right) when `fromLeft` and
-   there is room -- the Mayor's step, whose coach card stands over his head */
-function place(r, words, fromLeft) {
+   there is room -- the Mayor's step, whose coach card stands over his head.
+   v2.3.4360: `follow` -- r is something in the world, placed again after
+   every frame (followFrame): no glide, whole device pixels */
+function place(r, words, fromLeft, follow) {
   ensureEl();
+  /* (only while the game is drawing frames: on a page where it is not, the
+     tick alone moves the arrow, gliding as it always did) */
+  follow = !!follow && framesRunning();
   /* v2.3.4106: above unless there is no room -- or the minimap's box is
      there (Mayor Bro at a computer's spawn stands half under it) */
   let side = r.top >= SIZE + GAP + 4 ? 'above' : 'below';
@@ -375,11 +418,15 @@ function place(r, words, fromLeft) {
   if (fromLeft && r.left >= SIZE + GAP + 4) side = 'left';
   const cx = r.left + r.width / 2;
   const vw = window.innerWidth || 0;
-  const left = side === 'left' ? Math.round(r.left - GAP - SIZE) : Math.max(2, Math.min(vw - SIZE - 2, Math.round(cx - SIZE / 2)));
-  const top = side === 'left' ? Math.round(r.top + r.height / 2 - SIZE / 2) : side === 'above' ? Math.round(r.top - GAP - SIZE) : Math.round(r.bottom + GAP);
+  const sp = spotOf(r, side);
+  const left = follow ? onDevicePx(sp.left) : Math.round(sp.left);
+  const top = follow ? onDevicePx(sp.top) : Math.round(sp.top);
   const first = !_el.style.transition;
+  const glide = follow ? 'none' : 'left .2s ease-out, top .2s ease-out';
+  if (!first && _el.style.transition !== glide) _el.style.transition = glide;
   _el.style.left = left + 'px'; _el.style.top = top + 'px';
-  if (first) { void _el.offsetWidth; _el.style.transition = 'left .2s ease-out, top .2s ease-out'; }
+  if (first) { void _el.offsetWidth; _el.style.transition = glide; }
+  _followAt.left = follow ? left : NaN; _followAt.top = follow ? top : NaN;
   if (_side !== side) {
     _side = side;
     const rot0 = side === 'below' ? ' rotate(180deg)' : side === 'left' ? ' rotate(-90deg)' : '';
@@ -438,7 +485,7 @@ function tick(getS) {
       if (_seen[id] === 0) qa.n++;
       _seen[id] += Math.max(1, dt);
       qa.lesson = id; qa.sel = 'mayor';
-      place({ left: mr.left, top: mr.top, width: mr.width, height: mr.height, right: mr.left + mr.width, bottom: mr.top + mr.height }, '', true);
+      place({ left: mr.left, top: mr.top, width: mr.width, height: mr.height, right: mr.left + mr.width, bottom: mr.top + mr.height }, '', true, true);
       return;
     }
     const shown = (sel) => { try { return Array.from(document.querySelectorAll(sel)).some((el) => !!shownRect(el)); } catch (e) { return false; } };
@@ -458,11 +505,16 @@ export function startGuideArrow(getS, pace) {
   if (pace && typeof pace.plateUp === 'function' && typeof pace.skipped === 'function') _pace = pace;
   if (_timer || typeof document === 'undefined') return stopGuideArrow;
   _timer = setInterval(() => tick(getS), TICK_MS);
+  /* v2.3.4360: ...and after every frame, while it points at Mayor Bro */
+  _followS = getS;
+  _stopFollow = onAfterFrame(followFrame);
   tick(getS);
   return stopGuideArrow;
 }
 export function stopGuideArrow() {
   if (_timer) { clearInterval(_timer); _timer = null; }
+  if (_stopFollow) { _stopFollow(); _stopFollow = null; }
+  _followS = null;
   _lastTick = 0;
   hide();
 }

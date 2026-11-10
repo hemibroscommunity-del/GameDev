@@ -111,10 +111,10 @@ The whole game is one seamless map, **the Wheel** (zone id `wheel`, shown to pla
 | Frost Ridge | frost | NW | Snowman → Glacier Snowman | — | frost.mp3 |
 | Flame Fields | flame | N | Fire Goblin → Cinder Goblin | — | fire.mp3 |
 | Wind Dunes | wind | NE | Mummy/Skeleton → Gilded | the Buried City (Lv 41–45) | desert.mp3 |
-| Stone Hollows | stone | E | Rock Monster → Amethyst Golem | the Great Cave (Lv 26–30) | the theme (no track yet) |
-| Electric Foundry | storm | SE | Slime → Storm Slime | the Foundry Dome (Lv 26–30) | the theme |
-| Water Caves | water | S | Fishman → Coral Fishman | — | the theme |
-| Poison Forest | venom | SW | Mire Wisp, Bog Lurker → Spectral, Shade | — | the theme |
+| Stone Hollows | stone | E | Rock Golem → Amethyst Golem | the Great Cave (Lv 26–30) | the theme (no track yet) |
+| Electric Foundry | storm | SE | Storm Eye → Tempest Eye | the Foundry Dome (Lv 26–30) | the theme |
+| Water Caves | water | S | Water Frog → Coral Frog | — | the theme |
+| Poison Forest | venom | SW | Rotcap, Great Rotcap → Spectral, Shade | — | the theme |
 | Earth Forest | flora | W | Blue Slime → Jade Slime | the Goo Grotto (Lv 16, for 2–3 players, v2.3.3573; Lv 1–5 since v2.3.3540) | forest.mp3 |
 
 Each land has four named **stages** (one look per twenty levels: Frost Ridge's thaw line, snowbound taiga, glacier, frozen crown) with a named **camp** at the middle of levels 20, 40, 60 and 80 (Trapper's Rest, the Snowshoe Lodge …); camps are clearings in the ground plan with nothing standing or happening in them. Sixteen named passes (Geyser Gap, Cinder Crossing, Ore Cut …) join neighbours at 20 and 60; nothing in the server treats a pass specially. A river (the Sweetwater) runs from the glacier through the commons to a delta; a mine railway runs from the Rail Depot outside the east gate down the Stone Hollows to the Great Cave; ten oases ring the Wind Dunes' palms; Bro Pond lies south-west of town. The Dark gates are on the four compass points and the Light gates on the diagonals, by plan only: no gate object exists and no way into the `shadow` or `radiant` zones exists from the Wheel.
@@ -600,11 +600,11 @@ Every monster is an **archetype** (the stat template the AI runs against) dresse
 | Snowman | Frost Ridge (frost) | snowman | 1.3 / 1.1 / 0.8 | 18 | Beast (v2.3.3908) | Glacier Snowman |
 | Fire Goblin | Flame Fields (flame) | fodder | 0.6 / 0.8 / 1.0 | 67 | Humanoid | Cinder Goblin |
 | Mummy → Skeleton | Wind Dunes (wind) | fodder, stalker (0.7/1.2/1.3), hexer (0.9/0.8/1.0), volatile (0.8/1.0/1.0) | — | 18 → 79 as a skeleton | Humanoid | Gilded Mummy |
-| Rock Monster | Stone Hollows (stone) | brute | 1.5 / 1.3 / 0.7 | 16 | Beast | Amethyst Golem |
-| Slime | Electric Foundry (storm) | fodder | 0.6 / 0.8 / 1.0 | 22 | Ooze | Storm Slime |
-| Fishman | Water Caves (water) | brute | 1.5 / 1.3 / 0.7 | 16 | Aquatic | Coral Fishman |
-| Mire Wisp | Poison Forest (venom) | fodder | 0.6 / 0.8 / 1.0 | 22 | Ooze | Spectral Wisp |
-| Bog Lurker | Poison Forest (venom) | brute | 1.5 / 1.3 / 0.7 | 16 | Aquatic | Shade Lurker |
+| Rock Golem (v2.3.4358; the one-pose rock monster before it) | Stone Hollows (stone) | brute | 1.5 / 1.3 / 0.7 | 16 | Beast | Amethyst Golem |
+| Storm Eye (v2.3.4356; the plain slime stood in before it) | Electric Foundry (storm) | fodder | 0.6 / 0.8 / 1.0 | 22 | Winged | Tempest Eye |
+| Water Frog (v2.3.4355; the fishman before it) | Water Caves (water) | brute | 1.5 / 1.3 / 0.7 | 16 | Aquatic | Coral Frog |
+| Rotcap (v2.3.4357; the Mire Wisp, a violet slime, before it) | Poison Forest (venom) | fodder | 0.6 / 0.8 / 1.0 | 22 | Beast | Spectral Rotcap |
+| Great Rotcap (v2.3.4357; the Bog Lurker, the old fishman picture, before it) | Poison Forest (venom) | brute | 1.5 / 1.3 / 0.7 | 16 | Beast | Shade Rotcap |
 | Blue Slime | Earth Forest (flora) | fodder, HP × 0.55 | 0.33 / 0.8 / 1.0 | 52 | Ooze | Jade Slime |
 
 A player walks at ~150 px/s, so no monster can catch a walking player except by reach, telegraph, a thrown ball or a shove. Each land spawns six monsters a stretch list (the Wind Dunes: 2 stalkers, 2 hexers, 2 volatiles; the Poison Forest: 4 wisps, 2 lurkers), repeated five times on the long Wheel. Two further archetypes (swarm, sentinel) exist only as dungeon summons and Workshop picks.

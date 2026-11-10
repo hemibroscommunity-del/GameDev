@@ -8572,7 +8572,15 @@ export function monsterBodyOffsetY(archOrType) {
    torso shot has exactly the room to hit that a shot at the old centre had.
    Every value lies on the body the old circle covers (skeleton 100 vs 60 +/-
    50, mummy 74 vs 48 +/- 40, the 96px brutes vs 48 +/- 40).  mp-shotland. */
-const MONSTER_TORSO_Y = { skeleton: 100, mummy: 74, fishman: 66, bogLurker: 66, rockmonster: 64, thornShambler: 64 };
+/* v2.3.4355: the `fishman` key is the water frog now (the bog lurker keeps
+   the fishman's figure and its 66): a squat body from its feet to ~98 px up
+   (140 of its cell's rows at liveScalePx 120 under the container's 1.5), its
+   middle 54 above m.y -- the hit circle's centre is 60 (liveScalePx / 2). */
+/* v2.3.4356: the storm eye floats: the middle of its ball is 48 above m.y
+   (its cell's row 124 at liveScalePx 72, plus its hover) */
+/* v2.3.4357: the rotcap, at its two sizes (the keys the Poison Forest's two
+   had): a low wide cap, its middle 24 up at liveScalePx 66 and 44 at 104 */
+const MONSTER_TORSO_Y = { skeleton: 100, mummy: 74, fishman: 54, bogLurker: 44, mireWisp: 24, rockmonster: 44 /* v2.3.4358: the rock golem, a low wide heap: its middle 44 up */, thornShambler: 44, stormEye: 48 };
 export function monsterTorsoY(archOrType) {
   const shape = hitShapeOf(archOrType);
   const t = MONSTER_TORSO_Y[shape];

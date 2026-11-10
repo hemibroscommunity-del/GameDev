@@ -13,6 +13,7 @@ import { prog3FreshLevel } from '@/data/prog3.js'; /* v2.3.3538: a new character
 import { startDeskTeach } from '@/ui/deskTeach.js'; /* v2.3.4343: the first-time teaching a computer player missed */
 import { startGuideArrow } from '@/ui/guideArrow.js'; /* v2.3.3925: the big arrow, the first time */
 import { mayorScreenRect } from '@/ui/mayorScreen.js';
+import { onAfterFrame, onDevicePx } from '@/ui/afterFrame.js'; /* v2.3.4360: a mark on something in the world follows it every frame */
 import { worldReady } from '@/ui/loadingGate.js'; /* v2.3.4136: no card while a loading screen is up */ /* v2.3.4106: the first steps' step 2 rings him */
 import { pointsTipWanted, pointsTipDone, pointsTipWords, POINTS_TIP_SNOOZE_AFTER_MS, POINTS_TIP_SNOOZE_MS, POINTS_TIP_MAX_SNOOZES } from '@/game/pointsTips.js'; /* v2.3.3551: the first points, shown */
 import { holdDisc, releaseDisc, discSideFor } from '@/game/controlVisibility.js'; /* v2.3.2246 */
@@ -188,6 +189,57 @@ function _finePointer() {
     if (!_fineMq && typeof window !== 'undefined' && window.matchMedia) _fineMq = window.matchMedia('(pointer:fine)');
     return !!(_fineMq && _fineMq.matches);
   } catch (_e) { return false; }
+}
+
+/* ═══ v2.3.4360: A MARK ON SOMETHING IN THE WORLD FOLLOWS IT EVERY FRAME ═══
+ *
+ * The owner, 2026-11-10: "the reticle around mayor bro is pretty obnoxious
+ * with movement (the frames are gritty)".
+ *
+ * The first steps ring Mayor Bro himself (lesson `mayor`, a `worldRect`), and
+ * he is in the world: on the page he moves whenever the camera does, and he
+ * strolls about on his own besides.  The ring and the card over his head are
+ * placed by the walk that picks the lesson, ~12 times a second, each a React
+ * render -- so they stuttered after him at 12 frames a second over a world
+ * drawn at 60.  (The big arrow at him did the same at 4: ui/guideArrow.js.)
+ *
+ * The walk and its renders are as they were: they say WHERE THE RULES put
+ * the ring and the card (`base`: the rect React last drew them for).  What is
+ * new is in between: after every frame the game draws (ui/afterFrame.js: the
+ * camera that frame was drawn with), both are MOVED by how far he now is from
+ * `base`, on whole device pixels as the camera is.
+ *   - the ring's HOLDER is moved, not the ring: the ring's own transform is
+ *     its pulse (game.css bt-coach-pulse);
+ *   - the card is moved by what its own rules would give for that much
+ *     movement -- across, kept inside the world's span; up and down, held by
+ *     the band's and the bro's clearance and the cap at the top, exactly as
+ *     the render below works its `left` and `bottom` out (`k`, noted there)
+ *     -- so the next render lands where the card already is;
+ *   - nothing is written on a frame he did not move in (a style written
+ *     every frame on a layer over the canvas is iPhone's sore spot,
+ *     v2.3.1808 below).
+ *
+ * `f` is the component's record: L the lesson, base the rect React drew for
+ * (window px), dx/dy the ring's move, cx/cy the card's, k the card's sums. */
+function coachFollow(f, el, card, S) {
+  if (!f || !f.L || !f.base || !el) return;
+  let wr = null;
+  try { wr = f.L.worldRect(S); } catch (_e) { wr = null; }
+  if (!wr) return;   /* off the screen: the walk takes the mark down */
+  const dx = onDevicePx(wr.left - f.base.left), dy = onDevicePx(wr.top - f.base.top);
+  if (dx === f.dx && dy === f.dy) return;
+  f.dx = dx; f.dy = dy; f.frames = (f.frames || 0) + 1;
+  el.style.transform = (dx || dy) ? 'translate3d(' + dx + 'px,' + dy + 'px,0)' : '';
+  const k = f.k;
+  if (!card || !k) return;
+  const clampX = function (v) { return Math.min(Math.max(k.lo, v), k.hi); };
+  const cx = onDevicePx(clampX(k.ideal + dx) - clampX(k.ideal));
+  /* above him the card hangs by its `bottom` (a bigger one is higher) */
+  const bot = function (top) { return Math.min(Math.max(Math.max(6, k.boxH - (top - k.pad - 10)), k.clear), k.cap); };
+  const cy = onDevicePx(k.above ? -(bot(k.top + dy) - bot(k.top)) : dy);
+  if (cx === f.cx && cy === f.cy) return;
+  f.cx = cx; f.cy = cy;
+  card.style.transform = (cx || cy) ? 'translate3d(' + cx + 'px,' + cy + 'px,0)' : '';
 }
 
 /* Measure a live control.  A zero-size or missing element yields null and
@@ -1040,6 +1092,10 @@ export function QuestCoach(props) {
   const doneRef = React.useRef(loadDone());
   const ringRef = React.useRef(null);
   const arcRef = React.useRef(null);
+  /* v2.3.4360: the ring's holder, the card, and what the follow keeps (above) */
+  const followElRef = React.useRef(null);
+  const cardRef = React.useRef(null);
+  const followRef = React.useRef({ L: null, base: null, dx: 0, dy: 0, cx: 0, cy: 0, k: null, frames: 0 });
   /* Gesture trackers.  Refs, not state: they tick every frame and only
      their CROSSING of the finish line is worth a render. */
   /* Object.create(null): keyed by slot name, which is player-influenced data
@@ -1514,6 +1570,10 @@ export function QuestCoach(props) {
                  /* v2.3.4106: the first steps in order, which are done, and the retired lessons */
                  firstSteps: FIRST_STEPS.slice(), retired: Array.from(RETIRED),
                  showing: viewRef.current ? viewRef.current.id : null,
+                 /* v2.3.4360: a world mark's follow -- how far its ring's
+                    holder (dx, dy) and its card (cx, cy) are moved from where
+                    React drew them, and the frames they were moved in */
+                 follow: (function () { const f = followRef.current; return { id: f.L ? f.L.id : null, dx: f.dx, dy: f.dy, cx: f.cx, cy: f.cy, frames: f.frames || 0 }; })(),
                  raised: b.sectors === 1,   /* v2.3.2242 */
                  sectors: b.sectors, needMs: BLOCK_HOLD_MS, needSectors: BLOCK_SECTORS,
                  slots: Object.assign({}, seenSlots.current),
@@ -1605,6 +1665,24 @@ export function QuestCoach(props) {
     const left = qr.right - lb.x + 8;
     if (left + cr.width <= wx + pw - 8) el.style.left = left + 'px';
   });
+
+  /* v2.3.4360: a world mark's ring and card are moved after every frame the game draws */
+  React.useEffect(function () {
+    return onAfterFrame(function (S) { coachFollow(followRef.current, followElRef.current, cardRef.current, S || (stateRef && stateRef.current)); });
+  }, []);
+  /* ...from where React has just drawn them: both back to nothing, the new
+     `base`, and at once the move for where he is now -- all before the
+     paint, so neither shows a frame at a stale place */
+  React.useLayoutEffect(function () {
+    const f = followRef.current, el = followElRef.current, card = cardRef.current;
+    const L = view ? LESSONS.find(function (l) { return l.id === view.id; }) : null;
+    if (el) el.style.transform = '';
+    if (card) card.style.transform = '';
+    f.dx = 0; f.dy = 0; f.cx = 0; f.cy = 0;
+    if (!view || !L || typeof L.worldRect !== 'function' || !(view.rect.width > 0)) { f.L = null; f.base = null; return; }
+    f.L = L; f.base = view.rect;
+    coachFollow(f, el, card, stateRef && stateRef.current);
+  }, [view]);
 
   if (!view) return null;
   /* ═══ v2.3.3470: THE RING IS DRAWN IN THE LAYER'S BOX, NOT THE WINDOW'S ═══
@@ -1749,6 +1827,26 @@ export function QuestCoach(props) {
       return lift;
     } catch (_e) { return 0; }
   })();
+  /* v2.3.4360: the card's sums for coachFollow (top of the file) -- the SAME
+     numbers its `left` and `bottom` below are worked out from, so the card
+     moved between two renders lands where the next render puts it: `ideal`
+     its left before the world's span holds it (`lo`..`hi`), and above him its
+     `bottom` held by the band's and the bro's clearance (`clear`) and the cap
+     at the top (`cap`).  (The step right of the quest card is not followed:
+     it is a place the card jumps to, and the next render makes the jump.) */
+  {
+    let _wx = 0, _pw = 0;
+    try {
+      const _cs = getComputedStyle(document.documentElement);
+      _wx = parseFloat(_cs.getPropertyValue('--world-x')) || 0;
+      _pw = parseFloat(_cs.getPropertyValue('--play-w')) || window.innerWidth;
+    } catch (_e) { _pw = (typeof window !== 'undefined' && window.innerWidth) || 0; }
+    followRef.current.k = {
+      ideal: r.left + r.width / 2 - 110, lo: _wx + 8, hi: Math.max(_wx + 8, _wx + _pw - 228),
+      above: above, top: r.top, pad: pad, boxH: boxH,
+      clear: Math.max(bandClear, broClear), cap: Math.max(6, boxH - 120),
+    };
+  }
   /* v2.3.2312: ONE dismiss, worn by the X and by the card body alike.  Both
      mark the lesson done in the same localStorage record the gesture would
      have -- a card you have explicitly put down, which then returns on the
@@ -1819,7 +1917,14 @@ export function QuestCoach(props) {
       position: 'fixed', inset: 0, zIndex: 31, pointerEvents: 'none',
     },
   },
-    /* the flashing ring */
+    /* the flashing ring -- v2.3.4360: in a holder of no size, which is what
+       moves when the ring is on something in the world (coachFollow); the
+       ring's own transform is its pulse */
+    React.createElement('div', {
+      ref: followElRef,
+      'data-coach-follow': view.id,
+      style: { position: 'absolute', left: 0, top: 0, width: 0, height: 0, pointerEvents: 'none' },
+    },
     React.createElement('div', {
       ref: ringRef,
       'data-coach-ring': view.id,
@@ -1843,9 +1948,10 @@ export function QuestCoach(props) {
           + ' 0 0 22px rgba(216,170,88,.55)',
         pointerEvents: 'none',
       },
-    }),
+    })),
     /* the line that says what to do with it */
     React.createElement('div', {
+      ref: cardRef,
       'data-coach-card': view.id,
       style: {
         position: 'absolute',

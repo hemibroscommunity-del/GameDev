@@ -72,8 +72,9 @@ const KINDS_BODY = ['normal', 'slice', 'decap', 'leg'];
 const KINDS_BLOB = ['normal', 'slice', 'decap'];
 /* ═══ v2.3.3499: NO DEATH IS A FROZEN FRAME ═══
    The owner: "Remove the death where the enemy is frozen in place (it's just a
-   frame of the enemy still)."  Four monsters have no death strip of their own
-   -- the fishman, the rock monster, the thorn shambler and the bog lurker
+   frame of the enemy still)."  Four monsters had no death strip of their own
+   -- the fishman (v2.3.4355: the water frog now, with its own), the rock
+   monster, the thorn shambler and the bog lurker
    (monsterVariantSprites.js: walk sheets only) -- so their `normal` death (one
    kill in four), or a cut that could not be made, kept the display alive with
    nothing drawing it: the last living frame stood still, often still in the
