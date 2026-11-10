@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "47e4952583ac2a612dab68338c5f6ab073ae9115",
+  "tree": "169455137307c3b90409558c8df857096b2b04cd",
+  "committedAt": "2026-11-10T08:53:12-08:00",
+  "subject": "Merge pull request #1508 from hemibroscommunity-del/claude/sm-fight-dodges",
+  "files": 7946,
+  "bytes": 966573319,
+  "listingSha256": "a4987322a7596699688b05e8d060fdaa7fff683c209e09cf103c0c75398221fb",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
