@@ -97,6 +97,13 @@ const skipIt = (F, id, now, ms) => { if (id) F.skip.set(id, now + (ms || PET_FET
    {x, y} while it runs, or null when the follow has it. */
 export function petFetchStep(F, c) {
   const P = PET_FETCH;
+  /* v2.3.4388: NO CLOCK, NO FETCH.  BroTown.jsx passed the frame's `now`
+     before the loop had set it (a hoisted `var`, undefined there), so every
+     timer here compared against undefined and never fired: a pet never gave
+     up on a pile it could not reach, and a pile it skipped was skipped for
+     good (sweep 2026-11-03, VA U1-1).  A step without a time is a caller's
+     bug: the pet stays with the follow rather than run with dead timers. */
+  if (!Number.isFinite(c.now)) { F.phase = null; F.lootId = null; return null; }
   if (F.zone !== c.zone) { F.zone = c.zone; F.phase = null; F.lootId = null; F.skip.clear(); }
   for (const [id, until] of F.skip) if (c.now > until) F.skip.delete(id);
   if (!F.phase) {
@@ -174,6 +181,13 @@ export function petFetchStep(F, c) {
    the pet is there, so the pet touches what it fetches */
 export function petFetchHolds(F, lootId) {
   return !!(F && F.phase === 'go' && F.lootId === lootId && !F.atPile);
+}
+
+/* v2.3.4388: a pet's place that is not a pair of numbers (NaN, undefined,
+   Infinity).  The renderer draws any number, NaN included, so such a pet was
+   simply gone from the screen; BroTown.jsx puts it back beside you. */
+export function petPlaceBad(x, y) {
+  return !Number.isFinite(x) || !Number.isFinite(y);
 }
 
 export function petFetchState() {
