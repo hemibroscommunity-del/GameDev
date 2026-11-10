@@ -1,4 +1,4 @@
-# The state-machine sweep (2026-11-03) and its fixes (v2.3.4381)
+# The state-machine sweep (2026-11-03) and its fixes (v2.3.4381, v2.3.4433)
 
 ## What it was
 
@@ -62,36 +62,85 @@ A fix starts with a test that fails on today's code.
 A kill switch is a live flag: setting it to `false` brings back the old
 behaviour without a deploy. The lessons are in `docs/TRAPS.md` §262-278.
 
+## What shipped, second wave (2026-11-10, pull requests #1478 to #1500)
+
+Each row: what a player gets, its live flag, and the server suite that fails
+if it breaks. A blank flag means none on purpose (a phone-only fix, or a
+leftover cleared inside a rule that already existed). Lessons: `docs/TRAPS.md`
+§284-308 and the note under §278.
+
+| PR | Tag | System | What | Kill switch | Suite |
+|----|-----|--------|------|-------------|-------|
+| #1479 | v2.3.4382 | rejoin | after a reconnect the server re-sends a live duel (`duel_resume`) and trade (window, or the newest invite); the phone clears its copies only when `caps.rejoinResend` says so (a count: 1 duel, 2 trade); leaving a trade the server no longer has is answered at once | `rejoinresend` | `rejoin-resend` |
+| #1478 | v2.3.4383 | death pile | its windows go as time left (`openLeft`, `left`); a pet's refused pickup says it was the pet's (`viaPet`) | `pileleft` | `pile-left` |
+| #1483 | v2.3.4384 | death pile | the pile survives a server update: one row `death_pile:<lootId>`, written with the death's save, deleted with the taker's | `deathpilesave` | `death-pile-saved`, `cost-guard` §13 |
+| #1484 | v2.3.4385 | harvest | a bow volley's stuck arrows no longer end a harvest | `volleychip` | `volley-chip` |
+| #1482 | v2.3.4386 | gear | a Rare armour piece survives a reconnect (matched by `gid`); the weapon picker checks a full bag and the level; a refused weapon is re-sent | `gearresend` | `gear-resend` |
+| #1480 | v2.3.4387 | combat (phone) | a tapped swing is shown to others; no held attacks while staggered; a one-gem bow or staff shows its element; no "+N MP" the server never paid | | `swing-shown` |
+| #1481 | v2.3.4388 | pet (phone) | the pet's fetch has a clock (`_petNow`): its timers fire, playful and curious pets are drawn | | `pet-clock` |
+| #1486 | v2.3.4401 | quests | the six silent quest refusals re-send the true quest list, coins, points and XP | `disable_quest_echo` (set it to turn the fix off) | `quest-echo`, `cost-guard` §14 |
+| #1485 | v2.3.4402 | mute (phone) | a mute tapped while the line is down is kept and sent on the rejoin; the channel's `send` returns `false` when it drops | | `mute-kept` |
+| #1489 | v2.3.4403 | monsters | a world monster's next life starts clean (ball, knock-back, lunge from a corpse, lifesteal, the phone's swell) | | `monster-life`, `slime-boss` §8 |
+| #1487 | v2.3.4404 | friends (phone) | a refused friend request says why | | `friend-errors` |
+| #1491 | v2.3.4405 | shield | the phone never re-judges a blow the server landed; others' shields drawn right in any zone; a monster's blow at 0 stamina breaks the guard for 3 s | `monsterguardbreak` | `shield-guard` |
+| #1493 | v2.3.4411 | small slips (phone) | the board button stays while riding; others' freeze and wobble are drawn; the microphone stops when the chat box closes | | `phone-slips` |
+| #1496 | v2.3.4412 | Auction House | an ignored offer's gold comes back at 48 h on a busy shelf; a lost "list" answer says "not sure" and keeps the card locked | `disable_offer_sweep_all` (set it to turn the fix off) | `store-offer-sweep`, `store-answer` |
+| #1492 | v2.3.4413 | session exits | a failed join closes with 4013, not the fight's 4010; an admin restore waits for a body left in a fight; arena fighters cannot eat after a reload | `arenaeatgate` (the eating fix only) | `session-exits` |
+| #1497 | v2.3.4414 | changing place (phone) | `changeZone` clears what you left (respawn, dungeon entry, Workshop clear, farm trip); the dungeon's loading screen comes down only by its owner; a stale world load is not "loaded" | | `zone-leftovers` |
+| #1495 | v2.3.4415 | renderer (phone) | a black-screen rebuild remakes the buildings' little effects; the loading report shows a failure; the health-bar pictures retry; a reconnect stands you up | phone: `?barretry=0` (or `?retrylooks=0`) | `renderer-life` |
+| #1494 | v2.3.4416 | art caches (phone) | a shared monster sheet is kept while any look holds it; a failed building page is asked again after 5 s; a departed player's gear sprites are freed | | `art-holds` |
+| #1500 | v2.3.4421 | refusals | the harvest cap re-sends the skills; the cook popup says 200 XP; the amulet's set gem cannot be spent again; a refused arena bet leaves the screen | | `silent-refusals` |
+| #1498 | v2.3.4422 | sound (phone) | after an iPhone app switch the ground footsteps and the slime hum come back | | `audio-rebuild` |
+| #1499 | v2.3.4423 | dungeons | a move into a dungeon nobody opened is refused (no free half second of safety, no leak) | `dungeonlive` | `dungeon-live` |
+
+Most live flags here are `false` to go back; the two named `disable_*` are
+`true` to go back. `?barretry=0` is for one phone, in its address.
+
 ## What is left
 
 This is a list, not a promise. The plan is `PLAN.md` on the storage branch.
+Updated v2.3.4433, after the second wave.
 
-**In flight on 2026-11-10:** the rejoin re-sending a live duel and trade
-(v2.3.4382); a death pile's windows sent as time left (v2.3.4383).
+**In flight on 2026-11-10:** a second login during a player fight takes over
+the body where it stands (v2.3.4432, `claude/sm-takeover-body`; the owner's
+decision below); the loaders' retries (`claude/sm-loader-retries`).
 
-**Not started, no decision needed:** rare armour lost on the phone after a
-reconnect (V9b); quest and gear predictions the server refuses without a word
-(V9a, V9b); friend requests (V12); a monster's life across deaths (V7); the
-shield's kept parts (V10); art loads and the renderer's rebuilds (V17a,
-V17b); the small-bugs bundles (VA, VB, VC); the General Store's request
-timeout (V8a); the feedback board's typed id (VA); dungeon ids made up on the
-phone (V1, V6); the money-in-one-write items (V8a, V8b).
+**Not started, no decision needed:**
+- the rest of the silent refusals: harvest strikes, cooking, the gear swap
+  of armour (V9a, V9b; TRAPS §284);
+- `stats_update` and the quest taps ignore the channel's `false` (TRAPS §287);
+- the player's trail reads the same unset `now` the pet did (TRAPS §294);
+- nine places still change zone by hand, five on the retired old map
+  (TRAPS §304);
+- the bigger "one reset for a whole life" of a monster (`m.life`);
+- a stack listing whose card is closed and reopened while its answer is out
+  could go up twice (it needs the money lane's pending note);
+- the duel challenge card has no clock of its own (`REJOIN_NOT_YET`);
+- a phone's own `dead: true` turns the linger off (a modified phone only);
+- the small-bugs bundles' other items (VA, VB, VC); the feedback board's
+  typed id (VA).
 
-**Waiting on the owner:**
-- a second tab in the middle of a fight, and two characters in two tabs (V3, V5);
-- whether forging, hardening and equipping count as leaving a fight (V21);
-- the farm's two phone-only workshops (V9c);
-- a server-side "entering" grace for the dungeon's loading screen (V11; TRAPS §262);
-- showing the guard break on the phone (V10);
-- a death pile surviving a server restart (V22);
-- a monster's pile: 30 or 60 seconds;
-- hiding a blocked player's attack warning;
-- a grace period for a trade that loses its server.
+**Decided by the owner (2026-11-10):**
+- a death pile survives a server update: built (v2.3.4384);
+- the colour fade between places stays OFF for now (TRAPS §305);
+- a second login during a player fight takes over the body where it stands
+  (being built as v2.3.4432);
+- the Auction House's refund-and-raise money fix (one write for the refund
+  and the listing) waits until after the judges;
+- the half second of no damage on a change between real places stays.
+
+**Waiting on the owner:** the questions are in plain words, each with its
+recommendation, in `docs/OWNER-LIST-2026-10-26.md` §10 (the shield, the
+dungeon's loading screen, quests, friends, monsters, pictures, sound, the
+Arena and others).
 
 **Already red on `main`, not the lanes' doing (2026-11-10):**
-- `node tools/world/test-world-core.mjs --check` fails 2 of 540 (the Town
-  Hall window, the forge room's stage);
+- `node tools/world/test-world-core.mjs --check` fails 4 (the Town Hall
+  window, the forge room's stage, two quest checks; it was 2 of 540 in the
+  first wave);
 - `mp-farmmusic` step 4 (the frost land's music after the farm gate);
+- `mp-block` 10 of 11 and `mp-pvpshield` (both on the retired old map; the
+  shield lane saw the same on `main`);
 - `node tools/art/head-bake.mjs --check` listed 49 stale head sheets on the
   orchestrator's machine, the same on `main` before any lane. Unconfirmed: it
   may be that machine's picture encoder.

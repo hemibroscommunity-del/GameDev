@@ -41,7 +41,7 @@ Server → client (all in `PRIVILEGED_EVENTS`):
 | `friend_sync` | `{list, reqIn, reqOut}` | On join and after every mutation, to each affected online party |
 | `friend_request_in` | `{from, fromName, at}` | Live notification to an online target |
 | `friend_accepted` | `{by, byName, at}` | To the original requester when accepted |
-| `friend_error` | `{reason, target?}` | `not-found`, `already-friends`, `too-many-requests`, `target-full`, `not-friends` |
+| `friend_error` | `{reason, target?}` | `not-found`, `already-friends`, `too-many-requests`, `target-full`, `not-friends`. Shown to the player since v2.3.4404 (one sentence a reason, `src/game/friendErrors.js`; repeats within 5 s shown once; before, it was stored and never read) |
 | `friend_dm` | `{from, fromName, text, ts}` | Live delivery; sender is server-stamped (unforgeable) |
 | `friend_dm_backlog` | `{messages: [...]}` | On join when offline DMs are waiting; storage cleared after send |
 

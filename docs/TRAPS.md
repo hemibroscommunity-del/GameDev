@@ -9047,6 +9047,14 @@ clears, and the join re-sends the roster right after `state_sync` (join.js,
 v2.3.1185). Until a live duel and trade are re-sent (v2.3.4382, in flight on
 2026-11-10), a reconnect keeps the phone's window.
 
+v2.3.4433: v2.3.4382 shipped it. Each piece the phone clears at a reconnect is
+a row in `REJOIN_SLOTS` (`src/game/rejoinSlots.js`) naming the worker method
+that sends it back (`server/src/rejoinresend.js`), cleared only when
+`caps.rejoinResend` (a count: 1 the duel, 2 the trade) says the worker re-sends
+it; `rejoin-resend.test` §6 fails on a clear with no re-send. The one row with
+no re-send is the held pose (v2.3.4415): no worker keeps a pose across a join,
+so the phone stands up too. Switch `rejoinresend`.
+
 ## 279. "The test box loads it in a blink, so nobody waits for it" (v2.3.4400)
 
 **The move.** Judge a load by how it behaves here: the test page server reads
@@ -9227,3 +9235,286 @@ as you walk) say WHERE a load may happen, not that it is free there.
   before the change before you chase it (`mp-geartrim`, 15 of 40 on `main`).
 
 **Receipt:** `strip-slices` suite, `mp-stripgentle`, docs/specs/strip-gentle.md.
+
+<!-- v2.3.4433: §284-308 are the lessons the second wave of state-machine
+     lanes (#1478-#1500) left under "For TRAPS" in their pull requests, each
+     checked against the code on main; the map of what shipped is
+     docs/STATE-MACHINES.md. -->
+
+## 284. "The server said no, and nothing changed, so there is nothing to send" (v2.3.4401)
+
+**Tempting:** a refused request changes nothing on the server, so its handler
+just `return`s. **Wrong:** the phone already drew the action as done (a quest
+claimed with its gold, a weapon in the hand, a harvest's XP), and protocol v2
+sends only what CHANGED: nothing changed, so nothing went, and the phone kept
+its guess until the next login. Found three times in one wave: six quest
+refusals (v2.3.4401), the weapon level refusal (v2.3.4386), the harvest's
+anti-bot cap (v2.3.4421, whose comment already promised the snap-back).
+**The rule.** A refusal of something the phone predicts re-sends the true
+fields through `_resendPlayerState` (it reaches v1 and v2 alike): quests'
+`_questSilentEcho` / `_questRefusedEcho`, `gear.js`'s weapon fields,
+`gathering.js`'s `lifeSkills`. A refusal saves nothing (cost-guard §14).
+**Receipt:** `quest-echo.test`, `gear-resend.test`, `silent-refusals.test`;
+switches `disable_quest_echo`, `gearresend`.
+
+## 285. "The worker sends the reason, so the player sees it" (v2.3.4404)
+
+**Tempting:** `friend_error` is privileged and the phone has a case for it, so
+a refused friend request is explained. **Wrong:** the case stored the reason
+(`friendsSrv.setError`) and nothing ever called `takeError()`: for two years
+every refusal was silent while the card said "Friend request sent!".
+**The rule.** A `*_error` the worker sends has a reader that SHOWS it. A new
+friend refusal reason gets its sentence in `src/game/friendErrors.js`
+(`friend-errors.test` §1 fails otherwise). And the worker's friend lists are
+maps keyed by player id, not arrays: "listed twice" cannot happen, so do not
+add an `includes` check to `_friendAcceptCore`. **Receipt:** `friend-errors.test`.
+
+## 286. "Same name and same strength, so the same armour piece" (v2.3.4386)
+
+**Tempting:** after a reconnect the phone matches its armour to the server's
+by name and strength (`wsClient.js` `_armorSame`). **Wrong:** every grade of a
+forged piece shares both. A swap made while the line was down left the phone
+with two Normal torsos and no Rare one (the server still had it).
+**The rule.** When both copies carry a `gid`, compare the `gid`; name and
+strength only for older pieces without one. **Receipt:** `gear-resend.test`.
+
+## 287. "The send returned, so the message went" (v2.3.4402)
+
+**Tempting:** call `S.channel.send(...)`, then mark the thing done (the
+"Muted" card, a signature, a quest tap). **Wrong:** the channel dropped the
+message without a word when the socket was not open, and the rejoin's
+`chat_mute_list` then replaced the phone's list: a mute tapped in a Wi-Fi blip
+was lost and the muted player's chat came back. **The rule.** Since v2.3.4402
+the channel returns `false` when it drops a message. A caller that marks
+something sent checks `=== true` and keeps what was dropped to send on the
+rejoin (`chatMute.js` `_kept` is the pattern). `stats_update` and the quest
+taps still ignore the answer. **Receipt:** `mute-kept.test`.
+
+## 288. "No answer from the store is a no" (v2.3.4412)
+
+**Tempting:** a listing request that times out or fails unlocks the card with
+"could not take it", so the player can try again. **Wrong:** the store may
+have taken it already; a second tap lists a second copy (the v2.3.2507 double
+listing), and a late answer landed on whichever card was open by then.
+**The rule.** `postWithin` (`src/game/storeAnswer.js`) answers
+`{ ok:false, unsure:true }` on a time-out (15 s) or a failed fetch, and a
+listing card stays LOCKED on `unsure` ("look under Yours, My Listings"). A late
+answer checks `cardAnswer(...).mine` before touching a card.
+**Receipt:** `store-answer.test`.
+
+## 289. "The sweep is bounded: it stops after 20 listings" (v2.3.4412)
+
+**Tempting:** bound a sweep by the records it LOOKS at. **Wrong:** the
+Auction House's offer pass counted every listing it walked, so on a shelf of
+more than 20 an offer on listing 21 was never reached and its gold stayed
+held for the listing's week instead of 48 hours. **The rule.** Bound the
+records you ACT on (writes, refunds); walk the in-memory index freely
+(`store.js` `_stSweep`, `storeoffer.js` `_soHasDue`). A quiet shelf still
+writes nothing. **Receipt:** `store-offer-sweep.test`; switch
+`disable_offer_sweep_all`.
+
+## 290. "Write the death pile's row where the pile is laid" (v2.3.4384)
+
+**Tempting:** a death pile now has a storage row (`death_pile:<lootId>`,
+`deathpile.js`), so write it in `_spawnDeathPile`, and delete it wherever is
+handy. **Wrong:** `itemdrop.js` piles share that shape, and #1478's test pins
+that laying a pile writes nothing; and the row is only safe when it moves in
+the SAME synchronous run of writes as the save it pairs with: an await between
+them loses the bag at the death or doubles it at the pickup.
+**The rule.** The row's put goes with the death's `_saveRpg`, its delete with
+the taker's. Anything that removes a death pile from `this.loot` calls
+`_deathPileGone(pile)` (today the pickup, `_tickLoot`, `_dungeonCleanup`), or
+the pile comes back at the next start. **Receipt:** `death-pile-saved.test`
+§7 (every crash point), cost-guard §13; switch `deathpilesave`.
+
+## 291. "A pile's windows are worker times, compare them with the clock" (v2.3.4383)
+
+**Tempting:** read a death pile's `ownerOnlyUntil` and `expiry` against the
+phone's `Date.now()`. **Wrong:** in the seconds before the first ping a phone
+whose clock was 2 minutes fast dropped its own bag from the screen for good.
+**The rule.** A death pile's windows arrive as time left (`openLeft`, `left`),
+like a dropped item's. `_buildServerPile` converts them once; a pile marked
+`_leftWire` is not moved by `rebasePiles` (only its `ts`).
+**Receipt:** `pile-left.test`; switch `pileleft`.
+
+## 292. "A bow hit marked no knockback is a leftover arrow" (v2.3.4385)
+
+**Tempting:** a volley's stuck arrows chip a monster after the player starts
+harvesting, so let any `noKb` bow chip keep the harvest. **Wrong:** the phone
+sets `noKb`; trusting it alone is "harvest while attacking".
+**The rule.** `_volleyChipKeeps` (gathering.js) keeps the harvest only for a
+bow chip (ranged, not special, noKb, no part) inside a bow special the SERVER
+charged (`ps._pveSpec`) that opened no later than the harvest's `startedAt`.
+Keep both halves: drop the start-time comparison and a volley fired
+mid-harvest keeps the shield on while attacking. A missed volley's arrows in
+the ground still end a harvest (they carry no `noKb`). **Receipt:**
+`volley-chip.test`; switch `volleychip`.
+
+## 293. "Add it to the swing" (v2.3.4387)
+
+**Tempting:** put a new swing rule (a relay flag, a sound, a refusal) in the
+swing code you found. **Wrong:** a swing has two starts: the tapped press
+(`playerActions.swingAttack`) and the held loop (`monsterCombat`). A tapped
+swing never told the other players (`player_swing`), and the held loop kept
+swinging while staggered. **The rule.** Anything a swing must do goes in both
+starts. **Receipt:** `swing-shown.test`.
+
+## 294. "`now` is set in the loop, so the block can read it" (v2.3.4388)
+
+**Tempting:** use the game loop's `now` in a block of the loop. **Wrong:**
+`var now = performance.now()` sits ~800 lines BELOW the pet block; a `var`
+read above where it is set is `undefined`, not last frame's value. Every pet
+fetch timer was dead and two pet personalities were "not a number" and never
+drawn. The trail just above has the same fault (left for later).
+**The rule.** Before reading a loop-wide name, find where it is SET; a block
+that runs earlier gets its own clock (`_petNow`). **Receipt:** `pet-clock.test`.
+
+## 295. "The respawn reset list is complete" (v2.3.4403)
+
+**Tempting:** a monster's next life is clean because respawn resets its
+fields. **Wrong:** the list is kept by hand. A ball in the air hit you 19 s
+later, a knock-back slid into the next life, a corpse landed its lunge, and a
+kill's lifesteal record healed you off the next life. On the phone a swell
+that missed its end event drew a slime 3.5 times its size, unhittable.
+**The rule.** A new per-life field on a monster (`m._*`) is added to the
+respawn reset in the same change, with a respawn check (`monster-life.test`,
+`burrow.test` §8). On the phone, a moment that must END gets its own clock,
+not just the event that ends it (`isIntangible` reads `_burstUntil`).
+**Receipt:** `monster-life.test`, `slime-boss.test` §8.
+
+## 296. "The phone can tell a blocked blow from the angle" (v2.3.4405)
+
+**Tempting:** when a `monster_attack` lands with the shield up and facing it,
+the phone draws a block. **Wrong:** in a server zone the server already
+decided; the phone hid real hits (no number, no flash, while the health bar
+dropped). And `player_shield` for a player in another zone was thrown away,
+so their shield was drawn wrong when you met. **The rule.** In a server zone
+the worker's `blocked` flag is the only block (`shieldCopies.js`
+`localBlockApplies`): no arc test there. `player_shield` is room-wide on
+purpose (§176): gate only its SOUND on `_peerInZone`. **Receipt:**
+`shield-guard.test`; switch `monsterguardbreak`.
+
+## 297. "Close with the code that is nearest" (v2.3.4413)
+
+**Tempting:** reuse an existing close code for a new reason. **Wrong:** the
+phone picks its screen from the code alone (`wsClient.js` `onclose`). A
+failed join closed with the linger's 4010 (v2.3.2438), so players saw "Your
+bro is still in that fight" on a loop. **The rule.** A new reason gets a code
+no file uses, listed in `docs/specs/one-socket.md`'s table (a failed join is
+4013). An old phone reads an unknown code as an ordinary drop.
+**Receipt:** `session-exits.test` §1.
+
+## 298. "The player is offline, so the admin may write their record" (v2.3.4413)
+
+**Tempting:** a restore checks that the player has no socket. **Wrong:** a
+body left in a fight (`linger.js`) has no socket but stays up to 20 s and
+saves when it goes, over the backup just restored. **The rule.** An admin
+write over a player's record waits for the player to be out of the ROOM:
+check `playerState[pid]`, not only `_wsBySessionId`. **Receipt:**
+`session-exits.test`; docs/OPERATIONS.md.
+
+## 299. "Its cleanup runs when it closes" (v2.3.4411)
+
+**Tempting:** release the microphone in the chat box's unmount cleanup.
+**Wrong:** ChatBubble is always mounted and returns null while shut, so the
+cleanup ran only when the game unmounted: the phone kept listening (iOS's
+recording dot) and the words went into the next message. **The rule.** A
+component that only hides itself releases what is live (a microphone, a
+timer, a stream) in the effect that watches `open` going false
+(`src/game/dictation.js`). **Receipt:** `phone-slips.test`.
+
+## 300. "The draw knows how to draw it, so it is drawn" (v2.3.4411)
+
+**Tempting:** add a status to the draw code. **Wrong:** a filter in front of
+the draw asked its own list whether there was anything to draw, and freeze
+and wobble were not on it: nobody saw another player frozen.
+**The rule.** A filter before a draw reads the same list as the draw's own
+guard: one shared function (`elemFxLive`, `elemHits.js`).
+**Receipt:** `phone-slips.test`.
+
+## 301. "Nobody near uses the shared sheet, so free it" (v2.3.4416)
+
+**Tempting:** a cache frees a shared picture set when no other look using it
+is near on this tick. **Wrong:** the mire wisp and the bog lurker share a
+set; walking away from the wisps freed it under a bog lurker that was ready
+and just outside the radius (a stand-in body, or a dead picture that can
+throw the whole frame away). **The rule.** Sharing is decided by who HOLDS
+(loading or ready), not who is near (`artHolds.js` `heldBySibling`).
+**Receipt:** `art-holds.test`.
+
+## 302. "It failed, it is marked failed, it will be asked again" (v2.3.4416)
+
+**Tempting:** a streamed load that fails is marked and left. **Wrong:** a page
+of building pictures that failed once was never asked for again while you
+stood near it: the buildings stayed invisible and walk-through for the visit.
+§257 is a load that never answers; this is a failure that never retries.
+**The rule.** A failed record has a clock and is dropped so the next round
+asks again (`pageDropDue`, 5 s; the ground's pieces already did this).
+**Receipt:** `art-holds.test`.
+
+## 303. "Catch each one so allSettled cannot fail" (v2.3.4415)
+
+**Tempting:** wrap each loading promise in `.catch(() => {})` before
+`Promise.allSettled`. **Wrong:** `allSettled` never rejects anyway; the catch
+only turned every failure into "fulfilled", so the loading report (§12's
+check) could never show a miss. **The rule.** Settle the promises as they
+are (`preloadReport.js` `settleGroups`). **Receipt:** `renderer-life.test`.
+
+## 304. "Set `S.currentZone` and clear what you left" (v2.3.4414)
+
+**Tempting:** a new way of changing place writes `S.currentZone =` and its own
+wipe. **Wrong:** the copies drift: four ways skipped the shared list and a
+campfire's invisible "Cook" spot followed you to the farm for 45 s (v2.3.1748
+again). And a dungeon's loading finished after a death and took down the
+screen the respawn's trip was using. **The rule.** Change place with
+`changeZone(S, to)` (`zoneTransitions.js`), which runs `clearZoneLocalFx`.
+Only the owner who put up the shared loading screen (`_zoneLoadEl`) takes it
+down, and only if no other holder (`_wheelTripVeil`, `_zoneLoading`,
+`_townArtHold`, `_farmArtHold`) has it. Nine places still change zone by
+hand (four already clear the list). **Receipt:** `zone-leftovers.test`.
+
+## 305. "It was written long ago and never worked: make it work" (v2.3.4414)
+
+**Tempting:** a fix finds a dormant effect, sound or screen that never showed
+because of a bug (the colour fade between places read `S._zoneWipe.ts` while
+`_zoneWipe` is a number), and mends it on the way. **Wrong:** that turns on
+something nobody has seen, on every phone, inside a fix. **The rule.** A fix
+never turns on something nobody has seen: it becomes the owner's question.
+`_zoneWipe` is a number and the renderer still reads `.ts`, so it draws
+nothing, on purpose: the owner kept the fade off (2026-11-10). The same went
+for showing the guard break and the phone's own Remains piles (owner's list
+§10). **Receipt:** `zone-leftovers.test`; CLAUDE.md §3.
+
+## 306. "The sound engine is rebuilt, so every sound is back" (v2.3.4422)
+
+**Tempting:** after an iPhone app switch `_rebuildContext` makes a fresh audio
+context and reloads the main list, and that is all. **Wrong:** the slime hum
+kept its own nodes on the closed context and thought it was still playing;
+the ground footsteps, loaded outside the manifest, were gone until you left
+the world. **The rule.** A sound with its own Web Audio nodes outside
+`BT_AUDIO` remembers the context it made them in and rebuilds them (one copy,
+the old decoded copy let go) when `BT_AUDIO.ctx` is not that context, as the
+water, beds and ride sounds already did. Anything loaded into `_samples`
+outside the manifest is asked for again in `_rebuildContext` while it is
+wanted. **Receipt:** `audio-rebuild.test`.
+
+## 307. "A `dungeon:` id is valid by its shape" (v2.3.4423)
+
+**Tempting:** take any move into a zone shaped `dungeon:...`. **Wrong:** a
+made-up id bought the zone entry's half second of no damage on every round
+trip (never hurt, by monsters or players) and left two empty lists in memory
+each time. **The rule.** A CHANGE into a `dungeon:` zone is taken only while
+that run is open (`dungeon.js` `_dungeonIdDead`). Do not widen it back to the
+shape to "unfreeze" someone: a phone already in a closed run names no change,
+so it is never refused. Do not narrow it to the run's owner: runs are shared
+("Membership = zone presence"). **Receipt:** `dungeon-live.test`; switch
+`dungeonlive`.
+
+## 308. "The server refused the bet, so drop the round's bet" (v2.3.4421)
+
+**Tempting:** on `arena_stake_error`, take the round's bet off the screen.
+**Wrong:** an `already-staked` refusal would erase a real bet whose gold is
+held in escrow. **The rule.** Drop only a still-waiting bet
+(`_serverStake && !_placed`), matched by `targetId`, and nothing on
+`already-staked` (`src/game/arenaStakes.js`). **Receipt:**
+`silent-refusals.test` §2.
