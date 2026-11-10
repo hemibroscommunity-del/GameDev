@@ -15,7 +15,7 @@
  */
 import * as LONG from './wheelspawns.js';
 import * as SHORT from './wheelspawns1.js';
-import { WHEEL_ZONE } from './wheelzone.js';   /* v2.3.4540: _wheelSpectator */
+import { WHEEL_ZONE } from './wheelzone.js';   /* v2.3.4575: _wheelSpectator */
 
 const own = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 
@@ -52,7 +52,7 @@ export const wheelTableMethods = {
     const ws = ps._wheelSizes, long = this._wheelLongNow();
     return Array.isArray(ws) ? ws.includes(long) : long === SHORT.WHEEL_LONG;
   },
-  /* ═══ v2.3.4540: AN OUT-OF-STEP PHONE IN THE WHEEL WATCHES, IT DOES NOT FIGHT ═══
+  /* ═══ v2.3.4575: AN OUT-OF-STEP PHONE IN THE WHEEL WATCHES, IT DOES NOT FIGHT ═══
      Sheltered above (no monster picks or hits it, No man's land's level 0),
      its own blows still landed: one number left out of a join's `ws` made a
      page that hits monsters and is never hit back (the 2026-11-03 sweep,

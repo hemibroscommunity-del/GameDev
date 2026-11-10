@@ -3173,7 +3173,7 @@ export class GameRoom {
        players within its level of each other (nomansland.js).  ABOVE the
        master switch on purpose: v2.3.1917's "remove the option to kill other
        players for now" still holds everywhere else. */
-    /* v2.3.4540: an out-of-step phone in the Wheel neither hurts nor is hurt
+    /* v2.3.4575: an out-of-step phone in the Wheel neither hurts nor is hurt
        by a player outside a duel (wheeltables.js _wheelSpectator) */
     if (this._wheelSpectator && (this._wheelSpectator(this.playerState[attackerId]) || this._wheelSpectator(this.playerState[targetId]))) return false;
     if (this._nmlAllowed && this._nmlAllowed(attackerId, targetId)) return true;
@@ -3374,7 +3374,7 @@ export class GameRoom {
      reflect needed a flag for at v2.3.1137.  It is a display tag only;
      nothing server-side reads it. */
   _applyMonsterDot(zoneId, m, rawDmg, sourceId, statusId, opts) {
-    /* v2.3.4540: nothing an out-of-step phone in the Wheel started lands (wheeltables.js _wheelSpectator) */
+    /* v2.3.4575: nothing an out-of-step phone in the Wheel started lands (wheeltables.js _wheelSpectator) */
     if (sourceId && this._wheelSpectator && this._wheelSpectator(this.playerState[sourceId])) return 0;
     if (!this._monsterDamageable(m)) return 0;   /* v2.3.2221: a DoT tick into an
        invulnerable phase DROPS -- it must not bank up and land on the way out,

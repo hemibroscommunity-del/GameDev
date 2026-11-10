@@ -677,7 +677,7 @@ export const abilityMethods = {
       } catch (e) {}
     };
     ps._abilFrom = { x: ps.x || 0, y: ps.y || 0, at: Date.now(), kind };
-    /* v2.3.4540: an out-of-step phone in the Wheel deals nothing (wheeltables.js
+    /* v2.3.4575: an out-of-step phone in the Wheel deals nothing (wheeltables.js
        _wheelSpectator): the cast whiffs, as one that reaches nobody does */
     if (this._wheelSpectator && this._wheelSpectator(ps)) { reject('whiff', { spent: cost }); return; }
     /* ═══ v2.3.3262: A LUNGE THAT NAMES A PLAYER ═══
@@ -1103,7 +1103,7 @@ export const abilityMethods = {
      way, v2.3.3262: `targetId` stays a monster's) */
   _lungeStrike(session, ps, targetId, pid) {
     if (!session || !session.id || !ps) return false;
-    if (this._wheelSpectator && this._wheelSpectator(ps)) return false;   /* v2.3.4540: wheeltables.js _wheelSpectator */
+    if (this._wheelSpectator && this._wheelSpectator(ps)) return false;   /* v2.3.4575: wheeltables.js _wheelSpectator */
     const _byPid = typeof pid === 'string' && pid.length > 0;
     if (!_byPid && (targetId === undefined || targetId === null || targetId === '')) return false;
     if (!ps.weapon) return false;

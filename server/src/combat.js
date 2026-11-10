@@ -1217,7 +1217,7 @@ export const combatMethods = {
        ps.respawnAt are set by _handlePlayerDeath, which is server-sole-
        writer, so they are the authoritative pair. */
     if (attackerPs.dying || attackerPs.disconnected) return;
-    /* v2.3.4540: an out-of-step phone in the Wheel deals nothing (wheeltables.js _wheelSpectator) */
+    /* v2.3.4575: an out-of-step phone in the Wheel deals nothing (wheeltables.js _wheelSpectator) */
     if (this._wheelSpectator && this._wheelSpectator(attackerPs)) return;
     /* THE ACTUAL FIX: the attacker must be in the zone they claim.  The
        monster is resolved from the CLIENT-SUPPLIED `zone`, so without

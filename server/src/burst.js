@@ -148,7 +148,7 @@ export const burstMethods = {
     const ws = this._wsBySessionId(session.id);
     const now = Date.now();
 
-    /* v2.3.4540: an out-of-step phone in the Wheel deals nothing, its mana kept (wheeltables.js _wheelSpectator) */
+    /* v2.3.4575: an out-of-step phone in the Wheel deals nothing, its mana kept (wheeltables.js _wheelSpectator) */
     if (this._wheelSpectator && this._wheelSpectator(ps)) return;
     const refusal = this._burstRefusal(ps, now);
     if (refusal) {
