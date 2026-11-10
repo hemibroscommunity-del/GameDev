@@ -59,6 +59,7 @@ import { releaseShadowTextures } from './lightfx/shadows.js';   /* v2.3.3000: a 
 import { WHEEL_SUN } from './lightfx/zoneLight.js';             /* v2.3.3000: how far a shadow reaches */
 import { SHADE } from './formShade.js';                         /* v2.3.3000: shaded toward the ground, as the old props */
 import { readArtBottoms } from './propGround.js';               /* v2.3.3028: where each column of a picture meets the ground */
+import { pageDropDue } from './artHolds.js';                    /* v2.3.4416: a failed page is asked for again */
 import { drawSourceRect } from './paletteDraw.js';              /* v2.3.3190: a page kept as colour numbers, read on the CPU */
 import { paletteOn, makePaletteSource, paletteStats } from './paletteTex.js';   /* v2.3.3190: ...and drawn so */
 
@@ -348,7 +349,9 @@ function loadPage(ix, k) {
   }, () => {
     _loading--;
     notePageLoad(ix.pageNames[k], rec, false);
-    if (_pages.get(k) === rec) { rec.state = 'failed'; wheelObjectStats.failed++; }
+    /* v2.3.4416: stamped, so it is let go after PAGE_RETRY_MS and asked
+       for again (artHolds.js pageDropDue) */
+    if (_pages.get(k) === rec) { rec.state = 'failed'; rec.failedAt = performance.now(); wheelObjectStats.failed++; }
     return null;
   });
   return rec.p;
@@ -493,9 +496,14 @@ export class WheelObjects {
         if (rec) { rec.wanted = now; continue; }
         if (_loading < MAX_LOADING) loadPage(ix, k);
       }
+      /* v2.3.4416: a page whose download failed is let go after a few
+         seconds even while near, so the next round asks for it again: it
+         stayed failed for the visit, its buildings invisible and
+         walk-through after one network blip (the sweep's V17b R11-1) */
       for (const [k, rec] of _pages) {
-        if (keep.has(k)) { rec.wanted = Math.max(rec.wanted, now - DROP_MS / 2); continue; }
-        if (rec.state !== 'loading' && now - rec.wanted > DROP_MS) this._dropPage(ix, k);
+        const kept = keep.has(k);
+        if (kept) rec.wanted = Math.max(rec.wanted, now - DROP_MS / 2);
+        if (pageDropDue(rec, kept, now, DROP_MS)) this._dropPage(ix, k);
       }
     }
 

@@ -31,6 +31,7 @@
 import { MONSTER_VARIANTS, variantsForZone } from '../data/monsterVariants.js';
 import { zoneHomes, wheelLandAt } from '../data/zones.js';   /* v2.3.3017: + which land you are on */
 import { VARIANT_SPRITES, unloadVariantSprites, setVariantKicks } from './monsterVariantSprites.js';
+import { heldBySibling } from './artHolds.js';   /* v2.3.4416: a sibling HELD, not only one near this tick */
 import { loadMonsterRecolor, recolorFamilyOf, freeMonsterRecolor } from './monsterRecolor.js';
 import { loadSnowmanSprites, unloadSnowmanSprites } from './snowmanSprites.js';
 /* (the snowball's burst lives in effectsRenderer, which imports
@@ -137,21 +138,25 @@ function loadLook(k) {
 /* Let a look go -- but never a sprite module or a recolour another look
    still kept here draws from (thornShambler and rockmonster share one
    module -- as bogLurker and fishman did until v2.3.4355's water frog: unloadVariantSprites dedupes by
-   loader, so freeing one by key would tear the other's art out). */
-function freeLook(k, keep) {
+   loader, so freeing one by key would tear the other's art out).
+   v2.3.4416: "still kept" is still HELD in _looks (loading or ready), not
+   near this tick: the rotcap's two keys share one module, and letting the
+   mire wisp go while the bog lurker sat just past FREE_R unloaded the
+   module under a 'ready' bog lurker -- a stand-in body, or a dead texture
+   that throws the frame (the sweep's V17b R6-5; artHolds.js). */
+function freeLook(k) {
   if (k === 'snowman') {
     try { unloadSnowmanSprites(); } catch (e) { /* a leak, not a crash */ }
     fx().then((m) => m.freeFrostImpactTex()).catch(() => {});
     return;
   }
   const v = VARIANT_SPRITES[k];
-  const shared = (q) => q !== k && keep.has(q) && _looks.has(q);
-  if (v && v.unload && ![..._looks.keys()].some((q) => shared(q) && VARIANT_SPRITES[q] && VARIANT_SPRITES[q].unload === v.unload)) {
+  if (v && v.unload && !heldBySibling(k, _looks, (q) => VARIANT_SPRITES[q] && VARIANT_SPRITES[q].unload === v.unload)) {
     Promise.resolve(unloadVariantSprites([k])).catch(() => []);
   }
   const mv = MONSTER_VARIANTS[k];
   const fam = mv ? recolorFamilyOf(mv) : null;
-  if (fam && ![..._looks.keys()].some((q) => shared(q) && MONSTER_VARIANTS[q] && recolorFamilyOf(MONSTER_VARIANTS[q]) === fam && String(MONSTER_VARIANTS[q].recolor) === String(mv.recolor))) {
+  if (fam && !heldBySibling(k, _looks, (q) => MONSTER_VARIANTS[q] && recolorFamilyOf(MONSTER_VARIANTS[q]) === fam && String(MONSTER_VARIANTS[q].recolor) === String(mv.recolor))) {
     try { freeMonsterRecolor(mv); } catch (e) { /* a leak, not a crash */ }
   }
 }
@@ -184,7 +189,7 @@ function lateFree(k) {
   const used = variantsForZone(_curZone);
   if (used.has('mummy')) used.add('skeleton');   /* co-loaded, as preloadZoneAssets does */
   if (k === 'snowman' ? _curZone === 'frost' : used.has(k)) return;
-  freeLook(k, new Set());
+  freeLook(k);
 }
 
 /* ═══ v2.3.3016: A WHEEL DUNGEON'S MONSTERS, LOADED BEFORE YOU STEP IN ═══
@@ -258,7 +263,7 @@ export function wheelArtTick(S, monsters, now) {
   for (const [k, e] of _looks) {
     if (keep.has(k)) { e.lastNear = now; continue; }
     if (e.state !== 'ready' || now - e.lastNear < FREE_AFTER) continue;
-    freeLook(k, keep);
+    freeLook(k);
     _looks.delete(k);
     wheelArtStats.frees++;
   }
