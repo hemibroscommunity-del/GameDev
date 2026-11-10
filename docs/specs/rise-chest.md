@@ -107,19 +107,34 @@ near BroTown).
     measured tones. No colour outside `RISE_PALETTE`, so a piece of ground
     stays colour numbers;
   - its **cast shade** (`hillCast`, `hillHolds`): ONE shadow, the drawn
-    shape's own, thrown south-east (the light is from the north-west) and
-    longer the taller the rise: 0.4 of its height east and 0.3 south, capped
-    at 40 and 30 px. A point is in it when the hill stands between it and the
+    shape's own. A point is in it when the hill stands between it and the
     light (stepping back toward the light), so it bends round the back corner,
     runs down the east side and turns under the foot with no seam; the ledge's
-    falls on the terrace's lit top. The first version was a straight band down
-    the east side plus a separate one at the foot, and the owner said: "correct
-    the shadow that doesnt band around the bend. The overall structure still
-    needs more of a shadow effect.";
+    falls on the terrace's lit top. (The first version was a straight band
+    down the east side plus a separate one at the foot: "correct the shadow
+    that doesnt band around the bend. The overall structure still needs more
+    of a shadow effect.")
+    v2.3.4494, "Shadow is still kinda off": it is now **the world's shadow**.
+    Thrown by the world's sun (`lightfx/zoneLight.js` `WHEEL_SUN`: 0.5 of the
+    height east, 0.34 south, as a tree's and a player's; a rise over 80 px
+    casts as one 80 px tall, so the ledge's shade stays on the terrace), and a
+    **smooth veil** where it was two dark greens scattered pixel by pixel:
+    `risePaint` takes each pixel under it to what the commons' shade
+    (0x13240c at 0.36) makes of it, the grass by its tone (5 steps,
+    `RISE_PALETTE.shade`), a stone or a flower by its lightness (3,
+    `shadeStone`). The ground's detail shows through, darker. Loose boulders
+    cast none of it;
   - its **face** a cliff of rounded brown boulders (lit from the upper left,
     dark in the gaps, darker toward the foot) under a thick **cap** of grass
-    whose blades hang 10 to 21 px over it, the ground's own tufts standing in
-    front of its foot, and its **shade** on the grass below;
+    whose blades hang 10 to 21 px over it.
+    v2.3.4494, "make the elevated dirt wall kind of jagged at the bottom so it
+    doesn't look like a perfect cutout": the face **ends on whole boulders**
+    (`boulderAt`, `hillStone`), not on a line. A boulder is in the wall when
+    its middle is above a wandering line through the last row; the last row's
+    keep the round of their lower halves; now and then one sits loose just
+    below. The ground's tufts stand in front of each underside. The walk grid
+    is the same cells: a stone may sit up to 20 px past the last row, and the
+    ground may show up to about 25 px inside it, between stones;
   - its **sides** the same cliff nearly edge-on: a wall 5 px wide at the back
     and 13 where it meets the face (west lit, east in shadow);
   - its **outline** wandering 1 to 9 px and stepping stone to stone, its two
