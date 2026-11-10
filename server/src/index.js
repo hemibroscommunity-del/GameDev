@@ -260,6 +260,7 @@ import { xpDecayMethods } from './xpdecay.js'; /* v2.3.3251: XP fades for what i
 import { floodMethods, roomNameFor, requestIp, FLOOD } from './flood.js'; /* v2.3.3274: one socket cannot stop the game */
 import { originAllowed, refuseOrigin } from './origin.js'; /* v2.3.3312: only the game's own sites open a socket */
 import { verifyMethods } from './verify.js'; /* v2.3.3275: the account check -- a new character proves a person is there */
+import { moveClaimMethods, guardFacing } from './moveclaims.js'; /* v2.3.4605: what a move's claims buy (the parry, the block's arc, the cook's shield) */
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
 import { staminaRegenMethods } from './staminaregen.js'; /* v2.3.3536: stamina regen worked out by the worker */
 import { fightLockMethods, FIGHT_GATED } from './fightlock.js'; /* v2.3.4510: one fight-lock table */
@@ -2918,13 +2919,24 @@ export class GameRoom {
    * Degenerate geometry (the attacker standing exactly on the player) has no
    * meaningful direction, so it counts as covered — a monster inside your own
    * hitbox is not a flanking manoeuvre. */
+  /* ═══ v2.3.4605: NO `ba` IS NOT AN OLD PHONE ANY MORE ═══
+   * Every phone since v2.3.1705 puts a number in `ba` whenever its shield is
+   * up (wsClient.js's move shim falls back to the facing, then 0), so a raised
+   * guard with no `ba` is a modified page, and the omni block above was its
+   * all-round shield for free.  It now covers the FRONT of the player's last
+   * facing (moveclaims.js guardFacing: `f`, else `d`, else south).
+   * `blockarc: false` in the live flags is the all-round block again. */
   _blockArcCovers(ps, ax, ay) {
     if (!ps || !ps.blocking) return false;
-    if (typeof ps.ba !== 'number' || !Number.isFinite(ps.ba)) return true; // old client: omni
+    let ba = ps.ba;
+    if (typeof ba !== 'number' || !Number.isFinite(ba)) {
+      if (this._blockArcOff()) return true;   // the old omni fail-open, switched back on
+      ba = guardFacing(ps);
+    }
     const dx = (ax || 0) - (ps.x || 0), dy = (ay || 0) - (ps.y || 0);
     if (dx * dx + dy * dy < 1) return true;
     const from = Math.atan2(dy, dx);
-    const d = ((from - ps.ba + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+    const d = ((from - ba + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
     return Math.abs(d) <= BLOCK_ARC_HALF;
   }
 
@@ -5425,6 +5437,9 @@ export class GameRoom {
 
       case 'player_attack':
         if (session.id) {
+          /* v2.3.4605: a sword's claim lowers the guard first, as the phone
+             does (moveclaims.js `swingguard`) */
+          this._swingDropsGuard(session, 'player_attack', msg.payload || msg);
           this._resolvePvPAttack(session, msg.payload || msg);
         }
         break;
@@ -5433,6 +5448,7 @@ export class GameRoom {
         // Client reports damage dealt to a server monster
         if (session.id) {
           this._sigOnHit(session, msg.payload || msg);   /* v2.3.3731: where it was struck from (botsig.js) */
+          this._swingDropsGuard(session, 'monster_damage', msg.payload || msg);   /* v2.3.4605: as player_attack's */
           this._handleMonsterDamage(session, msg.payload || msg);
         }
         break;
@@ -6932,6 +6948,7 @@ Object.assign(GameRoom.prototype, loginKeyMethods); /* v2.3.3355: new Login Keys
 Object.assign(GameRoom.prototype, pvpLungeMethods); /* v2.3.3262: the sword's opening lunge at a player (pvplunge.js) */
 Object.assign(GameRoom.prototype, oneFormulaMethods); /* v2.3.3260: one formula for every fight */
 Object.assign(GameRoom.prototype, pvpExtrasMethods); /* v2.3.3264: the monster-only extras on players */
+Object.assign(GameRoom.prototype, moveClaimMethods); /* v2.3.4605: what a move's claims buy (moveclaims.js) */
 Object.assign(GameRoom.prototype, sparMethods); /* v2.3.3265: sparring clones (spar.js) */
 Object.assign(GameRoom.prototype, staminaRegenMethods); /* v2.3.3536: stamina regen from the worker's own amulet (staminaregen.js) */
 Object.assign(GameRoom.prototype, fightLockMethods); /* v2.3.4510: one fight-lock table (fightlock.js) */

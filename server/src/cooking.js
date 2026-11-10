@@ -230,6 +230,9 @@ export const cookingMethods = {
     if ((ps.inventory[invKey] || 0) <= 0) return;
     ps.inventory[invKey] -= 1;
     if (ps.inventory[invKey] <= 0) delete ps.inventory[invKey];
+    /* v2.3.4605: the fire as the worker knows it -- the cook / fire shield
+       holds only near one (moveclaims.js `cookshield`).  Memory only. */
+    this._fireLitNote(ps, Date.now());
     this._saveRpg(session.id, ps);
     const ws = this._wsBySessionId(session.id);
     if (ws) this._sendPlayerState(ws, session.id);
