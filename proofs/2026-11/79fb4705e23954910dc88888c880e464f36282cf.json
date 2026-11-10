@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "79fb4705e23954910dc88888c880e464f36282cf",
+  "tree": "487961f13f0c16b6cf1e7d05ea1683e142e10833",
+  "committedAt": "2026-11-09T21:53:51-08:00",
+  "subject": "Merge pull request #1480 from hemibroscommunity-del/claude/sm-swing-shown",
+  "files": 7782,
+  "bytes": 952207692,
+  "listingSha256": "a888ec7426e3637881b42ca5c6bddcf950a7ee6fe14861aa01dfc03dcb8fac4b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

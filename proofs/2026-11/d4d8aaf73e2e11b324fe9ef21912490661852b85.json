@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d4d8aaf73e2e11b324fe9ef21912490661852b85",
+  "tree": "7c699a006efae60e0370e66123fbdbc05893d139",
+  "committedAt": "2026-11-09T21:54:33-08:00",
+  "subject": "Merge pull request #1484 from hemibroscommunity-del/claude/sm-bow-harvest",
+  "files": 7788,
+  "bytes": 952289393,
+  "listingSha256": "4a61715bb83e2dac8a5b1cd491816fcaa54193e72db9098c499d9102df805c76",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
