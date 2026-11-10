@@ -196,7 +196,7 @@ export function risePaint(plan, data, ow, oh, X0, Y0, K, opts = {}) {
   const gxa = (X0 - F.x0) * wpa, gya = (Y0 - F.y0) * wpa;
   const gxb = gxa + (ow / K) * wpa, gyb = gya + (oh / K) * wpa;
   const LIFT = 34;   /* the chest and the lip draw a little above their cells */
-  const BELOW = 34;   /* v2.3.4462: a hill's shade falls a little below its foot */
+  const BELOW = 48;   /* v2.3.4462: a hill's shade falls a little below its foot */
   if (gxb < L.x0 * c || gxa > (L.x0 + L.w) * c + HILL.CAST || gyb < L.y0 * c - LIFT || gya > (L.y0 + L.h) * c + BELOW) return 0;
   /* v2.3.4456: ...and near one rise in particular -- the grid is ONE box over every rise, and with a
      rise by the town and two on the islet that box is a strip a quarter of the Wheel long: a piece in it
@@ -249,7 +249,7 @@ export function riseColour(L, gx, gy, seed) {
   for (let k = L.list.length - 1; k >= 0; k--) {
     const r = L.list[k];
     const hill = r.look === 'hill';
-    if (gx < r.x0 * c || gx >= r.x1 * c + (hill ? HILL.CAST : 0) || gy < r.y0 * c - 8 || gy >= r.y1 * c + (hill ? 34 : 5)) continue;
+    if (gx < r.x0 * c || gx >= r.x1 * c + (hill ? HILL.CAST : 0) || gy < r.y0 * c - 8 || gy >= r.y1 * c + (hill ? HILL.CAST : 5)) continue;
     /* v2.3.4471: east of a hill's box there is only the shade it casts */
     if (gx >= r.x1 * c) { const sh = hillCast(r, c, gx, gy, seed); if (sh) return sh; continue; }
     const top = r.faceY0 * c;
@@ -259,25 +259,20 @@ export function riseColour(L, gx, gy, seed) {
     /* v2.3.4471: a hill's wander further and more slowly (a game px is under half a screen px on a
        phone): its lip up to 7 px into the top's front row, its foot up to 9 px onto the ground */
     const lip = hill ? top - 3.5 + 3.5 * valueNoise(gx * 0.045, 3.1, seed + r.k) : top - 2 + 2 * valueNoise(gx * 0.07, 3.1, seed + r.k);
-    const foot = r.y1 * c + 2 + 2 * valueNoise(gx * 0.09, 5.3, seed + 7 + r.k) + (hill ? 2.5 + 2.5 * valueNoise(gx * 0.031, 8.8, seed + 9 + r.k) : 0);
+    const foot = hill ? hillFoot(r, c, gx, seed) : r.y1 * c + 2 + 2 * valueNoise(gx * 0.09, 5.3, seed + 7 + r.k);
     if (gy >= lip && gy < foot) {
       if (!hill) return faceColour(r, c, gx, gy, top, foot, lip, seed);
       /* v2.3.4471: where a hill's face draws nothing (past its round ends, on its ramp) the rise under
-         it goes on (the ledge stands on the terrace's lit top), in this one's cast shade if it is there */
-      const col = hillFace(r, c, gx, gy, top, foot, lip, seed) || hillCast(r, c, gx, gy, seed);
+         it goes on (the ledge stands on the terrace's lit top), in this one's cast shade if it is there
+         -- but not on its own ramp, which hillFace shades from its cut ends */
+      const col = hillFace(r, c, gx, gy, top, foot, lip, seed);
       if (col) return col;
+      if (!(r.ramp && gx >= r.ramp.x0 * c && gx < r.ramp.x1 * c)) { const sh = hillCast(r, c, gx, gy, seed); if (sh) return sh; }
       continue;
     }
     /* v2.3.4462: a hill throws shade on the ground at its foot (what makes a bank stand UP on flat
-       grass), thinning out, so it ends in the grass and not on a line.  v2.3.4471: 22 px of it and
-       thicker (it was 11, and faint), reaching a little east with the light from the north-west */
-    if (hill && gy >= foot && gy < foot + HILL.FOOT_SHADE) {
-      /* v2.3.4471: ...but none under a ramp (nothing stands over its foot) or west of the cliff's round end */
-      if (gx < r.x0 * c + 12 || (r.ramp && gx >= r.ramp.x0 * c + 5 && gx < r.ramp.x1 * c - 3)) continue;
-      const t = (gy - foot) / HILL.FOOT_SHADE;
-      if (hash2(Math.floor(gx), Math.floor(gy), seed + 41) > t * t * 0.9 + 0.04) return RISE_PALETTE.shade[t < 0.5 ? 0 : 1];
-      continue;
-    }
+       grass).  v2.3.4471: the same shade it casts east (hillCast): one shadow, round the corner */
+    if (hill && gy >= foot) { const sh = hillCast(r, c, gx, gy, seed); if (sh) return sh; continue; }
     if (gy >= r.y1 * c) continue;
     if (gy < r.y0 * c) {
       /* above the north rim: the rim's back edge, a hair of rock */
@@ -406,8 +401,8 @@ function rimColour(r, c, gx, gy, seed) {
      the TOP is the ground as laid, the very grass around it -- LIT: the owner, of the first cut that
        painted nothing there, "It looks like it's a transparent on top of the elevated surface.  It
        needs shadowing or something to look like a raised surface": most of its grass's blades are a
-       tone lighter (risePaint's lift), and the hill casts shade on the lower ground east of it
-       (hillCast) and at its foot;
+       tone lighter (risePaint's lift), and the hill casts its shape's own shade on the lower ground
+       south-east of it (hillCast);
      the FACE is a cliff of rounded brown boulders, lit from above, dark in the gaps, under a thick
        CAP of grass whose blades hang over it, with the ground's own tufts standing in front of its
        foot and its shade on the grass below (riseColour);
@@ -419,24 +414,56 @@ function rimColour(r, c, gx, gy, seed) {
        laid again, the cliff's cut ends casting more shade the taller they stand.
    Painted in code like the rest (the sheet is "a visual design reference rather than a ...
    game-ready tile atlas": no picture is loaded), in RISE_PALETTE's own colours. */
-const HILL = Object.freeze({ GW: 16, GH: 20, WALL: 13, WALL_BACK: 5, CORNER: 14, FOOT_R: 10, CAST: 26, FOOT_SHADE: 22 });
+const HILL = Object.freeze({ GW: 16, GH: 20, WALL: 13, WALL_BACK: 5, CORNER: 14, FOOT_R: 10, CAST: 44, CAST_X: 0.4, CAST_Y: 0.3, CAST_MAX_X: 40, CAST_MAX_Y: 30 });
 /* v2.3.4471: what riseColour answers for a hill's top -- not a colour but how much of the ground's own
    grass risePaint takes up a tone there: seven blades in ten on a rise on the ground, nearly all on one
    standing on another (told from a colour by its `lift`) */
 const HILL_LIFT = Object.freeze([Object.freeze({ lift: 0.7 }), Object.freeze({ lift: 0.92 })]);
-/* v2.3.4471: the shade a hill casts on the ground east of it (the light is from the north-west, as on
-   its boulders): up to HILL.CAST px out from its rock's east edge where it stands a face tall, less
-   toward the back where the wall is low, thinning to nothing.  null where there is none. */
+/* a hill's foot line at game px gx (riseColour's, and hillHolds'): 2-9 px past its last row */
+function hillFoot(r, c, gx, seed) {
+  return r.y1 * c + 2 + 2 * valueNoise(gx * 0.09, 5.3, seed + 7 + r.k) + 2.5 + 2.5 * valueNoise(gx * 0.031, 8.8, seed + 9 + r.k);
+}
+/* the corner's radius: as wide as the rise's `round` cells allow */
+function hillRound(r, c) { return r.round > 0 ? c * r.round - 12 : HILL.CORNER; }
+/* Is game px (gx, gy) inside a hill's DRAWN shape -- its top, its side walls, its face down to the
+   foot's line, inside its wandering edge and round corners, and not its ramp's gap?  The shape
+   hillRim and hillFace draw, asked as one question: what casts the shade (hillCast). */
+function hillHolds(r, c, gx, gy, seed) {
+  const x0 = r.x0 * c, x1 = r.x1 * c, y0 = r.y0 * c, top = r.faceY0 * c;
+  if (gx < x0 || gx >= x1 || gy < y0 || gy >= r.y1 * c + 10) return false;
+  const rw = gx - x0 - hillEdge(r, 0, gy, seed), re = x1 - gx - hillEdge(r, 1, gy, seed), end = Math.min(rw, re);
+  if (end < 0) return false;
+  if (gy >= top - 2) {
+    const ds = hillFoot(r, c, gx, seed) - gy;
+    if (ds <= 0) return false;
+    if (end < HILL.FOOT_R && ds < HILL.FOOT_R && Math.hypot(HILL.FOOT_R - end, HILL.FOOT_R - ds) > HILL.FOOT_R) return false;
+    return !(r.ramp && gx >= r.ramp.x0 * c + 4 && gx < r.ramp.x1 * c - 4);
+  }
+  const gn = gy - y0 - hillEdge(r, 2, gx, seed);
+  if (gn < 0) return false;
+  const wall = hillWall(r, c, gy), side = end - wall, R = hillRound(r, c);
+  if (side < R && gn < R) { const ax = R - side, ay = R - gn, h = Math.hypot(ax, ay); return h <= 0 || R - h >= -wall * (ax / h); }
+  return true;
+}
+/* v2.3.4471: THE SHADE A HILL CASTS -- its drawn shape's own shadow on the ground, thrown south-east
+   (the light is from the north-west, as on its boulders), longer the taller it stands: 0.4 of its
+   height east and 0.3 south (a 72 px terrace 29 and 22 px; a 144 px ledge the caps, 40 and 30).
+   The owner, of the first one (a straight band down the east side from below the corner, and a
+   separate one at the foot): "correct the shadow that doesnt band around the bend.  The overall
+   structure still needs more of a shadow effect."  So it is ONE shadow, the shape's: a point is in
+   it when the hill stands between it and the light -- found by stepping back toward the light --
+   so it bends round the back corner, runs down the side, and turns under the foot with no seam.
+   Solid at the hill, breaking up to nothing at its far edge.  null where there is none. */
 function hillCast(r, c, gx, gy, seed) {
-  /* (from below its round back corner, where the rock's edge is the straight one this measures from) */
-  const y0 = r.y0 * c + (r.round > 0 ? c * r.round - 12 : HILL.CORNER) + 4, y1 = r.y1 * c;
-  if (gy < y0 || gy >= y1 + 8) return null;
-  const out = hillEdge(r, 1, gy, seed) - (r.x1 * c - gx);
-  if (out <= 0) return null;
-  const s = Math.max(0, Math.min(1, (gy - y0) / Math.max(1, r.faceY0 * c - y0)));
-  const len = HILL.CAST * (0.3 + 0.7 * s) * Math.min(1, (gy - y0) / 24), t = out / Math.max(0.01, len);
-  if (t >= 1) return null;
-  return hash2(Math.floor(gx), Math.floor(gy), seed + 43) > t * t * 0.9 + 0.04 ? RISE_PALETTE.shade[t < 0.5 ? 0 : 1] : null;
+  const cx = Math.min(HILL.CAST_MAX_X, r.h * HILL.CAST_X), cy = Math.min(HILL.CAST_MAX_Y, r.h * HILL.CAST_Y);
+  const N = 8;
+  for (let i = 1; i <= N; i++) {
+    const t = i / N;
+    if (!hillHolds(r, c, gx - cx * t, gy - cy * t, seed)) continue;
+    if (t > 0.3 && hash2(Math.floor(gx), Math.floor(gy), seed + 43) < (t - 0.3) / 0.7 * 0.92) return null;
+    return RISE_PALETTE.shade[t < 0.6 ? 0 : 1];
+  }
+  return null;
 }
 /* where a hill's drawn edge is, px in from its box's side `side` (0 west, 1 east, 2 north) at `t` px
    along it: 1-9 px, wandering slowly, stepping a little from one boulder to the next, with a blade
@@ -535,7 +562,7 @@ function hillRim(r, c, gx, gy, seed) {
   const east = re < rw, side = (east ? re : rw) - wall;
   /* how far inside the GRASS's edge (the wall is outside it), its two back corners a curve as wide
      as the rise's `round` cells allow; `nx`: how much that edge faces the side (1) or the back (0) */
-  const R = r.round > 0 ? c * r.round - 12 : HILL.CORNER;
+  const R = hillRound(r, c);
   let d = Math.min(side, gn), nx = side < gn ? 1 : 0;
   if (side < R && gn < R) { const ax = R - side, ay = R - gn, h = Math.hypot(ax, ay); d = R - h; nx = h > 0 ? ax / h : 0; }
   if (d >= 5) return HILL_LIFT[Math.min(HILL_LIFT.length - 1, r.level - 1)];   /* the top's own grass, lit */

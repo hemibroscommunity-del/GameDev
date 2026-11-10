@@ -104,9 +104,18 @@ near BroTown).
     or something to look like a raised surface." So `risePaint` takes most of
     the top's grass pixels up a tone (`HILL_LIFT`: 7 blades in 10 on a rise on
     the ground, nearly all on a rise standing on another), in the grass's own
-    measured tones, and the hill **casts shade** on the lower ground east of
-    it (`hillCast`, up to 26 px) and at its foot (22 px). No colour outside
-    `RISE_PALETTE`, so a piece of ground stays colour numbers;
+    measured tones. No colour outside `RISE_PALETTE`, so a piece of ground
+    stays colour numbers;
+  - its **cast shade** (`hillCast`, `hillHolds`): ONE shadow, the drawn
+    shape's own, thrown south-east (the light is from the north-west) and
+    longer the taller the rise: 0.4 of its height east and 0.3 south, capped
+    at 40 and 30 px. A point is in it when the hill stands between it and the
+    light (stepping back toward the light), so it bends round the back corner,
+    runs down the east side and turns under the foot with no seam; the ledge's
+    falls on the terrace's lit top. The first version was a straight band down
+    the east side plus a separate one at the foot, and the owner said: "correct
+    the shadow that doesnt band around the bend. The overall structure still
+    needs more of a shadow effect.";
   - its **face** a cliff of rounded brown boulders (lit from the upper left,
     dark in the gaps, darker toward the foot) under a thick **cap** of grass
     whose blades hang 10 to 21 px over it, the ground's own tufts standing in
