@@ -346,6 +346,7 @@ import { onPatternChange, parsePattern, getPattern, sanitizePattern } from '../t
 import { STANDIN_GARB_K, localGarb, peerGarb, garbKey, onGarbChange } from '../standInGarb.js';   /* v2.3.4037: the trouser and shoe patterns and the trouser print on every stand-in */
 import { composeShirt } from '../playerDecal.js';   /* v2.3.3146: the walking shirt's own dressing, on the stand-ins' strips */   /* v2.3.2429; v2.3.2431 the symmetry gate */
 import { getGearFrame, packTrimmed, registerGearSource, unregisterGearSource, subTexture, loadCroppedStrip } from '../gearSheets.js';   /* v2.3.2774: + the cropper and the upload hook for the combat strips; v2.3.3074: + its release */
+import { peerEntSprites } from '../artHolds.js';   /* v2.3.4416: every sprite of a peer who left, the gear too */
 import { releaseCanvasSource } from '../releaseCanvasTexture.js';   /* v2.3.3074: a canvas-made texture let go of for good (TRAPS §139) */
 import { gearTint, gearArt, gearArtSafe } from '../gearVariants.js'; /* v2.3.1764: the swing wears the same metal; v2.3.1772: ...and finds its sheets */
 import { materialTint, weaponTint } from '../traits/materialTints.js';
@@ -14746,14 +14747,13 @@ export class EffectsRenderer {
     /* reap sprites for peers who left the room. */
     for (const [id, ent] of pool) {
       if (!others[id]) {
-        if (ent.chop) ent.chop.destroy();
-        if (ent.cook) ent.cook.destroy();
-        if (ent.cookInk) ent.cookInk.destroy();   /* v2.3.2856 */
-        if (ent.fire) ent.fire.destroy();
-        if (ent.fireInk) ent.fireInk.destroy();   /* v2.3.2858 */
-        /* v2.3.1574: reap the trait sprites too — they are added to the same
-           layer, so leaking them on every peer who leaves is a slow leak. */
-        if (ent.traits) for (const k in ent.traits) { if (ent.traits[k]) ent.traits[k].destroy(); }
+        /* chop, cook and its ink (v2.3.2856), fire and its ink (v2.3.2858);
+           v2.3.1574: the trait sprites too -- they are added to the same
+           layer, so leaking them on every peer who leaves is a slow leak.
+           v2.3.4416: and the gear worn over them (legs, shirt, plate), left
+           hidden in the gesture layer until a rebuild (the sweep's V17b
+           R4-15): one list, artHolds.js peerEntSprites */
+        for (const sp of peerEntSprites(ent)) { if (!sp.destroyed) sp.destroy(); }
         if (ent.farm) this._destroyPeerFarmer(ent);   /* v2.3.3439 */
         pool.delete(id);
       }
