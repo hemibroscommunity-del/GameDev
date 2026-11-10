@@ -2,24 +2,27 @@
  *
  * The owner, 2026-11-09: "I want to make the system more manual.  I think only
  * making an attack after manual input is better than auto-attacking at
- * precisely the correct interval.  So maybe for bow and magic the system
- * becomes a timing game where the right joystick is held at a certain
- * direction and there's some kind of visual cue of build-up happening ...
- * until it lights up at full draw.  You'll already have your finger pointed
- * towards the enemy (rotation and everything still works the same) but the
- * timing of the attack is based on when you release.  Special attacks now
- * require you to tap the special attack button prior to buildup of the next
- * attack and upon release the special attack is active for that attack.
- * Remove the tap to target system for now ... For melee, keep the invisible
- * targeting system where it automatically faces the closest monster ... the
- * sword will be an icon on the button and need to build up before you tap
- * the button to attack."  And his answers the same day: "I want the timer to
- * reset if the user lets go of the held direction.  The exception to this is
- * melee."  "Hold as long as you like."  "Tapping early does nothing.  You
- * need to tap once it's ready."  "Yes for computer controls."  "Yes duels
- * lose tap lock."  "Don't do any monster adjustments."  "Just keep in mind
- * magic uses your finger to control the projectile once launched so none of
- * the new controls should interfere with that."
+ * precisely the correct interval."  "Remove the tap to target system for now
+ * ... I think this system will be easily botted and abused.  The timing
+ * intervals for manual human attacks will give a good fingerprint to identify
+ * bots."  "For melee, keep the invisible targeting system where it
+ * automatically faces the closest monster."  "Yes for computer controls."
+ * "Yes duels lose tap lock."  "Don't do any monster adjustments."  "Just keep
+ * in mind magic uses your finger to control the projectile once launched so
+ * none of the new controls should interfere with that."
+ *
+ * THE THIRD SHAPE OF IT.  The first was a DRAW: hold the stick, a build-up
+ * fills over the weapon's interval, let go at full to shoot (a sword: wait
+ * for the build-up, then tap).  Its build-up needed something to watch, and
+ * nowhere on the screen was right for it: on the attack button ("The thumb
+ * covers the indicator and the indicator itself is too subtle"), round the
+ * bro ("too obnoxious having it circle the player"), a bar over the joystick
+ * ("I don't like it.  Especially for bow and staffs.  Is there any
+ * alternatives?  I still like the no lock on monster for bow and staff, but
+ * maybe the sword you have to make a swipe motion each attack?").  Offered
+ * three ways on, the owner, 2026-11-10: "Try version a" --
+ *
+ *   EVERY ATTACK IS A SWIPE.  Nothing to wait on, nothing to watch.
  *
  * BEHIND A SWITCH while it is new: `?manual=1` in the address turns it on for
  * this phone or computer (and it stays on: localStorage `bt_manual`);
@@ -29,57 +32,65 @@
  * server/test/manual-combat.test.mjs; BroTown.jsx and monsterCombat.js call
  * it, docs/specs/manual-combat.md says where):
  *
- *   BOW AND STAFF -- a DRAW.  It starts when the thumb (or the mouse button)
- *     goes down, and is FULL after the weapon's own attack interval (the same
- *     number the held attack fired on: `need`, set each frame by the loop).
- *     Turning the aim never resets it.  Held past full it stays full for as
- *     long as you like.
- *       lift at full      -> one shot, at once, the way the thumb last pointed;
- *       lift before full  -> nothing, and the draw is LOST -- unless the thumb
- *                            is back within SLIP_MS (a thumb leaves glass for
- *                            an instant; that is not letting go), when it
- *                            carries on as if it never left;
- *       back to the stick's centre, then lift (a full draw) -> CANCEL: no
- *                            shot.  Inside its dead zone the stick writes no
- *                            aim, so a bolt you are steering does not turn.
+ *   A SWORD -- each SWIPE of the thumb is one swing: SWIPE_PX of travel
+ *     inside SWIPE_MS (a thumb that only drifts is not a swipe), anywhere on
+ *     the right side or across the attack button, any direction -- the sword
+ *     still faces the nearest monster by itself.  Back and forth without
+ *     lifting is a swing each stroke.  A tap swings nothing.
+ *
+ *   A BOW, A STAFF -- a FLICK: thumb down, moved, lifted SWIPE_PX or more
+ *     from where it touched = one shot, the way it moved.  A slow drag is the
+ *     same gesture made carefully: the sight turns with the thumb, and the
+ *     lift is the shot.  Back to where the thumb started (inside CENTRE_PX),
+ *     then lift: no shot.  A tap shoots nothing.  A QUICK flick (QUICK_MS)
+ *     is helped a little: its shot turns to a monster within ASSIST_DEG of
+ *     the way it pointed (mcAssist) -- a thumb is not a mouse.  A drag that
+ *     took its time is left exactly as aimed.
  *     A staff bolt in flight is steered by the held thumb exactly as before
  *     (projectiles.js reads S._aiming / S._aimAngle, which this file never
- *     writes): lift to launch, touch again to steer, and the next draw builds
- *     under the same thumb.
+ *     writes): flick to launch, touch and hold to steer.
  *
- *   MELEE -- NO HOLD.  The sword builds by itself after each swing (the same
- *     interval), and a TAP swings once it is ready.  A tap before that swings
- *     nothing, is not kept for later, and STARTS THE BUILD-UP AGAIN from that
- *     tap (the owner, 2026-11-10, of his own "Tapping early does nothing":
- *     "I also changed my mind about early swing penalty.  I think it should
- *     restart if you tap too early.  Otherwise player just mashes button.
- *     Plus adds a skill element and tension").
+ *   NO FASTER THAN THE WEAPON.  Each weapon keeps its own interval (the same
+ *     number the held attack fired on: the loop says it each frame, mcFrame).
+ *     A swipe that comes sooner attacks nothing and costs nothing; one that
+ *     comes within EARLY_MS of ready is kept for that moment (a thumb is not
+ *     a metronome).
  *
- *   A SPECIAL is ARMED by its button (a second press disarms), before or
- *     during the build-up, and the next attack made is the special.
+ *   A SPECIAL is ARMED by its button (a second press disarms), and the next
+ *     attack made is the special.  A flick never makes one.
+ *
+ *   A COMPUTER -- each CLICK is one attack, at the cursor.  Holding the
+ *     button down attacks once.
  *
  *   NO TAP-LOCK, for any weapon, duels included.  A sword still faces the
  *     nearest monster by itself (targeting.js's automatic lock).
  *
  * The worker is not changed by this: it already drops a hit that comes sooner
- * than its floors (combat.js, hitproof.js), and a draw can only make a
- * player's shots further apart than the held attack's.  Reading the spacing
- * of those shots as a sign of a script (the owner: "The timing intervals for
- * manual human attacks will give a good fingerprint to identify bots") is the
- * worker's next step, in its own change.
+ * than its floors (combat.js, hitproof.js), and nothing here attacks faster
+ * than the held attack did.  Reading the spacing and the shape of those
+ * swipes as a sign of a script is the worker's next step, in its own change.
  */
 
 export var MANUAL = {
-  /* a thumb back on the glass within this long never left (the owner agreed:
-     "a tiny slip allowance ... about a tenth of a second") */
-  SLIP_MS: 100,
+  /* a swipe: this far (CSS px) ... */
+  SWIPE_PX: 24,
+  /* ...inside this long, for a sword's stroke (a thumb that drifts 24 px in
+     a second has not swiped) */
+  SWIPE_MS: 280,
   /* how close to where the thumb first touched counts as "back at the centre"
-     for a cancel: the stick's own dead zone (BroTown rJoyAim, 8 px) */
+     for a bow's or a staff's cancel: the stick's own dead zone (BroTown
+     rJoyAim, 8 px) */
   CENTRE_PX: 8,
-  /* a shot asked for by a lift is the loop's to take on its next frame; one
-     it could not take (dazed, in the air, the shield up) is let go after this */
+  /* a flick this quick from touch to lift is helped to a monster near its
+     line; a slower one was aimed, and is left alone */
+  QUICK_MS: 350,
+  ASSIST_DEG: 12,
+  /* a swipe this much too soon is kept until the weapon is ready */
+  EARLY_MS: 180,
+  /* a shot asked for is the loop's to take on its next frame; one it could
+     not take (dazed, in the air, the shield up) is let go after this */
   FIRE_HOLD_MS: 250,
-  /* the draw when the loop has not said yet (the first frame of a session) */
+  /* the interval when the loop has not said yet (the first frame of a session) */
   NEED_DEFAULT_MS: 600,
   KEY: 'bt_manual',
 };
@@ -110,107 +121,135 @@ export function setManualCombat(v) { _on = !!v; }
 
 function st(S) {
   if (!S) return null;
-  if (!S._mc) S._mc = { drawAt: 0, liftAt: 0, fireAt: 0, armed: false, need: MANUAL.NEED_DEFAULT_MS, meleeNeed: MANUAL.NEED_DEFAULT_MS, slot: null, n: 0, earlyAt: 0, early: 0 };
+  if (!S._mc) S._mc = { fireAt: 0, fireUntil: 0, swingUntil: 0, armed: false, need: MANUAL.NEED_DEFAULT_MS, meleeNeed: MANUAL.NEED_DEFAULT_MS, slot: null, n: 0, early: 0, down: false, ox: 0, oy: 0, ot: 0, ax: 0, ay: 0, at: 0 };
   return S._mc;
 }
 function slotOf(S) { return (S && S.rpg && S.rpg.activeSlot) || 'melee'; }
-/** Does this weapon draw (the bow, the staff)?  A sword does not. */
-export function mcDraws(S) { var s = slotOf(S); return s === 'ranged' || s === 'staff'; }
+/** Does this weapon shoot (the bow, the staff)?  A sword does not. */
+export function mcShoots(S) { var s = slotOf(S); return s === 'ranged' || s === 'staff'; }
 
-/** The loop says, each frame, how long this weapon's draw is and how long a
- *  sword takes to be ready again; and what time it is (a slip that was not
- *  taken back, a shot nobody took, a weapon changed mid-draw). */
+/** The loop says, each frame, how long this weapon's interval is (a bow's or
+ *  a staff's, and a sword's); and what time it is (a shot nobody took, a
+ *  weapon changed with a swipe waiting). */
 export function mcFrame(S, now, need, meleeNeed) {
   var m = st(S);
   if (!m) return;
   if (need > 0) m.need = need;
   if (meleeNeed > 0) m.meleeNeed = meleeNeed;
   var slot = slotOf(S);
-  if (m.slot !== slot) { m.slot = slot; m.drawAt = 0; m.liftAt = 0; m.fireAt = 0; m.earlyAt = 0; }   /* another weapon in hand: its own draw */
-  if (m.liftAt && now - m.liftAt > MANUAL.SLIP_MS) { m.drawAt = 0; m.liftAt = 0; }   /* let go for real: the draw is lost */
-  if (m.fireAt && now - m.fireAt > MANUAL.FIRE_HOLD_MS) m.fireAt = 0;
+  if (m.slot !== slot) { m.slot = slot; m.fireAt = 0; m.fireUntil = 0; m.swingUntil = 0; }   /* another weapon in hand: nothing of the last one's waits */
+  if (m.fireAt && now > m.fireUntil) { m.fireAt = 0; m.fireUntil = 0; }
+  if (m.swingUntil && now > m.swingUntil) m.swingUntil = 0;
 }
 
-/** The thumb (or the mouse button) went down.  A draw starts -- or, within
- *  the slip allowance of a lift, carries on.  Nothing for a sword. */
-export function mcPress(S, now) {
-  var m = st(S);
-  if (!m || !mcDraws(S)) return 'none';
-  if (m.drawAt && m.liftAt && now - m.liftAt <= MANUAL.SLIP_MS) { m.liftAt = 0; return 'resumed'; }
-  if (m.drawAt && !m.liftAt) return 'held';   /* a second finger, a repeated press: the draw under way is the draw */
-  m.drawAt = now; m.liftAt = 0;
-  return 'started';
-}
-
-/** The thumb lifted (or the mouse button came up).  `cancel`: it came back to
- *  the stick's centre first.  Returns 'fire' (a full draw: the loop takes the
- *  shot), 'cancel', 'slip' (not full: lost unless the thumb is back in time)
- *  or 'none'. */
-export function mcLift(S, now, cancel) {
-  var m = st(S);
-  if (!m || !m.drawAt || m.liftAt) return 'none';
-  if (!mcDraws(S)) { m.drawAt = 0; return 'none'; }
-  if (now - m.drawAt >= m.need) {
-    m.drawAt = 0; m.liftAt = 0;
-    if (cancel) return 'cancel';
-    m.fireAt = now; m.n += 1;
-    return 'fire';
-  }
-  m.liftAt = now;
-  return 'slip';
-}
-
-/** The press ended some other way than a lift (the button went away under
- *  the thumb, the thumb slid on to the shield, the window lost focus): the
- *  draw is dropped, and nothing is fired. */
-export function mcAbort(S) {
-  var m = S && S._mc;
-  if (!m) return;
-  if (m.drawAt && !m.liftAt) m.drawAt = 0;
-}
-
-/** Is a shot waiting for the loop (a full draw was just let go)? */
-export function mcFireWaiting(S, now) {
-  var m = S && S._mc;
-  return !!m && !!m.fireAt && now - m.fireAt <= MANUAL.FIRE_HOLD_MS;
-}
-/** The loop took it (or found nothing to shoot at): once only. */
-export function mcFireDone(S) { var m = S && S._mc; if (m) m.fireAt = 0; }
-
-/** How far along the build-up is, 0 to 1: the draw for a bow or a staff (0
- *  with no thumb down), the time since the last swing for a sword. */
-export function mcFrac(S, now) {
+/** How long until this weapon may attack again (0: now).  Measured from its
+ *  last attack (S.swingTimer, which every swing and shot stamps). */
+export function mcReadyIn(S, now) {
   var m = st(S);
   if (!m) return 0;
-  if (mcDraws(S)) {
-    if (!m.drawAt) return 0;
-    var t = (m.liftAt || now) - m.drawAt;
-    return Math.max(0, Math.min(1, t / Math.max(1, m.need)));
-  }
-  var since = now - mcMeleeFrom(S);
-  return Math.max(0, Math.min(1, since / Math.max(1, m.meleeNeed)));
+  var need = mcShoots(S) ? m.need : m.meleeNeed;
+  return Math.max(0, need - (now - ((S && S.swingTimer) || 0)));
 }
-/** Full: a lift now would shoot; a tap now would swing. */
-export function mcReady(S, now) { return mcFrac(S, now) >= 1; }
+export function mcReady(S, now) { return mcReadyIn(S, now) === 0; }
 
-/** When the sword's build-up began: its last swing, or a later tap that came
- *  too early (mcMeleeEarly). */
-export function mcMeleeFrom(S) {
+/** The thumb went down at (x, y): a swipe may start here. */
+export function mcSwipeStart(S, now, x, y) {
+  var m = st(S);
+  if (!m) return;
+  m.down = true; m.ox = x; m.oy = y; m.ot = now; m.ax = x; m.ay = y; m.at = now;
+}
+
+/** The thumb moved to (x, y).  A SWORD: 'swing' each time it has gone
+ *  SWIPE_PX from where its last stroke ended, inside SWIPE_MS (the caller
+ *  asks mcMeleeMay and swings); a thumb that drifts is followed, not
+ *  counted.  A bow or a staff: 'none' -- theirs is the lift. */
+export function mcSwipeMove(S, now, x, y) {
+  var m = st(S);
+  if (!m || !m.down || mcShoots(S)) return 'none';
+  if (now - m.at > MANUAL.SWIPE_MS) { m.ax = x; m.ay = y; m.at = now; return 'none'; }
+  var dx = x - m.ax, dy = y - m.ay;
+  if (dx * dx + dy * dy < MANUAL.SWIPE_PX * MANUAL.SWIPE_PX) return 'none';
+  m.ax = x; m.ay = y; m.at = now;
+  return 'swing';
+}
+
+/** The thumb lifted at (x, y).  A BOW or a STAFF: 'fire' when it is
+ *  SWIPE_PX or more from where it touched and the weapon is ready (or will
+ *  be inside EARLY_MS: the loop takes the shot then); 'early' when the
+ *  weapon is not; 'cancel' when it came back to the centre having left it;
+ *  'none' for a tap.  A sword: 'none'.  `quick` in the answer's second word
+ *  is the caller's to ask (mcWasQuick). */
+export function mcSwipeEnd(S, now, x, y) {
+  var m = st(S);
+  if (!m || !m.down) return 'none';
+  m.down = false;
+  if (!mcShoots(S)) return 'none';
+  var dx = x - m.ox, dy = y - m.oy, d2 = dx * dx + dy * dy;
+  if (d2 < MANUAL.SWIPE_PX * MANUAL.SWIPE_PX) return d2 <= MANUAL.CENTRE_PX * MANUAL.CENTRE_PX ? 'cancel' : 'none';
+  return mcAskShot(S, now);
+}
+/** Was the press that just ended a quick flick (helped: mcAssist), not a
+ *  drag that took its time (left as aimed)? */
+export function mcWasQuick(S, now) { var m = S && S._mc; return !!m && now - m.ot <= MANUAL.QUICK_MS; }
+
+/** The press ended some other way than a lift (the button went away under
+ *  the thumb, the thumb slid on to the shield, the window lost focus):
+ *  nothing is attacked. */
+export function mcAbort(S) { var m = S && S._mc; if (m) m.down = false; }
+
+/** One shot is asked for (a flick's lift, a computer's click): 'fire' when
+ *  the weapon is ready or nearly, else 'early'. */
+export function mcAskShot(S, now) {
+  var m = st(S);
+  if (!m || !mcShoots(S)) return 'none';
+  var wait = mcReadyIn(S, now);
+  if (wait > MANUAL.EARLY_MS) { m.early += 1; return 'early'; }
+  m.fireAt = now; m.fireUntil = now + wait + MANUAL.FIRE_HOLD_MS; m.n += 1;
+  return 'fire';
+}
+/** Is a shot waiting for the loop? */
+export function mcFireWaiting(S, now) {
   var m = S && S._mc;
-  return Math.max((S && S.swingTimer) || 0, (m && m.earlyAt) || 0);
+  return !!m && !!m.fireAt && now <= m.fireUntil;
 }
-/** A sword's tap: may it swing now?  (Asking changes nothing.) */
-export function mcMeleeMay(S, now) {
-  if (!S || mcDraws(S)) return false;
+/** The loop took it (or found it could not): once only. */
+export function mcFireDone(S) { var m = S && S._mc; if (m) { m.fireAt = 0; m.fireUntil = 0; } }
+
+/** A sword's stroke: may it swing now?  'yes'; 'soon' (inside EARLY_MS of
+ *  ready: kept, mcSwingWaiting says when); 'no'. */
+export function mcMeleeAsk(S, now) {
+  if (!S || mcShoots(S)) return 'no';
   var m = st(S);
-  return now - mcMeleeFrom(S) >= m.meleeNeed;
+  var wait = mcReadyIn(S, now);
+  if (wait === 0) return 'yes';
+  if (wait <= MANUAL.EARLY_MS) { m.swingUntil = now + wait + MANUAL.FIRE_HOLD_MS; return 'soon'; }
+  m.early += 1;
+  return 'no';
 }
-/** A sword's tap came too early: nothing swings, and the build-up starts
- *  again from this tap -- mashing the button never swings. */
-export function mcMeleeEarly(S, now) {
-  var m = st(S);
-  if (!m || mcDraws(S)) return;
-  m.earlyAt = now; m.early = (m.early || 0) + 1;
+/** A sword's stroke that came a moment early: is it due now? */
+export function mcSwingWaiting(S, now) {
+  var m = S && S._mc;
+  return !!m && !!m.swingUntil && now <= m.swingUntil && !mcShoots(S) && mcReadyIn(S, now) === 0;
+}
+export function mcSwingDone(S) { var m = S && S._mc; if (m) m.swingUntil = 0; }
+
+/** A quick flick's help: the way to the monster nearest the flick's line,
+ *  if one is within ASSIST_DEG of it and `reach` px of (px, py); else the
+ *  flick's own angle.  `pts` is [{x, y}] -- where a shot at each would be
+ *  aimed (the caller's: this file knows no monsters). */
+export function mcAssist(ang, px, py, pts, reach) {
+  var best = ang, bestOff = MANUAL.ASSIST_DEG * Math.PI / 180;
+  if (!pts) return ang;
+  for (var i = 0; i < pts.length; i++) {
+    var p = pts[i];
+    if (!p) continue;
+    var dx = p.x - px, dy = p.y - py;
+    if (reach > 0 && dx * dx + dy * dy > reach * reach) continue;
+    var a = Math.atan2(dy, dx);
+    var off = Math.abs(Math.atan2(Math.sin(a - ang), Math.cos(a - ang)));
+    if (off <= bestOff) { bestOff = off; best = a; }
+  }
+  return best;
 }
 
 /** The special's button: arm it for the next attack, or disarm it. */
@@ -232,7 +271,7 @@ if (typeof window !== 'undefined') {
         var S = window._gameState && window._gameState.current;
         var m = S && S._mc;
         var now = Date.now();
-        return m ? { drawAt: m.drawAt, liftAt: m.liftAt, fireAt: m.fireAt, armed: m.armed, need: m.need, meleeNeed: m.meleeNeed, slot: m.slot, shots: m.n, early: m.early || 0, earlyAt: m.earlyAt || 0, frac: mcFrac(S, now), ready: mcReady(S, now) } : null;
+        return m ? { fireAt: m.fireAt, armed: m.armed, need: m.need, meleeNeed: m.meleeNeed, slot: m.slot, shots: m.n, early: m.early || 0, down: !!m.down, readyIn: mcReadyIn(S, now), ready: mcReady(S, now) } : null;
       },
     };
   } catch (e) { /* no window */ }

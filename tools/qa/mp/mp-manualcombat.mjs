@@ -1,32 +1,33 @@
 /* ═══ MANUAL COMBAT ON A PHONE AND A COMPUTER (v2.3.4357, docs/specs/manual-combat.md) ═══
  *
  * The owner, 2026-11-09: "only making an attack after manual input is better
- * than auto-attacking at precisely the correct interval ... the timing of the
- * attack is based on when you release."  Behind `?manual=1`.
+ * than auto-attacking at precisely the correct interval."  And, 2026-11-10,
+ * of the draw-and-release it first was: "I don't like it ... maybe the sword
+ * you have to make a swipe motion each attack?" -- "Try version a": EVERY
+ * ATTACK IS A SWIPE.  Behind `?manual=1`.
  *
  * A real phone (390 x 844, real touch events on the right stick and the
- * attack disc) in the Wheel's BroTown, with a bow, standing under the Town
- * Hall (a bow looses only at something: the hall is something, and takes the
- * arrows -- mp-bowprops' own ground):
- *   1. the switch is on, and the worker was told nothing new;
- *   2. HOLDING the stick toward the hall fires NOTHING, however long: the
- *      build-up ring appears on the button, fills and lights up (full), the
- *      bow's badge showing;
- *   3. LIFTING at full looses exactly ONE arrow;
- *   4. lifting BEFORE full looses nothing and the draw is lost;
- *   5. a thumb that slips off and is back within 100 ms keeps its draw, and
- *      the lift at full looses one;
- *   6. drawn to full, brought back to where the thumb first touched, then
- *      lifted: CANCELLED, no arrow;
- *   7. the special's button ARMS it (it reads armed), and the next lift at
- *      full is the special, once;
- *   8. a SWORD: its tap on the disc swings; a tap straight after it (early)
- *      does nothing, is not kept, and a hold swings nothing; once ready, a
- *      tap swings again; the badge is the sword;
+ * attack disc) in the Wheel's BroTown, with a bow, under the Town Hall:
+ *   1. the switch is on; nothing is drawn for it (no gauge);
+ *   2. HOLDING the stick fires NOTHING, however long; its lift (a slow drag:
+ *      aimed) is ONE arrow, the way the thumb pointed;
+ *   3. a quick FLICK is one arrow, the way it went;
+ *   4. a tap, and a thumb that barely moved, shoot nothing;
+ *   5. dragged out, brought back to where the thumb touched, lifted: no shot;
+ *   6. no faster than the bow: a flick straight after a shot shoots nothing
+ *      and costs nothing; one a moment before the bow is ready is kept for
+ *      that moment;
+ *   7. the special's button ARMS it; a bow's flick with no line on a monster
+ *      is an ordinary arrow and the special stays armed; a sword's stroke
+ *      takes it;
+ *   8. a SWORD: a tap swings nothing; a STROKE across the disc swings; the
+ *      stroke back, straight after, swings nothing (and costs nothing); once
+ *      ready, a stroke swings again; a thumb that drifts is not a stroke; a
+ *      stroke on the right side of the screen swings too;
  *   9. a lock a player chose does not last a frame.
  * And a computer (1280 x 800, a mouse):
- *  10. holding the mouse button fires nothing; its release at full looses
- *      one arrow toward the cursor; the right click arms the special.
+ *  10. each click is one arrow at the cursor, however long the button is
+ *      held; the right click arms the special; a sword's click swings.
  *  11. no page errors.
  * Pictures: tools/qa/mp/out/manualcombat-*.png.
  */
@@ -80,8 +81,19 @@ const installTouch = (P) => P.page.evaluate(() => {
   };
   window.__zone = () => document.querySelector('[data-joyzone="R"]');
   window.__disc = () => document.querySelector('.bt-rjoy-base');
+  /* the clock, not a timer: this box's timers run late (a 100 ms interval fires every 800) */
+  window.__spin = (until) => { while (Date.now() < until) { /* wait */ } };
+  /* one whole flick in one task: down at (x, y), through the middle, up at (x + dx, y + dy) */
+  window.__flick = (el, x, y, dx, dy, id) => {
+    window.__touch(el, 'touchstart', x, y, id);
+    window.__touch(el, 'touchmove', x + dx / 2, y + dy / 2, id);
+    window.__touch(el, 'touchmove', x + dx, y + dy, id);
+    window.__touch(el, 'touchend', x + dx, y + dy, id);
+  };
+  /* resolve when the weapon is ready (and `extra` ms more) */
+  window.__ready = (extra) => new Promise((res) => { const t0 = performance.now(); const tick = () => { const st = window.__btManual.state(); if ((st && st.ready) || performance.now() - t0 > 6000) setTimeout(res, extra || 0); else setTimeout(tick, 20); }; tick(); });
 });
-const mc = (P) => P.page.evaluate(() => ({ st: window.__btManual ? window.__btManual.state() : null, gauge: window.__btManualGauge ? { ...window.__btManualGauge } : null, shots: window.__qaShots, swingTimer: window._gameState.current.swingTimer, early: window._gameState.current._mcEarly || 0 }));
+const mc = (P) => P.page.evaluate(() => ({ st: window.__btManual ? window.__btManual.state() : null, aim: window._gameState.current._lastAimAngle, shots: window.__qaShots, swingTimer: window._gameState.current.swingTimer, early: window._gameState.current._mcEarly || 0 }));
 const wait = (P, ms) => P.page.waitForTimeout(ms);
 /* thumb down on the stick's zone at (x, y), then dragged `dy` up (the aim: straight up the screen) */
 const down = (P, x, y, dy = -60, id = 7) => P.page.evaluate(({ x, y, dy, id }) => { const z = window.__zone(); window.__touch(z, 'touchstart', x, y, id); window.__touch(z, 'touchmove', x, y + dy / 2, id); window.__touch(z, 'touchmove', x, y + dy, id); }, { x, y, dy, id });
@@ -89,11 +101,6 @@ const move = (P, x, y, id = 7) => P.page.evaluate(({ x, y, id }) => window.__tou
 const up = (P, x, y, id = 7) => P.page.evaluate(({ x, y, id }) => window.__touch(window.__zone(), 'touchend', x, y, id), { x, y, id });
 const shotsNow = (P) => P.page.evaluate(() => window.__qaShots);
 const resetShots = (P) => P.page.evaluate(() => { window.__qaShots = 0; });
-const waitFull = (P, extra = 250) => P.page.evaluate((extra) => new Promise((res) => {
-  const t0 = performance.now();
-  const tick = () => { const s = window.__btManual.state(); if ((s && s.ready) || performance.now() - t0 > 6000) setTimeout(() => res(s), extra); else setTimeout(tick, 30); };
-  tick();
-}), extra);
 /* shots counted once the loop has had frames to take a lift (this box draws a few frames a second) */
 const settleShots = async (P, want, ms = 2500) => { const t0 = Date.now(); let n = 0; while (Date.now() - t0 < ms) { n = await shotsNow(P); if (n >= want) break; await wait(P, 120); } await wait(P, 500); return shotsNow(P); };
 
@@ -128,113 +135,73 @@ async function phone({ browser, wsPort, webPort, rec, OUT }) {
 
     /* ── 1 ── */
     const on = await P.page.evaluate(() => ({ on: !!(window.__btManual && window.__btManual.on()), stored: localStorage.getItem('bt_manual'), gauge: !!document.querySelector('[data-manual-gauge]') }));
-    rec.ok('1 `?manual=1` turns manual combat on, remembers it, and mounts the build-up gauge', on.on && on.stored === '1' && on.gauge, on);
+    rec.ok('1 `?manual=1` turns manual combat on and remembers it; nothing is drawn for it (no gauge)', on.on && on.stored === '1' && !on.gauge, on);
 
     const armed = await arm(P, 'ranged');
     const hall = await standUnderHall(P, rec, 'phone ');
     if (!hall) return;
     const X = 300, Y = 430;   /* on the right half, over the world, clear of the buttons */
+    const near = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
 
-    /* ── 2 ── holding fires nothing; the gauge fills and lights */
+    /* ── 2 ── holding fires nothing; the lift is the shot */
     await resetShots(P);
-    await wait(P, 300);
-    const rest = await mc(P);
-    rec.ok('2z at rest the ready bar is empty (or away): nothing has been drawn yet',
-      !rest.gauge || rest.gauge.vis === false || (rest.gauge.frac === 0 && rest.gauge.full === false), rest.gauge);
-    await down(P, X, Y);
-    await wait(P, 400);
-    const mid = await mc(P);
-    const full = await waitFull(P, 900);
+    await down(P, X, Y);              /* thumb down, dragged 60 px up the screen */
+    await wait(P, 1800);              /* three of the bow's intervals and more */
     const held = await mc(P);
-    await shot('1-full-draw');
-    rec.ok(`2a holding the stick toward the hall fires nothing (${held.shots} arrows in ${Math.round((held.st && held.st.need) || 0)} ms and more)`,
-      armed.wpn === 'bow' && held.shots === 0 && !!held.st && held.st.drawAt > 0 && held.st.ready === true, { mid: mid.st, held: held.st, shots: held.shots });
-    rec.ok('2b the build-up shows on the button: the ring fills, then lights up at full, the bow\'s badge on it',
-      !!held.gauge && held.gauge.vis === true && held.gauge.full === true && held.gauge.kind === 'bow' && !!full && full.ready === true
-      && !!mid.gauge && mid.gauge.vis === true && mid.gauge.frac > 0 && mid.gauge.frac <= 1, { mid: mid.gauge, held: held.gauge });
-    /* v2.3.4357 (the owner: "The thumb covers the indicator and the indicator itself is too subtle", then of a
-       ring round the bro "too obnoxious ... Maybe north of the right joystick can be a ready bar"): a BAR,
-       over the disc, on no other control, off the bro */
-    const ring = await P.page.evaluate(() => {
-      const g = document.querySelector('[data-manual-gauge]'), d = document.querySelector('.bt-rjoy-base');
-      const a = g.getBoundingClientRect(), b = d.getBoundingClientRect();
-      const S = window._gameState.current, cv = document.querySelector('canvas.brotown-canvas') || document.querySelector('canvas'), c = cv.getBoundingClientRect();
-      const px = c.left + (S.player.x - S.camera.x) * (S._worldScaleX || 1), py = c.top + (S.player.y - S.camera.y) * (S._worldScaleY || 1);
-      const SEL = '[data-sprint], [data-ride], [data-quickeat], [data-jump], [data-shield], [data-special], [data-weapon-tri], [data-weapon-pill], [data-ability], .bt-burst-btn, .bt-charge-pie, [data-trap-round]';
-      /* the bar with its badge: everything it draws */
-      let l = a.left, t = a.top, r = a.right, bt = a.bottom;
-      g.querySelectorAll('div').forEach((el) => { if (el.className && /bt-mc-(halo|pop)/.test(el.className)) return; const q = el.getBoundingClientRect(); if (q.width < 2) return; l = Math.min(l, q.left); t = Math.min(t, q.top); r = Math.max(r, q.right); bt = Math.max(bt, q.bottom); });
-      const on = [];
-      document.querySelectorAll(SEL).forEach((el) => { const q = el.getBoundingClientRect(); if (q.width > 8 && q.height > 8 && l < q.right && r > q.left && t < q.bottom && bt > q.top) on.push((el.getAttribute('class') || '') + ' ' + Array.from(el.attributes).filter((x) => /^data-/.test(x.name)).map((x) => x.name).join(',')); });
-      const fill = g.querySelector('[data-mc-fill]'), f = fill.getBoundingClientRect(), halo = g.querySelector('.bt-mc-halo');
-      return { full: g.getAttribute('data-mc-full'), kind: g.getAttribute('data-mc-kind'), pe: getComputedStyle(g).pointerEvents,
-        g: [Math.round(a.left), Math.round(a.top), Math.round(a.width), Math.round(a.height)], d: [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)],
-        bro: [Math.round(px), Math.round(py)], on,
-        north: a.bottom <= b.top && Math.abs((a.left + a.width / 2) - (b.left + b.width / 2)) <= 40, above: Math.round(b.top - a.bottom),
-        offBro: px < l - 20 || px > r + 20 || py < t - 40 || py > bt + 40,
-        filled: f.width >= a.width - 6 && getComputedStyle(fill).backgroundColor,
-        lit: !!halo && halo.classList.contains('bt-mc-lit') && parseFloat(getComputedStyle(halo).opacity) > 0.2,
-        inside: l >= 0 && r <= innerWidth && t >= 0 && bt <= innerHeight };
-    });
-    rec.ok(`2c ...a ready bar ${ring.g[2]} x ${ring.g[3]} px NORTH of the attack disc (${ring.above} px over its top), on no other control, off the bro, filled and lit at full, taking no touch`,
-      ring.full === '1' && ring.kind === 'bow' && ring.pe === 'none' && ring.north && ring.on.length === 0 && ring.offBro && !!ring.filled && ring.lit && ring.g[2] >= 100 && ring.g[3] >= 14 && ring.inside, ring);
-
-    /* ── 3 ── the lift at full looses one */
     await up(P, X, Y - 60);
+    const n2 = await settleShots(P, 1);
+    const after2 = await mc(P);
+    rec.ok(`2a holding the stick fires nothing (${held.shots} arrows in 1.8 s, the bow's interval ${Math.round((held.st && held.st.need) || 0)} ms)`,
+      armed.wpn === 'bow' && held.shots === 0 && !!held.st && held.st.need < 1500, { st: held.st, shots: held.shots });
+    rec.ok(`2b its lift is exactly ONE arrow (${n2}), straight up the screen as the thumb pointed`, n2 === 1 && near(after2.aim, -Math.PI / 2) < 0.05, { n2, aim: after2.aim });
+
+    /* ── 3 ── a quick flick */
+    await resetShots(P);
+    await P.page.evaluate(() => window.__ready(60));
+    await P.page.evaluate(({ X, Y }) => window.__flick(window.__zone(), X, Y, 40, -40, 31), { X, Y });
     const n3 = await settleShots(P, 1);
     const after3 = await mc(P);
-    rec.ok(`3 lifting at full looses exactly ONE arrow (${n3})`, n3 === 1 && after3.st.drawAt === 0 && after3.st.shots === 1, { n3, st: after3.st });
-    await wait(P, 900);
+    rec.ok(`3 a quick flick up and to the right is ONE arrow (${n3}), the way it went`, n3 === 1 && near(after3.aim, -Math.PI / 4) < 0.05, { n3, aim: after3.aim });
 
-    /* ── 4 ── an early lift looses nothing, and the draw is lost */
+    /* ── 4 ── a tap, a thumb that barely moved */
     await resetShots(P);
-    /* in one task: this box's frames are a few hundred ms long, and a lift
-       sent by a second call could come after the draw is full */
-    const e1 = await P.page.evaluate(({ X, Y }) => {
-      const z = window.__zone();
-      window.__touch(z, 'touchstart', X, Y, 7); window.__touch(z, 'touchmove', X, Y - 30, 7); window.__touch(z, 'touchmove', X, Y - 60, 7);
-      const before = window.__btManual.state();
-      window.__touch(z, 'touchend', X, Y - 60, 7);
-      return { before, after: window.__btManual.state() };
+    await P.page.evaluate(() => window.__ready(60));
+    await P.page.evaluate(({ X, Y }) => { const z = window.__zone(); window.__touch(z, 'touchstart', X, Y, 32); window.__touch(z, 'touchend', X, Y, 32); window.__flick(z, X, Y, 12, -8, 33); }, { X, Y });
+    await wait(P, 1200);
+    const n4 = await shotsNow(P);
+    rec.ok(`4 a tap and a 14 px nudge shoot nothing (${n4})`, n4 === 0, { n4 });
+
+    /* ── 5 ── out, back to the centre, lift: no shot */
+    await P.page.evaluate(({ X, Y }) => { const z = window.__zone(); window.__touch(z, 'touchstart', X, Y, 34); window.__touch(z, 'touchmove', X, Y - 60, 34); window.__touch(z, 'touchmove', X + 3, Y - 2, 34); window.__touch(z, 'touchend', X + 3, Y - 2, 34); }, { X, Y });
+    await wait(P, 1200);
+    const n5 = await shotsNow(P);
+    rec.ok(`5 dragged out, brought back to where the thumb touched, lifted: no shot (${n5})`, n5 === 0, { n5 });
+
+    /* ── 6 ── no faster than the bow.  The times are held by the clock in ONE task (this box's timers
+       run late), and "an arrow has just left" is stamped on the bow's own clock (S.swingTimer, which
+       every shot stamps) rather than waited for across this box's slow frames. */
+    await resetShots(P);
+    await P.page.evaluate(() => window.__ready(60));
+    const pace = await P.page.evaluate(({ X, Y }) => {
+      const S = window._gameState.current, z = window.__zone(), st = () => window.__btManual.state();
+      const need = st().need, e0 = st().early;
+      const T = Date.now(); S.swingTimer = T;   /* an arrow has just left */
+      window.__spin(T + 80);
+      window.__flick(z, X, Y, 0, -50, 36);      /* far too soon */
+      const a = { early: st().early, fireAt: st().fireAt, readyIn: st().readyIn, swingTimer: S.swingTimer };
+      window.__spin(T + need - 100);
+      window.__flick(z, X, Y, 0, -50, 37);      /* a moment too soon: kept */
+      const b = { early: st().early, fireAt: st().fireAt, readyIn: st().readyIn };
+      return { need, e0, T, a, b };
     }, { X, Y });
-    await wait(P, 1500);
-    const e2 = await mc(P);
-    rec.ok('4 lifting before full looses nothing, and the draw is lost (the timer resets)',
-      !!e1.before && e1.before.drawAt > 0 && e1.before.ready === false && e1.after.liftAt > 0 && e2.shots === 0 && e2.st.drawAt === 0 && e2.st.shots === 1, { e1, e2: e2.st, shots: e2.shots });
+    const n6 = await settleShots(P, 1, 3500);
+    rec.ok(`6a a flick 80 ms after a shot shoots nothing and costs nothing (the bow's ${Math.round(pace.need || 0)} ms is not started again)`,
+      pace.a.early === pace.e0 + 1 && pace.a.fireAt === 0 && pace.a.swingTimer === pace.T && pace.need > 300, pace);
+    rec.ok(`6b a flick 100 ms before the bow is ready is kept for that moment, and is the one arrow of the two flicks (${n6})`, pace.b.fireAt > 0 && pace.b.early === pace.a.early && n6 === 1, { pace, n6 });
 
-    /* ── 5 ── a slip inside the allowance keeps the draw */
+    /* ── 7 ── the special is armed by its button */
     await resetShots(P);
-    const slip = await P.page.evaluate(({ X, Y }) => new Promise((res) => {
-      const z = window.__zone();
-      window.__touch(z, 'touchstart', X, Y, 8); window.__touch(z, 'touchmove', X, Y - 30, 8); window.__touch(z, 'touchmove', X, Y - 60, 8);
-      const d0 = window.__btManual.state().drawAt;
-      /* the thumb leaves the glass and is back at once (one task: a timer of
-         40 ms can be 300 ms late under this box's frames, past the allowance) */
-      window.__touch(z, 'touchend', X, Y - 60, 8);
-      const off = window.__btManual.state().liftAt;
-      window.__touch(z, 'touchstart', X, Y, 9); window.__touch(z, 'touchmove', X, Y - 30, 9); window.__touch(z, 'touchmove', X, Y - 60, 9);
-      const s = window.__btManual.state();
-      res({ d0, off, d1: s.drawAt, liftAt: s.liftAt });
-    }), { X, Y });
-    await waitFull(P, 300);
-    await up(P, X, Y - 60, 9);
-    const n5 = await settleShots(P, 1);
-    rec.ok(`5 a thumb that slips off and is straight back keeps its draw (the same one), and the lift at full looses one (${n5})`,
-      slip.d0 > 0 && slip.off > 0 && slip.d1 === slip.d0 && slip.liftAt === 0 && n5 === 1, { slip, n5 });
-    await wait(P, 900);
-
-    /* ── 6 ── cancel */
-    await resetShots(P);
-    await down(P, X, Y);
-    await waitFull(P, 300);
-    await move(P, X, Y - 3);          /* back to where the thumb first touched */
-    await up(P, X, Y - 3);
-    await wait(P, 1500);
-    const c6 = await mc(P);
-    rec.ok('6 drawn to full, brought back to the stick\'s centre, then lifted: cancelled, no arrow', c6.shots === 0 && c6.st.drawAt === 0 && c6.st.fireAt === 0, { st: c6.st, shots: c6.shots });
-
-    /* ── 7 ── the special is armed by its button, and is the next attack */
-    await resetShots(P);
+    await P.page.evaluate(() => window.__ready(60));
     const before7 = await P.page.evaluate(() => {
       const b = document.querySelector('[data-special]');
       if (!b) return { btn: false };
@@ -242,21 +209,22 @@ async function phone({ browser, wsPort, webPort, rec, OUT }) {
       window.__touch(b, 'touchstart', r.left + r.width / 2, r.top + r.height / 2, 11);
       window.__touch(b, 'touchend', r.left + r.width / 2, r.top + r.height / 2, 11);
       const S = window._gameState.current;
-      return { btn: true, armed: window.__btManual.state().armed, lastSwipe: S._lastSwipe || 0, mana: S.rpg.mana };
+      return { btn: true, armed: window.__btManual.state().armed, lastSwipe: S._lastSwipe || 0, sight: !!(S._bowSight && S._bowSight.d != null) };
     });
     await wait(P, 500);
-    const btn7 = await P.page.evaluate(() => ({ attr: (document.querySelector('[data-special]') || { getAttribute: () => null }).getAttribute('data-special'), star: (document.querySelector('[data-manual-gauge]') || { getAttribute: () => null }).getAttribute('data-mc-armed') }));
-    await down(P, X, Y);
-    await waitFull(P, 300);
-    await shot('2-armed-full');
-    await up(P, X, Y - 60);
-    await settleShots(P, 1, 3000);
-    const after7 = await P.page.evaluate(() => { const S = window._gameState.current; return { armed: window.__btManual.state().armed, lastSwipe: S._lastSwipe || 0, queued: !!S._bowSpecialQueued, shots: window.__qaShots, mana: S.rpg.mana }; });
-    rec.ok('7a the special\'s button is there and ARMS it for the next attack (it reads armed; the gauge wears its star)',
-      before7.btn && before7.armed === true && btn7.attr === 'armed' && btn7.star === '1', { before7, btn7 });
-    rec.ok(`7b the next lift at full is the special (its clock stamped, mana ${before7.mana} -> ${after7.mana}), and it is armed no longer`,
-      after7.armed === false && (after7.lastSwipe > before7.lastSwipe || after7.queued) && after7.shots >= 1, after7);
-    await wait(P, 1200);
+    const btn7 = await P.page.evaluate(() => (document.querySelector('[data-special]') || { getAttribute: () => null }).getAttribute('data-special'));
+    await shot('1-special-armed');
+    await P.page.evaluate(({ X, Y }) => window.__flick(window.__zone(), X, Y, -40, -40, 38), { X, Y });   /* up and to the left: open ground */
+    const n7 = await settleShots(P, 1, 3000);
+    const after7 = await P.page.evaluate(() => { const S = window._gameState.current; return { armed: window.__btManual.state().armed, lastSwipe: S._lastSwipe || 0, queued: !!S._bowSpecialQueued, sight: !!(S._bowSight && S._bowSight.d != null) }; });
+    rec.ok('7a the special\'s button is there and ARMS it for the next attack (it reads armed)', before7.btn && before7.armed === true && btn7 === 'armed', { before7, btn7 });
+    /* a bow's special needs a line: with one, this flick IS the special; with none, it is an ordinary
+       arrow and the special stays armed (never queued for a held bow's next line: a flick has none) */
+    rec.ok(after7.sight
+      ? `7b the flick had a line: it was the special (${n7} arrows), armed no longer`
+      : `7b the flick had no line: an ordinary arrow (${n7}), the special still armed`,
+      after7.sight ? (n7 >= 1 && after7.armed === false && after7.lastSwipe > before7.lastSwipe) : (n7 === 1 && after7.armed === true && !after7.queued && after7.lastSwipe === before7.lastSwipe), after7);
+    await wait(P, 800);
 
     /* ── 9 ── a lock a player chose does not last */
     const lock = await P.page.evaluate(() => new Promise((res) => {
@@ -268,80 +236,64 @@ async function phone({ browser, wsPort, webPort, rec, OUT }) {
     }));
     rec.ok(`9 a lock a player chose is not kept (gone in ${lock.ms} ms)`, lock.gone, lock);
 
-    /* ── 8 ── a sword */
+    /* ── 8 ── a sword: every swing is a stroke */
     const sw = await arm(P, 'melee');
     await wait(P, 1500);
-    const tapDisc = () => P.page.evaluate(() => { const d = window.__disc(); const r = d.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2; window.__touch(d, 'touchstart', x, y, 21); window.__touch(d, 'touchend', x, y, 21); return Date.now(); });
-    const s0 = await mc(P);
-    /* two taps in one task: the second is straight after the first, so early */
-    const two = await P.page.evaluate(() => {
+    await P.page.evaluate(() => window.__ready(60));
+    const sword = await P.page.evaluate(() => {
       const S = window._gameState.current, d = window.__disc(); const r = d.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2;
-      const tap = (id) => { window.__touch(d, 'touchstart', x, y, id); window.__touch(d, 'touchend', x, y, id); };
-      tap(21);
-      const a = { swingTimer: S.swingTimer, early: S._mcEarly || 0, st: window.__btManual.state() };
-      tap(22);
-      return { a, b: { swingTimer: S.swingTimer, early: S._mcEarly || 0, st: window.__btManual.state() } };
-    });
-    const s1 = two.a, s2 = two.b;
-    await wait(P, 150);
-    const g1 = await mc(P);
-    /* v2.3.4357 (the owner: "it should restart if you tap too early.  Otherwise player just mashes
-       button"): MASHING NEVER SWINGS.  In ONE task, its times held by the clock (this box's timers run
-       late: a 100 ms interval fires every 800): a ready tap swings at T; a tap at T+300 is early and
-       starts the build-up again; at T+700 -- past the T+need it would have been ready at -- it is still
-       not ready and a tap swings nothing (and restarts it again); one whole build-up after THAT, a tap
-       swings. */
-    await wait(P, 900);
-    const mash = await P.page.evaluate(() => {
-      const S = window._gameState.current, d = window.__disc(); const r = d.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2;
-      let id = 40;
-      const tap = () => { id += 1; window.__touch(d, 'touchstart', x, y, id); window.__touch(d, 'touchend', x, y, id); };
-      const spin = (until) => { while (Date.now() < until) { /* the clock, not a timer */ } };
       const st = () => window.__btManual.state();
-      const need = st().meleeNeed, e0 = st().early, ready0 = st().ready, sw0 = S.swingTimer;
-      tap();
-      const T = S.swingTimer, swung1 = T !== sw0;
-      spin(T + 300); tap();
-      const a = { sw: S.swingTimer, st: st() };
-      spin(T + 700);
-      const b0 = st(); tap();
-      const b = { sw: S.swingTimer, st: st() };
-      spin(b.st.earlyAt + need + 20);
-      const c0 = st(); tap();
-      const c = { sw: S.swingTimer, st: st() };
-      return { need, e0, ready0, swung1, T, a, b0, b, c0, c };
+      /* the special armed for the sword's first stroke (mana for it: the arming asks) */
+      if (!st().armed) {
+        S.rpg.mana = Math.max(S.rpg.mana || 0, S.rpg.maxMana || 100);
+        const b = document.querySelector('[data-special]');
+        if (b) { const q = b.getBoundingClientRect(); window.__touch(b, 'touchstart', q.left + q.width / 2, q.top + q.height / 2, 40); window.__touch(b, 'touchend', q.left + q.width / 2, q.top + q.height / 2, 40); }
+      }
+      const need = st().meleeNeed, e0 = st().early, armed0 = st().armed, ls0 = S._lastSwipe || 0, sw0 = S.swingTimer;
+      /* a tap */
+      window.__touch(d, 'touchstart', x, y, 41); window.__touch(d, 'touchend', x, y, 41);
+      const tap = { sw: S.swingTimer };
+      /* a stroke across the disc: the special it was armed with, or a swing */
+      window.__touch(d, 'touchstart', x - 15, y, 42);
+      window.__touch(d, 'touchmove', x + 15, y, 42);
+      const T = S.swingTimer, one = { sw: T, armed: st().armed, ls: S._lastSwipe || 0 };
+      /* the stroke back, straight after: too soon */
+      window.__touch(d, 'touchmove', x - 15, y, 42);
+      const two = { sw: S.swingTimer, early: st().early };
+      /* ready again: the first move after the pause is followed (not a stroke), the next is one */
+      window.__spin(Math.max(T, Date.now()) + need + 30);
+      window.__touch(d, 'touchmove', x + 15, y, 42);
+      const follow = { sw: S.swingTimer };
+      window.__touch(d, 'touchmove', x - 15, y, 42);
+      const three = { sw: S.swingTimer };
+      window.__touch(d, 'touchend', x - 15, y, 42);
+      /* a thumb that drifts 30 px over 0.7 s is not a stroke */
+      window.__spin(S.swingTimer + need + 30);
+      const T3 = S.swingTimer;
+      window.__touch(d, 'touchstart', x - 15, y, 43);
+      window.__spin(Date.now() + 340); window.__touch(d, 'touchmove', x - 5, y, 43);
+      window.__spin(Date.now() + 340); window.__touch(d, 'touchmove', x + 5, y, 43);
+      window.__spin(Date.now() + 340); window.__touch(d, 'touchmove', x + 15, y, 43);
+      window.__touch(d, 'touchend', x + 15, y, 43);
+      const drift = { sw: S.swingTimer, T3 };
+      /* a stroke on the right side of the screen, off the disc */
+      const z = window.__zone();
+      window.__touch(z, 'touchstart', 300, 430, 44);
+      window.__touch(z, 'touchmove', 300, 400, 44);
+      const side = { sw: S.swingTimer };
+      window.__touch(z, 'touchend', 300, 400, 44);
+      return { need, e0, armed0, ls0, sw0, tap, T, one, two, follow, three, drift, side };
     });
-    await wait(P, 100);
-    const gMiss = await mc(P);
-    /* a HOLD on the disc: its press is a tap (one swing, it is ready by now),
-       and holding on swings nothing more */
-    await wait(P, 900);
-    const sP = await P.page.evaluate(() => { const S = window._gameState.current, d = window.__disc(); const r = d.getBoundingClientRect(); window.__touch(d, 'touchstart', r.left + r.width / 2, r.top + r.height / 2, 23); return S.swingTimer; });
-    await wait(P, 2200);
-    const s3 = await mc(P);
-    await P.page.evaluate(() => { const d = window.__disc(); const r = d.getBoundingClientRect(); window.__touch(d, 'touchend', r.left + r.width / 2, r.top + r.height / 2, 23); });
-    await wait(P, 200);
-    await tapDisc();                 /* ready again by now */
-    await wait(P, 60);
-    const s4 = await mc(P);
-    /* the picture only: this box takes seconds over a screenshot, longer than a build-up, so the
-       sword is held part-built for it (every check above is already read) */
-    await P.page.evaluate(() => { window.__mcHold = setInterval(() => { window._gameState.current.swingTimer = Date.now() - 380; }, 30); });
-    await wait(P, 200);
-    await shot('3-sword-building');
-    await P.page.evaluate(() => { clearInterval(window.__mcHold); });
-    rec.ok('8a a sword\'s tap on the disc swings (it was ready)', sw.wpn === 'greatsword' && s0.st.ready === true && s1.swingTimer > s0.swingTimer, { s0: s0.swingTimer, s1: s1.swingTimer, st: s0.st });
-    rec.ok('8b a tap straight after it swings nothing, and STARTS THE BUILD-UP AGAIN from that tap (the ready tap before it cost nothing)',
-      s2.swingTimer === s1.swingTimer && s2.early === s1.early + 1 && s2.st.ready === false && s1.st.early === s0.st.early && s2.st.early === s1.st.early + 1 && s2.st.earlyAt >= s1.swingTimer && s2.st.frac < 0.2,
-      { s0: s0.st, s1: s1.st, s2: s2.st });
-    rec.ok(`8f mashing never swings: a tap 300 ms after a swing restarts the ${Math.round(mash.need)} ms build-up, so at 700 ms it is still not ready and that tap swings nothing either; one whole build-up after it, a tap swings`,
-      mash.need < 700 && mash.ready0 && mash.swung1 && mash.a.sw === mash.T && mash.a.st.early === mash.e0 + 1 && mash.b0.ready === false && mash.b.sw === mash.T && mash.b.st.early === mash.e0 + 2
-      && mash.c0.ready === true && mash.c.sw > mash.T, mash);
-    rec.ok('8g the bar counted the early taps (it empties and flashes red on each)', !!gMiss.gauge && gMiss.gauge.missed >= mash.e0 + 2, gMiss.gauge);
-    rec.ok('8c a held thumb is one tap and no more: its press swung once, and 2 s of holding swung nothing else',
-      sP > s1.swingTimer && s3.swingTimer === sP && s3.st.ready === true, { s1: s1.swingTimer, sP, s3: s3.swingTimer, st: s3.st });
-    rec.ok('8e the sword\'s bar shows while it builds', !!g1.gauge && g1.gauge.vis === true && g1.gauge.kind === 'sword', g1.gauge);
-    rec.ok('8d once ready, a tap swings again', s4.swingTimer > sP, { sP, s4: s4.swingTimer });
+    await wait(P, 400);
+    rec.ok('8a a sword\'s tap swings nothing', sw.wpn === 'greatsword' && sword.tap.sw === sword.sw0, { sw0: sword.sw0, tap: sword.tap });
+    rec.ok('8b a STROKE across the disc swings', sword.T > sword.sw0, { sw0: sword.sw0, T: sword.T });
+    rec.ok('7c ...and that stroke took the special armed for it (its own attack, or its refusal and a swing): armed no longer',
+      sword.armed0 === true && sword.one.armed === false, { armed0: sword.armed0, one: sword.one, ls0: sword.ls0 });
+    rec.ok('8c the stroke back, straight after, swings nothing (too soon), and costs nothing', sword.two.sw === sword.T && sword.two.early === sword.e0 + 1, sword.two);
+    rec.ok(`8d once the sword is ready (${Math.round(sword.need)} ms) a stroke swings again -- the first move after the pause only follows the thumb`,
+      sword.follow.sw === sword.T && sword.three.sw > sword.T, { T: sword.T, follow: sword.follow, three: sword.three });
+    rec.ok('8e a thumb that drifts 30 px over a second is not a stroke: nothing swings', sword.drift.sw === sword.drift.T3, sword.drift);
+    rec.ok('8f a stroke on the right side of the screen, off the disc, swings too', sword.side.sw > sword.drift.sw, { drift: sword.drift, side: sword.side });
 
     rec.ok('11a phone: no page errors', errors.length === 0, errors);
   } finally {
@@ -362,6 +314,7 @@ async function desk({ browser, wsPort, webPort, rec, OUT }) {
     if (!inW) return;
     await wait(P, 2000);
     await P.page.addStyleTag({ content: '.bt-quest-banner, .bt-quest-plate, [data-coach-card], [data-coach-ring], *:has(> [data-coach-dismiss]) { visibility: hidden !important; }' }).catch(() => {});
+    await installTouch(P);   /* its helpers (__ready): no touch is made here */
     await arm(P, 'ranged');
     const hall = await standUnderHall(P, rec, 'computer ');
     if (!hall) return;
@@ -375,31 +328,34 @@ async function desk({ browser, wsPort, webPort, rec, OUT }) {
     await P.page.mouse.move(at.x, at.y);
     await wait(P, 400);
     await resetShots(P);
+    await P.page.evaluate(() => window.__ready(60));
     await P.page.mouse.down();
-    await waitFull(P, 900);
-    const held = await mc(P);
-    const dRing = await P.page.evaluate(() => {
-      const g = document.querySelector('[data-manual-gauge]'), a = g.getBoundingClientRect();
-      const pill = document.querySelector('[data-weapon-pill]'), p = pill ? pill.getBoundingClientRect() : null;
-      const root = document.getElementById('root').getBoundingClientRect();
-      const dashH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dash-h')) || 0;
-      return { g: [Math.round(a.left), Math.round(a.top), Math.round(a.width), Math.round(a.height)], pill: p ? [Math.round(p.left), Math.round(p.top), Math.round(p.width), Math.round(p.height)] : null,
-        root: [Math.round(root.left), Math.round(root.width)], bandTop: Math.round(innerHeight - dashH),
-        clear: !p || a.left - 16 >= p.right || a.right <= p.left || a.bottom <= p.top || a.top >= p.bottom,
-        over: a.bottom <= innerHeight - dashH && a.top >= innerHeight - dashH - 90, inside: a.left >= root.left && a.right + 12 <= root.right };
-    });
-    await P.page.screenshot({ path: join(OUT, 'manualcombat-4-computer-full.png') }).catch(() => {});
+    const n10a = await settleShots(P, 1);
+    await wait(P, 1500);              /* held: three intervals and more */
+    const heldN = await shotsNow(P);
     await P.page.mouse.up();
-    const n = await settleShots(P, 1);
-    rec.ok(`10a a computer: holding the mouse button fires nothing (${held.shots}), the ready bar fills`,
-      at.desk && held.shots === 0 && !!held.st && held.st.ready === true && !!held.gauge && held.gauge.vis && held.gauge.full, { at, st: held.st, gauge: held.gauge });
-    rec.ok(`10b ...and its release at full looses one arrow (${n})`, n === 1, { n });
-    rec.ok('10d ...the bar stands just over the band on a computer, beside the weapon pill and not on it, inside the game\'s box', dRing.clear && dRing.over && dRing.inside && dRing.g[2] >= 100, dRing);
+    await wait(P, 600);
+    const upN = await shotsNow(P);
+    rec.ok(`10a a computer: a click is ONE arrow at the cursor (${n10a}), however long the button is held (${heldN}) and whatever its release (${upN})`,
+      at.desk && n10a === 1 && heldN === 1 && upN === 1, { at, n10a, heldN, upN });
+    await P.page.evaluate(() => window.__ready(60));
+    await P.page.mouse.down(); await P.page.mouse.up();
+    const n10b = await settleShots(P, 2);
+    rec.ok(`10b ...and the next click is the next arrow (${n10b})`, n10b === 2, { n10b });
     await wait(P, 600);
     await P.page.mouse.click(at.x, at.y, { button: 'right' });
     await wait(P, 300);
-    const armed = await P.page.evaluate(() => window.__btManual.state().armed);
-    rec.ok('10c the right click arms the special for the next attack', armed === true, { armed });
+    const armedD = await P.page.evaluate(() => window.__btManual.state().armed);
+    rec.ok('10c the right click arms the special for the next attack', armedD === true, { armedD });
+    await P.page.mouse.click(at.x, at.y, { button: 'right' });   /* and disarms */
+    await arm(P, 'melee');
+    await wait(P, 1200);
+    await P.page.evaluate(() => window.__ready(60));
+    const dsw0 = await P.page.evaluate(() => window._gameState.current.swingTimer);
+    await P.page.mouse.down(); await P.page.mouse.up();
+    await wait(P, 500);
+    const dsw1 = await P.page.evaluate(() => window._gameState.current.swingTimer);
+    rec.ok('10d a sword\'s click is one swing', dsw1 > dsw0, { dsw0, dsw1 });
     rec.ok('11b computer: no page errors', errors.length === 0, errors);
   } finally {
     stop();
