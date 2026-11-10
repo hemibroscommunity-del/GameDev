@@ -35,6 +35,18 @@ export class Leaderboard {
         return new Response(JSON.stringify({ ok: true, gone }), { headers: H });
       }
 
+      /* v2.3.4545: THE FACES OF ROWS FROM BEFORE A ROW CARRIED ONE (boards.js _boardsFaceFill, over the object
+         binding only: the public route is read-only).  `/faceless`: the live rows with no look; `/faces`
+         {faces: {pid: look}}: each such row given its look -- never one that has a look already, and nothing
+         else about the row (its lastSeen least of all: a filled row is not a player who played). */
+      if (request.method === 'POST' && path.startsWith('/faceless')) {
+        return new Response(JSON.stringify({ ok: true, ids: await this.faceless() }), { headers: H });
+      }
+      if (request.method === 'POST' && path.startsWith('/faces')) {
+        const body = await request.json();
+        return new Response(JSON.stringify({ ok: true, filled: await this.fillFaces(body && body.faces) }), { headers: H });
+      }
+
       if (request.method === 'GET' && path.startsWith('/top')) {
         const category = url.searchParams.get('category') || 'level';
         const limit = Math.min(100, parseInt(url.searchParams.get('limit')) || 50);
@@ -46,6 +58,35 @@ export class Leaderboard {
     } catch (err) {
       return new Response(JSON.stringify({ ok: false, error: err.message }), { status: 500, headers: H });
     }
+  }
+
+  /* v2.3.4545: the live rows that have no face (set before v2.3.4393, by a player who has not been back) */
+  async faceless(limit = 200) {
+    const entries = await this.state.storage.list({ prefix: 'player:' });
+    const now = Date.now();
+    const ids = [];
+    for (const [k, raw] of entries) {
+      if (ids.length >= limit) break;
+      try { const p = JSON.parse(raw); if (p && !p.look && now - (p.lastSeen || 0) < STALE_MS) ids.push(k.slice('player:'.length)); } catch { /* not a row */ }
+    }
+    return ids;
+  }
+  async fillFaces(faces) {
+    if (!faces || typeof faces !== 'object') return 0;
+    let n = 0;
+    for (const pid of Object.keys(faces).slice(0, 200)) {
+      const look = boardFace(faces[pid]);
+      if (!look) continue;
+      const raw = await this.state.storage.get('player:' + pid);
+      if (!raw) continue;
+      let p = null;
+      try { p = JSON.parse(raw); } catch { p = null; }
+      if (!p || p.look) continue;
+      p.look = look;
+      await this.state.storage.put('player:' + pid, JSON.stringify(p));
+      n++;
+    }
+    return n;
   }
 
   async updatePlayer(data) {

@@ -83,8 +83,18 @@ const advertised = new Map(); // flag -> [file:line]
     /* v2.3.3315: or a number the ROOM decides with one of its own methods
        (`wheelsize: this._wheelLongNow()`: which Wheel it plays, wheeltables.js) */
     const RE = /([A-Za-z0-9_$]+):\s*(?:true\b|[A-Z][A-Z0-9_]*\.length\b|this\._[A-Za-z0-9_$]+\(\))/g;
+    /* v2.3.4545: ...and the caps that follow on lines of their OWN (TRAPS §316: a new cap never goes on the old
+       long line).  The literal runs on until the line that closes it (`},`): read to there. */
+    const closes = (l) => /\}\s*,?\s*$/.test(l);
+    let body = m0[1];
+    if (!closes(line)) {
+      for (let j = i + 1; j < lines.length && j < i + 200; j++) {
+        body += '\n' + lines[j];
+        if (closes(lines[j])) break;
+      }
+    }
     let m;
-    while ((m = RE.exec(m0[1]))) {
+    while ((m = RE.exec(body))) {
       if (!advertised.has(m[1])) advertised.set(m[1], []);
       advertised.get(m[1]).push('join.js:' + (i + 1));
     }
