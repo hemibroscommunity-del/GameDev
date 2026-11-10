@@ -46,10 +46,10 @@ import { MONSTER_VARIANTS } from '../../../src/data/monsterVariants.js';
 const PHONE = { width: 390, height: 844 };
 const OUT = `${H.REPO}/tools/qa/mp/out/waterfrog`;
 const DEATH_Y = MONSTER_VARIANTS.fishman.deathOffsetY;
-const DEATH_MS = MONSTER_VARIANTS.fishman.deathMs;   /* v2.3.4382: 570, three times as fast as first cut */
+const DEATH_MS = MONSTER_VARIANTS.fishman.deathMs;   /* v2.3.4390: 570, three times as fast as first cut */
 /* the most frames of a death's strip one drawn frame may skip (the renderer's own) */
 const BURST_MAX_SKIP = Number((/const BURST_MAX_SKIP = (\d+);/.exec(readFileSync(join(H.REPO, 'src/rendering/systems/entityRenderer.js'), 'utf8')) || [])[1]) || 2;
-const WIND_SHARE = MONSTER_VARIANTS.fishman.attackWindShare;   /* v2.3.4382: 0.5, the wind-up over the last half of a warning */
+const WIND_SHARE = MONSTER_VARIANTS.fishman.attackWindShare;   /* v2.3.4390: 0.5, the wind-up over the last half of a warning */
 
 /* the page's own monsters, re-asserted every frame (the worker's set aside) */
 const hold = (P, specs) => P.page.evaluate((specs) => {
@@ -183,7 +183,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.evaluate(() => { for (const el of document.querySelectorAll('button[aria-label="Close"], button[aria-label="Dismiss"]')) try { el.click(); } catch (e) {} });
     await P.page.waitForTimeout(600);
 
-    /* v2.3.4381: THE WATER'S SPRITES ARE THE FROG'S.  In BroTown with no frog
+    /* v2.3.4389: THE WATER'S SPRITES ARE THE FROG'S.  In BroTown with no frog
        near, none are held (128 of them were, in every land: the memory
        check's heap line); they come with its look and go with it. */
     const poolNow = () => P.page.evaluate(() => { const w = window.__btWaterAttack ? window.__btWaterAttack() : null; return w ? { pool: w.pool, wanted: w.wanted, made: w.made } : null; });
@@ -262,7 +262,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
          in order, on to the hop's last third, and then the breath) */
       const hop = fr.filter((f) => f.n === 12).map((f) => f.ix);
       const rising = hop.every((v, i) => i === 0 || v >= hop[i - 1] || v === 0);
-      /* v2.3.4382: the rest of a hop is 7 frames at 28 ms now, a fifth of a
+      /* v2.3.4390: the rest of a hop is 7 frames at 28 ms now, a fifth of a
          second -- this box can draw that in one frame or two.  So: in order
          and ending in its breath always; and where the box drew three frames
          of it or more, on to the hop's last third (the frame-by-frame rule
@@ -309,7 +309,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /* (the arithmetic of it, frame by frame, is the water-frog suite's;
          here: the real event starts it, and what is drawn follows the rule
          at whatever pace this box draws) */
-      /* v2.3.4382: the wind-up is played over the LAST HALF of the warning
+      /* v2.3.4390: the wind-up is played over the LAST HALF of the warning
          (twice as fast: the owner).  How many of its frames are seen is this
          box's frame rate; what is held is that every frame drawn is the one
          the rule gives for its own time (to a frame), that none is drawn in
@@ -391,7 +391,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }), [id, big]);
       const dead = fr.filter((f) => !f.gone && f.n === 20 && f.vis);
       const seen = uniq(dead.map((f) => f.ix));
-      /* v2.3.4382: the death is 570 ms now (three times as fast: the owner),
+      /* v2.3.4390: the death is 570 ms now (three times as fast: the owner),
          so how many of its 20 frames are SEEN is this box's frame rate; what
          is held is the pace -- by the frames' own times, it is at its last
          frame 570 ms after its first (and one frame of this box's), and not

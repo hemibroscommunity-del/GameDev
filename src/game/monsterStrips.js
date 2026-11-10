@@ -31,7 +31,7 @@ export function attackStripFrame(elapsed, windupMs, count, recover, stepMs) {
   return Math.min(n - 1, wind + Math.floor((e - dur) / step));
 }
 
-/** v2.3.4382: how far into a warning of `windupMs` an attack strip's wind-up
+/** v2.3.4390: how far into a warning of `windupMs` an attack strip's wind-up
  *  frames BEGIN, when they are played over only the last `share` of it (the
  *  water frog's: half, so its frames go by twice as fast and the blow is
  *  still on screen as the blow lands).  Until then the monster does what it

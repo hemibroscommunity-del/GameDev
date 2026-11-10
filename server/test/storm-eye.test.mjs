@@ -256,7 +256,7 @@ const strips = {};
     /this\._stormSparks = new StormSparksFx\(this\.projectileLayer\);/.test(fx) && /this\._stormSparks\.update\(S, now\)/.test(fx) && /this\._stormSparks\.clear\(\)/.test(fx)
     && /stormSparks: Promise\.resolve\(warmStormSparks\(\)\)/.test(pre) && /keepAsImage\(base\.source, Cache\)/.test(sfx) && /has\('nostormfx'\)/.test(sfx)
     && /for \(let i = 0; i < STORM_FX\.POOL; i\+\+\)/.test(sfx) && !/removeChild|\.visible = /.test(sfx));
-  /* v2.3.4381: THE POOL IS THE EYE'S -- made when its look is loaded,
+  /* v2.3.4389: THE POOL IS THE EYE'S -- made when its look is loaded,
      destroyed whole when the look is let go; with no eye's look loaded the
      frame does not walk the land's monsters and shots for eyes at all */
   const ses = src('src/rendering/stormEyeSprites.js');
