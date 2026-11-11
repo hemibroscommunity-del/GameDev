@@ -268,7 +268,10 @@ and "the reverse of the phantom"; review R2 W1.3). Now the party's shape:
   party, the ride, the trade's invite, the duel, the arena, the trade window,
   and since v2.3.4415 your own held pose, cleared at every `state_sync`
   because no worker keeps one across a join); `REJOIN_NOT_YET` names the ones
-  still left (the duel challenge card). `rejoin-resend.test` §6 fails a clear with no row, and a
+  still left (none since v2.3.4628: the duel challenge card has the worker's
+  own 2-minute clock, `duelPending.js DUEL_CARD`, mirror of
+  `DUEL.CHALLENGE_TTL`, and closes itself when the challenge runs out, saying
+  "Duel challenge expired"; `duel-pending.test` §7). `rejoin-resend.test` §6 fails a clear with no row, and a
   row whose re-send is not called after `state_sync`.
 
 The lesson (for TRAPS): a phone copy of a worker session is cleared at

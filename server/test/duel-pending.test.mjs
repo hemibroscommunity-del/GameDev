@@ -226,5 +226,19 @@ const SETTLE = (P.DUEL_PENDING && P.DUEL_PENDING.SETTLE_MS) || 8000;
   const body = cutBraces(MC, MC.indexOf('payload:', at));
   check('6c monsterCombat\'s melee claim sends it as `target`', /target:\s*duelSwingTarget\(S\)/.test(body) && /kind: 'melee'/.test(body));
 }
+/* ── 7. v2.3.4628: the challenge card's own clock ── */
+{
+  const D = await import('../src/duel.js');
+  check('7a the card lives as long as the worker\'s challenge (DUEL.CHALLENGE_TTL)', !!P.DUEL_CARD && !!D.DUEL && P.DUEL_CARD.TTL_MS === D.DUEL.CHALLENGE_TTL, { card: P.DUEL_CARD, srv: D.DUEL && D.DUEL.CHALLENGE_TTL });
+  const t0 = 1000000;
+  check('7b ...counted from when it came: all of it at once, half at a minute, none at two', typeof P.duelCardLeftMs === 'function'
+    && P.duelCardLeftMs({ ts: t0 }, t0) === 120000 && P.duelCardLeftMs({ ts: t0 }, t0 + 60000) === 60000
+    && P.duelCardLeftMs({ ts: t0 }, t0 + 120000) === 0 && P.duelCardLeftMs({ ts: t0 }, t0 + 999999) === 0);
+  check('7c a card that says nothing of when it came closes at once', typeof P.duelCardLeftMs === 'function' && P.duelCardLeftMs({}, t0) === 0 && P.duelCardLeftMs(null, t0) === 0);
+  const DR = src('src/ui/panels/DuelRequestPanel.jsx');
+  check('7d the card closes itself on that clock, only if it is still the same card', /setTimeout\([\s\S]{0,200}cur === duelRequest \? null : cur[\s\S]{0,400}duelCardLeftMs\(duelRequest, Date\.now\(\)\)/.test(DR) && /clearTimeout\(t\)/.test(DR));
+  const RJ = await import('../../src/game/rejoinSlots.js');
+  check('7e ...and is off the rejoin "not yet" list', Array.isArray(RJ.REJOIN_NOT_YET) && !RJ.REJOIN_NOT_YET.some((s) => /duel/.test(s)));
+}
 console.log(`\nduel-pending: ${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);

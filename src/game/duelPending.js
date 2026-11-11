@@ -31,6 +31,22 @@
  */
 import { lockOntoDuelOpponent } from './duelLock.js';
 
+/* ═══ v2.3.4628: THE CHALLENGE CARD HAS A CLOCK OF ITS OWN ═══
+   The worker holds a challenge for DUEL.CHALLENGE_TTL (server/src/duel.js, 2
+   minutes; mirror-audit pins the two) and refuses an accept after it.  The card
+   (DuelRequestPanel) had no clock: it covers the screen, its backdrop is inert
+   on purpose (v2.3.2289), and it stayed up for a challenge the worker had long
+   dropped -- the 2 minutes run out, a server update forgets every challenge, or
+   the phone came back from a reconnect still showing it (rejoinSlots.js
+   REJOIN_NOT_YET).  It closes itself when the challenge does. */
+export const DUEL_CARD = Object.freeze({ TTL_MS: 120000 });
+/** How long the card `req` ({ ts }, when it came) has left at `now`: 0 when the
+    worker's challenge has run out (or the card says nothing of when it came). */
+export function duelCardLeftMs(req, now) {
+  if (!req || !(Number(req.ts) > 0)) return 0;
+  return Math.max(0, Number(req.ts) + DUEL_CARD.TTL_MS - (Number(now) || 0));
+}
+
 export const DUEL_PENDING = Object.freeze({
   /* the echo comes one tick (~50 ms) plus the round trip after the tap, and a
      wager's escrow write; eight seconds is far past that and still short

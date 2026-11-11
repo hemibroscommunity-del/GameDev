@@ -51,10 +51,10 @@ export const REJOIN_SLOTS = Object.freeze([
 ]);
 
 /* phone copies of a worker session that still outlive a reconnect, each its
-   own change (left for later) */
-export const REJOIN_NOT_YET = Object.freeze([
-  'duel challenge card (setDuelRequest: the card has no clock of its own)',
-]);
+   own change (left for later).  v2.3.4628: the duel challenge card left the list:
+   it has the worker's own clock now (duelPending.js DUEL_CARD), so a card
+   carried over a reconnect closes when its challenge runs out on the worker */
+export const REJOIN_NOT_YET = Object.freeze([]);
 
 /* the count the worker said (0 for an old worker or the kill switch) */
 export function rejoinCount(caps) {
