@@ -279,7 +279,7 @@ export const trade2Methods = {
     }
     // Debit BOTH synchronously before any credit -- atomicity.
     for (const side of sides) {
-      if (side.gives._gold) this._goldTake(side.ps, side.gives._gold, 'trade_window'); /* v2.3.4652: the gold door */
+      if (side.gives._gold) this._goldTake(side.ps, side.gives._gold, 'trade_window'); /* v2.3.4670: the gold door */
       for (const [k, v] of Object.entries(side.gives)) {
         if (k === '_gold') continue;
         side.ps.inventory[k] = this._invCount(side.ps, k) - v;

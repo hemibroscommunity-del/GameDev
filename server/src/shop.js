@@ -667,7 +667,7 @@ export const shopMethods = {
 
     ps.inventory[key] = have - sold;
     if (ps.inventory[key] <= 0) delete ps.inventory[key];
-    this._goldGive(ps, paid, 'shop_sell'); /* v2.3.4652: the gold door */
+    this._goldGive(ps, paid, 'shop_sell'); /* v2.3.4670: the gold door */
     stock[key] = held;
     /* ═══ v2.3.3137: THE SELLER'S BAG AND PURSE ARE SAVED WITH THE PILE ═══
        Neither buy nor sell ever called _saveRpg, and nothing else saves a
@@ -709,7 +709,7 @@ export const shopMethods = {
       const cost = TOOL_SHELF[key];
       const purse = Math.floor(Number(ps.coins) || 0);
       if (purse < cost) return { ok: false, error: 'Not enough coins' };
-      this._goldTake(ps, cost, 'shop_tool'); /* v2.3.4652: the gold door */
+      this._goldTake(ps, cost, 'shop_tool'); /* v2.3.4670: the gold door */
       if (!ps.inventory) ps.inventory = {};
       /* `key` passed isToolKey, an own-property test on our own table, so it
          cannot be '__proto__' (rule 4) */
@@ -750,7 +750,7 @@ export const shopMethods = {
       const cost = unit * want;
       const purse = Math.floor(Number(ps.coins) || 0);
       if (purse < cost) return { ok: false, error: 'Not enough coins' };
-      this._goldTake(ps, cost, 'shop_staple'); /* v2.3.4652: the gold door */
+      this._goldTake(ps, cost, 'shop_staple'); /* v2.3.4670: the gold door */
       /* Plain {} is safe: `key` passed isShopStaple, which is a
          hasOwnProperty test against SHOP_ITEMS -- our own table -- so it
          cannot be '__proto__' (rule 4). */
@@ -778,7 +778,7 @@ export const shopMethods = {
     const purse = Math.floor(Number(ps.coins) || 0);
     if (purse < cost) return { ok: false, error: 'Not enough coins' };
 
-    this._goldTake(ps, cost, 'shop_pile'); /* v2.3.4652: the gold door */
+    this._goldTake(ps, cost, 'shop_pile'); /* v2.3.4670: the gold door */
     if (!ps.inventory) ps.inventory = {};
     ps.inventory[key] = (Math.floor(Number(ps.inventory[key]) || 0)) + take;
     stock[key] = held - take;

@@ -905,7 +905,7 @@ export const dungeonMethods = {
       // and payout because there is no roll.  (v2.3.3565: the boss's chest
       // has one, made and paid in this same run before the save below --
       // dungeonreward.js -- so there is still no window.)
-      this._goldGive(ps, gold, 'dungeon_clear'); /* v2.3.4652: the gold door */
+      this._goldGive(ps, gold, 'dungeon_clear'); /* v2.3.4670: the gold door */
       this._addCombatXp(ps, xp);
       /* v2.3.3565: THE BOSS'S CHEST, AND THE CLEAR'S XP INTO THE WEAPONS USED
          (dungeonreward.js) -- a world dungeon's, riding this save and said on

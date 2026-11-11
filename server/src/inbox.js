@@ -128,7 +128,7 @@ export const inboxMethods = {
     const writes = [];
     for (const d of list) {
       const ps = this.playerState[d.id];
-      this._goldTake(ps, Math.floor(Number(d.amount)), 'escrow_debit_group'); /* v2.3.4652: the gold door */
+      this._goldTake(ps, Math.floor(Number(d.amount)), 'escrow_debit_group'); /* v2.3.4670: the gold door */
       writes.push(this._saveRpg(d.id, ps));
       writes.push(this._opStamp(d.opId));
     }
@@ -366,7 +366,7 @@ export const inboxMethods = {
   _applyCreditToPs(ps, entry, playerId) {
     const p = entry.payload || {};
     if (entry.kind === 'gold') {
-      this._goldGive(ps, Math.max(0, Math.floor(p.amount || 0)), 'mail_gold'); /* v2.3.4652: the gold door */
+      this._goldGive(ps, Math.max(0, Math.floor(p.amount || 0)), 'mail_gold'); /* v2.3.4670: the gold door */
       /* v2.3.3481: a prize may carry ACHIEVEMENT POINTS with its gold (the
          arena's champion, gladiator.js ARENA.CHAMPION_AP) -- added here, in
          the same apply as the gold, so the points are paid exactly when the
@@ -666,7 +666,7 @@ export const inboxMethods = {
        debits as if for the first time. */
     if (ps) {
       if ((ps.coins || 0) < amt) return { ok: false, reason: 'insufficient_gold' };
-      this._goldTake(ps, amt, 'escrow_debit'); /* v2.3.4652: the gold door */
+      this._goldTake(ps, amt, 'escrow_debit'); /* v2.3.4670: the gold door */
       this._saveRpg(playerId, ps);
       const stamped = this._opStamp(opId);
       this._queuePlayerStateFlush(playerId);
@@ -675,7 +675,7 @@ export const inboxMethods = {
     }
     const stored = await this._loadRpg(playerId);
     if (!stored || (stored.coins || 0) < amt) return { ok: false, reason: 'insufficient_gold' };
-    this._goldTake(stored, amt, 'escrow_debit_stored'); /* v2.3.4652: the gold door */
+    this._goldTake(stored, amt, 'escrow_debit_stored'); /* v2.3.4670: the gold door */
     const saved = this.state.storage.put('rpg:' + playerId, stored);
     const stampedOff = this._opStamp(opId);
     await saved;

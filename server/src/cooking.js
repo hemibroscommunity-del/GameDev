@@ -850,7 +850,7 @@ export const cookingMethods = {
     // its own discount hook.
     const finalCost = Math.max(1, Math.floor(item.cost));
     if ((ps.coins || 0) < finalCost) return;
-    this._goldTake(ps, finalCost, 'tonic_buy'); /* v2.3.4652: the gold door */
+    this._goldTake(ps, finalCost, 'tonic_buy'); /* v2.3.4670: the gold door */
     /* v2.3.2063: the coins go back if the item refused to apply (an arena
        match blocks healing). The apply half reports rather than refunding,
        because it has two callers now and each holds the purse differently. */

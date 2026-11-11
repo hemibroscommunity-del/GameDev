@@ -1,4 +1,4 @@
-# One door for every change to a player's gold (v2.3.4652)
+# One door for every change to a player's gold (v2.3.4670)
 
 `server/src/gold.js`; held by `server/test/gold-door.test.mjs`.
 

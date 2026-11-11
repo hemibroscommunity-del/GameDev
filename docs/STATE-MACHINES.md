@@ -256,7 +256,7 @@ so nothing waits on them any more.
   server judging a change of place, is done (#1534, v2.3.4640). What remains
   of Wave 2 item 1 (the server deciding guard and cooking itself, beyond the
   limits #1530 put on the phone's claims) and Wave 3 stay on the plan.
-- **Gold has its door (v2.3.4652, `docs/specs/gold-door.md`)**: every change
+- **Gold has its door (v2.3.4670, `docs/specs/gold-door.md`)**: every change
   to a player's gold goes through `server/src/gold.js`, each call naming its
   row in `GOLD_ROADS`, with nothing a player sees changed (step 1). Its next
   steps (one sum for every road, then a gold log and the fight lock at the

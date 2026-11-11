@@ -1,4 +1,4 @@
-/* ═══ v2.3.4652: THE GOLD DOOR -- every change to a player's gold goes through here ═══
+/* ═══ v2.3.4670: THE GOLD DOOR -- every change to a player's gold goes through here ═══
  * (spec: docs/specs/gold-door.md; pinned by server/test/gold-door.test.mjs)
  *
  * WHY.  A player's gold (`ps.coins`, and the stored `rpg:` record's `coins`)

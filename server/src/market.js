@@ -343,7 +343,7 @@ export const marketMethods = {
       ps.weaponStash.splice(idx, 1);
     } else {
       if ((ps.coins || 0) < p) return { ok: false, error: 'Not enough gold' };
-      this._goldTake(ps, p, 'market_order'); /* v2.3.4652: the gold door */
+      this._goldTake(ps, p, 'market_order'); /* v2.3.4670: the gold door */
     }
     this._saveRpg(playerId, ps);
     this._queuePlayerStateFlush(playerId);
@@ -494,7 +494,7 @@ export const marketMethods = {
         if (back.weaponStash.length < this.WEAPON_STASH_CAP) back.weaponStash.push(item);
         else await this._creditPlayer(playerId, { opId: 'mktunwind:' + order.id, source: 'market', kind: 'weapon', payload: { weapon: item }, note: 'listing failed' });
       } else if (type === 'buy') {
-        this._goldGive(back, p, 'market_unwind'); /* v2.3.4652: the gold door */
+        this._goldGive(back, p, 'market_unwind'); /* v2.3.4670: the gold door */
       }
       this._saveRpg(playerId, back);
       this._queuePlayerStateFlush(playerId);

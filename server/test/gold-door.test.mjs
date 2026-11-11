@@ -1,4 +1,4 @@
-/* The gold door -- v2.3.4652 (spec docs/specs/gold-door.md; src/gold.js).
+/* The gold door -- v2.3.4670 (spec docs/specs/gold-door.md; src/gold.js).
  *
  * A player's gold was changed by hand in 41 places across 27 files, each with
  * its own sum: six different ways of reading the purse.  The door puts every
@@ -6,7 +6,7 @@
  * naming its ROAD, its row in GOLD_ROADS.  This suite holds it:
  *
  *   1. THE SUMS: every give and take road, replayed against its own longhand
- *      line (at v2.3.4652, the exact line its place had before the door) for
+ *      line (at v2.3.4670, the exact line its place had before the door) for
  *      every purse it can hold -- whole, fractional, below 0, missing, null,
  *      NaN, huge -- and many amounts: the same number, to the bit.  Step 1
  *      changes nothing a player can see, and this is the proof;
@@ -35,7 +35,7 @@ function check(name, cond, detail) {
 const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
 /* ── 1. THE SUMS ─────────────────────────────────────────────────────────── */
-/* Each road's sum, written out longhand.  At v2.3.4652 each is its place's own
+/* Each road's sum, written out longhand.  At v2.3.4670 each is its place's own
    line from before the door, `ps.coins` read as `c` and the amount as `n` (the
    amount itself is still worked out at the call, exactly as before: the
    mail's `Math.max(0, Math.floor(p.amount || 0))`, the quest's
@@ -214,7 +214,7 @@ function callsIn(s) {
   const twice = Object.keys(byRoad).filter((r) => byRoad[r].length > 1).map((r) => r + ': ' + byRoad[r].join(', '));
   check('3. every road has a caller (a row nobody calls is deleted with its feature)', none.length === 0, none);
   check('3. no road has two callers (a second place is a second row)', twice.length === 0, twice);
-  check('3. at v2.3.4652: 44 roads, 41 places that wrote gold by hand before the door',
+  check('3. at v2.3.4670: 44 roads, 41 places that wrote gold by hand before the door',
     Object.keys(GOLD_ROADS).length >= 44, Object.keys(GOLD_ROADS).length);
 }
 

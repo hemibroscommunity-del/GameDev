@@ -1055,7 +1055,7 @@ export const joinMethods = {
          they next want the badge (broverify.js). */
       try { await this._restoreBroLink(msg.id); } catch { /* badge is cosmetic — never block a join */ }
       if (stored) {
-        this._goldSet(this.playerState[msg.id], stored.coins || 0, 'join_stored'); /* v2.3.4652: the gold door */
+        this._goldSet(this.playerState[msg.id], stored.coins || 0, 'join_stored'); /* v2.3.4670: the gold door */
         this.playerState[msg.id].inventory = stored.inventory || {};
         this.playerState[msg.id].lifeSkills = stored.lifeSkills || {};
         healLifeSkillLevels(this.playerState[msg.id]);   /* v2.3.3041: a stored level 0 reads 1 (migrations.js) */
@@ -1189,7 +1189,7 @@ export const joinMethods = {
            NEW_CHARACTER_COINS and the default life skills, the rest zero or
            empty.  The caps stay as the second line. */
         this._goldSet(this.playerState[msg.id], Math.max(0, Math.min(BOOTSTRAP_COINS_CAP,
-          (msg.data && typeof msg.data.rpgCoins === 'number') ? Math.floor(msg.data.rpgCoins) : NEW_CHARACTER_COINS)), 'join_new'); /* v2.3.4652: the gold door */
+          (msg.data && typeof msg.data.rpgCoins === 'number') ? Math.floor(msg.data.rpgCoins) : NEW_CHARACTER_COINS)), 'join_new'); /* v2.3.4670: the gold door */
         this.playerState[msg.id].inventory = _cappedInv;
         this.playerState[msg.id].lifeSkills = (msg.data && msg.data.rpgLifeSkills && typeof msg.data.rpgLifeSkills === 'object') ? { ...msg.data.rpgLifeSkills } : freshLifeSkills();
         // v2.3.1152: boundary heal.  Migration v1 fixes STORED

@@ -795,7 +795,7 @@ export const noMansLandMethods = {
        their own with no credit kind to carry them, so they stay -- written
        down in docs/specs/no-mans-land.md.) */
     lost.coins = Math.max(0, Math.floor(Number(ps.coins) || 0));
-    this._goldSet(ps, 0, 'nml_loss'); /* v2.3.4652: the gold door */
+    this._goldSet(ps, 0, 'nml_loss'); /* v2.3.4670: the gold door */
     if (lost.coins) credit('gold', { amount: lost.coins }, 'No man\'s land');
     this._nmlSave(playerId, ps);
     /* tell the victim's game what went, so it clears its own copies.

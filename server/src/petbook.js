@@ -768,7 +768,7 @@ export const petbookMethods = {
       if (Math.floor(Number(payload.cap)) !== rec.cap) return 'stale';
       const price = petHousePrice(rec.cap);
       if (!ps || !(price > 0) || !(Math.floor(Number(ps.coins) || 0) >= price)) return 'no-gold';
-      this._goldTake(ps, price, 'pet_house'); /* v2.3.4652: the gold door */
+      this._goldTake(ps, price, 'pet_house'); /* v2.3.4670: the gold door */
       rec.cap = Math.min(PETBOOK.CAP_MAX, rec.cap + PETBOOK.HOUSE_STEP);
       this._saveRpg(pid, ps);
       if (this._queuePlayerStateFlush) this._queuePlayerStateFlush(pid);

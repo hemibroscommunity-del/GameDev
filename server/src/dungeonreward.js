@@ -116,7 +116,7 @@ export const dungeonRewardMethods = {
     if (cfg.hasBoss && !this._bossChestOff()) {
       const lvl = Math.max(1, Math.floor(Number(cfg.monsterLevel) || 1));
       const gold = BOSS_CHEST.GOLD_PER_LEVEL * lvl;
-      this._goldGive(ps, gold, 'boss_chest'); /* v2.3.4652: the gold door */
+      this._goldGive(ps, gold, 'boss_chest'); /* v2.3.4670: the gold door */
       if (!ps.inventory || typeof ps.inventory !== 'object') ps.inventory = {};
       const inv = ps.inventory;
       const items = [];

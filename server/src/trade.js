@@ -194,7 +194,7 @@ export const tradeMethods = {
       if (this._invCount(senderPs, k) < v) return rejectAccepter();
     }
     // Debit the sender synchronously (no awaits yet).
-    if (offer._gold) this._goldTake(senderPs, offer._gold, 'gift_trade'); /* v2.3.4652: the gold door */
+    if (offer._gold) this._goldTake(senderPs, offer._gold, 'gift_trade'); /* v2.3.4670: the gold door */
     for (const [k, v] of Object.entries(offer)) {
       if (k === '_gold') continue;
       senderPs.inventory[k] = this._invCount(senderPs, k) - v;

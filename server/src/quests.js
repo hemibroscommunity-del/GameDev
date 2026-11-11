@@ -422,7 +422,7 @@ export const questMethods = {
       this._collectConsume(ps, _obj, _obj.count || 1);
     }
     ps._quests[questId] = 'turnedIn';
-    this._goldGive(ps, reward.gold || 0, 'quest_reward'); /* v2.3.4652: the gold door */
+    this._goldGive(ps, reward.gold || 0, 'quest_reward'); /* v2.3.4670: the gold door */
     if (_trade) this._questTradeApply(ps, _trade, reward.trade);   /* v2.3.3525 */
     // XP via _addCombatXp so level-up logic runs (including
     // pool restores via _recomputeMaxes inside).
