@@ -146,7 +146,7 @@ export const SettingsPanel = () => {
     if (retryTimerRef.current) { clearInterval(retryTimerRef.current); retryTimerRef.current = null; }
   };
   useEffect(() => clearRetry, []);
-  /* v2.3.4608: the restart can be REFUSED now -- not during a fight with a player in
+  /* v2.3.4627: the restart can be REFUSED now -- not during a fight with a player in
      No man's land, where the wipe would leave the killer nothing (server
      fightlock.js `fightlockreset`; wsClient's `character_reset_refused`).  The
      8 s fallback reload is cancelled and the screen says why. */

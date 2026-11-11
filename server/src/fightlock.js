@@ -33,9 +33,9 @@
  *             fightlockequip  putting on a spare weapon, which an honest
  *                             player can meet too (and a forged shield
  *                             report).
- *             fightlockreset  (v2.3.4608) restarting the character, from
+ *             fightlockreset  (v2.3.4627) restarting the character, from
  *                             Settings or from the character picker.
- *             fightlockarmor  (v2.3.4607) putting on spare armour or legs,
+ *             fightlockarmor  (v2.3.4626) putting on spare armour or legs,
  *                             or taking off armour, legs, the shield or the
  *                             amulet.
  *   refuse  the router answers the message with its HANDLER'S OWN refusal --
@@ -204,7 +204,7 @@ export const FIGHT_LOCK = Object.freeze({
      refused -- the phone could not be told to take it off */
   shield_wear: { sw: 'fightlockequip', at: 'shieldwear.js _handleShieldWear' },
 
-  /* ── v2.3.4608: the character wiped (STATE-MACHINES.md "what is left", from #1523) ── */
+  /* ── v2.3.4627: the character wiped (STATE-MACHINES.md "what is left", from #1523) ── */
   /* A restart deletes the whole character -- the bag, the gold, the stashes --
      and the state goes BEFORE the socket closes (persistence.js
      _resetCharacterData), so the body that would linger and the loss that
@@ -217,7 +217,7 @@ export const FIGHT_LOCK = Object.freeze({
   character_reset: { sw: 'fightlockreset', at: 'persistence.js _handleCharacterReset' },
   'http:/api/account/reset': { sw: 'fightlockreset', at: 'account.js _accountReset' },
 
-  /* ── v2.3.4607: armour put on or taken off (STATE-MACHINES.md, from #1523) ── */
+  /* ── v2.3.4626: armour put on or taken off (STATE-MACHINES.md, from #1523) ── */
   /* Armour and legs are put on through stats_update (the phone moves them
      between its own bag and the slot); the loss leaves what you wear and takes
      the spares the worker holds, so a spare put on mid-fight was saved, and the

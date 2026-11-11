@@ -98,7 +98,7 @@ export const gridMethods = {
     const newSig = next ? JSON.stringify(next) : 'null';
     if (oldSig === newSig) return false;
     if (this._threatGearLocked(session.id, ps)) return false;
-    /* v2.3.4607: NOT DURING A FIGHT WITH A PLAYER IN NO MAN'S LAND (fightlock.js
+    /* v2.3.4626: NOT DURING A FIGHT WITH A PLAYER IN NO MAN'S LAND (fightlock.js
        `fightlockarmor`; STATE-MACHINES.md "what is left" after #1523).  The loss
        takes the spare armour and legs and leaves what you wear: putting your
        best spare on mid-fight made it the piece you wear (kept), and the piece

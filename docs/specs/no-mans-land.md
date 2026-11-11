@@ -869,7 +869,7 @@ new router case or relayed type that is in neither list.
   fighting member at the mouth; (`fightlockequip`) equip_request, and a
   shield_wear naming a shield the worker does not hold no longer clears the
   arm mid-fight (which took no spare shield at all).
-- **v2.3.4607, `fightlockarmor`**: a spare chest or legs piece put on
+- **v2.3.4626, `fightlockarmor`**: a spare chest or legs piece put on
   (`stats_update`, `grids.js _gridsApplyArmor`) and armour, legs, the shield
   or the amulet taken off (`unequip_request`) are refused in the fight, the
   worn slots sent back (the phone puts the piece it showed back in the bag,
@@ -885,7 +885,7 @@ new router case or relayed type that is in neither list.
   rearrange the bag; eating is the fight; a held spare shield
   put on the arm, because the phone owns which shield is worn and would keep
   showing a refused swap.
-- **v2.3.4608, `fightlockreset`**: `character_reset` (Settings) and its HTTP
+- **v2.3.4627, `fightlockreset`**: `character_reset` (Settings) and its HTTP
   twin `/api/account/reset` (the character picker, `account.js
   _accountReset`) are rows now. A restart wiped the loser's whole character,
   the state dropped before the socket closed, so neither the lingering body

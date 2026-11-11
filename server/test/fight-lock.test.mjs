@@ -25,10 +25,10 @@
  *   6. the switches: `fightlocktable`, `fightlockdoor`, `fightlockequip`
  *      written false give back today's behaviour row by row, and
  *      `fightlock: false` still opens everything.
- *   9. (v2.3.4607) armour: a spare put on (stats_update) and armour taken off
+ *   9. (v2.3.4626) armour: a spare put on (stats_update) and armour taken off
  *      (unequip_request) are refused in the fight, the worn pieces sent back;
  *      out of a fight and with `fightlockarmor: false` they work as before.
- *   8. (v2.3.4608) the character restart, on both roads (Settings over the
+ *   8. (v2.3.4627) the character restart, on both roads (Settings over the
  *      socket, the picker over HTTP): refused in the fight with its own
  *      `character_reset_refused` / `reason: 'fight'`, the character whole;
  *      `fightlockreset: false` lets it through; out of a fight it works. */
@@ -501,7 +501,7 @@ for (const name of Object.keys(CASES)) {
   room._liveFlags = keepFlags;
 }
 
-// ── 9. v2.3.4607: armour put on or taken off ───────────────────────────────
+// ── 9. v2.3.4626: armour put on or taken off ───────────────────────────────
 /* STATE-MACHINES.md, "what is left" after #1523: "armour, legs and the amulet
    put on mid-fight are not locked".  The loss takes the spares and leaves what
    you wear: a spare put on mid-fight was saved, and what it replaced went to the
@@ -545,7 +545,7 @@ for (const name of Object.keys(CASES)) {
   room._liveFlags = keepFlags;
 }
 
-// ── 8. v2.3.4608: the character restart, both roads ─────────────────────────
+// ── 8. v2.3.4627: the character restart, both roads ─────────────────────────
 /* STATE-MACHINES.md, "what is left" after #1523: "`character_reset` mid-fight
    (and its web twin, `_accountReset`) wipes the loser's own character: spite,
    the killer gets nothing."  The wipe drops the state before the socket closes,

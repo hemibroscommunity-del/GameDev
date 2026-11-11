@@ -573,9 +573,9 @@ Six switches, each written `false`:
   guarded before v2.3.4510;
 - `fightlockdoor` lets a fighting player through a dungeon mouth again;
 - `fightlockequip` lets a fighting player put on a spare weapon again;
-- `fightlockreset` (v2.3.4608) lets a fighting player restart their
+- `fightlockreset` (v2.3.4627) lets a fighting player restart their
   character again (Settings and the character picker);
-- `fightlockarmor` (v2.3.4607) lets a fighting player put on spare armour or
+- `fightlockarmor` (v2.3.4626) lets a fighting player put on spare armour or
   legs, or take off armour, legs, the shield or the amulet, again;
 - `fightlock` (the old one) opens everything, the six old roads too.
 ```
