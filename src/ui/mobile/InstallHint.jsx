@@ -2,6 +2,7 @@ import { installMayShow } from '@/ui/onboardingPace.js'; /* v2.3.2766 */
 import React, { useEffect, useState } from 'react';
 import { tapDismiss, TAP_DISMISS_STYLE } from '../tapDismiss.js'; /* v2.3.2284 */
 import { installHintBus } from './installHintBus.js';
+import { onIOS } from '../../game/deviceProfile.js';   /* v2.3.4804: the device profile */
 
 /* ═══ v2.3.2159: THE ADD-TO-HOME-SCREEN CARD ═══
  *
@@ -32,8 +33,7 @@ const KEY = 'bt_a2hs_hint_done';
 
 const isIOS = () => {
   try {
-    return /iPad|iPhone|iPod/.test(navigator.userAgent)
-      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    return onIOS();   /* v2.3.4804: the device profile */
   } catch (e) { return false; }
 };
 const isStandalone = () => {

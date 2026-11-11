@@ -5,6 +5,7 @@ import { jumpAirborne } from '@/game/jump.js';
 import { isWheelSwimming } from '@/game/wheelSwim.js';
 import { jumpButtonWanted } from '@/game/tapJump.js'; /* v2.3.3105 */
 import { Skin, JumpGlyph, jumpGlyphKind, PaintedIcon, ICON_URL, pressOn, pressOff } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup; v2.3.3721: a plain jump mark */
+import { fineInput } from '../../game/deviceProfile.js';   /* v2.3.4804: the device profile */
 
 /* ═══ v2.3.3017: THE JUMP BUTTON, BENEATH THE ATTACK DISC ═══
  *
@@ -107,7 +108,7 @@ export function JumpButton(props) {
   React.useEffect(function () {
     var root = typeof document !== 'undefined' && document.documentElement;
     if (!root) return undefined;
-    var fine = typeof matchMedia === 'function' && matchMedia('(pointer:fine)').matches;
+    var fine = fineInput();   /* v2.3.4804: the device profile */
     var on = !isLandscape && !fine && !!jumpButtonView(stateRef && stateRef.current) && jumpButtonWanted();
     if (!on) { root.removeAttribute('data-jump-clear'); return undefined; }
     var a = jumpAnchor(false);

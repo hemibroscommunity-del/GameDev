@@ -2,7 +2,6 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { PlayerDrawings, AccuracyDays } from './DevWatch.jsx';   /* v2.3.4545: what players drew, and every player's accuracy a day */
 import { COL, getState } from '../mobile/dash/common.js';
 import { BT_API_BASE } from '../../networking/index.js';
-import { WORLDVIEW_EXITS } from '../../data/index.js';
 import { runSpeedTest } from '../../game/speedTest.js';   /* v2.3.3339: the speed test, measured on this phone */
 import { openSoundStudio } from '../../game/soundStudio.js';   /* v2.3.3523: every sound and where it plays */
 import { CLIENT_SAVERS, clientOffNow } from '../../game/clientOff.js';   /* v2.3.3755: the Memory savers row */
@@ -62,20 +61,7 @@ const DEV_PET_LANDS = [
  * player who does not know it is there never finds it, and if they did it
  * would ask for a key they do not have.
  *
- * ── WARP IS "STAND ME AT THE DOOR" ───────────────────────────────────────
- * Deliberately NOT a teleport.  Entering a zone is a long, load-bearing
- * sequence — per-zone asset preload behind the loading overlay (CLAUDE.md's
- * ZONE-ASSET EXCEPTION), freeing the previous map, zone dimensions, ambient
- * audio, encyclopedia discovery, quest flags, depth reset, and the server
- * move — all of it inside handleZoneTransitions.  A dev button that
- * re-implemented that would drift from the real path and start reporting
- * bugs that do not exist, and one that skipped the preload would break the
- * animation-preloading law outright.
- *
- * So this puts the player ON the trail-head and lets the game walk itself
- * through its own front door.  It works from the worldview map, where every
- * zone's door is (WORLDVIEW_EXITS); from anywhere else the panel says so
- * rather than half-working.
+ * (v2.3.4802: the zone warp, "stand me at the door", went with the old map.)
  */
 
 const KEY_LS = 'bt_dev_key';
@@ -763,32 +749,6 @@ export const DevPanel = ({ onClose }) => {
     setKey(''); setState(null); setMsg('Key cleared from this device.');
   };
 
-  /* ═══ v2.3.2308: FROM WHEREVER YOU ARE STANDING ═══
-     This used to place you on a trail-head and required you to already be on
-     the World View; from town -- where a session starts -- the chips printed
-     "head there first" and did nothing at all.  Proven, not assumed:
-     mp-devwarp pressed the Flame Fields chip from town and the player was
-     still in town thirty seconds later on both the client and the worker.
-
-     Now it hands a DESTINATION to the game loop (driveDevWarp in
-     zoneTransitions.js), which walks the game's own front doors one leg at a
-     time -- town -> World View -> the spoke, or out of a spoke through its
-     return marker first.  Every leg is a real zone entry, so the per-zone
-     asset preload behind the loading overlay still happens and the
-     animation-preloading law is untouched.  Nothing here reimplements a
-     transition, which is why it cannot drift from the one players use. */
-  const warp = (zoneId) => {
-    const st = getState();
-    if (!st || !st.player) return;
-    if (st.currentZone === zoneId) { setMsg('You are already there.'); return; }
-    const ex = WORLDVIEW_EXITS.find((e) => e.zoneId === zoneId);
-    if (!ex) { setMsg('No door to ' + zoneId + ' on the World View.'); return; }
-    st._devWarp = { to: zoneId, legs: 0, t: Date.now(), nextAt: 0 };
-    setMsg('Heading to ' + (ex.label || zoneId) + '…');
-    if (onClose) onClose();
-  };
-
-  const zoneRows = WORLDVIEW_EXITS.filter((e) => e.zoneId !== 'town');
 
   return (
     <div style={box} onPointerDown={(e) => { if (e.target === e.currentTarget && onClose) onClose(); }}>
@@ -914,33 +874,8 @@ export const DevPanel = ({ onClose }) => {
 
         {key && (
           <>
-            <div style={label}>Zones</div>
-            <button type="button" style={btn(false)} disabled={busy}
-              onClick={async () => { const j = await call('/dev/unlock', { playerId: myId }); if (j) { setMsg(j.opened.length ? 'Opened: ' + j.opened.join(', ') : 'Already open.'); refresh(); } }}>
-              Unlock every gated zone
-            </button>
-            {state && (
-              <div style={{ color: COL.text2, fontSize: 12, marginBottom: 8 }}>
-                {Object.keys(state.zones || {}).map((z) => (
-                  <span key={z} style={{ marginRight: 10, color: state.zones[z] ? COL.accent : COL.disabled }}>
-                    {state.zones[z] ? '● ' : '○ '}{z}
-                  </span>
-                ))}
-              </div>
-            )}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7, marginBottom: 4 }}>
-              {zoneRows.map((e) => (
-                <button key={e.zoneId} type="button" style={chip}
-                  onClick={() => warp(e.zoneId)}>
-                  {e.label}
-                </button>
-              ))}
-            </div>
-            <div style={{ color: COL.muted, fontSize: 12, marginBottom: 2 }}>
-              Works from anywhere — it walks you through the doors, so each zone
-              still loads properly on the way in.
-            </div>
-
+            {/* v2.3.4802: the Zones section (unlock the gated zones, their state, the
+               warp chips) went with the old map: every gate and chip was an old land */}
             <div style={label}>Character</div>
             <button type="button" style={btn(false)} disabled={busy}
               onClick={async () => { const j = await call('/dev/kit', { playerId: myId }); if (j) { setMsg('Kit granted (' + j.weapons + ' weapons' + (typeof j.armor === 'number' ? ', ' + j.armor + ' armour pieces' : '') + ') — check your bag.'); refresh(); } }}>

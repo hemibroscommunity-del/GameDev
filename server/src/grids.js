@@ -130,6 +130,12 @@ export const gridMethods = {
        counts in every hit, so nothing worn is a secret */
     if (next && next.unrevealed && this._revealBagOnWear) next = this._revealBagOnWear(session && session.id, ps, slot, next);
     const wasGrade = wornGradeLetter(ps[slot]);
+    /* v2.3.4840: the worker's armour stash follows the swap: the piece put on
+       leaves it, the piece taken off goes in (gearstash.js _gearStashLiveAdd) */
+    if (this._gearStashLiveAdd) {
+      if (next) this._gearStashLiveTake(ps, slot, next);
+      if (ps[slot]) this._gearStashLiveAdd(ps, slot, ps[slot]);
+    }
     ps[slot] = next;
     /* v2.3.3142: a swap that changes the grade everyone else sees (tick.js
        `eqg`) goes out with the next tick -- an elite torso for a plain one of
@@ -190,7 +196,7 @@ export const gridMethods = {
     }
     if (levelsGained > 0) {
       this._recomputeMaxes(ps);
-      if (typeof ps.maxHp === 'number') ps.hp = ps.maxHp;
+      if (typeof ps.maxHp === 'number') this._hpSet(ps, ps.maxHp, 'bp_level_up');
       if (typeof ps.maxStamina === 'number') ps.stamina = ps.maxStamina;
       if (typeof ps.maxMana === 'number') ps.mana = ps.maxMana;
     }
@@ -214,7 +220,7 @@ export const gridMethods = {
     const _was = JSON.stringify([ps.level, ps.maxHp, ps.maxStamina, ps.maxMana]);
     this._recomputeMaxes(ps);
     if ((ps.level || 1) > prevLevel) {
-      if (typeof ps.maxHp === 'number') ps.hp = ps.maxHp;
+      if (typeof ps.maxHp === 'number') this._hpSet(ps, ps.maxHp, 'bp_earned_level_up');
       if (typeof ps.maxStamina === 'number') ps.stamina = ps.maxStamina;
       if (typeof ps.maxMana === 'number') ps.mana = ps.maxMana;
     }
@@ -703,8 +709,8 @@ export const gridMethods = {
     ps.maxStamina = Math.floor(this._calcMaxStamina(ps.endurance || 0) + this._staminaFlat(ps)); // v2.3.1345: flat
     ps.maxMana = this._calcMaxMana(ps.mind || 0);
     // Clamp current values into the new ranges.
-    if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
-    ps.hp = Math.min(ps.hp, ps.maxHp);
+    if (typeof ps.hp !== 'number') this._hpSet(ps, ps.maxHp, 'maxes_unset');
+    this._hpSet(ps, Math.min(ps.hp, ps.maxHp), 'maxes_clamp'); /* v2.3.4820: the life door */
     if (typeof ps.stamina !== 'number') ps.stamina = ps.maxStamina;
     ps.stamina = Math.min(ps.stamina, ps.maxStamina);
     if (typeof ps.mana !== 'number') ps.mana = ps.maxMana;
@@ -899,7 +905,7 @@ export const gridMethods = {
       if (((ps.defenseSkill && ps.defenseSkill.level) || 0) > _oldDl) _skillLeveledUp = true;
     }
     if (_skillLeveledUp) {
-      if (typeof ps.maxHp === 'number') ps.hp = ps.maxHp;
+      if (typeof ps.maxHp === 'number') this._hpSet(ps, ps.maxHp, 'skill_level_up');
       if (typeof ps.maxStamina === 'number') ps.stamina = ps.maxStamina;
       if (typeof ps.maxMana === 'number') ps.mana = ps.maxMana;
       this._queuePlayerStateFlush(session.id);
@@ -1085,7 +1091,7 @@ export const gridMethods = {
       const prevLevel = ps.level || 1;
       this._recomputeMaxes(ps);
       if ((ps.level || 1) > prevLevel) {
-        if (typeof ps.maxHp === 'number') ps.hp = ps.maxHp;
+        if (typeof ps.maxHp === 'number') this._hpSet(ps, ps.maxHp, 'stats_level_up');
         if (typeof ps.maxStamina === 'number') ps.stamina = ps.maxStamina;
         if (typeof ps.maxMana === 'number') ps.mana = ps.maxMana;
       }

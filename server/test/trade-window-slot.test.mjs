@@ -201,11 +201,15 @@ if (a > 0 && b > a) {
 
 /* ── 3. the worker side this leans on (read, never changed here) ── */
 const ix = src('server/src/index.js'), t2 = src('server/src/trade2.js'), jn = src('server/src/join.js');
-const close = ix.slice(ix.indexOf('async webSocketClose(ws)'), ix.indexOf('async webSocketError(ws)'));
+/* v2.3.4830: the close's duties live in the session door's table (leave.js) */
+const lv = src('server/src/leave.js');
+const { LEAVE_WAYS } = await import('../src/leave.js');
 check('3a a socket the worker sees close cancels its trade (so a cleared window hides nothing)',
-  /this\._trade2OnDisconnect\(session\.id\)/.test(close) && /_trade2OnDisconnect\(playerId\)\s*\{[^}]*_t2Cancel\(s, 'disconnected'\)/.test(t2));
-check('3b a second login evicts the old socket without webSocketClose: that trade lives on',
-  /this\.sessions\.delete\(oldWs\);\s*try \{ oldWs\.close\(1000, 'superseded by reconnect'\)/.test(jn));
+  LEAVE_WAYS.close.trade === true && /if \(d\.trade\) this\._trade2OnDisconnect\(session\.id\)/.test(lv)
+  && /webSocketClose\(ws\) \{ return this\._playerLeaves\(ws, 'close'\)/.test(ix)
+  && /_trade2OnDisconnect\(playerId\)\s*\{[^}]*_t2Cancel\(s, 'disconnected'\)/.test(t2));
+check('3b a second login evicts the old socket without the trade\'s cancel: that trade lives on',
+  !LEAVE_WAYS.takeover.trade && /this\._playerLeaves\(oldWs, 'takeover', \{ kept: !!_body \}\);\s*try \{ oldWs\.close\(1000, 'superseded by reconnect'\)/.test(jn));
 check('3c ...and every broadcast sends the full state to both, so the partner\'s next action draws it again',
   /_t2Broadcast\(s, extra\) \{\s*const wire = Object\.assign\(this\._t2Wire\(s\), extra \|\| \{\}\);\s*this\._t2Send\(s\.a, 'trade2_state', wire\);\s*this\._t2Send\(s\.b, 'trade2_state', wire\);/.test(t2));
 /* v2.3.4382: the worker now answers a leave that names a trade it no longer

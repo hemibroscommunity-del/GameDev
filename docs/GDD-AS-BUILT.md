@@ -174,7 +174,7 @@ Eleven of these count as building visits for the Mayor's "Visit 3 buildings" err
 
 - **A session** starts at one loading screen (the owner's "washed ashore" clip) that waits for the server and for your arrival on the Wheel's town square, 108 px south of the Town Hall's door, Mayor Bro to the east, Lil Bro to the west, a welcome plate ("Find Mayor Bro — he wants a word. Follow the gold road on your map.") with one button, Skip tutorial.
 - **A death** respawns you on that square after 5 s with every pool full.
-- **The old town** (the game's original BroTown map) is only an unseen stop on every way in; nothing leads back to it. **The old lands** (eight zones and a World View with trails) are closed; their code still runs the Wheel's monsters, and `?trial=off` reopens them for one tab.
+- **The old town** (the game's original BroTown map) is only an unseen stop on every way in; nothing leads back to it. **The old lands** (eight zones and a World View with trails) are closed for good (v2.3.4675-4676): the server refuses a move or a join into them (zonejudge.js R3, off switch `retiredlands`) and `?trial=off` is gone; their tables (data.js ZONES) still define the Wheel's monsters, whose homes are the same eight ids.
 - **Dungeons** (Part 6.8): a mouth at a land's landmark, "⚔️ Enter the Great Cave" within 200 px; a run comes out at the mouth; a death comes out in town. **The farm** (Part 8) is reached from the Feed & Seed or the Land Office and its gate leads back to the door you left by.
 - **A reconnect** joins where the server last had you, judged at honest walking speed for the time away (an hour's memory).
 

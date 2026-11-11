@@ -129,7 +129,7 @@ export const BOTFP = {
   // bound on the world anyway: a teleporting bot touring all 9 wilderness
   // zones could reach 9 x 180 = 1620/h at BASE density, so 810 still clips
   // the multi-zone tourist by half.
-  // Whoever changes SPAWN_SCALE.NODE_MAX owns this number next.
+  // v2.3.4850: the population scaler (SPAWN_SCALE) is gone with the old lands; this number's history stays.
   //
   // v2.3.3036: 810 -> 2400, and the derivation changes kind, because SUPPLY
   // stopped being the bound.  In the Wheel (v2.3.3012) a skill has 34-54

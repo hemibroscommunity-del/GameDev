@@ -1259,3 +1259,22 @@ remove them from the game screen: they're already seeing it on the dashboard
 and whenever they enter combat or have any resource depletion it appears above
 their character head anyway"). `ui/PlayerFrame.jsx` is deleted; `--bt-hud-top`
 is just under the top bar again (game.css).
+
+## A red skull in a fight with a monster holds its bag (v2.3.4841)
+
+A red skull a monster kills loses everything it carries, the same as one a
+player kills. The fight lock (`_bagLockedByFight`, and the router's table in
+`fightlock.js` built on it) watched only fights with players, so a red skull
+losing to a monster could sell, list, trade, bank or drop the bag in its last
+seconds and leave an empty pile (STATE-MACHINES.md "what is left"; the sweep's
+V21 Q3, #1523).
+
+Now a red skull hit by anything in the last 10 seconds (`PVP_HEAL.WINDOW_MS`,
+read from `ps.lastDamageAt`, the stamp every hit already writes) is locked the
+same way. A player without a red skull keeps everything to a monster, so a
+monster never locks them. Kill switch: `fightlockmonster: false`. Test:
+`server/test/redskull-monster-lock.test.mjs`.
+
+The refusals reuse the existing wording ("Not while you are fighting a
+player"), which is slightly off for a monster fight; a red skull is always in a
+fight with players' rules, so it was left as it is.

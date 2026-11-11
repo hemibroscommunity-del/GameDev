@@ -3510,7 +3510,7 @@ async function _runBake(job) {
   }
   const [body, belt, ...inps] = await Promise.all([_frameInput(bodyTex), beltTex ? _frameInput(beltTex) : null, ...worn.map(w => _frameInput(w.tex))]);
   const _close = () => { for (const x of [body, belt, ...inps]) { try { if (x && x.bm) x.bm.close(); } catch (e) { /* gone */ } } };
-  if (!body) { _close(); _bakeWorkerStats.inline++; _maskedBodyFrame(bodyTex, worn, dilate, poseInfo); return; }
+  if (!body) { _close(); _bakeWorkerStats.failed++; _maskedFailed(key); return; }   /* v2.3.4870: counted, not baked here (above) */
   const id = ++_bakeSeq;
   const reply = await new Promise((resolve) => {
     _bakeJobs.set(id, resolve);
@@ -3519,7 +3519,10 @@ async function _runBake(job) {
       wk.postMessage({ id, body, belt, worn: worn.map((w, i) => ({ k: w.k, inp: inps[i] })), dilate, poseInfo, ds: DISPLAY_DS, crop: true }, transfer);
     } catch (e) { _bakeJobs.delete(id); _close(); resolve({ err: String(e) }); }
   });
-  if (reply.err) { _bakeWorkerStats.failed++; _maskedBodyFrame(bodyTex, worn, dilate, poseInfo); return; }
+  /* v2.3.4870: a failure is counted, not baked here (a renderer frame is
+     baked inline on its second failure: _maskedRetryInline); a background
+     prewarm with no worker left bakes inline as it always did */
+  if (reply.err) { _bakeWorkerStats.failed++; _maskedFailed(key); if (!(job.rank > 0) && !_getBakeWorker()) _maskedBodyFrame(bodyTex, worn, dilate, poseInfo); return; }
   if (reply.raw || !reply.bitmap) {
     _bakeWorkerStats.raw++;
     if (_bakeWorkerStats.rawKeys.length < 12) _bakeWorkerStats.rawKeys.push(poseInfo.pose + '/' + poseInfo.dir + ' #' + poseInfo.frameIdx);
@@ -3822,6 +3825,33 @@ if (typeof window !== 'undefined') {
    -- on a loaded machine the jobs' main-thread share is the bottleneck, not
    the worker.  Measure on a phone before trying it again. */
 const _localBakeStats = { hits: 0, plain: 0, inline: 0, late: 0, delivered: 0 };
+/* v2.3.4870: frames the worker failed on (an error, an unreadable input), by
+   key.  The renderer's frames are never baked inline while a worker is up
+   (held-budget.mjs `masked-bake`); one that failed twice is, once, so a
+   frame the worker cannot do is not left unmasked for good.  Capped: a
+   long session's failures do not grow it without end. */
+const _maskedFails = new Map();
+function _maskedFailed(key) {
+  if (_maskedFails.size >= 256) _maskedFails.delete(_maskedFails.keys().next().value);
+  _maskedFails.set(key, (_maskedFails.get(key) || 0) + 1);
+}
+function _maskedRetryInline(key) { return (_maskedFails.get(key) || 0) >= 2; }
+/* v2.3.4870: a worker that has sat on ONE job for _BAKE_STUCK_MS is hung, not
+   busy (the slowest bake measured on the QA box's software chip was under
+   2 s): it is let go and a new one made on the next ask, its jobs answered
+   as failed (so each is asked again, and baked here only on a second
+   failure).  It used to be answered with inline bakes after 1 s. */
+const _BAKE_STUCK_MS = 6000;
+function _bakeWorkerWatch() {
+  if (!(_bakeBusy > 0) || !_bakeWorker || performance.now() - _bakeStartedAt < _BAKE_STUCK_MS) return;
+  const w = _bakeWorker;
+  _bakeWorker = null;
+  _bakeWorkerStats.restarts = (_bakeWorkerStats.restarts || 0) + 1;
+  try { w.terminate(); } catch (e) { /* gone */ }
+  for (const [, job] of _bakeJobs) job({ err: 'worker stuck' });
+  _bakeJobs.clear();
+  _rodSent = null;   /* the new worker has no rod mask: sent again */
+}
 const _localMisses = [];   /* v2.3.3520: QA -- the last 32 drawn plain (window.__btLocalMisses) */
 const _LOCAL_PATIENCE_MS = 1000;
 let _localMissKey = null, _localEpoch = 0;
@@ -3830,10 +3860,14 @@ function _localMaskedFrame(bodyTex, worn, dilate, poseInfo) {
   const key = _maskedKey(bodyTex, worn, dilate);
   if (_maskedBodyCache.has(key)) { _localBakeStats.hits++; return _maskedBodyFrame(bodyTex, worn, dilate, poseInfo); }
   if (!_getBakeWorker()) { _localBakeStats.inline++; return _maskedBodyFrame(bodyTex, worn, dilate, poseInfo); }
-  if (_bakeBusy > 0 && performance.now() - _bakeStartedAt > _LOCAL_PATIENCE_MS) {
-    _localBakeStats.late++;   /* the worker is stuck on a job: the old way */
-    return _maskedBodyFrame(bodyTex, worn, dilate, poseInfo);
-  }
+  /* v2.3.4870: a stuck worker no longer sends frames back to the inline bake
+     (17 to 107 ms each, inside the frame: held-budget.mjs `masked-bake`; on
+     the QA box's software chip a busy worker read as stuck).  It is
+     restarted instead (_bakeWorkerWatch), and a frame the worker could not
+     bake twice is the one baked here (_maskedRetryInline). */
+  if (_bakeBusy > 0 && performance.now() - _bakeStartedAt > _LOCAL_PATIENCE_MS) _localBakeStats.late++;
+  _bakeWorkerWatch();
+  if (_maskedRetryInline(key)) { _localBakeStats.inline++; return _maskedBodyFrame(bodyTex, worn, dilate, poseInfo); }
   const job = _bakeByKey.get(key);
   /* A NEW miss (the animation stepped onto an unbaked frame) opens a new
      epoch, its rank: it outranks everything asked for before.  The same
@@ -3896,6 +3930,25 @@ function _peerMaskedFrame(display, bodyTex, worn, dilate, poseInfo, mirror) {
     _peerBakeSoon(bodyTex, worn, dilate, poseInfo);
     _peerBakeStats.held++;
     return last;
+  }
+  /* v2.3.4870: NEVER BAKE INLINE IN PLAY (held-budget.mjs `masked-bake`).
+     With no frame to hold (first sight, a new facing) this used to bake here,
+     in the frame: 17 to 107 ms on the QA box, a freeze each time an armoured
+     player arrived or turned.  Now it is drawn as the local player's is
+     (_localMaskedFrame, v2.3.3520): the plain body, the RIGHT pose, for the
+     frame or two until the worker answers -- what it lacks is the mask's
+     trimming of the few pixels the art pokes past a plate edge.  Asked at a
+     rank above the background prewarms (0.5), below the local player's own
+     misses (whole epochs, 1 and up).  No worker: inline, as before. */
+  _bakeWorkerWatch();
+  if (_peerWorkerOk() && !_maskedRetryInline(key)) {
+    const pk = key;
+    if (!_peerPending.has(pk)) {
+      _peerPending.add(pk);
+      Promise.resolve(_prewarmBake(bodyTex, worn, dilate, poseInfo, 0.5)).catch(() => {}).then(() => { _peerPending.delete(pk); });
+    } else _prewarmBake(bodyTex, worn, dilate, poseInfo, 0.5);   /* queued already: raise it */
+    _peerBakeStats.plain = (_peerBakeStats.plain || 0) + 1;
+    return bodyTex;
   }
   _peerBakeStats.inline++;
   return _maskedBodyFrame(bodyTex, worn, dilate, poseInfo);
@@ -13102,7 +13155,8 @@ export class EntityRenderer {
             _placeLookResidue(display, !!(_rla && (_rla.tex || _rHold)), _rRes, _mt);
             if (_rla && _rla.tex) display._peerLastResidue = _rla.residue || null;
             if (spriteBody.texture !== _mt) spriteBody.texture = _mt;
-            if (!_fsR && pose !== 'pickup' && _mt !== tex) {
+            /* v2.3.4870: a plain body drawn while the worker bakes (_peerMaskedFrame) is never the frame held */
+            if (!_fsR && pose !== 'pickup' && _mt !== tex && _mt !== _rOld) {
               display._peerLastMasked = _mt;
               display._peerLastPD = pose + '|' + dir + '|' + (mirror ? 1 : 0) + '|' + _rworn.map((w) => w.k).join(',');
             }

@@ -693,3 +693,29 @@ Gear (v2.3.2531):
 - The seller sets the price. No suggested value was invented for gear.
 - The strict-provenance flag ships **off**, because nothing carries the
   mark yet.
+
+## The stamp prune waits for the shelf's heal (v2.3.4842)
+
+A listing a restart caught mid-settlement (goods delivered, the seller not yet
+paid), mid-release or mid-bid is finished by the shelf's rebuild
+(`_stConverge`), which reads the legs' oplog stamps. The prune deletes those
+stamps after 48 hours, and the rebuild ran only on the first Auction House
+request after a wake. So 48 hours of play with nobody opening the shop let the
+prune go first, and the heal went the wrong way: goods delivered twice, a sale
+re-listed (STATE-MACHINES.md "what is left", from #1521; the sweep's V8a S6-4).
+
+The fix is the General Store's (`market.js _mktSettleWait`, v2.3.4505): the
+tick's housekeeping slot asks `_stSettleWait()` before the prune. It is true
+until the shelf has been rebuilt in this worker's life, and it starts the
+rebuild. No prune comes between a restart and its heal.
+
+- **Cost:** no extra write a sale. The other fix considered, "paid facts in the
+  record", would have cost one more put per sale, bid and release. This one
+  reads the shelf once per worker life (the read the first shop request made
+  anyway) and writes only where a leftover is finished.
+- **One load at a time:** `_stEnsureIndex` shares an in-flight load, so a shop
+  request during the slot's rebuild waits for it instead of reading a
+  half-built shelf. A load that throws leaves no shelf and is tried again.
+- **Kill switch:** `storehealwait: false` (the prune runs as before).
+- Test: `server/test/store-heal-wait.test.mjs` (§2 reproduces the hole with
+  the switch off).

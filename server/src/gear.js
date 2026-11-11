@@ -23,6 +23,7 @@ import { BLACKSMITH_TIERS, WOODWORKING_TIERS, QUALITY_GRADES, AMULET_TIER_POWER,
 import { forgeLevelFor, forgeOffered } from './forgeladder.js'; /* v2.3.3524: the forge's ladder */
 import { ELEMENT_STATUS } from './elemental.js'; /* v2.3.3513: a weapon's gems are checked on the way in */
 import { isVolatilePair } from './weapongem.js'; /* v2.3.3513 */
+import { bagTake } from './bag.js'; /* v2.3.4810: the bag door */
 
 export const gearMethods = {
   /* v2.3.4386: `gearresend: false` in the live flags is the way back to the
@@ -615,8 +616,7 @@ export const gearMethods = {
     }
 
     // Apply: consume resources, mint new weapon, swap old to stash.
-    ps.inventory[resourceKey] -= cost;
-    if (ps.inventory[resourceKey] <= 0) delete ps.inventory[resourceKey];
+    bagTake(ps.inventory, resourceKey, cost, 'weapon_forge'); /* v2.3.4810: the bag door */
     this._goldTake(ps, tier.goldCost, 'weapon_forge'); /* v2.3.4670: the gold door */
 
     if (current) {
@@ -696,6 +696,9 @@ export const gearMethods = {
       if (ps.weaponStash.length >= this.WEAPON_STASH_CAP) return; // stash full -- reject
       ps.weaponStash.push(current);
     }
+    /* v2.3.4840: armour or legs taken off go to the bag: the worker's armour
+       stash too (gearstash.js _gearStashLiveAdd) */
+    if ((slot === 'armor' || slot === 'legsArmor') && this._gearStashLiveAdd) this._gearStashLiveAdd(ps, slot, current);
     ps[slot] = null;
     // v2.3.1159: active-slot repair.  Unequipping the weapon the
     // activeSlot points at used to leave the pointer dangling — the

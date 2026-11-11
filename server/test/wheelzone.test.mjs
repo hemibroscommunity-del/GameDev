@@ -615,7 +615,6 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
   /* v2.3.3012: it has nodes now, but only the baked ones (section 8) -- none
      from the random layout, whose every point of 43,008 px is likely sea */
   check('not: nodes scattered over the map at random', (room._ensureZoneNodes(WHEEL_ZONE) || []).every((n) => /^wn-/.test(n.id)));
-  check('not: population-scaled', room._spawnScalableZone(WHEEL_ZONE) === false);
   check('not: in ZONES (PvP needs ZONES[z].lawless, so it fails closed)', !Object.prototype.hasOwnProperty.call(ZONES, WHEEL_ZONE));
   check('not: a hub -- it heals at the ordinary rate (no town top-off on the spokes)',
     !['town', 'worldview', 'farm_home'].includes(WHEEL_ZONE));

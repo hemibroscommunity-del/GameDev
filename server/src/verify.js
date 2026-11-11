@@ -90,6 +90,6 @@ export const verifyMethods = {
   _verifyRefuse(ws) {
     try { ws.send(JSON.stringify({ type: 'join_rejected', reason: 'verify', sitekey: this._verifySiteKey() })); } catch (e) {}
     try { ws.close(VERIFY.CLOSE_CODE, 'verify'); } catch (e) {}
-    this.sessions.delete(ws);
+    this._playerLeaves(ws, 'refused');   /* v2.3.4830: the session door (leave.js) */
   },
 };

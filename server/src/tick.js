@@ -211,11 +211,7 @@ export const tickMethods = {
            not worse), so this is deploy-order safe in both
            directions. */
         try { ws.close(4006, 'idle timeout'); } catch {}
-        try {
-          const _p = this.webSocketClose(ws);
-          if (_p && _p.catch) _p.catch(() => {});
-        } catch {}
-        this.sessions.delete(ws); // belt-and-braces: deterministic in both paths
+        this._playerLeaves(ws, 'afk');   // v2.3.4830: the session door (leave.js): out of the map at once, the saves after
         continue;
       }
       session.lastPing = nowMs;
@@ -328,12 +324,6 @@ export const tickMethods = {
         try { fn(); } catch (e) { this._tickGuardErr(label, e); }
       };
 
-      /* v2.3.1983: population-scaled spawns.  Self-throttled to one pass
-         per SPAWN_SCALE.SCALE_MS (2s, ~1 tick in 90) — a per-tick re-scan
-         of every zone would be the wrong shape even with the budget to
-         spare.  Runs BEFORE monster AI so a zone that just grew ticks its
-         new monsters in the same frame they were announced. */
-      guard('spawnScale', () => this._tickSpawnScale(Date.now()));
 
       /* v2.3.3325: a move the budget could not cover is followed on between
          the phone's moves (movement.js), before the monsters look for whom
@@ -436,7 +426,12 @@ export const tickMethods = {
           /* v2.3.4505: the prune waits while the General Store has a sale a
              restart caught half done (market.js _mktSettleWait): the stamps
              it would delete are what says which legs were paid */
-          if (!(this._mktSettleWait && this._mktSettleWait())) this._opPruneMaybe(nowJp).catch(() => {});
+          /* v2.3.4842: and while the Auction House's shelf has not been
+             rebuilt since the restart (store.js _stSettleWait): both are
+             asked, so both heals start in the same slot */
+          const _mktWait = !!(this._mktSettleWait && this._mktSettleWait());
+          const _stWait = !!(this._stSettleWait && this._stSettleWait());
+          if (!_mktWait && !_stWait) this._opPruneMaybe(nowJp).catch(() => {});
           this._metricsMaybe(nowJp).catch(() => {});
         }
         /* v2.3.3140: the daily quests' counted progress is written here at

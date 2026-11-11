@@ -599,7 +599,7 @@ export const pvpExtrasMethods = {
     if (!this._pvpExtrasOn() || !killerPs || killerPs.dying || !(killerPs.hp > 0)) return;
     const maxHp = killerPs.maxHp || 100;
     const lb = this._lifebloodFlat ? this._lifebloodFlat(killerPs) : 0;
-    if (lb > 0) killerPs.hp = Math.min(maxHp, killerPs.hp + lb);
+    if (lb > 0) this._hpSet(killerPs, Math.min(maxHp, killerPs.hp + lb), 'pvp_lifeblood');   /* v2.3.4820: the life door */
     let refund = 0, reason = 'ok';
     const rec = killerPs._dmgFromPlayer instanceof Map ? killerPs._dmgFromPlayer : null;
     if (slot !== 'melee') reason = 'not-melee';
@@ -607,7 +607,7 @@ export const pvpExtrasMethods = {
       const taken = rec ? (rec.get(victimId) || 0) : 0;
       if (taken > 0) {
         refund = Math.ceil(taken * LIFESTEAL_REFUND);
-        killerPs.hp = Math.min(maxHp, killerPs.hp + refund);
+        this._hpSet(killerPs, Math.min(maxHp, killerPs.hp + refund), 'pvp_refund');
         rec.delete(victimId);
       } else reason = 'no-damage';
     }

@@ -50,6 +50,8 @@
  * than the ore pays for and is given exactly what it asked
  * (docs/specs/smelting.md "One ore, one bar"). */
 
+import { bagGive, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
+
 export const SMELT = {
   /* bar invKey -> recipe.  `ore` is the exact inventory key gathering.js
      _harvestInvKey mints for the tier's rock.  Higher metals join this table
@@ -123,9 +125,8 @@ export const smeltingMethods = {
     const count = Math.min(want, Math.floor(have / r.oreCost));
     if (count <= 0) return null;
 
-    ps.inventory[r.ore] = have - count * r.oreCost;
-    if (ps.inventory[r.ore] <= 0) delete ps.inventory[r.ore];
-    ps.inventory[barKey] = (Math.floor(Number(ps.inventory[barKey]) || 0)) + count;
+    bagTake(ps.inventory, r.ore, count * r.oreCost, 'smelt_ore'); /* v2.3.4810: the bag door */
+    bagGive(ps.inventory, barKey, count, 'smelt_bar');
 
     const fromLevel = lvl;
     let leveled = false;

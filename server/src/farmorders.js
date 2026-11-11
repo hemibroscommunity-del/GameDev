@@ -71,6 +71,7 @@
  * Spec: docs/specs/farm-orders.md.  Suite: server/test/farmorders.test.mjs. */
 
 import { PVP_HEAL } from './data.js';
+import { bagTake } from './bag.js'; /* v2.3.4810: the bag door */
 
 export const FARM_ORDERS = {
   /* The record's shape.  A change to it bumps this; an older worker then
@@ -273,8 +274,7 @@ export const farmOrderMethods = {
        and the writes can throw except the XP, which is last and caught
        (farm.js's harvest, v2.3.3127). */
     rec.done[slot] = 1;
-    if (have - o.n > 0) ps.inventory[o.key] = have - o.n;
-    else delete ps.inventory[o.key];
+    bagTake(ps.inventory, o.key, o.n, 'farm_order'); /* v2.3.4810: the bag door */
     this._goldGive(ps, o.gold, 'farm_order'); /* v2.3.4670: the gold door */
     const fromLevel = skillLvl(ps, 'farming');
     let leveled = false;

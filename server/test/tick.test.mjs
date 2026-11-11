@@ -778,67 +778,19 @@ check('forged monster_transform dropped by deny-list',
     await room.webSocketMessage(wsZ, JSON.stringify({ type: 'move', x, y, z }));
   };
 
-  /* ── locked: no quest names frost yet ── */
-  await move('frost');
-  check('a gated zone is refused with no quest for it', ps.z === 'town', ps.z);
-  /* NOT FROZEN — the property that actually matters, and it is subtler than
-     "the position still applies".  The rejection path drops the offending
-     message whole and arms the NEXT one to bypass the anti-teleport cap
-     (lastMoveAt = undefined), so the player loses one packet and keeps
-     playing.  Asserted as "the next move lands", because that is the thing a
-     player would notice if it broke — and because a first draft of this test
-     asserted the position applied on the REJECTED message, which is not what
-     this path has ever done. */
+  /* v2.3.4853: the quest gates (a zone opens when a quest names it) are gone with
+     the old lands.  What this section pinned stays true of the ONE rejection
+     path left, an unlisted zone id: the move is dropped whole, the player is
+     held where the worker has them, and the NEXT move lands (never frozen). */
+  await move('nowhere');
+  check('an unlisted zone is refused', ps.z === 'town', ps.z);
   check('...and the rejected move does not write a position', ps.x === 100, { x: ps.x });
   await move('town', 121, 121);
-  check('...but the NEXT move lands, so a lock never freezes you',
+  check('...but the NEXT move lands, so a refusal never freezes you',
     ps.x === 121 && ps.y === 121, { x: ps.x, y: ps.y });
-
-  /* ── always-open zones are never gated ── */
-  await move('meadow', 130, 130);
-  check('the Starting Meadow is always open', ps.z === 'meadow', ps.z);
-  ps.z = 'town';
   await move('worldview', 140, 140);
-  check('the World View is always open (it is how you reach a quest giver)',
-    ps.z === 'worldview', ps.z);
+  check('the World View is open (it is how you reach a quest giver)', ps.z === 'worldview', ps.z);
   ps.z = 'town';
-
-  /* ── accepting the quest opens it ── */
-  /* v2.3.3525: tut_2 names frost now (the tour's finale; tut_1 the slimes) */
-  ps._quests.tut_2 = 'active';
-  await move('frost', 150, 150);
-  check('accepting the quest that names frost opens frost', ps.z === 'frost', ps.z);
-
-  /* ── and it does not close behind you ── */
-  ps._quests.tut_2 = 'turnedIn';
-  ps.z = 'town';
-  await move('frost', 160, 160);
-  check('...and a finished quest leaves its zone open, not locked again',
-    ps.z === 'frost', ps.z);
-
-  /* ── ALREADY INSIDE A LOCKED ZONE: you can still move, and still leave ──
-     Found by the suite rather than by reasoning: the first cut gated on the
-     zone alone, and since a client re-sends its current zone on every move
-     packet, anyone standing in a locked zone had EVERY move dropped.  That is
-     a player frozen in place with no way out — strictly worse than the lock
-     being absent.  Reachable for real: entered before the gate shipped, or
-     abandoned the quest afterwards. */
-  ps.z = 'sky'; ps.x = 200; ps.y = 200;      /* no tut_3 -> sky is locked */
-  await move('sky', 210, 210);
-  check('a player already inside a locked zone can still move',
-    ps.x === 210 && ps.y === 210, { x: ps.x, y: ps.y });
-  await move('town', 220, 220);
-  check('...and can still walk OUT of it', ps.z === 'town', ps.z);
-
-  /* ── GUARD: the gate is per-zone, not a single global unlock ──
-     Without this, "opens frost" would also pass on an implementation that
-     opened EVERYTHING the moment any quest went active. */
-  ps.z = 'town';
-  await move('ember', 170, 170);
-  check('one quest does not open every zone (guard)', ps.z === 'town', ps.z);
-  ps._quests.tut_4 = 'active';
-  await move('ember', 180, 180);
-  check('...and the quest that DOES name ember opens ember', ps.z === 'ember', ps.z);
 }
 
 /* ══ v2.3.2482: monsters stop a sword's length away, and can still reach ══

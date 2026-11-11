@@ -29,7 +29,7 @@
 import fs from 'node:fs';
 import { GameRoom } from '../src/index.js';
 import { ZONE_JUDGE } from '../src/zonejudge.js';
-import { QUEST_ZONE_GATE } from '../src/movement.js';
+import { RETIRED_LANDS } from '../src/zonejudge.js';   /* v2.3.4853: the old land comes from the retired list (the quest gates are gone) */
 import { NML } from '../src/nomansland.js';
 import { WHEEL_ZONE } from '../src/wheelzone.js';
 import { WHEEL_DUNGEON } from '../src/wheeldungeon.js';
@@ -156,12 +156,8 @@ room._liveFlags = {};
 {
   const hit = await fightSetUp();
   check('1a. (setup) F is in No man\'s land, in a fight with K', hit && room._nmlLevelOf(F) >= 1 && room._bagLockedByFight(IDS.f, T), { hit, lvl: room._nmlLevelOf(F) });
-  /* the old lands open on a quest's accept: open them, so the refusal is
-     the judge's and not the quest lock's */
-  F._quests = F._quests || {};
-  for (const [, qids] of QUEST_ZONE_GATE) F._quests[qids[0]] = 'active';
-  const oldLand = [...QUEST_ZONE_GATE.keys()][0];
-  check('1b. (setup) an old land F may otherwise enter', !!oldLand && room._zoneUnlocked(F, oldLand), oldLand);
+  const oldLand = [...RETIRED_LANDS].find((z) => z !== 'shadow');
+  check('1b. (setup) an old land is named', !!oldLand && RETIRED_LANDS.has(oldLand), oldLand);
   const x0 = F.x, y0 = F.y, b0 = F._mvBudget, bt0 = F._mvBudgetAt;
   const lists0 = Object.keys(room.monsters).length + Object.keys(room.nodes).length;
   WS[IDS.f].sent.length = 0;

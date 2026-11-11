@@ -202,6 +202,6 @@ export const oneFormulaMethods = {
   _keepBarFullness(ps, hp0, max0) {
     if (!ps || !(max0 > 0) || !(ps.maxHp > 0) || ps.maxHp === max0) return;
     if (ps.dead || ps.dying || !(hp0 > 0)) return;
-    ps.hp = Math.max(1, Math.min(ps.maxHp, Math.round(hp0 * ps.maxHp / max0)));
+    this._hpSet(ps, Math.max(1, Math.min(ps.maxHp, Math.round(hp0 * ps.maxHp / max0))), 'bar_fullness');   /* v2.3.4820: the life door */
   },
 };

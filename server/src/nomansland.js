@@ -113,6 +113,7 @@
 import { WHEEL_ZONE } from './wheelzone.js';
 import { wheelTable } from './wheeltables.js';   /* v2.3.3315 */
 import { GEAR_PROV_FIELD, GEAR_PROV_SLOTS } from './gearprov.js';
+import { PVP_HEAL } from './data.js';   /* v2.3.4841: the lock's window */
 
 export const NML = Object.freeze({
   /* the Wheel's rings, game px (plan.js wheel: hub 2.7 zones, tierZones 1,
@@ -250,7 +251,24 @@ export const noMansLandMethods = {
     if (!pid || typeof pid !== 'string') return false;
     const f = this._liveFlags;
     if (f && typeof f === 'object' && own(f, 'fightlock') && !f.fightlock) return false;
-    return !!(this._farmOrderInFight && this._farmOrderInFight(pid, typeof now === 'number' ? now : Date.now()));
+    const t = typeof now === 'number' ? now : Date.now();
+    if (this._farmOrderInFight && this._farmOrderInFight(pid, t)) return true;
+    /* v2.3.4841: A RED SKULL IN A FIGHT WITH A MONSTER (STATE-MACHINES.md
+       "what is left"; the sweep's V21 Q3, #1523).  A red skull a monster kills
+       loses all it carries, the same as one a player kills (_nmlOnDeath: the
+       loss runs for `red` whatever the cause), but the lock above watches
+       player fights only -- so a red skull losing to a monster could sell,
+       list, trade or bank the bag in its last seconds and leave an empty
+       pile.  Locked for a blow taken in the same 10 s window
+       (PVP_HEAL.WINDOW_MS; `lastDamageAt`, every hit's own stamp in
+       combat.js _applyDamage, no new clock).  A player without a red skull
+       keeps everything to a monster, so is never locked by one.  Kill switch:
+       `fightlockmonster: false`. */
+    if (f && typeof f === 'object' && own(f, 'fightlockmonster') && !f.fightlockmonster) return false;
+    const ps = this.playerState ? this.playerState[pid] : null;
+    if (!ps || !ps._nml || !(ps._nml.red > 0)) return false;
+    const hitAt = Number(ps.lastDamageAt) || 0;
+    return hitAt > 0 && t - hitAt >= 0 && t - hitAt < PVP_HEAL.WINDOW_MS;
   },
 
   /* the No man's land level a live player stands in */

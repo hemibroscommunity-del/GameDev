@@ -46,6 +46,8 @@
  * (smelting.js _oneToOneOff, the same switch the bars, Diego's prices and the
  * daily smelt quest follow).  The worker settles from _hardenedWoodRecipe. */
 
+import { bagGive, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
+
 export const HARDENED_WOOD = {
   /* hardened invKey -> recipe.  `log` is the exact key gathering.js
      _harvestInvKey mints for the tree (its TREE names); `tier` the
@@ -116,9 +118,8 @@ export const hardenedWoodMethods = {
     const count = Math.min(want, HARDENED_WOOD.MAX_PER_REQUEST, Math.floor(held / r.logCost));
     if (count < 1) { reply({ error: 'no-logs', key, need: r.logCost, have: held }); return null; }
 
-    ps.inventory[r.log] = held - count * r.logCost;
-    if (ps.inventory[r.log] <= 0) delete ps.inventory[r.log];
-    ps.inventory[key] = (has(ps.inventory, key) ? Math.floor(Number(ps.inventory[key]) || 0) : 0) + count;
+    bagTake(ps.inventory, r.log, count * r.logCost, 'hardwood_logs'); /* v2.3.4810: the bag door */
+    bagGive(ps.inventory, key, count, 'hardwood_made');
 
     /* Per piece, not one lump: the level curve is per level, as smelting's. */
     const fromLevel = lvl;

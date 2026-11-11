@@ -29,6 +29,7 @@ import { PINNED as SFX_PINNED, PREFETCH as SFX_PREFETCH, BUDGET_MB as SFX_BUDGET
 import { makeVoiceCap, parseVoiceCap, exempt as voiceExempt } from './voiceCap.js';   /* v2.3.3727: a crowd of one sound starts as a few (`?voicecap`) */
 import { FARM_GATE, FARM_SPOTS } from './farmLayout.js';   /* v2.3.3136: the farm you walk */
 import { feelSynth, feelBuildDemo } from './weaponFeelSound.js';   /* v2.3.4800: the weapon feel's sounds, synthesised (no files) */
+import { fineInput } from '../game/deviceProfile.js';   /* v2.3.4804: the device profile */
 
 /* ── Babel helper polyfill (from pre-transpiled source) ── */
 function _defineProperty(e, r, t) { return (r in e) ? Object.defineProperty(e, r, { value: t, enumerable: true, configurable: true, writable: true }) : e[r] = t, e; }
@@ -4664,7 +4665,7 @@ BT_AUDIO._deskStepK = function () {
   try {
     var m = typeof location !== 'undefined' && /[?&]stepvol=([0-9.]+)/.exec(location.search || '');
     if (m) k = Math.max(0, Math.min(4, parseFloat(m[1]) || 0));
-    else if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer:fine)').matches) k = this.DESK_STEP_K;
+    else if (fineInput()) k = this.DESK_STEP_K;   /* v2.3.4804: the device profile */
   } catch (e) { k = 1; }
   this._deskStepKv = k;
   return k;

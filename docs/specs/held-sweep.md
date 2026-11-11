@@ -219,7 +219,7 @@ rank order:
 | `body-bake` | 220 ms (the crowd's stations: up to 730) | the head an armoured player shows (`<pose>-<dir>-head`) is recoloured on the page for each look the first time it is drawn | key the head sheets by skin alone (they take no trouser or boot colour), then keep them as numbers like the bodies; the same for a body with an eye style or a drawing (STATE-MACHINES A2) |
 | `gear-sheet` | 195 ms | a drawn shirt composed on the page for each pose (the crowd tour) | stamp the drawing on a worker, or draw it as a layer over the plain shirt |
 | `portrait` | 150 ms | the Leaderboards draw a board's faces in one piece (the crowd tour) | a few faces a frame |
-| `masked-bake` | 140 ms | armour cut to the body on the page, inside a frame, when a frame is wanted before the worker has it | draw the bare look until the worker answers; prewarm the poses of what was just put on |
+| `masked-bake` | 24 ms (v2.3.4870; was 140) | the worker job's page-side part (frames handed over as pictures): the cut itself no longer runs on the page in play -- another player's frame is drawn plain until the worker answers, as yours was | hand the worker the sheets once and send rectangles; prewarm the poses of what was just put on |
 | `pack-page` | 80 ms | a gear strip cropped and packed on a canvas the first time its pose is drawn | the strip door for gear strips (256-colour files, packed on the worker) |
 | `gc` | 60 ms | the browser's garbage collector | make less garbage a frame (OPTIMIZATION-ROADMAP's pools) |
 | `the frame itself` | 70 ms | this box plays a quarter of a second of game in each frame | `mp-phoneframe` is the measure at a phone's rate; here the line stops it growing |
