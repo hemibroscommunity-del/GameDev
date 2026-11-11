@@ -656,7 +656,7 @@ Object.assign(globalThis, DATA);
 Object.assign(globalThis, { wsrvUrl, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId });
 /* BT_API_BASE etc from networking — derive fresh each time */
 var BT_API_BASE = (window.BROTOWN_WS_URL || 'wss://api.brotown.net').replace('wss://', 'https://').replace('ws://', 'http://');   /* v2.3.2446: see networking/index.js */
-Object.assign(globalThis, { BT_API_BASE });   /* v2.3.4654: the Supabase globals (SUPA_URL, SUPA_KEY, supa) are gone */
+Object.assign(globalThis, { BT_API_BASE });   /* v2.3.4672: the Supabase globals (SUPA_URL, SUPA_KEY, supa) are gone */
 Object.assign(globalThis, { _regenerator, _regeneratorDefine2, _asyncToGenerator, _typeof, _slicedToArray, _toConsumableArray, _objectSpread, _defineProperty, _toPropertyKey, _toPrimitive, ownKeys, _arrayWithHoles, _iterableToArrayLimit, _unsupportedIterableToArray, _arrayLikeToArray, _nonIterableRest, _arrayWithoutHoles, _iterableToArray, _nonIterableSpread, _createForOfIteratorHelper, asyncGeneratorStep });
 
 /* ── v2.3.1448: tap-to-open resource menu ──────────────────────────
@@ -4527,7 +4527,7 @@ export var BroTown = function BroTown(_ref0) {
       } catch (e) {}
       discoverZone('town'); /* §ENC — Everyone starts in town */
 
-      /* v2.3.4654: a load from the removed Supabase backend (bt_load_player,
+      /* v2.3.4672: a load from the removed Supabase backend (bt_load_player,
          else bt_register_player) went here; both were no-ops.  The worker's
          join is the character's load. */
     }
@@ -9163,7 +9163,7 @@ export var BroTown = function BroTown(_ref0) {
             stateRef.current._statsSavedJson = _statsJson;
           }
         } catch (e) {}
-        /* v2.3.4654: a bt_update_stats ping to the removed Supabase backend went here */
+        /* v2.3.4672: a bt_update_stats ping to the removed Supabase backend went here */
       }
       /* Clear collect notification after 2s */
       setCollectMsg(function (prev) {
@@ -12472,7 +12472,7 @@ export var BroTown = function BroTown(_ref0) {
         if (_rosterPf) rememberChar(_rosterPf, { name: S.myName, level: (S.rpg && S.rpg.level) || 0 });
       }
     } catch (e) {}
-    /* v2.3.4654: a bt_register_player call to the removed Supabase backend went here */
+    /* v2.3.4672: a bt_register_player call to the removed Supabase backend went here */
     /* v2.3.777: resume snapshot -- the character needed to rejoin without
        the login screen.  Written on every PLAY; heartbeated in-game; read
        by the auto-rejoin effect after a recovery reload or an iOS tab
@@ -15926,8 +15926,8 @@ export var BroTown = function BroTown(_ref0) {
         borderRadius: 10,        border: '1px solid rgba(255,255,255,.08)'
       }
     }].concat(buttons));
-  }() /* v2.3.4655: the Dark Sanctum / Light Summit buttons went here: they showed only at depth
-     'core' with endgameUnlocked, which only the deleted standard dungeon ever set */), /* v2.3.4654: the hidden toolbar (MenuBar, display:none since v14) is gone */ showInfo && /*#__PURE__*/React.createElement(InfoPanel, { playerCount: playerCount, setPlayerCount: setPlayerCount, setShowInfo: setShowInfo, stateRef: stateRef }),
+  }() /* v2.3.4673: the Dark Sanctum / Light Summit buttons went here: they showed only at depth
+     'core' with endgameUnlocked, which only the deleted standard dungeon ever set */), /* v2.3.4672: the hidden toolbar (MenuBar, display:none since v14) is gone */ showInfo && /*#__PURE__*/React.createElement(InfoPanel, { playerCount: playerCount, setPlayerCount: setPlayerCount, setShowInfo: setShowInfo, stateRef: stateRef }),
   /* v2.3.816: floating-joystick touch zones.  Left half = movement, right
      half = aim/combat; each captures touches anywhere in its half and spawns
      the joystick under the finger (see the dual-joystick effect).  Transparent

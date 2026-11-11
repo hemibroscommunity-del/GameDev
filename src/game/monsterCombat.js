@@ -51,7 +51,7 @@ import { isStaggered } from '@/game/elemHits.js'; /* v2.3.4387: nor a held attac
 import { specialAttack } from '@/game/playerActions.js'; /* v2.3.2473: a queued bow special fires from the fire site */
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
-import { getBtPlayerId } from '@/networking/index.js';   /* v2.3.4654: btRpc and syncRpgToServer went with Supabase */
+import { getBtPlayerId } from '@/networking/index.js';   /* v2.3.4672: btRpc and syncRpgToServer went with Supabase */
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
@@ -3100,7 +3100,7 @@ export function updateMonsterCombat(S, deps) {
                      inline full-blob writes stalled the frame (same
                      mechanism as the bow-special freeze).  rpgSave.js. */
                   saveRpgSoon();
-                  /* v2.3.4654: a bt_monster_kill RPC went here, to the removed Supabase
+                  /* v2.3.4672: a bt_monster_kill RPC went here, to the removed Supabase
                      backend (a no-op since); the worker credits the kill */
                 }
               }

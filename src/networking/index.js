@@ -19,7 +19,7 @@ import { CHAR_CACHE_KEYS, CHAR_SESSION_KEYS } from '../game/tabIdentity.js';   /
 const WS_BASE = window.BROTOWN_WS_URL || 'wss://api.brotown.net';
 export const BT_API_BASE = WS_BASE.replace('wss://', 'https://').replace('ws://', 'http://');
 
-/* v2.3.4654: the Supabase leftovers are gone -- btRpc (a no-op returning
+/* v2.3.4672: the Supabase leftovers are gone -- btRpc (a no-op returning
    null since Supabase was removed), its five callers, and syncRpgToServer,
    which packed the whole character for btRpc to drop.  The worker is the
    only backend, and the character is its record (handoff rule zero). */

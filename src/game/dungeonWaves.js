@@ -7,12 +7,12 @@
    standard → dungeonClears unlock, next-depth warp, endgame-zone flag
    on core clear).
    Liveness: the CUSTOM dungeon path is reachable in play (Dungeon
-   Workshop). v2.3.4655: the STANDARD (depth-tier) path is deleted -- its
+   Workshop). v2.3.4673: the STANDARD (depth-tier) path is deleted -- its
    only way in, the tile-10 entrance, was off from v2.3.54 and is gone too.
    deps = { stateRef, setRpgState }: the 3s return-home setTimeouts
    re-read stateRef.current (not the frame's S) exactly like the inline
    code did; setRpgState publishes reward state to React. */
-import { ZONES, TILE, BT_AUDIO, createMonster, createDefaultCompStats, updateZoneDimensions, generateZoneMap } from '@/data/index.js';   /* v2.3.4655: the standard dungeon's imports went with it */
+import { ZONES, TILE, BT_AUDIO, createMonster, createDefaultCompStats, updateZoneDimensions, generateZoneMap } from '@/data/index.js';   /* v2.3.4673: the standard dungeon's imports went with it */
 import { _objectSpread } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -111,7 +111,7 @@ export function updateDungeonWaves(S, deps) {
                   }, 3000);
                 }
               }
-                /* v2.3.4655: the standard (depth-tier) dungeon's boss went here: only the
+                /* v2.3.4673: the standard (depth-tier) dungeon's boss went here: only the
                    tile-10 entrance (never on since v2.3.54) ever started one */
             } else if (S._dungeonBossSpawned) {
               /* Boss killed — dungeon complete! */
@@ -160,7 +160,7 @@ export function updateDungeonWaves(S, deps) {
                   holdFarmUntilReady(st);
                 }, 3000);
               }
-                /* v2.3.4655: the standard dungeon's completion went here (the next depth, the
+                /* v2.3.4673: the standard dungeon's completion went here (the next depth, the
                    Shadow & Radiant unlock): unreachable, as above */
             } else if (S._dungeonWave < S._dungeonMaxWaves) {
               /* Spawn next wave */
@@ -185,7 +185,7 @@ export function updateDungeonWaves(S, deps) {
                   }
                 });
               }
-                /* v2.3.4655: the standard dungeon's next wave went here: unreachable, as above */
+                /* v2.3.4673: the standard dungeon's next wave went here: unreachable, as above */
               pushDmgPopup(S, P.x, P.y - 40, 'Wave ' + (S._dungeonWave + 1) + '/' + S._dungeonMaxWaves, '#ff5e6c');
               BT_AUDIO.beep(300, 0.1, 0.15, 'sawtooth');
               S.screenShake = 4;

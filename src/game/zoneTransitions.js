@@ -6,7 +6,7 @@
      at shallow depth, with spawn placement, monster push-back, and tile 9/10
      remap + path carving per entry direction;
    - combat-zone tile 9 → return to town at the exit you left from;
-   - (v2.3.4655: the tile-10 dungeon entrance, disabled since v2.3.54, is gone);
+   - (v2.3.4673: the tile-10 dungeon entrance, disabled since v2.3.54, is gone);
    - dungeon exit tile 9 → return to the combat zone at current depth.
    Closure captures made explicit via imports below (never the globalThis
    copies). Frame-scope values arrive as arguments:
@@ -1345,7 +1345,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
           }
         }
 
-        /* v2.3.4655: the dungeon entrance on tile 10 went here, behind `if (false &&`
+        /* v2.3.4673: the dungeon entrance on tile 10 went here, behind `if (false &&`
            since v2.3.54 (the depth-tier dungeons were never opened); Wheel dungeons
            have their own mouths (game/wheelDungeons.js). */
 
