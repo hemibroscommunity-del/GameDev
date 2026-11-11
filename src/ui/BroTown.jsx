@@ -630,6 +630,7 @@ import { deskWords, onComputer } from '@/game/deskWords.js';   /* v2.3.3615: "ta
 import { tooFarWord, tooFarPlace } from '@/game/tooFar.js';   /* v2.3.3990: "Too far away" over a resource out of reach */
 import { idleChatMay, idleChatTimer, inTownAt } from '@/game/townChatter.js';   /* v2.3.4040: the townsfolk's idle lines: in town, near, rarely */
 import QuestCard from '@/ui/QuestCard.jsx';   /* v2.3.3918: the pinned quest card, top left */
+import { fineInput, computerFrame } from '../game/deviceProfile.js';   /* v2.3.4804: the device profile */
 
 /* ═══ v2.3.2062: THE MANA DRAUGHT'S FLOOR, IN CLIENT FRAMES ═══
  * The server holds the surge as a flat amount PER REGEN TICK (660 ms); this
@@ -3757,8 +3758,7 @@ export var BroTown = function BroTown(_ref0) {
          on a different trigger, and asking the media query directly costs
          nothing and makes "phones are untouched" true by construction
          rather than by hope. */
-      var _shellMq = window.matchMedia && window.matchMedia('(pointer:fine) and (min-width:1000px)');
-      var shellEl = (_shellMq && _shellMq.matches) ? document.getElementById('root') : null;
+      var shellEl = computerFrame() ? document.getElementById('root') : null;   /* v2.3.4804: the device profile */
       if (shellEl) {
         var _sw = shellEl.clientWidth, _sh = shellEl.clientHeight;
         if (_sw > 0 && _sw < vw) vw = _sw;
@@ -6560,7 +6560,7 @@ export var BroTown = function BroTown(_ref0) {
                   _rw._btHintEx = _ex;
                   try { var _hn = (Number(localStorage.getItem('bt_harvestHints')) || 0) + 1; localStorage.setItem('bt_harvestHints', String(_hn)); _rw._btHintN = _hn; } catch (e) { _rw._btHintN = 99; }
                 }
-                if (_rw._btHintN <= FIRST_HINTS) { _dhFirst = '1'; if (!(typeof window.matchMedia === 'function' && window.matchMedia('(pointer:fine)').matches)) _dhText = PHONE_GESTURE_HINT[_ex.skill] || _dhText; }
+                if (_rw._btHintN <= FIRST_HINTS) { _dhFirst = '1'; if (!fineInput()) _dhText = PHONE_GESTURE_HINT[_ex.skill] || _dhText; }
               }
               if (_dh.textContent !== _dhText) _dh.textContent = _dhText;
               var _dhShow = _dhText ? '1' : '0';
