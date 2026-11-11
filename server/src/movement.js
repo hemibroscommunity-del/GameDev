@@ -872,7 +872,7 @@ export const movementMethods = {
         ps.ba = (typeof msg.ba === 'number' && Number.isFinite(msg.ba)) ? msg.ba : null;
       }
       /* v2.3.4373: `dead` is the worker's word (_serverDeadOff below) */
-      if (msg.dead !== undefined && this._serverDeadOff()) ps.dead = !!msg.dead;
+      if (msg.dead !== undefined && this._serverDeadOff()) this._lifeDeadClaim(ps, msg.dead);   /* v2.3.4820: the life door's one claim road */
       /* v2.3.3392: a held pose ends when the player really moves (poses.js):
          the worker's own word, so a walker is never drawn sitting */
       if (ps.po && this._poseEndsOn(ps, _stepPx, zoneChanged, msg)) ps.po = null;

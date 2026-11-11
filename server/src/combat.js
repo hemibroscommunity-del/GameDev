@@ -574,7 +574,7 @@ export const combatMethods = {
       dmgTaken = Math.max(1, Math.round(dmgTaken - this._t2Flat(ps, 'defense', 'ironskin'))); // v2.3.1451: bench-locked banked soak (was t2Accel), floor 1
     }
     if (typeof ps.maxHp !== 'number') ps.maxHp = 100;
-    if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
+    if (typeof ps.hp !== 'number') this._hpSet(ps, ps.maxHp, 'hit_unset');
     /* v2.3.3263: v2.3.3260's one formula stopped every blow here at
        30% of this player's max HP.  A monster had no such cap, so one hit read
        two numbers; gone (oneformula.js, "No cap of its own"). */
@@ -610,7 +610,7 @@ export const combatMethods = {
         lastStand = true;
       }
     }
-    ps.hp = Math.max(0, ps.hp - dmgTaken);
+    this._hpSet(ps, Math.max(0, ps.hp - dmgTaken), 'hit'); /* v2.3.4820: the life door */
     ps.lastDamageAt = Date.now();
     // v2.3.1137: SECOND WIND — after SURVIVING an unblocked hit, heal
     // 1% of maxHp per point (cap 50% at the [0,50] defenseSpec clamp)
@@ -632,7 +632,7 @@ export const combatMethods = {
         // Recovery's banked per-heal bonus; Math.min(maxHp) bounds it.
         secondWind = this._t2Flat(ps, 'defense', 'secondwind') + this._recoveryFlat(ps);
         if (secondWind > 0) {
-          ps.hp = Math.min(ps.maxHp, ps.hp + secondWind);
+          this._hpSet(ps, Math.min(ps.maxHp, ps.hp + secondWind), 'second_wind');
           ps._secondWindReadyAt = _nowSw + 10000;
         }
       }
@@ -676,7 +676,7 @@ export const combatMethods = {
     if (taken <= 0) return { refund: 0, reason: 'no-this-mon' };
     const refund = Math.ceil(taken * LIFESTEAL_REFUND);   /* v2.3.3264: the constant a player kill pays by too */
     const maxHp = ps.maxHp || 100;
-    ps.hp = Math.min(maxHp, (ps.hp || 0) + refund);
+    this._hpSet(ps, Math.min(maxHp, (ps.hp || 0) + refund), 'lifesteal_melee');
     delete ps.dmgFromMonster[monsterId];
     return { refund, reason: 'ok' };
   },
@@ -2032,7 +2032,7 @@ export const combatMethods = {
         const _lbFlat = this._lifebloodFlat(killerPs);
         if (_lbFlat > 0) {
           const _lbMax = killerPs.maxHp || 100;
-          killerPs.hp = Math.min(_lbMax, killerPs.hp + _lbFlat);
+          this._hpSet(killerPs, Math.min(_lbMax, killerPs.hp + _lbFlat), 'kill_lifeblood');
         }
       }
       // Melee lifesteal -- refund 90% of net damage the killer took
@@ -2123,7 +2123,7 @@ export const combatMethods = {
         // (each level adds 12 base HP).
         if (leveled) {
           this._recomputeMaxes(recipPs);
-          if (typeof recipPs.maxHp === 'number') recipPs.hp = recipPs.maxHp;
+          if (typeof recipPs.maxHp === 'number') this._hpSet(recipPs, recipPs.maxHp, 'kill_level_up');
           if (typeof recipPs.maxStamina === 'number') recipPs.stamina = recipPs.maxStamina;
           if (typeof recipPs.maxMana === 'number') recipPs.mana = recipPs.maxMana;
         }

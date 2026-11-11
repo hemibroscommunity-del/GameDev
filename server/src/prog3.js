@@ -1188,8 +1188,8 @@ export const prog3Methods = {
        blocksAt(magicLvl), i.e. unchanged. */
     ps.manaBlocks = blocksAt(magicLvl + manaPts);
     ps.stamBlocks = blocksAt(stamPts);
-    if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
-    ps.hp = Math.min(ps.hp, ps.maxHp);
+    if (typeof ps.hp !== 'number') this._hpSet(ps, ps.maxHp, 'prog3_unset');
+    this._hpSet(ps, Math.min(ps.hp, ps.maxHp), 'prog3_clamp');   /* v2.3.4820: the life door */
     if (typeof ps.stamina !== 'number') ps.stamina = ps.maxStamina;
     ps.stamina = Math.min(ps.stamina, ps.maxStamina);
     if (typeof ps.mana !== 'number') ps.mana = ps.maxMana;
@@ -1331,7 +1331,7 @@ export const prog3Methods = {
       this._prog3Recompute(ps);
       /* v2.3.2662: the milestone payout that ran here (v2.3.1733) is gone
          with the ladder -- see the tombstone in abilities.js. */
-      if (typeof ps.maxHp === 'number') ps.hp = ps.maxHp;
+      if (typeof ps.maxHp === 'number') this._hpSet(ps, ps.maxHp, 'prog3_level_up');
       if (typeof ps.maxStamina === 'number') ps.stamina = ps.maxStamina;
       if (typeof ps.maxMana === 'number') ps.mana = ps.maxMana;
       /* v2.3.3527: Blooded, Veteran, Centurion (achievements.js: the highest of

@@ -365,10 +365,10 @@ export const devToolsMethods = {
 
     if (o.heal !== false) {
       this._recomputeMaxes(ps);
-      ps.hp = ps.maxHp;
+      this._hpSet(ps, ps.maxHp, 'dev_heal');
       if (typeof ps.maxStamina === 'number') ps.stamina = ps.maxStamina;
       if (typeof ps.maxMana === 'number') ps.mana = ps.maxMana;
-      ps.dead = false; ps.dying = false;
+      this._lifeTo(ps, 'alive', 'dev_heal'); /* v2.3.4820: the life door */
       out.healed = { hp: ps.hp, stamina: ps.stamina, mana: ps.mana };
     }
     /* v2.3.3006: a stamina level to test against -- a sprint running dry
@@ -382,7 +382,7 @@ export const devToolsMethods = {
        in one blow rather than a dozen.  Never 0: a death is the game's to
        make, through _handlePlayerDeath, not a number set here. */
     if (typeof o.hp === 'number' && Number.isFinite(o.hp) && typeof ps.maxHp === 'number') {
-      ps.hp = Math.max(1, Math.min(ps.maxHp, Math.floor(o.hp)));
+      this._hpSet(ps, Math.max(1, Math.min(ps.maxHp, Math.floor(o.hp))), 'dev_hp');
       out.hp = ps.hp;
     }
 
