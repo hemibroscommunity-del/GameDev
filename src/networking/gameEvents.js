@@ -81,6 +81,7 @@ import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHe
 import { storeChatBus } from '@/ui/mobile/storeChatBus.js';   /* v2.3.2621 */
 import { petMailWords } from '@/data/trapping.js';   /* v2.3.3122: a pet in the mail */
 import { mcLightHit } from '@/game/manualCombat.js';   /* v2.3.4520: a light free swing rings no crit */
+import { staffFeelHit, staffPeerK } from '@/game/staffFeel.js';   /* v2.3.4803: the staff's feel -- your bolt's verdict, another's bolt's size */
 import { achvMailPhrase } from '@/game/achievements.js';   /* v2.3.3527: an achievement in the mail (the arena's crown) */
 import { markStakePlaced, dropRefusedStake } from '@/game/arenaStakes.js';   /* v2.3.4421: a refused arena bet leaves the screen, a placed one never */
 import { noteWard } from '@/game/trapping.js';   /* v2.3.3123: a hit the pet out with you softened */
@@ -2338,6 +2339,9 @@ export function processGameEvent(type, payload, S, deps) {
                    the caster's crystal.  Absent (an older caster) -> their
                    charged orbs, exactly as before. */
                 big: !!(payload.big && payload.isStaff && payload.isSpecial),
+                /* v2.3.4803: a gathered bolt drawn its stage's size, from the gather
+                   the worker counted (`ga`, game/staffFeel.js); absent: as ever */
+                _gk: staffPeerK(payload),
                 /* v2.3.3265: a shot that names its target (`tg`): a bolt chases
                    it, as a staff bolt chases the lock on its caster's own screen
                    (projectiles.js), and an arrow keeps its line -- and either
@@ -2983,6 +2987,7 @@ export function processGameEvent(type, payload, S, deps) {
                          freeswing.js): a small bright accent over the hit --
                          the drop roll's glint, quiet (an existing cue) */
                       if (payload.pf === 1) cue('rollWin', 0.45);
+                      staffFeelHit(S, payload);   /* v2.3.4803: a gathered bolt's verdict -- its stage (`gs`) and share (`pw`) -- kept (game/staffFeel.js) */
                     }
                   } else if (payload.thorns) {
                     /* v2.3.1137: Thorns reflect is SERVER-rolled with no

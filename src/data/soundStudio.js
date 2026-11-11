@@ -319,6 +319,25 @@ export const STEP_PLACES = {
 export const OTHER_PLAYS = [
   ['swing', 'fight', 'Your sword swing (the whoosh)', { fn: 'swordSwing', args: ['sword-swing', { vol: 0.6 }] }],
   ['swipe', 'fight', "Your sword's special swipe", { fn: 'specialSwipe', args: [{ vol: 0.6 }] }],
+  /* v2.3.4800: the weapon feel's own sounds, made with WebAudio (data/weaponFeelSound.js; no recordings) */
+  ['feelReady', 'fight', 'Your sword coming full again: the glint\'s small ring (a cut now is a perfect strike)', { fn: 'feelSound', args: ['ready', 1] }],
+  ['feelCut', 'fight', 'A quick, light cut landing: the tick over the hit (a swing before the blade is full)', { fn: 'feelSound', args: ['contact', 0.4] }],
+  ['feelCleave', 'fight', 'A full cut landing: the thud under the hit', { fn: 'feelSound', args: ['contact', 1] }],
+  ['feelPerfect', 'fight', 'A perfect cut landing (struck in the glint): the deep thud and crack under the hit', { fn: 'feelSound', args: ['contact', 1.12] }],
+  ['feelBuild', 'fight', 'A weapon building power: the tone rising as it builds, and its release (the bow and the staff, as they come)', { fn: 'feelBuildDemo', args: [1] }],
+  ['feelStage', 'fight', 'A build stage landing: a pulse, a step deeper each stage (the staff, as it comes)', { fn: 'feelSound', args: ['stage', 1, { stage: 2 }] }],
+  /* v2.3.4803: the staff's feel (game/staffFeel.js) */
+  ['feelGather', 'fight', 'Your staff gathering power: the low hum rising as the orb grows (spark, orb, sphere), then let go', { fn: 'feelBuildDemo', args: [1, 130] }],
+  ['feelBlast', 'fight', 'Your staff\'s orb blasted: the air swelling inward, then a boom', { fn: 'feelSound', args: ['blast', 0.6] }],
+  ['feelBlastBig', 'fight', 'Your staff\'s full sphere blasted: the swell, a deep boom and a crack', { fn: 'feelSound', args: ['blast', 1.1] }],
+  /* v2.3.4802: the bow's draw (data/bowFeelSound.js; made with WebAudio, no recordings) */
+  ['bowNock', 'fight', 'Your bow: the thumb goes down and the arrow is set on the string (the nock)', { fn: 'bowSound', args: ['nock', 1] }],
+  ['bowDraw', 'fight', 'Your bow drawn back: the string creaking, rising as it bends, the quiet click at full draw, then the loose', { fn: 'bowDrawDemo', args: [1] }],
+  ['bowClick', 'fight', 'Your bow at full draw: the quiet click (let go now for the perfect shot)', { fn: 'bowSound', args: ['click', 1] }],
+  ['bowTwangLight', 'fight', 'Your bow let go half drawn: a thin, quick twang (a weaker, quicker shot)', { fn: 'bowSound', args: ['twang', 0.4] }],
+  ['bowTwang', 'fight', 'Your bow let go at full draw: the deep twang of the string', { fn: 'bowSound', args: ['twang', 1] }],
+  ['bowTwangPerfect', 'fight', 'Your bow let go in the sweet spot just after full draw: the twang with a bright ring on top', { fn: 'bowSound', args: ['twang', 1.12] }],
+  ['bowLetDown', 'fight', 'Your bow\'s string let down (the thumb slid back to where it touched): no shot', { fn: 'bowSound', args: ['letdown', 1] }],
   ['arrowHit', 'hits', 'Your arrow hitting a monster', { sample: 'arrow-hit', opts: { vol: 0.6 } }],
   ['magicHit', 'hits', 'Your staff bolt hitting a monster', { fn: 'magicHit', args: [{ vol: 0.6 }] }],
   ['staffCast', 'fight', 'Your staff casting a bolt', { sample: 'magic-cast', opts: { vol: 0.55 } }],

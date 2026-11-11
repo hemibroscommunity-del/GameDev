@@ -26,7 +26,7 @@ a known bug with no other test (the look palette on Windows and a Mac:
 
 | Question | Function | What decides it | Who asks |
 |---|---|---|---|
-| A mouse or trackpad is the main pointer | `fineInput()` | `(pointer:fine)`, live | the "click" words (`deskWords.js`), keys, hints, the Trap / Jump / timing-bar layouts, the step volume, the coach, the band sideways, the minimap size |
+| A mouse or trackpad is the main pointer | `fineInput()` | `(pointer:fine)`, live | the "click" words (`deskWords.js`), keys, hints, the Trap / Jump layouts (the timing bar's went with it: v2.3.4800, the combat feel), the step volume, the coach, the band sideways, the minimap size |
 | A computer's window with room | `computerFrame()` | `(pointer:fine) and (min-width:1000px)`, live: game.css's computer rule | the layout (`deskWide.js`), the canvas's shell (`BroTown.jsx` resize), the keys strip's column |
 | An iPhone or iPad | `onIOS()` | the user agent, or MacIntel with touch points (an iPad asking for the desktop site) | the install hint, Settings' "add to home screen" |
 | All of it | `deviceProfile()` | the above, plus Windows / Mac and the look palette's choice and the pixel ratio | the Speed test's card (`speedTest.js`), and `window.__btDevice()` for QA |

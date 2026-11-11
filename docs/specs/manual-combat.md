@@ -113,6 +113,11 @@ everything written before it. Moving the old scenarios over is not done.
 
 ### A bow: flick to shoot
 
+> **v2.3.4802: the game's own bow is DRAWN now** (`bow-feel.md`): thumb down
+> nocks, pull back to draw, lift to loose, each arrow its share of a full
+> draw. What follows is the flick, which `?bowfeel=0`, `?manual=1` and a
+> worker without `caps.bowDraw` still play.
+
 - **Flick**: thumb down, moved, lifted 24 px or more from where it touched.
   One shot, the way the thumb went.
 - **A slow drag is the same gesture made carefully.** Hold the thumb out and
@@ -138,6 +143,12 @@ everything written before it. Moving the old scenarios over is not done.
   held bow's.
 
 ### A staff: as it was
+
+> **v2.3.4803: in the game's own combat the staff GATHERS now** (thumb down
+> gathers power through a spark, an orb and a sphere; the lift blasts it; a
+> quick tap fires a spark; its special is its button): `docs/specs/staff-feel.md`.
+> What follows is the held staff, still what `?manual=0/1/2`, `?stafffeel=0`
+> and a worker without `caps.staffGather` play.
 
 - **Hold the stick in a direction and it fires by itself**, at its own
   interval, for as long as the thumb is down. The bolt in flight is steered by
@@ -201,7 +212,9 @@ everything written before it. Moving the old scenarios over is not done.
 
 - A sword, a bow: **each click is one attack**, at the cursor. Holding the
   button attacks once.
-- A staff fires while the button is held, as it did.
+- A staff fires while the button is held, as it did. (v2.3.4803: in the
+  game's own combat, the button held GATHERS and its release blasts at the
+  cursor: `docs/specs/staff-feel.md`.)
 - The right click arms and disarms the special.
 
 ### No tap to target
@@ -214,9 +227,11 @@ everything written before it. Moving the old scenarios over is not done.
 ## Nothing is drawn for it
 
 There is no gauge, bar or ring. The one thing on the screen is the special's
-button reading ON while armed. (v2.3.4615: the free-swing trial, `?manual=3`,
-gets the owner's own timing bar, drawn with their art in its own change, on
-the rules below: "For the timing bar's art".)
+button reading ON while armed. (v2.3.4615 to v2.3.4656 the free-swing trial
+had the owner's timing bar; v2.3.4800 removed it, the owner: *"Yes remove the
+timing bar. It needs to be something else entirely"*. Readiness is shown on
+the weapon itself now: the sword's blade refills and glints,
+docs/specs/sword-feel.md.)
 
 ## How it is built
 
@@ -315,7 +330,7 @@ sooner than that is dropped there, and that costs nothing either.
 
 ### On the screen
 
-**Nothing new is drawn** (v2.3.4615: but the timing bar, drawn in its own change: "For the timing bar's art", below). A light swing's damage number is smaller, sized by
+**Nothing new is drawn** (v2.3.4800: the blade's own readiness and glint, and the cut's weight, docs/specs/sword-feel.md; the timing bar of v2.3.4615 is gone). A light swing's damage number is smaller, sized by
 the share the worker sends (`pw` on `monster_hit` and `pvp_hit`:
 `mcNumberScale`, a quarter swing 0.7 of the size). A full swing's number is
 as today. A light swing's hit sound is the same sample, quieter
@@ -333,7 +348,7 @@ The constants are `FREE_SWING` in `server/src/freeswing.js`
 `MANUAL.FREE_GAP_MS`. The state lives on the player and is never saved
 (`ps._fs`). It goes when the player leaves.
 
-## The timing bar and the perfect strike (v2.3.4615)
+## The perfect strike, and the timing bar that was (v2.3.4615; the bar removed v2.3.4800)
 
 > The owner, 2026-11-10: *"Yeah rising pitch on quick hits and something that
 > benefits the player if they swipe just around the time their swing is back
@@ -349,8 +364,9 @@ The constants are `FREE_SWING` in `server/src/freeswing.js`
 The free-swing trial's second step. **All of it is behind the trial**
 (`?manual=3`, and a worker advertising `caps.freeSwing` and
 `caps.perfectStrike`): a device not on it meets nothing new. The perfect
-strike, its mana and the sound are in the game; the bar is drawn with the
-owner's art in its own change, on the rules in "For the timing bar's art".
+strike, its mana and the sound are in the game. **v2.3.4800: the bar is
+gone** (below); the blade's glint shows the same window
+(docs/specs/sword-feel.md).
 
 ### The perfect strike (the worker's: `server/src/freeswing.js`)
 
@@ -386,73 +402,23 @@ owner's art in its own change, on the rules in "For the timing bar's art".
 asks without it (remembered), `?swingbonus=1` comes back. The live flags:
 `freeswingbonus: false` turns every bonus off (the damage and the mana, both
 weapons); `perfectbow: false` the bow's part only; `freeswing: false` the
-whole trial, the bar with it (`caps.perfectStrike` goes with `freeSwing`).
+whole trial, the blade's glint with it (`caps.perfectStrike` goes with
+`freeSwing`).
 
-### For the timing bar's art
+### The timing bar (v2.3.4625 to v2.3.4656; REMOVED v2.3.4800)
 
-The bar is drawn in its own change (another session, with the owner's art).
-Everything it needs to read is here; it adds no rule of its own.
-
-**v2.3.4625, as built** (`src/ui/panels/TimingBar.jsx`): the owner's own
-sheet (*"I just added a sprite sheet for you to use for filling up the
-weapons. I'd like it to actually lay vertically in the space above the left
-joystick and try it that way."*), `public/sprites/timingbar/weapons.png`
-(`ui/panels/timingBarArt.js`): the dark iron weapon fills with the gold one
-from the grip at the bottom to the point at the top, standing upright over
-the MOVEMENT disc in the gap between Element Burst's and Quick Eat's places
-(`barBox`). One 2.4 KB file warmed on the loading screen, on the trial only
-(`rendering/timingBarPreload.js`). Where and why: docs/UI-DESIGN-NOTES.md
-"The timing bar".
-
-**The rules** (`src/game/manualCombat.js`, no imports; node tests them,
-`manual-combat.test.mjs` §14):
-
-| function | returns |
-|---|---|
-| `mcBarWeapon(S)` | `'sword'`, `'bow'` or `null`: which bar this hand shows. Not null only on the trial (`?manual=3`) against a worker advertising `caps.freeSwing` AND `caps.perfectStrike`, with a sword (`S.rpg.weapon`) or a bow (`S.rpg.rangedWeapon`) in the active slot. A staff, and everything off the trial: `null`, so nothing is drawn. |
-| `mcBarCycle(S)` | ms the bar fills over: the sword's cycle (the interval `mcFrame` is told each frame: 600 x the Speed stat's cut, the worker's `_fsCycleMs`), or the flicked bow's (`mcBowInterval`, 371 for a new character). |
-| `mcBarTimes(cycle)` | `{ fillMs, fillDelayMs: 0, glintDelayMs, glintMs, freezeMs }`: the fill runs `fillMs` from the attack, never delayed; the glint starts `cycle - PERFECT_EARLY_MS` after it and lasts `PERFECT_EARLY_MS + PERFECT_LATE_MS`; the freeze lasts `FREEZE_MS`. |
-| `mcBarAttack(prevAt, cycle, now)` | `{ frozen, glint }` for an attack at `now`, the last at `prevAt`, its fill running over `cycle`: `frozen` = how full the bar was, `(now - prevAt) / cycle` capped at 1 (computed once, at the attack); `glint` = whether that moment was inside the window. |
-| `timingBarWanted()` | `false` after `?timingbar=0` on this device (remembered in `bt_timingbar`; `?timingbar=1` comes back): the bar hides, the bonus is unchanged. |
-
-**The numbers:** the window is `MANUAL.PERFECT_EARLY_MS` (60) before the full
-cycle to `MANUAL.PERFECT_LATE_MS` (300) after it, mirrors of the worker's
-`FREE_SWING.PERFECT_EARLY_MS` / `PERFECT_LATE_MS` (`perfect-strike.test`
-pins both). `MANUAL.FREEZE_MS` is 400.
-
-**When an attack happened:** every swing and shot stamps `S.swingTimer`; a
-change in it is an attack (the special and the abilities stamp it too).
-
-**The freeze** (the owner: "the bar freezing in place a moment so you could
-see where you decided to swing. It doesn't slow down the recovery of the
-next attack though"): at each attack, a copy of the fill as it was
-(`frozen`), in the glint's look if `glint`, stays `FREEZE_MS` and fades;
-under it the real fill restarts from empty at once.
-
-**A perfect strike, told:** the worker's `monster_hit` for your hit carries
-`pf: 1` (the phone already plays its accent: `gameEvents.js`, the drop roll's
-glint, quiet). The bar may use it too; it is the worker's verdict, where the
-glint is the phone's guide.
-
-**The rules it must keep (CLAUDE.md):**
-- No work a frame: the fill, the glint and the freeze run as CSS animations
-  (or the art's own animation) started ONCE an attack, never a React render
-  or a timer a frame; at most one compare a frame (`S.swingTimer`) in the
-  game's loop (section 7, the page's thread budget). Restarting a CSS
-  animation without a forced layout: flip between two identically defined
-  keyframe names.
-- `pointer-events: none` (a thumb passes through it) and `touch-action:
-  manipulation`.
-- A new screen element: its state in `tools/qa/ui-review/states.mjs` and a
-  section in `docs/UI-DESIGN-NOTES.md` (`--check-notes`). `window.__btManual
-  .set(3)` puts the review's one page on the trial (the worker is not asked).
-- Art: preloaded behind the loading screen (PRELOADING IS LAW) and in its
-  memory slot (`docs/MEMORY-MAP.md`; 256 colours).
-- **Where: "the space above the left joystick"** (the owner, v2.3.4625; it
-  was "north of the right joystick", whose own top edge Sprint and the
-  minimap hold). A computer draws no disc (place it in the play column,
-  sizes from the column: `fixedBox` if it is measured).
-- A staff shows nothing; nothing off the trial.
+The owner's design (*"a sword silhouette laying horizontally that refills as
+a bar and once the bar reaches the top it glints"*), drawn with their own
+sheet standing over the left joystick, with a frozen copy where you struck.
+Removed on the owner's word, 2026-11-11: *"Yes remove the timing bar. It
+needs to be something else entirely"*: readiness is shown ON THE WEAPON now,
+never a gauge (docs/specs/sword-feel.md). Gone with it: `TimingBar.jsx`,
+`timingBarArt.js`, `timingBarPreload.js`, its CSS (`.bt-tbar`), its rules in
+manualCombat.js (`mcBarWeapon`, `mcBarCycle`, `mcBarTimes`, `mcBarAttack`,
+`timingBarWanted`, `?timingbar`), `mp-timingbar`, its two UI-review pictures.
+The owner's sheet stays on disk (`public/sprites/timingbar/weapons.png`, not
+loaded). The window's numbers stay (`MANUAL.PERFECT_EARLY_MS`,
+`PERFECT_LATE_MS`): the blade glints for exactly them.
 
 ### The sound (the phone's)
 
@@ -466,11 +432,110 @@ glint is the phone's guide.
 ### Not the same, and why
 
 - **A swing that hits nothing never reaches the worker**, so the worker
-  times the next swing from the last one that hit, while the bar restarts at
+  times the next swing from the last one that hit, while the blade (until
+  v2.3.4800 the bar) restarts at
   every swing. In a steady fight they agree; right after a miss the glint
   can promise a strike the worker does not count.
 - **A script times perfectly.** The bonus is 12% and a little mana; reading
   the timing as a bot's fingerprint is still the worker's next step (below).
+
+## The bow's draw and the staff's gather: the worker's half (v2.3.4801)
+
+> The owner, 2026-11-11: *"Think about the sword swing. The bow pull back and
+> release. The staff building power and blasting the orb."* Approving the
+> design: *"build all of them (sword, bow, magic)"*; of the staff, *"For magic
+> I think it should be skipped for now"* (no timing window).
+
+The worker ships first (`server/src/drawgather.js`, its header has every
+rule). **Nothing changes for a player until the phone sends the new fields**:
+a shot without them is today's, exactly. The phone's rules, which its bow and
+staff lanes import: `src/game/drawGather.js` (no imports; pinned to the
+worker's copy by `draw-gather.test` §1).
+
+### The wire
+
+| what | where | meaning |
+|---|---|---|
+| `dr` | an arrow's `player_projectile` relay | the draw, whole ms, nock to release (`buildWire`) |
+| `ga` | a bolt's relay (`isStaff: true`) | the gather, whole ms, thumb down to blast |
+| `ts` | both relays (as today) | the shot's own stamp |
+| `sw` | every hit claim of that arrow or bolt: `monster_damage` and `pvp_attack` | names the shot (`sw: ts`) |
+| `caps.bowDraw`, `caps.staffGather` | `state_sync` | the worker counts `dr` / `ga` (off with `bowdraw: false` / `staffgather: false`) |
+| `pw`, `pf`, `gs` | `monster_hit` | the share (when not a plain full one), a perfect draw, a gathered bolt's stage (0 spark, 1 orb, 2 sphere). Display only |
+
+The relayed copy carries the build the worker COUNTED, so the others draw what
+lands.
+
+### The rules
+
+1. **The bound.** A claim counts at most the time since your last counted
+   bow shot or bolt (ONE clock for both weapons, or a weapon switch would
+   build a full arrow and a full bolt in the same second) plus 100 ms of
+   slack for the network, LENT: what a shot takes past its time is owed by
+   the next, so over any run the builds sum to the time that passed plus
+   100 ms once. A negative, NaN, a string or Infinity is a build of nothing;
+   a huge number is the bound; `dr` on a bolt, `ga` on an arrow, a shot with
+   no such weapon in the worker's slot, a special's or a retreat's shot, a
+   shot with no `ts`: nothing kept (today's).
+2. **The share**: damage = bounded build / full build, at most 1, the
+   fraction carried. Full draw = the flicked bow's cycle (371 ms on a new
+   character: today's bow, so a full draw a cycle is today's damage a
+   second); full gather = the held staff's interval + 300 (900 ms).
+3. **A share of 0.8 or more** carries the extras (the shove, the gem's
+   status, its collision and mana, the spark), as a sword's swing.
+4. **The perfect draw**: released from full draw to 300 ms after it, not cut
+   by the bound: x1.12 and an eighth of the special's mana once a shot, on a
+   monster only, to whom today's perfect arrow pays (`fs: 2`, the phone's
+   default; `freeswingbonus`, `perfectbow`). No perfect for the staff.
+5. **The staff's stage**: spark under 0.4, orb, sphere from 0.8 (the pulses
+   at 360 and 720 ms of 900). The splash's reach is 0, 0.6 and 1 x the basic
+   bolt's 60 px (x Detonation), its damage the bolt's share of today's half
+   (whole, the fraction carried); a ring of force throws the monsters the
+   splash takes outward from the impact, 0, 15 and 30 px (x the zone's depth,
+   a debt they walk back; a braced monster stays). Monsters only.
+6. **The floors**: one counted shot at most every 100 ms (a quicker one lands
+   nothing; the clock is untouched). A named shot's claims are held to the
+   210 ms lane a monster and the 300 ms lane a player by their WORTH (a full
+   one a whole lane, a light one its share, one lane early at most:
+   v2.3.4799), and spend their SHARE of the bow's or staff's hits-a-second
+   allowance (`hitproof.js`). Each target once a shot; an arrow 4 (or its
+   Piercing's), a bolt 1.
+   **A shot with NO field** (today's whole arrow or bolt) is charged to the
+   one clock as a full build (v2.3.4799). Before, it touched nothing, and a
+   modified phone mixing the two (a field-less arrow, a full draw 1 ms
+   later, every cycle) landed 35,044 a minute with 312 perfects, past
+   today's best forged rhythm (29,068), and 1.8x today's in a duel (the
+   combined feel's review, F1).
+7. **Against a player** the share lands as a sword's does; no perfect, no
+   mana, no ring; a bolt's splash by its stage.
+
+### The balance (draw-gather.test §9, a minute against a dummy, a roll of 100)
+
+| rhythm | bow | staff (monster / two neighbours' splash) |
+|---|---|---|
+| today (bow on the trial: every arrow perfect) | 18,132 | 6,700 / 6,700 |
+| today, a bow off the trial | 16,200 | |
+| full builds | 18,144 perfect (the first draw is timed by itself: one bonus) / 16,200 off the trial | 6,700 / 6,700 |
+| 0.8 spheres | | 6,720 / 6,720 |
+| tap-spam (120 ms draws / 150 ms sparks) | 16,172 | 6,666 / 0 |
+| forged (a billion ms every 120 ms) | 16,267 (the slack once) | |
+| today's best forged (no field, every 210 ms lane) | 29,068 (39 perfect) | 12,500 |
+| MIXED, no field + a full draw 1 ms later a cycle (v2.3.4799) | 18,132 (161 perfect; was 35,044 / 312) | 6,800 (was 12,400) |
+| MIXED, no field every lane + a draw between | 29,096 (one lane once; was 31,956) | 12,433 |
+| duels: today's best forged (300 ms) / the worst mix | 20,000 / 20,000 (was 36,272; staff was 26,766) | |
+
+Building pays over a pack (sparks splash nothing); no weapon's best damage a
+second moves. The same holds with the worker's own roll.
+
+## The bow's draw: the phone's half (v2.3.4802)
+
+The bow lane built what a player feels on top of it: `bow-feel.md` (the
+nock, the draw's bend and creak, the settle's gold line and click, the tired
+arm, the twang, the let-down; a computer's held button). The phone sends `dr`
+on a drawn arrow's relay and names the arrow on every claim (`sw` on
+`monster_damage` and `player_attack`), gated on `caps.bowDraw`; the gesture is
+a hook in this file (`mcSetBowHook`), so the touch handlers carry it unchanged.
+`?bowfeel=0` is the flick above on one device.
 
 ## Not built
 
@@ -491,11 +556,16 @@ glint is the phone's guide.
 - `server/test/free-swing.test.mjs` (v2.3.4520): the trial on the real
   GameRoom (its header lists the checks); `manual-combat.test.mjs` §13 its
   phone rules and wiring.
+- `server/test/draw-gather.test.mjs` (v2.3.4801): the draw and the gather on the
+  real GameRoom, every shot through the real router (its header lists the
+  checks), with the balance proof.
+- `server/test/bow-feel.test.mjs` (v2.3.4802): the bow's draw on the phone,
+  its claim through the real GameRoom; `node tools/qa/mp/run.mjs bowfeel`.
 - `server/test/perfect-strike.test.mjs` (v2.3.4615): the perfect strike on
   the real GameRoom, the bow's arrows through the real router (its header
-  lists the checks); `manual-combat.test.mjs` §14 the bar's numbers, the
-  freeze, the pitch and the wiring. The bar's own phone test comes with
-  the bar.
+  lists the checks); `manual-combat.test.mjs` §14 the perfect strike's
+  wiring, the pitch and (v2.3.4800) the bar's absence. The blade's glint:
+  `weapon-feel.test`, `mp-swordfeel` (docs/specs/sword-feel.md).
 - `server/test/manual-combat.test.mjs`: the switch; a flick, a tap, a nudge,
   the cancel, a slow drag; no faster than the weapon (too soon, kept, the
   window's edges); a forced end; a sword's stroke, back and forth, the pause,

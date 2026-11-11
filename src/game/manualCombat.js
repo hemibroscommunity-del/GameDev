@@ -126,11 +126,18 @@
  * It doesn't slow down the recovery of the next attack though."  The worker
  * judges the strike (server/src/freeswing.js "THE PERFECT STRIKE"); here are
  * the bar's numbers (mcBar*: the window mirrored, the freeze) and the hit
- * sound's rising pitch (mcHitPitch).  The bar itself is drawn with the
- * owner's art in its own change, on these rules: docs/specs/manual-combat.md
- * "For the timing bar's art".  `?swingbonus` is on by default on the trial
- * now (`?swingbonus=0` to compare without); `?timingbar=0` is the rule that
- * hides the bar on one device (timingBarWanted).
+ * sound's rising pitch (mcHitPitch).  `?swingbonus` is on by default on the
+ * trial now (`?swingbonus=0` to compare without).
+ *
+ * ═══ v2.3.4800: THE TIMING BAR IS GONE ═══
+ * The owner, 2026-11-11: "Yes remove the timing bar.  It needs to be
+ * something else entirely".  Readiness is shown ON THE WEAPON now (the
+ * blade refills and glints: game/weaponFeel.js, game/swordFeel.js,
+ * docs/specs/sword-feel.md), so the bar's rules (mcBarWeapon, mcBarCycle,
+ * mcBarTimes, mcBarAttack, timingBarWanted, `?timingbar`) went with it.  The
+ * perfect strike's window is unchanged (PERFECT_EARLY_MS / PERFECT_LATE_MS);
+ * a sword's stroke now also says which way and how fast the thumb went
+ * (mcSwipeMove: `stroke`), so the cut's arc can follow it.
  */
 
 export var MANUAL = {
@@ -174,14 +181,10 @@ export var MANUAL = {
   BONUS_KEY: 'bt_swingbonus',
   /* v2.3.4615: THE PERFECT STRIKE'S WINDOW round the full cycle -- MIRROR:
      server/src/freeswing.js FREE_SWING.PERFECT_EARLY_MS / PERFECT_LATE_MS
-     (perfect-strike.test pins them).  The timing bar glints for exactly it */
+     (perfect-strike.test pins them).  v2.3.4800: the blade glints for
+     exactly it (weaponFeel.js feelPhase) */
   PERFECT_EARLY_MS: 60,
   PERFECT_LATE_MS: 300,
-  /* v2.3.4615: how long the bar's frozen copy (where you attacked) stays
-     before it is gone; the real fill restarts under it at once */
-  FREEZE_MS: 400,
-  /* v2.3.4615: `?timingbar=0` hides the bar on one device, remembered */
-  BAR_KEY: 'bt_timingbar',
   /* v2.3.4615: THE RISING PITCH -- a hit within PITCH_GAP_MS of your last is
      a semitone higher, PITCH_MAX steps at most; hits within PITCH_SAME_MS
      (one swing's several monsters, an arrow's pierce) share a step */
@@ -254,9 +257,6 @@ function deviceSwitch(name, key, search, store) {
  *  perfect strike's, ON by default on the trial: `?swingbonus=0` asks
  *  without it and is remembered, `?swingbonus=1` comes back. */
 export function swingBonusWanted(search, store) { return deviceSwitch('swingbonus', MANUAL.BONUS_KEY, search, store); }
-/** v2.3.4615: is the timing bar shown on this device?  `?timingbar=0` hides
- *  it (remembered), `?timingbar=1` comes back.  The bonus is not touched. */
-export function timingBarWanted(search, store) { return deviceSwitch('timingbar', MANUAL.BAR_KEY, search, store); }
 /** v2.3.4520: what the join asks the worker (`fs`): 0 nothing, 1 the trial,
  *  2 the trial with the bonus.  An old worker ignores it. */
 export function freeSwingAsk(search, store) {
@@ -273,7 +273,21 @@ function slotOf(S) { return (S && S.rpg && S.rpg.activeSlot) || 'melee'; }
 /** Is this the SLINGSHOT bow (`?manual=2`, a bow in hand)?  Its thumb pulls
  *  BACK from the target and the arrow leaves the other way.  A staff stays a
  *  flick, a sword a stroke. */
-export function mcBowSling(S) { return manualSling() && slotOf(S) === 'ranged'; }
+export function mcBowSling(S) { return (manualSling() || bowHooked(S)) && slotOf(S) === 'ranged'; }   /* v2.3.4802: + the bow's draw (it pulls back too) */
+/* ═══ v2.3.4802: THE BOW'S DRAW HOOKS THE BOW'S GESTURE ═══
+   The owner's brief (docs/specs/bow-feel.md): thumb down nocks, drag back to
+   draw, lift to loose, back to the touch point to let the string down.  The
+   draw's rules are game/bowDraw.js and its wiring game/bowFeel.js, which
+   hands this file a hook ({ on(S), step(S, ev), gap }) -- so the touch
+   handlers that already call mcSwipeStart / Move / End / mcAbort carry it
+   with no line of their own, and this file still imports nothing.  With no
+   hook, or the hook off (`?bowfeel=0`, a worker without caps.bowDraw, any
+   combat but the game's own), every line here is what it was. */
+var _bowHook = null;
+export function mcSetBowHook(h) { _bowHook = h || null; }
+function bowHooked(S) { try { return !!(_bowHook && slotOf(S) === 'ranged' && _bowHook.on(S)); } catch (e) { return false; } }
+/** v2.3.4802: is this bow drawn (the bow's feel), not flicked? */
+export function mcBowDraws(S) { return bowHooked(S); }
 /** The way a shot leaves for a thumb that went `ang` from where it touched:
  *  that way -- or, for the slingshot bow, the opposite. */
 export function mcShotAngle(S, ang) { return mcBowSling(S) ? Math.atan2(-Math.sin(ang), -Math.cos(ang)) : ang; }
@@ -326,39 +340,6 @@ export function mcLightHit(pw) { return typeof pw === 'number' && pw < MANUAL.FU
 export function mcPerfectOn(S) {
   return manualFreeSwing() && !!(S && S._serverCaps && S._serverCaps.freeSwing && S._serverCaps.perfectStrike);
 }
-/** v2.3.4615: which timing bar this hand shows: 'sword', 'bow', or null --
- *  only on the trial (`?manual=3`) against a worker that judges the perfect
- *  strike (caps.freeSwing and caps.perfectStrike), with the weapon in hand.
- *  A staff: none (the owner: "For magic I think it should be skipped"). */
-export function mcBarWeapon(S) {
-  if (!mcPerfectOn(S) || !S.rpg) return null;
-  var s = slotOf(S);
-  if (s === 'ranged') return S.rpg.rangedWeapon ? 'bow' : null;
-  if (s === 'staff') return null;
-  return S.rpg.weapon ? 'sword' : null;
-}
-/** v2.3.4615: the cycle the bar fills over (the interval mcFrame was told):
- *  a sword's, or the flicked bow's. */
-export function mcBarCycle(S) {
-  var m = st(S);
-  if (!m) return MANUAL.NEED_DEFAULT_MS;
-  return (mcShoots(S) ? m.need : m.meleeNeed) || MANUAL.NEED_DEFAULT_MS;
-}
-/** v2.3.4615: the bar's CSS timings for one attack: it fills over the cycle
- *  from now (never delayed: the next attack's timing is untouched by the
- *  freeze), and glints for the worker's window. */
-export function mcBarTimes(cycle) {
-  var c = Math.max(1, cycle || MANUAL.NEED_DEFAULT_MS);
-  return { fillMs: c, fillDelayMs: 0, glintDelayMs: Math.max(0, c - MANUAL.PERFECT_EARLY_MS), glintMs: MANUAL.PERFECT_EARLY_MS + MANUAL.PERFECT_LATE_MS, freezeMs: MANUAL.FREEZE_MS };
-}
-/** v2.3.4615: an attack at `now`, `prevAt` the last one and `cycle` the
- *  cycle its bar was filling over: how full the bar was (the frozen copy's
- *  width, 0..1, computed once) and whether it was glinting. */
-export function mcBarAttack(prevAt, cycle, now) {
-  var c = Math.max(1, cycle || MANUAL.NEED_DEFAULT_MS);
-  var el = now - (prevAt || 0);
-  return { frozen: Math.max(0, Math.min(1, el / c)), glint: el >= c - MANUAL.PERFECT_EARLY_MS && el <= c + MANUAL.PERFECT_LATE_MS };
-}
 /** v2.3.4615: THE RISING PITCH.  `p` is {at, step}: a hit within
  *  PITCH_SAME_MS of the last shares its step, within PITCH_GAP_MS is a step
  *  higher (PITCH_MAX at most), after a pause back to 0.  The step. */
@@ -392,7 +373,7 @@ export function mcFrame(S, now, need, meleeNeed) {
   if (meleeNeed > 0) m.meleeNeed = meleeNeed;
   var slot = slotOf(S);
   if (m.slot !== slot) { m.slot = slot; m.fireAt = 0; m.fireUntil = 0; m.swingUntil = 0; }   /* another weapon in hand: nothing of the last one's waits */
-  if (m.fireAt && now > m.fireUntil) { m.fireAt = 0; m.fireUntil = 0; }
+  if (m.fireAt && now > m.fireUntil && m.fireTry !== 1) { m.fireAt = 0; m.fireUntil = 0; m.fireTry = 0; }   /* v2.3.4799: a drawn bow's loose waits for the loop's first chance (mcFireChance) */
   if (m.swingUntil && now > m.swingUntil) m.swingUntil = 0;
 }
 
@@ -412,6 +393,7 @@ export function mcSwipeStart(S, now, x, y) {
   if (!m) return;
   m.down = true; m.ox = x; m.oy = y; m.ot = now; m.ax = x; m.ay = y; m.at = now;
   m.strokes = 0; m.far = 0;   /* what this press has made so far (mcPressIdle) */
+  if (bowHooked(S)) _bowHook.step(S, { type: 'down', now: now, x: x, y: y });   /* v2.3.4802: the nock */
 }
 
 /** The thumb moved to (x, y).  A SWORD: 'swing' each time it has gone
@@ -423,10 +405,16 @@ export function mcSwipeMove(S, now, x, y) {
   if (!m || !m.down) return 'none';
   var fx = x - m.ox, fy = y - m.oy, f2 = fx * fx + fy * fy;
   if (f2 > (m.far || 0)) m.far = f2;   /* the farthest this thumb has been from where it touched */
+  if (bowHooked(S)) _bowHook.step(S, { type: 'move', now: now, x: x, y: y });   /* v2.3.4802: the draw, or the string let down */
   if (!strokes(S)) return 'none';
+  m.cx = x; m.cy = y;   /* v2.3.4800: where the thumb is now (swordFeel.js: the arc keeps following it) */
   if (now - m.at > MANUAL.SWIPE_MS) { m.ax = x; m.ay = y; m.at = now; return 'none'; }
   var dx = x - m.ax, dy = y - m.ay;
   if (dx * dx + dy * dy < MANUAL.SWIPE_PX * MANUAL.SWIPE_PX) return 'none';
+  /* v2.3.4800: the stroke, for the cut's arc (weaponFeel.js feelArc): where
+     it started, which way it went and how long it took -- the arc follows
+     the thumb, forehand or backhand, sweep or flick */
+  m.stroke = { x0: m.ax, y0: m.ay, dx: dx, dy: dy, ms: Math.max(1, now - m.at), at: now };
   m.ax = x; m.ay = y; m.at = now;
   m.strokes = (m.strokes || 0) + 1;
   return 'swing';
@@ -443,6 +431,10 @@ export function mcSwipeEnd(S, now, x, y) {
   if (!m || !m.down) return 'none';
   m.down = false;
   if (!mcShoots(S)) return 'none';
+  /* v2.3.4802: a drawn bow looses on the lift wherever the pull ended past
+     the centre (a quick flick back is a light draw); a nock let go, a string
+     let down, is no shot */
+  if (bowHooked(S)) { var _bs = _bowHook.step(S, { type: 'up', now: now, x: x, y: y }); return _bs === 'loose' ? mcAskShot(S, now) : _bs === 'cancel' ? 'cancel' : 'none'; }
   var dx = x - m.ox, dy = y - m.oy, d2 = dx * dx + dy * dy;
   if (d2 < MANUAL.SWIPE_PX * MANUAL.SWIPE_PX) return d2 <= MANUAL.CENTRE_PX * MANUAL.CENTRE_PX ? 'cancel' : 'none';
   return mcAskShot(S, now);
@@ -465,25 +457,48 @@ export function mcWasQuick(S, now) { var m = S && S._mc; return !!m && now - m.o
 /** The press ended some other way than a lift (the button went away under
  *  the thumb, the thumb slid on to the shield, the window lost focus):
  *  nothing is attacked. */
-export function mcAbort(S) { var m = S && S._mc; if (m) m.down = false; }
+export function mcAbort(S) {
+  var m = S && S._mc;
+  if (m) m.down = false;
+  if (m && bowHooked(S)) _bowHook.step(S, { type: 'abort', now: Date.now() });   /* v2.3.4802: no shot, the string let down */
+}
 
 /** One shot is asked for (a flick's lift, a computer's click): 'fire' when
  *  the weapon is ready or nearly, else 'early'. */
 export function mcAskShot(S, now) {
   var m = st(S);
   if (!m || !mcShoots(S)) return 'none';
+  /* v2.3.4802: a drawn bow looses at once, for its share (the worker's
+     drawgather.js) -- only never sooner than the hook's gap after the last */
+  if (bowHooked(S)) {
+    if (now - ((S && S.swingTimer) || 0) < (_bowHook.gap || MANUAL.FREE_GAP_MS)) { m.early += 1; return 'early'; }
+    m.fireAt = now; m.fireUntil = now + MANUAL.FIRE_HOLD_MS; m.n += 1;
+    m.fireTry = 1;   /* v2.3.4799: the loop's next frame gets its chance, however late (mcFireChance) */
+    return 'fire';
+  }
   var wait = mcReadyIn(S, now);
   if (wait > MANUAL.EARLY_MS) { m.early += 1; return 'early'; }
   m.fireAt = now; m.fireUntil = now + wait + MANUAL.FIRE_HOLD_MS; m.n += 1;
+  m.fireTry = 0;
   return 'fire';
 }
-/** Is a shot waiting for the loop? */
+/** Is a shot waiting for the loop?  v2.3.4799: a drawn bow's loose also
+ *  while the loop has not had its first chance at it (`fireTry` 1), however
+ *  late that frame comes -- the staff's rule (staffFeel.js
+ *  staffFireWaiting).  A slow page draws a frame every few hundred ms, and a
+ *  loose lost to that is "I let go and nothing happened" (the combined
+ *  feel's review, N3).  The flick bow keeps its FIRE_HOLD_MS, as before. */
 export function mcFireWaiting(S, now) {
   var m = S && S._mc;
-  return !!m && !!m.fireAt && now <= m.fireUntil;
+  return !!m && !!m.fireAt && (now <= m.fireUntil || m.fireTry === 1);
 }
+/** v2.3.4799: the loop has had its chance at the waiting loose (bowFeelFrame
+ *  calls it once a frame, after the combat step): from now on it waits only
+ *  its FIRE_HOLD_MS (a shot the loop refused -- the shield up, in the air --
+ *  is let go after it, as before). */
+export function mcFireChance(S) { var m = S && S._mc; if (m && m.fireTry === 1) m.fireTry = 2; }
 /** The loop took it (or found it could not): once only. */
-export function mcFireDone(S) { var m = S && S._mc; if (m) { m.fireAt = 0; m.fireUntil = 0; } }
+export function mcFireDone(S) { var m = S && S._mc; if (m) { m.fireAt = 0; m.fireUntil = 0; m.fireTry = 0; } }
 
 /** A sword's stroke: may it swing now?  'yes'; 'soon' (inside EARLY_MS of
  *  ready: kept, mcSwingWaiting says when); 'no'. */
@@ -545,9 +560,9 @@ if (typeof window !== 'undefined') {
       on: function () { return manualOn(); },
       sling: function () { return manualSling(); },
       free: function () { return manualFreeSwing(); },   /* v2.3.4520 */
-      /* v2.3.4615: for the timing bar's pictures, the UI review can put its
-         one page on the trial (what `?manual=3` does at load; the worker is
-         not asked, so nothing it judges changes) */
+      /* v2.3.4615: the UI review can put its one page on the trial (what
+         `?manual=3` does at load; the worker is not asked, so nothing it
+         judges changes) */
       set: function (v) { setManualCombat(v); },
       state: function () {
         var S = window._gameState && window._gameState.current;

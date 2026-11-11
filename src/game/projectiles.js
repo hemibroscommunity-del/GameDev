@@ -420,6 +420,7 @@ function _projImpactFx(S, a, m, fx, tx, ty) {
        ring: the area you see is the area that was hit. */
     orbCrashFx(S, tx, ty, fx.orbColor, { elem: fx.elem, vdx: vdx, vdy: vdy, big: !!fx.bigBolt,
       blastR: fx.bigBolt ? STAFF_BIG_BOLT_BLAST_PX * staffAoeMult(S.rpg || {}) : 0 });
+    staffFeelImpact(S, a, tx + vdx, ty + vdy);   /* v2.3.4803: a gathered bolt's ring of force, sized by its stage (game/staffFeel.js) */
   }
   if (fx.stub) {
     if (fx.snap) {
@@ -1009,6 +1010,8 @@ import {
 import { baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2511: arrows sound like what they hit */, hitSoundOf /* v2.3.3001: ...in its material's voice */, isIntangible /* v2.3.2224 */, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { monsterHitSfx, shotEndSfx } from '@/game/hitSounds.js'; /* v2.3.3001: hits and monster balls sound like their material */
 import { mcHitPitch, mcPerfectOn } from '@/game/manualCombat.js'; /* v2.3.4615: the free-swing trial's rising pitch, and its arrows named */
+import { staffSw, staffFeelImpact } from '@/game/staffFeel.js'; /* v2.3.4803: a gathered bolt names its shot, and its ring of force is drawn */
+import { bowFeelSw, bowFeelContact } from '@/game/bowFeel.js'; /* v2.3.4802: a drawn arrow's claims name its shot (`sw`), and its hit is sized by its draw */
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, from recordings already in the game */
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
@@ -1923,6 +1926,7 @@ export function updateArrows(S, deps) {
                    distributeKillXpToBuild's share split.  Power stays
                    reserved for melee swing damage. */
                 if (S.rpg && _vShove) addBuildUse(S.rpg, isStaffProj ? 'mind' : 'agility', 1);   /* v2.3.2848: a volley counts once per monster, as the one arrow did */
+                if (!isStaffProj) bowFeelContact(S, a, m);   /* v2.3.4802: a drawn arrow's spark and sound, sized by its draw (nothing for any other) */
                 /* T2: damage-driven weapon-skill XP — the equipped slot
                    resolves to Bow or Staff at hit time. */
                 if (S.rpg) {
@@ -1984,7 +1988,11 @@ export function updateArrows(S, deps) {
                     /* v2.3.4615: on the free-swing trial an arrow names its
                        shot (its relay's `ts`), so the worker judges it by the
                        moment it left (freeswing.js _pfBowClaim) */
-                    sw: (!isStaffProj && !a.isSpecial && mcPerfectOn(S) && typeof a._shotTs === 'number') ? a._shotTs : undefined
+                    sw: (!isStaffProj && !a.isSpecial && mcPerfectOn(S) && typeof a._shotTs === 'number') ? a._shotTs
+                      /* v2.3.4803: and a GATHERED bolt names its shot too (its relay carried `ga`:
+                         drawGather.js), so the worker lands its share and its stage's blast;
+                         v2.3.4802: ...and a drawn arrow always (its share: drawGather.js) */
+                      : (staffSw(S, a) ?? bowFeelSw(a))
                   }});
                 }
                 if (arrowCollision) {
@@ -2579,6 +2587,10 @@ export function updateArrows(S, deps) {
                          caps.pvpextras puts its status on the player it hit,
                          the same as on a monster.  An older one ignores it. */
                       element: projElem || undefined,
+                      /* v2.3.4802: a drawn arrow names its shot (drawgather.js: its share lands as a sword's); absent, today's.
+                         v2.3.4803: a gathered bolt's share lands on a player as a sword's does.  ONE key: the two lanes each
+                         added an `sw:` here and in an object literal the second silently wins (the arrow's was lost). */
+                      sw: staffSw(S, a) ?? bowFeelSw(a),
                       kind: isStaffProj ? 'staff' : 'ranged',
                       /* v2.3.1306: declare the single intended target so
                          the server skips everyone else in the cone — the

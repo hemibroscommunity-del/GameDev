@@ -146,6 +146,11 @@ const hash = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return
  *  glow (below), so the wind-up and the light cannot drift apart. */
 const _charge = { charge: 0, rhythm: 0 };   /* reused: read at once by each caller */
 export function staffCharge(S, now) {
+  /* v2.3.4803: with the staff's feel the crystal fills with the GATHER (the
+     thumb held: its share of a full one, game/staffFeel.js) and is dark
+     between gathers -- no cooldown refills it, the thumb does */
+  const _sv = S && S._stf && S._stf.view;
+  if (_sv) { _charge.charge = _sv.gathering ? clamp(_sv.r, 0, 1) : 0; _charge.rhythm = _sv.gathering ? 1 : 0; return _charge; }
   const castAt = (S && S._staffCastAt) || 0;
   if (!castAt) { _charge.charge = 0; _charge.rhythm = 0; return _charge; }
   const cad = S._staffCadenceMs || 900;

@@ -46,7 +46,7 @@ const C = { arrowPx, reachPx, volleyK: BOW_VOLLEY.SPEED_K, peerPx: BOW_VOLLEY.PE
   /* v2.3.4862: x depthK is gone with the old map's dunes (it was 1 in every live zone) */
   check('1d ...its _rangeMult is bowRangeMult, and its relay\'s life is 90 x the same (monsterCombat.js)',
     /_rangeMult: isStaff \? 1 : bowRangeMult\(S\.rpg\)/.test(mc)
-    && /life: Math\.round\(isStaff \? staffOrbLife\(S\.rpg\) : 90 \* \(bowRangeMult\(S\.rpg\) \|\| 1\)\)/.test(mc) && PEER_SHOT.LIFE_PER_K === 90);
+    && /life: (?:staffShotLife\()?Math\.round\(isStaff \? staffOrbLife\(S\.rpg\) : 90 \* \(bowRangeMult\(S\.rpg\) \|\| 1\)\)/.test(mc)   /* v2.3.4803: the staff's gather wraps it (staffShotLife: a stage's speed), the arrow's life unchanged */ && PEER_SHOT.LIFE_PER_K === 90);
   const pa = src('src/game/playerActions.js');
   check('1e the volley\'s life is 90 x its own reach multiplier, and its wait is sized for PEER_PX_PER_FRAME (playerActions.js)',
     /life: Math\.round\(90 \* _bowStat\)/.test(pa)

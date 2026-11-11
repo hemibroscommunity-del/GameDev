@@ -2,6 +2,7 @@
  * Entity Renderer — renders player, monsters, other players, NPCs, and pets.
  * Uses PixiJS Graphics for procedural shapes (matching the original Canvas 2D look).
  */
+import { feelTint } from '../../game/weaponFeel.js';   /* v2.3.4800: the sword's blade, dull right after a swing */
 import { tickSmithing } from '@/game/smithing.js';   /* v2.3.2827: the smith borrows the mining swing */
 import { Assets, Cache, ColorMatrixFilter, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture } from 'pixi.js';
 import { readbackFrames } from '../photoSheet.js';   /* v2.3.2987: the stat scene's roll and jog, one readback */
@@ -14229,6 +14230,14 @@ export class EntityRenderer {
       const _bf = SECTORS[((_bsec % 8) + 8) % 8];
       if (_BOW_FACINGS.includes(_bf)) _bowDir = _bf;
     }
+    /* v2.3.4802: THE BOW NOCKED AND DRAWN (game/bowFeel.js, its S._bfPose): the thumb down raises
+       the bow (the stand-in's first frame held), a third of a draw holds it drawn (its second), until
+       the loose -- then the shot's own frames above (released at once: bowFeelLoosed) */
+    S._bowHoldFrame = null;
+    if (!_bowDir && S._bfPose && !S._extraction && !S._firemaking && !S._farmWork) {
+      const _bfs = SECTORS[((Math.round(S._bfPose.ang / (Math.PI / 4)) % 8) + 8) % 8];
+      if (_BOW_FACINGS.includes(_bfs)) { _bowDir = _bfs; S._bowHoldFrame = S._bfPose.frame; }
+    }
     /* ═══ v2.3.1800: A RAISED SHIELD BORROWS THE BOW POSE ═══
        Owner: "are you allowing the legs to move (jog motion while blocking)
        and just freezing the top half?  Thats what I'd prefer.  Otherwise the
@@ -15824,7 +15833,15 @@ export class EntityRenderer {
           /* v2.3.1760: the weapon's METAL is its blacksmith tier (gearBase), so
              a copper sword is copper everywhere without a new field.  Melee
              only — owner: "only for metals though not staff or bow". */
-          weaponSprite.tint = weaponTint(wpn && wpn.type, wpn && wpn.gearBase);
+          /* ═══ v2.3.4800: THE BLADE REFILLS (game/swordFeel.js) ═══
+             The owner's brief: "dull right after a swing, brightening over
+             the sword's cycle".  Your sword only, with its feel on: its metal
+             times the readiness (weaponFeel.js feelDim, 0.5 to 1); the glint
+             itself is drawn in the feel's own layer (weaponFeelFx.js).  A
+             tint is not a structural change (TRAPS §218). */
+          const _wTint = weaponTint(wpn && wpn.type, wpn && wpn.gearBase);
+          const _feelV = S._sf && S._sf.view;
+          weaponSprite.tint = (_feelV && _feelV.dim < 1 && (S.rpg && (S.rpg.activeSlot || 'melee') === 'melee')) ? feelTint(_wTint, _feelV.dim) : _wTint;
           _lastWeaponSprite = weaponSprite; /* v2.3.1760: QA probe */
           /* v2.3.1786: carried-blade probe — a headless run cannot read the
              canvas, so the blade-up work is measured from here. */

@@ -159,6 +159,14 @@ const WORLD_LAYER_NAMES = [
      under the damage numbers and the world overlay, like everything in the
      world. */
   'glows',
+  /* ═══ v2.3.4800: THE WEAPON FEEL'S OWN LAYER ═══
+     The blade's glint, a cut's trail, a contact's sparks
+     (systems/weaponFeelFx.js; docs/specs/sword-feel.md).  A layer of its own
+     so what changes in it every frame rebuilds only its own small draw list
+     (TRAPS §218), and AFTER the light, because a glint and a spark are light
+     and the night must not dim them; under the damage numbers, which must
+     always read. */
+  'weaponFeel',
   'damageNumbers', 'overlayWorld',
   /* ═══ v2.3.3035: A BAR NOTHING IN THE WORLD MAY COVER ═══
      The harvest's bar (effectsRenderer _drawGatherHpBar) sits ON the rock you

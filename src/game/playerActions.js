@@ -18,6 +18,7 @@ import { shotAimWire } from '@/game/shotGround.js';   /* v2.3.3501: what a shot 
 import { BOW_VOLLEY, newVolley, volleyDelayMs } from '@/game/bowVolley.js';   /* v2.3.2848 */
 import { SWING_COOLDOWN, weaponSwingMult, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, swingCooldownMult, specialManaCost, burstRefusal, burstWeapon, PROG3, ELEMENTS, LEGACY_BURST_MIN_CHAR_LEVEL } from '@/data/index.js';
 import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead, lockShotPoint, swimRefused /* v2.3.3003 */, dazeRefused /* v2.3.3014 */, staggerRefused /* v2.3.3264 */, airRefused /* v2.3.3017 */, shotGroundDy /* v2.3.3206 */ } from '@/game/combatHelpers.js';   /* v2.3.2845: lockShotPoint, the torso; v2.3.3206: shotGroundDy, a shot's ground under the boots */
+import { swordFeelSwing } from '@/game/swordFeel.js';   /* v2.3.4800: the sword's feel */
 import { accShot } from './accuracy.js';   /* v2.3.4545: a basic swing is a shot (accuracy) */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the hold */
 import { cue, cueLater } from '@/game/eventSounds.js'; /* v2.3.3343: the specials' and the burst's own sounds; v2.3.3523: + cueLater, the volley's arrows */
@@ -86,8 +87,11 @@ export function swingAttack(S) {
        and are gated in the loop.  S.rpg.weapon mirrors what getActiveWeapon
        resolves for the melee slot. */
     if (!S.rpg.weapon) return;
-    mcNoteSwing(S, S.swingTimer, Date.now());   /* v2.3.4520: this swing's share, for its sound */
+    mcNoteSwing(S, S.swingTimer, Date.now()); var _sfPrev = S.swingTimer;   /* v2.3.4520: this swing's share, for its sound */
     S.swingTimer = Date.now();
+    /* v2.3.4800: the sword's feel (game/swordFeel.js): this swing's weight and
+       whether it was struck in the glint, and the stroke it came from */
+    swordFeelSwing(S, _sfPrev, S.swingTimer);
     S.isSwinging = true;
     S._specialAttack = false;
     clearSwingHitFlags(S); /* v2.3.1421: fresh dedup per swing (quick re-tap fix) */

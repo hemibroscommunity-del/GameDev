@@ -28,7 +28,9 @@ import { foldToMono } from './soundFold.js';   /* v2.3.3706: a stereo sound whos
 import { PINNED as SFX_PINNED, PREFETCH as SFX_PREFETCH, BUDGET_MB as SFX_BUDGET_MB, COLD_MS as SFX_COLD_MS, LATE_MS as SFX_LATE_MS, familyOf as sfxFamilyOf, makeLru as makeSfxLru, parseSfxCache } from './sfxCache.js';   /* v2.3.3714: decoded sound held only while it is needed (on by default since v2.3.3735; `?sfxcache=0` off) */
 import { makeVoiceCap, parseVoiceCap, exempt as voiceExempt } from './voiceCap.js';   /* v2.3.3727: a crowd of one sound starts as a few (`?voicecap`) */
 import { FARM_GATE, FARM_SPOTS } from './farmLayout.js';   /* v2.3.3136: the farm you walk */
+import { feelSynth, feelBuildDemo } from './weaponFeelSound.js';   /* v2.3.4800: the weapon feel's sounds, synthesised (no files) */
 import { fineInput } from '../game/deviceProfile.js';   /* v2.3.4804: the device profile */
+import { bowSynth, bowDrawDemo } from './bowFeelSound.js';   /* v2.3.4802: the bow's draw -- the nock, the creak, the click, the twang (no files) */
 
 /* ── Babel helper polyfill (from pre-transpiled source) ── */
 function _defineProperty(e, r, t) { return (r in e) ? Object.defineProperty(e, r, { value: t, enumerable: true, configurable: true, writable: true }) : e[r] = t, e; }
@@ -3483,6 +3485,37 @@ BT_AUDIO.swordSwing = function (key, opts) {
      wins), and a caller that wants its own rate still overrides this. */
   if (o.rate == null) o.rate = this.SWING_DETUNE[step % this.SWING_DETUNE.length];
   return this.play(k, o);
+};
+/* ═══ v2.3.4800: THE WEAPON FEEL'S SOUNDS (data/weaponFeelSound.js) ═══
+   The glint's ring, a cut landing sized by its weight, a release, a build
+   stage, the rising build tone -- synthesised, so nothing is fetched or
+   decoded.  The same gates as play(): the mute, the loading screen's sound
+   gate, a context that is not running (no wake here: a feel sound is never
+   worth a resume, and play() for the hit beside it does that).  Each kind is
+   labelled in the Sound Studio (soundStudio.js OTHER_PLAYS, `feel*`). */
+BT_AUDIO.feelSound = function (kind, k, opts) {
+  if (this.muted || !this.ctx || !this._ctxLive()) return null;
+  if (this.soundGateClosed()) return null;
+  try { return feelSynth(this.ctx, this._out(), kind, k, opts); } catch (e) { return null; }
+};
+/* the Sound Studio's button for the build tone: one second, rising, then let go */
+BT_AUDIO.feelBuildDemo = function (vol, base) {   /* v2.3.4803: + base (the staff's hum) */
+  if (this.muted || !this.ctx || !this._ctxLive()) return null;
+  try { return feelBuildDemo(this.ctx, this._out(), vol, base); } catch (e) { return null; }
+};
+/* ═══ v2.3.4802: THE BOW'S SOUNDS (data/bowFeelSound.js) ═══
+   The nock, the creak of the draw rising in pitch, the click of full draw,
+   the twang of the loose sized by its share, the string let down -- made with
+   WebAudio behind feelSound's gates.  Labelled in the Sound Studio (`bow*`). */
+BT_AUDIO.bowSound = function (kind, k, opts) {
+  if (this.muted || !this.ctx || !this._ctxLive()) return null;
+  if (this.soundGateClosed()) return null;
+  try { return bowSynth(this.ctx, this._out(), kind, k, opts); } catch (e) { return null; }
+};
+/* the Sound Studio's button: a draw of a second, its click, its loose */
+BT_AUDIO.bowDrawDemo = function (vol) {
+  if (this.muted || !this.ctx || !this._ctxLive()) return null;
+  try { return bowDrawDemo(this.ctx, this._out(), vol); } catch (e) { return null; }
 };
 /* v2.3.1798: the special's own sound.  Quietest of the four uploads by a wide
    margin (peak RMS 0.043 against the swings' 0.27), so it carries a large

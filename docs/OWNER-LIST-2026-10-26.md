@@ -487,7 +487,7 @@ Made under your second instruction above. Each is one line with its reason; tell
 
 ### Your sword trial (everyone's combat since v2.3.4655)
 
-**On for everyone now** (you, 2026-11-11: *"Yeah everyone"*). Every phone and computer that has not chosen another combat plays the trial and shows the timing bar; nothing to add to the address. `?manual=1` goes back to the plain swipes on one device; the live switch `freeswing` turns it off for everyone at once.
+**On for everyone now** (you, 2026-11-11: *"Yeah everyone"*). Every phone and computer that has not chosen another combat plays the trial; nothing to add to the address. (The timing bar is gone: readiness shows on the weapon itself now, the combat feel, v2.3.4800 to v2.3.4803.) `?manual=1` goes back to the plain swipes on one device; the live switch `freeswing` turns it off for everyone at once.
 
 
 You asked: *"What if the attack speed was uncapped (you can swipe as many times as you want to hit) but the DPS is prorated by the time elapsed relative to the full swing cycle?"* It is in the game for the phones that ask (v2.3.4520); nobody else's game changes.
@@ -501,7 +501,7 @@ You asked: *"What if the attack speed was uncapped (you can swipe as many times 
 
 What was decided for it: the bonus is +12% damage and a little mana, on monsters only for now; quick hits play at a rising pitch. The staff has no bar yet (magic skipped, as you said).
 
-**Please check where the bar stands.** Your first design said *"north of the right joystick"*. #1532 put it standing upright **over the LEFT joystick**, quoting you: *"I'd like it to actually lay vertically in the space above the left joystick and try it that way."* If the left is what you want now, nothing to do; if you meant the right, say so and a session will move it. `?timingbar=0` hides the bar on one phone.
+**The bar is removed** (you, 2026-11-11: *"Yes remove the timing bar. It needs to be something else entirely"*): the sword's blade, the bow's draw and the staff's orb show readiness on the weapon itself (docs/specs/sword-feel.md, bow-feel.md, staff-feel.md). Your sword and arrow pictures stay on disk (`public/sprites/timingbar/`), no longer loaded; `?timingbar=0` does nothing now.
 
 ### Decided (2026-11-10)
 

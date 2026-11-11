@@ -342,7 +342,6 @@ const LIST = {
     _loadTileset: ['once', 1, 'a Tiled tileset: no time limit, no retry'],
     loadTiledMap: ['once', 1, 'a Tiled map: no time limit, no retry'],
   },
-  'src/rendering/timingBarPreload.js': { preloadTimingBar: ['warm', 1, "the timing bar's art, warmed and held"] },
   'src/rendering/traitThumbs.js': { preloadTraitThumbs: ['warm', 1, "the character creator's thumbnails, warmed; each <img> loads its own"] },
   'src/rendering/traits/speciesArt.js': {
     _loadImg: ['retry', 1, "a species' picture: two more asks on an error (1.5 s, 5 s) and later rounds (_retryMissing); no time limit"],

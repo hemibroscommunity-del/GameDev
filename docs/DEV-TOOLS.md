@@ -86,9 +86,14 @@ Notes for anyone extending it:
   to every address that does not name `manual=` itself
   (`tools/qa/mp/harness.mjs`). A new scenario about fighting plays what a
   new player gets by passing `query: 'manual=default'` (since v2.3.4655 the
-  free-swing sword, the perfect strike and the timing bar; `manual=3` is
-  the same), as `mp-timingbar` does. `manual=1` is the plain swipes (no
-  bar) and `manual=2` the slingshot bow (`mp-manualcombat`).
+  free-swing sword and the perfect strike, and since v2.3.4800 the sword's
+  feel -- the blade's glint, the cut that follows the thumb; `manual=3` is
+  the same), as `mp-swordfeel` does. `manual=1` is the plain swipes and
+  `manual=2` the slingshot bow (`mp-manualcombat`). `swordfeel=0` is the
+  sword without its feel. (The timing bar and `mp-timingbar` are gone,
+  v2.3.4800.) The feel's probes: `window.__btWeaponFeel()` (readiness, the
+  glint, the last cut's turn; `.tick()` runs the loop's frame now,
+  `.contact(m, ang)` a contact) and `window.__btWeaponFeelFx()` (its layer).
 - `window._gameState` is a **ref**; the live state is `.current`.
   Reading the ref yields `undefined` for every field and looks exactly
   like "the player never joined".

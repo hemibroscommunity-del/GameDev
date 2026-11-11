@@ -47,8 +47,8 @@ const STEPS = [
      the owner's rule ("always nearest, tap to pick") is invisible otherwise. */
   { key: 'attack', shape: 'circle', sels: ['.bt-rjoy-base'],
     label: 'Attack', body: 'The button lights up when something is in reach. Tap it to swing, hold it to keep fighting, and flick across it for your special.',
-    /* v2.3.4396 (docs/specs/manual-combat.md): every attack is made by hand */
-    bodyManual: 'Sword: swipe across it, or anywhere on the right side, for each swing. Bow: flick the way you want to shoot. Staff: hold a direction and it keeps casting.' },
+    /* v2.3.4396 (docs/specs/manual-combat.md): every attack is made by hand; v2.3.4802: the bow is DRAWN back (docs/specs/bow-feel.md); v2.3.4803: the staff gathers and blasts (game/staffFeel.js) */
+    bodyManual: 'Sword: swipe across it, or anywhere on the right side, for each swing. Bow: pull back, away from where you want to shoot, and let go; the longer you hold, the harder it shoots. Staff: hold to gather power (drag to aim), let go to blast the orb; a quick tap fires a spark.' },
   /* v2.3.2251: replaces the switch-target arrows, which are deleted.  This
      is the one rule a player cannot discover by pressing things: the game
      picks your target for you, and tapping is how you overrule it. */
@@ -56,7 +56,7 @@ const STEPS = [
     label: 'Your target', body: 'You always aim at the closest enemy. Tap a different one to lock onto it instead, and tap it again to let go.',
     /* v2.3.4396: no lock a player chooses; a special is armed, then made */
     labelManual: 'Aiming and specials',
-    bodyManual: 'Your sword turns to the closest enemy by itself. A bow shoots where you flick, a staff where you hold. For a sword or bow special, tap the Special button first: your next attack is the special.' },
+    bodyManual: 'Your sword turns to the closest enemy by itself. A bow shoots opposite your pull, a staff where you drag. For a sword or bow special, tap the Special button first: your next attack is the special.' },
   /* v2.3.2242: the shield left the stick.  Its own button, under Attack,
      that only shows once there is something to block. */
   { key: 'shield', shape: 'circle', sels: ['[data-shield]'], anchorOptional: true,
