@@ -23,6 +23,11 @@ import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
 import { RIDE, RIDE_ENDS_ON } from '../src/ride.js';
 import { SPRINT } from '../src/sprint.js';
 import * as C from '../../src/game/ride.js';
+/* v2.3.4675: this suite stands players in the retired old lands as a fixture.
+   zonejudge.js R3 closes them to players, so it opens them for this suite
+   only.  On retired-lands.test's FIXTURES list, which only shrinks: move the
+   suite to the world ('wheel') and take it off. */
+GameRoom.prototype._retiredLandsOn = function () { return false; };
 
 const ticksRun = async (room, n, ms) => {
   const from = room.tickSeq || 0, t0 = realNow();

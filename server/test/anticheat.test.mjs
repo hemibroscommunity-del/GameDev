@@ -24,6 +24,11 @@ import { GameRoom, CHAT_RELAY } from '../src/index.js';
 import { DRAWING_KEYS, NEW_CHARACTER_COINS } from '../src/join.js';   /* v2.3.2445: assert the gate's own set, not a copy of it; v2.3.3138 the new purse */
 import { HARVEST_PERFECT_PER_MIN, HONEST_CYCLE_MIN_MS } from '../src/gathering.js'; /* v2.3.3036 */
 import { COOK_PER_MIN } from '../src/cooking.js';                                   /* v2.3.3036 */
+/* v2.3.4675: this suite stands players in the retired old lands as a fixture.
+   zonejudge.js R3 closes them to players, so it opens them for this suite
+   only.  On retired-lands.test's FIXTURES list, which only shrinks: move the
+   suite to the world ('wheel') and take it off. */
+GameRoom.prototype._retiredLandsOn = function () { return false; };
 
 /* v2.3.2445: driven off the gate, so a drawing key added tomorrow is covered
    the day it is added rather than the day somebody notices it was missed. */

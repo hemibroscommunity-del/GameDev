@@ -395,7 +395,9 @@ export const joinMethods = {
       if (k === 'x' || k === 'y') {
         if (typeof v === 'number' && Number.isFinite(v)) out[k] = v;
       } else if (k === 'z') {
-        if (this._validZone(v)) out.z = v;
+        /* v2.3.4675: never a retired land (zonejudge.js R3): the join then
+           arrives in today's town, as one naming no place does */
+        if (this._validZone(v) && !this._retiredLand(v)) out.z = v;
       } else if (typeof v === 'string' && v.length <= 16) {
         out[k] = v;
       }

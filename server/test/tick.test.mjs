@@ -35,6 +35,11 @@ import { ZONES as SERVER_ZONES } from '../src/data.js';
 // ESM) -- the lockstep section at the bottom pins it against the
 // server's copy.
 import { ZONES as CLIENT_ZONES } from '../../src/data/zones.js';
+/* v2.3.4675: this suite stands players in the retired old lands as a fixture.
+   zonejudge.js R3 closes them to players, so it opens them for this suite
+   only.  On retired-lands.test's FIXTURES list, which only shrinks: move the
+   suite to the world ('wheel') and take it off. */
+GameRoom.prototype._retiredLandsOn = function () { return false; };
 
 /* v2.3.3639: a window of real time is not a tick.  Waiting TICK_RATE x N ms
    and reading the socket failed whenever the machine was busy (the precheck

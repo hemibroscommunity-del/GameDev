@@ -18,6 +18,11 @@
 import { GameRoom } from '../src/index.js';
 import { CHAIN_SCORE, LIFE_SKILL_KEYS, COMBAT_SKILL_KEYS } from '../src/chainscore.js';
 import { privToAddress, normalizePrivKey } from '../src/chainwriter.js';
+/* v2.3.4675: this suite stands players in the retired old lands as a fixture.
+   zonejudge.js R3 closes them to players, so it opens them for this suite
+   only.  On retired-lands.test's FIXTURES list, which only shrinks: move the
+   suite to the world ('wheel') and take it off. */
+GameRoom.prototype._retiredLandsOn = function () { return false; };
 
 let failures = 0;
 function check(name, cond, detail) {

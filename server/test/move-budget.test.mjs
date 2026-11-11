@@ -35,6 +35,11 @@ import { GameRoom } from '../src/index.js';
 import { MOVE_BUDGET } from '../src/movement.js';
 import { WHEEL_ZONE } from '../src/wheelzone.js';
 import { flagNameOk } from '../src/liveops.js';
+/* v2.3.4675: this suite stands players in the retired old lands as a fixture.
+   zonejudge.js R3 closes them to players, so it opens them for this suite
+   only.  On retired-lands.test's FIXTURES list, which only shrinks: move the
+   suite to the world ('wheel') and take it off. */
+GameRoom.prototype._retiredLandsOn = function () { return false; };
 
 let T = 1_800_000_000_000;
 Date.now = () => T;

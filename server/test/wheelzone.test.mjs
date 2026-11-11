@@ -71,6 +71,11 @@ import * as LONG from '../src/wheelspawns.js';
 import { WHEEL_STAGE_LOOKS, wheelStageLook, wheelStageOf } from '../../src/data/wheelStageLooks.js';   /* v2.3.3093 */
 import { ZONE_VARIANT_MAP } from '../../src/data/monsterVariants.js';   /* v2.3.3093: the look the game gives a monster */
 import { ZONES as CLIENT_ZONES } from '../../src/data/zones.js';
+/* v2.3.4675: this suite stands players in the retired old lands as a fixture.
+   zonejudge.js R3 closes them to players, so it opens them for this suite
+   only.  On retired-lands.test's FIXTURES list, which only shrinks: move the
+   suite to the world ('wheel') and take it off. */
+GameRoom.prototype._retiredLandsOn = function () { return false; };
 
 /* v2.3.3639: a window of real time is not a tick.  Waiting TICK_RATE x N ms
    and reading the socket failed whenever the machine was busy (the precheck
