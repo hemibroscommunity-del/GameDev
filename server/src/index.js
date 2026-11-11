@@ -239,6 +239,7 @@ import { lastPlaceMethods } from './lastplace.js'; /* v2.3.3327: a reconnect sta
 import { zoneJudgeMethods } from './zonejudge.js'; /* v2.3.4640: the worker judges a change of place */
 import { hitProofMethods } from './hitproof.js'; /* v2.3.3334: a hit on a monster needs its weapon, its reach, a paid special */
 import { freeSwingMethods } from './freeswing.js'; /* v2.3.4520: the free-swing trial (a phone that asks swings its sword as often as it likes) */
+import { drawGatherMethods } from './drawgather.js'; /* v2.3.4801: the bow's draw and the staff's gather (a shot's share of a full build) */
 import { testModeMethods } from './testmode.js'; /* v2.3.3430: test mode -- the owner's own characters without the honesty checks */
 import { deviceLockMethods } from './devicelock.js'; /* v2.3.3344: a character's login key works on the devices it is played on */
 import { loginKeyMethods } from './loginkeys.js'; /* v2.3.3355: new Login Keys, made by the worker */
@@ -6397,6 +6398,12 @@ export class GameRoom {
         /* v2.3.3304: ...and only a type a phone relays: an ALLOWLIST now, the
            deny-list above its last line (relay.js RELAY.TYPES) */
         if (!this._relayAllowed(msg.type)) break;
+        /* v2.3.4801: a bow's arrow or a staff's bolt carrying its draw or
+           gather (`dr` / `ga`) is stamped on the worker's clock HERE, before
+           the relay's budget: a tap-spam of five shots a second outruns its
+           four, and a shot never stamped would have its claims land as
+           today's whole ones (drawgather.js _dgShot; no field: nothing) */
+        if (msg.type === 'player_projectile' && session.id) this._dgShot(session, msg.payload, Date.now());
         /* ═══ v2.3.1618: RELAY BUDGET ═══
          *
          * The size gate at the top of this method bounds ONE message; this
@@ -6952,6 +6959,7 @@ Object.assign(GameRoom.prototype, lastPlaceMethods); /* v2.3.3327: a reconnect s
 Object.assign(GameRoom.prototype, zoneJudgeMethods); /* v2.3.4640: the worker judges a change of place (zonejudge.js) */
 Object.assign(GameRoom.prototype, hitProofMethods); /* v2.3.3334: a hit on a monster needs its weapon, its reach, a paid special */
 Object.assign(GameRoom.prototype, freeSwingMethods); /* v2.3.4520: the free-swing trial (freeswing.js) */
+Object.assign(GameRoom.prototype, drawGatherMethods); /* v2.3.4801: the bow's draw and the staff's gather (drawgather.js) */
 Object.assign(GameRoom.prototype, testModeMethods); /* v2.3.3430: test mode (testmode.js) */
 Object.assign(GameRoom.prototype, deviceLockMethods); /* v2.3.3344: a character's login key works on the devices it is played on */
 Object.assign(GameRoom.prototype, loginKeyMethods); /* v2.3.3355: new Login Keys, made by the worker */

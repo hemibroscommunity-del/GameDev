@@ -1343,7 +1343,14 @@ export const combatMethods = {
     }
     /* v2.3.3334: ...and a bow or staff lands no more hits a second, across
        every monster, than its shots carry (hitproof.js _hitRateTake) */
-    if (_hp && !isSpecial && !this._hitRateTake(attackerPs, _effSlot, _hpNow)) { this._hpTally('rate'); return; }
+    /* v2.3.4801: THE BOW'S DRAW AND THE STAFF'S GATHER (drawgather.js): the
+       shot this claim names, if the worker stamped it with a build (null:
+       today's arrow or bolt).  Its claims spend their SHARE of the allowance
+       below (a dropped shot's nothing: it lands nothing), skip the 210 ms
+       lane (their own floor holds them), and land their share. */
+    const _dg = (!isSpecial && (_effSlot === 'ranged' || _effSlot === 'staff'))
+      ? this._dgFind(attackerPs, _effSlot, payload.sw) : null;
+    if (_hp && !isSpecial && !this._hitRateTake(attackerPs, _effSlot, _hpNow, _dg ? (_dg.drop ? 0 : _dg.f) : 1)) { this._hpTally('rate'); return; }
     /* v2.3.2849: a big bolt is ONE roll from its own band that then explodes
        (STAFF_BOLT at the top of this file) -- `_bigBolt` is what the wire
        said, `_orbs` below is what the lane lets it be worth. */
@@ -1390,7 +1397,7 @@ export const combatMethods = {
            more than the lane has left. */
         _orbs = Math.min(_orbs, 3 - cad.s.length);
         for (let k = 0; k < _orbs; k++) cad.s.push(nowTs);
-      } else if (!_fsOn) {   /* v2.3.4520: the trial's own floor is below */
+      } else if (!_fsOn && !_dg) {   /* v2.3.4520: the trial's own floor is below; v2.3.4801: a named build shot's too */
         if (nowTs - cad.n < 210) return; // v2.3.1343: 335 -> 210 (Tempo cap -50%)
         cad.n = nowTs;
       }
@@ -1420,6 +1427,14 @@ export const combatMethods = {
         _pf = this._pfSword(attackerPs, session);
         _fsK = _pf ? _f * (1 + FREE_SWING.FULL_SWING_BONUS) : _f;
       }
+    } else if (_dg) {
+      /* v2.3.4801: a drawn arrow's or a gathered bolt's share of a full one
+         (null: a shot that lands nothing, or a monster it took already); a
+         perfect draw x FULL_SWING_BONUS, and its mana once a shot */
+      const _t = this._dgTake(attackerPs, session, _dg, 'm:' + monsterId, true);
+      if (!_t) return;
+      _fsK = _t.k;
+      _pf = _t.pf;
     } else if (_effSlot === 'ranged' && !isSpecial && this._freeSwingFor(session)
         && this._pfBowClaim(attackerPs, session, payload.sw, 'm:' + monsterId, Date.now())) {
       _pf = true;
@@ -1495,7 +1510,7 @@ export const combatMethods = {
     /* v2.3.4520: a free swing's share of the full hit, the fraction carried
        (freeswing.js); a full one with no bonus is this line as it was */
     const rawDmg = (_fsK !== null && _fsK !== 1)
-      ? this._fsTake(_fsOn ? attackerPs._fs : attackerPs._pfb /* v2.3.4615: an arrow's own carry */, 'c', Math.max(1, Math.round(_cappedDmg * this._fractureDmgMult(m) * _up)), _fsK)
+      ? this._fsTake(_fsOn ? attackerPs._fs : _dg ? attackerPs._dg /* v2.3.4801 */ : attackerPs._pfb /* v2.3.4615: an arrow's own carry */, 'c', Math.max(1, Math.round(_cappedDmg * this._fractureDmgMult(m) * _up)), _fsK)
       : Math.max(1, Math.round(_cappedDmg * this._fractureDmgMult(m) * _up));
     /* v2.3.3558: ...and never past a splitting boss's next mark: it splits
        there (_monsterHpFloor, above; 0 for every other monster) */
@@ -1690,6 +1705,7 @@ export const combatMethods = {
            plain full one: the phone sizes the number by it.  Display only */
         ...(_fsK !== null && _fsK !== 1 ? { pw: Math.round(_fsK * 100) / 100 } : null),
         ...(_pf ? { pf: 1 } : null),   /* v2.3.4615: a perfect strike (the phone's accent).  Display only */
+        ...(_dg && _dg.kind === 'staff' ? { gs: _dg.st } : null),   /* v2.3.4801: a gathered bolt's stage (drawgather.js), for its blast.  Display only */
         /* ═══ v2.3.2481: THE KILLING BLOW SHOWS WHAT IT ACTUALLY HIT FOR ═══
            Owner ask: the last hit on a monster always printed a small
            number — 3 on a 40-damage swing — because `dmg` is the CREDITED
@@ -1743,7 +1759,12 @@ export const combatMethods = {
        monster_hit so the numbers arrive in the order they happened, and
        before the kill check so a splash that finishes a neighbour resolves
        inside the same event. */
-    if (_effSlot === 'staff' && !isSpecial) {
+    if (_effSlot === 'staff' && !isSpecial && _dg) {
+      /* v2.3.4801: a gathered bolt's splash by its stage, its share of the
+         basic one's, and its ring of force on the monsters it took
+         (drawgather.js _dgBlast; a spark: none) */
+      this._dgBlast(zone, m, _impactX, _impactY, session.id, attackerPs, _cappedDmg, _dg, _fsK);
+    } else if (_effSlot === 'staff' && !isSpecial) {
       this._staffSplash(zone, m, _impactX, _impactY, session.id, attackerPs,
         _cappedDmg);   /* v2.3.3263: the capped roll, as before (_rollHit caps it) */
     } else if (_bigBolt) {
@@ -2379,6 +2400,10 @@ export const combatMethods = {
     /* v2.3.4520: the free-swing trial (freeswing.js), a sword's claim from a
        phone that asked */
     const _fsPvp = kind === 'melee' && this._freeSwingFor(attackerSession);
+    /* v2.3.4801: a drawn arrow or a gathered bolt names its shot (drawgather.js):
+       its share lands as a sword's does, no perfect, no mana */
+    const _dgPvp = (!_special && (kind === 'ranged' || kind === 'staff'))
+      ? this._dgFind(attackerPs, kind, payload.sw) : null;
 
     // Check all players in room for hits
     for (const [targetId, targetPs] of Object.entries(this.playerState)) {
@@ -2437,7 +2462,8 @@ export const combatMethods = {
           if (lane.spCount >= this.PVP_TUNING.SPECIAL_LANE_MAX) continue;
           lane.spCount++;
         } else {
-          if (now - lane.lastTs < this.PVP_TUNING.CADENCE_MS) continue;
+          /* v2.3.4801: a named build shot is held by its own floor and bound */
+          if (!_dgPvp && now - lane.lastTs < this.PVP_TUNING.CADENCE_MS) continue;
           lane.lastTs = now;
         }
       }
@@ -2454,7 +2480,13 @@ export const combatMethods = {
           if (_fsK === null) continue;
         }
       }
+      if (_dgPvp) {
+        const _t = this._dgTake(attackerPs, attackerSession, _dgPvp, 'p:' + targetId, false);
+        if (!_t) continue;
+        _fsK = _t.k;
+      }
       const _fsShare = _fsK !== null && _fsK < 1;
+      const _fsCarry = _dgPvp ? attackerPs._dg : attackerPs._fs;   /* v2.3.4801: its own carry */
 
       // §16.12 — Resolve dodge/block against historical state
       /* v2.3.3262: ...unless the worker has them dazed -- a dazed player cannot
@@ -2503,7 +2535,7 @@ export const combatMethods = {
       if (blocked && !_parried && BLOCK_COSTS_STAMINA && typeof targetPs.stamina === 'number') {
         const _cost0 = Math.max(1, Math.round(BLOCK_STAMINA_COST * this._blockStaminaMult(targetPs)));
         /* v2.3.4520: a free swing's share of it, the fraction carried */
-        const _cost = _fsShare ? this._fsTake(attackerPs._fs, 'sc', _cost0, _fsK) : _cost0;
+        const _cost = _fsShare ? this._fsTake(_fsCarry, 'sc', _cost0, _fsK) : _cost0;
         targetPs.stamina = Math.max(0, targetPs.stamina - _cost);
         _blockDrain = _cost;
         if (targetPs.stamina <= 0) {
@@ -2562,7 +2594,7 @@ export const combatMethods = {
       const _adOpts = _bal ? { attackerLevel: this._prog3OpponentLevel(attackerPs) } : undefined;
       /* v2.3.4520: a free swing lands its share, after every cut (combat's _applyDamage) */
       const dmgResult = this._applyDamage(targetPs, rawDmg, blocked,
-        _fsShare ? Object.assign(_adOpts || {}, { share: _fsK, carry: attackerPs._fs }) : _adOpts);
+        _fsShare ? Object.assign(_adOpts || {}, { share: _fsK, carry: _fsCarry }) : _adOpts);
       const dmgTaken = dmgResult.dmgTaken;
       if (_bal && _special) _specialLanded = true;
       /* ═══ v2.3.3264: WHAT THE BLOW CARRIES, AS ON A MONSTER ═══
@@ -2681,7 +2713,12 @@ export const combatMethods = {
            through them (dodged) */
         if (kind === 'staff' && !dmgResult.dodged) {
           const _big = !!(_special && Math.floor(Number(payload.orbs)) > 1);
-          if (!_special || _big) this._pvpSplashFromPlayer(attackerId, attackerPs, targetId, targetPs, _hitBase, _big);
+          if (_dgPvp) {
+            /* v2.3.4801: a gathered bolt's splash by its stage, its share of
+               the basic one's; no ring (a bolt that struck a player) */
+            const _sp = this._dgSplashSpec(_dgPvp.st);
+            if (_sp) this._dgSplash(attackerPs.z, null, targetPs.x, targetPs.y, attackerId, attackerPs, _hitBase, _fsK, _sp, { exclude: targetId });
+          } else if (!_special || _big) this._pvpSplashFromPlayer(attackerId, attackerPs, targetId, targetPs, _hitBase, _big);
         }
         /* v2.3.3264: NOT the bow volley's burn: its arrows stuck in a monster
            burn it four more ordinary hits (projectiles.js), but against a
