@@ -234,12 +234,17 @@ export const hitProofMethods = {
     }
     return { b, cap };
   },
-  /* May one more bow or staff claim land now?  Takes it.  Melee: always. */
-  _hitRateTake(ps, slot, now) {
+  /* May one more bow or staff claim land now?  Takes it.  Melee: always.
+     v2.3.4801: `cost` -- a drawn arrow's or a gathered bolt's claim spends
+     its SHARE of a hit (drawgather.js): the allowance is hits' WORTH a
+     second, so a tap-spam of light shots is held to what full ones may land,
+     never cut below it.  Anything else spends 1, as before. */
+  _hitRateTake(ps, slot, now, cost) {
     if (slot !== 'ranged' && slot !== 'staff') return true;
+    const c = (typeof cost === 'number' && cost >= 0 && cost < 1) ? cost : 1;
     const { b } = this._hitBucketOf(ps, slot, now);
-    if (b.tokens < 1) return false;
-    b.tokens -= 1;
+    if (b.tokens < c) return false;
+    b.tokens -= c;
     return true;
   },
   /* A paid ability's shots: added past the burst, GRANT_MAX at most. */

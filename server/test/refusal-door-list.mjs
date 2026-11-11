@@ -92,6 +92,7 @@ export const INFRA = Object.freeze({
   _relayAllowed: 'the relay list (relay.js): read by the default case\'s own guard',
   _socialLane: 'which allowance a relay spends', _socialAllow: 'the social allowance: read by the default case\'s own guard',
   _pfBowShot: 'times a bow shot for the trial (freeswing.js); refuses nothing',
+  _dgShot: 'v2.3.4801: stamps a drawn arrow or a gathered bolt (drawgather.js); refuses nothing',
   _relayBuild: 'rebuilds a relay in the sender\'s name', _clanPartyOn: 'the clans-are-parties switch: read by the default case\'s own guard',
   _observeClanInvite: 'records a clan invite\'s pending half; refuses nothing',
   _sparSeen: 'shows a spar clone what it saw; refuses nothing',
@@ -104,7 +105,7 @@ export const SWALLOWED = Object.freeze({
 
 /* The list's size when it was frozen (v2.3.4791).  Lower these as lines come
    off; raising one is a decision the PR names. */
-export const FROZEN = Object.freeze({ listed: 318, known: 54 });
+export const FROZEN = Object.freeze({ listed: 319, known: 54 });   /* v2.3.4801: +1, the draw and gather's quiet drop (drawgather.js) */
 
 /* handler -> { guard: 'code[ code...][: note]' } */
 export const ALLOW = {
@@ -145,10 +146,11 @@ export const ALLOW = {
     "if (_rdx * _rdx + _rdy * _rdy > this.PVE_MELEE_RANGE * this.PVE_MELEE_RANGE)": "fight",
     "if (_reach !== null && _hdx * _hdx + _hdy * _hdy > _reach * _reach)": "fight",
     "if (_wdx * _wdx + _wdy * _wdy > WHEEL.RANGED_MAX * WHEEL.RANGED_MAX)": "fight",
-    "if (_hp && !isSpecial && !this._hitRateTake(attackerPs, _effSlot, _hpNow))": "rate",
+    "if (_hp && !isSpecial && !this._hitRateTake(attackerPs, _effSlot, _hpNow, _dg ? (_dg.drop ? 0 : _dg.f) : 1))": "rate",
     "if (cad.s.length >= 3)": "rate",
     "if (nowTs - cad.n < 210)": "rate",
     "if (_f === null)": "fight",
+    "if (!_t)": "rate: v2.3.4801, a drawn arrow's or gathered bolt's claim on a shot that lands nothing (sooner than its floor) or on a target it took already (drawgather.js _dgTake): the sword's `_f === null`",
   },
   '_handleExtractionStart': {
     "if (!nodeId || !zone || !skill)": "shape",

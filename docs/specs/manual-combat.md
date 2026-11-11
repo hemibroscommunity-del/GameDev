@@ -426,6 +426,82 @@ loaded). The window's numbers stay (`MANUAL.PERFECT_EARLY_MS`,
 - **A script times perfectly.** The bonus is 12% and a little mana; reading
   the timing as a bot's fingerprint is still the worker's next step (below).
 
+## The bow's draw and the staff's gather: the worker's half (v2.3.4801)
+
+> The owner, 2026-11-11: *"Think about the sword swing. The bow pull back and
+> release. The staff building power and blasting the orb."* Approving the
+> design: *"build all of them (sword, bow, magic)"*; of the staff, *"For magic
+> I think it should be skipped for now"* (no timing window).
+
+The worker ships first (`server/src/drawgather.js`, its header has every
+rule). **Nothing changes for a player until the phone sends the new fields**:
+a shot without them is today's, exactly. The phone's rules, which its bow and
+staff lanes import: `src/game/drawGather.js` (no imports; pinned to the
+worker's copy by `draw-gather.test` §1).
+
+### The wire
+
+| what | where | meaning |
+|---|---|---|
+| `dr` | an arrow's `player_projectile` relay | the draw, whole ms, nock to release (`buildWire`) |
+| `ga` | a bolt's relay (`isStaff: true`) | the gather, whole ms, thumb down to blast |
+| `ts` | both relays (as today) | the shot's own stamp |
+| `sw` | every hit claim of that arrow or bolt: `monster_damage` and `pvp_attack` | names the shot (`sw: ts`) |
+| `caps.bowDraw`, `caps.staffGather` | `state_sync` | the worker counts `dr` / `ga` (off with `bowdraw: false` / `staffgather: false`) |
+| `pw`, `pf`, `gs` | `monster_hit` | the share (when not a plain full one), a perfect draw, a gathered bolt's stage (0 spark, 1 orb, 2 sphere). Display only |
+
+The relayed copy carries the build the worker COUNTED, so the others draw what
+lands.
+
+### The rules
+
+1. **The bound.** A claim counts at most the time since your last counted
+   bow shot or bolt (ONE clock for both weapons, or a weapon switch would
+   build a full arrow and a full bolt in the same second) plus 100 ms of
+   slack for the network, LENT: what a shot takes past its time is owed by
+   the next, so over any run the builds sum to the time that passed plus
+   100 ms once. A negative, NaN, a string or Infinity is a build of nothing;
+   a huge number is the bound; `dr` on a bolt, `ga` on an arrow, a shot with
+   no such weapon in the worker's slot, a special's or a retreat's shot, a
+   shot with no `ts`: nothing kept (today's).
+2. **The share**: damage = bounded build / full build, at most 1, the
+   fraction carried. Full draw = the flicked bow's cycle (371 ms on a new
+   character: today's bow, so a full draw a cycle is today's damage a
+   second); full gather = the held staff's interval + 300 (900 ms).
+3. **A share of 0.8 or more** carries the extras (the shove, the gem's
+   status, its collision and mana, the spark), as a sword's swing.
+4. **The perfect draw**: released from full draw to 300 ms after it, not cut
+   by the bound: x1.12 and an eighth of the special's mana once a shot, on a
+   monster only, to whom today's perfect arrow pays (`fs: 2`, the phone's
+   default; `freeswingbonus`, `perfectbow`). No perfect for the staff.
+5. **The staff's stage**: spark under 0.4, orb, sphere from 0.8 (the pulses
+   at 360 and 720 ms of 900). The splash's reach is 0, 0.6 and 1 x the basic
+   bolt's 60 px (x Detonation), its damage the bolt's share of today's half
+   (whole, the fraction carried); a ring of force throws the monsters the
+   splash takes outward from the impact, 0, 15 and 30 px (x the zone's depth,
+   a debt they walk back; a braced monster stays). Monsters only.
+6. **The floors**: one counted shot at most every 100 ms (a quicker one lands
+   nothing; the clock is untouched). A named shot's claims skip the 210 ms
+   lane a monster and the 300 ms lane a player, and spend their SHARE of the
+   bow's or staff's hits-a-second allowance (`hitproof.js`). Each target once
+   a shot; an arrow 4 (or its Piercing's), a bolt 1.
+7. **Against a player** the share lands as a sword's does; no perfect, no
+   mana, no ring; a bolt's splash by its stage.
+
+### The balance (draw-gather.test §9, a minute against a dummy, a roll of 100)
+
+| rhythm | bow | staff (monster / two neighbours' splash) |
+|---|---|---|
+| today (bow on the trial: every arrow perfect) | 18,132 | 6,700 / 6,700 |
+| today, a bow off the trial | 16,200 | |
+| full builds | 18,144 perfect (the first draw is timed by itself: one bonus) / 16,200 off the trial | 6,700 / 6,700 |
+| 0.8 spheres | | 6,720 / 6,720 |
+| tap-spam (120 ms draws / 150 ms sparks) | 16,172 | 6,666 / 0 |
+| forged (a billion ms every 120 ms) | 16,267 (the slack once) | |
+
+Building pays over a pack (sparks splash nothing); no weapon's best damage a
+second moves. The same holds with the worker's own roll.
+
 ## Not built
 
 - **Reading attack timing and swipe shape on the server to find bots** (the
@@ -445,6 +521,9 @@ loaded). The window's numbers stay (`MANUAL.PERFECT_EARLY_MS`,
 - `server/test/free-swing.test.mjs` (v2.3.4520): the trial on the real
   GameRoom (its header lists the checks); `manual-combat.test.mjs` §13 its
   phone rules and wiring.
+- `server/test/draw-gather.test.mjs` (v2.3.4801): the draw and the gather on the
+  real GameRoom, every shot through the real router (its header lists the
+  checks), with the balance proof.
 - `server/test/perfect-strike.test.mjs` (v2.3.4615): the perfect strike on
   the real GameRoom, the bow's arrows through the real router (its header
   lists the checks); `manual-combat.test.mjs` §14 the perfect strike's
