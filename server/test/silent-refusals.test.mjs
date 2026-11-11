@@ -17,7 +17,13 @@
  *   3. the amulet's gem pill (src/game/amuletGem.js): the gem already set is
  *      not settable again, so a double tap spends one gem, not two;
  *   4. the cook's popup reads the fallback's own number, and that number is
- *      the worker's (a third literal said "+40" while both paid 200). */
+ *      the worker's (a third literal said "+40" while both paid 200);
+ *   5. (v2.3.4642) the other harvest-strike refusals after the node is found
+ *      (out of reach, no tool, a node already down, ...) send the node and the
+ *      skills again, once a node every DIRTY_MS a player; `strikesnap: false`
+ *      brings back the silence;
+ *   6. (v2.3.4642) an armour swap the guard's gear lock or the defence-points
+ *      gate refuses sends the worn armour back (`gearresend: false`: silent). */
 import { readFileSync } from 'node:fs';
 import { GameRoom } from '../src/index.js';
 import { markStakePlaced, dropRefusedStake } from '../../src/game/arenaStakes.js';
@@ -184,6 +190,90 @@ async function join(room, id, z) {
   check('4. the phone\'s cooked-dish XP is the worker\'s', n > 0 && n === srvN, { phone: n, worker: srvN });
   check('4. the popup and the fallback both read it (no third literal)',
     /'\+' \+ COOK_XP \+ ' Cooking XP'/.test(src) && /addLifeSkillXp\(R\.lifeSkills, 'cooking', COOK_XP\)/.test(src) && !/'\+\d+ Cooking XP'/.test(src));
+}
+
+// ── 5. v2.3.4642: the other strike refusals snap the phone back ──
+/* V9a G4-10, S7-8: of the refusals after the node is found, only the proof's
+   and the hourly cap's told the phone; the rest returned in silence, and on v2
+   the phone kept the tree felled and the XP it predicted. */
+{
+  const ZONE = 'meadow';
+  const room = new GameRoom(makeState(), env);
+  const p = await join(room, 'bp_sr_s', ZONE);
+  p.ps.z = ZONE;
+  p.ps.inventory = { woodcutting_axe: 1 };
+  p.ps.lifeSkills = { woodcutting: { level: 3, xp: 120 } };
+  const nodes = room._ensureZoneNodes(ZONE);
+  const tree = nodes.find((n) => n.nodeType === 'tree');
+  tree.alive = true; tree.respawnAt = 0;
+  const why = () => (room._lastStrikeFor('bp_sr_s') || {}).why;
+  const skillsSent = () => p.ws.sent.filter((m) => m.type === 'player_state' && m.payload && m.payload.lifeSkills).length;
+  const dirty = () => !!(room.dirtyNodeIds[ZONE] && room.dirtyNodeIds[ZONE].has(tree.id));
+  const clean = () => { if (room.dirtyNodeIds[ZONE]) room.dirtyNodeIds[ZONE].clear(); room.dirtyNodes.delete(ZONE); p.ws.sent.length = 0; };
+  /* out of reach */
+  p.ps.x = tree.x + 2000; p.ps.y = tree.y;
+  clean();
+  await p.send('node_strike', { id: tree.id, zone: ZONE, accuracy: 'good' });
+  check('5a. a strike out of reach is refused, and the node and the skills are sent again', why() === 'out-of-range' && dirty() && skillsSent() === 1 && tree.alive === true,
+    { why: why(), dirty: dirty(), sent: p.ws.sent.map((m) => m.type) });
+  clean();
+  await p.send('node_strike', { id: tree.id, zone: ZONE, accuracy: 'good' });
+  check('5b. ...at most once a node every DIRTY_MS a player: a second at once sends nothing', why() === 'out-of-range' && !dirty() && skillsSent() === 0);
+  /* no tool, later */
+  T += 2500;
+  p.ps.x = tree.x; p.ps.y = tree.y;
+  p.ps.inventory = {};
+  clean();
+  await p.send('node_strike', { id: tree.id, zone: ZONE, accuracy: 'good' });
+  check('5c. a strike with no axe is refused and snapped back the same way', why() === 'no-tool' && dirty() && skillsSent() === 1, why());
+  /* a node already down */
+  T += 2500;
+  p.ps.inventory = { woodcutting_axe: 1 };
+  tree.alive = false; tree.respawnAt = T + 60000;
+  clean();
+  await p.send('node_strike', { id: tree.id, zone: ZONE, accuracy: 'good' });
+  check('5d. a strike on a node already down: its state and the skills are sent again', why() === 'node-already-dead' && dirty() && skillsSent() === 1, why());
+  /* the switch */
+  T += 2500;
+  room._liveFlags = { ...(room._liveFlags || {}), strikesnap: false };
+  tree.alive = true; tree.respawnAt = 0;
+  p.ps.x = tree.x + 2000;
+  clean();
+  await p.send('node_strike', { id: tree.id, zone: ZONE, accuracy: 'good' });
+  check('5e. `strikesnap: false`: the refusal is silent again, as before', why() === 'out-of-range' && !dirty() && skillsSent() === 0);
+  const sum = JSON.stringify(p.ps.lifeSkills);
+  check('5f. a refusal pays nothing (the skills as they were)', sum === JSON.stringify({ woodcutting: { level: 3, xp: 120 } }), sum);
+}
+
+// ── 6. v2.3.4642: a refused armour swap sends the worn armour back ──
+/* V9b: the guard's gear lock and the defence-points gate refused an armour swap
+   with a bare return; nothing changed, so nothing was sent, and the phone wore
+   the refused piece until the next real change. */
+{
+  const room = new GameRoom(makeState(), env);
+  const p = await join(room, 'bp_sr_a', 'town');
+  const A = { name: 'Copper Chestplate', gearBase: 'copper', tierMult: 1.12, tier: 'common' };
+  const B = { name: 'Copper Chestplate of the Ox', gearBase: 'copper', tierMult: 1.2, tier: 'common' };
+  p.ps.armor = { ...A };
+  const armourSent = () => p.ws.sent.filter((m) => m.type === 'player_state' && m.payload && 'armor' in m.payload);
+  const realLock = room._threatGearLocked;
+  room._threatGearLocked = () => true;   /* the guard has you (threat.js) */
+  p.ws.sent.length = 0;
+  await p.send('stats_update', { armor: { ...B } });
+  const back = armourSent();
+  check('6a. a swap the guard\'s gear lock refuses keeps the worn piece, and tells the phone',
+    p.ps.armor.name === A.name && back.length === 1 && back[0].payload.armor.name === A.name, p.ws.sent.map((m) => m.type));
+  const realP3 = room._prog3EquipOk;
+  room._threatGearLocked = realLock;
+  room._prog3EquipOk = () => false;   /* not enough defence points for it */
+  p.ws.sent.length = 0;
+  await p.send('stats_update', { armor: { ...B } });
+  check('6b. ...and so does one the defence-points gate refuses', p.ps.armor.name === A.name && armourSent().length === 1);
+  room._liveFlags = { ...(room._liveFlags || {}), gearresend: false };
+  p.ws.sent.length = 0;
+  await p.send('stats_update', { armor: { ...B } });
+  check('6c. `gearresend: false`: silent again, as before', p.ps.armor.name === A.name && armourSent().length === 0);
+  room._prog3EquipOk = realP3;
 }
 
 Date.now = REAL_NOW;

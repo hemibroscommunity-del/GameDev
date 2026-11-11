@@ -157,8 +157,14 @@ so nothing waits on them any more.
   v2.3.4550).
 
 **Not started, no decision needed:**
-- the rest of the silent refusals: harvest strikes, cooking, the gear swap
-  of armour (V9a, V9b; TRAPS §309);
+- ~~the rest of the silent refusals: harvest strikes, cooking, the gear swap
+  of armour (V9a, V9b)~~: v2.3.4642. A harvest strike refused after its node
+  is found (out of reach, no tool, too low, too early, away, a node already
+  down) sends the node and the skills again, once a node every 2 s a player
+  (`strikesnap`); an armour swap the guard's lock or the defence gate refuses
+  sends the worn armour back (`gearresend`); `silent-refusals.test` §5-6.
+  Cooking needed nothing: the sweep refuted its findings, and a refused cook
+  already re-sends;
 - ~~`stats_update` and the quest taps ignore the channel's `false` (TRAPS
   §287)~~: the quest taps are kept and sent on the rejoin, and
   `stats_update` keeps its signature only when the message went (v2.3.4641,
