@@ -353,6 +353,7 @@ async function removePicture(id, ver) {
 }
 
 async function loadAll() {
+  S.unreadable = [];   /* v2.3.4654: saved pictures that would not read back (below) */
   const keys = await S.store.keys('raw');
   /* v2.3.2953: tiles made seamless the old way (the cross-fade that left
      the stones see-through, style/process.js) are made again, once, from
@@ -376,8 +377,18 @@ async function loadAll() {
       try { const c = await blobToImg(pb); if (c.width === TILE) kept = await keepPrep(c, pb); else release(c); } catch (e) { kept = null; }
     }
     if (!kept) {
-      kept = await keepPrep(await prepareFor(ver, rec.blob));
-      await S.store.put('prep', k, kept.png);
+      /* ═══ v2.3.4654: ONE PICTURE THAT WILL NOT READ DOES NOT STOP THE STUDIO ═══
+         This was the one bare decode on the way in, and the buttons are
+         wired only after loadAll: a saved picture the browser could no
+         longer read stopped the page at "Something went wrong", with
+         Download and Restore dead, so nothing else could be backed up
+         (state-machine sweep VC-3, T2-6).  It is skipped now: its card
+         reads as not made (Add picture), the count above says which, and
+         the record stays in the store untouched. */
+      try {
+        kept = await keepPrep(await prepareFor(ver, rec.blob));
+        await S.store.put('prep', k, kept.png);
+      } catch (e) { S.unreadable.push(k); continue; }
     }
     S.prep.set(k, kept);
   }
@@ -1138,6 +1149,15 @@ function renderEdgeCounts() {
   $('edge-count').textContent = `${made} of ${can.length} made.`;
 }
 
+/* v2.3.4654: the saved pictures loadAll could not read, named, so the owner
+   knows which to add again (empty when all read) */
+function unreadableNote() {
+  const u = S.unreadable || [];
+  if (!u.length) return '';
+  const names = u.map((k) => { const [id, v] = String(k).split('|'); return `${(S.byId[id] && S.byId[id].name) || id} (${v})`; });
+  return ` ${u.length} saved picture${u.length > 1 ? 's' : ''} could not be read back and ${u.length > 1 ? 'were' : 'was'} skipped: ${names.join(', ')}. Add ${u.length > 1 ? 'them' : 'it'} again.`;
+}
+
 function renderCount() {
   renderJump();
   const made = S.cat.filter((e) => S.tiles[e.id]).length;
@@ -1145,7 +1165,7 @@ function renderCount() {
   $('count').textContent = `${made} of ${S.cat.length}`;
   $('count').className = made ? 'chip ok' : 'chip';
   const nb = BLENDS_ON ? S.blendPairs.filter((p) => S.blends[p.key]).length : 0;
-  $('status').textContent = made ? `${made} of ${S.cat.length} swatches made${both ? `, ${both} with a second version` : ''}${nb ? `, and ${nb} blend${nb > 1 ? 's' : ''}` : ''}.` : `${S.cat.length} swatches to make. Start with the commons, a road and one spoke's first stage.`;
+  $('status').textContent = (made ? `${made} of ${S.cat.length} swatches made${both ? `, ${both} with a second version` : ''}${nb ? `, and ${nb} blend${nb > 1 ? 's' : ''}` : ''}.` : `${S.cat.length} swatches to make. Start with the commons, a road and one spoke's first stage.`) + unreadableNote();   /* v2.3.4654 */
   renderSaved();
 }
 

@@ -670,6 +670,25 @@ try {
     nB === 6 && JSON.stringify(restored) === JSON.stringify(before) && restoredSheet === shapes.length, { nB, restored, before, restoredSheet });
   await ctxB.close();
 
+  /* ── 7b. v2.3.4654: a finished object whose saved piece will not read back
+     no longer stops the page before Download and Restore are wired (VC-3,
+     T2-10): it is made again from its own picture, the same to the pixel ── */
+  console.log('7b. a saved piece that will not read back');
+  await page.evaluate(async () => {
+    const { openStore } = await import('/tools/world/store.js');
+    const st = await openStore('brotown-object-studio', ['raw', 'fin', 'misc']);
+    const f = await st.get('fin', 'barrel');
+    f.pieces[0].png = new Blob(['not a picture'], { type: 'image/png' });
+    await st.put('fin', 'barrel', f);
+    st.close();
+  });
+  await page.close();
+  page = await open(ctxA);   /* (open waits for S.ready: it threw here before) */
+  const after7b = await hashes(page);
+  ok('the page still starts, and the barrel is made again from its own picture, the same to the pixel (the rest as they were)', JSON.stringify(after7b) === JSON.stringify(before), { before, after7b });
+  const zip7b = await page.evaluate(async () => (await window.__objects.api.exportZip()).length);
+  ok('...and Download all still works', zip7b > 1000, zip7b);
+
   /* ── 8. an older prompt; removing; errors ── */
   console.log('8. an older prompt, removing, errors');
   await page.evaluate(async () => {

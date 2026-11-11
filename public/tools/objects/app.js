@@ -543,15 +543,27 @@ async function loadAll() {
     if (!want) continue;
     const f = await S.store.get('fin', e.id);
     const mul = S.sizes[e.id] || 1;
+    /* ═══ v2.3.4654: A FINISHED OBJECT THAT WILL NOT READ IS MADE AGAIN ═══
+       The pieces' decode was bare, and the buttons are wired only after
+       loadAll: one saved piece the browser could no longer read stopped
+       the page at "Something went wrong", with Download and Restore dead
+       (state-machine sweep VC-3, T2-10).  It falls to the making-again
+       branch below now, which has its own catch (and leaves the object
+       not made if that fails too). */
+    let read = false;
     if (f && f.made === MADE && f.size === mul && srcOf(f) === want && Array.isArray(f.pieces) && f.pieces.length) {
-      const pieces = [];
-      for (const p of f.pieces) {
-        const c = await blobToCanvas(p.png, 4096);
-        pieces.push({ png: p.png, w: p.w, h: p.h, thumb: thumbOf(c) });
-        release(c);
-      }
-      S.fin.set(e.id, { ...f, src: want, pieces });
-    } else {
+      try {
+        const pieces = [];
+        for (const p of f.pieces) {
+          const c = await blobToCanvas(p.png, 4096);
+          pieces.push({ png: p.png, w: p.w, h: p.h, thumb: thumbOf(c) });
+          release(c);
+        }
+        S.fin.set(e.id, { ...f, src: want, pieces });
+        read = true;
+      } catch (err) { read = false; }
+    }
+    if (!read) {
       $('status').textContent = `Making your objects again with this version, once: ${++n}…`;
       try { if (want === 'own') await finish(e.id); else await makeFromSheet(want, [e.id]); } catch (err) { S.fin.delete(e.id); }
     }
