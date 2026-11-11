@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "5728d13470d318343e0524fa9cf075641d90e8c0",
+  "tree": "f35282836d4a868a9b057916057b0e6bb0cf917d",
+  "committedAt": "2026-11-11T13:10:25-08:00",
+  "subject": "Merge pull request #1574 from hemibroscommunity-del/claude/lane-econ-d",
+  "files": 7215,
+  "bytes": 940133262,
+  "listingSha256": "2c5fc453849c4d9d71ec16e2fd780334e0bec8c91333481aaed1098fcd3ce333",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

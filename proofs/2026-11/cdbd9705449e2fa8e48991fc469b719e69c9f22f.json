@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "cdbd9705449e2fa8e48991fc469b719e69c9f22f",
+  "tree": "ea2d0197439856ddd38c99d072bd69fce3bf0d1b",
+  "committedAt": "2026-11-11T13:10:07-08:00",
+  "subject": "Merge pull request #1563 from hemibroscommunity-del/claude/lane-oldmap-server-3",
+  "files": 7209,
+  "bytes": 940098479,
+  "listingSha256": "7ba320512940ba5809d75a8ba78f9261124ab6a00708b81494d88374f0773389",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
