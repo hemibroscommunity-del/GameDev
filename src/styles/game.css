@@ -8202,3 +8202,52 @@ html[data-orient="landscape"] .bt-fish-card{top:calc(env(safe-area-inset-top,0px
 }
 @keyframes bt-rank-shine{0%,58%{transform:translateX(-160%) skewX(-20deg)}100%{transform:translateX(360%) skewX(-20deg)}}
 @keyframes bt-rank-spark{0%,62%,100%{opacity:0;transform:scale(0) rotate(0deg)}74%{opacity:1;transform:scale(1.25) rotate(25deg)}86%{opacity:0;transform:scale(.3) rotate(45deg)}}
+
+/* ═══ v2.3.4550: THE TIMING BAR (ui/panels/TimingBar.jsx; the free-swing
+   trial) ═══  Every moving part is a transform or an opacity: the fill is a
+   window sliding in over a full silhouette sliding the other way (the reveal
+   stays on the shape), the glint a narrow window doing the same across a
+   bright one.  Restarted ONCE an attack by `data-k` flipping a/b; times from
+   TimingBar's custom properties (--cyc, --fd, --gd, --gl, --fz, --w). */
+.bt-tbar{position:fixed;z-index:31;pointer-events:none;touch-action:manipulation;overflow:hidden;opacity:0;transition:opacity .22s ease}
+.bt-tbar[data-on="1"]{opacity:1}
+/* v2.3.4615: the owner's pictures (TimingBar.jsx Art, timingBarArt.js): the
+   weapon lies on its side in .bt-tbar-rot, turned a quarter up about its
+   centre, so every window below still slides along X and the bar fills from
+   the grip at the bottom to the point at the top.  The picture's own pixels,
+   never smoothed; the glint and the frozen copy are the gold weapon's
+   outline in one colour (a mask), the colours they always were. */
+.bt-tbar-rot{position:absolute;transform:rotate(-90deg);transform-origin:50% 50%}
+.bt-tbar-art{position:absolute;left:0;top:0;width:100%;height:100%;display:block;background-repeat:no-repeat;image-rendering:pixelated;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}
+.bt-tbar-shine{background-color:#FFF4D6;opacity:.85}
+.bt-tbar-froze{background-color:#B88643}
+.bt-tbar[data-g="1"] .bt-tbar-froze{background-color:#FFF4D6}
+.bt-tbar-win{position:absolute;left:0;top:0;width:100%;height:100%;overflow:hidden}
+.bt-tbar-in{position:absolute;left:0;top:0;width:100%;height:100%}
+.bt-tbar-glint{width:40%;transform:translateX(-100%)}
+.bt-tbar-glint>.bt-tbar-in{width:250%;transform:translateX(40%)}
+.bt-tbar-frz{position:absolute;left:0;top:0;width:100%;height:100%;opacity:0}
+.bt-tbar-frz>.bt-tbar-win{transform:translateX(calc((var(--w,1) - 1) * 100%))}
+.bt-tbar-frz .bt-tbar-in{transform:translateX(calc((1 - var(--w,1)) * 100%))}
+.bt-tbar[data-k="a"] .bt-tbar-fill{animation:btTbWinA var(--cyc) linear var(--fd,0ms) both}
+.bt-tbar[data-k="b"] .bt-tbar-fill{animation:btTbWinB var(--cyc) linear var(--fd,0ms) both}
+.bt-tbar[data-k="a"] .bt-tbar-fill>.bt-tbar-in{animation:btTbInA var(--cyc) linear var(--fd,0ms) both}
+.bt-tbar[data-k="b"] .bt-tbar-fill>.bt-tbar-in{animation:btTbInB var(--cyc) linear var(--fd,0ms) both}
+.bt-tbar[data-k="a"] .bt-tbar-glint{animation:btTbGlA var(--gl) linear var(--gd) both}
+.bt-tbar[data-k="b"] .bt-tbar-glint{animation:btTbGlB var(--gl) linear var(--gd) both}
+.bt-tbar[data-k="a"] .bt-tbar-glint>.bt-tbar-in{animation:btTbGlInA var(--gl) linear var(--gd) both}
+.bt-tbar[data-k="b"] .bt-tbar-glint>.bt-tbar-in{animation:btTbGlInB var(--gl) linear var(--gd) both}
+.bt-tbar[data-k="a"] .bt-tbar-frz{animation:btTbFzA var(--fz) ease-in both}
+.bt-tbar[data-k="b"] .bt-tbar-frz{animation:btTbFzB var(--fz) ease-in both}
+@keyframes btTbWinA{from{transform:translateX(-100%)}to{transform:translateX(0)}}
+@keyframes btTbWinB{from{transform:translateX(-100%)}to{transform:translateX(0)}}
+@keyframes btTbInA{from{transform:translateX(100%)}to{transform:translateX(0)}}
+@keyframes btTbInB{from{transform:translateX(100%)}to{transform:translateX(0)}}
+@keyframes btTbGlA{from{transform:translateX(-100%)}to{transform:translateX(250%)}}
+@keyframes btTbGlB{from{transform:translateX(-100%)}to{transform:translateX(250%)}}
+@keyframes btTbGlInA{from{transform:translateX(40%)}to{transform:translateX(-100%)}}
+@keyframes btTbGlInB{from{transform:translateX(40%)}to{transform:translateX(-100%)}}
+@keyframes btTbFzA{from{opacity:.95}to{opacity:0}}
+@keyframes btTbFzB{from{opacity:.95}to{opacity:0}}
+/* the old side column open (`?oneband=0`): with the controls it covers */
+html.bt-band-side-open .bt-tbar{visibility:hidden}

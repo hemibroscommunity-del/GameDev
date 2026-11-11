@@ -333,6 +333,22 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
   setManualCombat(false);
   /* the wiring */
   const pj = read('../../src/game/projectiles.js'), ge = read('../../src/networking/gameEvents.js'), gd = read('../../src/data/gameDisplay.js');
+  const tb2 = read('../../src/ui/panels/TimingBar.jsx'), css = read('../../src/styles/game.css'), bro = read('../../src/ui/BroTown.jsx');
+  /* v2.3.4615: the owner's own sheet replaced the inline silhouettes: ONE small file, warmed on the loading screen
+     on the trial only (the preloading law), its pixels never smoothed, the bar standing upright over the left disc */
+  const tba = read('../../src/ui/panels/timingBarArt.js'), tbp = read('../../src/rendering/timingBarPreload.js'), pa = read('../../src/rendering/preloadAnimations.js');
+  check('14m the bar is the owner\'s picture: one file, warmed on the loading screen and only on the trial, never smoothed, not touchable',
+    /export const TB_ART = `\/sprites\/timingbar\/weapons\.png\?v=\$\{TB_ART_V\}`;/.test(tba) && !/<svg|\bsrc=/.test(tb2)
+    && /want = manualFreeSwing\(\) && timingBarWanted\(\);/.test(tbp) && /if \(!want \|\| typeof Image === 'undefined'\) return Promise\.resolve\(null\);/.test(tbp)
+    && /timingBar: preloadTimingBar\(\),/.test(pa)
+    && /\.bt-tbar-art\{[^}]*image-rendering:pixelated/.test(css) && /\.bt-tbar-rot\{position:absolute;transform:rotate\(-90deg\)/.test(css)
+    && /\.bt-tbar\{position:fixed;z-index:31;pointer-events:none;touch-action:manipulation;/.test(css));
+  check('14n ...started ONCE an attack by flipping data-k (two keyframe sets), no timer, no React render a frame: the loop calls one compare',
+    /r\.setAttribute\('data-k', b\.k\);/.test(tb2) && /if \(at !== b\.at\) \{/.test(tb2) && !/setInterval|setTimeout|requestAnimationFrame|getBoundingClientRect|offsetWidth/.test(tb2)
+    && /\.bt-tbar\[data-k="a"\] \.bt-tbar-fill\{animation:btTbWinA var\(--cyc\)/.test(css) && /\.bt-tbar\[data-k="b"\] \.bt-tbar-fill\{animation:btTbWinB var\(--cyc\)/.test(css)
+    && /timingBarFrame\(S, Date\.now\(\)\);/.test(bro) && /React\.createElement\(TimingBar, \{ stateRef: stateRef, isLandscape: isLandscape \}\)/.test(bro));
+  check('14o the freeze is one width written once (--w) and a fade; the frozen copy wears the glint\'s colour when struck in it',
+    /r\.style\.setProperty\('--w', /.test(tb2) && /\.bt-tbar\[data-g="1"\] \.bt-tbar-froze\{background-color:#FFF4D6\}/.test(css) && /@keyframes btTbFzA\{from\{opacity:\.95\}to\{opacity:0\}\}/.test(css));
   check('14p an arrow on the trial names its shot; a perfect strike plays the drop roll\'s glint quietly (an existing cue); the hit voice takes a pitch',
     /sw: \(!isStaffProj && !a\.isSpecial && mcPerfectOn\(S\) && typeof a\._shotTs === 'number'\) \? a\._shotTs : undefined/.test(pj)
     && /if \(payload\.pf === 1\) cue\('rollWin', 0\.45\);/.test(ge) && /\* \(\(opts && opts\.pitch > 0\) \? opts\.pitch : 1\);/.test(gd)
