@@ -142,8 +142,12 @@ async function phone({ browser, wsPort, webPort, rec, OUT }) {
     await installTouch(P);
 
     /* ── 1 ── */
-    const on = await P.page.evaluate(() => ({ on: !!(window.__btManual && window.__btManual.on()), sling: window.__btManual.sling(), stored: localStorage.getItem('bt_manual'), gauge: !!document.querySelector('[data-manual-gauge]') }));
-    rec.ok('1 `?manual=1` is the game\'s own combat (nothing to remember); nothing is drawn for it (no gauge)', on.on && !on.sling && on.stored === null && !on.gauge, on);
+    const on = await P.page.evaluate(() => ({ on: !!(window.__btManual && window.__btManual.on()), sling: window.__btManual.sling(), free: window.__btManual.free(), stored: localStorage.getItem('bt_manual'), gauge: !!document.querySelector('[data-manual-gauge]') }));
+    /* v2.3.4797: since v2.3.4655 (#1547) the game's own combat is the
+       free-swing trial (3), so `?manual=1` -- the plain swipes this phone
+       plays -- is a CHOICE and remembered as '1' (src/game/manualCombat.js
+       manualMode); it was the default and stored nothing.  Not the trial. */
+    rec.ok('1 `?manual=1` is the plain swipes, not the trial, remembered as this device\'s choice; nothing is drawn for it (no gauge)', on.on && !on.sling && !on.free && on.stored === '1' && !on.gauge, on);
 
     const armed = await arm(P, 'ranged');
     const hall = await standUnderHall(P, rec, 'phone ');
@@ -383,8 +387,9 @@ async function desk({ browser, wsPort, webPort, rec, OUT }) {
     await wait(P, 2000);
     await P.page.addStyleTag({ content: '.bt-quest-banner, .bt-quest-plate, [data-coach-card], [data-coach-ring], *:has(> [data-coach-dismiss]) { visibility: hidden !important; }' }).catch(() => {});
     await installTouch(P);   /* its helpers (__ready): no touch is made here */
-    const dOn = await P.page.evaluate(() => ({ on: window.__btManual.on(), sling: window.__btManual.sling(), stored: localStorage.getItem('bt_manual'), search: location.search }));
-    rec.ok('10z a computer with no combat named in its address plays the new combat: it is the DEFAULT (v2.3.4396)', dOn.on === true && dOn.sling === false && dOn.stored === null && !/manual=[012]/.test(dOn.search), dOn);
+    const dOn = await P.page.evaluate(() => ({ on: window.__btManual.on(), sling: window.__btManual.sling(), free: window.__btManual.free(), stored: localStorage.getItem('bt_manual'), search: location.search }));
+    /* v2.3.4797: and since v2.3.4655 (#1547) that default is the free-swing trial */
+    rec.ok('10z a computer with no combat named in its address plays the new combat: it is the DEFAULT (v2.3.4396), the free-swing trial (v2.3.4655)', dOn.on === true && dOn.sling === false && dOn.free === true && dOn.stored === null && !/manual=[0123]/.test(dOn.search), dOn);
     await arm(P, 'ranged');
     const hall = await standUnderHall(P, rec, 'computer ');
     if (!hall) return;

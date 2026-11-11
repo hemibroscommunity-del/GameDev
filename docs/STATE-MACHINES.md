@@ -249,7 +249,17 @@ so nothing waits on them any more.
   promise a perfect strike the worker does not count (a miss never reaches
   the worker);
 - `farmorders.test` can fail once as the clock crosses midnight UTC; its
-  clock is not pinned yet (TRAPS §335).
+  clock is not pinned yet (TRAPS §335);
+- the 54 refusals still silent, found by the refusal door (v2.3.4791,
+  `refusal-door.test`, its list `server/test/refusal-door-list.mjs`, the
+  lines marked `known`): the forge, the amulet forge and gem cutting, the
+  smelter and the armour forge, the stat and skill points, the chest, the
+  capes, the gamble, ace flip and jackpot purses, the weapon stash (equip,
+  sell, take off), the daily reroll, the heap burn's place checks, lighting
+  a fire with no log, a party accept of a gone invite, a trade's one weapon
+  too many, the old relay trade's run-out offer. Each answers nothing
+  today; a fix lane answers them (TRAPS §284) and takes the lines off. The
+  door fails any NEW silent refusal at review time.
 
 **Not started, big repairs (no longer waiting on the judges):**
 - the plan's larger "one door per system" work (#1508). Its first piece, the
@@ -340,9 +350,12 @@ offered.
 5. **The reviewer reads every diff.** It caught a brief of the orchestrator's
    own that would have hidden live trades on a reconnect (TRAPS §278).
 6. **A lane's tag moves.** The fifth wave's lanes were renumbered up to three
-   times as `main`'s high-water passed them (precheck's version gate needs a
+   times as `main`'s high-water passed them (precheck's version gate needed a
    tag above `main`). Docs written while a lane is open name it by its
-   branch; the closing docs pass writes the final tags.
+   branch; the closing docs pass writes the final tags. Since v2.3.4790 a
+   tag only has to be unused on `main` (owner, 2026-11-11): give each lane
+   its own number up front and it never moves unless another change takes
+   that same number first.
 
 And: every merge with a file under `server/` deploys the worker, a test
 included (TRAPS §277). Merge a batch together, in a quiet hour.

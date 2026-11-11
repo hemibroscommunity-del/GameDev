@@ -38,8 +38,22 @@ round-bet form to send `arena_sponsor`.
   storage key IS the uniqueness check).
 - Competitors cannot sponsor their own match. Sponsors may be anyone
   else in the room, including gladiators in *other* matches.
-- Escrow: `_escrowDebitGold` opId `arenastake:<tid>:<mid>:<pid>`;
-  record persisted before the ack.
+- Escrow: opId `arenastake:<tid>:<mid>:<pid>`; record persisted before the
+  ack.
+- **The stake and its record are one write** (v2.3.4796). The stake was
+  taken by `_escrowDebitGold` (the purse and its stamp, one write) and the
+  `arena_stake:` record written after it, in a second: a restart between
+  them (every merge touching `server/` restarts the room) kept the gold with
+  no record for the sweep to refund -- 300 g staked, 300 g gone. Now the
+  purse is checked, then the debit, its save, its stamp and the record go
+  out in ONE synchronous run (`inbox.js` `_escrowDebitGoldTogether`, as the
+  duel's start and the arena's entry, v2.3.3185), so the stake is placed or
+  nothing moved; the rows are the same three. The stamp is no longer read
+  first (written with its record, it never stands without one). The sponsor
+  must be in the room (their live purse). Kill switch
+  `arenastakeonewrite: false` in the live flags puts back the two writes.
+  Tests: `sponsorship.test` §12 (a restart before every write). Found by the
+  chaos suite (`chaos-restart.test`, its case `arena-stake-place`).
 
 ## Settlement
 

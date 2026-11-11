@@ -173,6 +173,11 @@ What changed:
   did not. When a recipient is not in the room, or a credit could fail to
   land (anything but gold and stackable items), it does nothing and the
   caller credits one by one, as before. Both trade lanes use it.
+  v2.3.4795: a **weapon** joins the run when its recipient's stash has room
+  for every weapon the run gives them (`_weaponStashRoom`; a full stash would
+  send it to the mail, a write of its own: then null, as before), and an
+  optional `also()` returns the caller's own writes for the same run (the
+  trade window's escrow records: `docs/specs/trading.md`, "v2.3.4795").
 - The trade window's staging issues the escrow record and the stash save in
   one run.
 

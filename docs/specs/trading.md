@@ -113,7 +113,11 @@ are opaque blobs at REST in the stage, so they use **escrow-at-stage**
 - **Commit** delivers each side's escrowed weapons to the OTHER via
   `_creditPlayer(kind:'weapon')` (stash, or **inbox** if full — rule 3,
   never destroyed), then deletes the records (credit-before-delete,
-  rule 6). The item/gold path is unchanged.
+  rule 6). The item/gold path is unchanged. **v2.3.4795: in the swap's
+  one write now** (below, "v2.3.4795").
+- **v2.3.4795, a sweep never refunds an OWED record** (one carrying `to`):
+  it delivers it to `to` with the deliver opId (so never twice) and deletes
+  it.
 - **Refund on cancel / disconnect / idle-expiry** (`_t2RefundWeapons`
   off `_t2Cancel`) and a **deploy-orphan sweep** (`_trade2WpnSweep`,
   join-path, rate-limited, the `_duelEscrowSweep` pattern) return
@@ -284,3 +288,49 @@ v2: the gift with the window on moves nothing and is refused to its sender;
 with the window off it settles; in a fight it is refused at the offer and
 at the accept; a decline voids the offer; the kill switch; an offer kept
 across the switch. §1-9 run as the fallback (`trade2: false`).
+
+## v2.3.4795: the weapons in the swap's one write
+
+**The hole** (the chaos tests, #1548, `chaos-restart.test` §3). The commit
+moved both sides' gold and goods in ONE write (v2.3.3294,
+`_creditLiveTogether`), then paid each staged weapon in a write of its own
+after it, and deleted its escrow record in a third. A restart between (every
+merge touching `server/` restarts the room): the window is gone, the weapon's
+escrow record still stands with no deliver stamp, and the restart sweep
+(`_trade2WpnSweep`) hands the weapon BACK to its owner, who also kept the
+other side's gold and goods. One player paid and got nothing. Red on main at
+"a restart before write 1 of 3".
+
+**Now** (`trade2.js` `_handleTrade2Confirm`):
+
+- When the receiver's stash has room for every weapon coming to them, each
+  weapon goes into the swap's one synchronous run of writes: credited to the
+  stash, its deliver opId (`trade2:<sid>:wpndeliver:<owner>:<seq>`) stamped
+  and its escrow record deleted, with both sides' debits and credits
+  (`_creditLiveTogether`'s `also`). One write instead of three, and one row
+  fewer: the weapon rides the receiver's save.
+- When it does not (a full stash: 140 weapons, or 8 with `disable_bigbags`),
+  the weapon goes by mail, which cannot join the run (the mailbox is read
+  first). So the run rewrites its escrow record as OWED to the receiver
+  (`to`, `note`), then the mail (and its stamp) is one write and the record's
+  delete another. The sweep finishes an owed record by delivering it to
+  `to`, never by refunding it.
+- A restart lands before the whole swap or after it.
+- Kill switch: `tradeonewrite: false` in the live flags puts back the old
+  order (each weapon after the gold, its hole included). The sweep's care of
+  an owed record stays on either way: refunding one would be the half trade.
+- No new wire and no cap: the phone sees the same `trade2_state` and
+  `inbox_delivered` (the weapon now in the same `inbox_delivered` as the
+  gold).
+- An older worker (a rollback) reads an owed record as an orphan and refunds
+  it to its owner: today's hole, only for a restart in the middle of a trade
+  to a full stash.
+
+**Tests.** `server/test/trade-onewrite.test.mjs`, on `inbox.test` §8c's
+batch storage: chaos §3 itself (gold, goods and a weapon; the room dies
+before each write; nothing made or lost and the swap whole or not at all), a
+weapon each way, a full stash (the owed record, then the mail), the sweep
+(an owed record to its receiver once, an orphan home), the kill switch (the
+old order and its hole), the writes (1 batch and 7 rows; was 3 and 8), and
+`_creditLiveTogether` refusing a weapon that would not fit with nothing done.
+On main 9 checks fail.

@@ -14,6 +14,7 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { tagsIn, suggestTag } from './tagRule.mjs';
 
 function git(args) {
   try { return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024, timeout: 8000 }).trim(); }
@@ -26,14 +27,21 @@ if (!root) { console.log('session-brief: not in a git repo — skipping'); proce
 const fetched = spawnSync('git', ['fetch', 'origin', '--prune', '--quiet'],
   { cwd: root, timeout: 7000, stdio: 'ignore' }).status === 0;
 
-// 2. main version high-water: package.json + recent log subjects
+// 2. the tags used on main: package.json, every log subject, the tree.
+// v2.3.4790: a tag only has to be UNUSED on main (owner, 2026-11-11), not
+// above its high-water, so the suggestion also clears every in-flight
+// branch's numbers (below) and nobody renumbers because someone else
+// merged first.
 const mainRef = git(['rev-parse', '--verify', '--quiet', 'origin/main']) ? 'origin/main' : 'HEAD';
-let high = 0;
+const usedOnMain = new Set();
 try {
   const m = (JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version || '').match(/^2\.3\.(\d+)$/);
-  if (m) high = Math.max(high, +m[1]);
+  if (m) usedOnMain.add(+m[1]);
 } catch { /* ignore */ }
-for (const m of git(['log', mainRef, '-300', '--format=%s']).matchAll(/v2\.3\.(\d+)/g)) high = Math.max(high, +m[1]);
+tagsIn(git(['log', mainRef, '--format=%s']), usedOnMain);
+tagsIn(git(['grep', '-h', '-oE', 'v2\\.3\\.[0-9]+', mainRef]), usedOnMain);
+let high = 0;
+for (const n of usedOnMain) if (n > high) high = n;
 
 // 3. in-flight remote claude/* branches, last 72h
 const now = Date.now() / 1000;
@@ -42,10 +50,14 @@ const inflight = git(['for-each-ref', '--sort=-committerdate', 'refs/remotes/ori
   .split('\n').filter(Boolean).map((l) => l.split('\t'))
   .filter(([ts]) => now - +ts < 72 * 3600);
 
+// numbers the in-flight branches already carry (their own commits)
+const inFlightTags = new Set();
+for (const [, ref] of inflight) tagsIn(git(['log', `${mainRef}..${ref}`, '--format=%s']), inFlightTags);
+
 console.log('=== BroTown session brief ===');
 console.log(`refs: ${fetched ? 'fetched origin just now' : 'OFFLINE/slow — using local refs (may be stale)'}`);
 console.log(`version high-water on ${mainRef}: v2.3.${high}`);
-console.log(`SUGGESTED next free tag: v2.3.${high + 1}  (parallel sessions get the same suggestion — check the branches below, and renumber before merge if someone beat you to it)`);
+console.log(`SUGGESTED free tag: v2.3.${suggestTag(usedOnMain, inFlightTags)}  (unused on main and on every branch below; a tag only has to be UNUSED on main, never higher than it: no renumbering when someone else merges first; precheck says if yours was taken)`);
 if (inflight.length) {
   console.log(`\nIN-FLIGHT work — remote claude/* branches pushed in the last 72h (${inflight.length}). Someone may already be building your feature or holding your tag:`);
   for (const [ts, ref, subj] of inflight.slice(0, 15)) {
@@ -61,7 +73,7 @@ Protocol (6 lines):
   2. Run \`node tools/dev/precheck.mjs\` before EVERY push (the sandbox blocks npm install — this is your local gate).
   3. Read docs/ARCHITECTURE-HANDOFF.md before ANY server change; it is load-bearing.
   4. Objects keyed by client-supplied ids: Object.create(null) or Map — plain {} no-ops on '__proto__' (3 incidents on 2026-07-07).
-  5. Claim a v2.3.N tag ABOVE the high-water and tag every change with it (rule 25).
+  5. Claim ONE v2.3.N tag not used on main or a branch above (the SUGGESTED one) and tag every change with it (rule 25).
   6. THE OLD MAP IS RETIRED (owner, 2026-10-21: "You keep making that mistake").  The world is the Wheel's
      BroTown ("BroTown" on the top bar, the Town Hall); "Town" on the top bar is the retired map.  Every phone
      test passes world: 'wheel' -- the harness refuses a new one that does not (tools/qa/mp/oldMap.mjs).`);

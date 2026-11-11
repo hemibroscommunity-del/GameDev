@@ -617,7 +617,8 @@ replace it with (maybe just an attack in its place if nothing else is
 there?)".
 
 - **The jump is the button's.** A tap on the right stick never jumps any
-  more. The JUMP button under the attack disc jumps (X on a keyboard), and
+  more. The JUMP button under the attack disc jumps (X on a keyboard; Space
+  since v2.3.3844, below), and
   a second press in the air flips, as since v2.3.3681-3682. `?jumpbtn=0`
   still hides the button, and then a phone has no jump at all: it is a QA
   switch, no player's.
@@ -634,6 +635,10 @@ there?)".
   (600 ms), so a quick second tap is the next swing, not a lost one.
   (`game/tapJump.js` `requestTapAttack`, `tapAttackWaiting`,
   `tapAttackDone`, `tapSwingAim`; BroTown's `rE`.)
+  **v2.3.4794: since v2.3.4396 the free tap attacks only with a staff** (or
+  in the old combat, `?manual=0`): a sword swings by a swipe and a bow
+  shoots by a flick, and their tap attacks nothing (BroTown's `rE` asks
+  `mcSwipes` before `requestTapAttack`; `docs/specs/manual-combat.md`).
 - **The way you face.** The tap's aim is the body's heading
   (`tapFacingAngle`: the renderer's target facing, else the slewing one,
   else the four-way facing), written into the aim as a drag of the stick

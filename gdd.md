@@ -11,6 +11,8 @@
 > and `docs/specs/*.md` (implementation specs for shipped features).
 > Read this file only for what it is: a record of early creative and
 > systems thinking.
+> **The game as built (its controls included) is `docs/GDD-AS-BUILT.md`**
+> (pointer added v2.3.4794).
 
 > Vite + React + PixiJS · WebGL renderer · Real-Time ARPG · 50 players/room · 4-player dungeon parties.
 > Priority: Clarity > Flexibility > Balance > Implementation.
