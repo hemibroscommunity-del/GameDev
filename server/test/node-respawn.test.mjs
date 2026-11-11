@@ -28,7 +28,6 @@ import { ZONES as SERVER_ZONES } from '../src/data.js';
 import { ZONES as CLIENT_ZONES } from '../../src/data/zones.js';
 import { GameRoom } from '../src/index.js';
 import { BOTFP } from '../src/botfp.js';
-import { SPAWN_SCALE } from '../src/spawnscale.js';
 import { HONEST_CYCLE_MIN_MS } from '../src/gathering.js';   /* v2.3.3036 */
 
 let failures = 0;
@@ -145,13 +144,9 @@ const wilderness = Object.keys(SERVER_ZONES);
   const cfg = room._getZoneNodeConfig('meadow');
   const perSkill = Math.max(cfg.treeCt, cfg.fishCt, cfg.oreCt);
   const respawnsPerHour = 3600000 / room.NODE_RESPAWN_TIME;
-  /* v2.3.1983: the ceiling is now the CROWDED one.  Population-scaled spawns
-     (spawnscale.js) grow a zone to SPAWN_SCALE.NODE_MAX nodes per skill, so
-     the supply the cap is derived from is that maximum, not the authored
-     one.  A LONE harvester — the case the original derivation was written
-     for — still sees exactly `perSkill` nodes, which §3b below pins
-     separately: the scaling cannot raise what a player alone can take. */
-  const perSkillCrowded = Math.max(perSkill, SPAWN_SCALE.NODE_MAX);
+  /* v2.3.4850: the population scaler is gone (it grew only the old lands),
+     so the supply is the authored one: a lone harvester's. */
+  const perSkillCrowded = perSkill;
   /* The most a teleporting bot could take from one skill in one zone: every
      node of that skill, harvested the instant it comes back. */
   const ceiling = perSkillCrowded * respawnsPerHour;
@@ -168,28 +163,9 @@ const wilderness = Object.keys(SERVER_ZONES);
      the numbers without deriving them. */
   console.log(`      (ceiling ${ceiling}/h = ${perSkillCrowded} nodes x ${respawnsPerHour}/h; cap ${BOTFP.HARVEST_HOUR_CAP})`);
 
-  /* ── 3b. v2.3.1983: SOLO IS UNCHANGED ──────────────────────────────────
-     The load-bearing half of the new derivation.  Extra nodes only exist
-     while other people are standing in the zone competing for them, so the
-     rate a player ALONE can physically reach is exactly what it was before
-     population scaling — and that is why raising HARVEST_HOUR_CAP does not
-     hand a solo bot anything.  If a future change makes nodes scale on
-     something other than co-located players, this is the assertion that
-     should stop it. */
-  const soloNodes = room._scaledNodeCap('meadow', 1, cfg.oreCt);
-  const soloCeiling = soloNodes * respawnsPerHour;
-  check('ceiling: a player ALONE still sees the authored node count',
-    soloNodes === cfg.oreCt, { soloNodes, authored: cfg.oreCt });
-  check('ceiling: the solo physical rate is unchanged at 180/h',
-    soloCeiling === 180, { soloCeiling });
-  /* And the crowd ceiling must be reachable only by a crowd: the scaler
-     needs 1 + NODE_PLAYERS_PER_EXTRA * (NODE_MAX - base) players in the
-     zone before the maximum exists at all. */
-  const crowdNeeded = 1 + SPAWN_SCALE.NODE_PLAYERS_PER_EXTRA * (SPAWN_SCALE.NODE_MAX - cfg.oreCt);
-  check('ceiling: the max node count needs a real crowd to exist',
-    room._scaledNodeCap('meadow', crowdNeeded, cfg.oreCt) === SPAWN_SCALE.NODE_MAX
-    && room._scaledNodeCap('meadow', crowdNeeded - 1, cfg.oreCt) < SPAWN_SCALE.NODE_MAX,
-    { crowdNeeded, at: room._scaledNodeCap('meadow', crowdNeeded, cfg.oreCt) });
+  /* ── 3b. the solo rate is the whole rate (v2.3.4850: no scaler) ── */
+  const soloCeiling = cfg.oreCt * respawnsPerHour;
+  check('ceiling: the physical rate is 180/h', soloCeiling === 180, { soloCeiling });
 }
 
 // ── 3c. v2.3.3036: THE QUICKEST HONEST HAND ─────────────────────────────

@@ -163,9 +163,9 @@ const openEveryQuest = (p) => { p._quests = p._quests || {}; for (const [, qids]
   const FIXTURES = new Set([
     'anticheat', 'arrowblast', 'burrow', 'chainscore', 'combat-lifecycle', 'devtools',
     'gem-weight', 'move-budget', 'prog3', 'props', 'protocol-v2', 'quests', 'ride',
-    'spawn-scale', 'tick', 'weapon-gem', 'wheelnear', 'wheelzone',
+    'tick', 'weapon-gem', 'wheelnear', 'wheelzone',
   ]);
-  const FROZEN = 18;
+  const FROZEN = 17;
   const dir = new URL('./', import.meta.url);
   const opening = readdirSync(dir).filter((f) => f.endsWith('.test.mjs'))
     .filter((f) => /GameRoom\.prototype\._retiredLandsOn\s*=/.test(readFileSync(new URL(f, dir), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')))   /* code, not a comment */
