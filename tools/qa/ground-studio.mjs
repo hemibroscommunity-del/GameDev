@@ -352,6 +352,31 @@ try {
   ok('restoring the zip in a fresh browser gives the same swatches, pixel for pixel', h3.h === h1.h, { h1, h3 });
   await shot(pageB, 'restored');
 
+  /* ── 6b. v2.3.4654: one saved picture that will not read back no longer
+     stops the page before Download and Restore are wired (VC-3, T2-6): it is
+     skipped, named in the count, and the rest still downloads ── */
+  console.log('6b. a saved picture that will not read back');
+  const badKey = await page.evaluate(async () => {
+    const S = window.__ground.S;
+    const e = S.cat.find((c) => !S.tiles[c.id] && !S.edges[c.id]);
+    const k = e.id + '|A';
+    await S.store.put('raw', k, { blob: new Blob(['not a picture'], { type: 'image/png' }), name: 'spoilt.png', at: Date.now() });
+    await S.store.del('prep', k);
+    return k;
+  });
+  await page.close();
+  page = await open(ctxA);   /* (open waits for S.ready: it threw here before) */
+  const st6b = await page.evaluate(() => ({ status: document.getElementById('status').textContent, skipped: (window.__ground.S.unreadable || []).slice() }));
+  ok('the page still starts, and says which saved picture it skipped', st6b.skipped.length === 1 && st6b.skipped[0] === badKey && /could not be read back/.test(st6b.status), st6b);
+  const h6b = await hashOf(page);
+  ok('...with every other swatch as it was, to the pixel', h6b.h === h1.h && h6b.n === 6, { h1, h6b });
+  const [dl6b] = await Promise.all([page.waitForEvent('download'), page.click('#export')]);
+  const zip6b = fs.readFileSync(await dl6b.path());
+  ok('...and Download all still works', zip6b.includes(Buffer.from('ground/commons-A.png')), zip6b.length);
+  await page.evaluate(async (k) => { await window.__ground.S.store.del('raw', k); }, badKey);
+  await page.close();
+  page = await open(ctxA);
+
   /* ── 7. v2.3.2944: a swatch made from an older prompt is marked ── */
   console.log('7. a swatch made from an older prompt');
   const oldPic = await makePicture(page, '#a08050', 18);

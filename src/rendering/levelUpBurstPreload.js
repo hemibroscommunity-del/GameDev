@@ -27,26 +27,13 @@
 import { LEVELUP_STRIP_SRC, LEVELUP_NUM_URLS } from '../data/levelUpBurst.js';
 import { LEVELUP_ICON_URLS } from '../ui/levelUpIcons.js';
 import { portraitStore } from '../ui/mobile/sheet/portraitStore.js'; /* v2.3.2615 */
+import { warmOnce } from './warmOnce.js';   /* v2.3.4652 */
 
 const _held = [];
 
-function warm(url) {
-  if (typeof Image === 'undefined') return Promise.resolve(null);
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.decoding = 'async';
-    img.onload = () => {
-      const done = () => { _held.push(img); resolve(img); };
-      if (typeof img.decode === 'function') img.decode().then(done, done);
-      else done();
-    };
-    /* A failed warm must not fail the gate — the intro overlay lifting is
-       worth more than this asset, and the <img>/background falls back to a
-       normal fetch at use time. */
-    img.onerror = () => resolve(null);
-    img.src = url;
-  });
-}
+/* v2.3.4652: once a page, not once a join (warmOnce.js says why); a failed
+   warm never fails the gate: the picture fetches at use */
+const warm = warmOnce(_held);
 
 /* ═══ v2.3.2615: AND THE PORTRAIT ═══
  *
