@@ -45,7 +45,6 @@
  * reuses the exact short-circuit shape `_zoneEntryGraceUntil` already has in
  * _applyDamage rather than inventing a second immunity mechanism.
  */
-import { QUEST_ZONE_GATE } from './movement.js';
 import { ACHV_KEY, achvAp } from './achievements.js'; /* v2.3.4354: /dev/apinfo */
 import { QUEST_TOUR, GUILD_QUESTS } from './data.js'; /* v2.3.3525: the tour's steps; v2.3.4354: + a guild rung's AP (/dev/apinfo) */
 import { GEM_ELEMENTS, gemGive, gemCount } from './gems.js'; /* v2.3.3516: the kit's gems, in the bag */
@@ -106,33 +105,6 @@ export const devToolsMethods = {
     const ws = this._wsBySessionId(playerId);
     if (ws) this._sendPlayerState(ws, playerId);
     this.dirtyPlayers.add(playerId);
-  },
-
-  /* ═══ UNLOCK THE ZONE GATES ═══
-     Derived from QUEST_ZONE_GATE, the same table _zoneUnlocked reads, so it
-     cannot drift: a quest that starts gating a zone tomorrow is unlocked by
-     this tomorrow, with no edit here.
-
-     Sets 'active', NOT 'turnedIn'.  'active' is all _zoneUnlocked asks for,
-     and it is the honest state -- marking a quest COMPLETE would hand over
-     its rewards' worth of progress, rewrite the tutorial's dialogue state,
-     and quietly make the owner's save unrepresentative of the players she is
-     testing for. */
-  _devUnlockZones(playerId) {
-    const t = this._devTarget(playerId);
-    if (!t) return { ok: false, error: 'player not online' };
-    const ps = t.ps;
-    if (!ps._quests) ps._quests = Object.create(null);   /* rule 4 */
-    const opened = [];
-    for (const [zone, qids] of QUEST_ZONE_GATE) {
-      const already = qids.some((q) => ps._quests[q] === 'active' || ps._quests[q] === 'turnedIn');
-      if (already) continue;
-      /* The first quest that names the zone is enough to open it. */
-      ps._quests[qids[0]] = 'active';
-      opened.push(zone);
-    }
-    this._devPush(playerId, ps);
-    return { ok: true, opened, zones: [...QUEST_ZONE_GATE.keys()] };
   },
 
   /* ═══ KIT + LEVELS ═══ */
@@ -411,11 +383,6 @@ export const devToolsMethods = {
     const t = this._devTarget(playerId);
     if (!t) return { ok: false, error: 'player not online' };
     const ps = t.ps;
-    const q = ps._quests || {};
-    const zones = {};
-    for (const [zone, qids] of QUEST_ZONE_GATE) {
-      zones[zone] = qids.some((k) => q[k] === 'active' || q[k] === 'turnedIn');
-    }
     return {
       ok: true,
       zone: ps.z,
@@ -426,7 +393,6 @@ export const devToolsMethods = {
          whether the room allows it (the `testmode: false` kill switch) */
       testMode: ps._testMode === true,
       testModeAllowed: this._testModeAllowed(),
-      zones,
       /* v2.3.3538: the worker's own character level (prog3.js
          _prog3CharLevel: the highest skill, or the sum with `onelevel:
          false`) -- it was summed here inline, a copy of the old rule */
@@ -780,8 +746,7 @@ export const devToolsMethods = {
     if (!playerId) return json({ ok: false, error: 'playerId required' }, 400);
 
     let result = null;
-    if (path === '/dev/unlock') result = this._devUnlockZones(playerId);
-    else if (path === '/dev/kit') result = this._devKit(playerId, body);
+    if (path === '/dev/kit') result = this._devKit(playerId, body);
     else if (path === '/dev/vitals') result = this._devVitals(playerId, body);
     else if (path === '/dev/quests') result = this._devFinishQuests(playerId, body);   /* v2.3.2277; v2.3.3121: + except */
     else if (path === '/dev/tour') result = this._devTour(playerId, body);   /* v2.3.3525: {at} -- the tour jumped to that step (the Test panel's "Tour: jump to") */

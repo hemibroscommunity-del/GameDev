@@ -1551,9 +1551,6 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     /ps\._godUntil && Date\.now\(\) < ps\._godUntil/.test(combatSrc), {});
   check('devkit: god mode is capped so it cannot be left on forever',
     /GOD_MINUTES_MAX/.test(devSrv), {});
-  /* The unlock must derive from the gate the game reads, not a second list. */
-  check('devkit: the unlock derives from QUEST_ZONE_GATE itself',
-    /QUEST_ZONE_GATE/.test(devSrv), {});
   /* The panel must remain reachable, and by the gesture the docs describe. */
   check('devkit: the long-press trigger is still wired to the zone title',
     /bt-zone-header__title/.test(header) && /onPointerDown=\{holdStart\}/.test(header), {});
