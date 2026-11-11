@@ -348,6 +348,11 @@ spec. Add a line here only for a new RULE every session must follow.
 - **Standing owner decisions**: no single-player; the Wheel is the world;
   talking to townsfolk is a tap, never walking up; no play caps ("Dont ship any
   caps yet"); the supporter pass waits on the repo lock-down.
+- **It is a demo, and the owner is its only player** (owner, 2026-11-11: "only
+  me is testing all this. I've said that probably dozens of times"). A trial
+  the owner likes becomes everyone's default, with its switch to turn it off;
+  do not hold a change behind one phone's address, or ask about other
+  players' disruption, for that reason alone.
 
 ## 8. Same-change checklist
 
