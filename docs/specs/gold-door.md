@@ -105,12 +105,32 @@ Two places became two roads each, in the order their line did the sum:
   never run. Their sums are proven by §1. Left in place: removing them, or
   stocking the shelf again, is its own change.
 
+## Step 2 (v2.3.4803): one sum for every road
+
+The owner, 2026-11-11: "keep going on the architectural plan". Every road now
+does the same sum, `goldOneSum` (gold.js):
+
+- the purse is read as a whole number never below 0 (missing, NaN, fractional,
+  below 0 or not finite reads as the whole number under it, or 0);
+- the amount likewise;
+- a take never leaves the purse below 0;
+- a set (a character loading, a purse lost whole) makes the purse a whole
+  number never below 0, so a broken purse saved long ago heals as it loads.
+
+**Nothing changes for an honest purse and amount** (whole, not below 0, a take
+no larger than the purse, which every road's caller checks): `gold-door.test`
+§6 proves each road gives its step-1 line exactly there. What it does change:
+the Ace flip's and the gamble's stakes come from the phone and are checked to
+be finite but not whole, so a stake of 10.5 used to leave half a coin in the
+purse. Now it moves 10.
+
+**The switch**: `goldonesum: false` in the live flags puts every road back on
+its step-1 sum (`GOLD_SUMS`, the `sum` column) at once. The column stays until
+this has run a while; deleting it is then a small change of its own.
+
 ## Next steps (each its own version, with a live switch)
 
-1. **One sum.** Every road reads the purse the one safe way: a whole number,
-   never below 0. The `sum` column goes. It changes only a purse that is
-   missing, fractional or below 0 (none should exist), and that is exactly
-   what the switch is for.
+1. ~~One sum~~: done, step 2 above.
 2. **What the door can now do once for every road**:
    - a per-player record of where gold came from and went (a bounded list in
      memory first: no storage writes, so no running cost), for spotting
