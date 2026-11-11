@@ -1904,6 +1904,10 @@ export const joinMethods = {
         freeSwing: this._freeSwingOn() ? 1 : undefined,
         /* v2.3.4615: THE PERFECT STRIKE (freeswing.js): on the trial, an attack timed to the full cycle is judged here (the sword's swing, the bow's arrow at its relay) and told as `pf: 1`; the phone draws its timing bar only against a worker that judges it */
         perfectStrike: this._freeSwingOn() ? 1 : undefined,
+        /* v2.3.4801: THE BOW'S DRAW (drawgather.js): an arrow's relay may carry its draw (`dr`, ms) and its claims name it (`sw`); the worker lands its share of a full draw, bounded by its own clock, and judges the perfect draw.  Un-advertised under `bowdraw: false` (the phone plays today's bow) */
+        bowDraw: this._bowDrawOn() ? 1 : undefined,
+        /* v2.3.4801: THE STAFF'S GATHER (drawgather.js): a bolt's relay may carry its gather (`ga`, ms) and its claims name it (`sw`); its share, its stage (spark, orb, sphere: the splash and the ring of force).  Un-advertised under `staffgather: false` */
+        staffGather: this._staffGatherOn() ? 1 : undefined,
         accuracy: this._accOn() /* v2.3.4545: ACCURACY (accuracy.js) -- the phone numbers its basic shots a weapon and sends the counts on `track` (`ac`) and each hit's shot (`sn`); `acc_request` answers `acc_state`; `accuracy: false` in liveflags un-advertises it and counts nothing -- lower case, a kill switch */ },
       // v2.3.1178: this session's private economy-endpoint token.
       // state_sync goes to the joining socket ONLY -- never broadcast.
