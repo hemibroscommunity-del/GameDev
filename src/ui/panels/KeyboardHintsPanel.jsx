@@ -12,6 +12,7 @@ import { trappingOn, trapsHeld } from '@/game/trapping.js';
 import { rideButtonWanted } from '@/game/ride.js';   /* v2.3.3776: Z, the skateboard, in BroTown */
 import { rideGround } from '@/game/rideGround.js';
 import { oneBandActive } from '@/ui/oneBand.js';   /* v2.3.4263: the band's own key list */
+import { fineInput, COMPUTER_FRAME_QUERY } from '../../game/deviceProfile.js';   /* v2.3.4804: the device profile */
 
 /* === KeyboardHintsPanel — the desktop keyboard-hints overlay === */
 /* v2.3.889: extracted verbatim from the bt-kb-hints JSX subtree in
@@ -199,7 +200,7 @@ export function DeskKeysList({ side = 'right' } = {}) {
    covers nothing and never has to stand aside.  A window too narrow or too
    short for it, or no column at all (a computer window under 1000 px), keeps
    the strip in the column as before. */
-const COLUMN_QUERY = '(pointer:fine) and (min-width:1000px)';   /* game.css's column rule */
+const COLUMN_QUERY = COMPUTER_FRAME_QUERY;   /* game.css's column rule (v2.3.4804: written once, in the device profile) */
 const SIDE_GAP = 16;     /* between the strip and the column, and the window's bottom */
 const SIDE_MIN = 190;    /* the margin it needs: its 150 px + a gap each side */
 const SIDE_MIN_H = 520;  /* the window height its rows and the ⌨ need */
@@ -250,7 +251,7 @@ function useSideRoom() {
    mouse under the one band, upright (bandKeysActive). */
 export function bandKeysActive() {
   try {
-    if (typeof window === 'undefined' || !window.matchMedia || !window.matchMedia('(pointer:fine)').matches) return false;
+    if (!fineInput()) return false;   /* v2.3.4804: the device profile */
     const cl = document.documentElement.classList;
     return oneBandActive() && !cl.contains('bt-band-side');
   } catch (_e) { return false; }

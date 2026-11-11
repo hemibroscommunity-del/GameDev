@@ -335,6 +335,8 @@ spec. Add a line here only for a new RULE every session must follow.
   `data-enter`; words a computer player reads say "click", through
   `deskWords()`; every screen, a computer included, plays the upright layout,
   the band at the bottom (`src/ui/oneBand.js`; `?oneband=0` the old side column).
+  A device question (a mouse? a computer's window? an iPhone?) is asked
+  through `src/game/deviceProfile.js`, never written again (`device-profile.test`).
 - **Touch**: a control that closes its window on `pointerup` calls
   `swallowTapClick(e)` (TRAPS §247).
 - **Sound**: a new sound gets its label in the Sound Studio

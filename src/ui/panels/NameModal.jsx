@@ -41,6 +41,7 @@ import { SHIRT_CATALOG, setShirt } from '@/rendering/traits/shirtCatalog.js';
 import { SHIRT_COLOR_CATALOG, setShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
 import { recolorEnabled, SOLID_ONLY_HAT_COLOR } from '@/rendering/traits/recolorOptions.js';
 import { HEIGHT_CATALOG } from '@/rendering/traits/buildCatalog.js';   /* v2.3.1953; v2.3.1996: frame picker removed; v2.3.2268: the tab went with the height axis, so `setBuildHeight` has no caller left here -- HEIGHT_CATALOG stays because the unreached _buildTile branch below still names it, and that branch is the restoration path */
+import { fineInput } from '../../game/deviceProfile.js';   /* v2.3.4804: the device profile */
 
 /* === NameModal — the character-creator / name-entry splash screen === */
 /* v2.3.888: extracted verbatim from the `if (showNameModal) { ... }`
@@ -1345,7 +1346,7 @@ export function NameModal(props) {
        computer (desktopControls.js, QuestCoach.jsx).  Same eleven characters
        and about 1.5px wider at the field's 16px, inside v2.3.2464's measured
        slack (93 of 103.5px); the sideways fit below is touch-only. */
-    placeholder: (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer:fine)').matches) ? "Type a name" : "Tap to name",
+    placeholder: fineInput() ? "Type a name" : "Tap to name",
     maxLength: 20,
     /* ═══ v2.3.1818: NO AUTOFOCUS ═══
        Owner: "Immediately after tapping new character from splash screen the

@@ -13,21 +13,15 @@
    "TAP" in capitals (shouted, as a label would) and any word that merely
    holds the letters ("tapestry", "strap", the TRAP button's own name) stay.
 
-   No imports: the dialogue window, the quest pages and the coach read it. */
+   One import, the device profile (pure itself): the dialogue window, the
+   quest pages and the coach read it, and node tests it. */
+import { fineInput } from './deviceProfile.js';   /* v2.3.4804: the device profile */
 
-let _fine = null;
-function fineMq() {
-  if (_fine === null) {
-    try { _fine = (typeof window !== 'undefined' && window.matchMedia) ? window.matchMedia('(pointer:fine)') : false; } catch (e) { _fine = false; }
-  }
-  return _fine;
-}
 
 /** Is this a computer (a mouse, `(pointer:fine)`)?  Read live: a laptop with a
  *  touch screen can switch. */
 export function onComputer() {
-  const mq = fineMq();
-  return !!(mq && mq.matches);
+  return fineInput();   /* v2.3.4804: the device profile */
 }
 
 const ENDINGS = { '': '', s: 's', ped: 'ed', ping: 'ing' };

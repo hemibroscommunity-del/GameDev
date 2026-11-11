@@ -8,6 +8,7 @@ import { controlsTutorialBus } from '../controlsTutorialBus.js';
 import { installHintBus } from '../installHintBus.js'; /* v2.3.2159 */
 import { TRAIL_STYLES, getTrailStyle, setTrailStyle, GROUND_PATH } from '@/game/questTrailStyle.js'; /* v2.3.2992 GROUND_PATH */
 import { DASH_SIDES, getDashSidePref, setDashSidePref } from '@/game/dashSidePref.js'; /* v2.3.2177 */
+import { onIOS } from '../../../game/deviceProfile.js';   /* v2.3.4804: the device profile */
 
 /* v2.3.1232: Lantern Slate pass (docs/LANTERN-SLATE-SPEC.md) — 44px
    setting rows, and the switch grows to a 46×26 touchable pill: track
@@ -370,8 +371,7 @@ export const SettingsPanel = () => {
           instruction would be wrong. */}
       {(() => {
         try {
-          const ios = /iPad|iPhone|iPod/.test(navigator.userAgent)
-            || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+          const ios = onIOS();   /* v2.3.4804: the device profile */
           const standalone = window.navigator.standalone === true
             || window.matchMedia('(display-mode: standalone)').matches;
           if (!ios || standalone) return null;

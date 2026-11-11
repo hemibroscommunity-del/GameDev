@@ -59,6 +59,7 @@ import {
      (equipModel) owns that lookup now. */
   recalcDerived,
 } from '../../../data/gameSystems.js';
+import { fineInput } from '../../../game/deviceProfile.js';   /* v2.3.4804: the device profile */
 
 /* v2.3.3516: the card's line for a gem, a shard with a gem in it, or the Rare
    Gem -- null for anything else */
@@ -184,7 +185,7 @@ function shieldThumb(shield) {
 /* v2.3.3711: on a computer the guard is the RIGHT MOUSE BUTTON held now (the
    owner's layout: BroTown onMouseDown; Q is the special), so the card says so */
 function shieldBlockHint() {
-  const fine = typeof matchMedia === 'function' && matchMedia('(pointer:fine)').matches;
+  const fine = fineInput();   /* v2.3.4804: the device profile */
   return fine ? 'Press Q to block' : 'Tap Block in a fight to raise it';
 }
 

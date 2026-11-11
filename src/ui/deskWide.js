@@ -20,6 +20,7 @@
  * it, and the side column described above is the old layout, `?oneband=0`. */
 
 import { oneBandActive } from './oneBand.js';   /* v2.3.4072 */
+import { COMPUTER_FRAME_QUERY } from '../game/deviceProfile.js';   /* v2.3.4804: the device profile */
 
 export function deskWideWanted(search) {
   let q;
@@ -73,7 +74,7 @@ export function deskKeysW() {
   return deskKeysHidden() ? DESK_KEYS_FOLDED_W : DESK_KEYS_W;
 }
 
-const FRAME_QUERY = '(pointer:fine) and (min-width:1000px)';   /* game.css's computer rule */
+const FRAME_QUERY = COMPUTER_FRAME_QUERY;   /* game.css's computer rule (v2.3.4804: written once, in the device profile) */
 
 /* Is a computer playing wide right now: the switch on AND the window one the
    computer's rule applies to (a narrow window has no shell, so it plays as
