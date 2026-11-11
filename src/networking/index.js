@@ -19,14 +19,10 @@ import { CHAR_CACHE_KEYS, CHAR_SESSION_KEYS } from '../game/tabIdentity.js';   /
 const WS_BASE = window.BROTOWN_WS_URL || 'wss://api.brotown.net';
 export const BT_API_BASE = WS_BASE.replace('wss://', 'https://').replace('ws://', 'http://');
 
-/* Legacy Supabase compat (Supabase removed; Durable Objects is the backend).
-   btRpc is kept as a no-op because BroTown.jsx still calls it on legacy paths
-   (bt_load_player / bt_register_player / bt_update_stats / bt_monster_kill /
-   bt_sync_rpg) -- every caller already handles the null return.  The call
-   sites go away with the BroTown decomposition. */
-export const SUPA_URL = '';
-export const SUPA_KEY = '';
-export async function btRpc(fnName, params) { return null; }
+/* v2.3.4672: the Supabase leftovers are gone -- btRpc (a no-op returning
+   null since Supabase was removed), its five callers, and syncRpgToServer,
+   which packed the whole character for btRpc to drop.  The worker is the
+   only backend, and the character is its record (handoff rule zero). */
 
 /* ═══ PASSPHRASE IDENTITY SYSTEM ═══ */
 const BT_WORDS = [
@@ -257,60 +253,6 @@ export function applyAccountLogin(phrase, id) {
     /* v2.3.3888: the page's switches ride along (ui/keepSwitches.js), guest among them */
     window.location.replace(window.location.pathname + keptQuery());
   } catch (e) { window.location.reload(); }
-}
-
-/* ═══ RPG SERVER SYNC ═══ */
-export function syncRpgToServer(rpg) {
-  const pid = getBtPlayerId();
-  if (!pid || !rpg) return;
-  const payload = {
-    p_id: pid,
-    p_level: rpg.level || 1,
-    p_coins: rpg.coins || 0,
-    p_xp: rpg.xp || 0,
-    p_hp: rpg.hp || 50,
-    p_state: JSON.stringify({
-      level: rpg.level, xp: rpg.xp, coins: rpg.coins,
-      hp: rpg.hp, maxHp: rpg.maxHp,
-      stamina: rpg.stamina, maxStamina: rpg.maxStamina,
-      mana: rpg.mana, maxMana: rpg.maxMana,
-      power: rpg.power, vitality: rpg.vitality, endurance: rpg.endurance,
-      agility: rpg.agility, mind: rpg.mind,
-      /* v2.3.1155: the five retired T2 stats are off the wire. */
-      unspentT1: rpg.unspentT1, unspentT2: rpg.unspentT2,
-      weapon: rpg.weapon, rangedWeapon: rpg.rangedWeapon,
-      activeSlot: rpg.activeSlot, armor: rpg.armor,
-      weaponStash: rpg.weaponStash || [],
-      amulet: rpg.amulet,
-      goldNuggets: rpg.goldNuggets || 0, goldBars: rpg.goldBars || 0,
-      shield: rpg.shield,
-      _compStats: rpg._compStats,
-      achievementPoints: rpg.achievementPoints || 0,
-      inventory: rpg.inventory,
-      lifeSkills: rpg.lifeSkills ? {
-        woodcutting: rpg.lifeSkills.woodcutting,
-        fishing: rpg.lifeSkills.fishing,
-        mining: rpg.lifeSkills.mining,
-        farming: rpg.lifeSkills.farming,
-        cooking: rpg.lifeSkills.cooking,
-        blacksmithing: rpg.lifeSkills.blacksmithing,
-        woodworking: rpg.lifeSkills.woodworking,
-        gemCutting: rpg.lifeSkills.gemCutting,
-        enchanting: rpg.lifeSkills.enchanting,
-        trapping: rpg.lifeSkills.trapping,
-        resources: rpg.lifeSkills.resources,
-        gems: rpg.lifeSkills.gems,
-        farmPlots: rpg.lifeSkills.farmPlots,
-        dungeonClears: rpg.lifeSkills.dungeonClears,
-        pets: rpg.lifeSkills.pets,
-        activePet: rpg.lifeSkills.activePet,
-      } : null,
-      _quests: rpg._quests,
-      _questFlags: rpg._questFlags,
-      _questKills: rpg._questKills,
-    }),
-  };
-  btRpc('bt_sync_rpg', payload);
 }
 
 /* ═══ DEVICE NONCE (v2.3.694) ═══

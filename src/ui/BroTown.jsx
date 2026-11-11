@@ -131,7 +131,6 @@ import { ActiveWarBanner, EndedWarBanner } from './panels/WarBanner.jsx';
    observed ladder + the tutorial-banner-under-dashboard incident. */
 import { Z_ABOVE_DASH_PROMPT } from './zLayers.js';
 import { deskWideActive, deskBandActive, deskBigActive } from './deskWide.js';   /* v2.3.3769: a computer's building windows are a computer's size; v2.3.4152: deskBandActive / deskBigActive, the band on a computer */
-import { MenuBar } from './panels/MenuBar.jsx';
 import { RevealOverlay } from './reveal/RevealOverlay.jsx'; /* v2.3.1925 */
 /* v2.3.872: buildingPanel sub-panels (decomposed individually). */
 import { WheelHallPanel, SaloonPanel } from './panels/buildings/WheelHallPanel.jsx';   /* v2.3.3066: the Wheel's halls; v2.3.3258: + the Saloon's own window (parties) */
@@ -353,7 +352,7 @@ import { perfTracker } from '@/debug/perfTracker.js';
 import { markAlive } from '@/debug/crashTrap.js';   /* v2.3.3017: a page that dies open is reported by the next one */
 import { t1StatsPayload } from '@/game/t1Sync.js'; /* v2.3.1633: shared T1 report gate */
 import * as DATA from '@/data/index.js';
-import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId, idForKey } from '@/networking/index.js';
+import { wsrvUrl, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId, idForKey } from '@/networking/index.js';
 /* v2.3.1923: the device's character roster — see src/networking/charRoster.js */
 import { rememberChar, ensureChar, activateChar, inRoster, adoptSharedPhrase, readRoster } from '@/networking/charRoster.js';   /* v2.3.3689: + readRoster, the picked row's look */
 import { applyCharacterRecord } from '@/game/characterRecord.js';   /* v2.3.3689: the picked row's look into the stores before the reload */
@@ -654,11 +653,10 @@ function manaSurgePerFrame(S, active) {
 /* Expose all exports as globals for the pre-transpiled code.
    The original index.html had everything in one scope; this bridges the gap. */
 Object.assign(globalThis, DATA);
-Object.assign(globalThis, { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId });
+Object.assign(globalThis, { wsrvUrl, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId });
 /* BT_API_BASE etc from networking — derive fresh each time */
 var BT_API_BASE = (window.BROTOWN_WS_URL || 'wss://api.brotown.net').replace('wss://', 'https://').replace('ws://', 'http://');   /* v2.3.2446: see networking/index.js */
-var SUPA_URL = ''; var SUPA_KEY = ''; var supa = null;
-Object.assign(globalThis, { BT_API_BASE, SUPA_URL, SUPA_KEY, supa });
+Object.assign(globalThis, { BT_API_BASE });   /* v2.3.4672: the Supabase globals (SUPA_URL, SUPA_KEY, supa) are gone */
 Object.assign(globalThis, { _regenerator, _regeneratorDefine2, _asyncToGenerator, _typeof, _slicedToArray, _toConsumableArray, _objectSpread, _defineProperty, _toPropertyKey, _toPrimitive, ownKeys, _arrayWithHoles, _iterableToArrayLimit, _unsupportedIterableToArray, _arrayLikeToArray, _nonIterableRest, _arrayWithoutHoles, _iterableToArray, _nonIterableSpread, _createForOfIteratorHelper, asyncGeneratorStep });
 
 /* ── v2.3.1448: tap-to-open resource menu ──────────────────────────
@@ -4529,66 +4527,9 @@ export var BroTown = function BroTown(_ref0) {
       } catch (e) {}
       discoverZone('town'); /* §ENC — Everyone starts in town */
 
-      /* Then fetch from server and overwrite (async, non-blocking) */
-      if (!S._serverLoadStarted && getBtPlayerId()) {
-        S._serverLoadStarted = true;
-        _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee4() {
-          var pid, sd, sr;
-          return _regenerator().w(function (_context4) {
-            while (1) switch (_context4.n) {
-              case 0:
-                pid = getBtPlayerId();
-                _context4.n = 1;
-                return btRpc('bt_load_player', {
-                  p_id: pid
-                });
-              case 1:
-                sd = _context4.v;
-                if (!(sd && sd.rpg)) {
-                  _context4.n = 2;
-                  break;
-                }
-                sr = sd.rpg;
-                /* Server may still have old format — handle both */
-                if (sr.power !== undefined) {
-                  Object.assign(S.rpg, sr);
-                } else {
-                  S.rpg.level = sr.level || 1;
-                  S.rpg.xp = sr.xp || 0;
-                  S.rpg.coins = sr.coins || 0;
-                }
-                recalcDerived(S.rpg);
-                /* Update legacy compat (v2.3.1155: def/lck literal 0 —
-                   they aliased the retired fortification/ferocity) */
-                S.rpg.str = S.rpg.power;
-                S.rpg.def = 0;
-                S.rpg.vit = S.rpg.vitality;
-                S.rpg.spd = S.rpg.agility;
-                S.rpg.lck = 0;
-                S.rpg.unspentPts = S.rpg.unspentT1 + S.rpg.unspentT2;
-                setRpgState(_objectSpread({}, S.rpg));
-                try {
-                  localStorage.setItem('bt_rpg', JSON.stringify(S.rpg));
-                } catch (e) {}
-                console.log('[Game] Server sync: Lv' + S.rpg.level + ' ' + S.rpg.coins + 'G');
-                _context4.n = 3;
-                break;
-              case 2:
-                if (!pid) {
-                  _context4.n = 3;
-                  break;
-                }
-                _context4.n = 3;
-                return btRpc('bt_register_player', {
-                  p_id: pid,
-                  p_name: S.myName || 'Anon'
-                });
-              case 3:
-                return _context4.a(2);
-            }
-          }, _callee4);
-        }))();
-      }
+      /* v2.3.4672: a load from the removed Supabase backend (bt_load_player,
+         else bt_register_player) went here; both were no-ops.  The worker's
+         join is the character's load. */
     }
 
     /* Monsters spawned with zone map — see S.map init above */
@@ -9222,13 +9163,7 @@ export var BroTown = function BroTown(_ref0) {
             stateRef.current._statsSavedJson = _statsJson;
           }
         } catch (e) {}
-        if (stateRef.current._statsSyncTimer === undefined) stateRef.current._statsSyncTimer = 0;
-        stateRef.current._statsSyncTimer++;
-        if (stateRef.current._statsSyncTimer % 600 === 0 && getBtPlayerId()) btRpc('bt_update_stats', {
-          p_id: getBtPlayerId(),
-          p_steps: Math.min(100, ((_stateRef$current$sta = stateRef.current.stats) === null || _stateRef$current$sta === void 0 ? void 0 : _stateRef$current$sta.steps) || 0),
-          p_msgs: 0
-        });
+        /* v2.3.4672: a bt_update_stats ping to the removed Supabase backend went here */
       }
       /* Clear collect notification after 2s */
       setCollectMsg(function (prev) {
@@ -12537,16 +12472,7 @@ export var BroTown = function BroTown(_ref0) {
         if (_rosterPf) rememberChar(_rosterPf, { name: S.myName, level: (S.rpg && S.rpg.level) || 0 });
       }
     } catch (e) {}
-    /* Optional server registration */
-    var pid = getBtPlayerId();
-    if (pid) btRpc('bt_register_player', {
-      p_id: pid,
-      p_name: S.myName,
-      p_avatar: S.myAvatar,
-      p_color: S.myColor,
-      p_body_torso: S.bodyTorso,
-      p_body_legs: S.bodyLegs
-    });
+    /* v2.3.4672: a bt_register_player call to the removed Supabase backend went here */
     /* v2.3.777: resume snapshot -- the character needed to rejoin without
        the login screen.  Written on every PLAY; heartbeated in-game; read
        by the auto-rejoin effect after a recovery reload or an iOS tab
@@ -16000,107 +15926,8 @@ export var BroTown = function BroTown(_ref0) {
         borderRadius: 10,        border: '1px solid rgba(255,255,255,.08)'
       }
     }].concat(buttons));
-  }(), function (_R$_questFlags) {
-    var S = stateRef.current;
-    var R = S === null || S === void 0 ? void 0 : S.rpg;
-    if (!R || (S === null || S === void 0 ? void 0 : S.currentZone) === 'town' || S !== null && S !== void 0 && S._inDungeon) return null;
-    if (S._currentDepth !== 'core') return null;
-    if (!((_R$_questFlags = R._questFlags) !== null && _R$_questFlags !== void 0 && _R$_questFlags.endgameUnlocked)) return null;
-    var curZone = ZONES[S.currentZone];
-    if (!(curZone !== null && curZone !== void 0 && curZone.element) || curZone.endgame) return null; /* already in endgame zone */
-    /* Show portal near dungeon entrance */
-    return React.createElement('div', {
-      style: {
-        position: 'absolute',
-        /* v2.3.1205: was bottom:210 / zIndex:18 — inside + under the
-           28vh dashboard band on iPhone (≈225px+), which hid the
-           ENDGAME PORTAL button entirely on mobile.  +92 preserves its
-           original ~80px stack above the zone bars; centered, so it
-           clears the corner joysticks at calc(var(--dash-h) + 70px).
-           See src/ui/zLayers.js. */
-        bottom: 'calc(var(--dash-h) + 92px)',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: Z_ABOVE_DASH_PROMPT,
-        display: 'flex',
-        gap: 8
-      }
-    }, React.createElement('button', {
-      className: 'bt-interact-prompt',
-      style: {
-        position: 'relative',
-        bottom: 'auto',
-        left: 'auto',
-        transform: 'none',
-        background: 'rgba(44,62,80,.9)',
-        border: '1px solid rgba(80,40,120,.5)'
-      },
-      onTouchStart: function onTouchStart(e) {
-        e.preventDefault();
-        var S2 = stateRef.current,
-          P2 = S2.player;
-        changeZone(S2, 'shadow');   /* v2.3.4651: the one door (TRAPS §304) */
-        updateZoneDimensions('shadow');
-        BT_AUDIO.startZoneAmbient('shadow');
-        S2.map = generateZoneMap('shadow');
-        /* v2.3.1144: levelMod 60 dropped — the zone band is a real [81,100]
-           since v2.3.1140, so the old +60 (a stand-in while bands were
-           pinned [1,1]) spawned L141-160 monsters on this SP-fallback path. */
-        S2.monsters = spawnMonstersForZone(ZONES.shadow);
-        S2.gatherNodes = spawnGatherNodes('shadow', 'core');
-        S2._currentDepth = 'core';
-        P2.x = 20 * TILE;
-        P2.y = 37 * TILE;
-        S2.groundLoot = [];
-        S2.hitParticles = [];
-        S2.deathExplosions = [];
-        S2.arrows = [];
-        S2._ambientParticles = [];
-        S2._zoneWipe = Date.now();
-        pushDmgPopup(S2, P2.x, P2.y - 40, 'Dark Sanctum', '#8E44AD');
-        pushDmgPopup(S2, P2.x, P2.y - 25, 'Lv 81-100', 'rgba(255,255,255,.5)');
-      },
-      onMouseDown: function onMouseDown(e) {
-        return e.preventDefault();
-      }
-    }, '🌑 Enter Dark Sanctum'), React.createElement('button', {
-      className: 'bt-interact-prompt',
-      style: {
-        position: 'relative',
-        bottom: 'auto',
-        left: 'auto',
-        transform: 'none',
-        background: 'rgba(200,180,40,.85)',
-        border: '1px solid rgba(241,196,15,.5)'
-      },
-      onTouchStart: function onTouchStart(e) {
-        e.preventDefault();
-        var S2 = stateRef.current,
-          P2 = S2.player;
-        changeZone(S2, 'radiant');   /* v2.3.4651: the one door (TRAPS §304) */
-        updateZoneDimensions('radiant');
-        BT_AUDIO.startZoneAmbient('radiant');
-        S2.map = generateZoneMap('radiant');
-        /* v2.3.1144: levelMod 60 dropped — see the shadow branch note. */
-        S2.monsters = spawnMonstersForZone(ZONES.radiant);
-        S2.gatherNodes = spawnGatherNodes('radiant', 'core');
-        S2._currentDepth = 'core';
-        P2.x = 20 * TILE;
-        P2.y = 37 * TILE;
-        S2.groundLoot = [];
-        S2.hitParticles = [];
-        S2.deathExplosions = [];
-        S2.arrows = [];
-        S2._ambientParticles = [];
-        S2._zoneWipe = Date.now();
-        pushDmgPopup(S2, P2.x, P2.y - 40, 'Light Summit', '#F1C40F');
-        pushDmgPopup(S2, P2.x, P2.y - 25, 'Lv 81-100', 'rgba(255,255,255,.5)');
-      },
-      onMouseDown: function onMouseDown(e) {
-        return e.preventDefault();
-      }
-    }, '☀️ Enter Light Summit'));
-  }()), /*#__PURE__*/React.createElement(MenuBar, { stateRef: stateRef, rpgState: rpgState, bodySize: bodySize, chatOpen: chatOpen, friendsList: friendsList, unreadChats: unreadChats, showClanPanel: showClanPanel, showEncyclopedia: showEncyclopedia, showFeedback: showFeedback, showGuildPanel: showGuildPanel, showInventory: showInventory, showLeaderboard: showLeaderboard, showSkills: showSkills, showSocialPanel: showSocialPanel, showStatScreen: showStatScreen, doSpecialAttack: doSpecialAttack, setBodySize: setBodySize, setChatOpen: setChatOpen, setRpgState: setRpgState, setUnreadChats: setUnreadChats, setShowClanPanel: setShowClanPanel, setShowEmotes: setShowEmotes, setShowEncyclopedia: setShowEncyclopedia, setShowFeedback: setShowFeedback, setShowGuildPanel: setShowGuildPanel, setShowInfo: setShowInfo, setShowInventory: setShowInventory, setShowLeaderboard: setShowLeaderboard, setShowShop: setShowShop, setShowSkills: setShowSkills, setShowSocialPanel: setShowSocialPanel, setShowStatScreen: setShowStatScreen }), showInfo && /*#__PURE__*/React.createElement(InfoPanel, { playerCount: playerCount, setPlayerCount: setPlayerCount, setShowInfo: setShowInfo, stateRef: stateRef }),
+  }() /* v2.3.4673: the Dark Sanctum / Light Summit buttons went here: they showed only at depth
+     'core' with endgameUnlocked, which only the deleted standard dungeon ever set */), /* v2.3.4672: the hidden toolbar (MenuBar, display:none since v14) is gone */ showInfo && /*#__PURE__*/React.createElement(InfoPanel, { playerCount: playerCount, setPlayerCount: setPlayerCount, setShowInfo: setShowInfo, stateRef: stateRef }),
   /* v2.3.816: floating-joystick touch zones.  Left half = movement, right
      half = aim/combat; each captures touches anywhere in its half and spawns
      the joystick under the finger (see the dual-joystick effect).  Transparent
