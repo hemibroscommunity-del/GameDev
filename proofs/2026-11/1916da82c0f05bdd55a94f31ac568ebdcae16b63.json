@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "1916da82c0f05bdd55a94f31ac568ebdcae16b63",
+  "tree": "055a3e11a39ab4bf4b752451f82f6a36cd81bf8c",
+  "committedAt": "2026-11-11T14:09:09-08:00",
+  "subject": "Merge pull request #1585 from hemibroscommunity-del/claude/lane-depth-2",
+  "files": 7213,
+  "bytes": 940117384,
+  "listingSha256": "b88e5a0fba578a378d76607337637f3c73a478787216400bc46a64990413f553",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
