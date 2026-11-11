@@ -24,7 +24,7 @@
  *
  * `TEST_JOBS` sets the number at a time too.  The suites already ran side by
  * side safely (the review ran them so): each builds its own room on its own
- * mock storage, and the two that time themselves (spawn-scale, wheelzone)
+ * mock storage, and the one that times itself (wheelzone)
  * have 14x and more headroom on this box.
  */
 import { spawn } from 'node:child_process';

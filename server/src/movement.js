@@ -919,17 +919,8 @@ export const movementMethods = {
           ps._entryGraceAt = _gNow;
         }
         this._ensureZoneNodes(ps.z);
-        /* v2.3.1983: re-scale the zone to its NEW population before the
-           snapshot is built, so the arriving player's own frame already
-           carries the monsters/nodes their arrival just bought.  Doing it
-           on the 2s tick instead would show them the sparse world and then
-           re-sync it a moment later, which reads as a glitch.  `ws` is
-           excluded from the roster push — this snapshot IS their copy.
-           Everyone else already standing here gets theirs from inside. */
-        this._spawnScaleZone(ps.z, Date.now(), undefined, ws);
         /* One shared definition of a zone snapshot (spawnscale.js), read
-           back AFTER the scale so a grow/trim can't leave a stale array
-           reference behind.  v2.3.3318: into the Wheel, a phone that takes
+           back fresh.  v2.3.3318: into the Wheel, a phone that takes
            it is sent only the monsters around it (wheelnear.js) */
         const _near = this._wheelNearArrival(session, ps);
         if (!_near) session._wheelWhole = null;   /* a whole list: nothing to send whole later */

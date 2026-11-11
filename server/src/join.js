@@ -1764,12 +1764,6 @@ export const joinMethods = {
     if (_joinInWorld) {
       this._ensureZoneMonsters(joinZone);
       this._ensureZoneNodes(joinZone);
-      /* v2.3.1983: this player is already in playerState, so scaling here
-         counts them — their own state_sync below then carries the world
-         their arrival just grew, and everyone else in the zone gets the
-         roster push from inside (this socket is excluded; it is about to
-         receive the same lists in state_sync). */
-      this._spawnScaleZone(joinZone, Date.now(), undefined, ws);
     }
     const _joinMonstersAll = _joinInWorld ? (this.monsters[joinZone] || []) : [];
     const zoneNodes = _joinInWorld ? (this.nodes[joinZone] || []) : [];
