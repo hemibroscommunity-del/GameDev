@@ -64,7 +64,7 @@
    tools/qa/qa-mapfree-race.mjs loads tiledMaps.js straight into Node, where the
    Vite alias does not exist. */
 import { ZONES } from '../data/zones.js';
-import { WORLDVIEW_EXITS, WORLDVIEW_ARRIVAL, COMING_SOON_MARKS } from '../data/effects.js';
+import { WORLDVIEW_EXITS, WORLDVIEW_ARRIVAL } from '../data/effects.js';
 import { wheelStart, wheelRetryIn, wheelWarm, wheelStop, wheelRunning, wheelWalkGrid, wheelOverview, wheelHere, wheelMade, wheelEdges, wheelBlends, wheelResetCounts, wheelStats, wheelStepAt, wheelGroundAt, wheelMapInfo, wheelObjectStats, wheelObjectsInfo, wheelObjectsOn, wheelBigTown, wheelBuildingScale } from './wheelTrial.js';
 import { swimFeet } from './wheelSwim.js';   /* v2.3.3003: the footstep's ground is at your boots, and the water's while you swim */
 import { setAlwaysDay } from './timeOfDay.js';
@@ -199,7 +199,6 @@ export function applyWorldTrial() {
   delete z.playerScale;
   delete z.refViewW;
   delete z.refViewH;
-  delete z.playerLens;
   delete z.atmosphere;
   /* the sea, for anything drawn before a piece arrives */
   z.palette = { ground: '#1c467e', path: '#c9a36a', accent: '#86b94f' };
@@ -212,7 +211,6 @@ export function applyWorldTrial() {
      src/data/wheelBuildingDoors.js), so the quests that need one come back
      with them -- unless `?noobjects` leaves the town bare */
   setWheelDoorsOpen(wheelObjectsOn());
-  COMING_SOON_MARKS.length = 0;
   /* QA probe, house style (cf. __btZoneLabels): the live numbers the readout
      shows, for tools/qa/mp/mp-worldtrial.mjs to assert on. */
   if (typeof window !== 'undefined') {
