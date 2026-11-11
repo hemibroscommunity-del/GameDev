@@ -1290,6 +1290,32 @@ export const gatheringMethods = {
    * diagnosis only -- no gate changed, nothing is now allowed that was not
    * allowed before -- and it costs one assignment on a path that runs at most
    * once per harvest. */
+  /* ═══ v2.3.4642: A REFUSED STRIKE SNAPS THE PHONE BACK ═══
+     The state-machine sweep (V9a G4-10, S7-8; docs/STATE-MACHINES.md "the rest
+     of the silent refusals"): the phone fells the node and adds the harvest's
+     XP when the swing lands, then sends `node_strike`.  Of the refusals after
+     the node is found, only the harvest proof's and the hourly cap's told it:
+     the rest (dead, away, no tool, too low a level, out of reach, too early)
+     returned in silence, and on protocol v2 nothing is sent unless it changed,
+     so the phone kept a felled tree and XP the worker never gave until the
+     next real change.  Now each sends the node again (standing, or dead as it
+     is) and the skills -- at most once a node every HARVEST_PROOF.DIRTY_MS a
+     player, the proof refusal's own clock, so a script hammering refused
+     strikes cannot make the room chatty.  `strikesnap: false` in the live
+     flags goes back to the silence.  Saves nothing (a refusal changes
+     nothing). */
+  _strikeSnapBack(session, zone, n, now) {
+    if (!session || !session.id || !n) return;
+    const f = this._liveFlags;
+    if (f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'strikesnap') && !f.strikesnap) return;
+    const d = session._proofDirty;
+    if (d && d.id === n.id && now - d.at < HARVEST_PROOF.DIRTY_MS) return;
+    session._proofDirty = { id: n.id, at: now };
+    this._markNodeDirty(zone, n.id);
+    const ws = this._wsBySessionId(session.id);
+    if (ws && this.playerState[session.id]) this._resendPlayerState(ws, session.id, ['lifeSkills']);
+  },
+
   _strikeRefused(session, why, extra) {
     if (!session || !session.id) return;
     /* Object.create(null): keyed by player id, which comes off the wire --
@@ -1336,7 +1362,7 @@ export const gatheringMethods = {
     if (!list) { this._strikeRefused(session, 'zone-has-no-nodes', { zone }); return; }
     const n = list.find((x) => x.id === id);
     if (!n) { this._strikeRefused(session, 'node-not-found', { id, zone, known: list.length }); return; }
-    if (!n.alive) { this._strikeRefused(session, 'node-already-dead', { id, zone, respawnAt: n.respawnAt || 0 }); return; }
+    if (!n.alive) { this._strikeRefused(session, 'node-already-dead', { id, zone, respawnAt: n.respawnAt || 0 }); this._strikeSnapBack(session, zone, n, Date.now()); return; }
     /* Position gate -- player must actually be near the node.  The
        client's minigame wouldn't open without proximity but a
        handcrafted node_strike would; check anyway. */
@@ -1344,6 +1370,7 @@ export const gatheringMethods = {
     if (!ps) { this._strikeRefused(session, 'no-player-state', {}); return; }
     if (ps.z !== zone || ps.dead || ps.disconnected) {
       this._strikeRefused(session, 'player-not-here', { psZone: ps.z, zone, dead: !!ps.dead, disconnected: !!ps.disconnected });
+      this._strikeSnapBack(session, zone, n, Date.now());
       return;
     }
     /* v2.3.1680: the tool gate again, on the PAYING path.  extraction_start
@@ -1352,6 +1379,7 @@ export const gatheringMethods = {
        harvest.  Gate both or the gate is decorative. */
     if (!this._hasGatherTool(ps, this._harvestSkillName(n.nodeType))) {
       this._strikeRefused(session, 'no-tool', { skill: this._harvestSkillName(n.nodeType) });
+      this._strikeSnapBack(session, zone, n, Date.now());
       return;
     }
     /* v2.3.3038: and the level gate on the paying path too, for the same
@@ -1361,6 +1389,7 @@ export const gatheringMethods = {
       const _sk = this._harvestSkillName(n.nodeType);
       this._strikeRefused(session, 'skill-too-low', { skill: _sk, need: gatherReqLvl(n.nodeType, n.tierLvl),
         have: (ps.lifeSkills && ps.lifeSkills[_sk] && ps.lifeSkills[_sk].level) || 1 });
+      this._strikeSnapBack(session, zone, n, Date.now());
       return;
     }
     const dx = ps.x - n.x;
@@ -1371,6 +1400,7 @@ export const gatheringMethods = {
     const strikeR = this._nodeStrikeRange(n.nodeType, n.tierLvl);
     if (dx * dx + dy * dy > strikeR * strikeR) {
       this._strikeRefused(session, 'out-of-range', { dist: Math.round(Math.sqrt(dx * dx + dy * dy)), max: Math.round(strikeR), nodeType: n.nodeType });
+      this._strikeSnapBack(session, zone, n, Date.now());
       return;
     }
 
@@ -1413,6 +1443,7 @@ export const gatheringMethods = {
         if (!session._extractionRejects) session._extractionRejects = 0;
         session._extractionRejects++;
         this._strikeRefused(session, 'too-early', { earlyBy: earliestOpen - now, openDelayBase: ex.openDelayBase, sinceStart: now - ex.startedAt, hits: Array.isArray(ex.hits) ? ex.hits.length : 0 /* v2.3.2956 */ });
+        this._strikeSnapBack(session, zone, n, now);
         return;
       }
       /* v2.3.1416 (owner: harvest windows no longer time out): the

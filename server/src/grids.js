@@ -97,7 +97,17 @@ export const gridMethods = {
     const oldSig = ps[slot] ? JSON.stringify(ps[slot]) : 'null';
     const newSig = next ? JSON.stringify(next) : 'null';
     if (oldSig === newSig) return false;
-    if (this._threatGearLocked(session.id, ps)) return false;
+    /* v2.3.4642: these two refusals were bare returns (the sweep, V9b "bare-return
+       refusal (level gate ... armour gate)"): a refused swap changes nothing,
+       so no echo followed and the phone kept wearing the piece the worker
+       refused.  The worn slots are sent back, as a refused weapon's are
+       (gear.js, v2.3.4386); `gearresend: false` brings back the silence. */
+    const _armourBack = () => {
+      if (this._gearResendOff && this._gearResendOff()) return;
+      const w = this._wsBySessionId(session.id);
+      if (w) this._resendPlayerState(w, session.id, ['armor', 'legsArmor']);
+    };
+    if (this._threatGearLocked(session.id, ps)) { _armourBack(); return false; }
     /* v2.3.4626: NOT DURING A FIGHT WITH A PLAYER IN NO MAN'S LAND (fightlock.js
        `fightlockarmor`; STATE-MACHINES.md "what is left" after #1523).  The loss
        takes the spare armour and legs and leaves what you wear: putting your
@@ -114,7 +124,7 @@ export const gridMethods = {
       return false;
     }
     /* _prog3EquipOk's 'armor' slot covers BOTH body pieces (gear.js). */
-    if (next && !this._prog3EquipOk(ps, 'armor', next)) return false;
+    if (next && !this._prog3EquipOk(ps, 'armor', next)) { _armourBack(); return false; }
     /* v2.3.4012: a piece still a "?" is opened as it goes on, with its
        ceremony (revealbag.js): a worn grade shows on your body (`eqg`) and
        counts in every hit, so nothing worn is a secret */
