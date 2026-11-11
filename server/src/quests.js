@@ -441,7 +441,7 @@ export const questMethods = {
         const { leveled } = this._addCombatXp(ps, reward.xp);
         if (leveled) {
           this._recomputeMaxes(ps);
-          if (typeof ps.maxHp === 'number') ps.hp = ps.maxHp;
+          if (typeof ps.maxHp === 'number') this._hpSet(ps, ps.maxHp, 'quest_level_up');   /* v2.3.4820: the life door */
           if (typeof ps.maxStamina === 'number') ps.stamina = ps.maxStamina;
           if (typeof ps.maxMana === 'number') ps.mana = ps.maxMana;
         }

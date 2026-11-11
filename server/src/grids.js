@@ -190,7 +190,7 @@ export const gridMethods = {
     }
     if (levelsGained > 0) {
       this._recomputeMaxes(ps);
-      if (typeof ps.maxHp === 'number') ps.hp = ps.maxHp;
+      if (typeof ps.maxHp === 'number') this._hpSet(ps, ps.maxHp, 'bp_level_up');
       if (typeof ps.maxStamina === 'number') ps.stamina = ps.maxStamina;
       if (typeof ps.maxMana === 'number') ps.mana = ps.maxMana;
     }
@@ -214,7 +214,7 @@ export const gridMethods = {
     const _was = JSON.stringify([ps.level, ps.maxHp, ps.maxStamina, ps.maxMana]);
     this._recomputeMaxes(ps);
     if ((ps.level || 1) > prevLevel) {
-      if (typeof ps.maxHp === 'number') ps.hp = ps.maxHp;
+      if (typeof ps.maxHp === 'number') this._hpSet(ps, ps.maxHp, 'bp_earned_level_up');
       if (typeof ps.maxStamina === 'number') ps.stamina = ps.maxStamina;
       if (typeof ps.maxMana === 'number') ps.mana = ps.maxMana;
     }
@@ -703,8 +703,8 @@ export const gridMethods = {
     ps.maxStamina = Math.floor(this._calcMaxStamina(ps.endurance || 0) + this._staminaFlat(ps)); // v2.3.1345: flat
     ps.maxMana = this._calcMaxMana(ps.mind || 0);
     // Clamp current values into the new ranges.
-    if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
-    ps.hp = Math.min(ps.hp, ps.maxHp);
+    if (typeof ps.hp !== 'number') this._hpSet(ps, ps.maxHp, 'maxes_unset');
+    this._hpSet(ps, Math.min(ps.hp, ps.maxHp), 'maxes_clamp'); /* v2.3.4820: the life door */
     if (typeof ps.stamina !== 'number') ps.stamina = ps.maxStamina;
     ps.stamina = Math.min(ps.stamina, ps.maxStamina);
     if (typeof ps.mana !== 'number') ps.mana = ps.maxMana;
@@ -899,7 +899,7 @@ export const gridMethods = {
       if (((ps.defenseSkill && ps.defenseSkill.level) || 0) > _oldDl) _skillLeveledUp = true;
     }
     if (_skillLeveledUp) {
-      if (typeof ps.maxHp === 'number') ps.hp = ps.maxHp;
+      if (typeof ps.maxHp === 'number') this._hpSet(ps, ps.maxHp, 'skill_level_up');
       if (typeof ps.maxStamina === 'number') ps.stamina = ps.maxStamina;
       if (typeof ps.maxMana === 'number') ps.mana = ps.maxMana;
       this._queuePlayerStateFlush(session.id);
@@ -1085,7 +1085,7 @@ export const gridMethods = {
       const prevLevel = ps.level || 1;
       this._recomputeMaxes(ps);
       if ((ps.level || 1) > prevLevel) {
-        if (typeof ps.maxHp === 'number') ps.hp = ps.maxHp;
+        if (typeof ps.maxHp === 'number') this._hpSet(ps, ps.maxHp, 'stats_level_up');
         if (typeof ps.maxStamina === 'number') ps.stamina = ps.maxStamina;
         if (typeof ps.maxMana === 'number') ps.mana = ps.maxMana;
       }

@@ -3,6 +3,7 @@ import { trapButtonView, armTrap, trapProbe } from '@/game/trapping.js';
 import { TRAP_ICON_URL } from '@/rendering/controlsPreload.js';   /* warmed on the loading screen */
 import { ctlColumn, ctlBottom, CTL_SLOT, leftCluster, LCTL_SLOT } from '@/ui/panels/ShieldButton.jsx';   /* v2.3.3617: upright, a round button in the column */
 import { Skin } from '@/ui/panels/controlSkin.jsx';
+import { fineInput } from '../../game/deviceProfile.js';   /* v2.3.4804: the device profile */
 
 /* ═══ v2.3.3120: THE TRAP POP-UP ═══
  * Plan: docs/PET-TRAPPING-PLAN.md, "Arming, and the kill".  When you have a
@@ -133,7 +134,7 @@ export function TrapButton({ stateRef, isLandscape }) {
     },
     onTouchCancel: (e) => { e.stopPropagation(); touchRef.current = null; },
   };
-  const fine = typeof matchMedia === 'function' && matchMedia('(pointer:fine)').matches;
+  const fine = fineInput();   /* v2.3.4804: the device profile */
   if (!fine && !isLandscape) {
     const col = ctlColumn(false);
     const size = col.size;

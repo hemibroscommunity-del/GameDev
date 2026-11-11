@@ -29,6 +29,7 @@ import { playIsLandscape } from './playViewport.js';
 import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470: the layer's own box -- a computer's is the game's column (TRAPS §232) */
 import { deskWords } from '@/game/deskWords.js'; /* v2.3.3615: "tap" reads "click" on a computer */
 import { deskBigActive } from '@/ui/deskWide.js'; /* v2.3.3687; v2.3.3793: no OPEN chip now, but the coach card's clear-of-the-quest-HUD layout (main) asks it; v2.3.4152: either computer layout */
+import { fineInput } from '../../game/deviceProfile.js';   /* v2.3.4804: the device profile */
 
 /* ═══════════════════════════════════════════════════════════════════
    QUEST COACH — the controls are taught by the questline (v2.3.1796)
@@ -183,13 +184,7 @@ function _markTooBig(L, r) {
 
 /* v2.3.3407: is this a mouse-driven browser (game.css's own test) -- asked
    every frame, so the query list is made once */
-let _fineMq = null;
-function _finePointer() {
-  try {
-    if (!_fineMq && typeof window !== 'undefined' && window.matchMedia) _fineMq = window.matchMedia('(pointer:fine)');
-    return !!(_fineMq && _fineMq.matches);
-  } catch (_e) { return false; }
-}
+function _finePointer() { return fineInput(); }   /* v2.3.4804: the device profile */
 
 /* ═══ v2.3.4360: A MARK ON SOMETHING IN THE WORLD FOLLOWS IT EVERY FRAME ═══
  *
@@ -1759,7 +1754,7 @@ export function QuestCoach(props) {
          open).  On a computer what stands over the band is the keys strip,
          so the card clears that, or the band alone when it is put away.
          TRAPS §220; mp-deskreach 4. */
-      if (typeof matchMedia === 'function' && matchMedia('(pointer:fine)').matches) {
+      if (fineInput()) {   /* v2.3.4804: the device profile */
         const kb = document.querySelector('.bt-kb-hints');
         const kr = kb && getComputedStyle(kb).display !== 'none' ? kb.getBoundingClientRect() : null;
         return Math.max(band + 12, kr && kr.height > 0 ? (box.y + boxH) - kr.top + 8 : 0);

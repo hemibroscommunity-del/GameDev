@@ -39,6 +39,7 @@ import { sheenBatchOn, setSheenPass } from '@/rendering/lightfx/sheenBatch.js'; 
 import { oneBatchOn, setOneBatchLive } from '@/rendering/paletteTex.js';   /* v2.3.3447 */
 import { shadowPrepassOn, setShadowPrepass } from '@/rendering/lightfx/shadows.js';   /* v2.3.3458 */
 import { renderDpr, setRenderResLive } from './renderRes.js';
+import { deviceProfile } from './deviceProfile.js';   /* v2.3.4804: the device profile */
 
 const SETTLE_MS = 1500;
 const MEASURE_MS = 4000;
@@ -335,7 +336,8 @@ export async function runSpeedTest() {
   const device = 'Screen ' + window.innerWidth + ' x ' + window.innerHeight + ' at ' + dev + 'x'
     + (cv ? ', drawn ' + cv.width + ' x ' + cv.height + ' px' : '')
     + (renderDpr() < dev ? ' (lowered to ' + renderDpr() + 'x)' : '')
-    + (/iPhone|iPad/.test(navigator.userAgent || '') ? ', iOS' : '');
+    /* v2.3.4804: the device profile's lanes, so one screenshot says which this machine is in */
+    + (() => { try { const d = deviceProfile(); return ', ' + d.input + (d.computerFrame ? ', computer window' : '') + (d.ios ? ', iOS' : '') + ', looks palette ' + d.palette; } catch (e) { return ''; } })();
   const result = { rows, notes, device, at: Date.now() };
   try { window.__btSpeedTest = result; } catch (e) { /* QA only */ }
   showResult(result);

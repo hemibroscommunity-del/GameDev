@@ -31,6 +31,7 @@ import { openRiseChest } from '@/game/climbActions.js';   /* v2.3.3994: E (or th
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.4105: E beside someone says "Click <name> to talk" */
 import { folkDisplayName } from '@/data/folkNames.js';   /* v2.3.4105: ...by the name his plate wears */
+import { fineInput } from './deviceProfile.js';   /* v2.3.4804: the device profile */
 /* v2.3.4105: aceFlipBus, shopBus, npcSpeaks and mayorSaysNext left with E's
    talk (runTalk): a tap on him answers each (BroTown.jsx tapNpcAtCss) */
 
@@ -177,7 +178,7 @@ export function setupDesktopControls(S, deps) {
     };
     S._interactNow = runInteract;
     /* ═══ DESKTOP KEYBOARD CONTROLS ═══ */
-    S._isDesktop = window.matchMedia('(pointer:fine)').matches;
+    S._isDesktop = fineInput();   /* v2.3.4804: the device profile */
     var onKeyDown = function onKeyDown(e) {
       var _document$activeEleme;
       var _ae = document.activeElement, _aeTag = _ae && _ae.tagName;
@@ -586,7 +587,7 @@ export function setupDesktopControls(S, deps) {
        where the menu is the point: a text field (paste) and a link. */
     var onContextMenu = function onContextMenu(e) {
       try {
-        if (!(window.matchMedia && window.matchMedia('(pointer:fine)').matches)) return;   /* phones unchanged */
+        if (!fineInput()) return;   /* phones unchanged (v2.3.4804: the device profile) */
         var t = e.target;
         if (t && t.closest && t.closest('input, textarea, select, [contenteditable="true"], a[href]')) return;
         e.preventDefault();
