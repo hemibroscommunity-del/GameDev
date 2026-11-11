@@ -15,7 +15,7 @@
  * at each attack a frozen copy of where it was fades over the fill, which has
  * already restarted.  Not touchable, no number, no words.
  *
- * v2.3.4615, the owner: "I just added a sprite sheet for you to use for
+ * v2.3.4625, the owner: "I just added a sprite sheet for you to use for
  * filling up the weapons.  I'd like it to actually lay vertically in the
  * space above the left joystick and try it that way."  So the silhouettes are
  * the owner's pictures now (timingBarArt.js: the empty weapon in dark iron,
@@ -40,14 +40,14 @@ import { mcBarWeapon, mcBarCycle, mcBarTimes, mcBarAttack, timingBarWanted } fro
 import { leftCluster, LCTL_SLOT, ctlBottom } from './ShieldButton.jsx';
 import { TB_ART, TB_SHEET, TB_HALF_X, TB_RECT } from './timingBarArt.js';
 
-const AIR = 4;           /* v2.3.4615: px clear of Burst and Quick Eat either side */
+const AIR = 4;           /* v2.3.4625: px clear of Burst and Quick Eat either side */
 const SHOW_MS = 3000;    /* after an attack, it stays this long with nothing near */
 
 /* the mounted bar (one at a time): its root, the last attack it drew, the
    cycle that attack's fill ran over, which keyframes are running */
 let _bar = null;
 
-/* v2.3.4615: one layer of the owner's picture: the weapon EMPTY (dark) or
+/* v2.3.4625: one layer of the owner's picture: the weapon EMPTY (dark) or
    FULL (gold), or -- `mask` -- the full one's outline in one colour (the
    glint, the frozen copy: game.css paints it), at `s` css px a pixel */
 function Art({ cls, rect, s, full, mask }) {
@@ -61,7 +61,7 @@ function Art({ cls, rect, s, full, mask }) {
   return <i className={'bt-tbar-art ' + cls} style={st} />;
 }
 
-/* v2.3.4615: the box, from the controls' own numbers (ShieldButton.jsx).
+/* v2.3.4625: the box, from the controls' own numbers (ShieldButton.jsx).
  * "The space above the left joystick": what never moves there is the left
  * cluster -- Element Burst (slot 0, over the disc's left edge) and Quick Eat
  * (slot 1, up and to its right), both of them up in exactly the fights the

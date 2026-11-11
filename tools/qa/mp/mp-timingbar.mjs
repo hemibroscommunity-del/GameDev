@@ -9,7 +9,7 @@
  * server/test/perfect-strike.test.mjs; the rules' half manual-combat.test §14.
  * This plays the page, an upright phone with `?manual=3` in BroTown --
  *   1. the trial and the worker's caps (freeSwing, perfectStrike); the bar
- *      mounts as the sword, not touchable -- v2.3.4615: the owner's own
+ *      mounts as the sword, not touchable -- v2.3.4625: the owner's own
  *      picture, standing upright over the MOVEMENT disc between Burst's and
  *      Quick Eat's places ("lay vertically in the space above the left
  *      joystick"), the picture warmed on the loading screen;
@@ -78,7 +78,7 @@ const PAGE_TOOLS = `
   window.__tbSpan = (sel) => {
     const bar = document.querySelector('.bt-tbar'), w = bar && bar.querySelector(sel);
     if (!bar || !w) return null;
-    /* v2.3.4615: the bar stands up, its grip at the bottom: a span is measured from the bottom up */
+    /* v2.3.4625: the bar stands up, its grip at the bottom: a span is measured from the bottom up */
     const b = bar.getBoundingClientRect(), r = w.getBoundingClientRect();
     const top = Math.max(b.top, r.top), bot = Math.min(b.bottom, r.bottom);
     return { from: Math.round(((b.bottom - bot) / b.height) * 100) / 100, to: Math.round(((b.bottom - top) / b.height) * 100) / 100 };
@@ -109,7 +109,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const S = window._gameState.current, c = S._serverCaps || {};
       const bar = document.querySelector('.bt-tbar');
       const b = bar && bar.getBoundingClientRect();
-      /* v2.3.4615: upright over the movement disc, in the gap between Element Burst's and Quick Eat's slots
+      /* v2.3.4625: upright over the movement disc, in the gap between Element Burst's and Quick Eat's slots
          (WeaponPill's every-control boxes: x/r from the screen's left, b/h px over the band) */
       const q = window.__btWeaponPill, sl = q && q.slots ? q.slots(innerWidth > innerHeight, innerWidth) : null;
       const base = bar && bar.querySelector('.bt-tbar-base'), full = bar && bar.querySelector('.bt-tbar-full');
@@ -127,7 +127,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     rec.ok('1 on the trial against a worker that judges the perfect strike (caps.freeSwing, caps.perfectStrike), the bar mounts as the sword',
       !!up && one.free && one.freeSwing === 1 && one.perfectStrike === 1 && one.tbar === 'sword', { up, one });
-    /* v2.3.4615, the owner: "lay vertically in the space above the left joystick" */
+    /* v2.3.4625, the owner: "lay vertically in the space above the left joystick" */
     rec.ok('1 ...standing upright over the movement disc, in the gap between Burst\'s and Quick Eat\'s places, and not touchable',
       one.upright && one.overStick && one.clearX && one.pe === 'none', one);
     rec.ok('1 ...drawn from the owner\'s sheet, its pixels never smoothed, the picture warmed on the loading screen and held',

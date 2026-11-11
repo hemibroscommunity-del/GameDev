@@ -8211,7 +8211,7 @@ html[data-orient="landscape"] .bt-fish-card{top:calc(env(safe-area-inset-top,0px
    TimingBar's custom properties (--cyc, --fd, --gd, --gl, --fz, --w). */
 .bt-tbar{position:fixed;z-index:31;pointer-events:none;touch-action:manipulation;overflow:hidden;opacity:0;transition:opacity .22s ease}
 .bt-tbar[data-on="1"]{opacity:1}
-/* v2.3.4615: the owner's pictures (TimingBar.jsx Art, timingBarArt.js): the
+/* v2.3.4625: the owner's pictures (TimingBar.jsx Art, timingBarArt.js): the
    weapon lies on its side in .bt-tbar-rot, turned a quarter up about its
    centre, so every window below still slides along X and the bar fills from
    the grip at the bottom to the point at the top.  The picture's own pixels,

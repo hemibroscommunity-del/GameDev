@@ -1,4 +1,4 @@
-/* ═══ v2.3.4615: THE TIMING BAR'S PICTURE, WARMED ON THE LOADING SCREEN ═══
+/* ═══ v2.3.4625: THE TIMING BAR'S PICTURE, WARMED ON THE LOADING SCREEN ═══
  *
  * CLAUDE.md's preloading LAW for a DOM picture (xpBarPreload.js's three
  * steps): the timing bar (ui/panels/TimingBar.jsx) shows on the first swing

@@ -384,7 +384,7 @@ whole trial, the bar with it (`caps.perfectStrike` goes with `freeSwing`).
 The bar is drawn in its own change (another session, with the owner's art).
 Everything it needs to read is here; it adds no rule of its own.
 
-**v2.3.4615, as built** (`src/ui/panels/TimingBar.jsx`): the owner's own
+**v2.3.4625, as built** (`src/ui/panels/TimingBar.jsx`): the owner's own
 sheet (*"I just added a sprite sheet for you to use for filling up the
 weapons. I'd like it to actually lay vertically in the space above the left
 joystick and try it that way."*), `public/sprites/timingbar/weapons.png`
@@ -439,7 +439,7 @@ glint is the phone's guide.
   .set(3)` puts the review's one page on the trial (the worker is not asked).
 - Art: preloaded behind the loading screen (PRELOADING IS LAW) and in its
   memory slot (`docs/MEMORY-MAP.md`; 256 colours).
-- **Where: "the space above the left joystick"** (the owner, v2.3.4615; it
+- **Where: "the space above the left joystick"** (the owner, v2.3.4625; it
   was "north of the right joystick", whose own top edge Sprint and the
   minimap hold). A computer draws no disc (place it in the play column,
   sizes from the column: `fixedBox` if it is measured).

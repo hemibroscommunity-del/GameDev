@@ -334,7 +334,7 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
   /* the wiring */
   const pj = read('../../src/game/projectiles.js'), ge = read('../../src/networking/gameEvents.js'), gd = read('../../src/data/gameDisplay.js');
   const tb2 = read('../../src/ui/panels/TimingBar.jsx'), css = read('../../src/styles/game.css'), bro = read('../../src/ui/BroTown.jsx');
-  /* v2.3.4615: the owner's own sheet replaced the inline silhouettes: ONE small file, warmed on the loading screen
+  /* v2.3.4625: the owner's own sheet replaced the inline silhouettes: ONE small file, warmed on the loading screen
      on the trial only (the preloading law), its pixels never smoothed, the bar standing upright over the left disc */
   const tba = read('../../src/ui/panels/timingBarArt.js'), tbp = read('../../src/rendering/timingBarPreload.js'), pa = read('../../src/rendering/preloadAnimations.js');
   check('14m the bar is the owner\'s picture: one file, warmed on the loading screen and only on the trial, never smoothed, not touchable',

@@ -1,4 +1,4 @@
-/* ═══ v2.3.4615: THE TIMING BAR'S WEAPONS -- THE OWNER'S OWN SHEET ═══
+/* ═══ v2.3.4625: THE TIMING BAR'S WEAPONS -- THE OWNER'S OWN SHEET ═══
  *
  * The owner, 2026-11-10: "I just added a sprite sheet for you to use for
  * filling up the weapons.  I'd like it to actually lay vertically in the
