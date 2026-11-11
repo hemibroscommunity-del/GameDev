@@ -87,7 +87,7 @@ export function earVol(S, x, y) {
  *  0.55, lunge 0.5, arrow 0.6, a bolt's 0.22 under its magic).  `src` names
  *  the weapon for the tests; `mat` is the voice when the caller captured it
  *  at the hit (an arrow lands a beat after it hits). */
-export function monsterHitSfx(m, vol, src, mat) {
+export function monsterHitSfx(m, vol, src, mat, pitch) {   /* v2.3.4615: `pitch`, the rising pitch (manualCombat.js mcHitPitch; 1 or none: as ever) */
   if (!m) return;
   /* sound only, and called from inside the swing and the arrow loops: nothing
      here may throw into them */
@@ -97,8 +97,8 @@ export function monsterHitSfx(m, vol, src, mat) {
     const now = Date.now();
     m._hitSndAt = now;
     hitSoundStats.local++;
-    hitSoundStats.last = { arch, mat: snd, vol, src: src || null, at: now };
-    BT_AUDIO.materialHit(snd, { vol });
+    hitSoundStats.last = { arch, mat: snd, vol, src: src || null, at: now, pitch: pitch || 1 };
+    BT_AUDIO.materialHit(snd, pitch > 0 && pitch !== 1 ? { vol, pitch } : { vol });
     noteVoice(hitSoundStats.last);
   } catch (e) {
     /* never silent: the arrow's own old sample (v2.3.2511's fallback) */

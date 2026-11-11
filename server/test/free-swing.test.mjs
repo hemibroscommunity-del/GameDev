@@ -16,8 +16,10 @@
  *   6. the fractions: tiny hits never add up past one full hit a cycle, and
  *      the floor of 1 cannot be farmed;
  *   7. a swing's other targets take its share, each once;
- *   8. the bonus: only with the phone's ask AND `freeswingbonus`, only a full
- *      swing, never on a player;
+ *   8. the bonus: only with the phone's ask AND `freeswingbonus`, only a
+ *      perfect strike (v2.3.4615: a swing timed to the full cycle; a full
+ *      swing after a rest is an ordinary full hit -- perfect-strike.test has
+ *      the window), never on a player;
  *   9. a paid special swing is untouched and counted as a swing;
  *  10. against a player: damage a second the same at every rate, the
  *      blocker's stamina by the share, no status from a light swing;
@@ -332,9 +334,14 @@ check('12. a new character\'s sword cycle is the untried 600 ms', cycle === 600,
   arm(A); arm(J2); arm(C);
   const D = swingFor(A, m, 600, 0).dmg;
   const m2 = monster(J2, 40);
-  const Db = swingFor(J2, m2, 600, 0).dmg;
-  check('8. a full swing from a phone that asked for the bonus is 12% harder', Db === Math.floor(D * 1.12) || Db === Math.round(D * 1.12), { D, Db });
-  check('8. ...and its monster_hit says so (pw 1.12)', !!hitEv() && hitEv().payload.pw === 1.12, hitEv() && hitEv().payload);
+  /* v2.3.4615: a full swing after a rest is an ordinary full hit now; the
+     bonus is a perfect strike's -- a swing a full cycle after the last */
+  const Drest = swingFor(J2, m2, 600, 0).dmg;
+  check('8. v2.3.4615: a full swing after a rest, from a phone that asked, is an ordinary full hit', Drest === D, { D, Drest });
+  T -= 10000 - 600; home(J2, m2);   /* swingFor left the clock 10 s on: a cycle after its swing */
+  const Db = hit(J2, m2, { sw: 97 });
+  check('8. a perfect strike (a full cycle after the last swing) from a phone that asked for the bonus is 12% harder', Db === Math.floor(D * 1.12) || Db === Math.round(D * 1.12), { D, Db });
+  check('8. ...and its monster_hit says so (pw 1.12, pf 1)', !!hitEv() && hitEv().payload.pw === 1.12 && hitEv().payload.pf === 1, hitEv() && hitEv().payload);
   T += 10000; home(J2, m2);
   hit(J2, m2, { sw: 98 });
   T += 150; home(J2, m2);
@@ -342,11 +349,13 @@ check('12. a new character\'s sword cycle is the untried 600 ms', cycle === 600,
   check('8. a light swing gets no bonus (its plain share)', !!hitEv() && hitEv().payload.pw === 0.25, { lightB, p: hitEv() && hitEv().payload });
   room._liveFlags = { freeswingbonus: false };
   T += 10000;
-  const Dnb = swingFor(J2, m2, 600, 0).dmg;
+  swingFor(J2, m2, 600, 0); T -= 10000 - 600; home(J2, m2);   /* a cycle after it */
+  const Dnb = hit(J2, m2, { sw: 96 });
   check('8. `freeswingbonus: false`: no bonus even when asked', Dnb === D, { D, Dnb });
   room._liveFlags = {};
   T += 10000;
-  check('8. `fs: 1` never gets it', swingFor(A, m, 600, 0).dmg === D);
+  swingFor(A, m, 600, 0); T -= 10000 - 600; home(A, m);
+  check('8. `fs: 1` never gets it', hit(A, m, { sw: 95 }) === D);
 }
 
 // ── 9. a paid special swing ──
@@ -472,7 +481,7 @@ check('12. a new character\'s sword cycle is the untried 600 ms', cycle === 600,
   T += 200;
   hit(A, ms[0], { sw: 78 });
   check('12. a new swing forgets the last one\'s targets', A.ps._fs.ids.size === 1);
-  check('12. the state is six fields on the player (gone with the player)', Object.keys(A.ps._fs).length === 6, Object.keys(A.ps._fs));
+  check('12. the state is seven fields on the player (gone with the player; v2.3.4615: + the perfect strike\'s)', Object.keys(A.ps._fs).length === 7, Object.keys(A.ps._fs));
   /* the Speed stat */
   const ps = A.ps;
   const was = ps.prog3 && ps.prog3.atk ? JSON.parse(JSON.stringify(ps.prog3.atk)) : null;
