@@ -319,6 +319,13 @@ export const STEP_PLACES = {
 export const OTHER_PLAYS = [
   ['swing', 'fight', 'Your sword swing (the whoosh)', { fn: 'swordSwing', args: ['sword-swing', { vol: 0.6 }] }],
   ['swipe', 'fight', "Your sword's special swipe", { fn: 'specialSwipe', args: [{ vol: 0.6 }] }],
+  /* v2.3.4800: the weapon feel's own sounds, made with WebAudio (data/weaponFeelSound.js; no recordings) */
+  ['feelReady', 'fight', 'Your sword coming full again: the glint\'s small ring (a cut now is a perfect strike)', { fn: 'feelSound', args: ['ready', 1] }],
+  ['feelCut', 'fight', 'A quick, light cut landing: the tick over the hit (a swing before the blade is full)', { fn: 'feelSound', args: ['contact', 0.4] }],
+  ['feelCleave', 'fight', 'A full cut landing: the thud under the hit', { fn: 'feelSound', args: ['contact', 1] }],
+  ['feelPerfect', 'fight', 'A perfect cut landing (struck in the glint): the deep thud and crack under the hit', { fn: 'feelSound', args: ['contact', 1.12] }],
+  ['feelBuild', 'fight', 'A weapon building power: the tone rising as it builds, and its release (the bow and the staff, as they come)', { fn: 'feelBuildDemo', args: [1] }],
+  ['feelStage', 'fight', 'A build stage landing: a pulse, a step deeper each stage (the staff, as it comes)', { fn: 'feelSound', args: ['stage', 1, { stage: 2 }] }],
   ['arrowHit', 'hits', 'Your arrow hitting a monster', { sample: 'arrow-hit', opts: { vol: 0.6 } }],
   ['magicHit', 'hits', 'Your staff bolt hitting a monster', { fn: 'magicHit', args: [{ vol: 0.6 }] }],
   ['staffCast', 'fight', 'Your staff casting a bolt', { sample: 'magic-cast', opts: { vol: 0.55 } }],

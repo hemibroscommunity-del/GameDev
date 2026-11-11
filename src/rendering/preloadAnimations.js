@@ -65,7 +65,6 @@ import { loadNpcSprites, loadZoneDecor, freeZoneDecor, loadTownScenery } from '.
 import { preloadLevelUpBurst } from './levelUpBurstPreload.js';
 import { preloadHemiBust } from './hemiBust.js';   /* v2.3.3999: the Hemi Bros portrait's layers */
 import { preloadXpBar } from './xpBarPreload.js';   /* v2.3.3695: the XP bar's skill icons */
-import { preloadTimingBar } from './timingBarPreload.js';   /* v2.3.4625: the timing bar's weapons (the free-swing trial only) */
 import { preloadStatDemo } from './statDemoPreload.js'; /* v2.3.2591: the level-up burst strip + its skill icons */
 import { preloadGestureCue } from './gestureCuePreload.js'; /* v2.3.2760: the harvest cue's mini tools */
 import { preloadControls } from './controlsPreload.js'; /* v2.3.3018: the touch controls' pictures (the owner's mockup) */
@@ -467,11 +466,9 @@ export async function preloadWorldAnimations() {
        icons), DOM pictures on the top bar from the first hit of any fight:
        GLOBAL for the level-up's reason.  See xpBarPreload.js. */
     xpBar: preloadXpBar(),
-    /* v2.3.4625: the timing bar's weapons (the owner's sheet), a DOM picture
-       shown on the first swing of a fight: GLOBAL for the XP bar's reason,
-       and ONLY on the free-swing trial (`?manual=3`); off it, nothing loads.
-       See timingBarPreload.js. */
-    timingBar: preloadTimingBar(),
+    /* v2.3.4800: the timing bar's weapons (v2.3.4625) load no more: the bar
+       is gone, readiness is shown on the blade (docs/specs/sword-feel.md).
+       The owner's sheet stays on disk (public/sprites/timingbar/). */
     /* ═══ v2.3.3776: the skateboard's three views (the owner's picture, cut
        by tools/art/cut-skateboard.mjs), drawn under any rider in BroTown and
        worn by the board button.  GLOBAL: another rider can roll up to you

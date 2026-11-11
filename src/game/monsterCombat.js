@@ -60,6 +60,7 @@ import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, f
 import { isWheelSwimming } from '@/game/wheelSwim.js'; /* v2.3.3003: no fighting while you swim */
 import { jumpAirborne } from '@/game/jump.js'; /* v2.3.3017: nor in the air */
 import { tapAttackWaiting, tapAttackDone, tapSwingAim } from '@/game/tapJump.js'; /* v2.3.3712: a tap on the right stick asks for one attack */
+import { swordFeelContact } from '@/game/swordFeel.js';   /* v2.3.4800: the cut's weight at contact */
 import { manualOn, mcFrame, mcFireWaiting, mcFireDone, mcTakeArmed, mcBowInterval, mcFreeSwing, mcHitVol, mcHitPitch } from '@/game/manualCombat.js'; /* v2.3.4395: manual combat (`?manual=1`) -- a bow or a staff shoots once for each flick, never because the stick is held */
 import { isDazed } from '@/game/elemHits.js'; /* v2.3.3014: nor while a rock monster has you dazed */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the shield hold */
@@ -2430,12 +2431,22 @@ export function updateMonsterCombat(S, deps) {
                    code-drawn circles read as placeholder).  One queue,
                    rendered by effectsRenderer._updateDebrisBursts. */
                 if (!S.hitParticles) S.hitParticles = [];
+                /* ═══ v2.3.4800: THE CUT'S WEIGHT (game/swordFeel.js) ═══
+                   The owner's brief: "a quick cut = a light tick, a small
+                   spark; a full, gleaming cut = a heavy thud, debris,
+                   knock-back, a small camera push in the swing's direction".
+                   The spark, the sound and the push are swordFeelContact's;
+                   it answers the strength the knock-back, the shake and the
+                   debris below are scaled by (null: the feel is off -- the
+                   look before it, unchanged).  The look only: the worker
+                   rolls the damage and its own shove (freeswing.js). */
+                var _sfk = swordFeelContact(S, m, baseAngle);
                 /* v2.3.2843: ...and it knows it was a BLADE -- a flat sheet
                    flung off the edge of the swing (hitMaterialFx), heavier off
                    a greatsword, bigger on a crit or a special. */
                 spawnHitDebris(S, m, baseAngle, {
                   mine: true,   /* v2.3.3985: your blow, written down for its death (deathBlow.js) */
-                  weapon: 'sword', crit: !!isCrit, big: !!S._specialAttack,
+                  weapon: 'sword', crit: !!isCrit || !!(_sfk && _sfk.tier === 'perfect'), big: !!S._specialAttack,   /* v2.3.4800: a perfect cut throws the crit's bigger sheet */
                   heavy: (_activeWpn && _activeWpn.type) === 'greatsword',
                   elem: (_activeWpn && _activeWpn.element1) || null,
                 });
@@ -2608,7 +2619,7 @@ export function updateMonsterCombat(S, deps) {
                    below readability and "floaty" is partly this.  Still
                    25-60% under the last owner-approved pre-halving values
                    (called out in the PR body for a one-word veto). */
-                var kbForce = S._specialAttack ? 10 : isCrit ? 7 : 6;
+                var kbForce = (S._specialAttack ? 10 : isCrit ? 7 : 6) * (_sfk ? _sfk.knock : 1);   /* v2.3.4800: a light cut barely moves it, a perfect one throws it back */
                 /* Collision adds extra knockback (v2.3.1356: 6 -> 2; v2.3.1402: -> 1) */
                 var collisionKb = collisionResult ? 1 : 0;
                 m.x += Math.cos(kbAngle) * (kbForce + collisionKb);
@@ -2629,7 +2640,7 @@ export function updateMonsterCombat(S, deps) {
                    mark, crisp instead of blurred) -- so both are retired
                    rather than drawn over it. */
                 /* Screen shake */
-                S.screenShake = isCrit ? 6 : 3;
+                S.screenShake = _sfk ? Math.max(isCrit ? 6 : 0, _sfk.shake) : (isCrit ? 6 : 3);   /* v2.3.4800: sized by the cut's weight */
                 /* Camera punch — directional kick toward the hit */
                 if (isCrit || collisionResult) {
                   var cpAngle = Math.atan2(m.y - P.y, m.x - P.x);

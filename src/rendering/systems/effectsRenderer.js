@@ -3,6 +3,7 @@
  * projectiles, telegraphs, lock-on, ambient particles, chat bubbles, building signs.
  * Uses PixiJS Graphics for procedural particles and Text for damage numbers.
  */
+import { swordCutDir } from '../../game/swordFeel.js';   /* v2.3.4800: the cut's turn (forehand / backhand) */
 import { notePileShine } from '@/game/dropLines.js';   /* v2.3.3746: a pile's shine, its best line's colour */
 import { coinPileTexture } from '../coinPileArt.js';   /* v2.3.3734: the owner's coin piles, one an amount */
 import { SMITH_STRIKE_MS, SMITH_STRIKE_FRAME, SMITH_ANVIL_DX, SMITH_ANVIL_DY, SMITH_FIRE_DX, SMITH_SCALE } from '@/game/smithing.js';   /* v2.3.2827 */
@@ -1783,6 +1784,15 @@ const MAGIC_SPECIAL = {
    the slash draws here, not in entityRenderer's retired arc path).
    Art: crescent bulge faces LEFT → rotation aim+PI leads the swing. */
 const SWORD_SLASH = { frames: [], anchor: { x: 0.5, y: 0.5 } };
+/* v2.3.4800: the way each authored sword swing sweeps on screen, unmirrored:
+   -1 counter-clockwise (y down).  Measured off the weapon layers
+   (sword-<dir>-weapon.png: the blade's middle frame by frame) -- south from
+   upper left round through the left and below to the right, east and north
+   the same turn.  Mirrored, each sweeps clockwise (+1).  And the twin that
+   sweeps the other way for the front and back views (swordFeel.js
+   swordCutDir; _updateSwordSwing). */
+export const SWORD_FEEL_AUTHORED_DIR = -1;
+const SWORD_FEEL_FLIP = { south: ['south', true], 'south|m': ['south', false], north: ['north', true], 'north|m': ['north', false] };
 
 /* ═══ v2.3.1825: THE PINE ARROW ═══
  * Owner: "You can use this art for the pine arrow."
@@ -16251,8 +16261,26 @@ export class EffectsRenderer {
       spx.visible = true;
     }
     /* entityRenderer published the active facing; resolve it to a sheet + mirror. */
-    const fmap = this._swordFacing[S._swordSwingDir];
+    let fmap = this._swordFacing[S._swordSwingDir];
     if (!fmap) return;
+    /* ═══ v2.3.4800: THE CUT FOLLOWS THE THUMB (game/swordFeel.js) ═══
+       The owner's brief: "left-to-right a forehand, right-to-left a
+       backhand".  Every authored swing sweeps one way on screen (measured
+       off the weapon layers: counter-clockwise as drawn, clockwise mirrored:
+       SWORD_FEEL_AUTHORED_DIR), so a cut the other way is the same frames
+       made to sweep back: the front and back views (south, north) take
+       their mirrored twin -- the figure faces the camera or away, so it
+       still faces the same way -- and the side view (east, west), whose
+       mirror would turn the bro round, plays its frames from the last to the
+       first.  No new pose: each is a pair of facing and frames the game
+       already draws.  Your own swing only (the others' relay carries no
+       turn); the look before this with the feel off. */
+    const _cutDir = swordCutDir(S);
+    let _cutBack = false;
+    if (_cutDir && _cutDir !== (fmap[1] ? 1 : -1)) {
+      if (fmap[0] === 'east') _cutBack = true;
+      else fmap = SWORD_FEEL_FLIP[fmap[0] + (fmap[1] ? '|m' : '')] || fmap;
+    }
     const cfg = this._swordCfg[fmap[0]];
     const mirror = fmap[1];
     /* v2.3.2353: count the strip that is DRAWN.  This used to read the plain
@@ -16266,7 +16294,9 @@ export class EffectsRenderer {
     if (!cfg || !frames || !frames.length) return;
     const n = frames.length;
     const elapsed = now - (S.swingTimer || now);
-    const fi = Math.max(0, Math.min(n - 1, Math.floor((elapsed / SWORD_SWING_MS) * n)));
+    const _fi0 = Math.max(0, Math.min(n - 1, Math.floor((elapsed / SWORD_SWING_MS) * n)));
+    const fi = _cutBack ? n - 1 - _fi0 : _fi0;   /* v2.3.4800: a backhand from the side, the frames run back */
+    if (typeof window !== 'undefined' && window.__btSwordCutLog) window.__btSwordCutLog.push({ dir: _cutDir, back: _cutBack, sheet: fmap[0], mirror: !!fmap[1], fi, at: S.swingTimer });   /* QA (mp-swordfeel): only when a test asked */
     const sp = this.swordSprite;
     const anchorY = cfg.feetY / cfg.fh;
     sp.anchor.set(0.5, anchorY);

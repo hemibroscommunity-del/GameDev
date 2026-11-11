@@ -214,9 +214,11 @@ everything written before it. Moving the old scenarios over is not done.
 ## Nothing is drawn for it
 
 There is no gauge, bar or ring. The one thing on the screen is the special's
-button reading ON while armed. (v2.3.4615: the free-swing trial, `?manual=3`,
-gets the owner's own timing bar, drawn with their art in its own change, on
-the rules below: "For the timing bar's art".)
+button reading ON while armed. (v2.3.4615 to v2.3.4656 the free-swing trial
+had the owner's timing bar; v2.3.4800 removed it, the owner: *"Yes remove the
+timing bar. It needs to be something else entirely"*. Readiness is shown on
+the weapon itself now: the sword's blade refills and glints,
+docs/specs/sword-feel.md.)
 
 ## How it is built
 
@@ -315,7 +317,7 @@ sooner than that is dropped there, and that costs nothing either.
 
 ### On the screen
 
-**Nothing new is drawn** (v2.3.4615: but the timing bar, drawn in its own change: "For the timing bar's art", below). A light swing's damage number is smaller, sized by
+**Nothing new is drawn** (v2.3.4800: the blade's own readiness and glint, and the cut's weight, docs/specs/sword-feel.md; the timing bar of v2.3.4615 is gone). A light swing's damage number is smaller, sized by
 the share the worker sends (`pw` on `monster_hit` and `pvp_hit`:
 `mcNumberScale`, a quarter swing 0.7 of the size). A full swing's number is
 as today. A light swing's hit sound is the same sample, quieter
@@ -333,7 +335,7 @@ The constants are `FREE_SWING` in `server/src/freeswing.js`
 `MANUAL.FREE_GAP_MS`. The state lives on the player and is never saved
 (`ps._fs`). It goes when the player leaves.
 
-## The timing bar and the perfect strike (v2.3.4615)
+## The perfect strike, and the timing bar that was (v2.3.4615; the bar removed v2.3.4800)
 
 > The owner, 2026-11-10: *"Yeah rising pitch on quick hits and something that
 > benefits the player if they swipe just around the time their swing is back
@@ -349,8 +351,9 @@ The constants are `FREE_SWING` in `server/src/freeswing.js`
 The free-swing trial's second step. **All of it is behind the trial**
 (`?manual=3`, and a worker advertising `caps.freeSwing` and
 `caps.perfectStrike`): a device not on it meets nothing new. The perfect
-strike, its mana and the sound are in the game; the bar is drawn with the
-owner's art in its own change, on the rules in "For the timing bar's art".
+strike, its mana and the sound are in the game. **v2.3.4800: the bar is
+gone** (below); the blade's glint shows the same window
+(docs/specs/sword-feel.md).
 
 ### The perfect strike (the worker's: `server/src/freeswing.js`)
 
@@ -386,73 +389,23 @@ owner's art in its own change, on the rules in "For the timing bar's art".
 asks without it (remembered), `?swingbonus=1` comes back. The live flags:
 `freeswingbonus: false` turns every bonus off (the damage and the mana, both
 weapons); `perfectbow: false` the bow's part only; `freeswing: false` the
-whole trial, the bar with it (`caps.perfectStrike` goes with `freeSwing`).
+whole trial, the blade's glint with it (`caps.perfectStrike` goes with
+`freeSwing`).
 
-### For the timing bar's art
+### The timing bar (v2.3.4625 to v2.3.4656; REMOVED v2.3.4800)
 
-The bar is drawn in its own change (another session, with the owner's art).
-Everything it needs to read is here; it adds no rule of its own.
-
-**v2.3.4625, as built** (`src/ui/panels/TimingBar.jsx`): the owner's own
-sheet (*"I just added a sprite sheet for you to use for filling up the
-weapons. I'd like it to actually lay vertically in the space above the left
-joystick and try it that way."*), `public/sprites/timingbar/weapons.png`
-(`ui/panels/timingBarArt.js`): the dark iron weapon fills with the gold one
-from the grip at the bottom to the point at the top, standing upright over
-the MOVEMENT disc in the gap between Element Burst's and Quick Eat's places
-(`barBox`). One 2.4 KB file warmed on the loading screen, on the trial only
-(`rendering/timingBarPreload.js`). Where and why: docs/UI-DESIGN-NOTES.md
-"The timing bar".
-
-**The rules** (`src/game/manualCombat.js`, no imports; node tests them,
-`manual-combat.test.mjs` §14):
-
-| function | returns |
-|---|---|
-| `mcBarWeapon(S)` | `'sword'`, `'bow'` or `null`: which bar this hand shows. Not null only on the trial (`?manual=3`) against a worker advertising `caps.freeSwing` AND `caps.perfectStrike`, with a sword (`S.rpg.weapon`) or a bow (`S.rpg.rangedWeapon`) in the active slot. A staff, and everything off the trial: `null`, so nothing is drawn. |
-| `mcBarCycle(S)` | ms the bar fills over: the sword's cycle (the interval `mcFrame` is told each frame: 600 x the Speed stat's cut, the worker's `_fsCycleMs`), or the flicked bow's (`mcBowInterval`, 371 for a new character). |
-| `mcBarTimes(cycle)` | `{ fillMs, fillDelayMs: 0, glintDelayMs, glintMs, freezeMs }`: the fill runs `fillMs` from the attack, never delayed; the glint starts `cycle - PERFECT_EARLY_MS` after it and lasts `PERFECT_EARLY_MS + PERFECT_LATE_MS`; the freeze lasts `FREEZE_MS`. |
-| `mcBarAttack(prevAt, cycle, now)` | `{ frozen, glint }` for an attack at `now`, the last at `prevAt`, its fill running over `cycle`: `frozen` = how full the bar was, `(now - prevAt) / cycle` capped at 1 (computed once, at the attack); `glint` = whether that moment was inside the window. |
-| `timingBarWanted()` | `false` after `?timingbar=0` on this device (remembered in `bt_timingbar`; `?timingbar=1` comes back): the bar hides, the bonus is unchanged. |
-
-**The numbers:** the window is `MANUAL.PERFECT_EARLY_MS` (60) before the full
-cycle to `MANUAL.PERFECT_LATE_MS` (300) after it, mirrors of the worker's
-`FREE_SWING.PERFECT_EARLY_MS` / `PERFECT_LATE_MS` (`perfect-strike.test`
-pins both). `MANUAL.FREEZE_MS` is 400.
-
-**When an attack happened:** every swing and shot stamps `S.swingTimer`; a
-change in it is an attack (the special and the abilities stamp it too).
-
-**The freeze** (the owner: "the bar freezing in place a moment so you could
-see where you decided to swing. It doesn't slow down the recovery of the
-next attack though"): at each attack, a copy of the fill as it was
-(`frozen`), in the glint's look if `glint`, stays `FREEZE_MS` and fades;
-under it the real fill restarts from empty at once.
-
-**A perfect strike, told:** the worker's `monster_hit` for your hit carries
-`pf: 1` (the phone already plays its accent: `gameEvents.js`, the drop roll's
-glint, quiet). The bar may use it too; it is the worker's verdict, where the
-glint is the phone's guide.
-
-**The rules it must keep (CLAUDE.md):**
-- No work a frame: the fill, the glint and the freeze run as CSS animations
-  (or the art's own animation) started ONCE an attack, never a React render
-  or a timer a frame; at most one compare a frame (`S.swingTimer`) in the
-  game's loop (section 7, the page's thread budget). Restarting a CSS
-  animation without a forced layout: flip between two identically defined
-  keyframe names.
-- `pointer-events: none` (a thumb passes through it) and `touch-action:
-  manipulation`.
-- A new screen element: its state in `tools/qa/ui-review/states.mjs` and a
-  section in `docs/UI-DESIGN-NOTES.md` (`--check-notes`). `window.__btManual
-  .set(3)` puts the review's one page on the trial (the worker is not asked).
-- Art: preloaded behind the loading screen (PRELOADING IS LAW) and in its
-  memory slot (`docs/MEMORY-MAP.md`; 256 colours).
-- **Where: "the space above the left joystick"** (the owner, v2.3.4625; it
-  was "north of the right joystick", whose own top edge Sprint and the
-  minimap hold). A computer draws no disc (place it in the play column,
-  sizes from the column: `fixedBox` if it is measured).
-- A staff shows nothing; nothing off the trial.
+The owner's design (*"a sword silhouette laying horizontally that refills as
+a bar and once the bar reaches the top it glints"*), drawn with their own
+sheet standing over the left joystick, with a frozen copy where you struck.
+Removed on the owner's word, 2026-11-11: *"Yes remove the timing bar. It
+needs to be something else entirely"*: readiness is shown ON THE WEAPON now,
+never a gauge (docs/specs/sword-feel.md). Gone with it: `TimingBar.jsx`,
+`timingBarArt.js`, `timingBarPreload.js`, its CSS (`.bt-tbar`), its rules in
+manualCombat.js (`mcBarWeapon`, `mcBarCycle`, `mcBarTimes`, `mcBarAttack`,
+`timingBarWanted`, `?timingbar`), `mp-timingbar`, its two UI-review pictures.
+The owner's sheet stays on disk (`public/sprites/timingbar/weapons.png`, not
+loaded). The window's numbers stay (`MANUAL.PERFECT_EARLY_MS`,
+`PERFECT_LATE_MS`): the blade glints for exactly them.
 
 ### The sound (the phone's)
 
@@ -466,7 +419,8 @@ glint is the phone's guide.
 ### Not the same, and why
 
 - **A swing that hits nothing never reaches the worker**, so the worker
-  times the next swing from the last one that hit, while the bar restarts at
+  times the next swing from the last one that hit, while the blade (until
+  v2.3.4800 the bar) restarts at
   every swing. In a steady fight they agree; right after a miss the glint
   can promise a strike the worker does not count.
 - **A script times perfectly.** The bonus is 12% and a little mana; reading
@@ -493,9 +447,9 @@ glint is the phone's guide.
   phone rules and wiring.
 - `server/test/perfect-strike.test.mjs` (v2.3.4615): the perfect strike on
   the real GameRoom, the bow's arrows through the real router (its header
-  lists the checks); `manual-combat.test.mjs` §14 the bar's numbers, the
-  freeze, the pitch and the wiring. The bar's own phone test comes with
-  the bar.
+  lists the checks); `manual-combat.test.mjs` §14 the perfect strike's
+  wiring, the pitch and (v2.3.4800) the bar's absence. The blade's glint:
+  `weapon-feel.test`, `mp-swordfeel` (docs/specs/sword-feel.md).
 - `server/test/manual-combat.test.mjs`: the switch; a flick, a tap, a nudge,
   the cancel, a slow drag; no faster than the weapon (too soon, kept, the
   window's edges); a forced end; a sword's stroke, back and forth, the pause,

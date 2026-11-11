@@ -2,6 +2,7 @@
  * Entity Renderer — renders player, monsters, other players, NPCs, and pets.
  * Uses PixiJS Graphics for procedural shapes (matching the original Canvas 2D look).
  */
+import { feelTint } from '../../game/weaponFeel.js';   /* v2.3.4800: the sword's blade, dull right after a swing */
 import { tickSmithing } from '@/game/smithing.js';   /* v2.3.2827: the smith borrows the mining swing */
 import { Assets, Cache, ColorMatrixFilter, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture } from 'pixi.js';
 import { readbackFrames } from '../photoSheet.js';   /* v2.3.2987: the stat scene's roll and jog, one readback */
@@ -15796,7 +15797,15 @@ export class EntityRenderer {
           /* v2.3.1760: the weapon's METAL is its blacksmith tier (gearBase), so
              a copper sword is copper everywhere without a new field.  Melee
              only — owner: "only for metals though not staff or bow". */
-          weaponSprite.tint = weaponTint(wpn && wpn.type, wpn && wpn.gearBase);
+          /* ═══ v2.3.4800: THE BLADE REFILLS (game/swordFeel.js) ═══
+             The owner's brief: "dull right after a swing, brightening over
+             the sword's cycle".  Your sword only, with its feel on: its metal
+             times the readiness (weaponFeel.js feelDim, 0.5 to 1); the glint
+             itself is drawn in the feel's own layer (weaponFeelFx.js).  A
+             tint is not a structural change (TRAPS §218). */
+          const _wTint = weaponTint(wpn && wpn.type, wpn && wpn.gearBase);
+          const _feelV = S._sf && S._sf.view;
+          weaponSprite.tint = (_feelV && _feelV.dim < 1 && (S.rpg && (S.rpg.activeSlot || 'melee') === 'melee')) ? feelTint(_wTint, _feelV.dim) : _wTint;
           _lastWeaponSprite = weaponSprite; /* v2.3.1760: QA probe */
           /* v2.3.1786: carried-blade probe — a headless run cannot read the
              canvas, so the blade-up work is measured from here. */

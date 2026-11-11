@@ -28,6 +28,7 @@ import './paletteLoad.js';                                 /* v2.3.3464: the far
 import { JumpFx } from './jumpFx.js';                 /* v2.3.3017: a jumper is drawn in the air */
 import { RideFx } from './rideFx.js';                 /* v2.3.3776: a rider is drawn on the board */
 import { EmoteFx } from './emoteFx.js';               /* v2.3.3392: a bro who emotes moves */
+import { WeaponFeelFx, setLiveFeelFx } from './systems/weaponFeelFx.js';   /* v2.3.4800: the weapon feel's pictures (the glint, the cut's trail, the sparks) */
 import { deathCrumble } from './deathCrumble.js';     /* v2.3.2712 */
 import { setFighterEffects } from './fighterCapture.js';   /* v2.3.2986; v2.3.2987 + the player renderer */
 import { setMonsterDeathRenderer } from './monsterDeathFx.js';   /* v2.3.2913 */
@@ -341,6 +342,8 @@ export async function initPixiRenderer(canvas) {
   const jumpFx = new JumpFx();          /* v2.3.3017 */
   const rideFx = new RideFx();          /* v2.3.3776 */
   const emoteFx = new EmoteFx();        /* v2.3.3392 */
+  const weaponFeelFx = new WeaponFeelFx(layers.weaponFeel, app.renderer);   /* v2.3.4800: its own world layer */
+  setLiveFeelFx(weaponFeelFx);
   worldFx.setEntityRenderer(entityRenderer);   /* v2.3.2715: night lights the plates and the monsters */
   deathCrumble.setRenderer(app.renderer);
   /* v2.3.2986: the stat scene's hero swings in frames photographed off the
@@ -513,6 +516,7 @@ export async function initPixiRenderer(canvas) {
     /* v2.3.2975: made on the way into the Wheel, destroyed -- every page let
        go -- on the way out (the ZONE-ASSET rule) */
     try { silhouettes.clear(); } catch (e) { /* ignore */ }   /* v2.3.3707: each rides on a thing of the zone left */
+    try { weaponFeelFx.clear(); } catch (e) { /* ignore */ }   /* v2.3.4800: a cut's trail does not follow you into the next zone */
     if (wheelObjects && !isWheelTrialZone(zoneId)) { try { wheelObjects.destroy(); } catch (e) { /* ignore */ } wheelObjects = null; }
     if (!wheelObjects && isWheelTrialZone(zoneId) && wheelObjectsOn()) wheelObjects = new WheelObjects(layers.entities, app.renderer);
     /* v2.3.3136: made on the way onto your farm, after the Wheel's has gone
@@ -814,6 +818,13 @@ export async function initPixiRenderer(canvas) {
        lights, which cast them where they stand. */
     try { emoteFx.update(S, entityRenderer); }
     catch (e) { if (!update._emoteErr) { update._emoteErr = true; console.error('[pixi-render] emoteFx threw', e && e.message, e && e.stack); } }
+    /* ═══ v2.3.4800: THE WEAPON FEEL, AFTER EVERYTHING THAT MOVES THE BODY ═══
+       The blade's glint reads where the hand put the blade this frame
+       (systems/weaponFeelFx.js); the cut's trail and the sparks drain the
+       game's queue (S._feelFx).  Its own layer, so its changes rebuild only
+       its own list. */
+    try { weaponFeelFx.frame(S, entityRenderer, now); }
+    catch (e) { if (!update._feelErr) { update._feelErr = true; console.error('[pixi-render] weaponFeelFx threw', e && e.message, e && e.stack); } }
     /* v2.3.2710: light and shine, LAST of the world passes: a shadow copies
        each figure's pieces where they are THIS frame, so it runs after
        everything that moves them -- the entity pass, the stand-ins placed by
@@ -936,6 +947,7 @@ export async function initPixiRenderer(canvas) {
     /* v2.3.2710; v2.3.3152: destroy, not clear -- the shadow system stayed in
        shadows.js's module list after every rebuild, its old world with it */
     try { lightFx.destroy(); } catch (e) { /* ignore */ }
+    try { weaponFeelFx.destroy(); } catch (e) { /* ignore */ }   /* v2.3.4800: its pictures and sprites go with the renderer */
     try { minimap.destroy(); } catch (e) {}
     if (fpsOverlay) fpsOverlay.destroy();
     /* ═══ v2.3.3074: CUT THE OLD RENDERER LOOSE FROM TEXTURES THAT OUTLIVE IT ═══
