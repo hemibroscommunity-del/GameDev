@@ -435,7 +435,7 @@ import { sendChatMessage, setChatMoveSender } from '@/game/chat.js';   /* v2.3.3
 import { subscribeMutes, subscribeBlocks } from '@/game/chatMute.js'; /* v2.3.1981; v2.3.4365: + subscribeBlocks */
 /* v2.3.787: zone transitions (town exits, tile-9 return, dungeon entrance/exit)
    extracted behavior-frozen (REBUILD-PLAN Phase 6). */
-import { handleZoneTransitions } from '@/game/zoneTransitions.js';
+import { handleZoneTransitions, changeZone } from '@/game/zoneTransitions.js';   /* v2.3.4643: + the one door (TRAPS §304) */
 import { holdForAvatar, holdForAvatarAlso } from '@/game/avatarHold.js'; /* v2.3.3520: the straight-in road waits for your bro's pictures behind a veil; v2.3.3689: + the server's look's */
 /* v2.3.789: desktop keyboard handlers extracted behavior-frozen (REBUILD-PLAN Phase 7). */
 import { setupDesktopControls } from '@/game/desktopControls.js';
@@ -16039,7 +16039,7 @@ export var BroTown = function BroTown(_ref0) {
         e.preventDefault();
         var S2 = stateRef.current,
           P2 = S2.player;
-        S2.currentZone = 'shadow';
+        changeZone(S2, 'shadow');   /* v2.3.4643: the one door (TRAPS §304) */
         updateZoneDimensions('shadow');
         BT_AUDIO.startZoneAmbient('shadow');
         S2.map = generateZoneMap('shadow');
@@ -16077,7 +16077,7 @@ export var BroTown = function BroTown(_ref0) {
         e.preventDefault();
         var S2 = stateRef.current,
           P2 = S2.player;
-        S2.currentZone = 'radiant';
+        changeZone(S2, 'radiant');   /* v2.3.4643: the one door (TRAPS §304) */
         updateZoneDimensions('radiant');
         BT_AUDIO.startZoneAmbient('radiant');
         S2.map = generateZoneMap('radiant');

@@ -208,5 +208,39 @@ const ge = src('src/networking/gameEvents.js');
   check('5c one that ends after you left does not (the next trip would skip its gate)', b.api.ready() === false);
 }
 
+/* ── 6. v2.3.4643: ONE DOOR, NO OTHER WRITER (TRAPS §304) ── */
+/* Nine ways still flipped the zone by hand after §2 (four on the live world,
+   five on the retired old map); every one goes through changeZone now, and no
+   new one may appear.  The renderers' own `this.currentZone` / local
+   `currentZone` (what they last drew) are not the game's place. */
+{
+  const { readdirSync, statSync } = await import('node:fs');
+  const root = new URL('../../src/', import.meta.url);
+  const files = [];
+  (function walk(dir) {
+    for (const name of readdirSync(dir)) {
+      const u = new URL(name, dir);
+      if (statSync(u).isDirectory()) walk(new URL(name + '/', dir));
+      else if (/\.(js|jsx|mjs)$/.test(name)) files.push(u);
+    }
+  })(root);
+  const writers = [];
+  for (const u of files) {
+    const rel = u.pathname.slice(root.pathname.length);
+    readFileSync(u, 'utf8').split('\n').forEach((line, i) => {
+      if (!/(?<![\w$])currentZone\s*=[^=]/.test(line)) return;   /* not babel's `_ZONES$S$currentZone` temp */
+      if (/this\.currentZone|\blet currentZone\b|^\s*currentZone = zoneId;/.test(line)) return;
+      if (/^\s*(\/\/|\/\*|\*)/.test(line)) return;   /* a comment */
+      writers.push(rel + ':' + (i + 1) + '  ' + line.trim().slice(0, 80));
+    });
+  }
+  check('6a the only writer of the game\'s place is changeZone', writers.length === 1 && /^game\/zoneTransitions\.js:/.test(writers[0]) && /S\.currentZone = to;/.test(writers[0]), writers);
+  for (const [f, n] of [['game/zoneTransitions.js', 4], ['game/wheelDungeons.js', 1], ['game/dungeonWaves.js', 2], ['game/monsterCombat.js', 1], ['ui/BroTown.jsx', 2]]) {
+    const t = readFileSync(new URL(f, root), 'utf8');
+    const got = (t.match(/\bchangeZone\((S|S2|st), /g) || []).length;
+    check('6b ' + f + ' changes place through changeZone (' + n + ')', got >= n, got);
+  }
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);

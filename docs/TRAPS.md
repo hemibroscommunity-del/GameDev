@@ -9474,8 +9474,10 @@ screen the respawn's trip was using. **The rule.** Change place with
 `changeZone(S, to)` (`zoneTransitions.js`), which runs `clearZoneLocalFx`.
 Only the owner who put up the shared loading screen (`_zoneLoadEl`) takes it
 down, and only if no other holder (`_wheelTripVeil`, `_zoneLoading`,
-`_townArtHold`, `_farmArtHold`) has it. Nine places still change zone by
-hand (four already clear the list). **Receipt:** `zone-leftovers.test`.
+`_townArtHold`, `_farmArtHold`) has it. Since v2.3.4643 `changeZone` is the
+only writer of `S.currentZone`: the nine ways that still flipped it by hand
+(four on the live world, five on the retired old map) go through it.
+**Receipt:** `zone-leftovers.test` (§6 fails a new writer).
 
 ## 305. "It was written long ago and never worked: make it work" (v2.3.4414)
 
