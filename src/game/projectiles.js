@@ -407,7 +407,7 @@ function _projImpactFx(S, a, m, fx, tx, ty) {
     try { BT_AUDIO.magicHit({ vol: 0.3 }); } catch (e) { /* audio is best-effort */ }
     monsterHitSfx(m, 0.22, 'bolt', fx.snd);
   } else {
-    monsterHitSfx(m, 0.6, 'arrow', fx.snd);
+    monsterHitSfx(m, 0.6, 'arrow', fx.snd, mcHitPitch(S, Date.now()));   /* v2.3.4615: a semitone higher a quick hit, on the trial */
   }
   if (fx.staff) {
     /* v2.3.2505: the crash where the orb is.  v2.3.2730: through combatHelpers'
@@ -1008,6 +1008,7 @@ import {
 } from '@/data/index.js';
 import { baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2511: arrows sound like what they hit */, hitSoundOf /* v2.3.3001: ...in its material's voice */, isIntangible /* v2.3.2224 */, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { monsterHitSfx, shotEndSfx } from '@/game/hitSounds.js'; /* v2.3.3001: hits and monster balls sound like their material */
+import { mcHitPitch, mcPerfectOn } from '@/game/manualCombat.js'; /* v2.3.4615: the free-swing trial's rising pitch, and its arrows named */
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, from recordings already in the game */
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
@@ -1979,7 +1980,11 @@ export function updateArrows(S, deps) {
                        hits and sums them into ONE monster_hit (combat.js).
                        Only ever > 1 on a bolt born under caps.bigorb; left
                        undefined otherwise, which JSON drops from the wire. */
-                    orbs: a.orbs > 1 ? a.orbs : undefined
+                    orbs: a.orbs > 1 ? a.orbs : undefined,
+                    /* v2.3.4615: on the free-swing trial an arrow names its
+                       shot (its relay's `ts`), so the worker judges it by the
+                       moment it left (freeswing.js _pfBowClaim) */
+                    sw: (!isStaffProj && !a.isSpecial && mcPerfectOn(S) && typeof a._shotTs === 'number') ? a._shotTs : undefined
                   }});
                 }
                 if (arrowCollision) {

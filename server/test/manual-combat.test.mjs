@@ -27,9 +27,19 @@
  *      the worker's half is free-swing.test): remembered, its bonus asked by
  *      `?swingbonus=1`; a sword on it swings at once, no sooner than
  *      FREE_GAP_MS, only with caps.freeSwing; the join asks; a lighter
- *      swing's number and sound are lighter; and the wiring. */
+ *      swing's number and sound are lighter; and the wiring.
+ *  14. v2.3.4615: THE TIMING BAR AND THE PERFECT STRIKE (the worker's half is
+ *      perfect-strike.test): `?swingbonus` on by default on the trial and
+ *      `?timingbar=0`; which bar a hand shows (a sword, a bow, never a
+ *      staff, only on the trial against caps.perfectStrike); the bar's
+ *      times (the glint is the worker's window; the fill is never delayed);
+ *      the freeze (how full at 0.5, 1.0, 1.3 cycles); the rising pitch; and
+ *      the wiring that stays here (an arrow names its shot, the accent, the
+ *      pitch).  The bar itself is drawn in its own change, on these rules:
+ *      docs/specs/manual-combat.md "For the timing bar's art". */
 import fs from 'node:fs';
 import {
+  timingBarWanted, mcBarWeapon, mcBarCycle, mcBarTimes, mcBarAttack, mcPitchStep, mcHitPitch, mcPerfectOn,
   MANUAL, manualCombatWanted, manualMode, manualFreeSwing, swingBonusWanted, freeSwingAsk, mcFreeSwing, mcSwingGapMs, mcNoteSwing, mcHitVol, mcNumberScale, mcLightHit, manualSling, mcBowSling, mcShotAngle, mcSwipes, mcBowInterval, setManualCombat, manualOn, mcFrame, mcSwipeStart, mcSwipeMove, mcSwipeEnd, mcWasQuick, mcPressIdle, mcAbort, mcAskShot,
   mcFireWaiting, mcFireDone, mcReady, mcReadyIn, mcMeleeAsk, mcSwingWaiting, mcSwingDone, mcAssist, mcArmToggle, mcArmed, mcTakeArmed, mcLockAllowed, mcShoots,
 } from '../../src/game/manualCombat.js';
@@ -233,14 +243,15 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
   check('13a `?manual=3` is the free-swing trial, remembered; `?manual=1` comes back and forgets', manualMode('?manual=3', ls) === 3 && ls.getItem(MANUAL.KEY) === '3' && manualMode('', ls) === 3 && manualCombatWanted('', ls) === true
     && manualMode('?manual=1', ls) === 1 && ls.getItem(MANUAL.KEY) === null);
   const lb = store();
-  check('13b `?swingbonus=1` asks for the bonus and is remembered; `?swingbonus=0` forgets; nothing asks nothing',
-    swingBonusWanted('', store()) === false && swingBonusWanted('?swingbonus=1', lb) === true && swingBonusWanted('', lb) === true
-    && swingBonusWanted('?swingbonus=0', lb) === false && swingBonusWanted('', lb) === false && swingBonusWanted('?swingbonus=10', store()) === false);
+  /* v2.3.4615: the bonus (the perfect strike's) is ON by default on the trial now */
+  check('13b v2.3.4615: the bonus is asked by default; `?swingbonus=0` asks without it and is remembered; `?swingbonus=1` comes back',
+    swingBonusWanted('', store()) === true && swingBonusWanted('?swingbonus=0', lb) === false && lb.getItem(MANUAL.BONUS_KEY) === '0' && swingBonusWanted('', lb) === false
+    && swingBonusWanted('?swingbonus=1', lb) === true && lb.getItem(MANUAL.BONUS_KEY) === null && swingBonusWanted('', lb) === true && swingBonusWanted('?swingbonus=10', store()) === true);
   setManualCombat(true);
   check('13c the join asks nothing off the trial (`?manual=1`), even with the bonus remembered', freeSwingAsk('?swingbonus=1', store()) === 0 && manualFreeSwing() === false);
   setManualCombat(3);
-  check('13d on it the join asks 1, or 2 with the bonus; it is manual combat (a bow still flicks, no slingshot)',
-    freeSwingAsk('', store()) === 1 && freeSwingAsk('?swingbonus=1', store()) === 2 && manualOn() && manualFreeSwing() && !manualSling() && mcSwipes(bow()) && mcShoots(bow()));
+  check('13d on it the join asks 2 (the bonus: v2.3.4615, the default), or 1 with `?swingbonus=0`; it is manual combat (a bow still flicks, no slingshot)',
+    freeSwingAsk('', store()) === 2 && freeSwingAsk('?swingbonus=0', store()) === 1 && manualOn() && manualFreeSwing() && !manualSling() && mcSwipes(bow()) && mcShoots(bow()));
   const Sw = sword(10000), B = bow(), St = { rpg: { activeSlot: 'staff' }, swingTimer: 0 };
   check('13e without caps.freeSwing (an old worker, or `freeswing: false`) a sword is the untried swipe: too soon is no, a moment early is kept',
     !mcFreeSwing(Sw) && mcSwingGapMs(Sw) === null && (mcFrame(Sw, 10000, 600, 600), mcMeleeAsk(Sw, 10200)) === 'no' && mcMeleeAsk(Sw, 10500) === 'soon');
@@ -267,7 +278,7 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
     && /mcNoteSwing\(S, S\.swingTimer, Date\.now\(\)\);[^\n]*\n\s*S\.swingTimer = Date\.now\(\);/.test(pa));
   const mc = read('../../src/game/monsterCombat.js');
   check('13n a sword\'s monster_damage names its swing on the trial; its hit sound is the light swing\'s',
-    /sw: mcFreeSwing\(S\) \? S\.swingTimer : undefined/.test(mc) && /monsterHitSfx\(m, 0\.55 \* mcHitVol\(S\), 'melee'\)/.test(mc));
+    /sw: mcFreeSwing\(S\) \? S\.swingTimer : undefined/.test(mc) && /monsterHitSfx\(m, 0\.55 \* mcHitVol\(S\), 'melee', undefined, mcHitPitch\(S, Date\.now\(\)\)\)/.test(mc));
   const ws = read('../../src/networking/wsClient.js');
   check('13o the join asks (`fs`), and the live switch (free_swing) sets caps.freeSwing',
     /fs: freeSwingAsk\(\) \|\| undefined,/.test(ws) && /case 'free_swing':\s*\n\s*\{\s*\n\s*if \(S\._serverCaps\) S\._serverCaps\.freeSwing = msg\.on \? 1 : 0;/.test(ws));
@@ -275,6 +286,57 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
   check('13p the number is sized by the worker\'s share (own, a peer\'s, on a player), and nothing new is drawn',
     (ge.match(/pw: payload\.pw/g) || []).length === 3 && /const k = DMG_SCALE \* \(isDmg \? mcNumberScale\(dmg\.pw\) : 1\);/.test(fx));
   setManualCombat(false);
+}
+
+// ── 14. v2.3.4615: the timing bar and the perfect strike ──
+{
+  const lt = store();
+  check('14a the bar\'s rule: shown by default; `?timingbar=0` hides it and is remembered; `?timingbar=1` comes back',
+    timingBarWanted('', store()) === true && timingBarWanted('?timingbar=0', lt) === false && lt.getItem(MANUAL.BAR_KEY) === '0' && timingBarWanted('', lt) === false
+    && timingBarWanted('?timingbar=1', lt) === true && timingBarWanted('', lt) === true && timingBarWanted('?timingbar=0', null) === false);
+  const caps = { freeSwing: 1, perfectStrike: 1 };
+  const Sw = { rpg: { activeSlot: 'melee', weapon: { type: 'sword' } }, _serverCaps: caps, swingTimer: 0 };
+  const B = { rpg: { activeSlot: 'ranged', rangedWeapon: { type: 'bow' } }, _serverCaps: caps, swingTimer: 0 };
+  const St = { rpg: { activeSlot: 'staff', staffWeapon: { type: 'staff' } }, _serverCaps: caps, swingTimer: 0 };
+  setManualCombat(true);
+  check('14b off the trial (`?manual=1`) no hand shows a bar, and no arrow is named', mcBarWeapon(Sw) === null && mcBarWeapon(B) === null && !mcPerfectOn(B));
+  setManualCombat(3);
+  check('14c on the trial: a sword shows the sword, a bow the arrow, a staff nothing (the owner: "For magic I think it should be skipped")',
+    mcBarWeapon(Sw) === 'sword' && mcBarWeapon(B) === 'bow' && mcBarWeapon(St) === null && mcPerfectOn(B));
+  const old = { rpg: Sw.rpg, _serverCaps: { freeSwing: 1 } };
+  check('14d against a worker that does not judge the perfect strike (no caps.perfectStrike), or with no sword in hand: nothing',
+    mcBarWeapon(old) === null && !mcPerfectOn(old) && mcBarWeapon({ rpg: { activeSlot: 'melee' }, _serverCaps: caps }) === null);
+  check('14e MIRROR: the glint is the worker\'s window (60 before full, 300 after)', MANUAL.PERFECT_EARLY_MS === 60 && MANUAL.PERFECT_LATE_MS === 300
+    && /PERFECT_EARLY_MS: 60,/.test(read('../src/freeswing.js')) && /PERFECT_LATE_MS: 300,/.test(read('../src/freeswing.js')));
+  mcFrame(Sw, 1000, 600, 600); mcFrame(B, 1000, mcBowInterval(495), 600);
+  check('14f the bar fills over the weapon\'s own cycle: the sword\'s 600, the flicked bow\'s 371', mcBarCycle(Sw) === 600 && mcBarCycle(B) === 371);
+  const t = mcBarTimes(600), tb = mcBarTimes(371);
+  check('14g it fills from the attack, never delayed; it glints from 60 ms before full for 360 ms (540-900 on a sword, 311-671 on a bow)',
+    t.fillMs === 600 && t.fillDelayMs === 0 && t.glintDelayMs === 540 && t.glintMs === 360 && tb.glintDelayMs === 311 && tb.fillDelayMs === 0);
+  const f05 = mcBarAttack(10000, 600, 10300), f10 = mcBarAttack(10000, 600, 10600), f13 = mcBarAttack(10000, 600, 10780);
+  check('14h THE FREEZE: struck at 0.5 a cycle the frozen copy is half the bar (no glint); at 1.0 full, glinting; at 1.3 full, still glinting (300 late)',
+    f05.frozen === 0.5 && !f05.glint && f10.frozen === 1 && f10.glint && f13.frozen === 1 && f13.glint, { f05, f10, f13 });
+  check('14i ...its edges are the worker\'s: 539 ms no glint, 540 and 900 glinting, 901 not; a first attack (nothing before) is full and not glinting',
+    !mcBarAttack(10000, 600, 10539).glint && mcBarAttack(10000, 600, 10540).glint && mcBarAttack(10000, 600, 10900).glint && !mcBarAttack(10000, 600, 10901).glint
+    && mcBarAttack(0, 600, 1e12).frozen === 1 && !mcBarAttack(0, 600, 1e12).glint);
+  check('14j the freeze lasts FREEZE_MS (400) and costs the next attack nothing: the fill restarts at the attack (delay 0), the freeze is its own animation',
+    MANUAL.FREEZE_MS === 400 && t.freezeMs === 400 && t.fillDelayMs === 0);
+  /* the rising pitch */
+  const p = {};
+  const steps = [0, 500, 1000, 1010, 1500, 2000, 2500, 3000, 3600, 6000].map((x) => mcPitchStep(p, 100000 + x));
+  check('14k THE RISING PITCH: a hit within 1.2 s of the last is a step higher, at most +5; one blow\'s second monster (inside 50 ms) shares its step; a pause is back to 0',
+    JSON.stringify(steps) === JSON.stringify([0, 1, 2, 2, 3, 4, 5, 5, 5, 0]), steps);
+  const P = { rpg: Sw.rpg, _serverCaps: caps, _mc: null };
+  const r1 = mcHitPitch(P, 50000), r2 = mcHitPitch(P, 50400);
+  check('14l a semitone a step, on your sword or bow on the trial (2^(1/12)); 1 for a staff, and off the trial',
+    r1 === 1 && Math.abs(r2 - Math.pow(2, 1 / 12)) < 1e-12 && mcHitPitch(St, 50400) === 1 && (setManualCombat(true), mcHitPitch(P, 50800)) === 1);
+  setManualCombat(false);
+  /* the wiring */
+  const pj = read('../../src/game/projectiles.js'), ge = read('../../src/networking/gameEvents.js'), gd = read('../../src/data/gameDisplay.js');
+  check('14p an arrow on the trial names its shot; a perfect strike plays the drop roll\'s glint quietly (an existing cue); the hit voice takes a pitch',
+    /sw: \(!isStaffProj && !a\.isSpecial && mcPerfectOn\(S\) && typeof a\._shotTs === 'number'\) \? a\._shotTs : undefined/.test(pj)
+    && /if \(payload\.pf === 1\) cue\('rollWin', 0\.45\);/.test(ge) && /\* \(\(opts && opts\.pitch > 0\) \? opts\.pitch : 1\);/.test(gd)
+    && /monsterHitSfx\(m, 0\.6, 'arrow', fx\.snd, mcHitPitch\(S, Date\.now\(\)\)\)/.test(pj));
 }
 
 // ── 10. the wiring ──
