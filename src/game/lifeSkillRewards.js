@@ -15,7 +15,7 @@
    call time, identical). The only React setter any of them touches is
    setRpgState, threaded via deps; succeedExtraction forwards deps to the
    appliers. All other refs are module imports below. */
-import { BT_AUDIO, EXTRACT_WINDOW_MS, MINIGAME_REWARDS, addLifeSkillXp, computeOpenDelay, createDefaultCompStats, migrateLifeSkills, GATHER_SWING, GATHER_HIT_PLAN_WAIT_MS, GATHER_HIT_SETTLE_MS, gatherHitTimes, gatherNodeHpFor, GATHER_PLAN_MAX, harvestXpFor, zonePlayerScale, TILE } from '@/data/index.js'; /* v2.3.2956: the gathering hits (and the zone scale a cook's hit pops at) */
+import { BT_AUDIO, EXTRACT_WINDOW_MS, MINIGAME_REWARDS, addLifeSkillXp, computeOpenDelay, createDefaultCompStats, migrateLifeSkills, GATHER_SWING, GATHER_HIT_PLAN_WAIT_MS, GATHER_HIT_SETTLE_MS, gatherHitTimes, gatherNodeHpFor, GATHER_PLAN_MAX, harvestXpFor } from '@/data/index.js'; /* v2.3.2956: the gathering hits (and the zone scale a cook's hit pops at) */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.1915 */
 import { rollHarvestShard, shardByKey } from '@/data/shards.js';
 import { _objectSpread } from '@/lib/babelHelpers.js';
@@ -518,8 +518,7 @@ function _gatherHitAt(S, skill, node, k) {
       var chopSign = node.x >= _px ? 1 : -1;
       x += chopSign * (18 + 10 * (side > 0 ? 1 : 0)) * g; y -= 76 * g;
     } else if (skill === 'cooking') {
-      var zs = zonePlayerScale(S.currentZone, node.x, node.y, TILE) || 1;
-      x += (8 + side * 12) * zs; y -= 30 * zs;
+      x += (8 + side * 12); y -= 30;
     } else {
       x += side * 16 * g; y -= 8 * g;
     }

@@ -43,16 +43,17 @@ const C = { arrowPx, reachPx, volleyK: BOW_VOLLEY.SPEED_K, peerPx: BOW_VOLLEY.PE
   check('1c the shooter\'s arrow flies ARROW_SPEED_PX x _rangeMult and comes down at BOW_RANGE_PX x _rangeMult (projectiles.js)',
     /ARROW_SPEED_PX \* \(a\._rangeMult \|\| 1\)/.test(projSrc) && /a\.dist > BOW_RANGE_PX \* \(a\._rangeMult \|\| 1\)/.test(projSrc));
   const mc = src('src/game/monsterCombat.js');
-  check('1d ...its _rangeMult is bowRangeMult x depthK, and its relay\'s life is 90 x the same (monsterCombat.js)',
-    /_rangeMult: \(isStaff \? 1 : bowRangeMult\(S\.rpg\)\) \* depthK\(S\.currentZone, P\.y\)/.test(mc)
-    && /90 \* \(bowRangeMult\(S\.rpg\) \|\| 1\)\) \* depthK\(S\.currentZone, P\.y\)/.test(mc) && PEER_SHOT.LIFE_PER_K === 90);
+  /* v2.3.4862: x depthK is gone with the old map's dunes (it was 1 in every live zone) */
+  check('1d ...its _rangeMult is bowRangeMult, and its relay\'s life is 90 x the same (monsterCombat.js)',
+    /_rangeMult: isStaff \? 1 : bowRangeMult\(S\.rpg\)/.test(mc)
+    && /life: Math\.round\(isStaff \? staffOrbLife\(S\.rpg\) : 90 \* \(bowRangeMult\(S\.rpg\) \|\| 1\)\)/.test(mc) && PEER_SHOT.LIFE_PER_K === 90);
   const pa = src('src/game/playerActions.js');
   check('1e the volley\'s life is 90 x its own reach multiplier, and its wait is sized for PEER_PX_PER_FRAME (playerActions.js)',
-    /life: Math\.round\(90 \* _bowStat \* depthK\(S\.currentZone, S\.player\.y\)\)/.test(pa)
+    /life: Math\.round\(90 \* _bowStat\)/.test(pa)
     && /delayMs: Math\.round\(volleyDelayMs\(bvj, BOW_VOLLEY\.PEER_PX_PER_FRAME\)\)/.test(pa)
     && /_bowSpd = _bowVolley \? ARROW_SPEED_PX \* _bowRange \* BOW_VOLLEY\.SPEED_K/.test(pa));
   check('1f the retreat shot\'s life is 90 x its reach multiplier too (dodge.js)',
-    /90 \* \(bowRangeMult\(R\) \|\| 1\)\) \* _dk\)/.test(src('src/game/dodge.js')) && /_rangeMult: \(isStaff \? 1 : bowRangeMult\(R\)\) \* _dk/.test(src('src/game/dodge.js')));
+    /life: Math\.round\(isStaff \? staffOrbLife\(R\) : 90 \* \(bowRangeMult\(R\) \|\| 1\)\)/.test(src('src/game/dodge.js')) && /_rangeMult: isStaff \? 1 : bowRangeMult\(R\),/.test(src('src/game/dodge.js')));
 }
 
 /* ── 2. an arrow's copy: the shooter's speed, the shooter's reach ────────── */

@@ -305,7 +305,7 @@ function _bakeCookSplit(img, skinT, art, clothes) {
   return recolorStandInSkinSplit(img, skinT, COOK_FH, { keepX: COOK_KEEP_X, art, regions: COOK_INK_REGIONS, frameW: COOK_FW, patK: STANDIN_GARB_K.cook, ...(clothes || {}) });
 }
 import { ELEMENTS } from '@/data/elements.js';
-import { ZONES, zonePlayerScale, depthK /* v2.3.2790 */ } from '@/data/zones.js';
+import { ZONES } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY, MINE_SEAT_DX, MINE_SEAT_DY, FISH_SEAT_DX, FISH_SEAT_DY } from '@/data/constants.js';   /* v2.3.2915: + the harvest seats */
 import { footprintFrames } from '@/rendering/footprintSprites.js'; /* v2.3.2654: prints in the snow */
 import { propsForZone } from '@/data/worldProps.js'; /* v2.3.2730: marks drawn ON props -- slash marks, arrows standing in the rock */
@@ -631,11 +631,11 @@ export const CHOP_OFFSET = 44;   /* px from the trunk to the figure's centre */
    blade bites inside it whatever its size. */
 export function chopStandInSpot(zone, node, sign) {
   const x = node.x - sign * (node && node.nodeType === 'tree' ? treeChopOffset(node) : CHOP_OFFSET);
-  const pscale = zonePlayerScale(zone, x, node.y, TILE);
+  const pscale = 1;
   return { x, y: node.y + 6 * pscale, pscale };
 }
 export function cookStandInSpot(zone, fire) {
-  const pscale = zonePlayerScale(zone, fire.x, fire.y, TILE);
+  const pscale = 1;
   return { x: fire.x - COOK_STANDIN_H * COOK_PAN_DX * pscale, y: fire.y + 8 * pscale, pscale };
 }
 /* The watcher's bounds on those nodes (_updateRemoteExtraction).  Generous on
@@ -6212,7 +6212,7 @@ export class EffectsRenderer {
            record, same position, same lifetime (mp-orbrange reads all three);
            only the drawing differs. */
         if (ring.style === 'staff' && this._staffFx) {
-          this._staffFx.ring(ring, now, zonePlayerScale(S.currentZone, ring.x, ring.y, TILE) || 1);
+          this._staffFx.ring(ring, now, 1);
           continue;
         }
         /* v2.3.2824: a `settle` ring sweeps in to EXACTLY maxR over the first
@@ -6316,9 +6316,8 @@ export class EffectsRenderer {
       const ghost = trail[i];
       const age = (now - ghost.ts) / 200;
       if (age >= 1) { trail.splice(i, 1); continue; }
-      const gk = zonePlayerScale(S.currentZone, ghost.x, ghost.y, TILE) || 1;
-      this._dodgeGhostR = 8 * gk;
-      gfx.circle(ghost.x, ghost.y, 8 * gk);
+      this._dodgeGhostR = 8;
+      gfx.circle(ghost.x, ghost.y, 8);
       gfx.fill({ color: 0x3498db, alpha: (1 - age) * 0.3 });
     }
 
@@ -6362,9 +6361,8 @@ export class EffectsRenderer {
              local-only exemption is the mistake v2.3.2124 shipped and
              v2.3.2141 reverted — the two halves move together or a peer's
              roll looks like a different move than your own. */
-          const gk = zonePlayerScale(S.currentZone, g.x, g.y, TILE) || 1;
-          this._dodgeGhostPeerR = 8 * gk;
-          gfx.circle(g.x, g.y, 8 * gk);
+          this._dodgeGhostPeerR = 8;
+          gfx.circle(g.x, g.y, 8);
           gfx.fill({ color: 0x3498db, alpha: (1 - age) * 0.3 });
         }
         if (!o._dodgeRoll && !ot.length) o._dodgeTrail = null;
@@ -7006,10 +7004,9 @@ export class EffectsRenderer {
          position -- the same rule the peer stand-ins follow, and literally 1
          on every zone but worldview. See _placeMagicBolt for why the `|| 1`
          guards matter more than the multiply does. */
-      const _pk = zonePlayerScale(S.currentZone, a._renderX, a._renderY, TILE) || 1;
       /* v2.3.2730: an arrow standing in a prop is drawn ON the prop, sorted
          with it, not in the ground layer -- see _placePropArrow. */
-      if (a._inProp && a.planted) { this._placePropArrow(S, a, now, _pk); continue; }
+      if (a._inProp && a.planted) { this._placePropArrow(S, a, now, 1); continue; }
       const elemColor = a._projElem && ELEMENTS[a._projElem] ? cssToHex(ELEMENTS[a._projElem].color) : 0xc8c8d0;
       const fadeA = Math.min(1, a.life / 20);
       /* v2.3.1095: a planted/falling arrow is stuck in the world -- no motion
@@ -7086,9 +7083,9 @@ export class EffectsRenderer {
          answer the same question and the longer-lived one wins.  Nothing else
          moves — staff bolts, ice, the charged shots and every remote
          projectile keep _updateProjectileTrail exactly as it was. */
-      const _jetOn = this._noteJetStream(a, now, _pk, S.currentZone);
+      const _jetOn = this._noteJetStream(a, now, 1, S.currentZone);
       if (!_stuckPose && !_jetOn && !(_isBasicStaffBolt && MAGIC_BOLT_FRAMES.length) && !_paintedSpecial && !_isBigBolt) {
-        this._updateProjectileTrail(a, gfx, fadeA, /* isStaffProj */ a._isStaffProj || a.ice, _pk);
+        this._updateProjectileTrail(a, gfx, fadeA, /* isStaffProj */ a._isStaffProj || a.ice, 1);
       }
 
       if (_hotSpecial) {
@@ -7102,7 +7099,7 @@ export class EffectsRenderer {
            throb on the burn's ticks and burn out together), and only the lone
            arrow an old worker gets builds to white for a blast */
         const _tb = (a.stuckIn || a.planted) ? burnT0(a) : 0;
-        this._hotArrow.arrow(a, a._renderX, a._renderY, _angB, fadeA, _pk, now, !!_headless, _tb, !a.volley);
+        this._hotArrow.arrow(a, a._renderX, a._renderY, _angB, fadeA, 1, now, !!_headless, _tb, !a.volley);
         /* the v2.3.2381 tallies mp-arrowhead reads, kept exactly */
         this._specialArrowsDrawn = (this._specialArrowsDrawn || 0) + 1;
         if (!_headless) this._specialArrowHeads = (this._specialArrowHeads || 0) + 1;
@@ -7114,7 +7111,7 @@ export class EffectsRenderer {
            so the special keeps its tip through flight AND through the spent
            `planting` drop -- v2.3.1879's distinction between those two is
            untouched -- and loses it the moment it is actually in something. */
-        this._placeSpecialFx(ARROW_SPECIAL, a, a._renderX, a._renderY, _angB, fadeA, now, _liveBolts, _pk, _headless);
+        this._placeSpecialFx(ARROW_SPECIAL, a, a._renderX, a._renderY, _angB, fadeA, now, _liveBolts, 1, _headless);
       } else if (isBowHeavy) {
         /* Heavy bow shot — draw the arrow normally with a bright
            element-tinted halo around it.  Reads as a powered shot
@@ -7123,22 +7120,22 @@ export class EffectsRenderer {
            request so the special bow shot reads as much heavier and
            its damage radius matches the visual.
            v2.3.1396: fallback while the painted strip loads. */
-        gfx.circle(a._renderX, a._renderY, 39 * _pk);
+        gfx.circle(a._renderX, a._renderY, 39);
         gfx.fill({ color: 0xf5c542, alpha: fadeA * 0.25 });
-        gfx.circle(a._renderX, a._renderY, 27 * _pk);
+        gfx.circle(a._renderX, a._renderY, 27);
         gfx.fill({ color: elemColor, alpha: fadeA * 0.45 });
-        gfx.circle(a._renderX, a._renderY, 15 * _pk);
+        gfx.circle(a._renderX, a._renderY, 15);
         gfx.fill({ color: 0xfff2a8, alpha: fadeA * 0.55 });
-        this._drawArrow(gfx, a._renderX, a._renderY, _angB, elemColor, fadeA, 3 * _pk);
+        this._drawArrow(gfx, a._renderX, a._renderY, _angB, elemColor, fadeA, 3);
       } else if (_isStaffSpecial && MAGIC_SPECIAL.frames.length) {
         /* v2.3.1396: painted charged orb (owner sheet) — golden power
            halo baked into the art; the ring draw below stays as the
            pre-load fallback (and for non-staff ice projectiles). */
-        this._placeSpecialFx(MAGIC_SPECIAL, a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts, _pk);
+        this._placeSpecialFx(MAGIC_SPECIAL, a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts, 1);
       } else if (_isBigBolt) {
         /* v2.3.2842: the one-bolt special -- the basic bolt, bigger, leaving
            the crystal with the heavy release (staffCastFx reads a.big). */
-        this._placeMagicBolt(a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts, _pk, S);
+        this._placeMagicBolt(a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts, 1, S);
         if (_shotLook) _shotLook.push({ who: 'self', kind: 'bigbolt', elem: a._fxElem || null, alpha: +fadeA.toFixed(3), life: a.life });   /* v2.3.2919 */
       } else if (a.isSpecial || a.ice) {
         /* Staff special / ice — bigger yellow glow ring so specials
@@ -7148,26 +7145,26 @@ export class EffectsRenderer {
             – mid element-tinted glow
             – bright element-tinted core */
         const sz = a._isStaffProj ? 2.0 : 1.6;
-        gfx.circle(a._renderX, a._renderY, 16 * sz * _pk);
+        gfx.circle(a._renderX, a._renderY, 16 * sz);
         gfx.fill({ color: 0xf5c542, alpha: fadeA * 0.22 });
-        gfx.circle(a._renderX, a._renderY, 12 * sz * _pk);
+        gfx.circle(a._renderX, a._renderY, 12 * sz);
         gfx.fill({ color: elemColor, alpha: fadeA * 0.35 });
-        gfx.circle(a._renderX, a._renderY, 7 * sz * _pk);
+        gfx.circle(a._renderX, a._renderY, 7 * sz);
         gfx.fill({ color: elemColor, alpha: fadeA * 0.9 });
-        gfx.circle(a._renderX, a._renderY, 7 * sz * _pk);
-        gfx.stroke({ color: 0xfff2a8, width: 1.5 * _pk, alpha: fadeA * 0.85 });
+        gfx.circle(a._renderX, a._renderY, 7 * sz);
+        gfx.stroke({ color: 0xfff2a8, width: 1.5, alpha: fadeA * 0.85 });
       } else if (a._isStaffProj) {
         /* v2.3.1334: painted 4-frame magic bolt (owner sheet).  The
            tail always points back toward the caster: rotation = the
            travel angle, art noses right.  Falls back to the old
            two-circle draw until the strip loads. */
         if (MAGIC_BOLT_FRAMES.length) {
-          this._placeMagicBolt(a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts, _pk, S);   /* v2.3.2841: + S, for the caster's crystal */
+          this._placeMagicBolt(a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts, 1, S);   /* v2.3.2841: + S, for the caster's crystal */
           if (_shotLook) _shotLook.push({ who: 'self', kind: 'bolt', elem: a._fxElem || null, alpha: +fadeA.toFixed(3), life: a.life });   /* v2.3.2919 */
         } else {
-          gfx.circle(a._renderX, a._renderY, 5 * _pk);
+          gfx.circle(a._renderX, a._renderY, 5);
           gfx.fill({ color: elemColor, alpha: fadeA * 0.8 });
-          gfx.circle(a._renderX, a._renderY, 9 * _pk);
+          gfx.circle(a._renderX, a._renderY, 9);
           gfx.fill({ color: elemColor, alpha: fadeA * 0.2 });
         }
       } else {
@@ -7181,7 +7178,7 @@ export class EffectsRenderer {
            two deliberately differ by `planting`, and only there. */
         /* v2.3.1915: a PLANTED arrow draws under the player. `planting` is
            still falling — in the air, so it stays in front until it lands. */
-        this._drawArrow(gfx, a._renderX, a._renderY, _angB, elemColor, fadeA, 1 * _pk, _headless, !!a.planted);
+        this._drawArrow(gfx, a._renderX, a._renderY, _angB, elemColor, fadeA, 1, _headless, !!a.planted);
         if (_shotLook) _shotLook.push({ who: 'self', kind: 'arrow', color: elemColor, alpha: +fadeA.toFixed(3), life: a.life });   /* v2.3.2919 */
         /* v2.3.2287 QA probe, house style (__btChopFigure, __btStandInCape).
            A screenshot cannot tell "the arrow shrank" from "the arrow was never
@@ -7190,8 +7187,8 @@ export class EffectsRenderer {
            vanishes in EVERY zone. Reports the multiplier and the resulting
            drawn length so a test can assert an exact 52.5 off the vista. */
         if (typeof window !== 'undefined') {
-          this._projScaleProbe = { zone: S.currentZone, pk: +_pk.toFixed(4),
-            drawnLenPx: +(ARROW_PINE.lenPx * _pk).toFixed(2) };
+          this._projScaleProbe = { zone: S.currentZone, pk: 1,
+            drawnLenPx: +(ARROW_PINE.lenPx).toFixed(2) };
         }
       }
     }
@@ -7218,9 +7215,6 @@ export class EffectsRenderer {
          big the moment it was hit.  Scaled at the monster's feet, the size
          its body is drawn (combatHelpers.monsterDrawScale); 1 in every zone
          without a depth curve, so nothing else changes. */
-      const _mk = zonePlayerScale(S.currentZone,
-        (typeof m.renderX === 'number') ? m.renderX : m.x,
-        (typeof m.renderY === 'number') ? m.renderY : m.y, TILE) || 1;
       /* ═══ v2.3.2923b: BAKED AT THE MONSTER'S RESOLUTION ═══
          Owner: "the enemy is at a lower resolution so it looks very artificial
          having higher resolution art and injury site tacked on top."  The
@@ -7244,7 +7238,7 @@ export class EffectsRenderer {
         }
         const color = (sa.color && cssToHex(sa.color)) || 0x8b6914;
         if (sa.isStaff) {
-          this._drawStuckMagicShard(gfx, sx, sy, ang, color, _mk);
+          this._drawStuckMagicShard(gfx, sx, sy, ang, color, 1);
           continue;
         }
         /* ═══ v2.3.2923: THE SHAFT GOES INTO SOMETHING ═══
@@ -7257,22 +7251,22 @@ export class EffectsRenderer {
         const _tint = hitFxTintOf(_arch);
         const _age = sa.born ? Math.max(0, now - sa.born) : 5000;
         if (_bakeList) {
-          const sc = stuckShaftScale(_mk);
+          const sc = stuckShaftScale(1);
           _shaftScale = sc;
-          _bakeList.push({ x: sx, y: sy, ang, k: _mk, mat: _mat, tint: _tint, age: _age, seed: sa.seed,
+          _bakeList.push({ x: sx, y: sy, ang, k: 1, mat: _mat, tint: _tint, age: _age, seed: sa.seed,
             shaftScale: sc, shaftLen: sc * ((ARROW_PINE.noHead && ARROW_PINE.noHead.width) || 0) });
           continue;
         }
-        try { drawArrowWound(gfx, sx, sy, ang, _mk, _mat, _tint, _age, sa.seed); } catch (e) { /* drawing only */ }
-        this._drawStuckArrow(gfx, sx, sy, ang, color, _mk);
-        if (lipGfx) { try { drawArrowWoundLip(lipGfx, sx, sy, ang, _mk, _mat, _tint, _age, 0, sa.seed); } catch (e) { /* drawing only */ } }
+        try { drawArrowWound(gfx, sx, sy, ang, 1, _mat, _tint, _age, sa.seed); } catch (e) { /* drawing only */ }
+        this._drawStuckArrow(gfx, sx, sy, ang, color, 1);
+        if (lipGfx) { try { drawArrowWoundLip(lipGfx, sx, sy, ang, 1, _mat, _tint, _age, 0, sa.seed); } catch (e) { /* drawing only */ } }
       }
       if (_bakeList && _bakeList.length) {
         let ok = false;
         try { ok = this._arrowBaker.bake(m.id, _body, _bakeList, ARROW_PINE.noHead, now); } catch (e) { ok = false; }
         if (ok) {
           this._arrowsDrawn = (this._arrowsDrawn || 0) + _bakeList.length;
-          this._stuckScaleProbe = { id: m.id, y: Math.round(m.y), k: +_mk.toFixed(4),
+          this._stuckScaleProbe = { id: m.id, y: Math.round(m.y), k: 1,
             spriteScale: _shaftScale != null ? +Math.abs(_shaftScale).toFixed(4) : null, baked: true };
           continue;
         }
@@ -7285,7 +7279,7 @@ export class EffectsRenderer {
       }
       /* v2.3.2889: what the last shaft was DRAWN at, for mp-dunedepth */
       const _lastSp = this.arrowSprites[this._arrowSpriteN - 1];
-      this._stuckScaleProbe = { id: m.id, y: Math.round(m.y), k: +_mk.toFixed(4),
+      this._stuckScaleProbe = { id: m.id, y: Math.round(m.y), k: 1,
         spriteScale: _lastSp ? +Math.abs(_lastSp.scale.x).toFixed(4) : null };
     }
 
@@ -7300,7 +7294,6 @@ export class EffectsRenderer {
          remote STAND-IN figures (:6288 / :6768 / :6923, curved since
          v2.3.1574) this is a FIRST application, not a double one -- there is
          no zonePlayerScale anywhere in this loop today. */
-      const _pk = zonePlayerScale(S.currentZone, rp._renderX, rp._renderY, TILE) || 1;
       /* ═══ v2.3.2919: DRAWN THE WAY THE SHOOTER DRAWS IT ═══
          Your own shot is tipped in your weapon's element colour and fades over
          its last 20 frames of flight (elemColor / fadeA above).  A peer's was
@@ -7319,28 +7312,28 @@ export class EffectsRenderer {
       const _remoteArrowSpec = !rp.isStaff && rp.isSpecial && ARROW_SPECIAL.frames.length;
       /* v2.3.2847: a peer's special is white-hot too, through the same code */
       const _remoteHot = !rp.isStaff && rp.isSpecial && HOT_SPECIAL_ARROW && hotArrowReady() && !!this._hotArrow;
-      if (!_remoteBasicBolt && !_remoteMagicSpec && !_remoteArrowSpec && !_remoteHot) this._updateProjectileTrail(rp, gfx, _rFade, !!rp.isStaff, _pk);   /* v2.3.2919: + the fade */
+      if (!_remoteBasicBolt && !_remoteMagicSpec && !_remoteArrowSpec && !_remoteHot) this._updateProjectileTrail(rp, gfx, _rFade, !!rp.isStaff, 1);   /* v2.3.2919: + the fade */
       if (rp.isStaff) {
         if (_remoteMagicSpec) {
-          this._placeSpecialFx(MAGIC_SPECIAL, rp, rp._renderX, rp._renderY, rp.ang, _rFade, now, _liveBolts, _pk);   /* v2.3.2919: was a flat 0.95 */
+          this._placeSpecialFx(MAGIC_SPECIAL, rp, rp._renderX, rp._renderY, rp.ang, _rFade, now, _liveBolts, 1);   /* v2.3.2919: was a flat 0.95 */
         } else if (_remoteBasicBolt) {
-          this._placeMagicBolt(rp, rp._renderX, rp._renderY, rp.ang, _rFade, now, _liveBolts, _pk, S);   /* v2.3.2841: + S; v2.3.2919: + the fade, was 0.95 */
+          this._placeMagicBolt(rp, rp._renderX, rp._renderY, rp.ang, _rFade, now, _liveBolts, 1, S);   /* v2.3.2841: + S; v2.3.2919: + the fade, was 0.95 */
           if (_shotLook) _shotLook.push({ who: rp.ownerId != null ? String(rp.ownerId) : '?', kind: rp.big ? 'bigbolt' : 'bolt', elem: rp._fxElem || null, alpha: +_rFade.toFixed(3), life: rp.life });   /* v2.3.2919 */
         } else {
           /* v2.3.840: special staff bolts read bigger + golden with a halo. */
-          gfx.circle(rp._renderX, rp._renderY, (rp.isSpecial ? 7 : 4) * _pk);
+          gfx.circle(rp._renderX, rp._renderY, (rp.isSpecial ? 7 : 4));
           gfx.fill({ color: rp.isSpecial ? 0xf5c542 : 0xa855f7, alpha: rp.isSpecial ? 0.95 : 0.8 });
-          if (rp.isSpecial) { gfx.circle(rp._renderX, rp._renderY, 11 * _pk); gfx.stroke({ color: 0xfff2a8, width: 2 * _pk, alpha: 0.6 }); }
+          if (rp.isSpecial) { gfx.circle(rp._renderX, rp._renderY, 11); gfx.stroke({ color: 0xfff2a8, width: 2, alpha: 0.6 }); }
         }
       } else if (_remoteHot) {
-        this._hotArrow.arrow(rp, rp._renderX, rp._renderY, rp.ang + bend, _rFade, _pk, now, false, 0);   /* v2.3.2919: + the fade */
+        this._hotArrow.arrow(rp, rp._renderX, rp._renderY, rp.ang + bend, _rFade, 1, now, false, 0);   /* v2.3.2919: + the fade */
       } else if (_remoteArrowSpec) {
-        this._placeSpecialFx(ARROW_SPECIAL, rp, rp._renderX, rp._renderY, rp.ang + bend, _rFade, now, _liveBolts, _pk);   /* v2.3.2919: + the fade */
+        this._placeSpecialFx(ARROW_SPECIAL, rp, rp._renderX, rp._renderY, rp.ang + bend, _rFade, now, _liveBolts, 1);   /* v2.3.2919: + the fade */
       } else {
         /* v2.3.2919: the element's colour and the fade, as yours (was tan at 0.9). */
-        this._drawArrow(gfx, rp._renderX, rp._renderY, rp.ang + bend, rp.isSpecial ? 0xf5c542 : _rElemColor, rp.isSpecial ? 1.0 : _rFade, _pk);   /* v2.3.2287: 7th arg is SCALE, not alpha -- this call omitted it and relied on the default */
+        this._drawArrow(gfx, rp._renderX, rp._renderY, rp.ang + bend, rp.isSpecial ? 0xf5c542 : _rElemColor, rp.isSpecial ? 1.0 : _rFade, 1);   /* v2.3.2287: 7th arg is SCALE, not alpha -- this call omitted it and relied on the default */
         if (_shotLook && !rp.isSpecial) _shotLook.push({ who: rp.ownerId != null ? String(rp.ownerId) : '?', kind: 'arrow', color: _rElemColor, alpha: +_rFade.toFixed(3), life: rp.life });   /* v2.3.2919 */
-        if (rp.isSpecial) { gfx.circle(rp._renderX, rp._renderY, 9 * _pk); gfx.stroke({ color: 0xfff2a8, width: 2 * _pk, alpha: 0.55 }); }
+        if (rp.isSpecial) { gfx.circle(rp._renderX, rp._renderY, 9); gfx.stroke({ color: 0xfff2a8, width: 2, alpha: 0.55 }); }
       }
     }
 
@@ -8475,8 +8468,8 @@ export class EffectsRenderer {
           /* v2.3.2790: your reach x YOUR depth, the body x ITS depth -- the
              same two factors monsterCombat's hit test now applies, so the
              ring keeps meaning "what is drawn is what hits" on Wind Dunes. */
-          const _rrMk = depthK(S.currentZone, _rrFy) * bossSizeK(_rrM);   /* v2.3.3556: x a boss's size, as the hit test */
-          const _rrOuter = GS_OUTER_RADIUS * meleeRangeMult(S.rpg) * depthK(S.currentZone, S.player.y);
+          const _rrMk = bossSizeK(_rrM);   /* v2.3.3556: x a boss's size, as the hit test */
+          const _rrOuter = GS_OUTER_RADIUS * meleeRangeMult(S.rpg);
           const _rrR = _rrOuter + (monsterMeleeHitRadius(_rrArch) || 24) * _rrMk;
           const _rrY = _rrFy - (monsterBodyOffsetY(_rrArch) || 23) * _rrMk;
           const _rrD = Math.hypot(_rrX - S.player.x, _rrY - S.player.y);
@@ -8929,9 +8922,9 @@ export class EffectsRenderer {
              depth and a boss's size, to its body centre) */
           const fy = m.renderY != null ? m.renderY : m.y;
           const arch = m.arch || m.archetype || m.type;
-          const mk = depthK(S.currentZone, fy) * bossSizeK(m);
+          const mk = bossSizeK(m);
           return { x: m.renderX != null ? m.renderX : m.x, y: fy - (monsterBodyOffsetY(arch) || 23) * mk,
-            r: GS_OUTER_RADIUS * meleeRangeMult(S.rpg) * depthK(S.currentZone, S.player.y) + (monsterMeleeHitRadius(arch) || 24) * mk };
+            r: GS_OUTER_RADIUS * meleeRangeMult(S.rpg) + (monsterMeleeHitRadius(arch) || 24) * mk };
         }));
       }
       if (typeof window !== 'undefined' && !window.__btAtkMark) {
@@ -9218,7 +9211,7 @@ export class EffectsRenderer {
          where the arrow comes down": "Go recommended" (arrowEdge.js). */
       const _fullLen = (isBow && S._bowSight && typeof S._bowSight.reach === 'number' && isFinite(S._bowSight.reach))
         ? S._bowSight.reach
-        : BOW_RANGE_PX * bowRangeMult(S.rpg) * depthK(S.currentZone, S.player.y);   /* v2.3.2790: x depth, as the arrow is */
+        : BOW_RANGE_PX * bowRangeMult(S.rpg);   /* v2.3.2790: x depth, as the arrow is */
       const _sightD = (isBow && S._bowSight && typeof S._bowSight.d === 'number')
         ? S._bowSight.d : null;
       const _beamLen = isRanged
@@ -9286,7 +9279,7 @@ export class EffectsRenderer {
              per the charge-pie drop-shadow incident).  Arrow stays below. */
           /* v2.3.2592: the preview and the direction chip sit at the reach
              the RANGE stat gives this swing (monsterCombat's _mRm). */
-          const _mRm = meleeRangeMult(S.rpg) * depthK(S.currentZone, S.player.y);   /* v2.3.2790: x depth, as monsterCombat's _mRm is */
+          const _mRm = meleeRangeMult(S.rpg);   /* v2.3.2790: x depth, as monsterCombat's _mRm is */
           if (meleeSwinging) {
             const p = Math.max(0, Math.min(1, (now - (S.swingTimer || now)) / SWORD_SWING_MS));
             const a = 0.07 * Math.sin(p * Math.PI);   // swell-in then fade-out -- very subtle (owner: almost unnoticeable)
@@ -11338,9 +11331,8 @@ export class EffectsRenderer {
   _spawnArrowSnap(S, r, now) {
     if (!ARROW_PINE.front || !ARROW_PINE.back || !ARROW_PINE.full) return;
     while (this._snaps.length >= SNAP_MAX) this._killArrowSnap(this._snaps.shift());
-    const pk = zonePlayerScale(S.currentZone, r.x, r.y, TILE) || 1;
-    const k = (ARROW_PINE.lenPx * pk) / (ARROW_PINE.full.width || 1);
-    const L = ARROW_PINE.lenPx * pk;
+    const k = (ARROW_PINE.lenPx) / (ARROW_PINE.full.width || 1);
+    const L = ARROW_PINE.lenPx;
     const c = Math.cos(r.ang), sn = Math.sin(r.ang);
     const px = -sn, py = c;   /* across the flight */
     const rnd = Math.random;
@@ -11381,7 +11373,7 @@ export class EffectsRenderer {
       const a = r.ang + Math.PI + (rnd() - 0.5) * 2.4;
       const v = 1.4 + rnd() * 1.8;
       pieces.push(mk(stex, 0, Math.cos(a) * v, Math.sin(a) * v - (0.8 + rnd() * 1.2),
-        (rnd() - 0.5) * 0.6, 'splinter', (0.7 + rnd() * 0.5) * pk));
+        (rnd() - 0.5) * 0.6, 'splinter', (0.7 + rnd() * 0.5)));
     }
     this._snaps.push({ pieces, t0: now, x: r.x, y: r.y });
   }
@@ -11523,7 +11515,6 @@ export class EffectsRenderer {
     if (!p) return;
     const back = rec.face === 'n';
     const ov = this._propOverlay(p, back);
-    const pk = zonePlayerScale(S.currentZone, rec.x, rec.y, TILE) || 1;
     let sp = null, glow = null, scorch = null;
     /* v2.3.2995: the newest few arrows and burn marks on any one object, and
        a ceiling on them all -- the oldest goes */
@@ -11574,13 +11565,13 @@ export class EffectsRenderer {
       const tex = propSlashTex();
       sp = new Sprite(tex);
       sp.anchor.set(0.5, 0.45);
-      sp.scale.set((PROP_SLASH_LEN * pk) / (tex.width || 48));
+      sp.scale.set((PROP_SLASH_LEN) / (tex.width || 48));
       sp.rotation = rec.ang || 0;
     } else if (rec.kind === 'arrow') {
       const tex = this._stuckArrowTex(!!rec.special, now);
       if (!tex) return;
       sp = new Sprite(tex);
-      this._poseStuckArrow(sp, !!rec.special, pk);
+      this._poseStuckArrow(sp, !!rec.special, 1);
       sp.rotation = rec.ang || 0;
     }
     if (!sp) return;
@@ -12417,11 +12408,10 @@ export class EffectsRenderer {
      over or the ground line it hangs under.  Not cached: one call per frame
      while a harvest is up, and the fire can be re-lit elsewhere. */
   _nodeHpBarAt(S, node) {
-    const zs = zonePlayerScale(S.currentZone, node.x, node.y, TILE) || 1;
-    const scale = bandScale(zs);
+    const scale = bandScale(1);
     const halfH = (HPBAR_BIG_H / 2) * scale;
     if (node.nodeType === 'campfire') {
-      return { x: node.x, y: node.y + CAMPFIRE_HPBAR_GAP * zs + halfH, scale, artTop: null, artBase: node.y, nodeY: node.y, under: true };
+      return { x: node.x, y: node.y + CAMPFIRE_HPBAR_GAP + halfH, scale, artTop: null, artBase: node.y, nodeY: node.y, under: true };
     }
     /* in the Wheel a fishing spot is its school of fish, no pond picture
        (v2.3.3012): over the school */
@@ -13282,7 +13272,6 @@ export class EffectsRenderer {
       const wobble = (R._wobbleUntil > now && now >= (R._wobbleFrom || 0)) ? R._wobbleUntil - now : 0;
       if (!chill && !stuck && !burn && !(gustAge >= 0 && gustAge < GUST_FX_MS) && !daze && !shock && !soak && !poison
         && !slow && !fracture && !thorn && !frozen && !wobble) return;
-      const k = zonePlayerScale(zone, x, y, TILE) || 1;
       const fy = y + playerGroundDy(zone, x, y);
       /* QA (mp-elemhits), armed by the harness only: frames each look was drawn */
       if (typeof window !== 'undefined' && window.__btProbe) {
@@ -13305,66 +13294,66 @@ export class EffectsRenderer {
       if (burn && !blazed) {
         const a = Math.min(1, burn / 250);
         const fl = 0.8 + 0.2 * Math.sin(now / 70);
-        g.ellipse(x, fy, 24 * k, 8 * k); g.fill({ color: 0xff8a2a, alpha: 0.3 * a * fl });
+        g.ellipse(x, fy, 24, 8); g.fill({ color: 0xff8a2a, alpha: 0.3 * a * fl });
         /* v2.3.3620: "you burn for 3 s with flames you can see" -- the owner
            read the first cut's flames as three small ticks: they are half
            again as tall now, the glow runs up the body, and flames lick up
            your front (below) */
-        g.ellipse(x, fy - 44 * k, 22 * k, 50 * k); g.fill({ color: 0xff7a1e, alpha: 0.16 * a * fl });
+        g.ellipse(x, fy - 44, 22, 50); g.fill({ color: 0xff7a1e, alpha: 0.16 * a * fl });
         /* a row of flames at the feet, the middle ones tallest... */
         for (let i = 0; i < 5; i++) {
-          const tx = x + (i - 2) * 7.5 * k + Math.sin(now / 95 + i * 2.1) * 1.5 * k;
-          const h = 1.5 * (22 + (i === 2 ? 14 : (i === 1 || i === 3) ? 8 : 0)) * k * (0.78 + 0.22 * Math.sin(now / 60 + i * 1.7));
-          const wv = (i === 2 ? 7 : 6) * k;
-          f.moveTo(tx - wv, fy); f.quadraticCurveTo(tx + Math.sin(now / 80 + i) * 4 * k, fy - h, tx + wv, fy);
+          const tx = x + (i - 2) * 7.5 + Math.sin(now / 95 + i * 2.1) * 1.5;
+          const h = 1.5 * (22 + (i === 2 ? 14 : (i === 1 || i === 3) ? 8 : 0)) * (0.78 + 0.22 * Math.sin(now / 60 + i * 1.7));
+          const wv = (i === 2 ? 7 : 6);
+          f.moveTo(tx - wv, fy); f.quadraticCurveTo(tx + Math.sin(now / 80 + i) * 4, fy - h, tx + wv, fy);
           f.fill({ color: (i & 1) ? 0xffc23a : 0xff5e14, alpha: 0.88 * a });
           f.moveTo(tx - wv * 0.45, fy); f.quadraticCurveTo(tx, fy - h * 0.55, tx + wv * 0.45, fy);
           f.fill({ color: 0xfff0b0, alpha: 0.85 * a });
         }
         /* ...and licking up both sides of the body */
         for (const sx of [-1, 1]) {
-          const bx = x + sx * 12 * k, by = fy - (30 + 8 * Math.sin(now / 110 + sx)) * k;
-          const h = (24 + 7 * Math.sin(now / 55 + sx * 2)) * k;
-          f.moveTo(bx - 5 * k, by); f.quadraticCurveTo(bx + sx * 3 * k, by - h, bx + 5 * k, by);
+          const bx = x + sx * 12, by = fy - (30 + 8 * Math.sin(now / 110 + sx));
+          const h = (24 + 7 * Math.sin(now / 55 + sx * 2));
+          f.moveTo(bx - 5, by); f.quadraticCurveTo(bx + sx * 3, by - h, bx + 5, by);
           f.fill({ color: 0xff7a1e, alpha: 0.85 * a });
-          f.moveTo(bx - 2.4 * k, by); f.quadraticCurveTo(bx + sx * 1.5 * k, by - h * 0.55, bx + 2.4 * k, by);
+          f.moveTo(bx - 2.4, by); f.quadraticCurveTo(bx + sx * 1.5, by - h * 0.55, bx + 2.4, by);
           f.fill({ color: 0xffd060, alpha: 0.85 * a });
         }
         /* v2.3.3620: ...and up your front, chest and shoulders */
         for (let i = 0; i < 3; i++) {
-          const bx = x + (i - 1) * 8 * k + Math.sin(now / 80 + i * 2.3) * 2 * k;
-          const by = fy - (46 + (i === 1 ? 16 : 6) + 5 * Math.sin(now / 120 + i)) * k;
-          const h = (18 + 6 * Math.sin(now / 50 + i * 1.9)) * k;
-          f.moveTo(bx - 4.5 * k, by); f.quadraticCurveTo(bx, by - h, bx + 4.5 * k, by);
+          const bx = x + (i - 1) * 8 + Math.sin(now / 80 + i * 2.3) * 2;
+          const by = fy - (46 + (i === 1 ? 16 : 6) + 5 * Math.sin(now / 120 + i));
+          const h = (18 + 6 * Math.sin(now / 50 + i * 1.9));
+          f.moveTo(bx - 4.5, by); f.quadraticCurveTo(bx, by - h, bx + 4.5, by);
           f.fill({ color: (i & 1) ? 0xff5e14 : 0xff9a2a, alpha: 0.78 * a });
         }
         if (parts && Math.random() < 0.85 * dts) {
-          parts.push({ x: x + (Math.random() - 0.5) * 26 * k, y: fy - (6 + Math.random() * 60) * k,
+          parts.push({ x: x + (Math.random() - 0.5) * 26, y: fy - (6 + Math.random() * 60),
             vx: (Math.random() - 0.5) * 0.6, vy: -1.8 - Math.random() * 1.6, life: 0.6 + Math.random() * 0.3,
             color: ['#ff5e14', '#ff9a3c', '#ffc23a', '#ffe9a8'][(Math.random() * 4) | 0], size: 1.8 + Math.random() * 1.4 });
         }
       }
       if (chill) {
         const a = Math.min(1, chill / 200);
-        g.ellipse(x, fy, 27 * k, 9.5 * k); g.fill({ color: 0xd8f2ff, alpha: 0.5 * a });
-        g.ellipse(x, fy, 27 * k, 9.5 * k); g.stroke({ color: 0x8fd0ff, width: 2.2 * k, alpha: 0.95 * a });
+        g.ellipse(x, fy, 27, 9.5); g.fill({ color: 0xd8f2ff, alpha: 0.5 * a });
+        g.ellipse(x, fy, 27, 9.5); g.stroke({ color: 0x8fd0ff, width: 2.2, alpha: 0.95 * a });
         for (let i = 0; i < 9; i++) {
           const ang = i / 9 * Math.PI * 2 + 0.25;
-          const bx = x + Math.cos(ang) * 26 * k, by = fy + Math.sin(ang) * 9 * k;
-          const h = (7 + (i % 3) * 3.5) * k;
-          g.moveTo(bx - 2.6 * k, by); g.lineTo(bx, by - h); g.lineTo(bx + 2.6 * k, by); g.closePath();
+          const bx = x + Math.cos(ang) * 26, by = fy + Math.sin(ang) * 9;
+          const h = (7 + (i % 3) * 3.5);
+          g.moveTo(bx - 2.6, by); g.lineTo(bx, by - h); g.lineTo(bx + 2.6, by); g.closePath();
           g.fill({ color: 0xf2fbff, alpha: 0.95 * a });
         }
         /* frost creeping up the shins, in front of them */
         for (let i = 0; i < 6; i++) {
           const sx = (i & 1) ? 1 : -1;
-          const cx = x + sx * (5 + (i % 3) * 2.5) * k, cy = fy - (3 + i * 3.6) * k;
-          const r = (3.2 - i * 0.3) * k;
+          const cx = x + sx * (5 + (i % 3) * 2.5), cy = fy - (3 + i * 3.6);
+          const r = (3.2 - i * 0.3);
           f.moveTo(cx, cy - r * 1.6); f.lineTo(cx + r, cy); f.lineTo(cx, cy + r * 1.6); f.lineTo(cx - r, cy); f.closePath();
           f.fill({ color: i % 2 ? 0xdff4ff : 0xb6e3ff, alpha: 0.9 * a });
         }
         if (parts && Math.random() < 0.6 * dts) {
-          parts.push({ x: x + (Math.random() - 0.5) * 40 * k, y: fy - (50 + Math.random() * 45) * k,
+          parts.push({ x: x + (Math.random() - 0.5) * 40, y: fy - (50 + Math.random() * 45),
             vx: (Math.random() - 0.5) * 0.4, vy: -0.8, life: 0.75, color: Math.random() < 0.5 ? '#ffffff' : '#bfe7ff', size: 1.9 });
         }
       }
@@ -13378,21 +13367,21 @@ export class EffectsRenderer {
            wears it too, as it was built "as a slime's hold" */
         const a = Math.min(1, stuck / 180);
         const wob = Math.sin(now / 110) * 0.06;
-        g.ellipse(x, fy, 28 * k * (1 + wob), 9.5 * k * (1 - wob)); g.fill({ color: GOO_HOLD.body, alpha: 0.85 * a });
+        g.ellipse(x, fy, 28 * (1 + wob), 9.5 * (1 - wob)); g.fill({ color: GOO_HOLD.body, alpha: 0.85 * a });
         for (let i = 0; i < 7; i++) {
           const ang = i / 7 * Math.PI * 2 + 0.4;
-          const r = (3.4 + (i % 3)) * k * (1 + 0.15 * Math.sin(now / 90 + i));
-          g.circle(x + Math.cos(ang) * 26 * k, fy + Math.sin(ang) * 8.8 * k, r); g.fill({ color: GOO_HOLD.body, alpha: 0.85 * a });
+          const r = (3.4 + (i % 3)) * (1 + 0.15 * Math.sin(now / 90 + i));
+          g.circle(x + Math.cos(ang) * 26, fy + Math.sin(ang) * 8.8, r); g.fill({ color: GOO_HOLD.body, alpha: 0.85 * a });
         }
-        g.ellipse(x - 4 * k, fy - 1.5 * k, 17 * k, 5 * k); g.fill({ color: GOO_HOLD.light, alpha: 0.8 * a });
-        g.ellipse(x + 8 * k, fy - 2.8 * k, 4.5 * k, 1.8 * k); g.fill({ color: GOO_HOLD.shine, alpha: 0.65 * a });
+        g.ellipse(x - 4, fy - 1.5, 17, 5); g.fill({ color: GOO_HOLD.light, alpha: 0.8 * a });
+        g.ellipse(x + 8, fy - 2.8, 4.5, 1.8); g.fill({ color: GOO_HOLD.shine, alpha: 0.65 * a });
         /* over the boots: the goo that is holding them */
         for (const s2 of [-1, 1]) {
-          f.ellipse(x + s2 * 6.5 * k, fy - 3.5 * k, 8.5 * k, 6 * k * (1 + wob)); f.fill({ color: GOO_HOLD.boot, alpha: 0.88 * a });
-          f.ellipse(x + s2 * 6.5 * k - 2 * k, fy - 6.5 * k, 3 * k, 1.4 * k); f.fill({ color: GOO_HOLD.bootShine, alpha: 0.65 * a });
+          f.ellipse(x + s2 * 6.5, fy - 3.5, 8.5, 6 * (1 + wob)); f.fill({ color: GOO_HOLD.boot, alpha: 0.88 * a });
+          f.ellipse(x + s2 * 6.5 - 2, fy - 6.5, 3, 1.4); f.fill({ color: GOO_HOLD.bootShine, alpha: 0.65 * a });
         }
         if (parts && Math.random() < 0.15 * dts) {
-          parts.push({ x: x + (Math.random() - 0.5) * 18 * k, y: fy - 12 * k, vx: 0, vy: 0.3, life: 0.45, color: GOO_HOLD.drip, size: 1.9 });
+          parts.push({ x: x + (Math.random() - 0.5) * 18, y: fy - 12, vx: 0, vy: 0.3, life: 0.45, color: GOO_HOLD.drip, size: 1.9 });
         }
       }
       if (gustAge >= 0 && gustAge < GUST_FX_MS) {
@@ -13400,24 +13389,24 @@ export class EffectsRenderer {
         const ang = typeof R._gustAng === 'number' ? R._gustAng : 0;
         const ux = Math.cos(ang), uy = Math.sin(ang);
         const px = -uy, py = ux;
-        const cy = y - 10 * k;
+        const cy = y - 10;
         /* streaks blowing past you, the way you were blown */
         /* each streak twice: a dark line under a pale one, so it reads on
            snow, on sand and across the bro's own white shirt */
         for (const pass of [0, 1]) {
-          const col = pass ? 0xf2faff : 0x41586a, wAdd = pass ? 0 : 2.2 * k, al = pass ? 0.92 : 0.42;
+          const col = pass ? 0xf2faff : 0x41586a, wAdd = pass ? 0 : 2.2, al = pass ? 0.92 : 0.42;
           for (let i = 0; i < 5; i++) {
-            const off = (i - 2) * 11 * k;
-            const lead = (-50 + t * 96) * k + (i % 2) * 10 * k;
+            const off = (i - 2) * 11;
+            const lead = (-50 + t * 96) + (i % 2) * 10;
             const sx = x + px * off + ux * lead, sy = cy + py * off * 0.7 + uy * lead;
-            const len = (38 - (i % 2) * 10) * k;
+            const len = (38 - (i % 2) * 10);
             f.moveTo(sx, sy); f.lineTo(sx + ux * len, sy + uy * len);
-            f.stroke({ color: col, width: 3.2 * k + wAdd, alpha: al * a, cap: 'round' });
+            f.stroke({ color: col, width: 3.2 + wAdd, alpha: al * a, cap: 'round' });
             /* a curl at the head of the middle streak, the wind icon's swirl */
             if (i === 2) {
               f.moveTo(sx + ux * len, sy + uy * len);
-              f.arc(sx + ux * len + px * 5 * k, sy + uy * len + py * 5 * k, 5 * k, ang - Math.PI / 2, ang + Math.PI);
-              f.stroke({ color: col, width: 2.8 * k + wAdd, alpha: al * a, cap: 'round' });
+              f.arc(sx + ux * len + px * 5, sy + uy * len + py * 5, 5, ang - Math.PI / 2, ang + Math.PI);
+              f.stroke({ color: col, width: 2.8 + wAdd, alpha: al * a, cap: 'round' });
             }
           }
         }
@@ -13427,7 +13416,7 @@ export class EffectsRenderer {
           for (let i = 0; i < 9; i++) {
             const da = ang + Math.PI + (Math.random() - 0.5) * 1.6;
             const sp = 0.8 + Math.random() * 1.6;
-            parts.push({ x: x + (Math.random() - 0.5) * 14 * k, y: fy - 2 * k, vx: Math.cos(da) * sp, vy: Math.sin(da) * sp * 0.5 - 0.9,
+            parts.push({ x: x + (Math.random() - 0.5) * 14, y: fy - 2, vx: Math.cos(da) * sp, vy: Math.sin(da) * sp * 0.5 - 0.9,
               life: 0.6, color: i % 2 ? '#d9cbb0' : '#efe6d4', size: 2.1 });
           }
         }
@@ -13440,30 +13429,30 @@ export class EffectsRenderer {
            with a white rim and shine, shards at its foot, and chips flying
            off as it closes (once a freeze) */
         const a = Math.min(1, frozen / 120);
-        const top = fy - 106 * k, w = 27 * k;
-        f.roundRect(x - w, top, w * 2, fy + 4 * k - top, 9 * k);
+        const top = fy - 106, w = 27;
+        f.roundRect(x - w, top, w * 2, fy + 4 - top, 9);
         f.fill({ color: 0xbfe7ff, alpha: 0.42 * a });
-        f.roundRect(x - w, top, w * 2, fy + 4 * k - top, 9 * k);
-        f.stroke({ color: 0xf4fcff, width: 2.4 * k, alpha: 0.95 * a });
-        f.roundRect(x - w, top, w * 2, fy + 4 * k - top, 9 * k);
-        f.stroke({ color: 0x3e86c8, width: 1.2 * k, alpha: 0.7 * a });
+        f.roundRect(x - w, top, w * 2, fy + 4 - top, 9);
+        f.stroke({ color: 0xf4fcff, width: 2.4, alpha: 0.95 * a });
+        f.roundRect(x - w, top, w * 2, fy + 4 - top, 9);
+        f.stroke({ color: 0x3e86c8, width: 1.2, alpha: 0.7 * a });
         /* the shine: two long strokes down its face */
-        f.moveTo(x - w * 0.55, top + 10 * k); f.lineTo(x - w * 0.15, fy - 30 * k);
-        f.stroke({ color: 0xffffff, width: 3 * k, alpha: 0.6 * a, cap: 'round' });
-        f.moveTo(x + w * 0.2, top + 16 * k); f.lineTo(x + w * 0.45, top + 46 * k);
-        f.stroke({ color: 0xffffff, width: 2 * k, alpha: 0.5 * a, cap: 'round' });
+        f.moveTo(x - w * 0.55, top + 10); f.lineTo(x - w * 0.15, fy - 30);
+        f.stroke({ color: 0xffffff, width: 3, alpha: 0.6 * a, cap: 'round' });
+        f.moveTo(x + w * 0.2, top + 16); f.lineTo(x + w * 0.45, top + 46);
+        f.stroke({ color: 0xffffff, width: 2, alpha: 0.5 * a, cap: 'round' });
         /* shards at the foot */
         for (let i = 0; i < 6; i++) {
-          const bx = x + (i - 2.5) * 10 * k, h = (10 + (i % 3) * 6) * k;
-          f.moveTo(bx - 4 * k, fy + 3 * k); f.lineTo(bx + (i % 2 ? 2 : -2) * k, fy + 3 * k - h); f.lineTo(bx + 4 * k, fy + 3 * k); f.closePath();
+          const bx = x + (i - 2.5) * 10, h = (10 + (i % 3) * 6);
+          f.moveTo(bx - 4, fy + 3); f.lineTo(bx + (i % 2 ? 2 : -2), fy + 3 - h); f.lineTo(bx + 4, fy + 3); f.closePath();
           f.fill({ color: i % 2 ? 0xe8f7ff : 0xa8dcff, alpha: 0.95 * a });
-          f.stroke({ color: 0x3e86c8, width: 1 * k, alpha: 0.75 * a });
+          f.stroke({ color: 0x3e86c8, width: 1, alpha: 0.75 * a });
         }
         if (parts && R._frozenChipAt !== R._frozenAt) {
           R._frozenChipAt = R._frozenAt;
           for (let i = 0; i < 12; i++) {
             const da = Math.random() * Math.PI * 2;
-            parts.push({ x: x + Math.cos(da) * 20 * k, y: fy - (20 + Math.random() * 70) * k,
+            parts.push({ x: x + Math.cos(da) * 20, y: fy - (20 + Math.random() * 70),
               vx: Math.cos(da) * (1.2 + Math.random() * 1.8), vy: -1 - Math.random() * 1.6, life: 0.6,
               color: i % 2 ? '#ffffff' : '#a8dcff', size: 2.2 + Math.random() * 1.2 });
           }
@@ -13473,21 +13462,21 @@ export class EffectsRenderer {
         /* DIZZY: a swirl turning over your head, the daze's stars gone soft
            and slow, fading as your steering steadies */
         const a = Math.min(1, wobble / 250);
-        const hx = x, hy = fy - 102 * k;
+        const hx = x, hy = fy - 102;
         for (let j = 0; j < 2; j++) {
           const a0 = now / 260 + j * Math.PI;
-          f.moveTo(hx + Math.cos(a0) * 15 * k, hy + Math.sin(a0) * 5 * k);
+          f.moveTo(hx + Math.cos(a0) * 15, hy + Math.sin(a0) * 5);
           for (let q = 1; q <= 14; q++) {
-            const aa = a0 + q * 0.32, rr = (15 - q * 0.7) * k;
+            const aa = a0 + q * 0.32, rr = (15 - q * 0.7);
             f.lineTo(hx + Math.cos(aa) * rr, hy + Math.sin(aa) * rr * 0.36);
           }
-          f.stroke({ color: 0x5a4410, width: 3.6 * k, alpha: 0.55 * a, cap: 'round', join: 'round' });
-          f.moveTo(hx + Math.cos(a0) * 15 * k, hy + Math.sin(a0) * 5 * k);
+          f.stroke({ color: 0x5a4410, width: 3.6, alpha: 0.55 * a, cap: 'round', join: 'round' });
+          f.moveTo(hx + Math.cos(a0) * 15, hy + Math.sin(a0) * 5);
           for (let q = 1; q <= 14; q++) {
-            const aa = a0 + q * 0.32, rr = (15 - q * 0.7) * k;
+            const aa = a0 + q * 0.32, rr = (15 - q * 0.7);
             f.lineTo(hx + Math.cos(aa) * rr, hy + Math.sin(aa) * rr * 0.36);
           }
-          f.stroke({ color: 0xfff2a8, width: 2 * k, alpha: 0.95 * a, cap: 'round', join: 'round' });
+          f.stroke({ color: 0xfff2a8, width: 2, alpha: 0.95 * a, cap: 'round', join: 'round' });
         }
       }
       /* ═══ v2.3.3014: THE OTHER FOUR LOOKS ═══
@@ -13499,24 +13488,24 @@ export class EffectsRenderer {
            lasts.  (The first cut, a faint ring, did not read on sand at
            phone size: mp-elemhits' look-soak.) */
         const a = Math.min(1, soak / 400);
-        g.ellipse(x, fy, 27 * k, 9.5 * k); g.fill({ color: 0x2f7fd0, alpha: 0.5 * a });
-        g.ellipse(x - 5 * k, fy - 1.5 * k, 13 * k, 3.6 * k); g.fill({ color: 0x9fd8ff, alpha: 0.55 * a });
+        g.ellipse(x, fy, 27, 9.5); g.fill({ color: 0x2f7fd0, alpha: 0.5 * a });
+        g.ellipse(x - 5, fy - 1.5, 13, 3.6); g.fill({ color: 0x9fd8ff, alpha: 0.55 * a });
         for (let i = 0; i < 2; i++) {
           const ph = ((now / 900) + i * 0.5) % 1;
-          g.ellipse(x, fy, (12 + ph * 24) * k, (4 + ph * 8.2) * k);
-          g.stroke({ color: 0xd8f2ff, width: 2.2 * k, alpha: 0.9 * (1 - ph) * a });
+          g.ellipse(x, fy, (12 + ph * 24), (4 + ph * 8.2));
+          g.stroke({ color: 0xd8f2ff, width: 2.2, alpha: 0.9 * (1 - ph) * a });
         }
         /* water running down the body, in front of it */
         for (let i = 0; i < 4; i++) {
           const ph = ((now / 650) + i * 0.27) % 1;
-          const sx = x + (i - 1.5) * 6.5 * k;
-          const sy = fy - (78 - i * 9) * k + ph * 26 * k;
-          f.moveTo(sx, sy); f.lineTo(sx, sy + 9 * k);
-          f.stroke({ color: 0x8fd0ff, width: 2 * k, alpha: 0.85 * (1 - ph) * a, cap: 'round' });
-          f.circle(sx, sy + 10 * k, 1.6 * k); f.fill({ color: 0xcfeeff, alpha: 0.9 * (1 - ph) * a });
+          const sx = x + (i - 1.5) * 6.5;
+          const sy = fy - (78 - i * 9) + ph * 26;
+          f.moveTo(sx, sy); f.lineTo(sx, sy + 9);
+          f.stroke({ color: 0x8fd0ff, width: 2, alpha: 0.85 * (1 - ph) * a, cap: 'round' });
+          f.circle(sx, sy + 10, 1.6); f.fill({ color: 0xcfeeff, alpha: 0.9 * (1 - ph) * a });
         }
         if (parts && Math.random() < 0.75 * dts) {
-          parts.push({ x: x + (Math.random() - 0.5) * 24 * k, y: fy - (30 + Math.random() * 50) * k,
+          parts.push({ x: x + (Math.random() - 0.5) * 24, y: fy - (30 + Math.random() * 50),
             vx: (Math.random() - 0.5) * 0.15, vy: 1.6 + Math.random() * 0.8, life: 0.45,
             color: Math.random() < 0.5 ? '#3f9be8' : '#cfeeff', size: 2.1 + Math.random() * 0.9 });
         }
@@ -13526,20 +13515,20 @@ export class EffectsRenderer {
            rising off you and popping over your head and shoulders */
         const a = Math.min(1, poison / 300);
         const pl = 0.85 + 0.15 * Math.sin(now / 160);
-        g.ellipse(x, fy, 27 * k, 9.5 * k); g.fill({ color: 0x6fcf2a, alpha: 0.45 * a * pl });
-        g.ellipse(x, fy, 27 * k, 9.5 * k); g.stroke({ color: 0x3f8a1a, width: 2.2 * k, alpha: 0.85 * a });
-        f.ellipse(x, fy - 48 * k, 17 * k, 44 * k); f.fill({ color: 0x8be04a, alpha: 0.13 * a * pl });
+        g.ellipse(x, fy, 27, 9.5); g.fill({ color: 0x6fcf2a, alpha: 0.45 * a * pl });
+        g.ellipse(x, fy, 27, 9.5); g.stroke({ color: 0x3f8a1a, width: 2.2, alpha: 0.85 * a });
+        f.ellipse(x, fy - 48, 17, 44); f.fill({ color: 0x8be04a, alpha: 0.13 * a * pl });
         const spots = [[-9, 78], [10, 84], [-15, 52], [15, 56]];
         for (let i = 0; i < spots.length; i++) {
           const ph = ((now / 700) + i * 0.27) % 1;
-          const bx = x + spots[i][0] * k, by = fy - (spots[i][1] + ph * 24) * k;
-          const r = (2.8 + ph * 3.8) * k;
+          const bx = x + spots[i][0], by = fy - (spots[i][1] + ph * 24);
+          const r = (2.8 + ph * 3.8);
           f.circle(bx, by, r); f.fill({ color: 0x9fe04a, alpha: 0.35 * (1 - ph) * a });
-          f.circle(bx, by, r); f.stroke({ color: 0x4f9a24, width: 1.8 * k, alpha: 0.95 * (1 - ph * ph) * a });
-          f.circle(bx - r * 0.35, by - r * 0.35, 1.1 * k); f.fill({ color: 0xeaffc8, alpha: 0.9 * (1 - ph) * a });
+          f.circle(bx, by, r); f.stroke({ color: 0x4f9a24, width: 1.8, alpha: 0.95 * (1 - ph * ph) * a });
+          f.circle(bx - r * 0.35, by - r * 0.35, 1.1); f.fill({ color: 0xeaffc8, alpha: 0.9 * (1 - ph) * a });
         }
         if (parts && Math.random() < 0.6 * dts) {
-          parts.push({ x: x + (Math.random() - 0.5) * 26 * k, y: fy - (8 + Math.random() * 60) * k,
+          parts.push({ x: x + (Math.random() - 0.5) * 26, y: fy - (8 + Math.random() * 60),
             vx: (Math.random() - 0.5) * 0.3, vy: -0.7 - Math.random() * 0.6, life: 0.7,
             color: Math.random() < 0.5 ? '#a6e24a' : '#4f9a24', size: 2 + Math.random() * 1.4 });
         }
@@ -13549,13 +13538,13 @@ export class EffectsRenderer {
            half behind it drawn under the figure, the half in front over it
            -- and grit off the blow, once */
         const a = Math.min(1, daze / 150);
-        const hx = x, hy = fy - 98 * k;
-        g.ellipse(hx, hy, 20 * k, 6.5 * k); g.stroke({ color: 0xfff2a8, width: 1.6 * k, alpha: 0.55 * a });
+        const hx = x, hy = fy - 98;
+        g.ellipse(hx, hy, 20, 6.5); g.stroke({ color: 0xfff2a8, width: 1.6, alpha: 0.55 * a });
         for (let i = 0; i < 5; i++) {
           const ang = now / 170 + i * (Math.PI * 2 / 5);
-          const sx = hx + Math.cos(ang) * 20 * k, sy = hy + Math.sin(ang) * 6.5 * k;
+          const sx = hx + Math.cos(ang) * 20, sy = hy + Math.sin(ang) * 6.5;
           const gg = Math.sin(ang) < 0 ? g : f;
-          const rO = 5.6 * k, rI = 2.4 * k;
+          const rO = 5.6, rI = 2.4;
           for (let q = 0; q < 10; q++) {
             const qa = -Math.PI / 2 + q * Math.PI / 5 + now / 400;
             const rr = q % 2 ? rI : rO;
@@ -13564,12 +13553,12 @@ export class EffectsRenderer {
           }
           gg.closePath();
           gg.fill({ color: 0xffe36b, alpha: 0.97 * a });
-          gg.stroke({ color: 0x5a4410, width: 1.1 * k, alpha: 0.8 * a });
+          gg.stroke({ color: 0x5a4410, width: 1.1, alpha: 0.8 * a });
         }
         if (parts && R._dazeGritAt !== R._dazeUntil) {
           R._dazeGritAt = R._dazeUntil;
           for (let i = 0; i < 9; i++) {
-            parts.push({ x: x + (Math.random() - 0.5) * 20 * k, y: fy - (20 + Math.random() * 50) * k,
+            parts.push({ x: x + (Math.random() - 0.5) * 20, y: fy - (20 + Math.random() * 50),
               vx: (Math.random() - 0.5) * 2.4, vy: -0.6 - Math.random() * 1.2, life: 0.55,
               color: i % 2 ? '#a89a82' : '#d4c8b0', size: 2 + Math.random() });
           }
@@ -13602,24 +13591,24 @@ export class EffectsRenderer {
           }
         };
         const fl = 0.7 + 0.3 * rnd();
-        g.ellipse(x, fy - 46 * k, 24 * k, 54 * k); g.fill({ color: 0xbfe6ff, alpha: 0.18 * a * fl });
-        f.ellipse(x, fy - 46 * k, 15 * k, 44 * k); f.fill({ color: 0xfff6a0, alpha: 0.12 * a * fl });
+        g.ellipse(x, fy - 46, 24, 54); g.fill({ color: 0xbfe6ff, alpha: 0.18 * a * fl });
+        f.ellipse(x, fy - 46, 15, 44); f.fill({ color: 0xfff6a0, alpha: 0.12 * a * fl });
         for (let i = 0; i < 4; i++) {
           const ang0 = rnd() * Math.PI * 2;
-          const cx0 = x + Math.cos(ang0) * 10 * k, cy0 = fy - (22 + rnd() * 62) * k;
-          const len = (24 + rnd() * 16) * k;
+          const cx0 = x + Math.cos(ang0) * 10, cy0 = fy - (22 + rnd() * 62);
+          const len = (24 + rnd() * 16);
           const ex = cx0 + Math.cos(ang0) * len, ey = cy0 + Math.sin(ang0) * len * 0.7;
-          const pts = zig(cx0, cy0, ex, ey, 5, 5 * k);
-          stroke(pts, 2.2 * k);
+          const pts = zig(cx0, cy0, ex, ey, 5, 5);
+          stroke(pts, 2.2);
           /* a fork off its middle */
           const mid = pts[2], fa = ang0 + (rnd() < 0.5 ? 0.7 : -0.7);
-          stroke(zig(mid[0], mid[1], mid[0] + Math.cos(fa) * len * 0.45, mid[1] + Math.sin(fa) * len * 0.32, 3, 3 * k), 1.5 * k);
+          stroke(zig(mid[0], mid[1], mid[0] + Math.cos(fa) * len * 0.45, mid[1] + Math.sin(fa) * len * 0.32, 3, 3), 1.5);
         }
         const from = R._shockFrom;
         if (from && typeof from.x === 'number' && now - (R._shockAt || 0) < 300) {
-          const ty = fy - 50 * k, sy0 = from.y + playerGroundDy(zone, from.x, from.y) - 50 * k;
+          const ty = fy - 50, sy0 = from.y + playerGroundDy(zone, from.x, from.y) - 50;
           const L = Math.hypot(x - from.x, ty - sy0);
-          stroke(zig(from.x, sy0, x, ty, Math.max(4, Math.round(L / (14 * k))), 8 * k), 2.8 * k);
+          stroke(zig(from.x, sy0, x, ty, Math.max(4, Math.round(L / (14))), 8), 2.8);
         }
       }
       /* ═══ v2.3.3264: THE THREE A PLAYER'S GEM PUTS ON YOU ═══
@@ -13633,11 +13622,11 @@ export class EffectsRenderer {
            its icon, turning lazily and dragging -- with dust kicked low */
         const a = Math.min(1, slow / 250);
         for (const pass of [0, 1]) {
-          const col = pass ? 0xe6edf3 : 0x41586a, w = pass ? 2.6 * k : 4.6 * k, al = pass ? 0.9 : 0.4;
+          const col = pass ? 0xe6edf3 : 0x41586a, w = pass ? 2.6 : 4.6, al = pass ? 0.9 : 0.4;
           for (let i = 0; i < 3; i++) {
             const ph = now / 900 + i * (Math.PI * 2 / 3);
-            const cy = fy - (10 + i * 13) * k;
-            const rx = (22 - i * 3) * k, ry = (6.5 - i) * k;
+            const cy = fy - (10 + i * 13);
+            const rx = (22 - i * 3), ry = (6.5 - i);
             /* an open arc of the ellipse, a third of the way round, and a curl
                at its head */
             const a0 = ph, a1 = ph + 2.1;
@@ -13649,13 +13638,13 @@ export class EffectsRenderer {
             f.stroke({ color: col, width: w, alpha: al * a, cap: 'round', join: 'round' });
             const hx = x + Math.cos(a1) * rx, hy = cy + Math.sin(a1) * ry;
             f.moveTo(hx, hy);
-            f.arc(hx - Math.sin(a1) * 4 * k, hy + Math.cos(a1) * 4 * k, 4 * k, a1 - Math.PI / 2, a1 + Math.PI);
+            f.arc(hx - Math.sin(a1) * 4, hy + Math.cos(a1) * 4, 4, a1 - Math.PI / 2, a1 + Math.PI);
             f.stroke({ color: col, width: w * 0.85, alpha: al * a, cap: 'round' });
           }
         }
-        g.ellipse(x, fy, 25 * k, 8.5 * k); g.fill({ color: 0xcfd8de, alpha: 0.28 * a });
+        g.ellipse(x, fy, 25, 8.5); g.fill({ color: 0xcfd8de, alpha: 0.28 * a });
         if (parts && Math.random() < 0.35 * dts) {
-          parts.push({ x: x + (Math.random() - 0.5) * 34 * k, y: fy - Math.random() * 6 * k,
+          parts.push({ x: x + (Math.random() - 0.5) * 34, y: fy - Math.random() * 6,
             vx: (Math.random() - 0.5) * 0.9, vy: -0.25 - Math.random() * 0.3, life: 0.6,
             color: Math.random() < 0.5 ? '#d9cbb0' : '#eef2f5', size: 2 });
         }
@@ -13666,36 +13655,36 @@ export class EffectsRenderer {
            behind the body drawn under it */
         const a = Math.min(1, fracture / 250);
         const n = Math.max(1, Math.min(5, Math.floor(R._fractureStacks) || 1));
-        g.ellipse(x, fy, 26 * k, 9 * k); g.fill({ color: 0x6b5a3a, alpha: 0.32 * a });
+        g.ellipse(x, fy, 26, 9); g.fill({ color: 0x6b5a3a, alpha: 0.32 * a });
         for (let i = 0; i < n + 2; i++) {
           const ang = i / (n + 2) * Math.PI * 2 + 0.6;
-          let px = x + Math.cos(ang) * 4 * k, py = fy + Math.sin(ang) * 1.4 * k;
+          let px = x + Math.cos(ang) * 4, py = fy + Math.sin(ang) * 1.4;
           g.moveTo(px, py);
           for (let q = 1; q <= 3; q++) {
             const jit = ((i * 7 + q * 3) % 5 - 2) * 0.16;
-            px = x + Math.cos(ang + jit) * (4 + q * 7.5) * k;
-            py = fy + Math.sin(ang + jit) * (1.4 + q * 2.6) * k;
+            px = x + Math.cos(ang + jit) * (4 + q * 7.5);
+            py = fy + Math.sin(ang + jit) * (1.4 + q * 2.6);
             g.lineTo(px, py);
           }
-          g.stroke({ color: 0x2e2416, width: 2.2 * k, alpha: 0.9 * a, cap: 'round', join: 'round' });
+          g.stroke({ color: 0x2e2416, width: 2.2, alpha: 0.9 * a, cap: 'round', join: 'round' });
         }
-        const cy = fy - 52 * k;
+        const cy = fy - 52;
         for (let i = 0; i < n; i++) {
           const ang = now / 520 + i * (Math.PI * 2 / n);
-          const sx = x + Math.cos(ang) * 22 * k, sy = cy + Math.sin(ang) * 7 * k;
+          const sx = x + Math.cos(ang) * 22, sy = cy + Math.sin(ang) * 7;
           const gg = Math.sin(ang) < 0 ? g : f;
-          const r = 4.2 * k;
+          const r = 4.2;
           gg.moveTo(sx - r, sy + r * 0.3); gg.lineTo(sx - r * 0.2, sy - r); gg.lineTo(sx + r, sy - r * 0.2);
           gg.lineTo(sx + r * 0.5, sy + r); gg.closePath();
           gg.fill({ color: 0xc9b48a, alpha: 0.97 * a });
-          gg.stroke({ color: 0x4a3a20, width: 1.3 * k, alpha: 0.9 * a });
+          gg.stroke({ color: 0x4a3a20, width: 1.3, alpha: 0.9 * a });
         }
       }
       if (thorn) {
         /* FLORA: a thorny bramble wound round the waist, its thorns out --
            the back of it under the figure, the front over it */
         const a = Math.min(1, thorn / 250);
-        const cy = fy - 38 * k, rx = 21 * k, ry = 6.5 * k;
+        const cy = fy - 38, rx = 21, ry = 6.5;
         const sway = Math.sin(now / 420) * 0.15;
         for (const half of [0, 1]) {
           const gg = half ? f : g;
@@ -13703,24 +13692,24 @@ export class EffectsRenderer {
           for (const pass of [0, 1]) {
             for (let q = 0; q <= 14; q++) {
               const t = a0 + (a1 - a0) * q / 14;
-              const px = x + Math.cos(t) * rx, py = cy + Math.sin(t) * ry + Math.sin(t * 3 + sway) * 2 * k;
+              const px = x + Math.cos(t) * rx, py = cy + Math.sin(t) * ry + Math.sin(t * 3 + sway) * 2;
               if (q === 0) gg.moveTo(px, py); else gg.lineTo(px, py);
             }
-            gg.stroke({ color: pass ? 0x6f9a2e : 0x2a3a12, width: pass ? 2.6 * k : 4.6 * k, alpha: (pass ? 0.95 : 0.55) * a, cap: 'round', join: 'round' });
+            gg.stroke({ color: pass ? 0x6f9a2e : 0x2a3a12, width: pass ? 2.6 : 4.6, alpha: (pass ? 0.95 : 0.55) * a, cap: 'round', join: 'round' });
           }
           for (let q = 0; q < 5; q++) {
             const t = a0 + (a1 - a0) * (q + 0.5) / 5;
             const px = x + Math.cos(t) * rx, py = cy + Math.sin(t) * ry;
             const ox = Math.cos(t), oy = Math.sin(t) * 0.45 - 0.35;
             const L = Math.hypot(ox, oy) || 1;
-            const tx = px + ox / L * 6 * k, ty = py + oy / L * 6 * k;
-            gg.moveTo(px - oy / L * 2 * k, py + ox / L * 2 * k); gg.lineTo(tx, ty); gg.lineTo(px + oy / L * 2 * k, py - ox / L * 2 * k); gg.closePath();
+            const tx = px + ox / L * 6, ty = py + oy / L * 6;
+            gg.moveTo(px - oy / L * 2, py + ox / L * 2); gg.lineTo(tx, ty); gg.lineTo(px + oy / L * 2, py - ox / L * 2); gg.closePath();
             gg.fill({ color: 0xd8e8a8, alpha: 0.95 * a });
-            gg.stroke({ color: 0x2a3a12, width: 1 * k, alpha: 0.8 * a });
+            gg.stroke({ color: 0x2a3a12, width: 1, alpha: 0.8 * a });
           }
         }
         if (parts && Math.random() < 0.12 * dts) {
-          parts.push({ x: x + (Math.random() - 0.5) * 36 * k, y: cy - Math.random() * 6 * k,
+          parts.push({ x: x + (Math.random() - 0.5) * 36, y: cy - Math.random() * 6,
             vx: (Math.random() - 0.5) * 0.5, vy: 0.4 + Math.random() * 0.4, life: 0.7,
             color: Math.random() < 0.5 ? '#8be36a' : '#5a8a2a', size: 2 });
         }
@@ -13741,7 +13730,7 @@ export class EffectsRenderer {
     if (this.personFire) {
       const px = S.player.x, py = S.player.y;
       const on = !isPlayerDead(S) && (S._heapBurnUntil > now || (blazeMe && S._burnUntil > now));
-      this.personFire.step(on, px, py + playerGroundDy(zone, px, py), zonePlayerScale(zone, px, py, TILE) || 1, now);
+      this.personFire.step(on, px, py + playerGroundDy(zone, px, py), 1, now);
       if (typeof window !== 'undefined' && window.__btProbe) window.__btPersonFire = this.personFire.probe();
     }
     const others = S.others;
@@ -13763,7 +13752,7 @@ export class EffectsRenderer {
         if (fires && o._burnUntil > now) {
           pf = fires.get(id) || null;
           if (!pf && fires.size < PEER_FIRES) { pf = { fire: new PersonFire(this.overlayLayer), tick: 0 }; fires.set(id, pf); }
-          if (pf) { pf.tick = tick; pf.fire.step(true, ox, oy + playerGroundDy(zone, ox, oy), zonePlayerScale(zone, ox, oy, TILE) || 1, now); }
+          if (pf) { pf.tick = tick; pf.fire.step(true, ox, oy + playerGroundDy(zone, ox, oy), 1, now); }
         }
         draw(o, ox, oy, !!pf);
       }
@@ -13778,7 +13767,7 @@ export class EffectsRenderer {
         const ox = o ? (typeof o.renderX === 'number' ? o.renderX : o.x) : NaN;
         const oy = o ? (typeof o.renderY === 'number' ? o.renderY : o.y) : NaN;
         if (o && !o._isDead && (o.zone || o.z || 'town') === zone && !_peerNotDrawn(S, id) && Number.isFinite(ox) && Number.isFinite(oy)) {
-          pf.fire.step(false, ox, oy + playerGroundDy(zone, ox, oy), zonePlayerScale(zone, ox, oy, TILE) || 1, now);
+          pf.fire.step(false, ox, oy + playerGroundDy(zone, ox, oy), 1, now);
           if (!pf.fire.done()) continue;
         }
         pf.fire.destroy();
@@ -13816,7 +13805,7 @@ export class EffectsRenderer {
     const draw = (x, y, w) => {
       const span = Math.max(1, w.until - w.t0);
       const p = Math.max(0, Math.min(1, (now - w.t0) / span));
-      const R = (w.r || 240) * depthK(S.currentZone, y);
+      const R = (w.r || 240);
       g.circle(x, y, R);
       g.fill({ color: 0xff9a3c, alpha: 0.05 + 0.13 * p });
       g.circle(x, y, R);
@@ -13895,7 +13884,7 @@ export class EffectsRenderer {
     const g = this.windupGfx;
     const ms = S.monsters;
     if (!g || !ms || !ms.length || !S.player) { S._whirlCatch = null; return; }
-    const R = (w.r || 240) * depthK(S.currentZone, S.player.y);
+    const R = (w.r || 240);
     const R2 = R * R;
     const px = S.player.x, py = S.player.y;
     const hits = [];
@@ -14145,8 +14134,7 @@ export class EffectsRenderer {
        BroTown's record.) */
     const _ax = Number.isFinite(fm.x) ? fm.x : S.player.x;
     const _ay = Number.isFinite(fm.y) ? fm.y - 6 : S.player.y;
-    const pscale = zonePlayerScale(S.currentZone, _ax, _ay, TILE);
-    const s = (FH / FIRE_FH) * pscale;
+    const s = (FH / FIRE_FH);
     /* v2.3.2500: ...times your build, as the walking body is (see _localBuild).
        The sprite is anchored (0.5, 1) -- its feet -- so growing y grows the
        figure upward and needs no lift, unlike the frame-centred body. */
@@ -14157,8 +14145,8 @@ export class EffectsRenderer {
     const [_fdx, _fdy] = _fireFrameShift(fi, sp.scale.x, sp.scale.y);
     sp.x = _ax + _fdx;
     /* v2.3.2846: boots on your boots (see FIRE_FEET_ROW); was
-       `S.player.y + 6 * pscale`, which planted the frame's bottom at your hips */
-    sp.y = _ay + standFootDy(pscale) + (FIRE_FH - FIRE_FEET_ROW) * sp.scale.y + _fdy;
+       `S.player.y + 6`, which planted the frame's bottom at your hips */
+    sp.y = _ay + standFootDy(1) + (FIRE_FH - FIRE_FEET_ROW) * sp.scale.y + _fdy;
     /* v2.3.2287 QA probe -- the sibling of __btChopFigure, which the fire
        figure never had. */
     if (typeof window !== 'undefined') {
@@ -14568,7 +14556,7 @@ export class EffectsRenderer {
       /* v2.3.3666: a light where it began (ent._fireAt) */
       const _fa = code === 'fire' && ent._fireAt ? ent._fireAt : null;
       const _ox = _fa ? _fa.x : ox, _oy = _fa ? _fa.y : oy;
-      const pscale = _spot ? _spot.pscale : zonePlayerScale(zone, _ox, _oy, TILE);
+      const pscale = _spot ? _spot.pscale : 1;
       const s = (spec.h / spec.fh) * pscale;   /* v2.3.1715: per-strip frame height, was a hardcoded 220 */
       /* v2.3.2500: and THEIR build, relayed as hg/fr (peerCosmetics) and read
          here exactly as entityRenderer reads it for their walking body. */
@@ -15641,10 +15629,7 @@ export class EffectsRenderer {
          were a flat 0.45, so on a vista zone — where the curve runs to ~0.03 —
          a peer attacking drew a full-size figure over a speck.  Same curve,
          same inputs, so the stand-in and the body shrink together. */
-      const sY = REMOTE_SWING_SCALE * zonePlayerScale(
-        S.currentZone || 'town',
-        (o.renderX != null) ? o.renderX : o.x,
-        (o.renderY != null) ? o.renderY : o.y, TILE);
+      const sY = REMOTE_SWING_SCALE;
       /* v2.3.1088: jogging legs while this remote is MOVING -- swap the body to the
          leg-erased torso strip and composite jog legs under it (same as the bow).
          v2.3.1093: legs face the SAME direction as the torso (the swing facing
@@ -15913,10 +15898,7 @@ export class EffectsRenderer {
         sY = _pst.bodyH / 188;
         sgnX = mirror ? -sY : sY;
       } else {
-        const _sYraw = REMOTE_BOW_SCALE * zonePlayerScale(
-          S.currentZone || 'town',
-          (o.renderX != null) ? o.renderX : o.x,
-          (o.renderY != null) ? o.renderY : o.y, TILE);
+        const _sYraw = REMOTE_BOW_SCALE;
         /* v2.3.2500: their build, as on the remote swing above and on their
            walking body.  Height on y, frame on x. */
         const _bB = _peerBuild(o);
@@ -17464,9 +17446,8 @@ export class EffectsRenderer {
     const ox = (o.renderX != null ? o.renderX : o.x) || 0;
     const oy = (o.renderY != null ? o.renderY : o.y) || 0;
     const feetY = oy + playerGroundDy(zone, ox, oy);
-    const pscale = zonePlayerScale(zone, ox, feetY, TILE) || 1;
     const bl = _peerBuild(o);   /* their build, as on their walking body */
-    const k = (FARM_ANIM_HEAD_WORLD / FARM_ANIM_HEAD) * pscale;
+    const k = (FARM_ANIM_HEAD_WORLD / FARM_ANIM_HEAD);
     const body = F.body;
     body.texture = fig.arr[fi] || Texture.EMPTY;
     body.scale.set(k * bl.sx, k * bl.sy);
@@ -17498,7 +17479,7 @@ export class EffectsRenderer {
     const pFit = fittedShadeSpan(body.y + (farmCrownMed(A) - A.fh) * body.scale.y, pFoot);
     const fsp = F.shade = spanSpec(SHADE.figure, pFit, body.y - A.fh * body.scale.y, body.y, F.shade);
     for (const sp of [body, F.legs, F.shirt, F.chest, F.prop]) if (sp) sp._vShade = fsp;
-    placeFarmFigProxy(F.fig, ox, pFit, standShadeSpan(feetY, pscale, bl.sy), bl);
+    placeFarmFigProxy(F.fig, ox, pFit, standShadeSpan(feetY, 1, bl.sy), bl);
     const looks = {
       hair: o.hair, hairColor: o.hairColor,
       facialhair: o.facialhair, facialHairColor: o.facialHairColor,
@@ -17591,9 +17572,8 @@ export class EffectsRenderer {
     const fi = Math.min(frames.length - 1, hold != null ? Math.max(0, hold) : farmWorkFrame(w.step, now - w.startedAt, w.doneAt - w.startedAt));
     const P = S.player;
     const feetY = P.y + playerGroundDy(S.currentZone, P.x, P.y);
-    const pscale = zonePlayerScale(S.currentZone, P.x, feetY, TILE) || 1;
     const bl = _localBuild();   /* your build, as on the body */
-    const k = (FARM_ANIM_HEAD_WORLD / FARM_ANIM_HEAD) * pscale;
+    const k = (FARM_ANIM_HEAD_WORLD / FARM_ANIM_HEAD);
     body.texture = frames[fi];
     body.scale.set(k * bl.sx, k * bl.sy);
     /* the point between his boots where yours are */
@@ -17659,7 +17639,7 @@ export class EffectsRenderer {
     const fsp = this._farmShadeSpec = spanSpec(SHADE.figure, fit,
       body.y - A.fh * body.scale.y, body.y, this._farmShadeSpec);
     for (const sp of [body, legs, shirt, chest, prop]) if (sp) sp._vShade = fsp;
-    placeFarmFigProxy(this.farmFigProxy, P.x, fit, standShadeSpan(feetY, pscale, bl.sy), bl);
+    placeFarmFigProxy(this.farmFigProxy, P.x, fit, standShadeSpan(feetY, 1, bl.sy), bl);
     this._placeSkillTraitsOn(A.pose, body, fi, 'south', false);
     /* where the work lands -- the blade striking, the water reaching the soil,
        the hands in it: what you dig, pour or plant flies from there
@@ -17697,10 +17677,10 @@ export class EffectsRenderer {
             const qT = body.y - A.fh * body.scale.y, qB = body.y;
             const lerp = (a, b, t) => [0, 1, 2].map((j) => +(a[j] + (b[j] - a[j]) * t).toFixed(4));
             const mine = (y) => lerp(sp.top, sp.bot, (y - qT) / (qB - qT));
-            const span = standShadeSpan(feetY, pscale, bl.sy);
+            const span = standShadeSpan(feetY, 1, bl.sy);
             const walk = (y) => lerp(SHADE.figure.top, SHADE.figure.bot, (y - span[0]) / (span[1] - span[0]));
             const fig = nominalStandFigure('south');
-            const wFeet = feetY, wCrown = feetY - fig.bodyH * pscale * (bl.sy || 1);
+            const wFeet = feetY, wCrown = feetY - fig.bodyH * (bl.sy || 1);
             return { boots: mine(footYw), crown: mine(crownYw), walkBoots: walk(wFeet), walkCrown: walk(wCrown),
               all: [body, legs, shirt, chest, prop].every((q) => !q || q._vShade === sp),
               /* the box his shine is laid across (glint.js), world px */

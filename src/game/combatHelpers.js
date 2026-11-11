@@ -8,7 +8,7 @@
    globalThis assignments run. The defensive typeof guards in the code are kept
    verbatim. window._gameState / window._setLevelUpMsg stay as runtime lookups
    by design (they are wired up inside the BroTown component each render). */
-import { xpRequired, recalcDerived, BT_AUDIO, BLOCK_ARC_HALF, monsterBodyOffsetY, monsterTorsoY, zonePlayerScale, TILE, bossSizeK /* v2.3.3556 */ } from '@/data/index.js';   /* v2.3.2845: + the torso a shot is aimed at, and the size it is drawn */
+import { xpRequired, recalcDerived, BT_AUDIO, BLOCK_ARC_HALF, monsterBodyOffsetY, monsterTorsoY, bossSizeK /* v2.3.3556 */ } from '@/data/index.js';   /* v2.3.2845: + the torso a shot is aimed at, and the size it is drawn */
 import { hitMaterialOf, hitFxTintOf, isRemnantSkull } from '@/data/monsterVariants.js'; /* v2.3.2200: hit-feedback material table; v2.3.2233: remnant guard; v2.3.2844: goo in the drawn colour */
 import { propMaterial, propSwingContact } from '@/data/worldProps.js';   /* v2.3.2730: what a prop is made of, and where a swing meets one */
 import { strikeWheelObject } from '@/game/wheelBreak.js';   /* v2.3.2995: the Wheel's objects take hits, break, and are mended */
@@ -241,12 +241,11 @@ export function monsterDrawScale(m, zoneId) {
   if (!m) return 1;
   /* v2.3.3556: ...times a dungeon boss's own size (data/gameSystems.js
      bossSizeK, 1 for any other monster) -- the scale it is drawn at */
-  var b = bossSizeK(m);
-  if (!zoneId) return b;
-  var x = (typeof m.renderX === 'number' && isFinite(m.renderX)) ? m.renderX : m.x;
-  var y = (typeof m.renderY === 'number' && isFinite(m.renderY)) ? m.renderY : m.y;
-  var k = zonePlayerScale(zoneId, x, y, TILE);
-  return ((typeof k === 'number' && isFinite(k) && k > 0) ? k : 1) * b;
+  /* v2.3.4862: the zone's own draw scale (zonePlayerScale) is gone with the
+     old map's World View and dunes -- 1 in every live zone.  `zoneId` stays
+     in the signature for its callers. */
+  void zoneId;
+  return bossSizeK(m);
 }
 export function torsoLift(m, zoneId) {
   if (!m) return 0;
