@@ -99,6 +99,14 @@ export const arenaMethods = {
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'arenaap') && !f.arenaap);
   },
 
+  /* v2.3.4796: a sponsor's stake and its record go out as ONE write
+     (_handleArenaSponsor).  On unless the live flags say
+     `arenastakeonewrite: false`, which puts back the old two writes. */
+  _arenaStakeOneWrite() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'arenastakeonewrite') && !f.arenastakeonewrite);
+  },
+
   /* HTTP surface -- the worker routes /api/arena/* here (old DO
    * retired from routing).  Response shapes mirror arena.js so the
    * polling client renders unchanged. */
@@ -497,9 +505,41 @@ export const arenaMethods = {
     }
     const key = 'arena_stake:' + t.id + ':' + m.id + ':' + session.id;
     if (await this.state.storage.get(key)) return err('already-staked', 'One stake per match');
-    const debit = await this._escrowDebitGold(session.id, amount, 'arenastake:' + t.id + ':' + m.id + ':' + session.id);
-    if (!debit.ok) return err('no-gold', 'Need ' + amount + 'g');
-    await this.state.storage.put(key, { tid: t.id, matchId: m.id, sponsorId: session.id, targetId, amount, ts: Date.now() });
+    const opId = 'arenastake:' + t.id + ':' + m.id + ':' + session.id;
+    const rec = { tid: t.id, matchId: m.id, sponsorId: session.id, targetId, amount, ts: Date.now() };
+    if (this._arenaStakeOneWrite()) {
+      /* ═══ v2.3.4796: THE STAKE AND ITS RECORD IN ONE WRITE ═══
+         _escrowDebitGold took the stake (the purse and its stamp, one write)
+         and the arena_stake record -- the only thing _arenaStakeSweep
+         refunds from -- was put after it, in a write of its own.  A restart
+         between them (every merge touching server/ restarts the room, and
+         the bracket lives in memory, so the tournament is void) took the
+         sponsor's gold with no record naming it: 300 g staked, 300 g gone,
+         nothing to refund (the chaos tests, chaos-restart's
+         'arena-stake-place').  The ENTRY had the same shape and was fixed
+         in v2.3.3185 (_arenaJoin above), and the duel's start (duel.js) the
+         same way with the helper used here: the purse is checked, then the
+         debit, its save, its stamp and the record are issued in ONE
+         synchronous run (inbox.js _escrowDebitGoldTogether), so they commit
+         together -- the stake is placed, or nothing moved.  The rows written
+         are the same three (the player, the stamp, the record), one batch
+         instead of two.
+         The record's key above stays the one-stake-a-match check.  The stamp
+         is no longer read first: written with its record, it can never stand
+         without one, and _escrowDebitGold answered a stamp with no record
+         as "already paid" and wrote the record for nothing.  The sponsor is
+         the socket that sent this, so the purse is their live state; a
+         sender with none in the room is refused (_escrowDebitGold debited
+         the saved record instead).
+         Kill switch: `arenastakeonewrite: false` in the live flags puts back
+         the two writes (_arenaStakeOneWrite). */
+      const staked = await this._escrowDebitGoldTogether([{ id: session.id, amount, opId }], [[key, rec]]);
+      if (!staked.ok) return err('no-gold', 'Need ' + amount + 'g');
+    } else {
+      const debit = await this._escrowDebitGold(session.id, amount, opId);
+      if (!debit.ok) return err('no-gold', 'Need ' + amount + 'g');
+      await this.state.storage.put(key, rec);
+    }
     const ws = this._wsBySessionId(session.id);
     if (ws) {
       try {

@@ -28,6 +28,11 @@
  *       leaked); a second staked match adds a row; a resolved match
  *       drops off after settlement while open matches remain; a forged
  *       arena_stake_board is dropped by the PRIVILEGED deny-list.
+ *   11. v2.3.3177: a pool -- settlement moves gold, it never makes it.
+ *   12. v2.3.4796: a stake and its record are ONE write -- a restart at any
+ *       write of a stake, then the sweep, gives the sponsor all their gold
+ *       back; a refused stake writes nothing; `arenastakeonewrite: false`
+ *       puts the old two writes (and the old loss) back.
  */
 import { GameRoom } from '../src/index.js';
 import { ARENA } from '../src/gladiator.js';
@@ -284,6 +289,190 @@ check('forged arena_stake_result dropped by deny-list', room.eventBuffer.filter(
   room._lastStakeSweep = 0;
   await room._arenaStakeSweep();
   check('the sweep never refunds a losing stake a pool already paid out', coins(P('d')) === dBefore && !state._store.has('arena_stake:pool-t:pool-m1:' + P('d')), coins(P('d')) - dBefore);
+}
+
+/* ── 12. v2.3.4796: a restart at ANY write of a stake loses no gold ──
+ * The stake was taken in one write (the purse and its stamp) and the
+ * arena_stake record -- the only thing the restart sweep refunds from --
+ * written in the next, so a restart between them kept the 300 g with no
+ * record naming it (chaos-restart's 'arena-stake-place').  arena.test §15's
+ * storage: every write of one synchronous run commits as one batch (a
+ * Durable Object's), and the room dies before batch `crashAt`, that one and
+ * every later one lost.  For every batch of a stake: crash there, wake a
+ * second room on what was written (the bracket lives in memory, so the
+ * tournament is void), age the records, sweep, and the sponsor must have the
+ * 1,000 back with no record left standing.  And `arenastakeonewrite: false`
+ * puts the two writes back -- and with them the loss, which is how this
+ * section fails on the code before v2.3.4796. */
+{
+  const clone = (v) => (v === undefined ? v : JSON.parse(JSON.stringify(v)));
+  const mkBatchState = (seed) => {
+    const store = new Map(seed ? [...seed].map(([k, v]) => [k, clone(v)]) : []);
+    let pending = null, batches = 0, crashAt = Infinity, dead = false;
+    const commit = () => {
+      const w = pending; pending = null;
+      const n = batches++;
+      if (dead || n >= crashAt) { dead = true; return; }
+      for (const [op, k, v] of w) { if (op === 'put') store.set(k, v); else store.delete(k); }
+    };
+    const write = (op, k, v) => {
+      if (!pending) { pending = []; queueMicrotask(commit); }
+      pending.push([op, k, clone(v)]);
+    };
+    const view = (k) => {
+      if (pending) for (let i = pending.length - 1; i >= 0; i--) if (pending[i][1] === k) return pending[i][0] === 'put' ? clone(pending[i][2]) : undefined;
+      return clone(store.get(k));
+    };
+    return {
+      _store: store,
+      batches: () => batches,
+      rows: () => [...store.keys()],
+      crashAt(n) { crashAt = n; },
+      storage: {
+        get: async (k) => view(k),
+        put: async (k, v) => {
+          if (k && typeof k === 'object') { for (const [kk, vv] of Object.entries(k)) write('put', kk, vv); return; }
+          write('put', k, v);
+        },
+        delete: async (k) => { for (const x of (Array.isArray(k) ? k : [k])) write('del', x); return true; },
+        list: async (opts) => { const out = new Map(); for (const [k, v] of store) if (!opts?.prefix || k.startsWith(opts.prefix)) out.set(k, clone(v)); return out; },
+      },
+      getWebSockets: () => [],
+      acceptWebSocket: () => {},
+    };
+  };
+  const settleIo = () => new Promise((r) => setTimeout(r, 5));
+  const SP = 'bp_sp_restart', FA = 'bp_sp_rfa', FB = 'bp_sp_rfb', STAKE = 300;
+  const joinOn = async (rm, pid) => {
+    const ws = fakeWs('r-' + pid);
+    rm.sessions.set(ws, baseSession());
+    /* today's login reward already taken, so a join moves no gold */
+    await rm.state.storage.put('cadence:login:' + pid, { period: rm._cadencePeriodDaily(), streak: 1, ts: Date.now() });
+    await rm.webSocketMessage(ws, JSON.stringify({ type: 'join', id: pid, name: 'R', phrase: 'p-' + pid, data: { x: 0, y: 0, z: 'town' } }));
+    await settleIo();
+    return ws;
+  };
+  /* the sponsor's gold on disk: the purse and any mail */
+  const goldOnDisk = (store) => {
+    let g = Math.floor(((store.get('rpg:' + SP) || {}).coins) || 0);
+    for (const e of store.get('inbox:' + SP) || []) if (e.kind === 'gold') g += Math.floor((e.payload && e.payload.amount) || 0);
+    return g;
+  };
+  const stakeKeys = (store) => [...store.keys()].filter((k) => k.startsWith('arena_stake:'));
+  /* the world: the sponsor with 1,000 saved (and the live flags, if any) */
+  const seedWith = async (flags) => {
+    const s = mkBatchState();
+    if (flags) s._store.set('liveflags', flags);
+    const r = new GameRoom(s, mockEnv);
+    await r._liveFlagsEnsure();
+    await joinOn(r, SP);
+    r.playerState[SP].coins = 1000;
+    r._saveRpg(SP, r.playerState[SP]);
+    await settleIo();
+    return s._store;
+  };
+  /* one stake on a room over `seed`, the room dying before its k-th batch
+     (Infinity: never); then a second room wakes on what was written */
+  const stakeRun = async (seed, k, amount = STAKE) => {
+    const s1 = mkBatchState(seed);
+    const r1 = new GameRoom(s1, mockEnv);
+    await r1._liveFlagsEnsure();
+    const ws = await joinOn(r1, SP);
+    r1._arena = { id: 'rs-t', status: 'running', round: 1, matches: [{ id: 'rs-m', round: 1, a: FA, b: FB, aName: 'FA', bName: 'FB' }], players: [], queue: [] };
+    ws.sent.length = 0;
+    const b0 = s1.batches();
+    s1.crashAt(k === Infinity ? Infinity : b0 + k);
+    await r1.webSocketMessage(ws, JSON.stringify({ type: 'arena_sponsor', payload: { targetId: FA, amount } }));
+    await settleIo(); await settleIo();
+    const out = { batches: s1.batches() - b0, store: s1._store, ws, room: r1 };
+    if (k === Infinity) return out;
+    /* the restart: the stake records aged past the sweep's wait */
+    const s2 = mkBatchState(s1._store);
+    for (const [kk, v] of s2._store) if (kk.startsWith('arena_stake:')) s2._store.set(kk, { ...v, ts: 0 });
+    const r2 = new GameRoom(s2, mockEnv);
+    await r2._liveFlagsEnsure();
+    await joinOn(r2, SP);
+    r2._lastStakeSweep = 0;
+    await r2._arenaStakeSweep();
+    await settleIo();
+    await joinOn(r2, SP);   /* any mail reaches the sponsor at a join */
+    return { ...out, woken: s2._store, live: r2.playerState[SP].coins };
+  };
+
+  // 12a. with no restart: placed, acknowledged, and ONE write of three rows
+  const seed = await seedWith(null);
+  const ok = await stakeRun(seed, Infinity);
+  const okRec = ok.store.get('arena_stake:rs-t:rs-m:' + SP);
+  check('12a. a stake with no restart: 700 left, the record of 300 on file, the ack sent',
+    goldOnDisk(ok.store) === 700 && ok.room.playerState[SP].coins === 700 && okRec && okRec.amount === STAKE && okRec.targetId === FA
+      && msgsOfType(ok.ws, 'arena_stake_placed').length === 1,
+    { disk: goldOnDisk(ok.store), live: ok.room.playerState[SP].coins, rec: okRec, sent: ok.ws.sent.map((x) => x.type) });
+  check('12a. ...the purse, its stamp and the record go out as ONE write (was two)', ok.batches === 1, ok.batches);
+  check('12a. ...of the same three rows as before (the player, the stamp, the record)',
+    ok.store.has('rpg:' + SP) && ok.store.has('oplog:arenastake:rs-t:rs-m:' + SP) && !!okRec);
+
+  // 12b. a restart before every write of it: the sweep gives the 1,000 back
+  {
+    const lost = [];
+    for (let k = 0; k <= ok.batches; k++) {
+      const w = await stakeRun(seed, k);
+      if (goldOnDisk(w.woken) !== 1000 || w.live !== 1000 || stakeKeys(w.woken).length) {
+        lost.push({ restartBefore: k, of: ok.batches, disk: goldOnDisk(w.woken), live: w.live, left: stakeKeys(w.woken) });
+      }
+    }
+    check('12b. a restart at any write of a stake, then the sweep: the sponsor has the 1,000 back, no record left', lost.length === 0, lost);
+  }
+
+  // 12c. refused stakes write nothing: too little gold, and a second stake
+  {
+    const poor = mkBatchState(seed);
+    const rp = new GameRoom(poor, mockEnv);
+    await rp._liveFlagsEnsure();
+    const wsP = await joinOn(rp, SP);
+    rp.playerState[SP].coins = 100;
+    rp._arena = { id: 'rs-t', status: 'running', round: 1, matches: [{ id: 'rs-m', round: 1, a: FA, b: FB, aName: 'FA', bName: 'FB' }], players: [], queue: [] };
+    wsP.sent.length = 0;
+    const b0 = poor.batches();
+    await rp.webSocketMessage(wsP, JSON.stringify({ type: 'arena_sponsor', payload: { targetId: FA, amount: STAKE } }));
+    await settleIo();
+    const e = msgsOfType(wsP, 'arena_stake_error')[0];
+    check('12c. a stake over the purse is refused no-gold and writes nothing',
+      e && e.payload.code === 'no-gold' && poor.batches() === b0 && rp.playerState[SP].coins === 100 && !stakeKeys(poor._store).length,
+      { e: e && e.payload, wrote: poor.batches() - b0, coins: rp.playerState[SP].coins });
+    const s3 = mkBatchState(seed);
+    const r3 = new GameRoom(s3, mockEnv);
+    await r3._liveFlagsEnsure();
+    const ws3 = await joinOn(r3, SP);
+    r3._arena = { id: 'rs-t', status: 'running', round: 1, matches: [{ id: 'rs-m', round: 1, a: FA, b: FB, aName: 'FA', bName: 'FB' }], players: [], queue: [] };
+    await r3.webSocketMessage(ws3, JSON.stringify({ type: 'arena_sponsor', payload: { targetId: FA, amount: STAKE } }));
+    await settleIo();
+    ws3.sent.length = 0;
+    const b1 = s3.batches();
+    await r3.webSocketMessage(ws3, JSON.stringify({ type: 'arena_sponsor', payload: { targetId: FB, amount: 50 } }));
+    await settleIo();
+    const e2 = msgsOfType(ws3, 'arena_stake_error')[0];
+    check('12c. a second stake on the match is refused already-staked and writes nothing',
+      e2 && e2.payload.code === 'already-staked' && s3.batches() === b1 && r3.playerState[SP].coins === 700,
+      { e: e2 && e2.payload, wrote: s3.batches() - b1, coins: r3.playerState[SP].coins });
+  }
+
+  // 12d. the kill switch: `arenastakeonewrite: false` puts the two writes back
+  {
+    const offSeed = await seedWith({ arenastakeonewrite: false });
+    const off = await stakeRun(offSeed, Infinity);
+    check('12d. arenastakeonewrite: false -- the stake is placed the old way, in two writes',
+      off.batches === 2 && goldOnDisk(off.store) === 700 && !!off.store.get('arena_stake:rs-t:rs-m:' + SP), { batches: off.batches, disk: goldOnDisk(off.store) });
+    const between = await stakeRun(offSeed, 1);
+    check('12d. ...and with them the old loss: a restart between the two keeps the 300 with no record (the bug this fixes)',
+      goldOnDisk(between.woken) === 700 && !stakeKeys(between.woken).length, { disk: goldOnDisk(between.woken), left: stakeKeys(between.woken) });
+    const was = room._liveFlags;
+    room._liveFlags = { arenastakeonewrite: false }; const offRead = room._arenaStakeOneWrite();
+    room._liveFlags = { arenastakeonewrite: true }; const onTrue = room._arenaStakeOneWrite();
+    room._liveFlags = {}; const onUnset = room._arenaStakeOneWrite();
+    room._liveFlags = was;
+    check('12d. the switch is off only when written false (a lower-case name POST /flags takes)',
+      offRead === false && onTrue === true && onUnset === true && /^[a-z0-9_]{1,32}$/.test('arenastakeonewrite'), { offRead, onTrue, onUnset });
+  }
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
