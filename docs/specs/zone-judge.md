@@ -80,6 +80,47 @@ It protects the other player: never asks test mode. Memory only (rule 11): the
 passes go with their runs, and the passes are written whatever the switch says,
 so turning it on mid-run strands nobody.
 
+## R3: the retired lands are closed (v2.3.4675)
+
+The owner retired the old map on 2026-10-02 ("The Wheel is the world") and, on
+2026-11-11, asked whether to close it for good: **"Close it"**. The server had
+never closed its lands. A phone in today's town (where every login, death and
+way back starts) could name meadow, hollows, thunder, tidal or mist at any time,
+and verdant, frost, sky or ember once the first tutorial quests were under way
+(movement.js `QUEST_ZONE_GATE`), and the server spawned their monsters and paid
+their kills in full: XP, gold, shards, quest credit. `?trial=off` was the honest
+way there; a modified phone needed no switch at all. (The monsters there are
+level 1 and 2, so the value was low, but it was an open door.)
+
+- **R3. Into a retired land, from anywhere: never.** `RETIRED_LANDS`
+  (zonejudge.js) is the old map's eight element lands, its commons (meadow) and
+  the endgame pair (shadow, radiant). A change into one takes the refused-move
+  path below: nothing written, nothing sent. Its road counts on the overview as
+  `<from>>retired`.
+- **A join naming one arrives in today's town**, as a join naming no place does
+  (join.js `_sanitizeJoinData`).
+- **A player already there can still walk and leave**: R3 refuses a change INTO
+  a land, never a move within one.
+- **Its own switch**: `retiredlands: false` in the live flags opens the lands
+  again at once. `zonejudge: false` leaves R3 in force, so turning the rest of
+  the judge off never reopens them. The overview shows it (`retiredLands`).
+- **The lands' rows stay** (server/src/data.js `ZONES`): the world's monsters,
+  nodes, shards, pets and dungeons are keyed by the same eight ids as their
+  homes (wheelzone.js `_wheelSpawnMonsters`). It is the PLACES that are closed.
+  Today's town, the farm, the world and the old World View (the world's own
+  fallback under `wheelmonsters: false`) stay open.
+- It protects the economy and every other player: never asks test mode. No
+  cap: the only phone that meets it is one on the retired map, which is
+  closing on the phone too.
+
+**Tests**: `server/test/retired-lands.test.mjs` (the list, a join, a move from
+town and from the world's safe ground with every quest open, both switches, a
+player already there; 9 of its checks fail without the rule). **Eighteen suites
+still stand players in an old land as a fixture.** Each opens the lands for
+itself with one marked line (`GameRoom.prototype._retiredLandsOn = ...`), and
+that suite's `FIXTURES` list only shrinks: move a suite to the world and take
+it off. `zone-judge.test` counts an old land's refusal as `retired` now.
+
 ## A refused move
 
 It is the refused zone's path exactly (v2.3.1631, v2.3.3325): nothing is
@@ -111,7 +152,8 @@ the phone needs to know nothing, and either side may ship first.
 
 ## What it does not judge
 
-- The old map's hubs and lands (no fights there; their exits are the phone's).
+- The old map's hubs (no fights there; their exits are the phone's). Its LANDS
+  are closed since v2.3.4675 (R3 above).
 - Today's town to anywhere: it is the hub every way home passes through.
 - A join's zone: a reconnect mid-fight lingers or is taken over (#309, #1509).
 - The place on entering a dungeon or the farm: small places, free entry as

@@ -25,6 +25,11 @@ import { t2ReplayFlat as _replay } from '../src/data.js';
    pinning "slowest wind-up / no damage spike / rare" against the other
    kits is what keeps the owner's trade honest if anyone retunes one. */
 import { TELEGRAPH, BASIC_WINDUP, basicWindupMs } from '../src/telegraph.js';
+/* v2.3.4675: this suite stands players in the retired old lands as a fixture.
+   zonejudge.js R3 closes them to players, so it opens them for this suite
+   only.  On retired-lands.test's FIXTURES list, which only shrinks: move the
+   suite to the world ('wheel') and take it off. */
+GameRoom.prototype._retiredLandsOn = function () { return false; };
 
 const mockState = {
   storage: {

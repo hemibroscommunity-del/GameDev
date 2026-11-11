@@ -29,6 +29,11 @@ import { WHEEL_ZONE, WHEEL } from '../src/wheelzone.js';
 import { WHEEL_NEAR } from '../src/wheelnear.js';
 import { monsterSnapWire } from '../src/spawnscale.js';
 import * as LONG from '../src/wheelspawns.js';
+/* v2.3.4675: this suite stands players in the retired old lands as a fixture.
+   zonejudge.js R3 closes them to players, so it opens them for this suite
+   only.  On retired-lands.test's FIXTURES list, which only shrinks: move the
+   suite to the world ('wheel') and take it off. */
+GameRoom.prototype._retiredLandsOn = function () { return false; };
 
 const mockEnv = { LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async () => ({}) }) } };
 const mockState = (flags) => ({

@@ -42,10 +42,36 @@
  *       asked of a phone out of step with the room's Wheel (another map's
  *       numbers: No man's land holds nothing for it, as lastplace.js leaves it
  *       alone).
+ *   R3. INTO A RETIRED LAND (v2.3.4675, below): never, from anywhere.
  *   Everything else as before, INTO the Wheel included (its place is judged
  *   already: the way back and the arrival, lastplace.js).  The worker's own
  *   zone writes (the respawn, the join, a spar, a body taken over) never pass
  *   here.
+ *
+ * ═══ v2.3.4675: R3, THE RETIRED LANDS ARE CLOSED ═══
+ * The owner retired the old map on 2026-10-02 ("The Wheel is the world") and,
+ * on 2026-11-11, chose to close it for good ("Close it").  But the worker
+ * never closed its lands: a phone in today's town (where every login, death
+ * and way back starts) could name meadow, hollows, thunder, tidal or mist at
+ * any time, and verdant, frost, sky or ember once the first tutorial quests
+ * were under way (movement.js QUEST_ZONE_GATE), and the worker spawned their
+ * monsters and paid their kills in full: XP, gold, shards, quest credit.
+ * `?trial=off` was the honest way there, and a modified phone needed no
+ * switch at all.  So:
+ *   - a CHANGE into a RETIRED_LANDS id is refused here, from any zone, with
+ *     the same refused-move path as R1 and R2 (nothing written, nothing sent);
+ *     its road counts on the overview as '<from>>retired';
+ *   - a JOIN naming one arrives in today's town instead, as any join with no
+ *     place does (join.js _sanitizeJoinData);
+ *   - `retiredlands: false` in the live flags opens them again at once.  It
+ *     is its own switch: `zonejudge: false` leaves R3 in force, so turning
+ *     the rest of the judge off never reopens the old lands.
+ * The lands' ROWS stay (data.js ZONES): the Wheel's monsters, nodes, shards,
+ * pets and dungeons are keyed by the same eight ids as their homes
+ * (wheelzone.js _wheelSpawnMonsters).  It is the PLACES that are closed.
+ * `worldview` stays open: it is the Wheel's own fallback under
+ * `wheelmonsters: false` (wheelzone.js).  It protects the economy and every
+ * other player's: never asks _testMode.
  *
  * A REFUSED MOVE is the refused zone's path exactly (movement.js, v2.3.1631 /
  * v2.3.3325): nothing is written -- not the zone, the place, the grace, the
@@ -79,6 +105,14 @@ export const ZONE_JUDGE = Object.freeze({
   PASS_MS: 20000,
 });
 
+/* v2.3.4675: R3's lands: the old map's eight element lands, its commons
+   (meadow) and the endgame pair only an old land led to.  NOT today's town
+   (every way in), the farm, the Wheel or worldview (the Wheel's fallback). */
+export const RETIRED_LANDS = Object.freeze(new Set([
+  'meadow', 'frost', 'ember', 'sky', 'verdant', 'hollows', 'thunder', 'tidal', 'mist',
+  'shadow', 'radiant',
+]));
+
 const own = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 
 /* the overview's road names: a dungeon's id is never a key (a phone can
@@ -90,6 +124,18 @@ export const zoneJudgeMethods = {
   _zoneJudgeOn() {
     const f = this._liveFlags;
     return !(f && typeof f === 'object' && own(f, 'zonejudge') && !f.zonejudge);
+  },
+
+  /* v2.3.4675: R3's own kill switch: on unless `retiredlands: false` */
+  _retiredLandsOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && own(f, 'retiredlands') && !f.retiredlands);
+  },
+
+  /* v2.3.4675: is `z` a retired land a player may not enter (R3)?  Also asked
+     by join.js _sanitizeJoinData, so a join naming one arrives in town */
+  _retiredLand(z) {
+    return typeof z === 'string' && RETIRED_LANDS.has(z) && this._retiredLandsOn();
   },
 
   /* dungeon.js: the run gives `pid` its pass as the worker sends them
@@ -119,7 +165,15 @@ export const zoneJudgeMethods = {
   /* movement.js's zone gate: true when this CHANGE, from the worker's
      `ps.z` to `to`, has no reason the worker knows (R1, R2 above) */
   _zoneJudgeRefuses(pid, ps, to, now) {
-    if (!ps || to === ps.z || !this._zoneJudgeOn()) return false;
+    if (!ps || to === ps.z) return false;
+    /* v2.3.4675: R3, under its own switch, whatever `zonejudge` says */
+    if (this._retiredLand(to)) {
+      const c = this._zjRefused || (this._zjRefused = new Map());
+      const k = roadEnd(ps.z) + '>retired';
+      c.set(k, (c.get(k) || 0) + 1);
+      return true;
+    }
+    if (!this._zoneJudgeOn()) return false;
     const t = typeof now === 'number' ? now : Date.now();
     let refused = false;
     if (typeof to === 'string' && to.startsWith('dungeon:')) {
@@ -143,6 +197,6 @@ export const zoneJudgeMethods = {
   _zoneJudgeInfo() {
     const refused = Object.create(null);
     if (this._zjRefused) for (const [k, n] of this._zjRefused) refused[k] = n;
-    return { on: this._zoneJudgeOn(), refused };
+    return { on: this._zoneJudgeOn(), retiredLands: this._retiredLandsOn(), refused };   /* v2.3.4675: R3's switch too */
   },
 };

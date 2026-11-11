@@ -15,6 +15,11 @@
 import { GameRoom } from '../src/index.js';
 import { BURROW, BURROW_ARCH, SLIME_BURST, TELEGRAPH } from '../src/telegraph.js';
 import { BLOCK_COSTS_STAMINA } from '../src/data.js'; /* v2.3.2700: whether the bonk's blocked slam should cost stamina */
+/* v2.3.4675: this suite stands players in the retired old lands as a fixture.
+   zonejudge.js R3 closes them to players, so it opens them for this suite
+   only.  On retired-lands.test's FIXTURES list, which only shrinks: move the
+   suite to the world ('wheel') and take it off. */
+GameRoom.prototype._retiredLandsOn = function () { return false; };
 
 const mockState = {
   storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} },

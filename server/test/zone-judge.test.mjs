@@ -178,7 +178,9 @@ room._liveFlags = {};
   check('1h. ...and the move budget is untouched', F._mvBudget === b0 && F._mvBudgetAt === bt0, { b: F._mvBudget, b0 });
   check('1i. ...F is not in the run (a death there would keep the bag)', !room._dungeonKeepsBag(F) && !room._dungeonZonePlayers(OTHER_RUN).includes(IDS.f));
   check('1j. ...each refusal counted by its road on the overview',
-    refusedN('wheel>town') >= 1 && refusedN('wheel>farm_home') >= 1 && refusedN('wheel>dungeon') >= 1 && refusedN('wheel>' + oldLand) >= 1, room._zoneJudgeInfo && room._zoneJudgeInfo());
+    refusedN('wheel>town') >= 1 && refusedN('wheel>farm_home') >= 1 && refusedN('wheel>dungeon') >= 1
+    /* v2.3.4675: an old land and the endgame are R3's now (zonejudge.js), counted as 'retired' */
+    && refusedN('wheel>retired') >= 2, room._zoneJudgeInfo && room._zoneJudgeInfo());
   check('1k. ...and a dungeon\'s id is never a key there', room._zoneJudgeInfo && !Object.keys(room._zoneJudgeInfo().refused).some((k) => k.includes(':')));
   /* the fight goes on: K's blow lands, and a loss pays the killer */
   check('1l. K\'s next blow lands on F', await attack(IDS.k, IDS.f));

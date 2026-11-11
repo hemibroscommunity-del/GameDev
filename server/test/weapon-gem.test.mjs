@@ -41,6 +41,11 @@ import * as EL from '../src/elemental.js';
 import { LIVEOPS } from '../src/liveops.js';
 import { GEM_EXTRACT_BASE_COST, BLACKSMITH_TIERS, WEAPON_GEMS, GEM_SET_XP } from '../src/data.js';
 import { weaponSig } from '../src/salvage.js';
+/* v2.3.4675: this suite stands players in the retired old lands as a fixture.
+   zonejudge.js R3 closes them to players, so it opens them for this suite
+   only.  On retired-lands.test's FIXTURES list, which only shrinks: move the
+   suite to the world ('wheel') and take it off. */
+GameRoom.prototype._retiredLandsOn = function () { return false; };
 
 let NOW = 1_770_000_000_000;
 Date.now = () => NOW;
