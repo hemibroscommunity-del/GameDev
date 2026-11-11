@@ -1,4 +1,4 @@
-# The server decides a change of place (v2.3.4620)
+# The server decides a change of place (v2.3.4640)
 
 > The owner's working list (docs/OWNER-LIST-2026-10-26.md §10; docs/STATE-MACHINES.md
 > "What is left"): *"who decides a change of place (the server placing you at the

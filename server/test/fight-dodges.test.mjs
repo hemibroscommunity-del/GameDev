@@ -96,7 +96,7 @@ function swing() {
 const heal = () => { V.hp = V.maxHp = 100000; V.dead = V.dying = false; };
 const freshClock = () => { T += Math.max(ENTRY_GRACE_GAP_MS, PVP_HEAL.WINDOW_MS) + 1000; };
 /* out to town, then into the Wheel beside the monster.
-   v2.3.4620: a move out of the Wheel off its safe ground is refused now
+   v2.3.4640: a move out of the Wheel off its safe ground is refused now
    (zonejudge.js; 2a0 below), so the way out here is the worker's own placing
    in today's town -- as a respawn puts you there -- and what this suite
    judges, the way back IN, is still a real move (the 120 ms the way out's
@@ -120,7 +120,7 @@ heal();
 {
   T += 600;                                      /* the first grace is over */
   heal();
-  /* v2.3.4620: the hop's way out, beside the monster, is refused before any
+  /* v2.3.4640: the hop's way out, beside the monster, is refused before any
      grace is asked (zonejudge.js) */
   check('2a0. the hop\'s own way out, off the safe ground, is refused now (zonejudge)', !(await move('bp_fd_v', 'town', 1000, 1000)) && V.z === WHEEL_ZONE);
   check('2a. the hop out to town and back is taken (nobody is held)', await hop());

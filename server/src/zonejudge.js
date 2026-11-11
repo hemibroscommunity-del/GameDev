@@ -1,4 +1,4 @@
-/* ═══ v2.3.4620: THE WORKER JUDGES A CHANGE OF PLACE ═══
+/* ═══ v2.3.4640: THE WORKER JUDGES A CHANGE OF PLACE ═══
  *
  * A phone's `move` names the zone it is in (`z`), and the worker took it:
  * "a zone change is never judged" (movement.js, MOVE_BUDGET).  So a modified

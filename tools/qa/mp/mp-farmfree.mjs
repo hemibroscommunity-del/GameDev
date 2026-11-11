@@ -16,7 +16,7 @@
  *   1. the Wheel's own pictures in, in BroTown (guard): the lands' banner
  *      strips, the buildings' pictures, the signposts' icons;
  *   2. out at the Flame Fields' first monsters, their look loaded (guard);
- *      v2.3.4620: then back just inside the safe ground's edge, the look
+ *      v2.3.4640: then back just inside the safe ground's edge, the look
  *      still loaded -- the farm trip is the safe ground's (zonejudge.js);
  *   3. the Feed & Seed's "Visit Your Farm" (a real touch) takes you onto the
  *      farm, all of it drawn (guard);
@@ -102,7 +102,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const looks = Object.keys((out && out.bundles) || {});
     mem.wilds = out;
     rec.ok(`2. at the Flame Fields' first monsters, their look loaded: ${looks.join(', ') || 'none'} (guard)`, looks.length >= 1, out);
-    /* v2.3.4620: the farm trip is taken from the safe ground, where the
+    /* v2.3.4640: the farm trip is taken from the safe ground, where the
        Feed & Seed's door is -- the worker refuses a way out of the world
        from anywhere else (server/src/zonejudge.js).  A few steps back
        toward BroTown, just inside its edge: the first stretch's monsters

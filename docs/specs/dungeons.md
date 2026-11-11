@@ -39,7 +39,7 @@ Since v2.3.4423 a move INTO a `dungeon:` zone is taken only while that run
 is open (`_dungeonIdDead`; live flag `dungeonlive`; `dungeon-live.test`): a
 made-up id no longer buys the entry's half second of safety or leaves lists
 behind. A player already inside a closed run still moves (TRAPS §307).
-Since v2.3.4620 the step in also needs the run's pass, given with the
+Since v2.3.4640 the step in also needs the run's pass, given with the
 `dungeon_started` the server sends (the owner's tap, or the leader's pull):
 used once, within 20 s (`zonejudge.js`; live flag `zonejudge`;
 docs/specs/zone-judge.md). Runs stay shared the way the phone shares them, by

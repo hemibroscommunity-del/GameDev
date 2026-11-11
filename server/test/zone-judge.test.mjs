@@ -1,4 +1,4 @@
-/* THE WORKER JUDGES A CHANGE OF PLACE -- v2.3.4620
+/* THE WORKER JUDGES A CHANGE OF PLACE -- v2.3.4640
  * (server/src/zonejudge.js; the gate in movement.js _handleMove; the passes
  * in dungeon.js; docs/specs/zone-judge.md).
  *

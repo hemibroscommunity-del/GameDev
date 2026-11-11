@@ -77,7 +77,7 @@ async function setup(opts = {}) {
   room._saveRpg = () => {}; room._saveRpgVitals = () => {}; room._saveRpgPools = () => {};
   const id = 'bp_mb' + (++seq);
   const ws = fakeWs();
-  /* v2.3.4620: `safe` joins on the Wheel's safe ground (its arrival): the one
+  /* v2.3.4640: `safe` joins on the Wheel's safe ground (its arrival): the one
      place a move out of the Wheel is taken (zonejudge.js) */
   const at0 = opts.safe ? room._wheelArrival() : { x: 1000, y: 1000 };
   room.sessions.set(ws, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: T });
@@ -310,7 +310,7 @@ async function walk(p, pxs, ms, gap = 33, extra) {
 }
 
 // ── 6. the Wheel's way back ──
-/* v2.3.4620: every way out of the Wheel here leaves from its safe ground,
+/* v2.3.4640: every way out of the Wheel here leaves from its safe ground,
    where the honest ones are (zonejudge.js): off it, a move out is refused */
 {
   const p = await setup({ z: WHEEL_ZONE, safe: true });

@@ -583,7 +583,7 @@ curl -X POST -H "Authorization: Bearer YOUR_KEY" \
   -d '{"name":"fightlockdoor","value":false}' "https://WORKER/api/admin/flags"
 ```
 
-**Who decides a change of place** (v2.3.4620). A phone says which place it
+**Who decides a change of place** (v2.3.4640). A phone says which place it
 is in, and the server used to believe it, so a modified phone losing a fight
 in No man's land could escape (with the bag the winner should get) by
 claiming to be in town or on its farm. Now the server takes a change of
