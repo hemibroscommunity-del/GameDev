@@ -39,7 +39,8 @@
       28      ping readout; EndedWarBanner (pre-v2.3.1205)
       30      DASHBOARD (BottomDashboard, joystick visuals,
               top-right player card)
-      31      special charge pie (SpecialChargePie); onboarding tutorial
+      31      onboarding tutorial (v2.3.4653: the special charge pie's
+              file, retired v2.3.1895, deleted)
               banner (v2.3.1234: was 34 — must yield to modals)
       32      .bt-inspect decision modals + building panels (v2.3.1234:
               was 30 — shared the rung with joystick visuals and DOM
@@ -73,7 +74,8 @@
     9200      MoreOverlay
     9250      DailyRewardsWindow (v2.3.3140) -- over the building panels (32)
               it can be opened from (the Gambling Den), under InfoPopup
-    9300      ControlsTutorial, MasteryNotification
+    9300      ControlsTutorial (v2.3.4653: MasteryNotification, unmounted
+              v2.3.820, deleted)
     9400      InfoPopup (v2.3.2131) -- opened from panels inside
               MoreOverlay, so it has to clear 9200, and it is an aside
               rather than a flow, so it stays under the modals
@@ -82,7 +84,7 @@
               bottom -- so the 9450 Prog3SpendConfirm layer is retired.  The
               two could never stack again: there is only one window.)
     9999      name modal (.bt-name-modal)
-   10000      account modal (AccountModal)
+   10000      (free: v2.3.4653 deleted AccountModal, which nothing opened)
    99000+     inventory surface (InventorySurface 99000/99500,
               InspectCard 99800)
    99999+     debug / exit dim (.bt-exit-dim)
