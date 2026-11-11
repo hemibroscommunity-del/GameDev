@@ -400,7 +400,7 @@ export const wheelzoneMethods = {
      are thousands of px apart; sorted by x, a monster is checked only against
      the next ones within `minSep` of it in x, and nothing else can be within
      `minSep` of it at all.  No depth scaling: 'wheel' has no depth row
-     (depth.js zoneDepthK is 1 here), so the flat ring is the ring. */
+     (depth.js, gone since v2.3.4851, was 1 here), so the flat ring is the ring. */
   _wheelSeparate(zoneId, monsters, minSep) {
     const live = [];
     for (const m of monsters) if (m.alive) live.push(m);

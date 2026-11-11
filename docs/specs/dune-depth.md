@@ -1,5 +1,7 @@
 # Wind Dunes depth: smaller and slower going north (v2.3.2745, v2.3.2790)
 
+> **RETIRED (v2.3.4851 server, v2.3.4862+ client).** The old map, Wind Dunes with it, is closed (v2.3.4675), and no live zone (the Wheel, the farm, dungeons) has a depth row, so the curve was 1 everywhere. The worker's `depth.js`, `caps.zoneDepth`, the `zoneDepth` live flag and `zonedepth.test` are deleted; the phone's `zoneDepthScale` / `depthK` / `zonePlayerScale` go with it. What follows is the history.
+
 The owner asked: "can the player, monsters, etc follow a similar perspective pattern the more north on the map they get, and also slow the movement speed the further north they get to emulate travel distance. I'm thinking of desert winds zone."
 
 The Wind Dunes art (`sky_v5`) is already painted with a horizon: the rocks at the north edge are drawn at about two fifths the size of the ones at your feet. This makes everything standing on the map follow the same curve.

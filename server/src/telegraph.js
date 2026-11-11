@@ -495,7 +495,7 @@ export const telegraphMethods = {
        REMEMBERED (_tgRadius) so the execute measures the circle the
        telegraph drew, even if a shove moved the caster up or down the
        curve during the wind-up. */
-    const _dk = this._depthK(zoneId, m.y);
+    const _dk = 1;   /* v2.3.4851: depth.js is gone (the old map's dunes); every live zone is flat */
     if (attackDist > TELEGRAPH.CAST_RANGE * _dk) return false;
     if (nearest.extracting) return false;          /* harvesters are left alone (v2.3.1690) */
 
@@ -620,7 +620,7 @@ export const telegraphMethods = {
      the stop ring and the whiff ring stay one ring on Wind Dunes' north edge.
      Omitted (the tick.test pairing probe), it is the flat geometry. */
   _basicAtkGeom(m, zoneId) {
-    const _dk = zoneId ? this._depthK(zoneId, m.y) : 1;
+    const _dk = 1;   /* v2.3.4851: depth.js is gone; every live zone is flat */
     /* v2.3.2482: the snowman's 70 was a RELAXATION of the old 45px default;
        with the default now 72 (GS_OUTER_RADIUS) it would be a tightening, so
        take whichever is larger.  His 1.5 Y-scale still does its own job.
@@ -742,7 +742,7 @@ export const telegraphMethods = {
     /* v2.3.2790: the blast is as wide as the swollen body LOOKS -- x the
        zone's depth at the slime's feet (1 off Wind Dunes), remembered so the
        detonation measures the ring the swell drew. */
-    m._burstR = SLIME_BURST.RADIUS * this._depthK(zoneId, m.y);
+    m._burstR = SLIME_BURST.RADIUS;   /* v2.3.4851: the depth factor went with depth.js */
     /* The killer is replayed into the real kill after the blast, so credit,
        loot and XP land exactly as they would have. */
     m._burstKiller = killerId || null;

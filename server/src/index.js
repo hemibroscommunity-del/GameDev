@@ -66,7 +66,7 @@ import { hitMethods } from './hits.js'; /* v2.3.3296: one door for every monster
 import { monsterLifeMethods } from './monsterlife.js'; /* v2.3.4843: a world monster's one reset for a new life */
 import { monsterMoveMethods } from './monstermoves.js'; /* v2.3.4011: the tiers' moves (combo, charge, volley, slams, enrage) */
 import { relayMethods } from './relay.js'; /* v2.3.3304: the relay is an allowlist, in the sender's name */
-import { depthMethods } from './depth.js'; /* v2.3.2790: the dunes' north-south depth, on the monster AI */
+/* v2.3.4851: depth.js (v2.3.2790, the dunes' north-south depth) is gone with the old map; was: the monster AI */
 import { dailyChestMethods } from './dailychest.js'; /* v2.3.2820: the daily chest */
 import { loginSpinMethods } from './loginspin.js'; /* v2.3.4295: the login wheel */
 import { dailyRewardsMethods } from './dailyrewards.js'; /* v2.3.3140: the free daily spin, daily quests, the season */
@@ -2266,7 +2266,7 @@ export class GameRoom {
            search, and no longer under "Movement AI" below: the grid needs the
            range to know where to look.  Nothing in between moves the
            monster, so they are the same numbers. */
-        const _dk = this._depthK(zoneId, m.y);
+        const _dk = 1;   /* v2.3.4851: depth.js is gone with the old map's dunes; every live zone is flat */
         // Effective aggro range -- bumps to 1200 px when the sticky
         // override is active, so a bow-snipe from anywhere on screen
         // pulls the monster.  Without the bump the monster could be
@@ -2580,7 +2580,7 @@ export class GameRoom {
              (the step lengths and its speed x _dk), and its leash is read at
              its SPAWN point so the circle it is held to does not breathe as
              it walks north and south inside it. */
-          const _dkS = this._depthK(zoneId, m.spawnY);
+          const _dkS = 1;   /* v2.3.4851: depth.js is gone */
           const WANDER_STEP_MIN = 30 * _dkS;
           const WANDER_STEP_MAX = 80 * _dkS;
           const WANDER_REACH = 6;
@@ -2697,7 +2697,7 @@ export class GameRoom {
                Read only for a pair already inside the flat ring -- the
                depth factor never exceeds 1, so nothing outside it can be
                inside the scaled one. */
-            const _sep = MIN_SEP * this._depthK(zoneId, (a.y + b.y) / 2);
+            const _sep = MIN_SEP;   /* v2.3.4851: the depth factor went with depth.js */
             if (d2 >= _sep * _sep) continue;
             const d = Math.sqrt(d2);
             const push = (_sep - d) / 2;
@@ -6624,7 +6624,6 @@ Object.assign(GameRoom.prototype, hitMethods); /* v2.3.3296 */
 Object.assign(GameRoom.prototype, monsterMoveMethods); /* v2.3.4011 */
 Object.assign(GameRoom.prototype, monsterLifeMethods); /* v2.3.4843 */
 Object.assign(GameRoom.prototype, relayMethods); /* v2.3.3304 */
-Object.assign(GameRoom.prototype, depthMethods); /* v2.3.2790 */
 Object.assign(GameRoom.prototype, dailyChestMethods); /* v2.3.2820 */
 Object.assign(GameRoom.prototype, loginSpinMethods); /* v2.3.4295 */
 Object.assign(GameRoom.prototype, dailyRewardsMethods); /* v2.3.3140 */

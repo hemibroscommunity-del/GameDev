@@ -79,7 +79,7 @@ export const arrowBlastMethods = {
      client that joins after it fires the old single arrow and asks for the
      old blast -- and this answers null and lets it through.  One flag, and
      the special is exactly what it was, blast included.  Same read as
-     depth.js _depthK: only an explicit false turns it off.
+     the old depth.js _depthK had: only an explicit false turns it off.
      LOWER CASE ON PURPOSE.  POST /api/admin/flags only takes names matching
      liveops.js FLAG_NAME_RE (/^[a-z0-9_]{1,32}$/), so a camelCase cap cannot
      be switched off through the route that exists for it -- `bowvolley` can,

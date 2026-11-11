@@ -449,7 +449,7 @@ function monster(id, x, y, level) {
   room._handleMonsterDamage(sess('A'), { monsterId: m.id, zone: 'town', slot: 'melee' });
   const mh = room.eventBuffer.find((e) => e.type === 'monster_hit' && e.payload.monsterId === m.id);
   check('...while the same hit on a monster still shoves it HIT_KNOCKBACK.normal', !!mh && !mh.payload.isCrit
-    && Math.abs(m.x - (30 + HIT_KNOCKBACK.normal * room._depthK('town', 0))) < 0.01, { x: m.x, hit: mh && mh.payload });
+    && Math.abs(m.x - (30 + HIT_KNOCKBACK.normal)) < 0.01, { x: m.x, hit: mh && mh.payload });
 }
 
 // ── 5. the staff's splash and blast ──

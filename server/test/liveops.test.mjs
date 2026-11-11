@@ -38,7 +38,6 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { GameRoom } from '../src/index.js';
 import { LIVEOPS, METRICS, flagNameOk, orderEscrowGold } from '../src/liveops.js';
 import { ZONES } from '../src/data.js';
-import { zoneDepthK } from '../src/depth.js';
 
 function makeState() {
   const store = new Map();
@@ -398,11 +397,9 @@ await req('DELETE', '/api/admin/flags?name=disable_threats');
     check('8a. POST /flags stores ' + name + ': false (was a 400)', r.status === 200 && r.body.flags[name] === false, r);
   }
   // 8b. ...and each one does what its comment says, on the worker
-  const dunes = Object.keys(ZONES).find((z) => ZONES[z] && ZONES[z].depth && ZONES[z].depth.axis === 'y');
   check('8b. storeGear: the gear listings read off (_stGearOff)', room._stGearOff() === true);
   check('8b. dailyChest: the chest reads off (_chestOff)', room._chestOff() === true);
   check('8b. whirlWindup: the windup reads off (_abilWindupOff)', room._abilWindupOff() === true);
-  check('8b. zoneDepth: a zone with depth scales 1 (_depthK)', !!dunes && zoneDepthK(dunes, 0) !== 1 && room._depthK(dunes, 0) === 1, { dunes, k: dunes && zoneDepthK(dunes, 0) });
   // 8c. ...and the phone is told: a join's caps say all five are off
   {
     const ws8 = fakeWs('s8');
@@ -415,7 +412,7 @@ await req('DELETE', '/api/admin/flags?name=disable_threats');
   for (const name of LIVEOPS.CAMEL_SWITCHES) await req('DELETE', '/api/admin/flags?name=' + name);
   const left = (await jbody(await req('GET', '/api/admin/flags'))).body.flags;
   check('8d. DELETE clears all five', LIVEOPS.CAMEL_SWITCHES.every((n) => !(n in left)), left);
-  check('8d. ...and the worker reads them on again', !room._stGearOff() && !room._chestOff() && !room._abilWindupOff() && room._depthK(dunes, 0) === zoneDepthK(dunes, 0));
+  check('8d. ...and the worker reads them on again', !room._stGearOff() && !room._chestOff() && !room._abilWindupOff());
   // 8e. no other camelCase name: weaponDrops' false brings back weapons the
   //     phone mints itself (liveops.md "Caps override"), and a near miss of
   //     a listed name is not that name
@@ -533,7 +530,7 @@ await req('DELETE', '/api/admin/flags?name=disable_threats');
     });
   }
   const unthrowable = [...reads].filter(([n]) => !flagNameOk(n)).map(([n, w]) => n + ' @ ' + w);
-  check('8f. the scan sees the worker\'s flag reads (60 or more, the camelCase ones among them)', reads.size >= 60 && ['storeGear', 'dailyChest', 'zoneDepth', 'whirlWindup', 'disable_dungeons', 'xp_mult'].every((n) => reads.has(n)), reads.size);
+  check('8f. the scan sees the worker\'s flag reads (60 or more, the camelCase ones among them)', reads.size >= 60 && ['storeGear', 'dailyChest', 'whirlWindup', 'disable_dungeons', 'xp_mult'].every((n) => reads.has(n)), reads.size);
   check('8f. every flag the worker reads can be set through POST /flags', unthrowable.length === 0, unthrowable);
 
   // 8g. every kill switch a COMMENT promises -- `<name>: false` beside
