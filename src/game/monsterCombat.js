@@ -51,7 +51,7 @@ import { isStaggered } from '@/game/elemHits.js'; /* v2.3.4387: nor a held attac
 import { specialAttack } from '@/game/playerActions.js'; /* v2.3.2473: a queued bow special fires from the fire site */
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
-import { btRpc, getBtPlayerId, syncRpgToServer } from '@/networking/index.js';
+import { getBtPlayerId } from '@/networking/index.js';   /* v2.3.4654: btRpc and syncRpgToServer went with Supabase */
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
@@ -3100,21 +3100,8 @@ export function updateMonsterCombat(S, deps) {
                      inline full-blob writes stalled the frame (same
                      mechanism as the bow-special freeze).  rpgSave.js. */
                   saveRpgSoon();
-                  btRpc('bt_monster_kill', {
-                    p_id: getBtPlayerId(),
-                    p_monster_type: m.type,
-                    p_damage: dmg,
-                    p_is_crit: isCrit,
-                    p_is_special: !!S._specialAttack
-                  }).then(function (sr) {
-                    if (sr && sr.rpg) {
-                      _R6.level = sr.rpg.level;
-                      _R6.xp = sr.rpg.xp;
-                      _R6.coins = sr.rpg.coins;
-                      _R6.unspentPts = sr.rpg.unspent_pts;
-                      setRpgState(_objectSpread({}, _R6));
-                    }
-                  });
+                  /* v2.3.4654: a bt_monster_kill RPC went here, to the removed Supabase
+                     backend (a no-op since); the worker credits the kill */
                 }
               }
             });
@@ -3471,7 +3458,6 @@ export function updateMonsterCombat(S, deps) {
             try {
               localStorage.setItem('bt_rpg', JSON.stringify(_R6));
             } catch (e) {}
-            syncRpgToServer(_R6);
           }
         }
 }

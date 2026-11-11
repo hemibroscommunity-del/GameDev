@@ -12,7 +12,6 @@
 import { BT_AUDIO, WEAPON_STASH_MAX, WEAPON_TYPES, ZONES, meetsStatReq, recalcDerived } from '@/data/index.js';
 import { isRemnantSkull, remnantInvKey } from '@/data/monsterVariants.js';
 import { shardByKey } from '@/data/shards.js';
-import { syncRpgToServer } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { _objectSpread } from '@/lib/babelHelpers.js';
 
@@ -387,7 +386,6 @@ export function updateGroundLootPickup(S, deps) {
                  server). */
               S.rpg.coins += loot.coins || 0;
               if (loot.coins && S.rpg._compStats) S.rpg._compStats.totalGoldEarned += loot.coins;
-              syncRpgToServer(S.rpg);
               if (loot.skull && S.rpg.inventory) {
                 /* v2.3.1673: one shared resolver with the server (see
                    remnantInvKey).  The chain that used to live here fell

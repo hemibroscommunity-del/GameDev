@@ -172,9 +172,11 @@ const LOOK_BLANK = {
      character creation over live gear would overwrite what the player is
      actually wearing.
 
-   bs -- body size is a MenuBar toggle, not a creator trait, and it rides the
+   bs -- body size was a MenuBar toggle, not a creator trait, and it rides the
      2s relay from the owner's own store, so peers converge on the owner
      within one relay.  Restoring a frozen copy would fight the live toggle.
+     (v2.3.4654: the toggle went with the hidden MenuBar; a stored value
+     still rides the relay.)
 
    wpnMat -- the weapon's material is derived from the weapon you are holding
      (its gearBase), and the weapon lives in the rpg blob, which the worker
@@ -193,7 +195,7 @@ export const LOOK_UNRESTORED = {
   eql: 'derived from worn armour (rpg blob restores it)',
   eqs: 'catalog has only none',
   eqst: 'follows st, which is restored',
-  bs: 'live MenuBar toggle, converges via the 2s relay',
+  bs: 'rides the 2s relay from the owner\'s store (its toggle went with the hidden MenuBar, v2.3.4654)',
   hg: 'retired axis, renders identically for everyone',
   fr: 'retired axis, renders identically for everyone',
 };
