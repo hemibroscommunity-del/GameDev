@@ -3,7 +3,7 @@
  * Owner: "test features directly without needing to play through the quest
  * line".  So the thing under test is not really "does unlock write a field" —
  * it is "can the owner now REACH ember", which is a question about
- * _zoneUnlocked, the gate the game actually consults.  Every assertion below
+ * (the quest gates are gone, v2.3.4853).  Every assertion below
  * is written against that gate or against _applyDamage rather than against
  * the fields this module writes, because a test that only checked its own
  * writes would pass on a kit that unlocked nothing.
@@ -16,7 +16,6 @@
  */
 import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
 import { DEVKIT } from '../src/devtools.js';
-import { QUEST_ZONE_GATE } from '../src/movement.js';
 /* v2.3.4675: this suite stands players in the retired old lands as a fixture.
    zonejudge.js R3 closes them to players, so it opens them for this suite
    only.  On retired-lands.test's FIXTURES list, which only shrinks: move the
@@ -57,17 +56,17 @@ async function newRoom(key) {
 // ── 1. THE LOCK ──
 {
   const { room } = await newRoom(null);           /* no ADMIN_KEY configured */
-  const r = await room._adminFetch(authed('/dev/unlock', { playerId: 'p1' }));
+  const r = await room._adminFetch(authed('/dev/kit', { playerId: 'p1' }));
   check('lock: with no ADMIN_KEY the whole surface 404s', r.status === 404, { status: r.status });
 
   const { room: r2 } = await newRoom(KEY);
-  const bad = await r2._adminFetch(req('/dev/unlock', {
+  const bad = await r2._adminFetch(req('/dev/kit', {
     method: 'POST', headers: { Authorization: 'Bearer wrong', 'Content-Type': 'application/json' },
     body: JSON.stringify({ playerId: 'p1' }),
   }));
   check('lock: a wrong key is 401, not a hint', bad.status === 401, { status: bad.status });
 
-  const none = await r2._adminFetch(req('/dev/unlock', {
+  const none = await r2._adminFetch(req('/dev/kit', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
   }));
   check('lock: no key at all is 401', none.status === 401, { status: none.status });
@@ -78,7 +77,7 @@ async function newRoom(key) {
   const { room, ws, ps } = await newRoom(KEY);
   const before = JSON.stringify(ps._quests || {});
   /* Every shape a cheater would try. */
-  for (const type of ['dev_unlock', 'dev_kit', 'dev_vitals', 'dev_warp', 'dev/unlock']) {
+  for (const type of ['dev_unlock', 'dev_kit', 'dev_vitals', 'dev_warp', 'dev/kit']) {
     await room.webSocketMessage(ws, JSON.stringify({ type, playerId: 'p1', payload: { playerId: 'p1' } }));
   }
   check('wire: no dev message unlocks anything',
@@ -90,43 +89,8 @@ async function newRoom(key) {
     PRIVILEGED_EVENTS.has('player_state'), {});
 }
 
-// ── 3. UNLOCK OPENS THE GATE THE GAME ACTUALLY CHECKS ──
-{
-  const { room, ps } = await newRoom(KEY);
-  const gated = [...QUEST_ZONE_GATE.keys()];
-  check('fixture: some zones really are quest-gated', gated.length > 0, { gated });
-  check('fixture: ember is one of them, and shut to start',
-    gated.includes('ember') && !room._zoneUnlocked(ps, 'ember'), { gated });
-
-  const res = await room._adminFetch(authed('/dev/unlock', { playerId: 'p1' }));
-  check('unlock: 200', res.status === 200, { status: res.status });
-  const body = await res.json();
-  check('unlock: it reports what it opened', body.ok && Array.isArray(body.opened) && body.opened.length > 0, body);
-
-  /* THE assertion: the gate the game consults, not the field we wrote. */
-  let allOpen = true;
-  for (const z of gated) if (!room._zoneUnlocked(ps, z)) allOpen = false;
-  check('unlock: EVERY quest-gated zone is now reachable', allOpen,
-    gated.map((z) => z + ':' + room._zoneUnlocked(ps, z)).join(' '));
-
-  /* ...and a real move into ember is now accepted, which is the owner's
-     actual goal.  Driving _handleMove rather than trusting the gate helper. */
-  const ws2 = [...room.sessions.keys()][0];
-  const session = room.sessions.get(ws2);
-  room._handleMove(session, ws2, { x: 500, y: 500, z: 'ember' });
-  check('unlock: the player can now MOVE into ember', ps.z === 'ember', { z: ps.z });
-}
-
-// ── 4. IT MARKS QUESTS ACTIVE, NOT COMPLETE ──
-{
-  const { room, ps } = await newRoom(KEY);
-  await room._adminFetch(authed('/dev/unlock', { playerId: 'p1' }));
-  const states = Object.values(ps._quests || {});
-  /* Completing them would hand over rewards and rewrite tutorial dialogue,
-     making the owner's save unrepresentative of the players being tested for. */
-  check('unlock: nothing is marked turnedIn', !states.includes('turnedIn'), ps._quests);
-  check('unlock: they are active', states.includes('active'), ps._quests);
-}
+/* v2.3.4853: sections 3 and 4 (unlock opens the quest gates; marks quests active) are
+   gone with /dev/unlock and the gates: the old lands they opened are refused for good. */
 
 // ── 5. GOD MODE ACTUALLY STOPS DAMAGE, AND EXPIRES ──
 {
@@ -266,10 +230,8 @@ async function newRoom(key) {
 {
   const { room, ps } = await newRoom(KEY);
   const before = await (await room._adminFetch(authed('/dev/state?id=p1'))).json();
-  check('state: ember reads shut before unlocking', before.ok && before.zones.ember === false, before.zones);
-  await room._adminFetch(authed('/dev/unlock', { playerId: 'p1' }));
+  check('state: it answers', before.ok === true && before.zones === undefined, before);
   const after = await (await room._adminFetch(authed('/dev/state?id=p1'))).json();
-  check('state: ...and open afterwards', after.zones.ember === true, after.zones);
   check('state: it reports god mode honestly', after.god === false, after);
   await room._adminFetch(authed('/dev/vitals', { playerId: 'p1', god: true }));
   const god = await (await room._adminFetch(authed('/dev/state?id=p1'))).json();
@@ -311,8 +273,6 @@ async function newRoom(key) {
   const { room } = await newRoom(KEY);
   const ps = room.playerState.p1;
   const before = { coins: ps.coins || 0, inv: JSON.stringify(ps.inventory || {}) };
-  const shut = await (await room._adminFetch(authed('/dev/state?id=p1'))).json();
-  check('quests: ember reads shut before finishing (guard)', shut.ok && shut.zones.ember === false, shut.zones);
 
   const r = await room._adminFetch(authed('/dev/quests', { playerId: 'p1' }));
   const body = await r.json();
@@ -325,8 +285,6 @@ async function newRoom(key) {
   check('quests: it paid NO rewards -- same purse, same bag',
     (ps.coins || 0) === before.coins && JSON.stringify(ps.inventory || {}) === before.inv,
     { before, after: { coins: ps.coins, inv: ps.inventory } });
-  const open = await (await room._adminFetch(authed('/dev/state?id=p1'))).json();
-  check('quests: ...and the gated zones opened with it', open.zones.ember === true, open.zones);
 
   const again = await (await room._adminFetch(authed('/dev/quests', { playerId: 'p1' }))).json();
   check('quests: running it twice is a clean no-op', again.ok && again.finished === 0, again);
@@ -335,11 +293,11 @@ async function newRoom(key) {
 // ── 10. AN UNKNOWN PLAYER IS AN ERROR, NOT A CRASH ──
 {
   const { room } = await newRoom(KEY);
-  for (const p of ['/dev/unlock', '/dev/kit', '/dev/vitals', '/dev/quests']) {
+  for (const p of ['/dev/kit', '/dev/vitals', '/dev/quests']) {
     const r = await room._adminFetch(authed(p, { playerId: 'nobody' }));
     check('robust: ' + p + ' on an unknown player is a clean 404', r.status === 404, { status: r.status });
   }
-  const noId = await room._adminFetch(authed('/dev/unlock', {}));
+  const noId = await room._adminFetch(authed('/dev/kit', {}));
   check('robust: a missing playerId is a 400', noId.status === 400, { status: noId.status });
 }
 

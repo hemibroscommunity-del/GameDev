@@ -13,31 +13,8 @@
  * `pong` / `track` stay inline in the router (session-local, two
  * lines each). */
 
-import { VALID_ZONE_IDS, DUNGEON_ZONE_RE, QUEST_REWARDS } from './data.js';
+import { VALID_ZONE_IDS, DUNGEON_ZONE_RE } from './data.js';
 import { WHEEL_ZONE } from './wheelzone.js'; /* v2.3.3325: the Wheel's way back (MOVE_BUDGET) */
-
-/* v2.3.1817: zones you can always reach — see _zoneUnlocked for why each one
-   is here.  A Set literal rather than an array: this is tested per move. */
-const ALWAYS_OPEN_ZONES = new Set(['town', 'worldview', 'farm_home', 'meadow']);
-
-/* zone -> the quest ids that open it, built ONCE from the quest table's own
-   objective.zone.  Built rather than written out so a new step opens its zone
-   by existing, and a retuned one cannot leave a stale lock behind.
-   Object.create(null) is not needed — a Map is keyed by our own strings, and
-   the values come from QUEST_REWARDS, never from a client. */
-/* v2.3.2240: exported so the operator test kit (devtools.js) unlocks
-   exactly the gates _zoneUnlocked checks, derived from the same table --
-   a hand-written second list would drift the day a quest moves. */
-export const QUEST_ZONE_GATE = (() => {
-  const m = new Map();
-  for (const qid of Object.keys(QUEST_REWARDS)) {
-    const z = QUEST_REWARDS[qid] && QUEST_REWARDS[qid].objective && QUEST_REWARDS[qid].objective.zone;
-    if (!z) continue;
-    if (!m.has(z)) m.set(z, []);
-    m.get(z).push(qid);
-  }
-  return m;
-})();
 
 /* ═══ v2.3.3292: A ROLL IS ONLY AS LONG AS THE ONE YOU PAID FOR ═══
    `dodging` on a move is the phone's word that it is mid-roll, and the two
@@ -441,40 +418,6 @@ export const movementMethods = {
     return DUNGEON_ZONE_RE.test(z);
   },
 
-  /* ═══ v2.3.1817: A ZONE OPENS WHEN A QUEST SENDS YOU THERE ═══
-   * Owner: "make each zone open up only after a mayor bro quest requires
-   * that area."
-   *
-   * Derived from QUEST_REWARDS' own `objective.zone` rather than a second
-   * table, because that field ALREADY names the zone each step is scoped to
-   * and a parallel list is how the lock and the quest text drift apart.  The
-   * client mirrors it from QUEST_CHAINS[].zone for the UI; this is what
-   * actually enforces it, because the client cannot be trusted with a gate.
-   *
-   * ACCEPTED counts, not completed: the quest is the thing that sends you
-   * there, so it has to open on accept or the step is impossible.  Turned-in
-   * counts too — a zone you have earned does not close behind you, which
-   * would strand anyone farming a zone they already finished.
-   *
-   * THE ALWAYS-OPEN SET is not "everything not in a quest".  Town and the
-   * World View are how you reach a quest giver at all; farm_home is personal;
-   * the Starting Meadow is where a new character begins.  Locking any of
-   * those makes the game unenterable rather than gated.  Dungeon instances
-   * carry their own entry rules (_validZone's DUNGEON_ZONE_RE) and are not
-   * re-gated here. */
-  _zoneUnlocked(ps, z) {
-    if (ALWAYS_OPEN_ZONES.has(z)) return true;
-    if (DUNGEON_ZONE_RE.test(z)) return true;
-    const gate = QUEST_ZONE_GATE.get(z);
-    if (!gate) return true;          /* no quest names it -> not a gated zone */
-    const q = ps && ps._quests;
-    if (!q) return false;
-    for (const qid of gate) {
-      const st = q[qid];
-      if (st === 'active' || st === 'turnedIn') return true;
-    }
-    return false;
-  },
 
   _handleMove(session, ws, msg) {
     if (!session.id || !this.playerState[session.id]) return;
@@ -552,7 +495,6 @@ export const movementMethods = {
        not left by naming another place.  A change only, as above. */
     const _zoneRejected = (msg.z !== undefined && msg.z !== null
       && (!this._validZone(msg.z)
-          || (msg.z !== ps.z && !this._zoneUnlocked(ps, msg.z))
           || (msg.z !== ps.z && this._dungeonIdDead(msg.z))
           || (msg.z !== ps.z && this._zoneJudgeRefuses(session.id, ps, msg.z, Date.now()))));
     const newZone = (msg.z === undefined || msg.z === null || _zoneRejected) ? ps.z : msg.z;

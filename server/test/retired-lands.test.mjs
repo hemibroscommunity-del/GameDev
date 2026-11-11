@@ -24,7 +24,6 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { GameRoom } from '../src/index.js';
 import { RETIRED_LANDS } from '../src/zonejudge.js';
 import { VALID_ZONE_IDS } from '../src/data.js';
-import { QUEST_ZONE_GATE } from '../src/movement.js';
 import { flagNameOk } from '../src/liveops.js';
 import { WHEEL_ZONE } from '../src/wheelzone.js';
 
@@ -80,7 +79,6 @@ async function move(pid, z, x, y) {
 }
 const put = (p, z, x, y) => { p.z = z; p.x = x; p.y = y; p.dead = false; p.dying = false; p._zoneEntryGraceUntil = 0; p._mvFollow = undefined; };
 const refusedN = (k) => room._zoneJudgeInfo().refused[k] || 0;
-const openEveryQuest = (p) => { p._quests = p._quests || {}; for (const [, qids] of QUEST_ZONE_GATE) for (const q of qids) p._quests[q] = 'active'; };
 
 /* ── 1. THE LIST ── */
 {
@@ -107,8 +105,6 @@ const openEveryQuest = (p) => { p._quests = p._quests || {}; for (const [, qids]
 /* ── 3. A MOVE ── */
 {
   const p = room.playerState.bp_rl_a;
-  openEveryQuest(p);
-  check('3. (setup) the quest lock would let this player into frost', room._zoneUnlocked(p, 'frost'));
   const x0 = p.x, y0 = p.y;
   const lists0 = Object.keys(room.monsters).length + Object.keys(room.nodes).length;
   WS.bp_rl_a.sent.length = 0;
