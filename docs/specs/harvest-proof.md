@@ -39,6 +39,13 @@ stopped it.
 - **A refused strike leaves the node standing.** The node's state is sent again
   (at most every 2 s per player, `DIRTY_MS`), so the phone that already showed
   it falling shows it standing, and you can harvest it properly.
+- **v2.3.4642: every refusal after the node is found snaps back**, not only
+  these two: out of reach, no tool, too low a level, too early, away or dead,
+  a node already down (`gathering.js _strikeSnapBack`). Each sends the node
+  again and re-sends the skills (the phone added the harvest's XP when it
+  swung), at most once a node every `DIRTY_MS` a player, the same clock as
+  above. Live flag `strikesnap: false` goes back to the silence.
+  `silent-refusals.test` §5.
 - **A refused strike is evidence** (botfp.js `_botfpOnStartless`): counted as
   `startless` in the player's bot record, and flagged
   `strikes-without-start` at 20. An honest phone's recovery strike is paid, so

@@ -7588,7 +7588,12 @@ export const QUEST_CHAINS = {
     needsDoor: 'farm',
     check: function check(rpg) {
       var _rpg$lifeSkills4;
-      return Object.keys(((_rpg$lifeSkills4 = rpg.lifeSkills) === null || _rpg$lifeSkills4 === void 0 ? void 0 : _rpg$lifeSkills4.dungeonClears) || {}).length > 0;
+      /* v2.3.4641: a clear the record holds as TRUE, as the worker counts it
+         (quests.js _dungeonClearCount) -- this counted every key, so a map
+         holding a dungeon as not-cleared offered a Claim the worker refused
+         (quest-check-drift.test) */
+      var _dc = ((_rpg$lifeSkills4 = rpg.lifeSkills) === null || _rpg$lifeSkills4 === void 0 ? void 0 : _rpg$lifeSkills4.dungeonClears) || {};
+      return Object.keys(_dc).some(function (k) { return _dc[k] === true; });
     },
     reward: {
       gold: 300,

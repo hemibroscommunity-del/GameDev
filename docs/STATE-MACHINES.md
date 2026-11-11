@@ -160,7 +160,15 @@ a player in No man's land; `fightlockreset`, `fightlockarmor`;
 owner's own sword and arrow, standing up over the left joystick, built on
 #1529; `?timingbar=0`; phone `mp-timingbar`), #1533 (v2.3.4628: the duel
 challenge card closes itself when the challenge runs out on the server, 2
-minutes; `duel-pending.test` §7).
+minutes; `duel-pending.test` §7), #1535 (v2.3.4641: a quest tap made while
+the connection is down is kept and sent on the rejoin, and `stats_update`
+keeps its signature only when the message went (TRAPS §287); each quest's
+phone check is held to the server's goal by `quest-check-drift.test`, which
+found and fixed one drift, the Mayor's "Clear any dungeon"; `quest-kept.test`),
+#1537 (v2.3.4642: the rest of the silent refusals, V9a and V9b: a refused
+harvest strike sends the node and the skills again, at most once a node every
+2 s a player, `strikesnap`; a refused armour swap sends the worn armour back,
+`gearresend`; a refused cook already re-sent; `silent-refusals.test` §5-6).
 
 ## What is left
 
@@ -168,11 +176,6 @@ This is a list, not a promise. The plan is `PLAN.md` on the storage branch.
 Updated v2.3.4650, after the fifth wave. The judges have played (owner,
 2026-11-10: "Judges have already played you can do any big repairs now"),
 so nothing waits on them any more.
-
-**In progress in another session (not merged yet):**
-- a quest tap kept while the connection is down, and each quest's phone
-  check held to the server's goal (`claude/brotown-elevation-obstacles-6ak97l`,
-  v2.3.4629).
 
 **Waiting on the owner:**
 - the shield questions 1-4 (`docs/OWNER-LIST-2026-10-26.md` §10): showing
@@ -184,9 +187,6 @@ so nothing waits on them any more.
   be skipped for now"). The owner's art sheet has the staff, unused.
 
 **Not started, no decision needed:**
-- the rest of the silent refusals: harvest strikes, cooking, the gear swap
-  of armour (V9a, V9b; TRAPS §309);
-- `stats_update` and the quest taps ignore the channel's `false` (TRAPS §287);
 - nine places still change zone by hand, five on the retired old map
   (TRAPS §304);
 - the bigger "one reset for a whole life" of a monster (`m.life`);
