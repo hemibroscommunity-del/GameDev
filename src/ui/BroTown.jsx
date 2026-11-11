@@ -3553,7 +3553,7 @@ export var BroTown = function BroTown(_ref0) {
     ].join('|');
     if (S._lastStatsUpdateSig === _sig) return;
     try {
-      /* v2.3.4629: the signature is kept only when the channel TOOK the message
+      /* v2.3.4641: the signature is kept only when the channel TOOK the message
          (TRAPS §287: it answers false when it drops one, the socket down).
          Stamped before, a stats_update dropped in a Wi-Fi blip was never sent
          again -- the signature already matched -- so the worker kept the old

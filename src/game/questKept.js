@@ -1,4 +1,4 @@
-/* ═══ v2.3.4629: A QUEST TAP MADE WHILE THE CONNECTION IS DOWN IS KEPT ═══
+/* ═══ v2.3.4641: A QUEST TAP MADE WHILE THE CONNECTION IS DOWN IS KEPT ═══
  *
  * TRAPS §287: "The send returned, so the message went" -- the channel drops a
  * message without a word while the socket is not open, and since v2.3.4402 it

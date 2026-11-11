@@ -161,7 +161,7 @@ so nothing waits on them any more.
   of armour (V9a, V9b; TRAPS §309);
 - ~~`stats_update` and the quest taps ignore the channel's `false` (TRAPS
   §287)~~: the quest taps are kept and sent on the rejoin, and
-  `stats_update` keeps its signature only when the message went (v2.3.4629,
+  `stats_update` keeps its signature only when the message went (v2.3.4641,
   `quest-kept.test`);
 - nine places still change zone by hand, five on the retired old map
   (TRAPS §304);
@@ -170,7 +170,7 @@ so nothing waits on them any more.
   has the worker's 2-minute clock now and closes itself (v2.3.4628);
 - ~~a test that holds each quest's phone check to the server's goal, so the
   two cannot drift apart (#1486, #1503)~~: `quest-check-drift.test`
-  (v2.3.4629) builds each objective just short of its goal and at it and asks
+  (v2.3.4641) builds each objective just short of its goal and at it and asks
   both. It found one drift, fixed: mayor_3's phone check counted every key of
   `dungeonClears`, the worker only the ones set to true;
 - a tab already in the world that reconnects mid-fight gets no `body_place`:

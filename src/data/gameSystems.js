@@ -7588,7 +7588,7 @@ export const QUEST_CHAINS = {
     needsDoor: 'farm',
     check: function check(rpg) {
       var _rpg$lifeSkills4;
-      /* v2.3.4629: a clear the record holds as TRUE, as the worker counts it
+      /* v2.3.4641: a clear the record holds as TRUE, as the worker counts it
          (quests.js _dungeonClearCount) -- this counted every key, so a map
          holding a dungeon as not-cleared offered a Claim the worker refused
          (quest-check-drift.test) */

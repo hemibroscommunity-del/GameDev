@@ -1,4 +1,4 @@
-/* A quest tap made while the connection is down is kept -- v2.3.4629 (TRAPS
+/* A quest tap made while the connection is down is kept -- v2.3.4641 (TRAPS
  * §287: "stats_update and the quest taps still ignore the answer"; the
  * state-machine sweep's "what is left", docs/STATE-MACHINES.md).
  *
