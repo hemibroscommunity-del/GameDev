@@ -19,7 +19,8 @@
  *   5. v2.3.3025, the owner: "there still a portal to the old town. Disable
  *      that." -- there is no marker beside where they land any more (it led
  *      to today's town, where they stayed);
- *   6. `?trial=off` is today's town and the old World View, as before;
+ *   6. `?trial=off` leads nowhere since v2.3.4676 (the owner, 2026-11-11, of
+ *      the old map: "Close it"): the world, as without it;
  *   7. no page errors;
  *   8. the quest's way works there (src/game/questRoute.js): the minimap's
  *      star and, since v2.3.2992, its gold road lead a new character to the
@@ -262,5 +263,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.enterWorld(Q);
   await Q.page.waitForTimeout(6000);
   const q = await Q.page.evaluate(() => ({ zone: window._gameState.current.currentZone, trial: !!window.__btWorldTrial }));
-  rec.ok('with ?trial=off: today\'s town, and the old World View, as before', q.zone === 'town' && !q.trial, q);
+  /* v2.3.4676: the switch is gone -- the world, as for everyone */
+  rec.ok('with ?trial=off: the world all the same (the old map is closed)', q.zone === 'wheel' && q.trial, q);
 }
