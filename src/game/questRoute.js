@@ -156,43 +156,12 @@ export function questRouteExits(currentZone, rpg, S) {
     if (want && _npcHere(S, want)) return [];
   }
 
-  /* v2.3.2128: "out there, anywhere". */
-  if (target === ANY_FIELD_ZONE) {
-    /* v2.3.2990: the Wheel has no portals out at all -- the World View's
-       trails to the old lands are gone with it, its one exit the marker back
-       to today's town -- and nothing to gather yet.  "Back to the Mayor" is
-       advice for a locked spoke; with no spokes it would be a road to
-       nowhere. */
-    if (!WORLDVIEW_EXITS.some((e) => e && e.zoneId !== 'town')) return [];
-    if (isWorldViewZone(currentZone)) {
-      /* Every live spoke EXCEPT the one back to town — that is the way home,
-         not a place to fish — and only the ones you can actually walk into.
-         A locked spoke is painted shut (tileRenderer, v2.3.1822) and starring
-         it would be the map arguing with the door. */
-      const open = WORLDVIEW_EXITS
-        .filter((e) => e && e.zoneId !== 'town' && isZoneUnlocked(rpg, e.zoneId));
-      if (open.length) return open.map(at);
-      /* Nothing out here is open to you yet, so "go fish anywhere" has no
-         anywhere in it — the next real step is back to the Mayor for the
-         quest that unlocks a zone.  Falling through to an empty list would
-         put us back at the blank map this whole change is about. */
-      const home = WORLDVIEW_EXITS.find((e) => e && e.zoneId === 'town');
-      return home ? [at(home)] : [];
-    }
-    if (currentZone === 'town') {
-      /* One way out of town, and the whole field is behind it — but only if
-         any of it is open.  With every spoke still locked the trip is a dead
-         end, and the Mayor's own '❗' pin is already the honest next step. */
-      const anyOpen = WORLDVIEW_EXITS.some(
-        (e) => e && e.zoneId !== 'town' && isZoneUnlocked(rpg, e.zoneId));
-      if (!anyOpen) return [];
-      const e = TOWN_EXITS.find((x) => x && x.zoneId === 'worldview');
-      return e ? [at(e)] : [];
-    }
-    /* You are standing in a zone already: this IS one of the places the
-       quest meant, so the next step is work, not travel. */
-    return [];
-  }
+  /* v2.3.2128: "out there, anywhere".  v2.3.4861: the Wheel has no portals out
+     (its exit list holds at most the one stop on the way in, worldTrial.js) and
+     the old lands are closed for good, so there is no spoke to star: the unlock
+     walk-through that lived here (open spokes, "back to the Mayor", the town's
+     trail-head) had no live case left. */
+  if (target === ANY_FIELD_ZONE) return [];
 
   const one = _routeOne(currentZone, target, S, at);
   return one ? [one] : [];
@@ -216,25 +185,9 @@ function _routeOne(currentZone, target, S, at) {
     const e = TOWN_EXITS.find((x) => x && x.zoneId === 'worldview');
     return e ? at(e) : null;
   }
-  /* ═══ v2.3.1906: THE SPOKE'S WAY OUT IS TILE 9 ═══
-     This used to return nothing, on the reasoning that "a spoke's return
-     portal is a painted tile rather than a declared exit, so there is no
-     coordinate to star here without guessing at one".  The first half is
-     true and the conclusion was not: the tile IS the coordinate.
-     zoneTransitions triggers the return by scanning S.map for tile 9 within
-     RETURN_R of the player, so starring the nearest 9 marks exactly the
-     thing that will fire — no guessing, and the map and the trigger read the
-     same source.
-
-     It needs the map, which is why S is threaded in. Without it (an older
-     caller) this still returns null and keeps the old behaviour rather than
-     inventing a position.
-
-     This matters most for the case the owner reported: standing in Frost
-     Ridge holding four snowmen, the next step is the Mayor, and "deliberately
-     nothing" left the one screen where you actually need directions blank. */
-  const home = _nearestReturnTile(S);
-  return home ? { x: home.x, y: home.y, zoneId: (S && isWorldViewZone(S._enteredFromHub)) ? S._enteredFromHub : 'town' } : null;
+  /* v2.3.4861: a combat zone's tile-9 way out (v2.3.1906) went with the old
+     lands: no zone but the Wheel, the farm, dungeons and the town is left. */
+  return null;
 }
 
 /** The FIRST exit worth starring, or null.  Kept because "where is the quest
@@ -243,30 +196,6 @@ function _routeOne(currentZone, target, S, at) {
 export function questRouteExit(currentZone, rpg, S) {
   const list = questRouteExits(currentZone, rpg, S);
   return list.length ? list[0] : null;
-}
-
-/* The nearest tile-9 return marker in the zone you are standing in, as world
-   coordinates — or null when there is no map to read or no marker on it.
-   Nearest rather than first so a zone with markers on two edges stars the one
-   you would actually walk to. */
-function _nearestReturnTile(S) {
-  const map = S && S.map;
-  if (!Array.isArray(map)) return null;
-  const P = (S && S.player) || null;
-  const px = P ? P.x / TILE : 0;
-  const py = P ? P.y / TILE : 0;
-  let best = null;
-  let bestD = Infinity;
-  for (let ty = 0; ty < map.length; ty++) {
-    const row = map[ty];
-    if (!row) continue;
-    for (let tx = 0; tx < row.length; tx++) {
-      if (row[tx] !== 9) continue;
-      const d = Math.abs(tx - px) + Math.abs(ty - py);
-      if (d < bestD) { bestD = d; best = { x: (tx + 0.5) * TILE, y: (ty + 0.5) * TILE }; }
-    }
-  }
-  return best;
 }
 
 /* ═══ v2.3.1817: WHICH QUEST OPENS A ZONE ═══
