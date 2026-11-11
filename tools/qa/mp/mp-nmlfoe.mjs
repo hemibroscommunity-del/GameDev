@@ -348,6 +348,45 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (R._quests) R._quests.tut_4 = 'turnedIn';   /* the onboarding coach covers the band (mp-duelblock) */
     });
   }
+  /* v2.3.4797: EVERY weapon into its own slot now, before the first blow.
+     Since v2.3.4510 (#1523, server/src/fightlock.js `fightlockequip`) the
+     worker refuses an equip_request -- a spare taken out of the bag -- for
+     10 s after a hit between players in No man's land, the fight lock: on
+     purpose, a losing player must not save a spare weapon from the killer.
+     Steps 3 and 5 took the staff out of the bag right after the sword's and
+     the bow's blows, were refused, and the raider held an empty staff slot:
+     0 bolts (regression pass, main e89ef82f6 and d2119ea68, twice each).  With
+     the three in their slots every later H.equipWeapon only switches the
+     hand (set_active_slot, open in a fight: FIGHT_OPEN), as a player who
+     came out armed does.  The raider's bow last, in hand for step 1; the
+     wanderer's bow (it is in hand from step 7 on, and locks nothing by
+     itself before then); the bystander's staff for step 8.  Each read back
+     off the worker's answer (the phone's slot moves on its player_state). */
+  const armSlots = async (P, list) => {
+    const out = [];
+    for (const [k, slot, active] of list) {
+      let r = null;
+      for (let i = 0; i < 20 && !(r && r.ok); i++) {
+        r = await H.equipWeapon(P, k, slot, active);
+        if (!r.ok) await P.page.waitForTimeout(250);
+      }
+      let held = false;
+      for (let i = 0; i < 40 && !held; i++) {
+        held = await P.page.evaluate((a) => {
+          const R = window._gameState && window._gameState.current && window._gameState.current.rpg;
+          return !!(R && R[a.slot] && R[a.slot].type === a.k);
+        }, { k, slot });
+        if (!held) await P.page.waitForTimeout(250);
+      }
+      out.push(`${k}:${held ? 'held' : JSON.stringify(r)}`);
+    }
+    return out;
+  };
+  const armA = await armSlots(A, [['greatsword', 'weapon', 'melee'], ['staff', 'staffWeapon', 'staff'], ['bow', 'rangedWeapon', 'ranged']]);
+  const armB = await armSlots(B, [['bow', 'rangedWeapon', 'ranged']]);
+  const armC = await armSlots(C, [['staff', 'staffWeapon', 'staff']]);
+  rec.ok(`setup: every weapon in its slot before the first blow (the fight lock refuses a spare taken out mid-fight): ${[...armA, ...armB, ...armC].join(' ')}`,
+    [...armA, ...armB, ...armC].every((s) => s.endsWith(':held')), { armA, armB, armC });
   const shields = [await H.readState(A, (S) => !!(S.rpg && S.rpg.shield)), await H.readState(B, (S) => !!(S.rpg && S.rpg.shield))];
   const lvls = [];
   for (const id of [idA, idB, idC]) lvls.push(((await H.serverPlayer(wsPort, id)) || {}).level);
