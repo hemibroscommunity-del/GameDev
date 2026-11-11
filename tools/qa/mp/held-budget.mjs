@@ -62,14 +62,15 @@ export const KNOWN = {
   'the frame itself': { ms: 70,
     why: "one frame's own code on this box, which plays a quarter of a second of game in each (it draws four a second): every monster, bubble and name plate that changed in that time is done in one frame",
     next: 'mp-phoneframe is the measure of a frame at a phone\'s rate; here the line only stops it growing',
-    crowd: 'v2.3.4499: eight species-and-skin pairs churning their builds recolour fur inside the frame (speciesArt.js _compose > retintSkinPixels): 28 to 70 ms frames, 15 of them in a minute (e-species).  Goes with the churn (gc, below)' },
+    crowd: 'v2.3.4871 FIXED, one 39 ms frame left as they arrive (each pair built once; was 25 frames of 30 to 36 ms).  Was: v2.3.4499: eight species-and-skin pairs churning their builds recolour fur inside the frame (speciesArt.js _compose > retintSkinPixels): 28 to 70 ms frames, 15 of them in a minute (e-species).  Goes with the churn (gc, below)' },
   gc: { ms: 60,
     why: "the browser's garbage collector, 8 to 45 ms at a time: it runs when the page has made enough garbage",
     next: 'make less of it per frame (the pools: docs/OPTIMIZATION-ROADMAP.md); nothing here calls it',
     /* v2.3.4499: the crowd tour: one armoured player walking about, 0 to 1 collections in 25 s (the longest 31 ms);
        eight, 3 to 7 (the longest 17 to 29 ms).  Then the species churn (played last): every collection longer and longer */
-    at: { 'e-species': 100 },
-    crowd: 'eight species-and-skin pairs on screen (e-species) churn their builds (speciesArt.js _BUILD_CAP 6: each frame lets go of one and builds another, and what it let go of is freed 30 s later): 566 pictures of 256 x 256 made in a minute, 187 MB, then 757 and 250 MB.  The collector holds the page 35 to 100 ms at a time, and when the first tours went on after it, 336 to 698 ms walking into the crowd and up to 1076 ms at the Leaderboards.  On an iPhone this is the black screen, not a hitch.  Fix: a cap that is never under the looks on screen (or the build kept while its player is), and a let-go freed at once when nothing draws it' },
+    /* v2.3.4871: the species churn fixed (speciesArt.js: a build kept while drawn): e-species 67.6 ms worst, 18 times
+       -> 9 ms, 3 times; its own line (100) is gone, the family's 60 stands */
+    crowd: 'v2.3.4871 FIXED (was:) eight species-and-skin pairs on screen (e-species) churn their builds (speciesArt.js _BUILD_CAP 6: each frame lets go of one and builds another, and what it let go of is freed 30 s later): 566 pictures of 256 x 256 made in a minute, 187 MB, then 757 and 250 MB.  The collector holds the page 35 to 100 ms at a time, and when the first tours went on after it, 336 to 698 ms walking into the crowd and up to 1076 ms at the Leaderboards.  On an iPhone this is the black screen, not a hitch.  Fix: a cap that is never under the looks on screen (or the build kept while its player is), and a let-go freed at once when nothing draws it' },
   /* ── v2.3.4499: found by the crowd tour (mp-crowdsweep) ── */
   'gear-sheet': { ms: 195,
     why: "a drawn shirt composed on the page for each player who wears one, the first time each pose is drawn (composeShirt > stampShirtArt): 121 to 192 ms each, 8 to 13 times as ten players in drawn shirts swung, rolled and mined beside you (d-prints).  gearSheets.js keeps 8 drawings baked: with ten on screen none were seen to bake again in the 25 s",
