@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d74e0d931624b4441e6f558c0bbf0e47bd299cda",
+  "tree": "6dd6ee711a9d04853e2a3bd4435cbfc22ca3914b",
+  "committedAt": "2026-11-10T16:58:43-08:00",
+  "subject": "Merge pull request #1534 from hemibroscommunity-del/claude/sm-zone-judge",
+  "files": 8006,
+  "bytes": 967057134,
+  "listingSha256": "24b31a33b7cad55c74d8384fdf7da4a96be0ac2d3879441b7cd3cee1fde6a0f4",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
