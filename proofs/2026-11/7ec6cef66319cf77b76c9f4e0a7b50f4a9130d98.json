@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7ec6cef66319cf77b76c9f4e0a7b50f4a9130d98",
+  "tree": "1a430200e834e824f85c4a3ddef79fafe66a55ee",
+  "committedAt": "2026-11-11T10:46:33-08:00",
+  "subject": "Merge pull request #1549 from hemibroscommunity-del/claude/retired-lands",
+  "files": 7623,
+  "bytes": 961433268,
+  "listingSha256": "a07056679fe16484394fb43e9209f1aa5d7190394c14c4cc2ef0e42c3b7ac978",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

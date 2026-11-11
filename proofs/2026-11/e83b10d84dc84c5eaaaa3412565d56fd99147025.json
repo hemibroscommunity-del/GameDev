@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e83b10d84dc84c5eaaaa3412565d56fd99147025",
+  "tree": "d09fb10c410a0e03c6923a5cfb26831f9bba16c1",
+  "committedAt": "2026-11-11T10:46:44-08:00",
+  "subject": "Merge pull request #1551 from hemibroscommunity-del/claude/close-trial-off",
+  "files": 7219,
+  "bytes": 944190719,
+  "listingSha256": "3518db97013ca3339abcb6c7817780fc3d2f2b4a7c7a929fdd8dc52fba782e94",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
