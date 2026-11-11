@@ -706,7 +706,7 @@ export const abilityMethods = {
        purpose: it bounds how far the client's dash may carry you, which is a
        travel cap, not a hit circle -- and a cap tighter than the client's
        own DASH_MAX_REACH_PX would refuse a dash the client already flew. */
-    const _castK = this._depthK(zone, ps.y);
+    const _castK = 1;   /* v2.3.4851: depth.js is gone (the old map's dunes) */
     const _castR = cfg.radius * _castK;
     for (const m of monsters) {
       if (!this._monsterDamageable(m)) continue;   /* v2.3.2221 */
@@ -918,7 +918,7 @@ export const abilityMethods = {
     /* v2.3.2790: the gather ring and the shove are x the caster's depth, so
        on Wind Dunes' north edge the pack lands inside a sword that now
        reaches 0.42 (and a bash shoves as far as it looks).  1 elsewhere. */
-    const _strK = this._depthK(zoneId, ps.y);
+    const _strK = 1;   /* v2.3.4851: depth.js is gone (the old map's dunes) */
     if (cfg.pullTo > 0 && m.hp > 0) {
       const ang = Math.atan2((m.y || 0) - (ps.y || 0), (m.x || 0) - (ps.x || 0));
       m.x = (ps.x || 0) + Math.cos(ang) * cfg.pullTo * _strK;
