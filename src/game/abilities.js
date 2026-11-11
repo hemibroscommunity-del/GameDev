@@ -27,7 +27,7 @@ import { BT_AUDIO, abilityCfg, abilityStaminaCost, abilityUnlocked, isAbilitiesE
   prog3CharLevel, getActiveWeapon,
   meleeSwingSfx /* v2.3.2260: the lunge borrows the swing's own per-weapon sound */ } from '@/data/index.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the sword's dash heard leaving */
-import { depthK, ZONES } from '@/data/zones.js';   /* v2.3.2790; v2.3.3262: + ZONES (a lunge at a player follows the swing's PvP gate) */
+import { ZONES } from '@/data/zones.js';   /* v2.3.2790; v2.3.3262: + ZONES (a lunge at a player follows the swing's PvP gate) */
 import { isPlayerDead, pushDmgPopup, swimRefused /* v2.3.3003 */, dazeRefused /* v2.3.3014 */, staggerRefused /* v2.3.3264 */, airRefused /* v2.3.3017 */ } from '@/game/combatHelpers.js';
 import { prog3ActiveCat } from '@/data/prog3.js';   /* v2.3.2327: whirlwind is the sword's */
 import { monsterLock } from '@/game/targeting.js';  /* v2.3.2542: whirlwind wants a fight under way */
@@ -709,8 +709,7 @@ export function applyAbilityStrike(S, kind, targetId, opts) {
      otherwise keep its sweep and bill the same press twice. */
   var aim = resolveCastAngle(S);
   S._abilitySwingUntil = now + 460;
-  var _abDk = depthK(S.currentZone, S.player ? S.player.y : 0);   /* v2.3.2790: the rings are as wide as the (depth-scaled) move */
-  S._abilityFx = { kind: kind, at: now, ang: aim, radius: cfg.radius * _abDk };
+  S._abilityFx = { kind: kind, at: now, ang: aim, radius: cfg.radius };
   S.swingTimer = now;
   S._swingAng = aim;
   S.screenShake = kind === 'whirl' ? 5 : 3;
@@ -773,14 +772,14 @@ export function applyAbilityStrike(S, kind, targetId, opts) {
      player's own x/y -- not 10px up at the chest, or its edge ring sits 10px
      off the circle that actually hits. */
   var _ringY = kind === 'whirl' ? S.player.y : S.player.y - 10;
-  pushAbilityRings(S, S.player.x, _ringY, kind, aim, cfg.radius * _abDk);
+  pushAbilityRings(S, S.player.x, _ringY, kind, aim, cfg.radius);
 
   /* v2.3.1735: the whirlwind's vortex (owner art), centred on the caster
      because that is where the gather pulls everything TO.  Read by
      effectsRenderer._updateWhirlVortex, which no-ops until the sheet is
      committed. */
   if (kind === 'whirl') {
-    S._whirlFx = { t0: now, x: S.player.x, y: S.player.y, radius: cfg.radius * _abDk };   /* v2.3.2824: centred on the tested circle */
+    S._whirlFx = { t0: now, x: S.player.x, y: S.player.y, radius: cfg.radius };   /* v2.3.2824: centred on the tested circle */
   }
 
   if (kind === 'bash') {

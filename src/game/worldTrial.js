@@ -196,7 +196,7 @@ export function applyWorldTrial() {
   /* The vista's own tricks -- the figure shrinking with distance, the wide
      reference zoom, the magnifier ring, the haze -- are for a painting of a
      far-away place.  At full size the island is walked like any zone. */
-  delete z.playerScale;
+  /* v2.3.4862: `playerScale` is gone from the zone (zones.js) */
   delete z.refViewW;
   delete z.refViewH;
   delete z.atmosphere;

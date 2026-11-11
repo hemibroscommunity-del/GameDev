@@ -46,8 +46,6 @@
  * import effectsRenderer (the fxStrips.js precedent). */
 import { Container, Sprite, Texture } from 'pixi.js';
 import { ELEMENTS } from '@/data/elements.js';
-import { zonePlayerScale } from '@/data/zones.js';
-import { TILE } from '@/data/constants.js';
 
 /* Centre of the crystal head in the staff icon (Wizard Staff2.png, 64x64),
    measured off its alpha: the white claw spans rows 12-24, cols 40-55.  One
@@ -595,14 +593,13 @@ export class StaffCastFx {
     if (staffOut) {
       const tip = _tipA;
       tip.x = S._staffTipX; tip.y = S._staffTipY;
-      const pk = zonePlayerScale(S.currentZone, tip.x, tip.y, TILE) || 1;
-      this._pk = pk;
+      this._pk = 1;
       const elem = (R.staffWeapon && R.staffWeapon.element1) || null;
       const ramp = rampFor(elem);
       const castAt = S._staffCastAt || 0;
       if (castAt && castAt !== this._lastCastAt) {
         this._lastCastAt = castAt;
-        if (now - castAt < 300) this._onCast('self', tip, S._staffCastAng || 0, ramp, true, pk, now, S._staffCastBig === castAt);
+        if (now - castAt < 300) this._onCast('self', tip, S._staffCastAng || 0, ramp, true, 1, now, S._staffCastBig === castAt);
       }
       const { charge: c, rhythm } = staffCharge(S, now);
       this._charge = c; this._rhythm = rhythm;
@@ -611,11 +608,11 @@ export class StaffCastFx {
         const vis = behind ? 0.3 : 1;
         const stepN = Math.floor(now / STEP_MS);
         const fl = c > 0.55 ? 0.78 + 0.22 * hash(stepN) : 1;   /* stepped flicker near full */
-        this._glow(true, tip.x, tip.y, (5 + 11 * c) * pk, ramp[2], (0.12 + 0.6 * c * c) * fl * rhythm * vis);
-        this._glow(true, tip.x, tip.y, (2 + 3.5 * c) * pk, 0xffffff, (0.2 + 0.65 * c) * fl * rhythm * vis);
+        this._glow(true, tip.x, tip.y, (5 + 11 * c), ramp[2], (0.12 + 0.6 * c * c) * fl * rhythm * vis);
+        this._glow(true, tip.x, tip.y, (2 + 3.5 * c), 0xffffff, (0.2 + 0.65 * c) * fl * rhythm * vis);
         if (c > 0.82 && !behind) {
           const big = stepN % 2 === 0;
-          this._cross(true, tip.x, tip.y, big ? 3 : 2, big ? 2 : 1, ramp[1], pk);
+          this._cross(true, tip.x, tip.y, big ? 3 : 2, big ? 2 : 1, ramp[1], 1);
         }
         if (c > 0.12) {
           this._orbitAcc += ((5 + 28 * c) / 60) * f * rhythm;
@@ -623,8 +620,8 @@ export class StaffCastFx {
             this._orbitAcc -= 1;
             const p = this._spawn();
             if (!p) break;
-            p.kind = K_ORBIT; p.back = false; p.rev = true; p.ramp = ramp; p.pk = pk;
-            p.a0 = Math.random() * Math.PI * 2; p.r0 = (11 + Math.random() * 12) * pk;
+            p.kind = K_ORBIT; p.back = false; p.rev = true; p.ramp = ramp; p.pk = 1;
+            p.a0 = Math.random() * Math.PI * 2; p.r0 = (11 + Math.random() * 12);
             p.w = 3.2 + Math.random() * 2.6; p.life = 240 + Math.random() * 180;
             p.size = Math.random() < 0.3 ? 2 : 1;
           }
@@ -646,8 +643,7 @@ export class StaffCastFx {
         if (now - o._staffCastAt > 300) continue;
         const tip = this._tipOf(id, S, _tipA);
         if (!tip) continue;
-        const pk = zonePlayerScale(S.currentZone, tip.x, tip.y, TILE) || 1;
-        this._onCast(id, tip, typeof o._staffCastAng === 'number' ? o._staffCastAng : 0, RAMPS.none, false, pk, now,
+        this._onCast(id, tip, typeof o._staffCastAng === 'number' ? o._staffCastAng : 0, RAMPS.none, false, 1, now,
           o._staffCastBig === o._staffCastAt);
       }
       if (this._peerCastSeen.size > 64) {
@@ -665,8 +661,7 @@ export class StaffCastFx {
         if (!c || !isFinite(c.x) || !isFinite(c.y)) continue;
         const cx = c.x + (Number.isFinite(c.vdx) ? c.vdx : 0);
         const cy = c.y + (Number.isFinite(c.vdy) ? c.vdy : 0);
-        const pk = zonePlayerScale(S.currentZone, cx, cy, TILE) || 1;
-        this._onCrash(cx, cy, rampFor(c.elem), pk, now, !!c.big);
+        this._onCrash(cx, cy, rampFor(c.elem), 1, now, !!c.big);
       }
       q.length = 0;
     }

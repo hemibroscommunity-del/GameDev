@@ -428,12 +428,11 @@ export const monsterStatusMethods = {
     const dx = ps.x - m.x, dy = ps.y - m.y;
     const d = Math.hypot(dx, dy);
     if (!(d > 0.5)) return null;
-    const k = this._depthK ? this._depthK(zoneId, ps.y) : 1;
     /* v2.3.3123: `mult`, the ward's share left (1 - w); 1 when absent */
     const wk = typeof mult === 'number' && mult > 0 && mult < 1 ? mult : 1;
     /* v2.3.3621: a roar's shove (`m._gustPx`, set by telegraph.js for its
        blow) is longer than a swing's */
-    const len = ((m && m._gustPx > 0) ? m._gustPx : GUST.PX) * (k > 0 ? k : 1) * wk;
+    const len = ((m && m._gustPx > 0) ? m._gustPx : GUST.PX) * wk;   /* v2.3.4851: the depth factor went with depth.js (the old map's dunes) */
     return [Math.round(dx / d * len), Math.round(dy / d * len)];
   },
 

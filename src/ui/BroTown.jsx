@@ -5,7 +5,7 @@ import { FIRE_STRIKE_FRAME } from '@/data/fireStrip.js';     /* v2.3.3666: the s
 import { shopBus } from './mobile/shopBus.js';   /* v2.3.2050: Shopkeeper Bro's window */
 import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js'; /* v2.3.2618 */
 import { uiBusyBus } from './mobile/uiBusyBus.js'; /* v2.3.2085: tell chrome outside this tree to stand aside */
-import { zonePlayerScale, zoneDepthScale, depthK, zoneHomes /* v2.3.3012: the Wheel's fishing spots are in real water */ } from '@/data/zones.js'; /* v2.3.1574: the one copy of the vista perspective curve; v2.3.2745: + the dunes' depth */
+import { zoneHomes /* v2.3.3012: the Wheel's fishing spots are in real water */ } from '@/data/zones.js'; /* v2.3.1574: the one copy of the vista perspective curve; v2.3.2745: + the dunes' depth */
 import { ExtractionSwipeLayer } from './ExtractionSwipeLayer.jsx';
 /* v2.3.855: first UI-panel extraction — the info/online-count popup. */
 import { InfoPanel } from './panels/InfoPanel.jsx';
@@ -5300,13 +5300,12 @@ export var BroTown = function BroTown(_ref0) {
                share of its speed -- the swing it ends in now reaches depthK
                too (monsterCombat _mRm), so a full-size stop would park you
                outside it. */
-            var _bdk = depthK(S.currentZone, S.player.y);
-            var _bstop = DASH_STOP_PX * _bdk;
+            var _bstop = DASH_STOP_PX;
             if (_bdist <= _bstop) {
               _endDash(true);
             } else {
               var _bstep = Math.min(_bdist - _bstop,
-                Math.min(DASH_MAX_STEP_PX, DASH_STEP_PX * _bdk * (S._dtScale || 1)));
+                Math.min(DASH_MAX_STEP_PX, DASH_STEP_PX * (S._dtScale || 1)));
               _bd.travelled = (_bd.travelled || 0) + _bstep;
               var _bnx = S.player.x + (_bdx / _bdist) * _bstep;
               var _bny = S.player.y + (_bdy / _bdist) * _bstep;
@@ -5461,7 +5460,7 @@ export var BroTown = function BroTown(_ref0) {
           try { BT_AUDIO.sprintPush(); } catch (e) { /* sound only */ }
           try {
             sprintDust(S, P.x, P.y + playerGroundDy(S.currentZone, P.x, P.y), footstepSurface(S) || 'dirt',
-              Math.atan2(dy, dx), zonePlayerScale(S.currentZone, P.x, P.y, TILE) || 1, 7);
+              Math.atan2(dy, dx), 1, 7);
           } catch (e) { /* a look only */ }
         }
         /* v2.3.3340: the monsters chasing you call now and then -- the
@@ -5544,39 +5543,10 @@ export var BroTown = function BroTown(_ref0) {
         /* Shield up: half speed.  Trades mobility for the guard. */
         var shieldMult = S._shieldUp ? 0.5 : 1.0;
         shieldMult *= staffFeelMoveK(S);   /* v2.3.4803: gathering, the bro plants his feet (game/staffFeel.js MOVE_K; slower is always within the worker's bound) */
-        /* v2.3.858: vista perspective -- on a distance-based playerScale zone
-           (the Overlook), slow movement as the avatar shrinks toward the
-           distance so a tiny speck on the trail also creeps like a far-off
-           figure.  Full speed at the plateau centre, down to a 20% floor. */
-        /* v2.3.1574: the curve itself now comes from data/zones.js
-           (zonePlayerScale) instead of a third hand-copy of the same math —
-           the copies had already drifted apart, and the remote harvest
-           stand-ins were missing one entirely.
-           VISTA_SPEED_BOOST (owner: "make the players in world view move 2x
-           faster"): the depth illusion is worth keeping, but crossing the
-           worldview at a 0.2 floor was a slog.  Doubling the whole curve
-           keeps the near/far RATIO — so a distant figure still creeps
-           relative to a near one — while halving the crossing time.
-           v2.3.1674 (owner: "slow movement speed by 50% while in worldview"):
-           back to 1.  This multiplies the WHOLE curve, so halving it halves
-           the speed everywhere on the map while leaving the near/far ratio —
-           the depth illusion the curve exists for — exactly as it was.
-           Landing on 1 also means the vista no longer scales speed at all
-           beyond its own depth curve, which is the same thing the pre-1574
-           code did; the boost was the outlier, not this. */
-        var VISTA_SPEED_BOOST = 1;
-        var vistaSpeedMult = 1;
-        var _vz = ZONES[S.currentZone];
-        if (_vz && _vz.playerScale && typeof _vz.playerScale === 'object') {
-          var _vnear = _vz.playerScale.near != null ? _vz.playerScale.near : 0.6;
-          var _vsc = zonePlayerScale(S.currentZone, S.player.x, S.player.y, TILE);
-          vistaSpeedMult = VISTA_SPEED_BOOST * Math.max(0.2, _vsc / _vnear);
-        }
-        /* v2.3.2745: the dunes' north-south depth (zones.js `depth`): you slow
-           by the same ratio you shrink, so the horizon takes walking to. */
-        var _dsc = zoneDepthScale(S.currentZone, S.player.y, TILE);
-        if (_dsc != null) vistaSpeedMult = Math.max(0.2, _dsc / ((_vz.depth && _vz.depth.near) || 1));
-        var finalSpd = S._sled ? 0 : baseSpd * terrainMult * spdBuff * amuletSpdMult * swimMult * shieldMult * vistaSpeedMult; /* sled overrides movement */
+        /* v2.3.4862: the vista's and the dunes' slow-with-distance (v2.3.858,
+           v2.3.2745) are gone with the old map -- no live zone has either, so
+           both were 1 */
+        var finalSpd = S._sled ? 0 : baseSpd * terrainMult * spdBuff * amuletSpdMult * swimMult * shieldMult; /* sled overrides movement */
         finalSpd *= wheelSwimMult(S);   /* v2.3.3003: the Wheel's water, in strokes (1 on land) */
         finalSpd *= rideMult(S);   /* v2.3.3776: RIDE_MULT on the skateboard; the worker judges the moves at the same (server/src/ride.js) */
         finalSpd *= sprintMult(S);   /* v2.3.3006: SPRINT_MULT while you sprint; the worker widens its bound by the same for the moves it paid for (server/src/sprint.js) */
@@ -5781,19 +5751,10 @@ export var BroTown = function BroTown(_ref0) {
             : _arch === 'fodder' ? 8
             : MONSTER_VARIANTS[_arch] ? 14
             : 32;
-          /* v2.3.2790: ...times the zone's depth at the monster's feet.  On
-             Wind Dunes' north edge a mummy is drawn at 0.42 and the worker
-             now measures its reach at 0.42 (server depth.js); a full-size
-             disc there would hold you outside that shorter reach -- the
-             v2.3.1409 snowman bug, rebuilt by perspective.  Scaled with the
-             player's own half-size below (_hsK), every distance in this
-             contact is the one the flat zones have, just smaller. */
-          var _mk = zoneDepthScale(S.currentZone, _m.y, TILE);
-          if (_mk == null) _mk = 1;
-          return { by: _m.y - _off * _mk, r: _r * _mk };
+          /* v2.3.4862: the dunes' depth factor (v2.3.2790) is gone with the old map */
+          return { by: _m.y - _off, r: _r };
         };
-        var _hsK = zoneDepthScale(S.currentZone, P.y, TILE);   /* v2.3.2790 */
-        var hsM = hs * (_hsK == null ? 1 : _hsK);
+        var hsM = hs;
         var _monBlock = function (curX, curY, px, py) {
           var ms = S.monsters;
           if (!ms) return false;

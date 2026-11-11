@@ -145,27 +145,27 @@ const src = (p) => readFileSync(new URL('../../' + p, import.meta.url), 'utf8');
     monsterBodyY({ y: 500, archetype: 'blueSlime', boss: 1 }) === 500 - 211 / 2 && monsterBodyY({ y: 500, archetype: 'blueSlime' }) === 500 - 23);
   check('4: the worker\'s `boss` drawn at that size, through the one scale every write uses',
     /const _bossK = m\.boss \? bossSizeK\(m\) : 1;/.test(er)
-      && /const _mk = MONSTER_SIZE_MULT \* \(this\._zonePscale\(S, rx, ry\) \|\| 1\) \* _bossK;/.test(er));
+      && /const _mk = MONSTER_SIZE_MULT \* _bossK;/.test(er));
   check('4: ...see-through while it covers you (behind its feet, inside its drawn body)',
     /if \(m\.boss && m\.alive && !m\._spawnFxAt && S\.player\) \{/.test(er) && /\? BOSS_SEE_THROUGH : 1;/.test(er) && /const BOSS_SEE_THROUGH = 0\.45;/.test(er));
   /* ...and every test of its body at that size, so a hit lands where it is drawn */
   const mc = src('src/game/monsterCombat.js'), pj = src('src/game/projectiles.js'), ch = src('src/game/combatHelpers.js'), bt = src('src/ui/BroTown.jsx'), ef = src('src/rendering/systems/effectsRenderer.js');
   const sites = {
-    swing: /var _hitMk = depthK\(S\.currentZone, _hitBaseY\) \* bossSizeK\(m\);/.test(mc),
-    lungeReach: /var _eMk = depthK\(S\.currentZone, _eFy\) \* bossSizeK\(_eLt\);/.test(mc),
+    swing: /var _hitMk = bossSizeK\(m\);/.test(mc),
+    lungeReach: /var _eMk = bossSizeK\(_eLt\);/.test(mc),
     shotRadius: /_hitR \*= bossSizeK\(m\);/.test(pj),
     shotCentre: /\(monsterBodyOffsetY\(hitShapeOf\(m\.archetype \|\| m\.type\)\) \|\| 0\) \* bossSizeK\(m\);/.test(pj),
     bowLine: /monsterBodyOffsetY\(mArch\) \* bossSizeK\(m\)\),/.test(pj),
-    drawScale: /var b = bossSizeK\(m\);\n  if \(!zoneId\) return b;/.test(ch) && /return \(\(typeof k === 'number' && isFinite\(k\) && k > 0\) \? k : 1\) \* b;/.test(ch),
+    drawScale: /export function monsterDrawScale\(m, zoneId\) \{[\s\S]{0,400}?return bossSizeK\(m\);\n\}/.test(ch),   /* v2.3.4862: the zone's scale is gone, 1 */
     lockAim: /\(monsterBodyOffsetY\(t\.archetype \|\| t\.type\) \|\| 0\) \* bossSizeK\(t\) \};/.test(ch),
     lockShot: /var feetY = p\.y \+ \(monsterBodyOffsetY\(t\.archetype \|\| t\.type\) \|\| 0\) \* bossSizeK\(t\);/.test(ch),
     taps: (bt.match(/\/ DATA\.bossSizeK\(m\)/g) || []).length === 2,
-    reachRing: /const _rrMk = depthK\(S\.currentZone, _rrFy\) \* bossSizeK\(_rrM\);/.test(ef),
+    reachRing: /const _rrMk = bossSizeK\(_rrM\);/.test(ef),
     caret: /\* bossSizeK\(c\.m\);/.test(ef) && /\* bossSizeK\(_lockChip\);/.test(ef),
   };
   check('4: ...and the swing, the lunge\'s reach, a shot\'s circle and centre, the bow\'s line, the lock\'s aim, a tap and the rings all measure it at that size',
     Object.values(sites).every(Boolean), sites);
-  check('4: ...its plate fitted back to the plates\' size on the screen', /_ui\._plateLift = _plateLiftAt\(S\.currentZone, ry\) \/ _bossK;/.test(er));
+  check('4: ...its plate fitted back to the plates\' size on the screen', /_ui\._plateLift = 1 \/ _bossK;/.test(er));
   check('4: the plate says "Boss <name>" and is drawn as a boss\'s (`boss`, in its key)',
     /* v2.3.3906: + the monster's element after the boss flag (its icon on the plate) */
     /\(m\.boss \? 'Boss ' : ''\) \+ wheelStageName\(/.test(er) && /_plateAlarm, _plateBand, false, !!m\.boss,\s*elemSmallKey\(m\.element\)\);/.test(er)

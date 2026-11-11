@@ -88,7 +88,7 @@ import { toDisplayDamage } from '@/data/gameSystems.js'; /* v2.3.2520: the displ
 import { setGrottoParty, setWeaponStashMax } from '@/data/gameSystems.js'; /* v2.3.3579: the Mayor's Goo Grotto aside */
 import { WHEEL_DUNGEON_PARTY } from '@/data/wheelDungeons.js'; /* v2.3.3579 */
 import { setOneFormulaEnabled, setOneLevelEnabled, setGearOnLevel } from '@/data/oneFormula.js'; /* v2.3.3260: one formula for every fight; v2.3.3538: one level; v2.3.3544: gear on level */
-import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, setProg3ElemEnabled /* v2.3.2512 */, setProg3SharedEnabled /* v2.3.2592 */, setProg3RelEnabled /* v2.3.2680 */, setStatCapFree /* v2.3.3578 */, setGearQEnabled /* v2.3.2664 */, setFishHealEnabled /* v2.3.3260 */, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, setMilestonesRetired /* v2.3.2662 */, PROG3_SKILL_META, setZoneDepthLive /* v2.3.2790 */ } from '@/data/index.js';
+import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, setProg3ElemEnabled /* v2.3.2512 */, setProg3SharedEnabled /* v2.3.2592 */, setProg3RelEnabled /* v2.3.2680 */, setStatCapFree /* v2.3.3578 */, setGearQEnabled /* v2.3.2664 */, setFishHealEnabled /* v2.3.3260 */, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, setMilestonesRetired /* v2.3.2662 */, PROG3_SKILL_META /* v2.3.2790 */ } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { usesClientSideMovement, MONSTER_VARIANTS, isRemnantSkull, applyZoneVariant } from '@/data/monsterVariants.js';
 import { rollMonsterShard, shardByKey } from '@/data/shards.js';
@@ -1824,10 +1824,8 @@ export function setupWebSocket(ctx) {
                    otherwise the worker's stat-sum level echo would
                    fight the local formula every player_state flush. */
                 setT2SimpleEnabled(!!(S._serverCaps && S._serverCaps.t2simple));
-                /* v2.3.2790: Wind Dunes' depth curve draws only while THIS
-                   worker measures its monsters with it (server depth.js) --
-                   see _previewOn in zones.js for the ?depth= overrides. */
-                setZoneDepthLive(!!(S._serverCaps && S._serverCaps.zoneDepth));
+                /* v2.3.4851: the dunes' depth cap (caps.zoneDepth) is gone with
+                   the old map; nothing here reads it any more. */
                 /* v2.3.1451: bench-locked T2 deploy-order gate — the
                    10 flat channels read the server-priced ps.t2Flat
                    accumulator only while THIS worker claims

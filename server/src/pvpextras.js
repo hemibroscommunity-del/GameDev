@@ -429,7 +429,7 @@ export const pvpExtrasMethods = {
     const dx0 = (ps.x || 0) - fx, dy0 = (ps.y || 0) - fy;
     const d = Math.hypot(dx0, dy0);
     if (!(d > 0.5)) return null;
-    const k = this._depthK ? (this._depthK(ps.z, ps.y) || 1) : 1;
+    const k = 1;   /* v2.3.4851: depth.js is gone (the old map's dunes) */
     let len, ux = dx0 / d, uy = dy0 / d;
     if (spec.pullTo > 0) {
       const ring = spec.pullTo * k;

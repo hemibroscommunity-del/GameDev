@@ -1684,7 +1684,7 @@ export const combatMethods = {
          reads as the same shove on screen (1 on every other zone).  The
          debt cap below takes the same factor so the repay (index.js, also
          depth-scaled) still undoes exactly one swing. */
-      const _kbK = this._depthK(zone, m.y);
+      const _kbK = 1;   /* v2.3.4851: depth.js is gone with the old map's dunes -- every live zone was flat (1) */
       const kbForce = (isSpecial ? HIT_KNOCKBACK.special : (rolled.isCrit ? HIT_KNOCKBACK.crit : HIT_KNOCKBACK.normal)) * _kbK;   /* v2.3.3264: the numbers, named (above); v2.3.3334: an unpaid special shoves as an ordinary hit */
       const kbAng = Math.atan2(m.y - attackerPs.y, m.x - attackerPs.x);
       m.x += Math.cos(kbAng) * kbForce;

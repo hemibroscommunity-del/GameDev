@@ -41,8 +41,6 @@
  * vector fire read them.  This module only draws them.
  */
 import { Container, Rectangle, Sprite, Texture } from 'pixi.js';
-import { zonePlayerScale } from '@/data/zones.js';
-import { TILE } from '@/data/constants.js';
 import * as ART from './campfireArt.js';
 import { standFootDy } from './systems/entityRenderer.js';
 
@@ -114,8 +112,7 @@ function lightSizeIndex(sinceStrike) {
    function for your light, a peer's light and the campfire that takes it over,
    so the three agree to the pixel. */
 export function fireLightSpot(zone, x, y) {
-  const zs = zonePlayerScale(zone, x, y, TILE) || 1;
-  return { x: x - 34 * zs, y: y + standFootDy(zs) + 2 * zs, zs };
+  return { x: x - 34, y: y + standFootDy(1) + 2, zs: 1 };
 }
 
 class Pool {
@@ -355,7 +352,7 @@ class Fire {
     this.halo.scale.set(u);
     this.halo.alpha = 0.16 * light;
     this.halo.visible = light > 0.01;
-    this.glow.x = this.x; this.glow.y = this.y - 1 * u;
+    this.glow.x = this.x; this.glow.y = this.y - u;
     this.glow.scale.set(u);
     this.glow.alpha = 0.42 * light;
     this.glow.visible = light > 0.01;
@@ -464,7 +461,7 @@ export class CampfireFx {
       if (!f && !cf.lighting) {
         const lk = key === 'self' ? 'light' : key.startsWith('p:') ? 'pl:' + key.slice(2) : null;
         const lf = lk ? this.fires.get(lk) : null;
-        const reach = ADOPT_PX * (zonePlayerScale(zone, cf.x, cf.y, TILE) || 1);
+        const reach = ADOPT_PX;
         if (lf && lf.lighting && !lf.dyingAt && Math.hypot(lf.x - cf.x, lf.y - cf.y) <= reach) {
           this.fires.delete(lk);
           lf.key = key;
@@ -477,16 +474,14 @@ export class CampfireFx {
       }
       if (!f) { f = new Fire(this.body, this.ground, key, cf, now); this.fires.set(key, f); }
       seen.add(key);
-      const scale = zonePlayerScale(zone, cf.x, cf.y, TILE) || 1;
-      f.step(cf, now, scale, cf.expiresAt ? cf.expiresAt - now : null);
+      f.step(cf, now, 1, cf.expiresAt ? cf.expiresAt - now : null);
       if (f.root.visible === !!this.qaHide) f.root.visible = !this.qaHide;   /* v2.3.3666: QA */
     }
     for (const [key, f] of this.fires) {
       if (seen.has(key)) continue;
       /* gone because we LEFT the zone: no embers in the next one */
       if (f.zone && zone && f.zone !== zone) { f.destroy(); this.fires.delete(key); continue; }
-      const scale = zonePlayerScale(zone, f.x, f.y, TILE) || 1;
-      if (!f.step(null, now, scale, 0)) { f.destroy(); this.fires.delete(key); }
+      if (!f.step(null, now, 1, 0)) { f.destroy(); this.fires.delete(key); }
     }
   }
 

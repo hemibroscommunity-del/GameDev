@@ -74,7 +74,6 @@ import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent, handleAreaChat
 import { applyServerMuteList, isBlockedId } from '@/game/chatMute.js'; /* v2.3.1981; v2.3.3526: a block stops requests */
 import { dropAsBlocked, withoutBlockedRows } from '@/game/blockedAsks.js'; /* v2.3.4365: one block check, one table */
 import { pushAbilityRings, BASH_POSE_MS } from '@/game/abilities.js'; /* v2.3.1735: a peer's bash draws the caster's own shockwave; v2.3.2920 + its pose window */
-import { depthK } from '@/data/zones.js'; /* v2.3.2824: a peer's whirlwind is as wide as its (depth-scaled) hit */
 import { friendsSrv } from '@/ui/mobile/sheet/friendsSync.js'; /* v2.3.1324 */
 import { friendErrorText, friendErrorFresh } from '@/game/friendErrors.js'; /* v2.3.4404: a refused request says why */
 import { deskWords } from '@/game/deskWords.js'; /* v2.3.4404 */
@@ -2203,7 +2202,7 @@ export function processGameEvent(type, payload, S, deps) {
                   var _wo = S.others[payload.id];
                   var _wx = (typeof _wo.renderX === 'number') ? _wo.renderX : (_wo.x || 0);
                   var _wy = (typeof _wo.renderY === 'number') ? _wo.renderY : (_wo.y || 0);
-                  var _wr = Math.max(0, Math.min(600, Number(payload.r) || 240)) * depthK(S.currentZone, _wy);
+                  var _wr = Math.max(0, Math.min(600, Number(payload.r) || 240));
                   if (!S._peerWhirlFx) S._peerWhirlFx = [];
                   if (S._peerWhirlFx.length < 8) S._peerWhirlFx.push({ t0: Date.now(), x: _wx, y: _wy, radius: _wr });
                   pushAbilityRings(S, _wx, _wy, 'whirl', 0, _wr);

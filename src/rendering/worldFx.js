@@ -43,7 +43,7 @@ import { dayPhase, lightingAt, windAt, zoneHasSky } from '@/game/timeOfDay.js';
 import { isWheelTrialZone } from '@/game/worldTrial.js';          /* v2.3.3000: the Wheel's air by its lands */
 import { wheelHere, wheelGroundAt } from '@/game/wheelTrial.js';
 import { fxTex, SOFTBOX_EDGE } from './worldFxTextures.js';
-import { zonePlayerScale, ZONES } from '@/data/zones.js';
+import { ZONES } from '@/data/zones.js';
 import { GROUND_GRID, GROUND_COLORS } from '@/data/groundColors.js';   /* v2.3.2825: the ground's own colour, baked */
 import { deathCrumble } from './deathCrumble.js';
 import { frameBounds } from './gearSheets.js';   /* v2.3.2870: a cropped monster's whole-cell box */
@@ -186,7 +186,7 @@ const GRAV = 900;   /* drops leave from the chest now (~44px up), so they fall f
    waist.  Scaled by the zone's player scale for the one map (worldview) that
    shrinks its figures. */
 export const FEET_DY = 42;
-const feetDy = (S, x, y) => FEET_DY * (zonePlayerScale(S.currentZone, x, y, 32) || 1);
+const feetDy = (S, x, y) => FEET_DY;
 
 const rand = (a, b) => a + Math.random() * (b - a);
 const shade = (hex, k) => (Math.round(((hex >> 16) & 255) * k) << 16) | (Math.round(((hex >> 8) & 255) * k) << 8) | Math.round((hex & 255) * k);
@@ -469,7 +469,7 @@ export class WorldFx {
     /* v2.3.2716: lanterns shrink with the figure carrying them -- the world
        map draws its people as specks (zonePlayerScale), and a full-size pool
        of light round a speck would light half the map */
-    const ps = (x, y) => zonePlayerScale(S.currentZone, x, y, 32) || 1;
+    const ps = (x, y) => 1;
     if (S.player && !(S.rpg && S.rpg.hp <= 0)) list.push({ x: S.player.x, y: S.player.y - 18 * ps(S.player.x, S.player.y), r: 165 * ps(S.player.x, S.player.y), c: 0xffd9a0, a: 1 });
     if (S.others) {
       for (const id in S.others) {

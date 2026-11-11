@@ -96,6 +96,7 @@ turns them off -- `storeGear`, `dailyChest`, `zoneDepth`, `whirlWindup`
 (each also read by the worker: `_stGearOff`, `_chestOff`, `_depthK`,
 `_abilWindupOff`) and `broCount` (read by the phone only, through the
 caps) -- and until v2.3.3295 the route above answered all five with a 400:
+(v2.3.4851: `zoneDepth` is gone with depth.js and the old map; four remain.)
 the name rule is lower case only. TRAPS §117 found it in v2.3.2848 and set
 the rule for NEW names; these five were already shipped or came after.
 

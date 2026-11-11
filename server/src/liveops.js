@@ -102,7 +102,7 @@ export const LIVEOPS = {
      (docs/specs/liveops.md "Caps override").  So these five, by name, and no
      other: a new kill switch still takes a lower-case name, and
      liveops.test §8 fails for one that does not. */
-  CAMEL_SWITCHES: Object.freeze(['storeGear', 'dailyChest', 'zoneDepth', 'whirlWindup', 'broCount']),
+  CAMEL_SWITCHES: Object.freeze(['storeGear', 'dailyChest', 'whirlWindup', 'broCount']),
   FLAGS_MAX: 64,
   METRICS_KEEP: 30,
   ALERT_PCT: 25,
