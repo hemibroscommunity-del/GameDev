@@ -63,7 +63,7 @@ passphrases — the headless equivalent of the manual `?guest=1` trick.
 ```
 npm run build                    # the tests serve dist/, so build first
 node tools/qa/mp/run.mjs         # every scenario
-node tools/qa/mp/run.mjs trade duel
+node tools/qa/mp/run.mjs questline membudget   # named ones (v2.3.4674: `trade`, `duel` went with the old map)
 node tools/qa/mp/audio-formats.mjs   # every SFX decodes in Chromium
 ```
 

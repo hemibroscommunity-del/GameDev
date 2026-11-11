@@ -39,8 +39,8 @@ spec. Add a line here only for a new RULE every session must follow.
   says **"BroTown"**, with the Town Hall and "Brotown · safe" under the minimap.
   **"Town"** on the top bar, with the old fountain, is the RETIRED map: stop and
   move the test. Every phone test passes `world: 'wheel'` to `H.newPlayer` /
-  `H.joinPair`; the harness refuses a new one that does not (only the old ones
-  frozen in `tools/qa/mp/oldMap.mjs` may, and that list only shrinks). TRAPS §244.
+  `H.joinPair`; the harness refuses one that does not. The old map's 397 tests
+  are deleted (v2.3.4674; what each checked: `docs/OLD-MAP-TESTS.md`). TRAPS §244.
 - **Players never read "Wheel"**: on screen it is "BroTown", the "World map",
   "the world" ("Wheel" stays in code, ids and docs). Players read "Remains",
   never "remnants".
