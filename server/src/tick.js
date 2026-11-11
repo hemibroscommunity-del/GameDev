@@ -223,6 +223,26 @@ export const tickMethods = {
     }
   },
 
+  /* ═══ v2.3.4653: EVERY PART OF THE TICK IS GUARDED ═══
+     v2.3.1562's `guard` put each system of the tick in its own try, so one
+     that throws no longer stops the others.  Four were left outside it
+     (the state-machine sweep VA, S3-1): the parties' housekeeping, the
+     health regen, the player-state flush and the ping / AFK sweep.  A throw
+     in any of them aborted the rest of the tick, the broadcast with it, and
+     if it threw again, every tick after: a silent room, players frozen in
+     place, with the message handlers still answering.  They are guarded
+     now, and a throw that still gets out (the snapshot before the guards)
+     is caught at the tick's top as 'body'.  Counted by name, logged once
+     (at 45 a second a log line each tick would be its own outage);
+     tick-guard.test. */
+  _tickGuardErr(label, e) {
+    this._tickErrs = this._tickErrs || Object.create(null);
+    this._tickErrs[label] = (this._tickErrs[label] || 0) + 1;
+    if (this._tickErrs[label] === 1) {
+      try { console.error('[tick] ' + label + ' threw:', e && e.message); } catch {}
+    }
+  },
+
   startTickLoop() {
     let pingCounter = 0;
     let regenCounter = 0;
@@ -234,7 +254,10 @@ export const tickMethods = {
     this._tickPace = null;
     const tick = () => {
       this._tickPaceStart(Date.now());
-      try { body(); } finally { this._tickPaceEnd(tick); }
+      /* v2.3.4653: a throw that still escapes the guards below (the snapshot
+         before them) is counted like theirs, once in the log, instead of an
+         uncaught error every 22 ms (state-machine sweep VA, S3-1) */
+      try { body(); } catch (e) { this._tickGuardErr('body', e); } finally { this._tickPaceEnd(tick); }
     };
     this.tickInterval = setInterval(tick, this.TICK_RATE);
 
@@ -302,13 +325,7 @@ export const tickMethods = {
          counted rather than logged per-tick — at 45Hz a logging loop
          would be its own outage. */
       const guard = (label, fn) => {
-        try { fn(); } catch (e) {
-          this._tickErrs = this._tickErrs || Object.create(null);
-          this._tickErrs[label] = (this._tickErrs[label] || 0) + 1;
-          if (this._tickErrs[label] === 1) {
-            try { console.error('[tick] ' + label + ' threw:', e && e.message); } catch {}
-          }
-        }
+        try { fn(); } catch (e) { this._tickGuardErr(label, e); }
       };
 
       /* v2.3.1983: population-scaled spawns.  Self-throttled to one pass
@@ -436,7 +453,7 @@ export const tickMethods = {
       // past the offline grace, re-echo rosters at the vitals cadence
       // (cross-zone HP bars).  Cheap map walks; rooms rarely hold more
       // than a handful of parties.
-      this._tickParties(Date.now());
+      guard('parties', () => this._tickParties(Date.now()));   /* v2.3.4653: guarded (S3-1, below) */
 
       // HP regen tick — every REGEN_TICKS server ticks (~660 ms at TICK_RATE=22).
       // v2.3.2062: the interval is NAMED now because the Mana Draught's regen
@@ -447,14 +464,14 @@ export const tickMethods = {
       regenCounter++;
       if (regenCounter >= REGEN_TICKS) {
         regenCounter = 0;
-        this._tickPlayerRegen();
+        guard('regen', () => this._tickPlayerRegen());   /* v2.3.4653 */
       }
 
       // §16.8 aggregated player_state flush.  Tick-path mutations
       // (monster attacks, regen, respawn, combat XP) queue here
       // instead of emitting per-mutation, so multiple per-tick
       // updates to the same player collapse to one wire emit.
-      this._flushPendingPlayerStates();
+      guard('flush', () => this._flushPendingPlayerStates());   /* v2.3.4653 */
 
       /* Periodic ping for RTT estimation + idle-session eviction
          (every ~3s at 30Hz).  Body hoisted to _tickPingAndAfk
@@ -464,7 +481,7 @@ export const tickMethods = {
       pingCounter++;
       if (pingCounter >= 90) {
         pingCounter = 0;
-        this._tickPingAndAfk(Date.now());
+        guard('pingAfk', () => this._tickPingAndAfk(Date.now()));   /* v2.3.4653 */
       }
 
       /* ═══ v2.3.1575: INTEREST MANAGEMENT ═══
