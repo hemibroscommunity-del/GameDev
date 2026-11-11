@@ -212,8 +212,10 @@ so nothing waits on them any more.
   missing time limit (S5-16: the same call sends the paid score
   transactions, and one cut off after it was sent could be paid again);
 - VC-3, the owner-only Ground and Object Studios (`public/tools/`, low
-  priority): one unreadable saved picture stops the page before Download and
-  Restore work; a restore resets the "made from" stamps and replaces sound
+  priority): ~~one unreadable saved picture stops the page before Download
+  and Restore work~~ (v2.3.4654: the Ground Studio skips it and names it in
+  its count, the Object Studio makes the object again from its picture;
+  `tools/qa/ground-studio.mjs` 6b, `object-studio.mjs` 7b); a restore resets the "made from" stamps and replaces sound
   and name choices; the Object Studio's stage draws about 1.36 times too big
   (#1505);
 - the stat scene's memo bit (M3-18, about 1.8 MB, kept on purpose) needs a
