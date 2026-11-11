@@ -62,6 +62,7 @@ import { jumpAirborne } from '@/game/jump.js'; /* v2.3.3017: nor in the air */
 import { tapAttackWaiting, tapAttackDone, tapSwingAim } from '@/game/tapJump.js'; /* v2.3.3712: a tap on the right stick asks for one attack */
 import { swordFeelContact } from '@/game/swordFeel.js';   /* v2.3.4800: the cut's weight at contact */
 import { manualOn, mcFrame, mcFireWaiting, mcFireDone, mcTakeArmed, mcBowInterval, mcFreeSwing, mcHitVol, mcHitPitch } from '@/game/manualCombat.js'; /* v2.3.4395: manual combat (`?manual=1`) -- a bow or a staff shoots once for each flick, never because the stick is held */
+import { bowFeelGapMs, bowFeelWire, bowFeelLoosed } from '@/game/bowFeel.js'; /* v2.3.4802: the bow's draw -- a drawn bow looses at once for its share, its relay carries the draw (`dr`), its arrow leaves on the loose */
 import { isDazed } from '@/game/elemHits.js'; /* v2.3.3014: nor while a rock monster has you dazed */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the shield hold */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
@@ -1368,6 +1369,11 @@ export function updateMonsterCombat(S, deps) {
           var _mcDraws = _mcOn && _aSlot === 'ranged';
           if (_mcDraws) effectiveSwingCd = mcBowInterval(effectiveSwingCd);
           if (_mcOn) mcFrame(S, Date.now(), effectiveSwingCd + _staffCdExtra, Math.ceil(SWING_COOLDOWN * swingCooldownMult(S.rpg) * weaponSwingMult(_aSlot)));
+          /* v2.3.4802: a DRAWN bow (game/bowFeel.js) looses the moment the thumb lifts, for its share
+             of a full draw (the worker's drawgather.js): only its own small gap holds it.  mcFrame
+             above still has the full draw (the flicked bow's interval), which the draw fills to */
+          var _bfGap = _mcDraws ? bowFeelGapMs(S) : null;
+          if (_bfGap != null) effectiveSwingCd = _bfGap;
           var _eqWpn = !S.rpg ? null
                      : _aSlot === 'ranged' ? S.rpg.rangedWeapon
                      : _aSlot === 'staff'  ? S.rpg.staffWeapon
@@ -1923,6 +1929,9 @@ export function updateMonsterCombat(S, deps) {
                      and every bolt the no-element lavender.  Additive: an older
                      client ignores it. */
                   el: ((getActiveWeapon(S.rpg) || {}).element1) || undefined,
+                  /* v2.3.4802: a drawn bow's DRAW, whole ms (game/bowFeel.js; the worker bounds it and
+                     counts its share: drawgather.js).  Only against caps.bowDraw; absent, today's arrow */
+                  dr: bowFeelWire(S, isStaff),
                   /* v2.3.3206: the low thing it is aimed at, so it stops there on
                      every screen and flies over the rest (visualSystems.js).
                      Additive: an older client ignores it. */
@@ -1965,6 +1974,7 @@ export function updateMonsterCombat(S, deps) {
                      these to play the load/draw/release frames for the shot). */
                   S._bowShotAt = Date.now();
                   S._bowShotAng = arrAngle;
+                  bowFeelLoosed(S, arrAngle);   /* v2.3.4802: a drawn bow's arrow leaves now -- the twang, the streak, the recoil */
                   /* v2.3.3343: the arrow's whoosh on the release frame
                      (entityRenderer BOW_RELEASE_MS, 110 ms), where the arrow
                      leaves the grip.  v2.3.3523: as the jump's rush of air

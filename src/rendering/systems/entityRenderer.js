@@ -14201,6 +14201,14 @@ export class EntityRenderer {
       const _bf = SECTORS[((_bsec % 8) + 8) % 8];
       if (_BOW_FACINGS.includes(_bf)) _bowDir = _bf;
     }
+    /* v2.3.4802: THE BOW NOCKED AND DRAWN (game/bowFeel.js, its S._bfPose): the thumb down raises
+       the bow (the stand-in's first frame held), a third of a draw holds it drawn (its second), until
+       the loose -- then the shot's own frames above (released at once: bowFeelLoosed) */
+    S._bowHoldFrame = null;
+    if (!_bowDir && S._bfPose && !S._extraction && !S._firemaking && !S._farmWork) {
+      const _bfs = SECTORS[((Math.round(S._bfPose.ang / (Math.PI / 4)) % 8) + 8) % 8];
+      if (_BOW_FACINGS.includes(_bfs)) { _bowDir = _bfs; S._bowHoldFrame = S._bfPose.frame; }
+    }
     /* ═══ v2.3.1800: A RAISED SHIELD BORROWS THE BOW POSE ═══
        Owner: "are you allowing the legs to move (jog motion while blocking)
        and just freezing the top half?  Thats what I'd prefer.  Otherwise the

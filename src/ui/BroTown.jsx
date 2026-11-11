@@ -68,6 +68,7 @@ import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton, EDGE_GUARD_PX } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack; v2.3.2563: ...and the edge guard's width, shared so the left cluster cannot drift into it */
 import { SpecialButton } from './panels/SpecialButton.jsx'; /* v2.3.2472: the special's second trigger; v2.3.2542 moved it to the attack disc's column */
 import { swordFeelFrame } from '@/game/swordFeel.js'; /* v2.3.4800: the sword's feel -- the blade refills and glints, the cut follows the thumb (the timing bar of v2.3.4625 is gone: docs/specs/sword-feel.md) */
+import { bowFeelFrame, bowFeelWalkMult, bowFeelDeskDown } from '@/game/bowFeel.js'; /* v2.3.4802: the bow's feel -- nock, draw back, settle, loose (docs/specs/bow-feel.md) */
 import { WeaponPill } from './panels/WeaponPill.jsx'; /* v2.3.4130: the weapon pill, centred at the foot of the world (it was v2.3.3921's triangle, v2.3.3005's chip) */
 import { GESTURE_CUE_SPRITES, gestureCueFace, gestureIdle, extractionMeter01, DESK_GESTURE_HINT, PHONE_GESTURE_HINT, FIRST_HINTS } from '@/game/gesturePose.js'; /* v2.3.2760: the mini-tool cue on the button (it replaced v2.3.2245's strip and v2.3.2384's finger); extractionMeter01 v2.3.2514 (shared with the node's HP bar since v2.3.2956, the bar above the head before); DESK_GESTURE_HINT v2.3.3407 (a computer's words over the button) */
 import { isTapLock, engagedStance } from '@/game/targeting.js'; /* v2.3.2251: the target is acquired automatically; a tap is the only deliberate pick.  v2.3.2260: autoAcquires dropped with the forced-live line it gated -- visibility is input-driven now, not weapon-driven */
@@ -5589,6 +5590,7 @@ export var BroTown = function BroTown(_ref0) {
            at CHILL_MULT, a blue slime's goo holds you where you stand
            (game/elemHits.js; the worker said so on the hit). */
         finalSpd *= elemMoveMult(S, Date.now());
+        finalSpd *= bowFeelWalkMult(S);   /* v2.3.4802: a drawn bow slows the walk, settled it plants you (game/bowDraw.js; slower only) */
         /* v2.3.3620: a rock monster's bash leaves your steering swaying a
            second after the daze -- the stick's way turned to and fro
            (game/elemHits.js wobbleTurn; the worker said so on the hit) */
@@ -7626,6 +7628,7 @@ export var BroTown = function BroTown(_ref0) {
            blade's readiness (the glint), the cut's arc once the swing has its
            angle (game/swordFeel.js; the timing bar's call stood here) */
         swordFeelFrame(S, Date.now());
+        bowFeelFrame(S, Date.now());   /* v2.3.4802: the bow's draw -- its bend and line, the creak's pitch, the click as it settles, the pose */
 
         /* Pick up ground loot — walk over it */
         /* v2.3.812: the ~347-line ground-loot pickup block moved verbatim to
@@ -13347,7 +13350,9 @@ export var BroTown = function BroTown(_ref0) {
         if (mcSwipes(S)) {
           if (mcShoots(S)) {
             if (S._mouseAimAngle != null) { S._aimAngle = S._mouseAimAngle; S._lastAimAngle = S._mouseAimAngle; }
-            mcAskShot(S, Date.now());
+            /* v2.3.4802: a DRAWN bow (game/bowFeel.js): the button held draws, its release (heard on
+               the window) looses at the cursor; off, the click shoots as before */
+            if (!bowFeelDeskDown(S, Date.now())) mcAskShot(S, Date.now());
           } else mcMeleeSwipe();
           return;
         }
