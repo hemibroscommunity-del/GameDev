@@ -10,7 +10,7 @@ import { propsForZone, propFootprint, foregroundForZone } from '../../data/world
 import { propGroundFor, settleProfile, groundLineAt } from '../propGround.js'; /* v2.3.2748: a building's base, read off its art */
 import { TILE } from '@/data/constants.js';
 import { folkDisplayName } from '@/data/folkNames.js';   /* v2.3.4048: the townsfolk's nicknames on their plates */
-import { ZONES, zonePlayerScale, zoneDepthScale, zoneHomes } from '@/data/zones.js';   /* v2.3.2978: + zoneHomes, the Wheel's far-monster cull */
+import { ZONES, zoneHomes } from '@/data/zones.js';   /* v2.3.2978: + zoneHomes, the Wheel's far-monster cull */
 import { ELEMENTS } from '@/data/elements.js';
 import { rpgBlocks } from '@/data/abilities.js'; /* v2.3.2302: the block ladder */
 import { isProg3RelEnabled, prog3Live, prog3SkillLevel, prog3ActiveCat } from '@/data/prog3.js'; /* v2.3.2680: the plate's yardstick */
@@ -6864,7 +6864,7 @@ export function figureFeetUnits(display) {
    edge that moved with the walk cycle would jitter against every wall. */
 const _STAND_SOUTH = { _animPose: 'stand', _animDir: 'south' };
 export function playerGroundDy(zoneId, x, y) {
-  return _feetOffsetUnits(_STAND_SOUTH) * zonePlayerScale(zoneId, x, y, TILE) * PLAYER_SIZE_MULT;
+  return _feetOffsetUnits(_STAND_SOUTH) * PLAYER_SIZE_MULT;
 }
 /* ═══ v2.3.3027: WHILE YOU GATHER, THE BAND OVER YOUR HEAD IS THE HARVEST'S ═══
    Owner, 2026-10-04: "Ticks for the resource extraction is too hard to see.
@@ -7703,22 +7703,9 @@ export function setPlateZoom(worldScale) {
   _cueZoom = Math.min(CUE_ZOOM_MAX, Math.max(1, Math.sqrt(1 / w)));
 }
 
-/* ═══ v2.3.2745: A FAR PLATE STAYS READABLE ═══
-   Wind Dunes' north-south depth (zones.js `depth`) takes a body down to 0.42
-   at the horizon, and a plate riding that all the way measured ~6 CSS px --
-   an unreadable label, the thing the owner already asked to have fixed once
-   (v2.3.2715: "name plates to be legible").  So on a depth zone the plate
-   still shrinks with distance, which is what sells the distance, but never
-   below this share of its designed size.  `_plateLift` is stamped per frame
-   by whoever sets the figure's depth scale (monsters in _updateMonsters, bros
-   where pscale is computed); on every other zone, the World View included, it
-   is 1 and this is the v2.3.2513 rule unchanged. */
-const PLATE_DEPTH_FLOOR = 0.8;
-function _plateLiftAt(zoneId, y) {
-  const d = zoneDepthScale(zoneId, y, TILE);
-  return d == null || d <= 0 ? 1 : Math.max(1, PLATE_DEPTH_FLOOR / d);
-}
-
+/* v2.3.4862: _plateLiftAt (v2.3.2745, a name plate on the dunes' far edge
+   kept readable) is gone with the dunes; `_plateLift` is now only a boss's
+   1 / size. */
 function _fitPlateToZoom(display) {
   const pill = display && display._namePill;
   if (!pill) return;
@@ -10341,7 +10328,7 @@ export class EntityRenderer {
          `boss`: twice your height); every write of the scale below goes
          through `_mk` */
       const _bossK = m.boss ? bossSizeK(m) : 1;
-      const _mk = MONSTER_SIZE_MULT * (this._zonePscale(S, rx, ry) || 1) * _bossK;
+      const _mk = MONSTER_SIZE_MULT * _bossK;
       if (display.scale.x !== _mk) display.scale.set(_mk);
       /* v2.3.1472: mirror the transform onto the above-head UI, which
          lives in a sibling layer (same world container, so the values
@@ -10355,7 +10342,7 @@ export class EntityRenderer {
         if (_ui.scale.x !== _mk) _ui.scale.set(_mk);
         /* v2.3.3556: a boss's plate is fitted back to the plates' size on the
            screen (its bar grows with it) */
-        _ui._plateLift = _plateLiftAt(S.currentZone, ry) / _bossK;   /* v2.3.2745 */
+        _ui._plateLift = 1 / _bossK;   /* v2.3.2745; v2.3.4862: the dunes' lift is gone, 1 */
       }
 
       /* ═══ v2.3.1765: A MONSTER ARRIVES AS A GROWING WHITE SILHOUETTE ═══
@@ -12137,19 +12124,8 @@ export class EntityRenderer {
     if (_artOn) wheelArtWaiting(_artWait, now);
   }
 
-  /* v2.3.1091: zone perspective player-scale -- the Overlook/vista "world
-     view" shrink that makes avatars tiny while travelling. Shared by the
-     LOCAL player and REMOTE players from each one's own position, so everyone
-     shrinks together on a vista map. Previously only the local avatar shrank
-     and other players stayed full size, dwarfing the tiny landscape. Absent
-     playerScale => 1 (normal in-zone sizing, unchanged). */
-  /* v2.3.1574: delegates to the single copy in data/zones.js.  The curve was
-     hand-duplicated here, in BroTown's movement speed, and NOT AT ALL in the
-     remote harvest stand-ins — so a peer cooking on the worldview drew full
-     size beside their own speck-sized body. */
-  _zonePscale(S, x, y) {
-    return zonePlayerScale(S.currentZone, x, y, TILE);
-  }
+  /* v2.3.4862: _zonePscale (v2.3.1091, the World View's shrinking figure)
+     is gone with the old map: 1 in every live zone. */
 
   /* ═══ v2.3.1917: the duel opponent's health bar ═══
      Owner: "During duels make it so that the hp and combat resource bars
@@ -12486,8 +12462,8 @@ export class EntityRenderer {
          lives on the inner _spriteBody, so scaling the container uniformly
          here doesn't disturb facing. */
       {
-        const pscale = this._zonePscale(S, display.x, display.y) * PLAYER_SIZE_MULT; /* v2.3.1274 */
-        display._plateLift = _plateLiftAt(S.currentZone, display.y);   /* v2.3.2745 */
+        const pscale = PLAYER_SIZE_MULT;   /* v2.3.4862: the zone's scale (_zonePscale) is gone, 1 */ /* v2.3.1274 */
+        display._plateLift = 1;   /* v2.3.2745; v2.3.4862: the dunes' lift is gone */
         /* v2.3.1953: ...times this bro's own build.  Computed from the
            UNLIFTED y above, because _zonePscale reads the position to work out
            how far up a vista map he is standing; the lift is applied after. */
@@ -12921,10 +12897,9 @@ export class EntityRenderer {
             }
             if (other._sp && _rPlant) {
               const _ox = other.renderX || other.x || 0, _oy = other.renderY || other.y || 0;
-              const _ok = zonePlayerScale(S.currentZone, _ox, _oy, TILE) || 1;
               const _ov = Math.abs(other._vx || 0) + Math.abs(other._vy || 0) > 0.0001;
               sprintDust(S, _ox, _oy + playerGroundDy(S.currentZone, _ox, _oy), 'dirt',
-                _ov ? Math.atan2(other._vy || 0, other._vx || 0) : null, _ok, 3);
+                _ov ? Math.atan2(other._vy || 0, other._vx || 0) : null, 1, 3);
               if (typeof window !== 'undefined' && window.__btProbe) window.__btPeerSprintDust = (window.__btPeerSprintDust || 0) + 1;
             }
             display._prevJogFrame = frameIdx;
@@ -14045,8 +14020,8 @@ export class EntityRenderer {
          same _zonePscale as every peer, on the World View and everywhere
          else.  `playerLens` is now purely a DRAWING instruction, which is why
          the zone entry lost its `scale` key rather than this reading a 1. */
-      const pscale = this._zonePscale(S, P.x, P.y) * PLAYER_SIZE_MULT; /* v2.3.1274 */
-      display._plateLift = _plateLiftAt(S.currentZone, P.y);   /* v2.3.2745 */
+      const pscale = PLAYER_SIZE_MULT;   /* v2.3.4862: the zone's scale (_zonePscale) is gone, 1 */ /* v2.3.1274 */
+      display._plateLift = 1;   /* v2.3.2745; v2.3.4862: the dunes' lift is gone */
       /* v2.3.1953: your own build.  Read from the store rather than from S,
          the same way this path reads your skin, shirt art and patterns — the
          creator writes it there and the store is the one copy. */
@@ -14829,10 +14804,9 @@ export class EntityRenderer {
           /* v2.3.3015: a sprinting foot kicks up a puff of the ground it
              lands on, thrown back against the run (game/sprint.js) */
           if (_plant && isSprinting(S)) {
-            const _gk = zonePlayerScale(S.currentZone, P.x, P.y, TILE) || 1;
             const _moving = Math.abs(P.vx || 0) + Math.abs(P.vy || 0) > 0.01;
             sprintDust(S, P.x, P.y + playerGroundDy(S.currentZone, P.x, P.y), footstepSurface(S) || 'dirt',
-              _moving ? Math.atan2(P.vy || 0, P.vx || 0) : null, _gk, 4);
+              _moving ? Math.atan2(P.vy || 0, P.vx || 0) : null, 1, 4);
             if (typeof window !== 'undefined' && window.__btProbe) window.__btSprintDust = (window.__btSprintDust || 0) + 1;
           }
           display._prevJogFrame = frameIdx;
@@ -17824,7 +17798,7 @@ export class EntityRenderer {
     if (HEAD_FRAMES_ON) folk._btHeadAt = { pose, dir, mirror, frameIdx, now,   /* v2.3.3860: the head-frame count (headFrames.js, `?headframes` only) */
       worn: { headwear: look.headwear, hair: look.hair, facialhair: look.facialhair, eyewear: look.eyewear, eyestyle: look.eyeStyle } };
     /* a player's size on this ground, times his own (above); his feet on his origin */
-    const k = this._zonePscale(S, npc.x, npc.y) * PLAYER_SIZE_MULT * size;
+    const k = PLAYER_SIZE_MULT * size;
     if (folk.scale.x !== k) folk.scale.set(k);
     folk.y = -_feetOffsetUnits(folk) * k;
     display._walkIdx = frameIdx;   /* the probe's (mp-wheelfolk) */

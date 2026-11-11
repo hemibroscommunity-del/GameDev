@@ -32,7 +32,6 @@ import { BT_AUDIO } from '@/data/index.js';
 import { FARM, FARM_CROP_ORDER } from '@/data/farmCrops.js';
 import { FARM_BEDS, FARM_BED_REACH, FARM_KNEEL_DY, FARM_KNEEL_DX, FARM_ANIM_HEAD_WORLD, farmDigSpot } from '@/data/farmLayout.js';
 import { FARM_ANIMS, FARM_ANIM_HEAD } from '@/data/farmAnims.js';   /* v2.3.3960: the hoe's reach */
-import { zonePlayerScale } from '@/data/zones.js';
 import { farmBus } from '@/ui/mobile/farmBus.js';
 import { bedNext, bedAt, farmClock, farmWorkBeats, FARM_WORK_MS, farmBeatPlay, seedToPlant, seedsInHand } from '@/game/farmWork.js';
 import { pushDmgPopup, offlineRefused } from '@/game/combatHelpers.js';
@@ -186,7 +185,7 @@ export function startFarmStep(S, i) {
      _updateFarmWork draws him, his boots at the spot */
   let bx = b.x + b.w / 2 + FARM_KNEEL_DX, by = b.y + FARM_KNEEL_DY;
   if (n.step === 'dig') {
-    const k = (FARM_ANIM_HEAD_WORLD / FARM_ANIM_HEAD) * (zonePlayerScale(S.currentZone, bx, b.y + b.h / 2, 32) || 1);
+    const k = (FARM_ANIM_HEAD_WORLD / FARM_ANIM_HEAD);
     const sp = farmDigSpot(b, FARM_ANIMS.hoe, k);
     bx = sp.x; by = sp.y;
   }

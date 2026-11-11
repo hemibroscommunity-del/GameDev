@@ -117,7 +117,6 @@ export const ZONES = {
     palette: { ground: '#b89a5a', path: '#cdb27a', accent: '#7aa050' },
     spawns: [],
     atmosphere: { tint: 'rgba(180,200,230,0.03)', vignette: 'rgba(80,110,150,0.05)' },
-    playerScale: { near: 0.55, far: 0.03, curve: 0.6 },
     /* ═══ v2.3.2257: THE VISTA KEEPS THE PRE-v2.3.2247 WIDTH RULE ═══
        Owner: "For character size in worldview revert to how big the character
        was previously.  He's too small in worldview now."
@@ -288,31 +287,8 @@ export const ZONES = {
     spawns: [{ arch: 'stalker', count: 2 }, { arch: 'hexer', count: 2 }, { arch: 'volatile', count: 2 }],   /* v2.3.2244: six per zone (mirror of server/src/data.js) */
     atmosphere: { tint: 'rgba(210,165,90,0.05)', vignette: 'rgba(150,100,40,0.08)' },
     enemyEmoji: { fodder: '🌬️', brute: '🦅', swarm: '🕊️', volatile: '🌪️', stalker: '🦉', hexer: '☁️', sentinel: '🗼' },
-    /* ═══ v2.3.2745: THE DUNES RUN AWAY FROM YOU ═══
-       Owner: "some maps show distance. So the north part of the image shows
-       the background getting smaller. I'm wondering if the objects in the
-       game, player, monsters, etc can follow a similar perspective changing
-       pattern the more north on the map they get and also slow the movement
-       speed the further north they get to emulate travel distance."
-       The sky_v5 art is painted that way: the rock stacks on the horizon are
-       drawn at roughly two fifths the size of the ones at your feet.  So
-       everything standing on it follows the same ramp -- full size on the
-       south edge, `far` at the north -- and walking north slows by the same
-       ratio (BroTown's vistaSpeedMult), so the horizon is a JOURNEY.
-       STEP 1 OF 3, and a PREVIEW: `preview: 'depth'` keeps the curve off
-       unless the page asks for it (?depth=1), because step 2 -- the server
-       scaling monster speed and reach by the same curve -- is not built, and
-       until it is a far-off monster moves and hits at full size.
-       v2.3.2790, STEP 2: the worker now measures the monster AI with this
-       same curve (server/src/depth.js -- its ZONES.sky.depth is a MIRROR of
-       this row minus `preview`, held in lockstep by zonedepth.test) and
-       says so in caps.zoneDepth.  `preview` now means "on when the worker
-       claims it": the curve draws for everyone against a worker that
-       advertises zoneDepth, and stays behind ?depth=1 against one that
-       does not (see _previewOn).
-       Its own key (`depth`), not `playerScale`: that one is the world map's
-       radial vista, and mp-wvscale holds it to exactly one zone. */
-    depth: { axis: 'y', near: 1, far: 0.42, curve: 1, preview: 'depth' },
+    /* v2.3.4862: its north-south `depth` ramp (v2.3.2745, v2.3.2790) is gone
+       with the old map (docs/specs/dune-depth.md) */
   },
   tidal: {
     id: 'tidal', name: 'Water Caves' /* v2.3.1438 */, w: 32, h: 32,
@@ -361,31 +337,10 @@ export const ZONES = {
   },
 };
 
-/* v2.3.1574: the ONE copy of the vista perspective curve.
- *
- * A zone may carry `playerScale` to sell depth on a zoomed-out map: a flat
- * number, or { near, far, curve } scaling by distance from the zone centre so
- * a figure on a distant trail renders as a speck (worldview: 0.55 at the
- * plateau down to 0.03 at the rim).
- *
- * This math had drifted into THREE hand-copied sites -- entityRenderer's
- * _zonePscale (local + remote bodies), BroTown's vistaSpeedMult (movement),
- * and a fourth that was simply MISSING: the remote harvest stand-ins in
- * effectsRenderer, which is why another player cooking or lighting a fire on
- * the worldview drew at full size next to their own thumbnail-sized body.
- * A shrink curve that only some of a character's parts obey is not a curve,
- * so it lives here now and every site calls it.
- */
-/* v2.3.2745: is a preview curve switched on for this page?  `?depth=1` in the
-   URL, or window.__btDepth = true from the console.  Read from the URL once.
-   v2.3.2790: ...or the WORKER claims it (caps.zoneDepth, set by wsClient on
-   every state_sync through setZoneDepthLive).  Order of precedence, most
-   explicit first: the console override, then the URL (`?depth=1` forces it
-   on against an old worker, `?depth=0` forces it off for a before/after
-   look), then the worker.  Drawing the curve is gated on the worker because
-   the two halves only make sense together -- a small far monster that still
-   hits from flat distances strikes from outside its own body. */
-let _depthLive = false;
+/* v2.3.4862: the vista perspective curve (zonePlayerScale, v2.3.1574) and the
+   dunes' depth (zoneDepthScale / depthK, v2.3.2745-2790) are gone with the old
+   map: the World View's `playerScale` and Wind Dunes' `depth` were the only
+   rows they read, and both zones are closed.  Every live zone drew at 1. */
 /* ═══ v2.3.2978: THE WORLD VIEW, BY EITHER NAME ═══
    'worldview' is the hub town's World View exit leads to.  The Wheel trial
    rides it -- or, against a worker that runs the Wheel's monsters, its own
@@ -456,76 +411,9 @@ export function wheelLandAt(zoneId, x, y) {
   return best;
 }
 
-export function setZoneDepthLive(on) { _depthLive = !!on; }
-function _previewOn(name) {
-  if (name !== 'depth') return false;
-  if (typeof window !== 'undefined') {
-    if (typeof window.__btDepth === 'boolean') return window.__btDepth;
-    if (_previewOn._url === undefined) {
-      _previewOn._url = null;
-      try {
-        const m = /[?&]depth=([01])\b/.exec(window.location.search);
-        if (m) _previewOn._url = m[1] === '1';
-      } catch (e) { /* no URL: fall through to the worker */ }
-    }
-    if (_previewOn._url != null) return _previewOn._url;
-  }
-  return _depthLive;
-}
-
-/* v2.3.2745: the dunes' NORTH-SOUTH depth ramp -- 1 on the south edge down
-   to `far` on the north, eased by `curve`.  Null when the zone has none or
-   its preview is off, so the caller falls through to the old answer. */
-export function zoneDepthScale(zoneId, y, TILE) {
-  const z = ZONES[zoneId];
-  const d = z && z.depth;
-  if (!d || d.axis !== 'y') return null;
-  if (d.preview && !_previewOn(d.preview)) return null;
-  const H = (z.h || 32) * (TILE || 32);
-  const t = Math.max(0, Math.min(1, 1 - (Number(y) || 0) / H));   /* 0 south .. 1 north */
-  const near = d.near != null ? d.near : 1, far = d.far != null ? d.far : 0.5;
-  return near + (far - near) * Math.pow(t, d.curve != null ? d.curve : 1);
-}
-
-/* ═══ v2.3.2790: YOUR REACH SHRINKS WITH YOU ═══
-   Owner: "Yes fix my reach."  Step 2 made a far monster measure its reach in
-   the curve (server depth.js), and left yours flat -- on Wind Dunes' north
-   edge you swung a 72px sword with a body drawn at 0.42, so you hit from well
-   outside the blade on screen and out-ranged every monster there.  This is
-   the ONE factor every one of your reaches multiplies by: the swing and the
-   engage test, the bow's range and sight line, the staff orb's life, the dash's
-   stop and step, the reach rings drawn under you (monsterCombat, projectiles'
-   callers, effectsRenderer, abilities, BroTown).  1 wherever the curve is off,
-   exactly -- a multiply by 1, so every other zone is untouched. */
-export function depthK(zoneId, y) {
-  const k = zoneDepthScale(zoneId, y, 32);
-  return k == null ? 1 : k;
-}
-
-export function zonePlayerScale(zoneId, x, y, TILE) {
-  const z = ZONES[zoneId];
-  const dz = zoneDepthScale(zoneId, y, TILE);
-  if (dz != null) return dz;
-  const ps = z && z.playerScale;
-  if (typeof ps === 'number') return ps;
-  if (ps && typeof ps === 'object') {
-    const cx = (z.w * TILE) / 2, cy = (z.h * TILE) / 2;
-    const d = Math.min(1, Math.hypot(x - cx, y - cy) / (Math.hypot(cx, cy) || 1));
-    const near = ps.near != null ? ps.near : 0.6;
-    const far = ps.far != null ? ps.far : 0.3;
-    const curve = ps.curve != null ? ps.curve : 1;   /* <1 shrinks faster off-centre */
-    return near + (far - near) * Math.pow(d, curve);
-  }
-  return 1;
-}
-
 /* v2.3.1813 dev probe, house style (__btWorldProps, __btCoach).  mp-townmap
    already read `window.__btZones` — behind a `.catch(() => null)` that made a
    missing probe look like a skipped check rather than a failure, so the zone's
    dimensions went untested through two shape changes.  Defining it for real is
    the fix; the scenario no longer swallows the miss. */
 if (typeof window !== 'undefined') window.__btZones = ZONES;
-/* v2.3.2790 dev probe (mp-dunedepth): the depth answer the game is using
-   right now, so a scenario can tell "the curve is off" from "the walk was
-   blocked" instead of guessing from a distance. */
-if (typeof window !== 'undefined') window.__btZoneDepth = (zoneId, y) => zoneDepthScale(zoneId, y, 32);

@@ -10,7 +10,7 @@
    setter). All other references are module imports below. */
 import { staffBoltK } from '@/data/oneFormula.js'; /* v2.3.3260: the big bolt's worth under the one formula */
 import { STAFF_RANGE_PX, staffRangeMult, bowRangeMult, STAFF_BIG_BOLT_ORBS, STAFF_BIG_BOLT_BAND, BOW_RANGE_PX /* v2.3.3501 */ } from '@/data/gameSystems.js'; /* v2.3.2387; v2.3.2592: the RANGE stat; v2.3.2842: the one-bolt special; v2.3.2849: its band */
-import { depthK, ZONES } from '@/data/zones.js';   /* v2.3.2790; v2.3.3266: + whether the zone is safe (peerShots.js) */
+import { ZONES } from '@/data/zones.js';   /* v2.3.2790; v2.3.3266: + whether the zone is safe (peerShots.js) */
 import { shotTargetId } from '@/game/peerShots.js'; /* v2.3.3266: the player a special is aimed at, for the others' screens */
 import { ARROW_SPEED_PX, lowAimAlong, shotAimAt, arrowSureReachPast } from '@/game/projectiles.js';   /* v2.3.2848: the volley's stagger is sized from it; v2.3.3206: + the low thing a shot is aimed at */
 import { arrowEdgeRoom } from '@/game/arrowEdge.js';   /* v2.3.3501: the volley's target, as far as its gate reaches */
@@ -370,7 +370,7 @@ export function specialAttack(S) {
       var _bowN = _bowVolley ? BOW_VOLLEY.N : 1;
       var _bowVol = _bowVolley ? newVolley() : null;
       var _bowStat = bowRangeMult(R || {}) || 1;
-      var _bowRange = _bowStat * depthK(S.currentZone, S.player.y);
+      var _bowRange = _bowStat;
       /* v2.3.2891: a volley flies slower than a plain arrow (BOW_VOLLEY.SPEED_K)
          so its three arrows read as three; a lone arrow (old worker) keeps the
          bow's own speed */
@@ -456,7 +456,7 @@ export function specialAttack(S) {
             volley: _bowVolley ? 1 : undefined,   /* v2.3.2849: additive -- a peer burns it out on the volley's 2.5 s, not the lone arrow's 4 */
             lp: _bowLp ? [Math.round(_bowLp.x), Math.round(_bowLp.y)] : undefined,   /* v2.3.3206: additive */
             gf: shotAimWire(_bowGf),   /* v2.3.3501: additive */
-            life: Math.round(90 * _bowStat * depthK(S.currentZone, S.player.y)), /* v2.3.2592: peers see the stat's reach too; v2.3.2790 x depth */
+            life: Math.round(90 * _bowStat), /* v2.3.2592: peers see the stat's reach too; v2.3.2790 x depth */
             tg: _shotTg,   /* v2.3.3266: the player it is aimed at (monsterCombat's shot); it pierces, so it flies on through */
           }});
         }
@@ -550,7 +550,7 @@ export function specialAttack(S) {
          the swipe cooldown, by which time the first stamp has expired. */
       /* v2.3.2387: 560 -> STAFF_RANGE_PX (675), so the special reaches exactly
          as far as the basic orb and as far as an arrow. */
-      var _ORB_RANGE_PX = STAFF_RANGE_PX * staffRangeMult(R || {}) * depthK(S.currentZone, S.player.y); /* v2.3.2592: × the Magic lane's RANGE stat; v2.3.2790: × your depth */
+      var _ORB_RANGE_PX = STAFF_RANGE_PX * staffRangeMult(R || {}); /* v2.3.2592: × the Magic lane's RANGE stat; v2.3.2790: × your depth */
       var _ORB_SPEED = 5;              /* the staff's own bolt speed */
       var _ORB_SPEEDS = [_ORB_SPEED, _ORB_SPEED, _ORB_SPEED];
       /* v2.3.3206: over the low things, bar the one it is aimed at (nothing

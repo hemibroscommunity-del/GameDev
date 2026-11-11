@@ -36,7 +36,6 @@ import {
   trainDefense, applyIronSkin, applyResilience, /* v2.3.1314 */
   monsterBodyOffsetY, monsterMeleeHitRadius, monsterProceduralRadius, TOWN_SPAWN /* v2.3.1777 */
 } from '@/data/index.js';
-import { depthK } from '@/data/zones.js';   /* v2.3.2790: your reach shrinks with you on Wind Dunes */
 import { prog3Live, prog3CatFor, prog3CritPct, prog3CritMult, prog3CritFlat } from '@/data/prog3.js'; /* v2.3.2218 */
 import { BOW_RANGE_PX, toDisplayDamage, staffOrbLife, meleeRangeMult, bossSizeK /* v2.3.3556: a dungeon boss's drawn size */ } from '@/data/gameSystems.js'; /* v2.3.2387: one staff range for all four spawn sites; v2.3.2473: the sight gate's reach; v2.3.2520: the display damage scale; v2.3.2592: the RANGE stat scales the orb's life and the melee envelope */
 import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2200 */, isIntangible /* v2.3.2224 */, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
@@ -1511,11 +1510,11 @@ export function updateMonsterCombat(S, deps) {
               /* v2.3.2790: the body's centre offset and radius shrink with the
                  monster on a depth zone -- its sprite is drawn at depthK. */
               var _eFy = (typeof _eLt.renderY === 'number') ? _eLt.renderY : _eLt.y;
-              var _eMk = depthK(S.currentZone, _eFy) * bossSizeK(_eLt);   /* v2.3.3556: x a dungeon boss's size */
+              var _eMk = bossSizeK(_eLt);   /* v2.3.3556: x a dungeon boss's size */
               var _eY = _eFy - monsterBodyOffsetY(_eArch) * _eMk;
               var _eD = Math.sqrt((_eX - P.x) * (_eX - P.x) + (_eY - P.y) * (_eY - P.y))
                 - monsterMeleeHitRadius(_eArch) * _eMk;
-              _engSwing = _eD <= GS_OUTER_RADIUS * meleeRangeMult(S.rpg) * depthK(S.currentZone, P.y); /* v2.3.2592: the engage test reaches as far as the swing does; v2.3.2790: x your depth */
+              _engSwing = _eD <= GS_OUTER_RADIUS * meleeRangeMult(S.rpg); /* v2.3.2592: the engage test reaches as far as the swing does; v2.3.2790: x your depth */
             }
           }
           /* ═══ v2.3.2473: WHERE IS THE BOW ACTUALLY POINTING? ═══
@@ -1560,7 +1559,7 @@ export function updateMonsterCombat(S, deps) {
                short of it.  `_bsRoom` is the flight left from the grip, and
                arrowSureReachPast how far past it the arrow's head is always
                tested.  The props were already held to it (`ground.len`). */
-            var _bsRange = BOW_RANGE_PX * (bowRangeMult(S.rpg) || 1) * depthK(S.currentZone, P.y);
+            var _bsRange = BOW_RANGE_PX * (bowRangeMult(S.rpg) || 1);
             var _bsRoom = _viewEdgeDist(S, _bsX, _bsY, _bsA);
             /* v2.3.3528: the length and the ground the gate tests, named once
                for the No man's land ask below */
@@ -1848,7 +1847,7 @@ export function updateMonsterCombat(S, deps) {
                    says so above (nothing else on its line); the staff has no
                    sight, so the same question is asked along its bolt's reach. */
                 var _shotLp = !isStaff ? ((S._bowSight && S._bowSight.lp) || null)
-                  : lowAimAlong(S, _shotX, _shotY, arrAngle, staffOrbLife(S.rpg) * depthK(S.currentZone, P.y) * 5,
+                  : lowAimAlong(S, _shotX, _shotY, arrAngle, staffOrbLife(S.rpg) * 5,
                     P.x, P.y + shotGroundDy(S), { isStaff: true });   /* a bolt flies 5 px a tick for its life */
                 /* ═══ v2.3.3501: ...AND WHAT IT IS FIRED AT, BOOTS TO FEET ═══
                    The target on the shot's line by the gate's own rule
@@ -1864,10 +1863,10 @@ export function updateMonsterCombat(S, deps) {
                   var _sgRoom = _viewEdgeDist(S, _shotX, _shotY, arrAngle);
                   _shotGd.len = _sgRoom;
                   _shotGf = shotAimAt(S, _shotX, _shotY, arrAngle,
-                    Math.min(BOW_RANGE_PX * (bowRangeMult(S.rpg) || 1) * depthK(S.currentZone, P.y), _sgRoom + arrowSureReachPast(bowRangeMult(S.rpg) || 1)),
+                    Math.min(BOW_RANGE_PX * (bowRangeMult(S.rpg) || 1), _sgRoom + arrowSureReachPast(bowRangeMult(S.rpg) || 1)),
                     { isStaff: false, isSpecial: false, aimAt: _shotLock, ground: _shotGd });
                 } else {
-                  _shotGd.len = staffOrbLife(S.rpg) * depthK(S.currentZone, P.y) * 5;
+                  _shotGd.len = staffOrbLife(S.rpg) * 5;
                   _shotGf = shotAimAt(S, _shotX, _shotY, arrAngle, _shotGd.len, { isStaff: true, aimAt: _shotLock, ground: _shotGd });
                 }
                 S.arrows.push({
@@ -1900,8 +1899,8 @@ export function updateMonsterCombat(S, deps) {
                      life (v2.3.2473: 90 x 24 = 2160, further past 675 than the
                      90 x 8 = 720 this note was written for). */
                   /* v2.3.2592: × the Magic lane's RANGE stat (staffOrbLife). */
-                  life: isStaff ? Math.round(staffOrbLife(S.rpg) * depthK(S.currentZone, P.y)) : 90,   /* v2.3.2790: an orb's range is its life -- x depth */
-                  maxLife: isStaff ? Math.round(staffOrbLife(S.rpg) * depthK(S.currentZone, P.y)) : 90,
+                  life: isStaff ? Math.round(staffOrbLife(S.rpg)) : 90,   /* v2.3.2790: an orb's range is its life -- x depth */
+                  maxLife: isStaff ? Math.round(staffOrbLife(S.rpg)) : 90,
                   hitIds: new Set(),
                   isStaff: isStaff,
                   /* v2.3.1135: Piercing/Longshot channels — finite pierce
@@ -1910,7 +1909,7 @@ export function updateMonsterCombat(S, deps) {
                      (Detonation) and take neither. */
                   pierceLeft: isStaff ? undefined : (bowPierceCount(S.rpg) || undefined),
                   pierce: !isStaff && bowPierceCount(S.rpg) > 0,
-                  _rangeMult: (isStaff ? 1 : bowRangeMult(S.rpg)) * depthK(S.currentZone, P.y)   /* v2.3.2790: an arrow loosed in the far north lands as far off as it LOOKS */
+                  _rangeMult: isStaff ? 1 : bowRangeMult(S.rpg)   /* v2.3.4862: was x depthK (v2.3.2790), gone with the old map's dunes */
                 });
                 /* Broadcast projectile to other players */
                 if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
@@ -1934,7 +1933,7 @@ export function updateMonsterCombat(S, deps) {
                      mirror needs the life too or a remote orb dies at 675 px
                      while it flew 1012 on the caster's screen (the v2.3.2387
                      lesson).  Additive: an old client ignores it. */
-                  life: Math.round((isStaff ? staffOrbLife(S.rpg) : 90 * (bowRangeMult(S.rpg) || 1)) * depthK(S.currentZone, P.y)),   /* v2.3.2790: x your depth -- the orb's range is its life */
+                  life: Math.round(isStaff ? staffOrbLife(S.rpg) : 90 * (bowRangeMult(S.rpg) || 1)),   /* v2.3.2790: x your depth -- the orb's range is its life */
                   /* v2.3.3266: the player you have locked, when this shot may
                      hit them (game/peerShots.js shotTargetId): on every screen
                      it leaves aimed at them and ends where it reaches them, a
@@ -2056,7 +2055,7 @@ export function updateMonsterCombat(S, deps) {
                meleeRangeMult, so what is drawn is what hits. */
             /* v2.3.2790: ...times your depth (zones.js depthK) -- on Wind Dunes'
                north edge the sword is drawn at 0.42 and now reaches 0.42. */
-            var _mRm = meleeRangeMult(S.rpg) * depthK(S.currentZone, P.y);
+            var _mRm = meleeRangeMult(S.rpg);
             var _swingRange = (S._specialAttack ? SWING_RANGE * 2 : SWING_RANGE) * _mRm;
             var _swingArc   = S._specialAttack ? Math.PI         : SWING_ARC;
             /* v2.3.940: ALL melee swings are "wild" -- a small 360° core around
@@ -2174,7 +2173,7 @@ export function updateMonsterCombat(S, deps) {
                  Wind Dunes' north edge is hit where its smaller body is. */
               /* v2.3.3556: ...and x a dungeon boss's size (gameSystems.js
                  bossSizeK): a huge boss is hit where its body is drawn */
-              var _hitMk = depthK(S.currentZone, _hitBaseY) * bossSizeK(m);
+              var _hitMk = bossSizeK(m);
               var _mHitY = _hitBaseY - monsterBodyOffsetY(_archHit) * _hitMk;
               var _hitR = monsterMeleeHitRadius(_archHit) * _hitMk;
               var mDist = Math.sqrt(Math.pow(_hitX - P.x, 2) + Math.pow(_mHitY - P.y, 2)) - _hitR;
@@ -3112,7 +3111,7 @@ export function updateMonsterCombat(S, deps) {
               S.npcs.forEach(function (npc) {
                 if (!npc.alive || npc._hitThisSwing) return;
                 var nDist = Math.sqrt(Math.pow(npc.x - P.x, 2) + Math.pow(npc.y - P.y, 2));
-                if (nDist > SWING_RANGE * meleeRangeMult(S.rpg) * depthK(S.currentZone, P.y)) return; /* v2.3.2592; v2.3.2790 x depth */
+                if (nDist > SWING_RANGE * meleeRangeMult(S.rpg)) return; /* v2.3.2592; v2.3.2790 x depth */
                 var nAngle = Math.atan2(npc.y - P.y, npc.x - P.x);
                 var naDiff = nAngle - baseAngle;
                 while (naDiff > Math.PI) naDiff -= Math.PI * 2;
@@ -3240,8 +3239,7 @@ export function updateMonsterCombat(S, deps) {
                  most three times a swing, and only when it can land
                  (pvpSwing.js). */
               var _pvpReach = Math.min(250, Math.round((wpnType.range || SWING_RANGE)
-                * (S.rpg && S.rpg.activeSlot === 'ranged' ? bowRangeMult(S.rpg) : meleeRangeMult(S.rpg))
-                * depthK(S.currentZone, P.y)));
+                * (S.rpg && S.rpg.activeSlot === 'ranged' ? bowRangeMult(S.rpg) : meleeRangeMult(S.rpg))));
               var _pvpBal = pvpBalanceOn(S);
               /* v2.3.3267: a lock on one of your sparring clones claims through
                  the clones' own claims below, each naming its clone -- never
@@ -3415,7 +3413,7 @@ export function updateMonsterCombat(S, deps) {
               if (_pvpPaintId && String(pid) !== _pvpPaintId && !_pvpClone) return;
               if (o._hitThisSwing) return;
               var oDist = Math.sqrt(Math.pow(o.x - P.x, 2) + Math.pow(o.y - P.y, 2));
-              if (oDist > SWING_RANGE * meleeRangeMult(S.rpg) * depthK(S.currentZone, P.y)) return; /* v2.3.2592; v2.3.2790 x depth */
+              if (oDist > SWING_RANGE * meleeRangeMult(S.rpg)) return; /* v2.3.2592; v2.3.2790 x depth */
               var oAngle = Math.atan2(o.y - P.y, o.x - P.x);
               var aDiff = oAngle - baseAngle;
               while (aDiff > Math.PI) aDiff -= Math.PI * 2;

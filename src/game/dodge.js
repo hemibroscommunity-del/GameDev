@@ -10,7 +10,7 @@
    was `var X = function...` in the component; `export var` here keeps the
    bodies byte-identical and the cross-calls resolve within the module. */
 import { staffOrbLife, bowRangeMult, BOW_RANGE_PX /* v2.3.3501 */ } from '@/data/gameSystems.js'; /* v2.3.2387; v2.3.2592: × the RANGE stat */
-import { depthK, ZONES } from '@/data/zones.js';   /* v2.3.2790; v2.3.3266: + whether the zone is safe (peerShots.js) */
+import { ZONES } from '@/data/zones.js';   /* v2.3.2790; v2.3.3266: + whether the zone is safe (peerShots.js) */
 import { shotTargetId } from '@/game/peerShots.js'; /* v2.3.3266: the player the retreat shot is aimed at, for the others' screens */
 import { BT_AUDIO, ELEMENTS, LUNGE_DAMAGE_MULT, LUNGE_DIRECTION_THRESHOLD, LUNGE_IFRAMES_MS, LUNGE_STAMINA_FRACTION, RETREAT_SHOT_DAMAGE_MULT, RETREAT_SHOT_STAMINA_FRACTION, RETREAT_STAFF_CONE_RAD, applyStatus, calcWeaponDmg, getActiveWeapon, rpgBlockSize } from '@/data/index.js';
 import { addBuildUse, pushDmgPopup, lockAimPoint, swimRefused /* v2.3.3003 */, dazeRefused /* v2.3.3014 */, airRefused /* v2.3.3017 */, shotGroundDy /* v2.3.3206 */ } from '@/game/combatHelpers.js';
@@ -328,22 +328,21 @@ export var doRetreatShot = function (S, R, ang) {
     var slot = R.activeSlot || 'ranged';
     var isStaff = slot === 'staff';
     if (!S.arrows) S.arrows = [];
-    var _dk = depthK(S.currentZone, S.player.y);   /* v2.3.2790: the retreat shot reaches as far as you LOOK */
     var pushArrow = function (a) {
       var _shotTs = Date.now();   /* v2.3.2919: one stamp for the arrow and its broadcast (the snap roll, data/arrowSnap.js) */
       /* v2.3.3501: what this shot is fired at along its own line -- the lock,
          or whatever stands in front of it -- so its ground line runs from your
          boots to that target's feet (shotGround.js), on every screen (`gf`).
          A cone bolt with nothing on its line keeps the parallel one. */
-      var _rLen = (isStaff ? staffOrbLife(R) * 5 : BOW_RANGE_PX * (bowRangeMult(R) || 1)) * _dk;
+      var _rLen = isStaff ? staffOrbLife(R) * 5 : BOW_RANGE_PX * (bowRangeMult(R) || 1);
       var _rGf = shotAimAt(S, P.x, P.y, a, _rLen,
         { isStaff: isStaff, ground: { x: P.x, y: P.y + shotGroundDy(S), len: _rLen } });
       S.arrows.push({
         /* v2.3.1335: range -25%.  v2.3.2387: the staff's 68 becomes STAFF_LIFE
            (675px, the arrow's cap) -- gameSystems.js has the derivation. */
-        ang: a, dist: 14, dmg: shotDmg, life: isStaff ? Math.round(staffOrbLife(R) * _dk) : 90,
-        maxLife: isStaff ? Math.round(staffOrbLife(R) * _dk) : 90, hitIds: new Set(), isStaff: isStaff,
-        _rangeMult: (isStaff ? 1 : bowRangeMult(R)) * _dk, /* v2.3.2592: the retreat shot reaches as far as an ordinary arrow; v2.3.2790 x depth */
+        ang: a, dist: 14, dmg: shotDmg, life: isStaff ? Math.round(staffOrbLife(R)) : 90,
+        maxLife: isStaff ? Math.round(staffOrbLife(R)) : 90, hitIds: new Set(), isStaff: isStaff,
+        _rangeMult: isStaff ? 1 : bowRangeMult(R), /* v2.3.2592: the retreat shot reaches as far as an ordinary arrow (v2.3.2790 x depth: gone, v2.3.4862) */
         element: activeWpn.element1 || null, retreatShot: true, brew: _rBrew,
         _gdy: shotGroundDy(S),   /* v2.3.3206: its ground is under your boots (projectiles.js _goy) */
         _gf: _rGf || undefined,   /* v2.3.3501 */
@@ -364,7 +363,7 @@ export var doRetreatShot = function (S, R, ang) {
           S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
             id: S.myId, x: Math.round(P.x), y: Math.round(P.y), ang: a, isStaff: isStaff, ts: _shotTs,
             el: activeWpn.element1 || undefined,
-            life: Math.round((isStaff ? staffOrbLife(R) : 90 * (bowRangeMult(R) || 1)) * _dk),
+            life: Math.round(isStaff ? staffOrbLife(R) : 90 * (bowRangeMult(R) || 1)),
             retreat: 1,
             gf: shotAimWire(_rGf),   /* v2.3.3501: additive */
             /* v2.3.3266: the player it is aimed at, as monsterCombat's shot

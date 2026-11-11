@@ -50,8 +50,6 @@
 import { Container, Rectangle, Sprite, Texture } from 'pixi.js';
 import { drawSourceRect } from './paletteDraw.js';   /* v2.3.3190 */
 import { readSourceRect } from './heldNumbers.js';   /* v2.3.3699: a monster's strip may be held as colour numbers */
-import { zonePlayerScale } from '@/data/zones.js';
-import { TILE } from '@/data/constants.js';
 
 /* One art pixel of the character sheets in world px (staffCastFx's PIX): the
    sheets are drawn in 3-sheet-px blocks at LOCAL_SCALE 0.421875.  A piece of
@@ -1258,7 +1256,7 @@ export class HitMaterialFx {
       rec.ey = gy - Math.sin(dir) * R * 0.35 * DEPTH;
       rec.ez = h;
     }
-    rec.u = PIX * ((S && zonePlayerScale(S.currentZone, rec.ex, gy, TILE)) || 1);
+    rec.u = PIX;
     /* v2.3.2929: the monster's own art, when it is on screen */
     rec.chips = null; rec.cs = 1; rec.chipTint = 0xffffff; rec.soft = false;
     if (this._artOf && b.monsterId != null && !b.prop && !String(b.monsterId).startsWith('prop:')) {
