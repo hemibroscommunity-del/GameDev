@@ -280,8 +280,7 @@ const LIST = {
   'src/game/characterCreatorEffects.js': { '*': ['warm', 1, "the intro video's poster, warmed"] },
   'src/game/dungeonArt.js': { load: ['once', 1, "a dungeon arena's walls, things and chest: no time limit, no retry (a failure is null)"] },
   'src/game/wheelDungeons.js': { loadDungeonFloor: ['once', 2, "a dungeon's floor picture and the ground manifest read before it: no time limit, no retry"] },
-  'src/game/worldTrial.js': { '*': ['off', 2, 'the retired world trial (`?trial=world`)'] },
-  'src/rendering/chunkGround.js': { '*': ['off', 1, "the retired world trial's ground (`?trial=world`)"] },
+  /* v2.3.4676: worldTrial.js's two loads and chunkGround.js went with `?trial=world` (the island trial, deleted) */
   'src/rendering/characterPortrait.js': {
     loadImage: ['once', 1, "the portrait's pictures: no time limit; a failure stays in the cache"],
     loadMeta: ['once', 1, "a head piece's meta.json for the portrait: no time limit; a failure is null for the page"],
