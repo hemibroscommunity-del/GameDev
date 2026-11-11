@@ -49,6 +49,13 @@ function check(name, cond, detail) {
 /* ── 1. geometry ──
    frost-rock-ridge: x 430, y 570, blockW 202, blockD 42
    -> box x 329..531, y 528..570.  Every probe below is quoted against it. */
+/* v2.3.4852: the server's table is empty now; this suite's own fixture (frost's
+   three snowbanks, as they were) stands in so the geometry is still tested */
+ZONE_PROPS.frost = [
+  { id: 'frost-snowbank-w', x: 140, y: 570, blockW: 202, blockD: 42 },
+  { id: 'frost-rock-ridge', x: 430, y: 570, blockW: 202, blockD: 42 },
+  { id: 'frost-snowbank-e', x: 720, y: 570, blockW: 202, blockD: 42 },
+];
 const RIDGE = ZONE_PROPS.frost.find((p) => p.id === 'frost-rock-ridge');
 check('fixture: the rock ridge is where this suite thinks it is',
   !!RIDGE && RIDGE.x === 430 && RIDGE.y === 570 && RIDGE.blockW === 202 && RIDGE.blockD === 42, RIDGE);

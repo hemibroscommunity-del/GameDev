@@ -111,6 +111,8 @@ for (const k of ['full', 'pools', 'vitals']) {
 
 /* Frost's middle snowbank (props.js): a monster north of it and a player
    south of it have it between them. */
+/* v2.3.4852: the server's table is empty now; frost's middle snowbank as it was */
+ZONE_PROPS.frost = [{ id: 'frost-rock-ridge', x: 430, y: 570, blockW: 202, blockD: 42 }];
 const BANK = ZONE_PROPS.frost.find((p) => p.id === 'frost-rock-ridge');
 
 /* Where a case is played: out on the Wheel off the safe ground, on the safe

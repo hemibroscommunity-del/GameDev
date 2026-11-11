@@ -32,29 +32,16 @@
  * the registry.
  */
 
-/* zone -> blocking footprints, as the sprite's bottom-centre plus its box.
-   Mirrors src/data/worldProps.js (x, y, blockW, blockD). `id` is carried for
-   the audit's benefit and for readable failures; nothing at runtime reads it. */
-export const ZONE_PROPS = {
-  town: [
-    { id: 'mayor-house', x: 1001, y: 622, blockW: 454, blockD: 206 },
-    { id: 'forge', x: 522, y: 1198, blockW: 470, blockD: 200 },
-    { id: 'auction-house', x: 1632, y: 1290, blockW: 321, blockD: 220 },
-    { id: 'fountain', x: 957, y: 1521, blockW: 252, blockD: 95 },
-    { id: 'market-stall', x: 522, y: 1705, blockW: 228, blockD: 74 },
-    { id: 'lamp-plaza-w', x: 740, y: 1613, blockW: 57, blockD: 33 },
-    { id: 'bench-w', x: 653, y: 1428, blockW: 72, blockD: 34 },
-    { id: 'anvil', x: 566, y: 1336, blockW: 52, blockD: 27 },
-    { id: 'bank', x: 1495, y: 760, blockW: 357, blockD: 154 },
-  ],
-  frost: [
-    /* v2.3.2894: three snowbanks in a line, nothing else (owner: "the small
-       zone needs space and not props") -- MIRROR of src/data/worldProps.js */
-    { id: 'frost-snowbank-w', x: 140, y: 570, blockW: 202, blockD: 42 },
-    { id: 'frost-rock-ridge', x: 430, y: 570, blockW: 202, blockD: 42 },
-    { id: 'frost-snowbank-e', x: 720, y: 570, blockW: 202, blockD: 42 },
-  ],
-};
+/* zone -> blocking footprints, as the sprite's bottom-centre plus its box
+   (x, y, blockW, blockD; `id` is for readable failures).
+   v2.3.4852: EMPTY, on purpose.  The table held the old town's buildings and
+   frost's three snowbanks (a mirror of src/data/worldProps.js); the worker
+   refuses those lands for good (v2.3.4675) and the Wheel has no solid props
+   the worker knows of, so nothing read a row.  attackBlocked / slideMove stay
+   (the hit door's sight gate and the chase use them) and answer "nothing in
+   the way" for every zone.  The suites that test the geometry (props,
+   hit-door, mirror-audit) put their own rows in first. */
+export const ZONE_PROPS = {};
 
 /* zone -> [{x0,x1,y0,y1}], built once. The footprint is the box `blockW` wide
    and `blockD` deep at the sprite's base, which is propFootprint()'s own
