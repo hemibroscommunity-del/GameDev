@@ -203,8 +203,14 @@ so nothing waits on them any more.
   (#1505)~~: five did (the chest already warmed once); they share
   `warmOnce.js` now, one held picture a URL for the page, a failed one tried
   again (v2.3.4652, `warm-once.test`; `?warmonce=0` the old way);
-- the small-bugs bundles' other items (VA, VB); the feedback board's typed
-  id (VA);
+- the small-bugs bundles' other items (VA, VB). Done from VA: the tick's
+  four unguarded systems (S3-1: parties, regen, the player-state flush, the
+  ping and AFK sweep), each in its own guard now, a throw before them caught
+  at the tick's top (v2.3.4653, `tick-guard.test`). Left in VA for the
+  owner: the feedback board's typed id (a real ranking needs a real identity;
+  a suggestion box needs only a limit a connection), and the chain RPC's
+  missing time limit (S5-16: the same call sends the paid score
+  transactions, and one cut off after it was sent could be paid again);
 - VC-3, the owner-only Ground and Object Studios (`public/tools/`, low
   priority): one unreadable saved picture stops the page before Download and
   Restore work; a restore resets the "made from" stamps and replaces sound
