@@ -97,7 +97,8 @@ Every attack has four beats: **touch**, **build**, **release**, **contact**.
   brings it back. Off, the staff is today's held staff exactly: it fires by
   itself while the thumb is held, its tap a bolt, its flick its special.
 - **The worker's `staffgather: false`** (a live flag) takes the cap away
-  from every phone at once: each plays today's held staff.
+  from every phone at once: each plays today's held staff (v2.3.4799: phones
+  already playing are told by `draw_gather`; before, only at a join).
 - `?manual=0`, `?manual=1` and `?manual=2` keep the held staff, as they are.
 
 ## How it is built

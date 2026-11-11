@@ -2083,6 +2083,20 @@ export function setupWebSocket(ctx) {
               if (S._serverCaps) S._serverCaps.freeSwing = msg.on ? 1 : 0;
               break;
             }
+          /* v2.3.4799: the bow's draw and the staff's gather switched live
+             (server drawgather.js _drawGatherFlagChanged): `bowdraw: false`
+             or `staffgather: false` reaches a phone already playing, which
+             goes back to today's flick and held staff at once (bowFeelOn,
+             staffFeelOn read these caps).  Before, it kept drawing until a
+             rejoin, and its light shots landed as today's whole ones */
+          case 'draw_gather':
+            {
+              if (S._serverCaps) {
+                S._serverCaps.bowDraw = msg.bow ? 1 : undefined;
+                S._serverCaps.staffGather = msg.staff ? 1 : undefined;
+              }
+              break;
+            }
           /* v2.3.3058: No man's land (server/src/nomansland.js; the game's half,
              src/game/noMansLand.js) -- your own skulls' time left, and what a
              death there took from you */

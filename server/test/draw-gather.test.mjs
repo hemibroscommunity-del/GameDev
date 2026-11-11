@@ -515,6 +515,35 @@ async function drawAt(p, dr, gap) {
     check(`8. \`${flag}: false\`: a shot claiming a 50 ms build is today's whole one, nothing kept, the claim relayed as sent`, d === 100 && P.ps._dg === undefined && relayed && relayed.payload[kind === 'staff' ? 'ga' : 'dr'] === 50, { d });
     room._liveFlags = {};
   }
+  /* v2.3.4799: a switch thrown live reaches every phone already playing
+     (the combined feel's review, F2: the caps were read only at a join, so
+     a phone kept drawing and its light flicks landed as whole arrows) */
+  {
+    const told = [];
+    const realBA = room.broadcastAll;
+    room.broadcastAll = (msg) => { told.push(msg); };
+    const req = (method, path, body) => room.fetch(new Request('https://x' + path, {
+      method, headers: { Authorization: 'Bearer dg-key' }, body: body ? JSON.stringify(body) : undefined,
+    }));
+    await req('POST', '/api/admin/flags', { name: 'bowdraw', value: false });
+    const a = told.filter((x) => x.type === 'draw_gather').pop();
+    told.length = 0;
+    await req('POST', '/api/admin/flags', { name: 'staffgather', value: false });
+    const b = told.filter((x) => x.type === 'draw_gather').pop();
+    told.length = 0;
+    await req('DELETE', '/api/admin/flags?name=bowdraw');
+    await req('DELETE', '/api/admin/flags?name=staffgather');
+    const c = told.filter((x) => x.type === 'draw_gather').pop();
+    room.broadcastAll = realBA;
+    room._liveFlags = {};
+    check('8. setting `bowdraw: false` live tells every phone (draw_gather, bow 0, staff 1)', !!a && a.bow === 0 && a.staff === 1, a);
+    check('8. ...`staffgather: false` too (bow 0, staff 0), and clearing both puts both back', !!b && b.bow === 0 && b.staff === 0 && !!c && c.bow === 1 && c.staff === 1, { b, c });
+    const { PRIVILEGED_EVENTS } = await import('../src/index.js');
+    check('8. draw_gather is a privileged type (a phone cannot forge it)', PRIVILEGED_EVENTS.has('draw_gather'));
+    const wsc = read('../../src/networking/wsClient.js');
+    check('8. the phone\'s direct switch sets both caps from it (bowFeelOn and staffFeelOn read them, and give way at once)',
+      /case 'draw_gather':\s*\n\s*\{\s*\n\s*if \(S\._serverCaps\) \{\s*\n\s*S\._serverCaps\.bowDraw = msg\.bow \? 1 : undefined;\s*\n\s*S\._serverCaps\.staffGather = msg\.staff \? 1 : undefined;/.test(wsc));
+  }
   /* switched off with shots already kept: their claims are today's at once */
   arm(P); T += 10000;
   const mk = monster(P, 120);

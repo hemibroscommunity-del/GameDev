@@ -142,6 +142,17 @@ export const drawGatherMethods = {
     const f = this._liveFlags;
     return !(f && typeof f === 'object' && own(f, 'staffgather') && !f.staffgather);
   },
+  /* v2.3.4799: liveops.js, when `bowdraw` or `staffgather` is set or
+     cleared: every phone told at once (`draw_gather {bow, staff}`, 1 or 0:
+     the two caps as a join would advertise them now).  Before, a phone read
+     the caps only at its join, so a switch thrown live left every connected
+     phone drawing -- and the worker, counting nothing, landed each light
+     flick as today's WHOLE arrow (tap-spam ~29,000 a minute against the
+     honest 18,144; the combined feel's review, F2).  Freeswing's pattern
+     (freeswing.js _freeSwingFlagChanged). */
+  _drawGatherFlagChanged() {
+    this.broadcastAll({ type: 'draw_gather', bow: this._bowDrawOn() ? 1 : 0, staff: this._staffGatherOn() ? 1 : 0 });
+  },
   _dgOn(kind) {
     return kind === 'staff' ? this._staffGatherOn() : kind === 'ranged' ? this._bowDrawOn() : false;
   },

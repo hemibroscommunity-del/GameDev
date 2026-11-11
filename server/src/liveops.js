@@ -363,6 +363,7 @@ export const liveopsMethods = {
       if (name.startsWith('off_') && typeof this._clientOffChanged === 'function') this._clientOffChanged();
       if (name === 'disable_bigbags') this._syncBagCaps();   /* v2.3.4224 */
       if (name === 'freeswing' && typeof this._freeSwingFlagChanged === 'function') this._freeSwingFlagChanged();   /* v2.3.4520: the free-swing trial, every phone told (freeswing.js) */
+      if ((name === 'bowdraw' || name === 'staffgather') && typeof this._drawGatherFlagChanged === 'function') this._drawGatherFlagChanged();   /* v2.3.4799: the bow's draw and the staff's gather, every phone told (drawgather.js) */
       return json({ ok: true, flags });
     }
     if (request.method === 'DELETE' && path === '/flags') {
@@ -378,6 +379,7 @@ export const liveopsMethods = {
         if (name.startsWith('off_') && typeof this._clientOffChanged === 'function') this._clientOffChanged();   /* v2.3.3755 */
         if (name === 'disable_bigbags') this._syncBagCaps();   /* v2.3.4224 */
         if (name === 'freeswing' && typeof this._freeSwingFlagChanged === 'function') this._freeSwingFlagChanged();   /* v2.3.4520 */
+        if ((name === 'bowdraw' || name === 'staffgather') && typeof this._drawGatherFlagChanged === 'function') this._drawGatherFlagChanged();   /* v2.3.4799 */
       }
       return json({ ok: true, flags });
     }

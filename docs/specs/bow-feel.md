@@ -57,7 +57,9 @@ the special.
   went, no sooner than its 371 ms, and no `dr` is sent.
 - **`bowdraw: false`** (the worker's live flag) takes the draw away from every
   phone at once: the cap is no longer advertised and every phone plays the
-  flick bow.
+  flick bow. (v2.3.4799: phones already playing are told by `draw_gather`;
+  before, they read the cap only at a join and kept drawing, and the worker
+  landed each light flick as a whole arrow.)
 - `?manual=1` (the plain swipes, a flicked bow), `?manual=2` (the slingshot
   bow) and `?manual=0` (the old held combat) never meet it.
 

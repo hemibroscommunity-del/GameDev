@@ -777,6 +777,10 @@ export const PRIVILEGED_EVENTS = new Set([
   // _freeSwingFlagChanged) -- forged, it would put a phone's sword back on
   // the untried swipes, or take it off them with no worker behind it
   'free_swing',
+  // v2.3.4799: the bow's draw and the staff's gather switched live
+  // (drawgather.js _drawGatherFlagChanged) -- forged, it would take a phone's
+  // drawn bow or gathered staff away, or give it one with no worker counting
+  'draw_gather',
   // v2.3.1132: two-sided trade session echoes (server-truth renderer).
   'trade2_state', 'trade2_invite',
   // v2.3.4382: a rejoin's live duel, said again (rejoinresend.js) -- forged,
