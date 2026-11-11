@@ -162,7 +162,10 @@ const NOT_A_PLAYER = [
 ];
 {
   const HP_WRITE = /([\w$\]\)]+)(?:\.hp|\[\s*['"]hp['"]\s*\])\s*(?:[-+*/%]?=(?!=)|\+\+|--)|(?:\+\+|--)\s*[\w$.]*\.hp\b/g;
-  const PHASE_WRITE = /(?:\.(?:dying|dead|life)|\[\s*['"](?:dying|dead|life)['"]\s*\])\s*(?:[-+*/%]?=(?!=)|\+\+|--)/g;
+  /* v2.3.4820 (batch merge): the owner is captured here too, so a monster's own
+     `m.life` (monsterlife.js, v2.3.4843: its count of lives) is a monster's
+     field, not a player's phase -- the same `m` / `mn` rule as hp */
+  const PHASE_WRITE = /([\w$\]\)]+)(?:\.(?:dying|dead|life)|\[\s*['"](?:dying|dead|life)['"]\s*\])\s*(?:[-+*/%]?=(?!=)|\+\+|--)/g;
   const found = [];
   const allowedSeen = new Set();
   for (const f of files) {
@@ -170,7 +173,7 @@ const NOT_A_PLAYER = [
     const s = code[f];
     for (const [re, isHp] of [[HP_WRITE, true], [PHASE_WRITE, false]]) {
       for (const m of s.matchAll(re)) {
-        if (isHp && m[1] && MONSTER_NAMES.includes(m[1])) continue;
+        if (m[1] && MONSTER_NAMES.includes(m[1])) continue;
         const lineStart = s.lastIndexOf('\n', m.index) + 1;
         const lineEnd = s.indexOf('\n', m.index);
         const line = s.slice(lineStart, lineEnd < 0 ? s.length : lineEnd);
