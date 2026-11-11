@@ -7,7 +7,8 @@
  * now."  And: "the bar freezing in place a moment so you could see where you
  * decided to swing."  The worker's half (the perfect strike) is
  * server/test/perfect-strike.test.mjs; the rules' half manual-combat.test §14.
- * This plays the page, an upright phone with `?manual=3` in BroTown --
+ * This plays the page, an upright phone with nothing chosen (v2.3.4655: the
+ * trial is the default; `?manual=3` until then) in BroTown --
  *   1. the trial and the worker's caps (freeSwing, perfectStrike); the bar
  *      mounts as the sword, not touchable -- v2.3.4625: the owner's own
  *      picture, standing upright over the MOVEMENT disc between Burst's and
@@ -86,7 +87,7 @@ const PAGE_TOOLS = `
 `;
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  const P = await H.newPlayer(browser, { name: 'Glintbro', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'manual=3' });
+  const P = await H.newPlayer(browser, { name: 'Glintbro', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'manual=default' });   /* v2.3.4655: nothing chosen -- the trial and its bar are everyone's default now */
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   const stop = H.keepAlive(P);
@@ -202,7 +203,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
 
   /* ── 6 ── a phone not on the trial, and one on it with `?timingbar=0` */
-  for (const [label, query] of [['the game\'s own swipes (`?manual=1`)', 'manual=1'], ['the trial with `?timingbar=0`', 'manual=3&timingbar=0']]) {
+  for (const [label, query] of [['the plain swipes (`?manual=1`)', 'manual=1'], ['the trial with `?timingbar=0`', 'manual=3&timingbar=0']]) {
     const Q = await H.newPlayer(browser, { name: 'Plainbro', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query });
     Q.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
     const stopQ = H.keepAlive(Q);

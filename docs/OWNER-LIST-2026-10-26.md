@@ -485,7 +485,10 @@ Made under your second instruction above. Each is one line with its reason; tell
 - **After an attack, the cooking shield waits 3 seconds** (v2.3.4605), then holds for the rest of the cook. Refusing the cook outright would have left an honest player unshielded for the whole cook.
 - **A rare case left as it is:** a reconnect or a server update while a campfire burns can make the server forget that fire, so cooks there are unshielded until you light the next one.
 
-### Your sword trial (to try)
+### Your sword trial (everyone's combat since v2.3.4655)
+
+**On for everyone now** (you, 2026-11-11: *"Yeah everyone"*). Every phone and computer that has not chosen another combat plays the trial and shows the timing bar; nothing to add to the address. `?manual=1` goes back to the plain swipes on one device; the live switch `freeswing` turns it off for everyone at once.
+
 
 You asked: *"What if the attack speed was uncapped (you can swipe as many times as you want to hit) but the DPS is prorated by the time elapsed relative to the full swing cycle?"* It is in the game for the phones that ask (v2.3.4520); nobody else's game changes.
 
