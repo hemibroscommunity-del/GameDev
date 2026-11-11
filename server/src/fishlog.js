@@ -84,6 +84,7 @@
  * Suite: server/test/fish-variants.test.mjs. */
 import { FISH_TIERS } from './data.js';
 import { boardFace, retireRows, BOARDS } from './boards.js';   /* v2.3.4393: a face and a level on each row, and the deleted stand-ins */
+import { bagGive } from './bag.js'; /* v2.3.4810: the bag door */
 
 export const FISHLOG_KEY = (playerId) => 'fishlog:' + playerId;
 
@@ -308,7 +309,7 @@ export const fishlogMethods = {
     const n = Math.max(1, Math.floor(Number(qty) || 1));
     if (!ps.inventory) ps.inventory = {};
     if (!info || info.v) {   /* not one of the game's fish: paid as it was */
-      ps.inventory[plainKey] = (ps.inventory[plainKey] || 0) + n;   // proto-ok: plainKey is gathering.js _harvestInvKey's, from its own table
+      bagGive(ps.inventory, plainKey, n, 'fish_catch_plain');   /* v2.3.4810: the bag door */ // proto-ok: plainKey is gathering.js _harvestInvKey's, from its own table
       return null;
     }
     let out = null;
@@ -322,7 +323,7 @@ export const fishlogMethods = {
         v = rollFishVariant(() => this._fishRand());
       }
       const key = fishVariantKey(plainKey, v);
-      ps.inventory[key] = (ps.inventory[key] || 0) + 1;   // proto-ok: one of RAW_KEYS
+      bagGive(ps.inventory, key, 1, 'fish_catch');   /* v2.3.4810: the bag door */ // proto-ok: one of RAW_KEYS
       this._fishlogCount(pid, key, 1);
       out = { key, sp: info.sp, v };
     }
@@ -482,7 +483,7 @@ export const fishlogMethods = {
       if (!info) return { ok: false, error: 'give: a fish key (fish_<species>[_albino|_large], or cooked_)' };
       const n = Math.max(1, Math.min(FISHLOG.GIVE_MAX, Math.floor(Number(b.n) || 1)));
       if (!ps.inventory) ps.inventory = {};
-      ps.inventory[b.give] = (ps.inventory[b.give] || 0) + n;   // proto-ok: fishKeyInfo matched one of the game's fish
+      bagGive(ps.inventory, b.give, n, 'fish_dev');   /* v2.3.4810: the bag door */ // proto-ok: fishKeyInfo matched one of the game's fish
       if (!info.cooked) {
         const book = this._fishlogOf(pid);
         if (book && !book.locked && book.rec && !this._fishWeighOff()) {

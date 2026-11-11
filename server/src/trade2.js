@@ -44,6 +44,7 @@
 
 import { PETBOOK, petPublic } from './petbook.js';   /* v2.3.3122: the pet lane */
 import { PACE } from './flood.js';   /* v2.3.3293: the weapon lane's pace */
+import { bagTake } from './bag.js'; /* v2.3.4810: the bag door */
 
 export const TRADE2 = {
   INVITE_TTL: 60000,    // open-toward-you offer lifetime
@@ -291,8 +292,7 @@ export const trade2Methods = {
       if (side.gives._gold) this._goldTake(side.ps, side.gives._gold, 'trade_window'); /* v2.3.4670: the gold door */
       for (const [k, v] of Object.entries(side.gives)) {
         if (k === '_gold') continue;
-        side.ps.inventory[k] = this._invCount(side.ps, k) - v;
-        if (side.ps.inventory[k] <= 0) delete side.ps.inventory[k];
+        bagTake(side.ps.inventory, k, v, 'trade_window'); /* v2.3.4810: the bag door */
       }
     }
     /* v2.3.3122: ...and the pets move, all out then all in, in this same

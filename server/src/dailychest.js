@@ -33,6 +33,7 @@
  * A chest already in a bag stays openable only while the cap is up; with the
  * switch off it waits, it is never destroyed. */
 import { RARE_GEM_KEY } from './data.js';
+import { bagGive, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
 
 export const CHEST = {
   KEY: 'daily_chest',
@@ -113,14 +114,13 @@ export const dailyChestMethods = {
     } catch (e) { /* the floor streak is fine */ }
     if (!ps.inventory || (ps.inventory[CHEST.KEY] || 0) <= 0) return;   /* re-check after the await */
 
-    ps.inventory[CHEST.KEY] -= 1;
-    if (ps.inventory[CHEST.KEY] <= 0) delete ps.inventory[CHEST.KEY];
+    bagTake(ps.inventory, CHEST.KEY, 1, 'chest_key'); /* v2.3.4810: the bag door */
 
     const prize = this._chestRoll(streak);
     if (prize.kind === 'coins') {
       this._goldGive(ps, prize.coins, 'daily_chest'); /* v2.3.4670: the gold door */
     } else if (prize.kind === 'fish' || prize.kind === 'gem') {
-      ps.inventory[prize.invKey] = (Math.floor(Number(ps.inventory[prize.invKey]) || 0)) + prize.count;
+      bagGive(ps.inventory, prize.invKey, prize.count, 'chest_prize'); /* v2.3.4810: the bag door */
     } else if (prize.kind === 'armor') {
       /* Minted into the ledger before it leaves, exactly as a picked-up drop
          is (index.js loot pickup, src 'drop'). */

@@ -266,6 +266,7 @@ import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stop
 import { staminaRegenMethods } from './staminaregen.js'; /* v2.3.3536: stamina regen worked out by the worker */
 import { fightLockMethods, FIGHT_GATED } from './fightlock.js'; /* v2.3.4510: one fight-lock table */
 import { goldMethods } from './gold.js'; /* v2.3.4670: the gold door -- every change to a player's gold */
+import { bagGive } from './bag.js'; /* v2.3.4810: the bag door */
 /* v2.3.3130: the Herb Bread's out-of-combat healing multiplier, read once
    from its dish (data.js DISHES) -- 2, "twice as fast". */
 const HERB_REGEN_MULT = (DISHES.meal_herb_bread && Number(DISHES.meal_herb_bread.power) > 1) ? Number(DISHES.meal_herb_bread.power) : 2;
@@ -4692,7 +4693,7 @@ export class GameRoom {
         const key = it && it.key;
         const qty = Math.floor(Number(it && it.qty) || 0);
         if (!key || qty <= 0) continue;
-        ps.inventory[key] = (ps.inventory[key] || 0) + qty;
+        bagGive(ps.inventory, key, qty, 'loot_death_items'); /* v2.3.4810: the bag door */
         itemsForMe.push({ key, qty });
       }
       /* v2.3.2491: stamp what was just handed over, so a death inside the
@@ -4824,11 +4825,11 @@ export class GameRoom {
     if (skullForMe) {
       if (!ps.inventory) ps.inventory = {};
       const invKey = this._invKeyForSkull(skullForMe, pile.skullArch);
-      ps.inventory[invKey] = (ps.inventory[invKey] || 0) + 1;
+      bagGive(ps.inventory, invKey, 1, 'loot_skull'); /* v2.3.4810: the bag door */
     }
     if (shardForMe) {
       if (!ps.inventory) ps.inventory = {};
-      ps.inventory[shardForMe] = (ps.inventory[shardForMe] || 0) + 1;
+      bagGive(ps.inventory, shardForMe, 1, 'loot_shard'); /* v2.3.4810: the bag door */
     }
     /* v2.3.1924: the gem is a plain stackable, credited exactly like the
        shard — server-side, before the credit goes out, so the player_state
@@ -4836,7 +4837,7 @@ export class GameRoom {
        self-credit is simply overwritten (rule 20). */
     if (gemForMe) {
       if (!ps.inventory) ps.inventory = {};
-      ps.inventory[gemForMe] = (ps.inventory[gemForMe] || 0) + 1;
+      bagGive(ps.inventory, gemForMe, 1, 'loot_gem'); /* v2.3.4810: the bag door */
     }
     /* v2.3.2491: the SAME 500 ms client freeze fires for a kill pile's
        trophy, shard or gem, so the same shield applies -- the player did not

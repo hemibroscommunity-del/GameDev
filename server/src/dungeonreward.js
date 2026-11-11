@@ -46,6 +46,7 @@
  */
 import { ZONES, RARE_GEM_KEY } from './data.js';
 import { PROG3 } from './prog3.js';
+import { bagGive } from './bag.js'; /* v2.3.4810: the bag door */
 
 export const BOSS_CHEST = {
   GOLD_PER_LEVEL: 20,
@@ -121,7 +122,7 @@ export const dungeonRewardMethods = {
       const inv = ps.inventory;
       const items = [];
       const add = (key, n) => {
-        inv[key] = Math.max(0, Math.floor(Number(own(inv, key) ? inv[key] : 0) || 0)) + n;
+        bagGive(inv, key, n, 'boss_chest_item'); /* v2.3.4810: the bag door */
         items.push({ key, n });
       };
       /* only a land that HAS a shard (index.js _rollShardForKill's rule) */

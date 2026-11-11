@@ -49,6 +49,7 @@
 
 import { QUALITY_GRADES, BLACKSMITH_TIERS, WOODWORKING_TIERS } from './data.js';
 import { HARDENED_WOOD } from './hardenedwood.js';
+import { bagTake } from './bag.js'; /* v2.3.4810: the bag door */
 
 export const HARDEN = {
   MAX: 5,
@@ -299,8 +300,7 @@ export const hardeningMethods = {
     // event on live ps, roll after the debit, no crash window.
     this._goldTake(ps, cost, 'harden'); /* v2.3.4670: the gold door */
     if (amount > 0) {
-      ps.inventory[material] = haveMats - amount;
-      if (ps.inventory[material] <= 0) delete ps.inventory[material];
+      bagTake(ps.inventory, material, amount, 'harden_mats'); /* v2.3.4810: the bag door */
     }
     const success = Math.random() < HARDEN.ODDS[hardness];
     const temperBefore = (typeof w.temper === 'number' && w.temper >= 0) ? Math.floor(w.temper) : 0;
