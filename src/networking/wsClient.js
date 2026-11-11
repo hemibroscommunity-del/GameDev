@@ -219,6 +219,7 @@ function _rescueDisplacedArmor(S, slot, stashKey, incoming) {
     } catch (e) { /* a popup must never cost the rescue */ }
   } catch (e) { /* never let this break the state echo */ }
 }
+import { resendKeptQuests } from '@/game/questKept.js'; /* v2.3.4629: quest taps dropped while down */
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822 */
 import { applyGatherHits } from '@/game/lifeSkillRewards.js'; /* v2.3.2956: the worker's gathering hits */
 import { applyNmlSkull, applyNmlLoss, applyNmlTake, nmlPeerSkull, applyNmlLock, nmlLockAskShow } from '@/game/noMansLand.js'; /* v2.3.3058: No man's land; v2.3.3316: + what your kill took */
@@ -1807,6 +1808,9 @@ export function setupWebSocket(ctx) {
                  was away is gone (game/rejoinSlots.js).  An old worker: as
                  before, nothing more is cleared. */
               try { rejoinClear(S, S._serverCaps.rejoinResend, setTrade2); } catch (e) { /* the duel's own end still clears it */ }
+              /* v2.3.4629: a quest Accept or Hand in the channel dropped while the socket was
+                 down goes now, once (game/questKept.js, TRAPS §287); the worker judges it */
+              try { resendKeptQuests(S); } catch (e) { /* kept for the next rejoin */ }
               /* v2.3.1154: HP/Endurance grid deploy-order gate.  The
                  pool multipliers only apply while THIS worker claims
                  caps.hpEndGrids — otherwise its player_state echo would

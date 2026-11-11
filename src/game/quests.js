@@ -11,6 +11,7 @@
    click time — identical semantics). Imports are explicit per the
    extracted-module rule. */
 import { QUEST_STATUS, QUEST_AP_REWARD, createDefaultCompStats, BT_AUDIO, getNpcQuest } from '@/data/index.js';
+import { sendQuestMsg } from './questKept.js';   /* v2.3.4629: a quest tap made while the connection is down is kept */
 import { _objectSpread } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -48,7 +49,8 @@ export function acceptQuest(S, questPanel, deps) {
        Mayor did not -- the same button, two code paths, one of them mute.
        Gate on the CHANNEL only, like the panel does. */
     if (_Sqa.channel) {
-      try { _Sqa.channel.send({ type: 'quest_accept', payload: { questId: questPanel.quest.id } }); } catch (e) {}
+      /* v2.3.4629: kept for the rejoin when the channel drops it (game/questKept.js, TRAPS §287) */
+      sendQuestMsg(_Sqa, { type: 'quest_accept', payload: { questId: questPanel.quest.id } });
     }
   }
   setRpgState(_objectSpread({}, R));
@@ -167,16 +169,15 @@ export function turnInQuest(S, questPanel, deps, xpCat, opts) {
     var _sendCat = typeof xpCat === 'string' ? xpCat
       : (questPanel.quest.reward && questPanel.quest.reward.xp > 0 ? undefined : 'sword');
     if (_Sqt.channel) {
-      try {
-        _Sqt.channel.send({ type: 'quest_turn_in', payload: {
-          questId: questPanel.quest.id,
-          xpCat: _sendCat,
-          /* v2.3.3525: which weapon a hand-in's trade takes (wood_2: 'bow' or
-             'staff', QuestPanel's TradeChooser) -- the worker picks the
-             first it finds without one (quests.js _questTradePick) */
-          trade: typeof o.trade === 'string' ? o.trade : undefined,
-        } });
-      } catch (e) {}
+      /* v2.3.4629: kept for the rejoin when the channel drops it (game/questKept.js, TRAPS §287) */
+      sendQuestMsg(_Sqt, { type: 'quest_turn_in', payload: {
+        questId: questPanel.quest.id,
+        xpCat: _sendCat,
+        /* v2.3.3525: which weapon a hand-in's trade takes (wood_2: 'bow' or
+           'staff', QuestPanel's TradeChooser) -- the worker picks the
+           first it finds without one (quests.js _questTradePick) */
+        trade: typeof o.trade === 'string' ? o.trade : undefined,
+      } });
     }
   }
   R._quests[questPanel.quest.id] = QUEST_STATUS.turnedIn;
