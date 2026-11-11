@@ -187,8 +187,9 @@ so nothing waits on them any more.
   be skipped for now"). The owner's art sheet has the staff, unused.
 
 **Not started, no decision needed:**
-- nine places still change zone by hand, five on the retired old map
-  (TRAPS §304);
+- ~~nine places still change zone by hand, five on the retired old map
+  (TRAPS §304)~~: all nine go through `changeZone` (v2.3.4651), the only
+  writer of the place now (`zone-leftovers.test` §6);
 - the bigger "one reset for a whole life" of a monster (`m.life`);
 - a tab already in the world that reconnects mid-fight gets no `body_place`:
   its next step decides (beside the body it carries on, far away it waits)

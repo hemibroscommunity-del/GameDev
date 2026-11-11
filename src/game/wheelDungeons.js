@@ -33,7 +33,7 @@ import { TILE, ZONES, BT_AUDIO, updateZoneDimensions, generateZoneMap } from '@/
 import { wheelMapInfo } from './wheelTrial.js';
 import { setWheelArrival } from './worldTrial.js';
 import { wantWheelSpawn } from './wheelHome.js';
-import { releaseLeftZoneArt, clearZoneLocalFx, veilWheelTrip } from './zoneTransitions.js';
+import { releaseLeftZoneArt, clearZoneLocalFx, veilWheelTrip, changeZone } from './zoneTransitions.js';   /* v2.3.4651: + the one door */
 import { WHEEL_DUNGEON_HOMES, DOOR_R, WHEEL_DOOR_LOOK, WHEEL_DUNGEON_FLOOR, WHEEL_ARENA, WHEEL_DUNGEON_PARTY, WHEEL_DUNGEON_REC, dungeonLevelsLine, dungeonDoorLine, dungeonBoardLine } from '@/data/wheelDungeons.js';   /* v2.3.3573: + the party dungeons and their words; v2.3.3608: + the level each is for */
 import { freeDungeonArt } from './dungeonArt.js';   /* v2.3.3566 */
 
@@ -263,7 +263,7 @@ export function leaveWheelDungeon(S) {
   S._serverMonsters = false;
   S._dungeonBack = null;
   setWheelArrival(back);
-  S.currentZone = 'town';
+  changeZone(S, 'town');   /* v2.3.4651: the one door (TRAPS §304) */
   S.npcs = null;   /* town's townsfolk come back with it (respawn.js, v2.3.2990) */
   /* the dungeon's monsters' looks go with it: the release (400 ms on) reads
      them off its synthetic ZONES entry's `homes` (variantsForZone), so the
