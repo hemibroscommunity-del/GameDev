@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e3c19f4cf30efdd0813181c727f201f0703e5741",
+  "tree": "a64276b5ba6d8fc9ffa836509914e9caa985deae",
+  "committedAt": "2026-11-11T13:09:57-08:00",
+  "subject": "Merge pull request #1566 from hemibroscommunity-del/claude/lane-session-door",
+  "files": 7210,
+  "bytes": 940148447,
+  "listingSha256": "709bae9412d180e45778e7db3e0af1e14200958033bd192196d2a6028046a8d7",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

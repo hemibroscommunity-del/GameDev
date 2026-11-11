@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c6e988e602107a6e611701427d2718765d792af4",
+  "tree": "f74122ae63a538fa7f5318b04926025a71843486",
+  "committedAt": "2026-11-11T13:09:54-08:00",
+  "subject": "Merge pull request #1568 from hemibroscommunity-del/claude/lane-bag-door",
+  "files": 7207,
+  "bytes": 940123339,
+  "listingSha256": "8ab9a1e15dbfac8163c94e929812628c6b771e87b5f9c14fb1e94dc914d7cac7",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
