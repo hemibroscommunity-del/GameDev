@@ -243,9 +243,18 @@ of its own.)
 > elapsed relative to the full swing cycle? Thinking that might be better."*
 > Then: *"Yes pass it on. I'd like to try."*
 
-**A trial on one device, for the sword only.** A bow, a staff, the opening
-lunge and the armed special are exactly as above. A phone or computer that
-has not asked for it meets nothing new.
+**v2.3.4655: EVERYONE'S DEFAULT.** The owner, 2026-11-11, asked whether the
+timing bar should be for everyone and not only `?manual=3`: *"Yeah
+everyone. It's still a demo btw only me is testing all this."* A device with
+nothing chosen plays the trial now (manualMode's default is 3);
+`?manual=1` is the plain swipes, remembered; `?manual=3` comes back to the
+default and forgets; the worker's `freeswing: false` takes it from every
+phone at once. Below, "on the trial" means every phone that has not chosen
+another combat.
+
+**A trial on one device, for the sword only** (until v2.3.4655). A bow, a
+staff, the opening lunge and the armed special are exactly as above. A phone
+or computer that has not asked for it meets nothing new.
 
 ### How to try it
 

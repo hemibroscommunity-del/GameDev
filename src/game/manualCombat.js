@@ -190,11 +190,23 @@ export var MANUAL = {
   PITCH_SAME_MS: 50,
 };
 
-/** Which combat this device plays: 1 swipes (the game's own, and the answer
- *  when nothing says otherwise), 2 swipes with the SLINGSHOT BOW, 0 the old
- *  held attack and tap lock.  `?manual=0` / `?manual=2` choose one and are
- *  remembered; `?manual=1` comes back to the game's own and forgets.
- *  `search` and `store` are for tests (location.search, localStorage). */
+/** Which combat this device plays: 3 the free-swing trial with its timing
+ *  bar (the game's own since v2.3.4655, and the answer when nothing says
+ *  otherwise), 1 the plain swipes, 2 swipes with the SLINGSHOT BOW, 0 the old
+ *  held attack and tap lock.  `?manual=0` / `?manual=1` / `?manual=2` choose
+ *  one and are remembered; `?manual=3` comes back to the game's own and
+ *  forgets.  `search` and `store` are for tests (location.search,
+ *  localStorage).
+ *
+ *  v2.3.4655: THE TRIAL IS EVERYONE'S.  The owner, 2026-11-11, asked whether
+ *  the timing bar should be for everyone, not only `?manual=3`: "Yeah
+ *  everyone."  So a device with nothing chosen plays the free-swing trial:
+ *  every swipe swings at once for its share, the perfect strike, the timing
+ *  bar.  `?manual=1` is the plain swipes (remembered now, since 1 is no
+ *  longer the default); the worker's `freeswing: false` takes the trial back
+ *  from every phone at once (freeswing.js), and they play the plain swipes.
+ *  A device that remembered `3` keeps it; one that remembered nothing (the
+ *  old default, or a `?manual=1` that forgot) moves to the trial. */
 export function manualMode(search, store) {
   var q = search;
   if (q == null) { try { q = typeof location !== 'undefined' ? location.search : ''; } catch (e) { q = ''; } }
@@ -202,12 +214,13 @@ export function manualMode(search, store) {
   if (ls === undefined) { try { ls = typeof localStorage !== 'undefined' ? localStorage : null; } catch (e) { ls = null; } }
   var m = /(?:^|[?&])manual=([0123])(?:&|$)/.exec(String(q || ''));   /* v2.3.4520: + 3, the free-swing trial */
   if (m) {
-    try { if (ls) { if (m[1] === '1') ls.removeItem(MANUAL.KEY); else ls.setItem(MANUAL.KEY, m[1]); } } catch (e) { /* a private window: the address still decides this visit */ }
+    try { if (ls) { if (m[1] === '3') ls.removeItem(MANUAL.KEY); else ls.setItem(MANUAL.KEY, m[1]); } } catch (e) { /* a private window: the address still decides this visit */ }
     return +m[1];
   }
-  try { var v = ls ? ls.getItem(MANUAL.KEY) : null; return v === '0' ? 0 : v === '2' ? 2 : v === '3' ? 3 : 1; } catch (e) { return 1; }
+  /* v2.3.4655: nothing remembered is the trial (3), the game's own now */
+  try { var v = ls ? ls.getItem(MANUAL.KEY) : null; return v === '0' ? 0 : v === '1' ? 1 : v === '2' ? 2 : 3; } catch (e) { return 3; }
 }
-/** Is manual combat wanted on this device (either kind)?  Yes, unless it chose the old one. */
+/** Is manual combat wanted on this device (any kind)?  Yes, unless it chose the old one. */
 export function manualCombatWanted(search, store) { return manualMode(search, store) > 0; }
 
 var _mode = null;

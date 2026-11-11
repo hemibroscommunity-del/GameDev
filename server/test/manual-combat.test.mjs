@@ -57,16 +57,17 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
 {
   const ls = store();
   /* v2.3.4396 (the owner: "Yes do the new combat"): it is the game's combat -- on unless a device says otherwise */
-  check('1a ON by default: a new player, with nothing in the address and nothing remembered', manualCombatWanted('', ls) === true && manualMode('?foo=1', ls) === 1 && ls.getItem(MANUAL.KEY) === null);
+  /* v2.3.4655 (the owner: "Yeah everyone"): the default is the free-swing trial, 3 */
+  check('1a ON by default: a new player, with nothing in the address and nothing remembered, plays the free-swing trial', manualCombatWanted('', ls) === true && manualMode('?foo=1', ls) === 3 && ls.getItem(MANUAL.KEY) === null);
   check('1b `?manual=0` is the old combat for this device, and is remembered', manualCombatWanted('?x=2&manual=0', ls) === false && ls.getItem(MANUAL.KEY) === '0' && manualCombatWanted('', ls) === false && manualMode('', ls) === 0);
-  check('1c `?manual=1` comes back to the game\'s own, and nothing is left remembered', manualCombatWanted('?manual=1', ls) === true && ls.getItem(MANUAL.KEY) === null && manualCombatWanted('', ls) === true);
-  check('1d a look-alike is not the switch (it chooses nothing: the default stands)', manualMode('?notmanual=0', store()) === 1 && manualMode('?manual=02', store()) === 1 && manualMode('?manual=default', store()) === 1);
+  check('1c `?manual=3` comes back to the game\'s own, and nothing is left remembered', manualMode('?manual=3', ls) === 3 && ls.getItem(MANUAL.KEY) === null && manualMode('', ls) === 3);
+  check('1d a look-alike is not the switch (it chooses nothing: the default stands)', manualMode('?notmanual=0', store()) === 3 && manualMode('?manual=02', store()) === 3 && manualMode('?manual=default', store()) === 3);
   check('1e no storage (a private window): the address still decides, and with nothing in it the default stands', manualCombatWanted('?manual=0', null) === false && manualCombatWanted('', null) === true);
   setManualCombat(true); check('1f the page\'s own answer can be set for a test', manualOn() === true && manualSling() === false); setManualCombat(false);
   /* the slingshot bow's variation: `?manual=2` */
   const l2 = store();
   check('1g `?manual=2` is manual combat with the slingshot bow, and is remembered as that', manualMode('?manual=2', l2) === 2 && manualCombatWanted('', l2) === true && l2.getItem(MANUAL.KEY) === '2' && manualMode('', l2) === 2);
-  check('1h `?manual=1` after it is the plain swipes again; `?manual=0` after that is the old combat', manualMode('?manual=1', l2) === 1 && manualMode('', l2) === 1 && manualMode('?manual=0', l2) === 0 && manualMode('', l2) === 0 && manualMode('?manual=4', store()) === 1);   /* v2.3.4520: 3 is the free-swing trial (13) */
+  check('1h `?manual=1` after it is the plain swipes, remembered (v2.3.4655); `?manual=0` after that is the old combat', manualMode('?manual=1', l2) === 1 && l2.getItem(MANUAL.KEY) === '1' && manualMode('', l2) === 1 && manualMode('?manual=0', l2) === 0 && manualMode('', l2) === 0 && manualMode('?manual=4', store()) === 3);   /* v2.3.4520: 3 is the free-swing trial (13) */
   const B = bow(), St = { rpg: { activeSlot: 'staff' } }, Sw = sword();
   setManualCombat(2);
   check('1i the slingshot is the BOW\'s only: a staff stays a flick, a sword a stroke', manualOn() && manualSling() && mcBowSling(B) && !mcBowSling(St) && !mcBowSling(Sw));
@@ -240,8 +241,9 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
 // ── 13. v2.3.4520: the free-swing trial ──
 {
   const ls = store();
-  check('13a `?manual=3` is the free-swing trial, remembered; `?manual=1` comes back and forgets', manualMode('?manual=3', ls) === 3 && ls.getItem(MANUAL.KEY) === '3' && manualMode('', ls) === 3 && manualCombatWanted('', ls) === true
-    && manualMode('?manual=1', ls) === 1 && ls.getItem(MANUAL.KEY) === null);
+  /* v2.3.4655: the trial is the default; `?manual=1` leaves it for the plain swipes and is remembered, `?manual=3` comes back and forgets */
+  check('13a the free-swing trial is the default; `?manual=1` is the plain swipes, remembered; `?manual=3` comes back and forgets', manualMode('', ls) === 3 && manualMode('?manual=1', ls) === 1 && ls.getItem(MANUAL.KEY) === '1' && manualMode('', ls) === 1
+    && manualMode('?manual=3', ls) === 3 && ls.getItem(MANUAL.KEY) === null && manualMode('', ls) === 3 && manualCombatWanted('', ls) === true);
   const lb = store();
   /* v2.3.4615: the bonus (the perfect strike's) is ON by default on the trial now */
   check('13b v2.3.4615: the bonus is asked by default; `?swingbonus=0` asks without it and is remembered; `?swingbonus=1` comes back',
@@ -347,8 +349,10 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
     /r\.setAttribute\('data-k', b\.k\);/.test(tb2) && /if \(at !== b\.at\) \{/.test(tb2) && !/setInterval|setTimeout|requestAnimationFrame|getBoundingClientRect|offsetWidth/.test(tb2)
     && /\.bt-tbar\[data-k="a"\] \.bt-tbar-fill\{animation:btTbWinA var\(--cyc\)/.test(css) && /\.bt-tbar\[data-k="b"\] \.bt-tbar-fill\{animation:btTbWinB var\(--cyc\)/.test(css)
     && /timingBarFrame\(S, Date\.now\(\)\);/.test(bro) && /React\.createElement\(TimingBar, \{ stateRef: stateRef, isLandscape: isLandscape \}\)/.test(bro));
-  check('14o the freeze is one width written once (--w) and a fade; the frozen copy wears the glint\'s colour when struck in it',
-    /r\.style\.setProperty\('--w', /.test(tb2) && /\.bt-tbar\[data-g="1"\] \.bt-tbar-froze\{background-color:#FFF4D6\}/.test(css) && /@keyframes btTbFzA\{from\{opacity:\.95\}to\{opacity:0\}\}/.test(css));
+  /* v2.3.4656: the frozen copy is the owner's gold weapon itself, shining brighter when struck in the glint (never a one-colour cut-out) */
+  check('14o the freeze is one width written once (--w) and a fade; the frozen copy is the owner\'s gold weapon, brighter when struck in the glint',
+    /r\.style\.setProperty\('--w', /.test(tb2) && /\.bt-tbar\[data-g="1"\] \.bt-tbar-froze\{filter:brightness\(/.test(css)
+    && /<Art cls="bt-tbar-froze" rect=\{rect\} s=\{s\} full \/>/.test(tb2) && /<Art cls="bt-tbar-shine" rect=\{rect\} s=\{s\} full \/>/.test(tb2) && /@keyframes btTbFzA\{from\{opacity:\.95\}to\{opacity:0\}\}/.test(css));
   check('14p an arrow on the trial names its shot; a perfect strike plays the drop roll\'s glint quietly (an existing cue); the hit voice takes a pitch',
     /sw: \(!isStaffProj && !a\.isSpecial && mcPerfectOn\(S\) && typeof a\._shotTs === 'number'\) \? a\._shotTs : undefined/.test(pj)
     && /if \(payload\.pf === 1\) cue\('rollWin', 0\.45\);/.test(ge) && /\* \(\(opts && opts\.pitch > 0\) \? opts\.pitch : 1\);/.test(gd)
