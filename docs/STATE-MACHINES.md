@@ -198,9 +198,11 @@ so nothing waits on them any more.
   duel's away clock, the trade's cancel, party "away", PvP consent, the
   chat-mute list, the daily-quest flush, `player_leave`); mostly on purpose,
   so a reconnect does not cancel a trade (TRAPS §162, #1502);
-- the other six `*Preload.js` warm-ups push the same image URLs again on a
+- ~~the other six `*Preload.js` warm-ups push the same image URLs again on a
   rejoin (likely shared by the browser; only the slime was a proven cost)
-  (#1505);
+  (#1505)~~: five did (the chest already warmed once); they share
+  `warmOnce.js` now, one held picture a URL for the page, a failed one tried
+  again (v2.3.4652, `warm-once.test`; `?warmonce=0` the old way);
 - the small-bugs bundles' other items (VA, VB); the feedback board's typed
   id (VA);
 - VC-3, the owner-only Ground and Object Studios (`public/tools/`, low
