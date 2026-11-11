@@ -751,8 +751,8 @@ design notes live in each item's spec.
 
 - Sessions start with the auto-brief: a SessionStart hook runs
   `tools/dev/session-brief.mjs` (version high-water, next free
-  `v2.3.N` tag, in-flight `claude/*` branches). Claim ONE tag above
-  high-water and check the branch list for your topic before building
+  `v2.3.N` tag, in-flight `claude/*` branches). Claim ONE tag unused on
+  main (v2.3.4790: unused, not higher) and check the branch list for your topic before building
   — on 2026-07-07 five parallel sessions claimed one tag and two
   built the same feature.
 - Run `node tools/dev/precheck.mjs` before EVERY push. The sandbox

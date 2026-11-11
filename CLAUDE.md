@@ -86,9 +86,10 @@ spec. Add a line here only for a new RULE every session must follow.
 
 ## 3. How to work here
 
-- A SessionStart hook prints `tools/dev/session-brief.mjs`: the version
-  high-water, the next free tag, and the `claude/*` branches in flight. Claim ONE
-  `v2.3.N` tag above the high-water, tag every change with it, and check the
+- A SessionStart hook prints `tools/dev/session-brief.mjs`: a free tag and the
+  `claude/*` branches in flight. Claim ONE `v2.3.N` tag UNUSED on main (it need
+  not be above main's highest: never renumber because someone merged first;
+  owner, 2026-11-11, v2.3.4790), tag every change with it, and check the
   branches for your topic first. ONE system per PR.
 - Run **`node tools/dev/precheck.mjs`** before EVERY push (syntax, lint, the
   server suites, duplicate cases, tag collisions, the storage-key registry,

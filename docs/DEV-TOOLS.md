@@ -21,8 +21,10 @@ not a necessity.)
 Session-start briefing, auto-run by the SessionStart hook in
 `.claude/settings.json`. Prints:
 
-- version high-water on `origin/main` (max `v2.3.N` across
-  package.json + recent log subjects) and the SUGGESTED next free tag;
+- the highest `v2.3.N` on `origin/main` and a SUGGESTED free tag, one above
+  every tag used on main (package.json, every log subject, the tree) and on
+  the in-flight branches' own commits (v2.3.4790: a tag only has to be
+  unused, `tools/dev/tagRule.mjs`);
 - remote `claude/*` branches pushed in the last 72h with head-commit
   subjects — the in-flight-work collision surface;
 - the 5-line session protocol.
@@ -41,7 +43,7 @@ block). Checks:
 |---|---|---|
 | 1 | syntax | `node --check` per changed .js/.mjs (via temp .mjs); string/comment-aware brace/paren/bracket balance for .jsx |
 | 2 | dup-case | duplicate `case` labels in one switch (v2.3.1176 arena_bet shadowing class) |
-| 3 | version-tag | the tag CLAIMED by the diff (max added `v2.3.N`) ≤ base high-water; older added tags are treated as rule-25 back-references, not gated. Also WARNs with 48h remote-branch activity |
+| 3 | version-tag | v2.3.4790 (owner, 2026-11-11): a tag only has to be NEW. The added tags used nowhere on the base (its tree, any commit subject, ranges expanded) are the claim; the rest are rule-25 back-references. FAILs when the diff adds tags and claims none (taken on main first: renumber; or only back-references: claim one). WARNs when a branch from the last 48h already carries a claimed number, and lists those branches. Rule and self-test: `tools/dev/tagRule.mjs` |
 | 4 | dmg-popup | raw `S.dmgNumbers.push(` in changed client files — use `pushDmgPopup` (v2.3.1188) |
 | 5 | storage-keys | literal `storage.put/get('<prefix>:` in changed server/src files not in the ARCHITECTURE-HANDOFF rule-2 registry (GameRoom only; marketplace/arena/leaderboard/feedback DOs exempt) |
 | 6 | proto-safety | WARN: `= {}` / `: {}` indexed nearby by an id-shaped bracket key — use `Object.create(null)` or `Map` (duel.away v2.3.1175, party meta v2.3.1185, amulet tiers v2.3.1192). A site triaged SAFE (server-generated key, join-gate-protected player id, or not-a-map) carries an inline `// proto-ok:<reason>` marker and is skipped (v2.3.1214) |
