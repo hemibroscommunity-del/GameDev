@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c828d1c1fb618d80cdebbb8ac53925ddef59fdb4",
+  "tree": "37565c21ddff2e7af39a2a8c25fa1566d836ea6c",
+  "committedAt": "2026-11-11T10:33:08-08:00",
+  "subject": "Merge pull request #1546 from hemibroscommunity-del/claude/gifted-euler-c20tgo-controls-docs",
+  "files": 8013,
+  "bytes": 967147463,
+  "listingSha256": "d43465e29e30345a0a55e779f2b68e4defd69638ba746a7c6dcd6a903af85215",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

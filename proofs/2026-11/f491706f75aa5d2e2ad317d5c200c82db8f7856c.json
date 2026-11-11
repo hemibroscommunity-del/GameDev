@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "f491706f75aa5d2e2ad317d5c200c82db8f7856c",
+  "tree": "53c4ca2b846c78c125a2fdaa01b17795ba6ea541",
+  "committedAt": "2026-11-11T10:33:05-08:00",
+  "subject": "Merge pull request #1544 from hemibroscommunity-del/claude/gifted-euler-c20tgo-tag-rule",
+  "files": 8013,
+  "bytes": 967131235,
+  "listingSha256": "e135095be65860c51f22631cd350b13a425567e420291bb3c84bb6749b912ebf",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

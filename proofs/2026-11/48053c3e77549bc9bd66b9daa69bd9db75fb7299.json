@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "48053c3e77549bc9bd66b9daa69bd9db75fb7299",
+  "tree": "0d3f04c296cf509385e1136751f4f24a9f782eb2",
+  "committedAt": "2026-11-11T10:33:12-08:00",
+  "subject": "Merge pull request #1556 from hemibroscommunity-del/claude/gifted-euler-c20tgo-tests-catch-up",
+  "files": 8013,
+  "bytes": 967150835,
+  "listingSha256": "d8af718174e7e9e966858931f000cfddc5b127cbe9b91faa52c07721004fa13e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
