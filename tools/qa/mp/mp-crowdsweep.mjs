@@ -307,6 +307,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     here = await H.readState(A, (S) => ({ x: S.player.x, y: S.player.y }));
     if (WANT.includes('e-species')) groups.e = await joinGroup(groups.e);
     await play('e-species', 'e: eight species-and-skin pairs (more than the 6 kept built)', groups.e);
+    /* v2.3.4871: how many species builds the page made (a churn makes one every frame; eight pairs want eight) */
+    report.species = await A.page.evaluate(() => { const s = window.__btSpeciesArt && window.__btSpeciesArt(); return s ? { built: s.built, kept: s.builds.length } : null; }).catch(() => null);
+    console.log('  e, the species builds:', JSON.stringify(report.species));
 
     const { ranked, over } = judgeHeld(report.stations);
     report.ranked = ranked;

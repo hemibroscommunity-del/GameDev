@@ -40,6 +40,7 @@ const _art = Object.create(null);      /* id -> Promise<art|null>; rule 4: keyed
 const _artReady = Object.create(null); /* id -> art (once loaded) */
 const _builds = Object.create(null);   /* id|target -> build */
 const _canvases = Object.create(null); /* id|target -> { dir: canvas } for the portrait */
+const _speciesStats = { built: 0 };   /* v2.3.4871: QA (window.__btSpeciesArt) */
 
 function _url(id, path, round) { return `/sprites/traits/species/${id}/${path}?v=${SPECIES_ART_VER}${round ? `&g=${round}` : ''}`; }   /* v2.3.3870: + the later round's bust */
 
@@ -174,11 +175,36 @@ export function speciesCanvases(id, skinId) {
   });
 }
 
+/* ═══ v2.3.4871: THE CAP IS NEVER UNDER THE LOOKS ON SCREEN ═══
+   It was a plain LRU of 6: with 7 or more species-and-skin pairs on screen
+   (seven monkeys and aliens of different colours near you) every frame let
+   go of the oldest build and made it again, its fur recoloured inside the
+   frame -- 566 pictures of 256 x 256 (187 MB) in a minute on the QA box,
+   then 250 to 287 MB, each freed only 30 s later: the black screen on an
+   iPhone (docs/specs/held-sweep.md, the crowd tour's e-species;
+   STATE-MACHINES #1518 finding e).  Now a build is let go of only when
+   nothing has asked for it for _BUILD_IDLE_MS (each ask stamps it), so the
+   builds kept are at least the pairs drawn, and never made twice while
+   drawn; past the cap the idle ones go, oldest first, swept on the next
+   build or every _SWEEP_MS while over. */
 const _BUILD_CAP = 6;
+const _BUILD_IDLE_MS = 3000;
+const _SWEEP_MS = 2000;
+let _lastSweep = 0;
+const _now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 function _capBuilds() {
   const keys = Object.keys(_builds);
   if (keys.length <= _BUILD_CAP) return;
-  _releaseBuild(keys[0]);
+  const now = _now();
+  _lastSweep = now;
+  let over = keys.length - _BUILD_CAP;
+  for (const k of keys) {   /* oldest ask first (an ask re-inserts its key) */
+    if (over <= 0) break;
+    const b = _builds[k];
+    if (b && now - (b.usedAt || 0) < _BUILD_IDLE_MS) continue;   /* drawn lately: kept */
+    _releaseBuild(k);
+    over--;
+  }
 }
 /* v2.3.3870: every build of a species, let go of (its pictures came in a later
    round: the next ask makes it again with them), and its portrait canvases */
@@ -190,14 +216,17 @@ function _releaseBuild(k) {
   const b = _builds[k];
   delete _builds[k];
   if (!b) return;
-  /* deferred, so a texture still being drawn this frame is not pulled out */
+  /* deferred, so a texture still being drawn this frame is not pulled out.
+     v2.3.4871: 30 s -> 2 s: what is let go of now has not been asked for in
+     _BUILD_IDLE_MS (or its species' pictures were replaced), so nothing
+     draws it; 30 s of a churn's let-gos was the 187 MB */
   setTimeout(() => {
     try {
       /* v2.3.3074: the whole release, Cache entry and canvas too (TRAPS §139) */
       for (const d in b.tex) if (b.tex[d] && b.tex[d].source) releaseCanvasSource(b.tex[d].source);
       for (const k2 in b.stripTex) if (b.stripTex[k2] && b.stripTex[k2].source) releaseCanvasSource(b.stripTex[k2].source);
     } catch (e) { /* ignore */ }
-  }, 30000);
+  }, 2000);
 }
 
 /* v2.3.3689: a facing whose picture never came (its load given up) has no
@@ -225,8 +254,14 @@ export function getSpeciesBuild(id, skinId) {
   const target = skinTarget(skinId);
   const key = id + '|' + _targetKey(target);
   let b = _builds[key];
-  if (b) { delete _builds[key]; _builds[key] = b; return b; }   /* LRU touch */
-  b = { meta: art.meta, tex: {}, stripTex: {}, frames: {} };
+  if (b) {
+    b.usedAt = _now();   /* v2.3.4871: drawn now -- never let go of while it is */
+    delete _builds[key]; _builds[key] = b;   /* LRU touch */
+    if (b.usedAt - _lastSweep > _SWEEP_MS && Object.keys(_builds).length > _BUILD_CAP) _capBuilds();   /* over the cap: the idle ones go */
+    return b;
+  }
+  _speciesStats.built++;
+  b = { meta: art.meta, tex: {}, stripTex: {}, frames: {}, usedAt: _now() };
   for (const d of Object.keys(art.base)) b.tex[d] = _texFrom(_compose(art.base[d], art.baseFur[d], target));
   for (const k of Object.keys(art.strips)) {
     /* v2.3.2861: the hit strips' fur was painted in the hit sheets' orange, and
@@ -256,6 +291,7 @@ if (typeof window !== 'undefined') {
   window.__btSpeciesArt = () => ({
     loaded: Object.keys(_artReady),
     builds: Object.keys(_builds),
+    built: _speciesStats.built,   /* v2.3.4871: builds made since load (a churn makes them every frame) */
     strips: Object.fromEntries(Object.entries(_artReady).map(([id, a]) => [id, Object.keys(a.strips).length])),
   });
 }
