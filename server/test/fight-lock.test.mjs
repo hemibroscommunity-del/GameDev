@@ -24,7 +24,14 @@
  *      shield report that would clear the arm, the arena's HTTP join;
  *   6. the switches: `fightlocktable`, `fightlockdoor`, `fightlockequip`
  *      written false give back today's behaviour row by row, and
- *      `fightlock: false` still opens everything. */
+ *      `fightlock: false` still opens everything.
+ *   9. (v2.3.4626) armour: a spare put on (stats_update) and armour taken off
+ *      (unequip_request) are refused in the fight, the worn pieces sent back;
+ *      out of a fight and with `fightlockarmor: false` they work as before.
+ *   8. (v2.3.4627) the character restart, on both roads (Settings over the
+ *      socket, the picker over HTTP): refused in the fight with its own
+ *      `character_reset_refused` / `reason: 'fight'`, the character whole;
+ *      `fightlockreset: false` lets it through; out of a fight it works. */
 import { readFileSync } from 'node:fs';
 import { GameRoom } from '../src/index.js';
 import { NML } from '../src/nomansland.js';
@@ -286,7 +293,7 @@ const endRuns = () => {
   check('every row the router refuses has a case in this suite', gated.length > 0 && untested.length === 0, untested);
   const sws = new Set(Object.values(L).map((r) => r.sw));
   check('the switches: the old `fightlock` and the three new lower-case ones', [...sws].every((s) => /^[a-z0-9_]{1,32}$/.test(s))
-    && ['fightlock', 'fightlocktable', 'fightlockdoor', 'fightlockequip'].every((s) => sws.has(s)), [...sws]);
+    && ['fightlock', 'fightlocktable', 'fightlockdoor', 'fightlockequip', 'fightlockreset', 'fightlockarmor'].every((s) => sws.has(s)), [...sws]);
 }
 
 // ── 2-3. every row in a fight, and out of it ────────────────────────────────
@@ -491,6 +498,90 @@ for (const name of Object.keys(CASES)) {
   await send(ws.v, 'dungeon_start', { entrance: 'hollows' });
   check('`fightlock: false` still opens everything, as it always did', V.inventory.bar_copper === 25 && msgs(ws.v, 'dungeon_started').length === 1);
   endRuns();
+  room._liveFlags = keepFlags;
+}
+
+// ── 9. v2.3.4626: armour put on or taken off ───────────────────────────────
+/* STATE-MACHINES.md, "what is left" after #1523: "armour, legs and the amulet
+   put on mid-fight are not locked".  The loss takes the spares and leaves what
+   you wear: a spare put on mid-fight was saved, and what it replaced went to the
+   phone's bag, out of the worker's view; a piece taken off went there too. */
+{
+  const PLATE_A = { name: 'Copper Chestplate', gearBase: 'copper', tierMult: 1.12, tier: 'common', slot: 'armor' };
+  const PLATE_B = { name: 'Copper Chestplate of the Bear', gearBase: 'copper', tierMult: 1.2, tier: 'common', slot: 'armor' };
+  const dress = () => { V.armor = { ...PLATE_A }; V.armorStash = [{ ...PLATE_B }]; };
+  const swap = async () => { ws.v.sent.length = 0; await send(ws.v, 'stats_update', { armor: { ...PLATE_B } }); };
+  room._liveFlags = { ...(keepFlags || {}), nmlsteps: false };
+  base(V); base(K);
+  dress();
+  await fightOn();
+  check('9. setup: the victim is in a fight with a player in No man\'s land', lockedNow() && room._nmlLevelOf(V) >= 1);
+  await swap();
+  const back = ws.v.sent.filter((m) => m.type === 'player_state' && m.payload && 'armor' in m.payload);
+  check('9a. a spare chest piece put on mid-fight is refused: the worker keeps the one worn, and tells the phone what it is',
+    !!V.armor && V.armor.name === PLATE_A.name && back.length >= 1 && back[back.length - 1].payload.armor.name === PLATE_A.name,
+    { worn: V.armor && V.armor.name, sent: ws.v.sent.map((m) => m.type) });
+  ws.v.sent.length = 0;
+  await send(ws.v, 'unequip_request', { slot: 'armor' });
+  check('9b. the chest piece taken off mid-fight is refused too, the slot sent back', !!V.armor && V.armor.name === PLATE_A.name
+    && ws.v.sent.some((m) => m.type === 'player_state' && m.payload && m.payload.armor && m.payload.armor.name === PLATE_A.name));
+  ws.v.sent.length = 0;
+  await send(ws.v, 'unequip_request', { slot: 'weapon' });
+  check('9c. ...but a weapon taken off still goes into the stash, which the loss takes anyway', !V.weapon && Array.isArray(V.weaponStash) && V.weaponStash.length >= 1);
+  /* the switch: as before this version */
+  room._liveFlags = { ...(keepFlags || {}), nmlsteps: false, fightlockarmor: false };
+  await hit();
+  await swap();
+  check('9d. `fightlockarmor: false`: the swap goes through mid-fight, as before', !!V.armor && V.armor.name === PLATE_B.name, V.armor && V.armor.name);
+  /* out of the fight it works */
+  room._liveFlags = { ...(keepFlags || {}), nmlsteps: false };
+  dress();
+  fightOff();
+  check('9e. setup: ten seconds later the lock is off', !lockedNow());
+  await swap();
+  check('9f. out of a fight the swap works as before', !!V.armor && V.armor.name === PLATE_B.name, V.armor && V.armor.name);
+  await send(ws.v, 'unequip_request', { slot: 'armor' });
+  check('9g. ...and so does taking it off', !V.armor);
+  room._liveFlags = keepFlags;
+}
+
+// ── 8. v2.3.4627: the character restart, both roads ─────────────────────────
+/* STATE-MACHINES.md, "what is left" after #1523: "`character_reset` mid-fight
+   (and its web twin, `_accountReset`) wipes the loser's own character: spite,
+   the killer gets nothing."  The wipe drops the state before the socket closes,
+   so neither the lingering body nor the loss finds anything to take. */
+{
+  room._liveFlags = { ...(keepFlags || {}), nmlsteps: false };
+  base(V); base(K);
+  await fightOn();
+  check('8. setup: the victim is in a fight with a player in No man\'s land', lockedNow() && room._nmlLevelOf(V) >= 1);
+  const before = goods(V);
+  ws.v.sent.length = 0;
+  await send(ws.v, 'character_reset', { confirm: true });
+  const rr = msgs(ws.v, 'character_reset_refused');
+  check('8a. Settings\' restart mid-fight is refused with its own message, and nothing of the character goes',
+    rr.length === 1 && rr[0].payload.reason === 'fight' && msgs(ws.v, 'character_reset_done').length === 0
+    && room.playerState[ids.v] === V && goods(V) === before && room.sessions.has(ws.v), { sent: ws.v.sent.map((m) => m.type) });
+  /* the picker's road: a bro played on another device; the Login Key check is
+     its own suite's (account-reset), stood in for here */
+  const keepLogin = room._accountLogin;
+  room._accountLogin = async () => ({ ok: true, settled: true, exists: true, id: ids.v, device: 'ok' });
+  const r1 = await room._accountReset('a key', true, '1.2.3.4', 'dev');
+  check('8b. the picker\'s restart of a bro in a fight is refused (reason \'fight\'), and nothing goes',
+    !!r1 && r1.ok === false && r1.reason === 'fight' && room.playerState[ids.v] === V && goods(V) === before, r1);
+  check('8c. both roads are rows of the table under `fightlockreset`', !!FL && !!FL.FIGHT_LOCK.character_reset
+    && FL.FIGHT_LOCK.character_reset.sw === 'fightlockreset' && FL.FIGHT_LOCK['http:/api/account/reset'].sw === 'fightlockreset' && !own(FL.FIGHT_OPEN, 'character_reset'));
+  /* the switch: today's behaviour back -- the picker's road wipes it */
+  room._liveFlags = { ...(keepFlags || {}), nmlsteps: false, fightlockreset: false };
+  await hit();
+  const r2 = await room._accountReset('a key', true, '1.2.3.4', 'dev');
+  check('8d. `fightlockreset: false`: the restart goes through mid-fight, as before this version', !!r2 && r2.ok === true && r2.reset === true && !room.playerState[ids.v], r2);
+  room._accountLogin = keepLogin;
+  room._liveFlags = { ...(keepFlags || {}), nmlsteps: false };
+  /* out of a fight it works, as it always did: the friend, never in one */
+  ws.f.sent.length = 0;
+  await send(ws.f, 'character_reset', { confirm: true });
+  check('8e. out of a fight the restart works as before (done, the character gone)', msgs(ws.f, 'character_reset_done').length === 1 && msgs(ws.f, 'character_reset_refused').length === 0 && !room.playerState[ids.f]);
   room._liveFlags = keepFlags;
 }
 

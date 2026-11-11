@@ -98,6 +98,21 @@ export const gridMethods = {
     const newSig = next ? JSON.stringify(next) : 'null';
     if (oldSig === newSig) return false;
     if (this._threatGearLocked(session.id, ps)) return false;
+    /* v2.3.4626: NOT DURING A FIGHT WITH A PLAYER IN NO MAN'S LAND (fightlock.js
+       `fightlockarmor`; STATE-MACHINES.md "what is left" after #1523).  The loss
+       takes the spare armour and legs and leaves what you wear: putting your
+       best spare on mid-fight made it the piece you wear (kept), and the piece
+       it replaced went to the phone's bag, which the worker learns only at the
+       next join (gearstash.js) -- so neither was taken.  Refused, and the worn
+       pieces sent back: this path's other refusals rely on an echo that a
+       refused swap never triggers (nothing changed), and the phone puts the
+       piece it showed back in the bag when told what is worn
+       (wsClient.js _rescueDisplacedArmor). */
+    if (this._fightLockHolds && this._fightLockHolds(session.id, 'fightlockarmor')) {
+      const w = this._wsBySessionId(session.id);
+      if (w) this._resendPlayerState(w, session.id, ['armor', 'legsArmor']);
+      return false;
+    }
     /* _prog3EquipOk's 'armor' slot covers BOTH body pieces (gear.js). */
     if (next && !this._prog3EquipOk(ps, 'armor', next)) return false;
     /* v2.3.4012: a piece still a "?" is opened as it goes on, with its
