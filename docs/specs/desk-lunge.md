@@ -1,5 +1,13 @@
 # A computer's sword click lunges, as a phone's press does (v2.3.3694)
 
+> **v2.3.4794: TODAY THE CLICK TAKES NO LOCK.** Since v2.3.4396 a computer's
+> click is one attack at the cursor and keeps no lock a player chose
+> (`docs/specs/manual-combat.md` "A computer"; `targeting.js`
+> `mcLockAllowed`). The sword still opens with its lunge: the first click
+> asks `maybeSwordDash` on the sword's own nearest-monster lock
+> (`BroTown.jsx` `mcMeleeGo`). The click-locks-a-monster steps below are the
+> old combat, `?manual=0`.
+
 The owner, 2026-10-28, testing the desktop version:
 
 > The melee needs the "zoom to attack monster" behavior that exists on phones

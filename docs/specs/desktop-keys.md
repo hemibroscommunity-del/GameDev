@@ -266,3 +266,52 @@ all run: 2 does nothing until you carry a bow, 3 until a staff. A slot saved
 before this is taken as melee when the phone joins (`healedSlot`, in
 wsClient's `player_state`), and the worker is told, so the save heals too.
 Test: `server/test/weapon-pick.test.mjs`.
+
+## v2.3.4323: Q is the shield, the right click the special
+
+(Written up v2.3.4794, from the code and commit `6c7b8c4c5`.) The owner:
+*"I think right click should be special attack instead. Block should be moved
+to something else."* A trackpad's right click is also ignored while keys are
+held, so a shield on the right button was unreliable for them.
+
+- **Q raises the shield and Q again lowers it**, standing or walking
+  (`_desktopShieldToggle` in `src/ui/BroTown.jsx`, called from
+  `desktopControls.js`). It is aimed at the pointer, as the right button's
+  guard was. Everything `raiseShieldToggle` refuses it refuses (no shield,
+  the cooldown after a stamina break, the water, a daze, mid-jump), and
+  everything that lowered the guard still does (`dropShield`: an attack, a
+  roll, a jump, the water, stamina).
+- **The right click is the weapon's special, always** (`_deskRightPress`):
+  with or without a shield.
+- A left click with the shield up is still the bash (`+Click`).
+- The list reads `Q Shield ↕` (only with a shield) and `R-Click Special`
+  (always) (`src/game/deskKeyList.js`).
+
+Tests: `server/test/desk-keys.test.mjs` §7a, `mp-deskkeys`, `mp-deskwide`,
+`mp-shieldtoggle`.
+
+## v2.3.4396: a click is one attack, the right click arms the special
+
+(Written up v2.3.4794.) The game's combat since v2.3.4396 attacks by hand
+(`docs/specs/manual-combat.md` "A computer"; the owner: *"Yes for computer
+controls."*):
+
+- **Each left click is one attack at the cursor** with a sword or a bow: a
+  sword's stroke (the opening lunge, or a swing when it is ready), a bow's one
+  shot, on a line or not. Holding the button down attacks once. A staff fires
+  while the button is held, as before (the canvas's `onMouseDown` in
+  `BroTown.jsx`, `mcSwipes` / `mcShoots` / `mcAskShot` / `mcMeleeSwipe`).
+- **The right click ARMS a sword's or a bow's special** for the next attack;
+  a second right click disarms it (`_deskRightPress` -> `mcArmToggle`). A
+  staff's right click fires its special at once. **Nothing on a computer's
+  screen shows that a special is armed**: the ON is the Special button's,
+  a touch control a computer hides (`SpecialButton.jsx`, `bt-desktop-hide`),
+  and the right click arms without the button's mana check (a special it
+  cannot pay for is refused when the attack takes it, and that attack is
+  an ordinary one: `mcMeleeGo`). Both found while writing this
+  up: the owner's question, not changed here. The COMBAT TIPS card says "Right-click Special: then
+  attack" for a sword or a bow (`src/ui/deskTeach.js`).
+- **A double click locks on to nothing.** No weapon keeps a lock a player
+  chose (`targeting.js`, `mcLockAllowed`), so the `2×Click Lock on` row is
+  listed only in the old combat, `?manual=0` (`deskKeyList.js`'s `lock`
+  requirement).

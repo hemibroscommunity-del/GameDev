@@ -36,7 +36,7 @@ bow in hand loosed an arrow first.
 
 | under the cursor | the press | the click |
 |---|---|---|
-| a monster | the attack (unchanged) | locks it |
+| a monster | the attack (unchanged) | locks it (v2.3.4794 note: only in the old combat, `?manual=0`; since v2.3.4396 a click takes no lock: `docs/specs/manual-combat.md`) |
 | a townsperson, near or far | nothing | talks to him (far: "Too far away!") |
 | another player | the attack (unchanged) | their card, or the fight's own rules |
 | a resource IN REACH that you hold the tool for | nothing | starts the harvest |

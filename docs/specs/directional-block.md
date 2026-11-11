@@ -1,5 +1,18 @@
 # Brotown UI Spec Reference — Directional Block Ring + Shield Mechanics
 
+> **v2.3.4794: WHAT CHANGED SINCE (from the code).** The parry is re-armed
+> on the worker: a raise parries only after the guard was DOWN at least
+> 400 ms (`PARRY_REARM_MS`); a quicker re-raise still blocks but does not
+> parry (`server/src/moveclaims.js`, v2.3.4605, live flag `parryrearm`). A
+> sword's claim lowers a raised guard on the worker, as the phone already
+> lowered it before a swing (`swingguard`; not a bow's or staff's hit, which
+> lands after its flight, nor Shield Bash or the Element Burst). A raised
+> guard whose move carries no angle covers the FRONT of the last facing,
+> not all round (`blockarc`). On a computer the shield is Q, up and down
+> (v2.3.4323; the right button until then). And "auto-attack resumes"
+> below is the old combat: since v2.3.4396 nothing attacks by itself
+> except a staff under a held thumb (`docs/specs/manual-combat.md`).
+
 > **v2.3.3300: EVERY MONSTER BLOW IS BLOCKED THE SAME WAY** (the owner's
 > decisions on the hit door, docs/specs/hit-door.md "Decided"). A **snowball
 > from behind lands**: its second shield test, measured from where it landed
