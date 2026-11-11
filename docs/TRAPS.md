@@ -242,6 +242,13 @@ branching — precheck's verdict expires the moment anything else lands.
 shipping a v2.3.1579, and both independently diagnosing the same login
 trait-resolution problem because neither could see the other in flight.
 
+**Since v2.3.4790** (owner, 2026-11-11) a tag only has to be UNUSED on
+main, not above its high-water, so "re-check before merging" now means
+"is my number still unused?" (precheck answers it, and reads the tree and
+expands ranges like this one). Renumbering because someone else merged a
+higher number first is the WRONG move now: it only buys another paid
+check run.
+
 ## 17. Sharpening art that is about to be minified
 
 **Tempting:** downscaled art looks soft where it is enlarged, and

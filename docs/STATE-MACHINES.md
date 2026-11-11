@@ -340,9 +340,12 @@ offered.
 5. **The reviewer reads every diff.** It caught a brief of the orchestrator's
    own that would have hidden live trades on a reconnect (TRAPS §278).
 6. **A lane's tag moves.** The fifth wave's lanes were renumbered up to three
-   times as `main`'s high-water passed them (precheck's version gate needs a
+   times as `main`'s high-water passed them (precheck's version gate needed a
    tag above `main`). Docs written while a lane is open name it by its
-   branch; the closing docs pass writes the final tags.
+   branch; the closing docs pass writes the final tags. Since v2.3.4790 a
+   tag only has to be unused on `main` (owner, 2026-11-11): give each lane
+   its own number up front and it never moves unless another change takes
+   that same number first.
 
 And: every merge with a file under `server/` deploys the worker, a test
 included (TRAPS §277). Merge a batch together, in a quiet hour.

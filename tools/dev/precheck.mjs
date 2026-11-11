@@ -15,15 +15,16 @@
  *   2. dup-case      — duplicate `case` labels inside one switch (the
  *                      v2.3.1176 arena_bet shadowing class; eslint
  *                      no-duplicate-case can't run in the sandbox).
- *   3. version-tag   — the tag CLAIMED by this diff (max added v2.3.N)
- *                      must be > the base's high-water. Deliberate
- *                      deviation from "fail any added tag ≤ high-water":
- *                      rule-25 comments back-reference old tags
- *                      constantly, so only the claim (max) is gated;
- *                      older added tags are listed as info. Also WARNs
- *                      with remote branches pushed in the last 48h so the
- *                      session can spot tag/topic collisions (five
- *                      sessions claimed one tag on 2026-07-07).
+ *   3. version-tag   — v2.3.4790: a tag only has to be NEW (owner,
+ *                      2026-11-11), not above main's high-water. The
+ *                      tags this diff ADDS that appear nowhere on the
+ *                      base (its tree, or any commit subject, ranges
+ *                      expanded) are its claim; the ones that do are
+ *                      rule-25 back-references. FAIL only when the diff
+ *                      adds tags and claims none (a collision, or only
+ *                      back-references). WARNs when a branch pushed in
+ *                      the last 48h already carries a claimed number.
+ *                      Rule in tools/dev/tagRule.mjs (self-tested here).
  *   4. dmg-popup     — raw `S.dmgNumbers.push(` in changed client files;
  *                      must use pushDmgPopup (v2.3.1188 sweep). The
  *                      helper's own home (src/game/combatHelpers.js) is
@@ -334,22 +335,25 @@ function sanitize(src, { jsxText = false } = {}) {
 }
 
 /* ---- 3. version-tag --------------------------------------------- */
+/* v2.3.4790: a tag only has to be unused on the base, not above its
+ * high-water (owner, 2026-11-11: the renumbering after every merge cost a
+ * paid check run each time).  The rule and its self-test: tagRule.mjs. */
 {
-  // base high-water: baseRef package.json + recent baseRef log subjects + tags in baseRef tree
-  let high = 0, highSrc = '';
+  const { tagsIn, judgeClaim, selfTest } = await import('./tagRule.mjs');
+  let selfOk = true;
+  try { selfTest(); } catch (e) { selfOk = false; add('FAIL', 'version-tag', `the tag rule's self-test failed: ${e.message}`); }
+
+  // every tag USED on the base: its tree (all text files), every commit
+  // subject in its history, and its package.json
+  const used = new Set();
   try {
     const v = JSON.parse(git(['show', `${baseRef}:package.json`], { cwd: root })).version || '';
     const mv = v.match(/^2\.3\.(\d+)$/);
-    if (mv && +mv[1] > high) { high = +mv[1]; highSrc = `${baseRef}:package.json`; }
+    if (mv) used.add(+mv[1]);
   } catch { /* no package.json at base */ }
-  try {
-    const subjects = git(['log', baseRef, '-500', '--format=%s'], { cwd: root });
-    for (const mm of subjects.matchAll(/v2\.3\.(\d+)/g)) if (+mm[1] > high) { high = +mm[1]; highSrc = `${baseRef} log`; }
-  } catch { /* ignore */ }
-  try {
-    const treeTags = git(['grep', '-h', '-oE', 'v2\\.3\\.[0-9]+', baseRef, '--', '*.js', '*.jsx', '*.mjs', '*.md'], { cwd: root });
-    for (const mm of treeTags.matchAll(/v2\.3\.(\d+)/g)) if (+mm[1] > high) { high = +mm[1]; highSrc = `${baseRef} tree`; }
-  } catch { /* git grep exits 1 on no match */ }
+  try { tagsIn(git(['log', baseRef, '--format=%s'], { cwd: root }), used); } catch { /* ignore */ }
+  try { tagsIn(git(['grep', '-h', '-oE', 'v2\\.3\\.[0-9]+([[:space:]]*[-–—][[:space:]]*(v2\\.3\\.)?[0-9]+)?', baseRef], { cwd: root }), used); }
+  catch { /* git grep exits 1 on no match */ }
 
   // tags ADDED by this diff, with file:line via unified=0 hunk headers
   const diff = git(['diff', '--unified=0', mergeBase, '--'], { cwd: root });
@@ -359,33 +363,45 @@ function sanitize(src, { jsxText = false } = {}) {
     if (line.startsWith('+++ b/')) { curFile = line.slice(6); continue; }
     if (line.startsWith('@@')) { const h = line.match(/\+(\d+)/); curLine = h ? +h[1] : 0; continue; }
     if (line.startsWith('+') && !line.startsWith('+++')) {
-      for (const mm of line.matchAll(/v2\.3\.(\d+)/g)) addedTags.push({ n: +mm[1], file: curFile, line: curLine });
+      for (const n of tagsIn(line)) addedTags.push({ n, file: curFile, line: curLine });
       curLine++;
     }
   }
-  if (!addedTags.length) {
-    add('PASS', 'version-tag', `no v2.3.N tags added (base high-water v2.3.${high}); tag your changes per rule 25`);
-  } else {
-    const max = addedTags.reduce((a, b) => (b.n > a.n ? b : a));
-    const older = addedTags.filter((t) => t.n < max.n && t.n <= high).length;
-    if (max.n <= high) {
-      add('FAIL', 'version-tag', `claimed tag v2.3.${max.n} (${max.file}:${max.line}) ≤ base high-water v2.3.${high} (${highSrc}) — already shipped; renumber to ≥ v2.3.${high + 1}`);
-    } else {
-      add('PASS', 'version-tag', `claimed v2.3.${max.n} > base high-water v2.3.${high}${older ? ` (${older} back-reference(s) to older tags: fine, not gated)` : ''}`);
-    }
+  const j = judgeClaim(addedTags, used);
+  const claimList = j.claims.map((t) => `v2.3.${t.n}`).join(', ');
+  if (j.verdict === 'none') {
+    add('PASS', 'version-tag', `no v2.3.N tags added (main's highest is v2.3.${j.high}); tag your changes per rule 25 with a number not used on ${baseRef}`);
+  } else if (j.verdict === 'fail') {
+    const first = j.backRefs[0];
+    add('FAIL', 'version-tag', `every tag this diff adds is already used on ${baseRef} (e.g. v2.3.${first.n} at ${first.file}:${first.line}): either it was taken there first (renumber) or the diff only cites old work (claim a new number). Any unused number works; v2.3.${j.high + 1} is one`);
+  } else if (selfOk) {
+    add('PASS', 'version-tag', `claims ${claimList} (unused on ${baseRef}; main's highest v2.3.${j.high})${j.backRefs.length ? ` + ${j.backRefs.length} back-reference(s) to older tags` : ''}`);
   }
 
-  // in-flight remote branches (last 48h) — collision awareness, WARN only
+  // in-flight remote branches (last 48h): WARN when one already carries a
+  // number this diff claims (its own commits' subjects), and list the rest
+  // for topic collisions
   try {
     const refs = git(['for-each-ref', '--sort=-committerdate', 'refs/remotes',
       '--format=%(committerdate:unix)\t%(refname:short)\t%(subject)'], { cwd: root });
     const now = Date.now() / 1000;
     const fresh = refs.split('\n').filter(Boolean).map((l) => l.split('\t')).filter(([ts, ref]) =>
-      now - +ts < 48 * 3600 && !/\/(main|HEAD)$/.test(ref));
+      now - +ts < 48 * 3600 && !/\/(main|HEAD|provenance)$/.test(ref));
+    const mine = new Set(j.claims.map((t) => t.n));
+    if (mine.size) {
+      for (const [, ref] of fresh) {
+        // a branch whose head is already in this one (our own push) is not a rival
+        if (spawnSync('git', ['merge-base', '--is-ancestor', ref, 'HEAD'], { cwd: root }).status === 0) continue;
+        let theirs;
+        try { theirs = tagsIn(git(['log', `${baseRef}..${ref}`, '--format=%s'], { cwd: root })); } catch { continue; }
+        const clash = [...mine].filter((n) => theirs.has(n));
+        if (clash.length) add('WARN', 'version-tag', `${ref} already carries ${clash.map((n) => `v2.3.${n}`).join(', ')}: whoever merges second must renumber; pick another unused number now`);
+      }
+    }
     if (fresh.length) {
       const list = fresh.slice(0, 12).map(([ts, ref, subj]) =>
         `    ${Math.round((now - +ts) / 3600)}h  ${ref}  ${subj}`).join('\n');
-      add('WARN', 'version-tag', `${fresh.length} remote branch(es) pushed in the last 48h — check none claims your tag or your topic:\n${list}`);
+      add('WARN', 'version-tag', `${fresh.length} remote branch(es) pushed in the last 48h — check none is building your topic:\n${list}`);
     }
   } catch { /* offline: skip */ }
 }
