@@ -332,6 +332,47 @@ export async function packTrimmedSliced(img, fw, fh, n, turn) {
   return { canvas: cv, cells };
 }
 
+/* ═══ v2.3.4873: A GEAR SHEET PACKED A FEW MS AT A TIME, IN PLAY ═══
+   A gear sheet first drawn in play (another player's armour arriving,
+   armour just put on) was cropped and packed in one go as its file came:
+   21 to 59 ms held on the QA box (held-budget.mjs `pack-page`).  Now, while
+   the world is in play, packTrimmedSliced does it -- the same canvas and the
+   same cells, to the byte -- with GEAR_SLICE_MS of work and then the next
+   frame first, one sheet at a time.  The frame's own slice is fixed, not a
+   share of the frame as the monsters' strips are (zoneTextures stripTurn): on
+   this box a frame is 200 ms long, and a quarter of it was the hold.
+   Behind a loading screen (setGearPackPlay's fn says 0) it packs flat out,
+   as before.  `?gearpackgentle=0`: the old way for one tab. */
+const GEAR_SLICE_MS = 6, GEAR_SLICE_WAIT_MS = 120;
+let _gearPlay = null, _gearLine = Promise.resolve(), _gearT0 = 0;
+const _gearGentleOff = (() => { try { return /(^|[?&])gearpackgentle=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+/** zoneTextures.setStripPlay hands the same `fn` here: the frame's length in
+ *  ms while the world is in play, 0 behind a loading screen. */
+export function setGearPackPlay(fn) { _gearPlay = typeof fn === 'function' ? fn : null; }
+function _gearInPlay() {
+  if (_gearGentleOff || !_gearPlay) return false;
+  try { return +_gearPlay() > 0; } catch (e) { return false; }
+}
+const _gearAfterFrame = () => new Promise((res) => {
+  let done = false;
+  const go = () => { if (!done) { done = true; res(); } };
+  try { requestAnimationFrame(() => setTimeout(go, 0)); } catch (e) { /* the timer below */ }
+  setTimeout(go, GEAR_SLICE_WAIT_MS);
+});
+async function _gearTurn() {
+  if (!_gearInPlay()) return;
+  if (performance.now() - _gearT0 < GEAR_SLICE_MS) return;
+  await _gearAfterFrame();
+  _gearT0 = performance.now();
+}
+function _gearPack(img, fw, fh) {
+  if (!_gearInPlay()) return packTrimmed(img, fw, fh);
+  const job = () => { _gearT0 = performance.now(); return packTrimmedSliced(img, fw, fh, 0, _gearTurn); };
+  const p = _gearLine.then(job, job);
+  _gearLine = p.then(() => {}, () => {});
+  return p;
+}
+
 /** Draw a gear frame onto a 2D canvas as if it were the WHOLE frame, scaled
  *  to (dw x dh) at (dx, dy).  Handles cropped frames (v2.3.2750) and plain
  *  ones alike: for an uncropped texture this is exactly
@@ -599,7 +640,7 @@ function _buildSheet(key, slot, item, pose, dir, attempt = 0, stampArt = null) {
   /* Returns a promise that ALWAYS resolves (missing sheet -> []), so callers
      that want to await a full preload don't hang on a 404. */
   const bust = (attempt > 0 ? `&r=${attempt}` : '') + (_gearRound[key] ? `&g=${_gearRound[key]}` : '');   /* v2.3.3870: + the later round */
-  return loadImg(`/sprites/gear/${slot}/${item}/${pose}-${dir}.png?v=${GEAR_VERSION}${bust}`).then(rawImg => {
+  return loadImg(`/sprites/gear/${slot}/${item}/${pose}-${dir}.png?v=${GEAR_VERSION}${bust}`).then(async rawImg => {   /* v2.3.4873: async, for the gentle pack */
     /* restore a downscaled-on-disk gear sheet to the 256px frame (no-op for any
        native >=256 sheet, so the variable-height combat poses are untouched) */
     const rawH = rawImg.naturalHeight || rawImg.height || 0;
@@ -682,7 +723,8 @@ function _buildSheet(key, slot, item, pose, dir, attempt = 0, stampArt = null) {
     /* v2.3.2750: crop the empty space off every frame before upload -- see
        packTrimmed below.  Falls through to the plain strip for the sheets it
        does not cover, or if the pixels cannot be read. */
-    const packed = TRIM_SLOTS.has(slot) && TRIM_POSES.has(pose) ? packTrimmed(img, fw, fh) : null;
+    /* v2.3.4873: in play, a few ms at a time (_gearPack): held-budget `pack-page` */
+    const packed = TRIM_SLOTS.has(slot) && TRIM_POSES.has(pose) ? await _gearPack(img, fw, fh) : null;
     if (packed) { _trimStats.sheets++; _trimStats.fullBytes += img.width * fh * 4; _trimStats.packedBytes += packed.canvas.width * packed.canvas.height * 4; }
     else { _trimStats.uncropped++; }
     const src = Texture.from(packed ? packed.canvas : img).source;

@@ -220,7 +220,7 @@ rank order:
 | `gear-sheet` | 195 ms | a drawn shirt composed on the page for each pose (the crowd tour) | stamp the drawing on a worker, or draw it as a layer over the plain shirt |
 | `portrait` | 150 ms | the Leaderboards draw a board's faces in one piece (the crowd tour) | a few faces a frame |
 | `masked-bake` | 24 ms (v2.3.4870; was 140) | the worker job's page-side part (frames handed over as pictures): the cut itself no longer runs on the page in play -- another player's frame is drawn plain until the worker answers, as yours was | hand the worker the sheets once and send rectangles; prewarm the poses of what was just put on |
-| `pack-page` | 80 ms | a gear strip cropped and packed on a canvas the first time its pose is drawn | the strip door for gear strips (256-colour files, packed on the worker) |
+| `pack-page` | 20 ms (v2.3.4873; was 80) | a gear sheet first drawn in play, now packed a few ms at a time (`gearSheets.js` `_gearPack`; was one go, 21 to 59 ms): one cell's read and the hand-off, 9 to 15 ms | the strip door for gear strips (256-colour files, packed on the worker) |
 | `gc` | 60 ms | the browser's garbage collector | make less garbage a frame (OPTIMIZATION-ROADMAP's pools) |
 | `the frame itself` | 70 ms | this box plays a quarter of a second of game in each frame | `mp-phoneframe` is the measure at a phone's rate; here the line stops it growing |
 | `screen-check` | 260 ms | only with a second page on this box's one software chip; one page: 0 to 2 ms | nothing here; on a phone the frame strip names it if it is ever 4 ms |

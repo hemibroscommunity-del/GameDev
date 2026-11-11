@@ -45,7 +45,7 @@
  * "everywhere you have been".
  */
 import { Assets, Cache, Rectangle, Texture } from 'pixi.js';
-import { packTrimmed, packTrimmedSliced } from './gearSheets.js';   /* v2.3.2870: monster strips load cropped; v2.3.4400: a few ms at a time in play */
+import { packTrimmed, packTrimmedSliced, setGearPackPlay } from './gearSheets.js';   /* v2.3.2870: monster strips load cropped; v2.3.4400: a few ms at a time in play */
 import { holdOnceDrawn, forgetHeld, numbersOfSliced, numbersOf } from './heldNumbers.js';   /* v2.3.3699: held once drawn, as colour numbers */
 import { stripAsNumbers, releaseBundleNumbers, picNumbersOn } from './picsNumbers.js';   /* v2.3.3715: ?picnumbers, colour numbers on the chip */
 import { noteMade } from '../debug/madeLog.js';   /* v2.3.4400: a strip packed on the page says its name and its time */
@@ -261,7 +261,7 @@ const _sliceFixed = (() => { const m = /(^|[?&])stripslice=(\d+)(&|$)/.exec(_sea
 let _play = null;
 /** BroTown.jsx: `fn()` is the frame's length in ms while the world is in
  *  play, 0 behind a loading screen (or the tab hidden). */
-export function setStripPlay(fn) { _play = typeof fn === 'function' ? fn : null; }
+export function setStripPlay(fn) { _play = typeof fn === 'function' ? fn : null; setGearPackPlay(_play); }   /* v2.3.4873: + the gear sheets' gentle pack */
 function stripFrameMs() {
   if (_gentleOff || !_play) return 0;
   try { const v = +_play(); return v > 0 ? v : 0; } catch (e) { return 0; }
