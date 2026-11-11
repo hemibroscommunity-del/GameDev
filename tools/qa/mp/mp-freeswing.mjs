@@ -6,8 +6,11 @@
  * share, the extras, the floor) is server/test/free-swing.test.mjs; the
  * rules' half manual-combat.test §13.  This plays the page: an upright phone
  * with `?manual=3` in BroTown, a sword in hand --
- *   1. the trial is on for this device and remembered, and the worker said it
- *      can (caps.freeSwing): the join asked;
+ *   1. the trial is on for this device, and the worker said it can
+ *      (caps.freeSwing): the join asked.  v2.3.4797: since v2.3.4655 (#1547)
+ *      the trial is everyone's default, so `?manual=3` is what a player with
+ *      nothing chosen plays, and it is NOT remembered: it forgets any other
+ *      choice (src/game/manualCombat.js manualMode; it was remembered as '3');
  *   2. a stroke swings; a stroke back 160 ms later swings again (on the
  *      untried swipes it waits the sword's whole interval);
  *   3. a stroke sooner than FREE_GAP_MS (150 ms) swings nothing;
@@ -35,7 +38,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       free: !!(window.__btManual && window.__btManual.free()), stored: localStorage.getItem('bt_manual'),
       cap: (window._gameState.current._serverCaps || {}).freeSwing,
     }));
-    rec.ok('1 `?manual=3` is the trial on this device, remembered, and the worker can do it (caps.freeSwing)', on.free && on.stored === '3' && on.cap === 1, on);
+    /* v2.3.4797: nothing stored -- `?manual=3` comes back to the game's own
+       combat (the trial, since v2.3.4655) and forgets, as a device that never
+       chose plays it */
+    rec.ok('1 `?manual=3` is the trial on this device, the game\'s own (nothing remembered: it forgets any other choice), and the worker can do it (caps.freeSwing)', on.free && on.stored === null && on.cap === 1, on);
 
     /* ── 2, 3 ── a sword, and real touches on the attack disc */
     const sw = await P.page.evaluate(() => {
