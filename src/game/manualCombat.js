@@ -114,7 +114,7 @@
  * no sooner than FREE_GAP_MS, and a lighter swing's number and sound are
  * lighter.  docs/specs/manual-combat.md "The free-swing trial".
  *
- * ═══ v2.3.4610: THE TIMING BAR AND THE PERFECT STRIKE (the trial's step 2) ═══
+ * ═══ v2.3.4615: THE TIMING BAR AND THE PERFECT STRIKE (the trial's step 2) ═══
  * The owner, 2026-11-10: "rising pitch on quick hits and something that
  * benefits the player if they swipe just around the time their swing is back
  * to full again"; "a sword silhouette laying horizontally that refills as a
@@ -170,19 +170,19 @@ export var MANUAL = {
   /* MIRROR: server/src/freeswing.js FREE_SWING.FULL_SWING_SHARE (the
      free-swing suite pins it): a swing under it is a light one */
   FULL_SWING_SHARE: 0.8,
-  /* `?swingbonus=1`, remembered (v2.3.4610: on by default; '0' remembers off) */
+  /* `?swingbonus=1`, remembered (v2.3.4615: on by default; '0' remembers off) */
   BONUS_KEY: 'bt_swingbonus',
-  /* v2.3.4610: THE PERFECT STRIKE'S WINDOW round the full cycle -- MIRROR:
+  /* v2.3.4615: THE PERFECT STRIKE'S WINDOW round the full cycle -- MIRROR:
      server/src/freeswing.js FREE_SWING.PERFECT_EARLY_MS / PERFECT_LATE_MS
      (perfect-strike.test pins them).  The timing bar glints for exactly it */
   PERFECT_EARLY_MS: 60,
   PERFECT_LATE_MS: 300,
-  /* v2.3.4610: how long the bar's frozen copy (where you attacked) stays
+  /* v2.3.4615: how long the bar's frozen copy (where you attacked) stays
      before it is gone; the real fill restarts under it at once */
   FREEZE_MS: 400,
-  /* v2.3.4610: `?timingbar=0` hides the bar on one device, remembered */
+  /* v2.3.4615: `?timingbar=0` hides the bar on one device, remembered */
   BAR_KEY: 'bt_timingbar',
-  /* v2.3.4610: THE RISING PITCH -- a hit within PITCH_GAP_MS of your last is
+  /* v2.3.4615: THE RISING PITCH -- a hit within PITCH_GAP_MS of your last is
      a semitone higher, PITCH_MAX steps at most; hits within PITCH_SAME_MS
      (one swing's several monsters, an arrow's pierce) share a step */
   PITCH_GAP_MS: 1200,
@@ -237,11 +237,11 @@ function deviceSwitch(name, key, search, store) {
   }
   try { return !(ls && ls.getItem(key) === '0'); } catch (e) { return true; }
 }
-/** v2.3.4520: does this device ask for the bonus too?  v2.3.4610: the
+/** v2.3.4520: does this device ask for the bonus too?  v2.3.4615: the
  *  perfect strike's, ON by default on the trial: `?swingbonus=0` asks
  *  without it and is remembered, `?swingbonus=1` comes back. */
 export function swingBonusWanted(search, store) { return deviceSwitch('swingbonus', MANUAL.BONUS_KEY, search, store); }
-/** v2.3.4610: is the timing bar shown on this device?  `?timingbar=0` hides
+/** v2.3.4615: is the timing bar shown on this device?  `?timingbar=0` hides
  *  it (remembered), `?timingbar=1` comes back.  The bonus is not touched. */
 export function timingBarWanted(search, store) { return deviceSwitch('timingbar', MANUAL.BAR_KEY, search, store); }
 /** v2.3.4520: what the join asks the worker (`fs`): 0 nothing, 1 the trial,
@@ -307,13 +307,13 @@ export function mcNumberScale(pw) {
  *  a full swing's)? */
 export function mcLightHit(pw) { return typeof pw === 'number' && pw < MANUAL.FULL_SWING_SHARE; }
 
-/** v2.3.4610: is this device on the trial against a worker that judges the
+/** v2.3.4615: is this device on the trial against a worker that judges the
  *  perfect strike (caps.freeSwing, caps.perfectStrike)?  Its arrows' claims
  *  then name their shot (`sw`: projectiles.js), as its sword's swings do. */
 export function mcPerfectOn(S) {
   return manualFreeSwing() && !!(S && S._serverCaps && S._serverCaps.freeSwing && S._serverCaps.perfectStrike);
 }
-/** v2.3.4610: which timing bar this hand shows: 'sword', 'bow', or null --
+/** v2.3.4615: which timing bar this hand shows: 'sword', 'bow', or null --
  *  only on the trial (`?manual=3`) against a worker that judges the perfect
  *  strike (caps.freeSwing and caps.perfectStrike), with the weapon in hand.
  *  A staff: none (the owner: "For magic I think it should be skipped"). */
@@ -324,21 +324,21 @@ export function mcBarWeapon(S) {
   if (s === 'staff') return null;
   return S.rpg.weapon ? 'sword' : null;
 }
-/** v2.3.4610: the cycle the bar fills over (the interval mcFrame was told):
+/** v2.3.4615: the cycle the bar fills over (the interval mcFrame was told):
  *  a sword's, or the flicked bow's. */
 export function mcBarCycle(S) {
   var m = st(S);
   if (!m) return MANUAL.NEED_DEFAULT_MS;
   return (mcShoots(S) ? m.need : m.meleeNeed) || MANUAL.NEED_DEFAULT_MS;
 }
-/** v2.3.4610: the bar's CSS timings for one attack: it fills over the cycle
+/** v2.3.4615: the bar's CSS timings for one attack: it fills over the cycle
  *  from now (never delayed: the next attack's timing is untouched by the
  *  freeze), and glints for the worker's window. */
 export function mcBarTimes(cycle) {
   var c = Math.max(1, cycle || MANUAL.NEED_DEFAULT_MS);
   return { fillMs: c, fillDelayMs: 0, glintDelayMs: Math.max(0, c - MANUAL.PERFECT_EARLY_MS), glintMs: MANUAL.PERFECT_EARLY_MS + MANUAL.PERFECT_LATE_MS, freezeMs: MANUAL.FREEZE_MS };
 }
-/** v2.3.4610: an attack at `now`, `prevAt` the last one and `cycle` the
+/** v2.3.4615: an attack at `now`, `prevAt` the last one and `cycle` the
  *  cycle its bar was filling over: how full the bar was (the frozen copy's
  *  width, 0..1, computed once) and whether it was glinting. */
 export function mcBarAttack(prevAt, cycle, now) {
@@ -346,7 +346,7 @@ export function mcBarAttack(prevAt, cycle, now) {
   var el = now - (prevAt || 0);
   return { frozen: Math.max(0, Math.min(1, el / c)), glint: el >= c - MANUAL.PERFECT_EARLY_MS && el <= c + MANUAL.PERFECT_LATE_MS };
 }
-/** v2.3.4610: THE RISING PITCH.  `p` is {at, step}: a hit within
+/** v2.3.4615: THE RISING PITCH.  `p` is {at, step}: a hit within
  *  PITCH_SAME_MS of the last shares its step, within PITCH_GAP_MS is a step
  *  higher (PITCH_MAX at most), after a pause back to 0.  The step. */
 export function mcPitchStep(p, now) {
@@ -357,7 +357,7 @@ export function mcPitchStep(p, now) {
   if (!(gap <= MANUAL.PITCH_SAME_MS)) p.at = now;
   return p.step || 0;
 }
-/** v2.3.4610: a hit sound's playback rate for YOUR sword's or bow's hit on
+/** v2.3.4615: a hit sound's playback rate for YOUR sword's or bow's hit on
  *  the trial: one semitone a step (1 off the trial, and for a staff). */
 export function mcHitPitch(S, now) {
   if (!manualFreeSwing() || !S || slotOf(S) === 'staff') return 1;
@@ -532,7 +532,7 @@ if (typeof window !== 'undefined') {
       on: function () { return manualOn(); },
       sling: function () { return manualSling(); },
       free: function () { return manualFreeSwing(); },   /* v2.3.4520 */
-      /* v2.3.4610: for the timing bar's pictures, the UI review can put its
+      /* v2.3.4615: for the timing bar's pictures, the UI review can put its
          one page on the trial (what `?manual=3` does at load; the worker is
          not asked, so nothing it judges changes) */
       set: function (v) { setManualCombat(v); },

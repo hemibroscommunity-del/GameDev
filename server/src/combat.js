@@ -1407,7 +1407,7 @@ export const combatMethods = {
        full one x FULL_SWING_BONUS for a phone that asked; a paid special
        swing is counted as a swing and rolls as it always has.  `_fsLight`: a
        swing under FULL_SWING_SHARE carries none of the extras below. */
-    /* v2.3.4610: THE PERFECT STRIKE (freeswing.js): the bonus is a perfect
+    /* v2.3.4615: THE PERFECT STRIKE (freeswing.js): the bonus is a perfect
        strike's now, not any full swing's -- its share x FULL_SWING_BONUS, and
        its mana; a bow's arrow on the trial is judged by its shot (`sw`) */
     let _fsK = null;
@@ -1495,7 +1495,7 @@ export const combatMethods = {
     /* v2.3.4520: a free swing's share of the full hit, the fraction carried
        (freeswing.js); a full one with no bonus is this line as it was */
     const rawDmg = (_fsK !== null && _fsK !== 1)
-      ? this._fsTake(_fsOn ? attackerPs._fs : attackerPs._pfb /* v2.3.4610: an arrow's own carry */, 'c', Math.max(1, Math.round(_cappedDmg * this._fractureDmgMult(m) * _up)), _fsK)
+      ? this._fsTake(_fsOn ? attackerPs._fs : attackerPs._pfb /* v2.3.4615: an arrow's own carry */, 'c', Math.max(1, Math.round(_cappedDmg * this._fractureDmgMult(m) * _up)), _fsK)
       : Math.max(1, Math.round(_cappedDmg * this._fractureDmgMult(m) * _up));
     /* v2.3.3558: ...and never past a splitting boss's next mark: it splits
        there (_monsterHpFloor, above; 0 for every other monster) */
@@ -1689,7 +1689,7 @@ export const combatMethods = {
         /* v2.3.4520: a free swing's share (freeswing.js), when it is not a
            plain full one: the phone sizes the number by it.  Display only */
         ...(_fsK !== null && _fsK !== 1 ? { pw: Math.round(_fsK * 100) / 100 } : null),
-        ...(_pf ? { pf: 1 } : null),   /* v2.3.4610: a perfect strike (the phone's accent).  Display only */
+        ...(_pf ? { pf: 1 } : null),   /* v2.3.4615: a perfect strike (the phone's accent).  Display only */
         /* ═══ v2.3.2481: THE KILLING BLOW SHOWS WHAT IT ACTUALLY HIT FOR ═══
            Owner ask: the last hit on a monster always printed a small
            number — 3 on a 40-damage swing — because `dmg` is the CREDITED

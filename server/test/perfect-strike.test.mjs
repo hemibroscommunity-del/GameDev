@@ -1,4 +1,4 @@
-/* THE PERFECT STRIKE (v2.3.4610): the free-swing trial's bonus is for timing.
+/* THE PERFECT STRIKE (v2.3.4615): the free-swing trial's bonus is for timing.
  *
  * The owner, 2026-11-10: "something that benefits the player if they swipe
  * just around the time their swing is back to full again", and of the timing
