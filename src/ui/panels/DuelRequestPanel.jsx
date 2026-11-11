@@ -1,7 +1,7 @@
 import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
 import { lockOntoDuelOpponent } from '@/game/duelLock.js'; /* v2.3.2145 */
-import { enterPendingDuel } from '@/game/duelPending.js'; /* v2.3.4361: the phantom duel */
+import { enterPendingDuel, duelCardLeftMs } from '@/game/duelPending.js'; /* v2.3.4361: the phantom duel; v2.3.4628: the card's clock */
 import { createPortal } from 'react-dom';
 import { BT_AUDIO } from '@/data/index.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the duel heard beginning */
@@ -60,6 +60,21 @@ export function DuelRequestPanel(props) {
     });
     setDuelRequest(null);
   };
+  /* v2.3.4628: the card closes when the worker's challenge runs out (duelPending.js
+     DUEL_CARD): an accept after it is refused anyway, and the inert backdrop
+     left nothing else to close it with.  The challenger's own card was never
+     answered, as a challenge left alone always ends; this phone says so. */
+  React.useEffect(function () {
+    if (!duelRequest) return undefined;
+    var t = setTimeout(function () {
+      setDuelRequest(function (cur) { return cur === duelRequest ? null : cur; });
+      try {
+        var S3 = stateRef.current;
+        if (S3 && S3.player) pushDmgPopup(S3, S3.player.x, S3.player.y - 40, 'Duel challenge expired', '#c9b48a');
+      } catch (e) { /* the card is gone either way */ }
+    }, duelCardLeftMs(duelRequest, Date.now()));
+    return function () { clearTimeout(t); };
+  }, [duelRequest]);
   return createPortal(React.createElement("div", {
     className: "bt-inspect",
     'data-duel-request': '',   /* v2.3.3526: a hook for mp-blockasks, as the party card's data-party-invite */

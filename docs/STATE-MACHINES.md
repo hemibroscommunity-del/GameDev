@@ -163,7 +163,8 @@ so nothing waits on them any more.
 - nine places still change zone by hand, five on the retired old map
   (TRAPS §304);
 - the bigger "one reset for a whole life" of a monster (`m.life`);
-- the duel challenge card has no clock of its own (`REJOIN_NOT_YET`);
+- ~~the duel challenge card has no clock of its own (`REJOIN_NOT_YET`)~~: it
+  has the worker's 2-minute clock now and closes itself (v2.3.4628);
 - a test that holds each quest's phone check to the server's goal, so the
   two cannot drift apart (#1486, #1503);
 - a tab already in the world that reconnects mid-fight gets no `body_place`:
