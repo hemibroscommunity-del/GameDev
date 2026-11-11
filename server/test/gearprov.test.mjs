@@ -310,10 +310,15 @@ let amuletGid = null;
     byName('Godly Iron Plate'));
   check('...while the real shield that id names is untouched and still proven',
     ps.shield && ps.shield.gid === realGid && ps.shield.prov === PROV_MINTED, ps.shield);
+  /* v2.3.4840: the quest armour minted above is in the worker's own stash
+     now (gearstash.js _gearStashLiveAdd), proven by its id; these checks are
+     about the CLAIM, so they read the four claimed plates */
+  const CLAIMED = new Set(['Forged Plate', 'Godly Iron Plate', 'Ghost Plate', 'Proto Plate']);
+  const claimedOut = stash.filter((g) => CLAIMED.has(g.name));
   check('every entry in the claimed stash landed unproven',
-    stash.every((g) => g.prov === PROV_LEGACY && !g.gid), stash);
+    claimedOut.every((g) => g.prov === PROV_LEGACY && !g.gid), stash);
   check('nothing the client claimed was DELETED -- four in, four out',
-    stash.length === 4, stash.length);
+    claimedOut.length === 4, claimedOut.length);
 
   /* And the same through the WORN bootstrap seed, which is the widest
      gear-trust surface in the game. */
@@ -327,7 +332,7 @@ let amuletGid = null;
   await room._saveRpg(PID, ps);
   const blob = state._store.get('rpg:' + PID);
   check('...and none of it reached storage as minted',
-    (blob.armorStash || []).every((g) => g.prov === PROV_LEGACY && !g.gid), blob.armorStash);
+    (blob.armorStash || []).filter((g) => CLAIMED.has(g.name)).every((g) => g.prov === PROV_LEGACY && !g.gid), blob.armorStash);
 }
 
 /* Same-id-on-a-same-slot claim: the piece is rebuilt from OUR row, so the

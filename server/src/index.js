@@ -4811,6 +4811,8 @@ export class GameRoom {
          (revealbag.js) */
       armorForMe = pile.armor.map((a) => this._gearProvRecord(
         session.id, (a && a.slot === 'legsArmor') ? 'legsArmor' : 'armor', this._revealBagMark(session, { ...a }), 'drop'));
+      /* v2.3.4840: the worker's armour stash too (gearstash.js _gearStashLiveAdd) */
+      if (this._gearStashLiveAdd) for (const a of armorForMe) this._gearStashLiveAdd(ps, (a && a.slot === 'legsArmor') ? 'legsArmor' : 'armor', a);
     }
     pile.claimedBy[session.id] = true;
 

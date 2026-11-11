@@ -125,6 +125,8 @@ export const dailyChestMethods = {
       /* Minted into the ledger before it leaves, exactly as a picked-up drop
          is (index.js loot pickup, src 'drop'). */
       prize.piece = this._gearProvRecord(session.id, prize.piece.slot, { ...prize.piece }, 'chest');
+      /* v2.3.4840: the worker's armour stash too (gearstash.js _gearStashLiveAdd) */
+      if (this._gearStashLiveAdd) this._gearStashLiveAdd(ps, prize.piece.slot, prize.piece);
     }
     if (opId && typeof opId === 'string') await this._opStamp('chestop:' + opId);
     /* v2.3.3527: an Elite or Godly piece is an achievement (achievements.js),

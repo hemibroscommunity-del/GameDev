@@ -130,6 +130,12 @@ export const gridMethods = {
        counts in every hit, so nothing worn is a secret */
     if (next && next.unrevealed && this._revealBagOnWear) next = this._revealBagOnWear(session && session.id, ps, slot, next);
     const wasGrade = wornGradeLetter(ps[slot]);
+    /* v2.3.4840: the worker's armour stash follows the swap: the piece put on
+       leaves it, the piece taken off goes in (gearstash.js _gearStashLiveAdd) */
+    if (this._gearStashLiveAdd) {
+      if (next) this._gearStashLiveTake(ps, slot, next);
+      if (ps[slot]) this._gearStashLiveAdd(ps, slot, ps[slot]);
+    }
     ps[slot] = next;
     /* v2.3.3142: a swap that changes the grade everyone else sees (tick.js
        `eqg`) goes out with the next tick -- an elite torso for a plain one of

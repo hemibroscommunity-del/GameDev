@@ -426,7 +426,60 @@ export const GEAR_STASH_PROV_SLOT = {
   amuletStash: 'amulet',
 };
 
+/* v2.3.4840: the two slots kept live (the armour stash; the loss's spares) */
+function liveField(slot) { return slot === 'armor' ? 'armorStash' : slot === 'legsArmor' ? 'legsStash' : null; }
+
 export const gearStashMethods = {
+  /* ═══ v2.3.4840: THE ARMOUR STASH KEPT LIVE ON THE WORKER ═══
+     (STATE-MACHINES.md "what is left", from #1531; the sweep's V21 S7-23.)
+     The worker learned `armorStash` / `legsStash` only at join, from the
+     phone's claim below.  A piece that reached the phone's bag THIS session --
+     forged, won from a chest or a quest, picked up, or taken off -- was in
+     nothing the No man's land loss reads (nomansland.js takes the spares in
+     ps.armorStash / legsStash), so a losing player kept it until the next
+     join.  Now every road that hands a piece to the bag puts it in the
+     worker's list too, and a piece put on leaves it.
+
+     ADD ONLY WHAT IS ABSENT, never a second copy.  The loss CREDITS what it
+     takes to the killer: a copy too many here would be a piece minted out of
+     nothing.  So an add is skipped when the list already holds the piece (by
+     its id, or by the value signature for an old unrecorded one): at worst
+     the worker still holds too few, which is the old behaviour, never too
+     many.  The phone never adopts this list (wsClient.js seeds from its own),
+     and the join's merge is a max, so the two cannot double each other.
+
+     No write of its own: each caller already saves (the forge, the chest,
+     the pickup, the quest, stats_update, the take-off) and the list rides
+     that put (cost-guard).  `armorstashlive: false` in the live flags puts
+     the join-only behaviour back. */
+  _gearStashLiveOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'armorstashlive') && !f.armorstashlive);
+  },
+  _gearStashLiveAdd(ps, slot, piece) {
+    if (!ps || !piece || typeof piece !== 'object' || Array.isArray(piece)) return false;
+    const field = liveField(slot);
+    if (!field || !this._gearStashLiveOn()) return false;
+    if (!Array.isArray(ps[field])) ps[field] = [];
+    const sig = stashSig(field, piece);
+    if (!sig || ps[field].some((g) => stashSig(field, g) === sig)) return false;
+    if (ps[field].length >= gearStashCap()) return false;
+    const clean = sanitizeGearPiece(piece, false);
+    if (!clean) return false;
+    ps[field].push(clean);
+    return true;
+  },
+  _gearStashLiveTake(ps, slot, piece) {
+    if (!ps || !piece || typeof piece !== 'object') return false;
+    const field = liveField(slot);
+    if (!field || !this._gearStashLiveOn() || !Array.isArray(ps[field])) return false;
+    const sig = stashSig(field, piece);
+    const i = ps[field].findIndex((g) => stashSig(field, g) === sig);
+    if (i < 0) return false;
+    ps[field].splice(i, 1);
+    return true;
+  },
+
   /* ═══ v2.3.2527: THE DOOR STAYS OPEN (review finding 1) ═══
      Join-time load + adoption of the four client-local stashes.  Called
      from _handleJoin for BOTH branches (stored record and first-connect
