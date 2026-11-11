@@ -494,10 +494,18 @@ lands.
    splash takes outward from the impact, 0, 15 and 30 px (x the zone's depth,
    a debt they walk back; a braced monster stays). Monsters only.
 6. **The floors**: one counted shot at most every 100 ms (a quicker one lands
-   nothing; the clock is untouched). A named shot's claims skip the 210 ms
-   lane a monster and the 300 ms lane a player, and spend their SHARE of the
-   bow's or staff's hits-a-second allowance (`hitproof.js`). Each target once
-   a shot; an arrow 4 (or its Piercing's), a bolt 1.
+   nothing; the clock is untouched). A named shot's claims are held to the
+   210 ms lane a monster and the 300 ms lane a player by their WORTH (a full
+   one a whole lane, a light one its share, one lane early at most:
+   v2.3.4799), and spend their SHARE of the bow's or staff's hits-a-second
+   allowance (`hitproof.js`). Each target once a shot; an arrow 4 (or its
+   Piercing's), a bolt 1.
+   **A shot with NO field** (today's whole arrow or bolt) is charged to the
+   one clock as a full build (v2.3.4799). Before, it touched nothing, and a
+   modified phone mixing the two (a field-less arrow, a full draw 1 ms
+   later, every cycle) landed 35,044 a minute with 312 perfects, past
+   today's best forged rhythm (29,068), and 1.8x today's in a duel (the
+   combined feel's review, F1).
 7. **Against a player** the share lands as a sword's does; no perfect, no
    mana, no ring; a bolt's splash by its stage.
 
@@ -511,6 +519,10 @@ lands.
 | 0.8 spheres | | 6,720 / 6,720 |
 | tap-spam (120 ms draws / 150 ms sparks) | 16,172 | 6,666 / 0 |
 | forged (a billion ms every 120 ms) | 16,267 (the slack once) | |
+| today's best forged (no field, every 210 ms lane) | 29,068 (39 perfect) | 12,500 |
+| MIXED, no field + a full draw 1 ms later a cycle (v2.3.4799) | 18,132 (161 perfect; was 35,044 / 312) | 6,800 (was 12,400) |
+| MIXED, no field every lane + a draw between | 29,096 (one lane once; was 31,956) | 12,433 |
+| duels: today's best forged (300 ms) / the worst mix | 20,000 / 20,000 (was 36,272; staff was 26,766) | |
 
 Building pays over a pack (sparks splash nothing); no weapon's best damage a
 second moves. The same holds with the worker's own roll.

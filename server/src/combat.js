@@ -1346,8 +1346,9 @@ export const combatMethods = {
     /* v2.3.4801: THE BOW'S DRAW AND THE STAFF'S GATHER (drawgather.js): the
        shot this claim names, if the worker stamped it with a build (null:
        today's arrow or bolt).  Its claims spend their SHARE of the allowance
-       below (a dropped shot's nothing: it lands nothing), skip the 210 ms
-       lane (their own floor holds them), and land their share. */
+       below (a dropped shot's nothing: it lands nothing), are held to the
+       210 ms lane by their WORTH (v2.3.4799, drawgather.js _dgLaneTake), and
+       land their share. */
     const _dg = (!isSpecial && (_effSlot === 'ranged' || _effSlot === 'staff'))
       ? this._dgFind(attackerPs, _effSlot, payload.sw) : null;
     if (_hp && !isSpecial && !this._hitRateTake(attackerPs, _effSlot, _hpNow, _dg ? (_dg.drop ? 0 : _dg.f) : 1)) { this._hpTally('rate'); return; }
@@ -1381,6 +1382,7 @@ export const combatMethods = {
     // learns nothing, a laggy legit client just loses a ghost hit its
     // next authoritative tick corrects).  In-memory only (rule 11).
     // v2.3.3430: no lanes for a test-mode character (testmode.js).
+    let _dgCad = null;   /* v2.3.4799: the lane a drawn or gathered claim is held to, by its worth */
     if (attackerPs && !_tm) {
       const nowTs = Date.now();
       if (!attackerPs._monHitCad) attackerPs._monHitCad = new Map();
@@ -1397,7 +1399,9 @@ export const combatMethods = {
            more than the lane has left. */
         _orbs = Math.min(_orbs, 3 - cad.s.length);
         for (let k = 0; k < _orbs; k++) cad.s.push(nowTs);
-      } else if (!_fsOn && !_dg) {   /* v2.3.4520: the trial's own floor is below; v2.3.4801: a named build shot's too */
+      } else if (_dg) {
+        _dgCad = cad;   /* v2.3.4799: held below, by its worth, once its worth is known */
+      } else if (!_fsOn) {   /* v2.3.4520: the trial's own floor is below */
         if (nowTs - cad.n < 210) return; // v2.3.1343: 335 -> 210 (Tempo cap -50%)
         cad.n = nowTs;
       }
@@ -1431,7 +1435,12 @@ export const combatMethods = {
       /* v2.3.4801: a drawn arrow's or a gathered bolt's share of a full one
          (null: a shot that lands nothing, or a monster it took already); a
          perfect draw x FULL_SWING_BONUS, and its mana once a shot */
-      const _t = this._dgTake(attackerPs, session, _dg, 'm:' + monsterId, true);
+      /* v2.3.4799: ...held to this monster's 210 ms lane by its worth (a
+         full one a whole lane, a light one its share; drawgather.js
+         _dgLaneTake): before, it skipped the lane, and a field-less arrow
+         between two drawn ones had the lane to itself (the review's F1) */
+      const _t = this._dgTake(attackerPs, session, _dg, 'm:' + monsterId, true,
+        _dgCad ? (k) => this._dgLaneTake(_dgCad, 'n', 210, k, Date.now()) : null);
       if (!_t) return;
       _fsK = _t.k;
       _pf = _t.pf;
@@ -2447,6 +2456,7 @@ export const combatMethods = {
          client-supplied. */
       if (!this._pvpHitLanes) this._pvpHitLanes = new Map();
       if (this._pvpHitLanes.size > 2000) this._pvpHitLanes.clear(); // stale-pair backstop
+      let _dgLane = null;   /* v2.3.4799: the lane a named build shot is held to, by its worth */
       {
         const laneKey = attackerId + '>' + targetId;
         const now = Date.now();
@@ -2462,9 +2472,15 @@ export const combatMethods = {
           if (lane.spCount >= this.PVP_TUNING.SPECIAL_LANE_MAX) continue;
           lane.spCount++;
         } else {
-          /* v2.3.4801: a named build shot is held by its own floor and bound */
-          if (!_dgPvp && now - lane.lastTs < this.PVP_TUNING.CADENCE_MS) continue;
-          lane.lastTs = now;
+          /* v2.3.4801: a named build shot is held by its own floor and bound;
+             v2.3.4799: ...and by this lane, by its worth, below (_dgTake's
+             gate): skipping it, a field-less arrow between two drawn ones had
+             the lane to itself (1.8x today's in a duel: the review's F1) */
+          if (_dgPvp) _dgLane = lane;
+          else {
+            if (now - lane.lastTs < this.PVP_TUNING.CADENCE_MS) continue;
+            lane.lastTs = now;
+          }
         }
       }
       /* v2.3.4520: THE FREE-SWING TRIAL -- after the lane, so a claim it
@@ -2481,7 +2497,8 @@ export const combatMethods = {
         }
       }
       if (_dgPvp) {
-        const _t = this._dgTake(attackerPs, attackerSession, _dgPvp, 'p:' + targetId, false);
+        const _t = this._dgTake(attackerPs, attackerSession, _dgPvp, 'p:' + targetId, false,
+          _dgLane ? (k) => this._dgLaneTake(_dgLane, 'lastTs', this.PVP_TUNING.CADENCE_MS, k, Date.now()) : null);
         if (!_t) continue;
         _fsK = _t.k;
       }

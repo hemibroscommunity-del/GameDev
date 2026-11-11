@@ -20,7 +20,7 @@
  *      x1.12 and an eighth of the special's mana once a shot, monsters only,
  *      and the switches (perfectbow, freeswingbonus, fs: 1, off the trial);
  *   5. the floors: a shot within 100 ms lands nothing and leaves the clock;
- *      a named shot skips the 210 ms lane; each monster once a shot; an
+ *      a named shot is held to the 210 ms lane by its worth (v2.3.4799); each monster once a shot; an
  *      arrow 4 monsters (or its Piercing's), a bolt 1; the allowance is
  *      spent by share;
  *   6. the staff's gather: its share; the stages (spark, orb, sphere at 0.4
@@ -34,7 +34,10 @@
  *   9. THE BALANCE PROOF: a minute against a dummy, each rhythm -- today's
  *      bow and staff, full builds, tap-spam, the forged rhythms -- the best
  *      damage a second does not move (exact with a fixed roll, and again
- *      with the worker's own roll at a fixed die). */
+ *      with the worker's own roll at a fixed die); and (v2.3.4799) the
+ *      MIXED rhythms, shots with and without a field, on a monster and in
+ *      a duel: never past today's best forged rhythm, never more perfects
+ *      than honest full draws. */
 import { readFileSync } from 'node:fs';
 import { GameRoom } from '../src/index.js';
 import { DRAW_GATHER } from '../src/drawgather.js';
@@ -479,7 +482,7 @@ async function drawAt(p, dr, gap) {
   const hA = TGT.ps.hp; room._resolvePvPAttack(P.sess, { kind: 'ranged', range: 600, arc: 3, angle: 0, target: TGT.id, sw: sa });
   T += 150;
   const hB = TGT.ps.hp; room._resolvePvPAttack(P.sess, { kind: 'ranged', range: 600, arc: 3, angle: 0, target: TGT.id, sw: sb });
-  check('7. two named shots on a player 150 ms apart both land (the 300 ms lane is for unnamed claims)', hA - hB > 0 && hB - TGT.ps.hp > 0, { a: hA - hB, b: hB - TGT.ps.hp });
+  check('7. two named shots on a player 150 ms apart both land (the 300 ms lane holds a named one by its worth: v2.3.4799)', hA - hB > 0 && hB - TGT.ps.hp > 0, { a: hA - hB, b: hB - TGT.ps.hp });
   const again = TGT.ps.hp; room._resolvePvPAttack(P.sess, { kind: 'ranged', range: 600, arc: 3, angle: 0, target: TGT.id, sw: sb });
   check('7. ...and each player once a shot', again === TGT.ps.hp);
   /* a gathered bolt's splash from a player, by its stage */
@@ -585,6 +588,91 @@ await proof('a fixed roll of 100');
 room._rollHit = realRoll;   /* the worker's own roll (its ceilings, the edge) at a fixed die */
 await proof('the worker\'s roll');
 room._rollHit = FIXED;
+
+/* v2.3.4799: THE MIXED RHYTHMS (the combined feel's review, F1).  A modified
+   phone mixing shots with and without a field: before, a field-less arrow
+   did not move the draw clock and a drawn one skipped the 210 ms lane, so a
+   field-less arrow then a full draw 1 ms later, every cycle, landed 35,044
+   a minute and 312 perfects (today's best forged rhythm 29,068; honest 162
+   perfects), and in a duel 1.8x today's.  Each step: a shot (`b` its build;
+   absent: no field; `nr`: no shot at all, a claim naming nothing), its
+   claim 1 ms later, then `gap` ms to the next. */
+async function mixMinute(p, kind, plan) {
+  arm(p, kind); T += 10000;
+  const m = monster(p, 200);
+  const t0 = T;
+  let main = 0, pf = 0;
+  while (T - t0 < 60000) {
+    for (const st of plan) {
+      const s = st.nr ? undefined : kind === 'staff' ? await bolt(p, st.b) : await bow(p, st.b);
+      T += 1;
+      main += hit(p, m, { slot: kind, sw: s });
+      for (const e of lastEvents) if (e.type === 'monster_hit' && e.payload.pf) pf++;
+      T += st.gap - 1;
+    }
+  }
+  return { main, pf };
+}
+async function mixDuel(p, kind, plan) {
+  arm(p, kind);
+  room._pvpConsent.set(room._pvpPairKey(p.id, TGT.id), T + 3600000);
+  TGT.ps.z = p.ps.z; TGT.ps.x = p.ps.x + 200; TGT.ps.y = p.ps.y;
+  TGT.ps.maxHp = 1e9; TGT.ps.hp = 1e9; TGT.ps.dead = TGT.ps.dying = TGT.ps.disconnected = false;
+  TGT.ps.blocking = false; TGT.ps.dodging = false; TGT.ps._zoneEntryGraceUntil = 0;
+  room._pvpHitLanes = new Map(); T += 10000;
+  const t0 = T, hp0 = TGT.ps.hp;
+  while (T - t0 < 60000) {
+    for (const st of plan) {
+      const s = st.nr ? undefined : kind === 'staff' ? await bolt(p, st.b) : await bow(p, st.b);
+      T += 1;
+      TGT.ps.dodging = false; TGT.ps.blocking = false;
+      room._resolvePvPAttack(p.sess, { kind, range: 600, arc: 3, angle: 0, target: TGT.id, sw: s });
+      T += st.gap - 1;
+    }
+  }
+  return hp0 - TGT.ps.hp;
+}
+{
+  room._rollHit = FIXED;
+  const honest = await mixMinute(P, 'ranged', [{ b: BCYC, gap: BCYC }]);
+  const ceiling = await mixMinute(P, 'ranged', [{ gap: 210 }]);   /* today's best forged rhythm: no field, every lane */
+  const one = 100 * (1 + FREE_SWING.FULL_SWING_BONUS) + 1;   /* one lane early, once (drawgather.js _dgLaneTake) */
+  const bowMixes = {
+    'a field-less arrow, a full draw 1 ms later, every cycle (the review\'s)': [{ gap: 1 }, { b: BCYC, gap: BCYC - 1 }],
+    'a field-less arrow every lane, a draw between': [{ gap: 1 }, { b: 209, gap: 209 }],
+    'claims naming no shot every lane, a full draw a cycle': [{ nr: 1, gap: 1 }, { b: BCYC, gap: 210 }, { nr: 1, gap: BCYC - 211 }],
+    'a field-less arrow in today\'s perfect window, then a full draw': [{ gap: BCYC - 60 }, { b: BCYC, gap: BCYC }],
+    'halves: field-less and a half draw, alternating': [{ gap: 105 }, { b: 105, gap: 105 }],
+    'a forged draw of 1e9 after each field-less arrow': [{ gap: 110 }, { b: 1e9, gap: 110 }],
+  };
+  const rows = [];
+  for (const [name, plan] of Object.entries(bowMixes)) {
+    const r = await mixMinute(P, 'ranged', plan);
+    rows.push(`${r.main}/${r.pf}`);
+    check(`9. MIXED [${name}]: never past today's best forged rhythm (+ one lane, once), never more perfects than honest full draws`,
+      r.main <= ceiling.main + one && r.pf <= honest.pf, { mixed: r, ceiling, honest });
+  }
+  const sCeiling = await mixMinute(P, 'staff', [{ gap: 210 }]);
+  const sMix = await mixMinute(P, 'staff', [{ gap: 1 }, { b: SCYC, gap: SCYC - 1 }]);
+  const sMix2 = await mixMinute(P, 'staff', [{ gap: 1 }, { b: 300, gap: 209 }]);
+  check('9. MIXED staff: a field-less bolt and a full gather 1 ms later, or every lane: never past today\'s best forged bolts (+ one, once)',
+    sMix.main <= sCeiling.main + 101 && sMix2.main <= sCeiling.main + 101, { sMix, sMix2, sCeiling });
+  console.log(`   mixed a minute (damage/perfects): honest ${honest.main}/${honest.pf}, today's best forged ${ceiling.main}/${ceiling.pf}; mixes ${rows.join(', ')}; staff today forged ${sCeiling.main}, mixes ${sMix.main}, ${sMix2.main}`);
+  /* a duel: no allowance there, the 300 ms lane is the whole ceiling */
+  const realPvp = room._pvpRollFor;
+  room._pvpRollFor = () => ({ dmg: 100, isCrit: false });
+  const dCeiling = await mixDuel(P, 'ranged', [{ gap: 300 }]);
+  const dRows = [];
+  for (const [kind, full] of [['ranged', BCYC], ['staff', SCYC]]) {
+    for (const plan of [[{ gap: 1 }, { b: full, gap: 299 }], [{ gap: 1 }, { b: full, gap: 300 }], [{ nr: 1, gap: 1 }, { b: full, gap: 299 }], [{ gap: 150 }, { b: 150, gap: 150 }]]) {
+      const d = await mixDuel(P, kind, plan);
+      dRows.push(d);
+      check(`9. MIXED duel [${kind} ${JSON.stringify(plan)}]: never past today's field-less shot every 300 ms (+ one, once)`, d <= dCeiling + 101, { d, dCeiling });
+    }
+  }
+  console.log(`   mixed duels a minute: today's best forged ${dCeiling}; mixes ${dRows.join(', ')}`);
+  room._pvpRollFor = realPvp;
+}
 
 if (failures) { console.log(`\n${failures} FAILED`); process.exit(1); }
 console.log('\nALL PASS');

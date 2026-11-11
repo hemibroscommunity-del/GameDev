@@ -57,10 +57,11 @@
  *      is today's.  Told as `gs` (the stage) on monster_hit.
  *   6. THE FLOORS.  One counted shot at most every MIN_GAP_MS (the sword's
  *      MIN_SWING_GAP_MS): one sooner is kept as a shot that lands nothing,
- *      and the clock is untouched.  A named shot's claims skip the 210 ms
- *      lane a monster (combat.js) and the 300 ms lane a player: its own
- *      floor and bound hold it, and a tap-spam of shares must not lose hits
- *      a flurry of light sword cuts keeps.  Its claims spend their SHARE of
+ *      and the clock is untouched.  A named shot's claims are held to the
+ *      210 ms lane a monster (combat.js) and the 300 ms lane a player by
+ *      their WORTH (v2.3.4799, _dgLaneTake: a full one a whole lane, a light
+ *      one its share, so a tap-spam of shares keeps every hit a flurry of
+ *      light sword cuts keeps).  Its claims spend their SHARE of
  *      the bow's or staff's hits-a-second allowance (hitproof.js
  *      _hitRateTake), so damage a second is held there too.  Each monster
  *      or player once a shot; an arrow its Piercing's worth, a bolt one (its
@@ -69,9 +70,19 @@
  *      cut, in _applyDamage; a blocker's stamina by it too); no perfect, no
  *      mana, no ring.
  *   8. A shot with no field, a claim naming no shot (or one never stamped,
- *      or one of another weapon): TODAY, exactly.  The field can only make
- *      a shot worth its share of today's arrow or bolt, never more -- a
- *      forged claim gains nothing a phone leaving the field off would not.
+ *      or one of another weapon): TODAY'S DAMAGE, exactly -- and (v2.3.4799)
+ *      a shot with no field is charged to the one clock as a FULL build
+ *      (_dgWhole), and every claim, named or not, shares the target's lane.
+ *      Until v2.3.4799 this line said "a forged claim gains nothing a phone
+ *      leaving the field off would not", and it was false: a field-less
+ *      arrow left the clock alone and a drawn one skipped the lane, so a
+ *      phone MIXING the two (a field-less arrow, a full draw 1 ms later,
+ *      every cycle) landed 35,044 a minute against today's best forged
+ *      29,068 with double the perfects, and 1.8x today's in a duel (the
+ *      combined feel's review, F1).  What holds now, draw-gather.test §9
+ *      MIXED: no mix of the two lands more than today's best forged rhythm
+ *      (one lane's worth more at most, once), nor more perfects than one
+ *      honest full draw a cycle.
  *
  * SWITCHES (live flags, lower case): `bowdraw: false` (no draw counted;
  * caps.bowDraw un-advertised), `staffgather: false` (no gather; caps
@@ -167,7 +178,12 @@ export const drawGatherMethods = {
     if (payload.isSpecial || payload.retreat) return false;
     const staff = payload.isStaff === true;
     const field = staff ? 'ga' : 'dr';
-    if (!own(payload, field) || payload[field] === null || payload[field] === undefined) return false;   /* no claim: today */
+    if (!own(payload, field) || payload[field] === null || payload[field] === undefined) {
+      /* no claim: today's whole arrow or bolt -- and a FULL build on the one
+         clock (v2.3.4799) */
+      this._dgWhole(session, staff ? 'staff' : 'ranged', now);
+      return false;
+    }
     const kind = staff ? 'staff' : 'ranged';
     if (!this._dgOn(kind)) return false;
     const ps = this.playerState && this.playerState[session.id];
@@ -202,6 +218,54 @@ export const drawGatherMethods = {
     return true;
   },
 
+  /* v2.3.4799: A shot with NO claim (today's whole arrow or bolt) is charged
+     to the one clock as a FULL build of its weapon: the clock moves to now
+     and what the time since the last shot did not cover is owed by the next
+     (`debt`, at most one full build).  Before, it touched nothing: a modified
+     phone loosed a field-less arrow (today's whole one, judged perfect by
+     freeswing.js's own clock) and a full draw 1 ms later (still a full
+     share: the clock had not moved), double the perfects and +21 % over
+     today's best forged rhythm (the combined feel's review, F1).  Charged
+     as a full build, every shot -- with a field or without -- spends the
+     time it is worth, so a mix of the two draws no more perfects than one
+     honest full draw a cycle.  Only for a phone that has drawn (or gathered)
+     already: one that never has has no clock to protect, and a first draw
+     after a rest is a full one anyway.  A special's shot is its own (paid,
+     its own lane), as before. */
+  _dgWhole(session, kind, now) {
+    if (!this._bowDrawOn() && !this._staffGatherOn()) return;
+    const ps = this.playerState && this.playerState[session.id];
+    const dg = ps && ps._dg;
+    if (!dg) return;
+    const full = this._dgFullMs(ps, kind);
+    const base = now - dg.at - dg.debt;
+    dg.debt = Math.min(full, Math.max(0, full - base));
+    dg.at = now;
+  },
+  /* v2.3.4799: A drawn or gathered claim on one target is HELD to that
+     target's lane (combat.js: 210 ms a monster, `_monHitCad`; 300 ms a
+     player, `_pvpHitLanes`) by its WORTH, not skipped: `lane[field]` is the
+     time of the last whole claim (today's), so the lane is free a whole
+     lane later; a claim worth `k` (its share, x the perfect bonus) moves it
+     on by k of a lane.  A light shot moves it a little (a tap-spam of
+     shares lands every one, as a flurry of light sword cuts does), a full
+     one a whole lane.  A drawn claim may come up to one lane early (it
+     needs only that the lane is not owed past now): the network bunches
+     two claims, and a drawn one's worth is already held by the clock --
+     once, never cumulative, so a mix of today's whole claims and drawn
+     ones lands at most one lane's worth more than today's whole ones alone,
+     however long it runs.  Before, a named claim skipped the lane outright
+     and a field-less claim between two drawn ones had the lane to itself
+     (the review's F1).  Mutates the lane only when it lets the claim
+     through. */
+  _dgLaneTake(lane, field, laneMs, k, now) {
+    if (!lane) return true;
+    const last = Number(lane[field]) || 0;
+    if (now < last) return false;
+    lane[field] = Math.max(last + laneMs, now) + laneMs * Math.max(0, k) - laneMs;
+    return true;
+  },
+
   /* The shot a claim names (`sw`), of this weapon, if the worker stamped one
      with a build: or null (the claim is today's). */
   _dgFind(ps, kind, sw) {
@@ -224,18 +288,20 @@ export const drawGatherMethods = {
   /* A claim on the shot `shot` against `key` ('m:' a monster, 'p:' a player):
      null (dropped quietly: a shot that lands nothing, or a target it took
      already, or more than it can take), or { k: its worth, pf: perfect }. */
-  _dgTake(ps, session, shot, key, onMonster) {
+  _dgTake(ps, session, shot, key, onMonster, gate) {
     if (!shot || shot.drop) return null;
     const max = shot.kind === 'staff' ? DRAW_GATHER.BOLT_TARGETS : Math.max(DRAW_GATHER.ARROW_TARGETS, 1 + this._hitPierce(ps));
+    if (shot.ids && (shot.ids.has(key) || shot.ids.size >= max)) return null;
+    const pf = !!(onMonster && shot.p && this._dgPerfectOn(session));
+    const k = pf ? shot.f * (1 + FREE_SWING.FULL_SWING_BONUS) : shot.f;
+    /* v2.3.4799: the target's lane, by the claim's worth (_dgLaneTake),
+       BEFORE anything is spent: a claim the lane holds back takes no
+       target and pays no mana */
+    if (typeof gate === 'function' && !gate(k)) return null;
     if (!shot.ids) shot.ids = new Set();
-    if (shot.ids.has(key) || shot.ids.size >= max) return null;
     shot.ids.add(key);
-    let pf = false;
-    if (onMonster && shot.p && this._dgPerfectOn(session)) {
-      pf = true;
-      if (shot.p === 1) { shot.p = 2; this._pfMana(session.id, ps, ps._dg); }
-    }
-    return { k: pf ? shot.f * (1 + FREE_SWING.FULL_SWING_BONUS) : shot.f, pf };
+    if (pf && shot.p === 1) { shot.p = 2; this._pfMana(session.id, ps, ps._dg); }
+    return { k, pf };
   },
 
   /* The splash a bolt of stage `st` makes (combat.js _staffSplash's spec), or
