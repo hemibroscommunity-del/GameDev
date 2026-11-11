@@ -577,8 +577,7 @@ export const persistenceMethods = {
     if (ws) {
       try { ws.send(JSON.stringify({ type: 'character_reset_done' })); } catch (e) {}
       try { ws.close(4005, 'character reset'); } catch (e) {}
-      try { await this.webSocketClose(ws); } catch (e) { /* best effort: the session goes below */ }
-      this.sessions.delete(ws);
+      await this._playerLeaves(ws, 'reset');   /* v2.3.4830: the session door (leave.js) */
     }
     return true;
   },

@@ -265,6 +265,7 @@ import { moveClaimMethods, guardFacing } from './moveclaims.js'; /* v2.3.4605: w
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
 import { staminaRegenMethods } from './staminaregen.js'; /* v2.3.3536: stamina regen worked out by the worker */
 import { fightLockMethods, FIGHT_GATED } from './fightlock.js'; /* v2.3.4510: one fight-lock table */
+import { leaveMethods } from './leave.js'; /* v2.3.4830: the session door -- every way of leaving */
 import { goldMethods } from './gold.js'; /* v2.3.4670: the gold door -- every change to a player's gold */
 import { lifeMethods } from './life.js'; /* v2.3.4820: the life door -- a player's health and life phase */
 import { bagGive } from './bag.js'; /* v2.3.4810: the bag door */
@@ -5034,7 +5035,7 @@ export class GameRoom {
        on the session only; the AS number goes in the player's botstat. */
     const _cf = (request && request.cf) || {};
     const _asn = Number(_cf.asn);
-    this.sessions.set(server, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now(), moveSig: '', ip: _ip, openedAt: Date.now(),
+    this.sessions.set(server, { phase: 'open', /* v2.3.4830: the session's life (leave.js) */ id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now(), moveSig: '', ip: _ip, openedAt: Date.now(),
       asn: Number.isFinite(_asn) && _asn > 0 ? _asn : null, asOrg: typeof _cf.asOrganization === 'string' ? _cf.asOrganization.slice(0, 64) : null });
     if (!this.tickInterval && this.sessions.size === 1) this.startTickLoop();
     return new Response(null, { status: 101, webSocket: client });
@@ -6506,114 +6507,11 @@ export class GameRoom {
   // decomposition) -- the §16.12 lag-comp rollback PvP resolution
   // lives in combatMethods, mixed into this prototype below.
 
-  async webSocketClose(ws) {
-    const session = this.sessions.get(ws);
-    let _petsLeft = null;   /* v2.3.3120: see below */
-    let _codexLeft = null;  /* v2.3.3209: the same, for the codex (codex.js) */
-    let _fishLeft = null;   /* v2.3.4036: and the catches to weigh (fishlog.js) */
-    let _accLeft = null;    /* v2.3.4545: and the shots and hits not yet written (accuracy.js) */
-    if (session?.id) {
-      /* ═══ v2.3.3260: LEAVING IN THE MIDDLE OF A FIGHT, THE BODY STAYS ═══
-         A player who leaves within 10 s of a hit between them and another
-         player, in the Wheel, leaves their body behind for LINGER.MS,
-         hittable (linger.js).  This close then does only what does not touch
-         the body -- the flushes, the duel/trade/party/consent bookkeeping --
-         and the rest (the body out of the world, its caches, player_leave)
-         waits for _lingerEnd. */
-      const _linger = this._lingerOnClose(session, Date.now());
-      /* v2.3.3265: your sparring clones go with you (spar.js) -- after the
-         linger's decision, which a spar keeps from happening */
-      if (this._sparOnLeave) this._sparOnLeave(session.id);
-      if (this.playerState[session.id] && !_linger) this.playerState[session.id].disconnected = true;
-      /* v2.3.1619: flush coalesced regen before the in-memory blob is
-         dropped.  The regen tick only writes durably every
-         REGEN_SAVE_MS, so a player who regenerated inside that window
-         and then left would reload the PRE-regen pools on their next
-         join -- visible as HP/stamina snapping backwards at the worst
-         possible moment.  Awaited: this is the last chance to persist,
-         a disconnect is not latency-critical, and an unawaited put can
-         be lost to DO eviction.  No-ops (_regenDirty false) for every
-         player whose last write was value-bearing. */
-      const _ps = this.playerState[session.id];
-      if (_ps && _ps._regenDirty) await this._saveRpg(session.id, _ps);
-      /* v2.3.3140: the daily quests' counting is written at most every 30 s;
-         this is its last chance (dailyrewards.js).  Awaited for the same
-         reason as the regen flush above -- and, like it, ONLY when there is
-         something to write: a promise comes back just then, so a clean close
-         stays synchronous for the AFK sweep (afk.test.mjs). */
-      const _drClose = this._drOnClose(session.id);
-      if (_drClose) await _drClose;
-      if (!_linger) {   /* v2.3.3260: a lingering body keeps all of this until _lingerEnd */
-      /* v2.3.3327: where the worker had them, for the next join to be
-         judged from (lastplace.js) */
-      this._placeRemember(session.id, this.playerState[session.id], Date.now());
-      delete this.playerState[session.id];
-      /* v2.3.2534: drop the in-memory provenance ledger with the session.
-         The record itself is durable in gear_prov:<pid> and reloads on the
-         next join (gearprov.js); this is only the cache. */
-      this._gearProvForget(session.id);
-      this._bankForget(session.id);   /* v2.3.3785: the vault's cache, the same way (bank.js) */
-      /* v2.3.3120: the pets record's cache goes with the session too
-         (petbook.js).  A try counted only in memory is copied out here and
-         written at the very END of this handler -- awaited, as the last
-         chance to keep it, but after every synchronous step, because the AFK
-         sweep (tick.js) calls this without awaiting and must still see the
-         player leave at once. */
-      _petsLeft = this._petbookDirtyCopy(session.id);
-      this._petbookForget(session.id);
-      /* v2.3.3209: and the codex's (codex.js): counting since its last write,
-         copied out now and written at the end with the pets record */
-      _codexLeft = this._codexDirtyCopy(session.id);
-      this._codexForget(session.id);
-      /* v2.3.4036: the catches to weigh, the codex's way (fishlog.js) */
-      _fishLeft = this._fishlogDirtyCopy(session.id);
-      this._fishlogForget(session.id);
-      /* v2.3.4545: the shots and hits counted since the last write, the same way (accuracy.js) */
-      _accLeft = this._accDirtyCopy(session.id);
-      /* v2.3.3527: achievements hold nothing unwritten (achievements.js) */
-      this._achvForget(session.id);
-      delete this.stateHistory[session.id];
-      }
-      /* v2.3.3322: the extraction record is NOT deleted here any more.  A
-         harvest's strike is paid only against its own start now
-         (gathering.js HARVEST_PROOF), and the phone replays a strike its
-         dropped socket ate after it rejoins (wsClient.js _holdForRejoin): the
-         record must outlive the socket for the replay to be timed against it.
-         _sweepStaleExtractions collects it at EXTRACTION_TIMEOUT_MS as ever,
-         and nothing reads it for a player who is not here (_extractionShielded
-         asks for the player first). */
-      if (!_linger) this.dirtyPlayers.delete(session.id);   /* v2.3.3260: the body's stop goes out first */
-      // v2.3.1121: an active duel gets a 15s reconnect grace (iOS tab
-      // suspends and deploy bounces are routine) before _tickDuels
-      // forfeits it -- so this runs BEFORE the consent clear, which
-      // would otherwise end the fight unconditionally.
-      this._duelOnDisconnect(session.id);
-      this._trade2OnDisconnect(session.id); // v2.3.1132: a dropped party cancels the window
-      this._partyOnDisconnect(session.id); // v2.3.1185: mark 'away' (grace), don't remove -- reconnects are routine
-      this._botfpFlush(session); // v2.3.1146: final botstat: write so evidence survives the disconnect
-      this._clearPvpConsent(session.id); // v2.3.1116: consent doesn't survive a disconnect
-      /* v2.3.1981: drop the in-memory mute Set (chatmod.js).  The list
-         itself is durable in chat_mute:<pid> and reloads on the next
-         join -- this only releases the fan-out lookup copy, so a room
-         that has seen a thousand players does not hold a thousand Sets. */
-      this._chatModOnClose(session.id);
-      if (!_linger) this.broadcastAll({ type: 'player_leave', id: session.id });   /* v2.3.3260: a lingering body is still there */
-      this.broadcastAll({ type: 'player_count', count: this.getPlayerCount() - 1 });
-    }
-    this.sessions.delete(ws);
-    /* v2.3.3260: the last one out ends every linger (linger.js): nobody is
-       left to fight, and the tick that sweeps them stops just below */
-    if (this.sessions.size === 0 && this._lingerBodies && this._lingerBodies.size) {
-      for (const id of [...this._lingerBodies.keys()]) { const _le = this._lingerEnd(id); if (_le && _le.catch) _le.catch(() => {}); }
-    }
-    if (this.sessions.size === 0 && this.tickInterval) { clearInterval(this.tickInterval); this.tickInterval = null; }
-    if (_petsLeft) await this._petbookPut(session.id, _petsLeft);
-    if (_codexLeft) await this._codexPut(session.id, _codexLeft);
-    if (_fishLeft) await this._fishlogPut(session.id, _fishLeft);
-    if (_accLeft) await this._accPut(session.id, _accLeft);
-  }
+  /* v2.3.4830: the runtime's close goes through the session door, as every
+     other way of leaving does (leave.js _playerLeaves; its body was here) */
+  async webSocketClose(ws) { return this._playerLeaves(ws, 'close'); }
 
-  async webSocketError(ws) { this.webSocketClose(ws); }
+  async webSocketError(ws) { const _p = this._playerLeaves(ws, 'error'); if (_p && _p.catch) _p.catch(() => {}); }
 
   // ═══ startTickLoop ═══ moved to tick.js (v2.3.1174, P4
   // decomposition; the roadmap's do-last slice) -- the 45Hz world
@@ -6962,5 +6860,6 @@ Object.assign(GameRoom.prototype, moveClaimMethods); /* v2.3.4605: what a move's
 Object.assign(GameRoom.prototype, sparMethods); /* v2.3.3265: sparring clones (spar.js) */
 Object.assign(GameRoom.prototype, staminaRegenMethods); /* v2.3.3536: stamina regen from the worker's own amulet (staminaregen.js) */
 Object.assign(GameRoom.prototype, fightLockMethods); /* v2.3.4510: one fight-lock table (fightlock.js) */
+Object.assign(GameRoom.prototype, leaveMethods); /* v2.3.4830: the session door (leave.js) */
 Object.assign(GameRoom.prototype, goldMethods); /* v2.3.4670: the gold door (gold.js) */
 Object.assign(GameRoom.prototype, lifeMethods); /* v2.3.4820: the life door (life.js) */

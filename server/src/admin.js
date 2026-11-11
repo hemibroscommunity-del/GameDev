@@ -71,8 +71,7 @@ export const adminMethods = {
      A body in a fight with a player lingers as any leaver's does (linger.js). */
   async _adminPutOut(ws, code, reason) {
     try { ws.close(code, reason); } catch (e) { /* closed */ }
-    try { await this.webSocketClose(ws); } catch (e) { /* best effort */ }
-    this.sessions.delete(ws);
+    await this._playerLeaves(ws, 'kick');   /* v2.3.4830: the session door (leave.js) */
   },
 
   async _adminLog(entry) {

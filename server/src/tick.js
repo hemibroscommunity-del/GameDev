@@ -211,11 +211,7 @@ export const tickMethods = {
            not worse), so this is deploy-order safe in both
            directions. */
         try { ws.close(4006, 'idle timeout'); } catch {}
-        try {
-          const _p = this.webSocketClose(ws);
-          if (_p && _p.catch) _p.catch(() => {});
-        } catch {}
-        this.sessions.delete(ws); // belt-and-braces: deterministic in both paths
+        this._playerLeaves(ws, 'afk');   // v2.3.4830: the session door (leave.js): out of the map at once, the saves after
         continue;
       }
       session.lastPing = nowMs;
