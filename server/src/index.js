@@ -747,6 +747,9 @@ export const PRIVILEGED_EVENTS = new Set([
   // another player's local caches (their server blob would survive,
   // but the grief is real).  Server-emitted only.
   'character_reset_done',
+  // v2.3.4627: ...and its refusal during a player fight in No man's land
+  // (persistence.js, fightlock.js `fightlockreset`)
+  'character_reset_refused',
   // v2.3.1198: gem-cut outcomes are server-rolled + private (amulet.js
   // _handleGemCut); forging one is fake-popup grief surface.
   'gem_cut_result',
@@ -6435,6 +6438,10 @@ export class GameRoom {
           }
         }
         if (session.id) {
+          /* v2.3.4615: a bow's arrow on the free-swing trial leaves now: the
+             worker's clock times it for the perfect strike (freeswing.js
+             _pfBowShot; a session not on the trial: nothing) */
+          if (msg.type === 'player_projectile') this._pfBowShot(session, msg.payload, Date.now());
           /* v2.3.3304: rebuilt -- {type, payload} and nothing else, the
              payload a copy in the worker's name for the sender (relay.js):
              a phone relayed "Bob died" by putting Bob's id in the payload,

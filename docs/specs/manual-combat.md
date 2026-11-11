@@ -214,7 +214,9 @@ everything written before it. Moving the old scenarios over is not done.
 ## Nothing is drawn for it
 
 There is no gauge, bar or ring. The one thing on the screen is the special's
-button reading ON while armed.
+button reading ON while armed. (v2.3.4615: the free-swing trial, `?manual=3`,
+gets the owner's own timing bar, drawn with their art in its own change, on
+the rules below: "For the timing bar's art".)
 
 ## How it is built
 
@@ -251,7 +253,9 @@ has not asked for it meets nothing new.
   remembered (`bt_manual` '3', as `?manual=2` is). **`?manual=1`** comes back
   to the game's own swipes and forgets.
 - **`?swingbonus=1`** adds the full-swing bonus (below), remembered in
-  `bt_swingbonus`; **`?swingbonus=0`** forgets it.
+  `bt_swingbonus`; **`?swingbonus=0`** forgets it. (v2.3.4615: the bonus is
+  the perfect strike's now and ON by default on the trial; `?swingbonus=0`
+  turns it off, remembered: "The timing bar and the perfect strike".)
 - The phone asks the worker in its join (`fs: 1`, or `fs: 2` with the bonus:
   `freeSwingAsk`), and the trial runs only when the worker advertises
   **`caps.freeSwing`**. An older worker, or one with the switch off, keeps
@@ -288,7 +292,8 @@ has not asked for it meets nothing new.
    player. Every target of one swing takes that swing's share, each once.
 6. **The bonus (a second switch to compare).** With `?swingbonus=1`, a swing
    after a full cycle (`f = 1`) is `FULL_SWING_BONUS` (0.12) harder, on a
-   monster only. Nothing is held and nothing is shown: it is not a charge
+   monster only. (v2.3.4615: only a PERFECT strike's now, a swing timed to
+   the full cycle; see "The timing bar and the perfect strike".) Nothing is held and nothing is shown: it is not a charge
    attack. Against a player there is no bonus.
 7. **A paid special swing is counted as a swing.** Its own hit is untouched,
    and the next swing's share runs from it, as the untried sword's interval
@@ -301,7 +306,7 @@ sooner than that is dropped there, and that costs nothing either.
 
 ### On the screen
 
-**Nothing new is drawn.** A light swing's damage number is smaller, sized by
+**Nothing new is drawn** (v2.3.4615: but the timing bar, drawn in its own change: "For the timing bar's art", below). A light swing's damage number is smaller, sized by
 the share the worker sends (`pw` on `monster_hit` and `pvp_hit`:
 `mcNumberScale`, a quarter swing 0.7 of the size). A full swing's number is
 as today. A light swing's hit sound is the same sample, quieter
@@ -318,6 +323,145 @@ The constants are `FREE_SWING` in `server/src/freeswing.js`
 (`FULL_SWING_SHARE`, mirrored in `MANUAL.FULL_SWING_SHARE`) and
 `MANUAL.FREE_GAP_MS`. The state lives on the player and is never saved
 (`ps._fs`). It goes when the player leaves.
+
+## The timing bar and the perfect strike (v2.3.4615)
+
+> The owner, 2026-11-10: *"Yeah rising pitch on quick hits and something that
+> benefits the player if they swipe just around the time their swing is back
+> to full again."* Then: *"I like the idea of a sword silhouette laying
+> horizontally that refills as a bar and once the bar reaches the top it
+> glints. During this glinting must attack to get the bonus. Same with the
+> bow. Make the arrow silhouette fill up as the timing bar. It would need to
+> be north of the right joystick. For magic I think it should be skipped for
+> now."* And: *"I also like the idea of the bar freezing in place a moment so
+> you could see where you decided to swing. It doesn't slow down the recovery
+> of the next attack though."*
+
+The free-swing trial's second step. **All of it is behind the trial**
+(`?manual=3`, and a worker advertising `caps.freeSwing` and
+`caps.perfectStrike`): a device not on it meets nothing new. The perfect
+strike, its mana and the sound are in the game; the bar is drawn with the
+owner's art in its own change, on the rules in "For the timing bar's art".
+
+### The perfect strike (the worker's: `server/src/freeswing.js`)
+
+1. **A sword swing or a bow shot whose time since your last counted attack
+   with that weapon lands from `PERFECT_EARLY_MS` (60) before its full cycle
+   to `PERFECT_LATE_MS` (300) after it is a perfect strike.** Judged on the
+   worker's clock: a sword on its counted swings (the trial's own clock); a
+   bow at its arrow's `player_projectile` relay, the moment it leaves (its
+   hit claim comes after the flight), each claim naming its shot (`sw`, the
+   shot's own stamp) so every monster it takes is judged by the shot that
+   hit it. The bow's cycle is the flicked bow's, mirrored from the phone:
+   `max(200, 600 x the Speed stat's cut x 0.825 / a storm amulet)`, then
+   `x 0.75`, never under 215: **371 ms** for a new character.
+2. **It gets the bonus**, `FULL_SWING_BONUS` (0.12): a perfect sword swing's
+   share x 1.12, a perfect arrow x 1.12. This is the bonus that went to any
+   full swing in v2.3.4520; **a full swing outside the window is an
+   ordinary full hit now.** A perfect cadence anywhere in the window is the
+   same damage a second (a swing at 0.95 of a cycle is 0.95 x 1.12).
+3. **And a little mana**, `PERFECT_MANA` (an eighth) of the special's cost.
+   The special costs one mana block (`abilities.js blockSize`): **20 mana**
+   of a new character's 100, so a perfect strike is 2.5, the half carried,
+   and **eight perfect strikes pay one sword special**. Once a strike,
+   however many monsters it takes. Saved as every mana write is (coalesced).
+4. **On monsters only.** Against a player the trial stays a fair fight:
+   damage a second is the untried sword's, no bonus, no mana.
+5. A paid special (a sword's, a bow's volley) and a retreat's arrow restart
+   the clock and are never perfect. A staff's bolt touches nothing.
+6. The phone is told in the hit's own event: `pf: 1` on `monster_hit` (no
+   new message).
+
+**Switches.** `?swingbonus` is the device's switch for the perfect bonus:
+**on by default on the trial now** (`fs: 2` in the join); `?swingbonus=0`
+asks without it (remembered), `?swingbonus=1` comes back. The live flags:
+`freeswingbonus: false` turns every bonus off (the damage and the mana, both
+weapons); `perfectbow: false` the bow's part only; `freeswing: false` the
+whole trial, the bar with it (`caps.perfectStrike` goes with `freeSwing`).
+
+### For the timing bar's art
+
+The bar is drawn in its own change (another session, with the owner's art).
+Everything it needs to read is here; it adds no rule of its own.
+
+**v2.3.4625, as built** (`src/ui/panels/TimingBar.jsx`): the owner's own
+sheet (*"I just added a sprite sheet for you to use for filling up the
+weapons. I'd like it to actually lay vertically in the space above the left
+joystick and try it that way."*), `public/sprites/timingbar/weapons.png`
+(`ui/panels/timingBarArt.js`): the dark iron weapon fills with the gold one
+from the grip at the bottom to the point at the top, standing upright over
+the MOVEMENT disc in the gap between Element Burst's and Quick Eat's places
+(`barBox`). One 2.4 KB file warmed on the loading screen, on the trial only
+(`rendering/timingBarPreload.js`). Where and why: docs/UI-DESIGN-NOTES.md
+"The timing bar".
+
+**The rules** (`src/game/manualCombat.js`, no imports; node tests them,
+`manual-combat.test.mjs` §14):
+
+| function | returns |
+|---|---|
+| `mcBarWeapon(S)` | `'sword'`, `'bow'` or `null`: which bar this hand shows. Not null only on the trial (`?manual=3`) against a worker advertising `caps.freeSwing` AND `caps.perfectStrike`, with a sword (`S.rpg.weapon`) or a bow (`S.rpg.rangedWeapon`) in the active slot. A staff, and everything off the trial: `null`, so nothing is drawn. |
+| `mcBarCycle(S)` | ms the bar fills over: the sword's cycle (the interval `mcFrame` is told each frame: 600 x the Speed stat's cut, the worker's `_fsCycleMs`), or the flicked bow's (`mcBowInterval`, 371 for a new character). |
+| `mcBarTimes(cycle)` | `{ fillMs, fillDelayMs: 0, glintDelayMs, glintMs, freezeMs }`: the fill runs `fillMs` from the attack, never delayed; the glint starts `cycle - PERFECT_EARLY_MS` after it and lasts `PERFECT_EARLY_MS + PERFECT_LATE_MS`; the freeze lasts `FREEZE_MS`. |
+| `mcBarAttack(prevAt, cycle, now)` | `{ frozen, glint }` for an attack at `now`, the last at `prevAt`, its fill running over `cycle`: `frozen` = how full the bar was, `(now - prevAt) / cycle` capped at 1 (computed once, at the attack); `glint` = whether that moment was inside the window. |
+| `timingBarWanted()` | `false` after `?timingbar=0` on this device (remembered in `bt_timingbar`; `?timingbar=1` comes back): the bar hides, the bonus is unchanged. |
+
+**The numbers:** the window is `MANUAL.PERFECT_EARLY_MS` (60) before the full
+cycle to `MANUAL.PERFECT_LATE_MS` (300) after it, mirrors of the worker's
+`FREE_SWING.PERFECT_EARLY_MS` / `PERFECT_LATE_MS` (`perfect-strike.test`
+pins both). `MANUAL.FREEZE_MS` is 400.
+
+**When an attack happened:** every swing and shot stamps `S.swingTimer`; a
+change in it is an attack (the special and the abilities stamp it too).
+
+**The freeze** (the owner: "the bar freezing in place a moment so you could
+see where you decided to swing. It doesn't slow down the recovery of the
+next attack though"): at each attack, a copy of the fill as it was
+(`frozen`), in the glint's look if `glint`, stays `FREEZE_MS` and fades;
+under it the real fill restarts from empty at once.
+
+**A perfect strike, told:** the worker's `monster_hit` for your hit carries
+`pf: 1` (the phone already plays its accent: `gameEvents.js`, the drop roll's
+glint, quiet). The bar may use it too; it is the worker's verdict, where the
+glint is the phone's guide.
+
+**The rules it must keep (CLAUDE.md):**
+- No work a frame: the fill, the glint and the freeze run as CSS animations
+  (or the art's own animation) started ONCE an attack, never a React render
+  or a timer a frame; at most one compare a frame (`S.swingTimer`) in the
+  game's loop (section 7, the page's thread budget). Restarting a CSS
+  animation without a forced layout: flip between two identically defined
+  keyframe names.
+- `pointer-events: none` (a thumb passes through it) and `touch-action:
+  manipulation`.
+- A new screen element: its state in `tools/qa/ui-review/states.mjs` and a
+  section in `docs/UI-DESIGN-NOTES.md` (`--check-notes`). `window.__btManual
+  .set(3)` puts the review's one page on the trial (the worker is not asked).
+- Art: preloaded behind the loading screen (PRELOADING IS LAW) and in its
+  memory slot (`docs/MEMORY-MAP.md`; 256 colours).
+- **Where: "the space above the left joystick"** (the owner, v2.3.4625; it
+  was "north of the right joystick", whose own top edge Sprint and the
+  minimap hold). A computer draws no disc (place it in the play column,
+  sizes from the column: `fixedBox` if it is measured).
+- A staff shows nothing; nothing off the trial.
+
+### The sound (the phone's)
+
+- **Rising pitch:** each of your sword's or bow's hits within
+  `PITCH_GAP_MS` (1200) of your last plays the hit sound a semitone higher,
+  up to +5 (`mcHitPitch`, the hit voice's playback rate); a pause brings it
+  back. Hits within 50 ms (one swing's several monsters) share a step.
+- **A perfect strike** plays the drop roll's glint (`rollWin`, an existing
+  cue) quietly over the hit, from the worker's `pf`.
+
+### Not the same, and why
+
+- **A swing that hits nothing never reaches the worker**, so the worker
+  times the next swing from the last one that hit, while the bar restarts at
+  every swing. In a steady fight they agree; right after a miss the glint
+  can promise a strike the worker does not count.
+- **A script times perfectly.** The bonus is 12% and a little mana; reading
+  the timing as a bot's fingerprint is still the worker's next step (below).
 
 ## Not built
 
@@ -338,6 +482,11 @@ The constants are `FREE_SWING` in `server/src/freeswing.js`
 - `server/test/free-swing.test.mjs` (v2.3.4520): the trial on the real
   GameRoom (its header lists the checks); `manual-combat.test.mjs` §13 its
   phone rules and wiring.
+- `server/test/perfect-strike.test.mjs` (v2.3.4615): the perfect strike on
+  the real GameRoom, the bow's arrows through the real router (its header
+  lists the checks); `manual-combat.test.mjs` §14 the bar's numbers, the
+  freeze, the pitch and the wiring. The bar's own phone test comes with
+  the bar.
 - `server/test/manual-combat.test.mjs`: the switch; a flick, a tap, a nudge,
   the cancel, a slow drag; no faster than the weapon (too soon, kept, the
   window's edges); a forced end; a sword's stroke, back and forth, the pause,

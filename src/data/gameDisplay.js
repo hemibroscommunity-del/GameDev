@@ -3676,13 +3676,15 @@ BT_AUDIO._noteHit = function (mat, keys, how, vol) {
 };
 /** A hit on something made of `material` (a HIT_VOICES key: hitSoundOf() for
  *  a monster, 'flesh' for a player or NPC).  opts.vol is the call site's
- *  level, as swordHit's always was; opts.rate overrides the detune. */
+ *  level, as swordHit's always was; opts.rate overrides the detune.
+ *  v2.3.4615: opts.pitch multiplies it (the free-swing trial's rising pitch:
+ *  manualCombat.js mcHitPitch, a semitone a quick hit). */
 BT_AUDIO.materialHit = function (material, opts) {
   var mat = (material && Object.prototype.hasOwnProperty.call(this.HIT_VOICES, material)) ? material : 'flesh';
   var V = this.HIT_VOICES[mat];
   var step = this._swordHitToggle++;
   var vol = (opts && opts.vol != null) ? opts.vol : 0.6;
-  var rate = (opts && opts.rate) || this.SWORD_HIT_DETUNE[step % this.SWORD_HIT_DETUNE.length];
+  var rate = ((opts && opts.rate) || this.SWORD_HIT_DETUNE[step % this.SWORD_HIT_DETUNE.length]) * ((opts && opts.pitch > 0) ? opts.pitch : 1);
   var L = V.hit[step % V.hit.length];
   var X = V.layer ? V.layer[step % V.layer.length] : null;
   var whole = this._has(L[0]) && (!X || this._has(X[0]));
