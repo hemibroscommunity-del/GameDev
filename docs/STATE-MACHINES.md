@@ -177,6 +177,23 @@ Updated v2.3.4650, after the fifth wave. The judges have played (owner,
 2026-11-10: "Judges have already played you can do any big repairs now"),
 so nothing waits on them any more.
 
+**Shipped by the parallel lanes (2026-11-11, v2.3.4805):** one door each, step
+1 changing nothing a player sees, a test failing a second writer:
+- a player's health through `_hpSet` (its row in `HP_ROADS`) and the life
+  phase as ONE field, `ps.life`, changed only by `_lifeTo`, which writes the
+  old `dying` / `dead` for their readers (`life.js`, v2.3.4820,
+  `life-door.test`; the sweep's V2 plan, its first half). Next: no heal on a
+  dying body, the death's notes into `ps.life` and saved, the phase to the
+  phone behind a cap (`docs/specs/life-door.md`);
+- a session's life: `session.phase` (open, joined, gone) and ONE leave,
+  `_playerLeaves(ws, why)`, its duties a row in `LEAVE_WAYS` (`leave.js`,
+  v2.3.4830, `session-door.test`; the sweep's V3 plan). Two leaves racing on
+  one socket now run its duties once;
+- a bag count through `bagGive` / `bagTake` / `bagSet` (its row in
+  `BAG_ROADS`; `bag.js`, v2.3.4810, `bag-door.test`). Step 2, one sum, is
+  next (`docs/specs/bag-door.md`; the shop's sell reads the count before an
+  await).
+
 **Waiting on the owner:**
 - the shield questions 1-4 (`docs/OWNER-LIST-2026-10-26.md` §10): showing
   the 3 s guard break on the phone, the guard coming back by itself, a daze
@@ -190,14 +207,21 @@ so nothing waits on them any more.
 - ~~nine places still change zone by hand, five on the retired old map
   (TRAPS §304)~~: all nine go through `changeZone` (v2.3.4651), the only
   writer of the place now (`zone-leftovers.test` §6);
-- the bigger "one reset for a whole life" of a monster (`m.life`);
-- a tab already in the world that reconnects mid-fight gets no `body_place`:
+- ~~the bigger "one reset for a whole life" of a monster (`m.life`)~~: on
+  the worker, one reset, `_monsterNewLife` (`monsterlife.js`, v2.3.4843,
+  `monster-newlife.test` fails a monster field in no list; `monsterlife:
+  false` the old list). The phone's own reset lists are left (TRAPS §245);
+- ~~a tab already in the world that reconnects mid-fight gets no `body_place`:
   its next step decides (beside the body it carries on, far away it waits)
-  (#1509);
+  (#1509)~~: it steps to its body, from 200 to 3000 px away (v2.3.4831,
+  `bodyPlace.js`, `body-place.test` §4; `?bodyhere=0` the old way);
 - outside a fight, a takeover still skips the close's other duties (the
   duel's away clock, the trade's cancel, party "away", PvP consent, the
   chat-mute list, the daily-quest flush, `player_leave`); mostly on purpose,
-  so a reconnect does not cancel a trade (TRAPS §162, #1502);
+  so a reconnect does not cancel a trade (TRAPS §162, #1502). Checked one by
+  one in v2.3.4830 (the table in `docs/specs/session-door.md`): none a bug.
+  For the owner: PvP consent is cleared by a disconnect but kept by a second
+  tab;
 - ~~the other six `*Preload.js` warm-ups push the same image URLs again on a
   rejoin (likely shared by the browser; only the slime was a proven cost)
   (#1505)~~: five did (the chest already warmed once); they share
@@ -223,13 +247,20 @@ so nothing waits on them any more.
 - a piece of armour that reached the phone's bag this session and never the
   worker's stash escapes a No man's land loss until the next join, because
   the worker learns the armour stash only at join (#1531 locked the swap and
-  the take-off mid-fight). The full fix is keeping the armour stash live on
-  the worker;
-- a red skull killed by a monster has no fight lock (V21 Q3, #1523);
-- the Auction House's settlement legs, releases and bids still heal from
-  their 48-hour stamps only: a restart followed by 48 hours with nobody
-  opening the shop still goes wrong there. "Paid facts in the record" (V8a)
-  would cost more writes a sale (#1521);
+  the take-off mid-fight). ~~The full fix is keeping the armour stash live on
+  the worker~~: done (v2.3.4840, `armour-stash-live.test`; `armorstashlive:
+  false` the old way). The shield and amulet stashes are still learned at
+  join;
+- ~~a red skull killed by a monster has no fight lock (V21 Q3, #1523)~~: a
+  red skull hit by anything in the last 10 s is locked (v2.3.4841,
+  `redskull-monster-lock.test`; `fightlockmonster: false`). For the owner:
+  the refusal still says "fighting a player";
+- ~~the Auction House's settlement legs, releases and bids still heal from
+  their 48-hour stamps only~~: the stamp prune waits for the Auction House's
+  heal, as the General Store's does (v2.3.4842, `store-heal-wait.test`, no
+  extra write a sale; `storehealwait: false`). Left from V8a: offers past
+  the first 20 listings, and a settle that throws midway (healed at the next
+  restart);
 - the species churn (#1518, finding e): 7 or more monkeys or aliens of
   different colours (8 or more species-and-skin pairs) near you build
   pictures up to 250-400 MB on the graphics chip, a black-screen risk on an
