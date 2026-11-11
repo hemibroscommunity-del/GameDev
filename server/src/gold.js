@@ -29,8 +29,21 @@
  * door for every purse it can hold (whole, fractional, negative, missing, NaN)
  * and they agree to the bit.
  *
- * STEP 2 (next, its own version and live switch): every road reads the purse
- * the one safe way (a whole number, never below 0), so the `sum` column goes.
+ * ═══ v2.3.4803: STEP 2 -- ONE SUM FOR EVERY ROAD ═══
+ * The owner, 2026-11-11, of the plan: "keep going on the architectural plan".
+ * Every road now does the same sum (ONE_SUM below): the purse read as a whole
+ * number never below 0, the amount likewise, and the answer never below 0.  A
+ * set makes the purse a whole number never below 0 too, so a broken purse
+ * saved long ago heals when its character loads.  For an honest purse and an
+ * honest amount -- whole, not below 0, a take no larger than the purse, which
+ * every road's caller checks -- it is the step-1 sum exactly (gold-door.test
+ * §6 proves it road by road).  What it changes is a purse that was not a whole
+ * number: the Ace flip's and the gamble's stakes come from the phone, are
+ * checked to be finite but not whole, and could leave a fraction of a coin
+ * behind.  `goldonesum: false` in the live flags puts every road back on its
+ * step-1 sum (GOLD_SUMS, the `sum` column), which stays until this has run a
+ * while and the column can be deleted.
+ *
  * STEP 3: what the door can now do once for every road -- the log, the fight
  * lock, test mode.  docs/specs/gold-door.md has the list.
  *
@@ -144,6 +157,19 @@ export const GOLD_ROADS = Object.freeze({
 
 const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
+/* v2.3.4803: step 2's one sum.  Gold is a whole number of coins, never below
+   0: a purse or an amount that is not (missing, NaN, fractional, below 0, not
+   finite) is read as the whole number under it, or 0. */
+const wholeGold = (v) => {
+  const x = Number(v);
+  return Number.isFinite(x) && x > 0 ? Math.floor(x) : 0;
+};
+export function goldOneSum(cur, n, take) {
+  const p = wholeGold(cur), a = wholeGold(n);
+  return take ? Math.max(0, p - a) : p + a;
+}
+export { wholeGold };
+
 /* The row for a road and a verb, or a thrown error.  A wrong road is a
    programming slip the test catches before it ships (every call names a
    literal row); failing loudly here keeps one that slipped past from moving
@@ -155,7 +181,8 @@ function roadFor(road, dir) {
   return row;
 }
 
-/** The purse after `n` moves by `road` -- the door's whole sum, pure (the test's). */
+/** The purse after `n` moves by `road` by its STEP-1 sum (its `sum` column) --
+    pure, the test's.  v2.3.4803: the door does goldOneSum unless `goldonesum: false`. */
 export function goldAfter(cur, n, road) {
   const row = own(GOLD_ROADS, road) ? GOLD_ROADS[road] : null;
   if (!row || row.dir === 'set') throw new Error('gold door: goldAfter needs a give or take road, not "' + road + '"');
@@ -163,10 +190,16 @@ export function goldAfter(cur, n, road) {
 }
 
 export const goldMethods = {
+  /** v2.3.4803: step 2's switch -- on unless `goldonesum: false` in the live flags */
+  _goldOneSumOn() {
+    const f = this && this._liveFlags;
+    return !(f && typeof f === 'object' && own(f, 'goldonesum') && !f.goldonesum);
+  },
+
   /** Gold INTO `rec`'s purse (a live player's state or a stored record) by `road`. Returns the purse. */
   _goldGive(rec, n, road) {
     const row = roadFor(road, 'give');
-    rec.coins = GOLD_SUMS[row.sum](rec.coins, n, false);
+    rec.coins = this._goldOneSumOn() ? goldOneSum(rec.coins, n, false) : GOLD_SUMS[row.sum](rec.coins, n, false);   /* v2.3.4803 */
     return rec.coins;
   },
 
@@ -174,14 +207,14 @@ export const goldMethods = {
       purse holds it (step 1: as each did before the door).  Returns the purse. */
   _goldTake(rec, n, road) {
     const row = roadFor(road, 'take');
-    rec.coins = GOLD_SUMS[row.sum](rec.coins, n, true);
+    rec.coins = this._goldOneSumOn() ? goldOneSum(rec.coins, n, true) : GOLD_SUMS[row.sum](rec.coins, n, true);   /* v2.3.4803 */
     return rec.coins;
   },
 
   /** The purse MADE `v` by `road`: a character loaded, or a purse lost whole. */
   _goldSet(rec, v, road) {
     roadFor(road, 'set');
-    rec.coins = v;
+    rec.coins = this._goldOneSumOn() ? wholeGold(v) : v;   /* v2.3.4803: a broken purse heals as it loads */
     return rec.coins;
   },
 };

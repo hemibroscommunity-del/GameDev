@@ -384,62 +384,9 @@ export const WORLDVIEW_EXITS = [
   { zoneId: 'frost',   tx: 13, ty: 13, dir: 'nw',    label: 'Frost Ridge',    color: ELEMENTS.frost.color },
 ];
 
-/* ═══ v2.3.1677: PAINTED, NOT PLAYABLE ═══
- * Owner: "put 'coming soon' over all buildings in town and over all zone
- * entry points that don't have a portal."
- *
- * The worldview art paints nine regions; only five have a live trail-head in
- * WORLDVIEW_EXITS above.  The other four are commented out up there — their
- * coordinates are kept HERE rather than left as dead comments, because a
- * commented-out exit tells a reader nothing and tells the PLAYER nothing at
- * all: they walk to a painted volcano and bounce off empty ground with no
- * explanation.  A label is the honest version of a disabled feature.
- *
- * To ship one of these, move it back into WORLDVIEW_EXITS and delete it here.
- * If both lists ever carry the same zone the exit wins — a live portal must
- * never be labelled "coming soon" — which the renderer enforces rather than
- * trusting these two lists to stay disjoint. */
-export const COMING_SOON_MARKS = [
-  { zoneId: 'hollows', tx: 43, ty: 22, label: 'Stone Hollows' },
-  { zoneId: 'thunder', tx: 42, ty: 36, label: 'Electric Foundry' },
-  { zoneId: 'tidal',   tx: 24, ty: 40, label: 'Water Caves' },
-  { zoneId: 'mist',    tx: 8,  ty: 32, label: 'Poison Forest' },
-];
-
-/* ═══ v2.3.1681: WHERE THE TOWN'S BUILDINGS ACTUALLY ARE ═══
- * Owner: "There's a whole bunch of invisible buildings with coming soon on
- * them."
- *
- * v2.3.1677 placed the town labels at the centre of every TOWN_BUILDINGS
- * rectangle.  Those rectangles are COLLISION boxes inherited from the old
- * 40x30 tile village and linearly rescaled into the 48x48 grid — their own
- * file header says outright that "they don't have to line up perfectly with
- * the new town image".  There are twelve of them; the painted town has seven
- * buildings, in different places.  So the labels landed on bare cobblestone,
- * which is exactly what an "invisible building" looks like.
- *
- * These coordinates are measured off the art instead (/maps/town_v15.webp,
- * 1254x1254, stretched to 48x48 tiles = 1536 world px), so each label sits on
- * a roof you can actually see.  Cross-checked against the one landmark
- * already measured independently: NPC_DATA puts the Mayor's House door arch
- * at world (757, 317), and the house entry below lands its label at world
- * (752, 250) — on the roof, just above that door.
- *
- * Deliberately unlabelled beyond "Coming soon": naming buildings the art
- * doesn't name would be inventing content, and the one building whose sign a
- * player can read is the Mayor's House — which must NOT read as "the mayor is
- * coming soon" when he is standing right below it handing out the tutorial. */
-/* ═══ v2.3.1777: EMPTY, BECAUSE THE NEW TOWN HAS NO BUILDINGS ═══
-   Every coordinate below was measured off the OLD square map's painted roofs.
-   The clifftop map is an empty plateau — the owner is placing building art on
-   it — so each of those seven labels would now float on bare cobblestone,
-   which is the exact bug the note above says v2.3.1681 fixed.  A label with no
-   building under it is worse than no label: it tells the player there is
-   something there to find.
-
-   This list comes back one entry at a time as buildings are placed, or does
-   not come back at all if they ship with real entrances instead. */
-export const TOWN_SOON_MARKS = [];
+/* v2.3.4802: COMING_SOON_MARKS (the old World View's four closed lands, labelled
+   "Coming soon") and TOWN_SOON_MARKS (empty since v2.3.1777) went with the old
+   map: nothing draws them any more. */
 
 /* v2.3.1813 dev probe: the town's exit markers, so mp-townmap can prove they
    sit on tiles the zone actually has.  Two shape changes in a row (v2.3.1777,
