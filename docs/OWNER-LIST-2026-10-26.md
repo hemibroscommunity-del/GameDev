@@ -448,6 +448,7 @@ fight simulator (18), then the "After the judges" list.
 - **Twenty-one more fixes are in the game** (#1478 to #1500, v2.3.4433 notes): your live duel and trade come back after a reconnect, a death bag survives a server update, Rare armour no longer vanishes after a reconnect, a refused quest, harvest or bet no longer shows as done, a monster's next life starts clean, the shield shows real hits, a mute in a Wi-Fi blip is kept, and more. The list, with each fix's off switch, is in `docs/STATE-MACHINES.md`.
 - **Six more are in the game** (#1502 to #1509, v2.3.4461 notes): opening the game again mid-fight puts you back in your body where it stands (no more escaping a lost fight with a second tab); hopping between places is no longer a shield; the Mayor's "Clear any dungeon" is paid only for a real clear; a refused duel is answered at once; a stack can't be listed twice; pictures that fail to load are tried again. The list is in `docs/STATE-MACHINES.md`.
 - **Three more fixes and your sword trial are in the game** (#1521 to #1525, v2.3.4580 notes): Auction House and General Store trades can no longer lose or make gold (or a weapon) when the server restarts mid-trade; a player losing a fight in No man's land can no longer forge, gamble, stake, offer, duel or run into a dungeon to keep their bag from the killer; and your free-swing sword trial is ready to try (how, below). The list, with each fix's off switch, is in `docs/STATE-MACHINES.md`. Five more are being built now (two tabs, the server judging a change of place, the shield's and cooking's claims, the preview pages, the timing bar).
+- **Five more fixes and the next step of your sword trial are in the game** (#1526 to #1534, v2.3.4650 notes): a player losing a fight in No man's land can no longer escape by claiming to be somewhere else (the server now decides where you are); a quick shield down-and-up no longer parries every blow, a sword swing lowers the shield, and the cooking shield needs a real fire; two tabs of one browser no longer mix up two characters (no more surprise level-1 copy); a page out of step with the world can't fight in it; and your trial has its perfect strike (below). From another session the same day: no character restart or armour swap mid-fight (#1531), the duel challenge card closes itself when the challenge runs out (#1533), a quest tap made during a Wi-Fi blip is kept and sent when you reconnect, with each quest's phone check held to the server's (#1535), and a refused harvest strike or armour swap snaps your screen back instead of showing something that didn't happen (#1537). The list, with each fix's off switch, is in `docs/STATE-MACHINES.md`.
 
 ### Your standing instructions (2026-11-10, in your words)
 
@@ -459,11 +460,11 @@ fight simulator (18), then the "After the judges" list.
 
 Made under your second instruction above. Each is one line with its reason; tell any session to change one.
 
-- **Two characters in two tabs:** no. One character per browser; a second tab takes the session over (in a fight it takes the body). The identity fixes that hold either way are being built now (v2.3.4560).
+- **Two characters in two tabs:** no. One character per browser; a second tab takes the session over (in a fight it takes the body). The identity fixes that hold either way are built (v2.3.4606): each tab keeps the character it started with, and a tab another tab switched shows "Play here instead".
 - **A second login during a fight with another player:** the full takeover is built (v2.3.4455): you land back in your body. v2.3.4432's "still in that fight" wait screen is the fallback for a game that cannot be placed (an old copy).
 - **The half second of no damage on entering a place:** kept for an honest entry, so you can see what is around you; not given mid-fight, nor twice within 10 seconds (v2.3.4454), so it can't be used as a shield.
 - **The colour fade between places:** stays off. Nobody has seen it; look again after the judges, with a picture.
-- **The Auction House's refund-and-raise money fix and the fight-lock table:** built after the judges played (v2.3.4500, v2.3.4510). The plan's larger "one door per system" work is next; its first piece, the server judging a change of place, is being built (v2.3.4565).
+- **The Auction House's refund-and-raise money fix and the fight-lock table:** built after the judges played (v2.3.4500, v2.3.4510). The plan's larger "one door per system" work is next; its first piece, the server judging a change of place, is built (v2.3.4640).
 - **A quest reward shown at once, taken back if the server says no:** kept (today's feel). This answers question 14 below.
 - **The retired Mayor quest ("Welcome Home") still worth 50 gold once on old saves:** left alone. It is tiny, retired, and once per old character.
 - **The loader retries (v2.3.4452):** merged on their tests and the memory budget check. The hour-long memory walk (mp-memledger with a rejoin, a farm leave and a dungeon recovery added) was not run: it is offered, say so to run it.
@@ -472,24 +473,32 @@ Made under your second instruction above. Each is one line with its reason; tell
 
 **Added with the fourth wave (v2.3.4580):**
 - **The fight lock counts every road that spends, converts, wagers or gives away gold or bag goods** (v2.3.4510). The loser's bag belongs to the killer; anything that turns it into something the loss does not take is refused for 10 seconds after the last hit between players.
-- **Putting on a spare weapon mid-fight is locked; armour not yet.** The server keeps the weapon stash, so a refusal is clean. It learns the armour stash only when you join, so a lock would not close the gap: the fix is keeping the armour stash on the server, which is still to do.
+- **Putting on a spare weapon mid-fight is locked; armour now too** (v2.3.4626, #1531, with a character restart mid-fight, v2.3.4627). One gap stays: armour that came into your bag this session and the server has not seen yet. The fix is keeping the armour stash on the server, which is still to do.
 - **A duel with someone else is declined during a No man's land fight with a player.** A duel kill skipped the No man's land loss, so a friend's duel let a losing player keep their bag.
 - **The General Store writes what it owes before paying** (v2.3.4505), the Auction House's way: a restart can then finish the trade instead of losing or doubling it.
-- **Shield question 5: YES.** The shield must be down 400 ms before a parry is ready again (being built, v2.3.4570). Honest players almost never lower and raise it faster than that.
-- **The preview pages (`?bigtown`, `?plaintown`, `?placing=2`) become spectators in the live room** (being built, v2.3.4575): they cannot be hurt and cannot hurt anyone.
-- **A dungeon's entry pass lasts 20 seconds and is not checked again at the step in** (being built, v2.3.4565). An honest player hit during the loading screen must not land in an empty arena.
+- **Shield question 5: YES.** The shield must be down 400 ms before a parry is ready again (built, v2.3.4605). Honest players almost never lower and raise it faster than that.
+- **The preview pages (`?bigtown`, `?plaintown`, `?placing=2`) become spectators in the live room** (built, v2.3.4575): they cannot be hurt and cannot hurt anyone.
+- **A dungeon's entry pass lasts 20 seconds and is not checked again at the step in** (built, v2.3.4640). An honest player hit during the loading screen must not land in an empty arena.
 
-### Your sword trial (in progress)
+**Added with the fifth wave (v2.3.4650):**
+- **A raised shield that doesn't say which way it faces covers your front only** (v2.3.4605). Every real phone says which way it faces; only a modified page didn't, and it blocked from behind too.
+- **After an attack, the cooking shield waits 3 seconds** (v2.3.4605), then holds for the rest of the cook. Refusing the cook outright would have left an honest player unshielded for the whole cook.
+- **A rare case left as it is:** a reconnect or a server update while a campfire burns can make the server forget that fire, so cooks there are unshielded until you light the next one.
+
+### Your sword trial (to try)
 
 You asked: *"What if the attack speed was uncapped (you can swipe as many times as you want to hit) but the DPS is prorated by the time elapsed relative to the full swing cycle?"* It is in the game for the phones that ask (v2.3.4520); nobody else's game changes.
 
 - **To try it:** open the game's usual address with `?manual=3` at the end. Your phone remembers it. Every sword swipe swings at once; a quick one hits for its share, so the damage a second is the same however fast you swipe.
-- **To add the full-swing bonus:** `?manual=3&swingbonus=1` (a swing after a full pause hits 12% harder). `?swingbonus=0` drops just the bonus.
+- **The perfect strike is live** (v2.3.4615, #1529). A sword swing or bow shot made right as your weapon is back to full hits **12% harder** and gives back a little mana (eight pay for one special). "Right as" is from 0.06 s before the full swing to 0.3 s after it, and the server judges it, not the phone. Monsters only: against a player the trial stays a fair fight. Your hits climb in pitch when they come quickly, up to five steps, and a perfect strike adds a quiet "ting". It is on by default on the trial.
+- **To compare without the bonus:** `?swingbonus=0` (remembered); `?swingbonus=1` brings it back.
 - **To go back:** open `?manual=1`.
 
-**The timing bar, your design** (being built, v2.3.4550), in your words: *"a sword silhouette laying horizontally that refills as a bar and once the bar reaches the top it glints. During this glinting must attack to get the bonus. Same with the bow ... north of the right joystick. For magic I think it should be skipped for now"*; and *"the bar freezing in place a moment so you could see where you decided to swing. It doesn't slow down the recovery of the next attack"*.
+**The timing bar, your design** (built, v2.3.4625, #1532, with your own sword and arrow pictures), in your words: *"a sword silhouette laying horizontally that refills as a bar and once the bar reaches the top it glints. During this glinting must attack to get the bonus. Same with the bow ... north of the right joystick. For magic I think it should be skipped for now"*; and *"the bar freezing in place a moment so you could see where you decided to swing. It doesn't slow down the recovery of the next attack"*.
 
-What was decided for it: the bonus is +12% damage and a little mana, on monsters only for now; quick hits play at a rising pitch.
+What was decided for it: the bonus is +12% damage and a little mana, on monsters only for now; quick hits play at a rising pitch. The staff has no bar yet (magic skipped, as you said).
+
+**Please check where the bar stands.** Your first design said *"north of the right joystick"*. #1532 put it standing upright **over the LEFT joystick**, quoting you: *"I'd like it to actually lay vertically in the space above the left joystick and try it that way."* If the left is what you want now, nothing to do; if you meant the right, say so and a session will move it. `?timingbar=0` hides the bar on one phone.
 
 ### Decided (2026-11-10)
 
@@ -506,7 +515,7 @@ What was decided for it: the bonus is +12% damage and a little mana, on monsters
 2. Should the guard come back up by itself after those 3 s (rather than wait for your next tap)? — Your choice; it goes with 1.
 3. Should being dazed or frozen also stop raising the shield on the server? — Wait for your answer to 1 (alone it would draw a shield that blocks nothing).
 4. Fix the shield's cooldown number (2 s on the phone, 3 s on the server)? — Only together with 1; today nothing reads it.
-5. ~~Should a quick shield down-and-up need a short time down before the parry is ready again?~~ Decided: yes, 400 ms (above; being built, v2.3.4570).
+5. ~~Should a quick shield down-and-up need a short time down before the parry is ready again?~~ Decided: yes, 400 ms (above; built, v2.3.4605).
 6. Tapping Block mid-lunge still lets the lunge hit. Keep it? — The reviews disagree; it stays as it is until you say.
 7. After someone joins (or after an update), they see your shield down until you next press it. Fix it at the cost of a tiny bit more data per player? — The pull request calls the cost small.
 
@@ -551,4 +560,4 @@ What was decided for it: the bonus is +12% damage and a little mana, on monsters
 29. The stat scene keeps about 1.8 MB on purpose (M3-18). Keep it and give it its line in the memory map, or let it go? — The pull request leaves it to you; keeping it changes nothing you see.
 30. Fix three bugs in your Ground and Object Studios (one unreadable saved picture stops the page before Download and Restore work; a restore resets the "made from" stamps and replaces sound and name choices; the Object Studio's stage draws about 1.36 times too big)? — Yes, but low priority: only you use them, so after the judges.
 
-**Still open from the first wave:** the farm's two phone-only workshops; hiding a blocked player's attack warning; a grace period for a trade that loses its server. (Forging, hardening and equipping mid-fight: decided above, after the judges.) Question 22 (a dungeon's loading screen) is still open: #1508 left the "entering" half second while a dungeon loads for it.
+**Still open from the first wave:** the farm's two phone-only workshops; hiding a blocked player's attack warning; a grace period for a trade that loses its server. (Forging, hardening and equipping mid-fight: built, v2.3.4510 and v2.3.4626.) Question 22 (a dungeon's loading screen) is still open: #1508 left the "entering" half second while a dungeon loads for it.

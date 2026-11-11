@@ -1,4 +1,4 @@
-# The state-machine sweep (2026-11-03) and its fixes (v2.3.4381, v2.3.4433, v2.3.4461, v2.3.4580)
+# The state-machine sweep (2026-11-03) and its fixes (v2.3.4381, v2.3.4433, v2.3.4461, v2.3.4580, v2.3.4650)
 
 ## What it was
 
@@ -135,50 +135,61 @@ caught up with the game), #1517 (v2.3.4498, `mp-deskclick` aims where Ace
 stands; not a game regression, TRAPS §320), #1518 (v2.3.4499, the crowd tour
 `mp-crowdsweep`, findings a to i in `docs/specs/held-sweep.md`).
 
+## What shipped, fifth wave (2026-11-11, pull requests #1526 to #1534)
+
+Same columns as above. Lessons: `docs/TRAPS.md` §327-336. The lanes were
+renumbered as `main`'s high-water passed them; these are the final tags (the
+fourth wave's notes named them v2.3.4550 to v2.3.4575 while they were open).
+
+| PR | Tag | System | What | Kill switch | Suite |
+|----|-----|--------|------|-------------|-------|
+| #1526 | v2.3.4575 | which Wheel a player is on | a page that joins the live room without the room's Wheel size (`ws` with no 5) is a spectator there: never attacked (as before) and now unable to hurt monsters, or players outside a duel. The owner's preview pages (`?bigtown`, `?plaintown`, `?placing=2`) are the one honest page that joins this way; they walk and draw as before. Out of the Wheel's zone nothing changes | `wheelstep` | `world-size` |
+| #1530 | v2.3.4605 | what a move's claims buy | a parry needs the shield down 400 ms first (a quicker raise still blocks); a sword's swing lowers the guard on the server (a bow, a staff, Shield Bash and the burst do not); a shield with no facing covers the front, not all round; the cooking and fire shield needs a fire the server saw lit, within 320 px and 60 s, and holds again only 3 s after an attack. All in `server/src/moveclaims.js` | `parryrearm`, `swingguard`, `blockarc`, `cookshield` | `move-claims` |
+| #1528 | v2.3.4606 | two tabs, one browser | a tab keeps the character it started with; if another tab switched the browser to another character, this tab shows the takeover's banner and Play here instead of joining as the other one or minting a level-1 copy; a join never makes a character (only Create does); the saved copies say whose they are. Phone only | `?tabid=0` (one phone) | `tab-identity`, phone `mp-tabidentity` |
+| #1529 | v2.3.4615 | the owner's trial, second step | ONLY `?manual=3`: the perfect strike, a sword swing or bow shot from 60 ms before the full cycle to 300 ms after it, judged by the server: +12% damage and an eighth of a special's mana, on monsters only; quick hits climb in pitch (up to five steps), a perfect strike adds a quiet "ting". The bar's rules for its art (`docs/specs/manual-combat.md`); the bar itself is #1532 | `freeswingbonus`, `perfectbow` (`freeswing` the whole trial) | `perfect-strike`, `free-swing`, `manual-combat` §14 |
+| #1534 | v2.3.4640 | the server judges a change of place | the worker takes a change of zone only with a reason: into a dungeon on the pass `dungeon_started` gives (used once, 20 s, the fight not asked again at the step in), out of the world only from BroTown's safe ground (where the farm's doors are); the stairs, the farm's gate, a dungeon's door and the old map as before. `/api/admin/overview` counts refusals by road (`zoneJudge`) | `zonejudge` | `zone-judge` |
+
+No new storage key or record shape. New cap: `perfectStrike` (#1529, on its
+own line above `accuracy`, TRAPS §333). No new message here (#1531 adds
+`character_reset_refused`). All the server switches are `false` to go back.
+
+From another session, the same day, closing items on this list: #1531
+(v2.3.4626-4627: no character restart and no armour swap during a fight with
+a player in No man's land; `fightlockreset`, `fightlockarmor`;
+`fight-lock.test` §8-9), #1532 (v2.3.4625: the timing bar drawn with the
+owner's own sword and arrow, standing up over the left joystick, built on
+#1529; `?timingbar=0`; phone `mp-timingbar`), #1533 (v2.3.4628: the duel
+challenge card closes itself when the challenge runs out on the server, 2
+minutes; `duel-pending.test` §7), #1535 (v2.3.4641: a quest tap made while
+the connection is down is kept and sent on the rejoin, and `stats_update`
+keeps its signature only when the message went (TRAPS §287); each quest's
+phone check is held to the server's goal by `quest-check-drift.test`, which
+found and fixed one drift, the Mayor's "Clear any dungeon"; `quest-kept.test`),
+#1537 (v2.3.4642: the rest of the silent refusals, V9a and V9b: a refused
+harvest strike sends the node and the skills again, at most once a node every
+2 s a player, `strikesnap`; a refused armour swap sends the worn armour back,
+`gearresend`; a refused cook already re-sent; `silent-refusals.test` §5-6).
+
 ## What is left
 
 This is a list, not a promise. The plan is `PLAN.md` on the storage branch.
-Updated v2.3.4580, after the fourth wave. The judges have played (owner,
+Updated v2.3.4650, after the fifth wave. The judges have played (owner,
 2026-11-10: "Judges have already played you can do any big repairs now"),
 so nothing waits on them any more.
 
-**In flight (branches open, not merged yet):**
-- the two-tab identity fixes (`claude/sm-tab-identity`, v2.3.4560);
-- the server judging a change of place, instead of taking the phone's word
-  (`claude/sm-zone-judge`, v2.3.4565); with it, a dungeon's entry pass that
-  lasts 20 s and is not re-checked at the step in;
-- a move's claims (`claude/sm-move-claims`, v2.3.4570): the parry is ready
-  again only 400 ms after the shield went down, a block with no facing, a
-  swing drops the guard, the cooking shield needs a real fire;
-- which Wheel a player is on (`claude/sm-world-size`, v2.3.4575): the
-  preview pages (`?bigtown`, `?plaintown`, `?placing=2`) become spectators
-  in the live room;
-- the timing bar for the owner's sword trial (`claude/timing-glint-bar`,
-  v2.3.4550).
+**Waiting on the owner:**
+- the shield questions 1-4 (`docs/OWNER-LIST-2026-10-26.md` §10): showing
+  the 3 s guard break on the phone, the guard coming back by itself, a daze
+  or freeze stopping a raise on the server, the cooldown number. #1530 left
+  them alone;
+- the staff's timing: the trial's bar and perfect strike are for the sword
+  and the bow; magic is skipped for now (owner: "For magic I think it should
+  be skipped for now"). The owner's art sheet has the staff, unused.
 
 **Not started, no decision needed:**
-- ~~the rest of the silent refusals: harvest strikes, cooking, the gear swap
-  of armour (V9a, V9b)~~: v2.3.4642. A harvest strike refused after its node
-  is found (out of reach, no tool, too low, too early, away, a node already
-  down) sends the node and the skills again, once a node every 2 s a player
-  (`strikesnap`); an armour swap the guard's lock or the defence gate refuses
-  sends the worn armour back (`gearresend`); `silent-refusals.test` §5-6.
-  Cooking needed nothing: the sweep refuted its findings, and a refused cook
-  already re-sends;
-- ~~`stats_update` and the quest taps ignore the channel's `false` (TRAPS
-  §287)~~: the quest taps are kept and sent on the rejoin, and
-  `stats_update` keeps its signature only when the message went (v2.3.4641,
-  `quest-kept.test`);
 - nine places still change zone by hand, five on the retired old map
   (TRAPS §304);
 - the bigger "one reset for a whole life" of a monster (`m.life`);
-- ~~the duel challenge card has no clock of its own (`REJOIN_NOT_YET`)~~: it
-  has the worker's 2-minute clock now and closes itself (v2.3.4628);
-- ~~a test that holds each quest's phone check to the server's goal, so the
-  two cannot drift apart (#1486, #1503)~~: `quest-check-drift.test`
-  (v2.3.4641) builds each objective just short of its goal and at it and asks
-  both. It found one drift, fixed: mayor_3's phone check counted every key of
-  `dungeonClears`, the worker only the ones set to true;
 - a tab already in the world that reconnects mid-fight gets no `body_place`:
   its next step decides (beside the body it carries on, far away it waits)
   (#1509);
@@ -198,16 +209,11 @@ so nothing waits on them any more.
   (#1505);
 - the stat scene's memo bit (M3-18, about 1.8 MB, kept on purpose) needs a
   row in `docs/MEMORY-MAP.md` or a decision (#1505);
-- ~~armour, legs and the amulet put on mid-fight are not locked (#1523)~~:
-  a spare put on and a piece taken off are refused in the fight (v2.3.4626,
-  `fightlockarmor`, `fight-lock.test` §9; there is no road that puts on a
-  spare amulet). Still open: a piece that reached the phone's bag this
-  session and never the worker's stash escapes a loss until the next join,
-  because the worker learns the armour stash only at join. The full fix is
-  keeping the armour stash live on the worker;
-- ~~`character_reset` mid-fight (and its web twin, `_accountReset`) wipes the
-  loser's own character: spite, the killer gets nothing (#1523)~~: refused in
-  the fight on both roads (v2.3.4627, `fightlockreset`, `fight-lock.test` §8);
+- a piece of armour that reached the phone's bag this session and never the
+  worker's stash escapes a No man's land loss until the next join, because
+  the worker learns the armour stash only at join (#1531 locked the swap and
+  the take-off mid-fight). The full fix is keeping the armour stash live on
+  the worker;
 - a red skull killed by a monster has no fight lock (V21 Q3, #1523);
 - the Auction House's settlement legs, releases and bids still heal from
   their 48-hour stamps only: a restart followed by 48 hours with nobody
@@ -218,11 +224,27 @@ so nothing waits on them any more.
   pictures up to 250-400 MB on the graphics chip, a black-screen risk on an
   iPhone. Listed for the performance work, with the crowd tour's other
   findings (a to d, g) in `docs/specs/held-sweep.md`. The armour pictures'
-  store (`_gearStrips`) is BOUNDED, about 22 MB, not a leak.
+  store (`_gearStrips`) is BOUNDED, about 22 MB, not a leak;
+- found by #1530, not built: the node harvest has the cook's old bundle shape
+  (a swing, then `extraction_start` in one frame, shielded at once); a 3 s
+  hold like the cook's would also leave an honest player who mines right
+  after a kill unshielded up to 3 s, so it is the owner's call;
+- found by #1530: a phone holding the shield through a 3 s guard break gets
+  a parry window when the break ends, with no press; the fix is "parry only
+  on the phone's own raise", beyond that lane's decisions;
+- found by #1530: a modified page can label a sword's claim as a bow's (with
+  a bow worn) to keep its guard up (TRAPS §329);
+- found by #1529: right after a swing that hit nothing, the bar's glint can
+  promise a perfect strike the worker does not count (a miss never reaches
+  the worker);
+- `farmorders.test` can fail once as the clock crosses midnight UTC; its
+  clock is not pinned yet (TRAPS §335).
 
 **Not started, big repairs (no longer waiting on the judges):**
-- the plan's larger "one door per system" work, beyond the change of place
-  now in flight (#1508).
+- the plan's larger "one door per system" work (#1508). Its first piece, the
+  server judging a change of place, is done (#1534, v2.3.4640). What remains
+  of Wave 2 item 1 (the server deciding guard and cooking itself, beyond the
+  limits #1530 put on the phone's claims) and Wave 3 stay on the plan.
 
 **Not fixed on purpose:**
 - the player's trail reads the same unset `now` the pet did (TRAPS §294):
@@ -247,15 +269,18 @@ so nothing waits on them any more.
 - the Mayor's "Clear any dungeon" is checked on the server: built
   (v2.3.4441).
 - the fight lock counts every road that spends, converts, wagers or gives
-  away gold or bag goods; a spare weapon is locked mid-fight, armour not
-  yet; a duel is declined during a No man's land fight with a player:
-  built (v2.3.4510);
+  away gold or bag goods; a spare weapon is locked mid-fight; a duel is
+  declined during a No man's land fight with a player: built (v2.3.4510);
+  an armour swap and a character restart mid-fight too (v2.3.4626-4627);
 - the General Store writes what it owes before paying, the Auction House's
   way: built (v2.3.4505);
 - shield question 5: YES, the shield must be down 400 ms before a parry is
-  ready again (in flight, v2.3.4570);
-- the preview pages are spectators in the live room, and a dungeon's entry
-  pass lasts 20 s (both in flight, above).
+  ready again: built (v2.3.4605);
+- the preview pages are spectators in the live room: built (v2.3.4575); a
+  dungeon's entry pass lasts 20 s and is not re-checked at the step in:
+  built (v2.3.4640);
+- one character per browser: each tab keeps the character it started with,
+  and a tab another tab moved shows Play here: built (v2.3.4606).
 
 Who decided what, and the questions still open, are in
 `docs/OWNER-LIST-2026-10-26.md` §10 (the shield, the dungeon's loading
@@ -270,7 +295,9 @@ offered.
 - `node tools/world/test-world-core.mjs --check` fails 4 (the Town Hall
   window, the forge room's stage, two quest checks; it was 2 of 540 in the
   first wave);
-- `mp-farmmusic` step 4 (the frost land's music after the farm gate);
+- `mp-farmmusic` step 4 (the frost land's music after the farm gate): back
+  through the farm's gate the phone lands in the frost lands; #1534 saw it
+  red on 6cb46cfe and 8d6f9e44, green on d48b5391 (TRAPS §177);
 - `soundcues` check 2c (no buckle sound when the right mouse button
   raises and lowers the shield): red before #1516 too, left for its own look;
 - `mp-block` 10 of 11 and `mp-pvpshield` (both on the retired old map; the
@@ -301,6 +328,10 @@ offered.
 4. **Lanes do not message the orchestrator.** It checks each wave once.
 5. **The reviewer reads every diff.** It caught a brief of the orchestrator's
    own that would have hidden live trades on a reconnect (TRAPS §278).
+6. **A lane's tag moves.** The fifth wave's lanes were renumbered up to three
+   times as `main`'s high-water passed them (precheck's version gate needs a
+   tag above `main`). Docs written while a lane is open name it by its
+   branch; the closing docs pass writes the final tags.
 
 And: every merge with a file under `server/` deploys the worker, a test
 included (TRAPS §277). Merge a batch together, in a quiet hour.

@@ -9878,3 +9878,144 @@ multiply with mashing (the shove, the gem's status, collision mana, the
 spark) come only with a full swing (`FULL_SWING_SHARE` 0.8). Off-ramps
 `freeswing: false`, `freeswingbonus: false`. **Receipt:**
 `free-swing.test` (the damage a second equal at every swipe rate).
+
+## 327. "A page out of step with the Wheel is only standing somewhere else" (v2.3.4575)
+
+**Tempting:** a page that joins the live room without the room's Wheel size
+in its `ws` (no 5) is treated as "elsewhere": sheltered from monsters and at
+No man's land level 0. That was enough. **Wrong:** only the defending side
+asked. Its own swings, bursts, burns and arrow blasts still hurt monsters, so
+a modified page left one number out of its join and became untouchable while
+it kept killing (sweep V1, S3-19). **The rule.** In the Wheel's zone an
+out-of-step page is a SPECTATOR: sheltered AND harmless (`_wheelSpectator`,
+`wheeltables.js`). A new road from a player to a monster or to a player asks
+it, or goes through `_handleMonsterDamage`, `_applyMonsterDot` or
+`_pvpAllowed`, which already do. A duel's consent still holds both ways, and
+out of the Wheel's zone (a dungeon, the arena) nothing changes. **And:** never
+"fix" the owner's preview pages (`?bigtown`, `?plaintown`, `?placing=2`) to
+send `ws: [1, 5]`. They draw the short Wheel inside the long room on purpose,
+and their places are in the short Wheel's numbers; a test or a bot still
+sends `[1, 5]` (§196). Fixed in #1526; off-ramp `wheelstep: false`.
+**Receipt:** `world-size.test`.
+
+## 328. "A raised shield with no facing is an old phone: keep the all-round block" (v2.3.4605)
+
+**Tempting:** a `move` with `blocking: true` and no `ba` (the shield's angle)
+blocks from every side, as deploy-order safety for phones older than the
+facing. **Wrong:** every phone since v2.3.1705 sends `ba` with a raised
+shield (`wsClient.js`'s move shim is the one place a `move` is built), so the
+only page without it is a modified one, and it blocked from behind as well.
+**The rule.** A guard with no `ba` covers the front, measured from where the
+player last faced (`guardFacing`, `moveclaims.js`: `f`, else `d`, else
+south). The way back is the switch `blockarc: false`, never a code path. A
+test fixture's raised shield carries `ba` toward the attacker, as a phone's
+does. Fixed in #1530. **Receipt:** `move-claims.test` §3.
+
+## 329. "Every attack claim lowers the guard" (v2.3.4605)
+
+**Tempting:** the phone lowers the shield before a swing, so the server
+should drop the guard on any attack claim. **Wrong** for a bow's or a staff's:
+that claim reaches the worker when the shot LANDS, not when it was loosed, and
+the player may have raised the shield again while it flew. Shield Bash is cast
+from a raised shield and the Element Burst with the shield up. **The rule.**
+Only a sword's claim lowers the guard on the worker (`_swingDropsGuard`,
+asked by the router's `player_attack` and `monster_damage` before the
+handler, `swingguard`). Never make a guard rule refuse or drop on a ranged
+claim; the daze rule has the same exemption (`combat.js`
+`_resolvePvPAttack`). Known and left: a modified page can label a sword's
+claim `slot: 'ranged'` with a bow worn; the hit then resolves as a bow's and
+the worker cannot tell it from a late arrow. Fixed in #1530. **Receipt:**
+`move-claims.test` §2.
+
+## 330. "Ask whether the cook's fire is still alive now" (v2.3.4605)
+
+**Tempting:** the cooking shield needs a real fire the server saw lit, within
+60 s; check the fire's age against the clock on every hit. **Wrong:** a long
+cook outlives its check, and the shield drops mid-cook: v2.3.2956's incident
+again. **The rule.** The fire is read at the moment the cook BEGAN (`_exAt`),
+never against the clock (`_cookShieldHolds`, `moveclaims.js`). The parry
+works the same way: a raise parries only after the shield was down 400 ms
+(`PARRY_REARM_MS`), and a quicker raise still blocks. And the "no shield
+right after an attack" rule holds the shield back until 3 s after the attack
+(`COOK_REARM_MS`); it does not refuse the cook's edge, which would leave an
+honest cook who started just after a fight unshielded for the whole cook
+(the phone sends the edge once). Fixed in #1530; off-ramps `cookshield`,
+`parryrearm`. **Receipt:** `move-claims.test` §1 and §4, `gather-hits`.
+
+## 331. "Read the Login Key when you need it" (v2.3.4606)
+
+**Tempting:** the Login Key lives in `bt_passphrase`, so a join, a
+`key_new`, the fallback or the heartbeat reads it there at that moment.
+**Wrong:** the slot is shared by every tab of the browser, but a page fixes
+its player id at start. Once another tab switched character, a join became
+the other character, or sent its own id with the other key, was refused
+`'auth'`, and minted a brand-new level-1 copy with the same name: a wipe to
+the player. The heartbeat stamped the wrong row of the character list.
+**The rule.** A page's identity is the pair it started with (`S._tabKey`,
+`S.myId`), changed only by its own key events (`src/game/tabIdentity.js`).
+The shared slot is compared with it, never substituted for it; a slot naming
+another character means "moved": the takeover's own banner and Play here.
+Per-character caches in shared storage carry whose they are (`_owner` on
+`bt_rpg`, `bt_resume`). A join never makes a character: only Create does.
+Fixed in #1528; off-ramp `?tabid=0` for one phone. **Receipt:**
+`tab-identity.test`, `mp-tabidentity`.
+
+## 332. "Time a bow shot when its claim arrives" (v2.3.4615)
+
+**Tempting:** the perfect strike (the free-swing trial) is judged from the
+last attack; a bow's hit claim says when it came, so judge it there.
+**Wrong:** a projectile's claim comes after its flight (up to 470 ms), so its
+time says nothing about when the shot was loosed. **The rule.** Time a shot
+at its own relay (`_pfBowShot`, on the arrow's `player_projectile`, after the
+relay budget), and have each hit's claim name its shot (`sw`, the relay's
+`ts`). Keep more than one shot: a flicked bow's next shot (371 ms) leaves
+before the last one lands; the worker keeps 4. Fixed in #1529; off-ramps
+`perfectbow`, `freeswingbonus`. **Receipt:** `perfect-strike.test`.
+
+## 333. "A new cap goes last in the caps literal" (v2.3.4615)
+
+**Tempting:** §316 puts a new cap on its own new line; the end of `join.js`'s
+`caps` literal (and of `CAP_GATES`) looks like the place. **Wrong:**
+`accuracy.test` pins `accuracy` as the LAST line of both. **The rule.** A new
+cap goes on its own line ABOVE `accuracy`. Found in #1529 (`perfectStrike`).
+**Receipt:** `accuracy.test`, `caps-audit.test`.
+
+## 334. "Two quick inputs in a phone test: the page sees both" (v2.3.4615)
+
+**Tempting:** a phone test sends one input, then another a few hundred ms
+later, and expects the page's per-frame check to have seen the first.
+**Wrong:** this QA box draws a frame every 400 to 900 ms (§200), so two inputs
+closer than that can land in one frame. **The rule.** A phone test that needs
+the page to SEE one input before the next, when the two are closer than a
+frame here, runs the page's own per-frame check itself, in one task. Found in
+#1529. **Receipt:** `mp-timingbar` (#1532).
+
+## 335. "A daily test passes at any hour" (v2.3.4615)
+
+**Tempting:** a suite that keeps things per day (the farm's orders) is green,
+so it is done. **Wrong:** `farmorders.test` failed once inside the full suite
+as the clock crossed midnight UTC, then passed on every run after. **The
+rule.** A test of anything kept per day pins its clock, or reads the day once
+and uses it throughout, so a run that straddles midnight cannot split it.
+Seen in #1529 (which does not touch the farm); `farmorders.test` itself is not
+yet pinned.
+
+## 336. "A move names its zone, so take it" (v2.3.4640)
+
+**Tempting:** a new way of changing place sends its `move` with the new `z`,
+and the worker takes it. **Wrong:** the worker believed the phone about where
+it was. A modified phone losing a No man's land fight left it, and the bag,
+by naming town, the farm, worldview, an old land or someone else's live run
+(V1 S3-15). **The rule.** The worker takes a change of zone only with a
+reason (`server/src/zonejudge.js`, one clause of movement.js's
+`_zoneRejected`): into a run only on the pass `dungeon_started` gives
+(`_zonePassGive` beside every send of it; used once, 20 s, the fight not
+asked again at the step in), and out of the Wheel only from its safe ground
+(`_wheelSafeAt`, the worker's own place). A new honest way of changing place
+gets its reason there in the same PR. A test that takes a player out of the
+Wheel stands them on the safe ground or gives the run's pass, never
+`zonejudge: false`. A QA shortcut that opens a building's window away from its
+door is not a road the worker takes. A refused change writes nothing and
+sends nothing; `/api/admin/overview`'s `zoneJudge` counts refusals by road,
+and an honest player never meets one, so a growing count is a missed road.
+Fixed in #1534; off-ramp `zonejudge: false`. **Receipt:** `zone-judge.test`.
