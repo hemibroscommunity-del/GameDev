@@ -249,7 +249,17 @@ so nothing waits on them any more.
   promise a perfect strike the worker does not count (a miss never reaches
   the worker);
 - `farmorders.test` can fail once as the clock crosses midnight UTC; its
-  clock is not pinned yet (TRAPS §335).
+  clock is not pinned yet (TRAPS §335);
+- the 54 refusals still silent, found by the refusal door (v2.3.4791,
+  `refusal-door.test`, its list `server/test/refusal-door-list.mjs`, the
+  lines marked `known`): the forge, the amulet forge and gem cutting, the
+  smelter and the armour forge, the stat and skill points, the chest, the
+  capes, the gamble, ace flip and jackpot purses, the weapon stash (equip,
+  sell, take off), the daily reroll, the heap burn's place checks, lighting
+  a fire with no log, a party accept of a gone invite, a trade's one weapon
+  too many, the old relay trade's run-out offer. Each answers nothing
+  today; a fix lane answers them (TRAPS §284) and takes the lines off. The
+  door fails any NEW silent refusal at review time.
 
 **Not started, big repairs (no longer waiting on the judges):**
 - the plan's larger "one door per system" work (#1508). Its first piece, the
