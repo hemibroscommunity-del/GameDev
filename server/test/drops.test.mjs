@@ -221,9 +221,11 @@ room._handleLootPickup({ id: 'pA', name: 'A' }, { lootId: pile.lootId, zone: 'to
 
 check('the gem is credited to the SERVER inventory, not just the wire',
   A.inventory[RARE_GEM_KEY] === 1, A.inventory);
-/* Claim 5: the worker must NOT have grown an armour store of its own. */
-check('the armour is NOT stashed server-side (there is no server armour stash)',
-  A.armorStash === undefined && A.legsStash === undefined && A.armor === undefined,
+/* Claim 5, v2.3.4840: the armour picked up goes into the worker's armour
+   stash too (gearstash.js _gearStashLiveAdd), so a No man's land loss can
+   take it this session; nothing is put ON the player. */
+check('the armour is stashed server-side too, one each, and nothing is worn',
+  Array.isArray(A.armorStash) && A.armorStash.length === 1 && Array.isArray(A.legsStash) && A.legsStash.length === 1 && A.armor === undefined,
   { armorStash: A.armorStash, legsStash: A.legsStash, armor: A.armor });
 check('...and the pile records the armour as claimed', pile.armorClaimed === true, pile.armorClaimed);
 check('...and the one-of inventory slot as claimed', pile.inventoryClaimed === true);

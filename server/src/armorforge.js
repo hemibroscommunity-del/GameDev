@@ -95,6 +95,9 @@ export const armorForgeMethods = {
        loot pickup's order (dailychest.js, index.js) */
     const piece = this._gearProvRecord(session.id, r.slot,
       { name: r.name, mat: r.mat, slot: r.slot, tierMult: r.tierMult, quality: this._rollWeaponQuality() }, 'forge');
+    /* v2.3.4840: into the worker's armour stash too, so a No man's land loss
+       can take it this session (gearstash.js _gearStashLiveAdd) */
+    if (this._gearStashLiveAdd) this._gearStashLiveAdd(ps, r.slot, piece);
 
     const res = this._addLifeSkillXp(ps, 'blacksmithing', r.xp);
     /* v2.3.3525: armour made counts for the tour's smith_2 as a sword does

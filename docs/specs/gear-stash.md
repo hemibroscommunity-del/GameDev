@@ -381,3 +381,27 @@ passed only because no test asked:
 (finding 2) and that an empty claim does not stamp (finding 1a); §3's
 "stored wins forever" case is now the open door taking a later claim's
 surplus.
+
+## v2.3.4840: the armour stash kept live on the worker
+
+Before this, the worker learned `armorStash` / `legsStash` only at join, from
+the phone's claim. A piece that reached the phone's bag during the session
+(forged, from the daily chest, a quest, a pickup, or taken off) was in nothing
+the No man's land loss reads, so a losing player kept it until the next join
+(STATE-MACHINES.md "what is left", from #1531; the sweep's V21 S7-23).
+
+Now every road that hands an armour or legs piece to the bag also puts it in
+the worker's list (`_gearStashLiveAdd`, gearstash.js), and a piece put on
+leaves it (`_gearStashLiveTake`, from `_gridsApplyArmor`). The roads: the
+armour forge, the daily chest, the loot pickup, a quest's armour, the dev
+reveal kit, a swap or take-off through `stats_update`, and `unequip_request`.
+Mail (the market, trades) already pushed into the list (inbox.js).
+
+- **Never a second copy.** An add is skipped when the list already holds the
+  piece (by its id, or by its value signature for an old unrecorded one). The
+  loss credits what it takes to the killer, so a copy too many would be a
+  piece made out of nothing; too few is only the old behaviour.
+- **No extra write.** Every caller already saves; the list rides that put.
+- **Kill switch:** `armorstashlive: false` in the live flags (join-only, as
+  before).
+- Test: `server/test/armour-stash-live.test.mjs`.

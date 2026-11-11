@@ -408,6 +408,7 @@ export const revealBagMethods = {
     if (!d) return { ok: false, error: 'give: armor, legsArmor or weapon' };
     const piece = this._revealBagMark(session, { name: d.name, mat: d.mat, slot: d.slot, tierMult: d.tierMult, quality: grade });
     this._gearProvRecord(playerId, d.slot, piece, 'drop');
+    if (this._gearStashLiveAdd) this._gearStashLiveAdd(ps, d.slot, piece);   /* v2.3.4840 */
     const pub = revealPublic(piece);
     if (ws) {
       try {

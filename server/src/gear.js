@@ -696,6 +696,9 @@ export const gearMethods = {
       if (ps.weaponStash.length >= this.WEAPON_STASH_CAP) return; // stash full -- reject
       ps.weaponStash.push(current);
     }
+    /* v2.3.4840: armour or legs taken off go to the bag: the worker's armour
+       stash too (gearstash.js _gearStashLiveAdd) */
+    if ((slot === 'armor' || slot === 'legsArmor') && this._gearStashLiveAdd) this._gearStashLiveAdd(ps, slot, current);
     ps[slot] = null;
     // v2.3.1159: active-slot repair.  Unequipping the weapon the
     // activeSlot points at used to leave the pointer dangling — the

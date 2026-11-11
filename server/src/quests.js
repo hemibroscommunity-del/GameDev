@@ -682,6 +682,8 @@ export const questMethods = {
            from.  The row lands in gear_prov:<playerId>, so a crash before the
            announcement still leaves the ownership proof behind. */
         this._gearProvRecord(playerId, slot, _minted, 'quest');
+        /* v2.3.4840: the worker's armour stash too (gearstash.js _gearStashLiveAdd) */
+        if (this._gearStashLiveAdd) this._gearStashLiveAdd(ps, slot, _minted);
         ps._questGrantOverflow.push(_minted);
         return false;
       }
