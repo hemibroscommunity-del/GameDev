@@ -295,7 +295,7 @@ const FULL = 371;   /* a new character's full draw (draw-gather.test §1) */
   check('9c gated on the worker: bowFeelOn reads caps.bowDraw, and caps-audit no longer excuses it',
     /S\._serverCaps\.bowDraw/.test(BF) && !/\['bowDraw',/.test(CA));
   check('9d the loop\'s frame after the sword\'s, the walk, a computer\'s press; its release heard on the window',
-    /swordFeelFrame\(S, Date\.now\(\)\);\n\s*bowFeelFrame\(S, Date\.now\(\)\);/.test(BRO) && /finalSpd \*= bowFeelWalkMult\(S\);/.test(BRO)
+    /swordFeelFrame\(S, Date\.now\(\)\);\n(?:\s*staffFeelFrame\([^\n]*\n)?\s*bowFeelFrame\(S, Date\.now\(\)\);/.test(BRO)   /* v2.3.4803: the staff's frame may sit between (both after the sword's) */ && /finalSpd \*= bowFeelWalkMult\(S\);/.test(BRO)
     && /if \(!bowFeelDeskDown\(S, Date\.now\(\)\)\) mcAskShot\(S, Date\.now\(\)\);/.test(BRO) && /addEventListener\('mouseup'/.test(BF) && /addEventListener\('blur'/.test(BF));
   check('9e the pose: the stand-in raised and drawn while nocked (entityRenderer), its frame held (effectsRenderer); the drawer in the kit\'s own layer',
     /S\._bowHoldFrame = null;\n\s*if \(!_bowDir && S\._bfPose/.test(ER) && /S\._bowHoldFrame != null && S\._bowHoldFrame >= 0\) \? Math\.min\(n - 1, S\._bowHoldFrame\)/.test(EF)
