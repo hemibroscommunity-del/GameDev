@@ -460,7 +460,8 @@ for (const src of BLOCKABLE) {
    NO MONSTER DAMAGE, FULL STOP"); the slam, the lunge, the slime burst, a
    boss and fire on the ground still hit one */
 for (const src of ALL) {
-  const r = play(src, 'out', ({ ps, now }) => { ps.ex = 'cook'; ps._exAt = now; ps._exX = ps.x; ps._exY = ps.y; });
+  /* v2.3.4605: at a fire the worker lit (moveclaims.js `cookshield`) */
+  const r = play(src, 'out', ({ ps, now }) => { ps.ex = 'cook'; ps._exAt = now; ps._exX = ps.x; ps._exY = ps.y; ps._fireLit = { z: ps.z, x: ps.x, y: ps.y, at: now }; });
   check('6. ' + src + ': leaves a harvester alone -- nothing taken, nothing sent', r.hpLost === 0 && r.evs.length === 0, { hpLost: r.hpLost, evs: r.evs });
 }
 
@@ -651,6 +652,7 @@ for (const src of ALL.filter((s) => s !== 'boss')) {
   check('11. heap: lands on the safe ground, through a raised shield, as a flame tick', took > 0 && P.hp === MAX_HP - took && !!ev && ev.payload.ability === 'heapburn' && ev.payload.elem === 'flame' && !ev.payload.blocked, { took, ev: ev && ev.payload });
   freshPlayer(P, at.zone, at.px, at.py);
   P.ex = 'cook'; P._exAt = Date.now(); P._exX = P.x; P._exY = P.y;
+  P._fireLit = { z: P.z, x: P.x, y: P.y, at: P._exAt };   /* v2.3.4605: the worker's own fire (moveclaims.js) */
   check('11. heap: leaves a harvester alone', room._handleHeapBurn(sess, Date.now()) === 0 && P.hp === MAX_HP);
   freshPlayer(P, at.zone, at.px, at.py);
   deaths.length = 0;

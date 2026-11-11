@@ -477,6 +477,10 @@ async function withRandom(fn, body) {
   ps.ex = 'cook'; ps._exX = ps.x; ps._exY = ps.y;
   const longest = GATHER_HITS.COOK_MAX_HITS * GATHER_HITS.MS.cooking;
   ps._exAt = Date.now() - (longest + 30000);
+  /* v2.3.4605: at the worker's own fire, lit a second before the cook began
+     -- the fire is read at the cook's start, never against the clock, so a
+     long cook keeps it (moveclaims.js `cookshield`) */
+  ps._fireLit = { z: ps.z, x: ps.x, y: ps.y, at: ps._exAt - 1000 };
   check('cook: the shield outlasts the longest plan plus a slow gesture (COOK_MAX_HITS beats + 30 s)',
     room._extractionShielded('bp_gh') === true, { longestMs: longest, ceiling: room.COOK_SHIELD_MS });
   ps._exAt = Date.now() - room.COOK_SHIELD_MS - 1000;

@@ -936,7 +936,11 @@ export const gatheringMethods = {
       if (t - ps._exAt >= this.COOK_SHIELD_MS) return false;
       const cdx = (ps.x || 0) - (ps._exX || 0);
       const cdy = (ps.y || 0) - (ps._exY || 0);
-      return cdx * cdx + cdy * cdy <= this.COOK_SHIELD_RANGE * this.COOK_SHIELD_RANGE;
+      if (cdx * cdx + cdy * cdy > this.COOK_SHIELD_RANGE * this.COOK_SHIELD_RANGE) return false;
+      /* v2.3.4605: ...and only at a fire the worker knows of, and not for
+         COOK_REARM_MS after an attack: an attack, `ex: null` and `ex: 'cook'`
+         in one bundle re-armed it before any tick (moveclaims.js `cookshield`) */
+      return this._cookShieldHolds(ps, t);
     }
     const e = this.extractions[playerId];
     if (!e) return false;
@@ -987,6 +991,10 @@ export const gatheringMethods = {
        edge in movement.js re-arms it. */
     const ps = this.playerState[playerId];
     if (ps) ps._exAt = 0;
+    /* v2.3.4605: ...and WHEN, for the cook / fire shield's re-arm
+       (moveclaims.js `cookshield`: none for COOK_REARM_MS after it).  Not for
+       a stuck arrow's late chip, which is no new attack (keepRecord). */
+    if (ps && !keepRecord) ps._exAttackAt = Date.now();
   },
 
   /* ═══ v2.3.4385: A STUCK ARROW'S LATE CHIP IS NOT A NEW ATTACK ═══
