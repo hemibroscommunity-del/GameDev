@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e64ab9253d97f5d21cbc45ebb9168f596d0b2ec6",
+  "tree": "c45dfc199bfa29f7b0153a95ea8b6f94875a0b89",
+  "committedAt": "2026-11-10T17:38:40-08:00",
+  "subject": "Merge pull request #1536 from hemibroscommunity-del/claude/sm-docs-closing-5",
+  "files": 8009,
+  "bytes": 967098109,
+  "listingSha256": "2fb77c5f4057ae2f2b2e0cd770e1d1fc11342ab18c54d733be61d28418641fea",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
