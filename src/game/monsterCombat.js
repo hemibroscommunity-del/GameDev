@@ -70,7 +70,7 @@ import { fightersInSwing, isLiveFighter } from '@/game/sparTargets.js'; /* v2.3.
 import { duelSwingTarget } from '@/game/duelPending.js';   /* v2.3.4361: a duel's swing names its foe (the phantom duel's red skull) */
 import { nmlSwingAsk } from '@/game/nmlAsk.js'; /* v2.3.3316: a swing at a player you have not chosen asks "Attack <name>?" */
 import { arrowEdgeRoom } from '@/game/arrowEdge.js'; /* v2.3.3489: where an arrow comes down at the screen's edge */
-import { changeZone } from '@/game/zoneTransitions.js';   /* v2.3.4643: the one door (TRAPS §304) */
+import { changeZone } from '@/game/zoneTransitions.js';   /* v2.3.4651: the one door (TRAPS §304) */
 import { shotAimWire } from '@/game/shotGround.js';   /* v2.3.3501: what a shot is fired at, on the wire */
 
 /* ═══ v2.3.3206: HOW FAR A PLAIN ARROW FLIES BEFORE THE SCREEN'S EDGE ═══
@@ -1256,7 +1256,7 @@ export function updateMonsterCombat(S, deps) {
                       _R6.hp = _R6.maxHp;
                       _R6.stamina = _R6.maxStamina;
                       _R6.mana = _R6.maxMana;
-                      changeZone(S, 'town');   /* v2.3.4643: the one door (TRAPS §304) */
+                      changeZone(S, 'town');   /* v2.3.4651: the one door (TRAPS §304) */
                       updateZoneDimensions('town');
                       BT_AUDIO.startZoneAmbient('town');
                       S.map = generateZoneMap('town');

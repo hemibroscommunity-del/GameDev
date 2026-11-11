@@ -436,7 +436,7 @@ export function clearZoneLocalFx(S) {
    named stay in the place you left).  On it so far: the respawn
    (respawn.js), a dungeon's arena entry and its Workshop clear (gameEvents
    dungeon_started / dungeon_cleared) and the buildings' farm trip
-   (farmTrip.js warpToFarm).  v2.3.4643: and now every other way too -- the
+   (farmTrip.js warpToFarm).  v2.3.4651: and now every other way too -- the
    town exits, the way back to the hub, a dungeon's door, a Wheel dungeon's
    way out, and the five on the retired old map (the local death, the Dark
    Sanctum and Radiant buttons, the custom dungeon's two clears).  This is the
@@ -879,7 +879,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                 return; /* hold this frame; enter once _zlObj.done flips */
               }
               S._enteredFromHub = S.currentZone; /* v2.3.859: which hub (town/worldview) to return to */
-              changeZone(S, bestExit.zoneId);   /* v2.3.4643: the one door (TRAPS §304) */
+              changeZone(S, bestExit.zoneId);   /* v2.3.4651: the one door (TRAPS §304) */
               perfTracker.setZone(bestExit.zoneId);
               updateZoneDimensions(bestExit.zoneId);
               BT_AUDIO.startZoneAmbient(bestExit.zoneId);
@@ -1248,7 +1248,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                you went in by. */
             var _farmOut = (_leftZone === 'farm_home' && S._farmBack && wheelIsHome()) ? S._farmBack : null;
             S._farmBack = null;
-            changeZone(S, _retHub);   /* v2.3.4643: the one door (TRAPS §304) */
+            changeZone(S, _retHub);   /* v2.3.4651: the one door (TRAPS §304) */
             updateZoneDimensions(_retHub);
             BT_AUDIO.startZoneAmbient(_retHub);
             S.map = generateZoneMap(_retHub);
@@ -1533,7 +1533,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                swept server-side; no partial rewards). */
             if (S._serverDungeon) {
               if (ZONES[S._serverDungeon] && ZONES[S._serverDungeon]._instance) delete ZONES[S._serverDungeon];
-              changeZone(S, S._dungeonZone || 'town');   /* v2.3.4643: the one door (TRAPS §304) */
+              changeZone(S, S._dungeonZone || 'town');   /* v2.3.4651: the one door (TRAPS §304) */
               S._serverDungeon = null;
               S._inCustomDungeon = false;
               S._customDungeonConfig = null;

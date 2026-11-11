@@ -18,7 +18,7 @@ import { _objectSpread } from '@/lib/babelHelpers.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { FARM_FROM_WORKSHOP } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
 import { holdFarmUntilReady } from '@/game/farmTrip.js';
-import { changeZone } from '@/game/zoneTransitions.js';   /* v2.3.4643: the one door (TRAPS §304) */
+import { changeZone } from '@/game/zoneTransitions.js';   /* v2.3.4651: the one door (TRAPS §304) */
 export function updateDungeonWaves(S, deps) {
   /* v2.3.1127: server-authoritative dungeon instances.  When the run
      lives on the worker (S._serverDungeon set by the dungeon_started
@@ -88,7 +88,7 @@ export function updateDungeonWaves(S, deps) {
                     st._inDungeon = false;
                     st._inCustomDungeon = false;
                     st._customDungeonConfig = null;
-                    changeZone(st, 'farm_home');   /* v2.3.4643: the one door (TRAPS §304) */
+                    changeZone(st, 'farm_home');   /* v2.3.4651: the one door (TRAPS §304) */
                     updateZoneDimensions('farm_home');
                     st.map = generateZoneMap('farm_home');
                     var fz = ZONES.farm_home;
@@ -176,7 +176,7 @@ export function updateDungeonWaves(S, deps) {
                   st._inDungeon = false;
                   st._inCustomDungeon = false;
                   st._customDungeonConfig = null;
-                  changeZone(st, 'farm_home');   /* v2.3.4643: the one door (TRAPS §304) */
+                  changeZone(st, 'farm_home');   /* v2.3.4651: the one door (TRAPS §304) */
                   updateZoneDimensions('farm_home');
                   st.map = generateZoneMap('farm_home');
                   var fz = ZONES.farm_home;

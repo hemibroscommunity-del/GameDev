@@ -208,7 +208,7 @@ const ge = src('src/networking/gameEvents.js');
   check('5c one that ends after you left does not (the next trip would skip its gate)', b.api.ready() === false);
 }
 
-/* ── 6. v2.3.4643: ONE DOOR, NO OTHER WRITER (TRAPS §304) ── */
+/* ── 6. v2.3.4651: ONE DOOR, NO OTHER WRITER (TRAPS §304) ── */
 /* Nine ways still flipped the zone by hand after §2 (four on the live world,
    five on the retired old map); every one goes through changeZone now, and no
    new one may appear.  The renderers' own `this.currentZone` / local
