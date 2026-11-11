@@ -181,8 +181,8 @@ export const cookingMethods = {
     ps.inventory[invKey] -= 1;
     if (ps.inventory[invKey] <= 0) delete ps.inventory[invKey];
     if (typeof ps.maxHp !== 'number') ps.maxHp = 100;
-    if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
-    ps.hp = Math.min(ps.maxHp, ps.hp + heal);
+    if (typeof ps.hp !== 'number') this._hpSet(ps, ps.maxHp, 'eat_unset');
+    this._hpSet(ps, Math.min(ps.maxHp, ps.hp + heal), 'eat'); /* v2.3.4820: the life door */
     /* v2.3.4036: the first albino (5 AP) and the first large (10 AP) of each
        species eaten is an achievement (achievements.js), however it came to
        the bag -- in this run, before the save that carries its points */
@@ -699,10 +699,10 @@ export const cookingMethods = {
       if (dish.buff !== 'heal' || !(Number(dish.power) > 0)) return false;
       if (this._arenaInMatch(pid, ps)) return false;   /* v2.3.4413: the duel's record too (gladiator.js) */
       if (typeof ps.maxHp !== 'number') ps.maxHp = 100;
-      if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
+      if (typeof ps.hp !== 'number') this._hpSet(ps, ps.maxHp, 'dish_unset');
       /* v2.3.3263: a fixed heal, like a fish's -- no Recovery on top unless
          the fish ladder is switched off (_handleEatRequest) */
-      ps.hp = Math.min(ps.maxHp, ps.hp + Math.ceil(Number(dish.power)) + (this._fishHealOff() ? this._recoveryFlat(ps) : 0));
+      this._hpSet(ps, Math.min(ps.maxHp, ps.hp + Math.ceil(Number(dish.power)) + (this._fishHealOff() ? this._recoveryFlat(ps) : 0)), 'dish');
       return true;
     }
     if (dish.slot !== 'meal' && dish.slot !== 'brew') return false;
@@ -740,8 +740,8 @@ export const cookingMethods = {
          its own way. */
       if (this._arenaInMatch(pid, ps)) return false;   /* v2.3.4413: the duel's record too (gladiator.js) */
       if (typeof ps.maxHp !== 'number') ps.maxHp = 100;
-      if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
-      ps.hp = Math.min(ps.maxHp, ps.hp + (item.power || 23));
+      if (typeof ps.hp !== 'number') this._hpSet(ps, ps.maxHp, 'tonic_unset');
+      this._hpSet(ps, Math.min(ps.maxHp, ps.hp + (item.power || 23)), 'tonic');
     } else if (item.effect === 'stamina') {
       if (typeof ps.maxStamina !== 'number') ps.maxStamina = 100;
       if (typeof ps.stamina !== 'number') ps.stamina = ps.maxStamina;

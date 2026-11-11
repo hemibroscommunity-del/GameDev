@@ -118,7 +118,7 @@ export const restMethods = {
       return answer({ ok: false, err: 'soon', wait: REST.GAP_MS - (now - ps._restAt) });
     }
     ps._restAt = now;
-    if (typeof ps.maxHp === 'number') ps.hp = ps.maxHp;
+    if (typeof ps.maxHp === 'number') this._hpSet(ps, ps.maxHp, 'rest');   /* v2.3.4820: the life door */
     if (typeof ps.maxStamina === 'number') ps.stamina = ps.maxStamina;
     if (typeof ps.maxMana === 'number') ps.mana = ps.maxMana;
     if (!ps._buffs || typeof ps._buffs !== 'object') ps._buffs = {};

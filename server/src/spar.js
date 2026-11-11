@@ -395,12 +395,13 @@ export const sparMethods = {
     Object.assign(ps, {
       x: (ownerPs.x || 0) + Math.cos(a0) * SPAR.RING_R, y: (ownerPs.y || 0) + Math.sin(a0) * SPAR.RING_R,
       z: ownerPs.z, d: 'down', f: 'south', vx: 0, vy: 0,
-      dead: false, dying: false, disconnected: false, dodging: false, blocking: false, blockStartT: 0,
+      disconnected: false, dodging: false, blocking: false, blockStartT: 0,
       name: W.name, lastMoveAt: Date.now(), lastDamageAt: 0,
       _buffs: {}, _spar: { owner: ownerId, weapon },
     });
+    this._lifeTo(ps, 'alive', 'spar_clone_new');   /* v2.3.4820: the life door (was dead: false, dying: false in the assign) */
     if (typeof this._prog3Recompute === 'function') this._prog3Recompute(ps);
-    ps.hp = ps.maxHp || 100; ps.stamina = ps.maxStamina || 100; ps.mana = ps.maxMana || 100;
+    this._hpSet(ps, ps.maxHp || 100, 'spar_clone_new'); ps.stamina = ps.maxStamina || 100; ps.mana = ps.maxMana || 100;
     this.playerState[id] = ps;
     this.stateHistory[id] = [];
     const look = { ...look0, name: W.name, wpnType: wpn.type, wpnMat: wpn.gearBase || undefined,
@@ -524,7 +525,7 @@ export const sparMethods = {
     const now = Date.now();
     const c = this._sparClone(playerId);
     if (c) {
-      ps.dying = true; ps.dead = true; ps.hp = 0;
+      this._lifeTo(ps, 'dying', 'spar_down'); this._hpSet(ps, 0, 'spar_down');   /* v2.3.4820: the life door */
       ps.respawnAt = 0;
       ps.blocking = false; ps.dodging = false; ps.vx = 0; ps.vy = 0;
       if (this._pvpClearStatuses) this._pvpClearStatuses(playerId, ps);
@@ -544,7 +545,7 @@ export const sparMethods = {
     const by = this._sparClone(cause.slice(4));
     if (!by || by.owner !== playerId) return false;
     /* ...you, by your own clone: not a death */
-    ps.hp = ps.maxHp || 100;
+    this._hpSet(ps, ps.maxHp || 100, 'spar_self_ko');
     ps.stamina = ps.maxStamina || ps.stamina;
     ps.mana = ps.maxMana || ps.mana;
     ps.lastDamageAt = 0;
@@ -585,12 +586,12 @@ export const sparMethods = {
     ps.vx = 0; ps.vy = 0;
     ps.lastMoveAt = now;
     if (revive || !(ps.dead || ps.dying)) {
-      ps.hp = ps.maxHp || 100; ps.stamina = ps.maxStamina || 100; ps.mana = ps.maxMana || 100;
+      this._hpSet(ps, ps.maxHp || 100, 'spar_up'); ps.stamina = ps.maxStamina || 100; ps.mana = ps.maxMana || 100;
       ps.lastDamageAt = 0; ps._dmgFromPlayer = null;
       if (this._pvpClearStatuses) this._pvpClearStatuses(c.id, ps);
       ps._dazeUntil = 0; ps._stuckUntil = 0; ps._staggerUntil = 0;
     }
-    if (revive) { ps.dead = false; ps.dying = false; c.downUntil = 0; }
+    if (revive) { this._lifeTo(ps, 'alive', 'spar_up'); c.downUntil = 0; }
     if (ps.blocking) this._sparRelay(c, { type: 'player_shield', up: false });
     ps.blocking = false; ps.dodging = false;
     this._sparResetAi(c);

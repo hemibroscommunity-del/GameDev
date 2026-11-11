@@ -1065,7 +1065,7 @@ export const joinMethods = {
         this.playerState[msg.id].xp = stored.xp || 0;
         this.playerState[msg.id].unspentT2 = stored.unspentT2 || 0;
         this.playerState[msg.id].buildPointsThisLvl = stored.buildPointsThisLvl || 0;
-        this.playerState[msg.id].hp = typeof stored.hp === 'number' ? stored.hp : 100;
+        this._hpSet(this.playerState[msg.id], typeof stored.hp === 'number' ? stored.hp : 100, 'join_stored'); /* v2.3.4820: the life door */
         this.playerState[msg.id].maxHp = typeof stored.maxHp === 'number' ? stored.maxHp : 100;
         this.playerState[msg.id].stamina = typeof stored.stamina === 'number' ? stored.stamina : 100;
         this.playerState[msg.id].maxStamina = typeof stored.maxStamina === 'number' ? stored.maxStamina : 100;
@@ -1221,7 +1221,7 @@ export const joinMethods = {
         // so a cheater can't seed a huge BP carry-over.
         this.playerState[msg.id].buildPointsThisLvl = Math.max(0, Math.min(4,
           (msg.data && typeof msg.data.rpgBuildPointsThisLvl === 'number') ? Math.floor(msg.data.rpgBuildPointsThisLvl) : 0));
-        this.playerState[msg.id].hp = (msg.data && typeof msg.data.rpgHp === 'number') ? msg.data.rpgHp : 100;
+        this._hpSet(this.playerState[msg.id], (msg.data && typeof msg.data.rpgHp === 'number') ? msg.data.rpgHp : 100, 'join_new');
         this.playerState[msg.id].maxHp = (msg.data && typeof msg.data.rpgMaxHp === 'number') ? msg.data.rpgMaxHp : 100;
         this.playerState[msg.id].stamina = (msg.data && typeof msg.data.rpgStamina === 'number') ? msg.data.rpgStamina : 100;
         this.playerState[msg.id].maxStamina = (msg.data && typeof msg.data.rpgMaxStamina === 'number') ? msg.data.rpgMaxStamina : 100;
@@ -1401,7 +1401,7 @@ export const joinMethods = {
       this.playerState[msg.id].amuletHpRegen = (msg.data && typeof msg.data.rpgAmuletHpRegen === 'number') ? Math.max(0, Math.min(100, msg.data.rpgAmuletHpRegen)) : 0;
       this.playerState[msg.id].amuletStaminaRegen = (msg.data && typeof msg.data.rpgAmuletStaminaRegen === 'number') ? Math.max(0, Math.min(100, msg.data.rpgAmuletStaminaRegen)) : 0;
       this.playerState[msg.id].lastDamageAt = 0;
-      this.playerState[msg.id].dying = false;
+      this._lifeTo(this.playerState[msg.id], 'alive', 'join_new');   /* v2.3.4820: the life door */
       this.playerState[msg.id].respawnAt = 0;
 
       // Raw stats: prefer stored (already-clamped) values; bootstrap
@@ -1559,7 +1559,7 @@ export const joinMethods = {
         // drops it by construction).
         if (_ps._p3FreshRespec) {
           delete _ps._p3FreshRespec;
-          if (typeof _ps.maxHp === 'number') _ps.hp = _ps.maxHp;
+          if (typeof _ps.maxHp === 'number') this._hpSet(_ps, _ps.maxHp, 'join_respec');
           if (typeof _ps.maxStamina === 'number') _ps.stamina = _ps.maxStamina;
           if (typeof _ps.maxMana === 'number') _ps.mana = _ps.maxMana;
         }
@@ -1586,7 +1586,7 @@ export const joinMethods = {
           const _lf = this._liveFlags;
           const _standOff = !!(_lf && typeof _lf === 'object' && Object.prototype.hasOwnProperty.call(_lf, 'joinstandup') && !_lf.joinstandup);
           if (!_standOff && stored && typeof stored.hp === 'number' && !(stored.hp > 0)) {
-            _ps.hp = _ps.maxHp || 100;
+            this._hpSet(_ps, _ps.maxHp || 100, 'join_stand_up');
             _ps.stamina = _ps.maxStamina || 100;
             _ps.mana = _ps.maxMana || 100;
             _ps.z = 'town';
