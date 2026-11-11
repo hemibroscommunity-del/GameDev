@@ -26,6 +26,7 @@
 
 import { QUEST_REWARDS, QUEST_DORMANT, QUEST_FIRST, QUEST_RETIRED, WOODWORKING_TIERS } from './data.js';
 import { PROG3 } from './prog3.js';
+import { bagGive, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
 
 /* ═══ v2.3.3525: THE KINDS A QUEST COUNTS ═══
    One list for the credit and the check: each is a counter in _questKills,
@@ -74,7 +75,7 @@ export const questMethods = {
       const have = inv[k] || 0;
       const take = Math.min(have, left);
       left -= take;
-      if (have - take > 0) inv[k] = have - take; else delete inv[k];
+      bagTake(inv, k, take, 'quest_collect'); /* v2.3.4810: the bag door */
     }
   },
 
@@ -796,7 +797,7 @@ export const questMethods = {
         const cap = Number(item.max) > 0 ? Math.min(99999, Math.floor(Number(item.max))) : 99999;
         const have = ps.inventory[item.key] || 0;
         if (have >= cap) return false;
-        ps.inventory[item.key] = Math.min(cap, have + n);
+        bagGive(ps.inventory, item.key, n, 'quest_item', cap); /* v2.3.4810: the bag door */
         return true;
       }
     } catch (e) { /* a bad reward definition must not break the turn-in */ }

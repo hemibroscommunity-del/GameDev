@@ -48,6 +48,7 @@
 
 import { SHOP_ITEMS, DIEGO_SHELF, DISHES, QUEST_REWARDS } from './data.js';   /* v2.3.2063: his staple shelf; v2.3.3130: his shelf is DIEGO_SHELF, and no dish; v2.3.3316: the quests that give the tools */
 import { FARM_SHOP_BASE } from './farm.js';   /* v2.3.3127: seeds, crops and compost */
+import { bagGive, bagSet } from './bag.js'; /* v2.3.4810: the bag door */
 
 /* ═══ v2.3.2063: THE THINGS HE ALWAYS HAS ═══
  *
@@ -665,8 +666,9 @@ export const shopMethods = {
     if (!sold) return { ok: false, error: "He's full of those" };
     paid = Math.max(sold * SHOP.MIN_BUY, Math.floor(paid));
 
-    ps.inventory[key] = have - sold;
-    if (ps.inventory[key] <= 0) delete ps.inventory[key];
+    /* v2.3.4810: the bag door.  A SET, not a take: `have` was read before the
+       stock's await above, and step 1 keeps that exactly (docs/specs/bag-door.md) */
+    bagSet(ps.inventory, key, have - sold, 'shop_sell');
     this._goldGive(ps, paid, 'shop_sell'); /* v2.3.4670: the gold door */
     stock[key] = held;
     /* ═══ v2.3.3137: THE SELLER'S BAG AND PURSE ARE SAVED WITH THE PILE ═══
@@ -713,7 +715,7 @@ export const shopMethods = {
       if (!ps.inventory) ps.inventory = {};
       /* `key` passed isToolKey, an own-property test on our own table, so it
          cannot be '__proto__' (rule 4) */
-      ps.inventory[key] = 1;
+      bagSet(ps.inventory, key, 1, 'shop_tool'); /* v2.3.4810: the bag door */
       /* saved, or the purchase came undone on the next reconnect (v2.3.3137) */
       if (pid) this._saveRpg(pid, ps);
       return { ok: true, bought: 1, cost, coins: ps.coins, tool: true, settled: true };
@@ -755,7 +757,7 @@ export const shopMethods = {
          hasOwnProperty test against SHOP_ITEMS -- our own table -- so it
          cannot be '__proto__' (rule 4). */
       if (!ps.inventory) ps.inventory = {};
-      ps.inventory[key] = (Math.floor(Number(ps.inventory[key]) || 0)) + want;
+      bagGive(ps.inventory, key, want, 'shop_staple'); /* v2.3.4810: the bag door */
       /* v2.3.3137: saved, or the purchase came undone on the next reconnect
          (see _shopSell). A staple touches no pile, so this is the one write. */
       if (pid) this._saveRpg(pid, ps);
@@ -780,7 +782,7 @@ export const shopMethods = {
 
     this._goldTake(ps, cost, 'shop_pile'); /* v2.3.4670: the gold door */
     if (!ps.inventory) ps.inventory = {};
-    ps.inventory[key] = (Math.floor(Number(ps.inventory[key]) || 0)) + take;
+    bagGive(ps.inventory, key, take, 'shop_pile'); /* v2.3.4810: the bag door */
     stock[key] = held - take;
     /* v2.3.3137: the buyer saved in the pile's batch (see _shopSell) */
     if (pid) this._saveRpg(pid, ps);

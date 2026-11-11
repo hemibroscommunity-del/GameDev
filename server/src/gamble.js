@@ -24,6 +24,7 @@
    (_handleAceItemFlipRequest). */
 import { TICKET_PREFIX } from './eventcapes.js';
 import { retireRows } from './boards.js';   /* v2.3.4393: the deleted stand-ins */
+import { bagGive, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
 
 /* ═══ v2.3.2618: ACE'S COIN FLIP ═══
  * Owner: "You can triple your money or lose 3x of your bag (you can only bet
@@ -211,12 +212,10 @@ export const gambleMethods = {
     ps._lastAceFlipAt = now;
     const won = Math.random() < ACE_ITEMS.WIN_CHANCE;
     for (const k of Object.keys(staked)) {
-      const held = Math.floor(Number(ps.inventory[k]) || 0);
       if (won) {
-        ps.inventory[k] = held + staked[k];           // doubled
+        bagGive(ps.inventory, k, staked[k], 'ace_items_win');   // doubled  /* v2.3.4810: the bag door */
       } else {
-        const left = held - staked[k];
-        if (left > 0) ps.inventory[k] = left; else delete ps.inventory[k];
+        bagTake(ps.inventory, k, staked[k], 'ace_items_loss');
       }
     }
     this._saveRpg(session.id, ps);

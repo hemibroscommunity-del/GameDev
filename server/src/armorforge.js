@@ -37,6 +37,8 @@
  * liveflags refuses every forge and un-advertises the cap; bars and armour
  * already made are untouched. */
 
+import { bagTake } from './bag.js'; /* v2.3.4810: the bag door */
+
 export const ARMOR_FORGE = Object.freeze({
   /* recipe key -> what it takes and what it makes.  `bar` is a SMELT.RECIPES
      key (smelting.js); `slot` the gear slot the piece is worn in; `mat` the
@@ -87,8 +89,7 @@ export const armorForgeMethods = {
     const have = Math.floor(Number(ps.inventory[r.bar]) || 0);
     if (have < r.bars) return null;
 
-    ps.inventory[r.bar] = have - r.bars;
-    if (ps.inventory[r.bar] <= 0) delete ps.inventory[r.bar];
+    bagTake(ps.inventory, r.bar, r.bars, 'armor_forge'); /* v2.3.4810: the bag door */
 
     /* minted into the ledger before it leaves -- the daily chest's and the
        loot pickup's order (dailychest.js, index.js) */

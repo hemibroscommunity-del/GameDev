@@ -54,6 +54,7 @@
  * nothing anybody owns.
  */
 import { PACE } from './flood.js';
+import { bagGive, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
 
 const has = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 
@@ -254,7 +255,7 @@ export const bankMethods = {
         const inVault = v.items.get(id) || 0;
         if (!inVault && v.items.size >= BANK.SLOTS) return this._bankSend(pid, v, last(false, 'vault_full'));
         if (inVault + n > BANK.MAX_N) return this._bankSend(pid, v, last(false, 'vault_full'));
-        if (held - n > 0) inv[id] = held - n; else delete inv[id];
+        bagTake(inv, id, n, 'bank_deposit'); /* v2.3.4810: the bag door */
         v.items.set(id, inVault + n);
       } else {
         const inVault = v.items.get(id) || 0;
@@ -262,7 +263,7 @@ export const bankMethods = {
         if (inVault < n) return this._bankSend(pid, v, last(false, 'not_enough'));
         const held = has(inv, id) ? Math.floor(Number(inv[id]) || 0) : 0;
         if (held + n > BANK.MAX_N) return this._bankSend(pid, v, last(false, 'bag_full'));
-        inv[id] = held + n;
+        bagGive(inv, id, n, 'bank_withdraw'); /* v2.3.4810: the bag door */
         if (inVault - n > 0) v.items.set(id, inVault - n); else v.items.delete(id);
       }
     }

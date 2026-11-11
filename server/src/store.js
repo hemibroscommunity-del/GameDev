@@ -95,6 +95,7 @@ import { SHOP_ITEMS } from './data.js';
 import { petPublic } from './petbook.js';   /* v2.3.3122: pet listings (what a buyer is shown) */
 import { swordToGreatsword } from './swordconvert.js';   /* v2.3.3895: a sword's listing is rewritten once as a greatsword */
 import { oldGreatswordToMetal } from './gscopper.js';   /* v2.3.3980: ...and a wooden or base-less greatsword's as a metal one */
+import { bagTake } from './bag.js'; /* v2.3.4810: the bag door */
 
 /* v2.3.3525: the four remains keys in words (the game's src/data/remains.js) */
 const REMAINS_WORDS = Object.freeze({
@@ -684,8 +685,7 @@ export const storeMethods = {
          Kill switch: `ahonewrite: false` (_ahOneWrite) puts back the old way. */
       if (this._ahOneWrite()) {
         if (this._invCount(ps, k) < qty) return { ok: false, settled: true, error: 'You do not have that' };
-        ps.inventory[k] = this._invCount(ps, k) - qty;
-        if (ps.inventory[k] <= 0) delete ps.inventory[k];
+        bagTake(ps.inventory, k, qty, 'ah_listing'); /* v2.3.4810: the bag door */
         this._saveRpg(playerId, ps);
         this._queuePlayerStateFlush(playerId);
       } else {

@@ -54,6 +54,7 @@
  * answer (handoff rule 10). */
 import { WEAPON_GEMS } from './data.js';
 import { GEM_ELEMENTS, gemCount, gemTake, gemGive } from './gems.js';
+import { bagTake } from './bag.js'; /* v2.3.4810: the bag door */
 
 const own = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 
@@ -146,7 +147,7 @@ export const shardCrackMethods = {
       rolls.push(roll);
       if (roll <= chance) found++;
     }
-    if (have - n > 0) inv[key] = have - n; else delete inv[key];
+    bagTake(inv, key, n, 'shard_crack'); /* v2.3.4810: the bag door */
     if (found) gemGive(ps, element, true, found);
     const x = this._gemCuttingXp(ps, SHARD_CRACK.CRACK_XP * n);
     this._saveRpg(pid, ps);
@@ -176,7 +177,7 @@ export const shardCrackMethods = {
       const inv = ps.inventory && typeof ps.inventory === 'object' ? ps.inventory : null;
       const have = inv && own(inv, 'rare_gem') ? Math.max(0, Math.floor(Number(inv.rare_gem) || 0)) : 0;
       if (have < 1) return refuse('no_rare', { need: 1, have: 0 });
-      if (have - 1 > 0) inv.rare_gem = have - 1; else delete inv.rare_gem;
+      bagTake(inv, 'rare_gem', 1, 'rare_gem_combine'); /* v2.3.4810: the bag door */
     } else {
       const have = gemCount(ps, element, true);
       if (have < SHARD_CRACK.RAW_PER_GEM) return refuse('short', { need: SHARD_CRACK.RAW_PER_GEM, have });

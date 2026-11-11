@@ -44,6 +44,8 @@
  * `caps.itemdrop` false at a phone's next join (it hides Drop).
  */
 
+import { bagTake } from './bag.js'; /* v2.3.4810: the bag door */
+
 export const ITEM_DROP = Object.freeze({
   /* only the dropper sees it, and only they may take it back */
   PRIVATE_MS: 60000,
@@ -118,7 +120,7 @@ export const itemDropMethods = {
 
     /* ONE synchronous run (handoff rule 5): out of the bag, onto the ground,
        saved -- no await between, so nothing can see it in both places */
-    if (have - qty > 0) inv[ask.key] = have - qty; else delete inv[ask.key];
+    bagTake(inv, ask.key, qty, 'item_drop'); /* v2.3.4810: the bag door */
     const pile = this._dropPile(session, ps, ask.key, qty, now);
     ps._dropAt = now;
     this._saveRpg(sid, ps);

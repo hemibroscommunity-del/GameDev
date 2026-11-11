@@ -37,6 +37,7 @@
  * Keys are built from an element only after the element is checked against
  * GEM_ELEMENTS (own members of a Set; never a client's string). */
 import { AMULET_GEMS, WEAPON_GEMS } from './data.js';
+import { bagGive, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
 
 /* every element a gem can be: the amulets' nine and the weapons' eight
    (Flora is a weapon's, Dark and Light an amulet's) -- the ten */
@@ -96,7 +97,7 @@ export function gemTake(ps, element, raw, n = 1) {
   if (bag && own(bag, k)) {
     const have = num(bag[k]);
     const t = Math.min(have, left);
-    if (have - t > 0) bag[k] = have - t; else delete bag[k];
+    bagTake(bag, k, t, 'gem_take'); /* v2.3.4810: the bag door */
     left -= t;
   }
   if (left > 0) {
@@ -114,7 +115,7 @@ export function gemGive(ps, element, raw, n = 1) {
   if (!add || !GEM_ELEMENTS.has(element)) return false;
   const bag = bagOf(ps, true);
   const k = raw ? gemRawKey(element) : gemCutKey(element);
-  bag[k] = (own(bag, k) ? num(bag[k]) : 0) + add;
+  bagGive(bag, k, add, 'gem_give'); /* v2.3.4810: the bag door */
   return true;
 }
 

@@ -41,6 +41,8 @@
 
 /* One record per cape: the cap, who holds a ticket, and who has redeemed.
    Count and winners in one place, so they cannot disagree. */
+import { bagGive, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
+
 export const CAPE_LEDGER_KEY = (capeId) => `capegrant:${capeId}`;
 
 /* The inventory key a ticket occupies.  Prefixed so the redeem handler can
@@ -292,7 +294,7 @@ export const eventCapeMethods = {
     if (roll >= rate) return null;
     led.issued.push(playerId);
     if (!ps.inventory) ps.inventory = {};
-    ps.inventory[def.ticket] = (ps.inventory[def.ticket] || 0) + 1;
+    bagGive(ps.inventory, def.ticket, 1, 'cape_ticket'); /* v2.3.4810: the bag door */
     /* ── end of the synchronous claim ── */
     this._capeLedgerSave(capeId);
     return def.ticket;
@@ -559,13 +561,12 @@ export const eventCapeMethods = {
     if (led.redeemed.indexOf(session.id) >= 0) return;     /* already owns it */
     /* ── synchronous again: consume and grant together, or not at all ── */
     if ((ps.inventory[invKey] || 0) <= 0) return;          /* re-check after the await */
-    ps.inventory[invKey] -= 1;
-    if (ps.inventory[invKey] <= 0) delete ps.inventory[invKey];
+    bagTake(ps.inventory, invKey, 1, 'cape_ticket_spent'); /* v2.3.4810: the bag door */
     led.redeemed.push(session.id);
     /* v2.3.2107: the trophy, in the same synchronous block as the consume, so
        a ticket can never be spent without the cape appearing. */
     const _capeKey = capeItemKey(capeId);
-    ps.inventory[_capeKey] = (Math.floor(Number(ps.inventory[_capeKey]) || 0)) + 1;
+    bagGive(ps.inventory, _capeKey, 1, 'cape_trophy'); /* v2.3.4810: the bag door */
     /* ── end ── */
     this._capeLedgerSave(capeId);
     /* v2.3.3173: the bag is saved HERE, in the same synchronous run as the

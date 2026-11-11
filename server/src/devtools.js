@@ -53,6 +53,7 @@ import { SHARD_CRACK } from './shardcrack.js'; /* v2.3.3516: the kit's shards */
 import { LIFE_SKILL_KEYS } from './migrations.js'; /* v2.3.3229: the life skills a level can be set on */
 import { GATHER_HITS } from './gathering.js'; /* v2.3.3229: 'hits' -- the skills whose harvests and cooks are hits */
 import { PROG3, prog3RespecPoints } from './prog3.js'; /* v2.3.3313: the combat skills a level can be set on; v2.3.3541: + the deal (/dev/combat `deal`) */
+import { bagGive, bagSet } from './bag.js'; /* v2.3.4810: the bag door */
 
 export const DEVKIT = {
   /* The tutorial's own starter weapons -- copper/pine/pine.  Deliberately
@@ -221,7 +222,7 @@ export const devToolsMethods = {
       out.shards = {};
       for (const land of Object.keys(SHARD_CRACK.LANDS)) {
         const k = 'shard_' + land;
-        ps.inventory[k] = Math.max(0, Math.floor(Number(ps.inventory[k]) || 0)) + n;
+        bagGive(ps.inventory, k, n, 'dev_shards'); /* v2.3.4810: the bag door */
         out.shards[k] = ps.inventory[k];
       }
     }
@@ -606,8 +607,8 @@ export const devToolsMethods = {
     if (!ps.lifeSkills || typeof ps.lifeSkills !== 'object') ps.lifeSkills = {};
     if (!ps.inventory || typeof ps.inventory !== 'object') ps.inventory = {};
     if (b.level != null) { const L = clampInt(b.level, 1, 120); ps.lifeSkills.trapping = { level: L, xp: 0 }; out.level = L; }
-    if (b.traps != null) { const n = clampInt(b.traps, 0, 999); if (n > 0) ps.inventory.trap_box = n; else delete ps.inventory.trap_box; out.traps = n; }
-    if (b.logs != null) { const n = clampInt(b.logs, 0, 999); if (n > 0) ps.inventory.wood_pine_log = n; else delete ps.inventory.wood_pine_log; out.logs = n; }
+    if (b.traps != null) { const n = clampInt(b.traps, 0, 999); bagSet(ps.inventory, 'trap_box', n, 'dev_traps'); out.traps = n; }
+    if (b.logs != null) { const n = clampInt(b.logs, 0, 999); bagSet(ps.inventory, 'wood_pine_log', n, 'dev_logs'); /* v2.3.4810: the bag door (both lines) */ out.logs = n; }
     /* v2.3.3123: `look: {gold, size}` -- the NEXT pet made (a catch, or the
        `pet` lever below) comes out golden and/or this size, for the reveal's
        phone test (mp-petsmatter) and the owner's own look at one.  Never set
