@@ -299,67 +299,6 @@ async function sparCloneId(P, timeout = 9000) {
    (harness equipWeapon); the shield the bag's way (ItemDetailPopup
    onEquipStashShield: off the stash onto the arm, and the worker told which,
    as shieldWear.js syncShieldWorn tells it). */
-/* v2.3.4590: the timing bar's pictures.  The review's one page joined off
-   the trial, so it is put on it the way `?manual=3` does at load
-   (window.__btManual.set; the worker is not asked, and judges nothing here);
-   two attacks a cycle apart are made by the swing clock alone (no blow is
-   struck); then the bar's own CSS animations are held at chosen moments
-   (`pose`: ms into the fill, the glint and the freeze; 'end', or -1 for not
-   yet), so every run's picture is the same frame.  Shown whatever the bar's
-   own "something near" rule says (an inline opacity), and all undone after. */
-function timingBarState(id, weapon, title, about, pose) {
-  return {
-    id, group: 'Fighting', title, about, settle: 300,
-    run: async ({ P, wsPort, myId }) => {
-      /* the bar reads the page's hand; no shot is fired, so the worker's bow is not needed */
-      if (weapon !== 'bow') await armForFight(P, wsPort, myId);
-      const bad = await evalIn(P, (w) => {
-        const S = window._gameState.current;
-        if (!window.__btManual || !window.__btManual.set || !window.__btTimingBar) return 'no probe';
-        if (!(S._serverCaps && S._serverCaps.perfectStrike)) return 'this worker does not judge the perfect strike (no caps.perfectStrike)';
-        window.__uiTbWas = window.__btManual.on() ? (window.__btManual.sling() ? 2 : window.__btManual.free() ? 3 : 1) : 0;
-        window.__btManual.set(3);
-        window.__uiTbBow = w === 'bow' && !S.rpg.rangedWeapon;
-        if (window.__uiTbBow) S.rpg.rangedWeapon = { type: 'bow', tierMult: 1, gearBase: 'pine', name: 'Pine Bow', tier: 'common' };
-        S.rpg.activeSlot = w === 'bow' ? 'ranged' : 'melee';
-        S.autoAttack = false;
-        return null;
-      }, weapon);
-      if (bad) return bad;
-      const up = await H.waitFor(P, () => window.__btTimingBar(), (v) => v.drawn && v.weapon === (weapon === 'bow' ? 'bow' : 'sword'), { timeout: 15000, label: 'the bar' }).catch(() => null);
-      if (!up) return 'the bar did not come';
-      const t0 = await evalIn(P, () => { const S = window._gameState.current; S.swingTimer = Date.now() - 1500; return S.swingTimer; });
-      await H.waitFor(P, () => window.__btTimingBar(), (v) => v.last && v.last.at === t0, { timeout: 10000, label: 'the first attack' }).catch(() => null);
-      const t1 = await evalIn(P, () => { const S = window._gameState.current, b = window.__btTimingBar(); S.swingTimer = b.last.at + b.last.cyc; return S.swingTimer; });
-      await H.waitFor(P, () => window.__btTimingBar(), (v) => v.last && v.last.at === t1, { timeout: 10000, label: 'the second attack' }).catch(() => null);
-      await evalIn(P, (ps) => {
-        const bar = document.querySelector('.bt-tbar');
-        if (bar) { bar.style.transition = 'none'; bar.style.opacity = '1'; }
-        for (const a of document.getAnimations()) {
-          const el = a.effect && a.effect.target;
-          if (!el || !el.closest || !el.closest('.bt-tbar')) continue;
-          const n = a.animationName || '', tm = a.effect.getTiming();
-          const v = /^btTb(Win|In)/.test(n) ? ps.fill : /^btTbGl/.test(n) ? ps.glint : /^btTbFz/.test(n) ? ps.frz : null;
-          if (v == null) continue;
-          a.currentTime = (tm.delay || 0) + (v === 'end' ? tm.duration : v);
-          a.pause();
-        }
-      }, pose);
-    },
-    after: async ({ P }) => {
-      await evalIn(P, () => {
-        for (const a of document.getAnimations()) if (a.playState === 'paused') { try { a.finish(); } catch (e) { /* gone */ } }
-        const bar = document.querySelector('.bt-tbar');
-        if (bar) { bar.style.transition = ''; bar.style.opacity = ''; }
-        if (window.__btManual && window.__btManual.set) window.__btManual.set(window.__uiTbWas || 0);
-        const S = window._gameState.current; if (S && S.rpg) { S.rpg.activeSlot = 'melee'; if (window.__uiTbBow) S.rpg.rangedWeapon = null; }
-        window.__uiTbBow = false;
-      }).catch(() => {});
-      await wait(P, 400);
-    },
-  };
-}
-
 async function armForFight(P, wsPort, myId) {
   let r = await H.equipWeapon(P, 'greatsword', 'weapon', 'melee').catch(() => null);
   if (!r || !r.ok) {
@@ -1505,14 +1444,6 @@ export const STATES = [
     },
     after: async ({ P }) => { await evalIn(P, () => { const S = window._gameState.current; if (S) S.lockedTarget = null; }).catch(() => {}); await wait(P, 300); },
   },
-  /* v2.3.4590: THE TIMING BAR, the free-swing trial's (ui/panels/TimingBar.jsx;
-     the owner's design, docs/UI-DESIGN-NOTES.md "The timing bar") */
-  timingBarState('timing-bar', 'sword', 'The timing bar: a swing struck in the glint (the free-swing trial)',
-    'On the free-swing trial (`?manual=3`) only: a sword lying on its side north of the attack disc (upright between Sprint and Special; sideways beside the disc\'s top, under Sprint, the minimap being over it; on a computer where the disc would be).  It fills with brass from the hilt over your swing\'s cycle and glints when full for the perfect strike\'s window.  Here you have just swung in the glint: the frozen copy of the full bar, in the glint\'s warm white, fades over the fill, which has already restarted from the hilt.  Not touchable; no number, no words.',
-    { fill: 90, glint: -1, frz: 60 }),
-  timingBarState('timing-bar-glint', 'bow', 'The timing bar: the arrow glinting (the free-swing trial)',
-    'The same bar with a bow in hand: an arrow lying on its side, filled to its head over the flicked bow\'s interval, the bright sweep running along it: the moment a flick is a perfect strike (12% harder and a little mana back, on monsters).  A staff shows no bar.',
-    { fill: 'end', glint: 150, frz: 'end' }),
   {
     /* v2.3.3817: the death card, staged (a real death's is mp-deathcard's),
        then let go */

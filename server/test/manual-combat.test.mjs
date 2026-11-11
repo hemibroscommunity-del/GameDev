@@ -28,13 +28,15 @@
  *      `?swingbonus=1`; a sword on it swings at once, no sooner than
  *      FREE_GAP_MS, only with caps.freeSwing; the join asks; a lighter
  *      swing's number and sound are lighter; and the wiring.
- *  14. v2.3.4590: THE TIMING BAR AND THE PERFECT STRIKE (the worker's half is
+ *  14. v2.3.4610: THE TIMING BAR AND THE PERFECT STRIKE (the worker's half is
  *      perfect-strike.test): `?swingbonus` on by default on the trial and
  *      `?timingbar=0`; which bar a hand shows (a sword, a bow, never a
  *      staff, only on the trial against caps.perfectStrike); the bar's
  *      times (the glint is the worker's window; the fill is never delayed);
  *      the freeze (how full at 0.5, 1.0, 1.3 cycles); the rising pitch; and
- *      the wiring (no React render a frame, nothing to load). */
+ *      the wiring that stays here (an arrow names its shot, the accent, the
+ *      pitch).  The bar itself is drawn in its own change, on these rules:
+ *      docs/specs/manual-combat.md "For the timing bar's art". */
 import fs from 'node:fs';
 import {
   timingBarWanted, mcBarWeapon, mcBarCycle, mcBarTimes, mcBarAttack, mcPitchStep, mcHitPitch, mcPerfectOn,
@@ -241,14 +243,14 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
   check('13a `?manual=3` is the free-swing trial, remembered; `?manual=1` comes back and forgets', manualMode('?manual=3', ls) === 3 && ls.getItem(MANUAL.KEY) === '3' && manualMode('', ls) === 3 && manualCombatWanted('', ls) === true
     && manualMode('?manual=1', ls) === 1 && ls.getItem(MANUAL.KEY) === null);
   const lb = store();
-  /* v2.3.4590: the bonus (the perfect strike's) is ON by default on the trial now */
-  check('13b v2.3.4590: the bonus is asked by default; `?swingbonus=0` asks without it and is remembered; `?swingbonus=1` comes back',
+  /* v2.3.4610: the bonus (the perfect strike's) is ON by default on the trial now */
+  check('13b v2.3.4610: the bonus is asked by default; `?swingbonus=0` asks without it and is remembered; `?swingbonus=1` comes back',
     swingBonusWanted('', store()) === true && swingBonusWanted('?swingbonus=0', lb) === false && lb.getItem(MANUAL.BONUS_KEY) === '0' && swingBonusWanted('', lb) === false
     && swingBonusWanted('?swingbonus=1', lb) === true && lb.getItem(MANUAL.BONUS_KEY) === null && swingBonusWanted('', lb) === true && swingBonusWanted('?swingbonus=10', store()) === true);
   setManualCombat(true);
   check('13c the join asks nothing off the trial (`?manual=1`), even with the bonus remembered', freeSwingAsk('?swingbonus=1', store()) === 0 && manualFreeSwing() === false);
   setManualCombat(3);
-  check('13d on it the join asks 2 (the bonus: v2.3.4590, the default), or 1 with `?swingbonus=0`; it is manual combat (a bow still flicks, no slingshot)',
+  check('13d on it the join asks 2 (the bonus: v2.3.4610, the default), or 1 with `?swingbonus=0`; it is manual combat (a bow still flicks, no slingshot)',
     freeSwingAsk('', store()) === 2 && freeSwingAsk('?swingbonus=0', store()) === 1 && manualOn() && manualFreeSwing() && !manualSling() && mcSwipes(bow()) && mcShoots(bow()));
   const Sw = sword(10000), B = bow(), St = { rpg: { activeSlot: 'staff' }, swingTimer: 0 };
   check('13e without caps.freeSwing (an old worker, or `freeswing: false`) a sword is the untried swipe: too soon is no, a moment early is kept',
@@ -286,10 +288,10 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
   setManualCombat(false);
 }
 
-// ── 14. v2.3.4590: the timing bar and the perfect strike ──
+// ── 14. v2.3.4610: the timing bar and the perfect strike ──
 {
   const lt = store();
-  check('14a the bar is shown by default; `?timingbar=0` hides it and is remembered; `?timingbar=1` comes back',
+  check('14a the bar\'s rule: shown by default; `?timingbar=0` hides it and is remembered; `?timingbar=1` comes back',
     timingBarWanted('', store()) === true && timingBarWanted('?timingbar=0', lt) === false && lt.getItem(MANUAL.BAR_KEY) === '0' && timingBarWanted('', lt) === false
     && timingBarWanted('?timingbar=1', lt) === true && timingBarWanted('', lt) === true && timingBarWanted('?timingbar=0', null) === false);
   const caps = { freeSwing: 1, perfectStrike: 1 };
@@ -330,16 +332,7 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
     r1 === 1 && Math.abs(r2 - Math.pow(2, 1 / 12)) < 1e-12 && mcHitPitch(St, 50400) === 1 && (setManualCombat(true), mcHitPitch(P, 50800)) === 1);
   setManualCombat(false);
   /* the wiring */
-  const tb2 = read('../../src/ui/panels/TimingBar.jsx'), css = read('../../src/styles/game.css'), bro = read('../../src/ui/BroTown.jsx');
   const pj = read('../../src/game/projectiles.js'), ge = read('../../src/networking/gameEvents.js'), gd = read('../../src/data/gameDisplay.js');
-  check('14m the bar is drawn in the page\'s own way: inline SVG, no file loaded, not touchable', /<svg className=\{cls\} viewBox="0 0 100 16"/.test(tb2) && !/\bsrc=|url\(|import .*\.(png|webp|svg)/.test(tb2)
-    && /\.bt-tbar\{position:fixed;z-index:31;pointer-events:none;touch-action:manipulation;/.test(css));
-  check('14n ...started ONCE an attack by flipping data-k (two keyframe sets), no timer, no React render a frame: the loop calls one compare',
-    /r\.setAttribute\('data-k', b\.k\);/.test(tb2) && /if \(at !== b\.at\) \{/.test(tb2) && !/setInterval|setTimeout|requestAnimationFrame|getBoundingClientRect|offsetWidth/.test(tb2)
-    && /\.bt-tbar\[data-k="a"\] \.bt-tbar-fill\{animation:btTbWinA var\(--cyc\)/.test(css) && /\.bt-tbar\[data-k="b"\] \.bt-tbar-fill\{animation:btTbWinB var\(--cyc\)/.test(css)
-    && /timingBarFrame\(S, Date\.now\(\)\);/.test(bro) && /React\.createElement\(TimingBar, \{ stateRef: stateRef, isLandscape: isLandscape \}\)/.test(bro));
-  check('14o the freeze is one width written once (--w) and a fade; the frozen copy wears the glint\'s colour when struck in it',
-    /r\.style\.setProperty\('--w', /.test(tb2) && /\.bt-tbar\[data-g="1"\] \.bt-tbar-froze path\{fill:#FFF4D6\}/.test(css) && /@keyframes btTbFzA\{from\{opacity:\.95\}to\{opacity:0\}\}/.test(css));
   check('14p an arrow on the trial names its shot; a perfect strike plays the drop roll\'s glint quietly (an existing cue); the hit voice takes a pitch',
     /sw: \(!isStaffProj && !a\.isSpecial && mcPerfectOn\(S\) && typeof a\._shotTs === 'number'\) \? a\._shotTs : undefined/.test(pj)
     && /if \(payload\.pf === 1\) cue\('rollWin', 0\.45\);/.test(ge) && /\* \(\(opts && opts\.pitch > 0\) \? opts\.pitch : 1\);/.test(gd)

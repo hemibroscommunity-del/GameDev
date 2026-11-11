@@ -3677,7 +3677,7 @@ BT_AUDIO._noteHit = function (mat, keys, how, vol) {
 /** A hit on something made of `material` (a HIT_VOICES key: hitSoundOf() for
  *  a monster, 'flesh' for a player or NPC).  opts.vol is the call site's
  *  level, as swordHit's always was; opts.rate overrides the detune.
- *  v2.3.4590: opts.pitch multiplies it (the free-swing trial's rising pitch:
+ *  v2.3.4610: opts.pitch multiplies it (the free-swing trial's rising pitch:
  *  manualCombat.js mcHitPitch, a semitone a quick hit). */
 BT_AUDIO.materialHit = function (material, opts) {
   var mat = (material && Object.prototype.hasOwnProperty.call(this.HIT_VOICES, material)) ? material : 'flesh';

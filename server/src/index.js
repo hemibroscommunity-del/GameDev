@@ -6434,7 +6434,7 @@ export class GameRoom {
           }
         }
         if (session.id) {
-          /* v2.3.4590: a bow's arrow on the free-swing trial leaves now: the
+          /* v2.3.4610: a bow's arrow on the free-swing trial leaves now: the
              worker's clock times it for the perfect strike (freeswing.js
              _pfBowShot; a session not on the trial: nothing) */
           if (msg.type === 'player_projectile') this._pfBowShot(session, msg.payload, Date.now());
