@@ -11,6 +11,9 @@
  *      message is taken in the direct switch, never a relayed copy (`from`),
  *      and only from a worker that says caps.bodyTake; the cap is registered
  *      (CAP_GATES);
+ *   4. v2.3.4831: a tab already in the Wheel steps to its body (bodyPlaceHere):
+ *      not for a blip beside it, a jump across the Wheel, or a dying bro;
+ *      `?bodyhere=0` the old way.
  *   3. the door: the stairs into the Wheel land at the arrival set
  *      (zoneTransitions.js takeWheelArrival) -- the same door the dungeon
  *      mouth uses, whose way in preloads around that point.
@@ -46,10 +49,11 @@ function make(home) {
     setWheelArrival: (p) => calls.arrive.push(p),
     wantWheelSpawn: (S) => { calls.want++; S._spawnToWheel = true; },
     veilWheelTrip: () => { calls.veil++; },
+    bodyPlaceHere: (S, x, y) => { calls.here = (calls.here || 0) + 1; return 'here'; },   /* v2.3.4831: §4 tests it */
   };
   // eslint-disable-next-line no-new-func
-  const fn = new Function('canBePlaced', 'setWheelArrival', 'wantWheelSpawn', 'veilWheelTrip', 'return function (S, p) {' + body + '};')(
-    deps.canBePlaced, deps.setWheelArrival, deps.wantWheelSpawn, deps.veilWheelTrip);
+  const fn = new Function('canBePlaced', 'setWheelArrival', 'wantWheelSpawn', 'veilWheelTrip', 'bodyPlaceHere', 'return function (S, p) {' + body + '};')(
+    deps.canBePlaced, deps.setWheelArrival, deps.wantWheelSpawn, deps.veilWheelTrip, deps.bodyPlaceHere);
   return { fn, calls };
 }
 const SPOT = { z: 'wheel', x: 1234, y: 5678, d: 'left' };   /* any spot: no Wheel coordinate is meant */
@@ -69,7 +73,9 @@ const SPOT = { z: 'wheel', x: 1234, y: 5678, d: 'left' };   /* any spot: no Whee
 {
   const { fn, calls } = make(true);
   const S = { currentZone: 'wheel', player: { x: 1, y: 2 } };
-  check('1. a phone already in the Wheel: nothing (its next move answers)', fn(S, SPOT) === false && calls.arrive.length === 0 && S.player.x === 1);
+  check('1. a phone already in the Wheel: no trip, it steps to the body itself (v2.3.4831, §4)', fn(S, SPOT) === 'here' && calls.here === 1 && calls.arrive.length === 0 && calls.want === 0);
+  const S3 = { currentZone: 'dungeon_x', player: { x: 1, y: 2 } };
+  check('1. a phone somewhere else (a dungeon): nothing (its next move answers)', fn(S3, SPOT) === false && calls.here === 1 && S3.player.x === 1);
   const S2 = { currentZone: 'town', player: { x: 1, y: 2 } };
   check('1. a spot that is not the Wheel: nothing', fn(S2, { z: 'town', x: 5, y: 5 }) === false && calls.arrive.length === 0);
   check('1. a spot with no numbers: nothing', fn(S2, { z: 'wheel', x: 'a', y: null }) === false && calls.arrive.length === 0);
@@ -119,7 +125,30 @@ const zt = src('src/game/zoneTransitions.js');
 check('3. the stairs into the Wheel land at the arrival set (takeWheelArrival)', /bestExit\.zoneId === 'wheel' \? takeWheelArrival\(\) : null/.test(zt) && /P\.x = _arr \? _arr\.x/.test(zt));
 const wt = src('src/game/worldTrial.js');
 check('3. ...and the way in warms the ground round that point (arrivalPoint)', /function arrivalPoint\(\)\s*\{\s*return arriveLive\(\)/.test(wt));
-check('3. bodyPlace.js writes no place: no S.player.x / S.currentZone assignment', !/S\.player\.(x|y)\s*=[^=]/.test(bp) && !/S\.currentZone\s*=[^=]/.test(bp));
+/* v2.3.4831: one exception, bodyPlaceHere (a tab already in the Wheel, §4) */
+const _bpRest = bp.replace(block(bp, 'export function bodyPlaceHere(S, x, y, d) {') || '', '');
+check('3. bodyPlace.js writes no place outside bodyPlaceHere: no S.player.x / S.currentZone assignment', !/S\.player\.(x|y)\s*=[^=]/.test(_bpRest) && !/\bP\.(x|y)\s*=[^=]/.test(_bpRest) && !/S\.currentZone\s*=[^=]/.test(bp));
+
+/* ── 4. v2.3.4831: a tab already in the Wheel steps to its body ── */
+{
+  const hb = block(bp, 'export function bodyPlaceHere(S, x, y, d) {');
+  check('4. (guard) bodyPlaceHere found', !!hb);
+  const NEAR = Number((bp.match(/NEAR_PX = (\d+)/) || [])[1]), FAR = Number((bp.match(/FAR_PX = (\d+)/) || [])[1]);
+  const mk = (off) => new Function('NEAR_PX', 'FAR_PX', 'bodyHereOff', 'return function (S, x, y, d) {' + hb + '};')(NEAR, FAR, () => off);
+  const here = mk(false);
+  const S = { player: { x: 0, y: 0, vx: 3, vy: 4, dir: 'up' } };
+  check('4. far from the body (600 px): it stands where the body stands, still, facing as the body faced',
+    here(S, 600, 0, 'left') === true && S.player.x === 600 && S.player.y === 0 && S.player.vx === 0 && S.player.vy === 0 && S.player.dir === 'left' && S._bodyPlacedAt > 0, S.player);
+  const S2 = { player: { x: 0, y: 0 } };
+  check('4. beside it (inside NEAR_PX): nothing, no jump for a blip', here(S2, NEAR - 1, 0) === false && S2.player.x === 0);
+  check('4. NEAR_PX sits inside the worker\'s RESUME_PX (300): the next move from the body answers', NEAR > 0 && NEAR < 300 && FAR > 300);
+  check('4. across the Wheel (past FAR_PX): nothing, the countdown as before', here(S2, FAR + 1, 0) === false && S2.player.x === 0);
+  const S3 = { _dying: true, player: { x: 0, y: 0 } };
+  check('4. dying: nothing', here(S3, 600, 0) === false && S3.player.x === 0);
+  const S4 = { player: { x: 0, y: 0, dead: true } };
+  check('4. dead: nothing', here(S4, 600, 0) === false);
+  check('4. `?bodyhere=0`: nothing, the old way for one phone', mk(true)({ player: { x: 0, y: 0 } }, 600, 0) === false);
+}
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
