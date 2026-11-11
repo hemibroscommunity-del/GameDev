@@ -63,6 +63,7 @@ import { arenaMethods } from './gladiator.js';
 import { dungeonMethods } from './dungeon.js';
 import { telegraphMethods } from './telegraph.js'; /* v2.3.1730 */
 import { hitMethods } from './hits.js'; /* v2.3.3296: one door for every monster hit on a player */
+import { monsterLifeMethods } from './monsterlife.js'; /* v2.3.4843: a world monster's one reset for a new life */
 import { monsterMoveMethods } from './monstermoves.js'; /* v2.3.4011: the tiers' moves (combo, charge, volley, slams, enrage) */
 import { relayMethods } from './relay.js'; /* v2.3.3304: the relay is an allowlist, in the sender's name */
 import { depthMethods } from './depth.js'; /* v2.3.2790: the dunes' north-south depth, on the monster AI */
@@ -2017,99 +2018,10 @@ export class GameRoom {
         // Respawn check
         if (!m.alive) {
           if (m.respawnAt > 0 && now >= m.respawnAt) {
-            m.alive = true;
-            m.hp = m.maxHp;
-            m.x = m.spawnX;
-            m.y = m.spawnY;
-            /* v2.3.2295: a respawn drops the target too -- same reasoning as
-               the aggro-loss stamp below. */
-            if (m.targetId) m._tgLost = now;
-            m.targetId = null;
-            m.atkCd = 0;
-            /* ═══ v2.3.1709: A RESPAWNED MONSTER COMES BACK CLEAN ═══
-               Owner, playtesting before judging: "the slimes were apparently
-               brand new ones that I had freshly killed in that zone.  I saw
-               no damage from any other person on them.  And new ones that
-               spawned still attributed the loot to that other person."
-
-               `m.statuses` was created (elemental.js) and never cleared —
-               not on death, not here.  So a burn or a thorn another player
-               landed OUTLIVED the monster it was on: the corpse respawned
-               still burning, still stamped with THEIR sourceId, and every
-               DoT tick after that credited them through _applyMonsterDot,
-               which writes straight into dmgByPlayer.  A slime the owner
-               killed single-handedly therefore listed a contributor they had
-               never seen touch it, and once that stale credit outgrew the
-               GDD §7 gold cutoff (share < 0.05) the owner dropped out of
-               `goldRecipients` entirely — so the pile said it was somebody
-               else's and `_handleLootPickup` refused the grab with
-               'not-recipient'.  It compounded across lives, which is why it
-               looked like a curse that followed them rather than one bad
-               kill.
-
-               dmgByPlayer is reset at the end of _resolveMonsterKill, but it
-               is cleared HERE too on purpose: that reset only runs on the
-               kill path, and anything that lands damage between the kill and
-               the respawn (a DoT tick resolving after death, a reflect) puts
-               credit back onto a corpse.  Belt and braces on the field that
-               decides who owns the loot. */
-            m.statuses = Object.create(null); // v2.3.1709: null-proto, rule 4
-            m._holdUntil = 0; m._holdImmuneUntil = 0;   /* v2.3.3513: a fresh life is never held or immune (elemental.js HOLD) */
-            m.dmgByPlayer = Object.create(null);
-            /* v2.3.2215: a wind-up must not survive death — a respawned
-               monster carrying _bwUntil would resolve a swing it started in
-               a previous life, at a target that is no longer there. */
-            m._bwUntil = 0; m._bwTarget = null; m._bwKind = null;
-            /* v2.3.2221: and the burrow, for the same reason plus a worse
-               one — a respawned monster still carrying _invulnUntil would
-               come back untouchable, and one still carrying _burPhase would
-               come back as a mound of snow that never reassembles.  The
-               COOLDOWN is deliberately not cleared: it is a fresh monster,
-               so it may burrow again as soon as it drops to half. */
-            m._burPhase = null; m._burUntil = 0; m._burTarget = null;
-            m._invulnUntil = 0; m._burCd = 0; m._burFloor = 0;   /* v2.3.2223 */
-            /* v2.3.2224: and the death fuse — a respawned slime carrying
-               _burstUntil would explode on arrival, at full health. */
-            m._burstUntil = 0; m._burstKiller = null; m._burstSlot = null;
-            m._burstDone = false;
-            /* v2.3.3634: and a kit's wind-up (telegraph.js), for the
-               _bwUntil reason above -- a monster killed mid-cast came back
-               with its phase still 'telegraph' and a _tgUntil long past, so
-               the next tick fired the cast at its spawn with no warning: a
-               mummy killed during its roar's wind-up (they plant for it, next
-               to the players hitting them) roared at whoever stood by its
-               spawn 6-19 s later, half a hit and a 130 px shove.  Found by the
-               review of v2.3.3621.  The cooldown stays, as the burrow's. */
-            m._tgPhase = null; m._tgUntil = 0; m._tgAim = null; m._tgTarget = null; m._tgRadius = 0;
-            /* v2.3.4403: and a ball still in the air (telegraph.js throw),
-               for the _bwUntil reason above -- a slime or snowman killed
-               with its ball up came back with _projImpactAt long past, so
-               the first tick of its new life landed the old ball on
-               whoever it was thrown at, about 19 s late, nothing drawn
-               (the sweep's V7).  What a ball does when its thrower dies is
-               the owner's question; this only stops it crossing a life.
-               And the knock-back debt (combat.js): a new life does not
-               glide back to where the last one was pushed from. */
-            m._projImpactAt = 0; m._projTargetId = null; m._projTx = 0; m._projTy = 0;
-            m._projFromX = undefined; m._projFromY = undefined;
-            m._kbDebt = 0;
-            /* v2.3.4011: and a move (monstermoves.js), for the same reason: a
-               fresh life with nothing in flight, nothing cooling, not enraged */
-            this._clearMonsterMove(m);
-            /* v2.3.3120: and its trap marks (trapping.js): a mark is on THIS
-               life of the monster, and the kill path clears it -- this is the
-               belt and braces dmgByPlayer has above. */
-            m._armedBy = null; m._trapJudgeAt = 0;
-            // Revert any in-life variant transform (mummy -> skeleton)
-            // so a respawned monster comes back in its original form
-            // with the original spd.  Stamped at spawn time and
-            // restored here on respawn.
-            if (m.spawnVariant !== undefined) {
-              m.variant = m.spawnVariant;
-              const respawnSpd = m.spawnVariant ? this._variantSpeed(m.spawnVariant) : null;
-              if (respawnSpd != null) m.spd = respawnSpd;
-              else if (m.spawnSpd != null) m.spd = m.spawnSpd;
-            }
+            /* v2.3.4843: the whole new life in ONE reset (monsterlife.js
+               _monsterNewLife): the hand list that lived here, every row
+               with its incident, plus what it missed and the life count */
+            this._monsterNewLife(m, now);
             this._markMonsterDirty(zoneId, m.id);
           }
           continue;
@@ -6710,6 +6622,7 @@ Object.assign(GameRoom.prototype, dungeonMethods);
 Object.assign(GameRoom.prototype, telegraphMethods);
 Object.assign(GameRoom.prototype, hitMethods); /* v2.3.3296 */
 Object.assign(GameRoom.prototype, monsterMoveMethods); /* v2.3.4011 */
+Object.assign(GameRoom.prototype, monsterLifeMethods); /* v2.3.4843 */
 Object.assign(GameRoom.prototype, relayMethods); /* v2.3.3304 */
 Object.assign(GameRoom.prototype, depthMethods); /* v2.3.2790 */
 Object.assign(GameRoom.prototype, dailyChestMethods); /* v2.3.2820 */
