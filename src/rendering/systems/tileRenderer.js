@@ -8,7 +8,7 @@
 import { Container, Graphics, Sprite, Text, TextStyle, Texture, Rectangle, Assets, TilingSprite } from 'pixi.js'; /* v2.3.3016: + TilingSprite, a Wheel dungeon's floor */
 import { TILE } from '@/data/constants.js';
 import { ZONES, isWorldViewZone } from '@/data/zones.js'; /* v2.3.2978: + either name of the World View */
-import { TOWN_EXITS, WORLDVIEW_EXITS, COMING_SOON_MARKS, TOWN_SOON_MARKS } from '@/data/effects.js';
+import { TOWN_EXITS, WORLDVIEW_EXITS } from '@/data/effects.js';
 import { isZoneUnlocked, zoneUnlockQuest, questRoutePoint } from "@/game/questRoute.js"; /* v2.3.1822: a shut door looks shut; v2.3.2121: and the way there is lit */
 import { getTrailStyle } from '@/game/questTrailStyle.js'; /* v2.3.2141: ...in the shape the player chose, or not at all */
 import { getLoadedTiledMap, getTilesetImage, IMAGE_ZONE_MAPS, VIDEO_ZONE_MAPS, mapScaleMode } from '../tiledMaps.js';
@@ -257,15 +257,6 @@ export class TileRenderer {
     this.layer.addChild(this.tileContainer);
     // Overlay graphics for effects (water shimmer, exit glow, building outlines)
     this.overlayGfx = new Graphics();
-    /* ═══ v2.3.2137: THE LENS GETS ITS OWN GRAPHICS ═══
-       Not tidiness -- it is what makes the stray-subpath bug below both
-       impossible to hide and cheap to test.  Sharing overlayGfx with the
-       portal markers and the quest road meant the lens had no bounds of its
-       own: a subpath reaching from the glass to world (0,0) was invisible to
-       every probe, because the overlay's bounds already span the whole map.
-       On its own Graphics the lens's bounds ARE the lens, so "did it draw a
-       disc or a disc plus a line to the corner" is one number. */
-    this.lensGfx = new Graphics();
     this.layer.addChild(this.overlayGfx);
     /* v2.3.2764: the footprint road's sprites, just above the overlay it
        replaces the chevrons on (see _trailSteps) */
@@ -273,7 +264,6 @@ export class TileRenderer {
     this._footLayer.label = 'questFootprints';
     this._footPool = [];
     this.layer.addChild(this._footLayer);
-    this.layer.addChild(this.lensGfx);
     /* v2.3.2070: the portal beams.  A Container of Sprites rather than more
        Graphics, and ABOVE overlayGfx so the shaft reads as light over the
        ground rather than something painted into it.  Pooled per exit tile —
@@ -292,32 +282,6 @@ export class TileRenderer {
         const all = [];
         for (const t of _liveTileRenderers) all.push(...t._portalBeams);
         return all;
-      };
-      /* ═══ v2.3.2137: WHAT THE LENS ACTUALLY DREW ═══
-         The bug this pins was a stray path segment from world (0,0) to the
-         glass, and it hid from everything: no scene node of its own, and a
-         moveTo/lineTo probe never sees it because `arc` builds that segment
-         itself.  Pixels could not settle it either -- the World View animates
-         enough that a with/without frame diff moved more than the bug did
-         (measured: no separation).  Its OWN Graphics makes it one number:
-         a disc's bounds are the disc. */
-      window.__btLensBounds = () => {
-        for (const t of _liveTileRenderers) {
-          if (!t.lensGfx) continue;
-          let b = null; try { b = t.lensGfx.getLocalBounds(); } catch (e) { continue; }
-          if (!b || !(b.width > 0)) continue;
-          return { x: Math.round(b.x), y: Math.round(b.y),
-                   w: Math.round(b.width), h: Math.round(b.height), zone: t.currentZone,
-                   /* v2.3.2141: the CENTRE, because "center them inside the
-                      magnifying glass" is a claim about where the glass sits
-                      relative to the figure -- and deriving it in the test
-                      from x + w/2 would be the test re-deriving the renderer's
-                      own geometry.  The bounds are a disc's, so this is its
-                      centre by construction. */
-                   cx: Math.round(b.x + b.width / 2),
-                   cy: Math.round(b.y + b.height / 2) };
-        }
-        return null;
       };
       window.__btPortalBeamsVisible = (v) => {
         let n = 0;
@@ -616,53 +580,9 @@ export class TileRenderer {
         }
       }
     }
-    /* ═══ v2.3.1677: COMING SOON ═══
-       Owner: "put 'coming soon' over all buildings in town and over all zone
-       entry points that don't have a portal."
-
-       Both cases are the same problem: the ART promises somewhere to go, and
-       walking there does nothing.  The worldview paints nine regions of which
-       five have a live trail-head, and most of town's twelve buildings have
-       no door.
-       v2.3.2078: that second half no longer reads "S.nearBuilding is
-       force-set to null every frame" — it is computed every frame now, from
-       buildingPropNear matching a prop's `action` against the BUILDINGS
-       table.  What is true is narrower and worth stating exactly: TWO of the
-       twelve are reachable (the forge and the auction house), because those
-       are the only PLACED town props carrying an action.  The other ten point
-       at the v16 set still held behind propIsPlaced, or at tiles from the
-       procedural town that no longer exists.  A player cannot tell "not built yet" from "I can't find
-       the door", and spends the difference hunting.  A label costs one Text
-       each and ends the hunt.
-
-       The exit list WINS over the coming-soon list: a zone with a live portal
-       is never labelled, even if someone leaves a stale entry in
-       COMING_SOON_MARKS.  Enforced here rather than trusted to two hand-kept
-       lists staying disjoint — the failure mode otherwise is a working zone
-       that looks shut. */
-    if (zoneId === 'town') {
-      /* v2.3.1681: driven off TOWN_SOON_MARKS (measured off the painted map),
-         NOT TOWN_BUILDINGS (collision boxes rescaled from the old tile
-         village, which put seven of these labels on empty cobblestone —
-         owner: "a whole bunch of invisible buildings with coming soon"). */
-      for (const b of TOWN_SOON_MARKS) {
-        labelsForFrame.push({
-          text: 'Coming soon',
-          x: b.tx * TILE, y: b.ty * TILE,
-          rotation: 0, soon: true,
-        });
-      }
-    } else if (isWorldViewZone(zoneId)) {
-      const live = new Set(WORLDVIEW_EXITS.map((e) => e.zoneId));
-      for (const m of COMING_SOON_MARKS) {
-        if (live.has(m.zoneId)) continue;      // a real portal shipped; never label it
-        labelsForFrame.push({
-          text: (m.label ? m.label + '\n' : '') + 'Coming soon',
-          x: m.tx * TILE, y: m.ty * TILE, rotation: 0, soon: true,
-        });
-      }
-    }
-
+    /* v2.3.4802: the "Coming soon" labels (the old World View's closed lands,
+       COMING_SOON_MARKS, and today's town's empty TOWN_SOON_MARKS) went with
+       the old map. */
     /* Apply pooled labels.  Grow the pool if needed; hide extras. */
     while (this._zoneLabels.length < labelsForFrame.length) {
       const t = new Text({ text: '', style: ZONE_LABEL_STYLE });
@@ -1419,8 +1339,6 @@ export class TileRenderer {
     }
     /* v2.3.2121: the road, drawn whether or not this zone declared exits. */
     this._drawQuestTrail(S, _questTo, _now);
-    /* v2.3.2124: the vista magnifier's glass, under your feet. */
-    this._drawPlayerLens(S, _now);
 
     // Two-pass background, matching the Canvas 2D path:
     //   1. Solid BLACK extending well beyond the map so out-of-bounds
@@ -1448,97 +1366,8 @@ export class TileRenderer {
     }
   }
 
-  /* ═══ v2.3.2124: THE MAGNIFYING GLASS ═══
-   * Owner: "there was a fair point about the character being too small in
-   * worldview.  Maybe it can show character full size but through a
-   * 'magnifying glass'."
-   *
-   * entityRenderer does the actual magnifying -- a zone carrying `playerLens`
-   * renders the LOCAL player at a flat readable scale instead of the vista
-   * curve that takes him to 3% at the rim.  This draws the glass he is being
-   * seen through, and it exists so the result reads as deliberate: a figure
-   * that is simply bigger than the map's perspective says he should be looks
-   * like a scale bug, and the same figure inside a lens looks like a lens.
-   *
-   * UNDER THE PLAYER, not over him.  overlayGfx sits below the entity layer,
-   * so this is glass he stands on rather than a pane across his face -- which
-   * is the only version that cannot cost readability, the exact thing the
-   * feature is for (Tee raised it about visual impairment).
-   *
-   * No filter and no texture: a ring, a fill and a highlight arc on the
-   * Graphics that is already cleared and refilled every frame.  A `filter`
-   * compositing over the WebGL canvas is the documented cause of the iOS
-   * static (CLAUDE.md), and this would be the worst possible place for it. */
-  _drawPlayerLens(S, now) {
-    this.lensGfx.clear();
-    const zone = ZONES[this.currentZone];
-    const lens = zone && zone.playerLens;
-    if (!lens || !S || !S.player) return;
-    const r = (typeof lens.r === 'number' ? lens.r : 46);
-    /* player x/y is the FOOT anchor and the figure stands up from it, so the
-       glass is lifted onto his middle -- centred on the feet it cut through
-       his knees and read as a selection ring.
-       ═══ v2.3.2141: LIFTED BY HIS SIZE, NOT BY A CONSTANT ═══
-       Owner: "center them inside the magnifying glass".  The lift used to be
-       a flat -26px, which was right for exactly one figure size -- the 0.9
-       one v2.3.2124 froze him at.  With the perspective curve back (zones.js)
-       he is 0.69 on the plateau and 0.04 at the rim, and -26 over a four-pixel
-       speck hangs the glass a whole body above his head.  So the lift is in
-       FIGURE UNITS and multiplied by the scale he is really drawn at, which
-       entityRenderer publishes each frame.
-       Missing (an older renderer, or a frame before the first player draw)
-       falls back to 1 rather than to 0: an unscaled lift is the old behaviour,
-       and a 0 would silently drop the glass to his feet -- the bug the
-       original comment above records. */
-    const _fs = (typeof S._figureScaleY === 'number' && S._figureScaleY > 0)
-      ? S._figureScaleY : 1;
-    const _cy = (typeof lens.cyUnits === 'number') ? lens.cyUnits * _fs
-      : (typeof lens.cy === 'number' ? lens.cy : 0);
-    const x = S.player.x, y = S.player.y + _cy;
-    /* A slow breath so the glass reads as an optic rather than a painted
-       circle -- 3% over four seconds, small enough never to pull the eye off
-       the figure inside it. */
-    const breathe = 1 + 0.03 * Math.sin((now % 4000) / 4000 * Math.PI * 2);
-    const rr = r * breathe;
-    /* the glass */
-    this.lensGfx.circle(x, y, rr);
-    this.lensGfx.fill({ color: 0xCFE3F0, alpha: 0.10 });
-    /* the rim, in Lantern Slate brass so it belongs to the UI rather than to
-       the landscape */
-    this.lensGfx.circle(x, y, rr);
-    this.lensGfx.stroke({ color: 0xD8AA58, width: 2.5, alpha: 0.75 });
-    /* an inner hairline, which is what makes a circle read as ground glass
-       instead of as a selection ring */
-    this.lensGfx.circle(x, y, rr - 3);
-    this.lensGfx.stroke({ color: 0xF4F0E7, width: 1, alpha: 0.24 });
-    /* the highlight: a short bright arc up-left, the one cue that says
-       "curved glass" at this size */
-    /* ═══ v2.3.2137: moveTo FIRST, OR THE ARC DRAGS A LINE IN WITH IT ═══
-       Owner: "On the worldview there shouldn't be two line guiding character
-       where to go.  Just keep the beaded line get rid of straight line."
-
-       There was a second line, and it was never a quest guide -- it was this
-       arc.  `arc()` continues the CURRENT path: with no point set it starts
-       from the path's origin, so the stroke below drew the highlight AND a
-       straight line reaching it from world (0,0) -- the map's top-left
-       corner.  On a 32x32 vista that is a hairline running most of the way
-       across the World View, ending exactly on the lens ring, which is
-       precisely what it looks like: a second guide pointing off past town.
-
-       The circles above are immune (each `circle()` opens its own subpath),
-       which is why only the one arc in this file ever showed it.
-
-       WHY IT SURVIVED EVERY OBVIOUS TEST, noted so the next person does not
-       repeat them: it is not the quest road (it outlived clearing the route),
-       not the portal beams (it outlived hiding them), not the map art, and it
-       is invisible to a scene-graph scan because it lives inside overlayGfx
-       alongside every other shape.  A moveTo/lineTo probe misses it too --
-       `arc` builds that connecting segment itself and never calls lineTo. */
-    const _hi0 = Math.PI * 1.05, _hi1 = Math.PI * 1.45;
-    this.lensGfx.moveTo(x + Math.cos(_hi0) * (rr - 5), y + Math.sin(_hi0) * (rr - 5));
-    this.lensGfx.arc(x, y, rr - 5, _hi0, _hi1);
-    this.lensGfx.stroke({ color: 0xFFFFFF, width: 2.5, alpha: 0.34 });
-  }
+  /* v2.3.4802: the old World View's magnifying glass (v2.3.2124, _drawPlayerLens)
+     went with the old map: no zone carries `playerLens` any more. */
 
   /* ═══ v2.3.2121: THE ROAD ITSELF ═══
    * Marks from the player along the way to `to`, fading with distance, with a
