@@ -9287,8 +9287,12 @@ message without a word when the socket was not open, and the rejoin's
 was lost and the muted player's chat came back. **The rule.** Since v2.3.4402
 the channel returns `false` when it drops a message. A caller that marks
 something sent checks `=== true` and keeps what was dropped to send on the
-rejoin (`chatMute.js` `_kept` is the pattern). `stats_update` and the quest
-taps still ignore the answer. **Receipt:** `mute-kept.test`.
+rejoin (`chatMute.js` `_kept` is the pattern). Since v2.3.4641 the quest taps
+are kept the same way (`questKept.js`, sent on the rejoin's `state_sync`) and
+`stats_update` keeps its dedupe signature only when the message went. Note the
+channel answers `false` ONLY when it drops: some of its paths answer nothing
+(`undefined`) when they send, so a caller tests `!== false`, not `=== true`.
+**Receipt:** `mute-kept.test`, `quest-kept.test`.
 
 ## 288. "No answer from the store is a no" (v2.3.4412)
 

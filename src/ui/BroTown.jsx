@@ -3552,9 +3552,13 @@ export var BroTown = function BroTown(_ref0) {
       typeof rpgState.enduranceUnspent === 'number' ? ('eu' + rpgState.enduranceUnspent) : 'noeu',
     ].join('|');
     if (S._lastStatsUpdateSig === _sig) return;
-    S._lastStatsUpdateSig = _sig;
     try {
-      S.channel.send({
+      /* v2.3.4641: the signature is kept only when the channel TOOK the message
+         (TRAPS §287: it answers false when it drops one, the socket down).
+         Stamped before, a stats_update dropped in a Wi-Fi blip was never sent
+         again -- the signature already matched -- so the worker kept the old
+         armour, stats or skill tracks until something else changed. */
+      const _went = S.channel.send({
         type: 'stats_update',
         payload: {
           /* maxHp / maxStamina / maxMana ignored by worker since v2.3.79
@@ -3624,6 +3628,7 @@ export var BroTown = function BroTown(_ref0) {
           enduranceUnspent: (typeof rpgState.enduranceUnspent === 'number') ? rpgState.enduranceUnspent : 0,
         },
       });
+      if (_went !== false) S._lastStatsUpdateSig = _sig;
     } catch (e) {}
   }, [rpgState]);
 
