@@ -139,6 +139,12 @@ everything written before it. Moving the old scenarios over is not done.
 
 ### A staff: as it was
 
+> **v2.3.4803: in the game's own combat the staff GATHERS now** (thumb down
+> gathers power through a spark, an orb and a sphere; the lift blasts it; a
+> quick tap fires a spark; its special is its button): `docs/specs/staff-feel.md`.
+> What follows is the held staff, still what `?manual=0/1/2`, `?stafffeel=0`
+> and a worker without `caps.staffGather` play.
+
 - **Hold the stick in a direction and it fires by itself**, at its own
   interval, for as long as the thumb is down. The bolt in flight is steered by
   the held thumb (`projectiles.js` reads `S._aiming` / `S._aimAngle`; the
@@ -201,7 +207,9 @@ everything written before it. Moving the old scenarios over is not done.
 
 - A sword, a bow: **each click is one attack**, at the cursor. Holding the
   button attacks once.
-- A staff fires while the button is held, as it did.
+- A staff fires while the button is held, as it did. (v2.3.4803: in the
+  game's own combat, the button held GATHERS and its release blasts at the
+  cursor: `docs/specs/staff-feel.md`.)
 - The right click arms and disarms the special.
 
 ### No tap to target

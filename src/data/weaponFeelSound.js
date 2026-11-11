@@ -22,6 +22,10 @@
  *              filtered noise, brighter and longer with k.
  *   'stage'    a build stage landing (the staff's spark -> orb -> sphere):
  *              a pulse, a step deeper each stage (opts.stage 1..3).
+ *   'blast'    v2.3.4803: the staff's orb let go (game/staffFeel.js): the air
+ *              swells INWARD a split second (noise rising, its band climbing),
+ *              then a boom, deeper and longer with k (0.6 an orb, 1.1 a
+ *              sphere).  A spark is the snap of 'release' instead.
  *   'build'    the rising build tone: returns a handle { set(r), stop() } --
  *              set(r) glides its pitch from 1x (r 0) to 2x (r 1, an octave)
  *              (weaponFeel feelBuildRate); stop() fades it out and lets go.
@@ -118,6 +122,29 @@ export function feelSynth(ctx, out, kind, k, opts) {
     hiss(ctx, out, 1400 + 1800 * Math.min(1, x), 0.9, (0.06 + 0.12 * Math.min(1, x)) * level, 0.08 + 0.12 * Math.min(1, x), 0);
     return true;
   }
+  if (kind === 'blast') {
+    /* v2.3.4803: the swell -- noise through a band-pass climbing 500 -> 2600
+       Hz, its level RISING (the inward pull), cut short at `sw` -- then the
+       boom under it: a sine falling to the floor of hearing, and a crack of
+       noise for a sphere (k over 1) */
+    var sw = 0.06 + 0.05 * Math.min(1, x);
+    var t0b = ctx.currentTime;
+    var sb = ctx.createBufferSource(), fb = ctx.createBiquadFilter(), gb = ctx.createGain();
+    sb.buffer = noiseBuf(ctx);
+    fb.type = 'bandpass'; fb.Q.value = 1.1;
+    fb.frequency.setValueAtTime(500, t0b);
+    fb.frequency.exponentialRampToValueAtTime(2600, t0b + sw);
+    gb.gain.setValueAtTime(0.0002, t0b);
+    gb.gain.exponentialRampToValueAtTime(Math.max(0.0003, (0.05 + 0.07 * Math.min(1, x)) * level), t0b + sw);
+    gb.gain.exponentialRampToValueAtTime(0.0001, t0b + sw + 0.03);
+    sb.connect(fb); fb.connect(gb); gb.connect(out);
+    letGo(sb, [sb, fb, gb]);
+    sb.start(t0b, 0, Math.min(0.25, sw + 0.05));
+    var big = x > 1.05;
+    tone(ctx, out, 'sine', big ? 110 : 150, big ? 32 : 48, (0.16 + 0.16 * Math.min(1.3, x)) * level, 0.005, 0.22 + 0.2 * Math.min(1.3, x), sw);
+    if (big) hiss(ctx, out, 700, 0.7, 0.11 * level, 0.16, sw + 0.004);
+    return true;
+  }
   if (kind === 'stage') {
     /* a pulse, a step deeper each stage (1..3) */
     var st = Math.max(1, Math.min(3, Number(o.stage) || 1));
@@ -157,9 +184,10 @@ export function feelSynth(ctx, out, kind, k, opts) {
 }
 
 /** For the Sound Studio's play button: a one-second build that rises and
- *  stops (the studio cannot hold a thumb down). */
-export function feelBuildDemo(ctx, out, vol) {
-  var h = feelSynth(ctx, out, 'build', 1, { vol: vol });
+ *  stops (the studio cannot hold a thumb down).  v2.3.4803: `base` the tone's
+ *  pitch (the staff's hum is 130; the default 220). */
+export function feelBuildDemo(ctx, out, vol, base) {
+  var h = feelSynth(ctx, out, 'build', 1, { vol: vol, base: base });
   if (!h) return null;
   var steps = 10;
   for (var i = 1; i <= steps; i++) (function (j) { setTimeout(function () { h.set(j / steps); }, j * 100); })(i);

@@ -55,7 +55,6 @@ const CAPS_ALLOWLIST = new Map([
   /* v2.3.4801: the worker's half ships first (drawgather.js); the phone's
      bow and staff lanes read them next -- delete each when its gate lands */
   ['bowDraw', 'v2.3.4801: the worker ships first; the phone\'s bow lane gates its `dr` on it (src/game/drawGather.js) -- delete this row when it does'],
-  ['staffGather', 'v2.3.4801: the worker ships first; the phone\'s staff lane gates its `ga` on it (src/game/drawGather.js) -- delete this row when it does'],
   /* v2.3.1660: the prog3 entry added at v2.3.1659 is deleted — the
      client gate shipped (wsClient setProg3Enabled), so the audit
      enforces it for real now. */

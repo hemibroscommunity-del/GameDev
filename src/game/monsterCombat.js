@@ -61,7 +61,8 @@ import { isWheelSwimming } from '@/game/wheelSwim.js'; /* v2.3.3003: no fighting
 import { jumpAirborne } from '@/game/jump.js'; /* v2.3.3017: nor in the air */
 import { tapAttackWaiting, tapAttackDone, tapSwingAim } from '@/game/tapJump.js'; /* v2.3.3712: a tap on the right stick asks for one attack */
 import { swordFeelContact } from '@/game/swordFeel.js';   /* v2.3.4800: the cut's weight at contact */
-import { manualOn, mcFrame, mcFireWaiting, mcFireDone, mcTakeArmed, mcBowInterval, mcFreeSwing, mcHitVol, mcHitPitch } from '@/game/manualCombat.js'; /* v2.3.4395: manual combat (`?manual=1`) -- a bow or a staff shoots once for each flick, never because the stick is held */
+import { manualOn, mcFrame, mcFireWaiting, mcFireDone, mcTakeArmed, mcBowInterval, mcFreeSwing, mcHitVol, mcHitPitch } from '@/game/manualCombat.js';
+import { staffFeelCycle, staffFireWaiting, staffFireTake, staffShotLife, STAFF_FEEL } from '@/game/staffFeel.js'; /* v2.3.4803: the staff's feel -- a bolt for each lift, carrying its gather */ /* v2.3.4395: manual combat (`?manual=1`) -- a bow or a staff shoots once for each flick, never because the stick is held */
 import { isDazed } from '@/game/elemHits.js'; /* v2.3.3014: nor while a rock monster has you dazed */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the shield hold */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
@@ -1346,6 +1347,7 @@ export function updateMonsterCombat(S, deps) {
              magic cast since downstream render code assumed swingTimer
              is always in the past). */
           var _staffCdExtra = (S.rpg && S.rpg.activeSlot === 'staff') ? 300 : 0;
+          if (_staffCdExtra) staffFeelCycle(S, effectiveSwingCd);   /* v2.3.4803: the full gather is this interval and its 300 (game/staffFeel.js) */
           /* v2.3.212: no weapon in active slot -> auto-attack disabled.
              Slot fallback to melee mirrors getActiveWeapon's default. */
           var _aSlot = (S.rpg && S.rpg.activeSlot) || 'melee';
@@ -1648,7 +1650,16 @@ export function updateMonsterCombat(S, deps) {
              Without the switch the line is exactly what it was. */
           var _mcFire = _mcDraws && mcFireWaiting(S, Date.now());
           var _wantAtk = _mcOn ? _mcFire : (S.autoAttack || _engSwing || _tapAtkNow);
-          if (_wantAtk && (_mcOn || !_flickWait) && !S._shieldUp && !isWheelSwimming(S) && !isDazed(S, Date.now()) && !jumpAirborne(S) /* v2.3.3017: a held attack waits for the landing */ && S.rpg && _eqWpn && Date.now() - S.swingTimer >= effectiveSwingCd + _staffCdExtra) {
+          /* ═══ v2.3.4803: THE STAFF'S FEEL -- A BOLT FOR EACH LIFT ═══
+             With it (game/staffFeel.js: the game's own combat, a staff, the
+             worker's caps.staffGather, `?stafffeel` not 0) a held thumb
+             GATHERS and fires nothing: the lift asks for one bolt, taken here
+             through every refusal below, no sooner than STAFF_FEEL.GAP_MS
+             after the last (its damage is its share of a full gather: the
+             worker's).  null: the held staff, exactly as before. */
+          var _sfFire = staffFireWaiting(S, Date.now());
+          if (_sfFire !== null) _wantAtk = _sfFire;
+          if (_wantAtk && (_mcOn || !_flickWait) && !S._shieldUp && !isWheelSwimming(S) && !isDazed(S, Date.now()) && !jumpAirborne(S) /* v2.3.3017: a held attack waits for the landing */ && S.rpg && _eqWpn && Date.now() - S.swingTimer >= (_sfFire !== null ? STAFF_FEEL.GAP_MS : effectiveSwingCd + _staffCdExtra)) {
             /* Loot pickup freeze suppresses auto-swing — keeps the
                0.5s pickup animation clean instead of mid-swing. */
             var _lootSwingBlock = S._lootFreezeUntil && Date.now() < S._lootFreezeUntil;
@@ -1871,6 +1882,8 @@ export function updateMonsterCombat(S, deps) {
                   _shotGd.len = staffOrbLife(S.rpg) * depthK(S.currentZone, P.y) * 5;
                   _shotGf = shotAimAt(S, _shotX, _shotY, arrAngle, _shotGd.len, { isStaff: true, aimAt: _shotLock, ground: _shotGd });
                 }
+                /* v2.3.4803: the lift's gathered shot (its `ga`, its stage's speed, size and reach), or null */
+                var _sfShot = (isStaff && _sfFire) ? staffFireTake(S, _shotTs, arrAngle) : null;
                 S.arrows.push({
                   ang: arrAngle,
                   _sn: accShot(S, isStaff ? 'staff' : 'ranged') || undefined,   /* v2.3.4545: this basic shot's number (accuracy.js) */
@@ -1901,8 +1914,12 @@ export function updateMonsterCombat(S, deps) {
                      life (v2.3.2473: 90 x 24 = 2160, further past 675 than the
                      90 x 8 = 720 this note was written for). */
                   /* v2.3.2592: × the Magic lane's RANGE stat (staffOrbLife). */
-                  life: isStaff ? Math.round(staffOrbLife(S.rpg) * depthK(S.currentZone, P.y)) : 90,   /* v2.3.2790: an orb's range is its life -- x depth */
-                  maxLife: isStaff ? Math.round(staffOrbLife(S.rpg) * depthK(S.currentZone, P.y)) : 90,
+                  life: staffShotLife(isStaff ? Math.round(staffOrbLife(S.rpg) * depthK(S.currentZone, P.y)) : 90, _sfShot),   /* v2.3.2790: an orb's range is its life -- x depth; v2.3.4803: at its stage's speed */
+                  maxLife: staffShotLife(isStaff ? Math.round(staffOrbLife(S.rpg) * depthK(S.currentZone, P.y)) : 90, _sfShot),
+                  /* v2.3.4803: a gathered bolt -- a spark quick, a sphere heavy and slow, drawn its stage's size */
+                  speedPx: _sfShot ? _sfShot.speedPx : undefined,
+                  _gs: _sfShot ? _sfShot.stage : undefined,
+                  _gk: _sfShot ? _sfShot.sizeK : undefined,
                   hitIds: new Set(),
                   isStaff: isStaff,
                   /* v2.3.1135: Piercing/Longshot channels — finite pierce
@@ -1935,7 +1952,13 @@ export function updateMonsterCombat(S, deps) {
                      mirror needs the life too or a remote orb dies at 675 px
                      while it flew 1012 on the caster's screen (the v2.3.2387
                      lesson).  Additive: an old client ignores it. */
-                  life: Math.round((isStaff ? staffOrbLife(S.rpg) : 90 * (bowRangeMult(S.rpg) || 1)) * depthK(S.currentZone, P.y)),   /* v2.3.2790: x your depth -- the orb's range is its life */
+                  life: staffShotLife(Math.round((isStaff ? staffOrbLife(S.rpg) : 90 * (bowRangeMult(S.rpg) || 1)) * depthK(S.currentZone, P.y)), _sfShot),   /* v2.3.2790: x your depth -- the orb's range is its life; v2.3.4803: at its stage's speed */
+                  /* v2.3.4803: the GATHER (drawGather.js: whole ms, thumb down to
+                     lift; the worker bounds it and lands its share), and the
+                     speed it flies at on every screen (peerShots.js reads it).
+                     Only against a worker with caps.staffGather (staffFeelOn). */
+                  ga: _sfShot ? _sfShot.ga : undefined,
+                  speedPx: _sfShot ? _sfShot.speedPx : undefined,
                   /* v2.3.3266: the player you have locked, when this shot may
                      hit them (game/peerShots.js shotTargetId): on every screen
                      it leaves aimed at them and ends where it reaches them, a
@@ -1960,6 +1983,7 @@ export function updateMonsterCombat(S, deps) {
                   S._staffCastAt = Date.now();
                   S._staffCastAng = arrAngle;
                   S._staffCadenceMs = effectiveSwingCd + _staffCdExtra;
+                  if (_sfShot && _sfShot.stage === 2) S._staffCastBig = S._staffCastAt;   /* v2.3.4803: a sphere kicks the staff and flashes as the big bolt does */
                 } else {
                   /* v2.3.925: drive the bow-shoot stand-in (entityRenderer reads
                      these to play the load/draw/release frames for the shot). */

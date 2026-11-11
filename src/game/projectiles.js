@@ -420,6 +420,7 @@ function _projImpactFx(S, a, m, fx, tx, ty) {
        ring: the area you see is the area that was hit. */
     orbCrashFx(S, tx, ty, fx.orbColor, { elem: fx.elem, vdx: vdx, vdy: vdy, big: !!fx.bigBolt,
       blastR: fx.bigBolt ? STAFF_BIG_BOLT_BLAST_PX * staffAoeMult(S.rpg || {}) : 0 });
+    staffFeelImpact(S, a, tx + vdx, ty + vdy);   /* v2.3.4803: a gathered bolt's ring of force, sized by its stage (game/staffFeel.js) */
   }
   if (fx.stub) {
     if (fx.snap) {
@@ -1009,6 +1010,7 @@ import {
 import { baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2511: arrows sound like what they hit */, hitSoundOf /* v2.3.3001: ...in its material's voice */, isIntangible /* v2.3.2224 */, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { monsterHitSfx, shotEndSfx } from '@/game/hitSounds.js'; /* v2.3.3001: hits and monster balls sound like their material */
 import { mcHitPitch, mcPerfectOn } from '@/game/manualCombat.js'; /* v2.3.4615: the free-swing trial's rising pitch, and its arrows named */
+import { staffSw, staffFeelImpact } from '@/game/staffFeel.js'; /* v2.3.4803: a gathered bolt names its shot, and its ring of force is drawn */
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, from recordings already in the game */
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
@@ -1984,7 +1986,10 @@ export function updateArrows(S, deps) {
                     /* v2.3.4615: on the free-swing trial an arrow names its
                        shot (its relay's `ts`), so the worker judges it by the
                        moment it left (freeswing.js _pfBowClaim) */
-                    sw: (!isStaffProj && !a.isSpecial && mcPerfectOn(S) && typeof a._shotTs === 'number') ? a._shotTs : undefined
+                    sw: (!isStaffProj && !a.isSpecial && mcPerfectOn(S) && typeof a._shotTs === 'number') ? a._shotTs
+                      /* v2.3.4803: and a GATHERED bolt names its shot too (its relay carried `ga`:
+                         drawGather.js), so the worker lands its share and its stage's blast */
+                      : staffSw(S, a)
                   }});
                 }
                 if (arrowCollision) {
@@ -2580,6 +2585,7 @@ export function updateArrows(S, deps) {
                          the same as on a monster.  An older one ignores it. */
                       element: projElem || undefined,
                       kind: isStaffProj ? 'staff' : 'ranged',
+                      sw: staffSw(S, a),   /* v2.3.4803: a gathered bolt's share lands on a player as a sword's does (drawgather.js) */
                       /* v2.3.1306: declare the single intended target so
                          the server skips everyone else in the cone — the
                          "never a bystander" promise is now enforced

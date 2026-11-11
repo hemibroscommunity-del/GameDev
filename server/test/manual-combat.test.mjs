@@ -328,7 +328,8 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
   /* the wiring */
   const pj = read('../../src/game/projectiles.js'), ge = read('../../src/networking/gameEvents.js'), gd = read('../../src/data/gameDisplay.js');
   check('14p an arrow on the trial names its shot; a perfect strike plays the drop roll\'s glint quietly (an existing cue); the hit voice takes a pitch',
-    /sw: \(!isStaffProj && !a\.isSpecial && mcPerfectOn\(S\) && typeof a\._shotTs === 'number'\) \? a\._shotTs : undefined/.test(pj)
+    /* v2.3.4803: ...and otherwise a gathered bolt's name (staffSw: game/staffFeel.js), undefined for anything else */
+    /sw: \(!isStaffProj && !a\.isSpecial && mcPerfectOn\(S\) && typeof a\._shotTs === 'number'\) \? a\._shotTs\s*\n[\s\S]{0,260}: staffSw\(S, a\)\s*\n/.test(pj)
     && /if \(payload\.pf === 1\) cue\('rollWin', 0\.45\);/.test(ge) && /\* \(\(opts && opts\.pitch > 0\) \? opts\.pitch : 1\);/.test(gd)
     && /monsterHitSfx\(m, 0\.6, 'arrow', fx\.snd, mcHitPitch\(S, Date\.now\(\)\)\)/.test(pj));
 }
@@ -342,7 +343,8 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
   const loop = read('../../src/game/monsterCombat.js');
   check('10c the loop: with the switch a shot is a flick\'s (mcFireWaiting), never a held thumb\'s, and no sooner than the weapon\'s interval; without it the gate is what it was',
     /var _wantAtk = _mcOn \? _mcFire : \(S\.autoAttack \|\| _engSwing \|\| _tapAtkNow\);/.test(loop)
-    && /&& S\.rpg && _eqWpn && Date\.now\(\) - S\.swingTimer >= effectiveSwingCd \+ _staffCdExtra\) \{/.test(loop)
+    /* v2.3.4803: the staff's feel's lift (staffFireWaiting, null without it) takes the gate's place for a gathering staff */
+    && /&& S\.rpg && _eqWpn && Date\.now\(\) - S\.swingTimer >= \(_sfFire !== null \? STAFF_FEEL\.GAP_MS : effectiveSwingCd \+ _staffCdExtra\)\) \{/.test(loop)
     && /\(_mcOn \|\| !_flickWait\)/.test(loop));
   check('10d the interval is the weapon\'s own, the staff\'s extra included', /mcFrame\(S, Date\.now\(\), effectiveSwingCd \+ _staffCdExtra,/.test(loop));
   check('10e an armed special is the flick\'s attack when it can go (a bow\'s needs a line), the ordinary shot only if it refused',
@@ -352,7 +354,7 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
   check('10g the handlers: a press starts a swipe on the stick and on the disc, a move may be a sword\'s stroke, the lift is judged before the release tidies, a forced end attacks nothing',
     (bro.match(/mcSwipeStart\(stateRef\.current, /g) || []).length === 2 && (bro.match(/=== 'swing'\) mcMeleeSwipe\(\);/g) || []).length === 2
     && (bro.match(/mcFlickEnd\(t\.clientX, t\.clientY\)/g) || []).length === 2 && /if \(manualOn\(\)\) mcAbort\(S\);/.test(bro));
-  check('10h a sword and a bow: no special is flicked, the right click arms, a tap attacks nothing -- and each asks mcSwipes, so a staff keeps its flick special, its right click and its tap', /if \(_rFlick && !mcSwipes\(stateRef\.current\)\)/.test(bro) && /if \(mcSwipes\(S\)\) \{ mcArmToggle\(S\); return 'armed'; \}/.test(bro) && /if \(!mcSwipes\(_tjS\)\) requestTapAttack\(_tjS, endT\);/.test(bro));
+  check('10h a sword and a bow: no special is flicked, the right click arms, a tap attacks nothing -- and each asks mcSwipes, so a staff keeps its flick special, its right click and its tap', /if \(_rFlick && !mcSwipes\(stateRef\.current\)( && !_sfEnd)?\)/.test(bro) && /if \(mcSwipes\(S\)\) \{ mcArmToggle\(S\); return 'armed'; \}/.test(bro) && /if \(!mcSwipes\(_tjS\)( && !_sfEnd)?\) requestTapAttack\(_tjS, endT\);/.test(bro));   /* v2.3.4803: a staff gathering (its feel) has its lift's blast instead (staff-feel.test) */
   check('10i a sword\'s stroke: asked first (too soon: nothing), then the lunge, the armed special, or a swing; the press itself never lunges',
     /var ask = mcMeleeAsk\(S, now\);\s*\n\s*if \(ask === 'yes'\) return mcMeleeGo\(S\);/.test(bro) && /if \(_mcP\) return false;\s*\n\s*try \{ return maybeSwordDash\(S\); \}/.test(bro));
   check('10j a computer: each click is one attack (a shot asked at the cursor, or a stroke); a staff is left to the lines below', /if \(mcSwipes\(S\)\) \{\s*\n\s*if \(mcShoots\(S\)\) \{[\s\S]{0,220}mcAskShot\(S, Date\.now\(\)\);\s*\n\s*\} else mcMeleeSwipe\(\);/.test(bro));

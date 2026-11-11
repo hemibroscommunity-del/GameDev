@@ -7656,7 +7656,7 @@ export class EffectsRenderer {
        vista curve changes as the bolt travels. */
     /* v2.3.2842: the one-bolt special is this art drawn bigger -- the same
        factor its hit body takes (projectiles.js PROJ_BODY.magicBig). */
-    const _bigK = p.big ? STAFF_BIG_BOLT_SCALE : 1;
+    const _bigK = p.big ? STAFF_BIG_BOLT_SCALE : (p._gk > 0 ? p._gk : 1);   /* v2.3.4803: a gathered bolt drawn its stage's size (game/staffFeel.js SIZE_K) */
     sprite.scale.set(0.18 * (pk || 1) * grow * _bigK);
     sprite.x = dx;
     sprite.y = dy;

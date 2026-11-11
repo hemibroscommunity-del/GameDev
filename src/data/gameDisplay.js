@@ -3497,9 +3497,9 @@ BT_AUDIO.feelSound = function (kind, k, opts) {
   try { return feelSynth(this.ctx, this._out(), kind, k, opts); } catch (e) { return null; }
 };
 /* the Sound Studio's button for the build tone: one second, rising, then let go */
-BT_AUDIO.feelBuildDemo = function (vol) {
+BT_AUDIO.feelBuildDemo = function (vol, base) {   /* v2.3.4803: + base (the staff's hum) */
   if (this.muted || !this.ctx || !this._ctxLive()) return null;
-  try { return feelBuildDemo(this.ctx, this._out(), vol); } catch (e) { return null; }
+  try { return feelBuildDemo(this.ctx, this._out(), vol, base); } catch (e) { return null; }
 };
 /* v2.3.1798: the special's own sound.  Quietest of the four uploads by a wide
    margin (peak RMS 0.043 against the swings' 0.27), so it carries a large

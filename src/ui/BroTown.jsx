@@ -67,6 +67,7 @@ import { weaponDiscIcon } from './panels/controlSkin.jsx'; /* v2.3.3105: the att
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton, EDGE_GUARD_PX } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack; v2.3.2563: ...and the edge guard's width, shared so the left cluster cannot drift into it */
 import { SpecialButton } from './panels/SpecialButton.jsx'; /* v2.3.2472: the special's second trigger; v2.3.2542 moved it to the attack disc's column */
+import { staffFeelFrame, staffFeelOn, staffGatherStart, staffGatherAim, staffGatherEnd, staffGatherAbort, staffFireCancel, staffFeelMoveK } from '@/game/staffFeel.js'; /* v2.3.4803: the staff's feel -- thumb down gathers, the lift blasts the orb (docs/specs/staff-feel.md) */
 import { swordFeelFrame } from '@/game/swordFeel.js'; /* v2.3.4800: the sword's feel -- the blade refills and glints, the cut follows the thumb (the timing bar of v2.3.4625 is gone: docs/specs/sword-feel.md) */
 import { WeaponPill } from './panels/WeaponPill.jsx'; /* v2.3.4130: the weapon pill, centred at the foot of the world (it was v2.3.3921's triangle, v2.3.3005's chip) */
 import { GESTURE_CUE_SPRITES, gestureCueFace, gestureIdle, extractionMeter01, DESK_GESTURE_HINT, PHONE_GESTURE_HINT, FIRST_HINTS } from '@/game/gesturePose.js'; /* v2.3.2760: the mini-tool cue on the button (it replaced v2.3.2245's strip and v2.3.2384's finger); extractionMeter01 v2.3.2514 (shared with the node's HP bar since v2.3.2956, the bar above the head before); DESK_GESTURE_HINT v2.3.3407 (a computer's words over the button) */
@@ -5541,6 +5542,7 @@ export var BroTown = function BroTown(_ref0) {
         var swimMult = S._swimming ? SWIM_SPEED_MULT : 1.0;
         /* Shield up: half speed.  Trades mobility for the guard. */
         var shieldMult = S._shieldUp ? 0.5 : 1.0;
+        shieldMult *= staffFeelMoveK(S);   /* v2.3.4803: gathering, the bro plants his feet (game/staffFeel.js MOVE_K; slower is always within the worker's bound) */
         /* v2.3.858: vista perspective -- on a distance-based playerScale zone
            (the Overlook), slow movement as the avatar shrinks toward the
            distance so a tiny speck on the trail also creeps like a far-off
@@ -7626,6 +7628,7 @@ export var BroTown = function BroTown(_ref0) {
            blade's readiness (the glint), the cut's arc once the swing has its
            angle (game/swordFeel.js; the timing bar's call stood here) */
         swordFeelFrame(S, Date.now());
+        staffFeelFrame(S, Date.now(), BT_AUDIO);   /* v2.3.4803: the staff's gather -- its stage, its hum, the orb the renderer draws */
 
         /* Pick up ground loot — walk over it */
         /* v2.3.812: the ~347-line ground-loot pickup block moved verbatim to
@@ -10643,6 +10646,7 @@ export var BroTown = function BroTown(_ref0) {
        (rE, bE: mcFlickEnd, before this); any other end of the press (the
        button gone from under it, a slide on to the shield) attacks nothing */
     if (manualOn()) mcAbort(S);
+    staffGatherAbort(S);   /* v2.3.4803: likewise a staff's gather (its own lift has blasted already) */
     S.autoAttack = false;
     setAutoAttack(false);
     S._aiming = false;
@@ -11505,6 +11509,7 @@ export var BroTown = function BroTown(_ref0) {
          legitimate swings at a monster standing next to one. */
       handleRBtnPress();
       if (manualOn() && stateRef.current) mcSwipeStart(stateRef.current, rts.startAt, t.clientX, t.clientY);   /* v2.3.4395: a swipe may start here */
+      staffGatherStart(stateRef.current, rts.startAt, t.clientX, t.clientY);   /* v2.3.4803: a staff gathers (the stick's drag aims it: rJoyAim) */
     };
     var rM = function rM(e) {
       if (rTouchId.current === null) return;
@@ -11560,6 +11565,9 @@ export var BroTown = function BroTown(_ref0) {
          way; brought back to where it started, none; a tap, none
          (game/manualCombat.js mcSwipeEnd, mcFlickEnd above). */
       if (manualOn() && stateRef.current) { mcFlickEnd(t.clientX, t.clientY); mcTeach(); }
+      /* v2.3.4803: a staff's lift is its blast -- the bolt the gather made (game/staffFeel.js);
+         a tap another job takes below lets it go (staffFireCancel) */
+      var _sfEnd = staffGatherEnd(stateRef.current, Date.now());
       /* v2.3.2258: the stick lets go -- auto-attack off, aim released, rod and
          knob back to centre.  Before the tap-forward below, so a tap that locks
          a monster is not also left holding the attack down. */
@@ -11598,7 +11606,7 @@ export var BroTown = function BroTown(_ref0) {
           || (_rtDist / Math.max(_rtDur, 1) > 0.2 && _rtDist > 15 && _rtDur < 500);
         /* v2.3.4395: manual combat -- a special is ARMED by its button, never
            flicked: a quick lift after aiming is the shot's own gesture */
-        if (_rFlick && !mcSwipes(stateRef.current)) { doSpecialAttack(); return; }   /* a staff's flick is still its special */
+        if (_rFlick && !mcSwipes(stateRef.current) && !_sfEnd) { doSpecialAttack(); return; }   /* a staff's flick is still its special (v2.3.4803: not with its feel: the flick is an aimed blast, the special its button) */
       }
       /* v2.3.1287: self-tap on the aim side opens chat -- no lock-on click.
          Its own 400ms ceiling (SELF_TAP_MAX_MS): opening chat is not a
@@ -11607,6 +11615,7 @@ export var BroTown = function BroTown(_ref0) {
          chat gesture.  See the note there. */
       if (!rts3.moved && (endT - rts3.startAt) < SELF_TAP_MAX_MS
           && tapResourceAtClient(t.clientX, t.clientY)) {
+        if (_sfEnd) staffFireCancel(stateRef.current);   /* v2.3.4803: the tap was the resource's */
         return;
       }
       /* v2.3.2305: an NPC beats the self-chat circle here too -- see the note
@@ -11614,6 +11623,7 @@ export var BroTown = function BroTown(_ref0) {
          where the touchstart used to start a swing at him. */
       if (!rts3.moved && (endT - rts3.startAt) < SELF_TAP_MAX_MS
           && tapNpcAtClient(t.clientX, t.clientY)) {
+        if (_sfEnd) staffFireCancel(stateRef.current);   /* v2.3.4803: the tap was the townsperson's */
         return;
       }
       /* v2.3.3253: a player you could fight in No man's land beats the
@@ -11625,6 +11635,7 @@ export var BroTown = function BroTown(_ref0) {
       }
       if (!rts3.moved && (endT - rts3.startAt) < SELF_TAP_MAX_MS
           && isSelfTouch(t.clientX, t.clientY)) {
+        if (_sfEnd) staffFireCancel(stateRef.current);   /* v2.3.4803: the tap was the chat's */
         openSelfChat();
         return;
       }
@@ -11672,6 +11683,7 @@ export var BroTown = function BroTown(_ref0) {
              a tap on him talks, never the stick). */
           var _tjAct = _tapActIcon(_tjS);
           if (_tjAct && typeof _tjS._interactNow === 'function') {
+            if (_sfEnd) staffFireCancel(_tjS);   /* v2.3.4803: the tap was the door's */
             try { if (_tjS._interactNow()) _tjS._tapActs = (_tjS._tapActs || 0) + 1; } catch (err) { /* the door's own refusals speak */ }   /* v2.3.4105: no npcFirst -- the stick never talks */
           } else if (!_tjAct) {
             /* ═══ v2.3.3712: ...AND OTHERWISE IT ATTACKS ONCE -- IT NEVER JUMPS ═══
@@ -11682,7 +11694,7 @@ export var BroTown = function BroTown(_ref0) {
                loop as a press of the disc is (game/tapJump.js
                requestTapAttack); the JUMP button and Space jump (X until v2.3.3844). */
             /* v2.3.4395: manual combat -- a tap attacks nothing: a swipe does */
-            try { if (!mcSwipes(_tjS)) requestTapAttack(_tjS, endT); } catch (err) { /* an attack is never worth a broken tap */ }
+            try { if (!mcSwipes(_tjS) && !_sfEnd) requestTapAttack(_tjS, endT); } catch (err) { /* an attack is never worth a broken tap */ }   /* v2.3.4803: a staff's tap is its spark (the lift's, above) */
           }
         }
       }
@@ -11780,6 +11792,7 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.4395: manual combat -- the disc's press attacks nothing: a
          stroke across it swings a sword (bM), a flick off it shoots (bE) */
       if (mcSwipes(stateRef.current)) { if (stateRef.current) mcSwipeStart(stateRef.current, bSwipe.st, t.clientX, t.clientY); return; }   /* a staff: the press attacks, as it did */
+      if (staffGatherStart(stateRef.current, bSwipe.st, t.clientX, t.clientY)) return;   /* v2.3.4803: with its feel a staff's press gathers (game/staffFeel.js) */
       doSwing();
     };
     var bM = function bM(e) {
@@ -11802,6 +11815,8 @@ export var BroTown = function BroTown(_ref0) {
             _slS._aiming = true; _slS._aimSrc = 'stick';
           }
         }
+        /* v2.3.4803: a staff gathering on the disc is aimed by the drag from where it touched (the orb leans that way) */
+        if (stateRef.current && !bSwipe.toShield && !bSwipe.harvest) staffGatherAim(stateRef.current, t.clientX - bSwipe.sx, t.clientY - bSwipe.sy);
         /* v2.3.2472: and the disc's copy of that steer went with it. */
         /* ═══ v2.3.2254: SLIDE DOWN FROM ATTACK ONTO THE SHIELD ═══
            Owner: "I'd like it if I can just slide my finger down from the
@@ -11931,6 +11946,7 @@ export var BroTown = function BroTown(_ref0) {
          staff's shot, the way it went (mcFlickEnd writes the aim: the disc
          does not), and no special is flicked */
       if (stateRef.current && mcSwipes(stateRef.current)) { mcFlickEnd(t.clientX, t.clientY); mcTeach(); isFlick = false; }
+      if (staffGatherEnd(stateRef.current, Date.now())) isFlick = false;   /* v2.3.4803: a staff's lift is its blast; its special is its button */
       if (isFlick) {
         var Sfk = stateRef.current;
         Sfk._hasUsedSwipe = true;
@@ -13344,6 +13360,8 @@ export var BroTown = function BroTown(_ref0) {
            ready), a bow's one shot.  Holding the button down attacks once.
            A STAFF is left as it was (it fires while the button is held:
            the lines below).  No lock is taken. */
+        /* v2.3.4803: a staff with its feel: the button held gathers (the cursor aims), its release blasts */
+        if (staffGatherStart(S, Date.now(), null, null)) return;
         if (mcSwipes(S)) {
           if (mcShoots(S)) {
             if (S._mouseAimAngle != null) { S._aimAngle = S._mouseAimAngle; S._lastAimAngle = S._mouseAimAngle; }
@@ -13375,6 +13393,7 @@ export var BroTown = function BroTown(_ref0) {
     onMouseUp: function onMouseUp(e) {
       if (!stateRef.current._isDesktop) return;
       if (e.button === 0) {
+        staffGatherEnd(stateRef.current, Date.now(), stateRef.current._mouseAimAngle);   /* v2.3.4803: a staff's blast, at the cursor */
         stateRef.current.autoAttack = false;
         setAutoAttack(false);
         stateRef.current._aiming = false;

@@ -326,6 +326,10 @@ export const OTHER_PLAYS = [
   ['feelPerfect', 'fight', 'A perfect cut landing (struck in the glint): the deep thud and crack under the hit', { fn: 'feelSound', args: ['contact', 1.12] }],
   ['feelBuild', 'fight', 'A weapon building power: the tone rising as it builds, and its release (the bow and the staff, as they come)', { fn: 'feelBuildDemo', args: [1] }],
   ['feelStage', 'fight', 'A build stage landing: a pulse, a step deeper each stage (the staff, as it comes)', { fn: 'feelSound', args: ['stage', 1, { stage: 2 }] }],
+  /* v2.3.4803: the staff's feel (game/staffFeel.js) */
+  ['feelGather', 'fight', 'Your staff gathering power: the low hum rising as the orb grows (spark, orb, sphere), then let go', { fn: 'feelBuildDemo', args: [1, 130] }],
+  ['feelBlast', 'fight', 'Your staff\'s orb blasted: the air swelling inward, then a boom', { fn: 'feelSound', args: ['blast', 0.6] }],
+  ['feelBlastBig', 'fight', 'Your staff\'s full sphere blasted: the swell, a deep boom and a crack', { fn: 'feelSound', args: ['blast', 1.1] }],
   ['arrowHit', 'hits', 'Your arrow hitting a monster', { sample: 'arrow-hit', opts: { vol: 0.6 } }],
   ['magicHit', 'hits', 'Your staff bolt hitting a monster', { fn: 'magicHit', args: [{ vol: 0.6 }] }],
   ['staffCast', 'fight', 'Your staff casting a bolt', { sample: 'magic-cast', opts: { vol: 0.55 } }],
