@@ -126,6 +126,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
         overBurst: !!(b && sl) && b.left >= sl.burst.x && b.right <= sl.burst.r,
         footUp: (() => { const m = /\+\s*([\d.]+)px/.exec(bar ? bar.style.bottom : ''); return m && sl ? Number(m[1]) - (sl.burst.b + sl.burst.h) : null; })(),
         big: !!b && b.height >= 100 && b.width >= 20,
+        /* the owner: "Vertical above the left joystick" -- centred on the disc, within 1 px */
+        centred: !!(b && sl) && Math.abs((b.left + b.right) / 2 - (sl.stick.x + sl.stick.r) / 2) <= 1,
         art: base ? getComputedStyle(base).backgroundImage : null, artFull: full ? getComputedStyle(full).backgroundPosition : null,
         rendering: base ? getComputedStyle(base).imageRendering : null,
         warm: warm ? { wanted: warm.wanted, held: warm.count() } : null };
@@ -133,8 +135,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('1 on the trial against a worker that judges the perfect strike (caps.freeSwing, caps.perfectStrike), the bar mounts as the sword',
       !!up && one.free && one.freeSwing === 1 && one.perfectStrike === 1 && one.tbar === 'sword', { up, one });
     /* v2.3.4625, the owner: "lay vertically in the space above the left joystick" */
-    rec.ok('1 ...standing upright over the movement disc, above Burst\'s place, big enough to see the owner\'s picture (v2.3.4656: one css px a pixel), and not touchable',
-      one.upright && one.overStick && one.overBurst && one.footUp >= 2 && one.big && one.pe === 'none', one);
+    rec.ok('1 ...standing upright over the movement disc, centred above the disc and Burst\'s place, big enough to see the owner\'s picture (v2.3.4656: one css px a pixel), and not touchable',
+      one.upright && one.overStick && one.overBurst && one.footUp >= 2 && one.big && one.centred && one.pe === 'none', one);
     rec.ok('1 ...drawn from the owner\'s sheet, its pixels never smoothed, the picture warmed on the loading screen and held',
       /\/sprites\/timingbar\/weapons\.png/.test(one.art || '') && one.rendering === 'pixelated' && !!one.warm && one.warm.wanted === true && one.warm.held === 1, one);
 

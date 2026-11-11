@@ -37,7 +37,7 @@
  * minimap's sideways; a computer draws no disc). */
 import React, { useEffect, useRef, useState } from 'react';
 import { mcBarWeapon, mcBarCycle, mcBarTimes, mcBarAttack, timingBarWanted } from '@/game/manualCombat.js';
-import { leftCluster, LCTL_SLOT, ctlBottom } from './ShieldButton.jsx';
+import { leftCluster, LCTL_SLOT, ctlBottom, LBTN } from './ShieldButton.jsx';   /* v2.3.4656: + the disc's own box, to centre on it */
 import { TB_ART, TB_SHEET, TB_HALF_X, TB_RECT } from './timingBarArt.js';
 
 const AIR = 4;           /* v2.3.4625: px clear of Burst and Quick Eat either side */
@@ -106,7 +106,9 @@ export function barBox(isLandscape, fine, rect, dpr) {
     const th = rect.h * ss;
     return { s: ss, thick: th, len: rect.w * ss, left: Math.round(burstR + AIR + (room - th) / 2), bottom: burstB };
   }
-  return { s, thick, len, left: Math.round(burstL + (lc.size - thick) / 2), bottom: burstB + lc.size + AIR };
+  /* v2.3.4656, the owner: "Vertical above the left joystick" -- centred on
+     the disc itself (its own box, LBTN), its foot clear of Burst's top */
+  return { s, thick, len, left: Math.round(LBTN.left + LBTN.w / 2 - thick / 2), bottom: burstB + lc.size + AIR };
 }
 
 export function TimingBar({ stateRef, isLandscape }) {
