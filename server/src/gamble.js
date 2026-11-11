@@ -254,7 +254,10 @@ export const gambleMethods = {
     if (ps._lastAceFlipAt && now - ps._lastAceFlipAt < ACE_FLIP.COOLDOWN_MS) return;
     ps._lastAceFlipAt = now;
     const won = Math.random() < ACE_FLIP.WIN_CHANCE;
-    ps.coins = coins + (won ? risk : -risk);
+    /* v2.3.4670: the gold door -- `coins` was this purse read the door's
+       orZero way, two lines up, with nothing between to change it */
+    if (won) this._goldGive(ps, risk, 'ace_flip_win');
+    else this._goldTake(ps, risk, 'ace_flip_loss');
     this._saveRpg(session.id, ps);
     this._queuePlayerStateFlush(session.id);
     const ws = this._wsBySessionId(session.id);
@@ -289,7 +292,8 @@ export const gambleMethods = {
     if ((ps.coins || 0) < wager) return;
     ps._lastGambleAt = now;
     const won = Math.random() < 0.40; // GAMBLE_WIN_CHANCE mirror
-    ps.coins += won ? wager : -wager;
+    if (won) this._goldGive(ps, wager, 'gamble_win'); /* v2.3.4670: the gold door */
+    else this._goldTake(ps, wager, 'gamble_loss');
     this._saveRpg(session.id, ps);
     this._queuePlayerStateFlush(session.id);
     const ws = this._wsBySessionId(session.id);

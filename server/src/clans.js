@@ -160,7 +160,7 @@ export const clanMethods = {
     if (_allyHas === 'tag') return this._clanError(session.id, 'Tag [' + tag + '] is taken');
     if (_allyHas === 'name') return this._clanError(session.id, 'Name is taken');
     if ((ps.coins || 0) < CLANS.CREATE_COST) return this._clanError(session.id, 'Need ' + CLANS.CREATE_COST + 'g');
-    ps.coins -= CLANS.CREATE_COST;
+    this._goldTake(ps, CLANS.CREATE_COST, 'clan_create'); /* v2.3.4670: the gold door */
     this._saveRpg(session.id, ps);
     this._queuePlayerStateFlush(session.id);
     const clan = {

@@ -190,6 +190,9 @@ spec. Add a line here only for a new RULE every session must follow.
 - **Every monster hit on a player goes through one door**: `hits.js`
   `_monsterHit` and its `MONSTER_HITS` table (`hit-door.test` fails a new
   caller of `_applyDamage`).
+- **Every change to a player's gold goes through one door**: `gold.js`
+  `_goldGive` / `_goldTake` / `_goldSet`, each call naming its row in
+  `GOLD_ROADS`; never write `.coins` (`gold-door.test` fails it).
 - **Identity**: stable `bp_` ids; two tabs share one (test with `?guest=1`). A
   new character starts from the SERVER's defaults: a join with no record reads
   no `rpg*` claim, so a test seeds a character by putting a record on file
@@ -365,6 +368,7 @@ spec. Add a line here only for a new RULE every session must follow.
 | a server behaviour | a cap the client gates on (`CAP_GATES`) and a lower-case kill switch |
 | a storage key | ARCHITECTURE-HANDOFF's rule-2 registry table (precheck `storage-keys`) |
 | a monster hit on players | its row in `MONSTER_HITS` (`hits.js`) |
+| a way to change a player's gold | its row in `GOLD_ROADS` (`gold.js`) and its line in `gold-door.test`'s `EXPECT` |
 | an honesty check | `_testMode(ps)` and its three lists |
 | a refusal in the hit test | the same in the bow's sight gate (TRAPS §236) |
 | a field on the tick | both tick builders (`tick-share.test`) |

@@ -606,7 +606,7 @@ export const farmMethods = {
     if ((ps.coins || 0) < cost) { this._farmSend(session.id, { err: 'coins', did: { op: 'buy', item, n: 0 } }); return null; }
     /* One event, live state (the jackpot deposit's shape): the coins and the
        bag change together and _saveRpg writes both. */
-    ps.coins -= cost;
+    this._goldTake(ps, cost, 'farm_buy'); /* v2.3.4670: the gold door */
     ps.inventory[item] = (Math.floor(Number(ps.inventory[item]) || 0)) + count;
     this._saveRpg(session.id, ps);
     const ws = this._wsBySessionId(session.id);

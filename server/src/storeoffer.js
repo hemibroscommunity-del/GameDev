@@ -229,7 +229,10 @@ export const storeOfferMethods = {
     rec.offers = { ...offers };
     rec.offerSeq = seq;
     rec.pendOffer = null;
-    ps.coins = (ps.coins || 0) + back - gold;
+    /* v2.3.4670: the gold door -- the old offer's gold back, then the new one
+       out: the same sum, in the order the old line added it */
+    this._goldGive(ps, back, 'ah_offer_back');
+    this._goldTake(ps, gold, 'ah_offer');
     const writes = [
       this._saveRpg(buyerId, ps),
       this._opStamp('store:' + rec.id + ':offer:' + seq),

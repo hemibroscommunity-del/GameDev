@@ -265,6 +265,7 @@ import { moveClaimMethods, guardFacing } from './moveclaims.js'; /* v2.3.4605: w
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
 import { staminaRegenMethods } from './staminaregen.js'; /* v2.3.3536: stamina regen worked out by the worker */
 import { fightLockMethods, FIGHT_GATED } from './fightlock.js'; /* v2.3.4510: one fight-lock table */
+import { goldMethods } from './gold.js'; /* v2.3.4670: the gold door -- every change to a player's gold */
 /* v2.3.3130: the Herb Bread's out-of-combat healing multiplier, read once
    from its dish (data.js DISHES) -- 2, "twice as fast". */
 const HERB_REGEN_MULT = (DISHES.meal_herb_bread && Number(DISHES.meal_herb_bread.power) > 1) ? Number(DISHES.meal_herb_bread.power) : 2;
@@ -4773,7 +4774,7 @@ export class GameRoom {
         weaponStashed = true;
       } else {
         weaponSoldFor = this._weaponSellValue(weaponForMe);
-        ps.coins = (ps.coins || 0) + weaponSoldFor;
+        this._goldGive(ps, weaponSoldFor, 'loot_weapon_sold'); /* v2.3.4670: the gold door */
       }
     }
     /* ═══ v2.3.1924: ARMOUR CLAIM ═══
@@ -4819,7 +4820,7 @@ export class GameRoom {
     // the next player_state event we send.  Persist async; the in-
     // memory state is what subsequent operations read.  Reusing the
     // `ps` variable from the range check above.
-    ps.coins = (ps.coins || 0) + coinsForMe;
+    this._goldGive(ps, coinsForMe, 'loot_gold'); /* v2.3.4670: the gold door */
     if (skullForMe) {
       if (!ps.inventory) ps.inventory = {};
       const invKey = this._invKeyForSkull(skullForMe, pile.skullArch);
@@ -6961,3 +6962,4 @@ Object.assign(GameRoom.prototype, moveClaimMethods); /* v2.3.4605: what a move's
 Object.assign(GameRoom.prototype, sparMethods); /* v2.3.3265: sparring clones (spar.js) */
 Object.assign(GameRoom.prototype, staminaRegenMethods); /* v2.3.3536: stamina regen from the worker's own amulet (staminaregen.js) */
 Object.assign(GameRoom.prototype, fightLockMethods); /* v2.3.4510: one fight-lock table (fightlock.js) */
+Object.assign(GameRoom.prototype, goldMethods); /* v2.3.4670: the gold door (gold.js) */

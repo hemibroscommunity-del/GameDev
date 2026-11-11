@@ -297,7 +297,7 @@ export const hardeningMethods = {
 
     // Single-mutation settle (the gamble pattern): one input-gated
     // event on live ps, roll after the debit, no crash window.
-    ps.coins -= cost;
+    this._goldTake(ps, cost, 'harden'); /* v2.3.4670: the gold door */
     if (amount > 0) {
       ps.inventory[material] = haveMats - amount;
       if (ps.inventory[material] <= 0) delete ps.inventory[material];

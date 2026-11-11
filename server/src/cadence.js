@@ -175,7 +175,7 @@ export const cadenceMethods = {
     // Single gated event (rule 8): debit live state + grow the pool,
     // both committed by the same event's output gate.  No opId needed
     // -- a resent deposit is legitimately a new deposit.
-    ps.coins -= amount;
+    this._goldTake(ps, amount, 'jackpot_ticket'); /* v2.3.4670: the gold door */
     this._saveRpg(session.id, ps);
     this._queuePlayerStateFlush(session.id);
     draw.pool += amount;
