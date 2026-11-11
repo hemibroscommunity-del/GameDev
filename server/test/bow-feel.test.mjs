@@ -23,7 +23,7 @@
 import { readFileSync } from 'node:fs';
 import { BOW_FEEL, bowState, bowStep, bowClaimMs, bowView, bowPerfect, bowWire, bowWalkMult, bowLineLook, bowStringPx, bowPoseFrame } from '../../src/game/bowDraw.js';
 import * as PHONE from '../../src/game/drawGather.js';
-import { MANUAL, setManualCombat, mcSetBowHook, mcBowSling, mcShotAngle, mcSwipeStart, mcSwipeMove, mcSwipeEnd, mcAbort, mcAskShot, mcFrame, mcBowDraws } from '../../src/game/manualCombat.js';
+import { MANUAL, setManualCombat, mcSetBowHook, mcBowSling, mcShotAngle, mcSwipeStart, mcSwipeMove, mcSwipeEnd, mcAbort, mcAskShot, mcFrame, mcBowDraws, mcFireWaiting, mcFireChance, mcFireDone } from '../../src/game/manualCombat.js';
 import { feelSwitch } from '../../src/game/weaponFeel.js';
 import { bowSynth } from '../../src/data/bowFeelSound.js';
 import { GameRoom } from '../src/index.js';
@@ -234,6 +234,39 @@ const FULL = 371;   /* a new character's full draw (draw-gather.test §1) */
   const S2 = { rpg: { activeSlot: 'ranged' }, swingTimer: 0, _serverCaps: {} };
   mcFrame(S2, 1000, FULL, 600);
   check('6g no hook at all: a bow asked to shoot early waits its interval, as before', mcAskShot(S2, 1000) === 'fire' && (S2.swingTimer = 1000, mcAskShot(S2, 1100)) === 'early');
+  /* v2.3.4799: a loose is never lost to a slow frame (the combined feel's
+     review, N3): the loop's first frame after the lift gets its chance,
+     however late -- the staff's rule; after it, FIRE_HOLD_MS as before */
+  const st3 = bowState();
+  mcSetBowHook({ on: () => true, step: (SS, ev) => bowStep(st3, ev), gap: BOW_FEEL.GAP_MS });
+  const S3 = { rpg: { activeSlot: 'ranged' }, swingTimer: 0, _serverCaps: {} };
+  mcFrame(S3, 1000, FULL, 600);
+  mcSwipeStart(S3, 5000, 300, 600); mcSwipeMove(S3, 5010, 300, 640);
+  const r3 = mcSwipeEnd(S3, 5300, 300, 640);
+  const late = 5300 + MANUAL.FIRE_HOLD_MS + 400;   /* the next frame 650 ms after the lift */
+  mcFrame(S3, late, FULL, 600);
+  const w1 = mcFireWaiting(S3, late);
+  mcFireChance(S3);   /* bowFeelFrame, after the combat step */
+  mcFrame(S3, late + 16, FULL, 600);
+  const w2 = mcFireWaiting(S3, late + 16);
+  check('6h a drawn bow\'s loose waits for the loop\'s FIRST frame however late it comes (650 ms), then FIRE_HOLD_MS as before',
+    r3 === 'fire' && w1 === true && w2 === false, { r3, w1, w2 });
+  mcSwipeStart(S3, 9000, 300, 600); mcSwipeMove(S3, 9010, 300, 640);
+  mcSwipeEnd(S3, 9300, 300, 640);
+  const w3 = mcFireWaiting(S3, 9300 + 5);
+  mcFireDone(S3);
+  check('6h ...and a loose the loop took is gone at once', w3 === true && mcFireWaiting(S3, 9310) === false);
+  mcSetBowHook(null);
+  const S4 = { rpg: { activeSlot: 'ranged' }, swingTimer: 0, _serverCaps: {} };
+  mcFrame(S4, 1000, FULL, 600);
+  mcAskShot(S4, 1000);
+  mcFrame(S4, 1000 + MANUAL.FIRE_HOLD_MS + 400, FULL, 600);
+  check('6h ...the flick bow (no hook) keeps its FIRE_HOLD_MS exactly', mcFireWaiting(S4, 1000 + MANUAL.FIRE_HOLD_MS + 400) === false);
+  const BF = read('../../src/game/bowFeel.js');
+  check('6h ...and the loose\'s `dr` waits with it (looseWaiting: its first chance, however late; bowFeelFrame marks it tried and gives the chance after the combat step)',
+    /\(L && !L\.taken && \(!L\.tried \|\| now - L\.at <= BOW_FEEL\.LOOSE_HOLD_MS\)\)/.test(BF)
+    && /if \(L && !L\.taken && L\.tried && now - L\.at > BOW_FEEL\.LOOSE_HOLD_MS\) g\.st\.loose = null;\s*\n\s*else if \(L && !L\.taken\) L\.tried = true;\s*\n\s*mcFireChance\(S\);/.test(BF));
+  setManualCombat(3);
 }
 
 // ── 7. the look ──

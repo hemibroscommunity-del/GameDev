@@ -45,7 +45,7 @@
  * QA: window.__btBowFeel() (below). */
 import { BOW_FEEL, bowState, bowStep, bowView, bowWire, bowWalkMult, bowPoseFrame } from './bowDraw.js';
 import { feelSwitch, feelStrength, pushFeelFx } from './weaponFeel.js';
-import { MANUAL, manualFreeSwing, mcSetBowHook, mcAskShot } from './manualCombat.js';
+import { MANUAL, manualFreeSwing, mcSetBowHook, mcAskShot, mcFireChance } from './manualCombat.js';
 import { BT_AUDIO } from '@/data/index.js';
 
 export var BOW_FEEL_KEY = 'bt_bowfeel';
@@ -165,6 +165,7 @@ export function bowFeelFrame(S, now) {
       f.view = null; f.lastPhase = '';
     }
     S._bfPose = null;
+    mcFireChance(S);   /* v2.3.4799: a loose asked for before the feel went off waits no longer than a flick's */
     return;
   }
   const t0 = _perf();
@@ -190,7 +191,13 @@ export function bowFeelFrame(S, now) {
   /* the pose: the bow raised at the nock, drawn from a third of a draw, and
      held drawn until the loop takes the loose (then the shot's own pose) */
   const L = g.st.loose;
-  if (L && !L.taken && now - L.at > BOW_FEEL.LOOSE_HOLD_MS) g.st.loose = null;
+  /* v2.3.4799: the loop (run before this) has had its first chance at the
+     loose: from now on it waits only LOOSE_HOLD_MS -- before, a frame later
+     than that lost it, or sent the arrow with no `dr` (a whole arrow the
+     worker charges a full draw for) (the review's N3) */
+  if (L && !L.taken && L.tried && now - L.at > BOW_FEEL.LOOSE_HOLD_MS) g.st.loose = null;
+  else if (L && !L.taken) L.tried = true;
+  mcFireChance(S);
   /* the way the bow is raised: the aim, the last aim, the way he faces (a new
      bro has aimed nowhere yet) */
   const ang = (S._aimAngle != null) ? S._aimAngle : (S._lastAimAngle != null) ? S._lastAimAngle
@@ -212,7 +219,7 @@ export function bowFeelGapMs(S) { return bowFeelOn(S) ? BOW_FEEL.GAP_MS : null; 
 
 function looseWaiting(S, now) {
   const f = S && S._bf, L = f && f.st.loose;
-  return (L && !L.taken && now - L.at <= BOW_FEEL.LOOSE_HOLD_MS) ? L : null;
+  return (L && !L.taken && (!L.tried || now - L.at <= BOW_FEEL.LOOSE_HOLD_MS)) ? L : null;   /* v2.3.4799: its first chance, however late */
 }
 /** The `dr` of the arrow leaving now (monsterCombat's player_projectile
  *  relay): the draw, whole ms -- or undefined (not a drawn bow's loose; the

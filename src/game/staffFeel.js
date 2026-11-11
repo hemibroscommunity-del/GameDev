@@ -48,7 +48,11 @@
  *                    lifts (rE, bE, mouse up): staffGatherEnd; a tap another
  *                    job took (a resource, a townsperson, a door, the chat
  *                    circle): staffFireCancel; any other end of a press
- *                    (handleRBtnRelease): staffGatherAbort; the game loop:
+ *                    (handleRBtnRelease, a touchcancel): staffGatherAbort;
+ *                    each press names itself ('r', 'b', 'desk': a lift
+ *                    ends only its own gather); the window: a mouseup
+ *                    anywhere (staffGatherDeskUp), a blur (staffFeelBlur);
+ *                    the game loop:
  *                    staffFeelFrame(S, now, BT_AUDIO) once a frame after the
  *                    combat step; the walk: x staffFeelMoveK(S).
  *   monsterCombat.js the loop fires only a lift's bolt (staffFireWaiting),
@@ -189,15 +193,25 @@ export function staffGatherNow(S, now) {
    so feelStageCrossed (floor(r x 3)) lands on the worker's thresholds */
 function stageR(stage) { return stage < 0 ? 0 : (stage + 1) / 3; }
 
+/* v2.3.4799: is this press (`by`: 'r' the stick, 'b' the disc, 'desk' the
+   left mouse button; undefined: any) the one that owns the gather?  With two
+   thumbs down -- the stick gathering, the disc's press swallowed -- the
+   disc's lift blasted the stick's gather while that thumb was still down
+   (the combined feel's review, N2): a lift ends only its own press's. */
+function owns(g, by) { return !g.by || typeof by !== 'string' || g.by === by; }
+
 /** THE THUMB GOES DOWN (or the left mouse button): the gather begins, at
  *  once -- the spark at the tip, its note, the hum.  (x, y) where it touched
- *  (null on a computer: the cursor aims).  False when the feel is not on. */
-export function staffGatherStart(S, now, x, y) {
+ *  (null on a computer: the cursor aims); `by` the press that owns it ('r'
+ *  the stick, 'b' the disc, 'desk' the mouse: v2.3.4799).  False when the
+ *  feel is not on. */
+export function staffGatherStart(S, now, x, y, by) {
   if (!staffFeelOn(S)) return false;
   const f = st(S);
   if (f.g) return true;   /* one press at a time: the stick's and the disc's never both */
   const t0 = _perf();
-  f.g = { at: now, x0: typeof x === 'number' ? x : null, y0: typeof y === 'number' ? y : null, stage: -1, share: 0, aimed: false, hum: null };
+  f.g = { at: now, x0: typeof x === 'number' ? x : null, y0: typeof y === 'number' ? y : null, stage: -1, share: 0, aimed: false, hum: null,
+    by: typeof by === 'string' ? by : null };
   f.stats.gathers++;
   tickGather(S, f, now);
   cost(f, t0);
@@ -207,9 +221,9 @@ export function staffGatherStart(S, now, x, y) {
 /** THE DISC'S DRAG while gathering (the disc does not aim by itself: BroTown
  *  bM): the way from where the thumb went down, past the stick's dead zone,
  *  written as the stick's own drag writes it (rJoyAim). */
-export function staffGatherAim(S, dx, dy) {
+export function staffGatherAim(S, dx, dy, by) {
   const f = S && S._stf, g = f && f.g;
-  if (!g || !(dx * dx + dy * dy > STAFF_FEEL.AIM_DEAD_PX * STAFF_FEEL.AIM_DEAD_PX)) return false;
+  if (!g || !owns(g, by) || !(dx * dx + dy * dy > STAFF_FEEL.AIM_DEAD_PX * STAFF_FEEL.AIM_DEAD_PX)) return false;
   const a = Math.atan2(dy, dx);
   S._aimAngle = a; S._lastAimAngle = a;
   S._facing = Math.abs(Math.cos(a)) > Math.abs(Math.sin(a)) ? (Math.cos(a) > 0 ? 'right' : 'left') : (Math.sin(a) > 0 ? 'down' : 'up');
@@ -223,9 +237,9 @@ export function staffGatherAim(S, dx, dy) {
  *  (staffFireWaiting / staffFireTake).  `aimAng` a computer's cursor (null on
  *  a phone: the drag's aim, or the facing for a still press).  The shot it
  *  asks for, or null (no gather). */
-export function staffGatherEnd(S, now, aimAng) {
+export function staffGatherEnd(S, now, aimAng, by) {
   const f = S && S._stf, g = f && f.g;
-  if (!g) return null;
+  if (!g || !owns(g, by)) return null;   /* v2.3.4799: another press's gather is not this lift's */
   const t0 = _perf();
   const n = staffGatherNow(S, now);
   stopHum(g);
@@ -245,14 +259,42 @@ export function staffGatherEnd(S, now, aimAng) {
 
 /** A press that ended some other way (the button gone from under it, a slide
  *  on to the shield, the weapon changed, the page hidden): nothing fires. */
-export function staffGatherAbort(S) {
+export function staffGatherAbort(S, by) {
   const f = S && S._stf;
-  if (!f || !f.g) return false;
+  if (!f || !f.g || !owns(f.g, by)) return false;
   stopHum(f.g);
   f.g = null;
   f.stats.aborts++;
   return true;
 }
+/** v2.3.4799: a computer's left button let go ANYWHERE (over a panel, the
+ *  band, off the canvas: the window hears it, as the bow's does, bowFeel.js):
+ *  the gather the button began blasts at the cursor.  Before, only the play
+ *  element's own mouseup ended it, so a release over a panel left the staff
+ *  humming, the bro slowed, until the next click's release blasted a full
+ *  sphere (the combined feel's review, F3). */
+export function staffGatherDeskUp(S, now) {
+  const g = S && S._stf && S._stf.g;
+  if (!g || g.by !== 'desk') return null;
+  return staffGatherEnd(S, now, S._mouseAimAngle, 'desk');
+}
+/** v2.3.4799: the window lost focus (alt-tab, another window): any gather is
+ *  let go, nothing fires -- its release will never be heard. */
+export function staffFeelBlur(S) { return staffGatherAbort(S); }
+if (typeof window !== 'undefined' && window && typeof window.addEventListener === 'function') {
+  try {
+    window.addEventListener('mouseup', (e) => {
+      if (e && e.button !== 0) return;
+      const gs = window._gameState, S = gs && gs.current;
+      if (S && S._stf && S._stf.g) staffGatherDeskUp(S, Date.now());
+    });
+    window.addEventListener('blur', () => {
+      const gs = window._gameState, S = gs && gs.current;
+      if (S && S._stf && S._stf.g) staffFeelBlur(S);
+    });
+  } catch (e) { /* no window */ }
+}
+
 /** A lift whose tap another job took (a resource, a townsperson, a door,
  *  the chat circle): its bolt is not made. */
 export function staffFireCancel(S) {

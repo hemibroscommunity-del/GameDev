@@ -30,7 +30,7 @@
 import fs from 'node:fs';
 import { STAFF_FEEL, staffFeelOn, setStaffFeel, staffFeelWanted, staffGatherStart, staffGatherAim, staffGatherEnd, staffGatherAbort, staffGatherNow,
   staffFireWaiting, staffFireTake, staffFireCancel, staffFeelFrame, staffFeelCycle, staffFeelMoveK, staffShotLife, staffSw, staffPeerK,
-  staffFeelImpact, staffFeelHit, staffAimAngle } from '../../src/game/staffFeel.js';
+  staffFeelImpact, staffFeelHit, staffAimAngle, staffGatherDeskUp, staffFeelBlur } from '../../src/game/staffFeel.js';
 import { setManualCombat, MANUAL } from '../../src/game/manualCombat.js';
 import { DRAW_GATHER as PHONE_DG, fullGatherMs, gatherStage } from '../../src/game/drawGather.js';
 import { DRAW_GATHER } from '../src/drawgather.js';
@@ -178,6 +178,45 @@ const T0 = 1000000;
   check('5f a tap another job took (a townsperson, a resource, a door) cancels its bolt', staffFireCancel(S) === true && staffFireWaiting(S, T0 + 2060) === false);
   staffGatherStart(S, T0 + 3000, 0, 0);
   check('5g any other end of a press (a slide to the shield, the button gone) fires nothing', staffGatherAbort(S) === true && staffGatherEnd(S, T0 + 3100) === null && staffFireWaiting(S, T0 + 3100) === false);
+  /* v2.3.4799: two thumbs (the combined feel's review, N2): the stick
+     gathering, the disc's press swallowed -- the disc's lift (and its
+     release's tidy-up) must not blast or drop the stick's gather */
+  staffGatherStart(S, T0 + 4000, 0, 0, 'r');
+  const swallowed = staffGatherStart(S, T0 + 4100, 0, 0, 'b');
+  const discLift = staffGatherEnd(S, T0 + 4300, undefined, 'b');
+  const discTidy = staffGatherAbort(S, 'b');
+  const discAim = staffGatherAim(S, 40, 0, 'b');
+  const still = !!S._stf.g && S._stf.g.by === 'r';
+  const stickLift = staffGatherEnd(S, T0 + 4600, undefined, 'r');
+  check('5h two thumbs: the disc\'s lift neither blasts nor drops nor aims the stick\'s gather; the stick\'s own lift blasts it',
+    swallowed === true && discLift === null && discTidy === false && discAim === false && still && !!stickLift && stickLift.ga === 600,
+    { swallowed, discLift, discTidy, discAim, still, stickLift });
+  staffFireCancel(S);
+  staffGatherStart(S, T0 + 5000, 0, 0, 'b');
+  check('5h ...an end that names no press (the page going away, the shield) ends any', staffGatherAbort(S) === true && !S._stf.g);
+  /* v2.3.4799: a computer's button let go anywhere (the window hears it), and
+     the window losing focus (the combined feel's review, F3) */
+  S._mouseAimAngle = 1.25;
+  staffGatherStart(S, T0 + 6000, null, null, 'desk');
+  const up = staffGatherDeskUp(S, T0 + 6500);
+  check('5i a computer\'s gather ends on a mouseup ANYWHERE (over a panel, off the canvas): blasted at the cursor, the hum and the slow walk gone',
+    !!up && up.ga === 500 && near(up.ang, 1.25) && !S._stf.g && staffFeelMoveK(S) === 1, up);
+  staffFireCancel(S);
+  staffGatherStart(S, T0 + 7000, 0, 0, 'r');
+  check('5i ...a mouseup is no thumb\'s lift (a touch gather stays)', staffGatherDeskUp(S, T0 + 7100) === null && !!S._stf.g);
+  staffGatherAbort(S);
+  const A2 = audio();
+  staffFeelFrame(S, T0 + 8000, A2);
+  staffGatherStart(S, T0 + 8000, null, null, 'desk');
+  staffFeelFrame(S, T0 + 8100, A2);
+  const hum = A2.log.find((e) => e.kind === 'build');
+  const blurred = staffFeelBlur(S);
+  check('5i the window losing focus (alt-tab) lets the gather go: nothing fires, the hum stops, the walk is back',
+    blurred === true && !S._stf.g && staffFireWaiting(S, T0 + 8200) === false && !!hum && hum.stopped && staffFeelMoveK(S) === 1, { blurred, hum });
+  const SFsrc = read('../../src/game/staffFeel.js');
+  check('5i ...both heard on the window (as the bow\'s are, bowFeel.js)',
+    /window\.addEventListener\('mouseup', \(e\) => \{\s*\n\s*if \(e && e\.button !== 0\) return;[\s\S]{0,160}staffGatherDeskUp\(S, Date\.now\(\)\);/.test(SFsrc)
+    && /window\.addEventListener\('blur', \(\) => \{[\s\S]{0,140}staffFeelBlur\(S\);/.test(SFsrc));
 }
 
 // ── 6. taps are sparks; the sphere ──
@@ -302,13 +341,26 @@ const T0 = 1000000;
     && /_gs: _sfShot \? _sfShot\.stage : undefined,/.test(MC) && (MC.match(/staffShotLife\(/g) || []).length === 3);
   check('10c its claims name the shot on monster_damage AND the duel\'s player_attack (staffSw)',
     /: \(staffSw\(S, a\) \?\? bowFeelSw\(a\)\)\s*\n\s*\}\}\);/.test(PJ) && /sw: staffSw\(S, a\) \?\? bowFeelSw\(a\),/.test(PJ) && /staffFeelImpact\(S, a, tx \+ vdx, ty \+ vdy\);/.test(PJ));
-  check('10d the presses: the stick, the disc and the left mouse button gather; their lifts blast; a tap another job took cancels; any other end aborts; the flick and the tap no longer make the special or a held bolt',
-    /staffGatherStart\(stateRef\.current, rts\.startAt, t\.clientX, t\.clientY\);/.test(BRO) && /if \(staffGatherStart\(stateRef\.current, bSwipe\.st, t\.clientX, t\.clientY\)\) return;/.test(BRO)
-    && /if \(staffGatherStart\(S, Date\.now\(\), null, null\)\) return;/.test(BRO) && /var _sfEnd = staffGatherEnd\(stateRef\.current, Date\.now\(\)\);/.test(BRO)
-    && /if \(staffGatherEnd\(stateRef\.current, Date\.now\(\)\)\) isFlick = false;/.test(BRO) && /staffGatherEnd\(stateRef\.current, Date\.now\(\), stateRef\.current\._mouseAimAngle\);/.test(BRO)
-    && (BRO.match(/staffFireCancel\(/g) || []).length === 4 && /staffGatherAbort\(S\);/.test(BRO)
-    && /if \(_rFlick && !mcSwipes\(stateRef\.current\) && !_sfEnd\)/.test(BRO) && /if \(!mcSwipes\(_tjS\) && !_sfEnd\) requestTapAttack/.test(BRO)
-    && /staffGatherAim\(stateRef\.current, t\.clientX - bSwipe\.sx, t\.clientY - bSwipe\.sy\);/.test(BRO));
+  check('10d the presses: the stick, the disc and the left mouse button gather (each naming itself: v2.3.4799); their lifts blast their own; a tap another job took cancels; any other end aborts; the flick and the tap no longer make the special or a held bolt',
+    /staffGatherStart\(stateRef\.current, rts\.startAt, t\.clientX, t\.clientY, 'r'\);/.test(BRO) && /if \(staffGatherStart\(stateRef\.current, bSwipe\.st, t\.clientX, t\.clientY, 'b'\)\) return;/.test(BRO)
+    && /if \(staffGatherStart\(S, Date\.now\(\), null, null, 'desk'\)\) return;/.test(BRO) && /var _sfEnd = _rCancel \? null : staffGatherEnd\(stateRef\.current, Date\.now\(\), undefined, 'r'\);/.test(BRO)
+    && /else if \(staffGatherEnd\(stateRef\.current, Date\.now\(\), undefined, 'b'\)\) isFlick = false;/.test(BRO) && /staffGatherEnd\(stateRef\.current, Date\.now\(\), stateRef\.current\._mouseAimAngle, 'desk'\);/.test(BRO)
+    && (BRO.match(/staffFireCancel\(/g) || []).length === 5 && /staffGatherAbort\(S, typeof by === 'string' \? by : undefined\);/.test(BRO)
+    && /if \(_rFlick && !mcSwipes\(stateRef\.current\) && !_sfEnd && !staffFeelOn\(stateRef\.current\)\)/.test(BRO) && /if \(!mcSwipes\(_tjS\) && !_sfEnd\) requestTapAttack/.test(BRO)
+    && /staffGatherAim\(stateRef\.current, t\.clientX - bSwipe\.sx, t\.clientY - bSwipe\.sy, 'b'\);/.test(BRO)
+    && /handleRBtnRelease\('r'\);/.test(BRO) && /handleRBtnRelease\('b'\);/.test(BRO));
+  /* v2.3.4799: a touchcancel is not a lift (the combined feel's review, F4),
+     and No man's land's player tap lets the bolt go (N1) */
+  const rEsrc = (BRO.match(/var rE = function rE\(e\) \{[\s\S]*?\n {4}\};/) || [''])[0];
+  const bEsrc = (BRO.match(/var bE = function bE\(e\) \{[\s\S]*?\n {4}\};/) || [''])[0];
+  check('10l a touchcancel (a call, the shade, a palm) on the stick or the disc lets a gather go and a drawn bow\'s string down: nothing fires',
+    /var _rCancel = e\.type === 'touchcancel';/.test(rEsrc) && /if \(_rCancel && bowFeelOn\(stateRef\.current\)\) mcAbort\(stateRef\.current\);/.test(rEsrc)
+    && /if \(_rCancel\) staffGatherAbort\(stateRef\.current, 'r'\);/.test(rEsrc)
+    && /var _bCancel = e\.type === 'touchcancel';/.test(bEsrc) && /if \(_bCancel && bowFeelOn\(stateRef\.current\)\) mcAbort\(stateRef\.current\);/.test(bEsrc)
+    && /if \(_bCancel\) staffGatherAbort\(stateRef\.current, 'b'\);/.test(bEsrc)
+    && /window\.addEventListener\('touchcancel', rE,/.test(BRO) && /window\.addEventListener\('touchcancel', bE,/.test(BRO));
+  check('10l ...and No man\'s land\'s player tap (it selects them) lets the lift\'s bolt go, as every other tap job does',
+    /&& nmlPlayerAtClient\(t\.clientX, t\.clientY\)\) \{\s*\n\s*if \(_sfEnd\) staffFireCancel\(stateRef\.current\);/.test(rEsrc));
   check('10e the loop\'s frame (with the game\'s audio) and the walk: the bro plants his feet',
     /swordFeelFrame\(S, Date\.now\(\)\);\s*\n\s*staffFeelFrame\(S, Date\.now\(\), BT_AUDIO\);/.test(BRO) && /shieldMult \*= staffFeelMoveK\(S\);/.test(BRO));
   check('10f the hits: your bolt\'s verdict kept, another\'s bolt sized', /staffFeelHit\(S, payload\);/.test(GE) && /_gk: staffPeerK\(payload\),/.test(GE));

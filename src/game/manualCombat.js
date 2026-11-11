@@ -373,7 +373,7 @@ export function mcFrame(S, now, need, meleeNeed) {
   if (meleeNeed > 0) m.meleeNeed = meleeNeed;
   var slot = slotOf(S);
   if (m.slot !== slot) { m.slot = slot; m.fireAt = 0; m.fireUntil = 0; m.swingUntil = 0; }   /* another weapon in hand: nothing of the last one's waits */
-  if (m.fireAt && now > m.fireUntil) { m.fireAt = 0; m.fireUntil = 0; }
+  if (m.fireAt && now > m.fireUntil && m.fireTry !== 1) { m.fireAt = 0; m.fireUntil = 0; m.fireTry = 0; }   /* v2.3.4799: a drawn bow's loose waits for the loop's first chance (mcFireChance) */
   if (m.swingUntil && now > m.swingUntil) m.swingUntil = 0;
 }
 
@@ -473,20 +473,32 @@ export function mcAskShot(S, now) {
   if (bowHooked(S)) {
     if (now - ((S && S.swingTimer) || 0) < (_bowHook.gap || MANUAL.FREE_GAP_MS)) { m.early += 1; return 'early'; }
     m.fireAt = now; m.fireUntil = now + MANUAL.FIRE_HOLD_MS; m.n += 1;
+    m.fireTry = 1;   /* v2.3.4799: the loop's next frame gets its chance, however late (mcFireChance) */
     return 'fire';
   }
   var wait = mcReadyIn(S, now);
   if (wait > MANUAL.EARLY_MS) { m.early += 1; return 'early'; }
   m.fireAt = now; m.fireUntil = now + wait + MANUAL.FIRE_HOLD_MS; m.n += 1;
+  m.fireTry = 0;
   return 'fire';
 }
-/** Is a shot waiting for the loop? */
+/** Is a shot waiting for the loop?  v2.3.4799: a drawn bow's loose also
+ *  while the loop has not had its first chance at it (`fireTry` 1), however
+ *  late that frame comes -- the staff's rule (staffFeel.js
+ *  staffFireWaiting).  A slow page draws a frame every few hundred ms, and a
+ *  loose lost to that is "I let go and nothing happened" (the combined
+ *  feel's review, N3).  The flick bow keeps its FIRE_HOLD_MS, as before. */
 export function mcFireWaiting(S, now) {
   var m = S && S._mc;
-  return !!m && !!m.fireAt && now <= m.fireUntil;
+  return !!m && !!m.fireAt && (now <= m.fireUntil || m.fireTry === 1);
 }
+/** v2.3.4799: the loop has had its chance at the waiting loose (bowFeelFrame
+ *  calls it once a frame, after the combat step): from now on it waits only
+ *  its FIRE_HOLD_MS (a shot the loop refused -- the shield up, in the air --
+ *  is let go after it, as before). */
+export function mcFireChance(S) { var m = S && S._mc; if (m && m.fireTry === 1) m.fireTry = 2; }
 /** The loop took it (or found it could not): once only. */
-export function mcFireDone(S) { var m = S && S._mc; if (m) { m.fireAt = 0; m.fireUntil = 0; } }
+export function mcFireDone(S) { var m = S && S._mc; if (m) { m.fireAt = 0; m.fireUntil = 0; m.fireTry = 0; } }
 
 /** A sword's stroke: may it swing now?  'yes'; 'soon' (inside EARLY_MS of
  *  ready: kept, mcSwingWaiting says when); 'no'. */

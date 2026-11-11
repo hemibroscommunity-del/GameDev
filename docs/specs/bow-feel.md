@@ -44,7 +44,11 @@ Every attack has four beats: **touch**, **build**, **release**, **contact**.
 The **left button held draws** (nocked and drawing at once: there is no pull
 to make), the cursor aims, and **its release looses**, wherever the pointer is
 then (the release is heard on the window). A plain click is a light, quick
-shot. The window losing focus lets the string down. The right click is still
+shot. The window losing focus lets the string down. A **touchcancel** (a
+call, the shade, a palm) lets it down too, no shot (v2.3.4799); and a loose
+is never lost to a slow frame: the loop's first frame after the lift always
+gets its chance, however late (v2.3.4799, the staff's rule; before, a frame
+more than 250 ms late lost it). The right click is still
 the special.
 
 ## Switches
