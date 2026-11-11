@@ -573,6 +573,10 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                player is never re-gated, and the worldview is gated too (its
                exits run through this same block), or you could hop the wall
                by going up to the map first. */
+            /* v2.3.4860: the Wheel's way in is not a spoke entry -- no zone-unlock
+               quest, no level band, no directional spawn, no tile 9/10 remap (the
+               remap scanned the whole ground, ~1.8M cells, on EVERY entry) */
+            var _toWV = isWorldViewZone(bestExit.zoneId);
             var _tutR = S.rpg || {};
             var _spokeToMayor = !!(_tutR._quests && _tutR._quests.tut_1);
             /* v2.3.2990: ...except the trip that starts you in the Wheel's
@@ -623,7 +627,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
 
                Any status counts — an accepted quest opens its zone, and a
                finished one leaves it open — matching the server exactly. */
-            var _zq = zoneUnlockQuest(bestExit.zoneId);
+            var _zq = _toWV ? null : zoneUnlockQuest(bestExit.zoneId);
             if (_zq && !(S.rpg && S.rpg._quests && S.rpg._quests[_zq])) {
               if (!S._zoneLockAt || Date.now() - S._zoneLockAt > 2500) {
                 S._zoneLockAt = Date.now();
@@ -661,7 +665,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                re-fire it, nudge the frozen player off the exit, and orphan
                the gate (the drift-clear would then abandon their entry). */
             var _zlArmedHere = S._zoneLoading && S._zoneLoading.toZone === bestExit.zoneId;
-            if (_gfloor > _plvl + 5 && !_zlArmedHere) {
+            if (!_toWV && _gfloor > _plvl + 5 && !_zlArmedHere) {
               if (!S._zoneWarnAt) S._zoneWarnAt = {};
               var _warnedAt = S._zoneWarnAt[bestExit.zoneId] || 0;
               if (Date.now() - _warnedAt > 10000) {
@@ -826,7 +830,8 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                  up with it (5 -> 8 tiles in). Without this the arrival lands
                  within RETURN_R of the marker and warps straight back. */
               var _botSpawnY = nH - TILE * (5 + PORTAL_EDGE_INSET);
-              if (bestExit.dir === 'north')      { P.x = midX;             P.y = _botSpawnY; }
+              if (_toWV) { /* v2.3.4860: set just below */ }
+              else if (bestExit.dir === 'north')      { P.x = midX;             P.y = _botSpawnY; }
               else if (bestExit.dir === 'south') { P.x = midX - TILE * 5;  P.y = TILE * 8;       }
               else if (bestExit.dir === 'east')  { P.x = TILE * 5;         P.y = midY;           }
               else if (bestExit.dir === 'west')  { P.x = nW - TILE * 5;    P.y = midY;           }
@@ -955,11 +960,11 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                 });
               }
               /* Remap exits: move return exit (tile 9) to entry edge, dungeon (tile 10) to far edge */
-              var mapH = S.map.length, mapW = S.map[0].length;
+              var mapH = _toWV ? 0 : S.map.length, mapW = _toWV ? 0 : S.map[0].length;
               var mapMX = Math.floor(mapW / 2);
               var mapMY = Math.floor(mapH / 2);
               /* Clear old exit/dungeon tiles */
-              for (var my = 0; my < mapH; my++) for (var mx = 0; mx < mapW; mx++) {
+              for (var my = 0; my < mapH; my++) for (var mx = 0; mx < mapW; mx++) { /* v2.3.4860: mapH 0 for the Wheel */
                 if (S.map[my][mx] === 9 || S.map[my][mx] === 10) S.map[my][mx] = 1;
               }
               /* Helper: carve a path (tile 1) through walls from edge to center road */
@@ -984,7 +989,8 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               /* v2.3.1693: bottom-edge return row, pulled PORTAL_EDGE_INSET
                  tiles up out from under the dashboard (see the constant). */
               var mapRetY = mapH - 1 - PORTAL_EDGE_INSET;
-              if (bestExit.dir === 'north') {
+              if (_toWV) { /* v2.3.4860: the Wheel has no return/dungeon markers to move */ }
+              else if (bestExit.dir === 'north') {
                 S.map[mapRetY][mapMX] = 9; S.map[mapRetY][mapMX+1] = 9;
                 S.map[2][mapMX] = 10; S.map[2][mapMX+1] = 10;
                 carvePath(mapMX, mapRetY, 0, -1, 4);

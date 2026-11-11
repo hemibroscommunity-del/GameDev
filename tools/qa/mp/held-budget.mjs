@@ -44,7 +44,8 @@ export const KNOWN = {
     why: 'the head an armoured player shows (<pose>-<dir>-head sheets) is recoloured on the page for each look the first time it is drawn: 28 to 164 ms a sheet as an armoured player circles you',
     next: 'key them by skin alone (they take no trouser or boot colour), then keep them as numbers like the bodies (a look set); the same for a body with an eye style or a drawing (STATE-MACHINES A2)',
     /* v2.3.4499: the crowd tour (mp-crowdsweep, docs/specs/held-sweep.md "The crowd tour"), five runs, the worst of each */
-    at: { 'a-ink': 730, 'b-fish': 160, 'c-armour1': 110, 'c-armour8': 270, 'h-eight': 120, 'd-prints': 190 },
+    at: { 'a-ink': 730, 'b-fish': 160, 'c-armour1': 90,   /* v2.3.4872: the pickaxe's outline turned round (toolWood.js solidTool): c-armour1 179 -> 62 ms, the crowd's armour stations 229 -> 169 */
+      'c-armour8': 270, 'h-eight': 120, 'd-prints': 190 },
     crowd: 'a player with a tattoo or a trouser print: every pose and facing they show is a body sheet baked on the page, 114 to 720 ms each, a dozen in the first 20 s (a-ink).  ANY player of a look not yet seen who fishes: the 32-frame fish sheet, 92 to 198 ms (b-fish, c-armour8: one per look, armour or not, a shirt or not).  Armoured players arriving: 36 to 267 ms per look and pose; walking about after, still 60 to 112 ms (h-eight).  The pickaxe made solid in the mining body (solidTool) is part of the same bake.  Fix: the bodies with drawings as a row of colours with the drawing stamped on the worker (the fish sheet too: it has no shirt or eye, lookBodyRefused already passes it), or the bake on a worker' },
   'masked-bake': { ms: 24,
     why: "v2.3.4870: no longer cut on the page in play (another player's armour drew it inline, in the frame, at first sight and each new facing: 17 to 107 ms; the crowd tour's c-armour stations 54 ms, 28 times).  What is left is the worker job's page-side part: the frames handed over as pictures (_frameInput > createImageBitmap) and the look sheets sent, 8 to 18 ms",
@@ -62,14 +63,15 @@ export const KNOWN = {
   'the frame itself': { ms: 70,
     why: "one frame's own code on this box, which plays a quarter of a second of game in each (it draws four a second): every monster, bubble and name plate that changed in that time is done in one frame",
     next: 'mp-phoneframe is the measure of a frame at a phone\'s rate; here the line only stops it growing',
-    crowd: 'v2.3.4499: eight species-and-skin pairs churning their builds recolour fur inside the frame (speciesArt.js _compose > retintSkinPixels): 28 to 70 ms frames, 15 of them in a minute (e-species).  Goes with the churn (gc, below)' },
+    crowd: 'v2.3.4871 FIXED, one 39 ms frame left as they arrive (each pair built once; was 25 frames of 30 to 36 ms).  Was: v2.3.4499: eight species-and-skin pairs churning their builds recolour fur inside the frame (speciesArt.js _compose > retintSkinPixels): 28 to 70 ms frames, 15 of them in a minute (e-species).  Goes with the churn (gc, below)' },
   gc: { ms: 60,
     why: "the browser's garbage collector, 8 to 45 ms at a time: it runs when the page has made enough garbage",
     next: 'make less of it per frame (the pools: docs/OPTIMIZATION-ROADMAP.md); nothing here calls it',
     /* v2.3.4499: the crowd tour: one armoured player walking about, 0 to 1 collections in 25 s (the longest 31 ms);
        eight, 3 to 7 (the longest 17 to 29 ms).  Then the species churn (played last): every collection longer and longer */
-    at: { 'e-species': 100 },
-    crowd: 'eight species-and-skin pairs on screen (e-species) churn their builds (speciesArt.js _BUILD_CAP 6: each frame lets go of one and builds another, and what it let go of is freed 30 s later): 566 pictures of 256 x 256 made in a minute, 187 MB, then 757 and 250 MB.  The collector holds the page 35 to 100 ms at a time, and when the first tours went on after it, 336 to 698 ms walking into the crowd and up to 1076 ms at the Leaderboards.  On an iPhone this is the black screen, not a hitch.  Fix: a cap that is never under the looks on screen (or the build kept while its player is), and a let-go freed at once when nothing draws it' },
+    /* v2.3.4871: the species churn fixed (speciesArt.js: a build kept while drawn): e-species 67.6 ms worst, 18 times
+       -> 9 ms, 3 times; its own line (100) is gone, the family's 60 stands */
+    crowd: 'v2.3.4871 FIXED (was:) eight species-and-skin pairs on screen (e-species) churn their builds (speciesArt.js _BUILD_CAP 6: each frame lets go of one and builds another, and what it let go of is freed 30 s later): 566 pictures of 256 x 256 made in a minute, 187 MB, then 757 and 250 MB.  The collector holds the page 35 to 100 ms at a time, and when the first tours went on after it, 336 to 698 ms walking into the crowd and up to 1076 ms at the Leaderboards.  On an iPhone this is the black screen, not a hitch.  Fix: a cap that is never under the looks on screen (or the build kept while its player is), and a let-go freed at once when nothing draws it' },
   /* ── v2.3.4499: found by the crowd tour (mp-crowdsweep) ── */
   'gear-sheet': { ms: 195,
     why: "a drawn shirt composed on the page for each player who wears one, the first time each pose is drawn (composeShirt > stampShirtArt): 121 to 192 ms each, 8 to 13 times as ten players in drawn shirts swung, rolled and mined beside you (d-prints).  gearSheets.js keeps 8 drawings baked: with ten on screen none were seen to bake again in the 25 s",
@@ -89,6 +91,11 @@ export const KNOWN = {
   'other: BT_AUDIO$1._fold > foldToMono': { ms: 30,
     why: 'a sound with two sides folded to one the first time it plays: 14 to 21 ms',
     next: 'fold as it is decoded, behind the loading screen or off the first play'},
+  /* v2.3.4872: found over the general line on main (mp-heldsweep `armour`, 15.4 and 16.5 ms, two runs; the crowd tour's
+     armour stations up to 8 ms) */
+  'other: R > J': { ms: 20,
+    why: "React's scheduler working through a redraw (R > J > Gk is performConcurrentWorkOnRoot in the vendor chunk) where no one of the game's components is the outermost named one, so the sweep cannot say whose: 15 to 17 ms at the armour station (putting armour on and off: the gear tab, the band and the bag at once), most of it in React's own commit (Bj) and a createObjectURL",
+    next: 'profile the armour station with React\'s profiler to name the components; then split or startTransition the redraw an equip causes' },
   'other: _flushOutbox > Wrapped.ws.send': { ms: 30,
     why: 'a message to the server handed to the browser: 18 ms once a tour, on a change of armour',
     next: 'watch it; not understood yet' },
