@@ -279,7 +279,7 @@ export const arenaMethods = {
     if (!t.entryN) t.entryN = Object.create(null);   // player-keyed (rule 4)
     const n = (t.entryN[playerId] || 0) + 1;
     t.entryN[playerId] = n;
-    ps.coins -= ARENA.ENTRY_FEE;
+    this._goldTake(ps, ARENA.ENTRY_FEE, 'arena_entry'); /* v2.3.4652: the gold door */
     const writes = [
       this._saveRpg(playerId, ps),
       this._opStamp('arena:' + t.id + ':entry:' + playerId + this._arenaEntrySfx(n)),

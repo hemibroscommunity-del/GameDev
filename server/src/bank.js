@@ -236,11 +236,11 @@ export const bankMethods = {
       if (dir === 'in') {
         if (purse < n) return this._bankSend(pid, v, last(false, 'not_enough'));
         if (v.gold + n > BANK.MAX_N) return this._bankSend(pid, v, last(false, 'vault_full'));
-        ps.coins = purse - n;
+        this._goldTake(ps, n, 'bank_deposit'); /* v2.3.4652: the gold door */
         v.gold += n;
       } else {
         if (v.gold < n) return this._bankSend(pid, v, last(false, 'not_enough'));
-        ps.coins = purse + n;
+        this._goldGive(ps, n, 'bank_withdraw'); /* v2.3.4652: the gold door */
         v.gold -= n;
       }
     } else {

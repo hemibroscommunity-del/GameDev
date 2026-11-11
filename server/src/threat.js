@@ -130,7 +130,7 @@ export const threatMethods = {
         // v2.3.1129: 10% fine, a single mutation on live ps.
         levy = Math.floor((aPs.coins || 0) * THREAT.LEVY_PCT);
         if (levy > 0) {
-          aPs.coins -= levy;
+          this._goldTake(aPs, levy, 'threat_levy'); /* v2.3.4652: the gold door */
           this._saveRpg(target, aPs);
           this._queuePlayerStateFlush(target);
           // v2.3.1211 (item C): the fine no longer evaporates -- it

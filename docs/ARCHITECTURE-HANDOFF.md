@@ -376,6 +376,14 @@ extended.
     fails a fourth file that does (the other two are a player's hits,
     combat.js and pvpextras.js). Changing what a way of being hit does is
     changing its cell and the test's row with it.
+29. **Every change to a player's gold goes through ONE door** (v2.3.4652,
+    `gold.js` `_goldGive` / `_goldTake` / `_goldSet`, docs/specs/gold-door.md).
+    A new way to change gold is a row in `GOLD_ROADS` (its verb and sum) and
+    one call that names it; nothing else writes `.coins`, a live purse or a
+    stored record's (`gold-door.test` fails a second writer, a road nobody
+    calls and a road two places call). Rule 4 is unchanged: a settlement
+    still PAYS through `_creditPlayer`, whose live landing is the door's
+    `mail_gold` road.
 
 ---
 

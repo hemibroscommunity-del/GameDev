@@ -850,11 +850,11 @@ export const cookingMethods = {
     // its own discount hook.
     const finalCost = Math.max(1, Math.floor(item.cost));
     if ((ps.coins || 0) < finalCost) return;
-    ps.coins -= finalCost;
+    this._goldTake(ps, finalCost, 'tonic_buy'); /* v2.3.4652: the gold door */
     /* v2.3.2063: the coins go back if the item refused to apply (an arena
        match blocks healing). The apply half reports rather than refunding,
        because it has two callers now and each holds the purse differently. */
-    if (!this._applyShopItem(ps, item, session.id)) { ps.coins += finalCost; return; }   /* v2.3.4413: the id, for the arena's gate */
+    if (!this._applyShopItem(ps, item, session.id)) { this._goldGive(ps, finalCost, 'tonic_refund'); return; }   /* v2.3.4413: the id, for the arena's gate */
     this._saveRpg(session.id, ps);
     const ws = this._wsBySessionId(session.id);
     if (ws) this._sendPlayerState(ws, session.id);

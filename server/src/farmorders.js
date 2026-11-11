@@ -275,7 +275,7 @@ export const farmOrderMethods = {
     rec.done[slot] = 1;
     if (have - o.n > 0) ps.inventory[o.key] = have - o.n;
     else delete ps.inventory[o.key];
-    ps.coins = Math.max(0, Math.floor(Number(ps.coins) || 0)) + o.gold;
+    this._goldGive(ps, o.gold, 'farm_order'); /* v2.3.4652: the gold door */
     const fromLevel = skillLvl(ps, 'farming');
     let leveled = false;
     let newLevel = fromLevel;

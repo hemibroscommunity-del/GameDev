@@ -58,7 +58,7 @@ export const guildMethods = {
        and the record go out in the same synchronous run, both or neither
        (the architecture review, 2026-10-17). */
     claims[skill] = idx + 1;
-    ps.coins = (ps.coins || 0) + quest.gold;
+    this._goldGive(ps, quest.gold, 'guild_rung'); /* v2.3.4652: the gold door */
     ps.achievementPoints = (ps.achievementPoints || 0) + quest.ap;
     const claimed = this.state.storage.put(key, claims);
     this._saveRpg(session.id, ps);

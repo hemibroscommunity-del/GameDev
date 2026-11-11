@@ -118,7 +118,7 @@ export const dailyChestMethods = {
 
     const prize = this._chestRoll(streak);
     if (prize.kind === 'coins') {
-      ps.coins = (ps.coins || 0) + prize.coins;
+      this._goldGive(ps, prize.coins, 'daily_chest'); /* v2.3.4652: the gold door */
     } else if (prize.kind === 'fish' || prize.kind === 'gem') {
       ps.inventory[prize.invKey] = (Math.floor(Number(ps.inventory[prize.invKey]) || 0)) + prize.count;
     } else if (prize.kind === 'armor') {

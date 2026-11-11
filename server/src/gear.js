@@ -237,7 +237,7 @@ export const gearMethods = {
     if (this._isGearNotWeapon(weapon)) return;
     const sellVal = this._weaponSellValue(weapon);
     ps.weaponStash.splice(stashIdx, 1);
-    ps.coins = (ps.coins || 0) + sellVal;
+    this._goldGive(ps, sellVal, 'weapon_sell'); /* v2.3.4652: the gold door */
     this._saveRpg(session.id, ps);
     const ws = this._wsBySessionId(session.id);
     if (ws) this._sendPlayerState(ws, session.id);
@@ -617,7 +617,7 @@ export const gearMethods = {
     // Apply: consume resources, mint new weapon, swap old to stash.
     ps.inventory[resourceKey] -= cost;
     if (ps.inventory[resourceKey] <= 0) delete ps.inventory[resourceKey];
-    ps.coins -= tier.goldCost;
+    this._goldTake(ps, tier.goldCost, 'weapon_forge'); /* v2.3.4652: the gold door */
 
     if (current) {
       ps.weaponStash.push(current);

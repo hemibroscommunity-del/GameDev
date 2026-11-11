@@ -151,7 +151,7 @@ export const amuletMethods = {
       if ((ps.goldBars || 0) < tier.bars) return;
       if ((ps.coins || 0) < tier.goldCost) return;
       ps.goldBars -= tier.bars;
-      ps.coins -= tier.goldCost;
+      this._goldTake(ps, tier.goldCost, 'amulet_craft'); /* v2.3.4652: the gold door */
       // Mint mirrors the client mint at ForgePanel "Amulet Crafting"
       // exactly ({tier, gem:null, name}; the old amulet has no stash --
       // it is replaced, same as the client).  Shape is what
@@ -248,7 +248,7 @@ export const amuletMethods = {
       if (!gained.length) return; // nothing socketed -> nothing to extract
       const cost = this._gemExtractCost(item);
       if ((ps.coins || 0) < cost) return;
-      ps.coins -= cost;
+      this._goldTake(ps, cost, 'gem_extract'); /* v2.3.4652: the gold door */
       /* v2.3.3516: back into the BAG (gems.js) -- an elemental gem, the item
          the gem plan's decision 5 makes it */
       for (const key of gained) gemGive(ps, key.slice('polished_'.length), false, 1);

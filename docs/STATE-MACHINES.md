@@ -241,11 +241,17 @@ so nothing waits on them any more.
 - `farmorders.test` can fail once as the clock crosses midnight UTC; its
   clock is not pinned yet (TRAPS §335).
 
-**Not started, big repairs (no longer waiting on the judges):**
+**Big repairs (no longer waiting on the judges):**
 - the plan's larger "one door per system" work (#1508). Its first piece, the
   server judging a change of place, is done (#1534, v2.3.4640). What remains
   of Wave 2 item 1 (the server deciding guard and cooking itself, beyond the
   limits #1530 put on the phone's claims) and Wave 3 stay on the plan.
+- **Gold has its door (v2.3.4652, `docs/specs/gold-door.md`)**: every change
+  to a player's gold goes through `server/src/gold.js`, each call naming its
+  row in `GOLD_ROADS`, with nothing a player sees changed (step 1). Its next
+  steps (one sum for every road, then a gold log and the fight lock at the
+  door) are listed there. Not started: the bag, health and death, and the
+  session.
 
 **Not fixed on purpose:**
 - the player's trail reads the same unset `now` the pet did (TRAPS §294):
