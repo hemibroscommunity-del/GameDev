@@ -29,7 +29,8 @@ spec. Add a line here only for a new RULE every session must follow.
 - **The world is the Wheel** (owner, 2026-10-02): BroTown and its safe commons
   in the middle, a spoke of land per element (levels 1-40 built), sea between.
   Players start in BroTown, on login and after a death. The old lands and their
-  World View are CLOSED (`?trial=off` reopens them for one tab). The plan is
+  World View are CLOSED for good: the worker refuses their lands (zonejudge R3)
+  and `?trial=off` is gone (v2.3.4675-4676). The plan is
   `public/tools/world/plan.js`, the geometry `public/tools/world/core/wheel.js`;
   the live Wheel is the long one (5x); the previews (`?bigtown`, `?plaintown`,
   `?placing=2`) the short one. Never write a Wheel coordinate into code or a

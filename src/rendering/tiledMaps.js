@@ -67,21 +67,17 @@ export const IMAGE_ZONE_MAPS = {
      and v2.3.1813 both shipped exits on tiles that no longer existed, which is
      why this is a check and not a sentence.) */
   worldview: '/maps/worldview_v4.webp',
-  frost:   '/maps/frost_v5.webp',   /* redesign: meadow-coast -> deep-ice transition */
-  meadow:  '/maps/meadow_v6.webp',   /* redesign: new painterly meadow (scaled to 1024 world) */
-  thunder: '/maps/thunder_v5.webp',   /* redesign: metallic/electric buried-machine peaks */
-  tidal:   '/maps/tidal_v6.webp',   /* redesign: arrival-by-sea cave island */
-  mist:    '/maps/mist_v5.webp',   /* redesign: poison swamp, living edge -> toxic deep */
-  hollows: '/maps/hollows_v6.webp',   /* redesign: underground crystal cavern */
-  ember:   '/maps/ember_v6.webp',   /* redesign: volcanic, scorched fringe -> molten heart */
-  sky:     '/maps/sky_v5.webp',   /* redesign: warm desert, scrub fringe -> dune sea */
+  /* v2.3.4802: the old map's nine lands' pictures (frost, meadow, thunder,
+     tidal, mist, hollows, ember, sky, verdant) are gone with the old map: the
+     worker refuses those places (zonejudge.js R3) and the phone never routes
+     to them.  meadow_v6.webp stays on disk: tools/qa/world-page.mjs reads it
+     as the World Builder's test picture. */
   /* v2.3.3136: the farm you walk, laid from the owner's Ground Studio pictures
      (tools/world/bake_farm_ground.py, src/data/farmLayout.js FARM_GROUND) --
      the cave grotto (farm_v1) retired: the owner, "This map isn't suited for
      a farm".  2 picture px a game px, like the Wheel's ground, so it is
      drawn smooth (MAP_SCALE_LINEAR). */
   farm_home: '/maps/farm_v2.webp',
-  verdant: '/maps/verdant_v1.webp',   /* redesign: new Flora spoke */
 };
 
 /* ═══ v2.3.3136: A MAP DRAWN SMALLER THAN ITS OWN PX IS DRAWN SMOOTH ═══
@@ -153,7 +149,11 @@ export const WALK_MASKS_ENABLED = false;
  *  inferred -- the exact case the paragraph above says this Set exists for.
  *  Nothing else is switched on: every other mask in WALKABILITY_MAPS is still
  *  a hue-derived one and stays off. */
-const WALK_MASK_ZONES = new Set(['worldview']);
+/* v2.3.4802: EMPTY -- the old World View's mask was fetched on every boot
+   (185 KB) and the Wheel's own grid replaced it on the first frame, since the
+   World View became the Wheel (worldTrial.js, v2.3.2990); with the old map
+   gone nothing reads it. */
+const WALK_MASK_ZONES = new Set([]);
 
 /** Per-zone walkability JSON.  Each url returns
  *  `{ width, height, grid: bool[h][w] }` where grid[ty][tx]=false marks
@@ -162,27 +162,6 @@ const WALK_MASK_ZONES = new Set(['worldview']);
  *  IMAGE_ZONE_MAPS entry but NO walkability JSON, isSolid() defaults
  *  it to fully walkable. */
 export const WALKABILITY_MAPS = {
-  /* ═══ v2.3.2076: THE WHOLE WORLD VIEW, TRACED BY THE OWNER ═══
-     Owner, over a screenshot of the overworld with magenta drawn across it:
-     "Actually just use this for walkability. Can't walk through pinkish
-     lines."  v2.3.2075 did the same for the town ring alone; this drawing is
-     the entire playable boundary -- mountain feet, the volcano's skirt, the
-     canyon rim, the cave mouth, the dead wood, the shore -- and supersedes it.
-
-     THE OWNER'S LINE IS THE MASK.  Lifted straight out of the annotated image
-     by tools/maps/build_worldview_walk.py rather than derived from the art by
-     hue -- which is the approach this file already tried and the owner already
-     rejected ("the areas you detected for the map are too unreliable",
-     v2.3.1794).  A drawn boundary classifies by intent, so there is nothing to
-     tune and nothing to re-tune when the art changes.
-
-     The generator refuses to write a mask that fails three checks: the arrival
-     is off the line with room around it, EVERY live trail-head is still
-     walkable to from it (a boundary that closes a trail is a zone you can
-     never enter again, and nothing else in the game would notice), and the
-     boundary HOLDS -- the sky and the open sea have to stay on the far side of
-     it.  The playable area comes out at 36% of the map. */
-  worldview: '/maps/worldview_v4.walk.json',
   /* Generated from a ChatGPT-painted magenta=blocked mask via
      tools/mask-to-walkable.mjs (64x64 grid). Authoritative collision for
      the new cove town -- blocks cliffs + ocean, replaces the stale
@@ -197,18 +176,9 @@ export const WALKABILITY_MAPS = {
      ring is a single traced outline in src/data/townRim.js, stamped into the
      prop grid by spriteSheets.js.  This per-pixel mask stays off. */
   town: '/maps/town_v17.walk.json',
-  meadow: '/maps/meadow_v6.walk.json',
-  frost: '/maps/frost_v5.walk.json',   /* note: north ice flat over-blocked by the mask; repaint to open it */
-  tidal: '/maps/tidal_v6.walk.json',   /* note: mask covered rocks only -- open sea + deep pools still walkable, needs a water pass */
-  mist: '/maps/mist_v5.walk.json',
-  sky: '/maps/sky_v5.walk.json',
-  hollows: '/maps/hollows_v6.walk.json',   /* dark cave: formations block, dark rock floor walkable */
-  ember: '/maps/ember_v6.walk.json',   /* note: translucent magenta over lava may leak a few walkable lava spots */
-  thunder: '/maps/thunder_v5.walk.json',   /* dense machinery -> walkable is mostly the central path corridor */
+  /* v2.3.4802: the old World View's and the nine old lands' masks went with the old map */
   /* v2.3.3136: farm_home has none -- its barn, props, trees and edge stop your
      boots through the farm's own blockers (rendering/farmWorld.js) */
-  verdant: '/maps/verdant_v1.walk.json',
-  // worldview: '/maps/worldview_v1.walk.json',   /* v2.3.1359: DISABLED — the v1 mask was painted for the old art's trails and misaligns on worldview_v2 (and on v4, which shares its layout); fully walkable until one is painted (same posture as the town mask above) */
 };
 
 /** v2.3.1405: which zone maps are currently decoded + resident in the Pixi
