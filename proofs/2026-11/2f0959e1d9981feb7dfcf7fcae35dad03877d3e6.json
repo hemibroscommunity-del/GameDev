@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "2f0959e1d9981feb7dfcf7fcae35dad03877d3e6",
+  "tree": "ea2cd4e82b2693ab10311975e933f708a322da13",
+  "committedAt": "2026-11-11T10:33:44-08:00",
+  "subject": "Merge pull request #1553 from hemibroscommunity-del/claude/gifted-euler-c20tgo-refusal-guard",
+  "files": 8020,
+  "bytes": 967333410,
+  "listingSha256": "bb66e415ccd56ddbc6849863e4a235d9ae91db1fa3b5c93ef118311d6ef6d4db",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

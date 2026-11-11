@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "21361e780761107ae282a23aae537e13a2dc2687",
+  "tree": "c22d3c9556b235424479c569a16c01d34dc9b5db",
+  "committedAt": "2026-11-11T10:33:41-08:00",
+  "subject": "Merge pull request #1550 from hemibroscommunity-del/claude/gifted-euler-c20tgo-picture-load-guard",
+  "files": 8017,
+  "bytes": 967271858,
+  "listingSha256": "f27f39076896d7d63362791a07e5d69531af2d54a17c7b714b7454eaeab799f2",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

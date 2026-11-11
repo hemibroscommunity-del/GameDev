@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "a0a41c1e7940d2bfcd2460f0431ec8a42056cf7b",
+  "tree": "d9210522d4972acd34b55426dbb5302c9dfee9b5",
+  "committedAt": "2026-11-11T10:33:30-08:00",
+  "subject": "Merge pull request #1552 from hemibroscommunity-del/claude/gifted-euler-c20tgo-arena-stake-onewrite",
+  "files": 8013,
+  "bytes": 967164930,
+  "listingSha256": "fbdfbf675062205a897e0da04e6595d3dde8e6b698c7e648f2107c8bc4429612",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
