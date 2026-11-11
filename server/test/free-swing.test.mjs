@@ -17,7 +17,7 @@
  *      the floor of 1 cannot be farmed;
  *   7. a swing's other targets take its share, each once;
  *   8. the bonus: only with the phone's ask AND `freeswingbonus`, only a
- *      perfect strike (v2.3.4610: a swing timed to the full cycle; a full
+ *      perfect strike (v2.3.4615: a swing timed to the full cycle; a full
  *      swing after a rest is an ordinary full hit -- perfect-strike.test has
  *      the window), never on a player;
  *   9. a paid special swing is untouched and counted as a swing;
@@ -334,10 +334,10 @@ check('12. a new character\'s sword cycle is the untried 600 ms', cycle === 600,
   arm(A); arm(J2); arm(C);
   const D = swingFor(A, m, 600, 0).dmg;
   const m2 = monster(J2, 40);
-  /* v2.3.4610: a full swing after a rest is an ordinary full hit now; the
+  /* v2.3.4615: a full swing after a rest is an ordinary full hit now; the
      bonus is a perfect strike's -- a swing a full cycle after the last */
   const Drest = swingFor(J2, m2, 600, 0).dmg;
-  check('8. v2.3.4610: a full swing after a rest, from a phone that asked, is an ordinary full hit', Drest === D, { D, Drest });
+  check('8. v2.3.4615: a full swing after a rest, from a phone that asked, is an ordinary full hit', Drest === D, { D, Drest });
   T -= 10000 - 600; home(J2, m2);   /* swingFor left the clock 10 s on: a cycle after its swing */
   const Db = hit(J2, m2, { sw: 97 });
   check('8. a perfect strike (a full cycle after the last swing) from a phone that asked for the bonus is 12% harder', Db === Math.floor(D * 1.12) || Db === Math.round(D * 1.12), { D, Db });
@@ -481,7 +481,7 @@ check('12. a new character\'s sword cycle is the untried 600 ms', cycle === 600,
   T += 200;
   hit(A, ms[0], { sw: 78 });
   check('12. a new swing forgets the last one\'s targets', A.ps._fs.ids.size === 1);
-  check('12. the state is seven fields on the player (gone with the player; v2.3.4610: + the perfect strike\'s)', Object.keys(A.ps._fs).length === 7, Object.keys(A.ps._fs));
+  check('12. the state is seven fields on the player (gone with the player; v2.3.4615: + the perfect strike\'s)', Object.keys(A.ps._fs).length === 7, Object.keys(A.ps._fs));
   /* the Speed stat */
   const ps = A.ps;
   const was = ps.prog3 && ps.prog3.atk ? JSON.parse(JSON.stringify(ps.prog3.atk)) : null;
