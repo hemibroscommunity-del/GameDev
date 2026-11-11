@@ -7,12 +7,12 @@
    standard → dungeonClears unlock, next-depth warp, endgame-zone flag
    on core clear).
    Liveness: the CUSTOM dungeon path is reachable in play (Dungeon
-   Workshop). The STANDARD path is dormant — zone-dungeon entry via
-   tile 10 has been disabled since v2.3.54 (see zoneTransitions.js).
+   Workshop). v2.3.4655: the STANDARD (depth-tier) path is deleted -- its
+   only way in, the tile-10 entrance, was off from v2.3.54 and is gone too.
    deps = { stateRef, setRpgState }: the 3s return-home setTimeouts
    re-read stateRef.current (not the frame's S) exactly like the inline
    code did; setRpgState publishes reward state to React. */
-import { ZONES, TILE, ELEMENTS, DEPTH_CONFIG, BT_AUDIO, createMonster, createDefaultCompStats, updateZoneDimensions, generateZoneMap, spawnMonstersForZone, spawnGatherNodes } from '@/data/index.js';
+import { ZONES, TILE, BT_AUDIO, createMonster, createDefaultCompStats, updateZoneDimensions, generateZoneMap } from '@/data/index.js';   /* v2.3.4655: the standard dungeon's imports went with it */
 import { _objectSpread } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -110,46 +110,9 @@ export function updateDungeonWaves(S, deps) {
                     holdFarmUntilReady(st);
                   }, 3000);
                 }
-              } else {
-                /* Standard dungeon boss */
-                var _zone3 = ZONES[S._dungeonZone];
-                var _nextDepth2 = {
-                  shallow: 'mid',
-                  mid: 'deep',
-                  deep: 'abyss',
-                  abyss: 'core'
-                }[S._dungeonDepth];
-                var _dc3 = DEPTH_CONFIG[_nextDepth2];
-                var bossLvl = _zone3.level[0] + _dc3.levelMod + 10;
-                var _boss = createMonster('boss-0', 'brute', bossLvl, Math.floor(_dW / 2) * TILE, Math.floor(_dH / 3) * TILE, _zone3.element);
-                _boss.hp *= 8;
-                _boss.maxHp = _boss.hp;
-                _boss.curHp = _boss.hp;
-                _boss.dmg = Math.ceil(_boss.dmg * 2);
-                _boss.emoji = '🐉';
-                _boss.color = '#ff5e6c';
-                _boss._isBoss = true;
-                _boss._bossSize = 2.5;
-                _boss._invulnerable = true;
-                _boss._attackPhase = 'idle';
-                _boss._phaseTimer = Date.now() + 2000;
-                _boss._attackPattern = 0;
-                var depthIdx = _dc3.depthIdx || 0;
-                _boss._bossAbilities = ['slam', 'charge'];
-                if (depthIdx >= 1) _boss._bossAbilities.push('summon');
-                if (depthIdx >= 2) _boss._bossAbilities.push('sweep');
-                if (depthIdx >= 3) _boss._bossAbilities.push('enrage');
-                _boss._nextAbility = Date.now() + 3000;
-                _boss._abilityInterval = Math.max(3000, 6000 - depthIdx * 800);
-                S.monsters = [_boss];
-                pushDmgPopup(S, P.x, P.y - 50, 'BOSS FIGHT!', '#ff5e6c');
-                pushDmgPopup(S, P.x, P.y - 35, 'Dodge attacks to expose weakness!', '#fbbf24');
-                BT_AUDIO.beep(100, 0.25, 0.3, 'sawtooth');
-                setTimeout(function () {
-                  return BT_AUDIO.beep(80, 0.3, 0.35, 'sawtooth');
-                }, 150);
-                S.screenShake = 8;
               }
+                /* v2.3.4655: the standard (depth-tier) dungeon's boss went here: only the
+                   tile-10 entrance (never on since v2.3.54) ever started one */
             } else if (S._dungeonBossSpawned) {
               /* Boss killed — dungeon complete! */
               S._dungeonComplete = true;
@@ -196,68 +159,9 @@ export function updateDungeonWaves(S, deps) {
                   st._zoneWipe = Date.now();
                   holdFarmUntilReady(st);
                 }, 3000);
-              } else {
-                var _DEPTH_CONFIG$_nextDe, _DEPTH_CONFIG$_nextDe2;
-                var _nextDepth3 = {
-                  shallow: 'mid',
-                  mid: 'deep',
-                  deep: 'abyss',
-                  abyss: 'core'
-                }[S._dungeonDepth];
-                var _clearKey = S._dungeonZone + '_' + S._dungeonDepth;
-                if (!S.rpg.lifeSkills.dungeonClears) S.rpg.lifeSkills.dungeonClears = {};
-                S.rpg.lifeSkills.dungeonClears[_clearKey] = true;
-                /* Bonus rewards */
-                var _bonusGold2 = 100 * (((_DEPTH_CONFIG$_nextDe = DEPTH_CONFIG[_nextDepth3]) === null || _DEPTH_CONFIG$_nextDe === void 0 ? void 0 : _DEPTH_CONFIG$_nextDe.depthIdx) || 1);
-                var _bonusXp2 = 200 * (((_DEPTH_CONFIG$_nextDe2 = DEPTH_CONFIG[_nextDepth3]) === null || _DEPTH_CONFIG$_nextDe2 === void 0 ? void 0 : _DEPTH_CONFIG$_nextDe2.depthIdx) || 1);
-                S.rpg.coins += _bonusGold2;
-                S.rpg.xp += _bonusXp2;
-                if (S.rpg._compStats) S.rpg._compStats.totalGoldEarned += _bonusGold2;
-                pushDmgPopup(S, P.x, P.y - 60, 'DUNGEON CLEARED!', '#f5c542');
-                pushDmgPopup(S, P.x, P.y - 45, '+' + _bonusGold2 + 'G +' + _bonusXp2 + 'XP', '#f5c542');
-                pushDmgPopup(S, P.x, P.y - 30, _nextDepth3.toUpperCase() + ' depth unlocked!', '#a855f7');
-                /* ═══ SHADOW/RADIANT CONVERGENCE — clearing core unlocks endgame zones ═══ */
-                if (_nextDepth3 === 'core' || S._dungeonDepth === 'core') {
-                  pushDmgPopup(S, P.x, P.y - 15, 'Shadow & Radiant zones revealed!', '#F1C40F');
-                  if (!S.rpg._questFlags) S.rpg._questFlags = {};
-                  S.rpg._questFlags.endgameUnlocked = true;
-                }
-                BT_AUDIO.levelUp();
-                S.screenShake = 10;
-                setRpgState(_objectSpread({}, S.rpg));
-                try {
-                  localStorage.setItem('bt_rpg', JSON.stringify(S.rpg));
-                } catch (e) {}
-                /* Return to zone at NEXT depth after 3 seconds */
-                setTimeout(function () {
-                  var _ELEMENTS$zn$element2;
-                  var st = stateRef.current;
-                  st._inDungeon = false;
-                  var zn = ZONES[st._dungeonZone];
-                  st._currentDepth = _nextDepth3;
-                  /* Generate fresh zone at the new deeper depth */
-                  st.map = generateZoneMap(st._dungeonZone);
-                  var dc = DEPTH_CONFIG[_nextDepth3];
-                  globalThis.TOWN_W = zn.w * TILE;
-                  globalThis.TOWN_H = zn.h * TILE;
-                  globalThis.COLS = zn.w;
-                  globalThis.ROWS = zn.h;
-                  st.monsters = spawnMonstersForZone(zn, (dc === null || dc === void 0 ? void 0 : dc.levelMod) || 0);
-                  st.gatherNodes = spawnGatherNodes(st._dungeonZone, _nextDepth3);
-                  st.groundLoot = [];
-                  st.hitParticles = [];
-                  st.deathExplosions = [];
-                  st.arrows = [];
-                  st._ambientParticles = [];
-                  /* Spawn player at center of new depth zone */
-                  st.player.x = zn.w / 2 * TILE;
-                  st.player.y = (zn.h - 3) * TILE;
-                  st._zoneWipe = Date.now();
-                  var lvlRange = dc.lvlRange || [1, 10];
-                  pushDmgPopup(st, st.player.x, st.player.y - 40, zn.name + ' - ' + _nextDepth3.toUpperCase(), ((_ELEMENTS$zn$element2 = ELEMENTS[zn.element]) === null || _ELEMENTS$zn$element2 === void 0 ? void 0 : _ELEMENTS$zn$element2.color) || '#fff');
-                  pushDmgPopup(st, st.player.x, st.player.y - 25, 'Lv ' + lvlRange[0] + '-' + lvlRange[1], 'rgba(255,255,255,.5)');
-                }, 3000);
-              } /* end standard dungeon completion */
+              }
+                /* v2.3.4655: the standard dungeon's completion went here (the next depth, the
+                   Shadow & Radiant unlock): unreachable, as above */
             } else if (S._dungeonWave < S._dungeonMaxWaves) {
               /* Spawn next wave */
               var _dW2 = S.map[0].length,
@@ -280,29 +184,8 @@ export function updateDungeonWaves(S, deps) {
                     S.monsters.push(_m2);
                   }
                 });
-              } else {
-                /* Standard dungeon wave */
-                var _zone4 = ZONES[S._dungeonZone];
-                var _nextDepth4 = {
-                  shallow: 'mid',
-                  mid: 'deep',
-                  deep: 'abyss',
-                  abyss: 'core'
-                }[S._dungeonDepth];
-                var _dc4 = DEPTH_CONFIG[_nextDepth4];
-                var _waveLvl = _zone4.level[0] + _dc4.levelMod + S._dungeonWave * 2;
-                var _waveArchs2 = ['fodder', 'swarm', 'brute', 'sentinel', 'volatile', 'hexer', 'stalker'];
-                var waveSize = 4 + S._dungeonWave + Math.floor(Math.random() * 2);
-                for (var _wi2 = 0; _wi2 < waveSize; _wi2++) {
-                  var _arch2 = _waveArchs2[Math.floor(Math.random() * _waveArchs2.length)];
-                  var _mx2 = (3 + Math.random() * (_dW2 - 6)) * TILE;
-                  var _my2 = (2 + Math.random() * (_dH2 / 2 - 2)) * TILE;
-                  var _m3 = createMonster('dw-' + S._dungeonWave + '-' + _wi2, _arch2, _waveLvl, _mx2, _my2, _zone4.element);
-                  _m3.curHp = _m3.hp;
-                  _m3.type = _arch2;
-                  S.monsters.push(_m3);
-                }
               }
+                /* v2.3.4655: the standard dungeon's next wave went here: unreachable, as above */
               pushDmgPopup(S, P.x, P.y - 40, 'Wave ' + (S._dungeonWave + 1) + '/' + S._dungeonMaxWaves, '#ff5e6c');
               BT_AUDIO.beep(300, 0.1, 0.15, 'sawtooth');
               S.screenShake = 4;

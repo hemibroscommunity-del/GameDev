@@ -235,7 +235,7 @@ const ge = src('src/networking/gameEvents.js');
     });
   }
   check('6a the only writer of the game\'s place is changeZone', writers.length === 1 && /^game\/zoneTransitions\.js:/.test(writers[0]) && /S\.currentZone = to;/.test(writers[0]), writers);
-  for (const [f, n] of [['game/zoneTransitions.js', 4], ['game/wheelDungeons.js', 1], ['game/dungeonWaves.js', 2], ['game/monsterCombat.js', 1], ['ui/BroTown.jsx', 2]]) {
+  for (const [f, n] of [['game/zoneTransitions.js', 4], ['game/wheelDungeons.js', 1], ['game/dungeonWaves.js', 2], ['game/monsterCombat.js', 1]]) {   /* v2.3.4655: BroTown.jsx's two (the Dark Sanctum and Light Summit buttons) went with the buttons, which could never show */
     const t = readFileSync(new URL(f, root), 'utf8');
     const got = (t.match(/\bchangeZone\((S|S2|st), /g) || []).length;
     check('6b ' + f + ' changes place through changeZone (' + n + ')', got >= n, got);

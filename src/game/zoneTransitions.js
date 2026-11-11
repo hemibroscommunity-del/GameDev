@@ -6,8 +6,7 @@
      at shallow depth, with spawn placement, monster push-back, and tile 9/10
      remap + path carving per entry direction;
    - combat-zone tile 9 → return to town at the exit you left from;
-   - dungeon entrance tile 10 (DISABLED since v2.3.54 — the `if (false &&`
-     gate is preserved verbatim, flip to `tile === 10` to re-enable);
+   - (v2.3.4655: the tile-10 dungeon entrance, disabled since v2.3.54, is gone);
    - dungeon exit tile 9 → return to the combat zone at current depth.
    Closure captures made explicit via imports below (never the globalThis
    copies). Frame-scope values arrive as arguments:
@@ -19,7 +18,7 @@
      intentionally sees the pre-transition zone);
    - W/H: CSS-pixel canvas size for the camera snap.
    S is stateRef.current; P is S.player (same object the loop mutates). */
-import { TILE, ZONES, ELEMENTS, TOWN_EXITS, WORLDVIEW_EXITS, WORLDVIEW_ARRIVAL, DEPTH_CONFIG, BT_AUDIO, updateZoneDimensions, discoverZone, generateZoneMap, spawnMonstersForZone, spawnGatherNodes, createMonster } from '@/data/index.js';
+import { TILE, ZONES, ELEMENTS, TOWN_EXITS, WORLDVIEW_EXITS, WORLDVIEW_ARRIVAL, DEPTH_CONFIG, BT_AUDIO, updateZoneDimensions, discoverZone, generateZoneMap, spawnMonstersForZone, spawnGatherNodes } from '@/data/index.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: in and out of a dungeon, heard */
 import { zoneUnlockQuest } from '@/game/questRoute.js'; /* v2.3.1817: which quest opens a zone */
 import { perfTracker } from '@/debug/perfTracker.js';
@@ -1346,167 +1345,9 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
           }
         }
 
-        /* Dungeon entrance — tile 10 */
-        if (S.map && ptx >= 0 && pty >= 0 && pty < _zone.h && ptx < _zone.w) {
-          var _S$map$pty;
-          var tile = (_S$map$pty = S.map[pty]) === null || _S$map$pty === void 0 ? void 0 : _S$map$pty[ptx];
-          /* Dungeon entry disabled v2.3.54 per user request -- the
-             depth-tier dungeons aren't ready for play yet so the
-             tile-10 trigger no-ops.  Flip this to `tile === 10` to
-             re-enable.  Generated maps still place tile 10 at the
-             far edge but stepping on it does nothing now. */
-          if (false && tile === 10 && S.currentZone !== 'town' && !S._inDungeon) {
-            var _S$rpg6;
-            /* §14.1 Dungeon entrance — find deepest accessible depth */
-            var currentDepth = S._currentDepth || 'shallow';
-            var depthOrder = ['shallow', 'mid', 'deep', 'abyss', 'core'];
-            var currentIdx = depthOrder.indexOf(currentDepth);
-            var clearKey = S.currentZone + '_' + currentDepth;
-            var isCleared = (_S$rpg6 = S.rpg) === null || _S$rpg6 === void 0 || (_S$rpg6 = _S$rpg6.lifeSkills) === null || _S$rpg6 === void 0 || (_S$rpg6 = _S$rpg6.dungeonClears) === null || _S$rpg6 === void 0 ? void 0 : _S$rpg6[clearKey];
-            if (currentIdx >= depthOrder.length - 1 && isCleared) {
-              /* Core is cleared — zone fully done */
-              pushDmgPopup(S, P.x, P.y - 30, 'Zone fully cleared!', '#3dd497');
-            } else if (isCleared) {
-              var _ELEMENTS$zn$element;
-              /* Current depth already cleared — warp to next depth zone (skip dungeon) */
-              var nextDepth = depthOrder[currentIdx + 1];
-              S._currentDepth = nextDepth;
-              var dc = DEPTH_CONFIG[nextDepth];
-              var zn = ZONES[S.currentZone];
-              S.map = generateZoneMap(S.currentZone);
-              if(!S._serverMonsters) S.monsters = spawnMonstersForZone(zn, (dc === null || dc === void 0 ? void 0 : dc.levelMod) || 0);
-              if (!S._serverGatherNodes) S.gatherNodes = spawnGatherNodes(S.currentZone, nextDepth);
-              onZoneEntered(S, S.currentZone); /* v2.3.1301: node self-heal */
-              P.x = zn.w / 2 * TILE;
-              P.y = (zn.h - 3) * TILE;
-              S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
-              S.hitParticles = [];
-              S.deathExplosions = [];
-              S.arrows = [];
-              S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */
-              clearZoneLocalFx(S); /* v2.3.1748: campfire / in-flight action / peer arrows */
-              /* v2.3.1710 (owner: "locking on a monster (tap to target) continues
-                 to follow the monster even when you exit the zone").  Same class
-                 of leak as the slime orbs above and fixed in the same place: the
-                 lock holds a direct REF to a monster object from the zone you
-                 just left, so the reticle, the aim assist (playerActions aims at
-                 the locked target instead of the stick) and the auto-attack all
-                 keep pointing at a monster that is not in this zone — and it
-                 never self-clears, because the only teardown is "the target
-                 died" (monsterCombat) and a monster you walked away from is
-                 still alive.  Cleared on EVERY zone change rather than at one
-                 call site: there are five wipe blocks in this file (hub exit,
-                 spoke return, dungeon entry/exit) and a lock surviving any one
-                 of them is the same bug. */
-              S.lockedTarget = null;
-              S._ambientParticles = [];
-              S._zoneWipe = Date.now();
-              var lvlRange = dc.lvlRange || [1, 10];
-              pushDmgPopup(S, P.x, P.y - 40, zn.name + ' - ' + nextDepth.toUpperCase(), ((_ELEMENTS$zn$element = ELEMENTS[zn.element]) === null || _ELEMENTS$zn$element === void 0 ? void 0 : _ELEMENTS$zn$element.color) || '#fff');
-              pushDmgPopup(S, P.x, P.y - 25, 'Lv ' + lvlRange[0] + '-' + lvlRange[1], 'rgba(255,255,255,.5)');
-              BT_AUDIO.beep(500, 0.08, 0.1, 'sine');
-            } else {
-              /* Current depth NOT cleared — enter dungeon fight! */
-              var nextDepthMap = {
-                shallow: 'mid',
-                mid: 'deep',
-                deep: 'abyss',
-                abyss: 'core'
-              };
-              var _nextDepth = nextDepthMap[currentDepth];
-              /* Enter dungeon! */
-              S._inDungeon = true;
-              S._dungeonZone = S.currentZone;
-              S._dungeonDepth = currentDepth;
-              S._dungeonWave = 0;
-              S._dungeonMaxWaves = 3 + DEPTH_CONFIG[_nextDepth].depthIdx;
-              S._dungeonBossSpawned = false;
-              S._dungeonComplete = false;
-              S._preDungeonPos = {
-                x: P.x,
-                y: P.y
-              };
-
-              /* Generate small dungeon arena */
-              var dW = 25,
-                dH = 20;
-              S._preDungeonMap = S.map;
-              S._preDungeonMonsters = S.monsters;
-              S._preDungeonNodes = S.gatherNodes;
-              var dMap = Array.from({
-                length: dH
-              }, function () {
-                return Array(dW).fill(0);
-              });
-              /* Walls around edge */
-              for (var x = 0; x < dW; x++) {
-                dMap[0][x] = 7;
-                dMap[dH - 1][x] = 7;
-              }
-              for (var y = 0; y < dH; y++) {
-                dMap[y][0] = 7;
-                dMap[y][dW - 1] = 7;
-              }
-              /* Path cross */
-              var dMX = Math.floor(dW / 2),
-                dMY = Math.floor(dH / 2);
-              for (var _x17 = 1; _x17 < dW - 1; _x17++) dMap[dMY][_x17] = 1;
-              for (var _y15 = 1; _y15 < dH - 1; _y15++) dMap[_y15][dMX] = 1;
-              S.map = dMap;
-              /* Add exit tile at bottom of dungeon (tile 9 = return) */
-              dMap[dH - 1][dMX] = 9;
-              dMap[dH - 1][dMX + 1] = 9;
-              globalThis.TOWN_W = dW * TILE;
-              globalThis.TOWN_H = dH * TILE;
-              globalThis.COLS = dW;
-              globalThis.ROWS = dH;
-              S.monsters = [];
-              S.gatherNodes = [];
-              S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
-              S.hitParticles = [];
-              S.deathExplosions = [];
-              S.arrows = [];
-              S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */
-              clearZoneLocalFx(S); /* v2.3.1748: campfire / in-flight action / peer arrows */
-              /* v2.3.1710 (owner: "locking on a monster (tap to target) continues
-                 to follow the monster even when you exit the zone").  Same class
-                 of leak as the slime orbs above and fixed in the same place: the
-                 lock holds a direct REF to a monster object from the zone you
-                 just left, so the reticle, the aim assist (playerActions aims at
-                 the locked target instead of the stick) and the auto-attack all
-                 keep pointing at a monster that is not in this zone — and it
-                 never self-clears, because the only teardown is "the target
-                 died" (monsterCombat) and a monster you walked away from is
-                 still alive.  Cleared on EVERY zone change rather than at one
-                 call site: there are five wipe blocks in this file (hub exit,
-                 spoke return, dungeon entry/exit) and a lock surviving any one
-                 of them is the same bug. */
-              S.lockedTarget = null;
-              P.x = dMX * TILE;
-              P.y = (dH - 3) * TILE;
-
-              /* Spawn first wave */
-              var _zone2 = ZONES[S.currentZone];
-              var _dc = DEPTH_CONFIG[_nextDepth];
-              var waveLvl = _zone2.level[0] + _dc.levelMod;
-              var waveArchs = ['fodder', 'swarm', 'brute', 'sentinel', 'volatile', 'hexer', 'stalker'];
-              for (var wi = 0; wi < 4 + S._dungeonWave; wi++) {
-                var _arch = waveArchs[Math.floor(Math.random() * waveArchs.length)];
-                var mx = (3 + Math.random() * (dW - 6)) * TILE;
-                var my = (2 + Math.random() * (dH / 2 - 2)) * TILE;
-                var m = createMonster('dw-0-' + wi, _arch, waveLvl + Math.floor(Math.random() * 5), mx, my, _zone2.element);
-                m.curHp = m.hp;
-                m.type = _arch;
-                S.monsters.push(m);
-              }
-              pushDmgPopup(S, P.x, P.y - 40, 'DUNGEON: Wave 1/' + S._dungeonMaxWaves, '#ff5e6c');
-              BT_AUDIO.beep(200, 0.15, 0.2, 'sawtooth');
-              setTimeout(function () {
-                return BT_AUDIO.beep(150, 0.2, 0.25, 'sawtooth');
-              }, 100);
-            }
-          }
-        }
+        /* v2.3.4655: the dungeon entrance on tile 10 went here, behind `if (false &&`
+           since v2.3.54 (the depth-tier dungeons were never opened); Wheel dungeons
+           have their own mouths (game/wheelDungeons.js). */
 
         /* ═══ DUNGEON EXIT — tile 9 in dungeon returns to zone ═══ */
         if (S._inDungeon && S.map && ptx >= 0 && pty >= 0) {
