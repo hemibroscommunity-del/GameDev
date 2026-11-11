@@ -436,7 +436,12 @@ export const tickMethods = {
           /* v2.3.4505: the prune waits while the General Store has a sale a
              restart caught half done (market.js _mktSettleWait): the stamps
              it would delete are what says which legs were paid */
-          if (!(this._mktSettleWait && this._mktSettleWait())) this._opPruneMaybe(nowJp).catch(() => {});
+          /* v2.3.4842: and while the Auction House's shelf has not been
+             rebuilt since the restart (store.js _stSettleWait): both are
+             asked, so both heals start in the same slot */
+          const _mktWait = !!(this._mktSettleWait && this._mktSettleWait());
+          const _stWait = !!(this._stSettleWait && this._stSettleWait());
+          if (!_mktWait && !_stWait) this._opPruneMaybe(nowJp).catch(() => {});
           this._metricsMaybe(nowJp).catch(() => {});
         }
         /* v2.3.3140: the daily quests' counted progress is written here at
