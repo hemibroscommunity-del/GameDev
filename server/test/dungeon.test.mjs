@@ -117,7 +117,7 @@ async function join(ws, id) {
 }
 const start = (ws, config) => room.webSocketMessage(ws, JSON.stringify({ type: 'dungeon_start', payload: { config } }));
 const move = (ws, z) => room.webSocketMessage(ws, JSON.stringify({ type: 'move', x: 100, y: 100, z }));
-/* v2.3.4565: a second player comes into a run by the dungeon_started the
+/* v2.3.4620: a second player comes into a run by the dungeon_started the
    leader's pull sends them, which gives the run's pass (dungeon.js
    _dungeonPullPartyMembers; zonejudge.js) -- given here as the pull would */
 const invite = (pid, z) => room._zonePassGive(room._dungeons.get(z.slice('dungeon:'.length)), pid, Date.now());

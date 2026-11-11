@@ -16,6 +16,8 @@
  *   1. the Wheel's own pictures in, in BroTown (guard): the lands' banner
  *      strips, the buildings' pictures, the signposts' icons;
  *   2. out at the Flame Fields' first monsters, their look loaded (guard);
+ *      v2.3.4620: then back just inside the safe ground's edge, the look
+ *      still loaded -- the farm trip is the safe ground's (zonejudge.js);
  *   3. the Feed & Seed's "Visit Your Farm" (a real touch) takes you onto the
  *      farm, all of it drawn (guard);
  *   4. ON THE FARM, NONE OF THE WHEEL'S PICTURES ARE HELD: no banner strip,
@@ -100,6 +102,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const looks = Object.keys((out && out.bundles) || {});
     mem.wilds = out;
     rec.ok(`2. at the Flame Fields' first monsters, their look loaded: ${looks.join(', ') || 'none'} (guard)`, looks.length >= 1, out);
+    /* v2.3.4620: the farm trip is taken from the safe ground, where the
+       Feed & Seed's door is -- the worker refuses a way out of the world
+       from anywhere else (server/src/zonejudge.js).  A few steps back
+       toward BroTown, just inside its edge: the first stretch's monsters
+       stand a few hundred px outside it, so their look stays loaded */
+    const { WHEEL_CENTRE, WHEEL_SAFE_R } = await import(H.REPO + '/server/src/wheelspawns.js');
+    const ra = Math.hypot(at[0] - WHEEL_CENTRE[0], at[1] - WHEEL_CENTRE[1]);
+    const ke = (WHEEL_SAFE_R - 150) / ra;
+    await H.glideTo(A, WHEEL_CENTRE[0] + (at[0] - WHEEL_CENTRE[0]) * ke, WHEEL_CENTRE[1] + (at[1] - WHEEL_CENTRE[1]) * ke, { speed: 450, timeoutMs: 60000 });
+    const edge = await until(() => held(A), (h) => looks.every((k) => h.bundles && h.bundles[k]), 15000);
+    rec.ok(`2b. back on the safe ground's edge, their look still loaded (guard)`, !!edge && looks.every((k) => edge.bundles && edge.bundles[k]), edge && edge.bundles);
 
     /* ── 3. the Feed & Seed's "Visit Your Farm", a real touch ── */
     await A.page.evaluate(() => { try { window._uiPanels.building('farm'); } catch (e) { /* the check says */ } });

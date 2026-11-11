@@ -140,7 +140,7 @@ room._liveFlags = {};
 let Z = null;
 {
   H.z = 'town'; H.x = 1000; H.y = 1000; H.level = 10;
-  /* v2.3.4565: a second player comes into a run by its dungeon_started --
+  /* v2.3.4620: a second player comes into a run by its dungeon_started --
      the leader's pull -- and no other way (zonejudge.js): V is in H's party,
      beside H as the run opens */
   V.z = 'town'; V.x = 1010; V.y = 1000;
@@ -182,7 +182,7 @@ let Z = null;
   check('3k. ...and the respawn puts them in town', !H2.dying && H2.z === 'town', { z: H2.z, dying: H2.dying });
 
   /* the way back out of a live run, by its exit */
-  /* v2.3.4565: the worker puts H back in it -- a death comes back to the
+  /* v2.3.4620: the worker puts H back in it -- a death comes back to the
      Wheel's arrival, and the run's pass was used by the first step in
      (zonejudge.js) */
   H2.z = Z; H2.x = 100; H2.y = 100;
@@ -194,7 +194,7 @@ let Z = null;
 room._liveFlags = {};
 {
   const H2 = room.playerState.bp_dl_h;
-  H2.z = Z; H2.x = 100; H2.y = 100;   /* v2.3.4565: placed, as 3l */
+  H2.z = Z; H2.x = 100; H2.y = 100;   /* v2.3.4620: placed, as 3l */
   check('4a. (setup) in the live run', H2.z === Z);
   room._dungeonCleanup(room._dungeons.get(Z.slice(8)));    /* swept with them inside */
   check('4b. (setup) the run is gone, and its lists', !room._dungeons.has(Z.slice(8)) && !hasKeys(Z));
@@ -224,7 +224,7 @@ heal();
   const FAKE = 'dungeon:old_way';
   V.z = 'wheel'; V._zoneEntryGraceUntil = 0;
   V._entryGraceAt = 0;   /* v2.3.4454: no grace given in the last 10 s (movement.js _entryGraceGive) */
-  /* v2.3.4565: a step into any run needs the pass its dungeon_started gave
+  /* v2.3.4620: a step into any run needs the pass its dungeon_started gave
      (zonejudge.js), and an invented one has none: this switch alone no
      longer opens it.  The way before both is both switches thrown. */
   check('5a0. `dungeonlive: false` alone: the invented dungeon is still refused (no pass: zonejudge)', !(await move('bp_dl_v', FAKE)) && V.z === 'wheel', { z: V.z });

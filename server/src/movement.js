@@ -77,7 +77,7 @@ export const ROLL = Object.freeze({
      - so did the sword's lunge (the worker puts you at contact, and the move
        after it skipped the bound), and so did a trip out of the Wheel and
        straight back in (a zone change is never judged): anywhere at all.
-       (v2.3.4565: a change of place is judged now, zonejudge.js.)
+       (v2.3.4620: a change of place is judged now, zonejudge.js.)
 
    THE BUDGET.  The bound is a budget now (ps._mvBudget, px).  It refills at
    the bound's own speed -- 500 px/s x the speed potion, the move stat and a
@@ -546,7 +546,7 @@ export const movementMethods = {
     /* v2.3.4423: ...and so is a CHANGE into a dungeon nobody opened
        (dungeon.js _dungeonIdDead): no grace stamped, no lists made.  A
        change only, for the same load-bearing reason as the lock's. */
-    /* v2.3.4565: ...and so is a CHANGE the worker has no reason for: into a
+    /* v2.3.4620: ...and so is a CHANGE the worker has no reason for: into a
        run without the pass its dungeon_started gave, or out of the Wheel off
        its safe ground (zonejudge.js) -- a losing fight in No man's land is
        not left by naming another place.  A change only, as above. */
@@ -790,7 +790,7 @@ export const movementMethods = {
       ps.z = newZone;
       /* v2.3.4371: a duel split across zones starts the away clock (duel.js) */
       if (zoneChanged) this._duelZoneMoved(session.id);
-      /* v2.3.4565: a run's pass is used by the step in (zonejudge.js) */
+      /* v2.3.4620: a run's pass is used by the step in (zonejudge.js) */
       if (zoneChanged) this._zonePassUse(session.id, newZone);
       ps.vx = msg.vx || 0; ps.vy = msg.vy || 0;
       /* v2.3.840: persist the sender's 8-way facing + live equip so
@@ -900,7 +900,7 @@ export const movementMethods = {
         // Zone-entry damage immunity: replaces the prior
         // ENTRY_SAFE_RADIUS monster-shove (visually janky
         // teleport) with a grace window where incoming
-        // (v2.3.4565: ZONE_ENTRY_GRACE_MS, 500 ms since index.js's
+        // (v2.3.4620: ZONE_ENTRY_GRACE_MS, 500 ms since index.js's
         // cut -- this note said 1500, the sweep's S3-15)
         // damage to the player is zeroed.  _applyDamage reads
         // ps._zoneEntryGraceUntil and short-circuits to 0 dmg /

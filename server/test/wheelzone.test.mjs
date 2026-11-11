@@ -570,7 +570,7 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
     emberIds.every((id) => he.has(id)) && whole.every((m) => typeof m.x === 'number' && typeof m.y === 'number' && typeof m.hp === 'number' && 'alive' in m),
     { heard: [...he], sample: whole[0] });
   /* out of the Wheel and back: what it had heard is forgotten, and comes in whole again.
-     v2.3.4565: out from the safe ground, where the honest ways out are
+     v2.3.4620: out from the safe ground, where the honest ways out are
      (zonejudge.js): home to the square first, and back in there -- then set
      where they stand at the six again, as above */
   const sq = room._wheelArrival();
