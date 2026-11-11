@@ -32,6 +32,7 @@ import { ICON_URL, RDISC_ICONS, ABILITY_ART_URLS, WPN_PILL_ICONS } from '../ui/p
 import { smallIconDomUrls } from '../data/smallIcons.js';   /* v2.3.3279: the owner's small icons */
 import { quickEatIconUrls } from '../data/foodIcons.js';   /* v2.3.3260: the quick-eat button's food */
 import { OWNER_ICON } from '../data/ownerIcons.js';   /* v2.3.3481: the trade request's handshake */
+import { warmOnce } from './warmOnce.js';   /* v2.3.4652 */
 /* v2.3.3120: the TRAP pop-up's picture (TrapButton.jsx uses the same string)
    v2.3.3281: the owner's box trap (tools/ui/cut-bag-icons.py), no longer the
    Trapping skill's icon -- the same picture in the bag, on the Woodworker's
@@ -40,22 +41,9 @@ export const TRAP_ICON_URL = '/icons/items/trap-box.webp?v=2.3.4222';
 
 const _held = [];
 
-function warm(url) {
-  if (typeof Image === 'undefined') return Promise.resolve(null);
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.decoding = 'async';
-    img.onload = () => {
-      const done = () => { _held.push(img); resolve(img); };
-      if (typeof img.decode === 'function') img.decode().then(done, done);
-      else done();
-    };
-    /* A failed warm must never fail the gate: the <img> falls back to an
-       ordinary fetch when the control shows. */
-    img.onerror = () => resolve(null);
-    img.src = url;
-  });
-}
+/* v2.3.4652: once a page, not once a join (warmOnce.js says why); a failed
+   warm never fails the gate: the picture fetches at use */
+const warm = warmOnce(_held);
 
 export function controlsPreloadUrls() {
   const urls = RDISC_ICONS.map((ic) => ic[1]);

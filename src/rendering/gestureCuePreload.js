@@ -20,25 +20,13 @@
  * an unreferenced decoded image is collectable under memory pressure.
  */
 import { GESTURE_CUE_SPRITES } from '../game/gesturePose.js';
+import { warmOnce } from './warmOnce.js';   /* v2.3.4652 */
 
 const _held = [];
 
-function warm(url) {
-  if (typeof Image === 'undefined') return Promise.resolve(null);
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.decoding = 'async';
-    img.onload = () => {
-      const done = () => { _held.push(img); resolve(img); };
-      if (typeof img.decode === 'function') img.decode().then(done, done);
-      else done();
-    };
-    /* A failed warm must never fail the gate: the <image> falls back to an
-       ordinary fetch when the cue actually shows. */
-    img.onerror = () => resolve(null);
-    img.src = url;
-  });
-}
+/* v2.3.4652: once a page, not once a join (warmOnce.js says why); a failed
+   warm never fails the gate: the picture fetches at use */
+const warm = warmOnce(_held);
 
 export function preloadGestureCue() {
   const urls = [...new Set(Object.values(GESTURE_CUE_SPRITES).map((s) => s.url))];

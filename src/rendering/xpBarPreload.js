@@ -8,24 +8,13 @@
  * you fight, so there is no zone to scope them to.
  */
 import { XP_BAR_ICONS, TOPBAR_LOGO } from '../ui/mobile/xpBarArt.js';
+import { warmOnce } from './warmOnce.js';   /* v2.3.4652 */
 
 const _held = [];
 
-function warm(url) {
-  if (typeof Image === 'undefined') return Promise.resolve(null);
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.decoding = 'async';
-    img.onload = () => {
-      const done = () => { _held.push(img); resolve(img); };
-      if (typeof img.decode === 'function') img.decode().then(done, done);
-      else done();
-    };
-    /* a failed warm never fails the gate: the bar's <img> fetches at use */
-    img.onerror = () => resolve(null);
-    img.src = url;
-  });
-}
+/* v2.3.4652: once a page, not once a join (warmOnce.js says why); a failed
+   warm never fails the gate: the picture fetches at use */
+const warm = warmOnce(_held);
 
 export function preloadXpBar() {
   try {
