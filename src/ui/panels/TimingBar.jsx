@@ -37,11 +37,10 @@
  * minimap's sideways; a computer draws no disc). */
 import React, { useEffect, useRef, useState } from 'react';
 import { mcBarWeapon, mcBarCycle, mcBarTimes, mcBarAttack, timingBarWanted } from '@/game/manualCombat.js';
-import { leftCluster, LCTL_SLOT, ctlBottom } from './ShieldButton.jsx';
+import { leftCluster, LCTL_SLOT, ctlBottom, LBTN } from './ShieldButton.jsx';   /* v2.3.4656: + the disc's own box, to centre on it */
 import { TB_ART, TB_SHEET, TB_HALF_X, TB_RECT } from './timingBarArt.js';
 
 const AIR = 4;           /* v2.3.4625: px clear of Burst and Quick Eat either side */
-const SHOW_MS = 3000;    /* after an attack, it stays this long with nothing near */
 
 /* the mounted bar (one at a time): its root, the last attack it drew, the
    cycle that attack's fill ran over, which keyframes are running */
@@ -76,20 +75,40 @@ function Art({ cls, rect, s, full, mask }) {
  * px each on a phone (2 device px on a 3x iPhone: the sword 78 px tall, 17
  * wide; 1 on a 2x phone: 59 by 13), a step smaller where the gap is
  * narrower, never over a button; one css px each on a computer (117 tall). */
+/* ═══ v2.3.4656: BIG ENOUGH TO SEE THE OWNER'S PICTURE ═══
+ * The owner, 2026-11-11: "It's way too tiny right now"; "the grayed out
+ * version should be shown when empty and the lit up version as it fills
+ * up".  In the 24 px gap between Burst and Quick Eat the sword needed 16.7 px
+ * at 2 device px a pixel and the gap left 16, so it fell to 1 device px a
+ * pixel: 8 by 39 css px on a 390 px iPhone, a sliver.  Upright it stands
+ * ABOVE Burst's place now, still over the movement disc, at one css px a
+ * pixel (25 by 117 for the sword; 3 device px a pixel on a 3x iPhone, whole
+ * and sharp).  Burst's slot is kept whether or not it is drawn, so nothing
+ * sits under the bar.  Sideways, where the screen is short, it stays in the
+ * gap beside Burst (27 px there) at two thirds of that (17 by 78).  A
+ * computer keeps one css px a pixel, right of Burst. */
 export function barBox(isLandscape, fine, rect, dpr) {
   const lc = leftCluster(isLandscape);
-  const burstR = lc.leftPx(LCTL_SLOT.burst) + lc.size;
-  const eatL = lc.leftPx(LCTL_SLOT.eat);
-  const room = fine ? Infinity : (eatL - AIR) - (burstR + AIR);
   const r = dpr > 0 ? dpr : 1;
-  /* a computer's screen is bigger than a phone's: the owner's pixels one css px each there */
-  let k = fine ? Math.max(1, Math.round(r)) : Math.max(1, Math.round(r * 2 / 3));
-  let s = k / r;
-  while (k > 1 && rect.h * s > room) { k -= 1; s = k / r; }
-  if (rect.h * s > room) s = room / rect.h;   /* a very narrow screen: a fraction, still clear */
+  const k = fine || !isLandscape ? Math.max(1, Math.round(r)) : Math.max(1, Math.round(r * 2 / 3));
+  const s = k / r;
   const thick = rect.h * s, len = rect.w * s;
-  const left = fine ? burstR + AIR * 2 : Math.round(burstR + AIR + (room - thick) / 2);
-  return { s, thick, len, left, bottom: lc.bottomPx(LCTL_SLOT.burst) };
+  const burstL = lc.leftPx(LCTL_SLOT.burst), burstB = lc.bottomPx(LCTL_SLOT.burst);
+  if (fine) return { s, thick, len, left: burstL + lc.size + AIR * 2, bottom: burstB };
+  if (isLandscape) {
+    /* sideways the screen is short (above Burst it ran under the top bar), and
+       the gap between Burst and Quick Eat is wider (27 px): it stands there,
+       a step smaller only if a narrower gap asks */
+    const burstR = burstL + lc.size, room = (lc.leftPx(LCTL_SLOT.eat) - AIR) - (burstR + AIR);
+    let kk = k, ss = s;
+    while (kk > 1 && rect.h * ss > room) { kk -= 1; ss = kk / r; }
+    if (rect.h * ss > room) ss = room / rect.h;
+    const th = rect.h * ss;
+    return { s: ss, thick: th, len: rect.w * ss, left: Math.round(burstR + AIR + (room - th) / 2), bottom: burstB };
+  }
+  /* v2.3.4656, the owner: "Vertical above the left joystick" -- centred on
+     the disc itself (its own box, LBTN), its foot clear of Burst's top */
+  return { s, thick, len, left: Math.round(LBTN.left + LBTN.w / 2 - thick / 2), bottom: burstB + lc.size + AIR };
 }
 
 export function TimingBar({ stateRef, isLandscape }) {
@@ -116,8 +135,9 @@ export function TimingBar({ stateRef, isLandscape }) {
       <div className="bt-tbar-rot" style={rot}>
         <Art cls="bt-tbar-base" rect={rect} s={s} />
         <div className="bt-tbar-win bt-tbar-fill"><div className="bt-tbar-in"><Art cls="bt-tbar-full" rect={rect} s={s} full /></div></div>
-        <div className="bt-tbar-win bt-tbar-glint"><div className="bt-tbar-in"><Art cls="bt-tbar-shine" rect={rect} s={s} mask /></div></div>
-        <div className="bt-tbar-frz"><div className="bt-tbar-win"><div className="bt-tbar-in"><Art cls="bt-tbar-froze" rect={rect} s={s} mask /></div></div></div>
+        {/* v2.3.4656: the glint and the frozen copy are the owner's gold weapon itself, brightened (game.css), never a one-colour cut-out over it */}
+        <div className="bt-tbar-win bt-tbar-glint"><div className="bt-tbar-in"><Art cls="bt-tbar-shine" rect={rect} s={s} full /></div></div>
+        <div className="bt-tbar-frz"><div className="bt-tbar-win"><div className="bt-tbar-in"><Art cls="bt-tbar-froze" rect={rect} s={s} full /></div></div></div>
       </div>
     </div>
   );
@@ -157,11 +177,11 @@ export function timingBarFrame(S, now) {
     }
     b.at = at;
   }
-  /* shown with a monster in reach (the sword's perimeter, a lock, the bow's
-     sight on something) or for SHOW_MS after an attack: quiet otherwise */
-  const near = (S._targetCands && S._targetCands.length > 0) || !!S.lockedTarget
-    || !!(S._bowSight && S._bowSight.d != null) || (at > 0 && now - at < SHOW_MS);
-  const on = near ? '1' : '0';
+  /* v2.3.4656: shown whenever a sword or a bow is in hand (the owner: "the
+     grayed out version should be shown when empty and the lit up version as
+     it fills up"); until then only near a monster or for SHOW_MS after an
+     attack, so the owner mostly saw it fading */
+  const on = '1';
   if (r.getAttribute('data-on') !== on) r.setAttribute('data-on', on);
 }
 
