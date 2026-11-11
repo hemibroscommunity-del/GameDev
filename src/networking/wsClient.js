@@ -1628,7 +1628,7 @@ export function setupWebSocket(ctx) {
             }
           case 'character_reset_refused':
             {
-              /* v2.3.4606: the restart refused during a fight with a player in No
+              /* v2.3.4608: the restart refused during a fight with a player in No
                  man's land (server persistence.js, fightlock.js `fightlockreset`):
                  nothing was wiped.  The Settings screen says so and cancels its
                  8 s reload (SettingsPanel.jsx). */

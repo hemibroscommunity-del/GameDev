@@ -885,7 +885,7 @@ new router case or relayed type that is in neither list.
   rearrange the bag; eating is the fight; a held spare shield
   put on the arm, because the phone owns which shield is worn and would keep
   showing a refused swap.
-- **v2.3.4606, `fightlockreset`**: `character_reset` (Settings) and its HTTP
+- **v2.3.4608, `fightlockreset`**: `character_reset` (Settings) and its HTTP
   twin `/api/account/reset` (the character picker, `account.js
   _accountReset`) are rows now. A restart wiped the loser's whole character,
   the state dropped before the socket closed, so neither the lingering body

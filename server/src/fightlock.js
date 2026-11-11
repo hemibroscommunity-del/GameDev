@@ -33,7 +33,7 @@
  *             fightlockequip  putting on a spare weapon, which an honest
  *                             player can meet too (and a forged shield
  *                             report).
- *             fightlockreset  (v2.3.4606) restarting the character, from
+ *             fightlockreset  (v2.3.4608) restarting the character, from
  *                             Settings or from the character picker.
  *             fightlockarmor  (v2.3.4607) putting on spare armour or legs,
  *                             or taking off armour, legs, the shield or the
@@ -204,7 +204,7 @@ export const FIGHT_LOCK = Object.freeze({
      refused -- the phone could not be told to take it off */
   shield_wear: { sw: 'fightlockequip', at: 'shieldwear.js _handleShieldWear' },
 
-  /* ── v2.3.4606: the character wiped (STATE-MACHINES.md "what is left", from #1523) ── */
+  /* ── v2.3.4608: the character wiped (STATE-MACHINES.md "what is left", from #1523) ── */
   /* A restart deletes the whole character -- the bag, the gold, the stashes --
      and the state goes BEFORE the socket closes (persistence.js
      _resetCharacterData), so the body that would linger and the loss that
