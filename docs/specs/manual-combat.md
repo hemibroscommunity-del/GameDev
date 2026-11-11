@@ -113,6 +113,11 @@ everything written before it. Moving the old scenarios over is not done.
 
 ### A bow: flick to shoot
 
+> **v2.3.4802: the game's own bow is DRAWN now** (`bow-feel.md`): thumb down
+> nocks, pull back to draw, lift to loose, each arrow its share of a full
+> draw. What follows is the flick, which `?bowfeel=0`, `?manual=1` and a
+> worker without `caps.bowDraw` still play.
+
 - **Flick**: thumb down, moved, lifted 24 px or more from where it touched.
   One shot, the way the thumb went.
 - **A slow drag is the same gesture made carefully.** Hold the thumb out and
@@ -510,6 +515,16 @@ lands.
 Building pays over a pack (sparks splash nothing); no weapon's best damage a
 second moves. The same holds with the worker's own roll.
 
+## The bow's draw: the phone's half (v2.3.4802)
+
+The bow lane built what a player feels on top of it: `bow-feel.md` (the
+nock, the draw's bend and creak, the settle's gold line and click, the tired
+arm, the twang, the let-down; a computer's held button). The phone sends `dr`
+on a drawn arrow's relay and names the arrow on every claim (`sw` on
+`monster_damage` and `player_attack`), gated on `caps.bowDraw`; the gesture is
+a hook in this file (`mcSetBowHook`), so the touch handlers carry it unchanged.
+`?bowfeel=0` is the flick above on one device.
+
 ## Not built
 
 - **Reading attack timing and swipe shape on the server to find bots** (the
@@ -532,6 +547,8 @@ second moves. The same holds with the worker's own roll.
 - `server/test/draw-gather.test.mjs` (v2.3.4801): the draw and the gather on the
   real GameRoom, every shot through the real router (its header lists the
   checks), with the balance proof.
+- `server/test/bow-feel.test.mjs` (v2.3.4802): the bow's draw on the phone,
+  its claim through the real GameRoom; `node tools/qa/mp/run.mjs bowfeel`.
 - `server/test/perfect-strike.test.mjs` (v2.3.4615): the perfect strike on
   the real GameRoom, the bow's arrows through the real router (its header
   lists the checks); `manual-combat.test.mjs` §14 the perfect strike's

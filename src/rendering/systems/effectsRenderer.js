@@ -16768,6 +16768,7 @@ export class EffectsRenderer {
        raising and frame 2 is the release recoil. */
     const fi = S._blockPose
       ? Math.min(n - 1, BLOCK_POSE_FRAME)
+      : (S._bowHoldFrame != null && S._bowHoldFrame >= 0) ? Math.min(n - 1, S._bowHoldFrame)   /* v2.3.4802: the bow nocked (0) or drawn (1), held (entityRenderer, game/bowFeel.js) */
       : (elapsed < BOW_RELEASE_MS
           ? Math.max(0, Math.min(n - 2, Math.floor((elapsed / BOW_RELEASE_MS) * (n - 1))))
           : n - 1);

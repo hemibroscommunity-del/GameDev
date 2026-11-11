@@ -328,8 +328,8 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
   /* the wiring */
   const pj = read('../../src/game/projectiles.js'), ge = read('../../src/networking/gameEvents.js'), gd = read('../../src/data/gameDisplay.js');
   check('14p an arrow on the trial names its shot; a perfect strike plays the drop roll\'s glint quietly (an existing cue); the hit voice takes a pitch',
-    /* v2.3.4803: ...and otherwise a gathered bolt's name (staffSw: game/staffFeel.js), undefined for anything else */
-    /sw: \(!isStaffProj && !a\.isSpecial && mcPerfectOn\(S\) && typeof a\._shotTs === 'number'\) \? a\._shotTs\s*\n[\s\S]{0,260}: staffSw\(S, a\)\s*\n/.test(pj)
+    /* v2.3.4803: ...and otherwise a gathered bolt's name (staffSw: game/staffFeel.js); v2.3.4802: or a drawn arrow's (bowFeelSw, bow-feel.test §9b); undefined for anything else */
+    /sw: \(!isStaffProj && !a\.isSpecial && mcPerfectOn\(S\) && typeof a\._shotTs === 'number'\) \? a\._shotTs\s*\n[\s\S]{0,400}: \(staffSw\(S, a\) \?\? bowFeelSw\(a\)\)\s*\n/.test(pj)
     && /if \(payload\.pf === 1\) cue\('rollWin', 0\.45\);/.test(ge) && /\* \(\(opts && opts\.pitch > 0\) \? opts\.pitch : 1\);/.test(gd)
     && /monsterHitSfx\(m, 0\.6, 'arrow', fx\.snd, mcHitPitch\(S, Date\.now\(\)\)\)/.test(pj));
 }
@@ -357,7 +357,7 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
   check('10h a sword and a bow: no special is flicked, the right click arms, a tap attacks nothing -- and each asks mcSwipes, so a staff keeps its flick special, its right click and its tap', /if \(_rFlick && !mcSwipes\(stateRef\.current\)( && !_sfEnd)?\)/.test(bro) && /if \(mcSwipes\(S\)\) \{ mcArmToggle\(S\); return 'armed'; \}/.test(bro) && /if \(!mcSwipes\(_tjS\)( && !_sfEnd)?\) requestTapAttack\(_tjS, endT\);/.test(bro));   /* v2.3.4803: a staff gathering (its feel) has its lift's blast instead (staff-feel.test) */
   check('10i a sword\'s stroke: asked first (too soon: nothing), then the lunge, the armed special, or a swing; the press itself never lunges',
     /var ask = mcMeleeAsk\(S, now\);\s*\n\s*if \(ask === 'yes'\) return mcMeleeGo\(S\);/.test(bro) && /if \(_mcP\) return false;\s*\n\s*try \{ return maybeSwordDash\(S\); \}/.test(bro));
-  check('10j a computer: each click is one attack (a shot asked at the cursor, or a stroke); a staff is left to the lines below', /if \(mcSwipes\(S\)\) \{\s*\n\s*if \(mcShoots\(S\)\) \{[\s\S]{0,220}mcAskShot\(S, Date\.now\(\)\);\s*\n\s*\} else mcMeleeSwipe\(\);/.test(bro));
+  check('10j a computer: each click is one attack (a shot asked at the cursor, or a stroke); a staff is left to the lines below', /if \(mcSwipes\(S\)\) \{\s*\n\s*if \(mcShoots\(S\)\) \{[\s\S]{0,520}mcAskShot\(S, Date\.now\(\)\);\s*\n\s*\} else mcMeleeSwipe\(\);/.test(bro));   /* v2.3.4802: room for a drawn bow's press (bow-feel.test §9d) */
   const tg = read('../../src/game/targeting.js');
   check('10k targeting keeps no chosen lock, and no duel lock, with the switch', /if \(manualOn\(\)\) \{\s*\n\s*if \(S\.lockedTarget && !mcLockAllowed\(S\.lockedTarget\)\) S\.lockedTarget = null;\s*\n\s*\} else keepDuelLock\(S\);/.test(tg));
   const btn = read('../../src/ui/panels/SpecialButton.jsx');

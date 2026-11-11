@@ -30,6 +30,7 @@ import { makeVoiceCap, parseVoiceCap, exempt as voiceExempt } from './voiceCap.j
 import { FARM_GATE, FARM_SPOTS } from './farmLayout.js';   /* v2.3.3136: the farm you walk */
 import { feelSynth, feelBuildDemo } from './weaponFeelSound.js';   /* v2.3.4800: the weapon feel's sounds, synthesised (no files) */
 import { fineInput } from '../game/deviceProfile.js';   /* v2.3.4804: the device profile */
+import { bowSynth, bowDrawDemo } from './bowFeelSound.js';   /* v2.3.4802: the bow's draw -- the nock, the creak, the click, the twang (no files) */
 
 /* ── Babel helper polyfill (from pre-transpiled source) ── */
 function _defineProperty(e, r, t) { return (r in e) ? Object.defineProperty(e, r, { value: t, enumerable: true, configurable: true, writable: true }) : e[r] = t, e; }
@@ -3501,6 +3502,20 @@ BT_AUDIO.feelSound = function (kind, k, opts) {
 BT_AUDIO.feelBuildDemo = function (vol, base) {   /* v2.3.4803: + base (the staff's hum) */
   if (this.muted || !this.ctx || !this._ctxLive()) return null;
   try { return feelBuildDemo(this.ctx, this._out(), vol, base); } catch (e) { return null; }
+};
+/* ═══ v2.3.4802: THE BOW'S SOUNDS (data/bowFeelSound.js) ═══
+   The nock, the creak of the draw rising in pitch, the click of full draw,
+   the twang of the loose sized by its share, the string let down -- made with
+   WebAudio behind feelSound's gates.  Labelled in the Sound Studio (`bow*`). */
+BT_AUDIO.bowSound = function (kind, k, opts) {
+  if (this.muted || !this.ctx || !this._ctxLive()) return null;
+  if (this.soundGateClosed()) return null;
+  try { return bowSynth(this.ctx, this._out(), kind, k, opts); } catch (e) { return null; }
+};
+/* the Sound Studio's button: a draw of a second, its click, its loose */
+BT_AUDIO.bowDrawDemo = function (vol) {
+  if (this.muted || !this.ctx || !this._ctxLive()) return null;
+  try { return bowDrawDemo(this.ctx, this._out(), vol); } catch (e) { return null; }
 };
 /* v2.3.1798: the special's own sound.  Quietest of the four uploads by a wide
    margin (peak RMS 0.043 against the swings' 0.27), so it carries a large

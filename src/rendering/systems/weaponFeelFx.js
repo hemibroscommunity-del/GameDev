@@ -51,6 +51,7 @@ import { Container, Sprite, Texture } from 'pixi.js';
 import { keepOnGpuOnly } from '../gpuOnly.js';
 import { swordFeelOn } from '../../game/swordFeel.js';
 import { staffFeelDraw } from './staffFeelFx.js';   /* v2.3.4803: the staff's drawer (the gathering orb, the push back) */
+import { bowFeelDrawer } from './bowFeelFx.js';   /* v2.3.4802: the bow's drawer -- the string's bend and the aim line */
 
 const POOL_MAX = 96;   /* sprites at most, all kinds: a sweep is 9, a burst up to 11 */
 const ARC_SEGS = 9;
@@ -349,6 +350,7 @@ function swordGleam(fx, S, er, now) {
 }
 registerFeelDrawer(swordGleam);
 registerFeelDrawer(staffFeelDraw);   /* v2.3.4803 */
+registerFeelDrawer(bowFeelDrawer);   /* v2.3.4802 */
 
 /* QA: what the layer holds */
 let _live = null;
