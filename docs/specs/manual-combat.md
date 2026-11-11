@@ -384,6 +384,17 @@ whole trial, the bar with it (`caps.perfectStrike` goes with `freeSwing`).
 The bar is drawn in its own change (another session, with the owner's art).
 Everything it needs to read is here; it adds no rule of its own.
 
+**v2.3.4625, as built** (`src/ui/panels/TimingBar.jsx`): the owner's own
+sheet (*"I just added a sprite sheet for you to use for filling up the
+weapons. I'd like it to actually lay vertically in the space above the left
+joystick and try it that way."*), `public/sprites/timingbar/weapons.png`
+(`ui/panels/timingBarArt.js`): the dark iron weapon fills with the gold one
+from the grip at the bottom to the point at the top, standing upright over
+the MOVEMENT disc in the gap between Element Burst's and Quick Eat's places
+(`barBox`). One 2.4 KB file warmed on the loading screen, on the trial only
+(`rendering/timingBarPreload.js`). Where and why: docs/UI-DESIGN-NOTES.md
+"The timing bar".
+
 **The rules** (`src/game/manualCombat.js`, no imports; node tests them,
 `manual-combat.test.mjs` §14):
 
@@ -428,10 +439,10 @@ glint is the phone's guide.
   .set(3)` puts the review's one page on the trial (the worker is not asked).
 - Art: preloaded behind the loading screen (PRELOADING IS LAW) and in its
   memory slot (`docs/MEMORY-MAP.md`; 256 colours).
-- **Where: "north of the right joystick"** (the owner's words). The disc's own
-  top edge is taken: upright Sprint stands 10 px over it, sideways the
-  minimap 2 px. A computer draws no disc (place it in the play column, sizes
-  from the column: `fixedBox` if it is measured).
+- **Where: "the space above the left joystick"** (the owner, v2.3.4625; it
+  was "north of the right joystick", whose own top edge Sprint and the
+  minimap hold). A computer draws no disc (place it in the play column,
+  sizes from the column: `fixedBox` if it is measured).
 - A staff shows nothing; nothing off the trial.
 
 ### The sound (the phone's)
