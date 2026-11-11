@@ -1,5 +1,18 @@
 # Control redesign — the contextual right button (v2.3.2242 → v2.3.2245; caught up to v2.3.2472 in §§10–11, and to v2.3.2542 in §12)
 
+> **v2.3.4794: TODAY THE ATTACK IS NOT HELD.** This spec is the control
+> surface of 2026-09 and stays as its record. Since v2.3.4396 the game's
+> combat attacks by hand (`docs/specs/manual-combat.md`,
+> `src/game/manualCombat.js`): a sword swings once for each swipe on the
+> disc or the right side, a bow shoots once for each flick, only a staff
+> still casts while the thumb is held, and a sword's or a bow's special is
+> armed by its button, never a swipe. **No tap lock** for any weapon: the
+> sword's automatic nearest-monster lock is the only one kept
+> (`targeting.js`, `mcLockAllowed`). The jump left the disc too (the JUMP
+> button, v2.3.3712: `docs/specs/jumping.md`). The shield button and the
+> left-side dodge below are unchanged. What this spec says about holding
+> the disc and tapping a monster is the old combat, `?manual=0`.
+
 Owner directive, 2026-09-03. Quoted in full because every decision below
 is measured against it:
 

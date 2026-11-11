@@ -78,6 +78,17 @@ Notes for anyone extending it:
 - **CLAUDE.md says the sandbox blocks `npm install`. That is stale** —
   it succeeds for both the client and `server/`, which is the only
   reason any of this is possible.
+- **The scenarios play the OLD combat unless they ask** (v2.3.4396; noted
+  here v2.3.4794). The game attacks by hand now (a sword's swipe, a bow's
+  flick, no tap lock: `docs/specs/manual-combat.md`), but about 120
+  scenarios drive the held attack and the tap lock (`S.autoAttack`,
+  `S.lockedTarget`, a press of the disc), so `H.newPlayer` adds `manual=0`
+  to every address that does not name `manual=` itself
+  (`tools/qa/mp/harness.mjs`). A new scenario about fighting plays what a
+  new player gets by passing `query: 'manual=default'` (since v2.3.4655 the
+  free-swing sword, the perfect strike and the timing bar; `manual=3` is
+  the same), as `mp-timingbar` does. `manual=1` is the plain swipes (no
+  bar) and `manual=2` the slingshot bow (`mp-manualcombat`).
 - `window._gameState` is a **ref**; the live state is `.current`.
   Reading the ref yields `undefined` for every field and looks exactly
   like "the player never joined".

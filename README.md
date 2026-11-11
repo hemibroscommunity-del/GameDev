@@ -11,6 +11,8 @@
 > and `docs/specs/*.md` (implementation specs for shipped features).
 > Read this file only for what it is: a record of early creative and
 > systems thinking.
+> **The game as built (its controls included) is `docs/GDD-AS-BUILT.md`**
+> (pointer added v2.3.4794).
 >
 > **The shipped game is free to play.** §32 of this document sketches a
 > paid "Supporter Pass" — it is design thinking that was never built.

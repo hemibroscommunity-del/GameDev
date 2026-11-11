@@ -1,5 +1,13 @@
 # The bow only shoots at something (v2.3.2473)
 
+> **v2.3.4794: THE GATE IS THE HELD BOW'S.** Since v2.3.4396 the game's bow
+> shoots once for each flick (or click), and a flick is **always an arrow**,
+> on a line or not: "I flicked and nothing happened" is worse than a miss
+> (`monsterCombat.js`, the `_mcFire` exception;
+> `docs/specs/manual-combat.md` "A bow: flick to shoot"). The gate below
+> still holds for the held bow of the old combat (`?manual=0`), and an
+> armed special still waits for a line in both.
+
 **Status:** shipped, client-only. Lane C of the 2026-09-14 backlog triage
 (`docs/BACKLOG-TRIAGE-2026-09-14.md` §2.5).
 
