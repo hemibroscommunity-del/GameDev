@@ -65,6 +65,15 @@ export const trade2Methods = {
     try { ws.send(JSON.stringify({ type, payload })); } catch (e) {}
   },
 
+  /* v2.3.4795: the weapons in the swap's one write (_handleTrade2Confirm).
+     On unless the live flags say `tradeonewrite: false`, which puts back the
+     old order -- each weapon paid in a write after the gold, its restart
+     hole included.  The sweep finishes an owed record either way. */
+  _t2OneWriteOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'tradeonewrite') && !f.tradeonewrite);
+  },
+
   _t2SessionFor(playerId) {
     if (!this._trades2) return null;
     for (const s of this._trades2.values()) {
@@ -320,15 +329,66 @@ export const trade2Methods = {
         credits.push({ pid: side.id, entry: { opId: 'trade2:' + s.id + ':' + side.id + ':' + k, source: 'trade', kind: 'item', payload: { invKey: k, count: v }, note } });
       }
     }
+    /* ═══ v2.3.4795: THE WEAPONS IN THE SAME WRITE AS THE GOLD ═══
+       The gold and goods moved in one write (below), but each staged weapon
+       was paid in a write of its own AFTER it.  A restart between (every
+       merge touching server/ restarts the room): the window is gone, the
+       escrow record still stands with no deliver stamp, and the restart
+       sweep hands the weapon BACK to its owner -- who also kept the other
+       side's gold and goods.  One player paid and got nothing (the chaos
+       tests, #1548: a restart before write 1 of 3).
+       Now each weapon goes into the same synchronous run: credited to its
+       recipient's live stash, its deliver opId stamped and its escrow record
+       deleted, with both sides' debits and credits (_creditLiveTogether's
+       `also`).  A recipient whose stash cannot take all it receives gets
+       them by mail, a write that cannot join the run (the mailbox is read
+       first): so the run rewrites each of those records as OWED to them
+       (`to`), and the restart sweep finishes an owed record by delivering
+       it, never by refunding it (_trade2WpnSweep).  A restart lands before
+       the whole swap or after it.  Off with `tradeonewrite: false` (the old
+       order, its hole included). */
+    const wpnLive = [], wpnOwed = [];
+    if (s.weapons && !this._t2OneWriteOff()) {
+      for (const side of sides) {
+        const incoming = s.weapons[side.getsFrom] || [];
+        if (!incoming.length) continue;
+        const note = 'trade with ' + (side.getsFrom === s.a ? s.aName : s.bName);
+        const fits = this._weaponStashRoom(side.ps) >= incoming.length;
+        for (const entry of incoming) {
+          const credit = { pid: side.id, from: side.getsFrom, seq: entry.seq, entry: {
+            opId: 'trade2:' + s.id + ':wpndeliver:' + side.getsFrom + ':' + entry.seq,
+            source: 'trade', kind: 'weapon', payload: { weapon: entry.weapon }, note,
+          } };
+          if (fits) { wpnLive.push(credit); credits.push(credit); } else wpnOwed.push(credit);
+        }
+      }
+    }
+    const wpnRecords = () => {
+      const w = [];
+      for (const c of wpnLive) w.push(this.state.storage.delete('trade2wpn:' + c.from + ':' + c.seq));
+      for (const c of wpnOwed) {
+        w.push(this.state.storage.put('trade2wpn:' + c.from + ':' + c.seq, {
+          pid: c.from, sid: s.id, seq: c.seq, weapon: c.entry.payload.weapon, ts: Date.now(), to: c.pid, note: c.entry.note,
+        }));
+      }
+      return w;
+    };
     /* v2.3.3294: both sides' debits, their pets and their credits in ONE
        write (inbox.js _creditLiveTogether).  The "one input-gated critical
        section" above kept other players out, but the two saves went first
        and each credit was awaited after them, so a restart in between took
        what each side gave and paid neither: the window lives in memory, and
        nothing comes back for it.  Not both in the room: as before. */
-    const together = this._creditLiveTogether(credits, [s.a, s.b]);
+    const wpnInRun = wpnLive.length > 0 || wpnOwed.length > 0;
+    const together = this._creditLiveTogether(credits, [s.a, s.b], wpnInRun ? wpnRecords : undefined);
     if (together) {
       await together;
+      /* v2.3.4795: the weapons are now delivered, or owed on file; an owed
+         one goes by mail (its stamp in the mailbox's write), then its record */
+      for (const c of wpnOwed) {
+        await this._creditPlayer(c.pid, { ...c.entry, opId: 'trade2:' + s.id + ':wpndeliver:' + c.from + ':' + c.seq });
+        await this.state.storage.delete('trade2wpn:' + c.from + ':' + c.seq);
+      }
     } else {
       this._saveRpg(s.a, psA);
       this._saveRpg(s.b, psB);
@@ -353,7 +413,9 @@ export const trade2Methods = {
     // escrow record AFTER the credit (rule 6, credit-before-delete); the
     // deliver opId is keyed by OWNER+seq so the sweep can tell a
     // delivered weapon from a refundable one.
-    if (s.weapons) {
+    // v2.3.4795: only when they did not ride the one write above
+    // (`tradeonewrite: false`, or the swap's credits went one by one).
+    if (s.weapons && !(together && wpnInRun)) {
       for (const side of sides) {
         const note = 'trade with ' + (side.getsFrom === s.a ? s.aName : s.bName);
         for (const entry of (s.weapons[side.getsFrom] || [])) {
@@ -665,8 +727,24 @@ export const trade2Methods = {
         if (!rec || !rec.pid) { await this.state.storage.delete(k); continue; }
         const live = this._t2SessionFor(rec.pid);
         if (live && live.id === rec.sid) continue; // still escrowed in a live window
-        if (await this._opSeen('trade2:' + rec.sid + ':wpndeliver:' + rec.pid + ':' + rec.seq)) {
+        const deliverOp = 'trade2:' + rec.sid + ':wpndeliver:' + rec.pid + ':' + rec.seq;
+        if (await this._opSeen(deliverOp)) {
           await this.state.storage.delete(k); // delivered, crash before delete
+          continue;
+        }
+        /* v2.3.4795: OWED -- the trade committed in the write that marked it
+           (`to`, _handleTrade2Confirm), and the restart came before its mail.
+           It is the other side's now: delivered to them (the same opId, so
+           never twice), never refunded to the owner who was paid for it.  A
+           'dup' with no stamp on file is a delivery still running: leave the
+           record to it. */
+        if (typeof rec.to === 'string' && rec.to) {
+          const got = await this._creditPlayer(rec.to, {
+            opId: 'trade2:' + rec.sid + ':wpndeliver:' + rec.pid + ':' + rec.seq, source: 'trade', kind: 'weapon', payload: { weapon: rec.weapon },
+            note: typeof rec.note === 'string' ? rec.note.slice(0, 80) : 'trade',
+          });
+          if (got === 'dup' && !(await this._opSeen(deliverOp))) continue;
+          await this.state.storage.delete(k);
           continue;
         }
         await this._creditPlayer(rec.pid, {

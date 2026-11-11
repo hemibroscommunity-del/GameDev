@@ -270,13 +270,26 @@ export const inboxMethods = {
      Returns the promise of those writes; or null with NOTHING done when a
      recipient is not in the room, or a credit is a kind that might not land
      now (only gold and stackable items always do) -- the caller then credits
-     one by one through _creditPlayer, as before. */
-  _creditLiveTogether(credits, saves) {
+     one by one through _creditPlayer, as before.
+     v2.3.4795: ...and a WEAPON, when its recipient's stash has room for
+     every weapon this run gives them (a full stash would park it in the
+     mail, a write of its own: then null, as before).  `also`, when given,
+     is called in the same run, after the credits are applied, and returns
+     the caller's own writes -- the trade window's escrow records
+     (trade2.js) -- so a weapon leaves its escrow in the write that pays it
+     and the gold and goods with it.  The trade window paid each weapon in a
+     write after the gold: a restart between, and the restart sweep handed
+     it back to its owner, who also kept the other side's gold (the chaos
+     tests, #1548). */
+  _creditLiveTogether(credits, saves, also) {
     const list = Array.isArray(credits) ? credits : [];
+    const wpnIn = new Map();
     for (const c of list) {
       if (!c || !c.entry || !this.playerState[c.pid]) return null;
+      if (c.entry.kind === 'weapon') { wpnIn.set(c.pid, (wpnIn.get(c.pid) || 0) + 1); continue; }
       if (c.entry.kind !== 'gold' && c.entry.kind !== 'item') return null;
     }
+    for (const [pid, n] of wpnIn) if (this._weaponStashRoom(this.playerState[pid]) < n) return null;
     const touched = new Set(Array.isArray(saves) ? saves : []);
     const byPid = new Map();
     for (const c of list) {
@@ -285,7 +298,7 @@ export const inboxMethods = {
       if (!byPid.has(c.pid)) byPid.set(c.pid, []);
       byPid.get(c.pid).push(c.entry);
     }
-    const writes = [];
+    const writes = typeof also === 'function' ? [...(also() || [])] : [];
     for (const pid of touched) {
       const ps = this.playerState[pid];
       if (ps) writes.push(this._saveRpg(pid, ps));
@@ -345,6 +358,15 @@ export const inboxMethods = {
     if (!isGearStashField(p.field)) return true;   /* malformed: "fits", so it is consumed and dropped */
     const list = ps[p.field];
     return !Array.isArray(list) || list.length < gearStashCap();
+  },
+
+  /* v2.3.4795: how many more weapons this stash takes before
+     _applyCreditToPs parks one in the mail (its own test, `length >= cap`,
+     read from the same cap) -- _creditLiveTogether and the trade window ask
+     it the same way, so they agree on which weapons ride the one write. */
+  _weaponStashRoom(ps) {
+    const n = (ps && Array.isArray(ps.weaponStash)) ? ps.weaponStash.length : 0;
+    return Math.max(0, (this.WEAPON_STASH_CAP || 0) - n);
   },
 
   /* Mark / unmark a parked gear entry's id in the pending-mail set. */
