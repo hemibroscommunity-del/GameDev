@@ -1572,24 +1572,14 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
    and infuriating to debug. */
 {
   const cliZones = [...new Set(CLIENT_WORLD_PROPS.map((p) => p.zone))];
-  const srvZones = Object.keys(SRV_ZONE_PROPS);
-  check('props: the worker knows about the same zones the client places props in',
-    cliZones.length === srvZones.length && cliZones.every((z) => srvZones.includes(z)),
-    { cliZones, srvZones });
-
+  /* v2.3.4852: the worker's ZONE_PROPS table is EMPTY (the old lands it held
+     are refused for good), so there is no table left to hold equal.  What is
+     still audited is the GEOMETRY: the worker's slab test, fed the client's
+     own footprints, must resolve every line as the client's does. */
+  check('props: the worker keeps no scenery table of its own', Object.keys(SRV_ZONE_PROPS).length === 0, Object.keys(SRV_ZONE_PROPS));
   for (const z of cliZones) {
-    /* The client's own filter decides what is real: propsForZone applies the
-       town mapV gate, and only props WITH a footprint block anything. Deriving
-       the expectation from the same functions the game calls is the point --
-       a list rebuilt by hand here would be a third copy to keep in sync. */
-    const want = clientPropsForZone(z).filter((p) => clientPropFootprint(p))
-      .map((p) => ({ id: p.id, x: p.x, y: p.y, blockW: p.blockW, blockD: p.blockD }))
-      .sort((a, b) => (a.id < b.id ? -1 : 1));
-    const got = (SRV_ZONE_PROPS[z] || [])
-      .map((p) => ({ id: p.id, x: p.x, y: p.y, blockW: p.blockW, blockD: p.blockD }))
-      .sort((a, b) => (a.id < b.id ? -1 : 1));
-    check(`props: ${z} blockers match the client exactly`,
-      JSON.stringify(want) === JSON.stringify(got), { want, got });
+    SRV_ZONE_PROPS[z] = clientPropsForZone(z).filter((p) => clientPropFootprint(p))
+      .map((p) => ({ id: p.id, x: p.x, y: p.y, blockW: p.blockW, blockD: p.blockD }));
   }
 
   /* And the GEOMETRY agrees, not just the table. Two identical tables read by
