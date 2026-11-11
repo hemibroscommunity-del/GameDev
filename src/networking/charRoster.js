@@ -1,5 +1,6 @@
 import { passphraseToId, idForKey, isNewKey, rememberKeyId } from './index.js';   /* v2.3.3355: a new key's id is kept */
 import { readShared, writeShared } from './rosterCookie.js';   /* v2.3.2110 */
+import { CHAR_CACHE_KEYS } from '../game/tabIdentity.js';   /* v2.3.4606: the one list */
 
 /* ═══ v2.3.1923: THE DEVICE'S CHARACTER ROSTER ═══
  *
@@ -43,11 +44,10 @@ const KEY = 'bt_chars';
 /* Per-character localStorage.  Cleared whenever the active key changes, for
    the reason v2.3.1861 gives: carrying these into another character is how
    someone else's progress shows up wearing your name.  One list, used by both
-   activate and forget, because two copies drift. */
-export const CHAR_CACHE_KEYS = [
-  'bt_rpg', 'bt_stats', 'bt_codex', 'bt_bestiary',
-  'bt_materials', 'bt_zones', 'bt_resume',
-];
+   activate and forget, because two copies drift.
+   v2.3.4606: the list lives in game/tabIdentity.js now, so the typed key
+   (networking/index.js) clears the same seven; exported here as before. */
+export { CHAR_CACHE_KEYS };
 
 /* A bug that appends in a loop must not be able to fill localStorage.  Well
    above ROSTER_MAX (which the UI enforces) so this is never reached in normal

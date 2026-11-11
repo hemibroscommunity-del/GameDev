@@ -1,4 +1,4 @@
-# The state-machine sweep (2026-11-03) and its fixes (v2.3.4381, v2.3.4433, v2.3.4461)
+# The state-machine sweep (2026-11-03) and its fixes (v2.3.4381, v2.3.4433, v2.3.4461, v2.3.4580)
 
 ## What it was
 
@@ -114,10 +114,47 @@ phone's direct switch) and the new cap `bodyTake` (in `CAP_GATES`). The four
 server switches are `false` to go back except `disable_mayor3_check`, which
 is `true` to go back. The `?...=0` switches are for one phone, in its address.
 
+## What shipped, fourth wave (2026-11-10, pull requests #1521 to #1525)
+
+Same columns as above. Lessons: `docs/TRAPS.md` §320-326.
+
+| PR | Tag | System | What | Kill switch | Suite |
+|----|-----|--------|------|-------------|-------|
+| #1521 | v2.3.4500 | Auction House | each money step saves the gold (or goods) and the listing in ONE write, so a restart lands before it or after it, never in the middle: an offer handed back, a raised offer (no more gold made from nothing on a Yes), a stack put up for sale, a buy-now (marked paid as it pays); a Yes on an offer whose gold already went back pays nothing | `ahonewrite` | `store-onewrite` |
+| #1522 | v2.3.4505 | General Store | when two orders meet, the server writes who is owed what (a `settle` note on the waiting order) in the same write as the taker's gold or weapon; each payment is made once and the order deleted only when all are done; a restart finishes the note (at the shop's rebuild or at wake), and the clean-up of old "paid" stamps waits until it has (no more weapon sold twice after 48 h) | `mktsettle` | `market-settle` |
+| #1523 | v2.3.4510 | fight lock | one table, `server/src/fightlock.js`: every road that spends, converts, wagers or gives away gold or bag goods is refused during a fight with a player in No man's land (the forge, hardening, gems, the amulet's craft, the jackpot, the gambles, the cape ticket, the pet house, Auction House offers, the arena's sponsor and join, a weapon put into a trade, a duel of any stake); a dungeon mouth (and a leader's party pull); putting on a spare weapon. Ten seconds after the last hit it all opens again. Safe ground, a town duel and the Arena are unchanged | `fightlocktable`, `fightlockdoor`, `fightlockequip` (`fightlock` still opens everything) | `fight-lock` |
+| #1525 | v2.3.4520 | the owner's trial: the free swing | ONLY a device that asks (`?manual=3`): the sword swings on every swipe, each swing worth its share of a full one, so the damage a second is the same however fast you swipe; a light swing has no shove, gem effect or spark; `&swingbonus=1` adds +12% for a swing after a full pause, on monsters only. Everyone else's game is unchanged | `freeswing`, `freeswingbonus` | `free-swing`, `manual-combat` §13, phone `mp-freeswing` |
+
+No new storage key, no new record shape except the market's `settle` note
+(its own `v: 1`, in ARCHITECTURE-HANDOFF's registry). The new cap
+`freeSwing` (on its own line, TRAPS §316) and the new message `free_swing`
+are #1525's. All the server switches are `false` to go back.
+
+Tools and documents only, the same day: #1516 (v2.3.4492, two phone tests
+caught up with the game), #1517 (v2.3.4498, `mp-deskclick` aims where Ace
+stands; not a game regression, TRAPS §320), #1518 (v2.3.4499, the crowd tour
+`mp-crowdsweep`, findings a to i in `docs/specs/held-sweep.md`).
+
 ## What is left
 
 This is a list, not a promise. The plan is `PLAN.md` on the storage branch.
-Updated v2.3.4461, after the third wave. Nothing is in flight.
+Updated v2.3.4580, after the fourth wave. The judges have played (owner,
+2026-11-10: "Judges have already played you can do any big repairs now"),
+so nothing waits on them any more.
+
+**In flight (branches open, not merged yet):**
+- the two-tab identity fixes (`claude/sm-tab-identity`, v2.3.4560);
+- the server judging a change of place, instead of taking the phone's word
+  (`claude/sm-zone-judge`, v2.3.4565); with it, a dungeon's entry pass that
+  lasts 20 s and is not re-checked at the step in;
+- a move's claims (`claude/sm-move-claims`, v2.3.4570): the parry is ready
+  again only 400 ms after the shield went down, a block with no facing, a
+  swing drops the guard, the cooking shield needs a real fire;
+- which Wheel a player is on (`claude/sm-world-size`, v2.3.4575): the
+  preview pages (`?bigtown`, `?plaintown`, `?placing=2`) become spectators
+  in the live room;
+- the timing bar for the owner's sword trial (`claude/timing-glint-bar`,
+  v2.3.4550).
 
 **Not started, no decision needed:**
 - the rest of the silent refusals: harvest strikes, cooking, the gear swap
@@ -147,17 +184,28 @@ Updated v2.3.4461, after the third wave. Nothing is in flight.
   and name choices; the Object Studio's stage draws about 1.36 times too big
   (#1505);
 - the stat scene's memo bit (M3-18, about 1.8 MB, kept on purpose) needs a
-  row in `docs/MEMORY-MAP.md` or a decision (#1505).
+  row in `docs/MEMORY-MAP.md` or a decision (#1505);
+- armour, legs and the amulet put on mid-fight are not locked (#1523): the
+  worker learns the armour stash only at join, so a lock would not close
+  it. The fix is keeping the armour stash on the worker. A red skull's
+  `unequip_request` on armour also drops the piece from the worker's view;
+- `character_reset` mid-fight (and its web twin, `_accountReset`) wipes the
+  loser's own character: spite, the killer gets nothing (#1523);
+- a red skull killed by a monster has no fight lock (V21 Q3, #1523);
+- the Auction House's settlement legs, releases and bids still heal from
+  their 48-hour stamps only: a restart followed by 48 hours with nobody
+  opening the shop still goes wrong there. "Paid facts in the record" (V8a)
+  would cost more writes a sale (#1521);
+- the species churn (#1518, finding e): 7 or more monkeys or aliens of
+  different colours (8 or more species-and-skin pairs) near you build
+  pictures up to 250-400 MB on the graphics chip, a black-screen risk on an
+  iPhone. Listed for the performance work, with the crowd tour's other
+  findings (a to d, g) in `docs/specs/held-sweep.md`. The armour pictures'
+  store (`_gearStrips`) is BOUNDED, about 22 MB, not a leak.
 
-**Not started, waits until after the judges (decided, see below):**
-- the Auction House's refund-and-raise money fix (one write for the refund
-  and the listing);
-- forging, hardening or equipping mid-fight: one fight-lock table;
-- the plan's larger "one door per system" work, including who decides a
-  change of place (the server placing you at the entry instead of taking
-  the phone's word) (#1508);
-- the identity fixes that hold whether or not one character may play in two
-  tabs (they touch login keys).
+**Not started, big repairs (no longer waiting on the judges):**
+- the plan's larger "one door per system" work, beyond the change of place
+  now in flight (#1508).
 
 **Not fixed on purpose:**
 - the player's trail reads the same unset `now` the pet did (TRAPS §294):
@@ -181,6 +229,16 @@ Updated v2.3.4461, after the third wave. Nothing is in flight.
 - a quest reward is shown at once and taken back if the server says no;
 - the Mayor's "Clear any dungeon" is checked on the server: built
   (v2.3.4441).
+- the fight lock counts every road that spends, converts, wagers or gives
+  away gold or bag goods; a spare weapon is locked mid-fight, armour not
+  yet; a duel is declined during a No man's land fight with a player:
+  built (v2.3.4510);
+- the General Store writes what it owes before paying, the Auction House's
+  way: built (v2.3.4505);
+- shield question 5: YES, the shield must be down 400 ms before a parry is
+  ready again (in flight, v2.3.4570);
+- the preview pages are spectators in the live room, and a dungeon's entry
+  pass lasts 20 s (both in flight, above).
 
 Who decided what, and the questions still open, are in
 `docs/OWNER-LIST-2026-10-26.md` §10 (the shield, the dungeon's loading
@@ -196,6 +254,8 @@ offered.
   window, the forge room's stage, two quest checks; it was 2 of 540 in the
   first wave);
 - `mp-farmmusic` step 4 (the frost land's music after the farm gate);
+- `soundcues` check 2c (no buckle sound when the right mouse button
+  raises and lowers the shield): red before #1516 too, left for its own look;
 - `mp-block` 10 of 11 and `mp-pvpshield` (both on the retired old map; the
   shield lane saw the same on `main`);
 - `mp-linger` step 4 (the countdown shows): a fresh browser takes 66 s to

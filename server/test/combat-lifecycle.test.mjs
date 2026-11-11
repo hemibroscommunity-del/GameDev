@@ -2101,6 +2101,15 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
       psE.x = 2000; psE.y = 2000; psE.z = 'frost';
       psE.dying = false; psE.dead = false;
       psE.ex = null; psE._exAt = 0;
+      /* v2.3.4605: a cook is at a fire the worker lit (moveclaims.js
+         `cookshield`) -- a real firemaking_request spends a real log here --
+         and B7's swing above is under COOK_REARM_MS old, which holds the
+         re-arm (move-claims.test owns both rules) */
+      if (!psE.inventory) psE.inventory = {};
+      psE.inventory.wood_pine = 1;
+      await room.webSocketMessage(wsA, JSON.stringify({ type: 'firemaking_request', payload: { invKey: 'wood_pine' } }));
+      check('the log lights a fire the worker knows of (v2.3.4605)', !!psE._fireLit && psE._fireLit.z === 'frost', psE._fireLit);
+      psE._exAttackAt = 0;
 
       /* C1. THE WIRING.  The stamp the whole branch rests on is written by
          _handleMove, not by the shield — so drive a real `move` packet rather
@@ -2281,7 +2290,13 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   check('directional: 66° off-axis is outside it',
     !!atk && atk.payload.blocked !== true, { ba: psB.ba, payload: atk && atk.payload });
 
-  /* THE DEPLOY-ORDER CASE: no facing reported at all. */
+  /* THE DEPLOY-ORDER CASE: no facing reported at all.
+     v2.3.4605: no longer an old phone -- every phone since v2.3.1705 sends
+     `ba` with a raised shield -- so by default the guard covers the front of
+     its last facing (move-claims.test); `blockarc: false` in the live flags
+     is this OMNI block, pinned here as the switch's way back. */
+  const _arcFlagsWas = room._liveFlags;
+  room._liveFlags = { blockarc: false };
   psB.hp = psB.maxHp;
   delete psB.ba;
   hp0 = psB.hp;
@@ -2300,6 +2315,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   atk = room.eventBuffer.filter((e) => e.type === 'monster_attack')[0];
   check('directional: a null facing reads as "unknown", not as "off"',
     !!atk && atk.payload.blocked === true && psB.hp === hp0, { payload: atk && atk.payload });
+  room._liveFlags = _arcFlagsWas;
 }
 
 /* ═══ v2.3.1726: THE MELEE BRANCH IS DIRECTIONAL TOO ═══
@@ -2354,11 +2370,13 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     !!atkM && atkM.payload.blocked !== true && psA.hp < hpM,
     { before: hpM, after: psA.hp, payload: atkM && atkM.payload });
 
-  psA.ba = null;                         /* old client: no facing -> omni stays */
+  psA.ba = null;                         /* no facing -> omni, under `blockarc: false` (v2.3.4605) */
   psA.hp = 5000;
   hpM = psA.hp;
-  atkM = swing();
-  check('melee arc: a client with no facing keeps the OMNI block',
+  { const was = room._liveFlags; room._liveFlags = { blockarc: false };
+    atkM = swing();
+    room._liveFlags = was; }
+  check('melee arc: a client with no facing keeps the OMNI block (blockarc: false)',
     !!atkM && atkM.payload.blocked === true && psA.hp === hpM,
     { hp: psA.hp, payload: atkM && atkM.payload });
 

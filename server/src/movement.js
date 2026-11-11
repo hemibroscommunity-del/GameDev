@@ -852,8 +852,13 @@ export const movementMethods = {
         const _wasBlocking = !!ps.blocking;
         const _guardBroken = ps._guardBrokenUntil && Date.now() < ps._guardBrokenUntil;
         ps.blocking = _guardBroken ? false : !!msg.blocking;
-        if (ps.blocking && !_wasBlocking) ps.blockStartT = Date.now();
+        /* v2.3.4605: ...and a raise parries only after PARRY_REARM_MS with
+           the guard down on the worker -- a quicker one blocks, unstamped
+           (moveclaims.js `parryrearm`; a down-up bundle parried every blow) */
+        const _raiseAt = Date.now();
+        if (ps.blocking && !_wasBlocking) ps.blockStartT = this._parryRearmed(ps, _raiseAt) ? _raiseAt : 0;
         else if (!ps.blocking) ps.blockStartT = 0;
+        this._guardDownNote(ps, _raiseAt);
       }
       /* v2.3.1705: the shield's facing angle, for the directional block
          (owner: "yes blocking should be directional").  Sanitised to a finite

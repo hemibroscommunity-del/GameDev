@@ -75,6 +75,9 @@ import { wheelLong, setWheelLong, wheelSizesDrawn } from '@/game/wheelSize.js'; 
 import { stashPendingZoneNodes } from '@/networking/nodeSync.js'; /* v2.3.1301: node self-heal */
 import { getDeviceNonce, generatePassphrase, passphraseToId, isNewKey, setActiveKey, idForKey, rememberKeyId, checkAccountLogin } from '@/networking/index.js';
 import { swapKey } from '@/networking/charRoster.js';   /* v2.3.3355: the same character, a new Login Key */
+import { joinIdentity, authRefusal, keyNewPlan, fallbackKey, slotIsMine, tabIdOff, stampOwner } from '@/game/tabIdentity.js';   /* v2.3.4606: which character this tab plays */
+/* v2.3.4606: `?tabid=0` -- this phone joins with the shared slot, as before */
+const TAB_ID_OFF = tabIdOff();
 /* v2.3.1961: the ONE wire-key -> peer-field rename table, read by the join
    snapshot, both self-heal placeholders and the 2s track relay below. */
 import { peerCosmeticsFromWire, peerPassthroughFromWire, applyPeerCosmetics } from '@/networking/peerCosmetics.js';
@@ -515,6 +518,32 @@ export function setupWebSocket(ctx) {
         connect();
       }, READY_RETRY_MS);
     }
+    /* ═══ v2.3.4606: THIS TAB'S CHARACTER, NOT THE SLOT'S ═══
+       The sweep's V5.  Every join read the Login Key slot every tab of the
+       browser shares, so after another tab switched character this tab's
+       next join (back to it after 5 s, a dropped line, a deploy) became that
+       character, or was refused 'auth' and made a level-1 copy of its own.
+       The tab now joins with the key it started with (S._tabKey, BroTown's
+       first render) and its id; a slot that names another character -- or
+       none -- is the takeover's banner, and its Play here gives this tab's
+       character the slot back (game/tabIdentity.js; `?tabid=0` the old road). */
+    function _tabJoin() {
+      var _slot = null;
+      try { _slot = localStorage.getItem('bt_passphrase'); } catch (e) { _slot = null; }
+      return joinIdentity({ key: S._tabKey || null, id: S.myId, claim: !!S._tabClaim, off: TAB_ID_OFF }, _slot, idForKey, isNewKey);
+    }
+    /* another tab has the browser's character now: this tab stops, as a
+       second login puts the first out ("superseded by reconnect" below), with
+       no new character and no key touched; the banner's button (_comeBack) is
+       the player choosing this tab */
+    function _tabMoved(sock) {
+      if (sock) retireSocket(sock, 1000, 'tab moved');
+      if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+      S._tabMoved = true;
+      S._realtimeStatus = 'superseded';
+      try { window.__btTabMoved = ((window.__btTabMoved || 0) | 0) + 1; } catch (e) { /* QA probe only */ }
+      showResumeBanner('This account connected from another window.', 'Play here instead');
+    }
     function connect() {
       if (!WS_URL) {
         resolveRoom().then(function (room) {
@@ -539,6 +568,20 @@ export function setupWebSocket(ctx) {
          sweep's V4 N1-2).  So connect() retires the line it replaces itself
          (handlers off, then closed: game/socketLine.js), and each handler
          below acts only while its own socket is still the current one. */
+      /* v2.3.4606: which character this line joins as (_tabJoin above) */
+      var _ti0 = _tabJoin();
+      if (_ti0.act === 'moved') {
+        var _mvWs = ws;
+        ws = null;
+        _tabMoved(_mvWs);
+        return;
+      }
+      if (_ti0.claim) {
+        /* the player pressed Play here: this tab's character is the
+           browser's again (the other tab's next join shows the banner) */
+        S._tabClaim = false;
+        try { setActiveKey(_ti0.key, _ti0.id); } catch (e) { /* private mode: the join still carries the tab's key */ }
+      }
       var _prevWs = ws;
       ws = null;
       retireSocket(_prevWs, 1000, 'replaced');
@@ -626,13 +669,14 @@ export function setupWebSocket(ctx) {
            it.  A page that started before it knew -- the start-up check at
            the door tells it (BroTown.jsx, ensureChar) -- takes it here, so
            its join names the character the key is for. */
-        try {
-          var _jk = localStorage.getItem('bt_passphrase');
-          if (S.myId && S.myId.indexOf('bp_') === 0 && isNewKey(_jk || '')) {
-            var _jkId = idForKey(_jk);
-            if (_jkId && _jkId !== S.myId) S.myId = _jkId;
-          }
-        } catch (e) { /* private mode: the id stays */ }
+        /* v2.3.4606: ...from THIS tab's key, never from whatever the shared
+           slot names now (another tab's character: the sweep's V5).  Asked
+           again at the open, as the slot may have moved during the handshake. */
+        var _ti = _tabJoin();
+        if (_ti.act === 'moved') { ws = null; _tabMoved(sock); return; }
+        S.myId = _ti.id;
+        if (_ti.key) S._tabKey = _ti.key;   /* the key this tab plays (adopt: its character's newer key) */
+        if (S.rpg) stampOwner(S.rpg, S.myId);   /* v2.3.4606: bt_rpg says whose it is (BroTown's readers) */
         S._joinId = S.myId;   /* v2.3.3355: the id this join names (`_joinedId` once it is in) */
         ws.send(JSON.stringify({
           type: 'join',
@@ -642,11 +686,10 @@ export function setupWebSocket(ctx) {
              the id.  Guest/random ids send none -- the worker treats
              them as unregistered throwaways (same as legacy clients). */
           phrase: (function () {
-            try {
-              var _jp = (S.myId && S.myId.indexOf('bp_') === 0) ? (localStorage.getItem('bt_passphrase') || undefined) : undefined;
-              S._joinKey = _jp || null;   /* v2.3.3355: which key this join came with */
-              return _jp;
-            } catch (e) { return undefined; }
+            /* v2.3.4606: this tab's key (_tabJoin); a guest's id sends none */
+            var _jp = _ti.key || undefined;
+            S._joinKey = _jp || null;   /* v2.3.3355: which key this join came with */
+            return _jp;
           })(),
           /* v2.3.3355: this phone can take a new Login Key the worker hands it
              (key_new below, server/src/loginkeys.js).  Old workers ignore it. */
@@ -1521,7 +1564,14 @@ export function setupWebSocket(ctx) {
               /* v2.3.3355: 'auth' for a NEW key can only be a worker from before
                  new keys (a rollback): it never throws a new key away -- it goes
                  back to the old key kept beside it, or stops */
-              if (_rejReason === 'auth' && isNewKey(S._joinKey || '')) {
+              /* v2.3.4606: ...and for an OLD key too.  The mint below made a
+                 level-1 copy of a real character whenever the join carried
+                 another tab's key (the sweep's V5; TRAPS 209 names the harm):
+                 a join never makes a character -- the key road does (this
+                 character's old key kept beside, or the key screen with its
+                 way to the door, where Create is).  The mint stays only on
+                 `?tabid=0` (game/tabIdentity.js authRefusal). */
+              if (_rejReason === 'auth' && (isNewKey(S._joinKey || '') || authRefusal({ off: TAB_ID_OFF }) === 'key')) {
                 _kyPending = { id: S.myId || '', auth: true };
                 break;
               }
@@ -1540,7 +1590,7 @@ export function setupWebSocket(ctx) {
                  identities and surface it. */
               try {
                 S._authRejects = (S._authRejects || 0) + 1;
-                if (_rejReason === 'auth' && S._authRejects <= 1 && S.myId && S.myId.indexOf('bp_') === 0) {
+                if (_rejReason === 'auth' && authRefusal({ off: TAB_ID_OFF }) === 'mint' && S._authRejects <= 1 && S.myId && S.myId.indexOf('bp_') === 0) {
                   var _newPf = generatePassphrase();
                   /* v2.3.1143: stash the phrase being destroyed -- this
                      regen is the one place a valid credential can be
@@ -1553,6 +1603,7 @@ export function setupWebSocket(ctx) {
                     if (_oldPf) localStorage.setItem('bt_passphrase_prev', _oldPf);
                   } catch (e2) {}
                   localStorage.setItem('bt_passphrase', _newPf);
+                  S._tabKey = _newPf;   /* v2.3.4606: the off road's tab key follows its mint */
                   /* The old character is unreachable under the new id --
                      drop the stale cache so the rejoin starts clean.
                      v2.3.2336: and cancel the pending debounced flush, or it
@@ -1619,7 +1670,15 @@ export function setupWebSocket(ctx) {
               try { if (typeof S._serverCaps.clientoff === 'string') setClientOff(S._serverCaps.clientoff); } catch (e) { /* the savers as they are */ }
               /* v2.3.3355: a join with a NEW key got in -- the old key kept
                  beside it (key_new below) is no longer needed */
-              try { if (isNewKey(S._joinKey || '')) localStorage.removeItem('bt_passphrase_old'); } catch (e) { /* private mode */ }
+              try {
+                if (isNewKey(S._joinKey || '')) {
+                  /* v2.3.4606: this character's spare only -- another tab's
+                     character may have left its own there */
+                  var _ksp = localStorage.getItem('bt_passphrase_old');
+                  if (_ksp && (TAB_ID_OFF || idForKey(_ksp) === S.myId)) localStorage.removeItem('bt_passphrase_old');
+                  S._tabKeyOld = null;
+                }
+              } catch (e) { /* private mode */ }
               S._keyIdAsked = false;   /* v2.3.3355: a later refusal may ask the door again */
               S._joinedId = S._joinId || S.myId;   /* v2.3.3355: the id the worker let in (BroTown's roster heartbeat keeps it beside a new key) */
               /* v2.3.3315: the Wheel the room plays -- 5 times longer, or the
@@ -2386,10 +2445,19 @@ export function setupWebSocket(ctx) {
                  keeps its name and place and takes the new key. */
               if (msg.from || !isNewKey(msg.key) || typeof msg.id !== 'string' || msg.id !== S.myId) break;
               try {
+                /* v2.3.4606: THIS tab's key is the one replaced: the shared slot
+                   takes the new key only while it still names this character,
+                   and the roster renames this character's row -- with another
+                   tab on B, renaming the slot's row gave B's row A's new key and
+                   tombstoned B's (game/tabIdentity.js keyNewPlan) */
                 var _kcur = localStorage.getItem('bt_passphrase');
-                if (_kcur && _kcur !== msg.key && !isNewKey(_kcur)) localStorage.setItem('bt_passphrase_old', _kcur);
-                setActiveKey(msg.key, msg.id);
-                swapKey(_kcur, msg.key, msg.id);
+                var _kp = keyNewPlan({ key: S._tabKey || null, id: S.myId, old: S._tabKeyOld || null, off: TAB_ID_OFF }, _kcur, msg.key, idForKey, isNewKey);
+                if (_kp.keepOld) localStorage.setItem('bt_passphrase_old', _kp.keepOld);
+                if (_kp.writeSlot) setActiveKey(msg.key, msg.id);
+                else rememberKeyId(msg.key, msg.id);
+                swapKey(_kp.swapFrom, msg.key, msg.id);
+                S._tabKey = _kp.tabKey;
+                S._tabKeyOld = _kp.tabOld;
                 S._keyNewAt = Date.now();
               } catch (e) { /* storage full: the old key still works on this device, and the next join is handed another */ }
               break;
@@ -4700,14 +4768,22 @@ export function setupWebSocket(ctx) {
           var _ky = _kyPending;
           _kyPending = null;
           var _keyRefused = function () {
-            var _kold = null;
-            try { _kold = localStorage.getItem('bt_passphrase_old'); } catch (e) { _kold = null; }
+            var _kshared = null;
+            try { _kshared = localStorage.getItem('bt_passphrase_old'); } catch (e) { _kshared = null; }
+            /* v2.3.4606: only an old key of THIS tab's character -- its own
+               (memory), or the shared spare when it is this character's; the
+               spare another tab's character left is never taken */
+            var _ktab = { key: S._tabKey || null, id: S.myId, old: S._tabKeyOld || null, off: TAB_ID_OFF };
+            var _kold = fallbackKey(_ktab, _kshared, idForKey);
             if (_kold && !S._keyFellBack) {
               S._keyFellBack = true;
               try {
-                var _knew = localStorage.getItem('bt_passphrase');
-                setActiveKey(_kold);
-                localStorage.removeItem('bt_passphrase_old');
+                var _knew = TAB_ID_OFF ? localStorage.getItem('bt_passphrase') : (S._tabKey || null);
+                var _kslot = localStorage.getItem('bt_passphrase');
+                if (TAB_ID_OFF || slotIsMine(_ktab, _kslot, idForKey)) setActiveKey(_kold);
+                if (_kshared === _kold) localStorage.removeItem('bt_passphrase_old');
+                S._tabKey = _kold;
+                S._tabKeyOld = null;
                 S.myId = idForKey(_kold) || S.myId;
                 try { swapKey(_knew, _kold, S.myId); } catch (e2) { /* the roster heals at the door */ }
               } catch (e) { /* private mode */ }
@@ -4723,7 +4799,8 @@ export function setupWebSocket(ctx) {
              them.  Once a refusal; nothing changes when the door does not
              know the key (taken back), and the old key or the screen follow. */
           var _kk = null;
-          try { _kk = localStorage.getItem('bt_passphrase'); } catch (e) { _kk = null; }
+          /* v2.3.4606: the key this tab joined with, not the shared slot's */
+          try { _kk = TAB_ID_OFF ? localStorage.getItem('bt_passphrase') : (S._tabKey || null); } catch (e) { _kk = null; }
           if (isNewKey(_kk || '') && !S._keyIdAsked) {
             S._keyIdAsked = true;
             checkAccountLogin(_kk).then(function (res) {
@@ -5165,6 +5242,10 @@ export function setupWebSocket(ctx) {
     function _comeBack() {
       _disarmComeBack();
       try { var _b = document.getElementById('bt-resume-banner'); if (_b) _b.remove(); } catch (e) {}
+      /* v2.3.4606: put out because another tab switched character (_tabMoved):
+         this press is the player choosing THIS tab, so its join takes the
+         browser's slot back (connect, _tabJoin's claim) */
+      if (S._tabMoved) { S._tabMoved = false; S._tabClaim = true; }
       /* clear the AFK clock first, or the idle check would hang up again on
          its very next frame */
       try { stateRef.current._lastInputAt = Date.now(); } catch (e) {}
