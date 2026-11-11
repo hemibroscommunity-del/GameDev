@@ -52,11 +52,26 @@ The scan in the test fails:
 
 ## Known leftovers (not changed in step 1)
 
-- The takeover (a second login outside a fight) runs only the bot summary and
-  the save. Which of the skipped duties are bugs: step 3.
-- `_lingerEnd` writes no accuracy copy (`_accDirtyCopy`), which the close
-  does: a lingered player who never comes back may lose a few seconds of
-  shot / hit counting.
+- `_lingerEnd` takes no accuracy copy (`_accDirtyCopy`), which the close
+  does. The counts stay in memory (`_accBook` keeps a dirty entry) rather
+  than being written when the body goes.
+
+## The takeover's skipped duties (step 3: checked, none changed)
+
+A second login outside a fight runs only the bot summary and the save. Each
+skipped duty, checked in today's code (v2.3.4830):
+
+| Skipped duty | Verdict |
+|---|---|
+| the duel's away clock | right to skip: the player is back at once, and the duel carries on (a rejoin re-sends it) |
+| the trade's cancel | on purpose: a reconnect must not cancel a trade (TRAPS §162) |
+| the party's "away" | right to skip: back at once |
+| the daily quests' flush | not needed: the live copy is kept across the join (dailyrewards.js) |
+| the chat-mute list | not needed: the join reloads it (`_chatModOnJoin`) |
+| `player_leave` | not needed: the join's `player_join` for the same id follows |
+| the pets / codex / catches / accuracy | not needed: each keeps its live copy across the join |
+| **PvP consent** | **the owner's question**: a real disconnect clears it ("consent doesn't survive a disconnect", v2.3.1116), a second tab keeps it. Not clearly a bug: the player is back at once. |
+
 - A join refusal (`refused`) only drops the session. `verify.js`'s refusal
   can also be reached by an already-joined session (`botsig_reverify`, off by
   default); that would leave its body in the world (sweep V3, PLAUSIBLE).
