@@ -82,10 +82,11 @@ Notes for anyone extending it:
   scenarios drive the held attack and the tap lock (`S.autoAttack`,
   `S.lockedTarget`, a press of the disc), so `H.newPlayer` adds `manual=0`
   to every address that does not name `manual=` itself
-  (`tools/qa/mp/harness.mjs`). A new scenario about fighting plays today's
-  combat by passing `query: 'manual=1'` (or `manual=default`, what a new
-  player gets), as `mp-manualcombat` does; `manual=2` is the slingshot bow
-  and `manual=3` the free-swing trial.
+  (`tools/qa/mp/harness.mjs`). A new scenario about fighting plays what a
+  new player gets by passing `query: 'manual=default'` (since v2.3.4655 the
+  free-swing sword, the perfect strike and the timing bar; `manual=3` is
+  the same), as `mp-timingbar` does. `manual=1` is the plain swipes (no
+  bar) and `manual=2` the slingshot bow (`mp-manualcombat`).
 - `window._gameState` is a **ref**; the live state is `.current`.
   Reading the ref yields `undefined` for every field and looks exactly
   like "the player never joined".

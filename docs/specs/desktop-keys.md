@@ -297,8 +297,10 @@ Tests: `server/test/desk-keys.test.mjs` §7a, `mp-deskkeys`, `mp-deskwide`,
 controls."*):
 
 - **Each left click is one attack at the cursor** with a sword or a bow: a
-  sword's stroke (the opening lunge, or a swing when it is ready), a bow's one
-  shot, on a line or not. Holding the button down attacks once. A staff fires
+  sword's stroke (the opening lunge, or a swing: since v2.3.4655 at once, for
+  its share of a full swing, no sooner than 150 ms after the last,
+  `mcMeleeAsk`; with `?manual=1` when it is ready), a bow's one shot, on a
+  line or not. Holding the button down attacks once. A staff fires
   while the button is held, as before (the canvas's `onMouseDown` in
   `BroTown.jsx`, `mcSwipes` / `mcShoots` / `mcAskShot` / `mcMeleeSwipe`).
 - **The right click ARMS a sword's or a bow's special** for the next attack;
