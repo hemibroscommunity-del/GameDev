@@ -165,6 +165,10 @@ export const adminMethods = {
           /* v2.3.3327: the last places -- kept at a leave, joins judged from
              one, followed past it, joins with none (lastplace.js) */
           lastPlace: this._lastPlaceInfo(),
+          /* v2.3.4640: changes of place refused, by road ('wheel>farm_home': n):
+             an honest phone never meets one, so a number here is a modified
+             phone or a road the inventory missed (zonejudge.js) */
+          zoneJudge: this._zoneJudgeInfo(),
           /* v2.3.3334: monster hits refused for want of the weapon, from too
              far, specials rolled ordinary for want of a paid swipe (hitproof.js) */
           hitProof: this._hitProofInfo(),

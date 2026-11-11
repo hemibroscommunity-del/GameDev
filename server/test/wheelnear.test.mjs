@@ -220,6 +220,9 @@ deadOne.alive = true; deadOne.hp = deadOne.maxHp;
 }
 
 // ── 5. OUT AND BACK IN ────────────────────────────────────────────────────
+/* v2.3.4640: out of the Wheel from its safe ground, where the honest ways out
+   are (zonejudge.js): home to the square first, set where it stands as above */
+room.playerState.pa.x = ARRIVE.x; room.playerState.pa.y = ARRIVE.y;
 await room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x: 1000, y: 1000, z: 'town' }));
 await run(room, 2);
 check('out: leaving the Wheel forgets what was held and heard', sA._wheelWhole === null && sA._wheelSeen === null);
@@ -254,6 +257,7 @@ graceAll(room);
   check('switch: only `wn: 1` exactly asks', !room._wheelNearFor({ protocolVersion: 2 }, { wn: true }) && !room._wheelNearFor({ protocolVersion: 2 }, { wn: '1' })
     && room._wheelNearFor({ protocolVersion: 2 }, { wn: 1 }) && !room._wheelNearFor({ protocolVersion: 1 }, { wn: 1 }));
   room._liveFlags = { wheelnear: false };
+  room.playerState.pa.x = ARRIVE.x; room.playerState.pa.y = ARRIVE.y;   /* v2.3.4640: out from the safe ground, as §5 */
   await room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x: 1000, y: 1000, z: 'town' }));
   wsA.sent.length = 0;
   await room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x: Math.round(frost.x), y: Math.round(frost.y + 60), z: WHEEL_ZONE }));
