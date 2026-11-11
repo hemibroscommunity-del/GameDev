@@ -14,8 +14,8 @@
  * point) -- landing at the body instead of the square.  Its first move from
  * there is its answer to the worker.  Nothing here writes the place.
  *
- * A phone already in the Wheel (its own reconnect) does nothing: its next
- * move, beside the body or not, answers.  Anything the trip cannot do (no
+ * A phone already in the Wheel (its own reconnect) steps to the body itself
+ * (v2.3.4831, bodyPlaceHere below); before, its next move answered.  Anything the trip cannot do (no
  * Wheel on this tab, a place that is not the Wheel) is left to the worker,
  * whose wait runs out into the "still in that fight" countdown.
  */
@@ -45,13 +45,51 @@ export function bodyPlaceHolds(S) {
   return !!(S && S._bodyPlaceDue && Date.now() - S._bodyPlaceDue < HOLD_MS);
 }
 
+/* ═══ v2.3.4831: A TAB ALREADY IN THE WHEEL STEPS TO ITS BODY ═══
+   The #1509 leftover (docs/STATE-MACHINES.md): a tab in the world whose
+   socket dropped mid-fight reconnects with `tb: 1`; the worker keeps the
+   body and sends body_place, and this tab -- not in today's town, so no
+   trip -- did nothing.  Its next move decided: beside the body it carried
+   on, but a phone that walked on while its socket was dead (the moves went
+   nowhere) answered from far off, and the worker sent it to the "still in
+   that fight" countdown.  Now it stands where the body stands, so its next
+   move is the answer the worker waits for (bodytake.js _bodyTakeMove,
+   within RESUME_PX).
+     - beside it already (NEAR_PX, inside the worker's 300): nothing, as
+       before -- no jump for a blip;
+     - farther than FAR_PX: nothing, as before (the countdown) -- a jump
+       across the Wheel would land on ground not yet loaded;
+     - dying or dead: nothing (the respawn has its own way).
+   This is the ONE place bodyPlace.js writes the place (body-place.test §4).
+   `?bodyhere=0`: the old way, for one phone. */
+const NEAR_PX = 200, FAR_PX = 3000;
+function bodyHereOff() {
+  try { return new URLSearchParams(window.location.search).get('bodyhere') === '0'; } catch (e) { return false; }
+}
+export function bodyPlaceHere(S, x, y, d) {
+  const P = S && S.player;
+  if (!P || bodyHereOff() || S._dying || P.dead) return false;
+  const dx = x - P.x, dy = y - P.y, dd = dx * dx + dy * dy;
+  if (!(dd > NEAR_PX * NEAR_PX) || dd > FAR_PX * FAR_PX) return false;
+  P.x = x; P.y = y;
+  if (typeof P.vx === 'number') P.vx = 0;
+  if (typeof P.vy === 'number') P.vy = 0;
+  if (typeof d === 'string') P.dir = d;
+  S._bodyPlacedAt = Date.now();   /* QA readout (mp-bodytake) */
+  return true;
+}
+
 /** `body_place`: land at the body.  True when the trip will take it there. */
 export function onBodyPlace(S, p) {
   if (S) S._bodyPlaceDue = 0;   /* it came: the trip goes on */
   if (!S || !p || p.z !== 'wheel' || !canBePlaced()) return false;
   const x = Number(p.x), y = Number(p.y);
   if (!isFinite(x) || !isFinite(y)) return false;
-  if (S.currentZone !== 'town') return false;   /* already somewhere: the next move answers */
+  /* v2.3.4831: a tab already in the Wheel (its own reconnect) steps to the
+     body itself -- before, its next move decided, and one that had walked
+     on while its socket was dead was sent to the countdown */
+  if (S.currentZone === 'wheel') return bodyPlaceHere(S, x, y, p.d);
+  if (S.currentZone !== 'town') return false;   /* already somewhere (a dungeon, ...): the next move answers */
   setWheelArrival({ x, y });
   if (S.player && typeof p.d === 'string') S.player.dir = p.d;
   if (!S._spawnToWheel) { wantWheelSpawn(S); veilWheelTrip(S); }

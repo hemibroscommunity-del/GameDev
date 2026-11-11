@@ -63,6 +63,7 @@ import { arenaMethods } from './gladiator.js';
 import { dungeonMethods } from './dungeon.js';
 import { telegraphMethods } from './telegraph.js'; /* v2.3.1730 */
 import { hitMethods } from './hits.js'; /* v2.3.3296: one door for every monster hit on a player */
+import { monsterLifeMethods } from './monsterlife.js'; /* v2.3.4843: a world monster's one reset for a new life */
 import { monsterMoveMethods } from './monstermoves.js'; /* v2.3.4011: the tiers' moves (combo, charge, volley, slams, enrage) */
 import { relayMethods } from './relay.js'; /* v2.3.3304: the relay is an allowlist, in the sender's name */
 import { depthMethods } from './depth.js'; /* v2.3.2790: the dunes' north-south depth, on the monster AI */
@@ -265,7 +266,10 @@ import { moveClaimMethods, guardFacing } from './moveclaims.js'; /* v2.3.4605: w
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
 import { staminaRegenMethods } from './staminaregen.js'; /* v2.3.3536: stamina regen worked out by the worker */
 import { fightLockMethods, FIGHT_GATED } from './fightlock.js'; /* v2.3.4510: one fight-lock table */
+import { leaveMethods } from './leave.js'; /* v2.3.4830: the session door -- every way of leaving */
 import { goldMethods } from './gold.js'; /* v2.3.4670: the gold door -- every change to a player's gold */
+import { lifeMethods } from './life.js'; /* v2.3.4820: the life door -- a player's health and life phase */
+import { bagGive } from './bag.js'; /* v2.3.4810: the bag door */
 /* v2.3.3130: the Herb Bread's out-of-combat healing multiplier, read once
    from its dish (data.js DISHES) -- 2, "twice as fast". */
 const HERB_REGEN_MULT = (DISHES.meal_herb_bread && Number(DISHES.meal_herb_bread.power) > 1) ? Number(DISHES.meal_herb_bread.power) : 2;
@@ -2014,99 +2018,10 @@ export class GameRoom {
         // Respawn check
         if (!m.alive) {
           if (m.respawnAt > 0 && now >= m.respawnAt) {
-            m.alive = true;
-            m.hp = m.maxHp;
-            m.x = m.spawnX;
-            m.y = m.spawnY;
-            /* v2.3.2295: a respawn drops the target too -- same reasoning as
-               the aggro-loss stamp below. */
-            if (m.targetId) m._tgLost = now;
-            m.targetId = null;
-            m.atkCd = 0;
-            /* ═══ v2.3.1709: A RESPAWNED MONSTER COMES BACK CLEAN ═══
-               Owner, playtesting before judging: "the slimes were apparently
-               brand new ones that I had freshly killed in that zone.  I saw
-               no damage from any other person on them.  And new ones that
-               spawned still attributed the loot to that other person."
-
-               `m.statuses` was created (elemental.js) and never cleared —
-               not on death, not here.  So a burn or a thorn another player
-               landed OUTLIVED the monster it was on: the corpse respawned
-               still burning, still stamped with THEIR sourceId, and every
-               DoT tick after that credited them through _applyMonsterDot,
-               which writes straight into dmgByPlayer.  A slime the owner
-               killed single-handedly therefore listed a contributor they had
-               never seen touch it, and once that stale credit outgrew the
-               GDD §7 gold cutoff (share < 0.05) the owner dropped out of
-               `goldRecipients` entirely — so the pile said it was somebody
-               else's and `_handleLootPickup` refused the grab with
-               'not-recipient'.  It compounded across lives, which is why it
-               looked like a curse that followed them rather than one bad
-               kill.
-
-               dmgByPlayer is reset at the end of _resolveMonsterKill, but it
-               is cleared HERE too on purpose: that reset only runs on the
-               kill path, and anything that lands damage between the kill and
-               the respawn (a DoT tick resolving after death, a reflect) puts
-               credit back onto a corpse.  Belt and braces on the field that
-               decides who owns the loot. */
-            m.statuses = Object.create(null); // v2.3.1709: null-proto, rule 4
-            m._holdUntil = 0; m._holdImmuneUntil = 0;   /* v2.3.3513: a fresh life is never held or immune (elemental.js HOLD) */
-            m.dmgByPlayer = Object.create(null);
-            /* v2.3.2215: a wind-up must not survive death — a respawned
-               monster carrying _bwUntil would resolve a swing it started in
-               a previous life, at a target that is no longer there. */
-            m._bwUntil = 0; m._bwTarget = null; m._bwKind = null;
-            /* v2.3.2221: and the burrow, for the same reason plus a worse
-               one — a respawned monster still carrying _invulnUntil would
-               come back untouchable, and one still carrying _burPhase would
-               come back as a mound of snow that never reassembles.  The
-               COOLDOWN is deliberately not cleared: it is a fresh monster,
-               so it may burrow again as soon as it drops to half. */
-            m._burPhase = null; m._burUntil = 0; m._burTarget = null;
-            m._invulnUntil = 0; m._burCd = 0; m._burFloor = 0;   /* v2.3.2223 */
-            /* v2.3.2224: and the death fuse — a respawned slime carrying
-               _burstUntil would explode on arrival, at full health. */
-            m._burstUntil = 0; m._burstKiller = null; m._burstSlot = null;
-            m._burstDone = false;
-            /* v2.3.3634: and a kit's wind-up (telegraph.js), for the
-               _bwUntil reason above -- a monster killed mid-cast came back
-               with its phase still 'telegraph' and a _tgUntil long past, so
-               the next tick fired the cast at its spawn with no warning: a
-               mummy killed during its roar's wind-up (they plant for it, next
-               to the players hitting them) roared at whoever stood by its
-               spawn 6-19 s later, half a hit and a 130 px shove.  Found by the
-               review of v2.3.3621.  The cooldown stays, as the burrow's. */
-            m._tgPhase = null; m._tgUntil = 0; m._tgAim = null; m._tgTarget = null; m._tgRadius = 0;
-            /* v2.3.4403: and a ball still in the air (telegraph.js throw),
-               for the _bwUntil reason above -- a slime or snowman killed
-               with its ball up came back with _projImpactAt long past, so
-               the first tick of its new life landed the old ball on
-               whoever it was thrown at, about 19 s late, nothing drawn
-               (the sweep's V7).  What a ball does when its thrower dies is
-               the owner's question; this only stops it crossing a life.
-               And the knock-back debt (combat.js): a new life does not
-               glide back to where the last one was pushed from. */
-            m._projImpactAt = 0; m._projTargetId = null; m._projTx = 0; m._projTy = 0;
-            m._projFromX = undefined; m._projFromY = undefined;
-            m._kbDebt = 0;
-            /* v2.3.4011: and a move (monstermoves.js), for the same reason: a
-               fresh life with nothing in flight, nothing cooling, not enraged */
-            this._clearMonsterMove(m);
-            /* v2.3.3120: and its trap marks (trapping.js): a mark is on THIS
-               life of the monster, and the kill path clears it -- this is the
-               belt and braces dmgByPlayer has above. */
-            m._armedBy = null; m._trapJudgeAt = 0;
-            // Revert any in-life variant transform (mummy -> skeleton)
-            // so a respawned monster comes back in its original form
-            // with the original spd.  Stamped at spawn time and
-            // restored here on respawn.
-            if (m.spawnVariant !== undefined) {
-              m.variant = m.spawnVariant;
-              const respawnSpd = m.spawnVariant ? this._variantSpeed(m.spawnVariant) : null;
-              if (respawnSpd != null) m.spd = respawnSpd;
-              else if (m.spawnSpd != null) m.spd = m.spawnSpd;
-            }
+            /* v2.3.4843: the whole new life in ONE reset (monsterlife.js
+               _monsterNewLife): the hand list that lived here, every row
+               with its incident, plus what it missed and the life count */
+            this._monsterNewLife(m, now);
             this._markMonsterDirty(zoneId, m.id);
           }
           continue;
@@ -3451,8 +3366,7 @@ export class GameRoom {
     /* v2.3.3265: a sparring clone's knockout, and yours by your own clone,
        are the spar's and never a death (spar.js _sparDeath) */
     if (this._sparById && this._sparById.size && this._sparDeath(ps, playerId, cause)) return;
-    ps.dying = true;
-    ps.dead = true;
+    this._lifeTo(ps, 'dying', 'death');   /* v2.3.4820: the life door */
     if (ps._ride) this._rideEnd(ps, 'dead', playerId);   /* v2.3.3776: off the board (ride.js) */
     ps.respawnAt = Date.now() + 5000;
     ps.dmgFromMonster = {};
@@ -3604,11 +3518,10 @@ export class GameRoom {
       }
       if (!ps.dying) continue;
       if (now < (ps.respawnAt || 0)) continue;
-      ps.hp = ps.maxHp || 100;
+      this._hpSet(ps, ps.maxHp || 100, 'respawn');
       ps.stamina = ps.maxStamina || 100;
       ps.mana = ps.maxMana || 100;
-      ps.dying = false;
-      ps.dead = false;
+      this._lifeTo(ps, 'alive', 'respawn');   /* v2.3.4820: the life door */
       ps.respawnAt = 0;
       ps.z = 'town';
       this._duelZoneMoved(id);   /* v2.3.4371: every zone write asks the duel (duel.js) */
@@ -3742,7 +3655,7 @@ export class GameRoom {
       if (!ps._arenaMatch && !inDuel && (inHub || safeHeal) && ps.hp < ps.maxHp) {
         const heal = Math.max(1, Math.ceil(ps.maxHp * 0.10));
         const beforeHp = ps.hp;
-        ps.hp = Math.min(ps.maxHp, ps.hp + heal);
+        this._hpSet(ps, Math.min(ps.maxHp, ps.hp + heal), 'regen_hub');
         if (ps.hp !== beforeHp) changed = true;
       } else if (!ps._arenaMatch && !inDuel && !inHub && ps.hp < ps.maxHp) {
         /* v2.3.1701: OUT-OF-COMBAT TRICKLE in the combat zones (see the
@@ -3771,7 +3684,7 @@ export class GameRoom {
           const _herb = this._buffActive(ps, 'rest') ? HERB_REGEN_MULT : 1;
           const heal = Math.max(1, Math.round(ps.maxHp * this.SPOKE_REGEN_PCT * _herb));
           const beforeHp = ps.hp;
-          ps.hp = Math.min(ps.maxHp, ps.hp + heal);
+          this._hpSet(ps, Math.min(ps.maxHp, ps.hp + heal), 'regen_spoke');
           if (ps.hp !== beforeHp) changed = true;
         }
       }
@@ -4692,7 +4605,7 @@ export class GameRoom {
         const key = it && it.key;
         const qty = Math.floor(Number(it && it.qty) || 0);
         if (!key || qty <= 0) continue;
-        ps.inventory[key] = (ps.inventory[key] || 0) + qty;
+        bagGive(ps.inventory, key, qty, 'loot_death_items'); /* v2.3.4810: the bag door */
         itemsForMe.push({ key, qty });
       }
       /* v2.3.2491: stamp what was just handed over, so a death inside the
@@ -4811,6 +4724,8 @@ export class GameRoom {
          (revealbag.js) */
       armorForMe = pile.armor.map((a) => this._gearProvRecord(
         session.id, (a && a.slot === 'legsArmor') ? 'legsArmor' : 'armor', this._revealBagMark(session, { ...a }), 'drop'));
+      /* v2.3.4840: the worker's armour stash too (gearstash.js _gearStashLiveAdd) */
+      if (this._gearStashLiveAdd) for (const a of armorForMe) this._gearStashLiveAdd(ps, (a && a.slot === 'legsArmor') ? 'legsArmor' : 'armor', a);
     }
     pile.claimedBy[session.id] = true;
 
@@ -4824,11 +4739,11 @@ export class GameRoom {
     if (skullForMe) {
       if (!ps.inventory) ps.inventory = {};
       const invKey = this._invKeyForSkull(skullForMe, pile.skullArch);
-      ps.inventory[invKey] = (ps.inventory[invKey] || 0) + 1;
+      bagGive(ps.inventory, invKey, 1, 'loot_skull'); /* v2.3.4810: the bag door */
     }
     if (shardForMe) {
       if (!ps.inventory) ps.inventory = {};
-      ps.inventory[shardForMe] = (ps.inventory[shardForMe] || 0) + 1;
+      bagGive(ps.inventory, shardForMe, 1, 'loot_shard'); /* v2.3.4810: the bag door */
     }
     /* v2.3.1924: the gem is a plain stackable, credited exactly like the
        shard — server-side, before the credit goes out, so the player_state
@@ -4836,7 +4751,7 @@ export class GameRoom {
        self-credit is simply overwritten (rule 20). */
     if (gemForMe) {
       if (!ps.inventory) ps.inventory = {};
-      ps.inventory[gemForMe] = (ps.inventory[gemForMe] || 0) + 1;
+      bagGive(ps.inventory, gemForMe, 1, 'loot_gem'); /* v2.3.4810: the bag door */
     }
     /* v2.3.2491: the SAME 500 ms client freeze fires for a kill pile's
        trophy, shard or gem, so the same shield applies -- the player did not
@@ -5034,7 +4949,7 @@ export class GameRoom {
        on the session only; the AS number goes in the player's botstat. */
     const _cf = (request && request.cf) || {};
     const _asn = Number(_cf.asn);
-    this.sessions.set(server, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now(), moveSig: '', ip: _ip, openedAt: Date.now(),
+    this.sessions.set(server, { phase: 'open', /* v2.3.4830: the session's life (leave.js) */ id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now(), moveSig: '', ip: _ip, openedAt: Date.now(),
       asn: Number.isFinite(_asn) && _asn > 0 ? _asn : null, asOrg: typeof _cf.asOrganization === 'string' ? _cf.asOrganization.slice(0, 64) : null });
     if (!this.tickInterval && this.sessions.size === 1) this.startTickLoop();
     return new Response(null, { status: 101, webSocket: client });
@@ -6506,114 +6421,11 @@ export class GameRoom {
   // decomposition) -- the §16.12 lag-comp rollback PvP resolution
   // lives in combatMethods, mixed into this prototype below.
 
-  async webSocketClose(ws) {
-    const session = this.sessions.get(ws);
-    let _petsLeft = null;   /* v2.3.3120: see below */
-    let _codexLeft = null;  /* v2.3.3209: the same, for the codex (codex.js) */
-    let _fishLeft = null;   /* v2.3.4036: and the catches to weigh (fishlog.js) */
-    let _accLeft = null;    /* v2.3.4545: and the shots and hits not yet written (accuracy.js) */
-    if (session?.id) {
-      /* ═══ v2.3.3260: LEAVING IN THE MIDDLE OF A FIGHT, THE BODY STAYS ═══
-         A player who leaves within 10 s of a hit between them and another
-         player, in the Wheel, leaves their body behind for LINGER.MS,
-         hittable (linger.js).  This close then does only what does not touch
-         the body -- the flushes, the duel/trade/party/consent bookkeeping --
-         and the rest (the body out of the world, its caches, player_leave)
-         waits for _lingerEnd. */
-      const _linger = this._lingerOnClose(session, Date.now());
-      /* v2.3.3265: your sparring clones go with you (spar.js) -- after the
-         linger's decision, which a spar keeps from happening */
-      if (this._sparOnLeave) this._sparOnLeave(session.id);
-      if (this.playerState[session.id] && !_linger) this.playerState[session.id].disconnected = true;
-      /* v2.3.1619: flush coalesced regen before the in-memory blob is
-         dropped.  The regen tick only writes durably every
-         REGEN_SAVE_MS, so a player who regenerated inside that window
-         and then left would reload the PRE-regen pools on their next
-         join -- visible as HP/stamina snapping backwards at the worst
-         possible moment.  Awaited: this is the last chance to persist,
-         a disconnect is not latency-critical, and an unawaited put can
-         be lost to DO eviction.  No-ops (_regenDirty false) for every
-         player whose last write was value-bearing. */
-      const _ps = this.playerState[session.id];
-      if (_ps && _ps._regenDirty) await this._saveRpg(session.id, _ps);
-      /* v2.3.3140: the daily quests' counting is written at most every 30 s;
-         this is its last chance (dailyrewards.js).  Awaited for the same
-         reason as the regen flush above -- and, like it, ONLY when there is
-         something to write: a promise comes back just then, so a clean close
-         stays synchronous for the AFK sweep (afk.test.mjs). */
-      const _drClose = this._drOnClose(session.id);
-      if (_drClose) await _drClose;
-      if (!_linger) {   /* v2.3.3260: a lingering body keeps all of this until _lingerEnd */
-      /* v2.3.3327: where the worker had them, for the next join to be
-         judged from (lastplace.js) */
-      this._placeRemember(session.id, this.playerState[session.id], Date.now());
-      delete this.playerState[session.id];
-      /* v2.3.2534: drop the in-memory provenance ledger with the session.
-         The record itself is durable in gear_prov:<pid> and reloads on the
-         next join (gearprov.js); this is only the cache. */
-      this._gearProvForget(session.id);
-      this._bankForget(session.id);   /* v2.3.3785: the vault's cache, the same way (bank.js) */
-      /* v2.3.3120: the pets record's cache goes with the session too
-         (petbook.js).  A try counted only in memory is copied out here and
-         written at the very END of this handler -- awaited, as the last
-         chance to keep it, but after every synchronous step, because the AFK
-         sweep (tick.js) calls this without awaiting and must still see the
-         player leave at once. */
-      _petsLeft = this._petbookDirtyCopy(session.id);
-      this._petbookForget(session.id);
-      /* v2.3.3209: and the codex's (codex.js): counting since its last write,
-         copied out now and written at the end with the pets record */
-      _codexLeft = this._codexDirtyCopy(session.id);
-      this._codexForget(session.id);
-      /* v2.3.4036: the catches to weigh, the codex's way (fishlog.js) */
-      _fishLeft = this._fishlogDirtyCopy(session.id);
-      this._fishlogForget(session.id);
-      /* v2.3.4545: the shots and hits counted since the last write, the same way (accuracy.js) */
-      _accLeft = this._accDirtyCopy(session.id);
-      /* v2.3.3527: achievements hold nothing unwritten (achievements.js) */
-      this._achvForget(session.id);
-      delete this.stateHistory[session.id];
-      }
-      /* v2.3.3322: the extraction record is NOT deleted here any more.  A
-         harvest's strike is paid only against its own start now
-         (gathering.js HARVEST_PROOF), and the phone replays a strike its
-         dropped socket ate after it rejoins (wsClient.js _holdForRejoin): the
-         record must outlive the socket for the replay to be timed against it.
-         _sweepStaleExtractions collects it at EXTRACTION_TIMEOUT_MS as ever,
-         and nothing reads it for a player who is not here (_extractionShielded
-         asks for the player first). */
-      if (!_linger) this.dirtyPlayers.delete(session.id);   /* v2.3.3260: the body's stop goes out first */
-      // v2.3.1121: an active duel gets a 15s reconnect grace (iOS tab
-      // suspends and deploy bounces are routine) before _tickDuels
-      // forfeits it -- so this runs BEFORE the consent clear, which
-      // would otherwise end the fight unconditionally.
-      this._duelOnDisconnect(session.id);
-      this._trade2OnDisconnect(session.id); // v2.3.1132: a dropped party cancels the window
-      this._partyOnDisconnect(session.id); // v2.3.1185: mark 'away' (grace), don't remove -- reconnects are routine
-      this._botfpFlush(session); // v2.3.1146: final botstat: write so evidence survives the disconnect
-      this._clearPvpConsent(session.id); // v2.3.1116: consent doesn't survive a disconnect
-      /* v2.3.1981: drop the in-memory mute Set (chatmod.js).  The list
-         itself is durable in chat_mute:<pid> and reloads on the next
-         join -- this only releases the fan-out lookup copy, so a room
-         that has seen a thousand players does not hold a thousand Sets. */
-      this._chatModOnClose(session.id);
-      if (!_linger) this.broadcastAll({ type: 'player_leave', id: session.id });   /* v2.3.3260: a lingering body is still there */
-      this.broadcastAll({ type: 'player_count', count: this.getPlayerCount() - 1 });
-    }
-    this.sessions.delete(ws);
-    /* v2.3.3260: the last one out ends every linger (linger.js): nobody is
-       left to fight, and the tick that sweeps them stops just below */
-    if (this.sessions.size === 0 && this._lingerBodies && this._lingerBodies.size) {
-      for (const id of [...this._lingerBodies.keys()]) { const _le = this._lingerEnd(id); if (_le && _le.catch) _le.catch(() => {}); }
-    }
-    if (this.sessions.size === 0 && this.tickInterval) { clearInterval(this.tickInterval); this.tickInterval = null; }
-    if (_petsLeft) await this._petbookPut(session.id, _petsLeft);
-    if (_codexLeft) await this._codexPut(session.id, _codexLeft);
-    if (_fishLeft) await this._fishlogPut(session.id, _fishLeft);
-    if (_accLeft) await this._accPut(session.id, _accLeft);
-  }
+  /* v2.3.4830: the runtime's close goes through the session door, as every
+     other way of leaving does (leave.js _playerLeaves; its body was here) */
+  async webSocketClose(ws) { return this._playerLeaves(ws, 'close'); }
 
-  async webSocketError(ws) { this.webSocketClose(ws); }
+  async webSocketError(ws) { const _p = this._playerLeaves(ws, 'error'); if (_p && _p.catch) _p.catch(() => {}); }
 
   // ═══ startTickLoop ═══ moved to tick.js (v2.3.1174, P4
   // decomposition; the roadmap's do-last slice) -- the 45Hz world
@@ -6810,6 +6622,7 @@ Object.assign(GameRoom.prototype, dungeonMethods);
 Object.assign(GameRoom.prototype, telegraphMethods);
 Object.assign(GameRoom.prototype, hitMethods); /* v2.3.3296 */
 Object.assign(GameRoom.prototype, monsterMoveMethods); /* v2.3.4011 */
+Object.assign(GameRoom.prototype, monsterLifeMethods); /* v2.3.4843 */
 Object.assign(GameRoom.prototype, relayMethods); /* v2.3.3304 */
 Object.assign(GameRoom.prototype, depthMethods); /* v2.3.2790 */
 Object.assign(GameRoom.prototype, dailyChestMethods); /* v2.3.2820 */
@@ -6962,4 +6775,6 @@ Object.assign(GameRoom.prototype, moveClaimMethods); /* v2.3.4605: what a move's
 Object.assign(GameRoom.prototype, sparMethods); /* v2.3.3265: sparring clones (spar.js) */
 Object.assign(GameRoom.prototype, staminaRegenMethods); /* v2.3.3536: stamina regen from the worker's own amulet (staminaregen.js) */
 Object.assign(GameRoom.prototype, fightLockMethods); /* v2.3.4510: one fight-lock table (fightlock.js) */
+Object.assign(GameRoom.prototype, leaveMethods); /* v2.3.4830: the session door (leave.js) */
 Object.assign(GameRoom.prototype, goldMethods); /* v2.3.4670: the gold door (gold.js) */
+Object.assign(GameRoom.prototype, lifeMethods); /* v2.3.4820: the life door (life.js) */

@@ -2,6 +2,7 @@ import { gearStashCap } from './gearstash.js';                      /* v2.3.2536
 import { isGearStashField, slotForGearField, PROV_MINTED, PROV_LEGACY } from './gearprov.js'; /* v2.3.2536 */
 import { swordToGreatsword } from './swordconvert.js';   /* v2.3.3895: a sword in the post arrives a greatsword */
 import { oldGreatswordToMetal } from './gscopper.js';   /* v2.3.3980: ...and a wooden or base-less greatsword a metal one */
+import { bagGive, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
 
 /* ═══ v2.3.1117: INBOX + ESCROW PRIMITIVES (PR2 of the heavy-systems
  * plan; spec in docs/specs/inbox-escrow.md) ═══
@@ -451,7 +452,7 @@ export const inboxMethods = {
          than concatenating onto it. */
       if (Object.prototype.hasOwnProperty.call(Object.prototype, k)) return true;
       if (!ps.inventory) ps.inventory = {};
-      ps.inventory[k] = this._invCount(ps, k) + Math.max(1, Math.floor(p.count || 1));
+      bagGive(ps.inventory, k, Math.max(1, Math.floor(p.count || 1)), 'mail_item'); /* v2.3.4810: the bag door */
       return true;
     }
     if (entry.kind === 'weapon') {
@@ -716,8 +717,7 @@ export const inboxMethods = {
     /* v2.3.3165: the take and its stamp in one write -- see _escrowDebitGold. */
     if (ps) {
       if (this._invCount(ps, k) < c) return { ok: false, reason: 'insufficient_items' };
-      ps.inventory[k] = this._invCount(ps, k) - c;
-      if (ps.inventory[k] <= 0) delete ps.inventory[k];
+      bagTake(ps.inventory, k, c, 'escrow_item'); /* v2.3.4810: the bag door */
       this._saveRpg(playerId, ps);
       const stamped = this._opStamp(opId);
       this._queuePlayerStateFlush(playerId);
@@ -726,8 +726,7 @@ export const inboxMethods = {
     }
     const stored = await this._loadRpg(playerId);
     if (this._invCount(stored, k) < c) return { ok: false, reason: 'insufficient_items' };
-    stored.inventory[k] = this._invCount(stored, k) - c;
-    if (stored.inventory[k] <= 0) delete stored.inventory[k];
+    bagTake(stored.inventory, k, c, 'escrow_item_stored'); /* v2.3.4810: the bag door */
     const saved = this.state.storage.put('rpg:' + playerId, stored);
     const stampedOff = this._opStamp(opId);
     await saved;

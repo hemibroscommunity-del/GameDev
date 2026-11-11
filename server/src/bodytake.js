@@ -147,7 +147,7 @@ export const bodyTakeMethods = {
     this._bodyTakeDone(id, ps);
     const ws = this._wsBySessionId ? this._wsBySessionId(id) : null;
     if (!ws) return;
-    try { await this.webSocketClose(ws); } catch (e) { /* the runtime's own close runs it again */ }
+    await this._playerLeaves(ws, 'bodyTakeFailed');   /* v2.3.4830: the session door (leave.js) */
     const b = this._lingerBodies ? this._lingerBodies.get(id) : null;
     if (b) {
       try { ws.send(JSON.stringify({ type: 'linger_wait', payload: { ms: Math.ceil(Math.max(0, b.until - Date.now()) + LINGER.WAIT_SLACK_MS) } })); } catch {}

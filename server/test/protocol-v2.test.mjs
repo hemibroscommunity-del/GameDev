@@ -224,9 +224,8 @@ const p1zm = msgsOfType(ws1, 'zone_monsters');
 check('v1 zone change sends legacy trio', p1zm.length >= 1
   && msgsOfType(ws1, 'zone_nodes').length >= 1 && msgsOfType(ws1, 'zone_loot').length === 1
   && msgsOfType(ws1, 'zone_state').length === 0);
-check('v1 client is re-sent a GROWN roster when a second player arrives',
-  p1zm.length === 2 && p1zm[1].monsters.length > p1zm[0].monsters.length,
-  { counts: p1zm.map((m) => m.monsters.length) });
+/* v2.3.4850: no roster re-send (the scaler that grew it is gone): p1 gets its one trio */
+check('v1 client is NOT re-sent a roster when a second player arrives', p1zm.length === 1, { n: p1zm.length });
 const zs = msgsOfType(ws2, 'zone_state');
 check('v2 zone change sends one zone_state', zs.length === 1 && msgsOfType(ws2, 'zone_monsters').length === 0
   && msgsOfType(ws2, 'zone_nodes').length === 0 && msgsOfType(ws2, 'zone_loot').length === 0);

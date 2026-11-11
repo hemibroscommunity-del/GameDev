@@ -35,6 +35,8 @@
  * In-memory pending offers on purpose: a deploy wipe just voids
  * un-accepted offers -- nothing is escrowed, no value at risk. */
 
+import { bagTake } from './bag.js'; /* v2.3.4810: the bag door */
+
 export const TRADE_OFFER_TTL = 120000; // 2 min to accept
 
 const own = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);   /* v2.3.4375 */
@@ -197,8 +199,7 @@ export const tradeMethods = {
     if (offer._gold) this._goldTake(senderPs, offer._gold, 'gift_trade'); /* v2.3.4670: the gold door */
     for (const [k, v] of Object.entries(offer)) {
       if (k === '_gold') continue;
-      senderPs.inventory[k] = this._invCount(senderPs, k) - v;
-      if (senderPs.inventory[k] <= 0) delete senderPs.inventory[k];
+      bagTake(senderPs.inventory, k, v, 'gift_trade'); /* v2.3.4810: the bag door */
     }
     // Credit the accepter through the PR2 primitives (they're online --
     // they just clicked accept -- so this applies live and notifies).

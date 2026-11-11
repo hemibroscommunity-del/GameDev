@@ -29,7 +29,8 @@ spec. Add a line here only for a new RULE every session must follow.
 - **The world is the Wheel** (owner, 2026-10-02): BroTown and its safe commons
   in the middle, a spoke of land per element (levels 1-40 built), sea between.
   Players start in BroTown, on login and after a death. The old lands and their
-  World View are CLOSED (`?trial=off` reopens them for one tab). The plan is
+  World View are CLOSED for good: the worker refuses their lands (zonejudge R3)
+  and `?trial=off` is gone (v2.3.4675-4676). The plan is
   `public/tools/world/plan.js`, the geometry `public/tools/world/core/wheel.js`;
   the live Wheel is the long one (5x); the previews (`?bigtown`, `?plaintown`,
   `?placing=2`) the short one. Never write a Wheel coordinate into code or a
@@ -193,6 +194,11 @@ spec. Add a line here only for a new RULE every session must follow.
 - **Every change to a player's gold goes through one door**: `gold.js`
   `_goldGive` / `_goldTake` / `_goldSet`, each call naming its row in
   `GOLD_ROADS`; never write `.coins` (`gold-door.test` fails it).
+- **The same for a bag count, a player's health and leaving**: `bag.js`
+  `bagGive` / `bagTake` / `bagSet` (`BAG_ROADS`); `life.js` `_hpSet`
+  (`HP_ROADS`) and the life phase `ps.life` only through `_lifeTo`; a session
+  leaves only through `leave.js` `_playerLeaves(ws, why)` (`LEAVE_WAYS`).
+  Their tests fail a second writer (TRAPS §337-339).
 - **Identity**: stable `bp_` ids; two tabs share one (test with `?guest=1`). A
   new character starts from the SERVER's defaults: a join with no record reads
   no `rpg*` claim, so a test seeds a character by putting a record on file
@@ -335,6 +341,8 @@ spec. Add a line here only for a new RULE every session must follow.
   `data-enter`; words a computer player reads say "click", through
   `deskWords()`; every screen, a computer included, plays the upright layout,
   the band at the bottom (`src/ui/oneBand.js`; `?oneband=0` the old side column).
+  A device question (a mouse? a computer's window? an iPhone?) is asked
+  through `src/game/deviceProfile.js`, never written again (`device-profile.test`).
 - **Touch**: a control that closes its window on `pointerup` calls
   `swallowTapClick(e)` (TRAPS §247).
 - **Sound**: a new sound gets its label in the Sound Studio
@@ -369,6 +377,7 @@ spec. Add a line here only for a new RULE every session must follow.
 | a storage key | ARCHITECTURE-HANDOFF's rule-2 registry table (precheck `storage-keys`) |
 | a monster hit on players | its row in `MONSTER_HITS` (`hits.js`) |
 | a way to change a player's gold | its row in `GOLD_ROADS` (`gold.js`) and its line in `gold-door.test`'s `EXPECT` |
+| a way to change a bag count, a player's hp, or to leave | its row in `BAG_ROADS`, `HP_ROADS` or `LEAVE_WAYS`, and its line in that door's test |
 | an honesty check | `_testMode(ps)` and its three lists |
 | a refusal in the hit test | the same in the bow's sight gate (TRAPS §236) |
 | a field on the tick | both tick builders (`tick-share.test`) |

@@ -46,9 +46,9 @@ export const KNOWN = {
     /* v2.3.4499: the crowd tour (mp-crowdsweep, docs/specs/held-sweep.md "The crowd tour"), five runs, the worst of each */
     at: { 'a-ink': 730, 'b-fish': 160, 'c-armour1': 110, 'c-armour8': 270, 'h-eight': 120, 'd-prints': 190 },
     crowd: 'a player with a tattoo or a trouser print: every pose and facing they show is a body sheet baked on the page, 114 to 720 ms each, a dozen in the first 20 s (a-ink).  ANY player of a look not yet seen who fishes: the 32-frame fish sheet, 92 to 198 ms (b-fish, c-armour8: one per look, armour or not, a shirt or not).  Armoured players arriving: 36 to 267 ms per look and pose; walking about after, still 60 to 112 ms (h-eight).  The pickaxe made solid in the mining body (solidTool) is part of the same bake.  Fix: the bodies with drawings as a row of colours with the drawing stamped on the worker (the fish sheet too: it has no shirt or eye, lookBodyRefused already passes it), or the bake on a worker' },
-  'masked-bake': { ms: 140,
-    why: 'armour cut to the body ON THE PAGE, inside a frame, when a frame is wanted before the worker has it (armour put on outside the Gear window, a pose first seen): 17 to 107 ms',
-    next: 'draw the bare look until the worker answers (never bake inline in play), and prewarm the poses of what was just put on' },
+  'masked-bake': { ms: 24,
+    why: "v2.3.4870: no longer cut on the page in play (another player's armour drew it inline, in the frame, at first sight and each new facing: 17 to 107 ms; the crowd tour's c-armour stations 54 ms, 28 times).  What is left is the worker job's page-side part: the frames handed over as pictures (_frameInput > createImageBitmap) and the look sheets sent, 8 to 18 ms",
+    next: 'hand the worker the sheets once (as the look sheets are) and send it frame rectangles, not a picture a frame; prewarm the poses of what was just put on' },
   'pack-page': { ms: 20,
     why: "v2.3.4873: a gear sheet first drawn in play is packed a few ms at a time (gearSheets.js _gearPack > packTrimmedSliced; was one go, 21 to 59 ms).  What is left: one cell's read on this box (getImageData, up to 9 ms) and the packed sheet handed to the page as a file of its own (keepAsImage): 9 to 15 ms",
     next: 'the strip door: gear strips as 256-colour files read and packed on the worker, as the monsters are' },

@@ -118,8 +118,7 @@ export const deviceLockMethods = {
   async _authPutOut(ws, why) {
     try { ws.send(JSON.stringify({ type: 'join_rejected', reason: why })); } catch (e) { /* closed */ }
     try { ws.close(why === 'key' ? 4017 : DEVICE_LOCK.CLOSE, why); } catch (e) { /* closed */ }   /* 4017: LOGIN_KEYS.CLOSE (loginkeys.js imports this file) */
-    try { await this.webSocketClose(ws); } catch (e) { /* best effort */ }
-    this.sessions.delete(ws);
+    await this._playerLeaves(ws, 'device');   /* v2.3.4830: the session door (leave.js) */
   },
 
   /* the kill switch, read the lower-case way (TRAPS §117) */

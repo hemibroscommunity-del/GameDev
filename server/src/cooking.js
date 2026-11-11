@@ -34,6 +34,7 @@ import { PROG3 } from './prog3.js';        /* v2.3.2062: the special's mana cost
 import { REGEN_TICKS } from './tick.js';   /* v2.3.2062: the regen cadence */
 import { cropHealFor } from './farm.js';  /* v2.3.3537: every crop is food */
 import { fishKeyInfo } from './fishlog.js';   /* v2.3.4036: an albino or a large fish eaten */
+import { bagGive, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
 
 /* v2.3.3036: _cookRateOk's cooks a minute, 20 -> 45.  20 ("one per 3 s ...
    well above legit play") held while the pan's gesture alone took 4.8 s or
@@ -133,8 +134,7 @@ export const cookingMethods = {
       if (meal.slot === 'now' && this._pvpHealHeld(session.id, ps)) { refuse(); return; }
       if (!this._applyDish(ps, meal, session.id)) { refuse(); return; }
       if (meal.slot === 'now') this._noteInstantHeal(session.id);   /* v2.3.3133 */
-      ps.inventory[invKey] -= 1;
-      if (ps.inventory[invKey] <= 0) delete ps.inventory[invKey];
+      bagTake(ps.inventory, invKey, 1, 'eat_meal'); /* v2.3.4810: the bag door */
       this._saveRpg(session.id, ps);
       const ws = this._wsBySessionId(session.id);
       if (ws) this._sendPlayerState(ws, session.id);
@@ -178,11 +178,10 @@ export const cookingMethods = {
     // we still consume the item to match client semantics (the click
     // handler returns early at full, but a race-condition cheater
     // could trigger this server-side -- consume anyway).
-    ps.inventory[invKey] -= 1;
-    if (ps.inventory[invKey] <= 0) delete ps.inventory[invKey];
+    bagTake(ps.inventory, invKey, 1, 'eat_fish'); /* v2.3.4810: the bag door */
     if (typeof ps.maxHp !== 'number') ps.maxHp = 100;
-    if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
-    ps.hp = Math.min(ps.maxHp, ps.hp + heal);
+    if (typeof ps.hp !== 'number') this._hpSet(ps, ps.maxHp, 'eat_unset');
+    this._hpSet(ps, Math.min(ps.maxHp, ps.hp + heal), 'eat'); /* v2.3.4820: the life door */
     /* v2.3.4036: the first albino (5 AP) and the first large (10 AP) of each
        species eaten is an achievement (achievements.js), however it came to
        the bag -- in this run, before the save that carries its points */
@@ -228,8 +227,7 @@ export const cookingMethods = {
     if (ps.dying || ps.dead || ps.disconnected) return;
     if (!ps.inventory) ps.inventory = {}; // proto-ok: invKey guarded by startsWith wood_ above
     if ((ps.inventory[invKey] || 0) <= 0) return;
-    ps.inventory[invKey] -= 1;
-    if (ps.inventory[invKey] <= 0) delete ps.inventory[invKey];
+    bagTake(ps.inventory, invKey, 1, 'firemaking'); /* v2.3.4810: the bag door */
     /* v2.3.4605: the fire as the worker knows it -- the cook / fire shield
        holds only near one (moveclaims.js `cookshield`).  Memory only. */
     this._fireLitNote(ps, Date.now());
@@ -313,8 +311,7 @@ export const cookingMethods = {
     /* Before the decrement -- see REFUSAL DOES NOT CONSUME above. */
     if (!(dish ? this._applyDish(ps, dish, session.id) : this._applyShopItem(ps, item, session.id))) { refuse(); return; }
     if (_bite) this._noteInstantHeal(session.id);
-    ps.inventory[invKey] -= 1;
-    if (ps.inventory[invKey] <= 0) delete ps.inventory[invKey];
+    bagTake(ps.inventory, invKey, 1, 'drink'); /* v2.3.4810: the bag door */
     this._saveRpg(session.id, ps);
     const ws = this._wsBySessionId(session.id);
     if (ws) this._sendPlayerState(ws, session.id);
@@ -379,9 +376,8 @@ export const cookingMethods = {
       if (remaining <= 0) break;
       if (!this._ingredientMatches(k, type) || ps.inventory[k] <= 0) continue;
       const take = Math.min(ps.inventory[k], remaining);
-      ps.inventory[k] -= take;
+      bagTake(ps.inventory, k, take, 'cook_ingredient'); /* v2.3.4810: the bag door */
       remaining -= take;
-      if (ps.inventory[k] <= 0) delete ps.inventory[k];
     }
     return true;
   },
@@ -464,7 +460,7 @@ export const cookingMethods = {
     /* `makes` is a key of our own table (COOKING_RECIPES), never the
        client's, so the plain-{} bag cannot be handed '__proto__' here. */
     const makes = recipe.makes;
-    const addToBag = () => { ps.inventory[makes] = (Math.floor(Number(ps.inventory[makes]) || 0)) + 1; };
+    const addToBag = () => { bagGive(ps.inventory, makes, 1, 'cook_recipe'); }; /* v2.3.4810: the bag door */
     if (carry) {
       addToBag();
     } else {
@@ -699,10 +695,10 @@ export const cookingMethods = {
       if (dish.buff !== 'heal' || !(Number(dish.power) > 0)) return false;
       if (this._arenaInMatch(pid, ps)) return false;   /* v2.3.4413: the duel's record too (gladiator.js) */
       if (typeof ps.maxHp !== 'number') ps.maxHp = 100;
-      if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
+      if (typeof ps.hp !== 'number') this._hpSet(ps, ps.maxHp, 'dish_unset');
       /* v2.3.3263: a fixed heal, like a fish's -- no Recovery on top unless
          the fish ladder is switched off (_handleEatRequest) */
-      ps.hp = Math.min(ps.maxHp, ps.hp + Math.ceil(Number(dish.power)) + (this._fishHealOff() ? this._recoveryFlat(ps) : 0));
+      this._hpSet(ps, Math.min(ps.maxHp, ps.hp + Math.ceil(Number(dish.power)) + (this._fishHealOff() ? this._recoveryFlat(ps) : 0)), 'dish');
       return true;
     }
     if (dish.slot !== 'meal' && dish.slot !== 'brew') return false;
@@ -740,8 +736,8 @@ export const cookingMethods = {
          its own way. */
       if (this._arenaInMatch(pid, ps)) return false;   /* v2.3.4413: the duel's record too (gladiator.js) */
       if (typeof ps.maxHp !== 'number') ps.maxHp = 100;
-      if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
-      ps.hp = Math.min(ps.maxHp, ps.hp + (item.power || 23));
+      if (typeof ps.hp !== 'number') this._hpSet(ps, ps.maxHp, 'tonic_unset');
+      this._hpSet(ps, Math.min(ps.maxHp, ps.hp + (item.power || 23)), 'tonic');
     } else if (item.effect === 'stamina') {
       if (typeof ps.maxStamina !== 'number') ps.maxStamina = 100;
       if (typeof ps.stamina !== 'number') ps.stamina = ps.maxStamina;
@@ -800,7 +796,7 @@ export const cookingMethods = {
       ps._buffs.spd = Date.now() + durMs;
     } else if (item.effect === 'trap') {
       if (!ps.inventory) ps.inventory = {};
-      ps.inventory.basic_trap = (ps.inventory.basic_trap || 0) + 1;
+      bagGive(ps.inventory, 'basic_trap', 1, 'shop_item_trap'); /* v2.3.4810: the bag door */
     } else if (item.effect === 'dmgBuff') {
       /* ═══ v2.3.2056: THE BUFF IS REAL NOW ═══
        * Owner: "Make it worthwhile to buy a potion."
@@ -973,11 +969,10 @@ export const cookingMethods = {
     }
     ps._lastCookAt = nowCk;
     ps._cookHits = null;   /* v2.3.2956: the cook's hits are spent with its fish (gathering.js _planCookHits) */
-    ps.inventory[fishKey] -= 1;
-    if (ps.inventory[fishKey] <= 0) delete ps.inventory[fishKey];
+    bagTake(ps.inventory, fishKey, 1, 'cook_fish_used'); /* v2.3.4810: the bag door */
     if (kind === 'cooked') {
       const cookedKey = 'cooked_' + fishKey;
-      ps.inventory[cookedKey] = (ps.inventory[cookedKey] || 0) + 1;
+      bagGive(ps.inventory, cookedKey, 1, 'cook_fish_cooked'); /* v2.3.4810: the bag door */
       /* v2.3.1435: life-skill XP x5 (was 8).
          v2.3.1765 (owner: "Lifeskills xp is far too slow.  I think you should
          increase it by about 5x"): x5 again, 25x the original — the same
@@ -996,7 +991,7 @@ export const cookingMethods = {
          (dailyrewards.js) */
       this._drSignal(session.id, 'cook', fishKey, 1);
     } else {
-      ps.inventory.burnt_dust = (ps.inventory.burnt_dust || 0) + 1;
+      bagGive(ps.inventory, 'burnt_dust', 1, 'cook_burnt'); /* v2.3.4810: the bag door */
     }
     this._saveRpg(session.id, ps);
     const ws = this._wsBySessionId(session.id);

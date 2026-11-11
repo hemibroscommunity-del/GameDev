@@ -10030,3 +10030,39 @@ door is not a road the worker takes. A refused change writes nothing and
 sends nothing; `/api/admin/overview`'s `zoneJudge` counts refusals by road,
 and an honest player never meets one, so a growing count is a missed road.
 Fixed in #1534; off-ramp `zonejudge: false`. **Receipt:** `zone-judge.test`.
+
+## 337. "Leaving: close the socket and clean up here" (v2.3.4830)
+
+**Tempting:** a new way to drop a player (a kick, a lock, a reset) deletes
+the session and calls `webSocketClose`, or runs the two duties it thinks
+matter. **Wrong:** the duties a leave runs (the save, the duel's away clock,
+the trade's cancel, party "away", PvP consent, the chat-mute list, the daily
+flush, `player_leave`, the body's linger) were written out in about ten
+places, and a duty added to one was missed by the rest; two leaves racing on
+one socket ran them twice. **The rule.** A session leaves only through
+`_playerLeaves(ws, why)` (`server/src/leave.js`); a new way of leaving is a
+row in `LEAVE_WAYS` naming its duties, and a session's life is the one field
+`session.phase`. **Receipt:** `session-door.test` (fails a second leave path).
+
+## 338. "A bag count is one line: `inv[k] = (inv[k] || 0) + n`" (v2.3.4810)
+
+**Tempting:** a new reward or cost writes the count by hand, as the line
+beside it does. **Wrong:** 69 hand writes in 28 files read the count eight
+ways and emptied a stack two ways (`<= 0 delete` keeps a NaN, `> 0 else
+delete` drops it). **The rule.** A bag count changes only through `bag.js`
+`bagGive` / `bagTake` / `bagSet`, each call naming its row in `BAG_ROADS`
+(the gold door's shape, `gold.js`). Whole-bag replacements (a new bag, the
+join's load, the death wipe) are listed in the test with their reasons.
+**Receipt:** `bag-door.test` (fails a hand write, aliases included).
+
+## 339. "Set `ps.dead = true` here, it is only one line" (v2.3.4820)
+
+**Tempting:** a new way to down, heal or stand up a player writes `ps.hp`,
+`ps.dying` or `ps.dead` itself. **Wrong:** health was written in 39 places
+and the phase was two booleans set in five, so a body could be "dead" and not
+"dying". **The rule.** A player's health changes only through `life.js`
+`_hpSet` naming its row in `HP_ROADS`; the life phase is `ps.life`, changed
+only by `_lifeTo` (which writes the old booleans for their readers). The one
+exception is the phone's `dead` claim behind `serverdead: false`
+(`_lifeDeadClaim`). A monster's `m.hp` / `m.life` is a monster's (`m`, `mn`).
+**Receipt:** `life-door.test`.

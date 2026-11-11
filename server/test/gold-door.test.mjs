@@ -24,7 +24,8 @@
  * its longhand line in EXPECT below.
  */
 import { readdirSync, readFileSync } from 'node:fs';
-import { GOLD_ROADS, GOLD_SUMS, goldAfter, goldMethods } from '../src/gold.js';
+import { GOLD_ROADS, GOLD_SUMS, goldAfter, goldMethods, goldOneSum, wholeGold } from '../src/gold.js';
+import { flagNameOk } from '../src/liveops.js';
 import { GameRoom } from '../src/index.js';
 
 let failures = 0, passes = 0;
@@ -84,6 +85,11 @@ const EXPECT = {
   escrow_debit_group:  (c, n) => c - n,                                   // ps.coins -= Math.floor(Number(d.amount))
 };
 
+/* v2.3.4803: step 1's proof is of the step-1 sums, so it runs on a door with
+   step 2's switch off (`goldonesum: false`); §6 proves step 2 */
+const STEP1 = Object.assign(Object.create(goldMethods), { _liveFlags: { goldonesum: false } });
+const STEP2 = Object.assign(Object.create(goldMethods), { _liveFlags: {} });
+
 /* every purse a record could hold, honest or not, and amounts likewise */
 const PURSES = [0, -0, 1, 7, 100, 4999, 1234567, 2 ** 40, 10.5, 0.25, 99.999, -5, -0.5, NaN, undefined, null, Infinity];
 const AMOUNTS = [0, 1, 3, 50, 2500, 0.5, 7.25];
@@ -106,7 +112,7 @@ const AMOUNTS = [0, 1, 3, 50, 2500, 0.5, 7.25];
         const want = EXPECT[road](c, n);
         const pure = goldAfter(c, n, road);
         const rec = { coins: c };
-        const ret = GOLD_ROADS[road].dir === 'give' ? goldMethods._goldGive(rec, n, road) : goldMethods._goldTake(rec, n, road);
+        const ret = GOLD_ROADS[road].dir === 'give' ? STEP1._goldGive(rec, n, road) : STEP1._goldTake(rec, n, road);
         if (!Object.is(pure, want) || !Object.is(rec.coins, want) || !Object.is(ret, want)) off.push({ c, n, want, pure, got: rec.coins });
       }
     }
@@ -119,8 +125,8 @@ const AMOUNTS = [0, 1, 3, 50, 2500, 0.5, 7.25];
   for (const c of PURSES) for (const back of AMOUNTS) for (const gold of AMOUNTS) {
     const want = (c || 0) + back - gold;
     const rec = { coins: c };
-    goldMethods._goldGive(rec, back, 'ah_offer_back');
-    goldMethods._goldTake(rec, gold, 'ah_offer');
+    STEP1._goldGive(rec, back, 'ah_offer_back');
+    STEP1._goldTake(rec, gold, 'ah_offer');
     if (!Object.is(rec.coins, want)) off.push({ c, back, gold, want, got: rec.coins });
   }
   check('1. ah_offer_back then ah_offer is the offer\'s old line, for every purse', off.length === 0, off.slice(0, 4));
@@ -130,7 +136,7 @@ const AMOUNTS = [0, 1, 3, 50, 2500, 0.5, 7.25];
     const off2 = [];
     for (const v of PURSES) {
       const rec = { coins: 123 };
-      const ret = goldMethods._goldSet(rec, v, road);
+      const ret = STEP1._goldSet(rec, v, road);
       if (!Object.is(rec.coins, v) || !Object.is(ret, v)) off2.push({ v, got: rec.coins });
     }
     check('1. ' + road + ' (set): the purse is what it is given', off2.length === 0, off2);
@@ -258,6 +264,74 @@ function callsIn(s) {
   check('5. _creditPlayer\'s gold lands through the door (floored, as before)', ps.coins === 142, ps);
   room._applyCreditToPs(ps, { kind: 'gold', payload: { amount: -50 } }, 'p1');
   check('5. ...and a negative credit still pays nothing', ps.coins === 142, ps);
+}
+
+/* ── 6. STEP 2: ONE SUM (v2.3.4803) ────────────────────────────────────── */
+{
+  check('6. the switch is on unless `goldonesum: false`, a name the flags route stores', STEP2._goldOneSumOn() && !STEP1._goldOneSumOn() && flagNameOk('goldonesum'));
+  /* the one sum, every road: whole, never below 0, the amount likewise */
+  const giveTake = Object.keys(GOLD_ROADS).filter((r) => GOLD_ROADS[r].dir !== 'set');
+  for (const road of giveTake) {
+    const take = GOLD_ROADS[road].dir === 'take';
+    const off = [];
+    for (const c of PURSES) for (const n of AMOUNTS) {
+      const rec = { coins: c };
+      const ret = take ? STEP2._goldTake(rec, n, road) : STEP2._goldGive(rec, n, road);
+      const want = goldOneSum(c, n, take);
+      if (!Object.is(rec.coins, want) || !Object.is(ret, want) || !Number.isInteger(rec.coins) || rec.coins < 0) off.push({ c, n, want, got: rec.coins });
+    }
+    check('6. ' + road + ': the one sum, a whole number never below 0, for every purse', off.length === 0, off.slice(0, 4));
+  }
+  /* ...and for an HONEST purse and amount it is the step-1 line exactly: no
+     honest player sees a coin of difference */
+  const HONEST_PURSES = [0, 1, 7, 100, 4999, 1234567];
+  const HONEST_AMOUNTS = [0, 1, 3, 50, 2500];
+  for (const road of giveTake) {
+    if (!own(EXPECT, road)) continue;
+    const take = GOLD_ROADS[road].dir === 'take';
+    const off = [];
+    for (const c of HONEST_PURSES) for (const n of HONEST_AMOUNTS) {
+      if (take && n > c) continue;   /* every take's caller checks the purse holds it */
+      const rec = { coins: c };
+      if (take) STEP2._goldTake(rec, n, road); else STEP2._goldGive(rec, n, road);
+      if (!Object.is(rec.coins, EXPECT[road](c, n))) off.push({ c, n, want: EXPECT[road](c, n), got: rec.coins });
+    }
+    check('6. ' + road + ': for an honest purse and amount, the same as step 1', off.length === 0, off.slice(0, 4));
+  }
+  /* a set heals the purse it makes */
+  for (const road of Object.keys(GOLD_ROADS).filter((r) => GOLD_ROADS[r].dir === 'set')) {
+    const off = [];
+    for (const v of PURSES) {
+      const rec = { coins: 5 };
+      STEP2._goldSet(rec, v, road);
+      if (!Object.is(rec.coins, wholeGold(v)) || !Number.isInteger(rec.coins) || rec.coins < 0) off.push({ v, got: rec.coins });
+    }
+    check('6. ' + road + ' (set): the purse made a whole number never below 0', off.length === 0, off);
+  }
+  check('6. the stakes that let a fraction in: a 10.5 coin flip wins 10, loses 10', (() => {
+    const a = { coins: 100 }, b = { coins: 100 };
+    STEP2._goldGive(a, 10.5, 'gamble_win'); STEP2._goldTake(b, 10.5, 'gamble_loss');
+    return a.coins === 110 && b.coins === 90;
+  })());
+  check('6. a broken purse heals on its next move: 10.5 - 3 = 7, -5 + 4 = 4, NaN + 2 = 2', (() => {
+    const a = { coins: 10.5 }, b = { coins: -5 }, c = { coins: NaN };
+    STEP2._goldTake(a, 3, 'harden'); STEP2._goldGive(b, 4, 'quest_reward'); STEP2._goldGive(c, 2, 'loot_gold');
+    return a.coins === 7 && b.coins === 4 && c.coins === 2;
+  })());
+  /* the room, with and without the switch */
+  const mockState = () => ({
+    storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} },
+    getWebSockets: () => [], acceptWebSocket: () => {},
+  });
+  const room = new GameRoom(mockState(), { LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async () => ({}) }) } });
+  room._liveFlags = {};
+  const ps = { coins: 10.5 };
+  room._goldGive(ps, 1, 'quest_reward');
+  check('6. the room does the one sum by default', ps.coins === 11, ps);
+  room._liveFlags = { goldonesum: false };
+  const q = { coins: 10.5 };
+  room._goldGive(q, 1, 'quest_reward');
+  check('6. ...and `goldonesum: false` puts the step-1 sum back at once', q.coins === 11.5, q);
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);

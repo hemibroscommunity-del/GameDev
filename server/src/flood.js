@@ -161,11 +161,7 @@ export const floodMethods = {
    *  (tick.js), so the session is gone whatever the runtime does next. */
   _floodClose(ws, code, reason) {
     try { ws.close(code, reason); } catch (e) {}
-    try {
-      const p = this.webSocketClose(ws);
-      if (p && p.catch) p.catch(() => {});
-    } catch (e) {}
-    this.sessions.delete(ws);
+    this._playerLeaves(ws, 'flood');   /* v2.3.4830: the session door (leave.js): gone at once, the rest after */
   },
 
   /* ── 4. the door ── */

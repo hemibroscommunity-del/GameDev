@@ -75,6 +75,8 @@
  * Spec: docs/specs/farm.md.  Suite: server/test/farm.test.mjs.  The crop
  * table is mirrored in src/data/farmCrops.js and pinned by mirror-audit. */
 
+import { bagGive, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
+
 export const FARM = {
   /* v2.3.3127: the shape of a `farm:<pid>` record this worker reads and
      writes.  A later phase that adds a crop, a field or a state to the
@@ -472,7 +474,7 @@ export const farmMethods = {
           did.n += 1;
         }
         if (did.n > 0) {
-          if (seeds > 0) ps.inventory[crop.seed] = seeds; else delete ps.inventory[crop.seed];
+          bagTake(ps.inventory, crop.seed, did.n, 'farm_plant'); /* v2.3.4810: the bag door */
           did.used = { [crop.seed]: did.n };
         }
       }
@@ -498,7 +500,7 @@ export const farmMethods = {
         did.n += 1;
       }
       if (did.n > 0) {
-        if (bags > 0) ps.inventory[FARM.COMPOST] = bags; else delete ps.inventory[FARM.COMPOST];
+        bagTake(ps.inventory, FARM.COMPOST, did.n, 'farm_feed'); /* v2.3.4810: the bag door */
         did.used = { [FARM.COMPOST]: did.n };
       }
     } else if (op === 'harvest') {
@@ -529,7 +531,7 @@ export const farmMethods = {
       }
       if (did.n > 0) {
         for (const k of Object.keys(items)) {
-          ps.inventory[k] = (Math.floor(Number(ps.inventory[k]) || 0)) + items[k];
+          bagGive(ps.inventory, k, items[k], 'farm_harvest'); /* v2.3.4810: the bag door */
         }
         let xp = 0;
         let leveled = false;
@@ -607,7 +609,7 @@ export const farmMethods = {
     /* One event, live state (the jackpot deposit's shape): the coins and the
        bag change together and _saveRpg writes both. */
     this._goldTake(ps, cost, 'farm_buy'); /* v2.3.4670: the gold door */
-    ps.inventory[item] = (Math.floor(Number(ps.inventory[item]) || 0)) + count;
+    bagGive(ps.inventory, item, count, 'farm_buy'); /* v2.3.4810: the bag door */
     this._saveRpg(session.id, ps);
     const ws = this._wsBySessionId(session.id);
     if (ws) this._sendPlayerState(ws, session.id);

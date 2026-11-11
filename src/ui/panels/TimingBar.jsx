@@ -39,6 +39,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { mcBarWeapon, mcBarCycle, mcBarTimes, mcBarAttack, timingBarWanted } from '@/game/manualCombat.js';
 import { leftCluster, LCTL_SLOT, ctlBottom, LBTN } from './ShieldButton.jsx';   /* v2.3.4656: + the disc's own box, to centre on it */
 import { TB_ART, TB_SHEET, TB_HALF_X, TB_RECT } from './timingBarArt.js';
+import { fineInput } from '../../game/deviceProfile.js';   /* v2.3.4804: the device profile */
 
 const AIR = 4;           /* v2.3.4625: px clear of Burst and Quick Eat either side */
 
@@ -121,7 +122,7 @@ export function TimingBar({ stateRef, isLandscape }) {
   }, [stateRef]);
   useEffect(() => { if (_bar) _bar.root = rootRef.current; }, [weapon]);
   if (!weapon) return null;
-  const fine = typeof matchMedia === 'function' && matchMedia('(pointer:fine)').matches;
+  const fine = fineInput();   /* v2.3.4804: the device profile */
   const rect = TB_RECT[weapon];
   const dpr = typeof window !== 'undefined' ? window.devicePixelRatio : 1;
   const b = barBox(isLandscape, fine, rect, dpr);

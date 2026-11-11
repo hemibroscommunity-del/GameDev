@@ -40,6 +40,7 @@ import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { shopBus } from './shopBus.js';
 import { tradeBagBus } from './tradeBagBus.js';
 import { playIsLandscape } from './playViewport.js';
+import { fineInput } from '../../game/deviceProfile.js';   /* v2.3.4804: the device profile */
 
 export const ONE_BAND_SIDE_MAX_H = 500;
 const SIDE = 'bt-band-side';
@@ -66,7 +67,7 @@ export function ctlLandscape() {
 function wantSideways() {
   if (typeof window === 'undefined' || !oneBandActive()) return false;
   let fine = false;
-  try { fine = !!(window.matchMedia && window.matchMedia('(pointer:fine)').matches); } catch (e) { /* a phone */ }
+  fine = fineInput();   /* v2.3.4804: the device profile */
   return bandSidewaysShape(window.innerWidth, window.innerHeight, fine);
 }
 

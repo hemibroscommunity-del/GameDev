@@ -651,7 +651,7 @@ export const joinMethods = {
     if (typeof msg.id === 'string' && MAGIC_IDS.has(msg.id)) {
       try { ws.send(JSON.stringify({ type: 'join_rejected', reason: 'auth' })); } catch {}
       try { ws.close(4003, 'auth'); } catch {}
-      this.sessions.delete(ws);
+      this._playerLeaves(ws, 'refused');   /* v2.3.4830: the session door (leave.js) */
       return;
     }
     // v2.3.1116: identity auth gate.  Runs BEFORE the eviction loop
@@ -690,7 +690,7 @@ export const joinMethods = {
       if (_authOk === 'key') {
         try { ws.send(JSON.stringify({ type: 'join_rejected', reason: 'key' })); } catch {}
         try { ws.close(LOGIN_KEYS.CLOSE, 'key'); } catch {}
-        this.sessions.delete(ws);
+        this._playerLeaves(ws, 'refused');   /* v2.3.4830: the session door (leave.js) */
         return;
       }
       /* v2.3.3355: a lockout (five wrong keys for this id in a minute) --
@@ -699,7 +699,7 @@ export const joinMethods = {
       if (_authOk === 'locked') {
         try { ws.send(JSON.stringify({ type: 'join_rejected', reason: 'locked', ms: 60000 })); } catch {}
         try { ws.close(LOGIN_KEYS.LOCKED_CLOSE, 'locked'); } catch {}
-        this.sessions.delete(ws);
+        this._playerLeaves(ws, 'refused');   /* v2.3.4830: the session door (leave.js) */
         return;
       }
       /* v2.3.3344: the right key from a device this character was never
@@ -709,13 +709,13 @@ export const joinMethods = {
       if (_authOk === 'device') {
         try { ws.send(JSON.stringify({ type: 'join_rejected', reason: 'device' })); } catch {}
         try { ws.close(DEVICE_LOCK.CLOSE, 'device'); } catch {}
-        this.sessions.delete(ws);
+        this._playerLeaves(ws, 'refused');   /* v2.3.4830: the session door (leave.js) */
         return;
       }
       if (!_authOk) {
         try { ws.send(JSON.stringify({ type: 'join_rejected', reason: 'auth' })); } catch {}
         try { ws.close(4003, 'auth'); } catch {}
-        this.sessions.delete(ws);
+        this._playerLeaves(ws, 'refused');   /* v2.3.4830: the session door (leave.js) */
         return;
       }
       // v2.3.1148: operator freeze gate.  Storage await keeps the
@@ -727,7 +727,7 @@ export const joinMethods = {
       if (_frozen) {
         try { ws.send(JSON.stringify({ type: 'join_rejected', reason: 'frozen' })); } catch {}
         try { ws.close(4004, 'frozen'); } catch {}
-        this.sessions.delete(ws);
+        this._playerLeaves(ws, 'refused');   /* v2.3.4830: the session door (leave.js) */
         return;
       }
     }
@@ -762,7 +762,7 @@ export const joinMethods = {
         if (oldWs === ws || oldS.id !== msg.id) continue;
         if (this._bodyTakeWants(msg, oldS, Date.now())) { _body = this.playerState[msg.id]; break; }
         if (!this._lingerWouldStay(oldS, Date.now())) continue;
-        await this.webSocketClose(oldWs);
+        await this._playerLeaves(oldWs, 'takeoverFight');   /* v2.3.4830: the session door (leave.js) */
         try { oldWs.close(1000, 'superseded by reconnect'); } catch {}
         break;
       }
@@ -773,7 +773,7 @@ export const joinMethods = {
       if (_lw && typeof _lw === 'object' && _lw.wait > 0) {
         try { ws.send(JSON.stringify({ type: 'linger_wait', payload: { ms: Math.ceil(_lw.wait) } })); } catch {}
         try { ws.close(LINGER.CLOSE_CODE, 'linger'); } catch {}
-        this.sessions.delete(ws);
+        this._playerLeaves(ws, 'refused');   /* v2.3.4830: the session door (leave.js) */
         return;
       }
     }
@@ -790,41 +790,19 @@ export const joinMethods = {
     if (msg.id) {
       for (const [oldWs, oldS] of this.sessions) {
         if (oldS.id === msg.id && oldWs !== ws) {
-          /* v2.3.3174: write the bot fingerprint's summary first, as a clean
-             close does (webSocketClose -> _botfpFlush).  This eviction skips
-             webSocketClose, and _botfpOnJoin below re-reads botstat: (written
-             at most every PUT_MIN_MS, 30 s) over the LIVE record -- so a
-             second login rolled the gathering and cooking hour counts back by
-             up to 30 s of strikes, and one every ~29 s kept the 2,400-an-hour
-             caps from ever binding (botfp.test §9b). */
-          try { this._botfpFlush(oldS); } catch (e) { /* evidence is best-effort; the join goes on */ }
-          /* v2.3.4377: ...and the record's unsaved part, as a close does
-             (webSocketClose's `_regenDirty` flush).  The join below reads
-             rpg: back from storage over the live state, so damage taken above
-             25% health (coalesced, persistence.js _saveRpgVitals), a paced
-             tap past the burst (flood.js _saveRpgPaced) and up to
-             REGEN_SAVE_MS of regen were given back: a script could reconnect
-             to heal (state-machine sweep V3, S2-13).  The other closes'
-             saves need nothing here: the daily quests, the pets, codex and
-             catches keep their live copy across a join, and the paced lanes
-             are keyed by player, not socket.  Only the SAVE: the linger,
-             the duel's away clock and the trade's cancel are not run on a
+          /* v2.3.3174 / v2.3.4377: the bot summary and the record's unsaved
+             part, as a close writes them -- and ONLY those: the linger, the
+             duel's away clock and the trade's cancel are not run on a
              takeover (an owner's decision; a trade must survive a phone's
-             reconnect).  Awaited, as the close awaits it, so the read below
-             finds it; writes nothing when nothing is dirty (cost-guard).
-             `takeoversave: false` in the live flags skips it (liveops). */
-          const _tf = this._liveFlags;
-          const _tsOff = !!(_tf && typeof _tf === 'object' && Object.prototype.hasOwnProperty.call(_tf, 'takeoversave') && !_tf.takeoversave);
-          const _oldPs = this.playerState[msg.id];
-          if (!_tsOff && !_body && _oldPs && _oldPs._regenDirty) {   /* v2.3.4455: a kept body is not read back: nothing to save over */
-            try { await this._saveRpg(msg.id, _oldPs); } catch (e) { /* the join goes on, as before */ }
-          }
-          this.sessions.delete(oldWs);
+             reconnect).  v2.3.4830: through the session door's `takeover`
+             row (leave.js), where the reasons are kept. */
+          await this._playerLeaves(oldWs, 'takeover', { kept: !!_body });
           try { oldWs.close(1000, 'superseded by reconnect'); } catch {}
         }
       }
     }
     session.id = msg.id;
+    session.phase = 'joined';   /* v2.3.4830: the session's life (leave.js) */
     /* v2.3.1970: see sanitizeDisplayName above -- this is the copy the
        state_sync nameplate and the hiscores row are built from. */
     session.name = sanitizeDisplayName(msg.name);
@@ -1003,8 +981,7 @@ export const joinMethods = {
            finished TCP close, and until then the room counted it and a
            joiner drew it (the review saw both).  Idempotent if the runtime
            fires it later: the session is gone by then. */
-        try { await this.webSocketClose(ws); } catch (_e) { /* best effort */ }
-        this.sessions.delete(ws);
+        await this._playerLeaves(ws, 'joinFailed');   /* v2.3.4830: the session door (leave.js) */
         return;
       }
       /* ═══ v2.3.3138: A NEW CHARACTER STARTS FROM THE SERVER'S DEFAULTS ═══
@@ -1065,7 +1042,7 @@ export const joinMethods = {
         this.playerState[msg.id].xp = stored.xp || 0;
         this.playerState[msg.id].unspentT2 = stored.unspentT2 || 0;
         this.playerState[msg.id].buildPointsThisLvl = stored.buildPointsThisLvl || 0;
-        this.playerState[msg.id].hp = typeof stored.hp === 'number' ? stored.hp : 100;
+        this._hpSet(this.playerState[msg.id], typeof stored.hp === 'number' ? stored.hp : 100, 'join_stored'); /* v2.3.4820: the life door */
         this.playerState[msg.id].maxHp = typeof stored.maxHp === 'number' ? stored.maxHp : 100;
         this.playerState[msg.id].stamina = typeof stored.stamina === 'number' ? stored.stamina : 100;
         this.playerState[msg.id].maxStamina = typeof stored.maxStamina === 'number' ? stored.maxStamina : 100;
@@ -1221,7 +1198,7 @@ export const joinMethods = {
         // so a cheater can't seed a huge BP carry-over.
         this.playerState[msg.id].buildPointsThisLvl = Math.max(0, Math.min(4,
           (msg.data && typeof msg.data.rpgBuildPointsThisLvl === 'number') ? Math.floor(msg.data.rpgBuildPointsThisLvl) : 0));
-        this.playerState[msg.id].hp = (msg.data && typeof msg.data.rpgHp === 'number') ? msg.data.rpgHp : 100;
+        this._hpSet(this.playerState[msg.id], (msg.data && typeof msg.data.rpgHp === 'number') ? msg.data.rpgHp : 100, 'join_new');
         this.playerState[msg.id].maxHp = (msg.data && typeof msg.data.rpgMaxHp === 'number') ? msg.data.rpgMaxHp : 100;
         this.playerState[msg.id].stamina = (msg.data && typeof msg.data.rpgStamina === 'number') ? msg.data.rpgStamina : 100;
         this.playerState[msg.id].maxStamina = (msg.data && typeof msg.data.rpgMaxStamina === 'number') ? msg.data.rpgMaxStamina : 100;
@@ -1401,7 +1378,7 @@ export const joinMethods = {
       this.playerState[msg.id].amuletHpRegen = (msg.data && typeof msg.data.rpgAmuletHpRegen === 'number') ? Math.max(0, Math.min(100, msg.data.rpgAmuletHpRegen)) : 0;
       this.playerState[msg.id].amuletStaminaRegen = (msg.data && typeof msg.data.rpgAmuletStaminaRegen === 'number') ? Math.max(0, Math.min(100, msg.data.rpgAmuletStaminaRegen)) : 0;
       this.playerState[msg.id].lastDamageAt = 0;
-      this.playerState[msg.id].dying = false;
+      this._lifeTo(this.playerState[msg.id], 'alive', 'join_new');   /* v2.3.4820: the life door */
       this.playerState[msg.id].respawnAt = 0;
 
       // Raw stats: prefer stored (already-clamped) values; bootstrap
@@ -1559,7 +1536,7 @@ export const joinMethods = {
         // drops it by construction).
         if (_ps._p3FreshRespec) {
           delete _ps._p3FreshRespec;
-          if (typeof _ps.maxHp === 'number') _ps.hp = _ps.maxHp;
+          if (typeof _ps.maxHp === 'number') this._hpSet(_ps, _ps.maxHp, 'join_respec');
           if (typeof _ps.maxStamina === 'number') _ps.stamina = _ps.maxStamina;
           if (typeof _ps.maxMana === 'number') _ps.mana = _ps.maxMana;
         }
@@ -1586,7 +1563,7 @@ export const joinMethods = {
           const _lf = this._liveFlags;
           const _standOff = !!(_lf && typeof _lf === 'object' && Object.prototype.hasOwnProperty.call(_lf, 'joinstandup') && !_lf.joinstandup);
           if (!_standOff && stored && typeof stored.hp === 'number' && !(stored.hp > 0)) {
-            _ps.hp = _ps.maxHp || 100;
+            this._hpSet(_ps, _ps.maxHp || 100, 'join_stand_up');
             _ps.stamina = _ps.maxStamina || 100;
             _ps.mana = _ps.maxMana || 100;
             _ps.z = 'town';
@@ -1764,12 +1741,6 @@ export const joinMethods = {
     if (_joinInWorld) {
       this._ensureZoneMonsters(joinZone);
       this._ensureZoneNodes(joinZone);
-      /* v2.3.1983: this player is already in playerState, so scaling here
-         counts them — their own state_sync below then carries the world
-         their arrival just grew, and everyone else in the zone gets the
-         roster push from inside (this socket is excluded; it is about to
-         receive the same lists in state_sync). */
-      this._spawnScaleZone(joinZone, Date.now(), undefined, ws);
     }
     const _joinMonstersAll = _joinInWorld ? (this.monsters[joinZone] || []) : [];
     const zoneNodes = _joinInWorld ? (this.nodes[joinZone] || []) : [];

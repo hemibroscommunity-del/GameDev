@@ -74,6 +74,7 @@
  * already held are untouched. */
 
 import { gemGive } from './gems.js'; /* v2.3.3516: gems live in the bag */
+import { bagGive, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
 
 export const SALVAGE = Object.freeze({
   /* metal id (the armour's `mat`, materialTints.js) -> its bar (smelting.js),
@@ -164,7 +165,7 @@ export const salvageMethods = {
     const now = Date.now();
     if (ps._lastSalvageAt && now - ps._lastSalvageAt < SALVAGE.COOLDOWN_MS) return null;
     ps._lastSalvageAt = now;
-    if (!ps.inventory || typeof ps.inventory !== 'object') ps.inventory = {};
+    if (!ps.inventory || typeof ps.inventory !== 'object') ps.inventory = {}; // proto-ok: v2.3.4810: every key written here is SALVAGE's own (a bar, essenceKey, or a key parseEssenceKey accepted)
     return ps;
   },
 
@@ -254,11 +255,11 @@ export const salvageMethods = {
     }
 
     const bar = SALVAGE.METALS[metal].bar;
-    ps.inventory[bar] = Math.floor(Number(ps.inventory[bar]) || 0) + SALVAGE.BARS;
+    bagGive(ps.inventory, bar, SALVAGE.BARS, 'salvage_bars'); /* v2.3.4810: the bag door */
     let essence = null;
     if (SALVAGE.ESSENCE_GRADES.indexOf(grade) >= 0) {
       essence = essenceKey(grade, metal);
-      ps.inventory[essence] = Math.floor(Number(ps.inventory[essence]) || 0) + 1;
+      bagGive(ps.inventory, essence, 1, 'salvage_essence'); /* v2.3.4810: the bag door */
     }
     this._saveRpg(pid, ps);
     /* v2.3.3513: + the gems it gave back -- v2.3.3516: by their bag keys
@@ -307,8 +308,7 @@ export const salvageMethods = {
       return refuse('bad');
     }
 
-    ps.inventory[key] = Math.floor(Number(ps.inventory[key]) || 0) - 1;
-    if (ps.inventory[key] <= 0) delete ps.inventory[key];
+    bagTake(ps.inventory, key, 1, 'essence_apply'); /* v2.3.4810: the bag door */
     this._saveRpg(pid, ps);
     const result = { ok: true, field, ...ref, essence: key, grade: ess.grade, metal: ess.metal, piece };
     this._salvageSend(pid, 'essence_result', result, true);

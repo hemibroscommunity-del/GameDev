@@ -26,6 +26,7 @@
    The owner's "double the size" is kept for the old layout, ?oneband=0. */
 import { deskWideActive } from './deskWide.js';
 import { oneBandActive } from './oneBand.js';
+import { fineInput } from '../game/deviceProfile.js';   /* v2.3.4804: the device profile */
 
 export const WHEEL_MINI_PX = 132;              /* CSS px a side on a phone (the box's own units) */
 /* v2.3.4263 (owner: "Make the desktop version of the minimap somewhat larger"):
@@ -49,7 +50,7 @@ export function wheelMiniK(now) {
     let band = false;
     try {
       band = !on && oneBandActive() && !document.documentElement.classList.contains('bt-band-side')
-        && window.matchMedia('(pointer:fine)').matches;
+        && fineInput();   /* v2.3.4804: the device profile */
     } catch (e) { band = false; }
     _k = on ? WHEEL_MINI_DESK_K : band ? WHEEL_MINI_BAND_K : 1;
   }

@@ -95,6 +95,7 @@ import { SHOP_ITEMS } from './data.js';
 import { petPublic } from './petbook.js';   /* v2.3.3122: pet listings (what a buyer is shown) */
 import { swordToGreatsword } from './swordconvert.js';   /* v2.3.3895: a sword's listing is rewritten once as a greatsword */
 import { oldGreatswordToMetal } from './gscopper.js';   /* v2.3.3980: ...and a wooden or base-less greatsword's as a metal one */
+import { bagTake } from './bag.js'; /* v2.3.4810: the bag door */
 
 /* v2.3.3525: the four remains keys in words (the game's src/data/remains.js) */
 const REMAINS_WORDS = Object.freeze({
@@ -426,7 +427,52 @@ export const storeMethods = {
      an unbounded list() holds the room's input gate for its whole
      duration (rule 9, v2.3.2438). */
   async _stEnsureIndex() {
+    /* v2.3.4842: one load at a time.  The tick's housekeeping slot now starts
+       this load too (_stSettleWait, below), so a shop request arriving while
+       it runs waits for the SAME load rather than reading a half-built shelf.
+       A load that throws leaves no shelf behind: the next call loads again
+       (each heal is idempotent through its own opId stamp). */
+    if (this._stLoadP) return this._stLoadP;
     if (this._stIndex) return;
+    this._stLoadP = this._stLoadIndex();
+    try {
+      await this._stLoadP;
+    } catch (e) {
+      this._stIndex = null;
+      this._stCounts = null;
+      throw e;
+    } finally {
+      this._stLoadP = null;
+    }
+  },
+
+  /* ═══ v2.3.4842: THE STAMP PRUNE WAITS FOR THE AUCTION HOUSE'S HEAL ═══
+     (STATE-MACHINES.md "what is left", from #1521; the sweep's V8a S6-4.)
+     A listing a restart caught mid-sale, mid-release or mid-bid is healed by
+     the shelf's rebuild (_stConverge), and which legs were paid lives in
+     oplog stamps the prune deletes after 48 h.  The rebuild ran only on the
+     first Auction House request after a wake: 48 h of play with nobody
+     opening the shop, and the prune came first -- a paid sale re-listed, a
+     release or bid read the wrong way.  The General Store's book had the same
+     hole and was closed by making the prune wait (market.js _mktSettleWait,
+     v2.3.4505); this is the same for the shelf.  The tick's housekeeping slot
+     (tick.js) asks this BEFORE the prune: true while the shelf has not been
+     rebuilt in this worker's life, and it starts the rebuild when none is
+     running.  So no prune comes between a restart and its heal.
+     The cost: NO extra write a sale (the "paid facts in the record" fix would
+     have cost one more put a sale, a bid and a release).  Once a worker's
+     life, the shelf is read a page at a time -- the read the first shop
+     request made anyway -- and written only where a leftover is finished.
+     Kill switch: `storehealwait: false` (the prune runs as before). */
+  _stSettleWait() {
+    const f = this._liveFlags;
+    if (f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'storehealwait') && !f.storehealwait) return false;
+    if (this._stIndex && !this._stLoadP) return false;
+    if (!this._stLoadP) this._stEnsureIndex().catch(() => { /* the next slot tries again */ });
+    return true;
+  },
+
+  async _stLoadIndex() {
     this._stIndex = new Map();
     this._stCounts = new Map();
     let after = null;
@@ -684,8 +730,7 @@ export const storeMethods = {
          Kill switch: `ahonewrite: false` (_ahOneWrite) puts back the old way. */
       if (this._ahOneWrite()) {
         if (this._invCount(ps, k) < qty) return { ok: false, settled: true, error: 'You do not have that' };
-        ps.inventory[k] = this._invCount(ps, k) - qty;
-        if (ps.inventory[k] <= 0) delete ps.inventory[k];
+        bagTake(ps.inventory, k, qty, 'ah_listing'); /* v2.3.4810: the bag door */
         this._saveRpg(playerId, ps);
         this._queuePlayerStateFlush(playerId);
       } else {

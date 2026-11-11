@@ -79,6 +79,7 @@ import { WHEEL_ZONE } from './wheelzone.js'; /* v2.3.3012: the Wheel's baked nod
 import { HIT_PROOF } from './hitproof.js'; /* v2.3.4385: a paid volley's window (_volleyChipKeeps) */
 import { xpDecayMult, xpAfterDecay } from './xpdecay.js'; /* v2.3.3251: XP fades 5+ levels below you */
 import { parseGemKey } from './gems.js';   /* v2.3.3516: gems are kept through a death (_keptThroughDeath) */
+import { bagGive } from './bag.js'; /* v2.3.4810: the bag door */
 
 export const GATHER_HITS = {
   MS: { mining: 650, woodcutting: 540, fishing: 650, cooking: 650 },
@@ -1571,7 +1572,7 @@ export const gatheringMethods = {
        (fishlog.js) -- and is counted as a catch to weigh; anything else is
        paid as before */
     const fishCaught = n.nodeType === 'fishSpot' ? this._fishCatch(session.id, ps, invKey, yieldQty) : null;
-    if (n.nodeType !== 'fishSpot') ps.inventory[invKey] = (ps.inventory[invKey] || 0) + yieldQty;
+    if (n.nodeType !== 'fishSpot') bagGive(ps.inventory, invKey, yieldQty, 'harvest'); /* v2.3.4810: the bag door */
 
     /* lifeSkill XP -- server applies the XP gain and detects level-up.
        Client used to do this via addLifeSkillXp(R.lifeSkills, ...);
@@ -1593,7 +1594,7 @@ export const gatheringMethods = {
     const shardZone = zone === WHEEL_ZONE ? (n.home || null) : (n.zoneId || zone);
     const shard = shardZone ? this._rollHarvestShard(shardZone) : null;
     if (shard) {
-      ps.inventory[shard] = (ps.inventory[shard] || 0) + 1;
+      bagGive(ps.inventory, shard, 1, 'harvest_shard'); /* v2.3.4810: the bag door */
     }
 
     // v2.3.1120: gather-objective quest credit (trader_2 et al).  The

@@ -55,6 +55,7 @@
  * tries is petbook.js's `pets:<pid>`.
  */
 import { WHEEL_ZONE } from './wheelzone.js';
+import { bagGive, bagSet, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
 
 export const TRAPPING = Object.freeze({
   /* The box trap, an ordinary bag item: traded, sold, mailed and dropped like
@@ -250,8 +251,8 @@ export const trappingMethods = {
     const inv = ps && ps.inventory;
     if (!inv || typeof inv !== 'object' || !has(inv, TRAPPING.LEGACY_TRAP)) return;
     const n = Math.max(0, Math.floor(Number(inv[TRAPPING.LEGACY_TRAP]) || 0));
-    delete inv[TRAPPING.LEGACY_TRAP];
-    if (n > 0) inv[TRAPPING.TRAP] = trapsIn(ps) + n;
+    bagSet(inv, TRAPPING.LEGACY_TRAP, 0, 'trap_legacy_out'); /* v2.3.4810: the bag door */
+    if (n > 0) bagGive(inv, TRAPPING.TRAP, n, 'trap_legacy_in');
   },
 
   /* ═══ make_traps {log, count} -- the Woodworker's Traps tab ═══
@@ -269,16 +270,15 @@ export const trappingMethods = {
     const log = payload && typeof payload.log === 'string' ? payload.log : '';
     if (!has(TRAPPING.LOGS, log)) return reply({ error: 'bad-log', log });
     const per = TRAPPING.LOGS[log];
-    if (!ps.inventory || typeof ps.inventory !== 'object') ps.inventory = {};
+    if (!ps.inventory || typeof ps.inventory !== 'object') ps.inventory = {}; // proto-ok: v2.3.4810: `log` is an own key of TRAPPING.LOGS, the trap key the table's
     const held = has(ps.inventory, log) ? Math.max(0, Math.floor(Number(ps.inventory[log]) || 0)) : 0;
     let count = Math.floor(Number(payload && payload.count) || 1);
     if (!(count >= 1)) count = 1;
     count = Math.min(count, TRAPPING.MAX_PER_REQUEST, Math.floor(held / per));
     if (count < 1) return reply({ error: 'no-logs', log, need: per, have: held });
 
-    ps.inventory[log] = held - count * per;
-    if (ps.inventory[log] <= 0) delete ps.inventory[log];
-    ps.inventory[TRAPPING.TRAP] = trapsIn(ps) + count;
+    bagTake(ps.inventory, log, count * per, 'trap_logs'); /* v2.3.4810: the bag door */
+    bagGive(ps.inventory, TRAPPING.TRAP, count, 'trap_made');
 
     let xp = 0, leveled = false, newLevel = 0;
     try {
@@ -391,8 +391,7 @@ export const trappingMethods = {
       if (!(chance > 0)) { tell({ sprung: false, why: 'level' }); continue; }
 
       /* One trap, caught or not. */
-      ps.inventory[TRAPPING.TRAP] = trapsIn(ps) - 1;
-      if (ps.inventory[TRAPPING.TRAP] <= 0) delete ps.inventory[TRAPPING.TRAP];
+      bagTake(ps.inventory, TRAPPING.TRAP, 1, 'trap_sprung'); /* v2.3.4810: the bag door */
       /* The dice.  `_trapForced` is the admin test kit's lever (devtools.js
          /dev/trapping `next`): one roll forced to catch or miss, for the QA
          scenario and the owner's own look at a catch, never set by play and

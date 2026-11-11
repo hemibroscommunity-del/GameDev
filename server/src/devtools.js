@@ -45,7 +45,6 @@
  * reuses the exact short-circuit shape `_zoneEntryGraceUntil` already has in
  * _applyDamage rather than inventing a second immunity mechanism.
  */
-import { QUEST_ZONE_GATE } from './movement.js';
 import { ACHV_KEY, achvAp } from './achievements.js'; /* v2.3.4354: /dev/apinfo */
 import { QUEST_TOUR, GUILD_QUESTS } from './data.js'; /* v2.3.3525: the tour's steps; v2.3.4354: + a guild rung's AP (/dev/apinfo) */
 import { GEM_ELEMENTS, gemGive, gemCount } from './gems.js'; /* v2.3.3516: the kit's gems, in the bag */
@@ -53,6 +52,7 @@ import { SHARD_CRACK } from './shardcrack.js'; /* v2.3.3516: the kit's shards */
 import { LIFE_SKILL_KEYS } from './migrations.js'; /* v2.3.3229: the life skills a level can be set on */
 import { GATHER_HITS } from './gathering.js'; /* v2.3.3229: 'hits' -- the skills whose harvests and cooks are hits */
 import { PROG3, prog3RespecPoints } from './prog3.js'; /* v2.3.3313: the combat skills a level can be set on; v2.3.3541: + the deal (/dev/combat `deal`) */
+import { bagGive, bagSet } from './bag.js'; /* v2.3.4810: the bag door */
 
 export const DEVKIT = {
   /* The tutorial's own starter weapons -- copper/pine/pine.  Deliberately
@@ -105,33 +105,6 @@ export const devToolsMethods = {
     const ws = this._wsBySessionId(playerId);
     if (ws) this._sendPlayerState(ws, playerId);
     this.dirtyPlayers.add(playerId);
-  },
-
-  /* ═══ UNLOCK THE ZONE GATES ═══
-     Derived from QUEST_ZONE_GATE, the same table _zoneUnlocked reads, so it
-     cannot drift: a quest that starts gating a zone tomorrow is unlocked by
-     this tomorrow, with no edit here.
-
-     Sets 'active', NOT 'turnedIn'.  'active' is all _zoneUnlocked asks for,
-     and it is the honest state -- marking a quest COMPLETE would hand over
-     its rewards' worth of progress, rewrite the tutorial's dialogue state,
-     and quietly make the owner's save unrepresentative of the players she is
-     testing for. */
-  _devUnlockZones(playerId) {
-    const t = this._devTarget(playerId);
-    if (!t) return { ok: false, error: 'player not online' };
-    const ps = t.ps;
-    if (!ps._quests) ps._quests = Object.create(null);   /* rule 4 */
-    const opened = [];
-    for (const [zone, qids] of QUEST_ZONE_GATE) {
-      const already = qids.some((q) => ps._quests[q] === 'active' || ps._quests[q] === 'turnedIn');
-      if (already) continue;
-      /* The first quest that names the zone is enough to open it. */
-      ps._quests[qids[0]] = 'active';
-      opened.push(zone);
-    }
-    this._devPush(playerId, ps);
-    return { ok: true, opened, zones: [...QUEST_ZONE_GATE.keys()] };
   },
 
   /* ═══ KIT + LEVELS ═══ */
@@ -221,7 +194,7 @@ export const devToolsMethods = {
       out.shards = {};
       for (const land of Object.keys(SHARD_CRACK.LANDS)) {
         const k = 'shard_' + land;
-        ps.inventory[k] = Math.max(0, Math.floor(Number(ps.inventory[k]) || 0)) + n;
+        bagGive(ps.inventory, k, n, 'dev_shards'); /* v2.3.4810: the bag door */
         out.shards[k] = ps.inventory[k];
       }
     }
@@ -365,10 +338,10 @@ export const devToolsMethods = {
 
     if (o.heal !== false) {
       this._recomputeMaxes(ps);
-      ps.hp = ps.maxHp;
+      this._hpSet(ps, ps.maxHp, 'dev_heal');
       if (typeof ps.maxStamina === 'number') ps.stamina = ps.maxStamina;
       if (typeof ps.maxMana === 'number') ps.mana = ps.maxMana;
-      ps.dead = false; ps.dying = false;
+      this._lifeTo(ps, 'alive', 'dev_heal'); /* v2.3.4820: the life door */
       out.healed = { hp: ps.hp, stamina: ps.stamina, mana: ps.mana };
     }
     /* v2.3.3006: a stamina level to test against -- a sprint running dry
@@ -382,7 +355,7 @@ export const devToolsMethods = {
        in one blow rather than a dozen.  Never 0: a death is the game's to
        make, through _handlePlayerDeath, not a number set here. */
     if (typeof o.hp === 'number' && Number.isFinite(o.hp) && typeof ps.maxHp === 'number') {
-      ps.hp = Math.max(1, Math.min(ps.maxHp, Math.floor(o.hp)));
+      this._hpSet(ps, Math.max(1, Math.min(ps.maxHp, Math.floor(o.hp))), 'dev_hp');
       out.hp = ps.hp;
     }
 
@@ -410,11 +383,6 @@ export const devToolsMethods = {
     const t = this._devTarget(playerId);
     if (!t) return { ok: false, error: 'player not online' };
     const ps = t.ps;
-    const q = ps._quests || {};
-    const zones = {};
-    for (const [zone, qids] of QUEST_ZONE_GATE) {
-      zones[zone] = qids.some((k) => q[k] === 'active' || q[k] === 'turnedIn');
-    }
     return {
       ok: true,
       zone: ps.z,
@@ -425,7 +393,6 @@ export const devToolsMethods = {
          whether the room allows it (the `testmode: false` kill switch) */
       testMode: ps._testMode === true,
       testModeAllowed: this._testModeAllowed(),
-      zones,
       /* v2.3.3538: the worker's own character level (prog3.js
          _prog3CharLevel: the highest skill, or the sum with `onelevel:
          false`) -- it was summed here inline, a copy of the old rule */
@@ -606,8 +573,8 @@ export const devToolsMethods = {
     if (!ps.lifeSkills || typeof ps.lifeSkills !== 'object') ps.lifeSkills = {};
     if (!ps.inventory || typeof ps.inventory !== 'object') ps.inventory = {};
     if (b.level != null) { const L = clampInt(b.level, 1, 120); ps.lifeSkills.trapping = { level: L, xp: 0 }; out.level = L; }
-    if (b.traps != null) { const n = clampInt(b.traps, 0, 999); if (n > 0) ps.inventory.trap_box = n; else delete ps.inventory.trap_box; out.traps = n; }
-    if (b.logs != null) { const n = clampInt(b.logs, 0, 999); if (n > 0) ps.inventory.wood_pine_log = n; else delete ps.inventory.wood_pine_log; out.logs = n; }
+    if (b.traps != null) { const n = clampInt(b.traps, 0, 999); bagSet(ps.inventory, 'trap_box', n, 'dev_traps'); out.traps = n; }
+    if (b.logs != null) { const n = clampInt(b.logs, 0, 999); bagSet(ps.inventory, 'wood_pine_log', n, 'dev_logs'); /* v2.3.4810: the bag door (both lines) */ out.logs = n; }
     /* v2.3.3123: `look: {gold, size}` -- the NEXT pet made (a catch, or the
        `pet` lever below) comes out golden and/or this size, for the reveal's
        phone test (mp-petsmatter) and the owner's own look at one.  Never set
@@ -779,8 +746,7 @@ export const devToolsMethods = {
     if (!playerId) return json({ ok: false, error: 'playerId required' }, 400);
 
     let result = null;
-    if (path === '/dev/unlock') result = this._devUnlockZones(playerId);
-    else if (path === '/dev/kit') result = this._devKit(playerId, body);
+    if (path === '/dev/kit') result = this._devKit(playerId, body);
     else if (path === '/dev/vitals') result = this._devVitals(playerId, body);
     else if (path === '/dev/quests') result = this._devFinishQuests(playerId, body);   /* v2.3.2277; v2.3.3121: + except */
     else if (path === '/dev/tour') result = this._devTour(playerId, body);   /* v2.3.3525: {at} -- the tour jumped to that step (the Test panel's "Tour: jump to") */
