@@ -583,6 +583,27 @@ curl -X POST -H "Authorization: Bearer YOUR_KEY" \
   -d '{"name":"fightlockdoor","value":false}' "https://WORKER/api/admin/flags"
 ```
 
+**Who decides a change of place** (v2.3.4640). A phone says which place it
+is in, and the server used to believe it, so a modified phone losing a fight
+in No man's land could escape (with the bag the winner should get) by
+claiming to be in town or on its farm. Now the server takes a change of
+place only when it has a reason: into a dungeon only for a player it opened
+the dungeon for (a tap at its mouth, or the party leader's), and out of the
+world only from BroTown's safe ground, where the farm doors are. Everything
+honest players do works as before. `/api/admin/overview`'s `zoneJudge` says
+whether it is on, and `refused` counts the changes it turned down by road
+(`wheel>farm_home` means "out of the world to the farm, from off the safe
+ground"). An honest player never meets a refusal, so those numbers should
+be a few modified phones at most. If a number grows and players report
+arriving somewhere with nothing in it (no monsters, a farm that does
+nothing) until they walk back out, the server missed an honest way of
+changing place: `zonejudge: false` puts every change of place back as it
+was, at once (`docs/specs/zone-judge.md`).
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" \
+  -d '{"name":"zonejudge","value":false}' "https://WORKER/api/admin/flags"
+```
+
 **A private room** for a playtest: the game only makes the rooms it is told
 to. Add the name to `ROOMS` in `server/wrangler.toml` (comma separated,
 `"brotown-1, playtest-2"`), merge, and `?room=playtest-2` on the game's

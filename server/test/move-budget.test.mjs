@@ -77,8 +77,11 @@ async function setup(opts = {}) {
   room._saveRpg = () => {}; room._saveRpgVitals = () => {}; room._saveRpgPools = () => {};
   const id = 'bp_mb' + (++seq);
   const ws = fakeWs();
+  /* v2.3.4640: `safe` joins on the Wheel's safe ground (its arrival): the one
+     place a move out of the Wheel is taken (zonejudge.js) */
+  const at0 = opts.safe ? room._wheelArrival() : { x: 1000, y: 1000 };
   room.sessions.set(ws, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: T });
-  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: 'Mover', phrase: 'p-' + id, protocolVersion: 2, ws: [1, 5], data: { x: 1000, y: 1000, z: opts.z || 'meadow' } }));
+  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: 'Mover', phrase: 'p-' + id, protocolVersion: 2, ws: [1, 5], data: { x: at0.x, y: at0.y, z: opts.z || 'meadow' } }));
   if (room.tickInterval) { clearInterval(room.tickInterval); room.tickInterval = null; }
   const ps = room.playerState[id];
   const move = (x, y, extra) => room.webSocketMessage(ws, JSON.stringify(Object.assign({ type: 'move', x, y, z: ps.z }, extra || {})));
@@ -307,13 +310,15 @@ async function walk(p, pxs, ms, gap = 33, extra) {
 }
 
 // ── 6. the Wheel's way back ──
+/* v2.3.4640: every way out of the Wheel here leaves from its safe ground,
+   where the honest ones are (zonejudge.js): off it, a move out is refused */
 {
-  const p = await setup({ z: WHEEL_ZONE });
+  const p = await setup({ z: WHEEL_ZONE, safe: true });
   await walk(p, 250, 1000);
   const P = { x: p.ps.x, y: p.ps.y };
   T += 500;
   await p.room.webSocketMessage(p.ws, JSON.stringify({ type: 'move', x: 300, y: 300, z: 'town' }));
-  check('6. out to town (guard: a zone change is never judged)', p.ps.z === 'town' && near(p.ps.x, 300));
+  check('6. out to town from the safe ground (guard: taken)', p.ps.z === 'town' && near(p.ps.x, 300));
   check('6. ...the Wheel remembers where they left it', p.ps._wheelBack && near(p.ps._wheelBack.x, P.x), p.ps._wheelBack);
   T += 500;
   await p.room.webSocketMessage(p.ws, JSON.stringify({ type: 'move', x: P.x + 20000, y: P.y, z: WHEEL_ZONE }));
@@ -323,7 +328,7 @@ async function walk(p, pxs, ms, gap = 33, extra) {
   check('6. ...and the way back is spent', p.ps._wheelBack === undefined);
 
   /* the farm: out by the Land Office's door, through town and the farm, back at the same door */
-  const f = await setup({ z: WHEEL_ZONE });
+  const f = await setup({ z: WHEEL_ZONE, safe: true });
   await walk(f, 250, 1000);
   const door = { x: f.ps.x, y: f.ps.y };
   for (const [z, x, y] of [['town', 300, 300], ['farm_home', 500, 600], ['town', 300, 300], [WHEEL_ZONE, door.x + 30, door.y]]) {
@@ -333,7 +338,7 @@ async function walk(p, pxs, ms, gap = 33, extra) {
   check('6. the farm\'s round trip (Wheel, town, farm, town, Wheel) back at the door it left by: taken', f.ps.z === WHEEL_ZONE && near(f.ps.x, door.x + 30), { x: f.ps.x, door: door.x });
 
   /* a dungeon: in at its mouth, out through town at the mouth */
-  const g = await setup({ z: WHEEL_ZONE });
+  const g = await setup({ z: WHEEL_ZONE, safe: true });
   await walk(g, 250, 1000);
   const mouth = { x: g.ps.x, y: g.ps.y };
   for (const [z, x, y] of [['dungeon_wheel_test_1', 400, 1500], ['town', 300, 300], [WHEEL_ZONE, mouth.x - 200, mouth.y + 150]]) {
@@ -343,7 +348,7 @@ async function walk(p, pxs, ms, gap = 33, extra) {
   check('6. a dungeon\'s round trip, back at its mouth 250 px from where they went in: taken', g.ps.z === WHEEL_ZONE && near(g.ps.x, mouth.x - 200) && near(g.ps.y, mouth.y + 150), { x: g.ps.x, y: g.ps.y, mouth });
 
   /* a flip does not refill the budget */
-  const h = await setup({ z: WHEEL_ZONE });
+  const h = await setup({ z: WHEEL_ZONE, safe: true });
   await h.move(h.ps.x + FULL, h.ps.y);   /* spends a full budget */
   const H = { x: h.ps.x, y: h.ps.y };
   await h.room.webSocketMessage(h.ws, JSON.stringify({ type: 'move', x: 300, y: 300, z: 'town' }));
@@ -351,7 +356,7 @@ async function walk(p, pxs, ms, gap = 33, extra) {
   check('6. out and back in at once does not buy a fresh budget: the re-entry moves next to nothing', h.ps.x - H.x < 1, { moved: h.ps.x - H.x });
 
   /* a death forgets it */
-  const dd = await setup({ z: WHEEL_ZONE });
+  const dd = await setup({ z: WHEEL_ZONE, safe: true });
   await walk(dd, 250, 1000);
   await dd.room.webSocketMessage(dd.ws, JSON.stringify({ type: 'move', x: 300, y: 300, z: 'town' }));
   dd.ps.dying = true; dd.ps.respawnAt = T - 1; dd.ps.hp = 0;
@@ -368,7 +373,7 @@ async function walk(p, pxs, ms, gap = 33, extra) {
   check('6. a first join\'s first way into the Wheel is taken wherever it is: no last place to judge it from (lastplace.js)', near(j.ps.x, 123456), j.ps.x);
 
   /* the kill switch: the flip is free again */
-  const k = await setup({ z: WHEEL_ZONE, flags: { movebudget: false } });
+  const k = await setup({ z: WHEEL_ZONE, flags: { movebudget: false }, safe: true });
   const K = { x: k.ps.x, y: k.ps.y };
   await k.room.webSocketMessage(k.ws, JSON.stringify({ type: 'move', x: 300, y: 300, z: 'town' }));
   await k.room.webSocketMessage(k.ws, JSON.stringify({ type: 'move', x: K.x + 20000, y: K.y, z: WHEEL_ZONE }));

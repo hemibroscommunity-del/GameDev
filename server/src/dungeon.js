@@ -369,6 +369,9 @@ export const dungeonMethods = {
     // lazy-"spawn" the empty unknown-zone list instead).
     this.monsters[zone] = [];
     this._dungeonSpawnWave(inst);
+    /* v2.3.4640: the run's pass, the one reason the worker takes a step into
+       it (zonejudge.js) -- given as dungeon_started goes, here and in the pull */
+    this._zonePassGive(inst, session.id, Date.now());
     this._dungeonSend(session.id, { type: 'dungeon_started', payload: { zone, cfg, wave: 1, ...(back ? { back } : {}) } });
     // v2.3.1218 (item D follow-up): leader-initiated group entry -- if the
     // starter leads a party, pull their co-located members into the same
@@ -418,6 +421,7 @@ export const dungeonMethods = {
     near.sort((x, y) => x.d - y.d);
     let pulled = 0;
     for (const { pid } of near.slice(0, room)) {
+      this._zonePassGive(inst, pid, Date.now());   /* v2.3.4640: zonejudge.js */
       this._dungeonSend(pid, { type: 'dungeon_started', payload: { zone: inst.zone, cfg: inst.cfg, wave: 1, ...(inst.back ? { back: inst.back } : {}) } });
       pulled++;
     }

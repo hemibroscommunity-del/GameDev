@@ -57,6 +57,11 @@ async function join(ws, id, z = 'town') {
   await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: 'T', phrase: 'p-' + id, ws: [1, 5], data: { x: 0, y: 0, z } }));
 }
 async function moveTo(ws, z, x = 0, y = 0) {
+  /* v2.3.4640: a step into a run is taken on the pass its dungeon_started
+     gives (zonejudge.js); these runs are the suite's own (below), so the
+     pass is given as their start would give it */
+  const inst = typeof z === 'string' && z.startsWith('dungeon:') && room._dungeons ? room._dungeons.get(z.slice(8)) : null;
+  if (inst) room._zonePassGive(inst, room.sessions.get(ws).id, Date.now());
   await room.webSocketMessage(ws, JSON.stringify({ type: 'move', x, y, z, d: 'down' }));
 }
 const A = 'bp_dz_a', B = 'bp_dz_b';
