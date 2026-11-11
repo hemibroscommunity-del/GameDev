@@ -268,7 +268,10 @@ export function staffFireCancel(S) {
 export function staffFireWaiting(S, now) {
   if (!staffFeelOn(S)) return null;
   const f = S._stf;
-  return !!(f && f.fire && now <= f.fire.until);
+  /* the loop's first frame after the lift always gets its chance, however
+     late it comes (a slow page draws a frame every few hundred ms: a lift
+     lost to that would be "I let go and nothing happened") */
+  return !!(f && f.fire && (!f.fire.tried || now <= f.fire.until));
 }
 
 /** The loop makes the bolt (its angle `ang`): the shot it carries --
@@ -400,7 +403,8 @@ export function staffFeelFrame(S, now, audio) {
   }
   const t0 = _perf();
   const s = st(S);
-  if (s.fire && now > s.fire.until) { s.fire = null; s.stats.lost++; }
+  if (s.fire && s.fire.tried && now > s.fire.until) { s.fire = null; s.stats.lost++; }
+  else if (s.fire) s.fire.tried = true;   /* the loop (run before this) has had its chance */
   /* a gather the page cannot finish: hidden (its lift may never come), or
      the bro down */
   let hidden = false;

@@ -167,8 +167,12 @@ const T0 = 1000000;
     && (S._feelFx || []).some((e) => e.kind === 'streak' && e.ang === 0.5) && !!S._stf.recoil && S._stf.recoil.px === STAFF_FEEL.RECOIL_PX[1] && S._stf.recoil.ang === 0.5);
   staffGatherStart(S, T0 + 1000, 0, 0);
   staffGatherEnd(S, T0 + 1200);
-  staffFeelFrame(S, T0 + 1200 + STAFF_FEEL.FIRE_HOLD_MS + 1);
-  check('5e a bolt the loop could not take (dazed, in the air, too soon) is let go after FIRE_HOLD_MS', S._stf.fire === null && S._stf.stats.lost === 1);
+  const late = staffFireWaiting(S, T0 + 1200 + STAFF_FEEL.FIRE_HOLD_MS + 400);
+  staffFeelFrame(S, T0 + 1200 + STAFF_FEEL.FIRE_HOLD_MS + 400);
+  const kept = S._stf.fire !== null;
+  staffFeelFrame(S, T0 + 1200 + STAFF_FEEL.FIRE_HOLD_MS + 800);
+  check('5e the loop\'s first frame after a lift always gets its chance, however late (a slow page); a bolt it then could not take (dazed, in the air, too soon) is let go after FIRE_HOLD_MS',
+    late === true && kept && S._stf.fire === null && S._stf.stats.lost === 1);
   staffGatherStart(S, T0 + 2000, 0, 0);
   staffGatherEnd(S, T0 + 2050);
   check('5f a tap another job took (a townsperson, a resource, a door) cancels its bolt', staffFireCancel(S) === true && staffFireWaiting(S, T0 + 2060) === false);

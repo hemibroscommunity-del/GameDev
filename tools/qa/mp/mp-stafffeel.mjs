@@ -146,6 +146,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('4 THE LIFT BLASTS ONE BOLT: its relay carries `ga` (the whole gather, thumb down to lift) and a sphere\'s heavy, slow speed; the bro pushed back a step',
       !!b4 && b4.ga >= 1000 && b4.sp < 5 && !lift.after.gathering && shot4.lastShot && shot4.lastShot.stage === 2 && shot4.lastShot.ga === b4.ga && shot4.moveK === 1, { b4, lastShot: shot4.lastShot, recoil: shot4.recoil, fx: await P.page.evaluate(() => window.__btStaffFeelFx()) });
 
+    /* to Frost Ridge's snowmen (out of town: a tap there is no door's or townsperson's) */
+    const { WHEEL_SPAWNS } = await import(H.REPO + '/server/src/wheelspawns.js');
+    const at = WHEEL_SPAWNS.frost.points[0];
+    await H.hopTo(P, at[0] + 150, at[1] + 220, { tries: 260 });
+    await P.page.waitForTimeout(1500);
     /* ── 5 ── a tap */
     const tap = await P.page.evaluate(() => {
       const z = window.__stZone(); window.__stSpin(Date.now() + 300);
@@ -158,20 +163,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const b5 = await H.waitFor(P, () => (window.__stLog || []).filter((e) => e.k === 'player_projectile' && !e.special).slice(-1)[0] || null, (v) => !!v && v.t >= tap.t, { timeout: 8000, label: 'the spark' }).catch(() => null);
     const shot5 = await P.page.evaluate(() => window.__btStaffFeel().lastShot);
     rec.ok('5 A QUICK TAP FIRES A SMALL FAST SPARK: a small `ga`, quicker than the staff\'s bolt, drawn small',
-      !!b5 && b5.ga >= 40 && b5.ga < 200 && b5.sp > 5 && shot5 && shot5.stage === 0 && shot5.sizeK < 1, { b5, shot5 });
-    const twoBolts = (await bolts(P, g.t0)).length;
+      !!b5 && b5.ga >= 40 && b5.ga < 200 && b5.sp > 5 && shot5 && shot5.stage === 0 && shot5.sizeK < 1, { b5, shot5, stats: await P.page.evaluate(() => window.__btStaffFeel().stats) });
+    const twoBolts = (await bolts(P, g.t0)).length;   /* the sphere and this spark */
     rec.ok('5 ...and nothing else left: two bolts in all (the held thumb fired none)', twoBolts === 2, { twoBolts });
 
-    /* ── 6 ── a real hit: the snowmen at Frost Ridge */
-    const { WHEEL_SPAWNS } = await import(H.REPO + '/server/src/wheelspawns.js');
-    const at = WHEEL_SPAWNS.frost.points[0];
-    await H.hopTo(P, at[0] + 150, at[1] + 220, { tries: 260 });
-    await P.page.waitForTimeout(1500);
+    /* ── 6 ── a real hit on a snowman */
     let hit = { sphere: null, spark: null, claims: [] };
     for (let i = 0; i < 24 && !(hit.sphere && hit.spark); i++) {
       const m = (await nearSnow(P))[0];
       if (!m) { await P.page.waitForTimeout(800); continue; }
-      if (m.d > 140) { await H.hopTo(P, m.x, m.y + 90, { tries: 20 }); continue; }
+      /* a bolt reaches 675 px: shoot from here once it is in reach (the snowmen keep their ground) */
+      if (m.d > 600) { await H.hopTo(P, m.x, m.y + 150, { tries: 12 }).catch(() => null); continue; }
       const want = hit.sphere ? 'spark' : 'sphere';
       const r = await P.page.evaluate(({ m, want }) => {
         const S = window._gameState.current, z = window.__stZone();
@@ -181,12 +183,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
         window.__stTouch(z.el, 'touchstart', z.x, z.y, 73);
         window.__stTouch(z.el, 'touchmove', z.x + Math.cos(a) * 30, z.y + Math.sin(a) * 30, 73);
         window.__stTouch(z.el, 'touchmove', z.x + Math.cos(a) * 60, z.y + Math.sin(a) * 60, 73);
-        window.__stSpin(t0 + (want === 'sphere' ? 950 : 90));
+        /* a spark of 250 ms (0.28 of a full gather): a tap's 60 ms lands under a whole point, which the worker
+           carries to the next bolt and reports nothing for (no "-0") */
+        window.__stSpin(t0 + (want === 'sphere' ? 950 : 250));
         window.__btStaffFeel.tick();
         window.__stTouch(z.el, 'touchend', z.x + Math.cos(a) * 60, z.y + Math.sin(a) * 60, 73);
         return { t0, want };
       }, { m, want });
-      const v = await H.waitFor(P, () => window.__btStaffFeel().lastHit, (h) => !!h && h.at >= Date.now() - 2500 && h.gs === (want === 'sphere' ? 2 : 0), { timeout: 3500, label: 'the hit' }).catch(() => null);
+      const v = await H.waitFor(P, () => window.__btStaffFeel().lastHit, (h) => !!h && h.at >= Date.now() - 6000 && h.gs === (want === 'sphere' ? 2 : 0), { timeout: 6000, label: 'the hit' }).catch(() => null);
       if (v) {
         hit[want] = v;
         hit.claims = await P.page.evaluate((t) => (window.__stLog || []).filter((e) => e.k === 'monster_damage' && e.t >= t), r.t0);
@@ -196,8 +200,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const claims = await P.page.evaluate(() => (window.__stLog || []).filter((e) => e.k === 'monster_damage' && !e.special));
     rec.ok('6 A REAL HIT NAMES ITS SHOT: each claim of a gathered bolt carries `sw`, its relay\'s `ts`',
       claims.length > 0 && claims.every((c) => typeof c.sw === 'number' && tsOf.includes(c.sw)), { claims: claims.slice(-4) });
-    rec.ok('6 ...AND THE WORKER\'S VERDICT COMES BACK on monster_hit: a sphere\'s stage 2 and full share; a spark\'s stage 0 and a small share',
-      !!hit.sphere && hit.sphere.gs === 2 && hit.sphere.pw >= 0.8 && !!hit.spark && hit.spark.gs === 0 && hit.spark.pw > 0 && hit.spark.pw < 0.4, hit);
+    rec.ok('6 ...AND THE WORKER\'S VERDICT COMES BACK on monster_hit: a sphere\'s stage 2 and full share (no `pw`: a whole one); a spark\'s stage 0 and a small share',
+      !!hit.sphere && hit.sphere.gs === 2 && (hit.sphere.pw == null || hit.sphere.pw >= 0.8) /* a full share is told by no `pw` (combat.js) */ && !!hit.spark && hit.spark.gs === 0 && hit.spark.pw > 0 && hit.spark.pw < 0.4,
+      { hit, stats: await P.page.evaluate(() => window.__btStaffFeel().stats), near: (await nearSnow(P)).slice(0, 2), bolts: (await bolts(P, 0)).length });
     const ring = await P.page.evaluate(() => ({ imp: window.__btStaffFeel().lastImpact, n: window.__btStaffFeel().stats.impacts, fx: window.__btWeaponFeelFx ? window.__btWeaponFeelFx().stats : null }));
     rec.ok('6 ...its ring of force drawn where it landed (the worker shoves the snowmen)', ring.n >= 1 && !!ring.imp && ring.fx && ring.fx.pulses > 0, ring);
 
