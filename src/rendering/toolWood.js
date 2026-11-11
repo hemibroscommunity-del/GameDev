@@ -204,13 +204,27 @@ export function solidTool(d, w, h, FW, mask) {
     else put(i, p >= w && m[p - w] !== 2 ? IRON_LIGHT : IRON);
     n++;
   }
-  /* the outline, out into the empty pixels only */
-  const out = [];
-  for (let p = 0, i = 0; p < N; p++, i += 4) {
-    if (m[p] || d[i + 3] > 40) continue;
-    if (near(p, (v) => v === 2, edge)) out.push(p, 2);
-    else if (near(p, (v) => v === 1, edge)) out.push(p, 1);
+  /* the outline, out into the empty pixels only.
+     v2.3.4872: turned round -- each pickaxe pixel marks the empty pixels
+     within `edge` of it (in its frame), where every empty pixel of the
+     WHOLE sheet used to scan its own window twice, through a closure: 30 to
+     150 ms of a mining sheet's bake on the page (held-budget.mjs
+     `body-bake`, via solidTool > near).  The same pixels, the same colours
+     (the head's dark wins where both are near). */
+  const ring = new Uint8Array(N);   /* 2 near the head, 1 near the handle only */
+  for (let p = 0; p < N; p++) {
+    const v = m[p];
+    if (!v) continue;
+    const x = p % w, y = (p - x) / w, fx0 = x - (x % FW), fx1 = Math.min(w, fx0 + FW);
+    const xa = Math.max(fx0, x - edge), xb = Math.min(fx1 - 1, x + edge);
+    for (let yy = Math.max(0, y - edge); yy <= Math.min(h - 1, y + edge); yy++) {
+      for (let q = yy * w + xa, qb = yy * w + xb; q <= qb; q++) if (ring[q] < v) ring[q] = v;
+    }
   }
-  for (let j = 0; j < out.length; j += 2) { put(out[j] * 4, out[j + 1] === 2 ? IRON_DARK : WOOD_DARK); n++; }
+  for (let p = 0, i = 0; p < N; p++, i += 4) {
+    const r = ring[p];
+    if (!r || m[p] || d[i + 3] > 40) continue;
+    put(i, r === 2 ? IRON_DARK : WOOD_DARK); n++;
+  }
   return n;
 }

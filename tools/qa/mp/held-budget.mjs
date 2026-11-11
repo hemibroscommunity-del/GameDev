@@ -44,7 +44,8 @@ export const KNOWN = {
     why: 'the head an armoured player shows (<pose>-<dir>-head sheets) is recoloured on the page for each look the first time it is drawn: 28 to 164 ms a sheet as an armoured player circles you',
     next: 'key them by skin alone (they take no trouser or boot colour), then keep them as numbers like the bodies (a look set); the same for a body with an eye style or a drawing (STATE-MACHINES A2)',
     /* v2.3.4499: the crowd tour (mp-crowdsweep, docs/specs/held-sweep.md "The crowd tour"), five runs, the worst of each */
-    at: { 'a-ink': 730, 'b-fish': 160, 'c-armour1': 110, 'c-armour8': 270, 'h-eight': 120, 'd-prints': 190 },
+    at: { 'a-ink': 730, 'b-fish': 160, 'c-armour1': 90,   /* v2.3.4872: the pickaxe's outline turned round (toolWood.js solidTool): c-armour1 179 -> 62 ms, the crowd's armour stations 229 -> 169 */
+      'c-armour8': 270, 'h-eight': 120, 'd-prints': 190 },
     crowd: 'a player with a tattoo or a trouser print: every pose and facing they show is a body sheet baked on the page, 114 to 720 ms each, a dozen in the first 20 s (a-ink).  ANY player of a look not yet seen who fishes: the 32-frame fish sheet, 92 to 198 ms (b-fish, c-armour8: one per look, armour or not, a shirt or not).  Armoured players arriving: 36 to 267 ms per look and pose; walking about after, still 60 to 112 ms (h-eight).  The pickaxe made solid in the mining body (solidTool) is part of the same bake.  Fix: the bodies with drawings as a row of colours with the drawing stamped on the worker (the fish sheet too: it has no shirt or eye, lookBodyRefused already passes it), or the bake on a worker' },
   'masked-bake': { ms: 24,
     why: "v2.3.4870: no longer cut on the page in play (another player's armour drew it inline, in the frame, at first sight and each new facing: 17 to 107 ms; the crowd tour's c-armour stations 54 ms, 28 times).  What is left is the worker job's page-side part: the frames handed over as pictures (_frameInput > createImageBitmap) and the look sheets sent, 8 to 18 ms",
@@ -90,6 +91,11 @@ export const KNOWN = {
   'other: BT_AUDIO$1._fold > foldToMono': { ms: 30,
     why: 'a sound with two sides folded to one the first time it plays: 14 to 21 ms',
     next: 'fold as it is decoded, behind the loading screen or off the first play'},
+  /* v2.3.4872: found over the general line on main (mp-heldsweep `armour`, 15.4 and 16.5 ms, two runs; the crowd tour's
+     armour stations up to 8 ms) */
+  'other: R > J': { ms: 20,
+    why: "React's scheduler working through a redraw (R > J > Gk is performConcurrentWorkOnRoot in the vendor chunk) where no one of the game's components is the outermost named one, so the sweep cannot say whose: 15 to 17 ms at the armour station (putting armour on and off: the gear tab, the band and the bag at once), most of it in React's own commit (Bj) and a createObjectURL",
+    next: 'profile the armour station with React\'s profiler to name the components; then split or startTransition the redraw an equip causes' },
   'other: _flushOutbox > Wrapped.ws.send': { ms: 30,
     why: 'a message to the server handed to the browser: 18 ms once a tour, on a change of armour',
     next: 'watch it; not understood yet' },
