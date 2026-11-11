@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b323e13ff73c5c8aed55c06b96bfb3099a60a4e6",
+  "tree": "6925ac604236c0b5668ef7f9904c460ca7c2a3c2",
+  "committedAt": "2026-11-11T13:08:17-08:00",
+  "subject": "Merge pull request #1565 from hemibroscommunity-del/claude/lane-life-door",
+  "files": 7204,
+  "bytes": 940082062,
+  "listingSha256": "8f25cc9923ba849eaff119aa97e7b7fb1c16a4c3c87045ca588e6d71ac4153ef",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
