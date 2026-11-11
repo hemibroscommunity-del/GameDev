@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
 import { IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
-import { worldTrialMapImage, worldTrialMapPicture, isWheelTrialZone } from '@/game/worldTrial.js';
+import { worldTrialMapPicture, isWheelTrialZone } from '@/game/worldTrial.js';
 import { Assets } from 'pixi.js';
 import { isPaletteSource, paletteThumb } from '@/rendering/paletteDraw.js';   /* v2.3.3464 */
 import { ZONES } from '@/data/zones.js';
@@ -60,7 +60,7 @@ export const MapPanel = () => {
     /* v2.3.2943: and the Wheel's, which the phone drew itself (a canvas) --
        never the vista, even while that picture is still being made */
     const pic = zoneId && worldTrialMapPicture(zoneId);
-    const url = zoneId && !isWheelTrialZone(zoneId) && (worldTrialMapImage(zoneId) || IMAGE_ZONE_MAPS[zoneId]);
+    const url = zoneId && !isWheelTrialZone(zoneId) && IMAGE_ZONE_MAPS[zoneId];   /* v2.3.4676: the island's overview went with `?trial=world` */
 
     ctx.clearRect(0, 0, MINI_W, MINI_H);
     ctx.fillStyle = '#111E23';

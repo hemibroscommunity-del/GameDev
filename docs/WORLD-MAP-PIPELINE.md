@@ -3123,6 +3123,12 @@ old map's far corner, and it slid in over ~15 frames.
 - keep `chunkGround.js` if the real world is going to stream the same way,
   which is the plan.
 
+**Removed (v2.3.4676).** The owner closed the old map for good on 2026-11-11
+("Close it"), and `?trial=world` went with `?trial=off`: the island's pieces
+(`public/maps/world-trial-v1/`, 18 MB), `chunkGround.js` and
+`tools/world/bake-trial-world.mjs` are deleted. The Wheel streams its own way
+(`wheelGround.js`). `src/game/worldTrial.js` stays: it is the Wheel's way in.
+
 ## The Wheel built in blocks round you (v2.3.3298)
 
 The owner, 2026-10-17: *"the game map needs to be larger. It goes from lvl 1

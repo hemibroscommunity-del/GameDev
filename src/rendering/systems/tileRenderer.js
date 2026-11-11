@@ -12,9 +12,8 @@ import { TOWN_EXITS, WORLDVIEW_EXITS, COMING_SOON_MARKS, TOWN_SOON_MARKS } from 
 import { isZoneUnlocked, zoneUnlockQuest, questRoutePoint } from "@/game/questRoute.js"; /* v2.3.1822: a shut door looks shut; v2.3.2121: and the way there is lit */
 import { getTrailStyle } from '@/game/questTrailStyle.js'; /* v2.3.2141: ...in the shape the player chose, or not at all */
 import { getLoadedTiledMap, getTilesetImage, IMAGE_ZONE_MAPS, VIDEO_ZONE_MAPS, mapScaleMode } from '../tiledMaps.js';
-import { ChunkGround } from '../chunkGround.js';            /* v2.3.2932: the world trial's streamed ground */
 import { WheelGround } from '../wheelGround.js';            /* v2.3.2943: ...and the Wheel's, laid on the phone */
-import { isWorldTrialZone, worldTrialMode } from '@/game/worldTrial.js';
+import { isWorldTrialZone } from '@/game/worldTrial.js';
 import { townSkippedOnTheWay, wheelTripVeiled } from '@/game/wheelHome.js'; /* v2.3.3037: no map for today's town on the way to the Wheel */
 import { PORTAL_BEAM } from '../fxStrips.js'; /* v2.3.2070: the light shaft over a zone exit */
 import { drawArenaWalls } from '../arenaWalls.js'; /* v2.3.3566: a dungeon walled with the owner's pictures */
@@ -740,10 +739,10 @@ export class TileRenderer {
     if (isWorldTrialZone(zoneId)) {
       this._renderedTiled = true;
       this._isImageZone = true;
-      /* v2.3.2943: `?trial=wheel` lays its ground from the swatches instead */
-      this._chunkGround = worldTrialMode() === 'wheel'
-        ? new WheelGround(this.tileContainer, this.app)   /* v2.3.3076: + the app, to upload each piece as it is placed */
-        : new ChunkGround(this.tileContainer);
+      /* v2.3.2943: the Wheel lays its ground from the swatches.  (v2.3.4676:
+         the island's streamed pieces, ChunkGround, went with `?trial=world`;
+         the field keeps its name.) */
+      this._chunkGround = new WheelGround(this.tileContainer, this.app);   /* v2.3.3076: + the app, to upload each piece as it is placed */
       return;
     }
 

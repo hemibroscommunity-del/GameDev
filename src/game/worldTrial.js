@@ -48,6 +48,17 @@
  * rivers stop you; the marker just west of where you land takes you back.
  * Everything else about the switch -- the World View it rides on, the
  * readout, `?trial=off` -- is as above.
+ *
+ * ═══ v2.3.4676: THE WHEEL, ALWAYS -- `?trial=off` AND `?trial=world` ARE GONE ═══
+ * The owner retired the old map on 2026-10-02 and, on 2026-11-11, closed it
+ * for good: "Close it" (with the worker refusing its lands, zonejudge.js R3).
+ * So the address no longer chooses: every tab plays the Wheel, a `trial=off`
+ * kept in a tab from before is forgotten, and the island trial (`?trial=world`,
+ * the baked 13,312 px island streamed in pieces: chunkGround.js, the manifest,
+ * public/maps/world-trial-v1, tools/world/bake-trial-world.mjs) is deleted with
+ * it.  `?nospawn` and `?wayback` (QA's roads into today's town) and the
+ * readout (`?trial=...` or `?trialhud`) stay.  The old map's own code, which
+ * nothing reaches now, goes in the next changes.
  */
 /* Relative, not '@/': tiledMaps.js imports this module, and
    tools/qa/qa-mapfree-race.mjs loads tiledMaps.js straight into Node, where the
@@ -67,18 +78,9 @@ export const WORLD_TRIAL_ZONE = 'worldview';
    The trial enters it only against a worker that says it runs them
    (trialZoneFor); otherwise it rides WORLD_TRIAL_ZONE as before. */
 export const WHEEL_ZONE = 'wheel';
-export const WORLD_TRIAL_BASE = '/maps/world-trial-v1/';
 const FLAG_KEY = 'bt-world-trial';
 const TILE = 32;
 
-/* What the bake wrote (manifest.json), for the tables that must be right at
-   BOOT, before the manifest can have arrived.  preloadWorldTrial re-reads
-   them from the manifest and corrects these if a re-bake moved them. */
-const BAKED = {
-  worldW: 13312, worldH: 13312,
-  arrival: { x: 6558, y: 7969 },
-  townExit: { tx: 204, ty: 245 },
-};
 /* v2.3.2943: the Wheel's, as the plan puts them today (the ground worker's
    'ready' reports them from the plan itself, and they are corrected then).
    v2.3.3315: one a Wheel the room may play (src/game/wheelSize.js): the
@@ -95,7 +97,7 @@ let WHEEL = WHEELS[1];
 const WHEEL_LINGER_MS = 5000;
 
 let _on = false;
-let _mode = null;             /* 'world' (the baked island) or 'wheel' */
+let _mode = null;             /* 'wheel' once applied (v2.3.4676: the island, 'world', is gone) */
 /* v2.3.2990: the Wheel is the world now.  `_spawnOff` (`?nospawn`) keeps you
    in today's town on the way in, as before -- the QA suite's scenarios walk
    down the stairs themselves -- and `_hudOn` shows the readout only to a
@@ -117,9 +119,6 @@ let _wayBack = false;
 export function wheelWayBack() { return _spawnOff || _wayBack; }
 let _hudOn = false;
 let _wheelAwayAt = 0;
-let _manifest = null;
-let _manifestP = null;
-let _walkGrid = null;
 let _ready = false;
 /* v2.3.4414: which way in `_ready` belongs to.  A preloadWheel that ended
    after you had left (worldTrialLeft) or after the worker stopped (5 s away)
@@ -128,21 +127,6 @@ let _ready = false;
    and a preload writes only for the count it started under. */
 let _readyGen = 0;
 
-/* Live numbers for the readout; written by chunkGround.js. */
-export const worldTrialStats = {
-  entryMs: null,         /* the way in: manifest + the first screen of pieces */
-  resident: 0,           /* pieces in memory now */
-  loading: 0,            /* pieces in flight now */
-  loads: 0,              /* pieces loaded since entering */
-  lastMs: 0,             /* the last piece's load time */
-  maxMs: 0,              /* the slowest */
-  sumMs: 0,
-  popIns: 0,             /* came on screen before its picture had arrived */
-  bytes: 0,              /* compressed bytes fetched (from the manifest's mean) */
-};
-
-export function worldTrialOn() { return _on; }
-export function worldTrialMode() { return _mode; }
 /* v2.3.2990: the Wheel is the world and you start in its Brotown (wheelHome.js) */
 export function wheelIsHome() { return _on && _mode === 'wheel' && !_spawnOff; }
 export function isWorldTrialZone(zoneId) { return _on && (zoneId === WORLD_TRIAL_ZONE || (_mode === 'wheel' && zoneId === WHEEL_ZONE)); }
@@ -163,26 +147,13 @@ export function worldTrialReady() { return _ready; }
 /* Leaving frees every piece (chunkGround.destroy), so the next way in has to
    warm the first screen again -- re-arm the zone gate for it. */
 export function worldTrialLeft() { _ready = false; _readyGen++; }
-export function worldTrialManifest() { return _manifest; }
 
-/* Which trial this tab is in: 'world', 'wheel' or null.  The stored value
-   was '1' before v2.3.2943, when there was only the island.
-   v2.3.2990, owner: "I'm ready to have this replace the old game map" --
-   with no switch at all it is the WHEEL, for everyone.  `?trial=off` still
-   brings back the old World View (and with it the old lands, which the
-   Wheel has closed for now), kept for the tab like the others: a way back
-   if a phone cannot carry the Wheel, and for comparing. */
+/* Which trial this tab is in.  v2.3.4676: always the Wheel ("Close it", the
+   owner, 2026-11-11): `?trial=off` and `?trial=world` choose nothing any more,
+   and a value kept in the tab from before is forgotten. */
 function readFlag() {
-  if (typeof window === 'undefined') return null;
-  let v = null;
-  try { v = new URLSearchParams(window.location.search).get('trial'); } catch (e) { /* no URL */ }
-  try {
-    if (v === 'world' || v === 'wheel' || v === 'off') window.sessionStorage.setItem(FLAG_KEY, v);
-    const got = window.sessionStorage.getItem(FLAG_KEY);
-    return got === 'off' ? null : got === 'world' || got === '1' ? 'world' : 'wheel';
-  } catch (e) {
-    return v === 'off' ? null : v === 'world' ? 'world' : 'wheel';   /* storage blocked: the URL alone decides */
-  }
+  try { if (typeof window !== 'undefined') window.sessionStorage.removeItem(FLAG_KEY); } catch (e) { /* storage blocked: nothing kept */ }
+  return 'wheel';
 }
 
 /* v2.3.3315: the room plays the Wheel five times longer (caps.wheelsize,
@@ -213,15 +184,15 @@ export function applyWorldTrial() {
   _on = true;
   _mode = mode;
   const z = ZONES[WORLD_TRIAL_ZONE];
-  if (mode === 'wheel') WHEEL = WHEELS[wheelLong()] || WHEELS[1];   /* v2.3.3315 */
-  const size = mode === 'wheel' ? WHEEL : BAKED;
-  z.name = mode === 'wheel' ? 'BroTown' /* v2.3.3039: the name players see (zones.js) */ : 'World Trial';
+  WHEEL = WHEELS[wheelLong()] || WHEELS[1];   /* v2.3.3315 */
+  const size = WHEEL;
+  z.name = 'BroTown';   /* v2.3.3039: the name players see (zones.js) */
   z.w = Math.round(size.worldW / TILE);
   z.h = Math.round(size.worldH / TILE);
   /* v2.3.2943: 1344 x 1344 tiles for the Wheel, and every one of them 0 but
      the way home -- generateZoneMap shares one row among all the rest
      instead of making 1.8 million cells (~14 MB on iPhone) */
-  if (mode === 'wheel') z.sharedRows = true;
+  z.sharedRows = true;
   /* The vista's own tricks -- the figure shrinking with distance, the wide
      reference zoom, the magnifier ring, the haze -- are for a painting of a
      far-away place.  At full size the island is walked like any zone. */
@@ -231,22 +202,21 @@ export function applyWorldTrial() {
   delete z.playerLens;
   delete z.atmosphere;
   /* the sea, for anything drawn before a piece arrives */
-  z.palette = { ground: mode === 'wheel' ? '#1c467e' : '#123a63', path: '#c9a36a', accent: '#86b94f' };
-  if (mode === 'wheel') setExits(wheelWayBack() ? exitBeside(WHEEL.arrival) : null, WHEEL.arrival, 'west');   /* v2.3.3025: no way back */
-  else setExits(BAKED.townExit, BAKED.arrival);
+  z.palette = { ground: '#1c467e', path: '#c9a36a', accent: '#86b94f' };
+  setExits(wheelWayBack() ? exitBeside(WHEEL.arrival) : null, WHEEL.arrival, 'west');   /* v2.3.3025: no way back */
   /* v2.3.3029: and with no way back, today's town's doors are out of reach --
      so a quest that needs them (mayor_1, "Visit 3 buildings in town") hides
      itself instead of walling the Mayor's chain (gameSystems.js anyBuildingDoor) */
-  setClosedDoorZones(mode === 'wheel' && !wheelWayBack() ? ['town'] : null);
+  setClosedDoorZones(!wheelWayBack() ? ['town'] : null);
   /* v2.3.3032: ...and the Wheel's own buildings are doors (game/wheelTownDoors.js,
      src/data/wheelBuildingDoors.js), so the quests that need one come back
      with them -- unless `?noobjects` leaves the town bare */
-  setWheelDoorsOpen(mode === 'wheel' && wheelObjectsOn());
+  setWheelDoorsOpen(wheelObjectsOn());
   COMING_SOON_MARKS.length = 0;
   /* QA probe, house style (cf. __btZoneLabels): the live numbers the readout
      shows, for tools/qa/mp/mp-worldtrial.mjs to assert on. */
   if (typeof window !== 'undefined') {
-    window.__btWorldTrial = { mode, stats: mode === 'wheel' ? wheelStats : worldTrialStats, manifest: () => _manifest, ready: () => _ready,
+    window.__btWorldTrial = { mode, stats: wheelStats, ready: () => _ready,
       running: () => wheelRunning(), hud: () => (_hud ? _hud.textContent : ''),
       /* v2.3.2967: the ground drawn at a spot and its footstep sound, the
          sound under the player now, and the map (its places, for walking to) */
@@ -277,56 +247,9 @@ function setExits(exit, arrival, dir = 'north') {
   WORLDVIEW_ARRIVAL.y = arrival.y;
 }
 
-async function loadManifest() {
-  if (_manifest) return _manifest;
-  if (!_manifestP) {
-    _manifestP = fetch(WORLD_TRIAL_BASE + 'manifest.json').then((r) => {
-      if (!r.ok) throw new Error('manifest ' + r.status);
-      return r.json();
-    }).then((m) => {
-      _manifest = m;
-      if (m.townExit && m.arrival) setExits(m.townExit, m.arrival);
-      _walkGrid = decodeWalk(m.walk);
-      return m;
-    }).catch((e) => { _manifestP = null; throw e; });
-  }
-  return _manifestP;
-}
-
-/* The bake's walk bits (1 = blocked: the sea and the river) as the grid
-   isSolid() reads -- rows of booleans, false = blocked. */
-function decodeWalk(w) {
-  if (!w || !w.bits) return null;
-  const bin = atob(w.bits);
-  const rows = [];
-  for (let ty = 0; ty < w.rows; ty++) {
-    const row = new Array(w.cols);
-    for (let tx = 0; tx < w.cols; tx++) {
-      const k = ty * w.cols + tx;
-      row[tx] = !(bin.charCodeAt(k >> 3) & (1 << (k & 7)));
-    }
-    rows.push(row);
-  }
-  return rows;
-}
-
-/* The picture to show for the whole zone (the dashboard's Map panel): the
-   island overview in the trial, which the zone gate already warmed. */
-export function worldTrialMapImage(zoneId) {
-  return isWorldTrialZone(zoneId) && _mode === 'world' ? WORLD_TRIAL_BASE + 'overview.webp' : null;
-}
 /* v2.3.2943: the Wheel's is drawn on the phone -- a canvas, not a URL. */
 export function worldTrialMapPicture(zoneId) {
   return isWorldTrialZone(zoneId) && _mode === 'wheel' ? wheelOverview() : null;
-}
-
-export function chunkUrl(i, j) {
-  const m = _manifest;
-  return WORLD_TRIAL_BASE + ((m && m.chunk) || 'c_{i}_{j}.webp').replace('{i}', i).replace('{j}', j);
-}
-export function chunkWorldSize() {
-  const m = _manifest;
-  return m ? m.worldW / m.cols : BAKED.worldW / 20;
 }
 
 /* ═══ v2.3.3016: ONE TRIP INTO THE WHEEL THAT LANDS ELSEWHERE ═══
@@ -356,29 +279,12 @@ export function takeWheelArrival() {
 }
 function arrivalPoint() { return arriveLive() || WORLDVIEW_ARRIVAL; }
 
-/* The per-zone gate's half of the trial (preloadAnimations.preloadZoneAssets):
-   the manifest, the blurry whole-island underlay, and every piece the first
-   screen round the arrival point needs.  Awaited behind the ordinary zone
-   loading overlay, and timed -- that is the "loading time" of walking into a
-   seamless world, the number the trial exists to show. */
+/* The per-zone gate's half of the trial (preloadAnimations.preloadZoneAssets),
+   awaited behind the ordinary zone loading overlay: the Wheel's way in.
+   (v2.3.4676: the island's manifest and pieces went with `?trial=world`.) */
 export async function preloadWorldTrial() {
   if (!_on) return;
-  if (_mode === 'wheel') return preloadWheel();
-  const t0 = performance.now();
-  const m = await loadManifest();
-  const { Assets } = await import('pixi.js');
-  const cs = m.worldW / m.cols;
-  const a = m.arrival;
-  /* a phone screen's worth of world round the arrival, plus one piece */
-  const reach = 900;
-  const i0 = Math.max(0, Math.floor((a.x - reach) / cs)), i1 = Math.min(m.cols - 1, Math.floor((a.x + reach) / cs));
-  const j0 = Math.max(0, Math.floor((a.y - reach) / cs)), j1 = Math.min(m.rows - 1, Math.floor((a.y + reach) / cs));
-  const urls = [WORLD_TRIAL_BASE + 'overview.webp'];
-  for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) urls.push(chunkUrl(i, j));
-  await Promise.all(urls.map((u) => Assets.load(u).catch(() => null)));
-  _ready = true;
-  worldTrialStats.entryMs = Math.round(performance.now() - t0);
-  worldTrialStats.bytes += (m.meanChunkBytes || 0) * (urls.length - 1);
+  return preloadWheel();
 }
 
 /* v2.3.4400: how far the Wheel's way in has got, as one number that changes
@@ -552,12 +458,7 @@ export function syncWorldTrial(S) {
   if (!_on || !S) return;
   const inTrial = isWorldTrialZone(S.currentZone);
   const now = performance.now();
-  if (_mode === 'wheel') {
-    syncWheel(S, inTrial, now);
-  } else if (inTrial && _walkGrid) {
-    S._tiledWalkable = S._tiledWalkable || {};
-    if (S._tiledWalkable[WORLD_TRIAL_ZONE] !== _walkGrid) S._tiledWalkable[WORLD_TRIAL_ZONE] = _walkGrid;
-  }
+  syncWheel(S, inTrial, now);   /* v2.3.4676: the island's walk grid went with `?trial=world` */
   if (now - _hudAt < 250) return;
   _hudAt = now;
   drawHud(inTrial && _hudOn, S);
@@ -609,18 +510,7 @@ function drawHud(show, S) {
   }
   _hud.style.display = show ? 'block' : 'none';
   if (!show) return;
-  if (_mode === 'wheel') { _hud.textContent = wheelHud(S); return; }
-  const s = worldTrialStats;
-  const avg = s.loads ? Math.round(s.sumMs / s.loads) : 0;
-  const mb = (s.resident * 1).toFixed(0);          /* 512 x 512 RGBA = 1 MB a piece */
-  /* short lines: this sits on a phone's left edge */
-  _hud.textContent =
-    'WORLD TRIAL\n' +
-    'way in  ' + (s.entryMs == null ? '…' : (s.entryMs / 1000).toFixed(1) + ' s') + '\n' +
-    'memory  ' + s.resident + ' pieces ~' + mb + ' MB' + (s.loading ? ' +' + s.loading : '') + '\n' +
-    'loaded  ' + s.loads + ' · avg ' + avg + ' ms\n' +
-    'last    ' + s.lastMs + ' ms · worst ' + s.maxMs + '\n' +
-    'pop-ins ' + s.popIns + ' · ' + (s.bytes / 1048576).toFixed(1) + ' MB in';
+  _hud.textContent = wheelHud(S);   /* v2.3.4676: the island's readout went with `?trial=world` */
 }
 
 /* v2.3.3019: the water's line of the readout.  Read off wheelWater.js's own

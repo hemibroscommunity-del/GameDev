@@ -119,7 +119,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
      edge can be reached: a first-timer shoved north is held inside the safe
      commons (wheelHome.js wheelCommonsGate), 3,165 px from where he stood, and
      the camera was still easing after him (the sweep of 2026-10-17). */
-  await page.goto(`http://localhost:${webPort}/?trial=off&nospawn`, { waitUntil: 'domcontentloaded' });
+  /* v2.3.4676: `?nospawn` alone (`trial=off` leads nowhere any more) */
+  await page.goto(`http://localhost:${webPort}/?nospawn`, { waitUntil: 'domcontentloaded' });
   const P = { ctx, page, logs: [], name: 'Firsty' };
 
   /* Take the first-timer's door explicitly rather than letting the harness

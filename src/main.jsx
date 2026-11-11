@@ -41,10 +41,11 @@ installPerfHud();
    element to exist yet and it catches panels that mount into portals. */
 installUiSfxDelegate();
 
-/* v2.3.2932: `?trial=world` -- the World View becomes the whole island at full
-   size, streamed in pieces (src/game/worldTrial.js).  BEFORE the render: it
-   rewrites the World View's shared tables (size, exits, arrival), and nothing
-   may read them first.  Does nothing without the switch. */
+/* v2.3.2932: the world trial (src/game/worldTrial.js); since v2.3.4676 always
+   the Wheel, the world ("Close it", the owner, 2026-11-11: no `?trial=off`, no
+   `?trial=world`).  BEFORE the render: it rewrites the World View's shared
+   tables (size, exits, arrival) into the Wheel's, and nothing may read them
+   first. */
 applyWorldTrial();
 
 /* v2.3.3687: a computer plays the sideways layout (src/ui/deskWide.js; `?narrow`
