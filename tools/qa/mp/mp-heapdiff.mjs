@@ -43,7 +43,7 @@ const AUDIO_INIT = `(() => {
     };
   }
 })();`;
-import { PROBE } from './mp-soak.mjs';
+import { PROBE } from './soakProbe.mjs';   /* v2.3.4674: mp-soak.mjs went with the old map's scenarios */
 
 const PHONE = { width: 390, height: 844 };
 const TRIPS = +(process.env.BT_HD_TRIPS || 6);

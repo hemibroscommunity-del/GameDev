@@ -31,7 +31,8 @@ const scenarios = [...runSrc.matchAll(/^\s+([A-Za-z0-9_]+): \(\) => import\('\.\
 
 /* ── 1. every scenario off the list names its world ── */
 {
-  check('1: run.mjs lists its scenarios (guard)', scenarios.length > 500, scenarios.length);
+  /* v2.3.4674: 362 once the 397 old-map scenarios were deleted (docs/OLD-MAP-TESTS.md) */
+  check('1: run.mjs lists its scenarios (guard)', scenarios.length > 300, scenarios.length);
   const bad = [];
   let named = 0;
   for (const [name, file] of scenarios) {
@@ -57,6 +58,8 @@ const scenarios = [...runSrc.matchAll(/^\s+([A-Za-z0-9_]+): \(\) => import\('\.\
   check('2: every name on it is a real scenario (take a deleted one off)', stale.length === 0, stale);
   check('2: today\'s own old-map tests came off it (pointsreset, gearlevel)', !OLD_MAP_LEGACY.has('pointsreset') && !OLD_MAP_LEGACY.has('gearlevel'));
   check('2: the scenarios that run on every PR play the world', !OLD_MAP_LEGACY.has('questline') && !OLD_MAP_LEGACY.has('membudget'));
+  /* v2.3.4674: the owner, 2026-11-11, of the old map's tests: "Delete, keep a list" */
+  check('2: the list is empty: every old-map scenario is deleted (docs/OLD-MAP-TESTS.md)', OLD_MAP_LEGACY.size === 0, [...OLD_MAP_LEGACY]);
 }
 
 /* ── 3. the harness refuses, run.mjs names the scenario, the old map is stamped ── */

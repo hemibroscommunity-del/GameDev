@@ -52,7 +52,7 @@
  */
 import * as H from './harness.mjs';
 import { MEM_INIT, memSampler } from './memprobe.mjs';
-import { PROBE } from './mp-soak.mjs';
+import { PROBE } from './soakProbe.mjs';   /* v2.3.4674: mp-soak.mjs went with the old map's scenarios */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { execSync } from 'node:child_process';

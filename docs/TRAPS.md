@@ -8171,6 +8171,8 @@ map's top bar says "Town", with the old fountain.  It is enforced in four
 places:
 - `tools/qa/mp/oldMap.mjs` freezes the 419 old scenarios; the list only shrinks
   (take a scenario's name off when you move it to the world);
+  (v2.3.4674: EMPTY -- the owner, 2026-11-11, "Delete, keep a list": all 397 left
+  were deleted; what each checked is in docs/OLD-MAP-TESTS.md);
 - the harness REFUSES any other scenario that opens a player with no `world`
   (`newPlayer` throws, naming the fix);
 - every picture saved from the old map is stamped "OLD MAP · RETIRED";
