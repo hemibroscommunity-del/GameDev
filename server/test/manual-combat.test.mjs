@@ -349,8 +349,10 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
     /r\.setAttribute\('data-k', b\.k\);/.test(tb2) && /if \(at !== b\.at\) \{/.test(tb2) && !/setInterval|setTimeout|requestAnimationFrame|getBoundingClientRect|offsetWidth/.test(tb2)
     && /\.bt-tbar\[data-k="a"\] \.bt-tbar-fill\{animation:btTbWinA var\(--cyc\)/.test(css) && /\.bt-tbar\[data-k="b"\] \.bt-tbar-fill\{animation:btTbWinB var\(--cyc\)/.test(css)
     && /timingBarFrame\(S, Date\.now\(\)\);/.test(bro) && /React\.createElement\(TimingBar, \{ stateRef: stateRef, isLandscape: isLandscape \}\)/.test(bro));
-  check('14o the freeze is one width written once (--w) and a fade; the frozen copy wears the glint\'s colour when struck in it',
-    /r\.style\.setProperty\('--w', /.test(tb2) && /\.bt-tbar\[data-g="1"\] \.bt-tbar-froze\{background-color:#FFF4D6\}/.test(css) && /@keyframes btTbFzA\{from\{opacity:\.95\}to\{opacity:0\}\}/.test(css));
+  /* v2.3.4656: the frozen copy is the owner's gold weapon itself, shining brighter when struck in the glint (never a one-colour cut-out) */
+  check('14o the freeze is one width written once (--w) and a fade; the frozen copy is the owner\'s gold weapon, brighter when struck in the glint',
+    /r\.style\.setProperty\('--w', /.test(tb2) && /\.bt-tbar\[data-g="1"\] \.bt-tbar-froze\{filter:brightness\(/.test(css)
+    && /<Art cls="bt-tbar-froze" rect=\{rect\} s=\{s\} full \/>/.test(tb2) && /<Art cls="bt-tbar-shine" rect=\{rect\} s=\{s\} full \/>/.test(tb2) && /@keyframes btTbFzA\{from\{opacity:\.95\}to\{opacity:0\}\}/.test(css));
   check('14p an arrow on the trial names its shot; a perfect strike plays the drop roll\'s glint quietly (an existing cue); the hit voice takes a pitch',
     /sw: \(!isStaffProj && !a\.isSpecial && mcPerfectOn\(S\) && typeof a\._shotTs === 'number'\) \? a\._shotTs : undefined/.test(pj)
     && /if \(payload\.pf === 1\) cue\('rollWin', 0\.45\);/.test(ge) && /\* \(\(opts && opts\.pitch > 0\) \? opts\.pitch : 1\);/.test(gd)

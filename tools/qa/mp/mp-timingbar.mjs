@@ -11,9 +11,10 @@
  * trial is the default; `?manual=3` until then) in BroTown --
  *   1. the trial and the worker's caps (freeSwing, perfectStrike); the bar
  *      mounts as the sword, not touchable -- v2.3.4625: the owner's own
- *      picture, standing upright over the MOVEMENT disc between Burst's and
- *      Quick Eat's places ("lay vertically in the space above the left
- *      joystick"), the picture warmed on the loading screen;
+ *      picture, standing upright over the MOVEMENT disc ("lay vertically in
+ *      the space above the left joystick"), the picture warmed on the
+ *      loading screen; v2.3.4656: above Burst's place at one css px a pixel
+ *      ("It's way too tiny right now": in the gap it was 8 by 39 px);
  *   2. a real stroke on the disc: the bar shows and its fill runs over the
  *      sword's cycle from empty (held at half its time, it is half full);
  *   3. a stroke a cycle later is in the glint: the frozen copy is full and
@@ -121,7 +122,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
         upright: !!b && b.height > 3 * b.width,
         stick: sl && sl.stick, burst: sl && sl.burst, eat: sl && sl.eat,
         overStick: !!(b && sl) && b.left >= sl.stick.x && b.right <= sl.stick.r,
-        clearX: !!(b && sl) && b.left >= sl.burst.r + 2 && b.right <= sl.eat.x - 2,
+        /* v2.3.4656: above Burst's place (the gap beside it was too narrow: the sword fell to 8 by 39 px), over its width, its foot clear of Burst's top */
+        overBurst: !!(b && sl) && b.left >= sl.burst.x && b.right <= sl.burst.r,
+        footUp: (() => { const m = /\+\s*([\d.]+)px/.exec(bar ? bar.style.bottom : ''); return m && sl ? Number(m[1]) - (sl.burst.b + sl.burst.h) : null; })(),
+        big: !!b && b.height >= 100 && b.width >= 20,
         art: base ? getComputedStyle(base).backgroundImage : null, artFull: full ? getComputedStyle(full).backgroundPosition : null,
         rendering: base ? getComputedStyle(base).imageRendering : null,
         warm: warm ? { wanted: warm.wanted, held: warm.count() } : null };
@@ -129,8 +133,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('1 on the trial against a worker that judges the perfect strike (caps.freeSwing, caps.perfectStrike), the bar mounts as the sword',
       !!up && one.free && one.freeSwing === 1 && one.perfectStrike === 1 && one.tbar === 'sword', { up, one });
     /* v2.3.4625, the owner: "lay vertically in the space above the left joystick" */
-    rec.ok('1 ...standing upright over the movement disc, in the gap between Burst\'s and Quick Eat\'s places, and not touchable',
-      one.upright && one.overStick && one.clearX && one.pe === 'none', one);
+    rec.ok('1 ...standing upright over the movement disc, above Burst\'s place, big enough to see the owner\'s picture (v2.3.4656: one css px a pixel), and not touchable',
+      one.upright && one.overStick && one.overBurst && one.footUp >= 2 && one.big && one.pe === 'none', one);
     rec.ok('1 ...drawn from the owner\'s sheet, its pixels never smoothed, the picture warmed on the loading screen and held',
       /\/sprites\/timingbar\/weapons\.png/.test(one.art || '') && one.rendering === 'pixelated' && !!one.warm && one.warm.wanted === true && one.warm.held === 1, one);
 
@@ -157,12 +161,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const h = window.__tbHold(0, 180, 50);
       return { h, glint: window.__tbSpan('.bt-tbar-glint'), frz: window.__tbSpan('.bt-tbar-frz > .bt-tbar-win'), fill: window.__tbSpan('.bt-tbar-fill'),
         g: document.querySelector('.bt-tbar').getAttribute('data-g'),
-        frzFill: getComputedStyle(document.querySelector('.bt-tbar-froze')).backgroundColor, frzOp: Number(getComputedStyle(document.querySelector('.bt-tbar-frz')).opacity) };
+        frzFill: getComputedStyle(document.querySelector('.bt-tbar-froze')).filter, frzArt: getComputedStyle(document.querySelector('.bt-tbar-froze')).backgroundImage, frzOp: Number(getComputedStyle(document.querySelector('.bt-tbar-frz')).opacity) };
     });
     const gl = (held3.h || []).find((x) => /^btTbGl[AB]$/.test(x.n));
     rec.ok('3 (guard) the bar saw the first stroke, and the second came inside the window, as the page\'s clock measured it', three.seenA && three.gap >= three.need - 60 && three.gap <= three.need + 300, three);
-    rec.ok('3 a stroke a cycle later is in the glint: the frozen copy is the whole bar, in the glint\'s colour, and showing',
-      !!seen3 && seen3.last.glint === true && seen3.last.frozen === 1 && held3.g === '1' && /255, 244, 214|#fff4d6/i.test(held3.frzFill) && held3.frzOp > 0.5
+    /* v2.3.4656: the frozen copy is the owner's gold weapon itself, brightened in the glint (never a one-colour cut-out) */
+    rec.ok('3 a stroke a cycle later is in the glint: the frozen copy is the whole bar, the owner\'s gold weapon shining brighter, and showing',
+      !!seen3 && seen3.last.glint === true && seen3.last.frozen === 1 && held3.g === '1' && /brightness/.test(held3.frzFill || '') && /\/sprites\/timingbar\/weapons\.png/.test(held3.frzArt || '') && held3.frzOp > 0.5
       && !!held3.frz && held3.frz.from === 0 && held3.frz.to === 1, { three, seen3, held3 });
     rec.ok('3 ...the glint runs the worker\'s window (from 60 ms before full, 360 ms long) and, held mid-way, crosses the bar',
       !!gl && gl.dur === 360 && Math.abs(gl.delay - (three.need - 60)) <= 120 && !!held3.glint && held3.glint.to - held3.glint.from > 0.2 && held3.glint.from > 0.05 && held3.glint.to < 0.95, { gl, glint: held3.glint, need: three.need });

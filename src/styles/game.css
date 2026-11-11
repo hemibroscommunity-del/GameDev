@@ -8219,9 +8219,12 @@ html[data-orient="landscape"] .bt-fish-card{top:calc(env(safe-area-inset-top,0px
    outline in one colour (a mask), the colours they always were. */
 .bt-tbar-rot{position:absolute;transform:rotate(-90deg);transform-origin:50% 50%}
 .bt-tbar-art{position:absolute;left:0;top:0;width:100%;height:100%;display:block;background-repeat:no-repeat;image-rendering:pixelated;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}
-.bt-tbar-shine{background-color:#FFF4D6;opacity:.85}
-.bt-tbar-froze{background-color:#B88643}
-.bt-tbar[data-g="1"] .bt-tbar-froze{background-color:#FFF4D6}
+.bt-tbar-shine{filter:brightness(1.7) saturate(.7)}
+/* v2.3.4656: the frozen copy is the gold weapon itself (where you swung), and the
+   glint's brighter gold when the swing was in the glint; no one-colour
+   cut-outs over the owner's picture (the owner: "doesn't use the art") */
+.bt-tbar-froze{filter:none}
+.bt-tbar[data-g="1"] .bt-tbar-froze{filter:brightness(1.7) saturate(.7)}
 .bt-tbar-win{position:absolute;left:0;top:0;width:100%;height:100%;overflow:hidden}
 .bt-tbar-in{position:absolute;left:0;top:0;width:100%;height:100%}
 .bt-tbar-glint{width:40%;transform:translateX(-100%)}
