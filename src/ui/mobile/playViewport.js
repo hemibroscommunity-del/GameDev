@@ -37,12 +37,66 @@ function shell() {
   return document.getElementById('root');
 }
 
+/* ═══ v2.3.4875: THE SIZES KEPT, NOT MEASURED IN THE MIDDLE OF A SCRIPT ═══
+   Reading el.clientWidth (and window.innerWidth) makes the browser lay the
+   page out there and then when anything has changed since: 5 to 9 ms as a
+   window opens, inside the frame (CLAUDE.md §7: nothing measures the page
+   inside a frame; docs/specs/held-sweep.md "The play column's size is
+   measured live").  Now the four numbers are kept: the shell's from a
+   ResizeObserver (told after the browser's own layout, so reading them
+   there costs nothing), the window's from its resize events, which clear
+   them all so the first read after a resize measures once, as before.
+   What moves the shell: the window (resize, a turn: cleared) and the
+   desktop and one-band switches, set once at boot, before the first read
+   that keeps anything (the observer starts on the first read with the shell
+   mounted).  `?playvwlive=1`: the old way, measured on every read, for one
+   tab. */
+const _live = (() => { try { return /(^|[?&])playvwlive=1(&|$)/.test(window.location.search || ''); } catch (e) { return true; } })();
+let _vw = -1, _vh = -1, _sw = -1, _sh = -1, _ro = null, _roEl = null, _wired = false;
+const _sizes = { reads: 0, measured: 0 };
+function _clear() { _vw = -1; _vh = -1; _sw = -1; _sh = -1; }
+function _wire(el) {
+  if (_live || typeof window === 'undefined') return;
+  if (!_wired) {
+    _wired = true;
+    try {
+      window.addEventListener('resize', _clear, true);
+      window.addEventListener('orientationchange', _clear, true);
+      if (window.visualViewport) window.visualViewport.addEventListener('resize', _clear);
+    } catch (e) { /* kept as long as nothing clears it: measured each read instead */ _wired = false; }
+  }
+  if (el && el !== _roEl && typeof ResizeObserver === 'function') {
+    try {
+      if (_ro) _ro.disconnect();
+      _roEl = el;
+      _ro = new ResizeObserver(() => { _sw = el.clientWidth; _sh = el.clientHeight; });
+      _ro.observe(el);
+    } catch (e) { _ro = null; _roEl = null; }
+  }
+}
+/* the shell's size and the window's, kept where they can be (above) */
+function _dims() {
+  _sizes.reads++;
+  const el = shell();
+  if (_live || !_wired || !el || el !== _roEl || !_ro) {
+    _wire(el);
+    _sizes.measured++;
+    return { vw: window.innerWidth, vh: window.innerHeight, sw: el ? el.clientWidth : 0, sh: el ? el.clientHeight : 0 };
+  }
+  if (_vw < 0 || _sw < 0) {
+    _sizes.measured++;
+    _vw = window.innerWidth; _vh = window.innerHeight; _sw = el.clientWidth; _sh = el.clientHeight;
+  }
+  return { vw: _vw, vh: _vh, sw: _sw, sh: _sh };
+}
+if (typeof window !== 'undefined') window.__btPlaySizes = () => ({ ..._sizes, kept: !_live && !!_ro });   /* QA */
+
 export function playVw() {
   if (typeof window === 'undefined') return PHONE_FALLBACK_W;
   /* window.innerWidth, NOT visualViewport — see playVh for why. */
-  const vw = window.innerWidth;
-  const el = shell();
-  const sw = el ? el.clientWidth : 0;
+  const d = _dims();
+  const vw = d.vw;
+  const sw = d.sw;
   /* Only ever NARROWS.  A shell wider than the viewport (or an unmounted one
      reporting 0) must never win, or a phone would start laying out for a size
      it does not have. */
@@ -64,9 +118,9 @@ export function playVh() {
      on the PRIMARY platform, introduced by a desktop-only feature.
      The shell narrowing below is the only thing this helper adds, and the
      shell only exists on pointer:fine + min-width:1000px. */
-  const vh = window.innerHeight;
-  const el = shell();
-  const sh = el ? el.clientHeight : 0;
+  const d = _dims();   /* v2.3.4875: kept, not measured mid-script */
+  const vh = d.vh;
+  const sh = d.sh;
   return sh > 0 && sh < vh ? sh : vh;
 }
 
