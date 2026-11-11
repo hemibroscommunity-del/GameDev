@@ -89,7 +89,7 @@ skills, quests, codex/bestiary caches) resets.
   intact — never half).
 - Old worker (deploy-order window): the message relays harmlessly and
   no ack arrives → fallback reload, character intact.
-- **In a fight with a player in No man's land** (v2.3.4581, `fightlock.js`
+- **In a fight with a player in No man's land** (v2.3.4606, `fightlock.js`
   `fightlockreset`): refused on both roads, because the wipe left the
   killer nothing. Settings is answered `character_reset_refused { reason:
   'fight', message }` (server-sent only, in `PRIVILEGED_EVENTS`): the screen

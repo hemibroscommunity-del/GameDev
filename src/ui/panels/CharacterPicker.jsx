@@ -314,7 +314,7 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
         /* v2.3.3344: server/src/devicelock.js */
         : res && res.reason === 'device'
           ? 'This character can only be restarted on a device it was played on. Nothing was changed.'
-        /* v2.3.4581: that bro is in a fight with a player (server fightlock.js) */
+        /* v2.3.4606: that bro is in a fight with a player (server fightlock.js) */
         : res && res.reason === 'fight'
           ? 'This character is in a fight with a player right now. Nothing was changed: try again once it is over.'
           : 'That did not work. Nothing was changed.');

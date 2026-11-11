@@ -678,7 +678,7 @@ export const gearMethods = {
     if (!this._isValidEquipSlot(slot)) return;
     const current = ps[slot];
     if (!current) return;
-    /* v2.3.4582: a piece of armour, the legs, the shield or the amulet taken off
+    /* v2.3.4607: a piece of armour, the legs, the shield or the amulet taken off
        during a fight with a player in No man's land (fightlock.js
        `fightlockarmor`): it goes nowhere the worker holds (only a weapon has a
        stash here), so it left the worker's view -- and a red skull loses what
