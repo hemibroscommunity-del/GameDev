@@ -604,6 +604,25 @@ curl -X POST -H "Authorization: Bearer YOUR_KEY" \
   -d '{"name":"zonejudge","value":false}' "https://WORKER/api/admin/flags"
 ```
 
+**The old lands are closed** (v2.3.4675). Nobody can walk or join into the
+old map's lands any more (a join naming one arrives in BroTown). The same
+`refused` counts show it as `town>retired` or `wheel>retired`. To open them
+again at once: `retiredlands: false` (`docs/specs/zone-judge.md` "R3").
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" \
+  -d '{"name":"retiredlands","value":false}' "https://WORKER/api/admin/flags"
+```
+
+**Gold is always a whole number of coins** (v2.3.4803). Every change to a
+player's gold does one sum, a whole number never below 0
+(`docs/specs/gold-door.md` "Step 2"). If players report a coin count that
+looks wrong after a gamble or a purchase, `goldonesum: false` puts every way
+gold changes back on its old sum, at once.
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" \
+  -d '{"name":"goldonesum","value":false}' "https://WORKER/api/admin/flags"
+```
+
 **A private room** for a playtest: the game only makes the rooms it is told
 to. Add the name to `ROOMS` in `server/wrangler.toml` (comma separated,
 `"brotown-1, playtest-2"`), merge, and `?room=playtest-2` on the game's
