@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "58e115c272085a61558476d25326bbfe4e668e8e",
+  "tree": "c193253855f9f78af01302f1f03dc97a4731d109",
+  "committedAt": "2026-11-11T10:46:09-08:00",
+  "subject": "Merge pull request #1543 from hemibroscommunity-del/claude/dead-code-1",
+  "files": 8016,
+  "bytes": 967290770,
+  "listingSha256": "ced3aac9fd8841a4f8203fd1d470bc7fb8cb07985d327792980d032f1fe8fb47",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
