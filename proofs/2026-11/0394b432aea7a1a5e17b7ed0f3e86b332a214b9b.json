@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0394b432aea7a1a5e17b7ed0f3e86b332a214b9b",
+  "tree": "7ad4fb9e39bff6754bd0f09e291348b519eb60ff",
+  "committedAt": "2026-11-11T12:07:05-08:00",
+  "subject": "Merge pull request #1560 from hemibroscommunity-del/claude/game-server-architecture-8ceklr",
+  "files": 7198,
+  "bytes": 940034834,
+  "listingSha256": "2ca0382375eae740bd20a7027bb2170efe7abf86269fccdcc24755fcb26ee27e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
