@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "277da99034aec102cc54a65835357e153f594f93",
+  "tree": "decf8f3a412d4a5b5b68d0e24a34275ec13d8b2e",
+  "committedAt": "2026-11-11T13:48:49-08:00",
+  "subject": "Merge pull request #1583 from hemibroscommunity-del/claude/lane-perf-6",
+  "files": 7215,
+  "bytes": 940147476,
+  "listingSha256": "bed9fd70da58819ca016d7d54a1e681edb076ecdac4e0df9e099a82dfaa0ef04",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
