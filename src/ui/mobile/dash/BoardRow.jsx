@@ -40,6 +40,37 @@ import { peerCosmeticsFromWire } from '@/networking/peerCosmetics.js';
 const FACE_CAP = 120;
 const FACES = new Map();   /* JSON look -> data URL */
 const faceKey = (look) => { try { return JSON.stringify(look); } catch (_e) { return ''; } };
+/* ═══ v2.3.4874: ONE FACE A TURN ═══
+   A board asked for every face it had at once, and their drawing (a bust
+   recoloured for each look) landed in one piece: 140 to 149 ms held as a
+   board of 56 faces opened (held-budget.mjs `portrait`, mp-crowdsweep
+   g-boards).  Now the faces are drawn one at a time, FACE_SLICE_MS of them,
+   then the next frame first (or FACE_WAIT_MS with no frame coming); a row
+   shows the plain circle until its face is in, as it always did while one
+   drew.  The faces drawn stay in FACES (FACE_CAP), so a board seen again
+   draws none. */
+const FACE_WAIT_MS = 100;
+let _faceLine = Promise.resolve();
+const _faceAfterFrame = () => new Promise((res) => {
+  let done = false;
+  const go = () => { if (!done) { done = true; res(); } };
+  try { requestAnimationFrame(() => setTimeout(go, 0)); } catch (_e) { /* the timer below */ }
+  setTimeout(go, FACE_WAIT_MS);
+});
+const FACE_SLICE_MS = 6;   /* a bust is 1 to 3 ms: two or three a frame */
+let _faceT0 = 0;
+const _faceNext = () => {
+  const now = performance.now();
+  if (now - _faceT0 < FACE_SLICE_MS) return undefined;   /* this slice has room: the next face now */
+  return _faceAfterFrame().then(() => { _faceT0 = performance.now(); });
+};
+function _faceInTurn(job) {
+  /* a line that sat idle starts a fresh slice */
+  const start = () => { const now = performance.now(); if (now - _faceT0 > 50) _faceT0 = now; return job(); };
+  const p = _faceLine.then(start, start);
+  _faceLine = p.then(_faceNext, _faceNext);
+  return p;
+}
 
 /** The busts of `rows` (each `{look}`), by row index: { i: url }.  Drawn as
  *  they come; a row whose look is missing or blank has no entry. */
@@ -56,7 +87,7 @@ export function useBoardFaces(rows) {
       if (!portraitHasSubject(cos)) return;
       FACES.set(key, '');   /* asked for: not asked again while it draws */
       try {
-        portraitDataUrl(portraitOptsFromPeer(cos), true).then((u) => {
+        _faceInTurn(() => portraitDataUrl(portraitOptsFromPeer(cos), true)).then((u) => {
           if (u) {
             FACES.delete(key); FACES.set(key, u);   /* newest last */
             while (FACES.size > FACE_CAP) FACES.delete(FACES.keys().next().value);
