@@ -118,12 +118,28 @@ async function dieAt(P, wsPort, id, spot, ms = 90000) {
   await P.page.waitForTimeout(1200);
   await H.devOp(wsPort, 'vitals', id, { heal: false, hp: 1, god: false });
   const t0 = Date.now();
+  let lowAt = Date.now(), g = null, hp = null, noGob = 0;
   while (Date.now() - t0 < ms) {
-    if (await H.readState(P, (S) => !!S._dying).catch(() => false)) return true;
-    const g = await nearestGoblin(P);
-    if (g) await H.hopTo(P, g.x, g.y + 8, { step: 60, tries: 6 });
-    else await P.page.waitForTimeout(500);
+    if (await H.readState(P, (S) => !!S._dying).catch(() => false)) { dieAt.last = null; return true; }
+    g = await nearestGoblin(P);
+    if (g) { noGob = 0; await H.hopTo(P, g.x, g.y + 8, { step: 60, tries: 6 }); }
+    else {
+      /* v2.3.4954: none drawn near: back to the spot, where they stand */
+      if (++noGob % 6 === 0) await H.hopTo(P, spot.x, spot.y, { step: 100 });
+      await P.page.waitForTimeout(500);
+    }
+    /* v2.3.4954: the body heals out of a fight like anyone's: on this slow
+       box a run's goblins took long enough to reach that it was well again
+       (1a failed at 90 s).  Back to 1 HP every 8 s it is above it -- the
+       death is still the monster's, through the worker's own hit */
+    if (Date.now() - lowAt > 8000) {
+      lowAt = Date.now();
+      const sp = await H.serverPlayer(wsPort, id).catch(() => null);
+      hp = sp && sp.hp;
+      if (typeof hp === 'number' && hp > 1) await H.devOp(wsPort, 'vitals', id, { heal: false, hp: 1, god: false });
+    }
   }
+  dieAt.last = { goblin: g, hp, noGob };
   return false;
 }
 
@@ -229,7 +245,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const before1 = new Set(((await deathPiles(B)) || []).map((p) => p.lootId));
     await H.instrumentWire(A); await H.instrumentWire(B);
     const died1 = await dieAt(A, wsPort, aId, spot);
-    rec.ok('1a a monster the worker runs takes the Fallen\'s last HP (its player_died)', died1);
+    rec.ok('1a a monster the worker runs takes the Fallen\'s last HP (its player_died)', died1, dieAt.last);
     if (!died1) return;
     /* BT_DP_TRACE=1: a timeline of the pile after the death -- the worker's
        list, both phones' views and where the Fallen is -- every 2 s for 40 s */
@@ -326,7 +342,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await H.hopTo(B, p2.x + 60, p2.y + 15, { step: 50 });
     await B.page.waitForTimeout(600);
     await H.hopTo(B, p2.x, p2.y + 15, { step: 30 });
-    const trout4c = await H.waitFor(B, (S) => ((S.rpg && S.rpg.inventory) || {}).fish_trout || 0, (n) => n >= 2, { label: 'the Finder\'s trout', timeout: 15000 }).catch(() => 0);
+    let trout4c = await H.waitFor(B, (S) => ((S.rpg && S.rpg.inventory) || {}).fish_trout || 0, (n) => n >= 2, { label: 'the Finder\'s trout', timeout: 8000 }).catch(() => 0);
+    /* v2.3.4954: not in by then (a page drawing a few frames a second can
+       step past the pick-up): off it and on again, as a player would */
+    for (let k = 0; k < 2 && trout4c !== 2; k++) {
+      await H.hopTo(B, p2.x + 60, p2.y + 15, { step: 50 });
+      await B.page.waitForTimeout(600);
+      await H.hopTo(B, p2.x, p2.y + 15, { step: 30 });
+      trout4c = await H.waitFor(B, (S) => ((S.rpg && S.rpg.inventory) || {}).fish_trout || 0, (n) => n >= 2, { label: 'the Finder\'s trout', timeout: 15000 }).catch(() => 0);
+    }
     const gone4B = await waitPile(B, p2.lootId, (p) => !p, 8000);
     const gone4A = await waitPile(A, p2.lootId, (p) => !p, 8000);
     rec.ok('4c past its minute the Finder walks onto it and takes it: +2 trout, gone from both phones',
