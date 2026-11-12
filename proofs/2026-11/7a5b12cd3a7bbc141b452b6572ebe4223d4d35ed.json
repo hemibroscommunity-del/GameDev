@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7a5b12cd3a7bbc141b452b6572ebe4223d4d35ed",
+  "tree": "d3d986df809f1bb3fb77d31dfe63faf79bbd07cc",
+  "committedAt": "2026-11-11T22:09:44-08:00",
+  "subject": "Merge pull request #1604 from hemibroscommunity-del/claude/lane2-authority-2",
+  "files": 7242,
+  "bytes": 940580614,
+  "listingSha256": "54629fae868a589ea2ae515ec48920ddde4db9b009c975747b0a24e0b6a3ec25",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

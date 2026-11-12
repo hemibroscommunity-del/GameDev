@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b1307144b724d20228612ef616806c6f5d2ba605",
+  "tree": "41c6449d58c19b671e221837558ba23c7ced6034",
+  "committedAt": "2026-11-11T22:10:05-08:00",
+  "subject": "Merge pull request #1611 from hemibroscommunity-del/claude/fix-deathpile-test",
+  "files": 7249,
+  "bytes": 940637404,
+  "listingSha256": "9431829d79f23560fbb1ff0365bbed0dd2b5d2d3b7edb1425b5c82a8db0b8d51",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

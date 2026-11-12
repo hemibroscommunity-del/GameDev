@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "2bfe994d4691ea98e21be32e7a2bea53dfa74256",
+  "tree": "2c8f92a43d357e6bf7f4d2d76fb1d0bc14fcad0a",
+  "committedAt": "2026-11-11T22:10:02-08:00",
+  "subject": "Merge pull request #1609 from hemibroscommunity-del/claude/lane2-looks-1",
+  "files": 7249,
+  "bytes": 940636941,
+  "listingSha256": "0ee1f556de13e0580605c140ef1900d43dbe9855fb8a9df81352f502966f6e20",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

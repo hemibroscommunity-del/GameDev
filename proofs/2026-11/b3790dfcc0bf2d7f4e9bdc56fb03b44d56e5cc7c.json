@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b3790dfcc0bf2d7f4e9bdc56fb03b44d56e5cc7c",
+  "tree": "6694a61000086c82e50d68bf4c5709df94a2641c",
+  "committedAt": "2026-11-11T22:09:31-08:00",
+  "subject": "Merge pull request #1598 from hemibroscommunity-del/claude/lane2-doors-3",
+  "files": 7240,
+  "bytes": 940601497,
+  "listingSha256": "c198823b2eb1d97183d030cc8d6588cb3fb04c72e0f175584500a08259807a85",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
