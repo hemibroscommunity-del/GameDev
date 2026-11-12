@@ -308,6 +308,31 @@ This box's frame times do not move (14.8 / 14.6 ms): it draws in software,
 where a draw call is cheap. A phone's driver is where draws and program
 changes cost.
 
+### What breaks the batch now (`mp-crowdbots BT_CROWD_INSTR=1`)
+
+**Pixi's own draw list for each world layer**, 50 walking with the plates'
+layer on:
+
+- the figures' layer (`entities`): 32 batches, and one stencil mask (a hair
+  under a hat);
+- the front layer: 21 batches;
+- no filters, no nested groups.
+
+That is about 55 batches a frame, and ~770 texture binds, ~14 a batch.
+
+**What ends a batch is its texture slots.** A batch holds 16 textures. A
+figure brings several (its body, its palette, hair, hat, armour pieces,
+weapon), so a batch fills after about two figures.
+
+The next structural lever for a walking crowd is therefore **texture
+atlases**: the hair, hats, armour and weapons packed into shared sheets, so
+that many figures draw from the same few textures. That is a change to the
+art pipeline (`docs/WORLD-MAP-PIPELINE.md`, `public/tools/style/`) and the
+owner's call.
+
+A smaller, visual one would be the small pieces (eyes, eyewear, facial hair)
+not drawn on far walkers, each one a texture less: also the owner's call.
+
 ### What a player sees change
 
 In its own layer, a plate is now over every figure and prop there, never behind
