@@ -545,8 +545,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await P.page.waitForTimeout(250);
         if (!(await ready())) await P.page.fill(`${arenaCard} [data-arena-bet-amount]`, String(amount)).catch(() => {});
       }
-      const placed = !!(await touch(P, `${arenaCard} [data-arena-bet-place]`));
-      for (const t0 = Date.now(); !/Bet placed/.test((await arenaText(P)) || '') && Date.now() - t0 < 10000;) await P.page.waitForTimeout(250);
+      /* ...and a tap that brought nothing (the line dropped and was coming
+         back: the window takes no bet until the worker's caps are in again,
+         a close 1006 on every page in two runs here) is tapped again once
+         the line is up, as a player would -- three tries at most */
+      let placed = false;
+      for (let k = 0; k < 3 && !/Bet placed/.test((await arenaText(P)) || ''); k++) {
+        await H.waitFor(P, (S) => !!(S._realtimeStatus === 'connected' && S._serverCaps && S._serverCaps.sponsor), Boolean,
+          { timeout: 20000, label: 'the line up' }).catch(() => null);
+        for (const t0 = Date.now(); !(await ready()) && Date.now() - t0 < 8000;) await P.page.waitForTimeout(250);
+        placed = !!(await touch(P, `${arenaCard} [data-arena-bet-place]`)) || placed;
+        for (const t0 = Date.now(); !/Bet placed/.test((await arenaText(P)) || '') && Date.now() - t0 < 10000;) await P.page.waitForTimeout(250);
+      }
       await shot(P, `4-bet-${P.name}`);
       const txt = ((await arenaText(P)) || '');
       await closeCard(P);
