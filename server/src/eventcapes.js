@@ -451,7 +451,8 @@ export const eventCapeMethods = {
     if (!ps) return;
     if (ps.dying || ps.dead || ps.disconnected) return;
     /* No cape, nothing to toggle -- and no way to acquire one through here. */
-    if (!this._capeOwnedBy(session.id)) return;
+    /* v2.3.4881: no cape -- what the back wears goes back to the phone (refusal door) */
+    if (!this._capeOwnedBy(session.id)) return this._refusalEcho(session, ['cape']);
     const want = !!(payload && payload.worn);
     const next = !want;
     if (ps.capeOff === next) return;            /* already there; no echo storm */
@@ -556,11 +557,12 @@ export const eventCapeMethods = {
        EVENT_CAPES, so '__proto__' returns null and we are gone before this
        point.  Keep the validation first if this is ever reordered. */
     if (!ps.inventory) ps.inventory = {};
-    if ((ps.inventory[invKey] || 0) <= 0) return;         /* ownership */
+    /* v2.3.4881: a refused redeem sends the bag and the cape back (refusal door) */
+    if ((ps.inventory[invKey] || 0) <= 0) return this._refusalEcho(session, ['inventory', 'cape']);         /* ownership */
     const led = await this._capeLedger(capeId);
-    if (led.redeemed.indexOf(session.id) >= 0) return;     /* already owns it */
+    if (led.redeemed.indexOf(session.id) >= 0) return this._refusalEcho(session, ['inventory', 'cape']);     /* already owns it */
     /* ── synchronous again: consume and grant together, or not at all ── */
-    if ((ps.inventory[invKey] || 0) <= 0) return;          /* re-check after the await */
+    if ((ps.inventory[invKey] || 0) <= 0) return this._refusalEcho(session, ['inventory', 'cape']);          /* re-check after the await */
     bagTake(ps.inventory, invKey, 1, 'cape_ticket_spent'); /* v2.3.4810: the bag door */
     led.redeemed.push(session.id);
     /* v2.3.2107: the trophy, in the same synchronous block as the consume, so

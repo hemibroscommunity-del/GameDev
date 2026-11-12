@@ -74,7 +74,7 @@ export const armorForgeMethods = {
   },
 
   /* forge_armor { recipe }.  Returns the result sent, or null when refused
-     (silently, as every blacksmith refusal is: the panel says "Could not
+     (v2.3.4880: the bag and skill echoed back, the refusal door; the panel says "Could not
      forge" when no receipt comes). */
   _handleForgeArmor(session, payload) {
     if (!session || !session.id || this._armorForgeOff()) return null;
@@ -85,9 +85,11 @@ export const armorForgeMethods = {
     if (!ps || ps.dying || ps.dead || ps.disconnected || !ps.inventory) return null;
 
     const lvl = (ps.lifeSkills && ps.lifeSkills.blacksmithing && ps.lifeSkills.blacksmithing.level) || 1;
-    if (lvl < r.minLvl) return null;
+    /* v2.3.4880: refused for the level or the bars, the bag and the skill go
+       back to the phone (it was silent: the refusal door) */
+    if (lvl < r.minLvl) { this._refusalEcho(session, ['inventory', 'lifeSkills']); return null; }
     const have = Math.floor(Number(ps.inventory[r.bar]) || 0);
-    if (have < r.bars) return null;
+    if (have < r.bars) { this._refusalEcho(session, ['inventory', 'lifeSkills']); return null; }
 
     bagTake(ps.inventory, r.bar, r.bars, 'armor_forge'); /* v2.3.4810: the bag door */
 

@@ -105,7 +105,7 @@ export const SWALLOWED = Object.freeze({
 
 /* The list's size when it was frozen (v2.3.4791).  Lower these as lines come
    off; raising one is a decision the PR names. */
-export const FROZEN = Object.freeze({ listed: 319, known: 54 });   /* v2.3.4801: +1, the draw and gather's quiet drop (drawgather.js) */
+export const FROZEN = Object.freeze({ listed: 270, known: 0 });   /* v2.3.4801: +1, the draw and gather's quiet drop (drawgather.js); v2.3.4880: -22, the workshop answers (forge, amulet forge, gem cut, smelter, armour forge); v2.3.4881: -14, the points, the chest, the capes and the reroll; v2.3.4882: -4, the purses; v2.3.4883: -6, the weapon stash; v2.3.4884: the heap burn's 4 recoded `fight`, the fire's 1 off; v2.3.4885: -2, the last three answer (party accept, trade2's weapon cap, the relay trade's run-out offer; and a party accept with no invite map, after a deploy), two right silences beside them named */
 
 /* handler -> { guard: 'code[ code...][: note]' } */
 export const ALLOW = {
@@ -171,17 +171,12 @@ export const ALLOW = {
   },
   '_handleStatAllocate': {
     "if (!this._isValidStat(stat))": "shape",
-    "if ((ps.unspentT2 || 0) <= 0)": "known: no stat point left",
   },
   '_handleProg3Allocate': {
     "if (!p3)": "norec",
     "if (typeof stat !== 'string')": "shape",
     "if (!sd)": "shape",
     "if (typeof cat !== 'string' || PROG3.SKILLS.indexOf(cat) < 0)": "shape",
-    "if (chan(cat) < 1 && anyPts < 1)": "known: no point of that kind left",
-    "if (cur >= cap)": "known: the stat is at its cap",
-    "if (sharedN < 1 && anyPts < 1)": "known: no shared point left",
-    "if (cur >= cap) #2": "known: the skill is at its cap",
   },
   '_handleCookRequest': {
     "if (typeof fishKey !== 'string' || !fishKey.startsWith('fish_'))": "shape",
@@ -215,8 +210,6 @@ export const ALLOW = {
     "if (invKey !== CHEST.KEY)": "shape",
     "if (this._chestOff())": "off",
     "if (opId && typeof opId === 'string' && await this._opSeen('chestop:' + opId))": "dup",
-    "if (!ps.inventory || (ps.inventory[CHEST.KEY] || 0) <= 0)": "known: no chest in the bag",
-    "if (!ps.inventory || (ps.inventory[CHEST.KEY] || 0) <= 0) #2": "known: the chest went while the opId was read",
   },
   '_handleRewardsGet': {
     "if (ps._lastRewardsGetAt && now - ps._lastRewardsGetAt < 800)": "rate",
@@ -232,9 +225,6 @@ export const ALLOW = {
     "if (this._dqOff())": "off",
     "if (typeof i !== 'number' || !Number.isInteger(i) || i < 0 || i >= QUESTS.COUNT)": "shape",
     "if (!rec)": "err",
-    "if (!q || q.d || rec.dq.rr >= QUESTS.REROLLS)": "known: a done quest, or no reroll left",
-    "if (!opts.length)": "known: no other quest to reroll to",
-    "if (!nq)": "known: no other quest to reroll to",
   },
   '_handleSeasonClaim': {
     "if (this._seOff())": "off",
@@ -243,19 +233,17 @@ export const ALLOW = {
   },
   '_handleHeapBurn': {
     "if (!ps || !this._heapBurnOn())": "norec off",
-    "if (ps.z !== 'wheel' || ps.dead || ps.dying || ps.disconnected || ps._spar)": "known: not on the Wheel, or in a spar",
+    "if (ps.z !== 'wheel' || ps.dead || ps.dying || ps.disconnected || ps._spar)": "fight: v2.3.4884, a heap tick the worker does not burn (off the Wheel, or in a spar): the phone predicts no damage (game/heapBurn.js draws only the flames), HP comes on the hits, and an answer would be a message a second while the phone stands in the fire",
     "if (!(ps.hp > 0))": "dead",
-    "if (ps._arenaMatch || (this._duelFor && this._duelFor(pid)))": "known: in an arena match or a duel",
-    "if (!this._wheelSafeAt(ps.x, ps.y))": "known: off the safe ground",
-    "if (this._extractionShielded && this._extractionShielded(pid, t))": "known: while harvesting",
+    "if (ps._arenaMatch || (this._duelFor && this._duelFor(pid)))": "fight: v2.3.4884, a heap tick the worker does not burn (in an arena match or a duel): the phone predicts no damage (game/heapBurn.js draws only the flames), HP comes on the hits, and an answer would be a message a second while the phone stands in the fire",
+    "if (!this._wheelSafeAt(ps.x, ps.y))": "fight: v2.3.4884, a heap tick the worker does not burn (off the safe ground): the phone predicts no damage (game/heapBurn.js draws only the flames), HP comes on the hits, and an answer would be a message a second while the phone stands in the fire",
+    "if (this._extractionShielded && this._extractionShielded(pid, t))": "fight: v2.3.4884, a heap tick the worker does not burn (a harvester takes no damage, hits.js rule 3): the phone predicts no damage (game/heapBurn.js draws only the flames), HP comes on the hits, and an answer would be a message a second while the phone stands in the fire",
     "if (t - (ps._heapBurnAt || 0) < HEAP_BURN.EVERY_MS)": "rate",
   },
   '_handleSmeltBar': {
     "if (this._smeltOff())": "off",
     "if (!r)": "shape",
     "if (!ps.inventory)": "norec",
-    "if (lvl < r.minLvl)": "known: smithing level too low",
-    "if (count <= 0)": "known: not enough ore in the bag",
   },
   '_handleFarmOpen': {
     "if (!this._farmRateOk(session.id))": "rate",
@@ -279,8 +267,6 @@ export const ALLOW = {
     "if (!session || !session.id || this._armorForgeOff())": "norec off",
     "if (typeof key !== 'string' || !Object.prototype.hasOwnProperty.call(ARMOR_FORGE.RECIPES, key))": "shape",
     "if (!ps || ps.dying || ps.dead || ps.disconnected || !ps.inventory)": "norec dead",
-    "if (lvl < r.minLvl)": "known: smithing level too low",
-    "if (have < r.bars)": "known: not enough bars",
   },
   '_handleNmlAttack': {
     "if (this._nmlOff() || !this._nmlChoiceOn())": "off",
@@ -322,12 +308,8 @@ export const ALLOW = {
   '_handleCapeRedeem': {
     "if (!capeId)": "shape",
     "if (opId && typeof opId === 'string' && await this._opSeen('capered:' + opId))": "dup",
-    "if ((ps.inventory[invKey] || 0) <= 0)": "known: no cape token in the bag",
-    "if (led.redeemed.indexOf(session.id) >= 0)": "known: this cape already redeemed",
-    "if ((ps.inventory[invKey] || 0) <= 0) #2": "known: the token went during the ledger read",
   },
   '_handleCapeEquip': {
-    "if (!this._capeOwnedBy(session.id))": "known: no cape owned",
     "if (ps.capeOff === next)": "noop",
   },
   '_handleEatRequest': {
@@ -342,7 +324,6 @@ export const ALLOW = {
   '_handleFiremakingRequest': {
     "if (typeof invKey !== 'string')": "shape",
     "if (!invKey.startsWith('wood_'))": "shape",
-    "if ((ps.inventory[invKey] || 0) <= 0)": "known: no such log in the bag",
   },
   '_handleShopPurchase': {
     "if (typeof itemId !== 'string')": "shape",
@@ -368,7 +349,6 @@ export const ALLOW = {
     "if (this._paceTake && !this._paceTake('t2wpn', session.id, PACE.T2WPN))": "rate",
     "if (!Number.isInteger(idx) || idx < 0 || idx >= ps.weaponStash.length)": "shape",
     "if (typeof (payload && payload.expectName) === 'string' && ps.weaponStash[idx] && ps.weaponStash[idx].name !== payload.expectName)": "shape",
-    "if (mine.length >= TRADE2.WEAPON_MAX)": "known: the trade already holds its most weapons",
     "if (!weapon)": "shape",
   },
   '_handleTrade2UnstageWeapon': {
@@ -386,8 +366,7 @@ export const ALLOW = {
   },
   '_handlePartyAccept': {
     "if (!inviter || typeof inviter !== 'string' || inviter === accepterId)": "shape",
-    "if (!this._partyInvites)": "gone",
-    "if (!ts)": "known: the invite is gone or never was",
+    "if (mine && mine === this._partyOf(inviter))": "noop: v2.3.4885, a second Join on an invite the first already took: the first put this player in the party and was answered",
   },
   '_handlePartyDecline': {
     "if (!inviter || typeof inviter !== 'string' || !this._partyInvites)": "shape",
@@ -472,18 +451,15 @@ export const ALLOW = {
   '_handleGambleRequest': {
     "if (!Number.isFinite(wager) || wager < 10 || wager > 10000)": "shape",
     "if (ps._lastGambleAt && now - ps._lastGambleAt < 2000)": "rate",
-    "if ((ps.coins || 0) < wager)": "known: not enough gold for the wager",
   },
   '_handleAceFlipRequest': {
     "if (!Number.isFinite(stake) || stake < ACE_FLIP.MIN_STAKE)": "shape",
-    "if (risk > coins)": "known: not enough gold for the stake",
     "if (ps._lastAceFlipAt && now - ps._lastAceFlipAt < ACE_FLIP.COOLDOWN_MS)": "rate",
   },
   '_handleAceItemFlipRequest': {
     "if (ps._lastAceFlipAt && now - ps._lastAceFlipAt < ACE_ITEMS.COOLDOWN_MS)": "rate",
     "if (!want || typeof want !== 'object')": "shape",
     "if (!ps.inventory || typeof ps.inventory !== 'object')": "norec",
-    "if (!kinds || total <= 0)": "known: none of the staked items in the bag",
   },
   '_handleFishInspect': {
     "if (!info)": "shape",
@@ -496,7 +472,6 @@ export const ALLOW = {
     "if (this._flagOn && this._flagOn('disable_jackpot'))": "off",
     "if (!Number.isFinite(amount) || amount < CADENCE.JACKPOT_MIN || amount > CADENCE.JACKPOT_MAX)": "shape",
     "if (amount % CADENCE.JACKPOT_TICKET !== 0)": "shape",
-    "if ((ps.coins || 0) < amount)": "known: not enough gold for the deposit",
   },
   '_handleClanJoinAccept': {
     "if (!inviter || typeof inviter !== 'string')": "shape",
@@ -515,19 +490,13 @@ export const ALLOW = {
   '_handleEquipRequest': {
     "if (!this._isWeaponSlot(slot))": "shape",
     "if (!Number.isInteger(stashIdx) || stashIdx < 0)": "shape",
-    "if (stashIdx >= ps.weaponStash.length)": "known: no weapon at that stash place",
-    "if (!stashItem)": "known: no weapon at that stash place",
   },
   '_handleSellWeapon': {
     "if (!Number.isInteger(stashIdx) || stashIdx < 0)": "shape",
-    "if (!Array.isArray(ps.weaponStash) || stashIdx >= ps.weaponStash.length)": "known: no weapon at that stash place",
-    "if (!weapon)": "known: no weapon at that stash place",
-    "if (this._isGearNotWeapon(weapon))": "known: a piece of gear, not a weapon",
   },
   '_handleUnequipRequest': {
     "if (!this._isValidEquipSlot(slot))": "shape",
     "if (!current)": "noop",
-    "if (ps.weaponStash.length >= this.WEAPON_STASH_CAP)": "known: the stash is full",
   },
   '_handleSetActiveSlot': {
     "if (ps.activeSlot === slot)": "noop",
@@ -538,34 +507,16 @@ export const ALLOW = {
     "if (wantWw !== !!isWoodwork)": "shape",
     "if (!Object.prototype.hasOwnProperty.call(table, tierKey))": "shape",
     "if (!tier)": "shape",
-    "if (!wantWw && !forgeOffered(tierKey, ladderOld))": "known: a tier the forge does not offer",
-    "if (skillLvl < (wantWw ? tier.minLvl : forgeLevelFor(tierKey, ladderOld)))": "known: the forge refuses (level, gear, stat, gold, bars or a full stash)",
-    "if (!this._prog3EquipOk(ps, slotFor, { type: weaponType, gearBase: wantWw ? ('ww_' + tierKey) : tierKey, tierMult: tier.tierMult }))": "known: the forge refuses (level, gear, stat, gold, bars or a full stash)",
-    "if (!this._prog3GearOk(ps, cat, tierIdx * 5))": "known: the forge refuses (level, gear, stat, gold, bars or a full stash)",
-    "if ((ps[reqStat] || 0) < (tier.statReq || 0))": "known: the forge refuses (level, gear, stat, gold, bars or a full stash)",
-    "if ((ps.coins || 0) < tier.goldCost)": "known: the forge refuses (level, gear, stat, gold, bars or a full stash)",
-    "if (have < cost)": "known: the forge refuses (level, gear, stat, gold, bars or a full stash)",
-    "if (ps.weaponStash.length >= this.WEAPON_STASH_CAP)": "known: the forge refuses (level, gear, stat, gold, bars or a full stash)",
   },
   '_handleAmuletForge': {
-    "if ((ps.goldNuggets || 0) < NUGGETS_PER_BAR)": "known: the amulet forge refuses (nuggets, bars, level, gold, gem, item)",
     "if (!tier)": "shape",
-    "if (bsLvl < tier.minLvl)": "known: the amulet forge refuses (nuggets, bars, level, gold, gem, item)",
-    "if ((ps.goldBars || 0) < tier.bars)": "known: the amulet forge refuses (nuggets, bars, level, gold, gem, item)",
-    "if ((ps.coins || 0) < tier.goldCost)": "known: the amulet forge refuses (nuggets, bars, level, gold, gem, item)",
-    "if (!ps.amulet || typeof ps.amulet.tier !== 'string' || !Object.prototype.hasOwnProperty.call(AMULET_FORGE_TIERS, ps.amulet.tier))": "known: no amulet to set a gem in",
     "if (typeof gem !== 'string' || !AMULET_GEMS.has(gem))": "shape",
-    "if (gemCount(ps, gem, false) < 1)": "known: the amulet forge refuses (nuggets, bars, level, gold, gem, item)",
     "if (!Array.isArray(ps.weaponStash) || !Number.isInteger(idx) || idx < 0 || idx >= ps.weaponStash.length)": "shape",
     "else { return; // unknown target -- deny by default": "shape",
-    "if (!item)": "known: the amulet forge refuses (nuggets, bars, level, gold, gem, item)",
-    "if (!gained.length)": "known: the amulet forge refuses (nuggets, bars, level, gold, gem, item)",
-    "if ((ps.coins || 0) < cost)": "known: the amulet forge refuses (nuggets, bars, level, gold, gem, item)",
     "else { return; // unknown op -- deny by default": "shape",
   },
   '_handleGemCut': {
     "if (typeof gem !== 'string' || !AMULET_GEMS.has(gem))": "shape",
-    "if (!gemTake(ps, gem, true, 1))": "known: no uncut gem of that kind",
   },
   '_handleQuestAccept': {
     "if (typeof questId !== 'string')": "shape",
@@ -606,7 +557,7 @@ export const ALLOW = {
     "if (!target || typeof target !== 'string' || target === fromId)": "shape",
     "if (target.length > 64)": "shape",
     "if (!offer)": "shape",
-    "if (!pending || Date.now() - pending.ts > TRADE_OFFER_TTL)": "known: an accept of an offer that ran out (the old relay trade)",
+    "if (!pending)": "gone: v2.3.4885, a forged accept, or a replayed one whose first settled the offer (an offer that ran out answers trade_reject now)",
   },
   '_interceptDuel': {
     "if (!target || typeof target !== 'string' || target === fromId)": "shape",

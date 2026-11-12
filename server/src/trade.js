@@ -176,7 +176,11 @@ export const tradeMethods = {
       this.eventBuffer.push({ type: 'trade_reject', from: target, payload: { from: target, target: fromId } });
       return null;
     };
-    if (!pending || Date.now() - pending.ts > TRADE_OFFER_TTL) return null; // forged/replayed/expired: drop silently
+    if (!pending) return null; // forged, or replayed (the first accept settled it): drop silently
+    /* v2.3.4885: an offer that ran out is a real tap on an old card: refused
+       to the accepter with this lane's refusal ("Trade declined"), where it
+       was dropped silently with the forged ones (the refusal door) */
+    if (Date.now() - pending.ts > TRADE_OFFER_TTL) return rejectAccepter();
     /* v2.3.4375: an offer recorded while the gift was open is not settled
        once it has closed, nor while its sender is in a fight with a player:
        the offer may well be older than the fight (handoff rule 14: what is

@@ -632,7 +632,10 @@ export const trade2Methods = {
       && ps.weaponStash[idx] && ps.weaponStash[idx].name !== payload.expectName) return;
     if (!s.weapons) s.weapons = { [s.a]: [], [s.b]: [] };
     const mine = s.weapons[session.id] || (s.weapons[session.id] = []);
-    if (mine.length >= TRADE2.WEAPON_MAX) return; // staged-weapon cap
+    /* v2.3.4885: the staged-weapon cap -- the window offers no more, so its
+       count was stale: the true window goes back (a bare return: the refusal
+       door; _handleTrade2Pets' shape) */
+    if (mine.length >= TRADE2.WEAPON_MAX) return this._t2Send(session.id, 'trade2_state', Object.assign(this._t2Wire(s), { reason: 'weapons-max' })); // staged-weapon cap
     // Take the weapon by INDEX from the SERVER's own stash (rule 16 --
     // never trust a client-supplied blob), sanitized (quality/hardness/
     // temper preserved, clamped -- the credit path re-sanitizes the same
