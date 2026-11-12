@@ -517,6 +517,10 @@ const SELF_CHEST_STAND_INS = ['swordChestSprite', 'bowChestSprite', 'chopChestSp
 const SELF_LEGS_STAND_INS = ['swordLegsSprite', 'bowLegsSprite', 'chopLegsSprite', 'cookLegsSprite', 'fireLegsSprite',
   'swordJogLegsGearSprite', 'bowJogLegsGearSprite', 'farmLegsSprite'];
 
+/* v2.3.4880: a slot object, made once per peer (GlintSystem._peerEntry) */
+function _newSlot(key) {
+  return { key, sprites: [], color: null, g: null, look: null, grade: 'normal', part: null, fig: null, nw: null, _metal: null, _grade: null };
+}
 function pushVisible(list, s) { if (s && s.visible && !s.destroyed) list.push(s); }
 
 /* ═══ v2.3.2887: A MASKED SPRITE IS LIT ACROSS ITS WHOLE PICTURE ═══
@@ -612,6 +616,10 @@ export class GlintSystem {
     this._fullBodies = new Set(); /* v2.3.3142: every full-set figure this frame (yours and others'), whose grade edge goes all round */
     this._fullLegs = new Map();   /* v2.3.3953: a full-set figure's sprite -> its greaves' half { look2, grade2, split, key } */
     this._figBoxes = new Map();   /* v2.3.3321: a figure's body sprite -> its frame's box this frame (_figIn) */
+    /* v2.3.4880: each drawn peer's slots, kept between frames (see _peerEntry), and the frame's own lists, emptied and filled again */
+    this._peerE = new Map();
+    this._out = [];
+    this._want = new Map();
     this._frameNo = 0;
     this._batched = new Set();    /* v2.3.3453: the pieces whose shine is drawn in the frame (sheenBatch.js) */
     this.stats.batched = 0;
@@ -648,6 +656,8 @@ export class GlintSystem {
     this._fullBodies.clear();
     this._fullLegs.clear();   /* v2.3.3953 */
     this._figBoxes.clear();   /* v2.3.3321 */
+    this._peerE.clear();      /* v2.3.4880 */
+    this._out = []; this._want.clear();
   }
 
   /* One figure-slot: which sprites show it, what metal, what grade.
@@ -663,8 +673,50 @@ export class GlintSystem {
     out.push({ key, sprites, color: own || METAL_SHINE[metal] || METAL_SHINE.steel, g, look, grade, part: part || null });
   }
 
+  /* v2.3.4880: A DRAWN PEER'S SLOTS ARE KEPT, NOT MADE EVERY FRAME.
+     Every armoured player on screen used to cost, each frame, three arrays,
+     three key strings (`id + ':c'`), three slot objects, a numbers object in
+     update(), a half for a full set and a Map for the frame: the crowd's
+     garbage (docs/specs/crowd-lanes.md).  What a slot HOLDS can change every
+     frame (which of its sprites are visible), so the list is emptied and
+     filled again in place; what it IS (the key, its metal, its grade and the
+     colour and look read from them) is worked out again only when the metal
+     or the grade changes (`_slotFill`).  A peer not drawn this frame is
+     dropped by the sweep at the end of the peers' loop (stamp `n`). */
+  _peerEntry(id) {
+    let e = this._peerE.get(id);
+    if (!e) {
+      e = { n: 0, c: _newSlot(id + ':c'), l: _newSlot(id + ':l'), w: _newSlot(id + ':w'), h: null };
+      this._peerE.set(id, e);
+    }
+    e.n = this._frameNo;
+    e.c.sprites.length = 0; e.l.sprites.length = 0; e.w.sprites.length = 0;
+    return e;
+  }
+
+  /* the same as _slot, for a slot object kept from the frame before */
+  _slotFill(out, sl, metal, grade, part) {
+    if (!metal || !sl.sprites.length) return;
+    if (sl._metal !== metal || sl._grade !== grade) {
+      sl._metal = metal; sl._grade = grade;
+      const g = GRADE_SHINE[grade] || GRADE_SHINE.normal;
+      const own = part ? null : g.color;
+      sl.g = g; sl.look = part ? (GRADE_LOOK[grade] || null) : null; sl.grade = grade; sl.part = part || null;
+      sl.color = own || METAL_SHINE[metal] || METAL_SHINE.steel;
+    }
+    out.push(sl);
+  }
+
+  /* a full set's lower half, as _fullHalf, in the entry's own object */
+  _peerHalf(e, id, grade2, split, a, b) {
+    const h = e.h || (e.h = { look2: null, grade2: 'normal', split: 0, key: id, w: null });
+    h.look2 = GRADE_LOOK[grade2] || null; h.grade2 = grade2; h.split = split > 0 && split < 1 ? split : 0;
+    if (a) this._fullLegs.set(a, h);
+    if (b) this._fullLegs.set(b, h);
+  }
+
   _targets(S, er, fx, zone) {
-    const out = [];
+    const out = this._out; out.length = 0;
     this._bodies.clear();
     this._fullBodies.clear();
     this._fullLegs.clear();   /* v2.3.3953 */
@@ -748,6 +800,7 @@ export class GlintSystem {
         if (!d || d.destroyed || !o || (o.zone || o.z || 'town') !== zone || d._swimK > 0) continue;   /* v2.3.3003 */
         if (d._farHidden) continue;   /* v2.3.3241: far off screen in the Wheel, not drawn (entityRenderer PEER_FAR_MARGIN) */
         const n1 = out.length;   /* v2.3.3321: this figure's slots, for their `fig` */
+        const pe = this._peerEntry(id);   /* v2.3.4880 */
         const sw = fx && fx._remoteSwordSprites && fx._remoteSwordSprites.get(id);
         /* v2.3.2887: their bow shot and their chop / cook / fire figure draw
            the armour on sprites of their own, as the swing does -- the shine
@@ -759,10 +812,10 @@ export class GlintSystem {
         const fa = skg && skg.farm;   /* v2.3.3472: their farmer (_drawPeerFarmer), as yours */
         const wm = weaponMaterial(o.wpnType, o.wpnMat);
         if (wm) {
-          const s = [];
+          const s = pe.w.sprites;
           if (d.visible) pushVisible(s, d._weaponSprite);
           if (sw) pushVisible(s, sw.weapon);
-          this._slot(out, id + ':w', s, wm, 'normal');
+          this._slotFill(out, pe.w, wm, 'normal');
         }
         /* v2.3.2887: the armour the renderer DRAWS them in -- `equip`, which
            the join frame builds -- not the flat `eqc`/`eql` wire names, which
@@ -772,34 +825,36 @@ export class GlintSystem {
         const oe = o.equip || null;
         const cm = armourMetal((oe && oe.chest) || o.eqc);
         if (cm) {
-          const s = [];
+          const s = pe.c.sprites;
           if (d.visible) pushVisible(s, d._gearChest);
           if (d.visible && d._fullsetOn) {
             pushVisible(s, d._spriteBody); this._fullBodies.add(d._spriteBody);   /* v2.3.2864; v2.3.3142: a whole figure */
-            this._fullHalf(id, peerGrade(o._eqg, 1), d._fullsetWaist, d._spriteBody);   /* v2.3.3953: their greaves' grade below the waist */
+            this._peerHalf(pe, id, peerGrade(o._eqg, 1), d._fullsetWaist, d._spriteBody);   /* v2.3.3953: their greaves' grade below the waist */
           }
           if (sw) pushVisible(s, sw.chest);
           if (bw) pushVisible(s, bw.chest);   /* v2.3.2887 */
           if (gg) pushVisible(s, gg.chest);
           if (fa) pushVisible(s, fa.chest);   /* v2.3.3472 */
           /* v2.3.3142: their grade, from the worker (tick.js eqg) */
-          this._slot(out, id + ':c', s, cm, peerGrade(o._eqg, 0), 'c');
+          this._slotFill(out, pe.c, cm, peerGrade(o._eqg, 0), 'c');
         }
         const lm = armourMetal((oe && oe.legs) || o.eql);
         if (lm) {
-          const s = [];
+          const s = pe.l.sprites;
           if (d.visible) pushVisible(s, d._gearLegs);
           if (sw) { pushVisible(s, sw.legs); pushVisible(s, sw.jogLegsGear); }   /* v2.3.2887: + the running legs' greaves */
           if (bw) { pushVisible(s, bw.legs); pushVisible(s, bw.jogLegsGear); }
           if (gg) pushVisible(s, gg.legs);
           if (fa) pushVisible(s, fa.legs);   /* v2.3.3472 */
-          this._slot(out, id + ':l', s, lm, peerGrade(o._eqg, 1), 'l');
+          this._slotFill(out, pe.l, lm, peerGrade(o._eqg, 1), 'l');
         }
         /* v2.3.3321; v2.3.3697: a farming peer's own walking frame (effectsRenderer _drawPeerFarmer) */
         const pfig = fa && fa.fig && fa.fig.visible ? fa.fig : null;
         for (let i = n1; i < out.length; i++) out[i].fig = pfig || d._spriteBody || null;
       }
     }
+    /* v2.3.4880: a peer not drawn this frame (left, far, swimming, hidden) is dropped now */
+    for (const [id, e] of this._peerE) if (e.n !== this._frameNo) this._peerE.delete(id);
     return out;
   }
 
@@ -873,7 +928,7 @@ export class GlintSystem {
   update(S, now, er, fx, zone, sheen, gradesOnly) {
     this._frameNo++;   /* v2.3.3321: the figures' boxes, worked out once a frame (_figIn) */
     const targets = this._targets(S, er, fx, zone);
-    const want = new Map();       /* sprite -> { p, strength, color, sheen, look } */
+    const want = this._want; want.clear();       /* sprite -> { p, strength, color, sheen, look }; v2.3.4880: the one Map, emptied */
     const sk = sheen && !gradesOnly ? (this.sheenScale == null ? 1 : this.sheenScale) * sheen.k : 0;
     let sweeping = 0;
     let graded = 0;
@@ -894,7 +949,9 @@ export class GlintSystem {
       for (let j = 0; j < t.sprites.length && !half; j++) { const h = this._fullLegs.get(t.sprites[j]); if (h && h.look2) half = h; }
       if (p < 0 && !(sk > 0) && !t.look && !half) continue;
       if (t.look || half) graded++;
-      const w = { p, strength: p >= 0 ? t.g.strength : 0, color: t.color, sheen: sk * (t.g.sheen || 0), look: t.look, part: t.part, fig: t.fig || null };
+      /* v2.3.4880: the slot's own numbers object, every field written again */
+      const w = t.nw || (t.nw = { p: 0, strength: 0, color: null, sheen: 0, look: null, part: null, fig: null });
+      w.p = p; w.strength = p >= 0 ? t.g.strength : 0; w.color = t.color; w.sheen = sk * (t.g.sheen || 0); w.look = t.look; w.part = t.part; w.fig = t.fig || null;
       for (let j = 0; j < t.sprites.length; j++) {
         const spr = t.sprites[j];
         const h = this._fullLegs.get(spr);
