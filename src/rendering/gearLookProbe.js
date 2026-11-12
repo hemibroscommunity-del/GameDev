@@ -19,7 +19,7 @@ import { paletteRendererOf } from './paletteTex.js';
 import { packTrimmed } from './gearSheets.js';
 import { GEAR_SHEETS } from './lookSets/gear.js';
 import { GEAR_WALK_SHEETS } from './lookSets/gearwalk.js';   /* v2.3.4999 */
-import { getGearFrame } from './gearSheets.js';
+import { getGearFrame, gearSheetLoad } from './gearSheets.js';
 import { getLookPartFrames } from './lookPalette.js';
 
 export function installGearProbe(dep) {
@@ -86,7 +86,11 @@ export function installGearProbe(dep) {
      computer's minified draw, the first mip level) */
   async function compareWalk({ sheets, sheen = null, tint = null, cols = 8, scale = 1 } = {}) {
     const out = [];
-    for (const sheet of (sheets || Object.keys(GEAR_WALK_SHEETS))) {
+    const list = sheets || Object.keys(GEAR_WALK_SHEETS);
+    /* v2.3.5000: the RGBA sheets are not preloaded where the numbers are
+       drawn (gearWalkFrame.js): loaded here, for the comparison (QA only) */
+    await Promise.all(list.map((k) => { const s = GEAR_WALK_SHEETS[k]; return s ? gearSheetLoad(s.slot, s.item, s.pose, s.dir) : null; }));
+    for (const sheet of list) {
       const s = GEAR_WALK_SHEETS[sheet];
       const nt = getLookPartFrames('gearwalk', sheet, [], { key: 'gear', asDrawn: true });
       if (!nt || !nt.length) { out.push({ sheet, error: 'no numbers' }); continue; }
