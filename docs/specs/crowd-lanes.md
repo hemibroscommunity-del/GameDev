@@ -198,6 +198,10 @@ made with the scene behind the loading screen; nothing when off
      shift and the inside the same.
    - The check is: the inside's colours the same to the eye, no shift, and
      99.5% of pixels matched within their 3 x 3.
+   - The last run, with the in-game reads: of 20,554 of the figure's pixels,
+     143 off by more than 2 of 255 (0.7%) and 15 by more than 8. None of
+     them is inside the figure, none is unmatched, and there is no shift.
+     Nine paints in the whole test.
 
 ### Stage 1 measured in the game
 
