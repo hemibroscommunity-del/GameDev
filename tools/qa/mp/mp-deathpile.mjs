@@ -382,7 +382,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok('5b at 100 s it is drawn and steady, its countdown near 20 s',
         !!at100 && at100.drawn && /^(18|19|20)s$/.test(at100.timer || '') && a100.length >= 2 && a100.every((a) => a === 1), { at100, a100 });
       await untilAge(B, p3, 112000);
-      const aEnd = await alphas(B, p3.lootId, 5000);
+      /* v2.3.4954: sampled through the last seconds, by the page's clock,
+         until six frames are in or the pile is 119 s old -- 5 s of wall clock
+         gave this box three (5c failed for want of a fourth) */
+      const aEnd = [];
+      for (;;) {
+        const now = await B.page.evaluate(() => Date.now()).catch(() => 0);
+        if (aEnd.length >= 6 || now - p3.ts >= 119000) break;
+        const q = pileOf(await deathPiles(B), p3.lootId);
+        if (q && q.alpha != null) aEnd.push(q.alpha);
+        await B.page.waitForTimeout(110);
+      }
       /* pulsing: its brightness changes frame to frame (a steady pile reads
          exactly 1 in every one, 5b).  Not "down to 0.35 and back": this box
          draws a few frames a second, and they can all miss the pulse's dip */
