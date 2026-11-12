@@ -35,11 +35,9 @@ import { GameRoom } from '../src/index.js';
 import { MOVE_BUDGET } from '../src/movement.js';
 import { WHEEL_ZONE } from '../src/wheelzone.js';
 import { flagNameOk } from '../src/liveops.js';
-/* v2.3.4675: this suite stands players in the retired old lands as a fixture.
-   zonejudge.js R3 closes them to players, so it opens them for this suite
-   only.  On retired-lands.test's FIXTURES list, which only shrinks: move the
-   suite to the world ('wheel') and take it off. */
-GameRoom.prototype._retiredLandsOn = function () { return false; };
+/* v2.3.4953: plays the world (the Wheel), off retired-lands.test's FIXTURES
+   list: the mover stands in the Wheel at (1000, 1000) where it stood in the
+   retired meadow; the budget is the same number in every zone. */
 
 let T = 1_800_000_000_000;
 Date.now = () => T;
@@ -86,7 +84,7 @@ async function setup(opts = {}) {
      place a move out of the Wheel is taken (zonejudge.js) */
   const at0 = opts.safe ? room._wheelArrival() : { x: 1000, y: 1000 };
   room.sessions.set(ws, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: T });
-  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: 'Mover', phrase: 'p-' + id, protocolVersion: 2, ws: [1, 5], data: { x: at0.x, y: at0.y, z: opts.z || 'meadow' } }));
+  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: 'Mover', phrase: 'p-' + id, protocolVersion: 2, ws: [1, 5], data: { x: at0.x, y: at0.y, z: opts.z || WHEEL_ZONE } }));
   if (room.tickInterval) { clearInterval(room.tickInterval); room.tickInterval = null; }
   const ps = room.playerState[id];
   const move = (x, y, extra) => room.webSocketMessage(ws, JSON.stringify(Object.assign({ type: 'move', x, y, z: ps.z }, extra || {})));
@@ -153,14 +151,14 @@ async function walk(p, pxs, ms, gap = 33, extra) {
   T += 33;
   const xb = b.ps.x;
   const frame = [];
-  for (let k = 1; k <= 24; k++) frame.push({ type: 'move', x: xb + 79.5 * k, y: 1000, z: 'meadow' });
+  for (let k = 1; k <= 24; k++) frame.push({ type: 'move', x: xb + 79.5 * k, y: 1000, z: WHEEL_ZONE });
   await b.room.webSocketMessage(b.ws, JSON.stringify(frame));
   check('2. a bundle of 24 moves in one frame covers what the budget holds (33 ms of it: 16.5 px), not 1,900', b.ps.x - xb <= 16.5 + 1e-6, { moved: b.ps.x - xb });
   const bo = await setup({ flags: { movebudget: false } });
   T += 33;
   const xo = bo.ps.x;
   const frame2 = [];
-  for (let k = 1; k <= 24; k++) frame2.push({ type: 'move', x: xo + 79.5 * k, y: 1000, z: 'meadow' });
+  for (let k = 1; k <= 24; k++) frame2.push({ type: 'move', x: xo + 79.5 * k, y: 1000, z: WHEEL_ZONE });
   await bo.room.webSocketMessage(bo.ws, JSON.stringify(frame2));
   check('2. ...where the old rule took the whole 1,908 px', near(bo.ps.x - xo, 79.5 * 24), { moved: bo.ps.x - xo });
 }
@@ -272,7 +270,7 @@ async function walk(p, pxs, ms, gap = 33, extra) {
   const p = await setup();
   empty(p.ps);
   await p.room.webSocketMessage(p.ws, JSON.stringify({ type: 'move', x: 99999, y: 99999, z: 'not_a_zone' }));
-  check('5. a refused zone writes nothing (as before)', near(p.ps.x, 1000) && p.ps.z === 'meadow', { x: p.ps.x, z: p.ps.z });
+  check('5. a refused zone writes nothing (as before)', near(p.ps.x, 1000) && p.ps.z === WHEEL_ZONE, { x: p.ps.x, z: p.ps.z });
   T += 100;
   await p.move(6000, 1000);
   check('5. ...and no longer arms a free move: the next is judged and followed (100 ms: 50 px), not taken', near(p.ps.x, 1050), p.ps.x);
@@ -387,13 +385,15 @@ async function walk(p, pxs, ms, gap = 33, extra) {
 
 // ── 7. the follow's ends ──
 {
-  const start = async () => {
-    const p = await setup();
+  const start = async (opts) => {
+    const p = await setup(opts);
     empty(p.ps);
-    await p.move(p.ps.x + 5000, 1000);
+    await p.move(p.ps.x + 5000, opts && opts.safe ? p.ps.y : 1000);
     return p;
   };
-  let p = await start();
+  /* v2.3.4953: the zone change from the Wheel's safe ground, the one place a
+     move out of the Wheel is taken (zonejudge.js) -- it was the old meadow */
+  let p = await start({ safe: true });
   check('7. (guard) a follow is on', !!p.ps._mvFollow);
   await p.room.webSocketMessage(p.ws, JSON.stringify({ type: 'move', x: 300, y: 300, z: 'town' }));
   p.room._tickMoveFollow(T + 22);
