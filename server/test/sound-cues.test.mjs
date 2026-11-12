@@ -488,6 +488,13 @@ for (const p of files) {
   check('11e every loop but the dance is 24 kHz mono (decoded at 24 kHz: half the memory)',
     loops.filter((k) => k !== 'dance').every((k) => rateOf(OWNER_LOOPS[k].url) === 24000), loops.map((k) => [k, rateOf(OWNER_LOOPS[k].url)]));
   check('11f the levels the loops were set against are the river\'s and the wind\'s own', Number.isFinite(LOOP_REFS.river) && Number.isFinite(LOOP_REFS.wind));
+  /* v2.3.4997: the noise effects decoded at 24 kHz are 24 kHz files (a 48 kHz
+     one put in their place would lose its top half: this fails instead) */
+  const f24 = (/BT_AUDIO\.FILE_24K_NOISE = \[([^\]]*)\]/.exec(GD) || [, ''])[1].match(/'[^']+'/g) || [];
+  const f24keys = f24.map((q) => q.slice(1, -1));
+  const f24bad = f24keys.filter((k) => !MANIFEST[k] || rateOf(MANIFEST[k]) !== 24000);
+  check(`11g0 every noise effect decoded at 24 kHz (${f24keys.length}) is a 24 kHz file in SFX_MANIFEST, and LOW_RATE_SFX takes them`,
+    f24keys.length >= 6 && f24bad.length === 0 && /FILE_24K_NOISE\[i\]\] = true/.test(GD), f24bad.map((k) => [k, MANIFEST[k] && rateOf(MANIFEST[k])]));
 
   /* one decode a file */
   const ls = GD.slice(GD.indexOf('BT_AUDIO.loadSample = function'), GD.indexOf('BT_AUDIO.loadSfxManifest = function'));
