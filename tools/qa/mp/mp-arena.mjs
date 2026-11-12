@@ -264,8 +264,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const offs = [-60, -20, 20, 60];
     const opened = [];
     for (let i = 0; i < G.length; i++) opened.push(await openArena(G[i], offs[i]));
+    /* v2.3.4951: each window's words are waited for, not read the instant
+       the last one opened: the window's frame (its ✕) is drawn a beat before
+       its contents, and on this 4-vCPU box the fourth gladiator's was read
+       in that beat ("✕" alone) a run in a few */
     const enterTexts = [];
-    for (const P of G) enterTexts.push(await arenaText(P));
+    for (const P of G) {
+      let t = await arenaText(P);
+      for (const t0 = Date.now(); !/Enter Arena · 100G/.test(t || '') && Date.now() - t0 < 15000;) {
+        await P.page.waitForTimeout(250);
+        t = await arenaText(P);
+      }
+      enterTexts.push(t);
+    }
     await shot(G[0], '1-signup');
     rec.ok(`1. each gladiator at the Sheriff's Office's steps: "${opened[0].btn}", The arena, and the arena's window offering "Enter Arena · 100G"`,
       opened.every((o) => /SHERIFF'S OFFICE/.test(o.btn || '') && o.hall && o.open) && enterTexts.every((t) => /Enter Arena · 100G/.test(t || '')),
@@ -520,9 +531,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const well = await waitSel(P, arenaCard + ' [data-arena-bet]', 8000);
       const picked = !!(await touch(P, `${arenaCard} [data-arena-bet-target="${targetId}"]`));
       await P.page.fill(`${arenaCard} [data-arena-bet-amount]`, String(amount)).catch(() => {});
-      await P.page.waitForTimeout(300);
+      /* v2.3.4951: Place is tapped once the window has taken the pick and the
+         amount (its button enabled, the box reading the amount), and the
+         answer is waited for -- not 300 ms and 1.5 s by the wall clock: on
+         this 4-vCPU box the knocked-out gladiator's page, just back from his
+         respawn, tapped a Place still disabled two runs in three, and no bet
+         went (the pick a chip that toggles, so it is never tapped twice) */
+      const ready = () => P.page.evaluate(({ c, a }) => {
+        const b = document.querySelector(c + ' [data-arena-bet-place]'), i = document.querySelector(c + ' [data-arena-bet-amount]');
+        return !!b && !b.disabled && !!i && String(i.value) === String(a);
+      }, { c: arenaCard, a: amount }).catch(() => false);
+      for (const t0 = Date.now(); !(await ready()) && Date.now() - t0 < 8000;) {
+        await P.page.waitForTimeout(250);
+        if (!(await ready())) await P.page.fill(`${arenaCard} [data-arena-bet-amount]`, String(amount)).catch(() => {});
+      }
       const placed = !!(await touch(P, `${arenaCard} [data-arena-bet-place]`));
-      await P.page.waitForTimeout(1500);
+      for (const t0 = Date.now(); !/Bet placed/.test((await arenaText(P)) || '') && Date.now() - t0 < 10000;) await P.page.waitForTimeout(250);
       await shot(P, `4-bet-${P.name}`);
       const txt = ((await arenaText(P)) || '');
       await closeCard(P);
