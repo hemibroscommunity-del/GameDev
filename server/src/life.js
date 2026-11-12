@@ -35,11 +35,12 @@
  * saved (persistence.js names its fields), never on the wire (the peer copy
  * and player_state name theirs).
  *
- * STEP 2 (next, its own version and lower-case live switch): what the door
- * can now do once for every road -- the `kind` column says which rows are a
- * heal, so "no heal lands on a dying body" is one line here, not twelve;
- * `ps.life` can carry its `until` (today `ps.respawnAt`) and be saved, so a
- * close in the dying seconds comes back as the same death (the sweep's V2).
+ * STEP 2a (v2.3.4901, live switch `lifenoheal`): no heal lands on a dying
+ * body -- the `kind` column says which rows are heals, and _hpSet refuses
+ * them while the body is dying (one line here, not twelve).
+ *
+ * STEP 2b (next): `ps.life` can carry its `until` (today `ps.respawnAt`) and
+ * be saved, so a close in the dying seconds comes back as the same death (the sweep's V2).
  * docs/specs/life-door.md has the list.
  *
  * WHAT IS NOT HERE (on purpose):
@@ -160,10 +161,26 @@ export function lifeOf(ps) {
 }
 
 export const lifeMethods = {
+  /** v2.3.4901: step 2a's switch -- on unless `lifenoheal: false` in the live flags */
+  _lifeNoHealOn() {
+    const f = this && this._liveFlags;
+    return !(f && typeof f === 'object' && own(f, 'lifenoheal') && !f.lifenoheal);
+  },
+
   /** A player's health made `v` by `road`.  Step 1: `v` is what the caller's
       own line worked out before the door, written as it is.  Returns it. */
   _hpSet(ps, v, road) {
-    hpRoad(road);
+    const row = hpRoad(road);
+    /* v2.3.4901: STEP 2a -- NO HEAL ON A DYING BODY.  A `heal` row is refused
+       while the body is in its dying seconds: the hp stays as it is and the
+       answer is the hp unchanged.  Most heals already checked (food, the
+       regen tick, a PvP kill's heals); the melee lifesteal and lifeblood's
+       on-kill heal did not, so a monster killed by a blow already in flight
+       as you fell could raise a dying body above 0.  One check here, for
+       every heal row, today's and tomorrow's.  A fill (a level-up, a rest),
+       a load and a respawn are not heals and are not touched.  Off with
+       `lifenoheal: false` in the live flags (the step-1 write, as it is). */
+    if (row.kind === 'heal' && lifeOf(ps) === LIFE.DYING && this._lifeNoHealOn()) return ps.hp;
     ps.hp = v;
     return ps.hp;
   },

@@ -60,11 +60,27 @@ the death's own notes (`respawnAt`, `_deathKeepsBag`, `_respawnOwed`).
 A new way to change a player's health or phase: a row in the table, one call
 that names it, and its line in the test's `EXPECT_HP`.
 
-## Step 2 (not built; each its own PR and lower-case live switch)
+## Step 2a (v2.3.4901): no heal on a dying body
 
-- **No heal on a dying body.** The `kind` column says which roads are heals:
-  one check in `_hpSet` instead of twelve (today a regen tick or a food can
-  in principle raise a dying body's hp before the respawn).
+`_hpSet` refuses every row whose `kind` is `heal` while the body is dying
+(`lifeOf(ps) === 'dying'`): the hp stays where it is, and the call's answer is
+that hp. One check for every heal row, today's and any added later.
+
+- **What it fixes.** Most heals already checked for themselves (food, the regen
+  tick, a PvP kill's heals). The melee lifesteal (`_applyMeleeLifesteal`) and
+  lifeblood's on-kill heal did not, so a monster killed by a blow already in
+  flight as you fell could raise a dying body's hp above 0 before the respawn.
+- **What it leaves alone.** A `fill` (a level-up, a rest, the respawn), a
+  `load`, a `clamp`, a `set` and a `hit`: none is a heal. A live body takes
+  every road exactly as in step 1.
+- **The switch.** `lifenoheal: false` in the live flags puts the step-1 write
+  back at once.
+- **Proof.** `life-door.test` §6: every heal row is refused on a dying body
+  (both the door's phase and a body made before the door), nothing else is, a
+  live body takes every road, the switch, and the real lifesteal path.
+
+## Step 2 (the rest; each its own PR and lower-case live switch)
+
 - **The death's notes in the one field.** `ps.life = { phase, until,
   keepsBag }`, folding `respawnAt` and `_deathKeepsBag`, saved with the
   record, so a close in the dying seconds comes back as the same death (the
