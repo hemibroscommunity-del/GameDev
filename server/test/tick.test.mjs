@@ -35,11 +35,11 @@ import { ZONES as SERVER_ZONES } from '../src/data.js';
 // ESM) -- the lockstep section at the bottom pins it against the
 // server's copy.
 import { ZONES as CLIENT_ZONES } from '../../src/data/zones.js';
-/* v2.3.4675: this suite stands players in the retired old lands as a fixture.
-   zonejudge.js R3 closes them to players, so it opens them for this suite
-   only.  On retired-lands.test's FIXTURES list, which only shrinks: move the
-   suite to the world ('wheel') and take it off. */
-GameRoom.prototype._retiredLandsOn = function () { return false; };
+/* v2.3.4953: off retired-lands.test's FIXTURES list -- nobody walks or joins
+   into a retired land here any more: the zone scoping (11) is two dungeon
+   runs.  Some sections still set a player's zone to an old land's id
+   directly, to read that land's tables (its monsters, its nodes); no move or
+   join is judged there. */
 
 /* v2.3.3639: a window of real time is not a tick.  Waiting TICK_RATE x N ms
    and reading the socket failed whenever the machine was busy (the precheck
@@ -444,15 +444,36 @@ check('forged monster_transform dropped by deny-list',
 {
   const state3 = makeState();
   const room3 = new GameRoom(state3, mockEnv);
-  const wsM = fakeWs('in-meadow');       // v2, meadow
-  const wsF = fakeWs('in-frost');        // v2, frost
-  const wsL = fakeWs('legacy-meadow');   // v1, meadow
+  /* v2.3.4954: the two zones are two dungeon runs (the live places with
+     monsters of their own but the Wheel), opened from town the honest way
+     (dungeon-live.test): run A is M's, L comes into it by its leader's pull
+     (a party), run B is F's.  They were the retired meadow and frost; the
+     names below keep the old ones for the zone each stood in. */
+  const wsM = fakeWs('in-run-a');        // v2, run A
+  const wsF = fakeWs('in-run-b');        // v2, run B
+  const wsL = fakeWs('legacy-run-a');    // v1, run A
   room3.sessions.set(wsM, baseSession());
   room3.sessions.set(wsF, baseSession());
   room3.sessions.set(wsL, baseSession());
-  await room3.webSocketMessage(wsM, JSON.stringify({ type: 'join', id: 'bp_zm', name: 'M', phrase: 'p-zm', protocolVersion: 2, data: { x: -100000, y: -100000, z: 'meadow' } }));
-  await room3.webSocketMessage(wsF, JSON.stringify({ type: 'join', id: 'bp_zf', name: 'F', phrase: 'p-zf', protocolVersion: 2, data: { x: -100000, y: -100000, z: 'frost' } }));
-  await room3.webSocketMessage(wsL, JSON.stringify({ type: 'join', id: 'bp_zl', name: 'L', phrase: 'p-zl', data: { x: -100000, y: -100000, z: 'meadow' } }));
+  await room3.webSocketMessage(wsM, JSON.stringify({ type: 'join', id: 'bp_zm', name: 'M', phrase: 'p-zm', protocolVersion: 2, ws: [1, 5], data: { x: 1000, y: 1000, z: 'town' } }));
+  await room3.webSocketMessage(wsF, JSON.stringify({ type: 'join', id: 'bp_zf', name: 'F', phrase: 'p-zf', protocolVersion: 2, ws: [1, 5], data: { x: 1000, y: 1000, z: 'town' } }));
+  await room3.webSocketMessage(wsL, JSON.stringify({ type: 'join', id: 'bp_zl', name: 'L', phrase: 'p-zl', ws: [1, 5], data: { x: 1010, y: 1000, z: 'town' } }));
+  if (room3.tickInterval) { clearInterval(room3.tickInterval); room3.tickInterval = null; }
+  const openRun = async (w) => {
+    await room3.webSocketMessage(w, JSON.stringify({ type: 'dungeon_start', payload: { config: { waves: 2, monsterLevel: 5, hasBoss: false } } }));
+    const st = w.sent.filter((m) => m.type === 'dungeon_started').slice(-1)[0];
+    return st && st.payload && st.payload.zone;
+  };
+  room3._partyOf = (pid) => (['bp_zm', 'bp_zl'].includes(pid) ? { leader: 'bp_zm', members: ['bp_zm', 'bp_zl'] } : null);
+  const RA = await openRun(wsM);
+  delete room3._partyOf;
+  const RB = await openRun(wsF);
+  for (const [w, z] of [[wsM, RA], [wsL, RA], [wsF, RB]]) await room3.webSocketMessage(w, JSON.stringify({ type: 'move', x: 100, y: 100, z }));
+  /* far from every monster, as before (the monsters are laid out below) */
+  for (const id of ['bp_zm', 'bp_zf', 'bp_zl']) { const q = room3.playerState[id]; q.x = -100000; q.y = -100000; q._zoneEntryGraceUntil = Date.now() + 600000; }
+  check('scoping: (setup) two runs, M and L in A, F in B',
+    typeof RA === 'string' && typeof RB === 'string' && RA !== RB && room3.playerState.bp_zm.z === RA
+    && room3.playerState.bp_zl.z === RA && room3.playerState.bp_zf.z === RB, { RA, RB });
 
   // Dirty one monster in each zone, plus a private dungeon instance.
   // Wander is frozen (the file-header convention) so the AI can't dirty
@@ -478,12 +499,12 @@ check('forged monster_transform dropped by deny-list',
       m._wanderTx = null; m._wanderTy = null;
     });
   };
-  const mMeadow = room3._ensureZoneMonsters('meadow')[0];
-  const mFrost = room3._ensureZoneMonsters('frost')[0];
-  freeze(room3.monsters.meadow);
-  freeze(room3.monsters.frost);
-  separate(room3.monsters.meadow);
-  separate(room3.monsters.frost);
+  const mMeadow = room3._ensureZoneMonsters(RA)[0];
+  const mFrost = room3._ensureZoneMonsters(RB)[0];
+  freeze(room3.monsters[RA]);
+  freeze(room3.monsters[RB]);
+  separate(room3.monsters[RA]);
+  separate(room3.monsters[RB]);
   room3.monsters['dungeon:secret'] = [{ ...mMeadow, id: 'dg-1' }];
   freeze(room3.monsters['dungeon:secret']);
   // _ensureZoneMonsters dirties the WHOLE zone on first spawn; reset so
@@ -492,8 +513,8 @@ check('forged monster_transform dropped by deny-list',
   room3.dirtyNodes.clear();
   room3.dirtyMonsterIds = Object.create(null);
   room3.dirtyNodeIds = Object.create(null);
-  room3._markMonsterDirty('meadow', mMeadow.id);
-  room3._markMonsterDirty('frost', mFrost.id);
+  room3._markMonsterDirty(RA, mMeadow.id);
+  room3._markMonsterDirty(RB, mFrost.id);
   room3._markMonsterDirty('dungeon:secret', 'dg-1');
   room3.eventBuffer.push({ type: 'qa_social', payload: { hi: 1 } });
 
@@ -512,12 +533,12 @@ check('forged monster_transform dropped by deny-list',
   };
   const zM = zonesSeenBy(wsM), zF = zonesSeenBy(wsF), zL = zonesSeenBy(wsL);
 
-  check('scoping: meadow player receives ONLY meadow monsters',
-    zM.length === 1 && zM[0] === 'meadow', zM);
-  check('scoping: frost player receives ONLY frost monsters',
-    zF.length === 1 && zF[0] === 'frost', zF);
+  check('scoping: run A\'s player receives ONLY run A\'s monsters',
+    zM.length === 1 && zM[0] === RA, zM);
+  check('scoping: run B\'s player receives ONLY run B\'s monsters',
+    zF.length === 1 && zF[0] === RB, zF);
   check('scoping: v1 legacy session is scoped the same way',
-    zL.length === 1 && zL[0] === 'meadow', zL);
+    zL.length === 1 && zL[0] === RA, zL);
   check('scoping: dungeon instance no longer leaks to the room',
     !zM.includes('dungeon:secret') && !zF.includes('dungeon:secret'),
     { zM, zF });
@@ -526,7 +547,7 @@ check('forged monster_transform dropped by deny-list',
   // in its zone, v2 only the ones marked dirty this tick.
   const monstersFor = (w) => {
     for (const m of w.sent) {
-      if (m.type === 'tick' && m.monsters && m.monsters.meadow) return m.monsters.meadow;
+      if (m.type === 'tick' && m.monsters && m.monsters[RA]) return m.monsters[RA];
     }
     return null;
   };
@@ -534,8 +555,8 @@ check('forged monster_transform dropped by deny-list',
   check('scoping: v2 still gets per-entity deltas (dirty only)',
     v2List && v2List.length === 1 && v2List[0].id === mMeadow.id, v2List && v2List.length);
   check('scoping: v1 still gets the full zone list',
-    v1List && v1List.length === room3.monsters.meadow.length,
-    { got: v1List && v1List.length, want: room3.monsters.meadow.length });
+    v1List && v1List.length === room3.monsters[RA].length && v1List.length > 1,
+    { got: v1List && v1List.length, want: room3.monsters[RA].length });
 
   // Events are deliberately NOT scoped -- they measured at 1% of
   // egress and mix zone-local combat with room-wide social relays.
@@ -554,7 +575,7 @@ check('forged monster_transform dropped by deny-list',
   await ticksRun(room3, 1, room3.TICK_RATE * 2);
   clearInterval(room3.tickInterval); room3.tickInterval = null;
   const rosterMsg = wsM.sent.find((m) => m.type === 'tick' && m.players && m.players.bp_zf);
-  check('presence roster: out-of-zone peer reaches the meadow session',
+  check('presence roster: out-of-zone peer reaches run A\'s session',
     !!rosterMsg, rosterMsg && Object.keys(rosterMsg.players));
 }
 
