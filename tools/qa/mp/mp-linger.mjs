@@ -11,7 +11,9 @@
  *      not disconnected), and the raider still sees it -- no player_leave;
  *   3. the raider swings again and it lands on the body left behind;
  *   4. the wanderer launches the game again: the join is refused while the
- *      body stands -- "Your bro is still in that fight" with its countdown;
+ *      body stands -- "Your bro is still in that fight" with its countdown
+ *      (v2.3.4950: the launch's Play is tapped as the fight goes on and the
+ *      game is closed as its page opens its socket: see 4 below);
  *   5. then they come in, once the body has gone; the worker saved the HP
  *      the body had (the relaunch's stop in today's town then heals it, as
  *      it always has); the raider was told the body left when its time was
@@ -177,6 +179,35 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.hopTo(B, spot.x + 50, spot.y, { tries: 90 });
   await B.page.waitForTimeout(2500);
 
+  /* v2.3.4950: the relaunch's page is opened NOW, while the wanderer still
+     plays (before the fight: the body lingers only for a leave within 10 s
+     of a hit), and held at its door with its character's row in reach; the
+     page in front of the door joins nothing (its account check is a plain
+     request).  Its Play is tapped in 4, below. */
+  let staged, go;
+  const atDoor = new Promise((r) => { staged = r; });
+  const tapPlay = new Promise((r) => { go = r; });
+  const B2 = await H.newPlayer(browser, { name: 'Wanderer', wsPort, webPort, world: 'wheel', viewport: VIEW, phrase: phraseB, device: deviceB });
+  const entering = H.enterWorld(B2, 120000, { beforePlay: () => { staged(true); return tapPlay; } })
+    .then(() => true).catch((e) => String(e));
+  const doorReady = await Promise.race([atDoor, entering.then(() => false),
+    new Promise((r) => setTimeout(() => r(false), 60000))]);
+  /* ...and it notes the wait screen the moment it is drawn: this box's page
+     is busy for seconds at a time while it boots (the worker's refusal sat
+     seconds in its queue), so the screen can be up for only a second or two of
+     a slice no poll from out here is let in to see.  Observed only: nothing
+     of the game's is replaced */
+  await B2.page.evaluate(() => {
+    window.__lgWaitSeen = null;
+    const mo = new MutationObserver(() => {
+      const el = document.getElementById('bt-linger-wait');
+      if (el && !window.__lgWaitSeen) { window.__lgWaitSeen = { text: el.textContent, probe: window.__btLingerWait || null, at: Date.now() }; mo.disconnect(); }
+    });
+    mo.observe(document, { childList: true, subtree: true });
+  });
+  rec.ok('setup: the relaunch\'s page waits at its door, its row in reach (guard)', doorReady === true, { doorReady });
+  if (doorReady !== true) { go(); stopAlive = true; await H.liveFlag(wsPort, 'bodytake', null); await A.ctx.close().catch(() => {}); await B.ctx.close().catch(() => {}); await B2.ctx.close().catch(() => {}); return; }
+
   /* ── 1. a swing lands ── */
   await closeIn(A, wsPort, idA, idB, 60);
   await A.page.evaluate(() => { if (window.__btNmlAsk) window.__btNmlAsk.setMs(30000); });
@@ -209,10 +240,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
     window.__lgStop = () => clearInterval(t);
   }, idB);
 
+  /* ── 4 begins: the wanderer's next launch is already on its way ──
+     v2.3.4950: the tap on Play comes now, and the game below closes the
+     moment that page opens its socket, so its join reaches the worker after
+     the close.  Timed by the socket, not by the clock: on this 4-vCPU box the
+     page boots for ~16 s from the tap to its join (its own work and
+     software-drawn frames starve the socket's open for ~11 s), and the game
+     then rejoins once on its own after that freeze (wsClient.js's
+     resume-resync) -- so a tap AFTER the close put both joins past the
+     body's 20 s (LINGER.MS) and nothing was held.  What is checked is
+     unchanged: a join that arrives while the body stands is refused, and the
+     phone shows why. */
+  let sockAt = null;
+  B2.page.on('websocket', () => { if (sockAt == null) sockAt = Date.now(); });
+  const tappedAt = Date.now();
+  go();
+  /* the raider keeps at it while that page boots: the body stays only for a
+     leave within 10 s of a hit (PVP_HEAL.WINDOW_MS) */
+  for (const t0 = Date.now(); sockAt == null && Date.now() - t0 < 60000;) {
+    await swingAt(A, idB);
+    await A.page.waitForTimeout(600);
+  }
+  rec.ok(`setup: the relaunch's page opens its socket (${sockAt ? ((sockAt - tappedAt) / 1000).toFixed(1) : '-'} s after its Play) (guard)`, sockAt != null);
+
   /* low enough that the body's out-of-fight healing cannot refill it before
      it goes: a rejoin that came back at full health would be plain to see */
   await H.devOp(wsPort, 'vitals', idB, { heal: false, hp: 20 });
-  await B.page.waitForTimeout(400);
   const maxB = ((await H.adminPlayer(wsPort, idB)).rpg || {}).maxHp || 0;
 
   /* ── 2. the wanderer closes the game ── */
@@ -226,15 +279,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('2. ...and the raider still sees it (no player_leave)', seen2);
   await shot(A, '2-body');
 
-  /* ── 3. the body can still be hit ── */
-  await closeIn(A, wsPort, idA, idB, 34);
-  const hp2 = ((await H.serverPlayer(wsPort, idB)) || {}).hp;
-  let hp3 = hp2;
-  for (let i = 0; i < 6 && !(hp3 < hp2); i++) { await swingAt(A, idB); hp3 = ((await H.serverPlayer(wsPort, idB)) || {}).hp; }
-  rec.ok(`3. the raider's swing lands on the body left behind: ${hp2} -> ${hp3} (${Math.round((Date.now() - leftAt) / 1000)} s after leaving)`,
-    typeof hp2 === 'number' && hp3 < hp2, { hp2, hp3 });
-
-  /* ── 4. the wanderer launches the game again ── */
   /* the body's HP as the worker holds it, to its last moment in the world:
      an unhit body heals out of a fight like anyone (6 s after a hit), so the
      HP a rejoin must carry is the body's LAST, not the one after the hit */
@@ -242,7 +286,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      between the body leaving and the relaunch coming in -- a relaunch then
      stops in today's town, whose hub healing refills 10% of the bar every
      ~0.7 s, so the HP after it is no evidence either way) */
-  let bodyHp = hp3, savedHp = null, watching = true;
+  let bodyHp = null, savedHp = null, watching = true;
   const watch = (async () => {
     while (watching) {
       const a = await H.adminPlayer(wsPort, idB).catch(() => ({}));
@@ -251,19 +295,36 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await new Promise((r) => setTimeout(r, 100));
     }
   })();
-  const B2 = await H.newPlayer(browser, { name: 'Wanderer', wsPort, webPort, world: 'wheel', viewport: VIEW, phrase: phraseB, device: deviceB });
-  const entering = H.enterWorld(B2, 120000).then(() => true).catch((e) => String(e));
-  let screen = null;
-  for (let i = 0; i < 80 && !screen; i++) {
-    await B2.page.waitForTimeout(250);
-    screen = await B2.page.evaluate(() => {
-      const el = document.getElementById('bt-linger-wait');
-      if (!el) return null;
-      return { text: el.textContent, probe: window.__btLingerWait || null };
-    }).catch(() => null);
-  }
-  rec.ok(`4. a fresh launch while the body stands is held: "${screen ? screen.text.slice(0, 40) : ''}..."`,
-    !!screen && /still in that fight/.test(screen.text) && /Back in \d+s/.test(screen.text), screen);
+  let refusedAt = null;   /* the worker's own answer, as the wire carried it (for the record) */
+  B2.page.on('websocket', (w) => w.on('framereceived', (f) => { if (refusedAt == null && /"linger_wait"/.test(String(f.payload || ''))) refusedAt = Date.now(); }));
+  /* looked for until the relaunch is in (or gives up), not for a fixed 20 s:
+     a page frozen by its own boot answers late */
+  let screen = null, settled = false;
+  entering.then(() => { settled = true; });
+  const lookForWait = (async () => {
+    const t0 = Date.now();
+    while (!screen && Date.now() - t0 < 120000) {
+      await B2.page.waitForTimeout(250).catch(() => {});
+      screen = await B2.page.evaluate(() => window.__lgWaitSeen || null).catch(() => null);
+      if (settled && !screen) screen = await B2.page.evaluate(() => window.__lgWaitSeen || null).catch(() => null);
+      if (settled) break;
+    }
+  })();
+
+  /* ── 3. the body can still be hit ── */
+  await closeIn(A, wsPort, idA, idB, 34);
+  const hp2 = ((await H.serverPlayer(wsPort, idB)) || {}).hp;
+  let hp3 = hp2;
+  for (let i = 0; i < 6 && !(hp3 < hp2); i++) { await swingAt(A, idB); hp3 = ((await H.serverPlayer(wsPort, idB)) || {}).hp; }
+  rec.ok(`3. the raider's swing lands on the body left behind: ${hp2} -> ${hp3} (${Math.round((Date.now() - leftAt) / 1000)} s after leaving)`,
+    typeof hp2 === 'number' && hp3 < hp2, { hp2, hp3 });
+
+  /* ── 4. the relaunch is held ── */
+  await lookForWait;
+  if (bodyHp == null) bodyHp = hp3;
+  rec.ok(`4. a fresh launch while the body stands is held: "${screen ? screen.text.slice(0, 40) : ''}..." (its Play tapped ${Math.round((leftAt - tappedAt) / 1000)} s before, its socket open as the game closed)`,
+    !!screen && /still in that fight/.test(screen.text) && /Back in \d+s/.test(screen.text),
+    { screen, refusedS: refusedAt && (refusedAt - leftAt) / 1000 });
   await shot(B2, '4-wait');
 
   /* ── 5. in, once the body has gone ── */
