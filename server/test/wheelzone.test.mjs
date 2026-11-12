@@ -71,11 +71,12 @@ import * as LONG from '../src/wheelspawns.js';
 import { WHEEL_STAGE_LOOKS, wheelStageLook, wheelStageOf } from '../../src/data/wheelStageLooks.js';   /* v2.3.3093 */
 import { ZONE_VARIANT_MAP } from '../../src/data/monsterVariants.js';   /* v2.3.3093: the look the game gives a monster */
 import { ZONES as CLIENT_ZONES } from '../../src/data/zones.js';
-/* v2.3.4675: this suite stands players in the retired old lands as a fixture.
-   zonejudge.js R3 closes them to players, so it opens them for this suite
-   only.  On retired-lands.test's FIXTURES list, which only shrinks: move the
-   suite to the world ('wheel') and take it off. */
-GameRoom.prototype._retiredLandsOn = function () { return false; };
+/* v2.3.4953: off retired-lands.test's FIXTURES list -- nobody walks into a
+   retired land here any more.  "Every other zone" is a dungeon run the player
+   opens from town (dungeon-live.test's honest start: the one live place but
+   the Wheel with monsters of its own), where it was the retired tidal and
+   meadow; another zone's NODES (none has any but the Wheel now) are read off
+   its snapshot, the wire's own builder, with nobody standing in it. */
 
 /* v2.3.3639: a window of real time is not a tick.  Waiting TICK_RATE x N ms
    and reading the socket failed whenever the machine was busy (the precheck
@@ -285,6 +286,13 @@ const deep = wheel.filter((m) => m.tier);
 
 // ── 3. THE WIRE ───────────────────────────────────────────────────────────
 const baseSession = () => ({ id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
+/* v2.3.4953: a dungeon run opened by the player on `ws` (standing in town),
+   its zone id: the ordinary zone the checks below compare the Wheel with */
+const openRun = async (ws) => {
+  await room.webSocketMessage(ws, JSON.stringify({ type: 'dungeon_start', payload: { config: { waves: 2, monsterLevel: 5, hasBoss: false } } }));
+  const st = msgsOfType(ws, 'dungeon_started').slice(-1)[0];
+  return st && st.payload && st.payload.zone;
+};
 const wsA = fakeWs('wheel');
 room.sessions.set(wsA, baseSession());
 await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 'A', protocolVersion: 2, data: { x: 1000, y: 1000, z: 'town' } }));
@@ -312,11 +320,14 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
   check(`wire: ...in ${Math.round(bytes / 1024)} KB, once, on the way in (the ticks after carry only the monsters in reach)`, bytes > 0 && bytes < 128 * 1024, bytes);
   wsA.sent.length = 0;
   await room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x: 1000, y: 1000, z: 'town' }));
-  await room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x: 500, y: 500, z: 'tidal' }));
+  const i0 = wsA.sent.length;
+  const DZ = await openRun(wsA);
+  wsA.sent.splice(i0);   /* the run's own start (dungeon_started) is not the trip this reads */
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x: 100, y: 100, z: DZ }));
   /* (leaving a zone for town sends an empty town zone_state first: the clear) */
-  const tz = msgsOfType(wsA, 'zone_state').filter((q) => q.zone === 'tidal');
-  check('wire: every other zone\'s snapshot is unchanged -- no home, no variant there',
-    tz.length === 1 && tz[0].zone === 'tidal' && tz[0].monsters.length > 0 && tz[0].monsters.every((m) => !('home' in m) && !('variant' in m)),
+  const tz = msgsOfType(wsA, 'zone_state').filter((q) => q.zone === DZ);
+  check('wire: every other zone\'s snapshot is unchanged -- no home, no variant there (a dungeon run)',
+    typeof DZ === 'string' && tz.length === 1 && tz[0].zone === DZ && tz[0].monsters.length > 0 && tz[0].monsters.every((m) => !('home' in m) && !('variant' in m)),
     { n: tz.length, zone: tz[0] && tz[0].zone, count: tz[0] && tz[0].monsters.length, first: tz[0] && tz[0].monsters[0] });
   const types = new Set(wsA.sent.map((m) => m.type));
   check('wire: no new message type', [...types].every((t) => ['zone_state', 'player_state', 'tick', 'fire_trail', 'zone_roster'].includes(t)), [...types]);
@@ -540,14 +551,18 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
   };
   for (const q of wheel) { q.x = q.spawnX; q.y = q.spawnY; q.targetId = null; q._wanderPausedUntil = Date.now() + 600000; }
   const f = mid('frost'), e = mid('ember');
-  const wsN = fakeWs('near'), wsF = fakeWs('far'), wsT = fakeWs('tidal');
+  const wsN = fakeWs('near'), wsF = fakeWs('far'), wsT = fakeWs('run');
   await join(wsN, 'hn', f.x, f.y + 60, WHEEL_ZONE);
   await join(wsF, 'hf', 21504, 21792, WHEEL_ZONE);
-  await join(wsT, 'ht', 500, 500, 'tidal');
+  room.sessions.set(wsT, baseSession());
+  await room.webSocketMessage(wsT, JSON.stringify({ type: 'join', id: 'ht', name: 'ht', protocolVersion: 2, data: { x: 1000, y: 1000, z: 'town' } }));
+  const RZ = await openRun(wsT);
+  await room.webSocketMessage(wsT, JSON.stringify({ type: 'move', x: 100, y: 100, z: RZ }));
+  room.playerState.ht._zoneEntryGraceUntil = Date.now() + 600000;
   /* every monster of both zones moving this tick: the hardest case */
   for (const q of wheel) room._markMonsterDirty(WHEEL_ZONE, q.id);
-  const tidal = room._ensureZoneMonsters('tidal');
-  for (const q of tidal) room._markMonsterDirty('tidal', q.id);
+  const tidal = room._ensureZoneMonsters(RZ);   /* the run's (the name kept from the retired tidal it was) */
+  for (const q of tidal) room._markMonsterDirty(RZ, q.id);
   for (const w of [wsN, wsF, wsT]) w.sent.length = 0;
   await run(4);
   const hn = heard(wsN), hf = heard(wsF), ht = heard(wsT);
@@ -560,7 +575,8 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
   check(`traffic: ...and about none out of reach (${WHEEL.INTEREST_R} px), though all ${wheel.length} moved`, [...hn].every((id) => inReach(id, 'hn')), [...hn].filter((id) => !inReach(id, 'hn')));
   check('traffic: in Brotown\'s square, 3,000 px and more from every one, you hear about none', hf.size === 0, [...hf]);
   check('traffic: an ordinary zone is unchanged -- its player hears every one of its moving monsters, none of the Wheel\'s',
-    tidal.every((q) => ht.has(q.id)) && [...ht].every((id) => !id.startsWith('wm-')), { n: ht.size, tidal: tidal.length });
+    typeof RZ === 'string' && room.playerState.ht.z === RZ && tidal.length > 0
+    && tidal.every((q) => ht.has(q.id)) && [...ht].every((id) => !id.startsWith('wm-')), { RZ, n: ht.size, run: tidal.length });
   /* walk the far one to the Flame Fields' six, none of them moving: they come
      in whole, so none is drawn where it stood when last heard */
   /* (set where they stand: one 3,900 px `move` is a teleport the
@@ -792,8 +808,10 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
     zs[0] && { n: zs[0].nodes && zs[0].nodes.length, first: zs[0].nodes && zs[0].nodes[0] });
   wsN.sent.length = 0;
   await room.webSocketMessage(wsN, JSON.stringify({ type: 'move', x: 1000, y: 1000, z: 'town' }));
-  await room.webSocketMessage(wsN, JSON.stringify({ type: 'move', x: 500, y: 500, z: 'meadow' }));
-  const mz = msgsOfType(wsN, 'zone_state').filter((q) => q.zone === 'meadow');
+  /* another zone's nodes: the snapshot the wire sends on the way in, read
+     off its builder (no live place but the Wheel has nodes, and the retired
+     meadow is closed to players) */
+  const mz = [room._zoneSnapshotWire('meadow')];
   check('wire: every other zone\'s nodes are unchanged -- no home there',
     mz.length === 1 && mz[0].nodes.length > 0 && mz[0].nodes.every((n) => !('home' in n)), mz[0] && mz[0].nodes[0]);
 

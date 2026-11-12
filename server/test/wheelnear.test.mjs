@@ -29,11 +29,9 @@ import { WHEEL_ZONE, WHEEL } from '../src/wheelzone.js';
 import { WHEEL_NEAR } from '../src/wheelnear.js';
 import { monsterSnapWire } from '../src/spawnscale.js';
 import * as LONG from '../src/wheelspawns.js';
-/* v2.3.4675: this suite stands players in the retired old lands as a fixture.
-   zonejudge.js R3 closes them to players, so it opens them for this suite
-   only.  On retired-lands.test's FIXTURES list, which only shrinks: move the
-   suite to the world ('wheel') and take it off. */
-GameRoom.prototype._retiredLandsOn = function () { return false; };
+/* v2.3.4953: plays the world only, off retired-lands.test's FIXTURES list:
+   "every other zone" (2) is a dungeon run the phone opens (the one live
+   place but the Wheel with monsters).  It was the retired tidal. */
 
 const mockEnv = { LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async () => ({}) }) } };
 const mockState = (flags) => ({
@@ -126,13 +124,20 @@ const full = room._zoneSnapshotWire(WHEEL_ZONE);
   check('as before: a v1 phone (wn or not) gets its zone_monsters whole', !!zmC && zmC.monsters.length === wheel.length && !('mnear' in zmC)
     && msgsOfType(wsC, 'zone_state').length === 0);
   check('as before: neither holds anything whole', sB._wheelWhole === null && !sC._wheelWhole);
-  const wsT = fakeWs('tidal');
+  /* another zone with monsters of its own: a dungeon run the phone opens
+     (dungeon-live.test's honest start), the only live place but the Wheel
+     whose zone_state carries any */
+  const wsT = fakeWs('dungeon');
   await join(room, wsT, 'pt', { wn: 1 });
+  await room.webSocketMessage(wsT, JSON.stringify({ type: 'dungeon_start', payload: { config: { waves: 2, monsterLevel: 5, hasBoss: false } } }));
+  const st = msgsOfType(wsT, 'dungeon_started')[0];
+  const DZ = st && st.payload && st.payload.zone;
   wsT.sent.length = 0;
-  await room.webSocketMessage(wsT, JSON.stringify({ type: 'move', x: 500, y: 500, z: 'tidal' }));
-  const zt = msgsOfType(wsT, 'zone_state')[0];
-  check('as before: every other zone whole and unmarked, even for a near phone', !!zt && zt.monsters.length > 0 && !('mnear' in zt)
-    && zt.monsters.length === room._ensureZoneMonsters('tidal').length);
+  await room.webSocketMessage(wsT, JSON.stringify({ type: 'move', x: 100, y: 100, z: DZ }));
+  const zt = msgsOfType(wsT, 'zone_state').find((m) => m.zone === DZ);
+  check('as before: every other zone whole and unmarked, even for a near phone (a dungeon run)', typeof DZ === 'string' && DZ.startsWith('dungeon:')
+    && !!zt && zt.monsters.length > 0 && !('mnear' in zt) && zt.monsters.length === room._ensureZoneMonsters(DZ).length,
+    { DZ, z: zt && zt.zone, n: zt && zt.monsters.length, mnear: zt && zt.mnear });
   room.sessions.delete(wsT); delete room.playerState.pt;
 }
 
