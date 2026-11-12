@@ -504,7 +504,7 @@ import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E
 import { jumpAirborne, overLow, jumpLatched, jumpLatch, landedOver, flipBoost } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears; v2.3.3499: a crossing once begun stays begun */
 import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land's badge (v2.3.3629: beside the minimap's name plate) */
 import DeathCard from '@/ui/mobile/DeathCard.jsx';   /* v2.3.3817: "You died", what killed you, back in BroTown in N */
-import NmlAskCard from '@/ui/mobile/NmlAskCard.jsx';   /* v2.3.3253: "Attack <name>?" -- Attack / Party / Ignore (v2.3.4931: + Trade on a tap's) */
+import NmlAskCard from '@/ui/mobile/NmlAskCard.jsx';   /* v2.3.3253: "Attack <name>?" -- Attack / Party / Ignore (v2.3.4988: + Trade on a tap's) */
 import { nmlAsk, nmlAskOn, nmlAim } from '@/game/nmlAsk.js';   /* v2.3.3253: a tap in No man's land asks first; v2.3.3528: about the one who attacked you too */
 import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their chips, on their own clock */
 import { TrapButton } from '@/ui/panels/TrapButton.jsx';   /* v2.3.3120: the TRAP pop-up */
@@ -11046,7 +11046,7 @@ export var BroTown = function BroTown(_ref0) {
     var nmlPlayerAtClient = function (clientX, clientY) {
       var S = stateRef.current;
       if (!S || !S.others || !S.player || !S.camera) return false;
-      /* v2.3.4931: ...and any other player under the finger, anywhere
+      /* v2.3.4988: ...and any other player under the finger, anywhere
          (peerAtClient, below) -- asked here so both sticks' callers, and the
          lift's bolt let go with them (staff-feel 10l), stay as they were */
       if (peerAtClient(clientX, clientY)) return true;
@@ -11066,7 +11066,7 @@ export var BroTown = function BroTown(_ref0) {
       }
       return false;
     };
-    /* ═══ v2.3.4931: ...AND ANY OTHER PLAYER, ANYWHERE ═══
+    /* ═══ v2.3.4988: ...AND ANY OTHER PLAYER, ANYWHERE ═══
        The owner, 2026-11-12: "Also add trading to the character menu when
        you tap another player."  Played on two upright phones in BroTown
        (mp-taptrade): to trade, two players stand side by side, and a tap on
@@ -11268,7 +11268,7 @@ export var BroTown = function BroTown(_ref0) {
           return;
         }
         /* v2.3.3253: a player you could fight in No man's land beats it too
-           (v2.3.4931: any other player under the finger, peerAtClient) */
+           (v2.3.4988: any other player under the finger, peerAtClient) */
         if (!lts.moved && (endT - lts.startAt) < SELF_TAP_MAX_MS
             && nmlPlayerAtClient(t.clientX, t.clientY)) {
           lts.lastEndAt = 0;
