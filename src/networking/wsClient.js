@@ -122,6 +122,7 @@ import { armResumeListeners } from '@/game/resumeListeners.js'; /* v2.3.4482: a 
 import { retireSocket } from '@/game/socketLine.js'; /* v2.3.4367: one line at a time */
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { takeBackFire } from '@/game/fireRefuse.js'; /* v2.3.4886: a fire the worker refused, taken back */
 import { noteEatRefused, pvpHealWaitText } from '@/game/fightFood.js'; /* v2.3.3133: the worker's word on a bite it held back */
 
 /* ═══ v2.3.2122: A PIECE THE WORKER TAKES OFF YOU GOES IN THE BAG ═══
@@ -3534,6 +3535,17 @@ export function setupWebSocket(ctx) {
                  for the attempt that asked (seq + node); a plan for one the
                  player already abandoned is dropped. */
               applyGatherHits(S, msg.payload);
+              break;
+            }
+          case 'firemaking_refused':
+            {
+              /* v2.3.4886: the worker had no such log (cooking.js): the light
+                 this phone started on the tap is stopped, or the campfire it
+                 lit from it put out (src/game/fireRefuse.js).  The bag came
+                 back on the player_state before it. */
+              if (takeBackFire(S, Date.now())) {
+                try { pushDmgPopup(S, S.player.x, S.player.y - 30, 'No log to light', '#ff5e6c'); } catch (e) { /* popup only */ }
+              }
               break;
             }
           case 'gem_cut_result':

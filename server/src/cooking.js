@@ -49,6 +49,12 @@ import { bagGive, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
 export const COOK_PER_MIN = 45;
 
 export const cookingMethods = {
+  /* v2.3.4886: `firerefuse: false` in the live flags -- a fire refused for
+     its log sends only the bag back, not `firemaking_refused` */
+  _fireRefuseOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'firerefuse') && !f.firerefuse);
+  },
   // ═══ Eating cooked fish (server-authoritative HP heal) ═══
   //
   // Client sends eat_request { invKey } when the player clicks Eat on
@@ -229,7 +235,19 @@ export const cookingMethods = {
     /* v2.3.4884: no such log -- the phone took one off its bag when it asked
        (BroTown.jsx firemakingBus), so the true bag goes back (a bare return:
        the refusal door, TRAPS §284) */
-    if ((ps.inventory[invKey] || 0) <= 0) return this._refusalEcho(session, ['inventory']);
+    if ((ps.inventory[invKey] || 0) <= 0) {
+      this._refusalEcho(session, ['inventory']);
+      /* v2.3.4886: ...and the light it drew is taken back: the phone starts a
+         fire on the tap and lights the campfire 0.7 s later (BroTown.jsx), so
+         `firemaking_refused` stops it, or puts out the fire just lit
+         (wsClient.js).  Privileged (index.js).  `firerefuse: false`: the bag
+         alone, the fire stays (as before) */
+      if (!this._fireRefuseOff()) {
+        const w = this._wsBySessionId(session.id);
+        if (w) { try { w.send(JSON.stringify({ type: 'firemaking_refused', payload: { invKey } })); } catch (e) { /* the bag went */ } }
+      }
+      return;
+    }
     bagTake(ps.inventory, invKey, 1, 'firemaking'); /* v2.3.4810: the bag door */
     /* v2.3.4605: the fire as the worker knows it -- the cook / fire shield
        holds only near one (moveclaims.js `cookshield`).  Memory only. */

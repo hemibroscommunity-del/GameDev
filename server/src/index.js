@@ -756,6 +756,9 @@ export const PRIVILEGED_EVENTS = new Set([
   // v2.3.4627: ...and its refusal during a player fight in No man's land
   // (persistence.js, fightlock.js `fightlockreset`)
   'character_reset_refused',
+  // v2.3.4886: a fire refused for its log (cooking.js): a forged one would
+  // put out another player's campfire
+  'firemaking_refused',
   // v2.3.1198: gem-cut outcomes are server-rolled + private (amulet.js
   // _handleGemCut); forging one is fake-popup grief surface.
   'gem_cut_result',
