@@ -13,14 +13,23 @@
  *   window.__btGearOracle.compareWalk({ sheets, sheen, tint, cols, scale })
  *     (v2.3.4999) the walking armour: the RGBA sheet gearSheets.js builds
  *     (getGearFrame) against the `gearwalk` numbers, every frame, at `scale`.
+ *   window.__btGearOracle.compareWeapons({ sheets, sheen, tint, cols, scale, mirror })
+ *     (v2.3.5002) the swing's blade and the bow's draw: each strip cut as
+ *     effectsRenderer.js cuts it (the swing: loadWebpOrPng, blown up to its
+ *     frame's height, the stand-ins' cut; the bow: its whole file through
+ *     Assets.load, frames i x fw) against the `weapons` numbers, every frame,
+ *     at `scale`, flipped as a west swing is with `mirror`.
  */
-import { Container, Sprite, RenderTexture, Texture, Rectangle } from 'pixi.js';
+import { Assets, Container, Sprite, RenderTexture, Texture, Rectangle } from 'pixi.js';
 import { paletteRendererOf } from './paletteTex.js';
 import { packTrimmed } from './gearSheets.js';
 import { GEAR_SHEETS } from './lookSets/gear.js';
 import { GEAR_WALK_SHEETS } from './lookSets/gearwalk.js';   /* v2.3.4999 */
 import { getGearFrame } from './gearSheets.js';
 import { getLookPartFrames } from './lookPalette.js';
+import { WEAPON_SHEETS } from './lookSets/weapons.js';   /* v2.3.5002 */
+import { upscaleToFrameHeight } from './spriteScale.js';   /* v2.3.5002: the swing's half-size files, as the game blows them up */
+import { loadWebpOrPng } from './webpImage.js';   /* v2.3.5002: as the game reads the swing's */
 
 export function installGearProbe(dep) {
   if (typeof window === 'undefined') return;
@@ -42,7 +51,7 @@ export function installGearProbe(dep) {
     }
     return { arr, src };
   }
-  function render(texs, fw, fh, cols, tint, sheen, scale = 1) {
+  function render(texs, fw, fh, cols, tint, sheen, scale = 1, mirror = false) {
     const r = paletteRendererOf();
     const rows = Math.ceil(texs.length / cols);
     const cw = Math.ceil(fw * scale), ch = Math.ceil(fh * scale);
@@ -55,7 +64,7 @@ export function installGearProbe(dep) {
       s._sharp = true;   /* a figure's piece (sharpPixels.js) */
       s.anchor.set(0.5);
       s.tint = tn;
-      s.scale.set(scale);
+      s.scale.set(mirror ? -scale : scale, scale);   /* v2.3.5002: a mirrored facing is a flip of the scale */
       s.position.set((i % cols) * cw + cw / 2, Math.floor(i / cols) * ch + ch / 2);
       if (sheen) s._btSheen = { on: true, r: sheen[0], g: sheen[1], b: sheen[2], k: sheen[3], sx: 0.6, sy: -0.4, fig: new Float32Array(4), tintPacked: tp };
       box.addChild(s);
@@ -113,5 +122,50 @@ export function installGearProbe(dep) {
     }
     return out;
   }
-  window.__btGearOracle = { compare, compareWalk, sheets: () => Object.keys(GEAR_SHEETS), walkSheets: () => Object.keys(GEAR_WALK_SHEETS) };
+  /* v2.3.5002: a weapon strip the old way, cut as effectsRenderer.js cuts
+     it -- the swing as _loadSwordStrip (loadWebpOrPng, upscaleToFrameHeight,
+     then _sliceStandIn: the packed cells where the cut finds any, linear),
+     the bow as _loadBowStrip (Assets.load, the whole file, frames i x fw:
+     its own address, let go of after, so the game's cache is untouched) */
+  async function oldWeaponFrames(sheet) {
+    const s = WEAPON_SHEETS[sheet];
+    if (s.pose === 'bowshot') {
+      const url = s.file + '?lookprobe=1';
+      const tex = await Assets.load(url);
+      const n = Math.max(1, Math.round(tex.width / s.fw));
+      const arr = [];
+      for (let i = 0; i < n; i++) arr.push(new Texture({ source: tex.source, frame: new Rectangle(i * s.fw, 0, s.fw, s.fh) }));
+      return { arr, done: () => { for (const t of arr) t.destroy(false); Assets.unload(url).catch(() => {}); } };
+    }
+    const img = upscaleToFrameHeight(await loadWebpOrPng(s.file), s.fh);
+    const W = img.naturalWidth || img.width, n = Math.max(1, Math.round(W / s.fw));
+    const packed = packTrimmed(img, s.fw, s.fh, n);
+    const src = Texture.from(packed ? packed.canvas : img).source;
+    src.scaleMode = 'linear';   /* as _sliceStandIn */
+    const arr = [];
+    for (let i = 0; i < n; i++) {
+      if (packed) {
+        const c = packed.cells[i];
+        arr.push(new Texture({ source: src, frame: new Rectangle(c.ax, c.ay, c.w, c.h), orig: new Rectangle(0, 0, s.fw, s.fh), trim: new Rectangle(c.tx, c.ty, c.w, c.h) }));
+      } else arr.push(new Texture({ source: src, frame: new Rectangle(i * s.fw, 0, s.fw, s.fh) }));
+    }
+    return { arr, cropped: !!packed, done: () => { for (const t of arr) t.destroy(false); try { src.destroy(); } catch (e) { /* gone */ } } };
+  }
+  async function compareWeapons({ sheets, sheen = null, tint = null, cols = 8, scale = 1, mirror = false } = {}) {
+    const out = [];
+    for (const sheet of (sheets || Object.keys(WEAPON_SHEETS))) {
+      const s = WEAPON_SHEETS[sheet];
+      const nt = getLookPartFrames('weapons', sheet, [], { key: 'gear', asDrawn: true });
+      if (!s || !nt || !nt.length) { out.push({ sheet, error: 'no numbers' }); continue; }
+      const old = await oldWeaponFrames(sheet);
+      /* the same number of frames, or a draw site's index lands elsewhere */
+      if (old.arr.length !== nt.length) { old.done(); out.push({ sheet, error: `frames: ${old.arr.length} RGBA, ${nt.length} numbers` }); continue; }
+      const r = diff(render(old.arr, s.fw, s.fh, cols, tint, sheen, scale, mirror), render(nt, s.fw, s.fh, cols, tint, sheen, scale, mirror));
+      old.done();
+      out.push({ sheet, frames: nt.length, cropped: old.cropped, ...r });
+    }
+    return out;
+  }
+  window.__btGearOracle = { compare, compareWalk, compareWeapons, sheets: () => Object.keys(GEAR_SHEETS), walkSheets: () => Object.keys(GEAR_WALK_SHEETS),
+    weaponSheets: () => Object.keys(WEAPON_SHEETS) };
 }

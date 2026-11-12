@@ -378,6 +378,7 @@ import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShi
 import { registerLookSheets, getLookPartFrames, lookPaletteWanted, lookPaletteOn, lookHas, preloadLookSheets } from '../lookPalette.js';   /* v2.3.3757: the stand-ins from the numbers */
 import { gearStripFrames, gearLookDecided } from '../gearLookFrame.js';   /* v2.3.4998: the combat poses' armour from the numbers */
 import { gearDrawFrame } from '../gearWalkFrame.js';   /* v2.3.4999: the jogging greaves from the numbers */
+import { weaponStripFrames, weaponLookDecided, weaponLookWanted } from '../weaponLookFrame.js';   /* v2.3.5002: the swing's blade and the bow's draw from the numbers */
 import { registerBowBodyFrames, BLOCK_STANDIN_HAND, BLOCK_OFFHAND, BLOCK_OFFHAND_PX, BLOCK_OFFHAND_ENABLED, BLOCK_OFFHAND_ART_ANG, BLOCK_ARM_FACING, blockArmTextureFrom } from '../blockArm.js'; /* v2.3.1785; v2.3.1833 the away-facing hand; v2.3.1864 the off-hand weapon; v2.3.2920 a peer's arm */
 import { getWeaponTexture, hasWeapon, weaponFitH } from '../weaponSprites.js'; /* v2.3.1864; weaponFitH v2.3.2910 */
 import { getWeaponHandle } from '../playerAnchors.js';             /* v2.3.1864 */
@@ -4281,7 +4282,9 @@ export class EffectsRenderer {
          is restored to cfg.fh before slicing -- keeps frame widths (cfg.fw) and
          feetY/crown maths valid.  No-op for any sheet already >= cfg.fh, so the
          not-yet-downscaled facings (e.g. sword-north) pass straight through. */
-      _loadImg(url + '?v=' + SWORD_ART_VERSION).then((rawImg) => {
+      /* v2.3.5002: the load returned, so the weapons' fallback (below,
+         _loadWeaponStrips) can hold the loading screen on it */
+      return _loadImg(url + '?v=' + SWORD_ART_VERSION).then((rawImg) => {
         if (this._destroyed) return;   /* v2.3.3074: a rebuild let this renderer go while it loaded */
         const img = upscaleToFrameHeight(rawImg, cfg.fh);
         const w = img.naturalWidth || img.width;
@@ -4668,7 +4671,9 @@ export class EffectsRenderer {
         _loadSwordStrip(this._swordFrames, dir, cfg.url, cfg);
         if (cfg.armorUrl) _loadSwordStrip(this._swordArmorFrames, dir, cfg.armorUrl, cfg);
       }
-      if (cfg.weaponUrl) _loadSwordStrip(this._swordWeaponFrames, dir, cfg.weaponUrl, cfg);
+      /* (v2.3.5002: the blade's strip, cfg.weaponUrl, loads in
+         _loadWeaponStrips below, only where it is not drawn from the colour
+         numbers) */
       const _swMirror = _mirroredDirs(this._swordFacing).has(dir);   /* v2.3.2429 */
       if (cfg.bodyUrl)   _loadRecoloredBody(this._swordBodyFrames, dir, cfg.bodyUrl, cfg, SWORD_ART_VERSION, _swMirror);
       if (cfg.torsoUrl)  _loadRecoloredBody(this._swordTorsoFrames, dir, cfg.torsoUrl, cfg, SWORD_ART_VERSION, _swMirror);
@@ -4774,7 +4779,7 @@ export class EffectsRenderer {
     this.nodeLayer.addChild(this.blockOffHandHi);
     const _loadBowStrip = (target, dir, url, cfg) => {
       target[dir] = [];
-      _fxLoad(url + '?v=' + BOW_ART_VERSION).then((tex) => {
+      return _fxLoad(url + '?v=' + BOW_ART_VERSION).then((tex) => {   /* v2.3.5002: returned, as the sword's */
         const n = Math.max(1, Math.round(tex.width / cfg.fw));
         for (let i = 0; i < n; i++) target[dir].push(new Texture({ source: tex.source, frame: new Rectangle(i * cfg.fw, 0, cfg.fw, cfg.fh) }));
       }).catch((err) => console.warn('[bow ' + dir + '] load failed', err));
@@ -4789,10 +4794,70 @@ export class EffectsRenderer {
         _loadBowStrip(this._bowFrames, dir, cfg.url, cfg);
         if (cfg.armorUrl) _loadBowStrip(this._bowArmorFrames, dir, cfg.armorUrl, cfg);
       }
-      if (cfg.weaponUrl) _loadBowStrip(this._bowWeaponFrames, dir, cfg.weaponUrl, cfg);
+      /* (v2.3.5002: the bow's strip, cfg.weaponUrl, loads in
+         _loadWeaponStrips below, as the sword's) */
       const _bwMirror = _mirroredDirs(this._bowFacing).has(dir);   /* v2.3.2429 */
       if (cfg.bodyUrl)   _loadRecoloredBody(this._bowBodyFrames, dir, cfg.bodyUrl, cfg, BOW_ART_VERSION, _bwMirror);
       if (cfg.torsoUrl)  _loadRecoloredBody(this._bowTorsoFrames, dir, cfg.torsoUrl, cfg, BOW_ART_VERSION, _bwMirror);
+    }
+    /* ═══ v2.3.5002: THE BLADE AND THE BOW FROM THE COLOUR NUMBERS ═══
+       The owner: "Do armor and weapons as 256 color pictures."  The swing's
+       blade and the bow's draw are drawn from the `weapons` look set where
+       the look program and its shine are built (weaponLookFrame.js; every
+       draw site asks _weaponStrip), and their RGBA strips -- 6.2 MB in the
+       page, and on the chip once drawn -- are then never fetched.  They are
+       loaded here, by pose, only where the numbers are not drawn:
+         - at once where they were never asked for (`?weaponlook=0`, a
+           Windows or Mac computer: weaponLookWanted), as before;
+         - once the look sets are in and the look program's shine has
+           answered, still behind the loading screen, where the answer is no
+           (weaponLookDecided false: its loads joined to the loading screen's
+           wait, the preloading law) -- never on "not yet known" (TRAPS §340);
+         - and at a draw that finds no numbers after all (a palette atlas
+           with no row free, the live "Characters coloured on the chip"
+           switch turned off): late, as _gearStripFrame's armour is, rather
+           than a swing with no blade. */
+    this._weaponRgba = Object.create(null);   /* pose -> true once its strips were asked for */
+    this._loadWeaponStrips = (pose) => {
+      if (this._weaponRgba[pose] || this._destroyed) return [];
+      this._weaponRgba[pose] = true;
+      const [cfgs, target, load] = pose === 'swing' ? [this._swordCfg, this._swordWeaponFrames, _loadSwordStrip]
+        : [this._bowCfg, this._bowWeaponFrames, _loadBowStrip];
+      const out = [];
+      for (const dir of Object.keys(cfgs)) {
+        const cfg = cfgs[dir];
+        if (cfg.weaponUrl) out.push(load(target, dir, cfg.weaponUrl, cfg));
+      }
+      return out;
+    };
+    const _warmWeapons = () => [...this._loadWeaponStrips('swing'), ...this._loadWeaponStrips('bowshot')];
+    if (!weaponLookWanted()) _warmWeapons();
+    else {
+      _fxPreload.push(weaponLookDecided().then((on) => {
+        if (on !== false || this._destroyed) return null;
+        return Promise.allSettled(_warmWeapons());
+      }));
+    }
+    /* QA (mp-lookgear): the strips the draw sites get -- from the numbers or
+       the RGBA -- and which RGBA strips were asked for at all.  `ask` false
+       reads the maps only (asking a draw site's way may load the RGBA) */
+    if (typeof window !== 'undefined') {
+      window.__btWeaponStrips = (ask) => {
+        const rgba = {};
+        for (const [pose, map] of [['swing', this._swordWeaponFrames], ['bowshot', this._bowWeaponFrames]]) {
+          for (const dir of Object.keys(map)) rgba[pose + '-' + dir] = map[dir].length;
+        }
+        const drawn = [];
+        if (ask) {
+          for (const [pose, cfgs] of [['swing', this._swordCfg], ['bowshot', this._bowCfg]]) {
+            for (const dir of Object.keys(cfgs)) {
+              const t = this._weaponStrip(pose, dir);
+              drawn.push({ sheet: pose + '-' + dir, frames: t ? t.length : 0, look: !!(t && t[0] && t[0]._btLook) });
+            }
+          }
+        }
+        return { asked: Object.keys(this._weaponRgba), rgba, drawn };
+      };
     }
     /* v2.3.1080: arm-erased jog LEG sheets (jog-<dir>-legs.png) for the jog-legs
        composite -- the jog fists swung below the waist and showed as ghost hands
@@ -14898,6 +14963,25 @@ export class EffectsRenderer {
       texW: (spr.texture && spr.texture.width) || 0 };
   }
 
+  /* ═══ v2.3.5002: A WEAPON STRIP FOR A DRAW SITE ═══
+     The swing's blade (`pose` 'swing') or the bow's draw ('bowshot') for the
+     strip's facing `dir` (the cfg's key): the frames from the colour numbers
+     (weaponLookFrame.js); nothing while the look sets still load behind the
+     loading screen; the RGBA strip where the numbers are not drawn -- asked
+     for here if the constructor did not load it (_loadWeaponStrips: a draw
+     that found no numbers after all), so empty until it lands.  Asked at
+     every draw: the numbers' frames are never kept (a look no one draws for
+     30 s gives them back). */
+  _weaponStrip(pose, dir) {
+    const lk = weaponStripFrames(pose, dir);
+    if (lk === 'wait') return null;
+    if (lk) return lk;
+    const map = pose === 'swing' ? this._swordWeaponFrames : this._bowWeaponFrames;
+    if (!map) return null;
+    if (map[dir] === undefined && this._loadWeaponStrips) this._loadWeaponStrips(pose);
+    return map[dir] || null;
+  }
+
   _gearStripFrame(slot, item, pose, dir, fw, fi) {
     if (!item || item === 'none') return null;
     /* ═══ v2.3.1772: A RECOLOURED SET HAS NO SHEETS OF ITS OWN ═══
@@ -15800,7 +15884,7 @@ export class EffectsRenderer {
       this._placeSwingShirt(set.shirt, place, oShirt, eq.chest, gp, cfgKey, cfg.fw, fi, o.shirtColor, o.shirt || 'tshirt', this._peerShirtLook(o));   /* v2.3.3146: + theirs */
       place(set.legs, _jog ? null : this._gearStripFrame('legs', eq.legs, gp, cfgKey, cfg.fw, fi));
       place(set.chest, this._gearStripFrame('chest', eq.chest, gp, cfgKey, cfg.fw, fi));
-      const weaponFrames = this._swordWeaponFrames[cfgKey];
+      const weaponFrames = this._weaponStrip('swing', cfgKey);   /* v2.3.5002: the numbers, or the RGBA strip */
       place(set.weapon, weaponFrames && weaponFrames[fi]);
       /* v2.3.1764: the peer's metals, on the same strips (see the local path).
          The equip ids and `wpnMat` are already relayed, so this needs no new
@@ -16039,7 +16123,7 @@ export class EffectsRenderer {
       /* v2.3.1764: the peer's metal on the remote BOWSHOT strips too. */
       this._tintGearSprite(set.legs, eq.legs, 'remoteBowLegs');
       this._tintGearSprite(set.chest, eq.chest, 'remoteBowChest');
-      const weaponFrames = this._bowWeaponFrames && this._bowWeaponFrames[cfgKey];
+      const weaponFrames = this._weaponStrip('bowshot', cfgKey);   /* v2.3.5002: the numbers, or the RGBA strip */
       place(set.weapon, _blk ? null : (weaponFrames && weaponFrames[fi]));   /* v2.3.2920: no bow in a block, as yours */
       const looks = {
         hair: o.hair, hairColor: o.hairColor,
@@ -16422,7 +16506,7 @@ export class EffectsRenderer {
     /* place an overlay sprite with the SAME transform as the body sprite. */
     const place = (spr, tex) => { if (!spr) return; if (!tex) { spr.visible = false; return; } spr.anchor.set(0.5, anchorY); spr.texture = tex; spr.scale.set(sgnT, sT); spr.x = sp.x; spr.y = sp.y; spr.visible = true; };
     const armorFrames = this._swordArmorFrames[fmap[0]];
-    const weaponFrames = this._swordWeaponFrames[fmap[0]];
+    const weaponFrames = this._weaponStrip('swing', fmap[0]);   /* v2.3.5002: the numbers, or the RGBA strip */
     const bodyFrames = this._standInStrip(this._swordBodyFrames, fmap[0], fmap[1]);   /* v2.3.2429 */
     if (bodyFrames && bodyFrames[fi]) {
       /* v2.3.954: layered gear path -- bald body + equipped chest/legs armour +
@@ -16844,7 +16928,7 @@ export class EffectsRenderer {
     const anchorY = cfg.feetY / cfg.fh;
     sp.anchor.set(0.5, anchorY);
     const armorFrames = this._bowArmorFrames[fmap[0]];
-    const weaponFrames = this._bowWeaponFrames[fmap[0]];
+    const weaponFrames = this._weaponStrip('bowshot', fmap[0]);   /* v2.3.5002: the numbers, or the RGBA strip */
     const bodyFrames = this._standInStrip(this._bowBodyFrames, fmap[0], fmap[1]);   /* v2.3.2429 */
     const bodyH = (S._swordBodyH != null) ? S._swordBodyH : 84;
     const s = bodyH / 188;
