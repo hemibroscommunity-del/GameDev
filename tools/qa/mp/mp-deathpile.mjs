@@ -146,7 +146,17 @@ async function dieAt(P, wsPort, id, spot, ms = 90000) {
       atSpot = !!sp && Math.hypot(sp.x - spot.x, sp.y - spot.y) <= 60;
       if (!atSpot) await P.page.waitForTimeout(500);
     }
-    if (!atSpot) await H.hopTo(P, spot.x + 30, spot.y - 30, { step: 60 });
+    if (!atSpot) {
+      /* v2.3.4954: something solid between: two runs' page AND worker stood
+         at the same point 250 px short the whole time (the page's own walk
+         held there).  Round it: sideways first, up beside it, then in */
+      const dx = [150, -150, 300, -300, 450, -450][k];
+      const cur = await P.page.evaluate(() => { const S = window._gameState.current; return { x: S.player.x, y: S.player.y }; }).catch(() => null);
+      if (cur) {
+        await H.hopTo(P, cur.x + dx, cur.y, { step: 60 });
+        await H.hopTo(P, spot.x + dx, spot.y, { step: 100 });
+      }
+    }
   }
   await H.devOp(wsPort, 'vitals', id, { heal: false, hp: 1, god: false });
   const t0 = Date.now();
