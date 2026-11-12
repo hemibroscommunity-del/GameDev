@@ -194,6 +194,31 @@ so nothing waits on them any more.
   next (`docs/specs/bag-door.md`; the shop's sell reads the count before an
   await).
 
+**Shipped by the second wave of lanes (2026-11-12, v2.3.4931):**
+- the bag's step 2: one read and one empty rule for every road (`bagonesum`),
+  and the shop's sale re-reads the bag after its await (a stack that shrank
+  is refused before any gold moves; v2.3.4900);
+- the life door's step 2a, no heal on a dying body (`lifenoheal`, v2.3.4901:
+  the melee lifesteal and lifeblood had no dying check), and 2b, a death's
+  own note `life:<pid>` so a rejoin inside the five dying seconds is the
+  same death (`lifesave`, v2.3.4902);
+- the gold log: the last 32 moves a purse, in memory only, read at
+  `GET /dev/goldlog` (`goldlog`, v2.3.4903). The fight lock at the door
+  waits on the owner (which settlement roads it covers);
+- the phone's own gold credits gone where the worker already pays: the
+  arena (and the worker no longer relays `arena_bet`), clan wars, the guild
+  quest, the Gambling Den, a trade (v2.3.4911-4915). Left for the owner:
+  FurniturePanel and DungeonCreatorPanel take gold on the page with no
+  server feature behind them; the quest hand-in and the weapon sale predict
+  on the page with no take-back; the local-monster mode
+  (`!S._serverMonsters`) is its own retirement;
+- another player's look (drawings, eye style, the fish sheet, armoured
+  heads, drawn stand-ins) baked on a worker in play, 48 sheets identical
+  (v2.3.4930, `mp-bodyworker`);
+- a session door leftover: a lingering body's shots and hits are written
+  when it goes (`lingeracc`), and a refused join on a joined socket leaves
+  in full (`refusejoined`, v2.3.4921).
+
 **Waiting on the owner:**
 - the shield questions 1-4 (`docs/OWNER-LIST-2026-10-26.md` §10): showing
   the 3 s guard break on the phone, the guard coming back by itself, a daze
@@ -210,7 +235,8 @@ so nothing waits on them any more.
 - ~~the bigger "one reset for a whole life" of a monster (`m.life`)~~: on
   the worker, one reset, `_monsterNewLife` (`monsterlife.js`, v2.3.4843,
   `monster-newlife.test` fails a monster field in no list; `monsterlife:
-  false` the old list). The phone's own reset lists are left (TRAPS §245);
+  false` the old list). The phone's own reset lists are one reset too,
+  `monsterNewLife` (`monsterCarry.js`, v2.3.4910, `monster-life.test` §6);
 - ~~a tab already in the world that reconnects mid-fight gets no `body_place`:
   its next step decides (beside the body it carries on, far away it waits)
   (#1509)~~: it steps to its body, from 200 to 3000 px away (v2.3.4831,
@@ -249,8 +275,9 @@ so nothing waits on them any more.
   the worker learns the armour stash only at join (#1531 locked the swap and
   the take-off mid-fight). ~~The full fix is keeping the armour stash live on
   the worker~~: done (v2.3.4840, `armour-stash-live.test`; `armorstashlive:
-  false` the old way). The shield and amulet stashes are still learned at
-  join;
+  false` the old way). The shield and amulet stashes: checked in
+  v2.3.4920, no gap (`shield_wear` has moved shields between the arm and the
+  worker's list since v2.3.3091; only the worker adds to the amulet list);
 - ~~a red skull killed by a monster has no fight lock (V21 Q3, #1523)~~: a
   red skull hit by anything in the last 10 s is locked (v2.3.4841,
   `redskull-monster-lock.test`; `fightlockmonster: false`). For the owner:
@@ -258,9 +285,10 @@ so nothing waits on them any more.
 - ~~the Auction House's settlement legs, releases and bids still heal from
   their 48-hour stamps only~~: the stamp prune waits for the Auction House's
   heal, as the General Store's does (v2.3.4842, `store-heal-wait.test`, no
-  extra write a sale; `storehealwait: false`). Left from V8a: offers past
-  the first 20 listings, and a settle that throws midway (healed at the next
-  restart);
+  extra write a sale; `storehealwait: false`). V8a's last two: offers past
+  the first 20 listings were fixed in v2.3.4412, and a settle that throws
+  midway is finished by the shop's minute sweep (v2.3.4920, no extra write;
+  `storehealnow: false`);
 - the species churn (#1518, finding e): 7 or more monkeys or aliens of
   different colours (8 or more species-and-skin pairs) near you build
   pictures up to 250-400 MB on the graphics chip, a black-screen risk on an
@@ -279,9 +307,12 @@ so nothing waits on them any more.
 - found by #1529: right after a swing that hit nothing, the bar's glint can
   promise a perfect strike the worker does not count (a miss never reaches
   the worker);
-- `farmorders.test` can fail once as the clock crosses midnight UTC; its
-  clock is not pinned yet (TRAPS §335);
-- the 54 refusals still silent, found by the refusal door (v2.3.4791,
+- ~~`farmorders.test` can fail once as the clock crosses midnight UTC~~: its
+  clock is pinned to noon UTC (v2.3.4922, TRAPS §335);
+- ~~the 54 refusals still silent~~ (all answered, v2.3.4880-4886: the
+  refusal door's `known` list is empty; four heap-burn place checks are
+  named `fight` silences on purpose, and a refused fire is taken back on the
+  phone, `firerefuse`), found by the refusal door (v2.3.4791,
   `refusal-door.test`, its list `server/test/refusal-door-list.mjs`, the
   lines marked `known`): the forge, the amulet forge and gem cutting, the
   smelter and the armour forge, the stat and skill points, the chest, the
@@ -301,8 +332,8 @@ so nothing waits on them any more.
   to a player's gold goes through `server/src/gold.js`, each call naming its
   row in `GOLD_ROADS`, with nothing a player sees changed (step 1). Its next
   steps (one sum for every road, then a gold log and the fight lock at the
-  door) are listed there. Not started: the bag, health and death, and the
-  session.
+  door) are listed there. The bag, health and death, and the session have
+  their doors too (the parallel lanes, above).
 
 **Not fixed on purpose:**
 - the player's trail reads the same unset `now` the pet did (TRAPS §294):
