@@ -92,36 +92,69 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }, [idA, on]);
       /* the picture settled: no paint for 10 frames running (a figure coming
          to rest is painted again at each new place inside a pixel) */
-      for (let i = 0; i < 30; i++) {
-        const before = (await probe()).paints;
-        await frames(B, 10);
-        if ((await probe()).paints === before) break;
-      }
+      const settle = async () => {
+        for (let i = 0; i < 30; i++) {
+          const before = (await probe()).paints;
+          await frames(B, 10);
+          if ((await probe()).paints === before) return true;
+        }
+        return false;
+      };
+      /* A's picture's own rectangle on the page, CSS px, relative to the crop:
+         only there is the picture compared (the crop round it holds B's own
+         plate and icons, the townsfolk's and coins that move between shots --
+         the earlier runs' "differences" there were not A at all) */
+      const rect = await B.page.evaluate((id) => {
+        const R = window._pixiRenderer;
+        const st = [R && R.app && R.app.stage];
+        let sp = null;
+        while (st.length && !sp) { const c = st.pop(); if (c && c.label === 'onepic_' + id) sp = c; else if (c && c.children) for (const k of c.children) st.push(k); }
+        if (!sp) return null;
+        const bb = sp.getBounds();
+        const r = document.querySelector('canvas').getBoundingClientRect();
+        return { x: r.left + bb.minX, y: r.top + bb.minY, w: bb.maxX - bb.minX, h: bb.maxY - bb.minY };
+      }, idA);
+      await settle();
+      /* five shots: the ground (A not drawn), A as a picture, A as layers, the
+         ground again.  A pixel the two ground shots disagree on was moving
+         (the sun's shadows, a flag) and is left out. */
+      await B.page.evaluate(() => window.__btOnePicSet(false));
+      await setFig(false);
+      await frames(B, 4);
+      const asGround = await B.page.screenshot({ clip: box });
+      await setFig(true);
+      await B.page.evaluate(() => window.__btOnePicSet(true));
+      for (let i = 0; i < 40 && !((await probe()).ids || []).includes(idA); i++) await frames(B, 3);
+      await settle();
       const asPic = await B.page.screenshot({ clip: box });
       await B.page.evaluate(() => window.__btOnePicSet(false));
       await frames(B, 6);
       const asLayers = await B.page.screenshot({ clip: box });
       await setFig(false);
       await frames(B, 4);
-      const asGround = await B.page.screenshot({ clip: box });
+      const asGround2 = await B.page.screenshot({ clip: box });
       await setFig(true);
       await B.page.evaluate(() => window.__btOnePicSet(true));
-      const a = H.decodePng(asPic), b = H.decodePng(asLayers), g = H.decodePng(asGround);
+      const a = H.decodePng(asPic), b = H.decodePng(asLayers), g = H.decodePng(asGround), g2 = H.decodePng(asGround2);
       const dif = (u, v) => Math.max(Math.abs(u[0] - v[0]), Math.abs(u[1] - v[1]), Math.abs(u[2] - v[2]));
-      let mask = 0, n = 0, big = 0, max = 0, outside = 0;
-      const w = Math.min(a.width, b.width, g.width), h = Math.min(a.height, b.height, g.height);
-      for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
-          const u = a.at(x, y), v = b.at(x, y);
-          const dd = dif(u, v);
-          if (dif(v, g.at(x, y)) <= 6) { if (dd > 2) outside++; continue; }   /* the ground, not A */
+      const sc = a.width / box.width;   /* device px a CSS px in the shot */
+      const rx0 = rect ? Math.max(0, Math.floor((rect.x - box.x) * sc)) : 0, ry0 = rect ? Math.max(0, Math.floor((rect.y - box.y) * sc)) : 0;
+      const rx1 = rect ? Math.min(a.width, Math.ceil((rect.x + rect.w - box.x) * sc)) : a.width, ry1 = rect ? Math.min(a.height, Math.ceil((rect.y + rect.h - box.y) * sc)) : a.height;
+      let mask = 0, n = 0, big = 0, max = 0, moving = 0;
+      for (let y = ry0; y < ry1; y++) {
+        for (let x = rx0; x < rx1; x++) {
+          const gg = g.at(x, y);
+          if (dif(gg, g2.at(x, y)) > 2) { moving++; continue; }   /* moving behind A: left out */
+          const v = b.at(x, y);
+          if (dif(v, gg) <= 6) continue;   /* the ground, not A */
           mask++;
+          const dd = dif(a.at(x, y), v);
           if (dd > 0) n++;
           if (dd > 2) big++;
           if (dd > max) max = dd;
         }
       }
-      diff = { figurePixels: mask, differing: n, over2: big, max, groundMovedOutside: outside, box };
+      diff = { figurePixels: mask, differing: n, over2: big, max, movingLeftOut: moving, rect, box };
       try { mkdirSync(OUT, { recursive: true }); writeFileSync(join(OUT, 'onepic-picture.png'), asPic); writeFileSync(join(OUT, 'onepic-layers.png'), asLayers); writeFileSync(join(OUT, 'onepic-ground.png'), asGround); } catch (e) { /* pictures are for a person */ }
     }
     rec.ok('to the pixel: A\'s figure as a picture and as layers, the same scene, differ in no pixel by more than 2 of 255',
