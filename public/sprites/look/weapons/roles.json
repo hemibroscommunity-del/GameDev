@@ -1,0 +1,658 @@
+{
+ "v": 2,
+ "version": "v2.3.3737",
+ "set": "weapons",
+ "kind": "body",
+ "bits": 8,
+ "mip": false,
+ "refScale": 1,
+ "fw": 128,
+ "fh": 128,
+ "roles": [
+  "keep"
+ ],
+ "roleDefs": [],
+ "code": "ae804c4cd041c4fc",
+ "codeFiles": [
+  "src/rendering/trimRules.js",
+  "src/rendering/trimPack.js",
+  "src/rendering/gearSheets.js",
+  "src/rendering/spriteScale.js",
+  "src/rendering/lookSets/weapons.js"
+ ],
+ "sheets": {
+  "swing-south": {
+   "ds": 1,
+   "frames": 14,
+   "fw": 320,
+   "fh": 320,
+   "w": 360,
+   "h": 592,
+   "tableRows": 2,
+   "entries": 256,
+   "ends": [
+    256
+   ],
+   "cells": [
+    [
+     64,
+     0,
+     72,
+     8,
+     56,
+     152,
+     0
+    ],
+    [
+     128,
+     0,
+     64,
+     16,
+     64,
+     152,
+     0
+    ],
+    [
+     0,
+     168,
+     32,
+     56,
+     104,
+     136,
+     0
+    ],
+    [
+     136,
+     432,
+     8,
+     128,
+     144,
+     80,
+     0
+    ],
+    [
+     0,
+     528,
+     32,
+     168,
+     152,
+     64,
+     0
+    ],
+    [
+     224,
+     312,
+     64,
+     168,
+     136,
+     96,
+     0
+    ],
+    [
+     112,
+     168,
+     104,
+     160,
+     112,
+     120,
+     0
+    ],
+    [
+     280,
+     0,
+     144,
+     152,
+     72,
+     144,
+     0
+    ],
+    [
+     0,
+     0,
+     176,
+     136,
+     56,
+     160,
+     0
+    ],
+    [
+     200,
+     0,
+     184,
+     136,
+     72,
+     152,
+     0
+    ],
+    [
+     232,
+     168,
+     192,
+     136,
+     104,
+     120,
+     0
+    ],
+    [
+     0,
+     432,
+     184,
+     64,
+     128,
+     88,
+     0
+    ],
+    [
+     0,
+     312,
+     192,
+     48,
+     104,
+     112,
+     0
+    ],
+    [
+     112,
+     312,
+     184,
+     48,
+     104,
+     112,
+     0
+    ]
+   ],
+   "split": 0,
+   "quant": {
+    "from": 6906,
+    "to": 255,
+    "meanMoved": 2.23,
+    "worstMoved": 9,
+    "over": false
+   },
+   "artFiles": [
+    "public/sprites/player/sword-south-weapon.png",
+    "public/sprites/player/sword-south-weapon.webp"
+   ],
+   "art": "9e3f55fa7262e5ab",
+   "bytes": 24164
+  },
+  "swing-east": {
+   "ds": 1,
+   "frames": 11,
+   "fw": 402,
+   "fh": 246,
+   "w": 320,
+   "h": 504,
+   "tableRows": 2,
+   "entries": 256,
+   "ends": [
+    256
+   ],
+   "cells": [
+    [
+     0,
+     368,
+     200,
+     32,
+     144,
+     64,
+     0
+    ],
+    [
+     168,
+     280,
+     48,
+     32,
+     128,
+     72,
+     0
+    ],
+    [
+     168,
+     440,
+     32,
+     88,
+     144,
+     48,
+     0
+    ],
+    [
+     144,
+     160,
+     48,
+     112,
+     128,
+     80,
+     0
+    ],
+    [
+     208,
+     0,
+     120,
+     120,
+     112,
+     112,
+     0
+    ],
+    [
+     0,
+     0,
+     208,
+     88,
+     64,
+     152,
+     0
+    ],
+    [
+     72,
+     0,
+     216,
+     104,
+     128,
+     120,
+     0
+    ],
+    [
+     0,
+     160,
+     232,
+     88,
+     136,
+     112,
+     0
+    ],
+    [
+     0,
+     280,
+     216,
+     96,
+     160,
+     80,
+     0
+    ],
+    [
+     152,
+     368,
+     216,
+     64,
+     168,
+     64,
+     0
+    ],
+    [
+     0,
+     440,
+     224,
+     64,
+     160,
+     64,
+     0
+    ]
+   ],
+   "split": 0,
+   "quant": {
+    "from": 4738,
+    "to": 255,
+    "meanMoved": 1.89,
+    "worstMoved": 7,
+    "over": false
+   },
+   "artFiles": [
+    "public/sprites/player/sword-east-weapon.png",
+    "public/sprites/player/sword-east-weapon.webp"
+   ],
+   "art": "b7ac89eb5b48f0b2",
+   "bytes": 17243
+  },
+  "swing-north": {
+   "ds": 1,
+   "frames": 9,
+   "fw": 340,
+   "fh": 227,
+   "w": 3060,
+   "h": 227,
+   "tableRows": 1,
+   "entries": 256,
+   "ends": [
+    256
+   ],
+   "cells": [
+    [
+     0,
+     0,
+     -1,
+     -1,
+     340,
+     227,
+     0
+    ],
+    [
+     340,
+     0,
+     -1,
+     -1,
+     340,
+     227,
+     0
+    ],
+    [
+     680,
+     0,
+     -1,
+     -1,
+     340,
+     227,
+     0
+    ],
+    [
+     1020,
+     0,
+     -1,
+     -1,
+     340,
+     227,
+     0
+    ],
+    [
+     1360,
+     0,
+     -1,
+     -1,
+     340,
+     227,
+     0
+    ],
+    [
+     1700,
+     0,
+     -1,
+     -1,
+     340,
+     227,
+     0
+    ],
+    [
+     2040,
+     0,
+     -1,
+     -1,
+     340,
+     227,
+     0
+    ],
+    [
+     2380,
+     0,
+     -1,
+     -1,
+     340,
+     227,
+     0
+    ],
+    [
+     2720,
+     0,
+     -1,
+     -1,
+     340,
+     227,
+     0
+    ]
+   ],
+   "split": 0,
+   "quant": {
+    "from": 23347,
+    "to": 255,
+    "meanMoved": 19.61,
+    "worstMoved": 13.3,
+    "over": false
+   },
+   "artFiles": [
+    "public/sprites/player/sword-north-weapon.png",
+    "public/sprites/player/sword-north-weapon.webp"
+   ],
+   "art": "a316b78c3b8ae1a5",
+   "bytes": 46248
+  },
+  "bowshot-east": {
+   "ds": 1,
+   "frames": 3,
+   "fw": 214,
+   "fh": 241,
+   "w": 232,
+   "h": 192,
+   "tableRows": 1,
+   "entries": 45,
+   "ends": [
+    45
+   ],
+   "cells": [
+    [
+     0,
+     0,
+     136,
+     8,
+     64,
+     192,
+     0
+    ],
+    [
+     72,
+     0,
+     104,
+     8,
+     96,
+     192,
+     0
+    ],
+    [
+     176,
+     0,
+     152,
+     8,
+     56,
+     192,
+     0
+    ]
+   ],
+   "split": 0,
+   "artFiles": [
+    "public/sprites/player/bow-east-weapon.png"
+   ],
+   "art": "21f505022ff1f2ec",
+   "bytes": 2812
+  },
+  "bowshot-southwest": {
+   "ds": 1,
+   "frames": 3,
+   "fw": 154,
+   "fh": 233,
+   "w": 192,
+   "h": 160,
+   "tableRows": 1,
+   "entries": 56,
+   "ends": [
+    56
+   ],
+   "cells": [
+    [
+     0,
+     0,
+     16,
+     8,
+     48,
+     160,
+     0
+    ],
+    [
+     56,
+     0,
+     16,
+     8,
+     80,
+     160,
+     0
+    ],
+    [
+     144,
+     0,
+     8,
+     8,
+     48,
+     160,
+     0
+    ]
+   ],
+   "split": 0,
+   "artFiles": [
+    "public/sprites/player/bow-southwest-weapon.png"
+   ],
+   "art": "1d7ed6a889691382",
+   "bytes": 2540
+  },
+  "bowshot-south": {
+   "ds": 1,
+   "frames": 3,
+   "fw": 130,
+   "fh": 234,
+   "w": 128,
+   "h": 168,
+   "tableRows": 1,
+   "entries": 11,
+   "ends": [
+    11
+   ],
+   "cells": [
+    [
+     0,
+     0,
+     64,
+     8,
+     32,
+     168,
+     0
+    ],
+    [
+     40,
+     0,
+     40,
+     8,
+     48,
+     168,
+     0
+    ],
+    [
+     96,
+     0,
+     64,
+     8,
+     32,
+     168,
+     0
+    ]
+   ],
+   "split": 0,
+   "artFiles": [
+    "public/sprites/player/bow-south-weapon.png"
+   ],
+   "art": "d6f47945462750f8",
+   "bytes": 1429
+  },
+  "bowshot-northwest": {
+   "ds": 1,
+   "frames": 3,
+   "fw": 160,
+   "fh": 248,
+   "w": 168,
+   "h": 168,
+   "tableRows": 1,
+   "entries": 61,
+   "ends": [
+    61
+   ],
+   "cells": [
+    [
+     0,
+     0,
+     8,
+     8,
+     48,
+     168,
+     0
+    ],
+    [
+     56,
+     0,
+     8,
+     8,
+     64,
+     168,
+     0
+    ],
+    [
+     128,
+     0,
+     8,
+     8,
+     40,
+     168,
+     0
+    ]
+   ],
+   "split": 0,
+   "artFiles": [
+    "public/sprites/player/bow-northwest-weapon.png"
+   ],
+   "art": "7ed54de04ad4f6ac",
+   "bytes": 2474
+  },
+  "bowshot-north": {
+   "ds": 1,
+   "frames": 3,
+   "fw": 122,
+   "fh": 260,
+   "w": 120,
+   "h": 184,
+   "tableRows": 1,
+   "entries": 48,
+   "ends": [
+    48
+   ],
+   "cells": [
+    [
+     0,
+     0,
+     80,
+     8,
+     32,
+     184,
+     0
+    ],
+    [
+     40,
+     0,
+     72,
+     8,
+     40,
+     184,
+     0
+    ],
+    [
+     88,
+     0,
+     88,
+     8,
+     32,
+     184,
+     0
+    ]
+   ],
+   "split": 0,
+   "artFiles": [
+    "public/sprites/player/bow-north-weapon.png"
+   ],
+   "art": "9ce7007ebf72b1ee",
+   "bytes": 1810
+  }
+ }
+}
