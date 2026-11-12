@@ -69,6 +69,42 @@ same held-frame key as the old.
 Off-ramp: none needed. The draw does not change, only how often the same
 strings and lists are rebuilt.
 
+## The second wave: six lanes, six pull requests
+
+The owner then allowed up to 20 lanes, "token efficient". Six items had clear,
+separate, low-risk work. Each went to a lane in its own worktree, which made
+one local commit after the precheck. The orchestrator read every diff, pushed
+each one, and opened its PR. All are client only.
+
+| § below | what | tag | PR |
+|---|---|---|---|
+| 2 | the phone's tick does less for each player | v2.3.4879 | #1615 |
+| 3 | the glint keeps each armoured player's slots | v2.3.4880 | #1614 |
+| 4 | other players' drawings checked once, not every frame | v2.3.4881 | #1613 |
+| 5 | the chat-bubble and emote passes | v2.3.4882 | #1618 |
+| 5 | the crowd pick makes nothing new each frame | v2.3.4883 | #1616 |
+| 5 | the player list, and the party re-send | v2.3.4884 | #1617 |
+
+- **They merge together cleanly.** All six, and this PR, were merged into one
+  scratch tree, in the order above.
+- **Phone checks.** The precheck and a sample of phone scenarios ran on that
+  merged build, one scenario per system touched. Each PR says what ran.
+- **Not built:**
+  - §1, the owner's answer was "not now";
+  - `_orderTraitsAndWeapon`, which risks the trait order;
+  - ticks applied once a frame, which is larger and moves the sounds.
+
+### A lesson for the next orchestrator: a suite that imports a client module
+
+Server CI installs only `server/`'s packages. A suite that imports a client
+module whose graph reaches `pixi.js` passes on this box, where `pixi.js` is
+installed, and fails in CI. #1614's first push did exactly that. The deploy
+workflow runs the same suite, so a red one would also hold the worker.
+
+Read the file as text, or register a stand-in for `pixi.js` before the import
+(`glint-peer-slots.test.mjs` shows how). Check it in a copy outside the repo,
+where `pixi.js` cannot resolve.
+
 ## What is left, ranked (none of it built)
 
 ### 1. Fewer messages to a crowd: the worker (lane D, checked)
@@ -113,7 +149,8 @@ start-of-fishing and sprint sounds ride on arrival.
 `lightfx/glint.js` `_targets` (~744-800): every drawn armoured player, every
 frame, gets 3 arrays, 3 key strings, 3 slot objects and a new `Map`, plus
 transform walks. The fix is to cache them per player and refresh on an equip,
-grade or stand-in change. The sheen tests (`mp-sheenall`) hold it.
+grade or stand-in change. `mp-armorgrade` (another player's grade glow) and
+`mp-crowdbots` with `BT_CROWD_LOOK` in iron (its `shine` counts) hold it.
 
 ### 4. Every drawn player's drawings checked every frame (lane A, checked)
 
