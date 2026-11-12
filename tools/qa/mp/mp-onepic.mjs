@@ -160,6 +160,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        colours the same to the eye (under 1% off by more than 8 of 255), no
        shift, and 99.5% of its pixels matched within their own 3 x 3 (nothing
        moved, nothing missing).  The raw counts are reported. */
+    console.log('  onepic, picture against layers:', JSON.stringify(diff));
     rec.ok('the picture is the figure: its inside\'s colours the same to the eye, no shift, and 99.5% of its pixels matched within their 3 x 3',
       !!diff && !diff.error && diff.figurePixels > 2000 && diff.inside > 1000 && diff.insideOver8 <= diff.inside * 0.01
         && diff.bestShift && diff.bestShift[0] === 0 && diff.bestShift[1] === 0 && diff.unmatched <= diff.figurePixels * 0.005, diff);

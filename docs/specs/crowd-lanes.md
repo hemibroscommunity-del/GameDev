@@ -105,6 +105,116 @@ Read the file as text, or register a stand-in for `pixi.js` before the import
 (`glint-peer-slots.test.mjs` shows how). Check it in a copy outside the repo,
 where `pixi.js` cannot resolve.
 
+## One picture per player, stage 1 (v2.3.4885, `?onepic=1`, off by default)
+
+> Owner, 2026-11-12: *"I'd rather just take the heavy work head on first"*,
+> *"I want to make this game ultra efficient"*.
+
+### The idea
+
+Every other player on the screen is a stack of about 31 to 43 layers: body,
+head, hair, hat, armour, weapon, name plate and so on. Each layer is posed,
+sorted and drawn every frame.
+
+A standing player's stack does not change from frame to frame: a stand is
+frame 0 until they turn. Stage 1 paints that stack ONCE into a slot of one
+shared picture, and draws the player as one sprite until it changes.
+
+**Who becomes a picture** (`src/game/onePic.js`):
+
+- standing players past the nearest ten;
+- never your party, target, duel, or anyone fighting you
+  (`entityRenderer.peerAlwaysDrawn`, the crowd cap's rule);
+- not anyone moving, gathering, riding, swimming, in a held pose, faded, or
+  wearing a grade glow, whose filter is a pass of its own and, when godly,
+  moves.
+
+### Measured first (lane P2, a standalone prototype with the real sheets)
+
+The page's main-thread ms a second, 43 layers a figure (software GL, so read
+the ratio):
+
+| players | standing: layers / one picture | walking: layers / one picture |
+|---|---|---|
+| 25 | 634 / 185 | 691 / 429 |
+| 50 | 982 / 258 | 969 / 647 |
+| 100 | 1005 / 373 (30 fps back to 60) | 1003 / 964 |
+
+Walking gains less because a jog changes picture about 26 times a second.
+That is why stage 1 takes the standing players.
+
+### How it works (`src/rendering/peerImpostor.js`)
+
+**The figure stays where it is.** Lane P1 mapped the figure (in the PR). The
+shadows (`casters.js`), the glint, the depth pass, jumpFx, emoteFx, swimFx
+and the stand-ins' geometry all read the figure's display. So it is left in
+its layer, posed by the peer loop as before, and only not DRAWN:
+
+- it becomes its own render group as it turns into a picture;
+- it is set `renderable = false`, and Pixi then paints its root anyway
+  (P2: one rebuild of the layer at entry, none per paint; 40 hidden groups
+  cost the layer nothing);
+- on leaving it is a plain part of its layer again.
+
+**Painted only when it changes:**
+
+- Pixi's own change counters over the whole figure (`checkChildrenDidChange`);
+- its device transform, and any change of its place inside a device pixel;
+- a slow refresh every ~4 s, staggered across slots;
+- a few new pictures a frame at most;
+- all paints in one place, after the lights and just before the frame is drawn.
+
+**Where it sits.** The figure's device transform comes from
+`getGlobalTransform` x the pixel ratio. It is painted at that fraction of a
+pixel. The sprite goes on the whole device pixel, through its layer's own
+transform. The shared picture is made at the screen's resolution, with
+slots in CSS px.
+
+**Memory.** 24 slots of 96 x 140 CSS px: about 13 MB at 3x and 6 MB at 2x,
+made with the scene behind the loading screen; nothing when off
+(MEMORY-MAP's slot).
+
+### What it took to get right (for the next one)
+
+1. **The layers' scale x the figure's place missed what sits above the
+   layers.** The picture was a device pixel off; use `getGlobalTransform`.
+2. **The picture at resolution 1 drew every edge differently.** The figure's
+   sharp-pixel shader (`dFdx`) and the rounding read the target's
+   resolution; make it at the screen's.
+3. **A 1/64 px allowance before repainting.** A figure painted while still
+   settling rounded a plate's border a row off; repaint at any change.
+4. **The test, not the painter, was then wrong three times.**
+   - Screenshots catch what changes between shots and what the page draws
+     over the canvas: a 💬 at the feet, the sun's shadows, the watcher's own
+     plate.
+   - `mp-onepic` now reads the game's own picture three times in one moment
+     (`renderer.extract`: picture, layers, figure not drawn), over the
+     picture's rectangle only.
+5. **Not bit for bit, and that is the layers' doing.** They are drawn from
+   the world's coordinates (x about 87,000 in BroTown) in the chip's 32-bit
+   numbers, about 0.02 of a device px apart there; the picture is drawn in
+   the figure's own small coordinates.
+   - The differences were only ever thin vertical lines along edges, with no
+     shift and the inside the same.
+   - The check is: the inside's colours the same to the eye, no shift, and
+     99.5% of pixels matched within their 3 x 3.
+
+### Stage 1 measured in the game
+
+(`mp-crowdbots`, `BT_CROWD_SETTLE=1`: bots walk to their spots round the phone
+and stand; off against `?onepic=1`, the same build.)
+
+STAGE1_NUMBERS
+
+### Stage 2 (not built)
+
+- **Effects in the picture:** the grade glow painted in, so graded players
+  can be pictures too.
+- **A slower picture for walkers far off:** e.g. half their steps, if the
+  owner likes the look.
+- **On by default with `?onepic=0`,** once the owner has tried it on their
+  iPhone.
+
 ## What is left, ranked (none of it built)
 
 ### 1. Fewer messages to a crowd: the worker (lane D, checked)
