@@ -173,6 +173,53 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /* v2.3.4885: a settled crowd (BT_CROWD_SETTLE) is measured standing, not
          arriving: the walkers' first walks over and their drawn places at rest */
       if (process.env.BT_CROWD_SETTLE === '1') await P.page.waitForTimeout(8000);
+      /* v2.3.4989: BT_CROWD_HIDE=plates -- an experiment, not a mode: every
+         other player's name plate (their display's `_uiLayer`) not drawn, to
+         see what the plates cost a crowd's frame in draws, program switches
+         and binds (a plate's text and box break the figures' batch) */
+      if (/(^|,)plates(,|$)/.test(process.env.BT_CROWD_HIDE || '')) {
+        const hid = await P.page.evaluate(() => {
+          const R = window._pixiRenderer;
+          const st = [R && R.app && R.app.stage];
+          let n = 0;
+          while (st.length) {
+            const c = st.pop();
+            if (c && typeof c.label === 'string' && c.label.startsWith('other_') && c._uiLayer) { c._uiLayer.renderable = false; n++; continue; }
+            if (c && c.children) for (const k of c.children) st.push(k);
+          }
+          return n;
+        });
+        console.log('  crowdbots: name plates hidden on', hid, 'players');
+      }
+      /* v2.3.4989: BT_CROWD_INSTR=1 -- what each world layer's draw list holds
+         between its batches (Pixi's own instruction set, by render pipe): the
+         stencil masks, filters, render groups and drawings that break the
+         figures' batch, counted, and the batches' sizes */
+      if (process.env.BT_CROWD_INSTR === '1') {
+        const instr = await P.page.evaluate(() => {
+          const R = window._pixiRenderer;
+          const st = [R && R.app && R.app.stage];
+          const out = {};
+          while (st.length) {
+            const c = st.pop();
+            if (!c) continue;
+            const g = c.isRenderGroup && c.renderGroup;
+            if (g && g.instructionSet && ['entities', 'gatherNodesFront', 'gatherNodes', 'player', 'gestureFront', 'shadows', 'world'].includes(c.label)) {
+              const by = {};
+              let batched = 0;
+              for (const ins of g.instructionSet.instructions.slice(0, g.instructionSet.instructionSize)) {
+                const k = (ins.renderPipeId || '?') + (ins.action ? ':' + ins.action : '');
+                by[k] = (by[k] || 0) + 1;
+                if (ins.renderPipeId === 'batch' && ins.size) batched += ins.size;
+              }
+              out[c.label] = { n: g.instructionSet.instructionSize, by, batchedElements: batched };
+            }
+            if (c.children) for (const k of c.children) st.push(k);
+          }
+          return out;
+        });
+        console.log('  crowdbots instructions:', JSON.stringify(instr));
+      }
       await P.page.evaluate(() => {
         window.perfTracker && window.perfTracker.reset();
         /* v2.3.3453: the render-target switches a frame (a phone's graphics

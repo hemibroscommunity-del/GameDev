@@ -247,6 +247,99 @@ once the figure is at rest (`settling`), and the refresh went from 4 to 10 s.
 - **On by default with `?onepic=0`,** once the owner has tried it on their
   iPhone.
 
+## Name plates in a layer of their own (v2.3.4989, `?platelayer=1`, off by default)
+
+### Found by measuring a walking crowd
+
+Pictures help a standing crowd. A walking one changes picture ~26 times a
+second, so the next step needed numbers first.
+
+**A Chrome profile of 50 players walking** (unminified build, `mp-crowdbots
+BT_CROWD_PROFILE`) says this box's main thread is ~975 of every 1,000 ms in
+native code: the software graphics driver. The game's own JavaScript is spread
+thin: Pixi moving and sorting ~2,000 objects and rebuilding the draw list,
+the peer loop, the messages. No one function stands out.
+
+**The GL counts tell more.** 50 walking players cost the frame:
+
+- 204 draw calls;
+- 186 program changes;
+- 770 texture binds.
+
+Nearly every draw changed program.
+
+**An experiment, `BT_CROWD_HIDE=plates`,** stopped drawing every other
+player's name plate. Draw calls 205 -> 102, program changes 187 -> 84,
+binds 768 -> 499. A plate (its box, a Graphics, and its text) is the last part
+of each display. So the chip drew figure, plate, figure, plate..., and every
+plate broke the figures' batch: a draw and, mostly, a change of program,
+which on a phone is the dearest thing a frame does.
+
+### The fix (`src/rendering/plateLayer.js`)
+
+**Each plate stays where it is in the scene.** That is its display's
+`_uiLayer`, which every system places as before: the build's counter-scale,
+emoteFx holding it still, the HP bar, the skull, the party badge.
+
+**It is DRAWN by a Pixi `RenderLayer`.**
+
+- There is one RenderLayer at the end of each sorted world layer
+  (`entities`, `gatherNodesFront`).
+- A plate is always drawn by the layer of the render group its figure is in,
+  so a change inside the plate marks the right group.
+- The depth pass never moves the plates' layers and sorts them last
+  (depthSort.js `_depthLast`). `ridersort.test` checks they are never moved,
+  always last, and that everything else is keyed exactly as without them.
+- A player drawn as one picture keeps their plate in the picture
+  (`peerImpostor.isPicture`). An attached plate is skipped by the paint and,
+  its figure not drawn, by the layer too.
+
+### Measured (the same build, 50 walking, off / on)
+
+| a frame | plates in the figures | the plates' layer |
+|---|---|---|
+| draw calls | 214 | **102** |
+| program changes | 195 | **80** |
+| texture binds | 798 | 680 |
+
+Binds fall less: every plate's text is its own texture.
+
+This box's frame times do not move (14.8 / 14.6 ms): it draws in software,
+where a draw call is cheap. A phone's driver is where draws and program
+changes cost.
+
+### What breaks the batch now (`mp-crowdbots BT_CROWD_INSTR=1`)
+
+**Pixi's own draw list for each world layer**, 50 walking with the plates'
+layer on:
+
+- the figures' layer (`entities`): 32 batches, and one stencil mask (a hair
+  under a hat);
+- the front layer: 21 batches;
+- no filters, no nested groups.
+
+That is about 55 batches a frame, and ~770 texture binds, ~14 a batch.
+
+**What ends a batch is its texture slots.** A batch holds 16 textures. A
+figure brings several (its body, its palette, hair, hat, armour pieces,
+weapon), so a batch fills after about two figures.
+
+The next structural lever for a walking crowd is therefore **texture
+atlases**: the hair, hats, armour and weapons packed into shared sheets, so
+that many figures draw from the same few textures. That is a change to the
+art pipeline (`docs/WORLD-MAP-PIPELINE.md`, `public/tools/style/`) and the
+owner's call.
+
+A smaller, visual one would be the small pieces (eyes, eyewear, facial hair)
+not drawn on far walkers, each one a texture less: also the owner's call.
+
+### What a player sees change
+
+In its own layer, a plate is now over every figure and prop there, never behind
+a figure standing in front of its owner. The players south of you (the front
+layer) keep theirs over them. That is why it is off until the owner has seen
+it: `?platelayer=1`, then on by default with `?platelayer=0`.
+
 ## What is left, ranked (none of it built)
 
 ### 1. Fewer messages to a crowd: the worker (lane D, checked)
