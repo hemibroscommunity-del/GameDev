@@ -377,7 +377,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       Array.isArray(sv36) && sv36.some((p) => p.lootId === p1.lootId) && asked === 0, { sv36, asked });
 
     /* ── 3. THE FALLEN TAKES IT BACK, INSIDE ITS MINUTE ── */
-    await H.hopTo(A, p1.x, p1.y + 15, { step: 50 });
+    /* v2.3.4954: the hop the move budget allows (100 px every 260 ms, about
+       385 px/s of its 500): at 50 a run's walk back came in at 70 s */
+    await H.hopTo(A, p1.x, p1.y + 15, { step: 100 });
     const logs3 = await H.waitFor(A, (S) => ((S.rpg && S.rpg.inventory) || {}).fish_salmon || 0, (n) => n >= LOGS, { label: 'the Fallen\'s salmon back', timeout: 15000 }).catch(() => 0);
     const age3 = (await A.page.evaluate(() => Date.now())) - p1.ts;
     const gone3B = await waitPile(B, p1.lootId, (p) => !p, 8000);
@@ -394,7 +396,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const p2 = n2.p;
     rec.ok('4a a second death leaves its pile (2 trout) on the Finder\'s screen', !!p2 && p2.drawn, { died2, p2, seen: p2 ? undefined : n2.seen });
     if (!p2) return;
-    await H.hopTo(B, p2.x, p2.y + 15, { step: 50 });
+    await H.hopTo(B, p2.x, p2.y + 15, { step: 100 });   /* v2.3.4954: inside its minute (at 50, a run's Finder arrived after it) */
     await B.page.waitForTimeout(2500);
     const at4 = pileOf(await deathPiles(B), p2.lootId);
     const trout4 = await held(B, 'fish_trout');
