@@ -81,6 +81,10 @@ function startBots(wsPort) {
     child.send({ cmd: 'config', cfg: {
       url: `ws://127.0.0.1:${wsPort}/ws?room=${ROOM}&rf=1`, wireUrl: null, fighters: 0, homes: HOMES, tag: String.fromCharCode(99 + i),
       idle: false, walkR: WALK_R,
+      /* v2.3.4885: BT_CROWD_SETTLE=1 -- each bot walks once to its spot round
+         the phone and stands there for good (bots.mjs settle): a standing
+         crowd, the case the one-picture crowd (?onepic) is built for */
+      settle: process.env.BT_CROWD_SETTLE === '1',
       /* v2.3.3240: each bot sends a real phone's 2 s look, as players do
          (bots.mjs --track), so the phone hears the worker's relays too */
       track: process.env.BT_CROWD_TRACK !== '0',
