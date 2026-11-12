@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "587306693c590736cd83ae2aec0ce345156d7b8d",
+  "tree": "ea4c8484d2af729229d6cd7274d8bdcae921efad",
+  "committedAt": "2026-11-12T02:43:40-08:00",
+  "subject": "Merge pull request #1626 from hemibroscommunity-del/claude/lane3-budget-1",
+  "files": 7261,
+  "bytes": 940767916,
+  "listingSha256": "cad76648f19d5426bd87dadc9763d585f7b9a59ff28ddeadff1e2601cfc8ac6c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

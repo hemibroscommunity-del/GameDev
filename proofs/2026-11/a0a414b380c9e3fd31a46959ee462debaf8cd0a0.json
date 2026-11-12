@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "a0a414b380c9e3fd31a46959ee462debaf8cd0a0",
+  "tree": "42bab5bdbae36f3538a9abc07db4d9d5e00a8332",
+  "committedAt": "2026-11-12T02:43:49-08:00",
+  "subject": "Merge pull request #1630 from hemibroscommunity-del/claude/lane3-tests-4",
+  "files": 7275,
+  "bytes": 940958996,
+  "listingSha256": "ab5eedf1f442ef84857a8e05ba12862e48d1aa5efeb96e1eb7662dc721b48fed",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
