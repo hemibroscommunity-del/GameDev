@@ -50,6 +50,8 @@ function check(name, cond, detail) {
  * real client gate must be deleted (checked below). */
 const CAPS_ALLOWLIST = new Map([
   ['httpAuth', 'handshake negotiation field, not a feature gate — the client SENDS httpAuth:true in join (wsClient.js) rather than reading it from caps'],
+  /* v2.3.4911 */
+  ['arena', 'for the record: every worker referees its own arena (v2.3.1126), and the page\'s old-worker paths it gated (the entry fee\'s own debit and refunds, the self-reported result and its win credit) are gone; the phone takes the fee and the prizes only from the worker'],
   /* v2.3.3318 */
   ['wheelnear', 'for the record and the tests (mp-wheelnear): the phone ASKS with `wn: 1` in its join, before any caps arrive, and reads a near list by the mark on the message itself (zone_state `mnear`, state_sync `monstersNear`), so it reads right whichever worker sent it; a caps gate would add nothing (server/src/wheelnear.js)'],
   /* v2.3.4801: the worker's half ships first (drawgather.js); the phone's

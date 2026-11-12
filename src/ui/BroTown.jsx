@@ -9173,26 +9173,17 @@ export var BroTown = function BroTown(_ref0) {
          arena or not — 1,028 HTTP requests per player-hour, ~a third of an
          idle player's entire request bill and billed 1:1 (no WS discount).
          "Business" is: in the queue or a live tournament (set from the last
-         response below), or holding a bet that has not paid out yet.
-         The bet case is why this stays a slow poll instead of stopping —
-         the §BET payout below fires ONLY from this callback, so a spectator
-         who bet without entering must keep checking or they never get paid.
+         response below).  It stays a slow poll rather than stopping.
+         (v2.3.4911: the old third case, a page-only bet not yet paid,
+         went with that bet; the worker pays a stake.)
          Panel liveness is unaffected: PartyPanel runs its own 3 s poll
          while it is open. */
       var _arenaBusy = !!(S3._arenaMatch || S3._arenaInvolved);
-      if (!_arenaBusy) {
-        var _R3 = S3.rpg;
-        var _bets = (_R3 && _R3._arenaBets) || [];
-        for (var _bi = 0; _bi < _bets.length; _bi++) {
-          if (!S3._betsPaidOut || !S3._betsPaidOut[_bets[_bi].tournamentId]) { _arenaBusy = true; break; }
-        }
-      }
       if (Date.now() - S3._arenaLastBgPoll > (_arenaBusy ? ARENA_POLL_INTERVAL : ARENA_IDLE_POLL_INTERVAL)) {
         S3._arenaLastBgPoll = Date.now();
         fetch(BT_API_BASE + '/api/arena/status?playerId=' + encodeURIComponent(S3.myId)).then(function (r) {
           return r.json();
         }).then(function (d) {
-          var _d$tournament3, _d$tournament4, _S3$_betsPaidOut;
           if (!d.ok) return;
           setArenaStatus(d);
           if (d.tournament) setArenaTournament(d.tournament);
@@ -9231,50 +9222,9 @@ export var BroTown = function BroTown(_ref0) {
           } else {
             S3._arenaMatch = null;
           }
-          /* §BET — Check for bet payouts when tournament completes */
-          if (((_d$tournament3 = d.tournament) === null || _d$tournament3 === void 0 ? void 0 : _d$tournament3.status) === 'complete' && (_d$tournament4 = d.tournament) !== null && _d$tournament4 !== void 0 && _d$tournament4.champion && !((_S3$_betsPaidOut = S3._betsPaidOut) !== null && _S3$_betsPaidOut !== void 0 && _S3$_betsPaidOut[d.tournament.id])) {
-            if (!S3._betsPaidOut) S3._betsPaidOut = {};
-            S3._betsPaidOut[d.tournament.id] = true;
-            var R3 = S3.rpg;
-            /* v2.3.3481: the 2026-10-19 UI review -- this 3x payout is the
-               PAGE's own, for the old wells' page-only bets.  Against a worker
-               that settles stakes (caps.sponsor) those wells are not drawn
-               (PartyPanel's legacyBets) and the worker pays a real stake
-               itself (arena_stake_result), so nothing is paid here and no
-               "BET WON!" shows for a bet that did not exist.  The paid-out
-               mark above stays: the poll's fast/idle choice reads it. */
-            var myBets = (S3._serverCaps && S3._serverCaps.sponsor) ? [] : ((R3 === null || R3 === void 0 ? void 0 : R3._arenaBets) || []).filter(function (b) {
-              return b.tournamentId === d.tournament.id;
-            });
-            if (myBets.length > 0) {
-              var champId = d.tournament.champion.id;
-              var totalWon = 0,
-                totalLost = 0;
-              myBets.forEach(function (b) {
-                if (b.targetPlayerId === champId) {
-                  /* Winner! Payout = bet × number of remaining players at time of bet (simplified: 3x) */
-                  var payout = b.amount * 3;
-                  totalWon += payout;
-                  R3.coins += payout;
-                  if (R3._compStats) R3._compStats.totalGoldEarned += payout;
-                  if (!S3.stats._betsWon) S3.stats._betsWon = 0;
-                  S3.stats._betsWon++;
-                } else {
-                  totalLost += b.amount;
-                }
-              });
-              if (totalWon > 0) {
-                pushDmgPopup(S3, S3.player.x, S3.player.y - 60, 'BET WON! +' + totalWon + 'G', '#D8A94D');
-                BT_AUDIO.collect();
-              } else {
-                pushDmgPopup(S3, S3.player.x, S3.player.y - 60, 'Bet lost (-' + totalLost + 'G)', 'rgba(255,255,255,.4)');
-              }
-              setRpgState(_objectSpread({}, R3));
-              try {
-                localStorage.setItem('bt_rpg', JSON.stringify(R3));
-              } catch (_unused12) {}
-            }
-          }
+          /* v2.3.4911: the page's own 3x bet payout (§BET, for the old
+             wells' page-only bets) is gone with those wells (PartyPanel):
+             a stake is the worker's to settle (arena_stake_result). */
         }).catch(function () {});
       }
     }, 500);

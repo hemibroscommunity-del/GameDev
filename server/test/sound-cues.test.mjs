@@ -564,7 +564,7 @@ for (const p of files) {
     ['src/game/combatHelpers.js', 4], ['src/game/playerActions.js', 1], ['src/game/abilities.js', 3],
     ['src/game/farmFeedback.js', 1], ['src/ui/panels/SprintButton.jsx', 1], ['src/game/groundLoot.js', 1],
     ['src/game/wheelHome.js', 1], ['src/game/zoneTransitions.js', 3], ['src/networking/wsClient.js', 1],
-    ['src/ui/panels/buildings/PartyPanel.jsx', 2], ['src/ui/panels/buildings/ExchangePanel.jsx', 1], ['src/ui/panels/DungeonCreatorPanel.jsx', 1],
+    ['src/ui/panels/buildings/PartyPanel.jsx', 1 /* v2.3.4911: the page-only bets' refusal went with them */], ['src/ui/panels/buildings/ExchangePanel.jsx', 1], ['src/ui/panels/DungeonCreatorPanel.jsx', 1],
   ];
   const short = denied.filter(([f, n]) => (strip(src(f)).match(/cue\('denied'(, [\d.]+)?\)/g) || []).length < n).map(([f, n]) => [f, n, (strip(src(f)).match(/cue\('denied'/g) || []).length]);
   const geDenied = ['arena_stake_error', 'guild_quest_error', 'gear_locked', 'trade_reject'].filter((n) => !/cue\('denied'\)/.test(caseOf(GE, n)));
