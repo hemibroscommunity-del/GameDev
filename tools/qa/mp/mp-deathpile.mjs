@@ -124,6 +124,7 @@ async function dieAt(P, wsPort, id, spot, ms = 90000) {
     return new Set((Array.isArray(sv) ? sv : []).filter((q) => String(q.lootId || '').startsWith('dd-' + id + '-')).map((q) => q.lootId));
   };
   const before = await mine();
+  dieAt.trace = [];
   const died = async () => {
     if (await H.readState(P, (S) => !!S._dying).catch(() => false)) return true;
     const sp = await H.serverPlayer(wsPort, id).catch(() => null);
@@ -137,10 +138,38 @@ async function dieAt(P, wsPort, id, spot, ms = 90000) {
   await H.devOp(wsPort, 'vitals', id, { heal: false, hp: 1, god: false });
   const t0 = Date.now();
   let lowAt = Date.now(), g = null, hp = null, noGob = 0;
+  /* v2.3.4954: the death watched on its own, every 300 ms, beside the walk:
+     a hop on this box can take most of a minute, and the pile's own clock
+     (its minute, its two) runs from the death, not from when the loop next
+     looked (a run's Finder first saw the pile at 70 s left) */
+  let dead = false;
+  const watch = (async () => {
+    while (!dead && Date.now() - t0 < ms) {
+      if (await died()) { dead = true; break; }
+      await new Promise((r) => setTimeout(r, 300));
+    }
+  })();
   while (Date.now() - t0 < ms) {
-    if (await died()) { dieAt.last = null; return true; }
+    if (dead) { await watch; dieAt.last = null; return true; }
     g = await nearestGoblin(P);
-    if (g) { noGob = 0; await H.hopTo(P, g.x, g.y + 8, { step: 60, tries: 6 }); }
+    if (g) {
+      noGob = 0;
+      /* hopTo's own steps (60 px a hop), stopping the moment the watch
+         sees the death -- a hop left running would walk the respawned
+         Fallen out of town after it */
+      for (let k = 0; k < 14 && !dead; k++) {
+        const there = await P.page.evaluate(({ x, y }) => {
+          const S = window._gameState.current;
+          const dx = x - S.player.x, dy = y - S.player.y, d = Math.hypot(dx, dy);
+          if (d < 6) return true;
+          const k2 = Math.min(60, d);
+          S.player.x += (dx / d) * k2; S.player.y += (dy / d) * k2;
+          return false;
+        }, { x: g.x, y: g.y + 8 }).catch(() => true);
+        await P.page.waitForTimeout(260);
+        if (there) break;
+      }
+    }
     else {
       /* v2.3.4954: none drawn near: back to the spot, where they stand */
       if (++noGob % 6 === 0) await H.hopTo(P, spot.x, spot.y, { step: 100 });
@@ -151,13 +180,17 @@ async function dieAt(P, wsPort, id, spot, ms = 90000) {
        death is still the monster's, through the worker's own hit */
     if (Date.now() - lowAt > 8000) {
       lowAt = Date.now();
-      if (await died()) { dieAt.last = null; return true; }
+      if (dead || await died()) { dead = true; await watch; dieAt.last = null; return true; }
       const sp = await H.serverPlayer(wsPort, id).catch(() => null);
       hp = sp && sp.hp;
+      (dieAt.trace = dieAt.trace || []).push({ s: Math.round((Date.now() - t0) / 1000), hp, x: sp && Math.round(sp.x), y: sp && Math.round(sp.y), z: sp && (sp.z || sp.zone), g: g && Math.round(Math.hypot(g.x - (sp ? sp.x : 0), g.y - (sp ? sp.y : 0))) });
       if (typeof hp === 'number' && hp > 1) await H.devOp(wsPort, 'vitals', id, { heal: false, hp: 1, god: false });
     }
   }
-  dieAt.last = { goblin: g, hp, noGob };
+  dead = dead || false;
+  await watch;
+  if (dead) { dieAt.last = null; return true; }
+  dieAt.last = { goblin: g, hp, noGob, spot, trace: (dieAt.trace || []).slice(-12) };
   return false;
 }
 
@@ -396,7 +429,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const bAt = await H.readState(B, (S) => ({ x: S.player.x, y: S.player.y }));
       rec.ok('5a2 (the Finder 300 px or more from it, watching)', Math.hypot(bAt.x - p3.x, bAt.y - p3.y) >= 300, { bAt, p3: { x: p3.x, y: p3.y } });
       await untilAge(B, p3, 100000);
-      const at100 = pileOf(await deathPiles(B), p3.lootId);
+      /* v2.3.4954: the countdown is drawn with the frame, and this box draws
+         a few a second: at 100.3 s a run's still read "21s" (19.3 left).
+         Read again, up to 2.5 s, until a frame has drawn it */
+      let at100 = pileOf(await deathPiles(B), p3.lootId);
+      for (const t0 = Date.now(); at100 && !/^(18|19|20)s$/.test(at100.timer || '') && Date.now() - t0 < 2500;) {
+        await B.page.waitForTimeout(150);
+        at100 = pileOf(await deathPiles(B), p3.lootId);
+      }
       const a100 = await alphas(B, p3.lootId, 2500);
       rec.ok('5b at 100 s it is drawn and steady, its countdown near 20 s',
         !!at100 && at100.drawn && /^(18|19|20)s$/.test(at100.timer || '') && a100.length >= 2 && a100.every((a) => a === 1), { at100, a100 });
