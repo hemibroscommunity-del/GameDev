@@ -174,6 +174,8 @@ export function applyGroundSort(layer) {
     const host = c._ridesOn;
     if (c._depthLast) {
       key = Number.MAX_SAFE_INTEGER;   /* v2.3.4989: the plates, last (plateLayer.js) */
+    } else if (c._depthFirst) {
+      key = -Number.MAX_SAFE_INTEGER;   /* v2.3.4995: the weapons carried behind, first (weaponLayer.js) */
     } else if (host && !host.destroyed && host.parent === c.parent) {
       const hy = groundOf(host);
       key = (Number.isFinite(hy) ? Math.round(hy) : k) + 0.25;
@@ -203,7 +205,7 @@ export function applyGroundSort(layer) {
 
 /* A figure is anything sorted that is not a prop and has a ground line. */
 function isFigure(c) {
-  return !!c && !c._propGround && !c._depthLast && c.visible !== false;
+  return !!c && !c._propGround && !c._depthLast && !c._depthFirst && c.visible !== false;
 }
 
 /**
@@ -291,7 +293,7 @@ export function applyDepthBuckets(backLayer, frontLayer, playerGroundY, playerX)
     if (!c || !c.parent) continue;
     /* v2.3.4989: a layer's plates (plateLayer.js, `_depthLast`) stand on no
        ground: never moved between the buckets, always drawn last in theirs */
-    if (c._depthLast) continue;
+    if (c._depthLast || c._depthFirst) continue;   /* v2.3.4995: and the weapons' first layer (weaponLayer.js) */
     const isFront = c.parent === frontLayer;
     /* a prop is in front of the player if his feet are north of ITS BASE
        WHERE HE STANDS -- the wall beside him, not its front step */

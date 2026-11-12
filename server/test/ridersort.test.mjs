@@ -196,5 +196,29 @@ console.log('ridersort: a building\'s pieces sort with the building');
   ok('everything else keyed and bucketed exactly as without plates', keys(a.back) === keys(b.back) && keys(a.front) === keys(b.front), { a: keys(a.back), b: keys(b.back) });
 }
 
+/* v2.3.4995: a layer's first weapons (weaponLayer.js, `_depthFirst`) are
+   never moved between the buckets and always sort FIRST in theirs */
+{
+  for (const py of [100, 790, 2000]) {
+    const { back, front } = scene(py, 1000);
+    const wb = { label: 'weapons_back_entities', x: 0, y: 99999, visible: true, _depthFirst: true };
+    const wf = { label: 'weapons_back_gatherNodesFront', x: 0, y: 99999, visible: true, _depthFirst: true };
+    back.addChild(wb);
+    front.addChild(wf);
+    applyDepthBuckets(back, front, py, 1000);
+    const minOf = (L) => Math.min(...L.children.filter((c) => !c._depthFirst).map((c) => c.zIndex));
+    ok(`first weapons stay in their own layer, the player's feet at ${py}`, wb.parent === back && wf.parent === front);
+    ok(`first weapons sort first in each layer, the player's feet at ${py}`,
+      (back.children.length === 1 || wb.zIndex < minOf(back)) && (front.children.length === 1 || wf.zIndex < minOf(front)),
+      { back: back.children.map((c) => [c.label, c.zIndex]), front: front.children.map((c) => [c.label, c.zIndex]) });
+  }
+  const a = scene(790, 1000), b = scene(790, 1000);
+  b.back.addChild({ label: 'weapons_back_entities', x: 0, y: 0, visible: true, _depthFirst: true });
+  applyDepthBuckets(a.back, a.front, 790, 1000);
+  applyDepthBuckets(b.back, b.front, 790, 1000);
+  const keys = (L) => L.children.filter((c) => !c._depthFirst).map((c) => c.label + ':' + c.zIndex).sort().join();
+  ok('everything else keyed and bucketed exactly as without the first weapons', keys(a.back) === keys(b.back) && keys(a.front) === keys(b.front));
+}
+
 console.log(`\nridersort: ${pass + fail} assertions, ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);
