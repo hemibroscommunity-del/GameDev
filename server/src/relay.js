@@ -39,7 +39,9 @@ export const RELAY = Object.freeze({
      (gameEvents.js processGameEvent) and several settled on the way through
      (the trade, duel and threat intercepts, the clan invite's record). */
   TYPES: Object.freeze(new Set([
-    'arena_bet',              /* PartyPanel: a bet on an arena fighter, shown to the others */
+    /* v2.3.4911: 'arena_bet' is gone: the page-only bet that sent it went
+       (PartyPanel), every phone already ignored it (gameEvents.js), and a
+       stake is the worker's own (arena_sponsor) */
     'campfire_lit',           /* BroTown: a fire you lit, drawn where it burns */
     'chat',                   /* chat.js, ChatBubble: room chat (_sanitizeChatRelay) */
     'clan_invite',            /* InspectPlayerPanel: _observeClanInvite records it */

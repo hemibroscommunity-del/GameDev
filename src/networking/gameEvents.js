@@ -18,7 +18,7 @@ import { shopBus } from '../ui/mobile/shopBus.js';   /* v2.3.2050 */
 import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js'; /* v2.3.2618 */
 import { capeStatusBus } from '../ui/mobile/capeStatusBus.js'; /* v2.3.2118 */
 import { storeToastBus } from '../ui/mobile/storeToastBus.js'; /* v2.3.2476 */
-import { BT_AUDIO, ZONES, TILE, ARENA_CHAMPION_REWARD, ARENA_WIN_REWARD, CLAN_WAR_REWARDS, createDefaultCompStats, recalcDerived, PVP_THREAT_CONSENT_MS, updateZoneDimensions, generateZoneMap, trainDefense, getGuildRank, SKILL_GUILDS } from '@/data/index.js';
+import { BT_AUDIO, ZONES, TILE, CLAN_WAR_REWARDS, createDefaultCompStats, recalcDerived, PVP_THREAT_CONSENT_MS, updateZoneDimensions, generateZoneMap, trainDefense, getGuildRank, SKILL_GUILDS } from '@/data/index.js';
 import { MONSTER_VARIANTS, maybeTransformMonster, isRemnantSkull, xpMultFor } from '@/data/monsterVariants.js';
 import { waterBlowKind } from '@/data/waterAttack.js';   /* v2.3.4355: which water a frog's blow throws */
 import { toDisplayDamage, toDisplayHitDamage, GS_OUTER_RADIUS, GS_FORWARD_ARC } from '@/data/gameSystems.js'; /* v2.3.2520: the display damage scale (§5.8 D1); v2.3.2730: + a peer's swing reach */
@@ -4630,61 +4630,11 @@ export function processGameEvent(type, payload, S, deps) {
                   });
                   pushDmgPopup(S, S.player.x, S.player.y - 65, '+' + points + ' war points!', '#ff5e6c');
                 }
-                /* §ARENA — Report arena match result if this was an arena fight.
-                   v2.3.1126: refereeing workers (caps.arena) observe match
-                   outcomes from their own duel resolution -- the client-claimed
-                   winnerId POST below was the collusion hole (two clients could
-                   trade fake wins), and the win/champion self-credit was
-                   phantom.  Legacy workers only; the new flow renders from the
-                   privileged arena_match_result / arena_tournament_complete
-                   events instead. */
-                if (!(S._serverCaps && S._serverCaps.arena) && S._arenaMatch && (payload.from === S._arenaMatch.p1 || payload.from === S._arenaMatch.p2)) {
-                  var match = S._arenaMatch;
-                  var loserId = payload.from; /* the person who sent pvp_confirmed with died=true is confirming WE killed THEM */
-                  /* Actually: pvp_confirmed target=us, from=attacker. If died=true, the attacker got a kill confirmation.
-                     So WE are the killer (target got confirmed as the killer) */
-                  fetch(BT_API_BASE + '/api/arena/result', {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                      tournamentId: S._arenaTournamentId,
-                      matchId: match.id,
-                      winnerId: S.myId,
-                      loserId: match.p1 === S.myId ? match.p2 : match.p1
-                    })
-                  }).then(function (r) {
-                    return r.json();
-                  }).then(function (d) {
-                    if (d.ok) {
-                      var _d$champion;
-                      S._arenaMatch = null;
-                      if (d.tournamentComplete && ((_d$champion = d.champion) === null || _d$champion === void 0 ? void 0 : _d$champion.id) === S.myId) {
-                        /* WE ARE THE CHAMPION */
-                        S.rpg.coins += ARENA_CHAMPION_REWARD.gold;
-                        S.rpg.achievementPoints = (S.rpg.achievementPoints || 0) + ARENA_CHAMPION_REWARD.ap;
-                        if (S.rpg._compStats) S.rpg._compStats.totalGoldEarned += ARENA_CHAMPION_REWARD.gold;
-                        if (!S.rpg._titles) S.rpg._titles = [];
-                        if (!S.rpg._titles.includes('Gladiator')) S.rpg._titles.push('Gladiator');
-                        pushDmgPopup(S, S.player.x, S.player.y - 80, 'GLADIATOR CHAMPION!', '#f5c542');
-                        pushDmgPopup(S, S.player.x, S.player.y - 65, '+' + ARENA_CHAMPION_REWARD.gold + 'G +' + ARENA_CHAMPION_REWARD.ap + 'AP', '#f5c542');
-                        BT_AUDIO.levelUp();
-                        S.screenShake = 10;
-                      } else {
-                        var _d$tournament;
-                        S.rpg.coins += ARENA_WIN_REWARD.gold;
-                        S.rpg.achievementPoints = (S.rpg.achievementPoints || 0) + ARENA_WIN_REWARD.ap;
-                        pushDmgPopup(S, S.player.x, S.player.y - 80, 'Arena win! Round ' + ((_d$tournament = d.tournament) === null || _d$tournament === void 0 ? void 0 : _d$tournament.round), '#3dd497');
-                      }
-                      setRpgState(_objectSpread({}, S.rpg));
-                      try {
-                        localStorage.setItem('bt_rpg', JSON.stringify(S.rpg));
-                      } catch (_unused10) {}
-                      if (d.tournament) setArenaTournament(d.tournament);
-                    }
-                  }).catch(function () {});
-                }
+                /* §ARENA: v2.3.4911, the page's own arena result (a POST
+                   naming its own winner, then crediting itself the win's
+                   gold and points) for a worker without caps.arena is gone.
+                   Every worker referees its own matches (v2.3.1126) and
+                   pays through arena_match_result / arena_tournament_complete. */
               }
               break;
             }
