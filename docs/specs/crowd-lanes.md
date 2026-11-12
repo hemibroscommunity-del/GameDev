@@ -368,6 +368,75 @@ Checked: `mp-onepic`, `mp-platelayer` (now with `?onepic=0`, its pictures
 turned on by hand), `mp-peercull`, `mp-chatbubble`, `mp-partychip` and a crowd
 of 50 with no address (`mp-crowdbots`).
 
+## Texture atlases: what the census found (v2.3.4991)
+
+Owner, 2026-11-12: *"Begin texture atlases."* An atlas packs many pictures
+into one texture, so the chip can draw more pieces in one go. Before building
+one, the census asked what actually ends each batch.
+
+### How it was counted (`mp-crowdbots`)
+
+- `BT_CROWD_LOOKS=1`: each bot wears one of `mp-crowdfight`'s 30 looks (skin,
+  trousers, shoes, eyes, hair and its colour, a sword or a bow). The sampled
+  look every bot wore before has no hair and draws its body the old RGBA way,
+  so it never showed what a real crowd draws.
+- `BT_CROWD_INSTR=2`: for every render group (the shadows' pieces too), why
+  each batch ended: another program next (`program`), the same program with
+  every texture slot used (`full`), another blend, or another pipe; and which
+  piece of whose display each batch held.
+- A CPU profile of the page (`BT_CROWD_PROFILE`): 99.6% of the time is this
+  box's software graphics chip, the game's own script about 1%. So this box
+  cannot time a crowd's frame; the counts can (TRAPS §225).
+
+### What it found: 50 players walking, 30 looks
+
+| render group | batches | ended by a program change | ended by full slots |
+|---|---|---|---|
+| `entities` (players north of you) | 78 | 66 | 2 |
+| `gatherNodesFront` (south of you) | 59 | 54 | 2 |
+| the shadows' pieces (`shadowCast`) | 72 | 71 | 0 |
+
+About 400 draws and 380 program changes a frame. **Texture slots end 4
+batches; program changes end almost all the rest.** Each player is drawn in
+four batches: body (the look's colour numbers), tee (Pixi's sharp program,
+RGBA gear), hair (colour numbers), weapon (sharp). An atlas alone would save
+almost nothing until those pieces stop taking turns.
+
+### First step: the shadows' pieces grouped by program (v2.3.4991)
+
+The shadows draw every figure's pieces a second time, into one picture of
+where they cover the ground (`lightfx/shadows.js`). The shade reads only that
+picture's alpha, and alpha laid over alpha is the same in any order, so the
+pieces are now drawn grouped: every look piece, then every Wheel
+colour-number piece, then the rest (three pools, three containers).
+
+| shadows' pieces, 50 walking | batches | program | full |
+|---|---|---|---|
+| before | 72 | 71 | 0 |
+| grouped | 17 | 2 | 14 |
+
+Nothing on screen changes. 15 of the 17 are look batches ended by the look
+program's **4 texture slots** (`lookPalette.js` `SLOTS`): every facing and pose
+is its own body sheet and every hair its own head sheet. That is where a look
+atlas pays: those 15 become one or two.
+
+### The atlas plan, in order
+
+1. **Done: the shadows grouped** (above).
+2. **A look atlas** (`docs/specs/look-palette.md` item 8 already names it):
+   every look sheet laid out in one texture with a directory of where each
+   sheet starts, the look program reading that one texture. The shadows' 15
+   look batches become about 2, and the look program's 4-way chain of reads
+   becomes one read.
+3. **The plain tee through the colour numbers**: a figure's body, tee and hair
+   in one look batch, so 4 batches a player become 2. A plain tee was left on
+   the old sheet because "the numbers save it nothing" in memory
+   (`lookShirtFrame.js`, v2.3.3790): with the look atlas they save two
+   program changes a player. A first try did not take; why is still open.
+4. **The weapon** is the last piece that takes turns with the look's. The one
+   program (`?onebatch=1`) would fold it, and is off since it made legs
+   flicker on the owner's iPhone (TRAPS §260): only their phone can clear it.
+
 ## What is left, ranked (none of it built)
 
 ### 1. Fewer messages to a crowd: the worker (lane D, checked)

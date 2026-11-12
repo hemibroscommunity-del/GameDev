@@ -49,6 +49,7 @@
  * with BT_CROWD_LOOK in iron every bot's armour is a graded glow on the phone.
  */
 import * as H from './harness.mjs';
+import { LOOKS as CROWD_LOOKS } from './mp-crowdfight.mjs';   /* v2.3.4991: BT_CROWD_LOOKS */
 import { fork } from 'node:child_process';
 import { join } from 'node:path';
 
@@ -96,6 +97,11 @@ function startBots(wsPort) {
          greaves worn in those grades (bots.mjs), so the phone draws each
          bot's grade glow: with BT_CROWD_LOOK in iron, the cost of a graded crowd */
       grade: process.env.BT_CROWD_GRADE || null,
+      /* v2.3.4991: BT_CROWD_LOOKS=1 -- each bot in one of mp-crowdfight's 30
+         looks (skin, trousers, shoes, eyes, hair and its colour, a sword or a
+         bow), as a real crowd is: the sampled look alone has no hair and draws
+         its body the old way, so it never shows the look pieces' programs */
+      looks: process.env.BT_CROWD_LOOKS === '1' ? CROWD_LOOKS : null,
     } });
     groups.push(g);
   }
@@ -195,16 +201,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
          between its batches (Pixi's own instruction set, by render pipe): the
          stencil masks, filters, render groups and drawings that break the
          figures' batch, counted, and the batches' sizes */
-      if (process.env.BT_CROWD_INSTR === '1') {
+      if (process.env.BT_CROWD_INSTR === '1' || process.env.BT_CROWD_INSTR === '2') {
+        if (process.env.BT_CROWD_INSTR === '2') await P.page.evaluate(() => { window.__btInstrPieces = true; });
         const instr = await P.page.evaluate(() => {
           const R = window._pixiRenderer;
           const st = [R && R.app && R.app.stage];
+          /* v2.3.4991: and the shadows' pieces, drawn a second time into
+             their own picture (shadows.js's prepass: `this.cast`, never in
+             the scene) */
+          if (window.__btInstrPieces && window.__btShadowPrepass && window.__btShadowPrepass.casts) st.push(...window.__btShadowPrepass.casts());
           const out = {};
           while (st.length) {
             const c = st.pop();
             if (!c) continue;
             const g = c.isRenderGroup && c.renderGroup;
-            if (g && g.instructionSet && ['entities', 'gatherNodesFront', 'gatherNodes', 'player', 'gestureFront', 'shadows', 'world'].includes(c.label)) {
+            /* v2.3.4991: every render group with anything in it (BT_CROWD_INSTR=2), not only the world's layers */
+            if (g && g.instructionSet && (['entities', 'gatherNodesFront', 'gatherNodes', 'player', 'gestureFront', 'shadows', 'world', 'shadowCast'].includes(c.label) || (window.__btInstrPieces && g.instructionSet.instructionSize > 0))) {
               const by = {};
               let batched = 0;
               for (const ins of g.instructionSet.instructions.slice(0, g.instructionSet.instructionSize)) {
@@ -212,7 +224,61 @@ export async function run({ browser, wsPort, webPort, rec }) {
                 by[k] = (by[k] || 0) + 1;
                 if (ins.renderPipeId === 'batch' && ins.size) batched += ins.size;
               }
-              out[c.label] = { n: g.instructionSet.instructionSize, by, batchedElements: batched };
+              /* v2.3.4991: why each batch ended (the atlases' first
+                 question, docs/specs/crowd-lanes.md "Texture atlases"): the
+                 next one is another program ('program'), the same program
+                 with every texture slot used ('full'), another blend
+                 ('blend'), or another pipe's instruction ('pipe:<id>');
+                 the programs' order, and the textures the batches held */
+              const list = g.instructionSet.instructions.slice(0, g.instructionSet.instructionSize);
+              const ends = {}, progs = {}, texSeen = {};
+              let seq = '';
+              let fullSlots = {};
+              for (let i = 0; i < list.length; i++) {
+                const ins = list[i];
+                if (ins.renderPipeId !== 'batch' || !ins.batcher) continue;
+                const nm = ins.batcher.name || '?';
+                const cnt = ins.textures ? ins.textures.count : 0;
+                progs[nm] = progs[nm] || { batches: 0, elements: 0, textures: 0 };
+                progs[nm].batches++;
+                progs[nm].elements += ins.elements ? ins.elements.length : 0;
+                progs[nm].textures += cnt;
+                if (seq.length < 600) seq += (seq ? ' ' : '') + nm.replace(/^bt-/, '') + cnt;
+                /* BT_CROWD_INSTR=2: and which piece of whose display each of
+                   its elements is (O<n>: another player's child n; W<n>: in
+                   their weapon; P: a plate; else its parent's label) */
+                if (window.__btInstrPieces && seq.length < 2400 && ins.elements) {
+                  const tags = new Set();
+                  for (const el of ins.elements) {
+                    const r = el && el.renderable, par = r && r.parent;
+                    if (!par) { tags.add('-'); continue; }
+                    const pl = par.label || '';
+                    let t;
+                    if (/^other_/.test(pl)) t = 'O' + par.children.indexOf(r);
+                    else if (par.parent && /^other_/.test(par.parent.label || '')) t = (r.text != null || (par.parent._uiLayer === par) ? 'P' : 'W') + par.children.indexOf(r);
+                    else t = (pl || (par.parent && par.parent.label) || r.constructor.name).slice(0, 12);
+                    tags.add(t);
+                    if (tags.size > 8) break;
+                  }
+                  seq += '[' + [...tags].join(',') + ']';
+                }
+                for (let t = 0; t < cnt; t++) {
+                  const src = ins.textures.textures[t];
+                  const lb = String((src && (src.label || (src.resource && src.resource.src))) || ('uid' + (src && src.uid))).replace(/^.*\/sprites\//, '').slice(0, 60);
+                  texSeen[lb] = (texSeen[lb] || 0) + 1;
+                }
+                const nx = list[i + 1];
+                let why;
+                if (!nx) why = 'last';
+                else if (nx.renderPipeId !== 'batch') why = 'pipe:' + (nx.renderPipeId || '?');
+                else if (!nx.batcher || nx.batcher.name !== ins.batcher.name) why = 'program';
+                else if (cnt >= (ins.batcher.maxTextures || 16)) { why = 'full'; fullSlots[nm] = ins.batcher.maxTextures; }
+                else if (nx.blendMode !== ins.blendMode) why = 'blend';
+                else why = 'other';
+                ends[why] = (ends[why] || 0) + 1;
+              }
+              const topTex = Object.entries(texSeen).sort((a, b) => b[1] - a[1]).slice(0, 14);
+              out[c.label || ('group:' + (c.constructor && c.constructor.name) + ':' + (c.parent && c.parent.label))] = { n: g.instructionSet.instructionSize, by, batchedElements: batched, ends, progs, fullSlots, distinctTextures: Object.keys(texSeen).length, topTex, seq: seq.slice(0, window.__btInstrPieces ? 2400 : 400) };
             }
             if (c.children) for (const k of c.children) st.push(k);
           }

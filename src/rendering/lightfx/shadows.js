@@ -420,8 +420,24 @@ export class ShadowSystem {
     this._T = new Matrix();
     this._I = new Matrix();
     this._last = null;           /* the last shade's light: what _redraw draws again */
-    this.pool = [];
-    this.used = 0;
+    /* ═══ v2.3.4991: THE PIECES GROUPED BY THE PROGRAM THAT DRAWS THEM ═══
+       Measured (docs/specs/crowd-lanes.md "Texture atlases: what the census
+       found"): 50 players in 30 looks walking, the pieces' pass was 72 draws a
+       frame, 71 of them ended by a change of program -- each figure's body
+       and hair (the look's colour numbers, lookPalette.js) and its tee and
+       weapon (Pixi's own) took turns, player after player.  A shadow is only
+       WHERE the pieces cover: the shade reads the picture's alpha and nothing
+       else (SHADE_FRAG, the filter's the same), and alpha laid over alpha is
+       the same whichever comes first (a + b(1 - a)).  So the pieces are drawn
+       grouped -- every look piece, then every colour-number piece of the
+       Wheel's (paletteTex.js), then the rest -- each group its own pool and
+       container, and a group breaks only when its program's texture slots
+       are full.  The figures themselves are untouched. */
+    this.pools = [[], [], []];   /* K_REST, K_LOOK, K_PAL */
+    this.usedK = [0, 0, 0];
+    this.used = 0;               /* all three */
+    this._grp = [];
+    for (const nm of ['shadowRest', 'shadowLook', 'shadowPal']) { const g = new Container(); g.label = nm; this._grp.push(g); }
     this.meshPool = [];          /* v2.3.2749: the buildings' depth-aware shadows (placeDepth) */
     this.meshUsed = 0;
     this._pieceMeshes = new Map();   /* v2.3.2817: a building's cut-out piece -> its shadow mesh */
@@ -438,6 +454,7 @@ export class ShadowSystem {
        `list`.  One array, cleared and refilled in place: the keys are strings
        the casters already carry, so this allocates nothing per frame. */
     this.stats = { casters: 0, pieces: 0, held: 0, self: null, list: [], keys: [], lifePieces: 0, lock: null, prepass: false };   /* v2.3.3149: + lock, the fraction the layer is drawn back by; v2.3.3458: + prepass, drawn before the frame */
+    for (const g of this._grp) this.home.addChild(g);   /* v2.3.4991: where the pieces start (_rehome moves them) */
     this._rehome();
   }
 
@@ -453,7 +470,7 @@ export class ShadowSystem {
     if (toCast === this._homeIsCast) return;
     const dst = toCast ? this.castIn : this.layer;
     const move = (o) => { if (o && !o.destroyed && o.parent !== dst) dst.addChild(o); };
-    for (let i = 0; i < this.pool.length; i++) move(this.pool[i]);
+    for (let i = 0; i < this._grp.length; i++) move(this._grp[i]);   /* v2.3.4991: the pieces' three groups */
     for (let i = 0; i < this.meshPool.length; i++) move(this.meshPool[i]);
     for (let i = 0; i < this._pieceList.length; i++) move(this._pieceList[i].mesh);
     this._homeIsCast = toCast;
@@ -465,14 +482,16 @@ export class ShadowSystem {
     }
   }
 
-  _piece() {
-    let s = this.pool[this.used];
+  _piece(k) {
+    const pool = this.pools[k];
+    let s = pool[this.usedK[k]];
     if (!s) {
       s = new Sprite();
       s._btNoSnap = true;   /* v2.3.3338: drawn where it is (installNoSnap) */
-      this.home.addChild(s);   /* v2.3.3458: the cast, or the layer (_rehome) */
-      this.pool.push(s);
+      this._grp[k].addChild(s);   /* v2.3.4991: its program's group, in the cast or the layer (_rehome) */
+      pool.push(s);
     }
+    this.usedK[k]++;
     this.used++;
     return s;
   }
@@ -480,7 +499,10 @@ export class ShadowSystem {
   /* Place one shadow piece: texture + anchor from the source, transform =
      projection (about the pivot) x the source's world transform. */
   _place(tex, ax, ay, world, proj) {
-    const s = this._piece();
+    /* v2.3.4991: the group of the program that will draw it (the batchers'
+       own tests: lookPalette.js lookTex, paletteTex.js palTex) */
+    const src = tex && tex._source;
+    const s = this._piece(src && !src.destroyed ? (src._btLook ? 1 : (src._btPal ? 2 : 0)) : 0);
     if (s.texture !== tex) s.texture = tex;
     if (s.anchor.x !== ax || s.anchor.y !== ay) s.anchor.set(ax, ay);
     this._f.copyFrom(proj).append(world);
@@ -647,7 +669,8 @@ export class ShadowSystem {
     _systems.delete(this);
     try { this.clear(); } catch (e) { /* its layer may be gone already */ }
     this._held.clear();
-    this.pool = [];
+    this.pools = [[], [], []];
+    this.usedK = [0, 0, 0];
     this.meshPool = [];
     this._pieceMeshes.clear();
     this._pieceList = [];
@@ -674,12 +697,15 @@ export class ShadowSystem {
        freeZoneMap) -- a pooled piece still holding it is the v2.3.2651 shape
        (CLAUDE.md, the zone-asset exception), where a hidden sprite came back
        on the next visit pointing at a destroyed source. */
-    for (let i = 0; i < this.pool.length; i++) {
-      const s = this.pool[i];
-      s.visible = false;
-      if (s.texture !== Texture.EMPTY) s.texture = Texture.EMPTY;
+    for (const pool of this.pools) {
+      for (let i = 0; i < pool.length; i++) {
+        const s = pool[i];
+        s.visible = false;
+        if (s.texture !== Texture.EMPTY) s.texture = Texture.EMPTY;
+      }
     }
     this.used = 0;
+    this.usedK[0] = this.usedK[1] = this.usedK[2] = 0;
     for (let i = 0; i < this.meshPool.length; i++) {
       const m = this.meshPool[i];
       m.visible = false;
@@ -711,6 +737,7 @@ export class ShadowSystem {
   update(casters, light, fade, now) {
     this._rehome();   /* v2.3.3458: where the pieces are drawn from, this frame */
     this.used = 0;
+    this.usedK[0] = this.usedK[1] = this.usedK[2] = 0;
     this.meshUsed = 0;
     this._frame++;
     const st = this.stats;
@@ -807,10 +834,13 @@ export class ShadowSystem {
        them, 1.65 MB, kept over three trips to a fight.  Once, as it leaves
        use (the hide is the same moment's change); _place gives it a
        picture again when it is next wanted. */
-    for (let i = this.used; i < this.pool.length; i++) {
-      const s = this.pool[i];
-      if (s.visible) s.visible = false;
-      if (s.texture !== Texture.EMPTY) s.texture = Texture.EMPTY;
+    for (let k = 0; k < 3; k++) {
+      const pool = this.pools[k];
+      for (let i = this.usedK[k]; i < pool.length; i++) {
+        const s = pool[i];
+        if (s.visible) s.visible = false;
+        if (s.texture !== Texture.EMPTY) s.texture = Texture.EMPTY;
+      }
     }
     for (let i = this.meshUsed; i < this.meshPool.length; i++) {
       if (this.meshPool[i].visible) this.meshPool[i].visible = false;
