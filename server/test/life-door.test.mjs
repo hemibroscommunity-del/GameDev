@@ -18,11 +18,15 @@
  *   4. A WRONG ROAD writes nothing;
  *   5. THE ROOM: the doors are on the GameRoom; a death and a respawn go
  *      through _lifeTo; "dead is the server's word" holds (a move's `dead`
- *      writes nothing with `serverdead` on, the old claim with it off).
+ *      writes nothing with `serverdead` on, the old claim with it off);
+ *   6. STEP 2a (v2.3.4901): every `heal` row is refused on a dying body (the
+ *      hp unchanged), nothing else is, and `lifenoheal: false` puts the
+ *      step-1 write back.
  */
 import { readdirSync, readFileSync } from 'node:fs';
 import { HP_ROADS, LIFE_ROADS, LIFE, lifeOf, lifeMethods } from '../src/life.js';
 import { GameRoom } from '../src/index.js';
+import { flagNameOk } from '../src/liveops.js';
 
 let failures = 0, passes = 0;
 function check(name, cond, detail) {
@@ -272,6 +276,45 @@ for (const [name, table, fn] of [['hp', HP_ROADS, '_hpSet'], ['life', LIFE_ROADS
   const q = { dead: false, dying: false };
   room._lifeDeadClaim(q, 1);
   check('5. the old claim writes `dead` alone, as a boolean (as before)', q.dead === true && q.dying === false && !('life' in q), q);
+}
+
+/* ── 6. STEP 2a: NO HEAL ON A DYING BODY (v2.3.4901) ───────────────────── */
+{
+  const mockState = () => ({
+    storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} },
+    getWebSockets: () => [], acceptWebSocket: () => {},
+  });
+  const room = new GameRoom(mockState(), { LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async () => ({}) }) } });
+  room._liveFlags = {};
+  check('6. the switch is on by default, a name the flags route stores', room._lifeNoHealOn() && flagNameOk('lifenoheal'));
+  const heals = Object.keys(HP_ROADS).filter((r) => HP_ROADS[r].kind === 'heal');
+  check('6. the heal rows are the ones the spec names', heals.length >= 10 && ['eat', 'lifesteal_melee', 'kill_lifeblood', 'regen_hub', 'second_wind'].every((r) => heals.includes(r)), heals);
+  const off = [];
+  for (const road of Object.keys(HP_ROADS)) {
+    /* a dying body (the door's own phase, and one made before the door: its booleans) */
+    for (const mk of [() => room._lifeTo({ hp: 0, maxHp: 100 }, 'dying', 'death'), () => ({ hp: 0, maxHp: 100, dying: true, dead: true })]) {
+      const ps = mk();
+      const ret = room._hpSet(ps, 40, road);
+      const heal = HP_ROADS[road].kind === 'heal';
+      if (heal ? (ps.hp !== 0 || ret !== 0) : ps.hp !== 40) off.push({ road, heal, hp: ps.hp });
+    }
+    /* a live body: every road writes, as in step 1 */
+    const up = room._lifeTo({ hp: 10, maxHp: 100 }, 'alive', 'respawn');
+    room._hpSet(up, 40, road);
+    if (up.hp !== 40) off.push({ road, alive: true, hp: up.hp });
+  }
+  check('6. on a dying body every heal row is refused and nothing else is; a live body takes every road', off.length === 0, off.slice(0, 6));
+  room._liveFlags = { lifenoheal: false };
+  const d = room._lifeTo({ hp: 0, maxHp: 100 }, 'dying', 'death');
+  room._hpSet(d, 25, 'lifesteal_melee');
+  check('6. `lifenoheal: false` puts the step-1 write back (the heal lands)', d.hp === 25 && !room._lifeNoHealOn(), d);
+  /* the real path that had no check of its own: a melee kill's lifesteal on a dying killer */
+  room._liveFlags = {};
+  const k = room._lifeTo({ hp: 0, maxHp: 100, dmgFromMonster: { m1: 30 } }, 'dying', 'death');
+  room._applyMeleeLifesteal(k, 'm1', 'melee');
+  const a = room._lifeTo({ hp: 10, maxHp: 100, dmgFromMonster: { m1: 30 } }, 'alive', 'respawn');
+  room._applyMeleeLifesteal(a, 'm1', 'melee');
+  check('6. the melee lifesteal no longer raises a dying body, and still heals a live one', k.hp === 0 && a.hp > 10, { dying: k.hp, alive: a.hp });
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);
