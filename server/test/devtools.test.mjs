@@ -16,11 +16,10 @@
  */
 import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
 import { DEVKIT } from '../src/devtools.js';
-/* v2.3.4675: this suite stands players in the retired old lands as a fixture.
-   zonejudge.js R3 closes them to players, so it opens them for this suite
-   only.  On retired-lands.test's FIXTURES list, which only shrinks: move the
-   suite to the world ('wheel') and take it off. */
-GameRoom.prototype._retiredLandsOn = function () { return false; };
+import { WHEEL_ZONE } from '../src/wheelzone.js';
+import { WHEEL_CENTRE } from '../src/wheelspawns.js';
+/* v2.3.4923: plays the world (the Wheel's BroTown), off retired-lands.test's
+   FIXTURES list; it stood its player in the retired meadow before. */
 
 const KEY = 'test-admin-key-0123456789';
 const mockState = {
@@ -48,7 +47,7 @@ async function newRoom(key) {
   room.sessions.set(ws, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
   await room.webSocketMessage(ws, JSON.stringify({
     type: 'join', id: 'p1', name: 'Owner', protocolVersion: 2,
-    data: { x: 500, y: 500, z: 'meadow' },
+    data: { x: WHEEL_CENTRE[0], y: WHEEL_CENTRE[1], z: WHEEL_ZONE },
   }));
   return { room, ws, ps: room.playerState.p1 };
 }

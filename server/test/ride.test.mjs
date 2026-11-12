@@ -23,11 +23,8 @@ import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
 import { RIDE, RIDE_ENDS_ON } from '../src/ride.js';
 import { SPRINT } from '../src/sprint.js';
 import * as C from '../../src/game/ride.js';
-/* v2.3.4675: this suite stands players in the retired old lands as a fixture.
-   zonejudge.js R3 closes them to players, so it opens them for this suite
-   only.  On retired-lands.test's FIXTURES list, which only shrinks: move the
-   suite to the world ('wheel') and take it off. */
-GameRoom.prototype._retiredLandsOn = function () { return false; };
+/* v2.3.4923: off retired-lands.test's FIXTURES list: "outside the Wheel" and
+   "a zone change" are the farm now, never a retired old land. */
 
 const ticksRun = async (room, n, ms) => {
   const from = room.tickSeq || 0, t0 = realNow();
@@ -117,7 +114,7 @@ async function step(dx, gapMs, extra) {
   check('2. off the safe ground: refused (`where`)', ps._ride === false && lastRide().on === false && lastRide().why === 'where', lastRide());
 
   await fresh();
-  ps.z = 'meadow';
+  ps.z = 'farm_home';
   await ride(true);
   check('2. outside the Wheel: refused (`where`)', ps._ride === false && lastRide().why === 'where', lastRide());
 
@@ -209,7 +206,7 @@ async function step(dx, gapMs, extra) {
   await fresh();
   await ride(true);
   wait(200);
-  await move(1000, 1000, { z: 'meadow' });
+  await move(1000, 1000, { z: 'farm_home' });
   check('4. a zone change: off the board', ps._ride === false && lastRide().on === false, { last: lastRide(), z: ps.z });
 
   /* death */
