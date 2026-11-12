@@ -173,6 +173,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /* v2.3.4885: a settled crowd (BT_CROWD_SETTLE) is measured standing, not
          arriving: the walkers' first walks over and their drawn places at rest */
       if (process.env.BT_CROWD_SETTLE === '1') await P.page.waitForTimeout(8000);
+      /* v2.3.4885: BT_CROWD_HIDE=plates -- an experiment, not a mode: every
+         other player's name plate (their display's `_uiLayer`) not drawn, to
+         see what the plates cost a crowd's frame in draws, program switches
+         and binds (a plate's text and box break the figures' batch) */
+      if (/(^|,)plates(,|$)/.test(process.env.BT_CROWD_HIDE || '')) {
+        const hid = await P.page.evaluate(() => {
+          const R = window._pixiRenderer;
+          const st = [R && R.app && R.app.stage];
+          let n = 0;
+          while (st.length) {
+            const c = st.pop();
+            if (c && typeof c.label === 'string' && c.label.startsWith('other_') && c._uiLayer) { c._uiLayer.renderable = false; n++; continue; }
+            if (c && c.children) for (const k of c.children) st.push(k);
+          }
+          return n;
+        });
+        console.log('  crowdbots: name plates hidden on', hid, 'players');
+      }
       await P.page.evaluate(() => {
         window.perfTracker && window.perfTracker.reset();
         /* v2.3.3453: the render-target switches a frame (a phone's graphics
