@@ -1,6 +1,6 @@
 import { coinArtFor, COIN_ONE } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
-import { BT_AUDIO, GAMBLE_MIN_BET, GAMBLE_WIN_CHANCE, JACKPOT_MIN_DEPOSIT, createDefaultCompStats } from '@/data/index.js';
+import { BT_AUDIO, GAMBLE_MIN_BET, JACKPOT_MIN_DEPOSIT, createDefaultCompStats } from '@/data/index.js';
 import { _objectSpread } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -217,8 +217,8 @@ export function GamblePanel(props) {
              server-side -- send the request and let the private
              gamble_result event (gameEvents.js) drive the popups while the
              player_state echo carries the coins.  The local roll below was
-             the player being their own house; it survives only for legacy
-             workers. */
+             the player being their own house.  v2.3.4914: and it is gone:
+             the roll and the gold are the worker's (CLAUDE.md §5). */
           if (stateRef.current._serverCaps && stateRef.current._serverCaps.gamble) {
             if (stateRef.current.channel) {
               stateRef.current.channel.send({
@@ -229,41 +229,7 @@ export function GamblePanel(props) {
             }
             return;
           }
-          if (!R._compStats) R._compStats = createDefaultCompStats();
-          R.coins -= wager;
-          R._compStats.totalGambled += wager;
-          R._compStats.totalGoldSpent += wager;
-          var won = Math.random() < GAMBLE_WIN_CHANCE;
-          if (won) {
-            var winnings = wager * 2;
-            R.coins += winnings;
-            R._compStats.totalGambleWon += winnings;
-            R._compStats.totalGoldEarned += winnings;
-            stateRef.current._gambleResult = {
-              won: true,
-              amount: winnings,
-              ts: Date.now()
-            };
-            pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, '+' + winnings + 'g!', '#59BF91');
-            stateRef.current.screenShake = 3;
-            BT_AUDIO.collect();
-            setTimeout(function () {
-              return BT_AUDIO.beep(784, 0.1, 0.08, 'sine');
-            }, 100);
-          } else {
-            R._compStats.totalGambleLost += wager;
-            stateRef.current._gambleResult = {
-              won: false,
-              amount: wager,
-              ts: Date.now()
-            };
-            pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, '-' + wager + 'g', '#D95C54');
-            BT_AUDIO.beep(150, 0.1, 0.15, 'sawtooth');
-          }
-          setRpgState(_objectSpread({}, R));
-          try {
-            localStorage.setItem('bt_rpg', JSON.stringify(R));
-          } catch (e) {}
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'The table is closed', '#D95C54');
         }
       }, stateRef.current._gambleWager ? "Roll \xB7 " + stateRef.current._gambleWager + "G" : "Select a wager") /* v2.3.1235: state-correction §7 — never a "—g" placeholder: "Select a wager" until a chip is picked, then "Roll · 10G" */,
       React.createElement("div", { style: LS_DIV }),
@@ -330,8 +296,8 @@ export function GamblePanel(props) {
                the real jackpot:draw pool, and replies jackpot_state (the
                gameEvents handler shows the popup + updates the pool
                display); the player_state echo is the coins tiebreaker --
-               no local mutation here.  Legacy stub below stays for old
-               workers only. */
+               no local mutation here.  v2.3.4914: the old workers' stub
+               (the page's own debit and pool) is gone. */
             if (stateRef.current._serverCaps && stateRef.current._serverCaps.jackpot) {
               if (stateRef.current.channel) {
                 stateRef.current.channel.send({
@@ -345,18 +311,7 @@ export function GamblePanel(props) {
               }
               return;
             }
-            R.coins -= amt;
-            if (!R._compStats) R._compStats = createDefaultCompStats();
-            R._compStats.jackpotDeposited += amt;
-            R._compStats.totalGoldSpent += amt;
-            /* Legacy local stub -- only reachable against pre-v2.3.1149 workers */
-            stateRef.current._jackpotPool = (stateRef.current._jackpotPool || 0) + amt;
-            pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Deposited ' + amt + 'g to jackpot', '#D8A94D');
-            BT_AUDIO.beep(500, 0.06, 0.08, 'sine');
-            setRpgState(_objectSpread({}, R));
-            try {
-              localStorage.setItem('bt_rpg', JSON.stringify(R));
-            } catch (e) {}
+            pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'The jackpot is closed', '#D95C54');
           }
         }, "Deposit ", amt, "G" /* v2.3.1235: state-correction §7 — verb + amount ("Deposit 50G", not a bare "50g") */);
       })),
