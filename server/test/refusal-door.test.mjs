@@ -242,9 +242,10 @@ const found = Object.create(null);   /* unit -> { key: {kw, line} } */
     { type: 'jackpot_deposit', why: 'a deposit above the purse', set: (p) => { p.coins = 0; }, payload: { amount: 100 } },
     { type: 'ace_flip_request', why: 'a stake whose loss is above the purse', set: (p) => { p.coins = 0; p._lastAceFlipAt = 0; }, payload: { stake: 1000 } },
     { type: 'ace_item_flip_request', why: 'none of the staked items in the bag', set: (p) => { p.inventory = {}; p._lastAceFlipAt = 0; }, payload: { items: { ore_copper_ore: 3 } } },
-    { type: 'sell_weapon', why: 'no weapon at that stash place', set: (p) => { p.weaponStash = [{ name: 'Old Sword', type: 'sword', gearBase: 'bronze', tierMult: 1 }]; }, payload: { stashIdx: 3 },
-      ok: () => {}, okPayload: { stashIdx: 0 },
-      known: ['_handleSellWeapon', 'if (!Array.isArray(ps.weaponStash) || stashIdx >= ps.weaponStash.length)'] },
+    /* v2.3.4883: the weapon stash answers now */
+    { type: 'sell_weapon', why: 'no weapon at that stash place', set: (p) => { p.weaponStash = [{ name: 'Old Sword', type: 'sword', gearBase: 'bronze', tierMult: 1 }]; }, payload: { stashIdx: 3 } },
+    { type: 'equip_request', why: 'no weapon at that stash place', set: (p) => { p.weaponStash = []; }, payload: { stashIdx: 2, slot: 'weapon' } },
+    { type: 'unequip_request', why: 'the weapon bag is full', set: (p) => { p.weapon = { name: 'copper greatsword', type: 'greatsword', gearBase: 'copper', tierMult: 1 }; p.weaponStash = Array.from({ length: R.WEAPON_STASH_CAP }, () => ({ name: 'Old Sword', type: 'sword', gearBase: 'bronze', tierMult: 1 })); }, payload: { slot: 'weapon' } },
     /* v2.3.4881: the points, the chest, the capes and the reroll answer now */
     { type: 'stat_allocate', why: 'no stat point to spend', set: (p) => { p.unspentT2 = 0; }, payload: { stat: 'power' } },
     { type: 'chest_open', why: 'no chest in the bag', set: (p) => { p.inventory = {}; }, payload: { invKey: 'daily_chest', opId: 'door-1' } },

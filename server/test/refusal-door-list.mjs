@@ -105,7 +105,7 @@ export const SWALLOWED = Object.freeze({
 
 /* The list's size when it was frozen (v2.3.4791).  Lower these as lines come
    off; raising one is a decision the PR names. */
-export const FROZEN = Object.freeze({ listed: 279, known: 14 });   /* v2.3.4801: +1, the draw and gather's quiet drop (drawgather.js); v2.3.4880: -22, the workshop answers (forge, amulet forge, gem cut, smelter, armour forge); v2.3.4881: -14, the points, the chest, the capes and the reroll; v2.3.4882: -4, the purses */
+export const FROZEN = Object.freeze({ listed: 273, known: 8 });   /* v2.3.4801: +1, the draw and gather's quiet drop (drawgather.js); v2.3.4880: -22, the workshop answers (forge, amulet forge, gem cut, smelter, armour forge); v2.3.4881: -14, the points, the chest, the capes and the reroll; v2.3.4882: -4, the purses; v2.3.4883: -6, the weapon stash */
 
 /* handler -> { guard: 'code[ code...][: note]' } */
 export const ALLOW = {
@@ -493,19 +493,13 @@ export const ALLOW = {
   '_handleEquipRequest': {
     "if (!this._isWeaponSlot(slot))": "shape",
     "if (!Number.isInteger(stashIdx) || stashIdx < 0)": "shape",
-    "if (stashIdx >= ps.weaponStash.length)": "known: no weapon at that stash place",
-    "if (!stashItem)": "known: no weapon at that stash place",
   },
   '_handleSellWeapon': {
     "if (!Number.isInteger(stashIdx) || stashIdx < 0)": "shape",
-    "if (!Array.isArray(ps.weaponStash) || stashIdx >= ps.weaponStash.length)": "known: no weapon at that stash place",
-    "if (!weapon)": "known: no weapon at that stash place",
-    "if (this._isGearNotWeapon(weapon))": "known: a piece of gear, not a weapon",
   },
   '_handleUnequipRequest': {
     "if (!this._isValidEquipSlot(slot))": "shape",
     "if (!current)": "noop",
-    "if (ps.weaponStash.length >= this.WEAPON_STASH_CAP)": "known: the stash is full",
   },
   '_handleSetActiveSlot': {
     "if (ps.activeSlot === slot)": "noop",

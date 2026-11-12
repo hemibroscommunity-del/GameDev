@@ -230,12 +230,17 @@ export const gearMethods = {
     if (ps.dying || ps.dead || ps.disconnected) return;
     const { stashIdx } = payload || {};
     if (!Number.isInteger(stashIdx) || stashIdx < 0) return;
-    if (!Array.isArray(ps.weaponStash) || stashIdx >= ps.weaponStash.length) return;
+    /* v2.3.4883: a sale refused (no weapon at that place, a piece of gear)
+       sends the weapon bag and the coins back: the phone takes the weapon
+       off its bag when it asks, and a bare return left it gone until the
+       next join (the refusal door, TRAPS §284) */
+    const refuse = () => this._refusalEcho(session, ['coins', 'weapon', 'rangedWeapon', 'staffWeapon', 'weaponStash', 'activeSlot']);
+    if (!Array.isArray(ps.weaponStash) || stashIdx >= ps.weaponStash.length) return refuse();
     const weapon = ps.weaponStash[stashIdx];
-    if (!weapon) return;
+    if (!weapon) return refuse();
     /* v2.3.3160: a piece of gear that crossed into the bag before the equip
        fix is not a weapon and is not bought as one (_isGearNotWeapon). */
-    if (this._isGearNotWeapon(weapon)) return;
+    if (this._isGearNotWeapon(weapon)) return refuse();
     const sellVal = this._weaponSellValue(weapon);
     ps.weaponStash.splice(stashIdx, 1);
     this._goldGive(ps, sellVal, 'weapon_sell'); /* v2.3.4670: the gold door */
@@ -698,7 +703,9 @@ export const gearMethods = {
     // Weapons go to stash; armor/shield/amulet just null out.
     if (slot === 'weapon' || slot === 'rangedWeapon' || slot === 'staffWeapon') {
       if (!Array.isArray(ps.weaponStash)) ps.weaponStash = [];
-      if (ps.weaponStash.length >= this.WEAPON_STASH_CAP) return; // stash full -- reject
+      /* v2.3.4883: stash full -- the phone took the weapon off its hand when it
+         asked, so the hand and the bag go back (a bare return: the refusal door) */
+      if (ps.weaponStash.length >= this.WEAPON_STASH_CAP) return this._refusalEcho(session, ['weapon', 'rangedWeapon', 'staffWeapon', 'weaponStash', 'activeSlot']); // stash full -- reject
       ps.weaponStash.push(current);
     }
     /* v2.3.4840: armour or legs taken off go to the bag: the worker's armour
@@ -743,7 +750,20 @@ export const gearMethods = {
     if (!this._isWeaponSlot(slot)) return;
     if (!Number.isInteger(stashIdx) || stashIdx < 0) return;
     if (!Array.isArray(ps.weaponStash)) ps.weaponStash = [];
-    if (stashIdx >= ps.weaponStash.length) return;
+    /* v2.3.3160: ...and refused OUT LOUD.  The game moves the weapon on its
+       own screen before the worker answers (ItemDetailPopup), putting the old
+       one at the END of the bag where the worker swaps in place -- so a
+       second equip tapped before the first answer names an index that holds a
+       different weapon here, and these checks refuse it.  Silent, the screen
+       kept its guess until the next join; resending the weapon fields puts it
+       back to what the worker holds (the cooking refusals' shape).
+       v2.3.4883: defined up here so an index past the bag's end, or an empty
+       place, answers the same (they were bare returns: the refusal door). */
+    const refuseWeapons = () => {
+      const w = this._wsBySessionId(session.id);
+      if (w) this._resendPlayerState(w, session.id, ['weapon', 'rangedWeapon', 'staffWeapon', 'weaponStash', 'activeSlot']);
+    };
+    if (stashIdx >= ps.weaponStash.length) return refuseWeapons();
     // Swap stash entry with current active slot.  If active slot
     // empty, the stash item moves in and the stash entry becomes
     // null (which we then splice out so stash stays compact).
@@ -752,20 +772,10 @@ export const gearMethods = {
     // happen from a corrupted stored blob from before the
     // splice-on-empty logic existed).  Without this, a cheater
     // could equip a "null" stash entry to wipe the active slot.
-    if (!stashItem) return;
+    if (!stashItem) return refuseWeapons();
     /* v2.3.3160: ...a weapon (never a piece of gear that crossed before this
        fix), into the one slot its type is worn in. */
-    /* v2.3.3160: ...and refused OUT LOUD.  The game moves the weapon on its
-       own screen before the worker answers (ItemDetailPopup), putting the old
-       one at the END of the bag where the worker swaps in place -- so a
-       second equip tapped before the first answer names an index that holds a
-       different weapon here, and these checks refuse it.  Silent, the screen
-       kept its guess until the next join; resending the weapon fields puts it
-       back to what the worker holds (the cooking refusals' shape). */
-    const refuseWeapons = () => {
-      const w = this._wsBySessionId(session.id);
-      if (w) this._resendPlayerState(w, session.id, ['weapon', 'rangedWeapon', 'staffWeapon', 'weaponStash', 'activeSlot']);
-    };
+    /* v2.3.3160: refused out loud (refuseWeapons, above) */
     if (this._isGearNotWeapon(stashItem)) return refuseWeapons();
     if (slot !== this._weaponSlotFor(stashItem)) return refuseWeapons();
     // v2.3.1661 (prog3): the tier gate, server-enforced at last —
