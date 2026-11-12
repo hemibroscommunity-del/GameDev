@@ -122,7 +122,7 @@ import { armResumeListeners } from '@/game/resumeListeners.js'; /* v2.3.4482: a 
 import { retireSocket } from '@/game/socketLine.js'; /* v2.3.4367: one line at a time */
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
-import { takeBackFire } from '@/game/fireRefuse.js'; /* v2.3.4886: a fire the worker refused, taken back */
+import { takeBackFireWhat, campfireOutMsg } from '@/game/fireRefuse.js'; /* v2.3.4886: a fire the worker refused, taken back; v2.3.4942: and the others told */
 import { noteEatRefused, pvpHealWaitText } from '@/game/fightFood.js'; /* v2.3.3133: the worker's word on a bite it held back */
 
 /* ═══ v2.3.2122: A PIECE THE WORKER TAKES OFF YOU GOES IN THE BAG ═══
@@ -3522,8 +3522,14 @@ export function setupWebSocket(ctx) {
                  this phone started on the tap is stopped, or the campfire it
                  lit from it put out (src/game/fireRefuse.js).  The bag came
                  back on the player_state before it. */
-              if (takeBackFire(S, Date.now())) {
+              var _fireBack = takeBackFireWhat(S, Date.now());
+              if (_fireBack) {
                 try { pushDmgPopup(S, S.player.x, S.player.y - 30, 'No log to light', '#ff5e6c'); } catch (e) { /* popup only */ }
+              }
+              /* v2.3.4942: the campfire it put out had gone to the others
+                 (campfire_lit): they are told it is out (fireRefuse.js) */
+              if (_fireBack === 'fire' && S.channel) {
+                try { S.channel.send(campfireOutMsg(S)); } catch (e) { /* their fire burns out on its fuse */ }
               }
               break;
             }

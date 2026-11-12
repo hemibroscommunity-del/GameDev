@@ -206,6 +206,7 @@ import { monsterShed } from '@/game/monsterNoises.js'; /* v2.3.3340: the mummy's
 import { noteLootDrop, notePileShine } from '@/game/dropLines.js'; /* v2.3.3627: a kill's drops, a line of words each over the monster */
 import { noteHitBlow } from '@/game/deathBlow.js'; /* v2.3.3985: the killing blow's direction and size, for the monster's own death */
 import { t2LeaveDrop, t2IgnoreBusy, t2Hushed } from '@/game/tradeSlot.js'; /* v2.3.4362: the trade window never outlives its server */
+import { peerFireOut } from '@/game/fireRefuse.js'; /* v2.3.4942: a peer's refused fire, put out */
 import { sameWire } from '@/game/partyEq.js'; /* v2.3.4884: an identical party_state re-echo does not re-render */
 
 /* v2.3.1107: angle -> 8-way compass, same SECTORS convention as
@@ -589,6 +590,14 @@ export function processGameEvent(type, payload, S, deps) {
                 expiresAt: Math.min(_cfExp > Date.now() ? _cfExp : Date.now() + 45000, _cfCap),
               });
               cuePeer(S, 'campfire', _cfX, _cfY);   /* v2.3.3343: their fire heard catching, by distance (silent) */
+              break;
+            }
+          case 'campfire_out':
+            {
+              /* v2.3.4942: the worker refused that fire (no such log): the
+                 lighter put it out and tells us (game/fireRefuse.js).  The
+                 relay stamps the sender's id, so only their own fire goes. */
+              peerFireOut(S, payload);
               break;
             }
           case 'party_chat':
