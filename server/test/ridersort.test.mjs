@@ -167,7 +167,7 @@ console.log('ridersort: a building\'s pieces sort with the building');
   ok('out of order: the keys go through the setter and the layer is marked', b.zIndex === 50 && back.sortDirty === true, { b: b.zIndex, dirty: back.sortDirty });
 }
 
-/* v2.3.4886: a layer's plates (plateLayer.js, `_depthLast`) are never moved
+/* v2.3.4989: a layer's plates (plateLayer.js, `_depthLast`) are never moved
    between the two buckets and always sort last in theirs -- wherever the
    player stands, and with no ground line of their own (y 0) */
 {

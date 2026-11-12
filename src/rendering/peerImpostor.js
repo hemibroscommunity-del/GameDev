@@ -55,7 +55,7 @@ export class PeerImpostors {
     this.on = onePicFromQuery(_search);
     this.near = onePicNearFromQuery(_search);
     this.recs = new Map();          /* id -> its picture (client-supplied ids: a Map, CLAUDE.md) */
-    this._displays = new Set();     /* v2.3.4886: the displays that are pictures (plateLayer.js asks) */
+    this._displays = new Set();     /* v2.3.4989: the displays that are pictures (plateLayer.js asks) */
     this.free = [];
     this.sheet = null;
     this.grid = null;
@@ -205,7 +205,7 @@ export class PeerImpostors {
     return r;
   }
 
-  /** v2.3.4886: is this display a picture now (or about to be painted as one)?
+  /** v2.3.4989: is this display a picture now (or about to be painted as one)?
       Its plate then stays in it (plateLayer.js). */
   isPicture(d) {
     return this._displays.has(d);

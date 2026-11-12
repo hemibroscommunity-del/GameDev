@@ -1,4 +1,4 @@
-/* ═══ v2.3.4886: OTHER PLAYERS' NAME PLATES, DRAWN AFTER THE FIGURES (?platelayer=1) ═══
+/* ═══ v2.3.4989: OTHER PLAYERS' NAME PLATES, DRAWN AFTER THE FIGURES (?platelayer=1) ═══
  *
  * Measured first (docs/specs/crowd-lanes.md "Name plates in a layer of their
  * own"): 50 players walking on the phone's screen, mp-crowdbots counting the

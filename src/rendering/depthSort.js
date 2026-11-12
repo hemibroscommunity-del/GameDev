@@ -173,7 +173,7 @@ export function applyGroundSort(layer) {
        raised over the wall they hang on (TRAPS §115). */
     const host = c._ridesOn;
     if (c._depthLast) {
-      key = Number.MAX_SAFE_INTEGER;   /* v2.3.4886: the plates, last (plateLayer.js) */
+      key = Number.MAX_SAFE_INTEGER;   /* v2.3.4989: the plates, last (plateLayer.js) */
     } else if (host && !host.destroyed && host.parent === c.parent) {
       const hy = groundOf(host);
       key = (Number.isFinite(hy) ? Math.round(hy) : k) + 0.25;
@@ -289,7 +289,7 @@ export function applyDepthBuckets(backLayer, frontLayer, playerGroundY, playerX)
   for (let i = 0; i < moving.length; i++) {
     const c = moving[i];
     if (!c || !c.parent) continue;
-    /* v2.3.4886: a layer's plates (plateLayer.js, `_depthLast`) stand on no
+    /* v2.3.4989: a layer's plates (plateLayer.js, `_depthLast`) stand on no
        ground: never moved between the buckets, always drawn last in theirs */
     if (c._depthLast) continue;
     const isFront = c.parent === frontLayer;

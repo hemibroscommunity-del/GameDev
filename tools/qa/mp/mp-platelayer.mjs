@@ -1,4 +1,4 @@
-/* ═══ v2.3.4886: OTHER PLAYERS' NAME PLATES DRAWN AFTER THE FIGURES (?platelayer=1) ═══
+/* ═══ v2.3.4989: OTHER PLAYERS' NAME PLATES DRAWN AFTER THE FIGURES (?platelayer=1) ═══
  *
  * src/rendering/plateLayer.js.  Two phones in the Wheel's BroTown; B watches
  * with `?platelayer=1&onepicnear=0` (the pictures off until switched on below).

@@ -173,7 +173,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /* v2.3.4885: a settled crowd (BT_CROWD_SETTLE) is measured standing, not
          arriving: the walkers' first walks over and their drawn places at rest */
       if (process.env.BT_CROWD_SETTLE === '1') await P.page.waitForTimeout(8000);
-      /* v2.3.4885: BT_CROWD_HIDE=plates -- an experiment, not a mode: every
+      /* v2.3.4989: BT_CROWD_HIDE=plates -- an experiment, not a mode: every
          other player's name plate (their display's `_uiLayer`) not drawn, to
          see what the plates cost a crowd's frame in draws, program switches
          and binds (a plate's text and box break the figures' batch) */
