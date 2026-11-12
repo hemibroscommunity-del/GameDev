@@ -969,6 +969,7 @@ export async function initPixiRenderer(canvas) {
        shadows.js's module list after every rebuild, its old world with it */
     try { lightFx.destroy(); } catch (e) { /* ignore */ }
     try { weaponFeelFx.destroy(); } catch (e) { /* ignore */ }   /* v2.3.4800: its pictures and sprites go with the renderer */
+    try { peerPics.destroy(); } catch (e) { /* ignore */ }   /* v2.3.4990: the crowd's shared picture (on for everyone now) goes with it */
     try { minimap.destroy(); } catch (e) {}
     if (fpsOverlay) fpsOverlay.destroy();
     /* ═══ v2.3.3074: CUT THE OLD RENDERER LOOSE FROM TEXTURES THAT OUTLIVE IT ═══

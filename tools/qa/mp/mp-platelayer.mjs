@@ -1,7 +1,8 @@
 /* ═══ v2.3.4989: OTHER PLAYERS' NAME PLATES DRAWN AFTER THE FIGURES (?platelayer=1) ═══
  *
  * src/rendering/plateLayer.js.  Two phones in the Wheel's BroTown; B watches
- * with `?platelayer=1&onepicnear=0` (the pictures off until switched on below).
+ * with `?platelayer=1&onepic=0&onepicnear=0` (the pictures off until switched on
+ * below; v2.3.4990: both on by default, so the pictures are turned off here).
  * Every comparison reads the game's own picture of the stage, over A's plate
  * only, with no frame between the reads (mp-onepic's way):
  *
@@ -22,7 +23,7 @@ const VIEW = { width: 390, height: 844 };
 export async function run({ browser, wsPort, webPort, rec }) {
   const errors = [];
   const A = await H.newPlayer(browser, { name: 'Plated', wsPort, webPort, world: 'wheel', viewport: VIEW, touch: true });
-  const B = await H.newPlayer(browser, { name: 'Reader', wsPort, webPort, world: 'wheel', viewport: VIEW, touch: true, guest: true, dpr: 3, query: 'platelayer=1&onepicnear=0' });
+  const B = await H.newPlayer(browser, { name: 'Reader', wsPort, webPort, world: 'wheel', viewport: VIEW, touch: true, guest: true, dpr: 3, query: 'platelayer=1&onepic=0&onepicnear=0' });
   for (const [n, P] of [['A', A], ['B', B]]) P.page.on('pageerror', (e) => errors.push(n + ': ' + String(e).slice(0, 200)));
   await H.enterWorld(A);
   await H.enterWorld(B);

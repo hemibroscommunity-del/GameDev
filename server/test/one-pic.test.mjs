@@ -5,7 +5,7 @@
  * itself (src/rendering/peerImpostor.js) is Pixi's and is held by the phone
  * scenario mp-onepic (to the pixel, in the game).
  */
-import { ONE_PIC, onePicFromQuery, onePicNearFromQuery, calmFigure, gradedWire, pickPictures, deviceSplit, slotGrid, sheetBytes } from '../../src/game/onePic.js';
+import { ONE_PIC, crowdSwitchOn, onePicFromQuery, onePicNearFromQuery, calmFigure, gradedWire, pickPictures, deviceSplit, slotGrid, sheetBytes } from '../../src/game/onePic.js';
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -14,9 +14,12 @@ function check(name, cond, detail) {
 }
 
 /* ── 1. the switch ── */
-check('1a. off by default', onePicFromQuery('') === false && onePicFromQuery('?x=1') === false);
-check('1b. ?onepic=1 on, ?onepic=0 off', onePicFromQuery('?onepic=1') === true && onePicFromQuery('?a=2&onepic=1') === true && onePicFromQuery('?onepic=0') === false);
-check('1c. not fooled by a longer name', onePicFromQuery('?onepicnear=1') === false);
+/* v2.3.4990: on by default (owner, 2026-11-12: "Turn both switches on by default") */
+check('1a. on by default', onePicFromQuery('') === true && onePicFromQuery('?x=1') === true);
+check('1b. ?onepic=0 off (the off-ramp), ?onepic=1 on', onePicFromQuery('?onepic=0') === false && onePicFromQuery('?a=2&onepic=0') === false && onePicFromQuery('?onepic=1') === true);
+check('1c. not fooled by a longer name', onePicFromQuery('?onepicnear=0') === true && onePicFromQuery('?onepic=01') === true);
+check('1d. the plates layer: on by default, ?platelayer=0 off', crowdSwitchOn('', 'platelayer') === true && crowdSwitchOn('?platelayer=0', 'platelayer') === false && crowdSwitchOn('?onepic=0', 'platelayer') === true && crowdSwitchOn('?platelayer=0', 'onepic') === true);
+check('1e. the shared picture is given back after a while with no picture', ONE_PIC.IDLE_FREE_MS >= 10000 && ONE_PIC.IDLE_FREE_MS <= 120000);
 check('1d. ?onepicnear=N, else the nearest ten', onePicNearFromQuery('?onepicnear=0') === 0 && onePicNearFromQuery('?onepic=1&onepicnear=3') === 3 && onePicNearFromQuery('') === ONE_PIC.NEAR_FULL && ONE_PIC.NEAR_FULL === 10);
 
 /* ── 2. calm ── */
