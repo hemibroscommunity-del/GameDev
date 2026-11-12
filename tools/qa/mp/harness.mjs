@@ -667,8 +667,12 @@ export async function pastWelcome(P, timeout = 25000) {
   return false;
 }
 
-export async function enterWorld(P, timeout = 90000) {
+export async function enterWorld(P, timeout = 90000, { beforePlay = null } = {}) {
   const { page, name } = P;
+  /* v2.3.4950: `beforePlay` -- awaited at the door, the character's row (or
+     Create) in reach, just before the tap that plays.  For a scenario that
+     must time the JOIN, not the page's boot: mp-linger's relaunch has to land
+     inside a 20 s window, and on a 4-vCPU box the page's boot alone ate it. */
   /* ═══ v2.3.1814: THE LOGIN DOOR COMES FIRST NOW ═══
      The creator used to be the landing screen; it now sits behind a login
      screen with two buttons (owner: "Login (put in key) or create new
@@ -724,7 +728,7 @@ export async function enterWorld(P, timeout = 90000) {
          to Create below. */
       const mine = '[data-tut="char-row"][data-char-active="1"]';
       const row = await page.waitForSelector(mine, { timeout: 10000 }).catch(() => null);
-      if (row) { await row.click(); tookRow = true; }
+      if (row) { if (beforePlay) await beforePlay(); await row.click(); tookRow = true; }
       else await uncoverDoor(page);
     }
     if (!tookRow) {
@@ -733,6 +737,7 @@ export async function enterWorld(P, timeout = 90000) {
         await page.waitForSelector('input.bt-cc-name', { timeout: 30000 });
       }
       await page.fill('input.bt-cc-name', name);
+      if (beforePlay) await beforePlay();
       await page.click('button.bt-cc-play');
     }
   }
