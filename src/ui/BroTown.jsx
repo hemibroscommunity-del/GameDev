@@ -288,6 +288,25 @@ export var QUEST_MSG_WELCOME_MS = 9000;
    v2.3.4105: never the speech bubble, and no `npcFirst`: the stick never
    talks (the owner: "Make talking to a npc player and entering a building
    always two different things"); a tap on the person does */
+/* v2.3.4884: the player list's rows, built only when the panel is open (the 2 Hz
+   roster interval) and once on the open itself, so the panel never opens empty
+   or half a second stale. */
+function _buildPlayerList(S) {
+  return Object.entries(S.others).map(function (_ref27) {
+    var o = _ref27[1];
+    return {
+      id: _ref27[0],
+      name: o.name,
+      color: o.color,
+      avatar: o.avatar,
+      bro: o.bro, brn: o.brn,
+      x: o.x,
+      y: o.y,
+      badges: o.badges,
+      stats: o.stats
+    };
+  });
+}
 function _tapActIcon(S) { return tapActIcon(interactKind(S)); }
 
 /* ═══ v2.3.3871: HIS HAND-IN LINE IS SAID ONCE, IN THE WINDOW THAT PAYS ═══
@@ -1757,7 +1776,12 @@ export var BroTown = function BroTown(_ref0) {
   /* v2.3.2330: a ref mirror, so the 2 Hz roster interval (which has [] deps) can
      see whether the panel is open without being re-subscribed on every toggle. */
   var showPlayerListRef = useRef(false);
-  useEffect(function () { showPlayerListRef.current = !!showPlayerList; }, [showPlayerList]);
+  /* v2.3.4884: and the list is built once as the panel opens (the interval below
+     now builds it only while open), so it never shows empty or stale. */
+  useEffect(function () {
+    showPlayerListRef.current = !!showPlayerList;
+    if (showPlayerList && stateRef.current && stateRef.current.others) setPlayerList(_buildPlayerList(stateRef.current));
+  }, [showPlayerList]);
   var _useState9 = useState(null),
     _useState0 = _slicedToArray(_useState9, 2),
     inspectPlayer = _useState0[0],
@@ -9078,22 +9102,6 @@ export var BroTown = function BroTown(_ref0) {
         return prev === fnear ? prev : fnear;
       });
       /* Update player list */
-      var list = Object.entries(S.others).map(function (_ref27) {
-        var _ref28 = _slicedToArray(_ref27, 2),
-          id = _ref28[0],
-          o = _ref28[1];
-        return {
-          id: id,
-          name: o.name,
-          color: o.color,
-          avatar: o.avatar,
-          bro: o.bro, brn: o.brn,
-          x: o.x,
-          y: o.y,
-          badges: o.badges,
-          stats: o.stats
-        };
-      });
       /* v2.3.2330: only while the panel that reads it is open.  This runs
          twice a second for the life of the session, and setPlayerList with a
          freshly-built array re-rendered the ENTIRE BroTown tree each time --
@@ -9102,7 +9110,8 @@ export var BroTown = function BroTown(_ref0) {
          within the same half-second, so it is never more than one tick stale.
          The stats save below still runs every tick as it always did
          (v2.3.3527: the achievement check that ran with it is gone). */
-      if (showPlayerListRef.current) setPlayerList(list);
+      /* v2.3.4884: the rows are built here only while the panel is open (and once on its open, by the effect at the ref). */
+      if (showPlayerListRef.current) setPlayerList(_buildPlayerList(S));
       /* Save the player's stats (this was "Check achievements") */
       var S2 = stateRef.current;
       if (S2.stats) {
