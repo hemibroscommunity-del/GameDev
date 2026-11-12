@@ -105,7 +105,7 @@ async function backHome(P, arrival, timeout = 60000) {
 /* the nearest living first-stretch Flame Fields monster this phone holds */
 const nearestGoblin = (P) => P.page.evaluate(() => {
   const S = window._gameState.current;
-  /* v2.3.4954: the nearest with a clear line to it first (the page's own
+  /* v2.3.4955: the nearest with a clear line to it first (the page's own
      solid test, every 10 px): a goblin over a wall can neither be reached
      nor reach -- three runs' Fallen stood a whole 90 s at the wall between
      the town's way out and the Flame Fields' first spawn */
@@ -124,7 +124,7 @@ const nearestGoblin = (P) => P.page.evaluate(() => {
 /* out to `spot` in god mode, then 1 HP and on the nearest monster until the
    worker's player_died lands (in the Wheel S._dying is set by that alone) */
 async function dieAt(P, wsPort, id, spot, ms = 90000) {
-  /* v2.3.4954: the death is read off the WORKER as well as the page: a new
+  /* v2.3.4955: the death is read off the WORKER as well as the page: a new
      death pile of this player's on the worker, or its own dead flag.  The
      page's _dying alone was missed on this slow box (the death and the
      respawn both fell between two reads: a run ended at full health with
@@ -144,7 +144,7 @@ async function dieAt(P, wsPort, id, spot, ms = 90000) {
     return false;
   };
   await H.devOp(wsPort, 'vitals', id, { heal: true, god: true, godMinutes: 4 });
-  /* v2.3.4954: a way round to the spot, found in the page (its own solid
+  /* v2.3.4955: a way round to the spot, found in the page (its own solid
      test on a 20 px grid, a breadth-first search over 3,000 px): three runs
      here stood a whole 90 s at a wall between the town's way out and the
      Flame Fields' first spawn, the straight walk held at it */
@@ -179,7 +179,7 @@ async function dieAt(P, wsPort, id, spot, ms = 90000) {
   await H.devOp(wsPort, 'vitals', id, { heal: false, hp: 1, god: false });
   const t0 = Date.now();
   let lowAt = Date.now(), g = null, hp = null, noGob = 0;
-  /* v2.3.4954: the death watched on its own, every 300 ms, beside the walk:
+  /* v2.3.4955: the death watched on its own, every 300 ms, beside the walk:
      a hop on this box can take most of a minute, and the pile's own clock
      (its minute, its two) runs from the death, not from when the loop next
      looked (a run's Finder first saw the pile at 70 s left) */
@@ -212,11 +212,11 @@ async function dieAt(P, wsPort, id, spot, ms = 90000) {
       }
     }
     else {
-      /* v2.3.4954: none drawn near: back to the spot, where they stand */
+      /* v2.3.4955: none drawn near: back to the spot, where they stand */
       if (++noGob % 6 === 0) await H.hopTo(P, spot.x, spot.y, { step: 100 });
       await P.page.waitForTimeout(500);
     }
-    /* v2.3.4954: the body heals out of a fight like anyone's: back to 1 HP
+    /* v2.3.4955: the body heals out of a fight like anyone's: back to 1 HP
        every 8 s it is above it (never after a death: died() first) -- the
        death is still the monster's, through the worker's own hit */
     if (Date.now() - lowAt > 8000) {
@@ -405,7 +405,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       Array.isArray(sv36) && sv36.some((p) => p.lootId === p1.lootId) && asked === 0, { sv36, asked });
 
     /* ── 3. THE FALLEN TAKES IT BACK, INSIDE ITS MINUTE ── */
-    /* v2.3.4954: the hop the move budget allows (100 px every 260 ms, about
+    /* v2.3.4955: the hop the move budget allows (100 px every 260 ms, about
        385 px/s of its 500): at 50 a run's walk back came in at 70 s */
     await H.hopTo(A, p1.x, p1.y + 15, { step: 100 });
     const logs3 = await H.waitFor(A, (S) => ((S.rpg && S.rpg.inventory) || {}).fish_salmon || 0, (n) => n >= LOGS, { label: 'the Fallen\'s salmon back', timeout: 15000 }).catch(() => 0);
@@ -424,7 +424,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const p2 = n2.p;
     rec.ok('4a a second death leaves its pile (2 trout) on the Finder\'s screen', !!p2 && p2.drawn, { died2, p2, seen: p2 ? undefined : n2.seen });
     if (!p2) return;
-    await H.hopTo(B, p2.x, p2.y + 15, { step: 100 });   /* v2.3.4954: inside its minute (at 50, a run's Finder arrived after it) */
+    await H.hopTo(B, p2.x, p2.y + 15, { step: 100 });   /* v2.3.4955: inside its minute (at 50, a run's Finder arrived after it) */
     await B.page.waitForTimeout(2500);
     const at4 = pileOf(await deathPiles(B), p2.lootId);
     const trout4 = await held(B, 'fish_trout');
@@ -438,7 +438,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await B.page.waitForTimeout(600);
     await H.hopTo(B, p2.x, p2.y + 15, { step: 30 });
     let trout4c = await H.waitFor(B, (S) => ((S.rpg && S.rpg.inventory) || {}).fish_trout || 0, (n) => n >= 2, { label: 'the Finder\'s trout', timeout: 8000 }).catch(() => 0);
-    /* v2.3.4954: not in by then (a page drawing a few frames a second can
+    /* v2.3.4955: not in by then (a page drawing a few frames a second can
        step past the pick-up): off it and on again, as a player would */
     for (let k = 0; k < 2 && trout4c !== 2; k++) {
       await H.hopTo(B, p2.x + 60, p2.y + 15, { step: 50 });
@@ -473,7 +473,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const bAt = await H.readState(B, (S) => ({ x: S.player.x, y: S.player.y }));
       rec.ok('5a2 (the Finder 300 px or more from it, watching)', Math.hypot(bAt.x - p3.x, bAt.y - p3.y) >= 300, { bAt, p3: { x: p3.x, y: p3.y } });
       await untilAge(B, p3, 100000);
-      /* v2.3.4954: the countdown is drawn with the frame, and this box draws
+      /* v2.3.4955: the countdown is drawn with the frame, and this box draws
          a few a second: at 100.3 s a run's still read "21s" (19.3 left).
          Read again, up to 2.5 s, until a frame has drawn it */
       let at100 = pileOf(await deathPiles(B), p3.lootId);
@@ -485,7 +485,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok('5b at 100 s it is drawn and steady, its countdown near 20 s',
         !!at100 && at100.drawn && /^(18|19|20)s$/.test(at100.timer || '') && a100.length >= 2 && a100.every((a) => a === 1), { at100, a100 });
       await untilAge(B, p3, 110500);
-      /* v2.3.4954: sampled IN the page, one reading a drawn frame (the
+      /* v2.3.4955: sampled IN the page, one reading a drawn frame (the
          renderer's clock), from the last ten seconds' start until six frames
          are in or the pile is 119 s old -- read from out here, a reading cost
          this box ~2 s and 5c failed for want of a fourth */
