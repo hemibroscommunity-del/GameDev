@@ -400,6 +400,7 @@ const SHARED = {
       'src/rendering/lookSets/standin.js': 'off: the offline role bake',
       'src/rendering/lookSets/standinlegs.js': 'off: the offline role bake',
       'src/rendering/lookSets/bodyheads.js': 'off: the offline role bake',   /* v2.3.4961 */
+      'src/rendering/lookSets/gearwalk.js': 'off: the offline role bake',   /* v2.3.4999 */
     },
   },
   warmOnce: {

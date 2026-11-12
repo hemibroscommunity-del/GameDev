@@ -159,7 +159,16 @@ let _loading = null;
 let _settled = false;   /* v2.3.4998: every set preloadLookSheets asked for has loaded or failed */
 /** v2.3.4998: the look sets the loading screen loads are in (or failed):
  *  what is drawn from the numbers is now known (gearLookFrame.js waits on it). */
-export function lookSetsSettled() { return _settled; }
+/* v2.3.4999: ...and every set registered since: a set whose module came after
+   the loading screen had begun (registerLookSheets with _loading set) loads
+   on its own, and the first answer said "in" while it was still on its way --
+   the armour's numbers then read as missing, and its RGBA was drawn and sent
+   to the chip (the combat strips warmed again, now and then: mp-lookgear) */
+export function lookSetsSettled() {
+  if (!_settled) return false;
+  for (const s of _sets.values()) if (s.loading && !s.finished) return false;
+  return true;
+}
 let _ok = null;                   /* the program: null not tried, true linked, false not here */
 const _stats = { sheets: 0, sheetBytes: 0, looksMade: 0, looksFreed: 0, rowsFull: 0, linkError: null, loadError: null, drawn: 0, sets: 0, rangeErrors: 0, remade: 0, remadeInFrame: 0,
   pages: 0, pageBytes: 0, paged: 0, pageSends: 0 };   /* v2.3.4993: the atlas */
@@ -545,6 +554,8 @@ async function loadSet(name, planned) {
       return false;
     }
   })();
+  /* v2.3.4999: finished, loaded or failed (lookSetsSettled) */
+  s.loading.then(() => { s.finished = true; }, () => { s.finished = true; });
   return s.loading;
 }
 /* ═══ v2.3.3752 (P3): THE ARMOUR'S MASKS (lookArmour.js) ═══
@@ -1167,6 +1178,24 @@ function lookSheenShader() {
 /** v2.3.4998: a look picture can be drawn with the metal's shine here (the
  *  program built and linked; armour as colour numbers asks this first). */
 export function lookSheenOn() { return lookPaletteOn() && _okSheen === true; }
+/** v2.3.4999: the shine form's answer -- true, false, or null while it is
+ *  not yet tried (the look program is built once a renderer and a sheet
+ *  exist: prewarmProgram).  lookPaletteOn() counts "not yet tried" as on;
+ *  armour must not, nor read it as off: an RGBA sheet drawn in that window
+ *  is sent to the chip and stays there (gearWalkFrame.js, gearLookFrame.js).
+ *  With a renderer, a pending answer is settled here (the program built). */
+export function lookSheenState() {
+  if (!_wanted || _ok === false || clientOff('lookpalette')) return false;
+  /* no renderer yet (the effects renderer is made before the game's is
+     handed to this module: its armour warm asked here and read "off", and
+     cut the RGBA strips the numbers replace -- mp-lookgear), or no sheet
+     yet: not known */
+  const r = paletteRendererOf();
+  if (!r || !_stats.sheets) return null;
+  if (!webgl2(r)) return false;
+  if (_okSheen === null) prewarmProgram();
+  return _ok === false ? false : _okSheen;
+}
 
 function packedId(el, slot) {
   const t = el.texture;

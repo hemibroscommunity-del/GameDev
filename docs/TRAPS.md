@@ -10071,3 +10071,20 @@ only by `_lifeTo` (which writes the old booleans for their readers). The one
 exception is the phone's `dead` claim behind `serverdead: false`
 (`_lifeDeadClaim`). A monster's `m.hp` / `m.life` is a monster's (`m`, `mn`).
 **Receipt:** `life-door.test`.
+
+## 340. "The look program is off here, so draw the RGBA art" (v2.3.4999)
+
+**Tempting:** code that chooses between a picture of colour numbers and its
+RGBA art asks `lookPaletteOn()` / `lookSheenOn()` and, on false, takes the
+RGBA. **Wrong:** both read false while the answer is not yet KNOWN: before the
+game's renderer is handed to `lookPalette.js`, before a sheet is in, before
+the program is built (`prewarmProgram`). The effects renderer is made in that
+window, and its armour warm took "off" at its word: it cut the 13.9 MB of RGBA
+combat strips the numbers replace and sent them to the chip, on 8 of 21
+loads (v2.3.4998 shipped with it). An RGBA
+picture drawn or warmed in that window stays on the chip for good. **The
+rule.** Ask `lookSheenState()`: true, false, or null for not yet known, and
+WAIT on null (`'wait'`, nothing drawn, behind the loading screen), with a
+cap that then falls back; and `lookSetsSettled()` for the sets, which also
+waits for a set registered after the loading screen began.
+**Receipt:** `mp-lookgear` ("the walking armour's RGBA is not on the chip").

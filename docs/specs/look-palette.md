@@ -588,6 +588,11 @@ loading screen beside the look program (`prewarmProgram`, `okSheen` in
 (`lookSheenOn()` false), warmed behind the loading screen once that is known
 (`gearLookDecided`).
 
+v2.3.4999: the walking armour is a second set, `gearwalk`
+(`lookSets/gearwalk.js`, `gearWalkFrame.js`): the chest, the greaves and the
+full set's figure in their walking poses, with the mip chain (`mip` is a
+set's field, so it is not slice 1's set). `pictures-256.md` §9.
+
 ## The plan for the rest
 
 Each its own pull request (on by default, as this one: the owner's rule for the phase).

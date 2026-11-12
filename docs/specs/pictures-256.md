@@ -312,7 +312,80 @@ the loading screen and kept there alone, `keepOnGpuOnly`: `mp-gpuonly`'s 47
 canvases let go of on arrival, 24.9 MB with the weapon bodies). So about
 9.7 MB less on the chip, from arrival on.
 
-**Next, slice 2**: the walking armour sheets (jog, stand, hit, dodge, mine,
-fish, pickup: 18.1 MB at the fight in §1), drawn by `gearSheets.js` and
-`entityRenderer.js _placeGear`, which also read some frames back on the CPU
-(those keep their RGBA through `getGearFrame`).
+Measured in CI on merge (#1640): the memory check's chip line at its
+highest 100.4 -> 89.9 MB.
+
+## 9. Phase 2, slice 2: the walking armour (v2.3.4999)
+
+**What it covers.** The chest plate and the greaves standing, jogging and
+taking a hit (five facings each), rolling (south, east), mining, fishing and
+picking up (south), and the full steel set's jog figure (east, north, south,
+south-west): 44 sheets, which `gearSheets.js` builds as RGBA (packed,
+linear, a full mip chain) and the loading screen sent to the chip
+(`uploadGearTextures`). The shirt's walking sheets are the tee's look set
+already (v2.3.4992).
+
+**What it is now.** A look set of its own, `gearwalk`
+(`src/rendering/lookSets/gearwalk.js`, `role-bake.mjs --set gearwalk`):
+read as `_buildSheet` reads the art (`loadWebpOrPng` and the art's version;
+the 128-tall sheets at a 128 frame, the 256-tall roll and pickup through the
+same upscale and smoothing calls), cut by the same packed cells, **with** the
+mip chain (its own set: `mip` is a set's field, and slice 1's is off).
+3.6 MB of numbers (1.3 MB of files), a texture a sheet.
+
+**How it is drawn** (`src/rendering/gearWalkFrame.js`). `gearDrawFrame` /
+`gearDrawFramePhased` at the five draw sites: `_placeGear` (the chest and the
+greaves), `_fullsetFrame` (the figure, as the body sprite's texture), and the
+jogging greaves under a swing or a shot (`effectsRenderer.js`, four callers).
+The numbers' frame where the look program and its shine are built; nothing
+while the look sets load behind the loading screen; the RGBA frame otherwise
+(`?gearwalk=0`, a computer the look program is off on, a sheet not in the
+set). The shine and the tints are slice 1's (`LOOK_SHEEN_BATCHER`, the
+sprite tint).
+
+**What keeps its RGBA.** The masked bakes read the chest's and the greaves'
+pixels on the CPU (`entityRenderer.js _frameInput`, the worker's input), as
+does the fishing grip (`_fishTopFrame`), so `gearSheets.js` still loads every
+walking sheet behind the loading screen. It no longer SENDS those drawn from
+the numbers to the chip (`setGearDrawnElsewhere`), nor the jog chain belt,
+which is never put on a sprite at all (its colours are copied by the bake).
+Feeding the bakes from the numbers (so the RGBA need not load) is a change to
+what the bakes see: its own PR, its baselines re-taken.
+
+**The cut** (the bake's self-check): every sheet to 255 colours within the
+16-level bar; the worst colour 14 levels (the pickup and the full set's
+figure, cut from 15,000-29,000 colours), the mean a texel moves 0.08-0.5.
+
+**The oracle** (`mp-lookgear`, `__btGearOracle.compareWalk`): every frame of
+the 44 sheets, the RGBA sheet the game builds against the numbers, through
+the game's batchers:
+
+| drawn | frames | px drawn | mean | worst | px past 16 |
+|---|--:|--:|--:|--:|--:|
+| steel, no shine, full size | 592 | 1.06 M | 2.50 | 14 | 0 |
+| steel, its shine | 592 | 1.06 M | 2.55 | 21 | 11 |
+| copper and its shine | 592 | 1.06 M | 1.83 | 16 | 0 |
+| half size (a computer's window: the chip's mips against the first level) | 592 | 0.29 M | 1.54 | 10 | 0 |
+
+**Memory** (`mp-membudget`, this box, the same day; its character wears no
+armour, so what goes is the loading screen's upload of every armour sheet):
+
+| reading | main (slice 1) | slice 2 | `?gearwalk=0` |
+|---|--:|--:|--:|
+| the chip on arrival | 74.7 | **59.2** | 74.6 |
+| the chip at its highest | 91.9 | **76.4** | 91.8 |
+| heap at its highest | 37.4 | 37.9 | 37.7 |
+
+A player WEARING iron, after jogging every way and 100 s (a probe, not a
+test): main held 38.0 MB of RGBA armour on the chip and 92.4 MB in all; slice
+2 holds 5.0 MB of the tee's RGBA, 7.9 MB of numbers, 62.1 MB in all.
+
+**The race this found** (TRAPS §340; it was in slice 1 as merged). The
+effects renderer is made before the game's renderer is handed to the look
+program, and its armour warm asked `lookSheenOn()`, read false, and took it
+for "off": on 8 of 21 loads it cut the 13.9 MB of RGBA combat strips
+and sent them to the chip anyway. Now `lookSheenState()` says null for "not
+yet known" (no renderer, no sheet, the program not built), and both armour
+modules wait on it; `lookSetsSettled()` also waits for a set registered after
+the loading screen began. 21 probe loads before: 8 with the strips on
+the chip; 6 after: none.

@@ -111,6 +111,7 @@ import { getFacialHairColor, getColoredFacialHairTextures, coloredFacialHairRead
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtLookFrame, drawGearFrame, loadCroppedStrip, subTexture, frameBounds, packTrimmed, preloadBeltSheets, gearSheetLoad } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
+import { gearDrawFrame, gearDrawFramePhased } from '../gearWalkFrame.js';   /* v2.3.4999: the walking armour from the numbers */
 import { sideForDir, getShirtArt, sanitizeShirtArt, artHasInk } from '../traits/playerArt.js';   /* v2.3.1938 */
 import { getPattern, parsePattern, sanitizePattern } from '../traits/patternCatalog.js';   /* v2.3.1941 */
 import { hatHairFit } from '../traits/hatHairFit.js';   /* v2.3.1943 band refit + v2.3.1561 float lift, in one place since v2.3.1959 */
@@ -2215,8 +2216,9 @@ function _fullsetFrame(chestItem, legsItem, pose, dir, frameIdx, phase) {
      its NATIVE frame count evenly on the same clock (east ships 25 frames
      vs the 28-frame body cycle — no held frames, no wrap jump).  Callers
      that only gate on presence (_placeGear) pass the body frameIdx. */
-  if (phase != null) return getGearFramePhased('fullset', 'steel', pose, dir, phase);
-  return getGearFrame('fullset', 'steel', pose, dir, frameIdx);
+  /* v2.3.4999: the figure from the colour numbers (gearWalkFrame.js) */
+  if (phase != null) return gearDrawFramePhased('fullset', 'steel', pose, dir, phase);
+  return gearDrawFrame('fullset', 'steel', pose, dir, frameIdx);
 }
 /* v2.3.1399: TRUE when a masked-body bake for this (worn set, pose, dir)
    would be dead weight — the fullset knight figure replaces the masked
@@ -2844,7 +2846,8 @@ function _placeGear(display, equip, pose, dir, frameIdx, legsFrom) {
     const _from = (legsFrom && _slotName === 'legs') ? legsFrom : null;
     const _gPose = _from ? _from.pose : pose;
     const _gFrame = _from ? _from.frameIdx : frameIdx;
-    let tex = (sb && item && item !== 'none' && !hiddenUnderChest) ? getGearFrame(_slotName, item, _gPose, dir, _gFrame) : null;
+    /* v2.3.4999: the chest and the greaves from the colour numbers (gearWalkFrame.js) */
+    let tex = (sb && item && item !== 'none' && !hiddenUnderChest) ? gearDrawFrame(_slotName, item, _gPose, dir, _gFrame) : null;
     /* v2.3.1938: a drawn shirt swaps in a second bake of the same sheet with
        the print on it.  Falls through to the plain frame while that bakes, so
        putting a drawing on never blinks the shirt off.

@@ -22,10 +22,12 @@
  * Frames are asked for every time a strip is drawn, never kept: a look nobody
  * draws for 30 s lets its frames go (lookPalette.js sweep).
  */
-import { registerLookSheets, getLookPartFrames, lookHas, lookSheenOn, lookPaletteWanted, lookSetsSettled, preloadLookSheets } from './lookPalette.js';
+import { registerLookSheets, getLookPartFrames, lookHas, lookSheenOn, lookSheenState, lookPaletteWanted, lookSetsSettled, preloadLookSheets } from './lookPalette.js';
 
 const _wanted = (() => { try { return !/(^|[?&])gearlook=0(&|$)/.test(window.location.search || ''); } catch (e) { return true; } })();
-if (_wanted) registerLookSheets('gear', '/sprites/look/gear/roles.json');
+/* v2.3.4999: its own load, when this module came after the loading screen
+   began (registerLookSheets then loads it apart: gearLookDecided waits) */
+const _reg = _wanted ? registerLookSheets('gear', '/sprites/look/gear/roles.json') : Promise.resolve(false);
 
 const _stats = { looked: 0, old: 0, waited: 0 };
 const WAIT_MS = 60000;
@@ -49,7 +51,16 @@ export function gearLookOn() {
  */
 export function gearLookDecided() {
   if (!_wanted || !lookPaletteWanted()) return Promise.resolve(null);
-  return preloadLookSheets().then(() => gearLookOn() && lookHas('gear', 'chest-swing-east'), () => false);
+  /* v2.3.4999: and the shine form's answer, which is null until the look
+     program is built (a renderer and a sheet): read as off, it warmed the
+     old strips for nothing -- 13.9 MB back on the chip, now and then */
+  const known = async () => {
+    for (let i = 0; i < 240; i++) {
+      if (lookSheenState() !== null) return;
+      await new Promise((r) => setTimeout(r, 250));
+    }
+  };
+  return Promise.all([preloadLookSheets(), _reg]).then(known).then(() => gearLookOn() && lookHas('gear', 'chest-swing-east'), () => false);
 }
 
 /**
@@ -60,18 +71,20 @@ export function gearLookDecided() {
 export function gearStripFrames(slot, item, pose, dir) {
   if (!_wanted || !lookPaletteWanted()) return null;
   const sheet = slot + '-' + pose + '-' + dir;
-  if (!lookSetsSettled()) {
-    /* behind the loading screen, the sets load: wait for them rather than
-       fetch the RGBA strip the numbers replace.  A page whose look sets
-       never load (none asked for them) gives up waiting after a minute, and
-       draws the old strip, never no armour */
+  /* behind the loading screen, the sets load: wait for them rather than
+     fetch the RGBA strip the numbers replace -- and (v2.3.4999) for the
+     look program's shine to be built, whose answer is null until then.  A
+     page where either never comes gives up waiting after a minute, and
+     draws the old strip, never no armour */
+  const sheen = lookSetsSettled() ? lookSheenState() : null;
+  if (sheen === null) {
     const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
     if (!_waitFrom) _waitFrom = now;
     if (now - _waitFrom < WAIT_MS) { _stats.waited++; return 'wait'; }
     _stats.old++;
     return null;
   }
-  if (!lookSheenOn() || !lookHas('gear', sheet)) { _stats.old++; return null; }
+  if (sheen !== true || !lookHas('gear', sheet)) { _stats.old++; return null; }
   const list = getLookPartFrames('gear', sheet, ENTRIES, OPTS);
   if (!list || !list.length) { _stats.old++; return null; }
   _stats.looked++;
