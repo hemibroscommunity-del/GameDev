@@ -221,8 +221,12 @@ are opaque blobs at REST in the stage, so they use **escrow-at-stage**
   `mp-tradebag` plays it on two upright phones, each band left on a page (Bro,
   Quests): red on the main of 2026-11-12 (no bag on screen), green with the
   change (a tap on the wood and on the weapon tile stage them, the other phone
-  sees both). Diego's shop drawer has the same hole upright and is not changed
-  here.
+  sees both). Diego's shop drawer had the same hole upright: v2.3.4878 gives
+  it the same rule (the same `bagToFront` in `BottomDashboard`, as his shop
+  opens, upright only: the old side column keeps ShopkeeperPanel's own
+  v2.3.3407 rule); `mp-shopbag` plays it (one phone, band on Bro, then
+  Quests, then turned sideways: a tap on Diego, a tap on the bag's remains,
+  SELL).
 
 ## v2.3.3856: your offer on the left, theirs on the right
 
