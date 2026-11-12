@@ -158,11 +158,11 @@ const refusedN = (k) => room._zoneJudgeInfo().refused[k] || 0;
      ('wheel') and take its name off.  A new suite plays the world. */
   const FIXTURES = new Set([
     'anticheat', 'arrowblast', 'burrow', 'combat-lifecycle',
-    'gem-weight', 'move-budget', 'prog3', 'props', 'protocol-v2',
+    'gem-weight', 'move-budget', 'props', 'protocol-v2',
     'tick', 'weapon-gem', 'wheelnear', 'wheelzone',
   ]);
-  /* v2.3.4923: 17 -> 13 (chainscore, devtools, quests, ride play the world) */
-  const FROZEN = 13;
+  /* v2.3.4923: 17 -> 12 (chainscore, devtools, prog3, quests, ride play the world) */
+  const FROZEN = 12;
   const dir = new URL('./', import.meta.url);
   const opening = readdirSync(dir).filter((f) => f.endsWith('.test.mjs'))
     .filter((f) => /GameRoom\.prototype\._retiredLandsOn\s*=/.test(readFileSync(new URL(f, dir), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')))   /* code, not a comment */
