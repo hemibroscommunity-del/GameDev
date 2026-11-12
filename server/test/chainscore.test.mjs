@@ -18,11 +18,10 @@
 import { GameRoom } from '../src/index.js';
 import { CHAIN_SCORE, LIFE_SKILL_KEYS, COMBAT_SKILL_KEYS } from '../src/chainscore.js';
 import { privToAddress, normalizePrivKey } from '../src/chainwriter.js';
-/* v2.3.4675: this suite stands players in the retired old lands as a fixture.
-   zonejudge.js R3 closes them to players, so it opens them for this suite
-   only.  On retired-lands.test's FIXTURES list, which only shrinks: move the
-   suite to the world ('wheel') and take it off. */
-GameRoom.prototype._retiredLandsOn = function () { return false; };
+import { WHEEL_ZONE } from '../src/wheelzone.js';
+import { WHEEL_CENTRE } from '../src/wheelspawns.js';
+/* v2.3.4923: plays the world (the Wheel), off retired-lands.test's FIXTURES
+   list; its killer stood in the retired meadow before. */
 
 let failures = 0;
 function check(name, cond, detail) {
@@ -265,16 +264,16 @@ function mk(over) {
   room.sessions.set(ws, { id: null, name: 'Anon', data: {}, rtt: 0, lastPing: 0, lastRecv: Date.now() });
   await room.webSocketMessage(ws, JSON.stringify({
     type: 'join', id: 'bp_k', name: 'Killer', protocolVersion: 2,
-    data: { x: -100000, y: -100000, z: 'meadow' },
+    data: { x: WHEEL_CENTRE[0], y: WHEEL_CENTRE[1], z: WHEEL_ZONE },
   }));
   const ps = room.playerState.bp_k;
   check('a fresh character starts at 0 server-verified kills', (ps.svKills || 0) === 0, ps.svKills);
 
-  const m = (room.monsters.meadow || []).find((x) => x.alive);
+  const m = room._ensureZoneMonsters(WHEEL_ZONE).find((x) => x.alive && !x.tier);
   if (m) {
     m.hp = 1; m.maxHp = 100; m.dmgByPlayer = Object.create(null);
     m.dmgByPlayer['bp_k'] = 100;
-    room._resolveMonsterKill('meadow', m, 'bp_k', ps, 'melee');
+    room._resolveMonsterKill(WHEEL_ZONE, m, 'bp_k', ps, 'melee');
     check('resolving a kill increments svKills', ps.svKills === 1, ps.svKills);
   } else {
     check('harness found a live monster', false);
@@ -291,7 +290,7 @@ function mk(over) {
   room2.sessions.set(ws2, { id: null, name: 'Anon', data: {}, rtt: 0, lastPing: 0, lastRecv: Date.now() });
   await room2.webSocketMessage(ws2, JSON.stringify({
     type: 'join', id: 'bp_k', name: 'Killer', protocolVersion: 2,
-    data: { x: -100000, y: -100000, z: 'meadow' },
+    data: { x: WHEEL_CENTRE[0], y: WHEEL_CENTRE[1], z: WHEEL_ZONE },
   }));
   check('svKills survives a reconnect (a reset would break monotonicity on-chain)',
     room2.playerState.bp_k.svKills === 42, room2.playerState.bp_k.svKills);

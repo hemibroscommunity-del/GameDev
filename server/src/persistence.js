@@ -545,6 +545,8 @@ export const persistenceMethods = {
        a new player would, every honesty check on.  The Test panel turns it on
        again in one tap. */
     try { await this.state.storage.delete('testmode:' + pid); } catch (e) { /* best-effort, as above */ }
+    /* v2.3.4902: a death's note (life.js LIFE_NOTE) goes with the character */
+    try { await this.state.storage.delete('life:' + pid); } catch (e) { /* best-effort, as above */ }
     /* v2.3.3284: and the party, which lasts now (party.js): a restarted
        character has joined nothing.  Before the socket closes, so the rest
        of the party is told at once. */
@@ -775,5 +777,18 @@ export const persistenceMethods = {
       for (const f of fields) delete session.lastPlayerStateSent[f];
     }
     this._sendPlayerState(ws, playerId);
+  },
+
+  /* ═══ v2.3.4880: A REFUSAL ANSWERS THE PHONE (the refusal door's lane) ═══
+   * The refusal door (refusal-door.test) listed 54 refusals as `known`: the
+   * worker said no with a bare `return`, and the phone kept what it drew --
+   * a weapon forged, a stat point spent, a chest opened -- until the next
+   * login (TRAPS §284).  This is the one-line answer for them: the fields
+   * the phone may have drawn go again, true, whatever it guessed.  Nothing
+   * is saved (cost-guard §14); one message, only on a refusal. */
+  _refusalEcho(session, fields) {
+    const id = session && session.id;
+    const ws = id ? this._wsBySessionId(id) : null;
+    if (ws) this._resendPlayerState(ws, id, fields);
   },
 };

@@ -30,7 +30,7 @@ import { applyTestMode } from '@/game/testMode.js'; /* v2.3.3430: the owner's te
 import { checkWitnesses, noteCheckActed, EMPTIED_NEED, CANVAS_CHECK_OFF } from '@/rendering/canvasWitness.js'; /* v2.3.3574: a picture Safari threw away is noticed */
 import { allyBus } from '@/game/alliance.js'; /* v2.3.3313: the alliance's answers (server alliance.js) */
 import { monsterNoticed } from '@/game/monsterNoises.js'; /* v2.3.3340: a monster calls as it notices you */
-import { carryMonsterState, endSwell } from '@/game/monsterCarry.js'; /* v2.3.3558: a re-push is not a new arrival (TRAPS §245) */
+import { carryMonsterState, monsterNewLife } from '@/game/monsterCarry.js'; /* v2.3.3558: a re-push is not a new arrival (TRAPS §245); v2.3.4910: the one new-life reset */
 import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } from '@/game/trapping.js'; /* v2.3.3120: pet trapping's answers; v2.3.3121: + a pet's XP */
 import { onCodexState, onCodexKill } from '@/game/monsterCodex.js'; /* v2.3.3209: the monster codex's counts (server/src/codex.js) */
 import { onAchvState, noteServerAp } from '@/game/achievements.js'; /* v2.3.3527: the achievements the worker granted (server/src/achievements.js) */
@@ -122,6 +122,7 @@ import { armResumeListeners } from '@/game/resumeListeners.js'; /* v2.3.4482: a 
 import { retireSocket } from '@/game/socketLine.js'; /* v2.3.4367: one line at a time */
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { takeBackFire } from '@/game/fireRefuse.js'; /* v2.3.4886: a fire the worker refused, taken back */
 import { noteEatRefused, pvpHealWaitText } from '@/game/fightFood.js'; /* v2.3.3133: the worker's word on a bite it held back */
 
 /* ═══ v2.3.2122: A PIECE THE WORKER TAKES OFF YOU GOES IN THE BAG ═══
@@ -989,10 +990,13 @@ export function setupWebSocket(ctx) {
               }
               // §16.9 — Process batched player positions
               if (msg.players) {
-                for (var _i33 = 0, _Object$entries5 = Object.entries(msg.players); _i33 < _Object$entries5.length; _i33++) {
-                  var _Object$entries5$_i = _slicedToArray(_Object$entries5[_i33], 2),
-                    pid = _Object$entries5$_i[0],
-                    data = _Object$entries5$_i[1];
+                /* v2.3.4879: for...in over the batch, not Object.entries and a
+                   destructured pair per player; one clock read and one lookup of
+                   each peer for the whole loop body. */
+                var _now = Date.now();
+                for (var pid in msg.players) {
+                  if (!Object.prototype.hasOwnProperty.call(msg.players, pid)) continue;
+                  var data = msg.players[pid];
                   if (pid === S.myId) continue;
                   /* v2.3.1112: SELF-HEALING peer presence.  Peer entries were
                      created ONLY by the player_join event -- iOS Safari
@@ -1033,34 +1037,35 @@ export function setupWebSocket(ctx) {
                     }, peerCosmeticsFromWire({}));
                     setPlayerCount(Object.keys(S.others).length + 1);
                   }
-                  if (S.others[pid]) {
-                    S.others[pid].x = data.x;
-                    S.others[pid].y = data.y;
-                    S.others[pid]._serverX = data.x;
-                    S.others[pid]._serverY = data.y;
-                    S.others[pid].dir = data.d;
-                    if (data.f) S.others[pid]._renderFacing = data.f;
-                    S.others[pid].zone = data.z;
-                    S.others[pid]._vx = (data.vx || 0) / 100;
-                    S.others[pid]._vy = (data.vy || 0) / 100;
-                    S.others[pid]._lastUpdate = Date.now();
+                  var _o = S.others[pid];
+                  if (_o) {
+                    _o.x = data.x;
+                    _o.y = data.y;
+                    _o._serverX = data.x;
+                    _o._serverY = data.y;
+                    _o.dir = data.d;
+                    if (data.f) _o._renderFacing = data.f;
+                    _o.zone = data.z;
+                    _o._vx = (data.vx || 0) / 100;
+                    _o._vy = (data.vy || 0) / 100;
+                    _o._lastUpdate = _now;
                     /* v2.3.3250: any update is where they really are -- a
                        parked copy (src/game/presence2.js) is back */
-                    S.others[pid]._away = false;
+                    _o._away = false;
                     /* v2.3.1092: current harvest activity (mine|chop|fish|cook|
                        fire, or null). Drives the remote body pose / skill
                        stand-in in the renderer. Absent (old server) => leave
                        untouched. */
                     if (data.ex !== undefined) {
-                      var _exWas = S.others[pid]._ex || null;
-                      S.others[pid]._ex = data.ex || null;
+                      var _exWas = _o._ex || null;
+                      _o._ex = data.ex || null;
                       /* v2.3.3343: a cast's plop when they start fishing, the
                          pan's sizzle when they start cooking, at their share by
                          distance (their chops and pick strikes are the
                          renderers', on the frames they are drawn) */
-                      if (S.others[pid]._ex !== _exWas) {
-                        if (S.others[pid]._ex === 'fish') cuePeer(S, 'peerCast', S.others[pid].x, S.others[pid].y);
-                        else if (S.others[pid]._ex === 'cook') cuePeer(S, 'cookStart', S.others[pid].x, S.others[pid].y);
+                      if (_o._ex !== _exWas) {
+                        if (_o._ex === 'fish') cuePeer(S, 'peerCast', _o.x, _o.y);
+                        else if (_o._ex === 'cook') cuePeer(S, 'cookStart', _o.x, _o.y);
                       }
                     }
                     /* v2.3.3015: sprinting, says the worker (server/src/tick.js
@@ -1068,15 +1073,15 @@ export function setupWebSocket(ctx) {
                        everywhere else), so their legs run at its pace.  Every
                        tick player is the whole wire, so an absent `spr` is
                        "not sprinting" -- from an old worker as from a new one. */
-                    var _wasSpr = !!S.others[pid]._sp;
-                    S.others[pid]._sp = data.spr === 1;
+                    var _wasSpr = !!_o._sp;
+                    _o._sp = data.spr === 1;
                     /* v2.3.3776: on the skateboard, says the worker (tick.js
                        `brd`, ride.js); absent is on foot, as for `spr` */
-                    S.others[pid]._brd = data.brd === 1;
+                    _o._brd = data.brd === 1;
                     /* v2.3.3343: a sprint starting is heard, your own push-off
                        (BT_AUDIO.SPRINT_PUSH) at their share by distance (it was
                        dust alone) */
-                    if (S.others[pid]._sp && !_wasSpr) peerOwn(S, 'peerSprint', BT_AUDIO.SPRINT_PUSH, 1, S.others[pid].x, S.others[pid].y);
+                    if (_o._sp && !_wasSpr) peerOwn(S, 'peerSprint', BT_AUDIO.SPRINT_PUSH, 1, _o.x, _o.y);
                     /* v2.3.3058: No man's land's skull (tick.js `sk`): absent is
                        none, for the same reason as `spr` above */
                     nmlPeerSkull(S, pid, data.sk);
@@ -1084,24 +1089,25 @@ export function setupWebSocket(ctx) {
                        trapping Phase 4), drawn beside them (entityRenderer
                        _updatePeerPets): absent is none, for the same reason
                        as `spr`.  Parsed only when it changes. */
-                    if (S.others[pid]._pwRaw !== data.pw) {
-                      S.others[pid]._pwRaw = data.pw;
-                      S.others[pid]._pet = data.pw ? parsePetWire(data.pw) : null;
+                    if (_o._pwRaw !== data.pw) {
+                      _o._pwRaw = data.pw;
+                      _o._pet = data.pw ? parsePetWire(data.pw) : null;
                     }
                     /* v2.3.3142: their worn torso's and greaves' grades (tick.js
                        `eqg`: 'rn', 'ee', ...), which glint.js draws as the
                        armour's grade look; absent is plain, as for `spr` */
-                    S.others[pid]._eqg = typeof data.eqg === 'string' ? data.eqg.slice(0, 2) : '';
+                    _o._eqg = typeof data.eqg === 'string' ? data.eqg.slice(0, 2) : '';
                     /* v2.3.3392: a held pose (tick.js `po`, poses.js): sit,
                        sleep, flop or a dance, drawn by rendering/emoteFx.js;
                        `_poAt` is when this phone first saw it, for its settle.
                        A far player's slim entry says nothing about it and
                        leaves it as it was (they are not drawn). */
-                    if (!peerEntrySlim(data)) {
+                    var _slim = peerEntrySlim(data); /* v2.3.4879: asked once, not twice */
+                    if (!_slim) {
                       const _po = typeof data.po === 'string' ? data.po : null;
-                      if ((S.others[pid]._po || null) !== _po) {
-                        S.others[pid]._po = _po;
-                        S.others[pid]._poAt = Date.now();
+                      if ((_o._po || null) !== _po) {
+                        _o._po = _po;
+                        _o._poAt = _now;
                       }
                     }
                     /* v2.3.3255: their Hemi Bro check (tick.js `bro`, the worn
@@ -1111,30 +1117,31 @@ export function setupWebSocket(ctx) {
                        else's badge.  A far player's slim entry (x y d z vx vy
                        only, tick.js slimWire) says nothing about them and
                        leaves both as they were. */
-                    if (!peerEntrySlim(data)) {
+                    if (!_slim) {
                       S.others[pid].bro = typeof data.bro === 'number' ? data.bro : null;
                       S.others[pid].brn = broCountOf(data.brn);
                     }
                     /* v2.3.599: live equip -> the renderer reads other.equip
                        (nested), so rebuild it from the broadcast eqc/eql/eqs
-                       whenever present, keeping armour on/off in sync. */
+                       whenever present, keeping armour on/off in sync.
+                       v2.3.4879: only when one of them differs from what it is
+                       now: a tick that changes nothing keeps the same object
+                       (the renderers only read it; none writes into it or keeps
+                       it by identity) instead of a new one per player per tick. */
                     if (data.eqc !== undefined || data.eql !== undefined || data.eqs !== undefined || data.eqst !== undefined) {
-                      var _oe5 = S.others[pid].equip || { head: 'none', chest: 'none', legs: 'none', shoulders: 'none', shirt: 'none' };
-                      S.others[pid].equip = {
-                        chest: data.eqc !== undefined ? (data.eqc || 'none') : _oe5.chest,
-                        legs: data.eql !== undefined ? (data.eql || 'none') : _oe5.legs,
-                        shoulders: data.eqs !== undefined ? (data.eqs || 'none') : _oe5.shoulders,
-                        shirt: data.eqst !== undefined ? (data.eqst || 'none') : _oe5.shirt,
-                      };
+                      var _oe5 = _o.equip || { head: 'none', chest: 'none', legs: 'none', shoulders: 'none', shirt: 'none' };
+                      var _eqC = data.eqc !== undefined ? (data.eqc || 'none') : _oe5.chest,
+                        _eqL = data.eql !== undefined ? (data.eql || 'none') : _oe5.legs,
+                        _eqS = data.eqs !== undefined ? (data.eqs || 'none') : _oe5.shoulders,
+                        _eqT = data.eqst !== undefined ? (data.eqst || 'none') : _oe5.shirt;
+                      if (!_o.equip || _eqC !== _oe5.chest || _eqL !== _oe5.legs || _eqS !== _oe5.shoulders || _eqT !== _oe5.shirt) {
+                        _o.equip = { chest: _eqC, legs: _eqL, shoulders: _eqS, shirt: _eqT };
+                      }
                     }
-                    /* Snapshot interpolation — buffer positions + velocity */
-                    if (!S.others[pid]._posBuffer) S.others[pid]._posBuffer = [];
-                    S.others[pid]._posBuffer.push({
-                      x: data.x, y: data.y,
-                      vx: (data.vx || 0) / 100, vy: (data.vy || 0) / 100,
-                      t: performance.now()
-                    });
-                    if (S.others[pid]._posBuffer.length > 20) S.others[pid]._posBuffer.shift();
+                    /* v2.3.4879: the position buffer pushed to here (an object and a
+                       performance.now() per player per tick, 20 deep) was read by
+                       nothing, so it is gone.  presence2.js and nearJoin.js still
+                       clear a `_posBuffer` if one is there (near-join.test seeds it). */
                   }
                 }
               }
@@ -1400,42 +1407,15 @@ export function setupWebSocket(ctx) {
                       }
                       /* Don't overwrite maxHp — it stays at the spawn value */
                       if (md.alive && !localM.alive) {
-                        /* Monster respawned -- clear all per-life
-                           transient flags so the next death replays
-                           the loot drop, SFX, stuck arrows, and the
-                           death animation cleanly. */
-                        localM.alive = true;
+                        /* Monster respawned -- one reset for a new life
+                           (v2.3.4910: game/monsterCarry.js monsterNewLife,
+                           the same list as the phone's own respawn) so the
+                           next death replays the loot drop, sound, stuck
+                           arrows and death animation cleanly; drawn from
+                           where it comes back. */
+                        monsterNewLife(localM, MONSTER_VARIANTS);
                         localM.renderX = md.x;
                         localM.renderY = md.y;
-                        localM._stuckArrows = [];
-                        localM._slimeDeathStart = null;
-                        localM._snowmanDeathStart = null;
-                        localM._lootDropped = false;
-                        localM._deathSfxPlayed = false;
-                        localM._killMine = false;   /* v2.3.3248: hitSounds.deathVol */
-                        /* v2.3.4403: and a swell whose blast this phone never
-                           heard (out of reach, or a gap): a slime that came
-                           back still holding it was drawn huge and could not
-                           be hit (monsterCarry.js endSwell; the sweep's V7) */
-                        endSwell(localM);
-                        /* Revert any mid-fight variant transform.  A
-                           desert mummy that died as a skeleton needs to
-                           come back as a mummy so the first 50% HP
-                           still triggers the bandage-shred animation
-                           next life.  Server already resets m.variant
-                           on its side but doesn't broadcast that field
-                           per tick, so the client uses the spawn
-                           archetype it stashed at state_sync time. */
-                        if (localM._spawnArchetype && localM.archetype !== localM._spawnArchetype) {
-                          localM.archetype = localM._spawnArchetype;
-                          localM.type = localM._spawnArchetype;
-                          if (localM.arch !== undefined) localM.arch = localM._spawnArchetype;
-                          localM._transformStart = null;
-                          localM._transformHoldMs = 0;
-                          localM._transformFromArch = null;
-                          var _sv = MONSTER_VARIANTS[localM._spawnArchetype];
-                          if (_sv && _sv.spd != null) localM.spd = _sv.spd;
-                        }
                         /* v2.3.3343: coming back is heard, by distance -- a
                            slime's plop, anything else a faint shimmer (it was
                            silent; SOUND-GAPS).  This edge only: a monster first
@@ -3534,6 +3514,17 @@ export function setupWebSocket(ctx) {
                  for the attempt that asked (seq + node); a plan for one the
                  player already abandoned is dropped. */
               applyGatherHits(S, msg.payload);
+              break;
+            }
+          case 'firemaking_refused':
+            {
+              /* v2.3.4886: the worker had no such log (cooking.js): the light
+                 this phone started on the tap is stopped, or the campfire it
+                 lit from it put out (src/game/fireRefuse.js).  The bag came
+                 back on the player_state before it. */
+              if (takeBackFire(S, Date.now())) {
+                try { pushDmgPopup(S, S.player.x, S.player.y - 30, 'No log to light', '#ff5e6c'); } catch (e) { /* popup only */ }
+              }
               break;
             }
           case 'gem_cut_result':

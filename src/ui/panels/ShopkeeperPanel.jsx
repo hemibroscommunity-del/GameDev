@@ -242,7 +242,9 @@ export function ShopkeeperPanel() {
 
   /* ═══ v2.3.3407: SIDEWAYS, THE BAG IS THE SIDE COLUMN ═══
      The owner: "Make sure all actions/buttons can be completed in landscape
-     mode."  Upright the bag is the band under this drawer.  Sideways the band
+     mode."  Upright the bag is the band under this drawer (v2.3.4878: put in
+     front as the shop opens, whatever page the band was on -- BottomDashboard
+     bagToFront, mp-shopbag).  Sideways the band
      holds no bag -- it is the side column's 'dashboard' page -- so nothing
      could be SOLD: the drawer lay over the ▴ chip that opens the column, and
      opening it put the shop away.  So sideways the shop opens the column with

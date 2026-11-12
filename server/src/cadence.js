@@ -166,7 +166,8 @@ export const cadenceMethods = {
     const amount = Math.floor(Number(payload && payload.amount));
     if (!Number.isFinite(amount) || amount < CADENCE.JACKPOT_MIN || amount > CADENCE.JACKPOT_MAX) return;
     if (amount % CADENCE.JACKPOT_TICKET !== 0) return;
-    if ((ps.coins || 0) < amount) return;
+    /* v2.3.4882: more than the purse -- the true coins go back (refusal door) */
+    if ((ps.coins || 0) < amount) return this._refusalEcho(session, ['coins']);
     // Settle any stale draw BEFORE taking the deposit so a new week's
     // first deposit can't land in last week's pool.
     await this._jackpotMaybeResolve();

@@ -118,12 +118,14 @@ export const smeltingMethods = {
     if (!ps.inventory) return null;
 
     const lvl = (ps.lifeSkills && ps.lifeSkills.blacksmithing && ps.lifeSkills.blacksmithing.level) || 1;
-    if (lvl < r.minLvl) return null;
+    /* v2.3.4880: a smelt refused for the level or the ore answers the phone
+       with the bag and the skill (it was silent: the refusal door) */
+    if (lvl < r.minLvl) { this._refusalEcho(session, ['inventory', 'lifeSkills']); return null; }
 
     const want = Math.max(1, Math.min(SMELT.MAX_PER_REQUEST, Math.floor(Number(payload.count) || 1)));
     const have = Math.floor(Number(ps.inventory[r.ore]) || 0);
     const count = Math.min(want, Math.floor(have / r.oreCost));
-    if (count <= 0) return null;
+    if (count <= 0) { this._refusalEcho(session, ['inventory', 'lifeSkills']); return null; }
 
     bagTake(ps.inventory, r.ore, count * r.oreCost, 'smelt_ore'); /* v2.3.4810: the bag door */
     bagGive(ps.inventory, barKey, count, 'smelt_bar');

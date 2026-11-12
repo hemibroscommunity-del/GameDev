@@ -7055,7 +7055,7 @@ html.bt-one-band .bt-kb-hints[data-beside]:not(.bt-kb-side *){left:calc(var(--wo
    of the dashboard assembly the same way it appears on mobile".  The box is
    no longer min(1200 px, the world): the nav row, an open page and the
    resting columns are ONE centred block of sheetGeometry's
-   BAND_ASSEMBLY_MAX_W (840, stamped as --band-max-w by resize()) or the
+   BAND_ASSEMBLY_MAX_W (480 since v2.3.4243; stamped as --band-max-w by resize()) or the
    band's own width when that is less (100%: the band is the world's width
    now), and the nav row fills it, CLOSE at its left edge
    (BottomDashboard navFill) -- the phone's row, centred.  Every tab draws in

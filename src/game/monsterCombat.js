@@ -39,6 +39,7 @@ import {
 import { prog3Live, prog3CatFor, prog3CritPct, prog3CritMult, prog3CritFlat } from '@/data/prog3.js'; /* v2.3.2218 */
 import { BOW_RANGE_PX, toDisplayDamage, staffOrbLife, meleeRangeMult, bossSizeK /* v2.3.3556: a dungeon boss's drawn size */ } from '@/data/gameSystems.js'; /* v2.3.2387: one staff range for all four spawn sites; v2.3.2473: the sight gate's reach; v2.3.2520: the display damage scale; v2.3.2592: the RANGE stat scales the orb's life and the melee envelope */
 import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2200 */, isIntangible /* v2.3.2224 */, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
+import { monsterNewLife } from '@/game/monsterCarry.js'; /* v2.3.4910: the one new-life reset (TRAPS §245) */
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
 import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, rangedAimAngle, bowGripPoint /* v2.3.2543 */, BOW_SPECIAL_QUEUE_MS /* v2.3.2473 */, propSwingHit /* v2.3.2730 */, shotGroundDy /* v2.3.3206: a shot's ground is under the boots */ } from '@/game/combatHelpers.js';
@@ -211,22 +212,16 @@ export function updateMonsterCombat(S, deps) {
               /* Server handles respawns when _serverMonsters active */
               if (S._serverMonsters) return;
               if (Date.now() > m.respawnAt) {
-                m.alive = true;
+                /* v2.3.4910: the one reset for a new life, the same list
+                   the worker's respawn edge uses (game/monsterCarry.js
+                   monsterNewLife): the pile, the stuck arrows, the death
+                   animations' clocks (the render loop waits for
+                   _slimeDeathStart / _snowmanDeathStart == null), the death
+                   sound and a swell.  Health and statuses are this
+                   respawn's own (the worker sends its monsters'). */
+                monsterNewLife(m, MONSTER_VARIANTS);
                 m.curHp = m.hp;
                 m.statuses = {}; /* clear statuses on respawn */
-                m._localRemnantDropped = false;   /* v2.3.2233: a new life drops its own pile */
-                /* Clear hit-marks accumulated in the previous life so a
-                   freshly respawned monster doesn't appear with old
-                   arrows / slashes / burns. */
-                m._stuckArrows = [];
-                m._slashMarks = [];
-                m._burnMarks = [];
-                /* Clear slime + snowman death-anim state so the splat
-                   sprite / shatter sheet fire fresh on the NEXT death
-                   (render-loop guards check _slimeDeathStart == null
-                   and _snowmanDeathStart == null). */
-                m._slimeDeathStart = null;
-                m._snowmanDeathStart = null;
                 m.x = m.spawnX + (Math.random() - 0.5) * 60;
                 m.y = m.spawnY + (Math.random() - 0.5) * 60;
               }

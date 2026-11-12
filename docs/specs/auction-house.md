@@ -719,3 +719,28 @@ rebuild. No prune comes between a restart and its heal.
 - **Kill switch:** `storehealwait: false` (the prune runs as before).
 - Test: `server/test/store-heal-wait.test.mjs` (§2 reproduces the hole with
   the switch off).
+
+## v2.3.4920: a settle that throws is finished in the worker's life
+
+A buy, an accepted bid, a release, a bid or an offer marks its listing first
+(`sale`, `releasing`, `pendBid`, `pendOffer`) and then moves the goods and the
+gold leg by leg. When a leg THREW, the request answered an error and the marker
+stayed on the listing in memory until the next restart: the listing stuck
+"Someone is buying that right now", the seller unpaid. A release that threw
+midway left a listing a buyer could still buy (the buy did not ask about
+`releasing`), so a piece its seller took down was sold anyway.
+
+- **The heal:** the shop's sweep (once a minute, on a shop request) hands any
+  marker older than a minute (`STORE.HEAL_AFTER`) to the rebuild's own
+  `_stConverge`. Every leg is idempotent through its opId, so a leg that
+  landed is not paid twice. The minute tells a request that threw from one
+  still running. At most 20 a pass.
+- **A listing being taken down** is hidden from the shelf and refused to a
+  buy, a bid and an accept (offers already were).
+- **Cost:** no extra write a sale (the heal writes only the legs the throw left
+  undone, what a restart would write).
+- **Kill switch:** `storehealnow: false` (healed at the next restart, as before).
+- Test: `server/test/store-heal-now.test.mjs` (§5 reproduces the hole with the
+  switch off).
+- Not covered (and not stuck): a release that threw after it left the shelf
+  (only its thread or its delete missed) is finished by the next restart.

@@ -14,7 +14,7 @@
  * worker's.
  *
  *   1. a monster takes the Fallen's last HP; the Finder's screen draws the
- *      pile, its 4 logs, a countdown near 120 s, the Fallen's for a minute;
+ *      pile, its 4 salmon, a countdown near 120 s, the Fallen's for a minute;
  *   2. at 36 s it is still drawn there, its countdown in the 80s, and steady
  *      (the last-call pulse is its last ten seconds, not the 30 a monster's
  *      pile gets); the Fallen, back in BroTown, still holds it; the worker
@@ -42,6 +42,13 @@ import * as H from './harness.mjs';
 
 const PHONE = { width: 390, height: 844 };
 const LOGS = 4;
+/* v2.3.4806: the first pile's item.  It was pine logs, but a pine log is a
+   quest objective (data.js: the collect quest's invKey), and a quest
+   objective stays in the bag through death (gathering.js _keptThroughDeath),
+   so a bag of only pine logs leaves no pile at all and step 1b failed on
+   main.  Salmon is plain loot (the second and third piles use trout and
+   minnows), so the pile is made.  `LOGS` keeps its name: the count. */
+const ITEM1 = 'fish_salmon';
 
 /* every death pile this phone holds, and how it is drawn */
 const deathPiles = (P) => P.page.evaluate(() => {
@@ -217,8 +224,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await H.hopTo(B, watch.x, watch.y, { step: 100 });
 
     /* ── 1. A REAL DEATH, AND ITS PILE ON THE OTHER PHONE ── */
-    await H.grant(wsPort, aId, 'item', { invKey: 'wood_pine_log', count: LOGS });
-    await H.waitFor(A, (S) => ((S.rpg && S.rpg.inventory) || {}).wood_pine_log || 0, (n) => n >= LOGS, { label: 'the logs' });
+    await H.grant(wsPort, aId, 'item', { invKey: ITEM1, count: LOGS });
+    await H.waitFor(A, (S) => ((S.rpg && S.rpg.inventory) || {}).fish_salmon || 0, (n) => n >= LOGS, { label: 'the salmon' });
     const before1 = new Set(((await deathPiles(B)) || []).map((p) => p.lootId));
     await H.instrumentWire(A); await H.instrumentWire(B);
     const died1 = await dieAt(A, wsPort, aId, spot);
@@ -244,9 +251,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
         console.log(`    ${k} sent: ` + JSON.stringify(await H.wireCounts(P)));
       }
     }
-    const n1 = await newPile(B, before1, 'wood_pine_log:' + LOGS);
+    const n1 = await newPile(B, before1, ITEM1 + ':' + LOGS);
     const p1 = n1.p;
-    rec.ok('1b the Finder\'s screen draws the pile: 4 logs, a countdown near 120 s, the Fallen\'s alone for about a minute',
+    rec.ok('1b the Finder\'s screen draws the pile: 4 salmon, a countdown near 120 s, the Fallen\'s alone for about a minute',
       !!p1 && p1.drawn && p1.leftMs > 100000 && p1.leftMs <= 120000 && p1.openInMs > 40000 && p1.openInMs <= 60000
         && Array.isArray(p1.recipients) && p1.recipients.includes(aId) && /^(1[01]\d|120)s$/.test(p1.timer || ''),
       p1 || { seen: n1.seen, server: await serverPiles(wsPort), fallen: await H.serverPlayer(wsPort, aId).then((v) => v && { z: v.z || v.zone, x: v.x, y: v.y, inv: v.inventory }).catch(() => null),
@@ -290,11 +297,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 3. THE FALLEN TAKES IT BACK, INSIDE ITS MINUTE ── */
     await H.hopTo(A, p1.x, p1.y + 15, { step: 50 });
-    const logs3 = await H.waitFor(A, (S) => ((S.rpg && S.rpg.inventory) || {}).wood_pine_log || 0, (n) => n >= LOGS, { label: 'the Fallen\'s logs back', timeout: 15000 }).catch(() => 0);
+    const logs3 = await H.waitFor(A, (S) => ((S.rpg && S.rpg.inventory) || {}).fish_salmon || 0, (n) => n >= LOGS, { label: 'the Fallen\'s salmon back', timeout: 15000 }).catch(() => 0);
     const age3 = (await A.page.evaluate(() => Date.now())) - p1.ts;
     const gone3B = await waitPile(B, p1.lootId, (p) => !p, 8000);
     const gone3A = await waitPile(A, p1.lootId, (p) => !p, 8000);
-    rec.ok(`3 the Fallen walks back onto it and takes all 4 logs back inside its minute (${(age3 / 1000).toFixed(0)} s), gone from both phones`,
+    rec.ok(`3 the Fallen walks back onto it and takes all 4 salmon back inside its minute (${(age3 / 1000).toFixed(0)} s), gone from both phones`,
       logs3 === LOGS && age3 < 60000 && gone3B.ok && gone3A.ok, { logs3, age3, onB: gone3B.last, onA: gone3A.last });
 
     /* ── 4. A SECOND DEATH: ONLY ITS OWNER INSIDE ITS MINUTE, THEN ANYONE ── */

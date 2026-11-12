@@ -865,7 +865,10 @@ export const dailyRewardsMethods = {
       if (await this._drRollover(pid, rec, now)) await this._drSave(pid);
     }
     const q = rec.dq.list[i];
-    if (!q || q.d || rec.dq.rr >= QUESTS.REROLLS) return;
+    /* v2.3.4881: a reroll refused (a done quest, none left, nothing to swap
+       to) redraws the window with the true list (a bare return before: the
+       refusal door, TRAPS §284) */
+    if (!q || q.d || rec.dq.rr >= QUESTS.REROLLS) return this._drSendState(pid);
     /* any pool: the reroll is how a player swaps a gather they do not want
        for a fight they do -- the brief's "quests that push play styles" */
     const rand = seeded(hash32(pid + ':' + rec.dq.day + ':rr' + rec.dq.rr));
@@ -876,9 +879,9 @@ export const dailyRewardsMethods = {
     const fits = (id) => this._dqFits(id, others) && this._dqEligible(ps, id);
     let opts = Object.keys(TEMPLATES).filter((id) => id !== q.t && fits(id));
     if (!opts.length && TEMPLATES[q.t].land && fits(q.t)) opts = [q.t];
-    if (!opts.length) return;
+    if (!opts.length) return this._drSendState(pid);
     const nq = this._dqMake(opts[Math.floor(rand() * opts.length) % opts.length], rand, rec.dq.list);
-    if (!nq) return;
+    if (!nq) return this._drSendState(pid);
     rec.dq.list[i] = nq;
     rec.dq.rr += 1;
     await this._drSave(pid);

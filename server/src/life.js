@@ -35,11 +35,12 @@
  * saved (persistence.js names its fields), never on the wire (the peer copy
  * and player_state name theirs).
  *
- * STEP 2 (next, its own version and lower-case live switch): what the door
- * can now do once for every road -- the `kind` column says which rows are a
- * heal, so "no heal lands on a dying body" is one line here, not twelve;
- * `ps.life` can carry its `until` (today `ps.respawnAt`) and be saved, so a
- * close in the dying seconds comes back as the same death (the sweep's V2).
+ * STEP 2a (v2.3.4901, live switch `lifenoheal`): no heal lands on a dying
+ * body -- the `kind` column says which rows are heals, and _hpSet refuses
+ * them while the body is dying (one line here, not twelve).
+ *
+ * STEP 2b (next): `ps.life` can carry its `until` (today `ps.respawnAt`) and
+ * be saved, so a close in the dying seconds comes back as the same death (the sweep's V2).
  * docs/specs/life-door.md has the list.
  *
  * WHAT IS NOT HERE (on purpose):
@@ -48,7 +49,8 @@
  *     blow, the block, the shield and the second wind (hit-door.test §10d
  *     pins its callers); it WRITES the result through `hit` here;
  *   - `ps.respawnAt`, `ps._deathKeepsBag`, `ps._respawnOwed`: the death's own
- *     notes, still where they were (step 2 folds them into `ps.life`).
+ *     notes, still where they were in memory (v2.3.4902 SAVES them as the life
+ *     note below; folding them into `ps.life` itself is its own change).
  *
  * No imports: node tests it directly.
  */
@@ -133,7 +135,54 @@ export const LIFE_ROADS = Object.freeze({
   spar_clone_new: L('alive', 'spar.js _sparSpawn: a clone made'),
   spar_up:        L('alive', 'spar.js _sparStandBack: revived'),
   dev_heal:       L('alive', 'devtools.js _devVitals: heal'),
+  join_dying:     L('dying', 'join.js _handleJoin: the same death, back inside its five seconds (v2.3.4902, the life note)'),
 });
+
+/* ═══ v2.3.4902: STEP 2b -- THE DEATH'S OWN NOTES, SAVED (the life note) ═══
+ * The dying seconds lived in memory only.  A close inside them (the app
+ * swiped away, the signal lost) forgot the death; the join then stood the
+ * player up at once (v2.3.4374 `joinstandup`: the owner's "comes back
+ * standing in BroTown at full health, and nothing is taken twice").  That
+ * stays for a join AFTER the five seconds.  A join INSIDE them -- a blip of
+ * signal, a quick reopen -- now comes back as the SAME death: dying for the
+ * seconds it had left, its card on the phone, then the ordinary respawn.
+ *
+ * The note is its own small record, `life:<pid>` = {v, phase, until,
+ * keepsBag, cause} (ARCHITECTURE-HANDOFF rule 1: never a new field in the
+ * rpg blob; the key is in rule 2's registry).  COST: the death puts it in the
+ * same synchronous run as the death's own record save (one write, rules 8-9:
+ * a restart finds both or neither) -- one row more a death (cost-guard §13's
+ * line is 4); the respawn writes NOTHING more (the note's `until` has passed,
+ * so it reads as nothing; the next death writes over it); the join READS it
+ * only when the stored record is at 0 health, never on an ordinary join.
+ * A note from a newer worker (`v` above LIFE_NOTE.V) is read as nothing and
+ * the join stands up as before; the next death writes over it (a transient
+ * note, no history to keep).  Deleted with the character on a restart.
+ * Kill switch `lifesave: false`: nothing written, nothing read -- the join
+ * stands up as v2.3.4374 did. */
+export const LIFE_NOTE = Object.freeze({ PREFIX: 'life:', V: 1 });
+
+/** The note a death leaves (pure; the test's).  `ps.respawnAt` and
+    `ps._deathKeepsBag` are the in-memory notes it saves. */
+export function lifeNoteOf(ps, cause) {
+  return {
+    v: LIFE_NOTE.V, phase: LIFE.DYING,
+    until: Math.max(0, Math.floor(Number(ps && ps.respawnAt) || 0)),
+    keepsBag: ps && ps._deathKeepsBag ? 1 : 0,
+    cause: typeof cause === 'string' ? cause.slice(0, 64) : 'unknown',
+  };
+}
+
+/** The death a stored note says is still running at `now`, or null: the
+    milliseconds left, whether the bag was kept, and the cause. */
+export function lifeNoteLeft(note, now) {
+  if (!note || typeof note !== 'object' || note.v !== LIFE_NOTE.V || note.phase !== LIFE.DYING) return null;
+  const until = Number(note.until);
+  if (!Number.isFinite(until) || !(until > now)) return null;
+  /* never longer than a death is: a clock that went back, or a hand-edited row */
+  const ms = Math.min(5000, until - now);
+  return { until: now + ms, ms, keptBag: note.keepsBag ? 1 : 0, cause: typeof note.cause === 'string' ? note.cause : 'unknown' };
+}
 
 const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
@@ -160,10 +209,26 @@ export function lifeOf(ps) {
 }
 
 export const lifeMethods = {
+  /** v2.3.4901: step 2a's switch -- on unless `lifenoheal: false` in the live flags */
+  _lifeNoHealOn() {
+    const f = this && this._liveFlags;
+    return !(f && typeof f === 'object' && own(f, 'lifenoheal') && !f.lifenoheal);
+  },
+
   /** A player's health made `v` by `road`.  Step 1: `v` is what the caller's
       own line worked out before the door, written as it is.  Returns it. */
   _hpSet(ps, v, road) {
-    hpRoad(road);
+    const row = hpRoad(road);
+    /* v2.3.4901: STEP 2a -- NO HEAL ON A DYING BODY.  A `heal` row is refused
+       while the body is in its dying seconds: the hp stays as it is and the
+       answer is the hp unchanged.  Most heals already checked (food, the
+       regen tick, a PvP kill's heals); the melee lifesteal and lifeblood's
+       on-kill heal did not, so a monster killed by a blow already in flight
+       as you fell could raise a dying body above 0.  One check here, for
+       every heal row, today's and tomorrow's.  A fill (a level-up, a rest),
+       a load and a respawn are not heals and are not touched.  Off with
+       `lifenoheal: false` in the live flags (the step-1 write, as it is). */
+    if (row.kind === 'heal' && lifeOf(ps) === LIFE.DYING && this._lifeNoHealOn()) return ps.hp;
     ps.hp = v;
     return ps.hp;
   },
@@ -185,5 +250,30 @@ export const lifeMethods = {
   _lifeDeadClaim(ps, v) {
     ps.dead = !!v;
     return ps.dead;
+  },
+
+  /** v2.3.4902: step 2b's switch -- on unless `lifesave: false` in the live flags */
+  _lifeSaveOn() {
+    const f = this && this._liveFlags;
+    return !(f && typeof f === 'object' && own(f, 'lifesave') && !f.lifesave);
+  },
+
+  /** v2.3.4902: a death's note PUT -- called in the same synchronous run as
+      the death's own _saveRpg (no await between), so they are one write. */
+  _lifeNotePut(pid, ps, cause) {
+    if (!pid || !ps || ps._spar || !this._lifeSaveOn()) return;
+    try {
+      const w = this.state.storage.put(LIFE_NOTE.PREFIX + pid, lifeNoteOf(ps, cause));
+      if (w && typeof w.catch === 'function') w.catch(() => {});
+    } catch (e) { /* the death stands without it: the join stands them up, as before */ }
+  },
+
+  /** v2.3.4902: the join's read of a death's note -- only for a stored record
+      at 0 health (an ordinary join reads nothing).  null: no death running. */
+  async _lifeNoteRead(pid, stored, now) {
+    if (!pid || !stored || typeof stored.hp !== 'number' || stored.hp > 0 || !this._lifeSaveOn()) return null;
+    let note = null;
+    try { note = await this.state.storage.get(LIFE_NOTE.PREFIX + pid); } catch (e) { return null; }
+    return lifeNoteLeft(note, now);
   },
 };

@@ -61,9 +61,10 @@
    "under": 3
   }
  ],
- "code": "7cde4234f0f2c21e",
+ "code": "81768c74604b328a",
  "codeFiles": [
   "src/rendering/playerSkins.js",
+  "src/rendering/bodyRecolor.js",
   "src/rendering/garmentConfine.js",
   "src/rendering/spriteScale.js",
   "src/rendering/eyeMask.json",

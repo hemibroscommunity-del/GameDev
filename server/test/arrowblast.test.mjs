@@ -24,11 +24,18 @@
  */
 import { GameRoom } from '../src/index.js';
 import { ARROW_BLAST } from '../src/arrowblast.js';
-/* v2.3.4675: this suite stands players in the retired old lands as a fixture.
-   zonejudge.js R3 closes them to players, so it opens them for this suite
-   only.  On retired-lands.test's FIXTURES list, which only shrinks: move the
-   suite to the world ('wheel') and take it off. */
-GameRoom.prototype._retiredLandsOn = function () { return false; };
+import { WHEEL_ZONE } from '../src/wheelzone.js';
+/* v2.3.4924: plays the world (the Wheel), off retired-lands.test's FIXTURES
+   list: the archer stands where a Frost Ridge monster does, off the safe
+   ground; "a zone you are not standing in" is the farm.  It was the retired
+   meadow (and ember) before. */
+const OFF_SAFE = (() => {
+  const r = new GameRoom({ storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} }, getWebSockets: () => [], acceptWebSocket: () => {} },
+    { LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async () => ({}) }) } });
+  const m = r._ensureZoneMonsters(WHEEL_ZONE).find((q) => q.home === 'frost' && !q.tier);
+  if (r.tickInterval) { clearInterval(r.tickInterval); r.tickInterval = null; }
+  return { x: Math.round(m.x), y: Math.round(m.y) };
+})();
 
 const mockState = {
   storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} },
@@ -49,10 +56,12 @@ async function newRoom() {
   const session = { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() };
   room.sessions.set(ws, session);
   await room.webSocketMessage(ws, JSON.stringify({
-    type: 'join', id: 'p1', name: 'Archer', protocolVersion: 2,
-    data: { x: 500, y: 500, z: 'meadow' },
+    type: 'join', id: 'p1', name: 'Archer', protocolVersion: 2, ws: [1, 5],
+    data: { x: OFF_SAFE.x, y: OFF_SAFE.y, z: WHEEL_ZONE },
   }));
+  if (room.tickInterval) { clearInterval(room.tickInterval); room.tickInterval = null; }
   const ps = room.playerState.p1;
+  ps.z = WHEEL_ZONE; ps.x = OFF_SAFE.x; ps.y = OFF_SAFE.y; ps._zoneEntryGraceUntil = 0;
   /* A bow in the equipped slot -- the gate reads ps.rangedWeapon, which is
      what "owning a bow" means on this side. */
   ps.rangedWeapon = { name: 'Pine Bow', type: 'bow', gearBase: 'ww_pine', quality: 'normal', tierMult: 1 };
@@ -104,13 +113,13 @@ function placeMonsters(room, zone, spots) {
      different answers.  `near` is 100px from the blast and 200 from the
      player; `far` is 260 from the blast, outside the 220 radius. */
   const bx = ps.x + 300, by = ps.y;
-  const mons = placeMonsters(room, 'meadow', [
+  const mons = placeMonsters(room, WHEEL_ZONE, [
     { x: bx + 100, y: by },        /* m0 - inside */
     { x: bx, y: by + 200 },        /* m1 - inside */
     { x: bx + 260, y: by },        /* m2 - OUTSIDE */
     { x: ps.x, y: ps.y },          /* m3 - on the PLAYER, outside the blast */
   ]);
-  room._handleArrowBlast(session, { zone: 'meadow', x: bx, y: by });
+  room._handleArrowBlast(session, { zone: WHEEL_ZONE, x: bx, y: by });
   const lost = mons.map((m) => 5000 - m.hp);
   check('area: everything inside the radius took damage', lost[0] > 0 && lost[1] > 0, lost);
   check('area: nothing outside it did', lost[2] === 0, lost);
@@ -141,21 +150,21 @@ function placeMonsters(room, zone, spots) {
 // ── 4. THE BOUNDS.  THIS IS THE FIRST MESSAGE THAT ASKS US TO TRUST A POINT ──
 {
   const { room, session, ps } = await newRoom();
-  const mons = placeMonsters(room, 'meadow', [{ x: 9000, y: 9000 }]);
+  const mons = placeMonsters(room, WHEEL_ZONE, [{ x: ps.x + 9000, y: ps.y + 9000 }]);
   /* Across the map: the whole reason a coordinate needs bounding. */
-  room._handleArrowBlast(session, { zone: 'meadow', x: 9000, y: 9000 });
+  room._handleArrowBlast(session, { zone: WHEEL_ZONE, x: ps.x + 9000, y: ps.y + 9000 });
   check('bounds: a blast far outside the bow\'s reach is refused', mons[0].hp === 5000, mons[0].hp);
   check('bounds: ...and it says which gate, for the operator',
     (room._arrowBlastRejectsFor('p1') || {}).last === 'out-of-reach', room._arrowBlastRejectsFor('p1'));
 }
 {
   const { room, session, ps } = await newRoom();
-  const mons = placeMonsters(room, 'meadow', [{ x: ps.x + 100, y: ps.y }]);
-  room._handleArrowBlast(session, { zone: 'meadow', x: ps.x + 100, y: ps.y });
+  const mons = placeMonsters(room, WHEEL_ZONE, [{ x: ps.x + 100, y: ps.y }]);
+  room._handleArrowBlast(session, { zone: WHEEL_ZONE, x: ps.x + 100, y: ps.y });
   const first = 5000 - mons[0].hp;
   /* Immediately again: the client's own swipe cooldown is 1500ms, so a legit
      client can never beat this and a modified one is held to the same pace. */
-  room._handleArrowBlast(session, { zone: 'meadow', x: ps.x + 100, y: ps.y });
+  room._handleArrowBlast(session, { zone: WHEEL_ZONE, x: ps.x + 100, y: ps.y });
   check('bounds: a second blast inside the cooldown does nothing',
     first > 0 && (5000 - mons[0].hp) === first, { first, after: 5000 - mons[0].hp });
   check('bounds: ...named as the cooldown',
@@ -164,30 +173,30 @@ function placeMonsters(room, zone, spots) {
 {
   const { room, session, ps } = await newRoom();
   ps.rangedWeapon = null;                       /* no bow owned */
-  const mons = placeMonsters(room, 'meadow', [{ x: ps.x + 100, y: ps.y }]);
-  room._handleArrowBlast(session, { zone: 'meadow', x: ps.x + 100, y: ps.y });
+  const mons = placeMonsters(room, WHEEL_ZONE, [{ x: ps.x + 100, y: ps.y }]);
+  room._handleArrowBlast(session, { zone: WHEEL_ZONE, x: ps.x + 100, y: ps.y });
   check('bounds: no bow, no blast', mons[0].hp === 5000, mons[0].hp);
 }
 {
   const { room, session, ps } = await newRoom();
   ps.dead = true;
-  const mons = placeMonsters(room, 'meadow', [{ x: ps.x + 100, y: ps.y }]);
-  room._handleArrowBlast(session, { zone: 'meadow', x: ps.x + 100, y: ps.y });
+  const mons = placeMonsters(room, WHEEL_ZONE, [{ x: ps.x + 100, y: ps.y }]);
+  room._handleArrowBlast(session, { zone: WHEEL_ZONE, x: ps.x + 100, y: ps.y });
   check('bounds: a dead player does not detonate', mons[0].hp === 5000, mons[0].hp);
 }
 {
   const { room, session, ps } = await newRoom();
-  const mons = placeMonsters(room, 'ember', [{ x: ps.x + 100, y: ps.y }]);
+  const mons = placeMonsters(room, 'farm_home', [{ x: ps.x + 100, y: ps.y }]);
   /* Claiming a zone you are not in: the attacker gate _handleMonsterDamage
      uses, verbatim. */
-  room._handleArrowBlast(session, { zone: 'ember', x: ps.x + 100, y: ps.y });
+  room._handleArrowBlast(session, { zone: 'farm_home', x: ps.x + 100, y: ps.y });
   check('bounds: a blast in a zone you are not standing in is refused',
     mons[0].hp === 5000, mons[0].hp);
 }
 {
   const { room, session, ps } = await newRoom();
-  const mons = placeMonsters(room, 'meadow', [{ x: ps.x + 100, y: ps.y }]);
-  room._handleArrowBlast(session, { zone: 'meadow', x: 'over-there', y: null });
+  const mons = placeMonsters(room, WHEEL_ZONE, [{ x: ps.x + 100, y: ps.y }]);
+  room._handleArrowBlast(session, { zone: WHEEL_ZONE, x: 'over-there', y: null });
   check('bounds: a non-numeric point cannot reach the damage loop',
     mons[0].hp === 5000, mons[0].hp);
 }
@@ -210,9 +219,9 @@ function placeMonsters(room, zone, spots) {
 {
   const { room, session, ps } = await newRoom();
   room._liveFlags = {};                         /* the default: no flags written */
-  const mons = placeMonsters(room, 'meadow', [{ x: ps.x + 100, y: ps.y }]);
+  const mons = placeMonsters(room, WHEEL_ZONE, [{ x: ps.x + 100, y: ps.y }]);
   room.eventBuffer.length = 0;
-  room._handleArrowBlast(session, { zone: 'meadow', x: ps.x + 100, y: ps.y });
+  room._handleArrowBlast(session, { zone: WHEEL_ZONE, x: ps.x + 100, y: ps.y });
   check('retired: with the volley live, a blast deals nothing',
     mons[0].hp === 5000, mons[0].hp);
   check('retired: ...paints nothing on anyone\'s screen',
@@ -226,8 +235,8 @@ function placeMonsters(room, zone, spots) {
 {
   const { room, session, ps } = await newRoom();
   room._liveFlags = { bowvolley: true };        /* written explicitly on: the same */
-  const mons = placeMonsters(room, 'meadow', [{ x: ps.x + 100, y: ps.y }]);
-  room._handleArrowBlast(session, { zone: 'meadow', x: ps.x + 100, y: ps.y });
+  const mons = placeMonsters(room, WHEEL_ZONE, [{ x: ps.x + 100, y: ps.y }]);
+  room._handleArrowBlast(session, { zone: WHEEL_ZONE, x: ps.x + 100, y: ps.y });
   check('retired: an explicit bowvolley:true is the same as the default',
     mons[0].hp === 5000 && (room._arrowBlastRejectsFor('p1') || {}).last === 'retired', mons[0].hp);
 }
@@ -242,15 +251,17 @@ function placeMonsters(room, zone, spots) {
   const ws = fakeWs('k');
   room.sessions.set(ws, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
   await room.webSocketMessage(ws, JSON.stringify({
-    type: 'join', id: 'k1', name: 'Archer', protocolVersion: 2, data: { x: 500, y: 500, z: 'meadow' },
+    type: 'join', id: 'k1', name: 'Archer', protocolVersion: 2, ws: [1, 5], data: { x: OFF_SAFE.x, y: OFF_SAFE.y, z: WHEEL_ZONE },
   }));
+  if (room.tickInterval) { clearInterval(room.tickInterval); room.tickInterval = null; }
   const sync = ws.sent.find((m) => m.type === 'state_sync');
   check('kill switch: bowvolley:false in liveflags un-advertises the volley',
     !!sync && !!sync.caps && sync.caps.bowvolley === false, sync && sync.caps && sync.caps.bowvolley);
   const ps = room.playerState.k1;
+  ps.z = WHEEL_ZONE; ps.x = OFF_SAFE.x; ps.y = OFF_SAFE.y; ps._zoneEntryGraceUntil = 0;
   ps.rangedWeapon = { name: 'Pine Bow', type: 'bow', gearBase: 'ww_pine', quality: 'normal', tierMult: 1 };
-  const mons = placeMonsters(room, 'meadow', [{ x: ps.x + 100, y: ps.y }]);
-  room._handleArrowBlast(room.sessions.get(ws), { zone: 'meadow', x: ps.x + 100, y: ps.y });
+  const mons = placeMonsters(room, WHEEL_ZONE, [{ x: ps.x + 100, y: ps.y }]);
+  room._handleArrowBlast(room.sessions.get(ws), { zone: WHEEL_ZONE, x: ps.x + 100, y: ps.y });
   check('kill switch: ...and the old blast lands again', mons[0].hp < 5000, mons[0].hp);
 }
 {

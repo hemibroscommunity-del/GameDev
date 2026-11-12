@@ -191,8 +191,52 @@ const hitsOn = (m, id) => room.eventBuffer.filter((e) => e.type === 'monster_att
   const ws = readFileSync(new URL('../../src/networking/wsClient.js', import.meta.url), 'utf8');
   const edge = ws.indexOf('if (md.alive && !localM.alive) {');
   const edgeEnd = ws.indexOf('if (!md.alive && localM.alive) {', edge);
+  /* v2.3.4910: through the one new-life reset, which ends the swell (§6) */
   check('5: the tick\'s respawn edge ends a swell the phone still holds',
-    edge > 0 && edgeEnd > edge && /endSwell\(localM\)/.test(ws.slice(edge, edgeEnd)));
+    edge > 0 && edgeEnd > edge && /(endSwell|monsterNewLife)\(localM\b/.test(ws.slice(edge, edgeEnd)));
+}
+
+/* ── 6. v2.3.4910: the phone's ONE reset for a new life (monsterCarry.js
+   monsterNewLife, PHONE_NEW_LIFE; TRAPS §245).  Both the worker's tick edge
+   (wsClient.js) and the phone's own respawn (monsterCombat.js) call it, and
+   neither keeps a hand list of its own beside it. ── */
+{
+  const newLife = carry.monsterNewLife;
+  const LIST = carry.PHONE_NEW_LIFE;
+  check('6: monsterCarry.js has the reset and its list', typeof newLife === 'function' && LIST && typeof LIST === 'object');
+  if (typeof newLife === 'function' && LIST) {
+    const now = 1_000_000;
+    const corpse = {
+      id: 'm', alive: false, archetype: 'skeleton', type: 'skeleton', arch: 'skeleton', _spawnArchetype: 'mummy', spd: 9,
+      _stuckArrows: [{ a: 1 }], _burstFrom: now - 500, _burstUntil: now + 1100, _burstScale: 3,
+      _transformStart: now, _transformHoldMs: 400, _transformFromArch: 'mummy',
+    };
+    for (const k in LIST) corpse[k] = 'last life';
+    newLife(corpse, { mummy: { spd: 3 } });
+    check('6: alive again', corpse.alive === true);
+    const left = Object.keys(LIST).filter((k) => corpse[k] !== LIST[k]);
+    check('6: every field on the list starts the new life fresh', left.length === 0, { left });
+    check('6: no arrows from the last life', Array.isArray(corpse._stuckArrows) && corpse._stuckArrows.length === 0);
+    check('6: no swell from the last life', !corpse._burstUntil && !corpse._burstFrom && !corpse._burstScale);
+    check('6: a mummy that died a skeleton comes back a mummy, at its speed',
+      corpse.archetype === 'mummy' && corpse.type === 'mummy' && corpse.arch === 'mummy' && corpse.spd === 3
+      && corpse._transformStart === null && !corpse._transformHoldMs && corpse._transformFromArch === null);
+    const plain = { id: 'p', alive: false, archetype: 'fodder', type: 'fodder', spd: 5 };
+    newLife(plain, {});
+    check('6: control: a monster with no transform keeps its kind and speed', plain.archetype === 'fodder' && plain.spd === 5 && plain.arch === undefined);
+  }
+  /* both edges call it, and neither clears a listed field by hand */
+  const src = (f) => readFileSync(new URL('../../src/' + f, import.meta.url), 'utf8');
+  const ws = src('networking/wsClient.js');
+  const e1 = ws.indexOf('if (md.alive && !localM.alive) {');
+  const tickEdge = ws.slice(e1, ws.indexOf('if (!md.alive && localM.alive) {', e1));
+  const mc = src('game/monsterCombat.js');
+  const e2 = mc.indexOf('if (Date.now() > m.respawnAt) {');
+  const ownEdge = mc.slice(e2, mc.indexOf('return;', e2));
+  check('6: the worker\'s tick edge calls the one reset', e1 > 0 && /monsterNewLife\(localM\b/.test(tickEdge));
+  check('6: the phone\'s own respawn calls the one reset', e2 > 0 && /monsterNewLife\(m\b/.test(ownEdge));
+  const byHand = Object.keys(LIST || {}).filter((k) => new RegExp('\\.' + k + '\\s*=[^=]').test(tickEdge + ownEdge));
+  check('6: neither edge keeps a hand list beside it', byHand.length === 0, { byHand });
 }
 
 if (failures) { console.log(`\n${failures} FAILED`); process.exit(1); }

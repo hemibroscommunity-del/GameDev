@@ -48,7 +48,7 @@
 
 import { SHOP_ITEMS, DIEGO_SHELF, DISHES, QUEST_REWARDS } from './data.js';   /* v2.3.2063: his staple shelf; v2.3.3130: his shelf is DIEGO_SHELF, and no dish; v2.3.3316: the quests that give the tools */
 import { FARM_SHOP_BASE } from './farm.js';   /* v2.3.3127: seeds, crops and compost */
-import { bagGive, bagSet } from './bag.js'; /* v2.3.4810: the bag door */
+import { bagGive, bagSet, bagTake, bagCount } from './bag.js'; /* v2.3.4810: the bag door; v2.3.4900: + bagTake, bagCount (the sale) */
 
 /* ═══ v2.3.2063: THE THINGS HE ALWAYS HAS ═══
  *
@@ -666,9 +666,15 @@ export const shopMethods = {
     if (!sold) return { ok: false, error: "He's full of those" };
     paid = Math.max(sold * SHOP.MIN_BUY, Math.floor(paid));
 
-    /* v2.3.4810: the bag door.  A SET, not a take: `have` was read before the
-       stock's await above, and step 1 keeps that exactly (docs/specs/bag-door.md) */
-    bagSet(ps.inventory, key, have - sold, 'shop_sell');
+    /* v2.3.4810: the bag door.  v2.3.4900: a TAKE, the count read again HERE.
+       Step 1 wrote `have - sold`, `have` read before the stock's await above:
+       safe only while nothing could change the bag across that await (the
+       Durable Object's input gate holds other messages through a storage
+       read, but not through a cached one, and a later await could open it).
+       Now the bag is asked again after the await, and a stack that shrank
+       meanwhile refuses the sale before a coin moves (docs/specs/bag-door.md). */
+    if (!ps.inventory || bagCount(ps.inventory, key) < sold) return { ok: false, error: "You don't have that many" };
+    bagTake(ps.inventory, key, sold, 'shop_sell');
     this._goldGive(ps, paid, 'shop_sell'); /* v2.3.4670: the gold door */
     stock[key] = held;
     /* ═══ v2.3.3137: THE SELLER'S BAG AND PURSE ARE SAVED WITH THE PILE ═══

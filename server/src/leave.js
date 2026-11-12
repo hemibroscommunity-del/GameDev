@@ -112,12 +112,29 @@ export const leaveMethods = {
   /* THE DOOR.  Returns a promise (the caller may await it); the session is
      out of the map when it settles, whatever happened inside. */
   _playerLeaves(ws, why, opts) {
-    const row = LEAVE_WAYS[why];
+    let row = LEAVE_WAYS[why];
     if (!row) throw new Error('session door: no way of leaving named ' + why);
+    /* v2.3.4921: a refusal reaching a session that HAS joined runs the full
+       leave, so its body does not stay standing (session-door.md "Known
+       leftovers", the sweep's V3).  It takes a race: two joins on one socket,
+       the second waiting on the account check (botsig.js _sigReverifyOk,
+       `botsig_reverify`, off by default) while the first finished -- then the
+       second's refusal dropped the session only, and the first's player stood
+       in the world, walked by every tick, with no socket to close it.
+       `refusejoined: false` in the live flags: the session dropped only. */
+    if (why === 'refused' && this._refuseJoinedOn()) {
+      const s = this.sessions.get(ws);
+      if (s && s.phase === 'joined') row = FULL;
+    }
     const p = this._leaveRun(ws, row, opts || null);
     if (row.dropNow) this.sessions.delete(ws);
     const done = () => { this.sessions.delete(ws); };
     return p.then(done, (e) => { done(); if (row.rethrow) throw e; });
+  },
+
+  _refuseJoinedOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'refusejoined') && !f.refusejoined);
   },
 
   /* The duties, as the close ran them (index.js webSocketClose before

@@ -43,3 +43,13 @@ export function loadWebpOrPng(pngUrl) {
   if (_TWINS && !_TWINS.has(webpUrl.split('?')[0].split('#')[0])) return _img(pngUrl);
   return _img(webpUrl).catch(() => _img(pngUrl));
 }
+
+/** v2.3.4930: the addresses loadWebpOrPng would try for `pngUrl`, in its
+ *  order (the twin first when there is one), for a worker that loads the very
+ *  same file (bodyBakeWorker.js). */
+export function spriteUrls(pngUrl) {
+  const webpUrl = pngUrl.replace(/\.png(\?|#|$)/i, '.webp$1');
+  if (webpUrl === pngUrl) return [pngUrl];
+  if (_TWINS && !_TWINS.has(webpUrl.split('?')[0].split('#')[0])) return [pngUrl];
+  return [webpUrl, pngUrl];
+}

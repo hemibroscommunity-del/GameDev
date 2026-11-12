@@ -143,6 +143,9 @@ export const STORE = {
   MAX_GLOBAL: 2000,           // hard bound on the rebuild's list() (rule 9)
   SWEEP_INTERVAL: 60000,
   SWEEP_MAX: 20,              // expired listings resolved per sweep pass
+  /* v2.3.4920: a marker (sale, release, bid, offer) this old belongs to a
+     request that threw, not one still running (_stHealStuck) */
+  HEAL_AFTER: 60000,
   LOAD_PAGE: 500,             // rebuild page size
   PAGE_DEFAULT: 20,
   PAGE_MAX: 40,
@@ -645,6 +648,7 @@ export const storeMethods = {
     const rows = [];
     for (const rec of this._stIndex.values()) {
       if (rec.sale) continue;                     // mid-settlement: not for sale
+      if (rec.releasing && this._stHealNowOn()) continue;   /* v2.3.4920: being taken down */
       if (wanted && rec.cat !== wanted) continue;
       rows.push(rec);
     }
@@ -884,6 +888,7 @@ export const storeMethods = {
     const rec = this._stIndex.get(String(listingId || ''));
     if (!rec) return { ok: false, settled: true, error: 'That listing is gone' };
     if (rec.sale || rec.pendBid) return { ok: false, settled: true, error: 'Someone is buying that right now' };
+    if (rec.releasing && this._stHealNowOn()) return { ok: false, settled: true, error: 'That listing is being taken down' };   /* v2.3.4920 */
     if (rec.sellerId === buyerId) return { ok: false, settled: true, error: 'That is your own listing' };
     const ps = this.playerState[buyerId];
     if (!ps) return { ok: false, settled: true, error: 'Not in game' };
@@ -948,6 +953,7 @@ export const storeMethods = {
     const rec = this._stIndex.get(String(listingId || ''));
     if (!rec) return { ok: false, settled: true, error: 'That listing is gone' };
     if (rec.sale || rec.pendBid) return { ok: false, settled: true, error: 'Someone is buying that right now' };
+    if (rec.releasing && this._stHealNowOn()) return { ok: false, settled: true, error: 'That listing is being taken down' };   /* v2.3.4920 */
     if (rec.sellerId === bidderId) return { ok: false, settled: true, error: 'That is your own listing' };
     const amt = Math.floor(Number(amount) || 0);
     if (!(amt >= 1 && amt <= STORE.MAX_PRICE)) return { ok: false, settled: true, error: 'Invalid bid' };
@@ -1000,6 +1006,7 @@ export const storeMethods = {
     if (!rec) return { ok: false, settled: true, error: 'That listing is gone' };
     if (rec.sellerId !== sellerId) return { ok: false, settled: true, error: 'Not yours' };
     if (rec.sale || rec.pendBid) return { ok: false, settled: true, error: 'Someone is buying that right now' };
+    if (rec.releasing && this._stHealNowOn()) return { ok: false, settled: true, error: 'That listing is being taken down' };   /* v2.3.4920 */
     if (!rec.topBid) return { ok: false, settled: true, error: 'No bids yet' };
 
     const bid = rec.topBid;
@@ -1136,6 +1143,7 @@ export const storeMethods = {
     const now = Date.now();
     if (this._stLastSweep && now - this._stLastSweep < STORE.SWEEP_INTERVAL) return;
     this._stLastSweep = now;
+    await this._stHealStuck(now);
     const due = [];
     for (const rec of this._stIndex.values()) {
       if (rec.expiresAt <= now && !rec.sale && !rec.pendBid) due.push(rec);
@@ -1180,6 +1188,55 @@ export const storeMethods = {
       if (rec.sale || rec.releasing || this._stIndex.get(String(rec.id)) !== rec) continue;
       await this._soSweepRec(rec, now);
     }
+  },
+
+  /* ═══ v2.3.4920: A SETTLE THAT THROWS IS FINISHED IN THIS WORKER'S LIFE ═══
+     (STATE-MACHINES.md "what is left", V8a.)  A buy, an accepted bid, a
+     release, a bid or an offer marks its listing first (rec.sale,
+     rec.releasing, rec.pendBid, rec.pendOffer), then moves the gold and the
+     goods leg by leg.  When a leg THREW (a storage error, a bad record) the
+     request answered 500 and the marker stayed on the listing in memory: the
+     shelf said "Someone is buying that right now" to everyone, the seller's
+     gold or the bid stayed locked, and only the next restart's rebuild
+     (_stConverge) finished it.  And a release (the seller's cancel, an
+     expiry) that threw midway left a listing a buyer could still buy: the
+     buy path did not ask about `releasing`, so a piece its seller took
+     down was sold anyway.
+     Now the sweep (once a minute, on a shop request) hands a marker older
+     than HEAL_AFTER to the rebuild's own _stConverge, in memory: every leg
+     is idempotent through its opId, so a leg that landed reports `dup` and
+     nobody is paid twice.  The age tells a request that threw from one still
+     running: a settle takes milliseconds.  At most SWEEP_MAX a pass.
+     No extra write a sale: the heal writes only the legs the throw left
+     undone, the same writes a restart would make.  And a listing being
+     released is refused to a buyer, a bidder and a seller's accept, as
+     the offers already were (storeoffer.js).
+     Kill switch: `storehealnow: false` (healed at the next restart, as before). */
+  _stHealNowOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'storehealnow') && !f.storehealnow);
+  },
+  async _stHealStuck(now) {
+    if (!this._stHealNowOn() || !this._stIndex) return 0;
+    const stuck = [];
+    for (const rec of this._stIndex.values()) {
+      if (stuck.length >= STORE.SWEEP_MAX) break;
+      let at = -1;
+      for (const m of [rec.sale, rec.releasing, rec.pendBid, rec.pendOffer]) {
+        if (m && typeof m === 'object') at = Math.max(at, Number(m.at) || 0);
+      }
+      if (at < 0 || now - at < STORE.HEAL_AFTER) continue;
+      stuck.push(rec);
+    }
+    let healed = 0;
+    for (const rec of stuck) {
+      if (this._stIndex.get(String(rec.id)) !== rec) continue;
+      try {
+        if (!(await this._stConverge(rec))) this._stRemoveFromIndex(rec);
+        healed++;
+      } catch (e) { /* still stuck: the next pass, or the restart, tries again */ }
+    }
+    return healed;
   },
 
   /* v2.3.4500: the Auction House's money in one write -- an offer's refund

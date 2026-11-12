@@ -159,6 +159,14 @@ export const lingerMethods = {
     this._codexForget(id);
     const fish = this._fishlogDirtyCopy(id);   /* v2.3.4036: the catches to weigh (fishlog.js) */
     this._fishlogForget(id);
+    /* v2.3.4921: and the shots and hits counted since the last write, as the
+       close takes them (leave.js, accuracy.js _accDirtyCopy).  The close puts
+       a lingering body's counts off to here, and nothing took them: they sat
+       in memory (_accBook, dirty) and a restart before the player's next
+       flush lost them (docs/specs/session-door.md "Known leftovers").  A
+       write only when something is unwritten, the close's cost.
+       `lingeracc: false` in the live flags: left in memory, as before. */
+    const acc = this._lingerAccOn() && this._accDirtyCopy ? this._accDirtyCopy(id) : null;
     /* v2.3.4413: the achievements' cache, as webSocketClose drops it -- a
        lingered player who never came back kept theirs for the worker's life
        (state-machine sweep V3, S1-4).  Kept on a resume (`quiet`): the join
@@ -175,6 +183,11 @@ export const lingerMethods = {
     if (pets) await this._petbookPut(id, pets);
     if (codex) await this._codexPut(id, codex);
     if (fish) await this._fishlogPut(id, fish);
+    if (acc) await this._accPut(id, acc);
+  },
+  _lingerAccOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'lingeracc') && !f.lingeracc);
   },
 
   /* A join from a player whose body is lingering.  'none' (no body: go on),

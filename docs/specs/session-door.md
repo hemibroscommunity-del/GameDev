@@ -52,9 +52,10 @@ The scan in the test fails:
 
 ## Known leftovers (not changed in step 1)
 
-- `_lingerEnd` takes no accuracy copy (`_accDirtyCopy`), which the close
-  does. The counts stay in memory (`_accBook` keeps a dirty entry) rather
-  than being written when the body goes.
+- ~~`_lingerEnd` takes no accuracy copy (`_accDirtyCopy`), which the close
+  does~~: it does since v2.3.4921, and writes it when the body goes (only
+  when something is unwritten; `linger-acc.test`; `lingeracc: false` leaves
+  the counts in memory, as before).
 
 ## The takeover's skipped duties (step 3: checked, none changed)
 
@@ -75,3 +76,7 @@ skipped duty, checked in today's code (v2.3.4830):
 - A join refusal (`refused`) only drops the session. `verify.js`'s refusal
   can also be reached by an already-joined session (`botsig_reverify`, off by
   default); that would leave its body in the world (sweep V3, PLAUSIBLE).
+  Confirmed as a race (two joins on one socket, the second waiting on the
+  account check while the first finished) and closed in v2.3.4921: the door
+  runs the full leave for a `refused` session whose phase is `joined`
+  (`session-door.test` §2; `refusejoined: false` drops the session only).

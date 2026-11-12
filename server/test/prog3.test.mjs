@@ -22,11 +22,11 @@ import { runRpgMigrations, RPG_SCHEMA_VERSION } from '../src/migrations.js';
 import { PROG3, prog3XpRequired, prog3FromLegacy, prog3SplitAtk,
   prog3StatDef, prog3FreshAtk /* v2.3.2512 */ } from '../src/prog3.js';
 import { BLACKSMITH_TIERS } from '../src/data.js';
-/* v2.3.4675: this suite stands players in the retired old lands as a fixture.
-   zonejudge.js R3 closes them to players, so it opens them for this suite
-   only.  On retired-lands.test's FIXTURES list, which only shrinks: move the
-   suite to the world ('wheel') and take it off. */
-GameRoom.prototype._retiredLandsOn = function () { return false; };
+import { WHEEL_ZONE } from '../src/wheelzone.js';
+import { WHEEL_CENTRE } from '../src/wheelspawns.js';
+/* v2.3.4923: plays the world (the Wheel), off retired-lands.test's FIXTURES
+   list; it stood its players in the retired meadow before. */
+const [CX, CY] = WHEEL_CENTRE;
 
 const mockState = {
   storage: {
@@ -127,8 +127,8 @@ const room = new GameRoom(mockState, mockEnv);
 const wsA = fakeWs('pa');
 const baseSession = () => ({ id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
 room.sessions.set(wsA, baseSession());
-const joinData = { x: -100000, y: -100000, z: 'meadow' };
-await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'pa', name: 'Trainee', protocolVersion: 2, data: { ...joinData } }));
+const joinData = { x: CX, y: CY, z: WHEEL_ZONE };
+await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'pa', name: 'Trainee', protocolVersion: 2, ws: [1, 5], data: { ...joinData } }));
 const psA = room.playerState.pa;
 {
   check('fresh join seeds prog3', !!psA.prog3 && psA.prog3.sk.sword.level === 1 && psA.prog3.pool === 0, psA.prog3);
@@ -205,14 +205,14 @@ const psA = room.playerState.pa;
 
   // Hit-time accrual through the real monster_damage handler:
   // melee → sword; v2.3.1710: a special trains its OWN weapon.
-  const m = (room.monsters.meadow || []).find((x) => x.alive);
-  check('harness found a live meadow monster', !!m);
+  const m = room._ensureZoneMonsters(WHEEL_ZONE).find((x) => x.alive && !x.tier);
+  check('harness found a live Wheel monster', !!m);
   if (m) {
     m.hp = 100000; m.maxHp = 100000; m.atkCd = Date.now() + 1e9;
-    psA.x = m.x; psA.y = m.y; psA.z = 'meadow';
+    psA.x = m.x; psA.y = m.y; psA.z = WHEEL_ZONE; psA._zoneEntryGraceUntil = 0;
     const sess = [...room.sessions.values()].find((s) => s.id === 'pa');
     const xpBefore = psA.prog3.sk.sword.xp;
-    room._handleMonsterDamage(sess, { monsterId: m.id, zone: 'meadow', slot: 'melee' });
+    room._handleMonsterDamage(sess, { monsterId: m.id, zone: WHEEL_ZONE, slot: 'melee' });
     check('melee hit trains sword (xp = credited damage)', psA.prog3.sk.sword.xp > xpBefore,
       { before: xpBefore, after: psA.prog3.sk.sword.xp });
     /* ═══ v2.3.1710: A SPECIAL TRAINS THE WEAPON THAT FIRED IT ═══
@@ -228,7 +228,7 @@ const psA = room.playerState.pa;
     const staffBefore = psA.prog3.sk.staff.xp + psA.prog3.sk.staff.level;
     const swordBefore2 = psA.prog3.sk.sword.xp + psA.prog3.sk.sword.level;
     room._pveSpecialPaid(psA, Date.now());   /* v2.3.3334: a special is paid for first (hitproof.js) */
-    room._handleMonsterDamage(sess, { monsterId: m.id, zone: 'meadow', slot: 'melee', special: true });
+    room._handleMonsterDamage(sess, { monsterId: m.id, zone: WHEEL_ZONE, slot: 'melee', special: true });
     check('special hit trains the WEAPON that fired it, not Magic',
       psA.prog3.sk.sword.xp + psA.prog3.sk.sword.level > swordBefore2,
       { before: swordBefore2, after: psA.prog3.sk.sword.xp + psA.prog3.sk.sword.level });
@@ -996,7 +996,7 @@ const psA = room.playerState.pa;
 
   /* ── ELEM RESIST: cuts elemental damage only ── */
   const victim = (pts) => ({
-    hp: 1000, maxHp: 1000, z: 'meadow', agility: 0, _zoneEntryGraceUntil: 0,
+    hp: 1000, maxHp: 1000, z: WHEEL_ZONE, agility: 0, _zoneEntryGraceUntil: 0,
     prog3: {
       sk: {}, alloc: { def: 0, hp: 0, dodge: 0, stam: 0, eres: pts, mana: 0 },
       atk: prog3FreshAtk(), pool: 0, poolBy: { sword: 0, bow: 0, staff: 0 },
@@ -1321,20 +1321,20 @@ const psA = room.playerState.pa;
     const _realNow = Date.now;
     Date.now = () => _t0;
     const mkMover = (movePts) => ({
-      x: 0, y: 0, z: 'meadow', lastMoveAt: _t0 - 1000,
+      x: CX, y: CY, z: WHEEL_ZONE, lastMoveAt: _t0 - 1000,
       _mvBudget: 0, _mvBudgetAt: _t0 - 1000,
       prog3: { sk: { sword: { level: 1 }, bow: { level: 1 }, staff: { level: 1 } }, alloc: { move: movePts }, atk: prog3FreshAtk(), pool: 0 },
     });
     const dist = 500 * 1.3 - 5;   /* inside the widened bound (x1.31 at cap), outside the plain one */
     try {
       room.playerState.mvA = mkMover(75); room.playerState.mvB = mkMover(0);
-      room._handleMove({ id: 'mvA' }, null, { x: dist, y: 0, z: 'meadow' });
-      room._handleMove({ id: 'mvB' }, null, { x: dist, y: 0, z: 'meadow' });
+      room._handleMove({ id: 'mvA' }, null, { x: CX + dist, y: CY, z: WHEEL_ZONE });
+      room._handleMove({ id: 'mvB' }, null, { x: CX + dist, y: CY, z: WHEEL_ZONE });
     } finally { Date.now = _realNow; }
     check('a maxed-move player\'s legitimate move is accepted by the widened bound',
-      room.playerState.mvA.x === dist, { x: room.playerState.mvA.x });
+      room.playerState.mvA.x === CX + dist, { x: room.playerState.mvA.x - CX });
     check('...while the same move from a player with no move points is refused (followed only the plain 500 px)',
-      room.playerState.mvB.x >= 500 - 0.01 && room.playerState.mvB.x < 502, { x: room.playerState.mvB.x });
+      room.playerState.mvB.x - CX >= 500 - 0.01 && room.playerState.mvB.x - CX < 502, { x: room.playerState.mvB.x - CX });
     delete room.playerState.mvA; delete room.playerState.mvB;
   }
 }

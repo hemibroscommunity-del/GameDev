@@ -138,10 +138,14 @@ const cellBytes = (d, W, i, fw, fh) => { const out = new Uint8ClampedArray(fw * 
 /* 4 */
 {
   const gs = readFileSync(join(ROOT, 'src/rendering/gearSheets.js'), 'utf8');
-  const sync = gs.slice(gs.indexOf('export function packTrimmed(img, fw, fh, n) {'), gs.indexOf('export async function packTrimmedSliced'));
+  /* v2.3.4930: the one-go packer's steps are trimPack.js packTrimmedCore (moved verbatim: the body bake's worker packs
+     by them too); gearSheets.js packTrimmed calls it */
+  const tp = readFileSync(join(ROOT, 'src/rendering/trimPack.js'), 'utf8');
+  const sync = /packTrimmedCore\(img, fw, fh, n\)/.test(gs.slice(gs.indexOf('export function packTrimmed(img, fw, fh, n) {'), gs.indexOf('export async function packTrimmedSliced')))
+    ? tp.slice(tp.indexOf('export function packTrimmedCore(')) : '';
   const sliced = gs.slice(gs.indexOf('export async function packTrimmedSliced'), gs.indexOf('/** Draw a gear frame onto a 2D canvas as if it were the WHOLE frame'));
   const uses = (t) => /trimScanCell\(/.test(t) && /trimCellOf\(/.test(t) && /trimLayout\(cells, fw, fh, n\)/.test(t);
-  check('4. both packers follow the same rules (trimRules.js), and neither keeps a copy of them', uses(sync) && uses(sliced) && !/layShelves|snapDn/.test(gs));
+  check('4. both packers follow the same rules (trimRules.js), and neither keeps a copy of them', uses(sync) && uses(sliced) && !/layShelves|snapDn/.test(gs) && !/layShelves|snapDn/.test(tp));
   check('4b. the sliced one reads a cell at a time and asks for its turn between cells and between crops', /await turn\(\);\s*const b = trimScanCell\(rctx\.getImageData\(i \* fw, 0, fw, fh\)\.data, fw, 0, fw, fh\);/.test(sliced)
     && /await turn\(\);\s*ctx\.drawImage\(rd, i \* fw \+ c\.tx, c\.ty, c\.w, c\.h, c\.ax, c\.ay, c\.w, c\.h\);/.test(sliced));
   const zt = readFileSync(join(ROOT, 'src/rendering/zoneTextures.js'), 'utf8');

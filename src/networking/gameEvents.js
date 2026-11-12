@@ -18,7 +18,7 @@ import { shopBus } from '../ui/mobile/shopBus.js';   /* v2.3.2050 */
 import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js'; /* v2.3.2618 */
 import { capeStatusBus } from '../ui/mobile/capeStatusBus.js'; /* v2.3.2118 */
 import { storeToastBus } from '../ui/mobile/storeToastBus.js'; /* v2.3.2476 */
-import { BT_AUDIO, ZONES, TILE, ARENA_CHAMPION_REWARD, ARENA_WIN_REWARD, CLAN_WAR_REWARDS, createDefaultCompStats, recalcDerived, PVP_THREAT_CONSENT_MS, updateZoneDimensions, generateZoneMap, trainDefense, getGuildRank, SKILL_GUILDS } from '@/data/index.js';
+import { BT_AUDIO, ZONES, TILE, CLAN_WAR_REWARDS, createDefaultCompStats, recalcDerived, PVP_THREAT_CONSENT_MS, updateZoneDimensions, generateZoneMap, trainDefense, getGuildRank, SKILL_GUILDS } from '@/data/index.js';
 import { MONSTER_VARIANTS, maybeTransformMonster, isRemnantSkull, xpMultFor } from '@/data/monsterVariants.js';
 import { waterBlowKind } from '@/data/waterAttack.js';   /* v2.3.4355: which water a frog's blow throws */
 import { toDisplayDamage, toDisplayHitDamage, GS_OUTER_RADIUS, GS_FORWARD_ARC } from '@/data/gameSystems.js'; /* v2.3.2520: the display damage scale (§5.8 D1); v2.3.2730: + a peer's swing reach */
@@ -206,6 +206,7 @@ import { monsterShed } from '@/game/monsterNoises.js'; /* v2.3.3340: the mummy's
 import { noteLootDrop, notePileShine } from '@/game/dropLines.js'; /* v2.3.3627: a kill's drops, a line of words each over the monster */
 import { noteHitBlow } from '@/game/deathBlow.js'; /* v2.3.3985: the killing blow's direction and size, for the monster's own death */
 import { t2LeaveDrop, t2IgnoreBusy, t2Hushed } from '@/game/tradeSlot.js'; /* v2.3.4362: the trade window never outlives its server */
+import { sameWire } from '@/game/partyEq.js'; /* v2.3.4884: an identical party_state re-echo does not re-render */
 
 /* v2.3.1107: angle -> 8-way compass, same SECTORS convention as
    entityRenderer (atan2(dy,dx) -> 'east' when dx>0).  Used to reconcile a
@@ -4018,14 +4019,9 @@ export function processGameEvent(type, payload, S, deps) {
               var reward = isWinner ? CLAN_WAR_REWARDS.winner : CLAN_WAR_REWARDS.loser;
               /* v2.3.1125: clan-capable workers pay war rewards
                  server-side via the mail/escrow plumbing (gold arrives
-                 through inbox_delivered + the player_state echo) -- the
-                 local mint below was the other half of the forgeable
-                 peer war.  Legacy workers only. */
-              if (!(S._serverCaps && S._serverCaps.clans) && S.rpg) {
-                S.rpg.coins += reward.gold;
-                S.rpg.achievementPoints = (S.rpg.achievementPoints || 0) + reward.ap;
-                if (S.rpg._compStats) S.rpg._compStats.totalGoldEarned += reward.gold;
-              }
+                 through inbox_delivered + the player_state echo).
+                 v2.3.4912: the page's own mint for a worker without
+                 caps.clans is gone: gold and points are the worker's. */
               pushDmgPopup(S, S.player.x, S.player.y - 50, isWinner ? 'WAR WON!' : 'War lost...', isWinner ? '#f5c542' : '#ff5e6c');
               /* v2.3.3180: the worker pays only the members who fought (made
                  or took a war kill) and are still in the clan, and names them
@@ -4621,61 +4617,11 @@ export function processGameEvent(type, payload, S, deps) {
                   });
                   pushDmgPopup(S, S.player.x, S.player.y - 65, '+' + points + ' war points!', '#ff5e6c');
                 }
-                /* §ARENA — Report arena match result if this was an arena fight.
-                   v2.3.1126: refereeing workers (caps.arena) observe match
-                   outcomes from their own duel resolution -- the client-claimed
-                   winnerId POST below was the collusion hole (two clients could
-                   trade fake wins), and the win/champion self-credit was
-                   phantom.  Legacy workers only; the new flow renders from the
-                   privileged arena_match_result / arena_tournament_complete
-                   events instead. */
-                if (!(S._serverCaps && S._serverCaps.arena) && S._arenaMatch && (payload.from === S._arenaMatch.p1 || payload.from === S._arenaMatch.p2)) {
-                  var match = S._arenaMatch;
-                  var loserId = payload.from; /* the person who sent pvp_confirmed with died=true is confirming WE killed THEM */
-                  /* Actually: pvp_confirmed target=us, from=attacker. If died=true, the attacker got a kill confirmation.
-                     So WE are the killer (target got confirmed as the killer) */
-                  fetch(BT_API_BASE + '/api/arena/result', {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                      tournamentId: S._arenaTournamentId,
-                      matchId: match.id,
-                      winnerId: S.myId,
-                      loserId: match.p1 === S.myId ? match.p2 : match.p1
-                    })
-                  }).then(function (r) {
-                    return r.json();
-                  }).then(function (d) {
-                    if (d.ok) {
-                      var _d$champion;
-                      S._arenaMatch = null;
-                      if (d.tournamentComplete && ((_d$champion = d.champion) === null || _d$champion === void 0 ? void 0 : _d$champion.id) === S.myId) {
-                        /* WE ARE THE CHAMPION */
-                        S.rpg.coins += ARENA_CHAMPION_REWARD.gold;
-                        S.rpg.achievementPoints = (S.rpg.achievementPoints || 0) + ARENA_CHAMPION_REWARD.ap;
-                        if (S.rpg._compStats) S.rpg._compStats.totalGoldEarned += ARENA_CHAMPION_REWARD.gold;
-                        if (!S.rpg._titles) S.rpg._titles = [];
-                        if (!S.rpg._titles.includes('Gladiator')) S.rpg._titles.push('Gladiator');
-                        pushDmgPopup(S, S.player.x, S.player.y - 80, 'GLADIATOR CHAMPION!', '#f5c542');
-                        pushDmgPopup(S, S.player.x, S.player.y - 65, '+' + ARENA_CHAMPION_REWARD.gold + 'G +' + ARENA_CHAMPION_REWARD.ap + 'AP', '#f5c542');
-                        BT_AUDIO.levelUp();
-                        S.screenShake = 10;
-                      } else {
-                        var _d$tournament;
-                        S.rpg.coins += ARENA_WIN_REWARD.gold;
-                        S.rpg.achievementPoints = (S.rpg.achievementPoints || 0) + ARENA_WIN_REWARD.ap;
-                        pushDmgPopup(S, S.player.x, S.player.y - 80, 'Arena win! Round ' + ((_d$tournament = d.tournament) === null || _d$tournament === void 0 ? void 0 : _d$tournament.round), '#3dd497');
-                      }
-                      setRpgState(_objectSpread({}, S.rpg));
-                      try {
-                        localStorage.setItem('bt_rpg', JSON.stringify(S.rpg));
-                      } catch (_unused10) {}
-                      if (d.tournament) setArenaTournament(d.tournament);
-                    }
-                  }).catch(function () {});
-                }
+                /* §ARENA: v2.3.4911, the page's own arena result (a POST
+                   naming its own winner, then crediting itself the win's
+                   gold and points) for a worker without caps.arena is gone.
+                   Every worker referees its own matches (v2.3.1126) and
+                   pays through arena_match_result / arena_tournament_complete. */
               }
               break;
             }
@@ -5196,7 +5142,11 @@ export function processGameEvent(type, payload, S, deps) {
                  {state:'none'} clears it. */
               if (!payload || !setParty) break;
               if (payload.state === 'open' && payload.members) {
-                setParty(payload);
+                /* v2.3.4884: the worker re-sends the roster every ~2 s and most
+                   are identical; handing React the old object back skips the
+                   whole-tree render (every field is compared).  S._party
+                   below stays the fresh one. */
+                setParty(function (prev) { return sameWire(prev, payload) ? prev : payload; });
                 /* v2.3.1185: mirror for the renderer's nameplate party
                    marker (entityRenderer reads S._party per frame --
                    grafted from the competing party build, PR #221). */

@@ -107,14 +107,18 @@ const flush = async () => { for (let i = 0; i < 20; i++) await Promise.resolve()
 /* ── 2. a failed body download: the promise waits through the retries ── */
 {
   const PS = src('src/rendering/playerSkins.js');
-  const code = cut(PS, 'buildBodySheet');
-  check('2a buildBodySheet is found', code.length > 0);
+  /* v2.3.4930: buildBodySheet hands the page's bake (and every retry) to
+     _buildBodySheetPage when the worker is not wanted (bodyBake.js); the
+     download and its retries are that function's */
+  const code = cut(PS, 'buildBodySheet') + '\n' + cut(PS, '_buildBodySheetPage');
+  check('2a buildBodySheet is found', code.length > 0 && /_buildBodySheetPage\(/.test(cut(PS, 'buildBodySheet')));
   const timers = fakeTimers();
   const sheets = {};
   const gaveUp = [];
   const loads = [];
   const ctx = vm.createContext({
     _bodySheets: sheets,
+    bodyWorkerWanted: () => false,
     _BODY_RETRY_MS: [2000, 6000],
     _bodyLater: { gaveUp: (k) => gaveUp.push(k) },
     artForFacing: (a) => a,

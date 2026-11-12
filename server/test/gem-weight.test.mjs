@@ -27,11 +27,11 @@ import * as EL from '../src/elemental.js';
 import { LIVEOPS } from '../src/liveops.js';
 import { MONSTER_HITS } from '../src/hits.js';
 import { PROG3 } from '../src/prog3.js';
-/* v2.3.4675: this suite stands players in the retired old lands as a fixture.
-   zonejudge.js R3 closes them to players, so it opens them for this suite
-   only.  On retired-lands.test's FIXTURES list, which only shrinks: move the
-   suite to the world ('wheel') and take it off. */
-GameRoom.prototype._retiredLandsOn = function () { return false; };
+import { WHEEL_ZONE } from '../src/wheelzone.js';
+/* v2.3.4924: plays the world (the Wheel), off retired-lands.test's FIXTURES
+   list: its monsters are the Wheel's plain ones, parked far away, and the
+   fights happen where a Frost Ridge monster stands, off the safe ground.
+   It was the retired meadow before. */
 
 let NOW = 1_770_000_000_000;
 Date.now = () => NOW;
@@ -72,7 +72,7 @@ const room = new GameRoom(state, mockEnv);
 const baseSession = () => ({ id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
 async function join(ws, id, z) {
   room.sessions.set(ws, baseSession());
-  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: 'T', phrase: 'p-' + id, protocolVersion: 2, data: { x: -100000, y: -100000, z: z || 'meadow' } }));
+  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: 'T', phrase: 'p-' + id, protocolVersion: 2, ws: [1, 5], data: { x: -100000, y: -100000, z: z || WHEEL_ZONE } }));
 }
 const PID = 'bp_gemweight_a';
 const ws = fakeWs();
@@ -85,12 +85,14 @@ const flag = (name, on) => {
   if (on === undefined) delete room._liveFlags[name]; else room._liveFlags[name] = on;
 };
 
-/* The meadow's monsters, made ours: every one far away and asleep until a
-   test puts it somewhere; `place(i, x, y, element)` readies one. */
-const meadow = room.monsters.meadow || [];
+/* The Wheel's monsters, made ours: every one far away and asleep until a
+   test puts it somewhere; `place(i, x, y, element)` readies one of the plain
+   ones (no tier: a boss's numbers are not this suite's). */
+const wheelAll = room._ensureZoneMonsters(WHEEL_ZONE) || [];
+const meadow = wheelAll.filter((m) => !m.tier);
 const FAR = -50000;
 function park() {
-  for (const m of meadow) {
+  for (const m of wheelAll) {
     m.x = FAR; m.y = FAR; m.alive = true; m.hp = 5000; m.maxHp = 5000; m.dmgByPlayer = Object.create(null);
     m.statuses = undefined; m._wanderPausedUntil = NOW + 3600000; m._invulnUntil = 0; m.element = null; m.level = 3;
   }
@@ -101,19 +103,20 @@ function place(i, x, y, element) {
   m.statuses = undefined; m._wanderPausedUntil = NOW + 3600000; m._invulnUntil = 0; m.element = element || null; m.level = 3;
   return m;
 }
-const X0 = 600, Y0 = 600;
+const _frost = meadow.find((m) => m.home === 'frost');
+const X0 = Math.round(_frost.x), Y0 = Math.round(_frost.y);   /* where it stood: off the safe ground */
 const hitEvents = () => room.eventBuffer.filter((e) => e.type === 'monster_hit').map((e) => e.payload);
 /* One melee hit on `m` by the player standing on it, every random draw
    fixed at `r` -- returns the monster_hit events it made. */
 async function hit(m, r, extra) {
   NOW += 1000;
   if (ps()._monHitCad) ps()._monHitCad.clear();
-  ps().x = m.x; ps().y = m.y; ps().z = 'meadow'; ps().activeSlot = 'melee';
+  ps().x = m.x; ps().y = m.y; ps().z = WHEEL_ZONE; ps().activeSlot = 'melee';
   room.eventBuffer.length = 0;
   const real = Math.random;
   Math.random = () => r;
   try {
-    await room.webSocketMessage(ws, JSON.stringify({ type: 'monster_damage', payload: { monsterId: m.id, zone: 'meadow', slot: 'melee', ...(extra || {}) } }));
+    await room.webSocketMessage(ws, JSON.stringify({ type: 'monster_damage', payload: { monsterId: m.id, zone: WHEEL_ZONE, slot: 'melee', ...(extra || {}) } }));
   } finally { Math.random = real; }
   return hitEvents();
 }
@@ -227,7 +230,7 @@ park();
 {
   ps().weapon = sword({ element1: 'flame', tier: 'elemental' });
   ps().activeSlot = 'melee';
-  ps().x = X0; ps().y = Y0; ps().z = 'meadow';
+  ps().x = X0; ps().y = Y0; ps().z = WHEEL_ZONE;
   ps().mana = ps().maxMana = 5000;
   ps()._burstCdUntil = 0;
   const up = place(0, X0 + 10, Y0, 'frost');
@@ -263,10 +266,10 @@ park();
     m.statuses = undefined;
     if (soaked) EL.applyElementStatus(m, 'water', PID, 0, NOW, 1);
     p.hp = p.maxHp = 100000; p.dying = false; p.dead = false; p.blocking = false; p._blockUp = false;
-    p.x = X0 + 30; p.y = Y0; p.z = 'meadow';
+    p.x = X0 + 30; p.y = Y0; p.z = WHEEL_ZONE;
     room.eventBuffer.length = 0;
     NOW += 5000;
-    room._monsterHit({ src, zoneId: 'meadow', pid: PID, m, mid: m.id, lvl: m.level, raw: 100, at: { x: m.x, y: m.y }, now: NOW });
+    room._monsterHit({ src, zoneId: WHEEL_ZONE, pid: PID, m, mid: m.id, lvl: m.level, raw: 100, at: { x: m.x, y: m.y }, now: NOW });
     const e = room.eventBuffer.find((x) => x.type === 'monster_attack');
     return e ? e.payload.dmg : null;
   };
@@ -290,7 +293,7 @@ park();
   NOW += 5000;
   p.hp = 1000;
   const big = Math.ceil(1000 * railRow.rail / 0.8) + 50;
-  room._monsterHit({ src: 'kit', zoneId: 'meadow', pid: PID, m, mid: m.id, lvl: m.level, raw: big, at: { x: m.x, y: m.y }, now: NOW });
+  room._monsterHit({ src: 'kit', zoneId: WHEEL_ZONE, pid: PID, m, mid: m.id, lvl: m.level, raw: big, at: { x: m.x, y: m.y }, now: NOW });
   const ek = room.eventBuffer.find((x) => x.type === 'monster_attack');
   check('...softened first, then the rail: a soaked slam past the rail is still railed at ' + Math.floor(1000 * railRow.rail),
     !!ek && ek.payload.dmg === Math.floor(1000 * railRow.rail), ek && ek.payload);
@@ -379,12 +382,12 @@ park();
   ps().weapon = sword();
   NOW += 1000;
   if (ps()._monHitCad) ps()._monHitCad.clear();
-  ps().x = X0 - 5; ps().y = Y0; ps().z = 'meadow';
+  ps().x = X0 - 5; ps().y = Y0; ps().z = WHEEL_ZONE;
   room.eventBuffer.length = 0;
   const realR = Math.random;
   Math.random = () => R;
   try {
-    await room.webSocketMessage(ws, JSON.stringify({ type: 'monster_damage', payload: { monsterId: m3.id, zone: 'meadow', slot: 'melee' } }));
+    await room.webSocketMessage(ws, JSON.stringify({ type: 'monster_damage', payload: { monsterId: m3.id, zone: WHEEL_ZONE, slot: 'melee' } }));
   } finally { Math.random = realR; }
   const sp3 = hitEvents().find((e) => e.spark);
   check('the spark leaps from where the hit landed, before its shove (the struck one shoved ' + Math.round(m3.x - X0) + ' px away; the neighbour 140 px behind still caught it)',
