@@ -133,8 +133,21 @@ async function dieAt(P, wsPort, id, spot, ms = 90000) {
     return false;
   };
   await H.devOp(wsPort, 'vitals', id, { heal: true, god: true, godMinutes: 4 });
-  await H.hopTo(P, spot.x, spot.y, { step: 100 });
-  await P.page.waitForTimeout(1200);
+  /* v2.3.4954: at the spot on the WORKER before the last HP goes: a run's
+     worker held the Fallen 250 px short of it, toward town, the whole 90 s
+     (full health every reading, the goblin 233 px off) -- re-hopped until
+     the worker has them there, as the page's walk would be */
+  let atSpot = false;
+  for (let k = 0; k < 6 && !atSpot; k++) {
+    await H.hopTo(P, spot.x, spot.y, { step: 100 });
+    await P.page.waitForTimeout(1200);
+    for (let w = 0; w < 10 && !atSpot; w++) {
+      const sp = await H.serverPlayer(wsPort, id).catch(() => null);
+      atSpot = !!sp && Math.hypot(sp.x - spot.x, sp.y - spot.y) <= 60;
+      if (!atSpot) await P.page.waitForTimeout(500);
+    }
+    if (!atSpot) await H.hopTo(P, spot.x + 30, spot.y - 30, { step: 60 });
+  }
   await H.devOp(wsPort, 'vitals', id, { heal: false, hp: 1, god: false });
   const t0 = Date.now();
   let lowAt = Date.now(), g = null, hp = null, noGob = 0;
@@ -183,7 +196,8 @@ async function dieAt(P, wsPort, id, spot, ms = 90000) {
       if (dead || await died()) { dead = true; await watch; dieAt.last = null; return true; }
       const sp = await H.serverPlayer(wsPort, id).catch(() => null);
       hp = sp && sp.hp;
-      (dieAt.trace = dieAt.trace || []).push({ s: Math.round((Date.now() - t0) / 1000), hp, x: sp && Math.round(sp.x), y: sp && Math.round(sp.y), z: sp && (sp.z || sp.zone), g: g && Math.round(Math.hypot(g.x - (sp ? sp.x : 0), g.y - (sp ? sp.y : 0))) });
+      const pg = await P.page.evaluate(() => { const S = window._gameState.current; return { x: Math.round(S.player.x), y: Math.round(S.player.y), net: String(S._realtimeStatus || '') }; }).catch(() => null);
+      (dieAt.trace = dieAt.trace || []).push({ s: Math.round((Date.now() - t0) / 1000), hp, pg, atSpot, x: sp && Math.round(sp.x), y: sp && Math.round(sp.y), z: sp && (sp.z || sp.zone), g: g && Math.round(Math.hypot(g.x - (sp ? sp.x : 0), g.y - (sp ? sp.y : 0))) });
       if (typeof hp === 'number' && hp > 1) await H.devOp(wsPort, 'vitals', id, { heal: false, hp: 1, god: false });
     }
   }
