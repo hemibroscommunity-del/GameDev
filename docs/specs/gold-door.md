@@ -128,17 +128,38 @@ purse. Now it moves 10.
 its step-1 sum (`GOLD_SUMS`, the `sum` column) at once. The column stays until
 this has run a while; deleting it is then a small change of its own.
 
+## Step 3, first part (v2.3.4903): the gold log
+
+Every move through the door is noted on a short list per purse: when, the
+road, how much it moved (`d`), and the purse after (`c`). The last 32
+(`GOLD_LOG.KEEP`) are kept, the oldest dropped.
+
+- **No running cost.** The log is in memory only: no storage write, no row,
+  no message. It is a `WeakMap` keyed by the purse object itself, so it is
+  never a field on the purse that a save could carry (handoff rule 1). It
+  goes when the player's state goes (a rejoin starts a new list), and a
+  stored record's notes go with that record.
+- **Reading it.** `GET /dev/goldlog?id=<pid>` (the admin routes,
+  devtools.js): a live player's purse and its log, oldest first. It is for
+  spotting duplicated gold or a cheat while it is happening. Read-only.
+- **The switch.** `goldlog: false` in the live flags notes nothing (the gold
+  still moves).
+- **Proof.** `gold-door.test` §7: every verb is noted, nothing is written to
+  storage, nothing new appears on the purse, the cap, a read is a copy, the
+  switch, and the admin read (with a 404 for `__proto__`).
+
 ## Next steps (each its own version, with a live switch)
 
 1. ~~One sum~~: done, step 2 above.
 2. **What the door can now do once for every road**:
-   - a per-player record of where gold came from and went (a bounded list in
-     memory first: no storage writes, so no running cost), for spotting
-     duplicated gold and cheats;
+   - ~~a per-player record of where gold came from and went~~: done in memory,
+     step 3 above. Keeping it across a rejoin or a deploy would cost a write,
+     so it waits for the owner's word;
    - the fight lock checked at the door too, for roads no message drives (a
      settlement), beside the router's table (`fightlock.js`);
    - test mode, where a road should treat the owner's characters differently.
-3. **The other doors**, the same way: the bag, health and death, the session.
+3. **The other doors**, the same way: the bag (its step 2), health and
+   death (its steps 2a and 2b), the session.
 
 ## Adding a way to change gold
 

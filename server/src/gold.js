@@ -44,8 +44,20 @@
  * step-1 sum (GOLD_SUMS, the `sum` column), which stays until this has run a
  * while and the column can be deleted.
  *
- * STEP 3: what the door can now do once for every road -- the log, the fight
- * lock, test mode.  docs/specs/gold-door.md has the list.
+ * ═══ v2.3.4903: STEP 3 (first part) -- THE GOLD LOG ═══
+ * Every move through the door is noted on a short list per purse: when, the
+ * road, how much it moved, the purse after (GOLD_LOG below).  MEMORY ONLY --
+ * no storage write, so no running cost (the gold door's own condition for
+ * step 3): a WeakMap keyed by the purse object itself, so it never rides a
+ * save (a stored record is written whole elsewhere, and rule 1 keeps the
+ * rpg blob's field list fixed), goes when the player's state goes, and a
+ * stored record's notes go with that record.  The last GOLD_LOG.KEEP moves a
+ * purse.  Read by the owner's `GET /dev/goldlog?id=` (devtools.js), for
+ * spotting duplicated gold or a cheat while it is happening.  Off with
+ * `goldlog: false` in the live flags (nothing noted).
+ *
+ * STEP 3, the rest: the fight lock at the door, test mode.
+ * docs/specs/gold-door.md has the list.
  *
  * WHAT IS NOT HERE (on purpose):
  *   - the gold nuggets and bars (amulet.js): ingredients, not money;
@@ -189,7 +201,35 @@ export function goldAfter(cur, n, road) {
   return GOLD_SUMS[row.sum](cur, n, row.dir === 'take');
 }
 
+/* v2.3.4903: the gold log (step 3).  Keyed by the purse object: never saved,
+   gone with it.  KEEP moves a purse, the oldest dropped. */
+export const GOLD_LOG = Object.freeze({ KEEP: 32 });
+const goldLogs = new WeakMap();
+function goldLogNote(rec, road, before, after, now) {
+  if (!rec || typeof rec !== 'object') return;
+  let list = goldLogs.get(rec);
+  if (!list) { list = []; goldLogs.set(rec, list); }
+  const b = Number(before), a = Number(after);
+  list.push({ at: now, road, d: Number.isFinite(a) && Number.isFinite(b) ? a - b : null, c: Number.isFinite(a) ? a : null });
+  if (list.length > GOLD_LOG.KEEP) list.splice(0, list.length - GOLD_LOG.KEEP);
+}
+/** The log of a purse, oldest first (a copy), or []. */
+export function goldLogOf(rec) {
+  const list = rec && typeof rec === 'object' ? goldLogs.get(rec) : null;
+  return list ? list.map((e) => ({ ...e })) : [];
+}
+
 export const goldMethods = {
+  /** v2.3.4903: step 3's log switch -- on unless `goldlog: false` in the live flags */
+  _goldLogOn() {
+    const f = this && this._liveFlags;
+    return !(f && typeof f === 'object' && own(f, 'goldlog') && !f.goldlog);
+  },
+  _goldLogged(rec, road, before) {
+    if (this._goldLogOn()) goldLogNote(rec, road, before, rec.coins, Date.now());
+    return rec.coins;
+  },
+
   /** v2.3.4803: step 2's switch -- on unless `goldonesum: false` in the live flags */
   _goldOneSumOn() {
     const f = this && this._liveFlags;
@@ -199,22 +239,25 @@ export const goldMethods = {
   /** Gold INTO `rec`'s purse (a live player's state or a stored record) by `road`. Returns the purse. */
   _goldGive(rec, n, road) {
     const row = roadFor(road, 'give');
+    const before = rec.coins;
     rec.coins = this._goldOneSumOn() ? goldOneSum(rec.coins, n, false) : GOLD_SUMS[row.sum](rec.coins, n, false);   /* v2.3.4803 */
-    return rec.coins;
+    return this._goldLogged(rec, road, before);   /* v2.3.4903 */
   },
 
   /** Gold OUT of `rec`'s purse by `road`.  The caller has already checked the
       purse holds it (step 1: as each did before the door).  Returns the purse. */
   _goldTake(rec, n, road) {
     const row = roadFor(road, 'take');
+    const before = rec.coins;
     rec.coins = this._goldOneSumOn() ? goldOneSum(rec.coins, n, true) : GOLD_SUMS[row.sum](rec.coins, n, true);   /* v2.3.4803 */
-    return rec.coins;
+    return this._goldLogged(rec, road, before);   /* v2.3.4903 */
   },
 
   /** The purse MADE `v` by `road`: a character loaded, or a purse lost whole. */
   _goldSet(rec, v, road) {
     roadFor(road, 'set');
+    const before = rec.coins;
     rec.coins = this._goldOneSumOn() ? wholeGold(v) : v;   /* v2.3.4803: a broken purse heals as it loads */
-    return rec.coins;
+    return this._goldLogged(rec, road, before);   /* v2.3.4903 */
   },
 };
