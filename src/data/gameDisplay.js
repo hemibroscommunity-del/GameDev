@@ -26,6 +26,7 @@ import { EVENT_SOUNDS } from './eventSounds.js';   /* v2.3.3343: each creature i
 import { OWNER_SOUNDS, OWNER_LOOPS } from './ownerSoundClips.js';   /* v2.3.3462: the owner's recordings for the sounds still needed */
 import { foldToMono } from './soundFold.js';   /* v2.3.3706: a stereo sound whose two sides are one is kept as one */
 import { PINNED as SFX_PINNED, PREFETCH as SFX_PREFETCH, BUDGET_MB as SFX_BUDGET_MB, COLD_MS as SFX_COLD_MS, LATE_MS as SFX_LATE_MS, familyOf as sfxFamilyOf, makeLru as makeSfxLru, parseSfxCache } from './sfxCache.js';   /* v2.3.3714: decoded sound held only while it is needed (on by default since v2.3.3735; `?sfxcache=0` off) */
+import { AHEAD as SFX_AHEAD_KEYS, AHEAD_WHEN as SFX_AHEAD_WHEN, parseSfxAhead } from './sfxCache.js';   /* v2.3.5006: the four slow decodes decoded ahead, not pinned (`?sfxahead=0` pins them) */
 import { makeVoiceCap, parseVoiceCap, exempt as voiceExempt } from './voiceCap.js';   /* v2.3.3727: a crowd of one sound starts as a few (`?voicecap`) */
 import { FARM_GATE, FARM_SPOTS } from './farmLayout.js';   /* v2.3.3136: the farm you walk */
 import { feelSynth, feelBuildDemo } from './weaponFeelSound.js';   /* v2.3.4800: the weapon feel's sounds, synthesised (no files) */
@@ -3381,10 +3382,23 @@ BT_AUDIO.LOW_RATE = 24000;
    sound-cues §11g holds every one of these files at 24 kHz on disk: one
    replaced by a 48 kHz file fails it instead of losing its top half. */
 BT_AUDIO.FILE_24K_NOISE = ['footstep-v2', 'footstep-v3', 'pan-sizzle', 'axe-chop', 'sword-swing-3', 'special-swipe'];
+/* v2.3.5006: and the four monster growls, whose files are 48 kHz with
+   nothing above 12 kHz -- three cut by tools/audio/cut_monster_noises.py
+   from 24 kHz recordings (the goblin's, the skeleton's, the snowman's), the
+   slime's from a 48 kHz one with its top 52 dB under its loudest moment
+   (measured from the files' own samples, 2026-11-12: the share above 12 kHz
+   8.8e-11, 4.7e-7, 2.9e-6, 8.6e-11).  Decoded at 24 kHz (the
+   OfflineAudioContext resamples them once, losing nothing a 24 kHz buffer
+   cannot hold) they are half the memory, ~0.36 MB, and play as the owner's
+   24 kHz voices do.  They stay pinned (a fight's sounds).  sound-cues §11g1
+   holds each file to the bytes that were measured: a re-cut file is measured
+   again before it joins. */
+BT_AUDIO.BAND_12K_NOISE = ['noise-goblin-rawr', 'noise-skeleton-rattle', 'noise-slime-bounce', 'noise-snowman-snarl'];
 BT_AUDIO.LOW_RATE_SFX = (function () {
   var o = Object.create(null);
   for (var k in OWNER_SOUNDS) if (OWNER_SOUNDS[k] && OWNER_SOUNDS[k].low) o[k] = true;
   for (var i = 0; i < BT_AUDIO.FILE_24K_NOISE.length; i++) o[BT_AUDIO.FILE_24K_NOISE[i]] = true;
+  for (var j = 0; j < BT_AUDIO.BAND_12K_NOISE.length; j++) o[BT_AUDIO.BAND_12K_NOISE[j]] = true;
   return o;
 })();
 BT_AUDIO._lowRate = function (key) {
@@ -4448,12 +4462,23 @@ try {
 } catch (e) { /* on, at the budget */ }
 BT_AUDIO._sfxPinned = Object.create(null);
 for (var _sp = 0; _sp < SFX_PINNED.length; _sp++) BT_AUDIO._sfxPinned[SFX_PINNED[_sp]] = true;
+/* v2.3.5006: the four slow decodes (the river, the reel, the level-up, the
+   win: data/sfxCache.js AHEAD) are decoded ahead of their play, not pinned;
+   `?sfxahead=0` pins them again for one phone (the game as it was).
+   _sfxAheadSet names them while they are not pinned (their waits counted). */
+BT_AUDIO.SFX_AHEAD = true;
+try { BT_AUDIO.SFX_AHEAD = parseSfxAhead(typeof location !== 'undefined' ? location.search || '' : ''); } catch (e) { /* on */ }
+BT_AUDIO._sfxAheadSet = Object.create(null);
+for (var _sa = 0; _sa < SFX_AHEAD_KEYS.length; _sa++) {
+  if (BT_AUDIO.SFX_AHEAD) BT_AUDIO._sfxAheadSet[SFX_AHEAD_KEYS[_sa]] = true;
+  else BT_AUDIO._sfxPinned[SFX_AHEAD_KEYS[_sa]] = true;
+}
 BT_AUDIO._sfxLru = null;   /* made on first use: tag -> decoded bytes */
 BT_AUDIO._sfxBytes = Object.create(null);   /* url -> the file (a Blob) */
 BT_AUDIO._sfxBytesP = Object.create(null);  /* url -> its fetch in flight */
 BT_AUDIO._sfxStats = null;
 BT_AUDIO._sfxStat = function () {
-  return this._sfxStats || (this._sfxStats = { cold: 0, late: 0, failed: 0, evicted: 0, warmed: 0, coldMs: Object.create(null), played: Object.create(null), lateKeys: [] });
+  return this._sfxStats || (this._sfxStats = { cold: 0, late: 0, failed: 0, evicted: 0, warmed: 0, coldMs: Object.create(null), played: Object.create(null), lateKeys: [], aheadWaits: 0, aheadLate: [] });
 };
 /* Keep a file's bytes, not its decode.  A Blob: the browser holds it outside
    the page's heap and its raw buffers (the memory check's `buffers` line), and
@@ -4525,6 +4550,32 @@ BT_AUDIO.sfxPrefetch = function (keys, fill) {
     this.loadSample(k, url);
   }
 };
+/* ═══ v2.3.5006: A SOUND WHOSE PLAY IS SEEN COMING, DECODED AHEAD ═══
+   `what`: a moment of data/sfxCache.js AHEAD_WHEN ('water', 'fishSpot',
+   'cast', 'levelNear', 'flip'), or a sound's key (or keys) when the caller
+   knows exactly which one comes.  Each not decoded is decoded now (off the
+   page's thread: decodeAudioData answers later); each decoded is marked
+   played, so the cache lets go of others first while its moment is near.
+   Nothing with the cache off, or for a pinned sound (`?sfxahead=0`). */
+BT_AUDIO.sfxAhead = function (what) {
+  if (!this.SFX_CACHE || !this.ctx || !what) return;
+  var keys = (typeof what === 'string' && Object.prototype.hasOwnProperty.call(SFX_AHEAD_WHEN, what)) ? SFX_AHEAD_WHEN[what] : what;
+  if (typeof keys === 'string') keys = [keys];
+  for (var i = 0; i < keys.length; i++) {
+    var k = keys[i];
+    if (this._sfxPinned[k] || !this.SFX_MANIFEST[k]) continue;
+    if (this._samples[k]) this._sfxTouch(k);
+    else this.sfxPrefetch(k);
+  }
+};
+/* a sound decoded ahead that was asked for before its decode was in: how long
+   it waited (its ahead missed), for window.__btSfxCache().aheadLate */
+BT_AUDIO._sfxAheadWait = function (key, ms) {
+  if (!this._sfxAheadSet[key]) return;
+  var st = this._sfxStat();
+  st.aheadWaits++;
+  if (st.aheadLate.length < 20) st.aheadLate.push({ key: key, ms: Math.round(ms) });
+};
 /* A sound not decoded, asked to play: decoded now and played the moment it
    is ready.  Its gain is made and wired at once, so a caller that fades it or
    stops it (the handle's gain and src) does so as it would a played one; the
@@ -4546,6 +4597,7 @@ BT_AUDIO._playCold = function (key, url, opts) {
     var prev = st.coldMs[key];
     st.coldMs[key] = prev == null ? Math.round(ms) : Math.max(prev, Math.round(ms));
     var buf = self._samples[key];
+    if (buf) self._sfxAheadWait(key, ms);   /* v2.3.5006: one decoded ahead that was not ready */
     if (!buf || h.stopped || self.muted || self.ctx !== ctx || ms > self.SFX_LATE_MS) {
       try { g.disconnect(); } catch (e) { /* gone */ }
       if (h.stopped || self.muted) return;
@@ -4590,7 +4642,10 @@ if (typeof window !== 'undefined') {
       pinnedMB: mb(pin), cachedMB: mb(held), lruMB: A._sfxLru ? mb(A._sfxLru.bytes) : 0, filesMB: mb(bytes), files: Object.keys(A._sfxBytes).length,
       cold: st.cold, late: st.late, failed: st.failed, evicted: st.evicted, warmed: st.warmed,
       coldMs: Object.assign({}, st.coldMs), played: Object.assign({}, st.played), lateKeys: st.lateKeys.slice(),
-      pinned: SFX_PINNED.slice(),
+      pinned: Object.keys(A._sfxPinned),   /* v2.3.5006: as this page has it (`?sfxahead=0` adds the four) */
+      /* v2.3.5006: the four decoded ahead (none with `?sfxahead=0`), and each
+         time one was asked for before its decode was in */
+      ahead: Object.keys(A._sfxAheadSet), aheadWaits: st.aheadWaits, aheadLate: st.aheadLate.slice(),
     };
   };
 }
@@ -4879,7 +4934,13 @@ BT_AUDIO.startSfxLoop = function (key, vol, bus) {
   if (this.SFX_CACHE && !this._sfxLoopSeen) this._sfxLoopSeen = Object.create(null);
   if (this.SFX_CACHE && !this._sfxLoopSeen[key]) { this._sfxLoopSeen[key] = true; var fam = sfxFamilyOf(key); if (fam.length) this.sfxPrefetch(fam); }
   if (buf && this.SFX_CACHE) this._sfxTouch(key);
-  if (!buf) { var url = this.SFX_MANIFEST[key]; if (url) this.loadSample(key, url); return; }
+  if (!buf) {
+    /* v2.3.5006: a loop decoded ahead (the river, the reel) whose ahead
+       missed: how long it waits is counted when it starts */
+    if (this._sfxAheadSet[key]) { if (!this._sfxLoopWait) this._sfxLoopWait = Object.create(null); if (!this._sfxLoopWait[key]) this._sfxLoopWait[key] = this._sfxNow(); }
+    var url = this.SFX_MANIFEST[key]; if (url) this.loadSample(key, url); return;
+  }
+  if (this._sfxLoopWait && this._sfxLoopWait[key]) { this._sfxAheadWait(key, this._sfxNow() - this._sfxLoopWait[key]); delete this._sfxLoopWait[key]; }
   try {
     var src = this.ctx.createBufferSource();
     src.buffer = buf;
@@ -4933,6 +4994,7 @@ BT_AUDIO._loopOverEdges = function (src, buf) {
 };
 BT_AUDIO.stopSfxLoop = function (key) {
   if (this._gateLoops) delete this._gateLoops[key];   /* v2.3.3800: one waiting for the gate is called off too */
+  if (this._sfxLoopWait && this._sfxLoopWait[key]) delete this._sfxLoopWait[key];   /* v2.3.5006: and a wait for its decode */
   var l = this._sfxLoops && this._sfxLoops[key];
   if (!l) return;
   delete this._sfxLoops[key];

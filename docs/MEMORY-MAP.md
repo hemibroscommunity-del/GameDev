@@ -43,7 +43,7 @@ This page is the map going forward.
 | `artCache` | pictures loaded from files, decoded in the page | 102 | **66** (M2) | ~10 | **M2** (v2.3.3715, landed): a picture held once, on the chip; only those read back on the CPU keep a page copy, as colour numbers |
 | `gpu` | textures on the graphics chip | 95 | **75-83** (M2) | ~55 | **M2**: colour numbers on the chip (a quarter of each picture); **M3** and its phase 2: characters from shared sheets |
 | `canvases` | pictures the game draws itself | 50 | **27** (M2) | ~15 | **M3** and phase 2: a look is a palette row, not a copy of every sheet |
-| `sound` | decoded sound effects | 27 | **24** (M1) | ~10 | **M1** (v2.3.3714, landed): decoded only while needed, a capped cache, the fight's sounds pinned |
+| `sound` | decoded sound effects | 27 | **24** (M1); ~17.5 expected (v2.3.5006, to measure) | ~10 | **M1** (v2.3.3714, landed): decoded only while needed, a capped cache, the fight's sounds pinned; v2.3.4997 and v2.3.5006: noise at 24 kHz, four slow decodes decoded ahead instead of pinned, silent tails cut (`docs/specs/sfx-cache.md`) |
 | `heap` | the page's JavaScript objects | 33 | 33 | ~28 | **M4** (v2.3.3717): trim what the page keeps without needing it |
 | `buffers` | raw buffers and the script's text | 20 | 21 | ~15 | **M4**: rarely opened parts of the game loaded when opened |
 | `workers` | the ground builder | 30 | 28.5 | ~15 | **M4**: its caches sized to what a walk needs |
@@ -149,9 +149,9 @@ The plan (M3, v2.3.3716, then its phase 2):
 
 | a new... | form | module | one more costs | line |
 |---|---|---|---|---|
-| sound effect | `SFX_MANIFEST`; after M1, its compressed file is kept, it is decoded on first play into a capped cache, and pinned (decoded for good) only if a fight, a walk or a tap plays it quickly and often | `gameDisplay.js` BT_AUDIO; M1's `sfxCache.js` | today, its decoded size for good (a second of mono at 48 kHz is ~190 KB); after M1, a few per cent of that until played | `sound` |
+| sound effect | `SFX_MANIFEST`; after M1, its compressed file is kept, it is decoded on first play into a capped cache, and pinned (decoded for good) only if a fight, a walk or a tap plays it quickly and often. A slow decode is no reason to pin: decode it ahead where its play is seen coming (v2.3.5006, `sfxCache.js` `AHEAD_WHEN`, `BT_AUDIO.sfxAhead`). Its file ends where its sound does: a silent tail is cut at an mp3 frame (`tools/trim_mp3_tail.mjs`, lossless) | `gameDisplay.js` BT_AUDIO; M1's `sfxCache.js` | today, its decoded size for good (a second of mono at 48 kHz is ~190 KB); after M1, a few per cent of that until played | `sound` |
 | music, or any long sound | streamed by the music deck, never decoded whole | `gameDisplay.js`, the music deck | nearly nothing | none |
-| a voice or loop | as a sound effect; decoded at 24 kHz where the cue already is | `soundFold.js` keeps a stereo file whose sides are one as one channel | | `sound` |
+| a voice or loop | as a sound effect; decoded at 24 kHz where the cue already is, and any effect whose file has nothing above 12 kHz, measured from its own samples (`LOW_RATE_SFX`: the owner's 24 kHz cuts, `FILE_24K_NOISE` v2.3.4997, `BAND_12K_NOISE` v2.3.5006) | `soundFold.js` keeps a stereo file whose sides are one as one channel | | `sound` |
 
 ### Code, tables and text
 

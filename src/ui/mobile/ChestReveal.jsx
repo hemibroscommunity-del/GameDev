@@ -190,6 +190,9 @@ export const ChestReveal = () => {
     if (typeof window !== 'undefined' && window.__btProbe) (window.__btChestSfx || (window.__btChestSfx = [])).push({ at: Date.now(), cue: 'lid', frame: f });
   };
   useEffect(() => { if (stage === 'offer' || stage === 'shaking') lidRef.current = false; }, [stage]);
+  /* v2.3.5006: the win's marimba decoded while the chest shakes (no longer
+     held decoded for good: data/sfxCache.js AHEAD) */
+  useEffect(() => { if (stage === 'shaking') { try { BT_AUDIO.sfxAhead('flip'); } catch (e) { /* sound only */ } } }, [stage]);
   useEffect(() => {
     if (stage !== 'opening' || frame < 4) return;
     playLid(frame);

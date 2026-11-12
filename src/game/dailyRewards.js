@@ -268,7 +268,11 @@ export function applyRewardsState(S, payload) {
       /* the window is open and redraws the row as claimed; a toast would sit
          under its scrim, so the moment is a sound */
       play('coin-pickup', { vol: 0.55 });
-      if (Array.isArray(n.grants) && n.grants.some((g) => g && g.kind === 'spin')) setTimeout(() => play('flip-win', { vol: 0.35 }), 140);
+      if (Array.isArray(n.grants) && n.grants.some((g) => g && g.kind === 'spin')) {
+        /* v2.3.5006: decoded in the 140 ms before it plays (data/sfxCache.js AHEAD) */
+        try { BT_AUDIO.sfxAhead('flip-win'); } catch (e) { /* sound only */ }
+        setTimeout(() => play('flip-win', { vol: 0.35 }), 140);
+      }
     } else if (n.kind === 'unlocked') {
       toastWhenSeen('Daily quests are open! Find them in Quests.');
     } else if (n.kind === 'newday') {

@@ -277,6 +277,11 @@ export function DailySpin() {
     }
     setPhase('landing');
     applyRot(landAngle(rotRef.current, j, (Math.random() - 0.5) * 0.6), LAND_MS);
+    /* v2.3.5006: the sting it lands on decoded while it eases in (the
+       level-up's and the win's are no longer held decoded for good:
+       data/sfxCache.js AHEAD) */
+    const _sting = n.act === 'spin' ? (n.jackpot ? 'level-up' : 'flip-win') : n.won ? (n.top ? 'level-up' : 'flip-win') : null;
+    if (_sting) { try { BT_AUDIO.sfxAhead(_sting); } catch (e) { /* sound only */ } }
     landTimerRef.current = setTimeout(() => {
       beforeRef.current = null;
       setPhase('idle');

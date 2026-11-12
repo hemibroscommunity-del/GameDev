@@ -139,3 +139,20 @@ ones (the coin pickup, the equip, the cooking ding, the daily wheel's spin,
 win and lose) stay at 48 kHz, as the UI's three do. `sound-cues` §11g0
 holds each listed file at 24 kHz on disk: a 48 kHz file put in one's place
 fails it rather than losing its top half.
+
+## v2.3.5006: the four monster growls decoded at 24 kHz
+
+The owner said yes to the memory list (2026-11-12). The four monster growls
+(`noise-goblin-rawr`, `noise-skeleton-rattle`, `noise-slime-bounce`,
+`noise-snowman-snarl`) are 48 kHz files with nothing above 12 kHz: three were
+cut by `tools/audio/cut_monster_noises.py` from 24 kHz recordings, and the
+slime's 48 kHz recording has its top 52 dB under its loudest moment. Measured
+from the files' own samples (ffmpeg's decode, numpy): the share of their
+energy above 12 kHz is 8.8e-11, 4.7e-7, 2.9e-6 and 8.6e-11. They now decode
+at 24 kHz (`BT_AUDIO.BAND_12K_NOISE`, in LOW_RATE_SFX): the OfflineAudioContext
+resamples each once, losing nothing a 24 kHz buffer cannot hold, and the
+context plays them as it plays the voices above. About 0.36 MB of the sound
+line; they stay pinned (a fight's sounds). `sound-cues` §11g1 holds each file
+to the bytes that were measured, so a re-cut file is measured again before it
+joins; `mp-ownersounds` step 0b reads every LOW_RATE_SFX buffer at 24 kHz on
+a phone.

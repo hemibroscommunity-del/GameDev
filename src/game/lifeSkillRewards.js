@@ -291,6 +291,9 @@ export function startExtraction(S, node, skill, extra) {
     /* v2.3.2761 (owner: sounds for the specific actions): the cast lands --
        the lure's plop, the moment the rod goes out. */
     if (skill === 'fishing') { try { if (BT_AUDIO.play) BT_AUDIO.play('lure-drop', { vol: 0.6 }); } catch (e) {} }
+    /* v2.3.5006: the reel's loop (and the water under the cast) decoded ahead:
+       the crank turns only after the wind-up (data/sfxCache.js AHEAD_WHEN) */
+    if (skill === 'fishing') { try { if (BT_AUDIO.sfxAhead) BT_AUDIO.sfxAhead('cast'); } catch (e) { /* sound only */ } }
 }
 
 /* ═══ v2.3.3059: A TRY AT A RESOURCE YOUR LEVEL CANNOT WORK YET ═══

@@ -27,7 +27,15 @@
  *   6. a family decoded ahead: the line's cast warms the bite, the reel and
  *      the splash before they are asked for (PREFETCH.family); the farm's
  *      sounds on entering it (PREFETCH.zone, through startZoneAmbient);
+ *   6b. v2.3.5006: the four slow decodes, no longer pinned (sfxCache.js
+ *      AHEAD: the river, the reel, the level-up, the win), each decoded AHEAD
+ *      at its moment (BT_AUDIO.sfxAhead: 'levelNear', 'flip', 'cast',
+ *      'fishSpot') and then played warm, no wait counted; and the river by a
+ *      real walk: decoded in the band past its reach while not a sound of it
+ *      is heard, then heard on Bro Pond's bank with no wait;
  *   7. no page errors.
+ * Step 4 holds the four to twice the aim (60 ms): they were pinned for a
+ * decode of 16-51 ms, and are decoded ahead now so it is not heard.
  *
  *   node tools/qa/mp/run.mjs sfxcache
  */
@@ -198,9 +206,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }, keysCold);
     } finally { await bench.close().catch(() => {}); }
     const aim = played.cache.coldAimMs;
-    const over = dec.filter((d) => d.ms > aim);
-    rec.ok(`4. the cold delay, each sound not pinned decoded from its held bytes: slowest ${dec.slice(0, 4).map((d) => d.k + ' ' + d.ms).join(', ')} ms -- every one under ${aim} ms (in the game's page on this box, behind its few frames a second: median ${med} ms, slowest ${slow[0] && slow[0].ms})`,
-      dec.length >= 10 && over.length === 0, { over, dec: dec.slice(0, 12), inGame: slow.slice(0, 8) });
+    /* v2.3.5006: the four decoded AHEAD (pinned before only for these
+       decodes) to twice the aim: a missed ahead is up to ~50 ms late */
+    const aheadKeys = new Set((played.cache.ahead || []));
+    const over = dec.filter((d) => d.ms > (aheadKeys.has(d.k) ? aim * 2 : aim));
+    rec.ok(`4. the cold delay, each sound not pinned decoded from its held bytes: slowest ${dec.slice(0, 4).map((d) => d.k + ' ' + d.ms).join(', ')} ms -- every one under ${aim} ms, the ${aheadKeys.size} decoded ahead under ${aim * 2} (in the game's page on this box, behind its few frames a second: median ${med} ms, slowest ${slow[0] && slow[0].ms})`,
+      dec.length >= 10 && over.length === 0 && aheadKeys.size === 4, { over, ahead: [...aheadKeys], dec: dec.slice(0, 12), inGame: slow.slice(0, 8) });
 
     /* 5. within the budget; one let go plays again */
     const after = await B.page.evaluate(async () => {
@@ -237,6 +248,65 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     rec.ok(`6. decoded ahead: the river under a cast warms the reel (${ahead.fam.join(', ')}), entering the farm its sounds (${ahead.farm.length}/4)`,
       ahead.before.length === 0 && ahead.fam.length === 1 && ahead.farm.length === 4, ahead);
+
+    /* 6b. v2.3.5006: the four slow decodes, decoded ahead at their moments
+       and then played warm (no wait counted); none of them pinned */
+    const ah = await B.page.evaluate(async () => {
+      const BA = window.BT_AUDIO;
+      const letGo = (k) => { const t = BA._sampleTag[k]; if (t && BA._sfxLru) { BA._sfxLru.remove(t); BA._sfxDrop(t); } };
+      const waitIn = async (keys) => { const t0 = performance.now(); while (performance.now() - t0 < 15000 && !keys.every((k) => BA._samples[k])) await new Promise((r) => setTimeout(r, 20)); return keys.filter((k) => BA._samples[k]); };
+      const out = { pinned: ['river-water', 'fish-reel', 'level-up', 'flip-win'].filter((k) => BA._sfxPinned[k]), moments: [] };
+      for (const [m, keys] of [['levelNear', ['level-up']], ['flip', ['flip-win']], ['cast', ['fish-reel', 'river-water']], ['fishSpot', ['river-water', 'fish-reel']]]) {
+        for (const k of keys) letGo(k);
+        const gone = keys.filter((k) => !BA._samples[k]);
+        BA.sfxAhead(m);
+        const inn = await waitIn(keys);
+        const w0 = window.__btSfxCache().aheadWaits;
+        const warm = [];
+        for (const k of keys) {
+          if (k === 'level-up' || k === 'flip-win') { const h = BA.play(k, { vol: 0.02, duration: 0.05 }); warm.push(!!(h && !h.cold)); }
+          else { BA.startSfxLoop(k, 0.01); warm.push(!!(BA._sfxLoops && BA._sfxLoops[k])); BA.stopSfxLoop(k); }
+        }
+        out.moments.push({ m, gone: gone.length, inn: inn.length, n: keys.length, warm: warm.every(Boolean), waits: window.__btSfxCache().aheadWaits - w0 });
+      }
+      return out;
+    });
+    rec.ok(`6b. the four slow decodes are not pinned (${ah.pinned.length}), and each moment decodes its sounds ahead, then played warm with no wait: ${ah.moments.map((x) => x.m + ' ' + x.inn + '/' + x.n).join(', ')}`,
+      ah.pinned.length === 0 && ah.moments.length === 4 && ah.moments.every((x) => x.gone === x.n && x.inn === x.n && x.warm && x.waits === 0), ah);
+
+    /* 6c. the river by a real walk: let go, then into the band past its
+       reach (RIVER_FAR < d < RIVER_FAR + RIVER_AHEAD_PX): decoded there while
+       not a sound of it is heard; then on Bro Pond's bank, heard with no wait */
+    const G = await H.wheelGeom();
+    const pond = ((await G.map()).places || []).find((p) => p.kind === 'pond');
+    let walk = { pond: !!pond };
+    if (pond) {
+      await B.page.evaluate(() => { const BA = window.BT_AUDIO, t = BA._sampleTag['river-water']; if (t && BA._sfxLru) { BA._sfxLru.remove(t); BA._sfxDrop(t); } });
+      const dy = await B.page.evaluate(() => { const S = window._gameState.current, g = window.__btPlayerGround(); return g.y - S.player.y; });
+      /* a point in the band, on the line from here to the pond's bank (the
+         player's place, as the river's tick measures it) */
+      const band = await B.page.evaluate(({ px, py, dy }) => {
+        const S = window._gameState.current, W = window.__btWater, c = W.consts;
+        const x0 = S.player.x, y0 = S.player.y;
+        for (let i = 0; i <= 400; i++) {
+          const x = x0 + (px - x0) * i / 400, y = y0 + (py - dy - y0) * i / 400;
+          const d = W.distance(x, y);
+          if (d < c.RIVER_FAR + c.RIVER_AHEAD_PX - 80 && d > c.RIVER_FAR + 80) return { x: Math.round(x), y: Math.round(y), d: Math.round(d) };
+        }
+        return null;
+      }, { px: pond.x, py: pond.y + 380, dy });
+      walk.band = band;
+      if (band) {
+        await H.hopTo(B, band.x, band.y, { step: 100, gap: 260, tries: 200 });
+        walk.inBand = await H.waitFor(B, () => ({ dec: !!window.BT_AUDIO._samples['river-water'], w: window.__btWater.state() }), (v) => v.dec, { timeout: 15000, label: 'the river decoded ahead' }).catch(() => null);
+        const w0 = await B.page.evaluate(() => window.__btSfxCache().aheadLate.filter((x) => x.key === 'river-water').length);
+        await H.hopTo(B, pond.x, pond.y + 380 - dy, { step: 100, gap: 260, tries: 200 });
+        walk.heard = await H.waitFor(B, () => window.__btWater.state(), (v) => v.playing && v.k > 0.95, { timeout: 8000, label: 'the pond heard' }).catch(() => null);
+        walk.waits = await B.page.evaluate(() => window.__btSfxCache().aheadLate.filter((x) => x.key === 'river-water').length) - w0;
+      }
+    }
+    rec.ok(`6c. the river by a walk: decoded in the band past its reach (${walk.band && walk.band.d} px from the water) while not a sound of it is heard (share ${walk.inBand && walk.inBand.w.k}), then heard on Bro Pond's bank with no wait (${walk.waits})`,
+      !!walk.band && !!walk.inBand && walk.inBand.w.k === 0 && !walk.inBand.w.playing && !!walk.heard && walk.waits === 0, walk);
 
     rec.ok(`7. no page errors (${errs.length})`, errs.length === 0, errs.slice(0, 5));
 
