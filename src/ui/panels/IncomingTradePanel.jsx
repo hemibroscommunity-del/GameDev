@@ -2,7 +2,7 @@ import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin
 import React from 'react';
 import { guardPush } from '../mobile/modalGuardBus.js'; /* v2.3.2145 */
 import { BT_AUDIO } from '@/data/index.js';
-import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
+import { _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 /* === IncomingTradePanel — the incomingTrade modal === */
@@ -193,23 +193,12 @@ export function IncomingTradePanel(props) {
     },
     onClick: function onClick() {
       var S = stateRef.current;
-      var R = S.rpg;
       /* v2.3.1119: settlement-aware workers (caps.trade) move the goods
          server-side when they relay our accept -- the credit arrives via
          inbox_delivered + the authoritative player_state echo.  The
-         local mint below was HALF of the trade duplication engine (the
-         sender was never debited); it now runs only against a legacy
-         worker. */
-      if (!(S._serverCaps && S._serverCaps.trade)) {
-        /* Accept: add offered items to our inventory */
-        Object.entries(incomingTrade.offer || {}).forEach(function (_ref157) {
-          var _ref158 = _slicedToArray(_ref157, 2),
-            k = _ref158[0],
-            v = _ref158[1];
-          if (k === '_gold') R.coins += v;else if (R.inventory) R.inventory[k] = (R.inventory[k] || 0) + v;
-        });
-        setRpgState(_objectSpread({}, R));
-      }
+         page's own mint for a legacy worker was HALF of the trade
+         duplication engine (the sender was never debited).  v2.3.4915: it
+         is gone: the goods and the gold are the worker's (CLAUDE.md §5). */
       /* Notify sender */
       if (S.channel) S.channel.send({
         type: 'broadcast',

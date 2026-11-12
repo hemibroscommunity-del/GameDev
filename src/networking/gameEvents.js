@@ -4086,18 +4086,10 @@ export function processGameEvent(type, payload, S, deps) {
                    read a shape that trade offers never had, offer.coins
                    / offer.items vs the real {itemKey: qty, _gold}).
                    Settlement-aware workers annotate the relay with
-                   settled:true and have already debited us server-side;
-                   the legacy mint stays only for old workers. */
-                if (!payload.settled) {
-                  var offer = payload.offer || {};
-                  if (offer.coins) _R.coins = (_R.coins || 0) + offer.coins;
-                  if (offer.items && _R.inventory) Object.entries(offer.items).forEach(function (_ref10) {
-                    var _ref11 = _slicedToArray(_ref10, 2),
-                      k = _ref11[0],
-                      v = _ref11[1];
-                    _R.inventory[k] = (_R.inventory[k] || 0) + v;
-                  });
-                }
+                   settled:true and have already debited us server-side.
+                   v2.3.4915: the legacy mint (an unsettled accept, which
+                   any phone's relay could also send) is gone: the goods
+                   and the gold are the worker's (CLAUDE.md §5). */
                 pushDmgPopup(S, S.player.x, S.player.y - 40, 'Trade complete!', '#3dd497');
                 BT_AUDIO.collect();
                 setRpgState(_objectSpread({}, _R));
