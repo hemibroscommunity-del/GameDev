@@ -485,7 +485,7 @@ import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E
 import { jumpAirborne, overLow, jumpLatched, jumpLatch, landedOver, flipBoost } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears; v2.3.3499: a crossing once begun stays begun */
 import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land's badge (v2.3.3629: beside the minimap's name plate) */
 import DeathCard from '@/ui/mobile/DeathCard.jsx';   /* v2.3.3817: "You died", what killed you, back in BroTown in N */
-import NmlAskCard from '@/ui/mobile/NmlAskCard.jsx';   /* v2.3.3253: "Attack <name>?" -- Attack / Party / Ignore */
+import NmlAskCard from '@/ui/mobile/NmlAskCard.jsx';   /* v2.3.3253: "Attack <name>?" -- Attack / Party / Ignore (v2.3.4879: + Trade on a tap's) */
 import { nmlAsk, nmlAskOn, nmlAim } from '@/game/nmlAsk.js';   /* v2.3.3253: a tap in No man's land asks first; v2.3.3528: about the one who attacked you too */
 import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their chips, on their own clock */
 import { TrapButton } from '@/ui/panels/TrapButton.jsx';   /* v2.3.3120: the TRAP pop-up */
@@ -11108,6 +11108,10 @@ export var BroTown = function BroTown(_ref0) {
     var nmlPlayerAtClient = function (clientX, clientY) {
       var S = stateRef.current;
       if (!S || !S.others || !S.player || !S.camera) return false;
+      /* v2.3.4879: ...and any other player under the finger, anywhere
+         (peerAtClient, below) -- asked here so both sticks' callers, and the
+         lift's bolt let go with them (staff-feel 10l), stay as they were */
+      if (peerAtClient(clientX, clientY)) return true;
       var _nmlTap = nmlAskOn(S) && nmlHere(S);
       var _sparTap = !!(S._spar && S._spar.ids && S._spar.ids.size);
       if (!_nmlTap && !_sparTap) return false;
@@ -11123,6 +11127,30 @@ export var BroTown = function BroTown(_ref0) {
         if (_nd < 25 && _nd < selfD && ((_nmlTap && nmlCanAttack(S, _nid, true)) || (_sparTap && sparCanAttack(S, _nid)))) return true;
       }
       return false;
+    };
+    /* ═══ v2.3.4879: ...AND ANY OTHER PLAYER, ANYWHERE ═══
+       The owner, 2026-11-12: "Also add trading to the character menu when
+       you tap another player."  Played on two upright phones in BroTown
+       (mp-taptrade): to trade, two players stand side by side, and a tap on
+       the one beside you landed inside your own 52 px self-chat circle and
+       opened YOUR CHAT -- never their card with its Trade (only No man's
+       land's players and the sparring clones beat the circle, above).  So
+       any other player under the finger -- the world tap's own pick
+       (otherPlayerAtCss: their body or head, 44 px) and nearer them than your
+       own body -- takes the tap and it is forwarded: the world's player
+       branch opens their card (or, in No man's land, its window).  A tap on
+       your own body still opens chat. */
+    var peerAtClient = function (clientX, clientY) {
+      var S = stateRef.current;
+      if (!S || !S.others || !S.player || !S.camera) return false;
+      if (!isSelfTouch(clientX, clientY)) return false;   /* outside your circle the tap is forwarded as it always was */
+      var _p = clientToCanvas(clientX, clientY);
+      var _pid = otherPlayerAtCss(_p.x, _p.y);
+      var _po = _pid != null ? S.others[_pid] : null;
+      if (!_po || typeof _po.renderX !== 'number' || typeof _po.renderY !== 'number') return false;
+      var sx = S._worldScaleX || 1.0, sy = S._worldScaleY || 1.0;
+      var selfD = Math.hypot(_p.x - (S.player.x - S.camera.x) * sx, _p.y - ((S.player.y - S.camera.y) * sy - PLAYER_TAP_RISE));
+      return otherPlayerDistCss(S, _po, _p.x, _p.y) < selfD;
     };
     /* ...and the forward itself, as each zone's own tap forward does */
     var forwardTapToWorld = function (clientX, clientY) {
@@ -11301,7 +11329,8 @@ export var BroTown = function BroTown(_ref0) {
           lts.lastEndAt = 0;
           return;
         }
-        /* v2.3.3253: a player you could fight in No man's land beats it too */
+        /* v2.3.3253: a player you could fight in No man's land beats it too
+           (v2.3.4879: any other player under the finger, peerAtClient) */
         if (!lts.moved && (endT - lts.startAt) < SELF_TAP_MAX_MS
             && nmlPlayerAtClient(t.clientX, t.clientY)) {
           lts.lastEndAt = 0;
