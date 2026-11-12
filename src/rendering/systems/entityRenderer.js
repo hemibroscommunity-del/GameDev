@@ -2343,7 +2343,28 @@ export function prewarmFolkBodies(jobs) {
     }
   });
 }
+/* v2.3.4881: the answer is memoised on the player's record, one slot a mirror.
+   It was rebuilt for every drawn player every frame (nine sanitiser runs, a
+   256-char regex and an ink scan each, and a fresh object) although a
+   player's drawings change a few times a session.  The nine raw strings are
+   compared with ===, so a changed drawing re-sanitises at this same door.
+   Read-only for every consumer (checked: they only read its fields). */
+const _bodyArtMemo = new WeakMap();
 function _remoteBodyArt(other, mirror) {
+  const m = mirror ? 1 : 0;
+  const a = other.pantsArt, b = other.tattooArt, c = other.faceTattooArt, d = other.armTattooArt,
+    e = other.headBackTattooArt, g = other.bodyBackTattooArt, h = other.pantsBackArt,
+    i = other.pantsPattern, j = other.shoesPattern;
+  let slots = _bodyArtMemo.get(other);
+  if (slots) {
+    const k = slots[m];
+    if (k && k.a === a && k.b === b && k.c === c && k.d === d && k.e === e && k.g === g && k.h === h && k.i === i && k.j === j) return k.out;
+  } else { slots = [null, null]; _bodyArtMemo.set(other, slots); }
+  const out = _remoteBodyArtBuild(other, mirror);
+  slots[m] = { a, b, c, d, e, g, h, i, j, out };
+  return out;
+}
+function _remoteBodyArtBuild(other, mirror) {
   const p = sanitizeShirtArt(other.pantsArt), t = sanitizeShirtArt(other.tattooArt);
   /* v2.3.1949: face and arm tattoos ride the same sanitiser -- a peer string
      that is not a well-formed 256-char drawing answers null and is dropped
