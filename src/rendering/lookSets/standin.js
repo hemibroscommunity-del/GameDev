@@ -51,7 +51,7 @@ export default {
   ],
   sheets: Object.keys(FRAME),
   art: (sheet) => [`public/sprites/player/${sheet}.png`, `public/sprites/player/${sheet}.webp`],
-  code: ['src/rendering/playerSkins.js', 'src/rendering/garmentConfine.js', 'src/rendering/spriteScale.js',
+  code: ['src/rendering/playerSkins.js', 'src/rendering/bodyRecolor.js' /* v2.3.4930: the recolour moved there */, 'src/rendering/garmentConfine.js', 'src/rendering/spriteScale.js',
     'src/rendering/playerDecal.js'],
   frameOf(sheet) {
     const f = FRAME[sheet];

@@ -984,6 +984,11 @@ export const joinMethods = {
         await this._playerLeaves(ws, 'joinFailed');   /* v2.3.4830: the session door (leave.js) */
         return;
       }
+      /* v2.3.4902: a record at 0 health may be a death still in its five
+         seconds: its note (life.js _lifeNoteRead) is read only then -- an
+         ordinary join reads nothing more.  A storage read: the input gate
+         stays shut through it. */
+      const _lifeLeft = await this._lifeNoteRead(msg.id, stored, Date.now());
       /* ═══ v2.3.3138: A NEW CHARACTER STARTS FROM THE SERVER'S DEFAULTS ═══
          Owner, on the farm's review: "Yes fix all of your recommended
          fixes.  Game is still a demo."  The first-join bootstrap below used
@@ -1562,7 +1567,21 @@ export const joinMethods = {
         {
           const _lf = this._liveFlags;
           const _standOff = !!(_lf && typeof _lf === 'object' && Object.prototype.hasOwnProperty.call(_lf, 'joinstandup') && !_lf.joinstandup);
-          if (!_standOff && stored && typeof stored.hp === 'number' && !(stored.hp > 0)) {
+          /* ═══ v2.3.4902: ...UNLESS THE DEATH IS STILL IN ITS FIVE SECONDS ═══
+             Its saved note (life.js, `life:<pid>`) says so: the join comes
+             back as the SAME death -- dying for the seconds it had left, then
+             the ordinary respawn (index.js _tickPlayerRespawn) stands them up
+             in town.  The death already wiped the bag or kept it, and saved
+             that; the respawn must not wipe again (the death's pickup shield
+             is memory and gone), so it is told the bag is kept, whatever the
+             death was.  The phone is told after its player_state (below,
+             `_lifeResumed`).  `lifesave: false`: no note, the stand-up. */
+          if (_lifeLeft) {
+            this._lifeTo(_ps, 'dying', 'join_dying');
+            _ps.respawnAt = _lifeLeft.until;
+            _ps._deathKeepsBag = true;
+            _ps._lifeResumed = _lifeLeft;
+          } else if (!_standOff && stored && typeof stored.hp === 'number' && !(stored.hp > 0)) {
             this._hpSet(_ps, _ps.maxHp || 100, 'join_stand_up');
             _ps.stamina = _ps.maxStamina || 100;
             _ps.mana = _ps.maxMana || 100;
@@ -1943,6 +1962,17 @@ export const joinMethods = {
        client just sent on the first connect, and matches the
        stored value on subsequent connects. */
     this._sendPlayerState(ws, msg.id);
+    /* v2.3.4902: the same death, back inside its five seconds (life.js): the
+       phone's death card, with the seconds left -- after its player_state, so
+       the card lands on the body at 0.  The respawn tick does the rest. */
+    {
+      const _psJ = this.playerState[msg.id];
+      const _lr = _psJ && _psJ._lifeResumed;
+      if (_lr) {
+        delete _psJ._lifeResumed;
+        try { ws.send(JSON.stringify({ type: 'player_died', payload: { cause: _lr.cause, respawnInMs: _lr.ms, ...(_lr.keptBag ? { keptBag: 1 } : {}) } })); } catch (e) { /* the respawn's messages still stand it up */ }
+      }
+    }
     /* v2.3.4455: where the kept body stands, after its health (bodytake.js) */
     if (_body) this._bodyTakeSend(ws, msg.id);
     /* v2.3.4012: the reveals the join opened (revealbag.js), after the

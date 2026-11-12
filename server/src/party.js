@@ -432,16 +432,27 @@ export const partyMethods = {
     const accepterId = session.id;
     const inviter = payload && payload.target;
     if (!inviter || typeof inviter !== 'string' || inviter === accepterId) return;
-    if (!this._partyInvites) return; // forged accept with no invite ever recorded
-    const ts = this._partyInvites.get(inviter + '>' + accepterId);
-    this._partyInvites.delete(inviter + '>' + accepterId);
+    /* v2.3.4885: no invite map at all (none recorded since the worker
+       started -- a deploy empties it under a card still on screen) reads as a
+       gone invite below, answered, where it was a silent return */
+    const ts = this._partyInvites ? this._partyInvites.get(inviter + '>' + accepterId) : undefined;
+    if (this._partyInvites) this._partyInvites.delete(inviter + '>' + accepterId);
     // Forged / replayed accepts are DROPPED (rule 15 posture: there is
     // no relay half here, so silence is the whole answer — and no
     // oracle for forgers).  v2.3.1185: an EXPIRED invite is different:
     // the accepter genuinely tapped Join on a card that aged out, so
     // dead air reads as a broken button — answer privately (grafted
     // from the competing party build in PR #221).
-    if (!ts) return;
+    /* v2.3.4885: ...but an invite that is gone (a second Join on a card, an
+       invite another accept or the inviter's leave took) is a real tap too:
+       answered 'expired' -- except the second tap of a Join that already put
+       this player in the inviter's party, which the first answered (the
+       refusal door) */
+    if (!ts) {
+      const mine = this._partyOf(accepterId);
+      if (mine && mine === this._partyOf(inviter)) return;
+      return this._partySend(accepterId, 'party_error', { reason: 'expired' });
+    }
     if (Date.now() - ts > PARTY.INVITE_TTL) {
       return this._partySend(accepterId, 'party_error', { reason: 'expired' });
     }

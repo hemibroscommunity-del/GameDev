@@ -105,14 +105,15 @@ export const dailyChestMethods = {
     const ps = this.playerState[session.id];
     if (!ps || ps.dying || ps.dead || ps.disconnected) return;
     if (opId && typeof opId === 'string' && await this._opSeen('chestop:' + opId)) return;
-    if (!ps.inventory || (ps.inventory[CHEST.KEY] || 0) <= 0) return;   /* ownership */
+    /* v2.3.4881: no chest -- the bag goes back to the phone (refusal door) */
+    if (!ps.inventory || (ps.inventory[CHEST.KEY] || 0) <= 0) return this._refusalEcho(session, ['inventory']);   /* ownership */
 
     let streak = 1;
     try {
       const rec = await this._cadenceGet('login', session.id);
       streak = (rec && rec.streak) || 1;
     } catch (e) { /* the floor streak is fine */ }
-    if (!ps.inventory || (ps.inventory[CHEST.KEY] || 0) <= 0) return;   /* re-check after the await */
+    if (!ps.inventory || (ps.inventory[CHEST.KEY] || 0) <= 0) return this._refusalEcho(session, ['inventory']);   /* re-check after the await */
 
     bagTake(ps.inventory, CHEST.KEY, 1, 'chest_key'); /* v2.3.4810: the bag door */
 

@@ -132,7 +132,7 @@ import { ActiveWarBanner, EndedWarBanner } from './panels/WarBanner.jsx';
 /* v2.3.1205: named z-index registry — see src/ui/zLayers.js for the
    observed ladder + the tutorial-banner-under-dashboard incident. */
 import { Z_ABOVE_DASH_PROMPT } from './zLayers.js';
-import { deskWideActive, deskBandActive, deskBigActive } from './deskWide.js';   /* v2.3.3769: a computer's building windows are a computer's size; v2.3.4152: deskBandActive / deskBigActive, the band on a computer */
+import { deskWideActive, deskBigActive } from './deskWide.js';   /* v2.3.3769: a computer's building windows are a computer's size; v2.3.4152: deskBigActive, the band on a computer (v2.3.4890: deskBandActive no longer read here) */
 import { RevealOverlay } from './reveal/RevealOverlay.jsx'; /* v2.3.1925 */
 /* v2.3.872: buildingPanel sub-panels (decomposed individually). */
 import { WheelHallPanel, SaloonPanel } from './panels/buildings/WheelHallPanel.jsx';   /* v2.3.3066: the Wheel's halls; v2.3.3258: + the Saloon's own window (parties) */
@@ -288,6 +288,25 @@ export var QUEST_MSG_WELCOME_MS = 9000;
    v2.3.4105: never the speech bubble, and no `npcFirst`: the stick never
    talks (the owner: "Make talking to a npc player and entering a building
    always two different things"); a tap on the person does */
+/* v2.3.4884: the player list's rows, built only when the panel is open (the 2 Hz
+   roster interval) and once on the open itself, so the panel never opens empty
+   or half a second stale. */
+function _buildPlayerList(S) {
+  return Object.entries(S.others).map(function (_ref27) {
+    var o = _ref27[1];
+    return {
+      id: _ref27[0],
+      name: o.name,
+      color: o.color,
+      avatar: o.avatar,
+      bro: o.bro, brn: o.brn,
+      x: o.x,
+      y: o.y,
+      badges: o.badges,
+      stats: o.stats
+    };
+  });
+}
 function _tapActIcon(S) { return tapActIcon(interactKind(S)); }
 
 /* ═══ v2.3.3871: HIS HAND-IN LINE IS SAID ONCE, IN THE WINDOW THAT PAYS ═══
@@ -1711,9 +1730,14 @@ export var BroTown = function BroTown(_ref0) {
      INITIALISER for the same reason the quest fold below is — an effect
      would flash the strip for one frame on every load before hiding it. */
   var _useKbHints = useState(function () {
-    /* v2.3.4152: on a computer playing the band the list starts folded to its
-       ⌨ (deskWide.js deskBandActive) until the player has opened it ('0') */
-    try { var _kh = localStorage.getItem('bt_kb_hints_off'); return _kh === '1' || (_kh !== '0' && deskBandActive()); } catch (e) { return false; }
+    /* v2.3.4152: on a computer playing the band the list started folded to
+       its ⌨ until the player had opened it ('0').  v2.3.4890: retired -- since
+       v2.3.4263 the list lives IN the band (KeyboardHintsPanel BandKeys), open
+       unless '1' is stored, and the floating ⌨ is gone on a computer; this
+       copy still started "off" there, so the first H stored '0' and nothing
+       moved (mp-oneband: H twice, the list never folded).  One reading of the
+       choice, the same as BandKeys' readHidden: off only when '1'. */
+    try { return localStorage.getItem('bt_kb_hints_off') === '1'; } catch (e) { return false; }
   }),
     _useKbHints2 = _slicedToArray(_useKbHints, 2),
     kbHintsOff = _useKbHints2[0],
@@ -1757,7 +1781,12 @@ export var BroTown = function BroTown(_ref0) {
   /* v2.3.2330: a ref mirror, so the 2 Hz roster interval (which has [] deps) can
      see whether the panel is open without being re-subscribed on every toggle. */
   var showPlayerListRef = useRef(false);
-  useEffect(function () { showPlayerListRef.current = !!showPlayerList; }, [showPlayerList]);
+  /* v2.3.4884: and the list is built once as the panel opens (the interval below
+     now builds it only while open), so it never shows empty or stale. */
+  useEffect(function () {
+    showPlayerListRef.current = !!showPlayerList;
+    if (showPlayerList && stateRef.current && stateRef.current.others) setPlayerList(_buildPlayerList(stateRef.current));
+  }, [showPlayerList]);
   var _useState9 = useState(null),
     _useState0 = _slicedToArray(_useState9, 2),
     inspectPlayer = _useState0[0],
@@ -7786,36 +7815,10 @@ export var BroTown = function BroTown(_ref0) {
              It became reachable in a new way once Leave Clan started actually
              leaving: leave, let a stale _activeClanWar run out its timer, and
              collect a phantom "WAR WON!" plus gold for a clan you are not in.
-             Against a registry-capable worker the war is settled server-side;
-             this branch is the legacy-worker path only. */
-          if (S.rpg && !(S._serverCaps && S._serverCaps.clans)) {
-            S.rpg.coins += reward.gold;
-            S.rpg.achievementPoints = (S.rpg.achievementPoints || 0) + reward.ap;
-            if (S.rpg._compStats) S.rpg._compStats.totalGoldEarned += reward.gold;
-          }
-          /* Find MVP — most kills in our team */
-          var myTeamKills = war.killLog.filter(function (k) {
-            var _war$challenger$membe, _war$defender$members;
-            var isOurs = S._clanData && (war.challenger.tag === S._clanData.tag && ((_war$challenger$membe = war.challenger.members) === null || _war$challenger$membe === void 0 ? void 0 : _war$challenger$membe.includes(S.myId)) || war.defender.tag === S._clanData.tag && ((_war$defender$members = war.defender.members) === null || _war$defender$members === void 0 ? void 0 : _war$defender$members.includes(S.myId)));
-            return isOurs && k.killer === S.myName;
-          });
-          if (myTeamKills.length > 0) {
-            var myKills = myTeamKills.reduce(function (s, k) {
-              return s + k.points;
-            }, 0);
-            var totalTeamKills = war.killLog.filter(function (k) {
-              return k.killer !== S.myName;
-            }).reduce(function (s, k) {
-              return s + k.points;
-            }, 0);
-            if (myKills >= totalTeamKills && !(S._serverCaps && S._serverCaps.clans)) {
-              /* v2.3.2301: same gate as the base payout above -- the MVP bonus
-                 is the same unauthorised local mint, one branch deeper. */
-              S.rpg.coins += CLAN_WAR_REWARDS.mvp.gold;
-              S.rpg.achievementPoints += CLAN_WAR_REWARDS.mvp.ap;
-              pushDmgPopup(S, P.x, P.y - 70, 'MVP! +' + CLAN_WAR_REWARDS.mvp.gold + 'G +' + CLAN_WAR_REWARDS.mvp.ap + 'AP', '#D8A94D');
-            }
-          }
+             Against a registry-capable worker the war is settled server-side.
+             v2.3.4912: and the page's own mint for any other worker is gone,
+             with the MVP bonus below: gold and points are the worker's
+             (CLAUDE.md §5). */
           pushDmgPopup(S, P.x, P.y - 55, cWin === 'tie' ? 'War ended in a TIE!' : isWinner ? 'WAR WON!' : 'War lost...', isWinner ? '#D8A94D' : '#D95C54');
           pushDmgPopup(S, P.x, P.y - 40, '+' + reward.gold + 'G +' + reward.ap + 'AP', '#D8A94D');
           if (isWinner) BT_AUDIO.levelUp();else BT_AUDIO.beep(150, 0.1, 0.15, 'triangle');
@@ -9078,22 +9081,6 @@ export var BroTown = function BroTown(_ref0) {
         return prev === fnear ? prev : fnear;
       });
       /* Update player list */
-      var list = Object.entries(S.others).map(function (_ref27) {
-        var _ref28 = _slicedToArray(_ref27, 2),
-          id = _ref28[0],
-          o = _ref28[1];
-        return {
-          id: id,
-          name: o.name,
-          color: o.color,
-          avatar: o.avatar,
-          bro: o.bro, brn: o.brn,
-          x: o.x,
-          y: o.y,
-          badges: o.badges,
-          stats: o.stats
-        };
-      });
       /* v2.3.2330: only while the panel that reads it is open.  This runs
          twice a second for the life of the session, and setPlayerList with a
          freshly-built array re-rendered the ENTIRE BroTown tree each time --
@@ -9102,7 +9089,8 @@ export var BroTown = function BroTown(_ref0) {
          within the same half-second, so it is never more than one tick stale.
          The stats save below still runs every tick as it always did
          (v2.3.3527: the achievement check that ran with it is gone). */
-      if (showPlayerListRef.current) setPlayerList(list);
+      /* v2.3.4884: the rows are built here only while the panel is open (and once on its open, by the effect at the ref). */
+      if (showPlayerListRef.current) setPlayerList(_buildPlayerList(S));
       /* Save the player's stats (this was "Check achievements") */
       var S2 = stateRef.current;
       if (S2.stats) {
@@ -9173,26 +9161,17 @@ export var BroTown = function BroTown(_ref0) {
          arena or not — 1,028 HTTP requests per player-hour, ~a third of an
          idle player's entire request bill and billed 1:1 (no WS discount).
          "Business" is: in the queue or a live tournament (set from the last
-         response below), or holding a bet that has not paid out yet.
-         The bet case is why this stays a slow poll instead of stopping —
-         the §BET payout below fires ONLY from this callback, so a spectator
-         who bet without entering must keep checking or they never get paid.
+         response below).  It stays a slow poll rather than stopping.
+         (v2.3.4911: the old third case, a page-only bet not yet paid,
+         went with that bet; the worker pays a stake.)
          Panel liveness is unaffected: PartyPanel runs its own 3 s poll
          while it is open. */
       var _arenaBusy = !!(S3._arenaMatch || S3._arenaInvolved);
-      if (!_arenaBusy) {
-        var _R3 = S3.rpg;
-        var _bets = (_R3 && _R3._arenaBets) || [];
-        for (var _bi = 0; _bi < _bets.length; _bi++) {
-          if (!S3._betsPaidOut || !S3._betsPaidOut[_bets[_bi].tournamentId]) { _arenaBusy = true; break; }
-        }
-      }
       if (Date.now() - S3._arenaLastBgPoll > (_arenaBusy ? ARENA_POLL_INTERVAL : ARENA_IDLE_POLL_INTERVAL)) {
         S3._arenaLastBgPoll = Date.now();
         fetch(BT_API_BASE + '/api/arena/status?playerId=' + encodeURIComponent(S3.myId)).then(function (r) {
           return r.json();
         }).then(function (d) {
-          var _d$tournament3, _d$tournament4, _S3$_betsPaidOut;
           if (!d.ok) return;
           setArenaStatus(d);
           if (d.tournament) setArenaTournament(d.tournament);
@@ -9231,50 +9210,9 @@ export var BroTown = function BroTown(_ref0) {
           } else {
             S3._arenaMatch = null;
           }
-          /* §BET — Check for bet payouts when tournament completes */
-          if (((_d$tournament3 = d.tournament) === null || _d$tournament3 === void 0 ? void 0 : _d$tournament3.status) === 'complete' && (_d$tournament4 = d.tournament) !== null && _d$tournament4 !== void 0 && _d$tournament4.champion && !((_S3$_betsPaidOut = S3._betsPaidOut) !== null && _S3$_betsPaidOut !== void 0 && _S3$_betsPaidOut[d.tournament.id])) {
-            if (!S3._betsPaidOut) S3._betsPaidOut = {};
-            S3._betsPaidOut[d.tournament.id] = true;
-            var R3 = S3.rpg;
-            /* v2.3.3481: the 2026-10-19 UI review -- this 3x payout is the
-               PAGE's own, for the old wells' page-only bets.  Against a worker
-               that settles stakes (caps.sponsor) those wells are not drawn
-               (PartyPanel's legacyBets) and the worker pays a real stake
-               itself (arena_stake_result), so nothing is paid here and no
-               "BET WON!" shows for a bet that did not exist.  The paid-out
-               mark above stays: the poll's fast/idle choice reads it. */
-            var myBets = (S3._serverCaps && S3._serverCaps.sponsor) ? [] : ((R3 === null || R3 === void 0 ? void 0 : R3._arenaBets) || []).filter(function (b) {
-              return b.tournamentId === d.tournament.id;
-            });
-            if (myBets.length > 0) {
-              var champId = d.tournament.champion.id;
-              var totalWon = 0,
-                totalLost = 0;
-              myBets.forEach(function (b) {
-                if (b.targetPlayerId === champId) {
-                  /* Winner! Payout = bet × number of remaining players at time of bet (simplified: 3x) */
-                  var payout = b.amount * 3;
-                  totalWon += payout;
-                  R3.coins += payout;
-                  if (R3._compStats) R3._compStats.totalGoldEarned += payout;
-                  if (!S3.stats._betsWon) S3.stats._betsWon = 0;
-                  S3.stats._betsWon++;
-                } else {
-                  totalLost += b.amount;
-                }
-              });
-              if (totalWon > 0) {
-                pushDmgPopup(S3, S3.player.x, S3.player.y - 60, 'BET WON! +' + totalWon + 'G', '#D8A94D');
-                BT_AUDIO.collect();
-              } else {
-                pushDmgPopup(S3, S3.player.x, S3.player.y - 60, 'Bet lost (-' + totalLost + 'G)', 'rgba(255,255,255,.4)');
-              }
-              setRpgState(_objectSpread({}, R3));
-              try {
-                localStorage.setItem('bt_rpg', JSON.stringify(R3));
-              } catch (_unused12) {}
-            }
-          }
+          /* v2.3.4911: the page's own 3x bet payout (§BET, for the old
+             wells' page-only bets) is gone with those wells (PartyPanel):
+             a stake is the worker's to settle (arena_stake_result). */
         }).catch(function () {});
       }
     }, 500);

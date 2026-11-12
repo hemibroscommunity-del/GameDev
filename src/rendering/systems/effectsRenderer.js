@@ -59,6 +59,8 @@ const _peerBuild = (o) => buildScale(o && o.buildHeight, o && o.buildFrame);
    which runs first) -- gets none of their effects either: no stand-in figure,
    trail, status look or bubble where nobody is drawn */
 const _peerNotDrawn = (S, id) => !!(S && S._peersNotDrawn && S._peersNotDrawn.has(id));
+/* v2.3.4882: the emote pass's per-frame lists, kept and emptied (no new arrays each frame) */
+const _emoteIds = [], _emoteSrcs = [], _emoteEms = [], _emoteActive = new Set();
 
 /* v2.3.1800: which of the three bow frames a HELD block sits on.  0 is still
    raising and 2 is the release recoil; 1 is drawn and steady, which is the one
@@ -337,6 +339,7 @@ import { oreArtSources, oreArtLevelFor, oreGeom, ORE_PX } from '@/game/tierOre.j
 import { WheelShatter } from '../wheelShatter.js';
 import { LandAuras, AURAS_ON, AURA_MAX } from '../landAuras.js';   /* v2.3.3402: each land's resources wear its element */   /* v2.3.3345: a rock mined out breaks into pieces of its own picture */
 import { gesturePose01, extractionMeter01, gestureLoopFrame, COOK_FLICKS_PER_LOOP } from '@/game/gesturePose.js'; /* v2.3.2245; extractionMeter01 v2.3.2514 (the harvest's bar reads the button ring's own numbers -- the node's HP bar since v2.3.2956) */
+import { bodyWorkerWanted, bakeOnWorker, noteWorkerSheet } from '../bodyBake.js';   /* v2.3.4930: a peer's stand-ins with drawings, baked on a worker */
 import { loadWebpOrPng } from '../webpImage.js'; /* v2.3.2328: the sword/bow/legs loader asks for the smaller file too */
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, SLIME_BASE_ROW, SLIME_FRAME_PX /* v2.3.2991: where a scene texel is on the world's slime */ } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
@@ -9784,16 +9787,22 @@ export class EffectsRenderer {
     const _view = (S.camera && S._viewW > 0) ? { l: S.camera.x, r: S.camera.x + S._viewW } : null;
 
     /* Player + others' bubbles. */
-    const allSources = { [S.myId]: S.player };
-    for (const [id, o] of Object.entries(S.others || {})) {
-      if (_peerNotDrawn(S, id)) continue;   /* v2.3.3241: no bubble over nobody */
-      allSources[id] = o;
-    }
-    for (const [pid, bubble] of Object.entries(bubbles)) {
+    /* v2.3.4882: driven from the bubbles that exist (usually none), not from
+       a table of every player built each frame (crowd-lanes: 150 players
+       meant 150 entries and a fresh object 60 times a second for nothing).
+       The source is looked up for each bubble, by the same rule the table
+       had: a drawn peer's entry (it wins over you if the room lists you),
+       else you, else nobody. */
+    const _others = S.others || null;
+    for (const pid in bubbles) {
+      if (!Object.prototype.hasOwnProperty.call(bubbles, pid)) continue;
+      const bubble = bubbles[pid];
       if (!bubble || !bubble.text) continue;
       const age = now - bubble.ts;
       if (age > 5000) continue;
-      const source = allSources[pid];
+      let source = null;
+      if (_others && Object.prototype.hasOwnProperty.call(_others, pid) && !_peerNotDrawn(S, pid)) source = _others[pid];   /* v2.3.3241: no bubble over nobody */
+      else if (pid === S.myId) source = S.player;
       if (!source) continue;
       /* v2.3.1748: only bubbles from THIS zone.  Chat relay is room-wide, and
          a peer's `others` entry survives their zone change, so a bubble from
@@ -9904,15 +9913,23 @@ export class EffectsRenderer {
      and kept (TRAPS §192: a hidden Text still holds its picture). */
   _updateEmotePops(S, now) {
     const pops = this._emotePops;
-    const active = new Set();
+    const active = _emoteActive; active.clear();
     const ws = S._worldScaleY || S._worldScaleX || 0;
-    const sources = [[S.myId, S.player, S.emote]];
-    for (const [id, o] of Object.entries(S.others || {})) {
+    /* v2.3.4882: three module-level lists reused each frame, not a new array
+       of arrays; and a walk over the peers that only looks at the ones with
+       an emote set (usually none) */
+    const _ids = _emoteIds, _srcs = _emoteSrcs, _ems = _emoteEms;
+    _ids.length = 0; _srcs.length = 0; _ems.length = 0;
+    _ids.push(S.myId); _srcs.push(S.player); _ems.push(S.emote);
+    const _others = S.others;
+    if (_others) for (const id in _others) {
+      const o = _others[id];
       if (!o || !o.emote || _peerNotDrawn(S, id)) continue;
       if ((o.zone || o.z || 'town') !== S.currentZone) continue;
-      sources.push([id, o, o.emote]);
+      _ids.push(id); _srcs.push(o); _ems.push(o.emote);
     }
-    for (const [pid, src, em] of sources) {
+    for (let _i = 0; _i < _ids.length; _i++) {
+      const pid = _ids[_i], src = _srcs[_i], em = _ems[_i];
       /* v2.3.3392: or a move's own emoji (`trusted`: set by this phone's code
          from the move's table, never from the wire -- game/emoteMoves.js) */
       const _okEmoji = em && (em.trusted ? (typeof em.emoji === 'string' && em.emoji.length <= 8) : emoteKind(em.emoji) === 'emoji');
@@ -15329,6 +15346,10 @@ export class EffectsRenderer {
     if (arr) { arr._btFrame = _bakeFrame; this._remoteBodyCache.delete(key); this._remoteBodyCache.set(key, arr); return arr; }
     const img = this._bodyImgCache[cfg.bodyUrl];   // loaded by the local bake
     if (!img) return null;
+    /* v2.3.4930: on the body bake's worker in play (bodyBake.js), the strip
+       drawn plain (null) until it lands, as while the image loads */
+    if (this._peerOnWorker(this._remoteBodyCache, key, img, { skinT: skinTarget(o.skin) || DEFAULT_SKIN_TARGET, pantsT: pantsTarget(o.pants), shoesT: shoesTarget(o.shoes),
+      fh: cfg.fh, fw: cfg.fw, art: _pa.art, legsUnder: _lu || null, torso: false })) return null;
     try {
       const cv = recolorBodyToCanvas(img, skinTarget(o.skin) || DEFAULT_SKIN_TARGET, pantsTarget(o.pants), shoesTarget(o.shoes),
         null, cfg.fh, null, null, _pa.art, cfg.fw, undefined, undefined, undefined, _lu);   /* v2.3.2863: see _peerStandInArt; v2.3.3640: + under greaves */
@@ -15364,6 +15385,9 @@ export class EffectsRenderer {
          did (P7 item 5). */
       const _sq = (fw == null || fh == null) ? (img.naturalHeight || img.height || 0) : 0;
       const _fw = _sq || fw, _fh = _sq || fh;
+      /* v2.3.4930: on the body bake's worker in play, as _remoteBodyFramesFor */
+      if (this._peerOnWorker(this._remoteSheetCache, key, img, { skinT: skinTarget(o.skin) || DEFAULT_SKIN_TARGET, pantsT: pantsTarget(o.pants), shoesT: shoesTarget(o.shoes),
+        fh: _fh, fw: _fw, art: _pa.art, legsUnder: null, torso: !!torso })) return null;
       const cv = recolorBodyToCanvas(img, skinTarget(o.skin) || DEFAULT_SKIN_TARGET, pantsTarget(o.pants), shoesTarget(o.shoes),
         null, _fh, null, null, _pa.art, _fw, undefined, undefined, undefined, undefined, !!torso);   /* v2.3.2863; v2.3.3658: + a torso strip's waist (TORSO_WAIST_UP) */
       const n = Math.max(1, Math.round(cv.width / _fw));
@@ -17746,6 +17770,48 @@ export class EffectsRenderer {
      throws in the frame it is next shown, CLAUDE.md v2.3.2651).  A re-bake is
      a menu action (a skin pick, a stroke in the designer), so walking the
      layers once for it costs nothing anyone can feel. */
+  /* ═══ v2.3.4930: A PEER'S STAND-IN, BAKED ON THE WORKER ═══
+     _remoteBodyFramesFor and _remoteSheetFramesFor recoloured a peer's strip
+     with their drawings INSIDE the frame the first time they swung: up to
+     564 ms in the crowd tour (held-sweep.md, a-ink).  In play the same
+     recolour and the same pack run on the body bake's worker
+     (bodyBakeWorker.js 'standin'); meanwhile the strip is null, which both
+     callers already draw as they do while the image loads.  True when the
+     caller should return null now (asked, or waiting); false to bake here (a
+     loading screen, `?bodyworker=0`, or a job the worker could not do). */
+  _peerOnWorker(cache, key, img, job) {
+    if (!this._peerWorker) this._peerWorker = new Map();   /* key -> 'waiting' | 'page' */
+    const st = this._peerWorker.get(key);
+    if (st === 'waiting') return true;
+    if (st === 'page' || !bodyWorkerWanted() || !img || !img.src) return false;
+    this._peerWorker.set(key, 'waiting');
+    bakeOnWorker('standin', [img.src], job, job.fw, job.fh).then((w) => {
+      if (this._destroyed) { if (w) { try { URL.revokeObjectURL(w.url); } catch (e) { /* gone */ } } return; }
+      if (!w) { this._peerWorker.set(key, 'page'); return; }   /* the next ask bakes here, as before */
+      this._peerWorker.delete(key);
+      const t0 = performance.now();
+      const src = Texture.from(w.img).source;
+      src.scaleMode = 'linear';   /* as _sliceStandIn */
+      try { src.once('destroy', () => { try { URL.revokeObjectURL(w.url); } catch (e) { /* gone */ } }); } catch (e) { /* kept */ }
+      const arr = [];
+      for (let i = 0; i < w.frames; i++) {
+        if (w.cells) {
+          const c = w.cells[i];
+          arr.push(new Texture({ source: src, frame: new Rectangle(c.ax, c.ay, c.w, c.h),
+            orig: new Rectangle(0, 0, job.fw, job.fh), trim: new Rectangle(c.tx, c.ty, c.w, c.h) }));
+        } else {
+          arr.push(new Texture({ source: src, frame: new Rectangle(i * job.fw, 0, job.fw, job.fh) }));
+        }
+      }
+      arr.cropped = !!w.cells;
+      this._own(arr);
+      arr._btFrame = _bakeFrame;
+      cache.set(key, arr);
+      _trimBakeCache(cache, this._bakes);
+      noteWorkerSheet('standin ' + key, performance.now() - t0);
+    });
+    return true;
+  }
   _own(arr) {
     const src = arr && arr[0] && arr[0].source;
     if (src) this._bakes.add(src);

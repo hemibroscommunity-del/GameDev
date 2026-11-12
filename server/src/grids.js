@@ -258,7 +258,9 @@ export const gridMethods = {
     if (!this._isValidStat(stat)) return;
     const ps = this.playerState[session.id];
     if (!ps) return;
-    if ((ps.unspentT2 || 0) <= 0) return;
+    /* v2.3.4881: no point left -- the stats and the pool go back to the phone
+       (it was a bare return: the refusal door, TRAPS §284) */
+    if ((ps.unspentT2 || 0) <= 0) return this._refusalEcho(session, ['unspentT2', 'buildPointsThisLvl', 'power', 'vitality', 'endurance', 'agility', 'mind']);
     ps.unspentT2 -= 1;
     this._saveRpg(session.id, ps);
     const ws = this._wsBySessionId(session.id);

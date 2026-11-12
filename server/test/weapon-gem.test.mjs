@@ -41,11 +41,10 @@ import * as EL from '../src/elemental.js';
 import { LIVEOPS } from '../src/liveops.js';
 import { GEM_EXTRACT_BASE_COST, BLACKSMITH_TIERS, WEAPON_GEMS, GEM_SET_XP } from '../src/data.js';
 import { weaponSig } from '../src/salvage.js';
-/* v2.3.4675: this suite stands players in the retired old lands as a fixture.
-   zonejudge.js R3 closes them to players, so it opens them for this suite
-   only.  On retired-lands.test's FIXTURES list, which only shrinks: move the
-   suite to the world ('wheel') and take it off. */
-GameRoom.prototype._retiredLandsOn = function () { return false; };
+import { WHEEL_ZONE } from '../src/wheelzone.js';
+/* v2.3.4924: plays the world (the Wheel), off retired-lands.test's FIXTURES
+   list: the fight is on the Wheel's plain monsters, the frozen chase where a
+   Frost Ridge monster stands.  It was the retired meadow before. */
 
 let NOW = 1_770_000_000_000;
 Date.now = () => NOW;
@@ -86,7 +85,7 @@ const room = new GameRoom(state, mockEnv);
 const baseSession = () => ({ id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
 async function join(ws, id, z) {
   room.sessions.set(ws, baseSession());
-  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: 'T', phrase: 'p-' + id, protocolVersion: 2, data: { x: -100000, y: -100000, z: z || 'meadow' } }));
+  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: 'T', phrase: 'p-' + id, protocolVersion: 2, ws: [1, 5], data: { x: -100000, y: -100000, z: z || WHEEL_ZONE } }));
 }
 const PID = 'bp_weapongem_a';
 let ws = fakeWs();
@@ -275,7 +274,7 @@ const ask = async (payload) => {
 }
 
 // ── 7. The fight reads the worker's copy ──
-const meadow = room.monsters.meadow || [];
+const meadow = (room._ensureZoneMonsters(WHEEL_ZONE) || []).filter((m) => !m.tier && m.home === 'frost');
 const target = (i) => {
   const m = meadow[i];
   m.alive = true; m.hp = 5000; m.maxHp = 5000; m.dmgByPlayer = Object.create(null); m.statuses = undefined;
@@ -285,11 +284,11 @@ const target = (i) => {
 const hit = async (m, extra) => {
   NOW += 1000;
   if (ps()._monHitCad) ps()._monHitCad.clear();
-  ps().x = m.x; ps().y = m.y; ps().z = 'meadow';
-  await room.webSocketMessage(ws, JSON.stringify({ type: 'monster_damage', payload: { monsterId: m.id, zone: 'meadow', slot: 'melee', ...(extra || {}) } }));
+  ps().x = m.x; ps().y = m.y; ps().z = WHEEL_ZONE;
+  await room.webSocketMessage(ws, JSON.stringify({ type: 'monster_damage', payload: { monsterId: m.id, zone: WHEEL_ZONE, slot: 'melee', ...(extra || {}) } }));
 };
 {
-  check('(the meadow has monsters to hit)', meadow.length >= 4, meadow.length);
+  check('(the Wheel has monsters to hit)', meadow.length >= 4, meadow.length);
   ps().weapon = copperSword({ element1: 'flame', tier: 'elemental' });
   ps().activeSlot = 'melee';
   let m = target(0);
@@ -507,8 +506,9 @@ const hit = async (m, extra) => {
   check('...and on by default', room._monsterHoldOff() === false);
   /* the tick: a frozen monster chasing a player stands for the stop, then moves */
   const m = target(4);
-  m.x = 3000; m.y = 3000; m.spawnX = 3000; m.spawnY = 3000;
-  ps().x = 3090; ps().y = 3000; ps().z = 'meadow'; ps().dead = false; ps().dying = false;
+  const MX = Math.round(m.x), MY = Math.round(m.y);   /* where it stands, off the safe ground */
+  m.x = MX; m.y = MY; m.spawnX = MX; m.spawnY = MY;
+  ps().x = MX + 90; ps().y = MY; ps().z = WHEEL_ZONE; ps().dead = false; ps().dying = false;
   m.targetId = PID; m.aggro = true; m._wanderPausedUntil = 0;
   const realRandom = Math.random;
   Math.random = () => 0.5;   /* the tick's dice, held still */

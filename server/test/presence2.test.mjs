@@ -370,7 +370,7 @@ check('0b the session took pres: 2 from its join (v2)', sessionOf(room, A).pres2
     /* v2.3.3254: through wsOut, the quiet phone's way out (one frame a moment) */
     /if \(msg\.type === 'map_watch'\) \{\s*(ws\.send\(JSON\.stringify\(msg\)\)|wsOut\(msg\));\s*return;/.test(ws));
   check('9r ...parks whoever an `nr` roster leaves out, and un-parks anyone a tick updates',
-    /if \(msg\.nr && presence2On\(S\)\) parkMissing\(S, msg\.players \|\| \{\}\)/.test(ws) && /_lastUpdate = Date\.now\(\);[\s\S]{0,200}S\.others\[pid\]\._away = false;/.test(ws));
+    /if \(msg\.nr && presence2On\(S\)\) parkMissing\(S, msg\.players \|\| \{\}\)/.test(ws) && /_lastUpdate = (Date\.now\(\)|_now);[\s\S]{0,200}(S\.others\[pid\]|_o)\._away = false;/.test(ws));
   const vs = readFileSync(new URL('../../src/game/visualSystems.js', import.meta.url), 'utf8');
   check('9s every frame keeps a parked copy PARK_R away, before it is moved or drawn',
     /Object\.values\(S\.others\)\.forEach\(function \(o\) \{[\s\S]{0,600}if \(o\._away\) parkAway\(S, o\);\s*if \(o\.renderX === undefined\)/.test(vs));

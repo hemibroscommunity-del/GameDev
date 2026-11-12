@@ -184,6 +184,37 @@ for (const [why, play] of Object.entries(PLAYS)) {
   room.sessions.set(ws3, { phase: 'open', id: null, name: 'Anon', data: {}, rtt: 0, lastPing: 0, lastRecv: T });
   room._playerLeaves(ws3, 'refused');
   check('2. a refusal drops the session at once', !room.sessions.has(ws3));
+  /* v2.3.4921: a refusal reaching a session that HAS joined (two joins on one
+     socket, the second refused by the account check after the first was in)
+     runs the full leave: the body goes and everyone is told */
+  {
+    const ID4 = 'bp_sd_refj';
+    const ws4 = fakeWs();
+    room.sessions.set(ws4, { phase: 'open', id: null, name: 'Anon', data: {}, rtt: 0, lastPing: 0, lastRecv: T });
+    await room.webSocketMessage(ws4, JSON.stringify({ type: 'join', id: ID4, name: 'R', phrase: 'p-' + ID4, ws: [1, 5], data: { x: 0, y: 0, z: 'wheel' } }));
+    await settle();
+    if (room.tickInterval) { clearInterval(room.tickInterval); room.tickInterval = null; }
+    const joined = room.sessions.get(ws4) && room.sessions.get(ws4).phase === 'joined' && !!room.playerState[ID4];
+    room._verifyRefuse(ws4);
+    await settle();
+    check('2. a refusal of a session that has joined takes its body out of the world',
+      joined && !room.sessions.has(ws4) && !room.playerState[ID4], { joined, body: !!room.playerState[ID4] });
+    /* the switch: the session dropped only, the old way (the body stands) */
+    const ID5 = 'bp_sd_refk';
+    const ws5 = fakeWs();
+    room.sessions.set(ws5, { phase: 'open', id: null, name: 'Anon', data: {}, rtt: 0, lastPing: 0, lastRecv: T });
+    await room.webSocketMessage(ws5, JSON.stringify({ type: 'join', id: ID5, name: 'K', phrase: 'p-' + ID5, ws: [1, 5], data: { x: 0, y: 0, z: 'wheel' } }));
+    await settle();
+    if (room.tickInterval) { clearInterval(room.tickInterval); room.tickInterval = null; }
+    const keep = room._liveFlags;
+    room._liveFlags = Object.assign({}, keep || {}, { refusejoined: false });
+    room._verifyRefuse(ws5);
+    await settle();
+    room._liveFlags = keep;
+    check('2. `refusejoined: false`: the session dropped only, the body left standing (the old way)',
+      !room.sessions.has(ws5) && !!room.playerState[ID5]);
+    delete room.playerState[ID5];
+  }
   let threw = false;
   try { room._playerLeaves(fakeWs(), 'nosuchway'); } catch (e) { threw = true; }
   check('2. a way the table has not got throws', threw);

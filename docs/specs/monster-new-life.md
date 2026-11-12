@@ -36,7 +36,29 @@ found by hand.
   the next new field is placed on purpose.
 - **Kill switch:** `monsterlife: false` (the old list only, no count).
 
-## Not done here
+## The phone's side (v2.3.4910)
 
-The phone side of the same sweep (its own reset lists in `monsterCarry.js`,
-`wsClient.js` and the renderer; TRAPS §245) is client work for another PR.
+The phone's copy of a monster is the same object across its lives too, and
+two edges reset it with two hand lists that had drifted apart: the worker's
+tick (`wsClient.js`, a monster `alive` again) and the phone's own respawn
+(`monsterCombat.js`, a zone the worker does not model). The tick's edge
+cleared the death sound, the loot pile and the swell; the phone's own edge
+did not.
+
+- `src/game/monsterCarry.js` `monsterNewLife(m, MONSTER_VARIANTS)` is the
+  phone's ONE reset, and `PHONE_NEW_LIFE` names each per-life field it wipes
+  with the value a new life starts from. It also clears the stuck arrows,
+  ends a swell (`endSwell`) and turns a mid-fight transform back (a mummy
+  that died a skeleton comes back a mummy).
+- Both edges call it. Where the monster is, its health and its statuses stay
+  each edge's own (the worker sends them for its monsters).
+- The renderer keeps its own edge (`_fxWasAlive`): the arrival it stamps is
+  the one it SEES, so a respawn off screen still grows in when it comes into
+  view. The re-push's carry lists (`CARRY_ALIVE`, `CARRY_DEAD`) are a
+  different question (a list replaced, not a life) and stay as they are.
+- **The guard:** `server/test/monster-life.test.mjs` §6: every listed field
+  starts fresh, both edges call the reset, and neither clears a listed field
+  by hand beside it. A new phone field that belongs to one life goes on the
+  list.
+- No kill switch: it is the same resets the two edges already did, in one
+  place.

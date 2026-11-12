@@ -46,26 +46,37 @@ export function crowdFromSearch(search) {
  *        your duel)
  * @param {number} k            how many at most (Infinity: everyone)
  * @param {Set<string>|null} shownBefore  who was drawn last frame
+ * @param {Set<string>} [out]   v2.3.4883: a Set to clear and fill instead of
+ *        a new one every frame.  It must NOT be `shownBefore` (the caller
+ *        keeps two and swaps them); the returned Set is `out` itself.
  * @returns {Set<string>|null}  the ids to draw, or null for everyone
  */
-export function crowdPick(cands, k, shownBefore) {
+const _rest = [];   /* v2.3.4883: the sort's scratch list, reused each frame */
+const _byNear = (a, b) => (a.d2 - b.d2) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+export function crowdPick(cands, k, shownBefore, out) {
   if (!(k > 0) || !Number.isFinite(k) || cands.length <= k) return null;
-  const keep = new Set();
-  const rest = [];
-  for (let i = 0; i < cands.length; i++) {
-    const c = cands[i];
-    if (c.prio) keep.add(c.id); else rest.push(c);
+  const keep = out && out !== shownBefore ? out : new Set();
+  keep.clear();
+  const rest = _rest;
+  rest.length = 0;
+  try {
+    for (let i = 0; i < cands.length; i++) {
+      const c = cands[i];
+      if (c.prio) keep.add(c.id); else rest.push(c);
+    }
+    const room = k - keep.size;
+    if (room <= 0) return keep;
+    if (rest.length <= room) { for (let i = 0; i < rest.length; i++) keep.add(rest[i].id); return keep; }
+    /* nearest first; equal distances in id order, so the pick does not depend
+       on the order the players happen to be listed in */
+    rest.sort(_byNear);
+    const held = Math.min(rest.length, room + CROWD_HOLD);
+    for (let i = 0; i < held; i++) {
+      const c = rest[i];
+      if (i < room || (shownBefore && shownBefore.has(c.id))) keep.add(c.id);
+    }
+    return keep;
+  } finally {
+    rest.length = 0;   /* hold no player records between frames */
   }
-  const room = k - keep.size;
-  if (room <= 0) return keep;
-  if (rest.length <= room) { for (const c of rest) keep.add(c.id); return keep; }
-  /* nearest first; equal distances in id order, so the pick does not depend
-     on the order the players happen to be listed in */
-  rest.sort((a, b) => (a.d2 - b.d2) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-  const held = Math.min(rest.length, room + CROWD_HOLD);
-  for (let i = 0; i < held; i++) {
-    const c = rest[i];
-    if (i < room || (shownBefore && shownBefore.has(c.id))) keep.add(c.id);
-  }
-  return keep;
 }

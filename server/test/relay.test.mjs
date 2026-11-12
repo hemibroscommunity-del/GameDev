@@ -100,10 +100,6 @@ for (const type of RELAY.TYPES) {
   const conf = one(await relay({ type: 'pvp_confirmed', payload: { from: B, name: 'Bob', target: A, dmg: 3 } }), 'pvp_confirmed');
   check('3. from and name are the sender\'s (pvp_confirmed)',
     conf.length === 1 && conf[0].payload.from === A && conf[0].payload.name === NAME_A && conf[0].payload.target === A, conf);
-  const bet = one(await relay({ type: 'arena_bet', payload: { playerId: B, playerName: 'Bob', targetPlayerId: B, targetName: 'Bob', amount: 5 } }), 'arena_bet');
-  check('3. playerId and playerName are the sender\'s (an arena bet); the target is left alone',
-    bet.length === 1 && bet[0].payload.playerId === A && bet[0].payload.playerName === NAME_A
-    && bet[0].payload.targetPlayerId === B && bet[0].payload.targetName === 'Bob', bet);
   const noFrom = one(await relay({ type: 'emote', payload: { emoji: '👋' } }), 'emote');
   check('3. a sender key the phone left out is not added (only id is always set)',
     noFrom.length === 1 && noFrom[0].payload.id === A && !('from' in noFrom[0].payload) && !('fromName' in noFrom[0].payload), noFrom);

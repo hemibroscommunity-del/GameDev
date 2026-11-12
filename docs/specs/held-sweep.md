@@ -216,7 +216,7 @@ rank order:
 
 | family (its key in `KNOWN`) | its line | why it is over | what fixes it |
 |---|---|---|---|
-| `body-bake` | 220 ms (the crowd's stations: up to 730) | the head an armoured player shows (`<pose>-<dir>-head`) is recoloured on the page for each look the first time it is drawn | key the head sheets by skin alone (they take no trouser or boot colour), then keep them as numbers like the bodies; the same for a body with an eye style or a drawing (STATE-MACHINES A2) |
+| `body-bake` | 220 ms (the crowd's a-ink, b-fish, c-armour8: 12 since v2.3.4930; its other stations up to 190) | v2.3.4930: in play every one of these bakes runs on a worker (`docs/specs/body-bake-worker.md`): a-ink 546 ms, b-fish 179, c-armour8 202 -> none. Left: the main tour's stations and the crowd's others were not run again | run them again and take the family off the list if they agree |
 | `gear-sheet` | 195 ms | a drawn shirt composed on the page for each pose (the crowd tour) | stamp the drawing on a worker, or draw it as a layer over the plain shirt |
 | `portrait` | 150 ms | the Leaderboards draw a board's faces in one piece (the crowd tour) | a few faces a frame |
 | `masked-bake` | 24 ms (v2.3.4870; was 140) | the worker job's page-side part (frames handed over as pictures): the cut itself no longer runs on the page in play -- another player's frame is drawn plain until the worker answers, as yours was | hand the worker the sheets once and send rectangles; prewarm the poses of what was just put on |

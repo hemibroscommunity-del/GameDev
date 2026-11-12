@@ -229,24 +229,31 @@ const found = Object.create(null);   /* unit -> { key: {kw, line} } */
     { type: 'bank_withdraw', why: 'away from the bank, more than is banked', set: () => {}, payload: { kind: 'coins', n: 500, opId: 'door-b1' } },
     { type: 'trade2_open', why: 'a trade with a player who is not here', set: () => {}, payload: { target: 'bp_nobody_here' } },
     { type: 'quest_accept', why: 'a quest out of its order', set: () => {}, payload: { questId: 'mayor_3' } },
+    /* v2.3.4880: the workshop's refusals answer now (the refusal door's lane) */
+    { type: 'forge_weapon', why: 'no gold or bars for the copper greatsword', set: (p) => { p.coins = 0; p.inventory = {}; }, payload: { weaponType: 'greatsword', tierKey: 'copper', isWoodwork: false } },
+    { type: 'smelt_bar', why: 'no ore to smelt', set: (p) => { p.inventory = {}; }, payload: { barKey: 'bar_copper', count: 1 } },
+    { type: 'forge_armor', why: 'no bars for the torso', set: (p) => { p.inventory = {}; }, payload: { recipe: 'copper_torso' } },
+    { type: 'amulet_forge_request', why: 'no nuggets to smelt', set: (p) => { p.goldNuggets = 0; }, payload: { op: 'smelt' } },
+    /* v2.3.4884: a fire lit with no log answers now */
+    { type: 'firemaking_request', why: 'no such log in the bag', set: (p) => { p.inventory = {}; }, payload: { invKey: 'wood_pine' } },
+    /* v2.3.4885: a Join on an invite that is gone answers now */
+    { type: 'party_accept', why: 'the invite is gone', set: () => {}, payload: { target: 'bp_nobody_invited' } },
     { type: 'cook_request', why: 'no such fish in the bag (answered only by the delta)', set: (p) => { p.inventory = {}; }, payload: { fishKey: 'fish_trout', kind: 'cooked', taps: [] },
       ok: (p) => { p.inventory = { fish_trout: 1 }; },
       known: ['_handleCookRequest', 'if ((ps.inventory[fishKey] || 0) <= 0)'] },
-    { type: 'gamble_request', why: 'a wager above the purse', set: (p) => { p.coins = 5; }, payload: { wager: 100 },
-      ok: (p) => { p.coins = 1000; },
-      known: ['_handleGambleRequest', 'if ((ps.coins || 0) < wager)'] },
-    { type: 'jackpot_deposit', why: 'a deposit above the purse', set: (p) => { p.coins = 0; }, payload: { amount: 100 },
-      ok: (p) => { p.coins = 1000; },
-      known: ['_handleJackpotDeposit', 'if ((ps.coins || 0) < amount)'] },
-    { type: 'sell_weapon', why: 'no weapon at that stash place', set: (p) => { p.weaponStash = [{ name: 'Old Sword', type: 'sword', gearBase: 'bronze', tierMult: 1 }]; }, payload: { stashIdx: 3 },
-      ok: () => {}, okPayload: { stashIdx: 0 },
-      known: ['_handleSellWeapon', 'if (!Array.isArray(ps.weaponStash) || stashIdx >= ps.weaponStash.length)'] },
-    { type: 'stat_allocate', why: 'no stat point to spend', set: (p) => { p.unspentT2 = 0; }, payload: { stat: 'power' },
-      ok: (p) => { p.unspentT2 = 1; },
-      known: ['_handleStatAllocate', 'if ((ps.unspentT2 || 0) <= 0)'] },
-    { type: 'chest_open', why: 'no chest in the bag', set: (p) => { p.inventory = {}; }, payload: { invKey: 'daily_chest', opId: 'door-1' },
-      ok: (p) => { p.inventory = { daily_chest: 1 }; }, okPayload: { invKey: 'daily_chest', opId: 'door-2' },
-      known: ['_handleChestOpen', 'if (!ps.inventory || (ps.inventory[CHEST.KEY] || 0) <= 0)'] },
+    /* v2.3.4882: the purses answer now */
+    { type: 'gamble_request', why: 'a wager above the purse', set: (p) => { p.coins = 5; }, payload: { wager: 100 } },
+    { type: 'jackpot_deposit', why: 'a deposit above the purse', set: (p) => { p.coins = 0; }, payload: { amount: 100 } },
+    { type: 'ace_flip_request', why: 'a stake whose loss is above the purse', set: (p) => { p.coins = 0; p._lastAceFlipAt = 0; }, payload: { stake: 1000 } },
+    { type: 'ace_item_flip_request', why: 'none of the staked items in the bag', set: (p) => { p.inventory = {}; p._lastAceFlipAt = 0; }, payload: { items: { ore_copper_ore: 3 } } },
+    /* v2.3.4883: the weapon stash answers now */
+    { type: 'sell_weapon', why: 'no weapon at that stash place', set: (p) => { p.weaponStash = [{ name: 'Old Sword', type: 'sword', gearBase: 'bronze', tierMult: 1 }]; }, payload: { stashIdx: 3 } },
+    { type: 'equip_request', why: 'no weapon at that stash place', set: (p) => { p.weaponStash = []; }, payload: { stashIdx: 2, slot: 'weapon' } },
+    { type: 'unequip_request', why: 'the weapon bag is full', set: (p) => { p.weapon = { name: 'copper greatsword', type: 'greatsword', gearBase: 'copper', tierMult: 1 }; p.weaponStash = Array.from({ length: R.WEAPON_STASH_CAP }, () => ({ name: 'Old Sword', type: 'sword', gearBase: 'bronze', tierMult: 1 })); }, payload: { slot: 'weapon' } },
+    /* v2.3.4881: the points, the chest, the capes and the reroll answer now */
+    { type: 'stat_allocate', why: 'no stat point to spend', set: (p) => { p.unspentT2 = 0; }, payload: { stat: 'power' } },
+    { type: 'chest_open', why: 'no chest in the bag', set: (p) => { p.inventory = {}; }, payload: { invKey: 'daily_chest', opId: 'door-1' } },
+    { type: 'prog3_allocate', why: 'no shared point to spend', set: (p) => { if (p.prog3) { p.prog3.pool = 0; p.prog3.shared = 0; p.prog3.poolBy = { sword: 0, bow: 0, staff: 0 }; } }, payload: { stat: 'def' } },
   ];
   const results = [];
   const ask = async (type, payload) => {

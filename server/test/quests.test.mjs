@@ -18,11 +18,11 @@
  */
 import { GameRoom } from '../src/index.js';
 import { QUEST_REWARDS } from '../src/data.js';
-/* v2.3.4675: this suite stands players in the retired old lands as a fixture.
-   zonejudge.js R3 closes them to players, so it opens them for this suite
-   only.  On retired-lands.test's FIXTURES list, which only shrinks: move the
-   suite to the world ('wheel') and take it off. */
-GameRoom.prototype._retiredLandsOn = function () { return false; };
+import { WHEEL_ZONE } from '../src/wheelzone.js';
+import { WHEEL_CENTRE } from '../src/wheelspawns.js';
+/* v2.3.4923: plays the world (the Wheel), off retired-lands.test's FIXTURES
+   list: the kill is a Wheel monster's, the harvest a node on the safe ground
+   (it was the retired meadow's). */
 
 function makeState() {
   const store = new Map();
@@ -58,9 +58,9 @@ function check(name, cond, detail) {
 const state = makeState();
 const room = new GameRoom(state, mockEnv);
 const baseSession = () => ({ id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
-async function join(ws, id, z = 'meadow') {
+async function join(ws, id, z = WHEEL_ZONE) {
   room.sessions.set(ws, baseSession());
-  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: 'T', phrase: 'p-' + id, data: { x: -100000, y: -100000, z } }));
+  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: 'T', phrase: 'p-' + id, ws: [1, 5], data: { x: WHEEL_CENTRE[0], y: WHEEL_CENTRE[1], z } }));
 }
 
 const ws = fakeWs('q');
@@ -74,21 +74,21 @@ const sync = ws.sent.find((m) => m.type === 'state_sync');
 check('state_sync advertises caps.questTrack', sync && sync.caps && sync.caps.questTrack === true, sync && sync.caps);
 
 // ── 1. kill credit increments kill objectives only ──
-// Pin a meadow monster next to the player and kill it via the wire.
-const monsters = room._ensureZoneMonsters('meadow');
-const m = monsters[0];
-m.x = -100000; m.y = -100000; m.spawnX = m.x; m.spawnY = m.y;
+// Stand the player beside a Wheel monster and kill it via the wire.
+const monsters = room._ensureZoneMonsters(WHEEL_ZONE);
+const m = monsters.find((x) => x.alive && !x.tier) || monsters[0];
 m.hp = 1;
-ps.x = -100000; ps.y = -100000;
-await room.webSocketMessage(ws, JSON.stringify({ type: 'monster_damage', payload: { monsterId: m.id, zone: 'meadow', dmg: 5 } }));
+ps.z = WHEEL_ZONE; ps.x = m.x + 30; ps.y = m.y; ps._zoneEntryGraceUntil = 0;
+await room.webSocketMessage(ws, JSON.stringify({ type: 'monster_damage', payload: { monsterId: m.id, zone: WHEEL_ZONE, dmg: 5 } }));
 check('kill increments the kill-objective quest', ps._questKills.mayor_2 === 1, ps._questKills);
 check('kill does NOT advance the gather quest (old client bug)', !ps._questKills.trader_2, ps._questKills);
 check('kill does not touch objective-less quests', !ps._questKills.trader_1 && !ps._questKills.mayor_1, ps._questKills);
 
 // ── 2. harvest credit increments gather objectives ──
-const nodes = room._ensureZoneNodes('meadow');
-const node = nodes.find((n) => n.alive !== false) || nodes[0];
-node.alive = true; node.x = ps.x; node.y = ps.y;
+/* a node on the safe ground (copper, pine, minnows: level 1), the player beside it */
+const nodes = room._ensureZoneNodes(WHEEL_ZONE);
+const node = nodes.find((n) => /^wn-commons-/.test(n.id) && n.alive !== false) || nodes[0];
+node.alive = true; ps.x = node.x; ps.y = node.y;
 /* v2.3.1680: gathering is TOOL-GATED (owner: extraction hidden behind a Mayor
    Bro quest that hands over the equipment).  This section is about QUEST
    CREDIT, not the gate, so hand over every tool rather than letting the strike
@@ -98,7 +98,7 @@ if (!ps.inventory) ps.inventory = {};
 ps.inventory.woodcutting_axe = 1;
 ps.inventory.fishing_pole = 1;
 ps.inventory.mining_pickaxe = 1;
-await room.webSocketMessage(ws, JSON.stringify({ type: 'node_strike', payload: { id: node.id, zone: 'meadow', accuracy: 'good' } }));
+await room.webSocketMessage(ws, JSON.stringify({ type: 'node_strike', payload: { id: node.id, zone: WHEEL_ZONE, accuracy: 'good' } }));
 check('harvest increments the gather-objective quest', ps._questKills.trader_2 === 1, ps._questKills);
 check('harvest does not advance kill quests', ps._questKills.mayor_2 === 1, ps._questKills);
 

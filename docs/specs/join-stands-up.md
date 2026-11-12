@@ -89,3 +89,12 @@ A record at 0 health with nothing dying is not "a stuck state to sweep": it is
 a death the close cut short. Sweeping it is a second death that takes what the
 first one kept. Stand it up at the join (`joinstandup`); never "restore" the
 second death.
+
+## v2.3.4902: inside the five seconds, the same death
+
+A join whose record is at 0 health first reads the death's saved note
+(`life:<pid>`, life.js). If the death's five seconds have not run out, the
+join comes back as that death for the seconds left (its card again, then the
+ordinary respawn) instead of standing up at once. After the five seconds, or
+with `lifesave: false`, it stands up exactly as above
+(`docs/specs/life-door.md` "Step 2b").

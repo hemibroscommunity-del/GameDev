@@ -296,6 +296,9 @@ const LIST = {
   'src/rendering/fxStrips.js': { '(top)': ['once', 2, 'the portal beam and the block bars: asked once a page, no time limit'] },
   'src/rendering/gearSheets.js': { loadCroppedStrip: ['shared', 1, 'loadCroppedStrip (SHARED below)'] },
   'src/rendering/hemiBust.js': { atlasRgba: [['once', 1, "the Hemi bust's atlas: no time limit, no retry"], ['local', 1, 'the same atlas from its own bytes (a blob URL), where the numbers cannot be read']] },
+  /* v2.3.4930: the body bake's worker */
+  'src/rendering/bodyBake.js': { bakeOnWorker: ['local', 1, "the worker's packed body or head sheet as an <img> (a blob URL of its own bytes)"] },
+  'src/rendering/bodyBakeWorker.js': { loadBitmap: ['limit', 1, "a body sheet for the body bake's worker: bounded by the page's 20 s (bodyBake.js WORKER_MS), then the page bakes it itself, with its retries and later rounds"] },
   'src/rendering/keepAsImage.js': { keepAsImage: ['local', 1, "a canvas's own pixels as an <img> (a blob URL)"] },
   'src/rendering/levelUpBurstPreload.js': { warmPortrait: ['warm', 1, 'the level-up portrait, warmed; the <img> loads it at use'] },
   'src/rendering/loginSpinPreload.js': { preloadLoginSpin: ['warm', 1, "the login spin's art, fetched into the browser's cache"] },

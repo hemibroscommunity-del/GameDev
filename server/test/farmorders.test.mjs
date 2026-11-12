@@ -68,10 +68,16 @@ function check(name, cond, detail) {
   else { failures++; console.log('FAIL', name, detail !== undefined ? JSON.stringify(detail) : ''); }
 }
 
-/* The worker's clock, movable, for tomorrow's board. */
+/* The worker's clock, movable, for tomorrow's board.
+   v2.3.4922: PINNED to noon UTC of a fixed day (TRAPS §335): the suite failed
+   once as a run crossed midnight UTC, the day read at one check not the day
+   of the next.  Real time still passes from there (the paced saves and the
+   timers read it), twelve hours from any midnight. */
 const realNow = Date.now;
+const PIN = Date.UTC(2026, 10, 12, 12, 0, 0);
+const started = realNow();
 let skew = 0;
-Date.now = () => realNow() + skew;
+Date.now = () => PIN + (realNow() - started) + skew;
 
 const st = makeState();
 const room = new GameRoom(st, mockEnv);

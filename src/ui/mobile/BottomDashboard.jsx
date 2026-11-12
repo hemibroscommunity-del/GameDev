@@ -545,6 +545,24 @@ const PANELS = {
 /* v2.3.3687: the computer's column opened once a page load (BottomDashboard) */
 let _deskOpened = false;
 
+/* v2.3.4877, lifted out v2.3.4878: PUT THE BAG IN FRONT, the way the Gear
+   button and the Bro card's Equipment row go there (BroCard openGear): the
+   band at rest, unfolded; with the old side column (?oneband=0, sideways),
+   its 'dashboard' page.  For a window that works through the band's own bag
+   tiles (the trade, Diego's shop) as it OPENS -- see the effect below. */
+function bagToFront() {
+  try {
+    const bus = dashboardPanelBus;
+    const onBag = bus.state.mode === 'expanded' && bus.current() === 'dashboard';
+    if (playIsLandscape()) {
+      if (!onBag) bus.open('dashboard');
+    } else if (bus.state.mode === 'expanded' && !onBag) {
+      bus.toBar();
+      if (dashMinBus.min) dashMinBus.set(false);
+    }
+  } catch (e) { /* the window still works through its own lanes */ }
+}
+
 const DESTINATIONS = [
   { id: 'bag',    label: 'Bag',     icon: '/icons/ui/nav-inventory.webp?v=2.3.1224' },
   /* v2.3.4172: "Bro" -- the owner's word for the page that is you (the id
@@ -1030,12 +1048,46 @@ export const BottomDashboard = () => {
      destination: the window that needs the bag brings it back.  Only as one
      OPENS: a player who folds the band with it open is not overruled by the
      next price update. */
+  /* ═══ v2.3.4877: ...AND THE TRADE BRINGS THE BAG ITSELF, NOT JUST THE BAND ═══
+     The owner, 2026-11-12: "Previously I had it to where you could just tap
+     your inventory items to put up items.  Now it only has predetermined pull
+     buttons you can tap on in the trade window."  Unfolding was not enough
+     once the band had pages of its own (Bro, Quests, Ranks, Codex, More:
+     v2.3.4172, v2.3.4393), which stay open while you play (v2.3.1307): a
+     player who last looked at their Bro card opened a trade over the Bro card,
+     no bag in sight, and the drawer's own pills (the weapon lane, the gold
+     steps) were all there was to tap (mp-tradebag, red on main).  So as the
+     trade window TAKES the bag (tradeBagBus opens: a live trade, never the
+     invite) the bag comes to the front, the way the Gear button and the Bro
+     card's Equipment row go there (BroCard openGear): upright the band at
+     rest, unfolded; with the old side column, its 'dashboard' page.  Only on
+     that edge: a player who taps another page mid-trade is not pulled back.
+     The bag stays in front after the trade -- the receipt tosses the goods
+     into it.
+     v2.3.4878: ...AND SO DOES DIEGO'S SHOP, UPRIGHT.  The same hole: his
+     drawer is half a window, "tap your bag below to sell" (v2.3.2059), and a
+     tap on him opens it whatever page the band is on, so a player who last
+     looked at their Bro card got his shelf over the Bro card and nothing to
+     sell from (mp-shopbag, red on main).  The owner asked for the trade's
+     fix here too.  Upright only (which, with the one band, v2.3.4072, is
+     every screen): the old side column's shop rule is ShopkeeperPanel's own
+     (v2.3.3407: it opens the column's bag page and folds it again on the way
+     out if it was what opened it -- opening it from here first would rob it
+     of that fold).  Its bag stays in front after, as the trade's does. */
   useEffect(() => {
     let was = false;
+    let tradeWas = false;
+    let shopWas = false;
     const onChange = () => {
       const now = !!(shopBus.open || tradeBagBus.open);
       if (now && !was && dashMinBus.min) dashMinBus.set(false);
       was = now;
+      const trade = !!tradeBagBus.open;
+      if (trade && !tradeWas) bagToFront();
+      tradeWas = trade;
+      const shop = !!shopBus.open;   /* v2.3.4878 */
+      if (shop && !shopWas && !playIsLandscape()) bagToFront();
+      shopWas = shop;
     };
     onChange();
     const offShop = shopBus.subscribe(onChange);

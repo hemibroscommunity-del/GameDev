@@ -102,11 +102,17 @@ how}`, `arena_tournament_complete {tid, champion}` (broadcast).
 `state_sync.caps` gains `arena: true` — gates the client's legacy entry
 debit/refund and round/champion self-credit. The Gladiator title stays
 client-granted for now (titles aren't server-owned — handoff backlog).
+**v2.3.4911:** those legacy paths are deleted (the page's own entry
+debit and refunds, its `POST /api/arena/result` and win/champion credit);
+`arena` stays advertised, on caps-audit's allowlist, for the record.
 
 **Sponsorship/betting is PR-B2** (stretch/backlog): `arena_stake:` escrow
 keys settled on server-observed results -- since v2.3.3177 a pool, the
 winning backers sharing the losing stakes (sponsorship.md).
-The legacy `arena_bet` relay remains cosmetic display only.
+The legacy `arena_bet` relay is gone (v2.3.4911): its four page-only bet
+wells and the page's own payouts for them (PartyPanel, BroTown's §BET)
+were deleted, and the worker no longer relays the type. A worker without
+`caps.sponsor` shows "Betting is closed" on the real well.
 
 Deploy-order note: old client + new worker still self-credits phantom
 rewards locally (stomped by the echo) and its `POST /result` is ignored —
