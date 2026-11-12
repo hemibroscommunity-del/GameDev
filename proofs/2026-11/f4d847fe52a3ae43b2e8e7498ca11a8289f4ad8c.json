@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "f4d847fe52a3ae43b2e8e7498ca11a8289f4ad8c",
+  "tree": "c1e08811cb003eea20fd3e88f5690960ae92dd98",
+  "committedAt": "2026-11-12T02:43:36-08:00",
+  "subject": "Merge pull request #1625 from hemibroscommunity-del/claude/lane3-takeback-3",
+  "files": 7261,
+  "bytes": 940767040,
+  "listingSha256": "4a77f4ca3f2e65136765055ffd94f71f69347b28dc7ad660419b7ac18544c9b0",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
