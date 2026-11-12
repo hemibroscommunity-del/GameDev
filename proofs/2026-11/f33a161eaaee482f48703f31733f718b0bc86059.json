@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "f33a161eaaee482f48703f31733f718b0bc86059",
+  "tree": "bdd0055b0877eb4a7ffd23ccdd9265a741ef006a",
+  "committedAt": "2026-11-11T21:18:54-08:00",
+  "subject": "Merge pull request #1619 from hemibroscommunity-del/claude/gifted-euler-c20tgo-shop-bag-front",
+  "files": 7233,
+  "bytes": 940504966,
+  "listingSha256": "020eefbec90c0d14c11f328b4146324f0bcd9e8bfad86af1957cc6b18ad2b6ca",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
