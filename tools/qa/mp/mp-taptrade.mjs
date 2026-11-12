@@ -1,4 +1,4 @@
-/* ═══ TRADE FROM THE MENU A TAP ON A PLAYER OPENS (v2.3.4879) ═══
+/* ═══ TRADE FROM THE MENU A TAP ON A PLAYER OPENS (v2.3.4931) ═══
  *
  * The owner, 2026-11-12: "Also add trading to the character menu when you tap
  * another player."  (He had just said trading was hard to use.)
@@ -170,7 +170,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 1. BroTown: side by side, as two players stand to trade -- inside
        Tradetap's own self-chat circle (52 world px), which took this tap and
-       opened Tradetap's CHAT before v2.3.4879 ── */
+       opened Tradetap's CHAT before v2.3.4931 ── */
     const me1 = await H.serverPlayer(wsPort, idA);
     await H.hopTo(B, me1.x + 34, me1.y, { tries: 30, step: 40 });
     await B.page.waitForTimeout(2000);

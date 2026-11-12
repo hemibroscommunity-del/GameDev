@@ -340,7 +340,7 @@ export function nmlPartyInvite(S, id) {
   return true;
 }
 
-/** ═══ v2.3.4879: TRADE, FROM THE WINDOW A TAP OPENS ═══
+/** ═══ v2.3.4931: TRADE, FROM THE WINDOW A TAP OPENS ═══
  *  The owner, 2026-11-12: "Also add trading to the character menu when you
  *  tap another player."  Out of BroTown (No man's land begins just outside
  *  it) a tap on a player you could fight opens THIS window, not the player
@@ -384,7 +384,7 @@ export function nmlAsk(S, id, why) {
     const again = S._nmlAskAgain instanceof Map ? (S._nmlAskAgain.get(key) || 0) : 0;
     if (again && Date.now() < again && !fresh) return false;
   } else if (_ask && _ask.id === key) {
-    /* v2.3.4879: a tap on the player a shot or a swing already asked about
+    /* v2.3.4931: a tap on the player a shot or a swing already asked about
        makes it the tap's window, with the tap's Trade (NmlAskCard) */
     if (_ask.why !== 'tap') { _ask = Object.assign({}, _ask, { why: 'tap' }); emit(); }
     return true;
@@ -459,7 +459,7 @@ export function nmlAskAnswer(S, choice) {
   emit();
   if (choice === 'attack') return nmlCanAttack(S, a.id) ? nmlAim(S, a.id) : false;
   if (choice === 'party') return nmlPartyInvite(S, a.id);
-  if (choice === 'trade') return nmlTradeOpen(S, a.id);   /* v2.3.4879: a tap's window, the card's Trade */
+  if (choice === 'trade') return nmlTradeOpen(S, a.id);   /* v2.3.4931: a tap's window, the card's Trade */
   /* v2.3.3770: the lock's two -- your "?" for them, and letting them at you again */
   if (choice === 'rematch') return nmlLockAsk(S, a.id);
   if (choice === 'allow') return nmlLockAllow(S, a.id);
@@ -487,7 +487,7 @@ try {
         return { can: !!nmlCanAttack(S, id), live: !!isLiveFoe(S, id), attackedAt: attackedMeAt(S, id) };
       },
       setMs: (ms) => { _msOverride = ms ? Math.max(1000, Math.min(60000, Number(ms) || NML_ASK_MS)) : 0; },
-      /* v2.3.4879: a tap's window about a stand-in player, held (the UI
+      /* v2.3.4931: a tap's window about a stand-in player, held (the UI
          review's picture: tools/qa/ui-review/states.mjs nml-ask-tap) --
          `demo` keeps the window's clock from letting it go; null drops it */
       hold: (o) => {

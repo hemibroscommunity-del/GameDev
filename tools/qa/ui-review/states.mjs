@@ -1295,11 +1295,11 @@ export const STATES = [
       await wait(P, 1000);
     },
   },
-  /* v2.3.4879: the window a TAP on another player opens out of town (the
+  /* v2.3.4931: the window a TAP on another player opens out of town (the
      review had none): a stand-in player, held by the QA handle */
   {
     id: 'nml-ask-tap', group: 'Other players', title: 'A tap on a player in No man\'s land',
-    about: 'Out of town (No man\'s land begins just outside BroTown) a tap on another player opens this small window at the top instead of the player card: "Attack <name>?" with their level, the red skull and its (i), and Attack, Party, Trade and Ignore (Trade since v2.3.4879: the owner, "add trading to the character menu when you tap another player"). Shown with a stand-in player.',
+    about: 'Out of town (No man\'s land begins just outside BroTown) a tap on another player opens this small window at the top instead of the player card: "Attack <name>?" with their level, the red skull and its (i), and Attack, Party, Trade and Ignore (Trade since v2.3.4931: the owner, "add trading to the character menu when you tap another player"). Shown with a stand-in player.',
     run: async ({ P }) => {
       await evalIn(P, () => { window.__btPlaceHold = { nml: 1, red: 0 }; if (window.__btNmlAsk && window.__btNmlAsk.hold) window.__btNmlAsk.hold({ name: 'Rival Bro', lv: 3 }); });
       await wait(P, 700);
