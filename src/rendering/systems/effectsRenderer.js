@@ -59,6 +59,8 @@ const _peerBuild = (o) => buildScale(o && o.buildHeight, o && o.buildFrame);
    which runs first) -- gets none of their effects either: no stand-in figure,
    trail, status look or bubble where nobody is drawn */
 const _peerNotDrawn = (S, id) => !!(S && S._peersNotDrawn && S._peersNotDrawn.has(id));
+/* v2.3.4882: the emote pass's per-frame lists, kept and emptied (no new arrays each frame) */
+const _emoteIds = [], _emoteSrcs = [], _emoteEms = [], _emoteActive = new Set();
 
 /* v2.3.1800: which of the three bow frames a HELD block sits on.  0 is still
    raising and 2 is the release recoil; 1 is drawn and steady, which is the one
@@ -9784,16 +9786,22 @@ export class EffectsRenderer {
     const _view = (S.camera && S._viewW > 0) ? { l: S.camera.x, r: S.camera.x + S._viewW } : null;
 
     /* Player + others' bubbles. */
-    const allSources = { [S.myId]: S.player };
-    for (const [id, o] of Object.entries(S.others || {})) {
-      if (_peerNotDrawn(S, id)) continue;   /* v2.3.3241: no bubble over nobody */
-      allSources[id] = o;
-    }
-    for (const [pid, bubble] of Object.entries(bubbles)) {
+    /* v2.3.4882: driven from the bubbles that exist (usually none), not from
+       a table of every player built each frame (crowd-lanes: 150 players
+       meant 150 entries and a fresh object 60 times a second for nothing).
+       The source is looked up for each bubble, by the same rule the table
+       had: a drawn peer's entry (it wins over you if the room lists you),
+       else you, else nobody. */
+    const _others = S.others || null;
+    for (const pid in bubbles) {
+      if (!Object.prototype.hasOwnProperty.call(bubbles, pid)) continue;
+      const bubble = bubbles[pid];
       if (!bubble || !bubble.text) continue;
       const age = now - bubble.ts;
       if (age > 5000) continue;
-      const source = allSources[pid];
+      let source = null;
+      if (_others && Object.prototype.hasOwnProperty.call(_others, pid) && !_peerNotDrawn(S, pid)) source = _others[pid];   /* v2.3.3241: no bubble over nobody */
+      else if (pid === S.myId) source = S.player;
       if (!source) continue;
       /* v2.3.1748: only bubbles from THIS zone.  Chat relay is room-wide, and
          a peer's `others` entry survives their zone change, so a bubble from
@@ -9904,15 +9912,23 @@ export class EffectsRenderer {
      and kept (TRAPS §192: a hidden Text still holds its picture). */
   _updateEmotePops(S, now) {
     const pops = this._emotePops;
-    const active = new Set();
+    const active = _emoteActive; active.clear();
     const ws = S._worldScaleY || S._worldScaleX || 0;
-    const sources = [[S.myId, S.player, S.emote]];
-    for (const [id, o] of Object.entries(S.others || {})) {
+    /* v2.3.4882: three module-level lists reused each frame, not a new array
+       of arrays; and a walk over the peers that only looks at the ones with
+       an emote set (usually none) */
+    const _ids = _emoteIds, _srcs = _emoteSrcs, _ems = _emoteEms;
+    _ids.length = 0; _srcs.length = 0; _ems.length = 0;
+    _ids.push(S.myId); _srcs.push(S.player); _ems.push(S.emote);
+    const _others = S.others;
+    if (_others) for (const id in _others) {
+      const o = _others[id];
       if (!o || !o.emote || _peerNotDrawn(S, id)) continue;
       if ((o.zone || o.z || 'town') !== S.currentZone) continue;
-      sources.push([id, o, o.emote]);
+      _ids.push(id); _srcs.push(o); _ems.push(o.emote);
     }
-    for (const [pid, src, em] of sources) {
+    for (let _i = 0; _i < _ids.length; _i++) {
+      const pid = _ids[_i], src = _srcs[_i], em = _ems[_i];
       /* v2.3.3392: or a move's own emoji (`trusted`: set by this phone's code
          from the move's table, never from the wire -- game/emoteMoves.js) */
       const _okEmoji = em && (em.trusted ? (typeof em.emoji === 'string' && em.emoji.length <= 8) : emoteKind(em.emoji) === 'emoji');
