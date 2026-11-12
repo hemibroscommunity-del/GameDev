@@ -132,7 +132,7 @@ import { ActiveWarBanner, EndedWarBanner } from './panels/WarBanner.jsx';
 /* v2.3.1205: named z-index registry — see src/ui/zLayers.js for the
    observed ladder + the tutorial-banner-under-dashboard incident. */
 import { Z_ABOVE_DASH_PROMPT } from './zLayers.js';
-import { deskWideActive, deskBandActive, deskBigActive } from './deskWide.js';   /* v2.3.3769: a computer's building windows are a computer's size; v2.3.4152: deskBandActive / deskBigActive, the band on a computer */
+import { deskWideActive, deskBigActive } from './deskWide.js';   /* v2.3.3769: a computer's building windows are a computer's size; v2.3.4152: deskBigActive, the band on a computer (v2.3.4890: deskBandActive no longer read here) */
 import { RevealOverlay } from './reveal/RevealOverlay.jsx'; /* v2.3.1925 */
 /* v2.3.872: buildingPanel sub-panels (decomposed individually). */
 import { WheelHallPanel, SaloonPanel } from './panels/buildings/WheelHallPanel.jsx';   /* v2.3.3066: the Wheel's halls; v2.3.3258: + the Saloon's own window (parties) */
@@ -1711,9 +1711,14 @@ export var BroTown = function BroTown(_ref0) {
      INITIALISER for the same reason the quest fold below is — an effect
      would flash the strip for one frame on every load before hiding it. */
   var _useKbHints = useState(function () {
-    /* v2.3.4152: on a computer playing the band the list starts folded to its
-       ⌨ (deskWide.js deskBandActive) until the player has opened it ('0') */
-    try { var _kh = localStorage.getItem('bt_kb_hints_off'); return _kh === '1' || (_kh !== '0' && deskBandActive()); } catch (e) { return false; }
+    /* v2.3.4152: on a computer playing the band the list started folded to
+       its ⌨ until the player had opened it ('0').  v2.3.4890: retired -- since
+       v2.3.4263 the list lives IN the band (KeyboardHintsPanel BandKeys), open
+       unless '1' is stored, and the floating ⌨ is gone on a computer; this
+       copy still started "off" there, so the first H stored '0' and nothing
+       moved (mp-oneband: H twice, the list never folded).  One reading of the
+       choice, the same as BandKeys' readHidden: off only when '1'. */
+    try { return localStorage.getItem('bt_kb_hints_off') === '1'; } catch (e) { return false; }
   }),
     _useKbHints2 = _slicedToArray(_useKbHints, 2),
     kbHintsOff = _useKbHints2[0],
