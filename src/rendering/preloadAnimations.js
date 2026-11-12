@@ -48,7 +48,8 @@ import { loadSnowmanSprites, unloadSnowmanSprites } from './snowmanSprites.js';
 import { loadPlayerDeathSprites } from './playerDeathSprites.js';
 import { mintWorldFxTextures } from './worldFxTextures.js';   /* v2.3.2712 */
 import { preloadStartZoneMap, loadWalkabilityMaps } from './tiledMaps.js';
-import { isWorldTrialZone, preloadWorldTrial } from '../game/worldTrial.js'; /* v2.3.2932 */
+import { isWorldTrialZone, preloadWorldTrial, wheelArrivalPoint } from '../game/worldTrial.js'; /* v2.3.2932; v2.3.5003: + where the Wheel's way in lands */
+import { wheelSizeTold } from '../game/wheelSize.js';   /* v2.3.5003: the Wheel's size before its lands are measured */
 import { townSkippedOnTheWay } from '../game/wheelHome.js'; /* v2.3.3037: today's town is a stop on the way to the Wheel */
 import { effectsAnimationsReady, ensureSnowballBurstTex, freeFrostImpactTex, ensureArrowBlastTex } from './systems/effectsRenderer.js'; /* v2.3.2272: the frost-only sheets get an exit; v2.3.2844: minus the retired snowman plume */
 import { fxStripsReady } from './fxStrips.js'; /* v2.3.1735: stun ring + whirl vortex (preloading is law) */
@@ -70,7 +71,7 @@ import { preloadGestureCue } from './gestureCuePreload.js'; /* v2.3.2760: the ha
 import { preloadControls } from './controlsPreload.js'; /* v2.3.3018: the touch controls' pictures (the owner's mockup) */
 import { preloadCoinPiles } from './coinPileArt.js'; /* v2.3.3734: the owner's coin piles, one an amount */
 import { preloadQuestArt } from './questArtPreload.js'; /* v2.3.3030: the quest windows' painted art (the owner's sheets) */
-import { preloadZoneBanner, freeZoneBanner } from './zoneBannerPreload.js'; /* v2.3.2596: the zone-entry banner strips are PER-ZONE */
+import { preloadZoneBanner, freeZoneBanner, preloadWheelBanners } from './zoneBannerPreload.js'; /* v2.3.2596: the zone-entry banner strips are PER-ZONE; v2.3.5003: + the Wheel's, near where you land */
 import { bannerStripFor } from '../data/zoneBanner.js';   /* v2.3.3024: which of the Wheel's lands have banner art (again since v2.3.3609) */
 import { WHEEL_LANDS } from '../data/wheelLands.js';      /* v2.3.3024 */
 import { loadSignpostIcons, freeSignpostIcons } from './wheelSignposts.js';   /* v2.3.3062: Brotown's signposts' icons */
@@ -158,7 +159,20 @@ export async function preloadZoneAssets(zoneId) {
      decoded where the four strips are ~15.7 MB; v2.3.3609, the owner: "I also
      don't like the intro graphics to each zone.  The older ones were better."
      -- the strips again, the scenes no longer loaded) */
-  if (zoneId === 'wheel') for (const land of wheelBannerLands()) tasks.push(Promise.resolve(preloadZoneBanner(land)).catch(() => {}));
+  /* ═══ v2.3.5003: ONLY THE ONES NEAR WHERE YOU LAND ═══
+     The owner, 2026-11-12 ("Yes do it", docs/specs/pictures-256.md §7): the
+     four strips were held decoded for the whole visit, ~15.7 MB.  Now only
+     the banners of the lands near where this trip lands load here -- none
+     at the town square, a land's own at a dungeon's mouth or a reload's spot
+     out in it -- AWAITED like the rest, so a land you arrive in has its banner
+     ready before the screen lifts; the others load as you walk toward their
+     land and go as you walk away (zoneBannerPreload.js wheelBannerTick, the
+     reach in src/game/bannerReach.js).  After the room has said which Wheel
+     (wheelSizeTold, which the way in waits for already), so the lands are
+     measured on the right one.  `?banners=all`: all four, as before. */
+  if (zoneId === 'wheel') {
+    tasks.push(Promise.resolve(wheelSizeTold(8000)).then(() => preloadWheelBanners(wheelArrivalPoint())).catch(() => {}));
+  }
   /* v2.3.3062: and the lands' icons for Brotown's signposts (wheelSignposts.js),
      drawn down to 64 px as they land; let go on leaving (below) */
   if (zoneId === 'wheel') tasks.push(Promise.resolve(loadSignpostIcons()).catch(() => {}));
@@ -300,7 +314,9 @@ export async function freeZoneAssets(fromZoneId, toZoneId) {
   let bannersFreed = [];
   try { bannersFreed = freeZoneBanner(fromZoneId, toZoneId); } catch (e) { /* a strip that will not release is a leak, not a crash */ }
   /* v2.3.3024: leaving the Wheel lets its lands' banner strips go too
-     (v2.3.3481-v2.3.3608: its lands' scenes in their place) */
+     (v2.3.3481-v2.3.3608: its lands' scenes in their place; since v2.3.5003
+     whichever are held near you, or all four with `?banners=all`, and one
+     still on its way lands let go) */
   if (fromZoneId === 'wheel' && toZoneId !== 'wheel') {
     for (const land of wheelBannerLands()) {
       try { bannersFreed = bannersFreed.concat(freeZoneBanner(land, toZoneId)); } catch (e) { /* a leak, not a crash */ }

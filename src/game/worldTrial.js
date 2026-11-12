@@ -276,6 +276,10 @@ export function takeWheelArrival() {
   return a ? { x: a.x, y: a.y } : null;
 }
 function arrivalPoint() { return arriveLive() || WORLDVIEW_ARRIVAL; }
+/** v2.3.5003: where this trip will land, NOT taken (takeWheelArrival takes
+ *  it, at the arrival): the banners near it load behind the same loading
+ *  screen (rendering/zoneBannerPreload.js preloadWheelBanners). */
+export function wheelArrivalPoint() { const a = arrivalPoint(); return a ? { x: a.x, y: a.y } : null; }
 
 /* The per-zone gate's half of the trial (preloadAnimations.preloadZoneAssets),
    awaited behind the ordinary zone loading overlay: the Wheel's way in.

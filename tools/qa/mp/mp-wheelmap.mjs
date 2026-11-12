@@ -57,6 +57,14 @@
  * ornaments drawn, the frost icon and the name on the plaque, no picture over
  * it), and that nothing comes up under the minimap
  * (wheelmap-04c-landbanner.png).
+ *
+ * v2.3.5003, the owner's "Yes do it" (docs/specs/pictures-256.md §7: hold
+ * only the banner of the land you are in or walking toward): 2 checks no
+ * land's banner strip is held in BroTown on arrival, and 4 that out on Frost
+ * Ridge only its strip is held (`window.__btBanners`), loaded on the walk out
+ * in time for the banner to play with its ornaments (none played the plaque
+ * alone for want of its strip).  `BT_QA_QUERY=banners=all` checks all four
+ * held, as before.
  * v2.3.3522, the owner: "Have icons representing each building on each
  * building in the minimap/compass" -- 2 checks every footprint on the box
  * wears its picture, loaded behind the loading screen, and 5 that leaving
@@ -155,6 +163,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
     m && m.window === 3200 && m.h === 132 && m.mapBottom > 80 && m.mapBottom < 100 && Math.abs(m.playerBoxX - 66) < 2 && Math.abs(m.playerBoxY - winMidY) < 2, m && { x: m.playerBoxX, y: m.playerBoxY, winMidY });
   /* v2.3.3023: in town, town is on the box: no home badge */
   rec.ok('...and in town no home badge: the town is on the box', m && m.home && m.home.edge === false && m.home.shown === false, m && m.home);
+  /* ═══ v2.3.5003: NO LAND'S BANNER HELD IN BROTOWN ═══
+     The owner's "Yes do it" (pictures-256.md §7): a land's banner strip is
+     held only near its land (zoneBannerPreload.js wheelBannerTick), and the
+     town square is thousands of px of walking from every land: none loaded
+     behind the loading screen, none held on arrival.  `?banners=all` holds
+     all four, as before. */
+  {
+    let bh = null;
+    for (let i = 0; i < 12; i++) {
+      bh = await P.page.evaluate(() => (window.__btBanners ? window.__btBanners() : null));
+      if (bh && bh.at > 0) break;
+      await P.page.waitForTimeout(300);
+    }
+    const all = !!bh && bh.mode === 'all';
+    rec.ok(all ? `...and with ?banners=all, all four lands' banner strips are held in BroTown, as before (${bh && bh.held})`
+      : `...and in BroTown, on arrival, no land's banner strip is held (${JSON.stringify(bh && bh.held)}, wanted ${JSON.stringify(bh && bh.want)}, ${bh && bh.r} px from the middle)`,
+      !!bh && (all ? bh.held.join() === 'desert,fire,forest,frost' : bh.mode === 'near' && bh.held.length === 0 && bh.loading.length === 0 && bh.want.length === 0), bh);
+  }
   /* v2.3.3009: the words were the top bar's, in place of "The Wheel (Lv1-2)" --
      v2.3.3108: the minimap's plate's (the owner: "move the zone name and
      level band beneath the minimap") */
@@ -438,17 +464,34 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return { land: pl ? pl.land : null, icon: pl ? pl.icon : false, color: pl ? pl.color : null, plateRect: window.__btWheelPlate || null,
       bannerAt: zb ? zb.shownAt('frost') : 0, banner: zb && zb.onScreen ? zb.onScreen() : null, watch: zb && zb.land ? zb.land() : null,
       /* v2.3.3609: the four strips held again (v2.3.3481-v2.3.3608 held the
-         eight lands' scenes in their place) */
-      strips: zb && zb.resident ? zb.resident() : null };
+         eight lands' scenes in their place); v2.3.5003: only the ones near you */
+      strips: zb && zb.resident ? zb.resident() : null,
+      hold: window.__btBanners ? window.__btBanners() : null };
   });
   rec.ok(`...and the name plate marks the land: the frost icon before "Frost Ridge", the name in the land's own colour (${look.color})`,
     look.land === 'frost' && look.icon === true && !!look.color && look.color !== '#f7f2e7', look);
   rec.ok(`...and crossing into Frost Ridge played its banner, docking into the plate (${look.banner ? `"${look.banner.text}"${look.banner.scene ? ', the owner\'s frost scene over it' : (look.banner.plain ? ', plain' : ', the owner\'s frost art')}` : 'shown ' + (look.bannerAt ? 'and docked' : 'never')})`,
     look.bannerAt > 0 && look.watch && look.watch.shown === 'frost', look);
   /* v2.3.3609, the owner: "The older ones were better": the Wheel holds the
-     four lands' animated strips again, loaded behind its loading screen */
-  rec.ok(`...and the Wheel holds the owner's four animated banners for its lands (${JSON.stringify(look.strips)})`,
-    Array.isArray(look.strips) && look.strips.length === 4 && ['frost', 'fire', 'desert', 'forest'].every((t) => look.strips.includes(t)), { strips: look.strips });
+     four lands' animated strips again, loaded behind its loading screen.
+     v2.3.5003, the owner's "Yes do it": only the strip of the land you are in
+     or walking toward (zoneBannerPreload.js, src/game/bannerReach.js) --
+     out on Frost Ridge's second stretch, Frost Ridge's alone on the long
+     Wheel (on the short one, 1,600 px nearer the middle, a neighbour's may
+     be kept too; never the Wind Dunes', two lands away) -- loaded on the walk
+     out, in time: the banner did not play the plaque alone for want of it */
+  {
+    const bh = look.hold || {};
+    const long = (await H.wheelGeom()).long === 5;
+    const all = bh.mode === 'all';
+    rec.ok(all ? `...and with ?banners=all the Wheel holds the owner's four animated banners for its lands, as before (${JSON.stringify(look.strips)})`
+      : `...and out on Frost Ridge only its banner strip is held (${JSON.stringify(bh.held)}; wanted ${JSON.stringify(bh.want)}, ${bh.r} px from the middle, ${bh.side} px from the line to ${bh.next})`,
+      all ? Array.isArray(look.strips) && look.strips.length === 4 && ['frost', 'fire', 'desert', 'forest'].every((t) => look.strips.includes(t))
+        : Array.isArray(bh.held) && bh.held.includes('frost') && !bh.held.includes('desert') && bh.held.length <= 2 && (!long || bh.held.join() === 'frost'),
+      { hold: bh, strips: look.strips, long });
+    rec.ok(`...its strip there in time: crossing in played the owner's ornaments, not the plaque alone (waited ${look.watch && look.watch.waitedMs} ms past the dwell, ${look.watch && look.watch.bare} played bare)`,
+      !!look.watch && look.watch.bare === 0, look.watch);
+  }
   {
     /* the minimap's land here is the land's one flat colour: ice blue round
        you, read off the screen (wheelLands.js frost #7fbfe0 under the box's
