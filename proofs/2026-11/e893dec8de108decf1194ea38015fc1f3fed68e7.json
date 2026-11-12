@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e893dec8de108decf1194ea38015fc1f3fed68e7",
+  "tree": "c59d5a0aba789e562f73b73ef67b8dc460932dcb",
+  "committedAt": "2026-11-11T22:49:45-08:00",
+  "subject": "Merge pull request #1622 from hemibroscommunity-del/claude/gifted-euler-c20tgo-tap-player-trade",
+  "files": 7250,
+  "bytes": 940666167,
+  "listingSha256": "14120a668aebc509d91f3d794409917551df779793f248c1d578b0f7192d9a38",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
