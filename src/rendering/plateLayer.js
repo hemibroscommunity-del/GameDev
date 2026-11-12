@@ -64,6 +64,18 @@ export class PlateLayers {
         for (const r of this.rl.values()) attached += r.renderLayerChildren ? r.renderLayerChildren.length : 0;
         return { on: this.on, layers: this.rl.size, attached };
       };
+      /* QA: the same scene both ways (mp-platelayer: a plate drawn by the
+         layer and drawn in place are the same picture) */
+      window.__btPlateLayerSet = (on) => {
+        if (!on) {
+          for (const r of this.rl.values()) {
+            const kids = (r.renderLayerChildren || []).slice();
+            for (const k of kids) r.detach(k);
+          }
+          this.on = false;
+        } else this.on = this.rl.size > 0;
+        return this.on;
+      };
     }
   }
 
