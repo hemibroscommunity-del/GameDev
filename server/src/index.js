@@ -3478,6 +3478,9 @@ export class GameRoom {
     /* v2.3.3556: renamed from _duelDeathKeepsBag -- a dungeon death keeps the
        bag through the respawn too */
     ps._deathKeepsBag = !!_duelKill || _dungeonKeep;
+    /* v2.3.4902: the death's notes saved beside the record, in this same
+       synchronous run (life.js _lifeNotePut; `lifesave: false` writes none) */
+    this._lifeNotePut(playerId, ps, cause);
     this._saveRpg(playerId, ps);
     this._queuePlayerStateFlush(playerId);
     const ws = this._wsBySessionId(playerId);

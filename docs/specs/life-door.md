@@ -65,10 +65,5 @@ that names it, and its line in the test's `EXPECT_HP`.
 - **No heal on a dying body.** The `kind` column says which roads are heals:
   one check in `_hpSet` instead of twelve (today a regen tick or a food can
   in principle raise a dying body's hp before the respawn).
-- **The death's notes in the one field.** `ps.life = { phase, until,
-  keepsBag }`, folding `respawnAt` and `_deathKeepsBag`, saved with the
-  record, so a close in the dying seconds comes back as the same death (the
-  state-machine sweep's V2; v2.3.4374's `joinstandup` already stands such a
-  join up).
 - **The phase on the wire** behind a cap, so a phone follows it on every join
   instead of waiting for one message (the sweep's V2, phone side).

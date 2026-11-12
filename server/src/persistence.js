@@ -545,6 +545,8 @@ export const persistenceMethods = {
        a new player would, every honesty check on.  The Test panel turns it on
        again in one tap. */
     try { await this.state.storage.delete('testmode:' + pid); } catch (e) { /* best-effort, as above */ }
+    /* v2.3.4902: a death's note (life.js LIFE_NOTE) goes with the character */
+    try { await this.state.storage.delete('life:' + pid); } catch (e) { /* best-effort, as above */ }
     /* v2.3.3284: and the party, which lasts now (party.js): a restarted
        character has joined nothing.  Before the socket closes, so the rest
        of the party is told at once. */
