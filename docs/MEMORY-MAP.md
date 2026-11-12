@@ -98,6 +98,10 @@ before anything else is made to fit.
 
 ### Characters: players, townsfolk and stand-ins
 
+(v2.3.4961: the armoured figure's head sheets are a look set too, `bodyheads`:
+1.42 MB once on the chip for every skin, where each skin's were a copy of
+about 1.4 MB on the chip and 1.4 MB of decoded picture; look-palette.md.)
+
 Today every look (skin, trousers, boots, shirt, armour) gets its own recoloured
 copy of the sheets it wears, so memory grows with every different look on
 screen: about 2.5 MB for each other player (`mp-peermem`), and a phone draws

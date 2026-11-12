@@ -36,7 +36,7 @@ import { getEyeStyle, onEyeStyleChange } from './traits/eyeStyleCatalog.js';   /
    that is where the pants pixels and the bare skin actually are. */
 import { getArt, artHasInk, artHash, artIsSymmetric, onArtChange, sideForDir, emptyArt } from './traits/playerArt.js';   /* v2.3.2042: sideForDir/emptyArt -- a face tattoo does not revolve to the back of a head */
 import { getPattern, parsePattern, patternKey, onPatternChange } from './traits/patternCatalog.js';   /* v2.3.1941 */
-import { lookPaletteWanted, lookPose, getLookFrame, preloadLookSheets } from './lookPalette.js';   /* v2.3.3716: on unless `?lookpalette=0` */
+import { lookPaletteWanted, lookPose, getLookFrame, preloadLookSheets, registerLookSheets, lookHas, getLookPartFrames } from './lookPalette.js';   /* v2.3.3716: on unless `?lookpalette=0` */
 import { installLookProbe } from './lookPaletteProbe.js';   /* v2.3.3716: QA, `?lookpalette=1` / `?lookprobe` only */
 import { bodyWorkerWanted, bakeOnWorker, noteWorkerSheet } from './bodyBake.js';   /* v2.3.4930: the bake on a worker */
 import { FRAME_W, FRAME_H, setBakeTag, bakeBodyFull, bakeHeadFull, GARMENT_SPECKS_OFF, recolorBodyToCanvas, retintSkinPixels, recolorStandInSkin, recolorStandInSkinSplit } from './bodyRecolor.js';   /* v2.3.4930: the recolour, moved verbatim (a worker runs it too) */
@@ -1006,6 +1006,32 @@ function _headSheetKey(skinId, pantsId, shoesId, pose, dir, blank, a) {
   return _headComboPrefix(skinId, pantsId, shoesId)
     + (blank ? '/es:' + blank.id : '') + '|' + pose + '-' + dir + _headArtSeg(a);
 }
+/* ═══ v2.3.4961: THE HEAD SHEETS FROM THE NUMBERS (on; `?headlook=0` off) ═══
+   The head an armoured figure draws over its armour (the jog, the hit taken,
+   mining, the pickup) was a recoloured copy of its sheet for every skin met:
+   your own ten behind the loading screen (the default skin's too, unchanged
+   copies), and up to eleven more for each armoured player of another skin.
+   Off the page's thread since v2.3.4930 (bodyBake.js), but each still a
+   full-colour picture of its own on the graphics chip.  The sheets are kept
+   ONCE now as colour numbers (lookSets/bodyheads.js, public/sprites/look/bodyheads/,
+   made by tools/art/role-bake.mjs --set bodyheads), a skin a row of colours, as
+   the bodies are (docs/specs/look-palette.md).  Null -- the old bake, as
+   before -- for what the numbers cannot carry: an eye style that erases (its
+   fill is the colour round each eye), a face drawing, the garment specks'
+   old way, no atlas row, the set not in. */
+const HEAD_LOOK_OFF = (() => { try { return /(^|[?&])headlook=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+if (!HEAD_LOOK_OFF) registerLookSheets('bodyheads', '/sprites/look/bodyheads/roles.json');
+function _headLookFrames(pose, dir, skinT, blank, a) {
+  if (HEAD_LOOK_OFF || GARMENT_SPECKS_OFF || blank || _headArtSeg(a) || !lookPaletteWanted()) return null;
+  const sheet = pose + '-' + dir + '-head';
+  if (!lookHas('bodyheads', sheet)) return null;
+  return getLookPartFrames('bodyheads', sheet, [[1, skinT || null]], { asDrawn: true });
+}
+/** v2.3.4961: will the numbers draw this head (so a bake of it is not needed)?
+ *  Asked once the sets are in (preloadLookSheets). */
+function _headByLook(pose, dir, skinT, blank, a) {
+  return !!_headLookFrames(pose, dir, skinT, blank, a);
+}
 /* v2.3.4930: the face drawing's stamp is bodyRecolor.js stampHeadInk (moved
    verbatim, with the head's bake steps: bakeHeadFull) */
 /* ═══ v2.3.4930: ...AND ON THE WORKER (bodyBake.js) ═══
@@ -1188,10 +1214,14 @@ export function getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx
      sheet resolves them -- a back-of-head sheet (hit-north) takes the back of
      the head's canvas, not the face's. */
   const a = art ? artForFacing(art, dir) : null;
-  const key = _headSheetKey(skinId, pantsId, shoesId, pose, dir, blank, a);
-  const entry = _pickupHeadSheets[key];
-  if (entry === undefined) { _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, blank && blank.rects, a); return null; }
-  if (entry === 'loading' || !entry.length) { if (entry !== 'loading') _headLater.due(key); return null; }   /* v2.3.3882 */
+  /* v2.3.4961: the numbers first (_headLookFrames); the bake where they cannot */
+  let entry = _headLookFrames(pose, dir, skinT, blank, a);
+  if (!entry) {
+    const key = _headSheetKey(skinId, pantsId, shoesId, pose, dir, blank, a);
+    entry = _pickupHeadSheets[key];
+    if (entry === undefined) { _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, blank && blank.rects, a); return null; }
+    if (entry === 'loading' || !entry.length) { if (entry !== 'loading') _headLater.due(key); return null; }   /* v2.3.3882 */
+  }
   /* v2.3.1389: jog callers pass the cycle `phase` (0..1) — the SAME clock
      getGearFramePhased plays the fullset armor with, so a head sheet whose
      native frame count differs from the body's (east: 25 vs 28) stays
@@ -1339,7 +1369,9 @@ export function preloadBodyAll() {
   const _hBlank = eyeBlankForSheet('pickup-south-head', getEyeStyle());
   const _hArt = artForFacing(localBodyArt(false), 'south');
   const headKey = _headSheetKey(skinId, pantsId, shoesId, 'pickup', 'south', _hBlank, _hArt);
-  if (!plain && _pickupHeadSheets[headKey] === undefined) tasks.push(_buildPickupHeadSheet(headKey, 'pickup', 'south', skinT, pantsT, shoesT, _hBlank && _hBlank.rects, _hArt));   /* v2.3.2861: !plain -- the default combo never reached here before */
+  /* v2.3.4961: not when the numbers draw it (_headByLook), asked once the sets are in */
+  const _pickupHead = () => { if (!_headByLook('pickup', 'south', skinT, _hBlank, _hArt) && _pickupHeadSheets[headKey] === undefined) return _buildPickupHeadSheet(headKey, 'pickup', 'south', skinT, pantsT, shoesT, _hBlank && _hBlank.rects, _hArt); };
+  if (!plain) tasks.push((!HEAD_LOOK_OFF && lookPaletteWanted()) ? preloadLookSheets().then(_pickupHead, _pickupHead) : _pickupHead());   /* v2.3.2861: !plain -- the default combo never reached here before */
   /* v2.3.3716: the stand and jog sheets as colour numbers, behind the same
      loading screen (not with `?lookpalette=0`).
      The bakes above are kept as they were: the armour's masked frames and the
@@ -1355,6 +1387,12 @@ export function preloadBodyAll() {
  *  preloadBodyAll this runs for the DEFAULT combo too: the head sheets must
  *  fetch + bake regardless of recoloring. */
 export function preloadJogHeadOverlays() {
+  /* v2.3.4961: the head sheets the numbers draw are not baked (_headByLook):
+     the sets first, behind the same loading screen */
+  if (!HEAD_LOOK_OFF && lookPaletteWanted()) return preloadLookSheets().then(_preloadJogHeads, _preloadJogHeads);
+  return _preloadJogHeads();
+}
+function _preloadJogHeads() {
   const skinId = _skinStore.get(), pantsId = _pantsStore.get(), shoesId = _shoesStore.get();
   const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
   const tasks = [];
@@ -1375,6 +1413,7 @@ export function preloadJogHeadOverlays() {
     const arts = (artM && MIRRORED_SOURCE_DIRS.indexOf(dir) !== -1) ? [art, artM] : [art];
     for (const a0 of arts) {
       const a = artForFacing(a0, dir);
+      if (_headByLook(pose, dir, poseSkinTarget(skinT, pose), blank, a)) continue;   /* v2.3.4961 */
       const key = _headSheetKey(skinId, pantsId, shoesId, pose, dir, blank, a);
       if (_pickupHeadSheets[key] === undefined) tasks.push(_buildPickupHeadSheet(key, pose, dir, poseSkinTarget(skinT, pose), pantsT, shoesT, blank && blank.rects, a));   /* v2.3.2861: poseSkinTarget */
     }
@@ -1470,7 +1509,7 @@ function _prewarmHeadOverlays() {
   const blank = eyeBlankForSheet('pickup-south-head', getEyeStyle());
   const a = artForFacing(localBodyArt(false), 'south');
   const key = _headSheetKey(skinId, pantsId, shoesId, 'pickup', 'south', blank, a);
-  if (_pickupHeadSheets[key] === undefined) {
+  if (!_headByLook('pickup', 'south', skinTarget(skinId), blank, a) && _pickupHeadSheets[key] === undefined) {   /* v2.3.4961 */
     _buildPickupHeadSheet(key, 'pickup', 'south', skinTarget(skinId), pantsTarget(pantsId), shoesTarget(shoesId),
       blank && blank.rects, a);
   }
@@ -1490,6 +1529,22 @@ onArtChange(_onArtChanged);
 onPatternChange(_onArtChanged);   /* v2.3.1941: a trouser pattern is part of the same bake */
 
 _prewarmCurrent();
+
+/* v2.3.4961: QA (mp-headlook) -- your own head sheets: which the numbers
+   draw, and how many copies the old path holds baked (any skin) */
+if (typeof window !== 'undefined') {
+  window.__btHeadSheets = () => {
+    const skinId = _skinStore.get();
+    const want = [['jog', 'south'], ['jog', 'southwest'], ['jog', 'north'], ['jog', 'east'], ['hit', 'south'], ['hit', 'southwest'], ['hit', 'east'], ['hit', 'northeast'], ['hit', 'north'], ['mine', 'south'], ['pickup', 'south']];
+    const look = want.map(([pose, dir]) => {
+      const t = getPickupHeadFrame(skinId, null, null, pose, dir, 0, undefined, getEyeStyle(), localBodyArt(false));
+      return pose + '-' + dir + ':' + (t ? (t._btLook ? 'look' : 'bake') : 'none');
+    });
+    let baked = 0;
+    for (const k of Object.keys(_pickupHeadSheets)) if (Array.isArray(_pickupHeadSheets[k]) && _pickupHeadSheets[k].length) baked++;
+    return { off: HEAD_LOOK_OFF, look, baked };
+  };
+}
 
 /* v2.3.3716: the look-palette oracle's probe (mp-lookpalette), on a page that
    asks for it only */

@@ -127,5 +127,6 @@ lands, which both callers already draw as they do while the image loads.
 
 ## Not here (next)
 
-- The look palette for the fish in a shirt and the head sheets (a memory
-  saving, not a hold: those bakes are off the page now).
+- The look palette for the fish in a shirt (a memory saving, not a hold:
+  that bake is off the page now). The head sheets are colour numbers since
+  v2.3.4961 (look-palette.md, "The head sheets").
