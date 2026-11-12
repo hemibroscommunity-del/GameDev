@@ -208,7 +208,10 @@ export const gambleMethods = {
       if (qty <= 0) continue;
       staked[k] = qty; kinds++; total += qty;
     }
-    if (!kinds || total <= 0) return;
+    /* v2.3.4882: none of it in the bag -- the phone's bag was stale, so the
+       true one goes back (the refusal door; only the asker's own bag, no
+       oracle) */
+    if (!kinds || total <= 0) return this._refusalEcho(session, ['inventory']);
     ps._lastAceFlipAt = now;
     const won = Math.random() < ACE_ITEMS.WIN_CHANCE;
     for (const k of Object.keys(staked)) {
@@ -235,7 +238,8 @@ export const gambleMethods = {
        item count onto a board measured in coins. */
   },
 
-  /* v2.3.2618: Ace's coin flip.  Invalid requests are ignored silently, the
+  /* v2.3.2618: Ace's coin flip.  Invalid requests are ignored silently (v2.3.4882: but an
+     unaffordable stake, a real phone's stale purse, gets its coins back), the
      same as the Gamble Hall's -- the panel's own gates keep a legitimate
      client from ever sending one, and answering an invalid request is a
      probe oracle. */
@@ -248,7 +252,10 @@ export const gambleMethods = {
     const coins = ps.coins || 0;
     const risk = stake * ACE_FLIP.RISK_MULT;
     /* THE bound. See the header: it is the LOSS that must be affordable. */
-    if (risk > coins) return;
+    /* v2.3.4882: the loss is not affordable -- the panel only offers a stake
+       it thinks is, so its coins were stale: the true purse goes back (the
+       refusal door; the asker's own coins are no probe oracle) */
+    if (risk > coins) return this._refusalEcho(session, ['coins']);
     const now = Date.now();
     if (ps._lastAceFlipAt && now - ps._lastAceFlipAt < ACE_FLIP.COOLDOWN_MS) return;
     ps._lastAceFlipAt = now;
@@ -288,7 +295,8 @@ export const gambleMethods = {
     if (!Number.isFinite(wager) || wager < 10 || wager > 10000) return;
     const now = Date.now();
     if (ps._lastGambleAt && now - ps._lastGambleAt < 2000) return;
-    if ((ps.coins || 0) < wager) return;
+    /* v2.3.4882: more than the purse -- the true coins go back (refusal door) */
+    if ((ps.coins || 0) < wager) return this._refusalEcho(session, ['coins']);
     ps._lastGambleAt = now;
     const won = Math.random() < 0.40; // GAMBLE_WIN_CHANCE mirror
     if (won) this._goldGive(ps, wager, 'gamble_win'); /* v2.3.4670: the gold door */

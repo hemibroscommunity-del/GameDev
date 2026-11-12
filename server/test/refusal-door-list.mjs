@@ -105,7 +105,7 @@ export const SWALLOWED = Object.freeze({
 
 /* The list's size when it was frozen (v2.3.4791).  Lower these as lines come
    off; raising one is a decision the PR names. */
-export const FROZEN = Object.freeze({ listed: 283, known: 18 });   /* v2.3.4801: +1, the draw and gather's quiet drop (drawgather.js); v2.3.4880: -22, the workshop answers (forge, amulet forge, gem cut, smelter, armour forge); v2.3.4881: -14, the points, the chest, the capes and the reroll */
+export const FROZEN = Object.freeze({ listed: 279, known: 14 });   /* v2.3.4801: +1, the draw and gather's quiet drop (drawgather.js); v2.3.4880: -22, the workshop answers (forge, amulet forge, gem cut, smelter, armour forge); v2.3.4881: -14, the points, the chest, the capes and the reroll; v2.3.4882: -4, the purses */
 
 /* handler -> { guard: 'code[ code...][: note]' } */
 export const ALLOW = {
@@ -454,18 +454,15 @@ export const ALLOW = {
   '_handleGambleRequest': {
     "if (!Number.isFinite(wager) || wager < 10 || wager > 10000)": "shape",
     "if (ps._lastGambleAt && now - ps._lastGambleAt < 2000)": "rate",
-    "if ((ps.coins || 0) < wager)": "known: not enough gold for the wager",
   },
   '_handleAceFlipRequest': {
     "if (!Number.isFinite(stake) || stake < ACE_FLIP.MIN_STAKE)": "shape",
-    "if (risk > coins)": "known: not enough gold for the stake",
     "if (ps._lastAceFlipAt && now - ps._lastAceFlipAt < ACE_FLIP.COOLDOWN_MS)": "rate",
   },
   '_handleAceItemFlipRequest': {
     "if (ps._lastAceFlipAt && now - ps._lastAceFlipAt < ACE_ITEMS.COOLDOWN_MS)": "rate",
     "if (!want || typeof want !== 'object')": "shape",
     "if (!ps.inventory || typeof ps.inventory !== 'object')": "norec",
-    "if (!kinds || total <= 0)": "known: none of the staked items in the bag",
   },
   '_handleFishInspect': {
     "if (!info)": "shape",
@@ -478,7 +475,6 @@ export const ALLOW = {
     "if (this._flagOn && this._flagOn('disable_jackpot'))": "off",
     "if (!Number.isFinite(amount) || amount < CADENCE.JACKPOT_MIN || amount > CADENCE.JACKPOT_MAX)": "shape",
     "if (amount % CADENCE.JACKPOT_TICKET !== 0)": "shape",
-    "if ((ps.coins || 0) < amount)": "known: not enough gold for the deposit",
   },
   '_handleClanJoinAccept': {
     "if (!inviter || typeof inviter !== 'string')": "shape",
