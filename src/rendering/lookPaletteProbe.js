@@ -151,7 +151,13 @@ export function installLookProbe(dep) {
       }
       render(cells, (c) => c.t, 0.25, 36, 32);
       done.push({ look: L.join('/'), frames: cells.length });
-      for (const c of cells) srcs.add(c.t.source);
+      for (const c of cells) {
+        /* v2.3.4993: a sheet in a page of the atlas counts its own texels, not
+           the page's (the other sheets in it are other sets') */
+        const L = c.t.source && c.t.source._btLook;
+        const M = L && L.page && c.t._btLookDir >= 0 ? L.page.members.find((m) => m.dir === c.t._btLookDir) : null;
+        srcs.add(M || c.t.source);
+      }
     }
     return { done, ...held() };
   }
@@ -170,6 +176,7 @@ export function installLookProbe(dep) {
     const ship = new Set();
     for (const [pose, dir, k] of sheets()) for (let f = 0; f < k; f++) { const t = getFrame(pose, dir, f); if (t) ship.add(t.source); }
     for (const s of srcs) {
+      if (s && s.look && s.rows) { if (s.up) gpu += s.w * s.rows * (s.look.bits === 8 ? 1 : 2); n++; continue; }   /* v2.3.4993: a sheet in a page */
       if (!s || s.destroyed) continue;
       if (ship.has(s)) { shipped++; continue; }
       const bpp = s.format === 'rg8unorm' ? 2 : (s.format === 'r8unorm' ? 1 : 4);

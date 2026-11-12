@@ -423,11 +423,7 @@ atlas pays: those 15 become one or two.
 ### The atlas plan, in order
 
 1. **Done: the shadows grouped** (above).
-2. **A look atlas** (`docs/specs/look-palette.md` item 8 already names it):
-   every look sheet laid out in one texture with a directory of where each
-   sheet starts, the look program reading that one texture. The shadows' 15
-   look batches become about 2, and the look program's 4-way chain of reads
-   becomes one read.
+2. **Done: the look atlas (v2.3.4993, below).**
 3. **The plain tee through the colour numbers**: a figure's body, tee and hair
    in one look batch, so 4 batches a player become 2. A plain tee was left on
    the old sheet because "the numbers save it nothing" in memory
@@ -436,6 +432,36 @@ atlas pays: those 15 become one or two.
 4. **The weapon** is the last piece that takes turns with the look's. The one
    program (`?onebatch=1`) would fold it, and is off since it made legs
    flicker on the owner's iPhone (TRAPS §260): only their phone can clear it.
+
+### The look atlas (v2.3.4993)
+
+`lookPalette.js` "THE LOOK ATLAS". The body's, the head pieces' and the
+tee's 89 sheets of colour numbers sit in three PAGES on the chip, one a form
+(8 bits at one or two texels a display texel; 16 bits), planned from the
+three sets' manifests before a picture loads and packed bottom-left on a
+skyline at the narrowest good width: 5.3 MB of pages for the 4.3 MB of
+sheets. The stand-ins and the bodies' heads stay a texture a sheet: in pages
+too they cost 15 MB for 12, and they are drawn far less.
+
+A sheet keeps its header, table and roles in its own last rows, and its
+frames in its own texels (the armour's bake reads them against the sheet's
+own bytes). Only its place is new: a directory (8 KB, two texels a sheet)
+gives its corner and size, and its number rides in the vertex beside the
+round flag. The program offsets every read by the corner and clamps to the
+sheet, so it reads exactly as before: the body oracle (every look, every
+frame, at most one level apart), the heads' (0 px over one level), the
+armour's (5,918 frames, 0 px over two). Each sheet goes to its page as its
+own rectangle, so no page-sized copy is held by the page. `?lookatlas=0`: a
+texture a sheet, as before.
+
+| 50 walking, 30 looks (with v2.3.4991-4992) | atlas off | atlas on |
+|---|---|---|
+| draws a frame | 194 | 152 |
+| texture binds | 775 | 591 |
+| shadows' pieces | 23 batches (20 ended full) | 3 |
+
+Against the census's first count (about 400 draws, 380 program changes,
+890 binds a frame): 152, 132 and 591.
 
 ## What is left, ranked (none of it built)
 

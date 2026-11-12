@@ -620,6 +620,15 @@ Each its own pull request (on by default, as this one: the owner's rule for the 
    atlas or a vertex attribute; and setOneBatchRenderer's prewarm DRAWING a
    known sprite and reading its pixel back, falling back to the three
    programs if it is wrong. After the showing (the orchestrator), its own PR.
+   **v2.3.4993: the atlas, without the fold.** The body's, the head pieces'
+   and the tee's sheets now sit in three pages (one texture a form), each
+   sheet found by a directory entry whose number rides in the vertex's low
+   half beside the round flag; the program offsets every read by the sheet's
+   corner and clamps to its size, so it reads exactly as before (the oracle:
+   every look, every frame, at most one level apart). The 4-way chain of
+   reads is unchanged: three pages fit it, so a batch of look pieces never
+   ends on slots. The fold into `ONE_BATCHER` is still the owner's phone's
+   question (TRAPS §260). `docs/specs/crowd-lanes.md` "Texture atlases".
 9. **The old copies' code removed**, once every part draws from numbers and
    the owner has played with it on a phone.
 

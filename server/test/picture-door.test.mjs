@@ -304,7 +304,7 @@ const LIST = {
   'src/rendering/loginSpinPreload.js': { preloadLoginSpin: ['warm', 1, "the login spin's art, fetched into the browser's cache"] },
   'src/rendering/lookPalette.js': {
     loadPng: ['limit', 1, "a look set's sheet: under timeLimit (60 s) in loadSet, no retry: a failed set is drawn the old way (asking again is the owner's call, #1505)"],
-    loadSet: ['limit', 1, "a look set's roles.json: the same 60 s limit, no retry"],
+    manifestOf: ['limit', 1, "a look set's roles.json: the same 60 s limit, no retry (v2.3.4993: fetched once, the atlas plans every set's pages from them first)"],
   },
   'src/rendering/lookPaletteProbe.js': { '*': ['off', 2, 'a QA probe (`?lookprobe`): the stand-ins\' and (v2.3.4961) the body heads\' manifests'] },
   'src/rendering/lookSets/standinlegs.js': { '*': ['off', 1, 'the offline role bake (tools/art/role-bake.mjs)'] },
