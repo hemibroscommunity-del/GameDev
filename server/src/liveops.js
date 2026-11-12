@@ -79,6 +79,7 @@ function boxEntries(box) {
 }
 
 import { setGearStashCap, GEAR_STASH_CAP, GEAR_STASH_CAP_LEGACY, WEAPON_STASH_CAP_NEW, WEAPON_STASH_CAP_LEGACY } from './gearstash.js';   /* v2.3.4224 */
+import { setBagOneSum } from './bag.js';   /* v2.3.4900: the bag door's step 2 switch */
 
 export const LIVEOPS = {
   XP_MULT_MIN: 1,
@@ -131,6 +132,10 @@ export const liveopsMethods = {
     const old = !!(this._liveFlags && this._liveFlags.disable_bigbags);
     this.WEAPON_STASH_CAP = old ? WEAPON_STASH_CAP_LEGACY : WEAPON_STASH_CAP_NEW;
     setGearStashCap(old ? GEAR_STASH_CAP_LEGACY : GEAR_STASH_CAP);
+    /* v2.3.4900: the bag door's one sum (bag.js), on unless `bagonesum: false` --
+       handed down here because bag.js's plain functions cannot see the flags */
+    const f = this._liveFlags;
+    setBagOneSum(!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'bagonesum') && !f.bagonesum));
   },
 
   // Synchronous by design (hot paths).  v2.3.4376: the cache is loaded
@@ -361,7 +366,7 @@ export const liveopsMethods = {
       if (name === 'monstermoves' && typeof this._monsterMovesFlagChanged === 'function') this._monsterMovesFlagChanged();   /* v2.3.4011: the tiers' stat step on or off every live monster (monstermoves.js) */
       /* v2.3.3755: a memory saver turned off or on for every phone (clientoff.js) */
       if (name.startsWith('off_') && typeof this._clientOffChanged === 'function') this._clientOffChanged();
-      if (name === 'disable_bigbags') this._syncBagCaps();   /* v2.3.4224 */
+      if (name === 'disable_bigbags' || name === 'bagonesum') this._syncBagCaps();   /* v2.3.4224; v2.3.4900: + the bag door's one sum */
       if (name === 'freeswing' && typeof this._freeSwingFlagChanged === 'function') this._freeSwingFlagChanged();   /* v2.3.4520: the free-swing trial, every phone told (freeswing.js) */
       if ((name === 'bowdraw' || name === 'staffgather') && typeof this._drawGatherFlagChanged === 'function') this._drawGatherFlagChanged();   /* v2.3.4799: the bow's draw and the staff's gather, every phone told (drawgather.js) */
       return json({ ok: true, flags });
@@ -377,7 +382,7 @@ export const liveopsMethods = {
         if ((name === 'movepath' || name === 'pathall') && typeof this._movePathFlagChanged === 'function') this._movePathFlagChanged();   /* v2.3.3732 */
         if (name === 'monstermoves' && typeof this._monsterMovesFlagChanged === 'function') this._monsterMovesFlagChanged();   /* v2.3.4011 */
         if (name.startsWith('off_') && typeof this._clientOffChanged === 'function') this._clientOffChanged();   /* v2.3.3755 */
-        if (name === 'disable_bigbags') this._syncBagCaps();   /* v2.3.4224 */
+        if (name === 'disable_bigbags' || name === 'bagonesum') this._syncBagCaps();   /* v2.3.4224; v2.3.4900 */
         if (name === 'freeswing' && typeof this._freeSwingFlagChanged === 'function') this._freeSwingFlagChanged();   /* v2.3.4520 */
         if ((name === 'bowdraw' || name === 'staffgather') && typeof this._drawGatherFlagChanged === 'function') this._drawGatherFlagChanged();   /* v2.3.4799 */
       }
