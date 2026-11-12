@@ -557,10 +557,14 @@ highp vec4 colourOf(highp float n, highp int row)
 {
     return texelFetch(uPalAtlas, ivec2(int(n * 255.0 + 0.5), row), 0);
 }
-${SHARP_SAMPLE_GLSL.replace('vec4 sharpSample(sampler2D tex', 'vec4 sharpSample(highp sampler2D tex')}
+${SHARP_SAMPLE_GLSL.replace('vec4 sharpSample(sampler2D tex', 'vec4 sharpSample(highp sampler2D tex').replace(/\bvec2 /g, 'highp vec2 ')}
 void main(void) {
-    vec2 uvDx = dFdx(vUV);
-    vec2 uvDy = dFdy(vUV);
+    /* v2.3.4994: highp, the sharp read's place and slopes as the look
+       program's (v2.3.3864: on an iPhone mediump is 16 bits, 1/2048 of a
+       texture -- more than a texel on a wide strip -- and the look program
+       lost the body in the four facings that lost the legs here) */
+    highp vec2 uvDx = dFdx(vUV);
+    highp vec2 uvDy = dFdy(vUV);
     vec4 outColor;
     if (vCode < 0.5) {
 ${oneChain((t) => `{\n    outColor = texture(uTextures[${t}], vUV);\n}`)}
@@ -631,12 +635,11 @@ OneBatcher.extension = { type: [ExtensionType.Batcher], name: ONE_BATCHER };
 extensions.add(OneBatcher);
 
 /* a batch of ONE_BATCHER's binds its own pictures, slot i to unit i as Pixi
-   does, and the atlas of colours to the unit after the last -- not the empty
-   picture into every slot it leaves (PaletteBatcher's way), which bound a
-   texture again for every slot a smaller batch left after a bigger one.  A
-   slot it leaves keeps what it had: nothing this batch draws reads it, and
-   Pixi unbinds a texture from every unit before drawing INTO it
-   (GlRenderTargetAdaptor), so it is never a feedback loop. */
+   does, and the atlas of colours to the unit after the last.  (Until
+   v2.3.4994 not the empty picture into every slot it leaves, which bound a
+   texture again for every slot a smaller batch left after a bigger one: a
+   slot it leaves kept what it had, "nothing this batch draws reads it" --
+   true of what is drawn, not of what a chip checks; below.) */
 {
   const P = GlBatchAdaptor.prototype;
   const exec = P.execute;
@@ -647,6 +650,17 @@ extensions.add(OneBatcher);
     renderer.state.set(this._tempState);
     const textures = batch.textures.textures;
     for (let i = 0; i < batch.textures.count; i++) renderer.texture.bind(textures[i], i);
+    /* v2.3.4994: and the empty picture into every slot it leaves, as the
+       palette's and the look's batchers do.  Off by default since a phone's
+       chip lost a bro's legs with it (TRAPS §260), with the cause never found;
+       the first suspect (lane P4, docs/specs/one-batch.md "v2.3.4994") is
+       here: the program declares all fifteen samplers, and on a chip that
+       checks every one a draw can see (Metal under WebKit), a slot left on a
+       picture that is not drawable now -- freed, half sent, or the frame's
+       own target -- may cost the whole draw, whichever piece it was.  A slot
+       already empty costs nothing (Pixi skips a bind it already has). */
+    const empty = Texture.EMPTY.source;
+    for (let i = batch.textures.count; i < SLOTS; i++) renderer.texture.bind(empty, i);
     renderer.texture.bind(atlas().source, SLOTS);
     renderer.geometry.draw(batch.topology, batch.size, batch.start);
   };

@@ -183,3 +183,31 @@ card says how many frames a second the one saves on that phone -- or, if the
 old way was faster, asks for the card. `?onebatch=0` is the three programs for
 a whole visit. (In software the step is not offered: the three programs are
 already drawing.)
+
+## v2.3.4994: the two suspects made safe, for the owner's phone to judge
+
+Still OFF by default (TRAPS §260). The leg flicker on the owner's iPhone was
+never reproduced here, so this changes nothing anyone sees unless the address
+says `?onebatch=1`. A read-only lane (P4, 2026-11-12) ranked what could make
+one shared draw lose some of its pieces on a phone's chip and not on this
+box's software one; both are now ruled out in the one program:
+
+- **Slots left on old pictures.** A batch bound only its own pictures and
+  left every other unit of its fifteen on whatever the batch before had
+  bound. The program declares all fifteen, and a chip that checks every
+  sampler a draw can see (Metal, under WebKit) may refuse or blank the draw
+  when one of them holds a picture that is not drawable at that moment
+  (freed, half sent, the frame's own target). Every slot a batch leaves is now
+  bound to the empty picture, as the palette's and the look's batchers always
+  did (a bind Pixi already has costs nothing).
+- **The sharp read at 16 bits.** The one program's copy of `sharpSample` and
+  its slopes ran at the fragment's default precision (mediump: 16 bits on an
+  iPhone, 1/2048 of a texture, more than a texel on a wide strip). The look
+  program lost the whole body in the SAME four facings to exactly that
+  (v2.3.3864). The one program's copy is now highp throughout.
+
+Which (if either) it was, only the owner's phone can say: `?onebatch=1`, a
+bow or a staff, walking and standing in SW, W, NW and N. If the legs stay,
+the one program can come back for everyone with the owner's word, and the
+look program can be folded into it (the look atlas, v2.3.4993, made that a
+three-page read: docs/specs/crowd-lanes.md "Texture atlases").

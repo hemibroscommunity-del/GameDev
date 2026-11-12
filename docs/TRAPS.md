@@ -8706,6 +8706,11 @@ greatsword), walking and standing.
 **Receipt:** docs/specs/one-batch.md "Off by default (v2.3.3894)"; mp-onebatch's
 choice table.
 
+**v2.3.4994:** the two likeliest causes (slots left on old pictures; the sharp
+read at 16 bits, the look program's own v2.3.3864 fault in the same four
+facings) are both removed from the one program, still off by default: the
+owner's phone decides (docs/specs/one-batch.md "v2.3.4994").
+
 ## 261. "A mixed-grade set can't be one figure, so draw it as its pieces" (v2.3.3953)
 
 **The move.** A matched set jogs as ONE full-set figure on the body sprite
