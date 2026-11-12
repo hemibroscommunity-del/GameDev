@@ -23,8 +23,17 @@
  * on purpose — but these ones are drawn INSIDE the burst, in the medallion's
  * void, and an icon that arrives a beat after the art is the most visible
  * version of this bug rather than the least.
+ *
+ * v2.3.5004: THE ART IS COLOUR NUMBERS NOW, NOT THE STRIP DECODED.  Holding
+ * the strip decoded for the session was 6.29 MB in the page; the eight
+ * frames' colour numbers are 0.88 MB (levelUpBurstNumbers.js, docs/specs/
+ * pictures-256.md §7), loaded here, behind the loading screen, as the strip
+ * was.  The strip is still warmed where the numbers cannot be drawn
+ * (`?burstnumbers=0`, a browser with no DecompressionStream, a first load
+ * that failed), so the law holds on every path.
  */
 import { LEVELUP_STRIP_SRC, LEVELUP_NUM_URLS } from '../data/levelUpBurst.js';
+import { levelUpNumbersWanted, loadLevelUpNumbers, levelUpNumbersStats } from './levelUpBurstNumbers.js'; /* v2.3.5004 */
 import { LEVELUP_ICON_URLS } from '../ui/levelUpIcons.js';
 import { portraitStore } from '../ui/mobile/sheet/portraitStore.js'; /* v2.3.2615 */
 import { warmOnce } from './warmOnce.js';   /* v2.3.4652 */
@@ -95,13 +104,36 @@ export function preloadLevelUpBurst() {
         has: levelUpBurstHasWarm,
         portrait: () => portraitStore.get(),
         count: levelUpBurstWarmCount,
+        /* v2.3.5004: the art's colour numbers (held, ready, the draws' cost),
+           and what of the art is held decoded as a picture (nothing, unless
+           the strip is the way: mp-levelupnum step 7) */
+        numbers: levelUpNumbersStats,
+        artHeld: levelUpBurstArtHeld,
       };
     }
   } catch (e) { /* SSR / locked-down window */ }
   /* v2.3.3693: and the ten gold numerals the medallion's level is drawn in
      (~3 KB each): the same reason as the icons, they are drawn INSIDE the
      burst, on its first frame. */
-  return Promise.all([LEVELUP_STRIP_SRC, ...LEVELUP_ICON_URLS, ...LEVELUP_NUM_URLS].map(warm));
+  /* v2.3.5004: the art as its colour numbers; the strip only where they
+     cannot be drawn, or did not come (a failed first load: the burst then
+     draws the strip, so it is warmed here, behind the loading screen) */
+  const art = levelUpNumbersWanted()
+    ? loadLevelUpNumbers().then((ok) => (ok ? null : warm(LEVELUP_STRIP_SRC)))
+    : warm(LEVELUP_STRIP_SRC);
+  return Promise.all([art, ...[...LEVELUP_ICON_URLS, ...LEVELUP_NUM_URLS].map(warm)]);
+}
+
+/* v2.3.5004: for rigs: the burst's art held decoded as pictures -- how many
+   and their bytes at four a pixel (the strip: 6.29 MB; with the numbers, none) */
+export function levelUpBurstArtHeld() {
+  let n = 0, bytes = 0;
+  for (const img of _held) {
+    if (!img || !/\/sprites\/fx\/levelup-burst/.test(img.src || '')) continue;
+    n++;
+    bytes += (img.naturalWidth || 0) * (img.naturalHeight || 0) * 4;
+  }
+  return { n, bytes };
 }
 
 /* For rigs: how many of the warms are actually being held. */

@@ -70,6 +70,32 @@ export const LEVELUP_FRAMES = [
   { sx: 1908, sy: 180, sw: 264, sh: 334, ox: 130.0, oy: 163.7, r: 40.0, ms: 0 },
 ];
 
+/* ═══ v2.3.5004: THE BURST AS COLOUR NUMBERS (docs/specs/pictures-256.md §7) ═══
+ * The burst is drawn by the page (at z 70, over the HUD's HTML), and a
+ * browser holds a decoded picture at four bytes a pixel whatever its colours:
+ * the strip, held decoded for the session by the loading screen (the
+ * preloading law), is 6.29 MB.  Now the loading screen holds only the eight
+ * rects above (all the burst ever shows: it clips to them, 878,722 px) as
+ * COLOUR NUMBERS, a byte a pixel: 0.88 MB.  As each frame comes up the burst
+ * turns its numbers into colours on a canvas the frame's own size
+ * (rendering/levelUpBurstNumbers.js), scaled by the page as the strip was,
+ * and empties the canvas when it ends.
+ *
+ * The 256 colours: the strip is on 505,071, almost every pixel a soft glow.
+ * tools/art/levelup-numbers.mjs puts it on 256 with the game's reducer
+ * (public/tools/style/quant256.js reduce256), the strip as one picture, and
+ * cuts each frame's rect from its numbers into its own palette PNG (the same
+ * colours in all eight).  Measured: the mean shown pixel moves 7.3 levels of
+ * 255 (premultiplied), 9.2% of them past 16, the worst 94.5 -- outside the
+ * armour's 16-level bar; the owner looked at the before / after sheet and
+ * said yes, 2026-11-12.  Drawn in the game's renderer instead, it would sit
+ * under the HUD's HTML and be cut at the band (the canvas ends there), so it
+ * stays a page overlay.
+ * `?burstnumbers=0`: the strip, as before.  (So does a browser that cannot
+ * unpack the files, iOS before 16.4, or a load that fails.) */
+export const LEVELUP_NUMBER_SRCS = Object.freeze(LEVELUP_FRAMES.map((_, i) => `/sprites/fx/levelup-burst-v1-f${i}.p256.png?v=2.3.5004`));
+export const LEVELUP_BURST_NUMBERS = (() => { try { return !/[?&]burstnumbers=0(&|$)/.test(window.location.search || ''); } catch (e) { return true; } })();
+
 /* Frame 7 holds this long after the run-in, then the overlay fades out.
    v2.3.3608: HALF AS LONG ON SCREEN -- the owner, 2026-10-26: "reduce the time
    the level up message stays on screen by 50%."  2,590 ms -> 1,295 ms: the

@@ -6,8 +6,11 @@ import {
   LEVELUP_HOLD_MS, LEVELUP_FADE_MS, LEVELUP_RUN_MS, LEVELUP_MAX_W, LEVELUP_MAX_H,
   LEVELUP_ICON_FILL, LEVELUP_TOTAL_MS, LEVELUP_PIN_Y_FRAC,
   LEVELUP_CAPTION_BOX_H, LEVELUP_CAPTION_GAP, levelUpFrameAt,
-  LEVELUP_NUM_H, LEVELUP_NUM_W, LEVELUP_NUM_URLS,
+  LEVELUP_NUM_H, LEVELUP_NUM_W, LEVELUP_NUM_URLS, LEVELUP_BURST_NUMBERS,
 } from '../data/levelUpBurst.js';
+import {
+  levelUpNumbersReady, ensureLevelUpNumbers, levelUpNumbersUse, drawLevelUpFrame, emptyLevelUpCanvas,
+} from '../rendering/levelUpBurstNumbers.js'; /* v2.3.5004: the art from its colour numbers */
 import { BT_AUDIO } from '../data/index.js';
 import { flyPointsBubbles } from './pointsFly.js'; /* v2.3.4055: a weapon level-up's bubbles to your points */
 import { playVw, playVh } from './mobile/playViewport.js'; /* v2.3.3470: the column on a computer, until the burst's own box is measured */
@@ -147,6 +150,35 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
      clock between them. */
   React.useEffect(() => { playLevelUpSting(); }, [msg.ts]);
 
+  /* ═══ v2.3.5004: THE ART FROM ITS COLOUR NUMBERS ═══
+     (rendering/levelUpBurstNumbers.js, docs/specs/pictures-256.md §7.)  The
+     page no longer holds the strip decoded (6.29 MB): the loading screen holds
+     the eight frames' colour numbers (0.88 MB), and the frame showing is
+     turned into colours on a canvas in the art's own pixels, which the page
+     scales by k exactly as it scaled the strip -- the same box, the same
+     place, the same z 70 over the HUD.  Decided ONCE a burst, so a burst
+     never changes how it is drawn half way: the numbers if all eight are in,
+     else the strip (`?burstnumbers=0`, an old iPhone, a failed load -- which
+     is then asked for again).  Drawn in a layout effect only when the frame
+     CHANGES (eight times a burst, never every tick), before the browser
+     paints the box the new frame's size; the canvas is emptied as soon as
+     the burst stops drawing it, and the shared ImageData let go with the
+     last burst on screen. */
+  const [fromNumbers] = React.useState(() => LEVELUP_BURST_NUMBERS && levelUpNumbersReady());
+  const cvRef = React.useRef(null);
+  const drawn = React.useRef({ cv: null, fi: -1 });
+  /* a layout effect, declared before the one that draws, so the burst holds
+     the shared ImageData before its first draw */
+  React.useLayoutEffect(() => {
+    if (!fromNumbers) { if (LEVELUP_BURST_NUMBERS) ensureLevelUpNumbers(); return undefined; }
+    const release = levelUpNumbersUse();
+    return () => {
+      release();
+      emptyLevelUpCanvas(drawn.current.cv);
+      drawn.current = { cv: null, fi: -1 };
+    };
+  }, []);
+
   /* ═══ v2.3.2659: THE CAPTION'S REAL HEIGHT, NOT AN ASSUMED LINE COUNT ═══
      The fit below reserves room for the caption plate so it cannot run under
      the dashboard tray.  That reservation used to be a constant picked per
@@ -272,6 +304,18 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
   });
   React.useEffect(() => () => { if (msg.kind === 'combat') fireBubbles(); }, [msg.ts]);
 
+  /* v2.3.5004: the frame showing into the canvas, once a frame (see above);
+     a canvas no longer drawn (the burst over, its render null) emptied now,
+     not when the component goes */
+  const fiNow = elapsed > LEVELUP_TOTAL_MS ? -1 : levelUpFrameAt(elapsed);
+  React.useLayoutEffect(() => {
+    if (!fromNumbers) return;
+    const d = drawn.current, cv = cvRef.current;
+    if (d.cv && d.cv !== cv) { emptyLevelUpCanvas(d.cv); d.cv = null; d.fi = -1; }
+    if (!cv || fiNow < 0 || (d.cv === cv && d.fi === fiNow)) return;
+    if (drawLevelUpFrame(cv, fiNow)) { d.cv = cv; d.fi = fiNow; }
+  });
+
   /* Gone, not merely transparent, once it is over.  BroTown's own render
      guard would also drop it, but only on the next time something else
      re-renders that tree — and an invisible overlay that is still IN THE DOM
@@ -389,18 +433,41 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
              notification that silently failed to mount photographs exactly
              like the world behind it. */
           data-levelup-art=""
+          data-levelup-frame={String(fi)}                  /* v2.3.5004: for the rigs (mp-levelupnum step 7) */
+          data-levelup-numbers={fromNumbers ? '1' : '0'}
           style={{
             position: 'absolute',
             left: -f.ox * k,
             top: -f.oy * k,
             width: f.sw * k,
             height: f.sh * k,
-            backgroundImage: `url(${LEVELUP_STRIP_SRC})`,
-            backgroundPosition: `${-f.sx * k}px ${-f.sy * k}px`,
-            backgroundSize: `${LEVELUP_STRIP_W * k}px ${LEVELUP_STRIP_H * k}px`,
-            backgroundRepeat: 'no-repeat',
+            /* v2.3.5004: from the numbers, the canvas holds frame fi at its
+               top left in the art's own pixels and this box clips it to the
+               frame's rect, as it clipped the strip; else the strip */
+            ...(fromNumbers ? { overflow: 'hidden' } : {
+              backgroundImage: `url(${LEVELUP_STRIP_SRC})`,
+              backgroundPosition: `${-f.sx * k}px ${-f.sy * k}px`,
+              backgroundSize: `${LEVELUP_STRIP_W * k}px ${LEVELUP_STRIP_H * k}px`,
+              backgroundRepeat: 'no-repeat',
+            }),
           }}
-        />
+        >
+          {fromNumbers ? (
+            <canvas
+              ref={cvRef}
+              /* the art's pixels at k a pixel, as the strip was drawn
+                 (backgroundSize STRIP x k), smoothed by the page as the
+                 strip's picture was: `image-rendering: auto`, said here so
+                 no ancestor's setting can make it blocky.  (No drawImage, so
+                 imageSmoothingQuality has nothing to act on: the canvas holds
+                 the art at its own size and the page does the scaling.) */
+              style={{
+                position: 'absolute', left: 0, top: 0, display: 'block',
+                width: LEVELUP_MAX_W * k, height: LEVELUP_MAX_H * k, imageRendering: 'auto',
+              }}
+            />
+          ) : null}
+        </div>
         {/* v2.3.3693: the LEVEL in the paper centre, the owner's numerals,
             pinned where the icon was (the circle's centre, every frame) and
             growing with the circle through the run; the skill's icon is on
