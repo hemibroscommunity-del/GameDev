@@ -18,15 +18,20 @@
  *   4. A WRONG ROAD moves nothing: an unknown road, a wrong verb, an
  *      Object.prototype name -- each throws, the purse untouched;
  *   5. THE ROOM: the door is on the GameRoom, and a settlement's gold (the
- *      `_creditPlayer` landing, inbox.js) arrives through it.
+ *      `_creditPlayer` landing, inbox.js) arrives through it;
+ *   (6. step 2, v2.3.4803: one sum;)
+ *   7. STEP 3's LOG (v2.3.4903): every move noted per purse, memory only --
+ *      no storage write, never a field on the purse, capped -- and the
+ *      owner's /dev/goldlog reads it; `goldlog: false` notes nothing.
  *
  * A new way to change gold: a row in GOLD_ROADS, one call that names it, and
  * its longhand line in EXPECT below.
  */
 import { readdirSync, readFileSync } from 'node:fs';
-import { GOLD_ROADS, GOLD_SUMS, goldAfter, goldMethods, goldOneSum, wholeGold } from '../src/gold.js';
+import { GOLD_ROADS, GOLD_SUMS, goldAfter, goldMethods, goldOneSum, wholeGold, GOLD_LOG, goldLogOf } from '../src/gold.js';
 import { flagNameOk } from '../src/liveops.js';
 import { GameRoom } from '../src/index.js';
+const NOW_SET = (t) => { Date.now = () => t; };
 
 let failures = 0, passes = 0;
 function check(name, cond, detail) {
@@ -332,6 +337,48 @@ function callsIn(s) {
   const q = { coins: 10.5 };
   room._goldGive(q, 1, 'quest_reward');
   check('6. ...and `goldonesum: false` puts the step-1 sum back at once', q.coins === 11.5, q);
+}
+
+/* ── 7. STEP 3: THE GOLD LOG (v2.3.4903) ────────────────────────────────── */
+{
+  const writes = [];
+  const state = {
+    storage: { get: async () => undefined, put: async (k) => { writes.push(k); }, list: async () => new Map(), delete: async (k) => { writes.push(k); } },
+    getWebSockets: () => [], acceptWebSocket: () => {},
+  };
+  const room = new GameRoom(state, { LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async () => ({}) }) } });
+  room._liveFlags = {};
+  check('7. the log switch is on by default, a name the flags route stores', room._goldLogOn() && flagNameOk('goldlog'));
+  const ps = { coins: 100 };
+  NOW_SET(5000);
+  room._goldGive(ps, 25, 'quest_reward');
+  room._goldTake(ps, 40, 'harden');
+  room._goldSet(ps, 7, 'nml_loss');
+  const log = goldLogOf(ps);
+  check('7. every move is noted: when, the road, how much, the purse after', log.length === 3
+    && log[0].road === 'quest_reward' && log[0].d === 25 && log[0].c === 125 && log[0].at === 5000
+    && log[1].road === 'harden' && log[1].d === -40 && log[1].c === 85
+    && log[2].road === 'nml_loss' && log[2].d === -78 && log[2].c === 7, log);
+  check('7. memory only: no storage write, and nothing on the purse a save could carry', writes.length === 0 && JSON.stringify(Object.keys(ps)) === '["coins"]', { writes, keys: Object.keys(ps) });
+  for (let i = 0; i < GOLD_LOG.KEEP + 10; i++) room._goldGive(ps, 1, 'loot_gold');
+  const l2 = goldLogOf(ps);
+  check('7. capped at GOLD_LOG.KEEP, the oldest dropped', l2.length === GOLD_LOG.KEEP && l2[l2.length - 1].c === 7 + GOLD_LOG.KEEP + 10 && l2.every((e) => e.road === 'loot_gold'), l2.length);
+  l2[0].road = 'tampered';
+  check('7. a read is a copy', goldLogOf(ps)[0].road === 'loot_gold');
+  check('7. a purse never moved has an empty log; junk too', goldLogOf({ coins: 3 }).length === 0 && goldLogOf(null).length === 0 && goldLogOf(5).length === 0);
+  room._liveFlags = { goldlog: false };
+  const q = { coins: 10 };
+  room._goldGive(q, 5, 'quest_reward');
+  check('7. goldlog: false notes nothing (the gold still moves)', q.coins === 15 && goldLogOf(q).length === 0);
+  /* the owner's read */
+  room._liveFlags = {};
+  room.playerState.p_gl = { coins: 50 };
+  room._goldGive(room.playerState.p_gl, 5, 'daily_chest');
+  const json = (o, st) => ({ o, st: st || 200 });
+  const r = await room._devFetch({ method: 'GET', url: 'https://x/dev/goldlog?id=p_gl' }, '/dev/goldlog', json);
+  check('7. GET /dev/goldlog?id= returns the live player\'s log', r && r.st === 200 && r.o.ok && r.o.coins === 55 && r.o.log.length === 1 && r.o.log[0].road === 'daily_chest', r && r.o);
+  const r404 = await room._devFetch({ method: 'GET', url: 'https://x/dev/goldlog?id=__proto__' }, '/dev/goldlog', json);
+  check('7. ...and 404 for nobody here (an Object.prototype name included)', r404 && r404.st === 404);
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);

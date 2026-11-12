@@ -53,6 +53,7 @@ import { LIFE_SKILL_KEYS } from './migrations.js'; /* v2.3.3229: the life skills
 import { GATHER_HITS } from './gathering.js'; /* v2.3.3229: 'hits' -- the skills whose harvests and cooks are hits */
 import { PROG3, prog3RespecPoints } from './prog3.js'; /* v2.3.3313: the combat skills a level can be set on; v2.3.3541: + the deal (/dev/combat `deal`) */
 import { bagGive, bagSet } from './bag.js'; /* v2.3.4810: the bag door */
+import { GOLD_LOG, goldLogOf } from './gold.js'; /* v2.3.4903: the gold log (/dev/goldlog) */
 
 export const DEVKIT = {
   /* The tutorial's own starter weapons -- copper/pine/pine.  Deliberately
@@ -697,6 +698,15 @@ export const devToolsMethods = {
       if (!playerId) return json({ ok: false, error: 'id required' }, 400);
       const r = this._devState(playerId);
       return json(r, r.ok ? 200 : 404);
+    }
+    /* v2.3.4903: THE GOLD LOG (gold.js, the gold door's step 3): a live
+       player's last moves of gold, oldest first -- when, the road, how much,
+       the purse after.  Memory only; read-only. */
+    if (request.method === 'GET' && path === '/dev/goldlog') {
+      const id = new URL(request.url).searchParams.get('id');
+      const ps = id && Object.prototype.hasOwnProperty.call(this.playerState, id) ? this.playerState[id] : null;
+      if (!ps) return json({ ok: false, error: 'not here' }, 404);
+      return json({ ok: true, id, coins: ps.coins, on: this._goldLogOn(), keep: GOLD_LOG.KEEP, log: goldLogOf(ps) });
     }
     /* v2.3.3323: every flagged player, for the Test panel's Bot flags
        section (botfp.js _botfpFlaggedList) -- the anti-bot review's fix 9 */
