@@ -10008,8 +10008,8 @@ so it is done. **Wrong:** `farmorders.test` failed once inside the full suite
 as the clock crossed midnight UTC, then passed on every run after. **The
 rule.** A test of anything kept per day pins its clock, or reads the day once
 and uses it throughout, so a run that straddles midnight cannot split it.
-Seen in #1529 (which does not touch the farm); `farmorders.test` itself is not
-yet pinned.
+Seen in #1529 (which does not touch the farm); `farmorders.test` pins its
+clock to noon UTC since v2.3.4922.
 
 ## 336. "A move names its zone, so take it" (v2.3.4640)
 
