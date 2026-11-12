@@ -459,12 +459,22 @@ has a mip chain; the walking armour's 1% bar).
 
 | drawn | frames | px drawn | mean | worst | px past 16 |
 |---|--:|--:|--:|--:|--:|
-| (measured with the bake: the PR's body) | | | | | |
+| as drawn (8 strips) | 49 | 135,771 | 1.99 | 13 | 0 |
+| the blade under the steel shine | 34 | 104,406 | 2.52 | 17 | 1 |
+| the blade in copper and its shine | 34 | 104,406 | 2.13 | 17 | 1 |
+| the blade mirrored (a west swing) | 34 | 104,406 | 2.59 | 13 | 0 |
+| at half size (8 strips) | 49 | 36,399 | 1.74 | 12 | 0 |
+
+Measured 2026-11-12 (v2.3.5002), with the first bake: every sheet held the
+8-bit cut, the north included (cut from 23,347 colours as the bake reads it;
+the bake's self-check: its worst texel 13.25 levels, the mean 0.19), so nothing stays 16-bit. The south was
+cut from 6,906 (9 at most), the east from 4,738 (7); the bow's five are exact
+(11 to 61 colours). The eight files are 124 KB on disk.
 
 **Memory.** The page lets go of the 6.2 MB of strips (1.4 MB of canvases,
 4.8 MB of `<img>`s) and the chip of what of them was drawn; the chip takes the numbers from arrival instead (`uploadSheets`, as the
 armour's): about 0.2 + 0.15 MB for the swing's south and east, 0.7 MB for its
-north (1.4 MB if the haze keeps it 16-bit), about 0.15 MB for the bow. So the
+north (it held the 8-bit cut), about 0.15 MB for the bow. So the
 chip on arrival can READ about 1 MB more (the strips were on it only once a
 swing or a shot drew them), and less at any fight with a swing or a shot in
 it: the memory check's numbers are in the PR.
