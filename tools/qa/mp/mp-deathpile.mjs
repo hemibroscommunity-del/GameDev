@@ -113,6 +113,24 @@ const nearestGoblin = (P) => P.page.evaluate(() => {
 /* out to `spot` in god mode, then 1 HP and on the nearest monster until the
    worker's player_died lands (in the Wheel S._dying is set by that alone) */
 async function dieAt(P, wsPort, id, spot, ms = 90000) {
+  /* v2.3.4954: the death is read off the WORKER as well as the page: a new
+     death pile of this player's on the worker, or its own dead flag.  The
+     page's _dying alone was missed on this slow box (the death and the
+     respawn both fell between two reads: a run ended at full health with
+     its pile already lying there), and the loop then went on to a second
+     death. */
+  const mine = async () => {
+    const sv = await serverPiles(wsPort);
+    return new Set((Array.isArray(sv) ? sv : []).filter((q) => String(q.lootId || '').startsWith('dd-' + id + '-')).map((q) => q.lootId));
+  };
+  const before = await mine();
+  const died = async () => {
+    if (await H.readState(P, (S) => !!S._dying).catch(() => false)) return true;
+    const sp = await H.serverPlayer(wsPort, id).catch(() => null);
+    if (sp && (sp.dead || sp.dying)) return true;
+    for (const k of await mine()) if (!before.has(k)) return true;
+    return false;
+  };
   await H.devOp(wsPort, 'vitals', id, { heal: true, god: true, godMinutes: 4 });
   await H.hopTo(P, spot.x, spot.y, { step: 100 });
   await P.page.waitForTimeout(1200);
@@ -120,7 +138,7 @@ async function dieAt(P, wsPort, id, spot, ms = 90000) {
   const t0 = Date.now();
   let lowAt = Date.now(), g = null, hp = null, noGob = 0;
   while (Date.now() - t0 < ms) {
-    if (await H.readState(P, (S) => !!S._dying).catch(() => false)) { dieAt.last = null; return true; }
+    if (await died()) { dieAt.last = null; return true; }
     g = await nearestGoblin(P);
     if (g) { noGob = 0; await H.hopTo(P, g.x, g.y + 8, { step: 60, tries: 6 }); }
     else {
@@ -128,12 +146,12 @@ async function dieAt(P, wsPort, id, spot, ms = 90000) {
       if (++noGob % 6 === 0) await H.hopTo(P, spot.x, spot.y, { step: 100 });
       await P.page.waitForTimeout(500);
     }
-    /* v2.3.4954: the body heals out of a fight like anyone's: on this slow
-       box a run's goblins took long enough to reach that it was well again
-       (1a failed at 90 s).  Back to 1 HP every 8 s it is above it -- the
+    /* v2.3.4954: the body heals out of a fight like anyone's: back to 1 HP
+       every 8 s it is above it (never after a death: died() first) -- the
        death is still the monster's, through the worker's own hit */
     if (Date.now() - lowAt > 8000) {
       lowAt = Date.now();
+      if (await died()) { dieAt.last = null; return true; }
       const sp = await H.serverPlayer(wsPort, id).catch(() => null);
       hp = sp && sp.hp;
       if (typeof hp === 'number' && hp > 1) await H.devOp(wsPort, 'vitals', id, { heal: false, hp: 1, god: false });
@@ -354,7 +372,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const gone4B = await waitPile(B, p2.lootId, (p) => !p, 8000);
     const gone4A = await waitPile(A, p2.lootId, (p) => !p, 8000);
     rec.ok('4c past its minute the Finder walks onto it and takes it: +2 trout, gone from both phones',
-      trout4c === 2 && gone4B.ok && gone4A.ok, { trout4c, onB: gone4B.last, onA: gone4A.last });
+      trout4c === 2 && gone4B.ok && gone4A.ok, { trout4c, onB: gone4B.last, onA: gone4A.last,
+        fallenTrout: trout4c === 2 ? undefined : await held(A, 'fish_trout'), server: trout4c === 2 ? undefined : await serverPiles(wsPort) });
 
     /* ── 5. A THIRD DEATH, ITS PILE LEFT ALONE TO ITS END ── */
     /* granted once the Fallen is back: the respawn's own wipe would take
