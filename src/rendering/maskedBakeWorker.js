@@ -38,7 +38,7 @@
  * The pixels drawn are the same, frame for frame (tools/qa/qa-bake-ident.mjs
  * fingerprints every baked frame drawn back from its crop). */
 import { bakeMaskedCanvas } from './maskedBake.js';
-import { lookSheetParse } from './lookExpand.js';   /* v2.3.3752: the armoured body from the colour numbers */
+import { lookSheetParse, lookFrameRGBA } from './lookExpand.js';   /* v2.3.3752: the armoured body from the colour numbers */
 import { lookBake } from './lookBake.js';
 
 /* ═══ v2.3.3752: THE BODY FROM THE COLOUR NUMBERS (lookArmour.js) ═══
@@ -76,10 +76,76 @@ const rodAt = (i, u, v) => {
    pixels, where they sit in the whole frame (trim; 0,0 for an uncropped
    frame) and the whole frame's size (orig).  Drawn as gearSheets.drawGearFrame
    draws a cropped frame: scaled by the whole frame, placed at its trim. */
-const drawer = (inp) => (inp && inp.bm ? (c, x, y, w, h) => {
-  const sx = w / inp.ow, sy = h / inp.oh;
-  c.drawImage(inp.bm, 0, 0, inp.fw, inp.fh, x + inp.tx * sx, y + inp.ty * sy, inp.fw * sx, inp.fh * sy);
-} : null);
+/* v2.3.5000: ...or { look, cell, tx, ty, fw, fh, ow, oh } -- a frame of the
+   walking armour's colour numbers (gearNumbers.js gearInput): its sheet came
+   here once ({ type: 'lookSheet' }), and its cell is turned into an
+   ImageBitmap of the table's own colours before the bake (lookBitmaps) --
+   what the RGBA path handed over, so the bake draws it the same way.  The
+   armour has no roles and one byte a texel, so a texel is one look-up in
+   the sheet's table (lookTable), not lookExpand.js's general walk; a frame
+   asked again (another look, another worn set) is kept, a few dozen at most.
+   A sheet not here yet draws nothing (null). */
+const NO_ROW = new Uint8Array(256 * 4);
+const _tables = new Map();   /* sheet key -> Uint8ClampedArray(256 * 4), straight RGBA by number */
+function lookTable(key, sh) {
+  let t = _tables.get(key);
+  if (t) return t;
+  t = new Uint8ClampedArray(256 * 4);
+  if (sh.bits === 8 && sh.ds === 1) {
+    /* entry k as lookExpand.js entry() gives it, premultiplied, then straight
+       again as lookFrameRGBA does (the same rounding both ways) */
+    for (let k = 1; k < 256; k++) {
+      const cell = lookFrameRGBA({ ...sh, num: () => k }, { x: 0, y: 0, w: 1, h: 1 }, NO_ROW);
+      t[k * 4] = cell.rgba[0]; t[k * 4 + 1] = cell.rgba[1]; t[k * 4 + 2] = cell.rgba[2]; t[k * 4 + 3] = cell.rgba[3];
+    }
+  } else t = null;
+  _tables.set(key, t);
+  return t;
+}
+const _bms = new Map();   /* 'key@x,y,w,h' -> ImageBitmap */
+const BM_CAP = 48;
+async function lookBitmap(inp) {
+  const sh = lookSheets.get(inp.look);
+  const c = inp.cell;
+  if (!sh || !c || !(c.w > 0) || !(c.h > 0)) return null;
+  const k = inp.look + '@' + c.x + ',' + c.y + ',' + c.w + ',' + c.h;
+  const had = _bms.get(k);
+  if (had) { _bms.delete(k); _bms.set(k, had); return had; }
+  let rgba;
+  const T = lookTable(inp.look, sh);
+  if (T) {
+    rgba = new Uint8ClampedArray(c.w * c.h * 4);
+    const B = sh.bytes, W = sh.w;
+    for (let y = 0; y < c.h; y++) {
+      let i = (c.y + y) * W + c.x, o = y * c.w * 4;
+      for (let x = 0; x < c.w; x++, i++, o += 4) {
+        const n = B[i] * 4;
+        if (!n) continue;
+        rgba[o] = T[n]; rgba[o + 1] = T[n + 1]; rgba[o + 2] = T[n + 2]; rgba[o + 3] = T[n + 3];
+      }
+    }
+  } else rgba = lookFrameRGBA(sh, c, NO_ROW).rgba;
+  const bm = await createImageBitmap(new ImageData(rgba, c.w, c.h));
+  _bms.set(k, bm);
+  while (_bms.size > BM_CAP) {
+    const old = _bms.keys().next().value;
+    try { _bms.get(old).close(); } catch (e) { /* gone */ }
+    _bms.delete(old);
+  }
+  return bm;
+}
+/* the job's pieces from numbers, as bitmaps on their inputs (lb), before the bake */
+async function lookBitmaps(j) {
+  const ins = (j.worn || []).map((w) => w && w.inp).filter((x) => x && x.look);
+  for (const x of ins) x.lb = await lookBitmap(x);
+}
+const drawer = (inp) => {
+  const src = inp && (inp.bm || inp.lb);
+  return src ? (c, x, y, w, h) => {
+    const sx = w / inp.ow, sy = h / inp.oh;
+    c.drawImage(src, 0, 0, inp.fw, inp.fh, x + inp.tx * sx, y + inp.ty * sy, inp.fw * sx, inp.fh * sy);
+  } : null;
+};
 
 /* ═══ v2.3.2904: THE CROP, FOR ONE FRAME ═══
    gearSheets.packTrimmed with n = 1, which is all _cropBakedFrame ever asked
@@ -125,6 +191,18 @@ self.onmessage = (e) => {
   const j = e.data || {};
   if (j.type === 'rod') { rod = j.rod || null; return; }
   if (j.type === 'lookSheet') { try { lookSheets.set(j.key, lookSheetParse(j.bytes, j.w, j.rows, j.bits)); } catch (e2) { /* the job then fails: the old path */ } return; }
+  /* v2.3.5000: a piece drawn from numbers whose sheet is not here would be
+     baked as if not worn: the job fails instead (the page asks again) */
+  if ((j.worn || []).some((w) => w && w.inp && w.inp.look && !lookSheets.has(w.inp.look))) {
+    self.postMessage({ id: j.id, bitmap: null, cell: null, beltPending: false, raw: false, err: 'gear numbers not here' });
+    return;
+  }
+  /* v2.3.5000: the pieces from numbers made bitmaps first (the one wait: the
+     job is then baked in one run, as before) */
+  if ((j.worn || []).some((w) => w && w.inp && w.inp.look)) { lookBitmaps(j).then(() => runJob(j), () => runJob(j)); return; }
+  runJob(j);
+};
+function runJob(j) {
   if (j.look) { lookJob(j); return; }
   const reply = { id: j.id, bitmap: null, cell: null, beltPending: false, raw: false, err: null };
   const transfer = [];

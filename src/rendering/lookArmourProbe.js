@@ -29,7 +29,7 @@ const COLOUR_BAR = 18;
 
 export function installArmourProbe(dep) {
   if (typeof window === 'undefined') return;
-  const { getBodyFrame, getLookBodyEntries, getFrame, getGearFrame, playerFrameCount, maskedFrame, fullsetCovers, loadGear, reference, lookJob } = dep;
+  const { getBodyFrame, getLookBodyEntries, getFrame, getGearFrame, playerFrameCount, maskedFrame, fullsetCovers, loadGear, reference, lookJob, gearFrame } = dep;
   const oldBody = (L, pose, dir, f) => getBodyFrame(L[0], L[1], L[2], pose, dir, f, null, 'none', L[3], null, undefined);
   const entriesOf = (L, pose, dir) => getLookBodyEntries(L[0], L[1], L[2], pose, dir, null, L[3], null, undefined);
   /* the old path's body bake for this look, waited for (getBodyFrame hands
@@ -319,5 +319,58 @@ export function installArmourProbe(dep) {
     rt.destroy(true);
     return { grew, rowsBefore: rows0, rowsAfter: window.__btLookArmour().atlasRows, drawn, differ };
   }
-  window.__btArmourOracle = { compare, picture, growth };
+  /* ═══ v2.3.5000: THE BAKE FED THE ARMOUR'S NUMBERS, AGAINST ITS RGBA ═══
+     The bakes now read the walking armour's pixels from its colour numbers
+     (gearNumbers.js).  For every frame of these poses: the same bake (the
+     look path's lookBake.js, inline, its display kept), once with the RGBA
+     pieces (getGearFrame) and once with the numbers' (gearFrame), compared
+     texel for texel -- the body it keeps, and what it draws in, decided from
+     255 colours within 16 levels instead of the art's own.  The worker
+     expands the numbers with the same lookExpand.js. */
+  async function compareGear({ look, set, poses = ['stand', 'jog', 'hit', 'dodge', 'mine'], frames = 0 } = {}) {
+    if (!gearFrame) return { error: 'no gearFrame' };
+    await loadGear([set]);
+    await baked(look, 120000, poses);
+    let drawn = 0, differ = 0, over16 = 0, worst = 0, cellsN = 0, missing = 0;
+    const worstCells = [];
+    for (const pose of poses) {
+      for (const dir of DIRS) {
+        if (!lookHas('body', pose + '-' + dir)) continue;
+        const ents = entriesOf(look, pose, dir);
+        if (!ents) continue;
+        const n = Math.max(1, playerFrameCount(pose, dir) || 1);
+        for (let f = 0; f < n && f < (frames || n); f++) {
+          const a = wornOf(set, pose, dir, f);
+          const b = [];
+          if (set[0]) { const t = gearFrame('chest', set[0], pose, dir, f); if (t) b.push({ k: 'chest:' + set[0], tex: t }); }
+          if (set[1]) { const t = gearFrame('legs', set[1], pose, dir, f); if (t) b.push({ k: 'legs:' + set[1], tex: t }); }
+          if (!a.length || fullsetCovers(a, pose, dir)) continue;
+          if (b.length !== a.length || !b.every((w) => w.tex && w.tex._source && w.tex._source._btLook)) { missing++; continue; }
+          const pi = { pose, dir, frameIdx: f };
+          const ra = await reference(lookJob(ents, a, pi));
+          const rb = await reference(lookJob(ents, b, pi));
+          if (!ra || !rb) { missing++; continue; }
+          const px = (t) => { const r = paletteRendererOf(); return r.extract.pixels(t); };
+          const A = px(ra), B = px(rb);
+          try { ra.destroy(true); rb.destroy(true); } catch (e) { /* gone */ }
+          cellsN++;
+          let cw = 0, cd = 0;
+          for (let p = 0; p < A.pixels.length; p += 4) {
+            if (!A.pixels[p + 3] && !B.pixels[p + 3]) continue;
+            drawn++;
+            let m = 0;
+            for (let k = 0; k < 4; k++) m = Math.max(m, Math.abs(A.pixels[p + k] - B.pixels[p + k]));
+            if (m > 2) { differ++; cd++; }
+            if (m > 16) over16++;
+            if (m > worst) worst = m;
+            if (m > cw) cw = m;
+          }
+          if (cd) worstCells.push({ pose, dir, f, differ: cd, worst: cw });
+        }
+      }
+    }
+    worstCells.sort((x, y) => y.differ - x.differ);
+    return { cells: cellsN, missing, drawn, differ, over16, worst, top: worstCells.slice(0, 5) };
+  }
+  window.__btArmourOracle = { compare, picture, growth, compareGear };
 }
