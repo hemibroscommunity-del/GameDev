@@ -1,6 +1,6 @@
 import React from 'react';
-import { BT_AUDIO, GUILD_RANKS, SKILL_GUILDS, getGuildQuest, getGuildRank } from '@/data/index.js';
-import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
+import { GUILD_RANKS, SKILL_GUILDS, getGuildQuest, getGuildRank } from '@/data/index.js';
+import { _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 /* ═══ GuildPanel — skill-guild rank/quest/title screen ═══ */
@@ -290,42 +290,17 @@ export function GuildPanel(props) {
         /* v2.3.1128: server-verified guild quests.  The worker checks
            the ladder + skill level against ITS OWN lifeSkills numbers
            and pays gold/AP authoritatively; completion visuals arrive
-           via guild_quest_result (gameEvents.js).  The local mint
-           below stays only for old workers. */
+           via guild_quest_result (gameEvents.js).  v2.3.4913:
+           the page's own mint for a worker without caps.guilds (gold,
+           points, the rank and its title, all on the page) is gone: they
+           are the worker's (CLAUDE.md §5). */
         if (S._serverCaps && S._serverCaps.guilds && S.channel) {
           try {
             S.channel.send({ type: 'broadcast', event: 'guild_quest_turn_in', payload: { skill: key } });
           } catch (e) {}
           return;
         }
-        if (!R._guildProgress) R._guildProgress = {};
-        var completed = R._guildProgress[key] || 0;
-        R._guildProgress[key] = completed + 1;
-        R.coins += quest.reward.gold;
-        R.achievementPoints = (R.achievementPoints || 0) + quest.reward.ap;
-        if (R._compStats) {
-          R._compStats.totalGoldEarned += quest.reward.gold;
-          R._compStats.questsCompleted++;
-        }
-        /* Track guild stats for achievements */
-        if (!S.stats._guildRanksEarned) S.stats._guildRanksEarned = 0;
-        S.stats._guildRanksEarned++;
-        var newRank = getGuildRank(quest.currentLvl);
-        if (newRank.rank >= 5) {
-          if (!S.stats._guildMasterCount) S.stats._guildMasterCount = 0;
-          S.stats._guildMasterCount++;
-        }
-        /* Add title */
-        if (!R._titles) R._titles = [];
-        var titleStr = newRank.title + ' ' + key.replace(/([A-Z])/g, ' $1').trim();
-        if (!R._titles.includes(titleStr)) R._titles.push(titleStr);
-        pushDmgPopup(S, S.player.x, S.player.y - 40, quest.title + ' complete!', g.color);
-        pushDmgPopup(S, S.player.x, S.player.y - 25, '+' + quest.reward.gold + 'G +' + quest.reward.ap + 'AP', '#D8A94D');
-        BT_AUDIO.collect();
-        setRpgState(_objectSpread({}, R));
-        try {
-          localStorage.setItem('bt_rpg', JSON.stringify(R));
-        } catch (_unused18) {}
+        pushDmgPopup(S, S.player.x, S.player.y - 40, 'Not open yet', '#D95C54');
       },
       style: {
         /* v2.3.1232: brass primary — the panel's one primary action */
