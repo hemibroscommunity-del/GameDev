@@ -40,12 +40,12 @@ export const AT_A_WINDOW = ['windows', 'folk', 'g-boards'];   /* v2.3.4499: + th
 export const NOISE_K = 1.5;
 
 export const KNOWN = {
-  'body-bake': { ms: 220,
+  'body-bake': { ms: 13,   /* v2.3.4960: 220 -> 13: none in the main tour (peer, armour) since v2.3.4930's worker; held to just over the general line while h-eight keeps the family listed */
     why: 'the head an armoured player shows (<pose>-<dir>-head sheets) is recoloured on the page for each look the first time it is drawn: 28 to 164 ms a sheet as an armoured player circles you',
     next: 'key them by skin alone (they take no trouser or boot colour), then keep them as numbers like the bodies (a look set); the same for a body with an eye style or a drawing (STATE-MACHINES A2)',
     /* v2.3.4499: the crowd tour (mp-crowdsweep, docs/specs/held-sweep.md "The crowd tour"), five runs, the worst of each */
-    at: { 'a-ink': 12, 'b-fish': 12, 'c-armour1': 90,   /* v2.3.4872: the pickaxe's outline turned round (toolWood.js solidTool): c-armour1 179 -> 62 ms, the crowd's armour stations 229 -> 169 */
-      'c-armour8': 12, 'h-eight': 120, 'd-prints': 190 },
+    at: { 'a-ink': 12, 'b-fish': 12, 'c-armour1': 12,   /* v2.3.4872: the pickaxe's outline turned round (toolWood.js solidTool): c-armour1 179 -> 62 ms, the crowd's armour stations 229 -> 169.  v2.3.4960: 90 -> 12 (none) */
+      'c-armour8': 12, 'h-eight': 120, 'd-prints': 12 },   /* v2.3.4960: d-prints 190 -> 12 (none).  h-eight NOT lowered: 2026-11-12 it measured 227 ms, 29 bakes on the page (bakeBodyFull and mostly bakeHeadFull): with eight armoured players the body bake's worker stalls past its 20 s watch (bodyBake.js WORKER_MS), is let go of, and the page bakes.  Over its line, left as it was (never raised silently) */
     /* v2.3.4930: in play every one of these bakes runs on the body bake's worker (bodyBake.js, docs/specs/body-bake-worker.md):
        the body sheets (a drawing, an eye style, the fish), the armoured heads, a peer's drawn stand-ins.  The crowd tour,
        a-ink, b-fish and c-armour8, before (`?bodyworker=0`) and after: 546 / 179 / 202 ms longest, 53 holds and 6.2 s in all
@@ -81,19 +81,17 @@ export const KNOWN = {
   'gear-sheet': { ms: 195,
     why: "a drawn shirt composed on the page for each player who wears one, the first time each pose is drawn (composeShirt > stampShirtArt): 121 to 192 ms each, 8 to 13 times as ten players in drawn shirts swung, rolled and mined beside you (d-prints).  gearSheets.js keeps 8 drawings baked: with ten on screen none were seen to bake again in the 25 s",
     next: 'stamp the drawing on the worker (the shirt is a 256-colour file like the rest), or draw the drawing as its own layer over the plain shirt instead of baking it into a sheet' },
-  portrait: { ms: 150,
+  portrait: { ms: 40,   /* v2.3.4960: 150 -> 40: the Leaderboards' faces 11.3 ms (g-boards, was 149); the bag's own portrait as armour goes on 37 ms (armour) */
     why: 'the Leaderboards draw the faces of the players on a board one after another in one piece (drawCharacterPortrait, a body recoloured for each): 140 to 149 ms held at once as a board of 56 faces opens',
     next: 'draw a few faces a frame (an idle callback, the rest as plain circles until their turn), and keep the faces a board drew' },
-  'other: createObjectURL': { ms: 20,
-    why: 'a picture handed to the page as a file of its own, 85 times in the crowd (a body, a species build), up to 18 ms',
-    next: 'watch it: a picture kept as colour numbers needs none' },
+  /* v2.3.4960: 'other: createObjectURL' off the list: 9.3 ms at most (h-eight; was 18) */
   'other: wrapped > sweepPicsOnce': { ms: 16,
     why: "picsOnce.js's sweep of the cache's pictures, up to 15 ms with the crowd's pictures in it",
     next: 'sweep a slice a turn' },
   'ui:*': { ms: 16,
     why: 'one component of the band drawn in one piece (the gear tab is 10 ms of one function): React lets a frame in between components, not inside one',
     next: 'split the gear tab so no one piece of it is over 5 ms' },
-  'other: BT_AUDIO$1._fold > foldToMono': { ms: 30,
+  'other: BT_AUDIO$1._fold > foldToMono': { ms: 20,   /* v2.3.4960: 30 -> 20 (18.9 ms once, lands) */
     why: 'a sound with two sides folded to one the first time it plays: 14 to 21 ms',
     next: 'fold as it is decoded, behind the loading screen or off the first play'},
   /* v2.3.4872: found over the general line on main (mp-heldsweep `armour`, 15.4 and 16.5 ms, two runs; the crowd tour's
@@ -101,9 +99,7 @@ export const KNOWN = {
   'other: R > J': { ms: 20,
     why: "React's scheduler working through a redraw (R > J > Gk is performConcurrentWorkOnRoot in the vendor chunk) where no one of the game's components is the outermost named one, so the sweep cannot say whose: 15 to 17 ms at the armour station (putting armour on and off: the gear tab, the band and the bag at once), most of it in React's own commit (Bj) and a createObjectURL",
     next: 'profile the armour station with React\'s profiler to name the components; then split or startTransition the redraw an equip causes' },
-  'other: _flushOutbox > Wrapped.ws.send': { ms: 30,
-    why: 'a message to the server handed to the browser: 18 ms once a tour, on a change of armour',
-    next: 'watch it; not understood yet' },
+  /* v2.3.4960: 'other: _flushOutbox > Wrapped.ws.send' off the list: 4.7 ms at most (lands, fight; was 18 once) */
 };
 
 const lineFor = (key, kind, where) => {

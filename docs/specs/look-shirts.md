@@ -114,6 +114,21 @@ savers) with two off switches, the rest of the look palette as it is:
 the Test panel's Memory savers row (`off_lookshirt`, `docs/specs/client-off.md`)
 for every phone, at once.
 
+**v2.3.4992: a plain tee follows its body.** The reason above was measured on
+a crowd whose bodies were drawn the old way (every bot in the default look):
+there a tee from the numbers sat between two sharp pieces and broke the batch.
+A player who picked any colour has a body drawn from the numbers, and then
+the plain tee on the sharp program is what breaks it: body (numbers), tee
+(sharp), hair (numbers), weapon (sharp), four batches a player. So a plain tee
+is now drawn from the numbers when its body is, this frame (`_placeGear`
+passes `plain`: the body sprite's texture is a look sheet's), and the old way
+when its body is (a player in every default colour keeps body, tee and weapon
+in one sharp batch). No figure is drawn in more batches than before.
+Measured (`mp-crowdbots`, `BT_CROWD_LOOKS=1`, 50 walking): the two figure
+layers 181 batches to 103; each player is now one look batch (body, tee,
+hair) and the weapon. The oracle draws plain tees both ways again (one level
+apart at most). `?plaintee=0` is the old way for one phone.
+
 ## Where it is not exact
 
 Minified (a computer), as the body: the chip rounds its own level of detail

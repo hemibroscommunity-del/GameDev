@@ -36,7 +36,9 @@ export function installShirtProbe(dep) {
   const lookArgs = (L, dir, mirror) => {
     const pattern = L.pattern ? parsePattern(L.pattern, 'shirt') : null;
     const art = sideForDir(dir) === 'back' ? (L.back || null) : (L.front || null);
-    return { art, pattern, tint: L.tint || null, mirror };
+    /* v2.3.4992: `plain` -- asked as the game asks beside a body drawn from
+       the numbers, so a plain tee is drawn from them too and compared */
+    return { art, pattern, tint: L.tint || null, mirror, plain: true };
   };
   const dressed = (a) => !!(a.art || a.pattern);
   /* `old`: the frames the old way draws for this look (a dressed or coloured tee), with no new path asked */
@@ -129,7 +131,13 @@ export function installShirtProbe(dep) {
       if (way === 'old') await baked(L);
       const cells = cellsFor(L, 0, way === 'old').map((c) => ({ ...c, t: way === 'old' ? c.ot : c.nt }));
       render(cells, (c) => c.t, 0.25, 36, 32, way === 'old');
-      for (const c of cells) if (c.t) srcs.add(c.t.source);
+      for (const c of cells) {
+        if (!c.t) continue;
+        /* v2.3.4993: a sheet in a page of the atlas counts its own texels (the page is other sets' too) */
+        const L = c.t.source && c.t.source._btLook;
+        const M = L && L.page && c.t._btLookDir >= 0 ? L.page.members.find((m) => m.dir === c.t._btLookDir) : null;
+        srcs.add(M || c.t.source);
+      }
       done.push({ frames: cells.length });
     }
     return { done, ...held() };
@@ -142,6 +150,7 @@ export function installShirtProbe(dep) {
     for (const pose of ['stand', 'jog']) for (const dir of DIRS) { const t = getGearFrame('shirt', 'tshirt', pose, dir, 0); if (t) plain.add(t.source); }
     let gpu = 0, n = 0, shipped = 0;
     for (const s of srcs) {
+      if (s && s.look && s.rows) { if (s.up) gpu += s.w * s.rows * (s.look.bits === 8 ? 1 : 2); n++; continue; }   /* v2.3.4993: a sheet in a page */
       if (!s || s.destroyed) continue;
       if (plain.has(s)) { shipped++; continue; }
       const bpp = s.format === 'rg8unorm' ? 2 : (s.format === 'r8unorm' ? 1 : 4);

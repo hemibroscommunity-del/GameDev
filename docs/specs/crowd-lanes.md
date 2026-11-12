@@ -244,8 +244,7 @@ once the figure is at rest (`settling`), and the refresh went from 4 to 10 s.
   catches: it is most of the switches left.
 - **More, smaller slots:** a figure's bounds are well inside 96 x 140; more
   slots means more of a big crowd as pictures, for the same memory.
-- **On by default with `?onepic=0`,** once the owner has tried it on their
-  iPhone.
+- ~~**On by default with `?onepic=0`**~~: done, v2.3.4990 (below).
 
 ## Name plates in a layer of their own (v2.3.4989, `?platelayer=1`, off by default)
 
@@ -337,8 +336,132 @@ not drawn on far walkers, each one a texture less: also the owner's call.
 
 In its own layer, a plate is now over every figure and prop there, never behind
 a figure standing in front of its owner. The players south of you (the front
-layer) keep theirs over them. That is why it is off until the owner has seen
-it: `?platelayer=1`, then on by default with `?platelayer=0`.
+layer) keep theirs over them. That is why it was off until the owner had seen
+it: `?platelayer=1`; on by default since v2.3.4990, `?platelayer=0` off.
+
+## Both on for everyone (v2.3.4990)
+
+Owner, 2026-11-12: *"Turn both switches on by default."* The one picture per
+standing player and the plates layer are on with no address; `?onepic=0` and
+`?platelayer=0` turn each off for one phone (the memory law's way: a saver
+lands on, with its off-ramp). Both switches are read by one rule,
+`crowdSwitchOn` in `src/game/onePic.js` (`one-pic.test` 1a-1d).
+
+**The shared picture is made only when a crowd stands.** Made with the scene,
+it would have cost every player its 6-13 MB, alone or not. It is now made the
+first frame more than `ONE_PIC.NEAR_FULL` (10) calm players are drawn, and
+given back to the chip `ONE_PIC.IDLE_FREE_MS` (30 s) after its last picture
+went, so a crowd that thins for a moment keeps it (`window.__btOnePic()`:
+`sheet`, `sheetsMade`, `sheetsFreed`, and `bytes` 0 while there is none). It
+is an empty picture the chip makes, not art from a file, so PRELOADING IS LAW
+does not ask for it behind the loading screen: one allocation and one clear,
+and its first paints wait their turn (four a frame). The renderer's teardown
+now gives it back too.
+
+**A plate is never drawn where its player was.** Pixi draws a piece attached
+to a RenderLayer by its last place, even once its owner has left the scene (it
+only warns when the piece has no parent at all). A player who goes is
+destroyed with their pieces, which lets the plate go; for any other way out of
+the list, each frame now lets go of every plate it did not attach.
+
+Checked: `mp-onepic`, `mp-platelayer` (now with `?onepic=0`, its pictures
+turned on by hand), `mp-peercull`, `mp-chatbubble`, `mp-partychip` and a crowd
+of 50 with no address (`mp-crowdbots`).
+
+## Texture atlases: what the census found (v2.3.4991)
+
+Owner, 2026-11-12: *"Begin texture atlases."* An atlas packs many pictures
+into one texture, so the chip can draw more pieces in one go. Before building
+one, the census asked what actually ends each batch.
+
+### How it was counted (`mp-crowdbots`)
+
+- `BT_CROWD_LOOKS=1`: each bot wears one of `mp-crowdfight`'s 30 looks (skin,
+  trousers, shoes, eyes, hair and its colour, a sword or a bow). The sampled
+  look every bot wore before has no hair and draws its body the old RGBA way,
+  so it never showed what a real crowd draws.
+- `BT_CROWD_INSTR=2`: for every render group (the shadows' pieces too), why
+  each batch ended: another program next (`program`), the same program with
+  every texture slot used (`full`), another blend, or another pipe; and which
+  piece of whose display each batch held.
+- A CPU profile of the page (`BT_CROWD_PROFILE`): 99.6% of the time is this
+  box's software graphics chip, the game's own script about 1%. So this box
+  cannot time a crowd's frame; the counts can (TRAPS §225).
+
+### What it found: 50 players walking, 30 looks
+
+| render group | batches | ended by a program change | ended by full slots |
+|---|---|---|---|
+| `entities` (players north of you) | 78 | 66 | 2 |
+| `gatherNodesFront` (south of you) | 59 | 54 | 2 |
+| the shadows' pieces (`shadowCast`) | 72 | 71 | 0 |
+
+About 400 draws and 380 program changes a frame. **Texture slots end 4
+batches; program changes end almost all the rest.** Each player is drawn in
+four batches: body (the look's colour numbers), tee (Pixi's sharp program,
+RGBA gear), hair (colour numbers), weapon (sharp). An atlas alone would save
+almost nothing until those pieces stop taking turns.
+
+### First step: the shadows' pieces grouped by program (v2.3.4991)
+
+The shadows draw every figure's pieces a second time, into one picture of
+where they cover the ground (`lightfx/shadows.js`). The shade reads only that
+picture's alpha, and alpha laid over alpha is the same in any order, so the
+pieces are now drawn grouped: every look piece, then every Wheel
+colour-number piece, then the rest (three pools, three containers).
+
+| shadows' pieces, 50 walking | batches | program | full |
+|---|---|---|---|
+| before | 72 | 71 | 0 |
+| grouped | 17 | 2 | 14 |
+
+Nothing on screen changes. 15 of the 17 are look batches ended by the look
+program's **4 texture slots** (`lookPalette.js` `SLOTS`): every facing and pose
+is its own body sheet and every hair its own head sheet. That is where a look
+atlas pays: those 15 become one or two.
+
+### The atlas plan, in order
+
+1. **Done: the shadows grouped** (above).
+2. **Done: the look atlas (v2.3.4993, below).**
+3. **The plain tee through the colour numbers**: a figure's body, tee and hair
+   in one look batch, so 4 batches a player become 2. A plain tee was left on
+   the old sheet because "the numbers save it nothing" in memory
+   (`lookShirtFrame.js`, v2.3.3790): with the look atlas they save two
+   program changes a player. A first try did not take; why is still open.
+4. **The weapon** is the last piece that takes turns with the look's. The one
+   program (`?onebatch=1`) would fold it, and is off since it made legs
+   flicker on the owner's iPhone (TRAPS §260): only their phone can clear it.
+
+### The look atlas (v2.3.4993)
+
+`lookPalette.js` "THE LOOK ATLAS". The body's, the head pieces' and the
+tee's 89 sheets of colour numbers sit in three PAGES on the chip, one a form
+(8 bits at one or two texels a display texel; 16 bits), planned from the
+three sets' manifests before a picture loads and packed bottom-left on a
+skyline at the narrowest good width: 5.3 MB of pages for the 4.3 MB of
+sheets. The stand-ins and the bodies' heads stay a texture a sheet: in pages
+too they cost 15 MB for 12, and they are drawn far less.
+
+A sheet keeps its header, table and roles in its own last rows, and its
+frames in its own texels (the armour's bake reads them against the sheet's
+own bytes). Only its place is new: a directory (8 KB, two texels a sheet)
+gives its corner and size, and its number rides in the vertex beside the
+round flag. The program offsets every read by the corner and clamps to the
+sheet, so it reads exactly as before: the body oracle (every look, every
+frame, at most one level apart), the heads' (0 px over one level), the
+armour's (5,918 frames, 0 px over two). Each sheet goes to its page as its
+own rectangle, so no page-sized copy is held by the page. `?lookatlas=0`: a
+texture a sheet, as before.
+
+| 50 walking, 30 looks (with v2.3.4991-4992) | atlas off | atlas on |
+|---|---|---|
+| draws a frame | 194 | 152 |
+| texture binds | 775 | 591 |
+| shadows' pieces | 23 batches (20 ended full) | 3 |
+
+Against the census's first count (about 400 draws, 380 program changes,
+890 binds a frame): 152, 132 and 591.
 
 ## What is left, ranked (none of it built)
 

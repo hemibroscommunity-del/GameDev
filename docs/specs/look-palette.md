@@ -534,6 +534,36 @@ pants, shoes, legs)`; your strips' marker carries `_btLookLegs`; a peer in
 greaves with no drawing takes the set before any bake is tried. `?legslook=0`
 is the bake. The oracle is `mp-standinlegs`.
 
+## The head sheets (v2.3.4961)
+
+An armoured figure draws its head from a sheet of its own over the armour
+(`<pose>-<dir>-head`: the jog's four facings, the hit taken's five, mining and
+the pickup; `playerSkins.js getPickupHeadFrame`). The old path recoloured a
+copy of each for every SKIN met (`bodyRecolor.js bakeHeadFull`, halved for the
+screen): your own ten behind the loading screen, the default skin's jog and
+pickup heads as unchanged copies, and up to eleven more for each armoured
+player of another skin. v2.3.4930 moved those bakes to a worker (they no
+longer hold the page), but each was still a full-colour picture of its own.
+
+They are a set now, `bodyheads` (`src/rendering/lookSets/bodyheads.js`,
+`public/sprites/look/bodyheads/`, `tools/art/role-bake.mjs --set bodyheads`;
+not the head PIECES' set, `heads`, which is the hats and hair): one role,
+the skin (a head sheet takes no trousers or boots since v2.3.3658, and no eye
+colour), ds 2 (the bake halves them with the canvas's smoothing, as the stand
+sheets), `keepFromDefault` for the pickaxe's wood on `mine-south-head`. All
+eleven at 8 bits, every pixel explained. 1.42 MB on the chip and 142 KB of
+files, once; the old path's eleven were about 1.4 MB on the chip a skin, and
+the same again as the decoded picture each was kept as (`keepAsImage`).
+
+`_headLookFrames` asks for a skin's row with `asDrawn` (`lookFrames`: a row of
+no colours is still asked for, because the old path baked the default skin's
+jog and pickup heads too). Still baked the old way: an eye style that erases
+on that sheet, a face drawing, `?garmentspecks=0`, no atlas row free.
+`?headlook=0` is the bake for every head. The oracle is `mp-headlook`
+(`__btLookOracle.compareHeads`: five skins, every frame of every head sheet,
+the old bake against the numbers through the sharp read; `__btHeadSheets`:
+which of your heads the numbers draw, and how many copies are baked).
+
 ## The plan for the rest
 
 Each its own pull request (on by default, as this one: the owner's rule for the phase).
@@ -590,6 +620,15 @@ Each its own pull request (on by default, as this one: the owner's rule for the 
    atlas or a vertex attribute; and setOneBatchRenderer's prewarm DRAWING a
    known sprite and reading its pixel back, falling back to the three
    programs if it is wrong. After the showing (the orchestrator), its own PR.
+   **v2.3.4993: the atlas, without the fold.** The body's, the head pieces'
+   and the tee's sheets now sit in three pages (one texture a form), each
+   sheet found by a directory entry whose number rides in the vertex's low
+   half beside the round flag; the program offsets every read by the sheet's
+   corner and clamps to its size, so it reads exactly as before (the oracle:
+   every look, every frame, at most one level apart). The 4-way chain of
+   reads is unchanged: three pages fit it, so a batch of look pieces never
+   ends on slots. The fold into `ONE_BATCHER` is still the owner's phone's
+   question (TRAPS §260). `docs/specs/crowd-lanes.md` "Texture atlases".
 9. **The old copies' code removed**, once every part draws from numbers and
    the owner has played with it on a phone.
 

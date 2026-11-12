@@ -99,6 +99,8 @@ const RELAY_PLACED = new Set([
      player_shield      the shield stays up (or down) until the next toggle;
      monster_transform  the mummy that became a skeleton, on no other wire;
      campfire_lit       sent once, and the cook stands over the fire for 45 s;
+                        (and v2.3.4942's campfire_out, its taking back, goes
+                        wherever its campfire_lit went: everyone)
      loot_*             a pile lies there until it is taken or despawns.
    Each is rare and small; they go to everyone, as before. */
 

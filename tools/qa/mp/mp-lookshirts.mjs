@@ -7,8 +7,9 @@
  * patterned or printed tee (gearSheets.getShirtLookFrame).
  *
  * THE ORACLE -- the switch must change nothing anyone can see:
- *   1. 6 shirt colours (white among them) x 4 dressings (plain -- never drawn
- *      from the numbers, the shared sheet and its tint, as always -- a pattern, a
+ *   1. 6 shirt colours (white among them) x 4 dressings (plain -- v2.3.4992:
+ *      drawn from the numbers beside a body that is, so compared too; it was
+ *      never drawn from them from v2.3.3790 -- a pattern, a
  *      print front and back, a print over a pattern): every stand and jog frame
  *      in all eight facings (the flipped three flipped, their print and tile
  *      pre-flipped), drawn the old way and the new, 1:1, through the sharp
@@ -153,7 +154,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     const rw = await rows(B);
     rec.ok(`THE ORACLE: ${res.length} tees (6 colours x 4 dressings), ${frames} stand and jog frames in all eight facings, ${drawn} px drawn both ways: ${differ} px more than 1 level apart (worst ${worst}); rows ${rw.rows}, rowsFull ${rw.rowsFull}`,
-      res.length === 24 && res.every((r) => r.baked && (/"p":null,"f":false/.test(r.look) ? r.frames === 0 : r.frames >= 150)) && differ === 0 && rw.rowsFull === 0, { frames, drawn, differ, worst, rw });
+      res.length === 24 && res.every((r) => r.baked && r.frames >= 150) && differ === 0 && rw.rowsFull === 0, { frames, drawn, differ, worst, rw });   /* v2.3.4992: the plain tees too */
     console.log(`    (the oracle took ${Math.round((Date.now() - t0) / 1000)} s)`);
 
     /* 2. a phone's zoom and a computer's */

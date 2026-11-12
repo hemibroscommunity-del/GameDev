@@ -61,6 +61,40 @@ export const LOOK_BATCHER = 'bt-look';
 const SLOTS = 4;                  /* sheets a batch (a figure draws one); the atlas is the unit after */
 const IDLE_MS = 30000;            /* a look no one drew for this long gives its row back */
 const SWEEP_MS = 5000;
+/* ═══ v2.3.4993: THE LOOK ATLAS -- EVERY SHEET IN A FEW PAGES ═══
+   Owner, 2026-11-12: "Begin texture atlases."  Measured first
+   (docs/specs/crowd-lanes.md "Texture atlases"): with the shadows' pieces
+   grouped by program, 15 of their 17 batches for 50 walking players ended
+   on this program's SLOTS (4): every pose and facing of the body is its own
+   sheet, every hair and hat its own head sheet, and a crowd draws dozens.
+   Here the sheets are laid out in PAGES, one texture for every sheet of one
+   form (8 or 16 bits; one or two texels a display texel: a page has ONE
+   resolution, so the stand's ds 2 sheets have their own), planned from
+   every set's manifest before a picture loads (preloadLookSheets), so three
+   pages hold them all and any batch of look pieces fits its 4 slots.
+   A sheet keeps everything that made it a sheet -- its header, table and
+   roles in its own last rows, its frames in its own texels (the armour's
+   bake reads those against the sheet's own bytes, lookArmourJob) -- and
+   only its PLACE in the page is new: a DIRECTORY (a small texture, two texels
+   a sheet: its corner and its size) that the program reads by the sheet's
+   number, which rides in the vertex beside the round flag.  The program
+   reads the sheet exactly as before, offset by its corner and clamped to its
+   own size, so nothing drawn changes.  Each sheet is sent to its page as its
+   own rectangle (texSubImage2D), so no page-sized copy is ever held by the
+   page; a book's header (setLookSheetBook) sends only its sheet again.
+   `?lookatlas=0`: a texture a sheet, as before. */
+const PAGE_MAX = 4096;            /* texels a side: every WebGL2 phone and computer draws one this big */
+const PAGE_ALIGN = 4;             /* a sheet's corner and width: whole points at ds 2 */
+const PAGE_GAP = 4;               /* empty texels round every sheet: gearSheets.subTexture's "nothing inside" cut reads the texel above or left of a frame, which must be its own sheet's (dirOf) */
+const DIR_W = 256;                /* the directory's width in texels (two a sheet) */
+const DIR_CAP = 1024;             /* sheets it holds (8 KB) */
+/* the sets a crowd draws every frame (the body's poses, the head pieces,
+   the tee), packed with 0.9 MB of gaps over their 4.3 MB; the stand-ins and
+   the bodies' heads stay a texture a sheet (all of them in pages cost 15 MB
+   for 12: tools/art/ has no packer that does better with sheets this
+   uneven, and they are drawn far less) */
+const ATLAS_SETS = new Set(['body', 'heads', 'shirt']);
+const _atlasWanted = (() => { try { return !/(^|[?&])lookatlas=0(&|$)/.test(window.location.search || ''); } catch (e) { return true; } })();
 
 /* ── the switch ── */
 /* v2.3.3716: ON by default -- the owner, 2026-10-28: "I think including the
@@ -103,7 +137,9 @@ const _sets = new Map();          /* name -> { url, base, manifest, loading } */
 const _sheets = Object.create(null);   /* 'body/jog-east' -> { src, frames: [{frame, trim}], ds, bits } */
 let _loading = null;
 let _ok = null;                   /* the program: null not tried, true linked, false not here */
-const _stats = { sheets: 0, sheetBytes: 0, looksMade: 0, looksFreed: 0, rowsFull: 0, linkError: null, loadError: null, drawn: 0, sets: 0, rangeErrors: 0, remade: 0, remadeInFrame: 0 };
+const _stats = { sheets: 0, sheetBytes: 0, looksMade: 0, looksFreed: 0, rowsFull: 0, linkError: null, loadError: null, drawn: 0, sets: 0, rangeErrors: 0, remade: 0, remadeInFrame: 0,
+  pages: 0, pageBytes: 0, paged: 0, pageSends: 0 };   /* v2.3.4993: the atlas */
+const _pages = [];                /* v2.3.4993: { src, bits, ds, w, h, members } */
 
 /* the body's roles, as v2.3.3716 baked them (its manifest predates `roles`):
    1 skin, 2 trousers, 3 boots retinted by luminance over their refs; 4-7 an
@@ -161,19 +197,28 @@ function loadPng(url) {
     im.src = url;
   });
 }
-function buildSheet(set, name, m, img, roles) {
+/* a sheet's rows on the chip: its numbers, its table (two RG texels an entry
+   at 16 bits, four R texels at 8), its header in the last row(s); the
+   stand's texture (resolution 2) an even number of rows.  v2.3.4993: also
+   what the atlas plans a sheet's place by, from its manifest alone */
+function sheetRows(W, n, E, bits, ds) {
+  const bpt = bits === 8 ? 1 : 2;
+  const tRows = Math.ceil((E * 4 / bpt) / W);
+  const hRows = Math.ceil((HEAD_VALUES * 2 / bpt) / W);
+  let rows = n + tRows + hRows;
+  if (ds === 2 && (rows & 1)) rows++;
+  return rows;
+}
+function buildSheet(set, name, m, img, roles, place) {
   const W = m.w, n = m.h, T = m.tableRows, E = m.entries;
   const bits = m.bits === 8 ? 8 : 16;
   const bpt = bits === 8 ? 1 : 2;            /* bytes a texel */
   if (img.naturalWidth !== W || img.naturalHeight !== n + T) throw new Error(name + ': ' + img.naturalWidth + 'x' + img.naturalHeight);
   if (roles.length > MAX_ROLES) throw new Error(name + ': ' + roles.length + ' roles, ' + MAX_ROLES + ' at most');
-  /* the table: two RG texels an entry (16 bits), four R texels (8 bits);
-     the header in the last row(s); the stand's texture (resolution 2) an
-     even number of rows */
-  const tRows = Math.ceil((E * 4 / bpt) / W);
-  const hRows = Math.ceil((HEAD_VALUES * 2 / bpt) / W);
-  let rows = n + tRows + hRows;
-  if (m.ds === 2 && (rows & 1)) rows++;
+  const rows = sheetRows(W, n, E, bits, m.ds);
+  /* v2.3.4993: a place planned for another form of sheet is not used (the
+     manifest and the picture disagree): its own texture, as before */
+  if (place && (place.page.bits !== bits || place.page.ds !== m.ds || place.w !== W || place.rows !== rows)) place = null;
   const head = new Array(HEAD_VALUES).fill(0);
   head[0] = m.ds | (bits === 8 ? 128 : 0) | (m.mip === false ? 64 : 0);   /* v2.3.3757: 64, a sheet drawn without mipmaps (the stand-ins) */ head[1] = n; head[2] = n; head[3] = bits; head[4] = roles.length;
   const ends = m.ends || [];
@@ -212,13 +257,30 @@ function buildSheet(set, name, m, img, roles) {
     head.forEach((v, i) => put(i, v));
     return out;
   };
-  const data = make();
-  const src = new BufferImageSource({
-    resource: data, width: W / m.ds, height: rows / m.ds, resolution: m.ds,
-    format: bits === 8 ? 'r8unorm' : 'rg8unorm', scaleMode: 'nearest', alphaMode: 'premultiplied-alpha',
-    autoGenerateMipmaps: false, autoGarbageCollect: false, label: 'bt-look:' + (set === 'body' ? '' : set + '/') + name,
-  });
-  src._btLook = { ds: m.ds, w: W, rows, bits, make, n };
+  const look = { ds: m.ds, w: W, rows, bits, make, n };
+  let src, member = null, bytes;
+  if (place) {
+    /* v2.3.4993: its place in a page; sent there by the page's upload */
+    src = place.page.src;
+    member = { x: place.x, y: place.y, w: W, rows, look, up: null, dirty: false, dir: dirAdd(place.x, place.y, W, rows),
+      name: 'bt-look:' + (set === 'body' ? '' : set + '/') + name };   /* the label its own texture had (QA reads it: __btSelfSprites) */
+    if (member.dir < 0) { place = null; member = null; }
+  }
+  if (member) {
+    place.page.members.push(member);
+    bytes = W * rows * bpt;
+    _stats.paged++;
+    try { src.update(); } catch (e) { /* sent with the page when it is first drawn */ }
+  } else {
+    const data = make();
+    bytes = data.length;
+    src = new BufferImageSource({
+      resource: data, width: W / m.ds, height: rows / m.ds, resolution: m.ds,
+      format: bits === 8 ? 'r8unorm' : 'rg8unorm', scaleMode: 'nearest', alphaMode: 'premultiplied-alpha',
+      autoGenerateMipmaps: false, autoGarbageCollect: false, label: 'bt-look:' + (set === 'body' ? '' : set + '/') + name,
+    });
+    src._btLook = look;
+  }
   const frames = m.cells.map(([ax, ay, tx, ty, w, h], i) => {
     const r = { i, n: m.cells.length };
     /* in display texels, which are the source's points (a ds 2 sheet is
@@ -227,11 +289,170 @@ function buildSheet(set, name, m, img, roles) {
     else { r.frame = new Rectangle(ax, ay, w, h); r.orig = new Rectangle(0, 0, m.fw || 128, m.fh || 128); r.trim = new Rectangle(tx, ty, w, h); }
     return r;
   });
-  const sheetRec = { src, frames, ds: m.ds, bits, book: 0, uploaded: -1 };
+  /* v2.3.4993: `look` the sheet's own (its size, its bytes again: make);
+     `member` its place in a page, or null (its own texture, `src`) */
+  const sheetRec = { src, frames, ds: m.ds, bits, book: 0, uploaded: -1, look, member };
   holder.sheet = sheetRec;
   _sheets[set + '/' + name] = sheetRec;
   _stats.sheets++;
-  _stats.sheetBytes += data.length;
+  _stats.sheetBytes += bytes;
+}
+/** v2.3.4993: a frame of a sheet as a texture -- in its page, offset by the
+ *  sheet's corner (the frames stay in the sheet's own texels: the armour's
+ *  bake reads them against lookSheetBytes). */
+export function lookSheetTexture(sh, f) {
+  const M = sh.member;
+  let frame = f.frame;
+  if (M) frame = new Rectangle(f.frame.x + M.x / sh.ds, f.frame.y + M.y / sh.ds, f.frame.width, f.frame.height);
+  const t = new Texture({ source: sh.src, frame, orig: f.orig, trim: f.trim });
+  t._btLookDir = M ? M.dir : -1;
+  if (M) t._btLookName = M.name;
+  return t;
+}
+
+/* ═══ v2.3.4993: THE PAGES ═══ */
+let _dirData = null, _dirSrc = null, _dirN = 0;
+/* a sheet's corner and size, in its page's texels, as the directory's next
+   entry (its number), or -1 when the directory is full */
+function dirAdd(x, y, w, rows) {
+  if (_dirN >= DIR_CAP) return -1;
+  if (!_dirData) {
+    const h = (DIR_CAP * 2) / DIR_W;
+    _dirData = new Uint8Array(DIR_W * h * 4);
+    _dirSrc = new BufferImageSource({
+      resource: _dirData, width: DIR_W, height: h, resolution: 1, format: 'rgba8unorm', scaleMode: 'nearest',
+      alphaMode: 'premultiplied-alpha', autoGenerateMipmaps: false, autoGarbageCollect: false, label: 'bt-look-dir',
+    });
+  }
+  const i = _dirN++;
+  _dirData.set([x & 255, (x >> 8) & 255, y & 255, (y >> 8) & 255, w & 255, (w >> 8) & 255, rows & 255, (rows >> 8) & 255], i * 8);
+  try { _dirSrc.update(); } catch (e) { /* sent when first bound */ }
+  return i;
+}
+function newPage(bits, ds, w, h, label) {
+  /* a byte for its resource, never null: given none, Pixi makes a Float32Array
+     of four floats a point (BufferImageSource) -- 57 MB for the three pages,
+     held for nothing, the memory check's buffers line (v2.3.4993's first cut) */
+  const src = new BufferImageSource({
+    resource: new Uint8Array(1), width: w / ds, height: h / ds, resolution: ds,
+    format: bits === 8 ? 'r8unorm' : 'rg8unorm', scaleMode: 'nearest', alphaMode: 'premultiplied-alpha',
+    autoGenerateMipmaps: false, autoGarbageCollect: false, label,
+  });
+  const P = { src, bits, ds, w, h, members: [], glt: null };
+  /* a look texture to the batchers (lookTex) and the probes: `page` says it
+     is many sheets, so nothing reads one sheet's size off it */
+  src._btLook = { page: P, bits, ds, w, rows: h };
+  _pages.push(P);
+  _stats.pages++;
+  _stats.pageBytes += w * h * (bits === 8 ? 1 : 2);
+  return P;
+}
+/* Every sheet of these sets ([[set, manifest], ...]) given a place, grouped
+   by form (one page a form when it fits): each form's sheets tallest first,
+   laid bottom-left on a skyline, at whichever of a few page widths makes the
+   smallest page; a form that fits no page PAGE_MAX tall is laid in shelves,
+   a page after another.  set -> sheet -> { page, x, y, w, rows }. */
+const up4 = (v) => Math.ceil(v / PAGE_ALIGN) * PAGE_ALIGN;
+function skyline(items, PW) {
+  let sky = [[PAGE_GAP, PW, PAGE_GAP]];   /* [x0, x1, top] */
+  let H = 0, X = 0;
+  const at = [];
+  for (const it of items) {
+    const ww = up4(it.w) + PAGE_GAP;
+    let bx = -1, by = Infinity;
+    for (const seg of sky) {
+      const x0 = seg[0];
+      if (x0 + ww > PW) continue;
+      let top = 0;
+      for (const o of sky) if (o[0] < x0 + ww && o[1] > x0 && o[2] > top) top = o[2];
+      if (top < by) { bx = x0; by = top; }
+    }
+    if (bx < 0) return null;
+    const y = up4(by);
+    if (y + it.rows > PAGE_MAX) return null;
+    const next = [];
+    for (const o of sky) {
+      if (o[1] <= bx || o[0] >= bx + ww) next.push(o);
+      else { if (o[0] < bx) next.push([o[0], bx, o[2]]); if (o[1] > bx + ww) next.push([bx + ww, o[1], o[2]]); }
+    }
+    next.push([bx, bx + ww, y + it.rows + PAGE_GAP]);
+    next.sort((a, b) => a[0] - b[0]);
+    sky = next;
+    at.push([bx, y]);
+    if (y + it.rows > H) H = y + it.rows;
+    if (bx + ww > X) X = bx + ww;
+  }
+  return { w: up4(X), h: up4(H), at };
+}
+function planPages(list) {
+  const groups = new Map();
+  for (const [set, m] of list) {
+    if (!m || !m.sheets || !ATLAS_SETS.has(set)) continue;
+    for (const sheet of Object.keys(m.sheets)) {
+      const e = m.sheets[sheet];
+      const bits = (e.bits != null ? e.bits : m.bits) === 8 ? 8 : 16;
+      const ds = e.ds || 1;
+      const W = e.w, rows = sheetRows(e.w, e.h, e.entries, bits, ds);
+      if (!(W > 0 && rows > 0) || W + 2 * PAGE_GAP > PAGE_MAX || rows + 2 * PAGE_GAP > PAGE_MAX) continue;
+      const k = bits + ':' + ds;
+      if (!groups.has(k)) groups.set(k, { bits, ds, items: [] });
+      groups.get(k).items.push({ set, sheet, w: W, rows });
+    }
+  }
+  const out = new Map();
+  const put = (P, it, x, y) => {
+    if (!out.has(it.set)) out.set(it.set, new Map());
+    out.get(it.set).set(it.sheet, { page: P, x, y, w: it.w, rows: it.rows });
+  };
+  for (const g of groups.values()) {
+    g.items.sort((a, b) => (b.rows - a.rows) || (b.w - a.w));
+    const wMin = Math.max(...g.items.map((it) => up4(it.w))) + 2 * PAGE_GAP;
+    let best = null;
+    for (const PW of [wMin, 1024, 1536, 2048, 2560, 3072, 3584, PAGE_MAX]) {
+      if (PW < wMin || PW > PAGE_MAX) continue;
+      const r = skyline(g.items, PW);
+      if (r && (!best || r.w * r.h < best.w * best.h)) best = r;
+    }
+    if (best) {
+      const P = newPage(g.bits, g.ds, best.w, best.h, 'bt-look:page/' + g.bits + '-' + g.ds + '-' + _pages.length);
+      g.items.forEach((it, i) => put(P, it, best.at[i][0], best.at[i][1]));
+      continue;
+    }
+    /* too many for one page: shelves, a page after another */
+    let x = PAGE_GAP, y = PAGE_GAP, shelf = 0, pw = 0, placed = [];
+    const close = () => {
+      if (!placed.length) return;
+      const P = newPage(g.bits, g.ds, up4(pw), up4(y + shelf), 'bt-look:page/' + g.bits + '-' + g.ds + '-' + _pages.length);
+      for (const it of placed) put(P, it, it.x, it.y);
+      placed = []; x = PAGE_GAP; y = PAGE_GAP; shelf = 0; pw = 0;
+    };
+    for (const it of g.items) {
+      if (x > PAGE_GAP && x + it.w > PAGE_MAX) { x = PAGE_GAP; y += up4(shelf) + PAGE_GAP; shelf = 0; }
+      if (y + it.rows > PAGE_MAX) close();
+      it.x = x; it.y = y;
+      placed.push(it);
+      x += up4(it.w) + PAGE_GAP;
+      if (it.rows > shelf) shelf = it.rows;
+      if (x > pw) pw = x;
+    }
+    close();
+  }
+  return out;
+}
+/* a texture's sheet number (the directory's), found once by its frame */
+function dirOf(t) {
+  if (t._btLookDir !== undefined) return t._btLookDir;
+  const L = t._source && t._source._btLook;
+  let d = -1;
+  if (L && L.page) {
+    const ds = L.ds, fx = t.frame.x * ds, fy = t.frame.y * ds;
+    for (const M of L.page.members) if (fx >= M.x && fx < M.x + M.w && fy >= M.y && fy < M.y + M.rows) { d = M.dir; break; }
+    /* a cut of the gap round a sheet (subTexture's "nothing inside"): that
+       sheet's, read clamped to its edge as a texture of its own was */
+    if (d < 0) for (const M of L.page.members) if (fx >= M.x - PAGE_GAP && fx < M.x + M.w + PAGE_GAP && fy >= M.y - PAGE_GAP && fy < M.y + M.rows + PAGE_GAP) { d = M.dir; break; }
+  }
+  t._btLookDir = d;
+  return d;
 }
 /* ═══ v2.3.4452: A SET'S FILES HAVE A TIME LIMIT ═══
    A manifest or sheet that never answered left the set 'loading' for the
@@ -247,25 +468,38 @@ const SET_FILE_TIMEOUT_MS = (() => {
   try { if (typeof location !== 'undefined' && /[?&]retrylooks=0\b/.test(location.search || '')) return 0; } catch (e) { /* on */ }
   return 60000;
 })();
-async function loadSet(name) {
+/* v2.3.4993: a set's manifest, fetched once (the atlas plans every set's
+   pages from them before a picture loads) */
+function manifestOf(s) {
+  if (!s.mf) {
+    s.mf = (async () => {
+      const res = await timeLimit(fetch(s.url + '?v=v2.3.3737'), SET_FILE_TIMEOUT_MS);
+      if (!res.ok) throw new Error(s.url + ' ' + res.status);
+      return timeLimit(res.json(), SET_FILE_TIMEOUT_MS);
+    })();
+  }
+  return s.mf;
+}
+async function loadSet(name, planned) {
   const s = _sets.get(name);
   if (!s || s.loading) return s ? s.loading : false;
   let dead = false;   /* v2.3.4452: failed -- a sheet that lands after is not built */
   s.loading = (async () => {
     try {
       const v = 'v2.3.3737';
-      const res = await timeLimit(fetch(s.url + '?v=' + v), SET_FILE_TIMEOUT_MS);
-      if (!res.ok) throw new Error(s.url + ' ' + res.status);
-      const m = await timeLimit(res.json(), SET_FILE_TIMEOUT_MS);
+      const m = await manifestOf(s);
       const roles = m.roleDefs || (name === 'body' ? BODY_ROLES : []);   /* (a manifest's `roles` is its roles' names) */
       /* the row is law: a set's roles stay inside its kind's entries */
       const range = m.kind && LOOK_ROW_RANGES[m.kind];
       if (range && roles.some((ro) => ro.entry < range[0] || ro.entry > range[1])) { _stats.rangeErrors++; throw new Error(name + ': a role outside the ' + m.kind + ' entries ' + range.join('-')); }
+      /* v2.3.4993: the places planned with every set's (preloadLookSheets),
+         or this set's own pages when it came later */
+      const places = !_atlasWanted ? null : ((planned && planned.get(name)) || planPages([[name, m]]).get(name) || null);
       await Promise.all(Object.keys(m.sheets).map(async (sheet) => {
         const e = m.sheets[sheet];
         const img = await timeLimit(loadPng(s.base + sheet + '.png?v=' + v + '.' + (e.art || '')), SET_FILE_TIMEOUT_MS);
         if (dead) return;
-        buildSheet(name, sheet, { bits: m.bits, fw: m.fw, fh: m.fh, refScale: m.refScale, kind: m.kind, mip: m.mip, ...e }, img, e.roleDefs || roles);
+        buildSheet(name, sheet, { bits: m.bits, fw: m.fw, fh: m.fh, refScale: m.refScale, kind: m.kind, mip: m.mip, ...e }, img, e.roleDefs || roles, places ? places.get(sheet) || null : null);
       }));
       s.manifest = m;
       _stats.sets++;
@@ -277,7 +511,10 @@ async function loadSet(name) {
       _stats.loadError = String((e && e.message) || e);
       for (const k of Object.keys(_sheets)) {
         if (k.slice(0, name.length + 1) !== name + '/') continue;
-        try { _sheets[k].src.destroy(); } catch (er) { /* gone */ }
+        /* v2.3.4993: a sheet in a page leaves it (the page is other sets' too) */
+        const M = _sheets[k].member;
+        if (M) { const P = _sheets[k].src._btLook.page; const i = P.members.indexOf(M); if (i >= 0) P.members.splice(i, 1); }
+        else try { _sheets[k].src.destroy(); } catch (er) { /* gone */ }
         delete _sheets[k];
         _stats.sheets--;
       }
@@ -305,8 +542,8 @@ export function lookSheetOf(set, sheet) { return _sheets[set + '/' + sheet] || n
  *  its <img>), for the bake to colour a frame on the CPU (lookExpand.js). */
 export function lookSheetBytes(set, sheet) {
   const sh = _sheets[set + '/' + sheet];
-  if (!sh || !sh.src._btLook) return null;
-  const L = sh.src._btLook;
+  if (!sh || !sh.look) return null;
+  const L = sh.look;   /* v2.3.4993: the sheet's own, in a page or not */
   return { bytes: L.make(), w: L.w, rows: L.rows, ds: L.ds, bits: L.bits, n: L.n };
 }
 /** v2.3.3737 (P3): a sheet's offset in its book of masks, in the header
@@ -315,6 +552,7 @@ export function setLookSheetBook(set, sheet, offset) {
   const sh = _sheets[set + '/' + sheet];
   if (!sh || sh.book === offset) return !!sh;
   sh.book = offset >>> 0;
+  if (sh.member) sh.member.dirty = true;   /* v2.3.4993: in a page, only this sheet is sent again */
   try { sh.src.update(); } catch (e) { /* uploaded with it when next drawn */ }
   return true;
 }
@@ -338,7 +576,10 @@ function uploadSheets() {
        (`remadeInFrame`), not behind the rebuild's wait (the renderer's uid,
        not the renderer: a destroyed one is not kept) */
     if (sh.uploaded === r.uid) continue;
-    try { _inPrewarm = true; r.texture.initSource(sh.src); sh.uploaded = r.uid; } catch (e) { /* drawn the usual way */ } finally { _inPrewarm = false; }
+    /* v2.3.4993: a page once for all its sheets (its upload sends each) */
+    const L = sh.src._btLook;
+    if (L && L.page && L.page.sentFor === r.uid) { sh.uploaded = r.uid; continue; }
+    try { _inPrewarm = true; r.texture.initSource(sh.src); sh.uploaded = r.uid; if (L && L.page) L.page.sentFor = r.uid; } catch (e) { /* drawn the usual way */ } finally { _inPrewarm = false; }
   }
 }
 /**
@@ -359,7 +600,20 @@ registerLookSheets('body', '/sprites/look/roles.json');
 export function preloadLookSheets() {
   if (!_wanted) return Promise.resolve(false);
   prewarmProgram();
-  if (!_loading) _loading = Promise.all([..._sets.keys()].map(loadSet)).then((r) => r.every(Boolean));
+  if (!_loading) {
+    _loading = (async () => {
+      const names = [..._sets.keys()];
+      /* v2.3.4993: every set's manifest first, so one plan places every
+         sheet (a set whose manifest fails is planned alone, and fails, later) */
+      let planned = null;
+      if (_atlasWanted) {
+        const ms = await Promise.all(names.map((n) => manifestOf(_sets.get(n)).then((m) => [n, m], () => null)));
+        try { planned = planPages(ms.filter(Boolean)); } catch (e) { planned = null; }
+      }
+      const r = await Promise.all(names.map((n) => loadSet(n, planned)));
+      return r.every(Boolean);
+    })();
+  }
   return _loading;
 }
 
@@ -403,7 +657,11 @@ function sweep(now) {
 function lookFrames(set, sheet, entries, opts) {
   if (!lookPaletteOn()) return null;
   if (_ok === null) prewarmProgram();   /* not built behind the loading screen (no renderer then): now */
-  if (!entries.some((e) => e[1])) return null;
+  /* v2.3.4961: `opts.asDrawn` -- a set whose every role left as drawn is still
+     a picture the old path bakes (the head sheets: the default skin's jog and
+     pickup heads were an unchanged copy each), so a row of no colours is asked
+     for too; elsewhere the caller draws its shipped sheet then */
+  if (!(opts && opts.asDrawn) && !entries.some((e) => e[1])) return null;
   const sh = _sheets[set + '/' + sheet];
   if (!sh) return null;
   /* v2.3.3737 (P2): `opts.key` -- the caller's own key for these entries
@@ -428,7 +686,7 @@ function lookFrames(set, sheet, entries, opts) {
   let list = look.tex[name];
   if (!list) {
     list = look.tex[name] = sh.frames.map((f) => {
-      const t = new Texture({ source: sh.src, frame: f.frame, orig: f.orig, trim: f.trim });
+      const t = lookSheetTexture(sh, f);   /* v2.3.4993: in its page */
       t._btLook = look;
       t._btLookMirror = mirror;
       t.__btIx = f.i; t.__btN = f.n;
@@ -480,10 +738,18 @@ flat out float vTextureId;
 flat out float vLook;
 flat out float vSharp;
 flat out float vMirror;
+flat out float vDir;
 uniform mat3 uProjectionMatrix;
 uniform mat3 uWorldTransformMatrix;
 uniform vec4 uWorldColorAlpha;
 uniform vec2 uResolution;
+uniform highp sampler2D uTextures[${SLOTS}];
+uniform highp sampler2D uDir;
+/* v2.3.4993: the page the sprite's sheet is in (its slot's texture) */
+highp ivec2 pageSizeV()
+{
+${fetchChain((t) => `textureSize(uTextures[${t}], 0)`)}
+}
 vec2 roundPixels(vec2 position, vec2 targetSize)
 {
     return (floor(((position * 0.5 + 0.5) * targetSize) + 0.5) / targetSize) * 2.0 - 1.0;
@@ -508,11 +774,28 @@ void main(void){
     highp float low = code - vLook * 4.0;
     vMirror = floor(low / 2.0 + 0.001);
     vSharp = low - vMirror * 2.0;
+    /* v2.3.4993: the low half is the round flag + 2 x (the sheet's number
+       in the directory + 1; 0: a texture of its own) */
+    highp float lo = floor(aTextureIdAndRound.x / 2.0 + 0.001);
+    vDir = lo - 1.0;
+    /* ...and a sheet in a page of the atlas gets its place on its OWN sheet,
+       as when it was a texture of its own: the corner's texel (a frame's
+       corners are whole texels) less the sheet's, over the sheet's size --
+       so the fragment's arithmetic (the sharp read, the mip level) is the
+       same as before to the last bit, not merely the same picture */
+    if (vDir > -0.5) {
+        highp int d = int(vDir + 0.5) * 2;
+        highp vec4 a = floor(texelFetch(uDir, ivec2(d % ${DIR_W}, d / ${DIR_W}), 0) * 255.0 + 0.5);
+        highp vec4 b = floor(texelFetch(uDir, ivec2((d + 1) % ${DIR_W}, (d + 1) / ${DIR_W}), 0) * 255.0 + 0.5);
+        highp vec2 org = vec2(a.r + 256.0 * a.g, a.b + 256.0 * a.a);
+        highp vec2 sz = vec2(b.r + 256.0 * b.g, b.b + 256.0 * b.a);
+        uv = (floor(aUV * vec2(pageSizeV()) + 0.5) - org) / sz;
+    }
     vUV = uv;
     mat3 modelViewProjectionMatrix = uProjectionMatrix * worldTransformMatrix * modelMatrix;
     gl_Position = vec4((modelViewProjectionMatrix * vec3(position, 1.0)).xy, 0.0, 1.0);
     vColor *= uWorldColorAlpha;
-    if(aTextureIdAndRound.x == 1.)
+    if(aTextureIdAndRound.x - 2.0 * lo > 0.5)
     {
         gl_Position.xy = roundPixels(gl_Position.xy, uResolution);
     }
@@ -569,17 +852,39 @@ flat in float vTextureId;
 flat in float vLook;
 flat in float vSharp;
 flat in float vMirror;
+flat in float vDir;
 out vec4 finalColor;
 uniform highp sampler2D uTextures[${SLOTS}];
 uniform highp sampler2D uPalAtlas;
 uniform highp sampler2D uMaskAtlas;
+uniform highp sampler2D uDir;
+/* v2.3.4993: the sheet's corner and size in its texture (a page of the
+   atlas, or its own: the corner 0, the size the texture's) */
+highp ivec2 sOrg;
+highp ivec2 sSz;
 highp vec4 fetchT(highp ivec2 p)
 {
+    p += sOrg;
 ${fetchChain((t) => `texelFetch(uTextures[${t}], p, 0)`)}
+}
+highp ivec2 pageSizeT()
+{
+${fetchChain((t) => `textureSize(uTextures[${t}], 0)`)}
 }
 highp ivec2 sizeT()
 {
-${fetchChain((t) => `textureSize(uTextures[${t}], 0)`)}
+    return sSz;
+}
+void dirRead()
+{
+    sOrg = ivec2(0);
+    sSz = pageSizeT();
+    if (vDir < -0.5) return;
+    highp int d = int(vDir + 0.5) * 2;
+    highp vec4 a = floor(texelFetch(uDir, ivec2(d % ${DIR_W}, d / ${DIR_W}), 0) * 255.0 + 0.5);
+    highp vec4 b = floor(texelFetch(uDir, ivec2((d + 1) % ${DIR_W}, (d + 1) / ${DIR_W}), 0) * 255.0 + 0.5);
+    sOrg = ivec2(int(a.r) + 256 * int(a.g), int(a.b) + 256 * int(a.a));
+    sSz = ivec2(int(b.r) + 256 * int(b.g), int(b.b) + 256 * int(b.a));
 }
 /* the sheet's header, read once a pixel (lookPalette.js buildSheet): its
    scale, rows, table, bits, and each role's entry of the row, ref and under */
@@ -754,6 +1059,7 @@ void main(void) {
     highp vec2 dy = dFdy(vUV);
     sRow = int(vLook + 0.5) - 1;
     sMirror = vMirror > 0.5;
+    dirRead();   /* v2.3.4993 */
     readSheet();
     mBase = -1;
     if (sBook > 0 && sRow >= 0) {
@@ -762,6 +1068,7 @@ void main(void) {
     }
     /* the body as the chip drew it: sharpPixels.js's sharpSample (or Pixi's
        plain read) on a mipmapped texture, done by hand on the coloured texels */
+    /* v2.3.4993: vUV is the sheet's own (the vertex shader made it so) */
     highp vec2 ts = vec2(sizeT()) / float(sDs);   /* in display texels */
     highp vec2 px = vUV * ts;
     highp vec2 P = px;
@@ -795,6 +1102,7 @@ function lookShader() {
         uTextures: { value: units, type: 'i32', size: SLOTS },
         uPalAtlas: { value: SLOTS, type: 'i32' },
         uMaskAtlas: { value: SLOTS + 1, type: 'i32' },   /* v2.3.3752 */
+        uDir: { value: SLOTS + 2, type: 'i32' },   /* v2.3.4993: the atlas's directory */
       }, { isStatic: true }),
     },
   });
@@ -806,7 +1114,10 @@ function packedId(el, slot) {
   const look = t && t._btLook;
   const lk = look && look.row >= 0 ? look.row + 1 : 0;
   const mi = t && t._btLookMirror ? 1 : 0;
-  return (((slot + 16 * (lk * 4 + mi * 2 + (el._btLookSharp ? 1 : 0))) << 16) | (el.roundPixels & 65535)) >>> 0;
+  /* v2.3.4993: the low half, the round flag and the sheet's number in the
+     atlas's directory + 1 (0: a texture of its own) */
+  const dir = t ? dirOf(t) : -1;
+  return (((slot + 16 * (lk * 4 + mi * 2 + (el._btLookSharp ? 1 : 0))) << 16) | (((dir + 1) << 1) | (el.roundPixels & 1))) >>> 0;
 }
 class LookBatcher extends DefaultBatcher {
   constructor() {
@@ -832,7 +1143,8 @@ class LookBatcher extends DefaultBatcher {
     /* v2.3.3752: the armour's mask atlas after it (a blank until a figure is
        drawn under armour, lookArmour.js) */
     textureBatch.textures[SLOTS + 1] = (_maskSource && _maskSource()) || empty;
-    textureBatch.count = SLOTS + 2;
+    textureBatch.textures[SLOTS + 2] = _dirSrc || empty;   /* v2.3.4993: the atlas's directory */
+    textureBatch.count = SLOTS + 3;
     super._finishBatch(batch, indexStart, indexSize, textureBatch, blendMode, topology, instructionSet, action, elements);
   }
   _updateMaxTextures() {}
@@ -884,6 +1196,32 @@ function patchPipes() {
     U.upload = function (source, glTexture, gl, webGLVersion, targetOverride, forceAllocation = false) {
       if (!source || !source._btLook) return up.call(this, source, glTexture, gl, webGLVersion, targetOverride, forceAllocation);
       const target = targetOverride || glTexture.target;
+      /* v2.3.4993: a page -- made once at its size, each sheet sent as its own
+         rectangle when it is new to this texture or its header changed */
+      if (source._btLook.page) {
+        const P = source._btLook.page;
+        const w = source.pixelWidth, h = source.pixelHeight;
+        gl.pixelStorei(gl.UNPACK_ALIGNMENT, P.bits === 8 ? 1 : 2);
+        let fresh = false;
+        if (forceAllocation || P.glt !== glTexture || glTexture.width !== w || glTexture.height !== h) {
+          gl.texImage2D(target, 0, glTexture.internalFormat, w, h, 0, glTexture.format, glTexture.type, null);
+          glTexture.width = w; glTexture.height = h;
+          P.glt = glTexture;
+          fresh = true;
+        }
+        for (const M of P.members) {
+          if (!fresh && M.up === glTexture && !M.dirty) continue;
+          if (M.up) { _stats.remade++; if (!_inPrewarm) _stats.remadeInFrame++; }
+          gl.texSubImage2D(target, 0, M.x, M.y, M.w, M.rows, glTexture.format, glTexture.type, M.look.make());
+          M.up = glTexture;
+          M.dirty = false;
+          _stats.pageSends++;
+        }
+        gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+        source.resource = null;
+        if (source.options) source.options.resource = null;
+        return;
+      }
       const w = source.pixelWidth, h = source.pixelHeight;
       /* v2.3.3716 (the owner put this on by default): the bytes are let go of
          once on the chip, as the Wheel's ground lets go of its colours
@@ -963,7 +1301,7 @@ export function warmLookPalette() { if (_wanted) prewarmProgram(); }
 function getLookFrameRaw(name) {
   const sh = _sheets[name];
   const f = sh.frames[0];
-  return new Texture({ source: sh.src, frame: f.frame, orig: f.orig, trim: f.trim });
+  return lookSheetTexture(sh, f);   /* v2.3.4993 */
 }
 
 /* QA probe, house style */
@@ -972,6 +1310,8 @@ if (typeof window !== 'undefined') {
     let rows = 0;
     for (const l of _looks.values()) if (l.row >= 0) rows++;
     return { wanted: _wanted, why: _why /* v2.3.3838: 'address', 'windows' or 'default' (v2.3.3842: or 'mac') */, on: lookPaletteOn(), ok: _ok, renderer: !!paletteRendererOf(), prewarmed: !!_prewarmedFor, ..._stats, looks: _looks.size, rows,
-      sheetMB: +(_stats.sheetBytes / 1048576).toFixed(2), sets: [..._sets.keys()].filter((k) => _sets.get(k).manifest) };
+      sheetMB: +(_stats.sheetBytes / 1048576).toFixed(2), sets: [..._sets.keys()].filter((k) => _sets.get(k).manifest),
+      /* v2.3.4993: the atlas */
+      atlas: { on: _atlasWanted, pages: _pages.map((P) => ({ bits: P.bits, ds: P.ds, w: P.w, h: P.h, sheets: P.members.length })), dir: _dirN, pageMB: +(_stats.pageBytes / 1048576).toFixed(2) } };
   };
 }

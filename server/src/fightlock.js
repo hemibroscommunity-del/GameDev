@@ -276,7 +276,7 @@ const OPEN_GROUPS = [
   /* relay.js RELAY.TYPES: drawn by the other phones only, or a handshake
      whose accept is the row (duel_accept; the gift's trade_offer/accept) */
   ['a relay', [
-    'campfire_lit', 'chat', 'clan_invite', 'duel_decline', 'duel_request', 'duel_wager_request',
+    'campfire_lit', 'campfire_out', 'chat', 'clan_invite', 'duel_decline', 'duel_request', 'duel_wager_request',
     'emote', 'gather_node', 'monster_dmg_at', 'player_died_to_monster', 'player_dodge', 'player_hurt_by_monster',
     'player_jump', 'player_projectile', 'player_respawned', 'player_shield', 'player_swing', 'pvp_confirmed',
     'pvp_threat', 'stunned', 'trade_reject',

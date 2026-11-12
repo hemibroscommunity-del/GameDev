@@ -39,13 +39,26 @@ export const ONE_PIC = Object.freeze({
      bounds do not fit stays layered (counted in `tooBig`). */
   SLOT_CSS_W: 96,
   SLOT_CSS_H: 140,
+  /* v2.3.4990: the shared picture is made when the first crowd stands (more
+     than NEAR_FULL calm players drawn) and given back this long after its
+     last picture went: a player alone, or walking with a few friends, holds
+     none of it (the memory law: a pool gives back what a spike made) */
+  IDLE_FREE_MS: 30000,
 });
 
-/** The switch.  Stage 1 is OFF unless the address says `?onepic=1`; `?onepic=0`
-    is off too (the off-ramp once it is the default). */
+/** v2.3.4990: a crowd switch that is ON unless the address says `?<name>=0`
+    (owner, 2026-11-12: "Turn both switches on by default"; the memory law's
+    way, a saver on by default with an off-ramp for one phone).  The name is
+    matched whole, so `?onepicnear=0` is not `?onepic=0`. */
+export function crowdSwitchOn(search, name) {
+  const m = new RegExp('[?&]' + name + '=([01])(?![0-9A-Za-z_])').exec(search || '');
+  return !(m && m[1] === '0');
+}
+
+/** The switch.  Stage 1 is ON (v2.3.4990; it was `?onepic=1` only in
+    v2.3.4885); `?onepic=0` turns it off. */
 export function onePicFromQuery(search) {
-  const m = /[?&]onepic=([01])\b/.exec(search || '');
-  return !!(m && m[1] === '1');
+  return crowdSwitchOn(search, 'onepic');
 }
 
 /** QA: `?onepicnear=N` keeps only the nearest N layered (0 makes every calm

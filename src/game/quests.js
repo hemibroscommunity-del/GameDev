@@ -12,6 +12,7 @@
    extracted-module rule. */
 import { QUEST_STATUS, QUEST_AP_REWARD, createDefaultCompStats, BT_AUDIO, getNpcQuest } from '@/data/index.js';
 import { sendQuestMsg } from './questKept.js';   /* v2.3.4641: a quest tap made while the connection is down is kept */
+import { noteHandIn } from './questHandIn.js';   /* v2.3.4940: a refused hand-in taken back, counters and all */
 import { _objectSpread } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -170,7 +171,7 @@ export function turnInQuest(S, questPanel, deps, xpCat, opts) {
       : (questPanel.quest.reward && questPanel.quest.reward.xp > 0 ? undefined : 'sword');
     if (_Sqt.channel) {
       /* v2.3.4641: kept for the rejoin when the channel drops it (game/questKept.js, TRAPS §287) */
-      sendQuestMsg(_Sqt, { type: 'quest_turn_in', payload: {
+      var _went = sendQuestMsg(_Sqt, { type: 'quest_turn_in', payload: {
         questId: questPanel.quest.id,
         xpCat: _sendCat,
         /* v2.3.3525: which weapon a hand-in's trade takes (wood_2: 'bow' or
@@ -178,6 +179,9 @@ export function turnInQuest(S, questPanel, deps, xpCat, opts) {
            first it finds without one (quests.js _questTradePick) */
         trade: typeof o.trade === 'string' ? o.trade : undefined,
       } });
+      /* v2.3.4940: settled by the worker's next quest map (game/questHandIn.js):
+         a refusal takes back the counters below too */
+      if (_went) noteHandIn(questPanel.quest.id, questPanel.quest.reward.gold);
     }
   }
   R._quests[questPanel.quest.id] = QUEST_STATUS.turnedIn;

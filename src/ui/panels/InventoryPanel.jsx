@@ -1,4 +1,5 @@
 import { coinArtFor, COIN_ONE } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
+import { askSellWeapon, drawWeaponSale } from '@/game/weaponSell.js'; /* v2.3.4941: a sale drawn only when it went */
 import React from 'react';
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { AMULET_TIERS, BLACKSMITH_TIERS, BT_AUDIO, COLLISION_TABLE, ELEMENTS, MAX_PET_SLOTS, NUGGETS_PER_BAR, PET_LOOT_RADIUS, RARITY_TIERS, WEAPON_STASH_MAX, WEAPON_TYPES, calcDisplayDmgRange, calcDisplayDps, calcDisplayHeal, canEquipItem, discoveredCollisions, getAmuletBonus, getEquipReqLabel, getShieldBonus, toDisplayDamage } from '@/data/index.js'; /* v2.3.2520: the display damage scale */
@@ -997,21 +998,17 @@ export function InventoryPanel(props) {
         var sold = R.weaponStash[si];
         var sellVal = Math.ceil((sold.tierMult || 1) * (((_WEAPON_TYPES$sold$ty2 = WEAPON_TYPES[sold.type]) === null || _WEAPON_TYPES$sold$ty2 === void 0 ? void 0 : _WEAPON_TYPES$sold$ty2.base) || 30) * 0.5);
         /* Server-authoritative stash sell in MP: worker validates the
-           stash entry exists, computes the same sell value, credits
-           coins, splices the stash.  Local mutation stays as snappy
-           visual prediction; player_state arrives shortly with the
-           authoritative stash + coins. */
-        {
-          var _Ssw = stateRef.current;
-          /* v2.3.1687: same dead gate — a sale that the worker never heard
-             about credits coins locally and loses them on the next echo. */
-          if (_Ssw.channel) {
-            try { _Ssw.channel.send({ type: 'sell_weapon', payload: { stashIdx: si } }); } catch (e) {}
-          }
+           stash entry exists, computes the same sell value, credits coins,
+           splices the stash, and answers a refusal with both (v2.3.4883).
+           v2.3.4941: drawn only when the channel took the ask -- a sale
+           dropped while the connection was down reached no worker, and
+           nothing ever took its gold back (game/weaponSell.js). */
+        if (!askSellWeapon(stateRef.current, si)) {
+          var _Sd = stateRef.current;
+          try { pushDmgPopup(_Sd, _Sd.player.x, _Sd.player.y - 30, 'Not sold: no connection', '#ff5e6c'); } catch (e) { /* popup only */ }
+          return;
         }
-        R.coins += sellVal;
-        if (R._compStats) R._compStats.totalGoldEarned += sellVal;
-        R.weaponStash.splice(si, 1);
+        drawWeaponSale(R, si, sellVal);
         setRpgState(_objectSpread({}, R));
         try {
           localStorage.setItem('bt_rpg', JSON.stringify(R));

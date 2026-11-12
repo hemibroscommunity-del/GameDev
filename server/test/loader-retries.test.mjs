@@ -396,8 +396,9 @@ await section(7, async () => {
 await section(8, async () => {
   const LP = src('src/rendering/lookPalette.js');
   const ls = cut(LP, 'loadSet');
+  const mf = cut(LP, 'manifestOf');   /* v2.3.4993: the manifest fetched once there (the atlas plans from every set's) */
   check('8a a set\'s manifest, its body and each sheet have a time limit',
-    /timeLimit\(fetch\(/.test(ls) && /timeLimit\(res\.json\(\)/.test(ls) && /timeLimit\(loadPng\(/.test(ls));
+    /timeLimit\(fetch\(/.test(mf) && /timeLimit\(res\.json\(\)/.test(mf) && /manifestOf\(s\)/.test(ls) && /timeLimit\(loadPng\(/.test(ls));
   check('8b a set that failed builds no sheet that lands after', /if \(dead\) return;\s*buildSheet\(/.test(ls) && /catch \(e\) \{\s*dead = true;/.test(ls));
 });
 

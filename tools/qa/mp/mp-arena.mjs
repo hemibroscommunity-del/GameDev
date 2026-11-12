@@ -192,7 +192,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('the four gladiators hold a great sword on the worker, and everyone has gold (guard)', armed.every(Boolean), armed);
     /* the operator view's `live` is now and then missing for a read (a
        player's state between two of the worker's writes): read again */
-    const liveOf = async (id) => { for (let k = 0; k < 6; k++) { const v = await H.serverPlayer(wsPort, id); if (v) return v; await G[0].page.waitForTimeout(150); } return null; };
+    const liveOf = async (id) => { for (let k = 0; k < 20; k++) {   /* v2.3.4951: 3 s, not 0.9: on this box a run read null for longer (its fight's first HP) */
+      const v = await H.serverPlayer(wsPort, id); if (v) return v; await G[0].page.waitForTimeout(150); } return null; };
     const coinsOf = async (id) => ((await liveOf(id)) || {}).coins;
     const apOf = async (id) => { const a = await H.adminPlayer(wsPort, id); return Math.floor(Number(a && a.rpg && a.rpg.achievementPoints) || 0); };
 
@@ -264,8 +265,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const offs = [-60, -20, 20, 60];
     const opened = [];
     for (let i = 0; i < G.length; i++) opened.push(await openArena(G[i], offs[i]));
+    /* v2.3.4951: each window's words are waited for, not read the instant
+       the last one opened: the window's frame (its ✕) is drawn a beat before
+       its contents, and on this 4-vCPU box the fourth gladiator's was read
+       in that beat ("✕" alone) a run in a few */
     const enterTexts = [];
-    for (const P of G) enterTexts.push(await arenaText(P));
+    for (const P of G) {
+      let t = await arenaText(P);
+      for (const t0 = Date.now(); !/Enter Arena · 100G/.test(t || '') && Date.now() - t0 < 15000;) {
+        await P.page.waitForTimeout(250);
+        t = await arenaText(P);
+      }
+      enterTexts.push(t);
+    }
     await shot(G[0], '1-signup');
     rec.ok(`1. each gladiator at the Sheriff's Office's steps: "${opened[0].btn}", The arena, and the arena's window offering "Enter Arena · 100G"`,
       opened.every((o) => /SHERIFF'S OFFICE/.test(o.btn || '') && o.hall && o.open) && enterTexts.every((t) => /Enter Arena · 100G/.test(t || '')),
@@ -370,14 +382,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
        them within a sword's reach */
     const closeIn = async (P, me, them) => {
       for (let k = 0; k < 8; k++) {
-        const [a, b] = await Promise.all([H.serverPlayer(wsPort, me), H.serverPlayer(wsPort, them)]);
+        /* v2.3.4951: through liveOf (the operator view's `live` now and then
+           missing for a read): a single miss returned null, a run here */
+        const [a, b] = await Promise.all([liveOf(me), liveOf(them)]);
         if (!a || !b) return null;
         const d = Math.hypot(a.x - b.x, a.y - b.y);
         if (d <= 44) return Math.round(d);
         await H.hopTo(P, b.x + 34, b.y, { step: 90, gap: 260, tries: 30 });
         await P.page.waitForTimeout(700);
       }
-      const [a, b] = await Promise.all([H.serverPlayer(wsPort, me), H.serverPlayer(wsPort, them)]);
+      const [a, b] = await Promise.all([liveOf(me), liveOf(them)]);
       return a && b ? Math.round(Math.hypot(a.x - b.x, a.y - b.y)) : null;
     };
     /* `win` (an index into G) beats `lose`; the loser lands a few blows first */
@@ -386,9 +400,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const reach = await closeIn(L, ids[lose], ids[win]);
       const hpW0 = await hpOf(ids[win]), hpL0 = await hpOf(ids[lose]);
       /* the loser hits back first: damage both ways */
-      const howL = await holdAttack(L, true);
-      for (let k = 0; k < 12 && (await hpOf(ids[win])) >= hpW0; k++) await L.page.waitForTimeout(500);
-      await holdAttack(L, false);
+      /* v2.3.4951: three tries of 6 s, stepping back in between (a shove, a
+         stray step: the winner's loop below does the same): on this box a
+         run's loser swung 6 s and never reached */
+      let howL = null;
+      for (let t = 0; t < 3 && (t === 0 || (await hpOf(ids[win])) >= hpW0); t++) {
+        if (t > 0) await closeIn(L, ids[lose], ids[win]);
+        howL = await holdAttack(L, true);
+        for (let k = 0; k < 12 && (await hpOf(ids[win])) >= hpW0; k++) await L.page.waitForTimeout(500);
+        await holdAttack(L, false);
+      }
       const hpW1 = await hpOf(ids[win]);
       /* then the winner, until the worker has the loser down */
       const t0 = Date.now();
@@ -520,9 +541,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const well = await waitSel(P, arenaCard + ' [data-arena-bet]', 8000);
       const picked = !!(await touch(P, `${arenaCard} [data-arena-bet-target="${targetId}"]`));
       await P.page.fill(`${arenaCard} [data-arena-bet-amount]`, String(amount)).catch(() => {});
-      await P.page.waitForTimeout(300);
-      const placed = !!(await touch(P, `${arenaCard} [data-arena-bet-place]`));
-      await P.page.waitForTimeout(1500);
+      /* v2.3.4951: Place is tapped once the window has taken the pick and the
+         amount (its button enabled, the box reading the amount), and the
+         answer is waited for -- not 300 ms and 1.5 s by the wall clock: on
+         this 4-vCPU box the knocked-out gladiator's page, just back from his
+         respawn, tapped a Place still disabled two runs in three, and no bet
+         went (the pick a chip that toggles, so it is never tapped twice) */
+      const ready = () => P.page.evaluate(({ c, a }) => {
+        const b = document.querySelector(c + ' [data-arena-bet-place]'), i = document.querySelector(c + ' [data-arena-bet-amount]');
+        return !!b && !b.disabled && !!i && String(i.value) === String(a);
+      }, { c: arenaCard, a: amount }).catch(() => false);
+      for (const t0 = Date.now(); !(await ready()) && Date.now() - t0 < 8000;) {
+        await P.page.waitForTimeout(250);
+        if (!(await ready())) await P.page.fill(`${arenaCard} [data-arena-bet-amount]`, String(amount)).catch(() => {});
+      }
+      /* ...and a tap that brought nothing (the line dropped and was coming
+         back: the window takes no bet until the worker's caps are in again,
+         a close 1006 on every page in two runs here) is tapped again once
+         the line is up, as a player would -- three tries at most */
+      let placed = false;
+      for (let k = 0; k < 3 && !/Bet placed/.test((await arenaText(P)) || ''); k++) {
+        await H.waitFor(P, (S) => !!(S._realtimeStatus === 'connected' && S._serverCaps && S._serverCaps.sponsor), Boolean,
+          { timeout: 20000, label: 'the line up' }).catch(() => null);
+        for (const t0 = Date.now(); !(await ready()) && Date.now() - t0 < 8000;) await P.page.waitForTimeout(250);
+        placed = !!(await touch(P, `${arenaCard} [data-arena-bet-place]`)) || placed;
+        for (const t0 = Date.now(); !/Bet placed/.test((await arenaText(P)) || '') && Date.now() - t0 < 10000;) await P.page.waitForTimeout(250);
+      }
       await shot(P, `4-bet-${P.name}`);
       const txt = ((await arenaText(P)) || '');
       await closeCard(P);

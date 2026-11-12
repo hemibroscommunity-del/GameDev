@@ -38,10 +38,17 @@
  * arriving (ONE_PIC.PAINTS_A_FRAME; a picture already shown that changed is
  * always painted that frame).
  *
- * The picture is made behind the loading screen (pixiRenderer.js makes this
- * object as the scene is built), never on the first crowd: PRELOADING IS LAW.
  * Its size is ONE_PIC.SLOTS slots of SLOT_CSS_W x SLOT_CSS_H CSS px at the
  * device's pixel ratio (`window.__btOnePic().bytes`).
+ *
+ * v2.3.4990: ON for everyone (owner, 2026-11-12: "Turn both switches on by
+ * default"; `?onepic=0` the off-ramp).  The picture was made as the scene was
+ * built; now it is made the first frame a crowd stands (more than
+ * ONE_PIC.NEAR_FULL calm players drawn) and given back ONE_PIC.IDLE_FREE_MS
+ * after its last picture went, so a player alone, or with a few friends,
+ * holds none of its ~6-13 MB.  It is an empty picture the chip makes, not art
+ * loaded from a file (PRELOADING IS LAW is about those): one allocation and
+ * one clear, and its first paints wait their turn (PAINTS_A_FRAME).
  */
 import { Container, Graphics, Matrix, Rectangle, RenderTexture, Sprite, Texture, checkChildrenDidChange } from 'pixi.js';
 import { ONE_PIC, onePicFromQuery, onePicNearFromQuery, calmFigure, gradedWire, pickPictures, deviceSplit, slotGrid, sheetBytes } from '../game/onePic.js';
@@ -69,24 +76,25 @@ export class PeerImpostors {
     this._eraseRoot = null;
     this._eraser = null;
     this._tooBigUntil = new Map();
-    this.stats = { pictures: 0, shown: 0, paints: 0, paintsLastFrame: 0, tooBig: 0, refreshes: 0 };
-    if (this.on) this._makeSheet();
+    this.stats = { pictures: 0, shown: 0, paints: 0, paintsLastFrame: 0, tooBig: 0, refreshes: 0, sheetsMade: 0, sheetsFreed: 0 };
+    this._emptySince = 0;   /* v2.3.4990: when the last picture went (0: some are pictures) */
     if (typeof window !== 'undefined') {
       /* QA: what the crowd is drawn as (mp-crowdbots reports it) */
       window.__btOnePic = () => ({
         on: this.on, near: this.near, pictures: this.recs.size, shown: this.stats.shown,
         paints: this.stats.paints, paintsLastFrame: this.stats.paintsLastFrame, refreshes: this.stats.refreshes,
         tooBig: this.stats.tooBig, slots: this.grid ? this.grid.n : 0, free: this.free.length,
-        slotW: this.grid ? this.grid.sw : 0, slotH: this.grid ? this.grid.sh : 0, bytes: sheetBytes(this.grid, this._dpr || 1),
+        slotW: this.grid ? this.grid.sw : 0, slotH: this.grid ? this.grid.sh : 0,
+        bytes: this.sheet ? sheetBytes(this.grid, this._dpr || 1) : 0,
+        sheet: !!this.sheet, sheetsMade: this.stats.sheetsMade, sheetsFreed: this.stats.sheetsFreed,
         ids: [...this.recs.keys()].filter((id) => this.recs.get(id).painted),
       });
       /* QA: the same scene both ways (mp-onepic compares a standing player
          drawn as a picture and as layers, pixel for pixel) */
       window.__btOnePicSet = (on) => {
-        if (!on) { this.revertAll(); this.on = false; return true; }
-        this.on = true;
-        if (!this.sheet) this._makeSheet();
-        return !!this.sheet;
+        if (!on) { this.revertAll(); this._freeSheet(); this.on = false; return true; }
+        this.on = true;   /* the picture is made by the next frame that wants one */
+        return true;
       };
     }
   }
@@ -117,6 +125,26 @@ export class PeerImpostors {
     this._eraseRoot.addChild(this._eraser);
     /* the whole picture cleared once, so a slot never shows what the chip held before */
     try { R.render({ container: new Container(), target: this.sheet, clear: true, clearColor: [0, 0, 0, 0] }); } catch (e) { /* first paint clears its slot anyway */ }
+    this.stats.sheetsMade++;
+    this._emptySince = 0;
+  }
+
+  /** v2.3.4990: the picture given back to the chip (no picture uses it). */
+  _freeSheet() {
+    if (this.recs.size) this.revertAll();
+    if (this.sheet) { this.sheet.destroy(true); this.sheet = null; this.stats.sheetsFreed++; }
+    if (this._eraseRoot) { this._eraseRoot.destroy({ children: true }); this._eraseRoot = null; this._eraser = null; }
+    this.grid = null;
+    this.free.length = 0;
+    this._emptySince = 0;
+  }
+
+  /** v2.3.4990: no picture since `_emptySince`: the picture is freed after
+      ONE_PIC.IDLE_FREE_MS (a crowd that thins for a moment keeps it). */
+  _idle(now) {
+    if (this.recs.size || !this.sheet) { this._emptySince = 0; return; }
+    if (!this._emptySince) this._emptySince = now || 1;
+    else if (now - this._emptySince >= ONE_PIC.IDLE_FREE_MS) this._freeSheet();
   }
 
   _slotXY(slot) {
@@ -128,14 +156,11 @@ export class PeerImpostors {
       sprite stood where its figure stands, so the depth pass sorts it there. */
   place(S, er, now) {
     if (!this.on) return;
-    if (!this.sheet || (this.renderer && this.renderer.resolution !== this._dpr)) {
-      this.revertAll();
-      if (this.sheet) { this.sheet.destroy(true); this.sheet = null; }
-      this._makeSheet();
-      if (!this.sheet) return;
-    }
+    /* the screen's resolution changed (renderRes.js): a picture at the old
+       one would draw every edge differently; the next crowd makes a new one */
+    if (this.sheet && this.renderer && this.renderer.resolution !== this._dpr) this._freeSheet();
     const displays = er && er.otherPlayerDisplays;
-    if (!displays || !S) { this.revertAll(); return; }
+    if (!displays || !S) { this.revertAll(); this._idle(now); return; }
     const others = S.others || {};
     const me = S.player || {};
     const notDrawn = S._peersNotDrawn;
@@ -163,8 +188,14 @@ export class PeerImpostors {
       c.calm = calmFigure(f) && !(tb && now < tb);
       cands.push(c);
     }
-    const pick = pickPictures(cands, this.near, this.grid.n, this._pick);
+    const pick = pickPictures(cands, this.near, this.grid ? this.grid.n : ONE_PIC.SLOTS, this._pick);
     cands.length = 0;
+    if (!this.sheet) {
+      /* v2.3.4990: nobody to draw as a picture, nothing made */
+      if (!pick.size) return;
+      this._makeSheet();
+      if (!this.sheet) return;
+    }
     for (const [id, r] of this.recs) {
       if (!pick.has(id) || displays.get(id) !== r.display || r.display.destroyed) this._leave(id, r);
     }
@@ -178,6 +209,7 @@ export class PeerImpostors {
       sp._groundDy = (d.y + (d._groundDy || 0)) - sp.y;
     }
     this.stats.pictures = this.recs.size;
+    this._idle(now);
   }
 
   _enter(id, d) {
@@ -350,8 +382,6 @@ export class PeerImpostors {
   }
 
   destroy() {
-    this.revertAll();
-    if (this.sheet) { this.sheet.destroy(true); this.sheet = null; }
-    if (this._eraseRoot) { this._eraseRoot.destroy({ children: true }); this._eraseRoot = null; }
+    this._freeSheet();
   }
 }

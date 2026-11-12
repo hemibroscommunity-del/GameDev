@@ -151,7 +151,13 @@ export function installLookProbe(dep) {
       }
       render(cells, (c) => c.t, 0.25, 36, 32);
       done.push({ look: L.join('/'), frames: cells.length });
-      for (const c of cells) srcs.add(c.t.source);
+      for (const c of cells) {
+        /* v2.3.4993: a sheet in a page of the atlas counts its own texels, not
+           the page's (the other sheets in it are other sets') */
+        const L = c.t.source && c.t.source._btLook;
+        const M = L && L.page && c.t._btLookDir >= 0 ? L.page.members.find((m) => m.dir === c.t._btLookDir) : null;
+        srcs.add(M || c.t.source);
+      }
     }
     return { done, ...held() };
   }
@@ -170,6 +176,7 @@ export function installLookProbe(dep) {
     const ship = new Set();
     for (const [pose, dir, k] of sheets()) for (let f = 0; f < k; f++) { const t = getFrame(pose, dir, f); if (t) ship.add(t.source); }
     for (const s of srcs) {
+      if (s && s.look && s.rows) { if (s.up) gpu += s.w * s.rows * (s.look.bits === 8 ? 1 : 2); n++; continue; }   /* v2.3.4993: a sheet in a page */
       if (!s || s.destroyed) continue;
       if (ship.has(s)) { shipped++; continue; }
       const bpp = s.format === 'rg8unorm' ? 2 : (s.format === 'r8unorm' ? 1 : 4);
@@ -267,6 +274,72 @@ export function installLookProbe(dep) {
     }
     return out;
   }
+  /* ═══ v2.3.4961: THE HEAD SHEETS -- every frame of every head sheet for a
+     skin, the old way (bodyRecolor.js bakeHeadFull, packTrimmed: the steps
+     the page and the worker both take, a linear canvas texture) against the
+     numbers (getLookPartFrames('bodyheads')), through the sharp read ═══ */
+  async function compareHeads({ looks, scale = 1, cols = 8, bar = 16 } = {}) {
+    const PS = await import('./playerSkins.js');
+    const BR = await import('./bodyRecolor.js');
+    const GS = await import('./gearSheets.js');
+    const WI = await import('./webpImage.js');
+    const LP = await import('./lookPalette.js');
+    const { Texture, Rectangle } = await import('pixi.js');
+    const man = await (await fetch('/sprites/look/bodyheads/roles.json?v=probe')).json();
+    const out = [];
+    const imgs = Object.create(null);
+    for (const L of looks) {
+      let nFrames = 0, drawn = 0, over = 0, worst = 0, sum = 0, worstAt = null, counts = 0;
+      for (const [sheet, e] of Object.entries(man.sheets)) {
+        const pose = sheet.split('-')[0];
+        const fw = e.fw || man.fw, fh = e.fh || man.fh;
+        const sT = PS.poseSkinTarget(PS.skinTarget(L[0]), pose);
+        const img = imgs[sheet] || (imgs[sheet] = await WI.loadWebpOrPng(`/sprites/player/${sheet}.png`));
+        const cv = BR.bakeHeadFull(img, { pose, skinT: sT, pantsT: null, shoesT: null, eyeBlank: null, art: null, ds: 2 });
+        const n = Math.max(1, Math.floor(cv.width / fw));
+        const packed = GS.packTrimmed(cv, fw, fh, n);
+        const src = Texture.from(packed ? packed.canvas : cv).source;
+        src.scaleMode = 'linear';
+        src.autoGenerateMipmaps = false;
+        const nt = LP.getLookPartFrames('bodyheads', sheet, [[1, sT || null]], { asDrawn: true });
+        if (nt && nt.length === n) counts++;
+        const cells = [];
+        if (nt) {
+          for (let f = 0; f < n; f++) {
+            const c = packed ? packed.cells[f] : null;
+            const ot = c ? new Texture({ source: src, frame: new Rectangle(c.ax, c.ay, c.w, c.h), orig: new Rectangle(0, 0, fw, fh), trim: new Rectangle(c.tx, c.ty, c.w, c.h) })
+              : new Texture({ source: src, frame: new Rectangle(f * fw, 0, fw, fh) });
+            cells.push({ pose: sheet, dir: '', f, mirror: false, ot, nt: nt[f % nt.length] });
+          }
+        }
+        if (cells.length) {
+          const cell = Math.ceil(Math.max(fw, fh) * scale) + 4;
+          const a = render(cells, (c) => c.ot, scale, cell, cols);
+          const b = render(cells, (c) => c.nt, scale, cell, cols);
+          nFrames += cells.length;
+          for (let p = 0; p < a.data.length; p += 4) {
+            if (!a.data[p + 3] && !b.data[p + 3]) continue;
+            let m = 0;
+            for (let k = 0; k < 4; k++) m = Math.max(m, Math.abs(a.data[p + k] - b.data[p + k]));
+            drawn++; sum += m;
+            if (m > bar) over++;
+            if (m > worst) {
+              worst = m;
+              const q = p >> 2, x = q % a.w, y = Math.floor(q / a.w);
+              const c = cells[Math.floor(y / cell) * cols + Math.floor(x / cell)];
+              worstAt = c ? `${c.pose}#${c.f} at ${x % cell},${y % cell}` : '?';
+            }
+          }
+        }
+        for (const c of cells) { try { c.ot.destroy(false); } catch (er) { /* gone */ } }
+        try { src.destroy(); } catch (er) { /* gone */ }
+        if (packed) { packed.canvas.width = 0; packed.canvas.height = 0; }
+        cv.width = 0; cv.height = 0;
+      }
+      out.push({ look: L.join('/'), sheets: Object.keys(man.sheets).length, sameCounts: counts, frames: nFrames, drawn, over, worst, worstAt, mean: +(sum / Math.max(1, drawn)).toFixed(3) });
+    }
+    return out;
+  }
   /* v2.3.3757: the palette atlas filled to its last row (a crowd fight's
      worst case: its rows are shared with the monsters' pictures), and given
      back -- so a test can see what a refused look draws */
@@ -284,5 +357,5 @@ export function installLookProbe(dep) {
     _filled = [];
     return n;
   }
-  window.__btLookOracle = { compare, draw, held, picture, compareStandIns, fillAtlas, freeAtlas, baked: (L) => baked(L) };
+  window.__btLookOracle = { compare, draw, held, picture, compareStandIns, compareHeads /* v2.3.4961 */, fillAtlas, freeAtlas, baked: (L) => baked(L) };
 }

@@ -545,7 +545,8 @@ if (typeof window !== 'undefined') {
           out.push({ name: names.get(c) || c.label || '?', src: [src.width, src.height], srcRes: src.resolution || 1,
             frame: [Math.round(fr.width), Math.round(fr.height)],
             devPxPerTexel: +(Math.hypot(wt.a, wt.b) * dpr / (src.resolution || 1)).toFixed(2),
-            url: String((src.resource && (src.resource.src || src.resource.currentSrc)) || src.label || '').slice(-60) });
+            /* v2.3.4993: a look sheet in a page of the atlas is named for its sheet, not its page */
+            url: String(c.texture._btLookName || (src.resource && (src.resource.src || src.resource.currentSrc)) || src.label || '').slice(-60) });
         }
         if (c.children && c.children.length) walk(c);
       }
@@ -2861,9 +2862,13 @@ function _placeGear(display, equip, pose, dir, frameIdx, legsFrom) {
        before. */
     if (tex && _slotName === 'shirt') {
       const _L = display._shirtLook;
+      /* v2.3.4992: `plain` -- the body is drawn from the numbers this frame,
+         so a plain tee is too (lookShirtFrame.js: one look batch, not two) */
+      const _bt = sb && sb.visible && sb.texture;
       const _lt = getLookShirtFrame(item, _gPose, dir, _gFrame, {
         art: _L && _L.art ? _L.art[sideForDir(dir)] : null, pattern: _L ? _L.pattern : null,
         tint: (equip && equip.shirtTint) || null, mirror: display._shirtArtMirror,
+        plain: !!(_bt && _bt._source && _bt._source._btLook),
       });
       if (_lt) { tex = _lt; _shirtBaked = true; }
     }

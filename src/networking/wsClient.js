@@ -122,7 +122,7 @@ import { armResumeListeners } from '@/game/resumeListeners.js'; /* v2.3.4482: a 
 import { retireSocket } from '@/game/socketLine.js'; /* v2.3.4367: one line at a time */
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
-import { takeBackFire } from '@/game/fireRefuse.js'; /* v2.3.4886: a fire the worker refused, taken back */
+import { takeBackFireWhat, campfireOutMsg } from '@/game/fireRefuse.js'; /* v2.3.4886: a fire the worker refused, taken back; v2.3.4942: and the others told */
 import { noteEatRefused, pvpHealWaitText } from '@/game/fightFood.js'; /* v2.3.3133: the worker's word on a bite it held back */
 
 /* ═══ v2.3.2122: A PIECE THE WORKER TAKES OFF YOU GOES IN THE BAG ═══
@@ -221,6 +221,7 @@ function _rescueDisplacedArmor(S, slot, stashKey, incoming) {
   } catch (e) { /* never let this break the state echo */ }
 }
 import { resendKeptQuests } from '@/game/questKept.js'; /* v2.3.4641: quest taps dropped while down */
+import { settleHandIns } from '@/game/questHandIn.js'; /* v2.3.4940: a refused hand-in's counters taken back */
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822 */
 import { applyGatherHits } from '@/game/lifeSkillRewards.js'; /* v2.3.2956: the worker's gathering hits */
 import { applyNmlSkull, applyNmlLoss, applyNmlTake, nmlPeerSkull, applyNmlLock, nmlLockAskShow } from '@/game/noMansLand.js'; /* v2.3.3058: No man's land; v2.3.3316: + what your kill took */
@@ -3164,7 +3165,17 @@ export function setupWebSocket(ctx) {
                  for chain progression + reward grants.  Quest completion
                  criteria (kill counts / item drops / NPC dialog) still
                  run client-side. */
-              if (msg.payload._quests && typeof msg.payload._quests === 'object') S.rpg._quests = msg.payload._quests;
+              if (msg.payload._quests && typeof msg.payload._quests === 'object') {
+                S.rpg._quests = msg.payload._quests;
+                /* v2.3.4940: the worker's map settles a hand-in this phone drew
+                   (game/questHandIn.js): refused, the page's counters go back
+                   too, and the player is told (the banner said complete) */
+                try {
+                  if (settleHandIns(S.rpg, msg.payload._quests).length && S.player) {
+                    pushDmgPopup(S, S.player.x, S.player.y - 40, 'Not handed in', '#ff5e6c');
+                  }
+                } catch (_qh) { /* the echo above is the truth either way */ }
+              }
               if (msg.payload._questFlags && typeof msg.payload._questFlags === 'object') S.rpg._questFlags = msg.payload._questFlags;
               if (msg.payload._questKills && typeof msg.payload._questKills === 'object') S.rpg._questKills = msg.payload._questKills;
               if (typeof msg.payload.achievementPoints === 'number') {
@@ -3522,8 +3533,14 @@ export function setupWebSocket(ctx) {
                  this phone started on the tap is stopped, or the campfire it
                  lit from it put out (src/game/fireRefuse.js).  The bag came
                  back on the player_state before it. */
-              if (takeBackFire(S, Date.now())) {
+              var _fireBack = takeBackFireWhat(S, Date.now());
+              if (_fireBack) {
                 try { pushDmgPopup(S, S.player.x, S.player.y - 30, 'No log to light', '#ff5e6c'); } catch (e) { /* popup only */ }
+              }
+              /* v2.3.4942: the campfire it put out had gone to the others
+                 (campfire_lit): they are told it is out (fireRefuse.js) */
+              if (_fireBack === 'fire' && S.channel) {
+                try { S.channel.send(campfireOutMsg(S)); } catch (e) { /* their fire burns out on its fuse */ }
               }
               break;
             }

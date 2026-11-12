@@ -180,7 +180,7 @@ export class LightFx {
       /* v2.3.3458: `filtered` -- the layer drawn through its one pass, the
          filter's or the pre-pass's shade (`prepass` says which) */
       shadows: sh ? { ...sh.stats, keys: sh.stats.keys.slice(),
-        filtered: !!(layer && layer.filters && layer.filters.length) || !!(sh.shade && sh.shade.visible), pool: sh.pool.length,
+        filtered: !!(layer && layer.filters && layer.filters.length) || !!(sh.shade && sh.shade.visible), pool: sh.pools[0].length + sh.pools[1].length + sh.pools[2].length, pools: [sh.pools[0].length, sh.pools[1].length, sh.pools[2].length],   /* v2.3.4991: the pieces in three pools, one a program */
         systems: shadowSystemCount() } : null,   /* v2.3.3152: + systems, the module's (mp-sceneleak) */
       glint: { ...this.glint.probeStats(), force: this.glint.force, sheenOn: sheenOn() },
       ms: +this.lastMs.toFixed(3),

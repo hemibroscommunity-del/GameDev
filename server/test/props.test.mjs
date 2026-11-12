@@ -27,11 +27,13 @@ import { attackBlocked, slideMove, ZONE_PROPS } from '../src/props.js';
    place a player's arrow and a local slime orb meet a prop. */
 import { arrowSnaps, arrowSnapRoll, ARROW_SNAP_CHANCE } from '../../src/data/arrowSnap.js';
 import { sweepBlockPoint as cliSweep, attackBlockPoint as cliBlockPoint, zoneBlockers as cliBlockers, boxExitPoint as cliExit, propSwingContact as cliSwing, propMaterial as cliMaterial, boxFace as cliFace, WORLD_PROPS as CLI_PROPS } from '../../src/data/worldProps.js';
-/* v2.3.4675: this suite stands players in the retired old lands as a fixture.
-   zonejudge.js R3 closes them to players, so it opens them for this suite
-   only.  On retired-lands.test's FIXTURES list, which only shrinks: move the
-   suite to the world ('wheel') and take it off. */
-GameRoom.prototype._retiredLandsOn = function () { return false; };
+import { WHEEL_ZONE } from '../src/wheelzone.js';
+/* v2.3.4953: off retired-lands.test's FIXTURES list -- the fights (2, 4) are
+   in the world (the Wheel): the player stands where the suite's own three
+   blockers are set, the same rows in the Wheel, and the monster is one of
+   the Wheel's snowmen (Frost Ridge's, the old frost's own kind).  The pure
+   geometry (1, 3) and the client's tables keep frost's rows, as they were. */
+const W = WHEEL_ZONE;
 
 const mockState = {
   storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} },
@@ -56,6 +58,7 @@ ZONE_PROPS.frost = [
   { id: 'frost-rock-ridge', x: 430, y: 570, blockW: 202, blockD: 42 },
   { id: 'frost-snowbank-e', x: 720, y: 570, blockW: 202, blockD: 42 },
 ];
+ZONE_PROPS[W] = ZONE_PROPS.frost.map((p) => ({ ...p }));   /* v2.3.4953: the same three, in the world */
 const RIDGE = ZONE_PROPS.frost.find((p) => p.id === 'frost-rock-ridge');
 check('fixture: the rock ridge is where this suite thinks it is',
   !!RIDGE && RIDGE.x === 430 && RIDGE.y === 570 && RIDGE.blockW === 202 && RIDGE.blockD === 42, RIDGE);
@@ -102,13 +105,16 @@ const ws = fakeWs('p');
 room.sessions.set(ws, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
 await room.webSocketMessage(ws, JSON.stringify({
   type: 'join', id: 'p1', name: 'Player', protocolVersion: 2,
-  data: { x: 430, y: 640, z: 'frost' },
+  data: { x: 430, y: 640, z: W }, ws: [1, 5],
 }));
+if (room.tickInterval) { clearInterval(room.tickInterval); room.tickInterval = null; }
 const ps = room.playerState.p1;
-check('fixture: the player joined frost', !!ps && ps.z === 'frost', { z: ps && ps.z });
+/* placed where the blockers are (a join lands on the Wheel's arrival) */
+if (ps) { ps.z = W; ps.x = 430; ps.y = 640; ps._zoneEntryGraceUntil = 0; }
+check('fixture: the player stands in the world, by the ridge', !!ps && ps.z === W && ps.x === 430 && ps.y === 640, { z: ps && ps.z });
 
-const snowman = (room.monsters.frost || [])[0];
-check('fixture: frost fields a monster', !!snowman, { count: (room.monsters.frost || []).length });
+const snowman = room._ensureZoneMonsters(W).find((m) => m.arch === 'snowman');
+check('fixture: the world fields a snowman', !!snowman, { count: room._ensureZoneMonsters(W).length });
 
 /* Zone-entry grace would swallow the damage regardless and hide a real
    failure, so clear it before measuring anything (TRAPS §33: a test that
@@ -119,7 +125,7 @@ ps.hp = ps.maxHp || 100;
 function strikeFrom(x, y) {
   ps.hp = ps.maxHp || 100;
   const before = ps.hp;
-  room._monsterStrikePlayer('frost', snowman, 'p1', x, y);
+  room._monsterStrikePlayer(W, snowman, 'p1', x, y);
   return before - ps.hp;
 }
 
@@ -214,14 +220,14 @@ check('on open ground nothing is blocked', openGround > 0, { openGround });
   /* Park every frost monster far away so no melee swing can pollute the HP
      measurement; the ball under test carries its own release point and does
      not need the thrower to be anywhere near. */
-  for (const mm of (room.monsters.frost || [])) { mm.x = 5000; mm.y = 5000; mm._projImpactAt = 0; }
-  const ball = (room.monsters.frost || [])[0];
+  for (const mm of room._ensureZoneMonsters(W)) { mm.x = 5000; mm.y = 5000; mm._projImpactAt = 0; }
+  const ball = snowman;
 
   /* Throw one, by hand-setting exactly what telegraph.js freezes at release. */
   function throwBall(fromX, fromY, aimX, aimY, opts) {
     ps.x = (opts && opts.px !== undefined) ? opts.px : 430;
     ps.y = (opts && opts.py !== undefined) ? opts.py : 640;
-    ps.z = 'frost'; ps.dying = false; ps._graceUntil = 0;
+    ps.z = W; ps.dying = false; ps._graceUntil = 0;
     ps.hp = ps.maxHp || 100;
     ps.blocking = false; ps.shieldEnd = 0;
     const before = ps.hp;
