@@ -340,6 +340,22 @@ export function nmlPartyInvite(S, id) {
   return true;
 }
 
+/** ═══ v2.3.4988: TRADE, FROM THE WINDOW A TAP OPENS ═══
+ *  The owner, 2026-11-12: "Also add trading to the character menu when you
+ *  tap another player."  Out of BroTown (No man's land begins just outside
+ *  it) a tap on a player you could fight opens THIS window, not the player
+ *  card, and it had no Trade: Attack / Party / Ignore only.  This is the
+ *  card's own Trade (InspectPlayerPanel openTrade): trade2_open toward them,
+ *  only against a worker with caps.trade2 -- the card's gate -- and no new
+ *  message.  Their phone gets the request as from the card. */
+export function nmlTradeOpen(S, id) {
+  if (!S || !S.channel || !(S._serverCaps && S._serverCaps.trade2) || id == null) return false;
+  try {
+    S.channel.send({ type: 'broadcast', event: 'trade2_open', payload: { target: id } });
+  } catch (e) { return false; }
+  return true;
+}
+
 /** Raise the window about `id`.  why 'shot': a stray shot passed through
  *  them; why 'swing' (v2.3.3316): your swing reached them; why 'aim'
  *  (v2.3.3528): your bow's line is on them and nothing else -- each once per
@@ -368,6 +384,9 @@ export function nmlAsk(S, id, why) {
     const again = S._nmlAskAgain instanceof Map ? (S._nmlAskAgain.get(key) || 0) : 0;
     if (again && Date.now() < again && !fresh) return false;
   } else if (_ask && _ask.id === key) {
+    /* v2.3.4988: a tap on the player a shot or a swing already asked about
+       makes it the tap's window, with the tap's Trade (NmlAskCard) */
+    if (_ask.why !== 'tap') { _ask = Object.assign({}, _ask, { why: 'tap' }); emit(); }
     return true;
   }
   const o = S.others[key];
@@ -440,6 +459,7 @@ export function nmlAskAnswer(S, choice) {
   emit();
   if (choice === 'attack') return nmlCanAttack(S, a.id) ? nmlAim(S, a.id) : false;
   if (choice === 'party') return nmlPartyInvite(S, a.id);
+  if (choice === 'trade') return nmlTradeOpen(S, a.id);   /* v2.3.4988: a tap's window, the card's Trade */
   /* v2.3.3770: the lock's two -- your "?" for them, and letting them at you again */
   if (choice === 'rematch') return nmlLockAsk(S, a.id);
   if (choice === 'allow') return nmlLockAllow(S, a.id);
@@ -467,6 +487,13 @@ try {
         return { can: !!nmlCanAttack(S, id), live: !!isLiveFoe(S, id), attackedAt: attackedMeAt(S, id) };
       },
       setMs: (ms) => { _msOverride = ms ? Math.max(1000, Math.min(60000, Number(ms) || NML_ASK_MS)) : 0; },
+      /* v2.3.4988: a tap's window about a stand-in player, held (the UI
+         review's picture: tools/qa/ui-review/states.mjs nml-ask-tap) --
+         `demo` keeps the window's clock from letting it go; null drops it */
+      hold: (o) => {
+        _ask = o ? { id: String(o.id || 'bp_demo'), name: o.name || 'Rival Bro', lv: Number(o.lv) || 3, why: 'tap', back: false, at: Date.now(), locked: false, lockedIn: false, demo: true } : null;
+        emit();
+      },
     };
   }
 } catch (e) { /* no window */ }

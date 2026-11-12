@@ -399,6 +399,11 @@ function step(bot) {
   const stepPx = bot.speed * (elapsed / 1000);
   const stopAt = bot.fighter && nearestMonster(bot) ? REACH_PX - 20 : 0;
   if (dist <= Math.max(stepPx, stopAt)) {
+    /* v2.3.4885: --settle: each walker stands for good where its first walk
+       ends -- a crowd spread over the square and standing still, which
+       --idle is not (it stands where it arrives, all in one clump).  What
+       the one-picture crowd is measured on (mp-crowdbots BT_CROWD_SETTLE). */
+    if (CFG.settle && !bot.fighter) { bot.standUntil = Infinity; sendMove(bot, false, 0, 0); return; }
     if (!bot.fighter && Math.random() < 0.3) bot.standUntil = now + rand(1000, 4000);
     newTarget(bot);
     if (now - bot.lastSent >= IDLE_KEEPALIVE_MS) sendMove(bot, false, 0, 0);

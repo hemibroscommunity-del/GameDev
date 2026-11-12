@@ -81,6 +81,10 @@ function startBots(wsPort) {
     child.send({ cmd: 'config', cfg: {
       url: `ws://127.0.0.1:${wsPort}/ws?room=${ROOM}&rf=1`, wireUrl: null, fighters: 0, homes: HOMES, tag: String.fromCharCode(99 + i),
       idle: false, walkR: WALK_R,
+      /* v2.3.4885: BT_CROWD_SETTLE=1 -- each bot walks once to its spot round
+         the phone and stands there for good (bots.mjs settle): a standing
+         crowd, the case the one-picture crowd (?onepic) is built for */
+      settle: process.env.BT_CROWD_SETTLE === '1',
       /* v2.3.3240: each bot sends a real phone's 2 s look, as players do
          (bots.mjs --track), so the phone hears the worker's relays too */
       track: process.env.BT_CROWD_TRACK !== '0',
@@ -166,6 +170,56 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await P.page.waitForTimeout(1000);
       }
       await P.page.waitForTimeout(4000);
+      /* v2.3.4885: a settled crowd (BT_CROWD_SETTLE) is measured standing, not
+         arriving: the walkers' first walks over and their drawn places at rest */
+      if (process.env.BT_CROWD_SETTLE === '1') await P.page.waitForTimeout(8000);
+      /* v2.3.4989: BT_CROWD_HIDE=plates -- an experiment, not a mode: every
+         other player's name plate (their display's `_uiLayer`) not drawn, to
+         see what the plates cost a crowd's frame in draws, program switches
+         and binds (a plate's text and box break the figures' batch) */
+      if (/(^|,)plates(,|$)/.test(process.env.BT_CROWD_HIDE || '')) {
+        const hid = await P.page.evaluate(() => {
+          const R = window._pixiRenderer;
+          const st = [R && R.app && R.app.stage];
+          let n = 0;
+          while (st.length) {
+            const c = st.pop();
+            if (c && typeof c.label === 'string' && c.label.startsWith('other_') && c._uiLayer) { c._uiLayer.renderable = false; n++; continue; }
+            if (c && c.children) for (const k of c.children) st.push(k);
+          }
+          return n;
+        });
+        console.log('  crowdbots: name plates hidden on', hid, 'players');
+      }
+      /* v2.3.4989: BT_CROWD_INSTR=1 -- what each world layer's draw list holds
+         between its batches (Pixi's own instruction set, by render pipe): the
+         stencil masks, filters, render groups and drawings that break the
+         figures' batch, counted, and the batches' sizes */
+      if (process.env.BT_CROWD_INSTR === '1') {
+        const instr = await P.page.evaluate(() => {
+          const R = window._pixiRenderer;
+          const st = [R && R.app && R.app.stage];
+          const out = {};
+          while (st.length) {
+            const c = st.pop();
+            if (!c) continue;
+            const g = c.isRenderGroup && c.renderGroup;
+            if (g && g.instructionSet && ['entities', 'gatherNodesFront', 'gatherNodes', 'player', 'gestureFront', 'shadows', 'world'].includes(c.label)) {
+              const by = {};
+              let batched = 0;
+              for (const ins of g.instructionSet.instructions.slice(0, g.instructionSet.instructionSize)) {
+                const k = (ins.renderPipeId || '?') + (ins.action ? ':' + ins.action : '');
+                by[k] = (by[k] || 0) + 1;
+                if (ins.renderPipeId === 'batch' && ins.size) batched += ins.size;
+              }
+              out[c.label] = { n: g.instructionSet.instructionSize, by, batchedElements: batched };
+            }
+            if (c.children) for (const k of c.children) st.push(k);
+          }
+          return out;
+        });
+        console.log('  crowdbots instructions:', JSON.stringify(instr));
+      }
       await P.page.evaluate(() => {
         window.perfTracker && window.perfTracker.reset();
         /* v2.3.3453: the render-target switches a frame (a phone's graphics
@@ -213,6 +267,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
              (`batched`) and in passes of their own (`lit`, a filter each) */
           shine: g ? { targets: g.targets, lit: g.lit, batched: g.batched || 0, graded: g.graded || 0 } : null,   /* v2.3.3953: + graded, the pieces wearing a grade's glow */
           switches: window.__bfCount || 0,
+          /* v2.3.4885: players drawn as one picture (?onepic=1, peerImpostor.js) and its paints so far */
+          pics: window.__btOnePic ? (({ shown, paints, refreshes, tooBig }) => ({ shown, paints, refreshes, tooBig }))(window.__btOnePic()) : null,
         };
       });
       /* v2.3.3716: BT_CROWD_GL=1 -- the GL calls a frame (draws, programs
@@ -248,6 +304,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         heapMB: +((m1.JSHeapUsedSize || 0) / 1048576).toFixed(1),
         shine: r.shine,
         targetSwitchesPerFrame: r.work.length ? +(r.switches / r.work.length).toFixed(1) : null,
+        pics: r.pics,
       };
       rows.push(row);
       console.log('  crowdbots', JSON.stringify(row), 'bots:', JSON.stringify(bots.states()), JSON.stringify(bots.totals()));

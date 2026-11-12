@@ -75,6 +75,8 @@ import { getFacialHair } from './traits/facialHairCatalog.js';
 import { getEyewear } from './traits/eyewearCatalog.js';
 import { getEyeStyle } from './traits/eyeStyleCatalog.js';
 import { recordCrash } from '../debug/crashTrap.js';   /* v2.3.3017: a frame that will not draw is reported, and rebuilt */
+import { PeerImpostors } from './peerImpostor.js';   /* v2.3.4885: one picture per standing player in a crowd (?onepic=1) */
+import { PlateLayers } from './plateLayer.js';   /* v2.3.4989: other players' name plates drawn after the figures (?platelayer=1) */
 
 /* v2.3.778: decode ALL textures to <img>-backed sources, never ImageBitmap.
    On iOS, ImageBitmaps are GPU-backed: the memory purge that kills the WebGL
@@ -383,6 +385,13 @@ export async function initPixiRenderer(canvas) {
   /* v2.3.2710: shadows cast by each map's own sun, and metal that catches the
      light (rendering/lightfx).  Off unless the switch is on -- see lightFx.js. */
   const lightFx = new LightFx(layers, worldContainer, app.renderer);   /* v2.3.3458: + the renderer, for the shadows' pre-pass */
+  /* v2.3.4885: one picture per standing player in a crowd (peerImpostor.js).
+     Made here, with the scene, so its shared picture is on the chip before
+     play (PRELOADING IS LAW); nothing is made unless `?onepic=1`. */
+  const peerPics = new PeerImpostors(app.renderer, layers);
+  /* v2.3.4989: the other players' name plates, drawn after all the figures of
+     their layer (plateLayer.js); nothing unless `?platelayer=1` */
+  const plates = new PlateLayers(layers);
   if (typeof window !== 'undefined') {
     window.__btLightFx = {
       probe: () => lightFx.probe(),
@@ -794,7 +803,14 @@ export async function initPixiRenderer(canvas) {
       /* QA only (mp-propdepth's before/after pictures): the v2.3.2711 rule --
          the body centre, and every prop on one flat line -- on the same frame */
       if (_depthProbe.legacy && S.player) { _pgy = S.player.y; _pgx = NaN; }
+      /* v2.3.4885: a standing player drawn as one picture stands where their
+         figure stands, so this pass sorts the picture on the figure's line */
+      try { peerPics.place(S, entityRenderer, now); }
+      catch (e) { if (!update._picErr) { update._picErr = true; console.error('[pixi-render] peerPics.place threw', e && e.message, e && e.stack); } }
       applyDepthBuckets(layers.entities, layers.gatherNodesFront, _pgy, _pgx);
+      /* v2.3.4989: each plate drawn by the layer its figure ended up in */
+      try { plates.update(entityRenderer.otherPlayerDisplays, (d) => peerPics.isPicture(d)); }
+      catch (e) { if (!update._plateErr) { update._plateErr = true; console.error('[pixi-render] plates.update threw', e && e.message, e && e.stack); } }
     }
     catch (e) { if (!update._depthErr) { update._depthErr = true; console.error('[pixi-render] depth sort threw', e && e.message); } }
     /* ═══ v2.3.3003: SWIMMERS, AFTER THE DEPTH PASS ═══
@@ -837,6 +853,11 @@ export async function initPixiRenderer(canvas) {
     try { refreshFigureShades(); } catch (e) { /* never break a frame */ }
     try { lightFx.update(S, now, entityRenderer, effectsRenderer); }
     catch (e) { if (!update._lightErr) { update._lightErr = true; console.error('[pixi-render] lightFx threw', e && e.message, e && e.stack); } }
+    /* v2.3.4885: the pictures that changed are painted now, after every pass
+       that moves or dresses a figure (the glint above included), in one place
+       just before the frame is drawn (peerImpostor.js; TRAPS §221) */
+    try { peerPics.paint(now); }
+    catch (e) { if (!update._picPaintErr) { update._picPaintErr = true; console.error('[pixi-render] peerPics.paint threw', e && e.message, e && e.stack); } }
     /* v2.3.3469: your place put back (YOU STAY WHERE YOU WERE ON SCREEN,
        above) -- every pass between is wrapped, so this line is always
        reached; it only undoes its own move */
