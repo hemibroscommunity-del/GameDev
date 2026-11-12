@@ -102,6 +102,9 @@ aren't listed:
   `docs/specs/arena-area.md` on 2026-10-28.
 - **Measured (v2.3.4499).** A crowd's cost to the page, by what each kind of
   look brings: `docs/specs/held-sweep.md`, "The crowd tour" (`mp-crowdsweep`).
+- **The crowd lanes (v2.3.4878).** Four lanes read what a crowd still costs,
+  the worker's sends included. What they found, ranked, and the armour's
+  per-frame garbage that shipped: `docs/specs/crowd-lanes.md`.
 
 ### 1d. Faster loading for returning players
 
