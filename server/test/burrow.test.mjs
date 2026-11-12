@@ -15,11 +15,11 @@
 import { GameRoom } from '../src/index.js';
 import { BURROW, BURROW_ARCH, SLIME_BURST, TELEGRAPH } from '../src/telegraph.js';
 import { BLOCK_COSTS_STAMINA } from '../src/data.js'; /* v2.3.2700: whether the bonk's blocked slam should cost stamina */
-/* v2.3.4675: this suite stands players in the retired old lands as a fixture.
-   zonejudge.js R3 closes them to players, so it opens them for this suite
-   only.  On retired-lands.test's FIXTURES list, which only shrinks: move the
-   suite to the world ('wheel') and take it off. */
-GameRoom.prototype._retiredLandsOn = function () { return false; };
+import { WHEEL_ZONE } from '../src/wheelzone.js';
+/* v2.3.4924: plays the world (the Wheel), off retired-lands.test's FIXTURES
+   list: the snowman and the blue slime are the Wheel's own (Frost Ridge's and
+   the Verdant spoke's), met where the snowman stands -- it was the retired
+   frost and verdant lands before. */
 
 const mockState = {
   storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} },
@@ -38,14 +38,16 @@ const room = new GameRoom(mockState, mockEnv);
 const ws = fakeWs('p');
 room.sessions.set(ws, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
 await room.webSocketMessage(ws, JSON.stringify({
-  type: 'join', id: 'p1', name: 'Player', protocolVersion: 2,
-  data: { x: 500, y: 500, z: 'frost' },
+  type: 'join', id: 'p1', name: 'Player', protocolVersion: 2, ws: [1, 5],
+  data: { x: 0, y: 0, z: WHEEL_ZONE },
 }));
 const ps = room.playerState.p1;
 
-const frost = room.monsters.frost || [];
-const snowman = frost.find((m) => m.arch === 'snowman');
-check('fixture: frost fields a snowman', !!snowman, { count: frost.length });
+const wheel = room._ensureZoneMonsters(WHEEL_ZONE) || [];
+const snowman = wheel.find((m) => m.arch === 'snowman' && m.home === 'frost');
+check('fixture: the Wheel\'s Frost Ridge fields a snowman', !!snowman, { count: wheel.length });
+/* the player stands where the snowman does, in his own land */
+ps.x = snowman.x - 120; ps.y = snowman.y; ps._zoneEntryGraceUntil = 0;
 
 /* Put him next to the player and drop him to half health so the move arms. */
 function arm(distance) {
@@ -61,7 +63,7 @@ function arm(distance) {
      cannot start a burrow -- so without this every section after 4 began with
      a dazed snowman and failed at "dig" for a reason none of them is about. */
   snowman._stunUntil = 0;
-  ps.dead = false; ps.dying = false; ps.z = 'frost'; ps.hp = ps.maxHp;
+  ps.dead = false; ps.dying = false; ps.z = WHEEL_ZONE; ps.hp = ps.maxHp;
   room.eventBuffer.length = 0;
 }
 const phaseEvents = () => room.eventBuffer
@@ -112,20 +114,20 @@ function toPile() {
   ps.weapon = { type: 'sword', tierMult: 1 };
   await room.webSocketMessage(ws, JSON.stringify({
     type: 'monster_damage',
-    payload: { monsterId: snowman.id, zone: 'frost', slot: 'melee' },
+    payload: { monsterId: snowman.id, zone: WHEEL_ZONE, slot: 'melee' },
   }));
   check('pile: a sword swing does nothing', snowman.hp === hp0, { hp0, hp: snowman.hp });
 
-  const dot = room._applyMonsterDot('frost', snowman, 25, 'p1', 'burn');
+  const dot = room._applyMonsterDot(WHEEL_ZONE, snowman, 25, 'p1', 'burn');
   check('pile: a damage-over-time tick does nothing (it DROPS, not banks)',
     dot === 0 && snowman.hp === hp0, { dot, hp0, hp: snowman.hp });
 
-  const burst = room._applyMonsterDot('frost', snowman, 40, 'p1', null, { burst: true });
+  const burst = room._applyMonsterDot(WHEEL_ZONE, snowman, 40, 'p1', null, { burst: true });
   check('pile: an element burst does nothing', burst === 0 && snowman.hp === hp0,
     { burst, hp: snowman.hp });
 
   const struck = room._abilityStrikeMonster
-    ? room._abilityStrikeMonster('frost', snowman, 30, 'p1', {})
+    ? room._abilityStrikeMonster(WHEEL_ZONE, snowman, 30, 'p1', {})
     : false;
   check('pile: a stamina ability (bash / whirlwind) does nothing',
     struck === false && snowman.hp === hp0, { struck, hp: snowman.hp });
@@ -356,18 +358,16 @@ function toPile() {
 // ══════════════════════════════════════════════════════════════════
 // v2.3.2224: the blue slime's death burst
 // ══════════════════════════════════════════════════════════════════
-/* Zones spawn lazily (_ensureZoneMonsters), and this suite joined in frost,
-   so verdant has to be asked for explicitly before its slimes exist. */
-const verdant = room._ensureZoneMonsters('verdant') || [];
-const slime = verdant.find((m) => m.variant === 'blueSlime');
-check('burst: verdant fields a blue slime', !!slime, { count: verdant.length });
+/* the Wheel's own blue slime, brought to the player */
+const slime = wheel.find((m) => m.variant === 'blueSlime');
+check('burst: the Wheel fields a blue slime', !!slime, { count: wheel.length });
 
 function armSlime(dist) {
   slime.alive = true; slime.hp = slime.maxHp;
   slime.x = ps.x + (dist === undefined ? 40 : dist); slime.y = ps.y;
   slime.spawnX = slime.x; slime.spawnY = slime.y;
   slime._burstUntil = 0; slime._burstKiller = null; slime._burstDone = false;
-  ps.z = 'verdant'; ps.dead = false; ps.dying = false;
+  ps.z = WHEEL_ZONE; ps.dead = false; ps.dying = false;
   ps.hp = ps.maxHp; ps.x = ps.x; ps.blocking = false;
   room.eventBuffer.length = 0;
 }
@@ -378,7 +378,7 @@ const burstPhases = () => room.eventBuffer
 // ── B1. Death defers into a swell, it does not drop ──
 {
   armSlime();
-  room._applyMonsterDot('verdant', slime, slime.hp + 50, 'p1', 'burn');
+  room._applyMonsterDot(WHEEL_ZONE, slime, slime.hp + 50, 'p1', 'burn');
   check('burst: at 0 hp it is still ALIVE, swelling', slime.alive === true && slime._burstUntil > 0,
     { alive: slime.alive, until: slime._burstUntil });
   check('burst: ...and announces the swell', burstPhases().includes('swell'), burstPhases());
@@ -401,7 +401,7 @@ const burstPhases = () => room.eventBuffer
 // ── B3. Walking out of the radius is the counterplay ──
 {
   armSlime();
-  room._applyMonsterDot('verdant', slime, slime.hp + 50, 'p1', 'burn');
+  room._applyMonsterDot(WHEEL_ZONE, slime, slime.hp + 50, 'p1', 'burn');
   ps.x = slime.x + SLIME_BURST.RADIUS + 40;   /* clear of it */
   ps.y = slime.y;
   const hpSafe = ps.hp;
@@ -418,7 +418,7 @@ const burstPhases = () => room.eventBuffer
   ps.weapon = { type: 'sword', tierMult: 1 };
   slime.hp = 1;
   await room.webSocketMessage(ws, JSON.stringify({
-    type: 'monster_damage', payload: { monsterId: slime.id, zone: 'verdant', slot: 'melee' },
+    type: 'monster_damage', payload: { monsterId: slime.id, zone: WHEEL_ZONE, slot: 'melee' },
   }));
   check('burst: a melee kill defers into the swell too',
     slime.alive === true && slime._burstUntil > 0, { alive: slime.alive });
@@ -429,7 +429,7 @@ const burstPhases = () => room.eventBuffer
   armSlime();
   ps.x = slime.x; ps.y = slime.y;
   ps.hp = ps.maxHp;
-  room._applyMonsterDot('verdant', slime, slime.hp + 50, 'p1', 'burn');
+  room._applyMonsterDot(WHEEL_ZONE, slime, slime.hp + 50, 'p1', 'burn');
   const before = ps.hp;
   slime._burstUntil = Date.now() - 1;
   room._tickMonsters();
