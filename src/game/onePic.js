@@ -29,7 +29,7 @@ export const ONE_PIC = Object.freeze({
   /* a picture is painted again at least this often whatever the change
      signal says (a look's colour row repacked in place changes no counter
      Pixi keeps); staggered by slot so they never come all at once */
-  REFRESH_MS: 4000,
+  REFRESH_MS: 10000,
   /* slots in the shared picture, and the most a frame paints (the rest wait
      their turn: a crowd arriving costs a few figures a frame, never all) */
   SLOTS: 24,
@@ -62,9 +62,13 @@ export function onePicNearFromQuery(search) {
       pose, moving, held (a sit/sleep/dance pose), gathering, riding, swimming,
       masked, graded (a grade glow, whose filter is a pass of its own and,
       godly, a rainbow that moves), standIn (a swing/chop/... figure in its
-      place), layerOk (in the sorted world layers, not the gesture layer). */
+      place), layerOk (in the sorted world layers, not the gesture layer),
+      settling (v2.3.4885: stopped, but the drawn place still easing onto the
+      real one -- a new place inside a pixel every frame, so a paint every
+      frame: the first crowd measurement, 9 paints a frame and the frame
+      slower; a picture is made once the figure is at rest). */
 export function calmFigure(f) {
-  return !!f && f.pose === 'stand' && !f.moving && !f.held && !f.gathering && !f.riding
+  return !!f && f.pose === 'stand' && !f.moving && !f.settling && !f.held && !f.gathering && !f.riding
     && !f.swimming && !f.masked && !f.graded && !f.standIn && !f.faded && f.layerOk !== false;
 }
 

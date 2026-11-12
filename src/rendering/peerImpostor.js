@@ -157,6 +157,7 @@ export class PeerImpostors {
       f.pose = d._animPose; f.moving = !!d._remoteMoving; f.held = !!o._po; f.gathering = !!o._ex;
       f.riding = !!o._brd; f.swimming = d._swimK > 0; f.masked = !!d.mask; f.graded = gradedWire(o._eqg);
       f.standIn = !d.visible; f.faded = d.alpha < 1; f.layerOk = d.parent === ent || d.parent === front;
+      f.settling = (o.renderX != null && o.renderX !== o.x) || (o.renderY != null && o.renderY !== o.y);
       const tb = this._tooBigUntil.get(id);
       c.calm = calmFigure(f) && !(tb && now < tb);
       cands.push(c);

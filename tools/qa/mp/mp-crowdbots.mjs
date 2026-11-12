@@ -170,6 +170,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await P.page.waitForTimeout(1000);
       }
       await P.page.waitForTimeout(4000);
+      /* v2.3.4885: a settled crowd (BT_CROWD_SETTLE) is measured standing, not
+         arriving: the walkers' first walks over and their drawn places at rest */
+      if (process.env.BT_CROWD_SETTLE === '1') await P.page.waitForTimeout(8000);
       await P.page.evaluate(() => {
         window.perfTracker && window.perfTracker.reset();
         /* v2.3.3453: the render-target switches a frame (a phone's graphics

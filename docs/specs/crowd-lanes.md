@@ -204,7 +204,31 @@ made with the scene behind the loading screen; nothing when off
 (`mp-crowdbots`, `BT_CROWD_SETTLE=1`: bots walk to their spots round the phone
 and stand; off against `?onepic=1`, the same build.)
 
-STAGE1_NUMBERS
+A standing crowd on the phone's screen (`BT_CROWD_WALKR=420`), the same build,
+`?onepic` off / on. This box draws in software at a few frames a second, so
+read the draw counts and the growth, not the absolute ms:
+
+| | 25 players: off / on | 50 players: off / on |
+|---|---|---|
+| players drawn as one picture | 0 / 15 | 0 / 24 (all the slots) |
+| draw calls a frame | 140 / 102 | 202 / 146 |
+| texture binds a frame | 543 / 417 | 763 / 564 |
+| the game's own work a frame, median (95%) | 7.9 (12.1) / 7.5 (11.1) ms | 11.4 (17.0) / **8.7 (12.8)** ms |
+| render-target switches a frame | 2.5 / 3.4 | 2.5 / 4.1 |
+
+With nobody about, the frame's work is 5.4 ms. So at 50 standing players, what
+the crowd adds to the frame went from 6.0 to 3.3 ms, **45% less**. That is with
+only 24 of the 45 on screen as pictures: the nearest 10 stay layers, and 11
+had no slot.
+
+The switches left are mostly the safety refresh: 55 of the 94 paints in the
+sample, one a picture every ~10 s.
+
+**The first measurement was worse with pictures on** (the frame 11.7 to 13.6
+ms; 9 paints and 11.5 switches a frame). A player who stops keeps easing
+their drawn place onto their real one for some 15 frames, and each frame of
+it was a new place inside a pixel, so a paint. A picture is now made only
+once the figure is at rest (`settling`), and the refresh went from 4 to 10 s.
 
 ### Stage 2 (not built)
 
@@ -212,6 +236,10 @@ STAGE1_NUMBERS
   can be pictures too.
 - **A slower picture for walkers far off:** e.g. half their steps, if the
   owner likes the look.
+- **The refresh rarer, or gone** if nothing is ever found that only it
+  catches: it is most of the switches left.
+- **More, smaller slots:** a figure's bounds are well inside 96 x 140; more
+  slots means more of a big crowd as pictures, for the same memory.
 - **On by default with `?onepic=0`,** once the owner has tried it on their
   iPhone.
 

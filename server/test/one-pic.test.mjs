@@ -20,9 +20,9 @@ check('1c. not fooled by a longer name', onePicFromQuery('?onepicnear=1') === fa
 check('1d. ?onepicnear=N, else the nearest ten', onePicNearFromQuery('?onepicnear=0') === 0 && onePicNearFromQuery('?onepic=1&onepicnear=3') === 3 && onePicNearFromQuery('') === ONE_PIC.NEAR_FULL && ONE_PIC.NEAR_FULL === 10);
 
 /* ── 2. calm ── */
-const stand = { pose: 'stand', moving: false, held: false, gathering: false, riding: false, swimming: false, masked: false, graded: false, standIn: false, faded: false, layerOk: true };
+const stand = { pose: 'stand', moving: false, settling: false, held: false, gathering: false, riding: false, swimming: false, masked: false, graded: false, standIn: false, faded: false, layerOk: true };
 check('2a. a player standing still, on foot, plain armour: calm', calmFigure(stand));
-for (const k of ['moving', 'held', 'gathering', 'riding', 'swimming', 'masked', 'graded', 'standIn', 'faded']) {
+for (const k of ['moving', 'settling', 'held', 'gathering', 'riding', 'swimming', 'masked', 'graded', 'standIn', 'faded']) {
   check(`2b. ${k}: not calm`, !calmFigure({ ...stand, [k]: true }));
 }
 check('2c. jogging, hit, mining poses: not calm', ['jog', 'hit', 'mine', 'fish', 'dodge', null].every((pose) => !calmFigure({ ...stand, pose })));
