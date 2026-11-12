@@ -236,6 +236,8 @@ const found = Object.create(null);   /* unit -> { key: {kw, line} } */
     { type: 'amulet_forge_request', why: 'no nuggets to smelt', set: (p) => { p.goldNuggets = 0; }, payload: { op: 'smelt' } },
     /* v2.3.4884: a fire lit with no log answers now */
     { type: 'firemaking_request', why: 'no such log in the bag', set: (p) => { p.inventory = {}; }, payload: { invKey: 'wood_pine' } },
+    /* v2.3.4885: a Join on an invite that is gone answers now */
+    { type: 'party_accept', why: 'the invite is gone', set: () => {}, payload: { target: 'bp_nobody_invited' } },
     { type: 'cook_request', why: 'no such fish in the bag (answered only by the delta)', set: (p) => { p.inventory = {}; }, payload: { fishKey: 'fish_trout', kind: 'cooked', taps: [] },
       ok: (p) => { p.inventory = { fish_trout: 1 }; },
       known: ['_handleCookRequest', 'if ((ps.inventory[fishKey] || 0) <= 0)'] },

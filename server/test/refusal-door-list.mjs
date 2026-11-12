@@ -105,7 +105,7 @@ export const SWALLOWED = Object.freeze({
 
 /* The list's size when it was frozen (v2.3.4791).  Lower these as lines come
    off; raising one is a decision the PR names. */
-export const FROZEN = Object.freeze({ listed: 272, known: 3 });   /* v2.3.4801: +1, the draw and gather's quiet drop (drawgather.js); v2.3.4880: -22, the workshop answers (forge, amulet forge, gem cut, smelter, armour forge); v2.3.4881: -14, the points, the chest, the capes and the reroll; v2.3.4882: -4, the purses; v2.3.4883: -6, the weapon stash; v2.3.4884: the heap burn's 4 recoded `fight`, the fire's 1 off */
+export const FROZEN = Object.freeze({ listed: 270, known: 0 });   /* v2.3.4801: +1, the draw and gather's quiet drop (drawgather.js); v2.3.4880: -22, the workshop answers (forge, amulet forge, gem cut, smelter, armour forge); v2.3.4881: -14, the points, the chest, the capes and the reroll; v2.3.4882: -4, the purses; v2.3.4883: -6, the weapon stash; v2.3.4884: the heap burn's 4 recoded `fight`, the fire's 1 off; v2.3.4885: -2, the last three answer (party accept, trade2's weapon cap, the relay trade's run-out offer; and a party accept with no invite map, after a deploy), two right silences beside them named */
 
 /* handler -> { guard: 'code[ code...][: note]' } */
 export const ALLOW = {
@@ -349,7 +349,6 @@ export const ALLOW = {
     "if (this._paceTake && !this._paceTake('t2wpn', session.id, PACE.T2WPN))": "rate",
     "if (!Number.isInteger(idx) || idx < 0 || idx >= ps.weaponStash.length)": "shape",
     "if (typeof (payload && payload.expectName) === 'string' && ps.weaponStash[idx] && ps.weaponStash[idx].name !== payload.expectName)": "shape",
-    "if (mine.length >= TRADE2.WEAPON_MAX)": "known: the trade already holds its most weapons",
     "if (!weapon)": "shape",
   },
   '_handleTrade2UnstageWeapon': {
@@ -367,8 +366,7 @@ export const ALLOW = {
   },
   '_handlePartyAccept': {
     "if (!inviter || typeof inviter !== 'string' || inviter === accepterId)": "shape",
-    "if (!this._partyInvites)": "gone",
-    "if (!ts)": "known: the invite is gone or never was",
+    "if (mine && mine === this._partyOf(inviter))": "noop: v2.3.4885, a second Join on an invite the first already took: the first put this player in the party and was answered",
   },
   '_handlePartyDecline': {
     "if (!inviter || typeof inviter !== 'string' || !this._partyInvites)": "shape",
@@ -559,7 +557,7 @@ export const ALLOW = {
     "if (!target || typeof target !== 'string' || target === fromId)": "shape",
     "if (target.length > 64)": "shape",
     "if (!offer)": "shape",
-    "if (!pending || Date.now() - pending.ts > TRADE_OFFER_TTL)": "known: an accept of an offer that ran out (the old relay trade)",
+    "if (!pending)": "gone: v2.3.4885, a forged accept, or a replayed one whose first settled the offer (an offer that ran out answers trade_reject now)",
   },
   '_interceptDuel': {
     "if (!target || typeof target !== 'string' || target === fromId)": "shape",
