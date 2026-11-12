@@ -740,6 +740,13 @@ uniform mat3 uProjectionMatrix;
 uniform mat3 uWorldTransformMatrix;
 uniform vec4 uWorldColorAlpha;
 uniform vec2 uResolution;
+uniform highp sampler2D uTextures[${SLOTS}];
+uniform highp sampler2D uDir;
+/* v2.3.4993: the page the sprite's sheet is in (its slot's texture) */
+highp ivec2 pageSizeV()
+{
+${fetchChain((t) => `textureSize(uTextures[${t}], 0)`)}
+}
 vec2 roundPixels(vec2 position, vec2 targetSize)
 {
     return (floor(((position * 0.5 + 0.5) * targetSize) + 0.5) / targetSize) * 2.0 - 1.0;
@@ -764,14 +771,27 @@ void main(void){
     highp float low = code - vLook * 4.0;
     vMirror = floor(low / 2.0 + 0.001);
     vSharp = low - vMirror * 2.0;
-    vUV = uv;
-    mat3 modelViewProjectionMatrix = uProjectionMatrix * worldTransformMatrix * modelMatrix;
-    gl_Position = vec4((modelViewProjectionMatrix * vec3(position, 1.0)).xy, 0.0, 1.0);
-    vColor *= uWorldColorAlpha;
     /* v2.3.4993: the low half is the round flag + 2 x (the sheet's number
        in the directory + 1; 0: a texture of its own) */
     highp float lo = floor(aTextureIdAndRound.x / 2.0 + 0.001);
     vDir = lo - 1.0;
+    /* ...and a sheet in a page of the atlas gets its place on its OWN sheet,
+       as when it was a texture of its own: the corner's texel (a frame's
+       corners are whole texels) less the sheet's, over the sheet's size --
+       so the fragment's arithmetic (the sharp read, the mip level) is the
+       same as before to the last bit, not merely the same picture */
+    if (vDir > -0.5) {
+        highp int d = int(vDir + 0.5) * 2;
+        highp vec4 a = floor(texelFetch(uDir, ivec2(d % ${DIR_W}, d / ${DIR_W}), 0) * 255.0 + 0.5);
+        highp vec4 b = floor(texelFetch(uDir, ivec2((d + 1) % ${DIR_W}, (d + 1) / ${DIR_W}), 0) * 255.0 + 0.5);
+        highp vec2 org = vec2(a.r + 256.0 * a.g, a.b + 256.0 * a.a);
+        highp vec2 sz = vec2(b.r + 256.0 * b.g, b.b + 256.0 * b.a);
+        uv = (floor(aUV * vec2(pageSizeV()) + 0.5) - org) / sz;
+    }
+    vUV = uv;
+    mat3 modelViewProjectionMatrix = uProjectionMatrix * worldTransformMatrix * modelMatrix;
+    gl_Position = vec4((modelViewProjectionMatrix * vec3(position, 1.0)).xy, 0.0, 1.0);
+    vColor *= uWorldColorAlpha;
     if(aTextureIdAndRound.x - 2.0 * lo > 0.5)
     {
         gl_Position.xy = roundPixels(gl_Position.xy, uResolution);
@@ -1045,9 +1065,9 @@ void main(void) {
     }
     /* the body as the chip drew it: sharpPixels.js's sharpSample (or Pixi's
        plain read) on a mipmapped texture, done by hand on the coloured texels */
-    /* v2.3.4993: vUV is the page's; the sheet's display texels start at its corner */
-    highp vec2 ts = vec2(pageSizeT()) / float(sDs);   /* in display texels */
-    highp vec2 px = vUV * ts - vec2(sOrg) / float(sDs);
+    /* v2.3.4993: vUV is the sheet's own (the vertex shader made it so) */
+    highp vec2 ts = vec2(sizeT()) / float(sDs);   /* in display texels */
+    highp vec2 px = vUV * ts;
     highp vec2 P = px;
     if (vSharp > 0.5) {
         highp vec2 tpp = vec2(length(vec2(dx.x, dy.x)), length(vec2(dx.y, dy.y))) * ts;
