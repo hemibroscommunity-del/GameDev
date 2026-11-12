@@ -306,7 +306,7 @@ const LIST = {
     loadPng: ['limit', 1, "a look set's sheet: under timeLimit (60 s) in loadSet, no retry: a failed set is drawn the old way (asking again is the owner's call, #1505)"],
     loadSet: ['limit', 1, "a look set's roles.json: the same 60 s limit, no retry"],
   },
-  'src/rendering/lookPaletteProbe.js': { '*': ['off', 1, 'a QA probe (`?lookprobe`)'] },
+  'src/rendering/lookPaletteProbe.js': { '*': ['off', 2, 'a QA probe (`?lookprobe`): the stand-ins\' and (v2.3.4961) the body heads\' manifests'] },
   'src/rendering/lookSets/standinlegs.js': { '*': ['off', 1, 'the offline role bake (tools/art/role-bake.mjs)'] },
   'src/rendering/lootIcons.js': { load: ['once', 1, 'the loot icons: no time limit, no retry (the ring and label show)'] },
   'src/rendering/monsterRecolor.js': { loadImg: ['once', 1, "a monster's recolour reference: no time limit, no retry"] },
@@ -396,6 +396,7 @@ const SHARED = {
       'src/rendering/lookSets/body.js': 'off: the offline role bake',
       'src/rendering/lookSets/standin.js': 'off: the offline role bake',
       'src/rendering/lookSets/standinlegs.js': 'off: the offline role bake',
+      'src/rendering/lookSets/bodyheads.js': 'off: the offline role bake',   /* v2.3.4961 */
     },
   },
   warmOnce: {

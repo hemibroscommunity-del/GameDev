@@ -403,7 +403,11 @@ function sweep(now) {
 function lookFrames(set, sheet, entries, opts) {
   if (!lookPaletteOn()) return null;
   if (_ok === null) prewarmProgram();   /* not built behind the loading screen (no renderer then): now */
-  if (!entries.some((e) => e[1])) return null;
+  /* v2.3.4961: `opts.asDrawn` -- a set whose every role left as drawn is still
+     a picture the old path bakes (the head sheets: the default skin's jog and
+     pickup heads were an unchanged copy each), so a row of no colours is asked
+     for too; elsewhere the caller draws its shipped sheet then */
+  if (!(opts && opts.asDrawn) && !entries.some((e) => e[1])) return null;
   const sh = _sheets[set + '/' + sheet];
   if (!sh) return null;
   /* v2.3.3737 (P2): `opts.key` -- the caller's own key for these entries
