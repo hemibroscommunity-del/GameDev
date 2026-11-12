@@ -30,7 +30,7 @@ import { applyTestMode } from '@/game/testMode.js'; /* v2.3.3430: the owner's te
 import { checkWitnesses, noteCheckActed, EMPTIED_NEED, CANVAS_CHECK_OFF } from '@/rendering/canvasWitness.js'; /* v2.3.3574: a picture Safari threw away is noticed */
 import { allyBus } from '@/game/alliance.js'; /* v2.3.3313: the alliance's answers (server alliance.js) */
 import { monsterNoticed } from '@/game/monsterNoises.js'; /* v2.3.3340: a monster calls as it notices you */
-import { carryMonsterState, endSwell } from '@/game/monsterCarry.js'; /* v2.3.3558: a re-push is not a new arrival (TRAPS §245) */
+import { carryMonsterState, monsterNewLife } from '@/game/monsterCarry.js'; /* v2.3.3558: a re-push is not a new arrival (TRAPS §245); v2.3.4910: the one new-life reset */
 import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } from '@/game/trapping.js'; /* v2.3.3120: pet trapping's answers; v2.3.3121: + a pet's XP */
 import { onCodexState, onCodexKill } from '@/game/monsterCodex.js'; /* v2.3.3209: the monster codex's counts (server/src/codex.js) */
 import { onAchvState, noteServerAp } from '@/game/achievements.js'; /* v2.3.3527: the achievements the worker granted (server/src/achievements.js) */
@@ -1407,42 +1407,15 @@ export function setupWebSocket(ctx) {
                       }
                       /* Don't overwrite maxHp — it stays at the spawn value */
                       if (md.alive && !localM.alive) {
-                        /* Monster respawned -- clear all per-life
-                           transient flags so the next death replays
-                           the loot drop, SFX, stuck arrows, and the
-                           death animation cleanly. */
-                        localM.alive = true;
+                        /* Monster respawned -- one reset for a new life
+                           (v2.3.4910: game/monsterCarry.js monsterNewLife,
+                           the same list as the phone's own respawn) so the
+                           next death replays the loot drop, sound, stuck
+                           arrows and death animation cleanly; drawn from
+                           where it comes back. */
+                        monsterNewLife(localM, MONSTER_VARIANTS);
                         localM.renderX = md.x;
                         localM.renderY = md.y;
-                        localM._stuckArrows = [];
-                        localM._slimeDeathStart = null;
-                        localM._snowmanDeathStart = null;
-                        localM._lootDropped = false;
-                        localM._deathSfxPlayed = false;
-                        localM._killMine = false;   /* v2.3.3248: hitSounds.deathVol */
-                        /* v2.3.4403: and a swell whose blast this phone never
-                           heard (out of reach, or a gap): a slime that came
-                           back still holding it was drawn huge and could not
-                           be hit (monsterCarry.js endSwell; the sweep's V7) */
-                        endSwell(localM);
-                        /* Revert any mid-fight variant transform.  A
-                           desert mummy that died as a skeleton needs to
-                           come back as a mummy so the first 50% HP
-                           still triggers the bandage-shred animation
-                           next life.  Server already resets m.variant
-                           on its side but doesn't broadcast that field
-                           per tick, so the client uses the spawn
-                           archetype it stashed at state_sync time. */
-                        if (localM._spawnArchetype && localM.archetype !== localM._spawnArchetype) {
-                          localM.archetype = localM._spawnArchetype;
-                          localM.type = localM._spawnArchetype;
-                          if (localM.arch !== undefined) localM.arch = localM._spawnArchetype;
-                          localM._transformStart = null;
-                          localM._transformHoldMs = 0;
-                          localM._transformFromArch = null;
-                          var _sv = MONSTER_VARIANTS[localM._spawnArchetype];
-                          if (_sv && _sv.spd != null) localM.spd = _sv.spd;
-                        }
                         /* v2.3.3343: coming back is heard, by distance -- a
                            slime's plop, anything else a faint shimmer (it was
                            silent; SOUND-GAPS).  This edge only: a monster first

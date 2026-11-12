@@ -58,3 +58,63 @@ export function carryMonsterState(local, prev) {
   }
   return local;
 }
+
+/* ═══ v2.3.4910: A MONSTER'S NEW LIFE ON THE PHONE, AND ITS ONE RESET ═══
+ * (TRAPS §245; the worker's twin is server/src/monsterlife.js
+ * _monsterNewLife and its MONSTER_LIFE.)
+ *
+ * A monster that dies and comes back is the SAME object on the phone, so
+ * whatever its last life left on it -- the arrows stuck in it, its splat's
+ * clock, the loot pile it dropped, a swell -- rides into the next one unless
+ * the respawn wipes it.  Two edges did that with two hand lists that had
+ * drifted apart: the worker's tick (wsClient.js, a monster `alive` again)
+ * cleared the death sounds, the pile and the swell, and the phone's own
+ * respawn (monsterCombat.js, a zone the worker does not model) cleared the
+ * statuses and its own pile mark but not the death sound or the swell.  Now
+ * both call monsterNewLife, and PHONE_NEW_LIFE names every per-life field it
+ * wipes, with the value a fresh life starts from.  A NEW phone field that
+ * belongs to one life goes on this list, the same rule as CARRY_* above.
+ *
+ * What is NOT here, on purpose:
+ *   - x, y, curHp and the statuses: the worker sends them for its monsters;
+ *     the phone's own respawn sets them itself (where it comes back);
+ *   - `_spawnFxAt`: the renderer stamps the arrival on the edge it SEES
+ *     (entityRenderer.js, `_fxWasAlive`), so a respawn off screen still
+ *     grows in when it scrolls into view;
+ *   - `_burstPeakFrom` is here AND kept on the renderer's edge (v2.3.2228:
+ *     the kill can land a frame after the execute's stamp).
+ */
+export const PHONE_NEW_LIFE = Object.freeze({
+  _slimeDeathStart: null, _snowmanDeathStart: null, _burstPeakFrom: 0,
+  _lootDropped: false, _localRemnantDropped: false,
+  _deathSfxPlayed: false, _killMine: false,
+});
+
+/* `variants` is MONSTER_VARIANTS (passed in: this file has no imports, so
+   the server's suites can run it).  Returns m. */
+export function monsterNewLife(m, variants) {
+  if (!m) return m;
+  m.alive = true;
+  for (const k in PHONE_NEW_LIFE) m[k] = PHONE_NEW_LIFE[k];
+  m._stuckArrows = [];
+  /* v2.3.4403: and a swell whose blast this phone never heard (out of reach,
+     or a gap): a slime that came back still holding it was drawn huge and
+     could not be hit (the sweep's V7) */
+  endSwell(m);
+  /* Revert a mid-fight variant transform.  A desert mummy that died as a
+     skeleton comes back a mummy, so its first half of health still plays
+     the bandage-shred next life.  The worker resets its own m.variant but
+     does not send that field each tick, so the phone uses the spawn
+     archetype it stashed at state_sync. */
+  if (m._spawnArchetype && m.archetype !== m._spawnArchetype) {
+    m.archetype = m._spawnArchetype;
+    m.type = m._spawnArchetype;
+    if (m.arch !== undefined) m.arch = m._spawnArchetype;
+    m._transformStart = null;
+    m._transformHoldMs = 0;
+    m._transformFromArch = null;
+    const v = variants && variants[m._spawnArchetype];
+    if (v && v.spd != null) m.spd = v.spd;
+  }
+  return m;
+}
