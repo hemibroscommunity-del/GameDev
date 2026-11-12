@@ -3956,6 +3956,25 @@ function _peerMaskedFrame(display, bodyTex, worn, dilate, poseInfo, mirror) {
 /* Queue a peer's stand + jog frames when what they wear (or their body)
    changes.  `bodyFor(pose, dir, f, mirror)` is the render path's own body
    lookup for THIS peer, so the keys match what it will ask for. */
+/* v2.3.4878: the two slots a peer's armour is masked by, in their old order
+   (chest, then legs: the order of the worn keys every cache is keyed by) */
+const _PEER_WORN_SLOTS = Object.freeze(['chest', 'legs']);
+/* v2.3.4878: the prewarm's signature for an armoured peer, remembered on their
+   display with the eight things it is made from, and made again only when one
+   of them changes.  The string is exactly the one the render path built every
+   frame before ([...].join('|')), so the prewarms see no difference.  All
+   eight are wire scalars (peerCosmetics.js; equip's are item ids) or a flag,
+   so `===` says what the join said. */
+function _peerArmourSig(display, other, hasArt) {
+  const e = other.equip, ch = e && e.chest, lg = e && e.legs;
+  const c = display._peerSigIn;
+  if (c && c.skin === other.skin && c.pants === other.pants && c.shoes === other.shoes
+    && c.eyeColor === other.eyeColor && c.eyeStyle === other.eyeStyle && c.art === hasArt
+    && c.ch === ch && c.lg === lg) return c.sig;
+  const sig = [other.skin, other.pants, other.shoes, other.eyeColor, other.eyeStyle, hasArt ? 'art' : '', ch, lg].join('|');
+  display._peerSigIn = { skin: other.skin, pants: other.pants, shoes: other.shoes, eyeColor: other.eyeColor, eyeStyle: other.eyeStyle, art: hasArt, ch, lg, sig };
+  return sig;
+}
 function _peerPrewarmIfChanged(display, sig, bodyFor, gearIds) {
   if (display._peerPrewarmSig === sig) return;
   display._peerPrewarmSig = sig;
@@ -13087,19 +13106,28 @@ export class EntityRenderer {
              the remote's worn chest/legs plate (dilated) so it can't poke past a
              plate edge; the head + bare regions still show. */
           _hideBodyRegions(display);
+          /* v2.3.4878: the worn keys ('chest:iron,legs:iron') and which slots
+             are worn are gathered here, in the one pass, instead of by a
+             `some` and a `map(...).join` apiece below -- every armoured peer,
+             every frame (the crowd lanes, 2026-11-12) */
           const _rworn = [];
-          for (const _sl of ['chest', 'legs']) {
+          let _rwk = '', _rlegsW = false, _rchestW = false;
+          for (let _si = 0; _si < _PEER_WORN_SLOTS.length; _si++) {
+            const _sl = _PEER_WORN_SLOTS[_si];
             const _it = other.equip && other.equip[_sl];
             if (_it && _it !== 'none') {
               const _gt = getGearFrame(_sl, _it, pose, dir, frameIdx);
-              if (_gt) _rworn.push({ k: _sl + ':' + _it, tex: _gt });
+              if (_gt) {
+                const _k = _sl + ':' + _it;
+                _rworn.push({ k: _k, tex: _gt });
+                _rwk = _rwk ? _rwk + ',' + _k : _k;
+                if (_sl === 'legs') _rlegsW = true; else _rchestW = true;
+              }
             }
           }
           let _rfull = false;
           let _fsR = null; /* v2.3.1389: hoisted — the trait crown override below needs it */
           if (_rworn.length) {
-            const _rlegsW = _rworn.some(w => w.k && w.k.indexOf('legs:') === 0);
-            const _rchestW = _rworn.some(w => w.k && w.k.indexOf('chest:') === 0);
             _rfull = pose === 'pickup' && _rlegsW && _rchestW;   // v2.3.1057: hide body, head overlay + gear render it (no bake)
             /* v2.3.1361: fullset figure for remote players too. */
             _fsR = _fullsetFrame(other.equip && other.equip.chest, other.equip && other.equip.legs, pose, dir, frameIdx, _rJogPhase);
@@ -13112,17 +13140,31 @@ export class EntityRenderer {
                change, hold-don't-bake on a miss) -- _peerMaskedFrame. */
             /* v2.3.3752: a peer drawn from the numbers is prewarmed and masked
                from them (lookArmour.js); else the old path, as before */
-            const _rEnt = (tex && tex._btLook) ? (p, d) => getLookBodyEntries(other.skin, other.pants, other.shoes, p, d, _oShirtT, other.eyeColor, _oBodyArt, other.eyeStyle) : null;
-            const _rSig = [other.skin, other.pants, other.shoes, other.eyeColor, other.eyeStyle, _oBodyArt ? 'art' : '', other.equip && other.equip.chest, other.equip && other.equip.legs].join('|');
-            if (_rEnt) _peerLookPrewarmIfChanged(display, _rSig, _rEnt, _rworn.map((w) => w.k.split(':')));
-            else _peerPrewarmIfChanged(display, _rSig,
+            /* v2.3.4878: AN ARMOURED CROWD MAKES NO GARBAGE WHILE NOTHING CHANGES.
+               Every armoured peer, every frame, used to build the prewarm's
+               signature (an array joined), its gear list (a `map` and a `split`
+               a piece) and its body lookup (a closure), and then call the
+               prewarm -- an async function, so a Promise -- which returned at
+               once because the signature had not changed.  About ten objects
+               a peer a frame for nothing: the crowd tour's collector line
+               (held-sweep.md "The crowd tour" h, held-budget.mjs `gc`) grows
+               with armoured players.  Now the signature is remembered with what
+               it was made from (_peerArmourSig: the SAME string as before, made
+               only when one of its parts changes), and the prewarm and its
+               arguments are made only when it differs from the one the prewarm
+               last took -- the exact test each prewarm opens with. */
+            const _rLook = !!(tex && tex._btLook);
+            const _rSig = _peerArmourSig(display, other, !!_oBodyArt);
+            if (_rLook) {
+              if (display._peerLookSig !== _rSig) _peerLookPrewarmIfChanged(display, _rSig, (p, d) => getLookBodyEntries(other.skin, other.pants, other.shoes, p, d, _oShirtT, other.eyeColor, _oBodyArt, other.eyeStyle), _rworn.map((w) => w.k.split(':')));
+            } else if (display._peerPrewarmSig !== _rSig) _peerPrewarmIfChanged(display, _rSig,
               (p, d, f, m) => getBodyFrame(other.skin, other.pants, other.shoes, p, d, f, _oShirtT, _oShirtKey, other.eyeColor, _remoteBodyArt(other, m), other.eyeStyle),
               _rworn.map((w) => w.k.split(':')));
             let _rla = null;
-            if (_rEnt && !_fsR && pose !== 'pickup') _rla = _lookArmourBody(_rEnt(pose, dir), _rworn, { pose, dir, frameIdx }, 0);
-            const _rpd = pose + '|' + dir + '|' + (mirror ? 1 : 0) + '|' + _rworn.map((w) => w.k).join(',');
+            if (_rLook && !_fsR && pose !== 'pickup') _rla = _lookArmourBody(getLookBodyEntries(other.skin, other.pants, other.shoes, pose, dir, _oShirtT, other.eyeColor, _oBodyArt, other.eyeStyle), _rworn, { pose, dir, frameIdx }, 0);
+            const _rpd = pose + '|' + dir + '|' + (mirror ? 1 : 0) + '|' + _rwk;
             let _rOld = tex;
-            if (_rEnt && !_rla && !_fsR && pose !== 'pickup') _rOld = getBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, _oShirtKey, other.eyeColor, _oBodyArt, other.eyeStyle);
+            if (_rLook && !_rla && !_fsR && pose !== 'pickup') _rOld = getBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, _oShirtKey, other.eyeColor, _oBodyArt, other.eyeStyle);
             /* not decided yet: the last masked frame of this pose and facing, as _peerMaskedFrame holds one */
             const _rHold = (_rla && _rla.pending && display._peerLastPD === _rpd && display._peerLastMasked && display._peerLastMasked._btLook && !display._peerLastMasked.destroyed && display._peerLastMasked.source && !display._peerLastMasked.source.destroyed) ? display._peerLastMasked : null;
             const _mt = _fsR || ((pose === 'pickup') ? tex : (_rla ? (_rla.tex || _rHold || tex) : _peerMaskedFrame(display, _rOld, _rworn, 6, { pose, dir, frameIdx }, mirror)));
@@ -13133,7 +13175,7 @@ export class EntityRenderer {
             /* v2.3.4870: a plain body drawn while the worker bakes (_peerMaskedFrame) is never the frame held */
             if (!_fsR && pose !== 'pickup' && _mt !== tex && _mt !== _rOld) {
               display._peerLastMasked = _mt;
-              display._peerLastPD = pose + '|' + dir + '|' + (mirror ? 1 : 0) + '|' + _rworn.map((w) => w.k).join(',');
+              display._peerLastPD = _rpd;   /* v2.3.4878: the same string, made once above */
             }
             /* v2.3.1757: the fullset figure IS the armour, drawn on the body
                sprite — so the material colour goes here.  Cleared whenever the
