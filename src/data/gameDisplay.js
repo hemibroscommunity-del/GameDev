@@ -3370,9 +3370,21 @@ BT_AUDIO.SFX_MANIFEST = {
    Their files are written at 24 kHz (cut_owner_sounds.py), so nothing is
    resampled twice.  A browser without one decodes them the old way. */
 BT_AUDIO.LOW_RATE = 24000;
+/* v2.3.4997: and the effects whose FILE is already 24 kHz and is noise -- the
+   steps, the pan's sizzle, the axe, the sword's whooshes.  Decoded at the
+   context's 48 kHz they were twice the memory for nothing a file at 24 kHz
+   has (nothing above 12 kHz); decoded at their own rate they are the file's
+   own samples, and the context plays them as it plays the owner's 24 kHz
+   ones.  ~2.1 MB of the sound line.  The chime-like and jingling ones whose
+   files are 24 kHz too (the coin pickup, the equip, the cooking ding, the
+   daily wheel's three) stay at 48, as the UI's do, by the rule above.
+   sound-cues §11g holds every one of these files at 24 kHz on disk: one
+   replaced by a 48 kHz file fails it instead of losing its top half. */
+BT_AUDIO.FILE_24K_NOISE = ['footstep-v2', 'footstep-v3', 'pan-sizzle', 'axe-chop', 'sword-swing-3', 'special-swipe'];
 BT_AUDIO.LOW_RATE_SFX = (function () {
   var o = Object.create(null);
   for (var k in OWNER_SOUNDS) if (OWNER_SOUNDS[k] && OWNER_SOUNDS[k].low) o[k] = true;
+  for (var i = 0; i < BT_AUDIO.FILE_24K_NOISE.length; i++) o[BT_AUDIO.FILE_24K_NOISE[i]] = true;
   return o;
 })();
 BT_AUDIO._lowRate = function (key) {

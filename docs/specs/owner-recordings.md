@@ -124,3 +124,18 @@ file's silent edges (`BT_AUDIO._loopOverEdges`).
 - `tools/qa/mp/mp-wheelswim.mjs`: a real swim, in off a bank and back out: the
   splash's IN part going in, its OUT part coming out, each played; and
   `mp-ownersounds` step 12: three points spent at once, one chime.
+
+## v2.3.4997: the noise effects whose files are already 24 kHz, decoded at 24 kHz
+
+The memory sweep (2026-11-12, the owner: "Check to see where else memory can
+be saved ... without affecting quality") found twelve effects in SFX_MANIFEST
+whose FILES are 24 kHz but which were decoded at the context's 48 kHz: twice
+the memory for nothing the file has (nothing above 12 kHz). The six that are
+noise -- footsteps v2 and v3, the pan's sizzle, the axe's chop, the sword's
+swing and special swipe -- now join LOW_RATE_SFX (`BT_AUDIO.FILE_24K_NOISE`):
+their own samples, played by the context as the voice and noise recordings
+above are. About 2.1 MB of the sound line. The six chime-like or jingling
+ones (the coin pickup, the equip, the cooking ding, the daily wheel's spin,
+win and lose) stay at 48 kHz, as the UI's three do. `sound-cues` §11g0
+holds each listed file at 24 kHz on disk: a 48 kHz file put in one's place
+fails it rather than losing its top half.
