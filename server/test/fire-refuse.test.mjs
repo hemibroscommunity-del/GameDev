@@ -72,7 +72,7 @@ check('3: a held log is lit, no refusal', !got.includes('firemaking_refused') &&
 /* 4 */
 check('4: firemaking_refused is privileged', PRIVILEGED_EVENTS && (PRIVILEGED_EVENTS.has ? PRIVILEGED_EVENTS.has('firemaking_refused') : PRIVILEGED_EVENTS.includes('firemaking_refused')));
 const wsc = readFileSync(new URL('../../src/networking/wsClient.js', import.meta.url), 'utf8');
-check("4: the phone's direct switch has its case, and takes the fire back", /case 'firemaking_refused':[\s\S]{0,400}takeBackFire\(/.test(wsc));
+check("4: the phone's direct switch has its case, and takes the fire back", /case 'firemaking_refused':[\s\S]{0,400}takeBackFire(What)?\(/.test(wsc));
 
 /* 5 */
 const now = 1_000_000;

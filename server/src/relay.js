@@ -43,6 +43,7 @@ export const RELAY = Object.freeze({
        (PartyPanel), every phone already ignored it (gameEvents.js), and a
        stake is the worker's own (arena_sponsor) */
     'campfire_lit',           /* BroTown: a fire you lit, drawn where it burns */
+    'campfire_out',           /* v2.3.4942: wsClient: that fire, refused by the worker, put out (fireRefuse.js) */
     'chat',                   /* chat.js, ChatBubble: room chat (_sanitizeChatRelay) */
     'clan_invite',            /* InspectPlayerPanel: _observeClanInvite records it */
     'duel_accept',            /* DuelRequestPanel: _interceptDuel settles it */
