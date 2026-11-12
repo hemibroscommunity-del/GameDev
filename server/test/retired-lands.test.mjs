@@ -157,13 +157,12 @@ const refusedN = (k) => room._zoneJudgeInfo().refused[k] || 0;
      (v2.3.4675).  THIS LIST ONLY SHRINKS: move a suite to the world
      ('wheel') and take its name off.  A new suite plays the world. */
   const FIXTURES = new Set([
-    'anticheat', 'combat-lifecycle', 'props', 'protocol-v2',
-    'tick',
+    'anticheat', 'combat-lifecycle', 'protocol-v2', 'tick',
   ]);
   /* v2.3.4923: 17 -> 12 (chainscore, devtools, prog3, quests, ride play the world)
      v2.3.4924: 12 -> 8 (arrowblast, burrow, gem-weight, weapon-gem too)
-     v2.3.4953: 8 -> 5 (move-budget, wheelnear, wheelzone) */
-  const FROZEN = 5;
+     v2.3.4953: 8 -> 4 (move-budget, wheelnear, wheelzone, props) */
+  const FROZEN = 4;
   const dir = new URL('./', import.meta.url);
   const opening = readdirSync(dir).filter((f) => f.endsWith('.test.mjs'))
     .filter((f) => /GameRoom\.prototype\._retiredLandsOn\s*=/.test(readFileSync(new URL(f, dir), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')))   /* code, not a comment */
