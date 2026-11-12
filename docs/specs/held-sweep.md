@@ -216,9 +216,9 @@ rank order:
 
 | family (its key in `KNOWN`) | its line | why it is over | what fixes it |
 |---|---|---|---|
-| `body-bake` | 220 ms (the crowd's a-ink, b-fish, c-armour8: 12 since v2.3.4930; its other stations up to 190) | v2.3.4930: in play every one of these bakes runs on a worker (`docs/specs/body-bake-worker.md`): a-ink 546 ms, b-fish 179, c-armour8 202 -> none. Left: the main tour's stations and the crowd's others were not run again | run them again and take the family off the list if they agree |
+| `body-bake` | 13 ms (v2.3.4960; was 220), 12 at the crowd's a-ink, b-fish, c-armour1, c-armour8, d-prints; 120 at h-eight | v2.3.4930: in play every one of these bakes runs on a worker (`docs/specs/body-bake-worker.md`). Re-timed 2026-11-12 (v2.3.4960): none in the main tour or at c-armour1, c-armour8, d-prints. **h-eight: 227 ms, 29 bakes on the page** (mostly heads): with eight armoured players the worker stalls past its 20 s watch, is let go of, and the page bakes | the heads as colour numbers (v2.3.4961); the worker's watch to tell a long queue from a dead worker |
 | `gear-sheet` | 195 ms | a drawn shirt composed on the page for each pose (the crowd tour) | stamp the drawing on a worker, or draw it as a layer over the plain shirt |
-| `portrait` | 150 ms | the Leaderboards draw a board's faces in one piece (the crowd tour) | a few faces a frame |
+| `portrait` | 40 ms (v2.3.4960; was 150) | the Leaderboards' faces are 11 ms now (g-boards, was 149); what is left is the bag's own portrait drawn as armour goes on, 37 ms (armour) | draw it a few rows a frame |
 | `masked-bake` | 24 ms (v2.3.4870; was 140) | the worker job's page-side part (frames handed over as pictures): the cut itself no longer runs on the page in play -- another player's frame is drawn plain until the worker answers, as yours was | hand the worker the sheets once and send rectangles; prewarm the poses of what was just put on |
 | `pack-page` | 20 ms (v2.3.4873; was 80) | a gear sheet first drawn in play, now packed a few ms at a time (`gearSheets.js` `_gearPack`; was one go, 21 to 59 ms): one cell's read and the hand-off, 9 to 15 ms | the strip door for gear strips (256-colour files, packed on the worker) |
 | `gc` | 60 ms | the browser's garbage collector | make less garbage a frame (OPTIMIZATION-ROADMAP's pools) |
@@ -226,8 +226,8 @@ rank order:
 | `screen-check` | 260 ms | only with a second page on this box's one software chip; one page: 0 to 2 ms | nothing here; on a phone the frame strip names it if it is ever 4 ms |
 | `strip-made` | 24 ms | the page's part of a strip coming in (its numbers put on its bundle's row, handed to the chip) | number the strip for its row on the worker |
 | `ui:*` | 16 ms | one component drawn in one piece (the gear tab is one function of 10 ms) | split the gear tab |
-| `other: BT_AUDIO$1._fold > foldToMono` | 30 ms | a two-sided sound folded to one on its first play | fold as it is decoded |
-| `other: _flushOutbox > Wrapped.ws.send` | 30 ms | a message handed to the browser, 18 ms once | not understood yet: watch it |
+| `other: BT_AUDIO$1._fold > foldToMono` | 20 ms (v2.3.4960; was 30) | a two-sided sound folded to one on its first play, 19 ms once | fold as it is decoded |
+| ~~`other: _flushOutbox > Wrapped.ws.send`~~ | off the list (v2.3.4960) | 4.7 ms at most in the 2026-11-12 tours (was 18 once); `other: createObjectURL` came off too (9.3 at most) | |
 
 Not on that list because the tour cannot see them:
 
