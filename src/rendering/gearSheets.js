@@ -24,6 +24,7 @@ import { releaseCanvasSource } from './releaseCanvasTexture.js';   /* v2.3.3074 
 import { witnessCanvas } from './canvasWitness.js';   /* v2.3.3574: a picture Safari threw away is noticed */
 import { p256Address, packedTwinAsNumbers } from './p256.js';   /* v2.3.3728: the effects from their 256-colour twins */
 import { trimScanCell, trimCellOf, trimLayout } from './trimRules.js';   /* v2.3.4400: the packer's rules, apart from its canvases */
+import { packTrimmedCore } from './trimPack.js';   /* v2.3.4930: packTrimmed's steps, shared with the body bake's worker */
 import { keepAsImage } from './keepAsImage.js';   /* v2.3.3702: every strip packed here, kept as an image of itself */
 import { KEEP_GPU_COPIES } from './gpuOnly.js';
 
@@ -236,45 +237,13 @@ if (typeof window !== 'undefined') {
    gives up is only the mip-alignment argument above, and those strips upload
    without mipmaps. */
 export function packTrimmed(img, fw, fh, n) {
-  const W = img.width | 0, H = img.height | 0;
-  if (!n) n = Math.max(1, Math.floor(W / fw));
-  if (!W || !H || H < fh || fw !== Math.round(fw) || fh !== Math.round(fh) || n * fw > W) return null;
-  let rd = null, data;
-  try {
-    rd = document.createElement('canvas'); rd.width = W; rd.height = fh;
-    const rctx = rd.getContext('2d', { willReadFrequently: true });
-    rctx.drawImage(img, 0, 0);
-    data = rctx.getImageData(0, 0, W, fh).data;
-  } catch (e) {
-    if (rd) { rd.width = 0; rd.height = 0; }
-    return null;
-  }
-  const cells = [];
-  /* v2.3.3574: the first solid pixel the scan meets (alpha 128 and up), the
-     picture's witness once packed (canvasWitness.js) */
-  let wi = -1, wx = 0, wy = 0;
-  for (let i = 0; i < n; i++) {
-    const b = trimScanCell(data, W, i * fw, fw, fh);
-    if (wi < 0 && b.sx >= 0) { wi = i; wx = b.sx; wy = b.sy; }
-    cells.push(trimCellOf(b, fw, fh));
-  }
-  const L = trimLayout(cells, fw, fh, n);
-  if (!L) { rd.width = 0; rd.height = 0; return null; }
-  const cv = document.createElement('canvas');
-  cv.width = L.W; cv.height = L.H;
-  const ctx = cv.getContext('2d');
-  ctx.imageSmoothingEnabled = false;   /* 1:1 copies; never resample */
-  for (let i = 0; i < n; i++) {
-    const c = cells[i];
-    if (!c.blank) ctx.drawImage(rd, i * fw + c.tx, c.ty, c.w, c.h, c.ax, c.ay, c.w, c.h);
-  }
-  /* Safari holds canvas backing stores against a hard total until GC gets to
-     them; zeroing hands the full-size scratch copy back now. */
-  rd.width = 0; rd.height = 0;
+  /* v2.3.4930: the steps are trimPack.js packTrimmedCore (moved verbatim, a
+     worker packs by them too); the witness is the page's */
+  const p = packTrimmedCore(img, fw, fh, n);
   /* v2.3.3574: if Safari empties this canvas while the tab is parked, the
      return's check reads this pixel back empty (canvasWitness.js) */
-  if (wi >= 0) { const c = cells[wi]; witnessCanvas(cv, c.ax + wx - c.tx, c.ay + wy - c.ty); }
-  return { canvas: cv, cells };
+  if (p && p.witness) witnessCanvas(p.canvas, p.witness[0], p.witness[1]);
+  return p ? { canvas: p.canvas, cells: p.cells } : null;
 }
 
 /* ═══ v2.3.4400: THE SAME PACK, A FEW MS AT A TIME ═══

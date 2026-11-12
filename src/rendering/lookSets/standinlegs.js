@@ -54,7 +54,7 @@ export default {
   sheets: STANDIN_LEGS_SHEETS,
   art: (sheet) => [`public/sprites/player/${sheet}.png`, `public/sprites/player/${sheet}.webp`,
     `public/sprites/gear/legs/steelgreaves/${GREAVES[sheet]}.png`],
-  code: ['src/rendering/playerSkins.js', 'src/rendering/garmentConfine.js', 'src/rendering/spriteScale.js',
+  code: ['src/rendering/playerSkins.js', 'src/rendering/bodyRecolor.js' /* v2.3.4930: the recolour moved there */, 'src/rendering/garmentConfine.js', 'src/rendering/spriteScale.js',
     'src/rendering/playerDecal.js', 'src/rendering/lookSets/standin.js'],
   frameOf(sheet) {
     const f = STANDIN_FRAMES[sheet];

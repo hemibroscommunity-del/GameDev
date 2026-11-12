@@ -34,9 +34,10 @@
    "under": 0
   }
  ],
- "code": "3ada761717e20022",
+ "code": "88503f4b813056f5",
  "codeFiles": [
   "src/rendering/playerSkins.js",
+  "src/rendering/bodyRecolor.js",
   "src/rendering/garmentConfine.js",
   "src/rendering/spriteScale.js",
   "src/rendering/playerDecal.js",
