@@ -167,5 +167,34 @@ console.log('ridersort: a building\'s pieces sort with the building');
   ok('out of order: the keys go through the setter and the layer is marked', b.zIndex === 50 && back.sortDirty === true, { b: b.zIndex, dirty: back.sortDirty });
 }
 
+/* v2.3.4989: a layer's plates (plateLayer.js, `_depthLast`) are never moved
+   between the two buckets and always sort last in theirs -- wherever the
+   player stands, and with no ground line of their own (y 0) */
+{
+  for (const py of [100, 790, 2000]) {
+    const { back, front } = scene(py, 1000);
+    const pb = { label: 'plates_entities', x: 0, y: 0, visible: true, _depthLast: true };
+    const pf = { label: 'plates_gatherNodesFront', x: 0, y: 0, visible: true, _depthLast: true };
+    back.addChild(pb);
+    front.addChild(pf);
+    /* a figure standing on the plates' own (absent) line, to be sure they do not sort by it */
+    back.addChild({ label: 'other_q', x: 500, y: 0, visible: true });
+    applyDepthBuckets(back, front, py, 1000);
+    const maxOf = (L) => Math.max(...L.children.map((c) => c.zIndex));
+    ok(`plates stay in their own layer, the player's feet at ${py}`, pb.parent === back && pf.parent === front, { pb: pb.parent && pb.parent.label, pf: pf.parent && pf.parent.label });
+    ok(`plates sort last in each layer, the player's feet at ${py}`,
+      pb.zIndex === maxOf(back) && pb.zIndex > Math.max(...back.children.filter((c) => c !== pb).map((c) => c.zIndex))
+      && (front.children.length === 1 || pf.zIndex > Math.max(...front.children.filter((c) => c !== pf).map((c) => c.zIndex))),
+      { back: back.children.map((c) => [c.label, c.zIndex]), front: front.children.map((c) => [c.label, c.zIndex]) });
+  }
+  /* and the rest sorts exactly as without them */
+  const a = scene(790, 1000), b = scene(790, 1000);
+  b.back.addChild({ label: 'plates_entities', x: 0, y: 0, visible: true, _depthLast: true });
+  applyDepthBuckets(a.back, a.front, 790, 1000);
+  applyDepthBuckets(b.back, b.front, 790, 1000);
+  const keys = (L) => L.children.filter((c) => !c._depthLast).map((c) => c.label + ':' + c.zIndex).sort().join();
+  ok('everything else keyed and bucketed exactly as without plates', keys(a.back) === keys(b.back) && keys(a.front) === keys(b.front), { a: keys(a.back), b: keys(b.back) });
+}
+
 console.log(`\nridersort: ${pass + fail} assertions, ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);
