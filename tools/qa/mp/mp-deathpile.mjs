@@ -105,25 +105,134 @@ async function backHome(P, arrival, timeout = 60000) {
 /* the nearest living first-stretch Flame Fields monster this phone holds */
 const nearestGoblin = (P) => P.page.evaluate(() => {
   const S = window._gameState.current;
-  const m = (S.monsters || []).filter((x) => x && x.home === 'ember' && x.alive !== false && x.hp > 0 && !/-t\d+-\d+$/.test(x.id))
-    .sort((a, b) => Math.hypot(a.x - S.player.x, a.y - S.player.y) - Math.hypot(b.x - S.player.x, b.y - S.player.y))[0];
+  /* v2.3.4955: the nearest with a clear line to it first (the page's own
+     solid test, every 10 px): a goblin over a wall can neither be reached
+     nor reach -- three runs' Fallen stood a whole 90 s at the wall between
+     the town's way out and the Flame Fields' first spawn */
+  const clear = (m) => {
+    if (!window.__btIsSolid) return true;
+    const dx = m.x - S.player.x, dy = m.y - S.player.y, d = Math.hypot(dx, dy), n = Math.ceil(d / 10);
+    for (let i = 1; i < n; i++) if (window.__btIsSolid(S.player.x + dx * i / n, S.player.y + dy * i / n)) return false;
+    return true;
+  };
+  const all = (S.monsters || []).filter((x) => x && x.home === 'ember' && x.alive !== false && x.hp > 0 && !/-t\d+-\d+$/.test(x.id))
+    .sort((a, b) => Math.hypot(a.x - S.player.x, a.y - S.player.y) - Math.hypot(b.x - S.player.x, b.y - S.player.y));
+  const m = all.slice(0, 12).find(clear) || all[0];
   return m ? { id: m.id, x: Math.round(m.x), y: Math.round(m.y) } : null;
 }).catch(() => null);
 
 /* out to `spot` in god mode, then 1 HP and on the nearest monster until the
    worker's player_died lands (in the Wheel S._dying is set by that alone) */
 async function dieAt(P, wsPort, id, spot, ms = 90000) {
+  /* v2.3.4955: the death is read off the WORKER as well as the page: a new
+     death pile of this player's on the worker, or its own dead flag.  The
+     page's _dying alone was missed on this slow box (the death and the
+     respawn both fell between two reads: a run ended at full health with
+     its pile already lying there), and the loop then went on to a second
+     death. */
+  const mine = async () => {
+    const sv = await serverPiles(wsPort);
+    return new Set((Array.isArray(sv) ? sv : []).filter((q) => String(q.lootId || '').startsWith('dd-' + id + '-')).map((q) => q.lootId));
+  };
+  const before = await mine();
+  dieAt.trace = [];
+  const died = async () => {
+    if (await H.readState(P, (S) => !!S._dying).catch(() => false)) return true;
+    const sp = await H.serverPlayer(wsPort, id).catch(() => null);
+    if (sp && (sp.dead || sp.dying)) return true;
+    for (const k of await mine()) if (!before.has(k)) return true;
+    return false;
+  };
   await H.devOp(wsPort, 'vitals', id, { heal: true, god: true, godMinutes: 4 });
+  /* v2.3.4955: a way round to the spot, found in the page (its own solid
+     test on a 20 px grid, a breadth-first search over 3,000 px): three runs
+     here stood a whole 90 s at a wall between the town's way out and the
+     Flame Fields' first spawn, the straight walk held at it */
+  const way = await P.page.evaluate(({ tx, ty }) => {
+    const S = window._gameState.current, solid = window.__btIsSolid;
+    if (!solid) return null;
+    const C = 20, R = 75, ox = Math.round(S.player.x), oy = Math.round(S.player.y);
+    const key = (i, j) => (i + R) * (2 * R + 1) + (j + R);
+    const goal = [Math.round((tx - ox) / C), Math.round((ty - oy) / C)];
+    if (Math.abs(goal[0]) > R || Math.abs(goal[1]) > R) return null;
+    const prev = new Map([[key(0, 0), -1]]), q = [[0, 0]];
+    for (let h = 0; h < q.length; h++) {
+      const [i, j] = q[h];
+      if (i === goal[0] && j === goal[1]) {
+        const pts = []; let k = key(i, j);
+        while (k !== -1) { const ii = Math.floor(k / (2 * R + 1)) - R, jj = (k % (2 * R + 1)) - R; pts.push([ox + ii * C, oy + jj * C]); k = prev.get(k); }
+        return pts.reverse().filter((_, n, a) => n % 4 === 0 || n === a.length - 1);
+      }
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const ni = i + di, nj = j + dj;
+        if (Math.abs(ni) > R || Math.abs(nj) > R || prev.has(key(ni, nj))) continue;
+        if (solid(ox + ni * C, oy + nj * C)) continue;
+        prev.set(key(ni, nj), key(i, j)); q.push([ni, nj]);
+      }
+    }
+    return null;
+  }, { tx: spot.x, ty: spot.y }).catch(() => null);
+  if (way) for (const [x, y] of way) await H.hopTo(P, x, y, { step: 60 });
   await H.hopTo(P, spot.x, spot.y, { step: 100 });
   await P.page.waitForTimeout(1200);
+  const atSpot = way ? way.length : null;
   await H.devOp(wsPort, 'vitals', id, { heal: false, hp: 1, god: false });
   const t0 = Date.now();
+  let lowAt = Date.now(), g = null, hp = null, noGob = 0;
+  /* v2.3.4955: the death watched on its own, every 300 ms, beside the walk:
+     a hop on this box can take most of a minute, and the pile's own clock
+     (its minute, its two) runs from the death, not from when the loop next
+     looked (a run's Finder first saw the pile at 70 s left) */
+  let dead = false;
+  const watch = (async () => {
+    while (!dead && Date.now() - t0 < ms) {
+      if (await died()) { dead = true; break; }
+      await new Promise((r) => setTimeout(r, 300));
+    }
+  })();
   while (Date.now() - t0 < ms) {
-    if (await H.readState(P, (S) => !!S._dying).catch(() => false)) return true;
-    const g = await nearestGoblin(P);
-    if (g) await H.hopTo(P, g.x, g.y + 8, { step: 60, tries: 6 });
-    else await P.page.waitForTimeout(500);
+    if (dead) { await watch; dieAt.last = null; return true; }
+    g = await nearestGoblin(P);
+    if (g) {
+      noGob = 0;
+      /* hopTo's own steps (60 px a hop), stopping the moment the watch
+         sees the death -- a hop left running would walk the respawned
+         Fallen out of town after it */
+      for (let k = 0; k < 14 && !dead; k++) {
+        const there = await P.page.evaluate(({ x, y }) => {
+          const S = window._gameState.current;
+          const dx = x - S.player.x, dy = y - S.player.y, d = Math.hypot(dx, dy);
+          if (d < 6) return true;
+          const k2 = Math.min(60, d);
+          S.player.x += (dx / d) * k2; S.player.y += (dy / d) * k2;
+          return false;
+        }, { x: g.x, y: g.y + 8 }).catch(() => true);
+        await P.page.waitForTimeout(260);
+        if (there) break;
+      }
+    }
+    else {
+      /* v2.3.4955: none drawn near: back to the spot, where they stand */
+      if (++noGob % 6 === 0) await H.hopTo(P, spot.x, spot.y, { step: 100 });
+      await P.page.waitForTimeout(500);
+    }
+    /* v2.3.4955: the body heals out of a fight like anyone's: back to 1 HP
+       every 8 s it is above it (never after a death: died() first) -- the
+       death is still the monster's, through the worker's own hit */
+    if (Date.now() - lowAt > 8000) {
+      lowAt = Date.now();
+      if (dead || await died()) { dead = true; await watch; dieAt.last = null; return true; }
+      const sp = await H.serverPlayer(wsPort, id).catch(() => null);
+      hp = sp && sp.hp;
+      const pg = await P.page.evaluate(() => { const S = window._gameState.current; return { x: Math.round(S.player.x), y: Math.round(S.player.y), net: String(S._realtimeStatus || '') }; }).catch(() => null);
+      (dieAt.trace = dieAt.trace || []).push({ s: Math.round((Date.now() - t0) / 1000), hp, pg, atSpot, x: sp && Math.round(sp.x), y: sp && Math.round(sp.y), z: sp && (sp.z || sp.zone), g: g && Math.round(Math.hypot(g.x - (sp ? sp.x : 0), g.y - (sp ? sp.y : 0))) });
+      if (typeof hp === 'number' && hp > 1) await H.devOp(wsPort, 'vitals', id, { heal: false, hp: 1, god: false });
+    }
   }
+  dead = dead || false;
+  await watch;
+  if (dead) { dieAt.last = null; return true; }
+  dieAt.last = { goblin: g, hp, noGob, spot, trace: (dieAt.trace || []).slice(-12) };
   return false;
 }
 
@@ -229,7 +338,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const before1 = new Set(((await deathPiles(B)) || []).map((p) => p.lootId));
     await H.instrumentWire(A); await H.instrumentWire(B);
     const died1 = await dieAt(A, wsPort, aId, spot);
-    rec.ok('1a a monster the worker runs takes the Fallen\'s last HP (its player_died)', died1);
+    rec.ok('1a a monster the worker runs takes the Fallen\'s last HP (its player_died)', died1, dieAt.last);
     if (!died1) return;
     /* BT_DP_TRACE=1: a timeline of the pile after the death -- the worker's
        list, both phones' views and where the Fallen is -- every 2 s for 40 s */
@@ -296,7 +405,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       Array.isArray(sv36) && sv36.some((p) => p.lootId === p1.lootId) && asked === 0, { sv36, asked });
 
     /* ── 3. THE FALLEN TAKES IT BACK, INSIDE ITS MINUTE ── */
-    await H.hopTo(A, p1.x, p1.y + 15, { step: 50 });
+    /* v2.3.4955: the hop the move budget allows (100 px every 260 ms, about
+       385 px/s of its 500): at 50 a run's walk back came in at 70 s */
+    await H.hopTo(A, p1.x, p1.y + 15, { step: 100 });
     const logs3 = await H.waitFor(A, (S) => ((S.rpg && S.rpg.inventory) || {}).fish_salmon || 0, (n) => n >= LOGS, { label: 'the Fallen\'s salmon back', timeout: 15000 }).catch(() => 0);
     const age3 = (await A.page.evaluate(() => Date.now())) - p1.ts;
     const gone3B = await waitPile(B, p1.lootId, (p) => !p, 8000);
@@ -313,7 +424,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const p2 = n2.p;
     rec.ok('4a a second death leaves its pile (2 trout) on the Finder\'s screen', !!p2 && p2.drawn, { died2, p2, seen: p2 ? undefined : n2.seen });
     if (!p2) return;
-    await H.hopTo(B, p2.x, p2.y + 15, { step: 50 });
+    await H.hopTo(B, p2.x, p2.y + 15, { step: 100 });   /* v2.3.4955: inside its minute (at 50, a run's Finder arrived after it) */
     await B.page.waitForTimeout(2500);
     const at4 = pileOf(await deathPiles(B), p2.lootId);
     const trout4 = await held(B, 'fish_trout');
@@ -326,11 +437,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await H.hopTo(B, p2.x + 60, p2.y + 15, { step: 50 });
     await B.page.waitForTimeout(600);
     await H.hopTo(B, p2.x, p2.y + 15, { step: 30 });
-    const trout4c = await H.waitFor(B, (S) => ((S.rpg && S.rpg.inventory) || {}).fish_trout || 0, (n) => n >= 2, { label: 'the Finder\'s trout', timeout: 15000 }).catch(() => 0);
+    let trout4c = await H.waitFor(B, (S) => ((S.rpg && S.rpg.inventory) || {}).fish_trout || 0, (n) => n >= 2, { label: 'the Finder\'s trout', timeout: 8000 }).catch(() => 0);
+    /* v2.3.4955: not in by then (a page drawing a few frames a second can
+       step past the pick-up): off it and on again, as a player would */
+    for (let k = 0; k < 2 && trout4c !== 2; k++) {
+      await H.hopTo(B, p2.x + 60, p2.y + 15, { step: 50 });
+      await B.page.waitForTimeout(600);
+      await H.hopTo(B, p2.x, p2.y + 15, { step: 30 });
+      trout4c = await H.waitFor(B, (S) => ((S.rpg && S.rpg.inventory) || {}).fish_trout || 0, (n) => n >= 2, { label: 'the Finder\'s trout', timeout: 15000 }).catch(() => 0);
+    }
     const gone4B = await waitPile(B, p2.lootId, (p) => !p, 8000);
     const gone4A = await waitPile(A, p2.lootId, (p) => !p, 8000);
     rec.ok('4c past its minute the Finder walks onto it and takes it: +2 trout, gone from both phones',
-      trout4c === 2 && gone4B.ok && gone4A.ok, { trout4c, onB: gone4B.last, onA: gone4A.last });
+      trout4c === 2 && gone4B.ok && gone4A.ok, { trout4c, onB: gone4B.last, onA: gone4A.last,
+        fallenTrout: trout4c === 2 ? undefined : await held(A, 'fish_trout'), server: trout4c === 2 ? undefined : await serverPiles(wsPort) });
 
     /* ── 5. A THIRD DEATH, ITS PILE LEFT ALONE TO ITS END ── */
     /* granted once the Fallen is back: the respawn's own wipe would take
@@ -353,12 +473,34 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const bAt = await H.readState(B, (S) => ({ x: S.player.x, y: S.player.y }));
       rec.ok('5a2 (the Finder 300 px or more from it, watching)', Math.hypot(bAt.x - p3.x, bAt.y - p3.y) >= 300, { bAt, p3: { x: p3.x, y: p3.y } });
       await untilAge(B, p3, 100000);
-      const at100 = pileOf(await deathPiles(B), p3.lootId);
+      /* v2.3.4955: the countdown is drawn with the frame, and this box draws
+         a few a second: at 100.3 s a run's still read "21s" (19.3 left).
+         Read again, up to 2.5 s, until a frame has drawn it */
+      let at100 = pileOf(await deathPiles(B), p3.lootId);
+      for (const t0 = Date.now(); at100 && !/^(18|19|20)s$/.test(at100.timer || '') && Date.now() - t0 < 2500;) {
+        await B.page.waitForTimeout(150);
+        at100 = pileOf(await deathPiles(B), p3.lootId);
+      }
       const a100 = await alphas(B, p3.lootId, 2500);
       rec.ok('5b at 100 s it is drawn and steady, its countdown near 20 s',
         !!at100 && at100.drawn && /^(18|19|20)s$/.test(at100.timer || '') && a100.length >= 2 && a100.every((a) => a === 1), { at100, a100 });
-      await untilAge(B, p3, 112000);
-      const aEnd = await alphas(B, p3.lootId, 5000);
+      await untilAge(B, p3, 110500);
+      /* v2.3.4955: sampled IN the page, one reading a drawn frame (the
+         renderer's clock), from the last ten seconds' start until six frames
+         are in or the pile is 119 s old -- read from out here, a reading cost
+         this box ~2 s and 5c failed for want of a fourth */
+      const aEnd = await B.page.evaluate(({ id, ts }) => new Promise((done) => {
+        const out = [];
+        const S = window._gameState.current;
+        const step = () => {
+          const l = ((S && S.groundLoot) || []).find((q) => q && q.lootId === id);
+          const ic = l && l._pixiIcon && !l._pixiIcon.destroyed ? l._pixiIcon : null;
+          if (ic) out.push(+ic.alpha.toFixed(2));
+          if (out.length >= 6 || Date.now() - ts >= 119000) done(out);
+          else requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      }), { id: p3.lootId, ts: p3.ts }).catch(() => []);
       /* pulsing: its brightness changes frame to frame (a steady pile reads
          exactly 1 in every one, 5b).  Not "down to 0.35 and back": this box
          draws a few frames a second, and they can all miss the pulse's dip */
