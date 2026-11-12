@@ -2861,9 +2861,13 @@ function _placeGear(display, equip, pose, dir, frameIdx, legsFrom) {
        before. */
     if (tex && _slotName === 'shirt') {
       const _L = display._shirtLook;
+      /* v2.3.4992: `plain` -- the body is drawn from the numbers this frame,
+         so a plain tee is too (lookShirtFrame.js: one look batch, not two) */
+      const _bt = sb && sb.visible && sb.texture;
       const _lt = getLookShirtFrame(item, _gPose, dir, _gFrame, {
         art: _L && _L.art ? _L.art[sideForDir(dir)] : null, pattern: _L ? _L.pattern : null,
         tint: (equip && equip.shirtTint) || null, mirror: display._shirtArtMirror,
+        plain: !!(_bt && _bt._source && _bt._source._btLook),
       });
       if (_lt) { tex = _lt; _shirtBaked = true; }
     }

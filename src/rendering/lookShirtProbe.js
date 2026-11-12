@@ -36,7 +36,9 @@ export function installShirtProbe(dep) {
   const lookArgs = (L, dir, mirror) => {
     const pattern = L.pattern ? parsePattern(L.pattern, 'shirt') : null;
     const art = sideForDir(dir) === 'back' ? (L.back || null) : (L.front || null);
-    return { art, pattern, tint: L.tint || null, mirror };
+    /* v2.3.4992: `plain` -- asked as the game asks beside a body drawn from
+       the numbers, so a plain tee is drawn from them too and compared */
+    return { art, pattern, tint: L.tint || null, mirror, plain: true };
   };
   const dressed = (a) => !!(a.art || a.pattern);
   /* `old`: the frames the old way draws for this look (a dressed or coloured tee), with no new path asked */

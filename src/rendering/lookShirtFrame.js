@@ -20,6 +20,8 @@ import { installShirtProbe } from './lookShirtProbe.js';
    the one batcher, so the owner can turn it off at the showing if frames
    suffer (still ON by default: "I can always revert") */
 const _wanted = (() => { try { return !/(^|[?&])lookshirt=0(&|$)/.test(window.location.search || ''); } catch (e) { return true; } })();
+/* v2.3.4992: a plain tee from the numbers when its body is (below); `?plaintee=0` as before */
+const _plainTee = (() => { try { return !/(^|[?&])plaintee=0(&|$)/.test(window.location.search || ''); } catch (e) { return true; } })();
 
 /* behind the loading screen with the body's sheets (preloadLookSheets) */
 registerLookSheets('shirt', '/sprites/look/shirt/roles.json');
@@ -70,11 +72,23 @@ export function getLookShirtFrame(item, pose, dir, frameIdx, look) {
   if (!_wanted || !lookPaletteWanted() || item !== 'tshirt' || !look || clientOff('lookshirt')) return null;
   const dressed = !!(look.art || look.pattern);
   if (look.pattern && look.pattern.tile && look.pattern.tile.w * look.pattern.tile.h > SHIRT_TILE_MAX) return null;   /* its ink does not fit the row (v2.3.3790) */
-  if (!dressed) return null;   /* plain: the shared sheet and its sprite tint, as it always was */
+  /* plain: the shared sheet and its sprite tint, as it always was -- unless
+     v2.3.4992: its BODY is drawn from the numbers this frame (`look.plain`,
+     _placeGear: the body sprite's texture is a look sheet's).  Measured
+     (docs/specs/crowd-lanes.md "Texture atlases"): a player whose body is
+     numbers was drawn body (the look's program), tee (sharp), hair (the
+     look's), weapon (sharp) -- four batches, each a program change; the tee
+     from the numbers puts body, tee and hair in ONE look batch.  A plain body
+     (the shipped sheet, sharp) keeps its plain tee on the sharp program
+     beside it, as before: the tee follows the body, so no figure draws in
+     more batches than it did.  The numbers drew a plain tee within one level
+     of the old way when they last did (v2.3.3751's oracle, mp-lookshirts,
+     which still draws both ways).  `?plaintee=0` as before. */
+  if (!dressed && !(look.plain && _plainTee)) return null;
   const sheet = pose + '-' + dir;
   if (!lookHas('shirt', sheet)) return null;
   const d = dressOf(look.tint || null, look.pattern || null, look.art || null);
-  return getLookPartFrame('shirt', sheet, frameIdx, d.entries, { key: d.key, mirror: dressed && !!look.mirror });
+  return getLookPartFrame('shirt', sheet, frameIdx, d.entries, { key: d.key, mirror: dressed && !!look.mirror, asDrawn: !dressed });
 }
 
 /* the shirt oracle's probe (mp-lookshirts), on a page that asks for it only */
