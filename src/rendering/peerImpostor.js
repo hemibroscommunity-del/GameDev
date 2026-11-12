@@ -117,14 +117,6 @@ export class PeerImpostors {
     return { x: (slot % g.cols) * g.sw, y: Math.floor(slot / g.cols) * g.sh };
   }
 
-  /* device px a unit of the display's PARENT is drawn at: the renderer's pixel
-     ratio times the world's scale (0.8 on every screen, pixiRenderer.js) */
-  _k(parent) {
-    let s = 1;
-    for (let p = parent; p; p = p.parent) s *= p.scale ? p.scale.x : 1;
-    return s * (this._dpr || 1);
-  }
-
   /** Before the depth pass: who is a picture this frame, and every picture's
       sprite stood where its figure stands, so the depth pass sorts it there. */
   place(S, er, now) {
@@ -239,20 +231,26 @@ export class PeerImpostors {
     const todo = this._todo;
     todo.length = 0;
     let fresh = 0;
+    const dpr = this._dpr || 1;
     for (const r of this.recs.values()) {
       const d = r.display;
       if (!d || d.destroyed || !d.parent) continue;
-      d.updateLocalTransform();
-      const lt = d.localTransform;
-      const k = this._k(d.parent);
-      const sx = deviceSplit(lt.tx, k), sy = deviceSplit(lt.ty, k);
+      /* where Pixi will draw the figure this frame, in device px: its whole
+         transform up to the stage (CSS px) times the pixel ratio.  Not the
+         layer's scale times the figure's place, which missed what sits above
+         the layers and left the picture a device pixel off its figure (the
+         first mp-onepic run: the outline differed all round) */
+      const G = d.getGlobalTransform(r.g || (r.g = new Matrix()));
+      const a = G.a * dpr, b = G.b * dpr, c = G.c * dpr, dd = G.d * dpr;
+      const sx = deviceSplit(G.tx, dpr), sy = deviceSplit(G.ty, dpr);
       r.cache.index = 0;
       r.cache.didChange = false;
       const changed = checkChildrenDidChange(d, r.cache);
-      const moved = k !== r.k || lt.a !== r.a || lt.b !== r.b || lt.c !== r.c || lt.d !== r.d
+      const moved = a !== r.a || b !== r.b || c !== r.c || dd !== r.d
         || Math.abs(sx.f - r.fx) > 1 / 64 || Math.abs(sy.f - r.fy) > 1 / 64;
       const due = r.painted && now >= r.refreshAt;
-      r._ix = sx.i; r._iy = sy.i; r._fx = sx.f; r._fy = sy.f; r._k = k; r._lt = lt;
+      r._ix = sx.i; r._iy = sy.i; r._fx = sx.f; r._fy = sy.f;
+      r._a = a; r._b = b; r._c = c; r._d = dd;
       if (!r.painted) { if (fresh < ONE_PIC.PAINTS_A_FRAME) { fresh++; todo.push(r); } }
       else if (changed || moved || due) { if (due && !changed && !moved) this.stats.refreshes++; todo.push(r); }
       else this._put(r);
@@ -265,13 +263,13 @@ export class PeerImpostors {
     er.fill(0xffffff);
     R.render({ container: this._eraseRoot, target: this.sheet, clear: false });
     for (const r of todo) {
-      const d = r.display, lt = r._lt, k = r._k;
+      const d = r.display;
       /* the figure's bounds, in device px about its own origin */
       const b = d.getLocalBounds();
       const xs = [b.minX, b.maxX, b.minX, b.maxX], ys = [b.minY, b.minY, b.maxY, b.maxY];
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
       for (let i = 0; i < 4; i++) {
-        const px = k * (lt.a * xs[i] + lt.c * ys[i]), py = k * (lt.b * xs[i] + lt.d * ys[i]);
+        const px = r._a * xs[i] + r._c * ys[i], py = r._b * xs[i] + r._d * ys[i];
         if (px < x0) x0 = px; if (px > x1) x1 = px; if (py < y0) y0 = py; if (py > y1) y1 = py;
       }
       const padX = Math.ceil(-x0) + 1, padY = Math.ceil(-y0) + 1;
@@ -282,11 +280,14 @@ export class PeerImpostors {
         this._leave(r.id, r);
         continue;
       }
+      /* the render replaces the figure's own transform with this one
+         (RenderGroupSystem.render), so it carries the figure's whole device
+         transform, its origin moved into the slot at the same fraction */
       const m = this._m;
-      m.set(k * lt.a, k * lt.b, k * lt.c, k * lt.d, r.sx + padX + r._fx, r.sy + padY + r._fy);
+      m.set(r._a, r._b, r._c, r._d, r.sx + padX + r._fx, r.sy + padY + r._fy);
       R.render({ container: d, target: this.sheet, transform: m, clear: false });
       r.padX = padX; r.padY = padY;
-      r.k = k; r.a = lt.a; r.b = lt.b; r.c = lt.c; r.d = lt.d; r.fx = r._fx; r.fy = r._fy;
+      r.a = r._a; r.b = r._b; r.c = r._c; r.d = r._d; r.fx = r._fx; r.fy = r._fy;
       /* staggered by slot so the refreshes never all fall in one frame */
       r.refreshAt = now + ONE_PIC.REFRESH_MS + (r.slot * 97) % 1000;
       r.paintedAt = now;
@@ -308,14 +309,20 @@ export class PeerImpostors {
     for (const r of this.recs.values()) if (r.painted) this.stats.shown++;
   }
 
-  /* the sprite on the whole device pixel its slot starts on, one texel a device px */
+  /* the sprite on the whole device pixel its slot starts on, one texel a
+     device px: that device pixel taken back through its layer's own whole
+     transform (the layers are scaled, never turned) */
   _put(r) {
-    const sp = r.sprite, k = r._k || r.k;
-    if (!sp || sp.destroyed || !(k > 0)) return;
-    const x = (r._ix - r.padX) / k, y = (r._iy - r.padY) / k;
+    const sp = r.sprite, P = sp && sp.parent;
+    if (!sp || sp.destroyed || !P) return;
+    const dpr = this._dpr || 1;
+    const GP = P.getGlobalTransform(this._gp || (this._gp = new Matrix()));
+    const gx = (r._ix - r.padX) / dpr, gy = (r._iy - r.padY) / dpr;
+    /* the inverse of a scale-and-shift */
+    const x = (gx - GP.tx) / GP.a, y = (gy - GP.ty) / GP.d;
     if (sp.x !== x || sp.y !== y) sp.position.set(x, y);
-    const s = 1 / k;
-    if (sp.scale.x !== s) sp.scale.set(s);
+    const sX = 1 / (dpr * GP.a), sY = 1 / (dpr * GP.d);
+    if (sp.scale.x !== sX || sp.scale.y !== sY) sp.scale.set(sX, sY);
     const d = r.display;
     sp._groundDy = (d.y + (d._groundDy || 0)) - y;
   }

@@ -78,30 +78,48 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const box = await H.figureBox(B, { pad: 30, peerId: idA });
     let diff = null;
     if (box) {
+      /* three shots a few frames apart: A as a picture, A as layers, and the
+         ground with A not drawn.  Where the layers differ from the ground is
+         A's figure (its mask); only there are the picture and the layers
+         compared -- the ground, the townsfolk and the coins round A go on
+         moving between shots (the first run: the crop's edges and its
+         bottom rows differed with A untouched) */
+      const setFig = (on) => B.page.evaluate(([id, v]) => {
+        const R = window._pixiRenderer;
+        const st = [R && R.app && R.app.stage];
+        while (st.length) { const c = st.pop(); if (c && c.label === 'other_' + id) { c.renderable = v; return true; } if (c && c.children) for (const k of c.children) st.push(k); }
+        return false;
+      }, [idA, on]);
       await frames(B, 4);
       const asPic = await B.page.screenshot({ clip: box });
       await B.page.evaluate(() => window.__btOnePicSet(false));
       await frames(B, 6);
       const asLayers = await B.page.screenshot({ clip: box });
+      await setFig(false);
+      await frames(B, 4);
+      const asGround = await B.page.screenshot({ clip: box });
+      await setFig(true);
       await B.page.evaluate(() => window.__btOnePicSet(true));
-      const a = H.decodePng(asPic), b = H.decodePng(asLayers);
-      let n = 0, big = 0, max = 0, opaque = 0;
-      const w = Math.min(a.width, b.width), h = Math.min(a.height, b.height);
+      const a = H.decodePng(asPic), b = H.decodePng(asLayers), g = H.decodePng(asGround);
+      const dif = (u, v) => Math.max(Math.abs(u[0] - v[0]), Math.abs(u[1] - v[1]), Math.abs(u[2] - v[2]));
+      let mask = 0, n = 0, big = 0, max = 0, outside = 0;
+      const w = Math.min(a.width, b.width, g.width), h = Math.min(a.height, b.height, g.height);
       for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
           const u = a.at(x, y), v = b.at(x, y);
-          const dd = Math.max(Math.abs(u[0] - v[0]), Math.abs(u[1] - v[1]), Math.abs(u[2] - v[2]));
+          const dd = dif(u, v);
+          if (dif(v, g.at(x, y)) <= 6) { if (dd > 2) outside++; continue; }   /* the ground, not A */
+          mask++;
           if (dd > 0) n++;
           if (dd > 2) big++;
           if (dd > max) max = dd;
-          opaque++;
         }
       }
-      diff = { pixels: opaque, differing: n, over2: big, max, box };
-      try { mkdirSync(OUT, { recursive: true }); writeFileSync(join(OUT, 'onepic-picture.png'), asPic); writeFileSync(join(OUT, 'onepic-layers.png'), asLayers); } catch (e) { /* pictures are for a person */ }
+      diff = { figurePixels: mask, differing: n, over2: big, max, groundMovedOutside: outside, box };
+      try { mkdirSync(OUT, { recursive: true }); writeFileSync(join(OUT, 'onepic-picture.png'), asPic); writeFileSync(join(OUT, 'onepic-layers.png'), asLayers); writeFileSync(join(OUT, 'onepic-ground.png'), asGround); } catch (e) { /* pictures are for a person */ }
     }
-    rec.ok('to the pixel: A as a picture and A as layers, the same scene, differ in no pixel by more than 2 of 255',
-      !!diff && diff.over2 === 0, diff);
+    rec.ok('to the pixel: A\'s figure as a picture and as layers, the same scene, differ in no pixel by more than 2 of 255',
+      !!diff && diff.figurePixels > 2000 && diff.over2 === 0, diff);
 
     /* ── 3. walking lets the picture go; standing again makes it ──────── */
     let back = null;
@@ -110,11 +128,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (back && back.ids.includes(idA)) break;
       await B.page.waitForTimeout(250);
     }
-    await H.hopTo(A, posB.x + 110, posB.y + 160);
     let moving = null;
     const t0 = Date.now();
-    /* sampled while A walks back and forth */
-    const walk = (async () => { for (let i = 0; i < 3; i++) { await H.hopTo(A, posB.x + 110, posB.y + 40); await H.hopTo(A, posB.x + 110, posB.y + 160); } })();
+    /* A WALKS on its stick (hopTo moves in hops, which B never sees as a walk) */
+    const stick = (x, y) => A.page.evaluate(([sx, sy]) => { const S = window._gameState.current; S.stickX = sx; S.stickY = sy; }, [x, y]);
+    await stick(0, 1);
+    const walk = (async () => { await A.page.waitForTimeout(2500); await stick(0, -1); await A.page.waitForTimeout(2500); await stick(0, 0); })();
     let sawLayered = false;
     while (Date.now() - t0 < 6000) {
       moving = await B.page.evaluate((id) => {

@@ -217,6 +217,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
              (`batched`) and in passes of their own (`lit`, a filter each) */
           shine: g ? { targets: g.targets, lit: g.lit, batched: g.batched || 0, graded: g.graded || 0 } : null,   /* v2.3.3953: + graded, the pieces wearing a grade's glow */
           switches: window.__bfCount || 0,
+          /* v2.3.4885: players drawn as one picture (?onepic=1, peerImpostor.js) and its paints so far */
+          pics: window.__btOnePic ? (({ shown, paints, refreshes, tooBig }) => ({ shown, paints, refreshes, tooBig }))(window.__btOnePic()) : null,
         };
       });
       /* v2.3.3716: BT_CROWD_GL=1 -- the GL calls a frame (draws, programs
@@ -252,6 +254,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         heapMB: +((m1.JSHeapUsedSize || 0) / 1048576).toFixed(1),
         shine: r.shine,
         targetSwitchesPerFrame: r.work.length ? +(r.switches / r.work.length).toFixed(1) : null,
+        pics: r.pics,
       };
       rows.push(row);
       console.log('  crowdbots', JSON.stringify(row), 'bots:', JSON.stringify(bots.states()), JSON.stringify(bots.totals()));
