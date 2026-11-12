@@ -375,7 +375,7 @@ import { upscaleToFrameHeight } from '../spriteScale.js'; /* v2.3.1112: restore 
 import { AIM_CARET, AIM_CARET_EDGE } from '../aimCaret.js'; /* v2.3.1799 */
 import { rangedAimAngle, bowGripPoint, orbCrashFx /* v2.3.2991: the staff's crash, filmed for the stat scene */, isPlayerDead /* v2.3.2996 */ } from '@/game/combatHelpers.js'; /* v2.3.2320: the bow sight line uses the SAME ladder the arrow does; v2.3.2543: ...from the same ORIGIN, too */
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShield.js'; /* v2.3.1784 */
-import { registerLookSheets, getLookPartFrames, lookPaletteWanted, lookPaletteOn, lookHas, preloadLookSheets } from '../lookPalette.js';   /* v2.3.3757: the stand-ins from the numbers */
+import { registerLookSheets, getLookPartFrames, lookPaletteWanted, lookPaletteOn, lookHas, preloadLookSheets, whenLookKnown } from '../lookPalette.js';   /* v2.3.3757: the stand-ins from the numbers */
 import { gearStripFrames, gearLookDecided } from '../gearLookFrame.js';   /* v2.3.4998: the combat poses' armour from the numbers */
 import { gearDrawFrame } from '../gearWalkFrame.js';   /* v2.3.4999: the jogging greaves from the numbers */
 import { weaponStripFrames, weaponLookDecided, weaponLookWanted } from '../weaponLookFrame.js';   /* v2.3.5002: the swing's blade and the bow's draw from the numbers */
@@ -3470,10 +3470,19 @@ export class EffectsRenderer {
           const cv = src.resource;
           if (cv && cv.width > 0) { kept++; keptMb += cv.width * cv.height * 4 / 1048576; } else onChip++;
         };
-        for (const rec of this._bodyStrips || []) { if (rec.target) { look(rec.target[rec.dir]); look(rec.target[rec.dir + '|m']); } }
+        /* v2.3.5000: the sword's and the bow's bodies drawn from the numbers
+           (a marker) against those baked the old way (RGBA) -- the race of
+           TRAPS §340 left them RGBA, on the chip, for the session */
+        let bodyLook = 0, bodyRgba = 0;
+        for (const rec of this._bodyStrips || []) {
+          if (!rec.target) continue;
+          const t = rec.target[rec.dir];
+          if (t && t._btLookUrl) bodyLook++; else if (t && t[0] && t[0].source) bodyRgba++;
+          look(t); look(rec.target[rec.dir + '|m']);
+        }
         for (const k of ['_chopSkinFrames', '_chopLeglessSkinFrames', '_cookFrames', '_cookLeglessFrames', '_fireFrames']) look(this[k]);
         return { owned: this._bakes.size, strips, deadInUse, destroyed: this._destroyed,
-          onChip, kept, keptMb: +keptMb.toFixed(2), waiting: this._gpuWaiting.size };
+          onChip, kept, keptMb: +keptMb.toFixed(2), waiting: this._gpuWaiting.size, bodyLook, bodyRgba };
       };
     }
     this.particleLayer = layers.particles;
@@ -4620,7 +4629,11 @@ export class EffectsRenderer {
     this._offs.push(onSkinChange(this._rebakeBodies), onPantsChange(this._rebakeBodies), onShoesChange(this._rebakeBodies));
     /* v2.3.3757: and once the stand-ins' numbers are in (behind the loading
        screen): a strip baked before them becomes a marker, its bake let go */
-    preloadLookSheets().then(() => { if (lookPaletteOn() && lookHas('standin', 'bow-south-body')) this._rebakeBodies(); });
+    /* v2.3.5000: ...once the look program's answer is KNOWN: asked when the
+       sets came in, before the game's renderer reached lookPalette.js, it
+       read "off", the strips baked the old way stayed, and up to 11 MB of
+       RGBA stand-in bodies went to the chip (TRAPS §340) */
+    preloadLookSheets().then(() => whenLookKnown()).then(() => { if (!this._destroyed && lookPaletteOn() && lookHas('standin', 'bow-south-body')) this._rebakeBodies(); });
     /* v2.3.2429: and when a DRAWING or a pattern changes, for the same reason
        the three above exist -- these strips are baked once and sampled for the
        rest of the session, so without this a tattoo drawn mid-session appears

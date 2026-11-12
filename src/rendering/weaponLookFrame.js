@@ -25,7 +25,7 @@
  * Frames are asked for every time a strip is drawn, never kept: a look nobody
  * draws for 30 s lets its frames go (lookPalette.js sweep).
  */
-import { registerLookSheets, getLookPartFrames, lookHas, lookSheenOn, lookSheenState, lookPaletteWanted, lookSetsSettled, preloadLookSheets } from './lookPalette.js';
+import { registerLookSheets, getLookPartFrames, lookHas, lookSheenOn, lookSheenState, lookPaletteWanted, lookSetsSettled, preloadLookSheets, whenLookKnown } from './lookPalette.js';
 
 const _wanted = (() => { try { return !/(^|[?&])weaponlook=0(&|$)/.test(window.location.search || ''); } catch (e) { return true; } })();
 /* its own load, when this module came after the loading screen began
@@ -65,14 +65,9 @@ export function weaponLookDecided() {
   if (!weaponLookWanted()) return Promise.resolve(null);
   /* and the shine form's answer, which is null until the look program is
      built (a renderer and a sheet): read as off, it would load the RGBA
-     strips for nothing (TRAPS §340) */
-  const known = async () => {
-    for (let i = 0; i < 240; i++) {
-      if (lookSheenState() !== null) return;
-      await new Promise((r) => setTimeout(r, 250));
-    }
-  };
-  return Promise.all([preloadLookSheets(), _reg]).then(known).then(() => weaponLookOn() && lookHas('weapons', 'swing-south') && lookHas('weapons', 'bowshot-south'), () => false);
+     strips for nothing (TRAPS §340).  whenLookKnown (v2.3.5000) is that
+     wait, shared with the armour's */
+  return Promise.all([preloadLookSheets(), _reg]).then(() => whenLookKnown()).then(() => weaponLookOn() && lookHas('weapons', 'swing-south') && lookHas('weapons', 'bowshot-south'), () => false);
 }
 
 /**

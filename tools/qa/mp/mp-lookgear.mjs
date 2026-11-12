@@ -16,14 +16,17 @@
  *   3. (v2.3.4999) the walking armour the same way (gearWalkFrame.js,
  *      lookSets/gearwalk.js): every frame of its 44 sheets, the RGBA sheet the
  *      game builds against the numbers, at full size and at half (the mip);
- *   4. (v2.3.5002) the swing's blade and the bow's draw (weaponLookFrame.js,
+ *   4. (v2.3.5000) the walking armour's RGBA not loaded at all, and the body
+ *      under it baked from the armour's numbers as from its RGBA
+ *      (__btArmourOracle.compareGear), every frame of five poses;
+ *   5. (v2.3.5002) the swing's blade and the bow's draw (weaponLookFrame.js,
  *      lookSets/weapons.js): before any oracle fetches them, their eight RGBA
  *      strips were never fetched nor cut by the game, nor are they on the
  *      chip, and every draw site's strip is the numbers'; then every frame of
  *      the eight drawn the old way and the new -- as drawn, the swing under
  *      the steel shine, in copper with its shine, mirrored (a west swing), and
  *      at half size -- to the armour's bar;
- *   5. no page errors.
+ *   6. no page errors.
  *
  *   node tools/qa/mp/run.mjs lookgear
  */
@@ -63,8 +66,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const walk = rows.filter((x) => /sprites\/gear\/(chest|legs|fullset|belt)\//.test(x.label));
     return { up: window.__btGearUpload ? window.__btGearUpload() : null, mb: +walk.reduce((a, x) => a + x.mb, 0).toFixed(2), n: walk.length, first: walk.slice(0, 4).map((x) => x.label) };
   });
-  rec.ok(`the walking armour's RGBA is not on the chip (${chip.n} sheets, ${chip.mb} MB; ${chip.up && chip.up.numbers} held back from the loading screen's upload)`,
-    !!chip.up && chip.up.numbers > 0 && chip.n === 0, chip);
+  rec.ok(`the walking armour's RGBA is not on the chip (${chip.n} sheets, ${chip.mb} MB)`, !!chip.up && chip.n === 0, chip);
+  console.log('    the bake worker: ' + JSON.stringify(await P.page.evaluate(() => window.__btBakeWorker ? (({ worker, inline, failed, raw, skipped }) => ({ worker, inline, failed, raw, skipped }))(window.__btBakeWorker()) : null)));
+  /* v2.3.5000: the sword's and the bow's stand-in bodies drawn from the
+     numbers, none left baked the old way by the race of TRAPS §340 */
+  const fx = await P.page.evaluate(() => (window.__btFxBakes ? window.__btFxBakes() : null));
+  rec.ok(`the stand-ins' bodies are drawn from the numbers (${fx && fx.bodyLook} of them; ${fx && fx.bodyRgba} baked in RGBA)`,
+    !!fx && fx.bodyLook > 0 && fx.bodyRgba === 0, fx);
+  /* v2.3.5000: ...nor loaded at all: the bakes and the fishing grip read the
+     numbers (gearNumbers.js), so the loading screen skips those sheets */
+  const loaded = await P.page.evaluate(() => (window.__btGearSheets ? window.__btGearSheets() : null));
+  const walkLoaded = (loaded || []).filter((k) => /^(?:(?:chest|legs)\/[^/]+\/(?:stand|jog|hit|dodge|mine|fish|pickup)|fullset\/steel\/jog)\//.test(k));
+  rec.ok(`the walking armour's RGBA is not even loaded (${walkLoaded.length} of its sheets in the gear cache)`, !!loaded && walkLoaded.length === 0, walkLoaded.slice(0, 6));
 
   /* ── v2.3.5002: the weapon strips, BEFORE any oracle loads them itself ── */
   const wl = await P.page.evaluate(() => {
@@ -160,6 +173,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`THE ORACLE, weapons, ${w.name}: all ${w.n} strips (${frames} frames, ${drawn} px) the same to the eye -- mean ${mean} levels, ${over16} px past 16 (worst ${worst})`,
         res.length === w.n && w.n > 0 && bad.length === 0, bad.slice(0, 4));
     }
+  }
+  /* ── v2.3.5000: the body under armour baked from the armour's numbers ── */
+  for (const look of [['default', 'default', 'default', 'default'], ['honey', 'navy', 'tan', 'default']]) {
+    const g = await P.page.evaluate((look) => window.__btArmourOracle && window.__btArmourOracle.compareGear
+      ? window.__btArmourOracle.compareGear({ look, set: ['steelplate', 'steelgreaves'] }) : { error: 'no oracle' }, look);
+    console.log(`  lookgear, the bake fed the numbers (${look.join('/')}): ${JSON.stringify(g)}; the page's expansions ${JSON.stringify(await P.page.evaluate(() => window.__btGearNumbers && window.__btGearNumbers()))}`);
+    rec.ok(`the body under steel baked from the armour's numbers as from its RGBA (${look[0]}): ${g.cells} frames, ${g.differ} of ${g.drawn} px past 2 levels, ${g.over16} past 16 (worst ${g.worst})`,
+      !g.error && g.cells >= 80 && g.missing === 0 && g.over16 <= g.drawn * 0.002, g);
   }
   rec.ok('no page errors', errors.length === 0, errors.slice(0, 5));
 }

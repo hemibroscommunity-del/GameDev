@@ -390,6 +390,61 @@ modules wait on it; `lookSetsSettled()` also waits for a set registered after
 the loading screen began. 21 probe loads before: 8 with the strips on
 the chip; 6 after: none.
 
+## 10. Phase 2, slice 3: the bodies under armour baked from the armour's numbers (v2.3.5000)
+
+**What was left.** After §9 the walking armour was drawn from its numbers,
+but three readers still took its RGBA on the CPU, so `gearSheets.js` loaded
+every walking chest, greaves and full-set sheet behind the loading screen
+(about 14 MB of pictures in the page, never drawn): the masked bakes of the
+body under armour (the worker, `maskedBakeWorker.js`, and their inline
+fallbacks), and the fishing grip (`entityRenderer.js _fishTopFrame`).
+
+**Now** (`src/rendering/gearNumbers.js`):
+- a bake's piece drawn from the numbers is NAMED to the worker, not copied:
+  `gearInput(tex)` gives the sheet and the frame's cell; the sheet's bytes go
+  to the worker once (`lookSheetForWorker`, as the body's do), and the worker
+  expands the cell to the table's own colours (`lookExpand.js
+  lookFrameRGBA`, a row of nothing: armour has no roles). A job naming a
+  sheet the worker lacks fails rather than bake the piece as not worn;
+- on the page (no worker, QA's inline oracle, the fishing grip),
+  `drawGearFrame` draws such a frame from the same expansion, its sheet
+  parsed once and its frames kept with caps (4 sheets, 24 frames);
+- every worn list a bake builds asks `gearDrawFrame` (§9), so nothing starts
+  an RGBA load in play;
+- `preloadGear` / `preloadFullsetFigures` skip those sheets
+  (`setGearPreloadSkip`) and load them after all, still behind the loading
+  screen, where it turns out the numbers are not drawn (`gearWalkDecided`).
+  The chain belt's jog sheets stay RGBA (read on the CPU only, never drawn).
+
+**The bake's answer is unchanged.** The bake reads the armour only for its
+outline (alpha) and the 255-colour cut keeps every sheet's alpha: the oracle
+(`mp-lookgear`, `__btArmourOracle.compareGear`) bakes every frame of stand,
+jog, hit, roll and mining under steel twice, the pieces' RGBA against their
+numbers: 0 of 1.49 million texels apart, for the default look and another.
+
+**What it saves.** No line of the memory check moves (59.1 MB on the chip on
+arrival, 76.3 at the highest; heap 37.8): the RGBA sheets were not on the chip
+since §9, and in the page they were kept as images of themselves
+(`keepAsImage`), which no line counts. What goes is the loading screen's work
+and what it held: 44 sheets, 14.4 MB of pixels, no longer decoded, packed and
+encoded again as images, nor their compressed copies held for the session.
+
+**The bake's speed.** The first cut expanded every piece texel by texel
+through lookExpand.js's general walk and drew it through a new
+OffscreenCanvas: `mp-armourflash` read 27 frames baked in 140 s against
+main's 41, and 4 plain body frames in the walk after the armour went on
+against 1. The worker now makes a sheet's table once (a texel is one look-up:
+no roles, a byte a texel), hands the bake an ImageBitmap as the RGBA path did,
+and keeps the last 48 frames: 39 in 140 s, 1 plain frame.
+
+**And the stand-ins' bodies** (TRAPS §340): the sword's and the bow's bodies
+are drawn from the numbers once the sets are in (`_rebakeBodies`), but that
+was asked when the sets came in, before the game's renderer reached
+lookPalette.js: read as "off", the strips baked the old way stayed, RGBA, on
+the chip. It now waits for the answer (`whenLookKnown`, shared with both
+armour modules); `__btFxBakes().bodyRgba` counts any left (`mp-lookgear`: 21
+from the numbers, 0 RGBA).
+
 ## 11. Phase 2, weapons slice 1: the swing's blade and the bow's draw (v2.3.5002)
 
 The owner, 2026-11-12: *"Do armor and weapons as 256 color pictures."* With
