@@ -26,7 +26,8 @@
  * the worst colour 14 levels, the mean 1-4 (docs/specs/pictures-256.md
  * "Phase 2: the armour").
  *
- * Read only by the bake; nothing in the game imports it (yet).
+ * Read by the bake and by the armour's oracle (gearLookProbe.js, QA pages
+ * only); the game draws the baked sheets (gearLookFrame.js).
  */
 
 /* [frame width, frame height] as effectsRenderer.js cuts each pose's strip

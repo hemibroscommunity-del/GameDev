@@ -1,0 +1,64 @@
+/* ═══ v2.3.4998: THE COMBAT POSES' ARMOUR FROM THE COLOUR NUMBERS -- ITS ORACLE ═══
+ *
+ * The owner, 2026-11-12: "Do armor and weapons as 256 color pictures."  The
+ * armour of the swing, the bow's draw, the chop, the cook, the fire and the
+ * farmer's three poses is drawn from the `gear` look set (gearLookFrame.js,
+ * lookSets/gear.js) instead of its RGBA strips.  One phone, `?lookprobe`:
+ *
+ *   1. the look program and its shine are built, and the armour is drawn
+ *      from the numbers (window.__btGearLook().on);
+ *   2. THE ORACLE (gearLookProbe.js): every frame of all 42 strips drawn the
+ *      old way and the new, through the game's own batchers, compared texel
+ *      for texel (premultiplied): with no shine, under a steel shine, and
+ *      under a copper tint with its shine.  The bar is the bake's: no colour
+ *      past 16 levels of 255 save the few the shine lifts on a colour the cut
+ *      moved (under 0.5% of a sheet's texels), the mean under 4;
+ *   3. no page errors.
+ *
+ *   node tools/qa/mp/run.mjs lookgear
+ */
+import * as H from './harness.mjs';
+
+const VIEW = { width: 390, height: 844 };
+const COPPER = [212, 140, 96];
+
+export async function run({ browser, wsPort, webPort, rec }) {
+  const errors = [];
+  const P = await H.newPlayer(browser, { name: 'Armour', wsPort, webPort, world: 'wheel', viewport: VIEW, touch: true, query: 'lookprobe' });
+  P.page.on('pageerror', (e) => errors.push(String(e).slice(0, 200)));
+  await H.enterWorld(P);
+  let ready = null;
+  for (let i = 0; i < 120; i++) {
+    ready = await P.page.evaluate(() => ({
+      gear: window.__btGearLook ? window.__btGearLook() : null,
+      lp: window.__btLookPalette ? (({ on, ok, okSheen, sheets }) => ({ on, ok, okSheen, sheets }))(window.__btLookPalette()) : null,
+      oracle: !!window.__btGearOracle,
+    }));
+    if (ready.gear && ready.gear.on && ready.oracle) break;
+    await P.page.waitForTimeout(500);
+  }
+  rec.ok('the look program and its shine are built, and the armour is drawn from the numbers', !!(ready && ready.gear && ready.gear.on && ready.lp && ready.lp.okSheen === true && ready.oracle), ready);
+  if (!(ready && ready.gear && ready.gear.on && ready.oracle)) return;
+
+  const ways = [
+    { name: 'no shine, steel', opts: { sheen: null, tint: null } },
+    { name: 'the steel shine', opts: { sheen: [1, 1, 1, 0.55], tint: null } },
+    { name: 'copper and its shine', opts: { sheen: [1, 0.78, 0.6, 0.55], tint: COPPER } },
+  ];
+  for (const w of ways) {
+    const res = await P.page.evaluate((o) => window.__btGearOracle.compare(o), w.opts);
+    let frames = 0, drawn = 0, over16 = 0, worst = 0, meanW = 0;
+    const bad = [];
+    for (const r of res) {
+      if (r.error) { bad.push(r); continue; }
+      frames += r.frames; drawn += r.drawn; over16 += r.over16; worst = Math.max(worst, r.worst); meanW += r.mean * r.drawn;
+      if (r.frames < 1 || r.mean > 4 || r.over16 > r.drawn * 0.005) bad.push(r);
+    }
+    const mean = drawn ? +(meanW / drawn).toFixed(2) : 0;
+    console.log(`  lookgear, ${w.name}: ${res.length} sheets, ${frames} frames, ${drawn} px, mean ${mean}, worst ${worst}, over 16 ${over16}`);
+    for (const r of res.slice().sort((a, b) => (b.worst || 0) - (a.worst || 0)).slice(0, 3)) console.log('    ' + JSON.stringify(r));
+    rec.ok(`THE ORACLE, ${w.name}: all 42 strips (${frames} frames, ${drawn} px) the same to the eye -- mean ${mean} levels, ${over16} px past 16 (worst ${worst})`,
+      res.length === 42 && bad.length === 0, bad.slice(0, 4));
+  }
+  rec.ok('no page errors', errors.length === 0, errors.slice(0, 5));
+}
