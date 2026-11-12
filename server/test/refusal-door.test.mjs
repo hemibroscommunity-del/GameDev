@@ -229,6 +229,11 @@ const found = Object.create(null);   /* unit -> { key: {kw, line} } */
     { type: 'bank_withdraw', why: 'away from the bank, more than is banked', set: () => {}, payload: { kind: 'coins', n: 500, opId: 'door-b1' } },
     { type: 'trade2_open', why: 'a trade with a player who is not here', set: () => {}, payload: { target: 'bp_nobody_here' } },
     { type: 'quest_accept', why: 'a quest out of its order', set: () => {}, payload: { questId: 'mayor_3' } },
+    /* v2.3.4880: the workshop's refusals answer now (the refusal door's lane) */
+    { type: 'forge_weapon', why: 'no gold or bars for the copper greatsword', set: (p) => { p.coins = 0; p.inventory = {}; }, payload: { weaponType: 'greatsword', tierKey: 'copper', isWoodwork: false } },
+    { type: 'smelt_bar', why: 'no ore to smelt', set: (p) => { p.inventory = {}; }, payload: { barKey: 'bar_copper', count: 1 } },
+    { type: 'forge_armor', why: 'no bars for the torso', set: (p) => { p.inventory = {}; }, payload: { recipe: 'copper_torso' } },
+    { type: 'amulet_forge_request', why: 'no nuggets to smelt', set: (p) => { p.goldNuggets = 0; }, payload: { op: 'smelt' } },
     { type: 'cook_request', why: 'no such fish in the bag (answered only by the delta)', set: (p) => { p.inventory = {}; }, payload: { fishKey: 'fish_trout', kind: 'cooked', taps: [] },
       ok: (p) => { p.inventory = { fish_trout: 1 }; },
       known: ['_handleCookRequest', 'if ((ps.inventory[fishKey] || 0) <= 0)'] },

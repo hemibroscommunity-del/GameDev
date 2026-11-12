@@ -536,6 +536,11 @@ export const gearMethods = {
     if (!Object.prototype.hasOwnProperty.call(table, tierKey)) return;
     const tier = table[tierKey];
     if (!tier) return;
+    /* v2.3.4880: a forge it refuses from here on (the ladder, the level, the
+       stat, the gold, the bars or a full stash) answers the phone with what
+       the bench reads, so a stale count on the panel is put right; it was a
+       bare return, the panel waiting out its 3.5 s (refusal door, TRAPS §284) */
+    const refuse = () => this._refusalEcho(session, ['coins', 'inventory', 'lifeSkills', 'prog3', 'weapon', 'rangedWeapon', 'staffWeapon', 'weaponStash']);
     /* v2.3.3524: THE FORGE'S LADDER (forgeladder.js) -- the owner: "'wood
        greatsword' is not an actual weapon in the game.  Make the beginning
        weapon a copper greatsword (requiring smithing lvl 1)", and "Copper 1,
@@ -544,12 +549,12 @@ export const gearMethods = {
        the Melee gate is what WEARING the blade asks (below).  `forgeladder:
        false` in liveflags puts the three back as they were. */
     const ladderOld = !wantWw && this._forgeLadderOff();
-    if (!wantWw && !forgeOffered(tierKey, ladderOld)) return;
+    if (!wantWw && !forgeOffered(tierKey, ladderOld)) return refuse();
 
     // Skill level gate
     const skillName = wantWw ? 'woodworking' : 'blacksmithing';
     const skillLvl = (ps.lifeSkills && ps.lifeSkills[skillName] && ps.lifeSkills[skillName].level) || 1;
-    if (skillLvl < (wantWw ? tier.minLvl : forgeLevelFor(tierKey, ladderOld))) return;
+    if (skillLvl < (wantWw ? tier.minLvl : forgeLevelFor(tierKey, ladderOld))) return refuse();
 
     // Stat gate (per EQUIP_STAT_MAP)
     // v2.3.1661 (prog3): the rebuild gates on the matching TRAINED
@@ -572,18 +577,18 @@ export const gearMethods = {
          question of the piece it is about to make -- copper and pine 0, iron
          and softwood free, every rung above them what wearing it asks. */
       const slotFor = weaponType === 'bow' ? 'rangedWeapon' : weaponType === 'staff' ? 'staffWeapon' : 'weapon';
-      if (!this._prog3EquipOk(ps, slotFor, { type: weaponType, gearBase: wantWw ? ('ww_' + tierKey) : tierKey, tierMult: tier.tierMult })) return;
+      if (!this._prog3EquipOk(ps, slotFor, { type: weaponType, gearBase: wantWw ? ('ww_' + tierKey) : tierKey, tierMult: tier.tierMult })) return refuse();
     } else if (ps.prog3) {
       const tierIdx = Object.keys(table).indexOf(tierKey);
       const cat = weaponType === 'bow' ? 'bow' : weaponType === 'staff' ? 'staff' : 'sword';
-      if (!this._prog3GearOk(ps, cat, tierIdx * 5)) return;
+      if (!this._prog3GearOk(ps, cat, tierIdx * 5)) return refuse();
     } else {
       const reqStat = this._equipStatFor(weaponType);
-      if ((ps[reqStat] || 0) < (tier.statReq || 0)) return;
+      if ((ps[reqStat] || 0) < (tier.statReq || 0)) return refuse();
     }
 
     // Coin + resource validation.
-    if ((ps.coins || 0) < tier.goldCost) return;
+    if ((ps.coins || 0) < tier.goldCost) return refuse();
     if (!ps.inventory) ps.inventory = {};
     /* v2.3.2123: `tier.wood` decides, not `wantWw`.  The blacksmith's first
        tier is a WOODEN weapon and carries a `wood` field now (see
@@ -599,7 +604,7 @@ export const gearMethods = {
     const resourceKey = tier.bar ? tier.bar : tier.hardened ? tier.hardened : tier.wood ? ('wood_' + tier.wood) : ('ore_' + tier.oreName + '_ore');
     const have = ps.inventory[resourceKey] || 0;
     const cost = tier.bar ? tier.bars : tier.hardened ? tier.hardenedCost : wantWw ? tier.woodCost : tier.oreCost;
-    if (have < cost) return;
+    if (have < cost) return refuse();
 
     // Active slot for the new weapon (matches client logic).
     const slot = (weaponType === 'bow') ? 'rangedWeapon'
@@ -612,7 +617,7 @@ export const gearMethods = {
     const current = ps[slot];
     if (current) {
       if (!Array.isArray(ps.weaponStash)) ps.weaponStash = [];
-      if (ps.weaponStash.length >= this.WEAPON_STASH_CAP) return;
+      if (ps.weaponStash.length >= this.WEAPON_STASH_CAP) return refuse();
     }
 
     // Apply: consume resources, mint new weapon, swap old to stash.

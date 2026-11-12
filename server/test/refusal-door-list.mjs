@@ -105,7 +105,7 @@ export const SWALLOWED = Object.freeze({
 
 /* The list's size when it was frozen (v2.3.4791).  Lower these as lines come
    off; raising one is a decision the PR names. */
-export const FROZEN = Object.freeze({ listed: 319, known: 54 });   /* v2.3.4801: +1, the draw and gather's quiet drop (drawgather.js) */
+export const FROZEN = Object.freeze({ listed: 297, known: 32 });   /* v2.3.4801: +1, the draw and gather's quiet drop (drawgather.js); v2.3.4880: -22, the workshop answers (forge, amulet forge, gem cut, smelter, armour forge) */
 
 /* handler -> { guard: 'code[ code...][: note]' } */
 export const ALLOW = {
@@ -254,8 +254,6 @@ export const ALLOW = {
     "if (this._smeltOff())": "off",
     "if (!r)": "shape",
     "if (!ps.inventory)": "norec",
-    "if (lvl < r.minLvl)": "known: smithing level too low",
-    "if (count <= 0)": "known: not enough ore in the bag",
   },
   '_handleFarmOpen': {
     "if (!this._farmRateOk(session.id))": "rate",
@@ -279,8 +277,6 @@ export const ALLOW = {
     "if (!session || !session.id || this._armorForgeOff())": "norec off",
     "if (typeof key !== 'string' || !Object.prototype.hasOwnProperty.call(ARMOR_FORGE.RECIPES, key))": "shape",
     "if (!ps || ps.dying || ps.dead || ps.disconnected || !ps.inventory)": "norec dead",
-    "if (lvl < r.minLvl)": "known: smithing level too low",
-    "if (have < r.bars)": "known: not enough bars",
   },
   '_handleNmlAttack': {
     "if (this._nmlOff() || !this._nmlChoiceOn())": "off",
@@ -538,34 +534,16 @@ export const ALLOW = {
     "if (wantWw !== !!isWoodwork)": "shape",
     "if (!Object.prototype.hasOwnProperty.call(table, tierKey))": "shape",
     "if (!tier)": "shape",
-    "if (!wantWw && !forgeOffered(tierKey, ladderOld))": "known: a tier the forge does not offer",
-    "if (skillLvl < (wantWw ? tier.minLvl : forgeLevelFor(tierKey, ladderOld)))": "known: the forge refuses (level, gear, stat, gold, bars or a full stash)",
-    "if (!this._prog3EquipOk(ps, slotFor, { type: weaponType, gearBase: wantWw ? ('ww_' + tierKey) : tierKey, tierMult: tier.tierMult }))": "known: the forge refuses (level, gear, stat, gold, bars or a full stash)",
-    "if (!this._prog3GearOk(ps, cat, tierIdx * 5))": "known: the forge refuses (level, gear, stat, gold, bars or a full stash)",
-    "if ((ps[reqStat] || 0) < (tier.statReq || 0))": "known: the forge refuses (level, gear, stat, gold, bars or a full stash)",
-    "if ((ps.coins || 0) < tier.goldCost)": "known: the forge refuses (level, gear, stat, gold, bars or a full stash)",
-    "if (have < cost)": "known: the forge refuses (level, gear, stat, gold, bars or a full stash)",
-    "if (ps.weaponStash.length >= this.WEAPON_STASH_CAP)": "known: the forge refuses (level, gear, stat, gold, bars or a full stash)",
   },
   '_handleAmuletForge': {
-    "if ((ps.goldNuggets || 0) < NUGGETS_PER_BAR)": "known: the amulet forge refuses (nuggets, bars, level, gold, gem, item)",
     "if (!tier)": "shape",
-    "if (bsLvl < tier.minLvl)": "known: the amulet forge refuses (nuggets, bars, level, gold, gem, item)",
-    "if ((ps.goldBars || 0) < tier.bars)": "known: the amulet forge refuses (nuggets, bars, level, gold, gem, item)",
-    "if ((ps.coins || 0) < tier.goldCost)": "known: the amulet forge refuses (nuggets, bars, level, gold, gem, item)",
-    "if (!ps.amulet || typeof ps.amulet.tier !== 'string' || !Object.prototype.hasOwnProperty.call(AMULET_FORGE_TIERS, ps.amulet.tier))": "known: no amulet to set a gem in",
     "if (typeof gem !== 'string' || !AMULET_GEMS.has(gem))": "shape",
-    "if (gemCount(ps, gem, false) < 1)": "known: the amulet forge refuses (nuggets, bars, level, gold, gem, item)",
     "if (!Array.isArray(ps.weaponStash) || !Number.isInteger(idx) || idx < 0 || idx >= ps.weaponStash.length)": "shape",
     "else { return; // unknown target -- deny by default": "shape",
-    "if (!item)": "known: the amulet forge refuses (nuggets, bars, level, gold, gem, item)",
-    "if (!gained.length)": "known: the amulet forge refuses (nuggets, bars, level, gold, gem, item)",
-    "if ((ps.coins || 0) < cost)": "known: the amulet forge refuses (nuggets, bars, level, gold, gem, item)",
     "else { return; // unknown op -- deny by default": "shape",
   },
   '_handleGemCut': {
     "if (typeof gem !== 'string' || !AMULET_GEMS.has(gem))": "shape",
-    "if (!gemTake(ps, gem, true, 1))": "known: no uncut gem of that kind",
   },
   '_handleQuestAccept': {
     "if (typeof questId !== 'string')": "shape",

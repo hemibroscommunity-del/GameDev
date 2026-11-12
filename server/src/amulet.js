@@ -126,9 +126,12 @@ export const amuletMethods = {
     if (!ps) return;
     if (ps.dying || ps.dead || ps.disconnected) return;
     const op = payload && payload.op;
+    /* v2.3.4880: a refusal of a known op answers the phone with what the
+       bench reads (it was a bare return: refusal door, TRAPS §284) */
+    const refuse = () => this._refusalEcho(session, ['goldNuggets', 'goldBars', 'coins', 'amulet', 'inventory', 'lifeSkills', 'weapon', 'rangedWeapon', 'staffWeapon', 'shield', 'weaponStash']);
 
     if (op === 'smelt') {
-      if ((ps.goldNuggets || 0) < NUGGETS_PER_BAR) return;
+      if ((ps.goldNuggets || 0) < NUGGETS_PER_BAR) return refuse();
       ps.goldNuggets -= NUGGETS_PER_BAR;
       ps.goldBars = (ps.goldBars || 0) + 1;
 
@@ -147,9 +150,9 @@ export const amuletMethods = {
         ? AMULET_FORGE_TIERS[tierKey] : null;
       if (!tier) return;
       const bsLvl = (ps.lifeSkills && ps.lifeSkills.blacksmithing && ps.lifeSkills.blacksmithing.level) || 1;
-      if (bsLvl < tier.minLvl) return;
-      if ((ps.goldBars || 0) < tier.bars) return;
-      if ((ps.coins || 0) < tier.goldCost) return;
+      if (bsLvl < tier.minLvl) return refuse();
+      if ((ps.goldBars || 0) < tier.bars) return refuse();
+      if ((ps.coins || 0) < tier.goldCost) return refuse();
       ps.goldBars -= tier.bars;
       this._goldTake(ps, tier.goldCost, 'amulet_craft'); /* v2.3.4670: the gold door */
       // Mint mirrors the client mint at ForgePanel "Amulet Crafting"
@@ -177,7 +180,7 @@ export const amuletMethods = {
       // Server-held amulets are server-minted or sanitizer-whitelisted,
       // but own-property check anyway (see the craft op's tier note).
       if (!ps.amulet || typeof ps.amulet.tier !== 'string'
-        || !Object.prototype.hasOwnProperty.call(AMULET_FORGE_TIERS, ps.amulet.tier)) return;
+        || !Object.prototype.hasOwnProperty.call(AMULET_FORGE_TIERS, ps.amulet.tier)) return refuse();
       const gem = payload && payload.gem;
       if (typeof gem !== 'string' || !AMULET_GEMS.has(gem)) return;
       // Consume one polished gem from the server-held lifeSkills.gems
@@ -186,7 +189,7 @@ export const amuletMethods = {
       // trust-posture note on the client-local gem economy.
       /* v2.3.3516: an elemental gem from the bag (gems.js: the bag, then any
          the old pouch still holds) */
-      if (gemCount(ps, gem, false) < 1) return;
+      if (gemCount(ps, gem, false) < 1) return refuse();
       gemTake(ps, gem, false, 1);
       const label = AMULET_FORGE_TIERS[ps.amulet.tier].label;
       ps.amulet.gem = gem;
@@ -237,7 +240,7 @@ export const amuletMethods = {
       } else {
         return; // unknown target -- deny by default
       }
-      if (!item) return;
+      if (!item) return refuse();
       // Shield yields its single .gem; every weapon slot (equipped or
       // stashed) yields element1/element2.
       const kind = target === 'shield' ? 'shield' : 'weapon';
@@ -245,9 +248,9 @@ export const amuletMethods = {
       // does it cost?  Only mutate after the coin gate passes (no
       // partial spend on a rejected extract).
       const gained = this._extractableGems(item, kind);
-      if (!gained.length) return; // nothing socketed -> nothing to extract
+      if (!gained.length) return refuse(); // nothing socketed -> nothing to extract
       const cost = this._gemExtractCost(item);
-      if ((ps.coins || 0) < cost) return;
+      if ((ps.coins || 0) < cost) return refuse();
       this._goldTake(ps, cost, 'gem_extract'); /* v2.3.4670: the gold door */
       /* v2.3.3516: back into the BAG (gems.js) -- an elemental gem, the item
          the gem plan's decision 5 makes it */
@@ -507,7 +510,9 @@ export const amuletMethods = {
     const gem = payload && payload.gem;
     if (typeof gem !== 'string' || !AMULET_GEMS.has(gem)) return;
     /* v2.3.3516: from the bag (gems.js) */
-    if (!gemTake(ps, gem, true, 1)) return; // deny-by-default, silent
+    /* v2.3.4880: no uncut gem of that kind -- the phone's cut took one off
+       (the crack's refusal above), so the bag goes back to it (refusal door) */
+    if (!gemTake(ps, gem, true, 1)) return this._refusalEcho(session, ['inventory', 'lifeSkills']);
     // Success rate from the server-held skill level -- a modified
     // client can't claim a Perfect Cut rate at level 1.
     const gcLvl = (ps.lifeSkills.gemCutting && ps.lifeSkills.gemCutting.level) || 1;
