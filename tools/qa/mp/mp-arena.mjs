@@ -192,7 +192,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('the four gladiators hold a great sword on the worker, and everyone has gold (guard)', armed.every(Boolean), armed);
     /* the operator view's `live` is now and then missing for a read (a
        player's state between two of the worker's writes): read again */
-    const liveOf = async (id) => { for (let k = 0; k < 6; k++) { const v = await H.serverPlayer(wsPort, id); if (v) return v; await G[0].page.waitForTimeout(150); } return null; };
+    const liveOf = async (id) => { for (let k = 0; k < 20; k++) {   /* v2.3.4951: 3 s, not 0.9: on this box a run read null for longer (its fight's first HP) */
+      const v = await H.serverPlayer(wsPort, id); if (v) return v; await G[0].page.waitForTimeout(150); } return null; };
     const coinsOf = async (id) => ((await liveOf(id)) || {}).coins;
     const apOf = async (id) => { const a = await H.adminPlayer(wsPort, id); return Math.floor(Number(a && a.rpg && a.rpg.achievementPoints) || 0); };
 
@@ -381,14 +382,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
        them within a sword's reach */
     const closeIn = async (P, me, them) => {
       for (let k = 0; k < 8; k++) {
-        const [a, b] = await Promise.all([H.serverPlayer(wsPort, me), H.serverPlayer(wsPort, them)]);
+        /* v2.3.4951: through liveOf (the operator view's `live` now and then
+           missing for a read): a single miss returned null, a run here */
+        const [a, b] = await Promise.all([liveOf(me), liveOf(them)]);
         if (!a || !b) return null;
         const d = Math.hypot(a.x - b.x, a.y - b.y);
         if (d <= 44) return Math.round(d);
         await H.hopTo(P, b.x + 34, b.y, { step: 90, gap: 260, tries: 30 });
         await P.page.waitForTimeout(700);
       }
-      const [a, b] = await Promise.all([H.serverPlayer(wsPort, me), H.serverPlayer(wsPort, them)]);
+      const [a, b] = await Promise.all([liveOf(me), liveOf(them)]);
       return a && b ? Math.round(Math.hypot(a.x - b.x, a.y - b.y)) : null;
     };
     /* `win` (an index into G) beats `lose`; the loser lands a few blows first */
@@ -397,9 +400,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const reach = await closeIn(L, ids[lose], ids[win]);
       const hpW0 = await hpOf(ids[win]), hpL0 = await hpOf(ids[lose]);
       /* the loser hits back first: damage both ways */
-      const howL = await holdAttack(L, true);
-      for (let k = 0; k < 12 && (await hpOf(ids[win])) >= hpW0; k++) await L.page.waitForTimeout(500);
-      await holdAttack(L, false);
+      /* v2.3.4951: three tries of 6 s, stepping back in between (a shove, a
+         stray step: the winner's loop below does the same): on this box a
+         run's loser swung 6 s and never reached */
+      let howL = null;
+      for (let t = 0; t < 3 && (t === 0 || (await hpOf(ids[win])) >= hpW0); t++) {
+        if (t > 0) await closeIn(L, ids[lose], ids[win]);
+        howL = await holdAttack(L, true);
+        for (let k = 0; k < 12 && (await hpOf(ids[win])) >= hpW0; k++) await L.page.waitForTimeout(500);
+        await holdAttack(L, false);
+      }
       const hpW1 = await hpOf(ids[win]);
       /* then the winner, until the worker has the loser down */
       const t0 = Date.now();
