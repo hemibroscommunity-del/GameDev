@@ -208,31 +208,6 @@ export function lifeOf(ps) {
 }
 
 export const lifeMethods = {
-  /** v2.3.4902: step 2b's switch -- on unless `lifesave: false` in the live flags */
-  _lifeSaveOn() {
-    const f = this && this._liveFlags;
-    return !(f && typeof f === 'object' && own(f, 'lifesave') && !f.lifesave);
-  },
-
-  /** v2.3.4902: a death's note PUT -- called in the same synchronous run as
-      the death's own _saveRpg (no await between), so they are one write. */
-  _lifeNotePut(pid, ps, cause) {
-    if (!pid || !ps || ps._spar || !this._lifeSaveOn()) return;
-    try {
-      const w = this.state.storage.put(LIFE_NOTE.PREFIX + pid, lifeNoteOf(ps, cause));
-      if (w && typeof w.catch === 'function') w.catch(() => {});
-    } catch (e) { /* the death stands without it: the join stands them up, as before */ }
-  },
-
-  /** v2.3.4902: the join's read of a death's note -- only for a stored record
-      at 0 health (an ordinary join reads nothing).  null: no death running. */
-  async _lifeNoteRead(pid, stored, now) {
-    if (!pid || !stored || typeof stored.hp !== 'number' || stored.hp > 0 || !this._lifeSaveOn()) return null;
-    let note = null;
-    try { note = await this.state.storage.get(LIFE_NOTE.PREFIX + pid); } catch (e) { return null; }
-    return lifeNoteLeft(note, now);
-  },
-
   /** A player's health made `v` by `road`.  Step 1: `v` is what the caller's
       own line worked out before the door, written as it is.  Returns it. */
   _hpSet(ps, v, road) {
@@ -258,5 +233,30 @@ export const lifeMethods = {
   _lifeDeadClaim(ps, v) {
     ps.dead = !!v;
     return ps.dead;
+  },
+
+  /** v2.3.4902: step 2b's switch -- on unless `lifesave: false` in the live flags */
+  _lifeSaveOn() {
+    const f = this && this._liveFlags;
+    return !(f && typeof f === 'object' && own(f, 'lifesave') && !f.lifesave);
+  },
+
+  /** v2.3.4902: a death's note PUT -- called in the same synchronous run as
+      the death's own _saveRpg (no await between), so they are one write. */
+  _lifeNotePut(pid, ps, cause) {
+    if (!pid || !ps || ps._spar || !this._lifeSaveOn()) return;
+    try {
+      const w = this.state.storage.put(LIFE_NOTE.PREFIX + pid, lifeNoteOf(ps, cause));
+      if (w && typeof w.catch === 'function') w.catch(() => {});
+    } catch (e) { /* the death stands without it: the join stands them up, as before */ }
+  },
+
+  /** v2.3.4902: the join's read of a death's note -- only for a stored record
+      at 0 health (an ordinary join reads nothing).  null: no death running. */
+  async _lifeNoteRead(pid, stored, now) {
+    if (!pid || !stored || typeof stored.hp !== 'number' || stored.hp > 0 || !this._lifeSaveOn()) return null;
+    let note = null;
+    try { note = await this.state.storage.get(LIFE_NOTE.PREFIX + pid); } catch (e) { return null; }
+    return lifeNoteLeft(note, now);
   },
 };
