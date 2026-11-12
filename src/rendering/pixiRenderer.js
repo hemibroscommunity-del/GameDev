@@ -76,6 +76,7 @@ import { getEyewear } from './traits/eyewearCatalog.js';
 import { getEyeStyle } from './traits/eyeStyleCatalog.js';
 import { recordCrash } from '../debug/crashTrap.js';   /* v2.3.3017: a frame that will not draw is reported, and rebuilt */
 import { PeerImpostors } from './peerImpostor.js';   /* v2.3.4885: one picture per standing player in a crowd (?onepic=1) */
+import { PlateLayers } from './plateLayer.js';   /* v2.3.4886: other players' name plates drawn after the figures (?platelayer=1) */
 
 /* v2.3.778: decode ALL textures to <img>-backed sources, never ImageBitmap.
    On iOS, ImageBitmaps are GPU-backed: the memory purge that kills the WebGL
@@ -388,6 +389,9 @@ export async function initPixiRenderer(canvas) {
      Made here, with the scene, so its shared picture is on the chip before
      play (PRELOADING IS LAW); nothing is made unless `?onepic=1`. */
   const peerPics = new PeerImpostors(app.renderer, layers);
+  /* v2.3.4886: the other players' name plates, drawn after all the figures of
+     their layer (plateLayer.js); nothing unless `?platelayer=1` */
+  const plates = new PlateLayers(layers);
   if (typeof window !== 'undefined') {
     window.__btLightFx = {
       probe: () => lightFx.probe(),
@@ -804,6 +808,9 @@ export async function initPixiRenderer(canvas) {
       try { peerPics.place(S, entityRenderer, now); }
       catch (e) { if (!update._picErr) { update._picErr = true; console.error('[pixi-render] peerPics.place threw', e && e.message, e && e.stack); } }
       applyDepthBuckets(layers.entities, layers.gatherNodesFront, _pgy, _pgx);
+      /* v2.3.4886: each plate drawn by the layer its figure ended up in */
+      try { plates.update(entityRenderer.otherPlayerDisplays, (d) => peerPics.isPicture(d)); }
+      catch (e) { if (!update._plateErr) { update._plateErr = true; console.error('[pixi-render] plates.update threw', e && e.message, e && e.stack); } }
     }
     catch (e) { if (!update._depthErr) { update._depthErr = true; console.error('[pixi-render] depth sort threw', e && e.message); } }
     /* ═══ v2.3.3003: SWIMMERS, AFTER THE DEPTH PASS ═══
