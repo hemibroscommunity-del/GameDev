@@ -206,6 +206,7 @@ import { monsterShed } from '@/game/monsterNoises.js'; /* v2.3.3340: the mummy's
 import { noteLootDrop, notePileShine } from '@/game/dropLines.js'; /* v2.3.3627: a kill's drops, a line of words each over the monster */
 import { noteHitBlow } from '@/game/deathBlow.js'; /* v2.3.3985: the killing blow's direction and size, for the monster's own death */
 import { t2LeaveDrop, t2IgnoreBusy, t2Hushed } from '@/game/tradeSlot.js'; /* v2.3.4362: the trade window never outlives its server */
+import { sameWire } from '@/game/partyEq.js'; /* v2.3.4884: an identical party_state re-echo does not re-render */
 
 /* v2.3.1107: angle -> 8-way compass, same SECTORS convention as
    entityRenderer (atan2(dy,dx) -> 'east' when dx>0).  Used to reconcile a
@@ -5204,7 +5205,11 @@ export function processGameEvent(type, payload, S, deps) {
                  {state:'none'} clears it. */
               if (!payload || !setParty) break;
               if (payload.state === 'open' && payload.members) {
-                setParty(payload);
+                /* v2.3.4884: the worker re-sends the roster every ~2 s and most
+                   are identical; handing React the old object back skips the
+                   whole-tree render (every field is compared).  S._party
+                   below stays the fresh one. */
+                setParty(function (prev) { return sameWire(prev, payload) ? prev : payload; });
                 /* v2.3.1185: mirror for the renderer's nameplate party
                    marker (entityRenderer reads S._party per frame --
                    grafted from the competing party build, PR #221). */
