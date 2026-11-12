@@ -29,10 +29,24 @@
  * can hold (whole, fractional, negative, missing, NaN, a string) and they
  * agree to the bit.
  *
- * STEP 2 (next, its own version and live switch): every road reads the count
- * the one safe way (own key, a whole number, never below 0) and empties a
- * stack the one way (nothing at 0 or below, nothing that is not a number).
- * docs/specs/bag-door.md has the list.
+ * ═══ v2.3.4900: STEP 2 -- ONE READ AND ONE EMPTY RULE FOR EVERY ROAD ═══
+ * The gold door's step 2 (v2.3.4803), for the bag.  Every road now reads the
+ * count one way (bagCount: own key only, a whole number, never below 0; a
+ * missing, NaN, fractional, negative, string or infinite count reads as the
+ * whole number under it, or 0), reads the amount the same way, never takes
+ * below 0, and empties a stack one way (a stack of 0 is gone).  A set makes
+ * the count a whole number never below 0 by the same rule.  For an honest bag
+ * and amount -- whole counts, not below 0, a take no larger than the stack,
+ * which every caller checks -- it is the step-1 line exactly, but for one
+ * thing nobody sees: a give of 0 onto nothing leaves no `0` stack behind
+ * (bag-door.test §6 proves both, road by road).  What it heals: a count no
+ * honest road made (a string, a fraction, NaN) and the Object.prototype
+ * names, which the `plain` and `orZero` reads read off the prototype.
+ * `bagonesum: false` in the live flags puts every road back on its step-1
+ * read and empty rule (BAG_READS, the `read` and `empty` columns) at once:
+ * plain functions cannot see the room's flags, so the room hands the switch
+ * down (setBagOneSum, from liveops.js _syncBagCaps) whenever its flags load
+ * or change.  The columns stay until this has run a while.
  *
  * WHAT IS NOT HERE (on purpose, listed in the test with why):
  *   - whole-bag assigns: a new bag (`ps.inventory = {}`), the join's load,
@@ -138,7 +152,7 @@ export const BAG_ROADS = Object.freeze({
   farm_order:         R('take', 'whole', 'gtZero', 'farmorders.js _handleFarmOrder'),
 
   /* ── shops ── */
-  shop_sell:          R('set', null, 'leZero', 'shop.js _shopSell: the count read before the stock\'s await, less what sold'),
+  shop_sell:          R('take', 'whole', 'leZero', 'shop.js _shopSell: what sold (v2.3.4900: a take, read after the stock\'s await)'),
   shop_tool:          R('set', null, 'none', 'shop.js _shopBuy: a lost tool bought back (one)'),
   shop_staple:        R('give', 'whole', 'none', 'shop.js _shopBuy: a staple'),
   shop_pile:          R('give', 'whole', 'none', 'shop.js _shopBuy: from his pile'),
@@ -202,7 +216,34 @@ function put(bag, k, v, empty) {
   return bag[k];
 }
 
-/** The count a give or take would write, before its empty rule -- pure (the test's). */
+/* v2.3.4900: step 2's one read.  A bag count is a whole number never below 0,
+   held under the bag's OWN key: anything else reads as the whole number under
+   it, or 0 (the gold door's wholeGold, for a stack). */
+export function wholeCount(v) {
+  const x = Number(v);
+  return Number.isFinite(x) && x > 0 ? Math.floor(x) : 0;
+}
+/** v2.3.4900: THE one way to read a count in a bag (own key, whole, never below 0). */
+export function bagCount(bag, k) {
+  return own(bag, k) ? wholeCount(bag[k]) : 0;
+}
+/** v2.3.4900: step 2's one sum, before the one empty rule -- pure (the test's). */
+export function bagOneSum(bag, k, n, take, cap) {
+  const have = bagCount(bag, k), a = wholeCount(n);
+  if (take) return Math.max(0, have - a);
+  return cap === undefined ? have + a : Math.min(wholeCount(cap), have + a);
+}
+
+/* v2.3.4900: step 2's switch.  Plain functions cannot read the room's flags,
+   so the room sets this whenever its flags load or change (liveops.js
+   _syncBagCaps: on unless `bagonesum: false`), as it sets the gear lists'
+   cap (gearstash.js setGearStashCap). */
+let ONE_SUM = true;
+export function setBagOneSum(on) { ONE_SUM = on !== false; }
+export function bagOneSumOn() { return ONE_SUM; }
+
+/** The count a give or take would write, before its empty rule, by its STEP-1
+    read -- pure (the test's).  v2.3.4900: the door does bagOneSum unless off. */
 export function bagAfter(bag, k, n, road, cap) {
   const row = own(BAG_ROADS, road) ? BAG_ROADS[road] : null;
   if (!row || row.dir === 'set') throw new Error('bag door: bagAfter needs a give or take road, not "' + road + '"');
@@ -215,6 +256,7 @@ export function bagAfter(bag, k, n, road, cap) {
     Returns the count left under `k`. */
 export function bagGive(bag, k, n, road, cap) {
   const row = roadFor(road, 'give');
+  if (ONE_SUM) return put(bag, k, bagOneSum(bag, k, n, false, row.cap ? cap : undefined), 'gtZero');   /* v2.3.4900 */
   const cur = BAG_READS[row.read](bag, k);
   return put(bag, k, row.cap ? Math.min(cap, cur + n) : cur + n, row.empty);
 }
@@ -224,11 +266,13 @@ export function bagGive(bag, k, n, road, cap) {
     (undefined: the stack is gone). */
 export function bagTake(bag, k, n, road) {
   const row = roadFor(road, 'take');
+  if (ONE_SUM) return put(bag, k, bagOneSum(bag, k, n, true), 'gtZero');   /* v2.3.4900 */
   return put(bag, k, BAG_READS[row.read](bag, k) - n, row.empty);
 }
 
 /** The count under `k` MADE `v` by `road` (by its empty rule).  Returns it. */
 export function bagSet(bag, k, v, road) {
   const row = roadFor(road, 'set');
+  if (ONE_SUM) return put(bag, k, wholeCount(v), 'gtZero');   /* v2.3.4900: a set heals what it makes */
   return put(bag, k, v, row.empty);
 }

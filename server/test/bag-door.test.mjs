@@ -18,14 +18,20 @@
  *   3. ONE ROW, ONE PLACE: every call names a road the table has, with that
  *      road's verb, from the file its row names; every road has one caller;
  *   4. A WRONG ROAD moves nothing: each throws, the bag untouched;
- *   5. THE ROOM: a mail item credit lands through the door.
+ *   5. THE ROOM: a mail item credit lands through the door;
+ *   6. STEP 2 (v2.3.4900): one read and one empty rule for every road, behind
+ *      `bagonesum`: a whole count never below 0 for every count a bag can
+ *      hold, the step-1 line exactly for every honest one, and the room's
+ *      switch.  §1-5 run with the switch OFF (the step-1 sums).
  *
  * A new way to change the bag: a row in BAG_ROADS, one call that names it,
  * and its longhand line in EXPECT below.
  */
 import { readdirSync, readFileSync } from 'node:fs';
-import { BAG_ROADS, BAG_READS, BAG_EMPTY, bagAfter, bagGive, bagTake, bagSet } from '../src/bag.js';
+import { BAG_ROADS, BAG_READS, BAG_EMPTY, bagAfter, bagGive, bagTake, bagSet, bagCount, bagOneSum, wholeCount, setBagOneSum, bagOneSumOn } from '../src/bag.js';
 import { GameRoom } from '../src/index.js';
+import { flagNameOk } from '../src/liveops.js';
+setBagOneSum(false);   /* v2.3.4900: §1-5 hold the step-1 sums; §6 turns step 2 on */
 
 let failures = 0, passes = 0;
 const show = (k, v) => (typeof v === 'number' && !Number.isFinite(v) ? String(v) : v === undefined ? 'undefined' : typeof v === 'function' ? '[fn]' : v);
@@ -119,8 +125,8 @@ const EXPECT = {
   escrow_item_stored: (b, k, n) => { b[k] = invCount(b, k) - n; if (b[k] <= 0) delete b[k]; },
   dev_shards:        (b, k, n) => { b[k] = Math.max(0, Math.floor(Number(b[k]) || 0)) + n; },
   fish_dev:          orZeroAdd,
+  shop_sell:         haveLe(whole),                                               // v2.3.4900: was a set of `have - sold`, have read before the await; now read after
   /* the set roads: the value as the place wrote it */
-  shop_sell:         (b, k, v) => { b[k] = v; if (b[k] <= 0) delete b[k]; },      // = have - sold; <= 0 delete
   shop_tool:         (b, k, v) => { b[k] = v; },                                  // = 1
   trap_legacy_out:   (b, k) => { delete b[k]; },                                  // delete inv[LEGACY_TRAP] (the door: set 0, gtZero)
   dev_traps:         (b, k, v) => { if (v > 0) b[k] = v; else delete b[k]; },
@@ -305,6 +311,102 @@ function callsIn(s) {
   check('5. a mail item credit lands through the door (floored, as before)', ps.inventory.wood_pine_log === 5, ps.inventory);
   room._applyCreditToPs(ps, { kind: 'item', payload: { invKey: 'constructor', count: 1 } }, 'p1');
   check('5. ...and never onto an Object.prototype name', !own(ps.inventory, 'constructor'), ps.inventory);
+}
+
+/* ── 6. STEP 2: ONE READ, ONE EMPTY RULE (v2.3.4900) ─────────────────────── */
+setBagOneSum(true);
+{
+  check('6. the switch is a name the flags route stores, and on here', flagNameOk('bagonesum') && bagOneSumOn());
+  const roads = Object.keys(BAG_ROADS);
+  /* every road: a whole count never below 0, or no stack at all */
+  for (const road of roads) {
+    const row = BAG_ROADS[road];
+    const caps = row.cap ? CAPS : [undefined];
+    const amounts = row.dir === 'set' ? COUNTS.filter((c) => c !== MISSING) : AMOUNTS;
+    const off = [];
+    for (const k of KEYS) for (const c of COUNTS) for (const n of amounts) for (const cap of caps) {
+      const b = bagWith(k, c);
+      const ret = row.dir === 'give' ? bagGive(b, k, n, road, cap) : row.dir === 'take' ? bagTake(b, k, n, road) : bagSet(b, k, n, road);
+      const want = row.dir === 'set' ? wholeCount(n) : bagOneSum(bagWith(k, c), k, n, row.dir === 'take', cap);
+      const left = own(b, k) ? b[k] : 0;
+      const okShape = own(b, k) ? Number.isInteger(b[k]) && b[k] > 0 : true;
+      if (!okShape || left !== want || !Object.is(ret, b[k]) || b.other_thing !== 4) off.push({ k, c: c === MISSING ? 'missing' : c, n, cap, want, got: b[k] });
+    }
+    check('6. ' + road + ': the one read and the one empty rule, for every count', off.length === 0, off.slice(0, 4));
+  }
+  /* ...and for an HONEST bag and amount it is the step-1 line exactly (a 0
+     stack and no stack are the same: step 2 leaves no 0 behind) */
+  const HONEST_COUNTS = [MISSING, 1, 7, 100, 4999];
+  const HONEST_AMOUNTS = [0, 1, 3, 50, 2500];
+  const countOf = (b, k) => (own(b, k) ? b[k] : 0);
+  for (const road of roads) {
+    const row = BAG_ROADS[road];
+    if (road === 'trap_legacy_out') continue;   /* its one call sets 0 */
+    const caps = row.cap ? CAPS : [undefined];
+    const amounts = row.dir === 'set' ? [0, 1, 7, 999] : HONEST_AMOUNTS;
+    const off = [];
+    for (const c of HONEST_COUNTS) for (const n of amounts) for (const cap of caps) {
+      const have = c === MISSING ? 0 : c;
+      if (row.dir === 'take' && (n > have || c === MISSING)) continue;   /* every take's caller checks the stack holds it (a take of 0 from no stack is step 1's NaN, healed) */
+      if (row.cap && have > cap) continue;            /* the quest grant fills up to its cap, never past it */
+      const k = 'wood_pine_log';
+      setBagOneSum(false); const want = bagWith(k, c); EXPECT[road](want, k, n, cap); setBagOneSum(true);
+      const got = bagWith(k, c);
+      if (row.dir === 'give') bagGive(got, k, n, road, cap); else if (row.dir === 'take') bagTake(got, k, n, road); else bagSet(got, k, n, road);
+      if (countOf(want, k) !== countOf(got, k) || (own(got, k) && got[k] <= 0)) off.push({ c: c === MISSING ? 'missing' : c, n, cap, want: want[k], got: got[k] });
+    }
+    check('6. ' + road + ': for an honest bag and amount, the same count as step 1', off.length === 0, off.slice(0, 4));
+  }
+  check('6. bagCount is the one read: own key, whole, never below 0', bagCount({ a: 3.9 }, 'a') === 3 && bagCount({ a: '4' }, 'a') === 4 && bagCount({ a: -2 }, 'a') === 0
+    && bagCount({ a: NaN }, 'a') === 0 && bagCount({ a: Infinity }, 'a') === 0 && bagCount({}, 'constructor') === 0 && bagCount(null, 'a') === 0);
+  check('6. what it heals: a string stack, a fraction, NaN, a prototype name', (() => {
+    const a = { x: '3' }; bagGive(a, 'x', 2, 'harvest');                 /* step 1: '32' */
+    const b = { x: 2.5 }; bagTake(b, 'x', 1, 'eat_meal');                /* step 1: 1.5 */
+    const c = { x: NaN }; bagGive(c, 'x', 2, 'loot_gem');                /* step 1: 2 (orZero) -- the same */
+    const d = {}; bagGive(d, 'constructor', 1, 'harvest');               /* step 1: 'function Object()...1' */
+    const e = { x: 5 }; bagTake(e, 'x', 9, 'chest_key');                 /* step 1: -4, deleted; the same */
+    return a.x === 5 && b.x === 1 && c.x === 2 && d.constructor === 1 && !own(e, 'x');
+  })());
+  /* the room hands the switch down whenever its flags load or change */
+  const mockState = () => ({
+    storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} },
+    getWebSockets: () => [], acceptWebSocket: () => {},
+  });
+  const room = new GameRoom(mockState(), { LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async () => ({}) }) } });
+  room._liveFlags = { bagonesum: false }; room._syncBagCaps();
+  const step1 = bagOneSumOn();
+  const q = { x: 2.5 }; bagTake(q, 'x', 1, 'eat_meal');
+  room._liveFlags = {}; room._syncBagCaps();
+  const step2 = bagOneSumOn();
+  const r = { x: 2.5 }; bagTake(r, 'x', 1, 'eat_meal');
+  room._liveFlags = { bagonesum: true }; room._syncBagCaps();
+  check('6. the room: `bagonesum: false` puts step 1 back, anything else is step 2', !step1 && q.x === 1.5 && step2 && r.x === 1 && bagOneSumOn(), { step1, step2, q, r });
+}
+
+/* ── 7. THE SALE READS THE BAG AFTER ITS AWAIT (v2.3.4900) ───────────────── */
+{
+  const src = code['shop.js'];
+  const i = src.indexOf('async _shopSell(');
+  const body = src.slice(i, src.indexOf('async _shopBuy(', i));
+  const aw = body.indexOf('await this._shopStock()');
+  const chk = body.indexOf('bagCount(ps.inventory, key) < sold');
+  const take = body.indexOf("bagTake(ps.inventory, key, sold, 'shop_sell')");
+  const pay = body.indexOf("_goldGive(ps, paid, 'shop_sell')");
+  check('7. _shopSell asks the bag again after the stock\'s await, then takes, then pays', aw > 0 && chk > aw && take > chk && pay > take, { aw, chk, take, pay });
+  const room = new GameRoom({
+    storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} },
+    getWebSockets: () => [], acceptWebSocket: () => {},
+  }, { LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async () => ({}) }) } });
+  /* drive it: a stack that shrinks during the await is refused, no coin moves */
+  room._shopBaseValue = () => 10; room._shopBuyRaw = () => 5; room._saveRpg = () => {}; room._shopSaveStock = async () => {};
+  const ps = { coins: 0, inventory: { wood_pine_log: 4 } };
+  room._shopStock = async () => { ps.inventory.wood_pine_log = 1; return Object.create(null); };
+  const res = await room._shopSell(ps, 'wood_pine_log', 4, null);
+  check('7. a stack that shrank across the await: refused, nothing paid', res && res.ok === false && ps.coins === 0 && ps.inventory.wood_pine_log === 1, { res, ps });
+  room._shopStock = async () => Object.create(null);
+  const ps2 = { coins: 0, inventory: { wood_pine_log: 4 } };
+  const res2 = await room._shopSell(ps2, 'wood_pine_log', 3, null);
+  check('7. an honest sale: sold, paid, the rest left', res2 && res2.ok && ps2.inventory.wood_pine_log === 1 && ps2.coins > 0, { res2, ps2 });
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);

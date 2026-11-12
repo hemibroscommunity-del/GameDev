@@ -72,11 +72,55 @@ Two roads are a **set** on purpose, to keep step 1 exact:
 - Other records: the old gem pouch, the bank vault, market orders, listings,
   the shop's stock.
 
+## Step 2 (v2.3.4900): one read and one empty rule for every road
+
+Modelled on the gold door's step 2. Every road now:
+
+- reads the count one way, `bagCount` (bag.js): the bag's OWN key only, a
+  whole number, never below 0. Missing, NaN, a fraction, below 0, a string or
+  Infinity reads as the whole number under it, or 0;
+- reads the amount the same way;
+- never takes below 0;
+- empties a stack one way: a stack of 0 is gone (`gtZero`);
+- a set makes the count a whole number never below 0 the same way.
+
+**Nothing changes for an honest bag** (whole counts, not below 0, a take no
+larger than the stack, which every caller checks): `bag-door.test` §6 proves
+each road gives its step-1 count there. One invisible difference: a give of 0
+onto no stack used to leave a `0` stack; now it leaves none. What it heals: a
+count no honest road made (a string `'3'` that a give turned into `'32'`, a
+fraction, NaN) and the `Object.prototype` names (`constructor`), which the
+`plain` and `orZero` reads read off the prototype.
+
+**The switch**: `bagonesum: false` in the live flags puts every road back on
+its step-1 read and empty rule (the `read` and `empty` columns) at once. The
+door's functions are plain (gems.js is not on the room), so they cannot see
+the room's flags: the room hands the switch down through `setBagOneSum`
+(liveops.js `_syncBagCaps`) whenever its flags load or change, as it already
+does for the gear lists' cap. The columns stay until this has run a while;
+deleting them is then a small change of its own.
+
+### The shop sale's read (decided: fixed)
+
+Step 1 kept `_shopSell` writing `have - sold`, with `have` read BEFORE
+`await this._shopStock()`. That was safe only while nothing could change the
+bag across the await: the Durable Object's input gate holds other messages
+through a storage read, but a cached read, or a later await, would open the
+window, and two sales of the same 10 logs would then both be paid. Now the
+sale asks the bag again AFTER the await (`bagCount`); a stack that shrank in
+between refuses the sale before a coin moves, and the bag goes down by a
+`take` on the `shop_sell` road (no longer a set). §7 drives it: a stack that
+shrinks during the await is refused with nothing paid, and an honest sale is
+unchanged. This part is not behind the switch: it is the safe order either way.
+
 ## Next
 
-- **Step 2 (one sum)**: every road reads the count one safe way (own key, a
-  whole number, not below 0) and empties a stack one way (`gtZero`), so the
-  `read` and `empty` columns go. Its own version and live switch; the test's
-  EXPECT lines become "the old line, for every honest count".
 - Step 3: what the door can then do once for every road (a log of where items
   came from, the fight lock, test mode), as the gold door's step 3.
+- Delete the `read` and `empty` columns once `bagonesum` has run a while.
+
+## Wire, storage and switches
+
+No message, cap, storage key or record shape changed. One live switch,
+`bagonesum` (on unless set to `false`). It is a `server/**` change, so
+merging it deploys the worker (CLAUDE.md §4).
