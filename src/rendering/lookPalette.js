@@ -330,8 +330,11 @@ function dirAdd(x, y, w, rows) {
   return i;
 }
 function newPage(bits, ds, w, h, label) {
+  /* a byte for its resource, never null: given none, Pixi makes a Float32Array
+     of four floats a point (BufferImageSource) -- 57 MB for the three pages,
+     held for nothing, the memory check's buffers line (v2.3.4993's first cut) */
   const src = new BufferImageSource({
-    resource: null, width: w / ds, height: h / ds, resolution: ds,
+    resource: new Uint8Array(1), width: w / ds, height: h / ds, resolution: ds,
     format: bits === 8 ? 'r8unorm' : 'rg8unorm', scaleMode: 'nearest', alphaMode: 'premultiplied-alpha',
     autoGenerateMipmaps: false, autoGarbageCollect: false, label,
   });
@@ -1215,6 +1218,8 @@ function patchPipes() {
           _stats.pageSends++;
         }
         gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+        source.resource = null;
+        if (source.options) source.options.resource = null;
         return;
       }
       const w = source.pixelWidth, h = source.pixelHeight;
