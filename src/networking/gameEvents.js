@@ -4019,14 +4019,9 @@ export function processGameEvent(type, payload, S, deps) {
               var reward = isWinner ? CLAN_WAR_REWARDS.winner : CLAN_WAR_REWARDS.loser;
               /* v2.3.1125: clan-capable workers pay war rewards
                  server-side via the mail/escrow plumbing (gold arrives
-                 through inbox_delivered + the player_state echo) -- the
-                 local mint below was the other half of the forgeable
-                 peer war.  Legacy workers only. */
-              if (!(S._serverCaps && S._serverCaps.clans) && S.rpg) {
-                S.rpg.coins += reward.gold;
-                S.rpg.achievementPoints = (S.rpg.achievementPoints || 0) + reward.ap;
-                if (S.rpg._compStats) S.rpg._compStats.totalGoldEarned += reward.gold;
-              }
+                 through inbox_delivered + the player_state echo).
+                 v2.3.4912: the page's own mint for a worker without
+                 caps.clans is gone: gold and points are the worker's. */
               pushDmgPopup(S, S.player.x, S.player.y - 50, isWinner ? 'WAR WON!' : 'War lost...', isWinner ? '#f5c542' : '#ff5e6c');
               /* v2.3.3180: the worker pays only the members who fought (made
                  or took a war kill) and are still in the clan, and names them

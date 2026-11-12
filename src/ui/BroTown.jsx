@@ -7810,36 +7810,10 @@ export var BroTown = function BroTown(_ref0) {
              It became reachable in a new way once Leave Clan started actually
              leaving: leave, let a stale _activeClanWar run out its timer, and
              collect a phantom "WAR WON!" plus gold for a clan you are not in.
-             Against a registry-capable worker the war is settled server-side;
-             this branch is the legacy-worker path only. */
-          if (S.rpg && !(S._serverCaps && S._serverCaps.clans)) {
-            S.rpg.coins += reward.gold;
-            S.rpg.achievementPoints = (S.rpg.achievementPoints || 0) + reward.ap;
-            if (S.rpg._compStats) S.rpg._compStats.totalGoldEarned += reward.gold;
-          }
-          /* Find MVP — most kills in our team */
-          var myTeamKills = war.killLog.filter(function (k) {
-            var _war$challenger$membe, _war$defender$members;
-            var isOurs = S._clanData && (war.challenger.tag === S._clanData.tag && ((_war$challenger$membe = war.challenger.members) === null || _war$challenger$membe === void 0 ? void 0 : _war$challenger$membe.includes(S.myId)) || war.defender.tag === S._clanData.tag && ((_war$defender$members = war.defender.members) === null || _war$defender$members === void 0 ? void 0 : _war$defender$members.includes(S.myId)));
-            return isOurs && k.killer === S.myName;
-          });
-          if (myTeamKills.length > 0) {
-            var myKills = myTeamKills.reduce(function (s, k) {
-              return s + k.points;
-            }, 0);
-            var totalTeamKills = war.killLog.filter(function (k) {
-              return k.killer !== S.myName;
-            }).reduce(function (s, k) {
-              return s + k.points;
-            }, 0);
-            if (myKills >= totalTeamKills && !(S._serverCaps && S._serverCaps.clans)) {
-              /* v2.3.2301: same gate as the base payout above -- the MVP bonus
-                 is the same unauthorised local mint, one branch deeper. */
-              S.rpg.coins += CLAN_WAR_REWARDS.mvp.gold;
-              S.rpg.achievementPoints += CLAN_WAR_REWARDS.mvp.ap;
-              pushDmgPopup(S, P.x, P.y - 70, 'MVP! +' + CLAN_WAR_REWARDS.mvp.gold + 'G +' + CLAN_WAR_REWARDS.mvp.ap + 'AP', '#D8A94D');
-            }
-          }
+             Against a registry-capable worker the war is settled server-side.
+             v2.3.4912: and the page's own mint for any other worker is gone,
+             with the MVP bonus below: gold and points are the worker's
+             (CLAUDE.md §5). */
           pushDmgPopup(S, P.x, P.y - 55, cWin === 'tie' ? 'War ended in a TIE!' : isWinner ? 'WAR WON!' : 'War lost...', isWinner ? '#D8A94D' : '#D95C54');
           pushDmgPopup(S, P.x, P.y - 40, '+' + reward.gold + 'G +' + reward.ap + 'AP', '#D8A94D');
           if (isWinner) BT_AUDIO.levelUp();else BT_AUDIO.beep(150, 0.1, 0.15, 'triangle');
