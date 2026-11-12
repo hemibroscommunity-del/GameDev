@@ -393,17 +393,12 @@ export function ClanPanel(props) {
           pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 40, 'Founding [' + tag + ']...', '#a78bfa');
           return;
         }
-        R.coins -= CLAN_CREATE_COST;
-        var newClan = createDefaultClan(name, tag, CLAN_COLORS[2], CLAN_COLORS[3], stateRef.current.myId);
-        setClanData(newClan);
-        stateRef.current._clanData = newClan;
-        setClanCreateMode(false);
-        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 40, 'Clan [' + tag + '] Created!', '#a78bfa');
-        BT_AUDIO.levelUp();
-        setRpgState(_objectSpread({}, R));
-        try {
-          localStorage.setItem('bt_clan', JSON.stringify(newClan));
-        } catch (e) {}
+        /* v2.3.4912: the page's own founding (its own 500g debit and a clan
+           only this page knew) for a worker without caps.clans is gone: gold
+           is the worker's (CLAUDE.md §5), so such a worker founds none.  (It
+           threw anyway, after the debit: createDefaultClan is the phantom
+           above.) */
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 40, 'Clans are closed', '#D95C54');
       }
     }, "Create (", CLAN_CREATE_COST, "g)"), /*#__PURE__*/React.createElement("button", {
       style: Object.assign({}, LS_SECONDARY, {
