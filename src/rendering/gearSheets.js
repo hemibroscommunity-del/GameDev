@@ -778,6 +778,9 @@ if (typeof window !== 'undefined') {
      shipped.  Read it from here instead. */
   window.__btGearVersion = () => GEAR_VERSION;
 }
+/* v2.3.4999: the art's version, for the walking armour's role bake
+   (lookSets/gearwalk.js reads the art exactly as _buildSheet does) */
+export { GEAR_VERSION };
 export function getGearFrame(slot, item, pose, dir, frameIdx) {
   if (!item || item === 'none') return null;
   /* v2.3.1757: a recoloured set resolves to its DONOR art here, so the cache
@@ -928,15 +931,36 @@ export function registerGearSource(source) { if (source) _extraSources.add(sourc
    bakes let go) must not stay in the upload list, holding its canvas. */
 export function unregisterGearSource(source) { if (source) _extraSources.delete(source); }
 
+/* ═══ v2.3.4999: SHEETS NEVER DRAWN FROM HERE ARE NOT SENT TO THE CHIP ═══
+   The loading screen sends every sheet this module built to the graphics
+   chip (uploadGearTextures), so the first armoured turn pays no upload.  Two
+   kinds are never drawn from here, and sending them only held their texels
+   (and Pixi's mip chain, a third more) on the chip for nothing:
+     - the walking armour drawn from the colour numbers (gearWalkFrame.js:
+       its predicate, set by that module, says which keys); their RGBA stays
+       loaded here for the masked bakes and the fishing grip, which read it
+       on the CPU, never on the chip;
+     - the jog chain belt, which is never put on a sprite at all (the masked
+       bake copies its colours: entityRenderer.js, v2.3.1347).
+   `?gearwalk=0` puts the walking armour back on this list (its predicate
+   answers false); the belt is left off in every case. */
+let _drawnElsewhere = null;
+export function setGearDrawnElsewhere(fn) { _drawnElsewhere = typeof fn === 'function' ? fn : null; }
+const _upStats = { asked: 0, sent: 0, belt: 0, numbers: 0 };
 export function getLoadedGearSources() {
   const sources = new Set(_extraSources);
-  for (const entry of Object.values(_sheets)) {
+  _upStats.asked++;
+  for (const [key, entry] of Object.entries(_sheets)) {
     if (Array.isArray(entry) && entry.length && entry[0] && entry[0].source) {
+      if (key.slice(0, 5) === 'belt/') { _upStats.belt++; continue; }
+      if (_drawnElsewhere && _drawnElsewhere(key)) { _upStats.numbers++; continue; }
       sources.add(entry[0].source);
+      _upStats.sent++;
     }
   }
   return sources;
 }
+if (typeof window !== 'undefined') window.__btGearUpload = () => ({ ..._upStats });
 
 /** Pre-bake a slot's spawn-pose sheets (all base dirs) to avoid a first-frame
  *  gap, mirroring playerSkins.prewarmBody. */

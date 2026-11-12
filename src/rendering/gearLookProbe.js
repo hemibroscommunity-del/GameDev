@@ -10,11 +10,17 @@
  *     frame (the sheen batcher against the look program's shine) -- under the
  *     sprite tint `tint` ([r, g, b]: steel white, copper...), read back and
  *     compared texel for texel, premultiplied.
+ *   window.__btGearOracle.compareWalk({ sheets, sheen, tint, cols, scale })
+ *     (v2.3.4999) the walking armour: the RGBA sheet gearSheets.js builds
+ *     (getGearFrame) against the `gearwalk` numbers, every frame, at `scale`.
  */
 import { Container, Sprite, RenderTexture, Texture, Rectangle } from 'pixi.js';
 import { paletteRendererOf } from './paletteTex.js';
 import { packTrimmed } from './gearSheets.js';
 import { GEAR_SHEETS } from './lookSets/gear.js';
+import { GEAR_WALK_SHEETS } from './lookSets/gearwalk.js';   /* v2.3.4999 */
+import { getGearFrame } from './gearSheets.js';
+import { getLookPartFrames } from './lookPalette.js';
 
 export function installGearProbe(dep) {
   if (typeof window === 'undefined') return;
@@ -36,10 +42,11 @@ export function installGearProbe(dep) {
     }
     return { arr, src };
   }
-  function render(texs, fw, fh, cols, tint, sheen) {
+  function render(texs, fw, fh, cols, tint, sheen, scale = 1) {
     const r = paletteRendererOf();
     const rows = Math.ceil(texs.length / cols);
-    const rt = RenderTexture.create({ width: cols * fw, height: rows * fh, resolution: 1 });
+    const cw = Math.ceil(fw * scale), ch = Math.ceil(fh * scale);
+    const rt = RenderTexture.create({ width: cols * cw, height: rows * ch, resolution: 1 });
     const box = new Container();
     const tn = tint ? ((tint[0] << 16) | (tint[1] << 8) | tint[2]) : 0xffffff;
     const tp = (((tn >> 16) & 255) | (((tn >> 8) & 255) << 8) | ((tn & 255) << 16) | (255 << 24)) >>> 0;
@@ -48,7 +55,8 @@ export function installGearProbe(dep) {
       s._sharp = true;   /* a figure's piece (sharpPixels.js) */
       s.anchor.set(0.5);
       s.tint = tn;
-      s.position.set((i % cols) * fw + fw / 2, Math.floor(i / cols) * fh + fh / 2);
+      s.scale.set(scale);
+      s.position.set((i % cols) * cw + cw / 2, Math.floor(i / cols) * ch + ch / 2);
       if (sheen) s._btSheen = { on: true, r: sheen[0], g: sheen[1], b: sheen[2], k: sheen[3], sx: 0.6, sy: -0.4, fig: new Float32Array(4), tintPacked: tp };
       box.addChild(s);
     });
@@ -58,6 +66,38 @@ export function installGearProbe(dep) {
     rt.destroy(true);
     return { data: px.pixels, w: px.width, h: px.height };
   }
+  function diff(a, b) {
+    let drawn = 0, over2 = 0, over16 = 0, worst = 0, sum = 0;
+    for (let p = 0; p < a.data.length; p += 4) {
+      if (!a.data[p + 3] && !b.data[p + 3]) continue;
+      drawn++;
+      let m = 0;
+      for (let k = 0; k < 4; k++) m = Math.max(m, Math.abs(a.data[p + k] - b.data[p + k]));
+      sum += m;
+      if (m > 2) over2++;
+      if (m > 16) over16++;
+      if (m > worst) worst = m;
+    }
+    return { drawn, over2, over16, worst, mean: drawn ? +(sum / drawn).toFixed(2) : 0 };
+  }
+  /* v2.3.4999: the walking armour (lookSets/gearwalk.js) -- the RGBA sheet
+     the game builds (getGearFrame: packed, linear, its mip chain) against
+     the numbers, at `scale` (1: as a phone magnifies it, level 0; 0.5: a
+     computer's minified draw, the first mip level) */
+  async function compareWalk({ sheets, sheen = null, tint = null, cols = 8, scale = 1 } = {}) {
+    const out = [];
+    for (const sheet of (sheets || Object.keys(GEAR_WALK_SHEETS))) {
+      const s = GEAR_WALK_SHEETS[sheet];
+      const nt = getLookPartFrames('gearwalk', sheet, [], { key: 'gear', asDrawn: true });
+      if (!nt || !nt.length) { out.push({ sheet, error: 'no numbers' }); continue; }
+      const old = [];
+      for (let i = 0; i < nt.length; i++) old.push(getGearFrame(s.slot, s.item, s.pose, s.dir, i));
+      if (old.some((t) => !t)) { out.push({ sheet, error: 'no RGBA sheet' }); continue; }
+      const r = diff(render(old, s.fw, s.fh, cols, tint, sheen, scale), render(nt, s.fw, s.fh, cols, tint, sheen, scale));
+      out.push({ sheet, frames: nt.length, ...r });
+    }
+    return out;
+  }
   async function compare({ sheets, sheen = null, tint = null, cols = 8 } = {}) {
     const out = [];
     for (const sheet of (sheets || Object.keys(GEAR_SHEETS))) {
@@ -66,24 +106,12 @@ export function installGearProbe(dep) {
       if (!nt) { out.push({ sheet, error: 'no numbers' }); continue; }
       const old = await oldFrames(sheet);
       const n = Math.min(old.arr.length, nt.length);
-      const a = render(old.arr.slice(0, n), s.fw, s.fh, cols, tint, sheen);
-      const b = render(nt.slice(0, n), s.fw, s.fh, cols, tint, sheen);
-      let drawn = 0, over2 = 0, over16 = 0, worst = 0, sum = 0;
-      for (let p = 0; p < a.data.length; p += 4) {
-        if (!a.data[p + 3] && !b.data[p + 3]) continue;
-        drawn++;
-        let m = 0;
-        for (let k = 0; k < 4; k++) m = Math.max(m, Math.abs(a.data[p + k] - b.data[p + k]));
-        sum += m;
-        if (m > 2) over2++;
-        if (m > 16) over16++;
-        if (m > worst) worst = m;
-      }
+      const r = diff(render(old.arr.slice(0, n), s.fw, s.fh, cols, tint, sheen), render(nt.slice(0, n), s.fw, s.fh, cols, tint, sheen));
       for (const t of old.arr) t.destroy(false);
       try { old.src.destroy(); } catch (e) { /* gone */ }
-      out.push({ sheet, frames: n, drawn, over2, over16, worst, mean: drawn ? +(sum / drawn).toFixed(2) : 0 });
+      out.push({ sheet, frames: n, ...r });
     }
     return out;
   }
-  window.__btGearOracle = { compare, sheets: () => Object.keys(GEAR_SHEETS) };
+  window.__btGearOracle = { compare, compareWalk, sheets: () => Object.keys(GEAR_SHEETS), walkSheets: () => Object.keys(GEAR_WALK_SHEETS) };
 }

@@ -377,6 +377,7 @@ import { rangedAimAngle, bowGripPoint, orbCrashFx /* v2.3.2991: the staff's cras
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShield.js'; /* v2.3.1784 */
 import { registerLookSheets, getLookPartFrames, lookPaletteWanted, lookPaletteOn, lookHas, preloadLookSheets } from '../lookPalette.js';   /* v2.3.3757: the stand-ins from the numbers */
 import { gearStripFrames, gearLookDecided } from '../gearLookFrame.js';   /* v2.3.4998: the combat poses' armour from the numbers */
+import { gearDrawFrame } from '../gearWalkFrame.js';   /* v2.3.4999: the jogging greaves from the numbers */
 import { registerBowBodyFrames, BLOCK_STANDIN_HAND, BLOCK_OFFHAND, BLOCK_OFFHAND_PX, BLOCK_OFFHAND_ENABLED, BLOCK_OFFHAND_ART_ANG, BLOCK_ARM_FACING, blockArmTextureFrom } from '../blockArm.js'; /* v2.3.1785; v2.3.1833 the away-facing hand; v2.3.1864 the off-hand weapon; v2.3.2920 a peer's arm */
 import { getWeaponTexture, hasWeapon, weaponFitH } from '../weaponSprites.js'; /* v2.3.1864; weaponFitH v2.3.2910 */
 import { getWeaponHandle } from '../playerAnchors.js';             /* v2.3.1864 */
@@ -15838,7 +15839,7 @@ export class EffectsRenderer {
         const _jfr = _d < 0 ? ((_fc - 1) - _raw) : _raw;
         const legTex = _legArr[((_jfr % _legArr.length) + _legArr.length) % _legArr.length];
         this._placeJogLegs(set.jogLegs, set.jogLegsGear, {
-          legTex, gearFrame: getGearFrame('legs', eq.legs, 'jog', _jdir, _jfr),
+          legTex, gearFrame: gearDrawFrame('legs', eq.legs, 'jog', _jdir, _jfr),
           /* v2.3.2500: the legs take the build too, or a tall peer swings with
              an average pair of legs under him.  _placeJogLegs takes ONE scalar
              for both axes, so it gets the height term -- the frame axis is
@@ -16062,7 +16063,7 @@ export class EffectsRenderer {
         const _jfr = _d < 0 ? ((_fc - 1) - _raw) : _raw;
         const legTex = _legArr[((_jfr % _legArr.length) + _legArr.length) % _legArr.length];
         this._placeJogLegs(set.jogLegs, set.jogLegsGear, {
-          legTex, gearFrame: getGearFrame('legs', eq.legs, 'jog', _jdir, _jfr),
+          legTex, gearFrame: gearDrawFrame('legs', eq.legs, 'jog', _jdir, _jfr),
           cutRow: bowTorsoCutRow(cfgKey, fi), jdir: _jdir, jfr: _jfr, mir: _rmir, s: sY, x: sp.x, footY: sp.y,
           feetY: cfg.feetY, hasLegArmour: !!(eq.legs && eq.legs !== 'none'), legsItem: eq.legs,
         });
@@ -16518,7 +16519,7 @@ export class EffectsRenderer {
         const _legArr = this._standInStrip(this._bowJogLegFrames, _jdir, _rd.mirror);
         const legTex = (_legArr && _legArr.length) ? _legArr[((_jfr % _legArr.length) + _legArr.length) % _legArr.length] : null;
         this._placeJogLegs(this.swordJogLegsSprite, this.swordJogLegsGearSprite, {
-          legTex, gearFrame: getGearFrame('legs', getEquip('legs'), 'jog', _jdir, _jfr),
+          legTex, gearFrame: gearDrawFrame('legs', getEquip('legs'), 'jog', _jdir, _jfr),
           cutRow: swordTorsoCutRow(fmap[0], fi), jdir: _jdir, jfr: _jfr, mir: _mir, s, x: sp.x, footY: _baseFootY,
           feetY: cfg.feetY, hasLegArmour: getEquip('legs') !== 'none', legsItem: getEquip('legs'), weapon: 'sword', seamLift: _seamLift, torsoScale: _torsoOnlyAdj, legSizeAdj: _legSizeAdj, legShiftX: _legShiftX, legShiftY: _legShiftY,
         });
@@ -16980,7 +16981,7 @@ export class EffectsRenderer {
         const _legArr = this._standInStrip(this._bowJogLegFrames, _jdir, _rd.mirror);
         const legTex = (_legArr && _legArr.length) ? _legArr[((_jfr % _legArr.length) + _legArr.length) % _legArr.length] : null;
         this._placeJogLegs(this.bowJogLegsSprite, this.bowJogLegsGearSprite, {
-          legTex, gearFrame: getGearFrame('legs', getEquip('legs'), 'jog', _jdir, _jfr),
+          legTex, gearFrame: gearDrawFrame('legs', getEquip('legs'), 'jog', _jdir, _jfr),
           cutRow: bowTorsoCutRow(fmap[0], fi), jdir: _jdir, jfr: _jfr, mir: _mir, s, x: sp.x, footY: sp.y,
           feetY: cfg.feetY, hasLegArmour: getEquip('legs') !== 'none', legsItem: getEquip('legs'),
         });
