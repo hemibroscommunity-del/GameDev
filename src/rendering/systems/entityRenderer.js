@@ -12378,19 +12378,34 @@ export class EntityRenderer {
         const party = (S._party && Array.isArray(S._party.members)) ? S._party.members : null;
         const lockId = (S.lockedTarget && S.lockedTarget.type === 'player' && S.lockedTarget.id != null) ? String(S.lockedTarget.id) : null;
         const duelId = (S._inDuel && S._inDuel.opponent != null) ? String(S._inDuel.opponent) : null;
-        const cands = [];
+        /* v2.3.4883: the pick allocates nothing in the steady state: the
+           candidate list and its records are kept and refilled, the party is
+           looked up by a plain loop, and the result is one of TWO kept Sets
+           that take turns (last frame's is `shownBefore`, read while this
+           one is filled; effectsRenderer reads `_peersNotDrawn`, never it). */
+        const cands = this._crowdCands || (this._crowdCands = []);
+        const pool = this._crowdPool || (this._crowdPool = []);
+        cands.length = 0;
+        let _cn = 0;
         for (const id in others) {
           const o = others[id];
           if (!_nearHere(o)) continue;
           const dx = (o.renderX || o.x || 0) - (me.x || 0), dy = (o.renderY || o.y || 0) - (me.y || 0);
           const _tm = S._threatMarks ? S._threatMarks[id] : null;
-          const prio = id === lockId || id === duelId
-            || !!(party && party.some((m) => m && m.id === id))
-            || !!(_tm && threatSkullPhase(_tm.type, _tm.until, now))
+          let prio = id === lockId || id === duelId;
+          if (!prio && party) { for (let pi = 0; pi < party.length; pi++) { const m = party[pi]; if (m && m.id === id) { prio = true; break; } } }
+          if (!prio) prio = !!(_tm && threatSkullPhase(_tm.type, _tm.until, now))
             || !!(o._hpSeenAt && now - o._hpSeenAt < PEER_HPBAR_HOLD_MS);
-          cands.push({ id, d2: dx * dx + dy * dy, prio });
+          const rec = pool[_cn] || (pool[_cn] = { id: '', d2: 0, prio: false });
+          _cn++;
+          rec.id = id; rec.d2 = dx * dx + dy * dy; rec.prio = prio;
+          cands.push(rec);
         }
-        _crowdKeep = crowdPick(cands, _crowdK, this._crowdShown === 'all' ? _CROWD_ALL_SHOWN : this._crowdShown);
+        const _prev = this._crowdShown === 'all' ? _CROWD_ALL_SHOWN : this._crowdShown;
+        const _sets = this._crowdSets || (this._crowdSets = [new Set(), new Set()]);
+        const _out = _sets[0] === _prev ? _sets[1] : _sets[0];
+        _crowdKeep = crowdPick(cands, _crowdK, _prev, _out);
+        cands.length = 0;
       }
     }
     this._crowdShown = _crowdKeep || 'all';
