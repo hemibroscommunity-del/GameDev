@@ -105,7 +105,7 @@ export const SWALLOWED = Object.freeze({
 
 /* The list's size when it was frozen (v2.3.4791).  Lower these as lines come
    off; raising one is a decision the PR names. */
-export const FROZEN = Object.freeze({ listed: 297, known: 32 });   /* v2.3.4801: +1, the draw and gather's quiet drop (drawgather.js); v2.3.4880: -22, the workshop answers (forge, amulet forge, gem cut, smelter, armour forge) */
+export const FROZEN = Object.freeze({ listed: 283, known: 18 });   /* v2.3.4801: +1, the draw and gather's quiet drop (drawgather.js); v2.3.4880: -22, the workshop answers (forge, amulet forge, gem cut, smelter, armour forge); v2.3.4881: -14, the points, the chest, the capes and the reroll */
 
 /* handler -> { guard: 'code[ code...][: note]' } */
 export const ALLOW = {
@@ -171,17 +171,12 @@ export const ALLOW = {
   },
   '_handleStatAllocate': {
     "if (!this._isValidStat(stat))": "shape",
-    "if ((ps.unspentT2 || 0) <= 0)": "known: no stat point left",
   },
   '_handleProg3Allocate': {
     "if (!p3)": "norec",
     "if (typeof stat !== 'string')": "shape",
     "if (!sd)": "shape",
     "if (typeof cat !== 'string' || PROG3.SKILLS.indexOf(cat) < 0)": "shape",
-    "if (chan(cat) < 1 && anyPts < 1)": "known: no point of that kind left",
-    "if (cur >= cap)": "known: the stat is at its cap",
-    "if (sharedN < 1 && anyPts < 1)": "known: no shared point left",
-    "if (cur >= cap) #2": "known: the skill is at its cap",
   },
   '_handleCookRequest': {
     "if (typeof fishKey !== 'string' || !fishKey.startsWith('fish_'))": "shape",
@@ -215,8 +210,6 @@ export const ALLOW = {
     "if (invKey !== CHEST.KEY)": "shape",
     "if (this._chestOff())": "off",
     "if (opId && typeof opId === 'string' && await this._opSeen('chestop:' + opId))": "dup",
-    "if (!ps.inventory || (ps.inventory[CHEST.KEY] || 0) <= 0)": "known: no chest in the bag",
-    "if (!ps.inventory || (ps.inventory[CHEST.KEY] || 0) <= 0) #2": "known: the chest went while the opId was read",
   },
   '_handleRewardsGet': {
     "if (ps._lastRewardsGetAt && now - ps._lastRewardsGetAt < 800)": "rate",
@@ -232,9 +225,6 @@ export const ALLOW = {
     "if (this._dqOff())": "off",
     "if (typeof i !== 'number' || !Number.isInteger(i) || i < 0 || i >= QUESTS.COUNT)": "shape",
     "if (!rec)": "err",
-    "if (!q || q.d || rec.dq.rr >= QUESTS.REROLLS)": "known: a done quest, or no reroll left",
-    "if (!opts.length)": "known: no other quest to reroll to",
-    "if (!nq)": "known: no other quest to reroll to",
   },
   '_handleSeasonClaim': {
     "if (this._seOff())": "off",
@@ -318,12 +308,8 @@ export const ALLOW = {
   '_handleCapeRedeem': {
     "if (!capeId)": "shape",
     "if (opId && typeof opId === 'string' && await this._opSeen('capered:' + opId))": "dup",
-    "if ((ps.inventory[invKey] || 0) <= 0)": "known: no cape token in the bag",
-    "if (led.redeemed.indexOf(session.id) >= 0)": "known: this cape already redeemed",
-    "if ((ps.inventory[invKey] || 0) <= 0) #2": "known: the token went during the ledger read",
   },
   '_handleCapeEquip': {
-    "if (!this._capeOwnedBy(session.id))": "known: no cape owned",
     "if (ps.capeOff === next)": "noop",
   },
   '_handleEatRequest': {

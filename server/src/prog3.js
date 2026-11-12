@@ -1432,6 +1432,9 @@ export const prog3Methods = {
        point you have for it, up to its storage bound (statcap.js; the
        `nostatcap: false` switch brings the bound back). */
     const cap = this._prog3StatBound(ps, stat, sd.def);
+    /* v2.3.4881: a spend refused for its points or its cap sends the build
+       back (a bare return before: the refusal door, TRAPS §284) */
+    const refuse = () => this._refusalEcho(session, ['prog3']);
 
     let cur, apply, takePoint;
     if (sd.scope === 'atk') {
@@ -1440,11 +1443,11 @@ export const prog3Methods = {
       /* THE RULE: "You can only apply offensive weapon damage to the combat
          skills you leveled up in."  A Bow point cannot buy Melee luck, and
          (v2.3.2592) neither can a shared point. */
-      if (chan(cat) < 1 && anyPts < 1) return;
+      if (chan(cat) < 1 && anyPts < 1) return refuse();
       if (!p3.atk || typeof p3.atk !== 'object') p3.atk = prog3FreshAtk();
       if (!p3.atk[cat] || typeof p3.atk[cat] !== 'object') p3.atk[cat] = prog3FreshAtk()[cat]; // v2.3.2512: one shape, one home (was an inline literal that drifted twice)
       cur = (typeof p3.atk[cat][stat] === 'number') ? p3.atk[cat][stat] : 0;
-      if (cur >= cap) return;
+      if (cur >= cap) return refuse();
       apply = () => { p3.atk[cat][stat] = cur + 1; return { stat, cat, pts: cur + 1 }; };
       /* Spend the CHANNELLED point first and keep the free one for a choice
          the player may not have yet — spending the flexible point while a
@@ -1457,9 +1460,9 @@ export const prog3Methods = {
       /* v2.3.2592: a SHARED stat takes a shared point, or a legacy
          unchannelled one — the shared point first, for the same reason the
          channelled point goes first above. */
-      if (sharedN < 1 && anyPts < 1) return;
+      if (sharedN < 1 && anyPts < 1) return refuse();
       cur = (typeof p3.alloc[stat] === 'number') ? p3.alloc[stat] : 0;
-      if (cur >= cap) return;
+      if (cur >= cap) return refuse();
       apply = () => { p3.alloc[stat] = cur + 1; return { stat, cat: null, pts: cur + 1 }; };
       takePoint = () => {
         if (sharedN > 0) p3.shared = sharedN - 1;

@@ -246,12 +246,10 @@ const found = Object.create(null);   /* unit -> { key: {kw, line} } */
     { type: 'sell_weapon', why: 'no weapon at that stash place', set: (p) => { p.weaponStash = [{ name: 'Old Sword', type: 'sword', gearBase: 'bronze', tierMult: 1 }]; }, payload: { stashIdx: 3 },
       ok: () => {}, okPayload: { stashIdx: 0 },
       known: ['_handleSellWeapon', 'if (!Array.isArray(ps.weaponStash) || stashIdx >= ps.weaponStash.length)'] },
-    { type: 'stat_allocate', why: 'no stat point to spend', set: (p) => { p.unspentT2 = 0; }, payload: { stat: 'power' },
-      ok: (p) => { p.unspentT2 = 1; },
-      known: ['_handleStatAllocate', 'if ((ps.unspentT2 || 0) <= 0)'] },
-    { type: 'chest_open', why: 'no chest in the bag', set: (p) => { p.inventory = {}; }, payload: { invKey: 'daily_chest', opId: 'door-1' },
-      ok: (p) => { p.inventory = { daily_chest: 1 }; }, okPayload: { invKey: 'daily_chest', opId: 'door-2' },
-      known: ['_handleChestOpen', 'if (!ps.inventory || (ps.inventory[CHEST.KEY] || 0) <= 0)'] },
+    /* v2.3.4881: the points, the chest, the capes and the reroll answer now */
+    { type: 'stat_allocate', why: 'no stat point to spend', set: (p) => { p.unspentT2 = 0; }, payload: { stat: 'power' } },
+    { type: 'chest_open', why: 'no chest in the bag', set: (p) => { p.inventory = {}; }, payload: { invKey: 'daily_chest', opId: 'door-1' } },
+    { type: 'prog3_allocate', why: 'no shared point to spend', set: (p) => { if (p.prog3) { p.prog3.pool = 0; p.prog3.shared = 0; p.prog3.poolBy = { sword: 0, bow: 0, staff: 0 }; } }, payload: { stat: 'def' } },
   ];
   const results = [];
   const ask = async (type, payload) => {
