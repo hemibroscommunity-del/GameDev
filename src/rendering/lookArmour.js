@@ -36,7 +36,7 @@
  * Probe: window.__btLookArmour().
  */
 import { Texture, Rectangle, BufferImageSource, ImageSource, glUploadBufferImageResource } from 'pixi.js';
-import { lookPaletteWanted, lookPaletteOn, lookSetSheets, lookSheetBytes, lookSheetOf, setLookSheetBook, setLookMaskSource, MASK_W } from './lookPalette.js';
+import { lookPaletteWanted, lookPaletteOn, lookSetSheets, lookSheetBytes, lookSheetOf, lookSheetTexture, setLookSheetBook, setLookMaskSource, MASK_W } from './lookPalette.js';
 import { takePaletteRow, givePaletteRow, paletteRowWrite } from './paletteTex.js';
 import { clientOff } from '../game/clientOff.js';   /* the Test panel's live off switch */
 
@@ -70,7 +70,7 @@ function layout() {
   const L = Object.create(null), poses = [], used = [];
   for (const sheet of names) {
     const sh = lookSheetOf('body', sheet);
-    const B = sh && sh.src && sh.src._btLook;
+    const B = sh && sh.look;   /* v2.3.4993: the sheet's own (its texture may be a page of the atlas) */
     if (!B) continue;
     const pose = sheet.slice(0, sheet.indexOf('-'));
     let pi = poses.indexOf(pose);
@@ -310,7 +310,7 @@ export function lookArmourFrame(entries, worn, poseInfo, rank, why) {
   if (!S) {
     S = ml.sheets[sheet] = { state: new Uint8Array(sh.frames.length), tex: [], residue: new Array(sh.frames.length).fill(null), jobs: [] };
     S.tex = sh.frames.map((f) => {
-      const t = new Texture({ source: sh.src, frame: f.frame, orig: f.orig, trim: f.trim });
+      const t = lookSheetTexture(sh, f);   /* v2.3.4993: in its page */
       t._btLook = ml;
       t.__btIx = f.i; t.__btN = f.n;
       return t;

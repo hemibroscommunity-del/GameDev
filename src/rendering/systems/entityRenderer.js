@@ -545,7 +545,8 @@ if (typeof window !== 'undefined') {
           out.push({ name: names.get(c) || c.label || '?', src: [src.width, src.height], srcRes: src.resolution || 1,
             frame: [Math.round(fr.width), Math.round(fr.height)],
             devPxPerTexel: +(Math.hypot(wt.a, wt.b) * dpr / (src.resolution || 1)).toFixed(2),
-            url: String((src.resource && (src.resource.src || src.resource.currentSrc)) || src.label || '').slice(-60) });
+            /* v2.3.4993: a look sheet in a page of the atlas is named for its sheet, not its page */
+            url: String(c.texture._btLookName || (src.resource && (src.resource.src || src.resource.currentSrc)) || src.label || '').slice(-60) });
         }
         if (c.children && c.children.length) walk(c);
       }
