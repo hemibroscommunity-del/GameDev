@@ -64,7 +64,7 @@ export default {
   ],
   sheets: Object.keys(POSE_DIRS).flatMap((p) => POSE_DIRS[p].map((d) => `${p}-${d}`)),
   art: (sheet) => [`public/sprites/player/${sheet}.png`, `public/sprites/player/${sheet}.webp`],
-  code: ['src/rendering/playerSkins.js', 'src/rendering/garmentConfine.js', 'src/rendering/spriteScale.js',
+  code: ['src/rendering/playerSkins.js', 'src/rendering/bodyRecolor.js' /* v2.3.4930: the recolour moved there */, 'src/rendering/garmentConfine.js', 'src/rendering/spriteScale.js',
     'src/rendering/eyeMask.json', 'src/rendering/playerDecal.js',
     'src/rendering/toolRecolor.js', 'src/rendering/toolWood.js'],   /* v2.3.3750: + the rod's pine and the pickaxe's wood */
   /* the sheet as the GAME reads it: its lossless .webp twin where there is

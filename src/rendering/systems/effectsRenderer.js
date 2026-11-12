@@ -339,6 +339,7 @@ import { oreArtSources, oreArtLevelFor, oreGeom, ORE_PX } from '@/game/tierOre.j
 import { WheelShatter } from '../wheelShatter.js';
 import { LandAuras, AURAS_ON, AURA_MAX } from '../landAuras.js';   /* v2.3.3402: each land's resources wear its element */   /* v2.3.3345: a rock mined out breaks into pieces of its own picture */
 import { gesturePose01, extractionMeter01, gestureLoopFrame, COOK_FLICKS_PER_LOOP } from '@/game/gesturePose.js'; /* v2.3.2245; extractionMeter01 v2.3.2514 (the harvest's bar reads the button ring's own numbers -- the node's HP bar since v2.3.2956) */
+import { bodyWorkerWanted, bakeOnWorker, noteWorkerSheet } from '../bodyBake.js';   /* v2.3.4930: a peer's stand-ins with drawings, baked on a worker */
 import { loadWebpOrPng } from '../webpImage.js'; /* v2.3.2328: the sword/bow/legs loader asks for the smaller file too */
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, SLIME_BASE_ROW, SLIME_FRAME_PX /* v2.3.2991: where a scene texel is on the world's slime */ } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
@@ -15345,6 +15346,10 @@ export class EffectsRenderer {
     if (arr) { arr._btFrame = _bakeFrame; this._remoteBodyCache.delete(key); this._remoteBodyCache.set(key, arr); return arr; }
     const img = this._bodyImgCache[cfg.bodyUrl];   // loaded by the local bake
     if (!img) return null;
+    /* v2.3.4930: on the body bake's worker in play (bodyBake.js), the strip
+       drawn plain (null) until it lands, as while the image loads */
+    if (this._peerOnWorker(this._remoteBodyCache, key, img, { skinT: skinTarget(o.skin) || DEFAULT_SKIN_TARGET, pantsT: pantsTarget(o.pants), shoesT: shoesTarget(o.shoes),
+      fh: cfg.fh, fw: cfg.fw, art: _pa.art, legsUnder: _lu || null, torso: false })) return null;
     try {
       const cv = recolorBodyToCanvas(img, skinTarget(o.skin) || DEFAULT_SKIN_TARGET, pantsTarget(o.pants), shoesTarget(o.shoes),
         null, cfg.fh, null, null, _pa.art, cfg.fw, undefined, undefined, undefined, _lu);   /* v2.3.2863: see _peerStandInArt; v2.3.3640: + under greaves */
@@ -15380,6 +15385,9 @@ export class EffectsRenderer {
          did (P7 item 5). */
       const _sq = (fw == null || fh == null) ? (img.naturalHeight || img.height || 0) : 0;
       const _fw = _sq || fw, _fh = _sq || fh;
+      /* v2.3.4930: on the body bake's worker in play, as _remoteBodyFramesFor */
+      if (this._peerOnWorker(this._remoteSheetCache, key, img, { skinT: skinTarget(o.skin) || DEFAULT_SKIN_TARGET, pantsT: pantsTarget(o.pants), shoesT: shoesTarget(o.shoes),
+        fh: _fh, fw: _fw, art: _pa.art, legsUnder: null, torso: !!torso })) return null;
       const cv = recolorBodyToCanvas(img, skinTarget(o.skin) || DEFAULT_SKIN_TARGET, pantsTarget(o.pants), shoesTarget(o.shoes),
         null, _fh, null, null, _pa.art, _fw, undefined, undefined, undefined, undefined, !!torso);   /* v2.3.2863; v2.3.3658: + a torso strip's waist (TORSO_WAIST_UP) */
       const n = Math.max(1, Math.round(cv.width / _fw));
@@ -17762,6 +17770,48 @@ export class EffectsRenderer {
      throws in the frame it is next shown, CLAUDE.md v2.3.2651).  A re-bake is
      a menu action (a skin pick, a stroke in the designer), so walking the
      layers once for it costs nothing anyone can feel. */
+  /* ═══ v2.3.4930: A PEER'S STAND-IN, BAKED ON THE WORKER ═══
+     _remoteBodyFramesFor and _remoteSheetFramesFor recoloured a peer's strip
+     with their drawings INSIDE the frame the first time they swung: up to
+     564 ms in the crowd tour (held-sweep.md, a-ink).  In play the same
+     recolour and the same pack run on the body bake's worker
+     (bodyBakeWorker.js 'standin'); meanwhile the strip is null, which both
+     callers already draw as they do while the image loads.  True when the
+     caller should return null now (asked, or waiting); false to bake here (a
+     loading screen, `?bodyworker=0`, or a job the worker could not do). */
+  _peerOnWorker(cache, key, img, job) {
+    if (!this._peerWorker) this._peerWorker = new Map();   /* key -> 'waiting' | 'page' */
+    const st = this._peerWorker.get(key);
+    if (st === 'waiting') return true;
+    if (st === 'page' || !bodyWorkerWanted() || !img || !img.src) return false;
+    this._peerWorker.set(key, 'waiting');
+    bakeOnWorker('standin', [img.src], job, job.fw, job.fh).then((w) => {
+      if (this._destroyed) { if (w) { try { URL.revokeObjectURL(w.url); } catch (e) { /* gone */ } } return; }
+      if (!w) { this._peerWorker.set(key, 'page'); return; }   /* the next ask bakes here, as before */
+      this._peerWorker.delete(key);
+      const t0 = performance.now();
+      const src = Texture.from(w.img).source;
+      src.scaleMode = 'linear';   /* as _sliceStandIn */
+      try { src.once('destroy', () => { try { URL.revokeObjectURL(w.url); } catch (e) { /* gone */ } }); } catch (e) { /* kept */ }
+      const arr = [];
+      for (let i = 0; i < w.frames; i++) {
+        if (w.cells) {
+          const c = w.cells[i];
+          arr.push(new Texture({ source: src, frame: new Rectangle(c.ax, c.ay, c.w, c.h),
+            orig: new Rectangle(0, 0, job.fw, job.fh), trim: new Rectangle(c.tx, c.ty, c.w, c.h) }));
+        } else {
+          arr.push(new Texture({ source: src, frame: new Rectangle(i * job.fw, 0, job.fw, job.fh) }));
+        }
+      }
+      arr.cropped = !!w.cells;
+      this._own(arr);
+      arr._btFrame = _bakeFrame;
+      cache.set(key, arr);
+      _trimBakeCache(cache, this._bakes);
+      noteWorkerSheet('standin ' + key, performance.now() - t0);
+    });
+    return true;
+  }
   _own(arr) {
     const src = arr && arr[0] && arr[0].source;
     if (src) this._bakes.add(src);

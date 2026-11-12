@@ -20,7 +20,7 @@
 
 import { laterRounds } from './retryLooks.js';   /* v2.3.3882 */
 import { Assets, Rectangle, Texture } from 'pixi.js';
-import { upscaleToFrameHeight, bakeDisplayCanvas, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1108: upscale downscaled-on-disk sheets back to the 256px logical frame; v2.3.1120: downscale the final DISPLAY texture for VRAM; v2.3.1237: bakeDisplayCanvas smooths nearest-upscaled sheets at DISPLAY_DS=1 (jog-shimmer fix) */
+import { upscaleToFrameHeight, bakeDisplayCanvas, DISPLAY_DS, stripDetachedComponents } from './spriteScale.js'; /* v2.3.1108: upscale downscaled-on-disk sheets back to the 256px logical frame; v2.3.1120: downscale the final DISPLAY texture for VRAM; v2.3.1237: bakeDisplayCanvas smooths nearest-upscaled sheets at DISPLAY_DS=1 (jog-shimmer fix) */
 import { sliceCropped } from './gearSheets.js';   /* v2.3.2791: the body sheets are cropped */
 import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
 import { recolorToolKeyCanvas, recordFishRodMask, TOOL_SPECS } from './toolRecolor.js'; /* v2.3.2761: the fishing rod's pine */
@@ -201,77 +201,9 @@ function deriveFrameCount(pose, tex) {
   return STAND_FRAMES;
 }
 
-/* v2.3.1239: owner feedback — the regenerated jog-northeast sheet
-   (v2.3.708, rebuilt from Grok video off a limb-marker reference)
-   carries faint marker-scrub RESIDUE: a handful of 1-8px specks that
-   sit just off the head crown, DISCONNECTED from the body silhouette.
-   Over the world they read as a detached dark/magenta outline that
-   trails the head while jogging NE (and NW, which is NE horizontally
-   mirrored -- resolveDirection maps 'northwest' -> {dir:'northeast',
-   mirror:true}), exactly the owner's report.  Naive outline edits ate
-   the REAL outline / shifted colors because the residue's colour range
-   overlaps the legit outline's; the safe discriminator is topology, not
-   colour: the body + its attached outline are ONE connected opaque blob
-   per frame, and the residue is separate islands.  Per frame, keep only
-   the largest 8-connected opaque component and zero the alpha of the
-   rest.  The real figure (outline + palette + the magenta fringe that
-   lives ON the attached outline) is untouched; only the ~29px of
-   detached specks across the 24 frames go.  Runs on the exact-palette
-   nearest-upscale (before texture upload) so no colour is introduced. */
-export function stripDetachedComponents(src, nFrames) {
-  const w = src.naturalWidth || src.width || 0;
-  const h = src.naturalHeight || src.height || 0;
-  if (!w || !h || nFrames < 1) return src;
-  const cv = document.createElement('canvas');
-  cv.width = w; cv.height = h;
-  const ctx = cv.getContext('2d');
-  ctx.drawImage(src, 0, 0);
-  const id = ctx.getImageData(0, 0, w, h);
-  const d = id.data;
-  const ALPHA = 16;                 // >16 = part of the figure (incl. AA edge)
-  const fw = Math.max(1, Math.round(w / nFrames));
-  const label = new Int32Array(fw * h);
-  const stack = new Int32Array(fw * h);
-  for (let f = 0; f < nFrames; f++) {
-    const ox = f * fw;
-    label.fill(0);
-    let cur = 0;
-    const sizes = [0];
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < fw; x++) {
-        if (d[(y * w + ox + x) * 4 + 3] > ALPHA && label[y * fw + x] === 0) {
-          cur++; let sz = 0; let sp = 0;
-          stack[sp++] = y * fw + x; label[y * fw + x] = cur;
-          while (sp) {
-            const p = stack[--sp]; const py = (p / fw) | 0; const px = p % fw; sz++;
-            for (let dy = -1; dy <= 1; dy++) {
-              for (let dx = -1; dx <= 1; dx++) {
-                if (!dx && !dy) continue;
-                const ny = py + dy; const nx = px + dx;
-                if (ny < 0 || nx < 0 || ny >= h || nx >= fw) continue;
-                const np = ny * fw + nx;
-                if (label[np]) continue;
-                if (d[(ny * w + ox + nx) * 4 + 3] > ALPHA) { label[np] = cur; stack[sp++] = np; }
-              }
-            }
-          }
-          sizes[cur] = sz;
-        }
-      }
-    }
-    if (cur <= 1) continue;         // one blob (or none): nothing detached
-    let big = 1;
-    for (let l = 2; l <= cur; l++) if (sizes[l] > sizes[big]) big = l;
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < fw; x++) {
-        const l = label[y * fw + x];
-        if (l !== 0 && l !== big) d[(y * w + ox + x) * 4 + 3] = 0;
-      }
-    }
-  }
-  ctx.putImageData(id, 0, 0);
-  return cv;
-}
+/* v2.3.4930: stripDetachedComponents lives in spriteScale.js (moved verbatim: the
+   body bake's worker runs it, and this module imports Pixi) */
+export { stripDetachedComponents };
 
 /* v2.3.1381 (owner: "make sure all the assets retry loading if they don't
    load first time — sometimes character appears invisible"): bounded retry
