@@ -434,13 +434,19 @@ async function oneBandChecks(P, rec, { label, viewport, upright, computer }) {
       };
     });
     const inside = (k) => !!k.box && !!k.band && k.box.x >= k.band.x && k.box.r <= k.band.r + 1 && k.box.y >= k.band.y - 1 && k.box.b <= k.band.b + 1 && (!k.asm || k.box.x >= k.asm.r);
+    /* v2.3.4952: each press's result waited for (up to 5 s), not read after a
+       fixed half second: on this 4-vCPU box the page drew a few frames a
+       second and the second press's read came before its redraw (TRAPS §200) */
+    const kbUntil = async (want) => {
+      let k = await kb();
+      for (const t0 = Date.now(); k.state !== want && Date.now() - t0 < 5000;) { await P.page.waitForTimeout(200); k = await kb(); }
+      return k;
+    };
     const kb0 = await kb();
     await P.page.keyboard.press('h');
-    await P.page.waitForTimeout(500);
-    const kb1 = await kb();
+    const kb1 = await kbUntil('folded');
     await P.page.keyboard.press('h');
-    await P.page.waitForTimeout(400);
-    const kb2 = await kb();
+    const kb2 = await kbUntil('open');
     rec.ok(`${label}: the controls list is in the band, right of the assembly (nothing floating over the world), and H folds it and opens it again`,
       !kb0.floating && kb0.state === 'open' && kb0.rows >= 4 && inside(kb0) && kb1.state === 'folded' && kb1.rows === 0 && kb2.state === 'open' && kb2.rows >= 4,
       { start: kb0, afterH: kb1, afterHH: kb2 });
