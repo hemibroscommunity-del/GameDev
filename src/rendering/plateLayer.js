@@ -27,7 +27,9 @@
  * What a player sees change: in its own layer, a plate is now over every
  * figure and prop there, never behind a figure standing in front of its
  * owner.  The players south of you (the front layer) keep theirs over them.
- * Off unless `?platelayer=1` until the owner has seen it.
+ * Off unless `?platelayer=1` until the owner has seen it; v2.3.4990: on for
+ * everyone (owner, 2026-11-12: "Turn both switches on by default"),
+ * `?platelayer=0` the off-ramp.
  *
  * A player drawn as one picture (peerImpostor.js) keeps its plate IN the
  * picture: not attached here while it is one (an attached plate is skipped by
@@ -35,19 +37,22 @@
  */
 import { RenderLayer } from 'pixi.js';
 
+import { crowdSwitchOn } from '../game/onePic.js';
+
 const _search = typeof location !== 'undefined' ? (location.search || '') : '';
 
-/** The switch: on only with `?platelayer=1` (`=0` is off too, the off-ramp
-    for when it is the default). */
+/** The switch: ON (v2.3.4990, owner 2026-11-12: "Turn both switches on by
+    default"; it was `?platelayer=1` only in v2.3.4989); `?platelayer=0`
+    turns it off. */
 export function plateLayerFromQuery(search) {
-  const m = /[?&]platelayer=([01])\b/.exec(search || '');
-  return !!(m && m[1] === '1');
+  return crowdSwitchOn(search, 'platelayer');
 }
 
 export class PlateLayers {
   constructor(layers) {
     this.on = plateLayerFromQuery(_search);
     this.rl = new Map();   /* world layer -> its plates' RenderLayer */
+    this._stamp = 0;
     if (!this.on || !layers) return;
     for (const name of ['entities', 'gatherNodesFront']) {
       const L = layers[name];
@@ -85,15 +90,29 @@ export class PlateLayers {
       gesture layer a miner or angler is drawn in). */
   update(displays, isPicture) {
     if (!this.on || !displays) return;
+    const stamp = ++this._stamp;
     for (const d of displays.values()) {
       if (!d || d.destroyed) continue;
       const ui = d._uiLayer;
       if (!ui || ui.destroyed) continue;
       const want = (isPicture && isPicture(d)) ? null : (this.rl.get(d.parent) || null);
+      if (want) ui._plateStamp = stamp;
       const was = ui.parentRenderLayer || null;
       if (was === want) continue;
       if (was) was.detach(ui);
       if (want) want.attach(ui);
+    }
+    /* v2.3.4990 (on for everyone): a plate whose display left the players'
+       list, or the scene, without being destroyed with its children (which
+       detaches it: Pixi's removeChildren) is let go here, never drawn by a
+       layer at the place it last stood (Pixi draws an attached piece by its
+       last transform, and only warns when it has no parent at all) */
+    for (const r of this.rl.values()) {
+      const kids = r.renderLayerChildren;
+      for (let i = kids.length - 1; i >= 0; i--) {
+        const k = kids[i];
+        if (k._plateStamp !== stamp || k.destroyed) r.detach(k);
+      }
     }
   }
 }

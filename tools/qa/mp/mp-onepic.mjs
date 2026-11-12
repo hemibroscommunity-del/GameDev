@@ -203,6 +203,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     rec.ok('A standing again is a picture again', !!again && again.ids.includes(idA), again);
 
+    /* v2.3.4990 (on for everyone): the shared picture exists only while
+       something is a picture; turned off, it is given back to the chip */
+    await B.page.evaluate(() => window.__btOnePicSet(false));
+    const off = await probe();
+    rec.ok('turned off, the shared picture is given back (no sheet, 0 bytes)', !!off && off.sheet === false && off.bytes === 0 && off.pictures === 0 && off.sheetsFreed >= 1, off);
+
     rec.ok('no page errors', errors.length === 0, errors.slice(0, 5));
     console.log('  onepic probe:', JSON.stringify(await probe()));
   } finally {

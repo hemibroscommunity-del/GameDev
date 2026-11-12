@@ -244,8 +244,7 @@ once the figure is at rest (`settling`), and the refresh went from 4 to 10 s.
   catches: it is most of the switches left.
 - **More, smaller slots:** a figure's bounds are well inside 96 x 140; more
   slots means more of a big crowd as pictures, for the same memory.
-- **On by default with `?onepic=0`,** once the owner has tried it on their
-  iPhone.
+- ~~**On by default with `?onepic=0`**~~: done, v2.3.4990 (below).
 
 ## Name plates in a layer of their own (v2.3.4989, `?platelayer=1`, off by default)
 
@@ -337,8 +336,37 @@ not drawn on far walkers, each one a texture less: also the owner's call.
 
 In its own layer, a plate is now over every figure and prop there, never behind
 a figure standing in front of its owner. The players south of you (the front
-layer) keep theirs over them. That is why it is off until the owner has seen
-it: `?platelayer=1`, then on by default with `?platelayer=0`.
+layer) keep theirs over them. That is why it was off until the owner had seen
+it: `?platelayer=1`; on by default since v2.3.4990, `?platelayer=0` off.
+
+## Both on for everyone (v2.3.4990)
+
+Owner, 2026-11-12: *"Turn both switches on by default."* The one picture per
+standing player and the plates layer are on with no address; `?onepic=0` and
+`?platelayer=0` turn each off for one phone (the memory law's way: a saver
+lands on, with its off-ramp). Both switches are read by one rule,
+`crowdSwitchOn` in `src/game/onePic.js` (`one-pic.test` 1a-1d).
+
+**The shared picture is made only when a crowd stands.** Made with the scene,
+it would have cost every player its 6-13 MB, alone or not. It is now made the
+first frame more than `ONE_PIC.NEAR_FULL` (10) calm players are drawn, and
+given back to the chip `ONE_PIC.IDLE_FREE_MS` (30 s) after its last picture
+went, so a crowd that thins for a moment keeps it (`window.__btOnePic()`:
+`sheet`, `sheetsMade`, `sheetsFreed`, and `bytes` 0 while there is none). It
+is an empty picture the chip makes, not art from a file, so PRELOADING IS LAW
+does not ask for it behind the loading screen: one allocation and one clear,
+and its first paints wait their turn (four a frame). The renderer's teardown
+now gives it back too.
+
+**A plate is never drawn where its player was.** Pixi draws a piece attached
+to a RenderLayer by its last place, even once its owner has left the scene (it
+only warns when the piece has no parent at all). A player who goes is
+destroyed with their pieces, which lets the plate go; for any other way out of
+the list, each frame now lets go of every plate it did not attach.
+
+Checked: `mp-onepic`, `mp-platelayer` (now with `?onepic=0`, its pictures
+turned on by hand), `mp-peercull`, `mp-chatbubble`, `mp-partychip` and a crowd
+of 50 with no address (`mp-crowdbots`).
 
 ## What is left, ranked (none of it built)
 
