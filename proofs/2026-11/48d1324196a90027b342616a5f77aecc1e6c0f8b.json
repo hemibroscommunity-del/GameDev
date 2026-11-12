@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "48d1324196a90027b342616a5f77aecc1e6c0f8b",
+  "tree": "797e3cf3695f396be185d3d33fc43114f0137520",
+  "committedAt": "2026-11-11T21:24:08-08:00",
+  "subject": "Merge pull request #1612 from hemibroscommunity-del/claude/token-efficient-lanes-perf-o4ish9",
+  "files": 7234,
+  "bytes": 940517797,
+  "listingSha256": "e89b71caeb803322cddf28b1d08c80798f8954d402c7cf15659324e0fad23897",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
