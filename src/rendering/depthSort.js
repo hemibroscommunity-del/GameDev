@@ -172,7 +172,9 @@ export function applyGroundSort(layer) {
        auction house's scales drew over a player standing at its left corner,
        raised over the wall they hang on (TRAPS §115). */
     const host = c._ridesOn;
-    if (host && !host.destroyed && host.parent === c.parent) {
+    if (c._depthLast) {
+      key = Number.MAX_SAFE_INTEGER;   /* v2.3.4989: the plates, last (plateLayer.js) */
+    } else if (host && !host.destroyed && host.parent === c.parent) {
       const hy = groundOf(host);
       key = (Number.isFinite(hy) ? Math.round(hy) : k) + 0.25;
     } else {
@@ -201,7 +203,7 @@ export function applyGroundSort(layer) {
 
 /* A figure is anything sorted that is not a prop and has a ground line. */
 function isFigure(c) {
-  return !!c && !c._propGround && c.visible !== false;
+  return !!c && !c._propGround && !c._depthLast && c.visible !== false;
 }
 
 /**
@@ -287,6 +289,9 @@ export function applyDepthBuckets(backLayer, frontLayer, playerGroundY, playerX)
   for (let i = 0; i < moving.length; i++) {
     const c = moving[i];
     if (!c || !c.parent) continue;
+    /* v2.3.4989: a layer's plates (plateLayer.js, `_depthLast`) stand on no
+       ground: never moved between the buckets, always drawn last in theirs */
+    if (c._depthLast) continue;
     const isFront = c.parent === frontLayer;
     /* a prop is in front of the player if his feet are north of ITS BASE
        WHERE HE STANDS -- the wall beside him, not its front step */

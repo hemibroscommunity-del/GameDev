@@ -12305,6 +12305,22 @@ export class EntityRenderer {
     }
   }
 
+  /* v2.3.4885: the crowd cap's "always drawn in full" (v2.3.3241, the pick in
+     _updateOtherPlayers below): your target, your duel, your party, whoever
+     shows a threat skull or was hit in the last PEER_HPBAR_HOLD_MS.  The
+     one-picture crowd (peerImpostor.js) keeps these as layers. */
+  peerAlwaysDrawn(S, id, o, now) {
+    if (!S) return false;
+    const lt = S.lockedTarget;
+    if (lt && lt.type === 'player' && lt.id != null && String(lt.id) === id) return true;
+    if (S._inDuel && S._inDuel.opponent != null && String(S._inDuel.opponent) === id) return true;
+    const party = (S._party && Array.isArray(S._party.members)) ? S._party.members : null;
+    if (party) for (let i = 0; i < party.length; i++) { const m = party[i]; if (m && m.id === id) return true; }
+    const tm = S._threatMarks ? S._threatMarks[id] : null;
+    if (tm && threatSkullPhase(tm.type, tm.until, now)) return true;
+    return !!(o && o._hpSeenAt && now - o._hpSeenAt < PEER_HPBAR_HOLD_MS);
+  }
+
   _updateOtherPlayers(S, now) {
     const others = S.others || {};
     const activeIds = new Set();

@@ -47,6 +47,17 @@
  * you will not get.  The buttons are the same three, Attack still Attack.
  * Read on its own clock as everything here (nmlHitBack): a window that came
  * up about a passer-by who then attacks you turns into "Hit back".
+ *
+ * ═══ v2.3.4988: A TAP'S WINDOW HAS TRADE ═══
+ * The owner, 2026-11-12: "Also add trading to the character menu when you tap
+ * another player."  Out of BroTown (No man's land begins just outside it) a
+ * tap on another player opens THIS window, never the player card with its
+ * Trade tile.  A TAP's window now reads Attack / Party / Trade / Ignore (nmlAskTrades: not
+ * a stray shot's or a swing's window, which ask about a fight, and not "Hit
+ * back").  The SAME width: 24 px more put a computer's window under the
+ * minimap instead of beside it (mp-nmlask 5b), so its four buttons are 57 px
+ * each (three are 78), still over Lantern Slate's 44.  Trade is the card's
+ * own (game/nmlAsk.js nmlTradeOpen: trade2_open, caps.trade2).
  */
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -79,6 +90,14 @@ const ATTACK = { background: '#7C3431', color: '#FFF1EE', border: '1px solid #C7
 const SECONDARY = { background: 'linear-gradient(180deg,#34444B,#2B3940)', color: '#F7F2E7', border: '1px solid rgba(238,242,235,.14)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.08)' };
 const QUIET = { background: 'transparent', color: '#B9C1BF', border: '1px solid rgba(238,242,235,.10)' };
 export const NML_ASK_W = 264;
+/* v2.3.4988: a tap's window offers Trade -- the window a TAP opens (not a
+   stray shot's or a swing's, which ask about a fight), not "Hit back" (they
+   are attacking you), and only against a worker with the two-sided trade
+   (caps.trade2), the player card's own gate */
+export function nmlAskTrades(S, ask) {
+  return !!ask && ask.why === 'tap' && !ask.back && !ask.locked
+    && !!(S && S.channel && S._serverCaps && S._serverCaps.trade2);
+}
 /* v2.3.3528: the white skull, the badge's own (NmlBadge.jsx) */
 const WHITE_SKULL = '#F2F2F2';
 /* its height, for the stacking test (the window measures 92) */
@@ -181,6 +200,7 @@ export default function NmlAskCard({ stateRef }) {
       let ok = false;
       /* v2.3.3770: a locked window stays while the rest of the rule holds */
       try { ok = ask.locked ? nmlCanAttack(S, ask.id, true) : nmlCanAttack(S, ask.id); } catch (e) { ok = false; }
+      if (ask.demo) { ok = true; until = now + 60000; }   /* v2.3.4988: the UI review's held stand-in (__btNmlAsk.hold) */
       /* v2.3.3316: with the game's state, so an unanswered window may ask again later */
       if (!ok || now >= until) { nmlAskClose(S); return; }
       /* v2.3.3528: they attacked you while it was up, or your white skull ran out */
@@ -194,8 +214,9 @@ export default function NmlAskCard({ stateRef }) {
     return () => clearInterval(t);
   }, [ask, stateRef]);
   if (!ask) return null;
-  const pl = place || cardPlace();
   const S = stateRef && stateRef.current;
+  const trades = nmlAskTrades(S, ask);   /* v2.3.4988 */
+  const pl = place || cardPlace();
   const hasParty = !!(S && S._serverCaps && S._serverCaps.party);
   /* the game's own taps never reach the world from here */
   const stop = (e) => { e.stopPropagation(); };
@@ -275,6 +296,8 @@ export default function NmlAskCard({ stateRef }) {
       <div style={{ display: 'flex', gap: 6, marginTop: 2, paddingLeft: 4 }}>
         <button type="button" data-nml-ask-attack="" onClick={answer('attack')} style={Object.assign({}, BTN, ATTACK)}>Attack</button>
         {hasParty && <button type="button" data-nml-ask-party="" onClick={answer('party')} style={Object.assign({}, BTN, SECONDARY)}>Party</button>}
+        {/* v2.3.4988: the player card's Trade (game/nmlAsk.js nmlTradeOpen) -- on a tap's window, and gone if they turn out to be attacking you */}
+        {trades && !back && <button type="button" data-nml-ask-trade="" onClick={answer('trade')} style={Object.assign({}, BTN, SECONDARY)}>Trade</button>}
         <button type="button" data-nml-ask-ignore="" onClick={answer('ignore')} style={Object.assign({}, BTN, QUIET)}>Ignore</button>
       </div>
       {/* v2.3.3770: you beat them, and they are locked out from you: let them have another go */}
