@@ -25,7 +25,8 @@
  *     its sides past that), and on a phone the two joysticks sit above it;
  *   - on a computer the nav buttons keep their key caps, every key (I P J K
  *     O; v2.3.4172: L is Bro's Life Skills page, no button) opens its page inside the band and Esc closes it, the controls list
- *     starts folded to its ⌨ (no list over the world) and H opens it.
+ *     sits in the band right of the assembly, open, nothing over the world, and H folds it and
+ *     opens it again (v2.3.4890).
  * Then the device's choice (v2.3.4152): no key and the old "on" ('1') both
  * read on; `?oneband=0` turns it off and the device keeps the off; `?oneband=1`
  * clears it.  And the old layout, still reachable: a sideways phone with
@@ -36,6 +37,7 @@ import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { BAND_ASSEMBLY_MAX_W } from '../../../src/ui/mobile/sheet/sheetGeometry.js';   /* v2.3.4890: the band's one width */
 
 /* pictures for the PR and the owner (tools/qa/mp/out/, not committed) */
 const OUT = join(dirname(fileURLToPath(import.meta.url)), 'out');
@@ -414,16 +416,34 @@ async function oneBandChecks(P, rec, { label, viewport, upright, computer }) {
     await P.page.keyboard.press('j');
     await P.page.waitForTimeout(500);
     /* v2.3.4152 (B3's rough edge): the controls list no longer comes up over
-       the world's bottom-left -- folded to its ⌨ until H or the ⌨ opens it */
-    const kb = () => P.page.evaluate(() => ({ chip: !!document.querySelector('.bt-kb-chip'), rows: document.querySelectorAll('.bt-kb-hints .bt-kb-key').length }));
+       the world's bottom-left.  v2.3.4890: since v2.3.4263 (owner: "add the
+       short list of shortcuts to the extra dashboard area on the right") the
+       list lives IN the band, right of the 480 px assembly (BandKeys,
+       KeyboardHintsPanel.jsx), open by default; the floating chip and strip
+       are gone on a computer.  So: nothing floats over the world, the list
+       sits inside the band beside the assembly, and H folds it and opens it
+       again (the test still looked for the retired chip). */
+    const kb = () => P.page.evaluate(() => {
+      const r = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return b.width > 0 && b.height > 0 ? { x: Math.round(b.left), y: Math.round(b.top), r: Math.round(b.right), b: Math.round(b.bottom) } : null; };
+      const el = document.querySelector('[data-band-keys]');
+      return {
+        floating: !!document.querySelector('.bt-kb-chip') || !!document.querySelector('.bt-kb-hints'),
+        state: el ? el.getAttribute('data-band-keys') : null, box: r(el),
+        rows: el ? el.querySelectorAll('.bt-band-keys-list .bt-band-key').length : 0,
+        band: r(document.querySelector('.bt-dashboard')), asm: r(document.querySelector('[data-band-box="cols"]') || document.querySelector('[data-band-box="nav"]')),
+      };
+    });
+    const inside = (k) => !!k.box && !!k.band && k.box.x >= k.band.x && k.box.r <= k.band.r + 1 && k.box.y >= k.band.y - 1 && k.box.b <= k.band.b + 1 && (!k.asm || k.box.x >= k.asm.r);
     const kb0 = await kb();
     await P.page.keyboard.press('h');
     await P.page.waitForTimeout(500);
     const kb1 = await kb();
     await P.page.keyboard.press('h');
     await P.page.waitForTimeout(400);
-    rec.ok(`${label}: the controls list starts folded to its ⌨ (nothing over the world), and H opens it`,
-      kb0.chip && kb0.rows === 0 && kb1.rows >= 4, { start: kb0, afterH: kb1 });
+    const kb2 = await kb();
+    rec.ok(`${label}: the controls list is in the band, right of the assembly (nothing floating over the world), and H folds it and opens it again`,
+      !kb0.floating && kb0.state === 'open' && kb0.rows >= 4 && inside(kb0) && kb1.state === 'folded' && kb1.rows === 0 && kb2.state === 'open' && kb2.rows >= 4,
+      { start: kb0, afterH: kb1, afterHH: kb2 });
   }
 }
 
@@ -433,8 +453,11 @@ async function oneBandChecks(P, rec, { label, viewport, upright, computer }) {
    most 1200 px; the band's own background the window's width (v2.3.4172: the world's width, the bars' edges).
    v2.3.4182: one assembly, one width -- at most 840 px (sheetGeometry
    BAND_ASSEMBLY_MAX_W; the owner: the buttons "should be part of the
-   dashboard assembly the same way it appears on mobile"). */
-const BAND_MAX_W = 840;
+   dashboard assembly the same way it appears on mobile").
+   v2.3.4890: 480 since v2.3.4243 (owner: "make the container areas smaller
+   (like they appear on mobile)"); read from sheetGeometry itself so the
+   test follows the game's one number. */
+const BAND_MAX_W = BAND_ASSEMBLY_MAX_W;
 const bandBoxes = (P) => P.page.evaluate(() => {
   const r = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return b.width > 0 ? { x: Math.round(b.left), r: Math.round(b.right), w: Math.round(b.width) } : null; };
   const o = window.__btOneBand ? window.__btOneBand() : {};
