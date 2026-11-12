@@ -217,7 +217,7 @@ const MON = join(ROOT, 'public/sprites/monsters');
      is a new job on the page's thread: route it through loadTrackedStrip, or add it to this list in the same change
      with the reason it cannot be. */
   const ALLOWED = {
-    'packTrimmed(': ['src/rendering/gearSheets.js', 'src/rendering/lookPaletteProbe.js', 'src/rendering/playerSkins.js', 'src/rendering/systems/effectsRenderer.js', 'src/rendering/systems/entityRenderer.js', 'src/rendering/zoneTextures.js'],
+    'packTrimmed(': ['src/rendering/gearLookProbe.js' /* v2.3.4998: the armour's oracle, a QA page's (`?lookprobe`): the old way it compares against */, 'src/rendering/gearSheets.js', 'src/rendering/lookPaletteProbe.js', 'src/rendering/playerSkins.js', 'src/rendering/systems/effectsRenderer.js', 'src/rendering/systems/entityRenderer.js', 'src/rendering/zoneTextures.js'],
     'packTrimmedSliced(': ['src/rendering/gearSheets.js', 'src/rendering/zoneTextures.js'],
     'stripAsNumbers(': ['src/rendering/p256.js', 'src/rendering/picsNumbers.js', 'src/rendering/zoneTextures.js'],
     'numbersOf(': ['src/rendering/heldNumbers.js', 'src/rendering/picsNumbers.js', 'src/rendering/zoneTextures.js'],

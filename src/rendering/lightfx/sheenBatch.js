@@ -53,6 +53,9 @@ export const SHEEN_BATCHER = 'sheen';
 /* floats a vertex: Pixi's six (position, uv, colour, texture id and round)
    then the box (4), the figure (4), the shine (4), the sun (2), the tint (1) */
 const VS = 21;
+/* v2.3.4998: the look program's shine draws its pieces with this layout too
+   (lookPalette.js LOOK_SHEEN_BATCHER: armour kept as colour numbers) */
+export const SHEEN_VS = VS;
 
 let _urlOff = false;
 try { if (typeof location !== 'undefined' && /[?&]sheenpass(=|&|$)/.test(location.search || '')) _urlOff = true; } catch (e) { /* on */ }
@@ -66,7 +69,7 @@ export function sheenBatchOn() {
     && !(typeof window !== 'undefined' && window.__btSharpOff);
 }
 
-class SheenGeometry extends Geometry {
+export class SheenGeometry extends Geometry {
   constructor() {
     const attributeBuffer = new Buffer({
       data: new Float32Array(1), label: 'attribute-sheen-buffer',
@@ -100,7 +103,7 @@ class SheenGeometry extends Geometry {
    where this corner lies in it (`p`, the filter's own 0-1 across its output
    frame, laid out linearly as the filter's quad was).  The fragment runs the
    filter's lines on the colour drawn. */
-const sheenBitGl = {
+export const sheenBitGl = {
   name: 'sheen-bit',
   vertex: {
     header: `
@@ -216,7 +219,24 @@ class SheenBatcher extends DefaultBatcher {
   }
 
   packQuadAttributes(el, f32, u32, idx, tid) {
-    DefaultBatcher.prototype.packQuadAttributes.call(this, el, _sf32, _su32, 0, tid);
+    packSheenQuad(this, el, f32, u32, idx, tid, null);
+  }
+
+  /* one shader for every batcher of this kind (sharpPixels' rule) */
+  _updateMaxTextures() {}
+
+  destroy() {
+    this.shader = null;
+    super.destroy();
+  }
+}
+SheenBatcher.extension = { type: [ExtensionType.Batcher], name: SHEEN_BATCHER };
+
+/** A sprite's quad at this layout: Pixi's six floats a corner, then the
+ *  shine's.  v2.3.4998: shared with the look program's shine (lookPalette.js),
+ *  which gives its own texture id and look (`id`, else Pixi's). */
+export function packSheenQuad(batcher, el, f32, u32, idx, tid, id) {
+    DefaultBatcher.prototype.packQuadAttributes.call(batcher, el, _sf32, _su32, 0, tid);
     const r = el.renderable;
     const sh = r && r._btSheen;
     /* the frame's box in the group: the sprite's bounds (Sprite.updateBounds:
@@ -247,7 +267,7 @@ class SheenBatcher extends DefaultBatcher {
       f32[q + 2] = _sf32[s + 2];
       f32[q + 3] = _sf32[s + 3];
       u32[q + 4] = _su32[s + 4];
-      u32[q + 5] = _su32[s + 5];
+      u32[q + 5] = id == null ? _su32[s + 5] : id;
       f32[q + 6] = minX; f32[q + 7] = minY; f32[q + 8] = maxX; f32[q + 9] = maxY;
       f32[q + 10] = fig ? fig[0] : 0; f32[q + 11] = fig ? fig[1] : 0;
       f32[q + 12] = fig ? fig[2] : 0; f32[q + 13] = fig ? fig[3] : 0;
@@ -257,17 +277,7 @@ class SheenBatcher extends DefaultBatcher {
       u32[q + 20] = tint;
     }
     _packed++;
-  }
-
-  /* one shader for every batcher of this kind (sharpPixels' rule) */
-  _updateMaxTextures() {}
-
-  destroy() {
-    this.shader = null;
-    super.destroy();
-  }
 }
-SheenBatcher.extension = { type: [ExtensionType.Batcher], name: SHEEN_BATCHER };
 
 /* ═══ WHICH PIECES: THE ONES THE SHARP BATCHER WOULD DRAW ═══
    The sharp batcher's own routing (sharpPixels.js setSheenBatcher) sends a

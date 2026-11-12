@@ -56,8 +56,24 @@ import { paletteAtlasSource, takePaletteRow, givePaletteRow, paletteRendererOf }
 import { timeLimit } from './retryLooks.js';   /* v2.3.4452: a set's file that never answers has failed */
 import { clientOff } from '../game/clientOff.js';   /* v2.3.3716: the Test panel's live off switch (lane D's clientOff.js) */
 import { lookPaletteChoice } from '../game/lookPaletteChoice.js';   /* v2.3.3838: not built on Windows */
+import { SheenGeometry, SHEEN_VS, sheenBitGl, packSheenQuad, SHEEN_BATCHER } from './lightfx/sheenBatch.js';   /* v2.3.4998: the shine on a numbers picture */
 
 export const LOOK_BATCHER = 'bt-look';
+/* ═══ v2.3.4998: THE LOOK PROGRAM WITH THE METAL'S SHINE ═══
+   Armour kept as colour numbers (lookSets/gear.js, the owner: "Do armor and
+   weapons as 256 color pictures") is metal, and every metal piece shines
+   (glint.js: the permanent sheen).  The shine is drawn in the frame by its own
+   batcher (lightfx/sheenBatch.js: the sharp read, then the filter's own lines
+   on the colour drawn, from what each piece carries in its corners) -- and
+   this file sends every look picture to LOOK_BATCHER, which would draw the
+   armour with no shine at all.  So a look picture the sharp hook marked for
+   the shine ('sheen') goes to this batcher instead: the look program's
+   reading, then the same lines (sheenBitGl, SHEEN_LIFT) on its colour, the
+   piece's corners in the sheen batcher's own layout (SheenGeometry,
+   packSheenQuad).  The same picture as the sheen batcher draws from the RGBA
+   art, to the look program's reading (mp-lookgear). */
+export const LOOK_SHEEN_BATCHER = 'bt-look-sheen';
+const isLookBatcher = (n) => n === LOOK_BATCHER || n === LOOK_SHEEN_BATCHER;
 const SLOTS = 4;                  /* sheets a batch (a figure draws one); the atlas is the unit after */
 const IDLE_MS = 30000;            /* a look no one drew for this long gives its row back */
 const SWEEP_MS = 5000;
@@ -92,7 +108,11 @@ const DIR_CAP = 1024;             /* sheets it holds (8 KB) */
    the tee), packed with 0.9 MB of gaps over their 4.3 MB; the stand-ins and
    the bodies' heads stay a texture a sheet (all of them in pages cost 15 MB
    for 12: tools/art/ has no packer that does better with sheets this
-   uneven, and they are drawn far less) */
+   uneven, and they are drawn far less).
+   v2.3.4998: the combat poses' armour (`gear`) stays a texture a sheet too:
+   on the 8-bit page it grew it from 2.4 to 8.4 MB for its 4.2 MB of sheets,
+   and it buys no batch -- shining armour is drawn by the look program's
+   shine form (LOOK_SHEEN_BATCHER), a batch apart from the bodies anyway */
 const ATLAS_SETS = new Set(['body', 'heads', 'shirt']);
 const _atlasWanted = (() => { try { return !/(^|[?&])lookatlas=0(&|$)/.test(window.location.search || ''); } catch (e) { return true; } })();
 
@@ -136,6 +156,10 @@ export function lookPaletteWanted() { return _wanted; }
 const _sets = new Map();          /* name -> { url, base, manifest, loading } */
 const _sheets = Object.create(null);   /* 'body/jog-east' -> { src, frames: [{frame, trim}], ds, bits } */
 let _loading = null;
+let _settled = false;   /* v2.3.4998: every set preloadLookSheets asked for has loaded or failed */
+/** v2.3.4998: the look sets the loading screen loads are in (or failed):
+ *  what is drawn from the numbers is now known (gearLookFrame.js waits on it). */
+export function lookSetsSettled() { return _settled; }
 let _ok = null;                   /* the program: null not tried, true linked, false not here */
 const _stats = { sheets: 0, sheetBytes: 0, looksMade: 0, looksFreed: 0, rowsFull: 0, linkError: null, loadError: null, drawn: 0, sets: 0, rangeErrors: 0, remade: 0, remadeInFrame: 0,
   pages: 0, pageBytes: 0, paged: 0, pageSends: 0 };   /* v2.3.4993: the atlas */
@@ -611,8 +635,10 @@ export function preloadLookSheets() {
         try { planned = planPages(ms.filter(Boolean)); } catch (e) { planned = null; }
       }
       const r = await Promise.all(names.map((n) => loadSet(n, planned)));
+      _settled = true;   /* v2.3.4998 */
       return r.every(Boolean);
     })();
+    _loading.catch(() => { _settled = true; });
   }
   return _loading;
 }
@@ -1109,6 +1135,39 @@ function lookShader() {
   return _shader;
 }
 
+/* v2.3.4998: the look program with the shine's lines after it (above) */
+let _sheenShader = null;
+let _okSheen = null;   /* the program: null not tried, true linked, false not here */
+function lookSheenShader() {
+  if (_sheenShader) return _sheenShader;
+  _built = true;
+  const V = sheenBitGl.vertex, F = sheenBitGl.fragment;
+  const vert = VERT
+    .replace('flat out float vDir;\n', 'flat out float vDir;\n' + V.header + '\n')
+    .replace('    vColor *= uWorldColorAlpha;\n', '    vColor *= uWorldColorAlpha;\n' + V.main + '\n');
+  const frag = fragSource()
+    .replace('out vec4 finalColor;\n', 'out vec4 finalColor;\n' + F.header + '\n')
+    .replace('    finalColor = (c / 255.0) * vColor;\n', '    finalColor = (c / 255.0) * vColor;\n' + F.end + '\n');
+  if (vert === VERT || frag.indexOf('vSheenP') < 0) throw new Error('the look program\'s text moved: the shine\'s lines found no place');
+  const units = new Int32Array(SLOTS);
+  for (let i = 0; i < SLOTS; i++) units[i] = i;
+  _sheenShader = new Shader({
+    glProgram: GlProgram.from({ vertex: vert, fragment: frag, name: 'bt-look-sheen-batch' }),
+    resources: {
+      lookSamplers: new UniformGroup({
+        uTextures: { value: units, type: 'i32', size: SLOTS },
+        uPalAtlas: { value: SLOTS, type: 'i32' },
+        uMaskAtlas: { value: SLOTS + 1, type: 'i32' },
+        uDir: { value: SLOTS + 2, type: 'i32' },
+      }, { isStatic: true }),
+    },
+  });
+  return _sheenShader;
+}
+/** v2.3.4998: a look picture can be drawn with the metal's shine here (the
+ *  program built and linked; armour as colour numbers asks this first). */
+export function lookSheenOn() { return lookPaletteOn() && _okSheen === true; }
+
 function packedId(el, slot) {
   const t = el.texture;
   const look = t && t._btLook;
@@ -1155,6 +1214,26 @@ class LookBatcher extends DefaultBatcher {
 }
 LookBatcher.extension = { type: [ExtensionType.Batcher], name: LOOK_BATCHER };
 
+/* v2.3.4998: the look batcher with the shine's corners: the same slots, atlas,
+   masks and directory (LookBatcher._finishBatch), the sheen batcher's layout */
+class LookSheenBatcher extends LookBatcher {
+  constructor() {
+    super();
+    this.name = LOOK_SHEEN_BATCHER;
+    this.vertexSize = SHEEN_VS;
+    const made = this.geometry;
+    this.geometry = new SheenGeometry();
+    try { if (made) made.destroy(true); } catch (e) { /* never uploaded */ }
+    this.shader = lookSheenShader();
+  }
+  packQuadAttributes(el, f32, u32, idx, slot) {
+    packSheenQuad(this, el, f32, u32, idx, slot, packedId(el, slot));
+    _stats.drawn++;
+    _stats.sheenDrawn = (_stats.sheenDrawn || 0) + 1;
+  }
+}
+LookSheenBatcher.extension = { type: [ExtensionType.Batcher], name: LOOK_SHEEN_BATCHER };
+
 /* ═══ WHICH BATCHER: BY THE TEXTURE (not with `?lookpalette=0`) ═══
    Inside sharpPixels' hook (installed at app.init, after this) and outside
    paletteTex's: sharp decides 'sharp' or 'default' first, this sends a look's
@@ -1166,15 +1245,19 @@ function patchPipes() {
   if (_patched) return;
   _patched = true;
   extensions.add(LookBatcher);
+  extensions.add(LookSheenBatcher);   /* v2.3.4998 */
   {
     const P = BatcherPipe.prototype;
     const add = P.addToBatch;
     P.addToBatch = function (obj, instructionSet) {
       if (obj) {
         if (lookTex(obj.texture)) {
-          if (obj.batcherName !== LOOK_BATCHER) obj._btLookSharp = obj.batcherName !== 'default';
-          obj.batcherName = LOOK_BATCHER;
-        } else if (obj.batcherName === LOOK_BATCHER) obj.batcherName = 'default';
+          /* v2.3.4998: a quad the sharp hook marked for the metal's shine
+             keeps it, through the look program's own (LOOK_SHEEN_BATCHER) */
+          const shine = (obj.batcherName === SHEEN_BATCHER || obj.batcherName === LOOK_SHEEN_BATCHER) && obj.packAsQuad && _okSheen === true;
+          if (!isLookBatcher(obj.batcherName)) obj._btLookSharp = obj.batcherName !== 'default';
+          obj.batcherName = shine ? LOOK_SHEEN_BATCHER : LOOK_BATCHER;
+        } else if (isLookBatcher(obj.batcherName)) obj.batcherName = 'default';
       }
       return add.call(this, obj, instructionSet);
     };
@@ -1184,7 +1267,7 @@ function patchPipes() {
     const valid = P.validateRenderable;
     P.validateRenderable = function (sprite) {
       const b = this._getGpuSprite(sprite);
-      if ((b.batcherName === LOOK_BATCHER) !== lookTex(sprite._texture)) return true;
+      if (isLookBatcher(b.batcherName) !== lookTex(sprite._texture)) return true;
       return valid.call(this, sprite);
     };
   }
@@ -1289,6 +1372,29 @@ function prewarmProgram() {
   }
   if (!_ok && !_stats.linkError) _stats.linkError = 'the look program did not build on this device';
   try { if (box) box.destroy({ children: true }); } catch (e) { /* gone */ }
+  /* v2.3.4998: and the look program with the shine, built the same way (one
+     piece drawn through it), so armour as colour numbers never compiles it
+     in the first armoured frame; not built, armour stays its RGBA art */
+  if (_ok) {
+    box = null;
+    try {
+      const name = Object.keys(_sheets)[0];
+      box = new Container();
+      const s = new Sprite(getLookFrameRaw(name));
+      s.width = 2; s.height = 2;
+      s._sharp = true;
+      s._btSheen = { on: true, r: 1, g: 1, b: 1, k: 1, sx: 0, sy: 0, fig: new Float32Array(4), tintPacked: 0xffffffff };
+      box.addChild(s);
+      box.alpha = 0.001;
+      _okSheen = true;   /* routed to it for this draw (addToBatch asks) */
+      r.render({ container: box });
+      _okSheen = programLinked(r, lookSheenShader().glProgram);
+    } catch (e) {
+      _okSheen = false;
+      _stats.sheenError = String((e && e.message) || e);
+    }
+    try { if (box) box.destroy({ children: true }); } catch (e) { /* gone */ }
+  }
 }
 /** v2.3.3883: a new renderer (initPixiRenderer: the first, and a black
  *  screen's rebuild) -- the look program built and the sheets sent to it
@@ -1309,7 +1415,7 @@ if (typeof window !== 'undefined') {
   window.__btLookPalette = () => {
     let rows = 0;
     for (const l of _looks.values()) if (l.row >= 0) rows++;
-    return { wanted: _wanted, why: _why /* v2.3.3838: 'address', 'windows' or 'default' (v2.3.3842: or 'mac') */, on: lookPaletteOn(), ok: _ok, renderer: !!paletteRendererOf(), prewarmed: !!_prewarmedFor, ..._stats, looks: _looks.size, rows,
+    return { wanted: _wanted, why: _why /* v2.3.3838: 'address', 'windows' or 'default' (v2.3.3842: or 'mac') */, on: lookPaletteOn(), ok: _ok, okSheen: _okSheen /* v2.3.4998 */, renderer: !!paletteRendererOf(), prewarmed: !!_prewarmedFor, ..._stats, looks: _looks.size, rows,
       sheetMB: +(_stats.sheetBytes / 1048576).toFixed(2), sets: [..._sets.keys()].filter((k) => _sets.get(k).manifest),
       /* v2.3.4993: the atlas */
       atlas: { on: _atlasWanted, pages: _pages.map((P) => ({ bits: P.bits, ds: P.ds, w: P.w, h: P.h, sheets: P.members.length })), dir: _dirN, pageMB: +(_stats.pageBytes / 1048576).toFixed(2) } };

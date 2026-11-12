@@ -245,3 +245,74 @@ the graphics chip.
 **The character sheets** (phase 2): at the fight the chip holds 18.1 MB of
 walking armour and body sheets as images, and 24.9 MB of emptied pose and
 weapon canvases. At a byte a pixel that is about 32 MB less.
+
+## 8. Phase 2, slice 1: the combat poses' armour (v2.3.4998)
+
+The owner, 2026-11-12: *"Do armor and weapons as 256 color pictures."* The
+first slice is the row ranked first in §1 that the look program can already
+draw: **the armour of the combat and work poses** (the sword's swing, the
+bow's draw, the chop, the cook's stir, the fire's lighting, the farmer's hoe,
+can and kneel), 42 strips across the shirt, the chest and the legs, which
+`effectsRenderer.js _gearStripFrame` cut into RGBA canvases: 13.9 MB on the
+chip at the memory check's fight.
+
+**What it is now.** A look set, `gear` (`src/rendering/lookSets/gear.js`,
+baked by `node tools/art/role-bake.mjs --set gear` into
+`public/sprites/look/gear/`): each strip's frames cut by the game's own
+`packTrimmed` cells, at a byte a pixel and the sheet's own 255 colours (the
+body's contract, `look-palette.md`), with no roles (armour is not recoloured
+by a look). Copper, iron and black steel are the same steel art under a sprite
+tint, which the look program applies as it applies every tint. 4.2 MB of
+sheets (1.7 MB of files), a texture a sheet, as the stand-ins: on the look
+atlas's 8-bit page they grew it from 2.4 to 8.4 MB (1.8 MB of gaps), and they
+buy no batch there, since shining armour is drawn by the look program's shine
+form, a batch apart from the bodies anyway.
+
+**How it is drawn** (`src/rendering/gearLookFrame.js`). `_gearStripFrame` asks
+`gearStripFrames` first: the frames from the numbers where the look program
+and its shine are built; `'wait'` while the look sets load behind the loading
+screen (so the RGBA strip is never fetched: that is the saving); null for the
+old strip (`?gearlook=0`, a computer, no WebGL2, a program that did not
+build). Where the numbers turn out not to be drawn after all, the old strips
+are warmed again once the look sets are in, still behind the loading screen
+(`gearLookDecided`; the preloading law). The metal's shine (`lightfx/
+sheenBatch.js`) is drawn by the look program with the shine's own lines: a
+look sprite the shine marks goes to `LOOK_SHEEN_BATCHER`, the look program
+with the sheen's vertex and fragment lines added (`lookPalette.js
+lookSheenShader`), its vertex the sheen's 21 floats with the sheet's number in
+the low half of the round flag (`packSheenQuad`). The legs' swing and bow
+strips still give the stand-in bodies the greaves' shape (TRAPS §255's
+receipt, the `standinlegs` clamp): read once from their own file and let go
+(`_greavesShapeOnce`).
+
+**The cut** (the bake's self-check, every sheet against its own RGBA): 8 of the
+42 already on 255 colours or fewer (exact); the rest from 788 colours (the
+median) to 27,012, each cut to 255 within the 16-level bar: the mean a sheet
+moves 0.8-3.9 levels (1.3 on average), the worst colour 14.5. All 111 armour
+sheets (the walking ones too) were measured before this was built: every one
+within the bar, the worst 14.
+
+**The oracle** (`mp-lookgear`, `src/rendering/gearLookProbe.js`): every frame
+of the 42 strips drawn the old way (the same PNG, `packTrimmed`, the sharp
+read) and the new, through the game's own batchers, read back and compared
+texel for texel, premultiplied:
+
+| drawn | frames | px drawn | mean (levels of 255) | worst | px past 16 |
+|---|--:|--:|--:|--:|--:|
+| steel, no shine | 351 | 1.76 M | 1.49 | 14 | 0 |
+| steel, its shine | 351 | 1.76 M | 1.51 | 15 | 0 |
+| copper tint and its shine | 351 | 1.76 M | 1.21 | 14 | 0 |
+
+**Memory** (§1's census; the check's numbers are in the PR): the 42 strips'
+13.9 MB on the chip at the fight become their 4.2 MB of numbers, sent to the
+chip behind the loading screen with every look sheet (`uploadSheets`: a sheet
+first sent when first drawn held its bytes in the page until then, the
+buffers line). The old strips were on the chip from arrival too (cut behind
+the loading screen and kept there alone, `keepOnGpuOnly`: `mp-gpuonly`'s 47
+canvases let go of on arrival, 24.9 MB with the weapon bodies). So about
+9.7 MB less on the chip, from arrival on.
+
+**Next, slice 2**: the walking armour sheets (jog, stand, hit, dodge, mine,
+fish, pickup: 18.1 MB at the fight in §1), drawn by `gearSheets.js` and
+`entityRenderer.js _placeGear`, which also read some frames back on the CPU
+(those keep their RGBA through `getGearFrame`).

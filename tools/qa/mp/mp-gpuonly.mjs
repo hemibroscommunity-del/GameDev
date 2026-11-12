@@ -203,8 +203,11 @@ const numberDraws = (P, text) => P.page.evaluate(async (txt) => {
 }, text);
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  const A = await H.newPlayer(browser, { name: 'chiponly', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel', init: INIT });
-  const B = await H.newPlayer(browser, { name: 'chipcopies', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel', init: INIT, query: 'gpucopies' });
+  /* v2.3.4998: `gearlook=0` -- the combat strips are drawn from the colour
+     numbers by default now (gearLookFrame.js, mp-lookgear); this holds the
+     RGBA strips' way, still every device's without the look program */
+  const A = await H.newPlayer(browser, { name: 'chiponly', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel', init: INIT, query: 'gearlook=0' });
+  const B = await H.newPlayer(browser, { name: 'chipcopies', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel', init: INIT, query: 'gpucopies&gearlook=0' });
   const errors = [];
   A.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   try {

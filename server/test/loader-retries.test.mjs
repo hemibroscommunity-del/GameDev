@@ -220,7 +220,7 @@ async function gearRun(search) {
   const images = [];
   class Img { constructor() { images.push(this); } set src(v) { this._src = v; if (v) this.url = v; } get src() { return this._src; } }
   const ctx = context(clock, search, {
-    Image: Img, gearArtSafe: (s, i) => i, GEAR_STRIP_TWIN: {}, GEARLAYER_VER: '1', GEAR_STRIP_TIMEOUT_MS: 20000,
+    Image: Img, gearArtSafe: (s, i) => i, gearStripFrames: () => null /* v2.3.4998: the old strip */, GEAR_STRIP_TWIN: {}, GEARLAYER_VER: '1', GEAR_STRIP_TIMEOUT_MS: 20000,
     packTrimmed: () => null, Texture: class { static from() { return { source: {} }; } }, Rectangle: class {}, registerGearSource: () => {},
     keepOnGpuOnly: () => {}, _fxPreload: [], _combatTrimStats: [], _combatTrimFrames: new Map(),
   });

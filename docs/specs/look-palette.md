@@ -564,6 +564,30 @@ on that sheet, a face drawing, `?garmentspecks=0`, no atlas row free.
 the old bake against the numbers through the sharp read; `__btHeadSheets`:
 which of your heads the numbers draw, and how many copies are baked).
 
+## The combat poses' armour, and the look program's shine (v2.3.4998)
+
+The armour of the swing, the bow's draw, the chop, the cook, the fire and the
+farmer's three poses is a set, `gear` (`src/rendering/lookSets/gear.js`,
+`public/sprites/look/gear/`, `tools/art/role-bake.mjs --set gear`): 42 sheets
+at 8 bits, no roles (each drawn with `asDrawn`; copper and iron are a sprite
+tint), ds 1, no mips, each frame width the one the game cuts the strip with.
+`src/rendering/gearLookFrame.js` hands `effectsRenderer.js _gearStripFrame`
+the frames; `?gearlook=0` is the RGBA strips. The cut and the oracle
+(`mp-lookgear`) are in `pictures-256.md` §8.
+
+Armour shines (`lightfx/sheenBatch.js`): a sprite the shine marks is moved to
+the sheen batcher, which the look program never was. So the look program has
+a second form, **`LOOK_SHEEN_BATCHER`** (`lookPalette.js`): the same program
+with the sheen's lines added (its vertex header and main, its fragment header
+and end, inserted at fixed places in the look program's text by
+`lookSheenShader`), and the sheen's vertex (21 floats) with the sheet's number
+in the round flag's low half, packed by the sheen's own `packSheenQuad`. A
+look sprite goes there when the shine marks it; built and linked behind the
+loading screen beside the look program (`prewarmProgram`, `okSheen` in
+`__btLookPalette()`). A device where it does not link draws the old strips
+(`lookSheenOn()` false), warmed behind the loading screen once that is known
+(`gearLookDecided`).
+
 ## The plan for the rest
 
 Each its own pull request (on by default, as this one: the owner's rule for the phase).

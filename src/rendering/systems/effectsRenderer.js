@@ -376,6 +376,7 @@ import { AIM_CARET, AIM_CARET_EDGE } from '../aimCaret.js'; /* v2.3.1799 */
 import { rangedAimAngle, bowGripPoint, orbCrashFx /* v2.3.2991: the staff's crash, filmed for the stat scene */, isPlayerDead /* v2.3.2996 */ } from '@/game/combatHelpers.js'; /* v2.3.2320: the bow sight line uses the SAME ladder the arrow does; v2.3.2543: ...from the same ORIGIN, too */
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShield.js'; /* v2.3.1784 */
 import { registerLookSheets, getLookPartFrames, lookPaletteWanted, lookPaletteOn, lookHas, preloadLookSheets } from '../lookPalette.js';   /* v2.3.3757: the stand-ins from the numbers */
+import { gearStripFrames, gearLookDecided } from '../gearLookFrame.js';   /* v2.3.4998: the combat poses' armour from the numbers */
 import { registerBowBodyFrames, BLOCK_STANDIN_HAND, BLOCK_OFFHAND, BLOCK_OFFHAND_PX, BLOCK_OFFHAND_ENABLED, BLOCK_OFFHAND_ART_ANG, BLOCK_ARM_FACING, blockArmTextureFrom } from '../blockArm.js'; /* v2.3.1785; v2.3.1833 the away-facing hand; v2.3.1864 the off-hand weapon; v2.3.2920 a peer's arm */
 import { getWeaponTexture, hasWeapon, weaponFitH } from '../weaponSprites.js'; /* v2.3.1864; weaponFitH v2.3.2910 */
 import { getWeaponHandle } from '../playerAnchors.js';             /* v2.3.1864 */
@@ -4932,60 +4933,77 @@ export class EffectsRenderer {
        and under the same law — 'steelplate' / 'steelgreaves' are the only chest
        and legs items with a fire-south sheet, so nothing is guessed here
        either. */
-    this._gearStripFrame('shirt', 'tshirt', 'fire', 'south', FIRE_FW, 0);
-    this._gearStripFrame('chest', 'steelplate', 'fire', 'south', FIRE_FW, 0);
-    this._gearStripFrame('legs', 'steelgreaves', 'fire', 'south', FIRE_FW, 0);
-    /* v2.3.2303: ...and the two poses that were missed, for the same reason
-       and under the same law.  A peer cooking or chopping is about to start
-       wearing their clothes (the remote gear block below), and warming these
-       here is what keeps that from becoming a mid-animation load.
-       WHY NOT preloadCombatGear (combatGear.js): that calls Assets.load, which
-       fills the Pixi ASSETS cache only.  _gearStripFrame keeps its own SLICE
-       cache (this._gearStrips) and, cold, returns null for a frame while it
-       schedules the cut -- so a hot Assets cache still draws nothing on the
-       first frame.  Routing through _gearStripFrame here registers with
-       effectsAnimationsReady(), which preloadWorldAnimations awaits, so the
-       SLICES exist before the intro overlay lifts.
-       chop-west and cook-south ship for all three slots (checked on disk), and
-       as above these three items are the only ones with sheets, so nothing is
-       guessed.  Recolours (copperplate, ironplate...) resolve through gearArt()
-       to the same steel art, so they are covered by these. */
-    for (const [pose, dir, fw] of [['cook', 'south', 213], ['chop', 'west', CHOP_GEAR_FW]]) {
-      this._gearStripFrame('shirt', 'tshirt', pose, dir, fw, 0);
-      this._gearStripFrame('chest', 'steelplate', pose, dir, fw, 0);
-      this._gearStripFrame('legs', 'steelgreaves', pose, dir, fw, 0);
-    }
-    /* ═══ v2.3.2500: AND THE TWO POSES EVERY FIGHT BEGINS WITH ═══
-       The sword swing and the bow shot were the last stand-ins whose gear
-       strips were still CUT on first use, and the paragraph above says in as
-       many words why warming them anywhere else does not work:
-       preloadCombatGear (combatGear.js) fills the Pixi ASSETS cache, while
-       _gearStripFrame keeps its own SLICE cache and returns null for a frame
-       while it schedules the cut -- so a hot Assets cache still draws nothing
-       on the first frame.  That is the first swing and the first shot of every
-       session drawn without the shirt or the armour, which is the same
-       first-use load the preloading law forbids (CLAUDE.md, TRAPS #12) and the
-       same shape of bug as the pickup pose in this change.
-       The SHIRT is the slot that needed this most: combatGear.js warms chest
-       and legs only ("Only chest + legs layer during combat"), so the shirt
-       sheets were not even in the Assets cache to be sliced from.
-       Frame widths are READ from _swordCfg / _bowCfg rather than written out
-       again -- those tables already own each facing's frame box, and a literal
-       here is exactly the copy TRAPS §51 is about.  Both tables are built
-       earlier in this constructor, so they are populated by now. */
-    for (const [_map, _fallbackPose] of [[this._swordCfg, 'swing'], [this._bowCfg, 'bowshot']]) {
-      for (const _dirKey of Object.keys(_map)) {
-        const _cfg = _map[_dirKey];
-        const _gp = _cfg.gearPose || _fallbackPose;
-        /* tshirt / steelplate / steelgreaves are the only items with sheets,
-           and every recolour (copperplate, coppergreaves...) resolves to this
-           same art through gearArtSafe inside _gearStripFrame -- so nothing
-           here is guessed and no recoloured id needs its own warm. */
-        this._gearStripFrame('shirt', 'tshirt', _gp, _dirKey, _cfg.fw, 0);
-        this._gearStripFrame('chest', 'steelplate', _gp, _dirKey, _cfg.fw, 0);
-        this._gearStripFrame('legs', 'steelgreaves', _gp, _dirKey, _cfg.fw, 0);
+    /* v2.3.4998: the warm below is one function, run now and -- where the
+       armour is NOT drawn from the colour numbers after all (the look
+       program's shine did not build on this device) -- again once the look
+       sets are in, still behind the loading screen (gearLookDecided).  Run
+       now, it fetches nothing the numbers replace: _gearStripFrame answers
+       'wait' (gearLookFrame.js). */
+    const _warmGear = () => {
+      this._gearStripFrame('shirt', 'tshirt', 'fire', 'south', FIRE_FW, 0);
+      this._gearStripFrame('chest', 'steelplate', 'fire', 'south', FIRE_FW, 0);
+      this._gearStripFrame('legs', 'steelgreaves', 'fire', 'south', FIRE_FW, 0);
+      /* v2.3.2303: ...and the two poses that were missed, for the same reason
+         and under the same law.  A peer cooking or chopping is about to start
+         wearing their clothes (the remote gear block below), and warming these
+         here is what keeps that from becoming a mid-animation load.
+         WHY NOT preloadCombatGear (combatGear.js): that calls Assets.load, which
+         fills the Pixi ASSETS cache only.  _gearStripFrame keeps its own SLICE
+         cache (this._gearStrips) and, cold, returns null for a frame while it
+         schedules the cut -- so a hot Assets cache still draws nothing on the
+         first frame.  Routing through _gearStripFrame here registers with
+         effectsAnimationsReady(), which preloadWorldAnimations awaits, so the
+         SLICES exist before the intro overlay lifts.
+         chop-west and cook-south ship for all three slots (checked on disk), and
+         as above these three items are the only ones with sheets, so nothing is
+         guessed.  Recolours (copperplate, ironplate...) resolve through gearArt()
+         to the same steel art, so they are covered by these. */
+      for (const [pose, dir, fw] of [['cook', 'south', 213], ['chop', 'west', CHOP_GEAR_FW]]) {
+        this._gearStripFrame('shirt', 'tshirt', pose, dir, fw, 0);
+        this._gearStripFrame('chest', 'steelplate', pose, dir, fw, 0);
+        this._gearStripFrame('legs', 'steelgreaves', pose, dir, fw, 0);
       }
-    }
+      /* ═══ v2.3.2500: AND THE TWO POSES EVERY FIGHT BEGINS WITH ═══
+         The sword swing and the bow shot were the last stand-ins whose gear
+         strips were still CUT on first use, and the paragraph above says in as
+         many words why warming them anywhere else does not work:
+         preloadCombatGear (combatGear.js) fills the Pixi ASSETS cache, while
+         _gearStripFrame keeps its own SLICE cache and returns null for a frame
+         while it schedules the cut -- so a hot Assets cache still draws nothing
+         on the first frame.  That is the first swing and the first shot of every
+         session drawn without the shirt or the armour, which is the same
+         first-use load the preloading law forbids (CLAUDE.md, TRAPS #12) and the
+         same shape of bug as the pickup pose in this change.
+         The SHIRT is the slot that needed this most: combatGear.js warms chest
+         and legs only ("Only chest + legs layer during combat"), so the shirt
+         sheets were not even in the Assets cache to be sliced from.
+         Frame widths are READ from _swordCfg / _bowCfg rather than written out
+         again -- those tables already own each facing's frame box, and a literal
+         here is exactly the copy TRAPS §51 is about.  Both tables are built
+         earlier in this constructor, so they are populated by now. */
+      for (const [_map, _fallbackPose] of [[this._swordCfg, 'swing'], [this._bowCfg, 'bowshot']]) {
+        for (const _dirKey of Object.keys(_map)) {
+          const _cfg = _map[_dirKey];
+          const _gp = _cfg.gearPose || _fallbackPose;
+          /* tshirt / steelplate / steelgreaves are the only items with sheets,
+             and every recolour (copperplate, coppergreaves...) resolves to this
+             same art through gearArtSafe inside _gearStripFrame -- so nothing
+             here is guessed and no recoloured id needs its own warm. */
+          this._gearStripFrame('shirt', 'tshirt', _gp, _dirKey, _cfg.fw, 0);
+          this._gearStripFrame('chest', 'steelplate', _gp, _dirKey, _cfg.fw, 0);
+          this._gearStripFrame('legs', 'steelgreaves', _gp, _dirKey, _cfg.fw, 0);
+        }
+      }
+    };
+    _warmGear();
+    /* the loads the second warm makes, waited for by the loading screen
+       (only those: the whole list would hold this promise itself) */
+    _fxPreload.push(gearLookDecided().then((on) => {
+      if (on !== false || this._destroyed) return null;
+      const n = _fxPreload.length;
+      _warmGear();
+      return Promise.allSettled(_fxPreload.slice(n));
+    }));
     /* ═══ v2.3.3146: AND YOUR SHIRT'S PRINT AND PATTERN ON THE GATHERERS ═══
        The three gathering figures' dressed shirt strips (_dressedShirtFrame,
        the note at SHIRT_PATTERN_K), baked behind the loading screen like the
@@ -14901,6 +14919,20 @@ export class EffectsRenderer {
        wire, and it is interpolated into the fetch URL below. */
     item = gearArtSafe(slot, item);
     if (!item) return null;
+    /* ═══ v2.3.4998: THE ARMOUR FROM THE COLOUR NUMBERS ═══
+       The owner: "Do armor and weapons as 256 color pictures."  Where the look
+       program and its shine are built, the strip's frames come from the
+       `gear` look set (gearLookFrame.js, a byte a pixel), asked for each draw,
+       and the RGBA strip below is never fetched; 'wait' while the look sets
+       load behind the loading screen.  The legs' swing and bow strips still
+       give the sword and bow bodies the greaves' shape, read from their own
+       file once (_greavesShapeOnce) -- from the constructor's warm, while the
+       answer is still 'wait', so behind the loading screen as before. */
+    const _lk = gearStripFrames(slot, item, pose, dir);
+    if (_lk) {
+      if (slot === 'legs' && !GEAR_STRIP_TWIN[pose] && (pose === 'swing' || pose === 'bowshot')) this._greavesShapeOnce(pose, dir, item);
+      return _lk === 'wait' ? null : _lk[Math.min(fi, _lk.length - 1)];
+    }
     const key = slot + '/' + item + '/' + pose + '/' + dir;
     let e = this._gearStrips[key];
     if (e === undefined) {
@@ -15265,6 +15297,35 @@ export class EffectsRenderer {
      as bytes.  Every metal's greaves are the one steel art
      (gearArtSafe), so the shape is keyed by pose and facing alone.
      `?standinlegs=0` is the game as it was. */
+  /* v2.3.4998: the greaves' shape from the legs' own swing or bow strip,
+     read once and let go (the strip itself is drawn from the numbers:
+     _gearStripFrame) -- joined to the loading screen's wait, as the strip's
+     own load was */
+  _greavesShapeOnce(pose, dir, item) {
+    const k = pose + '/' + dir;
+    const done = this._greavesRead || (this._greavesRead = new Set());
+    if (done.has(k)) return;
+    done.add(k);
+    const url = '/sprites/gear/legs/' + item + '/' + pose + '-' + dir + '.png?v=' + GEARLAYER_VER;
+    const p = new Promise((res) => {
+      const im = new Image();
+      /* a read that has not answered has failed (TRAPS §257): asked again
+         at its next draw, as a failed one is */
+      const fail = () => { clearTimeout(tm); im.onload = null; im.onerror = null; done.delete(k); res(); };
+      const tm = setTimeout(fail, GEAR_STRIP_TIMEOUT_MS);
+      im.onload = () => {
+        clearTimeout(tm);
+        if (!this._destroyed) {
+          try { this._noteGreavesShape(pose, dir, im, im.naturalWidth || im.width, im.naturalHeight || im.height); } catch (e) { /* the bodies keep their own legs */ }
+        }
+        res();
+      };
+      im.onerror = fail;
+      im.src = url;
+    });
+    _fxPreload.push(p);
+  }
+
   _noteGreavesShape(pose, dir, img, W, H) {
     if (STANDIN_LEGS_OFF) return;
     try {
