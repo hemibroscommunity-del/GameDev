@@ -62,8 +62,11 @@ and the later rounds are unchanged.
   there is a window, and the worker has none.
 - A QA probe that reads the page's bake (`__btGridProbe`, `__btInkProbe`,
   `__btTrimVerify`).
-- A job the worker could not do: no worker, any error, or no answer in 20 s
-  (`WORKER_MS`). A file that did not load goes on to the page's own second try
+- A job the worker could not do: no worker, or any error; or a worker that
+  answered nothing for 20 s while it had work (`WORKER_MS`: let go of, its
+  jobs the page's). A job has no time limit of its own: the first tour with
+  one worker and a limit a job sent b-fish's jobs, queued behind a-ink's, back
+  to the page (344 ms holds). Two workers where the device has the cores. A file that did not load goes on to the page's own second try
   after its backoff, as a failed first download always did.
 
 ## How it was proven
@@ -77,15 +80,30 @@ Wheel's BroTown:
   drawn and patterned trousers, patterned boots, an eye colour, an eye style
   that erases, mirrored and not; and the plain look), and the five head-sheet
   families (jog east and south, hit, mine, pickup) in the same three: the
-  page's bake against the worker's, **39 sheets, every byte the same**, the
-  same size and the same packed cells.
+  page's bake against the worker's, and a peer's stand-ins (a sword body, a
+  bow torso strip, the jog legs) in the same three: **48 sheets, every byte
+  the same**, the same size and the same packed cells.
 - **Off the page in play.** Behind the loading screen the page bakes (as
   before); a drawing changed in the world bakes its sheets again on the
   worker, none fails, and the page's part of each (the texture made from the
   decoded image) is 0.1 to 0.9 ms.
 
-The crowd tour, before and after: see the PR and `held-budget.mjs`'s
-`body-bake` line.
+- **The crowd tour** (`BT_CS_STATIONS=a-ink,b-fish,c-armour8`), before
+  (`BT_CS_QUERY=bodyworker=0`) and after:
+
+  | station | `body-bake` before: longest hold | after | the longest hold of anything, after |
+  |---|---|---|---|
+  | a-ink (drawn players) | 546 ms outside the frame; 122 ms inside it (a stand-in) | none | 10.5 ms |
+  | b-fish (fishing in shirts) | 179 ms | none | 7.7 ms |
+  | c-armour8 (eight armoured) | 202 ms | none | 36.1 ms (the garbage collector) |
+  | in all | 53 holds, 6.2 s | none | |
+
+  What the graphics chip held after c-armour8: 130.6 MB before, 96.3 MB after.
+  `held-budget.mjs` locks those three stations' `body-bake` lines at the
+  general line (12 ms).
+- **The memory check** (`mp-membudget`): every line within its budget.
+- The role bakes (`role-bake.mjs --check`, the body, `standin`,
+  `standinlegs`): the numbers on disk are a fresh bake of the moved code.
 
 ## What it costs
 
@@ -98,11 +116,16 @@ The crowd tour, before and after: see the PR and `held-budget.mjs`'s
   shows a little longer the first time a drawn player strikes a new pose: the
   same plain frame the page's bake always showed while it loaded.
 
+### A peer's stand-ins
+
+A peer with drawings has their sword and bow bodies, torso strips and jog legs
+recoloured for them (`effectsRenderer.js` `_remoteBodyFramesFor`,
+`_remoteSheetFramesFor`). That ran INSIDE the frame the first time they swung
+(up to 564 ms in the first tour after the body sheets moved). In play it is
+the worker's job `'standin'` now (`_peerOnWorker`): the strip is null until it
+lands, which both callers already draw as they do while the image loads.
+
 ## Not here (next)
 
-- The stand-ins of a peer with drawings (their sword, bow and block bodies:
-  `effectsRenderer.js` `_remoteBodyFramesFor` and its neighbours) are still
-  recoloured on the page, inside the frame, when they first swing (the crowd
-  tour: up to 122 ms in a-ink).
 - The look palette for the fish in a shirt and the head sheets (a memory
   saving, not a hold: those bakes are off the page now).

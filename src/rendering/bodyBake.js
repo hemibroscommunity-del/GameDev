@@ -20,7 +20,7 @@
  *     `__btTrimVerify`), checked at each bake.  (`__btProbe`, which every QA
  *     page sets, is the stand-ins' own: buildBodySheet's bake never reads it.)
  * A job the worker could not do (it failed to start, the file did not load,
- * any error, no answer in 20 s) answers null, and the caller bakes that sheet on the page as
+ * any error, a worker silent for 20 s with work) answers null, and the caller bakes that sheet on the page as
  * before, with its own retries.
  *
  * QA: window.__btBodyWorker() (what it did), and
@@ -39,29 +39,70 @@ const _OFF = (() => {
   return null;
 })();
 
-const _stats = { off: _OFF, asked: 0, done: 0, failed: 0, inlineProbe: 0, loading: 0, ms: 0, pageMs: 0, lastWhy: null };
-let _w = null, _dead = false, _seq = 0;
-const _pending = new Map();
+const _stats = { off: _OFF, asked: 0, done: 0, failed: 0, inlineProbe: 0, loading: 0, stalled: 0, ms: 0, pageMs: 0, lastWhy: null };
+let _dead = false, _seq = 0, _started = 0;
+/* ═══ TWO WORKERS, AND A WATCH THAT TELLS A DEAD ONE FROM A BUSY ONE ═══
+   The first crowd tour with one worker and a 20 s limit a JOB: a-ink's
+   drawn players queued dozens of sheets, b-fish's jobs waited behind them past
+   the limit, and the page baked them itself (344 ms holds).  A queue is not a
+   failure.  So a job has no limit of its own; a WORKER does: one that has
+   answered nothing for WORKER_MS while it has work is let go of, and its jobs
+   (and every later one, if none is left) bake on the page.  Two workers where
+   the device has the cores (a phone has six), so one drawn player's dozen
+   sheets do not hold up the next player's. */
+const POOL = (() => { try { return Math.max(1, Math.min(2, ((navigator && navigator.hardwareConcurrency) || 2) - 2)); } catch (e) { return 1; } })();
+const _pool = [];   /* { w, pending: Map(id -> res), sign: ms } */
+const _pending = { get size() { let n = 0; for (const s of _pool) n += s.pending.size; return n; } };
+let _watchT = null;
 
-function _worker() {
-  if (_w || _dead) return _w;
-  try { _w = new Worker(new URL('./bodyBakeWorker.js', import.meta.url), { type: 'module' }); } catch (e) { _w = null; _dead = true; return null; }
-  _w.onmessage = (ev) => {
+function _kill(slot, why) {
+  try { slot.w.terminate(); } catch (e) { /* gone */ }
+  const i = _pool.indexOf(slot);
+  if (i >= 0) _pool.splice(i, 1);
+  slot.dead = true;
+  for (const [id, p] of slot.pending) { slot.pending.delete(id); p({ ok: false, why }); }
+  if (!_pool.length) _dead = true;
+}
+function _watch() {
+  if (_watchT) return;
+  _watchT = setInterval(() => {
+    const now = Date.now();
+    for (const slot of _pool.slice()) if (slot.pending.size && now - slot.sign > WORKER_MS) { _stats.stalled++; _kill(slot, 'stalled'); }
+    if (!_pool.length) { clearInterval(_watchT); _watchT = null; }
+  }, 2000);
+}
+function _start() {
+  let w;
+  try { w = new Worker(new URL('./bodyBakeWorker.js', import.meta.url), { type: 'module' }); } catch (e) { return null; }
+  const slot = { w, pending: new Map(), sign: Date.now(), dead: false };
+  w.onmessage = (ev) => {
     const m = ev.data || {};
-    const p = _pending.get(m.id);
+    slot.sign = Date.now();
+    const p = slot.pending.get(m.id);
     if (!p) return;
-    _pending.delete(m.id);
+    slot.pending.delete(m.id);
     p(m);
   };
   /* a worker that dies (a script that failed to load, an error at the top):
-     every job waiting on it, and every later one, bakes on the page */
-  _w.onerror = () => {
-    _dead = true;
-    try { _w.terminate(); } catch (e) { /* gone */ }
-    _w = null;
-    for (const [id, p] of _pending) { _pending.delete(id); p({ ok: false, why: 'worker died' }); }
-  };
-  return _w;
+     its jobs bake on the page, and every later one if none is left */
+  w.onerror = () => _kill(slot, 'worker died');
+  _pool.push(slot);
+  _watch();
+  return slot;
+}
+/* the slot with the least work, started as needed */
+function _worker() {
+  if (_dead) return null;
+  let best = null;
+  for (const s of _pool) if (!best || s.pending.size < best.pending.size) best = s;
+  /* a worker let go of is not started again: its slot bakes on the page */
+  if ((!best || best.pending.size) && _started < POOL) {
+    _started++;
+    const s = _start();
+    if (s) return s;
+    if (!_pool.length) { _dead = true; return null; }
+  }
+  return best;
 }
 
 /** Bake on the worker now?  Checked at each bake (the QA probes are set by a
@@ -88,17 +129,17 @@ export function bodyWorkerWanted() {
    whole addresses: a worker resolves a relative one against its own script */
 function _abs(u) { try { return new URL(u, location.href).href; } catch (e) { return u; } }
 
-/* a job not answered in this long is the page's: it bakes the sheet itself,
-   with its own retries and later rounds (a late answer is dropped) */
+/* a worker that answers nothing for this long while it has work is let go
+   of (the watch above); its jobs are the page's, with their own retries */
 const WORKER_MS = 20000;
 function _ask(msg, transfer) {
-  const w = _worker();
-  if (!w) return Promise.resolve({ ok: false, why: 'no worker' });
+  const slot = _worker();
+  if (!slot) return Promise.resolve({ ok: false, why: 'no worker' });
   const id = ++_seq;
   return new Promise((res) => {
-    const t = setTimeout(() => { if (_pending.delete(id)) res({ ok: false, why: 'timeout' }); }, WORKER_MS);
-    _pending.set(id, (m) => { clearTimeout(t); res(m); });
-    try { w.postMessage({ ...msg, id }, transfer || []); } catch (e) { clearTimeout(t); _pending.delete(id); res({ ok: false, why: 'post' }); }
+    if (!slot.pending.size) slot.sign = Date.now();   /* idle until now: its clock starts with this job */
+    slot.pending.set(id, res);
+    try { slot.w.postMessage({ ...msg, id }, transfer || []); } catch (e) { slot.pending.delete(id); res({ ok: false, why: 'post' }); }
   });
 }
 
@@ -142,7 +183,7 @@ export function noteWorkerSheet(label, pageMs) {
 }
 
 if (typeof window !== 'undefined') {
-  window.__btBodyWorker = () => ({ ..._stats, dead: _dead, pending: _pending.size });
+  window.__btBodyWorker = () => ({ ..._stats, dead: _dead, pending: _pending.size, workers: _pool.length, pool: POOL });
   /* QA (mp-bodyworker): bake each { urls, job, fw, fh } on the worker and
      hand back its packed bytes, for the caller to compare with the page's */
   window.__btBodyWorkerBytes = (urls, job, fw, fh, type) => _ask({ type: type || 'body', urls: urls.map(_abs), job, fw, fh, raw: true })

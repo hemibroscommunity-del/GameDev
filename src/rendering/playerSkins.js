@@ -764,6 +764,44 @@ if (typeof window !== 'undefined') {
   };
 }
 
+/* v2.3.4930: QA (mp-bodyworker) -- a peer's stand-in strip baked as
+   effectsRenderer.js _remoteBodyFramesFor / _remoteSheetFramesFor bake it
+   (recolorBodyToCanvas, then _sliceStandIn's packTrimmed) and on the worker,
+   byte by byte.  `strips`: [{ url (the file as loaded), fw, fh (null: square,
+   off the art), skin, pants, shoes, art, mirror, dir, torso }]. */
+if (typeof window !== 'undefined') {
+  window.__btStandInWorkerCompare = async (strips) => {
+    const out = [];
+    for (const S of strips) {
+      const img = await loadImg(S.url);
+      const sq = (S.fw == null || S.fh == null) ? (img.naturalHeight || img.height || 0) : 0;
+      const fw = sq || S.fw, fh = sq || S.fh;
+      const da = S.art ? artForFacing({ ...S.art, mirror: !!S.mirror }, S.dir) : null;
+      const art = bodyArtSeg(da) ? da : null;
+      const job = { skinT: skinTarget(S.skin) || DEFAULT_SKIN_TARGET, pantsT: pantsTarget(S.pants), shoesT: shoesTarget(S.shoes), fh, fw, art, legsUnder: null, torso: !!S.torso };
+      const t0 = performance.now();
+      const cv = recolorBodyToCanvas(img, job.skinT, job.pantsT, job.shoesT, null, fh, null, null, art, fw, undefined, undefined, undefined, undefined, !!S.torso);
+      const n = Math.max(1, Math.round(cv.width / fw));
+      const packed = packTrimmed(cv, fw, fh, n);
+      const pc = packed ? packed.canvas : cv;
+      const page = pc.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, pc.width, pc.height).data;
+      const pageMs = performance.now() - t0;
+      const w = await window.__btBodyWorkerBytes([img.src], job, fw, fh, 'standin');
+      let diff = 0, worst = 0;
+      if (w && w.raw && w.W === pc.width && w.H === pc.height) {
+        for (let i = 0; i < page.length; i++) {
+          const d = Math.abs(page[i] - w.raw[i]);
+          if (d) { diff++; if (d > worst) worst = d; }
+        }
+      }
+      out.push({ url: S.url, look: S.name || '', W: pc.width, H: pc.height, wW: w && w.W, wH: w && w.H,
+        cellsSame: JSON.stringify(packed ? packed.cells : null) === JSON.stringify(w && w.cells), frames: n, wFrames: w && w.frames,
+        diff, worst, pageMs: Math.round(pageMs), workerMs: Math.round((w && w.ms) || 0), why: w && w.why, ink: !!art });
+    }
+    return out;
+  };
+}
+
 /* ═══ v2.3.3716: THE STAND AND JOG FRAMES FROM THE NUMBERS (on; `?lookpalette=0` off) ═══
    The same look getBodyFrame bakes a copy of, drawn instead from one shared
    sheet of colour numbers and a row of this look's colours (lookPalette.js;

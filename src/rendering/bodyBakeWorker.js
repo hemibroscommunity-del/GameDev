@@ -27,13 +27,18 @@
  * sheet as an armoured player circled you), come here too: bodyRecolor.js
  * bakeHeadFull, then the same pack.
  *
- * A job: { id, type: 'body' | 'head', urls: [first, fallback], job:
+ * And a peer's stand-ins with drawings (their sword and bow bodies, torso
+ * strips and jog legs: effectsRenderer.js _remoteBodyFramesFor and
+ * _remoteSheetFramesFor), which were recoloured INSIDE the frame the first
+ * time they swung (up to 564 ms in the crowd tour's a-ink): type 'standin'.
+ *
+ * A job: { id, type: 'body' | 'head' | 'standin', urls: [first, fallback], job:
  * bakeBodyFull's or bakeHeadFull's, fw, fh, raw }
  * The reply: { id, ok, png (Blob), W, H, cells | null, frames, ms } or
  * { id, ok: false, why } ('load: ...' when the file did not load).  `raw` (QA, bodyBake.js __btBodyWorkerCompare): the
  * packed canvas's bytes as well, to compare with the page's bake. */
 import './workerCanvas.js';
-import { bakeBodyFull, bakeHeadFull, FRAME_W } from './bodyRecolor.js';
+import { bakeBodyFull, bakeHeadFull, recolorBodyToCanvas, FRAME_W } from './bodyRecolor.js';
 import { bakeDisplayCanvas, stripDetachedComponents } from './spriteScale.js';
 import { packTrimmedCore } from './trimPack.js';
 
@@ -51,7 +56,7 @@ async function loadBitmap(urls) {
 
 self.onmessage = async (ev) => {
   const m = ev.data || {};
-  if (m.type !== 'body' && m.type !== 'head') return;
+  if (m.type !== 'body' && m.type !== 'head' && m.type !== 'standin') return;
   const t0 = performance.now();
   let bm = null;
   try {
@@ -59,7 +64,15 @@ self.onmessage = async (ev) => {
     const tLoad = performance.now();
     const j = m.job;
     let full, cv, frames;
-    if (m.type === 'head') {
+    if (m.type === 'standin') {
+      /* effectsRenderer.js _remoteBodyFramesFor / _remoteSheetFramesFor's
+         recolour (a peer's sword or bow body, torso strip or jog legs, with
+         their drawings), then _sliceStandIn's pack */
+      full = recolorBodyToCanvas(bm, j.skinT, j.pantsT, j.shoesT, null, j.fh, null, null, j.art, j.fw,
+        undefined, undefined, undefined, j.legsUnder || undefined, j.torso ? true : undefined);
+      cv = full;
+      frames = Math.max(1, Math.round(cv.width / m.fw));
+    } else if (m.type === 'head') {
       /* _buildPickupHeadSheet's steps: the bake halves it itself */
       full = null;
       cv = bakeHeadFull(bm, j);

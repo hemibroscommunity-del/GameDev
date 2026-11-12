@@ -12,6 +12,7 @@
  *      eye style that erases, an eye colour) and the plain default: the
  *      page's bake (buildBodySheet's own steps) against the worker's, byte by
  *      byte, and the packed cells the same;
+ *   1c. a peer's stand-ins (a sword body, a bow torso strip, the jog legs);
  *   1b. the head sheets an armoured player shows (jog, hit, mine, pickup),
  *      the same way;
  *   2. the game's own path: behind the loading screen the page bakes, as
@@ -35,6 +36,10 @@ const SHEETS = [['stand', 'south'], ['jog', 'east'], ['jog', 'northeast'], ['hit
   ['mine', 'south'], ['fish', 'south'], ['pickup', 'south']];
 /* the head sheets (every family that ships one: playerSkins getPickupHeadFrame) */
 const HEADS = [['jog', 'east'], ['jog', 'south'], ['hit', 'north'], ['mine', 'south'], ['pickup', 'south']];
+/* a peer's stand-ins: [file, fw, fh (null: square), facing, a torso strip, flipped] */
+const STANDINS = [['/sprites/player/sword-south-body.png', 320, 320, 'south', false, false],
+  ['/sprites/player/bow-east-torso.png', 214, 241, 'east', true, true],
+  ['/sprites/player/jog-east-legs.png', null, null, 'east', false, false]];
 const LOOKS = [
   { name: 'drawn', skin: 'green', pants: 'pink', shoes: 'blue', eyeColor: 'blue', eyeStyle: 'one-eye', art: ART },
   { name: 'drawn-mirror', skin: 'ebony', pants: 'red', shoes: 'white', eyeColor: undefined, eyeStyle: 'sleepy', art: { ...ART, mirror: true } },
@@ -113,6 +118,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`head ${r.look} ${r.pose}-${r.dir}: the worker's sheet is the page's, byte for byte (${r.diff} bytes differ), the same size and cells`,
         r.W === r.wW && r.H === r.wH && r.cellsSame && r.frames === r.wFrames && r.diff === 0, r);
     }
+    /* 4: a peer's stand-ins with drawings (their sword and bow bodies, a torso strip, the jog legs) */
+    const strips = [];
+    for (const L of LOOKS) {
+      for (const [url, fw, fh, dir, torso, mirror] of STANDINS) strips.push({ name: L.name, skin: L.skin, pants: L.pants, shoes: L.shoes, art: L.art, url, fw, fh, dir, torso, mirror });
+    }
+    const sres = await A.page.evaluate((ls) => window.__btStandInWorkerCompare(ls), strips);
+    for (const r of sres) {
+      console.log(`    stand-in ${r.look} ${r.url}: ${r.W}x${r.H} diff ${r.diff} (worst ${r.worst}) cells ${r.cellsSame} ink ${r.ink} page ${r.pageMs} ms worker ${r.workerMs} ms ${r.why || ''}`);
+      rec.ok(`stand-in ${r.look} ${r.url.replace(/^.*\//, '')}: the worker's strip is the page's, byte for byte (${r.diff} bytes differ), the same size and cells`,
+        r.W === r.wW && r.H === r.wH && r.cellsSame && r.frames === r.wFrames && r.diff === 0, r);
+    }
+    rec.ok('the drawn stand-ins carried their drawings (guard)', sres.filter((r) => r.ink).length >= 6, sres.filter((r) => r.ink).length);
     rec.ok('the drawn heads carried the face drawing, and an eye style that erases (guard)',
       hres.filter((r) => r.ink).length >= 5 && hres.filter((r) => r.blank).length >= 2, { ink: hres.filter((r) => r.ink).length, blank: hres.filter((r) => r.blank).length });
     rec.ok(`no page errors (${errors.length})`, errors.length === 0, errors.slice(0, 5));
