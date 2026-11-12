@@ -126,29 +126,43 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const asGround = await B.page.screenshot({ clip: box });
       await setFig(true);
       await B.page.evaluate(() => window.__btOnePicSet(true));
-      for (let i = 0; i < 40 && !((await probe()).ids || []).includes(idA); i++) await frames(B, 3);
-      await settle();
-      const asPic = await B.page.screenshot({ clip: box });
-      await B.page.evaluate(() => window.__btOnePicSet(false));
-      await frames(B, 6);
-      const asLayers = await B.page.screenshot({ clip: box });
+      const picShot = async () => {
+        for (let i = 0; i < 40 && !((await probe()).ids || []).includes(idA); i++) await frames(B, 3);
+        await settle();
+        return B.page.screenshot({ clip: box });
+      };
+      const layerShot = async () => {
+        await B.page.evaluate(() => window.__btOnePicSet(false));
+        await frames(B, 6);
+        return B.page.screenshot({ clip: box });
+      };
+      /* each way twice, taking turns: a pixel that is not the same in both of
+         its own shots was something blinking (the 💬 at A's feet came and
+         went between shots in the fifth run), and is left out */
+      const asPic = await picShot();
+      const asLayers = await layerShot();
+      await B.page.evaluate(() => window.__btOnePicSet(true));
+      const asPic2 = await picShot();
+      const asLayers2 = await layerShot();
       await setFig(false);
       await frames(B, 4);
       const asGround2 = await B.page.screenshot({ clip: box });
       await setFig(true);
       await B.page.evaluate(() => window.__btOnePicSet(true));
       const a = H.decodePng(asPic), b = H.decodePng(asLayers), g = H.decodePng(asGround), g2 = H.decodePng(asGround2);
+      const a2 = H.decodePng(asPic2), b2 = H.decodePng(asLayers2);
       const dif = (u, v) => Math.max(Math.abs(u[0] - v[0]), Math.abs(u[1] - v[1]), Math.abs(u[2] - v[2]));
       const sc = a.width / box.width;   /* device px a CSS px in the shot */
       const rx0 = rect ? Math.max(0, Math.floor((rect.x - box.x) * sc)) : 0, ry0 = rect ? Math.max(0, Math.floor((rect.y - box.y) * sc)) : 0;
       const rx1 = rect ? Math.min(a.width, Math.ceil((rect.x + rect.w - box.x) * sc)) : a.width, ry1 = rect ? Math.min(a.height, Math.ceil((rect.y + rect.h - box.y) * sc)) : a.height;
       let mask = 0, n = 0, big = 0, max = 0, moving = 0, inside = 0, insideBig = 0, unmatched = 0;
       const pts = [];
-      const inMask = (x, y) => x >= rx0 && x < rx1 && y >= ry0 && y < ry1 && dif(g.at(x, y), g2.at(x, y)) <= 2 && dif(b.at(x, y), g.at(x, y)) > 6;
+      const still = (x, y) => dif(g.at(x, y), g2.at(x, y)) <= 2 && dif(a.at(x, y), a2.at(x, y)) <= 2 && dif(b.at(x, y), b2.at(x, y)) <= 2;
+      const inMask = (x, y) => x >= rx0 && x < rx1 && y >= ry0 && y < ry1 && still(x, y) && dif(b.at(x, y), g.at(x, y)) > 6;
       for (let y = ry0; y < ry1; y++) {
         for (let x = rx0; x < rx1; x++) {
           const gg = g.at(x, y);
-          if (dif(gg, g2.at(x, y)) > 2) { moving++; continue; }   /* moving behind A: left out */
+          if (!still(x, y)) { moving++; continue; }   /* moving or blinking: left out */
           const v = b.at(x, y);
           if (dif(v, gg) <= 6) continue;   /* the ground, not A */
           mask++;
