@@ -205,6 +205,24 @@ are opaque blobs at REST in the stage, so they use **escrow-at-stage**
 - `mp-desktrade` plays it on two computers (the sideways layout): an item click
   stages one, a second click a second, and a weapon click stages the weapon
   (it leaves the bag and the other trader sees it).
+- v2.3.4877: **the trade brings the bag to the front.** The owner, 2026-11-12:
+  *"Previously I had it to where you could just tap your inventory items to
+  put up items. Now it only has predetermined pull buttons you can tap on in
+  the trade window."* The band has pages of its own now (Bro, Quests, Ranks,
+  Codex, More), and a page stays open while you play; a trade opened while one
+  was up showed that page where the bag should be, so the drawer's own pills
+  (the weapon lane, the gold steps) were all there was to tap. As the trade
+  window takes the bag (`tradeBagBus` opens: a live trade, never the invite),
+  `BottomDashboard` puts the bag in front, the way the Gear button does:
+  upright the band at rest, unfolded; with the old side column, its
+  `dashboard` page. Only as the trade opens (a player who taps another page
+  mid-trade is not pulled back), and the bag stays in front after it (the
+  receipt flies the goods into it). Nothing on the wire changes.
+  `mp-tradebag` plays it on two upright phones, each band left on a page (Bro,
+  Quests): red on the main of 2026-11-12 (no bag on screen), green with the
+  change (a tap on the wood and on the weapon tile stage them, the other phone
+  sees both). Diego's shop drawer has the same hole upright and is not changed
+  here.
 
 ## v2.3.3856: your offer on the left, theirs on the right
 

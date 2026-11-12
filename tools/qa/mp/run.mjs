@@ -372,6 +372,7 @@ const SCENARIOS = {
   ccsize: () => import('./mp-ccsize.mjs'), /* v2.3.2035: creator icon sizes + the Default colour button, MEASURED at 390x844 */
   heroview: () => import('./mp-heroview.mjs'), /* v2.3.1815: the equip screen's character view */
   tradeside: () => import('./mp-tradeside.mjs'), /* v2.3.3856: the trade window's two offers on an upright phone -- stacked by default (theirs on top, the drawer too narrow for two), side by side with ?tradeside=1 (its own offer left); pictures of both */
+  tradebag: () => import('./mp-tradebag.mjs'), /* v2.3.4877: two upright phones (touch) in BroTown -- during a live trade a real tap on your bag's wood stages one into the offer and a tap on a weapon tile stages it into the weapon lane, the other phone sees both, and the window carries no item or weapon buttons of its own (the bag is the way in: the owner's "just tap your inventory items to put up items") */
   desktrade: () => import('./mp-desktrade.mjs'), /* v2.3.3849: on a computer (wide) a mouse click on your bag's tile during a live trade stages the item, as a phone's tap does */
   arena: () => import('./mp-arena.mjs'),
   townboard: () => import('./mp-townboard.mjs'), /* v2.3.3766: the Town Hall's board of everything to do, on a phone and a computer -- the board, a page, red and blue pins on the minimap, red moved, blue lifted, a reload keeping red, the world map */

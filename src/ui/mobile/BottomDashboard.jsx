@@ -1030,12 +1030,44 @@ export const BottomDashboard = () => {
      destination: the window that needs the bag brings it back.  Only as one
      OPENS: a player who folds the band with it open is not overruled by the
      next price update. */
+  /* ═══ v2.3.4877: ...AND THE TRADE BRINGS THE BAG ITSELF, NOT JUST THE BAND ═══
+     The owner, 2026-11-12: "Previously I had it to where you could just tap
+     your inventory items to put up items.  Now it only has predetermined pull
+     buttons you can tap on in the trade window."  Unfolding was not enough
+     once the band had pages of its own (Bro, Quests, Ranks, Codex, More:
+     v2.3.4172, v2.3.4393), which stay open while you play (v2.3.1307): a
+     player who last looked at their Bro card opened a trade over the Bro card,
+     no bag in sight, and the drawer's own pills (the weapon lane, the gold
+     steps) were all there was to tap (mp-tradebag, red on main).  So as the
+     trade window TAKES the bag (tradeBagBus opens: a live trade, never the
+     invite) the bag comes to the front, the way the Gear button and the Bro
+     card's Equipment row go there (BroCard openGear): upright the band at
+     rest, unfolded; with the old side column, its 'dashboard' page.  Only on
+     that edge: a player who taps another page mid-trade is not pulled back.
+     The bag stays in front after the trade -- the receipt tosses the goods
+     into it.  The shop is not changed here (Diego's drawer has its own
+     sideways rule, ShopkeeperPanel v2.3.3407). */
   useEffect(() => {
     let was = false;
+    let tradeWas = false;
     const onChange = () => {
       const now = !!(shopBus.open || tradeBagBus.open);
       if (now && !was && dashMinBus.min) dashMinBus.set(false);
       was = now;
+      const trade = !!tradeBagBus.open;
+      if (trade && !tradeWas) {
+        try {
+          const bus = dashboardPanelBus;
+          const onBag = bus.state.mode === 'expanded' && bus.current() === 'dashboard';
+          if (playIsLandscape()) {
+            if (!onBag) bus.open('dashboard');
+          } else if (bus.state.mode === 'expanded' && !onBag) {
+            bus.toBar();
+            if (dashMinBus.min) dashMinBus.set(false);
+          }
+        } catch (e) { /* the window still works through its own lanes */ }
+      }
+      tradeWas = trade;
     };
     onChange();
     const offShop = shopBus.subscribe(onChange);
