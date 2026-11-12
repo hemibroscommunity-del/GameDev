@@ -120,7 +120,8 @@ export function slotGrid(n, w, h, maxW, maxH) {
   return { cols, rows, W, H };
 }
 
-/** The bytes the shared picture holds on the chip (RGBA). */
-export function sheetBytes(grid) {
-  return grid ? grid.W * grid.H * 4 : 0;
+/** The bytes the shared picture holds on the chip (RGBA): `grid` in the
+    picture's own units, `res` its resolution (texels a unit). */
+export function sheetBytes(grid, res = 1) {
+  return grid ? Math.round(grid.W * res) * Math.round(grid.H * res) * 4 : 0;
 }

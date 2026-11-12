@@ -76,7 +76,7 @@ export class PeerImpostors {
         on: this.on, near: this.near, pictures: this.recs.size, shown: this.stats.shown,
         paints: this.stats.paints, paintsLastFrame: this.stats.paintsLastFrame, refreshes: this.stats.refreshes,
         tooBig: this.stats.tooBig, slots: this.grid ? this.grid.n : 0, free: this.free.length,
-        slotW: this.grid ? this.grid.sw : 0, slotH: this.grid ? this.grid.sh : 0, bytes: sheetBytes(this.grid),
+        slotW: this.grid ? this.grid.sw : 0, slotH: this.grid ? this.grid.sh : 0, bytes: sheetBytes(this.grid, this._dpr || 1),
         ids: [...this.recs.keys()].filter((id) => this.recs.get(id).painted),
       });
       /* QA: the same scene both ways (mp-onepic compares a standing player
@@ -94,13 +94,19 @@ export class PeerImpostors {
     const R = this.renderer;
     const dpr = R && R.resolution ? R.resolution : 1;
     this._dpr = dpr;
-    const sw = Math.ceil(ONE_PIC.SLOT_CSS_W * dpr), sh = Math.ceil(ONE_PIC.SLOT_CSS_H * dpr);
+    /* v2.3.4885: the picture is made at the SCREEN's resolution, its slots in
+       CSS px, as the prototype's was: the game's figure shaders (the sharp
+       pixels, sharpPixels.js) and the rounding of what is drawn read the
+       target's resolution, and a picture at resolution 1 (one texel a device
+       px) drew every edge of the figure differently (the second mp-onepic run: no
+       offset, but 15% of the figure's edge pixels off) */
+    const sw = ONE_PIC.SLOT_CSS_W, sh = ONE_PIC.SLOT_CSS_H;
     let maxTex = 4096;
     try { const gl = R && R.gl; if (gl) maxTex = Math.min(maxTex, gl.getParameter(gl.MAX_TEXTURE_SIZE) || 4096); } catch (e) { /* keep 4096 */ }
-    const g = slotGrid(ONE_PIC.SLOTS, sw, sh, Math.min(2048, maxTex), maxTex);
+    const g = slotGrid(ONE_PIC.SLOTS, sw, sh, Math.floor(Math.min(2048, maxTex) / dpr), Math.floor(maxTex / dpr));
     if (!g) { this.on = false; return; }
-    this.grid = { ...g, n: g.cols * g.rows < ONE_PIC.SLOTS ? g.cols * g.rows : ONE_PIC.SLOTS, sw, sh };
-    this.sheet = RenderTexture.create({ width: g.W, height: g.H, resolution: 1, scaleMode: 'nearest', antialias: false });
+    this.grid = { ...g, n: g.cols * g.rows < ONE_PIC.SLOTS ? g.cols * g.rows : ONE_PIC.SLOTS, sw, sh, swPx: sw * dpr, shPx: sh * dpr };
+    this.sheet = RenderTexture.create({ width: g.W, height: g.H, resolution: dpr, scaleMode: 'nearest', antialias: false });
     this.sheet.source.label = 'bt-onepic';
     this.free.length = 0;
     for (let i = this.grid.n - 1; i >= 0; i--) this.free.push(i);
@@ -273,7 +279,7 @@ export class PeerImpostors {
         if (px < x0) x0 = px; if (px > x1) x1 = px; if (py < y0) y0 = py; if (py > y1) y1 = py;
       }
       const padX = Math.ceil(-x0) + 1, padY = Math.ceil(-y0) + 1;
-      if (!Number.isFinite(x0) || padX < 1 || padY < 1 || Math.ceil(x1) + padX + 2 > this.grid.sw || Math.ceil(y1) + padY + 2 > this.grid.sh) {
+      if (!Number.isFinite(x0) || padX < 1 || padY < 1 || Math.ceil(x1) + padX + 2 > this.grid.swPx || Math.ceil(y1) + padY + 2 > this.grid.shPx) {
         /* does not fit its slot: layered, and not asked again for a while */
         this.stats.tooBig++;
         this._tooBigUntil.set(r.id, now + 5000);
@@ -283,8 +289,9 @@ export class PeerImpostors {
       /* the render replaces the figure's own transform with this one
          (RenderGroupSystem.render), so it carries the figure's whole device
          transform, its origin moved into the slot at the same fraction */
-      const m = this._m;
-      m.set(r._a, r._b, r._c, r._d, r.sx + padX + r._fx, r.sy + padY + r._fy);
+      /* in the picture's own units, CSS px (its resolution is the screen's) */
+      const m = this._m, dpr = this._dpr || 1;
+      m.set(r._a / dpr, r._b / dpr, r._c / dpr, r._d / dpr, r.sx + (padX + r._fx) / dpr, r.sy + (padY + r._fy) / dpr);
       R.render({ container: d, target: this.sheet, transform: m, clear: false });
       r.padX = padX; r.padY = padY;
       r.a = r._a; r.b = r._b; r.c = r._c; r.d = r._d; r.fx = r._fx; r.fy = r._fy;
@@ -321,7 +328,7 @@ export class PeerImpostors {
     /* the inverse of a scale-and-shift */
     const x = (gx - GP.tx) / GP.a, y = (gy - GP.ty) / GP.d;
     if (sp.x !== x || sp.y !== y) sp.position.set(x, y);
-    const sX = 1 / (dpr * GP.a), sY = 1 / (dpr * GP.d);
+    const sX = 1 / GP.a, sY = 1 / GP.d;   /* the slot is in CSS px: one to one on the screen */
     if (sp.scale.x !== sX || sp.scale.y !== sY) sp.scale.set(sX, sY);
     const d = r.display;
     sp._groundDy = (d.y + (d._groundDy || 0)) - y;
