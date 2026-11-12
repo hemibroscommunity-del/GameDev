@@ -267,6 +267,18 @@ the banner of the land you are in or walking toward.
 - **Held:** 0 MB in BroTown (15.7 less), 3.1-4.7 MB out in a land (11-12.6
   less), at most two (6.7-9.0 MB, two neighbouring lands with art) near
   the commons' edge.
+- **Measured** (v2.3.5003, a browser, one build, BroTown 10 s after arrival,
+  Chromium's own memory dump of the page, three dumps each way, steady):
+  decoded pictures (`cc/image_memory`) 309.4 MB by default against 324.3
+  with `?banners=all`, **14.9 MB less**; the files' bytes
+  (`web_cache/Image_resources`) 0.9 MB less. `mp-membudget` does not see it
+  (its lines are the art cache, the chip, canvases, sound, the heap, buffers
+  and workers, not a picture the browser decodes for an `<img>`): its
+  readings on the branch and on main were the same within a run's noise
+  (artCache 54.9 / 54.9, chip highest 78.3 / 76.3, which moves 2-3 MB run to
+  run). Chromium keeps decoded pictures in memory it may throw away under
+  pressure; iPhone Safari keeps a decoded `<img>` that a page holds, which is
+  what the owner's black screens were.
 - **`?banners=all`** holds all four while you are in the world, as before.
 - **Probe:** `window.__btBanners()`: `mode`, `held`, `loading`, `want`,
   `keep`, your spoke `land`, its neighbour `next`, `r` and `side` in px,
