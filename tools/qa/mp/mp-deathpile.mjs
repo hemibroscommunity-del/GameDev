@@ -105,8 +105,19 @@ async function backHome(P, arrival, timeout = 60000) {
 /* the nearest living first-stretch Flame Fields monster this phone holds */
 const nearestGoblin = (P) => P.page.evaluate(() => {
   const S = window._gameState.current;
-  const m = (S.monsters || []).filter((x) => x && x.home === 'ember' && x.alive !== false && x.hp > 0 && !/-t\d+-\d+$/.test(x.id))
-    .sort((a, b) => Math.hypot(a.x - S.player.x, a.y - S.player.y) - Math.hypot(b.x - S.player.x, b.y - S.player.y))[0];
+  /* v2.3.4954: the nearest with a clear line to it first (the page's own
+     solid test, every 10 px): a goblin over a wall can neither be reached
+     nor reach -- three runs' Fallen stood a whole 90 s at the wall between
+     the town's way out and the Flame Fields' first spawn */
+  const clear = (m) => {
+    if (!window.__btIsSolid) return true;
+    const dx = m.x - S.player.x, dy = m.y - S.player.y, d = Math.hypot(dx, dy), n = Math.ceil(d / 10);
+    for (let i = 1; i < n; i++) if (window.__btIsSolid(S.player.x + dx * i / n, S.player.y + dy * i / n)) return false;
+    return true;
+  };
+  const all = (S.monsters || []).filter((x) => x && x.home === 'ember' && x.alive !== false && x.hp > 0 && !/-t\d+-\d+$/.test(x.id))
+    .sort((a, b) => Math.hypot(a.x - S.player.x, a.y - S.player.y) - Math.hypot(b.x - S.player.x, b.y - S.player.y));
+  const m = all.slice(0, 12).find(clear) || all[0];
   return m ? { id: m.id, x: Math.round(m.x), y: Math.round(m.y) } : null;
 }).catch(() => null);
 
@@ -133,31 +144,38 @@ async function dieAt(P, wsPort, id, spot, ms = 90000) {
     return false;
   };
   await H.devOp(wsPort, 'vitals', id, { heal: true, god: true, godMinutes: 4 });
-  /* v2.3.4954: at the spot on the WORKER before the last HP goes: a run's
-     worker held the Fallen 250 px short of it, toward town, the whole 90 s
-     (full health every reading, the goblin 233 px off) -- re-hopped until
-     the worker has them there, as the page's walk would be */
-  let atSpot = false;
-  for (let k = 0; k < 6 && !atSpot; k++) {
-    await H.hopTo(P, spot.x, spot.y, { step: 100 });
-    await P.page.waitForTimeout(1200);
-    for (let w = 0; w < 10 && !atSpot; w++) {
-      const sp = await H.serverPlayer(wsPort, id).catch(() => null);
-      atSpot = !!sp && Math.hypot(sp.x - spot.x, sp.y - spot.y) <= 60;
-      if (!atSpot) await P.page.waitForTimeout(500);
-    }
-    if (!atSpot) {
-      /* v2.3.4954: something solid between: two runs' page AND worker stood
-         at the same point 250 px short the whole time (the page's own walk
-         held there).  Round it: sideways first, up beside it, then in */
-      const dx = [150, -150, 300, -300, 450, -450][k];
-      const cur = await P.page.evaluate(() => { const S = window._gameState.current; return { x: S.player.x, y: S.player.y }; }).catch(() => null);
-      if (cur) {
-        await H.hopTo(P, cur.x + dx, cur.y, { step: 60 });
-        await H.hopTo(P, spot.x + dx, spot.y, { step: 100 });
+  /* v2.3.4954: a way round to the spot, found in the page (its own solid
+     test on a 20 px grid, a breadth-first search over 3,000 px): three runs
+     here stood a whole 90 s at a wall between the town's way out and the
+     Flame Fields' first spawn, the straight walk held at it */
+  const way = await P.page.evaluate(({ tx, ty }) => {
+    const S = window._gameState.current, solid = window.__btIsSolid;
+    if (!solid) return null;
+    const C = 20, R = 75, ox = Math.round(S.player.x), oy = Math.round(S.player.y);
+    const key = (i, j) => (i + R) * (2 * R + 1) + (j + R);
+    const goal = [Math.round((tx - ox) / C), Math.round((ty - oy) / C)];
+    if (Math.abs(goal[0]) > R || Math.abs(goal[1]) > R) return null;
+    const prev = new Map([[key(0, 0), -1]]), q = [[0, 0]];
+    for (let h = 0; h < q.length; h++) {
+      const [i, j] = q[h];
+      if (i === goal[0] && j === goal[1]) {
+        const pts = []; let k = key(i, j);
+        while (k !== -1) { const ii = Math.floor(k / (2 * R + 1)) - R, jj = (k % (2 * R + 1)) - R; pts.push([ox + ii * C, oy + jj * C]); k = prev.get(k); }
+        return pts.reverse().filter((_, n, a) => n % 4 === 0 || n === a.length - 1);
+      }
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const ni = i + di, nj = j + dj;
+        if (Math.abs(ni) > R || Math.abs(nj) > R || prev.has(key(ni, nj))) continue;
+        if (solid(ox + ni * C, oy + nj * C)) continue;
+        prev.set(key(ni, nj), key(i, j)); q.push([ni, nj]);
       }
     }
-  }
+    return null;
+  }, { tx: spot.x, ty: spot.y }).catch(() => null);
+  if (way) for (const [x, y] of way) await H.hopTo(P, x, y, { step: 60 });
+  await H.hopTo(P, spot.x, spot.y, { step: 100 });
+  await P.page.waitForTimeout(1200);
+  const atSpot = way ? way.length : null;
   await H.devOp(wsPort, 'vitals', id, { heal: false, hp: 1, god: false });
   const t0 = Date.now();
   let lowAt = Date.now(), g = null, hp = null, noGob = 0;
