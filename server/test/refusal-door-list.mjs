@@ -105,7 +105,7 @@ export const SWALLOWED = Object.freeze({
 
 /* The list's size when it was frozen (v2.3.4791).  Lower these as lines come
    off; raising one is a decision the PR names. */
-export const FROZEN = Object.freeze({ listed: 273, known: 8 });   /* v2.3.4801: +1, the draw and gather's quiet drop (drawgather.js); v2.3.4880: -22, the workshop answers (forge, amulet forge, gem cut, smelter, armour forge); v2.3.4881: -14, the points, the chest, the capes and the reroll; v2.3.4882: -4, the purses; v2.3.4883: -6, the weapon stash */
+export const FROZEN = Object.freeze({ listed: 272, known: 3 });   /* v2.3.4801: +1, the draw and gather's quiet drop (drawgather.js); v2.3.4880: -22, the workshop answers (forge, amulet forge, gem cut, smelter, armour forge); v2.3.4881: -14, the points, the chest, the capes and the reroll; v2.3.4882: -4, the purses; v2.3.4883: -6, the weapon stash; v2.3.4884: the heap burn's 4 recoded `fight`, the fire's 1 off */
 
 /* handler -> { guard: 'code[ code...][: note]' } */
 export const ALLOW = {
@@ -233,11 +233,11 @@ export const ALLOW = {
   },
   '_handleHeapBurn': {
     "if (!ps || !this._heapBurnOn())": "norec off",
-    "if (ps.z !== 'wheel' || ps.dead || ps.dying || ps.disconnected || ps._spar)": "known: not on the Wheel, or in a spar",
+    "if (ps.z !== 'wheel' || ps.dead || ps.dying || ps.disconnected || ps._spar)": "fight: v2.3.4884, a heap tick the worker does not burn (off the Wheel, or in a spar): the phone predicts no damage (game/heapBurn.js draws only the flames), HP comes on the hits, and an answer would be a message a second while the phone stands in the fire",
     "if (!(ps.hp > 0))": "dead",
-    "if (ps._arenaMatch || (this._duelFor && this._duelFor(pid)))": "known: in an arena match or a duel",
-    "if (!this._wheelSafeAt(ps.x, ps.y))": "known: off the safe ground",
-    "if (this._extractionShielded && this._extractionShielded(pid, t))": "known: while harvesting",
+    "if (ps._arenaMatch || (this._duelFor && this._duelFor(pid)))": "fight: v2.3.4884, a heap tick the worker does not burn (in an arena match or a duel): the phone predicts no damage (game/heapBurn.js draws only the flames), HP comes on the hits, and an answer would be a message a second while the phone stands in the fire",
+    "if (!this._wheelSafeAt(ps.x, ps.y))": "fight: v2.3.4884, a heap tick the worker does not burn (off the safe ground): the phone predicts no damage (game/heapBurn.js draws only the flames), HP comes on the hits, and an answer would be a message a second while the phone stands in the fire",
+    "if (this._extractionShielded && this._extractionShielded(pid, t))": "fight: v2.3.4884, a heap tick the worker does not burn (a harvester takes no damage, hits.js rule 3): the phone predicts no damage (game/heapBurn.js draws only the flames), HP comes on the hits, and an answer would be a message a second while the phone stands in the fire",
     "if (t - (ps._heapBurnAt || 0) < HEAP_BURN.EVERY_MS)": "rate",
   },
   '_handleSmeltBar': {
@@ -324,7 +324,6 @@ export const ALLOW = {
   '_handleFiremakingRequest': {
     "if (typeof invKey !== 'string')": "shape",
     "if (!invKey.startsWith('wood_'))": "shape",
-    "if ((ps.inventory[invKey] || 0) <= 0)": "known: no such log in the bag",
   },
   '_handleShopPurchase': {
     "if (typeof itemId !== 'string')": "shape",

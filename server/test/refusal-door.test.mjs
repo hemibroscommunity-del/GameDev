@@ -234,6 +234,8 @@ const found = Object.create(null);   /* unit -> { key: {kw, line} } */
     { type: 'smelt_bar', why: 'no ore to smelt', set: (p) => { p.inventory = {}; }, payload: { barKey: 'bar_copper', count: 1 } },
     { type: 'forge_armor', why: 'no bars for the torso', set: (p) => { p.inventory = {}; }, payload: { recipe: 'copper_torso' } },
     { type: 'amulet_forge_request', why: 'no nuggets to smelt', set: (p) => { p.goldNuggets = 0; }, payload: { op: 'smelt' } },
+    /* v2.3.4884: a fire lit with no log answers now */
+    { type: 'firemaking_request', why: 'no such log in the bag', set: (p) => { p.inventory = {}; }, payload: { invKey: 'wood_pine' } },
     { type: 'cook_request', why: 'no such fish in the bag (answered only by the delta)', set: (p) => { p.inventory = {}; }, payload: { fishKey: 'fish_trout', kind: 'cooked', taps: [] },
       ok: (p) => { p.inventory = { fish_trout: 1 }; },
       known: ['_handleCookRequest', 'if ((ps.inventory[fishKey] || 0) <= 0)'] },

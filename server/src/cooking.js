@@ -226,7 +226,10 @@ export const cookingMethods = {
     if (!ps) return;
     if (ps.dying || ps.dead || ps.disconnected) return;
     if (!ps.inventory) ps.inventory = {}; // proto-ok: invKey guarded by startsWith wood_ above
-    if ((ps.inventory[invKey] || 0) <= 0) return;
+    /* v2.3.4884: no such log -- the phone took one off its bag when it asked
+       (BroTown.jsx firemakingBus), so the true bag goes back (a bare return:
+       the refusal door, TRAPS §284) */
+    if ((ps.inventory[invKey] || 0) <= 0) return this._refusalEcho(session, ['inventory']);
     bagTake(ps.inventory, invKey, 1, 'firemaking'); /* v2.3.4810: the bag door */
     /* v2.3.4605: the fire as the worker knows it -- the cook / fire shield
        holds only near one (moveclaims.js `cookshield`).  Memory only. */
