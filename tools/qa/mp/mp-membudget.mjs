@@ -285,8 +285,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const s = await sample(label);
       s.trail = tr.seen;
       s.workers = await workers();
-      /* v2.3.3717: what the ground worker was asked (ground-worker.js DIET) */
-      s.groundDiet = await P.page.evaluate(() => { const t = window.__btWorldTrial; return t && t.stats ? { diet: t.stats.diet || null, loads: t.stats.loads, maxMs: t.stats.maxMs, sumMs: t.stats.sumMs, popIns: t.stats.popIns, unpacked: t.stats.unpacked } : null; }).catch(() => null);
+      /* v2.3.3717: what the ground worker was asked (ground-worker.js DIET) -- v2.3.5005: and
+         its pictures unpacked and squeezed now (`unpacked`, `cold`: said again at rest) */
+      s.groundDiet = await P.page.evaluate(() => { const t = window.__btWorldTrial; return t && t.stats ? { diet: t.stats.diet || null, loads: t.stats.loads, maxMs: t.stats.maxMs, sumMs: t.stats.sumMs, popIns: t.stats.popIns, unpacked: t.stats.unpacked, cold: t.stats.cold } : null; }).catch(() => null);
       const sg = await settledGpu(P);
       s.gpuSettled = sg ? sg.mb : null;
       s.gpuUidNow = sg ? sg.uidNow : null;   /* v2.3.3310: for the first draws (firstDrawsMB) */

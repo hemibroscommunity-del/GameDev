@@ -22,6 +22,11 @@
  * spot, and straight back, at a sprint's 1.33x the walk: the lean ground
  * shows no more holes on the way (pop-ins) than today's, no piece is left
  * short of a picture, and nothing fails.
+ * v2.3.5005: THE GROUND AT REST (ground-worker.js; `?groundidle=0` off):
+ * standing 3 s, the lean worker squeezes every picture it held unpacked.
+ * Each of the walk's 6-8 s stops is such a rest, so the pieces laid after
+ * them -- every picture thawed -- are in the byte-for-byte comparison; a
+ * check says the walk did rest, and the log what it held at the end.
  * Results: the log and tools/qa/mp/out/groundlean.json.
  *
  *   node tools/qa/mp/run.mjs groundlean
@@ -86,7 +91,7 @@ async function walk(browser, wsPort, webPort, query, label) {
     const st = await P.page.evaluate(() => {
       const w = window.__btWorldTrial.stats;
       return { loads: w.loads, avgMs: w.loads ? +(w.sumMs / w.loads).toFixed(1) : null, maxMs: w.maxMs, popIns: w.popIns, partial: w.partial,
-        failures: w.failures, diet: w.diet, sums: Object.assign({}, w.sums || {}) };
+        failures: w.failures, diet: w.diet, unpacked: w.unpacked, cold: w.cold, sums: Object.assign({}, w.sums || {}) };
     });
     const { workers } = await memSampler(P, browser);
     const ws = (await workers()) || [];
@@ -118,6 +123,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const d = lean.diet || {};
   rec.ok(`the lean walk let pictures go and thawed them back (${d.squeezed} squeezed, ${d.thaws} thawed in ${d.thawMs} ms), and unpacked none twice (${d.redecodes})`,
     d.lean === true && d.thaws > 0 && d.redecodes === 0, d);
+  /* v2.3.5005: the pieces compared above include those laid after a rest */
+  console.log(`    lean, standing at the end: ${lean.unpacked} pictures unpacked, ${lean.cold} squeezed (${d.coldMB} MB)`);
+  rec.ok(`the lean walk rested at its stops (${d.rests} times, ${d.restSqueezed} pictures squeezed at rest), so the pieces after them were laid from thawed pictures`,
+    d.idle === false || (d.rests > 0 && d.restSqueezed > 0), { idle: d.idle, rests: d.rests, restSqueezed: d.restSqueezed, unpacked: lean.unpacked, cold: lean.cold });
   rec.ok(`the lean ground came as fast: ${lean.avgMs} ms a piece against ${today.avgMs} (at most ${SLOWER_MS} more), ${lean.popIns} pop-ins against ${today.popIns} (at most ${POPIN_MORE} more), no failures`,
     lean.avgMs <= today.avgMs + SLOWER_MS && lean.popIns <= today.popIns + POPIN_MORE && !lean.failures, { today: [today.avgMs, today.popIns], lean: [lean.avgMs, lean.popIns] });
   const sp = (s) => `${s.sprint.loads} pieces, ${s.sprint.popIns} pop-ins, ${s.sprint.partial} partial, ${s.sprint.short} short at the end, ${s.sprint.failures} failures`;

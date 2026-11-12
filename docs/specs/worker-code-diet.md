@@ -70,6 +70,71 @@ piece sent with a checksum of its colour numbers, colours and footsteps):
 Tuning on the way (same test): 6 kept unpacked made town's pieces thaw 58
 times and come 5 ms slower; 8 is as fast as today.
 
+## 1b. The ground at rest (v2.3.5005, `?groundidle=0` turns it off)
+
+`public/tools/world/core/ground-worker.js`, THE GROUND AT REST. The owner said
+yes to the memory list of 2026-11-12; this is its first worker item.
+
+**Why.** The memory check reads the worker after the player has stood still
+for 8 to 14 s (on arrival, at the fight, home). At home its buffers were
+14.6 MB, and 8.0 MB of that was the 8 pictures the lean ground keeps
+unpacked (1 MB each) for pieces nobody was asking for. A squeezed one is
+~0.31 MB (0.25-0.37).
+
+**What it does.**
+
+- Once nothing has been asked of the worker for **3 s** (`REST_MS`: no piece,
+  no blocks; a `where` is answered at once and needs no picture, so standing
+  and stepping about in a fight both count as rest), **every** unpacked
+  picture is squeezed into the cold store, one at a time while the worker is
+  idle, exactly as one let go is (`toCold`). A standing player's worker holds
+  ~2.5 MB of squeezed pictures where it held 8 MB unpacked.
+- The next piece **thaws** what it needs, as a cold picture already thaws:
+  ~4.8 ms each on the test box (143 ms for 30 thaws), at most ~10 for a town
+  piece (~50 ms), all of it the worker's time: nothing runs on the page's
+  thread (THE PAGE'S ONE THREAD IS BUDGETED). The pieces are asked ahead of
+  the screen, so the first piece after a stop comes a little later in the
+  worker and no later on screen.
+- **The same ground, to the byte**: a thaw gives back the squeezed numbers
+  exactly, so every piece is laid as before (`?groundsum`; mp-groundlean
+  compares the pieces laid after its stops, which are rests now, and checks
+  the walk did rest: `rests` > 0).
+- **Nothing unpacked again from its file for it.** The cold store's cap
+  (`coldTrim`) is `LEAN.coldKeep` (24) plus the room the unpacked ones leave
+  (8 less those unpacked now): the 8 squeezed at rest push no cold picture
+  out, and the store shrinks back to 24 as a walk unpacks pictures again. So
+  the pictures held, unpacked or squeezed, are the very ones held before,
+  and at most 32 squeezed (~10 MB on a long walk) stand where 8 unpacked and
+  24 squeezed (~15.5 MB) did.
+- A picture with no colour numbers (a studio picture past 255 colours, kept
+  as colours) stays unpacked: squeezing is for numbers. A browser without
+  `CompressionStream` keeps them all unpacked, as before.
+
+**Switches.** On with the lean ground, for everyone. `?groundidle=0` (or
+`off`, `false`) in the page's address turns it off for one phone (the worker
+reads the address it is given at init, as `groundlean` and `climb`); the
+Test panel's "Lean ground builder" row (`groundlean`, docs/specs/client-off.md)
+turns it off with the rest of the lean ground for every phone. No row of its
+own: a row is a line in `server/test/client-off.test.mjs`, and a server file
+deploys the worker.
+
+**What it counts** (DIET, with every piece): `rests` (times the worker
+squeezed everything at rest), `restSqueezed` (pictures, in all), `idle` (the
+switch). When the squeezing is done the worker says so, unasked (`rest`:
+`unpacked` and `diet`), so the readout is true while you stand and not only
+as of the last piece: `window.__btWorldTrial.stats.unpacked` (unpacked now)
+and `.cold` (squeezed now); mp-membudget writes both at every stop
+(`groundDiet`).
+
+**To check it** (a browser run; this change was made without one):
+`mp-membudget` (the `workers` line ~5-5.5 MB lower at every stop: arrival,
+fights and homes; `groundDiet` `unpacked` 0 and `cold` 8 more than before),
+`mp-groundlean` (0 pieces differ; `rests` > 0; `redecodes` 0; pieces as fast,
+pop-ins within its margins), `mp-desksmooth` (no ground later than before on
+a slow line). Measured here only in Node, the worker's own code driven with
+made-up pictures: 8 pictures squeezed 3.0 s after the last job and thawed
+byte for byte, ~6.5 ms a thaw.
+
 ## 2. The rare windows' code, loaded when first opened (`?codelazy`)
 
 `src/ui/lazyPanel.js` (how), `src/ui/lazyPanels.js` (which).

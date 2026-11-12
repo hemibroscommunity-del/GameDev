@@ -46,7 +46,7 @@ This page is the map going forward.
 | `sound` | decoded sound effects | 27 | **24** (M1) | ~10 | **M1** (v2.3.3714, landed): decoded only while needed, a capped cache, the fight's sounds pinned |
 | `heap` | the page's JavaScript objects | 33 | 33 | ~28 | **M4** (v2.3.3717): trim what the page keeps without needing it |
 | `buffers` | raw buffers and the script's text | 20 | 21 | ~15 | **M4**: rarely opened parts of the game loaded when opened |
-| `workers` | the ground builder | 30 | 28.5 | ~15 | **M4**: its caches sized to what a walk needs |
+| `workers` | the ground builder | 30 | 28.5 | ~15 | **M4**: its caches sized to what a walk needs; v2.3.5005: standing 3 s, its 8 unpacked swatches squeezed (~8 MB to ~2.5, `?groundidle=0` off; `docs/specs/worker-code-diet.md` §1b) |
 | | **all seven** | **~358** | **~282** | **~150** | |
 
 The aims are the plan's estimates. Each lane measures its own and writes the
@@ -169,7 +169,10 @@ The ground worker holds swatch pictures, downloaded files, calmed water and
 blocks of the world. Its caches are sized to what a walk across the lands
 uses (M4's `groundlean`). A new kind of ground slots into the swatches: it
 is 64 colours, like every swatch, and is counted in the cache, not on top of
-it.
+it. v2.3.5005: a swatch is held unpacked (1 MB) only while pieces are being
+asked for; 3 s after the last, every one is squeezed (~0.31 MB) and thawed by
+the next piece that needs it (`?groundidle=0` off). A new cache in this worker
+does the same at rest: what nothing asks for is held in its smallest form.
 
 ## The order the conversion lands in
 
