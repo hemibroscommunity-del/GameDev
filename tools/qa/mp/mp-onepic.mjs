@@ -90,7 +90,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
         while (st.length) { const c = st.pop(); if (c && c.label === 'other_' + id) { c.renderable = v; return true; } if (c && c.children) for (const k of c.children) st.push(k); }
         return false;
       }, [idA, on]);
-      await frames(B, 4);
+      /* the picture settled: no paint for 10 frames running (a figure coming
+         to rest is painted again at each new place inside a pixel) */
+      for (let i = 0; i < 30; i++) {
+        const before = (await probe()).paints;
+        await frames(B, 10);
+        if ((await probe()).paints === before) break;
+      }
       const asPic = await B.page.screenshot({ clip: box });
       await B.page.evaluate(() => window.__btOnePicSet(false));
       await frames(B, 6);

@@ -252,8 +252,13 @@ export class PeerImpostors {
       r.cache.index = 0;
       r.cache.didChange = false;
       const changed = checkChildrenDidChange(d, r.cache);
-      const moved = a !== r.a || b !== r.b || c !== r.c || dd !== r.d
-        || Math.abs(sx.f - r.fx) > 1 / 64 || Math.abs(sy.f - r.fy) > 1 / 64;
+      /* any change of its place inside a device pixel, however small: a
+         figure settling still sat a hair off its last paint, enough to round
+         an edge lying near half a pixel the other way and shade the sharp
+         pixels' edges differently (the third mp-onepic run, with a 1/64 px
+         allowance: the plate's border a row off).  A standing figure stops
+         changing once it has settled, so this costs a few paints as it does */
+      const moved = a !== r.a || b !== r.b || c !== r.c || dd !== r.d || sx.f !== r.fx || sy.f !== r.fy;
       const due = r.painted && now >= r.refreshAt;
       r._ix = sx.i; r._iy = sy.i; r._fx = sx.f; r._fy = sy.f;
       r._a = a; r._b = b; r._c = c; r._d = dd;
