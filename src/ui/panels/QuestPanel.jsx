@@ -2,6 +2,7 @@ import React from 'react';
 import { BT_AUDIO } from '@/data/index.js'; /* v2.3.2637: ui-close tick */
 import { npcSpeaks } from '@/game/npcVoices.js'; /* v2.3.3462: the townsfolk's voices */
 import { acceptQuest, turnInQuest } from '@/game/quests.js';
+import { claimNext } from '@/game/questHandIn.js'; /* v2.3.4940: a refused hand-in reopens itself, not the next quest */
 import { NPC_DATA } from '@/data/gameDisplay.js';
 import { prog3Live, PROG3_SKILL_META } from '@/data/prog3.js';
 import { questObjectiveDone } from '@/data/index.js'; /* v2.3.1914 */
@@ -274,7 +275,12 @@ export function QuestPanel(props) {
     if (!c) return;
     if (c.timer) clearTimeout(c.timer);
     _claimRef.current = null;
-    setQuestPanel(c.next || null);
+    /* v2.3.4940: the next quest only if the worker paid this one: when its
+       echo took the hand-in back, this quest again, its Claim button back
+       (game/questHandIn.js claimNext) */
+    var _np = claimNext(stateRef.current && stateRef.current.rpg, questPanel, c.next);
+    if (_np && _np.quest && _np.quest.id === questPanel.quest.id) setClaimed(null);
+    setQuestPanel(_np);
   };
   React.useEffect(function () {
     setStage('talk');
