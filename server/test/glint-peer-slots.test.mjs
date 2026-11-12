@@ -11,7 +11,26 @@
  *      same frame, and their slots are not left in the keep;
  *   5. nothing is made per frame: the same slot objects, the same arrays.
  */
-import { GlintSystem, GRADE_LOOK, METAL_SHINE } from '../../src/rendering/lightfx/glint.js';
+import { register } from 'node:module';
+
+/* v2.3.4880: Server CI installs only server/'s packages, so 'pixi.js' is not
+   there to import (the first push of this suite failed on it).  glint.js
+   reaches it for its Filter and, through sheenBatch.js, the shine batcher; the
+   target build read here draws nothing.  So every name the graph imports from
+   it is a do-nothing stand-in, the same here as in CI: a hook serves it before
+   glint.js is loaded. */
+const PIXI_NAMES = ['Filter', 'Matrix', 'Rectangle', 'Sprite', 'Texture', 'DefaultBatcher', 'ExtensionType', 'extensions',
+  'Shader', 'GlProgram', 'Geometry', 'Buffer', 'BufferUsage', 'compileHighShaderGl', 'compileHighShaderGpuProgram',
+  'vertexGlTemplate', 'fragmentGlTemplate', 'globalUniformsBitGl', 'colorBitGl', 'colorBit', 'roundPixelsBitGl',
+  'roundPixelsBit', 'generateTextureBatchBit', 'getBatchSamplersUniformGroup', 'getMaxTexturesPerBatch', 'BatcherPipe'];
+const PIXI_STUB = 'const P = new Proxy(function () {}, { get: (t, k) => (k === "prototype" ? t.prototype : (typeof k === "symbol" ? undefined : P)), apply: () => P, construct: () => ({}) });\n'
+  + PIXI_NAMES.map((n) => `export const ${n} = P;`).join('\n');
+register('data:text/javascript,' + encodeURIComponent(
+  `export async function resolve(s, c, next) {
+     if (s === 'pixi.js') return { url: 'data:text/javascript,' + encodeURIComponent(${JSON.stringify(PIXI_STUB)}), shortCircuit: true };
+     return next(s, c);
+   }`));
+const { GlintSystem, GRADE_LOOK, METAL_SHINE } = await import('../../src/rendering/lightfx/glint.js');
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
