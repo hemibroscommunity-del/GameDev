@@ -33,7 +33,7 @@ Two independent fixes. Fix B alone removes the double-count; Fix A removes the b
 
 ### Fix A — Display scheduler for peer floaters (the smoothing)
 
-Give **incoming peer** damage numbers a tiny playback buffer, the same way remote **positions** already get one (`wsClient.js:171-178` `_posBuffer`). Decouple *receipt* from *display*: enqueue peer floaters on arrival, then release them at a steady minimum spacing per monster. A burst of 6 numbers arriving together drips out over ~half a second and reads like live combat.
+Give **incoming peer** damage numbers a tiny playback buffer, the same way remote **positions** already get one (a `_posBuffer` once buffered them in `wsClient.js`; nothing read it and v2.3.4879 removed it). Decouple *receipt* from *display*: enqueue peer floaters on arrival, then release them at a steady minimum spacing per monster. A burst of 6 numbers arriving together drips out over ~half a second and reads like live combat.
 
 **Scope:** peer numbers only — `attackerId !== S.myId` (for `monster_hit`) and `payload.id !== S.myId` (for `monster_dmg_at`). The local player's own numbers stay **immediate** (unchanged) so self-feedback keeps zero latency.
 

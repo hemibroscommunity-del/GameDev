@@ -246,16 +246,16 @@ STEP_MS = 22;
 /* ── 8. the slim entry has every field the client writes regardless ───── */
 {
   const src = readFileSync(new URL('../../src/networking/wsClient.js', import.meta.url), 'utf8');
-  /* the tick merge: `S.others[pid].<field> = data.<key>;` with no guard */
+  /* the tick merge: `_o.<field> = data.<key>;` (v2.3.4879: `_o` is S.others[pid]) with no guard */
   const start = src.indexOf('if (msg.players) {');
   const block = src.slice(start, src.indexOf('GHOST SWEEP', start));
   /* the block's own statements, at the indent of its `x` line: a write
      inside an `if` (the pet's, only when it changed) is deeper */
-  const xLine = block.match(/^(\s*)S\.others\[pid\]\.x = data\.x;/m);
+  const xLine = block.match(/^(\s*)(?:S\.others\[pid\]|_o)\.x = data\.x;/m);
   const indent = xLine ? xLine[1] : null;
-  const plain = indent === null ? [] : [...block.matchAll(/^(\s*)S\.others\[pid\]\.(\w+) = data\.(\w+);/gm)]
+  const plain = indent === null ? [] : [...block.matchAll(/^(\s*)(?:S\.others\[pid\]|_o)\.(\w+) = data\.(\w+);/gm)]
     .filter((m) => m[1] === indent).map((m) => m[3]);
-  const viaOr = [...block.matchAll(/S\.others\[pid\]\.\w+ = \(data\.(\w+) \|\| 0\)/g)].map((m) => m[1]);
+  const viaOr = [...block.matchAll(/(?:S\.others\[pid\]|_o)\.\w+ = \(data\.(\w+) \|\| 0\)/g)].map((m) => m[1]);
   const need = [...new Set([...plain, ...viaOr])];
   const slim = SLIM_KEYS.split(',');
   check('8a the client\'s tick merge was found and read', start > 0 && need.length >= 4, need);
