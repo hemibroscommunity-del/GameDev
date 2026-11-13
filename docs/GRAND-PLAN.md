@@ -7,8 +7,9 @@ it serves (2026-11-09): *"bulletproof performance wise depending on the device
 and software ... preventing malicious attacks ... buttery smooth."*
 
 **This is the plan above the plans.** It does not repeat them. It says what
-the last five months of fixes have in common, names eight finish lines, and
-puts the open work of the other plans in one order. The detail stays where it
+the last five months of fixes have in common, names nine finish lines, puts
+the open work of the other plans in one order, and (part 11) cuts it into
+sessions that can run side by side. The detail stays where it
 is (`STATE-MACHINES.md`, `PERFORMANCE-IDEAS.md`, `SERVER-SPLIT-PLAN.md`,
 `REBUILD-PLAN.md`, `MEMORY-MAP.md`, the specs).
 
@@ -81,7 +82,8 @@ Seven root causes. Each is a pattern in the record, with where it shows.
    (`PRIVILEGED_EVENTS`, `RELAY.TYPES`, `CAP_GATES`, the client's switch) and
    79 KB of prose. Tables are copied between server and client and audited
    after. Nothing checks a field's name before a test runs: no file is type
-   checked.
+   checked. Art's rules are kept the same way: each family of pictures has
+   its own tool that a session must know to run (pillar 9).
 6. **Old paths never leave.** Every saver lands on with an off-ramp (the
    owner's rule, and a good one). None has an end date, so both ways stay in
    the script, the heap, the tests and every session's reading.
@@ -113,10 +115,11 @@ Seven root causes. Each is a pattern in the record, with where it shows.
 | `S` fields with a stated owner and lifetime | the monsters' only | all |
 | Files type checked | 0 | the rules in `src/game/`, the server's doors, the wire |
 | Off-ramps past an end date | no end dates | 0 |
+| Pictures that are 256-colour files | 396 of 1,970 | every file in its family's form, or listed with why |
 | Tests red on `main` | listed in STATE-MACHINES | 0 |
 | Traps held by a test, not by prose | not counted | counted, then rising |
 
-## 4. The eight finish lines
+## 4. The nine finish lines
 
 1. **Every device reports.** A device problem is first seen in a table.
 2. **One ladder.** Every quality choice reads one lane; the lane comes from
@@ -132,6 +135,8 @@ Seven root causes. Each is a pattern in the record, with where it shows.
 7. **Old paths leave.** An off-ramp has an end date, and the old way goes.
 8. **Working here stays cheap.** A session reads one page for its system; a
    red test means something; the top model is spent on design.
+9. **Every file goes through the asset door.** A picture or a sound reaches
+   the game only in its family's cheapest form, made and checked by machine.
 
 ## 5. The work
 
@@ -223,14 +228,8 @@ report has seen.
   edge of that list, not at first sight.
 - [ ] **3.4 A look is a few colours, on every lane** (PERFORMANCE-IDEAS 2a).
   Then the bake's code leaves by pillar 7.
-- [ ] **3.5 The build proves the art's rules.** One manifest made at build
-  time: each picture's hash, bytes, frames, colours and loader. Precheck
-  fails a picture over 256 colours or with no loader, before a phone finds
-  it. The same manifest gives every sprite an address that changes with its
-  content, so a returning player downloads nothing twice
-  (PERFORMANCE-IDEAS 1d: `public/_headers` leaves about 2,000 sprite and
-  sound files asked for again on each visit), and the loading bar counts real
-  bytes.
+- [ ] **3.5 The art's rules are proved before a phone finds them**: pillar 9,
+  the asset door.
 
 **Done when** `KNOWN` is empty on the crowd tour, the field's "page busy"
 time at the 95th is under 4 ms, and `HOLD_MAX_MS` is lowered from 12 to 8 (a
@@ -339,12 +338,93 @@ loop is a list.
 - [ ] **8.4 Spend the top model on design.** It writes the table and the
   failing test. Lighter lanes make it pass (moving rows, splitting files,
   reaping switches). Money and login work stays at high effort.
+- [ ] **8.5 Shared lists that do not collide.** Sessions side by side all
+  add lines to the same few lists. Precheck's checks become one file each in
+  `tools/dev/checks/`, found by name. `run.mjs`'s scenarios go in name order
+  (today each new one is put on the top line, where two sessions always
+  collide). For every shared list: a new line in a place of its own, never
+  the top one (TRAPS §316's rule for the caps).
+
+### Pillar 9. The asset door: every file processed by machine
+
+The owner's standing rule (2026-10-28): *"everything converted using this
+more efficient method as standard protocol (art, audio, animations, etc)"*.
+And 2026-11-13: *"automatically processing any files through the pipeline for
+maximum performance efficiency (256 color conversion, compression, etc). You
+decide how that goes."*
+
+Today the rule is kept by hand:
+
+- each family has its own tool (`reduce256`, `strip256`, `npc256`,
+  `role-bake`, `head-bake`, `shirt-bake`, `optimize-sprites`, `encode_music`,
+  the `cut_*` scripts), and a session must know which to run;
+- only two folders get a `.webp` twin from the bot;
+- of the 1,970 PNGs in `public/`, 396 are 256-colour files and 1,574 are
+  not (40 MB: traits 937, look 223, gear 114, player 82, props 22, the
+  icons and screens).
+  Some of those are right as they are (a picture that holds numbers, not
+  colours). Nothing says which;
+- sound is 123 mp3 files (22 MB) and video six files (4 MB), with no stated
+  form;
+- the owner uploads to the top of the project: ten pictures and a video
+  wait there now.
+
+**How it goes (decided here): one table, one command, one gate, then the
+bot.** The command and the gate work in every session with no change to
+`.github/`. Running by itself on upload comes last, when it is ten lines.
+
+- [ ] **9.1 The family table** (`tools/assets/families.mjs`). Every folder
+  under `public/` one row:
+  - what it is (a strip, a sheet, an icon, ground, numbers, an illustration,
+    a sound, music, video);
+  - the form its files must have: a 256-colour file (its own colours, or one
+    row shared by a bundle), a lossless twin, "exact, leave alone", or "more
+    than 256, allowed, and why";
+  - its size limits, the door it loads through, its slot in MEMORY-MAP;
+  - for sound: one channel or two, the rate, the longest a file may be before
+    it must stream, how loud.
+
+  Step 1 changes nothing: the table is built from what is on disk, and every
+  file off its form is listed as debt, with its bytes and its MB in memory.
+- [ ] **9.2 One command**: `node tools/assets/process.mjs <files>`. It finds
+  the family from where the file is going, runs that family's own tool,
+  checks the result (read back to the same colours, `strip256`'s way; a twin
+  identical and smaller, `optimize-sprites`' way), writes the file's row in
+  the manifest (hash, bytes, frames, colours), and prints before and after.
+  The tools above stay, as its parts.
+- [ ] **9.3 The gate**: precheck `asset-door`. It fails a file under
+  `public/` in no family, a file off its form and not listed, and a source
+  changed without its outputs (the Wheel bakes' `--check` way).
+- [ ] **9.4 The inbox.** A file uploaded to the top of the project, or to
+  `inbox/`, is named by the session brief ("3 files wait"). The session runs
+  9.2, keeps the file as supplied under `assets/<kind>-source/`, and leaves
+  the top clean. Its first job is the eleven waiting now, asking the owner
+  what each is for.
+- [ ] **9.5 The backlog, a family a PR**, the biggest in memory first
+  (`docs/specs/pictures-256.md`'s inventory): the armour sheets, the game's
+  own canvases, the weapon bodies, the icons, the traits, the props. Each is
+  measured by `mp-membudget` and lowers its line; body and armour art goes
+  through a ghost-audit sample. Sound: a file is one channel on disk unless
+  its row says two, which takes `foldToMono` off the debt list (TRAPS §230).
+- [ ] **9.6 The manifest in the build.** Every picture and sound gets an
+  address that changes with its content. A returning player downloads
+  nothing twice (PERFORMANCE-IDEAS 1d: `public/_headers` leaves the sprite
+  and sound folders asked for again on each visit), and the loading bar
+  counts real bytes.
+- [ ] **9.7 By itself, on upload** (the owner's call: a `.github/` change).
+  The bot that makes the `.webp` twins runs 9.2 on whatever was uploaded and
+  commits the result. After 9.1 to 9.3. Its commit waits for an approval
+  like the twins' does (CLAUDE.md §4).
+
+**Done when** `asset-door` passes with no debt but the listed exceptions, and
+adding art is "upload it".
 
 ## 6. The order
 
 **Now (small, safe, nothing a player sees):**
-5.1 the size line, 1.1 and 1.2 the report, 8.1 red to zero, 7.1 and 5.2 the
-switch table and the system map as lists.
+5.1 the size line, 1.1 and 1.2 the report, 8.1 red to zero, 8.5 the shared
+lists, 7.1 and 5.2 the switch table and the system map as lists, 9.1 to 9.4
+the asset door.
 
 **Next (the owner feels these):**
 2.1 and 2.2 the ladder and the computer's lane, 3.1 the debt list by the
@@ -352,7 +432,8 @@ table's ranking, 2.3 the governor, 4.1 the wire table (step 1), 5.3 the
 ledger (step 1).
 
 **Then:**
-3.2 to 3.5, 4.2 to 4.5, 5.4 to 5.6, 6, 7.2 and 7.3, 8.2 and 8.3.
+3.2 to 3.4, 4.2 to 4.5, 5.4 to 5.6, 6, 7.2 and 7.3, 8.2 and 8.3, 9.5 to
+9.7.
 
 **When a number says so:** part 7.
 
@@ -369,7 +450,8 @@ Why this order:
 
 What unlocks what: 1.1 feeds 2.3, 3.1 and part 7. 5.2 feeds 5.5, 8.3 and
 test picking. 4.1 feeds 4.2, 5.6 and 6.1. 5.3 feeds 5.4. 7.1 feeds 2.4 and
-7.2. 5.4 makes the drawing-on-a-worker option in part 7 cheap.
+7.2. 9.1 feeds 9.5 and 9.6. 5.4 makes the drawing-on-a-worker option in part
+7 cheap.
 
 ## 7. Choices that wait for a number
 
@@ -419,6 +501,10 @@ Each a yes or no. My recommendation is after the dash.
    `BroTown.jsx`. YES, one step at a time, after 5.3.
 8. **Shared tables live under `server/src/`**, so changing one deploys the
    worker. YES.
+9. **The asset door runs by itself on upload** (9.7, a `.github/` change):
+   the bot processes what you upload and commits the result. Yours to ask
+   for in your own words, once 9.1 to 9.3 are in. Until then a session runs
+   the one command.
 
 ## 10. Where the detail is
 
@@ -432,3 +518,98 @@ Each a yes or no. My recommendation is after the dash.
 | The server at 1,000 players | `SERVER-SPLIT-PLAN.md`, `WORLD-ARCHITECTURE.md` §11 |
 | The client's shape so far | `REBUILD-PLAN.md`, `docs/specs/device-profile.md` |
 | Anti-cheat and hidden settings | `ANTICHEAT-SPEC.md`, `HIDDEN-SERVER-PLAN.md` |
+
+## 11. Splitting it across sessions
+
+The owner, 2026-11-13: *"how I can separate it out across different sessions
+(not lanes since those share the same 1 headless browser and compute
+power)"*.
+
+A session is its own machine with its own browser, so sessions truly run side
+by side. Lanes inside one session share four processors and one browser:
+inside a session they are right only for reading and for node tests.
+
+### Rules for sessions side by side
+
+1. **A session writes only in its card's files.** It reads anything. A
+   change it needs elsewhere goes in its PR's words, for the session that
+   owns that file.
+2. **A block of twenty tags each** (the cards below), one tag a PR.
+3. **A new line in a shared list goes in a place of its own, never the top
+   line** (`precheck.mjs`, `run.mjs`, the caps, the live flags). `CLAUDE.md`
+   is changed only for a new rule, in the session's last PR.
+4. **One PR a step.** Merge `main` into the branch before each push.
+5. **Merges in batches.** The node tests live in `server/test/`, so nearly
+   every PR deploys the worker when merged (CLAUDE.md §4).
+6. **Each session ticks its own boxes** in part 5 and writes what it found
+   in its step's spec, for the session that comes after.
+7. **One heavy browser job at a time** inside a session.
+
+### Wave 1: start any or all now
+
+None waits for another. Most are "step 1 changes nothing".
+
+| | Session | Steps | Writes only | Browser | Tags v2.3. |
+|---|---|---|---|---|---|
+| A | The report | 1.1, 1.2, 1.3 | `src/debug/`, `speedTest.js`, `server/src/feedback.js`, its flag, `tools/dev/field-report.mjs` | light | 5020-5039 |
+| B | Lines and maps | 8.5, 5.1, 5.2, 7.1 | `tools/dev/`, `tools/qa/mp/run.mjs`, `docs/SYSTEMS.md` | none | 5040-5059 |
+| C | The wire table | 4.1 step 1, 4.2's list counted | new `server/src/wire/`, its test | none | 5060-5079 |
+| D | The state ledger | 5.3 step 1 | new `src/game/stateLedger.js`, its test, its findings | none | 5080-5099 |
+| E | The sums and restart tests | 4.4, 4.5, and the fixes they find | `server/test/`, the faulty system's file | none | 5100-5119 |
+| F | The asset door | 9.1 to 9.4 | `tools/assets/`, the inbox, `tools/dev/session-brief.mjs` | none | 5120-5139 |
+| G | The ladder | 2.1 step 1, 2.2 | `deviceProfile.js`, `renderRes.js`, `lookPaletteChoice.js`, `pixiApp.js` | yes | 5140-5159 |
+| H | The debt list | 3.1, a family a PR | that family's files in `src/rendering/`, `held-budget.mjs` | heavy | 5160-5179 |
+| I | Traps to guards | 8.2, 6.1 | a new index of the traps, new node tests | none | 5180-5199 |
+| J | Red on `main` | 8.1 | `tools/qa/mp/` | heavy | 5200-5219 |
+
+B's first PR is 8.5, so the others stop colliding in the shared lists: merge
+it first.
+
+### Wave 2: as wave 1 merges
+
+| | Session | Steps | After | Owns (nobody else writes these meanwhile) | Tags v2.3. |
+|---|---|---|---|---|---|
+| K | The wire, moved | 4.1 step 2, 4.2, 4.3 | C, and E's fixes | the wire's parts of `index.js`, `relay.js`, `join.js`, `wsClient.js` | 5220-5239 |
+| L | The ledger, moved | 5.3 step 2, and D's findings | D | the zone change, the death, the rejoin | 5240-5259 |
+| M | The frame as steps | 5.4 | D | the loop in `BroTown.jsx` | 5260-5279 |
+| N | Types on the seams | 5.6 | C, D, call 5 | the type files, precheck's check | 5280-5299 |
+| O | The governor and the queue | 2.3, 2.4, 3.2, 3.3 | A's first reports, G | the ladder's files, the new queue | 5300-5319 |
+| P | The art backlog | 9.5, 9.6 | F | a family's pictures and its loader | 5320-5339 |
+| Q | Reaping | 7.2, 7.3 | B, call 2 | a system's old paths, the oldest switches first | 5340-5359 |
+
+### Wave 3: last
+
+| | Session | Steps | When | Tags v2.3. |
+|---|---|---|---|---|
+| R | The renderers split | 5.5 | H and P are merged and stopped: it owns both big renderers | 5360-5379 |
+| S | Docs by system | 8.3 | nothing else is writing docs | 5380-5399 |
+| T | Copied tables become one | 6.2 | K is merged | 5400-5419 |
+
+**Never side by side:** M with any other change to `BroTown.jsx`; R with H
+or P; K with E's fixes still open; H and P in the same family of art.
+
+### Spending the top model well
+
+- **Reading once is the best use of a surplus.** C, D, E and I read the
+  whole wire, the whole state, the money's roads and all 339 traps, and
+  leave tables and tests behind. Every later session is cheaper for them,
+  and their judgement (is this field a claim? when should this field reset?
+  can this coin be copied?) is where the strongest model earns its cost.
+  Start these first.
+- **G, H, J and P are bound by the clock**, not by tokens: a browser run
+  takes its minutes whatever the model. They are worth running, and they
+  spend slowly.
+- **B, F, Q, R and S are mostly moves.** They suit a lower effort when the
+  budget is tight.
+- **A fresh session a card**, and a short prompt: this file is the brief. A
+  session carried across cards pays for its whole history on every turn.
+- **Inside C, D and I, fan out readers** (lanes that only read and report):
+  no browser is shared, so they do run side by side.
+
+### The prompt for a session
+
+> You are session **X** of `docs/GRAND-PLAN.md` part 11. Read parts 5 and
+> 11, then do your card's steps in order, one PR a step, writing only in
+> your card's files, with your card's tags. Tick your boxes in the plan as
+> each PR is ready. If a step needs my yes (part 9), ask me once and carry
+> on with the next step.
