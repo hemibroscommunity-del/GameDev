@@ -163,19 +163,19 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
      CHANGES (eight times a burst, never every tick), before the browser
      paints the box the new frame's size; the canvas is emptied as soon as
      the burst stops drawing it, and the shared ImageData let go with the
-     last burst on screen. */
+     last burst DRAWING -- not at unmount: a burst over renders null but stays
+     mounted until its clock retires it, and one a rig froze past its end is
+     never retired (mp-levelupnum 7c found its hold kept the ImageData). */
   const [fromNumbers] = React.useState(() => LEVELUP_BURST_NUMBERS && levelUpNumbersReady());
   const cvRef = React.useRef(null);
-  const drawn = React.useRef({ cv: null, fi: -1 });
-  /* a layout effect, declared before the one that draws, so the burst holds
-     the shared ImageData before its first draw */
+  const drawn = React.useRef({ cv: null, fi: -1, release: null });
   React.useLayoutEffect(() => {
     if (!fromNumbers) { if (LEVELUP_BURST_NUMBERS) ensureLevelUpNumbers(); return undefined; }
-    const release = levelUpNumbersUse();
     return () => {
-      release();
-      emptyLevelUpCanvas(drawn.current.cv);
-      drawn.current = { cv: null, fi: -1 };
+      const d = drawn.current;
+      if (d.release) d.release();
+      emptyLevelUpCanvas(d.cv);
+      drawn.current = { cv: null, fi: -1, release: null };
     };
   }, []);
 
@@ -312,7 +312,10 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
     if (!fromNumbers) return;
     const d = drawn.current, cv = cvRef.current;
     if (d.cv && d.cv !== cv) { emptyLevelUpCanvas(d.cv); d.cv = null; d.fi = -1; }
-    if (!cv || fiNow < 0 || (d.cv === cv && d.fi === fiNow)) return;
+    /* over (or nothing drawn this render): the shared ImageData let go */
+    if (!cv || fiNow < 0) { if (d.release) { d.release(); d.release = null; } return; }
+    if (d.cv === cv && d.fi === fiNow) return;
+    if (!d.release) d.release = levelUpNumbersUse();
     if (drawLevelUpFrame(cv, fiNow)) { d.cv = cv; d.fi = fiNow; }
   });
 

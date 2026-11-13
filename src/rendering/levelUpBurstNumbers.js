@@ -95,12 +95,20 @@ export function ensureLevelUpNumbers() { if (_set) _set.ensure(); }
    the largest frame: let go when the last of them ends */
 let _scratch = null;
 let _users = 0;
-/** A burst that draws from the numbers holds this while it is on screen;
- *  the function it returns lets go. */
+/** A burst holds this while it DRAWS (from its first frame to the render
+ *  where it is over, LevelUpBurst.jsx); the function it returns lets go.
+ *  v2.3.5004: the ImageData goes a microtask after the last lets go, so a
+ *  burst whose first frame is drawn in the same commit as another's last
+ *  (a level-up just as one ends) takes it over instead of making another. */
 export function levelUpNumbersUse() {
   _users++;
   let done = false;
-  return () => { if (done) return; done = true; _users = Math.max(0, _users - 1); if (!_users) _scratch = null; };
+  return () => {
+    if (done) return;
+    done = true;
+    _users = Math.max(0, _users - 1);
+    if (!_users) Promise.resolve().then(() => { if (!_users) _scratch = null; });
+  };
 }
 
 /** Frame `i` into `canvas` (made LEVELUP_MAX_W x LEVELUP_MAX_H here, the
