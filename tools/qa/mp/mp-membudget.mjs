@@ -322,6 +322,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
       s.gpuUidNow = sg ? sg.uidNow : null;   /* v2.3.3310: for the first draws (firstDrawsMB) */
       s.gpuHeld = sg ? sg.held : null;
       out.stops.push(s);
+      /* v2.3.5007: QA_MB_SNAP=0,5,6 (stops by number, 0 arrival, 1-6 the trips'
+         fights and homes; `all`) writes a heap snapshot after two collections
+         at those stops into QA_MB_SNAPDIR (default the OS temp dir): what the
+         heap trim of 2026-11-13 was found with (docs/specs/heap-trim-2026-11-13.md;
+         tens of MB each, never in the repo).  A snapshot is taken AFTER the
+         stop's reading, so that stop reads as it would; the next ones carry it. */
+      if (process.env.QA_MB_SNAP) {
+        const want = process.env.QA_MB_SNAP.split(',');
+        const idx = String(out.stops.length - 1);
+        if (want.includes(idx) || want.includes('all')) {
+          const { createWriteStream } = await import('node:fs');
+          const { tmpdir } = await import('node:os');
+          const cdp = await P.ctx.newCDPSession(P.page);
+          await cdp.send('HeapProfiler.collectGarbage'); await cdp.send('HeapProfiler.collectGarbage');
+          const file = join(process.env.QA_MB_SNAPDIR || tmpdir(), `membudget-stop${idx}.heapsnapshot`);
+          const f = createWriteStream(file);
+          cdp.on('HeapProfiler.addHeapSnapshotChunk', (e) => f.write(e.chunk));
+          await cdp.send('HeapProfiler.takeHeapSnapshot', { reportProgress: false, captureNumericValue: false });
+          await new Promise((r) => f.end(r));
+          await cdp.detach().catch(() => {});
+          console.log(`    heap snapshot: ${file}`);
+        }
+      }
       const row = Object.fromEntries(Object.keys(READ).map((k) => [k, READ[k](s)]));
       console.log(`    ${label}: ${Object.entries(row).map(([k, v]) => `${k} ${v}`).join(', ')} (gpu settled ${s.gpuSettled})`);
       return s;

@@ -162,6 +162,7 @@ import { broBadgeOf } from '../../networking/broWallet.js';   /* v2.3.3255: the 
 import { plateNameWithTag, myAllyTag } from '../../game/alliance.js';   /* v2.3.3313: an alliance member's plate says [TAG] before the name */
 import { isLiveClone } from '../../game/sparTargets.js';   /* v2.3.3481: a clone you spar with lifts its plate off yours (it imports nothing) */
 import { clipHair, hairClippedBy } from '../hairClip.js';   /* v2.3.3459: the hair clipped through the stencil, not a pass of its own */
+import { heapTrimOn } from '../heapTrim.js';   /* v2.3.5007: the heap trim's switch */
 import { bakeMaskedCanvas } from '../maskedBake.js'; /* v2.3.2874: the masked-body pixel work, shared with the prewarm worker */ /* v2.3.2761: the rod is found by its recorded shape now that it is pine */
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
@@ -1114,8 +1115,25 @@ function _fetchTraitMeta(e, category, id, attempt, round) {
   try { ac = new AbortController(); timer = setTimeout(() => { try { ac.abort(); } catch (er) { /* gone */ } }, 15000); } catch (er) { ac = null; }
   fetch(`/sprites/traits/${category}/${id}/meta.json?v=${TRAIT_VER}${bust}`, ac ? { signal: ac.signal } : undefined)
     .then(r => r.ok ? r.json() : null)
-    .then(j => { if (timer) clearTimeout(timer); if (j) { e.meta = j; return; } again(); })
+    .then(j => { if (timer) clearTimeout(timer); if (j) { e.meta = _traitMetaLean(j); return; } again(); })
     .catch(() => { if (timer) clearTimeout(timer); again(); });
+}
+/* ═══ v2.3.5007: A HEAD PIECE'S NOTES ARE NOT KEPT ═══
+   Every head piece's meta.json carries its maker's notes (`note`, and the
+   fits' `poseFitNote`, `poseNudgeNote`, `hoodNote`, `bboxes_source`): ~170
+   KB of words across the 66 pieces the loading screen asks for, the biggest
+   strings on the page's heap after the shaders (heap snapshots of the memory
+   check, docs/specs/heap-trim-2026-11-13.md), and nothing in the game reads
+   them.  They are dropped as the meta arrives; every number the placing
+   reads stays.  `?heaptrim=0` keeps them (rendering/heapTrim.js). */
+const TRAIT_META_DOC = new Set(['note', 'poseFitNote', 'poseNudgeNote', 'hoodNote', 'bboxes_source']);
+function _traitMetaLean(j) {
+  if (!heapTrimOn() || !j || typeof j !== 'object' || Array.isArray(j)) return j;
+  /* a fresh object of the rest, not `delete` (which would leave the meta a
+     slow dictionary, read every frame by _placeTrait) */
+  const out = {};
+  for (const k of Object.keys(j)) if (!TRAIT_META_DOC.has(k)) out[k] = j[k];
+  return out;
 }
 /* v2.3.1305: per-direction trait load with bounded retry.  Owner
    two-player report: "lots of layers are missing depending on the
