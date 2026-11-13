@@ -497,7 +497,7 @@ import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the s
 import { climbBegin, climbSteer, climbSpeed, climbTick, riseSolidAt } from '@/game/climbActions.js';   /* v2.3.3994: the lagoon's climb and its faces (`?climb=1`) */
 import { tickJump, landJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick -- v2.3.3712: no longer, so triggerJump is the button's alone) */
 import { rightTapBusy, tapFreeMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress, requestTapAttack } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one; v2.3.3712: it attacks once now, never jumps */
-import { manualOn, mcSwipes, mcPressIdle, mcBowSling, mcShotAngle, mcSwipeStart, mcSwipeMove, mcSwipeEnd, mcWasQuick, mcAssist, mcAskShot, mcAbort, mcMeleeAsk, mcSwingWaiting, mcSwingDone, mcReadyIn, mcTakeArmed, mcArmToggle, mcArmed, mcShoots } from '@/game/manualCombat.js';   /* v2.3.4395: manual combat (`?manual=1`): every attack is a swipe, no chosen lock */
+import { manualOn, tapLockOn, mcSwipes, mcPressIdle, mcBowSling, mcShotAngle, mcSwipeStart, mcSwipeMove, mcSwipeEnd, mcWasQuick, mcAssist, mcAskShot, mcAbort, mcMeleeAsk, mcSwingWaiting, mcSwingDone, mcReadyIn, mcTakeArmed, mcArmToggle, mcArmed, mcShoots } from '@/game/manualCombat.js';   /* v2.3.4395: manual combat (`?manual=1`): every attack is a swipe, no chosen lock */
 import { BOW_RANGE_PX as MC_BOW_RANGE_PX, bowRangeMult as mcBowRangeMult } from '@/data/gameSystems.js';   /* v2.3.4395: how far a quick flick's help reaches */
 import { lockShotPoint as mcShotPoint } from '@/game/combatHelpers.js';
 import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here; v2.3.4105: talkBeforeDoor retired (E never talks) */
@@ -10399,7 +10399,7 @@ export var BroTown = function BroTown(_ref0) {
        press promotes none; and a press attacks nothing -- the swipe that
        may follow it does (rS / bS: mcSwipeStart) */
     var _mcP = manualOn();
-    if (!_mcP && _lt && _lt.ref && _lt.type === 'monster' && _lt.src !== 'tap') {
+    if (tapLockOn() && _lt && _lt.ref && _lt.type === 'monster' && _lt.src !== 'tap') {   /* v2.3.5018: only the old combat turns a press into a lock (not the held combat) */
       /* v2.3.3499: `near` -- an auto lock is only ever made inside the 220 px
          perimeter, so the promoted tap has been there: without the latch a
          press made with the monster 220-275 px off gave a sword a tap lock
@@ -10831,7 +10831,9 @@ export var BroTown = function BroTown(_ref0) {
     /* v2.3.4395: manual combat keeps no chosen lock (a click on a monster is
        a press like any other: the sword lunges at what it faces by itself) */
     if (manualOn()) return false;   /* its click is a stroke: mcMeleeSwipe makes the lunge */
-    if (hit) {
+    /* v2.3.5018: the held combat keeps no chosen lock either: its click lunges at what the sword faces */
+    if (!tapLockOn()) { /* no lock taken */ }
+    else if (hit) {
       if (!lt || lt.ref !== hit) S.lockedTarget = { type: 'monster', id: hit.id, ref: hit, src: 'tap' };
       else if (lt.src !== 'tap') S.lockedTarget = { type: 'monster', id: lt.id, ref: lt.ref, src: 'tap', near: true };
     } else if (lt && lt.ref && lt.type === 'monster' && lt.src !== 'tap') {
@@ -13159,8 +13161,8 @@ export var BroTown = function BroTown(_ref0) {
                    the automatic rule rather than leaving you with no target;
                    with acquisition automatic, `null` here means "resume", not
                    "nothing", and the next frame re-points at the nearest. */
-                if (manualOn()) {
-                  /* v2.3.4395: manual combat keeps no chosen lock */
+                if (!tapLockOn()) {
+                  /* v2.3.4395: manual combat keeps no chosen lock; v2.3.5018: nor the held combat */
                 } else if (_S.lockedTarget && _S.lockedTarget.ref === _closest) {
                   _S.lockedTarget = null;
                 } else {
@@ -13385,7 +13387,7 @@ export var BroTown = function BroTown(_ref0) {
       var rect = e.currentTarget.getBoundingClientRect();
       var m = monsterAtCss(e.clientX - rect.left, e.clientY - rect.top);
       if (!m) return;
-      if (manualOn()) return;   /* v2.3.4395: manual combat keeps no chosen lock, and a double click is two presses */
+      if (!tapLockOn()) return;   /* v2.3.4395: manual combat keeps no chosen lock, and a double click is two presses; v2.3.5018: nor the held combat */
       S.lockedTarget = { type: 'monster', id: m.id, ref: m, src: 'tap' };
       var dashed = false;
       try { dashed = maybeSwordDash(S) === true; } catch (_e) { dashed = false; }
@@ -13474,7 +13476,7 @@ export var BroTown = function BroTown(_ref0) {
         var closest = monsterAtCss(cssX, cssY);
         /* v2.3.4395: manual combat keeps no chosen lock -- a tap or a click on
            a monster is a tap like any other (the sword's swing, if ready) */
-        if (closest && !manualOn()) {
+        if (closest && tapLockOn()) {   /* v2.3.5018: only the old combat locks on a tap */
           /* Toggle lock: tap same = unlock, tap new = lock */
           if (S.lockedTarget && S.lockedTarget.ref === closest) {
             /* v2.3.3711: ...but the SECOND click of a double click is the

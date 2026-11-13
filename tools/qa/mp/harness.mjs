@@ -590,7 +590,8 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
      before it drive the held attack and the tap lock directly (S.autoAttack, S.lockedTarget, a press of
      the disc: about 120 files).  Those are still in the game behind `?manual=0`, so that is what a
      scenario plays unless it names `manual=` itself: `manual=1` the swipes, `manual=2` the slingshot
-     bow, `manual=default` whatever the game gives a new player (mp-manualcombat plays all three). */
+     bow, `manual=3` the free-swing trial, `manual=default` whatever the game gives a new player (v2.3.5018:
+     the held combat, `manual=4`: the old held attack without the tap lock; mp-manualcombat plays the swipes). */
   const _oldCombat = (/(?:^|&)manual=/.test(query) || /(?:^|&)manual=/.test(_env)) ? '' : 'manual=0';
   const _q = [guest ? 'guest=1' : '', query, _env, _world, _narrow, _noSpin, _oldCombat].filter(Boolean).join('&');
   /* v2.3.3312: `host` -- the page's own address, for a scenario that needs a

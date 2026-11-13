@@ -6,7 +6,9 @@
  *
  *   1. THE SWITCH: ON by default (v2.3.4396); `?manual=0` is the old combat
  *      for one device, remembered; `?manual=1` comes back; `?manual=2` the
- *      slingshot bow.
+ *      slingshot bow.  v2.3.5018 (the owner: "I like combat better the old
+ *      way"): the default is THE HELD COMBAT (4): the old held attack with no
+ *      tap lock (tapLockOn); every swipe combat a remembered choice.
  *   2. A BOW'S FLICK (a staff is left as it was: 11): thumb down, moved 24 px or more, lifted =
  *      one shot; a tap, a nudge: none; back to the centre: cancelled.
  *   3. NO FASTER THAN THE WEAPON: a flick too soon shoots nothing and costs
@@ -39,7 +41,7 @@
 import fs from 'node:fs';
 import {
   mcPitchStep, mcHitPitch, mcPerfectOn,
-  MANUAL, manualCombatWanted, manualMode, manualFreeSwing, swingBonusWanted, freeSwingAsk, mcFreeSwing, mcSwingGapMs, mcNoteSwing, mcHitVol, mcNumberScale, mcLightHit, manualSling, mcBowSling, mcShotAngle, mcSwipes, mcBowInterval, setManualCombat, manualOn, mcFrame, mcSwipeStart, mcSwipeMove, mcSwipeEnd, mcWasQuick, mcPressIdle, mcAbort, mcAskShot,
+  MANUAL, manualCombatWanted, manualMode, manualFreeSwing, tapLockOn, swingBonusWanted, freeSwingAsk, mcFreeSwing, mcSwingGapMs, mcNoteSwing, mcHitVol, mcNumberScale, mcLightHit, manualSling, mcBowSling, mcShotAngle, mcSwipes, mcBowInterval, setManualCombat, manualOn, mcFrame, mcSwipeStart, mcSwipeMove, mcSwipeEnd, mcWasQuick, mcPressIdle, mcAbort, mcAskShot,
   mcFireWaiting, mcFireDone, mcReady, mcReadyIn, mcMeleeAsk, mcSwingWaiting, mcSwingDone, mcAssist, mcArmToggle, mcArmed, mcTakeArmed, mcLockAllowed, mcShoots,
 } from '../../src/game/manualCombat.js';
 
@@ -56,17 +58,27 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
 {
   const ls = store();
   /* v2.3.4396 (the owner: "Yes do the new combat"): it is the game's combat -- on unless a device says otherwise */
-  /* v2.3.4655 (the owner: "Yeah everyone"): the default is the free-swing trial, 3 */
-  check('1a ON by default: a new player, with nothing in the address and nothing remembered, plays the free-swing trial', manualCombatWanted('', ls) === true && manualMode('?foo=1', ls) === 3 && ls.getItem(MANUAL.KEY) === null);
+  /* v2.3.4655 (the owner: "Yeah everyone"): the default was the free-swing trial, 3.
+     v2.3.5018 (the owner: "I like combat better the old way. You just move the right joystick towards the
+     enemy and it attacks as long as it is held down. A swipe on the right joystick activates the special
+     attack"): the default is THE HELD COMBAT, 4 -- the old held attack, no tap lock */
+  check('1a the HELD COMBAT by default (v2.3.5018): a new player, with nothing in the address and nothing remembered, plays the held attack, not manual combat, and keeps no tap lock', manualCombatWanted('', ls) === false && manualMode('?foo=1', ls) === 4 && ls.getItem(MANUAL.KEY) === null);
   check('1b `?manual=0` is the old combat for this device, and is remembered', manualCombatWanted('?x=2&manual=0', ls) === false && ls.getItem(MANUAL.KEY) === '0' && manualCombatWanted('', ls) === false && manualMode('', ls) === 0);
-  check('1c `?manual=3` comes back to the game\'s own, and nothing is left remembered', manualMode('?manual=3', ls) === 3 && ls.getItem(MANUAL.KEY) === null && manualMode('', ls) === 3);
-  check('1d a look-alike is not the switch (it chooses nothing: the default stands)', manualMode('?notmanual=0', store()) === 3 && manualMode('?manual=02', store()) === 3 && manualMode('?manual=default', store()) === 3);
-  check('1e no storage (a private window): the address still decides, and with nothing in it the default stands', manualCombatWanted('?manual=0', null) === false && manualCombatWanted('', null) === true);
+  check('1c `?manual=4` comes back to the game\'s own, and nothing is left remembered; `?manual=3`, the trial, is a remembered choice now', manualMode('?manual=4', ls) === 4 && ls.getItem(MANUAL.KEY) === null && manualMode('', ls) === 4
+    && manualMode('?manual=3', ls) === 3 && ls.getItem(MANUAL.KEY) === '3' && manualMode('', ls) === 3 && manualCombatWanted('', ls) === true);
+  check('1d a look-alike is not the switch (it chooses nothing: the default stands)', manualMode('?notmanual=0', store()) === 4 && manualMode('?manual=02', store()) === 4 && manualMode('?manual=default', store()) === 4);
+  check('1e no storage (a private window): the address still decides, and with nothing in it the default stands', manualCombatWanted('?manual=0', null) === false && manualCombatWanted('', null) === false && manualMode('', null) === 4);
+  /* v2.3.5018: the held combat keeps no lock a player chose; only the old combat (0) does */
+  setManualCombat(4); const held = { on: manualOn(), lock: tapLockOn() };
+  setManualCombat(false); const old0 = { on: manualOn(), lock: tapLockOn() };
+  setManualCombat(3); const trial = { on: manualOn(), lock: tapLockOn() };
+  setManualCombat(false);
+  check('1e2 the held combat (4) is not manual and takes no tap lock; the old combat (0) takes the tap lock; the trial (3) is manual with none', !held.on && !held.lock && !old0.on && old0.lock && trial.on && !trial.lock, { held, old0, trial });
   setManualCombat(true); check('1f the page\'s own answer can be set for a test', manualOn() === true && manualSling() === false); setManualCombat(false);
   /* the slingshot bow's variation: `?manual=2` */
   const l2 = store();
   check('1g `?manual=2` is manual combat with the slingshot bow, and is remembered as that', manualMode('?manual=2', l2) === 2 && manualCombatWanted('', l2) === true && l2.getItem(MANUAL.KEY) === '2' && manualMode('', l2) === 2);
-  check('1h `?manual=1` after it is the plain swipes, remembered (v2.3.4655); `?manual=0` after that is the old combat', manualMode('?manual=1', l2) === 1 && l2.getItem(MANUAL.KEY) === '1' && manualMode('', l2) === 1 && manualMode('?manual=0', l2) === 0 && manualMode('', l2) === 0 && manualMode('?manual=4', store()) === 3);   /* v2.3.4520: 3 is the free-swing trial (13) */
+  check('1h `?manual=1` after it is the plain swipes, remembered (v2.3.4655); `?manual=0` after that is the old combat', manualMode('?manual=1', l2) === 1 && l2.getItem(MANUAL.KEY) === '1' && manualMode('', l2) === 1 && manualMode('?manual=0', l2) === 0 && manualMode('', l2) === 0 && manualMode('?manual=5', store()) === 4);   /* v2.3.4520: 3 is the free-swing trial (13); v2.3.5018: 4 the held combat, 5 no switch */
   const B = bow(), St = { rpg: { activeSlot: 'staff' } }, Sw = sword();
   setManualCombat(2);
   check('1i the slingshot is the BOW\'s only: a staff stays a flick, a sword a stroke', manualOn() && manualSling() && mcBowSling(B) && !mcBowSling(St) && !mcBowSling(Sw));
@@ -240,9 +252,10 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
 // ── 13. v2.3.4520: the free-swing trial ──
 {
   const ls = store();
-  /* v2.3.4655: the trial is the default; `?manual=1` leaves it for the plain swipes and is remembered, `?manual=3` comes back and forgets */
-  check('13a the free-swing trial is the default; `?manual=1` is the plain swipes, remembered; `?manual=3` comes back and forgets', manualMode('', ls) === 3 && manualMode('?manual=1', ls) === 1 && ls.getItem(MANUAL.KEY) === '1' && manualMode('', ls) === 1
-    && manualMode('?manual=3', ls) === 3 && ls.getItem(MANUAL.KEY) === null && manualMode('', ls) === 3 && manualCombatWanted('', ls) === true);
+  /* v2.3.4655: the trial was the default; v2.3.5018: the held combat is (1a), and the trial a remembered choice */
+  check('13a the free-swing trial is `?manual=3`, remembered; `?manual=1` is the plain swipes, remembered; `?manual=4` comes back to the default and forgets', manualMode('?manual=3', ls) === 3 && ls.getItem(MANUAL.KEY) === '3' && manualMode('', ls) === 3
+    && manualMode('?manual=1', ls) === 1 && ls.getItem(MANUAL.KEY) === '1' && manualMode('', ls) === 1
+    && manualMode('?manual=4', ls) === 4 && ls.getItem(MANUAL.KEY) === null && manualMode('', ls) === 4 && manualCombatWanted('', ls) === false);
   const lb = store();
   /* v2.3.4615: the bonus (the perfect strike's) is ON by default on the trial now */
   check('13b v2.3.4615: the bonus is asked by default; `?swingbonus=0` asks without it and is remembered; `?swingbonus=1` comes back',
@@ -359,7 +372,8 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
     /var ask = mcMeleeAsk\(S, now\);\s*\n\s*if \(ask === 'yes'\) return mcMeleeGo\(S\);/.test(bro) && /if \(_mcP\) return false;\s*\n\s*try \{ return maybeSwordDash\(S\); \}/.test(bro));
   check('10j a computer: each click is one attack (a shot asked at the cursor, or a stroke); a staff is left to the lines below', /if \(mcSwipes\(S\)\) \{\s*\n\s*if \(mcShoots\(S\)\) \{[\s\S]{0,520}mcAskShot\(S, Date\.now\(\)\);\s*\n\s*\} else mcMeleeSwipe\(\);/.test(bro));   /* v2.3.4802: room for a drawn bow's press (bow-feel.test §9d) */
   const tg = read('../../src/game/targeting.js');
-  check('10k targeting keeps no chosen lock, and no duel lock, with the switch', /if \(manualOn\(\)\) \{\s*\n\s*if \(S\.lockedTarget && !mcLockAllowed\(S\.lockedTarget\)\) S\.lockedTarget = null;\s*\n\s*\} else keepDuelLock\(S\);/.test(tg));
+  /* v2.3.5018: the question is tapLockOn() now (the held combat keeps no chosen lock either) */
+  check('10k targeting keeps no chosen lock, and no duel lock, unless the old combat (tapLockOn)', /if \(!tapLockOn\(\)\) \{\s*\n\s*if \(S\.lockedTarget && !mcLockAllowed\(S\.lockedTarget\)\) S\.lockedTarget = null;\s*\n\s*\} else keepDuelLock\(S\);/.test(tg));
   const btn = read('../../src/ui/panels/SpecialButton.jsx');
   check('10l the special\'s button arms (and shows it), and is there whenever a weapon is in hand', /mcArmToggle\(Sm\)/.test(btn) && /if \(mcSwipes\(S\)\) return true;/.test(btn) && /armed \? 'armed'/.test(btn) && !/manualOn/.test(btn));
   check('10o the slingshot bow: the stick\'s drag, the disc\'s pull and the lift all turn the shot round through the one rule (mcShotAngle)',
@@ -371,9 +385,9 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
   /* v2.3.4396: the game's combat -- what tells a player how to attack says the new way, and the old
      scenarios are held to the old combat they were written for */
   const tour = read('../../src/ui/mobile/ControlsTutorial.jsx');
-  check('10q the controls tour says swipe, flick and hold, and that a special is armed first', /bodyManual: 'Sword: swipe across it/.test(tour) && /tap the Special button first/.test(tour) && /\(manualOn\(\) && cur\.bodyManual\) \|\| cur\.body/.test(tour));
+  check('10q the controls tour says swipe, flick and hold, and that a special is armed first', /bodyManual: 'Sword: swipe across it/.test(tour) && /tap the Special button first/.test(tour) && /\(manualOn\(\) && cur\.bodyManual\) \|\| \(!tapLockOn\(\) && cur\.bodyNoLock\) \|\| cur\.body/.test(tour));   /* v2.3.5018: + the held combat's words, no tap lock */
   check('10r the phone\'s arrow and a computer\'s tips say a sword\'s or a bow\'s special is armed, then made', /'Tap, then attack: your special'/.test(read('../../src/ui/guideArrow.js')) && /mcSwipes\(S\) \? ' Special: then attack<\/span>'/.test(read('../../src/ui/deskTeach.js')));
-  check('10s the key list offers the double-click lock only in the old combat', /\['2\\u00d7Click', 'Lock on', 'lock', 'fight'\]/.test(read('../../src/game/deskKeyList.js')) && /lock: !manualOn\(\),/.test(read('../../src/ui/panels/KeyboardHintsPanel.jsx')));
+  check('10s the key list offers the double-click lock only in the old combat', /\['2\\u00d7Click', 'Lock on', 'lock', 'fight'\]/.test(read('../../src/game/deskKeyList.js')) && /lock: tapLockOn\(\),/.test(read('../../src/ui/panels/KeyboardHintsPanel.jsx')));   /* v2.3.5018: the lock's own question */
   check('10t the phone tests play the old combat unless they name `manual=` themselves', /const _oldCombat = \(\/\(\?:\^\|&\)manual=\/\.test\(query\) \|\| \/\(\?:\^\|&\)manual=\/\.test\(_env\)\) \? '' : 'manual=0';/.test(read('../../tools/qa/mp/harness.mjs')));
   check('10u a press that made no attack gesture while the button is up for a fight is told the new way, after either touch lift, never over a harvest',
     /if \(!S \|\| !S\.rpg \|\| !S\.player \|\| !mcSwipes\(S\) \|\| !S\._rBtnShown \|\| S\._btnHarvest \|\| S\._extraction\) return;\s*\n\s*if \(!mcPressIdle\(S\)\) return;/.test(bro)

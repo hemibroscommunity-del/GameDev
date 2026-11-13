@@ -374,8 +374,9 @@ async function phone({ browser, wsPort, webPort, rec, OUT }) {
 }
 
 async function desk({ browser, wsPort, webPort, rec, OUT }) {
-  /* v2.3.4396: `manual=default` names no combat, so this page plays what the game gives a new player */
-  const P = await H.newPlayer(browser, { name: 'Drawdesk', wsPort, webPort, viewport: WIDE, wide: true, world: 'wheel', query: `manual=default&repairms=${REPAIR_MS}` });
+  /* v2.3.4396: `manual=default` named no combat, so this page played what the game gives a new player;
+     v2.3.5018: that is the held combat now (manualCombat.js), so the computer asks for the trial by name */
+  const P = await H.newPlayer(browser, { name: 'Drawdesk', wsPort, webPort, viewport: WIDE, wide: true, world: 'wheel', query: `manual=3&repairms=${REPAIR_MS}` });
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   const stop = H.keepAlive(P);
@@ -389,7 +390,8 @@ async function desk({ browser, wsPort, webPort, rec, OUT }) {
     await installTouch(P);   /* its helpers (__ready): no touch is made here */
     const dOn = await P.page.evaluate(() => ({ on: window.__btManual.on(), sling: window.__btManual.sling(), free: window.__btManual.free(), stored: localStorage.getItem('bt_manual'), search: location.search }));
     /* v2.3.4797: and since v2.3.4655 (#1547) that default is the free-swing trial */
-    rec.ok('10z a computer with no combat named in its address plays the new combat: it is the DEFAULT (v2.3.4396), the free-swing trial (v2.3.4655)', dOn.on === true && dOn.sling === false && dOn.free === true && dOn.stored === null && !/manual=[0123]/.test(dOn.search), dOn);
+    /* v2.3.5018: the held combat is the default; `?manual=3` is the trial, a choice, remembered */
+    rec.ok('10z a computer with `?manual=3` plays the free-swing trial (the default until v2.3.5018), remembered as its choice', dOn.on === true && dOn.sling === false && dOn.free === true && dOn.stored === '3', dOn);
     await arm(P, 'ranged');
     const hall = await standUnderHall(P, rec, 'computer ');
     if (!hall) return;

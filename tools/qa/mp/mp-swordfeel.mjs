@@ -59,7 +59,7 @@ const arm = () => {
 };
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  const P = await H.newPlayer(browser, { name: 'Gleambro', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'manual=default' });   /* the game's own combat: nothing chosen */
+  const P = await H.newPlayer(browser, { name: 'Gleambro', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'manual=3' });   /* the game's own combat: nothing chosen */
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   const stop = H.keepAlive(P);
@@ -197,7 +197,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
 
   /* ── 7 ── `?swordfeel=0`: the look before */
-  const Q = await H.newPlayer(browser, { name: 'Plainbro', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'manual=default&swordfeel=0' });
+  const Q = await H.newPlayer(browser, { name: 'Plainbro', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'manual=3&swordfeel=0' });
   Q.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   const stopQ = H.keepAlive(Q);
   try {
