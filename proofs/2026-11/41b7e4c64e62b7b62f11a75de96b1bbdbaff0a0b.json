@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "41b7e4c64e62b7b62f11a75de96b1bbdbaff0a0b",
+  "tree": "9f44e35f0971c468f59aea878ad9067aa15f1a3a",
+  "committedAt": "2026-11-12T23:23:59-08:00",
+  "subject": "Merge pull request #1652 from hemibroscommunity-del/claude/heap-trim-v2.3.5007",
+  "files": 7399,
+  "bytes": 944613143,
+  "listingSha256": "df165cba0cf289531bd69ef3c0802031d777e53281e3db42ad62cb5d18172900",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
