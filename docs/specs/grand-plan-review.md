@@ -144,6 +144,42 @@ Each was marked by its reviewer as not checkable from the test box.
 - EU consent rules spare only anonymous statistics.
 - Web uploads bypass git LFS; Safari evicts a service worker's idle storage.
 
+## Round 3: the cold-start dry run
+
+The owner, asked which one more audit was worth running, chose the one
+recommended: *"Go recommended"*. The first two rounds tested whether the
+plan was right. This one tested whether it could be FOLLOWED.
+
+**How.** Nine fresh readers, one for each day-one card (W, S, C, D, I, H,
+F, J and the gatekeeper Z). Each was given only the four-line prompt a real
+session would get, was allowed to change nothing, and reported its first
+ten actions, every file it expected to touch, every sentence it had to
+guess at, what its card needed that did not exist, and where it would stop
+and ask.
+
+**Result.** All nine answered "yes, with guesses". None could start clean.
+
+| What they met | How many | The cure |
+|---|---|---|
+| "Nothing else starts until it is merged" beside "Day one, beside wave 0" | 9 | W goes first; the day-one table may start beside it; nothing else until W and S merge |
+| The start-up brief offers every session the same tag, and CLAUDE.md says to take it; four cards had no tag at all | 9 | every card carries its tags; the prompt says not to take the brief's |
+| `docs/plan/status/` and the tag-blocks file did not exist; no format; no way for the gatekeeper to find a branch with no PR | 9 | `docs/plan/README.md`: the status file's four opening lines, and branches found through the brief's 72-hour list |
+| A card was one row of a table: no files, no count of PRs, no "done when" | 9 | a card is a file of its own, its PRs numbered, each with files, tag and "done when" |
+| Cards C and D each appeared twice | 2 | the session that reads is not the session that builds: N and U are new letters |
+| A census of hundreds of rows "in the status file" the gatekeeper must read short | 4 | `docs/plan/census/`, a page a census |
+| Files outside the card's "writes only" (a family's test, its spec, three families outside `src/rendering/`) | 3 | each card lists its files where they really are |
+| Names already taken in the code: `acct` (the device), `sess` (a sparring bot), "inbox" (the mail); `playable` is a check's name, the scenario is `questline` | 4 | card S picks free names; "uploads"; `questline` |
+| "A full run" of the phone tests is six hours or more, against the owner's sample rule | 2 | the sample is defined in card J, and the full run offered |
+| Nobody owned a test red because the GAME is wrong | 2 | J writes it under Found; the gatekeeper routes it |
+| The plan's counts could not be made again (610, 89, 850 against 657, 95, 793) | 2 | marked as a reviewer's counts; card D's script replaces them and says how |
+| "A checkout without `assets/`": nine server suites read it | 1 | dropped |
+| The gatekeeper: what "ready" and "silent" mean, when a box is ticked, how deep a review, how long a sitting | 1 | card Z, a sitting in seven steps, about two hours |
+| A new cap or live flag still collides on one line (TRAPS §333) | 1 | not wave 0's to cure; such PRs are listed one after another |
+
+Not taken: opening every PR as a draft at the first push so the gatekeeper
+can find it (each push would then run the paid checks). The brief's list of
+recent branches does the same for nothing.
+
 ## Stale lines the review met in other documents
 
 For a docs session; not changed here.

@@ -3,8 +3,9 @@
 **Plan version 2, 2026-11-13, after the review.** Nine experts each attacked
 one system of version 1, then three reviewers attacked the seams between
 systems. What they found and what was done with it:
-`docs/specs/grand-plan-review.md`. A session re-reads parts 5 and 11 before
-each PR: this file changes while it works.
+`docs/specs/grand-plan-review.md`. A session does not read all of this file:
+it reads its card (`docs/plan/cards/`) and the ten rules at the top of part
+5, and reads them again before each PR.
 
 The owner, 2026-11-13: *"make a grand plan for this codebase that can then
 guide future development ... look at the sessions around architecture and
@@ -85,7 +86,8 @@ Eight root causes. Each is a pattern in the record, with where it shows.
      game loop is about 3,600 lines and `_updatePlayer` about 3,200;
    - the state object `S` has about 610 field names, most created on the
      fly, 146 written from two or more files; another 850 variables at the
-     top of files hold state too;
+     top of files hold state too (a reviewer's counts: card D's census
+     replaces them, with how each was counted);
    - `window._gameState` hands the whole state to anyone with the page open;
    - REBUILD-PLAN took `BroTown.jsx` down to 8,969 lines. It is 15,938
      again, because nothing held the line.
@@ -321,7 +323,7 @@ outside the profile.
   as a fallback while anything can still fall back to it (7.1).
 
 **Done when** no row of the debt list is ours, on the crowd tour, in the
-`full` and the `light` lane. In the field: holds over 16 ms a minute of
+`full` and the `light` lane (once 2.1 has made lanes). In the field: holds over 16 ms a minute of
 play, a number 1.1 can measure.
 
 ### Pillar 4. The server's word
@@ -497,11 +499,13 @@ puts everything on 256 colours would scramble every body, and today's check
 would not see it. And a file's header is the wrong measure: what matters is
 the memory a family holds as the game draws it.
 
-- [ ] **9.0 [NOW] A weight line** for each top folder (the checkout is about
-  945 MB). Sources are named by hash, so they can move out of the
-  repository later. Sessions that do no art check out without `assets/`.
-- [ ] **9.4 [NOW] The inbox and its papers.** A file uploaded to the top of
-  the project gets a row BEFORE anything touches it: the hash of the bytes
+- [ ] **9.0 [NOW] The weight**, reported for each top folder (the checkout
+  is about 945 MB), and every source under `assets/` named by its hash, so
+  sources can move out of the repository later. (A checkout without
+  `assets/` is not possible today: nine server suites read it.)
+- [ ] **9.4 [NOW] The uploads' papers.** A file uploaded to the top of
+  the project (thirteen wait there today) gets a row BEFORE anything
+  touches it: the hash of the bytes
   supplied, its name, the date, the owner's words for it, the tool that
   made it, AI-made or not, the prompt or style key, the licence. The file
   is kept byte for byte (five of the seven pictures waiting carry a signed
@@ -539,8 +543,8 @@ the watch is on what an account does, in records the server makes itself.
 "Flag, never act" stands (`docs/specs/server-botsig.md`): nothing here
 punishes by itself.
 
-- [ ] **10.1 [NOW] The shapes** (8.6): the actor on every session; `sess`,
-  a sitting's id made by the server; one request id; the roads' classes.
+- [ ] **10.1 [NOW] The shapes** (8.6): the actor on every session; a
+  sitting's id made by the server; one request id; the roads' classes.
 - [ ] **10.2 [NEXT] The sitting's card.** About 120 bytes: when, how long,
   active seconds, the longest gap, the network, the build; moves and moves
   over budget; hits claimed, landed, refused by reason; gold by road class;
@@ -606,8 +610,8 @@ are cheap now and a rewrite later, and builds no helper feature.
 - [ ] **11.2 [NOW] The actor** (`docs/SHAPES.md`): the account, the
   character, the sitting, the kind (a person, QA, the owner, the system, a
   helper), where it came in, its grant. Set once as a connection or a
-  request comes in. `acct`, an account above characters, is an empty field
-  for now. A grant will have a storage prefix of its own, never a row among
+  request comes in. An account above characters is an empty field for now
+  (card S names it: `acct` already means the device in the daily spin). A grant will have a storage prefix of its own, never a row among
   the login keys: an older worker would honour it as a full login.
 - [ ] **11.3 [NEXT] Ids and repeats.** Whatever can be listed has a server
   id, never a place in a list (the market's `place` takes a position and no
@@ -654,8 +658,8 @@ money, a helper that plays.
 9. 8.1 red on `main` to zero.
 10. 9.0 and 9.4 the weight line and the papers of what was uploaded.
 11. 5.1 and 5.9 the four lines and the pins.
-12. Censuses that only read, into status files: state (5.3), traps (8.2),
-    art (9.1).
+12. Censuses that only read, each a page under `docs/plan/census/`: state
+    (5.3) and traps (8.2).
 
 **Next, before real players**, in four chains that run side by side. One
 session at a time in each chain's files.
@@ -687,9 +691,9 @@ Why this order:
   is a second player.
 
 **Baselines.** With a deploy at most merges and the game changing daily, no
-before-and-after means anything unless it is frozen. So: the lab's numbers
-are taken once at a recorded commit and then by the gatekeeper for each
-batch; every record carries its build and its thrown switches; merges
+before-and-after means anything unless it is frozen. So: the test box's
+own numbers (never the Cloudflare lab's) are taken once at a recorded
+commit and then by the gatekeeper for each batch; every record carries its build and its thrown switches; merges
 happen in one sitting a day; and a play window with no deploy follows it.
 
 ## 7. Choices that wait for a number
@@ -790,6 +794,7 @@ be invited, which decides how the report asks for consent.
 | For | Read |
 |---|---|
 | The review: every finding, what was taken, what was not, and why | `docs/specs/grand-plan-review.md` |
+| The sessions' cards, their status files and their censuses | `docs/plan/` |
 | The device work so far, and items A to A4 | `STATE-MACHINES.md`, "Smooth on every device" |
 | The ideas the ladder and the report come from | `PERFORMANCE-IDEAS.md` |
 | The page-hold debt list | `tools/qa/mp/held-budget.mjs`, `docs/specs/held-sweep.md` |
@@ -811,95 +816,112 @@ A session is its own machine with its own browser. Lanes inside one session
 share four processors and one browser: inside a session they are right only
 for reading and for node tests.
 
+### A session works from its card
+
+Each session has a **card**, a file of its own: `docs/plan/cards/<letter>.md`.
+A card names its PRs in order, each with its files, its tag and its "done
+when", and the readings already chosen, so no session has to guess. (A dry
+run of version 2 gave nine fresh readers only their prompt: every one could
+start, and every one had to guess. The cards are the cure.)
+
+- A session reads `CLAUDE.md`, the ten rules at the top of part 5, its
+  card, and the steps its card names. Not the whole plan.
+- **A session with no card does not start.** Day one's nine cards exist.
+  A later card is written when what it waits for has landed, from its row
+  below.
+- `docs/plan/README.md` says what a status file and a census are.
+
 ### The rule that prevents the most damage
 
 **No PR merges on its own green.** Each sitting, a fresh gatekeeper session
-(Z) merges every ready branch together in a scratch copy, runs precheck,
-`npm test`, the build and `playable` on the whole, and writes one list: what
-to merge, in what order, and what is held and why. The owner merges only
-that list.
+(card Z) checks every ready PR against its card, reviews the ones that
+change the game, merges them all together in a scratch copy, runs the
+checks on the whole, and writes one list: what to merge, in what order, and
+what is held and why. The owner merges only that list.
 
-- Z writes no game code. It reviews each ready PR (`/repo-review`), makes a
-  census strict when rule 3 allows, lowers lines, and ticks the plan's
-  boxes. It is the only session that edits this file.
-- A hold names a failing command, or it expires at the next sitting.
-- A red on `main` that a session did not cause is Z's, not that session's.
-- A change to a stored record's shape merges alone (a rolled-back worker
-  refuses newer saves).
-- Z is started fresh each sitting and reads only the status files: a long
-  one would run out of room. No list from Z: merge nothing, start a new Z.
+- Z writes no game code, merges nothing and comments on no PR.
+- Z ticks this file's boxes for steps whose PRs are MERGED, never for work
+  that is only on its list. It is the only session that edits this file.
+- A hold names a failing command or a review's finding, and expires at the
+  next sitting unless stated again.
+- A red on `main` that no open PR caused is named by Z, with the card whose
+  files it is in. No session "fixes" a red it did not cause.
+- Z is started fresh each sitting. No list from Z: merge nothing, start a
+  new Z.
 
 ### Rules for sessions side by side
 
-1. **A session writes only in its card's files.** A change it needs
-   elsewhere goes in its status file, for the session that owns that file.
-2. **Tags come from `tools/dev/tag-blocks.json`** (wave 0), one a PR. A
-   block is never written as a range in a commit's title: the tag check
-   reads a range as every tag in it taken.
-3. **A new line in a shared list goes in a place of its own.**
-4. **One PR a step, opened only when the step is done** (a push to a branch
-   with no PR runs no paid check). Merge `main` into the branch before the
-   last push.
-5. **A status file after every commit**: `docs/plan/status/<letter>.md`,
-   with what is done, what is next, and what it found. It is how the next
-   session, and Z, pick up; a branch silent for three hours is named by Z as
-   stalled.
-6. **Re-read parts 5 and 11 before each PR.**
-7. **One heavy browser job at a time** inside a session.
+1. **A session writes only in its card's files**, its own status file and
+   its own census. A fault outside the card is written under Found in the
+   status file, not fixed.
+2. **Tags come from the card** (day one) **or from
+   `tools/dev/tag-blocks.json`** (once wave 0 has made it), one a PR. Not
+   the number the start-up brief suggests: it offers every new session the
+   same one. A block is never written as a range in a commit's title: the
+   tag check reads a range as every tag in it taken.
+3. **A new line in a shared list goes in a place of its own.** A new cap or
+   a new live flag still meets its neighbours on one line (TRAPS §333): a
+   session that adds one says so in its status file, and the gatekeeper
+   lists those PRs one after another.
+4. **One PR for each numbered line of the card, opened when that line is
+   done** (a push to a branch with no PR runs no paid check). Merge `main`
+   into the branch before the last push.
+5. **The status file** lives on the session's branch, at most 40 lines,
+   committed with the work.
+6. **Long output goes in a census** (`docs/plan/census/`), never in the
+   status file.
+7. **Everything lands by PR, a census too**, so the next session reads it
+   from `main`.
+8. **One heavy browser job at a time. A check over about 30 minutes runs as
+   a sample**, and the owner is offered the full run (CLAUDE.md §6).
+9. **Read the card again before each PR.**
 
-### Wave 0: one session, alone
+### Day one
 
-Card **W**. Nothing else starts until it is merged.
+Card W goes first: it is the only one in the shared lists. The cards in
+this table may start beside it, because each only reads or writes files
+nothing else touches. **Nothing else starts until W and S are merged.**
 
-- `run.mjs` finds a scenario by its file's name (372 of 374 already match),
-  so two sessions adding scenarios never collide.
-- New guards and new prechecks go in files of their own (`tools/guards/`,
-  `tools/dev/checks/`); `server/test/run.mjs` runs the guards.
-- `tools/dev/tag-blocks.json`, read by the session brief.
-- `docs/plan/status/`, and `tools/dev/scoreboard.mjs` (part 3's table).
-- The gatekeeper's script: merge these branches in a scratch copy, run the
-  checks, print the tree's hash and the list.
-- The baseline: the commit and the lab's numbers at it.
-- Done when two scratch branches that each add a scenario, a guard, a cap
-  and a flag merge clean in both orders.
-
-### Day one, beside wave 0 (nothing here lands a strict list)
-
-Until wave 0's blocks file exists, day one's tags are these, one a PR: W
-5021 to 5024; S 5025; F 5026 and 5027; H 5028 to 5034; J 5035 to 5039.
-
-| | Session | Steps | Writes only | Browser |
+| Card | Session | Steps | Tags v2.3. | Browser |
 |---|---|---|---|---|
-| S | The shapes page | 8.6, 8.7, 10.1, 11.2 | `docs/SHAPES.md`, the budget table | none |
-| C | The wire, read | 4.1's census into its status file (the PR waits for S) | its status file | none |
-| D | The state, read | 5.3 step 1's census | its status file | none |
-| I | The traps, read | 8.2's index with break proofs | its status file | none |
-| H | The debt list | 3.1, a family a PR; first the worker's restart | that family's files in `src/rendering/`, `held-budget.mjs` | heavy |
-| F | The papers | 9.0, 9.4 | `tools/assets/`, the inbox | none |
-| J | Red on `main` | 8.1: a full run's census first, then fixes | `tools/qa/mp/` tests | heavy |
+| W | Wave 0: the rails | 8.0 | 5021 to 5024 | light |
+| S | The shapes page and the budget table | 8.6, 8.7 (10.1 and 11.2 are its sections) | 5025, 5026 | none |
+| F | The weight, and the uploads' papers | 9.0, 9.4 | 5027, 5028 | none |
+| C | The wire, read | 4.1's census, as a document | 5029 | none |
+| D | The state, read | 5.3's census, as a document | 5030 | none |
+| I | The traps, read | 8.2's index, as a document | 5031 | none |
+| Z | The gatekeeper | every sitting | 5032 to 5034, then the blocks file | light |
+| J | Red on `main` | 8.1 | 5035 to 5039 | heavy |
+| H | The debt list | 3.1 | 5040 to 5054 | heavy |
 
-### After wave 0 and S are merged
+Wave 0's blocks file starts new blocks at 5060.
 
-| | Session | Steps | After | Owns |
+### After wave 0 and the shapes page are merged
+
+Each of these gets its card then. One session, one card, one letter: the
+session that read is not the session that builds.
+
+| Card | Session | Steps | After | Owns |
 |---|---|---|---|---|
-| C | The wire census | 4.1 step 1, 11.1 | S | new `server/src/wire/`, its guard |
-| E | The books | 4.4, 4.5's harness, then 4.5, 10.3, 10.4 | S | the roads' classes, the shared test room, `server/test/` |
+| N | The wire table | 4.1 step 1 as code and its guard, from C's census | W, S, C | new `server/src/wire/`, its guard |
+| E | The books | 4.4, 4.5's harness, then 4.5, 10.3, 10.4 | W, S | the roads' classes, the shared test room |
 | B | The walls' rails | 5.1, 5.2, 5.2b, 5.9 | W | `tools/guards/`, `docs/SYSTEMS.md`, the test helper |
-| A | The report | 1.0, 1.1, 1.2, 1.6 | S; H for the names | `src/debug/`, `speedTest.js`, its router case and flag, the About row |
-| G | The pixel budget | 2.2a only | none | `renderRes.js`, its test |
-| D | The state ledger | 5.3 step 1 as a census | B | one ledger file a system |
+| A | The report | 1.0, 1.1, 1.2, 1.6 | W, S; H for the names | `src/debug/`, `speedTest.js`, its router case and flag, the About row |
+| G | The pixel budget | 2.2a only | W | `renderRes.js`, its test |
+| U | The state ledger | 5.3 step 1 as files a system and its guard, from D's census | B, D | one ledger file a system |
 
-### Later waves, one session at a time in each chain's files
+### Later, one session at a time in each chain's files
 
-| | Session | Steps | After |
+| Card | Session | Steps | After |
 |---|---|---|---|
-| K | The wire, moved | 4.1 step 2, 5.8, 4.2, 4.1b, 11.3, 11.4 | C, and E's fixes |
-| L | State and phases | 5.3 step 2, 5.3b | D |
+| K | The wire, moved | 4.1 step 2, 5.8, 4.2, 4.1b, 11.3, 11.4 | N, and E's fixes |
+| L | State and phases | 5.3 step 2, 5.3b | U |
 | O | Lanes and the governor | 2.1, 2.3, 2.4, 2.5, 1.7 | A's reports, H |
 | P | The asset door | 9.1, 9.2, 9.3, then 9.5 | F |
 | Q | The watch | 10.2, 10.6, 10.7, 10.8, 10.9 | E, K |
 | R | Roads and restore | 10.5, 4.7, 4.3 | E |
 | T | The switch table | 7.1, 7.2 | B |
+| V | Traps into guards | 8.2's guards, from I's index | B, I |
 | M | The frame as steps | 5.4, then 5.5 | B, L; H and P stopped |
 
 **Never side by side:** M with any other change to `BroTown.jsx` or the two
@@ -910,7 +932,7 @@ together.
 
 ### The owner's ten minutes a day
 
-1. Read Z's note.
+1. Start a fresh Z; read its list.
 2. Merge its list, in its order, in one sitting.
 3. Play for a while with no merge after it.
 4. Answer the yes or no calls waiting.
@@ -918,8 +940,8 @@ together.
 
 ### Spending the top model well
 
-- **Reading once is the best use of a surplus.** S, C, D, E and I read the
-  whole wire, the whole state, the money's roads and all 339 traps, and
+- **Reading once is the best use of a surplus.** S, C, D, I and E read the
+  whole wire, the whole state, all 339 traps and the money's roads, and
   leave tables and tests behind. Their judgement (who may start this? is
   this a claim? when should this field reset? can this coin be copied?) is
   where the strongest model earns its cost. Start these first.
@@ -932,23 +954,23 @@ together.
 - **Inside S, C, D and I, fan out readers** (lanes that only read): no
   browser is shared, so they do run side by side.
 - **GitHub's minutes are money too.** A push to an open PR runs every
-  check; so a PR is opened when the step is done, and merges go in one
+  check; so a PR is opened when its line is done, and merges go in one
   sitting (a deploy or two, not twenty).
 
 ### The prompt for a session
 
-> You are session **X** of `docs/GRAND-PLAN.md` part 11. Read parts 5 and
-> 11, and re-read them before each PR. Do your card's steps in order, one PR
-> a step, opened only when the step is done, writing only in your card's
-> files, with tags from `tools/dev/tag-blocks.json`. Push
-> `docs/plan/status/X.md` after every commit. Do not tick the plan: the
-> gatekeeper does. If a step needs my yes (part 9), ask me once and carry on
-> with the next step.
+> You are session **X** of the grand plan. Read `CLAUDE.md`, the ten rules
+> at the top of part 5 of `docs/GRAND-PLAN.md`, `docs/plan/README.md` and
+> your card, `docs/plan/cards/X.md`. Do the card's PRs in order, each
+> opened only when it is done, writing only in the card's files, with the
+> card's tags (not the tag the start-up brief suggests). Keep
+> `docs/plan/status/X.md` true with every commit. Read the card again
+> before each PR. Where the card does not say, do not guess: put the
+> question in your status file and ask me once.
 
-For the gatekeeper:
+For the gatekeeper, each sitting:
 
-> You are session **Z**, the gatekeeper of `docs/GRAND-PLAN.md` part 11.
-> Read part 11 and every file in `docs/plan/status/`. Write no game code.
-> Review each ready PR, rehearse them merged together, and give me one
-> list: what to merge, in what order, what is held and the command that
-> fails. Then tick the plan and name any branch silent for three hours.
+> You are session **Z**, the gatekeeper of the grand plan. Read
+> `CLAUDE.md`, part 11 of `docs/GRAND-PLAN.md`, `docs/plan/README.md` and
+> your card, `docs/plan/cards/Z.md`. Do one sitting as the card says, and
+> give me one list.
