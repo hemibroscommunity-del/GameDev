@@ -669,3 +669,12 @@ Each its own pull request (on by default, as this one: the owner's rule for the 
 - The plan's order: the measured win grows with the number of players on screen
   wearing different looks; the head pieces (5) and the local player (2) are the
   next biggest.
+
+## Letting a look go (v2.3.5011)
+
+The sweep lets an idle look's frames go through `bulkTexDestroy.js
+destroyTextures`: a frame is a Texture over its sheet or a look atlas page, and
+each listens to that picture's `resize`, so one `destroy()` at a time rebuilt the
+page's list of thousands of listeners once a frame (TRAPS §341): 15.3 MB of
+garbage in a 26 s fight, inside the frame that swept. Now each picture's list is
+rebuilt once.
