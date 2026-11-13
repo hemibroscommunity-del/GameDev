@@ -64,12 +64,23 @@ export function sidesAreOne(buf) {
   if (!buf || buf.numberOfChannels !== 2 || !(buf.length > 0)) return false;
   let sum = 0, diff = 0;
   eachStretch(buf, (l, r, n) => {
+    /* v2.3.5012: the stretch's totals in the callback's own
+       locals, added to the outer ones once a stretch.  Added up straight
+       into `sum` and `diff`, two variables the callback closes over, every
+       sample wrote a fresh number object into the closure (V8 keeps a closed
+       over double boxed): two allocations a sample, the whole sound long.
+       The page's allocation profile put it at 4.4 MB of garbage for one
+       sound's first play (foldToMono < sidesAreOne), and the stutter sweep
+       lists the fold at 14 to 21 ms (held-budget.mjs). */
+    let s2 = 0, d2 = 0;
     for (let i = 0; i < n; i++) {
       const a = l[i], b = r[i];
       const s = a + b, d = a - b;
-      sum += s * s;
-      diff += d * d;
+      s2 += s * s;
+      d2 += d * d;
     }
+    sum += s2;
+    diff += d2;
   });
   if (sum === 0) return diff === 0;   /* silent on both sides: one */
   return diff <= sum * SIDE_RATIO;
