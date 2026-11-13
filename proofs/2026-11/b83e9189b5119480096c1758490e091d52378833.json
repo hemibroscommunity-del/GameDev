@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b83e9189b5119480096c1758490e091d52378833",
+  "tree": "2117d8c8a147fe7f377f20f56a9219d6c5a2e1cc",
+  "committedAt": "2026-11-12T17:43:29-08:00",
+  "subject": "Merge pull request #1646 from hemibroscommunity-del/claude/token-efficient-lanes-perf-o4ish9-levelup",
+  "files": 7393,
+  "bytes": 944551689,
+  "listingSha256": "6dfde1bfaf4e925bc3ba8705ded3fa573eb6961445aed706123d20868813fa7b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
