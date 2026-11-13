@@ -71,7 +71,11 @@ export function applySalvageResult(S, payload, save) {
     say(S, '+' + (payload.bars || 0) + ' bars' + (payload.essence ? ' · ' + (essenceName(payload.essence) || 'essence') : '')
       + (_gemsBack ? ' · ' + (_gemsBack === 1 ? 'gem back' : _gemsBack + ' gems back') : ''), payload.essence ? '#9FD3F0' : '#D8AA58');
     cue('salvage');   /* v2.3.3343: the piece broken down -- collect() is a beep(), silent (SOUND-GAPS) */
-    if (payload.essence) setTimeout(() => play('flip-win', { vol: 0.45 }), 160);
+    if (payload.essence) {
+      /* v2.3.5006: decoded in the 160 ms before it plays (data/sfxCache.js AHEAD) */
+      try { BT_AUDIO.sfxAhead('flip-win'); } catch (e) { /* sound only */ }
+      setTimeout(() => play('flip-win', { vol: 0.45 }), 160);
+    }
   }
   _last = { kind: 'salvage', ...payload, at: Date.now() };
   probe({ at: _last.at, kind: 'salvage', ok: !!payload.ok, reason: payload.reason || null, field: payload.field, gid: payload.gid || null, idx: payload.idx, bar: payload.bar, bars: payload.bars, essence: payload.essence || null, grade: payload.grade || null });

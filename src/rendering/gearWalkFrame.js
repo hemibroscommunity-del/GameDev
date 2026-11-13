@@ -24,12 +24,14 @@
  * (`?gearwalk=0`, a Windows or Mac computer, no WebGL2, the look program's
  * shine not built, a sheet not in the set).
  */
-import { getLookPartFrames, lookHas, lookSheenOn, lookSheenState, lookPaletteWanted, lookSetsSettled, registerLookSheets } from './lookPalette.js';
-import { getGearFrame, getGearFramePhased, setGearDrawnElsewhere } from './gearSheets.js';
+import { getLookPartFrames, lookHas, lookSheenOn, lookSheenState, lookPaletteWanted, lookSetsSettled, registerLookSheets, preloadLookSheets, whenLookKnown } from './lookPalette.js';
+import { getGearFrame, getGearFramePhased, setGearDrawnElsewhere, setGearPreloadSkip } from './gearSheets.js';
 import { gearArtSafe } from './gearVariants.js';
 
 const _wanted = (() => { try { return !/(^|[?&])gearwalk=0(&|$)/.test(window.location.search || ''); } catch (e) { return true; } })();
-if (_wanted) registerLookSheets('gearwalk', '/sprites/look/gearwalk/roles.json');
+/* v2.3.5000: its own load, when this module came after the loading screen
+   began (registerLookSheets then loads it apart: gearWalkDecided waits) */
+const _reg = _wanted ? registerLookSheets('gearwalk', '/sprites/look/gearwalk/roles.json') : Promise.resolve(false);
 
 const SLOTS = new Set(['chest', 'legs', 'fullset']);
 const _stats = { looked: 0, old: 0, waited: 0 };
@@ -97,6 +99,23 @@ setGearDrawnElsewhere((key) => {
   const p = key.split('/');
   return p.length === 4 && SLOTS.has(p[0]) && lookHas('gearwalk', p[0] + '-' + p[2] + '-' + p[3]);
 });
+
+/* ═══ v2.3.5000: AND THEIR RGBA IS NOT LOADED ═══
+   The masked bakes and the fishing grip read these pieces' pixels from the
+   numbers now (gearNumbers.js), so where the numbers are drawn nothing reads
+   the RGBA sheets: gearSheets.js preloadGear / preloadFullsetFigures skip
+   them, and load them after all, behind the loading screen, where it turns
+   out the numbers are not drawn (gearWalkDecided false: the shine not built,
+   the set failed). */
+const SKIP = /^(?:(?:chest|legs)\/[^/]+\/(?:stand|jog|hit|dodge|mine|fish|pickup)|fullset\/steel\/jog)\//;
+/** True once it is known the walking armour IS drawn from the numbers; false
+ *  where it is not (or never asked for). */
+export function gearWalkDecided() {
+  if (!_wanted || !lookPaletteWanted()) return Promise.resolve(false);
+  return Promise.all([preloadLookSheets(), _reg]).then(() => whenLookKnown())
+    .then(() => gearWalkOn() && lookHas('gearwalk', 'chest-jog-east'), () => false);
+}
+setGearPreloadSkip((key) => _wanted && lookPaletteWanted() && SKIP.test(key), gearWalkDecided);
 
 if (typeof window !== 'undefined') {
   window.__btGearWalk = () => ({ wanted: _wanted, on: gearWalkOn(), settled: lookSetsSettled(), ..._stats });

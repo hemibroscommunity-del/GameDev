@@ -1196,6 +1196,21 @@ export function lookSheenState() {
   if (_okSheen === null) prewarmProgram();
   return _ok === false ? false : _okSheen;
 }
+/** v2.3.5000: resolves once the look program's answer is known (lookSheenState
+ *  not null: a renderer and a sheet here and the program built), or after
+ *  `capMs` (60 s); what to draw is then asked of lookPaletteOn / lookSheenOn.
+ *  A choice made before (the stand-ins' rebake, the armour's warm) read "not
+ *  yet" as "off" (TRAPS §340). */
+export function whenLookKnown(capMs = 60000) {
+  const t0 = Date.now();
+  return new Promise((res) => {
+    const tick = () => {
+      if (lookSheenState() !== null || Date.now() - t0 >= capMs) { res(); return; }
+      setTimeout(tick, 250);
+    };
+    tick();
+  });
+}
 
 function packedId(el, slot) {
   const t = el.texture;

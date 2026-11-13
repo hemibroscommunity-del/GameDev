@@ -185,6 +185,13 @@
  * 16.8; QA_MB_QUERY=onecopy=0&picnumbers=0).
  * (v2.3.3728: this note corrected: it said "off by default".)
  */
+/* v2.3.5006, `sound` 29 -> 22 -- LOWERED.  Four sounds no fight plays
+ * (river-water, level-up, flip-win, fish-reel: 4.5 MB) are decoded ahead of
+ * their moment instead of pinned for the session, seven held sounds lost their
+ * silent tails (0.9 MB) and the four growls decode at 24 kHz (0.36 MB): main's
+ * own code read 23.0-23.2, this branch 18.1.  22 keeps ~4 MB of room for the
+ * river or a flip played on the check's walk, and catches the four pinned again.
+ */
 /* v2.3.4058, the townsfolk walk around and work (docs/specs/living-town.md):
  * `gpu` 105 -> 115 -- RAISED, approved by the owner, 2026-11-03 ("Approve
  * walking").  (The heap line's 38 is main's own, the owner's
@@ -208,7 +215,7 @@ export const MEMORY_BUDGET = {
     what: 'textures on the graphics chip (window.__btGpuTex) -- including what was drawn in the last minute, which Pixi unloads after 60 s unused' },
   canvases: { name: 'pictures the game draws itself', mb: 56, measured: 49.7,   /* v2.3.3699: 96 -> 88; v2.3.3702: 88 -> 56, see the header */
     what: 'pictures the game draws itself, held in 2D canvases (every one still reachable)' },
-  sound: { name: 'decoded sound', mb: 29, measured: 27.0,   /* v2.3.3664: 30 -> 32; v2.3.3706: 32 -> 29, see the header */
+  sound: { name: 'decoded sound', mb: 22, measured: 18.1,   /* v2.3.3664: 30 -> 32; v2.3.3706: 32 -> 29; v2.3.5006: 29 -> 22, LOWERED to lock in the four sounds decoded ahead instead of pinned (main read 23.0-23.2, this 18.1), see the header */
     what: 'sound decoded into memory (music streams from its file and is not in it, v2.3.3073)' },
   heap: { name: 'the page\'s JavaScript objects', mb: 38.5, measured: 37.7,   /* v2.3.3595: 32 -> 33; v2.3.3657: 33 -> 34; v2.3.3807: 34 -> 36; v2.3.4005: 36 -> 38; v2.3.4080: 38 -> 37.5; v2.3.4483: 37.5 -> 38.5, see the header */
     what: 'the page\'s JavaScript objects' },

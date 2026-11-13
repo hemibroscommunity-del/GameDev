@@ -27,6 +27,12 @@
  *   { id, strip, fw, fh, n } -> { id, ok: true, w, h, idx, pal, cells, n,
  *                   fileW, fileH } or { id, ok: false, error } -- unpacked on
  *                   the page then, as before
+ *
+ * v2.3.5004: and a palette PNG the page holds as a Blob (no fetch: the
+ * level-up burst's frames, stripRead.js readPaletteBlob):
+ *
+ *   { id, pngBlob } -> { id, ok: true, w, h, stride (= w), n, idx, rgb, alpha }
+ *                   or { id, ok: false, error }
  */
 import { decodePng8 } from './png8Decode.js';
 import { packStripNumbers } from './stripPack.js';   /* v2.3.4470: a monster's strip, cropped and packed from its own numbers */
@@ -51,6 +57,16 @@ self.onmessage = async (ev) => {
       if (!out) throw new Error('not a strip of ' + m.fw + ' x ' + m.fh + ' frames');
       self.postMessage({ id: m.id, ok: true, w: out.w, h: out.h, idx: out.idx, pal: out.pal, cells: out.cells, n: out.n, fileW: dec.w, fileH: dec.h },
         [out.idx.buffer, out.pal.buffer]);
+      return;
+    }
+    /* v2.3.5004: a palette PNG the page already holds, as a Blob (the level-up
+       burst's frames, kept packed between bursts: levelUpBurstNumbers.js) */
+    if (m.pngBlob) {
+      const dec = await decodePng8(new Uint8Array(await m.pngBlob.arrayBuffer()), undefined, 1);
+      if (!dec) throw new Error('not a palette PNG');
+      const rgb = dec.rgb.slice(), alpha = dec.alpha;
+      self.postMessage({ id: m.id, ok: true, w: dec.w, h: dec.h, stride: dec.stride, n: dec.n,
+        idx: dec.idx, rgb, alpha }, [dec.idx.buffer, rgb.buffer, alpha.buffer]);
       return;
     }
     if (m.png) {

@@ -50,6 +50,8 @@ import { noteKillCredit } from '@/game/dropLines.js'; /* v2.3.3627: a kill's dro
 import { noteProg3Xp } from '@/game/xpBar.js'; /* v2.3.3695: the XP bar, from the worker's skill XP */
 import { killXpOnGain } from '@/game/killXp.js'; /* v2.3.3893: a kill's XP flies to the bar */
 import { prog3XpRequired } from '@/data/prog3.js'; /* v2.3.3695: the XP to each next level, for the bar */
+import { LIFE_SKILL_XP } from '@/data/lifeSkills.js'; /* v2.3.5006: a life skill's XP to its next level (the level-up's sting decoded ahead) */
+import { levelNear as sfxLevelNear } from '@/data/sfxCache.js'; /* v2.3.5006: a skill near its level: the sting decoded ahead */
 import { parsePetWire } from '@/data/trapping.js'; /* v2.3.3123: the others' pets */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns which shield is on the arm */
@@ -3278,6 +3280,14 @@ export function setupWebSocket(ctx) {
                 var _adoptLvl = S.rpg.level || 1;
                 if ((S.rpg._lastShownLevel || 1) < _adoptLvl) S.rpg._lastShownLevel = _adoptLvl;
                 if ((S.rpg._lastCharLvlShown || 0) < _adoptLvl) S.rpg._lastCharLvlShown = _adoptLvl;
+              }
+              /* v2.3.5006: a skill past LEVEL_AHEAD_FRAC of its level has the
+                 level-up's sting decoded ahead (no longer held decoded for
+                 good: data/sfxCache.js AHEAD), so LevelUpBurst's first frame
+                 never waits for its decode.  Below both adoption sites, as
+                 the baseline above is; only when an XP track came. */
+              if (msg.payload.prog3 || msg.payload.lifeSkills) {
+                try { if (sfxLevelNear(S.rpg, prog3XpRequired, LIFE_SKILL_XP)) BT_AUDIO.sfxAhead('levelNear'); } catch (_lna) { /* sound only */ }
               }
               /* v2.3.1624: the five T1 raw stats, adopted present-gated.
                  The server has always PERSISTED these but never echoed

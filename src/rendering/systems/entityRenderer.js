@@ -112,6 +112,7 @@ import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtLookFrame, drawGearFrame, loadCroppedStrip, subTexture, frameBounds, packTrimmed, preloadBeltSheets, gearSheetLoad } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
 import { gearDrawFrame, gearDrawFramePhased } from '../gearWalkFrame.js';   /* v2.3.4999: the walking armour from the numbers */
+import { gearInput, gearNumbersKey } from '../gearNumbers.js';   /* v2.3.5000: the bakes read the armour's numbers */
 import { sideForDir, getShirtArt, sanitizeShirtArt, artHasInk } from '../traits/playerArt.js';   /* v2.3.1938 */
 import { getPattern, parsePattern, sanitizePattern } from '../traits/patternCatalog.js';   /* v2.3.1941 */
 import { hatHairFit } from '../traits/hatHairFit.js';   /* v2.3.1943 band refit + v2.3.1561 float lift, in one place since v2.3.1959 */
@@ -3082,7 +3083,7 @@ function _placeSouthBlockLegs(display, sb, o) {
     for (const sl of ['chest', 'legs']) {
       const it = getEquip(sl);
       if (it && it !== 'none') {
-        const gt = getGearFrame(sl, it, 'jog', o.dir, o.jogFrame);
+        const gt = gearDrawFrame(sl, it, 'jog', o.dir, o.jogFrame);
         if (gt) wornJog.push({ k: sl + ':' + it, tex: gt });
       }
     }
@@ -3229,7 +3230,7 @@ if (typeof window !== 'undefined') {
     };
     for (let f = 0; f < out.want; f++) {
       const body = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, null, 'none', getEyeColor(), localBodyArt(false), getEyeStyle());
-      const gear = worn.map(([sl, it]) => ({ k: sl + ':' + it, tex: getGearFrame(sl, it, pose, dir, f) }));
+      const gear = worn.map(([sl, it]) => ({ k: sl + ':' + it, tex: gearDrawFrame(sl, it, pose, dir, f) }));
       if (!body || !gear.length || gear.some((g) => !g.tex)) continue;
       const g = read((x) => { for (const w of gear) drawGearFrame(x, w.tex, 0, 0, 256, 256); });
       const b = read((x) => drawGearFrame(x, body, 0, 0, 256, 256));
@@ -3334,7 +3335,7 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
   const _r = bakeMaskedCanvas({
     mk: _mkBakeCanvas,
     body: (c, x, y, w, h) => drawGearFrame(c, bodyTex, x, y, w, h),
-    worn: worn.map((w) => ({ k: w.k, draw: (w.tex && w.tex.source && w.tex.source.resource) ? (c, x, y, W, H) => drawGearFrame(c, w.tex, x, y, W, H) : null })),
+    worn: worn.map((w) => ({ k: w.k, draw: _gearReadable(w.tex) ? (c, x, y, W, H) => drawGearFrame(c, w.tex, x, y, W, H) : null })),   /* v2.3.5000: or from its numbers */
     dilate, poseInfo,
     belt: (dir, f) => {
       const bt = getGearFrame('belt', 'chainbelt', 'jog', dir, f);
@@ -3439,7 +3440,16 @@ function _getBakeWorker() {
    Replaces _frameBitmap, which drew every input into a whole-frame scratch
    canvas on this thread first: a canvas and a 2D context per input, per bake,
    in the frames right after an equip. */
+/* v2.3.5000: a gear frame whose pixels can be read on the CPU: its RGBA
+   source, or a frame of the walking armour's numbers (gearNumbers.js) */
+function _gearReadable(tex) {
+  return !!(tex && (gearNumbersKey(tex) || (tex.source && tex.source.resource)));
+}
 function _frameInput(tex) {
+  /* v2.3.5000: a frame of the walking armour's colour numbers is named, not
+     copied: the worker has its sheet (_sendGearSheets) and expands the cell */
+  const gi = gearInput(tex);
+  if (gi) return Promise.resolve(gi);
   const f = tex && tex.frame, o = tex && (tex.orig || tex.frame);
   const res = tex && tex.source && tex.source.resource;
   if (!f || !o || !res || !(f.width > 0) || !(f.height > 0)) return Promise.resolve(null);
@@ -3449,6 +3459,18 @@ function _frameInput(tex) {
   return p.then((bm) => ({
     bm, tx: t ? t.x : 0, ty: t ? t.y : 0, fw: f.width, fh: f.height, ow: o.width, oh: o.height,
   }), () => null);
+}
+
+/* v2.3.5000: the sheets of numbers a job's pieces name, to the worker before
+   the job (once a worker: lookSheetForWorker); false if one could not go */
+function _sendGearSheets(wk, inps) {
+  for (const x of inps) {
+    if (!x || !x.look) continue;
+    const sm = lookSheetForWorker(x.look, wk);
+    if (!sm) continue;
+    try { wk.postMessage(sm, [sm.bytes.buffer]); } catch (e) { return false; }
+  }
+  return true;
 }
 
 /* ═══ v2.3.2904: ONE QUEUE TO THE WORKER, AND THE FRAME ON SCREEN GOES FIRST ═══
@@ -3540,10 +3562,11 @@ async function _runBake(job) {
   const [body, belt, ...inps] = await Promise.all([_frameInput(bodyTex), beltTex ? _frameInput(beltTex) : null, ...worn.map(w => _frameInput(w.tex))]);
   const _close = () => { for (const x of [body, belt, ...inps]) { try { if (x && x.bm) x.bm.close(); } catch (e) { /* gone */ } } };
   if (!body) { _close(); _bakeWorkerStats.failed++; _maskedFailed(key); return; }   /* v2.3.4870: counted, not baked here (above) */
+  if (!_sendGearSheets(wk, inps)) { _close(); _bakeWorkerStats.failed++; _maskedFailed(key); return; }   /* v2.3.5000 */
   const id = ++_bakeSeq;
   const reply = await new Promise((resolve) => {
     _bakeJobs.set(id, resolve);
-    const transfer = [body, belt, ...inps].filter(Boolean).map((x) => x.bm);
+    const transfer = [body, belt, ...inps].filter((x) => x && x.bm).map((x) => x.bm);   /* v2.3.5000: a piece from numbers carries no bitmap */
     try {
       wk.postMessage({ id, body, belt, worn: worn.map((w, i) => ({ k: w.k, inp: inps[i] })), dilate, poseInfo, ds: DISPLAY_DS, crop: true }, transfer);
     } catch (e) { _bakeJobs.delete(id); _close(); resolve({ err: String(e) }); }
@@ -3606,10 +3629,11 @@ async function _runLookBake(job) {
   const _close = () => { for (const x of [belt, ...inps]) { try { if (x && x.bm) x.bm.close(); } catch (e) { /* gone */ } } };
   /* a piece whose sheet is not in yet would be baked as if not worn: asked again later */
   if (inps.some((x) => !x)) { _close(); job.reply = { err: 'gear not loaded' }; return; }
+  if (!_sendGearSheets(wk, inps)) { _close(); job.reply = { err: 'gear numbers not sent' }; return; }   /* v2.3.5000 */
   const id = ++_bakeSeq;
   const reply = await new Promise((resolve) => {
     _bakeJobs.set(id, resolve);
-    const transfer = [belt, ...inps].filter(Boolean).map((x) => x.bm);
+    const transfer = [belt, ...inps].filter((x) => x && x.bm).map((x) => x.bm);   /* v2.3.5000: a piece from numbers carries no bitmap */
     try {
       wk.postMessage({ id, look: job.look, belt, worn: worn.map((w, i) => ({ k: w.k, inp: inps[i] })), dilate: job.dilate, poseInfo, ds: DISPLAY_DS }, transfer);
     } catch (e) { _bakeJobs.delete(id); _close(); resolve({ err: String(e) }); }
@@ -3649,7 +3673,7 @@ async function _runLookBakeInline(j, keepDisplay) {
       const bt = getGearFrame('belt', 'chainbelt', 'jog', pi.dir, pi.frameIdx | 0);
       if (bt && bt.source && bt.source.resource) belt = (c, x, y, W, H) => drawGearFrame(c, bt, x, y, W, H); else beltPending = true;
     }
-    if (j.worn.some((w) => !(w.tex && w.tex.source && w.tex.source.resource))) return { err: 'gear not loaded' };
+    if (j.worn.some((w) => !_gearReadable(w.tex))) return { err: 'gear not loaded' };   /* v2.3.5000: or from its numbers */
     const r = lookBake(sh, {
       cell: j.look.cell, row: j.look.row,
       worn: j.worn.map((w) => ({ k: w.k, draw: (c, x, y, W, H) => drawGearFrame(c, w.tex, x, y, W, H) })),
@@ -3740,6 +3764,7 @@ try {
         return t;
       },
       lookJob: (entries, worn, pi) => lookArmourJob(entries, worn, pi),
+      gearFrame: (sl, it, pose, dir, f) => gearDrawFrame(sl, it, pose, dir, f),   /* v2.3.5000: the pieces from their numbers (compareGear) */
       loadGear: async (sets) => {
         const jobs = [preloadBeltSheets()];
         for (const [c, l] of sets) for (const pose of ['stand', 'jog', 'hit', 'dodge', 'mine']) for (const dir of ['east', 'north', 'northeast', 'south', 'southwest']) {
@@ -3792,7 +3817,7 @@ if (typeof window !== 'undefined') {
               const worn = [];
               for (const sl of ['chest', 'legs']) {
                 const it = getEquip(sl);
-                if (it && it !== 'none') { const gt = getGearFrame(sl, it, pose, dir, f); if (gt) worn.push({ k: sl + ':' + it, tex: gt }); }
+                if (it && it !== 'none') { const gt = gearDrawFrame(sl, it, pose, dir, f); if (gt) worn.push({ k: sl + ':' + it, tex: gt }); }
               }
               if (!worn.length || _fullsetCoversBake(worn, pose, dir)) continue;
               out.want++;
@@ -3806,7 +3831,7 @@ if (typeof window !== 'undefined') {
             const worn = [];
             for (const sl of ['chest', 'legs']) {
               const it = getEquip(sl);
-              if (it && it !== 'none') { const gt = getGearFrame(sl, it, pose, dir, f); if (gt) worn.push({ k: sl + ':' + it, tex: gt }); }
+              if (it && it !== 'none') { const gt = gearDrawFrame(sl, it, pose, dir, f); if (gt) worn.push({ k: sl + ':' + it, tex: gt }); }
             }
             if (!worn.length || _fullsetCoversBake(worn, pose, dir)) continue;
             out.want++;
@@ -4031,7 +4056,7 @@ async function _peerLookPrewarmIfChanged(display, sig, entriesFor, gearIds) {
         if (display.destroyed || display._peerLookSig !== sig) return;   /* gone, or changed again */
         const worn = [];
         for (const [sl, it] of gearIds) {
-          const gt = getGearFrame(sl, it, pose, dir, f);
+          const gt = gearDrawFrame(sl, it, pose, dir, f);
           if (gt) worn.push({ k: sl + ':' + it, tex: gt });
         }
         if (!worn.length || _fullsetCoversBake(worn, pose, dir)) continue;
@@ -4056,7 +4081,7 @@ async function _runPeerQueue() {
               if (!tex) continue;
               const worn = [];
               for (const [sl, it] of job.gearIds) {
-                const gt = getGearFrame(sl, it, pose, dir, f);
+                const gt = gearDrawFrame(sl, it, pose, dir, f);
                 if (gt) worn.push({ k: sl + ':' + it, tex: gt });
               }
               if (!worn.length || _fullsetCoversBake(worn, pose, dir)) continue;
@@ -4499,7 +4524,7 @@ export async function prewarmMaskedBodyFrames(opts) {
           const worn = [];
           for (const sl of slots) {
             const it = getEquip(sl);
-            if (it && it !== 'none') { const gt = getGearFrame(sl, it, pose, dir, f); if (gt) worn.push({ k: sl + ':' + it, tex: gt }); }
+            if (it && it !== 'none') { const gt = gearDrawFrame(sl, it, pose, dir, f); if (gt) worn.push({ k: sl + ':' + it, tex: gt }); }
           }
           if (!worn.length || !_prewarmMasks(pose) || _fullsetCoversBake(worn, pose, dir)) continue;
           pending.push(lookArmourPrewarm(_le, worn, { pose, dir, frameIdx: f }));
@@ -4517,7 +4542,7 @@ export async function prewarmMaskedBodyFrames(opts) {
         for (const sl of slots) {
           const it = getEquip(sl);
           if (it && it !== 'none') {
-            const gt = getGearFrame(sl, it, pose, dir, f);
+            const gt = gearDrawFrame(sl, it, pose, dir, f);
             if (gt) worn.push({ k: sl + ':' + it, tex: gt });
           }
         }
@@ -4653,7 +4678,7 @@ export async function prewarmAltWornSets(opts) {
           if (pose !== 'fish' && pose !== 'pickup' && _localLookEntries(pose, dir, art)) {
             if (!spare) {
               const worn = [];
-              for (const [sl, id] of set.worn) { const gt = getGearFrame(sl, id, pose, dir, f); if (gt) worn.push({ k: sl + ':' + id, tex: gt }); }
+              for (const [sl, id] of set.worn) { const gt = gearDrawFrame(sl, id, pose, dir, f); if (gt) worn.push({ k: sl + ':' + id, tex: gt }); }
               if (worn.length && _prewarmMasks(pose) && !_fullsetCoversBake(worn, pose, dir)) {
                 try { await lookArmourPrewarm(_localLookEntries(pose, dir, art), worn, { pose, dir, frameIdx: f }); } catch (e) { /* best-effort */ }
               }
@@ -4668,7 +4693,7 @@ export async function prewarmAltWornSets(opts) {
           if (!tex) continue;
           const worn = [];
           for (const [sl, id] of set.worn) {
-            const gt = getGearFrame(sl, id, pose, dir, f);
+            const gt = gearDrawFrame(sl, id, pose, dir, f);
             if (gt) worn.push({ k: sl + ':' + id, tex: gt });
           }
           if (!worn.length) continue;
@@ -4933,10 +4958,10 @@ function _fishTopFrame(bodyTex, rodTex, plate) {
   const _rod = (rodTex && rodTex !== bodyTex) ? rodTex : null;
   /* v2.3.3623: the plate under the overlay, {tex, tint} (see THE PLATE DRAWS
      ITS OWN HANDS) */
-  const _plate = (!_FISH_GRIP_OVER_PLATE && plate && plate.tex && plate.tex.source && plate.tex.source.resource) ? plate : null;
+  const _plate = (!_FISH_GRIP_OVER_PLATE && plate && _gearReadable(plate.tex)) ? plate : null;   /* v2.3.5000: or from its numbers */
   /* v2.3.3657: the greaves whether or not a plate is worn (a plate only:
      v2.3.3623) -- THE GRIP LIFTS THE HAND, NOT THE TROUSERS */
-  const _legs = (!_FISH_GRIP_OVER_PLATE && !_FISH_GRIP_TROUSERS && plate && plate.legs && plate.legs.source && plate.legs.source.resource) ? plate.legs : null;
+  const _legs = (!_FISH_GRIP_OVER_PLATE && !_FISH_GRIP_TROUSERS && plate && _gearReadable(plate.legs)) ? plate.legs : null;   /* v2.3.5000: or from its numbers */
   /* v2.3.3657: whether the raw frame could be READ: until its picture is in,
      the rod and the trousers are looked for on the recoloured frame, where
      coloured trousers fail the olive test and would ride over the greaves --
@@ -13176,7 +13201,7 @@ export class EntityRenderer {
             const _sl = _PEER_WORN_SLOTS[_si];
             const _it = other.equip && other.equip[_sl];
             if (_it && _it !== 'none') {
-              const _gt = getGearFrame(_sl, _it, pose, dir, frameIdx);
+              const _gt = gearDrawFrame(_sl, _it, pose, dir, frameIdx);
               if (_gt) {
                 const _k = _sl + ':' + _it;
                 _rworn.push({ k: _k, tex: _gt });
@@ -15141,7 +15166,7 @@ export class EntityRenderer {
           for (const _sl of ['chest', 'legs']) {
             const _it = getEquip(_sl);
             if (_it && _it !== 'none') {
-              const _gt = getGearFrame(_sl, _it, pose, dir, frameIdx);
+              const _gt = gearDrawFrame(_sl, _it, pose, dir, frameIdx);
               if (_gt) _worn.push({ k: _sl + ':' + _it, tex: _gt });
             }
           }

@@ -61,6 +61,27 @@ function ask(msg) {
   });
 }
 
+/* the worker let go IDLE_MS after its last answer */
+function letGoWhenIdle() {
+  if (_wait.size) return;
+  if (_idle) clearTimeout(_idle);
+  _idle = setTimeout(() => { _idle = 0; if (!_wait.size) stop(); }, IDLE_MS);
+}
+
+/** v2.3.5004: a palette PNG the page holds as a Blob, read as its numbers on
+ *  the same worker -- the level-up burst's frames (levelUpBurstNumbers.js),
+ *  kept packed between bursts and opened as one starts.  NOT in the strips'
+ *  line: a burst's frame is wanted within a frame or two, never behind a
+ *  monster's strip, and its bytes are small (a frame at most 359 x 645).
+ *  -> { w, h, stride, n, idx, rgb, alpha } or null */
+export function readPaletteBlob(blob) {
+  if (!stripReadOn() || !blob) return Promise.resolve(null);
+  return ask({ pngBlob: blob }).then((m) => {
+    letGoWhenIdle();
+    return m && m.ok && m.idx ? m : null;
+  });
+}
+
 /* one at a time */
 let _line = Promise.resolve();
 export function readStrip(url, fw, fh, n) {
@@ -69,7 +90,7 @@ export function readStrip(url, fw, fh, n) {
   const job = async () => {
     const t0 = (typeof performance !== 'undefined' ? performance.now() : 0);
     const m = await ask({ strip: String(url), fw, fh, n: n || 0 });
-    if (!_wait.size) { if (_idle) clearTimeout(_idle); _idle = setTimeout(() => { _idle = 0; if (!_wait.size) stop(); }, IDLE_MS); }
+    letGoWhenIdle();
     if (!m || !m.ok || !m.idx || !m.pal) { _stats.failed++; _stats.last = (m && m.error) || 'no answer'; return null; }
     _stats.read++;
     _stats.ms += (typeof performance !== 'undefined' ? performance.now() : 0) - t0;

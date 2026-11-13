@@ -164,12 +164,13 @@ pixel whatever their colours:
 | picture | file | decoded | drawn | held |
 |---|---|--:|---|---|
 | level-up burst (`LevelUpBurst.jsx`) | 2172 x 724 | 6.0 MB | up to 0.93 x the strip in CSS px (`LEVELUP_MAX_W` 359 in a 390-wide column at 0.86), so 2.8 x the file on a 3x phone: **nothing to shrink** without losing detail | the whole session (`levelUpBurstPreload.js` `_held`, on purpose: the preload law) |
-| zone banners (`zoneBannerOverlay.js`), four | 2043-2268 x 382-518 | 3.0-4.5 MB each | not measured here | the whole session, by theme (`zoneBannerPreload.js` `_held`) |
+| zone banners (`zoneBannerOverlay.js`), four | 2043-2268 x 382-518 | 3.0-4.5 MB each | not measured here | by theme (`zoneBannerPreload.js` `_held`); since v2.3.5003 only near its land (§7) |
 | coin flip win / lose | 1408 x 192 | 1.03 MB each | -- | also in Pixi's cache, never drawn there at a fight |
 
 Drawing the level-up burst in the game's renderer as colour numbers would
 take it to about 1.5 MB on the chip and nothing decoded in the page. That is
-a change of its own, not this one.
+a change of its own, not this one. (v2.3.5004 drew it from colour numbers in
+the page instead, keeping its place over the HUD: §7a.)
 
 ## 5. Measured
 
@@ -229,18 +230,149 @@ against a cell of 227-252 px in the file):
 | sideways phone at 3x | 281 device px | 1.12x |
 | computer, 1440 wide at 1x / 2x | 94 / 187 device px | 0.37x / 0.75x |
 
-All four themes are held decoded for the session (`zoneBannerPreload.js`
-`_held`, by theme): about 14 MB. **The owner's decision** (it changes what the
-loading screen holds, the preload law): hold only the banner of the land you
-are in or walking toward, loading the next behind the per-land
-loading/overlay path. That is about 10 MB less held.
+All four themes were held decoded while you were in the world
+(`zoneBannerPreload.js` `_held`, by theme): about 15.7 MB (3.1 fire, 3.6
+desert, 4.3 forest, 4.7 frost). **The owner's decision** (it changes what the
+loading screen holds, the preload law), 2026-11-12: "Yes do it" -- hold only
+the banner of the land you are in or walking toward.
+
+**Built in v2.3.5003.** A land's strip is held only near its land:
+
+- **Which** (`src/game/bannerReach.js`, from where you stand, not where you
+  face: a stick turns in an instant). Your spoke's land (the land whose
+  direction from the middle is nearest yours, `wheelLandAt`'s rule), from
+  2,400 px inside the safe ground's edge outward; and the neighbouring land
+  on your side while you are within 2,000 px of the line between the two
+  (near the commons a land's first stretch touches its neighbours', and the
+  passes cross between them); and the land under you, always. So: **none in
+  BroTown** (the town square, where you arrive, is 288 px from the middle);
+  at most two near the commons' edge; one out along a land.
+- **When.** The strip starts loading at least ~1,940 px of walking before its
+  land can begin (the commons' edge, 2,765 px, wandering 288), and ~1,420 px
+  before a neighbour's (the border wanders 576 px from the line): 4 s at the
+  worker's 500 px/s move bound, 13 s at a walk. Behind the world's loading
+  screen it loads the banners near where that trip lands (none at the town
+  square; a dungeon's mouth or a reload's spot out in a land, that land's),
+  then every 250 ms as you walk (`wheelBannerTick`, asked from the minimap's
+  frame by the land watch). It is let go 600 px past both measures, its
+  `<img>` pointed at nothing; a load that lands after you walked away is not
+  held. Leaving the world lets all of them go, as before.
+- **Not there in time** (a slow line, a reload that came back inside a land):
+  the banner never fetches anything itself and never shows a strip that is
+  not decoded and held. A strip still on its way is waited for, 2 s at most
+  past the 600 ms dwell (`zoneBannerOverlay.js` `BANNER_WAIT_MS`); then the
+  land plays the plaque alone, its icon and name, as the four lands with no
+  art of the owner's always do. Never a broken picture. A load that never
+  answers fails at 20 s and is asked again 10 s later while you are near
+  (TRAPS §257; `picture-door.test` lists it `own`).
+- **Held:** 0 MB in BroTown (15.7 less), 3.1-4.7 MB out in a land (11-12.6
+  less), at most two (6.7-9.0 MB, two neighbouring lands with art) near
+  the commons' edge.
+- **Measured** (v2.3.5003, a browser, one build, BroTown 10 s after arrival,
+  Chromium's own memory dump of the page, three dumps each way, steady):
+  decoded pictures (`cc/image_memory`) 309.4 MB by default against 324.3
+  with `?banners=all`, **14.9 MB less**; the files' bytes
+  (`web_cache/Image_resources`) 0.9 MB less. `mp-membudget` does not see it
+  (its lines are the art cache, the chip, canvases, sound, the heap, buffers
+  and workers, not a picture the browser decodes for an `<img>`): its
+  readings on the branch and on main were the same within a run's noise
+  (artCache 54.9 / 54.9, chip highest 78.3 / 76.3, which moves 2-3 MB run to
+  run). Chromium keeps decoded pictures in memory it may throw away under
+  pressure; iPhone Safari keeps a decoded `<img>` that a page holds, which is
+  what the owner's black screens were.
+- **`?banners=all`** holds all four while you are in the world, as before.
+- **Probe:** `window.__btBanners()`: `mode`, `held`, `loading`, `want`,
+  `keep`, your spoke `land`, its neighbour `next`, `r` and `side` in px,
+  `loads`, `frees`, `fails`. `__btZoneBanner.land()` adds `waitedMs` and
+  `bare` (lands with art that played the plaque alone).
+- **Tests:** `server/test/banner-reach.test.mjs` (the reach on both Wheels
+  against the plan's own geometry, the hold with a stand-in `<img>`, the
+  wiring); `mp-wheelmap` (none held in BroTown on arrival; out on Frost Ridge
+  only its strip, there in time: the banner played its ornaments);
+  `mp-farmfree` (the Flame Fields' strip held at its edge, none on the farm,
+  the wanted ones back on return).
 
 **The level-up burst.** 2172 x 724, 6.0 MB decoded, drawn up to 0.93 x the
 strip in CSS px, which is 2.8x the file on a 3x phone. It is held for the
 session (`levelUpBurstPreload.js` `_held`). **A rendering change of its own**:
 draw it in the game's renderer as colour numbers (on 256 colours, the
 owner's yes). That is about 6 MB decoded in the page becoming about 1.5 MB on
-the graphics chip.
+the graphics chip. **Built differently, v2.3.5004: below.**
+
+### 7a. The level-up burst as colour numbers (v2.3.5004)
+
+**Not in the game's renderer.** Measured before building: the world's canvas
+ends at the top of the dashboard band (`BroTown.jsx`, `bottom: var(--dash-h)`),
+and every HTML layer is over it. The burst is the page's own overlay at z 70
+(`LevelUpBurst.jsx`), over the top bar (25), the band (30), and the building
+windows and their scrim (`.bt-inspect`, 32). Drawn by the renderer, frames 4
+and 5 would lose about 36 px at 390 x 844 under the band. A level won at the
+Cookhouse, Smithy, Gem Works, Woodworker or Enchanter (each window raises the
+burst while it is open) would play dimmed under the window, its number and
+caption (still HTML) over it.
+
+**What it is.** The same overlay, the same box, timing and z, drawn from colour
+numbers:
+
+- the eight frames' rects (`LEVELUP_FRAMES`, all the burst ever shows: it
+  clips to them, 878,722 px) as palette PNGs,
+  `public/sprites/fx/levelup-burst-v1-f0..f7.p256.png` (398 KB of files; the
+  strip's was 434 KB), made by `tools/art/levelup-numbers.mjs` (`--check`
+  re-makes them and compares);
+- the loading screen fetches them through loadSetLater's door
+  (`levelUpBurstNumbers.js`; 20 s, then retried). **Between bursts** the page
+  holds the eight files PACKED, as Blobs (0.40 MB, which the browser keeps
+  outside the page's heap), and frames 0 and 1 open as colour numbers
+  (0.09 MB of buffers), so a burst's first 140 ms never wait. Nothing is
+  decoded as a picture. The strip was 6.29 MB, held for the session;
+- **as a burst starts** (its first render), frames 2-7 are opened from the
+  Blobs on the reader's worker (`stripRead.js` `readPaletteBlob`,
+  `png8Worker.js`'s `pngBlob` read, off the page's thread), all at once.
+  Frame 2 is wanted at 140 ms. A frame not back yet is drawn when it comes,
+  and the canvas keeps the frame before. When the last burst stops drawing,
+  frames 2-7 are let go (0.80 MB). The first cut held all eight open for the
+  session, 0.89 MB of buffers, and the memory check's buffers line failed by
+  0.3 (22.3 against 22; main reads 21.3-21.4). Opening them ahead (a skill
+  near its level) was not taken: at a fight that is when the check reads;
+- as a frame comes up (eight times a burst, never each tick) its numbers are
+  turned into colours on a canvas the size of the largest frame, at the art's
+  own pixels, and the page scales it by k as it scaled the strip
+  (`image-rendering: auto`). The draw is the largest frame at most: one table
+  look-up a pixel and one `putImageData` of 0.93 MB, with no read back. It
+  took 0.2-1.4 ms in node; the phone test reports the browser's number
+  against the 12 ms line. While a burst plays it holds 0.93 MB for its
+  canvas and 0.93 MB for the ImageData the bursts share. The canvas is
+  emptied when the burst ends and the ImageData let go with the last burst;
+- `?burstnumbers=0` draws the strip as before. So does a page with no
+  reader's worker (`?stripworker=0`), a browser that cannot unpack the files
+  (no DecompressionStream: iOS before 16.4), or a first load that failed (the
+  strip is then warmed behind the loading screen).
+
+**The cut.** The strip is on 505,071 colours, and almost every pixel is a soft
+glow (one solid pixel in 752,178 shown). It is put on 256 colours by
+`reduce256`, the whole strip as one picture, as decoded by libwebp (the
+browsers' decoder; ffmpeg's own decoder turns the colours out up to 110 levels
+apart). Measured over the eight rects' 727,367 shown pixels, premultiplied, in
+levels of 255:
+
+| reducer | mean | worst | past 16 levels | mean OKLab move |
+|---|--:|--:|--:|--:|
+| `reduce256` (shipped) | 7.26 | 94.5 | 66,581 (9.2%) | 0.0186 |
+| the armour's cut (`lookCut`, for comparison) | 14.3 | 29 | 22% | -- |
+
+This is **outside the armour's 16-level bar** (§8). No 256-colour cut of this
+glow meets it: frame by frame, the armour's cut held it only for frames 0
+and 1. Even with the see-through kept exact (2 bytes a pixel), the worst
+pixel was 23.7. `reduce256` has the lower mean, and by eye it is close to the
+original (the armour's cut bands the glow). **The owner looked at the
+before / after sheet (frames 4 and 7 on black and on grass) and said yes,
+2026-11-12.**
+
+**Tests.** `mp-levelupnum` step 7: what is held between bursts; each of the
+eight frames read off its canvas, alpha for alpha against its file; a live
+burst; the canvas emptied after, and frames 2-7 and the ImageData let go. The draw was also checked in node: the eight frames drawn through
+`drawLevelUpFrame` are byte for byte the strip's reduction at each rect, and
+see-through past it.
 
 **The character sheets** (phase 2): at the fight the chip holds 18.1 MB of
 walking armour and body sheets as images, and 24.9 MB of emptied pose and
@@ -389,3 +521,147 @@ yet known" (no renderer, no sheet, the program not built), and both armour
 modules wait on it; `lookSetsSettled()` also waits for a set registered after
 the loading screen began. 21 probe loads before: 8 with the strips on
 the chip; 6 after: none.
+
+## 10. Phase 2, slice 3: the bodies under armour baked from the armour's numbers (v2.3.5000)
+
+**What was left.** After §9 the walking armour was drawn from its numbers,
+but three readers still took its RGBA on the CPU, so `gearSheets.js` loaded
+every walking chest, greaves and full-set sheet behind the loading screen
+(about 14 MB of pictures in the page, never drawn): the masked bakes of the
+body under armour (the worker, `maskedBakeWorker.js`, and their inline
+fallbacks), and the fishing grip (`entityRenderer.js _fishTopFrame`).
+
+**Now** (`src/rendering/gearNumbers.js`):
+- a bake's piece drawn from the numbers is NAMED to the worker, not copied:
+  `gearInput(tex)` gives the sheet and the frame's cell; the sheet's bytes go
+  to the worker once (`lookSheetForWorker`, as the body's do), and the worker
+  expands the cell to the table's own colours (`lookExpand.js
+  lookFrameRGBA`, a row of nothing: armour has no roles). A job naming a
+  sheet the worker lacks fails rather than bake the piece as not worn;
+- on the page (no worker, QA's inline oracle, the fishing grip),
+  `drawGearFrame` draws such a frame from the same expansion, its sheet
+  parsed once and its frames kept with caps (4 sheets, 24 frames);
+- every worn list a bake builds asks `gearDrawFrame` (§9), so nothing starts
+  an RGBA load in play;
+- `preloadGear` / `preloadFullsetFigures` skip those sheets
+  (`setGearPreloadSkip`) and load them after all, still behind the loading
+  screen, where it turns out the numbers are not drawn (`gearWalkDecided`).
+  The chain belt's jog sheets stay RGBA (read on the CPU only, never drawn).
+
+**The bake's answer is unchanged.** The bake reads the armour only for its
+outline (alpha) and the 255-colour cut keeps every sheet's alpha: the oracle
+(`mp-lookgear`, `__btArmourOracle.compareGear`) bakes every frame of stand,
+jog, hit, roll and mining under steel twice, the pieces' RGBA against their
+numbers: 0 of 1.49 million texels apart, for the default look and another.
+
+**What it saves.** No line of the memory check moves (59.1 MB on the chip on
+arrival, 76.3 at the highest; heap 37.8): the RGBA sheets were not on the chip
+since §9, and in the page they were kept as images of themselves
+(`keepAsImage`), which no line counts. What goes is the loading screen's work
+and what it held: 44 sheets, 14.4 MB of pixels, no longer decoded, packed and
+encoded again as images, nor their compressed copies held for the session.
+
+**The bake's speed.** The first cut expanded every piece texel by texel
+through lookExpand.js's general walk and drew it through a new
+OffscreenCanvas: `mp-armourflash` read 27 frames baked in 140 s against
+main's 41, and 4 plain body frames in the walk after the armour went on
+against 1. The worker now makes a sheet's table once (a texel is one look-up:
+no roles, a byte a texel), hands the bake an ImageBitmap as the RGBA path did,
+and keeps the last 48 frames: 39 in 140 s, 1 plain frame.
+
+**And the stand-ins' bodies** (TRAPS §340): the sword's and the bow's bodies
+are drawn from the numbers once the sets are in (`_rebakeBodies`), but that
+was asked when the sets came in, before the game's renderer reached
+lookPalette.js: read as "off", the strips baked the old way stayed, RGBA, on
+the chip. It now waits for the answer (`whenLookKnown`, shared with both
+armour modules); `__btFxBakes().bodyRgba` counts any left (`mp-lookgear`: 21
+from the numbers, 0 RGBA).
+
+## 11. Phase 2, weapons slice 1: the swing's blade and the bow's draw (v2.3.5002)
+
+The owner, 2026-11-12: *"Do armor and weapons as 256 color pictures."* With
+the armour done (§8, §9), the first weapons are the two kinds of strip the
+stand-ins lay over their bodies: the sword's swing blade and the bow's draw.
+(The research, with the rest of the weapons ranked, was lane W1's: the held
+weapons (`weaponSprites.js`) and the projectiles are later slices.)
+
+**What they were.** Eight RGBA strips, loaded by the effects renderer's
+constructor (`effectsRenderer.js _loadSwordStrip`, `_loadBowStrip`), in the
+page from arrival and on the chip once drawn:
+
+| strip | on disk | as the game cuts it | kept as | MB at 4 B/px |
+|---|---|---|---|--:|
+| swing south | 2240 x 160, half size, 6,907 colours | blown up x2 (nearest) to 4480 x 320, 14 frames of 320, cropped | a packed canvas 360 x 592 | 0.81 |
+| swing east | 2211 x 123, half size, 4,739 colours | x2 to 4422 x 246, 11 frames of 402, cropped | a packed canvas 320 x 504 | 0.62 |
+| swing north | 3060 x 227, 38,244 colours | 9 frames of 340, NOT cropped: a faint haze (alpha 1-15) in every frame leaves the cut nothing to take | its `<img>` | 2.65 |
+| bow, five facings | 366-642 x 233-260, 11-61 colours | 3 frames each, the whole file (`Assets.load`, i x fw) | the files | 2.16 |
+
+6.2 MB in all.
+
+**What they are now.** A look set, `weapons` (`src/rendering/lookSets/weapons.js`,
+baked by `node tools/art/role-bake.mjs --set weapons` into
+`public/sprites/look/weapons/`), as the armour's: no roles (a blade is not
+recoloured by a look), 8 bits, `mip: false` (the game's strips have no mip
+chain). The set reads each strip exactly as the game does -- the swing through
+`loadWebpOrPng` and `upscaleToFrameHeight` to its frame's height, as
+`lookSets/standin.js` reads the stand-ins' bodies; the bow as its PNG -- and
+the bake cuts the display with the game's own packer, so its cells are the
+game's: the swing's south and east cropped as before, its north whole (the
+haze kept: cleaning it is an art change, the owner's call), the bow cropped
+where the game drew whole frames (a cropped frame keeps its `orig`, so every
+Sprite lands where it did). The bow's numbers are exact (61 colours at most);
+the swing's are the 8-bit cut, held to the 16-level bar (a sheet the cut
+cannot hold stays 16-bit, the bake's own rule).
+
+**How it is drawn** (`src/rendering/weaponLookFrame.js`, slice 1's pattern,
+`gearLookFrame.js`). Every draw site -- your swing (`_updateSwordSwing`,
+`swordWeaponSprite`), a peer's (`set.weapon`), your bow shot and a peer's --
+asks `_weaponStrip(pose, dir)`, which asks `weaponStripFrames`: the numbers'
+frames where the look program and its shine are built; nothing while the look
+sets load behind the loading screen; the RGBA strip otherwise. The RGBA strips
+are loaded only where the numbers are not drawn: at once where they were never
+asked for (`?weaponlook=0`, `?lookpalette=0`, a Windows or Mac computer); once
+the look sets are in and the shine has answered no, still behind the loading
+screen (`weaponLookDecided`, its loads joined to the loading screen's wait:
+the preloading law), never on "not yet known" (TRAPS §340); and late, at a draw
+that finds no numbers after all (a palette atlas with no row free, the live
+switch off), as the armour's are, rather than a swing with no blade. The tints
+are `weaponTint` as before (copper, iron, black steel on the sprite); the
+steel's shine is the look program's shine form (`LOOK_SHEEN_BATCHER`), which
+`glint.js` asks for as it always did (`swordWeaponSprite`, a peer's
+`sw.weapon`). The bow is never metal: no tint, no shine.
+
+**Kill switch.** `?weaponlook=0`: the RGBA strips at once, as before.
+
+**The oracle** (`mp-lookgear`, `gearLookProbe.js compareWeapons`). Before any
+oracle loads a strip itself: none of the eight RGBA files was fetched
+(resource timings), none cut by the renderer (`__btWeaponStrips`), none on the
+chip (`__btGpuTex`), and every draw site's strip is the numbers'. Then every
+frame of the eight, drawn the old way (the strip cut as the renderer cuts it)
+and the new, through the game's batchers, read back and compared texel for
+texel, premultiplied, to the armour's bar (the mean under 4 levels, under
+0.5% of a strip's texels past 16): as drawn; the blade under the steel shine;
+in copper with its shine; mirrored (a west swing); and at half size (neither
+has a mip chain; the walking armour's 1% bar).
+
+| drawn | frames | px drawn | mean | worst | px past 16 |
+|---|--:|--:|--:|--:|--:|
+| as drawn (8 strips) | 49 | 135,771 | 1.99 | 13 | 0 |
+| the blade under the steel shine | 34 | 104,406 | 2.52 | 17 | 1 |
+| the blade in copper and its shine | 34 | 104,406 | 2.13 | 17 | 1 |
+| the blade mirrored (a west swing) | 34 | 104,406 | 2.59 | 13 | 0 |
+| at half size (8 strips) | 49 | 36,399 | 1.74 | 12 | 0 |
+
+Measured 2026-11-12 (v2.3.5002), with the first bake: every sheet held the
+8-bit cut, the north included (cut from 23,347 colours as the bake reads it;
+the bake's self-check: its worst texel 13.25 levels, the mean 0.19), so nothing stays 16-bit. The south was
+cut from 6,906 (9 at most), the east from 4,738 (7); the bow's five are exact
+(11 to 61 colours). The eight files are 124 KB on disk.
+
+**Memory.** The page lets go of the 6.2 MB of strips (1.4 MB of canvases,
+4.8 MB of `<img>`s) and the chip of what of them was drawn; the chip takes the numbers from arrival instead (`uploadSheets`, as the
+armour's): about 0.2 + 0.15 MB for the swing's south and east, 0.7 MB for its
+north (it held the 8-bit cut), about 0.15 MB for the bow. So the
+chip on arrival can READ about 1 MB more (the strips were on it only once a
+swing or a shot drew them), and less at any fight with a swing or a shot in
+it: the memory check's numbers are in the PR.

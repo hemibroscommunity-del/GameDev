@@ -329,6 +329,15 @@ for (const p of files) {
   check('7d silent while you fish (the fishing loop is the water then), only in the Wheel', /skill === 'fishing'/.test(w) && /currentZone === 'wheel'/.test(w));
   const bt = src('src/ui/BroTown.jsx');
   check('7e the game loop ticks it', /import \{ tickWaterAmbience \} from '@\/game\/waterAmbience\.js'/.test(bt) && /tickWaterAmbience\(S, /.test(bt));
+  /* v2.3.5006: river-water is not held decoded for good any more (data/
+     sfxCache.js AHEAD): it is decoded ahead as you come near, and a loop
+     asked for before its decode is in waits for it -- never on the page */
+  const wc = w.replace(/\/\*[\s\S]*?\*\//g, '');
+  const ahead = +((w.match(/RIVER_AHEAD_PX = (\d+)/) || [])[1]);
+  check('7f the river is decoded ahead RIVER_AHEAD_PX past its reach (and kept recent while you stay); one not in yet is asked for and started the tick after it lands, its wait counted',
+    ahead >= 200 && /if \(st\.d < RIVER_FAR \+ RIVER_AHEAD_PX && B\.sfxAhead\) B\.sfxAhead\('water'\);/.test(wc)
+      && /B\.loadSample\(KEY, url\)\)\.then\(\(\) => \{ st\.asking = false; st\.at = 0; \}/.test(wc)
+      && /B\._sfxAheadWait\(KEY, t - st\.waitFrom\)/.test(wc) && !/await /.test(wc), { ahead });
 }
 
 /* ── 8. the door ── */
@@ -495,6 +504,19 @@ for (const p of files) {
   const f24bad = f24keys.filter((k) => !MANIFEST[k] || rateOf(MANIFEST[k]) !== 24000);
   check(`11g0 every noise effect decoded at 24 kHz (${f24keys.length}) is a 24 kHz file in SFX_MANIFEST, and LOW_RATE_SFX takes them`,
     f24keys.length >= 6 && f24bad.length === 0 && /FILE_24K_NOISE\[i\]\] = true/.test(GD), f24bad.map((k) => [k, MANIFEST[k] && rateOf(MANIFEST[k])]));
+  /* v2.3.5006: the four monster growls, 48 kHz files with nothing above
+     12 kHz (measured from their own samples), decoded at 24 kHz too.  Each
+     file is held to the bytes that were measured: a re-cut one (a recording
+     with real highs would lose them) fails here until it is measured again
+     and its size written in. */
+  const MEASURED_GROWLS = { 'noise-goblin-rawr': 16941, 'noise-skeleton-rattle': 16941, 'noise-slime-bounce': 12333, 'noise-snowman-snarl': 18477 };
+  const b12 = ((/BT_AUDIO\.BAND_12K_NOISE = \[([^\]]*)\]/.exec(GD) || [, ''])[1].match(/'[^']+'/g) || []).map((q) => q.slice(1, -1));
+  const { MONSTER_NOISE_CLIPS: MNC } = await import('../../src/data/monsterNoiseClips.js');
+  const sizeOf = (k) => { try { return statSync(new URL('public' + MANIFEST[k].split('?')[0], root)).size; } catch (e) { return -1; } };
+  const b12bad = b12.filter((k) => !MANIFEST[k] || rateOf(MANIFEST[k]) !== 48000 || sizeOf(k) !== MEASURED_GROWLS[k]);
+  check(`11g1 the monster growls with nothing above 12 kHz (${b12.length}) are decoded at 24 kHz: each a monster noise, its 48 kHz file the one measured, LOW_RATE_SFX takes them`,
+    b12.length === 4 && b12.every((k) => k.startsWith('noise-') && has(MNC, k.slice(6)) && has(MEASURED_GROWLS, k)) && b12bad.length === 0
+      && /BAND_12K_NOISE\[j\]\] = true/.test(GD), b12bad.map((k) => [k, MANIFEST[k] && rateOf(MANIFEST[k]), sizeOf(k)]));
 
   /* one decode a file */
   const ls = GD.slice(GD.indexOf('BT_AUDIO.loadSample = function'), GD.indexOf('BT_AUDIO.loadSfxManifest = function'));
@@ -985,6 +1007,49 @@ for (const p of files) {
   const named = moves.concat(['sword-swing-1', 'sword-swing-2', 'sword-swing-3', 'sword-hit2', 'sword-hit3', 'monster-hit', 'footstep-v2', 'footstep-v3', 'shield-block']);
   check(`18g the jump (its hup, flip and landing), the roll, the shield, the swings, the hits and the steps are pinned (${new Set(named).size} recordings)`,
     moves.length >= 7 && named.every((k) => PIN.has(k)), named.filter((k) => !PIN.has(k)));
+
+  /* ── v2.3.5006: the four slow decodes decoded AHEAD, not pinned ──
+     river-water, fish-reel, level-up and flip-win (4.5 MB) were pinned only
+     because their first decode took 16-51 ms; none is a fight's sound (18a).
+     Each is decoded ahead where its play is seen coming, and a play that
+     comes first waits for its decode: late by up to ~50 ms, never dropped. */
+  const AH = SC.AHEAD, WHEN = SC.AHEAD_WHEN;
+  const whenKeys = Object.values(WHEN).flat();
+  check('18h the four slow decodes (river-water, fish-reel, level-up, flip-win) are AHEAD: in SFX_MANIFEST, not pinned, none a fight\'s or a move\'s sound, each decoded ahead at some moment, and every moment names only them',
+    AH.join() === 'river-water,fish-reel,level-up,flip-win' && AH.every((k) => has(MANIFEST, k) && !PIN.has(k) && !need.has(k) && whenKeys.includes(k))
+      && whenKeys.every((k) => AH.includes(k)), { pinned: AH.filter((k) => PIN.has(k)), needed: AH.filter((k) => need.has(k)) });
+  const PA = SC.parseSfxAhead;
+  check('18i ON by default; `?sfxahead=0` (or off) pins the four again for one phone (the game as it was), and the page names them pinned then',
+    PA('') === true && PA('?sfxahead') === true && PA('?sfxahead=1') === true && PA('?sfxahead=0') === false && PA('?a=1&sfxahead=off&b') === false
+      && /BT_AUDIO\.SFX_AHEAD = parseSfxAhead\(typeof location/.test(G)
+      && /if \(BT_AUDIO\.SFX_AHEAD\) BT_AUDIO\._sfxAheadSet\[SFX_AHEAD_KEYS\[_sa\]\] = true;\s*else BT_AUDIO\._sfxPinned\[SFX_AHEAD_KEYS\[_sa\]\] = true;/.test(G));
+  /* the rule for the level-up's sting: a skill past LEVEL_AHEAD_FRAC of its level */
+  const reqP = (L) => 100 * L, reqL = (L) => 1000;
+  const LN = (rpg) => SC.levelNear(rpg, reqP, reqL);
+  check(`18j the level-up's sting is decoded ahead once a combat or life skill is past ${SC.LEVEL_AHEAD_FRAC * 100}% of its level (not before; gems, pets and plots are not skills)`,
+    SC.LEVEL_AHEAD_FRAC >= 0.5 && SC.LEVEL_AHEAD_FRAC < 1
+      && LN({ prog3: { sk: { sword: { level: 2, xp: 170 } } } }) === true && LN({ prog3: { sk: { sword: { level: 2, xp: 150 }, bow: { level: 1, xp: 10 } } } }) === false
+      && LN({ lifeSkills: { fishing: { level: 3, xp: 850 } } }) === true && LN({ lifeSkills: { fishing: { level: 3, xp: 700 }, gems: { raw_fire: 900 }, pets: [{ level: 9, xp: 99999 }] } }) === false
+      && LN(null) === false && LN({ prog3: { sk: { staff: { level: 'x', xp: 999 } } } }) === false);
+  /* each moment is asked for where it is seen coming */
+  const code = (f) => src(f).replace(/\/\*[\s\S]*?\*\//g, '');
+  const sites = {
+    water: /B\.sfxAhead\('water'\)/.test(code('src/game/waterAmbience.js')),
+    fishSpot: /if \(S\._nearNode && S\._nearNode\.nodeType === 'fishSpot'\) \{ try \{ BT_AUDIO\.sfxAhead\('fishSpot'\)/.test(code('src/ui/BroTown.jsx')),
+    cast: /if \(skill === 'fishing'\) \{ try \{ if \(BT_AUDIO\.sfxAhead\) BT_AUDIO\.sfxAhead\('cast'\)/.test(code('src/game/lifeSkillRewards.js')),
+    levelNear: /if \(sfxLevelNear\(S\.rpg, prog3XpRequired, LIFE_SKILL_XP\)\) BT_AUDIO\.sfxAhead\('levelNear'\)/.test(code('src/networking/wsClient.js')),
+    flip: (code('src/ui/panels/AceFlipPanel.jsx').match(/BT_AUDIO\.sfxAhead\('flip'\);[^\n]*\n\s*try \{\s*\n\s*(st|S)\.channel\.send\(\{ type: 'broadcast', event: 'ace_(item_)?flip_request'/g) || []).length === 2
+      && /if \(stage === 'shaking'\) \{ try \{ BT_AUDIO\.sfxAhead\('flip'\)/.test(code('src/ui/mobile/ChestReveal.jsx')),
+  };
+  check(`18k each moment is asked for where it is seen coming: the water near, a fishing spot in reach, the cast, a skill near its level, Ace's toss (both, before the request) and a chest shaking (${Object.keys(sites).length} of ${Object.keys(WHEN).length})`,
+    Object.keys(WHEN).every((k) => sites[k] === true), sites);
+  const lf = G.slice(G.indexOf('BT_AUDIO.startSfxLoop = function'), G.indexOf('BT_AUDIO._loopOverEdges = function'));
+  const ah = G.slice(G.indexOf('BT_AUDIO.sfxAhead = function'), G.indexOf('BT_AUDIO._playCold = function'));
+  check('18l ...and one asked for first waits for its decode, never dropped: a loop loads it and starts on the frame after, a one-shot plays cold; each wait counted (aheadLate); the ahead itself decodes what is missing and keeps what is in recent',
+    /if \(this\._sfxAheadSet\[key\]\)/.test(lf) && /this\._sfxAheadWait\(key, this\._sfxNow\(\) - this\._sfxLoopWait\[key\]\)/.test(lf)
+      && /if \(buf\) self\._sfxAheadWait\(key, ms\);/.test(G)
+      && /if \(this\._samples\[k\]\) this\._sfxTouch\(k\);\s*else this\.sfxPrefetch\(k\);/.test(ah) && /SFX_AHEAD_WHEN/.test(ah)
+      && /aheadLate: st\.aheadLate\.slice\(\)/.test(G));
 }
 
 /* ── 19. v2.3.3727: a crowd of one sound starts as a few (`?voicecap`) ──
