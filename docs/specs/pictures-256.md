@@ -501,3 +501,91 @@ the chip. It now waits for the answer (`whenLookKnown`, shared with both
 armour modules); `__btFxBakes().bodyRgba` counts any left (`mp-lookgear`: 21
 from the numbers, 0 RGBA).
 
+## 11. Phase 2, weapons slice 1: the swing's blade and the bow's draw (v2.3.5002)
+
+The owner, 2026-11-12: *"Do armor and weapons as 256 color pictures."* With
+the armour done (§8, §9), the first weapons are the two kinds of strip the
+stand-ins lay over their bodies: the sword's swing blade and the bow's draw.
+(The research, with the rest of the weapons ranked, was lane W1's: the held
+weapons (`weaponSprites.js`) and the projectiles are later slices.)
+
+**What they were.** Eight RGBA strips, loaded by the effects renderer's
+constructor (`effectsRenderer.js _loadSwordStrip`, `_loadBowStrip`), in the
+page from arrival and on the chip once drawn:
+
+| strip | on disk | as the game cuts it | kept as | MB at 4 B/px |
+|---|---|---|---|--:|
+| swing south | 2240 x 160, half size, 6,907 colours | blown up x2 (nearest) to 4480 x 320, 14 frames of 320, cropped | a packed canvas 360 x 592 | 0.81 |
+| swing east | 2211 x 123, half size, 4,739 colours | x2 to 4422 x 246, 11 frames of 402, cropped | a packed canvas 320 x 504 | 0.62 |
+| swing north | 3060 x 227, 38,244 colours | 9 frames of 340, NOT cropped: a faint haze (alpha 1-15) in every frame leaves the cut nothing to take | its `<img>` | 2.65 |
+| bow, five facings | 366-642 x 233-260, 11-61 colours | 3 frames each, the whole file (`Assets.load`, i x fw) | the files | 2.16 |
+
+6.2 MB in all.
+
+**What they are now.** A look set, `weapons` (`src/rendering/lookSets/weapons.js`,
+baked by `node tools/art/role-bake.mjs --set weapons` into
+`public/sprites/look/weapons/`), as the armour's: no roles (a blade is not
+recoloured by a look), 8 bits, `mip: false` (the game's strips have no mip
+chain). The set reads each strip exactly as the game does -- the swing through
+`loadWebpOrPng` and `upscaleToFrameHeight` to its frame's height, as
+`lookSets/standin.js` reads the stand-ins' bodies; the bow as its PNG -- and
+the bake cuts the display with the game's own packer, so its cells are the
+game's: the swing's south and east cropped as before, its north whole (the
+haze kept: cleaning it is an art change, the owner's call), the bow cropped
+where the game drew whole frames (a cropped frame keeps its `orig`, so every
+Sprite lands where it did). The bow's numbers are exact (61 colours at most);
+the swing's are the 8-bit cut, held to the 16-level bar (a sheet the cut
+cannot hold stays 16-bit, the bake's own rule).
+
+**How it is drawn** (`src/rendering/weaponLookFrame.js`, slice 1's pattern,
+`gearLookFrame.js`). Every draw site -- your swing (`_updateSwordSwing`,
+`swordWeaponSprite`), a peer's (`set.weapon`), your bow shot and a peer's --
+asks `_weaponStrip(pose, dir)`, which asks `weaponStripFrames`: the numbers'
+frames where the look program and its shine are built; nothing while the look
+sets load behind the loading screen; the RGBA strip otherwise. The RGBA strips
+are loaded only where the numbers are not drawn: at once where they were never
+asked for (`?weaponlook=0`, `?lookpalette=0`, a Windows or Mac computer); once
+the look sets are in and the shine has answered no, still behind the loading
+screen (`weaponLookDecided`, its loads joined to the loading screen's wait:
+the preloading law), never on "not yet known" (TRAPS §340); and late, at a draw
+that finds no numbers after all (a palette atlas with no row free, the live
+switch off), as the armour's are, rather than a swing with no blade. The tints
+are `weaponTint` as before (copper, iron, black steel on the sprite); the
+steel's shine is the look program's shine form (`LOOK_SHEEN_BATCHER`), which
+`glint.js` asks for as it always did (`swordWeaponSprite`, a peer's
+`sw.weapon`). The bow is never metal: no tint, no shine.
+
+**Kill switch.** `?weaponlook=0`: the RGBA strips at once, as before.
+
+**The oracle** (`mp-lookgear`, `gearLookProbe.js compareWeapons`). Before any
+oracle loads a strip itself: none of the eight RGBA files was fetched
+(resource timings), none cut by the renderer (`__btWeaponStrips`), none on the
+chip (`__btGpuTex`), and every draw site's strip is the numbers'. Then every
+frame of the eight, drawn the old way (the strip cut as the renderer cuts it)
+and the new, through the game's batchers, read back and compared texel for
+texel, premultiplied, to the armour's bar (the mean under 4 levels, under
+0.5% of a strip's texels past 16): as drawn; the blade under the steel shine;
+in copper with its shine; mirrored (a west swing); and at half size (neither
+has a mip chain; the walking armour's 1% bar).
+
+| drawn | frames | px drawn | mean | worst | px past 16 |
+|---|--:|--:|--:|--:|--:|
+| as drawn (8 strips) | 49 | 135,771 | 1.99 | 13 | 0 |
+| the blade under the steel shine | 34 | 104,406 | 2.52 | 17 | 1 |
+| the blade in copper and its shine | 34 | 104,406 | 2.13 | 17 | 1 |
+| the blade mirrored (a west swing) | 34 | 104,406 | 2.59 | 13 | 0 |
+| at half size (8 strips) | 49 | 36,399 | 1.74 | 12 | 0 |
+
+Measured 2026-11-12 (v2.3.5002), with the first bake: every sheet held the
+8-bit cut, the north included (cut from 23,347 colours as the bake reads it;
+the bake's self-check: its worst texel 13.25 levels, the mean 0.19), so nothing stays 16-bit. The south was
+cut from 6,906 (9 at most), the east from 4,738 (7); the bow's five are exact
+(11 to 61 colours). The eight files are 124 KB on disk.
+
+**Memory.** The page lets go of the 6.2 MB of strips (1.4 MB of canvases,
+4.8 MB of `<img>`s) and the chip of what of them was drawn; the chip takes the numbers from arrival instead (`uploadSheets`, as the
+armour's): about 0.2 + 0.15 MB for the swing's south and east, 0.7 MB for its
+north (it held the 8-bit cut), about 0.15 MB for the bow. So the
+chip on arrival can READ about 1 MB more (the strips were on it only once a
+swing or a shot drew them), and less at any fight with a swing or a shot in
+it: the memory check's numbers are in the PR.
