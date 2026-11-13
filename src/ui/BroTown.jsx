@@ -367,6 +367,7 @@ import { controlsTutorialBus } from './mobile/controlsTutorialBus.js';
 import { QuestCoach } from './mobile/QuestCoach.jsx';
 /* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
 import { initPixiRenderer, preloadPlayerAssets } from '@/rendering/pixiRenderer.js';
+import { markLoad } from '@/game/loadTimes.js';   /* v2.3.5019: the load timer */
 import { CANVAS_BG } from '@/rendering/pixiApp.js';   /* v2.3.3017: the watchdog reads the canvas's own colour as dark */
 import { IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
 import { perfTracker } from '@/debug/perfTracker.js';
@@ -12514,6 +12515,7 @@ export var BroTown = function BroTown(_ref0) {
     } catch (e) {}
     /* Kick off the full avatar-asset preload now (equip is finalized at this
        point) so the intro overlay can hold until it's flicker-free. */
+    try { markLoad('loading'); } catch (e) { /* the load timer: v2.3.5019 */ }
     try { introWaitRef.current = preloadPlayerAssets(); } catch (e) { introWaitRef.current = null; }
     /* ═══ v2.3.2439: AND THE SERVER ═══
        Owner: "don't let the player in at all unless it's ready to go".  The

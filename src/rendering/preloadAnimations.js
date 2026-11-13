@@ -34,6 +34,7 @@
  * group that failed reads "rejected" there now; it read "fulfilled".) */
 
 import { preloadLoginSpin } from './loginSpinPreload.js'; /* v2.3.4295: the login wheel's art */
+import { timeLoadGroups, markLoad } from '../game/loadTimes.js';   /* v2.3.5019: the load timer's picture groups */
 import { preloadLootIcons } from './lootIcons.js'; /* v2.3.2771 */
 import { warmStormSparks } from './stormSparksFx.js'; /* v2.3.4356: the storm eye's lightning's picture */
 import { warmWaterAttack } from './waterAttackFx.js'; /* v2.3.4355: the water attack's picture */
@@ -547,6 +548,8 @@ export async function preloadWorldAnimations() {
   };
 
   /* v2.3.4415: each group's TRUE ending, "rejected" included (preloadReport.js) */
+  /* v2.3.5019: each group's end noted for the load timer (game/loadTimes.js) */
+  timeLoadGroups(groups);
   const report = await settleGroups(groups, {});
   /* v2.3.1398 (owner: "make sure all this stuff loads correctly at the
      login loading page"): the fullset knight figures + their head
@@ -563,7 +566,9 @@ export async function preloadWorldAnimations() {
     fullset: preloadFullsetFigures(),
     jogHeads: preloadJogHeadOverlays(),
   };
+  timeLoadGroups(wave2);
   await settleGroups(wave2, report);
+  markLoad('pictures');   /* v2.3.5019 */
   try { if (typeof window !== 'undefined') window.__btPreloadReport = report; } catch (e) {}
   return report;
 }
