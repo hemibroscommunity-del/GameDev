@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "514ab2871481aca3da4304450d9c25bb9a9aec37",
+  "tree": "a74f2a29f1f1021752caa0f68228f85a32986de8",
+  "committedAt": "2026-11-13T03:04:54-08:00",
+  "subject": "Merge pull request #1658 from hemibroscommunity-del/claude/token-efficient-lanes-perf-o4ish9-heldcombat",
+  "files": 7403,
+  "bytes": 944685324,
+  "listingSha256": "87a1d5d54a6e24421c9b47e9a5be14a3479939720a44b704b2d80e82a4889da9",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
