@@ -174,3 +174,42 @@ shrink by about four.
 - One more sprite a figure (the residue), plain, batched with the gear over it.
 
 Probe: `window.__btLookArmour()`.
+
+## A sheet's bytes are never made again on the page in play (v2.3.5015)
+
+The stutter sweep's armour station (`mp-heldsweep`, `BT_HS_STATIONS=armour`)
+caught the page held 38 to 45 ms at once as armour went on
+(`prewarmMaskedBodyFrames > lookArmourPrewarm > lookArmourFrame`, its leaves
+`getImageData`, `make`, `drawImage`): a sheet of colour numbers made again from
+its picture on the page. Two roads led there.
+
+**The header.** A sheet's header (its last rows) carries its offset in the
+book of masks (`head[68-69]`), set the first time one of its poses is baked
+under armour (`lookPalette.js setLookSheetBook`). The upload then sent the WHOLE
+sheet again, its bytes made again from its picture (`make`). Now only the
+header rows are sent (`lookUnpack.js lookHeadRows`): the header rows hold
+nothing but the header, so they are made from the header alone, in a page or a
+sheet of its own. The whole sheet still goes on its first upload and after a
+black screen's rebuild (a new renderer). `__btLookPalette().headSends` counts
+the header sends; `remadeInFrame` (a whole sheet made again in a frame) stays 0.
+
+**The worker.**
+
+The masked bake's worker needs each sheet of colour numbers it bakes from (the
+body's pose, the walking armour's): once a worker, sent by
+`lookArmour.js lookSheetForWorker`. Those bytes were made on the PAGE
+(`lookPalette.js make`: the sheet's picture drawn on a canvas and read back),
+and the stutter sweep's armour station caught it holding the page 38 ms at once
+the first time a pose's body was baked under armour
+(`prewarmMaskedBodyFrames > lookArmourPrewarm > make`: `getImageData`,
+`drawImage`). Now the worker is sent the file's address and the spec
+(`'lookSheetUrl'`); it fetches the file (the browser's cache answers), decodes
+it with no colour conversion, and makes the bytes with the page's own function
+(`src/rendering/lookUnpack.js unpackLookSheet`). A job naming a sheet still on
+its way waits for it in the worker. A worker that cannot make one says so
+(`'lookSheetFailed'`) and is sent the bytes from the page from then on, as
+before. `?sheetfetch=0` sends the bytes from the start.
+
+Checked by `mp-sheetfetch`: the worker's bytes are the page's own, sheet for
+sheet (the page reads them too only when QA asks, `__btSheetFetchCheck`), and
+the bodies under armour are baked from them.

@@ -36,7 +36,8 @@
  * Probe: window.__btLookArmour().
  */
 import { Texture, Rectangle, BufferImageSource, ImageSource, glUploadBufferImageResource } from 'pixi.js';
-import { lookPaletteWanted, lookPaletteOn, lookSetSheets, lookSheetBytes, lookSheetOf, lookSheetTexture, setLookSheetBook, setLookMaskSource, MASK_W } from './lookPalette.js';
+import { lookPaletteWanted, lookPaletteOn, lookSetSheets, lookSheetBytes, lookSheetSource, lookSheetOf, lookSheetTexture, setLookSheetBook, setLookMaskSource, MASK_W } from './lookPalette.js';
+import { lookBytesHash } from './lookUnpack.js';   /* v2.3.5015: QA's comparison of the worker's bytes with the page's */
 import { takePaletteRow, givePaletteRow, paletteRowWrite } from './paletteTex.js';
 import { clientOff } from '../game/clientOff.js';   /* the Test panel's live off switch */
 
@@ -276,11 +277,62 @@ export function lookSheetForWorker(sheetKey, worker) {
   const k = sheetKey;
   if (worker && worker._btLookSent && worker._btLookSent.has(k)) return null;
   const [set, sheet] = sheetKey.split('/');
+  /* ═══ v2.3.5015: THE WORKER FETCHES THE SHEET AND DECODES IT ITSELF ═══
+     The bytes were made here, on the page: the sheet's picture drawn on a
+     canvas and read back (lookPalette.js make), 38 ms held at once on the
+     stutter sweep's armour station the first time a pose's body was baked
+     under armour.  Now the worker is told the file and the spec, and makes
+     the same bytes off the page (maskedBakeWorker.js 'lookSheetUrl', with
+     lookUnpack.js, the page's own function).  A worker that cannot (its
+     fetch or decode failed: 'lookSheetFailed') is sent the bytes from here
+     from then on, as before; `?sheetfetch=0` does that from the start. */
+  if (worker && SHEET_FETCH && !worker._btLookBytes) {
+    const src = lookSheetSource(set, sheet);
+    if (src) {
+      (worker._btLookSent || (worker._btLookSent = new Set())).add(k);
+      _sent.add(k);
+      _fetchStats.url++;
+      return { type: 'lookSheetUrl', key: k, url: src.url, spec: src.spec, check: _qaCheck(set, sheet) };
+    }
+  }
   const d = lookSheetBytes(set, sheet);
   if (!d) return null;
   if (worker) (worker._btLookSent || (worker._btLookSent = new Set())).add(k);
   _sent.add(k);
+  if (worker) _fetchStats.bytes++;
   return { type: 'lookSheet', key: k, bytes: d.bytes, w: d.w, rows: d.rows, bits: d.bits };
+}
+/** v2.3.5015: the worker could not make a sheet's bytes itself: it is sent
+ *  them from here, that one now and every one from then on. */
+export function lookSheetFetchFailed(worker, key) {
+  _fetchStats.failed++;
+  if (!worker) return;
+  worker._btLookBytes = true;
+  if (worker._btLookSent) worker._btLookSent.delete(key);
+}
+/** v2.3.5015: the worker's bytes for a sheet beside the page's (QA). */
+export function lookSheetFetchDone(key, hash) {
+  if (_qaHashes && _qaHashes.has(key)) _qaHashes.get(key).worker = hash;
+}
+const SHEET_FETCH = (() => { try { return !/(^|[?&])sheetfetch=0(&|$)/.test(window.location.search || ''); } catch (e) { return true; } })();
+const _fetchStats = { url: 0, bytes: 0, failed: 0 };
+/* QA (mp-sheetfetch, armed by the harness: window.__btSheetFetchCheck): the
+   page's own bytes' hash for each sheet sent as a file, to set beside the
+   worker's -- the page's read is the cost this saves, so only when asked */
+let _qaHashes = null;
+function _qaCheck(set, sheet) {
+  try {
+    if (typeof window === 'undefined' || !window.__btSheetFetchCheck) return false;
+    const d = lookSheetBytes(set, sheet);
+    if (!d) return false;
+    if (!_qaHashes) _qaHashes = new Map();
+    _qaHashes.set(set + '/' + sheet, { page: lookBytesHash(d.bytes), worker: null });
+    return true;
+  } catch (e) { return false; }
+}
+if (typeof window !== 'undefined') {
+  window.__btSheetFetch = () => ({ on: SHEET_FETCH, ..._fetchStats,
+    checked: _qaHashes ? [..._qaHashes].map(([k, v]) => ({ k, same: v.worker != null && v.worker === v.page, page: v.page, worker: v.worker })) : [] });
 }
 
 /**
