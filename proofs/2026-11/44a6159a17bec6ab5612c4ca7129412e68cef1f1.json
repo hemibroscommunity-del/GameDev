@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "44a6159a17bec6ab5612c4ca7129412e68cef1f1",
+  "tree": "9d180bd131f3adb87ff1a8bd2ec5ea4753197aa9",
+  "committedAt": "2026-11-12T17:33:45-08:00",
+  "subject": "Merge pull request #1645 from hemibroscommunity-del/claude/token-efficient-lanes-perf-o4ish9-soundpin",
+  "files": 7383,
+  "bytes": 944110762,
+  "listingSha256": "8f8b876f5fc079230a10f52c29c11b60be9bc2e94baf8b24742cb59c9a6bc5e2",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
