@@ -143,10 +143,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const BA = window.BT_AUDIO, out = [];
       const keys = Object.keys(BA.SFX_MANIFEST).filter((k) => !BA._sfxPinned[k] && !BA._sfxPinnedTag(BA.SFX_MANIFEST[k] + (BA._lowRate(k) ? '@low' : ''))).slice(0, 5);
       const orig = BA._startOn;
-      let seen = null;
+      /* v2.3.5006: only THIS sound's start is read, the first after its ask.
+         The game plays its own sounds meanwhile (a townsperson's hum, a cue),
+         and the read kept the last start of ANY sound: a cold wait long
+         enough for one of them to start was read as ours.  The river's and
+         the win's decodes, the slowest, came into the first five when they
+         stopped being pinned, and their waits were (river-water's cold read
+         {vol 0.0517, rate 1.0063}: another sound's). */
+      let want = null, got = false, seen = null;
       BA._startOn = function (buf, o, g) {
         const r = orig.call(this, buf, o, g);
-        seen = r ? { vol: +r.gain.gain.value.toFixed(4), rate: +r.src.playbackRate.value.toFixed(4), off: o.offset || 0, dur: o.duration, delay: o.delay || 0 } : null;
+        if (want && !got && buf && buf === BA._samples[want]) {
+          got = true;
+          seen = r ? { vol: +r.gain.gain.value.toFixed(4), rate: +r.src.playbackRate.value.toFixed(4), off: o.offset || 0, dur: o.duration, delay: o.delay || 0 } : null;
+        }
         return r;
       };
       try {
@@ -154,16 +164,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
           const t = BA._sampleTag[k];
           if (t && BA._sfxLru) { BA._sfxLru.remove(t); BA._sfxDrop(t); }
           const ask = { vol: 0.123, rate: 1.07, offset: 0.02, duration: 0.15 };
-          seen = null;
+          want = k; got = false; seen = null;
           const h = BA.play(k, Object.assign({}, ask));
           const t0 = performance.now();
           while (h && h.cold && !h.real && performance.now() - t0 < 20000) await new Promise((r) => setTimeout(r, 2));
           const cold = seen;
-          seen = null;
+          got = false; seen = null;
           const h2 = BA.play(k, Object.assign({}, ask));
-          out.push({ k, wasCold: !!(h && h.cold), warm2: !!(h2 && !h2.cold), cold, warm: seen });
+          const warm = seen;
+          want = null;
+          out.push({ k, wasCold: !!(h && h.cold), warm2: !!(h2 && !h2.cold), cold, warm });
         }
-      } finally { BA._startOn = orig; }
+      } finally { BA._startOn = orig; want = null; }
       return out;
     });
     const sameLevel = level.every((x) => x.wasCold && x.warm2 && x.cold && x.warm && JSON.stringify(x.cold) === JSON.stringify(x.warm) && x.cold.vol === 0.123);
