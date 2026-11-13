@@ -169,7 +169,8 @@ pixel whatever their colours:
 
 Drawing the level-up burst in the game's renderer as colour numbers would
 take it to about 1.5 MB on the chip and nothing decoded in the page. That is
-a change of its own, not this one.
+a change of its own, not this one. (v2.3.5004 drew it from colour numbers in
+the page instead, keeping its place over the HUD: §7a.)
 
 ## 5. Measured
 
@@ -296,7 +297,82 @@ strip in CSS px, which is 2.8x the file on a 3x phone. It is held for the
 session (`levelUpBurstPreload.js` `_held`). **A rendering change of its own**:
 draw it in the game's renderer as colour numbers (on 256 colours, the
 owner's yes). That is about 6 MB decoded in the page becoming about 1.5 MB on
-the graphics chip.
+the graphics chip. **Built differently, v2.3.5004: below.**
+
+### 7a. The level-up burst as colour numbers (v2.3.5004)
+
+**Not in the game's renderer.** Measured before building: the world's canvas
+ends at the top of the dashboard band (`BroTown.jsx`, `bottom: var(--dash-h)`),
+and every HTML layer is over it. The burst is the page's own overlay at z 70
+(`LevelUpBurst.jsx`), over the top bar (25), the band (30), and the building
+windows and their scrim (`.bt-inspect`, 32). Drawn by the renderer, frames 4
+and 5 would lose about 36 px at 390 x 844 under the band. A level won at the
+Cookhouse, Smithy, Gem Works, Woodworker or Enchanter (each window raises the
+burst while it is open) would play dimmed under the window, its number and
+caption (still HTML) over it.
+
+**What it is.** The same overlay, the same box, timing and z, drawn from colour
+numbers:
+
+- the eight frames' rects (`LEVELUP_FRAMES`, all the burst ever shows: it
+  clips to them, 878,722 px) as palette PNGs,
+  `public/sprites/fx/levelup-burst-v1-f0..f7.p256.png` (398 KB of files; the
+  strip's was 434 KB), made by `tools/art/levelup-numbers.mjs` (`--check`
+  re-makes them and compares);
+- the loading screen fetches them through loadSetLater's door
+  (`levelUpBurstNumbers.js`; 20 s, then retried). **Between bursts** the page
+  holds the eight files PACKED, as Blobs (0.40 MB, which the browser keeps
+  outside the page's heap), and frames 0 and 1 open as colour numbers
+  (0.09 MB of buffers), so a burst's first 140 ms never wait. Nothing is
+  decoded as a picture. The strip was 6.29 MB, held for the session;
+- **as a burst starts** (its first render), frames 2-7 are opened from the
+  Blobs on the reader's worker (`stripRead.js` `readPaletteBlob`,
+  `png8Worker.js`'s `pngBlob` read, off the page's thread), all at once.
+  Frame 2 is wanted at 140 ms. A frame not back yet is drawn when it comes,
+  and the canvas keeps the frame before. When the last burst stops drawing,
+  frames 2-7 are let go (0.80 MB). The first cut held all eight open for the
+  session, 0.89 MB of buffers, and the memory check's buffers line failed by
+  0.3 (22.3 against 22; main reads 21.3-21.4). Opening them ahead (a skill
+  near its level) was not taken: at a fight that is when the check reads;
+- as a frame comes up (eight times a burst, never each tick) its numbers are
+  turned into colours on a canvas the size of the largest frame, at the art's
+  own pixels, and the page scales it by k as it scaled the strip
+  (`image-rendering: auto`). The draw is the largest frame at most: one table
+  look-up a pixel and one `putImageData` of 0.93 MB, with no read back. It
+  took 0.2-1.4 ms in node; the phone test reports the browser's number
+  against the 12 ms line. While a burst plays it holds 0.93 MB for its
+  canvas and 0.93 MB for the ImageData the bursts share. The canvas is
+  emptied when the burst ends and the ImageData let go with the last burst;
+- `?burstnumbers=0` draws the strip as before. So does a page with no
+  reader's worker (`?stripworker=0`), a browser that cannot unpack the files
+  (no DecompressionStream: iOS before 16.4), or a first load that failed (the
+  strip is then warmed behind the loading screen).
+
+**The cut.** The strip is on 505,071 colours, and almost every pixel is a soft
+glow (one solid pixel in 752,178 shown). It is put on 256 colours by
+`reduce256`, the whole strip as one picture, as decoded by libwebp (the
+browsers' decoder; ffmpeg's own decoder turns the colours out up to 110 levels
+apart). Measured over the eight rects' 727,367 shown pixels, premultiplied, in
+levels of 255:
+
+| reducer | mean | worst | past 16 levels | mean OKLab move |
+|---|--:|--:|--:|--:|
+| `reduce256` (shipped) | 7.26 | 94.5 | 66,581 (9.2%) | 0.0186 |
+| the armour's cut (`lookCut`, for comparison) | 14.3 | 29 | 22% | -- |
+
+This is **outside the armour's 16-level bar** (§8). No 256-colour cut of this
+glow meets it: frame by frame, the armour's cut held it only for frames 0
+and 1. Even with the see-through kept exact (2 bytes a pixel), the worst
+pixel was 23.7. `reduce256` has the lower mean, and by eye it is close to the
+original (the armour's cut bands the glow). **The owner looked at the
+before / after sheet (frames 4 and 7 on black and on grass) and said yes,
+2026-11-12.**
+
+**Tests.** `mp-levelupnum` step 7: what is held between bursts; each of the
+eight frames read off its canvas, alpha for alpha against its file; a live
+burst; the canvas emptied after, and frames 2-7 and the ImageData let go. The draw was also checked in node: the eight frames drawn through
+`drawLevelUpFrame` are byte for byte the strip's reduction at each rect, and
+see-through past it.
 
 **The character sheets** (phase 2): at the fight the chip holds 18.1 MB of
 walking armour and body sheets as images, and 24.9 MB of emptied pose and

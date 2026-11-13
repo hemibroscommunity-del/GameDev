@@ -27,7 +27,19 @@
  *   5. no page errors;
  *   6. pictures held in the hold (window.__btLevelUpFreeze, shot-levelup.mjs's
  *      handle): one burst, then two side by side; last, as a frozen burst
- *      never retires.
+ *      never retires;
+ *   7. v2.3.5004, the art from its colour numbers (docs/specs/pictures-256.md
+ *      §7a): (a) between bursts (before any), the eight frames' files held
+ *      packed (about 0.40 MB, as Blobs) with frames 0-1 open as numbers
+ *      (under 0.1 MB), and NONE of the art held decoded as a picture (the
+ *      strip was 6.29 MB); (b) each of the eight frames, held,
+ *      drawn on its canvas from its own file: every pixel's alpha the file's,
+ *      at the frame's place in the box, nothing past it, the box and the
+ *      canvas at one scale, a draw under the 12 ms line; (c) a burst played
+ *      live reaches frame 7 with at most eight draws (one a frame, never one
+ *      a tick), and its canvas is emptied, and frames 2-7 and the shared
+ *      ImageData let go, when it ends.  With BT_QA_QUERY=burstnumbers=0: the strip held
+ *      (6.29 MB) and drawn, as before.
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -37,6 +49,22 @@ import {
   LEVELUP_NUM_H, LEVELUP_NUM_W, LEVELUP_NUM_URLS,
 } from '../../../src/data/levelUpBurst.js';
 import { POINTS_DIGIT_H, POINTS_DIGIT_W } from '../../../src/data/pointsHeadArt.js';
+import { readFileSync } from 'node:fs';
+import { inflateSync } from 'node:zlib';
+import { LEVELUP_NUMBER_SRCS, LEVELUP_MAX_W, LEVELUP_MAX_H, LEVELUP_STRIP_W, LEVELUP_STRIP_H } from '../../../src/data/levelUpBurst.js';
+import { decodePng8 } from '../../../src/rendering/png8Decode.js';
+
+/* v2.3.5004 (step 7): the art from its colour numbers unless the run turns
+   them off (BT_QA_QUERY=burstnumbers=0) */
+const NUMBERS = !/(^|&)burstnumbers=0(&|$)/.test(String(process.env.BT_QA_QUERY || '').replace(/^[?&]+/, ''));
+/* each frame file's own alpha: how many pixels show, and their alpha summed */
+async function frameAlpha(i) {
+  const file = join(H.REPO, 'public', LEVELUP_NUMBER_SRCS[i].replace(/\?.*$/, ''));
+  const p = await decodePng8(new Uint8Array(readFileSync(file)), async (z) => new Uint8Array(inflateSync(z)), 1);
+  let n = 0, sum = 0;
+  for (let q = 0; q < p.w * p.h; q++) { const a = p.alpha[p.idx[q]] ?? 0; if (a) { n++; sum += a; } }
+  return { w: p.w, h: p.h, n, sum };
+}
 
 const PHONE = { width: 390, height: 844 };
 const OLD_TOTAL_MS = 1295;   /* v2.3.3608's: 590 run + 455 hold + 250 fade */
@@ -167,6 +195,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`3. the ten gold numerals held decoded from the loading screen (${warm ? warm.filter(Boolean).length : 'no seam'}/10)`,
       !!warm && warm.length === 10 && warm.every(Boolean), warm);
 
+    /* 7a. v2.3.5004: before any burst, what the loading screen holds of the
+       art: the numbers (0.88 MB) and no picture of it -- or, with
+       burstnumbers=0, the strip decoded (6.29 MB) as before */
+    const held = await P.page.evaluate(() => {
+      const W = window.__btLevelUpWarm;
+      return W && typeof W.numbers === 'function' && typeof W.artHeld === 'function' ? { num: W.numbers(), art: W.artHeld() } : null;
+    });
+    const STRIP_BYTES = LEVELUP_STRIP_W * LEVELUP_STRIP_H * 4;
+    if (NUMBERS) {
+      rec.ok(`7a. between bursts, from the loading screen: ${held ? held.num.files : '-'}/8 files packed (${held ? (held.num.fileBytes / 1e6).toFixed(2) : '-'} MB, Blobs), ${held ? held.num.frames : '-'} frames open (${held ? (held.num.bytes / 1e6).toFixed(2) : '-'} MB of numbers); as a picture: ${held ? held.art.n : '-'} (${held ? (held.art.bytes / 1e6).toFixed(2) : '-'} MB; the strip was ${(STRIP_BYTES / 1e6).toFixed(2)})`,
+        !!held && held.num.ready && held.num.files === 8 && held.num.fileBytes > 0.35e6 && held.num.fileBytes < 0.45e6
+          && held.num.frames === 2 && held.num.bytes < 0.1e6 && held.art.n === 0 && held.art.bytes === 0, held);
+    } else {
+      rec.ok(`7a. burstnumbers=0: the strip held decoded as before (${held ? (held.art.bytes / 1e6).toFixed(2) : '-'} MB), no numbers`,
+        !!held && !held.num.wanted && held.num.frames === 0 && held.art.n === 1 && held.art.bytes === STRIP_BYTES, held);
+    }
+
     /* 1. each kind, at rest (frame 7 and the caption, before the fade) */
     const worldBottom = PHONE.height * 0.67;
     const rest = LEVELUP_FRAMES[LEVELUP_FRAMES.length - 1];
@@ -229,6 +274,96 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const v = q && q.numBox && q.art && q.pin ? inCircle(q, f, MID.num) : { ok: false, why: null };
       rec.ok(`2. held at frame ${m.frame} (its circle ${f.r} px of the art), "${q && q.value}" is in the void's middle at the circle's size ${JSON.stringify(v.why)}`,
         !!q && q.cols === 1 && q.value === MID.num && v.ok, { q, why: v.why });
+    }
+
+    /* 7b. v2.3.5004: each frame held (the freeze) in turn, read off its
+       canvas: drawn from that frame's own file, at the box's top left, at
+       the box's scale (k the same for all eight) */
+    const starts = []; let acc = 0;
+    for (const f of LEVELUP_FRAMES) { starts.push(acc); acc += f.ms; }
+    const ks = [];
+    for (let i = 0; i < LEVELUP_FRAMES.length; i++) {
+      const f = LEVELUP_FRAMES[i];
+      const at = f.ms ? starts[i] + f.ms / 2 : LEVELUP_RUN_MS + 200;
+      await P.page.evaluate(([ms, msg]) => { window.__btLevelUpFreeze = ms; window._setLevelUpMsg({ ...msg, ts: Date.now() }); }, [at, MID.msg]);
+      const q = await P.page.waitForFunction(([want, SW, SH]) => {
+        const all = document.querySelectorAll('[data-levelup-art]');
+        const art = all[0];
+        if (all.length !== 1 || !art || art.getAttribute('data-levelup-frame') !== String(want)) return null;
+        const r = art.getBoundingClientRect();
+        const cv = art.querySelector('canvas');
+        const out = { numbers: art.getAttribute('data-levelup-numbers'), w: r.width, h: r.height, bg: getComputedStyle(art).backgroundImage.slice(0, 160) };
+        if (cv) {
+          if (!cv.width || cv.getAttribute('data-frame') !== String(want)) return null;   /* not drawn yet (frames 2-7 open as the burst starts) */
+          const cr = cv.getBoundingClientRect();
+          const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+          let n = 0, sum = 0, past = 0;
+          for (let y = 0; y < cv.height; y++) {
+            for (let x = 0; x < cv.width; x++) {
+              const a = d[(y * cv.width + x) * 4 + 3];
+              if (x < SW && y < SH) { if (a) { n++; sum += a; } } else if (a) past++;
+            }
+          }
+          out.cv = { w: cv.width, h: cv.height, cssW: cr.width, cssH: cr.height, dx: cr.left - r.left, dy: cr.top - r.top, n, sum, past };
+        }
+        return out;
+      }, [i, f.sw, f.sh], { timeout: 8000, polling: 100 }).then((h) => h.jsonValue()).catch(() => null);
+      if (NUMBERS) {
+        const want = await frameAlpha(i);
+        const k = q ? q.w / f.sw : 0;
+        ks.push(k);
+        const c = q && q.cv;
+        rec.ok(`7b. frame ${i} (${f.sw} x ${f.sh}) drawn from its numbers: ${c ? c.n : '-'} px showing (the file: ${want.n}), alpha ${c ? c.sum : '-'} (${want.sum}), ${c ? c.past : '-'} past the frame; the canvas ${c ? c.w + ' x ' + c.h : '-'} at k ${k.toFixed(3)}`,
+          !!c && q.numbers === '1' && want.w === f.sw && want.h === f.sh
+            && c.w === LEVELUP_MAX_W && c.h === LEVELUP_MAX_H && c.n === want.n && c.sum === want.sum && c.past === 0
+            && Math.abs(c.dx) < 0.5 && Math.abs(c.dy) < 0.5
+            && Math.abs(c.cssW / LEVELUP_MAX_W - k) < 0.005 * k && Math.abs(q.h / f.sh - k) < 0.005 * k,
+          { q, want });
+      } else {
+        rec.ok(`7b. burstnumbers=0: frame ${i} drawn from the strip`, !!q && q.numbers === '0' && !q.cv && /levelup-burst-v1\.webp/.test(q.bg), q);
+      }
+    }
+    if (NUMBERS) {
+      const st = await P.page.evaluate(() => window.__btLevelUpWarm.numbers());
+      const kOk = ks.length === 8 && ks.every((k) => k > 0 && Math.abs(k - ks[0]) < 0.005 * ks[0]);
+      rec.ok(`7b. one scale for all eight (k ${ks.map((k) => k.toFixed(3)).join(', ')}); a frame's draw ${st.lastMs} ms last, ${st.maxMs} ms at most (the line: 12 ms)`,
+        kOk && st.maxMs < 12, { ks, st });
+    }
+    /* the frozen burst let go (its own clock is long past its end) */
+    await P.page.evaluate(() => { delete window.__btLevelUpFreeze; });
+    await gone(P);
+    await P.page.waitForTimeout(300);
+
+    /* 7c. v2.3.5004: a burst played live: its frames in order to 7, drawn at
+       most once each, the canvas emptied and the ImageData let go after */
+    if (NUMBERS) {
+      const live = await P.page.evaluate(() => new Promise((res) => {
+        const W = window.__btLevelUpWarm;
+        const d0 = W.numbers().draws;
+        const ts = Date.now();
+        const seen = [];
+        let cv = null;
+        window._setLevelUpMsg({ kind: 'combat', level: 16, skill: 'sword', skillLabel: 'Melee', skillLevel: 11, ts });
+        const tick = () => {
+          const art = document.querySelector('[data-levelup-art]');
+          if (art) {
+            const f = +art.getAttribute('data-levelup-frame');
+            if (seen[seen.length - 1] !== f) seen.push(f);
+            cv = art.querySelector('canvas') || cv;
+          } else if (seen.length) {
+            setTimeout(() => { const n = W.numbers(); res({ seen, draws: n.draws - d0, cvW: cv ? cv.width : null, cvH: cv ? cv.height : null, scratch: n.scratch, users: n.users, framesAfter: n.frames, bytesAfter: n.bytes, openMs: n.openMs }); }, 400);
+            return;
+          }
+          if (Date.now() - ts > 12000) { res({ seen, timeout: true }); return; }
+          requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }));
+      const inOrder = live.seen.length > 0 && live.seen.every((f, j) => j === 0 || f > live.seen[j - 1]) && live.seen[live.seen.length - 1] === 7;
+      rec.ok(`7c. played live: frames ${live.seen.join(' ')} (in order to 7), ${live.draws} draws (one a frame at most: <= 8), the canvas emptied after (${live.cvW} x ${live.cvH}), the ImageData let go (${!live.scratch}), frames 2-7 let go (${live.framesAfter} open after, ${live.bytesAfter} bytes); frames 2-7 opened in ${live.openMs} ms`,
+        !live.timeout && inOrder && live.draws >= 1 && live.draws <= 8 && live.cvW === 0 && live.cvH === 0 && !live.scratch && live.users === 0
+          && live.framesAfter === 2 && live.bytesAfter < 0.1e6, live);
+      await gone(P);
     }
 
     rec.ok('5. no page errors', errors.length === 0, errors.slice(0, 3));

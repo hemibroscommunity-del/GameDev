@@ -574,8 +574,9 @@ await section(3, async () => {
   check('3b. ...and no listed function holds more loads than its line says (a second load in it is a new one)', j.over.length === 0, j.over);
   check('3c. ...and a load fixed (now through a door) or gone comes off the list, or its count goes down: the list only shrinks', j.under.length === 0, j.under);
   const doorFiles = [...found].filter(([, l]) => l.some((s) => s.door)).map(([f, l]) => f + ':' + l.filter((s) => s.door).map((s) => s.door).join('+')).sort();
-  check('3d. the doors are where they are said to be: capes, shields, weapons, the health bars, the badges and the hat\'s hair mask, the head pieces\' pictures, the ground worker\'s start lists',
-    JSON.stringify(doorFiles) === JSON.stringify(['public/tools/world/core/startFetch.js:startFetch', 'src/rendering/capeSprites.js:loadSetLater', 'src/rendering/shieldSprites.js:loadSetLater',
+  /* v2.3.5004: and the level-up burst's colour numbers (levelUpBurstNumbers.js, a fetch inside loadSetLater) */
+  check('3d. the doors are where they are said to be: capes, shields, weapons, the health bars, the badges and the hat\'s hair mask, the head pieces\' pictures, the ground worker\'s start lists, the level-up burst\'s numbers',
+    JSON.stringify(doorFiles) === JSON.stringify(['public/tools/world/core/startFetch.js:startFetch', 'src/rendering/capeSprites.js:loadSetLater', 'src/rendering/levelUpBurstNumbers.js:loadSetLater', 'src/rendering/shieldSprites.js:loadSetLater',
       'src/rendering/systems/entityRenderer.js:loadSetLater+timeLimit+loadSetLater', 'src/rendering/traits/traitImg.js:loadTraitImg', 'src/rendering/weaponSprites.js:loadSetLater']), doorFiles);
   const timed = [...texts].filter(([, t]) => /(?<![\w$.])timeLimit\s*\(/.test(blank(t))).map(([f]) => f).filter((f) => f !== 'src/rendering/retryLooks.js').sort();
   check('3e. the callers of timeLimit are the known ones (a new one says where its retry is, in TIMED_AND_RETRIED, or its loads go on the list)',
