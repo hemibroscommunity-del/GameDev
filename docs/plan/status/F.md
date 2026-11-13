@@ -37,5 +37,4 @@ state: working
 - From the owner, asked once (2026-11-13): for each of the 13 uploads,
   what it is for, what made it, still wanted; may the credits say
   "AI-made" (call 19).
-- From card B: a guard under `tools/guards/` holding `sources.json` to
-  `assets/` (`weights.mjs --sources` only reports).
+- From card B: a guard holding `sources.json` to `assets/`.
