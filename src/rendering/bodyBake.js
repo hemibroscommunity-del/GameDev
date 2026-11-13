@@ -39,7 +39,8 @@ const _OFF = (() => {
   return null;
 })();
 
-const _stats = { off: _OFF, asked: 0, done: 0, failed: 0, inlineProbe: 0, loading: 0, stalled: 0, ms: 0, pageMs: 0, lastWhy: null };
+const _stats = { off: _OFF, asked: 0, done: 0, failed: 0, inlineProbe: 0, loading: 0, stalled: 0, beats: 0, dropped: 0, ms: 0, pageMs: 0, lastWhy: null,
+  shirt: { asked: 0, done: 0 } };   /* v2.3.5014: a drawn shirt's jobs (gearSheets.js), counted apart for mp-bodyworker 5 */
 let _dead = false, _seq = 0, _started = 0;
 /* ═══ TWO WORKERS, AND A WATCH THAT TELLS A DEAD ONE FROM A BUSY ONE ═══
    The first crowd tour with one worker and a 20 s limit a JOB: a-ink's
@@ -49,7 +50,12 @@ let _dead = false, _seq = 0, _started = 0;
    answered nothing for WORKER_MS while it has work is let go of, and its jobs
    (and every later one, if none is left) bake on the page.  Two workers where
    the device has the cores (a phone has six), so one drawn player's dozen
-   sheets do not hold up the next player's. */
+   sheets do not hold up the next player's.
+   v2.3.5013: "answered nothing" counts a job's beat between its steps
+   (bodyBakeWorker.js), and a worker runs its jobs in turn: four fish sheets
+   started at once answered only together, 19 to 25 s after the ask, and the
+   watch let two busy workers go (the crowd tour's h-eight: 208 to 288 ms
+   holds as the page baked what they had). */
 const POOL = (() => { try { return Math.max(1, Math.min(2, ((navigator && navigator.hardwareConcurrency) || 2) - 2)); } catch (e) { return 1; } })();
 const _pool = [];   /* { w, pending: Map(id -> res), sign: ms } */
 const _pending = { get size() { let n = 0; for (const s of _pool) n += s.pending.size; return n; } };
@@ -62,6 +68,7 @@ function _kill(slot, why) {
   slot.dead = true;
   for (const [id, p] of slot.pending) { slot.pending.delete(id); p({ ok: false, why }); }
   if (!_pool.length) _dead = true;
+  _pump();   /* v2.3.5014: the line goes to the worker left, or (none) to the page */
 }
 function _watch() {
   if (_watchT) return;
@@ -78,10 +85,14 @@ function _start() {
   w.onmessage = (ev) => {
     const m = ev.data || {};
     slot.sign = Date.now();
+    /* v2.3.5013: a job's beat between its steps (bodyBakeWorker.js): alive,
+       nothing to hand back */
+    if (m.beat) { _stats.beats++; return; }
     const p = slot.pending.get(m.id);
     if (!p) return;
     slot.pending.delete(m.id);
     p(m);
+    _pump();   /* v2.3.5014: free: the next job in line */
   };
   /* a worker that dies (a script that failed to load, an error at the top):
      its jobs bake on the page, and every later one if none is left */
@@ -90,19 +101,50 @@ function _start() {
   _watch();
   return slot;
 }
-/* the slot with the least work, started as needed */
+/* v2.3.5014: a worker with nothing in hand, started as needed; null when
+   every worker is busy (or none is left: _dead) */
 function _worker() {
   if (_dead) return null;
-  let best = null;
-  for (const s of _pool) if (!best || s.pending.size < best.pending.size) best = s;
+  for (const s of _pool) if (!s.pending.size) return s;
   /* a worker let go of is not started again: its slot bakes on the page */
-  if ((!best || best.pending.size) && _started < POOL) {
+  if (_started < POOL) {
     _started++;
     const s = _start();
     if (s) return s;
     if (!_pool.length) { _dead = true; return null; }
   }
-  return best;
+  return null;
+}
+/* ═══ v2.3.5014: THE LINE IS KEPT ON THE PAGE, AND A JOB NO LONGER WANTED IS DROPPED ═══
+   The crowd tour's d-prints, with drawn shirts moved to the worker: ten
+   players in ten drawings, and gearSheets.js keeps eight drawings baked
+   (MAX_ART_KEYS), so a sheet still waiting for the worker was let go of and
+   asked for again as its player came back on screen: 40 sheets asked for 230
+   times in 25 s, every ask a job posted, and the worker, working through
+   them in turn (v2.3.5013), had done 6 when the station ended.  Now each
+   worker is handed one job at a time and the rest wait here, in the order
+   asked; a job whose caller said how to tell it is still wanted (`wanted`)
+   and is not, when its turn comes, is dropped unbaked (resolved
+   `{ dropped }`: its caller had already let go of it). */
+const _line = [];   /* { msg, transfer, res, wanted } */
+function _pump() {
+  while (_line.length) {
+    const slot = _worker();
+    if (!slot) {
+      if (!_dead) return;   /* all busy: an answer pumps again */
+      const q = _line.shift();   /* none left: the page's, as before */
+      q.res({ ok: false, why: 'no worker' });
+      continue;
+    }
+    const q = _line.shift();
+    let want = true;
+    try { want = !q.wanted || !!q.wanted(); } catch (e) { want = true; }
+    if (!want) { _stats.dropped++; q.res({ ok: false, why: 'dropped', dropped: true }); continue; }
+    const id = ++_seq;
+    slot.sign = Date.now();   /* idle until now: its clock starts with this job */
+    slot.pending.set(id, q.res);
+    try { slot.w.postMessage({ ...q.msg, id }, q.transfer || []); } catch (e) { slot.pending.delete(id); q.res({ ok: false, why: 'post' }); }
+  }
 }
 
 /** Bake on the worker now?  Checked at each bake (the QA probes are set by a
@@ -130,28 +172,31 @@ export function bodyWorkerWanted() {
 function _abs(u) { try { return new URL(u, location.href).href; } catch (e) { return u; } }
 
 /* a worker that answers nothing for this long while it has work is let go
-   of (the watch above); its jobs are the page's, with their own retries */
+   of (the watch above); its jobs are the page's, with their own retries.
+   v2.3.5013: a beat counts, so this is one STEP of one job silent this long
+   (the longest measured, a fish sheet's recolour on this box: 5.6 s) */
 const WORKER_MS = 20000;
-function _ask(msg, transfer) {
-  const slot = _worker();
-  if (!slot) return Promise.resolve({ ok: false, why: 'no worker' });
-  const id = ++_seq;
-  return new Promise((res) => {
-    if (!slot.pending.size) slot.sign = Date.now();   /* idle until now: its clock starts with this job */
-    slot.pending.set(id, res);
-    try { slot.w.postMessage({ ...msg, id }, transfer || []); } catch (e) { slot.pending.delete(id); res({ ok: false, why: 'post' }); }
-  });
+function _ask(msg, transfer, wanted) {
+  if (_dead) return Promise.resolve({ ok: false, why: 'no worker' });
+  return new Promise((res) => { _line.push({ msg, transfer, res, wanted }); _pump(); });   /* v2.3.5014: through the line */
 }
 
 /** Bake one sheet on the worker: `type` 'body' (bodyRecolor.js bakeBodyFull)
- *  or 'head' (bakeHeadFull).  `urls`: the file first, then its fallback
+ *  or 'head' (bakeHeadFull), or (v2.3.5014) 'shirt' (a drawn shirt: gearBake.js).  `urls`: the file first, then its fallback
  *  (webpImage.js spriteUrls).  Resolves { img, url, W, H, cells | null,
  *  frames } once the image is decoded; false when the FILE did not load (the
+ *  v2.3.5014: `wanted`, optional: asked when the job's turn comes; false and
+ *  it is dropped unbaked, resolving { dropped: true } (only for a caller
+ *  that passed `wanted`).
  *  caller's own retries take over: the page asks again, as it did); null for
  *  anything else (the caller bakes it on the page). */
-export function bakeOnWorker(type, urls, job, fw, fh) {
+export function bakeOnWorker(type, urls, job, fw, fh, wanted) {
   _stats.asked++;
-  return _ask({ type, urls: urls.map(_abs), job, fw, fh }).then((m) => {
+  if (type === 'shirt') _stats.shirt.asked++;
+  return _ask({ type, urls: urls.map(_abs), job, fw, fh }, null, wanted).then((m) => {
+    /* v2.3.5014: no longer wanted when its turn came: { dropped }, never
+       null (null sends the caller to the page's bake) */
+    if (m && m.dropped) return { dropped: true };
     if (!m || !m.ok || !m.png) {
       _stats.failed++; _stats.lastWhy = (m && m.why) || 'no answer';
       return (m && /^load: /.test(m.why || '')) ? false : null;
@@ -166,7 +211,9 @@ export function bakeOnWorker(type, urls, job, fw, fh) {
     return img.decode().then(() => {
       if (img.naturalWidth !== m.W || img.naturalHeight !== m.H) throw new Error('size');
       _stats.done++;
-      return { img, url, W: m.W, H: m.H, cells: m.cells, frames: m.frames, ms: m.ms };
+      if (type === 'shirt') _stats.shirt.done++;
+      /* v2.3.5014: + a gear sheet's frame (fw, fh), its width before the pack and the file it read (a drawn shirt: gearSheets.js) */
+      return { img, url, W: m.W, H: m.H, cells: m.cells, frames: m.frames, ms: m.ms, fw: m.fw, fh: m.fh, fullW: m.fullW, src: m.src };
     }).catch(() => {
       try { URL.revokeObjectURL(url); } catch (e) { /* gone */ }
       _stats.failed++; _stats.lastWhy = 'decode';
@@ -183,7 +230,7 @@ export function noteWorkerSheet(label, pageMs) {
 }
 
 if (typeof window !== 'undefined') {
-  window.__btBodyWorker = () => ({ ..._stats, dead: _dead, pending: _pending.size, workers: _pool.length, pool: POOL });
+  window.__btBodyWorker = () => ({ ..._stats, shirt: { ..._stats.shirt }, dead: _dead, pending: _pending.size, waiting: _line.length, workers: _pool.length, pool: POOL });
   /* QA (mp-bodyworker): bake each { urls, job, fw, fh } on the worker and
      hand back its packed bytes, for the caller to compare with the page's */
   window.__btBodyWorkerBytes = (urls, job, fw, fh, type) => _ask({ type: type || 'body', urls: urls.map(_abs), job, fw, fh, raw: true })

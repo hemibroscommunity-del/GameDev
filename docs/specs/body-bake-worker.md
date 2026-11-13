@@ -68,6 +68,19 @@ and the later rounds are unchanged.
   one worker and a limit a job sent b-fish's jobs, queued behind a-ink's, back
   to the page (344 ms holds). Two workers where the device has the cores. A file that did not load goes on to the page's own second try
   after its backoff, as a failed first download always did.
+- **v2.3.5013: one job at a time, and a beat.** The crowd tour's h-eight still
+  held the page 208 to 288 ms, 7 times in 20 s, after eight armoured players
+  had cast (c-armour8): their 32-frame fish sheets, baked on the page because
+  the watch had let BOTH workers go (`__btBodyWorker()`: stalled 2, dead). They
+  were not stuck. Each job ran as its own async run, so the four fish sheets
+  a worker was given all loaded, then all recoloured (4 to 5.6 s each on this
+  box), then all packed, and the first answer came only when nearly all were
+  done: 18.7 to 24.6 s after the ask (measured, the worker's own step times).
+  Now a worker runs its jobs in turn (an answer every few seconds, the first
+  asked the first back, one job's canvases alive at once) and posts
+  `{ beat: 1 }` between a job's steps (loaded, recoloured, packed), which the
+  watch counts as an answer. `WORKER_MS` is unchanged: what it lets go of now is
+  one step silent for 20 s, a worker that is truly stuck.
 
 ## How it was proven
 
@@ -124,6 +137,43 @@ recoloured for them (`effectsRenderer.js` `_remoteBodyFramesFor`,
 (up to 564 ms in the first tour after the body sheets moved). In play it is
 the worker's job `'standin'` now (`_peerOnWorker`): the strip is null until it
 lands, which both callers already draw as they do while the image loads.
+
+### A drawn shirt (v2.3.5014)
+
+A player in a drawn shirt (a print, a pattern, a colour) has their shirt sheet
+dressed for them (`gearSheets.js` `getShirtLookFrame` > `composeShirt`) the
+first time each pose is drawn. The stand and jog are drawn from colour numbers
+(`lookShirtFrame.js`); the rest (a hit, a roll, mining, fishing, the pickup)
+were dressed ON THE PAGE: 121 to 192 ms each, 8 to 13 times in the crowd tour's
+d-prints. In play it is the worker's job `'shirt'` now. The steps are the
+page's own, moved verbatim to `gearBake.js` (`gearSheetCanvas`: the sheet
+restored to its frame; `dressShirtSheet`: colour, pattern, print) so the page
+and the worker run one copy, then `packTrimmedCore` where the page packs
+(`TRIM_SLOTS`, `TRIM_POSES`). The shirt stays the plain tinted shirt until the
+dressed one lands, as it always did while it baked. `mp-bodyworker` 5 compares
+one sheet a pose family (stand, jog, jog-northeast, hit, roll, mine, fish,
+pickup, the swing's upscaled and unpacked sheet) in two looks: byte for byte
+the same, the same size and cells. Off as the rest is off, plus
+`?shirtworker=0` for this alone. The stand-ins' shirt strips (the swing, the
+bow, the cook, the chop, the farmer: `effectsRenderer.js` `_dressedShirtFrame`)
+go the same way (`_dressedOnWorker`, `dressShirtStrip`).
+
+**The line is kept on the page (v2.3.5014).** Ten players in ten drawings and
+eight drawings kept (`MAX_ART_KEYS`): a sheet still waiting for the worker was
+let go of and asked for again as its player came back on screen, 40 sheets
+asked 230 times in 25 s, every ask a job posted. Now `bodyBake.js` hands each
+worker one job at a time and the rest wait in a line on the page; a job whose
+caller says how to tell it is still wanted (`wanted`) and is not, when its
+turn comes, is dropped unbaked (`{ dropped }`), and a shirt sheet asked for
+again waits for its job already on its way. d-prints: 60 asks, 8 dropped.
+
+**What it costs.** The page holds nothing; the dressed shirt arrives later.
+On this box a worker dresses a sheet in 0.8 to 1.5 s when it is quiet (the
+page did it in 0.2 to 0.5 s, holding the page), and about 3 s a sheet with ten
+players and the page drawing in software beside it: in d-prints' 25 s, 6 of
+the 60 were dressed and the rest drew the plain tinted shirt meanwhile, as a
+shirt always did while it baked. A phone has two more cores and a graphics
+chip of its own.
 
 ## Not here (next)
 

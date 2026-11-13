@@ -41,11 +41,11 @@ export const NOISE_K = 1.5;
 
 export const KNOWN = {
   'body-bake': { ms: 13,   /* v2.3.4960: 220 -> 13: none in the main tour (peer, armour) since v2.3.4930's worker; held to just over the general line while h-eight keeps the family listed */
-    why: 'the head an armoured player shows (<pose>-<dir>-head sheets) is recoloured on the page for each look the first time it is drawn: 28 to 164 ms a sheet as an armoured player circles you',
+    why: 'the head an armoured player shows (<pose>-<dir>-head sheets) is recoloured on the page for each look the first time it is drawn: 28 to 164 ms a sheet as an armoured player circles you.  v2.3.5013: in play, only where the body bake\'s worker is off or let go of (bodyBake.js); the heads are drawn from colour numbers since v2.3.4961',
     next: 'key them by skin alone (they take no trouser or boot colour), then keep them as numbers like the bodies (a look set); the same for a body with an eye style or a drawing (STATE-MACHINES A2)',
     /* v2.3.4499: the crowd tour (mp-crowdsweep, docs/specs/held-sweep.md "The crowd tour"), five runs, the worst of each */
     at: { 'a-ink': 12, 'b-fish': 12, 'c-armour1': 12,   /* v2.3.4872: the pickaxe's outline turned round (toolWood.js solidTool): c-armour1 179 -> 62 ms, the crowd's armour stations 229 -> 169.  v2.3.4960: 90 -> 12 (none) */
-      'c-armour8': 12, 'h-eight': 120, 'd-prints': 12 },   /* v2.3.4960: d-prints 190 -> 12 (none).  h-eight NOT lowered: 2026-11-12 it measured 227 ms, 29 bakes on the page (bakeBodyFull and mostly bakeHeadFull): with eight armoured players the body bake's worker stalls past its 20 s watch (bodyBake.js WORKER_MS), is let go of, and the page bakes.  Over its line, left as it was (never raised silently) */
+      'c-armour8': 12, 'h-eight': 12, 'd-prints': 12 },   /* v2.3.5013: h-eight 120 -> 12 (none; 11.1 / 9.1 / 10.3 ms the longest hold of any family, three runs; was 208 to 238 ms, 7 times).  Not the heads (the numbers draw those since v2.3.4961): the fish sheets of the armoured players who had cast, baked on the page because the watch let both busy workers go.  bodyBakeWorker.js: one job at a time and a beat between its steps */   /* v2.3.4960: d-prints 190 -> 12 (none).  h-eight NOT lowered: 2026-11-12 it measured 227 ms, 29 bakes on the page (bakeBodyFull and mostly bakeHeadFull): with eight armoured players the body bake's worker stalls past its 20 s watch (bodyBake.js WORKER_MS), is let go of, and the page bakes.  Over its line, left as it was (never raised silently) */
     /* v2.3.4930: in play every one of these bakes runs on the body bake's worker (bodyBake.js, docs/specs/body-bake-worker.md):
        the body sheets (a drawing, an eye style, the fish), the armoured heads, a peer's drawn stand-ins.  The crowd tour,
        a-ink, b-fish and c-armour8, before (`?bodyworker=0`) and after: 546 / 179 / 202 ms longest, 53 holds and 6.2 s in all
@@ -79,6 +79,10 @@ export const KNOWN = {
     crowd: 'v2.3.4871 FIXED (was:) eight species-and-skin pairs on screen (e-species) churn their builds (speciesArt.js _BUILD_CAP 6: each frame lets go of one and builds another, and what it let go of is freed 30 s later): 566 pictures of 256 x 256 made in a minute, 187 MB, then 757 and 250 MB.  The collector holds the page 35 to 100 ms at a time, and when the first tours went on after it, 336 to 698 ms walking into the crowd and up to 1076 ms at the Leaderboards.  On an iPhone this is the black screen, not a hitch.  Fix: a cap that is never under the looks on screen (or the build kept while its player is), and a let-go freed at once when nothing draws it' },
   /* ── v2.3.4499: found by the crowd tour (mp-crowdsweep) ── */
   'gear-sheet': { ms: 195,
+    /* v2.3.5014: d-prints 12 (none: the longest hold of any family 8.2 / 11.9 / 7.4 ms, three runs; was 180.7 to 238.9 ms,
+       7 to 15 times): a drawn shirt is dressed on the body bake's worker in play (gearSheets.js _buildShirtOnWorker,
+       effectsRenderer.js _dressedOnWorker).  The family's own 195 stands: only d-prints was run again */
+    at: { 'd-prints': 12 },
     why: "a drawn shirt composed on the page for each player who wears one, the first time each pose is drawn (composeShirt > stampShirtArt): 121 to 192 ms each, 8 to 13 times as ten players in drawn shirts swung, rolled and mined beside you (d-prints).  gearSheets.js keeps 8 drawings baked: with ten on screen none were seen to bake again in the 25 s",
     next: 'stamp the drawing on the worker (the shirt is a 256-colour file like the rest), or draw the drawing as its own layer over the plain shirt instead of baking it into a sheet' },
   portrait: { ms: 40,   /* v2.3.4960: 150 -> 40: the Leaderboards' faces 11.3 ms (g-boards, was 149); the bag's own portrait as armour goes on 37 ms (armour) */

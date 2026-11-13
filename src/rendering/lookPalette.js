@@ -57,6 +57,7 @@ import { timeLimit } from './retryLooks.js';   /* v2.3.4452: a set's file that n
 import { unpackLookSheet, lookHeadRows } from './lookUnpack.js';   /* v2.3.5015: the picture's pixels to the sheet's bytes, on either thread */
 import { destroyTextures } from './bulkTexDestroy.js';   /* v2.3.5011: the sweep's frames let go of in one pass a sheet */
 import { clientOff } from '../game/clientOff.js';   /* v2.3.3716: the Test panel's live off switch (lane D's clientOff.js) */
+import { heapTrimOn } from './heapTrim.js';   /* v2.3.5007: the heap trim's switch (a sheet's frames made when first drawn) */
 import { lookPaletteChoice } from '../game/lookPaletteChoice.js';   /* v2.3.3838: not built on Windows */
 import { SheenGeometry, SHEEN_VS, sheenBitGl, packSheenQuad, SHEEN_BATCHER } from './lightfx/sheenBatch.js';   /* v2.3.4998: the shine on a numbers picture */
 
@@ -309,17 +310,36 @@ function buildSheet(set, name, m, img, roles, place) {
     });
     src._btLook = look;
   }
-  const frames = m.cells.map(([ax, ay, tx, ty, w, h], i) => {
-    const r = { i, n: m.cells.length };
-    /* in display texels, which are the source's points (a ds 2 sheet is
-       resolution 2): the old path's own cells */
-    if (tx < 0) r.frame = new Rectangle(ax, ay, w, h);
-    else { r.frame = new Rectangle(ax, ay, w, h); r.orig = new Rectangle(0, 0, m.fw || 128, m.fh || 128); r.trim = new Rectangle(tx, ty, w, h); }
-    return r;
-  });
+  /* ═══ v2.3.5007: A SHEET'S FRAMES MADE WHEN IT IS FIRST DRAWN ═══
+     Each frame is up to three Rectangles (four boxed numbers each on V8: a
+     Rectangle's fields hold fractions somewhere, so all of them do), for
+     every cell of all ~190 sheets as they load: ~0.5 MB of the page's heap
+     at the memory check's fight (docs/specs/heap-trim-2026-11-13.md), most of
+     it for poses never drawn there (the fishing, mining, pickup and armour
+     sheets of every facing).  So the list is made the first time a caller
+     reads `frames` (a look's first frame of that sheet, lookArmour's first
+     bake of it) from the manifest's cells, kept by `make` anyway, and every
+     frame of the sheet shares its ONE whole-frame box (`orig`, the same
+     numbers in each, read by Pixi and never written).  The same frames, the
+     same pictures.  `?heaptrim=0` makes them all as the sheet loads, one box
+     a frame, as before (rendering/heapTrim.js). */
+  const lean = heapTrimOn();
+  const makeFrames = () => {
+    const orig = lean ? new Rectangle(0, 0, m.fw || 128, m.fh || 128) : null;
+    return m.cells.map(([ax, ay, tx, ty, w, h], i) => {
+      const r = { i, n: m.cells.length };
+      /* in display texels, which are the source's points (a ds 2 sheet is
+         resolution 2): the old path's own cells */
+      if (tx < 0) r.frame = new Rectangle(ax, ay, w, h);
+      else { r.frame = new Rectangle(ax, ay, w, h); r.orig = orig || new Rectangle(0, 0, m.fw || 128, m.fh || 128); r.trim = new Rectangle(tx, ty, w, h); }
+      return r;
+    });
+  };
   /* v2.3.4993: `look` the sheet's own (its size, its bytes again: make);
      `member` its place in a page, or null (its own texture, `src`) */
-  const sheetRec = { src, frames, ds: m.ds, bits, book: 0, uploaded: -1, look, member };
+  const sheetRec = { src, _frames: lean ? null : makeFrames(), get frames() { return this._frames || (this._frames = makeFrames()); },
+    ds: m.ds, bits, book: 0, uploaded: -1, look, member };
+  _stats.framesLazy = (_stats.framesLazy || 0) + (lean ? 1 : 0);
   holder.sheet = sheetRec;
   _sheets[set + '/' + name] = sheetRec;
   _stats.sheets++;

@@ -26,7 +26,7 @@
  *      1d phones fetch the new sheet: the player sprites' VERSION is 102 or
  *         later, and the stale .webp twin is gone (CI mints a fresh one from
  *         the new sheet: any twin but the stale one's bytes passes).
- * 2. THE PRINT (playerDecal.js torsoAnchors, gearSheets.js STABLE_PRINT_POSES).
+ * 2. THE PRINT (playerDecal.js torsoAnchors, gearBake.js STABLE_PRINT_POSES; v2.3.5014: moved there from gearSheets.js).
  *    The print and the pattern were placed by each frame's own chest box (its
  *    widest upper row, its top and bottom), and the mining swing raises the
  *    sleeve with the pickaxe: on the tee's mining strip the print's middle
@@ -186,12 +186,12 @@ const KEY = [150, 158, 172], TOL = 24;
   /* the body under the tee sways about 4 px across through the swing itself
      (its own middle 71.0-75.2 on this sheet): the print follows the torso */
   check(`2b ...and across, it follows the torso's middle (${span(newX)} px of sway through the swing, no more than 4)`, newX.length === frames && span(newX) <= 4, newX);
-  const gs = readFileSync(new URL('src/rendering/gearSheets.js', root), 'utf8');
+  const gs = readFileSync(new URL('src/rendering/gearBake.js', root), 'utf8');   /* v2.3.5014: the dressing moved to gearBake.js (the body bake's worker runs it too) */
   const m = gs.match(/const STABLE_PRINT_POSES = new Set\(\[([^\]]*)\]\)/);
   const poses = m ? m[1].split(',').map((s) => s.trim().replace(/'/g, '')).filter(Boolean) : null;
   check(`2c the mining pose is anchored, the walking and standing ones are not (${poses && poses.join(', ')})`,
     !!poses && poses.includes('mine') && !poses.includes('stand') && !poses.includes('jog')
-      && /composeShirt\(img, fh, STABLE_PRINT_POSES\.has\(pose\)/.test(gs), poses);
+      && /return composeShirt\(img, fh, STABLE_PRINT_POSES\.has\(pose\)/.test(gs), poses);
 }
 
 console.log(`\n${passed + failed} checks, ${passed} passed, ${failed} failed`);
