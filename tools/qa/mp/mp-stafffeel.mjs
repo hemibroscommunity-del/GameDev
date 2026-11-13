@@ -72,7 +72,7 @@ const nearSnow = (P) => P.page.evaluate(() => {
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const errors = [];
-  const P = await H.newPlayer(browser, { name: 'Orbbro', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'manual=default' });   /* the game's own combat: nothing chosen */
+  const P = await H.newPlayer(browser, { name: 'Orbbro', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'manual=3' });   /* the game's own combat: nothing chosen */
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   const stop = H.keepAlive(P);
   try {
@@ -216,7 +216,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
 
   /* ── 8 ── a computer: the left button */
-  const C = await H.newPlayer(browser, { name: 'Deskorb', wsPort, webPort, viewport: { width: 1280, height: 800 }, wide: true, world: 'wheel', query: 'manual=default' });
+  const C = await H.newPlayer(browser, { name: 'Deskorb', wsPort, webPort, viewport: { width: 1280, height: 800 }, wide: true, world: 'wheel', query: 'manual=3' });
   C.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   const stopC = H.keepAlive(C);
   try {
@@ -251,7 +251,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
 
   /* ── 9 ── `?stafffeel=0`: today's held staff */
-  const Q = await H.newPlayer(browser, { name: 'Heldbro', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'manual=default&stafffeel=0' });
+  const Q = await H.newPlayer(browser, { name: 'Heldbro', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'manual=3&stafffeel=0' });
   Q.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   const stopQ = H.keepAlive(Q);
   try {

@@ -116,7 +116,7 @@ async function enter(P, rec, label) {
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const errors = [];
-  const P = await H.newPlayer(browser, { name: 'Drawbro', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'manual=default', init: WIRE_IN });
+  const P = await H.newPlayer(browser, { name: 'Drawbro', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'manual=3', init: WIRE_IN });
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   const stop = H.keepAlive(P);
   try {
@@ -297,7 +297,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
 
   /* ── 9 ── a computer: the left button held draws, let go looses */
-  const D = await H.newPlayer(browser, { name: 'Deskbow', wsPort, webPort, viewport: { width: 1280, height: 800 }, wide: true, world: 'wheel', query: 'manual=default' });
+  const D = await H.newPlayer(browser, { name: 'Deskbow', wsPort, webPort, viewport: { width: 1280, height: 800 }, wide: true, world: 'wheel', query: 'manual=3' });
   D.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   const stopD = H.keepAlive(D);
   try {
@@ -324,7 +324,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
 
   /* ── 10 ── `?bowfeel=0`: today's flick bow */
-  const Q = await H.newPlayer(browser, { name: 'Flickbro', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'manual=default&bowfeel=0' });
+  const Q = await H.newPlayer(browser, { name: 'Flickbro', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'manual=3&bowfeel=0' });
   Q.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   const stopQ = H.keepAlive(Q);
   try {

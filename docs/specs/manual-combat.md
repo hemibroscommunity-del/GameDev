@@ -12,6 +12,36 @@
 > uses your finger to control the projectile once launched so none of the new
 > controls should interfere with that."*
 
+## The held combat is the game's again (v2.3.5018)
+
+> *"One more thing is that I like combat better the old way. You just move the
+> right joystick towards the enemy and it attacks as long as it is held down.
+> A swipe on the right joystick activates the special attack."* -- the owner,
+> 2026-11-13.
+
+That is the old combat (`?manual=0`: the held attack, a flick its special), but
+the old combat also has the **tap lock**, which the owner took out on
+2026-11-10 ("Remove the tap to target system ... easily botted") and did not ask
+back. So the default is a fifth choice, **4, the held combat**:
+
+| choice | what it plays | tap lock | remembered |
+|---|---|---|---|
+| **4** (the default) | the held attack: hold the right stick toward an enemy and it keeps attacking; a flick is the special; the staff fires while held and its bolt is steered; a computer attacks while the button is held | **none** (a tap or double click on a monster locks nothing; a duel keeps no lock) | `?manual=4` forgets, back to the default |
+| 0 | the old combat, as it was | yes | yes |
+| 1 / 2 / 3 | the swipes / the slingshot bow / the free-swing trial (the default from v2.3.4655 to v2.3.5018) | none | yes (3 too, now that it is a choice) |
+
+- `manualOn()` is false for 4, so every handler, the attack loop, the bow and
+  the staff take the old combat's lines; `tapLockOn()` (new) is true only for
+  0, and is what targeting.js, BroTown.jsx's tap and double click, the key list
+  and the controls tour ask about the lock.
+- The phone tests are unchanged: they play `?manual=0` unless they name one
+  (`harness.mjs`). The four that test the swipes' feel (`mp-manualcombat`,
+  `mp-swordfeel`, `mp-bowfeel`, `mp-stafffeel`) asked for "the default" and now
+  ask for `?manual=3` by name.
+- What the trial's worker-side rules (the free swing, the perfect strike, the
+  bow's draw, the staff's gather) need is untouched: they answer a phone on the
+  trial, as they always did.
+
 ## How it got here
 
 The first cut was **draw and release**: hold the right stick, a build-up fills

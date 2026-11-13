@@ -193,6 +193,22 @@ export var MANUAL = {
   PITCH_SAME_MS: 50,
 };
 
+/* ═══ v2.3.5018: THE HELD ATTACK IS THE GAME'S COMBAT AGAIN ═══
+   The owner, 2026-11-13: "I like combat better the old way. You just move
+   the right joystick towards the enemy and it attacks as long as it is held
+   down. A swipe on the right joystick activates the special attack."  That is
+   the old combat (0: the held attack, a flick its special) -- but 0 also has
+   the tap lock, which the owner took out on 2026-11-10 ("Remove the tap to
+   target system ... easily botted") and has not asked back.  So a fifth
+   choice, 4, THE HELD COMBAT: everything 0 does (manualOn() is false, so
+   every handler, the loop, the bow and the staff take their old lines),
+   but no lock a player chose (tapLockOn() false: a tap or a double click on
+   a monster locks nothing, a duel keeps no lock -- targeting.js, BroTown.jsx,
+   as in manual combat).  4 is the answer when nothing is chosen; `?manual=4`
+   comes back to it and forgets; `?manual=0` (the phone tests' own, harness.mjs)
+   is the old combat with its tap lock, remembered; `?manual=1/2/3` the
+   swipes, the slingshot bow, the free-swing trial, each remembered now that
+   none of them is the default. */
 /** Which combat this device plays: 3 the free-swing trial with its timing
  *  bar (the game's own since v2.3.4655, and the answer when nothing says
  *  otherwise), 1 the plain swipes, 2 swipes with the SLINGSHOT BOW, 0 the old
@@ -215,29 +231,38 @@ export function manualMode(search, store) {
   if (q == null) { try { q = typeof location !== 'undefined' ? location.search : ''; } catch (e) { q = ''; } }
   var ls = store;
   if (ls === undefined) { try { ls = typeof localStorage !== 'undefined' ? localStorage : null; } catch (e) { ls = null; } }
-  var m = /(?:^|[?&])manual=([0123])(?:&|$)/.exec(String(q || ''));   /* v2.3.4520: + 3, the free-swing trial */
+  var m = /(?:^|[?&])manual=([01234])(?:&|$)/.exec(String(q || ''));   /* v2.3.4520: + 3, the free-swing trial; v2.3.5018: + 4, the held combat */
   if (m) {
-    try { if (ls) { if (m[1] === '3') ls.removeItem(MANUAL.KEY); else ls.setItem(MANUAL.KEY, m[1]); } } catch (e) { /* a private window: the address still decides this visit */ }
+    /* v2.3.5018: 4 (the default) forgets; every other choice is remembered */
+    try { if (ls) { if (m[1] === '4') ls.removeItem(MANUAL.KEY); else ls.setItem(MANUAL.KEY, m[1]); } } catch (e) { /* a private window: the address still decides this visit */ }
     return +m[1];
   }
-  /* v2.3.4655: nothing remembered is the trial (3), the game's own now */
-  try { var v = ls ? ls.getItem(MANUAL.KEY) : null; return v === '0' ? 0 : v === '1' ? 1 : v === '2' ? 2 : 3; } catch (e) { return 3; }
+  /* v2.3.4655: nothing remembered was the trial (3); v2.3.5018: it is the held combat (4) */
+  try { var v = ls ? ls.getItem(MANUAL.KEY) : null; return v === '0' ? 0 : v === '1' ? 1 : v === '2' ? 2 : v === '3' ? 3 : 4; } catch (e) { return 4; }
 }
-/** Is manual combat wanted on this device (any kind)?  Yes, unless it chose the old one. */
-export function manualCombatWanted(search, store) { return manualMode(search, store) > 0; }
+/** Is manual combat wanted on this device (any kind)?  Yes for the swipes
+ *  (1, 2, 3); no for the old combat (0) and the held combat (4, v2.3.5018). */
+export function manualCombatWanted(search, store) { var m = manualMode(search, store); return m >= 1 && m <= 3; }
 
 var _mode = null;
 /** On for this page (read once; `setManualCombat` is QA's and the tests':
  *  false, true, or 2 for the slingshot bow). */
 export function manualOn() {
   if (_mode === null) _mode = manualMode();
-  return _mode > 0;
+  return _mode >= 1 && _mode <= 3;   /* v2.3.5018: 4, the held combat, is not manual */
+}
+/** v2.3.5018: may a player's tap (or a double click) lock onto a monster, and
+ *  a duel keep its lock?  Only in the old combat (`?manual=0`): the swipes and
+ *  the held combat keep no lock a player chose (the owner, 2026-11-10). */
+export function tapLockOn() {
+  if (_mode === null) _mode = manualMode();
+  return _mode === 0;
 }
 /** The slingshot bow's variation (`?manual=2`). */
 export function manualSling() { return manualOn() && _mode === 2; }
 /** v2.3.4520: the free-swing trial (`?manual=3`). */
 export function manualFreeSwing() { return manualOn() && _mode === 3; }
-export function setManualCombat(v) { _mode = v === 2 ? 2 : v === 3 ? 3 : (v ? 1 : 0); }
+export function setManualCombat(v) { _mode = v === 2 ? 2 : v === 3 ? 3 : v === 4 ? 4 : (v ? 1 : 0); }   /* v2.3.5018: + 4 */
 
 /** One device's remembered on/off: `?<name>=0` turns it off and is
  *  remembered under `key` ('0'), `?<name>=1` forgets; on otherwise. */
@@ -558,6 +583,8 @@ if (typeof window !== 'undefined') {
   try {
     window.__btManual = {
       on: function () { return manualOn(); },
+      mode: function () { if (_mode === null) _mode = manualMode(); return _mode; },   /* v2.3.5018 */
+      tapLock: function () { return tapLockOn(); },   /* v2.3.5018 */
       sling: function () { return manualSling(); },
       free: function () { return manualFreeSwing(); },   /* v2.3.4520 */
       /* v2.3.4615: the UI review can put its one page on the trial (what

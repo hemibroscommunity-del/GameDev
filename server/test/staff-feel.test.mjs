@@ -376,7 +376,7 @@ const T0 = 1000000;
   let SCN = '';
   try { SCN = read('../../tools/qa/mp/mp-stafffeel.mjs'); } catch (e) { SCN = ''; }
   check('10k the scenario plays the DEFAULT combat in the Wheel (registered in run.mjs)',
-    /stafffeel: \(\) => import\('\.\/mp-stafffeel\.mjs'\)/.test(RUN) && /world: 'wheel'/.test(SCN) && /query: 'manual=default/.test(SCN));
+    /stafffeel: \(\) => import\('\.\/mp-stafffeel\.mjs'\)/.test(RUN) && /world: 'wheel'/.test(SCN) && /query: 'manual=3/.test(SCN));
 }
 
 console.log(failures === 0 ? `\nstaff-feel: ${passes} passed, 0 failed` : `\nstaff-feel: ${failures} FAILURE(S)`);

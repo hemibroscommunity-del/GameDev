@@ -177,7 +177,7 @@ const store = () => { const m = new Map(); return { getItem: (k) => (m.has(k) ? 
   check('8j QA probes: window.__btWeaponFeel (the feel) and __btWeaponFeelFx (the layer)', /window\.__btWeaponFeel = function/.test(SF) && /window\.__btWeaponFeelFx = \(\) =>/.test(FX));
   check('8k the scenario plays the DEFAULT combat in the Wheel (registered in run.mjs)',
     /swordfeel: \(\) => import\('\.\/mp-swordfeel\.mjs'\)/.test(read('../../tools/qa/mp/run.mjs')) && /world: 'wheel'/.test(read('../../tools/qa/mp/mp-swordfeel.mjs'))
-    && /query: 'manual=default/.test(read('../../tools/qa/mp/mp-swordfeel.mjs')));
+    && /query: 'manual=3/.test(read('../../tools/qa/mp/mp-swordfeel.mjs')));
 }
 
 console.log(failures === 0 ? `\nweapon-feel: ${passes} passed, 0 failed` : `\nweapon-feel: ${failures} FAILURE(S)`);

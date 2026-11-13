@@ -3,7 +3,7 @@ import { controlsTutorialBus } from './controlsTutorialBus.js';
 import { holdDisc, releaseDisc } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves; a tour that points at them says so */
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { BT_AUDIO } from '@/data/index.js'; /* v2.3.2658: ui-close tick */
-import { manualOn } from '@/game/manualCombat.js'; /* v2.3.4396: the game's combat is swipes now -- the two steps that taught the held attack and the tap lock say so */
+import { manualOn, tapLockOn } from '@/game/manualCombat.js'; /* v2.3.4396: the game's combat is swipes now -- the two steps that taught the held attack and the tap lock say so */
 import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470: the layer's own box -- a computer's is the game's column (TRAPS §232) */
 
 /* v2.3.1205: REBUILT as live DOM-anchored annotations (previously a
@@ -54,6 +54,8 @@ const STEPS = [
      picks your target for you, and tapping is how you overrule it. */
   { key: 'target', shape: null, sels: null,
     label: 'Your target', body: 'You always aim at the closest enemy. Tap a different one to lock onto it instead, and tap it again to let go.',
+    /* v2.3.5018: the held combat (the game's own again) keeps no lock a player chose: no tap to lock */
+    bodyNoLock: 'You always aim at the closest enemy: hold the right stick toward it and keep fighting.',
     /* v2.3.4396: no lock a player chooses; a special is armed, then made */
     labelManual: 'Aiming and specials',
     bodyManual: 'Your sword turns to the closest enemy by itself. A bow shoots opposite your pull, a staff where you drag. For a sword or bow special, tap the Special button first: your next attack is the special.' },
@@ -411,7 +413,7 @@ export const ControlsTutorial = () => {
         <div style={{
           fontSize: 13, color: COL.text,
           marginTop: 6, lineHeight: 1.4,
-        }}>{(manualOn() && cur.bodyManual) || cur.body}</div>
+        }}>{(manualOn() && cur.bodyManual) || (!tapLockOn() && cur.bodyNoLock) || cur.body}</div>
 
         {/* v2.3.1235: Checkpoint B — ONE footer flex row:
             [Step text] [spacer] [Back?] [Next].  Progress text sits
