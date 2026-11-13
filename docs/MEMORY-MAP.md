@@ -162,7 +162,7 @@ The plan (M3, v2.3.3716, then its phase 2):
 | panel opened rarely (a tool, a page few players open) | its code in its own piece, loaded when it is first opened (the Sound Studio's way; after M4, the Test panel, the codex and others). Never a fight's code: a fight never waits for a load | `buffers` |
 | big table | with the code that needs it; nothing kept that can be worked out when asked | `heap` |
 | cache of anything | a cap, and a pool gives back what a spike made (the memory law) | its line |
-| on-screen words (Pixi Text) | destroyed when gone, never hidden (TRAPS §192); a style derived with `.clone()` (TRAPS §254); numbers that change often as a bitmap font | `gpu`, `heap` |
+| on-screen words (Pixi Text) | destroyed when gone, never hidden (TRAPS §192); a style derived with `.clone()` (TRAPS §254); numbers that change often as a bitmap font (the damage font: digits at 128 on three 512 pages, words at 80 on one 1024 page, 9.3 MB on the chip; v2.3.5008, damage-number-size.md) | `gpu`, `heap` |
 | words in the game's script | ASCII, so the script is kept at one byte a letter (TRAPS §258) | `buffers` |
 
 ### The ground builder
