@@ -39,7 +39,7 @@ const _OFF = (() => {
   return null;
 })();
 
-const _stats = { off: _OFF, asked: 0, done: 0, failed: 0, inlineProbe: 0, loading: 0, stalled: 0, ms: 0, pageMs: 0, lastWhy: null };
+const _stats = { off: _OFF, asked: 0, done: 0, failed: 0, inlineProbe: 0, loading: 0, stalled: 0, beats: 0, ms: 0, pageMs: 0, lastWhy: null };
 let _dead = false, _seq = 0, _started = 0;
 /* ═══ TWO WORKERS, AND A WATCH THAT TELLS A DEAD ONE FROM A BUSY ONE ═══
    The first crowd tour with one worker and a 20 s limit a JOB: a-ink's
@@ -49,7 +49,12 @@ let _dead = false, _seq = 0, _started = 0;
    answered nothing for WORKER_MS while it has work is let go of, and its jobs
    (and every later one, if none is left) bake on the page.  Two workers where
    the device has the cores (a phone has six), so one drawn player's dozen
-   sheets do not hold up the next player's. */
+   sheets do not hold up the next player's.
+   v2.3.5013: "answered nothing" counts a job's beat between its steps
+   (bodyBakeWorker.js), and a worker runs its jobs in turn: four fish sheets
+   started at once answered only together, 19 to 25 s after the ask, and the
+   watch let two busy workers go (the crowd tour's h-eight: 208 to 288 ms
+   holds as the page baked what they had). */
 const POOL = (() => { try { return Math.max(1, Math.min(2, ((navigator && navigator.hardwareConcurrency) || 2) - 2)); } catch (e) { return 1; } })();
 const _pool = [];   /* { w, pending: Map(id -> res), sign: ms } */
 const _pending = { get size() { let n = 0; for (const s of _pool) n += s.pending.size; return n; } };
@@ -78,6 +83,9 @@ function _start() {
   w.onmessage = (ev) => {
     const m = ev.data || {};
     slot.sign = Date.now();
+    /* v2.3.5013: a job's beat between its steps (bodyBakeWorker.js): alive,
+       nothing to hand back */
+    if (m.beat) { _stats.beats++; return; }
     const p = slot.pending.get(m.id);
     if (!p) return;
     slot.pending.delete(m.id);
@@ -130,7 +138,9 @@ export function bodyWorkerWanted() {
 function _abs(u) { try { return new URL(u, location.href).href; } catch (e) { return u; } }
 
 /* a worker that answers nothing for this long while it has work is let go
-   of (the watch above); its jobs are the page's, with their own retries */
+   of (the watch above); its jobs are the page's, with their own retries.
+   v2.3.5013: a beat counts, so this is one STEP of one job silent this long
+   (the longest measured, a fish sheet's recolour on this box: 5.6 s) */
 const WORKER_MS = 20000;
 function _ask(msg, transfer) {
   const slot = _worker();

@@ -35,7 +35,8 @@
  * A job: { id, type: 'body' | 'head' | 'standin', urls: [first, fallback], job:
  * bakeBodyFull's or bakeHeadFull's, fw, fh, raw }
  * The reply: { id, ok, png (Blob), W, H, cells | null, frames, ms } or
- * { id, ok: false, why } ('load: ...' when the file did not load).  `raw` (QA, bodyBake.js __btBodyWorkerCompare): the
+ * { id, ok: false, why } ('load: ...' when the file did not load); and,
+ * v2.3.5013, { beat: 1 } between a job's steps (alive: bodyBake.js's watch).  `raw` (QA, bodyBake.js __btBodyWorkerCompare): the
  * packed canvas's bytes as well, to compare with the page's bake. */
 import './workerCanvas.js';
 import { bakeBodyFull, bakeHeadFull, recolorBodyToCanvas, FRAME_W } from './bodyRecolor.js';
@@ -54,14 +55,38 @@ async function loadBitmap(urls) {
   throw new Error('load: ' + (last || '?'));
 }
 
-self.onmessage = async (ev) => {
+/* ═══ v2.3.5013: ONE JOB AT A TIME, AND A BEAT BETWEEN ITS STEPS ═══
+   The crowd tour's h-eight (eight armoured players walking about) still held
+   the page 208 to 288 ms, 7 times in 20 s: the fish sheets of the seven
+   armoured players who had just cast (c-armour8) baked ON THE PAGE.  Not a
+   stalled worker: bodyBake.js's watch lets a worker go when it has answered
+   nothing for 20 s while it has work, and this one was working.  Each job was
+   an async run of its own, so the four fish sheets a worker was given all
+   loaded, then all baked (4 to 5.6 s each on this box), then all packed, and
+   the FIRST answer came only when nearly all of them were done: 18.7 to
+   24.6 s after the ask, measured.  Past 20 s the watch let both workers go
+   (stalled: 2, dead), and every sheet still waiting, and every later one,
+   baked on the page.
+   Now the jobs run in turn (a queue: an answer each few seconds, the first
+   asked the first back, and one job's canvases alive at once), and a job
+   says it is alive between its steps (`beat`: the page's watch hears it).
+   The watch still lets go of a worker that is truly stuck: one step silent
+   for 20 s. */
+const beat = () => { try { self.postMessage({ beat: 1 }); } catch (e) { /* the page is gone */ } };
+let _line = Promise.resolve();
+self.onmessage = (ev) => {
   const m = ev.data || {};
   if (m.type !== 'body' && m.type !== 'head' && m.type !== 'standin') return;
+  _line = _line.then(() => _job(m), () => _job(m));
+};
+async function _job(m) {
+  beat();
   const t0 = performance.now();
   let bm = null;
   try {
     bm = await loadBitmap(m.urls);
     const tLoad = performance.now();
+    beat();
     const j = m.job;
     let full, cv, frames;
     if (m.type === 'standin') {
@@ -85,9 +110,11 @@ self.onmessage = async (ev) => {
       if (j.pose === 'jog' && j.dir === 'northeast') cv = stripDetachedComponents(cv, frames);
     }
     const tBake = performance.now();
+    beat();
     const tDisp = tBake;
     const packed = packTrimmedCore(cv, m.fw, m.fh, frames);
     const tPack = performance.now();
+    beat();
     const out = packed ? packed.canvas : cv;
     let raw = null;
     if (m.raw) raw = out.getContext('2d').getImageData(0, 0, out.width, out.height).data.buffer;
@@ -106,4 +133,4 @@ self.onmessage = async (ev) => {
   } finally {
     try { if (bm && bm.close) bm.close(); } catch (e) { /* ok */ }
   }
-};
+}
