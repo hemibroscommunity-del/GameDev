@@ -225,7 +225,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const cA = await canvases(A), cB = await canvases(B);
     console.log(`    let go of: ${JSON.stringify(gA)} / kept: ${JSON.stringify(gB)}; 2D canvases ${cA.mb} MB against ${cB.mb} MB`);
     rec.ok(`arriving, ${gA.emptied} canvases (${gA.mb} MB) are let go of once on the GPU; the phone with ?gpucopies keeps them (${gB.emptied})`,
-      gA.emptied >= 40 && gA.mb >= 20 && gB.keep === true && gB.emptied === 0, { gA, gB });
+      /* v2.3.5008: 36 and 16 (were 40 and 20): the damage font's eleven 512 pages (11 MB of canvases) are
+         four now, three of 512 and one of 1024 (7 MB; effectsRenderer.js DMG_WORD_FONT) */
+      gA.emptied >= 36 && gA.mb >= 16 && gB.keep === true && gB.emptied === 0, { gA, gB });
     rec.ok(`...and the page holds that much less in 2D canvases: ${cA.mb} MB against ${cB.mb} MB`,
       cB.mb - cA.mb >= gA.mb * 0.8, { cA, cB });
 
@@ -259,10 +261,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const f1ok = f1.pages.filter((p) => p.held != null && p.gpu === p.held && p.lit > 0 && p.canvasW === 0).length;
     console.log(`    the font's pages: ${JSON.stringify(f1.pages.slice(0, 3))}`);
     rec.ok(`the font's ${f1.pages.length} pages on the GPU hold exactly what their canvases held when let go of (${f1ok} of ${f1.pages.length}, each page's alpha)`,
-      f1.pages.length >= 6 && f1ok === f1.pages.length, f1.pages);
+      /* v2.3.5008: 4 (was 6): the digits' three pages and the words' one (effectsRenderer.js DMG_WORD_FONT) */
+      f1.pages.length >= 4 && f1ok === f1.pages.length, f1.pages);
     const n1 = await numberDraws(A, '1234');
     const nB1 = await numberDraws(B, '1234');
     rec.ok(`...and a damage number draws from them (fill ${n1.white} px, outline ${n1.dark})`, n1.bitmap && n1.white > 1000 && n1.dark > 1000, n1);
+    /* v2.3.5008: and a message with letters, from the words' own font */
+    const w1 = await numberDraws(A, 'Blocked');
+    rec.ok(`...and so does a message with letters, from the words' font (fill ${w1.white} px, outline ${w1.dark})`, w1.bitmap && w1.white > 1000 && w1.dark > 1000, w1);
 
     /* 4 -- both phones' renderers rebuilt, as after a black screen.  (A rebuild
        on main also leaves the old renderer's art behind, which #802 fixes, so

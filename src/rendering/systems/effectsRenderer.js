@@ -11,7 +11,7 @@ import { BT_AUDIO } from '@/data/gameDisplay.js';   /* v2.3.2827: the smith's cl
 import { peerShare, cue } from '@/game/eventSounds.js';   /* v2.3.3343: another player's axe, heard; v2.3.3874: + cue, the smith's hammer */
 import { sparkZigzag } from '@/game/shockSpark.js';   /* v2.3.3518: a shock's spark, drawn as a bolt */
 import { recordCrash } from '@/debug/crashTrap.js';   /* v2.3.3689: crowns.json's failure, logged */
-import { Assets, BitmapFont, BitmapText, Cache, CanvasTextMetrics, Container, FillGradient, Graphics, Matrix, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
+import { Assets, BitmapFont, BitmapText, Cache, CanvasTextMetrics, Container, DynamicBitmapFont, FillGradient, Graphics, Matrix, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
 import { LockReticle, nearestInMeleeReach } from '@/rendering/lockReticle.js';   /* v2.3.3876: the lock you chose wears a reticle */
 import { keepOnGpuOnly, emptyOnceDrawn } from '../gpuOnly.js';   /* v2.3.3088: pictures kept on the graphics chip only; v2.3.3698: or once drawn */
 import { emptyHeldOnceDrawn } from '../heldNumbers.js';   /* v2.3.3699: the monsters' strips, held as colour numbers once drawn */
@@ -2717,24 +2717,83 @@ const DMG_BMP_FONT = 'bt-dmg-digits';
    its 14/100 ratio. */
 const DMG_BMP_BAKE_PX = 128;
 let _dmgBmpReady = false;
+/* ═══ v2.3.5008: THE DIGITS AT 128, THE WORDS AT THEIR OWN SIZE ═══
+   The memory survey (mp-gpuaudit, 2026-11-13): on arrival the one font's
+   pages were the biggest thing on the graphics chip that had no name, 14.6
+   MB -- eleven canvases of 512 x 512 with a mip chain, 1.33 MB each (the
+   6.7 MB above, and TRAPS §137's, counted each page at its 400 x 400
+   layout size and without the mips).  All 67 characters were baked at 128
+   for a crit's sake, but a crit is only ever digits (DMG_PLAIN_RE: no
+   letter in a damage number); the letters are drawn in messages ("Dodged!",
+   "+12 XP", "Blocked!"), and a message is the plain number's size, 22.3 CSS
+   px (MSG_FONT_PX at POPUP_ZOOM): 67 device px on a 3x phone, 74 with a
+   crit-flagged note's 10% wiggle.  So two fonts:
+     - DMG_BMP_FONT, the digits and '+-. !' at 128 (3 pages, 4.0 MB): every
+       damage number and crit, drawn exactly as before;
+     - DMG_WORD_FONT, all 67 at 80 on ONE page of 1024 x 1024 (5.3 MB):
+       anything with a letter, drawn at 0.84x its bake (0.93x at the
+       wiggle's widest), so never enlarged (TRAPS §137's rule).
+   14.7 -> 9.3 MB on the chip.  Why 80 on a 1024 page: pixi stores a page at
+   resolution bake / 100, and 512 / 0.8 = 640 and 1024 / 0.8 = 1280 are
+   whole layout px; a bake of 76 (three 512 pages, 4.0 MB) made a page
+   673.7 layout px wide, which QA's exact read-back (drawnPixels) could not
+   read texel for texel.  At 512 the 80 bake takes five pages (6.7 MB); the
+   1024 page packs the same glyphs into one (measured with the page's own
+   install in Chromium's sans-serif).  The digits' pages stay 512 (one 1024
+   page would be 5.3 MB against three 512s' 4.0).  A message with a letter
+   drawn bigger than the words' bake allows (none today: a damage number has
+   no letter) is classic Text, as one outside the set always was.
+   `?dmgwords=0`: the one font of 67 at 128, as before. */
+const DMG_WORD_FONT = 'bt-dmg-words';
+const DMG_WORD_BAKE_PX = 80;
+const DMG_WORD_PAGE_PX = 1024;
+/* v2.3.5008: the space round each glyph (pixi's default is 4).  At 4 the
+   words' page put another glyph's ink inside a 'B' and a 'k' (two faint dots
+   under "Blocked!" at a phone's size), as the one font at 128 does today for
+   'K' and 'M' (their ink reaches their cell's edge: measured in Chromium's
+   sans-serif, every cell's ink against its own frame).  At 12 every cell
+   keeps 3 px or more clear, on the same one page. */
+const DMG_WORD_PAD = 12;
+const DMG_WORDS_ON = (() => {
+  try { return !(typeof location !== 'undefined' && /[?&]dmgwords=0\b/.test(location.search || '')); }
+  catch (e) { return true; }
+})();
 /* v2.3.3088: the install is a function, run again for a rebuilt renderer once
    the pages' canvases have been let go of (prewarmDmgFontPipe, gpuOnly.js). */
-const DMG_BMP_CHARS = [['0', '9'], ['A', 'Z'], ['a', 'z'], '+-. !'];
-function _installDmgFont(family) {
-  BitmapFont.install({
-    name: DMG_BMP_FONT,
-    style: {
-      fontFamily: family || 'Source Sans 3, sans-serif',
-      fontSize: DMG_BMP_BAKE_PX,
-      fontWeight: '800',
-      fill: '#ffffff',
-      stroke: { color: '#000000', width: 14 * DMG_BMP_BAKE_PX / 100 },
-    },
-    chars: DMG_BMP_CHARS,
-  });
+const DMG_ALL_CHARS = [['0', '9'], ['A', 'Z'], ['a', 'z'], '+-. !'];
+const DMG_DIGIT_CHARS = [['0', '9'], '+-. !'];
+function _installOneDmgFont(name, bakePx, chars, family, pagePx, padding) {
+  /* v2.3.5008: a page size of its own -- pixi reads it from its defaults
+     only (BitmapFont.install passes none), so set for this install alone */
+  const D = DynamicBitmapFont.defaultOptions;
+  const was = D.textureSize;
+  if (pagePx) D.textureSize = pagePx;
+  try {
+    BitmapFont.install({
+      name,
+      style: {
+        fontFamily: family || 'Source Sans 3, sans-serif',
+        fontSize: bakePx,
+        fontWeight: '800',
+        fill: '#ffffff',
+        stroke: { color: '#000000', width: 14 * bakePx / 100 },
+      },
+      chars,
+      ...(padding ? { padding } : null),
+    });
+  } finally { D.textureSize = was; }
   /* BitmapFont.install hands nothing back; the font is in Pixi's cache */
-  return Cache.has(DMG_BMP_FONT + '-bitmap') ? Cache.get(DMG_BMP_FONT + '-bitmap') : null;
+  return Cache.has(name + '-bitmap') ? Cache.get(name + '-bitmap') : null;
 }
+/* the fonts installed (one, or the digits' and the words'), as a list */
+function _installDmgFont(family) {
+  if (!DMG_WORDS_ON) return [_installOneDmgFont(DMG_BMP_FONT, DMG_BMP_BAKE_PX, DMG_ALL_CHARS, family)];
+  return [_installOneDmgFont(DMG_BMP_FONT, DMG_BMP_BAKE_PX, DMG_DIGIT_CHARS, family),
+    _installOneDmgFont(DMG_WORD_FONT, DMG_WORD_BAKE_PX, DMG_ALL_CHARS, family, DMG_WORD_PAGE_PX, DMG_WORD_PAD)];
+}
+const _dmgFontNames = () => (DMG_WORDS_ON ? [DMG_BMP_FONT, DMG_WORD_FONT] : [DMG_BMP_FONT]);
+/* the fonts in Pixi's cache now (a missing one as null) */
+const _dmgFontsNow = () => _dmgFontNames().map((n) => (Cache.has(n + '-bitmap') ? Cache.get(n + '-bitmap') : null));
 /* v2.3.3088: WHICH FACE THE ATLAS WAS DRAWN IN.  The install runs as this
    module loads -- before the page's web fonts have arrived (index.html loads
    them display=swap), so the glyphs are normally the browser's own sans-serif,
@@ -2743,12 +2802,16 @@ function _installDmgFont(family) {
    advance widths are kept as its face's fingerprint, and a re-install that
    does not match them is made again in the generic face (_reinstallDmgFont). */
 let _dmgFontSig = null;
-function _dmgSig(font) {
-  const c = font && font.chars;
-  if (!c) return null;
+function _dmgSig(fonts) {
+  /* v2.3.5008: the fonts' together (both are drawn in one face) */
   let out = '';
-  for (const k of Object.keys(c).sort()) out += k + ':' + c[k].xAdvance + ',';
-  return out;
+  for (const font of fonts || []) {
+    const c = font && font.chars;
+    if (!c) return null;
+    for (const k of Object.keys(c).sort()) out += k + ':' + c[k].xAdvance + ',';
+    out += '|';
+  }
+  return out || null;
 }
 try {
   _dmgFontSig = _dmgSig(_installDmgFont());
@@ -2758,23 +2821,28 @@ if (typeof window !== 'undefined') {
   /* QA (mp-gpuonly): the font's face fingerprint, the first install's and
      now's, and its pages (Textures) */
   window.__btDmgFont = () => {
-    const f = Cache.has(DMG_BMP_FONT + '-bitmap') ? Cache.get(DMG_BMP_FONT + '-bitmap') : null;
-    return { first: _dmgFontSig, now: _dmgSig(f), pages: f && f.pages ? f.pages.map((p) => p.texture) : [] };
+    /* v2.3.5008: both fonts' pages, the digits' first */
+    const fonts = _dmgFontsNow();
+    const pages = [];
+    for (const f of fonts) if (f && f.pages) for (const p of f.pages) pages.push(p.texture);
+    return { first: _dmgFontSig, now: _dmgSig(fonts), pages, words: DMG_WORDS_ON,
+      fonts: fonts.map((f) => (f && f.pages ? f.pages.length : 0)) };
   };
 }
 function _reinstallDmgFont() {
-  const key = DMG_BMP_FONT + '-bitmap';
+  const keys = _dmgFontNames().map((n) => n + '-bitmap');
+  const clear = () => { for (const key of keys) if (Cache.has(key)) Cache.remove(key); };
   for (const fam of ['Source Sans 3, sans-serif', 'sans-serif']) {
-    if (Cache.has(key)) Cache.remove(key);
-    const font = _installDmgFont(fam);
-    _dmgLog('attempt ' + fam + (_dmgSig(font) === _dmgFontSig ? ' matches' : ' differs'), null);
-    if (!_dmgFontSig || _dmgSig(font) === _dmgFontSig) return true;
+    clear();
+    const fonts = _installDmgFont(fam);
+    _dmgLog('attempt ' + fam + (_dmgSig(fonts) === _dmgFontSig ? ' matches' : ' differs'), null);
+    if (!_dmgFontSig || _dmgSig(fonts) === _dmgFontSig) return true;
     /* drawn in another face: never shown, let go of, and the next tried */
-    try { font.destroy(); } catch (e) { /* best-effort */ }
+    for (const font of fonts) { try { if (font) font.destroy(); } catch (e) { /* best-effort */ } }
   }
   /* neither face draws what the first install drew: the page's own, as the
      first install would have drawn it now */
-  if (Cache.has(key)) Cache.remove(key);
+  clear();
   _installDmgFont();
   return false;
 }
@@ -2793,17 +2861,21 @@ function _reinstallDmgFont() {
 let _dmgPagesGone = null;   /* the renderer the pages were let go of on, once they were */
 export function dmgFontNeedsRebuild(renderer) { return _dmgBmpReady && !!_dmgPagesGone && _dmgPagesGone !== renderer; }
 function _letGoOfDmgPages(renderer) {
-  const font = Cache.has(DMG_BMP_FONT + '-bitmap') ? Cache.get(DMG_BMP_FONT + '-bitmap') : null;
-  const pages = font && font.pages;
-  if (!pages || !pages.length) return;
-  /* any page let go of means another renderer needs the font afresh */
-  for (const pg of pages) {
-    if (keepOnGpuOnly(renderer, pg && pg.texture && pg.texture.source)) _dmgPagesGone = renderer;
+  /* v2.3.5008: every font's pages (the digits' and the words') */
+  for (const font of _dmgFontsNow()) {
+    const pages = font && font.pages;
+    if (!pages || !pages.length) continue;
+    /* any page let go of means another renderer needs the font afresh */
+    for (const pg of pages) {
+      if (keepOnGpuOnly(renderer, pg && pg.texture && pg.texture.source)) _dmgPagesGone = renderer;
+    }
   }
   _dmgLog('let go', renderer);
 }
 /* Plain popups the atlas can render: digits/letters/space and + - . ! */
 const DMG_BMP_RE = /^[0-9A-Za-z+\-. !]+$/;
+/* v2.3.5008: ...and those the digits' font draws (no letter) */
+const DMG_DIGIT_RE = /^[0-9+\-. !]+$/;
 
 /* v2.3.1361: prewarm the BitmapText render pipe behind the loading
    screen.  BitmapFont.install (above) bakes the glyph atlas at module
@@ -2836,18 +2908,23 @@ export function prewarmDmgFontPipe(renderer) {
         _dmgPagesGone = null;
       } catch (e) { _dmgBmpReady = false; return; }
     }
-    let bt = null;
-    try {
-      bt = new BitmapText({
-        text: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz+-. !',
-        style: { fontFamily: DMG_BMP_FONT, fontSize: DMG_BMP_BAKE_PX },
-      });
-      bt.alpha = 0.001; /* must actually draw — alpha 0 / visible false would be culled */
-      renderer.render(bt);
-    } catch (e) {
-      _dmgBmpReady = false; /* pipe is broken here — never touch it in combat */
+    /* v2.3.5008: each font's own characters, so every page goes up */
+    const warm = DMG_WORDS_ON
+      ? [[DMG_BMP_FONT, DMG_BMP_BAKE_PX, '0123456789+-. !'],
+        [DMG_WORD_FONT, DMG_WORD_BAKE_PX, '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz+-. !']]
+      : [[DMG_BMP_FONT, DMG_BMP_BAKE_PX, '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz+-. !']];
+    for (const [fontFamily, fontSize, chars] of warm) {
+      let bt = null;
+      try {
+        bt = new BitmapText({ text: chars, style: { fontFamily, fontSize } });
+        bt.alpha = 0.001; /* must actually draw — alpha 0 / visible false would be culled */
+        renderer.render(bt);
+      } catch (e) {
+        _dmgBmpReady = false; /* pipe is broken here — never touch it in combat */
+      }
+      if (bt) { try { bt.destroy(); } catch (e) { /* best-effort */ } }
+      if (!_dmgBmpReady) break;
     }
-    if (bt) { try { bt.destroy(); } catch (e) { /* best-effort */ } }
     /* v2.3.3088: on the GPU now -- its pages' canvases let go of (above) */
     if (_dmgBmpReady) { try { _letGoOfDmgPages(renderer); } catch (e) { /* the canvases simply stay */ } }
   }
@@ -6631,7 +6708,13 @@ export class EffectsRenderer {
            rasterizing a fresh canvas — the pack-fight frame killer.  Tint
            colors the white fill; the black stroke stays black (0 x tint). */
         let text = null;
-        if (_dmgBmpReady && !dmg.special && baseStyle === DMG_STYLE && DMG_BMP_RE.test(dmg.text || '')) {
+        /* v2.3.5008: which font: the digits' (every damage number), or the
+           words' for a message with a letter, unless it is drawn bigger than
+           the words' bake allows (then classic Text, as before 1357) */
+        const bmpFont = (!DMG_WORDS_ON || DMG_DIGIT_RE.test(dmg.text || '')) ? DMG_BMP_FONT
+          : (fontSize <= MSG_FONT_PX * 1.01 ? DMG_WORD_FONT : null);
+        const bmpBake = bmpFont === DMG_WORD_FONT ? DMG_WORD_BAKE_PX : DMG_BMP_BAKE_PX;
+        if (bmpFont && _dmgBmpReady && !dmg.special && baseStyle === DMG_STYLE && DMG_BMP_RE.test(dmg.text || '')) {
           /* v2.3.1361: defensive — if the BitmapText pipe ever throws
              (fire-goblin crash hardening), downgrade to classic Text
              PERMANENTLY for the session instead of taking the whole
@@ -6639,12 +6722,12 @@ export class EffectsRenderer {
           try {
             text = new BitmapText({
               text: dmg.text,
-              style: { fontFamily: DMG_BMP_FONT, fontSize: DMG_BMP_BAKE_PX },
+              style: { fontFamily: bmpFont, fontSize: bmpBake },
             });
             /* Bake is 2x — scale down to the popup size (crisp on retina).
                NOTE the spawn-pop animation below multiplies .scale; stash
                the base so it scales around this, not around 1. */
-            text._bmpBaseScale = fontSize / DMG_BMP_BAKE_PX;
+            text._bmpBaseScale = fontSize / bmpBake;
             text.scale.set(text._bmpBaseScale, text._bmpBaseScale);
             text.tint = displayColor;
           } catch (e) {

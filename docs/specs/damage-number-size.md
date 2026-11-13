@@ -72,6 +72,32 @@ wiggle), which a 100 px bake enlarged 1.33x. It is baked at 128 now
 6.0 to 6.7 MB, since pixi shrinks the page canvases as the bake grows (TRAPS §137);
 a dedicated digits-only font would hold 1.2-2 MB on top, 160 would hold 11.3 MB.
 
+**Two fonts since v2.3.5008.** The memory survey of 2026-11-13 (`mp-gpuaudit`,
+on arrival) found the one font's pages the biggest unnamed thing on the
+graphics chip: 14.6 MB, eleven 512 x 512 canvases with a mip chain (the 6.7 MB
+above counted each page at its 400 x 400 layout size and without the mips; see
+TRAPS §137's note). A crit is only ever digits (a damage number has no
+letter), and the letters are drawn in messages, which are the plain number's
+size: 22.3 CSS px, 67 device px on a 3x phone, 74 at a crit-flagged note's
+widest wiggle. So:
+
+| font | characters | bake | pages | on the chip |
+|---|---|--:|---|--:|
+| `bt-dmg-digits` (`DMG_BMP_FONT`) | `0-9 + - . !` and the space | 128 | three of 512 | 4.0 MB |
+| `bt-dmg-words` (`DMG_WORD_FONT`) | all 67 | 80 | one of 1024 | 5.3 MB |
+
+14.7 -> 9.3 MB. A popup with no letter draws from the digits' font exactly as
+before; one with a letter from the words' (0.84x its bake on a 3x phone, 0.93x
+at the wiggle: never enlarged). A popup with a letter drawn bigger than the
+message size (none today) is classic Text. Why 80 on one 1024 page: pixi
+stores a page at resolution bake / 100, so 80 makes whole layout px (1280); 76
+fitted three 512 pages but at 673.7 layout px a page, which QA's exact
+read-back could not read texel for texel. The words' glyphs are spaced 12 px
+apart, not pixi's 4: at 4 another glyph's ink showed as two faint dots under
+"Blocked!" (the one font at 128 has the same for `K` and `M`). Off on one
+phone: `?dmgwords=0` (the one font, as before). Checked by `mp-gpuonly` (the
+four pages read back off the chip, a message drawn from the words' font).
+
 ## Messages as big as the numbers (v2.3.3192)
 
 > *"Make the messages in the game like "no mana" and other things like "quest

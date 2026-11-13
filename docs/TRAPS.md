@@ -5421,6 +5421,14 @@ x device pixel ratio x the wiggle), measure the pages it costs before deciding,
 and keep the outline at 14/100 of it. Layout checks (text widths, gaps) are the
 proof that a bake change moved nothing.
 
+**v2.3.5008: and measure the pages on the CHIP.** The 6.0 / 6.7 MB above were
+the pages at their layout size (400 x 400 at 128) and without their mips. The
+canvases are 512 x 512 whatever the bake (pixi's page size), mipmapped: 1.33 MB
+a page on the graphics chip, so the 128 bake's eleven were 14.6 MB
+(`mp-gpuaudit`, "canvas (no label) 512x512"). Count pages x the page's pixel
+size x 4 x 4/3, and pick a bake that makes the page a whole number of layout px
+(512 or 1024 / (bake / 100)), or QA's read-back resamples it.
+
 ## 138. "The black screen broke the harvest", so fix the recovery (v2.3.3034)
 
 **The plausible move.** The owner's chops stopped paying and their points stopped
