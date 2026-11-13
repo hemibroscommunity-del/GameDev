@@ -168,10 +168,14 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
   const pa = src('src/rendering/preloadAnimations.js');
   check('4a the quest pins load on the loading screen (never on first sight)', /questPins: preloadQuestPinTextures\(\)/.test(pa));
   /* v2.3.3609: the four strips again (v2.3.3024's wheelBannerLands), loaded
-     behind the Wheel's loading screen and let go on leaving it; no scenes */
-  check('4b the Wheel loads the four lands\' animated strips behind its loading screen and lets them go on leaving, and no scenes',
+     behind the Wheel's loading screen and let go on leaving it; no scenes.
+     v2.3.5003 (the owner's "Yes do it", pictures-256.md §7): behind the
+     loading screen only the ones near where the trip lands (all four with
+     `?banners=all`), the rest as you walk toward their land
+     (banner-reach.test holds that); all let go on leaving, as before */
+  check('4b the Wheel loads the lands\' animated strips behind its loading screen (the ones near where it lands, v2.3.5003) and lets them go on leaving, and no scenes',
     /function wheelBannerLands\(\) \{ return WHEEL_LANDS\.filter\(\(l\) => !!bannerStripFor\(l\)\); \}/.test(pa)
-    && /if \(zoneId === 'wheel'\) for \(const land of wheelBannerLands\(\)\) tasks\.push\(Promise\.resolve\(preloadZoneBanner\(land\)\)/.test(pa)
+    && /if \(zoneId === 'wheel'\) \{\s*tasks\.push\(Promise\.resolve\(wheelSizeTold\(8000\)\)\.then\(\(\) => preloadWheelBanners\(wheelArrivalPoint\(\)\)\)/.test(pa)
     && /for \(const land of wheelBannerLands\(\)\) \{\s*try \{ bannersFreed = bannersFreed\.concat\(freeZoneBanner\(land, toZoneId\)\); \}/.test(pa)
     && !/LandScenes/.test(pa));
   const zb = await import('../../src/data/zoneBanner.js');
@@ -180,9 +184,12 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
   check('4b2 ...those four are Frost Ridge, the Flame Fields, the Wind Dunes and the Verdant Wilds, the owner\'s own art',
     withArt.join(',') === 'frost,ember,sky,verdant', withArt);
   const zp = src('src/rendering/zoneBannerPreload.js');
+  /* v2.3.5003: the free is release(), which freeZoneBanner and the Wheel's
+     tick share */
+  const rel = zp.slice(zp.indexOf('function release('), zp.indexOf('export function preloadZoneBanner'));
   check('4c the banner preloader holds no scenes any more (the strips only, released with their src emptied)',
     !/LAND_SCENE|landSceneUrl|_scenes|preloadLandScenes|landSceneHeld|freeLandScenes|landScenesResident/.test(zp)
-    && /img\.src = '';/.test(zp.slice(zp.indexOf('export function freeZoneBanner'))));
+    && /img\.src = '';/.test(rel) && /return release\(going\) \? \[going\] : \[\];/.test(zp.slice(zp.indexOf('export function freeZoneBanner'))));
   const zo = src('src/ui/zoneBannerOverlay.js');
   /* v2.3.3609: a land's strip plays when the Wheel holds it (`plain` only the
      plaque's fallback), and nothing shows a scene */
