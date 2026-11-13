@@ -32,7 +32,12 @@
  * _remoteSheetFramesFor), which were recoloured INSIDE the frame the first
  * time they swung (up to 564 ms in the crowd tour's a-ink): type 'standin'.
  *
- * A job: { id, type: 'body' | 'head' | 'standin', urls: [first, fallback], job:
+ * And (v2.3.5014) a drawn shirt, dressed for a player who wears one
+ * (gearSheets.js getShirtLookFrame: colour, pattern and print, 121 to 192 ms a
+ * sheet on the page in the crowd tour's d-prints): type 'shirt', gearBake.js's
+ * steps (the page's own, moved there) and the gear's pack.
+ *
+ * A job: { id, type: 'body' | 'head' | 'standin' | 'shirt', urls: [first, fallback], job:
  * bakeBodyFull's or bakeHeadFull's, fw, fh, raw }
  * The reply: { id, ok, png (Blob), W, H, cells | null, frames, ms } or
  * { id, ok: false, why } ('load: ...' when the file did not load); and,
@@ -42,13 +47,15 @@ import './workerCanvas.js';
 import { bakeBodyFull, bakeHeadFull, recolorBodyToCanvas, FRAME_W } from './bodyRecolor.js';
 import { bakeDisplayCanvas, stripDetachedComponents } from './spriteScale.js';
 import { packTrimmedCore } from './trimPack.js';
+import { gearSheetCanvas, dressShirtSheet, dressShirtStrip } from './gearBake.js';   /* v2.3.5014: a drawn shirt (gearSheets.js _buildSheet's steps) */
 
-async function loadBitmap(urls) {
+async function loadBitmap(urls, got) {
   let last = null;
   for (const u of urls) {
     try {
       const r = await fetch(u);
       if (!r.ok) { last = 'http ' + r.status; continue; }
+      if (got) got.src = u;   /* v2.3.5014: which file (a gear sheet's texture is labelled by it, as the page's) */
       return await createImageBitmap(await r.blob());
     } catch (e) { last = String(e && e.message || e); }
   }
@@ -76,7 +83,7 @@ const beat = () => { try { self.postMessage({ beat: 1 }); } catch (e) { /* the p
 let _line = Promise.resolve();
 self.onmessage = (ev) => {
   const m = ev.data || {};
-  if (m.type !== 'body' && m.type !== 'head' && m.type !== 'standin') return;
+  if (m.type !== 'body' && m.type !== 'head' && m.type !== 'standin' && m.type !== 'shirt') return;   /* v2.3.5014: + 'shirt' */
   _line = _line.then(() => _job(m), () => _job(m));
 };
 async function _job(m) {
@@ -84,11 +91,12 @@ async function _job(m) {
   const t0 = performance.now();
   let bm = null;
   try {
-    bm = await loadBitmap(m.urls);
+    const got = {};
+    bm = await loadBitmap(m.urls, got);
     const tLoad = performance.now();
     beat();
     const j = m.job;
-    let full, cv, frames;
+    let full, cv, frames, fw = m.fw, fh = m.fh, pack = true;
     if (m.type === 'standin') {
       /* effectsRenderer.js _remoteBodyFramesFor / _remoteSheetFramesFor's
          recolour (a peer's sword or bow body, torso strip or jog legs, with
@@ -97,6 +105,22 @@ async function _job(m) {
         undefined, undefined, undefined, j.legsUnder || undefined, j.torso ? true : undefined);
       cv = full;
       frames = Math.max(1, Math.round(cv.width / m.fw));
+    } else if (m.type === 'shirt') {
+      /* v2.3.5014: a drawn shirt, gearSheets.js _buildSheet's steps (gearBake.js:
+         the sheet restored to its frame, then dressed: colour, pattern, print);
+         packed as the page packs it (TRIM_SLOTS and TRIM_POSES: `j.pack`) */
+      if (j.strip) {
+        /* a stand-in's strip (effectsRenderer.js _dressedShirtFrame: gearBake.js
+           dressShirtStrip), packed as its packTrimmed does, always */
+        const d = dressShirtStrip(bm, j.fw, j.twin || 0, j.one, j.opts);
+        full = d.cv; fw = d.w; fh = d.H; frames = d.n; pack = true;
+      } else {
+        const g = gearSheetCanvas(bm, j.slot);
+        fw = g.fw; fh = g.fh; pack = !!j.pack;
+        full = dressShirtSheet(g.img, fw, fh, j.pose, j.stamp);
+        frames = Math.max(1, Math.floor(full.width / fw));
+      }
+      cv = full;
     } else if (m.type === 'head') {
       /* _buildPickupHeadSheet's steps: the bake halves it itself */
       full = null;
@@ -112,7 +136,7 @@ async function _job(m) {
     const tBake = performance.now();
     beat();
     const tDisp = tBake;
-    const packed = packTrimmedCore(cv, m.fw, m.fh, frames);
+    const packed = pack ? packTrimmedCore(cv, fw, fh, frames) : null;
     const tPack = performance.now();
     beat();
     const out = packed ? packed.canvas : cv;
@@ -120,7 +144,7 @@ async function _job(m) {
     if (m.raw) raw = out.getContext('2d').getImageData(0, 0, out.width, out.height).data.buffer;
     const png = await out.convertToBlob({ type: 'image/png' });
     const reply = { id: m.id, ok: true, png, W: out.width, H: out.height, cells: packed ? packed.cells : null,
-      frames, ms: performance.now() - t0, raw,
+      frames, ms: performance.now() - t0, raw, fw, fh, fullW: cv.width, src: got.src,
       t: { load: tLoad - t0, bake: tBake - tLoad, pack: tPack - tDisp, png: performance.now() - tPack } };
     /* the canvases are this job's alone: handed back now (Safari holds their
        backing stores against a total until a collection) */
