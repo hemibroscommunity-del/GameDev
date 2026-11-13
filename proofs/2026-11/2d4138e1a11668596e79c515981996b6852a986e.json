@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "2d4138e1a11668596e79c515981996b6852a986e",
+  "tree": "d190eb8e21d1a7a873f96612892fa6b405e2cb82",
+  "committedAt": "2026-11-13T15:43:31-08:00",
+  "subject": "v2.3.5020: the grand plan -- the order of all the open work, its session cards, after three audits (docs only) (#1660)",
+  "files": 7418,
+  "bytes": 944796136,
+  "listingSha256": "d18e737eb75b86d0d05a1fcfc50ec49b543c26f7bca289ff58e8e36b6042f377",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
