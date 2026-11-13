@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "3bf9dab553075e194651d4d53cf4aa3027e77110",
+  "tree": "d58e03d8130a6b40b8a1ff608340969961b1d461",
+  "committedAt": "2026-11-12T16:05:52-08:00",
+  "subject": "Merge pull request #1644 from hemibroscommunity-del/claude/token-efficient-lanes-perf-o4ish9-banners",
+  "files": 7372,
+  "bytes": 944033702,
+  "listingSha256": "a087bca8ff5abc18a67f5ec06239079c2dc95580f389f38f312b1538b238652d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
