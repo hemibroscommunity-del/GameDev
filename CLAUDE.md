@@ -68,8 +68,10 @@ spec. Add a line here only for a new RULE every session must follow.
   - UI: `docs/UI-BIBLE.md`, `docs/LANTERN-SLATE-SPEC.md` (the visual system;
     supersedes UI-BIBLE part 2), `docs/UI-DESIGN-NOTES.md` (why each screen is
     as it is: read the section before changing a screen);
-  - plans: `docs/MEMORY-MAP.md` (the memory slot every kind of thing goes
-    in), `docs/MEMORY-PLAN.md`, `docs/GEM-PLAN.md`,
+  - plans: `docs/GRAND-PLAN.md` (the order of ALL the open work and its
+    finish lines: pick the next step there; v2.3.5019),
+    `docs/MEMORY-MAP.md` (the memory slot every kind of thing goes in),
+    `docs/MEMORY-PLAN.md`, `docs/GEM-PLAN.md`,
     `docs/FUN-SOCIAL-PLAN.md`, `docs/specs/SPECIES-PLAN.md`,
     `docs/BALANCE-PLAN.md`, `docs/OPTIMIZATION-ROADMAP.md`,
     `docs/REBUILD-PLAN.md`, `docs/STATE-MACHINES.md` (the 2026-11-03 sweep:
