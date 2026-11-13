@@ -8719,6 +8719,12 @@ read at 16 bits, the look program's own v2.3.3864 fault in the same four
 facings) are both removed from the one program, still off by default: the
 owner's phone decides (docs/specs/one-batch.md "v2.3.4994").
 
+
+**v2.3.5016.** The owner tried `?onebatch=1` on the iPhone after v2.3.4994's two
+fixes and said "Everything looks fine to me make 1 program the default": it is
+the default on phones and tablets now (`docs/specs/one-batch.md`). The rule
+stands for the next program: the owner's phone is the judge, not this box.
+
 ## 261. "A mixed-grade set can't be one figure, so draw it as its pieces" (v2.3.3953)
 
 **The move.** A matched set jogs as ONE full-set figure on the body sprite

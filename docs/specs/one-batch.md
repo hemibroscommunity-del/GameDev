@@ -4,6 +4,39 @@ The owner, 2026-10-18: *"I'd like you to iterate on what best improves
 framerate without loss of quality (or negligible loss) for phone gameplay
 (iPhone, android)"*. The second round, after draw-lists.md.
 
+## On again by default, on phones and tablets (v2.3.5016)
+
+> *"Everything looks fine to me make 1 program the default"* -- the owner,
+> 2026-11-13, after trying `?onebatch=1` on the iPhone (v2.3.4994 had made the
+> two suspects of the vanishing legs safe, below).
+
+Measured that day, the same held frame drawn both ways (`mp-onebatch` and the
+stutter sweep's stations with a draw-list count; the picture identical, 0 px):
+
+| per frame | three programs | one program |
+|---|--:|--:|
+| BroTown, batches | 59-69 | 45-46 |
+| BroTown, program switches | 40-48 | 22-23 |
+| eight armoured players, batches | 76 | 61-65 |
+| eight armoured players, switches | 57 | 37-41 |
+| a fight at the Flame Fields, batches (switches) | 20 (2) | 21 (0) |
+| the game's own code a frame | 4.3-10.4 ms | 4.7-10.3 ms (no change) |
+
+A third of the switches stay: the look program's sheets (`bt-look`, the
+bodies and armour from colour numbers) are not the one program's. The saving
+is on the graphics chip only; the Speed test (`?onebatch=1`, its "three
+programs" step) is how a phone measures it.
+
+**Where:** `oneBatchChoice` (paletteTex.js) answers the one program by default,
+but:
+- a **Windows or Mac computer** keeps the three (`why: 'computer'`, from
+  `deviceProfile()`): ANGLE builds programs there, its compilers took minutes
+  over the look palette's (`lookPaletteChoice.js`), this one has never been
+  built on one, and a computer's chip draws the three's ~70 calls with ease;
+- a **software renderer** keeps the three (`why: 'software'`, TRAPS §225),
+  so this box and CI draw with the three unless asked;
+- the address wins either way: `?onebatch=0` the three, `?onebatch=1` the one.
+
 ## Off by default (v2.3.3894)
 
 **Since v2.3.3894 the one program is off on every chip.** The game draws with
