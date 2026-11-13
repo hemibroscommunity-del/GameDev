@@ -156,6 +156,25 @@ walk (8 in 10 pieces are asked for already on screen), so the count follows
 how many pieces were laid, not holes; the bars date from a run with 326 and
 331 (above). The log now prints the share a piece beside the count.
 
+**The second run** (a swatch at a time, c92ea2cc): mp-groundlean 7/7 (637
+pop-ins against 633; the sprint 223 against 217); mp-membudget's workers line
+15.4, 20, 18, 18, 18.1, 18.1 and then 22.4 at trip 3 home, so "the third trip
+ends where the second did" failed (+4.3 MB, 4 allowed). Nothing was lost:
+the 12 pictures the trip ever unpacked were all held, 6 unpacked and 6 cold
+(`decodes` 12, `redecodes` 0; the cold store fell from 12 to 6 because pieces
+THAWED six back, 25 thaws on that leg; its cap, 24 or more, never bit). Six
+town pictures were unpacked because town pieces had used them within the
+last 3 s: on this box the ground lags the walk (nearly every piece of a trip
+is asked for already on screen) and was still laying home when HOME_MS was
+up on some trips and not others, a swing of ~4.3 MB. So mp-membudget now
+reads the arrival and each home once the ground has been quiet (nothing in
+flight, no piece back for 5 s: its 3 s and the squeezing; 30 s at most), as
+it already waits for the monsters' looks to go, and says how long it waited
+(`groundQuiet`, and `quietMs` in `groundDiet`); `wheelStats.lastPieceAt` is
+when the last piece came. The fights are read mid-fight, as ever. A swatch is
+held one way at a time -- unpacked, waiting to be squeezed, or cold -- which
+the Node check holds over 120 random steps of use, clocks, looks and trims.
+
 ## 2. The rare windows' code, loaded when first opened (`?codelazy`)
 
 `src/ui/lazyPanel.js` (how), `src/ui/lazyPanels.js` (which).

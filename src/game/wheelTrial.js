@@ -75,6 +75,7 @@ export const wheelStats = {
   popIns: 0,           /* came on screen before its ground was laid */
   pieceBytes: 0,       /* the colours of one piece */
   unpacked: 0,         /* swatch pictures unpacked in the worker now */
+  lastPieceAt: 0,      /* v2.3.5005: when the last piece came back from the worker (performance.now): how long the ground has been quiet, for the memory check's standing stops (mp-membudget) */
   cold: 0,             /* v2.3.5005: ...and held squeezed (cold) -- both said again when the worker squeezes the ones no piece has used for 3 s ('rest': ground-worker.js THE GROUND AT REST) */
   calm: null,          /* v2.3.3021: { n, ms }, water pictures calmed (ground.js CALM WATER) */
   diet: null,          /* v2.3.3717: decodes, redecodes, keepMax... (ground-worker.js DIET, `?groundlean`) */
@@ -471,6 +472,7 @@ export function wheelChunk(i, j, relay, gate) {   /* v2.3.4400: + gate, the way 
       if (m.partial) wheelStats.partial++;
     }
     wheelStats.unpacked = m.unpacked;
+    wheelStats.lastPieceAt = performance.now();   /* v2.3.5005: a relay too: either used the worker's pictures */
     wheelStats.unreadable = m.unreadable || 0;
     wheelStats.downloading = m.downloading || 0;
     wheelStats.dlFails = m.dlFails || 0;
