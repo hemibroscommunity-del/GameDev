@@ -164,7 +164,7 @@ pixel whatever their colours:
 | picture | file | decoded | drawn | held |
 |---|---|--:|---|---|
 | level-up burst (`LevelUpBurst.jsx`) | 2172 x 724 | 6.0 MB | up to 0.93 x the strip in CSS px (`LEVELUP_MAX_W` 359 in a 390-wide column at 0.86), so 2.8 x the file on a 3x phone: **nothing to shrink** without losing detail | the whole session (`levelUpBurstPreload.js` `_held`, on purpose: the preload law) |
-| zone banners (`zoneBannerOverlay.js`), four | 2043-2268 x 382-518 | 3.0-4.5 MB each | not measured here | the whole session, by theme (`zoneBannerPreload.js` `_held`) |
+| zone banners (`zoneBannerOverlay.js`), four | 2043-2268 x 382-518 | 3.0-4.5 MB each | not measured here | by theme (`zoneBannerPreload.js` `_held`); since v2.3.5003 only near its land (§7) |
 | coin flip win / lose | 1408 x 192 | 1.03 MB each | -- | also in Pixi's cache, never drawn there at a fight |
 
 Drawing the level-up burst in the game's renderer as colour numbers would
@@ -229,11 +229,67 @@ against a cell of 227-252 px in the file):
 | sideways phone at 3x | 281 device px | 1.12x |
 | computer, 1440 wide at 1x / 2x | 94 / 187 device px | 0.37x / 0.75x |
 
-All four themes are held decoded for the session (`zoneBannerPreload.js`
-`_held`, by theme): about 14 MB. **The owner's decision** (it changes what the
-loading screen holds, the preload law): hold only the banner of the land you
-are in or walking toward, loading the next behind the per-land
-loading/overlay path. That is about 10 MB less held.
+All four themes were held decoded while you were in the world
+(`zoneBannerPreload.js` `_held`, by theme): about 15.7 MB (3.1 fire, 3.6
+desert, 4.3 forest, 4.7 frost). **The owner's decision** (it changes what the
+loading screen holds, the preload law), 2026-11-12: "Yes do it" -- hold only
+the banner of the land you are in or walking toward.
+
+**Built in v2.3.5003.** A land's strip is held only near its land:
+
+- **Which** (`src/game/bannerReach.js`, from where you stand, not where you
+  face: a stick turns in an instant). Your spoke's land (the land whose
+  direction from the middle is nearest yours, `wheelLandAt`'s rule), from
+  2,400 px inside the safe ground's edge outward; and the neighbouring land
+  on your side while you are within 2,000 px of the line between the two
+  (near the commons a land's first stretch touches its neighbours', and the
+  passes cross between them); and the land under you, always. So: **none in
+  BroTown** (the town square, where you arrive, is 288 px from the middle);
+  at most two near the commons' edge; one out along a land.
+- **When.** The strip starts loading at least ~1,940 px of walking before its
+  land can begin (the commons' edge, 2,765 px, wandering 288), and ~1,420 px
+  before a neighbour's (the border wanders 576 px from the line): 4 s at the
+  worker's 500 px/s move bound, 13 s at a walk. Behind the world's loading
+  screen it loads the banners near where that trip lands (none at the town
+  square; a dungeon's mouth or a reload's spot out in a land, that land's),
+  then every 250 ms as you walk (`wheelBannerTick`, asked from the minimap's
+  frame by the land watch). It is let go 600 px past both measures, its
+  `<img>` pointed at nothing; a load that lands after you walked away is not
+  held. Leaving the world lets all of them go, as before.
+- **Not there in time** (a slow line, a reload that came back inside a land):
+  the banner never fetches anything itself and never shows a strip that is
+  not decoded and held. A strip still on its way is waited for, 2 s at most
+  past the 600 ms dwell (`zoneBannerOverlay.js` `BANNER_WAIT_MS`); then the
+  land plays the plaque alone, its icon and name, as the four lands with no
+  art of the owner's always do. Never a broken picture. A load that never
+  answers fails at 20 s and is asked again 10 s later while you are near
+  (TRAPS §257; `picture-door.test` lists it `own`).
+- **Held:** 0 MB in BroTown (15.7 less), 3.1-4.7 MB out in a land (11-12.6
+  less), at most two (6.7-9.0 MB, two neighbouring lands with art) near
+  the commons' edge.
+- **Measured** (v2.3.5003, a browser, one build, BroTown 10 s after arrival,
+  Chromium's own memory dump of the page, three dumps each way, steady):
+  decoded pictures (`cc/image_memory`) 309.4 MB by default against 324.3
+  with `?banners=all`, **14.9 MB less**; the files' bytes
+  (`web_cache/Image_resources`) 0.9 MB less. `mp-membudget` does not see it
+  (its lines are the art cache, the chip, canvases, sound, the heap, buffers
+  and workers, not a picture the browser decodes for an `<img>`): its
+  readings on the branch and on main were the same within a run's noise
+  (artCache 54.9 / 54.9, chip highest 78.3 / 76.3, which moves 2-3 MB run to
+  run). Chromium keeps decoded pictures in memory it may throw away under
+  pressure; iPhone Safari keeps a decoded `<img>` that a page holds, which is
+  what the owner's black screens were.
+- **`?banners=all`** holds all four while you are in the world, as before.
+- **Probe:** `window.__btBanners()`: `mode`, `held`, `loading`, `want`,
+  `keep`, your spoke `land`, its neighbour `next`, `r` and `side` in px,
+  `loads`, `frees`, `fails`. `__btZoneBanner.land()` adds `waitedMs` and
+  `bare` (lands with art that played the plaque alone).
+- **Tests:** `server/test/banner-reach.test.mjs` (the reach on both Wheels
+  against the plan's own geometry, the hold with a stand-in `<img>`, the
+  wiring); `mp-wheelmap` (none held in BroTown on arrival; out on Frost Ridge
+  only its strip, there in time: the banner played its ornaments);
+  `mp-farmfree` (the Flame Fields' strip held at its edge, none on the farm,
+  the wanted ones back on return).
 
 **The level-up burst.** 2172 x 724, 6.0 MB decoded, drawn up to 0.93 x the
 strip in CSS px, which is 2.8x the file on a 3x phone. It is held for the

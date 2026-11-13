@@ -13,11 +13,14 @@
  * farm's hold does too (game/farmTrip.js).
  *
  * One phone, in the world, against a real worker:
- *   1. the Wheel's own pictures in, in BroTown (guard): the lands' banner
- *      strips, the buildings' pictures, the signposts' icons;
+ *   1. the Wheel's own pictures in, in BroTown (guard): the buildings'
+ *      pictures, the signposts' icons (v2.3.5003: and no land's banner strip,
+ *      held only near its land since the owner's "Yes do it",
+ *      zoneBannerPreload.js -- they were all four here before);
  *   2. out at the Flame Fields' first monsters, their look loaded (guard);
  *      v2.3.4640: then back just inside the safe ground's edge, the look
  *      still loaded -- the farm trip is the safe ground's (zonejudge.js);
+ *      v2.3.5003: and the Flame Fields' banner strip held there (guard);
  *   3. the Feed & Seed's "Visit Your Farm" (a real touch) takes you onto the
  *      farm, all of it drawn (guard);
  *   4. ON THE FARM, NONE OF THE WHEEL'S PICTURES ARE HELD: no banner strip,
@@ -46,8 +49,10 @@ const held = (P) => P.page.evaluate(() => {
   const bi = window.__btBuildingIcons ? window.__btBuildingIcons() : null;
   const bundles = window.__btBundles ? window.__btBundles() : {};
   const g = window.__btGpuTex ? window.__btGpuTex(1) : null;
+  const bh = window.__btBanners ? window.__btBanners() : null;   /* v2.3.5003 */
   return {
     banners: zb ? zb.resident().slice().sort() : null,
+    bannerWant: bh ? bh.want.slice().sort() : null,   /* v2.3.5003: the strips wanted where you stand */
     bld: bi ? { loaded: bi.loaded, grey: bi.grey, textures: bi.textures } : null,
     /* the build before had only the signposts' own probe, written while the
        Wheel draws them (on the farm, the last count it wrote) */
@@ -89,10 +94,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await A.page.addStyleTag({ content: '.bt-quest-banner, .bt-quest-plate, *:has(> [data-coach-dismiss]) { visibility: hidden !important; }' }).catch(() => {});
 
     /* ── 1. the Wheel's own pictures, in BroTown ── */
-    const town = await until(() => held(A), (h) => h.banners && h.banners.length >= 1 && h.bld && h.bld.loaded >= 10 && h.posts >= 8, 30000);
+    /* v2.3.5003: no land's banner strip in BroTown (held only near its land;
+       mp-wheelmap holds that) -- the guard is the buildings and signposts */
+    const town = await until(() => held(A), (h) => h.banners && h.bld && h.bld.loaded >= 10 && h.posts >= 8, 30000);
     mem.town = town;
     rec.ok(`1. in BroTown the Wheel's own pictures are in: banner strips ${JSON.stringify(town && town.banners)}, ${town && town.bld && town.bld.loaded} buildings' pictures, ${town && town.posts} signpost icons (guard)`,
-      !!town && town.banners.length >= 1 && town.bld.loaded >= 10 && town.posts >= 8, town);
+      !!town && !!town.banners && town.bld.loaded >= 10 && town.posts >= 8, town);
 
     /* ── 2. out at the Flame Fields' first monsters, their look loaded ── */
     const { WHEEL_SPAWNS } = await import(H.REPO + '/server/src/wheelspawns.js');
@@ -111,8 +118,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const ra = Math.hypot(at[0] - WHEEL_CENTRE[0], at[1] - WHEEL_CENTRE[1]);
     const ke = (WHEEL_SAFE_R - 150) / ra;
     await H.glideTo(A, WHEEL_CENTRE[0] + (at[0] - WHEEL_CENTRE[0]) * ke, WHEEL_CENTRE[1] + (at[1] - WHEEL_CENTRE[1]) * ke, { speed: 450, timeoutMs: 60000 });
-    const edge = await until(() => held(A), (h) => looks.every((k) => h.bundles && h.bundles[k]), 15000);
+    const edge = await until(() => held(A), (h) => looks.every((k) => h.bundles && h.bundles[k]) && h.banners && h.banners.includes('fire'), 15000);
     rec.ok(`2b. back on the safe ground's edge, their look still loaded (guard)`, !!edge && looks.every((k) => edge.bundles && edge.bundles[k]), edge && edge.bundles);
+    /* v2.3.5003: and the Flame Fields' banner strip, the land you are on the
+       edge of, held (the one the farm trip must let go) */
+    rec.ok(`2c. ...and the Flame Fields' banner strip held there (${JSON.stringify(edge && edge.banners)}) (guard)`, !!edge && !!edge.banners && edge.banners.includes('fire'), edge && { banners: edge.banners, want: edge.bannerWant });
 
     /* ── 3. the Feed & Seed's "Visit Your Farm", a real touch ── */
     await A.page.evaluate(() => { try { window._uiPanels.building('farm'); } catch (e) { /* the check says */ } });
@@ -131,20 +141,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const farm = await held(A);
     mem.farm = farm;
     const lookLeft = looks.filter((k) => farm.bundles && farm.bundles[k]);
-    const bannersLeft = (farm.banners || []).filter((b) => (town && town.banners || []).includes(b));
+    /* v2.3.5003: no land's strip at all (the farm has none of its own) --
+       measured against the four, not the town's (none there now) */
+    const bannersLeft = (farm.banners || []).filter((b) => ['desert', 'fire', 'forest', 'frost'].includes(b));
     rec.ok(`4. on the farm none of the Wheel's pictures are held: banner strips ${JSON.stringify(bannersLeft)}, buildings' pictures ${farm.bld && farm.bld.loaded}/${farm.bld && farm.bld.textures}, signpost icons ${farm.posts}, monster looks ${JSON.stringify(lookLeft)} -- the page ${farm.gpu} MB on the GPU and ${farm.cached} cached (at the Flame Fields ${out && out.gpu} and ${out && out.cached})`,
-      bannersLeft.length === 0 && farm.bld && farm.bld.loaded === 0 && farm.bld.textures === 0 && farm.posts === 0 && lookLeft.length === 0, { farm, looks, town: town && town.banners });
+      bannersLeft.length === 0 && farm.bld && farm.bld.loaded === 0 && farm.bld.textures === 0 && farm.posts === 0 && lookLeft.length === 0, { farm, looks, edge: edge && edge.banners });
 
     /* ── 5. back out through the gate: all of it loaded again ── */
     await H.hopTo(A, FARM_GATE.x, 1376 - FOOT_DY, { step: 80, gap: 220, tries: 60 });
     const back = await until(() => H.readState(A, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading, veil: !!document.querySelector('.bt-zone-loading') })),
       (v) => v.zone === 'wheel' && !v.loading && !v.veil, 60000);
     rec.ok(`5a. the farm's gate takes you back out to the world (${back && back.zone}) (guard)`, !!back && back.zone === 'wheel' && !back.loading, back);
+    /* v2.3.5003: the banner strips: the ones wanted where you came back in */
+    const bannersBack = (h) => !!h.banners && !!h.bannerWant && h.bannerWant.every((b) => h.banners.includes(b));
     const again = await until(() => held(A), (h) => h.banners && h.bld && h.bld.loaded >= (town ? town.bld.loaded : 10) && h.posts >= 8
-      && (town ? town.banners.every((b) => h.banners.includes(b)) : true), 30000);
+      && bannersBack(h), 30000);
     mem.back = again;
-    rec.ok(`5b. in the world again every one of them is loaded again: banner strips ${JSON.stringify(again && again.banners)}, ${again && again.bld && again.bld.loaded} buildings' pictures, ${again && again.posts} signpost icons`,
-      !!again && !!town && town.banners.every((b) => again.banners.includes(b)) && again.bld.loaded >= town.bld.loaded && again.posts >= 8, again);
+    rec.ok(`5b. in the world again every one of them is loaded again: banner strips ${JSON.stringify(again && again.banners)} (wanted there ${JSON.stringify(again && again.bannerWant)}), ${again && again.bld && again.bld.loaded} buildings' pictures, ${again && again.posts} signpost icons`,
+      !!again && !!town && bannersBack(again) && again.bld.loaded >= town.bld.loaded && again.posts >= 8, again);
     const mini = await until(() => A.page.evaluate(() => (window.__btMinimap && window.__btMinimap.buildingIcons) || null), (b) => b.n >= 10, 20000);
     rec.ok(`5c. the minimap wears the buildings' pictures again (${mini && mini.n})`, !!mini && mini.n >= 10, mini);
     const lookBack = await until(() => held(A), (h) => looks.every((k) => h.bundles && h.bundles[k]), 60000);

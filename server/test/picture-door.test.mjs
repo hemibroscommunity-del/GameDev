@@ -364,7 +364,8 @@ const LIST = {
   },
   'src/rendering/wheelSignposts.js': { loadOne: ['once', 1, "the signposts' land icons: no time limit, no retry"] },
   'src/rendering/worldLife.js': { preloadWorldLife: ['once', 1, "the props' moving parts: no time limit, no retry"] },
-  'src/rendering/zoneBannerPreload.js': { warm: ['warm', 1, "a zone's banner, warmed and held; a failure enters the zone without it"] },
+  /* v2.3.5003: held only near its land, loaded as you walk toward it: a time limit and a retry of its own */
+  'src/rendering/zoneBannerPreload.js': { warm: ['own', 1, "a land's banner, warmed and held near its land: a failure at WARM_LIMIT_MS (20 s), asked again FAIL_RETRY_MS later while you are near; one not there plays the plaque alone"] },
   'src/rendering/zoneTextures.js': {
     loadTracked: ['shared', 1, 'loadTracked (SHARED below)'],
     _stripByImage: ['shared', 1, "loadTrackedStrip's page way (SHARED below)"],
