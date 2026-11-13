@@ -1,4 +1,4 @@
-import { QUEST_CHAINS, QUEST_STATUS, getNpcQuest, NPC_DATA, questReachable } from '../../../data/gameSystems.js';
+import { QUEST_CHAINS, QUEST_STATUS, getNpcQuest, NPC_DATA, questReachable, questChainEntries } from '../../../data/gameSystems.js';
 
 /* ═══ v2.3.1681: ONLY QUESTS SOMEBODY CAN ACTUALLY GIVE YOU ═══
  * Owner: "There's a 'first purchase' 'first spark' and other quests that are
@@ -40,7 +40,8 @@ export function deriveQuestLog(S) {
 
   const active = [];
   const done = [];
-  for (const [qid, quest] of Object.entries(QUEST_CHAINS)) {
+  /* v2.3.5010: the table's pairs made once (gameSystems.js questChainEntries), not per draw */
+  for (const [qid, quest] of questChainEntries()) {
     /* A legacy save can hold an active/turnedIn quest from a giver who has
        since left the world.  Hiding it is the honest call: it can never be
        turned in, so listing it would be a permanent unfinishable row. */

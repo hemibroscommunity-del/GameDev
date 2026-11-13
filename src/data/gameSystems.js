@@ -8426,13 +8426,48 @@ export function questAfterMet(questState, after) {
   return true;
 }
 
+/* ═══ v2.3.5010: EACH GIVER'S QUESTS, LISTED ONCE ═══
+   getNpcQuest is asked for every townsperson every frame (the town's loop:
+   a companion's follow, the "!" over a head), and by the quest card, the
+   journal and the Mayor's tour offer as they draw.  It walked
+   Object.entries(QUEST_CHAINS) each time: a fresh array of [id, quest] pairs
+   for every quest in the game, to keep one giver's.  The page's allocation
+   profile (heldsweep's stations with the heap sampler, 2026-11-13) put it
+   first of everything the game makes: 16 MB of garbage in a 39 s ride
+   through the town, 2.8 MB standing still for 10 s -- garbage the collector
+   then stops the page to clear.  QUEST_CHAINS is a table nothing adds to or
+   re-keys after load, so each giver's [id, quest] pairs are listed here once,
+   in the table's own order (Object.entries'), the first time they are asked
+   for; the quests are the table's own objects, so a field changed on one is
+   seen as before. */
+let _questsByNpc = null;
+let _questEntries = null;
+/** v2.3.5010: Object.entries(QUEST_CHAINS), made once (the quest log's walk,
+ *  questModel.js deriveQuestLog, asked as the band draws).  Read only. */
+export function questChainEntries() {
+  if (!_questEntries) _questEntries = Object.freeze(Object.entries(QUEST_CHAINS));
+  return _questEntries;
+}
+function questsOfNpc(npcName) {
+  if (!_questsByNpc) {
+    _questsByNpc = new Map();
+    for (const [qid, quest] of questChainEntries()) {
+      if (!quest) continue;
+      let list = _questsByNpc.get(quest.npc);
+      if (!list) _questsByNpc.set(quest.npc, (list = []));
+      list.push([qid, quest]);
+    }
+  }
+  return _questsByNpc.get(npcName) || NO_QUESTS;
+}
+const NO_QUESTS = Object.freeze([]);
 export function getNpcQuest(rpg, npcName) {
   var questState = rpg._quests || {};
-  /* Find first incomplete quest for this NPC */
-  for (var _i32 = 0, _Object$entries4 = Object.entries(QUEST_CHAINS); _i32 < _Object$entries4.length; _i32++) {
-    var _Object$entries4$_i = _slicedToArray(_Object$entries4[_i32], 2),
-      qid = _Object$entries4$_i[0],
-      quest = _Object$entries4$_i[1];
+  /* Find first incomplete quest for this NPC (v2.3.5010: from its own list) */
+  var mine = questsOfNpc(npcName);
+  for (var _i32 = 0; _i32 < mine.length; _i32++) {
+    var qid = mine[_i32][0],
+      quest = mine[_i32][1];
     if (quest.npc !== npcName) continue;
     /* v2.3.1972: skip, do not stop.  `continue` is what keeps the rest of his
        chain reachable — a `return null` here would trade one unfinishable
