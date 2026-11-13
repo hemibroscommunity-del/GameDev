@@ -6144,6 +6144,9 @@ export var BroTown = function BroTown(_ref0) {
         if (S._nearNode !== promptNodeRef.current) {
           promptNodeRef.current = S._nearNode;
           setPromptNode(S._nearNode);
+          /* v2.3.5006: a fishing spot in reach: the water under its cast and
+             the reel's loop decoded ahead (data/sfxCache.js AHEAD_WHEN) */
+          if (S._nearNode && S._nearNode.nodeType === 'fishSpot') { try { BT_AUDIO.sfxAhead('fishSpot'); } catch (_fa) { /* sound only */ } }
         }
         /* ═══ v2.3.2245: THE BUTTON'S FACE, STAMPED PER FRAME ═══
            The right button is contextual: ATTACK with a monster in the

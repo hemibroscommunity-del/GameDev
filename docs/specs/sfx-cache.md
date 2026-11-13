@@ -101,6 +101,71 @@ rest of its file.
   decode is in), `_has` (a cold sound counts as in), `sfxPrefetch`,
   `window.__btSfxCache()` (what it holds and did).
 - `src/ui/panels/SoundStudio.jsx`: decodes what it lists. (The river's
-  loop, `game/waterAmbience.js`, reads the decoded sound itself: it is pinned,
-  and unpinning it means teaching it to ask.)
+  loop, `game/waterAmbience.js`, reads the decoded sound itself; since
+  v2.3.5006 it asks for it, below.)
 - Tests: `sound-cues` §18; `mp-sfxcache`.
+
+## v2.3.5006: the four slow decodes decoded ahead, not pinned
+
+The owner said yes to the memory list (2026-11-12). The `sound` line read
+about 23 MB, and about 90% of it was the pinned set. Four of the pinned
+sounds were pinned only because their first decode took longer than the
+30 ms aim, and none of them is a fight's sound (`sound-cues` §18a): the
+river's loop (1.46 MB decoded), the level-up's sting (1.18), the marimba of a
+win (0.93) and the reel's loop (0.91), 4.5 MB in all.
+
+They are now **decoded ahead** (`AHEAD` in `src/data/sfxCache.js`), each at a
+moment that sees its play coming (`AHEAD_WHEN`, through
+`BT_AUDIO.sfxAhead(name)`):
+
+| moment | where | decodes |
+|---|---|---|
+| `water` | `game/waterAmbience.js`: within `RIVER_AHEAD_PX` (400 px) of the river's reach, four times a second while you stay | the river |
+| `fishSpot` | `BroTown.jsx`: a fishing spot comes in reach (the harvest button offers it) | the river, the reel |
+| `cast` | `game/lifeSkillRewards.js` `startExtraction`: the cast (the reel turns only after the wind-up) | the reel, the river |
+| `levelNear` | `networking/wsClient.js` `player_state`: a combat or life skill past 80% of its level (`levelNear`, `LEVEL_AHEAD_FRAC`) | the level-up |
+| `flip` | `AceFlipPanel.jsx`: Ace's toss, before the request goes; `ChestReveal.jsx`: the chest shaking | the win |
+
+and three calls that know exactly which sound comes name it: the daily
+wheel's landing (the win or, on a jackpot, the level-up, 1.5 s before it
+plays), a salvage's essence and a daily reward's spin (each 140-160 ms before
+it plays).
+
+Once decoded, each is a sound of the cache like any other: let go when the
+cache is full and it was played (or asked ahead) longest ago. `sfxAhead`
+also marks one already decoded as played, so it stays while its moment is
+near (the river while you stand by the water). The cache's 4 MB is now a
+real cap: every sound not pinned decoded at once is about 7.8 MB.
+
+**A missed ahead is late, never dropped.** A play that comes before its
+decode (a walk that outran the river's band, the cache that let one go just
+before) waits for the decode as any cold sound does: up to about 50 ms. A
+loop waits by asking and starting the frame after the decode lands (the
+fishing loops through `startSfxLoop`; the river's own loop through
+`loadSample` and its next tick); nothing ever waits on the page's thread.
+Each such wait is counted: `window.__btSfxCache().aheadWaits` and
+`aheadLate` (the key and how long).
+
+`?sfxahead=0` pins the four again for one phone: the game as it was.
+
+The same change cut the inaudible tails of seven pinned files losslessly, at
+mp3 frame boundaries (`tools/trim_mp3_tail.mjs`, every kept byte the
+file's own): armor-hit-1 (1.392 -> 0.864 s), armor-hit-2 (1.776 -> 1.272),
+quest-complete-v2 (1.829 -> 1.437), flip-win (2.544 -> 2.208), catch-splash
+(1.584 -> 1.344), coin-flip (1.224 -> 0.792) and flip-lose (1.488 -> 1.008).
+Each cut is one frame past the last sample within 60 dB of the sound's own
+peak or above -60 dBFS, whichever is later (coin-flip, recorded at -20 dBFS
+and played louder in some cues, was cut at -80 dBFS). Each file's decode was
+compared with its original's (ffmpeg): identical to the last sample kept, and
+nothing after the cut louder than its threshold. Every slice a cue or a call
+plays ends inside the new lengths (`sound-cues` §3b). About 0.9 MB decoded:
+0.78 of it pinned, the win's 0.12 in the cache when it is held. The other
+pinned files' tails are too short to cut at a frame with that margin (under
+0.05 MB each).
+
+What it saves, expected (the memory check, `mp-membudget`, to measure): the
+pinned set 20.9 -> about 15.3 MB (4.5 unpinned, 0.78 of tails, 0.36 of the
+monster growls at 24 kHz, `docs/specs/owner-recordings.md`), so the `sound`
+line's 23.0 at home and 23.2 at the fight -> about 17.4 and 17.6 MB, unless
+the trip plays or nears one of the four (each then held in the cache, which
+holds at most its 4 MB).

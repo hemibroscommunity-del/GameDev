@@ -22,7 +22,15 @@
  * bus, as the Wind Dunes' wind is (the zone ambience's bus), so the Settings
  * music slider sets the world's ambience as one.  A loop that has been silent
  * a while is stopped, and one left on a context that was rebuilt is made
- * again on the new one.  window.__btWater is the tests' probe. */
+ * again on the new one.  window.__btWater is the tests' probe.
+ *
+ * v2.3.5006: river-water is no longer held decoded for good (data/
+ * sfxCache.js AHEAD: 1.46 MB, pinned only because its first decode took
+ * ~50 ms).  It is decoded AHEAD as you come within RIVER_AHEAD_PX of the
+ * water's reach (BT_AUDIO.sfxAhead('water'), which also keeps it recent in
+ * the sound cache while you stay), and a loop asked for before its decode is
+ * in waits for it: asked for, never waited on, and started by the frame
+ * after it lands (a wait counted in window.__btSfxCache().aheadLate). */
 import { BT_AUDIO } from '@/data/index.js';
 import { wheelMapInfo } from '@/game/wheelTrial.js';
 
@@ -34,6 +42,10 @@ export const RIVER_VOL = 0.32;
    -- Bro Pond is r 200 art px in plan.js `ponds` (300 game px), the falls'
    pool about half that */
 const POND_R = { pond: 300, falls: 150 };
+/* v2.3.5006: how far past RIVER_FAR the river is decoded ahead -- at a
+   sprint over a second before its first, faintest share; its decode takes
+   16-51 ms */
+export const RIVER_AHEAD_PX = 400;
 const EVERY_MS = 250;
 const STOP_AFTER_MS = 3000;
 const KEY = 'river-water';
@@ -42,6 +54,7 @@ const st = {
   src: null, gain: null, ctx: null,
   map: null, lines: [], ponds: [],
   at: 0, k: 0, d: null, quietSince: 0,
+  waitFrom: 0, asking: false,   /* v2.3.5006: waiting for the river's decode */
 };
 
 function geom(map) {
@@ -102,11 +115,22 @@ function drop() {
   try { if (g) g.disconnect(); } catch (e) { /* gone */ }
 }
 
-function ensure(B) {
+function ensure(B, t) {
   if (st.src && st.ctx === B.ctx) return true;
   drop();
   const buf = B._samples && B._samples[KEY];
-  if (!buf || !B.ctx) return false;
+  if (!B.ctx) return false;
+  if (!buf) {
+    /* v2.3.5006: not decoded (a walk that outran the ahead, or the cache let
+       it go): asked for, and the tick after it lands starts it */
+    if (!st.waitFrom) st.waitFrom = t;
+    const url = B.SFX_MANIFEST && B.SFX_MANIFEST[KEY];
+    if (url && B.loadSample && !st.asking) {
+      st.asking = true;
+      Promise.resolve(B.loadSample(KEY, url)).then(() => { st.asking = false; st.at = 0; }, () => { st.asking = false; });
+    }
+    return false;
+  }
   try {
     const src = B.ctx.createBufferSource();
     src.buffer = buf;
@@ -117,6 +141,7 @@ function ensure(B) {
     g.connect(B._out('music'));
     src.start(0);
     st.src = src; st.gain = g; st.ctx = B.ctx;
+    if (st.waitFrom) { if (B._sfxAheadWait) B._sfxAheadWait(KEY, t - st.waitFrom); st.waitFrom = 0; }
     return true;
   } catch (e) { drop(); return false; }
 }
@@ -132,16 +157,20 @@ export function tickWaterAmbience(S, now) {
     const ex = S && S._extraction;
     const fishing = !!(ex && ex.skill === 'fishing');
     /* v2.3.3800: and not under the loading screen or a veil (the sound gate) */
-    if (S && S.player && S.currentZone === 'wheel' && !S._zoneLoading && !fishing && B.ctx && !B.muted && !(B.soundGateClosed && B.soundGateClosed())) {
+    if (S && S.player && S.currentZone === 'wheel' && !S._zoneLoading && B.ctx && !B.muted) {
       const map = wheelMapInfo();
       if (map) {
         geom(map);
         st.d = waterDistance(S.player.x, S.player.y);
-        want = shareAt(st.d);
+        /* v2.3.5006: decoded ahead as you come near, kept recent while you
+           stay (fishing too: the water under the cast is this sound) */
+        if (st.d < RIVER_FAR + RIVER_AHEAD_PX && B.sfxAhead) B.sfxAhead('water');
+        if (!fishing && !(B.soundGateClosed && B.soundGateClosed())) want = shareAt(st.d);
       }
     }
     st.k = want;
     if (want <= 0.01) {
+      st.waitFrom = 0;
       if (!st.src) return;
       if (!st.quietSince) st.quietSince = t;
       try { st.gain.gain.setTargetAtTime(0, B.ctx.currentTime, 0.25); } catch (e) { /* the stop below */ }
@@ -149,7 +178,7 @@ export function tickWaterAmbience(S, now) {
       return;
     }
     st.quietSince = 0;
-    if (!ensure(B)) return;
+    if (!ensure(B, t)) return;
     st.gain.gain.setTargetAtTime(RIVER_VOL * want, B.ctx.currentTime, 0.35);
   } catch (e) { /* sound only: never into the game loop */ }
 }
@@ -159,6 +188,6 @@ if (typeof window !== 'undefined') {
   window.__btWater = {
     state: () => ({ playing: !!st.src, k: st.k, d: st.d, lines: st.lines.length, ponds: st.ponds.length }),
     distance: (x, y) => waterDistance(x, y),
-    consts: { RIVER_NEAR, RIVER_FAR, RIVER_VOL },
+    consts: { RIVER_NEAR, RIVER_FAR, RIVER_VOL, RIVER_AHEAD_PX },
   };
 }

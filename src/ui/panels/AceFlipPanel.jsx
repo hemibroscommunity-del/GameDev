@@ -79,6 +79,9 @@ var COIN_H = Math.round(FRAME_H * COIN_SCALE);
  * the few ms of lead-in so the strike is instant on the tap; duration drops the
  * dead tail.  Same technique as the manifest's footstep and mine-strike rows,
  * and it leaves the source file untouched for anyone re-cutting it later.
+ * (v2.3.5006: the file's own silence after 0.77 s -- under -80 dBFS -- is now
+ * cut on disk too, losslessly at an mp3 frame, to 0.792 s: it was held
+ * decoded for good, a pinned sound.  The 0.03 + 0.72 s here ends inside it.)
  *
  * NO pitchVar override is set, so play() applies its own +/-6% wobble -- which
  * is wanted here: this sound fires repeatedly in one sitting, and an identical
@@ -280,6 +283,10 @@ export function AceFlipPanel() {
     }
     aceFlipBus.setNote('');
     aceFlipBus.setPending(true);
+    /* v2.3.5006: the win's marimba decoded while the coin is in the air (no
+       longer held decoded for good: data/sfxCache.js AHEAD), asked for before
+       the worker can answer */
+    try { BT_AUDIO.sfxAhead('flip'); } catch (_a) { /* sound only */ }
     try {
       st.channel.send({ type: 'broadcast', event: 'ace_flip_request', payload: { stake: stake } });
       try { BT_AUDIO.play(TOSS_SFX, TOSS_OPTS); } catch (_s) { /* never hold a bet on a sound */ }
@@ -312,6 +319,7 @@ export function AceFlipPanel() {
     stagedKeys.forEach(function (k) { out[k] = staged[k]; });
     aceFlipBus.setNote('');
     aceFlipBus.setPending(true);
+    try { BT_AUDIO.sfxAhead('flip'); } catch (_a) { /* sound only (v2.3.5006, as the gold flip's) */ }
     try {
       S.channel.send({ type: 'broadcast', event: 'ace_item_flip_request', payload: { items: out } });
       try { BT_AUDIO.play(TOSS_SFX, TOSS_OPTS); } catch (_s) { /* never hold a bet on a sound */ }
