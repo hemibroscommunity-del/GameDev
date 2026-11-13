@@ -50,9 +50,18 @@
 
 /* a stroll, world px a second (the jog's frames go by the distance covered,
    entityRenderer _drawFolk, so the feet never skate at any pace) */
-export const FOLK_WALK_PX_S = 80;
-/* while he is behind his loop (a stop for you, the cap), this much quicker */
-export const FOLK_CATCH_UP = 1.6;
+/* ═══ v2.3.5017: A PLAYER'S PACE, NOT HALF OF IT ═══
+   The owner, 2026-11-13: "the townspeople run in slow motion make them have
+   normal movement".  They wear the player's jog (there is no walk pose), and
+   its frames go by the distance covered: at 80 px a second, a little over
+   half a player's 150 (BroTown.jsx: SPEED 2.5 world px a 60 Hz frame at no
+   agility), every stride took nearly twice as long as a player's -- a run in
+   slow motion.  At 150 the jog plays exactly as a player's does. */
+export const FOLK_WALK_PX_S = 150;
+/* while he is behind his loop (a stop for you, the cap), this much quicker
+   (v2.3.5017: 1.6 -> 1.25: at the player's pace, 1.6 was a sprint, 240 px a
+   second; "a little quicker" is 187) */
+export const FOLK_CATCH_UP = 1.25;
 /* further behind than this (a first sight, the race's end far off): placed */
 export const FOLK_SNAP_PX = 420;
 /* a quest giver's stops are all within this of his spot */
