@@ -93,7 +93,7 @@ import { lookPaletteWanted, lookPaletteOn } from '../lookPalette.js';   /* v2.3.
 import { lookFolkOn, folkFaceOverride } from '../lookFolk.js';   /* v2.3.3809: the townsfolk drawn live */
 import { folkWorkPose, folkWorkFrame, folkStandFacing } from '../folkPose.js';   /* v2.3.4058: the townsfolk at work */
 import { npcLookAsPeer, npcLookByName } from '../../data/npcLooks.js';   /* v2.3.3809: their looks */
-import { lookArmourOn, lookArmourFrame, lookArmourPrewarm, lookArmourDecided, lookArmourJob, setLookArmourBaker, lookSheetForWorker } from '../lookArmour.js';   /* v2.3.3752: the body under armour from the numbers */
+import { lookArmourOn, lookArmourFrame, lookArmourPrewarm, lookArmourDecided, lookArmourJob, setLookArmourBaker, lookSheetForWorker, lookSheetFetchFailed, lookSheetFetchDone } from '../lookArmour.js';   /* v2.3.3752: the body under armour from the numbers */
 import { lookBake } from '../lookBake.js';   /* v2.3.3752: the same bake on the page when there is no worker */
 import { lookSheetParse } from '../lookExpand.js';
 import { installArmourProbe } from '../lookArmourProbe.js';   /* v2.3.3752: QA, `?lookprobe` / `?lookpalette=1` only */
@@ -3435,6 +3435,10 @@ function _getBakeWorker() {
     const w = new Worker(new URL('../maskedBakeWorker.js', import.meta.url), { type: 'module' });
     w.onmessage = (e) => {
       const d = e.data || {};
+      /* v2.3.5015: a sheet the worker fetched and decoded itself, or could not
+         (then its bytes go from here: lookArmour.js lookSheetForWorker) */
+      if (d.type === 'lookSheetFailed') { lookSheetFetchFailed(w, d.key); return; }
+      if (d.type === 'lookSheetDone') { lookSheetFetchDone(d.key, d.hash); return; }
       const job = _bakeJobs.get(d.id);
       if (!job) return;
       _bakeJobs.delete(d.id);
@@ -3486,7 +3490,7 @@ function _sendGearSheets(wk, inps) {
     if (!x || !x.look) continue;
     const sm = lookSheetForWorker(x.look, wk);
     if (!sm) continue;
-    try { wk.postMessage(sm, [sm.bytes.buffer]); } catch (e) { return false; }
+    try { wk.postMessage(sm, sm.bytes ? [sm.bytes.buffer] : []); } catch (e) { return false; }   /* v2.3.5015: a file to fetch carries no bytes */
   }
   return true;
 }
@@ -3636,7 +3640,7 @@ async function _runLookBake(job) {
   if (!wk) { job.reply = { err: 'no worker' }; return; }
   if (poseInfo.pose === 'fish') _sendRod(wk);
   const sm = lookSheetForWorker(job.look.sheet, wk);
-  if (sm) { try { wk.postMessage(sm, [sm.bytes.buffer]); } catch (e) { job.reply = { err: String(e) }; return; } }
+  if (sm) { try { wk.postMessage(sm, sm.bytes ? [sm.bytes.buffer] : []); } catch (e) { job.reply = { err: String(e) }; return; } }   /* v2.3.5015: a file to fetch carries no bytes */
   const hasChest = worn.some(w => w.k && w.k.indexOf('chest:') === 0), hasLegs = worn.some(w => w.k && w.k.indexOf('legs:') === 0);
   let beltTex = null, beltPending = false;
   if (poseInfo.pose === 'jog' && hasChest && hasLegs) {

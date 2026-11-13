@@ -54,6 +54,7 @@
 import { BatcherPipe, DefaultBatcher, ExtensionType, extensions, BufferImageSource, Texture, Rectangle, Sprite, Container, GlProgram, Shader, UniformGroup, SpritePipe, glUploadBufferImageResource } from 'pixi.js';
 import { paletteAtlasSource, takePaletteRow, givePaletteRow, paletteRendererOf } from './paletteTex.js';
 import { timeLimit } from './retryLooks.js';   /* v2.3.4452: a set's file that never answers has failed */
+import { unpackLookSheet, lookHeadRows } from './lookUnpack.js';   /* v2.3.5015: the picture's pixels to the sheet's bytes, on either thread */
 import { destroyTextures } from './bulkTexDestroy.js';   /* v2.3.5011: the sweep's frames let go of in one pass a sheet */
 import { clientOff } from '../game/clientOff.js';   /* v2.3.3716: the Test panel's live off switch (lane D's clientOff.js) */
 import { heapTrimOn } from './heapTrim.js';   /* v2.3.5007: the heap trim's switch (a sheet's frames made when first drawn) */
@@ -172,7 +173,7 @@ export function lookSetsSettled() {
   return true;
 }
 let _ok = null;                   /* the program: null not tried, true linked, false not here */
-const _stats = { sheets: 0, sheetBytes: 0, looksMade: 0, looksFreed: 0, rowsFull: 0, linkError: null, loadError: null, drawn: 0, sets: 0, rangeErrors: 0, remade: 0, remadeInFrame: 0,
+const _stats = { sheets: 0, sheetBytes: 0, looksMade: 0, looksFreed: 0, rowsFull: 0, linkError: null, loadError: null, drawn: 0, sets: 0, rangeErrors: 0, remade: 0, remadeInFrame: 0, headSends: 0,
   pages: 0, pageBytes: 0, paged: 0, pageSends: 0 };   /* v2.3.4993: the atlas */
 const _pages = [];                /* v2.3.4993: { src, bits, ds, w, h, members } */
 
@@ -266,6 +267,14 @@ function buildSheet(set, name, m, img, roles, place) {
      from the <img> whenever the chip needs them (the bytes are let go of
      once uploaded) */
   const holder = { sheet: null };
+  /* v2.3.5015: what turns the picture into the bytes (lookUnpack.js), with
+     the sheet's book offset as it is now -- the page's `make` and the bake
+     worker's own decode (maskedBakeWorker.js 'lookSheetUrl') both use it */
+  const spec = () => {
+    const book = (holder.sheet && holder.sheet.book) || 0;
+    head[68] = book & 65535; head[69] = Math.floor(book / 65536) & 65535;
+    return { W, n, T, E, rows, bits, head: head.slice() };
+  };
   const make = () => {
     const cv = document.createElement('canvas');
     cv.width = W; cv.height = n + T;
@@ -273,26 +282,11 @@ function buildSheet(set, name, m, img, roles, place) {
     g.drawImage(img, 0, 0);
     const px = g.getImageData(0, 0, W, n + T).data;
     cv.width = 0; cv.height = 0;   /* Safari: hand the backing store back now */
-    const out = new Uint8Array(W * rows * bpt);
-    for (let q = 0; q < W * n; q++) { out[q * bpt] = px[q * 4]; if (bpt === 2) out[q * 2 + 1] = px[q * 4 + 1]; }
-    const t0 = W * n * bpt;
-    for (let e = 0; e < E; e++) {
-      const s = (W * n + 2 * e) * 4;
-      out.set([px[s], px[s + 1], px[s + 4], px[s + 5]], t0 + e * 4);
-    }
-    const put = (i, v) => {
-      for (let b = 0; b < (bits === 8 ? 2 : 1); b++) {
-        const p = i * (bits === 8 ? 2 : 1) + b, x = p % W, y = rows - 1 - Math.floor(p / W);
-        if (bits === 8) out[y * W + x] = b ? (v >> 8) & 255 : v & 255;
-        else { out[(y * W + x) * 2] = v & 255; out[(y * W + x) * 2 + 1] = (v >> 8) & 255; }
-      }
-    };
-    const book = (holder.sheet && holder.sheet.book) || 0;
-    head[68] = book & 65535; head[69] = Math.floor(book / 65536) & 65535;
-    head.forEach((v, i) => put(i, v));
-    return out;
+    return unpackLookSheet(px, spec());
   };
-  const look = { ds: m.ds, w: W, rows, bits, make, n };
+  /* v2.3.5015: the file the worker fetches (the <img>'s own address, the
+     browser's cache answers it) */
+  const look = { ds: m.ds, w: W, rows, bits, make, n, spec, url: img.currentSrc || img.src || null };
   let src, member = null, bytes;
   if (place) {
     /* v2.3.4993: its place in a page; sent there by the page's upload */
@@ -602,13 +596,24 @@ export function lookSheetBytes(set, sheet) {
   const L = sh.look;   /* v2.3.4993: the sheet's own, in a page or not */
   return { bytes: L.make(), w: L.w, rows: L.rows, ds: L.ds, bits: L.bits, n: L.n };
 }
+/** v2.3.5015: what a worker needs to make a sheet's bytes itself -- its
+ *  file's address and lookUnpack.js's spec -- or null (no file to fetch). */
+export function lookSheetSource(set, sheet) {
+  const sh = _sheets[set + '/' + sheet];
+  if (!sh || !sh.look || !sh.look.url || !sh.look.spec) return null;
+  return { url: sh.look.url, spec: sh.look.spec() };
+}
 /** v2.3.3737 (P3): a sheet's offset in its book of masks, in the header
  *  (68-69) for the shader -- uploaded again with it. */
 export function setLookSheetBook(set, sheet, offset) {
   const sh = _sheets[set + '/' + sheet];
   if (!sh || sh.book === offset) return !!sh;
   sh.book = offset >>> 0;
-  if (sh.member) sh.member.dirty = true;   /* v2.3.4993: in a page, only this sheet is sent again */
+  /* v2.3.5015: only its header rows are sent again (lookUnpack.js
+     lookHeadRows): the whole sheet was, made again from its picture on the
+     page, 38 to 40 ms at once the first time a pose was baked under armour */
+  if (sh.member) sh.member.headDirty = true;   /* v2.3.4993: in a page, only this sheet is sent again */
+  else if (sh.look) sh.look.headDirty = true;
   try { sh.src.update(); } catch (e) { /* uploaded with it when next drawn */ }
   return true;
 }
@@ -1363,11 +1368,22 @@ function patchPipes() {
           fresh = true;
         }
         for (const M of P.members) {
-          if (!fresh && M.up === glTexture && !M.dirty) continue;
+          if (!fresh && M.up === glTexture && !M.dirty) {
+            /* v2.3.5015: on the chip already, only its header changed: its
+               header rows alone, made from the header (no picture read) */
+            if (M.headDirty) {
+              const H = lookHeadRows(M.look.spec());
+              gl.texSubImage2D(target, 0, M.x, M.y + H.y0, M.w, H.hr, glTexture.format, glTexture.type, H.bytes);
+              M.headDirty = false;
+              _stats.headSends++;
+            }
+            continue;
+          }
           if (M.up) { _stats.remade++; if (!_inPrewarm) _stats.remadeInFrame++; }
           gl.texSubImage2D(target, 0, M.x, M.y, M.w, M.rows, glTexture.format, glTexture.type, M.look.make());
           M.up = glTexture;
           M.dirty = false;
+          M.headDirty = false;   /* v2.3.5015: the whole sheet carries its header */
           _stats.pageSends++;
         }
         gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
@@ -1384,6 +1400,21 @@ function patchPipes() {
          screen).  The decoded <img> is the browser's to drop and decode
          again. */
       let res = source.resource;
+      const L = source._btLook;
+      /* v2.3.5015: on the chip at its size already, only its header changed
+         (setLookSheetBook): its header rows alone, made from the header */
+      if (!res && L.headDirty && !forceAllocation && glTexture.width === w && glTexture.height === h) {
+        const H = lookHeadRows(L.spec());
+        gl.pixelStorei(gl.UNPACK_ALIGNMENT, L.bits === 8 ? 1 : 2);
+        gl.texSubImage2D(target, 0, 0, H.y0, w, H.hr, glTexture.format, glTexture.type, H.bytes);
+        gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+        L.headDirty = false;
+        _stats.headSends++;
+        source.resource = null;
+        if (source.options) source.options.resource = null;
+        return;
+      }
+      L.headDirty = false;   /* the whole sheet, its header in it */
       if (!res) {
         res = source._btLook.make();
         _stats.remade++;

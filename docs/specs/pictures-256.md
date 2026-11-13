@@ -534,7 +534,9 @@ fallbacks), and the fishing grip (`entityRenderer.js _fishTopFrame`).
 **Now** (`src/rendering/gearNumbers.js`):
 - a bake's piece drawn from the numbers is NAMED to the worker, not copied:
   `gearInput(tex)` gives the sheet and the frame's cell; the sheet's bytes go
-  to the worker once (`lookSheetForWorker`, as the body's do), and the worker
+  to the worker once (`lookSheetForWorker`, as the body's do; since v2.3.5015
+  as the file's address, the worker fetching and decoding it itself:
+  look-armour.md), and the worker
   expands the cell to the table's own colours (`lookExpand.js
   lookFrameRGBA`, a row of nothing: armour has no roles). A job naming a
   sheet the worker lacks fails rather than bake the piece as not worn;

@@ -39,6 +39,7 @@
  * fingerprints every baked frame drawn back from its crop). */
 import { bakeMaskedCanvas } from './maskedBake.js';
 import { lookSheetParse, lookFrameRGBA } from './lookExpand.js';   /* v2.3.3752: the armoured body from the colour numbers */
+import { unpackLookSheet, lookBytesHash } from './lookUnpack.js';   /* v2.3.5015: a sheet's bytes made here, from its file */
 import { lookBake } from './lookBake.js';
 
 /* ═══ v2.3.3752: THE BODY FROM THE COLOUR NUMBERS (lookArmour.js) ═══
@@ -187,10 +188,63 @@ function cropFrame(dc, dctx) {
   return { cc, cell: { tx, ty, w, h, fw, fh } };
 }
 
+/* ═══ v2.3.5015: A SHEET OF NUMBERS FETCHED AND DECODED HERE ═══
+   The page made a sheet's bytes by drawing its picture on a canvas and
+   reading it back (lookPalette.js make): 38 ms held on the page the first
+   time a pose's body was baked under armour.  Now it sends the file's address
+   and the spec ('lookSheetUrl'), and the bytes are made here with the page's
+   own function (lookUnpack.js).  The file is an opaque PNG of numbers, so it
+   is decoded with no colour conversion: its values as written.  A job that
+   names a sheet still on its way waits for it (pending); a sheet that cannot
+   be made here is reported ('lookSheetFailed') and the page sends its bytes
+   instead, as before. */
+const pending = new Map();   /* key -> the sheet's decode under way */
+/* a fetch that never answers is cut and counts as failed (TRAPS §257): the
+   page then sends the bytes itself -- its road is the retry -- and a job
+   waiting on the sheet is not held past the page's stuck watch (6 s,
+   entityRenderer.js _BAKE_STUCK_MS) by a fetch that hangs */
+const SHEET_FETCH_MS = 4000;
+function fetchSheet(j) {
+  const s = j.spec;
+  const ac = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const cut = ac ? setTimeout(() => ac.abort(), SHEET_FETCH_MS) : 0;
+  const p = fetch(j.url, ac ? { signal: ac.signal } : undefined)
+    .then((r) => { if (!r.ok) throw new Error('http ' + r.status); return r.blob(); })
+    .then((b) => createImageBitmap(b, { colorSpaceConversion: 'none', premultiplyAlpha: 'none' }))
+    .then((bm) => {
+      try {
+        if (bm.width !== s.W || bm.height !== s.n + s.T) throw new Error('size ' + bm.width + 'x' + bm.height);
+        const c = new OffscreenCanvas(s.W, s.n + s.T);
+        const g = c.getContext('2d', { willReadFrequently: true });
+        g.drawImage(bm, 0, 0);
+        const out = unpackLookSheet(g.getImageData(0, 0, s.W, s.n + s.T).data, s);
+        lookSheets.set(j.key, lookSheetParse(out, s.W, s.rows, s.bits));
+        if (j.check) self.postMessage({ type: 'lookSheetDone', key: j.key, hash: lookBytesHash(out) });
+      } finally { try { bm.close(); } catch (e2) { /* closed */ } }
+    })
+    .catch((err) => { self.postMessage({ type: 'lookSheetFailed', key: j.key, err: String((err && err.message) || err) }); })
+    .then(() => { clearTimeout(cut); pending.delete(j.key); });
+  pending.set(j.key, p);
+}
+/* the decodes a job waits for: its body's sheet and its pieces' */
+function waitsFor(j) {
+  const out = [];
+  if (!pending.size) return out;
+  if (j.look && pending.has(j.look.sheet)) out.push(pending.get(j.look.sheet));
+  for (const w of j.worn || []) if (w && w.inp && w.inp.look && pending.has(w.inp.look)) out.push(pending.get(w.inp.look));
+  return out;
+}
+
 self.onmessage = (e) => {
   const j = e.data || {};
   if (j.type === 'rod') { rod = j.rod || null; return; }
   if (j.type === 'lookSheet') { try { lookSheets.set(j.key, lookSheetParse(j.bytes, j.w, j.rows, j.bits)); } catch (e2) { /* the job then fails: the old path */ } return; }
+  if (j.type === 'lookSheetUrl') { fetchSheet(j); return; }
+  const wait = waitsFor(j);
+  if (wait.length) { Promise.all(wait).then(() => takeJob(j)); return; }
+  takeJob(j);
+};
+function takeJob(j) {
   /* v2.3.5000: a piece drawn from numbers whose sheet is not here would be
      baked as if not worn: the job fails instead (the page asks again) */
   if ((j.worn || []).some((w) => w && w.inp && w.inp.look && !lookSheets.has(w.inp.look))) {
@@ -201,7 +255,7 @@ self.onmessage = (e) => {
      job is then baked in one run, as before) */
   if ((j.worn || []).some((w) => w && w.inp && w.inp.look)) { lookBitmaps(j).then(() => runJob(j), () => runJob(j)); return; }
   runJob(j);
-};
+}
 function runJob(j) {
   if (j.look) { lookJob(j); return; }
   const reply = { id: j.id, bitmap: null, cell: null, beltPending: false, raw: false, err: null };
