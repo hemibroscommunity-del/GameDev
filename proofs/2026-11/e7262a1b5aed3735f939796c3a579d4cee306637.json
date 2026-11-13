@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e7262a1b5aed3735f939796c3a579d4cee306637",
+  "tree": "5113ec60031beef205d8b6b0bb5a71da7f1af9c4",
+  "committedAt": "2026-11-12T16:20:49-08:00",
+  "subject": "Merge pull request #1643 from hemibroscommunity-del/claude/token-efficient-lanes-perf-o4ish9-weaponlook",
+  "files": 7383,
+  "bytes": 944170993,
+  "listingSha256": "03464f0bc4fa5f81e4a5adfa39595e891dc7a06e879d53b5edf5d42db3e5f906",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
