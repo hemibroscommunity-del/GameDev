@@ -23,10 +23,14 @@
  * shows no more holes on the way (pop-ins) than today's, no piece is left
  * short of a picture, and nothing fails.
  * v2.3.5005: THE GROUND AT REST (ground-worker.js; `?groundidle=0` off):
- * standing 3 s, the lean worker squeezes every picture it held unpacked.
- * Each of the walk's 6-8 s stops is such a rest, so the pieces laid after
- * them -- every picture thawed -- are in the byte-for-byte comparison; a
- * check says the walk did rest, and the log what it held at the end.
+ * the lean worker squeezes each picture it holds unpacked 3 s after a piece
+ * last used it.  Each of the walk's 6-8 s stops squeezes them all, so the
+ * pieces laid after them -- every picture thawed -- are in the byte-for-byte
+ * comparison; a check says the walk did rest, and the log what it held at
+ * the end.  The log also gives the pop-ins as a share of the pieces laid: on
+ * a box that cannot keep up with the walk nearly every piece is asked for
+ * already on screen, and the count follows how many were laid (a faster
+ * worker lays more), not holes -- worker-code-diet.md §1b.
  * Results: the log and tools/qa/mp/out/groundlean.json.
  *
  *   node tools/qa/mp/run.mjs groundlean
@@ -111,7 +115,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const lean = await walk(browser, wsPort, webPort, 'groundsum', 'lean');
   rec.ok('both walks went out to the Flame Fields and home, twice (guard)', !!today && !!lean);
   if (!today || !lean) return;
-  const line = (s) => `${s.loads} pieces, ${s.avgMs} ms a piece (worst ${s.maxMs}), ${s.popIns} pop-ins, ${s.partial} partial; `
+  const pct = (a, b) => (b ? Math.round((a / b) * 1000) / 10 : null);   /* v2.3.5005: pop-ins a piece laid, % */
+  const line = (s) => `${s.loads} pieces, ${s.avgMs} ms a piece (worst ${s.maxMs}), ${s.popIns} pop-ins (${pct(s.popIns, s.loads)}% of pieces), ${s.partial} partial; `
     + `worker heap ${s.worker && s.worker.heapMB} + buffers ${s.worker && s.worker.buffersMB} MB; diet ${JSON.stringify(s.diet)}`;
   console.log(`    today: ${line(today)}`);
   console.log(`    lean:  ${line(lean)}`);
@@ -129,7 +134,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     d.idle === false || (d.rests > 0 && d.restSqueezed > 0), { idle: d.idle, rests: d.rests, restSqueezed: d.restSqueezed, unpacked: lean.unpacked, cold: lean.cold });
   rec.ok(`the lean ground came as fast: ${lean.avgMs} ms a piece against ${today.avgMs} (at most ${SLOWER_MS} more), ${lean.popIns} pop-ins against ${today.popIns} (at most ${POPIN_MORE} more), no failures`,
     lean.avgMs <= today.avgMs + SLOWER_MS && lean.popIns <= today.popIns + POPIN_MORE && !lean.failures, { today: [today.avgMs, today.popIns], lean: [lean.avgMs, lean.popIns] });
-  const sp = (s) => `${s.sprint.loads} pieces, ${s.sprint.popIns} pop-ins, ${s.sprint.partial} partial, ${s.sprint.short} short at the end, ${s.sprint.failures} failures`;
+  const sp = (s) => `${s.sprint.loads} pieces, ${s.sprint.popIns} pop-ins (${pct(s.sprint.popIns, s.sprint.loads)}%), ${s.sprint.partial} partial, ${s.sprint.short} short at the end, ${s.sprint.failures} failures`;
   console.log(`    sprint, today: ${sp(today)}; lean: ${sp(lean)}`);
   rec.ok(`the sprint across the land's edge and back: the lean ground no holier than today's (${lean.sprint.popIns} pop-ins against ${today.sprint.popIns}, at most ${SPRINT_POPIN_MORE} more), none short, no failures`,
     lean.sprint.popIns <= today.sprint.popIns + SPRINT_POPIN_MORE && !lean.sprint.short && !lean.sprint.failures && lean.sprint.loads > 0,

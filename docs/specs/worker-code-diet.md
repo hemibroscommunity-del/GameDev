@@ -83,12 +83,20 @@ unpacked (1 MB each) for pieces nobody was asking for. A squeezed one is
 
 **What it does.**
 
-- Once nothing has been asked of the worker for **3 s** (`REST_MS`: no piece,
-  no blocks; a `where` is answered at once and needs no picture, so standing
-  and stepping about in a fight both count as rest), **every** unpacked
-  picture is squeezed into the cold store, one at a time while the worker is
-  idle, exactly as one let go is (`toCold`). A standing player's worker holds
-  ~2.5 MB of squeezed pictures where it held 8 MB unpacked.
+- **Each** unpacked picture no piece has used for **3 s** (`REST_MS`; its
+  own clock, `usedAt`, set whenever a piece is laid with it) is squeezed into
+  the cold store, one at a time while the worker is idle, exactly as one let
+  go is (`toCold`). The worker looks right after every job and on a timer set
+  for the next picture due. A standing player's worker holds ~2.5 MB of
+  squeezed pictures where it held 8 MB unpacked.
+- **A swatch at a time, not the worker at rest.** The first cut waited for 3 s
+  with nothing asked of the worker at all, and the memory check's two highest
+  stops (trip 2 home: 23.9 MB; trip 3's fight: 23.4) never had it: pieces
+  kept trickling in. At a fight the camera steps to and fro with the swings,
+  and each step past a piece's edge asks for one, which needs only that
+  land's two pictures, so the town's six stayed unpacked beside them (the
+  other stops read 15.3-19 MB, main 21-23.7). Now a trickle keeps only the
+  pictures it uses.
 - The next piece **thaws** what it needs, as a cold picture already thaws:
   ~4.8 ms each on the test box (143 ms for 30 thaws), at most ~10 for a town
   piece (~50 ms), all of it the worker's time: nothing runs on the page's
@@ -118,9 +126,8 @@ turns it off with the rest of the lean ground for every phone. No row of its
 own: a row is a line in `server/test/client-off.test.mjs`, and a server file
 deploys the worker.
 
-**What it counts** (DIET, with every piece): `rests` (times the worker
-squeezed everything at rest), `restSqueezed` (pictures, in all), `idle` (the
-switch). When the squeezing is done the worker says so, unasked (`rest`:
+**What it counts** (DIET, with every piece): `rests` (looks that squeezed
+any picture), `restSqueezed` (pictures, in all), `idle` (the switch). When the squeezing is done the worker says so, unasked (`rest`:
 `unpacked` and `diet`), so the readout is true while you stand and not only
 as of the last piece: `window.__btWorldTrial.stats.unpacked` (unpacked now)
 and `.cold` (squeezed now); mp-membudget writes both at every stop
@@ -131,9 +138,23 @@ and `.cold` (squeezed now); mp-membudget writes both at every stop
 fights and homes; `groundDiet` `unpacked` 0 and `cold` 8 more than before),
 `mp-groundlean` (0 pieces differ; `rests` > 0; `redecodes` 0; pieces as fast,
 pop-ins within its margins), `mp-desksmooth` (no ground later than before on
-a slow line). Measured here only in Node, the worker's own code driven with
-made-up pictures: 8 pictures squeezed 3.0 s after the last job and thawed
-byte for byte, ~6.5 ms a thaw.
+a slow line). Measured in Node, the worker's own code driven with made-up
+pictures: 8 pictures squeezed 3.0 s after their last use and thawed byte for
+byte, ~6.5 ms a thaw; a job a second using 2 of them kept those 2 and
+squeezed the other 6.
+
+**The first browser run** (the worker-at-rest cut, 2026-11-12): mp-membudget
+11/11, workers 15.3 on arrival (main 21), 18-19 at four stops, 23.9 and 23.4
+at the two the trickle held (above); mp-desksmooth 29/29; mp-wheelmem passed;
+mp-groundlean 0 of 255 pieces differ, but 2 of its pop-in bars failed: 757
+against 644 (+60 allowed) and the sprint's 306 against 220 (+25). Per piece
+laid the two walks popped in alike -- 81.0% against 81.9%, the sprint's 97.1%
+against 96.5% -- and the lean walk laid MORE pieces (935 against 786; the
+sprint 315 against 228), each faster (39.4 ms against 60; its 65 thaws took
+250 ms in all, 0.27 ms a piece). On this box the page cannot keep up with the
+walk (8 in 10 pieces are asked for already on screen), so the count follows
+how many pieces were laid, not holes; the bars date from a run with 326 and
+331 (above). The log now prints the share a piece beside the count.
 
 ## 2. The rare windows' code, loaded when first opened (`?codelazy`)
 
