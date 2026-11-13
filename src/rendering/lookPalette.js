@@ -54,6 +54,7 @@
 import { BatcherPipe, DefaultBatcher, ExtensionType, extensions, BufferImageSource, Texture, Rectangle, Sprite, Container, GlProgram, Shader, UniformGroup, SpritePipe, glUploadBufferImageResource } from 'pixi.js';
 import { paletteAtlasSource, takePaletteRow, givePaletteRow, paletteRendererOf } from './paletteTex.js';
 import { timeLimit } from './retryLooks.js';   /* v2.3.4452: a set's file that never answers has failed */
+import { destroyTextures } from './bulkTexDestroy.js';   /* v2.3.5011: the sweep's frames let go of in one pass a sheet */
 import { clientOff } from '../game/clientOff.js';   /* v2.3.3716: the Test panel's live off switch (lane D's clientOff.js) */
 import { lookPaletteChoice } from '../game/lookPaletteChoice.js';   /* v2.3.3838: not built on Windows */
 import { SheenGeometry, SHEEN_VS, sheenBitGl, packSheenQuad, SHEEN_BATCHER } from './lightfx/sheenBatch.js';   /* v2.3.4998: the shine on a numbers picture */
@@ -678,7 +679,12 @@ function sweep(now) {
     /* its frames let go of the sheet (a Texture listens to its source's
        resize, so one dropped without this stays reachable from the sheet
        forever: a look a player who passed by) -- the sheet itself stays */
-    for (const k of Object.keys(look.tex)) for (const t of look.tex[k]) { try { t.destroy(false); } catch (e) { /* gone */ } }
+    /* v2.3.5011: all of them at once (bulkTexDestroy.js): one by one, each
+       destroy rebuilt the page's list of thousands of listeners -- 15 MB of
+       garbage in a 26 s fight, in the frame that swept */
+    const dying = [];
+    for (const k of Object.keys(look.tex)) for (const t of look.tex[k]) dying.push(t);
+    destroyTextures(dying);
     look.tex = Object.create(null);
     look.rowHeld = -1;
     _looks.delete(k);

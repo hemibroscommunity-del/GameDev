@@ -10096,3 +10096,25 @@ WAIT on null (`'wait'`, nothing drawn, behind the loading screen), with a
 cap that then falls back; and `lookSetsSettled()` for the sets, which also
 waits for a set registered after the loading screen began.
 **Receipt:** `mp-lookgear` ("the walking armour's RGBA is not on the chip").
+
+## 341. "Let each of them go: `for (const t of frames) t.destroy(false)`" (v2.3.5011)
+
+**The plausible move.** A cache of Textures over one shared picture (a look
+atlas page, a sheet) is let go of by destroying each, `destroy(false)` so the
+picture stays. It reads as linear and cheap.
+
+**Why it is wrong.** Every Pixi Texture listens to its source's `resize`, and
+`destroy()` takes that listener off with `source.off(...)`. The source is an
+eventemitter3 emitter, whose `removeListener` builds the event's whole list
+again, minus the one, as a NEW array, every call. A look atlas page carries a
+listener for every frame of every look drawn from it, thousands, so letting
+go of N frames one at a time is N rebuilds of a list of thousands: work and
+garbage that grow as the square. The look sweep did it inside the frame: the
+allocation profile (heldsweep's stations with the heap sampler) put it first
+in a fight, 15.3 MB of garbage in 26 s; with Pixi's own Texture, 1,500 frames
+of a 2,000-listener source took 34.6 ms one by one and 1.6 ms in one pass.
+
+**The rule.** Many Textures of one source go through
+`src/rendering/bulkTexDestroy.js destroyTextures(list)`: each source's list
+rebuilt once (server/test/bulk-tex-destroy.test.mjs). A single Texture now and
+then is fine as it is.
