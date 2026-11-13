@@ -3,6 +3,7 @@ import { PlayerDrawings, AccuracyDays } from './DevWatch.jsx';   /* v2.3.4545: w
 import { COL, getState } from '../mobile/dash/common.js';
 import { BT_API_BASE } from '../../networking/index.js';
 import { runSpeedTest } from '../../game/speedTest.js';   /* v2.3.3339: the speed test, measured on this phone */
+import { loadTimes, loadTimesText } from '../../game/loadTimes.js';   /* v2.3.5019: the load timer */
 import { openSoundStudio } from '../../game/soundStudio.js';   /* v2.3.3523: every sound and where it plays */
 import { CLIENT_SAVERS, clientOffNow } from '../../game/clientOff.js';   /* v2.3.3755: the Memory savers row */
 import { expoAddressFlags, expoAddressWords } from '../../game/expoAddress.js';   /* v2.3.4158: the expo's one-Wi-Fi switch */
@@ -820,6 +821,28 @@ export const DevPanel = ({ onClose }) => {
           onClick={() => { if (onClose) onClose(); setTimeout(() => { runSpeedTest(); }, 400); }}>
           Run the speed test
         </button>
+
+        {/* ═══ v2.3.5019: LOADING TIMES ═══
+            Keyless and this page's own (game/loadTimes.js): when each step of
+            this page's load ended, so a screenshot from the owner's phone says
+            what its loading screen waits on.  Nothing is sent or kept. */}
+        <div style={label}>Loading times</div>
+        <div style={{ color: COL.muted, fontSize: 12, marginBottom: 7, lineHeight: 1.4 }}>
+          How long this page took to load, step by step, in seconds since it began. For a fresh load,
+          close the game's tab, open it again, play in, then open this panel and take a screenshot.
+        </div>
+        {(() => {
+          const txt = loadTimesText(loadTimes());
+          return (
+            <>
+              <pre data-dev-load-times="" style={{ whiteSpace: 'pre-wrap', fontSize: 12, lineHeight: 1.45, margin: '0 0 7px', fontFamily: 'ui-monospace, Menlo, monospace', color: COL.text }}>{txt}</pre>
+              <button type="button" style={btn(false)} data-dev-load-copy=""
+                onClick={() => { try { navigator.clipboard.writeText(txt); } catch (e) { /* the screenshot still works */ } }}>
+                Copy the loading times
+              </button>
+            </>
+          );
+        })()}
 
         {/* ═══ v2.3.3523: THE SOUND STUDIO ═══
             The owner: "I think sounds were wired in the wrong places.  The
