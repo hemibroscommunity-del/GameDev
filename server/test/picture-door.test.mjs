@@ -298,6 +298,8 @@ const LIST = {
   'src/rendering/hemiBust.js': { atlasRgba: [['once', 1, "the Hemi bust's atlas: no time limit, no retry"], ['local', 1, 'the same atlas from its own bytes (a blob URL), where the numbers cannot be read']] },
   /* v2.3.4930: the body bake's worker */
   'src/rendering/bodyBake.js': { bakeOnWorker: ['local', 1, "the worker's packed body or head sheet as an <img> (a blob URL of its own bytes)"] },
+  /* v2.3.5015: the masked bake's worker fetches its sheets of colour numbers itself */
+  'src/rendering/maskedBakeWorker.js': { fetchSheet: ['limit', 1, "a sheet of colour numbers for the masked bake's worker: cut after 4 s (SHEET_FETCH_MS) or on any failure, and the page then sends its bytes itself, as before (lookArmour.js lookSheetFetchFailed): the page's road is the retry"] },
   'src/rendering/bodyBakeWorker.js': { loadBitmap: ['limit', 1, "a body sheet for the body bake's worker: bounded by the page's 20 s (bodyBake.js WORKER_MS), then the page bakes it itself, with its retries and later rounds"] },
   'src/rendering/keepAsImage.js': { keepAsImage: ['local', 1, "a canvas's own pixels as an <img> (a blob URL)"] },
   'src/rendering/levelUpBurstPreload.js': { warmPortrait: ['warm', 1, 'the level-up portrait, warmed; the <img> loads it at use'] },

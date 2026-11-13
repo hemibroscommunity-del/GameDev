@@ -199,9 +199,16 @@ function cropFrame(dc, dctx) {
    be made here is reported ('lookSheetFailed') and the page sends its bytes
    instead, as before. */
 const pending = new Map();   /* key -> the sheet's decode under way */
+/* a fetch that never answers is cut and counts as failed (TRAPS §257): the
+   page then sends the bytes itself -- its road is the retry -- and a job
+   waiting on the sheet is not held past the page's stuck watch (6 s,
+   entityRenderer.js _BAKE_STUCK_MS) by a fetch that hangs */
+const SHEET_FETCH_MS = 4000;
 function fetchSheet(j) {
   const s = j.spec;
-  const p = fetch(j.url)
+  const ac = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const cut = ac ? setTimeout(() => ac.abort(), SHEET_FETCH_MS) : 0;
+  const p = fetch(j.url, ac ? { signal: ac.signal } : undefined)
     .then((r) => { if (!r.ok) throw new Error('http ' + r.status); return r.blob(); })
     .then((b) => createImageBitmap(b, { colorSpaceConversion: 'none', premultiplyAlpha: 'none' }))
     .then((bm) => {
@@ -216,7 +223,7 @@ function fetchSheet(j) {
       } finally { try { bm.close(); } catch (e2) { /* closed */ } }
     })
     .catch((err) => { self.postMessage({ type: 'lookSheetFailed', key: j.key, err: String((err && err.message) || err) }); })
-    .then(() => { pending.delete(j.key); });
+    .then(() => { clearTimeout(cut); pending.delete(j.key); });
   pending.set(j.key, p);
 }
 /* the decodes a job waits for: its body's sheet and its pieces' */
