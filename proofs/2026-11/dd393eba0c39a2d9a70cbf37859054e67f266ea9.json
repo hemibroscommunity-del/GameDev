@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "dd393eba0c39a2d9a70cbf37859054e67f266ea9",
+  "tree": "3a03e4fa880de5da62d89419dd33755be211c240",
+  "committedAt": "2026-11-12T20:07:31-08:00",
+  "subject": "Merge pull request #1648 from hemibroscommunity-del/claude/token-efficient-lanes-perf-o4ish9-dmgfont",
+  "files": 7393,
+  "bytes": 944578153,
+  "listingSha256": "51f65fb730a7ceaa713134154e006edd638283205c427dbd9449ec9243a065ba",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
