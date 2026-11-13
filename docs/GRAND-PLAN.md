@@ -1,4 +1,4 @@
-# The grand plan: what to build next, in what order, and when each part is done (v2.3.5019)
+# The grand plan: what to build next, in what order, and when each part is done (v2.3.5020)
 
 The owner, 2026-11-13: *"make a grand plan for this codebase that can then
 guide future development ... look at the sessions around architecture and
