@@ -79,6 +79,10 @@ export const KNOWN = {
     crowd: 'v2.3.4871 FIXED (was:) eight species-and-skin pairs on screen (e-species) churn their builds (speciesArt.js _BUILD_CAP 6: each frame lets go of one and builds another, and what it let go of is freed 30 s later): 566 pictures of 256 x 256 made in a minute, 187 MB, then 757 and 250 MB.  The collector holds the page 35 to 100 ms at a time, and when the first tours went on after it, 336 to 698 ms walking into the crowd and up to 1076 ms at the Leaderboards.  On an iPhone this is the black screen, not a hitch.  Fix: a cap that is never under the looks on screen (or the build kept while its player is), and a let-go freed at once when nothing draws it' },
   /* ── v2.3.4499: found by the crowd tour (mp-crowdsweep) ── */
   'gear-sheet': { ms: 195,
+    /* v2.3.5014: d-prints 12 (none: the longest hold of any family 8.2 / 11.9 / 7.4 ms, three runs; was 180.7 to 238.9 ms,
+       7 to 15 times): a drawn shirt is dressed on the body bake's worker in play (gearSheets.js _buildShirtOnWorker,
+       effectsRenderer.js _dressedOnWorker).  The family's own 195 stands: only d-prints was run again */
+    at: { 'd-prints': 12 },
     why: "a drawn shirt composed on the page for each player who wears one, the first time each pose is drawn (composeShirt > stampShirtArt): 121 to 192 ms each, 8 to 13 times as ten players in drawn shirts swung, rolled and mined beside you (d-prints).  gearSheets.js keeps 8 drawings baked: with ten on screen none were seen to bake again in the 25 s",
     next: 'stamp the drawing on the worker (the shirt is a 256-colour file like the rest), or draw the drawing as its own layer over the plain shirt instead of baking it into a sheet' },
   portrait: { ms: 40,   /* v2.3.4960: 150 -> 40: the Leaderboards' faces 11.3 ms (g-boards, was 149); the bag's own portrait as armour goes on 37 ms (armour) */

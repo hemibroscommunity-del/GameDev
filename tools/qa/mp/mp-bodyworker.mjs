@@ -15,6 +15,15 @@
  *   1c. a peer's stand-ins (a sword body, a bow torso strip, the jog legs);
  *   1b. the head sheets an armoured player shows (jog, hit, mine, pickup),
  *      the same way;
+ *   5. (v2.3.5014) a drawn shirt (a print, a pattern, a colour; mirrored):
+ *      gearSheets.js's dressing on the page against the worker's, byte by
+ *      byte, one sheet a pose family (the 128 px sheets sliced raw, the
+ *      256 px ones, the swing's upscaled one that is not packed), and a
+ *      stand-in's strips (the swing, the bow, the cook's one frame, the
+ *      chop's twin: effectsRenderer.js _dressedShirtFrame).  In play
+ *      (another player's print in a hit, a roll, mining) it is the crowd
+ *      tour's d-prints that measures it: the stand and jog prints are drawn
+ *      from colour numbers (lookShirtFrame.js) and never come here;
  *   2. the game's own path: behind the loading screen the page bakes, as
  *      before; in play (the bro's drawing changed in the world, which bakes
  *      his drawn sheets again, as a stranger's do when they walk up) the
@@ -40,6 +49,18 @@ const HEADS = [['jog', 'east'], ['jog', 'south'], ['hit', 'north'], ['mine', 'so
 const STANDINS = [['/sprites/player/sword-south-body.png', 320, 320, 'south', false, false],
   ['/sprites/player/bow-east-torso.png', 214, 241, 'east', true, true],
   ['/sprites/player/jog-east-legs.png', null, null, 'east', false, false]];
+/* v2.3.5014: the drawn shirt's sheets: [pose, facing] (stand, jog, jog-northeast, hit, roll at 256 px, mine (its print
+   anchored), fish, pickup at 256 px, the swing: upscaled and not packed) */
+const SHIRTS = [['stand', 'south'], ['jog', 'east'], ['jog', 'northeast'], ['hit', 'north'], ['dodge', 'east'],
+  ['mine', 'south'], ['fish', 'south'], ['pickup', 'south'], ['swing', 'east']];
+/* ...and a stand-in's strips (effectsRenderer.js _dressedShirtFrame): the swing, the bow, the cook's one pinned frame,
+   the chop's twin; `k` the pattern's cell scale for the pose (SHIRT_PATTERN_K) */
+const SHIRT_STRIPS = [{ file: 'swing-east', fw: 402, k: 188 / 94.5 }, { file: 'bowshot-east', fw: 214, k: 188 / 94.5 },
+  { file: 'cook-south', fw: 213, one: 22, k: 85 / 25.5 }, { file: 'chop-west-220', fw: 240, twin: 12, k: 170 / 94.5 }];
+const SHIRT_LOOKS = [
+  { name: 'print+pattern+colour', art: INK('7', 3), pattern: 'stripe-v:2', tint: [200, 60, 60], mirror: false },
+  { name: 'print-mirrored', art: INK('e', 5), pattern: null, tint: null, mirror: true },
+];
 const LOOKS = [
   { name: 'drawn', skin: 'green', pants: 'pink', shoes: 'blue', eyeColor: 'blue', eyeStyle: 'one-eye', art: ART },
   { name: 'drawn-mirror', skin: 'ebony', pants: 'red', shoes: 'white', eyeColor: undefined, eyeStyle: 'sleepy', art: { ...ART, mirror: true } },
@@ -129,6 +150,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`stand-in ${r.look} ${r.url.replace(/^.*\//, '')}: the worker's strip is the page's, byte for byte (${r.diff} bytes differ), the same size and cells`,
         r.W === r.wW && r.H === r.wH && r.cellsSame && r.frames === r.wFrames && r.diff === 0, r);
     }
+    /* 5: v2.3.5014, a drawn shirt, the same way, and in play on the worker */
+    const shirts = [];
+    for (const L of SHIRT_LOOKS) for (const [pose, dir] of SHIRTS) shirts.push({ ...L, pose, dir });
+    for (const L of SHIRT_LOOKS) for (const strip of SHIRT_STRIPS) shirts.push({ ...L, strip });
+    const tres = await A.page.evaluate((ls) => window.__btShirtWorkerCompare(ls), shirts);
+    for (const r of tres) {
+      console.log(`    shirt ${r.look} ${r.pose}-${r.dir}: ${r.W}x${r.H} diff ${r.diff} (worst ${r.worst}) cells ${r.cellsSame} dressed ${r.dressedPx} px page ${r.pageMs} ms worker ${r.workerMs} ms ${r.why || ''}`);
+      rec.ok(`shirt ${r.look} ${r.pose}-${r.dir}: the worker's sheet is the page's, byte for byte (${r.diff} bytes differ), the same size and cells`,
+        r.W === r.wW && r.H === r.wH && r.cellsSame && r.frames === r.wFrames && r.diff === 0, r);
+    }
+    rec.ok('the drawn shirts were dressed (guard: the comparison means something)', tres.length === shirts.length && tres.every((r) => r.dressedPx > 50), tres.map((r) => r.dressedPx));
     rec.ok('the drawn stand-ins carried their drawings (guard)', sres.filter((r) => r.ink).length >= 6, sres.filter((r) => r.ink).length);
     rec.ok('the drawn heads carried the face drawing, and an eye style that erases (guard)',
       hres.filter((r) => r.ink).length >= 5 && hres.filter((r) => r.blank).length >= 2, { ink: hres.filter((r) => r.ink).length, blank: hres.filter((r) => r.blank).length });

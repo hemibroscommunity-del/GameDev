@@ -340,6 +340,7 @@ import { WheelShatter } from '../wheelShatter.js';
 import { LandAuras, AURAS_ON, AURA_MAX } from '../landAuras.js';   /* v2.3.3402: each land's resources wear its element */   /* v2.3.3345: a rock mined out breaks into pieces of its own picture */
 import { gesturePose01, extractionMeter01, gestureLoopFrame, COOK_FLICKS_PER_LOOP } from '@/game/gesturePose.js'; /* v2.3.2245; extractionMeter01 v2.3.2514 (the harvest's bar reads the button ring's own numbers -- the node's HP bar since v2.3.2956) */
 import { bodyWorkerWanted, bakeOnWorker, noteWorkerSheet } from '../bodyBake.js';   /* v2.3.4930: a peer's stand-ins with drawings, baked on a worker */
+import { shirtWorkerOff } from '../gearSheets.js';   /* v2.3.5014: `?shirtworker=0` */
 import { loadWebpOrPng } from '../webpImage.js'; /* v2.3.2328: the sword/bow/legs loader asks for the smaller file too */
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, SLIME_BASE_ROW, SLIME_FRAME_PX /* v2.3.2991: where a scene texel is on the world's slime */ } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
@@ -364,7 +365,7 @@ import { recolorBodyToCanvas, recolorStandInSkin, recolorStandInSkinSplit, DEFAU
 import { onArtChange, artHasInk, artIsSymmetric, artHash, sanitizeShirtArt, sideForDir, getShirtArt } from '../traits/playerArt.js';   /* v2.3.3146: + the shirt's sides, for the dressed stand-in shirts */   /* v2.3.2429; v2.3.2431 the symmetry gate; v2.3.2855 a peer's drawings on the lumberjack */
 import { onPatternChange, parsePattern, getPattern, sanitizePattern } from '../traits/patternCatalog.js';   /* v2.3.3146: + the shirt's pattern, yours and a peer's */
 import { STANDIN_GARB_K, localGarb, peerGarb, garbKey, onGarbChange } from '../standInGarb.js';   /* v2.3.4037: the trouser and shoe patterns and the trouser print on every stand-in */
-import { composeShirt } from '../playerDecal.js';   /* v2.3.3146: the walking shirt's own dressing, on the stand-ins' strips */   /* v2.3.2429; v2.3.2431 the symmetry gate */
+import { dressShirtStrip } from '../gearBake.js';   /* v2.3.3146: the walking shirt's own dressing (composeShirt), on the stand-ins' strips; v2.3.5014: through gearBake.js, which the body bake's worker runs too */   /* v2.3.2429; v2.3.2431 the symmetry gate */
 import { getGearFrame, packTrimmed, registerGearSource, unregisterGearSource, subTexture, loadCroppedStrip } from '../gearSheets.js';   /* v2.3.2774: + the cropper and the upload hook for the combat strips; v2.3.3074: + its release */
 import { peerEntSprites } from '../artHolds.js';   /* v2.3.4416: every sprite of a peer who left, the gear too */
 import { laterRounds } from '../retryLooks.js';   /* v2.3.4452: a stand-in's gear strip that failed is asked for again */
@@ -15319,25 +15320,18 @@ export class EffectsRenderer {
     const _file = pose + '-' + dir + (_twin ? _twin.suffix : '');
     const _url = '/sprites/gear/shirt/' + item + '/' + _file + '.png?v=' + GEARLAYER_VER;
     const one = DRESSED_ONE_FRAME[pose];
+    /* v2.3.5014: in play, on the body bake's worker (gearBake.js dressShirtStrip, the steps below, then the
+       same pack): this dressing held the page 121 to 192 ms a strip as drawn players swung beside you (the
+       crowd tour's d-prints).  Null meanwhile, as while the file loads; a job the worker could not do: here */
+    const _opts = { art, pattern: pat, tint: tint || null, mirror: !!mirror };
+    if (this._dressedOnWorker(D, key, e, _url, { strip: true, fw, twin: _twin ? _twin.frames : 0, one: one != null ? one : null, opts: _opts })) return null;
     const p = new Promise((res, rej) => {
       const im = new Image();
       im.onload = () => res(im); im.onerror = rej; im.src = _url;
     }).then((img) => {
       if (this._destroyed || D.get(key) !== e) return;   /* let go of while it loaded */
-      const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
-      const n0 = _twin ? _twin.frames : Math.max(1, Math.round(W / fw));
-      const w = _twin ? Math.round(W / n0) : fw;
-      /* the one frame a pinned strip draws, cut out first: the cook's 24
-         garments are 23 nobody sees */
-      let srcImg = img, n = n0;
-      if (one != null && one < n0) {
-        const c = document.createElement('canvas');
-        c.width = w; c.height = H;
-        c.getContext('2d').drawImage(img, one * w, 0, w, H, 0, 0, w, H);
-        srcImg = c; n = 1;
-      }
-      const cv = composeShirt(srcImg, H, { art, pattern: pat, tint: tint || null, mirror: !!mirror, frameW: w });
-      if (srcImg !== img) { srcImg.width = 0; srcImg.height = 0; }
+      /* v2.3.5014: the frame's cut and the dressing are gearBake.js dressShirtStrip (moved there verbatim) */
+      const { cv, w, H, n } = dressShirtStrip(img, fw, _twin ? _twin.frames : 0, one, _opts);
       const packed = packTrimmed(cv, w, H, n);
       const src = Texture.from(packed ? packed.canvas : cv).source;
       if (packed && cv !== packed.canvas) { cv.width = 0; cv.height = 0; }
@@ -18051,6 +18045,45 @@ export class EffectsRenderer {
       cache.set(key, arr);
       _trimBakeCache(cache, this._bakes);
       noteWorkerSheet('standin ' + key, performance.now() - t0);
+    });
+    return true;
+  }
+  /* ═══ v2.3.5014: A STAND-IN'S DRESSED SHIRT, ON THE WORKER ═══
+     _dressedShirtFrame's dressing (gearBake.js dressShirtStrip) and pack, on
+     the body bake's worker in play (bodyBakeWorker.js 'shirt', `strip`), as
+     _peerOnWorker does a peer's recolour.  The entry's `arr` stays null until
+     it lands (the plain shirt is drawn meanwhile, as while the file loaded)
+     and `e.p` is the wait (_warmFarmDressed).  True when asked; false to
+     dress it here (a loading screen, `?bodyworker=0`, `?shirtworker=0`).  A
+     job the worker could not do is dressed here the next time it is asked
+     for (the entry let go of, its key marked 'page'). */
+  _dressedOnWorker(D, key, e, url, job) {
+    if (!this._dressedPage) this._dressedPage = new Set();
+    if (this._dressedPage.has(key) || shirtWorkerOff() || !bodyWorkerWanted()) return false;
+    let abs = url;
+    try { abs = new URL(url, location.href).href; } catch (er) { /* as it is */ }
+    e.p = bakeOnWorker('shirt', [abs], job, 0, 0, () => !this._destroyed && D.get(key) === e).then((w) => {
+      if (this._destroyed || D.get(key) !== e || (w && w.dropped)) { if (w && w.url) { try { URL.revokeObjectURL(w.url); } catch (er) { /* gone */ } } return; }
+      if (!w) { this._dressedPage.add(key); D.delete(key); return; }   /* the next ask dresses it here, as before (a job dropped unwanted never gets here: D had let go of it) */
+      const t0 = performance.now();
+      const src = Texture.from(w.img).source;
+      this._bakes.add(src);
+      src.scaleMode = 'linear';
+      try { src.label = 'dressed:' + url; } catch (er) { /* QA-only */ }
+      try { src.once('destroy', () => { try { URL.revokeObjectURL(w.url); } catch (er) { /* gone */ } }); } catch (er) { /* kept */ }
+      const arr = [];
+      for (let i = 0; i < w.frames; i++) {
+        if (w.cells) {
+          const c = w.cells[i];
+          arr.push(new Texture({ source: src, frame: new Rectangle(c.ax, c.ay, c.w, c.h),
+            orig: new Rectangle(0, 0, w.fw, w.fh), trim: new Rectangle(c.tx, c.ty, c.w, c.h) }));
+        } else {
+          arr.push(new Texture({ source: src, frame: new Rectangle(i * w.fw, 0, w.fw, w.fh) }));
+        }
+      }
+      registerGearSource(src);
+      e.arr = arr;
+      noteWorkerSheet('shirt ' + key, performance.now() - t0);
     });
     return true;
   }
