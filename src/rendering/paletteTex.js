@@ -78,6 +78,7 @@ import { BatcherPipe, DefaultBatcher, ExtensionType, extensions, BufferImageSour
 import { SHARP_SAMPLE_GLSL } from './sharpPixels.js';   /* v2.3.3447: the sharp read, for ONE_BATCHER's program */
 import { setWheelPalette } from '../game/wheelTrial.js';
 import { isPaletteSource } from './paletteDraw.js';
+import { deviceProfile } from '../game/deviceProfile.js';   /* v2.3.5016: a Windows or Mac computer keeps the three programs */
 export { isPaletteSource, drawSourceRect, paletteRegionRGBA } from './paletteDraw.js';
 
 export const PAL_BATCHER = 'bt-palette';
@@ -439,18 +440,35 @@ export function paletteClipMade() { return FRAG_CLIP !== FRAG; }
    body and bow both drawn by this program.  So it is the phone's chip
    running this program, and the three are what drew the game until
    2026-10-18 (a fight's frame ~70 draw calls again, not ~30). */
+/* ═══ v2.3.5016: ...AND ON A PHONE OR TABLET IT IS ON AGAIN ═══
+   The owner, 2026-11-13, after the measurement (one program against three,
+   the same held frame: BroTown 59-69 -> 45-46 batches a frame and 40-48 ->
+   22-23 program switches; eight armoured players 76 -> 61-65 and 57 -> 37-41;
+   the picture identical, 0 px) and trying `?onebatch=1` on the iPhone:
+   "Everything looks fine to me make 1 program the default".  So the one
+   program is the default again -- on phones and tablets, the chip it was
+   tried on.  A Windows or Mac computer keeps the three unless asked: its
+   browsers build programs through ANGLE, whose compilers took minutes over
+   the look palette's (lookPaletteChoice.js, the owner's laptop at 75%), this
+   one has never been built there, and a computer's chip draws the three's
+   ~70 calls with ease.  A software renderer keeps the three (TRAPS §225).
+   `?onebatch=0` the three anywhere; `?onebatch=1` the one anywhere. */
 export const ONE_BATCHER = 'bt-one';
 const ONE_ID_K = 64;   /* the texture id: slot + 64 x code (Pixi's is 16 bits) */
 const SOFTWARE_GL = /swiftshader|llvmpipe|softpipe|software|basic render|\bwarp\b/i;
 /** v2.3.3447: one program or three, from the address (`onebatch=0|1` wins)
  *  and the renderer's name -- {on, why}.  Pure, so the QA probe asks it
  *  about chips this box is not (mp-onebatch).  v2.3.3894: the three on
- *  every chip unless the address asks for the one (`why` 'default'). */
-export function oneBatchChoice(search, renderer) {
+ *  every chip unless the address asks for the one (`why` 'default').
+ *  v2.3.5016: the one by default, but on a Windows or Mac computer (`os`:
+ *  deviceProfile()'s { windows, mac }, why 'computer') and a software
+ *  renderer ('software'). */
+export function oneBatchChoice(search, renderer, os) {
   const m = /(^|[?&])onebatch=([01])(&|$)/.exec(search || '');
   if (m) return { on: m[2] === '1', why: 'address' };
   if (SOFTWARE_GL.test(renderer || '')) return { on: false, why: 'software' };
-  return { on: false, why: 'default' };
+  if (os && (os.windows || os.mac)) return { on: false, why: 'computer' };
+  return { on: true, why: 'default' };
 }
 /* the chip's own name: Firefox gives it as RENDERER, Chrome and Safari
    answer "WebKit WebGL" there and the name through the debug extension
@@ -939,7 +957,10 @@ export function setOneBatchRenderer(r) {
   _oneRoute = false;
   _oneR = r || null;
   const name = rendererName(r);
-  const choice = oneBatchChoice(pageSearch(), name);
+  /* v2.3.5016: which computer, if one (game/deviceProfile.js: asked there, once) */
+  let os = null;
+  try { const d = deviceProfile(); os = { windows: !!d.windows, mac: !!d.mac }; } catch (e) { os = null; }
+  const choice = oneBatchChoice(pageSearch(), name, os);
   _oneWanted = choice.on;
   _oneStats.why = choice.why;
   _oneStats.renderer = name;
@@ -982,7 +1003,7 @@ if (typeof window !== 'undefined') {
   /* QA only (mp-onebatch): the Speed test's own lever, and the choice asked
      about any address and chip */
   window.__btOneBatchLive = (on) => setOneBatchLive(on);
-  window.__btOneBatchChoice = (search, renderer) => oneBatchChoice(search, renderer);
+  window.__btOneBatchChoice = (search, renderer, os) => oneBatchChoice(search, renderer, os);
   window.__btPalette = () => {
     let bytes = 0, n = 0, pieces = 0, pages = 0, farm = 0, farmBytes = 0;
     for (const s of _live) {
