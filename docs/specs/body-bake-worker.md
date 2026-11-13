@@ -68,6 +68,19 @@ and the later rounds are unchanged.
   one worker and a limit a job sent b-fish's jobs, queued behind a-ink's, back
   to the page (344 ms holds). Two workers where the device has the cores. A file that did not load goes on to the page's own second try
   after its backoff, as a failed first download always did.
+- **v2.3.5013: one job at a time, and a beat.** The crowd tour's h-eight still
+  held the page 208 to 288 ms, 7 times in 20 s, after eight armoured players
+  had cast (c-armour8): their 32-frame fish sheets, baked on the page because
+  the watch had let BOTH workers go (`__btBodyWorker()`: stalled 2, dead). They
+  were not stuck. Each job ran as its own async run, so the four fish sheets
+  a worker was given all loaded, then all recoloured (4 to 5.6 s each on this
+  box), then all packed, and the first answer came only when nearly all were
+  done: 18.7 to 24.6 s after the ask (measured, the worker's own step times).
+  Now a worker runs its jobs in turn (an answer every few seconds, the first
+  asked the first back, one job's canvases alive at once) and posts
+  `{ beat: 1 }` between a job's steps (loaded, recoloured, packed), which the
+  watch counts as an answer. `WORKER_MS` is unchanged: what it lets go of now is
+  one step silent for 20 s, a worker that is truly stuck.
 
 ## How it was proven
 
