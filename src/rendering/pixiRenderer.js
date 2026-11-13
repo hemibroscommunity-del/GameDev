@@ -3,6 +3,8 @@
  * Manages the PixiJS application and orchestrates all render systems.
  */
 import { createPixiApp } from './pixiApp.js';
+import { installBatchIdsLean } from './batchIdsLean.js';   /* v2.3.5007: Pixi's batches' id tables kept their size */
+import { installFieldLean } from './fieldLean.js';   /* v2.3.5007: Pixi's small geometry keeps its whole numbers unboxed */
 import { renderDpr } from '../game/renderRes.js'; /* v2.3.3339 */
 import { applyDepthBuckets } from './depthSort.js'; /* v2.3.2635: one depth pass per frame */
 import { TileRenderer } from './systems/tileRenderer.js';
@@ -77,6 +79,8 @@ import { getEyeStyle } from './traits/eyeStyleCatalog.js';
 import { recordCrash } from '../debug/crashTrap.js';   /* v2.3.3017: a frame that will not draw is reported, and rebuilt */
 import { PeerImpostors } from './peerImpostor.js';   /* v2.3.4885: one picture per standing player in a crowd (?onepic=1) */
 import { PlateLayers } from './plateLayer.js';   /* v2.3.4989: other players' name plates drawn after the figures (?platelayer=1) */
+installBatchIdsLean();   /* v2.3.5007: once, as the renderer loads (batchIdsLean.js) */
+installFieldLean();   /* v2.3.5007: and fieldLean.js */
 
 /* v2.3.778: decode ALL textures to <img>-backed sources, never ImageBitmap.
    On iOS, ImageBitmaps are GPU-backed: the memory purge that kills the WebGL

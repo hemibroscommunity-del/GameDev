@@ -185,6 +185,16 @@
  * 16.8; QA_MB_QUERY=onecopy=0&picnumbers=0).
  * (v2.3.3728: this note corrected: it said "off by default".)
  */
+/* v2.3.5007, the heap trim (docs/specs/heap-trim-2026-11-13.md): `heap`
+ * line UNCHANGED at 38.5, its room won back.  Main's own code read 36.5-38.0
+ * on CI, so any pull request failed or passed by luck.  Snapshots of the trip
+ * found half the heap is compiled code (kept for good) and the rest spread
+ * thin; four trims of what was kept with no use (`?heaptrim=0` all off): the
+ * head pieces' notes, the look palette's frames made when first drawn, Pixi's
+ * batches' id tables emptied, and Pixi's small geometry keeping whole numbers
+ * unboxed.  Back to back on this box: main 37.6 / 37.8 at its highest, the
+ * branch 36.4 / 36.0; arrival 32.3 / 32.1 -> 31.3 / 31.3.  QA_MB_SNAP writes
+ * heap snapshots at chosen stops (mp-membudget.mjs) for the next trim. */
 /* v2.3.5006, `sound` 29 -> 22 -- LOWERED.  Four sounds no fight plays
  * (river-water, level-up, flip-win, fish-reel: 4.5 MB) are decoded ahead of
  * their moment instead of pinned for the session, seven held sounds lost their
@@ -217,7 +227,7 @@ export const MEMORY_BUDGET = {
     what: 'pictures the game draws itself, held in 2D canvases (every one still reachable)' },
   sound: { name: 'decoded sound', mb: 22, measured: 18.1,   /* v2.3.3664: 30 -> 32; v2.3.3706: 32 -> 29; v2.3.5006: 29 -> 22, LOWERED to lock in the four sounds decoded ahead instead of pinned (main read 23.0-23.2, this 18.1), see the header */
     what: 'sound decoded into memory (music streams from its file and is not in it, v2.3.3073)' },
-  heap: { name: 'the page\'s JavaScript objects', mb: 38.5, measured: 37.7,   /* v2.3.3595: 32 -> 33; v2.3.3657: 33 -> 34; v2.3.3807: 34 -> 36; v2.3.4005: 36 -> 38; v2.3.4080: 38 -> 37.5; v2.3.4483: 37.5 -> 38.5, see the header */
+  heap: { name: 'the page\'s JavaScript objects', mb: 38.5, measured: 36.4,   /* v2.3.3595: 32 -> 33; v2.3.3657: 33 -> 34; v2.3.3807: 34 -> 36; v2.3.4005: 36 -> 38; v2.3.4080: 38 -> 37.5; v2.3.4483: 37.5 -> 38.5; v2.3.5007: unchanged, measured 37.7 -> 36.4 by the heap trim, see the header */
     what: 'the page\'s JavaScript objects' },
   buffers: { name: 'the page\'s raw data buffers', mb: 22, measured: 20.4,   /* v2.3.3703: 24 -> 22, see the header */
     what: 'the page\'s raw data buffers (ArrayBuffers), and the text of its scripts, which the same reading counts (v2.3.3703)' },
