@@ -8,6 +8,7 @@ import { installUiSfxDelegate } from './ui/uiSfxDelegate.js';
 import { applyWorldTrial } from './game/worldTrial.js';
 import { applyDeskWide } from './ui/deskWide.js';
 import { applyOneBand } from './ui/oneBand.js';   /* v2.3.4072 */
+import { markLoad } from './game/loadTimes.js';   /* v2.3.5019: the load timer (the Test panel's "Loading times") */
 import { startBandSideways } from './ui/mobile/bandSideways.js';   /* v2.3.4152 */
 import './styles/game.css';
 
@@ -30,6 +31,9 @@ installCrashTrap();
    Activates with ?perf=1 or ?debug=1.  Survives the React overlay
    vanishing after PLAY -- used to diagnose the reported 2x slowdown. */
 installPerfHud();
+
+/* v2.3.5019: the game's code is running -- the first step of the load timer */
+markLoad('app');
 
 /* v2.3.2658: the menu click / dialog close sounds (owner: "Use the click
    sound for navigating through the menus ... Use the close sound for closing

@@ -21,6 +21,7 @@
 import { TILE, ZONES, ELEMENTS, TOWN_EXITS, WORLDVIEW_EXITS, WORLDVIEW_ARRIVAL, DEPTH_CONFIG, BT_AUDIO, updateZoneDimensions, discoverZone, generateZoneMap, spawnMonstersForZone, spawnGatherNodes } from '@/data/index.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: in and out of a dungeon, heard */
 import { zoneUnlockQuest } from '@/game/questRoute.js'; /* v2.3.1817: which quest opens a zone */
+import { markLoad } from '@/game/loadTimes.js'; /* v2.3.5019: the load timer (the world's arrival) */
 import { perfTracker } from '@/debug/perfTracker.js';
 import { _typeof } from '@/lib/babelHelpers.js';
 
@@ -737,6 +738,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               } else if (!isZoneMapResident(_tz) || (_tz === 'town' && !townSceneryReady())) {   /* v2.3.2859: town's NPCs + buildings leave with town (its map too, which the first test already covers) */
                 var _zlObj = { toZone: _tz, from: S.currentZone, done: false, t: Date.now() }; /* v2.3.1406: t feeds the 20s failsafe */
                 S._zoneLoading = _zlObj;
+                if (isWheelTrialZone(_tz)) markLoad('arrival');   /* v2.3.5019: the first time only (the load timer) */
                 var _tzName = (ZONES[_tz] && ZONES[_tz].name) || _tz;
                 showZoneLoadingOverlay(_tzName);
                 /* race a 15s cap so a hung network fetch can never freeze
@@ -749,7 +751,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                 Promise.race([
                   Promise.resolve(preloadZoneAssets(_tz)).catch(function () {}),
                   gateCap(isWheelTrialZone(_tz) ? wheelEntryProgress : null),
-                ]).then(function () { _zlObj.done = true; });
+                ]).then(function () { _zlObj.done = true; if (isWheelTrialZone(_tz)) markLoad('arrived'); });
                 return; /* hold this frame; enter once _zlObj.done flips */
               }
               S._enteredFromHub = S.currentZone; /* v2.3.859: which hub (town/worldview) to return to */

@@ -33,6 +33,7 @@
 
 import { readSharedValue, writeSharedValue } from '@/networking/rosterCookie.js';   /* v2.3.2890 */
 import { markGateWorldIn } from './loadingGate.js';   /* v2.3.4136: nothing for the world while a loading screen is up */
+import { markLoad } from '../game/loadTimes.js';   /* v2.3.5019: the load timer's last step */
 
 /* ═══ v2.3.2890: SKIP TUTORIAL ═══
  * Owner: "add just a 'skip tutorial' button on the very first dialog box when
@@ -103,7 +104,7 @@ let _welcomePending = false;
 export function noteWelcomePending(on) { _welcomePending = !!on; }
 
 /** The world is on screen (intro lifted, or a resume with no intro). */
-export function markWorldIn() { _worldInAt = Date.now(); markGateWorldIn(); }   /* v2.3.4136: the loading gate too */
+export function markWorldIn() { _worldInAt = Date.now(); markGateWorldIn(); markLoad('world'); }   /* v2.3.4136: the loading gate too; v2.3.5019: the load timer */
 export function worldInMs(now = Date.now()) { return _worldInAt ? now - _worldInAt : -1; }
 
 function plateUntil() {
