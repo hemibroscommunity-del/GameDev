@@ -66,6 +66,9 @@
  *                                   one bit a cell of it, row by row, where you
  *                                   cannot walk and where you may swim; `x`, `y`
  *                                   its corner in cells, `w`, `h` its size)
+ *   (unasked)                    -> { type: 'rest', unpacked, diet }
+ *                                   (v2.3.5005: unpacked pictures no piece used for
+ *                                   3 s squeezed, and the counts now: THE GROUND AT REST)
  *   anything that fails          -> { type: 'error', id, message }
  */
 import { PLAN as BASE_PLAN, planFor } from '../plan.js';
@@ -476,7 +479,9 @@ function sumOf(...arrs) {
   }
   return h >>> 0;
 }
-const diet = { decodes: 0, redecodes: 0, decodeMs: 0, keepMax: 0, keepLast: 0, refetches: 0, thaws: 0, thawMs: 0, squeezed: 0 };
+/* v2.3.5005: + `rests`, the times every unpacked picture was squeezed at rest,
+   and `restSqueezed`, how many pictures that was in all (THE GROUND AT REST) */
+const diet = { decodes: 0, redecodes: 0, decodeMs: 0, keepMax: 0, keepLast: 0, refetches: 0, thaws: 0, thawMs: 0, squeezed: 0, rests: 0, restSqueezed: 0 };
 const SQUEEZE = typeof CompressionStream === 'function' && typeof DecompressionStream === 'function';
 const cold = new Map();               /* 'id|ver' -> { w, h, pal, z } a picture let go, its numbers deflated (lean only) */
 const squeezing = new Map();          /* 'id|ver' -> the tile, let go and waiting to be squeezed, or being squeezed */
@@ -525,13 +530,25 @@ function squeezeNext() {
     cold.set(k, { w: tile.w, h: tile.h, pal: tile.pal, z });
     coldBytes += z.length;
     diet.squeezed++;
-    while (cold.size > LEAN.coldKeep) {
-      const k0 = cold.keys().next().value;
-      coldBytes -= cold.get(k0).z.length;
-      cold.delete(k0);
-    }
+    coldTrim();
   }, () => { squeezingNow.delete(k); squeezing.delete(k); }).then(idleSoon);
   return true;
+}
+/* the oldest cold pictures let go past the cold store's cap.  v2.3.5005: with
+   the ground at rest (below) the cap is LEAN.coldKeep AND the room the
+   unpacked ones leave (LEAN.decodedKeep less those unpacked now), so the
+   pictures the worker holds, unpacked or squeezed, are the very ones it held
+   before: the eight squeezed at rest push no cold one out, and none is ever
+   unpacked again from its file for it (`redecodes`, mp-groundlean).  Run as
+   each picture is squeezed and after every piece (trim), so the store shrinks
+   back as a walk unpacks pictures again.  Without it, LEAN.coldKeep alone. */
+function coldTrim() {
+  const cap = LEAN.coldKeep + (groundIdle ? Math.max(0, DECODED_KEEP - decoded.size) : 0);
+  while (cold.size > cap) {
+    const k0 = cold.keys().next().value;
+    coldBytes -= cold.get(k0).z.length;
+    cold.delete(k0);
+  }
 }
 /* kept cold (lean): no download wanted for it */
 const isCold = (k) => cold.has(k) || squeezing.has(k);
@@ -552,6 +569,82 @@ async function thaw(k) {
     return { w: c.w, h: c.h, idx, pal: c.pal };
   } catch (e) { return null; }
 }
+
+/* ═══ v2.3.5005: THE GROUND AT REST (`?groundidle=0` turns it off) ═══
+   The owner said yes to the memory list of 2026-11-12, whose first worker item
+   this is.  The memory check (mp-membudget, its `workers` line) reads this
+   worker after a player has stood still for 8 to 14 s, and found 8.0 MB of its
+   14.6 MB of buffers were the LEAN.decodedKeep pictures kept UNPACKED, 1 MB
+   each, for pieces nobody was asking for: the cold ones beside them are
+   ~0.31 MB each.  So a picture no piece has used for REST_MS is squeezed as
+   one let go is (toCold, idleBlock, a picture at a time), and a standing
+   player holds ~2.5 MB where it held 8.
+   A SWATCH AT A TIME, not the worker at rest.  The first cut waited for
+   REST_MS with nothing asked of the worker at all, and on the memory check's
+   two highest stops (trip 2 home, trip 3's fight) that never came: the pieces
+   kept trickling in -- a fight steps the camera to and fro, and each step
+   past a piece's edge asks for one, which needs only that land's two
+   pictures -- so the town's six others stayed unpacked beside them.  Now each
+   picture has its own clock (`usedAt`: when a piece last used it), looked at
+   right after every job (restSoon) and on a timer set for the next one due
+   (restNow): a trickle keeps only the pictures it uses.
+   The next piece thaws what it needs, as a cold picture already thaws today:
+   ~4.8 ms each on the test box (143 ms for 30 thaws), at most ~10 for a town
+   piece, all of it the worker's time -- nothing on the page's thread.  The
+   thawed numbers are the squeezed ones to the byte, so every piece is laid
+   the same (`?groundsum`, mp-groundlean).  The cold store's cap makes room for
+   them (coldTrim), so nothing is unpacked again from its file for it.
+   A picture with no colour numbers (a studio picture past 255 colours, kept
+   as colours) stays unpacked: squeezing is for numbers.  Only with the lean
+   ground (`?groundlean=0` turns both off) and a browser that can squeeze.
+   `rests` (looks that squeezed any) and `restSqueezed` (pictures) count it
+   (DIET), and when the squeezing is done the worker says so ('rest': the
+   pictures unpacked and squeezed now), so the readout (wheelStats.unpacked,
+   .cold) is true while you stand, not only as of the last piece.
+   docs/specs/worker-code-diet.md §1b. */
+const REST_MS = 3000;
+let groundIdle = false;               /* on: init (lean, CompressionStream, not `groundidle=0`) */
+let restTimer = 0;                    /* the look at the next picture due (restNow) */
+let restSay = false;                  /* squeezed at rest: say so once the squeezing is done (idleBlock) */
+const usedAt = new Map();             /* 'id|ver' -> when a piece last used its unpacked picture (tileOf, chunk) */
+/* the switch, from the page's address (house style: climbOn, `groundlean`) */
+function idleOn(search) {
+  return !/(^|[?&])groundidle=(0|off|false)(&|$)/.test(search || '');
+}
+/* a job has just ended: look now (restNow sets the timer for the next due) */
+function restSoon() {
+  if (!groundIdle) return;
+  if (restTimer) { clearTimeout(restTimer); restTimer = 0; }
+  restNow();
+}
+/* every unpacked picture no piece has used for REST_MS squeezed; the timer set
+   for the next to come due.  Never while a job runs: it may be using one, and
+   squeezing waits for the worker to be idle anyway (idleBlock) -- the job's
+   end looks again (restSoon) */
+function restNow() {
+  restTimer = 0;
+  if (!groundIdle || !W || busy) return;
+  const now = performance.now();
+  let n = 0, next = Infinity;
+  for (const [k, t] of [...decoded]) {
+    if (!t || !t.idx) continue;
+    const idle = now - (usedAt.get(k) || 0);
+    if (idle < REST_MS) { next = Math.min(next, REST_MS - idle); continue; }
+    toCold(k, t);
+    if (squeezing.get(k) === t) { decoded.delete(k); usedAt.delete(k); n++; }
+  }
+  if (next < Infinity) restTimer = setTimeout(restNow, Math.max(50, next + 5));
+  if (!n) return;
+  diet.rests++;
+  diet.restSqueezed += n;
+  restSay = true;
+}
+/* what the walk has asked of the worker (DIET), as sent with every piece --
+   and v2.3.5005 with 'rest' */
+function dietNow() {
+  return { ...diet, decodeMs: Math.round(diet.decodeMs), thawMs: Math.round(diet.thawMs), lean, idle: groundIdle, files: files.size, calmed: calmed.size,
+    blocks: W ? W.blocks.size() : 0, cold: cold.size, coldMB: +(coldBytes / 1048576).toFixed(2) };
+}
 const everDecoded = new Set();        /* 'id|ver' unpacked at least once (a short key a picture: a few hundred bytes) */
 const everFetched = new Set();        /* 'id|ver' downloaded at least once */
 /* v2.3.3021: the water pictures calmed so far, and the time it took; and
@@ -570,7 +663,7 @@ self.onmessage = (ev) => {
   if (m.type === 'where') { post({ type: 'where', id: m.id, ...whereIs(m.x, m.y) }); idleSoon(); return; }
   busy++;
   queue = queue.then(() => handle(m)).catch((e) => post({ type: 'error', id: m.id, message: String((e && e.message) || e) }))
-    .then(() => { busy--; if (!busy) idleSoon(); });
+    .then(() => { busy--; if (!busy) { idleSoon(); restSoon(); } });   /* v2.3.5005: + THE GROUND AT REST */
 };
 /* v2.3.3298: the blocks next to yours built while nothing is asked of the
    worker, nearest first, so the ground beyond the next edge is laid from
@@ -588,6 +681,8 @@ function idleBlock() {
      idleSoon again when it is done */
   if (squeezingNow.size) return;
   if (lean && squeezeNext()) return;
+  /* v2.3.5005: the pictures squeezed at rest: the readout told (THE GROUND AT REST) */
+  if (restSay) { restSay = false; post({ type: 'rest', unpacked: decoded.size, diet: dietNow() }); }
   const next = W.blocks.missingNear(1);
   /* v2.3.4400: the blocks round you all built: the pictures further out */
   if (!next) { farPrefetch(); return; }
@@ -660,6 +755,9 @@ async function init(m) {
   lean = !/(^|[?&])groundlean=(0|off|false)(&|$)/.test(search);
   sums = /(^|[?&])groundsum(=|&|$)/.test(search);
   if (lean) { DECODED_KEEP = LEAN.decodedKeep; FILES_KEEP = LEAN.filesKeep; latticeKeep(LEAN.latticeKeep); }
+  /* v2.3.5005: and every unpacked picture squeezed once the worker is at rest
+     (THE GROUND AT REST) -- on with the lean ground, unless `groundidle=0` */
+  groundIdle = lean && SQUEEZE && idleOn(search);
   const g = gridInfo(PLAN);
   const F = planFeatures(PLAN);
   const blocks = wheelBlocks(PLAN, { onBuilt: postBlock, keep: lean ? LEAN.blocksKeep : 0 });
@@ -1014,14 +1112,14 @@ function ask(db, store, fn) {
 async function tileOf(id, ver, wait) {
   const k = `${id}|${ver}`;
   const hit = decoded.get(k);
-  if (hit) { decoded.delete(k); decoded.set(k, hit); return hit; }
+  if (hit) { decoded.delete(k); decoded.set(k, hit); usedAt.set(k, performance.now()); return hit; }   /* v2.3.5005: + usedAt (THE GROUND AT REST) */
   if (failed.has(k)) return null;
   const s = swatches[id], src = s && s.vers[ver];
   if (!src) return null;
   /* v2.3.3717: let go and squeezed (lean): back in a few ms, not unpacked again */
   if (lean) {
     const t = await thaw(k);
-    if (t) { decoded.set(k, t); return t; }
+    if (t) { decoded.set(k, t); usedAt.set(k, performance.now()); return t; }
   }
   let blob = files.get(k) || src.blob || null;     /* the studio's are on the phone already */
   if (!blob) {
@@ -1094,6 +1192,7 @@ async function tileOf(id, ver, wait) {
     return null;
   }
   decoded.set(k, tile);
+  usedAt.set(k, performance.now());   /* v2.3.5005 */
   diet.decodes++;
   diet.decodeMs += performance.now() - td;
   if (everDecoded.has(k)) diet.redecodes++; else everDecoded.add(k);
@@ -1106,7 +1205,10 @@ function trim(keep) {
     /* v2.3.3717: lean, kept cold, squeezed (LEAN) */
     if (lean) toCold(k, decoded.get(k));
     decoded.delete(k);
+    usedAt.delete(k);   /* v2.3.5005 */
   }
+  /* v2.3.5005: the cold store back to its cap as the walk unpacks again (coldTrim) */
+  if (groundIdle) coldTrim();
 }
 
 /* RGBA already on `pal` -> one index a pixel.  A colour not on it (a picture
@@ -1195,7 +1297,10 @@ async function chunk(m) {
   const under = underOf(out.mat, out.w);
   /* v2.3.3717: how many pictures this piece kept (DIET) */
   let kept = 0;
-  for (const k of keep) if (decoded.has(k)) kept++;
+  /* v2.3.5005: and each of them used as of now (a piece that waited for a
+     download took its first pictures seconds ago: THE GROUND AT REST) */
+  const usedNow = performance.now();
+  for (const k of keep) if (decoded.has(k)) { kept++; usedAt.set(k, usedNow); }
   diet.keepLast = kept;
   if (kept > diet.keepMax) diet.keepMax = kept;
   trim(keep);
@@ -1215,10 +1320,9 @@ async function chunk(m) {
     dl: { ...dlStats },   /* v2.3.4400 */
     /* v2.3.3021: the water pictures calmed (ground.js CALM WATER) */
     calm: W.calm ? { n: calmStats.n, ms: calmStats.ms } : null,
-    /* v2.3.3717: what the walk has asked of the worker (DIET) */
+    /* v2.3.3717: what the walk has asked of the worker (DIET; v2.3.5005: dietNow, + `idle`) */
     sum,
-    diet: { ...diet, decodeMs: Math.round(diet.decodeMs), thawMs: Math.round(diet.thawMs), lean, files: files.size, calmed: calmed.size, blocks: W.blocks.size(),
-      cold: cold.size, coldMB: +(coldBytes / 1048576).toFixed(2) } }, moved);
+    diet: dietNow() }, moved);
 }
 
 /* v2.3.2967: the swatch DRAWN under the piece's own square (not its apron),

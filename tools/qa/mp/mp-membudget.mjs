@@ -78,6 +78,34 @@ const LOOKS_MS = 45000;
    builder's heap steps by ~2 MB), every other line +0. */
 const TRIP_GROWTH = { artCache: 3, gpu: 4, canvases: 3, sound: 1, heap: 3, buffers: 3, workers: 4 };
 
+/* ═══ v2.3.5005: A STANDING STOP READS A GROUND THAT HAS STOPPED ═══
+   The ground worker squeezes each swatch picture 3 s after a piece last used
+   it (ground-worker.js THE GROUND AT REST): 1 MB unpacked, ~0.3 squeezed.  On
+   this box the ground lags the walk (nearly every piece of a trip is asked for
+   already on screen), and arriving home it was still laying the town's pieces
+   when HOME_MS was up on some trips and not others: the reading swung by up to
+   ~4.3 MB with it (six town pictures unpacked or squeezed), and the third trip
+   read 4.3 MB above the second for no leak.  So the arrival and each home are
+   read once the ground has been quiet -- nothing in flight, no piece back for
+   GROUND_QUIET_MS (its 3 s and the squeezing) -- GROUND_WAIT_MS at most; each
+   stop says how long it waited and how quiet it was.  The fights are read as
+   ever, mid-fight. */
+const GROUND_QUIET_MS = 5000;
+const GROUND_WAIT_MS = 30000;
+async function waitGroundQuiet(P) {
+  const t0 = Date.now();
+  let q = null;
+  for (;;) {
+    q = await P.page.evaluate(() => {
+      const w = window.__btWorldTrial && window.__btWorldTrial.stats;
+      return w ? { loading: w.loading, quietMs: w.lastPieceAt ? Math.round(performance.now() - w.lastPieceAt) : null } : null;
+    }).catch(() => null);
+    if (!q || (q.loading === 0 && (q.quietMs == null || q.quietMs >= GROUND_QUIET_MS)) || Date.now() - t0 >= GROUND_WAIT_MS) break;
+    await P.page.waitForTimeout(500);
+  }
+  return { ...(q || {}), waitedMs: Date.now() - t0 };
+}
+
 /* each line of the budget, read off one stop */
 const READ = {
   artCache: (s) => s.cache,
@@ -285,8 +313,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const s = await sample(label);
       s.trail = tr.seen;
       s.workers = await workers();
-      /* v2.3.3717: what the ground worker was asked (ground-worker.js DIET) */
-      s.groundDiet = await P.page.evaluate(() => { const t = window.__btWorldTrial; return t && t.stats ? { diet: t.stats.diet || null, loads: t.stats.loads, maxMs: t.stats.maxMs, sumMs: t.stats.sumMs, popIns: t.stats.popIns, unpacked: t.stats.unpacked } : null; }).catch(() => null);
+      /* v2.3.3717: what the ground worker was asked (ground-worker.js DIET) -- v2.3.5005: and
+         its pictures unpacked and squeezed now (`unpacked`, `cold`: said again at rest) */
+      s.groundDiet = await P.page.evaluate(() => { const t = window.__btWorldTrial; return t && t.stats ? { diet: t.stats.diet || null, loads: t.stats.loads, maxMs: t.stats.maxMs, sumMs: t.stats.sumMs, popIns: t.stats.popIns, unpacked: t.stats.unpacked, cold: t.stats.cold,
+        quietMs: t.stats.lastPieceAt ? Math.round(performance.now() - t.stats.lastPieceAt) : null } : null; }).catch(() => null);
       const sg = await settledGpu(P);
       s.gpuSettled = sg ? sg.mb : null;
       s.gpuUidNow = sg ? sg.uidNow : null;   /* v2.3.3310: for the first draws (firstDrawsMB) */
@@ -298,7 +328,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     };
 
     /* ── the seven stops ── */
-    await take('BroTown, on arrival');
+    const gq0 = await waitGroundQuiet(P);   /* v2.3.5005 */
+    console.log(`    the ground quiet on arrival after ${gq0.waitedMs} ms more (${JSON.stringify(gq0)})`);
+    (await take('BroTown, on arrival')).groundQuiet = gq0;
     const { WHEEL_SPAWNS } = await import(H.REPO + '/server/src/wheelspawns.js');
     const at = WHEEL_SPAWNS.ember.points[0];
     const home = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
@@ -326,7 +358,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /* v2.3.3656: and home again is once they are let go (the header's stop
          3), not a fixed wait after a trip that now takes a sixth as long */
       await waitLooks(P, (a) => a.ready === 0 && a.loading === 0, LOOKS_MS);
+      /* v2.3.5005: and once the ground has stopped (A STANDING STOP, above) */
+      const gq = await waitGroundQuiet(P);
+      console.log(`    trip ${k}: the ground quiet at home after ${gq.waitedMs} ms more (${JSON.stringify(gq)})`);
       const back = await take(`trip ${k}: home again`);
+      back.groundQuiet = gq;
       trips.push({ swings, atFight, back });
     }
     /* v2.3.3644: REACHED it -- a trip held on the commons (above) read the

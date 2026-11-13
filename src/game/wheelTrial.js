@@ -75,6 +75,8 @@ export const wheelStats = {
   popIns: 0,           /* came on screen before its ground was laid */
   pieceBytes: 0,       /* the colours of one piece */
   unpacked: 0,         /* swatch pictures unpacked in the worker now */
+  lastPieceAt: 0,      /* v2.3.5005: when the last piece came back from the worker (performance.now): how long the ground has been quiet, for the memory check's standing stops (mp-membudget) */
+  cold: 0,             /* v2.3.5005: ...and held squeezed (cold) -- both said again when the worker squeezes the ones no piece has used for 3 s ('rest': ground-worker.js THE GROUND AT REST) */
   calm: null,          /* v2.3.3021: { n, ms }, water pictures calmed (ground.js CALM WATER) */
   diet: null,          /* v2.3.3717: decodes, redecodes, keepMax... (ground-worker.js DIET, `?groundlean`) */
   dl: null,            /* v2.3.4400: cuts, far, gateWaitMs (ground-worker.js A SLOW LINE) */
@@ -411,6 +413,15 @@ function onMessage(m, resolveInit, rejectInit) {
      what lets the zone gate tell a slow way in from a hung one (worldTrial.js
      wheelEntryProgress; ground-worker.js THE WAY IN WAITS) */
   if (m.type === 'dl') { wheelStats.dlBytes = m.bytes || 0; return; }
+  /* v2.3.5005: the worker squeezed the pictures no piece had used for 3 s
+     (ground-worker.js THE GROUND AT REST): the counts as they are now, not as
+     of the last piece -- what the memory check's stops read beside the
+     worker's MB (mp-membudget groundDiet) */
+  if (m.type === 'rest') {
+    wheelStats.unpacked = m.unpacked || 0;
+    if (m.diet) { wheelStats.diet = m.diet; wheelStats.cold = m.diet.cold || 0; }
+    return;
+  }
   /* v2.3.2959: a picture some piece went without has come ('id|version') */
   if (m.type === 'got') {
     for (const fn of _gotFns) { try { fn(m.k); } catch (e) { /* one listener's trouble */ } }
@@ -461,13 +472,14 @@ export function wheelChunk(i, j, relay, gate) {   /* v2.3.4400: + gate, the way 
       if (m.partial) wheelStats.partial++;
     }
     wheelStats.unpacked = m.unpacked;
+    wheelStats.lastPieceAt = performance.now();   /* v2.3.5005: a relay too: either used the worker's pictures */
     wheelStats.unreadable = m.unreadable || 0;
     wheelStats.downloading = m.downloading || 0;
     wheelStats.dlFails = m.dlFails || 0;
     /* v2.3.3021: the water pictures calmed so far (ground.js CALM WATER) */
     if (m.calm) wheelStats.calm = m.calm;
     /* v2.3.3717: what the walk asked of the worker (ground-worker.js DIET) */
-    if (m.diet) wheelStats.diet = m.diet;
+    if (m.diet) { wheelStats.diet = m.diet; wheelStats.cold = m.diet.cold || 0; }   /* v2.3.5005: + cold */
     /* v2.3.4400: and the downloads' numbers (ground-worker.js A SLOW LINE) */
     if (m.dl) wheelStats.dl = m.dl;
     /* ...and with `?groundsum` (QA), each piece's checksum, whole pieces only:

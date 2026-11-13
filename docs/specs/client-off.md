@@ -38,7 +38,7 @@ for each client saver, from the Test panel, live, as the message diet has
 | `onecopy` | Pictures held once | `src/rendering/picsOnce.js` | next load |
 | `picnumbers` | Monster strips as colour numbers | `src/rendering/picsNumbers.js` | next load |
 | `codelazy` | Windows load when opened | `src/ui/lazyPanel.js` (CODE_LAZY) | next load |
-| `groundlean` | Lean ground builder | `src/game/wheelTrial.js` (adds `groundlean=0` to what the ground worker is told) | next load |
+| `groundlean` | Lean ground builder | `src/game/wheelTrial.js` (adds `groundlean=0` to what the ground worker is told; v2.3.5005: which also turns off the ground at rest, `groundidle`, worker-code-diet.md §1b) | next load |
 | `heaplean` | Map leftover let go | `src/game/wheelTrial.js` (_heapLean) | next load |
 | `lookpalette` | Characters coloured on the chip | its own PR (`src/rendering/lookPalette.js`): one line | at once |
 | `lookshirt` | Printed shirts coloured on the chip | v2.3.3790 (`src/rendering/lookShirtFrame.js`): `clientOff('lookshirt')` in `getLookShirtFrame`, asked every frame | at once |

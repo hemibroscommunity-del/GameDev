@@ -70,6 +70,111 @@ piece sent with a checksum of its colour numbers, colours and footsteps):
 Tuning on the way (same test): 6 kept unpacked made town's pieces thaw 58
 times and come 5 ms slower; 8 is as fast as today.
 
+## 1b. The ground at rest (v2.3.5005, `?groundidle=0` turns it off)
+
+`public/tools/world/core/ground-worker.js`, THE GROUND AT REST. The owner said
+yes to the memory list of 2026-11-12; this is its first worker item.
+
+**Why.** The memory check reads the worker after the player has stood still
+for 8 to 14 s (on arrival, at the fight, home). At home its buffers were
+14.6 MB, and 8.0 MB of that was the 8 pictures the lean ground keeps
+unpacked (1 MB each) for pieces nobody was asking for. A squeezed one is
+~0.31 MB (0.25-0.37).
+
+**What it does.**
+
+- **Each** unpacked picture no piece has used for **3 s** (`REST_MS`; its
+  own clock, `usedAt`, set whenever a piece is laid with it) is squeezed into
+  the cold store, one at a time while the worker is idle, exactly as one let
+  go is (`toCold`). The worker looks right after every job and on a timer set
+  for the next picture due. A standing player's worker holds ~2.5 MB of
+  squeezed pictures where it held 8 MB unpacked.
+- **A swatch at a time, not the worker at rest.** The first cut waited for 3 s
+  with nothing asked of the worker at all, and the memory check's two highest
+  stops (trip 2 home: 23.9 MB; trip 3's fight: 23.4) never had it: pieces
+  kept trickling in. At a fight the camera steps to and fro with the swings,
+  and each step past a piece's edge asks for one, which needs only that
+  land's two pictures, so the town's six stayed unpacked beside them (the
+  other stops read 15.3-19 MB, main 21-23.7). Now a trickle keeps only the
+  pictures it uses.
+- The next piece **thaws** what it needs, as a cold picture already thaws:
+  ~4.8 ms each on the test box (143 ms for 30 thaws), at most ~10 for a town
+  piece (~50 ms), all of it the worker's time: nothing runs on the page's
+  thread (THE PAGE'S ONE THREAD IS BUDGETED). The pieces are asked ahead of
+  the screen, so the first piece after a stop comes a little later in the
+  worker and no later on screen.
+- **The same ground, to the byte**: a thaw gives back the squeezed numbers
+  exactly, so every piece is laid as before (`?groundsum`; mp-groundlean
+  compares the pieces laid after its stops, which are rests now, and checks
+  the walk did rest: `rests` > 0).
+- **Nothing unpacked again from its file for it.** The cold store's cap
+  (`coldTrim`) is `LEAN.coldKeep` (24) plus the room the unpacked ones leave
+  (8 less those unpacked now): the 8 squeezed at rest push no cold picture
+  out, and the store shrinks back to 24 as a walk unpacks pictures again. So
+  the pictures held, unpacked or squeezed, are the very ones held before,
+  and at most 32 squeezed (~10 MB on a long walk) stand where 8 unpacked and
+  24 squeezed (~15.5 MB) did.
+- A picture with no colour numbers (a studio picture past 255 colours, kept
+  as colours) stays unpacked: squeezing is for numbers. A browser without
+  `CompressionStream` keeps them all unpacked, as before.
+
+**Switches.** On with the lean ground, for everyone. `?groundidle=0` (or
+`off`, `false`) in the page's address turns it off for one phone (the worker
+reads the address it is given at init, as `groundlean` and `climb`); the
+Test panel's "Lean ground builder" row (`groundlean`, docs/specs/client-off.md)
+turns it off with the rest of the lean ground for every phone. No row of its
+own: a row is a line in `server/test/client-off.test.mjs`, and a server file
+deploys the worker.
+
+**What it counts** (DIET, with every piece): `rests` (looks that squeezed
+any picture), `restSqueezed` (pictures, in all), `idle` (the switch). When the squeezing is done the worker says so, unasked (`rest`:
+`unpacked` and `diet`), so the readout is true while you stand and not only
+as of the last piece: `window.__btWorldTrial.stats.unpacked` (unpacked now)
+and `.cold` (squeezed now); mp-membudget writes both at every stop
+(`groundDiet`).
+
+**To check it** (a browser run; this change was made without one):
+`mp-membudget` (the `workers` line ~5-5.5 MB lower at every stop: arrival,
+fights and homes; `groundDiet` `unpacked` 0 and `cold` 8 more than before),
+`mp-groundlean` (0 pieces differ; `rests` > 0; `redecodes` 0; pieces as fast,
+pop-ins within its margins), `mp-desksmooth` (no ground later than before on
+a slow line). Measured in Node, the worker's own code driven with made-up
+pictures: 8 pictures squeezed 3.0 s after their last use and thawed byte for
+byte, ~6.5 ms a thaw; a job a second using 2 of them kept those 2 and
+squeezed the other 6.
+
+**The first browser run** (the worker-at-rest cut, 2026-11-12): mp-membudget
+11/11, workers 15.3 on arrival (main 21), 18-19 at four stops, 23.9 and 23.4
+at the two the trickle held (above); mp-desksmooth 29/29; mp-wheelmem passed;
+mp-groundlean 0 of 255 pieces differ, but 2 of its pop-in bars failed: 757
+against 644 (+60 allowed) and the sprint's 306 against 220 (+25). Per piece
+laid the two walks popped in alike -- 81.0% against 81.9%, the sprint's 97.1%
+against 96.5% -- and the lean walk laid MORE pieces (935 against 786; the
+sprint 315 against 228), each faster (39.4 ms against 60; its 65 thaws took
+250 ms in all, 0.27 ms a piece). On this box the page cannot keep up with the
+walk (8 in 10 pieces are asked for already on screen), so the count follows
+how many pieces were laid, not holes; the bars date from a run with 326 and
+331 (above). The log now prints the share a piece beside the count.
+
+**The second run** (a swatch at a time, c92ea2cc): mp-groundlean 7/7 (637
+pop-ins against 633; the sprint 223 against 217); mp-membudget's workers line
+15.4, 20, 18, 18, 18.1, 18.1 and then 22.4 at trip 3 home, so "the third trip
+ends where the second did" failed (+4.3 MB, 4 allowed). Nothing was lost:
+the 12 pictures the trip ever unpacked were all held, 6 unpacked and 6 cold
+(`decodes` 12, `redecodes` 0; the cold store fell from 12 to 6 because pieces
+THAWED six back, 25 thaws on that leg; its cap, 24 or more, never bit). Six
+town pictures were unpacked because town pieces had used them within the
+last 3 s: on this box the ground lags the walk (nearly every piece of a trip
+is asked for already on screen) and was still laying home when HOME_MS was
+up on some trips and not others, a swing of ~4.3 MB. So mp-membudget now
+reads the arrival and each home once the ground has been quiet (nothing in
+flight, no piece back for 5 s: its 3 s and the squeezing; 30 s at most), as
+it already waits for the monsters' looks to go, and says how long it waited
+(`groundQuiet`, and `quietMs` in `groundDiet`); `wheelStats.lastPieceAt` is
+when the last piece came. The fights are read mid-fight, as ever. A swatch is
+held one way at a time -- unpacked, waiting to be squeezed, or cold -- which
+the Node check holds over 120 random steps of use, clocks, looks and trims.
+
 ## 2. The rare windows' code, loaded when first opened (`?codelazy`)
 
 `src/ui/lazyPanel.js` (how), `src/ui/lazyPanels.js` (which).
