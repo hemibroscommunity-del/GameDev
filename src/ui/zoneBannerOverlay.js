@@ -63,7 +63,7 @@ import {
   ZONE_BANNER_IN_MS, ZONE_BANNER_NAME_AT, ZONE_BANNER_NAME_MS,
   ZONE_BANNER_DOCK_MS, ZONE_BANNER_REPEAT_MS,
 } from '../data/zoneBanner.js';
-import { zoneBannerReady, zoneBannerResident } from '../rendering/zoneBannerPreload.js';
+import { zoneBannerReady, zoneBannerResident, zoneBannerComing, wheelBannerTick } from '../rendering/zoneBannerPreload.js';   /* v2.3.5003: + a strip on its way, and the Wheel's hold */
 import { zoneTitle } from './mobile/zoneTitle.js';
 import { prefersReducedMotion } from './mobile/sheet/motion.js';
 import { landLook } from '../data/wheelLands.js';   /* v2.3.3024: the Wheel's lands */
@@ -177,8 +177,9 @@ export function playZoneBanner(zoneId, S, opts = {}) {
      minimap.  v2.3.3609 put the older banners back -- the owner, 2026-10-26: "I
      also don't like the intro graphics to each zone.  The older ones were
      better." -- so a land with the owner's ornaments plays them again (the
-     Wheel holds the four strips, preloadAnimations.js), and `plain` is only
-     the fallback for a land with none. */
+     Wheel holds the four strips, preloadAnimations.js; since v2.3.5003 only
+     the ones near you, noteWheelLand below), and `plain` is only the
+     fallback for a land with none, or whose strip is not there in time. */
   const art = bannerStripFor(zoneId);
   const strip = art && zoneBannerReady(zoneId) ? art : null;
   const plain = !strip && !!opts.plain;
@@ -393,11 +394,26 @@ export function noteZoneEntered(zoneId, S) {
  * (preloadAnimations.js), and the plaque alone, its icon and name, for the
  * other four.  No scene over the plaque and none under the minimap: the
  * emblem (landEmblem.js) is gone.  The four strips are ~15.7 MB decoded while
- * you are in the world, as they were from v2.3.3024 to v2.3.3480. */
+ * you are in the world, as they were from v2.3.3024 to v2.3.3480.
+ *
+ * v2.3.5003: ONLY THE STRIPS NEAR YOU.  The owner, 2026-11-12 ("Yes do it",
+ * docs/specs/pictures-256.md §7): a land's strip is held while you are in it
+ * or near enough to walk into it, none in BroTown (zoneBannerPreload.js
+ * wheelBannerTick, asked from here every frame; the reach in
+ * src/game/bannerReach.js), about 10 MB less held.  A strip loads seconds of
+ * walking before its land, so it is there when you cross; one somehow still
+ * on its way when the dwell is up (a slow line, a reload that came back
+ * inside a land) is WAITED for, BANNER_WAIT_MS at most, and then the land
+ * plays the plaque alone, its icon and name, as the four lands with no art
+ * always do: never a broken picture and never a fetch of its own.  `bare`
+ * counts those (the probe's land()). */
 export const LAND_DWELL_MS = 600;
 export const LAND_HOLD_MS = 350;
-const _wl = { cur: null, since: 0, shown: null };
+export const BANNER_WAIT_MS = 2000;
+const _wl = { cur: null, since: 0, shown: null, waitedMs: 0, bare: 0 };
 export function noteWheelLand(region, title, S) {
+  /* v2.3.5003: the banners near you held, the far ones let go (every 250 ms) */
+  try { wheelBannerTick(S, region); } catch (e) { /* a banner is never worth the frame */ }
   if (!S || S.currentZone !== 'wheel' || !region) {
     if (!S || S.currentZone !== 'wheel') { _wl.cur = null; _wl.shown = null; }
     return false;
@@ -405,15 +421,20 @@ export function noteWheelLand(region, title, S) {
   const now = Date.now();
   if (region !== _wl.cur) { _wl.cur = region; _wl.since = now; return false; }
   if (region === _wl.shown || now - _wl.since < LAND_DWELL_MS) return false;
+  /* v2.3.5003: the owner's strip for this land on its way: wait for it */
+  if (zoneBannerComing(region) && now - _wl.since < LAND_DWELL_MS + BANNER_WAIT_MS) return false;
   _wl.shown = region;
   const look = landLook(region);
   if (!look || !look.element || !title) return false;
+  _wl.waitedMs = Math.max(0, now - _wl.since - LAND_DWELL_MS);
+  const bare = !!bannerStripFor(region) && !zoneBannerReady(region);
   /* the owner's ornaments where the land has them, else the plaque alone
      (`plain`); either way its icon and its name in its colour (v2.3.3609) */
   const shown = playZoneBanner(region, S, { title, plain: true, icon: look.icon, color: landNameColor(look.color) });
   /* v2.3.3343: a breath of wind under a land's banner as you cross in (it came
      in silence; SOUND-GAPS) -- the land's banner only, not every zone's */
   if (shown) cue('landCross');
+  if (shown && bare) _wl.bare++;
   return shown;
 }
 /* the land's colour lifted toward white, to read on the dark plaque (as the
@@ -427,7 +448,7 @@ function landNameColor(hex, k = 0.42) {
 /** For rigs and teardown. */
 export function hideZoneBanner() { hide(); }
 export function zoneBannerPlaying() { return _playing; }
-export function resetZoneBannerHistory() { _lastShown.clear(); _lastZone = undefined; _wl.cur = null; _wl.shown = null; }
+export function resetZoneBannerHistory() { _lastShown.clear(); _lastZone = undefined; _wl.cur = null; _wl.shown = null; _wl.waitedMs = 0; _wl.bare = 0; }
 
 /* ═══ v2.3.2596: THE RIG HANDLE ═══
  * House style (cf. window.__btRoster, window.__btProbe): one read-only handle
@@ -446,8 +467,12 @@ try {
       shownAt: (z) => _lastShown.get(z) || 0,
       beatLog: () => _beatLog.slice(),
       reset: resetZoneBannerHistory,
-      /* v2.3.3024: the Wheel's land watch, and what the banner on screen says */
-      land: () => ({ cur: _wl.cur, shown: _wl.shown }),
+      /* v2.3.3024: the Wheel's land watch, and what the banner on screen says;
+         v2.3.5003: + how long the last land's banner waited for its strip
+         (ms past the dwell), and how many lands with the owner's art played
+         the plaque alone, their strip not there (which strips are held:
+         window.__btBanners) */
+      land: () => ({ cur: _wl.cur, shown: _wl.shown, waitedMs: _wl.waitedMs, bare: _wl.bare }),
       /* v2.3.3481: + any picture over the plaque (`scene`: null since
          v2.3.3511), and `orn` whether the owner's ornaments are drawn (a
          land's banner with art since v2.3.3609) */

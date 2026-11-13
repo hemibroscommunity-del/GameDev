@@ -22,7 +22,7 @@
  * Frames are asked for every time a strip is drawn, never kept: a look nobody
  * draws for 30 s lets its frames go (lookPalette.js sweep).
  */
-import { registerLookSheets, getLookPartFrames, lookHas, lookSheenOn, lookSheenState, lookPaletteWanted, lookSetsSettled, preloadLookSheets } from './lookPalette.js';
+import { registerLookSheets, getLookPartFrames, lookHas, lookSheenOn, lookSheenState, lookPaletteWanted, lookSetsSettled, preloadLookSheets, whenLookKnown } from './lookPalette.js';
 
 const _wanted = (() => { try { return !/(^|[?&])gearlook=0(&|$)/.test(window.location.search || ''); } catch (e) { return true; } })();
 /* v2.3.4999: its own load, when this module came after the loading screen
@@ -54,13 +54,7 @@ export function gearLookDecided() {
   /* v2.3.4999: and the shine form's answer, which is null until the look
      program is built (a renderer and a sheet): read as off, it warmed the
      old strips for nothing -- 13.9 MB back on the chip, now and then */
-  const known = async () => {
-    for (let i = 0; i < 240; i++) {
-      if (lookSheenState() !== null) return;
-      await new Promise((r) => setTimeout(r, 250));
-    }
-  };
-  return Promise.all([preloadLookSheets(), _reg]).then(known).then(() => gearLookOn() && lookHas('gear', 'chest-swing-east'), () => false);
+  return Promise.all([preloadLookSheets(), _reg]).then(() => whenLookKnown()).then(() => gearLookOn() && lookHas('gear', 'chest-swing-east'), () => false);
 }
 
 /**

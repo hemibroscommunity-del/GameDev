@@ -27,6 +27,7 @@ import { trimScanCell, trimCellOf, trimLayout } from './trimRules.js';   /* v2.3
 import { packTrimmedCore } from './trimPack.js';   /* v2.3.4930: packTrimmed's steps, shared with the body bake's worker */
 import { keepAsImage } from './keepAsImage.js';   /* v2.3.3702: every strip packed here, kept as an image of itself */
 import { KEEP_GPU_COPIES } from './gpuOnly.js';
+import { gearNumbersKey, gearNumbersCanvas } from './gearNumbers.js';   /* v2.3.5000: the walking armour's pixels from its numbers */
 
 /* ═══ v2.3.3702: A STRIP PACKED HERE IS KEPT AS AN IMAGE OF ITSELF ═══
  * The owner, 2026-10-28: "Memory seems to be the persistent bottleneck in
@@ -348,9 +349,18 @@ function _gearPack(img, fw, fh) {
  *  `drawImage(res, f.x, f.y, f.w, f.h, dx, dy, dw, dh)`.  Any code that copies
  *  gear pixels onto a canvas must use this rather than reading `tex.frame`. */
 export function drawGearFrame(ctx, tex, dx, dy, dw, dh) {
-  const res = tex && tex.source && tex.source.resource;
+  let res = tex && tex.source && tex.source.resource;
+  let f = tex && tex.frame;
+  /* v2.3.5000: a frame of the walking armour's colour numbers (gearNumbers.js:
+     its pixels expanded on the page, for the bakes' fallbacks and QA) */
+  if (gearNumbersKey(tex)) {
+    const c = gearNumbersCanvas(tex);
+    if (!c) return false;
+    res = c;
+    f = { x: 0, y: 0, width: c.width, height: c.height };
+  }
   if (!res) return false;
-  const f = tex.frame, t = tex.trim, o = tex.orig;
+  const t = tex.trim, o = tex.orig;
   if (!t || !o) {
     ctx.drawImage(res, f.x, f.y, f.width, f.height, dx, dy, dw, dh);
     return true;
@@ -908,11 +918,36 @@ export function getGearFramePhased(slot, item, pose, dir, phase) {
  *  cost one 404 at load time. */
 export function preloadFullsetFigures() {
   const tasks = [];
+  const later = [];
   for (const dir of ['south', 'southwest', 'north', 'east']) {
     const key = 'fullset/steel/jog/' + dir;
-    if (_sheets[key] === undefined) tasks.push(buildSheet(key, 'fullset', 'steel', 'jog', dir));
+    if (_sheets[key] !== undefined) continue;
+    if (_preloadSkip && _preloadSkip(key)) { later.push([key, 'fullset', 'steel', 'jog', dir]); continue; }   /* v2.3.5000 */
+    tasks.push(buildSheet(key, 'fullset', 'steel', 'jog', dir));
   }
-  return Promise.all(tasks);
+  return Promise.all(tasks.concat([_afterSkip(later)]));
+}
+
+/* ═══ v2.3.5000: SHEETS THE COLOUR NUMBERS REPLACE ARE NOT LOADED ═══
+   The walking armour is drawn from the `gearwalk` look set (v2.3.4999) and,
+   since v2.3.5000, the masked bakes and the fishing grip read its pixels from
+   the numbers too (gearNumbers.js) -- so its RGBA sheets had no reader left
+   on a device that draws the numbers, and loading them behind the loading
+   screen only held their decoded pixels in the page.  gearWalkFrame.js names
+   them (_preloadSkip) and says when it is known whether the numbers are
+   drawn (_skipDecided): where they turn out not to be, the sheets skipped
+   are loaded then, still behind the loading screen (the preloading law).
+   `?gearwalk=0` loads them all, as before. */
+let _preloadSkip = null, _skipDecided = null;
+export function setGearPreloadSkip(skip, decided) {
+  _preloadSkip = typeof skip === 'function' ? skip : null;
+  _skipDecided = typeof decided === 'function' ? decided : null;
+}
+function _afterSkip(later) {
+  if (!later.length) return null;
+  const decided = _skipDecided ? Promise.resolve().then(_skipDecided) : Promise.resolve(false);
+  return decided.then((on) => (on === true ? null
+    : Promise.all(later.filter((a) => _sheets[a[0]] === undefined).map((a) => buildSheet(...a)))), () => null);
 }
 
 /** Unique TextureSources of every gear sheet baked so far (idle/jog stand sets).
@@ -1013,6 +1048,7 @@ export function preloadGear() {
     ['mine', ['south']], ['dodge', ['south', 'east']],
     ['pickup', ['south']], ['fish', ['south']]];
   const tasks = [];
+  const later = [];   /* v2.3.5000: the sheets the numbers replace, loaded only if they are not drawn */
   for (const slot of GEAR_SLOTS) {
     /* v2.3.1197: preload EVERY catalog item per slot, not just the currently
        equipped one. Equipping owned armour after spawn used to fetch+slice the
@@ -1030,10 +1066,12 @@ export function preloadGear() {
       for (const [pose, dirs] of SETS) {
         for (const dir of dirs) {
           const key = slot + '/' + item + '/' + pose + '/' + dir;
-          if (_sheets[key] === undefined) tasks.push(buildSheet(key, slot, item, pose, dir));
+          if (_sheets[key] !== undefined) continue;
+          if (_preloadSkip && _preloadSkip(key)) { later.push([key, slot, item, pose, dir]); continue; }   /* v2.3.5000 */
+          tasks.push(buildSheet(key, slot, item, pose, dir));
         }
       }
     }
   }
-  return Promise.all(tasks);
+  return Promise.all(tasks.concat([_afterSkip(later)]));
 }

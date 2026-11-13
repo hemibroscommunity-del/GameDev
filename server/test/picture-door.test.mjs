@@ -306,8 +306,9 @@ const LIST = {
     loadPng: ['limit', 1, "a look set's sheet: under timeLimit (60 s) in loadSet, no retry: a failed set is drawn the old way (asking again is the owner's call, #1505)"],
     manifestOf: ['limit', 1, "a look set's roles.json: the same 60 s limit, no retry (v2.3.4993: fetched once, the atlas plans every set's pages from them first)"],
   },
-  'src/rendering/gearLookProbe.js': { '*': ['off', 1, "a QA probe (`?lookprobe`, v2.3.4998): the armour's oracle loads each combat strip the old way"] },
+  'src/rendering/gearLookProbe.js': { '*': ['off', 2, "a QA probe (`?lookprobe`, v2.3.4998): the armour's oracle loads each combat strip the old way (v2.3.5002: and the bow's draw, through Assets.load as the game does)"] },
   'src/rendering/lookSets/gear.js': { '*': ['off', 1, 'the offline role bake (tools/art/role-bake.mjs, v2.3.4998)'] },
+  'src/rendering/lookSets/weapons.js': { '*': ['off', 1, "the offline role bake (tools/art/role-bake.mjs, v2.3.5002): the bow's draw as its PNG"] },
   'src/rendering/lookPaletteProbe.js': { '*': ['off', 2, 'a QA probe (`?lookprobe`): the stand-ins\' and (v2.3.4961) the body heads\' manifests'] },
   'src/rendering/lookSets/standinlegs.js': { '*': ['off', 1, 'the offline role bake (tools/art/role-bake.mjs)'] },
   'src/rendering/lootIcons.js': { load: ['once', 1, 'the loot icons: no time limit, no retry (the ring and label show)'] },
@@ -363,7 +364,8 @@ const LIST = {
   },
   'src/rendering/wheelSignposts.js': { loadOne: ['once', 1, "the signposts' land icons: no time limit, no retry"] },
   'src/rendering/worldLife.js': { preloadWorldLife: ['once', 1, "the props' moving parts: no time limit, no retry"] },
-  'src/rendering/zoneBannerPreload.js': { warm: ['warm', 1, "a zone's banner, warmed and held; a failure enters the zone without it"] },
+  /* v2.3.5003: held only near its land, loaded as you walk toward it: a time limit and a retry of its own */
+  'src/rendering/zoneBannerPreload.js': { warm: ['own', 1, "a land's banner, warmed and held near its land: a failure at WARM_LIMIT_MS (20 s), asked again FAIL_RETRY_MS later while you are near; one not there plays the plaque alone"] },
   'src/rendering/zoneTextures.js': {
     loadTracked: ['shared', 1, 'loadTracked (SHARED below)'],
     _stripByImage: ['shared', 1, "loadTrackedStrip's page way (SHARED below)"],
@@ -401,6 +403,8 @@ const SHARED = {
       'src/rendering/lookSets/standinlegs.js': 'off: the offline role bake',
       'src/rendering/lookSets/bodyheads.js': 'off: the offline role bake',   /* v2.3.4961 */
       'src/rendering/lookSets/gearwalk.js': 'off: the offline role bake',   /* v2.3.4999 */
+      'src/rendering/lookSets/weapons.js': "off: the offline role bake (the swing's blade)",   /* v2.3.5002 */
+      'src/rendering/gearLookProbe.js': "off: a QA probe (`?lookprobe`): the swing's blade the old way",   /* v2.3.5002 */
     },
   },
   warmOnce: {
