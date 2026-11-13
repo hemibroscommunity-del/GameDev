@@ -14,10 +14,13 @@
  *   node tools/qa/mp/run.mjs                 # everything
  *   node tools/qa/mp/run.mjs trade duel      # named scenarios only
  *
+ * v2.3.5021: a NEW scenario needs no line in the table below: a name that is
+ * not in it is looked up as ./mp-<name>.mjs (a file that exports `run`).
+ *
  * Exits non-zero if any assertion failed, so it can gate a push.
  */
 import * as H from './harness.mjs';
-import { existsSync, statSync, readdirSync } from 'node:fs';   /* v2.3.1998: dist staleness check */
+import { existsSync, statSync, readdirSync, readFileSync } from 'node:fs';   /* v2.3.1998: dist staleness check */
 import { join } from 'node:path';
 
 const WS = await H.freePort(), WEB = await H.freePort();
@@ -451,10 +454,55 @@ if (_stale.missing) {
   console.log('     Run `npm run build` unless you meant to test what is already built.\n');
 }
 
+/* v2.3.5021: A SCENARIO IS FOUND BY ITS FILE (the grand plan's wave 0, step
+   8.0).  Every new scenario added a line to the table above, so two sessions
+   side by side met on it in every merge.  A name that is not in the table is
+   now looked up as ./mp-<name>.mjs: a NEW scenario needs no line.  The table
+   stays as it is (its lines are the old scenarios' notes, and two of its
+   names are not their file's).  Only a file that exports `run` is a scenario:
+   a few mp-*.mjs are scripts of their own (mp-coldload), whose whole body
+   would run on import, so the source is read first, never imported to ask. */
+const _FILE_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
+const _exportsRun = (file) => {
+  try { return /^export\s+(?:async\s+)?function\s+run\b|^export\s+(?:const|let)\s+run\b/m.test(readFileSync(file, 'utf8')); } catch { return false; }
+};
+function scenarioByFile(name) {
+  if (!_FILE_NAME.test(name)) return null;
+  const file = join(H.REPO, 'tools/qa/mp', 'mp-' + name + '.mjs');
+  if (!existsSync(file)) return null;
+  if (!_exportsRun(file)) return { notScenario: file };
+  return { load: () => import('./mp-' + name + '.mjs') };
+}
+/* the scenario files with no line in the table, by name */
+function unlistedScenarios() {
+  const out = [];
+  for (const f of readdirSync(join(H.REPO, 'tools/qa/mp')).sort()) {
+    const m = /^mp-(.+)\.mjs$/.exec(f);
+    if (!m || Object.hasOwn(SCENARIOS, m[1])) continue;
+    if (_exportsRun(join(H.REPO, 'tools/qa/mp', f))) out.push(m[1]);
+  }
+  return out;
+}
+
 const want = process.argv.slice(2).filter((a) => !a.startsWith('-'));
 const names = want.length ? want : Object.keys(SCENARIOS);
+const LOAD = Object.create(null);
 for (const n of names) {
-  if (!SCENARIOS[n]) { console.error(`unknown scenario "${n}"; have: ${Object.keys(SCENARIOS).join(', ')}`); process.exit(2); }
+  if (Object.hasOwn(SCENARIOS, n)) { LOAD[n] = SCENARIOS[n]; continue; }
+  const byFile = scenarioByFile(n);
+  if (byFile && byFile.load) { LOAD[n] = byFile.load; continue; }
+  if (byFile && byFile.notScenario) {
+    console.error(`"${n}": tools/qa/mp/mp-${n}.mjs exports no \`run\`, so it is a script of its own, not a scenario: run it with node.`);
+    process.exit(2);
+  }
+  console.error(`unknown scenario "${n}": not in run.mjs's table, and there is no tools/qa/mp/mp-${n}.mjs; have: ${[...Object.keys(SCENARIOS), ...unlistedScenarios()].join(', ')}`);
+  process.exit(2);
+}
+/* with no name given, the run is still the table's: the files with no line
+   are named, never silently left out (run one by its name) */
+if (!want.length) {
+  const un = unlistedScenarios();
+  if (un.length) console.log(`  (${un.length} scenario file(s) with no line in the table are run by name only: ${un.join(', ')})`);
 }
 
 console.log(`booting worker + dist for ${names.length} scenario(s): ${names.join(', ')}`);
@@ -481,7 +529,7 @@ for (const name of names) {
   const started = Date.now();
   console.log(`── ${name} ──────────────────────────────────`);
   try {
-    const mod = await SCENARIOS[name]();
+    const mod = await LOAD[name]();   /* v2.3.5021: the table's, or found by its file */
     H.setScenario(name);   /* v2.3.3552: so newPlayer can refuse the retired old map (oldMap.mjs) */
     await mod.run({ browser, wsPort: WS, webPort: WEB, rec });
   } catch (e) {

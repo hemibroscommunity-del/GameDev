@@ -1283,14 +1283,37 @@ if (changedServer.length || changedClient.length) {
 {
   try {
     const om = await import(new URL('file://' + join(root, 'tools/qa/mp/oldMap.mjs')).href);
+    /* v2.3.5021: the FILES are read, not run.mjs's table: a new scenario
+       needs no line there (run.mjs finds ./mp-<name>.mjs by its name), so a
+       check that read the table would never see it.  A scenario is a file
+       that exports `run` (a few mp-*.mjs are scripts of their own, which
+       run.mjs never runs); the table's lines are still read for the two old
+       scenarios whose file is not mp-<name>.mjs. */
+    const isScenario = (src) => /^export\s+(?:async\s+)?function\s+run\b|^export\s+(?:const|let)\s+run\b/m.test(src);
+    const byFile = new Map();
+    for (const f of readdirSync(join(root, 'tools/qa/mp')).sort()) {
+      const m = /^mp-(.+)\.mjs$/.exec(f);
+      if (m) byFile.set(f, m[1]);
+    }
     const runSrc = read('tools/qa/mp/run.mjs');
-    const pairs = [...runSrc.matchAll(/^\s+([A-Za-z0-9_]+): \(\) => import\('\.\/([^']+)'\)/gm)].map((m) => [m[1], m[2]]);
+    for (const m of runSrc.matchAll(/^\s+([A-Za-z0-9_]+): \(\) => import\('\.\/([^']+)'\)/gm)) byFile.set(m[2], m[1]);
+    const pairs = [...byFile].map(([file, name]) => [name, file]);
+    /* one file was already on main with no line in the table and no world:
+       mp-topaudit.mjs, a "temporary audit probe" of the old map's top bar.
+       The harness refuses it at run time (newPlayer throws), so it cannot
+       play the old map by accident; it is outside wave 0's files, so it is
+       named here and left for its owner (docs/plan/status/W.md, Found).
+       THIS LIST ONLY SHRINKS: never add a name. */
+    const LEFT_BEFORE_5021 = new Set(['mp-topaudit.mjs']);
+    const left = [];
     const bad = [];
     let checked = 0;
     for (const [name, file] of pairs) {
       if (om.OLD_MAP_LEGACY.has(name)) continue;
       let src = '';
       try { src = read('tools/qa/mp/' + file); } catch { continue; }
+      if (!isScenario(src)) continue;
+      if (LEFT_BEFORE_5021.has(file)) { if (om.callsWithoutWorld(src).length) left.push(file); continue; }
       checked++;
       const n = om.callsWithoutWorld(src).length;
       if (n) bad.push(`${name} (tools/qa/mp/${file}: ${n} call${n === 1 ? '' : 's'} with no world)`);
@@ -1299,7 +1322,8 @@ if (changedServer.length || changedClient.length) {
       add('FAIL', 'old-map', 'these phone tests would play the RETIRED old map -- pass world: \'wheel\' (the world '
         + 'players see) to every newPlayer / joinPair call:\n    ' + bad.join('\n    '));
     } else {
-      add('PASS', 'old-map', `all ${checked} phone test(s) off the frozen old-map list name their world (${om.OLD_MAP_LEGACY.size} old ones listed)`);
+      add('PASS', 'old-map', `all ${checked} phone test file(s) off the frozen old-map list name their world (${om.OLD_MAP_LEGACY.size} old ones listed)`
+        + (left.length ? `; ${left.join(', ')} still names none (an old probe the harness refuses to run: move it to the world or delete it)` : ''));
     }
   } catch (e) {
     add('WARN', 'old-map', 'could not read tools/qa/mp/oldMap.mjs or run.mjs -- old-map check skipped: ' + String(e && e.message || e).slice(0, 160));
