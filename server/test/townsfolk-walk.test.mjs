@@ -45,15 +45,21 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
 /* ── 1. the loop ─────────────────────────────────────────────────────────── */
 {
   const stops = [[0, 0, 1000], [80, 0, 500, 'mine']];
+  /* v2.3.5017: the leg's time from the pace (it was 80 px a second, so 1000 ms) */
+  const leg = 80 / W.FOLK_WALK_PX_S * 1000;
   const a = W.folkAt(stops, 0, 0), b = W.folkAt(stops, 0, 999);
   check('1a at the first stop for its pause, standing', a.dx === 0 && a.dy === 0 && !a.walking && b.dx === 0 && !b.walking, [a, b]);
-  const mid = W.folkAt(stops, 0, 1500);
+  const mid = W.folkAt(stops, 0, 1000 + leg / 2);
   check(`1b then walking to the next at ${W.FOLK_WALK_PX_S} px a second (half way after half the leg)`, mid.walking && Math.abs(mid.dx - 40) < 0.01 && mid.work === null, mid);
-  const at2 = W.folkAt(stops, 0, 2100);
+  const at2 = W.folkAt(stops, 0, 1000 + leg + 100);
   check('1c and pausing there at its job', !at2.walking && at2.dx === 80 && at2.work === 'mine', at2);
-  const period = 1000 + 1000 + 500 + 1000;
-  const back = W.folkAt(stops, 0, 2500 + 500), round = W.folkAt(stops, 0, period + 1500);
+  const period = 1000 + leg + 500 + leg;
+  const back = W.folkAt(stops, 0, 1000 + leg + 500 + leg / 2), round = W.folkAt(stops, 0, period + 1000 + leg / 2);
   check('1d back to the first, round and round (the same a loop later)', back.walking && Math.abs(back.dx - 40) < 0.01 && round.walking && Math.abs(round.dx - mid.dx) < 0.01, [back, round]);
+  /* v2.3.5017: "the townspeople run in slow motion": the pace is a player's, SPEED world px a 60 Hz frame */
+  const { SPEED } = await import('../../src/data/gameSystems.js');
+  check(`1d2 the pace is a player's: ${W.FOLK_WALK_PX_S} px a second (SPEED ${SPEED} x 60), and catching up only a little quicker (x${W.FOLK_CATCH_UP})`,
+    Math.abs(W.FOLK_WALK_PX_S - SPEED * 60) < 0.01 && W.FOLK_CATCH_UP > 1 && W.FOLK_CATCH_UP <= 1.3);
   const s1 = W.folkSeed('Sterling'), s2 = W.folkSeed('Sterling');
   check('1e his seed is his name\'s, the same on every phone, and two names differ', s1 === s2 && s1 !== W.folkSeed('Slim') && Number.isInteger(s1) && s1 >= 0);
   const st = W.FOLK_DAYS.Sterling.stops, t = 1730000000000;
