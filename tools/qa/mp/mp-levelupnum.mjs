@@ -29,15 +29,16 @@
  *      handle): one burst, then two side by side; last, as a frozen burst
  *      never retires;
  *   7. v2.3.5004, the art from its colour numbers (docs/specs/pictures-256.md
- *      §7): (a) before any burst, the eight frames' numbers held from the
- *      loading screen (under 1 MB) and NONE of the art held decoded as a
- *      picture (the strip was 6.29 MB); (b) each of the eight frames, held,
+ *      §7a): (a) between bursts (before any), the eight frames' files held
+ *      packed (about 0.40 MB, as Blobs) with frames 0-1 open as numbers
+ *      (under 0.1 MB), and NONE of the art held decoded as a picture (the
+ *      strip was 6.29 MB); (b) each of the eight frames, held,
  *      drawn on its canvas from its own file: every pixel's alpha the file's,
  *      at the frame's place in the box, nothing past it, the box and the
  *      canvas at one scale, a draw under the 12 ms line; (c) a burst played
  *      live reaches frame 7 with at most eight draws (one a frame, never one
- *      a tick), and its canvas is emptied and the shared ImageData let go
- *      when it ends.  With BT_QA_QUERY=burstnumbers=0: the strip held
+ *      a tick), and its canvas is emptied, and frames 2-7 and the shared
+ *      ImageData let go, when it ends.  With BT_QA_QUERY=burstnumbers=0: the strip held
  *      (6.29 MB) and drawn, as before.
  */
 import * as H from './harness.mjs';
@@ -203,8 +204,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     const STRIP_BYTES = LEVELUP_STRIP_W * LEVELUP_STRIP_H * 4;
     if (NUMBERS) {
-      rec.ok(`7a. the art held as colour numbers from the loading screen: ${held ? held.num.frames : '-'}/8 frames, ${held ? (held.num.bytes / 1e6).toFixed(2) : '-'} MB; as a picture: ${held ? held.art.n : '-'} (${held ? (held.art.bytes / 1e6).toFixed(2) : '-'} MB; the strip was ${(STRIP_BYTES / 1e6).toFixed(2)})`,
-        !!held && held.num.ready && held.num.frames === 8 && held.num.bytes > 0.8e6 && held.num.bytes < 1.0e6 && held.art.n === 0 && held.art.bytes === 0, held);
+      rec.ok(`7a. between bursts, from the loading screen: ${held ? held.num.files : '-'}/8 files packed (${held ? (held.num.fileBytes / 1e6).toFixed(2) : '-'} MB, Blobs), ${held ? held.num.frames : '-'} frames open (${held ? (held.num.bytes / 1e6).toFixed(2) : '-'} MB of numbers); as a picture: ${held ? held.art.n : '-'} (${held ? (held.art.bytes / 1e6).toFixed(2) : '-'} MB; the strip was ${(STRIP_BYTES / 1e6).toFixed(2)})`,
+        !!held && held.num.ready && held.num.files === 8 && held.num.fileBytes > 0.35e6 && held.num.fileBytes < 0.45e6
+          && held.num.frames === 2 && held.num.bytes < 0.1e6 && held.art.n === 0 && held.art.bytes === 0, held);
     } else {
       rec.ok(`7a. burstnumbers=0: the strip held decoded as before (${held ? (held.art.bytes / 1e6).toFixed(2) : '-'} MB), no numbers`,
         !!held && !held.num.wanted && held.num.frames === 0 && held.art.n === 1 && held.art.bytes === STRIP_BYTES, held);
@@ -292,7 +294,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const cv = art.querySelector('canvas');
         const out = { numbers: art.getAttribute('data-levelup-numbers'), w: r.width, h: r.height, bg: getComputedStyle(art).backgroundImage.slice(0, 160) };
         if (cv) {
-          if (!cv.width) return null;   /* not drawn yet */
+          if (!cv.width || cv.getAttribute('data-frame') !== String(want)) return null;   /* not drawn yet (frames 2-7 open as the burst starts) */
           const cr = cv.getBoundingClientRect();
           const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
           let n = 0, sum = 0, past = 0;
@@ -349,7 +351,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
             if (seen[seen.length - 1] !== f) seen.push(f);
             cv = art.querySelector('canvas') || cv;
           } else if (seen.length) {
-            setTimeout(() => { const n = W.numbers(); res({ seen, draws: n.draws - d0, cvW: cv ? cv.width : null, cvH: cv ? cv.height : null, scratch: n.scratch, users: n.users }); }, 400);
+            setTimeout(() => { const n = W.numbers(); res({ seen, draws: n.draws - d0, cvW: cv ? cv.width : null, cvH: cv ? cv.height : null, scratch: n.scratch, users: n.users, framesAfter: n.frames, bytesAfter: n.bytes, openMs: n.openMs }); }, 400);
             return;
           }
           if (Date.now() - ts > 12000) { res({ seen, timeout: true }); return; }
@@ -358,8 +360,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
         requestAnimationFrame(tick);
       }));
       const inOrder = live.seen.length > 0 && live.seen.every((f, j) => j === 0 || f > live.seen[j - 1]) && live.seen[live.seen.length - 1] === 7;
-      rec.ok(`7c. played live: frames ${live.seen.join(' ')} (in order to 7), ${live.draws} draws (one a frame at most: <= 8), the canvas emptied after (${live.cvW} x ${live.cvH}), the ImageData let go (${!live.scratch})`,
-        !live.timeout && inOrder && live.draws >= live.seen.length && live.draws <= 8 && live.cvW === 0 && live.cvH === 0 && !live.scratch && live.users === 0, live);
+      rec.ok(`7c. played live: frames ${live.seen.join(' ')} (in order to 7), ${live.draws} draws (one a frame at most: <= 8), the canvas emptied after (${live.cvW} x ${live.cvH}), the ImageData let go (${!live.scratch}), frames 2-7 let go (${live.framesAfter} open after, ${live.bytesAfter} bytes); frames 2-7 opened in ${live.openMs} ms`,
+        !live.timeout && inOrder && live.draws >= 1 && live.draws <= 8 && live.cvW === 0 && live.cvH === 0 && !live.scratch && live.users === 0
+          && live.framesAfter === 2 && live.bytesAfter < 0.1e6, live);
       await gone(P);
     }
 

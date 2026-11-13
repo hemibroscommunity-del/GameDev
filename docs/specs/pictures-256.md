@@ -263,10 +263,21 @@ numbers:
   `public/sprites/fx/levelup-burst-v1-f0..f7.p256.png` (398 KB of files; the
   strip's was 434 KB), made by `tools/art/levelup-numbers.mjs` (`--check`
   re-makes them and compares);
-- the loading screen reads them through loadSetLater's door
-  (`levelUpBurstNumbers.js`; 20 s, then retried) and keeps the numbers and
-  one palette: **0.89 MB in the page, nothing decoded as a picture** (the
-  strip was 6.29 MB held for the session);
+- the loading screen fetches them through loadSetLater's door
+  (`levelUpBurstNumbers.js`; 20 s, then retried). **Between bursts** the page
+  holds the eight files PACKED, as Blobs (0.40 MB, which the browser keeps
+  outside the page's heap), and frames 0 and 1 open as colour numbers
+  (0.09 MB of buffers), so a burst's first 140 ms never wait. Nothing is
+  decoded as a picture. The strip was 6.29 MB, held for the session;
+- **as a burst starts** (its first render), frames 2-7 are opened from the
+  Blobs on the reader's worker (`stripRead.js` `readPaletteBlob`,
+  `png8Worker.js`'s `pngBlob` read, off the page's thread), all at once.
+  Frame 2 is wanted at 140 ms. A frame not back yet is drawn when it comes,
+  and the canvas keeps the frame before. When the last burst stops drawing,
+  frames 2-7 are let go (0.80 MB). The first cut held all eight open for the
+  session, 0.89 MB of buffers, and the memory check's buffers line failed by
+  0.3 (22.3 against 22; main reads 21.3-21.4). Opening them ahead (a skill
+  near its level) was not taken: at a fight that is when the check reads;
 - as a frame comes up (eight times a burst, never each tick) its numbers are
   turned into colours on a canvas the size of the largest frame, at the art's
   own pixels, and the page scales it by k as it scaled the strip
@@ -276,9 +287,10 @@ numbers:
   against the 12 ms line. While a burst plays it holds 0.93 MB for its
   canvas and 0.93 MB for the ImageData the bursts share. The canvas is
   emptied when the burst ends and the ImageData let go with the last burst;
-- `?burstnumbers=0` draws the strip as before. So does a browser that cannot
-  unpack the files (no DecompressionStream: iOS before 16.4), or a first load
-  that failed (the strip is then warmed behind the loading screen).
+- `?burstnumbers=0` draws the strip as before. So does a page with no
+  reader's worker (`?stripworker=0`), a browser that cannot unpack the files
+  (no DecompressionStream: iOS before 16.4), or a first load that failed (the
+  strip is then warmed behind the loading screen).
 
 **The cut.** The strip is on 505,071 colours, and almost every pixel is a soft
 glow (one solid pixel in 752,178 shown). It is put on 256 colours by
@@ -300,9 +312,9 @@ original (the armour's cut bands the glow). **The owner looked at the
 before / after sheet (frames 4 and 7 on black and on grass) and said yes,
 2026-11-12.**
 
-**Tests.** `mp-levelupnum` step 7 (each of the eight frames read off its
-canvas, alpha for alpha against its file; a live burst; the canvas emptied
-after). The draw was also checked in node: the eight frames drawn through
+**Tests.** `mp-levelupnum` step 7: what is held between bursts; each of the
+eight frames read off its canvas, alpha for alpha against its file; a live
+burst; the canvas emptied after, and frames 2-7 and the ImageData let go. The draw was also checked in node: the eight frames drawn through
 `drawLevelUpFrame` are byte for byte the strip's reduction at each rect, and
 see-through past it.
 

@@ -74,12 +74,13 @@ export const LEVELUP_FRAMES = [
  * The burst is drawn by the page (at z 70, over the HUD's HTML), and a
  * browser holds a decoded picture at four bytes a pixel whatever its colours:
  * the strip, held decoded for the session by the loading screen (the
- * preloading law), is 6.29 MB.  Now the loading screen holds only the eight
- * rects above (all the burst ever shows: it clips to them, 878,722 px) as
- * COLOUR NUMBERS, a byte a pixel: 0.88 MB.  As each frame comes up the burst
- * turns its numbers into colours on a canvas the frame's own size
- * (rendering/levelUpBurstNumbers.js), scaled by the page as the strip was,
- * and empties the canvas when it ends.
+ * preloading law), is 6.29 MB.  Now the burst is drawn from the eight rects
+ * above (all it ever shows: it clips to them, 878,722 px) as COLOUR NUMBERS,
+ * a byte a pixel: held PACKED between bursts (the eight files, 398 KB, with
+ * frames 0-1 open, 89 KB), frames 2-7 opened on a worker as a burst starts
+ * and let go after it.  As each frame comes up the burst turns its numbers
+ * into colours on a canvas (rendering/levelUpBurstNumbers.js), scaled by the
+ * page as the strip was, and empties the canvas when it ends.
  *
  * The 256 colours: the strip is on 505,071, almost every pixel a soft glow.
  * tools/art/levelup-numbers.mjs puts it on 256 with the game's reducer

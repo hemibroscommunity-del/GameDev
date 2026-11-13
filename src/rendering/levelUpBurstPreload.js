@@ -25,10 +25,11 @@
  * version of this bug rather than the least.
  *
  * v2.3.5004: THE ART IS COLOUR NUMBERS NOW, NOT THE STRIP DECODED.  Holding
- * the strip decoded for the session was 6.29 MB in the page; the eight
- * frames' colour numbers are 0.88 MB (levelUpBurstNumbers.js, docs/specs/
- * pictures-256.md §7), loaded here, behind the loading screen, as the strip
- * was.  The strip is still warmed where the numbers cannot be drawn
+ * the strip decoded for the session was 6.29 MB in the page; now the eight
+ * frames' 256-colour files are held packed (398 KB) with frames 0-1 open
+ * (89 KB of numbers), the rest opened on a worker as a burst starts
+ * (levelUpBurstNumbers.js, docs/specs/pictures-256.md §7a) -- loaded here,
+ * behind the loading screen, as the strip was.  The strip is still warmed where the numbers cannot be drawn
  * (`?burstnumbers=0`, a browser with no DecompressionStream, a first load
  * that failed), so the law holds on every path.
  */

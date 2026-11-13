@@ -10,6 +10,7 @@ import {
 } from '../data/levelUpBurst.js';
 import {
   levelUpNumbersReady, ensureLevelUpNumbers, levelUpNumbersUse, drawLevelUpFrame, emptyLevelUpCanvas,
+  onLevelUpNumbers,
 } from '../rendering/levelUpBurstNumbers.js'; /* v2.3.5004: the art from its colour numbers */
 import { BT_AUDIO } from '../data/index.js';
 import { flyPointsBubbles } from './pointsFly.js'; /* v2.3.4055: a weapon level-up's bubbles to your points */
@@ -151,15 +152,18 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
   React.useEffect(() => { playLevelUpSting(); }, [msg.ts]);
 
   /* ═══ v2.3.5004: THE ART FROM ITS COLOUR NUMBERS ═══
-     (rendering/levelUpBurstNumbers.js, docs/specs/pictures-256.md §7.)  The
-     page no longer holds the strip decoded (6.29 MB): the loading screen holds
-     the eight frames' colour numbers (0.88 MB), and the frame showing is
-     turned into colours on a canvas in the art's own pixels, which the page
-     scales by k exactly as it scaled the strip -- the same box, the same
-     place, the same z 70 over the HUD.  Decided ONCE a burst, so a burst
-     never changes how it is drawn half way: the numbers if all eight are in,
-     else the strip (`?burstnumbers=0`, an old iPhone, a failed load -- which
-     is then asked for again).  Drawn in a layout effect only when the frame
+     (rendering/levelUpBurstNumbers.js, docs/specs/pictures-256.md §7a.)  The
+     page no longer holds the strip decoded (6.29 MB): between bursts it holds
+     the eight frames' 256-colour files packed and frames 0-1 open as colour
+     numbers; a burst opens frames 2-7 on the reader's worker as it starts,
+     and the frame showing is turned into colours on a canvas in the art's
+     own pixels, which the page scales by k exactly as it scaled the strip --
+     the same box, the same place, the same z 70 over the HUD.  Decided ONCE
+     a burst, so a burst never changes how it is drawn half way: the numbers
+     if the files are in and frames 0-1 open, else the strip
+     (`?burstnumbers=0`, an old iPhone, a failed load -- which is then asked
+     for again).  A frame not open yet is drawn when it comes (told by
+     onLevelUpNumbers; the canvas keeps the frame before).  Drawn in a layout effect only when the frame
      CHANGES (eight times a burst, never every tick), before the browser
      paints the box the new frame's size; the canvas is emptied as soon as
      the burst stops drawing it, and the shared ImageData let go with the
@@ -169,6 +173,8 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
   const [fromNumbers] = React.useState(() => LEVELUP_BURST_NUMBERS && levelUpNumbersReady());
   const cvRef = React.useRef(null);
   const drawn = React.useRef({ cv: null, fi: -1, release: null });
+  const [, frameCame] = React.useState(0);
+  React.useEffect(() => (fromNumbers ? onLevelUpNumbers(() => frameCame((v) => v + 1)) : undefined), []);
   React.useLayoutEffect(() => {
     if (!fromNumbers) { if (LEVELUP_BURST_NUMBERS) ensureLevelUpNumbers(); return undefined; }
     return () => {
@@ -314,8 +320,10 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
     if (d.cv && d.cv !== cv) { emptyLevelUpCanvas(d.cv); d.cv = null; d.fi = -1; }
     /* over (or nothing drawn this render): the shared ImageData let go */
     if (!cv || fiNow < 0) { if (d.release) { d.release(); d.release = null; } return; }
-    if (d.cv === cv && d.fi === fiNow) return;
+    /* drawing: held (the first hold opens frames 2-7), whether or not this
+       frame is open yet */
     if (!d.release) d.release = levelUpNumbersUse();
+    if (d.cv === cv && d.fi === fiNow) return;
     if (drawLevelUpFrame(cv, fiNow)) { d.cv = cv; d.fi = fiNow; }
   });
 
