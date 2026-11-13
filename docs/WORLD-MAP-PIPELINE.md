@@ -3830,10 +3830,14 @@ Brotown and the commons have a colour and no element.
   - The other four play the plaque alone, with the icon and the name. Their
     art isn't drawn yet, and none is borrowed.
   - It docks into the top bar, which says the same.
-  - The four strips load behind the Wheel's loading screen and go when you
-    leave it.
+  - The four strips loaded behind the Wheel's loading screen and went when
+    you left it.  Since v2.3.5003 a land's strip is held only near its land
+    (none in BroTown): it loads as you walk toward the land and goes as you
+    walk away (`zoneBannerPreload.js` `wheelBannerTick`, the reach in
+    `src/game/bannerReach.js`, `docs/specs/pictures-256.md` §7);
+    `?banners=all` holds all four.
 - **Probes:** `__btZoneBanner.land()` (the land watched, the land shown) and
-  `.onScreen()`.
+  `.onScreen()`; `__btBanners()` (which strips are held, and why: v2.3.5003).
 - **Tests:** `mp-wheelmap` walks onto Frost Ridge and checks:
   - the frost icon and the name's colour on the top bar;
   - the banner shown;
