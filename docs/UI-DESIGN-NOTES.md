@@ -1956,6 +1956,9 @@ Screens: dev-econ-card
 
 - **The numbers' sources, all read, nothing new written** (the planning session's reading, 2026-11-14): unexplained gold and the share of new gold to the richest come from the once-a-day economy count (`metrics:`), which now carries the world's one sum (`server/src/worldsum.js`) through its own paged walk; gold made a player-hour from the book (gold made, and the players' seconds added at each leave); the share moved one way for nothing from the transfer ledger (`xfer:`). The card reads them through its second route, `GET /dev/econcard`. A number that cannot be counted yet (one daily count so far, no play today, no gold moved) says why in its place.
 - **Unexplained gold in red when it is not 0**: it is the one number that means something went wrong.
+- **A character's restart is added back** (the gatekeeper's sitting 10): a restart deletes a character's gold together with their own count of what they made, outside the gold door, so the owner's own restarts from the picker read as red copies and losses. The server books the difference in the day's book as the restart happens (`econcard.js econResetBook`, riding the book's own writes), each daily count says how much of its day's it had seen, and the card adds back the restarts between the two counts. When a restart falls before the days the card loaded, it says so beside the number.
+- **Gold made a player-hour counts the sittings still open**: the book counts a sitting's seconds when it ends but its gold as it is made, so a reading inside a long sitting was far too high; the route adds the open sittings' seconds of today.
+- **The count is not instant**, and the card says so under the number: the daily walk reads 200 records a slot over a few seconds, so gold moving between two pages then can show as a little unexplained, either way.
 
 **Still open:**
 - Cases waiting, for card Q.

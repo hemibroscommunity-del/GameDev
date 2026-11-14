@@ -87,7 +87,7 @@ function boxEntries(box) {
 
 import { setGearStashCap, GEAR_STASH_CAP, GEAR_STASH_CAP_LEGACY, WEAPON_STASH_CAP_NEW, WEAPON_STASH_CAP_LEGACY } from './gearstash.js';   /* v2.3.4224 */
 import { setBagOneSum, setBagBook, setBagEcon } from './bag.js';   /* v2.3.4900: the bag door's step 2 switch; v2.3.5085: + its book */
-import { bookAdd } from './daybook.js';   /* v2.3.5085 */
+import { bookAdd, bookSoFar, bookDay } from './daybook.js';   /* v2.3.5085; v2.3.5093: + a day as it stands */
 import { worldCtx, worldAdd } from './worldsum.js';   /* v2.3.5093: the world's one sum, in the day's snapshot */
 import { STORAGE_MARKS } from './storagemarks.js';   /* v2.3.5093: which records hold gold */
 
@@ -258,6 +258,18 @@ export const liveopsMethods = {
    * _economySnapshot itself is kept for the owner's /economy endpoint,
    * paged the same way so its memory is bounded; it is an explicit
    * operator request and may take as long as the table is large. */
+  /* v2.3.5093 (sitting 10, M1): today's restarts so far, as the day's book
+     holds them (econcard.js econResetBook): the card adds back the restarts
+     between two counts, so each count says how many of its day's it saw */
+  async _worldGone(now) {
+    const day = bookDay(now);
+    try {
+      const r = (await bookSoFar(this, day)).econ;
+      const g = r && r.r && typeof r.r === 'object' ? r.r : {};
+      return { day, g: Number(g.g) || 0, n: Number(g.n) || 0 };
+    } catch (e) { return { day, g: 0, n: 0, unread: true }; }
+  },
+
   async _economyPage(after, onRec) {
     const opts = { prefix: 'rpg:', limit: METRICS.PAGE };
     if (after) opts.startAfter = after;
@@ -396,7 +408,7 @@ export const liveopsMethods = {
         pendingEntries: job.pendingEntries,
         ts: now,
         /* v2.3.5093: what the world holds against what its characters made (worldsum.js) */
-        ...(w ? { world: { v: WORLD.V, held: w.ctx.gold, net: w.ctx.net.gold, minted: w.minted, richest: w.richest } } : {}),
+        ...(w ? { world: { v: WORLD.V, held: w.ctx.gold, net: w.ctx.net.gold, minted: w.minted, richest: w.richest, gone: await this._worldGone(now) } } : {}),
       });
       this._lastMetricsDay = ymd;
       this._metricsJob = null;

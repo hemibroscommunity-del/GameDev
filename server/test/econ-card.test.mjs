@@ -22,9 +22,18 @@
  *      day at 1 and 100 characters, and the largest page's time.
  *   7. v2.3.5093: A SITTING'S SECONDS go into the book's riding `econ` part
  *      at the leave (leave.js), for gold a player-hour.
+ *   8. v2.3.5093 (the gatekeeper's sitting 10, M1): A RESTART MID-DAY reads
+ *      0: A is paid 1000, trades 100 to B, B restarts (its gold and its own
+ *      count of what it made go together, outside the gold door); the next
+ *      daily count, with the restart booked and added back, reads 0 -- and
+ *      0 again the day A restarts.  Played: real joins, a real trade, the
+ *      real restart, the real daily walk and the route.
+ *   9. M3: GOLD A PLAYER-HOUR counts the sittings still open (the route's
+ *      `open`): 100 made in a sitting open half an hour reads 200 an hour.
  *
- * BREAK PROOF (rule 8), tried by hand: econNumbers returning 0 for a number
- * with no count -> FAIL 3.
+ * BREAK PROOFS (rule 8), tried by hand: econNumbers returning 0 for a number
+ * with no count -> FAIL 3; the restart's line taken out of persistence.js ->
+ * FAIL 8 (-100, then +100).
  */
 import { econDay, econDays, econNumbers, ECON_NUMBERS } from '../../src/game/econCard.js';
 
@@ -219,6 +228,72 @@ function check(name, cond, detail) {
   const stored = [...store.entries()].filter(([k]) => k.startsWith('daybook:')).map(([, v]) => v.econ);
   const secs = [...(parts || []), ...stored].reduce((t, e) => t + ((e && e.p && e.p.s) || 0), 0);
   check('7. a sitting of 90 minutes adds 5400 seconds to the book\'s econ part at the leave', Math.abs(secs - 5400) <= 2, { secs, parts, stored });
+}
+
+/* ── 8. a restart mid-day reads 0 (sitting 10, M1) ── */
+{
+  const { makeStorage, openRoom, join, fakeWs, settle, seededClock } = await import('./testroom.mjs');
+  const { bookRead } = await import('../src/daybook.js');
+  const { econCardRead } = await import('../src/econcard.js');
+  const { econCompute } = await import('../../src/game/econCard.js');
+  const clock = seededClock({ start: Date.UTC(2026, 10, 12, 9, 0, 0), seed: 8 }).install();
+  try {
+    const A = 'bp_ec_a', B = 'bp_ec_b';
+    const st = makeStorage();
+    const room = await openRoom(st);
+    const wa = fakeWs('a'), wb = fakeWs('b');
+    await join(room, wa, A, { loginTaken: true });
+    await join(room, wb, B, { loginTaken: true });
+    const cmd = async (ws, type, payload) => { await room.webSocketMessage(ws, JSON.stringify({ type, payload: payload || {} })); await settle(); };
+    const walk = async () => { let n = 0; while ((await room._metricsMaybe(clock.now())) && n < 50) n++; await settle(); };
+    const read = async () => econCompute(await bookRead(room, 8), await econCardRead(room, 1));
+    await walk();   /* day 1's count */
+    clock.advance(86400000);
+    /* day 2: A is paid 1000 (a mint), trades 100 to B, and B restarts */
+    await room._creditPlayer(A, { opId: 'dq:' + A + ':20261113:ec', source: 'daily', kind: 'gold', payload: { amount: 1000 }, note: 'a daily quest' });
+    await settle();
+    await cmd(wa, 'trade2_open', { target: B }); await cmd(wb, 'trade2_open', { target: A });
+    await cmd(wa, 'trade2_set', { offer: { _gold: 100 } });
+    await cmd(wa, 'trade2_ready', { ready: true }); await cmd(wb, 'trade2_ready', { ready: true });
+    clock.advance(3000);
+    await cmd(wa, 'trade2_confirm'); await cmd(wb, 'trade2_confirm');
+    const traded = (st._store.get('rpg:' + B) || {}).coins;
+    await room._resetCharacterData(B);
+    await settle();
+    clock.advance(3600000);
+    await walk();   /* day 2's count */
+    const n2 = await read();
+    check('8. A paid 1000, trades 100 to B, B restarts: the next count reads 0 (not -100)', n2.unexplained.v === 0 && n2.unexplained.why === null && n2.unexplained.restarts === 1 && traded >= 100, { u: n2.unexplained, traded });
+    /* day 3: A restarts */
+    clock.advance(86400000);
+    await room._resetCharacterData(A);
+    await settle();
+    await walk();
+    const n3 = await read();
+    check('8. ...and the day A restarts, 0 again (not +100)', n3.unexplained.v === 0 && n3.unexplained.restarts === 1, n3.unexplained);
+    /* the restart took B's record with it */
+    const rec = st._store.get('rpg:' + B) || null;
+    check('8. setup: B\'s record gone with the restart', !rec || !(rec.coins >= 100));
+  } finally { clock.restore(); }
+}
+
+/* ── 9. gold a player-hour counts the sittings still open (sitting 10, M3) ── */
+{
+  const { econCompute } = await import('../../src/game/econCard.js');
+  const { econCardRead } = await import('../src/econcard.js');
+  const { makeStorage, openRoom } = await import('./testroom.mjs');
+  const room = await openRoom(makeStorage());
+  const now = Date.now();
+  room.sessions.set({}, { id: 'bp_o1', openedAt: now - 1800 * 1000 });
+  room.sessions.set({}, { id: 'bp_o1', openedAt: now - 1800 * 1000 });   /* a second tab: one sitting */
+  room.sessions.set({}, { id: null, openedAt: now - 1800 * 1000 });      /* a socket that never joined */
+  const c = await econCardRead(room, 1);
+  const day = c.open && c.open.day;
+  const n = econCompute({ days: [{ day, econ: { g: { mint: 100 }, p: { s: 0 } } }] }, c);
+  const sinceMidnight = Math.round((now - Math.floor(now / 86400000) * 86400000) / 1000);
+  const want = Math.min(1800, sinceMidnight);
+  check('9. the route counts the sittings still open, today\'s part, once a player', c.open && c.open.sittings === 1 && Math.abs(c.open.s - want) <= 2, c.open);
+  check('9. ...and 100 made in a sitting open half an hour reads 200 an hour (it read "not counted")', want === 1800 ? Math.abs(n.perHour.v - 200) < 1 : n.perHour.v > 0, n.perHour);
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);

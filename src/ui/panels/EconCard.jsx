@@ -75,7 +75,7 @@ export function EconCard({ call, busy, setMsg, COL, btn, label }) {
                     {v === null ? 'not counted yet' : v}
                   </strong>
                 </div>
-                <div style={sub}>{n.what}{v === null && x && x.why ? ' (' + x.why + ')' : ''}</div>
+                <div style={sub}>{n.what}{x && x.why ? ' (' + x.why + ')' : ''}</div>
               </div>
             );
           })}

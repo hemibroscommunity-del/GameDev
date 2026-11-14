@@ -12,16 +12,17 @@ state: ready
 - PRs 8a to 8c (5087 to 5089: #1759, #1761, #1764), `KNOWN` empty; 8c one
   plan record a match, OFF until the owner says yes (two rows a match).
 - PR 10 (5091, #1772), the storm: the sum under every disturbance, a
-  deploy before each message: all 0. Done before PR 9 (Needs below).
-- PR 11 (5092, #1773), `xfer:`: a row a trade, in its own run (`trade2.js`,
-  `trade.js`: the planning session's yes); none a kill; 90 days.
+  deploy before each message: all 0.
+- PR 11 (5092, #1773), `xfer:`: a row a trade, in its own run; none a
+  kill, none an empty window; 90 days (then its delete).
+- PR 12 (5093, #1785), the owner's card: the book's parts and the five
+  numbers. Sitting 10: a restart booked and added back (one line in
+  `persistence.js`), open sittings' seconds, the count's limit in words.
+- PR 9 (5090, #1786), on PR 11: value roads pause after a refused save.
 
 ## Next
 
-- PR 12 (5093), the owner's card: the book's parts and the five numbers
-  (one sum in `worldsum.js`; the daily count's `world`; `/dev/econcard`).
-- PR 9 (5090): the owner's "Go recommended" (option 1); built on its own
-  branch, its handlers' lines wait on the planning session's file yes.
+- Waiting on the gatekeeper's next sitting.
 
 ## Found
 
@@ -32,5 +33,4 @@ state: ready
 
 ## Needs
 
-- The planning session (asked 2026-11-14): PR 9's files outside the card
-  (its handlers' one line each, and three client maps for the words).
+- The owner's yes to the arena plan's two rows a match (#1764).

@@ -66,7 +66,7 @@ export function econDay(day) {
 /** The economy's five numbers, in the plan's order (step 10.4).  `from`:
  *  what counts it; `waits`: what it waits for while nothing does. */
 export const ECON_NUMBERS = Object.freeze([
-  Object.freeze({ id: 'unexplained', name: 'Unexplained gold', what: 'Between the last two daily counts, gold in the world that no road explains (0 is right; anything else is a copy or a loss)', waits: 'the world\'s sum, counted live' }),
+  Object.freeze({ id: 'unexplained', name: 'Unexplained gold', what: 'Between the last two daily counts, gold in the world that no road explains (0 is right; anything else is a copy or a loss). A character\'s restart is added back. The count reads the world a page at a time over a few seconds, so gold that moves between two pages then can show here, a little either way', waits: 'the world\'s sum, counted live' }),
   Object.freeze({ id: 'perHour', name: 'Gold made a player-hour', what: 'Gold made in an hour of play, today against the last week', waits: 'a count of player-hours' }),
   Object.freeze({ id: 'oneWay', name: 'Moved one way for nothing', what: 'Of the gold moved between players today, the share that went one way with nothing back', waits: 'the transfer ledger\'s read' }),
   Object.freeze({ id: 'richest', name: 'New gold to the richest', what: 'Of the gold made between the last two daily counts, the share the ten richest made', waits: 'each character\'s gold made over the day' }),
@@ -102,6 +102,28 @@ export function econNumbers(src) {
                   reads high on the day the ten change);
      cases        card Q's, not counted yet. */
 const W = (o) => (o && typeof o === 'object' && typeof o.held === 'number' ? o : null);
+
+/* ═══ v2.3.5093: THE RESTARTS BETWEEN TWO COUNTS (sitting 10, M1) ═══
+   A restart takes a character's gold and their own count of what they made
+   away together, outside the gold door; the server books the difference in
+   the day's `econ` part (`r.g`, `r.n`: econcard.js econResetBook), and each
+   daily count says how much of its own day's it had seen (`world.gone`).
+   Between count `b` (older) and `a`: the rest of b's day, every day between,
+   and a's day up to a.  `known` false when a day it needs is older than the
+   book's loaded days, or a count is from before `gone`. */
+function resetsBetween(a, b, days) {
+  const ga = a && a.gone && typeof a.gone === 'object' ? a.gone : null;
+  const gb = b && b.gone && typeof b.gone === 'object' ? b.gone : null;
+  if (!ga || !gb || typeof ga.day !== 'string' || typeof gb.day !== 'string') return { g: 0, n: 0, known: false };   /* a count from before `gone` */
+  if (ga.day === gb.day) return { g: num(ga.g) - num(gb.g), n: num(ga.n) - num(gb.n), known: true };
+  const byDay = new Map(days.filter((d) => d && typeof d.day === 'string').map((d) => [d.day, d]));
+  const oldest = days.length ? days[days.length - 1].day : null;
+  const rOf = (d) => { const e = d && d.econ && typeof d.econ === 'object' ? d.econ : {}; return e.r && typeof e.r === 'object' ? e.r : {}; };
+  let g = num(ga.g) - num(gb.g), n = num(ga.n) - num(gb.n);
+  let known = !!oldest && gb.day >= oldest;
+  for (const [day, d] of byDay) if (day >= gb.day && day < ga.day) { g += num(rOf(d).g); n += num(rOf(d).n); }
+  return { g, n, known };
+}
 export function econCompute(book, card) {
   const days = book && Array.isArray(book.days) ? book.days : [];
   const c = card && typeof card === 'object' ? card : {};
@@ -115,7 +137,9 @@ export function econCompute(book, card) {
   const snaps = (Array.isArray(c.metrics) ? c.metrics : []).map((m) => ({ day: m && m.day, w: W(m && m.world) })).filter((m) => m.w);
   if (snaps.length >= 2) {
     const [a, b] = snaps;   /* newest first */
-    out.unexplained = { v: (a.w.held - a.w.net) - (b.w.held - b.w.net), why: null, since: b.day };
+    /* v2.3.5093 (sitting 10, M1): + the restarts between the two counts */
+    const gone = resetsBetween(a.w, b.w, days);
+    out.unexplained = { v: (a.w.held - a.w.net) - (b.w.held - b.w.net) + gone.g, why: gone.known ? null : 'a restart before the book\'s loaded days is not added back', since: b.day, restarts: gone.n };
     const made = num(a.w.minted) - num(b.w.minted);
     const rich = (w) => (Array.isArray(w.richest) ? w.richest : []).reduce((t, r) => t + num(r && r[2]), 0);
     out.richest = made > 0 ? { v: Math.max(0, Math.min(1, (rich(a.w) - rich(b.w)) / made)), why: null } : none('no gold made between the last two counts');
@@ -124,13 +148,16 @@ export function econCompute(book, card) {
     out.richest = none(snaps.length ? 'one daily count so far: it needs two' : 'no daily count yet');
   }
   /* 2: gold made an hour of play, today and the other loaded days */
-  const rate = (d) => {
+  const rate = (d, extraS) => {
     const e = d && d.econ && typeof d.econ === 'object' ? d.econ : {};
-    const h = num(e.p && e.p.s) / 3600;
+    const h = (num(e.p && e.p.s) + num(extraS)) / 3600;
     return h > 0 ? { made: num(e.g && e.g.mint), h } : null;
   };
-  const today = rate(days[0]);
-  const week = days.slice(1, 8).map(rate).filter(Boolean);
+  /* v2.3.5093 (sitting 10, M3): today's hours include the sittings still
+     open (the route's `open`): their gold is in the book as it is made */
+  const open = c.open && typeof c.open === 'object' && days[0] && days[0].day === c.open.day ? num(c.open.s) : 0;
+  const today = rate(days[0], open);
+  const week = days.slice(1, 8).map((d) => rate(d)).filter(Boolean);
   const wk = week.reduce((t, r) => ({ made: t.made + r.made, h: t.h + r.h }), { made: 0, h: 0 });
   out.perHour = today ? { v: today.made / today.h, why: null, week: wk.h > 0 ? wk.made / wk.h : null } : none('no play counted today yet');
   /* 3: the ledger's day */
