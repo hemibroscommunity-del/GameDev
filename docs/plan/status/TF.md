@@ -1,6 +1,6 @@
 card: TF
 branch: claude/plan-tf-2-work-poses (PR 2, begun from PR 1's)
-prs: #1770 (5460, merged); PR 2 (5462: 5461 is burnt, below) on the branch above (opening)
+prs: #1770 (5460, merged); #1812 (5462: 5461 is burnt, below; draft until its checks)
 state: working
 
 ## Done
@@ -17,7 +17,7 @@ state: working
 
 ## Next
 
-- PR 2: open it as a draft, its pictures in the body; then wait.
+- #1812 (draft): ready once `test` and its phone tests are green on GitHub.
 
 ## Found
 
