@@ -41,11 +41,14 @@
  *  15. v2.3.5080: the day's book (daybook.js) writes nothing while nothing is
  *      added, and at most one row a DAYBOOK.PACE_MS (5 minutes) while its
  *      parts are added to on every tick -- 13 in an hour at most;
+ *  16. v2.3.5092: the transfer ledger (xfer.js) writes ONE row a settlement
+ *      between two players (the trade window: five trades, five rows; and
+ *      its delete 90 days on, XFER.KEEP_DAYS), none a kill (a purse taken in
+ *      No man's land by its killer) and none an empty window;
  *  17. v2.3.5089: an arena match's settlement (gladiator.js), its plan on,
  *      writes the old order's puts and ONE more, its plan (and deletes it
  *      once paid: two rows a match): 6 puts in a 1 v 1; off (the default
- *      until the owner says yes) the old order's 5 (16 is card E's transfer
- *      ledger, in its own PR);
+ *      until the owner says yes) the old order's 5;
  * A line here may move when a feature really needs the rows: say so in the
  * PR, in plain words, as the memory budget asks (CLAUDE.md).
  */
@@ -56,6 +59,7 @@ import { WHEEL_SPAWNS } from '../src/wheelspawns.js';
 import { PACE } from '../src/flood.js';
 import { shieldSig } from '../src/shieldwear.js';
 import { DAYBOOK, bookAdd } from '../src/daybook.js';
+import { XFER } from '../src/xfer.js';
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -630,6 +634,39 @@ const FAST = 110;
      hand's line dropped from roomrow.js writes the book 354 times */
   const line = 18;
   check(`15c. an hour of sockets that never join and of ${joins} joins and leaves writes the book ${rows.length} times, at most ${line} (no write without a join; the book's pace on the whole)`, rows.length >= 1 && rows.length <= line, byPrefix(rows));
+}
+
+/* ── 16. v2.3.5092: the transfer ledger (xfer.js) ─────────────────────────── */
+/* One row a settlement, none a kill (the owner's yes, call 13): the line is a
+   number a trade, not the ledger's own count of what it carried */
+{
+  const { room, state } = await makeRoom();
+  const a = await join(room, 'cg_xfa');
+  const b = await join(room, 'cg_xfb');
+  room.playerState.cg_xfa.coins = 500;
+  const w0 = state.writes.length;
+  for (let i = 0; i < 5; i++) {
+    await send(room, a, { type: 'trade2_open', payload: { target: 'cg_xfb' } });
+    await send(room, b, { type: 'trade2_open', payload: { target: 'cg_xfa' } });
+    await send(room, a, { type: 'trade2_set', payload: { offer: { _gold: 10 } } });
+    await send(room, a, { type: 'trade2_ready', payload: { ready: true } });
+    await send(room, b, { type: 'trade2_ready', payload: { ready: true } });
+    NOW += 3000;
+    await send(room, a, { type: 'trade2_confirm' });
+    await send(room, b, { type: 'trade2_confirm' });
+    NOW += 1000;
+  }
+  const rows = state.writes.slice(w0).filter((k) => k.startsWith(XFER.PREFIX));
+  check(`16a. five trades write the ledger ${rows.length} times: one row a settlement`, rows.length === 5 && room.playerState.cg_xfb.coins >= 50, { rows: byPrefix(rows), b: room.playerState.cg_xfb.coins });
+  /* a kill: A, marked as hit by B, dies to B in No man's land */
+  const ps = room.playerState.cg_xfa;
+  ps._nmlLastHitBy = 'cg_xfb'; ps._nmlLastHitAt = NOW;
+  const before = ps.coins;
+  const w1 = state.writes.length;
+  room._nmlOnDeath(ps, 'cg_xfa', 'pvp:cg_xfb');
+  await new Promise((r) => setTimeout(r, 5));
+  const none = state.writes.slice(w1).filter((k) => k.startsWith(XFER.PREFIX));
+  check(`16b. a kill that moves a purse (${before}) to the killer writes no ledger row (${none.length})`, none.length === 0 && before > 0 && ps.coins === 0, { none, coins: ps.coins });
 }
 
 /* ── 17. v2.3.5089: an arena match's settlement ─────────────────────────────── */
