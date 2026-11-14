@@ -573,6 +573,10 @@ const FAST = 110;
 {
   const { room, tickFn, state } = await makeRoom();
   const p = await join(room, 'cg_book');
+  /* v2.3.5124: an awake room adds its own row to the book every minute
+     (roomrow.js, card A): off here, so nothing is added; roomrow.test holds
+     the row itself to the book's pace */
+  room._liveFlags = Object.assign(room._liveFlags || {}, { roomrow: false });
   const w0 = state.writes.length;
   await run(room, tickFn, 10 * 60000, null, FAST);
   const none = state.writes.slice(w0).filter((k) => k.startsWith(DAYBOOK.PREFIX));

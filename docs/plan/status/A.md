@@ -1,26 +1,26 @@
 card: A
-branch: claude/plan-a-4-report-worker (one branch a PR, each begun from the one before: -1- to -7-; merge them in order)
-prs: #1688 (5120, ready), #1692 (5121, ready), #1703 (5122, ready), PR 4 (5123, the report's worker side; ready)
+branch: claude/plan-a-5-room-row (one branch a PR, each begun from the one before: -1- to -7-; merge them in order)
+prs: #1688 (5120), #1692 (5121), #1703 (5122), #1706 (5123), PR 5 (5124, the room's row): all ready
 state: ready
 
 ## Done
 
-- #1688 (5120): one list of hold names (`holdNames.js`); `noteMade` keeps a
-  name of it; `guards/hold-names`. Commits the card byte for byte.
+- #1688 (5120): one list of hold names; `guards/hold-names`; the card.
 - #1692 (5121): `devClass()` in `deviceProfile.js`, SHAPES part 6, facts
   only; `device-profile.test` 5 to 7. Its merge deploys the worker.
 - #1703 (5122): `src/debug/report.js`, the phone's side; the About row
   and its switch; `renderFrame.js` counts near players; `crashTrap.js`
   keeps the dead page's numbers. Sends nothing without `caps.report`.
-- PR 4 (5123): `server/src/report.js`: each field checked, one a socket a
-  50 s, into the book's `dev` part by cell with no player; `waver` kept
-  at each pong; `report: false`. The cap (`join.js`, `CAP_GATES`, each a
-  new line before `accuracy`'s) and the phone's read come together: list
-  it apart. Also the router's lists (`fightlock.js` open, refusal INFRA).
+- #1706 (5123): `server/src/report.js`, the worker's side, into the
+  book's `dev` part by cell; `caps.report` (a new cap line: list apart).
+- PR 5 (5124): `server/src/roomrow.js`: tick gaps, rows written (the
+  storage wrapped once), saves refused (`_savesRefused`, E's PR 9 reads
+  it), joins by protocol, restarts; `roomrow: false`. cost-guard 15a
+  (E's line) turns the row off: an awake room now always adds.
 
 ## Next
 
-- PR 5 (5124): the room's own row, the book's `room` part.
+- PR 6 (5125): the Speed test sends its card; the book's admin route.
 
 ## Found
 
