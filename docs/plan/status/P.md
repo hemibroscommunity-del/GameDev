@@ -16,11 +16,13 @@ state: working
 
 ## Next
 
-- 5256 `monster-slime`: its strips a look of the walking loader
-  (`?slimewalk=0`); three runs: `artCache` 31.9 -> 27.4 at the fight, its
-  line 95.1 -> 90.6; census 4.56 -> 0 MB (the splat and orb 0.13). The PR.
-  Once #1840 is in, their strips are packed a frame at a time once drawn.
-- Then the census's next family over 1 MB that is not a sound or data.
+- 5256 `monster-slime` (#1846), mended at sitting 16: the stat window's
+  films keep the hit's first frame as a still; a workshop dungeon of slimes
+  loads their look behind its screen and lets it go once out. Three runs
+  again (the still, 64 KB); `artCache` 95.1 -> 90.6 holds.
+- Then the owner's two ("go recommended"): gear worn at login loaded
+  behind the loading screen, a piece put on mid-play its stand-in until its
+  sheet is in; the rank trophy icons drawn by nothing removed.
 
 ## Found
 

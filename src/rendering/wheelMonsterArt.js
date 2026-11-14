@@ -240,6 +240,11 @@ export function loadLandLooks(home) {
     .then(() => [...ks]);
 }
 
+/* v2.3.5256: for a workshop's dungeon (game/dungeonArt.js enterArenaWithLooks):
+   does any of these archetypes draw from the slime's sheets, and its look */
+export function archsWearSlime(archs) { return (archs || []).some(onSlime); }
+export function loadSlimeLook() { return loadLook('slime'); }
+
 /* Leaving the Wheel: forget what was loaded here (freeZoneAssets lets all
    of it go, a beat later, as for any zone) and let the lazy kick back on. */
 export function wheelArtReset() {

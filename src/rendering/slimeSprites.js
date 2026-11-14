@@ -105,7 +105,8 @@ async function loadSheetTracked(state) {
     const frames = await loadTrackedStrip('slime', entry.url, FRAME_W, FRAME_H);
     if (frames && frames.length) entry.frames = frames;
   } catch {
-    /* sheet missing: the slime is not drawn (its look never ready) */
+    /* sheet missing: no frames, so a slime falls back to its procedural
+       circle (the look still counts as ready: this never throws) */
   }
 }
 
@@ -146,9 +147,37 @@ export function loadSlimeSprites() {
  *  rest (loadSlimeSprites). */
 let singlesPromise = null;
 export function loadSlimeSingles() {
-  if (!singlesPromise) singlesPromise = Promise.all(Object.keys(SHEETS).filter((k) => !WALKING.includes(k)).map(loadSheet));
+  if (!singlesPromise) singlesPromise = Promise.all(Object.keys(SHEETS).filter((k) => !WALKING.includes(k)).map(loadSheet).concat(loadHitStill()));
   return singlesPromise;
 }
+
+/* ═══ v2.3.5256: THE HIT'S FIRST FRAME, KEPT AS A STILL ═══
+   The stat window's demo films its slime in the world's own effects
+   (effectsRenderer.js _filmGunk, _filmStuck: the arrow that sticks in it,
+   the goo its hit throws), from the hit strip's first frame -- and the hit
+   strip is a look now, in only while a slime is near (the gatekeeper's
+   sitting 16: no arrow stuck in the demo's slime, and fighterCapture keeps
+   the film it made).  So that one 128 px frame is cut from the strip's file
+   once, behind the first loading screen with the splat and the orb, and
+   kept (64 KB, in the asset cache under the strip's address): getHitStill.
+   The strip itself is let go as it is cut. */
+let _hitStill = null;
+async function loadHitStill() {
+  try {
+    const url = SHEETS.hit.url;
+    const r = await fetch(url);
+    if (!r.ok || typeof createImageBitmap !== 'function') return;
+    const bmp = await createImageBitmap(await r.blob(), 0, 0, FRAME_W, FRAME_H);
+    const tex = Texture.from(bmp);
+    tex.source.label = url + '#still';
+    _hitStill = tex;
+  } catch {
+    /* none: the demo's films go without the slime, as before it loaded */
+  }
+}
+/** The hit strip's first frame, a still kept for the game (null on the
+ *  `?slimewalk=0` road, where the strip itself is kept). */
+export function getHitStill() { return _hitStill; }
 
 /** v2.3.5256: let the strips go (wheelMonsterArt.js: no slime near, or the
  *  Wheel left).  Only on the walking road: `?slimewalk=0` keeps them. */

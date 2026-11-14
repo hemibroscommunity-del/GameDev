@@ -55,7 +55,7 @@ function peerShotGame() {
 }
 import { recordMail, itemWords } from '@/game/postOffice.js'; /* v2.3.3066: the Post Office keeps the mail; v2.3.3516: + its words for an item */
 import { keepDungeonBack, leaveWheelDungeon, wheelArenaMap, loadDungeonFloor, freeDungeonFloor, WHEEL_DUNGEON_FLOOR } from '@/game/wheelDungeons.js'; /* v2.3.3016: the Wheel's dungeons -- their arena, its floor, and the way back out to their mouths */
-import { loadDungeonArt, freeDungeonArt } from '@/game/dungeonArt.js'; /* v2.3.3566: and the owner's pictures of it -- its walls, its things, the boss's chest */
+import { loadDungeonArt, freeDungeonArt, enterArenaWithLooks } from '@/game/dungeonArt.js'; /* v2.3.3566: and the owner's pictures of it -- its walls, its things, the boss's chest; v2.3.5256: a workshop's slimes loaded before you step in */
 import { startDungeonClear, setDungeonClearReward } from '@/game/dungeonClear.js'; /* v2.3.3556: 30 s to pick up the loot after a clear; v2.3.3565: and what the boss's chest held */
 import { loadLandLooks } from '@/rendering/wheelMonsterArt.js'; /* v2.3.3016: a Wheel dungeon's monsters' looks, loaded before you step in */
 import { campfireAtlas } from '@/rendering/campfireFx.js'; /* v2.3.3567: its torches burn with the campfire's flames, made before you step in */
@@ -1043,7 +1043,7 @@ export function processGameEvent(type, payload, S, deps) {
                   try { releaseLeftZoneArt(_dFrom, payload.zone); } catch (e) { /* a leak, not a crash */ }
                 });
               } else {
-                _enterArena();
+                enterArenaWithLooks(S, _dCfg, payload.zone, _enterArena, { show: showZoneLoadingOverlay, hide: hideZoneLoadingOverlay });   /* v2.3.5256: a workshop's slimes loaded first, behind its screen */
               }
               break;
             }
