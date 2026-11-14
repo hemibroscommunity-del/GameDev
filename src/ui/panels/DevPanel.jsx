@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { PlayerDrawings, AccuracyDays } from './DevWatch.jsx';   /* v2.3.4545: what players drew, and every player's accuracy a day */
+import { ReportTable } from './ReportTable.jsx';   /* v2.3.5125: the smoothness table, copied (card A) */
 import { COL, getState } from '../mobile/dash/common.js';
 import { BT_API_BASE } from '../../networking/index.js';
 import { runSpeedTest } from '../../game/speedTest.js';   /* v2.3.3339: the speed test, measured on this phone */
@@ -1611,6 +1612,7 @@ export const DevPanel = ({ onClose }) => {
             {/* ═══ v2.3.4545: WHAT PLAYERS DREW, AND HOW WELL THEY AIM (DevWatch.jsx) ═══ */}
             <PlayerDrawings call={call} busy={busy} setMsg={setMsg} COL={COL} btn={btn} chip={chip} label={label} />
             <AccuracyDays call={call} busy={busy} setMsg={setMsg} COL={COL} btn={btn} label={label} />
+            <ReportTable call={call} busy={busy} setMsg={setMsg} COL={COL} btn={btn} label={label} />{/* v2.3.5125: the smoothness table (ReportTable.jsx) */}
 
             <button type="button" style={{ ...btn(false), borderColor: COL.danger, color: COL.danger }} onClick={forgetKey}>
               Forget key on this device

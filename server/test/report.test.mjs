@@ -21,24 +21,32 @@
  *   6. THE WORKER'S OWN: the round trip's waver kept at each pong, and
  *      `delay` and `waver` binned from the session, never the message;
  *   7. THE BOOK'S ROOM: one cell with every field, against the part's line
- *      (daybook.js PART_BYTES), so a day holds several devices and builds.
+ *      (daybook.js PART_BYTES), so a day holds several devices and builds;
+ *   8. v2.3.5125: THE SPEED TEST'S CARD: its steps are the Speed test's own,
+ *      its model a place in the phone's list; checked, and into the book's
+ *      `speed` part by model, class and build;
+ *   9. THE BOOK'S ONE ADMIN ROUTE (GET /dev/daybook) and the Test panel's
+ *      "Copy table" text, with nothing of a player in either.
  *
  * BREAK PROOF (rule 8), each tried by hand, 2026-11-14:
  *   2. report.js: drop `!HOLD_NAMES.includes(name) ||`          -> FAIL 2
  *   3. report.js: `tree[session.id + '|' + r.cell] = r.sums`      -> FAIL 3
  *   4. report.js: `PACE_MS: 0`                                    -> FAIL 4
  *   5. join.js: `report: 1,` in place of the method's answer      -> FAIL 5
+ *   8. report.js speedSums: drop `|| has(s, r[0])` (a step twice)  -> FAIL 8
+ *   9. devtools.js: the /dev/daybook route's path `/dev/book`        -> FAIL 9
  */
 import { readFileSync } from 'node:fs';
 import { GameRoom } from '../src/index.js';
 import { REPORT, DEV_CLASS, SAVERS, WHERE, GAP_BINS, HOLD_NAMES as W_HOLDS, DRAW_LANES, DELAY_EDGES, WAVER_EDGES,
-  reportSums, swCell, holdKey, classOfReport, rttWaverNext } from '../src/report.js';
+  reportSums, swCell, holdKey, classOfReport, rttWaverNext, SPEED_STEPS, SPEED_MODELS_N, speedSums } from '../src/report.js';
 import { DAYBOOK, bookBytes, bookRead } from '../src/daybook.js';
 import { flagNameOk } from '../src/liveops.js';
 import { DEV_CLASS as P_CLASS } from '../../src/game/deviceProfile.js';
 import { CLIENT_SAVERS } from '../../src/game/clientOff.js';
 import { HOLD_NAMES as P_HOLDS } from '../../src/debug/holdNames.js';
-import { WHERE as P_WHERE, GAP_EDGES, DRAW_LANE, takesReports, gapBin, whereOf, buildOf } from '../../src/debug/report.js';
+import { WHERE as P_WHERE, GAP_EDGES, DRAW_LANE, takesReports, gapBin, whereOf, buildOf,
+  SPEED_STEPS as P_STEPS, SPEED_MODELS, speedCardOf, bookTableText } from '../../src/debug/report.js';
 
 let failures = 0, passes = 0;
 function check(name, cond, detail) {
@@ -250,6 +258,57 @@ const A = await join('bp_rep_a', 'Repo');
   const cells = Math.floor(DAYBOOK.PART_BYTES / bytes);
   console.log(`     one cell with every field: ${bytes} bytes as the book reckons it; the part holds ${cells} such a day`);
   check('7. a cell with every field leaves room for at least six cells a day (devices times builds)', cells >= 6, { bytes, cells });
+}
+
+/* ── 8. THE SPEED TEST'S CARD (v2.3.5125) ── */
+{
+  const st = readFileSync(new URL('../../src/game/speedTest.js', import.meta.url), 'utf8');
+  const ks = [...st.matchAll(/\{ k: '([a-z0-9]+)'/g)].map((m) => m[1]);
+  check('8. the card\'s steps are the Speed test\'s own (speedTest.js steps()), in its order, on both sides',
+    same(ks, [...P_STEPS]) && same(SPEED_STEPS, P_STEPS), { speedTest: ks, phone: P_STEPS });
+  check('8. the worker keeps the models\' count, the phone their names (only a place is sent)', SPEED_MODELS_N === SPEED_MODELS.length && SPEED_MODELS[0] === 'Not said');
+  check('8. the speed test hands its result to the report (queueSpeedCard)', /queueSpeedCard\(result\)/.test(st));
+  const result = { rows: [
+    { k: 'all', fps: 59.6, p50: 16.7, p95: 18.3, work: 2.4 }, { k: 'noshadow', fps: 60, p50: 16.6, p95: 17.1, work: null },
+    { k: 'bare', fps: 61, p50: 16.4, p95: 16.9, work: 1.9 }, { k: 'all', fps: 1 }, { k: 'my step', fps: 1 },
+  ] };
+  const card = speedCardOf(result, 7);
+  check('8. the phone\'s card: whole numbers, -1 for work not measured, a step once, off-list steps gone',
+    same(card, { model: 7, rows: [['all', 60, 17, 18, 2], ['noshadow', 60, 17, 17, -1], ['bare', 61, 16, 17, 2]] }), card);
+  const r = reportSums({ ...PHONE(), speed: card }, {});
+  check('8. a report with a card: its speed key is the model, the class and the build',
+    r && r.speed && r.speed.key === '1|7|' + KEY + '|5122', r && r.speed);
+  check('8. ...and its sums: [runs, fps, p50, p95, work, runs with no work] a step',
+    r && same(r.speed.sums.all, [1, 60, 17, 18, 2, 0]) && same(r.speed.sums.noshadow, [1, 60, 17, 17, 0, 1]) && r.speed.sums.n === 1, r && r.speed.sums);
+  const bad = (sp) => speedSums(sp, KEY, 5122);
+  check('8. a card off its shape is dropped whole: a model past the list, a step off it or twice, a fraction, a short row',
+    bad({ model: SPEED_MODELS_N, rows: card.rows }) === null && bad({ model: 1, rows: [['warp', 1, 1, 1, 1]] }) === null
+      && bad({ model: 1, rows: [['all', 1, 1, 1, 1], ['all', 2, 2, 2, 2]] }) === null && bad({ model: 1, rows: [['all', 1.5, 1, 1, 1]] }) === null
+      && bad({ model: 1, rows: [['all', 1, 1, 1]] }) === null && bad({ model: 'iPhone', rows: card.rows }) === null && bad(null) === null);
+  check('8. ...and the report itself still counts', reportSums({ ...PHONE(), speed: { model: 99, rows: [] } }, {}).speed === null);
+  /* through the room */
+  const S = room.sessions.get(A);
+  clock += REPORT.PACE_MS;
+  check('8. through the room: taken', room._reportTake(S, { ...PHONE(), speed: card }, clock) === 'ok');
+  if (room._daybook && room._daybook.putting) await room._daybook.putting;
+  const r2 = await bookRead(room, 1);
+  const sp = r2.days[0] && r2.days[0].speed;
+  check('8. ...into the book\'s `speed` part', sp && sp['1|7|' + KEY + '|5122'] && sp['1|7|' + KEY + '|5122'].n === 1, sp);
+}
+
+/* ── 9. THE ONE ADMIN ROUTE, AND THE TABLE ── */
+{
+  const json = (o, status) => new Response(JSON.stringify(o), { status: status || 200, headers: { 'content-type': 'application/json' } });
+  const res = await room._devFetch(new Request('http://x/dev/daybook?days=1'), '/dev/daybook', json);
+  const body = res ? await res.json() : null;
+  check('9. GET /dev/daybook reads the book: the day\'s `dev` and `speed` parts', body && body.ok && body.days.length === 1
+    && Object.keys(body.days[0].dev).length >= 1 && Object.keys(body.days[0].speed).length >= 1, body);
+  const text = bookTableText(body ? body.days : []);
+  check('9. the table as text: the cell, its gaps, the model\'s name and each step\'s means',
+    text.includes('1|' + KEY + '|full|none|5122') && /gaps 0 0 0 0 0 0 0 0 0 \d+/.test(text) && text.includes('(iPhone 14 Pro or Pro Max)')
+      && /\n  all  60 17 18 2\n/.test(text) && /noshadow  60 17 17 0  \(work not measured in 1\)/.test(text), text.slice(0, 900));
+  check('9. nothing of a player in the route\'s answer or the table', !/bp_rep|Repo|Offy|203\.0\.113/.test(JSON.stringify(body) + text));
+  check('9. an empty book is a table that says so', /0 cell\(s\)/.test(bookTableText([{ day: '20270101', dev: {}, speed: {} }])) && bookTableText(null).length > 0);
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);

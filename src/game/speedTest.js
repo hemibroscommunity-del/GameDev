@@ -31,6 +31,16 @@
  *
  * Nothing is sent.  `window.__btSpeedTest` is the last result (QA:
  * mp-speedtest); `?speedms=<ms>` shortens each step for a slow test machine.
+ *
+ * v2.3.5125: THE CARD IS SENT (the grand plan's step 1.2).  Each step's
+ * frames a second, middle and slowest frame and the game's own work ride
+ * the next smoothness report (debug/report.js queueSpeedCard), which goes
+ * soon after, into the day's book's `speed` part: the owner reads every
+ * phone's runs from the Test panel's "Copy table", not a screenshot.  The
+ * card asks which device this is, from a list (debug/report.js
+ * SPEED_MODELS: a page cannot read its model), kept on the device; only its
+ * place in the list is sent.  Nothing is sent with the reports switched off
+ * (About).
  */
 import { COL } from '@/ui/mobile/dash/common.js';
 import { lightFxOn, setLightFx } from '@/rendering/lightfx/lightFx.js';
@@ -40,6 +50,7 @@ import { oneBatchOn, setOneBatchLive } from '@/rendering/paletteTex.js';   /* v2
 import { shadowPrepassOn, setShadowPrepass } from '@/rendering/lightfx/shadows.js';   /* v2.3.3458 */
 import { renderDpr, setRenderResLive } from './renderRes.js';
 import { deviceProfile } from './deviceProfile.js';   /* v2.3.4804: the device profile */
+import { queueSpeedCard, SPEED_MODELS, speedModel, setSpeedModel, reportOn } from '@/debug/report.js';   /* v2.3.5125: the card is sent */
 
 const SETTLE_MS = 1500;
 const MEASURE_MS = 4000;
@@ -250,9 +261,20 @@ function showResult(r) {
     + '<tr style="color:' + COL.muted + ';font-size:11px"><td>Setting</td><td style="text-align:right">frames/s</td><td style="text-align:right">slowest ms</td></tr>'
     + rows + '</table>'
     + '<div style="color:' + COL.text2 + ';margin-top:7px">' + r.notes.map(esc).join('<br>') + '</div>'
-    + '<div style="color:' + COL.muted + ';margin-top:6px;font-size:11px">' + esc(r.device) + '</div>';
+    + '<div style="color:' + COL.muted + ';margin-top:6px;font-size:11px">' + esc(r.device) + '</div>'
+    /* v2.3.5125: which device this is, from a list (a page cannot read its model) */
+    + '<label style="display:block;margin-top:8px;color:' + COL.text2 + '">This is: '
+    + '<select data-speed-model style="touch-action:manipulation;max-width:100%;min-height:32px;border-radius:8px;border:1px solid ' + COL.border
+    + ';background:' + COL.raised + ';color:' + COL.text + '">'
+    + SPEED_MODELS.map((m, i) => '<option value="' + i + '"' + (i === speedModel() ? ' selected' : '') + '>' + esc(m) + '</option>').join('')
+    + '</select></label>'
+    + '<div data-speed-sent style="color:' + COL.muted + ';margin-top:4px;font-size:11px">'
+    + (r.queued ? 'This card goes to the game with the next smoothness report (no name on it, kept 60 days).'
+      : 'Not sent: smoothness reports are off (About).') + '</div>';
   const b = el.querySelector('[data-speed-close]');
   if (b) b.addEventListener('click', () => { try { el.remove(); } catch (e) { /* gone */ } _card = null; });
+  const sel = el.querySelector('[data-speed-model]');
+  if (sel) sel.addEventListener('change', () => { setSpeedModel(Number(sel.value)); });
 }
 
 let _running = false;
@@ -339,6 +361,8 @@ export async function runSpeedTest() {
     /* v2.3.4804: the device profile's lanes, so one screenshot says which this machine is in */
     + (() => { try { const d = deviceProfile(); return ', ' + d.input + (d.computerFrame ? ', computer window' : '') + (d.ios ? ', iOS' : '') + ', looks palette ' + d.palette; } catch (e) { return ''; } })();
   const result = { rows, notes, device, at: Date.now() };
+  /* v2.3.5125: the card rides the next smoothness report (debug/report.js) */
+  result.queued = reportOn() && queueSpeedCard(result);
   try { window.__btSpeedTest = result; } catch (e) { /* QA only */ }
   showResult(result);
   return result;

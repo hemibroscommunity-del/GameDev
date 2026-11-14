@@ -38,6 +38,12 @@
  *   died      ONCE, in the first report after the page's first join: ['no'],
  *             or ['killed' | 'evicted', MB of art, minutes up, rebuilds,
  *             where] -- the last page's last mark (debug/crashTrap.js)
+ *   speed     v2.3.5125: the Speed test's card, once, in the first report
+ *             after a player runs it (game/speedTest.js): { model, rows },
+ *             `model` a place in SPEED_MODELS the player picks (a page
+ *             cannot read its model), `rows` [step, fps, p50, p95, work] a
+ *             step of SPEED_STEPS, whole numbers.  The report goes early for
+ *             it (SPEED_SOON_MS), never sooner than the worker's pace
  *
  * The worker's own three (the line's delay, how much it wavers, the moves
  * this sitting sent) are never asked of the phone.
@@ -82,6 +88,75 @@ export const GAP_EDGES = Object.freeze([10, 12.5, 15, 18.5, 24, 29, 42, 75, 150]
 export const WHERE = Object.freeze(['town', 'farm', 'dungeon', 'commons', 'frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', 'verdant', 'other']);
 export const DRAW_LANE = 'full';
 const OFF_KEY = 'bt_report';
+
+/* ── v2.3.5125: THE SPEED TEST'S CARD (the grand plan's step 1.2) ── */
+/* the Speed test's steps (game/speedTest.js steps(): `k`), in its order */
+export const SPEED_STEPS = Object.freeze(['all', 'noshadow', 'noshine', 'shinepass', 'threeprog', 'shadowpass', 'still', 'res2', 'bare']);
+/* What a player says the device is: a page cannot read its model, so the
+   card asks.  A PLACE IN THIS LIST is what is sent and kept (a number, never
+   the words): add at the END, never reorder or reword one's meaning, or a
+   day's book reads an old number as the new name.  The worker keeps the
+   count (server/src/report.js SPEED_MODELS_N, report.test holds it). */
+export const SPEED_MODELS = Object.freeze([
+  'Not said',
+  'iPhone 17 Pro or Pro Max', 'iPhone 17 or iPhone Air', 'iPhone 16 Pro or Pro Max', 'iPhone 16 or 16 Plus or 16e',
+  'iPhone 15 Pro or Pro Max', 'iPhone 15 or 15 Plus', 'iPhone 14 Pro or Pro Max', 'iPhone 14 or 14 Plus',
+  'iPhone 13 or older', 'iPhone SE', 'iPad',
+  'Android phone, from 2023 or newer', 'Android phone, older', 'Android tablet',
+  'Mac laptop', 'Mac desktop', 'Windows laptop', 'Windows desktop', 'Chromebook', 'Linux computer',
+  'Something else',
+]);
+/* after a test, the report goes this soon (and not before the worker's pace
+   allows: one a socket each 50 s, server/src/report.js) */
+const SPEED_SOON_MS = 5 * 1000;
+const SPEED_GAP_MS = 60 * 1000;
+const MODEL_KEY = 'bt_speed_model';
+
+/** The device the player said this is, a place in SPEED_MODELS (0: not said). */
+export function speedModel() {
+  try {
+    const v = typeof localStorage !== 'undefined' ? Number(localStorage.getItem(MODEL_KEY)) : 0;
+    return Number.isInteger(v) && v >= 0 && v < SPEED_MODELS.length ? v : 0;
+  } catch (e) { return 0; }
+}
+/** The player's pick, kept on this device; a card waiting to go takes it. */
+export function setSpeedModel(i) {
+  const v = Number.isInteger(i) && i >= 0 && i < SPEED_MODELS.length ? i : 0;
+  try { localStorage.setItem(MODEL_KEY, String(v)); } catch (e) { /* this tab only */ }
+  if (_speed) _speed.model = v;
+  return v;
+}
+
+/** A Speed test's result as the card the report carries: its rows as
+ *  [step, fps, p50, p95, work] whole numbers (`work` -1 where not measured),
+ *  steps of SPEED_STEPS only.  Pure (the suite's). */
+export function speedCardOf(result, model) {
+  if (!result || !Array.isArray(result.rows)) return null;
+  const rows = [];
+  for (const x of result.rows) {
+    if (!x || !SPEED_STEPS.includes(x.k) || rows.some((r) => r[0] === x.k)) continue;
+    rows.push([x.k, _w(x.fps), _w(x.p50), _w(x.p95), typeof x.work === 'number' ? _w(x.work) : -1]);
+  }
+  if (!rows.length) return null;
+  return { model: Number.isInteger(model) && model >= 0 && model < SPEED_MODELS.length ? model : 0, rows };
+}
+
+/** game/speedTest.js, when a test ends: its card goes with the next report,
+ *  and that report goes soon.  Nothing goes with the report switched off. */
+export function queueSpeedCard(result) {
+  try {
+    if (!reportOn()) return false;
+    const card = speedCardOf(result, speedModel());
+    if (!card) return false;
+    _speed = card;
+    const now = Date.now();
+    const soon = Math.max(now + SPEED_SOON_MS, _lastSentAt + SPEED_GAP_MS);
+    if (_dueAt && soon < _dueAt) _dueAt = soon;
+    return true;
+  } catch (e) { return false; }
+}
+/** QA and the card: is a Speed test card waiting for the next report? */
+export function speedCardWaiting() { return !!_speed; }
 
 /** The bin a gap between two drawn frames falls in, 0..9. */
 export function gapBin(ms) {
@@ -129,6 +204,8 @@ let _lastFrameT = -Infinity, _lastHoldT = -Infinity;
 let _a = null;            /* the bins */
 let _last = null;         /* QA: the last report built, sent or not */
 let _sent = 0, _dropped = 0;
+let _speed = null;        /* v2.3.5125: the Speed test's card, waiting for the next report */
+let _lastSentAt = 0;
 
 function _reset(now) {
   _a = {
@@ -260,6 +337,7 @@ export function buildReport(now) {
     r.split = a.beatAll && a.late > 0 ? s.slice(0, 6).concat([_w(a.busy), _w(a.wait)]) : s;
   }
   if (_died) r.died = _died;
+  if (_speed) r.speed = { model: _speed.model, rows: _speed.rows.map((x) => x.slice()) };
   return r;
 }
 
@@ -280,7 +358,9 @@ function _due(now) {
   const ok = r.secs >= REPORT.MIN_SECS && takesReports(S) && S.channel && typeof S.channel.send === 'function';
   if (ok && S.channel.send(r) !== false) {
     _sent++;
+    _lastSentAt = now;
     if (_died) { _died = null; _diedOwed = false; }   /* once */
+    if (r.speed) _speed = null;   /* v2.3.5125: the card went with it */
   } else _dropped++;
   _reset(now);
 }
@@ -306,13 +386,69 @@ export function reportJoined(S) {
   } catch (e) { /* never the game's trouble */ }
 }
 
+/* ═══ v2.3.5125: THE BOOK AS TEXT (the Test panel's "Copy table") ═══
+   Until a reader can bring the book into the repository (step 1.3, the
+   owner's call 6), the owner pastes it: the days' `dev` and `speed` parts
+   from the worker's one admin route (GET /dev/daybook, devtools.js), as
+   plain lines, a cell's sums as means where a mean is what a person reads.
+   Numbers and the game's own names only: nothing in it came from a phone as
+   words (every key is the worker's, from its closed lists). */
+const _mean = (sum, n) => (n > 0 ? Math.round((sum / n) * 10) / 10 : 0);
+export function bookTableText(days) {
+  const out = [];
+  const list = Array.isArray(days) ? days : [];
+  out.push('BroTown smoothness table (v' + REPORT.V + '): ' + list.length + ' day(s), newest first. A cell is: shape | device class '
+    + '(gl-soft-maxTex-prec-units-mp-dpr-hz-fill-input-frame-cores) | lane | switches | build.');
+  out.push('gaps bins (ms): <' + GAP_EDGES.join(', <') + ', more.  where: ' + WHERE.join(' ') + '.  speed rows: step fps p50 p95 work (means of the runs).');
+  for (const d of list) {
+    out.push('');
+    out.push('== day ' + (d && d.day) + (d && d.over && Object.keys(d.over).length ? '  (refused as over a part\'s size: ' + JSON.stringify(d.over) + ')' : ''));
+    const dev = (d && d.dev) || {};
+    const cells = Object.keys(dev).sort();
+    out.push('-- smoothness: ' + cells.length + ' cell(s)');
+    for (const k of cells) {
+      const c = dev[k] || {};
+      const n = c.n || 0;
+      out.push(k + '  reports ' + n + '  secs ' + (c.secs || 0));
+      if (c.gaps) out.push('  gaps ' + c.gaps.join(' '));
+      if (c.late) out.push('  late ' + c.late[0] + ' of ' + c.late[1] + ' judged' + (c.split ? '  split ms sim,tile,entity,effects,fps,app,outside,busy,wait ' + c.split.join(' ') : ''));
+      if (c.where) out.push('  where (secs) ' + WHERE.map((w, i) => (c.where[i] ? w + ' ' + c.where[i] : '')).filter(Boolean).join(', '));
+      if (c.near) out.push('  near bins 0,1,2-3,4-7,8-15,16+: ' + c.near.join(' '));
+      if (c.mem) out.push('  mem mean MB tex ' + _mean(c.mem[0], n) + ' gpu ' + _mean(c.mem[1], n) + ' snd ' + _mean(c.mem[2], n));
+      if (c.lost) out.push('  lost contexts ' + c.lost[0] + ', rebuilt ' + c.lost[1]);
+      if (c.died) out.push('  died no ' + c.died[0] + ' killed ' + c.died[1] + ' evicted ' + c.died[2] + (c.diedMem ? '  (their MB ' + c.diedMem[0] + ', min up ' + c.diedMem[1] + ', rebuilds ' + c.diedMem[2] + ')' : ''));
+      if (c.delay) out.push('  delay bins <25,<50,<100,<150,<200,<300,more: ' + c.delay.join(' '));
+      if (c.waver) out.push('  waver bins <5,<10,<20,<40,<80,more: ' + c.waver.join(' '));
+      if (c.holds) {
+        const hs = Object.keys(c.holds).map((h) => [h, c.holds[h]]).sort((a, b) => b[1][1] - a[1][1]);
+        out.push('  holds (name|where: times, ms in all, mean near) ' + hs.map(([h, v]) => h + ' ' + v[0] + 'x ' + v[1] + 'ms ' + _mean(v[2], v[0])).join('; '));
+      }
+    }
+    const sp = (d && d.speed) || {};
+    const keys = Object.keys(sp).sort();
+    out.push('-- speed test: ' + keys.length + ' card(s)');
+    for (const k of keys) {
+      const c = sp[k] || {};
+      const parts = k.split('|');
+      const model = SPEED_MODELS[Number(parts[1])] || ('model ' + parts[1]);
+      out.push(k + '  (' + model + ')  runs ' + (c.n || 0));
+      for (const st of SPEED_STEPS) {
+        const v = c[st];
+        if (!v || !v[0]) continue;
+        out.push('  ' + st + '  ' + [1, 2, 3, 4].map((i) => (i === 4 && v[5] ? _mean(v[4], v[0] - v[5]) : _mean(v[i], v[0]))).join(' ') + (v[5] ? '  (work not measured in ' + v[5] + ')' : ''));
+      }
+    }
+  }
+  return out.join('\n');
+}
+
 /* QA: the open report as it would go now ({ send: true }: send it now), and
    what this page has done */
 if (typeof window !== 'undefined') {
   window.__btReport = (opt) => {
     if (opt && opt.send) { _poll(); _due(Date.now()); }
     return { on: reportOn(), cap: takesReports(_S), joinedAt: _joinedAt,
-      dueIn: _dueAt ? _dueAt - Date.now() : null, sent: _sent, dropped: _dropped, diedOwed: _diedOwed,
+      dueIn: _dueAt ? _dueAt - Date.now() : null, sent: _sent, dropped: _dropped, diedOwed: _diedOwed, speed: _speed,
       open: buildReport(Date.now()), last: _last };
   };
 }
