@@ -1,6 +1,6 @@
 card: U
 branch: claude/plan-u-1-ledger
-prs: PR 1, tag 5160 (ready; its number is in the PR list)
+prs: #1721 (ready)
 state: ready
 
 ## Done
