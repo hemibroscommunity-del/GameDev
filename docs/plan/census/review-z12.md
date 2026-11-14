@@ -265,3 +265,47 @@ today's list adds an asker (their diffs read). CI: `test` green at
   `index.js` PRs first; R's 5280 and 5281 before K's 5194; R's escrow
   ledger last), which the next lists follow. Every cost is built OFF and
   listed for the owner.
+
+## Card TF: #1812 (PR 2, tag 5462): HELD to the next batch
+
+Read at 14a8c24 (81e9b47 adds a status line only). The set: seven
+sheets of colour numbers (`public/sprites/look/skills/`, 2.59 MB of
+texels, 8-bit, no mips, a texture a sheet), loaded behind the loading
+screen by `preloadLookSheets`, not on a Windows or Mac computer
+(`lookPaletteWanted`); a texture list per look and sheet made once and
+swept after 30 s idle (not per frame); one more palette row per working
+townsperson's look (three). The cook's 5112 texels wide is the player's
+own cook strip's width. Its CI was green at 14a8c24.
+
+- **HELD, VERIFIED by reading (the gatekeeper), medium: red on `main`
+  after its merge.** `tools/qa/mp/mp-folkwalk.mjs` ~109-111 (unchanged
+  by the PR) waits 45 s for Chef Blaze's pose `pickup`; the PR's stop
+  table (townsfolkWalk.js ~131) gives him `cook`, so section 4 fails on
+  every run. Mend: expect `cook` (`pickup` under `?folkskills=0`).
+- **VERIFIED by reading, medium: the working townsperson is drawn without
+  the world's form shade.** `formShade.js` (on by default, `?shade=0`)
+  shades a sprite with `_vShade`, or a parent or grandparent with
+  `_vShadeKids` (~188-200); folkSkill.js's container `npc_folk_skill` and
+  its sprites carry neither, nor does the townsperson's display (only
+  `display._fig`). Farmer Bro's legs and boots jump up to about 28%
+  brighter and lose the cool shade at each stop, beside shaded players
+  doing the same work (`markStandIns`). Mend: `_vShade = SHADE.figure` on
+  the body, tee and prop, as the stand-ins.
+- **Medium, the card's "done when": no `mp-ghostaudit` sample of any new
+  townsperson pose** (cook, chop, farmhoe, farmwater, farmkneel). The PR
+  ran `BT_GHOST_ONLY=fire,cook` on the PLAYER (cook draws 0 frames there,
+  on `main` too); `mp-folkwork`'s own ghost check (11 of 11) stands in.
+  The PR says so; the planning session's to rule.
+- VERIFIED (probe), low-medium: `townsfolk-walk.test` 6d's ordering half
+  is vacuous (it looks for `this._drawFolkSkill(`, which exists nowhere:
+  `indexOf` -1); moving `folk.visible = true` above the draw call (TRAPS
+  §218's flip each frame) stays green (60 of 60).
+- VERIFIED by reading, low: 6e's second break proof is false (a whole-set
+  bake with `ROLE_BAKE_BAR=23` writes no `bar`, ~75, ~414, ~438); a
+  sturdier rule: any sheet whose worst shift is over 16 needs its `bars`
+  row. The cook's own row is honest (an empty why fails).
+- VERIFIED by reading, low: the 2.6 MB set loads under `?lookfolk=0`, the
+  Test panel's "Townsfolk drawn live" off, or `?folkwalk=0`, where nobody
+  is drawn live (folkSkill.js ~59: gate on `lookFolkAtLoad`).
+- Low: the cook's quantising "mean 4.3" is another measure (per pixel,
+  straight RGB, 11.1 against 3.1 to 6.5 for the others).
