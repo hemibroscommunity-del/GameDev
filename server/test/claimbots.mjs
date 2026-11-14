@@ -258,7 +258,7 @@ export async function honestSword(W, ph, take, opts = {}) {
     if (dist(target, ph) > 90) { const t = target; await ph.walkTo(() => t.x, () => t.y, { stop: 80, extra: opts.moveExtra && opts.moveExtra(t) }); continue; }
     const r = await claim(W, ph, target, 'melee', null, opts.bundle && opts.bundle(target), 100);
     if (r.sent && !r.landed && r.could) ph.refuse('a sword hit in reach did not land');
-    if (r.killed) take.kills++;
+    if (r.killed) { take.kills++; if (opts.afterKill) await opts.afterKill(); }
     await ph.wait(600);
   }
   take.xp = fightTake(W.ws[PID]);
@@ -345,6 +345,28 @@ export async function liarGuard(W, ph, take) {
     moveExtra: () => ({ blocking: true }),
   });
   take.hurt = W.hurt;
+}
+
+/* the cooking shield (moveclaims.js _cookShieldHolds): a liar lights its own
+   fire by the field and, after each kill, claims `ex: 'cook'` with no fish
+   (an `ex: null` then `'cook'` edge), waits out the 3 s re-arm and fights on.
+   Its take is the damage it is kept from per kill (the shield guards no
+   swing: the first attack ends it) */
+export async function liarCookShield(W, ph, take) {
+  await combatStart(W, ph, 'sword');
+  const ps0 = W.ps(PID); if (ps0) ps0.inventory = { ...(ps0.inventory || {}), wood_pine_log: 200 };
+  let fireAt = -Infinity, kills = 0;
+  const light = async () => { const p = W.ps(PID); if (p && !(p.inventory && p.inventory.wood_pine_log)) p.inventory = { ...(p.inventory || {}), wood_pine_log: 200 }; await ph.send({ type: 'firemaking_request', payload: { invKey: 'wood_pine_log' } }); fireAt = ph.now; };
+  await honestSword(W, ph, take, {
+    afterKill: async () => {
+      if (ph.now - fireAt > 50000) await light();
+      await ph.send(ph.moveMsg({ ex: null }));
+      await ph.send(ph.moveMsg({ ex: 'cook' }));
+      kills++;
+      await ph.wait(3200);
+      await ph.send(ph.moveMsg({ ex: null }));
+    },
+  });
 }
 
 /* ══════════ THE MOVE: a route of far points ══════════ */

@@ -41,7 +41,7 @@ import * as B from './claimbots.mjs';
 const BAR = 1.5;
 /* today's gains (main 82fb78d, the default seed): a line only falls */
 const LINES = {
-  reach: 2.96, bowlabel: 3.76, guard: 1.37, move: 4.35, harvest: 1.86, cook: 1.59, quest: 1, sale: 1, local: 1,
+  reach: 2.96, bowlabel: 3.76, guard: 1.37, cookshield: 0.67, move: 4.35, harvest: 1.86, cook: 1.59, quest: 1, sale: 1, local: 1,
 };
 /* each gain's spread over five other seeds (CLAIMS_SEED=a..e, --gains:
    the highest less the lowest, rounded up), measured 2026-11-14.  A gain
@@ -49,7 +49,7 @@ const LINES = {
    the room that moves the dice does not; a judge loosened moves it far more
    (the break proof: the reach doubled, 2.96 to 5.08) */
 const SPREAD = {
-  reach: 0.56, bowlabel: 0.23, guard: 0.49, move: 0.01, harvest: 0.32, cook: 0.02, quest: 0, sale: 0, local: 0,
+  reach: 0.56, bowlabel: 0.23, guard: 0.49, cookshield: 0.29, move: 0.01, harvest: 0.32, cook: 0.02, quest: 0, sale: 0, local: 0,
 };
 const GAIN_MIN = 4;
 const DIST_S = 30;
@@ -84,6 +84,10 @@ const CLAIMS = [
     take: 'hurt', less: true, world: COMBAT,
     honest: [['the honest sword, its guard down while it swings', B.honestSword]],
     liar: ['each swing sent with a raised guard pointed at its target, no shield', B.liarGuard] },
+  { id: 'cookshield', what: 'the cooking shield beyond #1530\'s limits', judge: '`ex: \'cook\'` is believed at a fire the worker saw lit, with no fish (moveclaims.js _cookShieldHolds): 3 s after any attack, 120 px from where it began',
+    take: 'hurtPerKill', less: true, whole: true, world: COMBAT,
+    honest: [['the honest sword, its guard down while it swings', B.honestSword]],
+    liar: ['its own fire by the field; after each kill `ex: \'cook\'` with no fish, the 3 s re-arm waited out', B.liarCookShield] },
   { id: 'move', what: 'the move', judge: '`MOVE_BUDGET`: 500 px a second and a 3 s burst (movement.js), the sprint mark (sprint.js), and no walls on the worker',
     take: 'px', world: { tickMs: 200 },
     honest: [['the honest walker: 150 px a second, point to point', B.mover, { speed: B.WALK }]],
@@ -111,7 +115,6 @@ const CLAIMS = [
 ];
 const UNREACHED = [
   { id: 'pagegold', what: 'gold taken on the page in two panels', why: 'FurniturePanel.jsx and DungeonCreatorPanel.jsx lower the gold on the page and send no message: the worker has no furniture or pack record and takes and pays nothing, so an honest phone and a liar keep the same purse. Nothing reaches the worker for a bot to send: the bench cannot reach it in node (the panels\' own fix is the page\'s).' },
-  { id: 'cookshield', what: 'the cooking shield beyond #1530\'s limits', why: 'a liar can claim `ex: \'cook\'` at its own fire with no fish (moveclaims.js _cookShieldHolds), but the shield needs 3 s with no attack and holds 120 px from where the cook began, so its take is time out of the fight: no gold, ore or experience. It can be reached in node; its bot (one that fights in bursts by a fire it lit) is not built in this PR, and is card K\'s Next, its line beside the guard\'s.' },
 ];
 
 /* one bot's run: its world, its phone (on a disturbance), its take */
@@ -133,7 +136,7 @@ async function runIn(clock, c, w, bot, opts, { d, ms, plant }) {
   take.hurt = W.hurt;
   return { take, refusals: ph.refusals, ms: W.clock.now() - ph.t0 };
 }
-const valueOf = (c, take) => (c.take === 'gold+xp+kills' ? take.gold + take.xp + take.kills : take[c.take]);
+const valueOf = (c, take) => (c.take === 'gold+xp+kills' ? take.gold + take.xp + take.kills : c.take === 'hurtPerKill' ? take.hurt / Math.max(1, take.kills) : take[c.take]);
 const perHour = (c, v, ms) => (c.whole ? v : ms > 0 ? (v * 3600000) / ms : 0);
 
 const t0 = performance.now();
@@ -184,7 +187,7 @@ console.log(`     ${rows.length} claims measured, ${dist.length} disturbance run
 if (WRITE) {
   const n0 = (v) => Math.round(v).toLocaleString('en-US');
   const esc = (s) => String(s).replace(/\|/g, '\\|');
-  const takeWord = { kills: 'kills an hour', hurt: 'damage taken an hour', px: 'px of ground an hour', ore: 'ore an hour', cooked: 'fish cooked an hour', gold: 'gold (the run\'s whole take)', 'gold+xp+kills': 'gold, experience and kills' };
+  const takeWord = { hurtPerKill: 'damage taken a kill', kills: 'kills an hour', hurt: 'damage taken an hour', px: 'px of ground an hour', ore: 'ore an hour', cooked: 'fish cooked an hour', gold: 'gold (the run\'s whole take)', 'gold+xp+kills': 'gold, experience and kills' };
   const L = [
     '# The claims\' gains (card K PR 6, v2.3.5186)',
     '',
@@ -235,6 +238,7 @@ if (WRITE) {
     '- **Walls.** The worker has no map, so both walkers go in straight lines. An honest walker\'s way round a wall or the sea only lengthens its route, so the move\'s gain is a floor.',
     '- **A join is a second door for a place** (lastplace.js): a reconnect is judged with no cap on the time it waited, and a join after a deploy is taken where it says. Not in the move\'s liar; its own line when its judge is tightened.',
     '- **The healer.** In every fight the bots\' health is put back after each blow, so a run measures its claim and never a death and the long walk back. The guard counts what the healer put back.',
+    '- **The cooking shield guards no swing**: the first attack ends it, and it comes back only 3 s after the last. Its liar is kept from blows only while it waits, among the monsters, so it is hurt more a kill than the honest sword: its gain is under 1, and the shield\'s worth is time out of a fight (no gold, ore or experience).',
     '- **The guard\'s liar raises its guard with every swing**; one that times each raise to a blow\'s wind-up (a parry: free, 10 stamina back, the monster staggered) is not built, so the guard\'s gain is a floor.',
     '- **An honest archer stands still while an arrow flies.** One that steps closer between two shots can land both on one monster inside its 210 ms lane, and the worker drops the second (`combat.js` `_handleMonsterDamage`): today\'s rule refusing honest play, written under Found in card K\'s status, not a claim\'s gain.',
     '- **The Wheel\'s far monsters** are left out of the fights\' rooms (claimbots.mjs `nearField`): they never meet a bot.',
