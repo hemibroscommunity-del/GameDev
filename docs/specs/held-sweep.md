@@ -219,7 +219,7 @@ box's software graphics chip, and the quarter second of game it plays in one
 frame: a phone has neither) or **the browser's** (its garbage collector: the
 game can only give it less to do). The grand plan's step 3.1 is done when no
 row is ours (`held-budget.mjs` `debtOf('ours')`, the count its scoreboard
-reads). Today (v2.3.5046): four ours, two the box's, one the browser's. A new family is
+reads). Today (v2.3.5047): three ours, two the box's, one the browser's. A new family is
 ours until a measurement says otherwise: `held-sweep.test` 7b3 holds the
 box's and the browser's to the three below, and 7b4 holds this table to
 `KNOWN`, row for row. Their break proofs (the grand plan's rule 8), each run
@@ -240,7 +240,7 @@ All of them (the first five by their old rank, then the rest; a family off the l
 | `the frame itself` | the box's | 70 ms | this box plays a quarter of a second of game in each frame | `mp-phoneframe` is the measure at a phone's rate; here the line stops it growing |
 | `screen-check` | the box's | 260 ms | only with a second page on this box's one software chip; one page: 0 to 2 ms | nothing here; on a phone the frame strip names it if it is ever 4 ms |
 | ~~`strip-made`~~ | | off the list (v2.3.5044; was 24 ms) | the page put a monster strip's numbers on its bundle's row of colours, a loop over every byte (`picsNumbers.js` `stripAsNumbers`) | **v2.3.5044**: numbered for its row on the reader's worker (below, "Card H") |
-| `ui:*` | ours | 16 ms | one component drawn in one piece (the gear tab is one function of 10 ms) | split the gear tab |
+| ~~`ui:*`~~ | | off the list (v2.3.5047; was 16 ms) | one component drawn in one piece (the gear tab is one function of 10 ms) | **v2.3.5047**: each equipment cell a component, the number formatter readied at load (below, "Card H") |
 | ~~`other: BT_AUDIO$1._fold > foldToMono`~~ | | off the list (v2.3.5045; was 20 ms) | a two-sided sound folded to one on its first play, in one piece | **v2.3.5045**: a stretch at a time, a frame between (below, "Card H") |
 | ~~`other: R > J`~~ | | off the list (v2.3.5046; was 20 ms) | React re-rendering the game's root in one piece on every equip (`gearWornSync.js`) | **v2.3.5046**: only when a worn flag changes, and as a transition (below, "Card H") |
 | `other: wrapped > sweepPicsOnce` | ours | 16 ms (v2.3.4499) | `picsOnce.js`'s sweep of the cache's pictures, up to 15 ms with the crowd's pictures in it | sweep a slice a turn |
@@ -526,6 +526,46 @@ round every timer's callback, so it names any anonymous timer job: 10 to 19.6
 ms in eight of about thirty runs (a GearTab redraw, the gear pack's own
 continuation, the screen check), over the general line now and then. The
 sweep would name these if it looked one frame inside `wrapped`.
+
+### `ui:*` off the list (v2.3.5047)
+
+**What it was.** A component of the band drawn in one piece. The band's beat
+is a transition (fix 6 above), so React lets a frame in between components,
+but never inside one, and the gear tab did two things inside its own body:
+
+- it built its nine equipment cells with a function of its own (`cellEl`),
+  each with its work (`cellContent`: the weapon's rows, the amulet's stat
+  card from `getEquipContribs`), so all nine were the gear tab's one piece;
+- its gold badge said the page's FIRST number with commas
+  (`toLocaleString`): about 10 ms on this box, the browser readying its
+  number formatter, and about 10 us for each one after. The badge also asked
+  for two locales in turn (its own `coins.toLocaleString()` and
+  `barNumber`'s `'en-US'`), and the browser keeps one formatter for
+  `toLocaleString`, for the last locale asked: a new one twice a redraw
+  (about 20 times a call's cost, in node).
+
+Before, six runs of the main tour's `town`, `lands`, `peer` and `armour`:
+13.4 ms the longest (`ui:GearTab`), 4 to 9 ms otherwise.
+
+**What it does now:**
+
+- each cell is a component (`GearTab.jsx` `GearCellView`: the same body,
+  its key on the element), a piece of its own;
+- `barNumbers.js` says one number both ways behind the loading screen (the
+  module is read with the game's code), and `barNumber` has one
+  `Intl.NumberFormat('en-US')` of its own (the same text as
+  `toLocaleString('en-US')`, 15,000 numbers compared).
+
+**After**, the sample (`town` and `lands`, then `peer` and `armour`, three
+runs each): 34 holds of a component over 4 ms, 9.9 ms the longest (the
+band, `town`; the gear tab 9.9 at `lands`), none over the general line.
+
+**Seen in the sample, not this PR's.** Two of the six runs failed the tour's
+budget on other families: `other: wrapped` (19.4 ms twice at `lands`: the
+timer wrapper of `debug/perfTracker.js`, its own time, so this box; seen
+over the line in four earlier runs) and `gear-sheet` once at `armour`
+(22.4 ms: the Equipment screen's figure composing the WHOLE upscaled shirt
+strip, `composeShirt`, for the one frame it shows).
 
 ## The standing check
 
