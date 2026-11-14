@@ -385,6 +385,7 @@ spec. Add a line here only for a new RULE every session must follow.
 | a message the server sends | `PRIVILEGED_EVENTS`; the client's direct switch |
 | a relay a phone sends | `RELAY.TYPES` |
 | a server behaviour | a cap the client gates on (`CAP_GATES`) and a lower-case kill switch |
+| a `?name=` or a live flag | its row in the switch table (`tools/guards/lib/switches.mjs`; `node tools/guards/switches.test.mjs --write`) |
 | a storage key | ARCHITECTURE-HANDOFF's rule-2 registry table (precheck `storage-keys`) |
 | a monster hit on players | its row in `MONSTER_HITS` (`hits.js`) |
 | a way to change a player's gold | its row in `GOLD_ROADS` (`gold.js`) and its line in `gold-door.test`'s `EXPECT` |
