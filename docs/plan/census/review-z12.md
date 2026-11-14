@@ -12,7 +12,54 @@ throwaway copy, or a reading). PLAUSIBLE: the code does it, what sets it
 off is unproven (it says what would settle it). The probes are not in the
 repository.
 
-DRAFT: filled in as the sitting goes.
+## Decided for the owner while away
+
+Each with its switch, for the planning session to read to the owner:
+
+- **#1812** (card TF, held below): the cook kept at 256 colours with a
+  limit of his own, 23 (every other picture 16; the owner's "I won't
+  notice at all from anything at 256"). Its switch: `?folkskills=0` (the
+  three townsfolk back in PR 1's poses, none of the set loaded).
+- **#1794** (card O, the next batch): a cool but slow computer on a 60
+  screen (a judge's laptop) also steps to a steady 30. Its switches:
+  `?govern=0`, `?ladderrate=0`; for everyone, the governor's live
+  off-switch, card O's #1814 (the next batch). Answer (a) with it: a fast
+  screen is never paced below about 40.
+- **#1800** (card O, the next batch) carries the planning session's
+  answers (A) (a kept rung loads without its pixel rungs) and (b) (a rung
+  takes a share of the pixels actually drawn: a computer too) without the
+  heading; `?ladderpix=0` (but see its findings below).
+- Not under the heading, the nearest: **#1805** (card P) is road B, the
+  planning session's; its condition "never drawn bare while it waits" is
+  not met, as on `main` (below), and goes to the owner's list.
+  **#1798** (card LB): Overall's columns, the planning session's yes.
+  **#1813** (cards K and R): nothing a player sees; every cost built OFF.
+- Still waiting for the owner's own word (costs, never decided this way):
+  card E's `arenasettleplan` and `econresetput` (both OFF); card SK's
+  #1782 (+8 to +10 moves a ride; `?ridecoast=0`), not listed.
+
+## What GitHub shows, step by step (card Z's step 5b)
+
+Every listed PR's base is `main` (`base.ref`, read at the sitting's
+start and again at the list). Merged down the list in its order in a
+scratch copy (each a merge commit), every head had ONE merge base with
+the `main` above it (`git merge-base --all`), this branch last included.
+Card L's #1803, now based on `main`, was retargeted from L's own branch
+before the sitting. The stacks: #1809 carries #1803's head, #1810
+carries #1806's carries #1805's, each with no `main` merge of its own
+past its parent's, so each needs nothing after its parent lands.
+
+**The next batch, and why (agreed with the planning session, 18:00):**
+- Card O's #1792 (723dc0b), #1794 (70dc592), #1800 (6d46f97) and #1814
+  (the governor's off-switch, begun from #1800): #1792's `ladder` row
+  meets #1803's new `DOOR_SUITES` form (a property read off the tree;
+  `_rung` was a module `let`: tried, FAIL 2 "a stale door"); O holds it
+  on a module object, merges the new `main` into #1792 after today's
+  list, then #1792 into #1794 into #1800 into #1814.
+- Card T's #1816 and #1817: conflict at `switches.mjs`'s end after
+  today's two rows; T merges the new `main`.
+- Card TF's #1812: held (below).
+- Card SK's #1782: the owner's yes to its cost (below).
 
 ## Card LB: #1798 (PR 3, tag 5502), read at 89092ea: clean (lows)
 
@@ -309,3 +356,21 @@ own cook strip's width. Its CI was green at 14a8c24.
   is drawn live (folkSkill.js ~59: gate on `lookFolkAtLoad`).
 - Low: the cook's quantising "mean 4.3" is another measure (per pixel,
   straight RGB, 11.1 against 3.1 to 6.5 for the others).
+
+## Card SK: #1782 (tag 5440): NOT LISTED (the owner's yes to its cost)
+
+Re-checked at 5f08c7b (`main` merged in at 17:50: it had conflicted at
+`src/state/movement.js`; one merge base now, clean). Sitting 11's
+finding is mended: `rideFeel` holds the board on whatever `rideActVerb`
+names (a pose struck, a harvest, a trap; ride.js ~375), so a pose struck
+mid-roll stops the roll for good and is not ended by it. Its cost is
+unchanged: +8 to +10 move messages a ride, all in the ~1.9 s roll-off
+(sitting 11's probe). Ready the moment the owner says yes; `?ridecoast=0`
+its switch.
+
+## The lines
+
+`tools/guards/lib/fourLines.mjs`: every file and function at its line on
+`main` (effectsRenderer 9870, entityRenderer 8961, BroTown 8371, ...):
+nothing to lower. The switch table's unlisted line (113, 112 found on
+`main`) is left to card T's #1816, which takes it to 0.
