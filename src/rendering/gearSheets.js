@@ -719,10 +719,8 @@ function _buildShirtOnWorker(key, slot, item, pose, dir, stampArt) {
   const bust = _gearRound[key] ? `&g=${_gearRound[key]}` : '';
   const job = { slot, pose, stamp: stampArt, pack: TRIM_SLOTS.has(slot) && TRIM_POSES.has(pose) };
   const asked = performance.now();
-  /* v2.3.5253: a plain sheet ahead of the line (its piece is hidden till it
-     is back); a drawn shirt keeps its turn (the plain tee shows meanwhile) */
   const p = bakeOnWorker('shirt', spriteUrls(`/sprites/gear/${slot}/${item}/${pose}-${dir}.png?v=${GEAR_VERSION}${bust}`), job, 0, 0,
-    () => _sheets[key] === 'loading', !stampArt).then((r) => {
+    () => _sheets[key] === 'loading').then((r) => {
     _shirtOnWay.delete(key);
     /* dropped unwanted, and asked for again since: a job of its own */
     if (r && r.dropped) { if (_sheets[key] === 'loading') return _buildShirtOnWorker(key, slot, item, pose, dir, stampArt); return; }

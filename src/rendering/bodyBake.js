@@ -246,26 +246,9 @@ function _abs(u) { try { return new URL(u, location.href).href; } catch (e) { re
    (the longest measured, a fish sheet's recolour on this box: 5.6 s).
    v2.3.5040: of time the page was visible and running (the watch's ticks) */
 const WORKER_MS = 20000;
-/* v2.3.5253 (card P, pack-page): `first`, a job whose piece is hidden while
-   it waits -- a gear sheet packed here for the page (gearSheets.js), its
-   armour missing from the figure until it is back.  Measured at
-   mp-heldsweep's armour station (the profiler on): five sheets in line
-   behind the peer's bakes waited 5.5-19.2 s, against 1.8-12.3 s packed on the
-   page.  It goes ahead of every job that is not `first`, behind those that
-   are, in the order asked; a job already on a worker finishes. */
-function _ask(msg, transfer, wanted, first) {
+function _ask(msg, transfer, wanted) {
   if (_dead) return Promise.resolve({ ok: false, why: 'no worker' });
-  return new Promise((res) => {
-    const q = { msg, transfer, res, wanted, first: !!first };
-    if (first) {
-      let i = 0;
-      while (i < _line.length && _line[i].first) i++;
-      _line.splice(i, 0, q);
-    } else {
-      _line.push(q);   /* v2.3.5014: through the line */
-    }
-    _pump();
-  });
+  return new Promise((res) => { _line.push({ msg, transfer, res, wanted }); _pump(); });   /* v2.3.5014: through the line */
 }
 
 /** Bake one sheet on the worker: `type` 'body' (bodyRecolor.js bakeBodyFull)
@@ -276,12 +259,11 @@ function _ask(msg, transfer, wanted, first) {
  *  it is dropped unbaked, resolving { dropped: true } (only for a caller
  *  that passed `wanted`).
  *  caller's own retries take over: the page asks again, as it did); null for
- *  anything else (the caller bakes it on the page).
- *  v2.3.5253: `first`, optional: ahead of the line (_ask). */
-export function bakeOnWorker(type, urls, job, fw, fh, wanted, first) {
+ *  anything else (the caller bakes it on the page). */
+export function bakeOnWorker(type, urls, job, fw, fh, wanted) {
   _stats.asked++;
   if (type === 'shirt') _stats.shirt.asked++;
-  return _ask({ type, urls: urls.map(_abs), job, fw, fh }, null, wanted, first).then((m) => {
+  return _ask({ type, urls: urls.map(_abs), job, fw, fh }, null, wanted).then((m) => {
     /* v2.3.5014: no longer wanted when its turn came: { dropped }, never
        null (null sends the caller to the page's bake) */
     if (m && m.dropped) return { dropped: true };
