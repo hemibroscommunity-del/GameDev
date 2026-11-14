@@ -23,7 +23,8 @@
  *      hp unchanged), nothing else is, and `lifenoheal: false` puts the
  *      step-1 write back.
  */
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { SRC_DIR, srcFiles } from './src-walk.mjs';
 import { HP_ROADS, LIFE_ROADS, LIFE, lifeOf, lifeMethods } from '../src/life.js';
 import { GameRoom } from '../src/index.js';
 import { flagNameOk } from '../src/liveops.js';
@@ -38,8 +39,8 @@ const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 /* ── the source, comments out, line numbers kept (gold-door.test's strip) ── */
 const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
   .replace(/(^|[^:'"`\\])\/\/[^\n]*/g, (m, p1) => p1 + ' '.repeat(m.length - p1.length));
-const dir = new URL('../src/', import.meta.url);
-const files = readdirSync(dir).filter((f) => f.endsWith('.js')).sort();
+const dir = SRC_DIR;
+const files = srcFiles();   /* v2.3.5060: in depth, a folder's files too (src-walk.mjs) */
 const code = Object.create(null);
 for (const f of files) code[f] = strip(readFileSync(new URL(f, dir), 'utf8'));
 const lineOf = (s, i) => s.slice(0, i).split('\n').length;

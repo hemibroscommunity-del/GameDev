@@ -51,7 +51,8 @@ const f = (dir, names) => {
 export const SYSTEMS = Object.freeze({
   wire: {
     what: 'the socket and the messages: the router, the relay, the client\'s connection and its event switch, what each side can do (caps)',
-    files: [f('server/src', 'index|relay|bundle|clientoff|flood'), re('^src/networking/'), f('src/game', 'clientOff|clientOffApply|blockedAsks|workerClock|t1Sync|tooFar')],
+    /* v2.3.5061 (card N): server/src/wire/, the wire table (one row a message or route) */
+    files: [f('server/src', 'index|relay|bundle|clientoff|flood'), re('^server/src/wire/'), re('^src/networking/'), f('src/game', 'clientOff|clientOffApply|blockedAsks|workerClock|t1Sync|tooFar')],
     words: ['wire', 'protocol', 'relay', 'caps', 'bundle', 'privileged', 'clientoff', 'flood'],
     traps: ['wire'],
     doors: [
@@ -331,9 +332,9 @@ export const SYSTEMS = Object.freeze({
     switches: [],
   },
   debug: {
-    what: 'the crash ring, the perf HUD, the debug overlay',
-    files: [re('^src/debug/')],
-    words: ['debug', 'crash', 'perf'],
+    what: 'the crash ring, the perf HUD, the debug overlay, the field report (its worker half: server/src/report.js, v2.3.5127)',
+    files: [re('^src/debug/'), f('server/src', 'report')],
+    words: ['debug', 'crash', 'perf', 'report'],
     traps: [],
     doors: [],
     switches: [],

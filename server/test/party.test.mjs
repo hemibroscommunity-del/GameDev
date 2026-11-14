@@ -37,6 +37,9 @@
  *       ignored, a partyless sender is dropped, control chars stripped +
  *       length clamped + empty/non-string dropped, and party_chat is
  *       never rebroadcast room-wide (its own validated case, rule 13).
+ *
+ * v2.3.5320 (grand plan card V PR 1), §13, one trap held, its break tried:
+ * TRAPS §3 (the rule): a party's kill is credited by damage alone: of two party members, the one who dealt none gets no share, gold or XP. Break: server/src/combat.js: in _resolveMonsterKill push the killer's party members into xpRecipients with an even share -> FAIL (tried 2026-11-14).
  */
 import { GameRoom } from '../src/index.js';
 import { PARTY } from '../src/party.js';
@@ -490,6 +493,61 @@ check('forged decline (no live invite) sends nothing', msgsOfType(wss.c, 'party_
   check('leaving twice / kicking from no party does nothing at all',
     msgsOfType(wss.q, 'party_state').length === 0 && room._parties.size === partiesAtEnd,
     { sent: msgsOfType(wss.q, 'party_state').length, before: partiesAtEnd, after: room._parties.size });
+}
+
+/* ── 13. v2.3.5320: A PARTY'S XP IS SPLIT BY DAMAGE, NEVER BY ROSTER
+   (TRAPS §3; grand plan card V PR 1).  Kill credit is the damage each
+   player dealt (GDD §7, combat.js _resolveMonsterKill's xpRecipients): a
+   party adds nothing to it.  Two members of a party (the stored party, as
+   the game plays, not this suite's `partykeep: false` room) stand by a
+   Wheel monster; one dealt all its damage.  The shares stay the damage's:
+   the other member is no recipient and gains no XP.  A roster split
+   (each member an even share) turns this red. */
+{
+  const st = makeState();
+  const r2 = new GameRoom(st, mockEnv);
+  const join2 = async (ws, id, name) => {
+    r2.sessions.set(ws, baseSession());
+    await r2.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name, phrase: 'p-' + id, ws: [1, 5], data: { x: 0, y: 0 } }));
+  };
+  const cmd2 = (ws, type, payload) => r2.webSocketMessage(ws, JSON.stringify({ type, payload: payload || {} }));
+  const X = 'bp_pty_xpa', Y = 'bp_pty_xpb';
+  const wx = fakeWs('xpa'), wy = fakeWs('xpb');
+  await join2(wx, X, 'Hitter');
+  await join2(wy, Y, 'Watcher');
+  await cmd2(wx, 'party_invite', { target: Y });
+  await cmd2(wy, 'party_accept', { target: X });
+  const pp = r2._partyOf(X);
+  check('§3: the two are one party (the stored party, the default)',
+    !!pp && r2._partyOf(Y) === pp && pp.members.length === 2, pp && pp.members);
+  /* a Wheel monster that does not swell into a blast first (that defers
+     the kill: telegraph.js _startSlimeBurst) */
+  const zone = 'wheel';   /* WHEEL_ZONE (wheelzone.js): the world */
+  const mon = r2._ensureZoneMonsters(zone).find((m) => m.alive && !r2._burstsOnDeath(m));
+  check('§3: a Wheel monster to kill', !!mon, (r2.monsters[zone] || []).length);
+  if (mon) {
+    const psX = r2.playerState[X], psY = r2.playerState[Y];
+    for (const p of [psX, psY]) { p.z = zone; p.x = mon.x; p.y = mon.y; p.disconnected = false; }
+    mon.xp = Math.max(40, mon.xp || 0);
+    mon.dmgByPlayer = { [X]: mon.maxHp };   /* the hitter dealt it all */
+    mon.hp = 0;
+    const xpY0 = psY.xp || 0, lvY0 = psY.level || 1, xpX0 = psX.xp || 0, lvX0 = psX.level || 1;
+    r2.eventBuffer.length = 0;
+    r2._resolveMonsterKill(zone, mon, X, psX, 'melee');
+    const kill = r2.eventBuffer.find((e) => e.type === 'monster_kill');
+    check('§3: the kill names the one who dealt the damage, with the whole share',
+      !!kill && kill.payload.recipients.length === 1 && kill.payload.recipients[0] === X && kill.payload.shares[X] === 1,
+      kill && { recipients: kill.payload.recipients, shares: kill.payload.shares });
+    check('§3: the hitter is paid the XP (the kill is a real one)',
+      (psX.xp || 0) > xpX0 || (psX.level || 1) > lvX0, { xp: psX.xp, was: xpX0 });
+    check('§3: ...and not the party member who dealt none (no share, no gold)',
+      !!kill && !kill.payload.recipients.includes(Y) && !(Y in kill.payload.shares) && !kill.payload.goldRecipients.includes(Y),
+      kill && { recipients: kill.payload.recipients, gold: kill.payload.goldRecipients });
+    check('§3: ...who gains no XP from it',
+      (psY.xp || 0) === xpY0 && (psY.level || 1) === lvY0, { xp: psY.xp, was: xpY0, level: psY.level });
+    check('§3: no combat_credit reaches the member who dealt none',
+      msgsOfType(wy, 'combat_credit').length === 0, msgsOfType(wy, 'combat_credit'));
+  }
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
