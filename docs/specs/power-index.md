@@ -24,17 +24,22 @@ the other's Dodge, Defense and armour; how often each of you attacks; the
 specials your mana bar holds; and how much health each of you has. That
 gives the time each of you needs to beat the other.
 
-    a style's score = 1,000 x (the control's time to beat you / your time to beat it) ^ 2
+    your odds against the control = (the control's time to beat you / your time to beat it) ^ 2
+    a style's score = 3,000 + 400 x log10(your odds against the control)
 
-The control scores exactly 1,000 in every style. Your **Power** is your best
-style's score; the three are kept too (`melee`, `bow`, `magic`).
+**A rating, like chess's** (the owner's choice, 2026-11-14: "Go recommended",
+shown this beside the odds themselves and a narrower power of them). The
+control rates exactly 3,000 in every style. **Every 400 points ahead is ten
+times likelier to win**: 3,400 beats the control ten fights in eleven, and
+between any two characters the odds are 10^(difference / 400). Your
+**Power** is your best style's rating; the three are kept too (`melee`,
+`bow`, `magic`). A rating is a whole number, at least 1 for a style you can
+fight in; 0 means no weapon in that hand.
 
-**The scores are the odds.** The exponent 2 was fitted so that, between any
-two characters, `A / (A + B)` is how often A wins: a score twice another's
-wins two fights in three, ten times another's wins ten in eleven. A score of
-3,000 beats the control three times in four.
+The exponent 2 was fitted so that the odds name who wins (below, "The
+fit").
 
-## The control (`POWER.CONTROL`, version `POWER.V` 1)
+## The control (`POWER.CONTROL`, version `POWER.V` 2)
 
 An honest mid-game character of today's game, never fitted to anyone's own
 character:
@@ -48,9 +53,11 @@ character:
 
 The suite holds it honest: the points within what its levels deal
 (`prog3RespecPoints`), every piece through the worker's own equip gate
-(`_prog3EquipOk`). It never changes quietly: a change to the control or the
-exponent bumps `POWER.V`, every score is recomputed, and a row carrying
-another `v` reads as not yet ranked (PR 2).
+(`_prog3EquipOk`). It never changes quietly: a change to the control, the
+exponent or the rating bumps `POWER.V`, every score is recomputed, and a row
+carrying another `v` reads as not yet ranked (PR 2). Version 1 (the odds as
+a number, the control at 1,000) never reached a board; version 2 is the
+rating.
 
 ## Where every number comes from
 
@@ -129,7 +136,9 @@ what the level cannot: the same level, 77% against a coin's 50%.
 
 ### The fit
 
-Bradley-Terry: P(A beats B) = A / (A + B), on the five duels' share. Fitted on
+Bradley-Terry: P(A beats B) = OA / (OA + OB), O each one's odds against the
+control (the rating is 400 log10 of that, the Elo form), on the five duels'
+share. Fitted on
 half the within-five pairs: 1.84 to 2.10 over five seeds of 1,200 pairs (the
 suite's seed 1.84; others 1.94, 2.00, 2.09, 2.10, where the index named the
 winner 83-86% of the time, the sum 64-67%, the level 81-84%). Fitted
@@ -141,20 +150,26 @@ refit drifts more than a third from 2: then refit, and bump `POWER.V`.
 
 ### The scale
 
-Because the scores are the odds, they are as wide as the odds are. The median
-Power of random characters by level:
+The median Power (the rating) of random characters by level (§4 prints it):
 
 | Level | 1 | 5 | 10 | 15 | 20 | 25 | 30 | 35 | 40 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Median Power | 1 | 1 | 1 | 1 | 8 | 290,000 | 1,000,000 | 4,600,000 | 17,000,000 |
+| Median Power | 203 | 579 | 988 | 1,230 | 2,164 | 3,987 | 4,207 | 4,464 | 4,694 |
 
-A score is a whole number, at least 1 for a style you can fight in (0 is "no
-weapon in that hand"). Two things show: the level edge again (a character
-five levels under the control has no chance against it, and reads 1), and the
-control itself is strong for its level (its points go where they count: a
-random level-20 character reads about 8). How the board shows a scale this
-wide, and whether the odds should be the scale at all, is the owner's (it is
-what a player sees): asked in `docs/plan/status/PW.md`.
+The biggest step is between 15 and 25: the control sits at 20, and the level
+edge makes a character five levels under it all but hopeless against it and
+one five levels over it all but unbeatable. A random level-20 character
+rates about 2,200 against the control's 3,000: the control's points go where
+they count.
+
+**The floor.** The owner was shown "nobody gets stuck at zero", and almost
+nobody comes near it: but a level-1 staff barely scratches the control's
+armour (about 1 a hit), and a few level-1 characters fall a little under ten
+million to one, under 0 unfloored (the lowest of 1,500 random characters of
+levels 1-5: -116 for a style, -10 for a best style). So a style you can
+fight in reads at least 1, never 0 (§4e: no level-1 character leaves the
+Power board; 23 of 900 level-1 styles read 1). A control at 3,200 instead
+would keep everyone clear of the floor; that is the owner's to choose.
 
 ## On the boards (v2.3.5481, PR 2)
 
@@ -203,5 +218,5 @@ move with it; the comment on each check names the one-line change in
   up;
 - 5d: a door a tenth off fails §2's 2 % (the composition check has teeth);
 - 5e: a roll that draws its dice a third time is seen (§2z);
-- 5f: the control and the exponent are version 1's (red if either changes
-  without `POWER.V`).
+- 5f: the control, the exponent and the rating are version 2's (red if any
+  changes without `POWER.V` and that line).

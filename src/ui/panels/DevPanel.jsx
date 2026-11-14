@@ -320,7 +320,6 @@ const CAP_GATES = [
   'bowDraw' /* v2.3.4801: the bow's draw (server/src/drawgather.js): an arrow carries its draw time and lands its share of a full draw, the perfect draw judged by the worker -- off with `bowdraw: false` */,
   'staffGather' /* v2.3.4801: the staff's gather (server/src/drawgather.js): a bolt carries its gather time and lands its share, its stage setting its splash and ring of force -- off with `staffgather: false` */,
   'report' /* v2.3.5123: the field report (server/src/report.js; the phone's half debug/report.js): the phone sends its smoothness only to a worker that says this -- lower case, a kill switch.  v2.3.5127: a count, 2 the Speed test's card too (takesSpeed; `reportspeed: false` 1) */,
-  'power' /* v2.3.5481: the power index on the boards (server/src/power.js, card PW): every board row carries `powerIndex` and the Power board is category `power` -- the index's version, a number; lower case, a kill switch */,
   'accuracy' /* v2.3.4545: shots and hits a weapon (server/src/accuracy.js): the phone numbers its basic shots and the Journey page shows how many hit -- lower case, a kill switch */,
 ];
 /* v2.3.3732: caps that are OFF by default on purpose -- an opt-in, not a job
