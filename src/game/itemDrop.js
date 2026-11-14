@@ -76,6 +76,7 @@ const REFUSED = Object.freeze({
   none: 'You don\'t have that',
   slow: '',   /* a second tap of the same press: nothing to say */
   'too-many': 'Too many of your things on the ground -- pick some up first',
+  paused: 'Saving is paused for a moment, try again.',   /* v2.3.5090: server valuepause.js */
 });
 export function dropRefusalText(reason) {
   if (Object.prototype.hasOwnProperty.call(REFUSED, reason)) return REFUSED[reason];
