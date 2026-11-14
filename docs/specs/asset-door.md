@@ -180,12 +180,33 @@ before**: it runs on every PR, and its lines are unchanged.
 ### Rows to families
 
 `tools/assets/fightmb.mjs` matches each row to its family by its label's
-path: `/sprites/x.png` is `public/sprites/x.png`, a row of `shipped.json`,
-and that row's family. A label that is not a file in reach is a texture
-**made in play** (a canvas, a render texture, a Wheel ground piece, a look
-atlas page): `in play: <label>`, its digits folded to `#`, and
-`in play: unnamed` with no label. Those are the renderers' bakes: listed for
-reading, never a family, never the door's to change.
+path. A label names a file in reach in two forms:
+
+- its address: `/sprites/x.png` is `public/sprites/x.png`, a row of
+  `shipped.json`, and that row's family. A picture with no label of its own
+  is named by its file (its image's `src`), and the page's copies by their
+  source, not by the cache's key: the cache keys some pictures by the
+  element itself (`[object HTMLImageElement]`);
+- a look sheet's texture, `bt-look:<set>/<sheet>` (`bt-look:<sheet>` for the
+  body set, `src/rendering/lookPalette.js`), which is
+  `public/sprites/look/<set>/<sheet>.png` drawn as it is.
+
+A label that is not a file in reach is a texture **made in play** (a canvas,
+a render texture, a Wheel ground piece, a look atlas page `bt-look:page/...`
+holding many sheets laid out in play): `in play: <label>`, its digits folded
+to `#`, and one line `in play: unnamed` for every texture with no label and
+no file, with its kinds on the chip beside it (render, canvas, buffer).
+Those are the renderers' bakes: listed for reading, never a family, never the
+door's to change.
+
+**The backlog column.** A data family is never the backlog's (the door never
+rewrites data: the look sheets are colour NUMBERS, and they hold real MB at
+the fight). A made family is taken only by changing its own tool. A family
+whose loader, or whose draw path's module, is one of the files card P leaves
+alone while card H runs ("Files P waits on": `zoneTextures.js` and
+`stripRead.js` for a strip, `soundFold.js` for a sound, `entityRenderer.js`,
+`gearSheets.js`, `characterPortrait.js` and the rest, `fightmb.mjs`
+`WAITS_ON_H`) goes after H, and the next family that is free goes first.
 
 A family's **MB at the fight** is the most it held at any one fight stop of
 any run (chip + page + numbers + sound at that stop): the highest of three
