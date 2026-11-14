@@ -133,7 +133,7 @@ extended.
    | `motd` | `{text, ts}` sticky announcement, delivered on join | liveops.md |
    | `metrics:<yyyymmdd>` | daily economy snapshot (ring of 30) | liveops.md |
    | `friends:<pid>` | `{list, reqIn, reqOut}` mutual-friend graph + pending requests | friends.md |
-   | `capegrant:<capeId>` | `{issued, redeemed}` event-cape ticket ledger: the cap, who holds a ticket, and who redeemed. ALSO the ownership record — rule 1 forbids a cape field on the rpg blob | cape-and-contest.md |
+   | `capegrant:<capeId>` | `{issued, redeemed, off?}` event-cape ticket ledger: the cap, who holds a ticket, and who redeemed. ALSO the ownership record — rule 1 forbids a cape field on the rpg blob — and, since v2.3.5422, `off`: the redeemers who took it off (only ever ids in `redeemed`; absent means worn; kill switch `capeoffkept`) | cape-and-contest.md §4.4 |
    | `cape_start_id` | the `EVENT_START_ID` of the cape contest whose start was last seen (eventcapes.js `_capeStartFresh`): a contest's start clears an old contest's `disable_event_capes` and `event_cape_rate` live flags ONCE, then this is written so a later join leaves the owner's new settings alone. One unprefixed key. Registered v2.3.3373 | cape-and-contest.md |
    | `friend_msg:<pid>` | offline DM backlog, capped 50, cleared on join delivery | friends.md |
    | `chat_mute:<pid>` | `{list: {mutedId: {name, at}}, at}` the muter's own chat-mute list; loaded into a null-proto map + a Set on join and enforced on the FAN-OUT (tick.js), so a muted line never reaches the socket | chat-moderation.md |
