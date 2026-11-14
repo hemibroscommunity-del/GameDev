@@ -21,6 +21,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { st, hold, jumpNorth } from './mp-lagoonclimb.mjs';
 import { chestPrizeNote } from '../../../src/game/climb.js';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const HS = 10;

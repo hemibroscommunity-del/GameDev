@@ -22,6 +22,7 @@
  * Pictures: tools/qa/mp/out/petsmatter-*.png.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const shot = (P, name) => P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/petsmatter-${name}.png` }).catch(() => {});

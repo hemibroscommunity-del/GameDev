@@ -35,6 +35,7 @@
  * which hears every click the guard (on the document) let through.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 /* every coach lesson already done (QuestCoach.jsx LESSONS): the first-points
    card would ring this very grid while points wait */

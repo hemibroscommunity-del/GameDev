@@ -28,6 +28,7 @@
  *   node tools/qa/mp/run.mjs pagebases
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 430, height: 932 };
 const OLD_HOLD_MS = 6;

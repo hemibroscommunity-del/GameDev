@@ -35,6 +35,7 @@
  *   node tools/qa/mp/run.mjs townride
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 430, height: 932 };
 /* this box, a phone page at dpr 1: measured 18 to 43 ms the longest job (one read of a page's bases, which cannot be

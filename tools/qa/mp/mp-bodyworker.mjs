@@ -63,6 +63,7 @@
  *                                   fails (v2.3.5049)
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const INK = (c, every) => Array.from({ length: 256 }, (_, i) => ((i % every) < 2 ? c : '0')).join('');
 const ART = {

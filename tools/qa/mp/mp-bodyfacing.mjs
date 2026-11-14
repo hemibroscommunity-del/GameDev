@@ -16,6 +16,7 @@
  *   BT_BF_QUERY=lookpalette=0   the old path, for a comparison
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const VIEW = { width: 390, height: 844 };
 const FACINGS = [['east', 0], ['southeast', 1], ['south', 2], ['southwest', 3], ['west', 4], ['northwest', 5], ['north', 6], ['northeast', 7]];

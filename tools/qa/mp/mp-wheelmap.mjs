@@ -85,6 +85,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 /* v2.3.2978: the Wheel is its own zone, 'wheel', against a worker that runs
    its monsters (server/src/wheelzone.js) -- 'worldview' against an older one */
 const WHEELISH = (z) => z === 'worldview' || z === 'wheel';

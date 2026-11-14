@@ -25,6 +25,7 @@
  *   9. v2.3.5221: the card names the lane the page draws in (game/drawLanes.js).
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const DPR = 3;

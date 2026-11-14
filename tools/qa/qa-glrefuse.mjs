@@ -5,6 +5,7 @@
  * with backoff retries -- then un-stub and assert a retry restores a real
  * WebGL renderer. */
 import { chromium } from 'playwright-core';
+import { withLane } from './lane.mjs';   /* v2.3.5223: the game's page names its lane (card O PR 3) */
 const EXE = '/tmp/chrome-headless-shell-linux64/chrome-headless-shell';
 const browser = await chromium.launch({ executablePath: EXE, headless: true,
   args: ['--no-sandbox', '--enable-unsafe-swiftshader', '--mute-audio'] });
@@ -13,7 +14,7 @@ const page = await ctx.newPage();
 const errs = [];
 page.on('pageerror', (e) => errs.push(e.message.slice(0, 160)));
 await page.addInitScript(`window.BROTOWN_WS_URL = 'ws://127.0.0.1:8787'`);
-await page.goto('http://localhost:4173/?dev=1', { waitUntil: 'domcontentloaded', timeout: 60000 });
+await page.goto(withLane('http://localhost:4173/?dev=1'), { waitUntil: 'domcontentloaded', timeout: 60000 });
 await page.waitForTimeout(9000);
 await page.locator('input').first().fill('RefuseBot', { timeout: 30000 });
 await page.locator('input').first().press('Enter');

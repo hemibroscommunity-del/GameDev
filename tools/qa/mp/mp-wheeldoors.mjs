@@ -32,6 +32,7 @@ import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { FARM_GATE } from '../../../src/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 

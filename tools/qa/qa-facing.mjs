@@ -21,6 +21,7 @@
 import { chromium } from 'playwright-core';
 import { legacyLogin } from './legacy-login.mjs';
 import { existsSync } from 'node:fs';
+import { withLane } from './lane.mjs';   /* v2.3.5223: the game's page names its lane (card O PR 3) */
 
 const SHELL = '/tmp/chrome-headless-shell-linux64/chrome-headless-shell';
 const EXE = process.env.QA_CHROME || (existsSync(SHELL) ? SHELL : undefined);
@@ -45,7 +46,7 @@ async function startSession(label) {
   if (process.env.QA_WS_URL) {
     await page.addInitScript(`window.BROTOWN_WS_URL = ${JSON.stringify(process.env.QA_WS_URL)};`);
   }
-  await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.goto(withLane(URL), { waitUntil: 'domcontentloaded', timeout: 60000 });
   await sleep(6000);
   /* v2.3.1964: the splash has no name box — it has a login door.
      legacyLogin takes the same route a player takes (see

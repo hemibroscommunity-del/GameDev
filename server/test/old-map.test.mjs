@@ -96,7 +96,8 @@ const byFile = scenarioFiles(scenarios, mpFiles, mp);
   check('3: joinPair passes `world` to both players', /joinPair\(browser, \{[^}]*world = null \}\)/.test(h)
     && (h.match(/chestOffer, world \}\)/g) || []).length === 2);
   check('3: a saved picture of the old map is stamped (a screenshot with a path)', /if \(_oldMap\) \{[\s\S]{0,400}stampOn, OLD_MAP_STAMP_ID/.test(h));
-  check('3: run.mjs tells the harness which scenario runs, and forgets it after', /H\.setScenario\(name\);/.test(runSrc) && /H\.setScenario\(null\);/.test(runSrc));
+  /* v2.3.5223 (card O PR 3): with the scenario's lane beside its name (`H.setScenario(name, { lane, govern })`) */
+  check('3: run.mjs tells the harness which scenario runs, and forgets it after', /H\.setScenario\(name(?:, \{[^}]*\})?\);/.test(runSrc) && /H\.setScenario\(null\);/.test(runSrc));
   const words = oldMapRefusal('demo');
   check('3: the refusal names the fix in words', /RETIRED/.test(words) && /world: 'wheel'/.test(words) && /demo/.test(words), words);
   const pre = readFileSync(new URL('../../tools/dev/precheck.mjs', import.meta.url), 'utf8');

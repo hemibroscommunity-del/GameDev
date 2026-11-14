@@ -18,6 +18,7 @@
  *      door's own road is untouched).
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 
@@ -49,7 +50,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const N = await browser.newContext({ viewport: PHONE, hasTouch: true });
     const np = await N.newPage();
     await np.addInitScript((port) => { window.BROTOWN_WS_URL = 'ws://127.0.0.1:' + port; window.__btProbe = true; }, wsPort);
-    await np.goto(`http://localhost:${webPort}/?create=1&nospawn`, { waitUntil: 'domcontentloaded' });
+    await np.goto(H.withLane(`http://localhost:${webPort}/?create=1&nospawn`), { waitUntil: 'domcontentloaded' });
     const fresh = await np.waitForFunction(() => window.__btBootRoute || null, null, { timeout: 30000 })
       .then((h) => h.jsonValue()).catch(() => null);
     rec.ok(`3. a new key with "?create=1" still opens the creator (route "${fresh}")`, fresh === 'create-forced', { fresh });
