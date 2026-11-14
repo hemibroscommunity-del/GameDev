@@ -1,7 +1,7 @@
 card: U
-branch: claude/plan-u-3-six (one branch a PR, each begun from the one before)
-prs: #1721 (ready), #1722 (ready), #1723 (ready)
-state: ready
+branch: claude/plan-u-4-five (one branch a PR, each begun from the one before)
+prs: #1721 (ready), #1722 (ready), #1723 (ready), PR 4 (working)
+state: working
 
 ## Done
 
@@ -15,11 +15,12 @@ state: ready
   (39 rows), the census page made again (`--write`): unlisted 2109.
 - PR 3 (5162): `quests`, `townsfolk`, `desktop`, `monsters`, `audio`,
   `social` (150 rows; the page already held them): unlisted 1959.
+- PR 4 (5163): `movement`, `economy`, `preload`, `skills`, `memory`
+  (199 rows): unlisted 1760.
 
 ## Next
 
-- PR 4 (5163): movement, economy, preload, skills, memory. Then debug,
-  art, data; wire, combat, world; look; render; ui (the systems of
+- PR 5 (5164): debug, art, data. Then wire, combat, world; look; render; ui (the systems of
   BroTown.jsx and the two renderers last, as the card says).
 
 ## Found
