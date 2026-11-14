@@ -359,7 +359,9 @@ Rehearsed with `tools/dev/gatekeeper.mjs` from `main` d6b8acd:
    with #1832's lanes) on that tip: 10 of 10 (341 s), its two pages
    each naming `lane=full`.
 3. **The list with this branch last** (documents only): precheck on the
-   whole, 0 FAIL. Its tree is in the list sent to the planning session
+   whole, 0 FAIL (4 WARN: the three above, and L's new
+   `plan-l-13-cook-door`, #1839, carries 5211 and 5212 because it is
+   begun from #1835's head: the same commits, nothing to renumber). Its tree is in the list sent to the planning session
    (the file cannot carry its own tree).
 
 Each listed head's `test` is green on GitHub (and `playable`,
