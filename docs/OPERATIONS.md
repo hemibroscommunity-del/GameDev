@@ -407,6 +407,49 @@ curl -X POST -H "Authorization: Bearer YOUR_KEY" \
 Restores are themselves safe: the current (broken) save is stashed as a
 `prerestore-` backup first, so you can always restore the restore.
 
+## Taking the whole room back to an earlier time (v2.3.5288)
+
+For when something went wrong for EVERYONE, not one player: a bad update
+that wrote nonsense into the saves, or a road that copied gold for an hour.
+Cloudflare keeps every change to the game's storage for 30 days, so the
+whole room can be put back to any moment in them. **Everything after that
+moment is gone**: every save, trade and purchase since. So it comes with its
+own way back.
+
+It takes two steps, so nothing happens by mistake:
+
+1. **Ask what it would do** (nothing changes yet). For an hour ago:
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" \
+  -d '{"step":"plan","minutesAgo":60}' "https://WORKER/api/admin/rewind"
+```
+   The answer says how many players it would disconnect, the time it goes
+   back to, and two codes: `now` (the way back to this very moment) and
+   `token` (the key for step 2, good for 10 minutes).
+2. **Do it**, with that token:
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" \
+  -d '{"step":"do","token":"THE_TOKEN"}' "https://WORKER/api/admin/rewind"
+```
+   Every player is disconnected (their game reconnects by itself, as after
+   an update), the room restarts, and it comes back as it was then.
+
+**Keep the `undo` code from step 2's answer** (copy it somewhere safe): the
+room's own storage, its log included, goes back with everything else, so the
+answer is the only place it is written. To change your mind, run step 1 with
+it, then step 2:
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" \
+  -d '{"step":"plan","bookmark":"THE_UNDO_CODE"}' "https://WORKER/api/admin/rewind"
+```
+
+- Only the game's room goes back: the leaderboards and the feedback board
+  keep what they have.
+- It has its own off switch, `roomrewind: false` in the live flags (below):
+  then both steps answer "off".
+- It can be tried on Cloudflare in the lab first, never on the game: see
+  "The restore try" in `docs/specs/cloudflare-lab.md`.
+
 ## Talking to your players (announcements)
 
 Send a message every online player sees instantly (a gold "📢" banner):

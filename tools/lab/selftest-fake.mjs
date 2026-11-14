@@ -12,7 +12,17 @@
        100,000; FAKE_COUNT=billed only once they reach 2,000,000 (20 to 1);
        FAKE_COUNT=late refuses as raw does, but only 30 s after the line was
        crossed (Cloudflare counting late).  The count starts from the fake
-       day's figure and goes back to 0 at midnight, as the free plan's does. */
+       day's figure and goes back to 0 at midnight, as the free plan's does.
+
+   v2.3.5288, for the restore try (run.mjs --restore): a fake Vault whose
+   storage keeps every write as a moment to go back to, running the GAME's
+   own rewind (server/src/restore.js), gold door and world's sum, as the
+   lab's Vault does on Cloudflare.  FAKE_PITR=none: a storage with no
+   earlier times (as `wrangler dev --local`); FAKE_PITR=wrong: one that
+   always goes back to now (the try must call that not balanced). */
+import { rewindPlan, rewindDo } from '../../server/src/restore.js';
+import { worldCtx, worldAdd } from '../../server/src/worldsum.js';
+import { goldMethods } from '../../server/src/gold.js';
 const realSetTimeout = globalThis.setTimeout;
 const realNow = Date.now.bind(Date);
 let skew = 0;
@@ -62,6 +72,59 @@ function refused() {
   return COUNT === 'late' ? Date.now() - quota.crossedAt >= 30000 : true;
 }
 const WORDS = 'Exceeded allowed volume of requests in Durable Objects free tier.';
+
+/* v2.3.5288: the fake Vault (header) */
+const PITR = process.env.FAKE_PITR || 'ok';
+const vaults = new Map();
+function fakeVault(name) {
+  if (vaults.has(name)) return vaults.get(name);
+  const V = { store: new Map(), moments: [], pending: null, restart: false, n: 0 };
+  const clone = (m) => new Map([...m].map(([k, x]) => [k, structuredClone(x)]));
+  const note = () => { const m = { bm: (++V.n).toString(16).padStart(8, '0') + '-0000-0000', t: Date.now(), store: clone(V.store) }; V.moments.push(m); return m; };
+  note();
+  const storage = {
+    getCurrentBookmark: async () => note().bm,
+    onNextSessionRestoreBookmark: async (bm) => { const m = V.moments.find((x) => x.bm === bm); if (!m) throw new Error('no such bookmark'); V.pending = m; return note().bm; },
+  };
+  if (PITR !== 'none') storage.getBookmarkForTime = async (t) => (PITR === 'wrong' ? note() : V.moments.filter((m) => m.t <= t).pop() || V.moments[0]).bm;
+  else storage.getBookmarkForTime = async () => { throw new Error('This Durable Object\'s storage back-end does not implement point-in-time recovery.'); };
+  V.room = { state: { storage, abort: () => { V.restart = true; }, getWebSockets: () => [] }, _liveFlags: {} };
+  V.note = note;
+  V.wake = () => { if (V.restart) { V.restart = false; if (V.pending) { V.store = clone(V.pending.store); V.pending = null; note(); } } };
+  vaults.set(name, V);
+  return V;
+}
+const vaultDoor = Object.assign({ _liveFlags: {}, _daybookOff: () => true }, goldMethods);
+function vaultCount(V) {
+  const c = worldCtx();
+  const purses = {};
+  for (const [k, x] of [...V.store].sort()) { worldAdd(c, k, x); purses[k.slice('rpg:bp_lab_'.length)] = x.coins; }
+  return { gold: c.gold, goods: c.goods, net: c.net, purses, records: V.store.size, now: Date.now() };
+}
+async function vaultOp(u) {
+  const V = fakeVault(u.searchParams.get('vault') || 'v0');
+  V.wake();
+  const op = u.searchParams.get('op');
+  if (op === 'seed') { for (let i = 0; i < 8; i++) V.store.set('rpg:bp_lab_' + i, { coins: 1000, inventory: {}, _econ: { v: 1, g: { m: 0, b: 0 }, i: {} } }); V.note(); return vaultCount(V); }
+  if (op === 'play') {
+    const step = +u.searchParams.get('step'), keys = [...V.store.keys()].sort();
+    const A = V.store.get(keys[step % keys.length]), B = V.store.get(keys[(step + 1) % keys.length]);
+    vaultDoor._goldGive(A, 100 + step, 'quest_reward'); vaultDoor._goldTake(B, 20, 'farm_buy');
+    vaultDoor._goldTake(A, 50, 'trade_window'); vaultDoor._goldGive(B, 50, 'mail_gold');
+    V.note();
+    return vaultCount(V);
+  }
+  if (op === 'count') return vaultCount(V);
+  if (op === 'plan') return rewindPlan(V.room, u.searchParams.get('bookmark') ? { bookmark: u.searchParams.get('bookmark') } : { at: Number(u.searchParams.get('at')) });
+  if (op === 'do') {
+    const r = await rewindDo(V.room, { token: u.searchParams.get('token') });
+    /* the restart a moment after the answer (restore.js ABORT_MS): the
+       runner's own wait for it is fast-forwarded here, so wait it out */
+    await new Promise((res) => realSetTimeout(res, 120));
+    return r;
+  }
+  return { error: 'unknown op' };
+}
 globalThis.fetch = async (url, init) => {
   const u = new URL(String(url));
   const json = (j, status = 200) => ({ ok: status < 400, status, json: async () => j, text: async () => JSON.stringify(j) });
@@ -73,6 +136,7 @@ globalThis.fetch = async (url, init) => {
       count(1);
       return json({ isolate: 'i-' + u.searchParams.get('name'), colo: 'TST', iters: +u.searchParams.get('iters'), x: 1, entry: 'TST', workerIsolate: 'w1' });
     }
+    if (u.pathname === '/vault') return json(await vaultOp(u));   /* v2.3.5288 */
     if (u.pathname === '/door') {
       const n = +u.searchParams.get('n'), mode = u.searchParams.get('mode');
       if (refused()) return json({ refused: WORDS, name: 'Error' }, 503);

@@ -29,6 +29,8 @@
  * blob (rule 1); every await in here is a storage await, so the DO
  * input gate stays closed between validation and commit (rule 9). */
 
+import { rewindPlan, rewindDo } from './restore.js';   /* v2.3.5288: the room's way back (card R PR 9) */
+
 /* v2.3.1617: every non-dated `rpgsnap:<pid>:` suffix in the repo.  These are
    "parachute" snapshots -- taken immediately before something destructive --
    and they prune as their OWN ring, separately from the dated dailies, for
@@ -425,6 +427,22 @@ export const adminMethods = {
         await this.state.storage.put('rpg:' + playerId, snap);
         await this._adminLog({ op: 'restore', playerId, snapKey });
         return json({ ok: true, restoredFrom: snapKey });
+      }
+
+      /* v2.3.5288: THE ROOM'S WAY BACK (restore.js; card R PR 9): the whole
+         room put back to an earlier time, in two steps -- {step: 'plan',
+         minutesAgo | at | bookmark} answers what it would do and the
+         bookmark of now; {step: 'do', token} does it (every socket closed,
+         the restore at the next start, the restart).  Behind this key only,
+         never a page's word.  `roomrewind: false` answers `off`. */
+      if (request.method === 'POST' && path === '/rewind') {
+        let body = null;
+        try { body = await request.json(); } catch (e) { body = null; }
+        const step = body && body.step;
+        if (step !== 'plan' && step !== 'do') return json({ ok: false, error: 'step: plan or do' }, 400);
+        const r = step === 'plan' ? await rewindPlan(this, body) : await rewindDo(this, body);
+        if (r.ok && step === 'plan') await this._adminLog({ op: 'rewind-plan', at: r.at, target: r.target, now: r.now });
+        return json(r, r.ok ? 200 : (r.error === 'off' || r.error === 'no-pitr' ? 409 : 400));
       }
 
       if (request.method === 'GET' && path === '/log') {

@@ -4,6 +4,73 @@
 > *"Go recommended"*, which said yes to the lab: "The Cloudflare lab: yes,
 > after Phase 0".
 
+## v2.3.5288: the restore try -- the room's way back, on Cloudflare
+
+Grand plan step 4.7's "done when": *a lab restore to an hour ago balances
+4.4's sum.* The game's lever (`server/src/restore.js`, the owner's
+`/api/admin/rewind`; `docs/specs/restore.md`) puts the whole room back to an
+earlier time through Cloudflare's point-in-time recovery, which `wrangler dev
+--local` does not have (`getBookmarkForTime`: "This Durable Object's storage
+back-end does not implement point-in-time recovery", tried 2026-11-14). So it
+is tried here, never on the game.
+
+**What it does** (`run.mjs --restore`, a run of its own):
+
+1. The lab's own **Vault** object (`src/index.js`) is seeded: 8 characters'
+   records (`rpg:bp_lab_<n>`), 1000 gold each.
+2. Three plays of the GAME's own gold door on them (a mint, a burn, a move
+   between two, each play one put), the world's sum counted after each with
+   the GAME's own `worldsum.js`.
+3. A wait of an hour (62 minutes, `--restore-wait`), then three plays more.
+4. The game's own rewind, `rewindPlan` to an hour ago (after the first plays,
+   before the second), then `rewindDo`: the Vault restarts restored.
+5. Counted again: every purse must be as it was before the wait, and the
+   world's sum balanced (unexplained gold 0) against the seed.
+6. The undo (the do's answer), planned and done: every purse as after the
+   wait again, balanced.
+
+The report says, in plain words, "The restore worked and the world's sum
+balanced", or what did not. Exit 0 only then.
+
+**What it costs:** about 30 Durable Object requests and a few rows in the
+lab's own storage, deleted with the worker. The hour's wait is GitHub
+runner time: about 65 Actions minutes, which the account pays for since the
+repository went private (CLAUDE.md §4). `--restore-wait 5` tries a restore to
+2.5 minutes ago in about 10 minutes instead (not the plan's "hour ago").
+
+**Checked without Cloudflare:** `node tools/lab/selftest.mjs` runs it on a
+fake Vault with fake earlier times, running the game's own rewind (balanced;
+a storage with no earlier times; one that goes back to the wrong time).
+`node tools/lab/run.mjs --local --restore --restore-wait 0.05` runs the Vault
+on `wrangler dev --local`: the seed and the plays, with the gold door and the
+world's sum, run on the real runtime and balance; the plan answers `no-pitr`
+there, as it should.
+
+**To run it, the workflow needs two changes** (`.github/workflows/lab.yml`,
+which only the owner may ask for in their own words): an input, and room for
+the hour.
+
+```yaml
+      # (under `inputs:`)
+      restore:
+        description: 'The restore try: the game''s rewind on the lab''s own Vault, to an hour ago (about 65 minutes).'
+        type: boolean
+        default: false
+```
+
+```yaml
+    timeout-minutes: 90   # was 55: the restore try waits an hour
+```
+
+```sh
+          # (in "Time it", beside the limit test's line)
+          if [ "$RESTORE" = "true" ]; then EXTRA="--restore"; fi
+```
+
+and `RESTORE: ${{ github.event.inputs.restore }}` in that step's `env`.
+Then: **Actions**, **Cloudflare lab**, **Run workflow**, tick **restore**, on
+`main`.
+
 ## v2.3.3257: the limit test -- does the free plan count every message?
 
 The free plan's daily limit is 100,000 Durable Object requests for the whole
@@ -344,8 +411,9 @@ requests have just reset. The results are on the run's page
 
 If the delete step ever fails, delete it by hand: Cloudflare dashboard,
 **Workers & Pages**, **brotown-lab**, **Settings**, **Delete**. Even left
-behind, it does nothing and costs nothing: it stores nothing and answers no
-one without the run's key.
+behind, it does nothing and costs nothing: it stores nothing (but the
+restore try's few records, v2.3.5288) and answers no one without the run's
+key.
 
 ## What the answers mean for the plan
 
