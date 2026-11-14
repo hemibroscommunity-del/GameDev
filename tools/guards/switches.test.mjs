@@ -21,6 +21,14 @@
  *      below: v2.3.5302, after the gatekeeper's review of sitting 8 found
  *      shapes that hid a switch).  Each fixture is a break proof that runs
  *      on every PR.
+ *  10. every row is in its place: by side, then by name (v2.3.5304:
+ *      the gatekeeper's sitting 11; a new row goes where its name puts
+ *      it, so two row-adding PRs meet only when their names are neighbours).
+ *  11. rule 4 (v2.3.5304): every need is a row; no switch needs itself,
+ *      however far round; a worker row with needs names its reader, which
+ *      reads each need (switchScan.mjs readsOf: directly or through the
+ *      functions it calls); a row that may never go off needs no switch
+ *      still in the table;
  *
  * BREAK PROOF (rule 8), each tried by hand once, 2026-11-14:
  *   - a method `_zzz() { if (this._flagOn('zzz')) return; }` in
@@ -39,6 +47,16 @@
  *                                        -> FAIL 9 (W8)
  *   - only the first name of a `[?&](a|b)` group kept
  *                                        -> FAIL 9 (P5)
+ *   (v2.3.5304, tried by hand once, 2026-11-14:)
+ *   - the `farm` row moved above `accuracy`
+ *                                        -> FAIL 10 (accuracy is after farm)
+ *   - `_lastPlaceOn` (server/src/lastplace.js) made to `return true` in place
+ *     of `this._moveBudgetOn()`: a need left unread in its reader
+ *                                        -> FAIL 11 (lastplace's reader does
+ *                                           not read movebudget)
+ *   Rehearsed: two branches from one table, one adding `?aardvark`, the
+ *   other `?minnow`, each in its place: merged in both orders, clean, and
+ *   the merged page is what --write makes.
  *
  * Run from the repository's root:
  *   node tools/guards/switches.test.mjs              the checks
@@ -49,8 +67,8 @@
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { SWITCHES, SIDES, KINDS, RISKS, COLUMNS } from './lib/switches.mjs';
-import { census, scanWorker, scanPage, DYNAMIC, NOT_ADDRESS, NOT_A_FLAG, ROOT } from './lib/switchScan.mjs';
+import { SWITCHES, SIDES, KINDS, RISKS, COLUMNS, OPTIONAL } from './lib/switches.mjs';
+import { census, scanWorker, scanPage, readsOf, DYNAMIC, NOT_ADDRESS, NOT_A_FLAG, ROOT } from './lib/switchScan.mjs';
 import { SYSTEMS } from './lib/systems.mjs';
 
 /* the census lines: each only falls, and only the gatekeeper lowers one */
@@ -160,6 +178,25 @@ function shapeCheck(sh) {
   return bad.length ? `${sh.id}: ${bad.join('; ')}` : null;
 }
 
+/* ── a row's place (v2.3.5304, the gatekeeper's sitting 11) ──
+   The table's rows run by side (both, worker, page) and, in each, by name
+   (its `?` aside, lower case).  Returns one line a row out of its place,
+   naming the row it should follow. */
+const SIDE_ORDER = ['both', 'worker', 'page'];
+export const placeKey = (r) => r.name.replace(/^\?/, '').toLowerCase();
+export function placeFaults(rows) {
+  const bad = [];
+  for (let i = 1; i < rows.length; i++) {
+    const a = rows[i - 1], b = rows[i];
+    const sa = SIDE_ORDER.indexOf(a.side), sb = SIDE_ORDER.indexOf(b.side);
+    if (sb < sa || (sb === sa && placeKey(b) < placeKey(a))) {
+      const after = rows.filter((r) => SIDE_ORDER.indexOf(r.side) === sb && placeKey(r) < placeKey(b)).pop();
+      bad.push(`${b.name} (${b.side}) is after ${a.name}: it belongs ${after ? 'after ' + after.name : 'first in its side'}`);
+    }
+  }
+  return bad;
+}
+
 /* ── command lines ── */
 const argv = process.argv.slice(2);
 await main();
@@ -240,7 +277,7 @@ async function checks() {
     for (const r of SWITCHES) {
       const why = [];
       for (const c of COLUMNS) if (!Object.hasOwn(r, c)) why.push('no ' + c);
-      for (const c of Object.keys(r)) if (!COLUMNS.includes(c)) why.push('an unknown column ' + c);
+      for (const c of Object.keys(r)) if (!COLUMNS.includes(c) && !OPTIONAL.includes(c)) why.push('an unknown column ' + c);
       if (!str(r.name)) why.push('name');
       if (!SIDES.includes(r.side)) why.push('side');
       if (!str(r.system)) why.push('system');
@@ -287,6 +324,46 @@ async function checks() {
   {
     const bad = SHAPES.map(shapeCheck).filter(Boolean);
     check(`9: the scanner reads each of its ${SHAPES.length} shapes (the fixtures above)`, bad.length === 0, bad);
+  }
+
+  /* 10. every row in its place: by side (both, worker, page), then by name */
+  {
+    const bad = placeFaults(SWITCHES);
+    check('10: every row is in its place in the table (by side, then by name: a new row goes where its name puts it)', bad.length === 0, bad);
+  }
+
+  /* 11. rule 4: what a switch needs (v2.3.5304) */
+  {
+    const by = new Map(SWITCHES.map((r) => [r.name, r]));
+    const unknownNeed = SWITCHES.flatMap((r) => r.needs.filter((n) => !by.has(n)).map((n) => `${r.name} needs ${n}, which is no row`));
+    check('11: every need is a row', unknownNeed.length === 0, unknownNeed);
+    const cycles = [];
+    for (const r of SWITCHES) {
+      const stack = [[r.name, [r.name]]];
+      const seen = new Set();
+      while (stack.length) {
+        const [n, path] = stack.pop();
+        for (const m of (by.get(n) || { needs: [] }).needs) {
+          if (m === r.name) { cycles.push(path.concat(m).join(' -> ')); continue; }
+          if (!seen.has(m)) { seen.add(m); stack.push([m, path.concat(m)]); }
+        }
+      }
+    }
+    check('11: no switch needs itself, however far round', cycles.length === 0, [...new Set(cycles)].slice(0, 6));
+    const badReader = [];
+    for (const r of SWITCHES) {
+      if (r.side !== 'worker' || !r.needs.length) { if (r.reader !== undefined && r.side !== 'worker') badReader.push(`${r.name}: a reader is a worker row's`); continue; }
+      const m = /^([A-Za-z_$][\w$]*) in (server\/src\/\S+)$/.exec(r.reader || '');
+      if (!m) { badReader.push(`${r.name}: needs ${r.needs.join(', ')} but names no reader ("fn in server/src/file.js")`); continue; }
+      const got = readsOf(m[2], m[1]);
+      const miss = r.needs.filter((n) => !got.has(n));
+      if (miss.length) badReader.push(`${r.name}: its reader ${r.reader} does not read ${miss.join(', ')}`);
+    }
+    check('11: every worker row with needs names its reader, and the reader reads each need', badReader.length === 0, badReader);
+    const never = SWITCHES.filter((r) => r.never !== undefined);
+    const badNever = never.filter((r) => typeof r.never !== 'string' || !r.never.trim() || r.needs.some((n) => by.has(n)))
+      .map((r) => `${r.name} may never go off (${r.never}) but needs ${r.needs.filter((n) => by.has(n)).join(', ')}: the switch beneath is removed first`);
+    check(`11: a row that may never go off needs no switch still in the table (${never.length} such rows)`, badNever.length === 0, badNever);
   }
 
   const sw = SWITCHES.filter((r) => r.kind === 'switch').length;
