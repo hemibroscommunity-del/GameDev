@@ -98,101 +98,129 @@ export const BAG_EMPTY = Object.freeze(['none', 'leZero', 'gtZero']);
  * empty: the BAG_EMPTY rule.
  * cap:   true when the call passes a most-it-fills-to (the quest grant).
  * at:    where its one caller is (the test checks the file).
+ * class: v2.3.5081 (grand plan step 4.4, card E PR 2): `mint`, `burn`, `move`
+ *        or `escrow`, as gold.js's CLASSES say, for this key's count; other:
+ *        a move's other road (the mail's), an escrow's place (gold.js
+ *        ESCROW_PLACES: `shop_stock` is Diego's pile, `death_pile:` a
+ *        player's pile on the ground), or null.  A cook is two roads of two
+ *        classes: the raw fish burned, the cooked fish minted.  The mail's
+ *        own class is its credit's (gold.js MAIL_CLASSES).
  * A new way to change the bag is a new row here and one call that names it. */
-const R = (dir, read, empty, at, cap = false) => Object.freeze({ dir, read, empty, at, cap });
+const R = (dir, read, empty, at, cls, other = null, cap = false) =>
+  Object.freeze({ dir, read, empty, at, cap, class: cls, other: Array.isArray(other) ? Object.freeze(other.slice()) : other });
 export const BAG_ROADS = Object.freeze({
   /* ── eating, drinking, burning ── */
-  eat_meal:           R('take', 'plain', 'leZero', 'cooking.js _handleEatRequest: a meal'),
-  eat_fish:           R('take', 'plain', 'leZero', 'cooking.js _handleEatRequest: a cooked fish or crop'),
-  firemaking:         R('take', 'plain', 'leZero', 'cooking.js _handleFiremakingRequest'),
-  drink:              R('take', 'plain', 'leZero', 'cooking.js _handleDrinkRequest'),
-  shop_item_trap:     R('give', 'orZero', 'none', 'cooking.js _applyShopItem: a trap'),
+  eat_meal:           R('take', 'plain', 'leZero', 'cooking.js _handleEatRequest: a meal', 'burn'),
+  eat_fish:           R('take', 'plain', 'leZero', 'cooking.js _handleEatRequest: a cooked fish or crop', 'burn'),
+  firemaking:         R('take', 'plain', 'leZero', 'cooking.js _handleFiremakingRequest', 'burn'),
+  drink:              R('take', 'plain', 'leZero', 'cooking.js _handleDrinkRequest', 'burn'),
+  shop_item_trap:     R('give', 'orZero', 'none', 'cooking.js _applyShopItem: a trap', 'mint'),
 
   /* ── cooking ── */
-  cook_ingredient:    R('take', 'plain', 'leZero', 'cooking.js _consumeIngredient'),
-  cook_recipe:        R('give', 'whole', 'none', 'cooking.js _handleCookRecipe'),
-  cook_fish_used:     R('take', 'plain', 'leZero', 'cooking.js _handleCookRequest: the raw fish'),
-  cook_fish_cooked:   R('give', 'orZero', 'none', 'cooking.js _handleCookRequest: cooked'),
-  cook_burnt:         R('give', 'orZero', 'none', 'cooking.js _handleCookRequest: burnt'),
+  cook_ingredient:    R('take', 'plain', 'leZero', 'cooking.js _consumeIngredient', 'burn'),
+  cook_recipe:        R('give', 'whole', 'none', 'cooking.js _handleCookRecipe', 'mint'),
+  cook_fish_used:     R('take', 'plain', 'leZero', 'cooking.js _handleCookRequest: the raw fish', 'burn'),
+  cook_fish_cooked:   R('give', 'orZero', 'none', 'cooking.js _handleCookRequest: cooked', 'mint'),
+  cook_burnt:         R('give', 'orZero', 'none', 'cooking.js _handleCookRequest: burnt', 'mint'),
 
   /* ── crafting ── */
-  armor_forge:        R('take', 'whole', 'leZero', 'armorforge.js _handleForgeArmor: the bars'),
-  weapon_forge:       R('take', 'plain', 'leZero', 'gear.js _handleForgeWeapon: the bars, logs or ore'),
-  harden_mats:        R('take', 'ownWhole', 'leZero', 'hardening.js _handleHardenWeapon'),
-  hardwood_logs:      R('take', 'ownWholeFloor', 'leZero', 'hardenedwood.js _handleMakeHardenedWood: the logs'),
-  hardwood_made:      R('give', 'ownWhole', 'none', 'hardenedwood.js _handleMakeHardenedWood: the hardened wood'),
-  smelt_ore:          R('take', 'whole', 'leZero', 'smelting.js _handleSmeltBar: the ore'),
-  smelt_bar:          R('give', 'whole', 'none', 'smelting.js _handleSmeltBar: the bars'),
-  salvage_bars:       R('give', 'whole', 'none', 'salvage.js _handleSmithSalvage: the bars'),
-  salvage_essence:    R('give', 'whole', 'none', 'salvage.js _handleSmithSalvage: the essence'),
-  essence_apply:      R('take', 'whole', 'leZero', 'salvage.js _handleEssenceApply'),
-  trap_logs:          R('take', 'ownWholeFloor', 'leZero', 'trapping.js _handleMakeTraps: the logs'),
-  trap_made:          R('give', 'ownWholeFloor', 'none', 'trapping.js _handleMakeTraps: the traps'),
-  trap_sprung:        R('take', 'ownWholeFloor', 'leZero', 'trapping.js _trapRollOnKill'),
-  trap_legacy_out:    R('set', null, 'gtZero', 'trapping.js _trapJoinConvert: the old trap key (set to 0: gone)'),
-  trap_legacy_in:     R('give', 'ownWholeFloor', 'none', 'trapping.js _trapJoinConvert: as new traps'),
+  armor_forge:        R('take', 'whole', 'leZero', 'armorforge.js _handleForgeArmor: the bars', 'burn'),
+  weapon_forge:       R('take', 'plain', 'leZero', 'gear.js _handleForgeWeapon: the bars, logs or ore', 'burn'),
+  harden_mats:        R('take', 'ownWhole', 'leZero', 'hardening.js _handleHardenWeapon', 'burn'),
+  hardwood_logs:      R('take', 'ownWholeFloor', 'leZero', 'hardenedwood.js _handleMakeHardenedWood: the logs', 'burn'),
+  hardwood_made:      R('give', 'ownWhole', 'none', 'hardenedwood.js _handleMakeHardenedWood: the hardened wood', 'mint'),
+  smelt_ore:          R('take', 'whole', 'leZero', 'smelting.js _handleSmeltBar: the ore', 'burn'),
+  smelt_bar:          R('give', 'whole', 'none', 'smelting.js _handleSmeltBar: the bars', 'mint'),
+  salvage_bars:       R('give', 'whole', 'none', 'salvage.js _handleSmithSalvage: the bars', 'mint'),
+  salvage_essence:    R('give', 'whole', 'none', 'salvage.js _handleSmithSalvage: the essence', 'mint'),
+  essence_apply:      R('take', 'whole', 'leZero', 'salvage.js _handleEssenceApply', 'burn'),
+  trap_logs:          R('take', 'ownWholeFloor', 'leZero', 'trapping.js _handleMakeTraps: the logs', 'burn'),
+  trap_made:          R('give', 'ownWholeFloor', 'none', 'trapping.js _handleMakeTraps: the traps', 'mint'),
+  trap_sprung:        R('take', 'ownWholeFloor', 'leZero', 'trapping.js _trapRollOnKill', 'burn'),
+  trap_legacy_out:    R('set', null, 'gtZero', 'trapping.js _trapJoinConvert: the old trap key (set to 0: gone)', 'burn'),
+  trap_legacy_in:     R('give', 'ownWholeFloor', 'none', 'trapping.js _trapJoinConvert: as new traps', 'mint'),
 
   /* ── gems and shards ── */
-  gem_take:           R('take', 'gem', 'gtZero', 'gems.js gemTake: the bag\'s part (every gem spent)'),
-  gem_give:           R('give', 'gem', 'none', 'gems.js gemGive (every gem gained)'),
-  shard_crack:        R('take', 'ownWholeFloor', 'gtZero', 'shardcrack.js _handleShardCrack'),
-  rare_gem_combine:   R('take', 'ownWholeFloor', 'gtZero', 'shardcrack.js _handleGemCombine: a rare gem'),
+  gem_take:           R('take', 'gem', 'gtZero', 'gems.js gemTake: the bag\'s part (every gem spent)', 'burn'),
+  gem_give:           R('give', 'gem', 'none', 'gems.js gemGive (every gem gained)', 'mint'),
+  shard_crack:        R('take', 'ownWholeFloor', 'gtZero', 'shardcrack.js _handleShardCrack', 'burn'),
+  rare_gem_combine:   R('take', 'ownWholeFloor', 'gtZero', 'shardcrack.js _handleGemCombine: a rare gem', 'burn'),
 
   /* ── gathering ── */
-  harvest:            R('give', 'orZero', 'none', 'gathering.js _handleNodeStrike: the yield'),
-  harvest_shard:      R('give', 'orZero', 'none', 'gathering.js _handleNodeStrike: a shard'),
-  fish_catch_plain:   R('give', 'orZero', 'none', 'fishlog.js _fishCatch: not one of the game\'s fish'),
-  fish_catch:         R('give', 'orZero', 'none', 'fishlog.js _fishCatch: each fish'),
+  harvest:            R('give', 'orZero', 'none', 'gathering.js _handleNodeStrike: the yield', 'mint'),
+  harvest_shard:      R('give', 'orZero', 'none', 'gathering.js _handleNodeStrike: a shard', 'mint'),
+  fish_catch_plain:   R('give', 'orZero', 'none', 'fishlog.js _fishCatch: not one of the game\'s fish', 'mint'),
+  fish_catch:         R('give', 'orZero', 'none', 'fishlog.js _fishCatch: each fish', 'mint'),
 
   /* ── the farm ── */
-  farm_plant:         R('take', 'whole', 'gtZero', 'farm.js _handleFarmAct: seeds'),
-  farm_feed:          R('take', 'whole', 'gtZero', 'farm.js _handleFarmAct: compost'),
-  farm_harvest:       R('give', 'whole', 'none', 'farm.js _handleFarmAct: the crops'),
-  farm_buy:           R('give', 'whole', 'none', 'farm.js _handleFarmBuy'),
-  farm_order:         R('take', 'whole', 'gtZero', 'farmorders.js _handleFarmOrder'),
+  farm_plant:         R('take', 'whole', 'gtZero', 'farm.js _handleFarmAct: seeds', 'burn'),
+  farm_feed:          R('take', 'whole', 'gtZero', 'farm.js _handleFarmAct: compost', 'burn'),
+  farm_harvest:       R('give', 'whole', 'none', 'farm.js _handleFarmAct: the crops', 'mint'),
+  farm_buy:           R('give', 'whole', 'none', 'farm.js _handleFarmBuy', 'mint'),
+  farm_order:         R('take', 'whole', 'gtZero', 'farmorders.js _handleFarmOrder', 'burn'),
 
   /* ── shops ── */
-  shop_sell:          R('take', 'whole', 'leZero', 'shop.js _shopSell: what sold (v2.3.4900: a take, read after the stock\'s await)'),
-  shop_tool:          R('set', null, 'none', 'shop.js _shopBuy: a lost tool bought back (one)'),
-  shop_staple:        R('give', 'whole', 'none', 'shop.js _shopBuy: a staple'),
-  shop_pile:          R('give', 'whole', 'none', 'shop.js _shopBuy: from his pile'),
+  shop_sell:          R('take', 'whole', 'leZero', 'shop.js _shopSell: what sold (v2.3.4900: a take, read after the stock\'s await)', 'escrow', 'shop_stock'),
+  shop_tool:          R('set', null, 'none', 'shop.js _shopBuy: a lost tool bought back (one)', 'mint'),
+  shop_staple:        R('give', 'whole', 'none', 'shop.js _shopBuy: a staple', 'mint'),
+  shop_pile:          R('give', 'whole', 'none', 'shop.js _shopBuy: from his pile', 'escrow', 'shop_stock'),
 
   /* ── rewards ── */
-  chest_key:          R('take', 'plain', 'leZero', 'dailychest.js _handleChestOpen: the key'),
-  chest_prize:        R('give', 'whole', 'none', 'dailychest.js _handleChestOpen: a fish or gem prize'),
-  boss_chest_item:    R('give', 'ownWholeFloor', 'none', 'dungeonreward.js _dungeonReward'),
-  quest_collect:      R('take', 'orZero', 'gtZero', 'quests.js _collectConsume'),
-  quest_item:         R('give', 'orZero', 'none', 'quests.js _grantQuestItem', true),
-  cape_ticket:        R('give', 'orZero', 'none', 'eventcapes.js _claimCapeTicket'),
-  cape_ticket_spent:  R('take', 'plain', 'leZero', 'eventcapes.js _handleCapeRedeem: the ticket'),
-  cape_trophy:        R('give', 'whole', 'none', 'eventcapes.js _handleCapeRedeem: the cape'),
-  loot_death_items:   R('give', 'orZero', 'none', 'index.js _handleLootPickup: a death pile\'s items'),
-  loot_skull:         R('give', 'orZero', 'none', 'index.js _handleLootPickup: a skull'),
-  loot_shard:         R('give', 'orZero', 'none', 'index.js _handleLootPickup: a shard'),
-  loot_gem:           R('give', 'orZero', 'none', 'index.js _handleLootPickup: a gem'),
+  chest_key:          R('take', 'plain', 'leZero', 'dailychest.js _handleChestOpen: the key', 'burn'),
+  chest_prize:        R('give', 'whole', 'none', 'dailychest.js _handleChestOpen: a fish or gem prize', 'mint'),
+  boss_chest_item:    R('give', 'ownWholeFloor', 'none', 'dungeonreward.js _dungeonReward', 'mint'),
+  quest_collect:      R('take', 'orZero', 'gtZero', 'quests.js _collectConsume', 'burn'),
+  quest_item:         R('give', 'orZero', 'none', 'quests.js _grantQuestItem', 'mint', null, true),
+  cape_ticket:        R('give', 'orZero', 'none', 'eventcapes.js _claimCapeTicket', 'mint'),
+  cape_ticket_spent:  R('take', 'plain', 'leZero', 'eventcapes.js _handleCapeRedeem: the ticket', 'burn'),
+  cape_trophy:        R('give', 'whole', 'none', 'eventcapes.js _handleCapeRedeem: the cape', 'mint'),
+  loot_death_items:   R('give', 'orZero', 'none', 'index.js _handleLootPickup: a death pile\'s items', 'escrow', 'death_pile:'),
+  loot_skull:         R('give', 'orZero', 'none', 'index.js _handleLootPickup: a skull', 'mint'),
+  loot_shard:         R('give', 'orZero', 'none', 'index.js _handleLootPickup: a shard', 'mint'),
+  loot_gem:           R('give', 'orZero', 'none', 'index.js _handleLootPickup: a gem', 'mint'),
 
   /* ── chance ── */
-  ace_items_win:      R('give', 'whole', 'none', 'gamble.js _handleAceItemFlipRequest: won (doubled)'),
-  ace_items_loss:     R('take', 'whole', 'gtZero', 'gamble.js _handleAceItemFlipRequest: lost'),
+  ace_items_win:      R('give', 'whole', 'none', 'gamble.js _handleAceItemFlipRequest: won (doubled)', 'mint'),
+  ace_items_loss:     R('take', 'whole', 'gtZero', 'gamble.js _handleAceItemFlipRequest: lost', 'burn'),
 
   /* ── between players, and the ground ── */
-  gift_trade:         R('take', 'ownNumber', 'leZero', 'trade.js _interceptTrade: the old gift trade, the sender'),
-  trade_window:       R('take', 'ownNumber', 'leZero', 'trade2.js _handleTrade2Confirm: each side\'s items'),
-  item_drop:          R('take', 'ownWhole', 'gtZero', 'itemdrop.js _handleItemDrop'),
+  gift_trade:         R('take', 'ownNumber', 'leZero', 'trade.js _interceptTrade: the old gift trade, the sender', 'move', 'mail_item'),
+  trade_window:       R('take', 'ownNumber', 'leZero', 'trade2.js _handleTrade2Confirm: each side\'s items', 'move', 'mail_item'),
+  item_drop:          R('take', 'ownWhole', 'gtZero', 'itemdrop.js _handleItemDrop', 'escrow', 'death_pile:'),
 
   /* ── into escrow, and back ── */
-  bank_deposit:       R('take', 'ownWhole', 'gtZero', 'bank.js _handleBankMove: in'),
-  bank_withdraw:      R('give', 'ownWhole', 'none', 'bank.js _handleBankMove: out'),
-  ah_listing:         R('take', 'ownNumber', 'leZero', 'store.js _stCreateListing'),
-  mail_item:          R('give', 'ownNumber', 'none', 'inbox.js _applyCreditToPs: every _creditPlayer item credit, landed'),
-  escrow_item:        R('take', 'ownNumber', 'leZero', 'inbox.js _escrowTakeItem: a live player'),
-  escrow_item_stored: R('take', 'ownNumber', 'leZero', 'inbox.js _escrowTakeItem: the stored record of one who is away'),
+  bank_deposit:       R('take', 'ownWhole', 'gtZero', 'bank.js _handleBankMove: in', 'escrow', 'bank:'),
+  bank_withdraw:      R('give', 'ownWhole', 'none', 'bank.js _handleBankMove: out', 'escrow', 'bank:'),
+  ah_listing:         R('take', 'ownNumber', 'leZero', 'store.js _stCreateListing', 'escrow', 'store_listing:'),
+  mail_item:          R('give', 'ownNumber', 'none', 'inbox.js _applyCreditToPs: every _creditPlayer item credit, landed', 'escrow', 'inbox:'),
+  escrow_item:        R('take', 'ownNumber', 'leZero', 'inbox.js _escrowTakeItem: a live player', 'escrow', ['store_listing:']),
+  escrow_item_stored: R('take', 'ownNumber', 'leZero', 'inbox.js _escrowTakeItem: the stored record of one who is away', 'escrow', ['store_listing:']),
 
   /* ── the owner's Test panel ── */
-  dev_shards:         R('give', 'wholeFloor', 'none', 'devtools.js _devKit: shards'),
-  dev_traps:          R('set', null, 'gtZero', 'devtools.js _devTrapping: traps'),
-  dev_logs:           R('set', null, 'gtZero', 'devtools.js _devTrapping: logs'),
-  fish_dev:           R('give', 'orZero', 'none', 'fishlog.js _fishDev: give a fish'),
+  dev_shards:         R('give', 'wholeFloor', 'none', 'devtools.js _devKit: shards', 'mint'),
+  dev_traps:          R('set', null, 'gtZero', 'devtools.js _devTrapping: traps', 'mint'),
+  dev_logs:           R('set', null, 'gtZero', 'devtools.js _devTrapping: logs', 'mint'),
+  fish_dev:           R('give', 'orZero', 'none', 'fishlog.js _fishDev: give a fish', 'mint'),
+});
+
+/* ═══ v2.3.5081: THE WHOLE-BAG ASSIGNS, CLASSED (SHAPES part 3, edge 4) ═══
+ * Four lines make the bag whole rather than change a count in it, so they
+ * are not roads (bag-door.test WHOLE_BAG lists each, with why).  The world's
+ * sum still has to know what each does to what the bag holds:
+ *   class null   the assign holds nothing the world did not hold before (an
+ *                empty bag; the stored bag loaded, as the stored purse is);
+ *   otherwise    a road's class and other.  The death's wipe MOVES the bag
+ *                (less the tools and the pickup shield it keeps) to the
+ *                pile on the ground (`death_pile:`); the respawn's wipe ends
+ *                whatever came into a dead player's bag after it (nothing,
+ *                for an honest death: a burn). */
+const W = (cls, other, why) => Object.freeze({ class: cls, other, why });
+export const BAG_WHOLE = Object.freeze({
+  new_bag:     W(null, null, 'a new, empty bag for a player who has none'),
+  join_load:   W(null, null, 'the join loads the stored character\'s bag (the record IS the character while away)'),
+  join_first:  W(null, null, 'a new character\'s first bag: no claim reaches it since v2.3.3138, so it is empty (a starter kit there would be a mint)'),
+  death_wipe:  W('escrow', 'death_pile:', 'the death: the bag less what the dead keep goes to the pile'),
+  respawn_wipe: W('burn', null, 'the respawn: what a dead player\'s bag gained after the death wipe'),
 });
 
 /* The row for a road and a verb, or a thrown error (nothing written).  Every
