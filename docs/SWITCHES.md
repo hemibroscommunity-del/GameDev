@@ -128,6 +128,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 
 | name | side | kind | born | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|
+| `?ladderpix` | page | switch | v2.3.5225 | =0, off, false | chip | `?govern` | no | The pixel rungs are off: every pixel the screen and the budget allow, whatever the rung. |
 | `?lane` | page | lever | v2.3.5221 | =full, =light or =thirty | none |  | no | This page draws in the named lane, whatever its device's facts pick. |
 | `lookpalette` | both | switch | v2.3.3716 | off_lookpalette: true; ?lookpalette=0 (=1 builds it anyway) | chip |  | onWindows, onMac in src/game/lookPaletteChoice.js | Each look's copy is baked on first sight again, not coloured on the chip. |
 | `?pixbudget` | page | switch | v2.3.5140 | =0 (off), or a number: the budget to try | chip |  | no | The drawing resolution is no longer held to the pixel budget. |

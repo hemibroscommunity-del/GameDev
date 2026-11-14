@@ -1,5 +1,5 @@
 card: O
-branch: claude/plan-o-4-rate (one branch a PR: claude/plan-o-<n>-<word>; each with main merged in)
+branch: claude/plan-o-5-pixels (one branch a PR: claude/plan-o-<n>-<word>; each with main merged in)
 prs: #1787, #1815 (5221, 5227: merged); #1792, #1794, #1800, #1814 (5222, 5224, 5225, 5235): ready, in that order
 state: ready
 

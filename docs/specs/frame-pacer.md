@@ -144,7 +144,8 @@ late. Now:
   into the pacer, nothing new timed): the game's own work takes the work
   axis (the crowd, then the rate); the rest, or where the busy beat runs the
   time the page WAITED, the chip axis (the rate, the shine, the shadows, the
-  water, the pixels).
+  water), then the pixels' own axis (v2.3.5225: last down and last up, a
+  chip-bound phone's only; `docs/specs/pixel-budget.md`).
 - **Down and up as the pacer**: two bad verdicts, a step down; clean for
   `UP_WAIT_MS`, a try up (undoing the last step); a step down after a step
   up doubles the wait, to `UP_WAIT_MAX_MS`. On a fast screen the ladder
@@ -225,8 +226,16 @@ whole sitting. Now:
   moved since) is not loaded: the sitting starts at the lane's row.
 - **A try up that moves the pixels waits for its veil, and the other axis
   may try meanwhile** (before, the wait stopped every try).
-- Today (the rate the one live knob) a cool phone after a hot sitting is
-  back at 60 in ONE try, about 20 seconds in.
+- Today a cool phone after a hot sitting is back at 60 in ONE try, about
+  20 seconds in.
+- **A kept rung loads WITHOUT its pixel rungs** (v2.3.5225, card O PR 5; the
+  planning session's (A), 2026-11-14): the rate and the passes are kept, and
+  if the phone is still hot the pixels are taken again at the next veil.
+  This departs from the card's "the next sitting starts there", for the
+  pixels only: a pixel rung moves only behind a veil, both ways, so a kept
+  one would hold a cool phone on a softer picture (and 30) until its next
+  loading screen or tab's return. In the Wheel that can be a whole sitting,
+  for the last sitting's heat. Held by §19g (and §19c).
 
 Held by `frame-pacer.test` §19, with its break proofs. §13 to §16 play the
 whole ladder live (`_liveKnobs`), as card O's later PRs will make it.
