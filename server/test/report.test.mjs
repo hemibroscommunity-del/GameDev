@@ -19,7 +19,7 @@
  *   5. THE KILL SWITCH `report: false`: un-advertised, and a report that
  *      still comes is dropped;
  *   6. THE WORKER'S OWN: the round trip's waver kept at each pong, and
- *      `delay` and `waver` binned from the session, never the message;
+ *      `delay` and `waver` summed from the session, never the message;
  *   7. THE BOOK'S ROOM: one cell with every field, against the part's line
  *      (daybook.js PART_BYTES), so a day holds several devices and builds;
  *  10. v2.3.5127, THE GATEKEEPER'S REVIEW (sitting 3), a test each: the
@@ -27,7 +27,11 @@
  *      sends nothing of the time it was off; the build in a cell is the
  *      worker's call (a preview is `preview`); hidden time is not play time;
  *      a report is not the player's input (the AFK clock); `near` is the
- *      near circle's.
+ *      near circle's;
+ *  11. v2.3.5127, SITTING 4'S REVIEW: a cell half its size (section 7's
+ *      floor, 16 a day); a socket's reports reach at most two cells; `died`
+ *      only on a socket's first report; a thawed page's spell is a return
+ *      and not seen; another tab's switch off throws the open report away.
  *
  * BREAK PROOF (rule 8), each tried by hand, 2026-11-14:
  *   2. report.js: drop `!HOLD_NAMES.includes(name) ||`          -> FAIL 2
@@ -37,10 +41,12 @@
  *  10. src/debug/report.js addFrames: drop `if (spansShow) continue;` -> FAIL 10
  *      report.js: `(o.site === 'live' ? build : 'preview')` as `build` -> FAIL 10
  *      index.js: `msg.type === 'pong'` alone (a report stamps the AFK clock) -> FAIL 10
+ *  11. report.js: `CELLS_A_SOCKET: 99`                             -> FAIL 11
+ *      report.js: `if (o.first && Array.isArray(msg.died)` without `o.first &&` -> FAIL 2
  */
 import { readFileSync } from 'node:fs';
 import { GameRoom } from '../src/index.js';
-import { REPORT, DEV_CLASS, SAVERS, WHERE, GAP_BINS, HOLD_NAMES as W_HOLDS, DRAW_LANES, DELAY_EDGES, WAVER_EDGES,
+import { REPORT, DEV_CLASS, SAVERS, WHERE, GAP_BINS, HOLD_NAMES as W_HOLDS, DRAW_LANES,
   reportSums, swCell, holdKey, classOfReport, rttWaverNext, reportSiteOf } from '../src/report.js';
 import { DAYBOOK, bookBytes, bookRead } from '../src/daybook.js';
 import { flagNameOk } from '../src/liveops.js';
@@ -103,7 +109,7 @@ const KEY = '2-1-8192-16-32-1-2-other-none-touch-0-4';
   check('1. the gaps\' bins are the phone\'s (one past its ' + GAP_EDGES.length + ' edges)', GAP_BINS === GAP_EDGES.length + 1 && gapBin(0) === 0 && gapBin(16.7) === 3 && gapBin(500) === GAP_BINS - 1);
   check('1. the holds\' names are the one list (holdNames.js HOLD_NAMES)', same(W_HOLDS, P_HOLDS));
   check('1. the lane is the phone\'s one', same(DRAW_LANES, [DRAW_LANE]));
-  check('1. every hold name makes a key the day\'s book takes', W_HOLDS.every((n) => /^[A-Za-z0-9_.:|,+=-]+$/.test(holdKey(n, 'town')) && holdKey(n, 'town').length <= DAYBOOK.KEY_MAX));
+  check('1. every hold name makes a key the day\'s book takes', W_HOLDS.every((n) => /^[A-Za-z0-9_.:|,+=-]+$/.test(holdKey(n)) && holdKey(n).length <= DAYBOOK.KEY_MAX));
   check('1. the phone\'s where: a dungeon, the farm, a region of the world, else other',
     whereOf('dungeon:x', null) === 'dungeon' && whereOf('farm_home', null) === 'farm' && whereOf('wheel', 'ember') === 'ember' && whereOf('wheel', 'sea') === 'other' && whereOf('town', 'town') === 'other');
   check('1. the phone\'s build: the N of 2.3.N', buildOf('2.3.5123') === 5123 && buildOf('dev') === 0);
@@ -112,15 +118,15 @@ const KEY = '2-1-8192-16-32-1-2-other-none-touch-0-4';
 
 /* ── 2. THE CHECKS ── */
 {
-  const r = reportSums(PHONE(), { delay: 80, waver: 12, site: 'live' });
+  const r = reportSums(PHONE(), { delay: 80, waver: 12, site: 'live', first: true });
   check('2. a phone\'s report makes its cell: the shape, the class\'s key, the lane, the switches, the build',
     r && r.cell === '1|' + KEY + '|full|none|5122', r && r.cell);
   const s = r && r.sums;
-  check('2. ...and its sums: one report, its seconds, its gaps, where it was, the near bin, memory, lost, died',
-    s && s.n === 1 && s.secs === 46 && same(s.gaps, [0, 0, 0, 0, 0, 0, 0, 0, 0, 105]) && s.where[WHERE.indexOf('town')] === 46
-      && same(s.near, [0, 1, 0, 0, 0, 0]) && same(s.mem, [47, 54, 18]) && same(s.lost, [0, 0]) && same(s.died, [1, 0, 0]), s);
-  check('2. the holds by name and place: [count, ms, near]', s && same(s.holds[holdKey('body-bake', 'other')], [1, 115, 0]) && same(s.holds[holdKey('screen-check', 'town')], [1, 91, 1]), s && s.holds);
-  check('2. the worker\'s own delay and waver, binned', s && same(s.delay, [0, 0, 1, 0, 0, 0, 0]) && same(s.waver, [0, 0, 1, 0, 0, 0]), s && [s.delay, s.waver]);
+  check('2. ...and its sums: one report, its seconds, its gaps, where it was (a map), near (a sum), memory, lost, died',
+    s && s.n === 1 && s.secs === 46 && same(s.gaps, [0, 0, 0, 0, 0, 0, 0, 0, 0, 105]) && same({ ...s.where }, { town: 46 })
+      && s.near === 1 && same(s.mem, [47, 54, 18]) && same(s.lost, [0, 0]) && same(s.died, [1, 0, 0]) && Object.getPrototypeOf(s.where) === null, s);
+  check('2. the holds by name: [times, ms in all]', s && same(s.holds[holdKey('body-bake')], [2, 212]) && same(s.holds[holdKey('screen-check')], [1, 91]), s && s.holds);
+  check('2. the worker\'s own delay and waver, summed: [delay, waver]', s && same(s.line, [80, 12]), s && s.line);
   check('2. no late where the pacer gave no verdict, and no split', s && !('late' in s) && !('split' in s));
   check('2. the seen seconds are the time played (v2.3.5127); `drawn` is the card\'s, not added', s && s.seen === 46 && !('drawn' in s));
 
@@ -131,7 +137,7 @@ const KEY = '2-1-8192-16-32-1-2-other-none-touch-0-4';
   check('2. ...a build that is not a whole number', drop((m) => { m.build = '5122'; }) === null && drop((m) => { m.build = 1e9; }) === null);
   check('2. ...no seconds, or past a day', drop((m) => { m.secs = 0; }) === null && drop((m) => { m.secs = REPORT.SECS_MAX + 1; }) === null);
   check('2. ...another shape number', drop((m) => { m.v = 2; }) === null);
-  const f = (mut) => { const m = PHONE(); mut(m); return reportSums(m, {}).sums; };
+  const f = (mut) => { const m = PHONE(); mut(m); return reportSums(m, { first: true }).sums; };
   check('2. gaps that do not add up to the frames drawn are dropped', !('gaps' in f((m) => { m.gaps[0] = 7; })));
   check('2. more frames than 250 a second: the frames and gaps dropped', !('gaps' in f((m) => { m.drawn = m.secs * 300; m.gaps = [0, 0, 0, 0, 0, 0, 0, 0, 0, m.drawn]; })));
   check('2. late over judged is dropped', !('late' in f((m) => { m.late = [9, 4]; })));
@@ -146,10 +152,10 @@ const KEY = '2-1-8192-16-32-1-2-other-none-touch-0-4';
   {
     const s2 = f((m) => { m.holds = [['__proto__', 50, 'town', 0], ['gc', 50, 'Paris', 0], ['gc', 50.5, 'town', 0], ['gc', 30, 'town', 2], ['gc', 20, 'town', 1]]; });
     check('2. holds: a name off the list, a place off the list, a fraction are dropped; the rest add up',
-      s2.holds && Object.keys(s2.holds).length === 1 && same(s2.holds[holdKey('gc', 'town')], [2, 50, 3]) && Object.getPrototypeOf(s2.holds) === null, s2.holds);
+      s2.holds && Object.keys(s2.holds).length === 1 && same(s2.holds[holdKey('gc')], [2, 50]) && Object.getPrototypeOf(s2.holds) === null, s2.holds);
     check('2. ...free text as a name reaches nothing', !('holds' in f((m) => { m.holds = [['DROP TABLE', 50, 'town', 0], ['body-bake jog-east', 40, 'town', 0]]; })));
     const many = f((m) => { m.holds = new Array(40).fill(['gc', 5, 'town', 0]); });
-    check('2. at most five holds are read', many.holds[holdKey('gc', 'town')][0] === REPORT.HOLDS_MAX);
+    check('2. at most five holds are read', many.holds[holdKey('gc')][0] === REPORT.HOLDS_MAX);
   }
   check('2. free text where a place goes is dropped (no `where`)', !('where' in f((m) => { m.where = 'my house'; })));
   check('2. memory past its line, or not three numbers, is dropped', !('mem' in f((m) => { m.mem = [1, 2, 99999]; })) && !('mem' in f((m) => { m.mem = [1, 2]; })));
@@ -157,7 +163,8 @@ const KEY = '2-1-8192-16-32-1-2-other-none-touch-0-4';
     swCell([]) === 'none' && swCell(['onecopy']) === 'onecopy' && swCell(['onecopy', 'viewcap']) === 'many' && swCell(['onecopy', 'rm -rf', '__proto__']) === 'onecopy' && swCell('onecopy') === 'none');
   {
     const k = f((m) => { m.died = ['killed', 230, 14, 1, 'ember']; });
-    check('2. a page that died: its kind, its numbers and where', same(k.died, [0, 1, 0]) && same(k.diedMem, [230, 14, 1]) && k.diedAt[WHERE.indexOf('ember')] === 1, k);
+    check('2. a page that died: its kind, its numbers and where', same(k.died, [0, 1, 0]) && same(k.diedMem, [230, 14, 1]) && same({ ...k.diedAt }, { ember: 1 }), k);
+    check('2. `died` counts only on a socket\'s first report (once a page; v2.3.5127)', !('died' in reportSums({ ...PHONE(), died: ['killed', 230, 14, 1, 'ember'] }, {}).sums));
     check('2. a death off its shape is dropped', !('died' in f((m) => { m.died = ['killed', 230]; })) && !('died' in f((m) => { m.died = ['murdered']; })) && !('died' in f((m) => { m.died = ['killed', 1, 2, 3, 'Paris']; })));
   }
 }
@@ -241,9 +248,8 @@ const A = await join('bp_rep_a', 'Repo');
   await pong(200); await pong(20); await pong(220); await pong(30);
   check('6. a steady line wavers little, a jumpy one much (kept at each pong)', typeof steady === 'number' && steady < 30 && S.rttWaver > 40, { steady, jumpy: S.rttWaver });
   check('6. the waver is capped as the round trip is', rttWaverNext(0, 1e6, 0, 0.3, 300) === 300 && rttWaverNext(undefined, 50, 50, 0.3, 300) === 0);
-  const r = reportSums({ ...PHONE(), delay: 1, waver: 1 }, { delay: 260, waver: 3 });
-  check('6. delay and waver are the session\'s, never the message\'s', same(r.sums.delay, [0, 0, 0, 0, 0, 1, 0]) && same(r.sums.waver, [1, 0, 0, 0, 0, 0]), [r.sums.delay, r.sums.waver]);
-  check('6. their bins', DELAY_EDGES.length + 1 === 7 && WAVER_EDGES.length + 1 === 6);
+  const r = reportSums({ ...PHONE(), delay: 1, waver: 1, line: [1, 1] }, { delay: 260.4, waver: 3 });
+  check('6. delay and waver are the session\'s, never the message\'s', same(r.sums.line, [260, 3]), r.sums.line);
 }
 
 /* ── 7. THE BOOK'S ROOM ── */
@@ -253,12 +259,13 @@ const A = await join('bp_rep_a', 'Repo');
   m.split = m.split.slice(0, 8);
   m.holds = [['body-bake', 115, 'town', 3], ['strip-made', 20, 'ember', 1], ['other: BT_AUDIO$1._fold > foldToMono', 19, 'farm', 0], ['screen-check', 30, 'commons', 0], ['gc', 40, 'frost', 9]];
   m.died = ['killed', 230, 14, 1, 'ember'];
-  const r = reportSums(m, { delay: 80, waver: 12, site: 'live' });
+  const r = reportSums(m, { delay: 80, waver: 12, site: 'live', first: true });
   const tree = { [r.cell]: r.sums };
   const bytes = bookBytes(tree);
   const cells = Math.floor(DAYBOOK.PART_BYTES / bytes);
   console.log(`     one cell with every field: ${bytes} bytes as the book reckons it; the part holds ${cells} such a day`);
-  check('7. a cell with every field leaves room for at least six cells a day (devices times builds)', cells >= 6, { bytes, cells });
+  /* v2.3.5127 (sitting 4): was 2,392 bytes and 10 cells; the day filled in about six live builds of two devices */
+  check('7. a cell with every field leaves room for at least sixteen cells a day (devices times builds)', cells >= 16, { bytes, cells });
 }
 
 /* ── 10. THE GATEKEEPER'S REVIEW (v2.3.5127, sitting 3) ── */
@@ -296,7 +303,7 @@ const A = await join('bp_rep_a', 'Repo');
   /* (4) hidden time is not play time */
   const h = reportSums({ ...PHONE(), secs: 300, seen: 30, drawn: 105 }, { site: 'live' });
   check('10.4 a report of 300 s with 30 seen: 30 is the time played and the time in its place, 300 the time covered',
-    h && h.sums.seen === 30 && h.sums.secs === 300 && h.sums.where[WHERE.indexOf('town')] === 30, h && h.sums);
+    h && h.sums.seen === 30 && h.sums.secs === 300 && h.sums.where.town === 30, h && h.sums);
   check('10.4 seen past secs, or none, drops the report; frames past the seen time drop the frames',
     reportSums({ ...PHONE(), seen: 47 }, {}) === null && reportSums({ ...PHONE(), seen: undefined }, {}) === null
       && !('gaps' in reportSums({ ...PHONE(), secs: 300, seen: 1, drawn: 600, gaps: [0, 0, 0, 0, 0, 0, 0, 0, 0, 600] }, {}).sums));
@@ -314,6 +321,33 @@ const A = await join('bp_rep_a', 'Repo');
   const rf = readFileSync(new URL('../../src/game/renderFrame.js', import.meta.url), 'utf8');
   check('10.6 the frame\'s `others` (the report\'s `near`) counts only this zone\'s players within the near circle',
     /others: nearOthers\(S\)/.test(rf) && /r2 = QUIET\.NEAR_R \* QUIET\.NEAR_R/.test(rf) && /p\.zone !== z/.test(rf) && /dx \* dx \+ dy \* dy > r2/.test(rf));
+}
+
+/* ── 11. SITTING 4'S REVIEW (v2.3.5127) ── */
+{
+  /* a socket's reports reach at most two cells */
+  const ws = await join('bp_rep_cells', 'Celly');
+  const S = room.sessions.get(ws);
+  const cls = (over) => ({ ...PHONE(), devClass: { ...PHONE().devClass, ...over } });
+  const take = (m) => { clock += REPORT.PACE_MS; return room._reportTake(S, m, clock); };
+  const a = take(cls({})), b = take(cls({ hz: 120 })), c = take(cls({ hz: 60 })), d = take(cls({}));
+  check('11.1 a socket\'s reports reach at most two cells (its rate settling, a window resized), then the third is refused',
+    a === 'ok' && b === 'ok' && c === 'cells' && d === 'ok' && REPORT.CELLS_A_SOCKET === 2, [a, b, c, d]);
+  /* died: the socket's first report only */
+  const ws2 = await join('bp_rep_died', 'Diedy');
+  const S2 = room.sessions.get(ws2);
+  const dev0 = async () => { const dd = await devPart(); return (dd && dd['1|' + KEY + '|full|none|5122'] && dd['1|' + KEY + '|full|none|5122'].died) || [0, 0, 0]; };
+  const before = (await dev0()).slice();
+  clock += REPORT.PACE_MS; room._reportTake(S2, { ...PHONE(), died: ['killed', 200, 9, 0, 'ember'] }, clock);
+  clock += REPORT.PACE_MS; room._reportTake(S2, { ...PHONE(), died: ['killed', 200, 9, 0, 'ember'] }, clock);
+  const after = await dev0();
+  check('11.2 `died` counts once a socket: its first report, not a second that says it again', after[1] - before[1] === 1, { before, after });
+  /* the phone: a thaw, and the other tab's switch */
+  const ph = readFileSync(new URL('../../src/debug/report.js', import.meta.url), 'utf8');
+  check('11.3 a poll far past its time (a page frozen with no word) marks a return and takes the spell off the seen time; `pageshow` marks one too',
+    /const late = now - a\.lastPoll - REPORT\.POLL_MS;\s*if \(late > REPORT\.THAW_MS && _visSince != null\) \{\s*_markShow\(_lastPollP \+ REPORT\.POLL_MS\);\s*a\.seenMs -= /.test(ph)
+      && /addEventListener\('pageshow', _onVisibility\)/.test(ph));
+  check('11.4 switched off anywhere (another tab\'s switch), the open report is thrown away at the poll', /if \(!reportOn\(\)\) \{ _a = null; return; \}/.test(ph));
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);
