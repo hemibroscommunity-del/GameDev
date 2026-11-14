@@ -1633,6 +1633,8 @@ point of damage.
 **Related:** §35 (a test that copies a value out of the game), §37 (measuring
 a drawing against the box that defines it).
 
+Held by: server/test/mirror-audit.test.mjs (tag 5322).
+
 ---
 
 ## §44 — Asking a moving value about a past event (v2.3.2261)
@@ -3380,6 +3382,8 @@ which is the desktop path.
 Related: §61 and §66 (a measurement taken in a state that cannot show the
 defect) — the first cut of the harness seeded `src:'tap'` by hand and so
 could only ever exercise the one path that worked.
+
+Held by: tools/guards/traps-fight.test.mjs (tag 5322).
 
 ## 80. A control run that still contains the fix (v2.3.2545)
 
@@ -7600,6 +7604,8 @@ every shot: the bow rows alone 49 of 49 checks, then the full run 128 of 129,
 its one miss a staff bolt into Frost Ridge's rock ridge, which the check now
 asks about at the boots (Frost Ridge again: 33 of 33).
 
+Held by: tools/guards/traps-fight.test.mjs (tag 5322).
+
 ## 223. "Move it by the transform: a shift is a shift" (v2.3.3458)
 
 **Tempting:** the shadows were drawn through a filter, the shadow layer moved
@@ -8782,6 +8788,8 @@ the screen only while the opening is still its own.
 
 **Receipt:** server/test/zone-entry.test.mjs §1-2; the sweep's V11 and its
 reviews (storage branch `claude/state-machine-sweep`, never merged).
+
+Held by: tools/guards/traps-fight.test.mjs (tag 5322).
 
 ## 263. "A blocked player's new request: add an isBlockedId check to its handler" (v2.3.4365)
 

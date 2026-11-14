@@ -45,7 +45,7 @@ export function heldLines({ root, read }) {
   for (const dir of ['tools/guards', 'server/test']) {
     for (const f of readdirSync(join(root, dir)).sort()) if (f.endsWith('.test.mjs')) tests.push(dir + '/' + f);
   }
-  const headings = new Set([...read('docs/TRAPS.md').matchAll(/^## (\d+)\. /gm)].map((m) => m[1]));
+  const headings = new Set([...read('docs/TRAPS.md').matchAll(/^## (?:§(\d+) |(\d+)\. )/gm)].map((m) => m[1] || m[2]));   /* `## 216. ...` and `## §43 — ...`, both forms the file has */
   let names = null;
   const isFile = (f) => (f.includes('/') ? existsSync(join(root, f)) : (names || (names = namesUnder(root, ['src', 'server', 'tools']))).has(f));
   const out = [];
