@@ -1,6 +1,6 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: #1822 (PR 1), #1820 (PR 3): merged; #1826 (PR 6), #1829 (PR 5), PR 2 tag 5182: ready
+prs: #1822 (PR 1), #1820 (PR 3): merged; #1826 (PR 6), #1829 (PR 5), #1831 (PR 2): ready
 state: ready
 
 ## Done
@@ -14,7 +14,7 @@ state: ready
   harvest 1.86, cook 1.59 (quest, sale, local 1); no honest refusal.
 - PR 5 (5185, #1829): the action door, `src/game/actions.js` (180 rows); the
   shim reads them; guard `action-door.test`, census 203 sends, 25 fetches.
-- PR 2 (5182): columns `fight`, `placed`, `muted`, `pace`, `watch`, `flag`;
+- PR 2 (5182, #1831): columns `fight`, `placed`, `muted`, `pace`, `watch`, `flag`;
   FIGHT_LOCK, FIGHT_OPEN, ROOM_/RELAY_PLACED, MUTABLE_RELAY_TYPES,
   SOCIAL.TYPES, the watched hooks made from them. Worker +137 KB (+19 gz).
 
