@@ -172,6 +172,7 @@ export const WIRE_HTTP = [
          'rpgData.clanTag': 'claim' },
     absent: 'dropped: no playerId writes nothing and still answers ok; default: a missing column is 0, \'Anon\', the default colour, level 1, no look',
     bad: ['taken'], answer: 'http', note: ['comes in: another of the worker\'s objects (internal)',
+      'ap (v2.3.5483, card PW): the room\'s own count (ps.achievementPoints), never the blob\'s: no trust; the blob\'s rpgData.ap only from a report with none',
       'powerIndex (v2.3.5481, card PW): the room\'s own (power.js powerOf, from the build it holds), never a phone\'s: no trust; absent under `power: false`, and the row then has none'] },
   { name: 'http:/api/leaderboard/gone', dir: 'in', at: 'leaderboard.js markGone', wayIn: 'room',
     envelope: 'http', phase: ['none checked'], mayStart: 'system', doesWhat: ['own'], reqId: 'state',
