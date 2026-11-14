@@ -5,7 +5,7 @@ state: ready
 
 ## Done
 - Sitting 3, `main` at 67a6f3d, 18 open PRs green. The 5 below on `main`:
-  precheck 0 FAIL, build green, `questline` (running). `/repo-review`, 7 angles:
+  precheck 0 FAIL, build green, questline 187 of 187. `/repo-review`, 7 angles:
   N1, N2, B1, A1 to A4, E4. Ticked 8.0 (card W's four are merged).
 
 ## The list: merge in this order, in one sitting, each "Create a merge commit"
