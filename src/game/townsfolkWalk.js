@@ -17,8 +17,21 @@
  *     stops when you come within FOLK_GIVER_NEAR;
  *   - a KEEPER or a LOCAL walks a short loop from his own spot, by his door,
  *     and pauses at a stop, now and then to WORK there (`work`: the mining
- *     swing for a hammer, a cleaver, an axe, a gavel or a hoe; the pickup for
- *     coins, a gem, a sign, a parcel or luggage; the cast by the river).
+ *     swing for the blacksmith's hammer; the pickup for coins, a gem, a sign,
+ *     a parcel, luggage, a lot, a plank or the cook's counter; the cast by
+ *     the river).
+ *   - v2.3.5460: EACH WORKS WITH HIS OWN TOOL.  The owner, 2026-11-14: "make
+ *     sure all NPCs do things that match their characters. Like chef blaze
+ *     should cook, not hammer like an anvil".  The mining swing's PICKAXE is
+ *     drawn into its body sheet (and the rock under its boots), so the chef's
+ *     cleaver, Gavel Greg's gavel, the woodworker's axe and the farmer's hoe
+ *     were all one pickaxe.  Now only the blacksmith at his forge swings it
+ *     (the player's own smithing is that very swing: effectsRenderer
+ *     _updateSmithing); the cook, the woodworker and Gavel Greg take the
+ *     pickup, empty-handed, and the farmer stands, until their own poses come
+ *     (card TF PR 2: the pan, the axe, the hoe).  Who may hold
+ *     which tool is townsfolk-walk.test §2j's table; every townsperson's
+ *     day, today's and what would make it right, is docs/specs/townsfolk-work.md.
  *   Every stop is an OFFSET from his own spot ([dx, dy], +y south), never a
  *   Wheel coordinate; tools/world/test-world-core.mjs walks every leg of every
  *   loop against the town's footprints and ground, on both Wheels, so nobody
@@ -98,22 +111,28 @@ export const FOLK_DAYS = Object.freeze({
   'Blacksmith Bro': { tether: true, stops: [[0, 0, 8000, 'mine'], [18, 8, 4000], [0, 0, 7000, 'mine'], [-16, 10, 4000]] },
   /* the store's shelves: the pickup */
   'Diego': { tether: true, stops: [[0, 0, 7000], [14, 8, 5000, 'pickup'], [0, 0, 6000], [-12, 10, 4000]] },
-  /* chopping at his bench: the swing */
-  'Woodworker Bro': { tether: true, stops: [[0, 0, 8000, 'mine'], [16, 8, 4000], [0, 0, 6000, 'mine'], [-14, 8, 4000]] },
-  /* hoeing by the Feed & Seed: the swing */
-  'Farmer Bro': { tether: true, stops: [[0, 0, 6000], [18, 10, 8000, 'mine'], [0, 0, 5000], [-12, 12, 4000]] },
+  /* at his bench, a plank off the pile: the pickup (v2.3.5460: it was the
+     mining swing, his axe a pickaxe; the chop is card TF PR 2's) */
+  'Woodworker Bro': { tether: true, stops: [[0, 0, 8000, 'pickup'], [16, 8, 4000], [0, 0, 6000, 'pickup'], [-14, 8, 4000]] },
+  /* by the Feed & Seed, looking over the crop: he stands (v2.3.5460: it was
+     the mining swing, his hoe a pickaxe.  Not the pickup: his wide eyes
+     ('wtf') have a blank on the pickup's sheet and none on the swing's
+     (rendering/eyeBlankMask.json), so the pickup would bake a copy of the
+     sheet for his look behind the loading screen, new memory; the hoe, the
+     can and the kneel are card TF PR 2's) */
+  'Farmer Bro': { tether: true, stops: [[0, 0, 6000], [18, 10, 8000], [0, 0, 5000], [-12, 12, 4000]] },
   /* the keepers: a short loop by the door */
   'Ace': { stops: [[0, 0, 7000], [-120, 40, 5000], [-40, 90, 4000], [60, 40, 5000]] },
   'Sterling': { stops: [[0, 0, 6000], [-150, 50, 5000], [-70, 90, 7000, 'pickup'], [60, 40, 4000]] },   /* stacking his coins */
   'Slim': { stops: [[0, 0, 7000], [120, 40, 5000], [60, 90, 5000], [-80, 50, 4000]] },
-  'Chef Blaze': { stops: [[0, 0, 8000, 'mine'], [140, 30, 4000], [60, 80, 4000], [-60, 40, 5000]] },   /* his cleaver */
+  'Chef Blaze': { stops: [[0, 0, 8000, 'pickup'], [140, 30, 4000], [60, 80, 4000], [-60, 40, 5000]] },   /* at his counter (v2.3.5460: was the mining swing, "hammer like an anvil"; the pan is card TF PR 2's) */
   'Glint': { stops: [[0, 0, 6000], [120, 30, 6000, 'pickup'], [40, 60, 4000], [-110, 30, 5000]] },   /* a gem held up to the light */
   'Postmaster Pete': { stops: [[0, 0, 7000, 'pickup'], [-120, 60, 4000], [-40, 120, 5000], [80, 60, 4000]] },   /* a parcel */
   'Deed Dave': { stops: [[0, 0, 6000], [-150, 40, 7000, 'pickup'], [-70, 60, 4000], [110, 30, 5000]] },   /* planting a SOLD sign */
   'Benny': { stops: [[0, 0, 6000], [140, 40, 5000, 'pickup'], [60, 110, 4000], [-80, 40, 5000]] },   /* luggage */
   'Guildmaster Gary': { stops: [[0, 0, 6000], [140, 60, 5000], [40, 140, 6000], [-80, 60, 4000]] },
   'Sheriff Buck': { stops: [[0, 0, 5000], [160, 50, 4000], [160, 140, 4000], [-40, 140, 4000], [-60, 40, 4000]] },   /* his beat */
-  'Gavel Greg': { stops: [[0, 0, 8000, 'mine'], [-140, 30, 5000], [-60, 80, 5000], [50, 10, 4000]] },   /* the gavel */
+  'Gavel Greg': { stops: [[0, 0, 8000, 'pickup'], [-140, 30, 5000], [-60, 80, 5000], [50, 10, 4000]] },   /* holding up a lot (v2.3.5460: was the mining swing, a pickaxe for a gavel; a gavel's bang is new art) */
   /* the locals */
   'Old Man Reel': { stops: [[0, 0, 10000, 'fish'], [30, -110, 6000], [10, -50, 3000]] },   /* by the river */
   'Bean': { stops: [[0, 0, 5000], [-100, -40, 4000], [-160, 60, 5000], [-40, 120, 4000]] },   /* the square, toward where you arrive (on an upright phone's screen there) */

@@ -301,7 +301,7 @@ const LIST = {
   /* v2.3.5015: the masked bake's worker fetches its sheets of colour numbers itself */
   'src/rendering/maskedBakeWorker.js': { fetchSheet: ['limit', 1, "a sheet of colour numbers for the masked bake's worker: cut after 4 s (SHEET_FETCH_MS) or on any failure, and the page then sends its bytes itself, as before (lookArmour.js lookSheetFetchFailed): the page's road is the retry"],
     /* v2.3.5043: a sheet the page holds as an image, read by its address for the bake's inputs */
-    sheetOf: ['limit', 1, "a sheet for the masked bake's inputs, read by its address (entityRenderer.js _frameInput): cut after 4 s (SHEET_URL_MS) or on any failure, answered `urlFail`, and the page cuts that address's frames itself from then on, as before: the page's road is the retry"] },
+    sheetOf: ['limit', 1, "a sheet for the masked bake's inputs, read by its address (bakeByAddress.js frameInput): cut after 4 s (SHEET_URL_MS, its decode too since v2.3.5050) or on any failure, answered `urlFail`, and the page cuts that address's frames itself from then on, as before: the page's road is the retry"] },
   'src/rendering/bodyBakeWorker.js': { loadBitmap: ['limit', 1, "a body sheet for the body bake's worker: bounded by the page's 20 s (bodyBake.js WORKER_MS), then the page bakes it itself, with its retries and later rounds"] },
   'src/rendering/keepAsImage.js': { keepAsImage: ['local', 1, "a canvas's own pixels as an <img> (a blob URL)"] },
   'src/rendering/levelUpBurstPreload.js': { warmPortrait: ['warm', 1, 'the level-up portrait, warmed; the <img> loads it at use'] },
