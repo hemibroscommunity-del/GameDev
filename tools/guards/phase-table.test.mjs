@@ -90,8 +90,10 @@ import { pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import { ROOT } from './lib/systems.mjs';
 
-/* Set 2026-11-14 at its first count.  Only the gatekeeper lowers it. */
-export const TODO_LINE = 31;
+/* Set 2026-11-14 at its first count.  Only the gatekeeper lowers it.
+   v2.3.5371 (the gatekeeper, sitting 14, main 1cce0b2): 31 -> 30, the
+   count since card L's trade door (#1809). */
+export const TODO_LINE = 30;
 
 /* the machines every side must have a row for: SHAPES part 5's names and
    step 5.3b's list (the plan's own `dungeon`, `connection`, `loading`,
@@ -241,12 +243,16 @@ const DOOR_SUITES = Object.freeze({
         .map((file) => ({ file, text: 'this.state = state', why: 'the Durable Object\'s own handle' })),
       { file: 'server/src/dungeon.js', text: 'inst.state = ', why: 'a dungeon instance: its own machine (the `dungeon` row)' },
     ] },
+  /* v2.3.5222: card O's ladder (the governor's rung, drawLanes.js `LANE._rung`) -- the planning session's word, sitting 12:
+     the rung is a property of a module object, so the tree reads its writes as every other door's */
+  'server/test/frame-pacer.test.mjs': { field: '_rung', fn: 'setRung', holds: '§17: setRung is called by the governor alone (framePacer.js), and the rung is written in setRung and the tests\' reset, nowhere else',
+    prop: '_rung', besides: [{ file: 'src/game/drawLanes.js', text: 'LANE._rung = ROW', why: 'the tests\' reset (_resetLanes), never the page\'s' }] },
   /* v2.3.5211: the duel door */
   'server/test/duel-door.test.mjs': { field: 'd.status', fn: '_duelTo', holds: '§2: no .status written in server/src but in _duelTo and NOT_A_DUEL\'s',
     prop: 'status', besides: [
       { file: 'server/src/alliance.js', text: 'w.status = ', why: 'an alliance war\'s end, its own record' },
       { file: 'server/src/clans.js', text: 'war.status = ', why: 'a clan war\'s end, its own record' },
-      { file: 'server/src/gladiator.js', text: 't.status = ', why: 'an arena tournament: the `arena` row' },
+      { file: 'server/src/gladiator.js', text: ' t.status = ', why: 'an arena tournament: the `arena` row (the space before `t` keeps out `mt.status =`, the gatekeeper\'s low)' },
       { file: 'server/src/arena.js', text: 'tournament.status = ', why: 'the old Arena object\'s tournament (kept for its binding)' },
     ] },
   /* v2.3.5212: the party door -- a Map, so its set / delete / clear are

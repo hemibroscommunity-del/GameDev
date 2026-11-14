@@ -64,6 +64,22 @@
  * `_daybookOff`): nothing is added, written or pruned; what is stored stays;
  * the reader says the book is off.
  *
+ * v2.3.5287: THE STORAGE'S SIZE (grand plan step 4.7, card R PR 8), the part
+ * `size`: `{ b, n }`, the room's whole storage in bytes as its own SQLite
+ * file reports it (`state.storage.sql.databaseSize`, a number the storage
+ * keeps: it reads no row), summed, and how many times it was read, so the
+ * reader takes the day's size as b / n (the book only adds: a size is not a
+ * sum, so two readings in one day -- a deploy between them -- are kept as
+ * two).  Read ONCE a worker's life a UTC day, at a put the book is already
+ * making for today (storeSizeRide, at the head of putDays): it rides that
+ * put (RIDES) and starts none, so it costs no row.  A size by prefix would
+ * read every row: not built.  Its kill switch `storesize: false` in the live
+ * flags (storeSizeOff): nothing read, nothing added.  DAYBOOK.V stays 1: a
+ * worker from before this reads a day with `size` as its own parts and
+ * leaves `size` out of its next put of that day (one day's reading lost, read
+ * again the next day), where a bump would have it drop its OWN counts for the
+ * day (bookNormalize: a newer day is left whole, its sums dropped).
+ *
  * THE READ: bookRead(room, n) -- the newest `n` days, stored plus what is
  * counted and not yet written.  The owner's card (card E, PR 12) and card A's
  * one admin route read the book through it.
@@ -75,14 +91,18 @@ export const DAYBOOK = Object.freeze({
   V: 1,
   PREFIX: 'daybook:',
   /* the parts, a closed list: a part not here is refused */
-  PARTS: Object.freeze(['econ', 'room', 'dev', 'speed']),
+  PARTS: Object.freeze(['econ', 'room', 'dev', 'speed',
+    'size',   /* v2.3.5287 (card R PR 8): the storage's size, riding */
+  ]),
   /* v2.3.5085 (the gatekeeper's sitting 8): the parts whose adds never start
      a put of their own: they RIDE the others' paced puts and the last one
      out's (roomrow.js _roomRowLastOut).  The `econ` part is added at every
      gold and bag change -- a new character's start gold at its join among
      them -- so its first add wrote the book at once at a room's wake, a
      write the pace did not count on.  Riding, it writes no row of its own */
-  RIDES: Object.freeze(['econ']),
+  RIDES: Object.freeze(['econ',
+    'size',   /* v2.3.5287: read at a put already being made, never a put of its own */
+  ]),
   /* v2.3.5080: one put every five minutes at most -- 12 rows an hour the room
      is awake and counting, 288 on a day it never sleeps (the free plan's day
      is 100,000), and at most five minutes of counts lost to a restart */
@@ -274,7 +294,7 @@ export function bookNormalize(raw, day) {
 
 /** The book's memory on the room: the sums of each day not yet written. */
 function mem(room) {
-  if (!room._daybook) room._daybook = { days: new Map(), lastPut: 0, putting: null, prunedDay: null, pruneAfter: null };
+  if (!room._daybook) room._daybook = { days: new Map(), lastPut: 0, putting: null, prunedDay: null, pruneAfter: null, sizedDay: null /* v2.3.5287 */ };
   return room._daybook;
 }
 
@@ -344,12 +364,46 @@ export async function bookPut(room, now) {
   return b.putting;
 }
 
+/** v2.3.5287: `storesize: false` in the live flags (the size is not read). */
+export function storeSizeOff(room) {
+  const f = room && room._liveFlags;
+  return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'storesize') && !f.storesize);
+}
+
+/** v2.3.5287: THE STORAGE'S SIZE, once a worker's life a UTC day, into
+ *  today's `size` part -- only when today's sums are about to be written
+ *  (the put it rides), so it never makes a write of its own.  The storage's
+ *  own number (`sql.databaseSize`: the SQLite file's bytes, no row read); a
+ *  storage with none (a test's, a key-value one) or one that throws adds
+ *  nothing, and is not asked again that day.  Returns the size added, or
+ *  null. */
+export function storeSizeRide(room) {
+  try {
+    /* v2.3.5287: the book's own switch asked here directly (not through
+       `off`), so the switch table's scan sees that `storesize` turns off with
+       `daybook` (its row's need: switches.test §11) */
+    if (!room || (typeof room._daybookOff === 'function' && room._daybookOff()) || storeSizeOff(room)) return null;
+    const b = mem(room);
+    const today = bookDay(roomNow());
+    if (b.sizedDay === today) return null;
+    const d = b.days.get(today);
+    if (!d || DAYBOOK.PARTS.every((p) => !Object.keys(d.parts[p]).length)) return null;   /* nothing of today's going out: wait for a put that is */
+    b.sizedDay = today;   /* asked once a day, whatever it answers */
+    const sql = room.state && room.state.storage ? room.state.storage.sql : null;
+    const size = sql ? sql.databaseSize : undefined;
+    if (!numOk(size) || size < 0) return null;
+    const bytes = Math.floor(size);
+    return bookAdd(room, 'size', { b: bytes, n: 1 }) ? bytes : null;
+  } catch (e) { return null; }   /* a count must never stop what it counts */
+}
+
 /* The write itself: every day with sums waiting, oldest first; then one page
    of the prune.  Only ever run as `b.putting` (one at a time). */
 async function putDays(room, now) {
   if (off(room)) return;   /* v2.3.5085: switched off, nothing written or pruned */
   const b = mem(room);
   now = callerNow(now);
+  storeSizeRide(room);   /* v2.3.5287: the storage's size rides today's put, once a day */
   const days = [...b.days.keys()].sort();
   for (const day of days) {
     const taken = b.days.get(day);

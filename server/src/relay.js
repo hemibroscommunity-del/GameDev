@@ -33,42 +33,17 @@
  * privileged type the worker drops on purpose.
  */
 
+import { RELAY_TYPES } from './wire/lists.js';
+
 export const RELAY = Object.freeze({
   /* The broadcasts an honest phone sends that the router has no case for,
      so they reach the default branch -- each drawn by the others' pages
      (gameEvents.js processGameEvent) and several settled on the way through
-     (the trade, duel and threat intercepts, the clan invite's record). */
-  TYPES: Object.freeze(new Set([
-    /* v2.3.4911: 'arena_bet' is gone: the page-only bet that sent it went
-       (PartyPanel), every phone already ignored it (gameEvents.js), and a
-       stake is the worker's own (arena_sponsor) */
-    'campfire_lit',           /* BroTown: a fire you lit, drawn where it burns */
-    'campfire_out',           /* v2.3.4942: wsClient: that fire, refused by the worker, put out (fireRefuse.js) */
-    'chat',                   /* chat.js, ChatBubble: room chat (_sanitizeChatRelay) */
-    'clan_invite',            /* InspectPlayerPanel: _observeClanInvite records it */
-    'duel_accept',            /* DuelRequestPanel: _interceptDuel settles it */
-    'duel_decline',           /* DuelRequestPanel: _interceptDuel */
-    'duel_request',           /* an older phone's plain duel: _interceptDuel settles it */
-    'duel_wager_request',     /* InspectPlayerPanel: _interceptDuel */
-    'emote',                  /* interactions.js */
-    'gather_node',            /* BroTown: the tree you chop, for a watcher */
-    'monster_dmg_at',         /* monsterCombat/projectiles: a local monster's number (no worker monsters) */
-    'player_died_to_monster', /* your knockout, drawn on the others' screens */
-    'player_dodge',           /* dodge.js, abilities.js: a roll, a lunge, a dash */
-    'player_hurt_by_monster', /* monsterCombat/projectiles: a local monster's hit (no worker monsters) */
-    'player_jump',            /* jumpActions.js */
-    'player_projectile',      /* monsterCombat, dodge, playerActions: an arrow or bolt */
-    'player_respawned',       /* your corpse cleared */
-    'player_shield',          /* shieldToggle, playerActions: your guard up or down */
-    'player_swing',           /* monsterCombat, abilities, playerActions: a swing */
-    'pvp_confirmed',          /* gameEvents: a hit between players, confirmed to the attacker */
-    'pvp_threat',             /* InspectPlayerPanel: _interceptThreat settles it */
-    'stunned',                /* gameEvents: a stun, told to the one who caused it */
-    'threat_response',        /* ThreatIncomingPanel: _interceptThreat */
-    'trade_accept',           /* IncomingTradePanel: _interceptTrade settles it */
-    'trade_offer',            /* TradePanel: _interceptTrade records it */
-    'trade_reject',           /* IncomingTradePanel */
-  ])),
+     (the trade, duel and threat intercepts, the clan invite's record).
+     v2.3.5181: MADE FROM THE WIRE TABLE (server/src/wire/lists.js; card K):
+     every row of server/src/wire/relays.js, where the comment above a row
+     says which page sends it.  A new relay is a row there, nothing here. */
+  TYPES: Object.freeze(RELAY_TYPES),
   /* the payload's own names for the sender's id, and for the sender's name */
   ID_KEYS: Object.freeze(['from', 'playerId']),
   NAME_KEYS: Object.freeze(['fromName', 'playerName', 'name']),

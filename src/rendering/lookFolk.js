@@ -34,11 +34,19 @@ export function lookFolkOn() {
   return _wanted && !clientOff('lookfolk') && lookPaletteOn();
 }
 
+/** v2.3.5462: lookFolkAtLoad's half known before a renderer exists (the
+ *  address and the switches): a look set registered as its module loads
+ *  asks it, so a phone that draws nobody live never loads the trades'
+ *  figures (folkSkill.js; the gatekeeper's review, sitting 12). */
+export function lookFolkWantedAtLoad() {
+  return _wanted && lookPaletteWanted() && !clientOffAtLoad('lookfolk') && !clientOffAtLoad('lookpalette');
+}
+
 /** As the world loads: will the townsfolk be drawn live, so their
  *  photographs need not be loaded?  The last word this phone heard of both
  *  switches (clientOffAtLoad), the address, and a WebGL2 renderer. */
 export function lookFolkAtLoad() {
-  if (!_wanted || !lookPaletteWanted() || clientOffAtLoad('lookfolk') || clientOffAtLoad('lookpalette')) return false;
+  if (!lookFolkWantedAtLoad()) return false;
   const r = paletteRendererOf();
   return !!(r && r.context && r.context.webGLVersion === 2);
 }

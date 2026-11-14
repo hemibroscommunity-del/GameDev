@@ -36,12 +36,19 @@ controller**.
   then the shine, the shadows, the water, then the pixels). A rung lowers ONE
   knob ONE step. The rate's rung is on both axes: whichever takes it first
   lowers the rate. A steady lower rate comes before a softer picture (the
-  owner's call 16); the order is data, not code.
+  owner's call 16); the order is data, not code. v2.3.5225 (the gatekeeper's
+  sitting 12): the pixels are a **third axis**, after the chip's: a rung is
+  an axis's first n, so on the chip axis the rate could not come back while
+  a pixel rung waited for a veil. The governor tries them up last and steps
+  them only for a chip-bound phone (`docs/specs/pixel-budget.md`).
 - An **override** pins a knob, over the lane and the ladder (an off-ramp, or
   a fallback for a known bug). None yet: PR 8 moves the fallbacks into the
   table, PR 12 the off-ramps.
 - The **rung** (PR 2) is where the governor stands on the ladder: rungs taken
-  on each axis. Until PR 2 it is always the row.
+  on each axis. Until PR 2 it is always the row. v2.3.5224 (the gatekeeper's
+  sitting 11): a knob is **live** once its row marks it moved (`liveKnobs()`);
+  the governor walks only rungs that change a live knob, and `rungDepth`
+  counts only those (`docs/specs/frame-pacer.md`).
 
 ## The reader
 
@@ -111,7 +118,8 @@ so it deploys once for the card:
 
 - `drawLane`: `full`, `light`, `thirty` (`DRAW_LANES`), each its own cell;
 - `rung` (sent from PR 2): two whole numbers, the most rungs taken at once
-  and the seconds below the lane's row; summed beside the cell, never in it;
+  (v2.3.5224: rungs that change a live knob) and the seconds below the
+  lane's row; summed beside the cell, never in it;
 - `self` (sent from PR 14): names from `SELF_PROGRAMS`.
 
 `caps.report` 3 takes them (a cap that grows gates by its count, TRAPS §9).

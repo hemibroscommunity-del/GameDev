@@ -46,6 +46,11 @@
  *      lane is dropped; `reportlanes: false` advertises 2, drops a lane other
  *      than `full` and the two fields; the phone sends a lane but `full` only
  *      to 3.
+ *  14. v2.3.5222, THE GOVERNOR (card O PR 2): `late` by the pacer's one rule
+ *      (framePacer.js lateOver) on EVERY screen it knows -- at 60 and 30 now,
+ *      not only past 70 -- and `split` with it; absent where the refresh is
+ *      not known; the phone's `rung` (the most rungs taken, the seconds
+ *      below the row) goes to caps.report 3 alone.
  *
  * BREAK PROOF (rule 8), each tried by hand, 2026-11-14:
  *   2. report.js: drop `!HOLD_NAMES.includes(name) ||`          -> FAIL 2
@@ -67,6 +72,9 @@
  *      report.js _reportCap: `return this._reportLanesOff() ? 2 : 2;` -> FAIL 3, 13.1 (and 13.2)
  *      report.js reportSums: `if (true) {` for `if (lanes) {` (rung and self always) -> FAIL 13.4
  *      src/debug/report.js buildReport: `drawLane: drawLane(cls),`  -> FAIL 13.6
+ *  14. (v2.3.5222, tried 2026-11-14)
+ *      src/debug/report.js addFrames: `const judging = !!(pace && pace.refresh && pace.refresh < 14);` -> FAIL 14.1
+ *      src/debug/report.js buildReport: `if (true) r.rung = ...` for `if (takesLanes(_S)) r.rung = ...` -> FAIL 14.3
  */
 import { readFileSync } from 'node:fs';
 import { GameRoom } from '../src/index.js';
@@ -80,6 +88,7 @@ import { HOLD_NAMES as P_HOLDS } from '../../src/debug/holdNames.js';
 import { WHERE as P_WHERE, GAP_EDGES, takesReports, gapBin, whereOf, buildOf, addFrames, blankBins,
   SPEED_STEPS as P_STEPS, SPEED_MODELS, speedCardOf, bookTableText, takesSpeed, queueSpeedCard, takesLanes } from '../../src/debug/report.js';
 import { LANE_NAMES, PROGRAM_NAMES, ladderDepth } from '../../src/game/drawLanes.js';   /* v2.3.5221: card O's lanes */
+import { lateOver } from '../../src/game/framePacer.js';   /* v2.3.5222: the pacer's one rule */
 
 let failures = 0, passes = 0;
 function check(name, cond, detail) {
@@ -520,6 +529,28 @@ const A = await join('bp_rep_a', 'Repo');
     takesLanes({ _serverCaps: { report: 3 } }) && !takesLanes({ _serverCaps: { report: 2 } }) && !takesLanes({ _serverCaps: {} }) && !takesLanes(null));
   const ph = readFileSync(new URL('../../src/debug/report.js', import.meta.url), 'utf8');
   check('13.6 ...and `full`, as every page before lanes, to a worker below 3', /drawLane: takesLanes\(_S\) \? drawLane\(cls\) : 'full'/.test(ph));
+}
+
+/* ── 14. THE GOVERNOR'S ONE VERDICT (v2.3.5222) ── */
+{
+  const frames = (gaps) => { let t = 1000; return gaps.map((g) => { t += g; return { t, totalMs: g, workMs: 4, simMs: 1, tileMs: 1, entityMs: 1, effectsMs: 0, fpsMs: 0, appMs: 1 }; }); };
+  /* a 60 screen: frames of one refresh, and of two (33 ms: late), and of three */
+  const a60 = blankBins(0);
+  addFrames(a60, frames([16.7, 16.7, 33.3, 16.7, 50, 16.7]), 0, [], { refresh: 1000 / 60, every: 1 });
+  check('14.1 at 60 a second the report has `late` now: the frames more than half a refresh past theirs (two of six), by the pacer\'s rule',
+    a60.judged === 6 && a60.late === 2 && lateOver(1000 / 60, 1) === 25, { judged: a60.judged, late: a60.late });
+  check('14.1 ...and its `split` with it (the late frames\' own work, and the rest outside)', a60.split[0] === 2 && a60.split[6] === 33.3 + 50 - 8, a60.split);
+  const a30 = blankBins(0);
+  addFrames(a30, frames([33.3, 66.7, 33.3]), 0, [], { refresh: 1000 / 30, every: 1 });
+  check('14.2 at 30 a second too (Low Power Mode): a missed refresh is late', a30.judged === 3 && a30.late === 1, { judged: a30.judged, late: a30.late });
+  const ax = blankBins(0);
+  addFrames(ax, frames([400, 600, 500]), 0, [], { refresh: null, every: 1 });
+  check('14.2 ...and absent where the pacer knows no refresh (the QA box\'s few frames a second)', ax.judged === 0 && ax.drawn === 3);
+  const ph = readFileSync(new URL('../../src/debug/report.js', import.meta.url), 'utf8');
+  check('14.1 one rule, never a copy: the report imports the pacer\'s lateOver and writes no lateness of its own',
+    /import \{ PACE_BREAK_MS, lateOver \} from '\.\.\/game\/framePacer\.js';/.test(ph) && /const lateMs = judging \? lateOver\(pace\.refresh, pace\.every \|\| 1\) : Infinity;/.test(ph) && !/refresh \/ 2/.test(ph));
+  check('14.3 the governor\'s `rung` goes to a worker that takes lanes alone: [the most rungs taken, the seconds seen below the row]',
+    /if \(takesLanes\(_S\)\) r\.rung = \[_w\(a\.rungMax\), Math\.min\(secs, _w\(a\.belowMs \/ 1000\)\)\];/.test(ph) && /if \(depth > 0\) a\.belowMs \+= seenD;/.test(ph) && blankBins(0).rungMax === 0);
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);

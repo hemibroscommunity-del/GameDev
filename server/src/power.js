@@ -155,7 +155,7 @@ export function controlBuild() {
   const C = POWER.CONTROL;
   const p3 = { sk: {} };
   for (const cat of PROG3.SKILLS) p3.sk[cat] = { level: C.sk[cat], xp: 0 };
-  prog3RespecPoints(p3, false);
+  prog3RespecPoints(p3, false, 'power_control');   /* v2.3.5283: the skill points' door (a made-up build: never a player's) */
   let spent = 0;
   for (const [k, n] of Object.entries(C.shared)) { p3.alloc[k] = n; spent += n; }
   p3.shared = Math.max(0, p3.shared - spent);
