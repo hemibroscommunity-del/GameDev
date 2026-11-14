@@ -388,3 +388,22 @@ its switch.
 `main` (effectsRenderer 9870, entityRenderer 8961, BroTown 8371, ...):
 nothing to lower. The switch table's unlisted line (113, 112 found on
 `main`) is left to card T's #1816, which takes it to 0.
+
+## The whole
+
+Rehearsed with `tools/dev/gatekeeper.mjs` from `main` 9fd5e580:
+
+1. #1808, #1811, #1803, #1809, #1805, #1806, #1810, #1798 (tree
+   fc52b43a): precheck 0 FAIL (2 WARN), build, questline 187 of 187.
+2. The list with #1813, #1812 (14a8c24) and #1815 (tree 096d6e6b):
+   precheck 0 FAIL (3 WARN), build; its questline stopped by the
+   gatekeeper when #1812 was held (its FAIL is the stop, not a check).
+3. **The list as written, without this branch** (#1808, #1811, #1813,
+   #1803, #1809, #1798, #1815, #1805, #1806, #1810; tree 51656f8b):
+   precheck 0 FAIL (2 WARN), build, questline 187 of 187.
+4. **The list with this branch last** (documents only): precheck and
+   build on the whole; its tree is in the list sent to the planning
+   session (the file cannot carry its own tree).
+
+Each listed head's `test` is green on GitHub; each base is `main`; ONE
+merge base each, step by step down the list.

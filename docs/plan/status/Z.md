@@ -1,13 +1,13 @@
 card: Z
 branch: claude/plan-z-sitting-12
-prs: #PRNUM, tag 5369, the last line of the list (ready)
+prs: #1818, tag 5369, the last line of the list (ready)
 state: ready
 
 ## Done
 - Sitting 12, `main` 9fd5e580: the list rehearsed in its order (tree
-  TREE): precheck 0 FAIL, build, questline 187/187; each base `main`,
-  ONE merge base step by step. Review: `census/review-z12.md`. 4.5 and
-  10.4 ticked; notes on 2.1, 5.3, 8.1.
+  51656f8b, this branch aside): precheck 0 FAIL, build, questline
+  187/187; each base `main`, ONE merge base step by step. Review:
+  `census/review-z12.md`. 4.5 and 10.4 ticked; notes on 2.1, 5.3, 8.1.
 
 ## The list: merge in this order, in one sitting, each "Create a merge commit"
 1 #1808 (Z) · 2 #1811 (E) · 3 #1813 (K, R) · 4 #1803 · 5 #1809 (L) ·
