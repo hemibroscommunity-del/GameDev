@@ -27,8 +27,8 @@ state: ready
   (a mire wisp), mp-hitsound.mjs (6), race (Lil Bro's start, his jog cells),
   desklunge (1 to 4 of 12 by run), bowprops 3 (the Town Hall takes no arrow),
   alliance (16, 14, 9 of 16 by run: the typed name or the war's tap lost),
-  fishvariants (4a-5: no Inspect on the card; 6c by run: healed before Eat).
-- bodytake.js ~94 cites a pose row that is none; session.phase: the scan's.
+  fishvariants (4a-5: no Inspect on the card; 6c by run: healed before Eat),
+  moresounds (setup and 10 every run; 8b, 9a by run: other cues heard).
 - Dead: S._shieldStamina, S.shieldActive, S._iceAttack; monsterCombat.js's
   own respawn (!S._serverMonsters).
 
