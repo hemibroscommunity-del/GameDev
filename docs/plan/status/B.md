@@ -1,25 +1,24 @@
 card: B
-branch: claude/plan-b-3-system-map (one branch a PR, each begun from the one before: -1- to -8-)
-prs: #1685 (ready), #1687 (ready), PR 3 system map (working)
+branch: claude/plan-b-4-tests-by-system (one branch a PR, each begun from the one before: -1- to -8-)
+prs: #1685 (ready), #1687 (ready), #1689 (ready), PR 4 (working)
 state: working
 
 ## Done
-- PR 1 (5100, #1685): a scenario is a file. `old-map.test` reads the files
-  (a scratch `mp-zzz.mjs` with no world -> FAIL 1), refuses a file a table
-  line hides (`mp-landview.mjs` -> FAIL 5, `run.mjs` too); `run.mjs` with
-  no name runs the unlisted files; `rails` takes precheck's rule;
-  `mp-topaudit` plays the world: 5 of 6 green, 1 red the game's (Found).
+- PR 1 (5100, #1685): a scenario is a file (`old-map.test` reads files,
+  refuses a hidden file); `mp-topaudit` on the world, 5/6, 1 red (Found).
 
 - PR 2 (5101, #1687): the four lines guard, rules pinned in
   `tools/guards/lib/fourLines.mjs` (esbuild; GitHub has no @babel): 9,871
   (`effectsRenderer.js`), 7,801 (`BroTown`), 5 cycles over 29 files, 114.
 
+- PR 3 (5102, #1689): the system map, `tools/guards/lib/systems.mjs`, 31
+  systems, `unsorted` 11; `docs/SYSTEMS.md` says the rules only.
+
 ## Next
-- PR 3 (5102): the system map, `tools/guards/lib/systems.mjs` (31 systems,
-  1,050 files, `unsorted` 11, 17 doors), `docs/SYSTEMS.md` made from it
-  (the rules only, so a new test or file elsewhere never stales it;
-  `--list <system>` prints today's files, tests, specs, traps), its guard
-  `systems.test.mjs`. Card U: read the names in `SYSTEMS`.
+- PR 4 (5103): `tools/guards/lib/filesOf.mjs` (`filesOf`, `readSystem`,
+  `findIn`); the census of suites naming a big file by path (222 pairs,
+  117 suites, `lib/bigFileSuitesKnown.mjs`, `--write` only removes); guard
+  `tests-by-system.test.mjs`. Card U can start after PRs 3 and 4.
 
 ## Found
 - `mp-topaudit` red, the GAME's (suspected): at a faked 59 px top inset the
