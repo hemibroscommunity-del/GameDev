@@ -133,6 +133,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 2 and 3. each one: his size, his spot, his cell, his look ── */
     const sized = [], tells = [];
+    /* v2.3.5421 (card J2): drawn live, his height is his facing's (a bro is
+       taller turned three-quarters than square on): every one turned south,
+       as the photographs were taken, through the game's own QA lever
+       (lookFolk.js __btLookFolkFace, mp-lookfolk's facings); their own
+       again after check 3 */
+    const faced = await P.page.evaluate(() => typeof window.__btLookFolkFace === 'function' ? window.__btLookFolkFace('south') : null);
     for (const n of cast) {
       /* beside him, not in front: your own figure and plate stay out of his
          box, and Diego's drawer (90 px) stays shut */
@@ -142,21 +148,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await H.closeNpcDialogue(P).catch(() => {});
       await P.page.waitForTimeout(500);
       await cameraStill(P);
-      const d = await P.page.evaluate((nm) => {
+      /* v2.3.5421 (card J2): drawn live (v2.3.3809) he walks his day
+         (v2.3.4058): read him once he has stopped (a stand or his work, not
+         the jog), and his feet against where he stands NOW, not where the
+         cast was read */
+      const look = () => P.page.evaluate((nm) => {
         const S = window._gameState.current;
         const s = (window.__btNpcSprites ? window.__btNpcSprites() : []).find((q) => q.name === nm);
+        const here = (S.npcs || []).find((q) => q.name === nm);
         const c = document.querySelector('canvas'), r = c.getBoundingClientRect();
         if (!s || !S.camera) return null;
         const k = S._worldScaleX || 1;
         return { h: s.height, x: s.x, y: s.y, footY: s.footY, frame: s.frame, src: s.src, size: s.size, paintTop: s.paintTop,
+          live: !!s.live, pose: s.pose || null, nowY: here ? here.y : null,
           sx: r.left + (s.x - S.camera.x) * k, sy: r.top + (s.y - S.camera.y) * (S._worldScaleY || k), k };
       }, n.name);
+      let d = await look();
+      for (let i = 0; i < 20 && d && d.live && d.pose === 'jog'; i++) { await P.page.waitForTimeout(500); d = await look(); }
       const row = NPC_DATA.find((q) => q.name === n.name);
       const want = SIZE[n.name] || BRO;
       sized.push({ name: n.name, h: d && +d.h.toFixed(1), want: +want.toFixed(1), frame: d && d.frame,
         size: d && d.size, paintTop: d && d.paintTop != null ? +d.paintTop.toFixed(1) : null,
-        ok: !!d && Math.abs(d.h - want) < 0.6 && Math.abs(d.footY - n.y) < 1
-          && (!(row && row.walk) || d.frame === row.walk.stand) });
+        live: !!(d && d.live), pose: d && d.pose, rel: (want / BRO) * ((d && d.size) || 1),
+        feet: !!d && Math.abs(d.footY - (d.nowY != null ? d.nowY : n.y)) < 1,
+        /* the photographs' way (?lookfolk=0): his cell's own height and his
+           stand cell, as v2.3.3580 had them; live, judged across the cast
+           below */
+        ok: !!d && (d.live || (Math.abs(d.h - want) < 0.6 && (!(row && row.walk) || d.frame === row.walk.stand))) });
       const tag = n.name.toLowerCase().replace(/\s+/g, '-');
       if (d) {
         /* the figure's box on the screen: his cell's width a third either
@@ -172,14 +190,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
         }
       } else tells.push({ name: n.name, what: 'not drawn', count: 0, ok: false });
     }
-    rec.ok(`2. each is a bro's size, feet on his spot, a walker on his standing cell: ${sized.map((s) => `${s.name} ${s.h} (${s.want})${s.frame != null ? ' cell ' + s.frame : ''}`).join(', ')}`,
-      sized.length === cast.length && sized.every((s) => s.ok), sized);
+    await P.page.evaluate(() => { if (typeof window.__btLookFolkFace === 'function') window.__btLookFolkFace(null); });
+    /* v2.3.5421 (card J2): since v2.3.3809 (the owner's rule for the memory
+       work: ON by default, `?lookfolk=0` the photographs) each is drawn live
+       from his look as a player is (rendering/lookFolk.js), his size the
+       photographs' own table (entityRenderer _drawFolk: NPC_SCALE_MULT, the
+       mayor 10% over, times npcFigureSize).  His body's height then is a
+       player's in that pose, not a 256 px cell: so, standing and facing
+       south (above), each one's
+       height over his size is the SAME bro's (within 3% of the cast's
+       middle), the mayor 1.1 and Lil Bro 0.8 of it; one at his work (the
+       chef's pose) is drawn, feet on his spot, his height his pose's.  Red
+       on main since v2.3.3809: the TEST's (docs/plan/census/red.md row 6). */
+    const standing = sized.filter((s) => s.live && s.pose === 'stand' && s.h > 0);
+    const per = standing.map((s) => s.h / s.rel).sort((a, b) => a - b);
+    const mid = per.length ? per[Math.floor(per.length / 2)] : 0;
+    for (const s of sized) if (s.live) s.ok = s.ok && s.h > 0 && (s.pose !== 'stand' || Math.abs(s.h / s.rel - mid) <= mid * 0.03);
+    rec.ok(`2. each is a bro's size, feet on his spot, a walker on his standing cell (live: ${standing.length} standing, turned ${faced || 'their own way'}, a bro ${mid ? mid.toFixed(1) : '?'} px): ${sized.map((s) => `${s.name} ${s.h}${s.live ? ' ' + s.pose + ' x' + s.rel.toFixed(2) : ' (' + s.want + ')'}${!s.live && s.frame != null ? ' cell ' + s.frame : ''}`).join(', ')}`,
+      sized.length === cast.length && sized.every((s) => s.ok && s.feet) && (!sized.some((s) => s.live) || (standing.length >= 6 && faced === 'south')), sized);
     /* a grown Lil Bro would be painted ~1.08 of Diego's height (his
-       figure 196 picture px to Diego's 186): 0.8 of it is ~0.87 */
+       figure 196 picture px to Diego's 186): 0.8 of it is ~0.87.  Live
+       (v2.3.5421): his body drawn 0.8 of Diego's, both standing */
     const lil = sized.find((q) => q.name === 'Lil Bro'), dg = sized.find((q) => q.name === 'Diego');
-    const kid = lil && dg && lil.paintTop && dg.paintTop ? +(lil.paintTop / dg.paintTop).toFixed(3) : null;
-    rec.ok(`2b. Lil Bro is a child: figure size ${lil && lil.size}, painted ${lil && lil.paintTop} world px over his feet to Diego's ${dg && dg.paintTop} (${kid})`,
-      !!lil && lil.size === 0.8 && kid != null && kid > 0.8 && kid < 0.92, { lil, dg });
+    const both = !!(lil && dg && lil.live && dg.live && lil.pose === 'stand' && dg.pose === 'stand');
+    const kid = !lil || !dg ? null
+      : (both && dg.h ? +(lil.h / dg.h).toFixed(3) : (lil.paintTop && dg.paintTop ? +(lil.paintTop / dg.paintTop).toFixed(3) : null));
+    rec.ok(`2b. Lil Bro is a child: figure size ${lil && lil.size}, ${both ? `drawn ${lil.h} world px to Diego's ${dg.h}` : `painted ${lil && lil.paintTop} world px over his feet to Diego's ${dg && dg.paintTop}`} (${kid})`,
+      !!lil && lil.size === 0.8 && kid != null && (both ? (kid > 0.77 && kid < 0.83) : (kid > 0.8 && kid < 0.92)), { lil, dg });
     rec.ok(`3. each one's creator look is what is painted: ${tells.map((t) => `${t.name}'s ${t.what} ${t.count} px`).join(', ')}`,
       tells.length >= 6 && tells.every((t) => t.ok), tells);
 

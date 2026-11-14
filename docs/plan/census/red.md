@@ -121,6 +121,27 @@ changed on purpose under each; then section 6 crashes the run.
   `nmlsteps`, N inside the band the words name; outside No man's land, the
   band alone. Green alone 3 of 3 (41 of 41), `questline` green. Tag 5420.
 
+### 6. `mp-npclooks` 2 and 2b: the townsfolk are drawn live (the TEST; card J2)
+
+- Failing checks: "2. each is a bro's size, feet on his spot, a walker on
+  his standing cell" (heights 100.8 to 168.8 against the photographs' 150,
+  165 for the mayor) and "2b. Lil Bro is a child" (`paintTop` null).
+- The game moved on purpose: since v2.3.3809 (the owner's rule for the
+  memory work, on by default, `?lookfolk=0` the photographs) each
+  townsperson is drawn live from his look as a player is
+  (`src/rendering/lookFolk.js`, `entityRenderer.js` `_drawFolk`), his size
+  the photographs' own table times `npcFigureSize`. His height is then a
+  player's body in that pose and facing, not a 256 px cell, and there is no
+  cell or crop (`paintTop`). And since v2.3.4058 he walks his day, so his
+  feet are where he is NOW, not where the cast was read. Red with P's #1736
+  on and off alike: not P's. No bake is stale.
+- **Fix**: each one turned south through the game's QA lever
+  (`__btLookFolkFace`, as `mp-lookfolk`), read once he has stopped (not
+  the jog); standing, each one's height over his size is the same bro's
+  (within 3%: all 143.2 px, the mayor 1.1 and Lil Bro 0.8 of it); one at
+  his work is drawn, feet on his spot; 2b: Lil Bro drawn 0.8 of Diego. The
+  photographs' way (`?lookfolk=0`) keeps the old checks. Tag 5421.
+
 ## Not run (the sample's edges)
 
 The other ~370 phone tests. The owner can ask for the full run.
