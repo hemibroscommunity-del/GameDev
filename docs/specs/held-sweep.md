@@ -399,7 +399,7 @@ After the gatekeeper's sitting 5 (`docs/plan/census/review-z5.md`, v2.3.5050):
   addresses go to the worker (a file's address can change under a deploy).
 
 The probe after (copper plate and greaves, steel plate, iron plate with steel
-greaves): 22 sent, 17 of 17 the same, none refused, none cut, no stuck kill.
+greaves): 24 sent, 19 of 19 the same, none refused, none cut, no stuck kill.
 
 **The same pixels.** `window.__btBakeUrlCheck = true` before the page loads:
 the page cuts each input as well, and the worker compares its own rectangle

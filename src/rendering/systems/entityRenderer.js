@@ -3573,11 +3573,10 @@ async function _runBake(job) {
   }
   const [body, belt, ...inps] = await Promise.all([frameInput(bodyTex), beltTex ? frameInput(beltTex) : null, ...worn.map(w => frameInput(w.tex))]);
   const _close = () => { for (const x of [body, belt, ...inps]) { try { if (x && x.bm) x.bm.close(); } catch (e) { /* gone */ } } };
-  if (!body) { _close(); _bakeWorkerStats.failed++; _maskedFailed(key); return; }   /* v2.3.4870: counted, not baked here (above) */
-  /* v2.3.5050 (the gatekeeper's sitting 5): a piece not readable would be baked as not worn, and kept under the whole set's
-     key (as _runLookBake: asked again); a worker let go as stuck during the page's wait above is not posted to (it dropped
-     the job, and the next worker was let go at once on the old clock) */
-  if (inps.some((x) => !x) || wk !== _bakeWorker) { _close(); _bakeWorkerStats.failed++; _maskedFailed(key); return; }
+  /* v2.3.4870: counted, not baked here (above).  v2.3.5050 (the gatekeeper's sitting 5): and a piece not readable (it was
+     baked as not worn, and kept under the whole set's key; _runLookBake asks again too), or a worker let go as stuck during
+     the page's wait above (it was posted to, dropped the job, and the next worker was let go at once on the old clock) */
+  if (!body || inps.some((x) => !x) || wk !== _bakeWorker) { _close(); _bakeWorkerStats.failed++; _maskedFailed(key); return; }
   if (!_sendGearSheets(wk, inps)) { _close(); _bakeWorkerStats.failed++; _maskedFailed(key); return; }   /* v2.3.5000 */
   const id = ++_bakeSeq;
   const reply = await new Promise((resolve) => {
@@ -3646,8 +3645,7 @@ async function _runLookBake(job) {
   const [belt, ...inps] = await Promise.all([beltTex ? frameInput(beltTex) : null, ...worn.map(w => frameInput(w.tex))]);
   const _close = () => { for (const x of [belt, ...inps]) { try { if (x && x.bm) x.bm.close(); } catch (e) { /* gone */ } } };
   /* a piece whose sheet is not in yet would be baked as if not worn: asked again later */
-  if (inps.some((x) => !x)) { _close(); job.reply = { err: 'gear not loaded' }; return; }
-  if (wk !== _bakeWorker) { _close(); job.reply = { err: 'worker let go' }; return; }   /* v2.3.5050: as _runBake */
+  if (inps.some((x) => !x) || wk !== _bakeWorker) { _close(); job.reply = { err: wk !== _bakeWorker ? 'worker let go' : 'gear not loaded' }; return; }   /* v2.3.5050: a worker let go meanwhile, as _runBake */
   if (!_sendGearSheets(wk, inps)) { _close(); job.reply = { err: 'gear numbers not sent' }; return; }   /* v2.3.5000 */
   const id = ++_bakeSeq;
   const reply = await new Promise((resolve) => {
