@@ -57,6 +57,8 @@ function resetSwitches(search) {
   return {
     audio: q.get('audioreset') !== '0',
     townsfolk: q.get('townsfolkreset') !== '0',
+    movement: q.get('movementreset') !== '0',   /* v2.3.5204 */
+    social: q.get('socialreset') !== '0',       /* v2.3.5204 */
   };
 }
 

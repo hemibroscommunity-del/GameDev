@@ -255,6 +255,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?legsync` | page | switch | v2.3.4077 | =0 | logic |  | no | The legs keep their old fixed cadences, not synced to the speed. |
 | `monsterroll` | worker | switch | v2.3.3300 | false | logic |  | no | A monster gets no roll i-frames (the way before v2.3.3300). |
 | `movebudget` | worker | switch | v2.3.3325 | false | logic |  | no | The move budget off: the per-message 80, the refusals and the three bypasses as before. |
+| `?movementreset` | page | switch | v2.3.5204 | =0 | logic |  | no | A climb and a swim end a frame after a change of place again, on their own off-the-Wheel checks, not at the zone door. |
 | `movepath` | worker | switch | v2.3.3726 | false | logic |  | no | No glide from the next tick; every phone is told to send every move again. |
 | `pathall` | worker | switch | v2.3.3726 | false | logic | `movepath` | no | Only a phone that asks with ?diet=1 gets the move glide. |
 | `rest` | worker | switch | v2.3.3539 | false | logic |  | no | Un-advertises the Hotel's rest: it rests nobody and pays no Well Rested XP. |
@@ -398,6 +399,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `partykeep` | worker | switch | v2.3.3276 | false | logic |  | no | Parties are not kept: the old cap and the away window remove a dropped member. |
 | `power` | worker | switch | v2.3.5481 | false | logic |  | no | Un-advertises the power index: no board report carries one, so the Power board empties as players report and the other boards are as they were. |
 | `race` | worker | switch | v2.3.3525 | false | logic |  | no | Lil Bro's race un-advertised and none started. |
+| `?socialreset` | page | switch | v2.3.5204 | =0 | logic |  | no | A race the worker forgot at a reconnect stays on the phone until its own clock lets it go, as before. |
 | `spar` | worker | switch | v2.3.3265 | false | logic |  | no | No sparring clones: every live clone goes on the next tick and the cap is withdrawn. |
 | `statboards` | worker | switch | v2.3.5484 | false | logic |  | no | Un-advertises the stat boards: no board report carries the points allocated, so those boards empty as players report; every other board is as it was. |
 
