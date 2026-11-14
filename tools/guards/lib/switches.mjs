@@ -36,6 +36,13 @@
  *   needs     the names it needs (rule 4: it turns off with them).
  *   fallback  `'no'`, or the trigger that still uses its old way, as names in
  *             a file (`'onWindows, onMac in src/game/lookPaletteChoice.js'`).
+ *   reader    (a worker row with needs, v2.3.5304) the function that decides
+ *             it, as `fn in file`: the guard asks that it reads each need
+ *             (rule 4: a dependent turns off with what it needs only if its
+ *             reader asks).
+ *   never     (optional) why it may never go off (a ledger): the guard fails
+ *             it while a switch it needs is still a row (the switch beneath
+ *             is removed first).
  *   off       one sentence: what throwing it turns off, or back on.
  *
  * CAPS.  A cap is a row only where the worker reads it as a flag or a comment
@@ -56,6 +63,8 @@ export const SIDES = Object.freeze(['worker', 'page', 'both']);
 export const KINDS = Object.freeze(['switch', 'value', 'lever']);
 export const RISKS = Object.freeze(['logic', 'memory', 'chip', 'none']);
 export const COLUMNS = Object.freeze(['name', 'side', 'system', 'kind', 'born', 'thrown', 'risk', 'needs', 'fallback', 'off']);
+/* v2.3.5304: columns only some rows carry (rule 4, card T PR 4) */
+export const OPTIONAL = Object.freeze(['reader', 'never']);
 
 export const SWITCHES = Object.freeze([
   /* ── the switches the worker throws for the page: one row each, both sides: the memory savers (CLIENT_SAVERS, src/game/clientOff.js) and any other `clientOff('<id>')` the page asks; `off_<id>: true` on the worker, `?<id>=0` on the page ── */
@@ -79,7 +88,7 @@ export const SWITCHES = Object.freeze([
   { name: 'achievements', side: 'worker', system: 'quests', kind: 'switch', born: 3527, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Grants, counts and sweeps no achievement and un-advertises the cap (what was earned stays).' },
   { name: 'aggrogrid', side: 'worker', system: 'monsters', kind: 'switch', born: 3201, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Monsters look for targets with the full loop everywhere instead of the grid.' },
   { name: 'ahonewrite', side: 'worker', system: 'economy', kind: 'switch', born: 4500, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'An auction-house listing goes back to its old two writes, restart hole and all.' },
-  { name: 'alliance', side: 'worker', system: 'social', kind: 'switch', born: 3313, thrown: 'false', risk: 'logic', needs: ['partykeep'], fallback: 'no', off: 'No alliance status, names, wars or board; tags come off at the next vitals echo.' },
+  { name: 'alliance', side: 'worker', system: 'social', kind: 'switch', born: 3313, thrown: 'false', risk: 'logic', needs: ['partykeep'], reader: '_allyOn in server/src/alliance.js', fallback: 'no', off: 'No alliance status, names, wars or board; tags come off at the next vitals echo.' },
   { name: 'amuletregen', side: 'worker', system: 'movement', kind: 'switch', born: 3536, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'The regeneration tick goes back to the phone\'s claim and Endurance for everyone (the amulet\'s multipliers off).' },
   { name: 'areachoice', side: 'worker', system: 'combat', kind: 'switch', born: 3528, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'The PvP area rule counts a blow either way, not only one you landed.' },
   { name: 'arenaap', side: 'worker', system: 'social', kind: 'switch', born: 3481, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'The arena champion is paid gold alone, no AP, and the cap is un-advertised.' },
@@ -103,7 +112,7 @@ export const SWITCHES = Object.freeze([
   { name: 'bundle', side: 'worker', system: 'wire', kind: 'switch', born: 3254, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Stops advertising message bundles: each phone sends its messages one by one from its next join.' },
   { name: 'capeoffkept', side: 'worker', system: 'economy', kind: 'switch', born: 5422, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'A cape taken off is kept in memory only again, so it is worn again after a rejoin or a deploy.' },
   { name: 'chatguard', side: 'worker', system: 'social', kind: 'switch', born: 3396, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'All three chat guards off: chat and emotes spend the relay bucket again, nothing filtered or cleaned.' },
-  { name: 'clanparty', side: 'worker', system: 'social', kind: 'switch', born: 3321, thrown: 'false', risk: 'logic', needs: ['partykeep'], fallback: 'no', off: 'No clan is turned into a party; clans work as they did.' },
+  { name: 'clanparty', side: 'worker', system: 'social', kind: 'switch', born: 3321, thrown: 'false', risk: 'logic', needs: ['partykeep'], reader: '_clanPartyOn in server/src/clanparty.js', fallback: 'no', off: 'No clan is turned into a party; clans work as they did.' },
   { name: 'clearxp', side: 'worker', system: 'world', kind: 'switch', born: 3565, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'A dungeon clear\'s XP goes to the old counter only.' },
   { name: 'codex', side: 'worker', system: 'quests', kind: 'switch', born: 3209, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'The monster codex counts no kills (what was learned stays readable) and its cap is off.' },
   { name: 'cookshield', side: 'worker', system: 'bots', kind: 'switch', born: 4605, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'The cook and fire shield holds on the move\'s edge alone, without the worker\'s own fire.' },
@@ -134,7 +143,7 @@ export const SWITCHES = Object.freeze([
   { name: 'econresetput', side: 'worker', system: 'economy', kind: 'switch', born: 5094, thrown: 'true', risk: 'logic', needs: [], fallback: 'no', off: 'Thrown (true), a character\'s restart with nobody in the room writes today\'s book at once, in the delete\'s own run (one put more): the owner\'s card then never reads it as a loss; off until the owner says yes.' },
   { name: 'elemhits', side: 'worker', system: 'monsters', kind: 'switch', born: 2996, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Stops every new elemental status at once; a burn already burning finishes.' },
   { name: 'elemup', side: 'worker', system: 'combat', kind: 'switch', born: 3518, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Un-advertises the element bonus and takes it away.' },
-  { name: 'emotemoves', side: 'worker', system: 'social', kind: 'switch', born: 3392, thrown: 'false', risk: 'logic', needs: ['emotes'], fallback: 'no', off: 'No emote move is relayed and no pose kept; the plain emotes go on.' },
+  { name: 'emotemoves', side: 'worker', system: 'social', kind: 'switch', born: 3392, thrown: 'false', risk: 'logic', needs: ['emotes'], reader: '_movesOff in server/src/emotes.js', fallback: 'no', off: 'No emote move is relayed and no pose kept; the plain emotes go on.' },
   { name: 'emotes', side: 'worker', system: 'social', kind: 'switch', born: 3391, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'No emote is relayed, and caps.emotes false shuts the picker at the next join.' },
   { name: 'entrygrace', side: 'worker', system: 'movement', kind: 'switch', born: 4453, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'The zone-entry grace is given on every entry again.' },
   { name: 'event_cape_rate', side: 'worker', system: 'economy', kind: 'value', born: 2027, thrown: 'a number', risk: 'logic', needs: [], fallback: 'no', off: 'The event cape\'s drop rate, a number in place of the shipped one.' },
@@ -160,9 +169,9 @@ export const SWITCHES = Object.freeze([
   { name: 'freezehit', side: 'worker', system: 'monsters', kind: 'switch', born: 3620, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'A chill is the plain chill, not frozen a moment first.' },
   { name: 'gatherhits', side: 'worker', system: 'skills', kind: 'switch', born: 2956, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Un-advertises gather hits and answers a phone that joined before with off.' },
   { name: 'gatherreq', side: 'worker', system: 'skills', kind: 'switch', born: 3038, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Lifts the level a resource asks: every resource harvestable at level 1, cap un-advertised.' },
-  { name: 'gearlevel', side: 'worker', system: 'economy', kind: 'switch', born: 3544, thrown: 'false', risk: 'logic', needs: ['onelevel'], fallback: 'no', off: 'Armour, shields and amulets ask Defense points and Magic again, not your level.' },
+  { name: 'gearlevel', side: 'worker', system: 'economy', kind: 'switch', born: 3544, thrown: 'false', risk: 'logic', needs: ['onelevel'], reader: '_gearOnLevel in server/src/gear.js', fallback: 'no', off: 'Armour, shields and amulets ask Defense points and Magic again, not your level.' },
   { name: 'gearresend', side: 'worker', system: 'economy', kind: 'switch', born: 4386, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'The level gate\'s refusal is silent again (no gear sent back).' },
-  { name: 'giftclosed', side: 'worker', system: 'economy', kind: 'switch', born: 4375, thrown: 'false', risk: 'logic', needs: ['trade2'], fallback: 'no', off: 'The old one-way gift opens again beside the trade window.' },
+  { name: 'giftclosed', side: 'worker', system: 'economy', kind: 'switch', born: 4375, thrown: 'false', risk: 'logic', needs: ['trade2'], reader: '_giftClosed in server/src/trade.js', fallback: 'no', off: 'The old one-way gift opens again beside the trade window.' },
   { name: 'goldlog', side: 'worker', system: 'economy', kind: 'switch', born: 4903, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'The gold log notes nothing.' },
   { name: 'goldonesum', side: 'worker', system: 'economy', kind: 'switch', born: 4803, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Every gold road goes back on its step-1 sum.' },
   { name: 'goohold', side: 'worker', system: 'monsters', kind: 'switch', born: 3620, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'The goo holds as the plain stuck hold, without its longer hold and sting.' },
@@ -182,7 +191,7 @@ export const SWITCHES = Object.freeze([
   { name: 'joinstandup', side: 'worker', system: 'session', kind: 'switch', born: 4374, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'The join restores 0 health and the sweep kills again, as before.' },
   { name: 'keys2', side: 'worker', system: 'identity', kind: 'switch', born: 3355, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'No new login key is handed out (keys already made still work).' },
   { name: 'killroll', side: 'worker', system: 'combat', kind: 'switch', born: 3209, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Every drop on its own roll again, nothing sent over the monster.' },
-  { name: 'lastplace', side: 'worker', system: 'session', kind: 'switch', born: 3327, thrown: 'false', risk: 'logic', needs: ['movebudget'], fallback: 'no', off: 'Every join takes its place again, and the first move after it is free.' },
+  { name: 'lastplace', side: 'worker', system: 'session', kind: 'switch', born: 3327, thrown: 'false', risk: 'logic', needs: ['movebudget'], reader: '_lastPlaceOn in server/src/lastplace.js', fallback: 'no', off: 'Every join takes its place again, and the first move after it is free.' },
   { name: 'leaderidleat', side: 'worker', system: 'social', kind: 'switch', born: 4378, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'The party leader\'s idle clock counts only a `seen` above 0, as before.' },
   { name: 'lifenoheal', side: 'worker', system: 'life', kind: 'switch', born: 4901, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'A dying player can be healed again (the life door\'s step 2a off).' },
   { name: 'lifesave', side: 'worker', system: 'life', kind: 'switch', born: 4902, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'No life note written or read: the join stands up as v2.3.4374 did.' },
@@ -193,16 +202,16 @@ export const SWITCHES = Object.freeze([
   { name: 'max_players', side: 'worker', system: 'session', kind: 'value', born: 1982, thrown: 'a number, 1 to the ceiling', risk: 'logic', needs: [], fallback: 'no', off: 'The room\'s cap on players, never above its bandwidth ceiling.' },
   { name: 'meals', side: 'worker', system: 'skills', kind: 'switch', born: 3130, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Only the old instant recipes cook; dishes in bags still eat.' },
   { name: 'mktsettle', side: 'worker', system: 'economy', kind: 'switch', born: 4505, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'A market leftover with a settle note is healed the old way.' },
-  { name: 'monstercharge', side: 'worker', system: 'monsters', kind: 'switch', born: 3946, thrown: 'false', risk: 'logic', needs: ['monstermoves'], fallback: 'no', off: 'No monster charges.' },
-  { name: 'monstercombo', side: 'worker', system: 'monsters', kind: 'switch', born: 3946, thrown: 'false', risk: 'logic', needs: ['monstermoves'], fallback: 'no', off: 'No monster swings its combo.' },
-  { name: 'monsterenrage', side: 'worker', system: 'monsters', kind: 'switch', born: 3946, thrown: 'false', risk: 'logic', needs: ['monstermoves'], fallback: 'no', off: 'No monster enrages.' },
+  { name: 'monstercharge', side: 'worker', system: 'monsters', kind: 'switch', born: 3946, thrown: 'false', risk: 'logic', needs: ['monstermoves'], reader: '_movesFor in server/src/monstermoves.js', fallback: 'no', off: 'No monster charges.' },
+  { name: 'monstercombo', side: 'worker', system: 'monsters', kind: 'switch', born: 3946, thrown: 'false', risk: 'logic', needs: ['monstermoves'], reader: '_movesFor in server/src/monstermoves.js', fallback: 'no', off: 'No monster swings its combo.' },
+  { name: 'monsterenrage', side: 'worker', system: 'monsters', kind: 'switch', born: 3946, thrown: 'false', risk: 'logic', needs: ['monstermoves'], reader: '_movesFor in server/src/monstermoves.js', fallback: 'no', off: 'No monster enrages.' },
   { name: 'monsterguardbreak', side: 'worker', system: 'combat', kind: 'switch', born: 4393, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'A monster\'s hit on no stamina no longer breaks the guard.' },
   { name: 'monsterhold', side: 'worker', system: 'combat', kind: 'switch', born: 3513, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'The element hold rule off: monsters move as before real gems.' },
   { name: 'monsterlife', side: 'worker', system: 'monsters', kind: 'switch', born: 4843, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'A monster\'s reset is the old hand list, with no `m.life`.' },
   { name: 'monstermoves', side: 'worker', system: 'monsters', kind: 'switch', born: 3946, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Every monster move off: tier 1\'s behaviour everywhere.' },
   { name: 'monsterroll', side: 'worker', system: 'movement', kind: 'switch', born: 3300, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'A monster gets no roll i-frames (the way before v2.3.3300).' },
-  { name: 'monsterslam', side: 'worker', system: 'monsters', kind: 'switch', born: 3946, thrown: 'false', risk: 'logic', needs: ['monstermoves'], fallback: 'no', off: 'No monster slams (the two-step slam and the area slam).' },
-  { name: 'monstervolley', side: 'worker', system: 'monsters', kind: 'switch', born: 3946, thrown: 'false', risk: 'logic', needs: ['monstermoves'], fallback: 'no', off: 'No monster throws its volley.' },
+  { name: 'monsterslam', side: 'worker', system: 'monsters', kind: 'switch', born: 3946, thrown: 'false', risk: 'logic', needs: ['monstermoves'], reader: '_movesFor in server/src/monstermoves.js', fallback: 'no', off: 'No monster slams (the two-step slam and the area slam).' },
+  { name: 'monstervolley', side: 'worker', system: 'monsters', kind: 'switch', born: 3946, thrown: 'false', risk: 'logic', needs: ['monstermoves'], reader: '_movesFor in server/src/monstermoves.js', fallback: 'no', off: 'No monster throws its volley.' },
   { name: 'movebudget', side: 'worker', system: 'movement', kind: 'switch', born: 3325, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'The move budget off: the per-message 80, the refusals and the three bypasses as before.' },
   { name: 'movediet', side: 'worker', system: 'wire', kind: 'switch', born: 3204, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Un-advertises the move diet: each phone sends every move again from its next join.' },
   { name: 'movepath', side: 'worker', system: 'movement', kind: 'switch', born: 3726, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'No glide from the next tick; every phone is told to send every move again.' },
@@ -223,7 +232,7 @@ export const SWITCHES = Object.freeze([
   { name: 'parryrearm', side: 'worker', system: 'bots', kind: 'switch', born: 4605, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Every raise parries again, however soon after the last.' },
   { name: 'partydungeon', side: 'worker', system: 'world', kind: 'switch', born: 3573, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'The Grotto of v2.3.3540 again, cap off.' },
   { name: 'partykeep', side: 'worker', system: 'social', kind: 'switch', born: 3276, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Parties are not kept: the old cap and the away window remove a dropped member.' },
-  { name: 'pathall', side: 'worker', system: 'movement', kind: 'switch', born: 3726, thrown: 'false', risk: 'logic', needs: ['movepath'], fallback: 'no', off: 'Only a phone that asks with ?diet=1 gets the move glide.' },
+  { name: 'pathall', side: 'worker', system: 'movement', kind: 'switch', born: 3726, thrown: 'false', risk: 'logic', needs: ['movepath'], reader: '_movePathAll in server/src/movepath.js', fallback: 'no', off: 'Only a phone that asks with ?diet=1 gets the move glide.' },
   { name: 'perfectbow', side: 'worker', system: 'combat', kind: 'switch', born: 4550, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'The bow as before its perfect strike (the sword\'s unchanged).' },
   { name: 'petbook', side: 'worker', system: 'quests', kind: 'switch', born: 3120, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Un-advertises the pet book and refuses naming, setting active and releasing (catches still land).' },
   { name: 'petfetch', side: 'worker', system: 'quests', kind: 'switch', born: 3806, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Every pile back on the 240 px pet reach.' },
@@ -237,9 +246,9 @@ export const SWITCHES = Object.freeze([
   { name: 'pointsresetroom', side: 'worker', system: 'quests', kind: 'switch', born: 4372, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'The points reset\'s minute is the socket\'s alone, not kept by the room.' },
   { name: 'power', side: 'worker', system: 'social', kind: 'switch', born: 5481, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Un-advertises the power index: no board report carries one, so the Power board empties as players report and the other boards are as they were.' },
   { name: 'presence2', side: 'worker', system: 'session', kind: 'switch', born: 3250, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Un-advertises presence 2: every phone back on the v2.3.3246 roster.' },
-  { name: 'pvpbalance', side: 'worker', system: 'combat', kind: 'switch', born: 3260, thrown: 'false', risk: 'logic', needs: ['oneformula'], fallback: 'no', off: 'The PvP resolver exactly as before: the phone\'s claim x 0.5, the 300 ms lane.' },
+  { name: 'pvpbalance', side: 'worker', system: 'combat', kind: 'switch', born: 3260, thrown: 'false', risk: 'logic', needs: ['oneformula'], reader: '_resolvePvPAttack in server/src/combat.js', fallback: 'no', off: 'The PvP resolver exactly as before: the phone\'s claim x 0.5, the 300 ms lane.' },
   { name: 'pvpbrew', side: 'worker', system: 'combat', kind: 'switch', born: 3133, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Un-advertises the brew in PvP: a new page folds it into its claims as before.' },
-  { name: 'pvpextras', side: 'worker', system: 'combat', kind: 'switch', born: 3264, thrown: 'false', risk: 'logic', needs: ['oneformula', 'pvpbalance'], fallback: 'no', off: 'Takes every PvP extra off players at once.' },
+  { name: 'pvpextras', side: 'worker', system: 'combat', kind: 'switch', born: 3264, thrown: 'false', risk: 'logic', needs: ['oneformula', 'pvpbalance'], reader: '_pvpExtrasOn in server/src/pvpextras.js', fallback: 'no', off: 'Takes every PvP extra off players at once.' },
   { name: 'pvpheal', side: 'worker', system: 'skills', kind: 'switch', born: 3133, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'The PvP bite rule (food held back in a fight between players) is off, and caps.pvpheal reads false.' },
   { name: 'pvplunge', side: 'worker', system: 'combat', kind: 'switch', born: 3262, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'No lunge at a player: caps.pvplunge false and the dazed gates off.' },
   { name: 'quiet', side: 'worker', system: 'session', kind: 'switch', born: 3254, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Un-advertises the quiet phone: each phone as before from its next join.' },
@@ -248,15 +257,15 @@ export const SWITCHES = Object.freeze([
   { name: 'rejoinresend', side: 'worker', system: 'session', kind: 'switch', born: 4382, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'No re-sends after state_sync, the cap un-advertised.' },
   { name: 'relaylist', side: 'worker', system: 'wire', kind: 'switch', born: 3304, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Relays every type that is not privileged again (the old deny-list).' },
   { name: 'report', side: 'worker', system: 'liveops', kind: 'switch', born: 5122, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Un-advertises the field report, so no phone sends its smoothness, and drops any that still comes.' },
-  { name: 'reportlanes', side: 'worker', system: 'liveops', kind: 'switch', born: 5221, thrown: 'false', risk: 'logic', needs: ['report', 'reportspeed'], fallback: 'no', off: 'The field report no longer takes a lane but full, the governor\'s rung or the self-test (caps.report back to 2).' },
-  { name: 'reportspeed', side: 'worker', system: 'liveops', kind: 'switch', born: 5127, thrown: 'false', risk: 'logic', needs: ['report'], fallback: 'no', off: 'The Speed test\'s card is no longer taken (caps.report back to 1); the smoothness reports carry on.' },
+  { name: 'reportlanes', side: 'worker', system: 'liveops', kind: 'switch', born: 5221, thrown: 'false', risk: 'logic', needs: ['report', 'reportspeed'], reader: '_reportCap in server/src/report.js', fallback: 'no', off: 'The field report no longer takes a lane but full, the governor\'s rung or the self-test (caps.report back to 2).' },
+  { name: 'reportspeed', side: 'worker', system: 'liveops', kind: 'switch', born: 5127, thrown: 'false', risk: 'logic', needs: ['report'], reader: '_reportCap in server/src/report.js', fallback: 'no', off: 'The Speed test\'s card is no longer taken (caps.report back to 1); the smoothness reports carry on.' },
   { name: 'rest', side: 'worker', system: 'movement', kind: 'switch', born: 3539, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Un-advertises the Hotel\'s rest: it rests nobody and pays no Well Rested XP.' },
   { name: 'retiredlands', side: 'worker', system: 'world', kind: 'switch', born: 4675, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Opens the retired lands again at once.' },
   { name: 'revealbag', side: 'worker', system: 'economy', kind: 'switch', born: 3951, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Un-advertises the bag\'s reveal and brings back the at-once reveal.' },
   { name: 'ride', side: 'worker', system: 'movement', kind: 'switch', born: 3776, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Un-advertises riding and ends every ride on the rider\'s next move.' },
   { name: 'risechest', side: 'worker', system: 'economy', kind: 'switch', born: 4438, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'The rise chest\'s cap goes and an ask is answered off.' },
   { name: 'rollwindow', side: 'worker', system: 'movement', kind: 'switch', born: 3292, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'A roll claim is trusted as before, paid or not.' },
-  { name: 'roomrow', side: 'worker', system: 'liveops', kind: 'switch', born: 5124, thrown: 'false', risk: 'logic', needs: ['daybook'], fallback: 'no', off: 'Nothing of the room\'s own row is added into the day\'s book.' },
+  { name: 'roomrow', side: 'worker', system: 'liveops', kind: 'switch', born: 5124, thrown: 'false', risk: 'logic', needs: ['daybook'], reader: '_roomRowLastOut in server/src/roomrow.js', fallback: 'no', off: 'Nothing of the room\'s own row is added into the day\'s book.' },
   { name: 'roundpos', side: 'worker', system: 'server-core', kind: 'switch', born: 3197, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Positions go out as the phones sent them, not rounded.' },
   { name: 'safeheal', side: 'worker', system: 'movement', kind: 'switch', born: 3569, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'The safe ground\'s heal is the wilds\' trickle again.' },
   { name: 'salvage', side: 'worker', system: 'economy', kind: 'switch', born: 3141, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Un-advertises salvage and refuses both acts.' },
@@ -288,7 +297,7 @@ export const SWITCHES = Object.freeze([
   { name: 'testmode', side: 'worker', system: 'liveops', kind: 'lever', born: 3430, thrown: 'false', risk: 'none', needs: [], fallback: 'no', off: 'Turns every character\'s test mode off at once, every check back on.' },
   { name: 'tickpace', side: 'worker', system: 'server-core', kind: 'switch', born: 3202, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'The tick\'s plain interval again, from the next tick.' },
   { name: 'tickshare', side: 'worker', system: 'server-core', kind: 'switch', born: 3195, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Builds every tick message whole again.' },
-  { name: 'tierxp', side: 'worker', system: 'skills', kind: 'switch', born: 3251, thrown: 'false', risk: 'logic', needs: ['nodehp'], fallback: 'no', off: 'Every harvest back on the old XP, cap un-advertised.' },
+  { name: 'tierxp', side: 'worker', system: 'skills', kind: 'switch', born: 3251, thrown: 'false', risk: 'logic', needs: ['nodehp'], reader: '_tierXpOff in server/src/gathering.js', fallback: 'no', off: 'Every harvest back on the old XP, cap un-advertised.' },
   { name: 'toolshop', side: 'worker', system: 'economy', kind: 'switch', born: 3316, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Takes the tools off the shelf and refuses every buy.' },
   { name: 'tour', side: 'worker', system: 'townsfolk', kind: 'switch', born: 3525, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Un-advertises the tour\'s two givers.' },
   { name: 'trade2', side: 'worker', system: 'economy', kind: 'switch', born: 4375, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'The trade window is off, so the old gift is open again.' },
