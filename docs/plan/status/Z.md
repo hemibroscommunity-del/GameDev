@@ -20,8 +20,8 @@ stored shape (#1752 fills `_econ`; schema 21).
   play (`p256.js` ~164; CLAUDE.md §7, §8; no `mp-heldsweep`); and after
   #1754 its `?fxmade` needs a row (switch guard 196 of 195).
 - #1756 E6, #1758 E7, #1759 E8a, #1761 E8b: #1756 conflicts with `main`
-  in `leave.js` (#1708 writes the book at the last one out already):
-  merge `main`, keep one writer. The three are stacked on it.
+  in `leave.js`; its `bookFlush` is unpaced (361 writes an hour) where
+  #1708's `_roomRowLastOut` already writes: drop it, mend roomrow 9, 10.5.
 - Not ready, left alone: L's PR 3 (`plan-l-3-resets`, no PR yet).
 
 ## Stalled

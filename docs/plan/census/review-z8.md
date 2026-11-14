@@ -68,7 +68,45 @@ A's #1708, merged at sitting 7, already writes the day's book at the last
 one out (`_roomRowLastOut`, at the book's pace, with the `owed` rule
 sitting 6 asked for); #1756 adds a second, unpaced `bookFlush` at the same
 line. Not a text conflict only: the mend keeps ONE writer at the last one
-out. #1758, #1759 and #1761 are stacked on it. FINDER_E_STACK
+out. #1758, #1759 and #1761 are stacked on it. The stack began at b9f7218,
+before #1708; the finder merged `main` into its top in a throwaway copy.
+
+- **VERIFIED, high, the hold: an unpaced write at every last one out.**
+  `daybook.js` ~372 `bookFlush` writes whenever the room empties with
+  anything waiting, outside the book's pace, `owed` and the hand of turns
+  (sittings 5 and 6 refused this shape for `roomrow.js`). The stack alone:
+  one player joining, minting 1 gold and leaving every 10 s writes the book
+  361 times an hour (the pace's line is 12 to 13). With `main` and both
+  lines: `cost-guard` 15c fails (62 book writes an hour of sockets, at most
+  18; a socket that never joins starts the tick) and `roomrow.test` fails
+  6 checks (`roomrow: false` no longer stops the last one out; 10.4's
+  hand). With `main`'s line alone `cost-guard` passes, but `roomrow.test`
+  still fails 9 (a new character's start gold, an `econ` add, triggers a
+  first write at once) and 10.5 (`SKEW_MS` pulls the test's day-ahead
+  `now` back, both writes on one day). Mend: drop `bookFlush` from
+  `leave.js` (`_roomRowLastOut` writes every part, `econ` included), then
+  roomrow 9 and 10.5. Card E's, with `main` merged in.
+- **Medium-low:** no lower-case flag turns the `econ` part off alone
+  (`daybook: false` turns off the whole book: room, dev and speed too).
+- **Low:** `bag.js` `let BOOK` (`setBagBook`) is one for the module: the
+  last room to run `_syncBagCaps` takes every room's bag counts (one room
+  in production; two in a suite or a local `?room=`). `bookAdd` measures
+  the whole part at each add (~28 us on a full part); past 617 keys new
+  keys count only in `over`, and the book and the characters' `_econ`
+  part ways. `bookFlush` takes what waits before `_lingerEnd`'s awaits.
+- **Read clean:** every `daybook.js` writer claims the running put with no
+  await between; a put that throws gives its sums back; `bookAdd` is
+  synchronous, never throws, inside the doors' run, refuses `__proto__`,
+  `constructor`, NaN and Infinity, the part capped at 24 KB; sitting 6's
+  two finds are mended (`arrOk` every place; `bookNow` clamps `now`);
+  daybook §13 fails with the flush removed. #1758: chaos-restart gives the
+  same lines before and after the move (8a's and 8b's NOTE become PASS),
+  no check removed; the test room's `delete` reports committed keys only
+  (the real storage counts one put in the same batch). #1759 and #1761 are
+  tests and docs; both break proofs reproduced (`tradeonewrite` off: FAIL
+  3; `arenastakeonewrite` off: FAIL 5, gold -300). Suites green on the
+  stack's top: gold-door, bag-door, daybook 90, cost-guard, world-sum,
+  testroom 30, chaos-restart.
 
 ## Card T: #1754 (PR 1, the switch table)
 
