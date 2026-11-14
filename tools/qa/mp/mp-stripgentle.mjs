@@ -81,7 +81,7 @@ async function ride(browser, wsPort, webPort, rec, label, query) {
       for (const src of (window.__btPicNumSources ? window.__btPicNumSources() : [])) {
         const label = String(src.label || '');
         if (!/fire-goblin/.test(label)) continue;
-        const nums = src._btNumbers;
+        const nums = src._btNumbers || (window.__btStripNumbers ? window.__btStripNumbers(src) : null);   /* v2.3.5257: or kept deflated a frame at a time (framePack.js) */
         let h = 2166136261 >>> 0, solid = 0;
         if (nums) {
           const { idx, pal } = nums;

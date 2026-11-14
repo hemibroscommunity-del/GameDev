@@ -42,6 +42,24 @@
  *      from the account's own figures, against the free plan's daily limits.
  *      Read only, and best effort like the bill.
  *
+ * ═══ v2.3.5288: --restore, THE ROOM'S WAY BACK, TRIED (card R PR 9) ═══
+ * The game's lever (server/src/restore.js) puts the whole room back to an
+ * earlier time through Cloudflare's point-in-time recovery, which `wrangler
+ * dev --local` does not have: so it is tried here, on the lab's own Vault
+ * (src/index.js), never the game.  A run of its own:
+ *   - the Vault is seeded (8 characters) and played (3 steps of the game's
+ *     own gold roads: a mint, a burn, a move, each step one put) -- the
+ *     world's sum counted after each, from the game's own worldsum.js;
+ *   - it waits --restore-wait minutes (62 by default: "an hour ago"), then
+ *     plays 3 steps more;
+ *   - the game's rewind: the plan to an hour ago (or half the wait, for a
+ *     shorter one), the do, the Vault restarting;
+ *   - the Vault counted again: its purses must be those of before the wait,
+ *     and the world's sum balanced (unexplained 0) against the seed;
+ *   - the undo (the do's answer, planned and done): the purses of after the
+ *     wait again, balanced.
+ * About 30 requests.  Exit 0 only when every part balanced.
+ *
  * ═══ v2.3.3257: --limit, THE FREE PLAN'S LIMIT TEST (the owner's yes, 2026-10-14) ═══
  * Does the free plan's 100,000 a day count every incoming socket message, or
  * 20 to a request as the bill does?  Cloudflare's docs give the 20 to 1 for
@@ -67,6 +85,7 @@ import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { unexplained } from '../../server/src/worldsum.js';   /* v2.3.5288: the restore try judges by the game's own sum */
 
 const here = dirname(fileURLToPath(import.meta.url));
 const arg = (name, d) => { const i = process.argv.indexOf('--' + name); return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : d; };
@@ -85,6 +104,9 @@ const POLL_MS = 50;   /* the Door's wait for a flood to land: one call a poll */
 const FREE_DAY = Object.freeze({ requests: 100000, gbs: 13000 });
 /* v2.3.3257: the limit test (header) */
 const LIMIT_RUN = process.argv.includes('--limit');
+/* v2.3.5288: the restore try (header), and how long it waits between its two plays */
+const RESTORE_RUN = process.argv.includes('--restore');
+const RESTORE_WAIT_MIN = (() => { const v = Number(arg('restore-wait', 62)); return Number.isFinite(v) ? Math.min(180, Math.max(0, v)) : 62; })();
 const LIMIT = Object.freeze({
   STEP: 5000,          /* socket messages a step */
   OVER: 25000,         /* past the every-message line by this much, at most */
@@ -222,6 +244,8 @@ try {
 /* v2.3.3257: the limit test is a run of its own (header) */
 if (LIMIT_RUN) {
   await limitTest();
+} else if (RESTORE_RUN) {
+  await restoreTry();   /* v2.3.5288: a run of its own (header) */
 } else {
 /* ── 1. side by side ──────────────────────────────────────────────────────── */
 {
@@ -302,6 +326,79 @@ out.game = (LOCAL || !process.env.CLOUDFLARE_API_TOKEN)
 await writeOut(out);
 if (worker) { try { process.kill(-worker.pid, 'SIGKILL'); } catch { /* gone */ } }
 process.exit(out.error ? 1 : 0);
+
+/* ── v2.3.5288: the restore try (header) ──────────────────────────────────── */
+async function restoreTry() {
+  const R = out.restore = { waitMin: RESTORE_WAIT_MIN, vault: 'r' + Date.now().toString(36), parts: [] };
+  const v = async (q) => (await get('/vault?vault=' + R.vault + '&' + q)).body;
+  const ok = (start, c) => { const u = unexplained(start, c); return { gold: u.gold, goods: Object.keys(u.goods).length, balanced: u.gold === 0 && !Object.keys(u.goods).length }; };
+  const part = (name, c, start) => { const p = { name, at: iso(), gold: c.gold, net: c.net && c.net.gold, records: c.records, purses: c.purses, sum: start ? ok(start, c) : null }; R.parts.push(p); return p; };
+  const seed = await v('op=seed&n=8');
+  part('seeded', seed, null);
+  let before = null;
+  for (let i = 0; i < 3; i++) before = await v('op=play&step=' + i);
+  part('played, before the wait', before, seed);
+  R.waitedFrom = iso();
+  await sleep(RESTORE_WAIT_MIN * 60000);
+  let after = null;
+  for (let i = 3; i < 6; i++) after = await v('op=play&step=' + i);
+  part('played, after the wait', after, seed);
+  /* back to an hour ago -- after the first play, before the second -- or,
+     for a shorter wait, half way between them */
+  const gap = after.now - before.now;
+  const ago = gap > 61 * 60000 ? 60 * 60000 : Math.floor(gap / 2);
+  R.agoMin = Math.round(ago / 600) / 100;
+  const plan = await v('op=plan&at=' + (after.now - ago));
+  R.plan = { ok: !!plan.ok, error: plan.error || null, words: plan.words || null, target: plan.target || null, now: plan.now || null };
+  if (!plan.ok) { R.verdict = plan.error === 'no-pitr' ? 'no-pitr' : 'plan-refused'; out.error = 'the restore try: ' + R.verdict + ' (' + (plan.words || '') + ')'; return; }
+  const done = await v('op=do&token=' + plan.token + '&confirm=' + encodeURIComponent(plan.confirm));
+  R.do = { ok: !!done.ok, error: done.error || null, words: done.words || null, undo: done.undo || null };
+  if (!done.ok) { R.verdict = 'do-refused'; out.error = 'the restore try: ' + R.verdict; return; }
+  const settled = async () => {
+    await sleep(3000);
+    for (let i = 0; i < 10; i++) { try { return await v('op=count'); } catch (e) { await sleep(2000); } }
+    throw new Error('the Vault did not answer after its restart');
+  };
+  const back = await settled();
+  const pb = part('restored to ' + R.agoMin + ' minutes ago', back, seed);
+  pb.samePursesAsBefore = JSON.stringify(back.purses) === JSON.stringify(before.purses);
+  /* the way back: the do's undo, planned and done */
+  const uplan = await v('op=plan&bookmark=' + encodeURIComponent(done.undo));
+  const udo = uplan.ok ? await v('op=do&token=' + uplan.token + '&confirm=' + encodeURIComponent(uplan.confirm)) : null;
+  R.undo = { ok: !!(uplan.ok && udo && udo.ok), error: uplan.error || (udo && udo.error) || null };
+  let pu = null;
+  if (R.undo.ok) {
+    const again = await settled();
+    pu = part('undone', again, seed);
+    pu.samePursesAsAfter = JSON.stringify(again.purses) === JSON.stringify(after.purses);
+  }
+  const good = R.parts.every((p) => !p.sum || p.sum.balanced) && pb.samePursesAsBefore && !!pu && pu.samePursesAsAfter;
+  R.verdict = good ? 'balanced' : 'not-balanced';
+  if (!good) out.error = 'the restore try: ' + R.verdict;
+}
+
+function renderRestore(o, L) {
+  const R = o.restore;
+  L.push('## The room\'s way back, tried (the game\'s rewind on the lab\'s own Vault)', '');
+  const head = {
+    balanced: '**The restore worked and the world\'s sum balanced.** The Vault went back to ' + R.agoMin + ' minutes ago: every purse as it was then, unexplained gold 0; and the undo brought back everything after it, balanced too.',
+    'not-balanced': '**The restore ran, but something did not match.** See the parts below.',
+    'no-pitr': '**Not tried: this storage keeps no earlier times** (`wrangler dev --local` has none; on Cloudflare it should).',
+    'plan-refused': '**Not tried: the plan was refused.**',
+    'do-refused': '**The plan was made, but the do was refused.**',
+  }[R.verdict] || ('**The try stopped part way' + (o.error ? ': ' + o.error : '') + '.**');
+  L.push(head, '');
+  L.push('It waited ' + R.waitMin + ' minute(s) between its two plays' + (R.waitedFrom ? ', from ' + R.waitedFrom : '') + '.', '');
+  if (R.plan && R.plan.words) L.push('The plan said: ' + R.plan.words, '');
+  if (R.do && R.do.words) L.push('The do said: ' + R.do.words, '');
+  L.push('| part | gold held | made less destroyed | unexplained gold | purses |', '|---|---|---|---|---|');
+  for (const p of R.parts) {
+    const same = p.samePursesAsBefore !== undefined ? (p.samePursesAsBefore ? 'as before the wait' : 'NOT as before the wait') : p.samePursesAsAfter !== undefined ? (p.samePursesAsAfter ? 'as after the wait' : 'NOT as after the wait') : '-';
+    L.push('| ' + p.name + ' | ' + p.gold + ' | ' + p.net + ' | ' + (p.sum ? p.sum.gold : '-') + ' | ' + same + ' |');
+  }
+  if (o.error) L.push('', '```', o.error, '```');
+  return L.join('\n');
+}
 
 /* ── helpers ──────────────────────────────────────────────────────────────── */
 
@@ -657,6 +754,8 @@ function render(o) {
   L.push(`# Cloudflare lab, ${o.started}`, '');
   /* v2.3.3257: the limit test is a report of its own */
   if (o.limit) return renderLimit(o, L, fmt);
+  /* v2.3.5288: the restore try is a report of its own */
+  if (o.restore) return renderRestore(o, L);
   /* v2.3.3257: the plan and the day so far */
   if (o.plan) {
     L.push('## 0. The free plan', '');

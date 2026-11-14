@@ -181,3 +181,65 @@ export function pathTurned(last, m) {
   const vtol = Math.max(MOVE_DIET.V_MIN, sp * MOVE_DIET.V_REL);
   return Math.abs(vx - lvx) > vtol || Math.abs(vy - lvy) > vtol;
 }
+
+/* ═══ v2.3.5440: THE BOARD'S ROLL RIDES THE PATH TOO (card SK) ═══
+ *
+ * The skateboard pushes off and rolls off (game/ride.js rideFeel): its speed
+ * changes every frame for about a second as it sets off and two as it rolls
+ * to a stop, and pathTurned's "the speed past a thumb's wobble" sent nearly
+ * every batch of them -- a start, 4 s held and a stop sent ~80 moves where
+ * the instant board sent 21 (the gatekeeper's sitting 10).  So on the board
+ * (the phone's say: wsClient.js, a rider with the roll-off on -- and a board
+ * is only ever on the safe ground), a move that keeps its heading and its
+ * line waits to MOVE_PATH.GAP_MS like a steady walk however its SPEED
+ * changed, while the worker's glide at the last speed sent (movepath.js) is
+ * within RIDE_ERR_PX of you along the line.  A turn, a start, a stop, a wall,
+ * any other field still goes on the next batch.  Nothing on the wire
+ * changes, and the worker judges every move from the last one's place, as
+ * ever: the glide between is never trusted.
+ */
+export const MOVE_PATH_RIDE = Object.freeze({
+  /* along its line, the worker's glide may be this far from a rolling board
+     before a move goes: the push start gains ~8 px on it in ~140 ms, the
+     roll-off loses it in ~230 (the path's own GAP_MS is 200) */
+  RIDE_ERR_PX: 8,
+});
+
+/** May a rolling board's move wait as part of a path, its speed changed?
+    steadyMove's arguments. */
+export function pathRideSteady(last, m, lastAt, at) {
+  if (!last || !m || typeof lastAt !== 'number' || typeof at !== 'number') return false;
+  const dt = at - lastAt;
+  if (!(dt >= 0)) return false;
+  for (const k in m) if (!MOTION[k] && m[k] !== last[k]) return false;
+  for (const k in last) if (!MOTION[k] && m[k] !== last[k]) return false;
+  if (typeof m.x !== 'number' || typeof m.y !== 'number' || typeof last.x !== 'number' || typeof last.y !== 'number') return false;
+  const vx = num(m.vx), vy = num(m.vy), lvx = num(last.vx), lvy = num(last.vy);
+  const sp = Math.sqrt(vx * vx + vy * vy), lsp = Math.sqrt(lvx * lvx + lvy * lvy);
+  if (!(sp > 0) || !(lsp > 0)) return false;   /* a start or a stop goes at once */
+  if (sp > MOVE_PATH.MAX_V) return false;
+  const ux = lvx / lsp, uy = lvy / lsp;
+  /* the same heading, give or take a thumb's wobble (about 2 degrees) */
+  if (Math.abs(vx / sp - ux) > MOVE_DIET.V_REL || Math.abs(vy / sp - uy) > MOVE_DIET.V_REL) return false;
+  /* on the line it drew ... */
+  const dx = m.x - last.x, dy = m.y - last.y;
+  if (Math.abs(dx * uy - dy * ux) > MOVE_DIET.ERR_PX) return false;
+  /* ... and within RIDE_ERR_PX of where the glide at that speed has it */
+  const along = dx * ux + dy * uy;
+  return Math.abs(along - lsp * PX_PER_MS * dt) <= MOVE_PATH_RIDE.RIDE_ERR_PX + lsp * PX_PER_MS * MOVE_PATH.ALONG_MS;
+}
+
+/** The batch's question for a rolling board (asked through pathWaits,
+    below, by wsClient.js flushInputBuffer): `on` is movePathOn. */
+export function pathRideMayWait(on, pending, pendingAt, sent, sentAt) {
+  if (!on || !pending || !sent) return false;
+  if (pending.z !== 'wheel' || sent.z !== 'wheel' || pending.pd !== 1 || sent.pd !== 1) return false;
+  return pathRideSteady(sent, pending, sentAt, pendingAt);
+}
+
+/** v2.3.5440: the batch's path question, whole: a steady walk's move
+    (pathMayWait), or, `riding` with the roll-off on, a rolling board's speed
+    change (pathRideMayWait).  wsClient.js flushInputBuffer asks this. */
+export function pathWaits(on, riding, pending, pendingAt, sent, sentAt) {
+  return pathMayWait(on, pending, pendingAt, sent, sentAt) || (!!riding && pathRideMayWait(on, pending, pendingAt, sent, sentAt));
+}
