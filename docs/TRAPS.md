@@ -3980,6 +3980,8 @@ material either).
 **Receipt:** `src/rendering/traits/eyeStyleColorCatalog.js`; `docs/specs/eyes.md`
 §6; the `flat` assertions in `mp-eyestyle.mjs` point 8.
 
+Held by: tools/guards/traps-look-tables.test.mjs (tag 5325).
+
 ## 94. A part that spans two materials cannot be named by a pin (v2.3.2646)
 
 **Tempting:** `traitMaterials.MAIN_MATERIAL` pins which material a swatch
@@ -4008,6 +4010,8 @@ is not; a percentage small enough to dismiss as anti-aliasing deserves a look at
 **Receipt:** `eyeStyleColorCatalog.EYE_STYLE_PAINTS`; the "spares the white"
 assertions in `mp-eyestyle.mjs` point 8; the two pins removed from
 `MAIN_MATERIAL`, with the reason left in their place.
+
+Held by: tools/guards/traps-look-tables.test.mjs (tag 5325).
 
 ## 95. A colour measured off the reference art is not the catalog target (v2.3.2665)
 
@@ -4069,6 +4073,8 @@ the repo references it, so the recolour never bakes it, and it is bright enough
 that leaving it in moved Alabaster's aggregate from 1.4% to 35% and drowned
 every real sheet. Excluded because it is not recoloured — not because the
 number was inconvenient.
+
+Held by: tools/guards/traps-look-tables.test.mjs (tag 5325).
 
 ## 96. Three head anchors that look load-bearing and are not (v2.3.2666)
 
@@ -4554,6 +4560,8 @@ Anything that reads it by position follows the same rule: size from `orig`,
 copy through `drawGearFrame`, cut through `subTexture`. And do not recover
 "which frame is this" as `frame.x / frame.width`: read `tex.__btIx`.
 
+Held by: tools/guards/traps-look-tables.test.mjs (tag 5325).
+
 ## 107. The harvest "demo" that animates the body contradicts the owner's freeze (v2.3.2760)
 
 **Tempting:** at `ready`, with no thumb down, loop a generated phase through
@@ -4902,6 +4910,8 @@ frame, flips honoured; identical to `getBounds()` for an uncropped texture.
 Keep `getBounds()` where you want the painted art (a probe asking where the
 figure actually is). The own-quad lighting gradient (formShade) had the same
 blind spot and reads the crop's rows inside `orig` since v2.3.2859.
+
+Held by: tools/guards/traps-look-tables.test.mjs (tag 5325).
 
 
 ## 120. A highlight added and clipped at white reads as white spots, and turning it down barely helps (v2.3.2914)
