@@ -1,7 +1,7 @@
 card: T
 branch: claude/plan-t-4-thrown (one branch a PR, each begun from the one before: -1- to -7-; merge them in order)
-prs: #1754 (5301, merged), #1768 (5302, merged), #1797 (5303, ready), PR 4 (5304, working)
-state: working
+prs: #1754 (5301, merged), #1768 (5302, merged), #1797 (5303, ready), #1804 (5304, ready: after #1797)
+state: ready
 
 ## Done
 
