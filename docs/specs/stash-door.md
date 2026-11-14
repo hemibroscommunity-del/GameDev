@@ -31,21 +31,30 @@ the list when it is missing, so no caller writes `= []`. A wrong road, a
 road of another verb, or a road that does not touch that stash throws, the
 list untouched.
 
-## The cap (handoff rule 3, moved)
+## The cap (handoff rule 3)
 
 The weapon bag's cap is the room's (`WEAPON_STASH_CAP`, its live-flag size);
 a gear list's is gearstash.js `gearStashCap()`. A give past it is refused at
 the door; every caller already answered a full bag (the mail keeps the
 weapon, a refusal goes back to the phone, a pile's blade is sold), so
-nothing a player sees changes. What changed:
+nothing a player sees changes there.
 
-- `_saveRpg` no longer cuts the weapon bag at the cap;
-- the equip no longer cuts it either (a swap never grows the bag).
+What is true of the cuts, and only this (the gatekeeper's medium, sitting
+17, verified by a probe through a real join; the planning session's choice:
+the words now, the cuts later):
 
-So a bag over its cap (a cap lowered under `disable_bigbags`) keeps every
-weapon and takes no more until it is under, where before the save destroyed
-the ones past the cap. The gear lists' save keeps its `capStash` copy as
-before (`persistence.js`); the door bounds what goes in.
+- **no longer cut**: `_saveRpg` writes every weapon the bag holds, and the
+  equip no longer cuts the bag (a swap never grows it). So a bag over its
+  cap (a cap lowered under `disable_bigbags`) keeps every weapon while the
+  player is in the room;
+- **still cut**: the join (`_sanitizeWeaponList`, gear.js, cuts a stored bag
+  to the cap at the next join); the phone's copy (persistence.js sends the
+  capped list); the gear lists at the save (`capStash`, persistence.js) and
+  at the join (gearstash.js `_gearStashAdoptOnJoin`).
+
+No new loss against before this door. Removing the remaining cuts is a
+bigger change in behaviour, for later. There is no kill switch: one would
+only bring back a cut that destroys weapons.
 
 ## The roads and their classes
 

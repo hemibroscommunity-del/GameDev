@@ -60,7 +60,8 @@ export const marketMethods = {
    *    `mkt_order:<uuid>` (128 KB value ceiling).  This is the HTTP
    *    surface, not a WS frame, so nothing bounded the body: a 200 KB
    *    `playerName` makes `storage.put` THROW -- and by then
-   *    `ps.weaponStash.splice(idx, 1)` and `_saveRpg` have already run, so
+   *    the weapon's take from the bag (v2.3.5281: the stashes' door,
+   *    `market_sell`) and `_saveRpg` have already run, so
    *    the seller's weapon is gone from live state and from disk with no
    *    order to show for it and nothing for any sweep to find.  Escrow
    *    that can't be written is escrow that never existed; validate

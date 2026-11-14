@@ -361,8 +361,9 @@ export const persistenceMethods = {
         legsArmor: ps.legsArmor || null,
         shield: ps.shield || null,
         amulet: ps.amulet || null,
-        /* v2.3.5281: never cut at the save (handoff rule 3, moved into the
-           stashes' door: a give past the cap is refused there, stash.js) */
+        /* v2.3.5281: the save no longer cuts the weapon bag (handoff rule
+           3: a give past the cap is refused at the stashes' door, stash.js;
+           the join's cut, the phone's copy and the gear lists' cuts remain) */
         weaponStash: Array.isArray(ps.weaponStash) ? ps.weaponStash.slice() : [],
         /* v2.3.2523: THE GEAR STASHES (gearstash.js, spec
            docs/specs/gear-stash.md).  Armour, legs, shields, cosmetic

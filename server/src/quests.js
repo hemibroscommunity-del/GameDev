@@ -748,8 +748,8 @@ export const questMethods = {
            it still opens -- that is a deliberate design call to raise with
            the owner, not something to "fix" here by tightening the gate.
            Rule 3 of the handoff still applies: check capacity FIRST --
-           _saveRpg truncates weaponStash at cap, so pushing past it destroys
-           the weapon silently. */
+           v2.3.5281: the stashes' door refuses a give past the cap (false),
+           so the weapon is kept aside below, never lost. */
         /* ═══ v2.3.2420: A FULL STASH NO LONGER EATS THE REWARD ═══
            Owner: "didn't receive bow and staff after completing first quest",
            on a character old enough to be carrying eight weapons already.

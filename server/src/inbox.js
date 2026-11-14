@@ -380,10 +380,10 @@ export const inboxMethods = {
   },
 
   // Apply one credit entry to a live playerState.  Returns false ONLY
-  // when the entry must stay queued (weapon + full stash -- _saveRpg
-  // truncates the stash at cap, so pushing past it would silently
-  // DESTROY the weapon).  Malformed entries return true so a bad
-  // payload can never wedge the inbox forever.
+  // when the entry must stay queued (weapon + full stash -- v2.3.5281:
+  // the stashes' door refuses a give past the cap, so the weapon waits
+  // in the mail).  Malformed entries return true so a bad payload can
+  // never wedge the inbox forever.
   /* v2.3.2536: `playerId` is the third argument so the `gear` kind below
      can put the piece's provenance row back into the right player's ledger
      (gearprov.js).  `ps` carries no id of its own and both call sites above

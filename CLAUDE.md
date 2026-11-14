@@ -212,7 +212,8 @@ spec. Add a line here only for a new RULE every session must follow.
 - **The same for a bag count, a stash, a player's health and leaving**:
   `bag.js` `bagGive` / `bagTake` / `bagSet` (`BAG_ROADS`); `stash.js`
   `stashGive` / `stashTake` / `stashSet` (`STASH_ROADS`: the weapon bag and
-  the gear lists; a give past the cap is refused there); `life.js` `_hpSet`
+  the gear lists; a give past the cap is refused there, and the join still
+  cuts a bag over it: handoff rule 3); `life.js` `_hpSet`
   (`HP_ROADS`) and the life phase `ps.life` only through `_lifeTo`; a session
   leaves only through `leave.js` `_playerLeaves(ws, why)` (`LEAVE_WAYS`).
   Their tests fail a second writer (TRAPS §337-339).

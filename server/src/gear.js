@@ -790,7 +790,8 @@ export const gearMethods = {
     ps[slot] = stashItem;
     /* v2.3.5281: the stashes' door.  The old cut to the cap here is gone: a
        swap never grows the bag, and a bag over its cap (a cap lowered) keeps
-       every weapon -- the door refuses a give past it, never cuts (rule 3) */
+       every weapon until the next join cuts it (rule 3: the join's cut
+       remains) -- the door refuses a give past it */
     if (activeItem) stashSet(ps, 'weaponStash', activeItem, 'equip_swap', stashIdx);
     else stashTake(ps, 'weaponStash', stashIdx, 'equip_take');
     // v2.3.1697: armor no longer changes maxHp (see _handleUnequipRequest

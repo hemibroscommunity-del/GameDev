@@ -22,14 +22,20 @@
  * `rec` is a live player's state or a stored record; give and take make the
  * list when it is missing, so no caller writes `rec.weaponStash = []`.
  *
- * THE CAP (ARCHITECTURE-HANDOFF rule 3, moved here): a give past the stash's
- * cap is REFUSED by the door (false: nothing added; the caller answers it,
- * as each did before: the mail, a refusal, a sale), never cut at the save.
- * `_saveRpg` no longer cuts the weapon bag, and the equip's own cut is gone:
- * a list over its cap (a cap lowered under `disable_bigbags`) keeps every
- * piece and takes no more until it is under.  The weapon bag's cap is the
- * room's (`WEAPON_STASH_CAP`, its live-flag size); the gear lists' is
- * gearstash.js `gearStashCap()`.
+ * THE CAP (ARCHITECTURE-HANDOFF rule 3): a give past the stash's cap is
+ * REFUSED by the door (false: nothing added; the caller answers it, as each
+ * did before: the mail, a refusal, a sale).  What is true of the cuts, and
+ * only this (the gatekeeper's medium, sitting 17, by a probe through a real
+ * join): `_saveRpg` and the equip NO LONGER cut the weapon bag, so a bag
+ * over its cap (a cap lowered under `disable_bigbags`) keeps every weapon
+ * while the player is in the room.  The cuts that REMAIN: the join's
+ * (`_sanitizeWeaponList` cuts the stored bag to the cap at the next join),
+ * the phone's copy (the capped list it is sent, persistence.js), and the
+ * gear lists' at the save (`capStash`) and at the join (gearstash.js).  No
+ * new loss against before; removing those cuts is a bigger change, for
+ * later.  No kill switch: one would only bring back a cut that destroys
+ * weapons.  The weapon bag's cap is the room's (`WEAPON_STASH_CAP`, its
+ * live-flag size); the gear lists' is gearstash.js `gearStashCap()`.
  *
  * EACH ROAD (STASH_ROADS):
  *   verb    'give', 'take' or 'set';
@@ -130,7 +136,8 @@ function listOf(rec, field) {
 }
 
 /** A piece INTO `field`, at its end, by `road`.  False, nothing added, when
- *  the stash is at its cap (rule 3: refused here, never cut at the save). */
+ *  the stash is at its cap (rule 3: refused here; the cuts that remain
+ *  are in the header). */
 export function stashGive(rec, field, piece, road, room) {
   roadFor(road, 'give', field);
   const list = listOf(rec, field);

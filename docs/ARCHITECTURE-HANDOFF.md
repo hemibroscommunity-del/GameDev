@@ -146,12 +146,16 @@ extended.
    Naming convention going forward: **lowercase_snake prefixes**
    (`duelEscrow:` predates the rule; don't imitate it). Register every
    new prefix in this table.
-3. **A stash past its cap is refused at the door, never cut at the save**
-   (v2.3.5281: was "`_saveRpg` truncates `weaponStash` at cap"). The
-   stashes' door (`stash.js` `stashGive`, rule 29b) answers false and adds
-   nothing when the weapon bag or a gear list is full; anything delivering
-   a piece answers that (`_applyCreditToPs` returns false, so the mail
-   keeps it). `_saveRpg` writes every weapon the bag holds.
+3. **A give past a stash's cap is refused at the door** (v2.3.5281: was
+   "`_saveRpg` truncates `weaponStash` at cap"). The stashes' door
+   (`stash.js` `stashGive`, rule 29b) answers false and adds nothing when
+   the weapon bag or a gear list is full; anything delivering a piece
+   answers that (`_applyCreditToPs` returns false, so the mail keeps it).
+   The save and the equip no longer cut the weapon bag. The cuts that
+   remain: the join's (`_sanitizeWeaponList` cuts a stored bag over its cap
+   at the next join), the phone's copy (sent capped), and the gear lists'
+   at the save (`capStash`) and the join (gearstash.js). No kill switch:
+   one would only bring back a cut that destroys weapons.
 4. **The regen tick's durable write is COALESCED, and that is deliberate**
    (v2.3.1619). `_tickPlayerRegen` runs every ~670 ms but calls `_saveRpg`
    at most once per `REGEN_SAVE_MS` (10 s); the skipped ticks set
@@ -409,7 +413,8 @@ extended.
     (`stash-door.test` fails a second writer, a road nobody calls and a road
     two places call). The gear helpers that hand the door their caller's
     road (`_gearStashLiveAdd`, `_gearStashLiveTake`, shieldwear.js `bagIt`)
-    take it as their last argument. A give past the cap is refused (rule 3).
+    take it as their last argument. A give past the cap is refused (rule 3,
+    with the cuts that remain).
 
 ---
 
