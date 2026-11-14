@@ -1,0 +1,41 @@
+/* ═══ v2.3.5160: THE STATE LEDGER, system `desktop` (grand plan step 5.3; card U) ═══
+ *
+ * Every field of the state `S` and every top-of-file variable of the system
+ * `desktop` (card B's map, docs/SYSTEMS.md), one row a line.  The columns
+ * are in src/state/README.md.
+ *
+ * MADE BY MACHINE: node tools/dev/state-census.mjs --ledger desktop --write
+ * Never type a row.  By hand: `lifetime` alone ("sitting": the sitting, never
+ * reset, until someone says otherwise; card L).  tools/guards/state-ledger.test.mjs
+ * holds it.  No imports, plain data: nothing in the game imports it yet.
+ */
+export const SYSTEM = 'desktop';
+export const ROWS = [
+  { field: '_dblTap', system: 'desktop', lifetime: 'sitting', suggested: 'never', born: 'fly src/game/desktopControls.js onKeyDown', twoFiles: '2+~', noRead: false, noSet: false, phase: null, flag: false, writers: ['src/game/deskCombos.js~', 'src/game/desktopControls.js'] },
+  { field: '_dblTapRolls', system: 'desktop', lifetime: 'sitting', suggested: 'never', born: 'fly src/game/desktopControls.js onKeyDown', twoFiles: '', noRead: 'tests', noSet: false, phase: null, flag: false, writers: ['src/game/desktopControls.js'] },
+  { field: '_eTalkHints', system: 'desktop', lifetime: 'sitting', suggested: 'never', born: 'fly src/game/desktopControls.js onKeyDown', twoFiles: '', noRead: 'tests', noSet: false, phase: null, flag: false, writers: ['src/game/desktopControls.js'] },
+  { field: '_interactNow', system: 'desktop', lifetime: 'sitting', suggested: 'never', born: 'fly src/game/desktopControls.js setupDesktopControls', twoFiles: '', noRead: false, noSet: false, phase: null, flag: false, writers: ['src/game/desktopControls.js'] },
+  { field: '_isDesktop', system: 'desktop', lifetime: 'sitting', suggested: 'never', born: 'fly src/game/desktopControls.js setupDesktopControls', twoFiles: '', noRead: false, noSet: false, phase: null, flag: false, writers: ['src/game/desktopControls.js'] },
+  { field: '_teachNode', system: 'desktop', lifetime: 'sitting', suggested: 'zone', born: 'fly src/ui/deskTeach.js resourceTick', twoFiles: '', noRead: false, noSet: false, phase: null, flag: false, writers: ['src/ui/deskTeach.js'] },
+  { field: 'keys', system: 'desktop', lifetime: 'sitting', suggested: 'never', born: 'first src/ui/BroTown.jsx', twoFiles: '', noRead: false, noSet: false, phase: null, flag: false, writers: ['src/game/desktopControls.js'] },
+  { variable: '_pref', file: 'src/game/dashSidePref.js', system: 'desktop', lifetime: 'sitting', suggested: 'never', born: 'let call', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/dashSidePref.js'] },
+  { variable: 'NAV_BY_CODE', file: 'src/game/deskKeys.js', system: 'desktop', lifetime: 'sitting', suggested: 'never', born: 'const object', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/deskKeys.js'] },
+  { variable: '_armed', file: 'src/ui/deskTeach.js', system: 'desktop', lifetime: 'sitting', suggested: 'zone', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/ui/deskTeach.js'] },
+  { variable: '_cursorOn', file: 'src/ui/deskTeach.js', system: 'desktop', lifetime: 'sitting', suggested: 'never', born: 'let bool', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/ui/deskTeach.js'] },
+  { variable: '_edgeEl', file: 'src/ui/deskTeach.js', system: 'desktop', lifetime: 'sitting', suggested: 'zone', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/ui/deskTeach.js'] },
+  { variable: '_encUntil', file: 'src/ui/deskTeach.js', system: 'desktop', lifetime: 'sitting', suggested: 'never', born: 'let number', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/ui/deskTeach.js'] },
+  { variable: '_getS', file: 'src/ui/deskTeach.js', system: 'desktop', lifetime: 'sitting', suggested: 'never', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/ui/deskTeach.js'] },
+  { variable: '_keyEl', file: 'src/ui/deskTeach.js', system: 'desktop', lifetime: 'sitting', suggested: 'zone', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/ui/deskTeach.js'] },
+  { variable: '_labelEl', file: 'src/ui/deskTeach.js', system: 'desktop', lifetime: 'sitting', suggested: 'zone', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/ui/deskTeach.js'] },
+  { variable: '_lastMouse', file: 'src/ui/deskTeach.js', system: 'desktop', lifetime: 'sitting', suggested: 'never', born: 'let null', twoFiles: '', noRead: true, phase: null, flag: false, neverChanged: false, writers: ['src/ui/deskTeach.js'] },
+  { variable: '_nextEnc', file: 'src/ui/deskTeach.js', system: 'desktop', lifetime: 'sitting', suggested: 'zone', born: 'let number', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/ui/deskTeach.js'] },
+  { variable: '_rings', file: 'src/ui/deskTeach.js', system: 'desktop', lifetime: 'sitting', suggested: 'zone', born: 'let array', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/ui/deskTeach.js'] },
+  { variable: '_t', file: 'src/ui/deskTeach.js', system: 'desktop', lifetime: 'sitting', suggested: 'never', born: 'let object', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/ui/deskTeach.js'] },
+  { variable: '_timer', file: 'src/ui/deskTeach.js', system: 'desktop', lifetime: 'sitting', suggested: 'never', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/ui/deskTeach.js'] },
+  { variable: '_tipsEl', file: 'src/ui/deskTeach.js', system: 'desktop', lifetime: 'sitting', suggested: 'never', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/ui/deskTeach.js'] },
+  { variable: '_tipsUntil', file: 'src/ui/deskTeach.js', system: 'desktop', lifetime: 'sitting', suggested: 'never', born: 'let number', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/ui/deskTeach.js'] },
+  { variable: '_toastEl', file: 'src/ui/deskTeach.js', system: 'desktop', lifetime: 'sitting', suggested: 'never', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/ui/deskTeach.js'] },
+  { variable: '_toastUntil', file: 'src/ui/deskTeach.js', system: 'desktop', lifetime: 'sitting', suggested: 'never', born: 'let number', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/ui/deskTeach.js'] },
+  { variable: '_who', file: 'src/ui/deskTeach.js', system: 'desktop', lifetime: 'sitting', suggested: 'never', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/ui/deskTeach.js'] },
+  { variable: 'qa', file: 'src/ui/deskTeach.js', system: 'desktop', lifetime: 'sitting', suggested: 'never', born: 'const object', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/ui/deskTeach.js'] },
+];
