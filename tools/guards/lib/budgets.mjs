@@ -177,6 +177,7 @@ export const ROWS = Object.freeze({
     ],
   },
   data: { reads: [], spends: { mb: null }, controls: [c('mb', 'src/data/gameDisplay.js')] },   /* zone music, 56 MB */
+  state: { reads: [], spends: {}, controls: [] },   /* v2.3.5160: the state ledger (card U): plain data, nothing imports it */
   debug: { reads: ['page-ms', 'lateness'], spends: {}, controls: [] },   /* perfTracker, madeLog, busyBeat, perfHud: meters */
   shell: { reads: [], spends: {}, controls: [] },
   vendor: { reads: [], spends: {}, controls: [] },

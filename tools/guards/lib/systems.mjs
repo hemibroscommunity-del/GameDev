@@ -320,6 +320,17 @@ export const SYSTEMS = Object.freeze({
     doors: [],
     switches: [],
   },
+  /* v2.3.5160 (card U PR 1, the planning session's call): the ledger's
+     files, src/state/<system>.js and its README.  A ledger is plain data
+     about another system's state; nothing imports it yet */
+  state: {
+    what: 'the state ledger: every field of S and top-of-file variable, a file a system',
+    files: [re('^src/state/')],
+    words: ['ledger'],
+    traps: [],
+    doors: [],
+    switches: [],
+  },
   debug: {
     what: 'the crash ring, the perf HUD, the debug overlay, the field report (its worker half: server/src/report.js, v2.3.5127)',
     files: [re('^src/debug/'), f('server/src', 'report')],

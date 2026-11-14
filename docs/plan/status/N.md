@@ -1,39 +1,39 @@
 card: N
-branch: claude/grand-plan-n-2-wire-table (one branch a PR, each begun from the one before: merge them in order)
-prs: #1684 (ready), PR 2 the table, from the branch above (ready; its number goes here with PR 3's commit)
+branch: claude/grand-plan-n-3-wire-guard (one branch a PR, each begun from the one before: merge them in order)
+prs: #1684 (merged), #1695 (merged), #1697 (ready)
 state: ready
 
 ## Done
 
 - #1684 (tag 5060): the door tests read `server/src/` in depth (one walker,
-  `server/test/src-walk.mjs`; `vendor/` left out by name). Deploys the worker.
-- PR 2 (tag 5061): the wire table, `server/src/wire/` (a file a direction,
-  `columns.js` the closed lists, a README). 436 rows: 139 in, 26 relay, 164
-  out, 107 routes, the census's part 8; 118 carry a note. All 370 suites
-  pass with it read by every door test. Deploys the worker: merge it with
-  #1684 in one sitting (TRAPS §277).
+  `server/test/src-walk.mjs`, `.js` and `.mjs`; `vendor/` left out by name,
+  what it holds pinned). Deploys.
+- #1695 (tag 5061): the wire table, `server/src/wire/`: 436 rows (the
+  census's part 8), 118 with a note. Registered with card B's guards (the
+  `wire` system; `shapes-once`'s Where for `wayIn`, `mayStart`,
+  `doesWhat`: `columns.js`). Deploys: merge it with #1684 (TRAPS §277).
+- #1697 (tag 5062): `tools/guards/wire-table.test.mjs`, the table held to
+  the code, reading its switches by system (`lib/filesOf.mjs`); seven break
+  proofs in its header, each tried by hand.
 
 ## Next
 
-- PR 3 (tag 5062), the guard: `tools/guards/wire-table.test.mjs`.
+- Nothing: the card stops when #1697 merges. It adds card A's `report`
+  row (#1706), so it deploys. A's held #1711 adds `/api/admin/dev/daybook`:
+  merged after #1697, it brings its row; merged first, I add it here.
 
 ## Found
 
+- **Once #1697 is on `main`, a new router case, privileged type, relay or
+  route with no row in `server/src/wire/` fails `npm test`.** Tell the
+  other sessions; CLAUDE.md §8's table may want that row (not my file).
 - `join_rejected` is also sent when the owner's `device-forget` or
   `key-new` puts out a character being played (`server/src/devicelock.js:315`);
-  the census's "who starts it" names only the join. The table says both.
-- `docs/SHAPES.md` part 5 left these open; the table fills them (its
-  README): `answer: 'http'` for a route; `wayIn: 'room'` for the five routes
-  only another of the worker's objects calls; the zone states `wheel`,
-  `safe`, `nml`, `dungeon`; an implicit machine's state `in` (`party` also
-  `leader`); `absent` opens each clause with `default`, `older phone`,
-  `refused`, `dropped` or `nothing`.
-- `caps-audit` (on the card) never lists `server/src/`; eight suites beyond
-  the card's nine did, and now read in depth.
+  the census's "who starts it" names only the join.
+- `docs/SHAPES.md` part 5 still says `server/src/wire/` "does not exist
+  yet". When the actor's `wayIn` is built, `shapes-once` needs its Where.
 
 ## Needs
 
-- From the owner, asked once: SHAPES' columns were written for a message a
-  phone sends. For a message the WORKER sends, the table reads them turned
-  round, as the census does (what the phone checks, does and answers;
-  README "How each column reads"). Keep that reading, or another?
+- Nothing. The question (an out row reads the columns turned round, as the
+  census does) was answered by the planning session: keep it.

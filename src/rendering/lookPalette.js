@@ -54,7 +54,7 @@
 import { BatcherPipe, DefaultBatcher, ExtensionType, extensions, BufferImageSource, Texture, Rectangle, Sprite, Container, GlProgram, Shader, UniformGroup, SpritePipe, glUploadBufferImageResource } from 'pixi.js';
 import { paletteAtlasSource, takePaletteRow, givePaletteRow, paletteRendererOf } from './paletteTex.js';
 import { timeLimit } from './retryLooks.js';   /* v2.3.4452: a set's file that never answers has failed */
-import { unpackLookSheet, lookHeadRows } from './lookUnpack.js';   /* v2.3.5015: the picture's pixels to the sheet's bytes, on either thread */
+import { unpackLookSheet, lookHeadRows, lookSheetSpec, lookSheetRows, LOOK_KIND_IDS, LOOK_MAX_ROLES } from './lookUnpack.js';   /* v2.3.5015: the picture's pixels to the sheet's bytes, on either thread; v2.3.5244: and a sheet's shape from its manifest (one copy, which node's gate reads too) */
 import { destroyTextures } from './bulkTexDestroy.js';   /* v2.3.5011: the sweep's frames let go of in one pass a sheet */
 import { clientOff } from '../game/clientOff.js';   /* v2.3.3716: the Test panel's live off switch (lane D's clientOff.js) */
 import { heapTrimOn } from './heapTrim.js';   /* v2.3.5007: the heap trim's switch (a sheet's frames made when first drawn) */
@@ -192,15 +192,13 @@ const BODY_ROLES = Object.freeze([
 /* THE ROW IS LAW (look-palette.md): which entries of a look's row each kind
    of part may use, so the parts of one player can share one row later */
 export const LOOK_ROW_RANGES = Object.freeze({ body: [0, 7], shirt: [8, 31], armour: [32, 63], head: [64, 127], 'shirt-drawing': [128, 159], spare: [160, 255] });
-/* a kind's number in the header (the shader's per-kind hook, registerLookKind) */
-export const LOOK_KIND_IDS = Object.freeze({ body: 0, shirt: 1, armour: 2, head: 3, 'shirt-drawing': 4 });
-const MAX_ROLES = 15;
-/* the header's 16-bit values: 0 scale (| 128 for 8 bits), 1 number rows, 2
-   the table's first row, 3 bits, 4 roles, 5-20 each role's end, 21-65 each
-   role's entry / ref / under, 66 the refs' scale (ref / refScale, P4's
-   fractional refs), 67 the kind (LOOK_KIND_IDS), 68-69 the sheet's offset in
-   a book (P3's masks, setLookSheetBook), low and high */
-const HEAD_VALUES = 5 + 16 + 3 * MAX_ROLES + 4;
+/* a kind's number in the header (the shader's per-kind hook, registerLookKind).
+   v2.3.5244: it, the most roles and the header's layout (its 16-bit values,
+   0 to 69) live in lookUnpack.js beside the sheet's shape (lookSheetSpec),
+   which has no imports, so tools/guards/asset-door.test.mjs reads a sheet as
+   this file does; still exported here for every reader of it */
+export { LOOK_KIND_IDS };
+const MAX_ROLES = LOOK_MAX_ROLES;
 
 function webgl2(r) { return !!(r && r.gl && r.context && r.context.webGLVersion === 2); }
 /** Drawn from the numbers here: wanted, the sheets in, WebGL2, the program not refused. */
@@ -233,18 +231,9 @@ function loadPng(url) {
     im.src = url;
   });
 }
-/* a sheet's rows on the chip: its numbers, its table (two RG texels an entry
-   at 16 bits, four R texels at 8), its header in the last row(s); the
-   stand's texture (resolution 2) an even number of rows.  v2.3.4993: also
-   what the atlas plans a sheet's place by, from its manifest alone */
-function sheetRows(W, n, E, bits, ds) {
-  const bpt = bits === 8 ? 1 : 2;
-  const tRows = Math.ceil((E * 4 / bpt) / W);
-  const hRows = Math.ceil((HEAD_VALUES * 2 / bpt) / W);
-  let rows = n + tRows + hRows;
-  if (ds === 2 && (rows & 1)) rows++;
-  return rows;
-}
+/* a sheet's rows on the chip (v2.3.4993: also what the atlas plans a sheet's
+   place by, from its manifest alone): lookUnpack.js lookSheetRows, v2.3.5244 */
+const sheetRows = lookSheetRows;
 function buildSheet(set, name, m, img, roles, place) {
   const W = m.w, n = m.h, T = m.tableRows, E = m.entries;
   const bits = m.bits === 8 ? 8 : 16;
@@ -255,13 +244,7 @@ function buildSheet(set, name, m, img, roles, place) {
   /* v2.3.4993: a place planned for another form of sheet is not used (the
      manifest and the picture disagree): its own texture, as before */
   if (place && (place.page.bits !== bits || place.page.ds !== m.ds || place.w !== W || place.rows !== rows)) place = null;
-  const head = new Array(HEAD_VALUES).fill(0);
-  head[0] = m.ds | (bits === 8 ? 128 : 0) | (m.mip === false ? 64 : 0);   /* v2.3.3757: 64, a sheet drawn without mipmaps (the stand-ins) */ head[1] = n; head[2] = n; head[3] = bits; head[4] = roles.length;
-  const ends = m.ends || [];
-  for (let r = 0; r < 16; r++) head[5 + r] = ends[Math.min(r, ends.length - 1)] != null ? ends[Math.min(r, ends.length - 1)] : E;
-  roles.forEach((ro, i) => { head[21 + 3 * i] = ro.entry; head[22 + 3 * i] = Math.round(ro.ref || 0); head[23 + 3 * i] = ro.under || 0; });
-  head[66] = Math.max(1, Math.round(m.refScale || 1));
-  head[67] = LOOK_KIND_IDS[m.kind] || 0;
+  /* the header (v2.3.5244: built by lookUnpack.js lookSheetSpec, its one copy) */
   /* the PNG is opaque, so it decodes exactly: a number in red (and green, 16
      bits), the table two pixels an entry, (r, g) then (b, a) -- made again
      from the <img> whenever the chip needs them (the bytes are let go of
@@ -270,11 +253,7 @@ function buildSheet(set, name, m, img, roles, place) {
   /* v2.3.5015: what turns the picture into the bytes (lookUnpack.js), with
      the sheet's book offset as it is now -- the page's `make` and the bake
      worker's own decode (maskedBakeWorker.js 'lookSheetUrl') both use it */
-  const spec = () => {
-    const book = (holder.sheet && holder.sheet.book) || 0;
-    head[68] = book & 65535; head[69] = Math.floor(book / 65536) & 65535;
-    return { W, n, T, E, rows, bits, head: head.slice() };
-  };
+  const spec = () => lookSheetSpec(m, roles, (holder.sheet && holder.sheet.book) || 0);
   const make = () => {
     const cv = document.createElement('canvas');
     cv.width = W; cv.height = n + T;

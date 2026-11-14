@@ -1,12 +1,11 @@
 card: A
 branch: claude/plan-a-6-speed-card (one branch a PR, each begun from the one before: -1- to -7-; merge them in order)
-prs: #1688, #1692, #1703, #1706 (merged); #1708 (5124), #1711 (5125, its route in card N's wire table): mended for sitting 5, ready
+prs: #1688, #1692, #1703, #1706 (merged); #1708 (5124), #1711 (5125, its route in card N's wire table): mended for sitting 6, ready
 state: ready
 
 ## Done
 
-- #1688, #1692, #1703 (5120 to 5122): merged at sitting 3; #1706 (5123,
-  with sitting 3's and 4's mends tagged 5127) at sitting 5.
+- #1688, #1692, #1703 (5120-5122) merged at sitting 3; #1706 (5123) at 5.
 - #1708 (5124): `roomrow.js` into the `room` part. Sitting 4's: in the
   map (`server-core`); the last one out (`leave.js`, one line) writes
   the book at once (roomrow.test 9). Sitting 5's: only after a join
@@ -15,14 +14,15 @@ state: ready
   put of the book spending one (the door's too: the storage's wrapper),
   a turn beyond a put running; `roomrow: false` stops it; two last-outs
   in one put never side by side. roomrow.test 10, cost-guard 15c (an
-  hour of storms: 14 rows, line 18), SHAPES's book row.
-- #1711 (5125): the Speed card into `speed`; GET /dev/daybook; "Copy
-  table". Sitting 4's (report.test 12): `caps.report` 2 takes the card
-  (`reportspeed: false` 1); the table reads the smaller cell.
+  hour of storms: 14 rows, line 18), SHAPES's book row. Sitting 6's: a
+  save refused owes the book too (a `newer` refusal comes at the join);
+  roomrow §3 reads the stored book alone.
+- #1711 (5125): the Speed card into `speed`; GET /dev/daybook (its row
+  in card N's wire table); "Copy table". `caps.report` 2 takes the card.
 
 ## Next
 
-- Sitting 6's list.
+- Sitting 7's list.
 
 ## Found
 

@@ -1,0 +1,49 @@
+/* ═══ v2.3.5160: THE STATE LEDGER, system `preload` (grand plan step 5.3; card U) ═══
+ *
+ * Every field of the state `S` and every top-of-file variable of the system
+ * `preload` (card B's map, docs/SYSTEMS.md), one row a line.  The columns
+ * are in src/state/README.md.
+ *
+ * MADE BY MACHINE: node tools/dev/state-census.mjs --ledger preload --write
+ * Never type a row.  By hand: `lifetime` alone ("sitting": the sitting, never
+ * reset, until someone says otherwise; card L).  tools/guards/state-ledger.test.mjs
+ * holds it.  No imports, plain data: nothing in the game imports it yet.
+ */
+export const SYSTEM = 'preload';
+export const ROWS = [
+  { variable: '_held', file: 'src/rendering/chestPreload.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'const array', twoFiles: '', noRead: true, phase: null, flag: false, neverChanged: false, writers: ['src/rendering/chestPreload.js'] },
+  { variable: '_p', file: 'src/rendering/chestPreload.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/rendering/chestPreload.js'] },
+  { variable: '_portraitHeld', file: 'src/rendering/levelUpBurstPreload.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/rendering/levelUpBurstPreload.js'] },
+  { variable: '_stopPortraitWatch', file: 'src/rendering/levelUpBurstPreload.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/rendering/levelUpBurstPreload.js'] },
+  { variable: '_installed', file: 'src/rendering/picsOnce.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'let bool', twoFiles: '', noRead: false, phase: null, flag: true, neverChanged: false, writers: ['src/rendering/picsOnce.js'] },
+  { variable: '_loading', file: 'src/rendering/picsOnce.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'const Map', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/rendering/picsOnce.js'] },
+  { variable: '_released', file: 'src/rendering/picsOnce.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'const Set', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/rendering/picsOnce.js'] },
+  { variable: '_renderer', file: 'src/rendering/picsOnce.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/rendering/picsOnce.js'] },
+  { variable: '_restorers', file: 'src/rendering/picsOnce.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'const array', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/rendering/picsOnce.js'] },
+  { variable: '_stats', file: 'src/rendering/picsOnce.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'const object', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/rendering/picsOnce.js'] },
+  { variable: '_timer', file: 'src/rendering/picsOnce.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'let number', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/rendering/picsOnce.js'] },
+  { variable: '_blueBaked', file: 'src/rendering/statDemoPreload.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/rendering/statDemoPreload.js'] },
+  { variable: '_blueBaking', file: 'src/rendering/statDemoPreload.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/rendering/statDemoPreload.js'] },
+  { variable: '_held', file: 'src/rendering/statDemoPreload.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'const array', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/rendering/statDemoPreload.js'] },
+  { variable: '_warm', file: 'src/rendering/statDemoPreload.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'const Map', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/rendering/statDemoPreload.js'] },
+  { variable: '_on', file: 'src/rendering/warmOnce.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'let bool', twoFiles: '', noRead: false, phase: null, flag: true, neverChanged: false, writers: ['src/rendering/warmOnce.js'] },
+  { variable: '_failAt', file: 'src/rendering/zoneBannerPreload.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'const Map', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/rendering/zoneBannerPreload.js'] },
+  { variable: '_held', file: 'src/rendering/zoneBannerPreload.js', system: 'preload', lifetime: 'sitting', suggested: 'zone', born: 'const Map', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/rendering/zoneBannerPreload.js'] },
+  { variable: '_inflight', file: 'src/rendering/zoneBannerPreload.js', system: 'preload', lifetime: 'sitting', suggested: 'zone', born: 'const Map', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/rendering/zoneBannerPreload.js'] },
+  { variable: '_lastTick', file: 'src/rendering/zoneBannerPreload.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'let number', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/rendering/zoneBannerPreload.js'] },
+  { variable: '_near', file: 'src/rendering/zoneBannerPreload.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'const object', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/rendering/zoneBannerPreload.js'] },
+  { variable: '_stats', file: 'src/rendering/zoneBannerPreload.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'const object', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/rendering/zoneBannerPreload.js'] },
+  { variable: '_want', file: 'src/rendering/zoneBannerPreload.js', system: 'preload', lifetime: 'sitting', suggested: 'zone', born: 'const Set', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/rendering/zoneBannerPreload.js'] },
+  { variable: '_cards', file: 'src/ui/lazyPanel.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'const object', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/ui/lazyPanel.js'] },
+  { variable: '_failed', file: 'src/ui/lazyPanel.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'const array', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/ui/lazyPanel.js'] },
+  { variable: '_loaded', file: 'src/ui/lazyPanel.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'const array', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/ui/lazyPanel.js'] },
+  { variable: '_named', file: 'src/ui/lazyPanel.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'const array', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/ui/lazyPanel.js'] },
+  { variable: '_introList', file: 'src/ui/loadingGate.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/ui/loadingGate.js'] },
+  { variable: '_readyAt', file: 'src/ui/loadingGate.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'let number', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/ui/loadingGate.js'] },
+  { variable: '_timer', file: 'src/ui/loadingGate.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/ui/loadingGate.js'] },
+  { variable: '_up', file: 'src/ui/loadingGate.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'let bool', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/ui/loadingGate.js'] },
+  { variable: '_veilList', file: 'src/ui/loadingGate.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/ui/loadingGate.js'] },
+  { variable: '_waiting', file: 'src/ui/loadingGate.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'const array', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/ui/loadingGate.js'] },
+  { variable: '_worldIn', file: 'src/ui/loadingGate.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'let bool', twoFiles: '', noRead: false, phase: null, flag: true, neverChanged: false, writers: ['src/ui/loadingGate.js'] },
+  { variable: 'qa', file: 'src/ui/loadingGate.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'const object', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/ui/loadingGate.js'] },
+];

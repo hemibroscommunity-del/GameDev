@@ -1,7 +1,7 @@
 card: H
 branch: claude/grand-plan-h-8-ui (one branch a PR, each begun from the one before, as W's are: merge them in order)
-prs: #1668, #1675, #1681 (merged); #1700, #1709, #1712 (sitting 4's holds mended: ready); #1714 (ready); PR 8 (working)
-state: working
+prs: #1668, #1675, #1681 (merged); #1700, #1709, #1712 (sitting 4's holds mended: ready); #1714 (ready); PR 8, the branch above (ready; its number with the next commit)
+state: ready
 
 ## Done
 
@@ -17,12 +17,12 @@ state: working
   `soundFold.js` (`four-lines`); a mono sound never waits (4g). Deploys.
 - #1714 (5046) the equip redraw `other: R > J` off. Client only.
 - PR 8 (5047) `ui:*` off: the gear tab's cells components, the formatter
-  readied at load; six runs, 9.9 ms the longest (13.4 before).
+  readied at load; six runs, 9.9 ms the longest (13.4); geartab 122 of 122.
 
 ## Next
 
-- Sitting 4: #1714 (`main` in), then PR 8 opened. Then `sweepPicsOnce`
-  (5048), `body-bake` (5049, + Z's #1668 finds).
+- `sweepPicsOnce` (5048), then `body-bake` (5049, + Z's #1668 finds).
+  Sitting 4's holds: `main` in, mended, ready for sitting 5.
 
 ## Found
 
