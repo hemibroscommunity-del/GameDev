@@ -26,7 +26,9 @@
  *
  * The storage is inbox.test §8c's: every write of one synchronous run commits
  * as one batch, as a Durable Object's does, and the room dies before batch
- * `crashAt` (that one and every later one are lost).
+ * `crashAt` (that one and every later one are lost).  v2.3.5086: it lives in
+ * the shared test room now (testroom.mjs, card E PR 7), this the first suite
+ * moved onto it.
  *
  * KNOWN: a case found RED on today's code is listed in KNOWN with the reason
  * and kept out of the failure count (it prints KNOWN), so the suite guards
@@ -41,19 +43,31 @@
  */
 import { GameRoom } from '../src/index.js';
 import { ARENA } from '../src/gladiator.js';
-
-const mockEnv = { LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async () => ({}) }) } };
-function fakeWs(label) {
-  return { label, sent: [], send(s) { this.sent.push(JSON.parse(s)); }, close() {} };
-}
-const baseSession = () => ({ id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
+/* v2.3.5086: the shared test room (testroom.mjs, card E PR 7): this suite's
+   own storage model (every write of one synchronous run one batch, the room
+   dying before batch `crashAt`), its socket, its session and its settle moved
+   there, the first suite on it */
+import { mockEnv, fakeWs, baseSession, makeStorage, settle } from './testroom.mjs';
 
 /* v2.3.4793: what is red on today's code, each with its reason.  The ids are
    the ones the checks below pass to `verdict`. */
 const KNOWN = new Map([
-  ['trade-weapon-half', 'trade2.js _handleTrade2Confirm: the gold and goods move in ONE write, but each staged weapon is delivered in a write of its own AFTER it; a restart between leaves the window gone and the escrow record standing, so the restart sweep hands the weapon BACK to its owner -- who also kept the other side\'s gold. The other side paid and got nothing (a half trade; handoff rule 7). Report: money path, not fixed here.'],
-  ['arena-stake-place', 'gladiator.js _handleArenaSponsor: _escrowDebitGold (the purse and its stamp, one write) is awaited, THEN the arena_stake record is put in a second write; a restart between takes the stake and leaves no record, so _arenaStakeSweep has nothing to refund from. The arena ENTRY had the same shape and was fixed in v2.3.3185 (arena.test §15). Report: money path, not fixed here.'],
-  ['arena-stake-settle-loss', 'gladiator.js _arenaSettleStakes: every losing stake is stamped settled FIRST, then the fighter\'s cut and the winners are paid in writes of their own; a restart between keeps the losing stakes (stamped, so never refunded) and pays nobody from them. By design in its own words ("a crash part-way costs a payout, never makes one twice"); listed so the owner sees it costs players gold on a deploy mid-arena.'],
+  /* v2.3.5087 (grand plan card E, PR 8): 'trade-weapon-half' is off the list --
+     trade2.js v2.3.4795 delivers each staged weapon, or marks it OWED on file,
+     in the swap's own one write, and this suite has passed it at every write
+     since (it printed NOTE). Its checks count again. */
+  /* v2.3.5088 (card E, PR 8b): 'arena-stake-place' is off the list too --
+     gladiator.js v2.3.4796 takes the stake and puts its arena_stake record in
+     ONE synchronous run (_escrowDebitGoldTogether), and this suite has passed
+     it at every write since (it printed NOTE). Its check counts again. */
+  /* v2.3.5089 (card E, PR 8c): 'arena-stake-settle-loss' is off the list --
+     gladiator.js _arenaSettleStakes writes the whole settlement as a plan on
+     every stake record in ONE run before a coin moves, pays each leg once by
+     its opId, and the sweep FINISHES a planned record rather than refunding
+     it.  KNOWN is empty: step 4.5's line.
+     Sitting 10: the plan is OFF until the owner says yes to its cost (two
+     rows a match), so case 6 runs it ON (`arenasettleplan: true`); off, the
+     old order's hole is as it was. */
 ]);
 const COUNT_KNOWN = process.env.CHAOS_KNOWN === '1';
 
@@ -62,58 +76,19 @@ function check(name, cond, detail) {
   if (cond) console.log('PASS', name);
   else { failures++; console.log('FAIL', name, detail !== undefined ? JSON.stringify(detail).slice(0, 600) : ''); }
 }
+/* v2.3.5089: step 4.5's line -- no money path loses value to a restart, and
+   none is waived: a new red case is fixed, never listed (grand plan card E) */
+check('KNOWN is empty: no restart loss is waived (step 4.5)', KNOWN.size === 0, [...KNOWN.keys()]);
 function verdict(id, name, cond, detail) {
   if (!KNOWN.has(id) || COUNT_KNOWN) return check(name, cond, detail);
   if (cond) console.log('NOTE known case "' + id + '" passes now: take it off KNOWN --', name);
   else console.log('KNOWN', name, '--', KNOWN.get(id).slice(0, 160) + '...', detail !== undefined ? JSON.stringify(detail).slice(0, 300) : '');
 }
 
-/* inbox.test §8c's storage (store-onewrite's, with its sorted list) */
-const clone = (v) => (v === undefined ? v : JSON.parse(JSON.stringify(v)));
-function mkCrashState(seed) {
-  const store = new Map(seed ? [...seed].map(([k, v]) => [k, clone(v)]) : []);
-  let pending = null, batches = 0, crashAt = Infinity, dead = false;
-  const commit = () => {
-    const w = pending; pending = null;
-    const n = batches++;
-    if (dead || n >= crashAt) { dead = true; return; }
-    for (const [op, k, v] of w) { if (op === 'put') store.set(k, v); else store.delete(k); }
-  };
-  const write = (op, k, v) => {
-    if (!pending) { pending = []; queueMicrotask(commit); }
-    pending.push([op, k, clone(v)]);
-  };
-  const view = (k) => {
-    if (pending) for (let i = pending.length - 1; i >= 0; i--) if (pending[i][1] === k) return pending[i][0] === 'put' ? clone(pending[i][2]) : undefined;
-    return clone(store.get(k));
-  };
-  return {
-    _store: store,
-    batches: () => batches,
-    crashAt(n) { crashAt = n; },
-    storage: {
-      get: async (k) => view(k),
-      put: async (k, v) => {
-        if (k && typeof k === 'object') { for (const [kk, vv] of Object.entries(k)) write('put', kk, vv); return; }
-        write('put', k, v);
-      },
-      delete: async (k) => { for (const x of (Array.isArray(k) ? k : [k])) write('del', x); return true; },
-      list: async (opts) => {
-        const out = new Map();
-        const keys = [...store.keys()].filter((k) => !opts?.prefix || k.startsWith(opts.prefix)).sort();
-        for (const k of keys) {
-          if (opts?.startAfter && k <= opts.startAfter) continue;
-          if (opts?.limit && out.size >= opts.limit) break;
-          out.set(k, clone(store.get(k)));
-        }
-        return out;
-      },
-    },
-    getWebSockets: () => [],
-    acceptWebSocket: () => {},
-  };
-}
-const settleIo = () => new Promise((r) => setTimeout(r, 5));
+/* v2.3.5086: the storage is the shared room's (testroom.mjs makeStorage): inbox.test
+   §8c's model, moved there whole */
+const mkCrashState = makeStorage;
+const settleIo = settle;   /* v2.3.5086: the shared room's */
 async function joinOn(rm, ws, pid) {
   rm.sessions.set(ws, baseSession());
   /* today's login reward already taken, so a join moves no gold (inbox.test) */
@@ -455,7 +430,8 @@ const arenaRunning = (r) => {
   const path = {
     pids: [C, D, W, L],
     before: async (r) => { for (const p of [C, D, W, L]) await joinOn(r, fakeWs('s6' + p), p); },
-    act: async (r) => { await r._arenaSettleStakes('cx-t', 'cx-m', W); },
+    /* v2.3.5089 (sitting 10): the plan on, as the owner's yes would turn it */
+    act: async (r) => { r._liveFlags = Object.assign({}, r._liveFlags, { arenasettleplan: true }); await r._arenaSettleStakes('cx-t', 'cx-m', W); },
   };
   const m = await measure(s0, path);
   const whole = { c: per(m.store, C).gold, d: per(m.store, D).gold, w: per(m.store, W).gold };
