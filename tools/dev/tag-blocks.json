@@ -1,0 +1,31 @@
+{
+  "_what": "The grand plan's tag blocks (docs/GRAND-PLAN.md part 11, docs/plan/README.md). A card's letter to its blocks, each a first and a last number, both ends its own. A session takes its tags from its card's block, one a PR, in order. The numbers are bare on purpose: written with the version prefix, the tag check would read each as used.",
+  "_rules": "A block is never written as a range in a commit's title (the tag check reads a range as every tag in it taken). A new card takes twenty from nextBlock and moves nextBlock on by twenty, in the PR that writes the card. A card that runs out takes a second block the same way. Blocks never overlap and are never handed back.",
+  "blocks": {
+    "W": [[5021, 5024]],
+    "S": [[5025, 5026]],
+    "F": [[5027, 5028]],
+    "C": [[5029, 5029]],
+    "D": [[5030, 5030]],
+    "I": [[5031, 5031]],
+    "Z": [[5032, 5034], [5360, 5379]],
+    "J": [[5035, 5039]],
+    "H": [[5040, 5054]],
+    "N": [[5060, 5079]],
+    "E": [[5080, 5099]],
+    "B": [[5100, 5119]],
+    "A": [[5120, 5139]],
+    "G": [[5140, 5159]],
+    "U": [[5160, 5179]],
+    "K": [[5180, 5199]],
+    "L": [[5200, 5219]],
+    "O": [[5220, 5239]],
+    "P": [[5240, 5259]],
+    "Q": [[5260, 5279]],
+    "R": [[5280, 5299]],
+    "T": [[5300, 5319]],
+    "V": [[5320, 5339]],
+    "M": [[5340, 5359]]
+  },
+  "nextBlock": 5380
+}
