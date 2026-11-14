@@ -79,6 +79,26 @@ forfeits, walkovers, shot-clock timeouts) fire-and-forgets
 - Records deleted after the stamps; a crash in between cannot double-pay
   (every credit is opId-idempotent and the sweep checks both stamps before
   refunding). A crash part-way costs a payout, never makes one twice.
+- **v2.3.5089: the settlement is a plan** (grand plan card E, PR 8c). Before
+  a coin moves, the whole settlement (every leg: to whom, how much, its
+  opId) is written as ONE record, `arena_settle:<tid>:<mid>`, in the same
+  run as the losers' stamps; the stake records are not touched. Then each
+  leg pays (`_creditPlayer`, the same opIds as above), and the stakes and
+  the plan are deleted in one run. A restart before the plan: the sweep
+  refunds every stake. After it: the sweep finishes the plan
+  (`_arenaStakeFinish`), each leg once, never a refund; a winner a
+  rolled-back worker refunded is paid only the share after. A plan the
+  sweep cannot read is kept, with its stakes, for the owner, and pays
+  nothing at all (not even its good legs). The oplog prune waits while a
+  plan is open (`_arenaSettleWait`, asked by the tick's housekeeping slot
+  beside the General Store's and the Auction House's): a plan found after
+  48 h would otherwise read its paid legs as unpaid. The cost: TWO rows a
+  match more than the old order, the plan's put and its delete (the puts:
+  5 → 6 in a 1 v 1, 10 → 11 at 3 v 2, 32 → 33 at 10 v 10; `cost-guard`
+  §17). **Off until the owner says yes** (the gatekeeper's sitting 10):
+  `arenasettleplan: true` in the live flags turns it on; off, the old order
+  runs, its hole included. A plan on file is finished either way. Tests:
+  `arena-settle.test`.
 
 Examples (FIGHTER_CUT 10%): 1,000 on the winner, 1,000 on the loser → the
 winning backer gets 1,900, the fighter 100. Two backers of the winner at
