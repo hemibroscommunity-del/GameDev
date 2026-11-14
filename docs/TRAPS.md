@@ -808,6 +808,8 @@ the pinned source rev), `tools/qa/mp/mp-shirtkeyline.mjs` (per-column
 outline widths and a near-black budget per sheet),
 `src/rendering/characterPortrait.js` (`SHIRT_ART_VER`).
 
+Held by: tools/guards/traps-art-on-disk.test.mjs (tag 5326).
+
 ---
 
 ## §28 — A test that reports "not found" is worse than no test (v2.3.2000)
@@ -2325,6 +2327,8 @@ close to the thing being placed as the picture allows, and check the result
 against a measurement the game already owns rather than against a screenshot;
 and make sure the measurement measures the thing the eye judges.
 
+Held by: tools/guards/traps-art-on-disk.test.mjs (tag 5326).
+
 ## 56. Keying a piece as "everything that is not a key colour" (v2.3.2362)
 
 **Tempting:** the green-silhouette import is built on one clean rule — the
@@ -2362,6 +2366,8 @@ has no such bias: 100% / 100% / 96% on the shipped pair.
 
 **Related:** §55 (the same import, the axis it is calibrated on), §21 (an
 instrument that measures the wrong quantity reports green).
+
+Held by: tools/guards/traps-art-on-disk.test.mjs (tag 5326).
 
 ## 57. Separating drawn detail by colour after a generator has resampled (v2.3.2363)
 
@@ -2442,6 +2448,8 @@ the Eye Patch's five `hi/` frames in that commit.
 in the picker thumbnails — a re-import deletes the trait folder and the
 importer writes `thumb.png` but not `thumb-sw.png`, which is why
 `make-southwest-thumbs.mjs --check` is step 7 of `docs/specs/eyewear.md`.
+
+Held by: tools/guards/traps-art-on-disk.test.mjs (tag 5326).
 
 ---
 
@@ -8613,6 +8621,8 @@ stale twin is what every phone is served.
 
 **Receipt:** `mp-standinlegs` (no greaves: the trousers and boots stay;
 mp-ghostaudit's swing frames), docs/specs/standin-legs.md.
+
+Held by: tools/guards/traps-art-on-disk.test.mjs (tag 5326).
 
 ## 256. "The colour test finds the garment" (v2.3.3658)
 
