@@ -1,6 +1,6 @@
 card: P
 branch: claude/plan-p-8-fx-made (one branch a PR, each begun from the one before)
-prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757 (5241-5248, 5251, merged); #1749 (5249) mended, ready; #1763, #1766 ready
+prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757 (5241-5248, 5251, merged); #1749 (5249) mended, T's #1768 merged in (sitting 10); #1763, #1766 mended at sitting 9
 state: working
 
 ## Done

@@ -491,6 +491,9 @@ export const ASSET_FAMILIES = Object.freeze([
     { tool: 'tools/ui/draw-control-icons.py', sources: 'public/icons/ui/hero/{melee,bow,magic}.webp', draw: 'dom', loader: 'src/ui/panels/controlSkin.jsx' }),
   fam('ui-daily-spin', 'made', 'public/ui/daily-spin/*.png',
     { tool: 'unknown', sources: 'assets/ui/daily-spin/*.png', draw: 'dom', loader: 'src/ui/mobile/LoginSpinWindow.jsx' }),
+  /* v2.3.5500 (card LB): the leaderboards' new look, cut by the sheet's own alpha from the owner's sheet; nothing draws them until LB's PR 2 */
+  fam('ui-leaderboard', 'made', 'public/ui/leaderboard/*.webp',
+    { tool: 'tools/ui/cut-leaderboard.mjs', sources: 'assets/ui/leaderboard/art-sheet-2026-11-14.png', draw: 'none', px: '2 picture px a CSS px (each piece its scale, tools/ui/cut-leaderboard.mjs PIECES)', note: 'the window draws them from card LB\'s PR 2' }),
   fam('ui-paint', 'made', 'public/ui/paint/*.png',
     { tool: 'tools/ui/slice-zone-picker.mjs', sources: 'tools/gear/src-art/creator/tattoo-zone-ui.png', draw: 'dom', loader: 'src/ui/panels/PlayerPaint.jsx' }),
   fam('ui-quest', 'made', 'public/ui/quest/{badge-done,banner*,burst,check,chip-*,claim*,close,divider,flourish,frame-*,green,slot*,spark-*}.webp',
