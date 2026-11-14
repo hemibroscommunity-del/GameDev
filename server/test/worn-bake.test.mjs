@@ -16,7 +16,9 @@
  *      sets baked into a full cache -- the old rule loses the worn frames not
  *      drawn lately, the new one keeps every one;
  *   4. the wiring: _storeBake lets go by the rule, at MASKED_CAP, and the
- *      spare sets are baked only into room the cache has. */
+ *      spare sets are baked only into room the cache has;
+ *   5. v2.3.5051: a worn piece not readable is never baked as if not worn,
+ *      on the page or in the worker. */
 import { readFileSync } from 'fs';
 import { wornSigOf, pickEvictKey } from '../../src/rendering/maskedEvict.js';
 
@@ -89,6 +91,37 @@ check(`3c. the rule alone keeps them too (${ruleOnly.worn} of 177)`, ruleOnly.wo
     /const spare = set\.worn\.map\(\(w\) => w\[0\] \+ ':' \+ w\[1\]\)\.join\(','\) !== wornSig;/.test(er)
     && /if \(spare && _maskedBodyCache\.size >= MASKED_CAP && !_maskedBodyCache\.has\(_maskedKey\(tex, worn, 6\)\)\) \{ _spareSkipped\+\+; continue; \}/.test(er));
   check('4d. the worn list is built chest, then legs, everywhere the key is made', !/for \(const (_?sl|_sl) of \['legs', 'chest'\]\)/.test(er));
+}
+
+/* 5. v2.3.5051 (the gatekeeper's sitting 9, review-z9.md "Card H: #1762"): a
+   worn piece not readable (its sheet not in: no picture, no numbers) is never
+   baked as if not worn and kept under the whole set's key.  The worker's two
+   paths refused it (v2.3.5050); the page's own bake (_maskedBodyFrameInner,
+   no worker, or a frame the worker failed twice) baked it without the piece.
+   In the page (the belt harness, the real bake) with one unreadable piece:
+   before, the frame was baked and kept, and asked again gave that frame;
+   after, the plain body both times, nothing kept.  This READS the text (node
+   cannot load the renderer), so a guard short-circuited with its words kept
+   would pass here: tools/qa/belt-unreadable.mjs RUNS the path (the vite dev
+   server and a browser), the check to run after a change to this bake. */
+{
+  const er = readFileSync(ROOT + 'src/rendering/systems/entityRenderer.js', 'utf8');
+  const fnBody = (name) => {
+    const at = er.indexOf('function ' + name + '(');
+    if (at < 0) return '';
+    const next = er.slice(at + 1).search(/\n(?:export )?(?:async )?function /);
+    return next < 0 ? er.slice(at) : er.slice(at, at + 1 + next);
+  };
+  const inner = fnBody('_maskedBodyFrameInner');
+  const ask = inner.indexOf('worn.every((w) => _gearReadable(w.tex)) && bakeMaskedCanvas(');
+  check('5a. the page\'s bake asks every worn piece if it is readable before it bakes, and draws the body plain if not',
+    ask > 0 && /if \(!_r\) return bodyTex;/.test(inner.slice(ask)), { found: ask });
+  check('5b. ...and no longer hands the bake a piece as not worn (a null draw)',
+    inner.length > 0 && !/draw: _gearReadable\(w\.tex\) \?[^\n]*: null/.test(inner));
+  check('5c. the worker\'s bake refuses an input it could not make (_runBake)',
+    /if \(!body \|\| inps\.some\(\(x\) => !x\) \|\| wk !== _bakeWorker\)/.test(fnBody('_runBake')));
+  check('5d. the look\'s inline bake refuses a piece not readable (_runLookBakeInline)',
+    /if \(j\.worn\.some\(\(w\) => !_gearReadable\(w\.tex\)\)\) return \{ err: 'gear not loaded' \};/.test(fnBody('_runLookBakeInline')));
 }
 
 if (failures) { console.log(`\n${failures} failure(s)`); process.exit(1); }
