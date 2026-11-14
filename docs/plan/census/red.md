@@ -73,9 +73,8 @@ changed on purpose under each; then section 6 crashes the run.
   answers 2 ("the code or a catalog changed since the bake": `roles.json`'s
   code hash 2a9542de, today's 580f5596), a WARN only. The 8-bit bake is
   pixel for pixel what is on disk, so only the stored hash is behind.
-- **Fix**: outside card J's files (`tools/art/head-bake.mjs`, precheck,
-  STATE-MACHINES). Either `--check` takes each sheet's bits from
-  `roles.json`, or the docs say `--bits 8`. Asked in `status/J.md`.
+- **Fix**: the owner chose card J to fix it (2026-11-14): `--check` with
+  no `--bits` checks at `roles.json`'s own bits. Tag 5038.
 
 ### 3. `mp-farmmusic` step 4: the farm's gate leads into the frost land (the GAME, suspected)
 
