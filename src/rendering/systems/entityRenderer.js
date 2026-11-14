@@ -3350,11 +3350,16 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
   /* ═══ v2.3.2874: THE PIXEL WORK LIVES IN maskedBake.js ═══
      So the same code can run in a worker (maskedBakeWorker.js) for the
      background prewarm, off the main thread.  Here it is fed draw functions
-     over the live textures, exactly the drawGearFrame calls it made inline. */
-  const _r = bakeMaskedCanvas({
+     over the live textures, exactly the drawGearFrame calls it made inline.
+     v2.3.5051 (the gatekeeper's sitting 9, review-z9.md "Card H: #1762"): a
+     piece not readable (v2.3.5000: an image, or its numbers) is not baked as
+     if not worn and kept under the whole set's key: the body is drawn plain
+     this frame and asked again, as _runBake and _runLookBakeInline refuse it
+     (server/test/worn-bake.test §5) */
+  const _r = worn.every((w) => _gearReadable(w.tex)) && bakeMaskedCanvas({
     mk: _mkBakeCanvas,
     body: (c, x, y, w, h) => drawGearFrame(c, bodyTex, x, y, w, h),
-    worn: worn.map((w) => ({ k: w.k, draw: _gearReadable(w.tex) ? (c, x, y, W, H) => drawGearFrame(c, w.tex, x, y, W, H) : null })),   /* v2.3.5000: or from its numbers */
+    worn: worn.map((w) => ({ k: w.k, draw: (c, x, y, W, H) => drawGearFrame(c, w.tex, x, y, W, H) })),
     dilate, poseInfo,
     belt: (dir, f) => {
       const bt = getGearFrame('belt', 'chainbelt', 'jog', dir, f);
@@ -3440,7 +3445,7 @@ function _getBakeWorker() {
          (then its bytes go from here: lookArmour.js lookSheetForWorker) */
       if (d.type === 'lookSheetFailed') { lookSheetFetchFailed(w, d.key); return; }
       if (d.type === 'lookSheetDone') { lookSheetFetchDone(d.key, d.hash); return; }
-      if (d.type === 'urlsRead') { bakeUrlsRead(d.id); return; }   /* v2.3.5043: its addresses read (bakeByAddress.js) */
+      if (d.type === 'urlsRead' || d.type === 'urlRead') { bakeUrlsRead(d.id, d.url); return; }   /* v2.3.5043: its addresses read (bakeByAddress.js); v2.3.5050: one by one */
       const job = _bakeJobs.get(d.id);
       if (!job) return;
       _bakeJobs.delete(d.id);
@@ -3573,11 +3578,14 @@ async function _runBake(job) {
   }
   const [body, belt, ...inps] = await Promise.all([frameInput(bodyTex), beltTex ? frameInput(beltTex) : null, ...worn.map(w => frameInput(w.tex))]);
   const _close = () => { for (const x of [body, belt, ...inps]) { try { if (x && x.bm) x.bm.close(); } catch (e) { /* gone */ } } };
-  if (!body) { _close(); _bakeWorkerStats.failed++; _maskedFailed(key); return; }   /* v2.3.4870: counted, not baked here (above) */
+  /* v2.3.4870: counted, not baked here (above).  v2.3.5050 (the gatekeeper's sitting 5): and a piece not readable (it was
+     baked as not worn, and kept under the whole set's key; _runLookBake asks again too), or a worker let go as stuck during
+     the page's wait above (it was posted to, dropped the job, and the next worker was let go at once on the old clock) */
+  if (!body || inps.some((x) => !x) || wk !== _bakeWorker) { _close(); _bakeWorkerStats.failed++; _maskedFailed(key); return; }
   if (!_sendGearSheets(wk, inps)) { _close(); _bakeWorkerStats.failed++; _maskedFailed(key); return; }   /* v2.3.5000 */
   const id = ++_bakeSeq;
   const reply = await new Promise((resolve) => {
-    _bakeJobs.set(id, resolve);
+    _bakeJobs.set(id, resolve); _bakeStartedAt = performance.now();   /* v2.3.5050: the stuck clock runs from the post (sitting 5) */
     const transfer = bakeTransfer([body, belt, ...inps], id);   /* v2.3.5000: a piece from numbers carries no bitmap; v2.3.5043: nor one by address */
     try {
       wk.postMessage({ id, body, belt, worn: worn.map((w, i) => ({ k: w.k, inp: inps[i] })), dilate, poseInfo, ds: DISPLAY_DS, crop: true }, transfer);
@@ -3642,11 +3650,11 @@ async function _runLookBake(job) {
   const [belt, ...inps] = await Promise.all([beltTex ? frameInput(beltTex) : null, ...worn.map(w => frameInput(w.tex))]);
   const _close = () => { for (const x of [belt, ...inps]) { try { if (x && x.bm) x.bm.close(); } catch (e) { /* gone */ } } };
   /* a piece whose sheet is not in yet would be baked as if not worn: asked again later */
-  if (inps.some((x) => !x)) { _close(); job.reply = { err: 'gear not loaded' }; return; }
+  if (inps.some((x) => !x) || wk !== _bakeWorker) { _close(); job.reply = { err: wk !== _bakeWorker ? 'worker let go' : 'gear not loaded' }; return; }   /* v2.3.5050: a worker let go meanwhile, as _runBake */
   if (!_sendGearSheets(wk, inps)) { _close(); job.reply = { err: 'gear numbers not sent' }; return; }   /* v2.3.5000 */
   const id = ++_bakeSeq;
   const reply = await new Promise((resolve) => {
-    _bakeJobs.set(id, resolve);
+    _bakeJobs.set(id, resolve); _bakeStartedAt = performance.now();   /* v2.3.5050: the stuck clock runs from the post */
     const transfer = bakeTransfer([belt, ...inps], id);   /* v2.3.5000: a piece from numbers carries no bitmap; v2.3.5043: nor one by address */
     try {
       wk.postMessage({ id, look: job.look, belt, worn: worn.map((w, i) => ({ k: w.k, inp: inps[i] })), dilate: job.dilate, poseInfo, ds: DISPLAY_DS }, transfer);

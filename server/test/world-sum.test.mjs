@@ -31,17 +31,19 @@
  *      owner's yes, 2026-11-14): the join brings `_econ` back before any
  *      door runs, a red skull killed by a monster BURNS its purse
  *      (nml_lost), and the champion's prize says the house's part.
+ *   5. v2.3.5085: A MAILBOX MERGED AT 200 counts each merged payout by its
+ *      own class (inbox.js keeps the minted part beside the entry).
  *
  * BREAK PROOF (rule 8), tried by hand: `WORLD_SUM_PLANT=1 node
  * test/world-sum.test.mjs` plants §2's vault double pay INTO §1's world,
  * and §1 fails ("unexplained gold 50").
  */
 import { GameRoom } from '../src/index.js';
-import { STORAGE_MARKS, marksOf } from '../src/storagemarks.js';
-import { mailMinted, wholeGold } from '../src/gold.js';
-import { bagGive, bagEconPending, wholeCount } from '../src/bag.js';
-import { orderEscrowGold } from '../src/liveops.js';
+import { STORAGE_MARKS } from '../src/storagemarks.js';
+import { bagGive } from '../src/bag.js';
 import { BANK } from '../src/bank.js';
+/* v2.3.5091: the sum moved to worldsum.mjs whole (the storm judges with it too) */
+import { READERS, count, unexplained } from './worldsum.mjs';
 
 let failures = 0, passes = 0;
 function check(name, cond, detail) {
@@ -88,138 +90,16 @@ const mockEnv = { LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: asy
 const fakeWs = () => ({ sent: [], send(s) { this.sent.push(JSON.parse(s)); }, close() {} });
 const settle = () => new Promise((r) => setTimeout(r, 5));
 
-/* ══════════════════════════ THE SUM ══════════════════════════ */
-/* One reader a marked value prefix (storagemarks.js `value` not `none`).  Each
-   adds what its record HOLDS to `held`: gold, each bag key, and the ids of
-   the things counted as one (a piece of gear by its gid, a pet by its id). */
-const add = (o, k, n) => { if (n) o[k] = (o[k] || 0) + n; };
-function holdBag(ctx, bag) {
-  if (!bag || typeof bag !== 'object') return;
-  for (const k of Object.keys(bag)) add(ctx.goods, k, wholeCount(bag[k]));
-}
-const GEAR_FIELDS = ['armor', 'legsArmor', 'shield', 'amulet', 'weapon', 'rangedWeapon', 'staffWeapon'];
-const STASH_FIELDS = ['armorStash', 'legsStash', 'shieldStash', 'gearStash', 'amuletStash'];
-function holdGear(ctx, rec, where) {
-  for (const f of GEAR_FIELDS) { const p = rec && rec[f]; if (p && typeof p === 'object' && typeof p.gid === 'string' && p.gid) ctx.ids.push(['gear', p.gid, where]); }
-  for (const f of STASH_FIELDS) for (const p of (rec && Array.isArray(rec[f]) ? rec[f] : [])) if (p && typeof p.gid === 'string' && p.gid) ctx.ids.push(['gear', p.gid, where]);
-}
-/* a character's own count: what it minted less what it burned */
-function netOf(ctx, econ) {
-  if (!econ || typeof econ !== 'object') return;
-  ctx.net.gold += (Number(econ.g && econ.g.m) || 0) - (Number(econ.g && econ.g.b) || 0);
-  const i = econ.i && typeof econ.i === 'object' ? econ.i : {};
-  for (const k of Object.keys(i)) add(ctx.net.goods, k, (Number(i[k].m) || 0) - (Number(i[k].b) || 0));
-}
-function holdCharacter(ctx, rec, where) {
-  ctx.gold += wholeGold(rec.coins);
-  holdBag(ctx, rec.inventory);
-  holdGear(ctx, rec, where);
-  netOf(ctx, rec._econ);
-  /* the bag door's counts still beside a bag no save has named (bag.js) */
-  const w = bagEconPending(rec.inventory);
-  for (const k of Object.keys(w)) add(ctx.net.goods, k, w[k].m - w[k].b);
-}
-export const READERS = {
-  'rpg:': (ctx, key, v) => { if (!ctx.live.has(key.slice(4))) holdCharacter(ctx, v || {}, key); },
-  'bank:': (ctx, key, v) => {
-    ctx.gold += Math.max(0, Math.floor(Number(v && v.gold) || 0));
-    for (const it of (v && Array.isArray(v.items) ? v.items : [])) add(ctx.goods, it.key, Math.max(0, Math.floor(Number(it.n) || 0)));
-  },
-  'inbox:': (ctx, key, v) => {
-    for (const e of (Array.isArray(v) ? v : [])) {
-      const p = (e && e.payload) || {};
-      if (e.kind === 'gold') { const n = Math.max(0, Math.floor(p.amount || 0)); ctx.gold += n; ctx.net.gold += mailMinted(e, n); }
-      else if (e.kind === 'item' && typeof p.invKey === 'string') { const n = Math.max(1, Math.floor(p.count || 1)); add(ctx.goods, p.invKey, n); add(ctx.net.goods, p.invKey, mailMinted(e, n)); }
-      else if (e.kind === 'gear' && p.piece && typeof p.piece.gid === 'string') ctx.ids.push(['gear', p.piece.gid, key]);
-      else if (e.kind === 'pet' && p.pet && typeof p.pet.id === 'string') ctx.ids.push(['pet', p.pet.id, key]);
-    }
-  },
-  'pets:': (ctx, key, v) => { for (const pet of (v && Array.isArray(v.list) ? v.list : [])) if (pet && typeof pet.id === 'string') ctx.ids.push(['pet', pet.id, key]); },
-  'mkt_order:': (ctx, key, v) => { ctx.gold += orderEscrowGold(v); /* a sell order holds a weapon: summed once weapons carry a gid (step 4.3) */ },
-  'store_listing:': (ctx, key, v) => {
-    if (!v) return;
-    if (v.kind === 'item' && typeof v.invKey === 'string' && !(v.sale && v.sale.goodsPaid)) add(ctx.goods, v.invKey, Math.max(0, Math.floor(Number(v.qty) || 0)));
-    if (v.kind === 'gear' && v.gear && typeof v.gear.gid === 'string') ctx.ids.push(['gear', v.gear.gid, key]);
-    if (v.kind === 'pet' && v.pet && typeof v.pet.id === 'string') ctx.ids.push(['pet', v.pet.id, key]);
-    if (v.topBid && Number(v.topBid.amount) > 0) ctx.gold += Math.floor(Number(v.topBid.amount));
-    for (const o of Object.values(v.offers || {})) if (o && Number(o.gold) > 0) ctx.gold += Math.floor(Number(o.gold));
-    if (v.sale && v.sale.paid && !v.sale.goldPaid) ctx.gold += Math.max(0, Math.floor(Number(v.sale.price) || 0));
-  },
-  'duelEscrow:': (ctx, key, v) => { ctx.gold += 2 * Math.max(0, Math.floor(Number(v && v.wager) || 0)); },
-  'arena_entry:': (ctx, key, v) => { ctx.gold += Math.max(0, Math.floor(Number(v && v.wager) || 0)); },
-  'arena_stake:': (ctx, key, v) => { ctx.gold += Math.max(0, Math.floor(Number(v && v.amount) || 0)); },
-  'bounty:': (ctx, key, v) => { ctx.gold += Math.max(0, Math.floor(Number(v && v.amount) || 0)); },
-  'jackpot:draw': (ctx, key, v) => { ctx.gold += Math.max(0, Math.floor(Number(v && v.pool) || 0)); },
-  'trade2wpn:': () => { /* a weapon: summed once weapons carry a gid (step 4.3) */ },
-  'death_pile:': (ctx, key, v) => {
-    /* a pile is counted once: from the ground while the room holds it, from
-       its row only before the room has restored it */
-    if (!v || ctx.piles.has(v.id || key.slice('death_pile:'.length))) return;
-    for (const it of (Array.isArray(v.items) ? v.items : [])) add(ctx.goods, it.key, Math.max(0, Math.floor(Number(it.qty) || 0)));
-  },
-  'shop_stock': (ctx, key, v) => { for (const k of Object.keys(v || {})) add(ctx.goods, k, Math.max(0, Math.floor(Number(v[k]) || 0))); },
-};
-
-/** Every marked value prefix with no reader, and every stored key with no
- *  marks: what the sum cannot count. */
-function coverage(readers, keys) {
-  const noReader = Object.entries(STORAGE_MARKS).filter(([p, m]) => m.value !== 'none' && !readers[p]).map(([p]) => p);
-  const unmarked = keys.filter((k) => !marksOf(k));
-  return { noReader, unmarked };
-}
-
-/** The world counted: held and net (minted less burned), gold and each bag
- *  key; every id held; and what could not be counted. */
-function count(room, state, readers = READERS) {
-  const ctx = { gold: 0, goods: Object.create(null), net: { gold: 0, goods: Object.create(null) }, ids: [], live: new Set(), piles: new Set() };
-  /* the characters in the room: live (a sparring clone is no one's) */
-  for (const [pid, ps] of Object.entries(room.playerState || {})) {
-    if (!ps || ps._spar) continue;
-    ctx.live.add(pid);
-    holdCharacter(ctx, ps, 'live:' + pid);
-  }
-  /* the piles on the ground: a player's (a death's, a drop's) */
-  for (const list of Object.values(room.loot || {})) {
-    for (const pile of (list || [])) {
-      if (!pile || !pile.isDeathDrop) continue;
-      ctx.piles.add(pile.lootId);
-      if (pile.inventoryClaimed) continue;
-      for (const it of (pile.deathItems || [])) add(ctx.goods, it.key, Math.max(0, Math.floor(Number(it.qty) || 0)));
-    }
-  }
-  const keys = [...state._store.keys()].sort();
-  for (const key of keys) {
-    const m = marksOf(key);
-    if (!m || m.value === 'none') continue;
-    const prefix = Object.prototype.hasOwnProperty.call(readers, key) ? key : Object.keys(readers).filter((p) => p.endsWith(':') && key.startsWith(p)).sort((a, b) => b.length - a.length)[0];
-    if (prefix) readers[prefix](ctx, key, state._store.get(key));
-  }
-  const dup = [];
-  const seen = new Map();
-  for (const [kind, id, where] of ctx.ids) { const k = kind + ':' + id; if (seen.has(k)) dup.push([k, seen.get(k), where]); else seen.set(k, where); }
-  return { gold: ctx.gold, goods: ctx.goods, net: ctx.net, dup, ...coverage(readers, keys) };
-}
-
-/** How far held and net have moved apart since `start`: gold, and each bag
- *  key that moved (0 everywhere when nothing went unexplained). */
-function unexplained(start, now) {
-  const gold = (now.gold - now.net.gold) - (start.gold - start.net.gold);
-  const goods = Object.create(null);
-  const keys = new Set([...Object.keys(start.goods), ...Object.keys(now.goods), ...Object.keys(start.net.goods), ...Object.keys(now.net.goods)]);
-  for (const k of keys) {
-    const d = ((now.goods[k] || 0) - (now.net.goods[k] || 0)) - ((start.goods[k] || 0) - (start.net.goods[k] || 0));
-    if (d) goods[k] = d;
-  }
-  return { gold, goods };
-}
-
 /* ══════════════════════════ THE ROOM ══════════════════════════ */
 async function world() {
   const state = makeState();
   /* the characters, on file before anyone joins (a test seeds a character
      by putting its record first: CLAUDE.md §5); D stays away */
-  const rec = (coins, inventory) => ({ _v: 21, coins, inventory, level: 5, hp: 100, maxHp: 100, _econ: { v: 1, g: { m: 0, b: 0 }, i: {} } });
-  state._store.set('rpg:bp_ws_a', rec(1000, { wood_oak: 10, fish_minnow: 20, 'slime-remnants': 10 }));
+  const rec = (coins, inventory, econ) => ({ _v: 21, coins, inventory, level: 5, hp: 100, maxHp: 100, _econ: econ || { v: 1, g: { m: 0, b: 0 }, i: {} } });
+  /* v2.3.5085 (the gatekeeper's sitting 8): A comes with counts on file, so
+     the join's line (join.js: `_econ` back before any door runs) is held --
+     with every seeded count 0, deleting it changed nothing here */
+  state._store.set('rpg:bp_ws_a', rec(1000, { wood_oak: 10, fish_minnow: 20, 'slime-remnants': 10 }, { v: 1, g: { m: 500, b: 120 }, i: { wood_oak: { m: 3, b: 1 } } }));
   state._store.set('rpg:bp_ws_b', rec(800, { ore_iron_ore: 6 }));
   state._store.set('rpg:bp_ws_d', rec(50, {}));
   const room = new GameRoom(state, mockEnv);
@@ -411,12 +291,59 @@ for (const [what, plant, wantGold, wantGoods] of [
     Object.entries(STORAGE_MARKS).filter(([, m]) => m.value !== 'none').every(([p]) => READERS[p]) && Object.keys(READERS).every((p) => STORAGE_MARKS[p] && STORAGE_MARKS[p].value !== 'none'));
 }
 
+/* ══════════════════════════ 5. A MAILBOX MERGED AT 200 ══════════════════════════ */
+/* v2.3.5085 (the gatekeeper's sitting 8): at 200 entries the mailbox merges a
+   credit into the first entry of its kind (inbox.js _inboxAppend), whatever
+   that entry's word.  A reward (a mint) merged into a parked sale (an escrow)
+   was counted by the sale's word: nothing minted, +300 unexplained.  The
+   merged entry keeps its minted part beside it now. */
+{
+  const w = await world();
+  const box = [{ opId: 'store:l1:pay', ts: 1, source: 'store', kind: 'gold', payload: { amount: 100 }, note: 'a sale, parked' }];
+  for (let i = 0; i < 199; i++) box.push({ opId: 'store:l' + i + ':goods', ts: 1, source: 'store', kind: 'item', payload: { invKey: 'fish_minnow', count: 1 }, note: 'goods, parked' });
+  w.state._store.set('inbox:bp_ws_d', box);
+  const s0 = count(w.room, w.state);
+  await w.room._creditPlayer('bp_ws_d', { opId: 'season:s1:bp_ws_d:t3', source: 'season', kind: 'gold', payload: { amount: 300 }, note: 'a season reward' });
+  await w.room._creditPlayer('bp_ws_d', { opId: 'questitem:bp_ws_d:q9:fish_minnow#1', source: 'quest', kind: 'item', payload: { invKey: 'fish_minnow', count: 2 }, note: 'a quest item' });
+  await settle();
+  const after = w.state._store.get('inbox:bp_ws_d');
+  check('5. the box was full: both credits merged into the first entry of their kind', after.length === 200 && after[0].payload.amount === 400 && after[1].payload.count === 3, { n: after.length, gold: after[0].payload, item: after[1].payload });
+  const u = unexplained(s0, count(w.room, w.state));
+  check(`5. ...a reward merged into a parked sale is still a mint: unexplained gold ${u.gold}, goods ${JSON.stringify(u.goods)}`, u.gold === 0 && Object.keys(u.goods).length === 0, u);
+  /* D comes in: the merged entries land, counted by what they say */
+  const wd = fakeWs();
+  w.room.sessions.set(wd, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
+  await w.room.webSocketMessage(wd, JSON.stringify({ type: 'join', id: 'bp_ws_d', name: 'D', phrase: 'p-d', protocolVersion: 2, ws: [1, 5], data: { x: 0, y: 0, z: 'town' } }));
+  await settle();
+  const D = w.room.playerState.bp_ws_d;
+  const u2 = unexplained(s0, count(w.room, w.state));
+  check('5. ...and when D comes in and they land: 300 of the 400 minted, nothing unexplained', D && D.coins >= 450 && D._econ.g.m >= 300 && u2.gold === 0 && Object.keys(u2.goods).length === 0, { coins: D && D.coins, econ: D && D._econ.g, u2 });
+}
+
 /* ══════════════════════════ 4. THE THREE LINES OUTSIDE ══════════════════════════ */
 {
   /* the join brings _econ back before any door runs */
   const w = await world();
   const stored = w.state._store.get('rpg:bp_ws_a');
   check('4. the join brought A\'s _econ back (it was on file; the start\'s join counted nothing over it)', !!w.A._econ && w.A._econ.g.m === stored._econ.g.m, { live: w.A._econ, stored: stored._econ });
+  {
+    /* v2.3.5085 (the gatekeeper's sitting 8): HELD at the join itself, before
+       any save -- persistence.js's adopt at the first save backs the line up,
+       so a check after the join passes without it; a door that ran between
+       the join and that save would have counted into a blank */
+    const st2 = makeState();
+    st2._store.set('rpg:bp_ws_j', { _v: 21, coins: 10, inventory: {}, level: 5, hp: 100, maxHp: 100, _econ: { v: 1, g: { m: 77, b: 7 }, i: {} } });
+    const r2 = new GameRoom(st2, mockEnv);
+    r2._liveFlags = {};
+    let seen = 'no save';
+    const save = r2._saveRpg;
+    r2._saveRpg = function (pid, ps, ...rest) { if (seen === 'no save') seen = ps && ps._econ ? JSON.stringify(ps._econ.g) : 'blank'; return save.call(this, pid, ps, ...rest); };
+    const wj = fakeWs();
+    r2.sessions.set(wj, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
+    await r2.webSocketMessage(wj, JSON.stringify({ type: 'join', id: 'bp_ws_j', name: 'J', phrase: 'p-j', protocolVersion: 2, ws: [1, 5], data: { x: 0, y: 0, z: 'town' } }));
+    await settle();
+    check('4. ...at the join itself: the counts on file are live before the first save (join.js, not the save\'s adopt)', seen === '{"m":77,"b":7}', seen);
+  }
   /* a red skull killed by a monster burns its purse; by a player it moves */
   const { NML } = await import('../src/nomansland.js').catch(() => ({}));
   const ps = w.A;

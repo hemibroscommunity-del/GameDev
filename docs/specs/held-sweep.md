@@ -337,6 +337,24 @@ PR's: `pack-page` at `armour` 17 to 35 ms against its 20 ms line (waits for
 card P's asset door); one `masked-bake` hold of 32.7 ms at `armour` (its own
 PR is next).
 
+**The figure's 22 ms, not yet explained (v2.3.5051; card H's second
+follow-up, withdrawn).** `gear-sheet` came back once, 22.4 ms at `armour`
+(#1733's sample, mostly `composeShirt`), and a whole main tour showed
+`portrait` 22.6 ms in `_drawGearLayer`. The follow-up took this for the
+figure composing each piece's WHOLE strip to show its first frame, and cut
+the first frame alone. Wrong: every sheet the figure loads
+(`/sprites/gear/{shirt,legs,chest,shoulders}/<item>/stand-<dir>.png`, all 15
+of them) is one 128x128 frame (the gatekeeper's sitting 10 read the PNG
+headers), so the cut built the very canvas the upscale did and saved
+nothing; its "55 of 55 the same" was a change that changed nothing, and its
+lower numbers after were the box. The cut and its switch were dropped before
+merging. The cause is open, two candidates, neither measured: the first
+draw of an image not yet decoded (the decode lands inside `drawImage`), or
+`composeShirt`'s and the tint's read-back (`getImageData`) of a canvas the
+chip holds. To settle it: the figure drawn cold and warm with each step
+timed (`loadImage`'s `decode()` awaited, and `willReadFrequently` on the
+canvases read back, one at a time).
+
 ### `masked-bake` off the list (v2.3.5043)
 
 **What was left.** Since v2.3.4870 the masked bake (armour cut to the body)
@@ -380,6 +398,47 @@ to the worker). The page's side moved out of `entityRenderer.js` into
 `src/rendering/bakeByAddress.js`, to keep that file under its line
 (`tools/guards/four-lines`). The same probe after: 16 sent, 11 of 11 the
 same, none refused, no stuck kill.
+
+After the gatekeeper's sitting 5 (`docs/plan/census/review-z5.md`, v2.3.5050):
+
+- a job whose worker was let go as stuck during the page's own wait (its
+  inputs cut or addressed) is not posted to that dead worker: it fails and
+  is asked again; and the stuck clock starts when a job is POSTED (the retry
+  after `urlFail` too), so the next worker is not let go at once on an old
+  clock;
+- the worker says each address as it is read (`urlRead`), so a stuck kill
+  refuses only what was still being read, not a whole job's;
+- the 4 s covers the decode as well as the fetch (a decode that ends later
+  has its bitmap closed), and a job's sheets start reading as it arrives,
+  beside the wait for its sheets of numbers;
+- `_runBake` fails a job, as `_runLookBake` did, when a piece is not
+  readable (it baked the set without it and kept that under the whole set's
+  key). Two failures send a frame to the page's own bake, which still baked
+  it without the piece (the gatekeeper's sitting 9): that bake
+  (`_maskedBodyFrameInner`) now draws the body plain and asks again, v2.3.5051
+  (`worn-bake.test` §5). Not reachable today (sitting 9: a sheet still loading
+  never enters the worn list; a `urlFail` is cut from the decoded image; the
+  chest and legs sheets are never freed), so this closes the door, it mends
+  no picture seen;
+- the refused list lets its oldest go when full (1024), and only `blob:`
+  addresses go to the worker (a file's address can change under a deploy).
+
+The probe after (copper plate and greaves, steel plate, iron plate with steel
+greaves): 24 sent, 19 of 19 the same, none refused, none cut, no stuck kill.
+
+**Why `masked-bake` grew back** (card A's full tour: 23.7 ms twice at
+`peer`; asked by the planning session). Not at `peer` or `armour` alone (17
+runs here, 7.1 ms the most): in the WHOLE main tour, where this box keeps
+the worker busy past the 6 s stuck watch at `armour`. On `main` (two whole
+tours, `__btBakeWorker().byUrl` after each station): at `armour`, 2 stuck
+kills, 2 addresses refused, 1 input cut on the page, and `masked-bake` 18.6
+ms (10 of it `createImageBitmap`: the page's own cut of a refused address)
+and 28.3 ms (the worker's reply drawn, and 11 ms of the garbage collector).
+Each stuck kill refused addresses that had READ (a whole job's word, and the
+early reads' word came only after the wait for the sheet of numbers), and
+from then on those frames were cut on the page. With this PR (and its early
+reads saying `urlRead` as each is in): two whole tours, `masked-bake` none
+and 4.6 ms; at `armour` 1 stuck kill, 1 address refused, none cut.
 
 **The same pixels.** `window.__btBakeUrlCheck = true` before the page loads:
 the page cuts each input as well, and the worker compares its own rectangle
@@ -564,8 +623,9 @@ band, `town`; the gear tab 9.9 at `lands`), none over the general line.
 budget on other families: `other: wrapped` (19.4 ms twice at `lands`: the
 timer wrapper of `debug/perfTracker.js`, its own time, so this box; seen
 over the line in four earlier runs) and `gear-sheet` once at `armour`
-(22.4 ms: the Equipment screen's figure composing the WHOLE upscaled shirt
-strip, `composeShirt`, for the one frame it shows).
+(22.4 ms, mostly `composeShirt` in the Equipment screen's figure; first read
+as composing a whole strip, but its sheets are one frame each: the cause is
+open, see "The figure's 22 ms" above).
 
 ### `sweepPicsOnce` off the list (v2.3.5048)
 

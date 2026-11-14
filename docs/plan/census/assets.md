@@ -2,7 +2,7 @@
 
 Card P, PR 2 (grand plan step 9.1, part two); `docs/specs/asset-door.md`
 part 2 says how it is read. Written by `node tools/assets/fightmb.mjs <runs> --write`,
-never by hand, from 3 runs of `QA_MB_ROWS=1 node tools/qa/mp/run.mjs membudget` at `0f60b348a`.
+never by hand, from 3 runs of `QA_MB_ROWS=1 node tools/qa/mp/run.mjs membudget` at `cc8fea875`.
 
 **MB at the fight** is the most a family held at any one fight stop of any
 run: on the graphics chip, the picture the page keeps, the colour numbers the
@@ -23,24 +23,23 @@ stops at the first family under 1 MB (the line below the table's marker).
 
 | family | kind | draw | files | MB on disk | MB at the fight | chip | page | numbers | sound | atlas | over bar | backlog | waits on H |
 |---|---|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|---|---|
-| `monster-fire-goblin` | made | strip | 14 | 1.32 | **7.79** | 2.25 | 0.00 | 5.54 | 0.00 | 14 |  | after H | zoneTextures.js, stripRead.js |
+| `monster-fire-goblin` | made | strip | 14 | 1.32 | **8.09** | 2.55 | 0.00 | 5.54 | 0.00 | 14 |  | after H | zoneTextures.js, stripRead.js |
 | `sfx-supplied` | supplied | sfx | 26 | 1.20 | **5.93** | 0.00 | 0.00 | 0.00 | 5.93 |  |  | no: sound | soundFold.js (the fold) |
-| `gear-walk-twins` | made | file | 69 | 1.76 | **4.99** | 4.99 | 0.00 | 0.00 | 0.00 |  | 62 | after H | gearSheets.js |
+| `gear-walk-twins` | made | file | 69 | 1.76 | **5.80** | 5.80 | 0.00 | 0.00 | 0.00 |  | 62 | after H | gearSheets.js |
 | `monster-slime` | made | file | 6 | 0.06 | **4.56** | 0.00 | 4.56 | 0.00 | 0.00 |  |  | yes, by its tool |  |
 | `look-standin` | data | look | 21 | 1.06 | **4.31** | 4.31 | 0.00 | 0.00 | 0.00 |  |  | no: data |  |
 | `look-gear` | data | look | 42 | 1.53 | **4.29** | 4.29 | 0.00 | 0.00 | 0.00 |  |  | no: data |  |
 | `sfx-m4a-twins` | made | sfx | 19 | 0.19 | **3.71** | 0.00 | 0.00 | 0.00 | 3.71 |  |  | no: sound | soundFold.js (the fold) |
 | `look-gearwalk` | data | look | 44 | 1.12 | **3.65** | 3.65 | 0.00 | 0.00 | 0.00 |  |  | no: data |  |
-| `fx-made` | made | file | 7 | 0.73 | **3.10** | 0.00 | 3.10 | 0.00 | 0.00 |  | 7 | yes, by its tool |  |
 | `sfx-footsteps` | supplied | sfx | 10 | 0.17 | **2.46** | 0.00 | 0.00 | 0.00 | 2.46 |  |  | no: sound | soundFold.js (the fold) |
 | `sfx-owner-cuts` | made | sfx | 36 | 0.38 | **2.22** | 0.00 | 0.00 | 0.00 | 2.22 |  |  | no: sound | soundFold.js (the fold) |
 | `icons-elements` | made | file | 18 | 0.12 | **2.16** | 0.02 | 2.14 | 0.00 | 0.00 |  |  | after H | entityRenderer.js |
 | `traits-hairmasks` | made | file | 155 | 0.07 | **2.13** | 0.24 | 1.89 | 0.00 | 0.00 |  | 155 | after H | entityRenderer.js |
 | `sfx-older` | made | sfx | 6 | 0.18 | **2.03** | 0.00 | 0.00 | 0.00 | 2.03 |  |  | no: sound | soundFold.js (the fold) |
-| `fx-sheets-supplied` | supplied | file | 6 | 1.16 | **2.00** | 0.00 | 2.00 | 0.00 | 0.00 |  | 6 | yes |  |
 | `look-standinlegs` | data | look | 8 | 0.42 | **2.00** | 2.00 | 0.00 | 0.00 | 0.00 |  |  | no: data |  |
 | `world-objects` | made | wheel | 40 | 5.14 | **1.78** | 0.89 | 0.00 | 0.89 | 0.00 | 1 |  | yes, by its tool |  |
-| `icons-items-world` | made | file | 19 | 0.11 | **1.62** | 0.00 | 1.62 | 0.00 | 0.00 |  | 6 | yes, by its tool |  |
+| `ambient-loops` | made | sfx | 6 | 0.33 | **1.53** | 0.00 | 0.00 | 0.00 | 1.53 |  |  | no: sound | soundFold.js (the fold) |
+| `fx-sheets-supplied` | supplied | none | 6 | 1.16 | **1.51** | 1.51 | 0.00 | 0.00 | 0.00 | 6 | 6 | yes |  |
 | `pets` | made | file | 1 | 0.35 | **1.50** | 0.00 | 1.50 | 0.00 | 0.00 |  | 1 | yes, by its tool |  |
 | `world-fish-spot` | made | file | 1 | 0.03 | **1.50** | 0.00 | 1.50 | 0.00 | 0.00 |  | 1 | yes, by its tool |  |
 | `cape-hood` | made | file | 6 | 0.02 | **1.50** | 0.00 | 1.50 | 0.00 | 0.00 |  | 6 | yes, by its tool |  |
@@ -54,10 +53,11 @@ stops at the first family under 1 MB (the line below the table's marker).
 | `icons-from-uploads-world` | supplied | file | 3 | 0.08 | **1.25** | 0.00 | 1.25 | 0.00 | 0.00 |  | 3 | after H | entityRenderer.js |
 | `look-weapons` | data | look | 8 | 0.09 | **1.17** | 1.17 | 0.00 | 0.00 | 0.00 |  |  | no: data |  |
 | `ore-tiers` | made | file | 5 | 0.07 | **1.15** | 0.00 | 1.15 | 0.00 | 0.00 |  |  | yes, by its tool |  |
-| `ambient-loops` | made | sfx | 6 | 0.33 | **1.10** | 0.00 | 0.00 | 0.00 | 1.10 |  |  | no: sound | soundFold.js (the fold) |
 | `props-parts` | made | file | 2 | 0.14 | **1.10** | 0.00 | 1.10 | 0.00 | 0.00 |  | 2 | yes, by its tool |  |
 | `projectile-sheets` | made | file | 3 | 0.16 | **1.06** | 0.00 | 1.06 | 0.00 | 0.00 |  | 3 | yes, by its tool |  |
+| `fx-made` | made | none | 6 | 0.63 | **1.05** | 1.05 | 0.00 | 0.00 | 0.00 | 6 | 6 | yes, by its tool |  |
 | **under 1 MB at the fight: the backlog stops here** | | | | | | | | | | | | | |
+| `icons-items-world` | made | file | 19 | 0.11 | **0.82** | 0.33 | 0.49 | 0.00 | 0.00 | 14 | 6 | yes, by its tool |  |
 | `icons-coins` | made | file | 14 | 0.08 | **0.55** | 0.00 | 0.55 | 0.00 | 0.00 |  |  | yes, by its tool |  |
 | `weapons-greatsword` | supplied | file | 5 | 0.06 | **0.51** | 0.00 | 0.51 | 0.00 | 0.00 |  | 5 | yes |  |
 | `monster-stills` | made | file | 5 | 0.03 | **0.50** | 0.00 | 0.50 | 0.00 | 0.00 |  | 1 | after H | zoneTextures.js |
@@ -72,7 +72,7 @@ stops at the first family under 1 MB (the line below the table's marker).
 | `shields` | made | file | 3 | 0.01 | **0.05** | 0.00 | 0.05 | 0.00 | 0.00 |  | 3 | yes, by its tool |  |
 | `projectile-arrow` | made | file | 1 | 0.01 | **0.02** | 0.00 | 0.02 | 0.00 | 0.00 |  | 1 | yes, by its tool |  |
 
-## Held nothing at the fight (153 families)
+## Held nothing at the fight (157 families)
 
 Loaded elsewhere (another land, a window, a computer's path), or by nothing.
 A family whose draw path is `none` is loaded by nothing on any device by
@@ -122,8 +122,10 @@ default: removing any of its files but the 19 `.m4a` is the owner's yes.
 | `traits-frames` | made | file | 285 | 0.36 | 285 |
 | `icons-bag` | made | dom | 10 | 0.34 | 10 |
 | `monster-skeleton` | made | strip | 6 | 0.33 |  |
+| `fx-made-twins` | made | numbers | 6 | 0.32 |  |
 | `ui-quest` | made | dom | 31 | 0.31 | 31 |
 | `world-dungeons` | made | file | 5 | 0.31 |  |
+| `fx-sheets-twins` | made | numbers | 6 | 0.28 |  |
 | `look-manifests` | data | data | 9 | 0.25 |  |
 | `traits-meta` | data | data | 61 | 0.24 |  |
 | `icons-achievements` | made | dom | 24 | 0.22 | 24 |
@@ -138,8 +140,10 @@ default: removing any of its files but the 19 `.m4a` is the owner's yes.
 | `player-sword-weapon-twins` | made | file | 3 | 0.12 | 3 |
 | `monster-codex` | made | dom | 3 | 0.11 |  |
 | `icons-ui-unknown` | made | dom | 5 | 0.11 | 5 |
+| `fx-snowball` | made | file | 1 | 0.10 | 1 |
 | `world-objects-data` | data | data | 41 | 0.09 |  |
 | `look-shirt` | data | look | 10 | 0.09 |  |
+| `icons-world-twins` | made | numbers | 14 | 0.08 |  |
 | `fx-coinflip` | supplied | dom | 2 | 0.08 | 2 |
 | `icons-small` | made | dom | 14 | 0.07 | 14 |
 | `species-frames` | made | file | 53 | 0.07 | 53 |
@@ -183,7 +187,6 @@ default: removing any of its files but the 19 `.m4a` is the owner's yes.
 | `gear-chop-originals` | supplied | none | 3 | 1.08 | 3 |
 | `player-standin-parts` | made | none | 13 | 1.03 | 13 |
 | `player-retired-twins` | made | none | 17 | 1.02 | 16 |
-| `p256-twins` | made | none | 18 | 0.97 |  |
 | `world-sprites-retired` | made | none | 36 | 0.96 | 36 |
 | `minigame-mining` | supplied | none | 2 | 0.86 |  |
 | `gear-walk-made` | made | none | 20 | 0.68 | 20 |
@@ -194,6 +197,7 @@ default: removing any of its files but the 19 `.m4a` is the owner's yes.
 | `icons-ui-unwired` | made | none | 20 | 0.39 | 20 |
 | `gear-dodge` | made | none | 6 | 0.38 | 6 |
 | `ui-welcome-unwired` | made | none | 17 | 0.37 | 17 |
+| `p256-twins` | made | none | 6 | 0.36 |  |
 | `player-renders` | supplied | none | 5 | 0.36 | 5 |
 | `player-heads` | made | none | 11 | 0.36 | 11 |
 | `tiles-retired` | made | none | 14 | 0.35 |  |
@@ -207,6 +211,7 @@ default: removing any of its files but the 19 `.m4a` is the owner's yes.
 | `gear-belt` | made | none | 5 | 0.14 | 5 |
 | `icons-hero-unwired` | made | none | 4 | 0.14 | 4 |
 | `minigame-mining-pictures` | made | none | 2 | 0.11 | 2 |
+| `ui-leaderboard` | made | none | 27 | 0.11 |  |
 | `icons-badge-retired` | supplied | none | 16 | 0.08 | 16 |
 | `projectile-arrow-special` | made | none | 1 | 0.07 | 1 |
 | `icons-old-folders` | made | none | 12 | 0.07 | 12 |
@@ -232,7 +237,6 @@ default: removing any of its files but the 19 `.m4a` is the owner's yes.
 | `traits-shirt-meta` | data | none | 1 | 0.00 |  |
 | `ui-cc-tab-species` | made | none | 1 | 0.00 | 1 |
 | `player-handles-stale` | data | none | 1 | 0.00 |  |
-| `sfx-m4a` | made | none | 0 | 0.00 |  |
 
 ## Made in play (no family holds these)
 
@@ -242,9 +246,9 @@ the door's to change. Digits in a label are folded to `#`.
 
 | label | MB at the fight | chip | page | numbers | sound | atlas |
 |---|--:|--:|--:|--:|--:|--:|
-| `unnamed` (on the chip: canvas 16.64, render 0.55, buffer 0.00) | 21.19 | 17.19 | 4.00 | 0.00 | 0.00 |  |
-| `blob: (a picture made in play from bytes)` | 12.72 | 12.72 | 0.00 | 0.00 | 0.00 |  |
-| `wheel-ground` | 8.40 | 8.40 | 0.00 | 0.00 | 0.00 | 56 |
+| `unnamed` (on the chip: canvas 16.64, render 1.55, buffer 0.00) | 22.19 | 18.19 | 4.00 | 0.00 | 0.00 |  |
+| `blob: (a picture made in play from bytes)` | 11.53 | 11.53 | 0.00 | 0.00 | 0.00 |  |
+| `wheel-ground` | 8.55 | 8.55 | 0.00 | 0.00 | 0.00 | 57 |
 | `bt-look:page/#-#-#` | 5.31 | 5.31 | 0.00 | 0.00 | 0.00 |  |
 | `bt-shadow-pieces` | 0.93 | 0.93 | 0.00 | 0.00 | 0.00 |  |
 | `worldfx/cloud#` | 0.47 | 0.00 | 0.47 | 0.00 | 0.00 |  |
@@ -261,12 +265,12 @@ still reach, so it can be higher.
 
 | run | stop | gpu line | chip rows | artCache line | page rows | numbers | sound line | soundHeld | sound rows | atlas rows used | rowsFull | monster bundles |
 |--:|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|---|
-| 1 | trip 1: a fight at the Flame Fields (4 swings; 0 px short af | 60.6 | 60.32 | 38.1 | 38.15 | 7.82 | 17.6 | 17.6 | 17.65 | 84 of 256 | 0 | fireGoblin |
-| 1 | trip 2: a fight at the Flame Fields (4 swings; 2 px short af | 64.8 | 64.61 | 38.1 | 38.15 | 7.82 | 17.6 | 17.6 | 17.65 | 78 of 256 | 0 | fireGoblin |
-| 1 | trip 3: a fight at the Flame Fields (8 swings; 0 px short af | 65.7 | 65.41 | 38.1 | 38.15 | 7.82 | 17.6 | 17.6 | 17.65 | 107 of 256 | 0 | fireGoblin |
-| 2 | trip 1: a fight at the Flame Fields (5 swings; 0 px short af | 65 | 64.71 | 38.1 | 38.15 | 7.82 | 17.6 | 17.6 | 17.65 | 91 of 256 | 0 | fireGoblin |
-| 2 | trip 2: a fight at the Flame Fields (6 swings; 0 px short af | 68.7 | 68.39 | 38.1 | 38.15 | 7.82 | 17.6 | 17.6 | 17.65 | 85 of 256 | 0 | fireGoblin |
-| 2 | trip 3: a fight at the Flame Fields (4 swings; 0 px short af | 68.6 | 68.37 | 38.1 | 38.15 | 7.82 | 17.6 | 17.6 | 17.65 | 101 of 256 | 0 | fireGoblin |
-| 3 | trip 1: a fight at the Flame Fields (2 swings; 0 px short af | 65.6 | 65.31 | 38.1 | 38.15 | 7.82 | 17.6 | 17.6 | 17.65 | 102 of 256 | 0 | fireGoblin |
-| 3 | trip 2: a fight at the Flame Fields (0 swings; 0 px short af | 66.1 | 65.86 | 38.1 | 38.15 | 7.82 | 17.6 | 17.6 | 17.65 | 88 of 256 | 0 | fireGoblin |
-| 3 | trip 3: a fight at the Flame Fields (4 swings; 0 px short af | 69.9 | 69.60 | 38.1 | 38.15 | 7.82 | 17.6 | 17.6 | 17.65 | 105 of 256 | 0 | fireGoblin |
+| 1 | trip 1: a fight at the Flame Fields (6 swings; 0 px short af | 66.8 | 66.55 | 31.9 | 31.92 | 7.82 | 17.9 | 17.5 | 17.48 | 135 of 256 | 0 | p256:/icons/popups/sword.webp, p256:/icons/popups/heart-256.webp, p256:/icons/shards/shard_meadow.webp, p256:/icons/shards/shard_mist.webp, p256:/icons/shards/shard_ember.webp, p256:/icons/shards/shard_frost.webp, p256:/icons/shards/shard_thunder.webp, p256:/icons/shards/shard_hollows.webp, p256:/icons/shards/shard_sky.webp, p256:/icons/shards/shard_tidal.webp, p256:/icons/shards/shard_verdant.webp, p256:/sprites/effects/jet-stream-v1.png, p256:/icons/items/ore-iron.webp, p256:/sprites/effects/arrow-blast-v1.webp, p256:/icons/items/ore-black-steel.webp, p256:/sprites/fx/stun-stars-v1.png, p256:/icons/items/ore-obsidian.webp, p256:/sprites/fx/smith-anvil.webp, p256:/sprites/fx/portal-beam.webp, p256:/sprites/fx/fire-trail-v1.png, p256:/sprites/effects/rocks-burst-v1.webp, p256:/sprites/effects/grease-burst-v1.webp, p256:/sprites/effects/woodchips-burst-v1.webp, p256:/sprites/effects/splash-burst-v1.webp, p256:/sprites/fx/whirl-vortex-v1.png, p256:/sprites/fx/snow-footprints.webp, fireGoblin |
+| 1 | trip 2: a fight at the Flame Fields (10 swings; 0 px short a | 71.1 | 70.83 | 31.9 | 31.92 | 7.82 | 17.5 | 17.5 | 17.48 | 133 of 256 | 0 | p256:/icons/popups/sword.webp, p256:/icons/popups/heart-256.webp, p256:/icons/shards/shard_meadow.webp, p256:/icons/shards/shard_mist.webp, p256:/icons/shards/shard_ember.webp, p256:/icons/shards/shard_frost.webp, p256:/icons/shards/shard_thunder.webp, p256:/icons/shards/shard_hollows.webp, p256:/icons/shards/shard_sky.webp, p256:/icons/shards/shard_tidal.webp, p256:/icons/shards/shard_verdant.webp, p256:/sprites/effects/jet-stream-v1.png, p256:/icons/items/ore-iron.webp, p256:/sprites/effects/arrow-blast-v1.webp, p256:/icons/items/ore-black-steel.webp, p256:/sprites/fx/stun-stars-v1.png, p256:/icons/items/ore-obsidian.webp, p256:/sprites/fx/smith-anvil.webp, p256:/sprites/fx/portal-beam.webp, p256:/sprites/fx/fire-trail-v1.png, p256:/sprites/effects/rocks-burst-v1.webp, p256:/sprites/effects/grease-burst-v1.webp, p256:/sprites/effects/woodchips-burst-v1.webp, p256:/sprites/effects/splash-burst-v1.webp, p256:/sprites/fx/whirl-vortex-v1.png, p256:/sprites/fx/snow-footprints.webp, fireGoblin |
+| 1 | trip 3: a fight at the Flame Fields (10 swings; 4 px short a | 72.9 | 72.68 | 31.9 | 31.92 | 7.82 | 18.1 | 18.1 | 18.07 | 134 of 256 | 0 | p256:/icons/popups/sword.webp, p256:/icons/popups/heart-256.webp, p256:/icons/shards/shard_meadow.webp, p256:/icons/shards/shard_mist.webp, p256:/icons/shards/shard_ember.webp, p256:/icons/shards/shard_frost.webp, p256:/icons/shards/shard_thunder.webp, p256:/icons/shards/shard_hollows.webp, p256:/icons/shards/shard_sky.webp, p256:/icons/shards/shard_tidal.webp, p256:/icons/shards/shard_verdant.webp, p256:/sprites/effects/jet-stream-v1.png, p256:/icons/items/ore-iron.webp, p256:/sprites/effects/arrow-blast-v1.webp, p256:/icons/items/ore-black-steel.webp, p256:/sprites/fx/stun-stars-v1.png, p256:/icons/items/ore-obsidian.webp, p256:/sprites/fx/smith-anvil.webp, p256:/sprites/fx/portal-beam.webp, p256:/sprites/fx/fire-trail-v1.png, p256:/sprites/effects/rocks-burst-v1.webp, p256:/sprites/effects/grease-burst-v1.webp, p256:/sprites/effects/woodchips-burst-v1.webp, p256:/sprites/effects/splash-burst-v1.webp, p256:/sprites/fx/whirl-vortex-v1.png, p256:/sprites/fx/snow-footprints.webp, fireGoblin |
+| 2 | trip 1: a fight at the Flame Fields (8 swings; 4 px short af | 64.3 | 64.09 | 31.9 | 31.92 | 7.82 | 18.1 | 17.6 | 17.65 | 132 of 256 | 0 | p256:/icons/popups/sword.webp, p256:/icons/popups/heart-256.webp, p256:/icons/shards/shard_mist.webp, p256:/icons/shards/shard_ember.webp, p256:/icons/shards/shard_meadow.webp, p256:/icons/shards/shard_frost.webp, p256:/icons/shards/shard_thunder.webp, p256:/icons/shards/shard_sky.webp, p256:/icons/shards/shard_hollows.webp, p256:/icons/shards/shard_verdant.webp, p256:/icons/shards/shard_tidal.webp, p256:/sprites/effects/jet-stream-v1.png, p256:/icons/items/ore-iron.webp, p256:/icons/items/ore-obsidian.webp, p256:/icons/items/ore-black-steel.webp, p256:/sprites/fx/smith-anvil.webp, p256:/sprites/fx/portal-beam.webp, p256:/sprites/effects/arrow-blast-v1.webp, p256:/sprites/effects/rocks-burst-v1.webp, p256:/sprites/effects/woodchips-burst-v1.webp, p256:/sprites/fx/fire-trail-v1.png, p256:/sprites/fx/stun-stars-v1.png, p256:/sprites/effects/grease-burst-v1.webp, p256:/sprites/fx/whirl-vortex-v1.png, p256:/sprites/effects/splash-burst-v1.webp, p256:/sprites/fx/snow-footprints.webp, fireGoblin |
+| 2 | trip 2: a fight at the Flame Fields (2 swings; 0 px short af | 71.8 | 71.57 | 31.9 | 31.92 | 7.82 | 17.6 | 17.6 | 17.65 | 127 of 256 | 0 | p256:/icons/popups/sword.webp, p256:/icons/popups/heart-256.webp, p256:/icons/shards/shard_mist.webp, p256:/icons/shards/shard_ember.webp, p256:/icons/shards/shard_meadow.webp, p256:/icons/shards/shard_frost.webp, p256:/icons/shards/shard_thunder.webp, p256:/icons/shards/shard_sky.webp, p256:/icons/shards/shard_hollows.webp, p256:/icons/shards/shard_verdant.webp, p256:/icons/shards/shard_tidal.webp, p256:/sprites/effects/jet-stream-v1.png, p256:/icons/items/ore-iron.webp, p256:/icons/items/ore-obsidian.webp, p256:/icons/items/ore-black-steel.webp, p256:/sprites/fx/smith-anvil.webp, p256:/sprites/fx/portal-beam.webp, p256:/sprites/effects/arrow-blast-v1.webp, p256:/sprites/effects/rocks-burst-v1.webp, p256:/sprites/effects/woodchips-burst-v1.webp, p256:/sprites/fx/fire-trail-v1.png, p256:/sprites/fx/stun-stars-v1.png, p256:/sprites/effects/grease-burst-v1.webp, p256:/sprites/fx/whirl-vortex-v1.png, p256:/sprites/effects/splash-burst-v1.webp, p256:/sprites/fx/snow-footprints.webp, fireGoblin |
+| 2 | trip 3: a fight at the Flame Fields (7 swings; 0 px short af | 72.8 | 72.55 | 31.9 | 31.92 | 7.82 | 18.1 | 17.6 | 17.65 | 132 of 256 | 0 | p256:/icons/popups/sword.webp, p256:/icons/popups/heart-256.webp, p256:/icons/shards/shard_mist.webp, p256:/icons/shards/shard_ember.webp, p256:/icons/shards/shard_meadow.webp, p256:/icons/shards/shard_frost.webp, p256:/icons/shards/shard_thunder.webp, p256:/icons/shards/shard_sky.webp, p256:/icons/shards/shard_hollows.webp, p256:/icons/shards/shard_verdant.webp, p256:/icons/shards/shard_tidal.webp, p256:/sprites/effects/jet-stream-v1.png, p256:/icons/items/ore-iron.webp, p256:/icons/items/ore-obsidian.webp, p256:/icons/items/ore-black-steel.webp, p256:/sprites/fx/smith-anvil.webp, p256:/sprites/fx/portal-beam.webp, p256:/sprites/effects/arrow-blast-v1.webp, p256:/sprites/effects/rocks-burst-v1.webp, p256:/sprites/effects/woodchips-burst-v1.webp, p256:/sprites/fx/fire-trail-v1.png, p256:/sprites/fx/stun-stars-v1.png, p256:/sprites/effects/grease-burst-v1.webp, p256:/sprites/fx/whirl-vortex-v1.png, p256:/sprites/effects/splash-burst-v1.webp, p256:/sprites/fx/snow-footprints.webp, fireGoblin |
+| 3 | trip 1: a fight at the Flame Fields (0 swings; 0 px short af | 65.3 | 65.10 | 31.9 | 31.92 | 7.82 | 17.6 | 17.6 | 17.65 | 121 of 256 | 0 | p256:/icons/popups/heart-256.webp, p256:/icons/popups/sword.webp, p256:/icons/shards/shard_meadow.webp, p256:/icons/shards/shard_ember.webp, p256:/icons/shards/shard_mist.webp, p256:/icons/shards/shard_frost.webp, p256:/icons/shards/shard_thunder.webp, p256:/icons/shards/shard_hollows.webp, p256:/icons/shards/shard_sky.webp, p256:/icons/shards/shard_tidal.webp, p256:/icons/shards/shard_verdant.webp, p256:/sprites/effects/jet-stream-v1.png, p256:/icons/items/ore-iron.webp, p256:/icons/items/ore-black-steel.webp, p256:/icons/items/ore-obsidian.webp, p256:/sprites/fx/smith-anvil.webp, p256:/sprites/fx/portal-beam.webp, p256:/sprites/effects/arrow-blast-v1.webp, p256:/sprites/fx/stun-stars-v1.png, p256:/sprites/fx/fire-trail-v1.png, p256:/sprites/effects/rocks-burst-v1.webp, p256:/sprites/fx/whirl-vortex-v1.png, p256:/sprites/effects/woodchips-burst-v1.webp, p256:/sprites/effects/grease-burst-v1.webp, p256:/sprites/effects/splash-burst-v1.webp, p256:/sprites/fx/snow-footprints.webp, fireGoblin |
+| 3 | trip 2: a fight at the Flame Fields (0 swings; 0 px short af | 70 | 69.82 | 31.9 | 31.92 | 7.82 | 17.6 | 17.6 | 17.65 | 118 of 256 | 0 | p256:/icons/popups/heart-256.webp, p256:/icons/popups/sword.webp, p256:/icons/shards/shard_meadow.webp, p256:/icons/shards/shard_ember.webp, p256:/icons/shards/shard_mist.webp, p256:/icons/shards/shard_frost.webp, p256:/icons/shards/shard_thunder.webp, p256:/icons/shards/shard_hollows.webp, p256:/icons/shards/shard_sky.webp, p256:/icons/shards/shard_tidal.webp, p256:/icons/shards/shard_verdant.webp, p256:/sprites/effects/jet-stream-v1.png, p256:/icons/items/ore-iron.webp, p256:/icons/items/ore-black-steel.webp, p256:/icons/items/ore-obsidian.webp, p256:/sprites/fx/smith-anvil.webp, p256:/sprites/fx/portal-beam.webp, p256:/sprites/effects/arrow-blast-v1.webp, p256:/sprites/fx/stun-stars-v1.png, p256:/sprites/fx/fire-trail-v1.png, p256:/sprites/effects/rocks-burst-v1.webp, p256:/sprites/fx/whirl-vortex-v1.png, p256:/sprites/effects/woodchips-burst-v1.webp, p256:/sprites/effects/grease-burst-v1.webp, p256:/sprites/effects/splash-burst-v1.webp, p256:/sprites/fx/snow-footprints.webp, fireGoblin |
+| 3 | trip 3: a fight at the Flame Fields (8 swings; 0 px short af | 72.5 | 72.25 | 31.9 | 31.92 | 7.82 | 18.1 | 17.6 | 17.65 | 134 of 256 | 0 | p256:/icons/popups/heart-256.webp, p256:/icons/popups/sword.webp, p256:/icons/shards/shard_meadow.webp, p256:/icons/shards/shard_ember.webp, p256:/icons/shards/shard_mist.webp, p256:/icons/shards/shard_frost.webp, p256:/icons/shards/shard_thunder.webp, p256:/icons/shards/shard_hollows.webp, p256:/icons/shards/shard_sky.webp, p256:/icons/shards/shard_tidal.webp, p256:/icons/shards/shard_verdant.webp, p256:/sprites/effects/jet-stream-v1.png, p256:/icons/items/ore-iron.webp, p256:/icons/items/ore-black-steel.webp, p256:/icons/items/ore-obsidian.webp, p256:/sprites/fx/smith-anvil.webp, p256:/sprites/fx/portal-beam.webp, p256:/sprites/effects/arrow-blast-v1.webp, p256:/sprites/fx/stun-stars-v1.png, p256:/sprites/fx/fire-trail-v1.png, p256:/sprites/effects/rocks-burst-v1.webp, p256:/sprites/fx/whirl-vortex-v1.png, p256:/sprites/effects/woodchips-burst-v1.webp, p256:/sprites/effects/grease-burst-v1.webp, p256:/sprites/effects/splash-burst-v1.webp, p256:/sprites/fx/snow-footprints.webp, fireGoblin |

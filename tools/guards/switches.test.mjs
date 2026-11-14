@@ -16,7 +16,11 @@
  *   5. no name is in two rows;
  *   6. every `system` is in card B's map;
  *   7. `born: 'unknown'` only falls (BORN_UNKNOWN_LINE);
- *   8. docs/SWITCHES.md is what the table makes.
+ *   8. docs/SWITCHES.md is what the table makes;
+ *   9. every shape the scanner knows finds its fixture's names (SHAPES
+ *      below: v2.3.5302, after the gatekeeper's review of sitting 8 found
+ *      shapes that hid a switch).  Each fixture is a break proof that runs
+ *      on every PR.
  *
  * BREAK PROOF (rule 8), each tried by hand once, 2026-11-14:
  *   - a method `_zzz() { if (this._flagOn('zzz')) return; }` in
@@ -28,6 +32,13 @@
  *     server/src/dice.js                 -> FAIL 2 (a read in no known shape)
  *   - the `bosschest` row named `bosschest2`
  *                                        -> FAIL 1 (bosschest no row), FAIL 3
+ *   (v2.3.5302, each tried by hand once, 2026-11-14, in switchScan.mjs:)
+ *   - the `(flags || {}).x` rule's regex made never to match
+ *                                        -> FAIL 9 (W5)
+ *   - a local followed 8 lines, not its function
+ *                                        -> FAIL 9 (W8)
+ *   - only the first name of a `[?&](a|b)` group kept
+ *                                        -> FAIL 9 (P5)
  *
  * Run from the repository's root:
  *   node tools/guards/switches.test.mjs              the checks
@@ -39,19 +50,22 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { SWITCHES, SIDES, KINDS, RISKS, COLUMNS } from './lib/switches.mjs';
-import { census, DYNAMIC, NOT_ADDRESS, NOT_A_FLAG, ROOT } from './lib/switchScan.mjs';
+import { census, scanWorker, scanPage, DYNAMIC, NOT_ADDRESS, NOT_A_FLAG, ROOT } from './lib/switchScan.mjs';
 import { SYSTEMS } from './lib/systems.mjs';
 
 /* the census lines: each only falls, and only the gatekeeper lowers one */
-const UNLISTED_LINE = 195;      /* the page's names, until card T's PRs 2 and 3 */
+const UNLISTED_LINE = 113;      /* the page's drawing side, until card T's PR 3 */
 const UNKNOWN_LINE = 0;
-const BORN_UNKNOWN_LINE = 0;
+const BORN_UNKNOWN_LINE = 2;    /* ?debug, ?nodebug: April commits with no tag in the commit, its body or its merge */
 
 const PAGE = join(ROOT, 'docs/SWITCHES.md');
 
 function rowsBySystem(rows = SWITCHES) {
   const by = new Map();
   for (const r of rows) { if (!by.has(r.system)) by.set(r.system, []); by.get(r.system).push(r); }
+  /* sorted by name (its `?` aside), whatever the table file's order */
+  const key = (r) => r.name.replace(/^\?/, '').toLowerCase() + (r.name.startsWith('?') ? ' ?' : '');
+  for (const list of by.values()) list.sort((a, b) => (key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0));
   return by;
 }
 
@@ -84,8 +98,13 @@ function makePage(rows = SWITCHES) {
   L.push('');
   const by = rowsBySystem(rows);
   const names = [...by.keys()].sort();
-  const kinds = (k) => rows.filter((r) => r.kind === k).length;
-  L.push(`${rows.length} rows: ${kinds('switch')} switches, ${kinds('value')} values, ${kinds('lever')} levers, in ${names.length} systems.`);
+  /* v2.3.5302 (the gatekeeper's sitting 9): no count and no total on the
+     page.  A count changes with every row added anywhere, so any two PRs
+     that each add a row conflicted on it, and one merged a sitting.  Rows
+     are one a line, sorted by name within their system: a row added to one
+     place touches nothing else.  The counts are the guard's to print, and
+     the scoreboard's (tools/dev/scoreboard/switch-rows.mjs). */
+  L.push('How many there are: `node tools/guards/switches.test.mjs` prints the count, and `node tools/dev/scoreboard.mjs` its row.');
   L.push('');
   for (const sys of names) {
     L.push(`## ${sys}`);
@@ -98,6 +117,47 @@ function makePage(rows = SWITCHES) {
     L.push('');
   }
   return L.join('\n');
+}
+
+/* ── the scanner's shapes, each a fixture (v2.3.5302, the gatekeeper's review,
+   sitting 8: "several read shapes hide a switch").  A fixture is code the
+   scanner reads as if it were a file: the names it must find, and how many
+   reads it must count as unknown.  Each is a break proof that runs on every
+   PR: drop the rule for its shape from switchScan.mjs and check 9 names it. ── */
+const W = 'server/src/zz_shape.js', P = 'src/zz_shape.js';
+export const SHAPES = [
+  { id: 'W1 a call', side: 'w', code: "m() { return this._flagOn('wa'); }", names: ['wa'] },
+  { id: 'W2 a call in double quotes', side: 'w', code: 'm() { return this._flagOn("wb"); }', names: ['wb'] },
+  { id: 'W3 a call at a constant\'s field', side: 'w', code: "const K = { FLAG_OFF: 'wc' };\nconst o = { m() { return this._flagOn(K.FLAG_OFF); } };", names: ['wc'] },
+  { id: 'W4 a call at anything else', side: 'w', code: "const o = { m(x) { return this._flagOn(x + 'y'); } };", names: [], unknown: 1 },
+  { id: 'W5 (flags || {}).x', side: 'w', code: 'const o = { m() { return (this._liveFlags || {}).we; } };', names: ['we'] },
+  { id: 'W6 destructured', side: 'w', code: 'const o = { m() { const { wf, wg: h } = this._liveFlags || {}; return wf && h; } };', names: ['wf', 'wg'] },
+  { id: 'W7 f?.x', side: 'w', code: 'const o = { m() { const f = this._liveFlags; return f?.wh; } };', names: ['wh'] },
+  { id: 'W8 a local read far below', side: 'w', code: 'const o = { m() {\n  const f = this._liveFlags;\n' + '  let a = 1;\n'.repeat(12) + '  return f.wi;\n} };', names: ['wi'] },
+  { id: 'W9 the flags handed on', side: 'w', code: 'const o = { m() { return send(this._liveFlags); } };', names: [], unknown: 1 },
+  { id: 'W10 the flags through _liveFlagsEnsure()', side: 'w', code: 'const o = { m() { return this._liveFlagsEnsure().then((f) => f.wj); } };', names: [], unknown: 1 },
+  { id: 'W11 a local handed on', side: 'w', code: 'const o = { m() { const f = this._liveFlags; return send(f); } };', names: [], unknown: 1 },
+  { id: 'W12 a new door that takes the name', side: 'w', code: "export const m = {\n  _xFlagOff(name) {\n    return !!(this._liveFlags && this._liveFlags[name]);\n  },\n  a() { return this._xFlagOff('wk'); },\n  b(k) { return this._xFlagOff(k + 1); },\n};", names: ['wk'], unknown: 1 },
+  { id: 'W13 presence tests read nothing', side: 'w', code: "export const o = {\n m() {\n  if (!this._liveFlags) return;\n  if (this._liveFlags) x();\n  const f = this._liveFlags;\n  if (f && typeof f === 'object' && own(f, 'wl') && !f.wl) return;\n },\n};", names: ['wl'] },
+  { id: 'P1 (?:^|&) over search.slice(1)', side: 'p', code: 'const a = /(?:^|&)pa=0(?:&|$)/.test(location.search.slice(1));', names: ['pa'] },
+  { id: 'P2 .get("x")', side: 'p', code: 'const a = new URLSearchParams(location.search).get("pb");', names: ['pb'] },
+  { id: 'P3 searchParams', side: 'p', code: "const a = new URL(location.href).searchParams.get('pc');\nconst sp = new URL(location.href).searchParams;\nconst b = sp.has('pd');", names: ['pc', 'pd'] },
+  { id: 'P4 .includes(\'x=1\')', side: 'p', code: "const a = location.search.includes('pe=1');", names: ['pe'] },
+  { id: 'P5 every name of a group', side: 'p', code: 'const a = /[?&](pf|pg)=0/.test(location.search);', names: ['pf', 'pg'] },
+  { id: 'P6 clientOff(\'x\')', side: 'p', code: "const a = clientOff('ph');", names: [], off: ['ph'] },
+  { id: 'P7 .get(a variable)', side: 'p', code: 'const q = new URLSearchParams(location.search);\nfor (const k of K) q.get(k);', names: [], unknown: 1 },
+];
+function shapeCheck(sh) {
+  const src = new Map([[sh.side === 'w' ? W : P, sh.code]]);
+  const r = sh.side === 'w' ? scanWorker([W], { source: src }) : scanPage([P], { source: src });
+  const got = [...r.names.keys()].sort().join(',');
+  const want = [...sh.names].sort().join(',');
+  const off = sh.side === 'p' ? [...r.offNames.keys()].sort().join(',') : '';
+  const bad = [];
+  if (got !== want) bad.push(`names ${got || '(none)'}, want ${want || '(none)'}`);
+  if (r.unknown.length !== (sh.unknown || 0)) bad.push(`unknown ${r.unknown.length}, want ${sh.unknown || 0}`);
+  if (sh.off && off !== sh.off.join(',')) bad.push(`clientOff ${off || '(none)'}, want ${sh.off.join(',')}`);
+  return bad.length ? `${sh.id}: ${bad.join('; ')}` : null;
 }
 
 /* ── command lines ── */
@@ -160,9 +220,9 @@ async function checks() {
     const unknown = [...worker.unknown, ...page.unknown];
     check(`2: reads in a shape the scanner does not know: ${unknown.length}, the line ${UNKNOWN_LINE}`, unknown.length <= UNKNOWN_LINE,
       unknown.map((u) => `${u.file}:${u.line} ${u.text}`));
-    const stale = [...worker.staleDynamic.map((d) => `DYNAMIC ${d.file} "${d.text}"`), ...page.staleNotAddress.map((x) => `NOT_ADDRESS ${x.name} ${x.file}`),
-      ...NOT_A_FLAG.filter((x) => !worker.names.has(x.name)).map((x) => `NOT_A_FLAG ${x.name}`)];
-    check(`2: every excuse the scanner keeps is still found (${DYNAMIC.length} dynamic, ${NOT_ADDRESS.length} not the address, ${NOT_A_FLAG.length} not a flag)`, stale.length === 0, stale);
+    const stale = [...worker.staleDynamic.map((d) => `DYNAMIC ${d.file} ${d.fn}`), ...page.staleNotAddress.map((x) => `NOT_ADDRESS ${x.name} ${x.file}`),
+      ...worker.staleNotAFlag.map((x) => `NOT_A_FLAG ${x.name}`), ...(page.staleOwnEntries ? ['keepSwitches.js\'s own entries'] : [])];
+    check(`2: every excuse the scanner keeps is still used (${DYNAMIC.length} functions, ${NOT_ADDRESS.length} not the address, ${NOT_A_FLAG.length} not a flag, keepSwitches.js's own entries)`, stale.length === 0, stale);
   }
 
   /* 3. every row is still found, on its side */
@@ -221,6 +281,12 @@ async function checks() {
     const want = makePage();
     const have = existsSync(PAGE) ? readFileSync(PAGE, 'utf8') : '';
     check('8: docs/SWITCHES.md is what the table makes (node tools/guards/switches.test.mjs --write)', have === want, have ? 'stale' : 'missing');
+  }
+
+  /* 9. every shape the scanner knows, on its fixture */
+  {
+    const bad = SHAPES.map(shapeCheck).filter(Boolean);
+    check(`9: the scanner reads each of its ${SHAPES.length} shapes (the fixtures above)`, bad.length === 0, bad);
   }
 
   const sw = SWITCHES.filter((r) => r.kind === 'switch').length;
