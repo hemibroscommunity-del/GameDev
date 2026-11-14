@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "1777ebd666ac1064528468654b538dd5864380b7",
+  "tree": "14f0738b7854eae3e495d27212354d3fbcd740d7",
+  "committedAt": "2026-11-14T14:19:51-08:00",
+  "subject": "Merge pull request #1838 from hemibroscommunity-del/claude/plan-k-4-wire-door",
+  "files": 7715,
+  "bytes": 956471145,
+  "listingSha256": "220c0bbe85fc8e6a94efe0e0ef92f750d780faf4f029d94f99ce6fae7fe4681c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
