@@ -1,6 +1,6 @@
 card: T
 branch: claude/plan-t-1-switches (one branch a PR, each begun from the one before: -1- to -7-; merge them in order)
-prs: PR 1 (5301, ready)
+prs: #1754 (5301, ready)
 state: ready
 
 ## Done
