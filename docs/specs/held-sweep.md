@@ -487,6 +487,11 @@ its stereo file (five to the bit, fish-reel -65.8 dB), 7 of 7.
 **After**, the sample (`town` and `lands`, three runs): 5.2, 4.9 and 6.9 ms
 the longest, and every run within its whole budget.
 
+After the gatekeeper's sitting 4: the game's side of the fold moved into
+`soundFold.js` (`foldForGame`; `gameDisplay.js` under its `four-lines`
+line), and a one-channel sound no longer waits behind a fold in the line
+(`docs/specs/sound-fold.md`).
+
 ## The standing check
 
 - `server/test/held-sweep.test.mjs` holds every fix above at its source and
