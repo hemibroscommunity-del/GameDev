@@ -78,9 +78,11 @@ export const KNOWN = {
     why: "only with a SECOND page open on this box (the other player's own browser): both pages draw on one software graphics chip, and the black-screen check's collect waits for the other page's frames too, 106 to 208 ms.  With one page it is 0 to 2 ms since the collect moved to the top of the frame (it was 110 to 206)",
     next: 'nothing here: two pages are never on one phone.  On a phone the frame strip names it ("screen check N ms") if it is ever 4 ms or more',
     crowd: "(no line of its own: the crowd tour now plays the species last) with one page, when the chip is swamped (the first crowd tours, after the species churn, 377 MB on it): the fenced read is not back within its frames and the check falls back to its OLD way, a drawImage copy of the canvas that waits for the chip: 465 to 625 ms, a dozen times.  Fix the churn first (speciesArt, below); then the old way should not run in play at all (skip a check rather than copy)" },
-  'strip-made': { ms: 24, whose: 'ours',
-    why: "the page's own part of a monster's strip coming in: its numbers put on its bundle's row of colours and handed to the graphics chip, 5 to 19 ms for the biggest strips (the reading and packing are off the page)",
-    next: "send the bundle's row with the ask so the worker numbers the strip for it, and the page only hands it to the chip" },
+  /* v2.3.5044: 'strip-made' (was 24) off the list.  What was left was the page putting a monster strip's numbers on its
+     bundle's row of colours (picsNumbers.js stripAsNumbers: a loop over every byte of the strip) as its look came in:
+     the main tour's `town`, three runs, 9.4 / 17.9 / 10.0 ms the longest, 34 holds.  Now the reader's worker numbers
+     the strip for its row (stripRows.js; a colour variant retinted there first) and the page only checks the rows and
+     makes the texture.  The sample (`town`, `lands` x3): 6.1 / 12.4 / 4.5 ms the longest, 11 holds in all (the 12.4: 9 ms of it the row's upload to this box's software chip; one hold just past the general line is the judge's noise) (docs/specs/held-sweep.md, "Card H") */
   'the frame itself': { ms: 70, whose: 'box',
     why: "one frame's own code on this box, which plays a quarter of a second of game in each (it draws four a second): every monster, bubble and name plate that changed in that time is done in one frame",
     next: 'mp-phoneframe is the measure of a frame at a phone\'s rate; here the line only stops it growing',

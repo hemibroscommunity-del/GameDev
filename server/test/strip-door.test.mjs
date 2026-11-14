@@ -29,6 +29,8 @@
  *   4. B: the door, read from the source;
  *   5. C: the callers of the page's packers;
  *   6. the rule is written where every session reads it (CLAUDE.md).
+ * v2.3.5044: and 4i to 4k, the strip numbered for its bundle's row of colours
+ * on the reader's worker (stripRows.js): the page's own rule, byte for byte.
  * The phone half is tools/qa/mp/mp-stripgentle.mjs.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
@@ -38,6 +40,7 @@ import { inflateSync } from 'node:zlib';
 import { decodePng8, readPng8Chunks } from '../../src/rendering/png8Decode.js';
 import { packStripNumbers } from '../../src/rendering/stripPack.js';
 import { trimScanCell, trimCellOf, trimLayout } from '../../src/rendering/trimRules.js';
+import { planOnRows, remapToRow } from '../../src/rendering/stripRows.js';   /* v2.3.5044 */
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -182,11 +185,12 @@ const MON = join(ROOT, 'public/sprites/monsters');
 {
   const zt = src('src/rendering/zoneTextures.js');
   const door = zt.slice(zt.indexOf('export function loadTrackedStrip'), zt.indexOf('function _stripByImage'));
-  check('4. the door reads the file\'s own numbers off the page\'s thread FIRST, wherever pictures are held as numbers', /if \(stripReadOn\(\) && picNumbersOn\(\) && !\(typeof window !== 'undefined' && window\.__btPicNumVerify === true\)\) \{\s*return readStrip\(url, fw, fh\)\.then\(\(m\) => \{/.test(door));
+  check('4. the door reads the file\'s own numbers off the page\'s thread FIRST, wherever pictures are held as numbers', /if \(stripReadOn\(\) && picNumbersOn\(\) && !\(typeof window !== 'undefined' && window\.__btPicNumVerify === true\)\) \{[\s\S]{0,400}?const p = readStrip\(url, fw, fh, 0, \(\) => \{ rows = stripRowsAsk\(bundle\); return rows && rows\.send; \}\)\.then\(\(m\) => \{/.test(door)
+    && /p\.then\(\(\) => \{ if \(plan\) stripPlanDone\(bundle, plan\); \}\);\s*return p;/.test(door));   /* v2.3.5044: + the bundle's rows with the ask, described as the read starts */
   check('4b. ...what the reader cannot read is unpacked on the page, as before; a zone left meanwhile keeps nothing', /if \(!m\) return _stripByImage\(bundle, url, fw, fh, gen\);/.test(door) && /if \(\(_gen\.get\(bundle\) \|\| 0\) !== gen\) return \[\];/.test(door)
     && /return _stripByImage\(bundle, url, fw, fh, gen\);\s*\}\s*$/.test(door.slice(0, door.indexOf('/* ═══ v2.3.4470: THE SAME STRIP IN ANOTHER COLOUR'))));
   check('4c. ...in play, one strip\'s texture a slice, in the same line as the strips unpacked gently', /if \(stripFrameMs\(\) > 0\) return _inLine\(async \(\) => \{ await stripTurn\(\); return _stripOfNumbers\(bundle, url, fw, fh, gen, m\); \}\);/.test(door));
-  check('4d. ...and its numbers go on the bundle\'s row of colours with no canvas at all', /const numSrc = stripAsNumbers\(bundle, null, url, \{ w: m\.w, h: m\.h, idx: m\.idx, pal: m\.pal \}\);/.test(door)
+  check('4d. ...and its numbers go on the bundle\'s row of colours with no canvas at all', /const numSrc = stripAsNumbers\(bundle, null, url, \{ w: m\.w, h: m\.h, idx: m\.idx, pal: m\.pal, onRow: m\.onRow \}\);/.test(door)
     && /if \(!picNumbersOn\(\) \|\| \(!canvas && !read\)\) return null;/.test(src('src/rendering/picsNumbers.js')));
   const wk = src('src/rendering/png8Worker.js');
   check('4e. the worker reads the strip as its numbers and packs them there', /if \(m\.strip\) \{/.test(wk) && /decodePng8\(new Uint8Array\(await pr\.arrayBuffer\(\)\), undefined, 1\)/.test(wk) && /const out = packStripNumbers\(dec, m\.fw, m\.fh, m\.n \|\| 0\);/.test(wk)
@@ -196,6 +200,88 @@ const MON = join(ROOT, 'public/sprites/monsters');
   check('4f. the packer of numbers has no canvas and no import but the packer\'s rules (so a worker and node can run it)', imports.length === 1 && /from '\.\/trimRules\.js'/.test(imports[0]) && !/document|canvas\.|getContext|window\./.test(sp.replace(/\/\*[\s\S]*?\*\//g, '')));
   const sr = src('src/rendering/stripRead.js');
   check('4g. one strip is asked for at a time (a strip\'s unpacked bytes sit on the worker\'s side meanwhile), the worker is let go when idle, and `?stripworker=0` is the page\'s way', /const p = _line\.then\(job, job\);/.test(sr) && /IDLE_MS/.test(sr) && /stripworker=\(0\|off\|false\)/.test(sr));
+  /* ── v2.3.5044: 4i-4k, the strip numbered for its row on the reader's worker (stripRows.js) ── */
+  /* the page's own rule, copied verbatim from picsNumbers.js rowFor and stripAsNumbers (4j holds the copy to it) */
+  const pageRule = (pal, live, idx, w, h) => {
+    let r = null;
+    for (const x of live) {
+      let fresh = 0;
+      for (let k = 1; k < pal.length; k++) if (!x.map.has(pal[k])) fresh++;
+      if (x.n + fresh <= 256) { r = x; break; }
+    }
+    let ri = live.indexOf(r);
+    if (!r) { r = { map: new Map([[0, 0]]), n: 1, pal: new Uint32Array(256) }; ri = live.length; }
+    const n0 = r.n, added = [];
+    const to = new Uint8Array(pal.length);
+    for (let k = 1; k < pal.length; k++) {
+      const c = pal[k];
+      let n = r.map.get(c);
+      if (n === undefined) { n = r.n++; r.map.set(c, n); r.pal[n] = c; added.push(c); }
+      to[k] = n;
+    }
+    const st = (w + 3) & ~3;
+    const src0 = idx.slice();
+    const out = st === w ? src0 : new Uint8Array(st * h);
+    for (let y = 0; y < h; y++) {
+      const o = y * st, i0 = y * w;
+      for (let x = 0; x < w; x++) out[o + x] = to[src0[i0 + x]];
+      for (let x = w; x < st; x++) out[o + x] = out[o + w - 1];
+    }
+    return { ri, n0, added, out, st };
+  };
+  let seed = 5044;
+  /* mulberry32: every bit good (the low bits of a plain LCG repeat every few calls) */
+  const rnd = (n) => {
+    seed = (seed + 0x6D2B79F5) >>> 0;
+    let z = seed;
+    z = Math.imul(z ^ (z >>> 15), z | 1);
+    z ^= z + Math.imul(z ^ (z >>> 7), z | 61);
+    return ((z ^ (z >>> 14)) >>> 0) % n;
+  };
+  const colour = () => ((rnd(256) << 24) | (rnd(256) << 16) | (rnd(256) << 8) | rnd(256)) >>> 0;
+  const pool = Array.from({ length: 700 }, colour);
+  let same = 0, cases = 0, newRows = 0, laterRows = 0;
+  const bad = [];
+  for (let t = 0; t < 1000; t++) {
+    /* the bundle's rows as the page holds them: 0 to 3, some nearly full */
+    const live = [];
+    for (let k = 0, nr = rnd(4); k < nr; k++) {
+      const r = { map: new Map([[0, 0]]), n: 1, pal: new Uint32Array(256) };
+      const want = 1 + rnd(256);
+      for (let j = 0; j < 400 && r.n < want; j++) { const c = pool[rnd(pool.length)]; if (!r.map.has(c)) { r.map.set(c, r.n); r.pal[r.n] = c; r.n++; } }
+      live.push(r);
+    }
+    /* a strip: place 0 see-through, its colours from the same pool (shared with the rows, or new) */
+    const np = 2 + rnd(120), pal = new Uint32Array(np), seen = new Set();
+    for (let k = 1; k < np; k++) { let c; for (let g = 0; g < 1000; g++) { c = pool[rnd(pool.length)]; if (!seen.has(c)) break; } seen.add(c); pal[k] = c; }
+    const w = 1 + rnd(40), h = 1 + rnd(12);
+    const idx = new Uint8Array(w * h);
+    for (let i = 0; i < idx.length; i++) idx[i] = rnd(np);
+    const sent = live.map((r) => ({ n: r.n, pal: r.pal.slice(0, r.n) }));
+    const plan = planOnRows(pal, sent);
+    const st = (w + 3) & ~3;
+    const out = remapToRow(idx, w, h, plan.to, st);
+    const ref = pageRule(pal, live, idx, w, h);
+    cases++;
+    if (ref.ri === live.length) newRows++; else if (ref.ri > 0) laterRows++;
+    const ok = plan.ri === ref.ri && plan.n0 === ref.n0 && plan.added.length === ref.added.length
+      && plan.added.every((c, i) => c === ref.added[i]) && out.length === ref.out.length && out.every((v, i) => v === ref.out[i]);
+    if (ok) same++; else if (bad.length < 3) bad.push({ t, ri: [plan.ri, ref.ri], n0: [plan.n0, ref.n0], added: [plan.added.length, ref.added.length] });
+  }
+  check(`4i. the strip numbered on the reader's worker (stripRows.js) is the page's own rule, byte for byte: the row chosen, its new colours in order, every number and the padding (${same} of ${cases} made-up strips; ${newRows} wanted a new row, ${laterRows} a later one)`,
+    same === cases && newRows > 20 && laterRows > 20, bad);
+  const pn = src('src/rendering/picsNumbers.js');
+  check('4j. ...the page\'s rule is still the one copied (picsNumbers.js), and the page takes the worker\'s plan only if the rows are as it described them',
+    /for \(let k = 1; k < colours\.length; k\+\+\) if \(!r\.map\.has\(colours\[k\]\)\) fresh\+\+;\s*if \(r\.n \+ fresh <= 256\) return r;/.test(pn)
+    && /n = r\.n\+\+;\s*r\.map\.set\(c, n\);\s*r\.pal\[n\] = c;/.test(pn)
+    && /for \(let x = w; x < st; x\+\+\) out\[o \+ x\] = out\[o \+ w - 1\];/.test(pn)
+    && /if \(\(_rowsEpoch\.get\(bundle\) \|\| 0\) !== asked\.epoch \|\| plan\.st !== paletteStride\(nums\.w\)\)/.test(pn)
+    && /_rowsEpoch\.set\(bundle, \(_rowsEpoch\.get\(bundle\) \|\| 0\) \+ 1\);\s*_plansWaiting\.delete\(bundle\);/.test(pn)
+    && /if \(!r \|\| r\.n !== plan\.n0\)/.test(pn)
+    && /if \(m\.rgb\) palTint = retintPalette\(out\.pal, out\.idx, m\.rgb\);\s*if \(m\.rows\) \{\s*const plan = planOnRows\(palTint \|\| out\.pal, m\.rows\);/.test(wk));   /* v2.3.5044: a colour variant retinted by the page's own rule first */
+  const srw = src('src/rendering/stripRows.js');
+  check('4k. ...and stripRows.js imports nothing (the worker and node run it)', !/^import /m.test(srw) && /export function planOnRows/.test(srw) && /export function remapToRow/.test(srw));
+
   /* every module that draws a monster from strips of frames comes through the door */
   const mods = readdirSync(join(ROOT, 'src/rendering')).filter((f) => /Sprites\.js$/.test(f));
   const loose = [];

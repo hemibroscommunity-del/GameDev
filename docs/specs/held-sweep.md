@@ -219,7 +219,7 @@ box's software graphics chip, and the quarter second of game it plays in one
 frame: a phone has neither) or **the browser's** (its garbage collector: the
 game can only give it less to do). The grand plan's step 3.1 is done when no
 row is ours (`held-budget.mjs` `debtOf('ours')`, the count its scoreboard
-reads). Today (v2.3.5043): seven ours, two the box's, one the browser's. A new family is
+reads). Today (v2.3.5044): six ours, two the box's, one the browser's. A new family is
 ours until a measurement says otherwise: `held-sweep.test` 7b3 holds the
 box's and the browser's to the three below, and 7b4 holds this table to
 `KNOWN`, row for row. Their break proofs (the grand plan's rule 8), each run
@@ -239,7 +239,7 @@ All of them (the first five by their old rank, then the rest; a family off the l
 | `gc` | the browser's | 60 ms | the browser's garbage collector | make less garbage a frame (OPTIMIZATION-ROADMAP's pools) |
 | `the frame itself` | the box's | 70 ms | this box plays a quarter of a second of game in each frame | `mp-phoneframe` is the measure at a phone's rate; here the line stops it growing |
 | `screen-check` | the box's | 260 ms | only with a second page on this box's one software chip; one page: 0 to 2 ms | nothing here; on a phone the frame strip names it if it is ever 4 ms |
-| `strip-made` | ours | 24 ms | the page's part of a strip coming in (its numbers put on its bundle's row, handed to the chip) | number the strip for its row on the worker |
+| ~~`strip-made`~~ | | off the list (v2.3.5044; was 24 ms) | the page put a monster strip's numbers on its bundle's row of colours, a loop over every byte (`picsNumbers.js` `stripAsNumbers`) | **v2.3.5044**: numbered for its row on the reader's worker (below, "Card H") |
 | `ui:*` | ours | 16 ms | one component drawn in one piece (the gear tab is one function of 10 ms) | split the gear tab |
 | `other: BT_AUDIO$1._fold > foldToMono` | ours | 20 ms (v2.3.4960; was 30) | a two-sided sound folded to one on its first play, 19 ms once | fold as it is decoded |
 | `other: R > J` | ours | 20 ms (v2.3.4872) | React working through the redraw an equip causes (the gear tab, the band and the bag at once) where no one of the game's components is the outermost named one: 15 to 17 ms at the `armour` station | name the components with React's profiler; then split or `startTransition` the redraw |
@@ -378,6 +378,52 @@ fails, each address is cut on the page once and then always, as before).
 Seen and not this PR's: the bake worker is let go as stuck 3 times in the
 probe's 2-player minute, the same with `?bakeurl=0` (a job past
 `_BAKE_STUCK_MS`, 6 s, on this box).
+
+### `strip-made` off the list (v2.3.5044)
+
+**What was left.** A monster's strip is read off the page's thread since
+v2.3.4470 (`stripRead.js`: the reader's worker reads the file's own colour
+numbers and packs them). The page's part was to put the strip on its
+bundle's shared row of colours (`picsNumbers.js` `stripAsNumbers`): choose
+the row, give it the colours it lacked, then a loop over every byte of the
+strip turning its numbers into the row's, padding each line to four bytes for
+WebGL. The main tour's `town`, three runs: 9.4, 17.9 and 10.0 ms the longest,
+34 holds; the lands' edges up to 8.1 ms.
+
+**What it does now** (the family's `next`: "send the bundle's row with the
+ask"):
+
+- **The rows go with the read.** The page describes the bundle's rows when
+  each strip's read STARTS (reads go one at a time), including the plans
+  already answered and not yet taken (`stripRowsAsk`). The first cut
+  described them when the strip was ASKED: a monster's look is a dozen
+  strips asked at once, and 27 of 29 came back stale on a ride.
+- **The reader's worker numbers the strip** (`png8Worker.js`, with
+  `stripRows.js` `planOnRows` and `remapToRow`, the page's own rule): which
+  row, the colours it gains in order, and the strip on the row's numbers. A
+  colour variant (the moss slime and its kin) has its palette retinted there
+  first, by the same pure `retintPalette`.
+- **The page checks and takes it** (`_onPlannedRow`), in the order the plans
+  were answered: the bundle's rows not given back since (a count of
+  releases), and the row with the number of places it was told. Otherwise
+  the page numbers the strip itself, as before, from the strip's own numbers,
+  which come back beside the plan.
+
+**The same picture.** `held-sweep`'s node half: `strip-door.test` 4i holds
+`stripRows.js` to a verbatim copy of the page's rule on 1000 made-up strips
+and rows (325 needing a new row, 64 a later one): the row, the colours in
+order, every byte, the padding. Break proof: the room rule off by one (`<`
+for `<=`), 5 of 1000 differ. In play, `window.__btStripRowCheck = true` checks
+every pixel's colour on the row against its colour in the strip: a ride to
+every land's edge, 35 of 35 strips numbered on the worker (6 of them colour
+variants), none stale, no pixel wrong.
+
+**After**, the sample (the main tour's `town` and `lands`, three runs): 6.1,
+12.4 and 4.5 ms the longest, 11 holds (was 34). The 12.4 is 9 ms of
+`texSubImage2D`, the row's colours sent to this box's software chip; one hold
+just past the general line is the judge's noise.
+
+**Not run** (offered): the whole tours; Safari.
 
 ## The standing check
 
