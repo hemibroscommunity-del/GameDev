@@ -1,6 +1,6 @@
 card: T
 branch: claude/plan-t-6-reader (one branch a PR, each begun from main once the one before merged)
-prs: #1754, #1768, #1816, #1817, #1837 (5301-5305, merged); PR 6 (5306, ready)
+prs: #1754, #1768, #1816, #1817, #1837 (5301-5305, merged); #1863 (5306, ready)
 state: ready
 
 ## Done
@@ -17,7 +17,7 @@ state: ready
 
 ## Next
 
-- PR 6 (5306): the page's one reader, src/game/switches.js (`sw`, `swHas`,
+- #1863 (5306): the page's one reader, src/game/switches.js (`sw`, `swHas`,
   `swValue`, `thrown`; forms and needs from the table, check 13); its guard
   switch-reader.test (moves held to their old answers; outside reads 220).
   First seven reads moved. Then PR 7 on: the reads moved, a few systems a PR.
@@ -37,4 +37,4 @@ state: ready
 
 ## Needs
 
-- The gatekeeper: PR 6.
+- The gatekeeper: #1863.
