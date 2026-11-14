@@ -110,6 +110,7 @@ import { riseChestMethods } from './risechest.js';   /* v2.3.4453: the chest on 
 import { boardMethods, boardFace } from './boards.js';   /* v2.3.4393: the daily spin's records, a face and a level on every board, the deleted stand-ins */
 import { accuracyMethods } from './accuracy.js';   /* v2.3.4545: how many of your shots hit, a weapon */
 import { reportMethods, rttWaverNext, reportSiteOf } from './report.js';   /* v2.3.5123: the field report, the worker's side */
+import { roomRowMethods } from './roomrow.js';   /* v2.3.5124: the room's own row in the day's book */
 import { charWatchMethods } from './charwatch.js';   /* v2.3.4545: what players drew, for the owner to look at (the Test panel) */
 import { achievementMethods } from './achievements.js';   /* v2.3.3527 */
 import { killRollMethods } from './killroll.js';   /* v2.3.3209: one roll a kill, each drop its own numbers */
@@ -1069,6 +1070,7 @@ export class GameRoom {
   constructor(state, env) {
     this.state = state;
     this.env = env;
+    this._roomRowStart(Date.now());   /* v2.3.5124: a restart, and every row the room writes counted (roomrow.js) */
     this.sessions = new Map();
     // v2.3.1202: keyed by CLIENT-CHOSEN join ids -- Object.create(null)
     // so a magic id ('__proto__') can't write through Object.prototype
@@ -6688,6 +6690,7 @@ Object.assign(GameRoom.prototype, fishlogMethods); /* v2.3.4036 */
 Object.assign(GameRoom.prototype, boardMethods); /* v2.3.4393 */
 Object.assign(GameRoom.prototype, accuracyMethods); /* v2.3.4545 */
 Object.assign(GameRoom.prototype, reportMethods); /* v2.3.5123 */
+Object.assign(GameRoom.prototype, roomRowMethods); /* v2.3.5124 */
 Object.assign(GameRoom.prototype, charWatchMethods); /* v2.3.4545 */
 Object.assign(GameRoom.prototype, riseChestMethods); /* v2.3.4453 */
 Object.assign(GameRoom.prototype, achievementMethods); /* v2.3.3527 */

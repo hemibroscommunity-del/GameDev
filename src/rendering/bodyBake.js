@@ -95,6 +95,7 @@ function _kill(slot, why) {
   const i = _pool.indexOf(slot);
   if (i >= 0) _pool.splice(i, 1);
   slot.dead = true;
+  if (!slot.heard) _unheard++;   /* v2.3.5049: never heard from: not started again at a return (_back) */
   for (const [id, p] of slot.pending) { slot.pending.delete(id); p({ ok: false, why }); }
   if (!_pool.length) _dead = true;
   _pump();   /* v2.3.5014: the line goes to the worker left, or (none) to the page */
@@ -116,12 +117,25 @@ function _watch() {
   }, WATCH_MS);
 }
 /* v2.3.5040: the page is back.  Each worker let go since (stalled, died, or
-   never started) may be started once more; the time away is no tick's */
+   never started) may be started once more; the time away is no tick's.
+   ═══ v2.3.5049: ...BUT NOT ONE THAT NEVER RAN HERE ═══
+   The gatekeeper's sitting 1 (#1668): a worker that hangs from its start (a
+   device where it cannot run) was started again at every return, and every
+   return then showed plain looks for the 20 s the watch waits before letting
+   it go.  A worker let go WITHOUT ever being heard from (no answer, no beat:
+   `slot.heard`) is counted (`_unheard`) and its slot is not started again;
+   one that ran here and was let go (stalled under a load, or ended while the
+   page was away) is, as before.  `_unheard` is never more than the pool:
+   with every slot spent that way, the page bakes for the rest of the sitting,
+   as it does where there is no worker. */
+let _unheard = 0;
 function _back() {
   _watchAt = Date.now();
-  if (_OFF || (_started <= _pool.length && !_dead)) return;
+  if (_OFF) return;
+  const spent = _pool.length + Math.min(_unheard, POOL);
+  if (_started <= spent && !(_dead && spent < POOL)) return;   /* nothing let go that ran here: every slot spent on one that never did stays spent, and the page bakes */
   _stats.restarts++;
-  _started = _pool.length;
+  _started = spent;
   _dead = false;
   _pump();   /* a line waiting on the one worker left goes to the new one too */
 }
@@ -134,10 +148,11 @@ if (!_OFF && typeof document !== 'undefined' && typeof window !== 'undefined') {
 function _start() {
   let w;
   try { w = new Worker(new URL('./bodyBakeWorker.js', import.meta.url), { type: 'module' }); } catch (e) { return null; }
-  const slot = { w, pending: new Map(), quiet: 0, dead: false };
+  const slot = { w, pending: new Map(), quiet: 0, dead: false, heard: false };
   w.onmessage = (ev) => {
     const m = ev.data || {};
     slot.quiet = 0;   /* v2.3.5040: heard from (was a wall-clock stamp, `sign`) */
+    slot.heard = true;   /* v2.3.5049: it runs here (_back) */
     /* v2.3.5013: a job's beat between its steps (bodyBakeWorker.js): alive,
        nothing to hand back */
     if (m.beat) { _stats.beats++; return; }
@@ -285,7 +300,7 @@ export function noteWorkerSheet(label, pageMs) {
 }
 
 if (typeof window !== 'undefined') {
-  window.__btBodyWorker = () => ({ ..._stats, shirt: { ..._stats.shirt }, dead: _dead, pending: _pending.size, waiting: _line.length, workers: _pool.length, pool: POOL });
+  window.__btBodyWorker = () => ({ ..._stats, shirt: { ..._stats.shirt }, dead: _dead, unheard: _unheard, pending: _pending.size, waiting: _line.length, workers: _pool.length, pool: POOL });
   /* QA (mp-bodyworker): bake each { urls, job, fw, fh } on the worker and
      hand back its packed bytes, for the caller to compare with the page's */
   window.__btBodyWorkerBytes = (urls, job, fw, fh, type) => _ask({ type: type || 'body', urls: urls.map(_abs), job, fw, fh, raw: true })
