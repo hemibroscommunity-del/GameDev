@@ -1,9 +1,12 @@
 card: Y
-branch: claude/plan-y-farm-gate
-prs: PR 1 (tag 5400, ready)
-state: ready
+branch: claude/plan-y-topaudit (PR 2, begun from PR 1's branch: merge in order)
+prs: #1705 (ready), PR 2 (tag 5401, testing)
+state: working
 
 ## Done
+
+- #1705 (tag 5400): `hopTo` stops at a zone change. `farmmusic` 12/12
+  x3 alone, `questline` 187/187.
 
 - Found the cause (tag 5400). The GAME keeps its word: out through the
   farm's gate the phone lands on the spot it left, (87168, 87456), by the
@@ -21,9 +24,9 @@ state: ready
 
 ## Next
 
-- Done: A, from the planning session: `hopTo` stops when its zone
-  changes (`tools/qa/mp/harness.mjs`). `farmmusic` 12/12 three runs of
-  three, alone; `questline` 187/187. Waiting for the gatekeeper.
+- PR 2 (tag 5401): the minimap's inset is measured again when the top
+  bar grows. `topaudit` 6/6 twice, `north` 9/9; `wheelmap` 1 red (the
+  plate's words, checking it on main); `questline` running.
 
 ## Found
 
@@ -31,6 +34,6 @@ state: ready
 
 ## Needs
 
-- The owner: the planning session also asked for a second PR,
-  `mp-topaudit` (`pixiRenderer.js` ~869, no `topInset` to
-  `wheelMinimap.js`). Outside card Y and in a renderer: yes or no?
+- None. PR 2 is the owner's yes (relayed by the planning session, 06:30
+  UTC): the fault is `minimapRenderer.js` `_measureTopInset` (cached by
+  canvas height alone), not `pixiRenderer.js` 869. `topaudit` 6/6 x2.
