@@ -41,6 +41,11 @@
  *  15. v2.3.5080: the day's book (daybook.js) writes nothing while nothing is
  *      added, and at most one row a DAYBOOK.PACE_MS (5 minutes) while its
  *      parts are added to on every tick -- 13 in an hour at most;
+ *  17. v2.3.5089: an arena match's settlement (gladiator.js), its plan on,
+ *      writes the old order's puts and ONE more, its plan (and deletes it
+ *      once paid: two rows a match): 6 puts in a 1 v 1; off (the default
+ *      until the owner says yes) the old order's 5 (16 is card E's transfer
+ *      ledger, in its own PR);
  * A line here may move when a feature really needs the rows: say so in the
  * PR, in plain words, as the memory budget asks (CLAUDE.md).
  */
@@ -625,6 +630,26 @@ const FAST = 110;
      hand's line dropped from roomrow.js writes the book 354 times */
   const line = 18;
   check(`15c. an hour of sockets that never join and of ${joins} joins and leaves writes the book ${rows.length} times, at most ${line} (no write without a join; the book's pace on the whole)`, rows.length >= 1 && rows.length <= line, byPrefix(rows));
+}
+
+/* ── 17. v2.3.5089: an arena match's settlement ─────────────────────────────── */
+/* The plan is one record a match (the gatekeeper's sitting 9: it was written
+   onto every stake, 5 puts became 7 in a 1 v 1, 32 became 52 in a 10 v 10).
+   The line is a number: a plan written per stake again must fail here. */
+{
+  const { room, state } = await makeRoom();
+  const W = 'cg_ar_w', C = 'cg_ar_c', D = 'cg_ar_d';
+  for (const [sp, tg] of [[C, W], [D, 'cg_ar_l']]) {
+    state.store.set('arena_stake:cg-t:cg-m:' + sp, { tid: 'cg-t', matchId: 'cg-m', sponsorId: sp, targetId: tg, amount: 100, ts: NOW });
+  }
+  const puts = [];
+  const real = state.storage.put;
+  state.storage.put = function (k, v) { if (k && typeof k === 'object') puts.push(...Object.keys(k)); else puts.push(k); return real.call(this, k, v); };
+  room._liveFlags = Object.assign({}, room._liveFlags, { arenasettleplan: true });   /* sitting 10: on only by the owner's yes */
+  await room._arenaSettleStakes('cg-t', 'cg-m', W);
+  state.storage.put = real;
+  const line = 6;
+  check(`17. a 1 v 1 match's settlement writes ${puts.length} puts, at most ${line} (the old order's 5 and its plan)`, puts.length <= line && puts.filter((k) => k.startsWith('arena_settle:')).length === 1 && !puts.some((k) => k.startsWith('arena_stake:')), byPrefix(puts));
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);
