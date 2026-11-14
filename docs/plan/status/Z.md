@@ -5,7 +5,7 @@ state: ready
 
 ## Done
 - Sitting 13, `main` 82fb78da: the list rehearsed in its order (tree
-  ad355e20, this branch aside): precheck 0 FAIL, build, questline;
+  4ec47d5d, this branch aside): precheck 0 FAIL, build, questline;
   each base `main`, ONE merge base step by step. Review:
   `census/review-z13.md`. Notes on 2.1, 5.3b, 9.5; no line to lower.
 

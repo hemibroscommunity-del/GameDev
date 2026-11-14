@@ -56,14 +56,15 @@ the rest 82fb78d.
 
 **Why not the rest (tried in the scratch copy):** card T's two conflict
 with O's stack and with TF either way round; R's #1823 and #1825 with
-#1819 (each adds R's status file); L's #1824 with #1792 (the
+#1819 (each adds R's status file); K's #1826 with #1822 and #1820 (K's
+status file, its copy different); L's #1824 with #1792 (the
 `DOOR_SUITES` end). Each is held below with what its session does.
 
 ## Card K: #1822 (PR 1, tag 5181) and #1820 (PR 3, tag 5183): listed
 
 **#1822, the worker's two lists made from the wire table (it DEPLOYS),
-read at 1f1494f: clean (lows).** A finder computed both sides: main's
-literals (82fb78d) against the made Sets, `PRIVILEGED_EVENTS` 163 and
+read at 1f1494f (8286ce6 adds K's status only): clean (lows).** A
+finder computed both sides: main's literals (82fb78d) against the made Sets, `PRIVILEGED_EVENTS` 163 and
 163, `RELAY.TYPES` 26 and 26, wire-audit's echo list 9 and 9, none
 missing, none extra (VERIFIED, a script). `index.js` re-exports the very
 object `lists.js` makes; `RELAY.TYPES` the same frozen object; the
@@ -94,8 +95,8 @@ options' noise), far under the worker's limits; start-up 3 to 6 ms.
   wire-table 27, the six; CI `test` green.
 
 **#1820, the hostile-values census (a test and a page; it DEPLOYS, a new
-file in `server/test/`), read at 785fd62 by the gatekeeper.** 10,524
-cases on card E's test room, a seeded clock, about 9 s; `LINE = 19`, the
+file in `server/test/`), read at 785fd62 by the gatekeeper (44be44d
+adds K's status only).** 10,524 cases on card E's test room, a seeded clock, about 9 s; `LINE = 19`, the
 census page made by `--write`, the break proof (`WIRE_HOSTILE_PLANT=1`)
 in the header. It changes no handler. Its count holds on the whole list
 merged (precheck runs it). Low: the PR's words and K's status name seven
@@ -236,13 +237,16 @@ walks). The gatekeeper re-checked each part of the hold:
   townsfolk, `mp-ghostaudit` playing the player's body). Check 7, after
   EACH of the five trades, upright: nothing of it left, his walking
   body back or the next trade's figure alone, never both, a picture of
-  each moment. On the rehearsed tree: RESULT_UPRIGHT.
+  each moment. On the rehearsed tree (`BT_FOLKWORK_ONLY=upright`): 13
+  of 13, each of the five trades drawn from the colour numbers and "nothing of it
+  left" after it, each picture taken while he walked.
 - Lows mended: §6d reads the real hook (it was vacuous); §6e's second
   break proof is true (role-bake.mjs records any bar off the law's 16,
   `LAW_BAR`); the set loads only where somebody is drawn doing the
   trades (`lookFolkWantedAtLoad() && folkWalkWanted()`: not under
   `?lookfolk=0`, its live switch as the world loads, or `?folkwalk=0`),
-  check 8: RESULT_UNSEEN.
+  check 8 (`BT_FOLKWORK_ONLY=unseen`): 6 of 6, 0 sheets loaded under
+  each.
 - Low, not mended (sitting 12's): precheck's `look-roles` runs `--hashes`
   for some paths only (precheck.mjs ~935), not the set's sources: a
   re-export of the cook strip would leave Chef Blaze stale without a red
@@ -286,10 +290,10 @@ Documents only (`docs/plan/status/LB.md`, `state: done`). True: #1771,
 
 ## Opened during the sitting: #1823 (R, tag 5283), #1824 (L, tag 5211), #1825 (R, tag 5287), #1826 (K, tag 5186): HELD (conflicts)
 
-Opened at 18:43, 18:44 and about 18:50, against `main` 82fb78d, `test`
-running when read; each changes worker code (two doors that move value,
-and the day's book), so each wants a full review: the next sitting's,
-once each merges the new `main`.
+Opened between 18:43 and 19:05, against `main` 82fb78d, `test` running
+when read. Three change worker code (two doors that move value, and the
+day's book) and want a full review; #1826 is tests and a census. Each is
+the next sitting's, once it merges the new `main`.
 
 - **#1823 (card R PR 4, the skill points' door)**: add/add conflict with
   #1819 at `docs/plan/status/R.md` (each R branch begun from `main` adds
@@ -339,13 +343,17 @@ in its order (#1821, #1822, #1819, #1820, #1792, #1794, #1800, #1814,
 
 1. With #1812 at 854164b (tree c6d86f3f): precheck 0 FAIL (4 WARN),
    build, questline 187 of 187.
-2. **The list as written, #1812 at fc3cce4, without this branch (tree
-   ad355e20)**: precheck 0 FAIL (4 WARN: card T's two old closed
-   branches carrying 5222; the busy-branches note; `look-roles`' "code
-   changed" for `standin`, as on `main`), build, questline 187 of 187.
-3. **The list with this branch last** (documents only): precheck and
-   build on the whole; its tree is in the list sent to the planning
-   session (the file cannot carry its own tree).
+2. With #1812 at fc3cce4 (tree ad355e20): precheck 0 FAIL (4 WARN:
+   card T's two old closed branches carrying 5222; the busy-branches
+   note; `look-roles`' "code changed" for `standin`, as on `main`),
+   build, questline 187 of 187; on that tree `mp-folkwalk` 12 of 12 and
+   `mp-folkwork` upright 13 of 13, unseen 6 of 6.
+3. **The list as written, at its final heads, without this branch (tree
+   4ec47d5d)**: from 2, only documents moved (#1819's SHAPES line and
+   R's status, K's status on #1822 and #1820).
+4. **The list with this branch last** (documents only): precheck, build
+   and questline on the whole; its tree is in the list sent to the
+   planning session (the file cannot carry its own tree).
 
 Each listed head's `test` is green on GitHub; each base is `main`; ONE
 merge base each, step by step down the list.
