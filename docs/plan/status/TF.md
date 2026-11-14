@@ -1,40 +1,36 @@
 card: TF
-branch: claude/plan-tf-2-work-poses (PR 2, begun from PR 1's)
-prs: #1770 (5460, merged); #1812 (5462: 5461 is burnt, below; ready)
-state: ready
+branch: claude/plan-tf-3-done (v2.3.5463: the status, done, on main)
+prs: #1770 (5460), #1812 (5462; 5461 burnt, below): all merged
+state: done
 
 ## Done
 
-- #1770 (5460), merged: the audit (`docs/specs/townsfolk-work.md`); the
+- #1770 (5460, merged): the audit (`docs/specs/townsfolk-work.md`); the
   pickaxe put away; `townsfolk-walk.test` §2j, §2k; `mp-folkwalk` §4.
-- PR 2 (5462): the `skills` look set (seven sheets, ~2.7 MB r8 on a phone;
-  the cook at a bar of 23, its reason written: @parent's A) drawn by
-  `folkSkill.js` from `_drawFolk`; `?folkskills=0` back to PR 1's poses.
-  Runs: membudget +3.2 MB chip, no line raised; heldsweep (stand, town)
-  0 over in 4 runs after the garbage cut (strip-made 7.3-9.1 ms);
-  questline 187/187; mp-folkwork 41/41 (the ghost check after each of the
-  five, pictures); sitting 12's review mended (folkwalk 4, the light, the
-  load gate, 6d/6e); main 82fb78d merged in.
+- #1812 (5462, merged at sitting 13): Chef Blaze cooks, Woodworker Bro
+  chops, Farmer Bro kneels, hoes and waters, from the `skills` look set's
+  colour numbers (`folkSkill.js`; the cook at a bar of 23, its reason
+  written); `?folkskills=0` back to PR 1's poses. Membudget +3.2 MB chip,
+  no line raised; heldsweep town 0 over; questline, mp-folkwork 41/41 (the
+  ghost check after each trade), mp-folkwalk 12/12; sitting 12's review
+  mended (the light, the load gate, 6d/6e).
 
 ## Next
 
-- #1812 ready again once its checks pass: the next batch. No PR 3.
+- Nothing: the card is done. The owner's later asks (the spec's "Not
+  drawn yet"): the blacksmith at the anvil, Beastmaster Bro by his
+  Snowling, the cook lighting his fire.
 
 ## Found
 
-- For card P (memory): a peer cooking, chopping or farming in other
-  colours is a 1-5 MB canvas bake (effectsRenderer `PEER_FIG_EST`); the
-  `skills` set could let peers draw from its numbers too.
-- `docs/plan/census/review-z9.md:273` writes `v2.3.5461` in full on `main`, so
-  the tag check counts it taken: PR 2 is 5462 (the card's spare).
+- Routed (@parent): to card P, peers drawing cook/chop/farm from the
+  `skills` numbers instead of 1-5 MB bakes; to J2, `mp-ghostaudit`'s cook
+  never starting on `main`, and heldsweep's `R > J` 14.4 ms at town.
+- `review-z9.md:273` writes `v2.3.5461` in full on `main`: burnt, so PR 2
+  was 5462.
 - `role-bake.mjs --hashes`: eight sets read "code changed" on `main` (a
   look-roles WARN for any PR touching the look sets).
-- PR 2's switch row (`?folkskills`) meets other row-adding PRs on SWITCHES.md.
-- `mp-ghostaudit` `BT_GHOST_ONLY=fire,cook BT_GHOST_OUTFITS=bare` on `main`
-  (96ffa005): the cook never starts (0 frames, 2 FAIL); the fire passes.
-- `mp-heldsweep` `stand,town` on `main` (96ffa005), 1 run in 5: `R > J`
-  (a React redraw) 14.4 ms > 12, twice, unlisted.
 
 ## Needs
 
-- Nothing: @parent answered (the cook's bar A, `?folkskills=0`, the runs).
+- Nothing.
