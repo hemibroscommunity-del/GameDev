@@ -27,6 +27,10 @@
  *   steady 30), and nothing else moved; every step changes a live knob (the
  *   governor walks no rung nothing reads).  The run's slow CPU is put back
  *   once its page is made (it leaked into the scenarios after it).
+ *   v2.3.5235: 4. THE OWNER'S SWITCH -- `off_govern: true` (the Test panel's
+ *   list, every phone, live): the page hears it at once, goes back to the
+ *   lane's row (every refresh) and the strip says `switched off`; cleared
+ *   in the end (one worker serves the whole run).
  *
  *   node tools/qa/mp/run.mjs governor
  */
@@ -122,8 +126,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
       pace.ladder.steps.length >= 1 && pace.ladder.steps.every((x) => x.knobs.length >= 1 && x.knobs.every((k) => live.includes(k))), { steps: pace.ladder.steps, live });
     rec.ok(`3. ...while the lanes' table says where the rung stands (depth ${lane && lane.depth}; the rate's knob would read ${lane && lane.knobs && lane.knobs.rate})`,
       !!lane && lane.depth === pace.ladder.depth && lane.lane === 'full', lane);
+    /* 4 (v2.3.5235): the owner's switch, thrown on the worker as the Test panel throws it */
+    await H.liveFlag(wsPort, 'off_govern', true);
+    const off = await H.waitFor(P, () => {
+      const p = window.__btPace ? window.__btPace() : null;
+      return p ? { off: p.ladder.off, depth: p.ladder.depth, every: p.every } : null;
+    }, (v) => v && v.off === true && v.depth === 0 && v.every === 1, { timeout: 120000, label: 'the switch heard, the row back' }).catch(() => null);
+    const strip4 = await P.page.evaluate(() => { const el = document.getElementById('bt-perf-hud'); return el ? el.textContent : ''; });
+    rec.ok(`4. the owner's switch (off_govern): heard at once, back at the lane's row, every refresh drawn (${JSON.stringify(off)}), the strip says so`,
+      !!off && /ladder full switched off/.test(strip4 || ''), { off, strip: String(strip4 || '').slice(-300) });
+    await H.liveFlag(wsPort, 'off_govern', null);
     rec.ok('the page threw nothing', said.length === 0, said);
   } finally {
+    await H.liveFlag(wsPort, 'off_govern', null).catch(() => {});
     stopAlive();
     await P.ctx.close().catch(() => {});
   }
