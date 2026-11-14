@@ -113,6 +113,11 @@
  *                      introduces it locks every player out until the
  *                      worker catches up (v2.3.2439).
  *
+ *  file checks       — v2.3.5022: every tools/dev/checks/*.mjs is loaded
+ *                      by its file name and run; a NEW check is a new file
+ *                      there and no edit here (tools/dev/checks/README.md).
+ *                      The checks above stay where they are.
+ *
  * Output is terse and actionable on purpose — the reader is usually an
  * AI session deciding whether it may push.
  */
@@ -120,6 +125,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const baseRef = process.argv[2] || 'origin/main';
 const results = []; // {level:'PASS'|'FAIL'|'WARN'|'INFO', check, msg}
@@ -834,7 +840,9 @@ if (changedClient.length) {
  * because it ran the suites only when server/ changed.  The whole suite is
  * ~25 s, so a client change runs it too (the v2.3.2124 lint precedent
  * above: a gate that green-lights a push CI rejects is not one). */
-if (changedServer.length || changedClient.length) {
+/* v2.3.5022: and for a guard (tools/guards/*.test.mjs), which npm test runs too */
+const changedGuards = changed.filter((f) => f.startsWith('tools/guards/'));
+if (changedServer.length || changedClient.length || changedGuards.length) {
   const r = spawnSync('npm', ['test'], { cwd: join(root, 'server'), encoding: 'utf8', timeout: 5 * 60 * 1000, maxBuffer: 64 * 1024 * 1024 });
   if (r.status === 0) add('PASS', 'server-tests', 'cd server && npm test — all suites green');
   else {
@@ -845,7 +853,7 @@ if (changedServer.length || changedClient.length) {
     add('FAIL', 'server-tests', `cd server && npm test exited ${r.status ?? 'timeout'}:\n    ${tail}`);
   }
 } else {
-  add('PASS', 'server-tests', 'no server/ or src/ changes — suite skipped');
+  add('PASS', 'server-tests', 'no server/, src/ or tools/guards/ changes — suite skipped');
 }
 
 /* ---- 8. prog3 blob-vs-cap ------------------------------------------
@@ -1327,6 +1335,41 @@ if (changedServer.length || changedClient.length) {
     }
   } catch (e) {
     add('WARN', 'old-map', 'could not read tools/qa/mp/oldMap.mjs or run.mjs -- old-map check skipped: ' + String(e && e.message || e).slice(0, 160));
+  }
+}
+
+/* ═══ v2.3.5022: A CHECK IN A FILE OF ITS OWN ═══
+   The grand plan's wave 0: every new check was a block added to this one
+   file, so two sessions that each added a check met here in every merge.
+   Each tools/dev/checks/*.mjs is loaded by its file name (the check's name)
+   and its default export run with the tools the checks above use.  A new
+   check is a new file and no edit here.  The checks above stay where they
+   are.  A check that throws, exports no function, or takes a name a check
+   above has is a FAIL, never skipped: a check nobody runs is how a rule is
+   lost.  tools/dev/checks/README.md. */
+{
+  const dir = join(root, 'tools/dev/checks');
+  let files = [];
+  try { files = readdirSync(dir).filter((f) => f.endsWith('.mjs')).sort(); } catch { /* no file checks */ }
+  const taken = new Set(results.map((r) => r.check));
+  for (const f of files) {
+    const name = f.replace(/\.mjs$/, '');
+    if (taken.has(name)) { add('FAIL', name, `tools/dev/checks/${f} takes the name of a check precheck.mjs already has: rename the file`); continue; }
+    const before = results.length;
+    try {
+      const mod = await import(pathToFileURL(join(dir, f)).href);
+      if (typeof mod.default !== 'function') { add('FAIL', name, `tools/dev/checks/${f} has no default export to run (export default async function (ctx) { ... })`); continue; }
+      await mod.default({
+        root, baseRef, mergeBase, changed, changedCode, read, git,
+        exists: (p) => existsSync(join(root, p)),
+        pass: (msg) => add('PASS', name, msg),
+        fail: (msg) => add('FAIL', name, msg),
+        warn: (msg) => add('WARN', name, msg),
+      });
+      if (results.length === before) add('PASS', name, 'ran and found nothing to say');
+    } catch (e) {
+      add('FAIL', name, `tools/dev/checks/${f} threw: ` + String(e && e.stack || e).split('\n').slice(0, 3).join(' | ').slice(0, 300));
+    }
   }
 }
 

@@ -22,6 +22,13 @@
  *   npm test -- --jobs=1             one at a time, as the chain did
  *   npm test -- --verbose            every suite's whole output
  *
+ * v2.3.5022 (the grand plan's wave 0, its rule 1): it ALSO runs every
+ * tools/guards/*.test.mjs.  A guard reads source or counts things; it tests
+ * no server behaviour, so it does not live under server/test/, where every
+ * merged file deploys the worker (TRAPS §277).  A guard runs from the
+ * repository's root, is shown as `guards/<name>`, and is picked by name the
+ * same way (`npm test -- rails`).  tools/guards/README.md.
+ *
  * `TEST_JOBS` sets the number at a time too.  The suites already ran side by
  * side safely (the review ran them so): each builds its own room on its own
  * mock storage, and the one that times itself (wheelzone)
@@ -62,13 +69,20 @@ const verbose = flag('verbose');
 const cores = typeof availableParallelism === 'function' ? availableParallelism() : cpus().length;
 const jobs = Math.max(1, Math.min(16, Number(opt('jobs') || process.env.TEST_JOBS) || Math.min(4, cores)));
 
-const all = readdirSync(HERE).filter((f) => f.endsWith('.test.mjs')).sort();
+/* v2.3.5022: a guard is listed as `guards/<file>` (a server suite as its bare
+   file), so the two never share a name and a result says which it is */
+const REPO = join(SERVER, '..');
+const GUARDS = join(REPO, 'tools', 'guards');
+const GUARD = 'guards/';
+let guardFiles = [];
+try { guardFiles = readdirSync(GUARDS).filter((f) => f.endsWith('.test.mjs')).sort(); } catch { /* no guards yet */ }
+const all = readdirSync(HERE).filter((f) => f.endsWith('.test.mjs')).sort().concat(guardFiles.map((f) => GUARD + f));
 const nameOf = (f) => f.replace(/\.test\.mjs$/, '');
 let files = all;
 if (want.length) {
   files = all.filter((f) => want.some((w) => nameOf(f) === w || f === w || nameOf(f).includes(w)));
   if (!files.length) {
-    console.error('no suite matches ' + want.join(' ') + ' (test/*.test.mjs)');
+    console.error('no suite matches ' + want.join(' ') + ' (test/*.test.mjs, tools/guards/*.test.mjs)');
     process.exit(2);
   }
 }
@@ -82,7 +96,11 @@ const NOISE = /MODULE_TYPELESS_PACKAGE_JSON|Reparsing as ES module because modul
 function runOne(file) {
   return new Promise((resolve) => {
     const t0 = Date.now();
-    const child = spawn(process.execPath, [join('test', file)], { cwd: SERVER, env: process.env, stdio: ['ignore', 'pipe', 'pipe'] });
+    /* a server suite runs in server/ as the old chain ran it; a guard in the repository's root */
+    const isGuard = file.startsWith(GUARD);
+    const child = isGuard
+      ? spawn(process.execPath, [join('tools', 'guards', file.slice(GUARD.length))], { cwd: REPO, env: process.env, stdio: ['ignore', 'pipe', 'pipe'] })
+      : spawn(process.execPath, [join('test', file)], { cwd: SERVER, env: process.env, stdio: ['ignore', 'pipe', 'pipe'] });
     let out = '';
     child.stdout.on('data', (d) => { out += d; });
     child.stderr.on('data', (d) => { out += d; });
@@ -114,5 +132,5 @@ const failed = results.filter((r) => r.code !== 0).sort((a, b) => a.file.localeC
 const secs = ((Date.now() - started) / 1000).toFixed(1);
 console.log('');
 console.log(`${results.length} suites, ${jobs} at a time, ${secs} s: ` + (failed.length ? `${failed.length} FAILED` : 'all green'));
-for (const r of failed) console.log('  FAILED ' + nameOf(r.file) + '  (node test/' + r.file + ')');
+for (const r of failed) console.log('  FAILED ' + nameOf(r.file) + (r.file.startsWith(GUARD) ? '  (node tools/' + r.file + ', from the repository\'s root)' : '  (node test/' + r.file + ')'));
 process.exit(failed.length ? 1 : 0);
