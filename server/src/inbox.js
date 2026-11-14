@@ -4,6 +4,7 @@ import { swordToGreatsword } from './swordconvert.js';   /* v2.3.3895: a sword i
 import { oldGreatswordToMetal } from './gscopper.js';   /* v2.3.3980: ...and a wooden or base-less greatsword a metal one */
 import { bagGive, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
 import { mailMinted } from './gold.js'; /* v2.3.5085: a merged entry's minted part */
+import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
 
 /* ═══ v2.3.1117: INBOX + ESCROW PRIMITIVES (PR2 of the heavy-systems
  * plan; spec in docs/specs/inbox-escrow.md) ═══
@@ -472,10 +473,8 @@ export const inboxMethods = {
       /* v2.3.3980: and a wooden (or base-less) greatsword arrives a copper
          one (gscopper.js, migration v20's boundary heal), on the same save */
       if (!(this._gsCopperOff && this._gsCopperOff())) oldGreatswordToMetal(w);
-      if (!Array.isArray(ps.weaponStash)) ps.weaponStash = [];
-      if (ps.weaponStash.length >= this.WEAPON_STASH_CAP) return false;
-      ps.weaponStash.push(w);
-      return true;
+      /* v2.3.5281: the stashes' door refuses a full bag (false: the mail keeps it) */
+      return stashGive(ps, 'weaponStash', w, 'mail_weapon', this);
     }
     /* ═══ v2.3.2546: ONE GEAR APPLY, TWO JOBS ═══
        #643 landed its own gear credit (`_stGearApplyCredit`, storegear.js)

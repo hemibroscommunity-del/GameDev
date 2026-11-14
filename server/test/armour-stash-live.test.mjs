@@ -110,9 +110,9 @@ check('4b. the legs taken off go into the legs stash', !ps.legsArmor && gids('le
 
 // ── 5. never a second copy ──
 const n0 = ps.armorStash.length;
-room._gearStashLiveAdd(ps, 'armor', { ...pA });
-room._gearStashLiveAdd(ps, 'armor', { name: 'Old Plate', tierMult: 2 });
-room._gearStashLiveAdd(ps, 'armor', { name: 'Old Plate', tierMult: 2 });
+room._gearStashLiveAdd(ps, 'armor', { ...pA }, 'gear_quest');   /* v2.3.5281: a road for the stashes' door */
+room._gearStashLiveAdd(ps, 'armor', { name: 'Old Plate', tierMult: 2 }, 'gear_quest');
+room._gearStashLiveAdd(ps, 'armor', { name: 'Old Plate', tierMult: 2 }, 'gear_quest');
 check('5. a piece already held is never added twice (by id, or by its look for an old one)', ps.armorStash.length === n0 + 1, ps.armorStash.map((g) => g.gid || g.name));
 
 // ── 6. the switch ──

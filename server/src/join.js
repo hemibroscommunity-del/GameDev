@@ -25,6 +25,7 @@ import { LINGER } from './linger.js'; /* v2.3.3260: the refusal's close code */
 import { cleanWheelSizes } from './wheeltables.js'; /* v2.3.3315: the Wheel sizes a phone draws */
 import { DEVICE_LOCK, cleanDevice } from './devicelock.js'; /* v2.3.3344: a key on its character's devices */
 import { LOGIN_KEYS, newKeyOf } from './loginkeys.js'; /* v2.3.3355: new Login Keys, made by the worker */
+import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
 
 /* ═══ v2.3.1627: the JOIN DATA ALLOWLIST ═══
  *
@@ -1092,7 +1093,7 @@ export const joinMethods = {
         // (_computeAttackDamage) -- whitelist even the stored blob, so a
         // pre-slice forged amulet heals on this reconnect (gear.js).
         this.playerState[msg.id].amulet = this._gearProvResolve(msg.id, 'amulet', stored.amulet, (a) => this._sanitizeAmulet(a), true);
-        this.playerState[msg.id].weaponStash = this._sanitizeWeaponList(stored.weaponStash);
+        stashSet(this.playerState[msg.id], 'weaponStash', this._sanitizeWeaponList(stored.weaponStash), 'join_stored');
         // v2.3.1192 (amulet forge): gold nugget/bar ledger.  Stored
         // wins; a record that predates the server ledger falls back to
         // the join payload ONCE (clamped -- the v2.3.1021 weaponSkills
@@ -1262,7 +1263,7 @@ export const joinMethods = {
         // bootstrap caps -- same rationale as BOOTSTRAP_COINS_CAP).
         this.playerState[msg.id].goldNuggets = this._amuletClampNuggets(msg.data && msg.data.rpgGoldNuggets);
         this.playerState[msg.id].goldBars = this._amuletClampBars(msg.data && msg.data.rpgGoldBars);
-        this.playerState[msg.id].weaponStash = this._sanitizeWeaponList(msg.data && msg.data.rpgWeaponStash, true);
+        stashSet(this.playerState[msg.id], 'weaponStash', this._sanitizeWeaponList(msg.data && msg.data.rpgWeaponStash, true), 'join_new');
         // Quest state bootstrap (slice 17).  Trust shape but not
         // size -- a cheater could pass a 10000-entry _questKills
         // map to inflate storage.  Strip non-numeric values and

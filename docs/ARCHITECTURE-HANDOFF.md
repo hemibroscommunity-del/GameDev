@@ -146,10 +146,12 @@ extended.
    Naming convention going forward: **lowercase_snake prefixes**
    (`duelEscrow:` predates the rule; don't imitate it). Register every
    new prefix in this table.
-3. **`_saveRpg` truncates `weaponStash` at cap.** Anything delivering
-   weapons must check capacity or partial-drain (`_applyCreditToPs`
-   returns false for exactly this case) — pushing past cap silently
-   destroys the weapon.
+3. **A stash past its cap is refused at the door, never cut at the save**
+   (v2.3.5281: was "`_saveRpg` truncates `weaponStash` at cap"). The
+   stashes' door (`stash.js` `stashGive`, rule 29b) answers false and adds
+   nothing when the weapon bag or a gear list is full; anything delivering
+   a piece answers that (`_applyCreditToPs` returns false, so the mail
+   keeps it). `_saveRpg` writes every weapon the bag holds.
 4. **The regen tick's durable write is COALESCED, and that is deliberate**
    (v2.3.1619). `_tickPlayerRegen` runs every ~670 ms but calls `_saveRpg`
    at most once per `REGEN_SAVE_MS` (10 s); the skipped ticks set
@@ -397,6 +399,17 @@ extended.
     calls and a road two places call). Rule 4 is unchanged: a settlement
     still PAYS through `_creditPlayer`, whose live landing is the door's
     `mail_gold` road.
+29b. **Every change to a player's stashes goes through ONE door** (v2.3.5281,
+    card R PR 2; `stash.js` `stashGive` / `stashTake` / `stashSet`,
+    docs/specs/stash-door.md): the weapon bag (`weaponStash`) and the five
+    gear lists. A new way to change one is a row in `STASH_ROADS` (its verb,
+    the stashes it touches, its class: a mint, a burn, a move within one
+    player (`other: 'self'`) or an escrow into a place that holds) and one
+    call that names it; nothing else pushes, splices, sets or cuts a stash
+    (`stash-door.test` fails a second writer, a road nobody calls and a road
+    two places call). The gear helpers that hand the door their caller's
+    road (`_gearStashLiveAdd`, `_gearStashLiveTake`, shieldwear.js `bagIt`)
+    take it as their last argument. A give past the cap is refused (rule 3).
 
 ---
 

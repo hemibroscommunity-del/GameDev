@@ -21,17 +21,20 @@
  *             weapon, a piece of gear, a pet
  *   roads     the door roads it runs on, by door: `gold` (gold.js
  *             GOLD_ROADS), `bag` (bag.js BAG_ROADS), `bagWhole` (bag.js
- *             BAG_WHOLE, the whole-bag assigns).  Only `move` and `escrow`
- *             roads: a `mint` or a `burn` has no other account.  The mail's
- *             landing (`mail_gold`, `mail_item`) is named on every row that
- *             pays through it.  Weapons, gear and pets have no door table
- *             yet (DOORLESS): the row names them in `carries` now, and the
- *             guard holds them once their door exists (weapons and gear:
- *             card R PR 2, the stash door).
+ *             BAG_WHOLE, the whole-bag assigns), `stash` (stash.js
+ *             STASH_ROADS, v2.3.5281: weapons and gear).  Only `move` and
+ *             `escrow` roads: a `mint` or a `burn` has no other account, and
+ *             a stash `move` is within one player (`other: 'self'`).  The
+ *             mail's landing (`mail_gold`, `mail_item`, `mail_weapon`,
+ *             `gear_mail`) is named on every row that pays through it.  Pets
+ *             have no door table yet (DOORLESS): the row names them in
+ *             `carries` now, and the guard holds them once their door exists.
  *   fee       the part of the value the game keeps (0: none)
  *   hold      how long the value waits before it lands (0: none)
  *   pace      how many such settlements an account may make (0: none)
- *   ledger    `xfer` (one `xfer:` row a settlement, xfer.js), `kill` (a kill
+ *   ledger    `xfer` (one `xfer:` row a settlement, xfer.js: the row's key is
+ *             a `move` road it names, or it names its `writer`, 'file fn',
+ *             v2.3.5281: the gatekeeper's low, review-z13), `kill` (a kill
  *             writes none: the owner's "none a kill", call 13), or `none`,
  *             with why in `ledgerWhy`
  *   why       what it is, in a line
@@ -61,11 +64,12 @@
 /** The kinds of value a road may carry (SHAPES part 3, "What is summed"). */
 export const ROAD_KINDS = Object.freeze(['gold', 'bag', 'weapon', 'gear', 'pet']);
 /** The doors a kind moves through, and the `roads` key each is named under. */
-export const KIND_DOORS = Object.freeze({ gold: Object.freeze(['gold']), bag: Object.freeze(['bag', 'bagWhole']) });
+export const KIND_DOORS = Object.freeze({ gold: Object.freeze(['gold']), bag: Object.freeze(['bag', 'bagWhole']),
+  weapon: Object.freeze(['stash']), gear: Object.freeze(['stash']) });   /* v2.3.5281: the stashes' door */
 /** Kinds with no door table yet: named in `carries`, not yet held by road.
- *  A kind leaves this list in the PR that builds its door (weapons and gear:
- *  card R PR 2). */
-export const DOORLESS = Object.freeze(['weapon', 'gear', 'pet']);
+ *  A kind leaves this list in the PR that builds its door (weapons and gear
+ *  left it in card R PR 2, v2.3.5281). */
+export const DOORLESS = Object.freeze(['pet']);
 export const ROAD_LEDGERS = Object.freeze(['xfer', 'kill', 'none']);
 
 const fz = (o) => {
@@ -78,7 +82,7 @@ export const PLAYER_ROADS = Object.freeze({
   /* ── straight from one player to another ── */
   trade_window: fz({
     at: 'trade2.js _handleTrade2Confirm', carries: ['gold', 'bag', 'weapon', 'pet'],
-    roads: { gold: ['trade_window', 'mail_gold'], bag: ['trade_window', 'mail_item'] },
+    roads: { gold: ['trade_window', 'mail_gold'], bag: ['trade_window', 'mail_item'], stash: ['trade_put', 'mail_weapon'] },
     fee: 0, hold: 0, pace: 0, ledger: 'xfer',
     why: 'the trade window: both sides staged, both confirmed, swapped in one write (weapons staged in `trade2wpn:`, pets moved book to book)',
   }),
@@ -90,7 +94,7 @@ export const PLAYER_ROADS = Object.freeze({
   }),
   nml_loss: fz({
     at: 'nomansland.js _nmlOnDeath', carries: ['gold', 'weapon', 'gear'],
-    roads: { gold: ['nml_loss', 'mail_gold'] },
+    roads: { gold: ['nml_loss', 'mail_gold'], stash: ['nml_weapons', 'nml_gear', 'mail_weapon', 'gear_mail'] },
     fee: 0, hold: 0, pace: 0, ledger: 'kill',
     why: 'No man\'s land: a player killed under its rule loses the purse and the spare weapons (a red skull its worn gear too) to the killer\'s mail; the bag goes to the ground',
   }),
@@ -98,28 +102,31 @@ export const PLAYER_ROADS = Object.freeze({
   /* ── through a record the worker holds between them ── */
   market: fz({
     at: 'market.js _mktPlaceOrder, _mktSettleRun', carries: ['gold', 'weapon'],
-    roads: { gold: ['market_order', 'market_unwind', 'mail_gold'] },
+    roads: { gold: ['market_order', 'market_unwind', 'mail_gold'], stash: ['market_sell', 'market_back', 'mail_weapon'] },
     fee: 0, hold: 0, pace: 0, ledger: 'none',
     ledgerWhy: 'an escrow road: its price is its point; whether its settle writes a row in the transfer ledger is card R PR 11 (`xferescrow`, more rows a day: the owner\'s cost question)',
     why: 'the General Store\'s order book: a buy order\'s gold and a sell order\'s weapon rest in `mkt_order:`; a cross pays each side by the mail',
   }),
   auction_sale: fz({
     at: 'store.js _stCreateListing, _stBuyNow, _stSettle', carries: ['gold', 'bag', 'weapon', 'gear', 'pet'],
-    roads: { gold: ['escrow_debit', 'escrow_debit_stored', 'escrow_debit_group', 'mail_gold'], bag: ['ah_listing', 'escrow_item', 'escrow_item_stored', 'mail_item'] },
+    roads: { gold: ['escrow_debit', 'escrow_debit_stored', 'escrow_debit_group', 'mail_gold'], bag: ['ah_listing', 'escrow_item', 'escrow_item_stored', 'mail_item'],
+      stash: ['store_list', 'gear_list', 'mail_weapon', 'gear_mail'] },
     fee: 0, hold: 0, pace: 0, ledger: 'none',
     ledgerWhy: 'an escrow road: card R PR 11 says whether its settle writes a row in the transfer ledger (`xferescrow`)',
     why: 'the Auction House, bought now: the seller\'s goods held in `store_listing:`, the buyer\'s gold paid in, each side paid by the mail',
   }),
   auction_bid: fz({
     at: 'store.js _stCreateListing, _stPlaceBid, _stAcceptBid, _stSettle', carries: ['gold', 'bag', 'weapon', 'gear', 'pet'],
-    roads: { gold: ['escrow_debit', 'escrow_debit_stored', 'mail_gold'], bag: ['ah_listing', 'escrow_item', 'escrow_item_stored', 'mail_item'] },
+    roads: { gold: ['escrow_debit', 'escrow_debit_stored', 'mail_gold'], bag: ['ah_listing', 'escrow_item', 'escrow_item_stored', 'mail_item'],
+      stash: ['store_list', 'gear_list', 'mail_weapon', 'gear_mail'] },
     fee: 0, hold: 0, pace: 0, ledger: 'none',
     ledgerWhy: 'an escrow road: card R PR 11 (`xferescrow`)',
     why: 'the Auction House, a bid won: the bid\'s gold held on the listing until it wins (or is refunded, outbid), then the goods and the gold swap by the mail',
   }),
   auction_offer: fz({
     at: 'store.js _stCreateListing; storeoffer.js _stOfferPlace, _soPlaceOneWrite, _stOfferReply', carries: ['gold', 'bag', 'weapon', 'gear', 'pet'],
-    roads: { gold: ['ah_offer', 'ah_offer_back', 'escrow_debit', 'escrow_debit_stored', 'mail_gold'], bag: ['ah_listing', 'escrow_item', 'escrow_item_stored', 'mail_item'] },
+    roads: { gold: ['ah_offer', 'ah_offer_back', 'escrow_debit', 'escrow_debit_stored', 'mail_gold'], bag: ['ah_listing', 'escrow_item', 'escrow_item_stored', 'mail_item'],
+      stash: ['store_list', 'gear_list', 'mail_weapon', 'gear_mail'] },
     fee: 0, hold: 0, pace: 0, ledger: 'none',
     ledgerWhy: 'an escrow road: card R PR 11 (`xferescrow`)',
     why: 'the Auction House, an offer taken: the offer\'s gold held on the listing until the seller takes it (or it is refunded), then the swap by the mail',
