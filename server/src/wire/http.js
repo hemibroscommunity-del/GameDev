@@ -290,6 +290,17 @@ export const WIRE_HTTP = [
     bad: ['refused'], answer: 'http',
     note: ['doesWhat: cannot be undone by any route but another restore from that prerestore copy (so not final)',
          'phase, of the player the route names (not the owner who calls): session:!joined'] },
+  /* v2.3.5288 (card R PR 9): the room's way back (restore.js).  Off until
+     the owner sets `roomrewind`; a plan is a dry run, a do needs the plan's
+     one-use token and the hour typed back */
+  { name: 'http:/api/admin/rewind', dir: 'in', at: 'admin.js _adminFetch', wayIn: 'admin', envelope: 'http',
+    phase: ['none checked'], mayStart: 'owner', doesWhat: ['others'], reqId: 'token',
+    trust: { step: 'request', minutesAgo: 'request', at: 'request', bookmark: 'request', token: 'request',
+         confirm: 'request' },
+    absent: 'default: no step is the plan, a dry run that changes nothing; refused: a plan with no minutesAgo, at or bookmark is a 400; refused: a do with no token or no confirm is a 400',
+    bad: ['refused'], answer: 'http', flag: 'roomrewind',
+    note: ['doesWhat: the whole room goes back to an earlier time; undone by its own undo bookmark (so not final)',
+         'reqId: a plan is harmless (a new token, nothing changed); a do spends the plan\'s one-use token'] },
   { name: 'http:/api/admin/log', dir: 'in', at: 'admin.js _adminFetch', wayIn: 'admin', envelope: 'http',
     phase: ['none checked'], mayStart: 'owner', doesWhat: ['reads'], reqId: 'harmless', trust: {},
     absent: 'nothing', bad: [], answer: 'http' },

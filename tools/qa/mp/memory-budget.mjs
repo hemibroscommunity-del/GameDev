@@ -276,6 +276,19 @@
  * 75.0-77.2, its line unchanged).  By the census's own ruler, the chip's
  * share counted (the gatekeeper's sitting 9), the family is 2.00 -> 1.51 MB
  * at the fight: 0.49 MB less. */
+/* v2.3.5257, the backlog's `monster-fire-goblin`: a monster strip's colour
+ * numbers kept deflated a frame at a time once the chip has drawn it
+ * (framePack.js, `?framepack=0` the numbers whole).  Three runs at
+ * f9ca7c07c, and two with `?framepack=0` at 92a4f166e (with the pack off
+ * the two run the same code): `buffers` at the Flame Fields' fight
+ * 21.2-21.4 -> 19.3-20.4 MB, but its highest is at home either way (23.1-23.4
+ * off, 23.0-23.6 on: the town's own numbers, as v2.3.3699 found it), so its
+ * line stays 24.2: the saving is at the fight, where the line never reads
+ * it.  `workers` at the fight 20.6 -> up to 21.9 (the strip reader's worker
+ * deflating the pieces), within its line.  Every other line unchanged.  By
+ * the census's own ruler, chip and page counted, the fire goblin is 8.10 ->
+ * 6.65 MB at the fight (its numbers 5.54 -> 4.09): its strips not yet drawn
+ * keep their numbers whole. */
 export const MEMORY_BUDGET = {
   artCache: { name: 'art loaded from files', mb: 95.1, measured: 31.8,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB); v2.3.5247: 109.1 -> 107.0, Ace's coin strips (2.1 MB); v2.3.5248: 107.0 -> 101.4, the trees as numbers (5.6 MB); v2.3.5249: 101.4 -> 98.3, the made effects as numbers (3.1 MB); v2.3.5250: 98.3 -> 97.1, the world's icons (1.2 MB); v2.3.5252: 97.1 -> 95.1, the whirlwind as numbers (2.0 MB), see the header */
     what: 'pictures loaded from files, decoded (the asset cache, window.__btTex) -- its highest at the fight, the monsters\' looks loaded' },

@@ -195,6 +195,18 @@ check('...and keeps its name', room.sessions.get(wsT).name === 'Name bp_fresh_t'
      keeps it one, so the frame on the wire carries it exactly as a hand-
      written one would. */
   const hidden = JSON.parse('{"__proto__":' + JSON.stringify(CLAIM) + '}');
+  /* v2.3.5184 (card K PR 4): the wire door (wire/door.js) refuses a frame
+     with a `__proto__` key at any depth before any handler, so this join is
+     never taken; the join's own drop below is played with the door's
+     switch thrown (`wiredoor: false`). */
+  {
+    const wsD = fakeWs('proto-door');
+    await join(wsD, 'bp_fresh_proto_door', hidden);
+    check('v2.3.5184: the wire door refuses the join that hides a claim behind "__proto__"', !room.playerState['bp_fresh_proto_door'] && !st._store.get('rpg:bp_fresh_proto_door') && (room.sessions.get(wsD) || {}).wireDoor === 1);
+    room.sessions.delete(wsD);
+  }
+  const _flags7 = room._liveFlags;
+  room._liveFlags = { ...(_flags7 || {}), wiredoor: false };
   const wsP = fakeWs('proto');
   await join(wsP, 'bp_fresh_proto', hidden);
   const p = room.playerState['bp_fresh_proto'];
@@ -205,6 +217,7 @@ check('...and keeps its name', room.sessions.get(wsT).name === 'Name bp_fresh_t'
   const r = p ? await room._shopSell(p, 'bar_00', 50, 'bp_fresh_proto') : { ok: false };
   check('...and Diego buys no made-up "bar_00" through it', !r.ok && !((p && p.inventory) || {}).bar_00, r);
   check('...and nothing leaked onto Object.prototype', ({}).rpgCoins === undefined && ({}).rpgLifeSkills === undefined);
+  room._liveFlags = _flags7;   /* v2.3.5184: the door's switch back */
 }
 
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nall fresh-start checks passed');

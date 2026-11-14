@@ -17,6 +17,10 @@ export function isPaletteSource(src) { return !!(src && src._btPal && !src.destr
 /** RGBA (straight alpha, as a canvas holds it) for the source's pixels
  *  (x0, y0)-(x0 + w, y0 + h), clamped to the picture. */
 export function paletteRegionRGBA(src, x0, y0, w, h) {
+  /* v2.3.5257: a strip kept deflated a frame at a time (framePack.js) is
+     unpacked whole first -- a region may cross its frames; no monster strip
+     is drawn here today, so it is the exact answer, never the frequent one */
+  if (src && typeof src.__btFPUnpack === 'function') { try { src.__btFPUnpack(src); } catch (e) { return null; } }
   const P = src && src._btPal;
   const idx = src && src.resource;
   if (!P || !idx || !(w > 0) || !(h > 0)) return null;

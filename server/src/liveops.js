@@ -212,6 +212,15 @@ export const liveopsMethods = {
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'reportspeed') && !f.reportspeed);
   },
 
+  /* v2.3.5184: the wire door's kill switch (wire/door.js), the same way:
+     `wiredoor: false` checks nothing at the router or the room's routes and
+     counts nothing -- every message and body reaches its handler as before
+     (and chatmod.js takes a mute of any id again) */
+  _wireDoorOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'wiredoor') && !f.wiredoor);
+  },
+
   /* v2.3.5124: the room's own row's (roomrow.js), the same way: `roomrow:
      false` adds nothing of the room's into the day's book */
   _roomRowOff() {

@@ -1,6 +1,6 @@
 card: R
 branch: claude/plan-r-7-export (one branch a PR, each begun from main)
-prs: #1819 (5280), #1823 (5283), #1825 (5287): merged; #1844 (5288), #1847 (5286): ready
+prs: #1819 (5280), #1823 (5283), #1825 (5287), #1844 (5288): merged; #1847 (5286): ready
 state: ready
 
 ## Done
@@ -8,7 +8,7 @@ state: ready
 - PR 1 (5280, #1819, merged): the roads between players (`playerroads.js`).
 - PR 4 (5283, #1823, merged): the skill points' door (`skillpoints.js`).
 - PR 8 (5287, #1825, merged): the storage's size in the day's book (ON).
-- PR 9 (5288, #1844, ready): the room's way back (`restore.js`,
+- PR 9 (5288, #1844, merged): the room's way back (`restore.js`,
   `roomrewind` OFF by default) and the lab's restore try (files only).
 - PR 7 (5286, #1847, ready): the paged export (admin.js
   `exportPage`, `roomexport` ON: the owner's "Just go recommended").

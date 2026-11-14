@@ -107,7 +107,7 @@ export const lingerMethods = {
     /* it stands still and drops its guard: nobody is holding the stick */
     ps.vx = 0; ps.vy = 0;
     ps.blocking = false; ps.blockStartT = 0; ps.dodging = false;
-    ps.ex = null; ps._exAt = 0;
+    this._exTo(ps, null, 'linger');   /* v2.3.5213: the cook door */
     ps._sprintStep = false;
     if (!this._lingerBodies) this._lingerBodies = new Map();
     this._lingerBodies.set(id, { until: ps._lingerUntil, session });

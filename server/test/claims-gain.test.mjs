@@ -69,6 +69,7 @@ const check = (name, ok, detail) => {
 const seedOf = (str) => { let h = 2166136261; for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619); return h >>> 0; };
 
 const COMBAT = { tickMs: 22, prep: B.nearField };
+const STEPPER = 'the stepping archer: a shot every 495 ms, running in (250 px a second) while its arrows fly';
 const PHONE_MIX = { perfect: 0.45, good: 0.44 };   /* the bot lab's assumption: no measured data on real grades */
 const CLAIMS = [
   { id: 'reach', what: 'the sword\'s reach', judge: 'a melee hit is taken from `PVE_MELEE_RANGE` (400 px, index.js; combat.js _handleMonsterDamage), and a miss never reaches the worker',
@@ -78,7 +79,9 @@ const CLAIMS = [
     plant: PLANT === 'reach' ? (room) => { room.PVE_MELEE_RANGE = 800; } : null },
   { id: 'bowlabel', what: 'a sword\'s claim labelled a bow\'s (TRAPS §329)', judge: '`slot: \'ranged\'` with a bow worn takes the bow\'s reach (1,490 px, hitproof.js) and five claims a second, and never lowers the guard',
     take: 'kills', world: COMBAT,
-    honest: [['the honest archer: in to 600 px, a shot every 495 ms, each claim when its arrow lands', B.honestBow], ['the honest sword', B.honestSword]],
+    honest: [['the honest archer: in to 600 px, a shot every 495 ms, each claim when its arrow lands', B.honestBow], ['the honest sword', B.honestSword],
+      /* v2.3.5540: the archer who steps in between shots (combat.js's archer's lane, `arrowlane`) */
+      [STEPPER, B.honestBow, { stepIn: true }]],
     liar: ['standing, five `ranged` claims a second over everything in the bow\'s reach', B.liarBowLabel] },
   { id: 'guard', what: 'the guard beyond #1530\'s limits', judge: '`blocking` is believed with no shield worn (movement.js), and a guard sent with each swing stays up through it (moveclaims.js)',
     take: 'hurt', less: true, world: COMBAT,
@@ -119,13 +122,13 @@ const UNREACHED = [
 
 /* one bot's run: its world, its phone (on a disturbance), its take */
 const blank = () => ({ kills: 0, xp: 0, ore: 0, cooked: 0, gold: 0, px: 0, points: 0, hurt: 0 });
-async function runBot(c, [who, bot, opts], { d = null, ms, plant = null } = {}) {
+async function runBot(c, [who, bot, opts], { d = null, ms, plant = null, flags = undefined } = {}) {
   const w = c.world || {};
   const clock = seededClock({ seed: seedOf(SEED + c.id + '|' + who + '|' + (d ? d.id : 'gain')) }).install();
-  try { return await runIn(clock, c, w, bot, opts, { d, ms, plant }); } finally { clock.restore(); }
+  try { return await runIn(clock, c, w, bot, opts, { d, ms, plant, flags }); } finally { clock.restore(); }
 }
-async function runIn(clock, c, w, bot, opts, { d, ms, plant }) {
-  const W = await B.makeWorld(clock, { tickMs: w.tickMs || 200, prep: w.prep || null, recs: w.recs ? w.recs() : {}, plant });
+async function runIn(clock, c, w, bot, opts, { d, ms, plant, flags }) {
+  const W = await B.makeWorld(clock, { tickMs: w.tickMs || 200, prep: w.prep || null, recs: w.recs ? w.recs() : {}, plant, ...(flags ? { flags } : {}) });
   const ph = new B.Phone(W, null, d, ms);
   const take = blank();
   const quiet = { l: console.log, w: console.warn, e: console.error };
@@ -176,6 +179,12 @@ check(`2: the honest bots meet no refusal on any disturbance (${dist.length} run
   refused.map((x) => x.claim + ' / ' + x.d + ': ' + x.refusals[0] + (x.refusals.length > 1 ? ' (+' + (x.refusals.length - 1) + ')' : '')));
 const gainRuns = rows.flatMap((r) => r.hon.filter((h) => h.refusals.length).map((h) => r.c.id + ': ' + h.refusals[0]));
 check('2: ...nor on the gain runs', gainRuns.length === 0, gainRuns);
+/* v2.3.5540 (card K, step 4.2): THE ARCHER'S LANE.  The stepping archer
+   keeps every arrow (2, above: its gain run and every disturbance), and with
+   the lane's switch thrown (`arrowlane: false`, the plan's rule 4) it loses
+   some to the plain 210 ms floor: what the mend gives back. */
+const stepOff = GAINS_ONLY ? null : await runBot(CLAIMS.find((c) => c.id === 'bowlabel'), [STEPPER, B.honestBow, { stepIn: true }], { ms: GAIN_MIN * B.MIN, flags: { arrowlane: false } });
+if (stepOff) check(`2b: the stepping archer keeps every arrow; with \`arrowlane: false\` it loses ${stepOff.refusals.length} in ${GAIN_MIN} minutes`, stepOff.refusals.length > 0 && stepOff.refusals.every((x) => /arrow in reach did not land/.test(x)), stepOff.refusals.slice(0, 3));
 for (const r of rows) {
   const line = LINES[r.c.id];
   check(`3: ${r.c.id}: its gain ${r.gain} is within its line ${line} and its spread ${SPREAD[r.c.id]} (${r.gain <= BAR ? 'under' : 'over'} the bar ${BAR})`, r.gain <= line + SPREAD[r.c.id] + 1e-9, { honest: Math.round(r.best.v), liar: Math.round(r.liar.v) });
@@ -240,7 +249,7 @@ if (WRITE) {
     '- **The healer.** In every fight the bots\' health is put back after each blow, so a run measures its claim and never a death and the long walk back. The guard counts what the healer put back.',
     '- **The cooking shield guards no swing**: the first attack ends it, and it comes back only 3 s after the last. Its liar is kept from blows only while it waits, among the monsters, so it is hurt more a kill than the honest sword: its gain is under 1, and the shield\'s worth is time out of a fight (no gold, ore or experience).',
     '- **The guard\'s liar raises its guard with every swing**; one that times each raise to a blow\'s wind-up (a parry: free, 10 stamina back, the monster staggered) is not built, so the guard\'s gain is a floor.',
-    '- **An honest archer stands still while an arrow flies.** One that steps closer between two shots can land both on one monster inside its 210 ms lane, and the worker drops the second (`combat.js` `_handleMonsterDamage`): today\'s rule refusing honest play, written under Found in card K\'s status, not a claim\'s gain.',
+    '- **The archer who steps in between shots** (the bow\'s third honest bot) lands two arrows on one monster closer together than it shot them. Until v2.3.5540 the 210 ms lane dropped the second (`combat.js` `_handleMonsterDamage`); the archer\'s lane (`arrowlane`) lets one in early, the same claims a minute: it keeps every arrow, and with the switch thrown it loses some (2b).',
     '- **The Wheel\'s far monsters** are left out of the fights\' rooms (claimbots.mjs `nearField`): they never meet a bot.',
     '',
   ];
