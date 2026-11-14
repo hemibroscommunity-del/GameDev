@@ -1,18 +1,16 @@
 card: P
 branch: claude/plan-p-12-pack-page (one branch a PR, each begun from the one before)
-prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757 (5241-5248, 5251, merged); #1749 (5249), #1763 (5250), #1766 (5252) mended, T's #1768 merged in (sitting 10); pack-page (5253) measuring
+prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766 (5241-5252, merged); pack-page (5253) measuring
 state: working
 
 ## Done
 
 - 5241-5248 (merged): the family table, record, census, `finish.mjs`, the
   gate; `.m4a` gone; portraits, coin strips let go; trees as numbers.
-- #1749 (5249) `fx-made`, #1763 (5250) world icons: the effects' and the
-  icons' twins on (3.1, 1.2 MB); mended at sitting 8 (not the snowball:
-  it loads in play; switch rows; the heart cut through drawSourceRect).
+- #1749 (5249) `fx-made`, #1763 (5250) world icons: the twins on (3.1 MB;
+  0.80 by the census); sittings 8 and 9: not the snowball, not the trap.
 - #1766 (5252), `fx-sheets-supplied`: the whirlwind's declined twin as numbers
-  (`gearSheets.js`); `artCache` 97.1 -> 95.1, `buffers` 23.7 -> 24.2;
-  0.49 MB by the census (chip counted). Sitting 9: not the trap's box.
+  (`gearSheets.js`): `artCache` 97.1 -> 95.1; 0.49 MB by the census.
 
 ## Next
 
@@ -29,6 +27,8 @@ state: working
 - `pack-page` on today's main (A's sample): 30.6 ms at armour, 15.9 at
   peer, against its line of 20 (not raised).
 - `mp-npclooks` 2 and 2b are red with PR 6's change on and off alike.
+- The Equipment screen's figure holds 22 ms (card H's, now P's; the
+  planning session, low): after pack-page and the guard, a profile first.
 
 ## Needs
 
