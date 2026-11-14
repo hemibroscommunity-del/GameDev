@@ -55,10 +55,11 @@ Each with its switch, for the planning session to read to the owner:
   (+138 KB to the worker's bundle, said by #1831 and paid once, at
   sitting 15). The lab's restore try is about 65 Actions minutes and
   needs `lab.yml` (the owner's words).
-- Still waiting for the owner's own word: card SK's #1782 (+8 to +10 moves
-  a ride), not listed; card E's `arenasettleplan` and `econresetput` (E's
-  #1852 turns them ON on the owner's yes: opened during the sitting, for
-  the next one).
+- The owner's own yes, given during the sitting (by the planning
+  session's word), so listed: card SK's #1782 (+8 to +10 move messages a
+  ride; `?ridecoast=0`) and card E's #1852 (`arenasettleplan` and
+  `econresetput` ON: two rows an arena match, one put a restart in an
+  empty room; `false` turns each off).
 
 ## What GitHub shows, step by step (card Z's step 5b)
 
@@ -109,7 +110,50 @@ mended: README ~313 names `fightlockequip`.
 
 ## Card K: #1842 (tag 5540): reviewed, listed
 
-FINDER_1842
+**The archer's lane (it DEPLOYS; `arrowlane`, ON), read at ef9dff4:
+clean (lows).** For an arrow or a bolt the rule is now: in if `now >=
+cad.n`, then `cad.n = max(cad.n + 210, now)`: one hit each 210 ms and one
+early, the rule `_dgLaneTake` already keeps for a drawn arrow worth a full
+hit; the plain path (a sword, or an arrow after a drawn one) is stricter
+and writes `cad.n` as the new rule would, so any mix of sword, bow, staff,
+drawn and plain hits is held to `floor(L/210) + 2` in any window L. A
+finder's probe through the real `_handleMonsterDamage` and relay (220
+random mixes at 15 gaps, hitproof on and off, a plain and an `fs: 2`
+join): the most on one monster in 10 s 49 ON, 48 OFF; in any 210 ms
+window 2 ON, 1 OFF; damage a minute 30,304 both ways (VERIFIED: the
+ceiling holds, +1 once). A weapon switch, a monster switch, a party, a
+respawn (same object, same lane) get no more. The only new state is
+`cad.o` on the existing per-player map (32 entries at most, keyed by a
+monster the server found). The new drop is silent, as the plain floor's;
+TRAPS §236 is the phone's hit test, not a rate lane. The flag: missing
+ON; `false`, 0, null, '' off (the house's way).
+
+- Low, VERIFIED: the phone's default bow is the drawn bow (`dr` and
+  `sw`), which already went through `_dgLaneTake`'s early hit (since
+  4799): a stepping drawn archer lost 0 arrows either way. The fix reaches
+  the hits with no draw: the flicked bow (`?bowfeel=0`, `?manual=`, a
+  worker with `bowdraw: false`), older phones, staff bolts without a
+  gather, stuck-arrow chips. combat.js's comment ("dropped an honest
+  hit") is true of the flicked bow; the bench's `honestBow` sends no draw,
+  so its 2b is right.
+- Low, PLAUSIBLE: a fresh lane (a rejoin without `tb`, join.js ~917; the
+  32-entry trim) now lets 2 hits in at once, not 1 (a rejoin already
+  refilled the bow's 15-token burst); how fast a modified page can rejoin
+  would settle it.
+- Nits: GDD-AS-BUILT ~411 says "one accepted hit per monster per 210
+  ms"; no spec names `arrowlane`; after an early arrow a sword hit waits
+  up to ~420 ms (the same count of hits).
+- Break proofs: `cad.n = nowTs` fails combat-lifecycle and draw-gather §9;
+  a rate-doubling variant (`max(cad.n, now) + 105`, 64 in 10 s) fails only
+  draw-gather §9: nothing tests "the most hits in 10 s" itself (for K's
+  bow claim). The `cad.o` guard is load-bearing (§9 fails without it).
+- Suites: combat-lifecycle 313, draw-gather 104, refusal-door 46,
+  silent-refusals 31, liveops 110, hit-proof 66, bow-feel 45, arrowblast
+  28, free-swing 66, anticheat 212, perfect-strike 59, test-mode 70,
+  claims-gain 14 (2b: 7 arrows lost with the switch off; bowlabel 3.91
+  against 3.76 + 0.23); guards switches, switches-thrown, keep-switches.
+  It writes K's second block (5540 to 5559, `nextBlock` 5560), the
+  planning session's. CI `test` green at ef9dff4.
 
 ## Card L: #1839 (PR 5's fourth, tag 5213): reviewed, listed
 
@@ -190,6 +234,32 @@ leaves the room as it is. No storage key.
   storage-marks; `node tools/lab/selftest.mjs` (8 restore checks, no
   network). Two of its four break proofs fail as it says. The lab try is
   the owner's (Needs).
+
+## Card E: #1852 (tag 5095): read, listed
+
+Opened during the sitting, on the owner's yes ("Just go recommended",
+21:46 UTC, by the planning session's word): `arenasettleplan` and
+`econresetput` turn ON by default (it DEPLOYS). Read whole (56 lines):
+`_arenaSettlePlanOn` (gladiator.js) and `resetPutOn` (econcard.js) now
+read `!(own && !flag)`: missing or a cold cache ON, `false` (any falsy)
+off, as every ON switch reads; the two rows now say what `false` puts
+back; the suites follow the default (arena-settle, econ-card,
+chaos-restart's case 6, cost-guard §17's words: 6 puts a 1 v 1 match with
+the plan, the old order's 5 off). A plan already on file is finished
+either way (`_arenaStakeSweep`, `_arenaSettleWait`): turning it off never
+strands one. Its cost, the owner's: two rows an arena match, one put a
+restart in an empty room. CI `test` green at 2475069.
+
+## Card SK: #1782 (PR 1, tag 5440): re-read, listed
+
+Held since sitting 10 for the owner's yes to its cost (+8 to +10 move
+messages a ride, all in the ~1.9 s roll-off), now given ("Just go
+recommended", by the planning session's word). Reviewed clean at sitting
+12 (5f08c7b). Since then only `main` merged in (a39a152: `?ridecoast`'s
+row beside `main`'s new rows, the switch page made again) and its status
+(0581207): its diff against `main` is, line for line, the one reviewed
+(`src/`, `server/`, `tools/`). It DEPLOYS (`server/test/ride.test.mjs`).
+Switch `?ridecoast=0`. CI `test`, `memory-budget` green at 0581207.
 
 ## Card P: #1840 (tag 5257): reviewed, listed
 
@@ -387,10 +457,9 @@ readers still count on it).** `?slimewalk=0` restores both.
 
 ## Not reviewed: opened during the sitting
 
-L's #1851 (5214, the harvest door; L's second, after #1839), O's #1850
-(5229, the passes; it conflicts with `main` at O.md), J2's #1849 (5429),
-E's #1852 (5095, `arenasettleplan` and `econresetput` ON, the owner's
-yes): the next sitting.
+L's #1851 (5214, the harvest door; it carries #1839), O's #1850 (5229, the
+passes; it conflicts with `main` at O.md), J2's #1849 (5429): the next
+sitting.
 
 ## Found (no card's, or another card's)
 
