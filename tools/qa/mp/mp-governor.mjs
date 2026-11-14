@@ -1,4 +1,4 @@
-/* ═══ mp-governor (v2.3.5222): THE GOVERNOR STEPS DOWN, AND MOVES NO KNOB YET ═══
+/* ═══ mp-governor (v2.3.5222): THE GOVERNOR STEPS DOWN; v2.3.5224, ONLY THE RATE MOVES ═══
  *
  * Card O's PR 2 (the grand plan's 2.3): the frame pacer, grown into the
  * governor (src/game/framePacer.js), judges late frames on EVERY screen and
@@ -21,6 +21,12 @@
  *   3. no knob moved: the canvas's pixels and resolution, every refresh
  *      drawn, the water as it was -- while the lanes' table says where the
  *      rung stands (`__btLane()`).
+ *   v2.3.5224 (card O PR 4, and the gatekeeper's sitting 11 on #1794): the
+ *   rate is the one knob read (LIVE), so the step is the rate's rung and 3
+ *   reads: every second refresh drawn while the rung holds the rate (a
+ *   steady 30), and nothing else moved; every step changes a live knob (the
+ *   governor walks no rung nothing reads).  The run's slow CPU is put back
+ *   once its page is made (it leaked into the scenarios after it).
  *
  *   node tools/qa/mp/run.mjs governor
  */
@@ -46,13 +52,17 @@ const knobsSeen = (P) => P.page.evaluate(() => {
   const pace = window.__btPace ? window.__btPace() : null;
   let water = null;
   try { water = window.__btWaves && window.__btWaves.probe ? !!window.__btWaves.probe().on : null; } catch (e) { water = null; }
+  const lane = window.__btLane ? window.__btLane() : null;
   return { cw: cv ? cv.width : null, ch: cv ? cv.height : null, res: R ? R.resolution : null, every: pace ? pace.every : null,
-    soft: document.documentElement.hasAttribute('data-res-soft'), water };
+    soft: document.documentElement.hasAttribute('data-res-soft'), water, rate: lane ? lane.knobs.rate : null };
 });
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  if (!process.env.BT_QA_CPU_THROTTLE) process.env.BT_QA_CPU_THROTTLE = '2';
-  const P = await H.newPlayer(browser, { name: 'Governed', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, dpr: 1, query: 'govern=1&perf=1' });
+  /* v2.3.5224: the slow CPU for this page alone (the harness reads it as the page is made): put back after */
+  const setThr = !process.env.BT_QA_CPU_THROTTLE;
+  if (setThr) process.env.BT_QA_CPU_THROTTLE = '2';
+  const P = await H.newPlayer(browser, { name: 'Governed', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, dpr: 1, query: 'govern=1&perf=1' })
+    .finally(() => { if (setThr) delete process.env.BT_QA_CPU_THROTTLE; });
   const stopAlive = H.keepAlive(P);
   const said = [];
   P.page.on('pageerror', (e) => said.push('error: ' + String((e && e.message) || e).slice(0, 160)));
@@ -104,8 +114,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* 3: no knob moved */
     const after = await knobsSeen(P);
     const lane = await P.page.evaluate(() => (window.__btLane ? window.__btLane() : null));
-    rec.ok(`3. no knob moved: the canvas ${after.cw} x ${after.ch} at ${after.res} as before, every refresh drawn (${after.every}), the water as it was`,
-      after.cw === before.cw && after.ch === before.ch && after.res === before.res && after.soft === before.soft && after.every === 1 && after.water === before.water, { before, after });
+    /* v2.3.5224: the rate is the one knob read -- every second refresh while the rung holds it (a try up may be under way) */
+    rec.ok(`3. only the rate moved: every ${after.every === 2 ? 'second refresh drawn (a steady 30)' : 'refresh drawn'} as the rate's knob reads ${after.rate}; the canvas ${after.cw} x ${after.ch} at ${after.res} and the water as before`,
+      after.cw === before.cw && after.ch === before.ch && after.res === before.res && after.soft === before.soft && after.every === (after.rate === 34 ? 2 : 1) && after.water === before.water && before.every === 1, { before, after });
+    const live = (lane && lane.live) || [];
+    rec.ok(`3. ...and every step changed a knob something reads (${pace.ladder.steps.map((x) => x.axis + ': ' + x.knobs.join('+')).join(', ')}; live: ${live.join(', ')})`,
+      pace.ladder.steps.length >= 1 && pace.ladder.steps.every((x) => x.knobs.length >= 1 && x.knobs.every((k) => live.includes(k))), { steps: pace.ladder.steps, live });
     rec.ok(`3. ...while the lanes' table says where the rung stands (depth ${lane && lane.depth}; the rate's knob would read ${lane && lane.knobs && lane.knobs.rate})`,
       !!lane && lane.depth === pace.ladder.depth && lane.lane === 'full', lane);
     rec.ok('the page threw nothing', said.length === 0, said);

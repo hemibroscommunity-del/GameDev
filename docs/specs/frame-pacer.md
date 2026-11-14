@@ -205,3 +205,34 @@ screen too hot for 60 takes the rate's rung first and comes back to 60 once
 cool with no see-saw (two seeds); at the rung, nine frames in ten are the
 same 33 ms; a 120 screen too hot for 40 is never paced below 40;
 `?ladderrate=0`; the read through `laneKnob`.
+
+### Only the rungs something reads (v2.3.5224, the gatekeeper's sitting 11)
+
+The governor first counted every knob in the table, read or not. So it
+stepped through rungs nothing read (the crowd, the passes, the pixels),
+kept them in `bt_rung`, and climbed back one 20-second try a rung, the rate
+last. After a hot sitting, a cool 60 phone started the next one at 30 and
+stayed there for minutes; where a pixel rung waited for a veil, for the
+whole sitting. Now:
+
+- **It walks only the LIVE knobs** (`drawLanes.js` `liveKnobs()`: the
+  knobs whose row marks them moved, read through `laneKnob`). A rung that
+  changes no live knob is passed, down and up, and `rungDepth` (the strip,
+  the report's `rung`) counts only rungs that change one. A step's rung is
+  trimmed to what it changes.
+- **A kept rung carries its live set** (`bt_rung`: `[work, chip, 'rate']`).
+  A rung kept under another set (the first version's, with none; a knob
+  moved since) is not loaded: the sitting starts at the lane's row.
+- **A try up that moves the pixels waits for its veil, and the other axis
+  may try meanwhile** (before, the wait stopped every try).
+- Today (the rate the one live knob) a cool phone after a hot sitting is
+  back at 60 in ONE try, about 20 seconds in.
+
+Held by `frame-pacer.test` §19, with its break proofs. §13 to §16 play the
+whole ladder live (`_liveKnobs`), as card O's later PRs will make it.
+
+A fight is not a reason to hold a step: the card's call 3 reads "a step
+may come in a fight (a hot phone needs it then): it changes no timing, and
+pixels still wait for a veil". The rate's rung changes how often a frame is
+DRAWN, never a swing's clock, a cooldown or the tick (`draw-lanes` guard: no
+knob read in `combat`).

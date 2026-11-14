@@ -47,7 +47,8 @@
  * pacer grown); server/test/frame-pacer.test.mjs fails a second caller, and
  * src/state/phases.js has its row (`ladder`).  Kept: the device's, not the
  * zone's (the governor keeps it by lane in localStorage for the next
- * sitting).  The rung moves no knob until each knob's PR reads laneKnob.
+ * sitting).  The rung moves no knob until each knob's PR reads laneKnob
+ * (v2.3.5224: and the governor walks only the rungs of knobs read: LIVE).
  *
  * THE LANE.  pickLane(cls) is the lane a device class picks: `thirty` where
  * the screen's rate is 30, else `full`.  FACTS ONLY, never a name (a system,
@@ -297,10 +298,38 @@ export function drawLane(cls) {
 const ROW = Object.freeze({ work: 0, chip: 0 });
 let _rung = ROW;          /* the governor's (setRung): rungs taken on each axis */
 
+/* v2.3.5224: THE LIVE KNOBS -- a rung counts only if something reads its
+   knob (the gatekeeper's sitting 11 on #1794, verified by a probe: the
+   governor counted every knob in KNOB_NAMES, read or not, so it stepped
+   through rungs nothing read -- the crowd, the passes, the pixels -- kept
+   them in bt_rung, and climbed back one 20 s try a rung, the rate (chip
+   rung 1) last: after a hot sitting a cool 60 phone started at 30 and stayed
+   there for minutes, a whole sitting where a pixel rung waited for a veil).
+   A knob is LIVE once its row marks it moved (its PR reads it through
+   laneKnob); the governor walks only rungs that change a live knob, and
+   rungDepth counts only those.  The tests may play the whole ladder, as the
+   knobs' PRs will make it (_liveKnobs). */
+export const MOVED_KNOBS = Object.freeze(KNOB_NAMES.filter((k) => KNOBS[k].reader && KNOBS[k].reader.moved));
+let _live = MOVED_KNOBS;
+/** The knobs a rung can change today (marked moved; the tests' list while one is set). */
+export function liveKnobs() { return _live; }
+/** For the tests only: play the ladder with these knobs live (null: the moved ones). */
+export function _liveKnobs(list) { _live = Array.isArray(list) ? Object.freeze(list.slice()) : MOVED_KNOBS; }
+
 /** Where the ladder stands now: { work, chip }, rungs taken on each axis. */
 export function ladderRung() { return _rung; }
-/** Rungs taken, both axes: 0 is the lane's row (the report's `rung`). */
-export function rungDepth(r) { const x = r || _rung; return (x.work | 0) + (x.chip | 0); }
+/** Rungs taken that change something, both axes: 0 is the lane's row (the
+ *  report's `rung`).  v2.3.5224: a rung whose knob nothing reads yet counts
+ *  none. */
+export function rungDepth(r) {
+  const x = r || _rung;
+  let n = 0;
+  for (const a of AXIS_NAMES) {
+    const m = Math.max(0, Math.min(AXES[a].length, x[a] | 0));
+    for (let j = 0; j < m; j++) if (_live.includes(AXES[a][j].knob)) n++;
+  }
+  return n;
+}
 /** THE ONE WRITER of the rung: the governor's (framePacer.js), never another
  *  file's.  Each axis held to its rungs.  Subscribed knobs are told. */
 export function setRung(work, chip) {
@@ -358,6 +387,6 @@ if (typeof window !== 'undefined') {
   window.__btLane = () => {
     const knobs = Object.create(null);
     for (const n of KNOB_NAMES) knobs[n] = laneKnob(n);
-    return { lane: drawLane(), fromAddress: !!laneFromSearch(_search()), rung: { ..._rung }, depth: rungDepth(), knobs };
+    return { lane: drawLane(), fromAddress: !!laneFromSearch(_search()), rung: { ..._rung }, depth: rungDepth(), live: _live.slice(), knobs };
   };
 }
