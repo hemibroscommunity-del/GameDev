@@ -404,3 +404,18 @@ roles; `lookPalette.js` imports it (and still exports `LOOK_KIND_IDS`), and the
 gate imports the same. The planning session's answer (2026-11-14): one shape,
 never a twin in the guard (part 5, rule 2). Compared before and after: the
 same spec for every one of the 223 sheets, at book 0 and 70,000 (446 of 446).
+
+## 5. The backlog, a family a PR (step 9.5; tags 5245 on)
+
+In the census's order, most MB held at the fight first; a family whose
+loader is card H's after H; a data family or a sound never. The planning
+session's rule for a conversion to colour numbers (2026-11-14): it may raise
+`buffers` by exactly what it moves there, if the same PR lowers the line the
+family was held in by its full amount and says both and the net. The owner
+(the same day, "Go recommended"): the slimes load as you walk in the Wheel,
+and the effects' 256-colour twins go on, each family its own PR.
+
+| tag | family | what changed | at the fight (three runs) | line |
+|---|---|---|---|---|
+| 5245 | the 19 `.m4a` | removed: nothing named them, the MP3 beside each plays | nothing loaded them | none |
+| 5246 | `npc-heads` | the dialogue portraits let go of once loaded: an `<img>` reads them from the HTTP cache (`npcSprites.js`, `?npcheads=0`) | `artCache` 48.7 -> 45.8; `buffers` 21.1-21.3, unchanged | `artCache` 112 -> 109.1 |

@@ -2,7 +2,7 @@
 
 Card P, PR 2 (grand plan step 9.1, part two); `docs/specs/asset-door.md`
 part 2 says how it is read. Written by `node tools/assets/fightmb.mjs <runs> --write`,
-never by hand, from 3 runs of `QA_MB_ROWS=1 node tools/qa/mp/run.mjs membudget` at `8f3596990`.
+never by hand, from 3 runs of `QA_MB_ROWS=1 node tools/qa/mp/run.mjs membudget` at `9ded1f9e0`.
 
 **MB at the fight** is the most a family held at any one fight stop of any
 run: on the graphics chip, the picture the page keeps, the colour numbers the
@@ -22,17 +22,16 @@ stops at the first family under 1 MB (the line below the table's marker).
 
 | family | kind | draw | files | MB on disk | MB at the fight | chip | page | numbers | sound | atlas | over bar | backlog | waits on H |
 |---|---|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|---|---|
-| `monster-fire-goblin` | made | strip | 14 | 1.32 | **8.11** | 2.57 | 0.00 | 5.54 | 0.00 | 14 |  | after H | zoneTextures.js, stripRead.js |
+| `monster-fire-goblin` | made | strip | 14 | 1.32 | **8.10** | 2.56 | 0.00 | 5.54 | 0.00 | 14 |  | after H | zoneTextures.js, stripRead.js |
 | `sfx-supplied` | supplied | sfx | 26 | 1.20 | **5.93** | 0.00 | 0.00 | 0.00 | 5.93 |  |  | no: sound | soundFold.js (the fold) |
-| `tree-tiers` | made | file | 5 | 0.31 | **5.57** | 0.00 | 5.57 | 0.00 | 0.00 |  |  | yes, by its tool |  |
-| `gear-walk-twins` | made | file | 69 | 1.76 | **4.99** | 4.99 | 0.00 | 0.00 | 0.00 |  | 69 | after H | gearSheets.js |
+| `gear-walk-twins` | made | file | 69 | 1.76 | **5.89** | 5.89 | 0.00 | 0.00 | 0.00 |  | 69 | after H | gearSheets.js |
+| `tree-tiers` | made | file | 5 | 0.31 | **5.58** | 0.00 | 5.58 | 0.00 | 0.00 |  |  | yes, by its tool |  |
 | `monster-slime` | made | file | 6 | 0.06 | **4.56** | 0.00 | 4.56 | 0.00 | 0.00 |  |  | yes, by its tool |  |
 | `look-standin` | data | look | 21 | 1.06 | **4.31** | 4.31 | 0.00 | 0.00 | 0.00 |  |  | no: data |  |
 | `look-gear` | data | look | 42 | 1.53 | **4.29** | 4.29 | 0.00 | 0.00 | 0.00 |  |  | no: data |  |
 | `sfx-m4a-twins` | made | sfx | 19 | 0.19 | **3.71** | 0.00 | 0.00 | 0.00 | 3.71 |  |  | no: sound | soundFold.js (the fold) |
 | `look-gearwalk` | data | look | 44 | 1.12 | **3.65** | 3.65 | 0.00 | 0.00 | 0.00 |  |  | no: data |  |
 | `fx-made` | made | file | 7 | 0.73 | **3.10** | 0.00 | 3.10 | 0.00 | 0.00 |  | 7 | yes, by its tool |  |
-| `npc-heads` | made | dom | 21 | 0.01 | **2.96** | 0.00 | 2.96 | 0.00 | 0.00 |  | 21 | yes, by its tool |  |
 | `sfx-footsteps` | supplied | sfx | 10 | 0.17 | **2.46** | 0.00 | 0.00 | 0.00 | 2.46 |  |  | no: sound | soundFold.js (the fold) |
 | `sfx-owner-cuts` | made | sfx | 36 | 0.38 | **2.22** | 0.00 | 0.00 | 0.00 | 2.22 |  |  | no: sound | soundFold.js (the fold) |
 | `icons-elements` | made | file | 18 | 0.12 | **2.16** | 0.02 | 2.14 | 0.00 | 0.00 |  | 18 | after H | entityRenderer.js |
@@ -73,7 +72,7 @@ stops at the first family under 1 MB (the line below the table's marker).
 | `shields` | made | file | 3 | 0.01 | **0.05** | 0.00 | 0.05 | 0.00 | 0.00 |  | 3 | yes, by its tool |  |
 | `projectile-arrow` | made | file | 1 | 0.01 | **0.02** | 0.00 | 0.02 | 0.00 | 0.00 |  | 1 | yes, by its tool |  |
 
-## Held nothing at the fight (151 families)
+## Held nothing at the fight (152 families)
 
 Loaded elsewhere (another land, a window, a computer's path), or by nothing.
 A family whose draw path is `none` is loaded by nothing on any device by
@@ -158,6 +157,7 @@ default: removing any of its files but the 19 `.m4a` is the owner's yes.
 | `player-bow-weapon` | made | file | 5 | 0.02 | 5 |
 | `world-ground-manifest` | data | data | 1 | 0.02 |  |
 | `wheel-overview` | made | wheel | 1 | 0.01 | 1 |
+| `npc-heads` | made | dom | 21 | 0.01 | 21 |
 | `icons-svg` | supplied | dom | 5 | 0.01 |  |
 | `player-body-tops` | data | data | 1 | 0.01 |  |
 | `traits-hi-made` | made | dom | 10 | 0.00 | 10 |
@@ -198,7 +198,6 @@ default: removing any of its files but the 19 `.m4a` is the owner's yes.
 | `tiles-retired` | made | none | 14 | 0.35 |  |
 | `world-arena` | made | none | 11 | 0.28 |  |
 | `player-sword-weapon` | supplied | none | 3 | 0.27 | 3 |
-| `sfx-m4a` | made | none | 19 | 0.19 |  |
 | `world-originals` | supplied | none | 3 | 0.19 | 3 |
 | `icons-sheets-unwired` | made | none | 15 | 0.18 | 15 |
 | `icons-bag-unwired` | made | none | 5 | 0.17 | 5 |
@@ -232,6 +231,7 @@ default: removing any of its files but the 19 `.m4a` is the owner's yes.
 | `traits-shirt-meta` | data | none | 1 | 0.00 |  |
 | `ui-cc-tab-species` | made | none | 1 | 0.00 | 1 |
 | `player-handles-stale` | data | none | 1 | 0.00 |  |
+| `sfx-m4a` | made | none | 0 | 0.00 |  |
 
 ## Made in play (no family holds these)
 
@@ -242,7 +242,7 @@ the door's to change. Digits in a label are folded to `#`.
 | label | MB at the fight | chip | page | numbers | sound | atlas |
 |---|--:|--:|--:|--:|--:|--:|
 | `unnamed` (on the chip: canvas 16.64, render 1.55, buffer 0.00) | 22.19 | 18.19 | 4.00 | 0.00 | 0.00 |  |
-| `blob: (a picture made in play from bytes)` | 10.46 | 10.46 | 0.00 | 0.00 | 0.00 |  |
+| `blob: (a picture made in play from bytes)` | 12.66 | 12.66 | 0.00 | 0.00 | 0.00 |  |
 | `wheel-ground` | 8.55 | 8.55 | 0.00 | 0.00 | 0.00 | 57 |
 | `bt-look:page/#-#-#` | 5.31 | 5.31 | 0.00 | 0.00 | 0.00 |  |
 | `bt-shadow-pieces` | 0.93 | 0.93 | 0.00 | 0.00 | 0.00 |  |
@@ -260,12 +260,12 @@ still reach, so it can be higher.
 
 | run | stop | gpu line | chip rows | artCache line | page rows | numbers | sound line | soundHeld | sound rows | atlas rows used | rowsFull | monster bundles |
 |--:|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|---|
-| 1 | trip 1: a fight at the Flame Fields (10 swings; 0 px short a | 60.6 | 60.38 | 48.7 | 48.75 | 6.43 | 18.1 | 18.1 | 18.07 | 104 of 256 | 0 | fireGoblin |
-| 1 | trip 2: a fight at the Flame Fields (9 swings; 0 px short af | 65.9 | 65.65 | 48.7 | 48.75 | 6.43 | 18.1 | 17.6 | 17.65 | 103 of 256 | 0 | fireGoblin |
-| 1 | trip 3: a fight at the Flame Fields (5 swings; 0 px short af | 68.6 | 68.39 | 48.7 | 48.75 | 6.43 | 18.1 | 17.6 | 17.65 | 100 of 256 | 0 | fireGoblin |
-| 2 | trip 1: a fight at the Flame Fields (9 swings; 0 px short af | 60.9 | 60.68 | 48.7 | 48.75 | 6.43 | 17.9 | 17.9 | 17.91 | 104 of 256 | 0 | fireGoblin |
-| 2 | trip 2: a fight at the Flame Fields (9 swings; 0 px short af | 64.7 | 64.45 | 48.7 | 48.75 | 6.43 | 17.9 | 17.5 | 17.48 | 103 of 256 | 0 | fireGoblin |
-| 2 | trip 3: a fight at the Flame Fields (11 swings; 2 px short a | 66.7 | 66.40 | 48.7 | 48.75 | 6.43 | 17.9 | 17.5 | 17.48 | 103 of 256 | 0 | fireGoblin |
-| 3 | trip 1: a fight at the Flame Fields (10 swings; 0 px short a | 60.9 | 60.66 | 48.7 | 48.75 | 6.43 | 18.1 | 17.6 | 17.65 | 104 of 256 | 0 | fireGoblin |
-| 3 | trip 2: a fight at the Flame Fields (11 swings; 0 px short a | 65.8 | 65.57 | 48.7 | 48.75 | 6.43 | 17.6 | 17.6 | 17.65 | 102 of 256 | 0 | fireGoblin |
-| 3 | trip 3: a fight at the Flame Fields (7 swings; 0 px short af | 68.6 | 68.28 | 48.7 | 48.75 | 6.43 | 18.1 | 18.1 | 18.07 | 104 of 256 | 0 | fireGoblin |
+| 1 | trip 1: a fight at the Flame Fields (9 swings; 2 px short af | 62.7 | 62.46 | 45.8 | 45.79 | 6.43 | 18.1 | 18.1 | 18.07 | 102 of 256 | 0 | fireGoblin |
+| 1 | trip 2: a fight at the Flame Fields (0 swings; 0 px short af | 67.6 | 67.37 | 45.8 | 45.79 | 6.43 | 17.6 | 17.6 | 17.65 | 88 of 256 | 0 | fireGoblin |
+| 1 | trip 3: a fight at the Flame Fields (4 swings; 0 px short af | 71.1 | 70.86 | 45.8 | 45.79 | 6.43 | 18.1 | 18.1 | 18.07 | 100 of 256 | 0 | fireGoblin |
+| 2 | trip 1: a fight at the Flame Fields (9 swings; 0 px short af | 61 | 60.70 | 45.8 | 45.79 | 6.43 | 17.9 | 17.9 | 17.91 | 104 of 256 | 0 | fireGoblin |
+| 2 | trip 2: a fight at the Flame Fields (5 swings; 0 px short af | 70.4 | 70.08 | 45.8 | 45.79 | 6.43 | 18.1 | 17.6 | 17.65 | 103 of 256 | 0 | fireGoblin |
+| 2 | trip 3: a fight at the Flame Fields (9 swings; 0 px short af | 71.3 | 71.01 | 45.8 | 45.79 | 6.43 | 18.1 | 18.1 | 18.07 | 104 of 256 | 0 | fireGoblin |
+| 3 | trip 1: a fight at the Flame Fields (6 swings; 0 px short af | 66.5 | 66.22 | 45.8 | 45.79 | 6.43 | 17.9 | 17.5 | 17.48 | 103 of 256 | 0 | fireGoblin |
+| 3 | trip 2: a fight at the Flame Fields (0 swings; 0 px short af | 69.3 | 69.09 | 45.8 | 45.79 | 6.43 | 17.6 | 17.6 | 17.65 | 88 of 256 | 0 | fireGoblin |
+| 3 | trip 3: a fight at the Flame Fields (9 swings; 0 px short af | 71.2 | 70.91 | 45.8 | 45.79 | 6.43 | 18.1 | 17.6 | 17.65 | 102 of 256 | 0 | fireGoblin |
