@@ -151,4 +151,6 @@ As the life door was built (v2.3.4820):
 
 The order, worker first and free files first: `trade`, `duel`, `party`,
 `cook`, `harvest`, `fishing`, `dungeon`, `guard`, `ride`, `pose`, `race`,
-`arena`; then the page's `connection`, `loading`, `window`.
+`arena`; then the page's `life` (the death's one door, one respawn through
+`applyLocalRespawn`: the death's resets land with it, v2.3.5203,
+`docs/specs/state-resets.md`), `connection`, `loading`, `window`.

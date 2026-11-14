@@ -13,6 +13,7 @@ import { moveKind, EMOTE_MOVES, EMOTE_HOLD_IDS } from '@/game/emoteMoves.js'; /*
 import { swimRefused, airRefused } from '@/game/combatHelpers.js'; /* v2.3.3392 */
 import { seasonOn } from '@/game/season.js'; /* v2.3.3395 */
 import { ownEmoteSound, ownMoveSound } from '@/game/moveSounds.js'; /* v2.3.3434: the emotes and moves heard */
+import { resetOn } from '@/game/resetOn.js'; /* v2.3.5203: a held pose ends at the zone edge's one door (card L) */
 
 export function sendEmote(S, emoji, deps) {
   var setShowEmotes = deps.setShowEmotes;
@@ -104,6 +105,15 @@ export function endOwnPose(S) {
   S._pose = null;
   if (S.channel) S.channel.send({ type: 'pose', id: null });
 }
+/* v2.3.5203 (grand plan step 5.3, card L): a held pose belongs to its place
+   (the worker stands its copy up at a change of zone, movement.js
+   _poseEndsOn), so it ends at the zone edge's ONE door (changeZone), the
+   frame the place changes.  updateOwnEmote's own zone check below did it a
+   frame later, the same way (with the word to the worker); it stays, and is
+   what ends it with the switch thrown: `?townsfolkreset=0`.  The state
+   ledger's row (src/state/townsfolk.js `_pose`): lifetime zone+rejoin, the
+   rejoin's half rejoinClear's (rejoinSlots.js, the pose slot). */
+resetOn('zone', endOwnPose, 'townsfolk');
 /* once a frame (BroTown's loop, beside the sprint): a moment is over on its
    own clock, and a held pose ends when you move, attack, raise the shield,
    swim, jump, harvest or die -- or a blow lands on you or from you after it

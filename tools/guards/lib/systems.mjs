@@ -325,7 +325,10 @@ export const SYSTEMS = Object.freeze({
      about another system's state; nothing imports it yet */
   state: {
     what: 'the state ledger: every field of S and top-of-file variable, a file a system',
-    files: [re('^src/state/')],
+    /* v2.3.5203 (card L PR 3, the planning session's call): and resetOn.js,
+       the state's resets registered beside their state and run at each
+       edge's one door (grand plan step 5.3, step 2) */
+    files: [re('^src/state/'), f('src/game', 'resetOn')],
     words: ['ledger'],
     traps: [],
     doors: [],
