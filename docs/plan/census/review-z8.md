@@ -293,4 +293,26 @@ files are `mp-heldsweep.mjs` and A's status.
 
 ## The whole
 
-REHEARSALS
+Rehearsed three times from `main` 7593b4e, each with
+`tools/dev/gatekeeper.mjs`. 1: the six ready at the start (#1751, #1750,
+#1748, #1749, #1752, #1754; tree 9580cbcc): precheck FAIL, one suite,
+`guards/switches` (196 unlisted, the line 195: #1749's `?fxmade`); build;
+questline 187/187; and `mp-wheelmap` once on that tree, 41/41 (#1750's
+"done when"). 2: with #1755, #1757, #1760 and card E's stack: CONFLICT at
+#1756 in `server/src/leave.js`, nothing run. 3: the list as written and
+this branch (tree 261ad2be): precheck 0 FAIL with every server suite and
+guard, build, questline 187/187. Its warnings: stacked branches carrying
+the tags of the PRs below them (E's and L's next), and `look-shirt`
+(#1757 touches `gearSheets.js`): `node tools/art/shirt-bake.mjs --check`
+on that tree, "the shirt numbers on disk are a fresh bake". Since then
+only card A's status moved on #1760 (b9920c01, documents). Every listed
+PR's own `test` check was green on its head.
+
+In this order: the documents and tools first (#1751, the owner's
+standing answers; #1750, J2's test; #1755, V's guard; #1748, L's table
+and guard); card P's #1757, then card A's #1760, which needs it; the two
+that deploy the worker, back to back: card E's #1752 (no stored shape
+changes) and card T's #1754 (a test and a guard; the switch guard closes
+its list, so it comes after everything that reads a `?name=`, and no PR
+after it adds one); this PR last (the line `fourLines.mjs` reads). No
+cap and no live flag is added by any of them.

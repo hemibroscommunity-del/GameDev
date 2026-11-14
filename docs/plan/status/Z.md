@@ -6,7 +6,7 @@ state: ready
 ## Done
 - Sitting 8, `main` at 7593b4e (sitting 7's twelve merged). The eight
   below and this branch rehearsed in this order (tree 261ad2be): precheck
-  0 FAIL, build, questline QUESTLINE. Review: `census/review-z8.md`.
+  0 FAIL, build, questline 187/187. Review: `census/review-z8.md`.
   Ticked 1.2, 1.6; notes on 3.1, 9.5. `effectsRenderer.js` 9871 -> 9870.
 
 ## The list: merge in this order, in one sitting, each "Create a merge commit"
