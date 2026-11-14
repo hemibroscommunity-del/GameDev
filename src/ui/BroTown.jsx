@@ -494,7 +494,7 @@ import { noteMade } from '@/debug/madeLog.js';   /* v2.3.4400: a job between fra
 import { setStripPlay } from '@/rendering/zoneTextures.js';   /* v2.3.4400: a look that loads as you walk is unpacked between frames */
 import { rideGround } from '@/game/rideGround.js';   /* v2.3.3776: where a board rolls */   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust; v2.3.3475: + the run-out's grunt/breath turn */
 import { updateMonsterNoises } from '@/game/monsterNoises.js';   /* v2.3.3340: the monsters chasing you call now and then */
-import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the speed test */
+import { renderDpr, noteCanvasCss } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the speed test; v2.3.5140: + the pixel budget */
 import { climbBegin, climbSteer, climbSpeed, climbTick, riseSolidAt } from '@/game/climbActions.js';   /* v2.3.3994: the lagoon's climb and its faces (`?climb=1`) */
 import { tickJump, landJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick -- v2.3.3712: no longer, so triggerJump is the button's alone) */
 import { rightTapBusy, tapFreeMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress, requestTapAttack } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one; v2.3.3712: it attacks once now, never jumps */
@@ -4001,6 +4001,7 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.2157: the canvas is the PLAY width, not the viewport width --
          identical in portrait (playW == vw always), narrower in landscape
          while a sheet is open. */
+      noteCanvasCss(_fp.playW, vh); dpr = renderDpr();   /* v2.3.5140: the pixel budget reads the canvas's CSS size, told here (game/renderRes.js) */
       var tw = Math.round(_fp.playW * dpr), th = Math.round(vh * dpr);
       if (canvas.width === tw && canvas.height === th) return;
       canvas.width = tw;
