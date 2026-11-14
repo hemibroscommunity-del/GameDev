@@ -39,5 +39,6 @@ export const ROWS = [
   { variable: '_lastS', file: 'src/game/climbActions.js', system: 'movement', lifetime: 'sitting', suggested: 'never', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/climbActions.js'] },
   { variable: 'climbStats', file: 'src/game/climbActions.js', system: 'movement', lifetime: 'sitting', suggested: 'never', born: 'const object', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/climbActions.js'] },
   { variable: '_jumpMs', file: 'src/game/jumpActions.js', system: 'movement', lifetime: 'sitting', suggested: 'never', born: 'var none', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/jumpActions.js'] },
+  { variable: '_feelOn', file: 'src/game/ride.js', system: 'movement', lifetime: 'sitting', suggested: '?', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/ride.js'] },
   { variable: '_tapMs', file: 'src/game/tapJump.js', system: 'movement', lifetime: 'sitting', suggested: 'never', born: 'var none', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/tapJump.js'] },
 ];

@@ -20,7 +20,7 @@ addresses (`tools/qa/`), `localStorage` toggles, and the worker's `env` settings
 reads it as a flag or a comment promises it as a kill switch; any other cap's override is the emergency lever of
 `docs/specs/liveops.md` ("Caps override").
 
-250 rows: 243 switches, 6 values, 1 levers, in 23 systems.
+251 rows: 244 switches, 6 values, 1 levers, in 23 systems.
 
 ## audio
 
@@ -210,6 +210,7 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 | `serverdead` | worker | switch | v2.3.4373 | false | logic |  | no | A phone's move may write `dead` again (the move's write back). |
 | `sprint` | worker | switch | v2.3.3003 | false | logic |  | no | No sprint step is allowed. |
 | `steadymovers` | worker | switch | v2.3.3203 | false | logic |  | no | Every move goes out again, from the next tick. |
+| `?ridecoast` | page | switch | v2.3.5440 | =0, off, false | logic |  | no | The board starts at top speed and stops the moment you let go, as before: no pushes to speed up, no roll-off. |
 
 ## preload
 

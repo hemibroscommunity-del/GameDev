@@ -18,6 +18,16 @@
  *   5. THE OTHERS: `brd: 1` on the tick's player while riding, absent on foot
  *      and after the kill switch.
  *   6. THE CLIENT'S RULES (src/game/ride.js): the mirror, and the speed.
+ *   7. (v2.3.5440, card SK) THE PUSH START AND THE ROLL-OFF (src/game/ride.js
+ *      rideFeel): the owner, "letting go of skateboard button makes it roll
+ *      for a while down to a slow stop.  Also let the skateboard take a push
+ *      or two before reaching max speed when starting from a stop".  Top
+ *      within two pushes; let go, a roll from top to a stop in the chosen
+ *      time, slowest at the end; stopped at once on a step-off, a hold, a
+ *      wall; held again mid-roll, on from its speed with no new start; the
+ *      pose's pushes are the model's; `?ridecoast=0` gives the old start and
+ *      stop.  Client rules only: the worker is unchanged (a slower start and a
+ *      roll are inside the bound §3 holds).
  */
 import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
 import { RIDE, RIDE_ENDS_ON } from '../src/ride.js';
@@ -333,6 +343,160 @@ async function step(dx, gapMs, extra) {
   check('6. going north the board runs up and down and he faces east across it', C.rideLook({}, 'north', false, t0).facing === 'east');
   check('6. on a diagonal he faces the diagonal across it, toward the camera', C.rideLook({}, 'southeast', false, t0).facing === 'southwest' && C.rideLook({}, 'northeast', false, t0).facing === 'southeast');
   check('6. standing still on the board: the sideways stand, no push', C.rideLook({}, 'west', false, t0).pose === 'stand');
+}
+
+// ── 7. THE PUSH START AND THE ROLL-OFF (v2.3.5440) ──────────────────────
+{
+  const F = C.RIDE_FEEL, L = C.RIDE_LOOK;
+  C.setRideFeel(true);
+  const board = () => { const S = { _serverCaps: { ride: true }, currentZone: 'wheel', player: { x: 0, y: 0 } }; C.rideApply(S, { on: true }, 1); return S; };
+  /* a run of frames: `dx` held (0: let go), `ms` long, at `dt` ms a frame;
+     each frame's [game ms, speed, pushing] */
+  const run = (S, dx, ms, dt = 16.667, held = false) => {
+    const out = [];
+    for (let t = 0; t < ms - 1e-6; t += dt) {
+      const o = C.rideFeel(S, dx, 0, dt, held);
+      out.push({ t: t + dt, spd: S._ride.spd, k: o[0], dx: o[1], push: S._ride.push });
+    }
+    return out;
+  };
+  check('7. the numbers sit in one frozen table, each a share or a time', Object.isFrozen(F)
+    && F.PUSH_ADD > 0 && F.PUSH_ADD <= 1 && F.PUSH_GAP_MS > L.PUSH_MS && F.COAST_MS > 0 && F.COAST_EASE >= 1, F);
+  check('7. on foot the model is the walk: a share of 1 and the stick as it is', JSON.stringify(C.rideFeel({ player: {} }, 0.7, -0.2, 16.667, false)) === JSON.stringify([1, 0.7, -0.2]));
+
+  /* a: from a stand, two pushes to top in about a second, at any frame rate */
+  for (const dt of [16.667, 50]) {
+    const S = board();
+    check(`7a. getting on, the board stands (speed ${S._ride.spd}) (${dt} ms frames)`, S._ride.spd === 0 && C.rideSpeed(S) === 0);
+    const r = run(S, 1, 1500, dt);
+    const at = (ms) => r.find((q) => q.t >= ms - 1e-6);
+    const top = r.find((q) => q.spd >= 1);
+    const pushes = r.filter((q, i) => q.push >= 0 && q.push <= dt + 1e-6 && i < r.indexOf(top) + 1).length;
+    check(`7a. held from a stand: below top early (${at(200).spd.toFixed(2)} at 0.2 s), the first push about 55% (${at(500).spd.toFixed(2)} at 0.5 s), top at ${top && top.t.toFixed(0)} ms, within two pushes (${pushes}) (${dt} ms frames)`,
+      at(200).spd > 0.2 && at(200).spd < 0.55 && Math.abs(at(500).spd - F.PUSH_ADD) < 0.01 && !!top && top.t >= 700 && top.t <= 1200 && pushes === 2,
+      { s200: at(200).spd, s500: at(500).spd, top: top && top.t, pushes });
+    check(`7a. ...and the walk is RIDE_MULT x that speed: the board never outruns its top (${dt} ms frames)`,
+      r.every((q) => q.k >= 0 && q.k <= 1) && r[r.length - 1].k === 1);
+    /* b: let go at top: rolls on the way it went, slower and slower, to a stop */
+    const c = run(S, 0, 3000, dt);
+    const stop = c.find((q) => q.spd === 0);
+    const cat = (ms) => c.find((q) => q.t >= ms - 1e-6).spd;
+    const falls = c.every((q, i) => i === 0 || q.spd <= c[i - 1].spd);
+    /* slowest at the end: the speed lost in the first quarter of the roll
+       against the last (a straight line loses the same in each) */
+    const q1 = 1 - cat(F.COAST_MS / 4), q4 = cat(F.COAST_MS * 3 / 4);
+    check(`7b. let go at top: still rolling the way it went (${c[0].dx}), slower each frame, stopped at ${stop && stop.t.toFixed(0)} ms (about ${F.COAST_MS} ms) (${dt} ms frames)`,
+      c[0].spd > 0.95 && c[0].dx === 1 && falls && !!stop && stop.t >= F.COAST_MS * 0.85 && stop.t <= F.COAST_MS * 1.05,
+      { first: c[0], stop: stop && stop.t });
+    check(`7b. ...slowest at the end, not a straight line: lost ${q1.toFixed(2)} in its first quarter, ${q4.toFixed(2)} left in its last (${dt} ms frames)`,
+      q1 > 0.35 && q4 < 0.1, { q1, q4 });
+    check(`7b. ...and stopped, it stays put: no way, no speed (${dt} ms frames)`,
+      c[c.length - 1].k === 0 && c[c.length - 1].dx === 0 && C.rideSpeed(S) === 0);
+  }
+  /* c: the roll is the same at any frame rate (the steady step's ms, game/frameClock.js) */
+  {
+    const a = board(), b = board();
+    run(a, 1, 1500, 16.667); run(b, 1, 1500, 50);
+    const ra = run(a, 0, 1000, 16.667), rb = run(b, 0, 1000, 50);
+    check(`7c. a second of rolling off reads the same at 60 and at 20 frames a second (${ra[ra.length - 1].spd.toFixed(4)}, ${rb[rb.length - 1].spd.toFixed(4)})`,
+      Math.abs(ra[ra.length - 1].spd - rb[rb.length - 1].spd) < 0.005);
+  }
+  /* d: a resume with no new start */
+  {
+    const S = board();
+    run(S, 1, 1500);
+    run(S, 0, 500);
+    const mid = S._ride.spd;
+    const r = run(S, 1, 100);
+    check(`7d. held again mid-roll (at ${mid.toFixed(2)}): on from the speed it had (${r[0].spd.toFixed(2)}), never back to a stand, with a push at once`,
+      mid > 0.3 && r[0].spd >= mid && r.every((q) => q.spd >= mid) && r[0].push >= 0 && r[0].push <= 17, { mid, r0: r[0] });
+    const r2 = run(S, 1, 1000);
+    const both = r.concat(r2);
+    check(`7d. ...and one push takes it back to top (${both.filter((q) => q.push >= 0 && q.push <= 17).length} push)`, r2[r2.length - 1].spd === 1 && both.filter((q) => q.push >= 0 && q.push <= 17).length === 1);
+    /* the way it rolls is the stick's last */
+    run(S, -0.6, 200);
+    const c = C.rideFeel(S, 0, 0, 16.667, false);
+    check(`7d. let go after turning: it rolls the stick's last way (${c[1]}, ${c[2]})`, c[1] === -0.6 && c[2] === 0);
+  }
+  /* e: stopped at once */
+  {
+    const S = board();
+    run(S, 1, 1500);
+    C.stepOff(S, 'edge', 2);
+    check('7e. a step-off (the edge, a hit, a fight, a tap): speed 0 at once, nothing left to roll', S._ride.spd === 0 && S._ride.push === -1 && S._ride.wx === 0 && C.rideSpeed(S) === 0);
+    C.rideApply(S, { on: true }, 3);
+    run(S, 1, 1500);
+    C.rideApply(S, { on: false, why: 'hit' }, 4);
+    const o = C.rideFeel(S, 0, 0, 16.667, false);
+    check('7e. ...the worker\'s ride_state off the same: on foot the next frame, the walk and no roll', S._ride.spd === 0 && o[0] === 1 && o[1] === 0);
+    C.rideApply(S, { on: true }, 5);
+    check('7e. ...and back on, it starts from a stand', S._ride.spd === 0 && S._ride.clk === 0);
+    run(S, 1, 1500);
+    const h = C.rideFeel(S, 0, 0, 16.667, true);
+    check('7e. a hold (a veil, the race line, a stun, the loot freeze): stopped at once, no roll after', S._ride.spd === 0 && h[0] === 0 && C.rideFeel(S, 0, 0, 16.667, false)[0] === 0);
+    /* at the safe ground's edge: rideCheck steps you off, and nothing rolls on */
+    const E = board();
+    E._ride.spd = 1; E._ride.wx = 1;
+    E.player = { x: 1000, y: 0 };
+    C.rideCheck(E, 6, { centre: [0, 0], safeR: 999 });
+    check('7e. rolled past the safe ground\'s edge: off there (rideCheck), speed 0, no roll after it', !C.isRiding(E) && E._ride.spd === 0 && C.rideFeel(E, 0, 0, 16.667, false)[1] === 0);
+  }
+  /* f: a wall stops it at once; along one it slides */
+  {
+    const S = board();
+    run(S, 1, 1500);
+    const o = C.rideFeel(S, 0, 0, 16.667, false, 100, 100);
+    C.rideStepped(S, 100, 100, 100 + o[1] * 5, 100);
+    C.rideFeel(S, 0, 0, 16.667, false, 100, 100);   /* the wall kept it where it was */
+    check('7f. rolling into a wall: the step went nowhere, stopped at once', S._ride.spd === 0);
+    const S2 = board();
+    run(S2, 0.7071, 1500); S2._ride.wy = 0.7071;
+    C.rideStepped(S2, 0, 0, 5, 5);
+    C.rideFeel(S2, 0, 0, 16.667, false, 0, 5);   /* the wall took the x, not the y */
+    check(`7f. ...at 45 degrees along a wall it slides on (${S2._ride.spd.toFixed(2)})`, S2._ride.spd > 0.9);
+    const S3 = board();
+    run(S3, 1, 1500);
+    C.rideStepped(S3, 0, 0, 5, 0);
+    C.rideFeel(S3, 0, 0, 16.667, false, 5, 0);
+    check(`7f. ...and a step that went where it meant: rolling on (${S3._ride.spd.toFixed(2)})`, S3._ride.spd > 0.95);
+  }
+  /* g: the pose's pushes are the model's (your own figure: rideLook handed the record) */
+  {
+    const S = board();
+    const st = {};
+    let t = 0;
+    const poses = [];
+    for (let i = 0; i < 90; i++) { C.rideFeel(S, 1, 0, 16.667, false); t += 16.667; poses.push(C.rideLook(st, 'east', true, t, S._ride).push ? 1 : 0); }
+    const starts = poses.filter((p, i) => p && !poses[i - 1]).length;
+    check(`7g. your pose from a stand: the jog's legs exactly while the model pushes (${starts} pushes in 1.5 s)`, starts === 2 && poses[0] === 1 && poses[30] === 0 && poses[40] === 1, poses.join(''));
+    const glide = [];
+    for (let i = 0; i < 150; i++) { C.rideFeel(S, 0, 0, 16.667, false); t += 16.667; if (S._ride.spd > 0) glide.push(C.rideLook(st, 'east', true, t, S._ride)); }
+    check(`7g. ...and rolling off, the sideways glide all the way (${glide.length} frames, no push)`, glide.length > 60 && glide.every((g) => g.pose === 'stand' && g.facing === 'south' && !g.push));
+    /* another rider (no record): a push setting off and the start's second PUSH_GAP_MS later */
+    const ps2 = {};
+    const p0 = C.rideLook(ps2, 'east', true, 1000);
+    const p1 = C.rideLook(ps2, 'east', true, 1000 + F.PUSH_GAP_MS + 1);
+    const p2 = C.rideLook(ps2, 'east', true, 1000 + F.PUSH_GAP_MS + L.PUSH_MS + 10);
+    const p3 = C.rideLook(ps2, 'east', true, 1000 + F.PUSH_GAP_MS + L.PUSH_EVERY_MS + 1);
+    check('7g. another rider: a push setting off, the second at PUSH_GAP_MS, then one every PUSH_EVERY_MS', p0.push && p1.push && !p2.push && p3.push, [p0, p1, p2, p3]);
+  }
+  /* h: the switch thrown: today's instant start and stop */
+  {
+    check('7h. `?ridecoast=0` (off, false) throws the switch; anything else leaves it on',
+      !C.rideCoastOn('?ridecoast=0') && !C.rideCoastOn('?a=1&ridecoast=off') && !C.rideCoastOn('?ridecoast=false') && C.rideCoastOn('') && C.rideCoastOn('?ridecoast=1') && C.rideCoastOn('?ridecoasts=0'));
+    C.setRideFeel(false);
+    const S = board();
+    const a = C.rideFeel(S, 1, 0, 16.667, false);
+    const b = C.rideFeel(S, 0, 0, 16.667, false);
+    const st = {};
+    const look = C.rideLook(st, 'east', true, 1000, S._ride);
+    const look2 = C.rideLook(st, 'east', true, 1000 + L.PUSH_MS + 10, S._ride);
+    const look3 = C.rideLook(st, 'east', true, 1000 + F.PUSH_GAP_MS + 1, S._ride);
+    check('7h. thrown: top on the first frame held, a stop the first frame let go, the stick as it is',
+      a[0] === 1 && a[1] === 1 && b[0] === 1 && b[1] === 0 && C.rideSpeed(S) === 0, { a, b });
+    check('7h. ...and the pose as before: a push setting off, then every PUSH_EVERY_MS (no start\'s second push)', look.push && !look2.push && !look3.push);
+    C.setRideFeel(null);
+  }
 }
 
 Date.now = realNow;

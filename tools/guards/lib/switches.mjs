@@ -305,5 +305,6 @@ export const SWITCHES = Object.freeze([
   { name: '?foldgentle', side: 'page', system: 'audio', kind: 'switch', born: 5045, thrown: '=0, off, false', risk: 'logic', needs: [], fallback: 'no', off: 'A sound is folded to mono in one go again, not in turns between frames.' },
   { name: '?npcheads', side: 'page', system: 'render', kind: 'switch', born: 5246, thrown: '=0', risk: 'memory', needs: [], fallback: 'no', off: 'The townsfolk\'s head pictures keep their decoded copies, as before.' },
   { name: '?pixbudget', side: 'page', system: 'device', kind: 'switch', born: 5140, thrown: '=0 (off), or a number: the budget to try', risk: 'chip', needs: [], fallback: 'no', off: 'The drawing resolution is no longer held to the pixel budget.' },
+  { name: '?ridecoast', side: 'page', system: 'movement', kind: 'switch', born: 5440, thrown: '=0, off, false', risk: 'logic', needs: [], fallback: 'no', off: 'The board starts at top speed and stops the moment you let go, as before: no pushes to speed up, no roll-off.' },
   { name: '?treenumbers', side: 'page', system: 'memory', kind: 'switch', born: 5247, thrown: '=0', risk: 'memory', needs: [], fallback: 'no', off: 'The trees are held as pictures again, not as colour numbers.' },
 ]);
