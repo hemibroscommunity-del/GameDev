@@ -99,3 +99,24 @@ the `ladder` row on `DOOR_SUITES`; O's own files unchanged but
   back. Suites: frame-pacer 113 (e3ae788, 6d46f97), 112 (70dc592);
   render-res 40; switches (359 rows), draw-lanes, phase-table green at
   6d46f97.
+
+## Card T: rebuilt without card O's #1792, to the next batch
+
+#1797 (tag 5303) and #1804 (tag 5304) carried card O's #1792 (0e3f823,
+merged in by mistake for sitting 11: #1797's red `test`). Card T rebuilt
+both on `main` 9fd5e580 without it: `claude/plan-t-3-page-draw-rebuilt`
+(a440c9b) and `claude/plan-t-4-thrown-rebuilt` (922b388, carrying the
+first), new PRs replacing #1797 and #1804. Step 3: the files are the
+card's (the switch table and its page, card B's map reading it, SHAPES'
+two lines, the spec, the thrown run's guard and preload, T's status); no
+`server/` or `src/` file; one merge base each, clean against `main`.
+
+**Not on today's list.** After today's two rows (#1809 `tradedoor`, #1805
+`?packworker`), both conflict at `tools/guards/lib/switches.mjs`'s end and
+`docs/SWITCHES.md` (tried in a scratch copy). Card T merges the new `main`
+after today's list lands; from PR 4 a row's place is set by its name,
+which ends these collisions. PR 3 takes the unlisted line from 113 to 0,
+so the gatekeeper does not lower it today (112 on `main`: a change there
+would collide with T). For the owner: the thrown run adds about 16 s to
+every PR's `test` (paid minutes); the full run (about 45 minutes) is the
+owner's to ask for.
