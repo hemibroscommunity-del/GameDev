@@ -1,7 +1,7 @@
 card: A
 branch: claude/plan-a-7-heldsweep (PR 7, tag 5126)
-prs: #1688, #1692, #1703, #1706, #1708, #1711 (merged); PR 7 (5126) working, not opened
-state: working
+prs: #1688, #1692, #1703, #1706, #1708, #1711 (merged); #1760 (5126, ready: after card P's #1757)
+state: ready
 
 ## Done
 
@@ -16,7 +16,7 @@ state: working
 
 ## Next
 
-- PR 7 (5126), `tools/qa/mp/mp-heldsweep.mjs`: a station keeps the
+- #1760 (5126), `tools/qa/mp/mp-heldsweep.mjs`: a station keeps the
   phone's notes (its ring of holds); the run fails a debt-list hold the
   page runs, 12 ms or more, that left none (`noteGaps`). Begun at 09:18:
   cards H and J are finished, their `ready` files stale (the planning
