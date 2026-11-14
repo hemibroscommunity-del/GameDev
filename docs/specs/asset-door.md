@@ -331,3 +331,46 @@ made again in this PR.
 `shipped.mjs` (v2.3.5243): a tracked file deleted in the working tree is no
 longer in reach (its row reads as a row with no file), where the compare
 crashed reading it.
+
+## 4. The gate (step 9.3; tag 5244)
+
+`tools/guards/asset-door.test.mjs`, in card B's form (`asset-sources.test.mjs`:
+its header lists the holds and their break proofs, `ROOT` from
+`tools/guards/lib/fourLines.mjs`); `cd server && npm test` runs it with every
+guard and suite (1.2 s, the 150 MB hashed). It fails:
+
+1. a file in reach with no row;
+2. a row with no file;
+3. a file whose bytes or hash are not its row's (changed outside the door: the
+   mend is its own tool, then `node tools/assets/shipped.mjs --write`);
+4. a file two families match;
+5. a rise in `unsorted` (a census: at most 0 today; it only falls, and the
+   gatekeeper alone makes it strict);
+6. a file of a supplied family that the game's reader (`png8Decode.js`) reads
+   over its bar: a census by family (`OVER_BAR`: 565 files in 32 families at
+   tag 5244, the bro's sheets, the head pieces' originals, the uploads' cuts),
+   each count only falls; and a supplied palette PNG the reader reads must be
+   whole frames of its family's pixel rule;
+7. a look sheet that `lookExpand.js` `lookSheetParse` will not read, or whose
+   hash is not its row's. Read the game's way: the picture's pixels as a
+   canvas gives them (a see-through texel reads 0,0,0,0; a partly see-through
+   one fails, its number would change), its manifest row and its set's roles
+   (`roles.json`), the spec (`lookUnpack.js` `lookSheetSpec`), the bytes
+   (`unpackLookSheet`), the parse (its rows, table start, scale and roles as
+   the manifest says); and every colour number below its table's entries (a
+   shirt's number is its red: its green is its frame + 1, `shirt-bake.mjs`);
+8. `shipped.json` totals that are not its rows'.
+
+It never makes a file again to compare: it compares recorded hashes and reads
+files through the game's own readers. Each hold's break proof is in the
+guard's header, tried once by hand: each turned its hold red, and the tree
+green again after.
+
+**`lookSheetSpec`, one copy.** A sheet's shape (its rows on the chip and its
+header) was built inside `lookPalette.js` `buildSheet`, which imports
+`pixi.js`, which GitHub's `test` job does not have. It moved, unchanged, to
+`src/rendering/lookUnpack.js` (no imports), with `LOOK_KIND_IDS` and the most
+roles; `lookPalette.js` imports it (and still exports `LOOK_KIND_IDS`), and the
+gate imports the same. The planning session's answer (2026-11-14): one shape,
+never a twin in the guard (part 5, rule 2). Compared before and after: the
+same spec for every one of the 223 sheets, at book 0 and 70,000 (446 of 446).
