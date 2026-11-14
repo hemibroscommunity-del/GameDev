@@ -969,6 +969,18 @@ writes them, never identifiers: `dungeon`, `connection`, `loading` and
 | `resetOn`, `runResets` (v2.3.5203) | a state's reset, registered beside it in its system's file, and the edge's one door's call (`src/game/resetOn.js`); the ledger's hand column `reset` | 5 (step 5.3) |
 | `dungeon`, `connection`, `loading`, `window`, `monster` | the phase table's machines beyond part 5's list (a row's `name`) | 5 |
 
+**Chosen by card R (step 4.3, tag 5283), free at its commit** (the same
+search, with `docs`): `skillpoints`, `POINT_ROADS`, `POINT_READS`,
+`POINT_FIELDS`, `POINTS_WHOLE`, `DEAL_FIELDS`, `pointsGive`, `pointsTake`,
+`pointsSet`, `pointsDeal` and `pointsAfter` have no hit. The plain `points`
+is a common word (achievement points, the points reset) and names no file.
+
+| Name | For | Part |
+|---|---|---|
+| `skillpoints.js`, `POINT_ROADS` | the skill points' door and its table (step 4.3's "a table a door", part 7) | 7 |
+| `pointsGive`, `pointsTake`, `pointsSet`, `pointsDeal` | its four verbs | 7 |
+| `POINT_READS`, `POINT_FIELDS`, `POINTS_WHOLE`, `DEAL_FIELDS`, `pointsAfter` | its columns' closed lists, the whole-build assigns, the deal's fields, its pure sum | 7 |
+
 `report` is free as a message type and a common word elsewhere; part 4 says
 what it is not. `gid`, `pid` and `hz` are TODAY's names, used here for the
 thing they already mean.

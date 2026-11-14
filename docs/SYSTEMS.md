@@ -171,8 +171,9 @@ The life skills: gathering, cooking, smithing, the farm, fishing, trapping.
 Quests, achievements, the codex, pets' book, points.
 
 - **Files**: `server/src/`: quests, achievements, codex, petbook, pets, pointsreset, prog3
+- **Files**: `server/src/`: skillpoints
 - **Files**: `src/game/`: quests, questCard, questComplete, questFly, questHandIn, questJournal, questKept, questPins, questRoute, questTrailStyle, questWays, trackedQuest, achievements, petBook, petFetch, pointsBubbles, pointsReset, pointsTips, tour, levelCelebration, xpBar, xpPop, welcomeBanner
-- **Doors**: none named yet
+- **Doors**: `pointsGive` in `server/src/skillpoints.js` (POINT_ROADS: every change to a player's build points (pointsGive, pointsTake, pointsSet, pointsDeal; v2.3.5283, card R))
 - **Switches**: none
 - **Words**: `quest`, `achievement`, `codex`, `pet`, `points`, `tour`, `xp`, `level`
 - **Traps**: `quests`
