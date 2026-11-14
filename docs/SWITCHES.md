@@ -137,6 +137,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `ahonewrite` | worker | switch | v2.3.4500 | false | logic |  | no | An auction-house listing goes back to its old two writes, restart hole and all. |
 | `armorstashlive` | worker | switch | v2.3.4840 | false | logic |  | no | The armour stash list goes back to being sent only at the join. |
 | `bank` | worker | switch | v2.3.3785 | false | logic |  | no | Un-advertises the bank and refuses every deposit and withdrawal; what is in a vault stays and still shows. |
+| `capeoffkept` | worker | switch | v2.3.5422 | false | logic |  | no | A cape taken off is kept in memory only again, so it is worn again after a rejoin or a deploy. |
 | `dailyChest` | worker | switch | v2.3.2820 | false | logic |  | no | Un-advertises the daily chest and pays the day's reward as plain gold again (a chest in a bag waits). |
 | `dailyquests` | worker | switch | v2.3.3140 | true | logic |  | no | Thrown (true), the put-away daily quests come back: counting, rerolls and claims. |
 | `dailyspin` | worker | switch | v2.3.3140 | false | logic |  | no | Un-advertises the daily spin and refuses every spin (nothing taken away). |
