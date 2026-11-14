@@ -19,8 +19,7 @@ state: ready
 ## Next
 
 - Nothing: the card stops when the three merge, in order. Sitting 4's
-  holds mended on today's `main` (`systems`, `shapes-once`,
-  `tests-by-system`), with the review's findings (`review-z4.md`).
+  holds and the review's findings mended on today's `main`.
 
 ## Found
 
