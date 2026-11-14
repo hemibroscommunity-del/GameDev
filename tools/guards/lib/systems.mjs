@@ -135,8 +135,8 @@ export const SYSTEMS = Object.freeze({
   economy: {
     what: 'gold, the bag, the bank, the market and shops, trades, drops, chests and daily rewards',
     files: [
-      f('server/src', 'gold|bag|bank|market|marketplace|shop|store|storechat|storegear|storeoffer|trade|trade2|xfer|inbox|itemdrop|deathpile|gearstash|gear|gearprov|salvage|gamble|dice|dailychest|dailyrewards|risechest|revealbag|loginspin|eventcapes'),
-      f('src/game', 'bank|itemDrop|groundLoot|lootAsk|dropLines|dropLook|storeAnswer|storeSellTap|tradeSlot|weaponSell|salvage|postOffice|revealBag|dice|dailyRewards|bossChest|loginSpinWheel|coinArt|spinBoard|gearWornSync|arenaStakes'),
+      f('server/src', 'gold|bag|bank|market|marketplace|shop|store|storechat|storegear|storeoffer|trade|trade2|xfer|econcard|worldsum|valuepause|inbox|itemdrop|deathpile|gearstash|gear|gearprov|salvage|gamble|dice|dailychest|dailyrewards|risechest|revealbag|loginspin|eventcapes'),
+      f('src/game', 'bank|itemDrop|groundLoot|lootAsk|dropLines|dropLook|storeAnswer|storeSellTap|tradeSlot|weaponSell|salvage|postOffice|revealBag|dice|dailyRewards|bossChest|loginSpinWheel|coinArt|spinBoard|gearWornSync|arenaStakes|econCard'),
     ],
     words: ['gold', 'bag', 'bank', 'market', 'shop', 'store', 'trade', 'inbox', 'drop', 'loot', 'chest', 'salvage', 'gamble', 'dice', 'daily', 'auction', 'gear', 'coin'],
     traps: ['economy'],
@@ -326,7 +326,10 @@ export const SYSTEMS = Object.freeze({
      about another system's state; nothing imports it yet */
   state: {
     what: 'the state ledger: every field of S and top-of-file variable, a file a system',
-    files: [re('^src/state/')],
+    /* v2.3.5203 (card L PR 3, the planning session's call): and resetOn.js,
+       the state's resets registered beside their state and run at each
+       edge's one door (grand plan step 5.3, step 2) */
+    files: [re('^src/state/'), f('src/game', 'resetOn')],
     words: ['ledger'],
     traps: [],
     doors: [],

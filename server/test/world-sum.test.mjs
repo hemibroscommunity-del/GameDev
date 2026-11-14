@@ -42,8 +42,8 @@ import { GameRoom } from '../src/index.js';
 import { STORAGE_MARKS } from '../src/storagemarks.js';
 import { bagGive } from '../src/bag.js';
 import { BANK } from '../src/bank.js';
-/* v2.3.5091: the sum moved to worldsum.mjs whole (the storm judges with it too) */
-import { READERS, count, unexplained } from './worldsum.mjs';
+/* v2.3.5091: the sum moved out whole (the storm judges with it too); v2.3.5093: into the worker (src/worldsum.js), the live walk's one sum */
+import { READERS, count, unexplained } from '../src/worldsum.js';
 
 let failures = 0, passes = 0;
 function check(name, cond, detail) {

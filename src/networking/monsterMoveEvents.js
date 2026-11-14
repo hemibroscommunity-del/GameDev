@@ -21,6 +21,24 @@
 import { ELEMENTS } from '@/data/elements.js';
 import { cueAt } from '@/game/eventSounds.js';
 import { movesCapOn, volleyBalls, MOVE_KINDS } from '@/game/monsterMoves.js';
+import { resetOn } from '@/game/resetOn.js';   /* v2.3.5207: the balls and the warnings stay in their place (card L) */
+
+/* ═══ v2.3.5207: A PLACE'S HAZARDS STAY IN IT (card L) ═══
+   Three lists filled from the worker's events (here, and gameEvents.js's
+   monster_ability and hit cases), drawn in world pixels and carrying no
+   place: the monsters' balls in flight, a monster's warning on the ground and
+   the impact rings.  Some ways of changing place emptied the balls by hand (a
+   dungeon's way in and out, zoneTransitions'); the respawn and the farm trip
+   did not, and no way emptied the warnings or the rings, which ran out their
+   own clocks on the new map.  The zone's door (resetOn.js) empties all
+   three; the hand-written wipes stay.  `?wirereset=0` leaves them as before.
+   (Here, not in gameEvents.js, which is at its line in four-lines.test.) */
+function leavePlaceHazards(S) {
+  S.slimeProjectiles = [];
+  S._telegraphZones = [];
+  S._impactRings = [];
+}
+resetOn('zone', leavePlaceHazards, 'wire');
 
 function monsterOf(S, id) {
   const list = (S && S.monsters) || [];

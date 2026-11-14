@@ -464,5 +464,101 @@ for (const crashAt of ['before the stamp', 'after the stamp']) {
     { redeemed: led && led.redeemed, bag });
 }
 
+/* ── v2.3.5422 (card J2): a cape taken off stays off after a rejoin ──
+ * `ps.capeOff` was never in _saveRpg's fixed list, so it was dropped: a cape
+ * taken off was worn again after a rejoin or a deploy (TRAPS §2).  The
+ * preference now rides the cape's own record (`capegrant:<capeId>` `off`).
+ * Played through the real join and `cape_equip`; a deploy is a NEW room on
+ * the same storage (it forgets its ledgers and every playerState).
+ * Break proof: _capeOffNow returning `ps.capeOff` alone (the old read) fails
+ * "still off after a deploy and a rejoin". */
+for (const way of ['kept', 'switch off']) {
+  const store = new Map();
+  const sK = {
+    storage: {
+      get: async (k) => { const v = store.get(k); return v === undefined ? undefined : JSON.parse(JSON.stringify(v)); },
+      put: async (k, v) => { store.set(k, JSON.parse(JSON.stringify(v))); },
+      list: async (opts) => {
+        const out = new Map();
+        for (const [k, v] of store) if (!opts?.prefix || k.startsWith(opts.prefix)) out.set(k, JSON.parse(JSON.stringify(v)));
+        return out;
+      },
+      delete: async (k) => { store.delete(k); },
+    },
+    getWebSockets: () => [],
+    acceptWebSocket: () => {},
+  };
+  const PK = 'bp_cape_off', OTHER = 'bp_cape_other';
+  store.set('cape_start_id', EVENT_START_ID);
+  store.set('capegrant:crimson', { issued: [PK, OTHER], redeemed: [PK, OTHER] });
+  if (way === 'switch off') store.set('liveflags', { capeoffkept: false });
+  store.set('rpg:' + PK, {
+    coins: 0, inventory: {}, lifeSkills: {}, level: 1, xp: 0, hp: 100, maxHp: 100,
+    stamina: 100, maxStamina: 100, mana: 100, maxMana: 100, _buffs: {}, weaponStash: [], _v: 17,
+  });
+  const joinK = async (room, id) => {
+    const ws = { sent: [], send(m) { this.sent.push(JSON.parse(m)); }, close() {} };
+    room.sessions.set(ws, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
+    await room._liveFlagsEnsure();
+    await room._capeLedgersLoad();
+    await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: 'K', phrase: 'p-' + id, protocolVersion: 2, data: { x: 0, y: 0, z: 'town' } }));
+    return ws;
+  };
+  /* the cape the join tells the phone it wears (persistence.js _sendPlayerState) */
+  const joinCape = (ws) => {
+    let said;
+    for (const m of ws.sent) if (m && m.type === 'player_state' && m.payload && 'cape' in m.payload) said = m.payload.cape;
+    return said;
+  };
+  const equip = async (room, ws, worn) => {
+    await room.webSocketMessage(ws, JSON.stringify({ type: 'cape_equip', payload: { worn } }));
+    await new Promise((r) => setTimeout(r, 5));
+  };
+  const rA = new GameRoom(sK, mockEnv);
+  const wsA = await joinK(rA, PK);
+  check(`${way}: setup -- a winner wears the cape on joining, and the join says so`, rA._capeWornBy(PK) === 'crimson' && joinCape(wsA) === 'crimson', { worn: rA._capeWornBy(PK), said: joinCape(wsA) });
+  await equip(rA, wsA, false);
+  check(`${way}: taken off, it is off in the room`, rA._capeWornBy(PK) === null, rA._capeWornBy(PK));
+  const ledA = store.get('capegrant:crimson');
+  if (way === 'kept') {
+    check(`${way}: ...and written on the cape's own record, the ledger whole`,
+      ledA && Array.isArray(ledA.off) && ledA.off.length === 1 && ledA.off[0] === PK
+        && ledA.redeemed.length === 2 && ledA.issued.length === 2, ledA);
+  } else {
+    check(`${way}: ...and nothing written on the record (the old way)`, ledA && !('off' in ledA), ledA);
+  }
+  /* a deploy: a new room on the same storage, and the player joins again */
+  const rB = new GameRoom(sK, mockEnv);
+  const wsB = await joinK(rB, PK);
+  if (way === 'kept') {
+    check(`${way}: still off after a deploy and a rejoin`, rB._capeWornBy(PK) === null, { worn: rB._capeWornBy(PK), led: store.get('capegrant:crimson') });
+    const said = joinCape(wsB);
+    check(`${way}: ...and the join tells the phone no cape on its back`, said === null, said);
+    check(`${way}: ...another winner's cape is still worn`, rB._capeWornBy(OTHER) === 'crimson', rB._capeWornBy(OTHER));
+    /* the take-off again: already off, no write, no echo storm */
+    const before = JSON.stringify(store.get('capegrant:crimson'));
+    await equip(rB, wsB, false);
+    check(`${way}: taking it off again changes nothing`, JSON.stringify(store.get('capegrant:crimson')) === before && rB._capeWornBy(PK) === null);
+    /* a redeem by someone else saves the ledger: "off" survives that save */
+    rB._capeLedgers.crimson.redeemed.push('bp_cape_third');
+    rB._capeLedgerSave('crimson');
+    await new Promise((r) => setTimeout(r, 5));
+    const rC = new GameRoom(sK, mockEnv);
+    await rC._liveFlagsEnsure(); await rC._capeLedgersLoad();
+    check(`${way}: another save of the ledger keeps "off"`, rC._capeWornBy(PK) === null && rC._capeWornBy('bp_cape_third') === 'crimson', store.get('capegrant:crimson'));
+    /* put it on: worn, and kept so */
+    await equip(rB, wsB, true);
+    check(`${way}: put on again, it is worn`, rB._capeWornBy(PK) === 'crimson', rB._capeWornBy(PK));
+    const rD = new GameRoom(sK, mockEnv);
+    await joinK(rD, PK);
+    check(`${way}: ...and worn after the next deploy and rejoin, the record's "off" cleared`,
+      rD._capeWornBy(PK) === 'crimson' && !('off' in store.get('capegrant:crimson')), store.get('capegrant:crimson'));
+  } else {
+    check(`${way}: the old way -- worn again after a deploy and a rejoin`, rB._capeWornBy(PK) === 'crimson', rB._capeWornBy(PK));
+  }
+  /* no cape, nothing to set: a player who never won leaves no "off" */
+  check(`${way}: a player who won nothing gets nothing written`, rA._capeOffSet('bp_nobody', true) === null);
+}
+
 console.log(failures ? `\n${failures} FAILURE(S)` : '\neventcapes: ALL PASS');
 process.exit(failures ? 1 : 0);

@@ -11,5 +11,5 @@
  */
 export const SYSTEM = 'liveops';
 export const ROWS = [
-  { field: '_testMode', system: 'liveops', lifetime: 'sitting', suggested: 'rejoin', born: 'fly src/game/testMode.js applyTestMode', twoFiles: '', noRead: false, noSet: false, phase: null, flag: false, writers: ['src/game/testMode.js'] },
+  { field: '_testMode', system: 'liveops', lifetime: 'sitting', reset: 'kept: the worker says it again in state_sync itself (msg.testMode, wsClient.js applyTestMode), before the rejoin\'s door runs: a reset there would wipe what it just said', suggested: 'rejoin', born: 'fly src/game/testMode.js applyTestMode', twoFiles: '', noRead: false, noSet: false, phase: null, flag: false, writers: ['src/game/testMode.js'] },
 ];
