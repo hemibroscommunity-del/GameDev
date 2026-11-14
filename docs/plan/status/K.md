@@ -1,6 +1,6 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: #1822 (PR 1, ready), #1820 (PR 3, ready), PR 6 tag 5186 (ready)
+prs: #1822 (PR 1, ready), #1820 (PR 3, ready), #1826 (PR 6, ready)
 state: ready
 
 ## Done
@@ -9,7 +9,7 @@ state: ready
   made from the wire table (`wire/lists.js`); column `privileged`. Deploys.
 - PR 3 (5183, #1820): `wire-hostile.test` (10,524 cases), census
   `hostile.md`: 19 failing, the line. Deploys.
-- PR 6 (5186): `claims-gain.test`, `claimbots.mjs`, census `claims.md`:
+- PR 6 (5186, #1826): `claims-gain.test`, `claimbots.mjs`, census `claims.md`:
   reach 2.96, bow label 3.76, guard 1.37, move 4.35, harvest 1.86, cook
   1.59 (quest, sale, local 1); no honest refusal in 81 disturbance runs.
 
