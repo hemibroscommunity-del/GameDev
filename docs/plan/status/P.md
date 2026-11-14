@@ -1,6 +1,6 @@
 card: P
-branch: claude/plan-p-4-gate (one branch a PR, each begun from the one before)
-prs: #1713 (5241, merged), #1715 (5242, ready), #1716 (5243, ready), PR 4 (5244, ready; its number with PR 5's first commit)
+branch: claude/plan-p-5-m4a (one branch a PR, each begun from the one before)
+prs: #1713 (5241, merged), #1715 (5242), #1716 (5243), #1718 (5244), PR 5 (5245): ready
 state: ready
 
 ## Done
@@ -14,13 +14,16 @@ state: ready
 - #1716 (tag 5243): `tools/assets/finish.mjs`; strip256, reduce256 and
   npc256 call it (each compared: the same bytes as before).
 
-- PR 4 (tag 5244): `tools/guards/asset-door.test.mjs`, eight holds, each
+- #1718 (tag 5244): `tools/guards/asset-door.test.mjs`, eight holds, each
   break proof tried; `lookSheetSpec` moved to `lookUnpack.js` (446 specs
   compared, the same). 381 suites green.
 
+- PR 5 (tag 5245): the 19 `.m4a` under `public/sfx/` removed (0.19 MB;
+  nothing named them; the MP3 beside each plays); 3,206 rows.
+
 ## Next
 
-- PR 5 (tag 5245), the 19 `.m4a` under `public/sfx/`.
+- The backlog (tag 5246 on), in the census's order, once PR 5 is merged.
 
 ## Found
 
@@ -30,6 +33,9 @@ state: ready
   (draw `none`); the census lists them (removal is the owner's yes).
 - At the fight 22.2 MB of textures have no label (canvases 16.6 on the
   chip): the renderers' bakes, not a family; naming them is not card P's.
+
+- `families.mjs` keeps the `sfx-m4a` row, now matching no file, and the
+  twins' note "beside (the .m4a)": the next PR touching the table drops them.
 
 ## Needs
 
