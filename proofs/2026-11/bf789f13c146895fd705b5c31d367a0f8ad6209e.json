@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "bf789f13c146895fd705b5c31d367a0f8ad6209e",
+  "tree": "59f0472092649cde23fa4a347fbf6a752bf50aef",
+  "committedAt": "2026-11-14T12:05:50-08:00",
+  "subject": "Merge pull request #1816 from hemibroscommunity-del/claude/plan-t-3-page-draw-rebuilt",
+  "files": 7691,
+  "bytes": 956114800,
+  "listingSha256": "1e22ca0aee928513470a54b365e1bca8b2bb240b4ca2c81d13c7de732dcddc3c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

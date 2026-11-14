@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b7c09d0ead519d82b2c8c10a733975563b43a432",
+  "tree": "c9892cb3399267bcb875c96ddb281a40aa96fa61",
+  "committedAt": "2026-11-14T12:05:58-08:00",
+  "subject": "Merge pull request #1817 from hemibroscommunity-del/claude/plan-t-4-thrown-rebuilt",
+  "files": 7693,
+  "bytes": 956146704,
+  "listingSha256": "de9262ddfd22db1eba4d3a88290e5ce21ef67e4d035c34b50519dc0e1cb55dc9",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
