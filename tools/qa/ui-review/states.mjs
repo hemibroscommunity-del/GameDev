@@ -772,9 +772,22 @@ export const STATES = [
   },
   dash('more', 'More', 'The More page: eleven tiles (map, social, party, guild, pets, journey, settings, account, notifications with its unread count, feedback, about).'),
   /* v2.3.4393: the Leaderboards have a button of their own on the row
-     ("Ranks"): the list of boards down the left (Ranks, Records, Skills), the
-     board beside it, a face and a level on each row */
-  dash('leaderboard', 'Leaderboards', 'The Leaderboards, from the Ranks button on the row: the list of boards down the left (Ranks: Level, Melee, Bow, Magic, Kills, AP; Records: Daily spin, Coin flip, Biggest fish; Skills: the ten life skills), the board beside it. Each row: the rank, the character\'s face, the name, the record ("Lv 1"). Your own row is lit.'),
+     ("Ranks"); v2.3.5501 (card LB): the new look after the owner's mockups --
+     "RANKS" between laurels, the pills on the sheet's bars, the podium, the
+     table */
+  dash('leaderboard', 'Leaderboards', 'The Leaderboards, from the Ranks button on the row (the owner\'s 2026-11-14 mockups): "RANKS" between two laurels down the left, then the boards as pills on the sheet\'s bars, the lit one gold (Overall, Melee, Bow, Magic with the sheet\'s tiles, Level; the Stats group: Defense, Max HP, Dodge, Stamina, Resist, Max Mana, Speed, Damage; a gold divider; Kills, AP, Records, Skills). Overall opens first: its table the Power rating in full. Beside them the podium of the first three on the gold, silver and bronze shields, each with a face, its name on the ribbon and the board\'s value; under it the table: #, Player, Lv, then (an upright phone) the Total or the sword, bow and staff columns, a button in the head swapping them (a computer shows all four), rows 1-3 on the gold, silver and bronze bars with the laurel medals and a crown by the first name. The board scrolls inside the band; no pages.'),
+  {
+    id: 'leaderboard-skill', group: 'Dashboard', title: 'Leaderboards: a skill',
+    about: 'Leaderboards, Skills, Fishing (a board below the divider, in the same new look): the podium, then the table: #, Player, Lv and the skill\'s level under its name (one "Lv" a row); or, with nobody on it, one line saying so.',
+    run: async ({ P }) => {
+      const e = await bus(P, 'open', 'leaderboard');
+      if (e) return e;
+      await wait(P, 500);
+      const e2 = await tapSel(P, '[data-lb-cat="fishing"]');
+      if (e2) return 'no Fishing board (' + e2 + ')';
+      await wait(P, 900);
+    },
+  },
   {
     id: 'leaderboard-spin', group: 'Dashboard', title: 'Leaderboards: Daily spin',
     about: 'Leaderboards, Records, Daily spin: Biggest wins / Biggest losses on the board\'s first line, then the ten biggest pots taken from the daily spin (or lost to double or nothing), one row a player: face, name, the level pill, how many doubles, the gold. A deleted character\'s record stays as a grey row with DELETED across its face.',
@@ -1476,5 +1489,49 @@ export const STATES = [
       await wait(P, 700);
     },
     after: async ({ P }) => { await evalIn(P, () => { clearInterval(window.__uiDeathStage); const S = window._gameState.current; if (S) S._deathCard = null; }).catch(() => {}); await wait(P, 400); },
+  },
+  /* v2.3.5093: THE OWNER'S CARD, THE ECONOMY (src/ui/panels/EconCard.jsx; the
+     grand plan's step 10.4, card E PR 12): a box of the Test panel, the
+     owner's own.  The panel is opened the owner's way (a long press on the
+     top bar's centre) and keyed with the QA worker's admin key, as
+     H.warpToZone does; then "Show the economy" reads the day's book */
+  {
+    id: 'dev-econ-card', group: 'The owner\'s Test panel', title: 'The owner\'s card: the economy',
+    about: 'The owner\'s Test panel, its economy box: the five numbers (those nothing counts yet say so), then each day of the book: gold and items the game made and destroyed, and the room\'s own counts.',
+    run: async ({ P }) => {
+      const up = () => evalIn(P, () => !!Array.from(document.querySelectorAll('strong')).find((n) => n.textContent === 'Test panel'));
+      if (!(await up())) {
+        await evalIn(P, async () => {
+          const el = document.querySelector('.bt-zone-header__title');
+          if (!el) return;
+          const r = el.getBoundingClientRect();
+          const o = { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1, pointerType: 'touch' };
+          el.dispatchEvent(new PointerEvent('pointerdown', o));
+          await new Promise((res) => setTimeout(res, 1500));
+          el.dispatchEvent(new PointerEvent('pointerup', o));
+        });
+        for (let i = 0; i < 40 && !(await up()); i++) await wait(P, 250);
+        if (!(await up())) return 'the Test panel did not open';
+      }
+      await evalIn(P, (k) => {
+        const inp = document.querySelector('input[type="password"]');
+        if (!inp) return;
+        Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(inp, k);
+        inp.dispatchEvent(new Event('input', { bubbles: true }));
+        const b = Array.from(document.querySelectorAll('button')).find((n) => (n.textContent || '').indexOf('Save key on this device') >= 0);
+        if (b) b.click();
+      }, H.ADMIN_KEY);
+      await wait(P, 1200);
+      /* the box is far down the panel: brought into view first */
+      const there = await evalIn(P, () => { const b = document.querySelector('[data-econ-load]'); if (b) b.scrollIntoView({ block: 'center' }); return !!b; });
+      if (!there) return 'the Test panel has no economy box (the key not taken?)';
+      await wait(P, 300);
+      const e = await tapSel(P, '[data-econ-load]');
+      if (e) return 'no Show the economy button (' + e + ')';
+      await P.page.waitForSelector('[data-econ-card]', { timeout: 8000 }).catch(() => {});
+      await evalIn(P, () => { const c = document.querySelector('[data-econ-card]'); if (c) c.scrollIntoView({ block: 'start' }); });
+      await wait(P, 400);
+    },
+    after: async ({ P }) => { await tapSel(P, '[data-dev-close]').catch(() => {}); await wait(P, 400); },
   },
 ];

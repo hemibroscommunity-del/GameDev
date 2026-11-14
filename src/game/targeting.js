@@ -42,6 +42,7 @@ import { zoneHomes } from '@/data/zones.js';   /* v2.3.3499: the Wheel's far cul
 import { keepDuelLock } from '@/game/duelLock.js';   /* v2.3.3713: a player lock follows its peer; an arena match locks on sight */
 import { tapLockOn, mcLockAllowed } from './manualCombat.js';   /* v2.3.4395: manual combat keeps no chosen lock; v2.3.5018: nor the held combat (tapLockOn) */
 import { dropUnsettledDuel } from '@/game/duelPending.js';   /* v2.3.4361: an accept the worker never settled */
+import { resetOn } from '@/game/resetOn.js';   /* v2.3.5206: the fight you picked ends at the zone door (card L) */
 
 function monPos(m) {
   const x = (typeof m.renderX === 'number' && isFinite(m.renderX)) ? m.renderX : m.x;
@@ -495,6 +496,19 @@ function _updateEngagement(S) {
     S._engaged = false; S._engagedId = null; S._engagedGapAt = 0;
   }
 }
+
+/* ═══ v2.3.5206: THE FIGHT YOU PICKED STAYS IN THE PLACE YOU LEFT (card L) ═══
+   The check above ends it when its monster is not in the list, but only after
+   ENGAGE_GRACE_MS: for a second and a half in the new place the fight with a
+   monster left behind was still on.  The zone's door (resetOn.js) ends it as
+   the check does, with the same three values.
+   `?combatreset=0` leaves it to the check, as before. */
+function endEngagement(S) {
+  S._engaged = false;
+  S._engagedId = null;
+  S._engagedGapAt = 0;
+}
+resetOn('zone', endEngagement, 'combat');
 
 export function updateTargeting(S) {
   if (!S || !S.player) return;

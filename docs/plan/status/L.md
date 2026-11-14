@@ -1,40 +1,39 @@
 card: L
-branch: claude/plan-l-2-phase-table (one branch a PR, each begun from the one before)
-prs: #1746 (ready), PR 2 (opening)
-state: working
+branch: claude/plan-l-10-trade-door (each PR on main, main merged in: sitting 11)
+prs: #1746 to #1801 (merged; #1791, #1796, #1801 through #1807), #1803 (5209), #1809 (5210): ready
+state: ready
 
 ## Done
 
-- PR 1 (5201, #1746): the ledger's guard and four-lines' fourth number read
-  the code on GitHub (`server/` gains the root's exact @babel; the loader
-  tries the root's, then `server/`'s, exit 3 where neither; one shared run a
-  `npm test`); the guard holds the machine's columns (`--json` gains
-  `ledger`). Its merge deploys the worker.
-- PR 2 (5202): the phase table, `src/state/phases.js` (36 rows, 5 `door`:
-  session, life, monster on both sides, the page's zone; 31 `todo`) and its
-  guard `phase-table.test.mjs` (TODO_LINE 31); `docs/specs/phase-table.md`;
-  SHAPES parts 5, 7 and 8. Changes no game file.
+- PR 1 (5201, #1746), PR 2 (5202, #1748): the ledger's guard on GitHub; the
+  phase table and its guard (36 rows, 5 door).
+- PR 3 (5203, #1767): `resetOn` at the zone and rejoin doors, 16 rows
+  (484 -> 468), state-resets.test; the phase guard's holes (sitting 8) shut.
+- PR 4 tags 5204 to 5208 (#1775, #1779, #1791, #1796, #1801, all merged):
+  235 rows, 468 -> 233; `clearElemStatuses` deleted (state-resets §7).
+- PR 4 tag 5209 (#1803): the phase guard reads DOOR_SUITES' doors off the tree.
+- PR 5 tag 5210 (#1809): the trade door (worker): `_t2To`, `tradedoor`.
 
 ## Next
 
-- PR 3 (5203): `resetOn` at the zone door, and the first systems' resets.
+- PR 5's next worker door, duel (5211); each page half after its worker
+  door, its own PR (planning); PR 4's `ui`/`render` (H is done).
 
 ## Found
 
-- `server/test/run.mjs`: the two guards that wait on the census script
-  (`guards/state-ledger`, `guards/four-lines`, ~23 s each, one shared run)
-  are not in `SLOW_FIRST`; the suite took 81 s, not 72, on this box.
-- `UNLISTED_LINE` is still 2128 (16 unlisted): a new top-of-file `let`
-  fails the guard only once the gatekeeper sets the line at its count.
-- `server/src/bodytake.js` ~94 cites "rejoinresend's pose row": there is
-  none (`rejoinresend.js` re-sends the duel and the trade only).
-- `session.phase` is written in three places (born `open` in index.js
-  `fetch`, `joined` in join.js `_handleJoin`, `gone` in leave.js
-  `_leaveRun`), and `session-door.test` fails no second writer: the phase
-  table's scan holds it now.
+- Red on main, not L's: ownersounds 3 (Quick Eat's munch), deathzones 12
+  (a mire wisp), mp-hitsound.mjs (6), race (Lil Bro's start, his jog cells),
+  desklunge (1 to 4 of 12 by run: the lunge does not leave), bowprops 3
+  (the Town Hall takes no arrow).
+- bodytake.js ~94 cites "rejoinresend's pose row" (none); session.phase:
+  three writers, held by the phase table's scan (not its suite).
+- Dead: S._shieldStamina, S.shieldActive, S._iceAttack; monsterCombat.js's
+  own respawn (!S._serverMonsters), an old path.
 
 ## Needs
 
-- Nothing. The planning session's call (2026-11-14): `--json` carries
-  `ledger` (ledgerFound's rows, an output), beyond "its loader only"; the
-  loader's exit 3 said in PR 1's words.
+- The owner: wheelMusic `_m` (a return to the Wheel's music at once) and
+  deskTeach `_armed` (no "Almost!" after a change of place): `sitting`.
+- Card SK's ride.js (S._ride). S._spar: the takeover's leave, unread.
+- Card A (perfTracker.js `zoneStats`). The page's death door heads PR 5's
+  page doors; the 8 death rows land with it.

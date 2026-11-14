@@ -38,10 +38,15 @@
  * (a touchscreen laptop, an iPad with a trackpad, a small window), listed in
  * docs/specs/device-profile.md.
  *
- * No imports but the look palette's pure choice, so node can test it
+ * No imports but the look palette's pure choice (and, v2.3.5221, the lanes'
+ * table, which has none), so node can test it
  * (server/test/device-profile.test.mjs).
  */
 import { lookPaletteChoice, onWindows, onMac } from './lookPaletteChoice.js';
+/* v2.3.5221: the lanes (card O): the class picks a lane, so it is handed to
+   drawLanes.js from here, the one file that asks the device anything (that
+   file has no imports: node tests it) */
+import { useDevClass } from './drawLanes.js';
 
 /* the two media questions, written once (game.css carries the same two in
    its @media rules; device-profile.test holds them to it) */
@@ -123,6 +128,33 @@ export function deviceProfile() {
     palette: palette.on ? 'on' : 'off (' + palette.why + ')',
     dpr: (typeof window !== 'undefined' && window.devicePixelRatio) || 1,
   };
+}
+
+/* ═══ v2.3.5227: THE DEVICE ASKED ONLY HERE (card O PR 7; card A's Found for O; 2.1's "facts only") ═══
+   Four files asked the device themselves: paletteTex.js the chip's name (one
+   program or three), peerImpostor.js the largest picture side, bodyBake.js
+   the processor's threads, crashTrap.js the user agent and the largest
+   picture side.  Each asks here now, and gets the answer it got before
+   (device-profile §3b); §3 fails a new asker outside this file (a few
+   others are a census that only falls: the suite's STILL_ASKS). */
+
+/** The chip's name, of a Pixi renderer ('' with none or no context). */
+export function rendererName(r) {
+  try { const gl = r && r.gl; return gl ? chipName(gl) : ''; } catch (e) { return ''; }
+}
+/** The largest picture side the renderer's chip takes, as WebGL says it
+ *  (null on a lost context); 0 with no renderer. */
+export function maxTextureSize(r) {
+  try { const gl = r && r.gl; return gl ? gl.getParameter(gl.MAX_TEXTURE_SIZE) : 0; } catch (e) { return 0; }
+}
+/** The processor's threads, as the browser says them (undefined where it does not). */
+export function cores() {
+  try { return typeof navigator !== 'undefined' && navigator ? navigator.hardwareConcurrency : undefined; } catch (e) { return undefined; }
+}
+/** The browser's user agent ('' with none): a crash report's, never a
+ *  quality choice's (SHAPES part 6: facts only). */
+export function userAgent() {
+  try { return (typeof navigator !== 'undefined' && navigator && navigator.userAgent) || ''; } catch (e) { return ''; }
 }
 
 /* ═══ v2.3.5121: THE DEVICE CLASS (docs/SHAPES.md part 6; the grand plan's 2.1) ═══
@@ -232,22 +264,28 @@ export function classKey(c) {
   return DEV_CLASS_FIELDS.map((k) => String(c[k])).join('-');
 }
 
-/* the chip's constants, asked once a drawing context */
-const _chipOf = typeof WeakMap === 'function' ? new WeakMap() : null;
-function chipFacts(gl) {
-  const kept = _chipOf && _chipOf.get(gl);
-  if (kept) return kept;
+/* the chip's name: Firefox gives it as RENDERER; Chrome and Safari answer
+   "WebKit WebGL" there and the name through the debug extension (read only
+   then: Firefox warns that it is going away).  v2.3.5227: one place, for
+   the class's `soft` and paletteTex.js's choice (rendererName, below) */
+function chipName(gl) {
   let name = '';
   try {
-    /* Firefox gives the name as RENDERER; Chrome and Safari answer "WebKit
-       WebGL" there and the name through the debug extension (paletteTex.js
-       rendererName, the same way) */
     name = String(gl.getParameter(gl.RENDERER) || '');
     if (!name || /^webkit webgl$/i.test(name)) {
       const ext = gl.getExtension('WEBGL_debug_renderer_info');
       if (ext) name = String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || '');
     }
   } catch (e) { name = ''; }
+  return name;
+}
+
+/* the chip's constants, asked once a drawing context */
+const _chipOf = typeof WeakMap === 'function' ? new WeakMap() : null;
+function chipFacts(gl) {
+  const kept = _chipOf && _chipOf.get(gl);
+  if (kept) return kept;
+  const name = chipName(gl);
   let precBits = 0;
   try { const p = gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER, gl.MEDIUM_FLOAT); precBits = (p && p.precision) || 0; } catch (e) { precBits = 0; }
   const facts = {
@@ -284,12 +322,17 @@ export function devClass(opts) {
       hz,
       fine: fineInput(),
       frame: computerFrame(),
-      cores: nav ? nav.hardwareConcurrency : 0,
+      cores: nav ? cores() : 0,
     });
   } catch (e) {
     return null;
   }
 }
+
+/* v2.3.5221: the lane is picked from this class (drawLanes.js pickLane):
+   handed over once, asked again by the lane at most every few seconds.  It
+   asks nothing new of the device */
+useDevClass(devClass);
 
 /* QA: the profile, as the page sees it */
 if (typeof window !== 'undefined') window.__btDevice = () => deviceProfile();
