@@ -23,10 +23,11 @@ state: ready
 
 ## Found
 
-- `?debug`, `?nodebug` (src/debug/debugBus.js): born in April commits with
-  no tag anywhere: `born: 'unknown'`, counted (the line 2).
+- `?debug`, `?nodebug`: April commits, no tag anywhere: born `unknown` (2).
 - New switches add their own rows (the table is on `main`): card L's
   `?<system>reset=0`, card SK's `?ridecoast=0`.
+- The thrown run's share on every PR is 29 s with sitting 11's switches
+  (3 born from 5301 on): at the card's 30 s line (the gatekeeper's call).
 - Rule 4's sample: `ahonewrite` thrown beside store-heal-wait.test's own
   `storehealwait: false` fails its check 2 (two switches off, not one).
 - Card O (planning session, 2026-11-14): the device knobs' off-ramps
