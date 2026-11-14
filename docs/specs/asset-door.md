@@ -150,3 +150,106 @@ files over it are the bot's lossless `.webp` twins of RGBA sheets. The bar's
 size (the pixel-size rule) is read by the gate (part 4), not here. Bytes on
 disk are not the measure: part 2 measures what each family holds at the
 memory check's fight.
+
+## 2. The measure: MB held at the memory check's fight (step 9.1, part two; tag 5242)
+
+The measure is **MB held at the fight, not a file's bytes**. The `.p256.png`
+twins taught it (`docs/specs/pictures-256.md`): 256 colours in a file saved
+nothing on the chip until the picture was held as colour numbers.
+
+### One ruler
+
+The memory check's own trip (`tools/qa/mp/mp-membudget.mjs`: a phone, 390 x
+844 at dpr 3, BroTown to a fight at the Flame Fields' inner end and home,
+three times), read its own way (`memprobe.mjs`: two forced collections), at
+its three fights. With **`QA_MB_ROWS=1`** each fight stop also carries every
+row of what the page holds, read in the same moment (`memprobe.mjs`
+`__memRows`):
+
+| column | what | read from |
+|---|---|---|
+| chip | every texture on the graphics chip, at its own size (bytes a pixel by format, x 4/3 with mipmaps) | `window.__btGpuTex()`, all rows (the check reads only its total) |
+| page | every picture the asset cache holds in the page, four bytes a pixel | `window.__btTex(true)` |
+| numbers | the colour numbers the page keeps beside a texture, one byte a pixel | the chip's and the cache's sources (`__btGpuTexSources`) and the monsters' strips (`__btPicNumSources`) whose numbers are still their resource |
+| sound | each decoded sound, by its file | BT_AUDIO's own maps: a sample's file is its tag (`_sampleTag`), a zone track its address, the session track `GLOBAL_MUSIC`; a buffer two keys share counted once |
+| atlas | the palette atlas's rows: used, the most, how often it was full; the monsters' bundles | `__btPalette()`, `__btPicNumbers()` |
+
+**Without `QA_MB_ROWS` the check asks the page exactly what it asked
+before**: it runs on every PR, and its lines are unchanged.
+
+### Rows to families
+
+`tools/assets/fightmb.mjs` matches each row to its family by its label's
+path. A label names a file in reach in two forms:
+
+- its address: `/sprites/x.png` is `public/sprites/x.png`, a row of
+  `shipped.json`, and that row's family. A picture with no label of its own
+  is named by its file (its image's `src`), and the page's copies by their
+  source, not by the cache's key: the cache keys some pictures by the
+  element itself (`[object HTMLImageElement]`);
+- a look sheet's texture, `bt-look:<set>/<sheet>` (`bt-look:<sheet>` for the
+  body set, `src/rendering/lookPalette.js`), which is
+  `public/sprites/look/<set>/<sheet>.png` drawn as it is.
+
+A label that is not a file in reach is a texture **made in play** (a canvas,
+a render texture, a Wheel ground piece, a look atlas page `bt-look:page/...`
+holding many sheets laid out in play): `in play: <label>`, its digits folded
+to `#`, and one line `in play: unnamed` for every texture with no label and
+no file, with its kinds on the chip beside it (render, canvas, buffer).
+Those are the renderers' bakes: listed for reading, never a family, never the
+door's to change.
+
+**The backlog column.** A data family is never the backlog's (the door never
+rewrites data: the look sheets are colour NUMBERS, and they hold real MB at
+the fight). Nor is a sound (the door re-encodes no sound: decoding every
+sound at 24 kHz is the owner's call, MEMORY-MAP's list). A made family is
+taken only by changing its own tool, and a backlog PR may change a loader
+rather than a file (a family already on 256 colours but held at four bytes a
+pixel is put in its slot's form). A family
+whose loader, or whose draw path's module, is one of the files card P leaves
+alone while card H runs ("Files P waits on": `zoneTextures.js` and
+`stripRead.js` for a strip, `soundFold.js` for a sound, `entityRenderer.js`,
+`gearSheets.js`, `characterPortrait.js` and the rest, `fightmb.mjs`
+`WAITS_ON_H`) goes after H, and the next family that is free goes first.
+
+A family's **MB at the fight** is the most it held at any one fight stop of
+any run (chip + page + numbers + sound at that stop): the highest of three
+runs. The census is `docs/plan/census/assets.md`, one row a family, most MB
+held first: the backlog's order.
+
+```
+QA_MB_ROWS=1 node tools/qa/mp/run.mjs membudget      three times, keeping each out/membudget.json
+node tools/assets/fightmb.mjs a.json b.json c.json --write
+```
+
+### At tag 5242: three runs
+
+Three runs of `QA_MB_ROWS=1 node tools/qa/mp/run.mjs membudget`, each 11 of
+11 assertions passed; the census is `docs/plan/census/assets.md`.
+
+- **Every fight stop's rows add up to its lines**: the chip's rows to within
+  0.3 MB of the `gpu` line (60.6 to 68.6 MB), the page's to the `artCache`
+  line (48.75 against 48.7), sound by file to BT_AUDIO's own count (17.5 to
+  18.1). So nothing the lines count is left out of the census.
+- **49 families hold something at the fight; 36 hold 1 MB or more**, where
+  the backlog's line falls. The most: the fire goblin's strips (8.1 MB:
+  2.6 on the chip, 5.5 of colour numbers in the page), the owner's sounds
+  (5.9 decoded), the tree tiers (5.6 in the page), the walking armour's twins
+  (5.0 on the chip; card H's `pack-page`), the slimes (4.6 in the page).
+- **Six look families hold 16.8 MB on the chip.** They are data: never the
+  backlog's.
+- **Made in play** (no family): unnamed textures 22.2 MB (canvases 16.6 on
+  the chip), pictures made from bytes 10.5 (`blob:`: the baked bodies,
+  `bodyBake.js`; canvases kept as images, `keepAsImage.js`), the Wheel's
+  ground pieces 8.6 (57 rows of the atlas), the look atlas's pages 5.3.
+- **The palette atlas**: 100 to 104 rows of 256 used at the fights, never
+  full (`rowsFull` 0); the monsters' bundle there, `fireGoblin`.
+- **151 families hold nothing at the fight**: another land's, a window's, a
+  computer's, or nothing's (`none`: 545 files).
+
+**And without the opt-in**, one run of `node tools/qa/mp/run.mjs membudget`
+read no rows at any stop and stayed within every line of
+`tools/qa/mp/memory-budget.mjs` (11 of 11): `artCache` 48.7 of 112, `gpu`
+72.1 of 115, `canvases` 15.4 of 56, `sound` 18.1 of 22, `heap` 36.4 of
+38.5, `buffers` 21.4 of 22, `workers` 19.4 of 36. No line changes in this
+PR.
