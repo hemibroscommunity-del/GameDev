@@ -367,6 +367,10 @@ export const WIRE_HTTP = [
   { name: 'http:/api/admin/dev/accuracy', dir: 'in', at: 'accuracy.js _accAdminDays', wayIn: 'admin',
     envelope: 'http', phase: ['none checked'], mayStart: 'owner', doesWhat: ['reads'], reqId: 'harmless',
     trust: { days: 'request' }, absent: 'default: no days is 14', bad: ['clamped'], answer: 'http' },
+  /* v2.3.5125 (card A, PR 6): the day's book, read -- the Test panel's "Copy table" (daybook.js bookRead) */
+  { name: 'http:/api/admin/dev/daybook', dir: 'in', at: 'daybook.js bookRead', wayIn: 'admin',
+    envelope: 'http', phase: ['none checked'], mayStart: 'owner', doesWhat: ['reads'], reqId: 'harmless',
+    trust: { days: 'request' }, absent: 'default: no days is 7', bad: ['clamped'], answer: 'http' },
   { name: 'http:/api/admin/dev/lookseen', dir: 'in', at: 'charwatch.js _watchSeen', wayIn: 'admin',
     envelope: 'http', phase: ['none checked'], mayStart: 'owner', doesWhat: ['own'], reqId: 'harmless',
     trust: {}, absent: 'default: an unreadable body is an empty one', bad: [], answer: 'http' },

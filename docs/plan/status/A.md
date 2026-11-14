@@ -1,6 +1,6 @@
 card: A
 branch: claude/plan-a-6-speed-card (one branch a PR, each begun from the one before: -1- to -7-; merge them in order)
-prs: #1688, #1692, #1703, #1706 (merged); #1708 (5124), #1711 (5125): mended for sitting 5, ready
+prs: #1688, #1692, #1703, #1706 (merged); #1708 (5124), #1711 (5125, its route in card N's wire table): mended for sitting 5, ready
 state: ready
 
 ## Done
