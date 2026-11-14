@@ -14,11 +14,10 @@ state: ready
   `chaos-restart` moved onto it, its output the same.
 - PR 8a (5087, #1759), `trade-weapon-half` off `KNOWN` (v2.3.4795).
 - PR 8b (5088, #1761), `arena-stake-place` off `KNOWN` (v2.3.4796).
-- PR 8c (5089), `arena-stake-settle-loss` fixed: the settlement is ONE
-  plan record (sitting 9's mend), written in one run with the losers'
-  stamps; each leg paid once; the sweep finishes it, a rolled-back
-  refund counted, an odd sponsor id kept. One put more a match: 5 -> 6
-  (1 v 1), 10 -> 11 (3 v 2), 32 -> 33 (10 v 10). `KNOWN` empty.
+- PR 8c (5089), `arena-stake-settle-loss` fixed: ONE plan record a
+  match, the prune waits while one is open, a kept plan pays nothing
+  (sittings 9, 10). Two rows a match (put, delete): OFF until the owner
+  says yes (`arenasettleplan: true`). `KNOWN` empty (case 6 runs it on).
 
 ## Next
 
