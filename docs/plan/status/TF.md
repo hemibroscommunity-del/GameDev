@@ -1,11 +1,11 @@
 card: TF
 branch: claude/plan-tf-1-townsfolk-tools
-prs: PR 1 (5460) on the branch above (ready; its number with the next commit)
+prs: #1770 (5460, ready)
 state: ready
 
 ## Done
 
-- PR 1 (5460): the audit (`docs/specs/townsfolk-work.md`, 21 rows); the
+- #1770 (5460): the audit (`docs/specs/townsfolk-work.md`, 21 rows); the
   pickaxe put away: Chef Blaze, Woodworker Bro and Gavel Greg take the
   pickup, Farmer Bro stands (the pickup would bake his look: his eye
   style); `townsfolk-walk.test` §2j (whose tool) and §2k (no new bake of a
