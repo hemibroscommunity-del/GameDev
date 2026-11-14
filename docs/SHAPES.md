@@ -306,6 +306,28 @@ That is what the planted double pay of step 4.4 turns on: the sum of every
 | Name | One writer | Readers | Where | Rows |
 |---|---|---|---|---|
 | a road's `class` and `other` (NEW columns) | card E, in the two road tables | the world's sum (4.4), the sitting's card ("gold by road class", 10.2), the day's book ("minted and burned by road class", 10.4), the transfer ledger (a row a `move`, 10.3) | `server/src/gold.js`, `server/src/bag.js` | none |
+| `MAIL_CLASSES` (built: 5081) | card E | the counting of a credit (4.4), the transfer ledger (10.3) | `server/src/gold.js` | none |
+| `ESCROW_PLACES` (built: 5081) | card E | an escrow road's `other`; the registry's marks (card E's next PR) | `server/src/gold.js` | none |
+| `BAG_WHOLE` (built: 5081) | card E | the world's sum, for the bag's whole assigns | `server/src/bag.js` | none |
+
+**Built (tag 5081).** Every row of `GOLD_ROADS` (44: 14 mint, 14 burn, 13
+escrow, 3 move) and `BAG_ROADS` (69: 32 mint, 25 burn, 10 escrow, 2 move)
+has `class` and `other`; `gold-door.test` and `bag-door.test` §8 fail a row
+with none, a `move` or an `escrow` with no other side, and a credit whose
+word has no class. Two words the first draft of this page did not have:
+
+- **`other` may be a list** for an escrow road behind ONE shared helper that
+  feeds several records (`escrow_debit`, `escrow_debit_stored`,
+  `escrow_debit_group`: `duelEscrow:`, `arena_stake:`, `store_listing:`;
+  the opId says which). A `move`'s other side is always one road.
+- **The places an escrow names** are one closed list, `ESCROW_PLACES`: the
+  prefixes above, less `trade2wpn:` (it holds weapons, which no gold or bag
+  road carries), and with `shop_stock`, Diego's one pile (`shop_sell` puts
+  in it what he buys and `shop_pile` sells it on, so goods pass through it
+  from one player to another). `death_pile:` means a player's pile on the
+  ground: its row when one is saved, the room's memory while it is up (a
+  dropped item's pile is a death pile's own and is never saved,
+  `itemdrop.js`).
 
 ### Four edges the words must cover, left for card E to rule on here
 
@@ -331,6 +353,60 @@ That is what the planted double pay of step 4.4 turns on: the sum of every
    the whole-bag assigns on purpose: a new bag, the join's load, and the
    death's wipe. The death's wipe moves a whole bag to the ground
    (`death_pile:`), so the sum needs it classed.
+
+
+#### Ruled (card E, tag 5081)
+
+1. **A `set` road is judged by its difference**: the purse (or count) after,
+   less what the world held for that character before the road ran: the live
+   purse, or for a LOAD the stored record it loads (a character is counted
+   once: stored while away, live while here). Its class is its honest
+   difference's, and its counter books the difference signed. So
+   `join_stored` is a `burn` (it heals a coin's fraction away; a negative
+   purse healed to 0 books a negative burn), `join_new` a `mint`, `nml_loss`
+   a `move` (the purse to the killer's mail, credit `nmlloot:`), the bag's
+   `shop_tool` a `mint` (one tool, from none), `trap_legacy_out` a `burn`,
+   and the Test panel's `dev_traps` and `dev_logs` `mint`s (signed: lowered,
+   a negative mint).
+   **Not ruled, asked (card E's status file):** a red skull killed by a
+   MONSTER loses the purse through `nml_loss` too, to nobody: a burn by a
+   `move` road. One road, two classes; splitting it is one line in
+   `nomansland.js`, a file card E does not own.
+2. **The mail's class is the credit's, keyed by the FIRST WORD OF ITS
+   `opId`**, in the closed table `MAIL_CLASSES` (`gold.js`). Not `source`:
+   its 15 values are too coarse (`arena` alone is an entry refunded, a pot,
+   a stake's cut, a stake won and a stake lost). The first word is finer
+   (every gold or goods credit under one word has one class: the auction
+   house's eight legs are all its listing paid on or given back), it is a
+   literal in every caller, and it is the credit's identity already: the
+   same on a retry, written on the inbox entry with it. `mail_gold` and
+   `mail_item` themselves are an `escrow` of `inbox:`: the mail paid on. A
+   credit to a player away waits there (its class counted as it is parked),
+   one to a player here lands at once (its class counted as it lands). 27
+   words today; the door test fails a credit whose word has no row, and a
+   row no credit uses. The operator's grant (`admin.js`) builds its opId a
+   line above the call, `admin:` and a uuid, and is listed so.
+3. **A mixed payment is ONE credit that carries two amounts**, not two
+   credits: two credits are two writes a restart can split (handoff rule
+   5), one credit keeps one opId and one stamp. The champion's prize
+   (`arenapot:`) is the only one today: its row is an `escrow` of
+   `arena_entry:` with `house` set, and the credit's `payload.house` is the
+   part the house minted. The PR that counts the mail writes that field in
+   `gladiator.js`.
+4. **The whole-bag assigns are classed in `BAG_WHOLE`** (`bag.js`), each tied
+   to its line by `bag-door.test`'s `WHOLE_BAG`: a new, empty bag and the
+   join's load hold nothing the world did not (class `null`); a new
+   character's first bag is empty since v2.3.3138 (were a starter kit put
+   there, a `mint`); **the death's wipe is an `escrow` into `death_pile:`**
+   (the bag, less the tools and the pickup shield it keeps, to the pile);
+   and the RESPAWN's wipe, the same helper five seconds on, is a `burn`
+   (whatever came into a dead player's bag after the death's wipe: nothing,
+   for an honest death).
+
+**Where value leaves an escrow by no road** (for the sum's PR, not a class):
+a stale fine is deleted (`bounty:`, `_bountySweep`: "the gold evaporates"),
+and a pile on the ground nobody takes runs out (`_tickLoot`) or its dungeon
+run closes. Each is a burn the world's sum counts at the record's end.
 
 ### The mark on a record that holds value
 
