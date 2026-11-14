@@ -53,9 +53,15 @@ const ALL_TWINS = /[?&]p256(=1)?(&|$)/.test(_q);
 const NO_TWINS = /[?&]p256=0(&|$)/.test(_q);
 const FX_MADE = /^\/sprites\/(?:fx\/(?:fire-trail-v1\.png|portal-beam\.webp|smith-anvil\.webp|snow-footprints\.webp)|effects\/(?:arrow-blast-v1\.webp|jet-stream-v1\.png|snowball-burst-v1\.png))$/;
 const FX_MADE_ON = !NO_TWINS && !/[?&]fxmade=0(&|$)/.test(_q);
+/* v2.3.5250, the second family: `fx-sheets-supplied`, the effects cut from
+   the owner's own sheets (the stun stars, the whirlwind, and the grease,
+   woodchips, rocks and splash bursts): 2.0 MB held as pictures in the page
+   at the fight.  `?fxsheets=0` keeps them pictures. */
+const FX_SHEETS = /^\/sprites\/(?:fx\/(?:stun-stars-v1|whirl-vortex-v1)\.png|effects\/(?:grease|woodchips|rocks|splash)-burst-v1\.webp)$/;
+const FX_SHEETS_ON = !NO_TWINS && !/[?&]fxsheets=0(&|$)/.test(_q);
 /** whether the picture at `path` (no host, no query) is read from its twin here */
-function wantedPath(path) { return !NO_TWINS && (ALL_TWINS || (FX_MADE_ON && FX_MADE.test(path))); }
-const WANTED = !NO_TWINS && (ALL_TWINS || FX_MADE_ON);
+function wantedPath(path) { return !NO_TWINS && (ALL_TWINS || (FX_MADE_ON && FX_MADE.test(path)) || (FX_SHEETS_ON && FX_SHEETS.test(path))); }
+const WANTED = !NO_TWINS && (ALL_TWINS || FX_MADE_ON || FX_SHEETS_ON);
 /* (never while QA compares cropped strips against their files: __btTrimVerify) */
 export function p256On() { return WANTED && picNumbersOn(); }
 
@@ -312,6 +318,6 @@ export function startP256Pack(renderer, canvas) {
 }
 
 if (typeof window !== 'undefined') {
-  window.__btP256 = () => ({ wanted: WANTED, on: p256On(), all: ALL_TWINS, fxMade: FX_MADE_ON, twins: Object.keys(P256_FILES).length, ..._stats,
+  window.__btP256 = () => ({ wanted: WANTED, on: p256On(), all: ALL_TWINS, fxMade: FX_MADE_ON, fxSheets: FX_SHEETS_ON, twins: Object.keys(P256_FILES).length, ..._stats,
     pack: { ..._pk, packedNow: _packed.size, waiting: _toPack.size } });
 }

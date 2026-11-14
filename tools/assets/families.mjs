@@ -288,7 +288,9 @@ export const ASSET_FAMILIES = Object.freeze([
 
   /* ── effects: public/sprites/fx/, effects/, skills/ ── */
   fam('fx-sheets-supplied', 'supplied', ['public/sprites/fx/{stun-stars-v1,whirl-vortex-v1}.png', 'public/sprites/effects/{grease,woodchips,rocks,splash}-burst-v1.webp'],
-    { draw: 'file', loader: ER, px: 'cells 256x256', note: 'tools/import_fx_sheet.mjs, process_effect_sheets.py, import_rocks_burst.py from the owner\'s sheets, not kept' }),
+    { draw: 'none', px: 'cells 256x256', note: 'tools/import_fx_sheet.mjs, process_effect_sheets.py, import_rocks_burst.py from the owner\'s sheets, not kept; v2.3.5250: drawn from their twins (fx-sheets-twins), the originals only with ?fxsheets=0 or where pictures are not drawn as numbers (no WebGL2)' }),
+  fam('fx-sheets-twins', 'made', ['public/sprites/fx/{stun-stars-v1,whirl-vortex-v1}.p256.png', 'public/sprites/effects/{grease,woodchips,rocks,splash}-burst-v1.p256.png'],
+    { tool: 'tools/art/reduce256.mjs', sources: 'beside', draw: 'numbers', loader: ['src/rendering/p256.js', 'src/rendering/gearSheets.js'], note: 'v2.3.5250, card P\'s backlog: the owner\'s effect sheets read from their 256-colour twins by default (?fxsheets=0 off); listed in src/data/p256Files.js' }),
   fam('fx-made', 'made', ['public/sprites/fx/{fire-trail-v1.png,portal-beam.webp,smith-anvil.webp,snow-footprints.webp}', 'public/sprites/effects/{arrow-blast-v1.webp,jet-stream-v1.png,snowball-burst-v1.png}'],
     { tool: ['tools/import_fire_trail.mjs', 'tools/import_portal_beam.py', 'tools/make_smith_anvil.py', 'unknown'], sources: 'assets/fx-source/{fire-trail-grid.png,portal-beam-source.jpg,snow-footprints-strip.png}, public/sprites/props/anvil.png, assets/icons-source/jet-stream-*.png', draw: 'none', note: 'the arrow blast\'s and the snowball burst\'s makers are not known; v2.3.5249: drawn from their twins (fx-made-twins), the originals only with ?fxmade=0 or where pictures are not drawn as numbers (no WebGL2)' }),
   fam('fx-made-twins', 'made', ['public/sprites/fx/{fire-trail-v1,portal-beam,smith-anvil,snow-footprints}.p256.png', 'public/sprites/effects/{arrow-blast-v1,jet-stream-v1,snowball-burst-v1}.p256.png'],
@@ -302,7 +304,7 @@ export const ASSET_FAMILIES = Object.freeze([
   fam('fx-levelup-numbers', 'made', 'public/sprites/fx/levelup-burst-v1-f*.p256.png',
     { tool: 'tools/art/levelup-numbers.mjs', sources: 'public/sprites/fx/levelup-burst-v1.webp', draw: 'dom', loader: 'src/rendering/levelUpBurstNumbers.js', note: 'colour numbers held packed and opened on the reader\'s worker, turned into colours on a canvas in the page (not the atlas)' }),
   fam('p256-twins', 'made', ['public/sprites/{fx,effects,tools}/*.p256.png'],
-    { not: ['public/sprites/fx/levelup-burst-*.p256.png', 'public/sprites/fx/{fire-trail-v1,portal-beam,smith-anvil,snow-footprints}.p256.png', 'public/sprites/effects/{arrow-blast-v1,jet-stream-v1,snowball-burst-v1}.p256.png'], tool: 'tools/art/reduce256.mjs', sources: 'beside', draw: 'none', note: 'read only with ?p256=1 (off: TRAPS §305); listed in src/data/p256Files.js' }),
+    { not: ['public/sprites/fx/levelup-burst-*.p256.png', 'public/sprites/fx/{fire-trail-v1,portal-beam,smith-anvil,snow-footprints}.p256.png', 'public/sprites/effects/{arrow-blast-v1,jet-stream-v1,snowball-burst-v1}.p256.png', 'public/sprites/fx/{stun-stars-v1,whirl-vortex-v1}.p256.png', 'public/sprites/effects/{grease,woodchips,rocks,splash}-burst-v1.p256.png'], tool: 'tools/art/reduce256.mjs', sources: 'beside', draw: 'none', note: 'read only with ?p256=1 (off: TRAPS §305); listed in src/data/p256Files.js' }),
   fam('skills-strips', 'made', 'public/sprites/skills/{chop,cook}-strip.webp',
     { tool: 'unknown', draw: 'file', loader: ER, note: 'the stand-ins\' drawn chop and cook; chop mended in place by tools/fill_chop_eyes.py' }),
   fam('skills-strips-made', 'made', 'public/sprites/skills/{chop-strip-legless,cook-strip-legless,firemaking-strip}.webp',
