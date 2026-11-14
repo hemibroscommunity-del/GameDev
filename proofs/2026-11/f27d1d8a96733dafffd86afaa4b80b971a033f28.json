@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "f27d1d8a96733dafffd86afaa4b80b971a033f28",
+  "tree": "ef08faff435491e449ec4e4e5686bd9ca6eb9bf4",
+  "committedAt": "2026-11-13T17:04:15-08:00",
+  "subject": "v2.3.5056: helpers' actions stay open until the helper door, and any session the owner asks in plain words is the orchestrator (docs only) (#1671)",
+  "files": 7419,
+  "bytes": 944802890,
+  "listingSha256": "26b8ef17d0334492cb31fc917026479197f84dd3d2ec3f5853ee163a4c505c42",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
