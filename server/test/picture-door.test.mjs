@@ -383,7 +383,8 @@ const LIST = {
   'src/ui/mobile/ChestReveal.jsx': { warmPrizeIcons: ['warm', 1, "the chest's prize icons, warmed; each <img> loads its own"] },
   'src/ui/mobile/DungeonClearHud.jsx': { '*': ['warm', 1, "the dungeon-clear pictures, warmed; each <img> loads its own"] },
   'src/ui/mobile/LoginSpinWindow.jsx': { LoginSpinWindow: ['warm', 1, "the login spin's art, warmed"] },
-  'src/ui/mobile/dash/BoardRow.jsx': { '*': ['warm', 1, "the leaderboard's trophies, warmed; each row's <img> loads its own"] },
+  /* v2.3.5501 (card LB): the trophies' warm-up became the new look's pieces', moved out of BoardRow.jsx (the Test panel imports it) */
+  'src/ui/mobile/dash/LeaderboardPanel.jsx': { '*': ['warm', 1, "the leaderboards' pieces (public/ui/leaderboard/), warmed as the window's script loads; each <img> and border-image loads its own"] },
   'src/ui/mobile/dash/CodexStage.jsx': { loadImg: ['once', 1, "the codex stage's pictures: no time limit, no retry"] },
   'src/ui/mobile/sheet/slimePins.js': { stripFrames: ['once', 1, "the sheet's slime pins: no time limit, no retry"] },
   'src/ui/panels/AchievementBanner.jsx': { iconReady: ['once', 1, "an achievement's icon: waited ICON_WAIT_MS, then shown as it is; never asked again"] },
