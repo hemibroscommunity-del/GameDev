@@ -1,39 +1,39 @@
 card: Z
-branch: claude/plan-z-sitting-15
-prs: (this PR), tag 5372, the last line of the list (ready)
+branch: claude/plan-z-sitting-16
+prs: (this PR), tag 5373, the last line of the list (ready)
 state: ready
 
 ## Done
-- Sitting 15, `main` d6b8acd: the list rehearsed in its order (tree
-  db4ea362, this branch aside): precheck 0 FAIL, build, questline 187;
-  each base `main`, ONE merge base step by step. Review:
-  `census/review-z15.md`. Notes on 4.2, 4.3, 4.7, 7.1; no line to lower.
+- Sitting 16, `main` 64bb498: the list rehearsed in its order (tree
+  WHOLE_TREE, this branch aside): REHEARSAL_SHORT; each base `main`, ONE
+  merge base step by step. Review: `census/review-z16.md`. 2.1 ticked;
+  notes on 4.1, 5.3b, 5.8, 8.1; `TODO_LINE` 30 -> 28.
 
 ## The list: merge in this order, in one sitting, each "Create a merge commit"
-1 #1824 (L) · 2 #1835 (L) · 3 #1829 (K) · 4 #1831 (K) · 5 #1833 (J2) ·
-6 #1832 (O) · 7 this PR. Five deploy (1 to 4, and 6 by its old-map
-test): back to back. #1824 and #1835 each add a live flag (`dueldoor`,
-`partydoor`, ON); #1835 carries #1824.
+1 #1838 (K) · 2 #1842 (K) · 3 #1839 (L) · 4 #1844 (R) · 5 #1840 (P) ·
+6 #1841 (O) · 7 #1845 (J2) · 8 this PR. Six deploy (1 to 6): back to
+back. Four add a live flag (`wiredoor`, `arrowlane`, `exdoor` ON;
+`roomrewind` OFF); no stored record changes its shape.
 
-## Held (expires at sitting 16)
-- #1836 O: conflict with `main` at `tools/guards/lib/switches.mjs`; next
-  sitting after T's #1837 (it merges #1837's head). Reviewed: one medium
-  (crowd rungs that hide no one delay the rate's ~5 s), for the planning
-  session.
-- #1837 T: conflict with `main` (`docs/SWITCHES.md`, `switches.mjs`);
-  next sitting FIRST, after merging the new `main`. Step 3 then.
-- #1838 K: conflicts with #1829 and #1831 either way; K merges the new
-  `main` after this list. Reviewed: one medium to mend first (the
-  refusal count keyed by the client's type or path, no bound).
+## Held (expires at sitting 17)
+- #1837 T: the planning session's (B): it conflicts with every PR adding
+  a switch row; T merges the new `main`, `on` on the new rows, a
+  one-PR sitting next. #1836 O carries its head: right after it.
+- #1848 K, #1847 R: each its card's second this sitting. #1848: two
+  MEDIUMs on its ON path before the owner's yes; #1847: one MEDIUM (a
+  hand deny list) and device ids out. In the review.
+- #1846 P: two MEDIUMs on screen (the stat demo's slime; the Workshop's
+  circles), `?slimewalk=0` restores both.
+- Not reviewed, opened during the sitting: #1849 J2, #1850 O (conflicts
+  with `main` at O.md), #1851 L (L's second), #1852 E.
 - #1782 SK: the owner's yes to +8 to +10 moves a ride.
 
 ## Stalled
-- P `working`, its branch quiet since 17:44 (over 3 h at the list).
+- None: P says `working` on two branches pushed within the hour.
 
 ## Found
-- L: the party door's births matched by text (an unconditional new map
-  in party.js passes); `?.delete` and an alias pass too.
-- K: wire/README.md ~307 names `fightlockgear` (no such switch).
-- O: crowd-cap §4 never calls the renderer's bare `crowdK()`.
-- T: the old `?crowd` row (switches.mjs ~326) says monsters; it caps
-  players.
+- CLAUDE.md §7's "three sprite programs on every chip" is older than
+  v2.3.5016 (one program the default): the owner's file.
+- K: three wire-table edits nothing catches since the guard's §7 left.
+- L: the cook door's guards miss destructuring and literal-built bodies.
+- O: an override with no `when` never pins, and draw-lanes §8 passes it.
