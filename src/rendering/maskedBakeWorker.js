@@ -144,7 +144,7 @@ async function lookBitmaps(j) {
    held-budget.mjs `masked-bake`: the page cut each input out of its sheet
    (createImageBitmap) for every bake, 5 to 15 ms a bake on the page.  An input
    whose sheet is an image at an address now comes as { url, sx, sy, ... }
-   (entityRenderer.js _frameInput): the sheet is fetched and decoded HERE, kept
+   (bakeByAddress.js frameInput): the sheet is fetched and decoded HERE, kept
    a few (sheetOf: SHEET_KEEP_N sheets and SHEET_KEEP_BYTES at most, the least
    lately used let go and closed when no job holds it; docs/MEMORY-MAP.md
    "Characters", and each reply says what is kept, `kept`), and the rectangle is
@@ -166,11 +166,19 @@ function sheetOf(url) {
   if (e) { sheetsKept.delete(url); sheetsKept.set(url, e); return e; }
   e = { p: null, bm: null, bytes: 0, uses: 0 };
   const ac = typeof AbortController !== 'undefined' ? new AbortController() : null;
-  const cut = ac ? setTimeout(() => ac.abort(), SHEET_URL_MS) : 0;
-  e.p = fetch(url, ac ? { signal: ac.signal } : undefined).then((r) => { if (!r.ok) throw new Error('http ' + r.status); return r.blob(); })
-    .then((b) => createImageBitmap(b))
-    .then((bm) => { clearTimeout(cut); e.bm = bm; e.bytes = bm.width * bm.height * 4; sheetsTrim(); return bm; },
-      () => { clearTimeout(cut); if (sheetsKept.get(url) === e) sheetsKept.delete(url); return null; });
+  /* v2.3.5050, the gatekeeper's sitting 5 (docs/plan/census/review-z5.md): the
+     4 s covered only the fetch (the abort), not the decode after it.  Now one
+     clock covers both: past it the read is a failure (`urlFail`), and a decode
+     that ends later has its bitmap closed (nobody holds it) */
+  let late = false, give = null;
+  const lateP = new Promise((r) => { give = r; });
+  const cut = setTimeout(() => { late = true; if (ac) ac.abort(); give(null); }, SHEET_URL_MS);
+  const read = fetch(url, ac ? { signal: ac.signal } : undefined).then((r) => { if (!r.ok) throw new Error('http ' + r.status); return r.blob(); })
+    .then((b) => createImageBitmap(b));
+  read.then((bm) => { if (late && bm) { try { bm.close(); } catch (err) { /* gone */ } } }, () => {});
+  e.p = Promise.race([read, lateP])
+    .then((bm) => { clearTimeout(cut); if (!bm) throw new Error('late'); e.bm = bm; e.bytes = bm.width * bm.height * 4; sheetsTrim(); return bm; })
+    .catch(() => { clearTimeout(cut); if (sheetsKept.get(url) === e) sheetsKept.delete(url); return null; });
   sheetsKept.set(url, e);
   return e;
 }
@@ -199,7 +207,10 @@ function sheetsTrim() {
 async function urlInputs(j, ins) {
   const used = j._sheets = [];
   const fail = [], qa = [];
-  const reads = ins.map((inp) => { const e = sheetOf(inp.url); e.uses++; used.push(e); return e.p; });
+  /* v2.3.5050 (sitting 5): each address the page is told of as it is read
+     (`urlRead`), so a stuck worker's let-go refuses only what was still being
+     read (bakeByAddress.js bakeWorkerStuck) */
+  const reads = ins.map((inp) => { const e = sheetOf(inp.url); e.uses++; used.push(e); return e.p.then((bm) => { if (bm) self.postMessage({ type: 'urlRead', id: j.id, url: inp.url }); return bm; }); });
   const bms = await Promise.all(reads);
   ins.forEach((inp, i) => {
     if (!bms[i]) { fail.push(inp.url); return; }
@@ -364,6 +375,15 @@ self.onmessage = (e) => {
   if (j.type === 'rod') { rod = j.rod || null; return; }
   if (j.type === 'lookSheet') { try { lookSheets.set(j.key, lookSheetParse(j.bytes, j.w, j.rows, j.bits)); } catch (e2) { /* the job then fails: the old path */ } return; }
   if (j.type === 'lookSheetUrl') { fetchSheet(j); return; }
+  /* v2.3.5050 (sitting 5): a job's sheets by address start reading as it
+     arrives, beside the wait for its sheets of numbers (they read only after
+     it, under the page's 6 s watch) */
+  /* ...and each said `urlRead` the moment it is in: the job's own word
+     (urlInputs) comes only after that wait, and a stuck kill during it refused
+     addresses that had read (the whole main tour's `armour`: 3 refused) */
+  for (const x of [j.body, j.belt, ...((j.worn || []).map((w) => w && w.inp))]) {
+    if (x && x.url) sheetOf(x.url).p.then((bm) => { if (bm && j.id) self.postMessage({ type: 'urlRead', id: j.id, url: x.url }); });
+  }
   const wait = waitsFor(j);
   if (wait.length) { Promise.all(wait).then(() => takeJob(j)); return; }
   takeJob(j);

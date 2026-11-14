@@ -36,6 +36,7 @@
  * un-accepted offers -- nothing is escrowed, no value at risk. */
 
 import { bagTake } from './bag.js'; /* v2.3.4810: the bag door */
+import { xferGift } from './xfer.js'; /* v2.3.5092: the transfer ledger */
 
 export const TRADE_OFFER_TTL = 120000; // 2 min to accept
 
@@ -221,11 +222,14 @@ export const tradeMethods = {
        credit awaited after it, so a restart in between took the goods from
        one and gave them to nobody -- an offer lives in memory, and nothing
        comes back for it.  Not both in the room: one by one, as before. */
-    const together = this._creditLiveTogether(credits, [target]);
+    /* v2.3.5092: the transfer ledger's row (xfer.js) rides the gift's own
+       write (`xfer: false`: no row) */
+    const together = this._creditLiveTogether(credits, [target], () => { const x = xferGift(this, pending, target, fromId); return x ? [x] : []; });
     if (together) {
       await together;
     } else {
       this._saveRpg(target, senderPs);
+      xferGift(this, pending, target, fromId);   /* v2.3.5092: the row in the debit's run */
       this._queuePlayerStateFlush(target);
       if (offer._gold) {
         await this._creditPlayer(fromId, { opId: 'trade:' + pending.id + ':gold', source: 'trade', kind: 'gold', payload: { amount: offer._gold }, note });
