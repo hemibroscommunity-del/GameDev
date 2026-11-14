@@ -1761,19 +1761,28 @@ export async function hopTo(P, tx, ty, { step = 100, gap = 260, tries = 40 } = {
     const d0 = await P.page.evaluate(({ x, y }) => { const S = window._gameState.current; return Math.hypot(x - S.player.x, y - S.player.y); }, { x: tx, y: ty });
     if (d0 > 0) tries = Math.max(tries, Math.ceil(d0 / step) + 8);
   } catch { /* the page's own trouble: the tries asked for */ }
+  /* v2.3.5400: the walk ends where its zone does.  A door fires before its
+     marker's own point (the farm's gate opens 2 tiles off), and the hops
+     left over went on in the zone it led to, toward a point of the old one:
+     out of the farm's gate, 80 px a hop into Frost Ridge (mp-farmmusic
+     step 4, card Y; docs/plan/census/red.md row 3). */
+  let zone0 = null;
   for (let i = 0; i < tries; i++) {
-    const done = await P.page.evaluate(({ x, y, s }) => {
+    const done = await P.page.evaluate(({ x, y, s, z0 }) => {
       const S = window._gameState.current;
+      if (z0 && S.currentZone !== z0) return 'left';
       const dx = x - S.player.x, dy = y - S.player.y;
       const d = Math.hypot(dx, dy);
       if (d < 6) { S.player.vx = 0; S.player.vy = 0; return true; }
       const k = Math.min(s, d);
       S.player.x += (dx / d) * k;
       S.player.y += (dy / d) * k;
-      return false;
-    }, { x: tx, y: ty, s: step });
+      return S.currentZone;
+    }, { x: tx, y: ty, s: step, z0: zone0 });
+    if (done === 'left') return false;   /* v2.3.5400: through a door: not there, and not moved on */
+    if (typeof done === 'string' && zone0 == null) zone0 = done;
     await P.page.waitForTimeout(gap);   /* > the 198ms solo move gap */
-    if (done) return true;
+    if (done === true) return true;
   }
   return false;
 }
