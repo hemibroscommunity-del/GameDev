@@ -19,6 +19,9 @@
  *   GC pauses, third-party script bursts, etc.
  */
 
+import { useFrameSamples } from '../game/framePacer.js';   /* v2.3.5222: the governor's split, handed in (below) */
+import { busyIn } from './busyBeat.js';
+
 const RING_SIZE = 600;            // ~10 s @ 60 fps
 const LONG_FRAME_BUFFER = 60;
 const LONG_TASK_BUFFER = 80;
@@ -267,3 +270,26 @@ export const perfTracker = {
 if (typeof window !== 'undefined') {
   window.perfTracker = perfTracker;
 }
+
+/* ═══ v2.3.5222: THE GOVERNOR READS THESE SAMPLES (card O PR 2) ═══
+   The pacer, grown into the governor (game/framePacer.js), picks the axis of
+   a step from the late frames' split: the game's own work against the time
+   outside it.  Those are this ring's samples: nothing new is timed.  Handed
+   by a setter, so the pacer imports nothing but the lanes' table: each(fromT,
+   fn) gives fn the samples recorded after fromT, oldest first, without a
+   copy of the ring, and returns the newest's time; the busy beat's busyIn
+   says where the page WAITED (`?perf=1`; null elsewhere). */
+function eachSince(fromT, fn) {
+  if (!ringCount) return fromT;
+  const newest = ring[(ringIdx - 1 + RING_SIZE) % RING_SIZE];
+  const newestT = newest ? newest.t : fromT;
+  let k = 0;
+  while (k < ringCount) {
+    const x = ring[(ringIdx - 1 - k + RING_SIZE * 2) % RING_SIZE];
+    if (!x || !(x.t > fromT)) break;
+    k++;
+  }
+  for (let i = k; i >= 1; i--) fn(ring[(ringIdx - i + RING_SIZE * 2) % RING_SIZE]);
+  return newestT;
+}
+useFrameSamples(eachSince, busyIn);

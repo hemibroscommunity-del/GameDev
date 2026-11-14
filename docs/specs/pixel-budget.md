@@ -132,3 +132,34 @@ lanes and the governor (card O), the frame pacer.
   `followRenderer` from `noteCanvasCss` turns 4a and 4b red.
 - `server/test/device-profile.test.mjs`: the phone question.
 - `mp-desksmooth`, `landview`, `questline` in a browser.
+
+## The ladder's pixel rungs (v2.3.5225, card O PR 5)
+
+The budget became a knob of the lanes' table (`src/game/drawLanes.js`,
+`docs/LANES.md`, `pixels`): 1 in every lane's row; the chip axis's last two
+rungs take it to 0.75, then 0.5. `renderRes.js` reads it through the lanes'
+one reader, `laneKnob('pixels')`, and is told when it changes (`onKnob`).
+
+**A rung takes a quarter, then half, of the pixels actually drawn**: the
+lowest of the screen's own, `?res=`, the speed test's and the budget, times
+the factor (each way its square root). That is the planning session's
+reading (b), 2026-11-14, and why: a rung means the same on every device, and
+a chip-bound phone under its budget is exactly the one a rung should help
+(under "the budget times the factor" it would get nothing). The owner's
+call 16 note -- a third fewer pixels made no difference on their iPhone --
+stands: that phone is not chip-bound, so the governor's split (step 2.3)
+never takes it to these rungs, which come last on the chip axis, after a
+steady lower rate, the shine, the shadows and the water.
+
+The governor (`framePacer.js`) moves a pixel rung only behind a veil: a
+loading screen or a tab's return (a live resize rebuilds the crowd's shared
+picture, the worst moment to do it). This file follows the way the speed
+test's ratio does: the renderer's resolution, the soft look, a `resize`
+event so `resize()` agrees. `?pixbudget` keeps its meaning (the budget; card
+O's PR 12 makes it an override); `?ladderpix=0` turns the pixel rungs off
+for one screen. The Speed test's `res2` still works: it holds the ladder
+while it runs.
+
+`render-res.test` §6: a phone under its budget and a computer held to it
+each lose a quarter, then half; the four callers agree after a rung moves;
+back at the row as before; `?ladderpix=0`. Break proofs in its header.

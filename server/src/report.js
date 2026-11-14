@@ -65,6 +65,21 @@
  * `_reportOff`): `caps.report` is not advertised, so the phone sends nothing,
  * and a report that still comes (an older socket) is dropped.
  *
+ * v2.3.5221, CARD O's LANES (step 2.1; src/game/drawLanes.js): the worker
+ * learns the whole card's lists at once, so it deploys once for the card --
+ *   - `drawLane`: `full`, `light` or `thirty` (DRAW_LANES), each its own
+ *     cell.  The page sends a lane but `full` only to `caps.report` 3;
+ *   - `rung` (the governor's, card O's PR 2): [the most rungs taken at
+ *     once, the seconds spent below the lane's row], two whole numbers;
+ *     the cell's sums beside it, never in the cell's key: [reports with one,
+ *     the most rungs summed, seconds below summed];
+ *   - `self` (the self-test at the door, step 1.7, card O's PR 14): the
+ *     game's drawing programs that failed (SELF_PROGRAMS), each a count of
+ *     reports naming it.
+ * `caps.report` 3 (_reportCap); THE KILL SWITCH `reportlanes: false` takes it
+ * back to 2: a lane other than `full` is then dropped (no cell), and `rung`
+ * and `self` are dropped from a report that still comes.
+ *
  * Suite: server/test/report.test.mjs.
  */
 import { bookAdd } from './daybook.js';
@@ -106,8 +121,16 @@ export const DEV_CLASS = Object.freeze({
   frame: Object.freeze([0, 1]),
   cores: Object.freeze([2, 4, 8, 16]),
 });
-/* card O's lanes (step 2.1); until then the one */
-export const DRAW_LANES = Object.freeze(['full']);
+/* v2.3.5221: card O's lanes (step 2.1): src/game/drawLanes.js LANE_NAMES
+   (mirror-audit holds the two equal) */
+export const DRAW_LANES = Object.freeze(['full', 'light', 'thirty']);
+/* v2.3.5221: the game's own drawing programs (step 1.7, the report's
+   `self`): src/game/drawLanes.js PROGRAM_NAMES (mirror-audit) */
+export const SELF_PROGRAMS = Object.freeze(['one', 'palette', 'look', 'sharp', 'clip', 'fill', 'water', 'glint', 'sheen', 'shadow']);
+/* v2.3.5221: the governor's `rung` -- the most rungs taken at once, at most
+   MAX (wider than the page's ladder, drawLanes.js ladderDepth(): the page's
+   ladder may grow without a deploy; mirror-audit holds it under) */
+export const RUNG = Object.freeze({ MAX: 31 });
 /* src/game/clientOff.js CLIENT_SAVERS' ids */
 export const SAVERS = Object.freeze(['sfxcache', 'voicecap', 'onecopy', 'picnumbers', 'codelazy', 'groundlean', 'heaplean',
   'lookpalette', 'lookshirt', 'soundgate', 'lookarmour', 'lookfolk', 'gfxlean', 'viewcap']);
@@ -150,6 +173,9 @@ export const SPEED = Object.freeze({ FPS_MAX: 1000, MS_MAX: 10000 });
  *   diedMem  [MB, minutes up, rebuilds] of the pages that died, summed
  *   diedAt   { '<place>': pages that died there }
  *   line     [delay, waver] ms summed, the worker's own (means: / n)
+ *   rung     v2.3.5221: [reports that carried one, the most rungs taken
+ *            summed, seconds below the lane's row summed] (card O)
+ *   self     v2.3.5221: { '<program>': reports naming it } (card O, step 1.7)
  *   v2.3.5127 (sitting 4): maps and sums, not a bin a word, so a cell is
  *   about half its first size and the day's 24 KB holds about twice the
  *   devices and builds */
@@ -247,6 +273,10 @@ export function reportSums(msg, own) {
   const cls = classOfReport(msg.devClass);
   if (!cls) return null;
   if (!DRAW_LANES.includes(msg.drawLane)) return null;
+  /* v2.3.5221: a lane but `full` only where the worker takes lanes
+     (`own.lanes`: caps.report 3; `reportlanes: false` none) */
+  const lanes = !!(own && own.lanes);
+  if (!lanes && msg.drawLane !== 'full') return null;
   const build = int(msg.build, 0, REPORT.BUILD_MAX);
   if (build === null) return null;
   const secs = int(msg.secs, 1, REPORT.SECS_MAX);
@@ -320,6 +350,17 @@ export function reportSums(msg, own) {
   /* the worker's own, summed: [delay, waver] ms (means: / n) */
   if (typeof o.delay === 'number' && o.delay >= 0 && typeof o.waver === 'number' && o.waver >= 0) s.line = [Math.round(o.delay), Math.round(o.waver)];
   else if (typeof o.delay === 'number' && o.delay >= 0) s.line = [Math.round(o.delay), 0];
+  /* v2.3.5221: the governor's rung (card O PR 2) and the self-test's
+     failures (PR 14), only where the worker takes lanes */
+  if (lanes) {
+    const rg = Array.isArray(msg.rung) && msg.rung.length === 2 ? [int(msg.rung[0], 0, RUNG.MAX), int(msg.rung[1], 0, secs)] : null;
+    if (rg && rg[0] !== null && rg[1] !== null) s.rung = [1, rg[0], rg[1]];
+    if (Array.isArray(msg.self) && msg.self.length && msg.self.length <= SELF_PROGRAMS.length) {
+      const sf = Object.create(null);
+      for (const p of msg.self) if (typeof p === 'string' && SELF_PROGRAMS.includes(p)) sf[p] = 1;
+      if (Object.keys(sf).length) s.self = sf;
+    }
+  }
   const speed = has(msg, 'speed') ? speedSums(msg.speed, cls.key, o.site === 'live' ? build : 'preview') : null;   /* v2.3.5127: the build is the worker's call */
   return { cell, sums: s, soft: cls.soft, speed };
 }
@@ -333,7 +374,19 @@ export const reportMethods = {
    *  card too; `report: false` none, `reportspeed: false` 1. */
   _reportCap() {
     if (this._reportOff()) return undefined;
-    return this._reportSpeedOff() ? 1 : 2;
+    if (this._reportSpeedOff()) return 1;
+    /* v2.3.5221: 3 takes card O's lanes, rung and self too; `reportlanes:
+       false` back to 2 (a cap that grows gates by its count: TRAPS §9) */
+    return this._reportLanesOff() ? 2 : 3;
+  },
+
+  /* v2.3.5221: card O's kill switch, as liveops.js's `_reportSpeedOff`:
+     `reportlanes: false` in the live flags takes the lanes no more --
+     caps.report back to 2, a lane other than `full` dropped, and `rung` and
+     `self` dropped from a report that still comes */
+  _reportLanesOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'reportlanes') && !f.reportlanes);
   },
 
   /** index.js `case 'report'`: checked, paced, added into the day's book.
@@ -347,7 +400,7 @@ export const reportMethods = {
       if (session.reportAt && now - session.reportAt < REPORT.PACE_MS) return 'pace';
       session.reportAt = now;
       const first = !session.reportCells;
-      const r = reportSums(msg, { delay: session.rtt, waver: session.rttWaver, site: session.site, first });
+      const r = reportSums(msg, { delay: session.rtt, waver: session.rttWaver, site: session.site, first, lanes: this._reportCap() >= 3 });   /* v2.3.5221: lanes */
       if (!r) return 'bad';
       /* v2.3.5127 (sitting 4: a program could fill the day's part with one
          device class a report): a socket's reports reach at most

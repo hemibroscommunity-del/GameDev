@@ -400,4 +400,10 @@ export const SWITCHES = Object.freeze([
   { name: '?wdgeterror', side: 'page', system: 'ui', kind: 'switch', born: 3450, thrown: 'present', risk: 'logic', needs: [], fallback: 'no', off: 'The world map\'s thumbnail asks the chip for errors every time, as before.' },
   { name: '?wheelwhole', side: 'page', system: 'wire', kind: 'switch', born: 3318, thrown: 'present', risk: 'logic', needs: [], fallback: 'no', off: 'Asks for every world monster on the way in, not only those near.' },
   { name: '?xpfly', side: 'page', system: 'combat', kind: 'switch', born: 3893, thrown: '=0', risk: 'logic', needs: [], fallback: 'no', off: 'A kill\'s XP does not fly to the bar.' },
+  /* ── card O's (the lanes and the governor, src/game/drawLanes.js): its rows in a place of their own ── */
+  { name: '?lane', side: 'page', system: 'device', kind: 'lever', born: 5221, thrown: '=full, =light or =thirty', risk: 'none', needs: [], fallback: 'no', off: 'This page draws in the named lane, whatever its device\'s facts pick.' },
+  { name: '?ladderpix', side: 'page', system: 'device', kind: 'switch', born: 5225, thrown: '=0, off, false', risk: 'chip', needs: ['?govern'], fallback: 'no', off: 'The pixel rungs are off: every pixel the screen and the budget allow, whatever the rung.' },
+  { name: '?ladderrate', side: 'page', system: 'page-thread', kind: 'switch', born: 5224, thrown: '=0, off, false', risk: 'logic', needs: ['?govern'], fallback: 'no', off: 'The rate as before the ladder: a 60 screen is never paced, whatever the rung.' },
+  { name: '?govern', side: 'page', system: 'page-thread', kind: 'switch', born: 5222, thrown: '=0 (off), =1 (on where `?lane=` holds it)', risk: 'logic', needs: [], fallback: 'no', off: 'The governor no longer moves the ladder: the lane\'s row, however late the frames.' },
+  { name: 'reportlanes', side: 'worker', system: 'liveops', kind: 'switch', born: 5221, thrown: 'false', risk: 'logic', needs: ['report', 'reportspeed'], fallback: 'no', off: 'The field report no longer takes a lane but full, the governor\'s rung or the self-test (caps.report back to 2).' },
 ]);
