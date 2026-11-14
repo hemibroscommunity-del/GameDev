@@ -1,26 +1,25 @@
 card: P
 branch: claude/plan-p-7-tree-tiers (one branch a PR, each begun from the one before)
-prs: #1713, #1715, #1716 (5241-5243, merged); #1718, #1719, #1736 (5244-5246) ready; #1743 (5247) ready; tree-tiers (5248) working
+prs: #1713, #1715, #1716, #1718 (5241-5244, merged); #1719, #1736, #1743 (5245-5247) ready; tree-tiers (5248) ready
 state: working
 
 ## Done
 
 - #1713, #1715, #1716 (5241-5243): the family table and record, the
   census at the fight, `finish.mjs`.
-- #1718 (5244): the gate. Held at sitting 5 on three faults, mended: a
-  WebP read by its colour index (finish.mjs writes one); no totals in
-  `shipped.json`; the sprite bot's twins read as their PNGs' rows.
+- #1718 (5244, merged at sitting 6): the gate, its three held faults
+  mended (WebP colour index, no totals, the sprite bot's twins).
 - #1719 (5245): the 19 `.m4a` removed. #1736 (5246), `npc-heads`: the
   portraits let go of once loaded; `artCache` line 112 -> 109.1.
-- #1743 (5247), `fx-coinflip`: Ace's coin
-  strips let go of; his window asks for the warmed address; `artCache`
-  45.8 -> 43.7, line 109.1 -> 107.0. Taken before `tree-tiers`, which
-  waited on its question.
+- #1743 (5247), `fx-coinflip`: Ace's coin strips let go of; `artCache`
+  line 109.1 -> 107.0. Taken before `tree-tiers` (it waited on a question).
+- 5248, `tree-tiers` as numbers (`?treenumbers=0`) with the probe
+  mended (cacheBytes.js, guard cache-bytes): `artCache` line 107 -> 101.4,
+  `buffers` 22 -> 23.4 (the trees' numbers), net 4.2 MB less.
 
 ## Next
 
-- 5248, `tree-tiers` as colour numbers (`?treenumbers=0`), with the
-  probe mended (cacheBytes.js; guard cache-bytes): three runs going.
+- `fx-made` (3.1 MB): the effects' 256-colour twins on, `?p256=0`.
 
 ## Found
 
