@@ -218,8 +218,15 @@
  * the shared head pieces and tees).  Nothing new is loaded: the walk is the
  * jog and the work the player's own sheets (folkPose.js).  Lower the line
  * again if it is trimmed. */
+/* v2.3.5246, card P's backlog (the asset door, docs/plan/census/assets.md):
+ * `artCache` 112 -> 109.1 -- LOWERED by what it saved, to lock it in.  The
+ * townsfolk's dialogue portraits (21 of 192 x 192) were warmed with
+ * Assets.load and kept decoded in the asset cache, though only an <img> ever
+ * shows them: now each is let go of the moment it lands (npcSprites.js,
+ * `?npcheads=0` the old way).  Three runs of this check: its highest 48.7 ->
+ * 45.8 (2.9 MB, the census's 2.96), `buffers` unchanged (21.1-21.3). */
 export const MEMORY_BUDGET = {
-  artCache: { name: 'art loaded from files', mb: 112, measured: 102.2,   /* v2.3.3702: 156 -> 112, see the header */
+  artCache: { name: 'art loaded from files', mb: 109.1, measured: 45.8,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB), see the header */
     what: 'pictures loaded from files, decoded (the asset cache, window.__btTex) -- its highest at the fight, the monsters\' looks loaded' },
   gpu: { name: 'textures on the graphics chip', mb: 115, measured: 95.0,   /* v2.3.4058: 105 -> 115, approved by the owner 2026-11-03, see the header */
     what: 'textures on the graphics chip (window.__btGpuTex) -- including what was drawn in the last minute, which Pixi unloads after 60 s unused' },
