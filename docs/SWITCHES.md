@@ -26,6 +26,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 
 | name | side | kind | born | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|
+| `?audioreset` | page | switch | v2.3.5203 | =0 | logic |  | no | The balls' ends are kept across a change of place again (hitSounds.js forgetShotEnds no longer runs at the zone door). |
 | `?foldgentle` | page | switch | v2.3.5045 | =0, off, false | logic |  | no | A sound is folded to mono in one go again, not in turns between frames. |
 | `?nobeds` | page | switch | v2.3.3462 | present | logic |  | no | No ambient sound beds (sea, crowd, fire). |
 | `?noforge` | page | switch | v2.3.3434 | present | logic |  | no | No forge sounds in the town. |
@@ -407,6 +408,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?folkwalk` | page | switch | v2.3.3949 | =0 | logic |  | no | The townsfolk stand at their spots, not walk their day. |
 | `tour` | worker | switch | v2.3.3525 | false | logic |  | no | Un-advertises the tour's two givers. |
 | `?townchat` | page | switch | v2.3.3901 | =0 | logic |  | no | The townsfolk do not chat to each other. |
+| `?townsfolkreset` | page | switch | v2.3.5203 | =0 | logic |  | no | A held pose ends a frame after a change of place again, on its own check, not at the zone door. |
 
 ## ui
 

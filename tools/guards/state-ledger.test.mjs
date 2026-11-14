@@ -24,7 +24,18 @@
  *      `--ledger` makes them now.  A row changed by hand, or left stale by a
  *      change to the code (a new writer), fails: make the ledger again.  The
  *      hand's columns (`lifetime`, and any a later card adds beside it, card
- *      L's `reset`) are the hand's and are never compared.
+ *      L's `reset`) are the hand's and are never compared;
+ *   6. (v2.3.5203, reading the script) a row whose lifetime names an edge
+ *      (`zone`, `rejoin`; `death` has no one door on the page yet) is reset
+ *      there: by a resetOn(edge, fn) whose named fn writes it (the script's
+ *      `resets`), or by the edge's door's own list (changeZone and
+ *      clearZoneLocalFx; rejoinClear); and every reset writes only rows whose
+ *      lifetime names its edge.  `lifetime` is `sitting` or edges joined by
+ *      `+`; `reset` is `value <v>` or `fn <name>` beside an edge, `kept:
+ *      <why>` beside `sitting` (src/state/README.md);
+ *   7. the rows card D suggests a reset for (not `never`, not `?`) still
+ *      `sitting` with no `kept:` may only fall: SITTING_LINE, which each of
+ *      card L's reset PRs lowers to its count (its card's PR 4).
  * Printed, never failed: the unlisted rows by system, the rows of files the
  * map has not placed (`unsorted`: no ledger can take them), and a listed row
  * whose system has moved since it was listed (it stays in its file).
@@ -62,6 +73,15 @@
  *   (its `lifetime` 'sitting' -> 'death' by hand: green, the hand's column)
  *   9. @babel moved aside in server/ too: the page is read and said,
  *      5 skipped, green; with `--live`                        -> FAIL 0
+ * v2.3.5203 (card L PR 3), each tried by hand, 2026-11-14:
+ *  10. `_shotEnds`'s lifetime set back to sitting in src/state/audio.js
+ *      (its reset, hitSounds.js forgetShotEnds, then writes a row whose
+ *      lifetime names no edge)                       -> FAIL 6 (and 7)
+ *  11. `_iceAttack` given lifetime zone by hand, with no reset in the code
+ *                                                         -> FAIL 6
+ *  12. `_pointsResetAskedAt`'s `kept:` taken off (469, line 468) -> FAIL 7
+ *  13. the reset given inline, `resetOn('zone', (S) => {...}, 'audio')`
+ *                                                         -> FAIL 6
  *
  * Run from the repository's root: node tools/guards/state-ledger.test.mjs
  *   --live   insist on the script: fail where it cannot load (no fallback)
@@ -88,6 +108,10 @@ import { stateCensus, CENSUS_SCRIPT } from './lib/fourLines.mjs';
    `--ledger debug`, `--ledger preload` and `--ledger art` take them, and
    the next sitting lowers it again. */
 export const UNLISTED_LINE = 22;
+/* v2.3.5203 (card L PR 3): the rows card D suggests a reset for that are
+   still `sitting` with no `kept:` (484 at main 75946b7's ledgers).  Each of
+   card L's reset PRs lowers it with what it decides (its card's PR 4). */
+export const SITTING_LINE = 468;
 
 const LIVE = process.argv.includes('--live');
 const PAGE_ONLY = process.argv.includes('--page');
@@ -150,13 +174,23 @@ function plainData(src) {
 }
 
 const SUGGESTED = /^(\?|(never|zone|death|rejoin)(\+(zone|death|rejoin))*)$/;
+const LIFETIME = /^(sitting|(zone|death|rejoin)(\+(zone|death|rejoin))*)$/;
+const RESET = /^(value \S.*|fn [A-Za-z_$][\w$]*|kept: \S.*)$/;
 const str = (x) => typeof x === 'string' && x.length > 0;
 function rowFault(row) {
   if (!row || typeof row !== 'object') return 'not an object';
   const isField = row.field !== undefined;
   if (isField ? !str(row.field) || row.variable !== undefined : !str(row.variable) || !str(row.file)) return 'no field, or no variable and its file';
   if (!Object.hasOwn(SYSTEMS, row.system) && row.system !== 'unsorted') return 'system';
-  if (!str(row.lifetime)) return 'lifetime';
+  /* v2.3.5203 (card L PR 3): the hand's two columns.  `lifetime` is
+     `sitting` or the edges it is reset at; `reset` (absent until someone
+     decides) is `value <v>` or `fn <name>` beside an edge, or `kept: <why>`
+     beside `sitting` */
+  if (!str(row.lifetime) || !LIFETIME.test(row.lifetime)) return 'lifetime';
+  if (row.reset !== undefined) {
+    if (!str(row.reset) || !RESET.test(row.reset)) return 'reset';
+    if (/^kept: /.test(row.reset) !== (row.lifetime === 'sitting')) return 'reset (kept: beside sitting, a value or fn beside an edge)';
+  } else if (row.lifetime !== 'sitting') return 'reset (an edge says what it resets to)';
   if (typeof row.suggested !== 'string' || !SUGGESTED.test(row.suggested)) return 'suggested';
   if (!str(row.born)) return 'born';
   if (!['', '2+', '2+~'].includes(row.twoFiles)) return 'twoFiles';
@@ -265,6 +299,74 @@ if (census) {
   check(`5: every listed row's machine columns are the script's (${MACHINE.join(', ')}): make the ledger again (state-census.mjs --ledger <system> --write); by hand only lifetime and the hand's columns`, hand.length === 0, hand);
 } else {
   info('5: not checked: the page carries no columns (only where the script cannot load)');
+}
+
+/* ── 6. a row's lifetime and the resets (v2.3.5203, card L PR 3) ──
+   Every listed row whose lifetime names an edge is reset there: by a
+   resetOn(edge, fn) whose fn writes it (the script's `resets`: its file is
+   then one of the row's writers), or by the edge's door's own list (the
+   zone's changeZone and clearZoneLocalFx; the rejoin's rejoinClear).  And
+   every reset writes only rows whose lifetime names its edge.  The death
+   has no one door on the page yet (docs/specs/state-resets.md): nothing
+   may be reset at it. */
+const DOOR_LISTS = Object.freeze({
+  zone: ['game/zoneTransitions.js changeZone', 'game/zoneTransitions.js clearZoneLocalFx'],
+  rejoin: ['game/rejoinSlots.js rejoinClear'],
+  death: [],
+});
+if (census) {
+  const bad = [];
+  const R = census.json.resets || [];
+  for (const b of census.json.resetsBad || []) bad.push(b);
+  /* key -> Set of edges its resets cover */
+  const by = new Map();
+  const cover = (k, e) => { if (!by.has(k)) by.set(k, new Set()); by.get(k).add(e); };
+  for (const r of R) {
+    for (const f of r.fields) cover('S ' + f, r.edge);
+    for (const v of r.variables) cover(v, r.edge);   /* the script's own path, from the root */
+  }
+  /* the doors' own lists: a write whose site is "<file>:<line> <fn>" */
+  const doorWrites = (sites, e) => (sites || []).some((x) => DOOR_LISTS[e].some((d) => { const [f, fn] = d.split(' '); return x.startsWith(f + ':') && x.split(' ')[1] === fn; }));
+  const doorCovers = new Map();
+  for (const r of census.json.fields) for (const e of Object.keys(DOOR_LISTS)) if (doorWrites([...r.sets, ...r.inside], e)) { const k = 'S ' + r.name; if (!doorCovers.has(k)) doorCovers.set(k, new Set()); doorCovers.get(k).add(e); }
+  for (const v of census.json.variables) for (const e of Object.keys(DOOR_LISTS)) if (doorWrites(v.writes, e)) { const k = 'src/' + v.file + ' ' + v.name; if (!doorCovers.has(k)) doorCovers.set(k, new Set()); doorCovers.get(k).add(e); }
+  const life = new Map();
+  for (const [sys, rows] of ledgers) for (const row of rows) life.set(keyOf(row), { sys, edges: row.lifetime === 'sitting' ? [] : row.lifetime.split('+') });
+  for (const [k, { sys, edges }] of life) {
+    for (const e of edges) {
+      if (e === 'death') { bad.push(`src/state/${sys}.js ${k}: lifetime death, but the death has no one door on the page yet`); continue; }
+      if (!(by.get(k) && by.get(k).has(e)) && !(doorCovers.get(k) && doorCovers.get(k).has(e))) bad.push(`src/state/${sys}.js ${k}: lifetime ${e}, and no resetOn('${e}', ...) writes it (nor the ${e} door's own list)`);
+    }
+  }
+  for (const r of R) {
+    for (const k of [...r.fields.map((f) => 'S ' + f), ...r.variables]) {
+      const l = life.get(k);
+      if (!l || !l.edges.includes(r.edge)) bad.push(`${r.file}:${r.line} resetOn('${r.edge}', ${r.fn}) writes ${k}, whose ledger row's lifetime is ${l ? (l.edges.join('+') || 'sitting') : 'not listed'}`);
+    }
+    if (!r.fields.length && !r.variables.length) bad.push(`${r.file}:${r.line} resetOn('${r.edge}', ${r.fn}) writes no row (a reset writes its state itself, not through a call)`);
+  }
+  check(`6: every row reset at an edge has its reset there, and every reset a row (${R.length} resets)`, bad.length === 0, bad);
+} else {
+  info('6: not checked: the page carries no resets (only where the script cannot load)');
+}
+
+/* ── 7. the rows still sitting with a suggestion (v2.3.5203, card L) ──
+   A row card D suggests a reset for (zone, death, rejoin: not `never`, not
+   `?`) is decided when its lifetime names its edge, or its reset says
+   `kept:` and why.  The count of the undecided only falls; each of card L's
+   reset PRs lowers SITTING_LINE with it (card L's card, PR 4). */
+{
+  let sitting = 0;
+  const bySys = new Map();
+  for (const [sys, rows] of ledgers) for (const row of rows) {
+    if (row.suggested === 'never' || row.suggested === '?') continue;
+    if (row.lifetime !== 'sitting' || (typeof row.reset === 'string' && /^kept: /.test(row.reset))) continue;
+    sitting++;
+    bySys.set(sys, (bySys.get(sys) || 0) + 1);
+  }
+  check(`7: rows still sitting with a suggestion at or under ${SITTING_LINE} (${sitting})`, sitting <= SITTING_LINE);
+  if (sitting < SITTING_LINE) info(`(room: ${SITTING_LINE - sitting} under the line ${SITTING_LINE}: lower it in this PR)`);
+  info('sitting with a suggestion, by system: ' + [...bySys].sort((a, b) => a[1] - b[1] || (a[0] < b[0] ? -1 : 1)).map(([s2, c]) => `${s2} ${c}`).join(', '));
 }
 
 console.log(failed ? `\n${failed} failed` : '\nall green');

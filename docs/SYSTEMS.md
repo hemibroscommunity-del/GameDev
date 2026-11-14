@@ -366,6 +366,7 @@ The client's tables (src/data/): items, zones, abilities, the long display and s
 The state ledger: every field of S and top-of-file variable, a file a system.
 
 - **Files**: everything under `src/state/`
+- **Files**: `src/game/`: resetOn
 - **Doors**: none named yet
 - **Switches**: none
 - **Words**: `ledger`
