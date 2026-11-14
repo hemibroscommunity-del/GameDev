@@ -1,11 +1,11 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: PR 1 tag 5181 (built, waits on a question), #1820 (PR 3, ready)
+prs: #1822 (PR 1, ready), #1820 (PR 3, ready)
 state: ready
 
 ## Done
 
-- PR 1 (5181, claude/plan-k-1-wire-lists): `PRIVILEGED_EVENTS`,
+- PR 1 (5181, #1822): `PRIVILEGED_EVENTS`,
   `RELAY.TYPES` and wire-audit's echo list made from the wire table
   (`server/src/wire/lists.js`); the column `privileged` (`echo` on 9 rows);
   the literals deleted, each type's why moved above its row. Bundle +88 KB
@@ -23,7 +23,8 @@ state: ready
 
 - Six suites read `PRIVILEGED_EVENTS` from index.js's source, not the Set:
   accuracy, achievements-client, boards, loginspin, rejoin-resend,
-  rise-chest (`server/test/`). PR 1 points each at the made Set (asked).
+  rise-chest (`server/test/`). PR 1 points each at the made Set (the
+  planning session's yes, 2026-11-14).
 - `tools/guards/lib/systems.mjs`: the wire system's two doors still name
   index.js and relay.js; both still hold the names (now made in lists.js).
 - `server/src/movement.js` `_handleMove` keeps `vx`, `vy`, `d`, `f`, `eqc`,
@@ -35,5 +36,4 @@ state: ready
 
 ## Needs
 
-- The planning session: may PR 1 change the six suites above (one check
-  each, the same assertion read from the Set)? Asked 2026-11-14.
+- Nothing asked. PR 2 waits for PR 1's merge; PR 4 for 1 and 3.
