@@ -26,11 +26,8 @@
  *      `at` says `(fall-through)` (a handler's last answer, or a gate before
  *      any route: the lister does not look for those).
  *
- *   7. (v2.3.5182, card K PR 2 only: its next list's PR takes it out) a made
- *      list that is not today's: TODAY below is each of PR 2's lists as it
- *      stood on main e8ee477 (fightlock.js, eventplace.js, chatmod.js,
- *      chatguard.js, botsig.js), written by hand in the one place it may be,
- *      for one PR.  PR 1's three are the rows' now (§1, §2);
+ *   7. (v2.3.5182 to 5184: PR 2's copy of today's lists, taken out by
+ *      card K's PR 4, the next PR to make a list from the table);
  *   8. a row added to the table, or a column changed, that does not reach
  *      its list with no other edit (`wireLists` with a probe row of each);
  *   9. (v2.3.5182) a machine's column that does not hold to the code: an
@@ -302,44 +299,10 @@ check('6: the lister finds the routes (guard)', tested.size > 60 && tested.has('
   check('6: every route row is a path a handler tests, or says (fall-through) in its `at`', unseen.length === 0, unseen);
 }
 
-/* ── 7. today's lists (v2.3.5182, card K PR 2 ONLY: the next PR that makes
-   a list takes this copy out, and from then the rows are the lists) ──
-   PR 2's lists as they stood, written by hand on main e8ee477 (fightlock.js
-   FIGHT_LOCK's switches and FIGHT_OPEN's whys, eventplace.js ROOM_PLACED and
-   RELAY_PLACED, chatmod.js MUTABLE_RELAY_TYPES, chatguard.js SOCIAL.TYPES,
-   botsig.js's hooks).  The made ones equal them: the move changed nothing. */
+/* ── 7. (v2.3.5184: PR 2's copy of today's lists came out with card K's PR 4,
+   the next PR to make a list from the table, the wire door's rows.  From
+   here the rows are the lists, held by §1, §2, §8 and §9) ── */
 const L = await import(W('lists.js'));
-{
-  const TODAY = {
-    FIGHT_LOCK_SW: {'ace_flip_request': 'fightlocktable', 'ace_item_flip_request': 'fightlocktable', 'amulet_forge_request': 'fightlocktable', 'arena_sponsor': 'fightlocktable', 'cape_redeem': 'fightlocktable', 'character_reset': 'fightlockreset', 'duel_accept': 'fightlocktable', 'dungeon_start': 'fightlockdoor', 'equip_request': 'fightlockequip', 'farm_act': 'fightlock', 'farm_order': 'fightlock', 'forge_armor': 'fightlocktable', 'forge_weapon': 'fightlocktable', 'gamble_request': 'fightlocktable', 'gem_combine': 'fightlocktable', 'gem_cut_request': 'fightlocktable', 'harden_weapon': 'fightlocktable', 'http:/api/account/reset': 'fightlockreset', 'http:/api/arena/join': 'fightlocktable', 'http:/api/market/place': 'fightlock', 'http:/api/store/bid': 'fightlock', 'http:/api/store/buy': 'fightlock', 'http:/api/store/list': 'fightlock', 'item_drop': 'fightlock', 'jackpot_deposit': 'fightlocktable', 'pet_house_buy': 'fightlocktable', 'shard_crack': 'fightlocktable', 'shield_gem': 'fightlocktable', 'shield_wear': 'fightlockequip', 'shop_sell': 'fightlock', 'stats_update': 'fightlockarmor', 'store_offer': 'fightlocktable', 'trade2_confirm': 'fightlock', 'trade2_stage_weapon': 'fightlocktable', 'trade_accept': 'fightlock', 'trade_offer': 'fightlock', 'unequip_request': 'fightlockarmor', 'weapon_gem': 'fightlocktable'},
-    FIGHT_OPEN_BY_WHY: {'the fight itself':['ability','ability_use','arrow_blast','element_burst','extraction_start','monster_damage','nml_attack','nml_lock_allow','nml_lock_ask','node_strike','player_attack'],'moves no goods':['acc_request','ace_board_request','achv_title','bank_open','build_point_earned','cape_equip','dice','farm_open','feedback','fish_board_request','fish_inspect','heap_burn','join','map_watch','move','pet_active','pet_capture','pet_name','pet_release','points_reset','pong','pose','prog3_allocate','race_start','report','rest_request','reveal_item','ride','set_active_slot','shop_list','shop_quote','spin_board_request','stat_allocate','track','trap_arm'],'talk, parties, friends, clans':['alliance_board','alliance_name','alliance_war','area_chat','bro_nonce','bro_verify','chat_mute','chat_report','clan_join_accept','clan_kick','clan_leave','clan_war_declare','friend_accept','friend_decline','friend_dm','friend_remove','friend_request','party_accept','party_chat','party_decline','party_invite','party_kick','party_leave','store_dm','store_dm_open','whisper'],'sound by place':['bank_deposit'],'brings things in':['bank_withdraw','chest_open','daily_reroll','daily_spin','guild_quest_turn_in','loginspin_ask','loginspin_collect','loginspin_double','loginspin_go','loot_pickup','quest_accept','quest_turn_in','rewards_get','rise_chest_open','season_claim','store_offer_cancel','store_offer_reply','trade2_cancel','trade2_unstage_weapon'],'a relay':['campfire_lit','campfire_out','chat','clan_invite','duel_decline','duel_request','duel_wager_request','emote','gather_node','monster_dmg_at','player_died_to_monster','player_dodge','player_hurt_by_monster','player_jump','player_projectile','player_respawned','player_shield','player_swing','pvp_confirmed','pvp_threat','stunned','trade_reject'],'dormant':['clan_create','shop_purchase'],'rearranges the bag':['cook_recipe','cook_request','essence_apply','farm_buy','make_hardened_wood','make_traps','sell_weapon','shop_buy','smelt_bar','smith_salvage'],'eaten or burnt in a fight, by design':['eat_request','firemaking_request','potion_drink'],"another player's fine":['threat_response'],'the trade window before its confirm':['trade2_open','trade2_pets','trade2_ready','trade2_set']},
-    ROOM_PLACED: {
-      monster_hit: { m: 'monsterId', who: ['attackerId'] },
-      monster_attack: { m: 'monsterId', xy: ['attackerX', 'attackerY'], who: ['targetId'] },
-      monster_ability: { m: 'monsterId', xy: ['x', 'y'], who: ['targetId'] },
-      monster_projectile: { m: 'monsterId', xy: ['x', 'y'] },
-      fire_trail: { xy: ['x', 'y'], m: 'monsterId' },
-      parry: { xy: ['x', 'y'], m: 'monsterId', who: ['targetId', 'attackerId'] },
-      arrow_boom: { xy: ['x', 'y'], who: ['id'] },
-      element_nova: { xy: ['x', 'y'], who: ['id'] },
-      ability_windup: { p: 'playerId', who: ['playerId'] },
-      dice_roll: { p: 'id', who: ['id'] },
-    },
-    RELAY_PLACED: ['player_swing', 'player_projectile', 'player_dodge', 'player_jump', 'monster_dmg_at', 'player_hurt_by_monster', 'gather_node', 'emote'],
-    MUTABLE_RELAY_TYPES: ['chat', 'emote', 'dice_roll'],
-    SOCIAL_TYPES: ['chat', 'emote'],
-    WATCH_HOOKS: ['_sigOnJoin', '_sigOnMove', '_sigOnAbility', '_sigOnStart', '_sigOnStrike', '_sigOnCook', '_sigOnHit'],
-  };
-  const sortObj = (o) => JSON.stringify(Object.fromEntries(Object.entries(o).sort().map(([k, v]) => [k, v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort()) : v])));
-  const set = (a) => JSON.stringify([...a].sort());
-  const openToday = Object.fromEntries(Object.entries(TODAY.FIGHT_OPEN_BY_WHY).flatMap(([why, ns]) => ns.map((n) => [n, why])));
-  check(`7: FIGHT_LOCK's types and switches made from the table are today's (${Object.keys(TODAY.FIGHT_LOCK_SW).length})`, sortObj(L.FIGHT_LOCK_SW) === sortObj(TODAY.FIGHT_LOCK_SW));
-  check(`7: FIGHT_OPEN made from the table is today's (${Object.keys(openToday).length})`, sortObj(L.FIGHT_OPEN) === sortObj(openToday));
-  check('7: ROOM_PLACED and RELAY_PLACED made from the table are today\'s', sortObj(L.ROOM_PLACED) === sortObj(TODAY.ROOM_PLACED) && set(L.RELAY_PLACED) === set(TODAY.RELAY_PLACED));
-  check('7: MUTABLE_RELAY_TYPES, SOCIAL.TYPES and the watched hooks made from the table are today\'s', set(L.MUTABLE_RELAY_TYPES) === set(TODAY.MUTABLE_RELAY_TYPES) && set(L.SOCIAL_TYPES) === set(TODAY.SOCIAL_TYPES) && set(L.WATCH_HOOKS) === set(TODAY.WATCH_HOOKS));
-  /* PR 1's three: the rows' now, held by §1 and §2 */
-  check('7: PR 1\'s lists stay the rows\' (privileged 163, relayed 26, echoes 9)', MADE_PRIV.size === 163 && MADE_RELAY.size === 26 && MADE_ECHOES.size === 9, [MADE_PRIV.size, MADE_RELAY.size, MADE_ECHOES.size]);
-}
 
 /* ── 8. a row added to the table reaches its list with no other edit ── */
 {

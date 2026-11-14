@@ -584,6 +584,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `relaylist` | worker | switch | v2.3.3304 | false | logic |  | no | Relays every type that is not privileged again (the old deny-list). |
 | `?room` | page | lever | v2.3.217 | a room's name | none |  | no | Joins the named room, not the lobby's. |
 | `?wheelwhole` | page | switch | v2.3.3318 | present | logic |  | no | Asks for every world monster on the way in, not only those near. |
+| `wiredoor` | worker | switch | v2.3.5184 | false | logic |  | no | Every message and the room's web routes reach their handlers unchecked again, as before the wire door; a mute of `__proto__` is taken again. |
 | `?wirereset` | page | switch | v2.3.5207 | =0 | logic |  | no | The monsters' balls in flight, their warnings on the ground and the impact rings carry over a change of place again, emptied only where a way out did it by hand or by their own clock. |
 
 ## world
