@@ -32,10 +32,8 @@ state: working
   the line in 5 of ~40 runs, 19.6 ms the most; the sweep should look inside.
 - `gear-sheet` again once: 22.4 ms at `armour` (`composeShirt` of the WHOLE
   upscaled shirt strip for the portrait's one frame): crop it first.
-- The Leaderboard's faces (a step at a time since #1681): to measure
-  (`g-boards`), as the gatekeeper asks.
-- Masked bake worker let go as stuck ~3/min on this box; `wheelGround.js`
-  `_sprite` up to 14.3 ms, unlisted.
+- The Leaderboard's faces (since #1681): to measure at `g-boards`.
+- Bake worker stuck ~3/min here; `wheelGround.js` `_sprite` 14.3 ms.
 
 ## Needs
 
