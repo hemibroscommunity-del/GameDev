@@ -34,8 +34,7 @@
  *       refused; and two scans of server/src hold every flag the worker
  *       READS and every `<name>: false` a comment PROMISES to a name the
  *       route takes.                                                  */
-import { readFileSync } from 'node:fs';
-import { srcFiles } from './src-walk.mjs';
+import { scanWorker } from '../../tools/guards/lib/switchScan.mjs';   /* v2.3.5301: §8f, §8g read the switch table's scanner */
 import { GameRoom } from '../src/index.js';
 import { LIVEOPS, METRICS, flagNameOk, orderEscrowGold } from '../src/liveops.js';
 import { ZONES } from '../src/data.js';
@@ -509,40 +508,30 @@ await req('DELETE', '/api/admin/flags?name=disable_threats');
   }
 
   // 8f. every flag the WORKER READS is a name the route takes.  The reads
-  //     come in three shapes: _flagOn/_flagNum('<name>'), and a cache held
-  //     in a local (`const f = this._liveFlags;`) then read as f.<name>,
-  //     f['<name>'] or hasOwnProperty.call(f, '<name>') a few lines on.
-  const dir = new URL('../src/', import.meta.url);
-  const files = srcFiles();   /* v2.3.5060: in depth, a folder's files too (src-walk.mjs) */
+  //     are the switch table's scanner's (v2.3.5301, card T: one reader of
+  //     the code, tools/guards/lib/switchScan.mjs, over server/src in depth
+  //     through src-walk.mjs): _flagOn/_flagNum('<name>'), a local holding
+  //     the flags read as f.<name>, f['<name>'] or own/has(f, '<name>'),
+  //     `<obj>._liveFlags.<name>`, a helper that takes the name, and a
+  //     table's `flag: '<name>'`.  Its rules are in its header; a read in a
+  //     shape it does not know is the switch table's guard's to count.
+  const scan = scanWorker();
   const reads = new Map();
-  const note = (n, where) => { if (!reads.has(n)) reads.set(n, where); };
-  for (const file of files) {
-    const lines = readFileSync(new URL(file, dir), 'utf8').split('\n');
-    lines.forEach((line, i) => {
-      for (const m of line.matchAll(/_flag(?:On|Num)\(\s*'([^']+)'/g)) note(m[1], file + ':' + (i + 1));
-      const decl = /(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*this\._liveFlags\b/.exec(line);
-      if (!decl) return;
-      const v = decl[1].replace(/\$/g, '\\$');
-      for (let j = i; j < Math.min(lines.length, i + 8); j++) {
-        for (const m of lines[j].matchAll(new RegExp('hasOwnProperty\\.call\\(\\s*' + v + "\\s*,\\s*'([^']+)'", 'g'))) note(m[1], file + ':' + (j + 1));
-        for (const m of lines[j].matchAll(new RegExp('(?<![\\w$.])' + v + '\\.([A-Za-z_]\\w*)', 'g'))) note(m[1], file + ':' + (j + 1));
-        for (const m of lines[j].matchAll(new RegExp('(?<![\\w$.])' + v + "\\[\\s*'([^']+)'\\s*\\]", 'g'))) note(m[1], file + ':' + (j + 1));
-      }
-    });
+  for (const [n, where] of scan.names) {
+    const r = where.find((w) => w.shape !== 'promise');
+    if (r) reads.set(n, r.file + ':' + r.line);
   }
   const unthrowable = [...reads].filter(([n]) => !flagNameOk(n)).map(([n, w]) => n + ' @ ' + w);
   check('8f. the scan sees the worker\'s flag reads (60 or more, the camelCase ones among them)', reads.size >= 60 && ['storeGear', 'dailyChest', 'whirlWindup', 'disable_dungeons', 'xp_mult'].every((n) => reads.has(n)), reads.size);
   check('8f. every flag the worker reads can be set through POST /flags', unthrowable.length === 0, unthrowable);
 
   // 8g. every kill switch a COMMENT promises -- `<name>: false` beside
-  //     "live flags" / "liveflags" / "kill switch" -- is a name the route takes
+  //     "live flags" / "liveflags" / "kill switch" -- is a name the route
+  //     takes (the same scanner's `promise` shape, v2.3.5301)
   const promised = new Map();
-  for (const file of files) {
-    const s = readFileSync(new URL(file, dir), 'utf8');
-    for (const m of s.matchAll(/`([A-Za-z_$][\w$]*): ?false`/g)) {
-      const ctx = s.slice(Math.max(0, m.index - 160), m.index + m[0].length + 160);
-      if (/live ?flags|liveflags|kill[ -]?switch/i.test(ctx) && !promised.has(m[1])) promised.set(m[1], file);
-    }
+  for (const [n, where] of scan.names) {
+    const p = where.find((w) => w.shape === 'promise');
+    if (p) promised.set(n, p.file);
   }
   const broken = [...promised].filter(([n]) => !flagNameOk(n)).map(([n, f]) => n + ' @ ' + f);
   check('8g. the scan sees the promised switches (60 or more, broCount among them)', promised.size >= 60 && promised.has('broCount') && promised.has('storeGear'), promised.size);
