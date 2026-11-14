@@ -112,7 +112,8 @@ import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtLookFrame, drawGearFrame, loadCroppedStrip, subTexture, frameBounds, packTrimmed, preloadBeltSheets, gearSheetLoad } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
 import { gearDrawFrame, gearDrawFramePhased } from '../gearWalkFrame.js';   /* v2.3.4999: the walking armour from the numbers */
-import { gearInput, gearNumbersKey } from '../gearNumbers.js';   /* v2.3.5000: the bakes read the armour's numbers */
+import { gearNumbersKey } from '../gearNumbers.js';   /* v2.3.5000: the bakes read the armour's numbers */
+import { frameInput, bakeTransfer, bakeUrlAnswer, bakeUrlProbe, bakeUrlsRead, bakeWorkerStuck } from '../bakeByAddress.js';   /* v2.3.5043: an input as its address */
 import { sideForDir, getShirtArt, sanitizeShirtArt, artHasInk } from '../traits/playerArt.js';   /* v2.3.1938 */
 import { getPattern, parsePattern, sanitizePattern } from '../traits/patternCatalog.js';   /* v2.3.1941 */
 import { hatHairFit } from '../traits/hatHairFit.js';   /* v2.3.1943 band refit + v2.3.1561 float lift, in one place since v2.3.1959 */
@@ -3439,6 +3440,7 @@ function _getBakeWorker() {
          (then its bytes go from here: lookArmour.js lookSheetForWorker) */
       if (d.type === 'lookSheetFailed') { lookSheetFetchFailed(w, d.key); return; }
       if (d.type === 'lookSheetDone') { lookSheetFetchDone(d.key, d.hash); return; }
+      if (d.type === 'urlsRead') { bakeUrlsRead(d.id); return; }   /* v2.3.5043: its addresses read (bakeByAddress.js) */
       const job = _bakeJobs.get(d.id);
       if (!job) return;
       _bakeJobs.delete(d.id);
@@ -3467,21 +3469,9 @@ function _getBakeWorker() {
 function _gearReadable(tex) {
   return !!(tex && (gearNumbersKey(tex) || (tex.source && tex.source.resource)));
 }
-function _frameInput(tex) {
-  /* v2.3.5000: a frame of the walking armour's colour numbers is named, not
-     copied: the worker has its sheet (_sendGearSheets) and expands the cell */
-  const gi = gearInput(tex);
-  if (gi) return Promise.resolve(gi);
-  const f = tex && tex.frame, o = tex && (tex.orig || tex.frame);
-  const res = tex && tex.source && tex.source.resource;
-  if (!f || !o || !res || !(f.width > 0) || !(f.height > 0)) return Promise.resolve(null);
-  const t = tex.trim;
-  let p;
-  try { p = createImageBitmap(res, f.x, f.y, f.width, f.height); } catch (e) { return Promise.resolve(null); }
-  return p.then((bm) => ({
-    bm, tx: t ? t.x : 0, ty: t ? t.y : 0, fw: f.width, fh: f.height, ow: o.width, oh: o.height,
-  }), () => null);
-}
+/* v2.3.5043: a frame of a sheet that is an image goes to the worker as its
+   address (frameInput, bakeTransfer, bakeUrlAnswer: bakeByAddress.js, where
+   the why is; moved there to keep this file under its line) */
 
 /* v2.3.5000: the sheets of numbers a job's pieces name, to the worker before
    the job (once a worker: lookSheetForWorker); false if one could not go */
@@ -3581,18 +3571,20 @@ async function _runBake(job) {
     const bt = getGearFrame('belt', 'chainbelt', 'jog', poseInfo.dir, poseInfo.frameIdx | 0);
     if (bt && bt.source && bt.source.resource) beltTex = bt;
   }
-  const [body, belt, ...inps] = await Promise.all([_frameInput(bodyTex), beltTex ? _frameInput(beltTex) : null, ...worn.map(w => _frameInput(w.tex))]);
+  const [body, belt, ...inps] = await Promise.all([frameInput(bodyTex), beltTex ? frameInput(beltTex) : null, ...worn.map(w => frameInput(w.tex))]);
   const _close = () => { for (const x of [body, belt, ...inps]) { try { if (x && x.bm) x.bm.close(); } catch (e) { /* gone */ } } };
   if (!body) { _close(); _bakeWorkerStats.failed++; _maskedFailed(key); return; }   /* v2.3.4870: counted, not baked here (above) */
   if (!_sendGearSheets(wk, inps)) { _close(); _bakeWorkerStats.failed++; _maskedFailed(key); return; }   /* v2.3.5000 */
   const id = ++_bakeSeq;
   const reply = await new Promise((resolve) => {
     _bakeJobs.set(id, resolve);
-    const transfer = [body, belt, ...inps].filter((x) => x && x.bm).map((x) => x.bm);   /* v2.3.5000: a piece from numbers carries no bitmap */
+    const transfer = bakeTransfer([body, belt, ...inps], id);   /* v2.3.5000: a piece from numbers carries no bitmap; v2.3.5043: nor one by address */
     try {
       wk.postMessage({ id, body, belt, worn: worn.map((w, i) => ({ k: w.k, inp: inps[i] })), dilate, poseInfo, ds: DISPLAY_DS, crop: true }, transfer);
-    } catch (e) { _bakeJobs.delete(id); _close(); resolve({ err: String(e) }); }
+    } catch (e) { _bakeJobs.delete(id); _close(); resolve({ id, err: String(e) }); }
   });
+  /* v2.3.5043: an address the worker could not read: cut here, once */
+  if (bakeUrlAnswer(reply, job)) return _runBake(job);
   /* v2.3.4870: a failure is counted, not baked here (a renderer frame is
      baked inline on its second failure: _maskedRetryInline); a background
      prewarm with no worker left bakes inline as it always did */
@@ -3647,7 +3639,7 @@ async function _runLookBake(job) {
     const bt = getGearFrame('belt', 'chainbelt', 'jog', poseInfo.dir, poseInfo.frameIdx | 0);
     if (bt && bt.source && bt.source.resource) beltTex = bt; else beltPending = true;
   }
-  const [belt, ...inps] = await Promise.all([beltTex ? _frameInput(beltTex) : null, ...worn.map(w => _frameInput(w.tex))]);
+  const [belt, ...inps] = await Promise.all([beltTex ? frameInput(beltTex) : null, ...worn.map(w => frameInput(w.tex))]);
   const _close = () => { for (const x of [belt, ...inps]) { try { if (x && x.bm) x.bm.close(); } catch (e) { /* gone */ } } };
   /* a piece whose sheet is not in yet would be baked as if not worn: asked again later */
   if (inps.some((x) => !x)) { _close(); job.reply = { err: 'gear not loaded' }; return; }
@@ -3655,11 +3647,13 @@ async function _runLookBake(job) {
   const id = ++_bakeSeq;
   const reply = await new Promise((resolve) => {
     _bakeJobs.set(id, resolve);
-    const transfer = [belt, ...inps].filter((x) => x && x.bm).map((x) => x.bm);   /* v2.3.5000: a piece from numbers carries no bitmap */
+    const transfer = bakeTransfer([belt, ...inps], id);   /* v2.3.5000: a piece from numbers carries no bitmap; v2.3.5043: nor one by address */
     try {
       wk.postMessage({ id, look: job.look, belt, worn: worn.map((w, i) => ({ k: w.k, inp: inps[i] })), dilate: job.dilate, poseInfo, ds: DISPLAY_DS }, transfer);
-    } catch (e) { _bakeJobs.delete(id); _close(); resolve({ err: String(e) }); }
+    } catch (e) { _bakeJobs.delete(id); _close(); resolve({ id, err: String(e) }); }
   });
+  /* v2.3.5043: an address the worker could not read: cut here, once */
+  if (bakeUrlAnswer(reply, job)) return _runLookBake(job);
   if (beltPending) reply.beltPending = true;
   if (reply.err) _bakeWorkerStats.failed++; else _bakeWorkerStats.worker++;
   if (!reply.err && job.rank > 0) _localBakeStats.delivered++;
@@ -3806,7 +3800,8 @@ function _localLookEntries(pose, dir, art) {
 if (typeof window !== 'undefined') {
   window.__btBakeWorker = () => ({ ..._bakeWorkerStats, rawKeys: _bakeWorkerStats.rawKeys.slice(), alive: !!_bakeWorker, dead: _bakeWorkerDead, pending: _bakeJobs.size,
     queued: _bakeQueue.length, busy: _bakeBusy,
-    peer: { ..._peerBakeStats, queued: _peerQueue.length }, local: { ..._localBakeStats } });
+    peer: { ..._peerBakeStats, queued: _peerQueue.length }, local: { ..._localBakeStats },
+    byUrl: bakeUrlProbe() });   /* v2.3.5043 */
   /* v2.3.3520: QA -- the last local frames drawn plain, and the body pictures
      the cache holds bakes for (each key starts with its body texture's uid) */
   window.__btLocalMisses = () => {
@@ -3924,6 +3919,7 @@ function _bakeWorkerWatch() {
   _bakeWorker = null;
   _bakeWorkerStats.restarts = (_bakeWorkerStats.restarts || 0) + 1;
   try { w.terminate(); } catch (e) { /* gone */ }
+  bakeWorkerStuck();   /* v2.3.5043: what it was still reading is refused (bakeByAddress.js) */
   for (const [, job] of _bakeJobs) job({ err: 'worker stuck' });
   _bakeJobs.clear();
   _rodSent = null;   /* the new worker has no rod mask: sent again */

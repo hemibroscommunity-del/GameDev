@@ -17,7 +17,8 @@
  *   8. a disconnect, and a rejoin, in the other zone: the clock neither
  *      stretches nor clears.
  */
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { srcFiles } from './src-walk.mjs';
 import { GameRoom } from '../src/index.js';
 import { DUEL } from '../src/duel.js';
 
@@ -222,7 +223,7 @@ check('0. both start in town', psA().z === 'town' && psB().z === 'town', [psA().
   const WRITE = /\b(?:ps|mps|qps|ownerPs|playerState\[[^\]]+\])\.z\s*=(?!=)|this\.playerState\[[^\]]+\]\s*=\s*\{/;
   const NEAR = 12;
   const writers = [], missing = [];
-  for (const f of readdirSync(dir).filter((n) => n.endsWith('.js'))) {
+  for (const f of srcFiles()) {   /* v2.3.5060: in depth, a folder's files too (src-walk.mjs) */
     const lines = readFileSync(new URL(f, dir), 'utf8').split('\n');
     lines.forEach((ln, i) => {
       if (/^\s*(\/\/|\*|\/\*)/.test(ln) || !WRITE.test(ln)) return;
