@@ -30,7 +30,7 @@ state: ready
   seconds land in the bag the respawn's wipe empties (read, not reproduced).
 - `threat.js`: the fine's take and its `bounty:` put are two runs.
 - `gladiator.js`: the prize is paid before its entries are deleted.
-- A new key inside `_econ` (card Q's sitting card) bumps `ECON.V`.
+- A new key inside `_econ` (card Q's sitting card) bumps `ECON_V` (gold.js).
 
 ## Needs
 
