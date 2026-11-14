@@ -1,7 +1,7 @@
 card: Y
 branch: claude/plan-y-farm-gate
-prs: PR 1 (tag 5400, testing)
-state: working
+prs: PR 1 (tag 5400, ready)
+state: ready
 
 ## Done
 
@@ -21,8 +21,9 @@ state: working
 
 ## Next
 
-- A, from the planning session: `hopTo` stops when its zone changes
-  (`tools/qa/mp/harness.mjs`). `farmmusic` 3 of 3 alone, `questline`.
+- Done: A, from the planning session: `hopTo` stops when its zone
+  changes (`tools/qa/mp/harness.mjs`). `farmmusic` 12/12 three runs of
+  three, alone; `questline` 187/187. Waiting for the gatekeeper.
 
 ## Found
 
