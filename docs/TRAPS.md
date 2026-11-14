@@ -4603,6 +4603,8 @@ goes on the shared-domain cookie too (`rosterCookie.readSharedValue` /
 `writeSharedValue`), not only in localStorage -- see the roster cookie's
 header for why every deploy is a different origin.
 
+Held by: tools/guards/traps-join-identity.test.mjs (tag 5321).
+
 ## 110. "WebGL2, so the batch shader can use textureSize / textureGrad" (v2.3.2770)
 
 **Tempting:** the app runs on a WebGL2 context (`preference: 'webgl'`,
@@ -7383,6 +7385,8 @@ or the shared roster carrying one of those. The door's answer also corrects
 **Receipt:** a second browser given a new key directly sent two joins, the
 first refused, before the fix; after it, one join, let in. mp-charlock and
 mp-linger.
+
+Held by: tools/guards/traps-join-identity.test.mjs (tag 5321).
 
 ## 217. "Put a player out: forget their session, then close their socket" (v2.3.3356)
 
