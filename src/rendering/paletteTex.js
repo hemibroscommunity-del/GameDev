@@ -754,6 +754,10 @@ function patchPipes() {
     const up = U.upload;
     U.upload = function (source, glTexture, gl, webGLVersion, targetOverride, forceAllocation = false) {
       if (!source || !source._btPal) return up.call(this, source, glTexture, gl, webGLVersion, targetOverride, forceAllocation);
+      /* v2.3.5257: a strip kept deflated a frame at a time (framePack.js) is
+         whole again before a chip is sent it (a second renderer, Pixi's
+         collector having let it go); packed again once the chip has it */
+      if (typeof source.__btFPUnpack === 'function') { try { source.__btFPUnpack(source); } catch (e) { /* sent as it is */ } }
       const target = targetOverride || glTexture.target;
       const w = source.pixelWidth, h = source.pixelHeight;
       if (!forceAllocation && glTexture.width === w && glTexture.height === h) {

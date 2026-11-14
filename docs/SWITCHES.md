@@ -305,6 +305,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 |---|---|---|---|---|---|---|---|---|
 | `?bakeurl` | page | switch | v2.3.5043 | =0 | logic |  | no | Every armour bake input is cut on the page again, not sent to the worker as its sheet's address. |
 | `?coinflip` | page | switch | v2.3.5247 | =0 | memory |  | no | Ace's coin strips keep their decoded copies, as before. |
+| `?framepack` | page | switch | v2.3.5257 | =0, off, false | memory |  | no | A monster strip's colour numbers are kept whole in the page once on the chip, as before, not deflated a frame at a time. |
 | `?fxmade` | page | switch | v2.3.5249 | =0 | memory |  | no | The effects the game's tools made are drawn from their full-colour pictures, as before, not their 256-colour twins. |
 | `?fxsheets` | page | switch | v2.3.5252 | =0 | memory |  | no | The effects cut from the owner's sheets (the stun stars, the whirlwind, the grease, woodchips, rocks and splash bursts) are drawn from their full-colour pictures, as before. |
 | `groundkeep` | both | switch | v2.3.3775 | off_groundkeep: true; ?groundkeep=0, off, false | chip |  | no | The world's ground is rebuilt on a return, not kept, as before. |
