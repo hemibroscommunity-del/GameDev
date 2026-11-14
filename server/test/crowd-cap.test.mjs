@@ -18,8 +18,8 @@
  *      deepest rung the always-drawn are still drawn; the cap read through
  *      laneKnob('crowd') in crowdCap.js, and the renderer asks it each frame.
  * BREAK PROOF (rule 8), tried by hand 2026-11-14:
- *   4. crowdK's `_knob()` as `CROWD_K` (the rung not read)  -> FAIL 4a
- *      ...entityRenderer.js asking `_crowdK` once at load (the old const)  -> FAIL 4e
+ *   4. crowdK's `_knob()` as `CROWD_K` (the rung not read)  -> FAIL 4a (50, 50, 50) and 4d
+ *      ...entityRenderer.js asking crowdK() once at load (the old const's way)  -> FAIL 4e
  */
 import { readFileSync } from 'node:fs';
 import { CROWD_K, CROWD_HOLD, crowdPick, crowdFromSearch, crowdK, _resetCrowdK } from '../../src/game/crowdCap.js';
