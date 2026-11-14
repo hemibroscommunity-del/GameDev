@@ -1,11 +1,11 @@
 card: PW
 branch: claude/plan-pw-1-power
-prs: PR 1 (5480, working)
-state: working
+prs: #1774 (5480, ready)
+state: ready
 
 ## Done
 
-- PR 1 (5480): `server/src/power.js` (the control, the fight on averages,
+- #1774 (5480): `server/src/power.js` (the control, the fight on averages,
   `powerOf`), `server/test/power.test.mjs` + `power-sim.mjs` (51 checks: the
   control 1,000, the dice against the door, never lowers, the prediction,
   six break proofs), `docs/specs/power-index.md`, this card, the PW tag
@@ -14,7 +14,8 @@ state: working
 
 ## Next
 
-- PR 1 up for the gatekeeper; then PR 2 (5481), the boards.
+- #1774 waits for the gatekeeper; PR 2 (5481), the boards, begun on
+  `claude/plan-pw-2-boards` from it (its stat boards wait on Needs).
 
 ## Found
 
