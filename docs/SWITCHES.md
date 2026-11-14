@@ -166,6 +166,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `toolshop` | worker | switch | v2.3.3316 | false | logic |  | no | Takes the tools off the shelf and refuses every buy. |
 | `trade2` | worker | switch | v2.3.4375 | false | logic |  | no | The trade window is off, so the old gift is open again. |
 | `tradeonewrite` | worker | switch | v2.3.4795 | false | logic |  | no | The trade's swap goes back to its old order of writes. |
+| `xfer` | worker | switch | v2.3.5092 | false | logic |  | no | No transfer ledger row (`xfer:`) is written; trades run exactly as before. |
 
 ## identity
 
@@ -383,6 +384,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `alliance` | worker | switch | v2.3.3313 | false | logic | `partykeep` | no | No alliance status, names, wars or board; tags come off at the next vitals echo. |
 | `arenaap` | worker | switch | v2.3.3481 | false | logic |  | no | The arena champion is paid gold alone, no AP, and the cap is un-advertised. |
 | `arenaeatgate` | worker | switch | v2.3.4413 | false | logic |  | no | Eating in an arena match is gated by the match flag alone, as before. |
+| `arenasettleplan` | worker | switch | v2.3.5089 | true | logic |  | no | Thrown (true), an arena match's stakes settle by a plan, one record a match (two rows: its put and its delete), so a restart mid-settlement loses nothing; off until the owner says yes. |
 | `arenastakeonewrite` | worker | switch | v2.3.4796 | false | logic |  | no | An arena sponsor's stake goes back to its old two writes. |
 | `boards2` | worker | switch | v2.3.4355 | false | logic |  | no | Un-advertises the boards with faces: records no spin, stamps no face or level, retires no row. |
 | `chatguard` | worker | switch | v2.3.3396 | false | logic |  | no | All three chat guards off: chat and emotes spend the relay bucket again, nothing filtered or cleaned. |
@@ -392,8 +394,10 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `emotes` | worker | switch | v2.3.3391 | false | logic |  | no | No emote is relayed, and caps.emotes false shuts the picker at the next join. |
 | `leaderidleat` | worker | switch | v2.3.4378 | false | logic |  | no | The party leader's idle clock counts only a `seen` above 0, as before. |
 | `partykeep` | worker | switch | v2.3.3276 | false | logic |  | no | Parties are not kept: the old cap and the away window remove a dropped member. |
+| `power` | worker | switch | v2.3.5481 | false | logic |  | no | Un-advertises the power index: no board report carries one, so the Power board empties as players report and the other boards are as they were. |
 | `race` | worker | switch | v2.3.3525 | false | logic |  | no | Lil Bro's race un-advertised and none started. |
 | `spar` | worker | switch | v2.3.3265 | false | logic |  | no | No sparring clones: every live clone goes on the next tick and the cap is withdrawn. |
+| `statboards` | worker | switch | v2.3.5484 | false | logic |  | no | Un-advertises the stat boards: no board report carries the points allocated, so those boards empty as players report; every other board is as it was. |
 
 ## townsfolk
 
