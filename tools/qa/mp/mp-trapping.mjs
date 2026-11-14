@@ -31,6 +31,7 @@
  */
 import * as H from './harness.mjs';
 import { trapChance, fmtTrapChance, TRAPPING } from '../../../src/data/trapping.js';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const HOME = process.env.TRAP_HOME || 'frost';

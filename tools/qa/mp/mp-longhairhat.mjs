@@ -39,6 +39,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 const HATS = process.env.LH_HATS ? process.env.LH_HATS.split(',') : ['cowboy-hat', 'cowboy-hat-2', 'army-helmet'];
 const REPEAT = Math.max(1, +(process.env.LH_REPEAT || 1));

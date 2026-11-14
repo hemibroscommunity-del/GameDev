@@ -22,6 +22,7 @@
 import * as H from './harness.mjs';
 import { existsSync, statSync, readdirSync, readFileSync } from 'node:fs';   /* v2.3.1998: dist staleness check */
 import { join } from 'node:path';
+import { LANE_NAMES } from '../../../src/game/drawLanes.js';   /* v2.3.5223: the lanes a scenario may name (card O PR 3) */
 
 const WS = await H.freePort(), WEB = await H.freePort();
 
@@ -520,6 +521,29 @@ for (const n of names) {
   process.exit(2);
 }
 
+/* ═══ v2.3.5223 (card O PR 3; the grand plan's 2.1): EVERY SCENARIO NAMES ITS LANE ═══
+   A scenario's module exports `lane` (`export const lane = 'full';`: today's
+   drawing, exactly), one of the lanes' table (src/game/drawLanes.js), and
+   `govern = true` to ask for the governor; the harness puts both on every
+   page it opens (tools/qa/lane.mjs).  One with no lane, or a lane not in the
+   table, is refused here before anything boots (tools/guards/scenario-lanes
+   fails it on GitHub first; tools/dev/name-lanes.mjs writes the line). */
+const MODS = Object.create(null);
+{
+  const bad = [];
+  for (const n of names) {
+    let mod = null;
+    try { mod = await LOAD[n](); } catch (e) { bad.push(`${n}: it does not load (${String(e).slice(0, 120)})`); continue; }
+    MODS[n] = mod;
+    if (typeof mod.lane !== 'string') bad.push(`${n}: exports no \`lane\` (add \`export const lane = 'full';\`, or run node tools/dev/name-lanes.mjs)`);
+    else if (!LANE_NAMES.includes(mod.lane)) bad.push(`${n}: its lane '${mod.lane}' is not in the lanes' table (${LANE_NAMES.join(', ')})`);
+  }
+  if (bad.length) {
+    console.error(`a scenario names no lane it may play, so none ran:\n  ${bad.join('\n  ')}`);
+    process.exit(2);
+  }
+}
+
 console.log(`booting worker + dist for ${names.length} scenario(s): ${names.join(', ')}`);
 const t0 = Date.now();
 /* v2.3.3465: the page server takes its port FIRST.  freePort only finds a
@@ -544,8 +568,10 @@ for (const name of names) {
   const started = Date.now();
   console.log(`── ${name} ──────────────────────────────────`);
   try {
-    const mod = await LOAD[name]();   /* v2.3.5021: the table's, or found by its file */
-    H.setScenario(name);   /* v2.3.3552: so newPlayer can refuse the retired old map (oldMap.mjs) */
+    const mod = MODS[name];   /* v2.3.5021: the table's, or found by its file (v2.3.5223: loaded above, its lane read) */
+    /* v2.3.3552: so newPlayer can refuse the retired old map (oldMap.mjs); v2.3.5223: and put the scenario's lane on every page */
+    H.setScenario(name, { lane: mod.lane, govern: mod.govern === true });
+    H.takeLoadedPages();
     await mod.run({ browser, wsPort: WS, webPort: WEB, rec });
   } catch (e) {
     /* A thrown scenario is a failure with a name, not a crashed run: record it
@@ -557,6 +583,13 @@ for (const name of names) {
      ever notice it -- see takeRenderThrows.  Charged to whichever scenario
      was running, because that is the one that can reproduce it. */
   H.setScenario(null);
+  /* v2.3.5223: every page of the game this scenario LOADED named its lane (a page opened by hand with no `lane=` plays whatever the box's facts pick) */
+  {
+    const game = H.takeLoadedPages().filter((u) => { try { return new URL(u).port === String(WEB); } catch (e) { return false; } });
+    const noLane = game.filter((u) => !/[?&]lane=/.test(u));
+    if (noLane.length) rec.ok('every page of the game it loaded named its lane (lane=: H.withLane)', false, { noLane: noLane.slice(0, 3) });
+    else if (game.length) console.log(`  lane: ${game.length} page(s) of the game loaded, each naming its lane (${[...new Set(game.map((u) => (/[?&]lane=([^&#]*)/.exec(u) || [])[1]))].join(', ')})`);
+  }
   const _rt = H.takeRenderThrows();
   if (_rt.length) rec.ok('the render loop did not throw', false, { threw: _rt.slice(0, 3) });
   /* v2.3.3249: EVERY PAGE A SCENARIO LEFT OPEN IS CLOSED HERE.  One browser

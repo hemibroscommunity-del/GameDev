@@ -26,6 +26,7 @@
  *   BT_MN_QUERY=held=0    the game as it was, to compare (1-5 then fail) */
 import * as H from './harness.mjs';
 import { MEM_INIT, memSampler } from './memprobe.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 /* v2.3.3715: heldNumbers.js's own path -- with the strips sent to the chip as

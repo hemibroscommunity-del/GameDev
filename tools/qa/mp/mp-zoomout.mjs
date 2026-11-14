@@ -35,6 +35,7 @@ import * as H from './harness.mjs';
 import { PLAN } from '../../../public/tools/world/plan.js';
 import { mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 /* v2.3.3283: the Town Hall's own scale on top of the town's (see below) */
 const HALL_ID = PLAN.town && PLAN.town.hallLot ? PLAN.town.hallLot.id : null;

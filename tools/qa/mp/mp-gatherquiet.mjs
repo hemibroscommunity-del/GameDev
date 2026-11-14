@@ -23,6 +23,7 @@
  *   node tools/qa/mp/run.mjs gatherquiet
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const STAND = [0, -70];   /* mp-nodelabels' miner's spot by a vein */

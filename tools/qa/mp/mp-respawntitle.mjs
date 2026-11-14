@@ -14,6 +14,7 @@
  *   - it reads "BroTown" once home.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const WIDE = { width: 1280, height: 800 };

@@ -29,6 +29,7 @@
  *     exactly that bug with the auction-house interior).
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const OUT = `${H.REPO}/tools/qa/mp/out`;
 

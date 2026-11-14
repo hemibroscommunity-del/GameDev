@@ -23,7 +23,7 @@ try {
   const p = await b.newPage();
   const errs = [];
   p.on('pageerror', (e) => errs.push(String(e).slice(0, 160)));
-  await p.goto(`http://localhost:${WEB}/`, { waitUntil: 'domcontentloaded' });
+  await p.goto(H.withLane(`http://localhost:${WEB}/`), { waitUntil: 'domcontentloaded' });
 
   /* The manifest lands on window.BT_AUDIO as the bundle evaluates. */
   await p.waitForFunction(() => !!(window.BT_AUDIO && window.BT_AUDIO.SFX_MANIFEST), null, { timeout: 30000 });

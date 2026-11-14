@@ -26,6 +26,7 @@
  *   BT_FP_THROTTLE=6    the slow phone slower */
 import * as H from './harness.mjs';
 import { UNPACK_MS } from '../../../src/rendering/framePack.js';
+export const lane = 'full';
 const PHONE = { width: 390, height: 844 };
 
 const near = (P) => P.page.evaluate(() => {

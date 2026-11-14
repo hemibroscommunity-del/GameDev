@@ -11,6 +11,7 @@
  *      gone (no login, no noresume).
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const NAME = 'Switchy';
 const where = (P) => P.page.evaluate(() => ({

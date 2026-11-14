@@ -23,6 +23,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 /* the heads the card is also shown with (a keeper's tap opens his window,
    and a local answers with a bubble, so only a quest giver opens the card on

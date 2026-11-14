@@ -31,6 +31,7 @@
  *   BT_TS_VIEW=desk a computer instead: 1366 x 768 at 1x, a mouse and keys */
 import * as H from './harness.mjs';
 import { MEM_INIT, memSampler } from './memprobe.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const DESK = process.env.BT_TS_VIEW === 'desk';

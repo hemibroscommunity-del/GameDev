@@ -37,6 +37,7 @@
  */
 import * as H from './harness.mjs';
 import { RACE } from '../../../server/src/race.js';
+export const lane = 'full';
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Speedy', wsPort, webPort, world: 'wheel' });

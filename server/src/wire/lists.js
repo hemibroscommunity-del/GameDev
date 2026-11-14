@@ -37,8 +37,10 @@
  * `type: '<name>'` anywhere in server/src/ as a message the worker sends
  * (README.md beside this file). */
 
+import { WIRE_IN } from './in.js';
 import { WIRE_OUT } from './out.js';
 import { WIRE_RELAY } from './relays.js';
+import { WIRE_HTTP } from './http.js';
 
 const ECHO = 'echo';
 const isEcho = (r) => r.privileged === ECHO;
@@ -49,11 +51,23 @@ const echoWhy = (r) => {
   return n ? n.slice(ECHO.length + 2) : '';
 };
 
-export function wireLists({ out = WIRE_OUT, relay = WIRE_RELAY } = {}) {
+const has = (r, k) => Object.prototype.hasOwnProperty.call(r, k);
+const listOf = (v) => (Array.isArray(v) ? v : [v]);
+export function wireLists({ out = WIRE_OUT, relay = WIRE_RELAY, inn = WIRE_IN, http = WIRE_HTTP } = {}) {
+  const takes = [...inn, ...relay, ...http];
+  const all = [...inn, ...relay, ...out, ...http];
   return {
     PRIVILEGED_EVENTS: new Set(out.filter((r) => !isEcho(r)).map((r) => r.name)),
     RELAY_TYPES: new Set(relay.map((r) => r.name)),
     RELAY_ECHOES: new Map([...relay, ...out].filter(isEcho).map((r) => [r.name, echoWhy(r)])),
+    /* v2.3.5182 (card K PR 2): the worker's other lists */
+    FIGHT_LOCK_SW: Object.fromEntries(takes.filter((r) => has(r, 'fight') && r.fight.startsWith('lock:')).map((r) => [r.name, r.fight.slice(5)])),
+    FIGHT_OPEN: Object.fromEntries(takes.filter((r) => has(r, 'fight') && r.fight.startsWith('open:')).map((r) => [r.name, r.fight.slice(5)])),
+    ROOM_PLACED: Object.fromEntries(out.filter((r) => has(r, 'placed') && typeof r.placed === 'object').map((r) => [r.name, r.placed])),
+    RELAY_PLACED: new Set(relay.filter((r) => r.placed === 'sender').map((r) => r.name)),
+    MUTABLE_RELAY_TYPES: new Set(all.filter((r) => r.muted === 'mutable').map((r) => r.name)),
+    SOCIAL_TYPES: new Set(relay.filter((r) => has(r, 'pace') && listOf(r.pace).includes('social')).map((r) => r.name)),
+    WATCH_HOOKS: [...new Set(takes.filter((r) => has(r, 'watch')).map((r) => r.watch))],
   };
 }
 
@@ -61,3 +75,10 @@ const MADE = wireLists();
 export const PRIVILEGED_EVENTS = MADE.PRIVILEGED_EVENTS;
 export const RELAY_TYPES = MADE.RELAY_TYPES;
 export const RELAY_ECHOES = MADE.RELAY_ECHOES;
+export const FIGHT_LOCK_SW = Object.freeze(MADE.FIGHT_LOCK_SW);
+export const FIGHT_OPEN = Object.freeze(MADE.FIGHT_OPEN);
+export const ROOM_PLACED = Object.freeze(MADE.ROOM_PLACED);
+export const RELAY_PLACED = MADE.RELAY_PLACED;
+export const MUTABLE_RELAY_TYPES = MADE.MUTABLE_RELAY_TYPES;
+export const SOCIAL_TYPES = MADE.SOCIAL_TYPES;
+export const WATCH_HOOKS = Object.freeze(MADE.WATCH_HOOKS);
