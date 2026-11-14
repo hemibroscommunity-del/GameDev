@@ -156,6 +156,34 @@ function entriesOf(look) {
   return [[1, skinTarget(look.skin) || DEFAULT_SKIN_TARGET], [2, pantsTarget(look.pants)], [3, shoesTarget(look.shoes)]];
 }
 const wearsTee = (look) => !!(look && look.equip && look.equip.shirt && look.equip.shirt !== 'none');
+/* v2.3.5462: what his look gives the figure, worked out ONCE a look (his
+   display's look is set once: entityRenderer _folkLook), never every frame --
+   his colours' entries and their key (lookPalette lookFrames's own key, so
+   his row is shared with any caller of the same colours), his tee's tint, his
+   head's pieces.  The page's thread is budgeted (CLAUDE.md section 7): a
+   frame's garbage is a later frame's collection. */
+const _tk = (t) => (t ? t[0] + ',' + t[1] + ',' + t[2] + (t.length > 3 ? ',' + t[3] : '') : '-');   /* lookPalette tkey */
+const _ofLook = new WeakMap();
+function lookBits(look) {
+  let b = _ofLook.get(look);
+  if (b) return b;
+  const e = entriesOf(look);
+  const fill = wearsTee(look) ? shirtFill(look.shirt || 'tshirt', look.shirtColor) : null;
+  b = {
+    e, opts: { key: e.map((x) => x[0] + ':' + _tk(x[1])).join('/') },
+    tee: wearsTee(look), tint: fill ? ((fill[0] << 16) | (fill[1] << 8) | fill[2]) : 0xffffff,
+    head: {
+      hair: look.hair, hairColor: look.hairColor,
+      facialhair: look.facialhair, facialHairColor: look.facialHairColor,
+      eyewear: look.eyewear, eyewearColor: look.eyewearColor,
+      eyeStyle: look.eyeStyle, eyeColor: look.eyeColor,
+      species: look.species, skin: look.skin,
+      headwear: look.headwear, hatColor: look.hatColor, hatDy256: look.hatDy256 || 0,
+    },
+  };
+  _ofLook.set(look, b);
+  return b;
+}
 
 /** Can he be drawn in this figure now: the switch, the look palette on, the
  *  figure's numbers in, its crowns read, and (in a tee) his tee's strip in the
@@ -170,19 +198,22 @@ export function folkSkillReady(pose, look) {
 }
 
 /** Frame `fi`'s pictures in his colours: { body, prop, shirt } (each a
- *  texture or null; `shirt` untinted -- the caller tints it his tee's colour). */
+ *  texture or null; `shirt` untinted -- the caller tints it his tee's colour).
+ *  v2.3.5462: the SAME object every call (no frame's garbage): read it before
+ *  the next. */
+const _tex = { body: null, prop: null, shirt: null };
 export function folkSkillTextures(pose, look, fi) {
   const s = SPEC[pose];
   if (!s || !look) return null;
-  const e = entriesOf(look);
-  const body = getLookPartFrame('skills', s.sheet, fi, e);
-  const prop = s.prop ? getLookPartFrame('skills', s.prop, fi, e) : null;
-  let shirt = null;
-  if (wearsTee(look)) {
+  const b = lookBits(look);
+  _tex.body = getLookPartFrame('skills', s.sheet, fi, b.e, b.opts);
+  _tex.prop = s.prop ? getLookPartFrame('skills', s.prop, fi, b.e, b.opts) : null;
+  _tex.shirt = null;
+  if (b.tee) {
     const list = gearStripFrames('shirt', 'tshirt', s.gearPose, s.gearDir);
-    if (Array.isArray(list) && list.length) shirt = list[Math.min(list.length - 1, s.shirtAt(fi))] || null;
+    if (Array.isArray(list) && list.length) _tex.shirt = list[Math.min(list.length - 1, s.shirtAt(fi))] || null;
   }
-  return { body, prop, shirt };
+  return _tex;
 }
 
 /* ═══ THE FIGURE, IN HIS DISPLAY ═══
@@ -226,32 +257,16 @@ export function drawFolkSkill(display, npc, look, pose, now, size, placeTraits) 
   /* his boots (the figure's own boot point) on his spot */
   body.x = -(spec.foot[0] - spec.fw / 2) * k;
   body.y = (spec.fh - spec.foot[1]) * k;
-  body.visible = true;
-  const place = (sp, t) => {
-    if (!t) { if (sp.visible) sp.visible = false; return; }
-    if (sp.texture !== t) sp.texture = t;
-    sp.scale.set(k, k); sp.x = body.x; sp.y = body.y;
-    if (!sp.visible) sp.visible = true;
-  };
-  place(F._shirt, tex.shirt);
-  if (tex.shirt) {
-    const t = shirtFill(look.shirt || 'tshirt', look.shirtColor);
-    F._shirt.tint = t ? ((t[0] << 16) | (t[1] << 8) | t[2]) : 0xffffff;
-  }
-  place(F._prop, tex.prop);
+  if (!body.visible) body.visible = true;
+  overBody(F._shirt, tex.shirt, body, k);
+  if (tex.shirt) F._shirt.tint = lookBits(look).tint;
+  overBody(F._prop, tex.prop, body, k);
   /* his head at the figure's crown (effectsRenderer _placeSkillTraitsOnFor's
      arithmetic), his own hat nudge with it (Farmer Bro's bucket hat down on
      his brow, as his walking figure wears it: npcLooks hatDy256) */
   const cwx = body.x + (cr[0] - spec.fw / 2) * k;
   const cwy = body.y + (cr[1] - spec.fh) * k;
-  placeTraits(F._traits, {
-    hair: look.hair, hairColor: look.hairColor,
-    facialhair: look.facialhair, facialHairColor: look.facialHairColor,
-    eyewear: look.eyewear, eyewearColor: look.eyewearColor,
-    eyeStyle: look.eyeStyle, eyeColor: look.eyeColor,
-    species: look.species, skin: look.skin,
-    headwear: look.headwear, hatColor: look.hatColor, hatDy256: look.hatDy256 || 0,
-  }, cwx, cwy, spec.traitDir, false, k * spec.traitMul);
+  placeTraits(F._traits, lookBits(look).head, cwx, cwy, spec.traitDir, false, k * spec.traitMul);
   if (!F.visible) F.visible = true;
   const folk = display._folk;
   if (folk) {
@@ -259,9 +274,19 @@ export function drawFolkSkill(display, npc, look, pose, now, size, placeTraits) 
     folk._animPose = pose; folk._animDir = 'south'; folk._animFrame = fi;   /* the probe's (mp-folkwork) */
   }
   display._walkIdx = fi;
-  display._folkSkillAt = { pose, frame: fi, look: !!tex.body._btLook, shirt: !!tex.shirt, prop: !!tex.prop,
-    height: Math.round(spec.fh * k), crown: [Math.round(cwx), Math.round(cwy)] };
+  /* the probe's, written into one object of his (no frame's garbage) */
+  const at = display._folkSkillAt || (display._folkSkillAt = { pose: null, frame: 0, look: false, shirt: false, prop: false, height: 0, crown: [0, 0] });
+  at.pose = pose; at.frame = fi; at.look = !!tex.body._btLook; at.shirt = !!tex.shirt; at.prop = !!tex.prop;
+  at.height = Math.round(spec.fh * k); at.crown[0] = Math.round(cwx); at.crown[1] = Math.round(cwy);
   return true;
+}
+/* a picture laid over the body, at its place and size (his tee, the
+   farmer's tool), or put away (a visible changed only when it was up) */
+function overBody(sp, t, body, k) {
+  if (!t) { if (sp.visible) sp.visible = false; return; }
+  if (sp.texture !== t) sp.texture = t;
+  sp.scale.set(k, k); sp.x = body.x; sp.y = body.y;
+  if (!sp.visible) sp.visible = true;
 }
 /** Not at his trade this frame: the figure put away (a visible changed only
  *  when it was up: TRAPS §218). */
