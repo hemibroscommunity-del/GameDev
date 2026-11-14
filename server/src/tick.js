@@ -433,7 +433,8 @@ export const tickMethods = {
              asked, so both heals start in the same slot */
           const _mktWait = !!(this._mktSettleWait && this._mktSettleWait());
           const _stWait = !!(this._stSettleWait && this._stSettleWait());
-          if (!_mktWait && !_stWait) this._opPruneMaybe(nowJp).catch(() => {});
+          const _arWait = !!(this._arenaSettleWait && this._arenaSettleWait());   /* v2.3.5089: and an arena match's plan (gladiator.js) */
+          if (!_mktWait && !_stWait && !_arWait) this._opPruneMaybe(nowJp).catch(() => {});
           this._metricsMaybe(nowJp).catch(() => {});
         }
         /* v2.3.3140: the daily quests' counted progress is written here at

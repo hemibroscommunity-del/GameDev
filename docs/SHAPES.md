@@ -416,7 +416,9 @@ save (`bagEconOwn`, in `_saveRpg` before its put), and a bag no save has
 named yet keeps its counts beside it until that save folds them in (the
 same put). The join brings `_econ` back before any door runs (`join.js`),
 and a red skull killed by no player burns its purse by `nml_lost`.
-`server/test/world-sum.test.mjs` plays the room and holds the sum to 0.
+`server/test/world-sum.test.mjs` plays the room and holds the sum to 0;
+`server/test/storm.test.mjs` (5091) holds it to 0 under every disturbance,
+a deploy before every message (the sum shared: `server/src/worldsum.js` since 5093, the live walk's too).
 
 **Where value leaves an escrow by no road** (for the sum's PR, not a class):
 a stale fine is deleted (`bounty:`, `_bountySweep`: "the gold evaporates"),
@@ -508,7 +510,7 @@ A report covers the seconds since the last one. `v` is 1.
 |---|---|---|---|
 | `v` | The report's shape number. A sink keeps it beside what it adds, so a new shape never adds into an old one's bins. | whole number | both |
 | `devClass` | The device class. | part 6's fields | smoothness (the cell); its `soft` also to the card |
-| `drawLane` | The lane the page draws in. | card O's closed list (step 2.1); until lanes exist, the one value `full` | smoothness (the cell) |
+| `drawLane` | The lane the page draws in. | card O's closed list (step 2.1; `src/game/drawLanes.js` `LANE_NAMES`): `full`, `light`, `thirty`. Sent to a worker whose `caps.report` is 3 or more; to an older one, `full` (v2.3.5221) | smoothness (the cell) |
 | `sw` | The switches thrown. | ids from ONE closed list: `CLIENT_SAVERS` today, the switch table's ids once step 7.1 has made it. Never a name read off the address bar. | smoothness (the cell: `none`, the one id, or `many`: rule 4's two configurations, and the rest apart) |
 | `build` | The page's build. | whole number: the N of its `v2.3.N` | smoothness (the cell); the card |
 | `secs` | Seconds this report covers. | whole number | both |
@@ -516,6 +518,7 @@ A report covers the seconds since the last one. `v` is 1.
 | `drawn` | Frames drawn in those seconds. | whole number | the card (against the moves the worker counted itself) |
 | `gaps` | The time between drawn frames, as counts in fixed bins. | 10 whole numbers; the bins' edges are 10, 12.5, 15, 18.5, 24, 29, 42, 75 and 150 ms | smoothness |
 | `late` | Late frames by the ONE definition: the pacer's. | 2 whole numbers, late and judged. **Absent** where the pacer gives no verdict, which today is every screen at 60 a second or slower. Never the strip's count or `perfTracker`'s under this name. | smoothness |
+| `rung` | The ladder in those seconds (card O's governor, step 2.3): the most rungs taken at once, and the seconds spent below the lane's row. Sent from card O's PR 2, to `caps.report` 3. | 2 whole numbers: rungs (0 to the worker's `RUNG.MAX`, wider than the page's ladder), seconds (at most `secs`) | smoothness, **beside the cell, never in it**: the cell's sums `[reports with one, rungs summed, seconds summed]` (v2.3.5221) |
 | `split` | Where the late frames' time went, each part summed. | whole ms, in this order: `sim`, `tile`, `entity`, `effects`, `fps`, `app`, `outside`. Where the busy beat runs, `busy` and `wait` in place of `outside`. | smoothness |
 | `holds` | The worst holds. | at most 5 of `[name, ms, where, near]`: `name` from the one list of hold names (step 1.0, part 7), `ms` whole, `where` and `near` as below | smoothness |
 | `where` | Where the player was for most of those seconds. | `town`, `farm`, `dungeon`, `commons`, `frost`, `ember`, `sky`, `hollows`, `thunder`, `tidal`, `mist`, `verdant`, `other` | smoothness |
@@ -523,7 +526,7 @@ A report covers the seconds since the last one. `v` is 1.
 | `mem` | The game's own memory count. | 3 whole MB: `tex`, `gpu`, `snd` | smoothness |
 | `lost` | Graphics lost in those seconds. | 2 whole numbers: contexts lost, renderers rebuilt | smoothness |
 | `died` | The tab died last time. Sent once, in the first report after a join. | `no`, `killed`, `evicted`; then the dead page's last mark as 3 whole numbers (MB of art, minutes up, renderers rebuilt) and its `where` | smoothness |
-| `self` | Drawing programs that failed their self-test (step 1.7). | names from the closed list of the game's own drawing programs (card O's) | smoothness |
+| `self` | Drawing programs that failed their self-test (step 1.7). Sent from card O's PR 14, to `caps.report` 3. | names from the closed list of the game's own drawing programs (card O's, `src/game/drawLanes.js` `PROGRAMS`): `one`, `palette`, `look`, `sharp`, `clip`, `fill`, `water`, `glint`, `sheen`, `shadow` (v2.3.5221) | smoothness: a count of reports a program |
 | `speed` | The Speed test's card (step 1.2). Only after a player runs it. | rows of `[step, fps, p50, p95, work]`: `step` from the test's own list (`all`, `noshadow`, `noshine`, `shinepass`, `threeprog`, `shadowpass`, `still`, `res2`, `bare`), the rest whole numbers; and `model`, a place in a list the player picks from (card A's list: a page cannot read its model) | the day's book, part `speed` |
 
 Three numbers the plan lists in the report are **the worker's own, and a
@@ -768,7 +771,7 @@ reports.
 | Name | One writer | Readers | Where | Rows |
 |---|---|---|---|---|
 | `devClass` (NEW) | `src/game/deviceProfile.js`, grown: the one file allowed to ask the device a question (`server/test/device-profile.test.mjs`) | the lane's choice (card O), the report (card A), the Speed test's card | the phone's memory | none |
-| `drawLane` (NEW) | card O (step 2.1): one function that reads `devClass` and picks a row of knobs | every knob; the report; every phone test, which names its lane | card O's | none |
+| `drawLane` (NEW) | `src/game/drawLanes.js` (card O, step 2.1, v2.3.5221): `drawLane()`, the page's lane: `?lane=`, else `pickLane` of the `devClass` `deviceProfile.js` hands it | every knob (`laneKnob`); the report; every phone test, which names its lane | the page's memory (`docs/LANES.md` is the table) | none |
 
 Not in the class, and not to be added:
 
@@ -796,11 +799,13 @@ row by the card that builds it, before it builds.**
 | The day's book (10.4) | `daybook:<yyyymmdd>` (NEW) | One record a UTC day, in parts: `econ` (minted and burned by road class), `room` (above), `dev` (the smoothness cells, part 4), `speed` (the Speed test's rows). | each part's own writer: card E `econ`, card A `room`, `dev` and `speed` | the owner's card in the Test panel; the reader of step 1.3; the restore's check | `server/src/`, a file of card E's | at most one put a pace while the room is awake (card E's number, with a line in `cost-guard.test.mjs`); v2.3.5124: and at a room's last one out after a join, at once (card A's `roomrow.js`), its turns spent by every put, so the two keep the pace on the whole (`cost-guard` 15c); see "Open" below for `econ` |
 | The device table (1.3) | no name in the room | The day's books' `dev` and `speed` parts, added over days, a cell blank under 20 reports. | the reader: a workflow, which is the owner's call 6 | every perf PR | the repository, once a road into it exists | none in the room |
 | The sitting's card (10.2) | the card of a `stint` (NEW) | About 120 bytes: when (the `stint`), how long, active seconds, the longest gap, the network (`asn`), the build; moves and moves over budget; hits claimed, landed, refused by reason; gold by road class; the hours of the day played; and the report's `soft`, `seen`, `drawn`. The last 32 of a character are kept (call 13). | one function of card Q's. Card A's handler hands it facts and writes no field itself. **Until card Q has built it, the report's card facts are dropped**: they still ride the message, so the phone's side is built once. | card Q's signals; the owner's cases | "Open" below | none new: it rides a save that is already paced |
-| The transfer ledger (10.3) | `xfer:` (NEW) | One lasting row each time value settles between two players: when, the road, from, to, gold, goods and their ids, the price, and the actor that started it. Kept 90 days. | the settlement's own write (card E): the row goes out in the same run as the payment and its stamp (handoff rule 5) | the owner's cases ("unwind this transfer"); card Q | `server/src/`, card E's; its key begins with the day, so old days are pruned a page a tick slot (handoff rule 9) | 1 a settlement, none a kill (`cost-guard`) |
+| The transfer ledger (10.3) | `xfer:` (built 5092: `server/src/xfer.js`) | One lasting row each time value settles between two players: when, the road, from, to, gold, goods and their ids, the price, and the actor that started it. Kept 90 days. | the settlement's own write (card E): the row goes out in the same run as the payment and its stamp (handoff rule 5) | the owner's cases ("unwind this transfer"); card Q | `server/src/`, card E's; its key begins with the day, so old days are pruned a page at a time (handoff rule 9), from a row's write once a day (as the day's book's are: no tick of an empty room pays for it) | 1 a settlement, none a kill (`cost-guard` §16) |
 | A trace (10.8) | `play_trace:` (NEW) | A recording of play with a label from a closed list. The one label for now is `human`: the first ten active minutes of a sitting of the owner's, with the owner's yes. | card Q | card Q's league (10.7) | card Q's | 1 a sitting recorded |
 | A flag's evidence (10.9) | on the flag itself | The detector's version, the hidden settings' date (`hidden_settings.at`), and the numbers it fired on: enough to explain the flag from its record alone. | `server/src/botsig.js`, `botfp.js` (card Q) | the owner's cases | inside `botstat:<pid>` (TODAY's record) | rides `botstat:` |
 | A case (10.9) | not named yet | The owner's act on one account: a hold on its transfers, a take, an unwind, the mail with the reason; undone in one tap. | card Q, through an admin route | the owner | a prefix card Q registers | 1 a case |
 | A helper's permit (11.2, 11.7) | `permit:` (NEW) | Whose it is (`principal`, or the character until there is one), its scopes from a closed list (`read`, `list`, `buy`), a gold limit a day, an end date, a mark other players can see. Taken back by deleting the row. **Never a row among the login keys** (`auth:<pid>.keys`): an older worker would honour it as a full login. | the helper door (step 11.7); nothing before it | the actor | a prefix of its own | 1 a permit |
+| The power index (card PW, tag 5481) | `powerIndex` on a board row (NEW) | `{power, melee, bow, magic, v}`: a build's odds against one fixed control, a style each and the best of them, whole numbers; `v` the control's version (`POWER.V`). A row with none, or another version's, is not yet ranked. | `server/src/power.js` (`powerOf`; `cleanPowerIndex` makes what is stored safe), sent by `index.js reportToLeaderboard`, kept by `leaderboard.js updatePlayer` | `getTop('power')` (the Power board); card LB's panel, against `caps.power` | `server/src/power.js` | rides the board row's put (`player:<pid>` in the Leaderboard object): not in the report's change signature, so no report goes for it |
+| The stat boards' points (card PW, tag 5484) | `statPoints` on a board row (NEW) | `{hp, def, dodge, stam, eres, mana, move, dmg}`: the points a player allocated to each shared stat (prog3 `alloc`) and to damage over the three weapons (`atk.*.dmg`), whole numbers. A row with none, or 0 in a stat, is off that board. | `server/src/statboards.js` (`statPointsOf`; `cleanStatPoints` makes what is stored safe), sent by `index.js reportToLeaderboard`, kept by `leaderboard.js updatePlayer` | `getTop('pts_<stat>')`; card LB's panel, against `caps.statboards` (a count) | `server/src/statboards.js` | rides the board row's put; inside the report's change signature, so a spend goes with the next report the throttle lets through |
 
 ### Lists and tables
 
@@ -809,8 +814,8 @@ row by the card that builds it, before it builds.**
 | A bounded claim's gain (4.2) | `liarGain` (NEW) | For one bounded claim: what a liar who pushes it to its bound takes in an hour, over what an honest player takes. A number; the line is 1.5. | the house bot written for that claim (card K) | `npm test` | beside the claim's judge, in the wire table's `trust` | none |
 | The world's sum (4.4) | a suite, not a record | Part 3's sum, played. | card E | the required check | `server/test/` | none |
 | The known losses of a restart (4.5) | `KNOWN` (TODAY) | The cases the restart test finds red today, each with its reason. The line is empty. | card E | the required check | `server/test/chaos-restart.test.mjs` | none |
-| The test room (4.5) | not named yet | One room for tests: a batch that commits or does not, a queue that knows the room's gates, a seeded clock. Today each suite carries its own storage mock (handoff rule 24). | card E | every suite that plays the room | `server/test/`, a helper | none |
-| The disturbances (4.5, 10.6, 10.7, 1.5) | one closed list (NEW) | What changes how an honest player looks without any cheating: a deploy (at any message), a hidden tab, the frame rate (60, 30, 20 and 4 a second), the line (its delay and its loss), and each `drawLane`. **Four steps name this list in four ways; it is one list.** Step 1.5's two slow profiles are two named members of it. | card E, with the test room | the storm of 4.5; each signal's honest troubles (10.6); the league's replays (10.7); the sweeps under a slow profile (1.5) | `server/test/`, beside the test room | none |
+| The test room (4.5) | `server/test/testroom.mjs` (built 5086) | One room for tests: `makeStorage` (a batch that commits or does not: every write of one synchronous run one batch, `crashAt(n)` the room dying before batch n), `roomQueue` (the input gate: one message at a time, each to its writes' commit), `seededClock`, `openRoom`, `join`. Suites move onto it one at a time; `chaos-restart` first. | card E | every suite that plays the room | `server/test/`, a helper (not a `*.test.mjs`); its suite `testroom.test.mjs` | none |
+| The disturbances (4.5, 10.6, 10.7, 1.5) | `DISTURBANCES` (built 5086) | What changes how an honest player looks without any cheating: a deploy (at any message), a hidden tab, the frame rate (60, 30, 20 and 4 a second), the line (its delay and its loss), and each `drawLane`. **Four steps name this list in four ways; it is one list.** Step 1.5's two slow profiles are two named members of it. Its ids: `deploy`, `hidden`, `fps60`, `fps30`, `fps20`, `fps4`, `delay`, `loss`, `lane_full` (one a lane; card O adds its lanes here). `schedule(script, d)` says how each delivers a script of messages. | card E, with the test room | the storm of 4.5 (built 5091: `storm.test.mjs`); each signal's honest troubles (10.6); the league's replays (10.7); the sweeps under a slow profile (1.5) | `server/test/testroom.mjs`, beside the test room | none |
 | The doors of 4.3 | a table a door, as `GOLD_ROADS` | Experience and levels, the stashes, quest state, skill points. | card R | their own tests | a file a door | none |
 | The roads between players (10.5) | three columns, not a table | For each way value passes from one player to another: its `fee`, its `hold`, its `pace`, all nothing today, and whether it writes an `xfer:` row. Its rows are the `move` rows card E classes (part 3): the same key, so no second list of roads. | card R, on card E's table | a guard that fails a `move` row without them | with the classes | none |
 | A signal's honest troubles (10.6) | a column of the signals' list | For each anti-bot signal (`SIG_REASONS`, 8 today, and the fingerprint's flags), the disturbances that move it. | card Q | card Q's scoring | `server/src/botsig.js` | none |
@@ -946,8 +951,12 @@ the record is named by its path, `tools/assets/shipped.json`.
 | `ASSET_FAMILIES`, `ASSET_REACH`, `ASSET_KINDS`, `ASSET_DRAWS` | the family table and its closed lists | 7 |
 | `tools/assets/shipped.json` | the record of what ships | 7 |
 
-**Chosen by card L (step 5.3b, tag 5202), free at its commit** (the same
-search): `PHASES` and `NOT_A_MACHINE`, the phase table's two lists, have no hit
+**Chosen by card L (step 5.3b, tag 5202; step 5.3, tag 5203), free at its
+commit** (the same search): `runResets` has no hit, and `resetOn` one, a
+local: the parameter of `src/game/pointsTips.js` `firstSpendHint` (a
+boolean, "the points reset is on"), never a definition outside
+`resetOn.js`;
+`PHASES` and `NOT_A_MACHINE`, the phase table's two lists, have no hit
 as a name (`PHASES` only inside other words: `GOO_PHASES`, `ART-ASSET-PHASES`).
 The table's machine names are words of a table, as the wire's `phase` column
 writes them, never identifiers: `dungeon`, `connection`, `loading` and
@@ -957,6 +966,7 @@ writes them, never identifiers: `dungeon`, `connection`, `loading` and
 | Name | For | Part |
 |---|---|---|
 | `PHASES`, `NOT_A_MACHINE` | the phase table and the marked fields that are no machine's (`src/state/phases.js`) | 5 |
+| `resetOn`, `runResets` (v2.3.5203) | a state's reset, registered beside it in its system's file, and the edge's one door's call (`src/game/resetOn.js`); the ledger's hand column `reset` | 5 (step 5.3) |
 | `dungeon`, `connection`, `loading`, `window`, `monster` | the phase table's machines beyond part 5's list (a row's `name`) | 5 |
 
 `report` is free as a message type and a common word elsewhere; part 4 says

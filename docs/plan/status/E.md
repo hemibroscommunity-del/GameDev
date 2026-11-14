@@ -1,34 +1,40 @@
 card: E
-branch: claude/plan-e-6-book-econ (one branch a PR)
-prs: #1686, #1691, #1694, #1699, #1752 (merged); #1756 (ready, sitting 8's mend)
+branch: claude/plan-e-13-restart (on #1786's branch: merge #1785, #1786 first)
+prs: #1686 to #1773 (all twelve merged); #1785, #1786 (ready); #1802 (5094, ready, this branch)
 state: ready
 
 ## Done
 
-- PR 1 (5080, #1686), the day's book's frame.
-- PR 2 (5081, #1691), the roads' classes; SHAPES part 3's edges ruled.
-- PR 3 (5082, #1694), the registry's marks (`storagemarks.js`).
-- PR 4 (5083, #1699), `_econ`, schema 21; the gatekeeper's hold mended.
-- PR 5 (5084, #1752), the world's sum: merged (sitting 8).
-- PR 6 (5085), the book's `econ` part; sitting 8's mend: one last-out
-  writer (card A's), the part rides (no write at a wake), `econ: false`,
-  `ECON_V` in one place, a merged mail entry's minted part (`inbox.js`).
-- New live flags (rule 3, one line each in the switch table): PR 6 `econ`,
-  PR 8c `arenasettleplan`, PR 11 `xfer`.
+- PRs 1 to 8, 10, 11 (5080 to 5089, 5091, 5092), merged (sittings 5-10).
+- New live flags (rule 3, rows in the switch table): `econ`, `xfer`,
+  `arenasettleplan`, `valuepause`, `econresetput`.
+- PRs 7, 8a to 8c (5086 to 5089): the test room; `KNOWN` empty; 8c one
+  plan record a match, OFF until the owner says yes (two rows a match).
+- PR 10 (5091, #1772), the storm: the sum under every disturbance, a
+  deploy before each message: all 0.
+- PR 11 (5092, #1773), `xfer:`: a row a trade, in its own run; none a
+  kill, none an empty window; 90 days (then its delete).
+- PR 12 (5093, #1785), the owner's card: the book's parts and the five
+  numbers. Sitting 10: a restart booked and added back (one line in
+  `persistence.js`), open sittings' seconds, the count's limit in words.
+- PR 9 (5090, #1786), on #1785: value roads pause after a refused save.
+- 5094 (#1802, sitting 11): a restart books its minted; an empty room's
+  restart written at once (`econresetput`, OFF); weapon staging pauses.
 
 ## Next
 
-- PR 7 (5086), the shared test room and the closed list of disturbances.
+- The gatekeeper's next sitting.
 
 ## Found
 
-- `inbox.js` / `index.js`: goods mailed to a player in the five dying
-  seconds land in the bag the respawn's wipe empties (read, not reproduced).
-- `threat.js`: the fine's take and its `bounty:` put are two runs.
-- `gladiator.js`: the prize is paid before its entries are deleted.
-- `deathpilesave: false` keeps piles in memory only (rule 4's two configs).
-- A new key inside `_econ` (card Q's sitting card) bumps `ECON.V`.
+- `inbox.js`: goods mailed in the five dying seconds meet the respawn wipe.
+- `threat.js`: the fine's take and its `bounty:` put are two runs;
+  `gladiator.js`: the prize is paid before its entries are deleted.
+- A new key inside `_econ` (card Q's sitting card) bumps `ECON_V` (gold.js).
+- For the owner (sitting 11, F3): any refused save pauses every player's
+  value roads; narrowing it to value records is a design change.
 
 ## Needs
 
-- Nothing for this PR (roomrow 9 and 10.5 pass unchanged after the mend).
+- The owner's yes to two costs: the arena plan's two rows a match
+  (#1764), and one put a restart in an empty room (5094).

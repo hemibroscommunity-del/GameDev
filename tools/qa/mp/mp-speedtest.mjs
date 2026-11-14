@@ -22,6 +22,7 @@
  *      missing, and the ground looks the same with it shown;
  *   8. the screen's empty graphics are not cleared every frame: the screen's
  *      draw list is not rebuilt every frame standing still.
+ *   9. v2.3.5221: the card names the lane the page draws in (game/drawLanes.js).
  */
 import * as H from './harness.mjs';
 
@@ -202,6 +203,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return !document.querySelector('[data-speed-test]');
     });
     rec.ok(`5. the card shows a row a step (${cardRows}) and goes on Close`, cardRows === rows.length && closed, { cardRows, closed });
+    /* v2.3.5221 (card O PR 1): the card names the lane this page draws in
+       (game/drawLanes.js), the one the page reads itself */
+    const laneNow = await P.page.evaluate(() => (window.__btLane ? window.__btLane().lane : null)).catch(() => null);
+    rec.ok(`9. the card names the lane ("${(result && result.device || '').replace(/^.*(lane \w+).*$/, '$1')}"), this page's own (${laneNow})`,
+      !!laneNow && new RegExp(', lane ' + laneNow + '$').test((result && result.device) || ''), { device: result && result.device, laneNow });
   } finally {
     stopAlive();
     await P.ctx.close().catch(() => {});

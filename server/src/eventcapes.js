@@ -42,6 +42,7 @@
 /* One record per cape: the cap, who holds a ticket, and who has redeemed.
    Count and winners in one place, so they cannot disagree. */
 import { bagGive, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
+import { PACE } from './flood.js'; /* v2.3.5422: the cape's "off" written at the player's pace */
 
 export const CAPE_LEDGER_KEY = (capeId) => `capegrant:${capeId}`;
 
@@ -192,6 +193,11 @@ export const eventCapeMethods = {
       ? { issued: Array.isArray(stored.issued) ? stored.issued : [],
           redeemed: Array.isArray(stored.redeemed) ? stored.redeemed : [] }
       : { issued: [], redeemed: [] };
+    /* v2.3.5422 (card J2): `off`, the winners who took it off, kept with the
+       rest -- a ledger loaded without it and saved again (a redeem) would
+       put every one of their capes back on.  Only ever a redeemer's id
+       (_capeOffSet), so it is no longer than `redeemed`. */
+    if (stored && typeof stored === 'object' && Array.isArray(stored.off) && stored.off.length) led.off = stored.off;
     this._capeLedgers[capeId] = led;
     return led;
   },
@@ -428,11 +434,50 @@ export const eventCapeMethods = {
    * every existing winner's blob, and absent must mean WORN or this change
    * would silently strip the cape off everyone who already has one. A default
    * that reads false and means "wearing it" is the safe direction here. */
+  /* ═══ v2.3.5422 (card J2): "OFF" KEPT ON THE CAPE'S OWN RECORD ═══
+   * `ps.capeOff` was never in _saveRpg's fixed list (handoff rule 1), so it
+   * was dropped: a cape taken off was worn again after a rejoin or a deploy
+   * (card V's Found, TRAPS §2).  Rule 1 also forbids a cape field on the rpg
+   * blob, so the preference rides the record that already says who owns it,
+   * `capegrant:<capeId>`: `off`, the redeemers who took it off.  Written by
+   * _capeLedgerSave at the player's pace; read here, so the join's `cape`
+   * (persistence.js) is right with no change to the join.  Absent still
+   * means WORN, as v2.3.2109 chose.  `capeoffkept: false` in the live flags
+   * (liveops.js _capeOffKeptOff): the old way, `ps.capeOff` in memory only. */
+  _capeOffNow(playerId) {
+    if (typeof this._capeOffKeptOff === 'function' && this._capeOffKeptOff()) {
+      const ps = this.playerState && this.playerState[playerId];
+      return !!(ps && ps.capeOff === true);
+    }
+    if (!playerId || !this._capeLedgers) return false;
+    for (const id of Object.keys(EVENT_CAPES)) {
+      const led = this._capeLedgers[id];
+      if (led && led.redeemed.indexOf(playerId) >= 0) return !!(Array.isArray(led.off) && led.off.indexOf(playerId) >= 0);
+    }
+    return false;
+  },
+
+  /** Write "off" (or clear it) on the ledger of the cape this player won:
+   *  that cape's id when the record changed, else null.  A redeemer's id
+   *  only, so `off` is never longer than `redeemed`. */
+  _capeOffSet(playerId, off) {
+    if (!playerId || !this._capeLedgers) return null;
+    for (const id of Object.keys(EVENT_CAPES)) {
+      const led = this._capeLedgers[id];
+      if (!led || led.redeemed.indexOf(playerId) < 0) continue;
+      const list = Array.isArray(led.off) ? led.off : [];
+      const at = list.indexOf(playerId);
+      if (off && at < 0) { list.push(playerId); led.off = list; return id; }
+      if (!off && at >= 0) { list.splice(at, 1); if (list.length) led.off = list; else delete led.off; return id; }
+      return null;
+    }
+    return null;
+  },
+
   _capeWornBy(playerId) {
     const owned = this._capeOwnedBy(playerId);
     if (!owned) return null;
-    const ps = this.playerState && this.playerState[playerId];
-    return (ps && ps.capeOff === true) ? null : owned;
+    return this._capeOffNow(playerId) ? null : owned;
   },
 
   _capeStamp(playerId, data) {
@@ -455,8 +500,17 @@ export const eventCapeMethods = {
     if (!this._capeOwnedBy(session.id)) return this._refusalEcho(session, ['cape']);
     const want = !!(payload && payload.worn);
     const next = !want;
+    /* v2.3.5422: "already there" read where it is kept (the ledger), not the
+       memory a rejoin starts empty */
+    ps.capeOff = this._capeOffNow(session.id);
     if (ps.capeOff === next) return;            /* already there; no echo storm */
     ps.capeOff = next;
+    if (!(typeof this._capeOffKeptOff === 'function' && this._capeOffKeptOff())) {
+      /* v2.3.5422: on the cape's own record, at the player's pace (flood.js
+         _paced: the latest held write wins, and a leave flushes it) */
+      const capeId = this._capeOffSet(session.id, next);
+      if (capeId) this._paced('capeoff', session.id, PACE.RPG, () => this._capeLedgerSave(capeId));
+    }
     this._saveRpgPaced(session.id, ps);   /* v2.3.3274: at the player's pace (flood.js) */
     const ws = this._wsBySessionId(session.id);
     if (ws) this._sendPlayerState(ws, session.id);

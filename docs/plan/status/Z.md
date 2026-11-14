@@ -1,40 +1,40 @@
 card: Z
-branch: claude/plan-z-sitting-9
-prs: this PR, tag 5365, the last line of the list (ready)
+branch: claude/plan-z-sitting-11
+prs: #1799, tag 5367, the last line of the list (ready)
 state: ready
 
 ## Done
-- Sitting 9, `main` at 0a5149b (sitting 8's nine merged). The four below
-  and this branch rehearsed in this order (tree 72434929): precheck
-  0 FAIL, build, questline 187/187.
-  Review: `census/review-z9.md`. Ticked 1.0, 4.4; notes on 5.3b, 7.1.
+- Sitting 11, `main` 90a91dbc (resumed 16:56 after the usage stop): the
+  list rehearsed in its order, this branch last (tree ba0e9e42): precheck
+  0 FAIL, build, questline 187/187; each branch ONE merge base. Review:
+  `census/review-z11.md`. 10.3 ticked; notes on 4.5, 7.1.
 
 ## The list: merge in this order, in one sitting, each "Create a merge commit"
-1 #1769 O's card · 2 #1771 LB-1 · 3 #1762 H-11 · 4 #1756 E6 · 5 this PR.
-Two deploy (#1762, a test's line; #1756): back to back. #1756 adds the
-live flag `econ` (rowed) and a mail entry's optional `minted` (ignored by
-a rolled-back worker; no shape refused). No cap.
+1 #1788 · 2 #1789 · 3 #1790 · 4 #1795 (J2) · 5 #1785 · 6 #1786 ·
+7 #1802 (E) · 8 #1787 (O) · 9 #1767 · 10 #1775 · 11 #1779 · 12 #1791 ·
+13 #1796 · 14 #1801 (L) · 15 #1783 (LB) · 16 this PR. Ten deploy (2, 3,
+5 to 10, 12, 15): back to back. Flags `capeoffkept` (ON),
+`valuepause` (ON), `econresetput` (OFF: the owner's cost word),
+`reportlanes` (ON; `caps.report` 3): each on a line of its own.
 
-## Held (expires at sitting 10)
-- #1749 P8, #1767 L3, #1768 T2: each adds switch rows, and the page's
-  count line (`docs/SWITCHES.md` "N rows") makes any two conflict: one a
-  sitting; #1756 goes now. Each merges `main` after it. #1749, #1767
-  read clean. #1768 also conflicts with #1749 in `switches.mjs`.
-- #1763, #1766 P: the trap box's twin is packed, and a missed trap's
-  break reads it on the CPU (`wheelShatter.js` `cutPicture`): no pieces.
-- #1758, #1759, #1761 E: no CI (they merged the old `main`): merge `main`.
-- #1764 E8c: `arenasettleplan` has no row; each settle writes every stake
-  record again (5 puts -> 7, 32 -> 52), undeclared, no cost-guard line.
-- #1770 TF: `tag-blocks.json` conflicts with #1771 (keep both; next 5520).
-- Not reviewed (opened during the sitting): #1772, #1773 (on #1764), #1777.
+## Held (expires at sitting 12)
+- #1792 O: red with L's #1767: `phase-table` FAIL 2 (`ladder`'s suite not
+  on `DOOR_SUITES`). Merge main, add its row there.
+- #1794 O: VERIFIED (probe), the ladder walks rungs nothing reads, kept
+  in `bt_rung`: a cool 60 phone at 30 for a sitting; steps mid-fight
+  (call 3); a cool computer too. #1800 waits on it.
+- #1797 T: conflicts at `switches.mjs`'s end after L: sitting 12.
+- #1782 SK: ready; the owner's yes to +8 to +10 moves a ride (one finding).
+- #1798 LB: ready after the rehearsal: sitting 12. TF's PR 2: none.
 
 ## Stalled
-- None.
+- None (P, TF, LB-3 say `working`: cut by the usage stop at 14:38).
 
 ## Found
-- T: the switch page's count line serialises every row-adding PR.
-- All: a branch that merged an OLD `main` (two merge bases) gets no CI
-  on GitHub ("has conflicts"); merging today's `main` mends it.
-- L: the zone door held by a regex (`zone-leftovers` §6a); shapes the
-  phase guard still misses (review-z9). E: `roomrow: false` silences the
-  book's `econ` part. P: `families.mjs` marks the snowball `draw: 'none'`.
+- All: switch rows appended at `switches.mjs`'s end collide (O with T, L
+  with T); card T's next PR sorts them by name.
+- J2: `mp-npclooks` check 2 holds the cast to its own median, no size.
+- O: `mp-governor`, `mp-loadinggate` leak `BT_QA_CPU_THROTTLE` onward.
+
+## Rule for later sittings
+- Quote other cards' tags BARE (`5461`): a full one counts as taken on `main`.

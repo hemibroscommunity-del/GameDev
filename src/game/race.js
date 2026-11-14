@@ -28,6 +28,7 @@
  */
 import { cue } from '@/game/eventSounds.js';
 import { noteRaceLost } from '@/data/raceTally.js';   /* v2.3.3583: his next line knows he beat you (no imports of its own) */
+import { resetOn } from '@/game/resetOn.js';   /* v2.3.5204: a race the worker forgot at a join ends here too (card L) */
 
 const LIL = 'Lil Bro';
 /* how long the phone waits for the worker to answer race_start before it
@@ -159,6 +160,21 @@ export function onRaceEnd(S, p) {
 }
 
 /** Close the result card (its OK, or the time running out). */
+/* v2.3.5204 (grand plan step 5.3, card L): the worker forgets a race at a
+   join ("a race lost to a reconnect is a race run again"; join.js makes the
+   body afresh) and says nothing of it again, so at the rejoin edge's one
+   door (rejoinSlots.js rejoinClear) the phone's copy goes too, and its card
+   is told (it showed a race no move could finish).  A race ends itself at a
+   change of place already (the worker's 'left', race_end): no zone reset.
+   `?socialreset=0` keeps it, as before. */
+function forgetRace(S) {
+  if (!S || (!S._race && !S._raceLil)) return;
+  S._race = null;
+  S._raceLil = null;
+  raceBus.emit();
+}
+resetOn('rejoin', forgetRace, 'social');
+
 export function dismissRace(S) {
   if (S && S._race && S._race.phase === 'done') { S._race = null; raceBus.emit(); }
 }
