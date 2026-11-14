@@ -10,11 +10,8 @@ state: working
 - PR 3 (5203, #1767): `resetOn` at the zone and rejoin doors; the census's
   `resets`; the guard's §6-7; 16 rows (484 -> 468); state-resets.test
   (deploys); the phase guard's two holes (sitting 8) closed.
-- PR 4 (5204): desktop, social, movement: 22 rows (3 resets: the rises,
-  the Wheel's water, a race at a rejoin), SITTING_LINE 468 -> 446.
-
-- PR 5 (5205): economy, skills: 17 rows (1 reset: a smelt's pose),
-  SITTING_LINE 446 -> 429.
+- PR 4 (5204, #1775): desktop, social, movement: 22 rows, 468 -> 446.
+- PR 5 (5205): economy, skills: 17 rows (a smelt's pose), 446 -> 429.
 
 ## Next
 
