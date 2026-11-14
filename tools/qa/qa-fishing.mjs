@@ -1,4 +1,5 @@
 import { chromium } from 'playwright-core';
+import { withLane } from './lane.mjs';   /* v2.3.5223: the game's page names its lane (card O PR 3) */
 const EXE = '/tmp/chrome-headless-shell-linux64/chrome-headless-shell';
 const browser = await chromium.launch({ executablePath: EXE, headless: true, args: ['--no-sandbox','--enable-unsafe-swiftshader','--mute-audio'] });
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
@@ -8,7 +9,7 @@ const errors = [];
 page.on('response', r => { if (/fish-south\.png/.test(r.url()) && r.status() >= 400) sheet404.push(r.url() + ' ' + r.status()); });
 page.on('pageerror', e => errors.push(String(e)));
 await page.addInitScript(`window.BROTOWN_WS_URL='ws://127.0.0.1:8787'`);
-await page.goto('http://localhost:4173/?noresume=1',{waitUntil:'domcontentloaded',timeout:60000});
+await page.goto(withLane('http://localhost:4173/?noresume=1'),{waitUntil:'domcontentloaded',timeout:60000});
 await page.waitForTimeout(9000);
 await page.locator('input').first().fill('FishBot',{timeout:30000});
 await page.locator('input').first().press('Enter');

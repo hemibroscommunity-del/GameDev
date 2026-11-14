@@ -45,6 +45,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const DUMP = !!process.env.BT_FISHARM_DUMP;
 /* the picture is drawn scaled, so a pixel where the gauntlet meets the skin

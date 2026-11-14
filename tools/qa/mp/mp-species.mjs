@@ -50,6 +50,7 @@
  */
 import * as H from './harness.mjs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const TAN = [149, 116, 89];

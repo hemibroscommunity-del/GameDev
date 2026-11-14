@@ -45,6 +45,7 @@
  */
 import net from 'node:net';
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const QUICK = !!process.env.BT_SLEEP_QUICK;

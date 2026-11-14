@@ -60,6 +60,7 @@
  * Synchronous on purpose: the router asks it before its switch and nothing
  * here awaits, so a bundle's parts still finish in order (TRAPS §182).  One
  * Set lookup a message (FIGHT_GATED) is all the hot path pays. */
+import { FIGHT_LOCK_SW, FIGHT_OPEN as FIGHT_OPEN_MADE } from './wire/lists.js';   /* v2.3.5182: which types, from the wire table */
 import { WEAPON_GEM } from './weapongem.js';
 import { SHARD_CRACK } from './shardcrack.js';
 import { WEAPON_GEMS, AMULET_GEMS } from './data.js';
@@ -78,40 +79,43 @@ const resend = (fields) => (room, pid) => {
 };
 const WEAPON_FIELDS = ['weapon', 'rangedWeapon', 'staffWeapon', 'weaponStash', 'activeSlot'];
 
-export const FIGHT_LOCK = Object.freeze({
+/* v2.3.5182 (card K PR 2): WHICH TYPES THE LOCK HOLDS, AND UNDER WHICH
+   SWITCH, ARE THE WIRE TABLE'S (its `fight` column, `lock:<switch>`:
+   server/src/wire/lists.js FIGHT_LOCK_SW).  What stays here is the code a
+   row needs: `refuse` (the router refuses it, and says so), `when` (only
+   for these payloads), `at` (its handler asks the lock itself).  A key here
+   with no `lock:` row in the table is a fault (wire-table.test). */
+const FIGHT_LOCK_HOW = Object.freeze({
   /* ── the v2.3.3183 roads (and v2.3.4375's gift), inside their handlers ── */
-  shop_sell: { sw: 'fightlock', at: 'shop.js _shopSell' },
-  farm_act: { sw: 'fightlock', at: 'farm.js _handleFarmAct' },                 /* plant, feed */
-  farm_order: { sw: 'fightlock', at: 'farmorders.js _handleFarmOrder' },       /* 'order-fight', its own test */
-  item_drop: { sw: 'fightlock', at: 'itemdrop.js _handleItemDrop' },
-  trade2_confirm: { sw: 'fightlock', at: 'trade2.js _handleTrade2Confirm' },
-  trade_offer: { sw: 'fightlock', at: 'trade.js _interceptTrade' },
-  trade_accept: { sw: 'fightlock', at: 'trade.js _interceptTrade' },
-  'http:/api/store/list': { sw: 'fightlock', at: 'store.js _stCreateListing' },
-  'http:/api/store/buy': { sw: 'fightlock', at: 'store.js _storeFetch' },
-  'http:/api/store/bid': { sw: 'fightlock', at: 'store.js _storeFetch' },
-  'http:/api/market/place': { sw: 'fightlock', at: 'market.js _mktPlaceOrder' },
+  shop_sell: { at: 'shop.js _shopSell' },
+  farm_act: { at: 'farm.js _handleFarmAct' },                 /* plant, feed */
+  farm_order: { at: 'farmorders.js _handleFarmOrder' },       /* 'order-fight', its own test */
+  item_drop: { at: 'itemdrop.js _handleItemDrop' },
+  trade2_confirm: { at: 'trade2.js _handleTrade2Confirm' },
+  trade_offer: { at: 'trade.js _interceptTrade' },
+  trade_accept: { at: 'trade.js _interceptTrade' },
+  'http:/api/store/list': { at: 'store.js _stCreateListing' },
+  'http:/api/store/buy': { at: 'store.js _storeFetch' },
+  'http:/api/store/bid': { at: 'store.js _storeFetch' },
+  'http:/api/market/place': { at: 'market.js _mktPlaceOrder' },
 
   /* ── v2.3.4510: turned into what the loss does not take ── */
   /* bars into a piece in the ledger, which the loss cannot reach (V21 S7-23);
      armorforge.js answers nothing ("Could not forge" when no receipt comes) */
-  forge_armor: { sw: 'fightlocktable', refuse: resend(['inventory']) },
+  forge_armor: { refuse: resend(['inventory']) },
   /* ore, bars or wood and gold into a blade in your hand (S7-12) */
-  forge_weapon: { sw: 'fightlocktable', refuse: resend(['inventory', 'coins', 'lifeSkills', ...WEAPON_FIELDS]) },
+  forge_weapon: { refuse: resend(['inventory', 'coins', 'lifeSkills', ...WEAPON_FIELDS]) },
   /* gold and bars into the hardness of the blade you hold (S7-12) */
   harden_weapon: {
-    sw: 'fightlocktable',
     refuse: (room, pid) => room._hardenSend(pid, { success: false, error: 'not-now', message: 'Cannot harden right now' }),
   },
   /* gold and gold bars into the amulet you wear; a bag gem onto it (S7-15) */
   amulet_forge_request: {
-    sw: 'fightlocktable',
     when: (p) => !!p && (p.op === 'craft' || p.op === 'gem'),
     refuse: resend(['coins', 'goldBars', 'amulet', 'inventory', 'lifeSkills']),
   },
   /* a bag gem into the weapon or the shield you wear: the guard lock's word */
   weapon_gem: {
-    sw: 'fightlocktable',
     refuse: (room, pid, p) => room._weaponGemSend(pid, {
       ok: false,
       slot: p && typeof p.slot === 'string' && WEAPON_GEM.SLOTS.indexOf(p.slot) >= 0 ? p.slot : null,
@@ -120,7 +124,6 @@ export const FIGHT_LOCK = Object.freeze({
     }, false),
   },
   shield_gem: {
-    sw: 'fightlocktable',
     refuse: (room, pid, p) => room._shieldGemSend(pid, {
       ok: false, reason: 'locked',
       gem: p && typeof p.gem === 'string' && AMULET_GEMS.has(p.gem) ? p.gem : null,
@@ -128,15 +131,13 @@ export const FIGHT_LOCK = Object.freeze({
   },
   /* crafting gems (the Gem Works): a failed cut or crack destroys what the
      killer would take, as a gamble does */
-  gem_cut_request: { sw: 'fightlocktable', refuse: resend(['inventory', 'lifeSkills']) },
+  gem_cut_request: { refuse: resend(['inventory', 'lifeSkills']) },
   shard_crack: {
-    sw: 'fightlocktable',
     refuse: (room, pid, p) => room._shardCrackSend(pid, 'shard_crack_result', {
       ok: false, land: p && typeof p.land === 'string' && own(SHARD_CRACK.LANDS, p.land) ? p.land : null, reason: 'fight',
     }, false),
   },
   gem_combine: {
-    sw: 'fightlocktable',
     refuse: (room, pid, p) => {
       const rare = !!p && p.rare === true;
       const el = p && typeof p.element === 'string' && (rare ? WEAPON_GEMS.has(p.element) : GEM_ELEMENTS.has(p.element)) ? p.element : null;
@@ -144,21 +145,20 @@ export const FIGHT_LOCK = Object.freeze({
     },
   },
   /* a golden ticket from the bag into a cape the ledger keeps */
-  cape_redeem: { sw: 'fightlocktable', refuse: resend(['inventory', 'cape']) },
+  cape_redeem: { refuse: resend(['inventory', 'cape']) },
   /* gold into room in the Pet House */
-  pet_house_buy: { sw: 'fightlocktable', refuse: (room, pid) => room._petbookSend(pid, { op: 'house', error: 'not-now' }) },
+  pet_house_buy: { refuse: (room, pid) => room._petbookSend(pid, { op: 'house', error: 'not-now' }) },
 
   /* ── v2.3.4510: given away, held in an escrow, or wagered ── */
   /* gold into this week's tickets, which no death touches (V21-new-1) */
-  jackpot_deposit: { sw: 'fightlocktable', refuse: resend(['coins']) },
+  jackpot_deposit: { refuse: resend(['coins']) },
   /* the Hall's roll, Ace's coin flip and item wager: spite only, the stake
      is the victim's either way (S6-10) -- all silent in gamble.js */
-  gamble_request: { sw: 'fightlocktable', refuse: resend(['coins']) },
-  ace_flip_request: { sw: 'fightlocktable', refuse: resend(['coins']) },
-  ace_item_flip_request: { sw: 'fightlocktable', refuse: resend(['inventory']) },
+  gamble_request: { refuse: resend(['coins']) },
+  ace_flip_request: { refuse: resend(['coins']) },
+  ace_item_flip_request: { refuse: resend(['inventory']) },
   /* gold into an escrowed arena stake (V21-new-3) */
   arena_sponsor: {
-    sw: 'fightlocktable',
     refuse: (room, pid, p) => {
       const ws = room._wsBySessionId(pid);
       const out = { code: 'fight', message: FIGHT_WORDS };
@@ -167,11 +167,10 @@ export const FIGHT_LOCK = Object.freeze({
     },
   },
   /* the 100 g entry into the queue's escrow, refunded on a leave */
-  'http:/api/arena/join': { sw: 'fightlocktable', at: 'gladiator.js _arenaFetch' },
+  'http:/api/arena/join': { at: 'gladiator.js _arenaFetch' },
   /* gold into an offer's escrow on someone's listing (the auction house's
      buy and bid were guarded, this road was not) */
   store_offer: {
-    sw: 'fightlocktable',
     refuse: (room, pid, p) => {
       const listingId = room._scListingId(p && p.listingId);
       if (listingId) room._soSend(pid, 'store_offer_error', { listingId, error: FIGHT_WORDS });
@@ -179,17 +178,16 @@ export const FIGHT_LOCK = Object.freeze({
   },
   /* a spare weapon into the trade window's escrow -- a death does not cancel
      the window, and the refund brings it back after */
-  trade2_stage_weapon: { sw: 'fightlocktable', refuse: resend(['weaponStash']) },
+  trade2_stage_weapon: { refuse: resend(['weaponStash']) },
   /* a duel's stake into its escrow, paid to the partner on ANY death; and a
      duel kill skips the No man's land loss altogether (index.js
      _handlePlayerDeath), so a friend's duel could end a losing fight with
      the bag kept (V21-new-2) -- declined to both, as duel.js refuses */
-  duel_accept: { sw: 'fightlocktable', at: 'duel.js _interceptDuel' },
+  duel_accept: { at: 'duel.js _interceptDuel' },
 
   /* ── v2.3.4510: leaving with the bag ── */
   /* the dungeon mouth, and the leader's party pull through it (V21-new-4) */
   dungeon_start: {
-    sw: 'fightlockdoor',
     at: 'dungeon.js _dungeonPullPartyMembers',
     refuse: (room, pid) => room._dungeonError(pid, 'not-now', 'Cannot start a dungeon right now'),
   },
@@ -197,12 +195,12 @@ export const FIGHT_LOCK = Object.freeze({
   /* ── v2.3.4510: a spare put on (worn gear stays with a white skull) ── */
   /* a spare blade into the hand; the phone takes the worker's weapon fields
      back (gear.js refuseWeapons) */
-  equip_request: { sw: 'fightlockequip', refuse: resend(WEAPON_FIELDS) },
+  equip_request: { refuse: resend(WEAPON_FIELDS) },
   /* only a report naming a shield the worker does not hold, which cleared
      the arm and so kept EVERY spare shield from the killer: the phone owns
      which shield is on the arm (wsClient.js), so a held spare put on is not
      refused -- the phone could not be told to take it off */
-  shield_wear: { sw: 'fightlockequip', at: 'shieldwear.js _handleShieldWear' },
+  shield_wear: { at: 'shieldwear.js _handleShieldWear' },
 
   /* ── v2.3.4627: the character wiped (STATE-MACHINES.md "what is left", from #1523) ── */
   /* A restart deletes the whole character -- the bag, the gold, the stashes --
@@ -214,8 +212,8 @@ export const FIGHT_LOCK = Object.freeze({
      a new message: the restart had no refusal before), and the picker's HTTP
      restart (account.js: `reason: 'fight'`), which reaches a bro being played
      on another device. */
-  character_reset: { sw: 'fightlockreset', at: 'persistence.js _handleCharacterReset' },
-  'http:/api/account/reset': { sw: 'fightlockreset', at: 'account.js _accountReset' },
+  character_reset: { at: 'persistence.js _handleCharacterReset' },
+  'http:/api/account/reset': { at: 'account.js _accountReset' },
 
   /* ── v2.3.4626: armour put on or taken off (STATE-MACHINES.md, from #1523) ── */
   /* Armour and legs are put on through stats_update (the phone moves them
@@ -224,69 +222,64 @@ export const FIGHT_LOCK = Object.freeze({
      piece it replaced went where the worker does not look until the next join.
      Taking a piece off sent it there too: a red skull's worn armour, shield or
      amulet left the worker's view.  The rest of stats_update moves no goods. */
-  stats_update: { sw: 'fightlockarmor', at: 'grids.js _gridsApplyArmor' },
-  unequip_request: { sw: 'fightlockarmor', at: 'gear.js _handleUnequipRequest' },
+  stats_update: { at: 'grids.js _gridsApplyArmor' },
+  unequip_request: { at: 'gear.js _handleUnequipRequest' },
 });
 
+/* v2.3.5182 (card K PR 2): THE SWITCHES A LOCK MAY NAME, a closed list as
+   OPEN_WHY is for the open rows: a `lock:<switch>` row of the wire table
+   names one of these (wire-table.test fails another), and each switch's
+   `sw` field here is where the switch scanner (tools/guards/lib/
+   switchScan.mjs, its `table` shape) reads _fightLockGate's `row.sw`.
+   What each switch does when thrown is the switch table's
+   (tools/guards/lib/switches.mjs); here only what it locks. */
+export const LOCK_SWITCHES = Object.freeze([
+  { sw: 'fightlock', locks: 'the v2.3.3183 roads: selling, farming, a drop, a trade, the market and the store' },
+  { sw: 'fightlocktable', locks: 'what turns goods into what the loss does not take: forging, gems, wagers, a duel' },
+  { sw: 'fightlockequip', locks: 'a spare weapon or shield put on' },
+  { sw: 'fightlockarmor', locks: 'armour put on or taken off' },
+  { sw: 'fightlockdoor', locks: 'a dungeon\'s mouth' },
+  { sw: 'fightlockreset', locks: 'a character\'s restart' },
+].map(Object.freeze));
+
 /* What the router may refuse itself: the rows with a `refuse` */
+export const FIGHT_LOCK = Object.freeze(Object.fromEntries(Object.entries(FIGHT_LOCK_SW)
+  .map(([n, sw]) => [n, Object.freeze({ sw, ...(own(FIGHT_LOCK_HOW, n) ? FIGHT_LOCK_HOW[n] : {}) })])));
+export const FIGHT_LOCK_HOW_KEYS = Object.freeze(Object.keys(FIGHT_LOCK_HOW));
+
 export const FIGHT_GATED = new Set(Object.keys(FIGHT_LOCK).filter((k) => typeof FIGHT_LOCK[k].refuse === 'function'));
 
 /* EVERY OTHER MESSAGE THE ROUTER TAKES, and why the loss loses nothing by
    it.  A new case in index.js _onMessage, or a new type in relay.js
-   RELAY.TYPES, goes here or in FIGHT_LOCK (fight-lock.test). */
-const OPEN_GROUPS = [
-  ['moves no goods', [
-    'join', 'pose', 'ride', 'dice', 'move', 'pong', 'track', 'map_watch', 'achv_title', 'points_reset',
-    'stat_allocate', 'prog3_allocate', 'build_point_earned', 'set_active_slot', 'rest_request',
-    'race_start', 'heap_burn', 'reveal_item', 'feedback', 'shop_list', 'shop_quote', 'farm_open', 'bank_open',
-    'cape_equip', 'pet_active', 'pet_name', 'pet_release', 'pet_capture', 'trap_arm', 'fish_inspect',
-    'fish_board_request', 'spin_board_request', 'ace_board_request',
-    'acc_request',   /* v2.3.4545: your own accuracy, read (accuracy.js) */
-    'report',   /* v2.3.5123: the field report, numbers into the day's book (report.js) */
-  ]],
-  ['the fight itself', [
-    'player_attack', 'monster_damage', 'extraction_start', 'arrow_blast', 'node_strike', 'ability_use', 'ability',
-    'element_burst', 'nml_attack', 'nml_lock_ask', 'nml_lock_allow',
-  ]],
-  ['talk, parties, friends, clans', [
-    'party_invite', 'party_accept', 'party_decline', 'party_leave', 'party_kick', 'party_chat', 'alliance_name',
-    'alliance_war', 'alliance_board', 'area_chat', 'whisper', 'store_dm', 'store_dm_open', 'bro_nonce', 'bro_verify',
-    'friend_request', 'friend_accept', 'friend_decline', 'friend_remove', 'friend_dm', 'chat_mute', 'chat_report',
-    'clan_join_accept', 'clan_leave', 'clan_kick', 'clan_war_declare',
-  ]],
+   RELAY.TYPES, goes here or in FIGHT_LOCK (fight-lock.test).
+   v2.3.5182 (card K PR 2): which types, and their why, are the wire table's
+   (its `fight` column, `open:<why>`: server/src/wire/lists.js FIGHT_OPEN);
+   the whys are this closed list, each with its reason (wire-table.test fails
+   an `open:` row whose why is not one of these). */
+export const OPEN_WHY = Object.freeze({
+  'moves no goods': 'a read, a look, a step, a point spent: nothing a death could take',
+  'the fight itself': 'the blows and the harvests a fight is made of',
+  'talk, parties, friends, clans': 'words and invitations',
   /* the window's staging moves nothing; its confirm is a `fightlock` row */
-  ['the trade window before its confirm', ['trade2_open', 'trade2_set', 'trade2_ready', 'trade2_pets']],
-  ['brings things in', [
-    'loot_pickup', 'loginspin_ask', 'loginspin_go', 'loginspin_double', 'loginspin_collect', 'chest_open',
-    'rewards_get', 'daily_spin', 'daily_reroll', 'season_claim', 'bank_withdraw', 'guild_quest_turn_in',
-    'quest_accept', 'quest_turn_in', 'rise_chest_open', 'trade2_cancel', 'trade2_unstage_weapon',
-    'store_offer_cancel', 'store_offer_reply',
-  ]],
+  'the trade window before its confirm': 'staging, before the swap',
+  'brings things in': 'gold or goods arrive, nothing leaves',
   /* the 2026-10 rule: what only rearranges the bag stays open (no-mans-
      land.md); the loss takes what comes out, and the XP is the craft's */
-  ['rearranges the bag', [
-    'shop_buy', 'farm_buy', 'smelt_bar', 'cook_request', 'cook_recipe', 'smith_salvage', 'essence_apply',
-    'make_traps', 'make_hardened_wood', 'sell_weapon',
-  ]],
-  ['eaten or burnt in a fight, by design', ['eat_request', 'potion_drink', 'firemaking_request']],
+  'rearranges the bag': 'the bag changes shape, its worth stays',
+  'eaten or burnt in a fight, by design': 'a bite, a potion, a fire',
   /* the Bank's door is on the safe ground, where no rule blow lands
      (bank.js _bankPlaceOk) */
-  ['sound by place', ['bank_deposit']],
+  'sound by place': 'only where no rule blow lands',
   /* DIEGO_SHELF is empty; clans are parties (clanparty.js) */
-  ['dormant', ['shop_purchase', 'clan_create']],
+  'dormant': 'nothing reaches it today',
   /* relay.js RELAY.TYPES: drawn by the other phones only, or a handshake
      whose accept is the row (duel_accept; the gift's trade_offer/accept) */
-  ['a relay', [
-    'campfire_lit', 'campfire_out', 'chat', 'clan_invite', 'duel_decline', 'duel_request', 'duel_wager_request',
-    'emote', 'gather_node', 'monster_dmg_at', 'player_died_to_monster', 'player_dodge', 'player_hurt_by_monster',
-    'player_jump', 'player_projectile', 'player_respawned', 'player_shield', 'player_swing', 'pvp_confirmed',
-    'pvp_threat', 'stunned', 'trade_reject',
-  ]],
+  'a relay': 'drawn by the other phones',
   /* the guards' fine is the THREATENER's, into a bounty paid to whoever
      kills them (threat.js) -- nothing of the sender's moves */
-  ['another player\'s fine', ['threat_response']],
-];
-export const FIGHT_OPEN = Object.freeze(Object.fromEntries(OPEN_GROUPS.flatMap(([why, types]) => types.map((t) => [t, why]))));
+  'another player\'s fine': 'the threatener pays, not the sender',
+});
+export const FIGHT_OPEN = FIGHT_OPEN_MADE;
 
 export const fightLockMethods = {
   /* a row's switch, written false in the live flags */

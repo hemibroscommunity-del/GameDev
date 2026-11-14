@@ -16,6 +16,7 @@
  *   4. a page closed properly leaves no mark and the next reports nothing.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const crashlog = (page) => page.evaluate(() => { try { return JSON.parse(localStorage.getItem('bt-crashlog') || '[]'); } catch (e) { return []; } });

@@ -31,6 +31,7 @@
  * it (TRAPS: an absent element satisfies every "is not there" check).
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 

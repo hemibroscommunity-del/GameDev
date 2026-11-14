@@ -18,6 +18,7 @@
  *   3. ...and the map opens and draws once more after it all.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 

@@ -27,6 +27,7 @@
  *   node tools/qa/mp/run.mjs farfeel
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const FAR = 2000, MID = 700, NEAR = 100;

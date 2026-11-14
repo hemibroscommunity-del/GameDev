@@ -36,6 +36,7 @@
  */
 import { readFileSync, existsSync } from 'node:fs';
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const DESK = { width: 1440, height: 900 };
 const FACINGS = {
@@ -192,7 +193,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }, { k: keyB, id: idB, look: withLook ? { hw: LOOK_B['bt-headwear'], htc: 'red', hr: LOOK_B['bt-hair'], hc: 'blue', fh: 'beard', fhc: 'blonde', ew: 'goggles', es: 'sleepy' } : null });
     await H.letDeviceIn(wsPort, idB).catch(() => null);
     /* the logout chip's road: the door, with the list up */
-    await A.page.goto(`http://localhost:${webPort}/?noresume=1&login=1`, { waitUntil: 'domcontentloaded' });
+    await A.page.goto(H.withLane(`http://localhost:${webPort}/?noresume=1&login=1`), { waitUntil: 'domcontentloaded' });
     await A.page.waitForSelector('[data-tut="char-row"]', { timeout: 30000 }).catch(() => null);
     if (!(await A.page.$('[data-tut="char-row"][data-char-name="Bravo"]'))) await H.openPicker(A.page).catch(() => false);
     const row = await A.page.$('[data-tut="char-row"][data-char-name="Bravo"]');

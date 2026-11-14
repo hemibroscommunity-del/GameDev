@@ -39,6 +39,7 @@
  *   node tools/qa/mp/run.mjs deathpile
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const LOGS = 4;

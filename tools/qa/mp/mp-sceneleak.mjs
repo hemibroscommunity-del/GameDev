@@ -41,6 +41,7 @@
  *   6. the render loop did not throw, and no page errors.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const SPARE_ALL = 8 * 16;   /* hitMaterialFx: two sides x four pools x TRIM_SPARE */

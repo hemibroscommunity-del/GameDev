@@ -54,6 +54,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 const VIEW = { width: 900, height: 700 };
 const DPR = 2;

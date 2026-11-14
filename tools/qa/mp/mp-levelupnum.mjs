@@ -53,6 +53,7 @@ import { readFileSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
 import { LEVELUP_NUMBER_SRCS, LEVELUP_MAX_W, LEVELUP_MAX_H, LEVELUP_STRIP_W, LEVELUP_STRIP_H } from '../../../src/data/levelUpBurst.js';
 import { decodePng8 } from '../../../src/rendering/png8Decode.js';
+export const lane = 'full';
 
 /* v2.3.5004 (step 7): the art from its colour numbers unless the run turns
    them off (BT_QA_QUERY=burstnumbers=0) */

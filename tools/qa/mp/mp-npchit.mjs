@@ -25,6 +25,7 @@
  * he dies within the swings, drops the pile and pays the XP.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const WHO = [['mayor_bro', 'Mayor Bro'], ['lil_bro', 'Lil Bro'], ['blacksmith_bro', 'Blacksmith Bro']];

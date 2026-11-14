@@ -20,6 +20,7 @@
  *   node tools/qa/mp/run.mjs ownerwatch
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 430, height: 932 };
 const INK = '0'.repeat(100) + '3'.repeat(56) + '0'.repeat(100);
