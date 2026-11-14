@@ -1,22 +1,21 @@
 card: LB
 branch: claude/plan-lb-3-power (PR 3, begun from claude/plan-lb-2-window)
-prs: #1771 (5500, merged); #1783 (5501, merged); #1798 (5502, ready)
-state: ready
+prs: #1771 (5500), #1783 (5501), #1798 (5502): all merged
+state: done
 
 ## Done
 
-- #1771 (5500, merged): the owner's sheet and two mockups; 27 pieces cut by
-  the sheet's own alpha (`tools/ui/cut-leaderboard.mjs`, family
-  `ui-leaderboard`); the papers, the MEMORY-MAP slot, the spec, LB's block.
-- #1783 (5501): the window after mockup 2 (title, pills, podium, table, no
-  pages); `mp-boardslook` 17/17, `mp-boards` 37/37, `questline` 187/187,
-  `mp-membudget` 11/11 before and after (no line moves); CI green.
+- #1771 (5500, merged): the owner's sheet cut into 27 pieces by its own
+  alpha (`tools/ui/cut-leaderboard.mjs`, family `ui-leaderboard`); the
+  papers, the MEMORY-MAP slot, the spec.
+- #1783 (5501, merged): the window after the second mockup (title, pills,
+  podium, table, no pages); sittings 10 and 11 mended.
+- #1798 (5502, merged): Overall and the Power rating (Overall's columns
+  only), the Stats group (`caps.statboards`), the caps' rows.
 
 ## Next
 
-- #1798 (5502): Overall and the Power rating (Overall's columns only, the
-  planning session's yes), the Stats group, the caps' rows; mp-boardslook
-  24/24, mp-boards 37/37. Merges after #1783. Then the card is done.
+- Nothing: the card is done.
 
 ## Found
 
