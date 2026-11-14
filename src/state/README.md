@@ -100,3 +100,11 @@ until the map places their file; the guard lists those files by name.
   word (`''` and `'jog-east'`), which the guard now takes.
 - `render` (v2.3.5167): 453 rows, the two renderers' system, near last as
   the card says.
+- `ui` (v2.3.5168): 522 rows, BroTown.jsx's system, last. Every row the
+  census finds is now listed but the 16 of four files the map has not
+  placed (`unsorted`): `src/game/characterCreatorEffects.js`, `rpgSave.js`,
+  `spriteSheets.js` and `visualSystems.js`. They go in a ledger when the map
+  gives their file a system.
+- Main merged in (sitting 5, v2.3.5168): the census page made again, and
+  the 20 rows main's merged work had added since put in their ledgers
+  (art 2, memory 2, debug 3, render 3, audio 4, device 6).

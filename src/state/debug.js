@@ -66,6 +66,9 @@ export const ROWS = [
   { variable: '_last', file: 'src/debug/report.js', system: 'debug', lifetime: 'sitting', suggested: '?', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/debug/report.js'] },
   { variable: '_lastFrameT', file: 'src/debug/report.js', system: 'debug', lifetime: 'sitting', suggested: '?', born: 'let number', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/debug/report.js'] },
   { variable: '_lastHoldT', file: 'src/debug/report.js', system: 'debug', lifetime: 'sitting', suggested: '?', born: 'let number', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/debug/report.js'] },
+  { variable: '_lastPollP', file: 'src/debug/report.js', system: 'debug', lifetime: 'sitting', suggested: '?', born: 'let number', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/debug/report.js'] },
   { variable: '_sent', file: 'src/debug/report.js', system: 'debug', lifetime: 'sitting', suggested: '?', born: 'let number', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/debug/report.js'] },
+  { variable: '_shows', file: 'src/debug/report.js', system: 'debug', lifetime: 'sitting', suggested: '?', born: 'const array', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/debug/report.js'] },
   { variable: '_timer', file: 'src/debug/report.js', system: 'debug', lifetime: 'sitting', suggested: '?', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/debug/report.js'] },
+  { variable: '_visSince', file: 'src/debug/report.js', system: 'debug', lifetime: 'sitting', suggested: '?', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/debug/report.js'] },
 ];

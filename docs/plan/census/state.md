@@ -14,7 +14,7 @@ It is a census, not a guard and not a ledger: card U makes the ledger files, a s
 2. **A variable at the top of a file under `src/` that holds state**: a `let` or `var`, or a `const` Map, Set,
    array or object that is changed after it is made.
 
-How the machine reads that rule (it reads all 886 `.js` and `.jsx` files under `src/` as syntax trees, so a
+How the machine reads that rule (it reads all 913 `.js` and `.jsx` files under `src/` as syntax trees, so a
 name in a comment or a string is never counted):
 
 - **The state** is `<ref>.current`, where `<ref>` is any name or property spelt `stateRef` or `_gameState`
@@ -199,7 +199,7 @@ name in a comment or a string is never counted):
 | `_extraction` | fly :218 | game/lifeSkillRewards.js | 6: ui/ExtractionSwipeLayer.jsx~, game/lifeSkillRewards.js, rendering/systems/effectsRenderer.js~, ui/BroTown.jsx, game/gesturePose.js~, +1 | 19: ui/BroTown.jsx, game/lifeSkillRewards.js, rendering/systems/entityRenderer.js, +16 | 2+ | zone | zone |
 | `_gatherHitSeq` | fly :253 | game/lifeSkillRewards.js | game/lifeSkillRewards.js | game/lifeSkillRewards.js | - | - | never |
 | `_lastHarvestOkAt` | fly :546 | game/lifeSkillRewards.js | game/lifeSkillRewards.js | ui/deskTeach.js | - | - | never |
-| `player` | first :1143 | game/lifeSkillRewards.js | 18: game/zoneTransitions.js~, ui/BroTown.jsx, game/monsterCombat.js, game/lifeSkillRewards.js, game/wheelHome.js~, +13 | 143: networking/gameEvents.js, ui/BroTown.jsx, networking/wsClient.js, +140 | 2+ | zone, death | never |
+| `player` | first :1143 | game/lifeSkillRewards.js | 18: game/zoneTransitions.js~, ui/BroTown.jsx, game/monsterCombat.js, game/lifeSkillRewards.js, game/wheelHome.js~, +13 | 144: networking/gameEvents.js, ui/BroTown.jsx, networking/wsClient.js, +141 | 2+ | zone, death | never |
 | `_mc` | fly :294 | game/manualCombat.js | game/manualCombat.js | 4: game/manualCombat.js, game/swordFeel.js, ui/BroTown.jsx, +1 | - | - | never |
 | `_codex` | fly :37 | game/monsterCodex.js | 2: game/monsterCodex.js, ui/panels/NewMonsterCard.jsx~ | 4: game/monsterCodex.js, game/achievements.js, ui/mobile/dash/AchievementsPanel.jsx, +1 | 2+~ | - | rejoin |
 | `_bowShotAng` | fly :1994 | game/monsterCombat.js | game/monsterCombat.js | rendering/systems/entityRenderer.js | - | - | never |
@@ -257,8 +257,8 @@ name in a comment or a string is never counted):
 | `_qcSeen` | fly :45 | game/questComplete.js | game/questComplete.js | game/questComplete.js | - | - | never |
 | `_race` | fly :75 | game/race.js | game/race.js | 4: game/race.js, rendering/systems/effectsRenderer.js, game/wheelMusic.js, +1 | - | - | zone+rejoin |
 | `_raceLil` | fly :117 | game/race.js | game/race.js | game/race.js | - | - | zone+rejoin |
-| `__pixiErrStreak` | fly :60 | game/renderFrame.js | game/renderFrame.js | game/renderFrame.js | - | - | never |
-| `_splitLog` | fly :120 | game/renderFrame.js | game/renderFrame.js | game/renderFrame.js | - | - | never |
+| `__pixiErrStreak` | fly :74 | game/renderFrame.js | game/renderFrame.js | game/renderFrame.js | - | - | never |
+| `_splitLog` | fly :134 | game/renderFrame.js | game/renderFrame.js | game/renderFrame.js | - | - | never |
 | `campfires` | never set | game/renderFrame.js | - | 2: game/renderFrame.js, ui/BroTown.jsx | no-set | - | zone |
 | `projectiles` | never set | game/renderFrame.js | - | 2: game/renderFrame.js, ui/BroTown.jsx | no-set | - | zone |
 | `_restAsked` | fly :63 | game/rest.js | game/rest.js | game/rest.js | - | - | rejoin |
@@ -434,7 +434,7 @@ name in a comment or a string is never counted):
 | `_resetRefused` | fly :1622 | networking/wsClient.js | networking/wsClient.js | - | no-read | - | never |
 | `_resistBuff` | fly :2987 | networking/wsClient.js | 3: networking/wsClient.js, ui/BroTown.jsx, ui/panels/buildings/CookPanel.jsx | 2: ui/BroTown.jsx, game/monsterCombat.js | 2+ | - | rejoin |
 | `_rpgFromServer` | fly :3392 | networking/wsClient.js | 2: networking/wsClient.js, ui/BroTown.jsx | 4: ui/mobile/QuestCoach.jsx, game/phoneDeath.js, game/questRoute.js, +1 | 2+, flag | - | never |
-| `_serverCaps` | fly :1657 | networking/wsClient.js | networking/wsClient.js | 98: networking/wsClient.js, ui/mobile/dash/ItemDetailPopup.jsx, ui/panels/buildings/SmithyPanel.jsx, +95 | - | rejoin | rejoin |
+| `_serverCaps` | fly :1657 | networking/wsClient.js | networking/wsClient.js | 99: networking/wsClient.js, ui/mobile/dash/ItemDetailPopup.jsx, ui/panels/buildings/SmithyPanel.jsx, +96 | - | rejoin | rejoin |
 | `_serverGatherNodes` | fly :1968 | networking/wsClient.js | networking/wsClient.js | 5: game/lifeSkillRewards.js, game/zoneTransitions.js, networking/nodeSync.js, +2 | flag | rejoin | rejoin |
 | `_serverLoot` | fly :1999 | networking/wsClient.js | networking/wsClient.js | networking/gameEvents.js | flag | rejoin | rejoin |
 | `_serverMonsters` | fly :1954 | networking/wsClient.js | 4: networking/wsClient.js, game/wheelDungeons.js, game/zoneTransitions.js, networking/gameEvents.js | 12: game/monsterCombat.js, game/projectiles.js, networking/gameEvents.js, +9 | 2+, flag | zone, rejoin | zone+rejoin |
@@ -479,184 +479,184 @@ name in a comment or a string is never counted):
 | `_peerBowFacingsReady` | fly :16098 | rendering/systems/effectsRenderer.js | rendering/systems/effectsRenderer.js | 2: rendering/systems/entityRenderer.js, rendering/systems/effectsRenderer.js | - | - | never |
 | `_whirlCatch` | fly :14037 | rendering/systems/effectsRenderer.js | rendering/systems/effectsRenderer.js | game/whirlCatch.js | - | - | zone |
 | `_whirlFx` | fly :13242 | rendering/systems/effectsRenderer.js | 3: game/abilities.js, game/zoneTransitions.js, rendering/systems/effectsRenderer.js | rendering/systems/effectsRenderer.js | 2+ | zone | zone |
-| `_bashPose` | fly :14507 | rendering/systems/entityRenderer.js | 3: game/abilities.js, game/zoneTransitions.js, rendering/systems/entityRenderer.js | 2: rendering/systems/entityRenderer.js, rendering/systems/effectsRenderer.js | 2+ | zone | zone |
-| `_blockPose` | fly :14466 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 2: rendering/systems/effectsRenderer.js, rendering/systems/entityRenderer.js | - | - | never |
-| `_blockShieldBehind` | fly :16846 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 2: rendering/systems/effectsRenderer.js, rendering/systems/entityRenderer.js | - | - | never |
-| `_bodyAnimDir` | fly :15154 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | - | no-read | - | never |
-| `_bodyAnimFrame` | fly :15154 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | - | no-read | - | never |
-| `_bodyAnimMirror` | fly :15154 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | - | no-read | - | never |
-| `_bodyDrawH` | fly :14838 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 2: rendering/systems/effectsRenderer.js, rendering/wheelObjects.js | - | - | never |
-| `_bodyFootY` | fly :14200 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | - | no-read (tests) | - | never |
-| `_bodyMoving` | fly :15154 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | - | no-read | - | never |
-| `_bowDir` | fly :14469 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 2: rendering/systems/effectsRenderer.js, rendering/systems/entityRenderer.js | - | - | never |
-| `_bowHoldFrame` | fly :14385 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | rendering/systems/effectsRenderer.js | - | - | never |
-| `_bowJogLegs` | fly :15501 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 2: rendering/systems/effectsRenderer.js, rendering/systems/entityRenderer.js | - | - | never |
-| `_bowShowing` | fly :14468 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | rendering/systems/effectsRenderer.js | - | - | never |
-| `_climbFrame` | fly :14928 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | game/climbActions.js | - | - | never |
-| `_facingSrc` | fly :14660 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | - | no-read (tests), phase | - | never |
-| `_figureScaleY` | fly :14193 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | - | no-read | - | never |
-| `_jogBodyH` | fly :15496 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | - | no-read | - | never |
-| `_monstersArtWait` | fly :12219 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | - | no-read | - | never |
-| `_monstersFarHidden` | fly :12218 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | - | no-read | - | never |
-| `_peerBlockPose` | fly :12398 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 2: rendering/systems/effectsRenderer.js, rendering/systems/entityRenderer.js | - | - | never |
-| `_peerShieldHeld` | fly :12400 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 2: rendering/systems/effectsRenderer.js, rendering/systems/entityRenderer.js | - | - | never |
-| `_peerStandGeom` | fly :12392 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 2: rendering/systems/effectsRenderer.js, rendering/systems/entityRenderer.js | - | - | never |
-| `_peersCrowdHidden` | fly :14002 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | - | no-read (tests) | - | never |
-| `_peersFarHidden` | fly :14001 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | - | no-read (tests) | - | never |
-| `_peersNotDrawn` | fly :14005 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 4: game/projectiles.js, rendering/systems/effectsRenderer.js, game/nmlAsk.js, +1 | - | - | never |
-| `_renderFacing` | fly :14703 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 6: rendering/systems/effectsRenderer.js, ui/BroTown.jsx, rendering/systems/entityRenderer.js, +3 | - | - | never |
+| `_bashPose` | fly :14503 | rendering/systems/entityRenderer.js | 3: game/abilities.js, game/zoneTransitions.js, rendering/systems/entityRenderer.js | 2: rendering/systems/entityRenderer.js, rendering/systems/effectsRenderer.js | 2+ | zone | zone |
+| `_blockPose` | fly :14462 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 2: rendering/systems/effectsRenderer.js, rendering/systems/entityRenderer.js | - | - | never |
+| `_blockShieldBehind` | fly :16842 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 2: rendering/systems/effectsRenderer.js, rendering/systems/entityRenderer.js | - | - | never |
+| `_bodyAnimDir` | fly :15150 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | - | no-read | - | never |
+| `_bodyAnimFrame` | fly :15150 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | - | no-read | - | never |
+| `_bodyAnimMirror` | fly :15150 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | - | no-read | - | never |
+| `_bodyDrawH` | fly :14834 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 2: rendering/systems/effectsRenderer.js, rendering/wheelObjects.js | - | - | never |
+| `_bodyFootY` | fly :14196 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | - | no-read (tests) | - | never |
+| `_bodyMoving` | fly :15150 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | - | no-read | - | never |
+| `_bowDir` | fly :14465 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 2: rendering/systems/effectsRenderer.js, rendering/systems/entityRenderer.js | - | - | never |
+| `_bowHoldFrame` | fly :14381 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | rendering/systems/effectsRenderer.js | - | - | never |
+| `_bowJogLegs` | fly :15497 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 2: rendering/systems/effectsRenderer.js, rendering/systems/entityRenderer.js | - | - | never |
+| `_bowShowing` | fly :14464 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | rendering/systems/effectsRenderer.js | - | - | never |
+| `_climbFrame` | fly :14924 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | game/climbActions.js | - | - | never |
+| `_facingSrc` | fly :14656 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | - | no-read (tests), phase | - | never |
+| `_figureScaleY` | fly :14189 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | - | no-read | - | never |
+| `_jogBodyH` | fly :15492 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | - | no-read | - | never |
+| `_monstersArtWait` | fly :12215 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | - | no-read | - | never |
+| `_monstersFarHidden` | fly :12214 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | - | no-read | - | never |
+| `_peerBlockPose` | fly :12394 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 2: rendering/systems/effectsRenderer.js, rendering/systems/entityRenderer.js | - | - | never |
+| `_peerShieldHeld` | fly :12396 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 2: rendering/systems/effectsRenderer.js, rendering/systems/entityRenderer.js | - | - | never |
+| `_peerStandGeom` | fly :12388 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 2: rendering/systems/effectsRenderer.js, rendering/systems/entityRenderer.js | - | - | never |
+| `_peersCrowdHidden` | fly :13998 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | - | no-read (tests) | - | never |
+| `_peersFarHidden` | fly :13997 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | - | no-read (tests) | - | never |
+| `_peersNotDrawn` | fly :14001 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 4: game/projectiles.js, rendering/systems/effectsRenderer.js, game/nmlAsk.js, +1 | - | - | never |
+| `_renderFacing` | fly :14699 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 6: rendering/systems/effectsRenderer.js, ui/BroTown.jsx, rendering/systems/entityRenderer.js, +3 | - | - | never |
 | `_respawnInvuln` | never set | rendering/systems/entityRenderer.js | - | rendering/systems/entityRenderer.js | no-set | - | death |
-| `_selfBandBotY` | fly :17131 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 2: rendering/systems/entityRenderer.js, rendering/nodeLabels.js | - | - | never |
-| `_selfBandHalfW` | fly :17133 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 3: rendering/nodeLabels.js, rendering/systems/entityRenderer.js, ui/mobile/QuestCoach.jsx | - | - | never |
-| `_selfBandTopY` | fly :17118 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 6: rendering/systems/effectsRenderer.js, game/dropLines.js, rendering/systems/entityRenderer.js, +3 | - | - | never |
-| `_selfChatTipY` | fly :17135 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | rendering/systems/effectsRenderer.js | - | - | never |
-| `_staffTipAt` | fly :15980 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 3: rendering/staffCastFx.js, game/staffFeel.js, rendering/systems/staffFeelFx.js | - | - | zone |
-| `_staffTipBehind` | fly :16513 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 2: rendering/staffCastFx.js, rendering/systems/staffFeelFx.js | flag | - | never |
-| `_staffTipX` | fly :15978 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 3: rendering/staffCastFx.js, game/staffFeel.js, rendering/systems/staffFeelFx.js | - | - | zone |
-| `_staffTipY` | fly :15979 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 3: rendering/staffCastFx.js, game/staffFeel.js, rendering/systems/staffFeelFx.js | - | - | zone |
-| `_standInBody` | fly :14117 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | rendering/systems/effectsRenderer.js | - | - | never |
-| `_standInBodyH` | fly :14851 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | rendering/systems/effectsRenderer.js | - | - | never |
-| `_standInFootY` | fly :14850 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | rendering/systems/effectsRenderer.js | - | - | never |
-| `_swordBodyH` | fly :15491 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | rendering/systems/effectsRenderer.js | - | - | never |
-| `_swordFootY` | fly :15487 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | rendering/systems/effectsRenderer.js | - | - | never |
-| `_swordJogLegs` | fly :15504 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | rendering/systems/effectsRenderer.js | - | - | never |
-| `_swordSwingDir` | fly :14362 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | rendering/systems/effectsRenderer.js | - | - | never |
-| `_swordSwinging` | fly :14361 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 3: rendering/systems/effectsRenderer.js, rendering/systems/weaponFeelFx.js, ui/BroTown.jsx | - | - | never |
+| `_selfBandBotY` | fly :17127 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 2: rendering/systems/entityRenderer.js, rendering/nodeLabels.js | - | - | never |
+| `_selfBandHalfW` | fly :17129 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 3: rendering/nodeLabels.js, rendering/systems/entityRenderer.js, ui/mobile/QuestCoach.jsx | - | - | never |
+| `_selfBandTopY` | fly :17114 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 6: rendering/systems/effectsRenderer.js, game/dropLines.js, rendering/systems/entityRenderer.js, +3 | - | - | never |
+| `_selfChatTipY` | fly :17131 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | rendering/systems/effectsRenderer.js | - | - | never |
+| `_staffTipAt` | fly :15976 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 3: rendering/staffCastFx.js, game/staffFeel.js, rendering/systems/staffFeelFx.js | - | - | zone |
+| `_staffTipBehind` | fly :16509 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 2: rendering/staffCastFx.js, rendering/systems/staffFeelFx.js | flag | - | never |
+| `_staffTipX` | fly :15974 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 3: rendering/staffCastFx.js, game/staffFeel.js, rendering/systems/staffFeelFx.js | - | - | zone |
+| `_staffTipY` | fly :15975 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 3: rendering/staffCastFx.js, game/staffFeel.js, rendering/systems/staffFeelFx.js | - | - | zone |
+| `_standInBody` | fly :14113 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | rendering/systems/effectsRenderer.js | - | - | never |
+| `_standInBodyH` | fly :14847 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | rendering/systems/effectsRenderer.js | - | - | never |
+| `_standInFootY` | fly :14846 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | rendering/systems/effectsRenderer.js | - | - | never |
+| `_swordBodyH` | fly :15487 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | rendering/systems/effectsRenderer.js | - | - | never |
+| `_swordFootY` | fly :15483 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | rendering/systems/effectsRenderer.js | - | - | never |
+| `_swordJogLegs` | fly :15500 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | rendering/systems/effectsRenderer.js | - | - | never |
+| `_swordSwingDir` | fly :14358 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | rendering/systems/effectsRenderer.js | - | - | never |
+| `_swordSwinging` | fly :14357 | rendering/systems/entityRenderer.js | rendering/systems/entityRenderer.js | 3: rendering/systems/effectsRenderer.js, rendering/systems/weaponFeelFx.js, ui/BroTown.jsx | - | - | never |
 | `_waterBlows` | fly :129 | rendering/waterAttackFx.js | rendering/waterAttackFx.js | rendering/waterAttackFx.js | - | - | zone |
 | `_bloodBursts` | fly :997 | rendering/worldFx.js | rendering/worldFx.js | rendering/worldFx.js | - | - | zone |
-| `__aliveAt` | fly :8911 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `__introLiftedAt` | fly :12895 | ui/BroTown.jsx | ui/BroTown.jsx | 8: ui/BroTown.jsx, game/achievements.js, game/dailyRewards.js, +5 | - | - | never |
-| `__introLiftedZone` | fly :12898 | ui/BroTown.jsx | ui/BroTown.jsx | - | no-read (tests) | - | never |
-| `__wdArmedAt` | fly :8903 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `__wdDark` | fly :9014 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `__wdEverLit` | fly :9014 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | flag | - | never |
-| `__wdFastRebuiltAt` | fly :9028 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `__wdFirstNext` | fly :8933 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `__wdHb` | fly :8937 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `__wdNext` | fly :8935 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `__wdReloading` | fly :8856 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | flag | - | never |
+| `__aliveAt` | fly :8912 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `__introLiftedAt` | fly :12896 | ui/BroTown.jsx | ui/BroTown.jsx | 8: ui/BroTown.jsx, game/achievements.js, game/dailyRewards.js, +5 | - | - | never |
+| `__introLiftedZone` | fly :12899 | ui/BroTown.jsx | ui/BroTown.jsx | - | no-read (tests) | - | never |
+| `__wdArmedAt` | fly :8904 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `__wdDark` | fly :9015 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `__wdEverLit` | fly :9015 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | flag | - | never |
+| `__wdFastRebuiltAt` | fly :9029 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `__wdFirstNext` | fly :8934 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `__wdHb` | fly :8938 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `__wdNext` | fly :8936 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `__wdReloading` | fly :8857 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | flag | - | never |
 | `_aimActive` | first :1244 | ui/BroTown.jsx | - | - | no-read | - | never |
 | `_aimAngle` | first :1243 | ui/BroTown.jsx | 6: ui/BroTown.jsx, game/staffFeel.js, game/bowFeel.js, game/monsterCombat.js, game/tapJump.js, +1 | 11: rendering/systems/effectsRenderer.js, rendering/systems/entityRenderer.js, ui/BroTown.jsx, +8 | 2+ | - | zone |
-| `_aimSrc` | fly :10523 | ui/BroTown.jsx | 5: ui/BroTown.jsx, game/monsterCombat.js, game/staffFeel.js, game/tapJump.js, game/targeting.js | 2: game/staffFeel.js, game/targeting.js | 2+, phase | - | zone |
-| `_aiming` | fly :5432 | ui/BroTown.jsx | 6: ui/BroTown.jsx, game/climbActions.js, game/monsterCombat.js, game/shieldToggle.js, game/staffFeel.js, +1 | 8: game/staffFeel.js, game/combatHelpers.js, game/monsterCombat.js, +5 | 2+, flag | - | zone |
-| `_arenaInvolved` | fly :9197 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | flag | - | rejoin |
-| `_arenaLastBgPoll` | fly :9162 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `_arenaMatch` | fly :9201 | ui/BroTown.jsx | ui/BroTown.jsx | 3: networking/wsClient.js, game/quietPhone.js, ui/BroTown.jsx | - | - | rejoin |
-| `_arenaNotified` | fly :9205 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `_arenaTournamentId` | fly :9202 | ui/BroTown.jsx | ui/BroTown.jsx | - | no-read | - | rejoin |
-| `_atkEnergy` | fly :8337 | ui/BroTown.jsx | ui/BroTown.jsx | - | no-read | - | never |
-| `_atkHoldUntil` | fly :10549 | ui/BroTown.jsx | ui/BroTown.jsx | 2: game/monsterCombat.js, game/tapJump.js | - | - | never |
-| `_atkPending` | fly :5429 | ui/BroTown.jsx | 4: ui/BroTown.jsx, game/climbActions.js, game/shieldToggle.js, game/tapJump.js | game/tapJump.js | 2+, flag | - | zone |
-| `_atkPressAt` | fly :10358 | ui/BroTown.jsx | ui/BroTown.jsx | game/monsterCombat.js | - | - | never |
-| `_backpedaling` | fly :5649 | ui/BroTown.jsx | ui/BroTown.jsx | rendering/systems/entityRenderer.js | flag | - | never |
-| `_bashDash` | fly :5279 | ui/BroTown.jsx | 3: ui/BroTown.jsx, game/abilities.js, game/zoneTransitions.js | 5: ui/BroTown.jsx, rendering/systems/entityRenderer.js, game/abilities.js, +2 | 2+ | zone | zone |
+| `_aimSrc` | fly :10524 | ui/BroTown.jsx | 5: ui/BroTown.jsx, game/monsterCombat.js, game/staffFeel.js, game/tapJump.js, game/targeting.js | 2: game/staffFeel.js, game/targeting.js | 2+, phase | - | zone |
+| `_aiming` | fly :5433 | ui/BroTown.jsx | 6: ui/BroTown.jsx, game/climbActions.js, game/monsterCombat.js, game/shieldToggle.js, game/staffFeel.js, +1 | 8: game/staffFeel.js, game/combatHelpers.js, game/monsterCombat.js, +5 | 2+, flag | - | zone |
+| `_arenaInvolved` | fly :9198 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | flag | - | rejoin |
+| `_arenaLastBgPoll` | fly :9163 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `_arenaMatch` | fly :9202 | ui/BroTown.jsx | ui/BroTown.jsx | 3: networking/wsClient.js, game/quietPhone.js, ui/BroTown.jsx | - | - | rejoin |
+| `_arenaNotified` | fly :9206 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `_arenaTournamentId` | fly :9203 | ui/BroTown.jsx | ui/BroTown.jsx | - | no-read | - | rejoin |
+| `_atkEnergy` | fly :8338 | ui/BroTown.jsx | ui/BroTown.jsx | - | no-read | - | never |
+| `_atkHoldUntil` | fly :10550 | ui/BroTown.jsx | ui/BroTown.jsx | 2: game/monsterCombat.js, game/tapJump.js | - | - | never |
+| `_atkPending` | fly :5430 | ui/BroTown.jsx | 4: ui/BroTown.jsx, game/climbActions.js, game/shieldToggle.js, game/tapJump.js | game/tapJump.js | 2+, flag | - | zone |
+| `_atkPressAt` | fly :10359 | ui/BroTown.jsx | ui/BroTown.jsx | game/monsterCombat.js | - | - | never |
+| `_backpedaling` | fly :5650 | ui/BroTown.jsx | ui/BroTown.jsx | rendering/systems/entityRenderer.js | flag | - | never |
+| `_bashDash` | fly :5280 | ui/BroTown.jsx | 3: ui/BroTown.jsx, game/abilities.js, game/zoneTransitions.js | 5: ui/BroTown.jsx, rendering/systems/entityRenderer.js, game/abilities.js, +2 | 2+ | zone | zone |
 | `_bleedUntil` | never set | ui/BroTown.jsx | - | ui/BroTown.jsx | no-set | - | death |
-| `_btnHarvest` | fly :6216 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `_campfire` | fly :6797 | ui/BroTown.jsx | 3: ui/BroTown.jsx, game/fireRefuse.js, game/zoneTransitions.js | 7: ui/BroTown.jsx, rendering/systems/effectsRenderer.js, data/gameSystems.js, +4 | 2+ | zone | zone |
-| `_chatBySelfTap` | fly :11111 | ui/BroTown.jsx | ui/BroTown.jsx | ui/mobile/QuestCoach.jsx | - | - | never |
-| `_dashStrike` | fly :5282 | ui/BroTown.jsx | 3: ui/BroTown.jsx, game/abilities.js, game/zoneTransitions.js | ui/BroTown.jsx | 2+ | zone | zone |
-| `_deathStart` | fly :5051 | ui/BroTown.jsx | 6: game/monsterCombat.js, ui/BroTown.jsx, game/respawn.js, networking/gameEvents.js, networking/wsClient.js, +1 | 4: rendering/systems/entityRenderer.js, game/lifeSkillRewards.js, ui/BroTown.jsx, +1 | 2+ | zone, death | death |
-| `_deskPressBash` | fly :10933 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | flag | - | never |
-| `_deskPressLock` | fly :10844 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | zone |
-| `_discGhost` | fly :6691 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `_discRect` | fly :6669 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `_discRectAt` | fly :6665 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `_dmgBuff` | fly :15591 | ui/BroTown.jsx | 3: networking/wsClient.js, ui/BroTown.jsx, ui/panels/buildings/CookPanel.jsx | 2: ui/BroTown.jsx, game/fightFood.js | 2+ | - | rejoin |
-| `_dmgBuffMul` | fly :15591 | ui/BroTown.jsx | 3: ui/BroTown.jsx, ui/panels/buildings/CookPanel.jsx, networking/wsClient.js | 2: game/fightFood.js, ui/BroTown.jsx | 2+ | - | rejoin |
-| `_dtScale` | fly :4942 | ui/BroTown.jsx | ui/BroTown.jsx | 6: ui/BroTown.jsx, game/projectiles.js, game/visualSystems.js, +3 | - | - | never |
-| `_dying` | fly :5048 | ui/BroTown.jsx | 5: game/monsterCombat.js, ui/BroTown.jsx, game/respawn.js, networking/gameEvents.js, networking/wsClient.js | 21: networking/gameEvents.js, ui/BroTown.jsx, rendering/systems/entityRenderer.js, +18 | 2+, flag | zone, death | death |
-| `_facing` | fly :9462 | ui/BroTown.jsx | 5: ui/BroTown.jsx, game/visualSystems.js, game/farmWalk.js, game/monsterCombat.js, game/staffFeel.js | 7: game/visualSystems.js, rendering/systems/entityRenderer.js, game/abilities.js, +4 | 2+, phase | - | never |
-| `_firemaking` | fly :6779 | ui/BroTown.jsx | 3: ui/BroTown.jsx, game/fireRefuse.js, game/zoneTransitions.js | 7: ui/BroTown.jsx, rendering/systems/entityRenderer.js, rendering/systems/effectsRenderer.js, +4 | 2+ | zone | zone |
-| `_frameCount` | fly :4899 | ui/BroTown.jsx | ui/BroTown.jsx | - | no-read (tests) | - | never |
-| `_frameMs` | fly :4949 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `_hasSled` | fly :15028 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | flag | - | never |
-| `_hitStop` | fly :4989 | ui/BroTown.jsx | ui/BroTown.jsx | - | no-read | - | never |
-| `_kaConfirmed` | fly :8125 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | rejoin |
-| `_lJoyHeld` | fly :10232 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | flag | - | never |
-| `_lJoyLiveUntil` | fly :10236 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `_lJoyPreviewUntil` | fly :11304 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `_lJoyShown` | fly :6747 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `_lastAimAngle` | fly :9461 | ui/BroTown.jsx | 4: ui/BroTown.jsx, game/staffFeel.js, game/bowFeel.js, game/tapJump.js | 7: rendering/systems/entityRenderer.js, game/staffFeel.js, game/abilities.js, +4 | 2+ | - | never |
-| `_lastBroadcastBa` | fly :8162 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | rejoin |
-| `_lastBroadcastBlocking` | fly :8161 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | rejoin |
-| `_lastBroadcastDead` | fly :8163 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | rejoin |
-| `_lastBroadcastEx` | fly :8158 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | rejoin |
-| `_lastBroadcastFacing` | fly :8112 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | rejoin |
-| `_lastBroadcastGear` | fly :8164 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | rejoin |
-| `_lastBroadcastX` | fly :8165 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | rejoin |
-| `_lastBroadcastY` | fly :8165 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | rejoin |
-| `_lastBroadcastZone` | fly :8165 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | rejoin |
-| `_lastExBroadcast` | fly :8159 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `_lastGatherNodeAt` | fly :8037 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `_lastGatherNodeId` | fly :8036 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | zone |
-| `_lastInputAt` | fly :5379 | ui/BroTown.jsx | 2: ui/BroTown.jsx, networking/wsClient.js | ui/BroTown.jsx | 2+ | - | never |
-| `_lastMoveBroadcast` | fly :8126 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `_btnHarvest` | fly :6217 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `_campfire` | fly :6798 | ui/BroTown.jsx | 3: ui/BroTown.jsx, game/fireRefuse.js, game/zoneTransitions.js | 7: ui/BroTown.jsx, rendering/systems/effectsRenderer.js, data/gameSystems.js, +4 | 2+ | zone | zone |
+| `_chatBySelfTap` | fly :11112 | ui/BroTown.jsx | ui/BroTown.jsx | ui/mobile/QuestCoach.jsx | - | - | never |
+| `_dashStrike` | fly :5283 | ui/BroTown.jsx | 3: ui/BroTown.jsx, game/abilities.js, game/zoneTransitions.js | ui/BroTown.jsx | 2+ | zone | zone |
+| `_deathStart` | fly :5052 | ui/BroTown.jsx | 6: game/monsterCombat.js, ui/BroTown.jsx, game/respawn.js, networking/gameEvents.js, networking/wsClient.js, +1 | 4: rendering/systems/entityRenderer.js, game/lifeSkillRewards.js, ui/BroTown.jsx, +1 | 2+ | zone, death | death |
+| `_deskPressBash` | fly :10934 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | flag | - | never |
+| `_deskPressLock` | fly :10845 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | zone |
+| `_discGhost` | fly :6692 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `_discRect` | fly :6670 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `_discRectAt` | fly :6666 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `_dmgBuff` | fly :15592 | ui/BroTown.jsx | 3: networking/wsClient.js, ui/BroTown.jsx, ui/panels/buildings/CookPanel.jsx | 2: ui/BroTown.jsx, game/fightFood.js | 2+ | - | rejoin |
+| `_dmgBuffMul` | fly :15592 | ui/BroTown.jsx | 3: ui/BroTown.jsx, ui/panels/buildings/CookPanel.jsx, networking/wsClient.js | 2: game/fightFood.js, ui/BroTown.jsx | 2+ | - | rejoin |
+| `_dtScale` | fly :4943 | ui/BroTown.jsx | ui/BroTown.jsx | 6: ui/BroTown.jsx, game/projectiles.js, game/visualSystems.js, +3 | - | - | never |
+| `_dying` | fly :5049 | ui/BroTown.jsx | 5: game/monsterCombat.js, ui/BroTown.jsx, game/respawn.js, networking/gameEvents.js, networking/wsClient.js | 21: networking/gameEvents.js, ui/BroTown.jsx, rendering/systems/entityRenderer.js, +18 | 2+, flag | zone, death | death |
+| `_facing` | fly :9463 | ui/BroTown.jsx | 5: ui/BroTown.jsx, game/visualSystems.js, game/farmWalk.js, game/monsterCombat.js, game/staffFeel.js | 7: game/visualSystems.js, rendering/systems/entityRenderer.js, game/abilities.js, +4 | 2+, phase | - | never |
+| `_firemaking` | fly :6780 | ui/BroTown.jsx | 3: ui/BroTown.jsx, game/fireRefuse.js, game/zoneTransitions.js | 7: ui/BroTown.jsx, rendering/systems/entityRenderer.js, rendering/systems/effectsRenderer.js, +4 | 2+ | zone | zone |
+| `_frameCount` | fly :4900 | ui/BroTown.jsx | ui/BroTown.jsx | - | no-read (tests) | - | never |
+| `_frameMs` | fly :4950 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `_hasSled` | fly :15029 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | flag | - | never |
+| `_hitStop` | fly :4990 | ui/BroTown.jsx | ui/BroTown.jsx | - | no-read | - | never |
+| `_kaConfirmed` | fly :8126 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | rejoin |
+| `_lJoyHeld` | fly :10233 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | flag | - | never |
+| `_lJoyLiveUntil` | fly :10237 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `_lJoyPreviewUntil` | fly :11305 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `_lJoyShown` | fly :6748 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `_lastAimAngle` | fly :9462 | ui/BroTown.jsx | 4: ui/BroTown.jsx, game/staffFeel.js, game/bowFeel.js, game/tapJump.js | 7: rendering/systems/entityRenderer.js, game/staffFeel.js, game/abilities.js, +4 | 2+ | - | never |
+| `_lastBroadcastBa` | fly :8163 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | rejoin |
+| `_lastBroadcastBlocking` | fly :8162 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | rejoin |
+| `_lastBroadcastDead` | fly :8164 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | rejoin |
+| `_lastBroadcastEx` | fly :8159 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | rejoin |
+| `_lastBroadcastFacing` | fly :8113 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | rejoin |
+| `_lastBroadcastGear` | fly :8165 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | rejoin |
+| `_lastBroadcastX` | fly :8166 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | rejoin |
+| `_lastBroadcastY` | fly :8166 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | rejoin |
+| `_lastBroadcastZone` | fly :8166 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | rejoin |
+| `_lastExBroadcast` | fly :8160 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `_lastGatherNodeAt` | fly :8038 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `_lastGatherNodeId` | fly :8037 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | zone |
+| `_lastInputAt` | fly :5380 | ui/BroTown.jsx | 2: ui/BroTown.jsx, networking/wsClient.js | ui/BroTown.jsx | 2+ | - | never |
+| `_lastMoveBroadcast` | fly :8127 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
 | `_lastStatsUpdateSig` | fly :3662 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | rejoin |
-| `_lastTrack` | fly :8198 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `_mcEarly` | fly :9407 | ui/BroTown.jsx | ui/BroTown.jsx | - | no-read (tests) | - | never |
-| `_mcTeachAt` | fly :9426 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `_mcTeachN` | fly :9427 | ui/BroTown.jsx | ui/BroTown.jsx | - | no-read (tests) | - | never |
+| `_lastTrack` | fly :8199 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `_mcEarly` | fly :9408 | ui/BroTown.jsx | ui/BroTown.jsx | - | no-read (tests) | - | never |
+| `_mcTeachAt` | fly :9427 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `_mcTeachN` | fly :9428 | ui/BroTown.jsx | ui/BroTown.jsx | - | no-read (tests) | - | never |
 | `_miningOpen` | never set | ui/BroTown.jsx | - | ui/BroTown.jsx | no-set | - | never |
-| `_mouseAimAngle` | fly :13264 | ui/BroTown.jsx | ui/BroTown.jsx | 4: ui/BroTown.jsx, game/bowFeel.js, game/desktopControls.js, +1 | - | - | never |
-| `_mouseScreen` | fly :13265 | ui/BroTown.jsx | ui/BroTown.jsx | game/deskShield.js | - | - | never |
-| `_mouseWorldX` | fly :13267 | ui/BroTown.jsx | ui/BroTown.jsx | rendering/systems/effectsRenderer.js | - | - | zone |
-| `_mouseWorldY` | fly :13268 | ui/BroTown.jsx | ui/BroTown.jsx | rendering/systems/effectsRenderer.js | - | - | zone |
-| `_nearHouse` | fly :6045 | ui/BroTown.jsx | ui/BroTown.jsx | 2: ui/BroTown.jsx, game/desktopControls.js | - | - | zone |
-| `_nearNode` | fly :6143 | ui/BroTown.jsx | ui/BroTown.jsx | 3: ui/BroTown.jsx, game/desktopControls.js, rendering/systems/effectsRenderer.js | - | - | zone |
-| `_nearNpc` | fly :6955 | ui/BroTown.jsx | ui/BroTown.jsx | 2: game/desktopControls.js, ui/BroTown.jsx | - | - | zone |
-| `_nearPetHouse` | fly :6063 | ui/BroTown.jsx | ui/BroTown.jsx | 2: game/desktopControls.js, ui/BroTown.jsx | - | - | zone |
-| `_nearWheelBuilding` | fly :6010 | ui/BroTown.jsx | ui/BroTown.jsx | 3: ui/BroTown.jsx, game/desktopControls.js, game/interactions.js | - | - | zone |
-| `_nearWheelDoor` | fly :6058 | ui/BroTown.jsx | ui/BroTown.jsx | 3: ui/BroTown.jsx, game/desktopControls.js, ui/panels/TrapButton.jsx | - | - | zone |
-| `_nearWorkshop` | fly :6053 | ui/BroTown.jsx | ui/BroTown.jsx | 2: ui/BroTown.jsx, game/desktopControls.js | - | - | zone |
-| `_npcProxLatch` | fly :7096 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | zone |
-| `_perf` | fly :4913 | ui/BroTown.jsx | ui/BroTown.jsx | 2: ui/BroTown.jsx, game/renderFrame.js | - | - | never |
-| `_petFetch` | fly :7213 | ui/BroTown.jsx | 3: game/petFetch.js~, networking/wsClient.js, ui/BroTown.jsx | 3: ui/BroTown.jsx, networking/wsClient.js, rendering/systems/entityRenderer.js | 2+ | - | zone |
-| `_petPrevPX` | fly :7218 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `_petPrevPY` | fly :7218 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `_petX` | fly :7182 | ui/BroTown.jsx | 4: ui/BroTown.jsx, game/trapping.js, ui/panels/InventoryPanel.jsx, ui/panels/PetHousePanel.jsx | 4: ui/BroTown.jsx, game/trapping.js, networking/wsClient.js, +1 | 2+ | - | zone |
-| `_petY` | fly :7183 | ui/BroTown.jsx | 2: ui/BroTown.jsx, game/trapping.js | 4: ui/BroTown.jsx, game/trapping.js, networking/wsClient.js, +1 | 2+ | - | zone |
+| `_mouseAimAngle` | fly :13265 | ui/BroTown.jsx | ui/BroTown.jsx | 4: ui/BroTown.jsx, game/bowFeel.js, game/desktopControls.js, +1 | - | - | never |
+| `_mouseScreen` | fly :13266 | ui/BroTown.jsx | ui/BroTown.jsx | game/deskShield.js | - | - | never |
+| `_mouseWorldX` | fly :13268 | ui/BroTown.jsx | ui/BroTown.jsx | rendering/systems/effectsRenderer.js | - | - | zone |
+| `_mouseWorldY` | fly :13269 | ui/BroTown.jsx | ui/BroTown.jsx | rendering/systems/effectsRenderer.js | - | - | zone |
+| `_nearHouse` | fly :6046 | ui/BroTown.jsx | ui/BroTown.jsx | 2: ui/BroTown.jsx, game/desktopControls.js | - | - | zone |
+| `_nearNode` | fly :6144 | ui/BroTown.jsx | ui/BroTown.jsx | 3: ui/BroTown.jsx, game/desktopControls.js, rendering/systems/effectsRenderer.js | - | - | zone |
+| `_nearNpc` | fly :6956 | ui/BroTown.jsx | ui/BroTown.jsx | 2: game/desktopControls.js, ui/BroTown.jsx | - | - | zone |
+| `_nearPetHouse` | fly :6064 | ui/BroTown.jsx | ui/BroTown.jsx | 2: game/desktopControls.js, ui/BroTown.jsx | - | - | zone |
+| `_nearWheelBuilding` | fly :6011 | ui/BroTown.jsx | ui/BroTown.jsx | 3: ui/BroTown.jsx, game/desktopControls.js, game/interactions.js | - | - | zone |
+| `_nearWheelDoor` | fly :6059 | ui/BroTown.jsx | ui/BroTown.jsx | 3: ui/BroTown.jsx, game/desktopControls.js, ui/panels/TrapButton.jsx | - | - | zone |
+| `_nearWorkshop` | fly :6054 | ui/BroTown.jsx | ui/BroTown.jsx | 2: ui/BroTown.jsx, game/desktopControls.js | - | - | zone |
+| `_npcProxLatch` | fly :7097 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | zone |
+| `_perf` | fly :4914 | ui/BroTown.jsx | ui/BroTown.jsx | 2: ui/BroTown.jsx, game/renderFrame.js | - | - | never |
+| `_petFetch` | fly :7214 | ui/BroTown.jsx | 3: game/petFetch.js~, networking/wsClient.js, ui/BroTown.jsx | 3: ui/BroTown.jsx, networking/wsClient.js, rendering/systems/entityRenderer.js | 2+ | - | zone |
+| `_petPrevPX` | fly :7219 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `_petPrevPY` | fly :7219 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `_petX` | fly :7183 | ui/BroTown.jsx | 4: ui/BroTown.jsx, game/trapping.js, ui/panels/InventoryPanel.jsx, ui/panels/PetHousePanel.jsx | 4: ui/BroTown.jsx, game/trapping.js, networking/wsClient.js, +1 | 2+ | - | zone |
+| `_petY` | fly :7184 | ui/BroTown.jsx | 2: ui/BroTown.jsx, game/trapping.js | 4: ui/BroTown.jsx, game/trapping.js, networking/wsClient.js, +1 | 2+ | - | zone |
 | `_playerCount` | fly :2380 | ui/BroTown.jsx | ui/BroTown.jsx | ui/mobile/ChatBubble.jsx | - | - | rejoin |
-| `_playtimeTick` | fly :7793 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `_proxNode` | fly :6112 | ui/BroTown.jsx | ui/BroTown.jsx | 2: game/desktopControls.js, ui/BroTown.jsx | - | - | zone |
+| `_playtimeTick` | fly :7794 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `_proxNode` | fly :6113 | ui/BroTown.jsx | ui/BroTown.jsx | 2: game/desktopControls.js, ui/BroTown.jsx | - | - | zone |
 | `_pvpReputation` | never set | ui/BroTown.jsx | - | ui/BroTown.jsx | no-set | - | never |
-| `_rBtnLiveUntil` | fly :6435 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `_rBtnPressUntil` | fly :6451 | ui/BroTown.jsx | ui/BroTown.jsx | 2: game/tapJump.js, ui/BroTown.jsx | - | - | never |
-| `_rBtnShown` | fly :6746 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `_rJoyLiveUntil` | fly :10331 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `_rBtnLiveUntil` | fly :6436 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `_rBtnPressUntil` | fly :6452 | ui/BroTown.jsx | ui/BroTown.jsx | 2: game/tapJump.js, ui/BroTown.jsx | - | - | never |
+| `_rBtnShown` | fly :6747 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `_rJoyLiveUntil` | fly :10332 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
 | `_raft` | first :1296 | ui/BroTown.jsx | ui/BroTown.jsx | 2: ui/BroTown.jsx, game/zoneMechanics.js | flag | - | never |
-| `_railCss` | fly :5952 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `_railCssAt` | fly :5950 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `_restPending` | fly :8060 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | flag | - | never |
-| `_resumeSpot` | fly :12589 | ui/BroTown.jsx | ui/BroTown.jsx | - | no-read (tests) | - | never |
-| `_shieldAimMouse` | fly :8360 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `_shieldAngle` | fly :8363 | ui/BroTown.jsx | 2: ui/BroTown.jsx, game/shieldToggle.js | 7: rendering/systems/entityRenderer.js, game/abilities.js, game/combatHelpers.js, +4 | 2+ | - | death |
-| `_shieldCdUntil` | fly :8411 | ui/BroTown.jsx | ui/BroTown.jsx | 3: ui/panels/ShieldButton.jsx, game/playerActions.js, game/shieldToggle.js | - | - | death |
-| `_shieldKb` | fly :10026 | ui/BroTown.jsx | 2: ui/BroTown.jsx, game/shieldToggle.js | ui/BroTown.jsx | 2+, flag | death | death |
-| `_shieldMouse` | fly :10019 | ui/BroTown.jsx | 3: ui/BroTown.jsx, game/desktopControls.js, game/shieldToggle.js | game/desktopControls.js | 2+, flag | death | death |
+| `_railCss` | fly :5953 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `_railCssAt` | fly :5951 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `_restPending` | fly :8061 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | flag | - | never |
+| `_resumeSpot` | fly :12590 | ui/BroTown.jsx | ui/BroTown.jsx | - | no-read (tests) | - | never |
+| `_shieldAimMouse` | fly :8361 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `_shieldAngle` | fly :8364 | ui/BroTown.jsx | 2: ui/BroTown.jsx, game/shieldToggle.js | 7: rendering/systems/entityRenderer.js, game/abilities.js, game/combatHelpers.js, +4 | 2+ | - | death |
+| `_shieldCdUntil` | fly :8412 | ui/BroTown.jsx | ui/BroTown.jsx | 3: ui/panels/ShieldButton.jsx, game/playerActions.js, game/shieldToggle.js | - | - | death |
+| `_shieldKb` | fly :10027 | ui/BroTown.jsx | 2: ui/BroTown.jsx, game/shieldToggle.js | ui/BroTown.jsx | 2+, flag | death | death |
+| `_shieldMouse` | fly :10020 | ui/BroTown.jsx | 3: ui/BroTown.jsx, game/desktopControls.js, game/shieldToggle.js | game/desktopControls.js | 2+, flag | death | death |
 | `_sled` | first :1292 | ui/BroTown.jsx | 2: ui/BroTown.jsx, game/zoneMechanics.js | 4: game/zoneMechanics.js, ui/BroTown.jsx, game/climbActions.js, +1 | 2+ | - | zone |
-| `_sleeping` | fly :5725 | ui/BroTown.jsx | ui/BroTown.jsx | 2: ui/BroTown.jsx, game/interactions.js | - | - | zone |
-| `_slideVx` | fly :5055 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | death | zone |
-| `_slideVy` | fly :5055 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | death | zone |
-| `_snowballCd` | fly :14662 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `_sleeping` | fly :5726 | ui/BroTown.jsx | ui/BroTown.jsx | 2: ui/BroTown.jsx, game/interactions.js | - | - | zone |
+| `_slideVx` | fly :5056 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | death | zone |
+| `_slideVy` | fly :5056 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | death | zone |
+| `_snowballCd` | fly :14663 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
 | `_snowballs` | first :1288 | ui/BroTown.jsx | 2: ui/BroTown.jsx, game/zoneMechanics.js | - | 2+, no-read | - | zone |
 | `_snowmen` | first :1290 | ui/BroTown.jsx | 2: ui/BroTown.jsx, game/zoneMechanics.js | ui/BroTown.jsx | 2+ | - | zone |
-| `_spdBuffMul` | fly :15594 | ui/BroTown.jsx | 3: networking/wsClient.js, ui/BroTown.jsx, ui/panels/buildings/CookPanel.jsx | ui/BroTown.jsx | 2+ | - | rejoin |
-| `_staleTouches` | fly :11948 | ui/BroTown.jsx | ui/BroTown.jsx | - | no-read (tests) | - | never |
-| `_statsSavedJson` | fly :9124 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `_tapActs` | fly :11636 | ui/BroTown.jsx | ui/BroTown.jsx | - | no-read | - | never |
-| `_tapEmptySeq` | fly :13700 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `_spdBuffMul` | fly :15595 | ui/BroTown.jsx | 3: networking/wsClient.js, ui/BroTown.jsx, ui/panels/buildings/CookPanel.jsx | ui/BroTown.jsx | 2+ | - | rejoin |
+| `_staleTouches` | fly :11949 | ui/BroTown.jsx | ui/BroTown.jsx | - | no-read (tests) | - | never |
+| `_statsSavedJson` | fly :9125 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `_tapActs` | fly :11637 | ui/BroTown.jsx | ui/BroTown.jsx | - | no-read | - | never |
+| `_tapEmptySeq` | fly :13701 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
 | `_torch` | first :1294 | ui/BroTown.jsx | 2: ui/BroTown.jsx, game/zoneMechanics.js | 2: ui/BroTown.jsx, game/zoneMechanics.js | 2+ | - | zone |
-| `_touchHandledAt` | fly :13131 | ui/BroTown.jsx | 2: ui/BroTown.jsx, ui/ExtractionSwipeLayer.jsx | ui/BroTown.jsx | 2+ | - | never |
+| `_touchHandledAt` | fly :13132 | ui/BroTown.jsx | 2: ui/BroTown.jsx, ui/ExtractionSwipeLayer.jsx | ui/BroTown.jsx | 2+ | - | never |
 | `_tourStarted` | fly :2140 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `_trailTimer` | fly :7145 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `_tutorialDoneAt` | fly :7893 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `_trailTimer` | fly :7146 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
+| `_tutorialDoneAt` | fly :7894 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
 | `_tutorialStep` | fly :2112 | ui/BroTown.jsx | ui/BroTown.jsx | 2: ui/BroTown.jsx, game/playerActions.js | - | - | never |
 | `_uiBusy` | fly :3476 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | - | - | never |
-| `_userCycledSlot` | fly :10064 | ui/BroTown.jsx | ui/BroTown.jsx | networking/wsClient.js | flag | - | never |
-| `_wasMovingBcast` | fly :8061 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | flag | - | never |
-| `_weaponSwapFlash` | fly :10080 | ui/BroTown.jsx | ui/BroTown.jsx | - | no-read | - | never |
+| `_userCycledSlot` | fly :10065 | ui/BroTown.jsx | ui/BroTown.jsx | networking/wsClient.js | flag | - | never |
+| `_wasMovingBcast` | fly :8062 | ui/BroTown.jsx | ui/BroTown.jsx | ui/BroTown.jsx | flag | - | never |
+| `_weaponSwapFlash` | fly :10081 | ui/BroTown.jsx | ui/BroTown.jsx | - | no-read | - | never |
 | `_wellRestedUntil` | never set | ui/BroTown.jsx | - | 2: ui/BroTown.jsx, ui/panels/buildings/FarmPanel.jsx | no-set | - | death |
-| `_wheelMem` | fly :13408 | ui/BroTown.jsx | 2: game/deskCombos.js~, ui/BroTown.jsx | ui/BroTown.jsx | 2+~ | - | never |
+| `_wheelMem` | fly :13409 | ui/BroTown.jsx | 2: game/deskCombos.js~, ui/BroTown.jsx | ui/BroTown.jsx | 2+~ | - | never |
 | `autoAttack` | first :1239 | ui/BroTown.jsx | 4: ui/BroTown.jsx, game/climbActions.js, game/shieldToggle.js, game/tapJump.js | 7: ui/BroTown.jsx, game/monsterCombat.js, rendering/systems/effectsRenderer.js, +4 | 2+, flag | - | zone |
 | `bodyLegs` | first :1237 | ui/BroTown.jsx | 2: ui/BroTown.jsx, game/characterRecord.js | 3: ui/BroTown.jsx, networking/wsClient.js, rendering/systems/entityRenderer.js | 2+ | rejoin | never |
 | `bodySize` | first :1238 | ui/BroTown.jsx | ui/BroTown.jsx | 3: networking/wsClient.js, rendering/systems/entityRenderer.js, ui/BroTown.jsx | - | - | never |
@@ -816,6 +816,10 @@ The system (provisional) is the row's own file. **what** is how it is declared a
 | data/soundFold.js | 37 | `_a` | let null | own | own | - | - | never |
 | data/soundFold.js | 37 | `_b` | let null | own | own | - | - | never |
 | data/soundFold.js | 37 | `_m` | let null | own | own | - | - | never |
+| data/soundFold.js | 122 | `_sa` | let null | own | own | - | - | ? |
+| data/soundFold.js | 122 | `_sb` | let null | own | own | - | - | ? |
+| data/soundFold.js | 122 | `_sm` | let null | own | own | - | - | ? |
+| data/soundFold.js | 123 | `_slicedLine` | let call | own | own | - | - | ? |
 | data/statDemoAssets.js | 44 | `_blueSheets` | let null | own | own | - | - | never |
 | data/weaponFeelSound.js | 39 | `_noise` | var null | own | own | - | - | never |
 | data/wheelLands.js | 22 | `LOOK` | const object | own | own | - | - | never |
@@ -866,18 +870,21 @@ The system (provisional) is the row's own file. **what** is how it is declared a
 | debug/perfTracker.js | 54 | `spikeWorst` | let null | own | own | - | - | never |
 | debug/perfTracker.js | 56 | `longTaskObserver` | let null | own | own | - | - | never |
 | debug/perfTracker.js | 87 | `timersHooked` | let bool | own | own | flag | - | never |
-| debug/report.js | 122 | `_S` | let null | own | own | - | rejoin | ? |
-| debug/report.js | 123 | `_timer` | let null | own | own | - | rejoin | ? |
-| debug/report.js | 124 | `_joinedAt` | let number | own | own | - | rejoin | ? |
-| debug/report.js | 125 | `_dueAt` | let number | own | own | - | rejoin | ? |
-| debug/report.js | 126 | `_died` | let null | own | own | - | - | ? |
-| debug/report.js | 127 | `_diedOwed` | let bool | own | own | flag | rejoin | ? |
-| debug/report.js | 128 | `_lastFrameT` | let number | own | own | - | rejoin | ? |
-| debug/report.js | 128 | `_lastHoldT` | let number | own | own | - | rejoin | ? |
-| debug/report.js | 129 | `_a` | let null | own | own | - | - | ? |
-| debug/report.js | 130 | `_last` | let null | own | own | - | - | ? |
-| debug/report.js | 131 | `_dropped` | let number | own | own | - | - | ? |
-| debug/report.js | 131 | `_sent` | let number | own | own | - | - | ? |
+| debug/report.js | 135 | `_S` | let null | own | own | - | rejoin | ? |
+| debug/report.js | 136 | `_timer` | let null | own | own | - | rejoin | ? |
+| debug/report.js | 137 | `_joinedAt` | let number | own | own | - | rejoin | ? |
+| debug/report.js | 138 | `_dueAt` | let number | own | own | - | rejoin | ? |
+| debug/report.js | 139 | `_died` | let null | own | own | - | - | ? |
+| debug/report.js | 140 | `_diedOwed` | let bool | own | own | flag | rejoin | ? |
+| debug/report.js | 141 | `_lastFrameT` | let number | own | own | - | - | ? |
+| debug/report.js | 141 | `_lastHoldT` | let number | own | own | - | - | ? |
+| debug/report.js | 142 | `_a` | let null | own | own | - | - | ? |
+| debug/report.js | 147 | `_visSince` | let null | own | own | - | rejoin | ? |
+| debug/report.js | 148 | `_shows` | const array | own | own | - | - | ? |
+| debug/report.js | 150 | `_last` | let null | own | own | - | - | ? |
+| debug/report.js | 151 | `_dropped` | let number | own | own | - | - | ? |
+| debug/report.js | 151 | `_sent` | let number | own | own | - | - | ? |
+| debug/report.js | 164 | `_lastPollP` | let number | own | own | - | - | ? |
 | game/accuracy.js | 56 | `listeners` | const Set | own | own | - | - | never |
 | game/achievements.js | 228 | `_titlePick` | let bool | own | own | flag | - | never |
 | game/alliance.js | 15 | `listeners` | const Set | own | own | - | - | never |
@@ -912,8 +919,8 @@ The system (provisional) is the row's own file. **what** is how it is declared a
 | game/dailyRewards.js | 86 | `_spinSeq` | let number | own | - | no-read | - | never |
 | game/dashSidePref.js | 70 | `_pref` | let call | own | own | - | - | never |
 | game/deskKeys.js | 50 | `NAV_BY_CODE` | const object | own | own | - | - | never |
-| game/deviceProfile.js | 47 | `_mq` | const object | own | own | - | - | never |
-| game/deviceProfile.js | 212 | `_chipOf` | const WeakMap | own | own | - | - | ? |
+| game/deviceProfile.js | 51 | `_mq` | const object | own | own | - | - | never |
+| game/deviceProfile.js | 236 | `_chipOf` | const WeakMap | own | own | - | - | ? |
 | game/dropLook.js | 13 | `thumb` | let null | own | own | - | - | never |
 | game/dungeonArt.js | 54 | `_live` | const Set | own | own | - | - | zone |
 | game/dungeonClear.js | 20 | `subs` | const Set | own | own | - | - | never |
@@ -966,8 +973,14 @@ The system (provisional) is the row's own file. **what** is how it is declared a
 | game/questTrailStyle.js | 92 | `_style` | let call | own | own | - | - | never |
 | game/questTrailStyle.js | 118 | `_lastShown` | let call | own | own | - | - | never |
 | game/race.js | 43 | `_subs` | const Set | own | own | - | - | never |
-| game/renderRes.js | 28 | `_url` | let null | own | own | - | - | never |
-| game/renderRes.js | 29 | `_live` | let number | own | own | - | - | never |
+| game/renderRes.js | 86 | `_url` | let null | own | own | - | - | never |
+| game/renderRes.js | 87 | `_live` | let number | own | own | - | - | never |
+| game/renderRes.js | 88 | `_cssW` | let number | own | own | - | - | ? |
+| game/renderRes.js | 89 | `_cssH` | let number | own | own | - | - | ? |
+| game/renderRes.js | 90 | `_budgetOn` | let null | own | own | - | - | ? |
+| game/renderRes.js | 91 | `_urlBudget` | let null | own | own | - | - | ? |
+| game/renderRes.js | 92 | `_phone` | let bool | own | own | - | - | ? |
+| game/renderRes.js | 93 | `_viewOut` | let null | own | own | - | - | ? |
 | game/revealBag.js | 77 | `_then` | const Map | own | own | - | - | rejoin |
 | game/revealBag.js | 83 | `_held` | const Map | own | own | - | - | never |
 | game/revealBag.js | 88 | `_after` | const array | own | own | - | - | never |
@@ -1109,6 +1122,9 @@ The system (provisional) is the row's own file. **what** is how it is declared a
 | rendering/arrowPin.js | 40 | `_frameBytes` | let number | own | own | - | - | never |
 | rendering/arrowPin.js | 41 | `_frames` | const Map | own | own | - | - | never |
 | rendering/arrowWound.js | 57 | `_renderer` | let null | own | own | - | - | never |
+| rendering/bakeByAddress.js | 36 | `_refused` | const Set | own | own | - | - | ? |
+| rendering/bakeByAddress.js | 38 | `_stats` | const object | own | own | - | - | ? |
+| rendering/bakeByAddress.js | 45 | `_reading` | const Map | own | own | - | - | ? |
 | rendering/batchIdsLean.js | 25 | `_stats` | const object | own | own | - | - | never |
 | rendering/bindGroupFix.js | 44 | `_installed` | let bool | own | own | flag | - | never |
 | rendering/bindGroupFix.js | 45 | `_swaps` | let number | own | own | - | - | never |
@@ -1348,7 +1364,9 @@ The system (provisional) is the row's own file. **what** is how it is declared a
 | rendering/maskedBakeWorker.js | 69 | `rod` | let null | own | own | - | - | never |
 | rendering/maskedBakeWorker.js | 90 | `_tables` | const Map | own | own | - | - | never |
 | rendering/maskedBakeWorker.js | 106 | `_bms` | const Map | own | own | - | - | never |
-| rendering/maskedBakeWorker.js | 201 | `pending` | const Map | own | own | - | - | never |
+| rendering/maskedBakeWorker.js | 163 | `sheetsKept` | const Map | own | own | - | - | ? |
+| rendering/maskedBakeWorker.js | 233 | `sheetsIdleT` | let number | own | own | - | - | ? |
+| rendering/maskedBakeWorker.js | 325 | `pending` | const Map | own | own | - | - | never |
 | rendering/monsterDeathFx.js | 95 | `_renderer` | let null | own | own | - | - | never |
 | rendering/monsterDeathFx.js | 176 | `_covCache` | const Map | own | own | - | - | never |
 | rendering/monsterDeathZonesFx.js | 101 | `_live` | const Set | own | own | - | - | zone |
@@ -1417,7 +1435,9 @@ The system (provisional) is the row's own file. **what** is how it is declared a
 | rendering/picsNumbers.js | 52 | `_live` | const Set | own | own | - | - | zone |
 | rendering/picsNumbers.js | 53 | `_stats` | const object | own | own | - | - | never |
 | rendering/picsNumbers.js | 55 | `_rows` | const Map | own | own | - | - | zone |
-| rendering/picsNumbers.js | 156 | `_warm` | let object | own | own | - | - | never |
+| rendering/picsNumbers.js | 89 | `_plansWaiting` | const Map | own | own | - | - | ? |
+| rendering/picsNumbers.js | 90 | `_rowsEpoch` | const Map | own | own | - | - | ? |
+| rendering/picsNumbers.js | 289 | `_warm` | let object | own | own | - | - | never |
 | rendering/picsOnce.js | 56 | `_stats` | const object | own | own | - | - | never |
 | rendering/picsOnce.js | 57 | `_released` | const Set | own | own | - | - | never |
 | rendering/picsOnce.js | 58 | `_loading` | const Map | own | own | - | - | never |
@@ -1510,7 +1530,7 @@ The system (provisional) is the row's own file. **what** is how it is declared a
 | rendering/stripRead.js | 25 | `_w` | let null | own | own | - | - | never |
 | rendering/stripRead.js | 26 | `_wait` | const Map | own | own | - | - | never |
 | rendering/stripRead.js | 27 | `_stats` | const object | own | own | - | - | never |
-| rendering/stripRead.js | 86 | `_line` | let call | own | own | - | - | never |
+| rendering/stripRead.js | 89 | `_line` | let call | own | own | - | - | never |
 | rendering/systems/ambientFx.js | 50 | `_TEX` | let null | own | own | - | - | never |
 | rendering/systems/bowFeelFx.js | 31 | `_last` | let null | own | own | - | - | never |
 | rendering/systems/bowFeelFx.js | 32 | `_drawn` | let number | own | own | - | - | never |
@@ -1553,81 +1573,81 @@ The system (provisional) is the row's own file. **what** is how it is declared a
 | rendering/systems/effectsRenderer.js | 3116 | `_bakeFrame` | let number | own | own | - | - | never |
 | rendering/systems/effectsRenderer.js | 3465 | `SMITH_ANVIL` | const object | own | own | - | - | never |
 | rendering/systems/entityRenderer.js | 23 | `STATUS_TO_ELEMENT` | const Map | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 366 | `SPAWN_WHITE_FILTER` | const new ColorMatrixFilter | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 496 | `_npcDrawn` | const object | own | own | - | - | zone |
-| rendering/systems/entityRenderer.js | 498 | `_propsDrawn` | const array | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 504 | `_fgDrawn` | const array | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 511 | `_entityLayerRef` | let null | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 512 | `_frontLayerRef` | let null | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 533 | `_selfDisplayRef` | let null | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 1048 | `_traitCache` | const object | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 1062 | `_traitRetryOn` | let bool | own | own | flag | - | never |
-| rendering/systems/entityRenderer.js | 1065 | `_looksRetryOn` | let bool | own | own | flag | - | never |
-| rendering/systems/entityRenderer.js | 1251 | `_headWatch` | const object | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 1330 | `_bodyAnchors` | let null | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 1331 | `_bodyTops` | let null | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 1332 | `_bodyDataPromise` | let null | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 1333 | `_bodyDataRounds` | let number | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 1780 | `_folkHatDy256` | let number | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 1781 | `_qaHatDy256` | let number | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 1868 | `_crownOverride` | let null | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 2285 | `_lastGearDisplay` | let null | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 2288 | `_lastPeerWeaponSprite` | let null | own | own | - | - | zone |
-| rendering/systems/entityRenderer.js | 2288 | `_lastWeaponSprite` | let null | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 2374 | `_bodyArtMemo` | const WeakMap | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 2984 | `_regionTexCache` | const WeakMap | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 3016 | `_bandTexCache` | const WeakMap | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 3132 | `_maskedBodyCache` | const Map | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 3138 | `_spareSkipped` | let number | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 3416 | `_bakeSeq` | let number | own | - | no-read | - | never |
-| rendering/systems/entityRenderer.js | 3416 | `_bakeWorker` | let null | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 3416 | `_bakeWorkerDead` | let bool | own | own | flag | - | never |
-| rendering/systems/entityRenderer.js | 3416 | `_rodSent` | let null | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 3425 | `_bakeJobs` | const Map | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 3426 | `_bakeWorkerStats` | const object | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 3521 | `_bakeQueue` | const array | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 3522 | `_bakeByKey` | const Map | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 3523 | `_bakeBusy` | let number | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 3524 | `_bakeStartedAt` | let number | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 3675 | `_lookSheetsHere` | const Map | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 3903 | `_localBakeStats` | const object | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 3909 | `_maskedFails` | const Map | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 3931 | `_localMisses` | const array | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 3933 | `_localEpoch` | let number | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 3933 | `_localMissKey` | let null | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 3983 | `_peerBakeStats` | const object | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 3984 | `_peerPending` | const Set | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 3985 | `_peerQueue` | const array | own | own | - | - | zone |
-| rendering/systems/entityRenderer.js | 3986 | `_peerRunning` | let bool | own | own | flag | - | never |
-| rendering/systems/entityRenderer.js | 4223 | `prewarmProgress` | const object | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 4257 | `_localBakeDir` | let string | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 4375 | `_ownedRpg` | let null | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 4418 | `_ownedAt` | let number | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 4418 | `_ownedSig` | let null | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 4443 | `_uploadedSources` | const WeakSet | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 4507 | `_prewarmRenderer` | let null | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 4617 | `_altPrewarmSeq` | let number | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 4784 | `_equipPrewarmTimer` | let null | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 4785 | `_equipPrewarmRunning` | let bool | own | own | flag | - | never |
-| rendering/systems/entityRenderer.js | 4786 | `_equipPrewarmAgain` | let bool | own | own | flag | - | never |
-| rendering/systems/entityRenderer.js | 4909 | `_fishTopCache` | const Map | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 4955 | `_FISH_GRIP_TROUSERS` | let call | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 5244 | `_hairMaskCache` | const object | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 5402 | `_lastHairDisplay` | let null | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 5671 | `_standInHairClip` | const object | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 5757 | `_monsterDisplaysRef` | let null | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 6044 | `_traitTex` | const object | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 6051 | `_mannequinTex` | const object | own | - | no-read | - | never |
-| rendering/systems/entityRenderer.js | 6056 | `_traitMeta` | let null | own | - | no-read | - | never |
-| rendering/systems/entityRenderer.js | 6057 | `_traitLoadStarted` | let bool | own | own | flag | - | never |
-| rendering/systems/entityRenderer.js | 7595 | `_broBadgeTex` | let null | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 7609 | `_broBadgeSet` | let null | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 7635 | `_smallTexHeld` | const object | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 7636 | `_smallSet` | let null | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 7671 | `_pinTexHeld` | const object | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 7672 | `_pinSet` | let null | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 7784 | `_plateWorldScale` | let number | own | own | - | - | never |
-| rendering/systems/entityRenderer.js | 7795 | `_cueZoom` | let number | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 367 | `SPAWN_WHITE_FILTER` | const new ColorMatrixFilter | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 497 | `_npcDrawn` | const object | own | own | - | - | zone |
+| rendering/systems/entityRenderer.js | 499 | `_propsDrawn` | const array | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 505 | `_fgDrawn` | const array | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 512 | `_entityLayerRef` | let null | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 513 | `_frontLayerRef` | let null | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 534 | `_selfDisplayRef` | let null | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 1049 | `_traitCache` | const object | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 1063 | `_traitRetryOn` | let bool | own | own | flag | - | never |
+| rendering/systems/entityRenderer.js | 1066 | `_looksRetryOn` | let bool | own | own | flag | - | never |
+| rendering/systems/entityRenderer.js | 1252 | `_headWatch` | const object | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 1331 | `_bodyAnchors` | let null | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 1332 | `_bodyTops` | let null | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 1333 | `_bodyDataPromise` | let null | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 1334 | `_bodyDataRounds` | let number | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 1781 | `_folkHatDy256` | let number | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 1782 | `_qaHatDy256` | let number | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 1869 | `_crownOverride` | let null | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 2286 | `_lastGearDisplay` | let null | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 2289 | `_lastPeerWeaponSprite` | let null | own | own | - | - | zone |
+| rendering/systems/entityRenderer.js | 2289 | `_lastWeaponSprite` | let null | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 2375 | `_bodyArtMemo` | const WeakMap | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 2985 | `_regionTexCache` | const WeakMap | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 3017 | `_bandTexCache` | const WeakMap | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 3133 | `_maskedBodyCache` | const Map | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 3139 | `_spareSkipped` | let number | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 3417 | `_bakeSeq` | let number | own | - | no-read | - | never |
+| rendering/systems/entityRenderer.js | 3417 | `_bakeWorker` | let null | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 3417 | `_bakeWorkerDead` | let bool | own | own | flag | - | never |
+| rendering/systems/entityRenderer.js | 3417 | `_rodSent` | let null | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 3426 | `_bakeJobs` | const Map | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 3427 | `_bakeWorkerStats` | const object | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 3511 | `_bakeQueue` | const array | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 3512 | `_bakeByKey` | const Map | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 3513 | `_bakeBusy` | let number | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 3514 | `_bakeStartedAt` | let number | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 3669 | `_lookSheetsHere` | const Map | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 3898 | `_localBakeStats` | const object | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 3904 | `_maskedFails` | const Map | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 3927 | `_localMisses` | const array | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 3929 | `_localEpoch` | let number | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 3929 | `_localMissKey` | let null | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 3979 | `_peerBakeStats` | const object | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 3980 | `_peerPending` | const Set | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 3981 | `_peerQueue` | const array | own | own | - | - | zone |
+| rendering/systems/entityRenderer.js | 3982 | `_peerRunning` | let bool | own | own | flag | - | never |
+| rendering/systems/entityRenderer.js | 4219 | `prewarmProgress` | const object | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 4253 | `_localBakeDir` | let string | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 4371 | `_ownedRpg` | let null | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 4414 | `_ownedAt` | let number | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 4414 | `_ownedSig` | let null | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 4439 | `_uploadedSources` | const WeakSet | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 4503 | `_prewarmRenderer` | let null | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 4613 | `_altPrewarmSeq` | let number | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 4780 | `_equipPrewarmTimer` | let null | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 4781 | `_equipPrewarmRunning` | let bool | own | own | flag | - | never |
+| rendering/systems/entityRenderer.js | 4782 | `_equipPrewarmAgain` | let bool | own | own | flag | - | never |
+| rendering/systems/entityRenderer.js | 4905 | `_fishTopCache` | const Map | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 4951 | `_FISH_GRIP_TROUSERS` | let call | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 5240 | `_hairMaskCache` | const object | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 5398 | `_lastHairDisplay` | let null | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 5667 | `_standInHairClip` | const object | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 5753 | `_monsterDisplaysRef` | let null | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 6040 | `_traitTex` | const object | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 6047 | `_mannequinTex` | const object | own | - | no-read | - | never |
+| rendering/systems/entityRenderer.js | 6052 | `_traitMeta` | let null | own | - | no-read | - | never |
+| rendering/systems/entityRenderer.js | 6053 | `_traitLoadStarted` | let bool | own | own | flag | - | never |
+| rendering/systems/entityRenderer.js | 7591 | `_broBadgeTex` | let null | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 7605 | `_broBadgeSet` | let null | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 7631 | `_smallTexHeld` | const object | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 7632 | `_smallSet` | let null | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 7667 | `_pinTexHeld` | const object | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 7668 | `_pinSet` | let null | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 7780 | `_plateWorldScale` | let number | own | own | - | - | never |
+| rendering/systems/entityRenderer.js | 7791 | `_cueZoom` | let number | own | own | - | - | never |
 | rendering/systems/minimapRenderer.js | 162 | `_propMarks` | const array | own | own | - | - | never |
 | rendering/systems/minimapRenderer.js | 172 | `_allMarks` | const array | own | own | - | - | never |
 | rendering/systems/staffFeelFx.js | 32 | `_st` | const object | own | own | - | - | never |
@@ -1807,14 +1827,14 @@ The system (provisional) is the row's own file. **what** is how it is declared a
 | rendering/zoneTextures.js | 57 | `_bundles` | const Map | own | own | - | - | zone |
 | rendering/zoneTextures.js | 60 | `_crops` | const Map | own | own | - | - | zone |
 | rendering/zoneTextures.js | 63 | `_gen` | const Map | own | own | - | - | never |
-| rendering/zoneTextures.js | 178 | `_readStats` | const object | own | own | - | - | never |
-| rendering/zoneTextures.js | 261 | `_play` | let null | own | own | - | - | never |
-| rendering/zoneTextures.js | 271 | `_line` | let call | own | own | - | - | never |
-| rendering/zoneTextures.js | 271 | `_sliceT0` | let number | own | own | - | - | never |
-| rendering/zoneTextures.js | 271 | `_waiting` | let number | own | - | no-read | - | never |
-| rendering/zoneTextures.js | 272 | `_slices` | const object | own | own | - | - | never |
-| rendering/zoneTextures.js | 395 | `_stripStats` | const array | own | own | - | - | never |
-| rendering/zoneTextures.js | 398 | `_verify` | const Map | own | own | - | - | never |
+| rendering/zoneTextures.js | 196 | `_readStats` | const object | own | own | - | - | never |
+| rendering/zoneTextures.js | 279 | `_play` | let null | own | own | - | - | never |
+| rendering/zoneTextures.js | 289 | `_line` | let call | own | own | - | - | never |
+| rendering/zoneTextures.js | 289 | `_sliceT0` | let number | own | own | - | - | never |
+| rendering/zoneTextures.js | 289 | `_waiting` | let number | own | - | no-read | - | never |
+| rendering/zoneTextures.js | 290 | `_slices` | const object | own | own | - | - | never |
+| rendering/zoneTextures.js | 413 | `_stripStats` | const array | own | own | - | - | never |
+| rendering/zoneTextures.js | 416 | `_verify` | const Map | own | own | - | - | never |
 | ui/BroTown.jsx | 547 | `BT_AUDIO` | const value | own | own | - | - | never |
 | ui/DeviceScreen.js | 20 | `el` | let null | own | own | - | - | never |
 | ui/LevelUpBurst.jsx | 654 | `_lastSting` | let number | own | own | - | - | never |
@@ -2436,9 +2456,9 @@ does not call an edge (a dungeon's end, a window closing).
 | `_wanted` | rendering/stormSparksFx.js:97 | zone | - |
 | `SNOWBALL_BURST` | rendering/systems/effectsRenderer.js:2160 | zone | - |
 | `_snowballBurstLoad` | rendering/systems/effectsRenderer.js:2168 | zone | - |
-| `_npcDrawn` | rendering/systems/entityRenderer.js:496 | zone | - |
-| `_lastPeerWeaponSprite` | rendering/systems/entityRenderer.js:2288 | zone | - |
-| `_peerQueue` | rendering/systems/entityRenderer.js:3985 | zone | - |
+| `_npcDrawn` | rendering/systems/entityRenderer.js:497 | zone | - |
+| `_lastPeerWeaponSprite` | rendering/systems/entityRenderer.js:2289 | zone | - |
+| `_peerQueue` | rendering/systems/entityRenderer.js:3981 | zone | - |
 | `_wanted` | rendering/waterAttackFx.js:110 | zone | - |
 | `idleSheets` | rendering/waterFrogSprites.js:73 | zone | - |
 | `hopSheets` | rendering/waterFrogSprites.js:74 | zone | - |
@@ -2525,11 +2545,11 @@ The plan's part 2 quoted a reviewer's numbers. These replace them; each says how
 | ... that nothing sets | not counted | 25 | read, or changed inside, and never made |
 | ... marked a phase | not counted | 7 | two or more words set or compared (or one, with a phase's name); 55 more are flags, only ever set to true or false |
 | writes to `S` from `src/rendering/` | 89 | **114** | places: 92 sets and 22 changes inside, over 74 fields; 604 more through a name for the inside |
-| top-of-file variables that hold state | about 850 | **1502** | 960 `let`/`var` (209 of them never changed) and 542 changed `const` containers; 1293 when the never-changed are left out |
+| top-of-file variables that hold state | about 850 | **1522** | 973 `let`/`var` (209 of them never changed) and 549 changed `const` containers; 1313 when the never-changed are left out |
 | ... written from two or more files | not counted | 9 | through an import |
 | ... marked a phase | not counted | 4 | as for a field; 110 more are flags |
 
-Variables by folder: data 73, debug 54, game 282, lib 0, networking 18, rendering 710, ui 365, the top of `src/` 0.
+Variables by folder: data 77, debug 57, game 288, lib 0, networking 18, rendering 717, ui 365, the top of `src/` 0.
 
 Should reset (suggested, not confirmed):
 
@@ -2540,10 +2560,10 @@ Should reset (suggested, not confirmed):
 | death | 23 | 2 |
 | rejoin | 69 | 50 |
 | zone+rejoin | 19 | 0 |
-| ? | 0 | 20 |
+| ? | 0 | 40 |
 
-Rows not yet read (`?`): 20. Suggestions whose row is gone: 0. Suggested to reset where nothing writes it today: 369.
+Rows not yet read (`?`): 40. Suggestions whose row is gone: 0. Suggested to reset where nothing writes it today: 369.
 
 Edges read off the code: 11 blocks call `changeZone()`, 4 set `S._dying = true`, 1 `case 'state_sync'`. The flow settled in 16 rounds over 2 passes.
 
-**Totals: 647 fields and 1502 top-of-file variables, 2149 rows, from 886 files.**
+**Totals: 647 fields and 1522 top-of-file variables, 2169 rows, from 913 files.**

@@ -1,6 +1,6 @@
 card: U
-branch: claude/plan-u-8-render (one branch a PR, each begun from the one before)
-prs: #1721, #1722, #1723, #1725, #1727, #1728, #1730, #1732 (all ready)
+branch: claude/plan-u-9-ui (one branch a PR, each begun from the one before)
+prs: #1721, #1722, #1723, #1725, #1727, #1728, #1730, #1732, #1734 (all ready)
 state: ready
 
 ## Done
@@ -13,13 +13,16 @@ state: ready
   #1722 liveops..input 2109 (the census page made again); #1723 quests..
   social 1959; #1725 movement..memory 1760; #1727 debug, art, data 1578;
   #1728 wire, combat, world 1185.
-- PR 7 (5166, #1730): look (194), and the guard takes a phase's empty word: 991.
-- PR 8 (5167, #1732): render (453): unlisted 538.
+- #1730 (5166) look and the guard takes a phase's empty word, 991; #1732
+  (5167) render, 538; #1734 (5168) ui, 16: the unsorted rows (the finish).
+- Sitting 5 held PRs 1-7 (card A's #1706 on main, `docs/SYSTEMS.md`): main
+  merged into each in order, the page made again, `unsorted` 11 at its line.
+  PR 9 put in the 20 rows main had added since (census page made again).
 
 ## Next
 
-- PR 9 (5168): ui (522). Tried: it passes the guard, unlisted 16 (the
-  unsorted rows): the card's finish.
+- Nothing: the card's nine PRs wait for the gatekeeper, in order. Its line
+  (2128) can come down to 16 once they are merged.
 
 ## Found
 
