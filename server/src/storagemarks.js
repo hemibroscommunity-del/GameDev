@@ -73,6 +73,7 @@ export const STORAGE_MARKS = Object.freeze({
   'duelEscrow:':      M('gold', 'between', 'both wagers'),
   'arena_entry:':     M('gold', 'between', 'an entry fee held'),
   'arena_stake:':     M('gold', 'between', 'a sponsorship stake held'),
+  'arena_settle:':    M('none', 'between', 'an arena match\'s settlement plan (the gold is in its stakes until paid)'),   /* v2.3.5089 */
   'bounty:':          M('gold', 'between', 'a fine on a head, paid to the killer'),
   'jackpot:draw':     M('gold', 'between', 'the weekly pool'),
   'trade2wpn:':       M('goods', 'between', 'a weapon in a trade window, or owed after it'),

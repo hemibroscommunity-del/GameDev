@@ -106,9 +106,9 @@ export const arenaMethods = {
     const f = this._liveFlags;
     return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'arenastakeonewrite') && !f.arenastakeonewrite);
   },
-  /* v2.3.5089: a match's stakes settle by a PLAN written on every one of its
-     records in one run (_arenaSettleStakes); `arenasettleplan: false` in the
-     live flags puts back the old order, its hole included */
+  /* v2.3.5089: a match's stakes settle by a PLAN, one record written in one
+     run with the losers' stamps (_arenaSettleStakes); `arenasettleplan:
+     false` in the live flags puts back the old order, its hole included */
   _arenaSettlePlanOn() {
     const f = this._liveFlags;
     return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'arenasettleplan') && !f.arenasettleplan);
@@ -566,8 +566,9 @@ export const arenaMethods = {
    * Backed the loser -> the stake is the pool; when nobody backed the
    * winner it goes to the winning competitor whole, as it always did.
    * Every losing stake is STAMPED settled before any winner is paid, so
-   * the sweep can never refund one that a winner was paid from (a crash
-   * part-way costs a payout, never makes one twice). */
+   * the sweep can never refund one that a winner was paid from.  Before
+   * v2.3.5089 a crash part-way cost a payout; now the plan record (below)
+   * lets the sweep finish it. */
   async _arenaSettleStakes(tid, matchId, winnerId) {
     try {
       const stakes = await this.state.storage.list({ prefix: 'arena_stake:' + tid + ':' + matchId + ':' });
@@ -585,18 +586,23 @@ export const arenaMethods = {
          and each winner were paid in writes of their own, then each record
          deleted: a restart between kept the losing stakes (stamped, so never
          refunded) and paid nobody from them -- players' gold gone on a
-         deploy mid-arena.  Now the whole settlement -- every leg, to whom
-         and how much, each by its own opId -- is written onto EVERY stake
-         record of the match in ONE synchronous run (with the losers' old
-         stamps, which a rolled-back worker's sweep still reads), before a
-         coin moves.  Then each leg pays by _creditPlayer (its credit and its
-         stamp one write: a retry pays it once, under the same opIds the old
-         order used), and the records go, in one run.  A
-         restart before the plan: no record says it settled, the sweep
-         refunds every stake.  After it: the sweep FINISHES the plan
-         (_arenaStakeFinish), every leg paid once, never a refund.  The
-         General Store's settle note is the same shape (market.js
-         v2.3.4505).  `arenasettleplan: false` puts back the old order. */
+         deploy mid-arena.  Now the whole settlement -- every leg, to whom and
+         how much, each by its own opId -- is written as ONE plan record,
+         `arena_settle:<tid>:<matchId>`, in the same synchronous run as the
+         losers' stamps (which a rolled-back worker's sweep still reads),
+         before a coin moves; the stake records are not touched.  Then each
+         leg pays by _creditPlayer (its credit and its stamp one write: a
+         retry pays it once, under the same opIds the old order used), and the
+         stakes and the plan go, in one run.  A restart before the plan: no
+         record says it settled, the sweep refunds every stake.  After it:
+         the sweep FINISHES the plan (_arenaStakeFinish), every leg paid once,
+         never a refund.  The General Store's settle note is the same shape
+         (market.js v2.3.4505).
+         v2.3.5089 (the gatekeeper's sitting 9): the plan is ONE record, not a
+         copy on every stake (that rewrote each stake: 5 puts became 7 in a
+         1 v 1, 32 became 52 in a 10 v 10).  Now a match's settlement writes
+         one put more than the old order -- the plan -- whatever its size
+         (cost-guard §17).  `arenasettleplan: false` puts back the old order. */
       if (this._arenaSettlePlanOn()) {
         const legs = [];
         if (totalW > 0) {
@@ -610,17 +616,19 @@ export const arenaMethods = {
           }
           const toFighter = cut + (pool - shared);   /* the rounding's leftover coins: what is paid out is exactly what was staked */
           /* a leg: whom, how much, and its kind and ids -- the opId each pays by is
-             `arenastake<kind>:<id>`, the very ids the old order paid by */
+             `arenastake<kind>:<id>`, the very ids the old order paid by; a win
+             leg carries its stake, what a refund already gave back */
           if (toFighter > 0) legs.push({ to: winnerId, amount: toFighter, kind: 'cut', id: tid + ':' + matchId, note: 'your cut of a sponsorship pool' });
-          for (const x of winners) legs.push({ to: x.rec.sponsorId, amount: payout.get(x.rec.sponsorId), kind: 'win', id: tid + ':' + matchId + ':' + x.rec.sponsorId, note: 'sponsorship paid off' });
+          for (const x of winners) legs.push({ to: x.rec.sponsorId, amount: payout.get(x.rec.sponsorId), stake: amt(x.rec), kind: 'win', id: tid + ':' + matchId + ':' + x.rec.sponsorId, note: 'sponsorship paid off' });
         } else {
           for (const x of losers) legs.push({ to: winnerId, amount: amt(x.rec), kind: 'loss', id: tid + ':' + matchId + ':' + x.rec.sponsorId, note: 'claimed a failed sponsorship' });
         }
-        const plan = { v: 1, winnerId, legs };
-        const writes = all.map((x) => this.state.storage.put(x.k, { ...x.rec, settle: plan }));
+        const planKey = 'arena_settle:' + tid + ':' + matchId;
+        const plan = { v: 1, tid, matchId, winnerId, legs, keys: all.map((x) => x.k), ts: Date.now() };
+        const writes = [this.state.storage.put(planKey, plan)];
         if (totalW > 0) for (const x of losers) writes.push(this._opStamp('arenastakeloss:' + tid + ':' + matchId + ':' + x.rec.sponsorId));
-        await Promise.all(writes);   /* one run: every record says how its match settles, or none does */
-        await this._arenaStakeFinish(all.map((x) => x.k), plan);
+        await Promise.all(writes);   /* one run: the plan and the losers' stamps, or neither */
+        await this._arenaStakeFinish(planKey, plan);
         for (const x of all) {
           const won = x.rec.targetId === winnerId;
           const ws = this._wsBySessionId(x.rec.sponsorId);
@@ -895,24 +903,37 @@ export const arenaMethods = {
    * If the match DID settle (either win/loss opId stamped), only the
    * record is deleted -- never refund on top of a payout (rule 6). */
   /* v2.3.5089: a settlement's plan, finished: each leg paid by its own opId
-     (_creditPlayer answers 'dup' for one already paid), then the records
-     gone in one write.  Run by the settlement itself, and by the sweep for a
-     record a restart left with its plan on it.  A leg that is not a leg (a
-     record a hand edited) is skipped, never paid. */
-  async _arenaStakeFinish(keys, plan) {
+     (_creditPlayer answers 'dup' for one already paid), then the stakes and
+     the plan gone in one write.  Run by the settlement itself, and by the
+     sweep for a plan a restart left.  Sitting 9's two finds:
+       - a win leg whose stake a rolled-back worker's sweep already REFUNDED
+         (its `arenastakerefund:` stamp) pays only what is left of it, the
+         share, never the stake twice;
+       - a leg's id is the sponsor's id as written, any string (the old order
+         paid any); a leg that is not a leg (a plan a hand edited) keeps the
+         plan and its stakes on file, paying nothing more, never dropped. */
+  async _arenaStakeFinish(planKey, plan) {
     const legs = plan && Array.isArray(plan.legs) ? plan.legs : [];
+    let bad = false;
     for (const leg of legs) {
       /* each kind of leg its own literal opId word (the opId audits: a credit's
-         id is never a value read back) and its own ids, checked */
-      if (!leg || typeof leg.to !== 'string' || !leg.to || typeof leg.id !== 'string' || !/^[A-Za-z0-9_:.-]{1,200}$/.test(leg.id)) continue;
-      const amount = Math.max(0, Math.floor(Number(leg.amount) || 0));
-      if (!amount) continue;
+         id is never a value read back), its id a string of a key's length */
+      if (!leg || typeof leg.to !== 'string' || !leg.to || typeof leg.id !== 'string' || !leg.id || leg.id.length > 400) { bad = true; continue; }
+      let amount = Math.max(0, Math.floor(Number(leg.amount) || 0));
       const note = typeof leg.note === 'string' ? leg.note.slice(0, 60) : 'arena';
+      if (leg.kind === 'win' && (await this._opSeen('arenastakerefund:' + leg.id))) {
+        amount = Math.max(0, amount - Math.max(0, Math.floor(Number(leg.stake) || 0)));   /* the stake came back by the refund */
+      }
+      if (!amount) continue;
       if (leg.kind === 'cut') await this._creditPlayer(leg.to, { opId: 'arenastakecut:' + leg.id, source: 'arena', kind: 'gold', payload: { amount }, note });
       else if (leg.kind === 'win') await this._creditPlayer(leg.to, { opId: 'arenastakewin:' + leg.id, source: 'arena', kind: 'gold', payload: { amount }, note });
       else if (leg.kind === 'loss') await this._creditPlayer(leg.to, { opId: 'arenastakeloss:' + leg.id, source: 'arena', kind: 'gold', payload: { amount }, note });
+      else bad = true;
     }
-    await Promise.all(keys.map((k) => this.state.storage.delete(k)));   /* every record in one run */
+    if (bad) return false;   /* kept on file for the owner: nothing is dropped unpaid */
+    const keys = (plan && Array.isArray(plan.keys) ? plan.keys : []).filter((k) => typeof k === 'string' && k.startsWith('arena_stake:'));
+    await Promise.all([...keys, planKey].map((k) => this.state.storage.delete(k)));   /* every stake and the plan in one run */
+    return true;
   },
 
   async _arenaStakeSweep() {
@@ -920,13 +941,23 @@ export const arenaMethods = {
     if (this._lastStakeSweep && now - this._lastStakeSweep < 300000) return;
     this._lastStakeSweep = now;
     try {
+      /* v2.3.5089: a match whose plan is on file settled: finish the plan
+         (every leg paid once) before any refund is weighed; its stakes are
+         the plan's, never refunded.  The live tournament's own settlement is
+         left to run (its plan is being paid as this reads). */
+      const plans = await this.state.storage.list({ prefix: 'arena_settle:' });
+      const planned = new Set();
+      for (const [pk, plan] of plans) {
+        if (!plan || plan.v !== 1) { planned.add(pk.slice('arena_settle:'.length)); continue; }
+        planned.add(plan.tid + ':' + plan.matchId);
+        if (this._arena && this._arena.id === plan.tid) continue;
+        await this._arenaStakeFinish(pk, plan);
+      }
       const stakes = await this.state.storage.list({ prefix: 'arena_stake:' });
       for (const [k, rec] of stakes) {
         if (this._arena && this._arena.id === rec.tid) continue; // live tournament
         if (now - (rec.ts || 0) < ARENA.STALE_STAKE_MS) continue;
-        /* v2.3.5089: a record carrying its match's plan settled: finish the
-           plan (every leg paid once), never refund it */
-        if (rec && rec.settle && rec.settle.v === 1) { await this._arenaStakeFinish([k], rec.settle); continue; }
+        if (rec && planned.has(rec.tid + ':' + rec.matchId)) continue;   /* v2.3.5089: its plan's, finished above or kept for the owner */
         const settled = (await this._opSeen('arenastakewin:' + rec.tid + ':' + rec.matchId + ':' + rec.sponsorId))
           || (await this._opSeen('arenastakeloss:' + rec.tid + ':' + rec.matchId + ':' + rec.sponsorId));
         if (!settled) {

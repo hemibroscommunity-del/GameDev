@@ -44,6 +44,8 @@
  *  16. v2.3.5092: the transfer ledger (xfer.js) writes ONE row a settlement
  *      between two players (the trade window: five trades, five rows), and
  *      none a kill (a purse taken in No man's land by its killer);
+ *  17. v2.3.5089: an arena match's settlement (gladiator.js) writes the old
+ *      order's puts and ONE more, its plan: 6 in a 1 v 1;
  * A line here may move when a feature really needs the rows: say so in the
  * PR, in plain words, as the memory budget asks (CLAUDE.md).
  */
@@ -662,6 +664,25 @@ const FAST = 110;
   await new Promise((r) => setTimeout(r, 5));
   const none = state.writes.slice(w1).filter((k) => k.startsWith(XFER.PREFIX));
   check(`16b. a kill that moves a purse (${before}) to the killer writes no ledger row (${none.length})`, none.length === 0 && before > 0 && ps.coins === 0, { none, coins: ps.coins });
+}
+
+/* ── 17. v2.3.5089: an arena match's settlement ─────────────────────────────── */
+/* The plan is one record a match (the gatekeeper's sitting 9: it was written
+   onto every stake, 5 puts became 7 in a 1 v 1, 32 became 52 in a 10 v 10).
+   The line is a number: a plan written per stake again must fail here. */
+{
+  const { room, state } = await makeRoom();
+  const W = 'cg_ar_w', C = 'cg_ar_c', D = 'cg_ar_d';
+  for (const [sp, tg] of [[C, W], [D, 'cg_ar_l']]) {
+    state.store.set('arena_stake:cg-t:cg-m:' + sp, { tid: 'cg-t', matchId: 'cg-m', sponsorId: sp, targetId: tg, amount: 100, ts: NOW });
+  }
+  const puts = [];
+  const real = state.storage.put;
+  state.storage.put = function (k, v) { if (k && typeof k === 'object') puts.push(...Object.keys(k)); else puts.push(k); return real.call(this, k, v); };
+  await room._arenaSettleStakes('cg-t', 'cg-m', W);
+  state.storage.put = real;
+  const line = 6;
+  check(`17. a 1 v 1 match's settlement writes ${puts.length} puts, at most ${line} (the old order's 5 and its plan)`, puts.length <= line && puts.filter((k) => k.startsWith('arena_settle:')).length === 1 && !puts.some((k) => k.startsWith('arena_stake:')), byPrefix(puts));
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);
