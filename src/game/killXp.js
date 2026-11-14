@@ -27,7 +27,10 @@
  * Off for one phone with ?xpfly=0 (the memory law's off-ramp: it adds no art,
  * but the owner can compare).
  *
- * NO IMPORTS: server/test/kill-xp.test.mjs runs this in node. */
+ * One import, resetOn.js, which has none: server/test/kill-xp.test.mjs runs
+ * this in node (v2.3.5206; it was NO IMPORTS). */
+
+import { resetOn } from './resetOn.js';   /* v2.3.5206: a kill left waiting stays in the place you left (card L) */
 
 /* a bar gain this recent at the kill is the killing blow's (the worker sent
    it a tick before the kill: some 25 ms, more on a slow phone) */
@@ -101,6 +104,16 @@ export function killXpOnGain(S, bar, now) {
   S._killXpFlewAt = bar.at;
   return { x: w.x, y: w.y, monsterId: w.monsterId, cat: bar.cat, gain: bar.gain };
 }
+
+/* v2.3.5206 (card L): a kill still waiting for its gain names where it fell in
+   the place you are leaving; a gain that came after a change of place flew its
+   label from that spot on the new map.  At the zone door it waits no more: the
+   bar's own "+N" shows the gain, as for a kill with none in time.
+   `?combatreset=0` leaves it to its KILL_XP_WAIT_MS, as before. */
+function forgetKillWaiting(S) {
+  S._killXpWait = null;
+}
+resetOn('zone', forgetKillWaiting, 'combat');
 
 /* ═══ THE BAR'S "+N" IS HELD ONLY WHILE A KILL'S LABEL IS REALLY IN THE AIR ═══
  * The bar's own "+N" is hidden while a kill's label flies to it (game.css

@@ -20,7 +20,7 @@ addresses (`tools/qa/`), `localStorage` toggles, and the worker's `env` settings
 reads it as a flag or a comment promises it as a kill switch; any other cap's override is the emergency lever of
 `docs/specs/liveops.md` ("Caps override").
 
-255 rows: 248 switches, 6 values, 1 levers, in 23 systems.
+256 rows: 249 switches, 6 values, 1 levers, in 23 systems.
 
 ## audio
 
@@ -81,6 +81,7 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 | `weapongem` | worker | switch | v2.3.3513 | false | logic |  | no | Un-advertises the weapon gem, refuses every ask, and the fight goes back on the claimed element. |
 | `whirlWindup` | worker | switch | v2.3.2820 | false | logic |  | no | The whirlwind is instant again, with no wind-up. |
 | `xp_mult` | worker | value | v2.3.1150 | a number, 1 to 4 | logic |  | no | Multiplies kill XP (the 2x weekend lever), 1 to 4. |
+| `?combatreset` | page | switch | v2.3.5206 | =0 | logic |  | no | A fight you picked, a roll or a lunge, the hit marks on the ground, a kill's XP still waiting and another player's damage numbers still queued carry over a change of place again, each ending on its own clock or its own check, not at the zone door. |
 
 ## data
 
