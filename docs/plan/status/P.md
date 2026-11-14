@@ -1,6 +1,6 @@
 card: P
-branch: claude/plan-p-12-pack-page (one branch a PR, each begun from the one before)
-prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766 (5241-5252, merged); pack-page (5253) ready
+branch: claude/plan-p-13-pixel-readers (one branch a PR, each begun from the one before)
+prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766 (5241-5252, merged); #1805 (5253) ready; the guard (5254) ready
 state: working
 
 ## Done
@@ -14,10 +14,10 @@ state: working
 
 ## Next
 
-- `pack-page` (5253), road B: in play on the bake worker (`?packworker=0`),
-  byte for byte; no pack-page hold; off held-budget. Road A: later.
-- Then a guard: a closed list of the CPU readers of picture pixels (the
-  planning session's yes, sitting 9).
+- #1805 (5253) `pack-page`, road B: in play on the bake worker
+  (`?packworker=0`), byte for byte; no pack-page hold; off held-budget.
+- The guard (5254, `tools/guards/pixel-readers.test.mjs`): the CPU readers
+  of picture pixels a closed list; the trap back in WORLD_ICONS fails it.
 
 ## Found
 
