@@ -56,6 +56,7 @@
  * `shieldwear: false` in liveflags un-advertises it, ignores every report,
  * and No man's land takes no shield on an ordinary loss again. */
 import { GEAR_PROV_FIELD } from './gearprov.js';
+import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
 
 export const SHIELD_WEAR = Object.freeze({
   /* the longest id or signature the worker reads */
@@ -82,8 +83,10 @@ const samePiece = (a, b) => {
    join (gearstash.js, the larger count wins), so one copy too few here is
    made up then, and one too many would be a second shield for whoever takes
    the bag in No man's land */
-function bagIt(bag, piece) {
-  if (piece && !bag.some((p) => p && typeof p === 'object' && samePiece(p, piece))) bag.push(piece);
+/* v2.3.5281: through the stashes' door, by its caller's road */
+function bagIt(ps, field, piece, road) {
+  const bag = Array.isArray(ps[field]) ? ps[field] : [];
+  if (piece && !bag.some((p) => p && typeof p === 'object' && samePiece(p, piece))) stashGive(ps, field, piece, road);
 }
 
 export const shieldWearMethods = {
@@ -101,12 +104,11 @@ export const shieldWearMethods = {
     const ps = this.playerState[session.id];
     if (!ps || !payload || typeof payload !== 'object') return null;
     const field = GEAR_PROV_FIELD.shield;
-    if (!Array.isArray(ps[field])) ps[field] = [];
-    const bag = ps[field];
+    const bag = () => (Array.isArray(ps[field]) ? ps[field] : []);   /* v2.3.5281: the door makes the list */
     const worn = ps.shield && typeof ps.shield === 'object' ? ps.shield : null;
 
     if (payload.none === true) {
-      bagIt(bag, worn);
+      bagIt(ps, field, worn, 'shield_off');
       ps.shield = null;
       ps._shieldKnown = true;
       if (worn) this._shieldWearSaved(session.id, ps);
@@ -125,8 +127,8 @@ export const shieldWearMethods = {
     }
     /* from the bag: that ONE copy leaves it */
     let piece = null;
-    const at = bag.findIndex((p) => p && typeof p === 'object' && same(p));
-    if (at >= 0) piece = bag.splice(at, 1)[0];
+    const at = bag().findIndex((p) => p && typeof p === 'object' && same(p));
+    if (at >= 0) piece = stashTake(ps, field, at, 'shield_on');
     /* by id, a piece the ledger says is yours though no list holds it */
     else if (gid && this._gearProvPieceByRef) piece = this._gearProvPieceByRef(session.id, 'shield', gid);
     if (!piece) {
@@ -144,7 +146,7 @@ export const shieldWearMethods = {
       ps._shieldKnown = false;
       return 'unknown';
     }
-    bagIt(bag, worn);
+    bagIt(ps, field, worn, 'shield_swap_off');
     ps.shield = piece;
     ps._shieldKnown = true;
     this._shieldWearSaved(session.id, ps);

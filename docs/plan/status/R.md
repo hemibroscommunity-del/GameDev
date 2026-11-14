@@ -1,6 +1,6 @@
 card: R
-branch: claude/plan-r-9-rewind (one branch a PR, each begun from main)
-prs: #1819 (5280), #1823 (5283), #1825 (5287): merged; PR 9 (5288): ready
+branch: claude/plan-r-2-stash (one branch a PR, each begun from main)
+prs: #1819 (5280), #1823 (5283), #1825 (5287), #1844 (5288): merged; #1847 (5286), PR 2 (5281): ready
 state: ready
 
 ## Done
@@ -8,17 +8,16 @@ state: ready
 - PR 1 (5280, #1819, merged): the roads between players (`playerroads.js`).
 - PR 4 (5283, #1823, merged): the skill points' door (`skillpoints.js`).
 - PR 8 (5287, #1825, merged): the storage's size in the day's book (ON).
-- PR 9 (5288, `claude/plan-r-9-rewind`, ready): the room's way back
-  (`restore.js`, `roomrewind` OFF by default), its route's row in the wire
-  table, and the lab's restore try (files only: the owner's to run).
+- PR 9 (5288, #1844, merged): the room's way back (`restore.js`,
+  `roomrewind` OFF by default) and the lab's restore try (files only).
+- PR 7 (5286, #1847, ready): the paged export (an allow list; ON).
+- PR 2 (5281, `claude/plan-r-2-stash`, ready): the stashes' door
+  (`stash.js`, 35 roads), and the gatekeeper's low on `xfer` rows.
 
 ## Next
 
-- Waiting (the planning session: no side work). PR 2 (5281) waits on card
-  K's 5184 (#1838, sitting 16); PR 7 (5286) is free of K's 5182 now, and
-  starts when the planning session says.
-- The next PR on the table (PR 2): the gatekeeper's low (review-z13): an
-  `xfer` row's road must be a `move` road, or name its writer.
+- Waiting (the planning session: no side work). Then PRs 3 (a weapon's
+  id), 5 and 6, each after PR 2 is merged.
 
 ## Found
 
@@ -28,12 +27,11 @@ state: ready
 
 ## Needs
 
-- PR 2 (5281): card K's 5184 merged (K's 5181 and L's #1809 are).
-  PRs 3, 5, 6 wait for PR 2.
+- PRs 3, 5, 6 wait for PR 2 (5281) merged.
 - Taken from card K: an honest `character_reset` reads to the world's sum
   as value gone; R mends it in PR 6 (5285: persistence.js, its roads).
-- For the owner (PR 9): the lab's restore try needs `lab.yml` changed (a
-  `restore` input, `timeout-minutes: 90`, a run line; the lines are in
-  `docs/specs/cloudflare-lab.md`); about 65 Actions minutes.
-- New live flags, a row each: `storesize` (PR 8, on), `roomrewind` (PR 9,
-  off until the owner sets it).
+- For the owner, LATER (PR 9; the owner's "Just go recommended": not now):
+  the lab's restore try (`lab.yml` lines in `docs/specs/cloudflare-lab.md`;
+  about 65 Actions minutes).
+- New live flags, a row each: `storesize` (PR 8, on), `roomexport` (PR 7,
+  on), `roomrewind` (PR 9, off until the owner sets it).
