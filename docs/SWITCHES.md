@@ -20,7 +20,7 @@ addresses (`tools/qa/`), `localStorage` toggles, and the worker's `env` settings
 reads it as a flag or a comment promises it as a kill switch; any other cap's override is the emergency lever of
 `docs/specs/liveops.md` ("Caps override").
 
-257 rows: 250 switches, 6 values, 1 levers, in 23 systems.
+258 rows: 251 switches, 6 values, 1 levers, in 23 systems.
 
 ## audio
 
@@ -393,3 +393,4 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 | `wheelslope` | worker | switch | v2.3.3320 | false | logic |  | no | A Wheel spawned after it is levels 1-2 again. |
 | `wheelstep` | worker | switch | v2.3.4540 | false | logic |  | no | A page that joins the Wheel off its step (a preview) is no longer kept out of harm and dealing nothing. |
 | `zonejudge` | worker | switch | v2.3.4565 | false | logic |  | no | The zone judge off (but its rule R3, the retired lands, stays: `retiredlands`). |
+| `?worldreset` | page | switch | v2.3.5208 | =0 | logic |  | no | Your arrows, the hit and death particles and the place's air are emptied only by each way's own clear block again (the respawn's 0.4 s after its flip, under its veil), not at the zone door. |
