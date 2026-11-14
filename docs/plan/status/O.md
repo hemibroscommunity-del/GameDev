@@ -1,6 +1,6 @@
 card: O
 branch: claude/plan-o-15-govoff (one branch a PR: claude/plan-o-<n>-<word>; each with main merged in)
-prs: #1787 (5221, merged); #1792, #1794, #1800 (5222-5225), the switch (5235), PR 7 (5227): ready
+prs: #1787 (5221, merged); #1792, #1794, #1800 (5222-5225), #1814 (5235), #1815 (5227): ready
 state: ready
 
 ## Done
@@ -11,11 +11,12 @@ state: ready
 - #1794 (5224): the rate's knob (a 60 screen to a steady 30; a fast screen
   as before: (a)). Sitting 11's hold mended: only knobs marked moved count,
   a kept rung carries its live set; back at 60 in one try (§19).
-- #1800 (5225): the pixels' knob, (b); (A): a kept rung loads without its
-  pixel rungs (§19g).
-- The switch (5235): `govern` on the Test panel's list, in place of the
+- #1800 (5225): the pixels' knob, (b); (A). Sitting 12's three mended: the
+  pixels an axis of their own, tried up last; a hide drops a pending step;
+  never a work-bound phone's; the switches off the live set (§21).
+- #1814 (5235): `govern` on the Test panel's list, in place of the
   card's cap `ladder` (the planning session's word); §20, `mp-governor` 4.
-- PR 7 (5227): the device asked only in `deviceProfile.js`; four askers on
+- #1815 (5227): the device asked only in `deviceProfile.js`; four askers on
   a census (A); `bodyworker`, `onebatch`, `questline` 303 of 303.
 
 ## Next
@@ -31,9 +32,9 @@ state: ready
   `systems.mjs`; `phases.js` (`ladder`); `DOOR_SUITES` (frame-pacer).
 - No one field says a window covers the world: pixels move at a veil only.
 - Card L: `ladder`'s `reset` is "kept: the device's"; M's BUDGETS #5, #7 kept.
-- A 60 screen whose every frame costs 33 ms reads as 30 (`refreshOf` reads
-  every call, drawn or passed: the rate's rung alone never does it).
+- A 60 screen whose frames all cost 33 ms reads as 30 (`refreshOf`).
 
 ## Needs
 
-- (none)
+- #1792: the rung on a module object and its row in #1803's form, once
+  #1803 and #1809 are on main (the planning session's word); then up.

@@ -144,7 +144,8 @@ late. Now:
   into the pacer, nothing new timed): the game's own work takes the work
   axis (the crowd, then the rate); the rest, or where the busy beat runs the
   time the page WAITED, the chip axis (the rate, the shine, the shadows, the
-  water, the pixels).
+  water), then the pixels' own axis (v2.3.5225: last down and last up, a
+  chip-bound phone's only; `docs/specs/pixel-budget.md`).
 - **Down and up as the pacer**: two bad verdicts, a step down; clean for
   `UP_WAIT_MS`, a try up (undoing the last step); a step down after a step
   up doubles the wait, to `UP_WAIT_MAX_MS`. On a fast screen the ladder

@@ -81,6 +81,12 @@
  *      next verdict and no step (a pixel rung at the next veil); the row is
  *      kept; on again, it steps again; a hot phone switched off all sitting
  *      is never paced.
+ *  21. THE GATEKEEPER'S SITTING 12 (v2.3.5225): the pixels are an axis of
+ *      their own, tried up LAST -- a cooled phone gets its rate back in play
+ *      before its next veil, the pixels at it (the gatekeeper's probe); a
+ *      pixel step wanted before the tab hid is dropped at its return; a
+ *      work-bound phone never reaches the pixels; `?ladderrate=0` and
+ *      `?ladderpix=0` take their knobs off the governor's live set.
  *
  * BREAK PROOF (rule 8), tried by hand 2026-11-14:
  *  13. framePacer.js makeGovernor down(): `upWait = Math.min(UP_WAIT_MAX_MS, upWait * 2)`
@@ -93,18 +99,22 @@
  *      ...and the fast screen's `(PACE_FLOOR_MS + 0.5)` as `(rateAt + 0.5)` -> FAIL 18c (a 120 screen to 30), 18e
  *  19. makeGovernor `vec` over every knob (the old KNOB_NAMES) in place of liveKnobs()
  *                                  -> FAIL 19b (empty steps through the crowd's rungs) and 19c (6 and 7 tries up, 127 and 149 s)
- *      ...load() without `v[2] === liveKey()` -> FAIL 19d (both); `if (pending) { back = ... }` taken out -> FAIL 19f;
+ *      ...load() without `v[2] === liveKey()` (v2.3.5225: `v[3]`) -> FAIL 19d (both); `if (pending) { back = ... }` taken out -> FAIL 19f;
  *      apply() without trim(to) -> FAIL 19c ([3,0]: back at 60 but the strip still says work 2)
- *      v2.3.5225: load() without its `while (t.chip > 0 && movesPixels(row, t))` (the kept pixel rungs loaded)
- *                                  -> FAIL 19g and 19c ([0,6], [3,6]: no step up in three cool minutes, no veil)
+ *  21. (v2.3.5225, the gatekeeper's sitting 12) the up order without `stack[i] !== 'pixels'` (the pixels not last)
+ *                                  -> FAIL 21a (the rate never back before the veil) and 19f
+ *      ...veil() without `if (pending && pending.hides !== _hides) pending = null;` -> FAIL 21b
+ *      ...a work-bound order `['work', 'chip', 'pixels']` -> FAIL 21c; liveKnobs() unfiltered by the switches -> FAIL 21d
+ *      v2.3.5225: load() taking the kept pixel count (`pixels: 0` as the kept `v[2]`: (A) undone)
+ *                                  -> FAIL 19g and 19c ([0,4,2], [3,4,2]: no step up in three cool minutes, no veil)
  *  20. verdict() without `if (switchedOff()) { rest(ts, false); return; }` -> FAIL 20a, 20b, 20d, 20e (a step taken, a rung kept)
- *      ...rest() with `const to = { work: 0, chip: 0 };` (the pixels in play) -> FAIL 20d
+ *      ...rest() with `const to = row;` (the pixels in play) -> FAIL 20d
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { framePaceOn, refreshOf, makeFramePacer, noteDrawn, whenDrawn, WHEN_DRAWN_TRIES, PACE_FAST_MS, PACE_FLOOR_MS, UP_WAIT_MS, UP_WAIT_MAX_MS, JUDGE_RUNS,
-  lateOver, governOn, makeGovernor, useFrameSamples, holdLadder, lateSplit, LATE_DOWN, ladderRateOn } from '../../src/game/framePacer.js';
+  lateOver, governOn, makeGovernor, useFrameSamples, holdLadder, lateSplit, LATE_DOWN, ladderRateOn, _tabHid } from '../../src/game/framePacer.js';
 import { readdirSync, statSync } from 'node:fs';
 import { AXES, KNOBS, KNOB_NAMES, knobAt, ladderRung, rungDepth, useDevClass, drawLane, _resetLanes, liveKnobs, _liveKnobs, MOVED_KNOBS } from '../../src/game/drawLanes.js';
 import { setClientOff, _resetClientOff, CLIENT_SAVERS } from '../../src/game/clientOff.js';   /* v2.3.5235: the owner's switch */   /* v2.3.5222; v2.3.5224 the live knobs */
@@ -469,12 +479,12 @@ _liveKnobs(KNOB_NAMES);   /* v2.3.5224: §13 to §16, the whole ladder (above) *
   const g2 = makeGovernor({ on: true, store: memStore() });
   g2.veil(0);
   for (let i = 0; i < 4; i++) g2.verdict(0.9, 1000 + i, { axis: 'chip', atFloor: true });   /* the rate rung, then the shine */
-  for (let i = 0; i < 10; i++) g2.verdict(0.9, 2000 + i, { axis: 'chip', atFloor: true });   /* shadows, water, then the pixels: wanted */
+  for (let i = 0; i < 10; i++) g2.verdict(0.9, 2000 + i, { axis: 'chip', atFloor: true });   /* shadows, water, then the pixels (v2.3.5225: their own axis): wanted */
   const waiting = g2.read();
   g2.veil(3000);
   const after = g2.read();
-  check('14b. a pixel step wanted in play waits (the strip says so), and is taken at the next veil', waiting.pending && waiting.pending.dir < 0 && knobAt('full', 'pixels', { work: waiting.work, chip: waiting.chip }) === 1
-    && !after.pending && knobAt('full', 'pixels', { work: after.work, chip: after.chip }) === 0.75, { waiting, after });
+  check('14b. a pixel step wanted in play waits (the strip says so), and is taken at the next veil', waiting.pending && waiting.pending.dir < 0 && waiting.pending.axis === 'pixels' && knobAt('full', 'pixels', waiting) === 1
+    && !after.pending && knobAt('full', 'pixels', after) === 0.75 && after.pixels === 1, { waiting, after });
   _resetLanes();
 }
 /* 15: a full memory */
@@ -508,7 +518,7 @@ _liveKnobs(KNOB_NAMES);   /* v2.3.5224: §13 to §16, the whole ladder (above) *
   holdLadder(false);
   for (let i = 0; i < 2; i++) g.verdict(0.9, 2000 + i, { axis: 'work', atFloor: true });
   check('16c. held by the Speed test: no step while it runs; let go, it steps', held === 0 && rungDepth() === 1, { held, now: ladderRung() });
-  check('16d. the rung is kept by lane (localStorage, here a model of it), with the live knobs it was kept under (v2.3.5224)', JSON.stringify(store.peek()) === JSON.stringify({ full: [1, 0, KNOB_NAMES.join(',')] }), store.peek());
+  check('16d. the rung is kept by lane (localStorage, here a model of it), with the live knobs it was kept under (v2.3.5224)', JSON.stringify(store.peek()) === JSON.stringify({ full: [1, 0, 0, KNOB_NAMES.join(',')] }), store.peek());   /* v2.3.5225: three axes */
   _resetLanes();
   const next = makeGovernor({ on: true, store });
   const before = rungDepth();
@@ -542,7 +552,7 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
   const dl = strip(readFileSync(join(ROOT, 'src/game/drawLanes.js'), 'utf8'));
   const writes = [...dl.matchAll(/\b_rung\s*=(?!=)/g)].length;
   check('17. ...and `_rung` is written in setRung, and reset for the tests (_resetLanes), nowhere else', writes === 3
-    && /export function setRung\([^)]*\) \{[\s\S]*?_rung = w === 0 && c === 0 \? ROW : Object\.freeze/.test(dl) && /export function _resetLanes\(\) \{[^}]*_rung = ROW;/.test(dl), writes);
+    && /export function setRung\([^)]*\) \{[\s\S]*?_rung = w === 0 && c === 0 && p === 0 \? ROW : Object\.freeze/.test(dl) && /export function _resetLanes\(\) \{[^}]*_rung = ROW;/.test(dl), writes);
   const fp = strip(readFileSync(join(ROOT, 'src/game/framePacer.js'), 'utf8'));
   /* v2.3.5235: and the owner's switch's list (clientOff.js), a leaf too */
   const co = strip(readFileSync(join(ROOT, 'src/game/clientOff.js'), 'utf8'));
@@ -642,20 +652,21 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
     const ups = steps.filter((x) => x.dir > 0);
     return { P, G, steps, ups, first: steps.length ? steps[0] : null };
   };
-  for (const kept of [[0, 6], [3, 0], [3, 6]]) {
+  /* v2.3.5225: kept as [work, chip, pixels]; (A) loads none of the pixels */
+  for (const kept of [[0, 4, 2], [3, 0, 0], [3, 4, 2]]) {
     const r = back([...kept, key], 5);
     const lastUp = r.ups.length ? r.ups[r.ups.length - 1].t : null;
     check(`19c. kept [${kept}] after a hot sitting, a cool 60 phone is back at 60 in ONE try (${r.ups.length} step(s) up, at ${lastUp != null ? Math.round(lastUp / 1000) + ' s' : '-'}), not one a rung`,
       r.ups.length === 1 && lastUp != null && lastUp <= 2000 + UP_WAIT_MS + 10000 && r.G.read().depth === 0 && r.G.read().work === 0 && r.G.read().chip === 0 && r.P.read().every === 1 && r.steps.every((x) => x.dir > 0), { steps: r.steps, end: r.G.read() });
   }
   /* a rung kept under another live set (the governor's first version: no set; a knob moved since) is not loaded */
-  for (const kept of [[0, 6], [0, 1, 'rate,crowd']]) {
+  for (const kept of [[0, 6], [0, 1, 'rate,crowd'], [0, 1, key]]) {   /* v2.3.5225: + a rung kept as two axes */
     const r = back(kept, 6);
     check(`19d. a rung kept under another live set ([${kept}]) starts at the row: nothing to try up`, r.steps.length === 0 && r.G.read().depth === 0 && r.P.read().every === 1, { steps: r.steps, end: r.G.read() });
   }
   check('19e. rungDepth counts the rungs that change a live knob (the report\'s `rung`): the crowd\'s two count none while it is not read',
-    rungDepth({ work: 2, chip: 0 }) === ['crowd', 'crowd'].filter((k) => live.has(k)).length
-    && rungDepth({ work: 0, chip: AXES.chip.length }) === AXES.chip.filter((x) => live.has(x.knob)).length);
+    rungDepth({ work: 2, chip: 0, pixels: 0 }) === ['crowd', 'crowd'].filter((k) => live.has(k)).length
+    && rungDepth({ work: 0, chip: AXES.chip.length, pixels: AXES.pixels.length }) === AXES.chip.concat(AXES.pixels).filter((x) => live.has(x.knob)).length);
   /* v2.3.5225, the planning session's (A): a kept rung loads WITHOUT its pixel rungs, the rest kept */
   const loaded = (kept) => {
     _resetLanes();
@@ -666,16 +677,16 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
     const r = { ...ladderRung() };
     return { r, pixels: knobAt('full', 'pixels', r), rate: knobAt('full', 'rate', r), knobs: KNOB_NAMES.map((k) => knobAt('full', k, r)) };
   };
-  const today = loaded([0, AXES.chip.length, liveKnobs().join(',')]);
+  const today = loaded([0, AXES.chip.length, AXES.pixels.length, liveKnobs().join(',')]);
   _liveKnobs(KNOB_NAMES);
-  const whole = loaded([2, AXES.chip.length, KNOB_NAMES.join(',')]);
-  const pxAt = AXES.chip.findIndex((x) => x.knob === 'pixels');
-  const wantWhole = KNOB_NAMES.map((k) => knobAt('full', k, { work: 2, chip: pxAt }));
+  const whole = loaded([2, AXES.chip.length, AXES.pixels.length, KNOB_NAMES.join(',')]);
+  const wantWhole = KNOB_NAMES.map((k) => knobAt('full', k, { work: 2, chip: AXES.chip.length, pixels: 0 }));
   _liveKnobs(null);
-  check(`19g. a kept pixel rung loads WITHOUT it (the planning session's (A)): kept [0,${AXES.chip.length}] loads ${today.r.work}/${today.r.chip}, the pixels ${today.pixels} and the rate kept (${today.rate}); the whole ladder's [2,${AXES.chip.length}] loads ${whole.r.work}/${whole.r.chip}, everything but the pixels kept`,
-    liveKnobs().includes('pixels') && today.pixels === 1 && today.rate === 34
-    && whole.pixels === 1 && whole.r.work === 2 && whole.r.chip === pxAt && whole.knobs.join() === wantWhole.join(), { today, whole });
-  /* the whole ladder: a try up that moves the pixels waits for its veil, and the work axis tries meanwhile */
+  check(`19g. a kept pixel rung loads WITHOUT it (the planning session's (A)): kept [0,${AXES.chip.length},${AXES.pixels.length}] loads ${today.r.work}/${today.r.chip}/${today.r.pixels}, the pixels ${today.pixels} and the rate kept (${today.rate}); the whole ladder's [2,${AXES.chip.length},${AXES.pixels.length}] loads ${whole.r.work}/${whole.r.chip}/${whole.r.pixels}, everything but the pixels kept`,
+    liveKnobs().includes('pixels') && today.pixels === 1 && today.rate === 34 && today.r.pixels === 0
+    && whole.pixels === 1 && whole.r.work === 2 && whole.r.chip === AXES.chip.length && whole.r.pixels === 0 && whole.knobs.join() === wantWhole.join(), { today, whole });
+  /* the whole ladder: a try up that moves the pixels waits for its veil, and every other axis comes back meanwhile, in
+     play (v2.3.5225: the pixels last -- the rate before them) */
   _liveKnobs(KNOB_NAMES);
   _resetLanes();
   const g = makeGovernor({ on: true, store: memStore() });
@@ -689,12 +700,14 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
   bad('chip', 2); g.veil(t += 1000);
   bad('chip', 2); g.veil(t += 1000);
   const at0 = { ...ladderRung() };
-  for (let i = 0; i < 4; i++) g.verdict(0, t + UP_WAIT_MS + 1000 * (i + 1), { axis: 'chip', atFloor: true });
+  /* cool: a clean verdict a second for five minutes, no veil */
+  for (let i = 0; i < 300; i++) g.verdict(0, t += 1000, { axis: 'chip', atFloor: true });
   const mid = g.read();
-  g.veil(t + UP_WAIT_MS + 9000);
+  g.veil(t += 1000);
   const after = g.read();
-  check(`19f. (the whole ladder) a try up that moves the pixels waits for a veil, and meanwhile the work axis tries (from ${at0.work}/${at0.chip}: ${mid.work}/${mid.chip}, waiting ${!!mid.pending}; at the veil ${after.work}/${after.chip})`,
-    at0.work === 2 && at0.chip === AXES.chip.length && mid.pending && mid.pending.dir > 0 && mid.work < 2 && mid.chip === AXES.chip.length && after.chip < AXES.chip.length && !after.pending, { mid, after });
+  check(`19f. (the whole ladder) cooled from ${at0.work}/${at0.chip}/${at0.pixels}: every axis but the pixels' comes back in play (${mid.work}/${mid.chip}/${mid.pixels}, the rate ${knobAt('full', 'rate', mid)}), the pixels' try waits (${!!mid.pending}) and is taken at the veil (${after.work}/${after.chip}/${after.pixels})`,
+    at0.work === 2 && at0.chip === AXES.chip.length && at0.pixels === AXES.pixels.length && mid.work === 0 && mid.chip === 0 && mid.pixels === AXES.pixels.length
+    && knobAt('full', 'rate', mid) === PACE_FLOOR_MS && mid.pending && mid.pending.dir > 0 && mid.pending.axis === 'pixels' && after.pixels === AXES.pixels.length - 1, { at0, mid, after });
   _liveKnobs(null);
   _resetLanes();
 }
@@ -723,7 +736,7 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
   const still = rungDepth();
   check(`20a. switched off, a phone at the rate's rung (${at} below) is back at the lane's row at its next verdict, and takes no step however late the frames (${still} below after 16 bad verdicts)`,
     at === 1 && offNow.work === 0 && offNow.chip === 0 && offNow.off === true && still === 0, { at, offNow, still });
-  check('20b. ...and the row is what it keeps for the next sitting', JSON.stringify(store.peek()) === JSON.stringify({ full: [0, 0, liveKnobs().join(',')] }), store.peek());
+  check('20b. ...and the row is what it keeps for the next sitting', JSON.stringify(store.peek()) === JSON.stringify({ full: [0, 0, 0, liveKnobs().join(',')] }), store.peek());
   setClientOff('');
   bad(g, 'chip', 2);
   check(`20c. switched on again, it steps again (${rungDepth()} below)`, rungDepth() === 1 && g.read().off === false, ladderRung());
@@ -741,14 +754,71 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
   const inPlay = { ...ladderRung() };
   g2.veil(t += 1000);
   const atVeil = { ...ladderRung() };
-  check(`20d. (the whole ladder) switched off on a pixel rung (${deep.work}/${deep.chip}): the work axis back at once (${inPlay.work}/${inPlay.chip}), the pixels and the rest of the chip's at the next veil (${atVeil.work}/${atVeil.chip})`,
-    deep.work === 2 && knobAt('full', 'pixels', deep) < 1 && inPlay.work === 0 && inPlay.chip === deep.chip && atVeil.work === 0 && atVeil.chip === 0, { deep, inPlay, atVeil });
+  check(`20d. (the whole ladder) switched off on a pixel rung (${deep.work}/${deep.chip}/${deep.pixels}): the work's and the chip's axes back at once (${inPlay.work}/${inPlay.chip}/${inPlay.pixels}: the rate too), the pixels at the next veil (${atVeil.work}/${atVeil.chip}/${atVeil.pixels})`,
+    deep.work === 2 && deep.chip === AXES.chip.length && deep.pixels === 1 && knobAt('full', 'pixels', deep) < 1 && inPlay.work === 0 && inPlay.chip === 0 && inPlay.pixels === deep.pixels
+    && atVeil.work === 0 && atVeil.chip === 0 && atVeil.pixels === 0, { deep, inPlay, atVeil });
   /* a whole sitting of a hot 60 phone, switched off from the start: never paced, never a step */
   _liveKnobs(null);
   _resetLanes();
   const { P, steps } = model(B60, { work: 3, chip: 8 }, () => 2.2, 4 * MIN, { veil: (x) => x < 2000, seed: 3 });
   check(`20e. a hot 60 phone with the switch off all sitting: every refresh drawn (${P.read().every}), no step (${steps.length})`, P.read().every === 1 && steps.length === 0, { pace: P.read(), steps });
   _resetClientOff();
+  _resetLanes();
+}
+
+/* 21: THE GATEKEEPER'S SITTING 12 (v2.3.5225), on today's knobs (the rate, the pixels) */
+{
+  _liveKnobs(null);
+  /* a: the gatekeeper's probe -- a 60 phone that cannot keep 30 takes the rate, then the pixels at a veil; cooled, the
+     rate comes back IN PLAY, before the next veil, and the pixels at it (before: the pixels' try up waited for a veil
+     and stopped the rate's, a cooled phone at 30 until its next loading screen) */
+  const heat = (t) => (t < 9 * MIN ? 2 : 0.6);
+  const veils = (t) => t < 2000 || [6, 15].some((m) => t >= m * MIN && t < m * MIN + 2000);
+  const run = (ms) => { _resetLanes(); return model(B60, { work: 3, chip: 20 }, heat, ms, { veil: veils, seed: 21 }); };
+  const before = run(14.5 * MIN);
+  const b = { ...before.G.read(), every: before.P.read().every };
+  const afterRun = run(16 * MIN);
+  const a = afterRun.G.read();
+  const pxDown = before.steps.find((x) => x.dir < 0 && x.knobs.includes('pixels'));
+  const rateUp = before.steps.find((x) => x.dir > 0 && x.knobs.includes('rate') && x.t > 9 * MIN);
+  check(`21a. the gatekeeper's probe: a 60 phone that cannot keep 30 takes the pixels at a veil (${pxDown ? Math.round(pxDown.t / 1000) + ' s' : 'never'}); cooled, the rate comes back in play (${rateUp ? Math.round(rateUp.t / 1000) + ' s' : 'never'}, every refresh at 14.5 min: ${b.every}) before the next veil, its pixels still down (${b.pixels}) and waiting; at the veil, a pixel rung up (${a.pixels})`,
+    !!pxDown && pxDown.veil && !!rateUp && rateUp.t < 15 * MIN && b.every === 1 && b.pixels >= 1 && b.pending && b.pending.dir > 0 && a.pixels < b.pixels, { b, a, steps: before.steps.slice(-6) });
+  /* b: a pixel step wanted before the tab hid is dropped at its return, not taken however long it was away */
+  _resetLanes();
+  const g = makeGovernor({ on: true, store: memStore() });
+  g.veil(0);
+  let t = 0;
+  const bad = (n) => { for (let i = 0; i < n; i++) g.verdict(0.9, t += 1000, { axis: 'chip', atFloor: true }); };
+  bad(2);                 /* the rate */
+  bad(2);                 /* the pixels: wanted */
+  const wanted = g.read().pending;
+  _tabHid();
+  g.veil(t += 600000);    /* back ten minutes later */
+  const dropped = g.read();
+  bad(2);
+  g.veil(t += 1000);      /* a veil with no hide between: taken */
+  const taken = g.read();
+  check(`21b. a pixel step wanted before the tab hid is dropped at the return (${dropped.pixels} pixel rungs, waiting ${!!dropped.pending}); one wanted after it is taken at the next veil (${taken.pixels})`,
+    !!wanted && wanted.dir < 0 && dropped.pixels === 0 && !dropped.pending && taken.pixels === 1, { wanted, dropped, taken });
+  /* c: a phone whose own work is the cost never reaches the pixels (the crowd's rungs are not live yet: it took the rate,
+     then fell to the pixels) */
+  _resetLanes();
+  const wb = model(B60, { work: 22, chip: 3 }, () => 2, 12 * MIN, { veil: (x) => x < 2000 || [2, 4, 6, 8, 10].some((m) => x >= m * MIN && x < m * MIN + 2000), seed: 22 });
+  check(`21c. a phone whose own work is the cost takes the rate (${wb.steps.filter((x) => x.dir < 0).map((x) => x.axis + ' ' + x.knobs.join('+')).join(', ')}) and NEVER the pixels, through five veils`,
+    wb.steps.some((x) => x.dir < 0 && x.knobs.includes('rate')) && !wb.steps.some((x) => x.knobs.includes('pixels')) && wb.G.read().pixels === 0 && !wb.G.read().pending, { steps: wb.steps.slice(0, 8), end: wb.G.read() });
+  /* d: a knob's ladder switch takes its rungs out of the governor's reach */
+  const hadLoc = Object.prototype.hasOwnProperty.call(globalThis, 'location');
+  const was = globalThis.location;
+  const at = (search) => { globalThis.location = { search }; _resetLanes(); return liveKnobs().slice(); };
+  const noPix = at('?ladderpix=0');
+  const px = model(B60, { work: 3, chip: 20 }, (x) => (x < 4 * MIN ? 2 : 0.6), 8 * MIN, { veil: (x) => x < 2000 || [3, 5].some((m) => x >= m * MIN && x < m * MIN + 2000), seed: 23 });
+  const noRate = at('?ladderrate=0');
+  const both = at('?ladderrate=0&ladderpix=0');
+  if (hadLoc) globalThis.location = was; else delete globalThis.location;
+  _resetLanes();
+  check(`21d. \`?ladderpix=0\` and \`?ladderrate=0\` take their knobs off the governor's live set (${noPix.join('+')}; ${noRate.join('+')}; both: ${both.join('+') || 'none'}); with \`?ladderpix=0\` a chip-bound phone takes no pixel rung, and cooled its rate comes back (every ${px.P.read().every})`,
+    !noPix.includes('pixels') && noPix.includes('rate') && !noRate.includes('rate') && noRate.includes('pixels') && both.length === 0
+    && !px.steps.some((x) => x.axis === 'pixels') && !px.G.read().pending && px.G.read().depth === 0 && px.P.read().every === 1, { noPix, noRate, both, steps: px.steps.slice(0, 6), end: px.G.read() });
   _resetLanes();
 }
 

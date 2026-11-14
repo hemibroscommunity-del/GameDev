@@ -72,8 +72,9 @@
  * ═══ v2.3.5225: THE PIXELS ARE A KNOB OF THE LADDER (card O PR 5) ═══
  *
  * The lanes' table (drawLanes.js, docs/LANES.md) has a `pixels` knob: 1 in
- * every lane's row, and the chip axis's last two rungs take it to 0.75, then
- * 0.5.  It is a share of the pixels ACTUALLY DRAWN -- the lowest of the
+ * every lane's row, and the ladder's last two rungs take it to 0.75, then
+ * 0.5 (v2.3.5225, the gatekeeper's sitting 12: an axis of their own, after
+ * the chip's, taken only by a chip-bound phone and tried up last).  It is a share of the pixels ACTUALLY DRAWN -- the lowest of the
  * screen's own, ?res=, the speed test's and the budget above -- so a rung
  * takes a quarter, then half, of them on every device, a phone under its
  * budget included (the planning session's (b), 2026-11-14: a chip-bound phone
@@ -89,7 +90,8 @@
 
 import { VIEW_CAP } from './viewCap.js';   /* v2.3.5140: the reference area of world (no imports: node reads it too) */
 import { phoneScreen } from './deviceProfile.js';   /* v2.3.5140: the budget's class */
-import { laneKnob, onKnob } from './drawLanes.js';   /* v2.3.5225: the pixels' knob (card O) */
+import { laneKnob, onKnob, ladderPixOn as laneHasPix } from './drawLanes.js';   /* v2.3.5225: the pixels' knob (card O) */
+import { beforeDraw } from './framePacer.js';   /* v2.3.5225: a knob's change carried out at the top of a frame */
 
 /* v2.3.5140: game px per picture px (public/tools/style/bible.js
    PIXEL.gamePxPerArtPx; render-res.test holds the two together) */
@@ -183,9 +185,10 @@ function urlRes() {
   return _url;
 }
 
-/* v2.3.5225: the ladder's pixel rungs, on unless ?ladderpix=0 */
+/* v2.3.5225: the ladder's pixel rungs, on unless ?ladderpix=0 (read in
+   drawLanes.js, which also takes them out of the governor's reach) */
 function ladderPixOn() {
-  if (_pixOff === null) _pixOff = /(?:^|[?&])ladderpix=(?:0|off|false)(?:&|$)/.test(search());
+  if (_pixOff === null) _pixOff = !laneHasPix(search());
   return !_pixOff;
 }
 /* v2.3.5225: the share of the pixels drawn the ladder keeps (1, 0.75, 0.5) */
@@ -262,14 +265,21 @@ export function setRenderResLive(r) {
    renderer and resize() follow, as they follow the speed test's ratio */
 readPixels();
 try {
+  /* v2.3.5225 (the gatekeeper's sitting 12): carried out at the TOP of the
+     next frame (framePacer.js beforeDraw), never inside the frame that moved
+     the rung -- BroTown's resize() reads clientWidth and getComputedStyle,
+     and the governor moves a rung in the loop's take() (CLAUDE.md §7: nothing
+     measures the page inside a frame) */
   onKnob('pixels', () => {
-    const was = renderDpr();
-    readPixels();
-    const res = renderDpr();
-    if (Math.abs(res - was) < 1e-9) return;
-    followRenderer(res);
-    markSoft();
-    try { window.dispatchEvent(new Event('resize')); } catch (e) { /* the next resize settles it */ }
+    beforeDraw(() => {
+      const was = renderDpr();
+      readPixels();
+      const res = renderDpr();
+      if (Math.abs(res - was) < 1e-9) return;
+      followRenderer(res);
+      markSoft();
+      try { window.dispatchEvent(new Event('resize')); } catch (e) { /* the next resize settles it */ }
+    });
   });
 } catch (e) { /* the row's pixels, always */ }
 

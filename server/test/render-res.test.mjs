@@ -27,6 +27,9 @@
  *      pixel at any rung.
  *   Break proof (6, tried 2026-11-14): renderDpr's `if (f < 1) r *= Math.sqrt(f);`
  *   taken out -> FAIL 6a, 6b, 6c; the onKnob's `followRenderer(res);` taken out -> FAIL 6c.
+ *   v2.3.5225 (the gatekeeper's sitting 12): the change is carried out at the
+ *   top of the next frame (beforeDraw), never inside the frame that moved the
+ *   rung; the knob's listener running it at once -> FAIL 6c (`early`).
  * Imported with a stand-in window (no Vite): its merge deploys the worker
  * (TRAPS §277), as any new file in server/test/ does.
  */
@@ -237,30 +240,33 @@ let worldViewport;
 /* ── 6. the ladder's pixels (v2.3.5225, card O PR 5) ─────────────────── */
 {
   const { setRung, ladderRung, AXES, knobAt } = await import(srcUrl('game/drawLanes.js'));
-  /* the chip axis's rungs to the first pixel rung, and to the second */
-  const at = (n) => AXES.chip.findIndex((r, i) => r.knob === 'pixels' && r.to === n) + 1;
+  const { runBeforeDraw } = await import(srcUrl('game/framePacer.js'));
+  /* v2.3.5225 (the gatekeeper's sitting 12): the pixels are an axis of their own, and the knob's change is carried
+     out at the top of the next frame (beforeDraw): a rung, then the loop's next frame */
+  const at = (n) => AXES.pixels.findIndex((r) => r.knob === 'pixels' && r.to === n) + 1;
   const P1 = at(1), P2 = at(2);
+  const rung = (p) => { setRung(0, 0, p); runBeforeDraw(); };
   const resizes = [];
   window.dispatchEvent = (e) => { resizes.push(e && e.type); };
   /* a phone under its budget: the screen's own pixels, then a quarter fewer, then half */
   page(3, '', 390, 844, PHONE(390, 844));
-  setRung(0, 0);
+  rung(0);
   const row = px(390, 844);
-  setRung(0, P1);
+  rung(P1);
   const q = px(390, 844);
-  setRung(0, P2);
+  rung(P2);
   const h = px(390, 844);
   check(`6a. a phone under its budget (its own ${Math.round(row)} px): the first pixel rung draws a quarter fewer (${Math.round(q)}), the second half (${Math.round(h)})`,
     knobAt('full', 'pixels', ladderRung()) === 0.5 && Math.abs(q - row * 0.75) < 1 && Math.abs(h - row * 0.5) < 1 && row === 390 * 844 * 9, { row, q, h });
   /* a computer held to its budget: a quarter, then half, of the BUDGET's pixels */
   page(2, '', 2560, 1440);
-  setRung(0, 0);
+  rung(0);
   const brow = px(2560, 1440);
-  setRung(0, P1);
+  rung(P1);
   const bq = px(2560, 1440);
   check(`6b. a computer held to its budget (${Math.round(brow)} px): the first pixel rung, a quarter of those fewer (${Math.round(bq)})`,
     Math.abs(brow - SCREEN) < 1 && Math.abs(bq - SCREEN * 0.75) < 1, { brow, bq });
-  setRung(0, 0);
+  rung(0);
   /* the four callers agree after a rung moves: told as the speed test's ratio is */
   const canvas = { width: 0, height: 0 }, pixi = { width: 0, height: 0 };
   const resize = (w, hh) => { noteCanvasCss(w, hh); const d = renderDpr(); const tw = Math.round(w * d), th = Math.round(hh * d); if (canvas.width === tw && canvas.height === th) return false; canvas.width = tw; canvas.height = th; return true; };
@@ -268,28 +274,30 @@ let worldViewport;
   const bad = [];
   for (const [w, hh, d, dev] of [[390, 806, 3, PHONE(390, 844)], [1920, 920, 1, null], [2560, 1300, 2, null]]) {
     page(d, '', w, hh, dev || undefined);
-    setRung(0, 0);
+    rung(0);
     resize(w, hh); frameResizes();
     resizes.length = 0;
-    setRung(0, P1);                       /* the governor's step, behind a veil */
-    const told = resizes.includes('resize');
+    setRung(0, 0, P1);                    /* the governor's step, behind a veil */
+    const early = resizes.includes('resize');   /* not inside the frame that moved the rung */
+    runBeforeDraw();                          /* the next frame's top */
+    const told = !early && resizes.includes('resize');
     const followed = Math.abs(R.resolution - renderDpr()) < 1e-9;
     resize(w, hh); frameResizes();        /* BroTown's resize(), told; the next frame takes the size */
     const again = frameResizes() || resize(w, hh);
-    if (!told || !followed || again || Math.abs(canvas.width / renderDpr() - w) > 0.5 / renderDpr() + 1e-9) bad.push({ w, hh, d, told, followed, again, res: R.resolution, dpr: renderDpr() });
-    setRung(0, 0);
+    if (early || !told || !followed || again || Math.abs(canvas.width / renderDpr() - w) > 0.5 / renderDpr() + 1e-9) bad.push({ w, hh, d, early, told, followed, again, res: R.resolution, dpr: renderDpr() });
+    rung(0);
     if (Math.abs(R.resolution - d) > 1e-9 && !(w === 2560)) bad.push({ back: R.resolution, d });
   }
-  check('6c. after a pixel rung moves the four still agree: the renderer follows, resize() is told, and the next frame asks for no resize', bad.length === 0, bad);
+  check('6c. after a pixel rung moves the four still agree: at the top of the next frame (never inside the one that moved it: v2.3.5225) the renderer follows, resize() is told, and the frame after asks for no resize', bad.length === 0, bad);
   /* back at the row: as before */
   page(2, '', 2560, 1440);
-  setRung(0, P2); setRung(0, 0);
+  rung(P2); rung(0);
   check('6d. back at the lane\'s row, every pixel the budget allows, as before the ladder', Math.abs(px(2560, 1440) - SCREEN) < 1);
   /* ?ladderpix=0 */
   page(3, '?ladderpix=0', 390, 844, PHONE(390, 844));
-  setRung(0, P2);
+  rung(P2);
   check('6e. `?ladderpix=0`: every pixel at any rung', Math.abs(px(390, 844) - 390 * 844 * 9) < 1);
-  setRung(0, 0);
+  rung(0);
   const rr = readFileSync(join(src, 'game/renderRes.js'), 'utf8');
   check('6f. the pixels are read through the lanes\' one reader (laneKnob(\'pixels\')), told by onKnob', /laneKnob\('pixels'\)/.test(rr) && /onKnob\('pixels', /.test(rr));
 }

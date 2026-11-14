@@ -61,8 +61,13 @@ a loading screen or a tab's return.
 | 2 | `shine` | No shine on metal |
 | 3 | `shadows` | No shadows |
 | 4 | `water` | The sea is still |
-| 5 | `pixels` | A quarter fewer pixels (a little softer) |
-| 6 | `pixels` | Half the pixels (softer) |
+
+### Waiting for the graphics chip
+
+| Rung | Knob | What a player sees |
+|---|---|---|
+| 1 | `pixels` | A quarter fewer pixels (a little softer) |
+| 2 | `pixels` | Half the pixels (softer) |
 
 Every rung of both axes: 9 (the report's `rung` counts the rungs taken at once).
 
