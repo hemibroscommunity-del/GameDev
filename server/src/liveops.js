@@ -46,7 +46,8 @@
  *                         pendingEntries, ts}
  *
  * v2.3.5080: the day's book (`daybook:<yyyymmdd>`, daybook.js) has its kill
- * switch here, `_daybookOff`; the book itself is daybook.js's.        */
+ * switch here, `_daybookOff`; the book itself is daybook.js's.
+ * v2.3.5123: and the field report's, `_reportOff` (report.js).        */
 
 /* v2.3.2438: the daily metric walks the player table one page per tick
    slot (see _metricsMaybe).  A throw waits RETRY_MS before trying again
@@ -147,6 +148,14 @@ export const liveopsMethods = {
   _daybookOff() {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'daybook') && !f.daybook);
+  },
+
+  /* v2.3.5123: the field report's kill switch (report.js), the same way:
+     `report: false` in the live flags un-advertises caps.report, so no phone
+     sends one, and drops any that still comes */
+  _reportOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'report') && !f.report);
   },
 
   // Synchronous by design (hot paths).  v2.3.4376: the cache is loaded

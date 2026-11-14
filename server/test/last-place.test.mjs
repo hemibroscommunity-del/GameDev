@@ -24,7 +24,8 @@
  *   7. `lastplace: false` and `movebudget: false` are all of it as before;
  *   8. the overview's counts;
  *   9. every way a player's state goes says where they were. */
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { srcFiles } from './src-walk.mjs';
 import { GameRoom } from '../src/index.js';
 import { MOVE_BUDGET } from '../src/movement.js';
 import { LAST_PLACE } from '../src/lastplace.js';
@@ -475,7 +476,7 @@ async function walk(r, ws, id, pxs, ms, gap = 33, extra) {
 
 // ── 9. every way a player's state goes says where they were ──
 {
-  const src = readdirSync(new URL('../src/', import.meta.url)).filter((f) => f.endsWith('.js'));
+  const src = srcFiles();   /* v2.3.5060: in depth, a folder's files too (src-walk.mjs) */
   const bad = [];
   for (const f of src) {
     const lines = readFileSync(new URL('../src/' + f, import.meta.url), 'utf8').split('\n');
