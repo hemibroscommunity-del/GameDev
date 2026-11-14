@@ -27,11 +27,17 @@ export const SRC_PATH = fileURLToPath(SRC_DIR);
 export const LEFT_OUT = Object.freeze({
   vendor: 'the vendored secp256k1 signer (chainwriter.js imports it): copied in whole, never edited, not ours',
 });
+/* v2.3.5060 (the gatekeeper's review, sitting 4): what a folder left out
+   holds, file by file, so nothing of ours hides in it.  gold-door §2 holds
+   the folder to it: a new file there is ours until it is named here. */
+export const LEFT_OUT_HOLDS = Object.freeze({
+  vendor: Object.freeze(['noble-secp256k1.LICENSE', 'noble-secp256k1.js']),
+});
 
-/* Every `.js` file under `root` (server/src by default), in depth, as a path
-   from it with `/` between folders, sorted.  A folder named in LEFT_OUT is
-   skipped at the top only: `zz/vendor/` is ours and is read. */
-export function srcFiles(root = SRC_DIR, { ext = /\.js$/ } = {}) {
+/* Every `.js` and `.mjs` file under `root` (server/src by default), in
+   depth, as a path from it with `/` between folders, sorted.  A folder named
+   in LEFT_OUT is skipped at the top only: `zz/vendor/` is ours and is read. */
+export function srcFiles(root = SRC_DIR, { ext = /\.m?js$/ } = {}) {
   const base = root instanceof URL ? root : pathToFileURL(root.endsWith('/') ? root : root + '/');
   const out = [];
   (function walk(rel) {
