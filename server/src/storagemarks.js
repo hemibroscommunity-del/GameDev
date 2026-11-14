@@ -83,6 +83,8 @@ export const STORAGE_MARKS = Object.freeze({
   'party:':           M('none', 'between', 'a party that lasts'),
   'ally:':            M('none', 'between', 'an alliance'),
   'ally_war:':        M('none', 'between', 'an alliance war (its pay is a mint, by the mail)'),
+  /* v2.3.5092: what moved between two players, kept to be read (xfer.js); the value is in the purses */
+  'xfer:':            M('none', 'between', 'the transfer ledger (a record of what moved, not what is held)'),
 
   /* ── the room's own ── */
   'shop_stock':       M('goods', 'room', 'Diego\'s pile: what he bought, sold on to the next'),

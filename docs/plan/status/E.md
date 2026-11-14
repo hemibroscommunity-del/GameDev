@@ -1,6 +1,6 @@
 card: E
-branch: claude/plan-e-10-storm (one branch a PR, each begun from the one before: merge #1752 to #1764 first)
-prs: #1686, #1691, #1694, #1699 (merged); #1752, #1756, #1758, #1759, #1761, #1764 (ready); PR 10 on the branch above (ready)
+branch: claude/plan-e-11-xfer (one branch a PR, each begun from the one before: merge #1752 to #1764 first)
+prs: #1686, #1691, #1694, #1699 (merged); #1752, #1756, #1758, #1759, #1761, #1764 (ready); PRs 10, 11 pushed, opened once main merges in (Needs)
 state: ready
 
 ## Done
@@ -15,20 +15,20 @@ state: ready
 - PRs 8a, 8b (5087, 5088: #1759, #1761), two cases off `KNOWN`.
 - PR 8c (5089, #1764), `arena-stake-settle-loss` fixed by a settlement
   plan written in one run (`arenasettleplan: false` the old order).
-- PR 10 (5091), the storm: the sum (now `worldsum.mjs`) under every
-  disturbance, a deploy before each of 33 messages: unexplained 0, nobody
-  flagged, no reload, no dead worker. Done before PR 9 (its Needs below).
+- PR 10 (5091), the storm: the sum under every disturbance, a deploy
+  before each message: all 0. Done before PR 9 (its Needs below).
+- PR 11 (5092), `xfer:`: a row a trade, in its own run (`trade2.js`,
+  `trade.js`: the planning session's yes); none a kill; 90 days.
 
 ## Next
 
 - PR 9 (5090), a value road failing closed: card A's counter is on main
   (`_savesRefused`); its design waits on the owner (Needs).
-- PR 11 (5092), the transfer ledger `xfer:`.
+- PR 12 (5093), the owner's card in the Test panel.
 
 ## Found
 
-- `inbox.js` / `index.js`: goods mailed to a player in the five dying
-  seconds land in the bag the respawn's wipe empties (read, not reproduced).
+- `inbox.js`: goods mailed in the five dying seconds meet the respawn wipe.
 - `threat.js`: the fine's take and its `bounty:` put are two runs.
 - `gladiator.js`: the prize is paid before its entries are deleted.
 - A new key inside `_econ` (card Q's sitting card) bumps `ECON.V`.
