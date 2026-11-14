@@ -36,8 +36,11 @@
  *     refusal message (the trade window's reason, `trade_reject`,
  *     `bank_state`'s last move, `arena_stake_error`, `jackpot_state`,
  *     `store_offer_error`, `duel_decline`, `item_drop_result`), and goes no
- *     further: what it would have moved stays where it is, an offer or a
- *     challenge stays open to be taken after the minute;
+ *     further: what it would have moved stays where it is.  The trade
+ *     window stays open, so its same Accept settles after the minute; a
+ *     gift's or a duel's card closes on the refusal (the phone's), so that
+ *     one is offered or challenged again -- the server keeps the offer and
+ *     the challenge until they run out (sitting 11, F4);
  *   - the HTTP routes (the arena's /join, the General Store's /place, the
  *     Auction House's /list, /buy and /bid): one line at the top of each,
  *     after its sign-in check, answering in the route's own shape
@@ -47,6 +50,14 @@
  * an older phone shows its own refusal, so neither side ships first.
  * Synchronous on purpose: nothing here awaits, so a bundle's parts still
  * finish in order (TRAPS §182); the vault's answer reads the vault after.
+ *
+ * WHAT STARTS IT, plainly (sitting 11, F3): a refused put of ANY record --
+ * a player's, the book's, a market order's -- pauses EVERY player's value
+ * roads, and each refusal starts the minute again, so a storage that keeps
+ * refusing keeps them paused.  Card A's count does not say which record was
+ * refused; narrowing the pause to the records that hold value is a design
+ * change for the owner (docs/plan/status/E.md, Found).  The way out is
+ * `valuepause: false`.  docs/specs/value-pause.md.
  *
  * THE KILL SWITCH `valuepause: false` in the live flags: nothing pauses
  * (the old way: every action runs whatever the storage says).
@@ -78,6 +89,11 @@ export const VALUE_PAUSE = Object.freeze({
   store_offer: R(['ah_offer'], ROUTER),
   duel_accept: R(['escrow_debit_group'], ROUTER),
   item_drop: R(['item_drop'], ROUTER),
+  /* v2.3.5094 (sitting 11, F2): a spare weapon staged into the trade window's
+     escrow (`trade2wpn:`, trade2.js) -- a held place, on no gold or bag road,
+     so the table's road check could not see it: valuepause.test now also
+     fails a router case that stages into the window and is not here */
+  trade2_stage_weapon: R([], ROUTER),
 });
 
 /** Every other `move` or `escrow` road, and why it never pauses. */
@@ -173,6 +189,14 @@ export const PAUSE_REFUSE = Object.freeze({
     room.eventBuffer.push({ type: 'duel_decline', from: t, payload: { from: t, target: pid, reason: PAUSE.CODE } });
   },
   item_drop: (room, pid, p) => room._dropReply(pid, { ok: false, reason: PAUSE.CODE, key: typeof p.key === 'string' ? p.key.slice(0, 64) : null }),
+  /* as the cap's refusal (trade2.js 'weapons-max'): the window back, with its
+     reason; the stash the phone may have drawn without the blade sent true */
+  trade2_stage_weapon: (room, pid) => {
+    const s = room._t2SessionFor(pid);
+    if (s) room._t2Send(pid, 'trade2_state', Object.assign(room._t2Wire(s), { reason: PAUSE.CODE }));
+    const ws = room._wsBySessionId(pid);
+    if (ws) room._resendPlayerState(ws, pid, ['weaponStash']);
+  },
 });
 
 /** Which of them pause: a relay only when there is something it would settle

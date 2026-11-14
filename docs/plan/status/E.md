@@ -8,8 +8,7 @@ state: ready
 - PRs 1 to 8, 10, 11 (5080 to 5089, 5091, 5092), merged (sittings 5-10).
 - New live flags (rule 3, rows in the switch table): `econ`, `xfer`,
   `arenasettleplan`, `valuepause`, `econresetput`.
-- PR 7 (5086, #1758), the shared test room and `DISTURBANCES`.
-- PRs 8a to 8c (5087 to 5089: #1759, #1761, #1764), `KNOWN` empty; 8c one
+- PRs 7, 8a to 8c (5086 to 5089): the test room; `KNOWN` empty; 8c one
   plan record a match, OFF until the owner says yes (two rows a match).
 - PR 10 (5091, #1772), the storm: the sum under every disturbance, a
   deploy before each message: all 0.
@@ -19,8 +18,8 @@ state: ready
   numbers. Sitting 10: a restart booked and added back (one line in
   `persistence.js`), open sittings' seconds, the count's limit in words.
 - PR 9 (5090, #1786), on #1785: value roads pause after a refused save.
-- 5094 (#1802, sitting 11): a restart books its minted (F2); an
-  empty room's restart written at once, `econresetput` (F1), OFF.
+- 5094 (#1802, sitting 11): a restart books its minted; an empty room's
+  restart written at once (`econresetput`, OFF); weapon staging pauses.
 
 ## Next
 
@@ -29,9 +28,11 @@ state: ready
 ## Found
 
 - `inbox.js`: goods mailed in the five dying seconds meet the respawn wipe.
-- `threat.js`: the fine's take and its `bounty:` put are two runs.
-- `gladiator.js`: the prize is paid before its entries are deleted.
+- `threat.js`: the fine's take and its `bounty:` put are two runs;
+  `gladiator.js`: the prize is paid before its entries are deleted.
 - A new key inside `_econ` (card Q's sitting card) bumps `ECON_V` (gold.js).
+- For the owner (sitting 11, F3): any refused save pauses every player's
+  value roads; narrowing it to value records is a design change.
 
 ## Needs
 
