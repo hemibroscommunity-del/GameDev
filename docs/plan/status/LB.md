@@ -29,4 +29,10 @@ state: ready
 
 ## Needs
 
-- (none yet)
+- Asked of @parent (once, 2026-11-14), before PR 2:
+  1. The owner's yes to the pieces (#1771's picture), as the card asks.
+  2. The second mockup (titled RANKS; Overall, Melee, Bow, Magic; no pages)
+     against the card's reading of the first (LEADERBOARDS; ten pills;
+     pages): which does the window follow? (On screen: the owner's.)
+  3. PW's field names for a row under `caps.power` (power, per style, the
+     five stats' boards).
