@@ -27,7 +27,10 @@
  * A new way to change gold: a row in GOLD_ROADS, one call that names it, and
  * its longhand line in EXPECT below.
  */
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { SRC_DIR, srcFiles, LEFT_OUT } from './src-walk.mjs';
 import { GOLD_ROADS, GOLD_SUMS, goldAfter, goldMethods, goldOneSum, wholeGold, GOLD_LOG, goldLogOf } from '../src/gold.js';
 import { flagNameOk } from '../src/liveops.js';
 import { GameRoom } from '../src/index.js';
@@ -152,11 +155,29 @@ const AMOUNTS = [0, 1, 3, 50, 2500, 0.5, 7.25];
 /* Comments out, line numbers kept (quiet-phone.test's strip). */
 const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
   .replace(/(^|[^:'"`\\])\/\/[^\n]*/g, (m, p1) => p1 + ' '.repeat(m.length - p1.length));
-const dir = new URL('../src/', import.meta.url);
-const files = readdirSync(dir).filter((f) => f.endsWith('.js')).sort();
+const dir = SRC_DIR;
+const files = srcFiles();   /* v2.3.5060: in depth, a folder's files too (src-walk.mjs) */
 const code = Object.create(null);
 for (const f of files) code[f] = strip(readFileSync(new URL(f, dir), 'utf8'));
 const lineOf = (s, i) => s.slice(0, i).split('\n').length;
+
+/* v2.3.5060 (grand plan 4.1, card N): the walker every door reads the worker
+   with.  A file in a folder is read like one at the top (a scratch
+   server/src/zz/x.js that writes `.coins` fails §2 below), and only the top's
+   vendor/ is left out.  Tried on a folder of its own, so it holds whatever
+   server/src holds today. */
+{
+  const tmp = mkdtempSync(join(tmpdir(), 'srcwalk-'));
+  try {
+    for (const d of ['zz', 'zz/deep', 'vendor', 'zz/vendor']) mkdirSync(join(tmp, d));
+    for (const f of ['a.js', 'zz/x.js', 'zz/deep/y.js', 'vendor/v.js', 'zz/vendor/w.js', 'zz/notes.md']) writeFileSync(join(tmp, f), '');
+    const got = srcFiles(tmp);
+    check('2. the walker reads a folder in depth, and leaves out the top\'s vendor/ only (src-walk.mjs)',
+      JSON.stringify(got) === JSON.stringify(['a.js', 'zz/deep/y.js', 'zz/vendor/w.js', 'zz/x.js']), got);
+  } finally { rmSync(tmp, { recursive: true, force: true }); }
+  check('2. ...and server/src: every top file, nothing under a folder LEFT_OUT names',
+    files.includes('gold.js') && files.includes('index.js') && !files.some((f) => Object.keys(LEFT_OUT).some((d) => f.startsWith(d + '/'))), files.filter((f) => f.includes('/')));
+}
 
 /* What writes a `.coins` that is NOT a purse, and why.  Each is matched by
    its file and the text of its write; anything else is a second door. */
