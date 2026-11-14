@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "08e25ea05d554cb092abf979f331c8c5920a27c5",
+  "tree": "1dbdf027e3315cc1be14d7c2eed79b984550225a",
+  "committedAt": "2026-11-13T18:14:12-08:00",
+  "subject": "Merge pull request #1667 from hemibroscommunity-del/claude/plan-c-wire",
+  "files": 7436,
+  "bytes": 945772405,
+  "listingSha256": "efe649fbfc97bad9b20d43a55324208bc1eaa4d11b71e31a1cd501c8fd7cb205",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

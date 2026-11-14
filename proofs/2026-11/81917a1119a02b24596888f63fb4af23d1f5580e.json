@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "81917a1119a02b24596888f63fb4af23d1f5580e",
+  "tree": "e2ffb19494543ee0c1b22a7f3e4b008ffd4142c3",
+  "committedAt": "2026-11-13T18:14:29-08:00",
+  "subject": "Merge pull request #1665 from hemibroscommunity-del/claude/plan-i-traps",
+  "files": 7441,
+  "bytes": 946324248,
+  "listingSha256": "84b2a5dcba297c5713336776a5d4eb20fa8f49f871e8009d3fd4fcc8bff513bf",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
