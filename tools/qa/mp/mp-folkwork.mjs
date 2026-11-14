@@ -150,17 +150,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
                -- his walking body back (or the next trade's figure, alone),
                never both; a picture of each moment (upright: once a trade) */
             if (part.key === 'upright') {
-              let off = null;
+              let off = null, pic = false;
               const end = Date.now() + 90000;
-              while (Date.now() < end && !off) {
+              while (Date.now() < end && !pic) {
                 const q = await T.drawnOf(W.name);
-                if (q && q.live && q.pose && q.pose !== pose) off = q;
-                else await T.P.page.waitForTimeout(250);
+                if (!(q && q.live && q.pose && q.pose !== pose)) { await T.P.page.waitForTimeout(250); continue; }
+                if (!off) off = q;   /* the check: the first moment off it */
+                if (TRADES.includes(q.pose)) { await T.P.page.waitForTimeout(250); continue; }
+                /* the picture: of his walking body, kept only if he is still
+                   in it once taken (a walk between the farmer's stops is a
+                   step or two: a picture after the probe caught the next trade) */
+                await T.shot(W.name, `folkwork-after-${pose}.png`);
+                const q2 = await T.drawnOf(W.name);
+                if (q2 && q2.pose === q.pose && q2.skill && q2.skill.shown === 'figure' && q2.skill.both === false) pic = true;
               }
-              if (off) await T.shot(W.name, `folkwork-after-${pose}.png`);
               const s2 = off && off.skill;
               const next = off && TRADES.includes(off.pose) ? 'skill' : 'figure';
-              rec.ok(`${part.key}: ${W.name} after ${pose} (now ${off && off.pose}): nothing of it left, ${next === 'skill' ? "the next trade's figure alone" : 'his walking body back'}, never both (${s2 ? s2.shown : 'not seen'})`,
+              rec.ok(`${part.key}: ${W.name} after ${pose} (now ${off && off.pose}): nothing of it left, ${next === 'skill' ? "the next trade's figure alone" : 'his walking body back'}, never both (${s2 ? s2.shown : 'not seen'}; its picture ${pic ? 'taken while walking' : 'not caught'})`,
                 !!s2 && s2.shown === next && s2.both === false && (next === 'figure' || s2.pose === off.pose), off);
             }
           }
