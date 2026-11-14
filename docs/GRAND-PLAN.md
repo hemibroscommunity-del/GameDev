@@ -316,6 +316,11 @@ devices it waits for: with one player, the table is empty for weeks.
   **Combat's timing and loading are never on the ladder.** Done when a node
   model of a heating and cooling phone settles and comes back at 30, 60 and
   120, with no see-saw.
+  *Begun (card O): #1792 (the governor and its rung), #1794 (the rate),
+  #1800 (the pixels, at a veil) and #1814 (`govern`, a row of the Test
+  panel's list), merged at sitting 13. The box waits for the crowd's, the
+  passes' and the memory's rungs (O's PRs 6, 8 to 11) (the gatekeeper,
+  sitting 14, tag 5371).*
 - [ ] **2.4 [NEXT] Off-ramps become overrides of the ladder**, through one
   reader (pillar 7's table).
 - [ ] **2.5 [NEXT] The 30 lane** (an iPhone in Low Power Mode): named by the
@@ -377,6 +382,11 @@ play, a number 1.1 can measure.
   *Step 1 merged: #1667 (card C's census), #1684, #1695 and #1697 (card N:
   the walker, the table `server/src/wire/`, its guard). Step 2 is card K's;
   the box waits for it (the gatekeeper, sitting 7, v2.3.5363).*
+  *Step 2 begun (card K): #1822 (`PRIVILEGED_EVENTS`, `RELAY.TYPES` and
+  the echo list made from the table) and #1820 (the hostile-values suite,
+  19 failing, its line), merged at sitting 13. The box waits for the
+  table's own lists (K's PR 2) and the door's checks (PR 4) (the
+  gatekeeper, sitting 14, tag 5371).*
 - [ ] **4.1b [NEXT] The send door**: one `_send` (132 places write to a
   socket today), counting bytes by type.
 - [ ] **4.2 [NEXT] Claims, bounded.** "No claims" can be met by calling a
@@ -479,6 +489,9 @@ nothing known, and a restore copies nothing.
   too) and #1809 (the trade door: `s.state` through `_t2To`, `tradedoor`
   its switch), merged at sitting 12: 6 `door`, 30 `todo` (the gatekeeper,
   sitting 13, v2.3.5370).*
+  *Card O's #1792 (the ladder's rung, a new row born `door`), merged at
+  sitting 13: 37 rows, 7 `door`, 30 `todo`; the line lowered 31 -> 30,
+  the count since #1809 (the gatekeeper, sitting 14, tag 5371).*
 - [ ] **5.4 [LATER] The frame as named steps.** PR 1 moves nothing: the six
   calls the loop already makes, plus one `legacy` step, become the list;
   each counts its errors to the crash ring (a throw in the frame reaches
@@ -675,6 +688,10 @@ punishes by itself.
   pace, its ledger. All zero today (a trade moves 999,999 gold with no fee,
   and the daily spin pays a new character about 464 gold). A guard fails a
   road with no row. Turning any of them up is the owner's call.
+  *Begun (card R): #1819, the table (`server/src/playerroads.js`, every
+  fee, hold and pace 0) and its guard, merged at sitting 13. The box waits
+  for the escrow roads' ledger (R's PR 11) and for an `xfer` row to name
+  its writer (review-z13's low) (the gatekeeper, sitting 14, tag 5371).*
 - [ ] **10.6 [NEXT] What an honest player's trouble looks like.** Each
   signal lists what changes it without any cheating: the frame rate, the
   line's delay, a deploy, a hidden tab. Every Low Power iPhone shares one
