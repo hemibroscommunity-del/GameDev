@@ -15,7 +15,7 @@ state: ready
 
 ## Next
 
-- PR 3 (v2.3.5042), `gear-sheet` (195 ms): the stations that measure it,
+- PR 3 (tag 5042), `gear-sheet` (195 ms): the stations that measure it,
   three runs.
 
 ## Found
