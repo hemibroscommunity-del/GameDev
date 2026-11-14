@@ -120,3 +120,28 @@ Each of these is someone else's to move, so this PR only lists them:
 `crashTrap.js` (`MAX_TEXTURE_SIZE`), `bodyBake.js` (`hardwareConcurrency`),
 `perfHud.js` (the chip's name, on the strip). Card O's lanes read the class
 instead (step 2.1).
+
+**Moved (v2.3.5227, card O PR 7).** The four the card names ask the
+profile now, and each gets the answer it got by asking itself
+(`device-profile.test` §3b):
+
+| File | Its question | The profile's |
+|---|---|---|
+| `paletteTex.js` | the chip's name (one program or three) | `rendererName(renderer)` |
+| `peerImpostor.js` | the largest picture side (`MAX_TEXTURE_SIZE`) | `maxTextureSize(renderer)` |
+| `bodyBake.js` | the processor's threads (the bake pool) | `cores()` |
+| `crashTrap.js` | the user agent and the largest side (a crash report) | `userAgent()`, `maxTextureSize(renderer)` |
+
+`chipName` is the one copy of "Firefox gives RENDERER, Chrome and Safari
+the debug extension"; the class's `soft` reads it too. `paletteTex.js`
+keeps `SOFTWARE_GL` (§7 holds the class's list to it).
+
+§3 now also fails a chip or browser question outside the profile: the
+largest side through `getParameter`, `.hardwareConcurrency`, `.userAgent`,
+the chip's name (`RENDERER`, the unmasked one). Four files still ask one,
+a census that only falls (`STILL_ASKS`, the line 4), each with its reason:
+`networking/index.js` (the identity's fingerprint parts: who, not what it
+can draw), `perfHud.js` (the strip's chip name, `?perf=1`),
+`DebugOverlay.jsx` (the "UA" cell), and `lookPalette.js` (the look's
+choice: card O's PR 8 moves it into the lanes' table). A file on the list
+that no longer asks fails too, so the list shrinks with the code.

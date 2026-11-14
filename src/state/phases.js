@@ -151,19 +151,17 @@ export const PHASES = [
     note: 'The record\'s status is the natural one field (_duelFor reads `active`); the leave starts a 15 s away clock, not an end.',
   },
   {
-    name: 'trade', side: 'worker', status: 'todo',
-    what: 'A trade window: invited, open (offer, review, confirmed), done or cancelled.',
-    field: null, states: ['invited', 'open', 'done', 'cancelled'], fn: null, file: null,
+    name: 'trade', side: 'worker', status: 'door',
+    what: 'A trade session: open (offer, review, confirmed), then done or cancelled; an invite is not yet a session but a key of _t2Invites with its own TTL.',
+    field: 's.state', states: ['open', 'done', 'cancelled'],
+    fn: '_t2To', file: 'server/src/trade2.js',
     clears: [
       { edge: 'end', at: 'server/src/trade2.js _t2Cancel' },
       { edge: 'leave', at: 'server/src/trade2.js _trade2OnDisconnect' },
     ],
     rejoin: ['trade', 'trade-invite'],
-    today: [
-      { field: 'this._t2Invites', file: 'server/src/trade2.js', writers: ['server/src/trade2.js _handleTrade2Open', 'server/src/trade2.js _t2ClearInvites', 'server/src/trade2.js _tickTrades2'] },
-      { field: 'this._trades2', file: 'server/src/trade2.js', writers: ['server/src/trade2.js _handleTrade2Open', 'server/src/trade2.js _t2Cancel', 'server/src/trade2.js _handleTrade2Confirm'] },
-    ],
-    note: 'A death does not cancel the window (fightlock.js); the takeover way skips the leave\'s cancel on purpose (TRAPS §162).',
+    held: { suite: 'server/test/trade-door.test.mjs' },
+    note: 'v2.3.5210: the door (TRADE_WAYS cancel, swap; both ends final; live flag tradedoor). A death does not cancel the window (fightlock.js); the takeover way skips the leave\'s cancel on purpose (TRAPS §162).',
   },
   {
     name: 'party', side: 'worker', status: 'todo',
