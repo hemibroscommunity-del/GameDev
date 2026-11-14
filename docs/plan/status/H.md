@@ -13,7 +13,7 @@ state: ready
 
 ## Next
 
-- PR 2 (v2.3.5041), whose row: `whose` on every row of `KNOWN`.
+- PR 2 (tag 5041), whose row: `whose` on every row of `KNOWN`.
 
 ## Found
 
