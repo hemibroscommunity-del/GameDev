@@ -242,3 +242,10 @@ Three runs of `QA_MB_ROWS=1 node tools/qa/mp/run.mjs membudget`, each 11 of
   full (`rowsFull` 0); the monsters' bundle there, `fireGoblin`.
 - **151 families hold nothing at the fight**: another land's, a window's, a
   computer's, or nothing's (`none`: 545 files).
+
+**And without the opt-in**, one run of `node tools/qa/mp/run.mjs membudget`
+read no rows at any stop and stayed within every line of
+`tools/qa/mp/memory-budget.mjs` (11 of 11): `artCache` 48.7 of 112, `gpu`
+72.1 of 115, `canvases` 15.4 of 56, `sound` 18.1 of 22, `heap` 36.4 of
+38.5, `buffers` 21.4 of 22, `workers` 19.4 of 36. No line changes in this
+PR.
