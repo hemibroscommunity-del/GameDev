@@ -1,6 +1,6 @@
 card: E
-branch: claude/plan-e-8-known-settle (one branch a PR, each begun from the one before: merge #1758 to #1761 first)
-prs: #1686, #1691, #1694, #1699, #1752, #1756 (merged); #1758, #1759, #1761 (ready); #1764 (ready, this branch)
+branch: claude/plan-e-10-storm (one branch a PR, each begun from the one before: merge #1758 to #1764 first)
+prs: #1686, #1691, #1694, #1699, #1752, #1756 (merged); #1758, #1759, #1761, #1764 (ready); PR 10 on the branch above (ready)
 state: ready
 
 ## Done
@@ -12,17 +12,19 @@ state: ready
   PR 8c `arenasettleplan`, PR 11 `xfer`.
 - PR 7 (5086, #1758), the shared test room and `DISTURBANCES`;
   `chaos-restart` moved onto it, its output the same.
-- PR 8a (5087, #1759), `trade-weapon-half` off `KNOWN` (v2.3.4795).
-- PR 8b (5088, #1761), `arena-stake-place` off `KNOWN` (v2.3.4796).
-- PR 8c (5089), `arena-stake-settle-loss` fixed: ONE plan record a
+- PRs 8a, 8b (5087, 5088: #1759, #1761), two cases off `KNOWN`.
+- PR 8c (5089, #1764), `arena-stake-settle-loss` fixed: ONE plan record a
   match, the prune waits while one is open, a kept plan pays nothing
-  (sittings 9, 10). Two rows a match (put, delete): OFF until the owner
-  says yes (`arenasettleplan: true`). `KNOWN` empty (case 6 runs it on).
+  (sittings 9, 10). Two rows a match: OFF until the owner says yes.
+- PR 10 (5091), the storm: the sum (now `worldsum.mjs`) under every
+  disturbance, a deploy before each of 33 messages: unexplained 0, nobody
+  flagged, no reload, no dead worker. Done before PR 9 (its Needs below).
 
 ## Next
 
-- PR 9 (5090), a refused save counted and a value road failing closed:
-  waits on card A's "saves refused" (`roomrow.js`); if not on main, PR 10.
+- PR 9 (5090), a value road failing closed: card A's counter is on main
+  (`_savesRefused`); its design waits on the owner (Needs).
+- PR 11 (5092), the transfer ledger `xfer:`.
 
 ## Found
 
@@ -30,9 +32,9 @@ state: ready
   seconds land in the bag the respawn's wipe empties (read, not reproduced).
 - `threat.js`: the fine's take and its `bounty:` put are two runs.
 - `gladiator.js`: the prize is paid before its entries are deleted.
-- `deathpilesave: false` keeps piles in memory only (rule 4's two configs).
-- A new key inside `_econ` (card Q's sitting card) bumps `ECON.V`.
+- A new key inside `_econ` (card Q's sitting card) bumps `ECON_V` (gold.js).
 
 ## Needs
 
-- Nothing.
+- The owner (asked 2026-11-14, through the planning session): PR 9's
+  which actions refuse, how long, what the phone says.
