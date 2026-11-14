@@ -32,8 +32,7 @@ state: ready
   `systems.mjs`; `phases.js` (`ladder`); `DOOR_SUITES` (frame-pacer).
 - No one field says a window covers the world: pixels move at a veil only.
 - Card L: `ladder`'s `reset` is "kept: the device's"; M's BUDGETS #5, #7 kept.
-- A 60 screen whose every frame costs 33 ms reads as 30 (`refreshOf` reads
-  every call, drawn or passed: the rate's rung alone never does it).
+- A 60 screen whose frames all cost 33 ms reads as 30 (`refreshOf`).
 
 ## Needs
 
