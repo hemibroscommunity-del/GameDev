@@ -399,6 +399,19 @@ export async function bookPrunePage(room, now) {
   }
 }
 
+/** One day as it stands: the stored record plus the sums waiting, read
+ *  after any put already running (so a sum being written is counted once,
+ *  never neither).  v2.3.5093: the daily economy snapshot reads today's
+ *  restarts with it (liveops.js, econcard.js econResetBook). */
+export async function bookSoFar(room, day) {
+  const b = mem(room);
+  while (b.putting) await b.putting.catch(() => {});
+  const r = bookNormalize(await room.state.storage.get(bookKey(day)), day);
+  const d = b.days.get(day);
+  if (d && !r.newer) mergeDay(r, r.over, d);   /* reads `d`, never changes it */
+  return r;
+}
+
 /** THE READ: the newest `n` days (1 to KEEP_DAYS, 7 when not said), each the
  *  stored record plus the sums counted and not yet written.  Newest first. */
 export async function bookRead(room, n) {
