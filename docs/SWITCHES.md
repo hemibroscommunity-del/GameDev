@@ -301,6 +301,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `groundkeep` | both | switch | v2.3.3775 | off_groundkeep: true; ?groundkeep=0, off, false | chip |  | no | The world's ground is rebuilt on a return, not kept, as before. |
 | `?npcheads` | page | switch | v2.3.5246 | =0 | memory |  | no | The townsfolk's head pictures keep their decoded copies, as before. |
 | `?p256` | page | switch | v2.3.3728 | =1 every twin on; =0 every twin off (v2.3.5249) | memory |  | no | With =0 every effect and icon is drawn from its full-colour picture; =1 turns on the twins not yet on by default. |
+| `?worldicons` | page | switch | v2.3.5250 | =0 | memory |  | no | The icons drawn in the world (the ore, the shards, the heart and sword popups; the trap's box has no twin) are drawn from their full-colour pictures, as before. |
 
 ## server-core
 

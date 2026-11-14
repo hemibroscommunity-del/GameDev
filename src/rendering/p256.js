@@ -55,9 +55,20 @@ const ALL_TWINS = /[?&]p256(=1)?(&|$)/.test(_q);
 const NO_TWINS = /[?&]p256=0(&|$)/.test(_q);
 const FX_MADE = /^\/sprites\/(?:fx\/(?:fire-trail-v1\.png|portal-beam\.webp|smith-anvil\.webp|snow-footprints\.webp)|effects\/(?:arrow-blast-v1\.webp|jet-stream-v1\.png))$/;
 const FX_MADE_ON = !NO_TWINS && !/[?&]fxmade=0(&|$)/.test(_q);
+/* v2.3.5250, the next family: `icons-items-world`, the icons drawn in the
+   world -- the ore that pops from a rock, the trap's box, the nine shards,
+   the heart and sword popups (1.6 MB held as pictures in the page at the
+   fight).  Their twins: tools/art/reduce256.mjs, by name.  `?worldicons=0`
+   keeps them pictures.  (The arrow, dice, spell and xp popups have no twin:
+   their widths need padding.)  Not the trap's box (the gatekeeper's sitting
+   9): a missed trap breaks it into pieces (trapFx.js _missBreak, wheelShatter
+   cutPicture), a read of its pixels long after the pack has emptied its
+   page copy -- it drew planks in their place. */
+const WORLD_ICONS = /^\/icons\/(?:items\/(?:ore-iron|ore-black-steel|ore-obsidian)|shards\/shard_[a-z]+|popups\/(?:heart-256|sword))\.webp$/;
+const WORLD_ICONS_ON = !NO_TWINS && !/[?&]worldicons=0(&|$)/.test(_q);
 /** whether the picture at `path` (no host, no query) is read from its twin here */
-function wantedPath(path) { return !NO_TWINS && (ALL_TWINS || (FX_MADE_ON && FX_MADE.test(path))); }
-const WANTED = !NO_TWINS && (ALL_TWINS || FX_MADE_ON);
+function wantedPath(path) { return !NO_TWINS && (ALL_TWINS || (FX_MADE_ON && FX_MADE.test(path)) || (WORLD_ICONS_ON && WORLD_ICONS.test(path))); }
+const WANTED = !NO_TWINS && (ALL_TWINS || FX_MADE_ON || WORLD_ICONS_ON);
 /* (never while QA compares cropped strips against their files: __btTrimVerify) */
 export function p256On() { return WANTED && picNumbersOn(); }
 
@@ -314,6 +325,6 @@ export function startP256Pack(renderer, canvas) {
 }
 
 if (typeof window !== 'undefined') {
-  window.__btP256 = () => ({ wanted: WANTED, on: p256On(), all: ALL_TWINS, fxMade: FX_MADE_ON, twins: Object.keys(P256_FILES).length, ..._stats,
+  window.__btP256 = () => ({ wanted: WANTED, on: p256On(), all: ALL_TWINS, fxMade: FX_MADE_ON, worldIcons: WORLD_ICONS_ON, twins: Object.keys(P256_FILES).length, ..._stats,
     pack: { ..._pk, packedNow: _packed.size, waiting: _toPack.size } });
 }
