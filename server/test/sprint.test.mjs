@@ -451,6 +451,48 @@ async function run(n, step, gapMs, extra) {
   const b2 = ps.stamina;
   await run(30, 5, 33);                     /* 150 px a second: no sprint needed */
   check('9: on, the walk after letting go is never billed', ps.stamina === b2, { b2, after: ps.stamina });
+  /* v2.3.5541 (the claims' bench: the move liar took as much ground with the
+     mark on as off, its stamina run out every 3 s): THE SPRINT'S BOUND ONLY
+     FOR WHAT IS BILLED (movement.js).  At zero, inside the grace, a move
+     past the walk's own budget is judged at the walk -- off, the grace gives
+     it the sprint's bound free */
+  const atZero = async () => {
+    let n = 0;
+    while (ps.stamina > 0 && n++ < 30) { wait(100); await move(ps.x + 60, ps.y, n % 2 ? { sp: 1 } : undefined); }
+    ps._mvBudget = 0; ps._mvBudgetAt = T; ps._mvFollow = undefined;
+    const z0 = ps.x;
+    wait(100); await move(ps.x + 60, ps.y, { sp: 1 });
+    return { px: ps.x - z0, grace: T - ps._sprintAt < SPRINT.GRACE_MS, st: ps.stamina };
+  };
+  await fresh(6); on();
+  const zOn = await atZero();
+  await fresh(6); ps.stamina = 0; ps._sprintAt = T;
+  const zOff = await atZero();
+  check(`9: on, at zero inside the grace a move past the walk's budget is judged at the walk (${zOn.px} px of 60)`,
+    zOn.grace && zOn.st === 0 && Math.abs(zOn.px - 50) < 1e-6, zOn);
+  check(`9: off, ...the grace gives it the sprint's bound (${zOff.px} px of 60: the hole, as today)`, zOff.grace && zOff.px === 60, zOff);
+  /* a liar marking only the steps the walk cannot cover, the move between
+     each at the walk (so each marked one is a run's first, which bills
+     nothing): billed for those steps' own gaps with the mark, free without */
+  const fastSlow = async () => { for (let i = 0; i < 20; i++) { wait(100); await move(ps.x + (i % 2 ? 60 : 49), ps.y, i % 2 ? { sp: 1 } : undefined); } return 100 - ps.stamina; };
+  await fresh(100); on();
+  const fsOn = await fastSlow();
+  await fresh(100);
+  const fsOff = await fastSlow();
+  check(`9: on, a sprint step the walk cannot cover is billed its own gap though its run is new (${fsOn} spent)`, fsOn >= 5, { fsOn });
+  check(`9: off, ...each such step ran free (${fsOff} spent: the hole, as today)`, fsOff === 0, { fsOff });
+  /* honest: a sprint marked on every move, the rest packet, a walk, a sprint
+     again -- billed and placed exactly as with the mark off */
+  const honest = async () => {
+    await run(20, 20, 100, { sp: 1 }); wait(40); await move(ps.x + 2, ps.y);
+    await run(10, 15, 100); await run(10, 20, 100, { sp: 1 });
+    return { st: ps.stamina, x: ps.x };
+  };
+  await fresh(100);
+  const hOff = await honest();
+  await fresh(100); on();
+  const hOn = await honest();
+  check(`9: on, an honest sprint is billed and placed exactly as with it off (${100 - hOn.st} spent, at ${hOn.x})`, hOn.st === hOff.st && hOn.x === hOff.x && hOn.st < 100, { hOn, hOff });
 }
 
 Date.now = realNow;

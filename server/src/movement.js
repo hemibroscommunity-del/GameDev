@@ -609,6 +609,7 @@ export const movementMethods = {
     }
     const _sprintK = typeof this._sprintK === 'function' ? this._sprintK(ps, msg, _now) : 1;
     let _needSprint = false;   /* v2.3.5541: the move needed the sprint's wide bound (set where it is judged; sprint.js _sprintPay) */
+    let _k = _sprintK;         /* v2.3.5541: the multiplier the move is judged at: with the sprint mark, MULT only for a move it bills (below) */
     /* v2.3.3325: where this move is judged from -- the worker's own place in
        this zone, or, coming back into the Wheel, where the player left it
        (MOVE_BUDGET above, "THE BYPASSES") -- and where it puts them */
@@ -673,6 +674,34 @@ export const movementMethods = {
         _w.b = Math.min(_wcap, _w.b + _wr * Math.max(0, (_now - _w.at) / 1000)); _w.at = _now;
         _needSprint = _sprintK > 1 && _d > _w.b + _gust;
         _w.b = Math.max(0, _w.b - _d);
+        /* v2.3.5541 (the claims' bench: the move liar took 156,205 px in 4
+           minutes with the mark on, exactly what it took with it off, though
+           billed for 197 s of it): ...AND THE SPRINT'S BOUND ONLY FOR WHAT IS
+           BILLED.  The bill alone never slowed it.  Its stamina ran out every
+           3 s, but the grace's wide bound held on for 1.5 s after the last
+           paid step, the regen put MIN_START back before the grace ran out,
+           and the few moves at the walk were paid for by the budget below,
+           which had refilled at the sprint's rate all through the grace.  So
+           with the mark the budget refills at the sprint's rate only over a
+           gap the worker bills (sprint.js _sprintBilled): a sprint step in a
+           run under way, or a carried move.  A run's first step, a move on
+           the grace's bound that is not carried, one with no stamina to pay:
+           all are judged at the walk.  An honest phone's budget is never the
+           worse for it: it walks under the walk's rate and sprints under the
+           sprint's, both refilling, so its budget sits full.
+           A run's first step bills nothing (standing still is never billed)
+           and is judged at the walk -- unless the walk's own bound cannot
+           cover it: then it is billed its own gap, since the move before, as
+           if its run were under way (a liar marking only the steps the walk
+           cannot cover, each one a run's first, paid for none). */
+        if (ps._sprintStep === true && !ps._sprintPrevPaid && typeof ps.lastMoveAt === 'number'
+          && _d > (_budgetOn ? this._moveBudgetNow(ps, _wr, _now) : _wr * dt + MOVE_BUDGET.SLACK_PX) + _gust) {
+          ps._sprintPrevPaid = 'first'; ps._sprintBilledAt = ps.lastMoveAt;
+        }
+        if (!this._sprintBilled(ps, _needSprint)) {
+          _k = 1;
+          _needSprint = false;   /* not carried: the run ends (sprint.js _sprintPay) */
+        }
       }
       if (_budgetOn) {
         /* v2.3.3325: the budget (MOVE_BUDGET above), refilled since the last
@@ -680,7 +709,7 @@ export const movementMethods = {
            past it, the move is taken as far as it reaches, toward where the
            phone says it is, and the worker's copy catches up on the moves
            after */
-        const rate = MOVE_BUDGET.SPEED_PX * _spdCap * _moveMult * _sprintK;
+        const rate = MOVE_BUDGET.SPEED_PX * _spdCap * _moveMult * _k;
         const budget = this._moveBudgetNow(ps, rate, _now);
         const dist = Math.sqrt(dx * dx + dy * dy);
         const reach = budget + _gust;
@@ -704,7 +733,7 @@ export const movementMethods = {
         }
         ps._mvBudgetAt = _now;
       } else {
-        const maxDist = 500 * _spdCap * _moveMult * _sprintK * dt + 80 + _gust;
+        const maxDist = 500 * _spdCap * _moveMult * _k * dt + 80 + _gust;
         if (dx * dx + dy * dy > maxDist * maxDist) {
           // Reject: do not update ps.x/y.  Still update lastMoveAt
           // so spam-bursts don't compound dt.  dropped silently --
@@ -885,7 +914,7 @@ export const movementMethods = {
       this.dirtyPlayers.add(session.id);
       /* v2.3.3732: and moved on along its speed until the next move, if its
          phone asks (movepath.js) */
-      this._movePathNote(session.id, ps, msg, _now, _sprintK);
+      this._movePathNote(session.id, ps, msg, _now, _k);   /* v2.3.5541: _k, so a move judged at the walk glides at it */
     }
 
     // Zone change handling.

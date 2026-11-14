@@ -39,7 +39,11 @@
  * off for now): a move on the grace's wide bound below that NEEDED it (more
  * than the walk's own budget held: movement.js) is billed as it moves and
  * keeps the run, so marking only some moves buys no free sprint; a move
- * that did not need it ends the run as described here (_sprintPay).
+ * that did not need it ends the run as described here (_sprintPay).  And
+ * the sprint's bound is given only to a move this worker bills
+ * (_sprintBilled): the rest, a run's first step among them unless the walk
+ * cannot cover it, are judged at the walk (movement.js), so the grace's
+ * wide bound at zero, and the budget it refilled, buy nothing unpaid.
  * At zero the sprint is over: the next marked move is an ordinary one.  The
  * client stops on its own bar (its prediction, then this worker's
  * player_state), and for GRACE_MS after the last paid step the bound stays
@@ -119,7 +123,7 @@ export const sprintMethods = {
     /* Was the move before this one a paid sprint step?  Asked of EVERY move,
        so any other move in between -- a rest packet, a keepalive, a walk, a
        refused move -- ends the run and the gap before it is not billed. */
-    ps._sprintPrevPaid = ps._sprintLastPaid || false;   /* v2.3.5541: true, or 'carry' (a grace move kept the run) */
+    ps._sprintPrevPaid = ps._sprintLastPaid || false;   /* v2.3.5541: true, or 'carry' (a grace move kept the run); movement.js sets 'first' */
     ps._sprintLastPaid = false;
     /* what happened to the moves, for the admin view (QA: mp-sprint) */
     const d = ps._sprintTally || (ps._sprintTally = { moves: 0, marked: 0, steps: 0, paid: 0, still: 0, ms: 0 });
@@ -147,6 +151,20 @@ export const sprintMethods = {
   _sprintMarkOn() {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && own(f, 'sprintmark') && f.sprintmark === true);
+  },
+
+  /* v2.3.5541: with the sprint mark, is this move one the worker bills, and
+     so judged at the sprint's bound (movement.js)?  A sprint step in a run
+     under way (the move before it billed or carried), or a grace move that
+     needed the wide bound, in a run under way, with stamina to take (a
+     carry).  A run's first step bills nothing (standing still is never
+     billed), so it is judged at the walk -- the budget's burst covers an
+     honest one -- unless the walk cannot cover it (movement.js: then its
+     run is 'first', and it is billed its own gap). */
+  _sprintBilled(ps, needed) {
+    if (!ps || !ps._sprintStep || !ps._sprintPrevPaid) return false;
+    if (ps._sprintStep === true) return true;
+    return !!needed && typeof ps.stamina === 'number' && ps.stamina > 0;
   },
 
   /* The move was accepted and moved the player `dist` px: pay for the step.
@@ -220,8 +238,14 @@ export const sprintMethods = {
     return !!(ps && ps._sprintAt && now - ps._sprintAt < SPRINT.WIRE_MS);
   },
 
-  /* Is the regen held off for a sprint (index.js _tickPlayerRegen)? */
+  /* Is the regen held off for a sprint (index.js _tickPlayerRegen)?
+     v2.3.5541: ...or within it of a carried move's bill (the sprint mark:
+     _sprintBilledAt is the last billed move's, a carry's too; without the
+     mark only a paid step bills, so it is _sprintAt's).  A run carried
+     between sparse marks refilled as it was billed: a mark every 1.4 s left
+     0.4 s of each unheld (the claims' bench at the worker's 22 ms tick). */
   _sprintHoldsRegen(ps, now) {
-    return !!(ps && ps._sprintAt && now - ps._sprintAt < SPRINT.REGEN_PAUSE_MS);
+    return !!(ps && ((ps._sprintAt && now - ps._sprintAt < SPRINT.REGEN_PAUSE_MS)
+      || (ps._sprintBilledAt && now - ps._sprintBilledAt < SPRINT.REGEN_PAUSE_MS)));
   },
 };

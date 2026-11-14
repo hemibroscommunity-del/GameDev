@@ -324,7 +324,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `safeheal` | worker | switch | v2.3.3569 | 2026-10-22 | false | logic |  | no | The safe ground's heal is the wilds' trickle again. |
 | `serverdead` | worker | switch | v2.3.4373 | 2026-11-10 | false | logic |  | no | A phone's move may write `dead` again (the move's write back). |
 | `sprint` | worker | switch | v2.3.3003 | 2026-10-03 | false | logic |  | no | No sprint step is allowed. |
-| `sprintmark` | worker | switch | v2.3.5541 | off | true | logic |  | no | An opt-in, off (the owner: off for now): thrown (`sprintmark: true`), a move between two sprint-marked ones keeps the run, so a sprint marked on every other move pays its stamina. |
+| `sprintmark` | worker | switch | v2.3.5541 | off | true | logic |  | no | An opt-in, off (the owner: off for now): thrown (`sprintmark: true`), a move between two sprint-marked ones keeps the run, so a sprint marked on every other move pays its stamina, and only a move the sprint bills is judged at its bound (the rest at the walk). |
 | `steadymovers` | worker | switch | v2.3.3203 | 2026-10-13 | false | logic |  | no | Every move goes out again, from the next tick. |
 | `?tapms` | page | lever | v2.3.3105 |  | a number of ms | none |  | no | A test's own longest tap that still counts as free. |
 
