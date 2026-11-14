@@ -149,7 +149,7 @@ and turns "a bug" into "nobody can log in". The way out is the live switch
 1. *(docs, tiny)* a "Rolling back" section in `docs/OPERATIONS.md`: right
    after a dashboard rollback, set `newersave` to false (a curl: the Test
    panel cannot set a switch); hold server merges; once the fix is
-   deployed, clear it (the Test panel can). **Done: #1872 (v2.3.5588).**
+   deployed, clear it (the Test panel can). **Done: #1872 (tag 5588).**
 2. *(server, small)* count the newer-save refusals in the day's book and on
    the deep health route (F3), so a rollback that locks people out shows.
 
@@ -175,7 +175,7 @@ and turns "a bug" into "nobody can log in". The way out is the live switch
    `[[migrations]]` is exactly the known list, with no `deleted_classes`,
    `renamed_classes` or `transferred_classes`. It runs in the deploy's own
    `test` job, so a bad line never deploys. Cost: nothing to run. **Done:
-   #1871 (v2.3.5587), `tools/guards/do-migrations.test.mjs`: a guard, so
+   #1871 (tag 5587), `tools/guards/do-migrations.test.mjs`: a guard, so
    merging it deploys nothing.**
 2. *(card R)* land the export, and give it a Test panel button that saves a
    file, so the owner keeps a copy off Cloudflare (weekly; cost per run is in
