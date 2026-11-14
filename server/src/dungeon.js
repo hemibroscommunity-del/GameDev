@@ -177,7 +177,60 @@ function clampInt(v, lo, hi, dflt) {
   return Math.max(lo, Math.min(hi, n));
 }
 
+/* ═══ v2.3.5215: THE DUNGEON DOOR -- A RUN'S ONE PHASE WRITER (card L PR 5) ═══
+   (docs/specs/dungeon-door.md; held by server/test/dungeon-door.test.mjs and
+   the phase table's guard, tools/guards/phase-table.test.mjs)
+   A run's phase was two fields: `inst.state` ('active', then 'done') and the
+   boolean beside it, `inst.bossSpawned`.  Now it is ONE field,
+   `inst.runPhase` -- 'active' (its waves), 'boss', 'done' -- written only by
+   _dungeonTo, by a way of DUNGEON_WAYS: `boss` (_dungeonSpawnBoss) and
+   `clear` (_dungeonComplete).  As the life door did (v2.3.4820), the door
+   writes the old pair for their readers -- `state` becomes 'done' at the
+   end, `bossSpawned` true at the boss -- so every reader reads what it read
+   before ('active' all through the boss: the start's "already running" and
+   slime-boss.test's "the run waits for it").  A run is born 'active' in
+   _handleDungeonStart; a run made by hand (a test's, or one from before the
+   door) is read from the old pair (_dungeonPhase).
+   The door's rules: the end is final, and the boss comes once, after the
+   waves.  The tick asks neither twice today, so nothing a player sees
+   changes; `dungeondoor: false` in the live flags lets both be written
+   again, as the old lines would have.
+   Not phases: the wave (`inst.wave`, a count), the empty clock
+   (`emptySince`) and the run's place in `this._dungeons` (born at the start,
+   gone at its cleanup).  A player is in a run by their place. */
+export const DUNGEON_PHASES = Object.freeze(['active', 'boss', 'done']);
+export const DUNGEON_WAYS = Object.freeze({ boss: 'boss', clear: 'done' });
+
 export const dungeonMethods = {
+  /* v2.3.5215: the dungeon door's kill switch (live flag `dungeondoor: false`) */
+  _dungeonDoorOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'dungeondoor') && !f.dungeondoor);
+  },
+
+  /* v2.3.5215: a run's phase: its own field, or (a run made by hand, or
+     before the door) read from the old pair */
+  _dungeonPhase(inst) {
+    if (!inst || typeof inst !== 'object') return null;
+    if (DUNGEON_PHASES.includes(inst.runPhase)) return inst.runPhase;
+    return inst.state === 'done' ? 'done' : (inst.bossSpawned ? 'boss' : 'active');
+  },
+
+  /* v2.3.5215: THE ONE WRITER of a run's phase, and of the old pair for
+     their readers.  True when it wrote. */
+  _dungeonTo(inst, to, way) {
+    if (!inst || typeof inst !== 'object' || !Object.prototype.hasOwnProperty.call(DUNGEON_WAYS, way) || DUNGEON_WAYS[way] !== to) return false;
+    const from = this._dungeonPhase(inst);
+    if (!this._dungeonDoorOff()) {
+      if (from === 'done') return false;                      /* the end is final */
+      if (to === 'boss' && from !== 'active') return false;   /* one boss, after the waves */
+    }
+    inst.runPhase = to;
+    if (to === 'done') inst.state = 'done';
+    if (to === 'boss') inst.bossSpawned = true;
+    return true;
+  },
+
   _dungeonSend(playerId, obj) {
     const ws = this._wsBySessionId(playerId);
     if (!ws) return;
@@ -358,7 +411,7 @@ export const dungeonMethods = {
     const zone = 'dungeon:' + id;
     const inst = {
       id, zone, ownerId: session.id, cfg,
-      wave: 1, state: 'active', bossSpawned: false,
+      wave: 1, state: 'active', bossSpawned: false, runPhase: 'active',   /* v2.3.5215: born active (the dungeon door) */
       createdAt: Date.now(), emptySince: 0, doneAt: 0,
       ...(back ? { back } : {}),
     };
@@ -567,7 +620,7 @@ export const dungeonMethods = {
        adds. */
     if (this._slimeBossArm(inst, m)) m._abilities = m._abilities.filter((a) => a !== 'summon');
     list.push(m);
-    inst.bossSpawned = true;
+    this._dungeonTo(inst, 'boss', 'boss');   /* v2.3.5215: the dungeon door (and the old bossSpawned) */
     this._markMonsterDirty(inst.zone, m.id);
   },
 
@@ -885,7 +938,7 @@ export const dungeonMethods = {
   },
 
   _dungeonComplete(inst, players, now) {
-    inst.state = 'done';
+    this._dungeonTo(inst, 'done', 'clear');   /* v2.3.5215: the dungeon door (and the old state) */
     inst.doneAt = now;
     const cfg = inst.cfg;
     // Legacy client formulas, verbatim (dungeonWaves.js) -- the

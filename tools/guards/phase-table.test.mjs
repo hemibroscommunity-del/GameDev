@@ -94,6 +94,11 @@
  *      party.js                                          -> FAIL 2
  *  22. `this.extractions = Object.create(null);` in a new function of
  *      index.js (not the constructor)                    -> FAIL 2
+ * v2.3.5215 (the dungeon door):
+ *  23. `inst.runPhase = 'done';` in a new function of slimeboss.js
+ *                                                         -> FAIL 2
+ *  24. `inst.state = 'done';` back in _dungeonComplete (the trade line's
+ *      besides is the door's own, `fn`)                   -> FAIL 2
  *
  * Run from the repository's root: node tools/guards/phase-table.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
@@ -255,7 +260,7 @@ const DOOR_SUITES = Object.freeze({
     prop: 'state', besides: [
       ...['server/src/index.js', 'server/src/marketplace.js', 'server/src/leaderboard.js', 'server/src/arena.js', 'server/src/feedback.js']
         .map((file) => ({ file, text: 'this.state = state', fn: 'constructor', why: 'the Durable Object\'s own handle, in its constructor' })),
-      { file: 'server/src/dungeon.js', text: 'inst.state = ', why: 'a dungeon instance: its own machine (the `dungeon` row)' },
+      { file: 'server/src/dungeon.js', text: 'inst.state = ', fn: '_dungeonTo', why: 'a dungeon run\'s old state, written by its own door (the `dungeon` row, v2.3.5215)' },
     ] },
   /* v2.3.5222: card O's ladder (the governor's rung, drawLanes.js `LANE._rung`) -- the planning session's word, sitting 12:
      the rung is a property of a module object, so the tree reads its writes as every other door's */
@@ -287,6 +292,11 @@ const DOOR_SUITES = Object.freeze({
     prop: 'extractions', keyed: true, besides: [
       { file: 'server/src/index.js', text: 'this.extractions = Object.create(null)', fn: 'constructor', why: 'the map\'s birth, empty, in the room\'s constructor' },
     ] },
+  /* v2.3.5215: the dungeon door -- a run's phase in one new field, the old
+     pair (state, bossSpawned) written by the door for their readers (the
+     suite holds those) */
+  'server/test/dungeon-door.test.mjs': { field: 'inst.runPhase', fn: '_dungeonTo', holds: '§2: no write of .runPhase or .bossSpawned in server/src, nor of a run\'s .state, outside _dungeonTo',
+    prop: 'runPhase', besides: [] },
 });
 const SCAN_DOORS = Object.freeze({
   'session (worker)': 'session-door.test plays the phases but fails no second writer of session.phase',
