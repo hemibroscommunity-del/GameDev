@@ -64,14 +64,16 @@ is ruled below); `docs/ARCHITECTURE-HANDOFF.md` in full (rules 1, 2, 5, 7,
      newer save). Say so in the PR's first line.
 5. **(tag 5084) The world's sum** (step 4.4).
    - Files: new `server/test/world-sum.test.mjs`; the counting in the two
-     doors (they add to `_econ` and to the book's `econ` as they run).
+     doors (they add to `_econ` as they run, by the road's class).
    - For each kind of value (SHAPES part 3, "What is summed"): purses,
      vaults, mail waiting and every escrow equal the start, plus minted,
      less burned.
    - Done when a planted double pay through a LEGAL road fails the suite,
      and so does a value record the marks of PR 3 do not count.
 6. **(tag 5085) The day's book's `econ` part**: minted and burned by road
-   class, through PR 1's door. Files: `daybook.js`, its suite.
+   class for the whole room, added through PR 1's door as the two doors
+   run. Files: `gold.js` and `bag.js` (that one call), `daybook.js`, its
+   suite.
 7. **(tag 5086) The shared test room** (step 4.5's harness).
    - Files: a helper under `server/test/` (not a `*.test.mjs`, so it is
      not run by itself), its own small suite, and one existing suite moved
@@ -108,8 +110,9 @@ is ruled below); `docs/ARCHITECTURE-HANDOFF.md` in full (rules 1, 2, 5, 7,
     own, mounted from `src/ui/panels/DevPanel.jsx` by one line (card A
     adds one line there too). The book is read through the ONE admin
     route card A builds (A's PR 6); if it is not on `main` when you get
-    here, build it in `server/src/devtools.js` and say so under Found. A screen: `states.mjs` and a section in
-    `UI-DESIGN-NOTES.md` (CLAUDE.md §8).
+    here, build it in `server/src/devtools.js` and say so under Found.
+    A screen: `states.mjs` and a section in `UI-DESIGN-NOTES.md`
+    (CLAUDE.md §8).
 
 ## Readings chosen for you
 
