@@ -19,6 +19,8 @@ mint counts FORGED remote amounts into `S.rpg.coins`. **Receipt:**
 case` lint; handoff item L. A real stake board is item A's caps-gated
 follow-up.
 
+Held by: tools/guards/traps-server-word.test.mjs (tag 5320).
+
 ## 2. Adding a field to the rpg blob ad hoc
 
 **Tempting:** the blob is right there — stick the new counter on `ps`
@@ -30,6 +32,8 @@ registered in the rule-2 table, or add to the fixed list + delta-emit
 list the way goldNuggets/goldBars did (v2.3.1192,
 `server/src/persistence.js`).
 
+Held by: tools/guards/traps-server-word.test.mjs (tag 5320).
+
 ## 3. Building a party XP-sharing system
 
 **Tempting:** parties shipped (v2.3.1185) with no XP split — obvious
@@ -39,6 +43,8 @@ roster-based split double-pays or re-derives what combat already
 settles. Item D's danger note pinned this: UI + roster only, do NOT
 touch the §7 share math. **Receipt:** `docs/specs/party.md`,
 `server/src/party.js` header, handoff item D.
+
+Held by: server/test/party.test.mjs (tag 5320).
 
 ## 4. Server-rolling the cook minigame outcome
 

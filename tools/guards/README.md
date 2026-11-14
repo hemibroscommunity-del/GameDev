@@ -44,3 +44,22 @@ source or counts things.
   there. `lib/fourLines.mjs` shows how to reach esbuild.
 
 `rails.test.mjs` is the example: it holds these rails themselves.
+
+## A trap held, and its break proof (v2.3.5320)
+
+A guard or a suite that holds a trap of `docs/TRAPS.md` (the plan's step
+8.2) says so in its **header**, one line a trap, in one form:
+
+```
+TRAPS §N (the rule | one case): what it holds. Break: <file>: <the change> -> FAIL (tried <date>).
+```
+
+- `the rule`: the check fails wherever the trap could come back (a
+  system's files, a folder, a table); `one case`: it pins only the place
+  the trap found, and the line says why.
+- `Break`: the one-line change, in a scratch copy, that turned the check
+  red; then undone.  A name a scan reads is tried renamed too.
+- The scoreboard's row "Traps held by a test that has a break proof"
+  counts these lines (`tools/dev/scoreboard/traps-with-break-proof.mjs`,
+  here and in `server/test/`), and the trap gets `Held by: <file> (tag N).`
+  at the end of its section in `docs/TRAPS.md`.
