@@ -312,4 +312,5 @@ export const SWITCHES = Object.freeze([
   { name: '?socialreset', side: 'page', system: 'social', kind: 'switch', born: 5204, thrown: '=0', risk: 'logic', needs: [], fallback: 'no', off: 'A race the worker forgot at a reconnect stays on the phone until its own clock lets it go, as before.' },
   { name: '?townsfolkreset', side: 'page', system: 'townsfolk', kind: 'switch', born: 5203, thrown: '=0', risk: 'logic', needs: [], fallback: 'no', off: 'A held pose ends a frame after a change of place again, on its own check, not at the zone door.' },
   { name: '?treenumbers', side: 'page', system: 'memory', kind: 'switch', born: 5247, thrown: '=0', risk: 'memory', needs: [], fallback: 'no', off: 'The trees are held as pictures again, not as colour numbers.' },
+  { name: '?wirereset', side: 'page', system: 'wire', kind: 'switch', born: 5207, thrown: '=0', risk: 'logic', needs: [], fallback: 'no', off: 'The monsters\' balls in flight, their warnings on the ground and the impact rings carry over a change of place again, emptied only where a way out did it by hand or by their own clock.' },
 ]);

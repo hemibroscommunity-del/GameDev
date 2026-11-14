@@ -20,7 +20,7 @@ addresses (`tools/qa/`), `localStorage` toggles, and the worker's `env` settings
 reads it as a flag or a comment promises it as a kill switch; any other cap's override is the emergency lever of
 `docs/specs/liveops.md` ("Caps override").
 
-256 rows: 249 switches, 6 values, 1 levers, in 23 systems.
+257 rows: 250 switches, 6 values, 1 levers, in 23 systems.
 
 ## audio
 
@@ -357,6 +357,7 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 | `movediet` | worker | switch | v2.3.3204 | false | logic |  | no | Un-advertises the move diet: each phone sends every move again from its next join. |
 | `pileleft` | worker | switch | v2.3.4383 | false | logic |  | no | Stops the death pile's time-left fields on the wire. |
 | `relaylist` | worker | switch | v2.3.3304 | false | logic |  | no | Relays every type that is not privileged again (the old deny-list). |
+| `?wirereset` | page | switch | v2.3.5207 | =0 | logic |  | no | The monsters' balls in flight, their warnings on the ground and the impact rings carry over a change of place again, emptied only where a way out did it by hand or by their own clock. |
 
 ## world
 
