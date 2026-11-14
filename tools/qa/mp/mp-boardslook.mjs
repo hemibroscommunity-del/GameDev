@@ -94,9 +94,12 @@ const look = (P) => P.page.evaluate(() => {
     return { place: +e.dataset.lbPodiumPlace, box: box(e), art: loaded(img) ? img.getAttribute('src').split('?')[0] : null,
       face: (e.querySelector('[data-board-face]') || { dataset: {} }).dataset.boardFace || null,
       name: ((e.querySelector('[data-lb-podium-name]') || {}).textContent || '').trim(),
-      lv: +((e.querySelector('[data-board-lv]') || { dataset: {} }).dataset.boardLv || 0) };
+      value: ((e.querySelector('[data-lb-podium-value]') || {}).textContent || '').trim() };
   });
-  const head = [...document.querySelectorAll('[data-lb-head] > *')].map((e) => (e.querySelector('img') ? '[' + e.querySelector('img').alt + ']' : e.textContent.trim()));
+  /* the head's cells, a narrow table's swap button opened into its own */
+  const cellsIn = [...document.querySelectorAll('[data-lb-head] > *')].flatMap((e) => (e.hasAttribute('data-lb-swap') ? [...e.children].filter((c) => c.hasAttribute('data-lb-head-col')) : [e]));
+  const head = cellsIn.map((e) => (e.querySelector('img') ? '[' + e.querySelector('img').alt + ']' : e.textContent.trim()));
+  const swap = (document.querySelector('[data-lb-swap]') || { dataset: {} }).dataset.lbSwap || null;
   const rows = [...document.querySelectorAll('[data-lb-board] [data-board-row]')].map((el) => {
     const medal = el.querySelector('[data-rank-medal] img'), bar = el.querySelector(':scope > [data-lb-bar]');
     return {
@@ -104,6 +107,10 @@ const look = (P) => P.page.evaluate(() => {
       medal: medal ? (loaded(medal) ? +el.querySelector('[data-rank-medal]').dataset.rankMedal : -1) : 0,
       number: ((el.querySelector('[data-rank-mark="number"]') || {}).textContent || '').trim(),
       bar: bar ? bar.dataset.lbBar : null, crown: loaded(el.querySelector('[data-lb-crown]')),
+      /* the whole name: not cut (one line, or two where one is too narrow) */
+      whole: (() => { const n = el.querySelector('[data-board-name]'); return !!n && n.scrollHeight <= n.clientHeight + 1 && n.scrollWidth <= n.clientWidth + 1; })(),
+      value: ((el.querySelector('[data-lb-value]') || {}).textContent || '').trim(),
+      ring: getComputedStyle(el).outlineStyle === 'solid' && parseFloat(getComputedStyle(el).outlineWidth) >= 2,
       face: (el.querySelector('[data-board-face]') || { dataset: {} }).dataset.boardFace || null,
       mine: el.dataset.boardMine === '1',
     };
@@ -111,7 +118,7 @@ const look = (P) => P.page.evaluate(() => {
   return {
     page: pg ? pg.dataset.lbPage : null, open: pg ? pg.dataset.lbOpen : null, pg: box(pg), vw: innerWidth, vh: innerHeight,
     title: title ? { text: title.textContent.trim(), laurels: [...title.querySelectorAll('img')].filter(loaded).length, box: box(title) } : null,
-    divider: loaded(document.querySelector('[data-lb-divider] img')), pills, order, podium, head, rows,
+    divider: loaded(document.querySelector('[data-lb-divider] img')), pills, order, podium, head, swap, rows,
     board: box(document.querySelector('[data-lb-board]')),
     empty: ((document.querySelector('[data-lb-board] [data-board-empty]') || {}).textContent || '').trim(),
     records: document.querySelectorAll('[data-lb-board] [data-winloss-board], [data-lb-board] [data-fish-board]').length,
@@ -185,14 +192,40 @@ export async function run({ browser, wsPort, webPort, rec }) {
       && /shield-silver/.test(p2.art) && /shield-gold/.test(p1.art) && /shield-bronze/.test(p3.art)
       && p2.box.r <= p1.box.l + 1 && p1.box.r <= p3.box.l + 1 && p1.box.t < p2.box.t && p1.box.t < p3.box.t
       && B.podium.every((p) => p.box.l >= B.board.l - 1 && p.box.r <= B.board.r + 1), B.podium);
-    rec.ok('2b ...each with a face, its name on the ribbon and "Lv N" under it, the first three of the table',
-      B.podium.every((p) => p.face === 'bust' && p.name && p.lv >= 1)
-      && [1, 2, 3].every((n) => B.podium.find((p) => p.place === n).name === (B.rows[n - 1] || {}).name), { podium: B.podium, rows: B.rows.slice(0, 3) });
-    rec.ok(`2c the table's head: ${B.head.join(' | ')}`, JSON.stringify(B.head) === JSON.stringify(['#', 'Player', 'Lv', 'Total', '[melee]', '[bow]', '[magic]']), B.head);
+    const digits = (t) => String(t || '').replace(/[^0-9]/g, '');
+    rec.ok('2b ...each with a face, its name on the ribbon and the BOARD\'s value under it (Melee: the melee level), the first three of the table',
+      B.podium.every((p) => p.face === 'bust' && p.name && /^Lv \d+$/.test(p.value))
+      && [1, 2, 3].every((n) => { const p = B.podium.find((x) => x.place === n), r = B.rows[n - 1] || {}; return p.name === r.name && digits(p.value) === digits(r.value); }),
+      { podium: B.podium, rows: B.rows.slice(0, 3) });
+    rec.ok(`2c a narrow (upright) table opens Melee on the three weapons: ${B.head.join(' | ')}`,
+      B.swap === 'styles' && JSON.stringify(B.head) === JSON.stringify(['#', 'Player', 'Lv', '[melee]', '[bow]', '[magic]']), { head: B.head, swap: B.swap });
+    rec.ok('2c2 every name whole on the upright phone (one line, or two)', B.rows.length >= 5 && B.rows.every((r) => r.whole), B.rows.map((r) => [r.name, r.whole]));
+    await tap(A, '[data-lb-swap]');
+    await A.page.waitForTimeout(400);
+    const Bt = await look(A);
+    rec.ok(`2c3 its head's button swaps them for the Total: ${Bt.head.join(' | ')}`,
+      Bt.swap === 'total' && JSON.stringify(Bt.head) === JSON.stringify(['#', 'Player', 'Lv', 'Total']) && Bt.rows.every((r) => r.whole), { head: Bt.head, swap: Bt.swap });
+    await tap(A, '[data-lb-swap]');
+    await A.page.waitForTimeout(300);
     rec.ok('2d rows 1-3 on the gold, silver and bronze bars with the laurel medals, a crown by the first name; from 4 the plain number',
       B.rows.length >= 5 && B.rows.slice(0, 3).every((r, i) => r.medal === i + 1 && r.bar === ['bar-gold', 'bar-silver', 'bar-bronze'][i] && !r.number)
       && B.rows[0].crown && !B.rows.slice(1).some((r) => r.crown) && B.rows.slice(3).every((r) => r.medal === 0 && r.number === String(r.rank) && (r.bar === null || (r.mine && r.bar === 'bar-plain'))), B.rows);
-    rec.ok('2e every row a face, inside the board; the phone\'s own row marked', B.rows.every((r) => r.face && r.box.l >= B.board.l - 1 && r.box.r <= B.board.r + 1) && B.rows.filter((r) => r.mine).length === 1, B.rows);
+    const mineRow = B.rows.find((r) => r.mine);
+    rec.ok(`2e every row a face, inside the board; the phone's own row marked (place ${mineRow && mineRow.rank}: ${mineRow && mineRow.rank <= 3 ? 'a ring round its bar' : 'the plain bar'})`,
+      B.rows.every((r) => r.face && r.box.l >= B.board.l - 1 && r.box.r <= B.board.r + 1) && B.rows.filter((r) => r.mine).length === 1
+      && (mineRow.rank <= 3 ? mineRow.ring : mineRow.bar === 'bar-plain' && !mineRow.ring) && B.rows.filter((r) => r.ring).length === (mineRow.rank <= 3 ? 1 : 0), B.rows);
+
+    /* ── 2f ── an upright 375 px iPhone: the names still whole */
+    await A.page.setViewportSize({ width: 375, height: 812 });
+    await A.page.waitForTimeout(1500);
+    await A.page.evaluate(() => { if (window.__broDashPanelBus) window.__broDashPanelBus.open('leaderboard'); });
+    await A.page.waitForTimeout(1200);
+    const B375 = await look(A);
+    await shot(A, 'upright-375');
+    rec.ok(`2f at 375 px every name is whole and every row inside the board (${B375.rows.length} rows)`,
+      B375.page === 'list' && B375.rows.length >= 5 && B375.rows.every((r) => r.whole && r.box.r <= B375.board.r + 1) && B375.pg.r <= B375.vw, B375.rows.map((r) => [r.name, r.whole]));
+    await A.page.setViewportSize(PHONE);
+    await A.page.waitForTimeout(1200);
 
     /* ── 3 ── every board in turn */
     const ids = L.pills.map((p) => p.id);

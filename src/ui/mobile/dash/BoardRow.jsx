@@ -114,7 +114,7 @@ const FACE_PX = 40;
  *
  * THE MEMORY MAP'S SLOT ("a window's own art, bigger than an icon"): the
  * pieces are files in the page, shown by <img> and CSS backgrounds only while
- * the window is open.  They are asked for as this script loads (it is the
+ * the window is open.  They are asked for as LeaderboardPanel.jsx loads (the
  * Leaderboards' own piece, loaded the first time the window opens: lazyPanels.js
  * DashLeaderboardPanel), as the trophies were, so the first board does not pop
  * them in; nothing holds them once the window is gone but the browser's own
@@ -122,13 +122,13 @@ const FACE_PX = 40;
  * window (lazyPanels.js's rule). */
 export const LB_ART = (name) => '/ui/leaderboard/' + name + '.webp?v=2.3.5500';
 /* every piece the window draws (the trophies, rosettes, title frame and the
-   silver divider are cut but not drawn: the mockups do not use them) */
-const LB_PIECES = ['laurel-left', 'laurel-right', 'crown', 'shield-silver', 'shield-gold', 'shield-bronze',
+   silver divider are cut but not drawn: the mockups do not use them).  Asked
+   for by LeaderboardPanel.jsx as its script loads, never here: the Test
+   panel (DevWatch.jsx) imports this file for its faces and must not fetch
+   the pieces (the gatekeeper's sitting 10). */
+export const LB_PIECES = ['laurel-left', 'laurel-right', 'crown', 'shield-silver', 'shield-gold', 'shield-bronze',
   'medal-1', 'medal-2', 'medal-3', 'pill-gold', 'pill-plain', 'bar-gold', 'bar-silver', 'bar-bronze', 'bar-plain',
   'tile-crown', 'tile-sword', 'tile-bow', 'tile-staff', 'divider-gold'];
-try {
-  if (typeof Image !== 'undefined') for (const n of LB_PIECES) { const im = new Image(); im.decoding = 'async'; im.src = LB_ART(n); }
-} catch (_e) { /* each <img> loads its own */ }
 
 /* THE BARS AND PILLS are kept as their two round ends and a strip of middle
    (96 px wide; `ends` 40 px, cut-leaderboard.mjs), so a row or a pill of any
@@ -197,6 +197,10 @@ export function RankMark({ rank, gone, w = 34 }) {
 /* the row's bar: gold, silver and bronze for the first three, your own row
    the plain bar, every other row none (the second mockup's plain rows) */
 export const rowBar = (rank, mine) => (rank === 1 ? 'bar-gold' : rank === 2 ? 'bar-silver' : rank === 3 ? 'bar-bronze' : mine ? 'bar-plain' : null);
+/* your own row in the first three has its metal's bar like the others: a
+   light ring round it marks it yours (the gatekeeper's sitting 10).  An
+   outline follows the row's round ends and takes no room. */
+export const mineRing = (mine, rank) => (mine && rank <= 3 ? { outline: '2px solid #F4F0E7', outlineOffset: -1 } : null);
 
 /** The picture tile: the bust, or the name's initial; grey with DELETED
  *  across it for a deleted character. */
@@ -237,15 +241,15 @@ export function BoardFace({ src, name, gone, px = FACE_PX }) {
 }
 
 /* the name plate's level, as the world draws it beside a name: a small pill */
-export function LvPill({ lv, gone, value, small }) {
-  if (!(lv > 0)) return null;
+export function LvPill({ lv, gone, value, small, text }) {
+  if (!(lv > 0) && !text) return null;
   return (
-    <span data-board-lv={lv} {...(value ? { 'data-lb-value': '' } : null)} title={'Level ' + lv} style={{
+    <span {...(text ? { 'data-lb-pill-value': '' } : { 'data-board-lv': lv })} {...(value ? { 'data-lb-value': '' } : null)} title={text ? undefined : 'Level ' + lv} style={{
       flex: 'none', minWidth: 18, height: small ? 16 : 18, padding: small ? '0 4px' : '0 5px', borderRadius: 9, boxSizing: 'border-box',
       background: gone ? 'transparent' : 'rgba(11, 22, 27, 0.72)', border: `1px solid ${gone ? COL.border : COL.edgeWarm}`,
       color: gone ? COL.muted : COL.text, fontSize: small ? 10.5 : 11.5, fontWeight: 800, lineHeight: small ? '14px' : '16px', textAlign: 'center',
       fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
-    }}>Lv {lv}</span>
+    }}>{text || 'Lv ' + lv}</span>
   );
 }
 
@@ -270,6 +274,7 @@ export function BoardRow({ rank, row, face, line, value, unit, mine, hook }) {
            it; without this you scan every name.  (Below the first three your
            own row wears the plain bar too.) */
         background: mine ? COL.accentFill : 'transparent', borderRadius: bar ? 999 : 0,
+        ...mineRing(mine, rank),
       }}>
       {bar ? <BarBack name={bar} /> : null}
       <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
@@ -316,20 +321,24 @@ export function TableRow({ rank, row, face, cells, mine, cols }) {
   const bar = gone ? null : rowBar(rank, mine);
   return (
     <div data-board-row={rank} data-board-gone={gone ? '1' : undefined} data-board-mine={mine ? '1' : undefined}
-      aria-label={gone ? name + ', a deleted character' : undefined}
+      aria-label={gone ? name + ', a deleted character' : mine ? name + ', you' : undefined}
       style={{
         position: 'relative', display: 'grid', gridTemplateColumns: cols, alignItems: 'center', columnGap: 3,
         minHeight: 30, padding: '0 9px 0 1px', margin: '0 0 2px',
         borderBottom: bar ? 'none' : `1px solid ${COL.divider}`,
         background: mine && !bar ? COL.accentFill : 'transparent', borderRadius: bar ? 999 : 0,
+        ...mineRing(mine, rank),
       }}>
       {bar ? <BarBack name={bar} /> : null}
       <RankMark rank={rank} gone={gone} w={28} />
       <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
         <BoardFace src={face} name={name} gone={gone} px={22} />
+        {/* the whole name: on two lines where one is too narrow (an upright
+            375 px phone), cut only past the second (the gatekeeper's sitting 10) */}
         <span data-board-name="" style={{
-          minWidth: 0, fontSize: 12, fontWeight: 700, color: gone ? COL.muted : COL.text,
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textShadow: bar ? '0 1px 2px rgba(0,0,0,.7)' : 'none',
+          minWidth: 0, fontSize: 12, fontWeight: 700, lineHeight: '13px', color: gone ? COL.muted : COL.text,
+          display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, overflow: 'hidden', overflowWrap: 'anywhere',
+          textShadow: bar ? '0 1px 2px rgba(0,0,0,.7)' : 'none',
         }}>{name}</span>
         {rank === 1 && !gone ? <Crown /> : null}
       </span>

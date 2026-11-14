@@ -3,7 +3,7 @@ import { COL, panelStyle, getState } from './common.js';
 import { BT_API_BASE } from '@/networking/index.js';
 import { FishBoard } from './FishBoard.jsx';   /* v2.3.4036: the Biggest fish board (server fishlog.js) */
 import { takeFishBoardWant, subscribeFishWeigh, fishWeighLive } from '@/game/fishWeigh.js';
-import { BoardRow, BoardEmpty, useBoardFaces, TableRow, BarBack, LB_ART, BoardFace, LvPill } from './BoardRow.jsx';   /* v2.3.4393: the face, the level, the record; v2.3.5501: the table, the bars, the pieces */
+import { BoardRow, BoardEmpty, useBoardFaces, TableRow, BarBack, LB_ART, LB_PIECES, BoardFace, LvPill } from './BoardRow.jsx';   /* v2.3.4393: the face, the level, the record; v2.3.5501: the table, the bars, the pieces */
 import { askSpinBoard, subscribeSpinBoard, spinBoardLive, spinRowLine } from '@/game/spinBoard.js';
 import { aceFlipBus } from '../aceFlipBus.js';
 import { useBoxSize, railHeading, FOOT_FADE } from './railKit.js';   /* v2.3.4394: the measuring and the headings this page and the Quests page share */
@@ -107,6 +107,13 @@ import { useBoxSize, railHeading, FOOT_FADE } from './railKit.js';   /* v2.3.439
    (Might, Fortitude, Vitality, Agility, Mind) are HELD (the planning
    session, 2026-11-14: retired stat names the worker no longer has; the
    second mockup shows none): none is built. */
+/* the pieces the window draws, asked for as this script (the Leaderboards'
+   own piece) loads, so the first board does not pop them in; never in
+   BoardRow.jsx, which the Test panel imports for its faces */
+try {
+  if (typeof Image !== 'undefined') for (const n of LB_PIECES) { const im = new Image(); im.decoding = 'async'; im.src = LB_ART(n); }
+} catch (_e) { /* each <img> loads its own */ }
+
 const U = '/icons/ui/';
 /* the boards the worker answers from `series` (leaderboard.js
    SERIES_CATEGORIES): the weapons' boards draw the power table */
@@ -230,17 +237,30 @@ function powerCells(r, power) {
 
 /* the table's columns: [key, head, width] -- the head a word or a weapon's icon */
 const WEAPON_ICON = { melee: U + 'hero/melee.webp?v=2.3.1311', bow: U + 'hero/bow.webp?v=2.3.1311', magic: U + 'hero/magic.webp?v=2.3.1311' };
-/* sized for an upright phone's board (~260 px beside the list): the name
-   keeps ~70 px (the face and six letters).  With the power index the Power
-   is a rating in full ("4,712", 38 px) and each weapon's score is short
-   ("2.7k", 24 px) */
-const tableOf = (board, power) => (board.table === 'power' ? (power ? [
-  ['lv', 'Lv', 30], ['total', 'Power', 38], ['melee', 'melee', 24], ['bow', 'bow', 24], ['magic', 'magic', 24],
-] : [
-  ['lv', 'Lv', 32], ['total', 'Total', 34], ['melee', 'melee', 22], ['bow', 'bow', 22], ['magic', 'magic', 22],
-]) : [
-  ['lv', 'Lv', 32], ['record', board.id === 'ap' ? 'AP' : board.id === 'kills' ? 'Kills' : 'Level', 54],
-]);
+/* WHOLE NAMES ON AN UPRIGHT PHONE (the gatekeeper's sitting 10: "Bee...",
+   "Chunk..." at 390 px, worse at 375).  A board narrower than WIDE_TABLE (an
+   upright phone's, ~250-265 px beside the list) shows its Total (or Power)
+   OR the three weapons' columns, never both: the head's last cell is a button
+   that swaps them (the weapons' boards open on the weapons, the board they
+   rank among them; Level and Overall on the total).  The name has ~105 px
+   then, and takes two lines before it is cut.  A wider board (a computer, a
+   phone on its side) shows them all.  With the power index the Power is a
+   rating in full ("4,712") and each weapon's score short ("2.7k"). */
+const WIDE_TABLE = 330;
+const tableOf = (board, power, narrow, view) => {
+  if (board.table !== 'power') {
+    /* a skill's record is its level, a plain number under the skill's name:
+       the row's "Lv" is the name plate's, never a second "Lv" (v2.3.4393's
+       rule, BoardRow.jsx) */
+    return [['lv', 'Lv', 32], ['record', board.id === 'ap' ? 'AP' : board.id === 'kills' ? 'Kills' : board.label, board.id === 'ap' || board.id === 'kills' ? 54 : 66]];
+  }
+  const total = ['total', power ? 'Power' : 'Total', power ? 40 : 36];
+  const styles = [['melee', 'melee', power ? 26 : 24], ['bow', 'bow', power ? 26 : 24], ['magic', 'magic', power ? 26 : 24]];
+  if (!narrow) return [['lv', 'Lv', 32], total, ...styles];
+  return view === 'styles' ? [['lv', 'Lv', 32], ...styles] : [['lv', 'Lv', 32], total];
+};
+/* the narrow table's first view: the weapons' boards rank one of the three */
+const firstView = (board) => (board.rank === 'melee' || board.rank === 'bow' || board.rank === 'magic' ? 'styles' : 'total');
 const RANK_COL = 28;
 const colsOf = (table) => RANK_COL + 'px minmax(0, 1fr) ' + table.map((c) => c[2] + 'px').join(' ');
 /** the cells of a row on `board` (the one it ranks by marked `value`) */
@@ -252,7 +272,7 @@ function cellsOf(board, table, r, power) {
     if (key === 'lv') return { key, lv, value: ranked === 'lv' };
     /* with the index: the Power in full (compact only past 9,999), each
        style short, a dash for a row not yet ranked; without it, the levels */
-    const text = key === 'record' ? (board.id === 'ap' ? num(r.ap) : board.id === 'kills' ? num(r.value ?? r.score) : 'Lv ' + num(r.value ?? r.score))
+    const text = key === 'record' ? (board.id === 'ap' ? num(r.ap) : num(r.value ?? r.score))
       : !p ? '-'
       : !power ? num(p[key])
       : key === 'total' ? compact(p[key]) : short(p[key]);
@@ -287,10 +307,28 @@ const SHIELD = { 1: ['shield-gold', 112, 88], 2: ['shield-silver', 89, 80], 3: [
 let lastCat = null;
 
 /** The first three on their shields: 2, 1 (raised), 3.  Each shield's field
- *  holds the face, its ribbon the name, "Lv N" under it (the shields' boxes,
+ *  holds the face, its ribbon the name, the board's value under it (the shields' boxes,
  *  measured on the pieces: the field 22-78% across and 27-62% down, the
  *  ribbon 17-83% across and 64-84% down). */
-function Podium({ rows, faces, k, meId }) {
+/** what the ribbon says under the name: the board's own value -- the level on
+ *  Level, the weapon's level (or score) on its board, the Power on Overall,
+ *  the kills, the AP, the skill's level -- so the shields read in the board's
+ *  order (the gatekeeper's sitting 10: the name plate's level could read out
+ *  of order on Melee, Kills, AP or a skill) */
+function podiumValue(board, r, power) {
+  if (board.rank === 'lv') return { lv: Math.floor(Number(r.lv) || 0) };
+  if (board.table === 'power') {
+    const p = powerCells(r, power);
+    const key = board.rank || 'total';
+    if (!p) return { text: '-' };
+    if (power) return { text: key === 'total' ? compact(p[key]) : num(p[key]) };
+    return key === 'total' ? { text: num(p.total) } : { lv: p[key] };
+  }
+  const v = Math.floor(Number(board.id === 'ap' ? r.ap : (r.value ?? r.score)) || 0);
+  return board.id === 'ap' ? { text: num(v) + ' AP' } : board.id === 'kills' ? { text: num(v) + (v === 1 ? ' kill' : ' kills') } : { lv: v };
+}
+
+function Podium({ rows, faces, k, meId, board, power }) {
   return (
     <div data-lb-podium="" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: 4 * k, padding: `${4 * k}px 0 ${6 * k}px` }}>
       {[2, 1, 3].map((place) => {
@@ -300,11 +338,11 @@ function Podium({ rows, faces, k, meId }) {
         if (!r) return <span key={place} aria-hidden="true" style={{ width: W, height: Hh, flex: 'none' }} />;
         const gone = !!r.gone;
         const name = r.name || r.id || 'Bro';
-        const lv = Math.floor(Number(r.lv) || 0);
+        const pv = podiumValue(board, r, power);
         const facePx = Math.round(Hh * 0.33);
         return (
           <div key={place} data-lb-podium-place={place} data-lb-podium-mine={meId && r.id === meId ? '1' : undefined}
-            role="img" aria-label={`Rank ${place}: ${name}${lv ? ', level ' + lv : ''}${gone ? ', a deleted character' : ''}`}
+            role="img" aria-label={`Rank ${place}: ${name}, ${pv.text || 'level ' + pv.lv}${gone ? ', a deleted character' : ''}`}
             style={{ position: 'relative', flex: 'none', width: W, height: Hh, marginBottom: place === 1 ? 0 : 6 * k }}>
             <img src={LB_ART(art)} alt="" draggable={false} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', filter: gone ? 'grayscale(1)' : 'none' }} />
             <span style={{ position: 'absolute', left: '50%', top: '29%', transform: 'translateX(-50%)' }}>
@@ -315,9 +353,9 @@ function Podium({ rows, faces, k, meId }) {
               fontSize: Math.max(9.5, 11 * k), fontWeight: 800, color: '#FFF6E0', textShadow: '0 1px 2px rgba(0,0,0,.85)',
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1,
             }}><span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span></span>
-            {lv > 0 ? (
-              <span style={{ position: 'absolute', left: 0, right: 0, top: '79%', display: 'flex', justifyContent: 'center', transform: `scale(${Math.min(1, 0.85 * k + 0.1)})` }}>
-                <LvPill lv={lv} gone={gone} />
+            {pv.text || pv.lv > 0 ? (
+              <span data-lb-podium-value="" style={{ position: 'absolute', left: 0, right: 0, top: '79%', display: 'flex', justifyContent: 'center', transform: `scale(${Math.min(1, 0.85 * k + 0.1)})` }}>
+                <LvPill lv={pv.lv} text={pv.text} gone={gone} />
               </span>
             ) : null}
           </div>
@@ -331,12 +369,42 @@ function Podium({ rows, faces, k, meId }) {
    session): what a tap on the Power head says, one line */
 const POWER_HINT = '400 points ahead = 10\u00d7 likelier to win';
 
+/** one head cell: a weapon's icon, or its word */
+function HeadCell({ k, head, hint, setHint }) {
+  if (WEAPON_ICON[head]) {
+    return (
+      <span data-lb-head-col={k} title={head === 'melee' ? 'Melee' : head === 'bow' ? 'Bow' : 'Magic'} style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <img src={WEAPON_ICON[head]} alt={head} draggable={false} style={{ width: 15, height: 15, objectFit: 'contain', display: 'block' }} />
+      </span>
+    );
+  }
+  if (head === 'Power' && setHint) {
+    return (
+      <button type="button" data-lb-head-col={k} data-lb-power-head="" aria-expanded={!!hint} title={POWER_HINT}
+        onClick={() => setHint(!hint)} style={{
+          position: 'relative', textAlign: 'right', whiteSpace: 'nowrap', padding: 0, margin: 0, border: 'none', background: 'transparent',
+          fontFamily: 'inherit', fontSize: 10.5, fontWeight: 800, color: hint ? COL.accent : COL.text2, cursor: 'pointer', touchAction: 'manipulation',
+        }}>
+        {head}<span aria-hidden="true" style={{ marginLeft: 2, opacity: 0.8 }}>?</span>
+        <span aria-hidden="true" style={{ position: 'absolute', left: -4, right: -4, top: -4, height: 44 }} />
+      </button>
+    );
+  }
+  return (
+    <span data-lb-head-col={k} title={k === 'total' && head === 'Total' ? 'Melee, Bow and Magic levels added up' : undefined}
+      style={{ textAlign: k === 'lv' ? 'center' : 'right', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{head}</span>
+  );
+}
+
 /** the table's head: #, Player, then each column's word or weapon.  "Power"
- *  is a button: a tap shows the rating's one-line reading under the head
- *  (`hint`), a second tap hides it; a computer's pointer reads it as the
- *  head's tooltip too.  Its target reaches 44 px down over the first row,
- *  which takes no tap of its own. */
-function TableHead({ table, hint, setHint }) {
+ *  (on a wide table) is a button: a tap shows the rating's one-line reading
+ *  under the head (`hint`), a second tap hides it; a computer's pointer reads
+ *  it as the head's tooltip too.  On a NARROW table (`swap`) the columns after
+ *  Lv are one button that swaps the total for the three weapons and back
+ *  (WIDE_TABLE above).  A head button's target reaches 44 px down over the
+ *  first row, which takes no tap of its own. */
+function TableHead({ table, hint, setHint, swap }) {
+  const [lv, ...rest] = table;
   return (
     <>
     <div data-lb-head="" style={{
@@ -346,25 +414,19 @@ function TableHead({ table, hint, setHint }) {
     }}>
       <span style={{ textAlign: 'center' }}>#</span>
       <span>Player</span>
-      {table.map(([key, head]) => (WEAPON_ICON[head] ? (
-        <span key={key} data-lb-head-col={key} title={head === 'melee' ? 'Melee' : head === 'bow' ? 'Bow' : 'Magic'} style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <img src={WEAPON_ICON[head]} alt={head} draggable={false} style={{ width: 15, height: 15, objectFit: 'contain', display: 'block' }} />
-        </span>
-      ) : (
-        head === 'Power' ? (
-          <button key={key} type="button" data-lb-head-col={key} data-lb-power-head="" aria-expanded={!!hint} title={POWER_HINT}
-            onClick={() => setHint(!hint)} style={{
-              position: 'relative', textAlign: 'right', whiteSpace: 'nowrap', padding: 0, margin: 0, border: 'none', background: 'transparent',
-              fontFamily: 'inherit', fontSize: 10.5, fontWeight: 800, color: hint ? COL.accent : COL.text2, cursor: 'pointer', touchAction: 'manipulation',
-            }}>
-            {head}<span aria-hidden="true" style={{ marginLeft: 2, opacity: 0.8 }}>?</span>
-            <span aria-hidden="true" style={{ position: 'absolute', left: -4, right: -4, top: -4, height: 44 }} />
-          </button>
-        ) : (
-          <span key={key} data-lb-head-col={key} title={key === 'total' && head === 'Total' ? 'Melee, Bow and Magic levels added up' : undefined}
-            style={{ textAlign: key === 'lv' ? 'center' : 'right', whiteSpace: 'nowrap', overflow: 'hidden' }}>{head}</span>
-        )
-      )))}
+      <HeadCell k={lv[0]} head={lv[1]} />
+      {swap ? (
+        <button type="button" data-lb-swap={swap.view} aria-label={swap.view === 'styles' ? 'Show the total' : 'Show Melee, Bow and Magic'}
+          onClick={swap.onSwap} style={{
+            position: 'relative', gridColumn: '4 / -1', display: 'grid', gridTemplateColumns: rest.map((c) => c[2] + 'px').join(' '), columnGap: 3,
+            alignItems: 'center', height: 20, margin: '0 -5px 0 0', padding: '0 4px 0 0', boxSizing: 'border-box',
+            border: `1px solid ${COL.edgeWarm}`, borderRadius: 10, background: 'rgba(216, 170, 88, 0.08)',
+            fontFamily: 'inherit', fontSize: 10.5, fontWeight: 800, color: COL.text2, cursor: 'pointer', touchAction: 'manipulation',
+          }}>
+          {rest.map(([key, head]) => <HeadCell key={key} k={key} head={head} />)}
+          <span aria-hidden="true" style={{ position: 'absolute', left: -4, right: -4, top: -4, height: 44 }} />
+        </button>
+      ) : rest.map(([key, head]) => <HeadCell key={key} k={key} head={head} hint={hint} setHint={setHint} />)}
     </div>
     {hint ? (
       <div data-lb-power-hint="" role="note" style={{
@@ -377,8 +439,9 @@ function TableHead({ table, hint, setHint }) {
 }
 
 /* ── a ranks board: fetched from the Leaderboard object ── */
-function RankBoard({ board, podium }) {
+function RankBoard({ board, podium, w }) {
   const cat = board.id;
+  const [view, setView] = useState(() => firstView(board));
   const [boards, setBoards] = useState(() => Object.create(null));
   const [loading, setLoading] = useState(true);
   const [hint, setHint] = useState(false);
@@ -416,12 +479,14 @@ function RankBoard({ board, podium }) {
   if (rows.length === 0) {
     return <BoardEmpty text={loading ? 'Loading…' : cat === 'ap' ? 'Nobody has achievement points yet.' : cat === 'kills' ? 'Nobody has a kill yet.' : 'Nobody has trained this yet.'} />;
   }
-  const table = tableOf(board, power);
+  const narrow = board.table === 'power' && w > 0 && w < WIDE_TABLE;
+  const table = tableOf(board, power, narrow, view);
   const cols = colsOf(table);
   return (
     <>
-      {podium ? <Podium rows={rows.slice(0, 3)} faces={[faces[0], faces[1], faces[2]]} k={podium} meId={meId} /> : null}
-      <TableHead table={table} hint={hint} setHint={setHint} />
+      {podium ? <Podium rows={rows.slice(0, 3)} faces={[faces[0], faces[1], faces[2]]} k={podium} meId={meId} board={board} power={power} /> : null}
+      <TableHead table={table} hint={hint} setHint={setHint}
+        swap={narrow ? { view, onSwap: () => setView(view === 'styles' ? 'total' : 'styles') } : null} />
       <div data-lb-rows="" style={{ paddingTop: 3 }}>
         {rows.map((r, i) => (
           <TableRow key={r.id || i} rank={i + 1} row={r} face={faces[i]} mine={!!meId && r.id === meId}
@@ -590,7 +655,7 @@ export const LeaderboardPanel = () => {
   const board = cur.kind === 'fish' ? <FishBoard key={fishWant || 'fish'} initial={fishWant} />
     : cur.kind === 'spin' ? <SpinBoard side={side} setSide={setSide} />
     : cur.kind === 'flip' ? <FlipBoard side={side} setSide={setSide} />
-    : <RankBoard key={cat} board={cur} podium={podium} />;
+    : <RankBoard key={cat} board={cur} podium={podium} w={boardW} />;
 
   if (!sideBySide) {
     /* the narrow page (a phone on its side): the pills in one row over the

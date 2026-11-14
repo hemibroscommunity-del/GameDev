@@ -128,13 +128,24 @@ second mockup's, the art the sheet's). What it looks like and why is
   height less the table's head and three rows over 100, at most 1.15; under
   0.6 it is not drawn. The face sits in the field (29% down, a third of the
   shield's height), the name on the ribbon (64-79% down, 19% in from each
-  side), "Lv N" at 79%: the boxes measured on the pieces.
+  side), the BOARD's value at 79% (`podiumValue`: the level on Level, the
+  weapon's level on its board, the Power on Overall, "1,234 kills",
+  "1,234 AP", the skill's level), so the shields read in the board's order:
+  the boxes measured on the pieces.
 - **The table** (`TableHead`, `BoardRow.jsx` `TableRow`): one CSS grid, the
-  rank 28 px, the player the rest, then the board's columns (`tableOf`): Lv
-  32, Total or Power 34, the three weapons 22 each on the weapons' boards;
-  Lv and the record (54) on the others. The head sticks to the top as the
-  board scrolls. A row is 30 px on its bar (`rowBar`: gold, silver and bronze
-  for 1-3, plain for your own below them).
+  rank 28 px, the player the rest, then the board's columns (`tableOf`). On a
+  board narrower than `WIDE_TABLE` (330 px: an upright phone's, ~250-265 px)
+  the weapons' boards and Level show Lv and EITHER the Total (36) OR the three
+  weapons (24 each), never both: the head's columns after Lv are one button
+  (`data-lb-swap`) that swaps them, its target 44 px tall; Melee, Bow and Magic
+  open on the weapons, Level on the Total. A wider board (a computer, a phone
+  on its side) shows all four. The name then has about 105 px and takes two
+  lines before it is cut (the gatekeeper's sitting 10: at 375 px it had
+  ~16 px). Other boards: Lv (32) and the record (54; a skill's 66, headed by
+  the skill's name, its level a plain number, so a row never shows two "Lv":
+  v2.3.4393's rule). The head sticks to the top as the board scrolls. A row
+  is 30 px on its bar (`rowBar`: gold, silver and bronze for 1-3, plain for
+  your own below them; your own in 1-3 wears a light ring, `mineRing`).
 - **The power index** (card PW; the worker's half #1776). HELD IN PR 2:
   `powerVersion` returns 0, because `caps-audit` refuses a cap the phone
   reads before `join.js` sends it, and #1776 is what sends it. Card LB's
@@ -153,15 +164,19 @@ second mockup's, the art the sheet's). What it looks like and why is
   button: a tap shows "400 points ahead = 10× likelier to win" under the head
   (`POWER_HINT`, the owner's own reading; the head's tooltip too). Without
   the cap the column is Total: the row's `series` melee, bow and magic
-  levels added up. The cap's row is in `CAP_GATES` (`src/ui/panels/
-  DevPanel.jsx`, its own line). The first mockup's five stat boards are
-  held (the planning session: retired stat names), and none is built.
+  levels added up. `CAP_GATES` gets the cap's row in PR 3, not here (no
+  cap is read here). The first mockup's five stat boards are held (the
+  planning session: retired stat names); PW's stat boards (`caps.statboards`)
+  come in PR 3 as a "Stats" group. On a narrow table the "Power?" hint button
+  is not drawn (the swap button holds the column): PR 3 decides where the
+  hint goes there.
 - **The rank** (`RankMark`): the medal for 1-3 (32 x 25 in a records row, 28
   x 22 in the table), with v2.3.4393's shine and stars (game.css `.bt-rank-*`,
   unchanged, the sizes inline); from 4 the number.
 - **The art**: `LB_ART(name)` (`?v=2.3.5500`, the pieces' tag); the twenty
-  pieces the window draws are asked for as `BoardRow.jsx` loads, which is
-  the Leaderboards' own script (`lazyPanels.js` `DashLeaderboardPanel`): the
+  pieces the window draws (`LB_PIECES`) are asked for as `LeaderboardPanel.jsx`
+  loads (not `BoardRow.jsx`, which the Test panel imports for its faces), the
+  Leaderboards' own script (`lazyPanels.js` `DashLeaderboardPanel`): the
   window's own art loads with its window. The trophies, rosettes, title frame
   and silver divider are cut but not drawn.
 

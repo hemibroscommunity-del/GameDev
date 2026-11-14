@@ -287,6 +287,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         sparks: t ? t.querySelectorAll('.bt-rank-spark').length : 0, running: anims.filter((a) => a.playState === 'running').length,
         gone: el.dataset.boardGone === '1', grey: img ? getComputedStyle(img).filter : '',
         number: ((el.querySelector('[data-rank-mark="number"]') || {}).textContent || '').trim(),
+        numberColor: el.querySelector('[data-rank-mark="number"]') ? getComputedStyle(el.querySelector('[data-rank-mark="number"]')).color : '',
       };
     }), (v) => v.length >= 4 && v.slice(0, 3).every((r) => r.loaded), { timeout: 15000, label: 'the medals loaded' }).catch(() => null);
     rec.ok('4e the first places wear the laurel medals where the rank was: 1, 2, 3, each left of its face; the fourth its number',
@@ -295,8 +296,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const live = (cups || []).filter((r) => !r.gone && r.medal);
     rec.ok(`4f ...shining: a band of light cut to the medal's own shape, and its stars (${live.map((r) => r.sparks).join(', ')}), all running`,
       live.length >= 2 && live.every((r) => r.shine && /medal-\d\.webp/.test(r.mask) && r.sparks === ({ 1: 3, 2: 2, 3: 2 })[r.medal] && r.running === r.sparks + 1), live);
-    const dead = (cups || []).find((r) => r.gone && r.medal);
-    rec.ok('4g a deleted character\'s medal (or number) is grey and still', !dead || (/grayscale\(1\)/.test(dead.grey) && !dead.shine && dead.sparks === 0 && dead.running === 0), dead || (cups || []).find((r) => r.gone));
+    /* v2.3.5501 (the gatekeeper's sitting 10: it passed with nothing checked
+       when Ghost ranked 4th or lower): Ghost's row is always checked -- a
+       medal grey and still in the first three, below them its number in the
+       muted grey (COL.disabled) */
+    const dead = (cups || []).find((r) => r.gone);
+    rec.ok(`4g a deleted character's rank is grey and still (Ghost at ${dead ? dead.rank : '?'}: ${dead && dead.medal ? 'a medal' : 'a number'})`,
+      !!dead && (dead.medal
+        ? /grayscale\(1\)/.test(dead.grey) && !dead.shine && dead.sparks === 0 && dead.running === 0
+        : dead.number === String(dead.rank) && dead.numberColor === 'rgb(102, 120, 117)' && dead.sparks === 0 && dead.running === 0), dead);
     /* a still of the shine mid-pass and the stars lit, for the picture */
     await A.page.evaluate(() => {
       for (const t of document.querySelectorAll('[data-rank-medal]')) for (const a of t.getAnimations({ subtree: true })) {
