@@ -1942,6 +1942,23 @@ Screens: death-card
 
 Sources: docs/specs/death-card.md, src/game/deathCard.js, src/ui/mobile/DeathCard.jsx, tools/qa/mp/mp-deathcard.mjs.
 
+## The owner's card: the economy (the Test panel)
+Screens: dev-econ-card
+
+**What it is for:** The owner's daily look at the game's economy, without a session or a terminal: how much gold and how many of each item the game made and destroyed each day (the day's book's `econ` part, counted by the gold and bag doors as each road runs), the room's own counts beside it (card A's `room` part), and the economy's five numbers of the grand plan's step 10.4. Only the owner sees it: a box of the Test panel, keyed with the admin key (v2.3.5093, card E PR 12).
+
+**Decisions, and why:**
+- **A box of the Test panel, not a window of its own**, below the smoothness table (card A's `ReportTable`): the owner's tools live there, the panel's own Close closes it, and nothing a player sees changes. Drawn only when "Show the economy" is tapped, so opening the panel reads nothing.
+- **Read through the book's ONE admin route** (`GET /dev/daybook`, card A's): the smoothness table and this card read the same answer; there is no second way to read the book.
+- **"Made" and "destroyed", never "minted" and "burned"** on screen: the owner reads plain words. A move between players or gold the game holds (the bank, a market order, the mail) is neither, and the card says so in its first line, so a busy trading day with nothing made reads as it is.
+- **A number nothing counts yet says "not counted yet"**, with what it waits for, never a 0: a 0 for unexplained gold is the reading the owner wants to see, and must never be shown by default. The five numbers are always listed in the plan's order, so the card's shape does not change as each one gets its count.
+- **Today, the last 7 or the last 30 days**, newest first, each day its own block: the same choices as the smoothness table beside it.
+
+**Still open:**
+- How unexplained gold, gold made a player-hour and the share to the richest are counted (asked through the planning session, 2026-11-14); the share moved one way for nothing waits for the transfer ledger's read (#1773); cases waiting for card Q.
+
+Sources: src/ui/panels/EconCard.jsx, src/game/econCard.js, server/test/econ-card.test.mjs, server/src/daybook.js, docs/plan/cards/E.md (PR 12).
+
 ## The login wheel (free daily spin)
 Screens: login-spin
 
