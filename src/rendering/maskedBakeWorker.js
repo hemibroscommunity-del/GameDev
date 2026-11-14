@@ -140,11 +140,94 @@ async function lookBitmaps(j) {
   const ins = (j.worn || []).map((w) => w && w.inp).filter((x) => x && x.look);
   for (const x of ins) x.lb = await lookBitmap(x);
 }
+/* ═══ v2.3.5043: AN INPUT AS AN ADDRESS AND A RECTANGLE ═══
+   held-budget.mjs `masked-bake`: the page cut each input out of its sheet
+   (createImageBitmap) for every bake, 5 to 15 ms a bake on the page.  An input
+   whose sheet is an image at an address now comes as { url, sx, sy, ... }
+   (entityRenderer.js _frameInput): the sheet is fetched and decoded HERE, kept
+   a few (sheetOf: SHEET_KEEP_N sheets and SHEET_KEEP_BYTES at most, the least
+   lately used let go and closed when no job holds it), and the rectangle is
+   drawn where the cut frame was (drawer: `ub` at sx, sy).  Every draw of an
+   input in the bake has smoothing off, so the texels are the cut's.  An
+   address that will not read is answered `urlFail` (the page cuts that one,
+   as before).  QA (`qaBm`, the page's own cut beside the address): the two
+   compared here, input by input, and answered in `qa`. */
+const SHEET_KEEP_N = 6, SHEET_KEEP_BYTES = 8 * 1024 * 1024;
+const sheetsKept = new Map();   /* url -> { p, bm, bytes, uses }, the newest last */
+function sheetOf(url) {
+  let e = sheetsKept.get(url);
+  if (e) { sheetsKept.delete(url); sheetsKept.set(url, e); return e; }
+  e = { p: null, bm: null, bytes: 0, uses: 0 };
+  e.p = fetch(url).then((r) => { if (!r.ok) throw new Error('http ' + r.status); return r.blob(); })
+    .then((b) => createImageBitmap(b))
+    .then((bm) => { e.bm = bm; e.bytes = bm.width * bm.height * 4; sheetsTrim(); return bm; },
+      () => { if (sheetsKept.get(url) === e) sheetsKept.delete(url); return null; });
+  sheetsKept.set(url, e);
+  return e;
+}
+function sheetsTrim() {
+  let bytes = 0;
+  for (const e of sheetsKept.values()) bytes += e.bytes;
+  for (const [u, e] of sheetsKept) {
+    if (bytes <= SHEET_KEEP_BYTES && sheetsKept.size <= SHEET_KEEP_N) break;
+    if (e.uses > 0 || !e.bm) continue;
+    sheetsKept.delete(u);
+    bytes -= e.bytes;
+    try { e.bm.close(); } catch (err) { /* gone */ }
+  }
+}
+/* the job's inputs by address, read (inp.ub); false, with the reply sent,
+   when one would not read */
+async function urlInputs(j, ins) {
+  const used = j._sheets = [];
+  const fail = [], qa = [];
+  for (const inp of ins) {
+    const e = sheetOf(inp.url);
+    e.uses++; used.push(e);
+    const bm = await e.p;
+    if (!bm) { fail.push(inp.url); continue; }
+    inp.ub = bm;
+    if (inp.qaBm) qa.push(sameCut(inp));
+  }
+  if (qa.length) j._qa = qa;
+  if (!fail.length) return true;
+  sheetsLetGo(j);
+  self.postMessage({ id: j.id, bitmap: null, cell: null, beltPending: false, raw: false, err: 'url', urlFail: fail, qa: j._qa || null });
+  closeInputs(j);
+  return false;
+}
+function sheetsLetGo(j) {
+  for (const e of j._sheets || []) e.uses--;
+  j._sheets = null;
+  sheetsTrim();
+}
+/* QA: the rectangle of the sheet read here against the page's own cut, byte for byte */
+function sameCut(inp) {
+  const w = inp.fw, h = inp.fh;
+  try {
+    const a = new OffscreenCanvas(w, h), b = new OffscreenCanvas(w, h);
+    const ax = a.getContext('2d'), bx = b.getContext('2d');
+    ax.drawImage(inp.ub, inp.sx, inp.sy, w, h, 0, 0, w, h);
+    bx.drawImage(inp.qaBm, 0, 0);
+    const da = ax.getImageData(0, 0, w, h).data, db = bx.getImageData(0, 0, w, h).data;
+    let diff = 0;
+    for (let i = 0; i < da.length; i++) if (da[i] !== db[i]) diff++;
+    return { same: diff === 0 && inp.qaBm.width === w && inp.qaBm.height === h, diff, w, h, url: String(inp.url).slice(0, 60) };
+  } catch (err) { return { same: false, err: String((err && err.message) || err) }; }
+}
+function closeInputs(j) {
+  for (const inp of [j.body, j.belt, ...((j.worn || []).map((w) => w && w.inp))]) {
+    try { if (inp && inp.bm && inp.bm.close) inp.bm.close(); } catch (e2) { /* already closed */ }
+    try { if (inp && inp.qaBm && inp.qaBm.close) inp.qaBm.close(); } catch (e2) { /* already closed */ }
+  }
+}
 const drawer = (inp) => {
-  const src = inp && (inp.bm || inp.lb);
+  const src = inp && (inp.bm || inp.lb || inp.ub);
+  /* v2.3.5043: a whole sheet (`ub`) is drawn from its rectangle; a cut one from its corner */
+  const ox = src && src === inp.ub ? inp.sx : 0, oy = src && src === inp.ub ? inp.sy : 0;
   return src ? (c, x, y, w, h) => {
     const sx = w / inp.ow, sy = h / inp.oh;
-    c.drawImage(src, 0, 0, inp.fw, inp.fh, x + inp.tx * sx, y + inp.ty * sy, inp.fw * sx, inp.fh * sy);
+    c.drawImage(src, ox, oy, inp.fw, inp.fh, x + inp.tx * sx, y + inp.ty * sy, inp.fw * sx, inp.fh * sy);
   } : null;
 };
 
@@ -245,6 +328,15 @@ self.onmessage = (e) => {
   takeJob(j);
 };
 function takeJob(j) {
+  /* v2.3.5043: inputs by address read first (urlInputs) */
+  if (!j._urlRead) {
+    const ins = [j.body, j.belt, ...((j.worn || []).map((w) => w && w.inp))].filter((x) => x && x.url);
+    if (ins.length) {
+      j._urlRead = true;
+      urlInputs(j, ins).then((ok) => { if (ok) takeJob(j); }, () => { sheetsLetGo(j); self.postMessage({ id: j.id, bitmap: null, cell: null, beltPending: false, raw: false, err: 'url read' }); closeInputs(j); });
+      return;
+    }
+  }
   /* v2.3.5000: a piece drawn from numbers whose sheet is not here would be
      baked as if not worn: the job fails instead (the page asks again) */
   if ((j.worn || []).some((w) => w && w.inp && w.inp.look && !lookSheets.has(w.inp.look))) {
@@ -291,9 +383,9 @@ function runJob(j) {
   } catch (err) {
     reply.err = String((err && err.message) || err);
   }
-  for (const inp of [j.body, j.belt, ...((j.worn || []).map((w) => w.inp))]) {
-    try { if (inp && inp.bm && inp.bm.close) inp.bm.close(); } catch (e2) { /* already closed */ }
-  }
+  closeInputs(j);   /* v2.3.5043: + the QA cuts */
+  sheetsLetGo(j);
+  if (j._qa) reply.qa = j._qa;
   self.postMessage(reply, transfer);
 };
 
@@ -325,8 +417,8 @@ function lookJob(j) {
   } catch (err) {
     reply.err = String((err && err.message) || err);
   }
-  for (const inp of [j.belt, ...((j.worn || []).map((w) => w.inp))]) {
-    try { if (inp && inp.bm && inp.bm.close) inp.bm.close(); } catch (e2) { /* already closed */ }
-  }
+  closeInputs(j);   /* v2.3.5043: + the QA cuts */
+  sheetsLetGo(j);
+  if (j._qa) reply.qa = j._qa;
   self.postMessage(reply, transfer);
 }

@@ -3467,6 +3467,47 @@ function _getBakeWorker() {
 function _gearReadable(tex) {
   return !!(tex && (gearNumbersKey(tex) || (tex.source && tex.source.resource)));
 }
+/* ═══ v2.3.5043: A FRAME OF A SHEET THAT IS AN IMAGE GOES AS ITS ADDRESS ═══
+   held-budget.mjs `masked-bake`: what the page still did for a bake was cut
+   each input out of its sheet (createImageBitmap(res, x, y, w, h), here): 5
+   to 15 ms a bake, the body, the belt and each worn piece back to back, as
+   another player's armour came on screen (the crowd tour's c-armour stations,
+   d-prints and h-eight; 32.7 ms once at the main tour's `armour`).  Every
+   such sheet measured was an image of a packed sheet at a blob: address
+   (gearSheets.js keepPackedAsImage), so the page now sends the address and
+   the rectangle ({ url, sx, sy, ... }) and the worker fetches and decodes the
+   sheet itself, keeps a few (maskedBakeWorker.js sheetOf), and draws the
+   rectangle where it drew the cut frame.  The bake draws every input with
+   smoothing off, so a rectangle of the whole sheet gives the very texels the
+   cut did (`window.__btBakeUrlCheck = true`: the page cuts as well, and the
+   worker compares the two, input by input: __btBakeWorker().byUrl).
+   A canvas, or an address the worker could not read (it answers `urlFail`),
+   is cut here as before, and that address is not tried again.  `?bakeurl=0`:
+   every input cut here, as before. */
+const _BAKE_URL_OFF = (() => { try { return typeof location !== 'undefined' && /[?&]bakeurl=0\b/.test(location.search || ''); } catch (e) { return false; } })();
+const _bakeUrlRefused = new Set();
+const _bakeUrlStats = { sent: 0, cut: 0, refused: 0, retried: 0, checked: 0, same: 0, differ: 0, lastDiffer: null };
+/* v2.3.5043: the bitmaps a job hands over: each input's own, and (QA) the
+   page's cut beside an address */
+function _bakeTransfer(list) {
+  const out = [];
+  for (const x of list) { if (!x) continue; if (x.bm) out.push(x.bm); if (x.qaBm) out.push(x.qaBm); }
+  return out;
+}
+/* v2.3.5043: the worker's word on the addresses: its QA comparisons counted;
+   true when one could not be read and the job is to run again with every
+   such input cut here (once: the address is refused from now on) */
+function _bakeUrlAnswer(reply, job) {
+  if (reply && reply.qa) {
+    for (const q of reply.qa) { _bakeUrlStats.checked++; if (q.same) _bakeUrlStats.same++; else { _bakeUrlStats.differ++; _bakeUrlStats.lastDiffer = q; } }
+  }
+  if (!reply || !reply.urlFail || !reply.urlFail.length || job._cutAgain) return false;
+  for (const u of reply.urlFail) if (_bakeUrlRefused.size < 1024) _bakeUrlRefused.add(u);
+  _bakeUrlStats.refused += reply.urlFail.length;
+  _bakeUrlStats.retried++;
+  job._cutAgain = true;
+  return true;
+}
 function _frameInput(tex) {
   /* v2.3.5000: a frame of the walking armour's colour numbers is named, not
      copied: the worker has its sheet (_sendGearSheets) and expands the cell */
@@ -3476,6 +3517,20 @@ function _frameInput(tex) {
   const res = tex && tex.source && tex.source.resource;
   if (!f || !o || !res || !(f.width > 0) || !(f.height > 0)) return Promise.resolve(null);
   const t = tex.trim;
+  /* v2.3.5043: an image at an address goes as the address (the note above) */
+  const url = (!_BAKE_URL_OFF && typeof HTMLImageElement !== 'undefined' && res instanceof HTMLImageElement) ? (res.currentSrc || res.src || '') : '';
+  if (url && !_bakeUrlRefused.has(url)) {
+    _bakeUrlStats.sent++;
+    const inp = { url, sx: f.x, sy: f.y, tx: t ? t.x : 0, ty: t ? t.y : 0, fw: f.width, fh: f.height, ow: o.width, oh: o.height };
+    let qa = false;
+    try { qa = typeof window !== 'undefined' && window.__btBakeUrlCheck === true; } catch (e) { qa = false; }
+    if (!qa) return Promise.resolve(inp);
+    /* QA: the page's own cut too, for the worker to compare */
+    let pq;
+    try { pq = createImageBitmap(res, f.x, f.y, f.width, f.height); } catch (e) { return Promise.resolve(inp); }
+    return pq.then((qaBm) => ({ ...inp, qaBm }), () => inp);
+  }
+  _bakeUrlStats.cut++;
   let p;
   try { p = createImageBitmap(res, f.x, f.y, f.width, f.height); } catch (e) { return Promise.resolve(null); }
   return p.then((bm) => ({
@@ -3588,11 +3643,13 @@ async function _runBake(job) {
   const id = ++_bakeSeq;
   const reply = await new Promise((resolve) => {
     _bakeJobs.set(id, resolve);
-    const transfer = [body, belt, ...inps].filter((x) => x && x.bm).map((x) => x.bm);   /* v2.3.5000: a piece from numbers carries no bitmap */
+    const transfer = _bakeTransfer([body, belt, ...inps]);   /* v2.3.5000: a piece from numbers carries no bitmap; v2.3.5043: nor one by address */
     try {
       wk.postMessage({ id, body, belt, worn: worn.map((w, i) => ({ k: w.k, inp: inps[i] })), dilate, poseInfo, ds: DISPLAY_DS, crop: true }, transfer);
     } catch (e) { _bakeJobs.delete(id); _close(); resolve({ err: String(e) }); }
   });
+  /* v2.3.5043: an address the worker could not read: cut here, once */
+  if (_bakeUrlAnswer(reply, job)) return _runBake(job);
   /* v2.3.4870: a failure is counted, not baked here (a renderer frame is
      baked inline on its second failure: _maskedRetryInline); a background
      prewarm with no worker left bakes inline as it always did */
@@ -3655,11 +3712,13 @@ async function _runLookBake(job) {
   const id = ++_bakeSeq;
   const reply = await new Promise((resolve) => {
     _bakeJobs.set(id, resolve);
-    const transfer = [belt, ...inps].filter((x) => x && x.bm).map((x) => x.bm);   /* v2.3.5000: a piece from numbers carries no bitmap */
+    const transfer = _bakeTransfer([belt, ...inps]);   /* v2.3.5000: a piece from numbers carries no bitmap; v2.3.5043: nor one by address */
     try {
       wk.postMessage({ id, look: job.look, belt, worn: worn.map((w, i) => ({ k: w.k, inp: inps[i] })), dilate: job.dilate, poseInfo, ds: DISPLAY_DS }, transfer);
     } catch (e) { _bakeJobs.delete(id); _close(); resolve({ err: String(e) }); }
   });
+  /* v2.3.5043: an address the worker could not read: cut here, once */
+  if (_bakeUrlAnswer(reply, job)) return _runLookBake(job);
   if (beltPending) reply.beltPending = true;
   if (reply.err) _bakeWorkerStats.failed++; else _bakeWorkerStats.worker++;
   if (!reply.err && job.rank > 0) _localBakeStats.delivered++;
@@ -3806,7 +3865,8 @@ function _localLookEntries(pose, dir, art) {
 if (typeof window !== 'undefined') {
   window.__btBakeWorker = () => ({ ..._bakeWorkerStats, rawKeys: _bakeWorkerStats.rawKeys.slice(), alive: !!_bakeWorker, dead: _bakeWorkerDead, pending: _bakeJobs.size,
     queued: _bakeQueue.length, busy: _bakeBusy,
-    peer: { ..._peerBakeStats, queued: _peerQueue.length }, local: { ..._localBakeStats } });
+    peer: { ..._peerBakeStats, queued: _peerQueue.length }, local: { ..._localBakeStats },
+    byUrl: { ..._bakeUrlStats, refusedN: _bakeUrlRefused.size, off: _BAKE_URL_OFF } });   /* v2.3.5043 */
   /* v2.3.3520: QA -- the last local frames drawn plain, and the body pictures
      the cache holds bakes for (each key starts with its body texture's uid) */
   window.__btLocalMisses = () => {

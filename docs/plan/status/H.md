@@ -1,25 +1,24 @@
 card: H
-branch: claude/grand-plan-h-3-gear-sheet (one branch a PR, each begun from the one before, as W's are: merge them in order)
-prs: #1668 (ready), #1675 (ready), PR 3 on the branch above (ready; its number goes here with PR 4's commit)
+branch: claude/grand-plan-h-4-masked-bake (one branch a PR, each begun from the one before, as W's are: merge them in order)
+prs: #1668 (merged), #1675 (merged), #1681 (ready), PR 4 on the branch above (ready; its number goes here with PR 5's commit)
 state: ready
 
 ## Done
 
-- #1668 (tag 5040), the worker's restart: the watch counts only visible
-  time; a let-go worker restarts once a return. `mp-bodyworker` 6: red on
-  main, green after; 97 of 97.
-- #1675 (tag 5041), whose row: `whose` on every row of `KNOWN`; spec table;
-  `held-sweep.test` 7b2 to 7b4. Its merge deploys the worker.
-- PR 3 (tag 5042), `gear-sheet` and `portrait` off the list: what was left
-  of both was the Equipment screen's figure (`characterPortrait.js`), now a
-  step at a time in play with the body kept and witnessed. Sample: peer and
-  armour x3, crowd b-fish to d-prints x4. One fix earned both lines, so the
-  card's `portrait` PR is this one; PR 4 is `masked-bake`.
+- #1668 (tag 5040, merged), the worker's restart. #1675 (tag 5041,
+  merged), whose row.
+- #1681 (tag 5042), `gear-sheet` and `portrait` off the list: both were the
+  Equipment screen's figure, now a step at a time in play, its body kept and
+  witnessed. One fix earned both lines (the card's `portrait` PR is this).
+- PR 4 (tag 5043), `masked-bake` off the list: a frame of an image goes to
+  the bake's worker as its address; the worker reads the sheet. 33 of 33
+  inputs byte for byte; sample peer, armour, crowd armour x3: 7.7 ms.
 
 ## Next
 
-- PR 4 (tag 5043), `masked-bake` (24 ms): one hold of 32.7 ms at `armour`
-  seen in PR 3's runs.
+- PR 5 (tag 5044), `strip-made` (24 ms): the strip's remap onto its row on
+  the reader's worker. The `body-bake` PR (last) also takes Z's two finds
+  on #1668: a hung worker restarted at every return; `BT_BW_PARTS` typos.
 
 ## Found
 
@@ -31,6 +30,8 @@ state: ready
   `packTrimmedSliced`). Not touched.
 - `tools/qa/mp/mp-heldsweep.mjs` FAMILIES: a hold is named by the first
   family on its stack, so the figure read as `gear-sheet` or `body-bake`.
+- `entityRenderer.js`: the masked bake's worker let go as stuck 3 times in
+  a 2-player minute here, with or without PR 4 (`_BAKE_STUCK_MS` 6 s).
 
 ## Needs
 

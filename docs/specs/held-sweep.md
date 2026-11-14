@@ -219,7 +219,7 @@ box's software graphics chip, and the quarter second of game it plays in one
 frame: a phone has neither) or **the browser's** (its garbage collector: the
 game can only give it less to do). The grand plan's step 3.1 is done when no
 row is ours (`held-budget.mjs` `debtOf('ours')`, the count its scoreboard
-reads). Today (v2.3.5042): eight ours, two the box's, one the browser's. A new family is
+reads). Today (v2.3.5043): seven ours, two the box's, one the browser's. A new family is
 ours until a measurement says otherwise: `held-sweep.test` 7b3 holds the
 box's and the browser's to the three below, and 7b4 holds this table to
 `KNOWN`, row for row. Their break proofs (the grand plan's rule 8), each run
@@ -234,7 +234,7 @@ All of them (the first five by their old rank, then the rest; a family off the l
 | `body-bake` | ours | 13 ms (v2.3.4960; was 220), 12 at the crowd's a-ink, b-fish, c-armour1, c-armour8, d-prints, h-eight (v2.3.5013; was 120) | v2.3.4930: in play every one of these bakes runs on a worker (`docs/specs/body-bake-worker.md`). Re-timed 2026-11-12 (v2.3.4960): none in the main tour or at c-armour1, c-armour8, d-prints. h-eight was 227 ms, 29 bakes on the page. **v2.3.5013: found and fixed.** Not the heads (the numbers draw them since v2.3.4961) and not a stalled worker: the 32-frame fish sheets of the armoured players who had cast at c-armour8, each job an async run of its own, so a worker's four answered only together, 19 to 25 s after the ask; the 20 s watch let both workers go and the page baked the rest (208 to 238 ms, 7 times). Now one job at a time with a beat between its steps: h-eight none, three runs (11.1 / 9.1 / 10.3 ms the longest of any family) | the fish sheet as colour numbers (lookBodyRefused passes it) would take the 4 to 6 s a sheet off this box's worker too |
 | ~~`gear-sheet`~~ | | off the list (v2.3.5042; was 195 ms, 12 at the crowd's d-prints) | a drawn shirt composed on the page for each pose (the crowd tour); on the body bake's worker in play since v2.3.5014 (`docs/specs/body-bake-worker.md`, "A drawn shirt") | **v2.3.5042**: what was left was the Equipment screen's figure (below, "Card H") |
 | ~~`portrait`~~ | | off the list (v2.3.5042; was 40 ms) | the Leaderboards' faces are 11 ms since v2.3.4960 (g-boards, was 149); what was left, the Equipment screen's figure drawn as armour goes on, 10 to 29 ms (armour) | **v2.3.5042**: drawn a step at a time in play, the body kept (below, "Card H") |
-| `masked-bake` | ours | 24 ms (v2.3.4870; was 140) | the worker job's page-side part (frames handed over as pictures): the cut itself no longer runs on the page in play -- another player's frame is drawn plain until the worker answers, as yours was | hand the worker the sheets once and send rectangles; prewarm the poses of what was just put on |
+| ~~`masked-bake`~~ | | off the list (v2.3.5043; was 24 ms) | the page cut each input out of its sheet for the bake's worker (`_frameInput`, `createImageBitmap`): 4 to 15 ms a bake | **v2.3.5043**: a frame of an image goes as its address, the worker reads the sheet (below, "Card H") |
 | `pack-page` | ours | 20 ms (v2.3.4873; was 80) | a gear sheet first drawn in play, now packed a few ms at a time (`gearSheets.js` `_gearPack`; was one go, 21 to 59 ms): one cell's read and the hand-off, 9 to 15 ms | the strip door for gear strips (256-colour files, packed on the worker) |
 | `gc` | the browser's | 60 ms | the browser's garbage collector | make less garbage a frame (OPTIMIZATION-ROADMAP's pools) |
 | `the frame itself` | the box's | 70 ms | this box plays a quarter of a second of game in each frame | `mp-phoneframe` is the measure at a phone's rate; here the line stops it growing |
@@ -336,6 +336,47 @@ tour (about 30 minutes); Safari; Windows and Mac. Seen on the way and not this
 PR's: `pack-page` at `armour` 17 to 35 ms against its 20 ms line (waits for
 card P's asset door); one `masked-bake` hold of 32.7 ms at `armour` (its own
 PR is next).
+
+### `masked-bake` off the list (v2.3.5043)
+
+**What was left.** Since v2.3.4870 the masked bake (armour cut to the body)
+runs on its worker in play; the page's part was handing it the inputs. For
+each bake the page cut the body, the belt and each worn piece out of their
+sheets (`entityRenderer.js` `_frameInput`: `createImageBitmap(res, x, y, w, h)`),
+back to back: 4 to 15 ms a bake as another player's armour came on screen
+(the crowd tour's `c-armour1` 11.7 ms, `c-armour8` 12.9, `d-prints` 12.7,
+`h-eight` 10.1, four runs; the main tour's `armour` 32.7 ms once, with 15 ms
+of it the cuts). Every such sheet a probe met (an armoured player walking
+round you, four sets) was an image of a packed sheet at a `blob:` address
+(`gearSheets.js` `keepPackedAsImage`).
+
+**What it does now.** A frame of a sheet that is an image goes as its
+address and its rectangle (`{ url, sx, sy, ... }`); the worker fetches and
+decodes the sheet itself, keeps six at most (8 MB, on the worker, the least
+lately used closed when no job holds it: `maskedBakeWorker.js` `sheetOf`), and
+draws the rectangle where it drew the cut frame. Every draw of an input in the
+bake has smoothing off, so the texels are the cut's. A canvas, or an address
+the worker cannot read (it answers `urlFail`: the page cuts that one, once,
+and never sends that address again), goes as before. `?bakeurl=0`: every
+input cut on the page, as before.
+
+**The same pixels.** `window.__btBakeUrlCheck = true` before the page loads:
+the page cuts each input as well, and the worker compares its own rectangle
+with the page's cut, byte for byte (`__btBakeWorker().byUrl`). An armoured
+player in copper plate and greaves, steel plate alone, steel greaves alone,
+and iron plate with steel greaves walking round you: 33 of 33 inputs the
+same, 38 sent by address, none cut on the page, none refused.
+
+**After**, the sample (the main tour's `peer` and `armour` x3; the crowd's
+`c-armour1`, `c-armour8`, `h-eight`, `d-prints` x3): `masked-bake` 7.7 ms the
+longest, 5 holds in six runs.
+
+**Not run** (offered): the whole tours; Safari, where a worker's `fetch` of
+the page's `blob:` address is expected to work but is unproven here (if it
+fails, each address is cut on the page once and then always, as before).
+Seen and not this PR's: the bake worker is let go as stuck 3 times in the
+probe's 2-player minute, the same with `?bakeurl=0` (a job past
+`_BAKE_STUCK_MS`, 6 s, on this box).
 
 ## The standing check
 
