@@ -1,7 +1,7 @@
 card: PW
 branch: claude/plan-pw-2-boards (from claude/plan-pw-1-power; merge #1774 first)
-prs: #1774 (5480, ready), PR 2 (5481, working)
-state: working
+prs: #1774 (5480, ready), #1776 (5481, ready; after #1774)
+state: ready
 
 ## Done
 
@@ -10,14 +10,14 @@ state: working
   dice against the door, never lowers, the prediction, six break proofs),
   the spec, this card, the PW tag block. Within five levels the index
   names the winner 84% of the time, today's sum 64%, the plain level 82%.
-- PR 2 (5481): the row's `powerIndex`, the Power board (`getTop('power')`),
+- #1776 (5481): the row's `powerIndex`, the Power board (`getTop('power')`),
   `caps.power` (own line, CAP_GATES, a caps-audit row until LB reads it),
   the live flag `power` and its switch row, wire-table notes, a SHAPES
   row; no new write (cost-guard green); suite §6.
 
 ## Next
 
-- PR 2 to the gatekeeper; the five stat boards wait on Needs (2).
+- #1774 then #1776 wait for the gatekeeper; the stat boards wait on Needs (2).
 ## Found
 
 - The card's stat names (Might, Fortitude, Vitality, Agility, Mind) are
