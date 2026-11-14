@@ -1,26 +1,24 @@
 card: A
 branch: claude/plan-a-5-room-row (one branch a PR, each begun from the one before: -1- to -7-; merge them in order)
-prs: #1688 (5120), #1692 (5121), #1703 (5122), #1706 (5123), PR 5 (5124, the room's row): all ready
+prs: #1688, #1692, #1703 (merged); #1706 (5123, mended; ready), #1708 (5124, ready), #1711 (ready)
 state: ready
 
 ## Done
 
-- #1688 (5120): one list of hold names; `guards/hold-names`; the card.
-- #1692 (5121): `devClass()` in `deviceProfile.js`, SHAPES part 6, facts
-  only; `device-profile.test` 5 to 7. Its merge deploys the worker.
-- #1703 (5122): `src/debug/report.js`, the phone's side; the About row
-  and its switch; `renderFrame.js` counts near players; `crashTrap.js`
-  keeps the dead page's numbers. Sends nothing without `caps.report`.
-- #1706 (5123): `server/src/report.js`, the worker's side, into the
-  book's `dev` part by cell; `caps.report` (a new cap line: list apart).
-- PR 5 (5124): `server/src/roomrow.js`: tick gaps, rows written (the
-  storage wrapped once), saves refused (`_savesRefused`, E's PR 9 reads
-  it), joins by protocol, restarts; `roomrow: false`. cost-guard 15a
-  (E's line) turns the row off: an awake room now always adds.
+- #1688, #1692, #1703 (5120 to 5122): merged at sitting 3.
+- #1706 (5123): `server/src/report.js`, into the book's `dev` part by
+  cell; `caps.report` (a new cap line: list it apart). Mended for sitting
+  3's hold, a test each (report.test 10), tag 5127 (#1703 on `main`
+  names 5123 ahead, so the tag rule counts it taken): the frame after a
+  hidden spell; the switch back on; a cell's build `preview` off the
+  game's own site; `seen` is the time played; no AFK stamp; `near`.
+- #1708 (5124): `roomrow.js`, the book's `room` part; saves refused is
+  `_savesRefused` (E's PR 9); cost-guard 15a turns the row off. Takes
+  #1706's mend (merged up).
 
 ## Next
 
-- PR 6 (5125): the Speed test sends its card; the book's admin route.
+- #1711 takes the mend too; then the gatekeeper.
 
 ## Found
 
@@ -33,7 +31,8 @@ state: ready
   `hardwareConcurrency` in `bodyBake.js`.
 - When card Q's sitting card keeps `soft`, `seen`, `drawn`, the About
   row's "no name on it" must change with it (card Q).
-- The book's `dev` part (24 KB a day) holds about 10 full cells.
+- Not mended: `waver` takes the phone's `hd`, as `rtt` does; the hold
+  ring names the hold, not the pose (step 1.0); no report at pagehide.
 
 ## Needs
 

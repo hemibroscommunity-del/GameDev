@@ -17,11 +17,19 @@
  *   2. run.mjs: `guardFiles = []` in place of its readdir  -> FAIL 2
  *   3. a tools/dev/checks/x.mjs holding only `export const a = 1;` -> FAIL 3
  *
+ * v2.3.5100 (grand plan card B, PR 1): rail 3 takes precheck's own rule.
+ * It read the source for `export default function`, so a check with an
+ * arrow default export (`export default async (ctx) => {}`) ran in precheck
+ * (which asks only `typeof mod.default === 'function'`) and failed here.
+ * Both now ask the same thing: the module is imported and its default
+ * export must be a function.  Break proof 3 above still turns it red; an
+ * arrow check now passes, as precheck runs it (tried by hand, 2026-11-14).
+ *
  * Run from the repository's root: node tools/guards/rails.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
  */
 import { readFileSync, readdirSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { join } from 'node:path';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
@@ -54,11 +62,19 @@ const check = (name, ok, detail) => {
   const files = readdirSync(join(ROOT, dir));
   const stray = files.filter((f) => f !== 'README.md' && !f.endsWith('.mjs'));
   check('3: every file in tools/dev/checks/ is a *.mjs check or the README', stray.length === 0, stray);
-  const noDefault = files.filter((f) => f.endsWith('.mjs')).filter((f) => !/^export default (?:async )?function\b/m.test(read(dir + '/' + f)));
+  /* v2.3.5100: precheck's rule, word for word: import it, ask its default */
+  const noDefault = [];
+  for (const f of files.filter((x) => x.endsWith('.mjs'))) {
+    let ok = false;
+    try { ok = typeof (await import(pathToFileURL(join(ROOT, dir, f)).href)).default === 'function'; } catch { ok = false; }
+    if (!ok) noDefault.push(f);
+  }
   check('3: every check has a default export for precheck to run', noDefault.length === 0, noDefault);
   const pre = read('tools/dev/precheck.mjs');
   check('3: precheck loads tools/dev/checks/*.mjs by file name',
     /join\(root, 'tools\/dev\/checks'\)/.test(pre) && /await mod\.default\(\{/.test(pre));
+  check('3: and asks the same of a check as this rail does (its default export is a function)',
+    /typeof mod\.default !== 'function'/.test(pre));
 }
 
 console.log(failed ? `\n${failed} FAILED` : '\nall green');
