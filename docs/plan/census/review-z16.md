@@ -401,9 +401,12 @@ differences); two MEDIUMs on the ON path, before the owner's yes.**
 
 ## Card R: #1847 (PR 7, tag 5286): HELD (R's second), reviewed
 
-**The paged export (`roomexport`, OFF): no request returns a login key,
-its fingerprint, the key index or the hidden settings today; one MEDIUM
-to mend before it is listed.**
+**The paged export, read at d7dfab7 (`roomexport` OFF): no request
+returns a login key, its fingerprint, the key index or the hidden settings
+today; one MEDIUM to mend before it is listed.** During the sitting R
+moved it to 3dc4744: `roomexport` ON by the owner's "Just go recommended"
+(`roomexport: false` its kill switch), so the findings below would stand
+in play behind the admin key, not behind a switch.
 
 - **Medium, VERIFIED:** the deny list is written by hand (admin.js ~83-91,
   `EXPORT.NEVER = ['auth:','keyidx:','hidden_settings']`); the registry
