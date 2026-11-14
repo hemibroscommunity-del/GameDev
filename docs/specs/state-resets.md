@@ -75,8 +75,14 @@ stays, and it is what ends the pose with the switch thrown.
 (`?townsfolkreset=0`, `?pagethreadreset=0`), turns that system's resets off at
 the door and no other system's. The plan's rule 4: `state-resets.test` plays
 every system's resets once with its switch on and once thrown. Where a reset
-replaced the system's own check, that check stays as the off-ramp. Once card
-T's switch table is on `main`, each switch is its row there.
+replaced the system's own check, that check stays as the off-ramp.
+
+Each switch is read by its literal name in `resetOn.js resetSwitches()`, where
+card T's scanner sees it, and has its row in card T's switch table
+(`tools/guards/lib/switches.mjs`, side `page`). Both go in the PR that
+registers a system's first reset (the planning session's call, 2026-11-14).
+`state-resets.test` fails a registered system with no line there. A system
+with no line has no switch, and its resets always run.
 
 ## The ledger's two hand columns
 
