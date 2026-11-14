@@ -106,9 +106,15 @@ function releasable(src, renderer) {
   if (!isImg && !isBitmap(img)) return false;
   if (isImg && (!img.complete || !(img.naturalWidth > 0))) return false;
   if (!(img.width > 0)) return false;
-  if (!FILE.test(urlOf(src)) || !ONLY_DRAWN.test(urlOf(src))) return false;
+  /* v2.3.5048: on the chip first, and the address read once, last -- the same
+     answer (every check must hold), but the address (an <img>'s currentSrc,
+     a string the page makes for each read) was read twice for every picture
+     in the cache every round, on the chip or not: `urlOf` and `releasable`
+     were most of what was left of the sweep's slices in the held sweep */
   const g = src._gpuData && src._gpuData[renderer.uid];
   if (!g || g.width !== src.pixelWidth || g.height !== src.pixelHeight) return false;
+  const url = urlOf(src);
+  if (!FILE.test(url) || !ONLY_DRAWN.test(url)) return false;
   return true;
 }
 
