@@ -211,6 +211,9 @@ spec. Add a line here only for a new RULE every session must follow.
   (`HP_ROADS`) and the life phase `ps.life` only through `_lifeTo`; a session
   leaves only through `leave.js` `_playerLeaves(ws, why)` (`LEAVE_WAYS`).
   Their tests fail a second writer (TRAPS §337-339).
+- **A player's build points too**: `skillpoints.js` `pointsGive` /
+  `pointsTake` / `pointsSet` / `pointsDeal`, each call naming its row in
+  `POINT_ROADS` (`skillpoints-door.test` fails a second writer).
 - **Identity**: stable `bp_` ids; two tabs share one (test with `?guest=1`). A
   new character starts from the SERVER's defaults: a join with no record reads
   no `rpg*` claim, so a test seeds a character by putting a record on file
@@ -392,6 +395,7 @@ spec. Add a line here only for a new RULE every session must follow.
 | a monster hit on players | its row in `MONSTER_HITS` (`hits.js`) |
 | a way to change a player's gold | its row in `GOLD_ROADS` (`gold.js`) and its line in `gold-door.test`'s `EXPECT` |
 | a way to change a bag count, a player's hp, or to leave | its row in `BAG_ROADS`, `HP_ROADS` or `LEAVE_WAYS`, and its line in that door's test |
+| a way to change a player's build points | its row in `POINT_ROADS` (`skillpoints.js`), and its line in `skillpoints-door.test`'s `EXPECT` |
 | an honesty check | `_testMode(ps)` and its three lists |
 | a refusal in the hit test | the same in the bow's sight gate (TRAPS §236) |
 | a field on the tick | both tick builders (`tick-share.test`) |

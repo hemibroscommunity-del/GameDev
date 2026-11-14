@@ -40,6 +40,7 @@
  *   2. src/game/actions.js: `cape_redeem: A('alone', { req: 1 })` -> no req -> FAIL 3
  *   3. the shim (wsClient.js): `if (msg.type === 'zz_probe') { wsOut(msg); return; }` in the shim -> FAIL 4
  *   4. src/game/actions.js: `stunned: A('priority')` -> A('batch')    -> FAIL 6
+ *   5. src/game/actions.js: `item_drop`'s `body: 'top'` taken off      -> FAIL 2b (v2.3.5185, sitting 14)
  *
  * Run from the repository's root: node tools/guards/action-door.test.mjs
  * (cd server && npm test runs it with every other guard).
@@ -113,6 +114,25 @@ const EXCEPT = (x) => x.f === 'src/debug/crashTrap.js' || x.f === 'src/networkin
   check(`2: every type and event the page sends by name (${sent.size}) has a row`, missing.length === 0, missing);
   const routeless = fetches.filter((x) => !EXCEPT(x) && x.path && x.path !== '/api/store' && !routeRows.some((n) => ACTIONS[n].path === x.path.replace(/\/$/, '') || ACTIONS[n].path.startsWith(x.path.replace(/\/$/, '') + '/')));
   check(`2: every route the page fetches (${fetches.length}, less the exceptions) has a row`, routeless.length === 0, routeless.map((x) => x.path + ' (' + x.f + ':' + x.line + ')'));
+}
+
+/* ── 2b (v2.3.5185, the gatekeeper's note, sitting 14). a direct send the
+   page writes with its fields at the message's top (`{ type: 'x', k: ... }`,
+   k not `payload`) is a `body: 'top'` row, so act() sends it the same way
+   (item_drop and report were not) ── */
+{
+  const topless = [];
+  for (const [f, s] of SRC) {
+    if (f === 'src/game/actions.js') continue;
+    /* block comments blanked first, line for line (a comment may sit between `{` and `type`) */
+    const sc = s.replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, ' '));
+    for (const m of sc.matchAll(/\{\s*type:\s*'([a-z_0-9]+)',\s*([A-Za-z_$][\w$]*)\s*[:,}]/g)) {
+      const r = Object.prototype.hasOwnProperty.call(ACTIONS, m[1]) ? ACTIONS[m[1]] : null;
+      if (!r || ENV_OF_WAY[r.way] !== 'direct' || m[2] === 'payload' || r.body === 'top') continue;
+      topless.push(m[1] + ' (' + f + ':' + lineOf(s, m.index) + ', `' + m[2] + '` at the top)');
+    }
+  }
+  check('2b: a direct send written with its fields at the top is a `body: \'top\'` row', topless.length === 0, topless);
 }
 
 /* ── 3. a request id exactly where the table says value goes out or cannot come back ── */

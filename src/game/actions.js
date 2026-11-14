@@ -158,7 +158,8 @@ export const ACTIONS = Object.freeze({
   /* v2.3.3473: Drop, from the bag's item card (game/itemDrop.js) ->
      itemdrop.js.  TRAPS #18: without this line the ask never leaves the
      browser, and the item would stay in the bag with nothing said. */
-  item_drop: A('alone', { req: 1 }),
+  /* v2.3.5185 (the gatekeeper, sitting 14): `key` and `qty` sit at the top */
+  item_drop: A('alone', { req: 1, body: 'top' }),
   /* v2.3.3527: the title on your card, from the Achievements page
      (game/achievements.js sendAchvTitle) -> achievements.js _achvTitle,
      which answers with a fresh achv_state.  TRAPS #18: without this line
@@ -332,7 +333,7 @@ export const ACTIONS = Object.freeze({
   set_active_slot: A('alone'),
   /* v2.3.5122: the field report (debug/report.js), numbers and closed
      lists only; sent only to a worker that takes one */
-  report: A('alone'),
+  report: A('alone', { body: 'top' }),   /* v2.3.5185 (sitting 14): its fields sit at the top */
 
   /* ── priority: a broadcast event sent at once, the batch flushed first (wsClient.js PRIORITY_EVENTS,
      moved here with its comments) ── */

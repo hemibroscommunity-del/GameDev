@@ -82,9 +82,9 @@ switch's reader asks besides its own flag, read in the code.
 Each of these may only fall; the gatekeeper alone makes one strict or lowers
 its line, in a PR of its own:
 
-- the names found with no row (`UNLISTED_LINE`: the page's drawing side,
-  until card T's PR 3; every worker name is a row from PR 1, the page's game
-  side from PR 2);
+- the names found with no row (`UNLISTED_LINE`, 0 since card T's PR 3:
+  every live flag and every page switch has its row; the gatekeeper may make
+  it strict);
 - the reads in a shape the scanner does not know (`UNKNOWN_LINE`, 0);
 - the rows born `unknown` (`BORN_UNKNOWN_LINE`, 2: `?debug` and `?nodebug`,
   from April commits that carry no tag in the commit, its body or its merge).
@@ -116,6 +116,49 @@ unknown, where no name can be read), and each has a fixture in the guard
 (`SHAPES`, check 9): a few lines of code the scanner reads as a file, with the
 names it must find and the unknown reads it must count. A rule dropped from
 the scanner turns its fixture red on every PR.
+
+## A row's place (v2.3.5304, the gatekeeper's sitting 11)
+
+The table runs in three sections by side (the switches the worker throws for
+the page, then the worker, then the page), and in each the rows are sorted by
+name (the `?` aside, lower case). A new row goes where its name puts it,
+never at the end: two PRs that each add a row touch the same lines only when
+their names are neighbours. The guard's check 10 fails a row out of its
+place and names the row it belongs after. Rehearsed: two branches from one
+table, one adding `?aardvark` and the other `?minnow`, merge clean in both
+orders.
+
+## Rule 4: two configurations (v2.3.5304)
+
+The plan's rule 4: all new, or exactly one switch thrown.
+
+- **Needs** (the guard's check 11). Every need is a row; no switch needs
+  itself, however far round. A worker row with needs names its **reader**
+  (`reader: '_giftClosed in server/src/trade.js'`), and the guard asks that
+  the reader reads each need, directly or through the functions it calls
+  (`switchScan.mjs readsOf`): a dependent turns off with what it needs only if
+  its reader asks. A row that may **never** go off (`never: '<why>'`, a
+  ledger) fails while a switch it needs is still a row: the switch beneath is
+  removed first.
+- **The thrown run** (`tools/guards/switches-thrown.test.mjs`, with the
+  preload `tools/guards/lib/thrown.mjs`). For a worker row of kind `switch`,
+  its system's suites (card B's map) and those of every row that needs it run
+  once with that one flag thrown on every room, with no line of game code
+  and no suite changed. The baseline runs through the same preload with a
+  flag nothing reads, so the only difference is the one flag.
+  - A check that fails thrown and is the switch's own (it asserts what the
+    switch turns off) is expected: the row lists it, by the check's words
+    (`thrownFails`).
+  - Anything else is a second configuration that breaks: listed as known in
+    the guard (`KNOWN`, a census) and written under Found in card T's status
+    file. Card T fixes none.
+  - On every PR only the rows born from tag 5301 on run (about 16 s today).
+    `--sample` runs one switch of each risk in each system; `--all` every one
+    (about 45 minutes here), the owner's to ask for.
+- **Page rows**: no browser run. The guard finds, for each page switch, the
+  server suite or phone scenario whose text holds its address (found, never
+  typed). The count with none only falls (`NO_PLAY_LINE`, 76 at its first
+  count).
 
 ## A new switch
 

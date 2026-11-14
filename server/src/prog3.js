@@ -584,6 +584,7 @@ export function prog3StatValue(ps, stat, cat, monsterLevel) {
 import { blocksAt, blockSize } from './abilities.js';
 /* v2.3.3260: the max-HP formula (no imports of its own, so no cycle) */
 import { healthAt } from './oneformula.js';
+import { pointsGive, pointsTake, pointsSet, pointsDeal } from './skillpoints.js';   /* v2.3.5283: the skill points' door */
 
 /* XP to go from trained level L to L+1.  The legacy weaponXpRequired
  * curve (280 × 1.16^L, gameSystems.js) reused verbatim (§3-A), shifted
@@ -699,8 +700,11 @@ export function prog3FromLegacy(src) {
 /** Every placed point back; the pools what the skill levels give.  `sumRule`:
  *  the shared pool by the old rule (3 a skill level past 1, the three summed),
  *  for a worker running with `onelevel: false`; else 3 a character level past
- *  1 (the highest skill).  Mutates and returns the blob. */
-export function prog3RespecPoints(p3, sumRule) {
+ *  1 (the highest skill).  Mutates and returns the blob.
+ *  v2.3.5283: `road`, the caller's row in the skill points' door
+ *  (skillpoints.js POINT_ROADS, a `deal`): the deal is worked out here and
+ *  written by the door. */
+export function prog3RespecPoints(p3, sumRule, road) {
   if (!p3 || typeof p3 !== 'object') return p3;
   if (!p3.sk || typeof p3.sk !== 'object') p3.sk = {};
   const lv = (cat) => Math.max(1, Math.min(PROG3.LEVEL_CAP, Math.floor(Number(p3.sk[cat] && p3.sk[cat].level) || 1)));
@@ -713,14 +717,16 @@ export function prog3RespecPoints(p3, sumRule) {
     best = Math.max(best, L);
     sumPast += L - 1;
   }
-  p3.alloc = prog3FreshAlloc();
-  p3.atk = prog3FreshAtk();
-  p3.poolBy = poolBy;
-  p3.pool = Math.min(999, pool);
-  p3.shared = Math.min(999, PROG3.SHARED_POINTS_PER_LEVEL * (sumRule ? sumPast : best - 1));
-  p3.ppl = PROG3.POINTS_PER_LEVEL;
-  p3.spl = PROG3.SHARED_POINTS_PER_LEVEL;
-  return p3;
+  /* v2.3.5283: the door writes it, field by field in the order it always was */
+  return pointsDeal(p3, {
+    alloc: prog3FreshAlloc(),
+    atk: prog3FreshAtk(),
+    poolBy,
+    pool: Math.min(999, pool),
+    shared: Math.min(999, PROG3.SHARED_POINTS_PER_LEVEL * (sumRule ? sumPast : best - 1)),
+    ppl: PROG3.POINTS_PER_LEVEL,
+    spl: PROG3.SHARED_POINTS_PER_LEVEL,
+  }, road);
 }
 
 /** The one-time re-deal (migration v18, and the join boundary).  False when
@@ -728,7 +734,7 @@ export function prog3RespecPoints(p3, sumRule) {
 export function prog3Redeal(p3) {
   if (!p3 || typeof p3 !== 'object' || !p3.sk || typeof p3.sk !== 'object') return false;
   if (Number(p3.olr) >= ONE_LEVEL_REDEAL) return false;
-  prog3RespecPoints(p3, false);
+  prog3RespecPoints(p3, false, 'one_level_redeal');   /* v2.3.5283: the skill points' door */
   p3.olr = ONE_LEVEL_REDEAL;
   return true;
 }
@@ -1305,10 +1311,10 @@ export const prog3Methods = {
       sk.xp -= prog3XpRequired(sk.level);
       sk.level++;
       /* v2.3.2199: 3 per level (POINTS_PER_LEVEL), was 1. */
-      p3.pool += PROG3.POINTS_PER_LEVEL;
+      pointsGive(p3, PROG3.POINTS_PER_LEVEL, 'level_lane');   /* v2.3.5283: the skill points' door */
       /* v2.3.2176: and the points remember WHICH skill earned them. */
-      if (!p3.poolBy || typeof p3.poolBy !== 'object') p3.poolBy = { sword: 0, bow: 0, staff: 0 };
-      p3.poolBy[cat] = (Number(p3.poolBy[cat]) || 0) + PROG3.POINTS_PER_LEVEL;
+      if (!p3.poolBy || typeof p3.poolBy !== 'object') pointsSet(p3, { sword: 0, bow: 0, staff: 0 }, 'level_by_heal');
+      pointsGive(p3, PROG3.POINTS_PER_LEVEL, 'level_lane_by', cat);
       gained++;
     }
     if (sk.level >= PROG3.LEVEL_CAP) sk.xp = 0;
@@ -1319,7 +1325,7 @@ export const prog3Methods = {
        not your best earns its own lane points and no shared ones (header). */
     const charGained = Math.max(0, this._prog3CharLevel(ps) - charBefore);
     if (charGained > 0) {
-      p3.shared = Math.min(999, Math.max(0, Math.floor(Number(p3.shared) || 0)) + charGained * PROG3.SHARED_POINTS_PER_LEVEL);
+      pointsGive(p3, charGained * PROG3.SHARED_POINTS_PER_LEVEL, 'level_shared');   /* v2.3.5283: the skill points' door */
     }
     if (gained > 0) {
       // A trained level-up IS the character level-up (level = Σ), so
@@ -1419,7 +1425,7 @@ export const prog3Methods = {
        allocated to any in that shared pool)".  The v2.3.2176 rule that a
        lane point may buy a defensive stat is RETIRED by that sentence; the
        `cat` an old client still sends on a body spend is ignored. */
-    if (!p3.poolBy || typeof p3.poolBy !== 'object') p3.poolBy = { sword: 0, bow: 0, staff: 0 };
+    if (!p3.poolBy || typeof p3.poolBy !== 'object') pointsSet(p3, { sword: 0, bow: 0, staff: 0 }, 'place_by_heal');   /* v2.3.5283: the skill points' door */
     const chan = (c) => (PROG3.SKILLS.indexOf(c) >= 0 ? Math.max(0, Number(p3.poolBy[c]) || 0) : 0);
     const poolN = Math.max(0, Math.floor(Number(p3.pool) || 0));
     const anyPts = Math.max(0, poolN - PROG3.SKILLS.reduce((n, c) => n + chan(c), 0));
@@ -1444,17 +1450,17 @@ export const prog3Methods = {
          skills you leveled up in."  A Bow point cannot buy Melee luck, and
          (v2.3.2592) neither can a shared point. */
       if (chan(cat) < 1 && anyPts < 1) return refuse();
-      if (!p3.atk || typeof p3.atk !== 'object') p3.atk = prog3FreshAtk();
-      if (!p3.atk[cat] || typeof p3.atk[cat] !== 'object') p3.atk[cat] = prog3FreshAtk()[cat]; // v2.3.2512: one shape, one home (was an inline literal that drifted twice)
+      if (!p3.atk || typeof p3.atk !== 'object') pointsSet(p3, prog3FreshAtk(), 'place_atk_heal');   /* v2.3.5283: the skill points' door */
+      if (!p3.atk[cat] || typeof p3.atk[cat] !== 'object') pointsSet(p3, prog3FreshAtk()[cat], 'place_lane_heal', cat); // v2.3.2512: one shape, one home (was an inline literal that drifted twice)
       cur = (typeof p3.atk[cat][stat] === 'number') ? p3.atk[cat][stat] : 0;
       if (cur >= cap) return refuse();
-      apply = () => { p3.atk[cat][stat] = cur + 1; return { stat, cat, pts: cur + 1 }; };
+      apply = () => { pointsGive(p3, 1, 'place_atk', cat, stat); return { stat, cat, pts: cur + 1 }; };   /* v2.3.5283: the door (its read is `cur`'s) */
       /* Spend the CHANNELLED point first and keep the free one for a choice
          the player may not have yet — spending the flexible point while a
          matching one sits unused would quietly narrow their options. */
-      takePoint = () => {
-        p3.pool = poolN - 1;
-        if (chan(cat) > 0) p3.poolBy[cat] = chan(cat) - 1;
+      takePoint = () => {   /* v2.3.5283: the door, its reads `poolN`'s and `chan`'s */
+        pointsTake(p3, 1, 'place_lane_pool');
+        if (chan(cat) > 0) pointsTake(p3, 1, 'place_lane_by', cat);
       };
     } else {
       /* v2.3.2592: a SHARED stat takes a shared point, or a legacy
@@ -1463,10 +1469,10 @@ export const prog3Methods = {
       if (sharedN < 1 && anyPts < 1) return refuse();
       cur = (typeof p3.alloc[stat] === 'number') ? p3.alloc[stat] : 0;
       if (cur >= cap) return refuse();
-      apply = () => { p3.alloc[stat] = cur + 1; return { stat, cat: null, pts: cur + 1 }; };
-      takePoint = () => {
-        if (sharedN > 0) p3.shared = sharedN - 1;
-        else p3.pool = poolN - 1;
+      apply = () => { pointsGive(p3, 1, 'place_body', stat); return { stat, cat: null, pts: cur + 1 }; };   /* v2.3.5283: the door (its read is `cur`'s) */
+      takePoint = () => {   /* v2.3.5283: the door, its reads `sharedN`'s and `poolN`'s */
+        if (sharedN > 0) pointsTake(p3, 1, 'place_shared');
+        else pointsTake(p3, 1, 'place_body_pool');
       };
     }
 

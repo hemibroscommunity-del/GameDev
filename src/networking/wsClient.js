@@ -6126,6 +6126,10 @@ export function setupWebSocket(ctx) {
       ws = null;
       retireSocket(_lastWs, 1000, 'teardown');
       S.channel = null;
+      /* v2.3.5185 (the gatekeeper, sitting 14): the action door's transport
+         goes with the shim it sends through -- an act() after the teardown
+         is refused (nothing leaves), never sent through a closed set-up */
+      setActionTransport(null);
       S._realtimeStatus = 'disconnected';
     };
 }
