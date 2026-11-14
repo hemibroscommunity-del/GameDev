@@ -1,21 +1,23 @@
 card: O
 branch: claude/plan-o-2-governor (one branch a PR: claude/plan-o-<n>-<word>; PR 2 begun from PR 1's)
-prs: PR 1 (5221, done, not pushed: waits on Needs), PR 2 (5222, done, not pushed)
-state: working
+prs: PR 1 (5221, ready), PR 2 (5222, ready: after PR 1)
+state: ready
 
 ## Done
 
 - PR 1 (5221) `claude/plan-o-1-lanes`: the lane table and its reader
   (`src/game/drawLanes.js`), its guard and `docs/LANES.md`, the report's
-  lane (`caps.report` 3, `reportlanes`), the worker's lists for the card.
-  Server suite, `questline` and `mp-speedtest` green. Deploys the worker.
+  lane (`caps.report` 3, `reportlanes`), the worker's lists for the card;
+  the wire row; the class asked at the join (card P's 18.4 ms hold).
+  Deploys the worker.
 - PR 2 (5222) `claude/plan-o-2-governor`: the governor (the pacer, grown),
   its model (30, 60, 120), `mp-governor`. `questline`, `mp-steadypace`,
   `mp-speedtest` green; the held-sweep sample shows no hold of its own.
 
 ## Next
 
-- Push PRs 1 and 2 once Needs is answered; then PR 4 (the rate's knob).
+- PR 4 (5224), the rate's knob: (a) by the planning session's answer -- a
+  fast screen's own steps stop at about 40, the rung moves a 60 screen.
 
 ## Found
 
@@ -24,8 +26,6 @@ state: working
   own in `tools/guards/lib/switches.mjs` (PR 1 `?lane`, `reportlanes`; PR 2
   `?govern`); `drawLanes` in `device` (`tools/guards/lib/systems.mjs`);
   PR 2 a row of its own in `src/state/phases.js` (`ladder`).
-- Card N: the wire table's `report` row (`server/src/wire/in.js`) lists no
-  `speed` (card A's), nor `rung` or `self` (card O's).
 - A `light` lane by facts (step 1.3) needs 20 reports or more from each of
   two classes that differ only in a fact a lane can read (say `mp` 3 and 9,
   the same `gl`, `soft`, `hz`), their `late` apart by more than a few points.
@@ -40,6 +40,4 @@ state: working
 
 ## Needs
 
-- The planning session: `tools/guards/shapes-once.test.mjs`
-  `NAMES.drawLane.where` = `'src/game/drawLanes.js'` (the guard asks for it
-  the day `drawLane` is defined; outside the card). Asked 2026-11-14.
+- (none) PR 1 merged before PR 2 (PR 2 is begun from it).
