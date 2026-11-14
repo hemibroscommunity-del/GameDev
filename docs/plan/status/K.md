@@ -23,8 +23,10 @@ state: ready
 ## Next
 
 - PR 7.2 to 7.5 (5188-5191): the rest of the page's sends, a family a PR.
-- The move's walls (movement.js, movepath.js) once card L's #1839 is on
-  main; the sword's reach (index.js, after card R's 5281); the bow claim.
+- #1848's two mends (bill carried moves as they move, only those faster
+  than walking; a test of the ON path); then the move's walls (movement.js
+  is free), the sword's reach (index.js, after card R's 5281), the bow claim.
+- Lows: wire-table §7's cure in K's next list PR; door.js "by type".
 - `rideEnds` (ride.js) its own small PR when card SK says done.
 
 ## Found
