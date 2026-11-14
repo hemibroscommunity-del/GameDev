@@ -186,8 +186,10 @@ Left out: a field the worker never reads (the census's "not read"), a field
 it writes itself (a relay's stamped `id` and `name`), and on an `out` row
 every field the worker made (its own, and an echo of the request). So an
 `out` row's `trust` holds what it passes on from another phone: a `look`, or
-`words`. A trust that holds only on one road is the weaker (`claim`), with a
-note.
+`words`. A trust that differs by road is the weaker (`claim`), with a note;
+but a bound with known holes keeps its judge (step 4.2 measures each judge's
+gain), and the holes go in a note. A demand of `phase` that holds on one road
+only (getting ON the board) is in `phase`, with the road in a note.
 
 ### `absent`
 
