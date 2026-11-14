@@ -35,6 +35,7 @@
  */
 import { readFileSync } from 'node:fs';
 import * as DOOR from '../../src/game/actions.js';   /* v2.3.5185: the action door's rows */
+import { PRIVILEGED_EVENTS } from '../src/wire/lists.js';   /* v2.3.5181: made from the wire table */
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -221,8 +222,7 @@ const freshS = (extra) => Object.assign({ chatLog: [] }, extra || {});
   check('7e the dashboard knows the page, with its Head', /achievements: \{ title: 'Achievements', Component: AchievementsPanel, Head: AchievementsHead \}/.test(src('src/ui/mobile/BottomDashboard.jsx')));
   check('7f the chat\'s mail line names an achievement', /_e\.kind === 'achv' \? achvMailPhrase\(_ep\)/.test(src('src/networking/gameEvents.js')));
   const idx = src('server/src/index.js');
-  const priv = idx.slice(idx.indexOf('export const PRIVILEGED_EVENTS'), idx.indexOf(']);', idx.indexOf('export const PRIVILEGED_EVENTS')));
-  check('7g the worker lists achv_state as privileged (a forged one is never relayed)', /'achv_state'/.test(priv));
+  check('7g the worker lists achv_state as privileged (a forged one is never relayed)', PRIVILEGED_EVENTS.has('achv_state'));
   check('7h the worker\'s router reads the title as the phone sends it', /case 'achv_title':\s*if \(session\.id\) this\._achvTitle\(session, msg\.payload \|\| msg\);/.test(idx));
   check('7i BT_ACHIEVEMENTS and its silent checker are gone', !/export const BT_ACHIEVEMENTS/.test(src('src/data/gameDisplay.js')) && !/BT_ACHIEVEMENTS\.forEach|setMyBadges/.test(src('src/ui/BroTown.jsx')));
   check('7j the fake rare-drop AP is gone', !/RARE_DROP_(CHANCE|ITEMS)\s*=/.test(src('src/data/items.js')) && !/RARE_DROP_ITEMS\[/.test(src('src/game/monsterCombat.js')));

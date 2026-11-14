@@ -6,7 +6,10 @@
  *      a player trading with themself, or an id the key does not take.
  *   2. WHICH ROADS: every `move` road of the two doors (gold.js, bag.js)
  *      writes a row (XFER.ROADS) or is a kill (XFER.KILLS, none: the owner's
- *      "none a kill"), and nothing else is on either list.
+ *      "none a kill"), and nothing else is on either list.  v2.3.5280: the
+ *      two lists are MADE from the roads between players (playerroads.js
+ *      PLAYER_ROADS' `ledger`), so a `move` road counts as listed when it is
+ *      on a row of that table whose ledger is `xfer` or `kill`.
  *   3. IN THE SETTLEMENT'S OWN RUN: the trade window's swap and its row
  *      commit in ONE batch (the shared test room's storage): a restart before
  *      it leaves neither, after it both.  One row whatever the swap carried
@@ -27,6 +30,7 @@ import { makeStorage, openRoom, join, fakeWs, settle, seededClock } from './test
 import { XFER, xferRow, xferKey, xferDay, xferList, xferPrunePage, xferOff } from '../src/xfer.js';
 import { GOLD_ROADS } from '../src/gold.js';
 import { BAG_ROADS } from '../src/bag.js';
+import { PLAYER_ROADS } from '../src/playerroads.js';   /* v2.3.5280 */
 
 let failures = 0, passes = 0;
 function check(name, cond, detail) {
@@ -71,14 +75,23 @@ const cmd = (r, ws, type, payload) => r.webSocketMessage(ws, JSON.stringify({ ty
   check('1. ...a count that is not a whole number above 0 is left out', (await xferRow(room, { road: 'gift_trade', id: 'g-odd', from: 'bp_a', to: 'bp_b', gives: { _gold: -5, a: 0, b: 'x', c: 2.7 }, price: {} }), st._store.get(xferKey(DAY, 'g-odd')).gold === 0 && JSON.stringify(st._store.get(xferKey(DAY, 'g-odd')).goods) === '{"c":2}'), st._store.get(xferKey(DAY, 'g-odd')));
 }
 
-/* ══════════ 2. WHICH ROADS ══════════ */
+/* ══════════ 2. WHICH ROADS ══════════
+   v2.3.5280: through the roads between players (playerroads.js): a door's
+   `move` road is listed when a row naming it under its door writes a row
+   (`xfer`) or is a kill (`kill`); the two lists are that table's rows. */
 {
-  const moves = new Set([...Object.entries(GOLD_ROADS), ...Object.entries(BAG_ROADS)].filter(([, r]) => r.class === 'move').map(([k]) => k));
-  const listed = new Set([...XFER.ROADS, ...XFER.KILLS]);
-  const unlisted = [...moves].filter((k) => !listed.has(k));
-  const notMove = [...listed].filter((k) => !moves.has(k));
-  check('2. every `move` road writes a row or is a kill (a new `move` road is listed here first)', unlisted.length === 0, unlisted);
-  check('2. ...and nothing on either list is anything but a `move` road', notMove.length === 0, notMove);
+  const moveOf = (door, table) => Object.entries(table).filter(([, r]) => r.class === 'move').map(([k]) => door + ':' + k);
+  const moves = [...moveOf('gold', GOLD_ROADS), ...moveOf('bag', BAG_ROADS)];
+  const listed = new Set();
+  for (const k of [...XFER.ROADS, ...XFER.KILLS]) {
+    const row = PLAYER_ROADS[k];
+    for (const door of ['gold', 'bag']) for (const r of ((row && row.roads[door]) || [])) listed.add(door + ':' + r);
+  }
+  const unlisted = moves.filter((k) => !listed.has(k));
+  const byLedger = (l) => Object.keys(PLAYER_ROADS).filter((k) => PLAYER_ROADS[k].ledger === l);
+  check('2. every `move` road writes a row or is a kill (its row in PLAYER_ROADS, ledger `xfer` or `kill`)', unlisted.length === 0, unlisted);
+  check('2. ...and the two lists are exactly the table\'s rows by ledger (one definition)',
+    XFER.ROADS.join() === byLedger('xfer').join() && XFER.KILLS.join() === byLedger('kill').join(), { ROADS: XFER.ROADS, KILLS: XFER.KILLS });
   check('2. ...the two lists are apart', XFER.ROADS.every((k) => !XFER.KILLS.includes(k)));
 }
 

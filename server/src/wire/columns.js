@@ -5,13 +5,16 @@
  * says how each column reads, and where a row may step off a list (a `note`).
  *
  * A leaf: no imports, plain data, so node and the worker can both read it.
- * Nothing in the worker imports the table yet (card K makes today's lists
- * FROM it: step 4.1, step 2).  tools/guards/wire-table.test.mjs holds every
+ * The worker's lists are made from the table (lists.js beside this file,
+ * card K: step 4.1, step 2).  tools/guards/wire-table.test.mjs holds every
  * row to these lists. */
 
 export const WIRE_COLUMNS = Object.freeze({
-  /* the order a row writes its columns in; `note` is the only one a row may leave out */
-  ORDER: Object.freeze(['name', 'dir', 'at', 'wayIn', 'envelope', 'phase', 'mayStart', 'doesWhat', 'reqId', 'trust', 'absent', 'bad', 'answer', 'note']),
+  /* the order a row writes its columns in; a row may leave out only the OPTIONAL ones */
+  ORDER: Object.freeze(['name', 'dir', 'at', 'wayIn', 'envelope', 'phase', 'mayStart', 'doesWhat', 'reqId', 'trust', 'absent', 'bad', 'answer', 'privileged', 'note']),
+  /* v2.3.5181: the machine's columns (SHAPES part 5's second table), each
+     written only where it says something, then `note` */
+  OPTIONAL: Object.freeze(['privileged', 'note']),
 
   /* which way it travels: a relay is one row for both ways */
   dir: Object.freeze(['in', 'out', 'relay']),
@@ -73,6 +76,14 @@ export const WIRE_COLUMNS = Object.freeze({
      from the list that exists (server/test/refusal-door-list.mjs CODES: read
      there, never copied here) */
   bad: Object.freeze(['clamped', 'refused', 'taken']),
+
+  /* v2.3.5181 (card K): `privileged`, a machine's column (lists.js makes
+     PRIVILEGED_EVENTS and wire-audit's echo list from it).  Left out on an
+     `out` row: the type is privileged (deny by default).  `echo`, on an `out`
+     or a `relay` row: the worker sends it AND a phone's copy is not dropped
+     as a forgery (the 8 relays a sparring clone or a settlement also sends,
+     and clan_war_declare); its why is the row's note that opens `echo: ` */
+  privileged: Object.freeze(['echo']),
 
   /* the message that tells the sender what happened: a type (any row's
      name: `ping` is answered by `pong`), one of these, or a list of them */
