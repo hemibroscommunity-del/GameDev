@@ -1,6 +1,6 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: #1822 (PR 1, merged), #1820 (PR 3, merged), #1826 (PR 6, ready), PR 5 tag 5185 (ready), PR 2 tag 5182 (working)
+prs: #1822 (PR 1, merged), #1820 (PR 3, merged), #1826 (PR 6, ready), #1829 (PR 5, ready), PR 2 tag 5182 (working)
 state: working
 
 ## Done
@@ -12,7 +12,7 @@ state: working
 - PR 6 (5186, #1826): `claims-gain.test`, `claimbots.mjs`, census `claims.md`:
   reach 2.96, bow label 3.76, guard 1.37, cook shield 0.67, move 4.35,
   harvest 1.86, cook 1.59 (quest, sale, local 1); no honest refusal.
-- PR 5 (5185): the action door, `src/game/actions.js` (180 rows); the shim
+- PR 5 (5185, #1829): the action door, `src/game/actions.js` (180 rows); the shim
   reads them (pass-through, PRIORITY_EVENTS, SETTLED_SENDS); guard
   `action-door.test`, census 203 sends and 25 fetches; questline 187/187.
 
