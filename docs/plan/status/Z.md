@@ -1,37 +1,39 @@
 card: Z
-branch: claude/plan-z-sitting-13
-prs: (this PR), tag 5370, the last line of the list (ready)
+branch: claude/plan-z-sitting-14
+prs: (this PR), tag 5371, the last line of the list (ready)
 state: ready
 
 ## Done
-- Sitting 13, `main` 82fb78da: the list rehearsed in its order (tree
-  301e12e6, this branch aside): precheck 0 FAIL, build, questline;
+- Sitting 14, `main` 1cce0b2: the list rehearsed in its order (tree
+  0f04b30b, this branch aside): precheck 0 FAIL, build, questline 187;
   each base `main`, ONE merge base step by step. Review:
-  `census/review-z13.md`. Notes on 2.1, 5.3b, 9.5; no line to lower.
+  `census/review-z14.md`. Lines lowered: entityRenderer 8955, the phase
+  table's `TODO_LINE` 30. Notes on 2.3, 4.1, 5.3b, 10.5.
 
 ## The list: merge in this order, in one sitting, each "Create a merge commit"
-1 #1821 (LB) · 2 #1822 (K) · 3 #1819 (R) · 4 #1820 (K) · 5 #1792 ·
-6 #1794 · 7 #1800 · 8 #1814 (O) · 9 #1812 (TF) · 10 this PR. Eight
-deploy (2 to 9): back to back. No cap, no live flag, no stored shape.
+1 #1816 (T) · 2 #1817 (T) · 3 #1828 (TF) · 4 #1823 (R) · 5 #1826 (K) ·
+6 #1825 (R) · 7 #1830 (J2) · 8 this PR. Three deploy (4, 5, 6): back
+to back. #1825 adds the live flag `storesize` (ON) and a part to the
+day's book (its shape number kept 1, a rollback loses one day's size):
+the last deploy, on its own line.
 
-## Held (expires at sitting 14)
-- #1816, #1817 T: conflict at `switches.mjs` and `SWITCHES.md` with
-  O's rows (#1792 on) and TF's, either order; T merges the new `main`
-  and goes FIRST at sitting 14 (its PR 4 sorts the rows by name).
-- #1823, #1825 R: add/add at `docs/plan/status/R.md` with #1819; R
-  merges the new `main` into each. Opened mid-sitting: unreviewed.
-- #1826 K: add/add at `docs/plan/status/K.md` with #1822, #1820; K
-  merges the new `main`. Opened mid-sitting: unreviewed.
-- #1824 L: conflict with #1792 at `phase-table.test.mjs`'s
-  `DOOR_SUITES` end; L merges the new `main`. Unreviewed.
-- #1782 SK: ready; the owner's yes to +8 to +10 moves a ride.
+## Held (expires at sitting 15)
+- #1824 L: conflict at `phase-table.test.mjs`'s `DOOR_SUITES` end with
+  O's `_rung` row; L merges the new `main` (keep both). Reviewed: clean
+  (lows).
+- #1829 K: conflict at `docs/SYSTEMS.md`'s `wire` with T's #1816; K
+  merges the new `main`. Reviewed: clean (lows, for K before PR 7).
+- #1831 K: conflict at `docs/SHAPES.md` with T's #1816; opened during
+  the sitting, unreviewed.
+- #1782 SK: the owner's yes to +8 to +10 moves a ride.
 
 ## Stalled
-- None. J2's PR 6 `working` (18:06), no PR; P's fire goblin, no branch.
+- None. P `working` (17:44, under 3 h): its fire goblin, no branch.
 
 ## Found
-- R: a row can claim `ledger: 'xfer'` with no writer (xfer.test's
-  move-only check gone): for R's next PR on the table.
-- K: `systems.mjs` and CLAUDE.md §5/§8 still name the hand lists.
-- T: the old `plan-t-3-page-draw`, `plan-t-4-thrown` carry 5222.
-- No card: `mp-ghostaudit`'s cook 0 frames; heldsweep `R > J` (TF's).
+- K: `item_drop`, `report` rows want `body: 'top'`; the door's transport
+  is not cleared at a teardown; four friend events have no row.
+- L: duel-door's gladiator.js exception matches `mt.status = ` too.
+- R: the `daybook:` registry row and daybook.js's shape lines stale.
+- K: claims-gain is the slowest suite (48 s on CI); its margin passes a
+  reach of 500 px.
