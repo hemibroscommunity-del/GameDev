@@ -29,7 +29,8 @@
  * EACH SYSTEM HAS ITS SWITCH (the plan's rule 4): `?<system>reset=0` (lower
  * case, the system's name without its hyphen: `?townsfolkreset=0`) turns that
  * system's resets off, and its old behaviour, where a reset replaced one, back
- * on (`resetsOn(system)`).  Read at the edge, never cached.
+ * on (`resetsOn(system)`).  Read at the edge, never cached; each by its
+ * literal name in resetSwitches() below, where card T's scanner reads it.
  *
  * No imports: node tests it directly.
  */
@@ -44,14 +45,34 @@ const _byEdge = { zone: [], death: [], rejoin: [] };
 /* what ran: for the Test panel and the suite (a ledger row: `kept`) */
 export const resetStats = { runs: 0, ran: 0, threw: 0, off: 0, lastThrew: null, refused: 0 };
 
+/* EACH SYSTEM'S SWITCH, BY ITS LITERAL NAME (v2.3.5203, the planning
+   session's call): card T's switch table (tools/guards/lib/switches.mjs)
+   rows every `?name=` the page reads, and its scanner (switchScan.mjs) sees
+   a name only where it is read as a literal.  So a system that registers a
+   reset adds its line here, and its row (`?<system>reset`, side page) there,
+   in the same PR; state-resets.test fails a registered system with no line.
+   A system with no line has no switch: its resets always run. */
+function resetSwitches(search) {
+  const q = new URLSearchParams(search);
+  return {
+    audio: q.get('audioreset') !== '0',
+    townsfolk: q.get('townsfolkreset') !== '0',
+  };
+}
+
 /** A system's switch: false when the page says `?<system>reset=0`. */
 export function resetsOn(system) {
   try {
-    const q = typeof location !== 'undefined' && location && location.search;
-    if (!q) return true;
-    const key = String(system).replace(/-/g, '') + 'reset';
-    return new URLSearchParams(q).get(key) !== '0';
+    const search = typeof location !== 'undefined' && location && location.search;
+    if (!search) return true;
+    const on = resetSwitches(search);
+    return Object.prototype.hasOwnProperty.call(on, system) ? on[system] : true;
   } catch (e) { return true; }
+}
+
+/** The systems that have a switch (the suite holds every registered system to one). */
+export function resetSwitchSystems() {
+  return Object.keys(resetSwitches(''));
 }
 
 /** Register `fn` to run at `edge`'s one door, for `system` (its switch).

@@ -28,7 +28,7 @@
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { resetOn, runResets, resetsOn, resetStats, resetsListed, RESET_EDGES } from '../../src/game/resetOn.js';
+import { resetOn, runResets, resetsOn, resetStats, resetsListed, resetSwitchSystems, RESET_EDGES } from '../../src/game/resetOn.js';
 
 let failures = 0, passes = 0;
 function check(name, cond, detail) {
@@ -76,17 +76,24 @@ function block(text, start) {
   check('1. another edge\'s door runs none of them', runResets('rejoin', { a: 1 }).every((n) => !['ta', 'tc'].includes(n)));
   check('1. no state, nothing run', runResets('death', null).length === 0);
 
-  /* ── 2. the switches ── */
+  /* ── 2. the switches: each by its literal name (resetOn.js resetSwitches,
+     card T's table) ── */
+  const order2 = [];
+  function sa(S) { order2.push('audio'); S.a = 0; }
+  function sb(S) { order2.push('townsfolk'); S.b = 0; }
+  resetOn('death', sa, 'audio'); resetOn('death', sb, 'townsfolk');
+  setSearch('?audioreset=0');
+  check('2. `?audioreset=0` turns the audio system off, and no other', resetsOn('audio') === false && resetsOn('townsfolk') === true);
+  order2.length = 0;
+  runResets('death', { a: 1, b: 1 });
+  check('2. ...and only that system\'s resets run off: exactly one switch thrown', !order2.includes('audio') && order2.includes('townsfolk'), order2);
+  setSearch('?audioreset=1');
+  check('2. any other value is on', resetsOn('audio') === true);
   setSearch('?testareset=0');
-  check('2. `?<system>reset=0` with the hyphen dropped turns that system off', resetsOn('test-a') === false && resetsOn('test-c') === true);
-  order.length = 0;
-  runResets('death', { a: 1, c: 1 });
-  check('2. ...and only that system\'s resets: exactly one switch thrown', order.join() === 'c', order);
-  setSearch('?testareset=1');
-  check('2. any other value is on', resetsOn('test-a') === true);
+  check('2. a system with no line in resetSwitches has no switch: always on', resetsOn('test-a') === true);
   setSearch('');
   globalThis.location = undefined;
-  check('2. no page (node, a worker): on', resetsOn('test-a') === true);
+  check('2. no page (node, a worker): on', resetsOn('audio') === true);
   setSearch('');
 }
 
@@ -139,6 +146,9 @@ function block(text, start) {
     for (const m of t.matchAll(/(?:^|[^\w$.])resetOn\(\s*'([a-z]+)'\s*,\s*([A-Za-z_$][\w$]*)\s*,\s*'([a-z-]+)'\s*\)/g)) calls.push({ file: f, edge: m[1], fn: m[2], system: m[3], text: t });
   }
   check(`5. the game registers its resets (${calls.length}: ${calls.map((c) => c.fn).join(', ')})`, calls.length >= 2);
+  /* each system that registers a reset has its switch, by its literal name */
+  const noSwitch = [...new Set(calls.map((c) => c.system))].filter((sys) => !resetSwitchSystems().includes(sys));
+  check('5. every system that registers a reset has its switch in resetOn.js resetSwitches (and its row in card T\'s table)', noSwitch.length === 0, noSwitch);
 
   /* the ledger's decided rows */
   const rows = [];

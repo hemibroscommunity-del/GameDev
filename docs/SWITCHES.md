@@ -20,7 +20,7 @@ addresses (`tools/qa/`), `localStorage` toggles, and the worker's `env` settings
 reads it as a flag or a comment promises it as a kill switch; any other cap's override is the emergency lever of
 `docs/specs/liveops.md` ("Caps override").
 
-250 rows: 243 switches, 6 values, 1 levers, in 23 systems.
+252 rows: 245 switches, 6 values, 1 levers, in 23 systems.
 
 ## audio
 
@@ -28,6 +28,7 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 |---|---|---|---|---|---|---|---|---|
 | `sfxcache` | both | switch | v2.3.3714 | off_sfxcache: true; ?sfxcache=0, off | memory |  | no | Sounds are held whole again, not only while needed. |
 | `voicecap` | both | switch | v2.3.3727 | off_voicecap: true; ?voicecap=0, off | memory |  | no | A crowd of one sound plays every voice again, not a few. |
+| `?audioreset` | page | switch | v2.3.5203 | =0 | logic |  | no | The balls' ends are kept across a change of place again (hitSounds.js forgetShotEnds no longer runs at the zone door). |
 | `?foldgentle` | page | switch | v2.3.5045 | =0, off, false | logic |  | no | A sound is folded to mono in one go again, not in turns between frames. |
 
 ## bots
@@ -339,6 +340,7 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 |---|---|---|---|---|---|---|---|---|
 | `race` | worker | switch | v2.3.3525 | false | logic |  | no | Lil Bro's race un-advertised and none started. |
 | `tour` | worker | switch | v2.3.3525 | false | logic |  | no | Un-advertises the tour's two givers. |
+| `?townsfolkreset` | page | switch | v2.3.5203 | =0 | logic |  | no | A held pose ends a frame after a change of place again, on its own check, not at the zone door. |
 
 ## wire
 
