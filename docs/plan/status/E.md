@@ -1,27 +1,25 @@
 card: E
-branch: claude/plan-e-8-known-trade (one branch a PR, each begun from the one before: merge #1758 first)
-prs: #1686, #1691, #1694, #1699, #1752, #1756 (merged); #1758 (ready); #1759 (ready, this branch)
+branch: claude/plan-e-8-known-stake (one branch a PR, each begun from the one before: merge #1758, #1759 first)
+prs: #1686, #1691, #1694, #1699, #1752, #1756 (merged); #1758, #1759 (ready); #1761 (ready, this branch)
 state: ready
 
 ## Done
 
-- PR 1 (5080, #1686), the day's book's frame.
-- PR 2 (5081, #1691), the roads' classes; SHAPES part 3's edges ruled.
-- PR 3 (5082, #1694), the registry's marks (`storagemarks.js`).
-- PR 4 (5083, #1699), `_econ`, schema 21; the gatekeeper's hold mended.
+- PRs 1 to 4 (5080 to 5083: #1686, #1691, #1694, #1699), merged.
 - PR 5 (5084, #1752), the world's sum: merged (sitting 8).
 - PR 6 (5085, #1756), the book's `econ` part: merged (sitting 9).
 - New live flags (rule 3, one line each in the switch table): PR 6 `econ`,
   PR 8c `arenasettleplan`, PR 11 `xfer`.
 - PR 7 (5086, #1758), the shared test room and `DISTURBANCES`;
   `chaos-restart` moved onto it, its output the same.
-- PR 8a (5087), `trade-weapon-half` off `KNOWN` (trade2.js v2.3.4795 made
-  it one write); break proof: the old order fails case 3 again.
+- PR 8a (5087, #1759), `trade-weapon-half` off `KNOWN` (v2.3.4795).
+- PR 8b (5088), `arena-stake-place` off `KNOWN` (v2.3.4796); break proof:
+  the old two writes fail case 5 again.
 
 ## Next
 
-- PR 8b (5088) `arena-stake-place` off `KNOWN` (v2.3.4796); PR 8c (5089)
-  `arena-stake-settle-loss`, the one left to fix (`gladiator.js`).
+- PR 8c (5089), `arena-stake-settle-loss`, the one left to fix
+  (`gladiator.js` `_arenaSettleStakes`: the settle in one run).
 
 ## Found
 

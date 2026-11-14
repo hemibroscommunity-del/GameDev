@@ -56,7 +56,10 @@ const KNOWN = new Map([
      trade2.js v2.3.4795 delivers each staged weapon, or marks it OWED on file,
      in the swap's own one write, and this suite has passed it at every write
      since (it printed NOTE). Its checks count again. */
-  ['arena-stake-place', 'gladiator.js _handleArenaSponsor: _escrowDebitGold (the purse and its stamp, one write) is awaited, THEN the arena_stake record is put in a second write; a restart between takes the stake and leaves no record, so _arenaStakeSweep has nothing to refund from. The arena ENTRY had the same shape and was fixed in v2.3.3185 (arena.test §15). Report: money path, not fixed here.'],
+  /* v2.3.5088 (card E, PR 8b): 'arena-stake-place' is off the list too --
+     gladiator.js v2.3.4796 takes the stake and puts its arena_stake record in
+     ONE synchronous run (_escrowDebitGoldTogether), and this suite has passed
+     it at every write since (it printed NOTE). Its check counts again. */
   ['arena-stake-settle-loss', 'gladiator.js _arenaSettleStakes: every losing stake is stamped settled FIRST, then the fighter\'s cut and the winners are paid in writes of their own; a restart between keeps the losing stakes (stamped, so never refunded) and pays nobody from them. By design in its own words ("a crash part-way costs a payout, never makes one twice"); listed so the owner sees it costs players gold on a deploy mid-arena.'],
 ]);
 const COUNT_KNOWN = process.env.CHAOS_KNOWN === '1';
