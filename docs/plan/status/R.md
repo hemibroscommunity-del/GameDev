@@ -1,5 +1,5 @@
 card: R
-branch: claude/plan-r-4-points (one branch a PR, each begun from main)
+branch: claude/plan-r-8-size (one branch a PR, each begun from main)
 prs: #1819 (5280, merged); #1823 (5283), #1825 (5287): ready; PR 9 built
 state: ready
 
@@ -15,6 +15,8 @@ state: ready
 
 - Waiting (the planning session: no side work). PR 9 opens once card K's
   5182 merges (its route's row in `server/src/wire/http.js`).
+- The next PR on the table (PR 2): the gatekeeper's low (review-z13): an
+  `xfer` row's road must be a `move` road, or name its writer.
 
 ## Found
 
