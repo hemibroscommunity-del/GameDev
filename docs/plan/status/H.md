@@ -1,39 +1,39 @@
 card: H
-branch: claude/grand-plan-h-6-fold (one branch a PR, each begun from the one before, as W's are: merge them in order)
-prs: #1668, #1675, #1681 (merged), #1700 (ready: sitting 2's hold answered), #1709 (ready), PR 6 on the branch above (ready; its number goes here with PR 7's commit)
+branch: claude/grand-plan-h-7-equip-redraw (one branch a PR, each begun from the one before, as W's are: merge them in order)
+prs: #1668, #1675, #1681 (merged), #1700 (sitting 2's hold answered), #1709, #1712 (ready), PR 7 on the branch above (ready)
 state: ready
 
 ## Done
 
 - #1668 (5040) the worker's restart; #1675 (5041) whose row; #1681 (5042)
-  `gear-sheet` and `portrait` off the list (the Equipment screen's figure).
-- #1700 (5043) `masked-bake` off the list: a frame of an image goes to the
-  bake's worker as its address; 7.7 ms. Sitting 2's hold answered: every
-  exit of a job lets its sheets go (`jobDone`), keep 4 sheets / 4 MB,
-  `keptMB` reported, a `MEMORY-MAP.md` row; 31 of 31 inputs the same.
-  Its merge deploys the worker (the picture door's list).
-- #1709 (5044) `strip-made` off the list: a strip numbered for its row on
-  the reader's worker (`stripRows.js`); town 34 holds -> 11. Deploys.
-- PR 6 (5045) `foldToMono` off the list: the fold a stretch at a time, the
-  same buffer sample for sample (sound-fold.test 4); 13.4 -> 6.9 ms. Its
-  merge deploys the worker (sound-fold.test).
+  `gear-sheet` and `portrait` off (the Equipment screen's figure).
+- #1700 (5043) `masked-bake` off: an image's frame goes to the bake's worker
+  as its address; 7.7 ms. Sitting 2's hold answered (`jobDone`, 4 sheets /
+  4 MB, `keptMB`, a MEMORY-MAP row). Deploys.
+- #1709 (5044) `strip-made` off: a strip numbered for its row on the
+  reader's worker (`stripRows.js`); town 34 holds -> 11. Deploys.
+- #1712 (5045) `foldToMono` off: the fold a stretch at a time, the same
+  buffer (sound-fold.test 4); 13.4 -> 6.9 ms. Deploys.
+- PR 7 (5046) the equip redraw `other: R > J` off: the root re-rendered on
+  every equip, now only on a worn flag's change, as a transition
+  (`gearWornSync.js`); 17.5 -> 8.6 ms. Client only.
 
 ## Next
 
-- PR 7 (tag 5046), the equip redraw `other: R > J` (20 ms): naming its
-  components first (a development build keeps React's names). The
-  `body-bake` PR (last) also takes Z's finds on #1668.
+- PR 8 (tag 5047), `ui:*` (16 ms). The `body-bake` PR (last) also takes
+  Z's finds on #1668 (a hung worker restarted each return; `BT_BW_PARTS`).
 
 ## Found
 
 - `stripRead.js`: `READ_MS` (20 s) is wall time; `_dead` has no restart.
 - `pack-page` (card P's): 17 to 35 ms at `armour` against its 20 ms line.
-- `mp-heldsweep.mjs` FAMILIES: a hold is named by the first family on its
-  stack (the figure read as `gear-sheet` or `body-bake`).
+- `mp-heldsweep.mjs` FAMILIES names a hold by the first family on its stack;
+  and `other: wrapped` is `perfTracker.js`'s timer wrapper (anonymous timer
+  jobs, 10 to 19.6 ms in 8 of ~30 runs): the sweep should look inside it.
 - `entityRenderer.js`: the masked bake's worker let go as stuck 3 times in a
   2-player minute, with or without #1700 (`_BAKE_STUCK_MS` 6 s).
-- `wheelGround.js` `_sprite` (ground pieces made and uploaded as you ride):
-  up to 14.3 ms, twice over the general line in two of six runs; unlisted.
+- `wheelGround.js` `_sprite` (ground pieces uploaded as you ride): up to
+  14.3 ms, over the general line in two of six runs; unlisted.
 
 ## Needs
 

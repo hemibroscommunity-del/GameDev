@@ -117,11 +117,12 @@ export const KNOWN = {
      (18.9 once before).  Now walked a stretch at a time, a frame let in once a piece has run 4 ms (foldToMonoSliced:
      the same buffer, sample for sample, sound-fold.test 4).  The sample (`town`, `lands` x3): 5.2 / 4.9 / 6.9 ms the
      longest (docs/specs/held-sweep.md, "Card H") */
-  /* v2.3.4872: found over the general line on main (mp-heldsweep `armour`, 15.4 and 16.5 ms, two runs; the crowd tour's
-     armour stations up to 8 ms) */
-  'other: R > J': { ms: 20, whose: 'ours',
-    why: "React's scheduler working through a redraw (R > J > Gk is performConcurrentWorkOnRoot in the vendor chunk) where no one of the game's components is the outermost named one, so the sweep cannot say whose: 15 to 17 ms at the armour station (putting armour on and off: the gear tab, the band and the bag at once), most of it in React's own commit (Bj) and a createObjectURL",
-    next: 'profile the armour station with React\'s profiler to name the components; then split or startTransition the redraw an equip causes' },
+  /* v2.3.5046: 'other: R > J' (was 20) off the list.  React working through one redraw in one piece: every equip
+     change set BroTown's own `gearWorn` (gearWornSync.js), a blocking re-render of the game's root and all under it
+     (named on a development build: BroTown, the GearTab, the band's keys, the ride button, the quest coach...).
+     Before, twelve runs of `peer` and `armour`: 17.5 / 17.5 / 15.9 ms at `armour`, 12.4 at `peer`.  Now an equip that
+     leaves the worn flags as they were sets nothing, and one that changes them is a transition (sliced, a frame
+     between).  The sample (`peer`, `armour` x3): 8.6 ms the longest (docs/specs/held-sweep.md, "Card H") */
   /* v2.3.4960: 'other: _flushOutbox > Wrapped.ws.send' off the list: 4.7 ms at most (lands, fight; was 18 once) */
 };
 

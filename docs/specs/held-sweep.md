@@ -219,7 +219,7 @@ box's software graphics chip, and the quarter second of game it plays in one
 frame: a phone has neither) or **the browser's** (its garbage collector: the
 game can only give it less to do). The grand plan's step 3.1 is done when no
 row is ours (`held-budget.mjs` `debtOf('ours')`, the count its scoreboard
-reads). Today (v2.3.5045): five ours, two the box's, one the browser's. A new family is
+reads). Today (v2.3.5046): four ours, two the box's, one the browser's. A new family is
 ours until a measurement says otherwise: `held-sweep.test` 7b3 holds the
 box's and the browser's to the three below, and 7b4 holds this table to
 `KNOWN`, row for row. Their break proofs (the grand plan's rule 8), each run
@@ -242,7 +242,7 @@ All of them (the first five by their old rank, then the rest; a family off the l
 | ~~`strip-made`~~ | | off the list (v2.3.5044; was 24 ms) | the page put a monster strip's numbers on its bundle's row of colours, a loop over every byte (`picsNumbers.js` `stripAsNumbers`) | **v2.3.5044**: numbered for its row on the reader's worker (below, "Card H") |
 | `ui:*` | ours | 16 ms | one component drawn in one piece (the gear tab is one function of 10 ms) | split the gear tab |
 | ~~`other: BT_AUDIO$1._fold > foldToMono`~~ | | off the list (v2.3.5045; was 20 ms) | a two-sided sound folded to one on its first play, in one piece | **v2.3.5045**: a stretch at a time, a frame between (below, "Card H") |
-| `other: R > J` | ours | 20 ms (v2.3.4872) | React working through the redraw an equip causes (the gear tab, the band and the bag at once) where no one of the game's components is the outermost named one: 15 to 17 ms at the `armour` station | name the components with React's profiler; then split or `startTransition` the redraw |
+| ~~`other: R > J`~~ | | off the list (v2.3.5046; was 20 ms) | React re-rendering the game's root in one piece on every equip (`gearWornSync.js`) | **v2.3.5046**: only when a worn flag changes, and as a transition (below, "Card H") |
 | `other: wrapped > sweepPicsOnce` | ours | 16 ms (v2.3.4499) | `picsOnce.js`'s sweep of the cache's pictures, up to 15 ms with the crowd's pictures in it | sweep a slice a turn |
 | ~~`other: _flushOutbox > Wrapped.ws.send`~~ | | off the list (v2.3.4960) | 4.7 ms at most in the 2026-11-12 tours (was 18 once); `other: createObjectURL` came off too (9.3 at most) | |
 
@@ -460,6 +460,41 @@ its stereo file (five to the bit, fish-reel -65.8 dB), 7 of 7.
 
 **After**, the sample (`town` and `lands`, three runs): 5.2, 4.9 and 6.9 ms
 the longest, and every run within its whole budget.
+
+### The equip redraw (`other: R > J`) off the list (v2.3.5046)
+
+**What it was.** The sweep could only say "React's scheduler" (`R > J > Gk`:
+the production build's minified `performConcurrentWorkOnRoot`, and inside it
+`performUnitOfWork` 13 ms in one go). A development build keeps React's names
+(`NODE_ENV=development vite build --mode development`), and a CPU profile of
+six equips on it named the work: every equip change set BroTown's own
+`gearWorn` state (`src/game/gearWornSync.js`), so the game's ROOT re-rendered,
+with everything under it (BroTown, the GearTab, the band's keys, the ride
+button, the quest coach, the band), as a blocking update in one piece. Only
+the inventory panel reads those flags, and they change only when a slot goes
+from bare to worn or back. Before, twelve runs of the main tour's `peer` and
+`armour`: 17.5, 17.5 and 15.9 ms at `armour`, 12.4 at `peer`.
+
+**What it does now** (`gearWornSync.js` alone; `BroTown.jsx` unchanged):
+
+- an equip that leaves the three flags as they were (one plate for another)
+  sets nothing and redraws nothing;
+- one that changes a flag is a React transition: rendered in pieces of about
+  5 ms with a frame between, as the band's beat is (fix 6 above). The
+  inventory panel's worn toggles follow a frame or two later.
+- `?equipredraw=0`: every change set at once, as before.
+
+On the development build, the blocking renders in six equips went from 35.0
+to 21.7 ms; what is left is the GearTab redrawn from its own buses.
+
+**After**, the sample (`peer` and `armour`, three runs): 8.6 ms the longest
+at `peer`, 8.2 at `armour`.
+
+**Seen, not this PR's.** `other: wrapped` is `debug/perfTracker.js`'s wrapper
+round every timer's callback, so it names any anonymous timer job: 10 to 19.6
+ms in eight of about thirty runs (a GearTab redraw, the gear pack's own
+continuation, the screen check), over the general line now and then. The
+sweep would name these if it looked one frame inside `wrapped`.
 
 ## The standing check
 
