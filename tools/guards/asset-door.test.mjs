@@ -3,6 +3,10 @@
  * tools/assets/shipped.json records every file the game ships under public/
  * (a picture, a sound, a video, data): its bytes, the SHA-256 of its bytes,
  * its family (tools/assets/families.mjs) and its kind (docs/specs/asset-door.md).
+ * A sprite's .webp twin (public/sprites/player/ or gear/, its .png beside
+ * it) is the sprite bot's, made on any branch and on main after a merge
+ * (optimize-assets.yml): it is read as its PNG's row, and held by nothing
+ * here (shipped.mjs inReach; the gatekeeper's sitting 5).
  * This guard fails:
  *
  *   1. a file in reach with no row (added outside the door);
@@ -14,8 +18,12 @@
  *      alone makes it strict);
  *   6. a file of a supplied family that the game's reader (png8Decode.js)
  *      reads over its bar -- a census too: today's are counted by family
- *      (OVER_BAR), and a family's count only falls; a palette PNG the reader
- *      reads must also be whole frames of its family's pixel rule;
+ *      (OVER_BAR), and a family's count only falls.  A WebP is within its
+ *      bar when its own colour index says 256 colours or fewer (shipped.mjs
+ *      webpColours: what finish.mjs writes, and checks); a JPEG never is.  A
+ *      picture within its bar must also be whole frames of its family's
+ *      pixel rule, where the rule names a frame or a cell (11 of the 36
+ *      supplied families with a bar at tag 5244: the others state no size);
  *   7. a look sheet that lookExpand.js lookSheetParse will not read, or whose
  *      hash is not its row's (the 223 bodies' NUMBERS: put on 256 colours, every
  *      body would be scrambled, and no other check would see it).  Read the
@@ -24,8 +32,15 @@
  *      manifest row and set's roles (roles.json), the spec (lookUnpack.js
  *      lookSheetSpec, the one copy lookPalette.js builds sheets with), the
  *      bytes (unpackLookSheet), the parse; every number below its table's
- *      entries;
- *   8. shipped.json totals that are not its rows'.
+ *      entries.  The sheets are every one a look set's roles.json names
+ *      (and every PNG of a family drawn `look`), each in a family of kind
+ *      data drawn `look`: a change of the table's kind cannot take them
+ *      out of this hold;
+ *   8. a record that would not merge with one press (the gatekeeper's
+ *      sitting 5): totals in its head (every PR changing a file in reach
+ *      would rewrite them), rows out of path order or twice, not one a line
+ *      as --write writes them; or a row whose family or kind is not the
+ *      table's (a family moved without --write).
  *
  * IT NEVER MAKES A FILE AGAIN TO COMPARE: two machines' encoders differ and
  * it would flap.  It compares recorded hashes and reads files through the
@@ -50,7 +65,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname, basename } from 'node:path';
 import { ROOT } from './lib/fourLines.mjs';
 import { ASSET_FAMILIES } from '../assets/families.mjs';
-import { inReach, rowOf, totalsOf, readShipped, UNSORTED } from '../assets/shipped.mjs';
+import { inReach, botTwins, rowOf, readShipped, webpColours, ABOUT, OUT, UNSORTED } from '../assets/shipped.mjs';
 import { readPng8Chunks } from '../../src/rendering/png8Decode.js';
 import { lookSheetSpec, unpackLookSheet } from '../../src/rendering/lookUnpack.js';
 import { lookSheetParse } from '../../src/rendering/lookExpand.js';
@@ -88,7 +103,7 @@ const famOf = new Map(ASSET_FAMILIES.map((f) => [f.name, f]));
 /* ── 1. every file in reach has its row ── */
 {
   const noRow = present.filter((p) => !rows.has(p));
-  check(`1: every file in reach has a row in tools/assets/shipped.json (${present.length} files)` + MEND, noRow.length === 0, noRow);
+  check(`1: every file in reach has a row in tools/assets/shipped.json (${present.length} files; ${botTwins(ROOT).length} sprite twins the bot's, read as their PNGs' rows)` + MEND, noRow.length === 0, noRow);
 }
 
 /* ── 2. every row has its file ── */
@@ -127,25 +142,39 @@ const now = new Map();
   for (const [p, r] of now) {
     const f = famOf.get(r.family);
     if (!f || f.kind !== 'supplied' || !f.bar || !/\.(png|webp|jpe?g)$/i.test(p)) continue;
-    const c = /\.png$/i.test(p) ? readPng8Chunks(readFileSync(join(ROOT, p))) : null;
+    /* a PNG read by the game's reader; a WebP by its own colour index (v2.3.5244) */
+    const buf = /\.(png|webp)$/i.test(p) ? readFileSync(join(ROOT, p)) : null;
+    const c = !buf ? null : /\.png$/i.test(p) ? readPng8Chunks(buf) : webpColours(buf);
     if (!c) { over[r.family] = (over[r.family] || 0) + 1; continue; }
-    /* read by the game's reader: whole frames of its pixel rule */
+    /* within its bar: whole frames of its pixel rule */
     const fr = frameOf(f.px);
     if (fr && (c.w % fr[0] || c.h % fr[1])) offFrame.push([p, `${c.w}x${c.h}`, f.px]);
   }
   const rose = Object.entries(over).filter(([f, n]) => n > (OVER_BAR[f] || 0)).map(([f, n]) => ({ family: f, now: n, was: OVER_BAR[f] || 0 }));
   const fell = Object.entries(OVER_BAR).filter(([f, n]) => (over[f] || 0) < n).map(([f, n]) => `${f} ${n} -> ${over[f] || 0}`);
   check('6: no supplied family has more files over its bar than at tag 5244 (finish it: node tools/assets/finish.mjs <family> <file>)', rose.length === 0, rose);
-  check('6: every supplied picture the game\'s reader reads is whole frames of its family\'s pixel rule', offFrame.length === 0, offFrame);
+  check('6: every supplied picture within its bar is whole frames of its family\'s pixel rule (where the rule names a frame or a cell)', offFrame.length === 0, offFrame);
   if (fell.length) console.log(`     (a census that fell: lower OVER_BAR in this guard to lock it in: ${fell.join(', ')})`);
 }
 
 /* ── 7. the look sheets: read by lookSheetParse, their hashes their rows' ── */
 {
-  const sheets = [...now.values()].filter((r) => r.kind === 'data' && famOf.get(r.family)?.draw === 'look' && /\.png$/i.test(r.path));
+  /* v2.3.5244 (the gatekeeper's sitting 5): the sheets are found by their
+     manifests, not by the table's kind and draw alone (one line changing
+     the kind took all 223 out of this hold with nothing failing) */
   const manifests = new Map();
   const bad = [];
+  const named = new Set();
+  for (const mf of present.filter((p) => /^public\/sprites\/look\/(?:.+\/)?roles\.json$/.test(p))) {
+    const man = JSON.parse(readFileSync(join(ROOT, mf), 'utf8'));
+    manifests.set(dirname(mf), man);
+    for (const name of Object.keys((man && man.sheets) || {})) named.add(`${dirname(mf)}/${name}.png`);
+  }
+  for (const p of named) if (!now.has(p)) bad.push([p, 'its roles.json names it; no file']);
+  const sheets = [...now.values()].filter((r) => named.has(r.path) || (famOf.get(r.family)?.draw === 'look' && /\.png$/i.test(r.path)));
   for (const r of sheets) {
+    const fam = famOf.get(r.family);
+    if (!fam || fam.kind !== 'data' || fam.draw !== 'look') { bad.push([r.path, `a look sheet in ${r.family} (${fam ? fam.kind + ', drawn ' + fam.draw : 'no family'}): its family is data, drawn look`]); continue; }
     const dir = dirname(r.path);
     if (!manifests.has(dir)) {
       const mf = join(ROOT, dir, 'roles.json');
@@ -193,13 +222,23 @@ const now = new Map();
   check(`7: every look sheet's hash is its row's (the bodies' numbers; re-made only by their bake: role-bake, head-bake, shirt-bake)`, moved.length === 0, moved);
 }
 
-/* ── 8. the record's own totals ── */
+/* ── 8. the record merges with one press; its rows are the table's ── */
 {
-  const t = totalsOf(doc.rows);
-  check(`8: tools/assets/shipped.json's totals are its rows' (files ${doc.files}, bytes ${doc.bytes}, unsorted ${doc.unsorted})`,
-    doc.files === t.files && doc.bytes === t.bytes && doc.unsorted === t.unsorted && doc.families === t.families
-      && Object.keys(t.kinds).every((k) => (doc.kinds || {})[k] === t.kinds[k]) && rows.size === doc.rows.length,
-    { files: t.files, bytes: t.bytes, unsorted: t.unsorted, families: t.families, kinds: t.kinds, distinct: rows.size });
+  /* v2.3.5244 (the gatekeeper's sitting 5): no totals stored, one row a
+     line in path order, as --write writes it: two PRs that change
+     different files change different lines */
+  const raw = readFileSync(join(ROOT, OUT), 'utf8');
+  const head = Object.keys(doc).filter((k) => k !== 'rows');
+  const lines = raw.split('\n');
+  const want = ['{', `  "about": ${JSON.stringify(ABOUT)},`, '  "rows": [', ...doc.rows.map((r, i) => '    ' + JSON.stringify(r) + (i < doc.rows.length - 1 ? ',' : '')), '  ]', '}', ''];
+  const off = lines.findIndex((l, i) => l !== want[i]);
+  const order = doc.rows.findIndex((r, i) => i && Buffer.compare(Buffer.from(doc.rows[i - 1].path), Buffer.from(r.path)) >= 0);
+  check('8: tools/assets/shipped.json holds no totals, one row a line in path order, each path once, as --write writes it (the mend: node tools/assets/shipped.mjs --write)',
+    head.length === 1 && head[0] === 'about' && off < 0 && lines.length === want.length && order < 0,
+    { head, firstLineOff: off < 0 ? null : [off + 1, (lines[off] || '').slice(0, 120)], outOfOrder: order < 0 ? null : doc.rows[order].path });
+  const moved = doc.rows.filter((r) => now.has(r.path) && (now.get(r.path).family !== r.family || now.get(r.path).kind !== r.kind))
+    .map((r) => [r.path, `${r.family} -> ${now.get(r.path).family}`]);
+  check('8: every row\'s family and kind are tools/assets/families.mjs\'s today' + MEND, moved.length === 0, moved);
 }
 
 console.log(failed ? `\n${failed} FAILED` : '\nall green');

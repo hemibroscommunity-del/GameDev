@@ -24,7 +24,8 @@
  *      fewer comes back exactly as it was.
  *   3. ENCODE: a palette PNG (public/tools/world/core/png8.js); a lossless
  *      WebP where the family's address is a .webp (writeWebp, as
- *      tools/art/npc256.mjs: PIL, which reads it back).
+ *      tools/art/npc256.mjs: PIL, which reads it back), with its colour
+ *      index (v2.3.5244: what the gate reads, shipped.mjs webpColours).
  *   4. VERIFY: read back through the game's own reader
  *      (src/rendering/png8Decode.js): exactly the colours written, the size.
  *      Then the row in tools/assets/shipped.json, with `door`: its sources'
@@ -136,9 +137,9 @@ export async function encodePng(idx, pal, w, h) {
 const WEBP_PY = `
 import sys
 from PIL import Image
-png, out = sys.argv[1:3]
+png, out, method = sys.argv[1:4]
 im = Image.open(png).convert('RGBA')
-im.save(out, 'WEBP', lossless=True, quality=100, method=6)
+im.save(out, 'WEBP', lossless=True, quality=100, method=int(method))
 back = Image.open(out).convert('RGBA')
 n = len(back.getcolors(1 << 20))
 if back.tobytes() != im.tobytes() or n > 256:
@@ -146,11 +147,12 @@ if back.tobytes() != im.tobytes() or n > 256:
 print(n)
 `;
 /** the palette PNG's picture written to `out` as a lossless WebP, read back
- *  (the same pixels, 256 colours or fewer) or the run stops; its colours */
-export function writeWebp(pngBytes, out) {
+ *  (the same pixels, 256 colours or fewer) or the run stops; its colours.
+ *  `method` is libwebp's effort (6, the most, unless the door asks again). */
+export function writeWebp(pngBytes, out, method = 6) {
   const tmp = path.join(os.tmpdir(), `finish-${process.pid}-${path.basename(out)}.png`);
   fs.writeFileSync(tmp, pngBytes);
-  try { return Number(execFileSync('python3', ['-I', '-c', WEBP_PY, tmp, out]).toString().trim()); }
+  try { return Number(execFileSync('python3', ['-I', '-c', WEBP_PY, tmp, out, String(method)]).toString().trim()); }
   finally { fs.unlinkSync(tmp); }
 }
 
@@ -204,7 +206,7 @@ function frameOf(px) {
 
 async function finishCommand(argv) {
   const { ASSET_FAMILIES } = await import('./families.mjs');
-  const { familiesOf, recordRows } = await import('./shipped.mjs');
+  const { familiesOf, recordRows, webpColours } = await import('./shipped.mjs');
   const dry = argv.includes('--dry'), shared = argv.includes('--shared');
   const at = argv.indexOf('--to');
   const to = at >= 0 ? argv[at + 1] : null;
@@ -256,8 +258,17 @@ async function finishCommand(argv) {
       console.log(`  ${j.f} -> ${j.out}: ${j.w}x${j.h}, ${r.n} colours${g.length > 1 ? ` shared by ${g.length}` : ''}${r.exact ? ' (as it was)' : `, moved ${r.err.toFixed(4)}`}${dry ? ' (dry)' : ''}`);
       if (dry) continue;
       fs.mkdirSync(path.dirname(j.out), { recursive: true });
-      if (webp) writeWebp(png, j.out);
-      else {
+      if (webp) {
+        /* v2.3.5244 (the gatekeeper's sitting 5: the gate read every WebP
+           as over its bar, this one too): the gate reads a WebP's colours
+           from its own colour index (shipped.mjs webpColours).  libwebp
+           keeps one for 256 colours or fewer at nearly every picture (25 of
+           25 tried at effort 6), but it chooses; one written without is
+           written again at the next effort down, or the run stops. */
+        let ix = null;
+        for (const m of [6, 5, 4, 3, 2, 1, 0]) { writeWebp(png, j.out, m); if ((ix = webpColours(fs.readFileSync(j.out)))) break; }
+        if (!ix) { fs.unlinkSync(j.out); stop(`${j.out}: libwebp kept no colour index at any effort, so the gate could not read it within the bar (give ${name} a .png address)`); }
+      } else {
         fs.writeFileSync(j.out, png);
         await verifyPng(fs.readFileSync(j.out), idx, r.pal, j.w, j.h, j.out);   /* read back from the disk */
       }
