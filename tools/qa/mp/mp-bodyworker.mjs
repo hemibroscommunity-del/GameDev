@@ -48,12 +48,19 @@
  *          another tab lets none go), and the page bakes; it is started
  *          again when the page comes back, once: let go a second time, it
  *          stays gone until the next return.
+ *      6c. (v2.3.5049, the gatekeeper's sitting 1 on #1668) a worker that
+ *          NEVER runs (a second page whose body bake worker is a script that
+ *          answers nothing: a device where it cannot run) is let go once,
+ *          and at the return NOT started again: the page bakes (it was
+ *          started again at every return, 20 s of plain looks each time).
  *
  * Sampled per CLAUDE.md §6: one sheet a pose family (the facings of a family
  * share the code; jog-northeast is the one with a step of its own).
  *
- *   BT_BW_PARTS=play,same,restart   some parts only (all three by default):
- *                                   `play` 2, `same` 1 to 5, `restart` 6
+ *   BT_BW_PARTS=play,same,restart,hung   some parts only (all by default):
+ *                                   `play` 2, `same` 1 to 5, `restart` 6a and
+ *                                   6b, `hung` 6c; a name it does not know
+ *                                   fails (v2.3.5049)
  */
 import * as H from './harness.mjs';
 
@@ -97,7 +104,11 @@ const OWN = `try {
   localStorage.setItem('bt-pantsart', ${JSON.stringify(INK('1', 4))});
 } catch (e) {}`;
 
-const PARTS = (process.env.BT_BW_PARTS || 'play,same,restart').split(',').map((s) => s.trim());
+const PART_NAMES = ['play', 'same', 'restart', 'hung'];
+const PARTS = (process.env.BT_BW_PARTS || PART_NAMES.join(',')).split(',').map((s) => s.trim()).filter(Boolean);
+/* v2.3.5049, the gatekeeper's sitting 1 (#1668): a name it does not know (a typo: `BT_BW_PARTS=restrat`) ran no
+   part and passed.  Now such a name is a failed check, and so is a list that names no part */
+const PARTS_UNKNOWN = PARTS.filter((p) => !PART_NAMES.includes(p));
 /* 6 (v2.3.5040): how long the page is frozen (bodyBake.js WORKER_MS is 20 s) */
 const FROZEN_MS = 25000;
 /* the page goes hidden and comes back, as mp-tabsleep and mp-tabwipe make it */
@@ -126,6 +137,9 @@ async function pageProcesses(browser) {
 }
 
 export async function run({ browser, wsPort, webPort, rec }) {
+  rec.ok(`BT_BW_PARTS names parts this scenario has (${PARTS.join(', ') || 'none'}; it knows ${PART_NAMES.join(', ')})`,
+    PARTS.length > 0 && PARTS_UNKNOWN.length === 0, { unknown: PARTS_UNKNOWN });
+  if (!PARTS.length || PARTS_UNKNOWN.length) return;
   const errors = [];
   const A = await H.newPlayer(browser, { name: 'Inked', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true, dpr: 1, world: 'wheel', init: OWN });
   A.page.on('pageerror', (e) => errors.push(String(e && e.message || e)));
@@ -320,6 +334,48 @@ export async function run({ browser, wsPort, webPort, rec }) {
         rec.ok(`6b round ${round}: the page came back and a worker was started again (${st && st.workers} at work), and baked the next sheets (${st && st.done - s3.done}, ${st && st.failed - s3.failed} failed)`,
           !!st && !st.dead && st.workers >= 1 && st.done - s3.done >= 3 && st.failed === s3.failed, st);
       }
+    }
+
+    if (PARTS.includes('hung')) {
+    /* ═══ 6c (v2.3.5049): A WORKER THAT NEVER RAN HERE IS NOT STARTED AGAIN AT A RETURN ═══
+       The gatekeeper's sitting 1 (#1668): a worker that hangs from its start was started again at every return,
+       each return then 20 s of plain looks.  A second page whose body bake worker is a script that never answers
+       (the device where it cannot run): let go once, after 20 s the page was there to see; at the return, not
+       started again (bodyBake.js _back, `unheard`), and the page bakes. */
+    const HANG = `(() => { const W = window.Worker; const Hung = function (url, opts) {
+      if (String(url).indexOf('bodyBakeWorker') >= 0) return new W(URL.createObjectURL(new Blob(['/* mp-bodyworker 6c: never answers */'], { type: 'text/javascript' })), opts);
+      return new W(url, opts); }; Hung.prototype = W.prototype; window.Worker = Hung; })();`;
+    const B = await H.newPlayer(browser, { name: 'Hung', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true, dpr: 1, world: 'wheel', init: OWN + HANG });
+    B.page.on('pageerror', (e) => errors.push('6c: ' + String(e && e.message || e)));
+    try {
+      await H.enterWorld(B);
+      const inB = await H.waitFor(B, (S) => ({ z: S.currentZone, l: !!S._zoneLoading }), (v) => v.z === 'wheel' && !v.l, { timeout: 120000, label: '6c: into the world' }).catch(() => null);
+      rec.ok('6c guard: the second page is in the world', !!inB, inB);
+      if (inB) {
+        const bwB = () => B.page.evaluate(() => window.__btBodyWorker()).catch(() => null);
+        const b0 = await bwB();
+        await B.page.evaluate((s) => { window.__btSetArt('tattoo', s); }, INK('e', 2));
+        let gone = null;
+        const t0 = Date.now();
+        while (Date.now() - t0 < 90000) { await B.page.waitForTimeout(1000); gone = await bwB(); if (gone && gone.dead) break; }
+        console.log(`    6c, the hung worker: ${JSON.stringify(gone)} after ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+        rec.ok(`6c: a worker that never answers is let go after 20 s the page was there to see, never heard from (${gone && gone.stalled - b0.stalled} let go, ${gone && gone.unheard} never heard from, ${gone && gone.beats - b0.beats} beats)`,
+          !!gone && gone.dead && gone.stalled > b0.stalled && gone.unheard >= 1 && gone.beats === b0.beats && (Date.now() - t0) >= 19000, gone);
+        await hide(B);
+        await B.page.waitForTimeout(1500);
+        await show(B);
+        await B.page.waitForTimeout(500);
+        const b1 = await bwB();
+        await B.page.evaluate((s) => { window.__btSetArt('tattoo', s); }, INK('7', 3));
+        await B.page.waitForTimeout(6000);
+        const b2 = await bwB();
+        console.log(`    6c, back: ${JSON.stringify(b2)}`);
+        rec.ok(`6c: at the return it is NOT started again (${b2 && b2.restarts - gone.restarts} restarts, ${b2 && b2.workers} at work), and the next sheets are the page's (${b2 && b2.asked - b1.asked} asked of a worker)`,
+          !!b2 && b2.dead && b2.restarts === gone.restarts && b2.workers === 0 && b2.asked === b1.asked, b2);
+      }
+    } finally {
+      await B.ctx.close().catch(() => {});
+    }
     }
     rec.ok(`no page errors (${errors.length})`, errors.length === 0, errors.slice(0, 5));
   } finally {

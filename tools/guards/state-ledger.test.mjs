@@ -16,45 +16,80 @@
  *   4. every row the census finds is a row of a ledger, or counted as
  *      UNLISTED; the count may only fall (the plan's rule 3: a census.  Only
  *      the gatekeeper lowers UNLISTED_LINE, in a PR of its own; nobody
- *      raises it, and only the gatekeeper makes it strict).
+ *      raises it, and only the gatekeeper makes it strict);
+ *   5. (v2.3.5201, reading the script) every listed row's MACHINE columns
+ *      are the script's: `system`, `suggested`, `born`, `twoFiles`,
+ *      `noRead`, `noSet`, `neverChanged`, `phase`, `flag`, `writers`, as
+ *      `--ledger` makes them now.  A row changed by hand, or left stale by a
+ *      change to the code (a new writer), fails: make the ledger again.  The
+ *      hand's columns (`lifetime`, and any a later card adds beside it, card
+ *      L's `reset`) are the hand's and are never compared.
  * Printed, never failed: the unlisted rows by system, the rows of files the
  * map has not placed (`unsorted`: no ledger can take them), and a listed row
  * whose system has moved since it was listed (it stays in its file).
  *
  * WHERE THE ROWS COME FROM.  Card D's script is the one reader of the code
- * (the plan's rule 2).  It needs the root's @babel, which GitHub's `test` job
- * does not install (it installs only server/'s), and it takes about 16 s.  So,
- * as four-lines does, the guard reads the rows off the page the script writes
- * (docs/plan/census/state.md: a field by its name, a variable by its file and
- * name), and `--live` runs the script instead.  The page is as true as its
- * last `--write`: nothing holds it to the code (the four-lines guard says
- * `--check` does; nothing runs it).  At landing it lagged main by 20
- * variables, so `--live` counted 2,148 unlisted, over the line.  A ledger
- * PR whose rows need it rewrites the page (`state-census.mjs --write`, the
- * planning session's call, 2026-11-14), and its new rows offset the page's.
+ * (the plan's rule 2).  v2.3.5201 (card L PR 1, the gatekeeper's finding,
+ * sitting 6): the guard READS THE SCRIPT wherever it loads, GitHub's `test`
+ * job included.  That job installs only server/'s packages; server/ now
+ * carries the root's exact @babel/parser and @babel/traverse, and the
+ * script's loader tries the root's packages, then server/'s.  Its run (~18 s)
+ * is shared with four-lines' fourth number, one a `npm test`
+ * (lib/fourLines.mjs, stateCensus()).  Only where it cannot load (no @babel
+ * in either place: it exits 3) does the guard read the page the script
+ * writes (docs/plan/census/state.md: a field by its name, a variable by its
+ * file and name), says so, and skips 5 (the page carries no columns).  Until
+ * then the guard was blind between rewrites of the page: a new top-of-file
+ * `let` was green by the page and red by the code.  The page stays a census
+ * the script rewrites, never a gate: it carries line numbers, so
+ * `--check` would fail every PR that moves a line under src/.
  *
  * BREAK PROOF (the plan's rule 8), each tried by hand, 2026-11-14:
  *   1. `import x from './y.js';` at the top of src/state/life.js  -> FAIL 1
  *   2. the `_deathCard` row's line twice in src/state/life.js     -> FAIL 2
  *   3. `_deathCard` renamed `_deathCardX` in that row             -> FAIL 3 and 4
  *   4. the row deleted (unlisted 2128 -> 2129, its line 2128)     -> FAIL 4
+ * v2.3.5201, each with ONLY server/'s packages installed (the root's
+ * node_modules moved aside, as GitHub's `test` job), 2026-11-14:
+ *   6. `let _l5201 = 0;` at the top of src/game/deathCard.js, with
+ *      UNLISTED_LINE at its count (16: the gatekeeper's to set, rule 3;
+ *      at 2128 a new row is room, not a fail)     -> FAIL 4 (17 of 2170)
+ *      (by the page, `--page`, it stayed green: the blindness this fixes)
+ *   7. the `_deathCard` row's `writers` changed by hand to
+ *      ['src/game/lifeSkillRewards.js'] in src/state/life.js  -> FAIL 5
+ *   8. its `suggested` 'death' -> 'zone' by hand              -> FAIL 5
+ *   (its `lifetime` 'sitting' -> 'death' by hand: green, the hand's column)
+ *   9. @babel moved aside in server/ too: the page is read and said,
+ *      5 skipped, green; with `--live`                        -> FAIL 0
  *
  * Run from the repository's root: node tools/guards/state-ledger.test.mjs
- *   --live   take the rows from the script (needs `npm install` at the root)
+ *   --live   insist on the script: fail where it cannot load (no fallback)
+ *   --page   read the page, as where the script cannot load (to compare)
  * (cd server && npm test runs it with every other guard and suite).
  */
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { execFileSync } from 'node:child_process';
 import { SYSTEMS, ROOT, placeFiles, systemOf } from './lib/systems.mjs';
+import { stateCensus, CENSUS_SCRIPT } from './lib/fourLines.mjs';
 
 /* Set 2026-11-14 at its first count (the page at main 75946b7: 647 fields
    and 1,482 variables, 2,129 rows, less the one row of src/state/life.js).
-   Only the gatekeeper lowers it. */
-export const UNLISTED_LINE = 2128;
+   Only the gatekeeper lowers it.
+   v2.3.5363 (the gatekeeper, sitting 7): 2128 -> 22, card U's nine merged.
+   The count on sitting 7's rehearsed list: 16 by the page (the four files
+   the map has not placed), 22 by the code (`--live`, and what card L's
+   #1746 reads): the list brings six top-of-file variables no ledger lists
+   yet, src/debug/report.js `_speed`, `_lastSentAt` (#1711),
+   src/rendering/picsOnce.js `_walk`, `_walkMap`, `_seen` (#1741) and
+   src/rendering/bodyBake.js `_unheard` (#1747).  The line is the code's
+   count, so the list merged with #1746 stays green; the next
+   `--ledger debug`, `--ledger preload` and `--ledger art` take them, and
+   the next sitting lowers it again. */
+export const UNLISTED_LINE = 22;
 
 const LIVE = process.argv.includes('--live');
+const PAGE_ONLY = process.argv.includes('--page');
 const PAGE = 'docs/plan/census/state.md';
 const DIR = 'src/state';
 
@@ -89,13 +124,12 @@ function fromPage() {
     !!t && Number(t[1]) === fields && Number(t[2]) === vars && rows.size === fields + vars);
   return rows;
 }
-function fromScript() {
-  const out = execFileSync(process.execPath, [join(ROOT, 'tools/dev/state-census.mjs'), '--json'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 256 << 20 });
-  const j = JSON.parse(out);
+function fromScript(j) {
   const rows = new Map();
   for (const r of j.fields) rows.set('S ' + r.name, 'src/' + r.system);
   for (const v of j.variables) rows.set('src/' + v.file + ' ' + v.name, 'src/' + v.file);
-  check(`0: the census script's rows read (${j.fields.length} fields, ${j.variables.length} variables)`, rows.size === j.fields.length + j.variables.length);
+  check(`0: the census script's rows read (${j.fields.length} fields, ${j.variables.length} variables, ${(j.ledger || []).length} made as ledger rows)`,
+    rows.size === j.fields.length + j.variables.length && Array.isArray(j.ledger) && j.ledger.length === rows.size);
   return rows;
 }
 
@@ -136,7 +170,17 @@ function rowFault(row) {
 }
 const keyOf = (row) => (row.field !== undefined ? 'S ' + row.field : row.file + ' ' + row.variable);
 
-const found = LIVE ? fromScript() : fromPage();
+/* the script wherever it loads (one run a `npm test`, shared with
+   four-lines); the page only where it cannot, and said */
+let census = null;
+if (!PAGE_ONLY) {
+  census = stateCensus();
+  if (!census && LIVE) {
+    check(`0: ${CENSUS_SCRIPT} loads its @babel (--live: no fallback to the page)`, false, 'run `npm install` at the root or in server/');
+  }
+}
+info(census ? `reading the code: ${census.by}` : `reading the page ${PAGE}${PAGE_ONLY ? ' (--page)' : `: ${CENSUS_SCRIPT} cannot load its @babel here (neither the root's nor server/'s); check 5 skipped`}`);
+const found = census ? fromScript(census.json) : fromPage();
 
 /* ── 1. the files, their form, their rows ── */
 const ledgers = new Map();   /* system -> rows */
@@ -174,14 +218,14 @@ for (const [sys, rows] of ledgers) for (const row of rows) {
 /* ── 3 and 4: against the rows the census finds ── */
 {
   const gone = [...listed.keys()].filter((k) => !found.has(k));
-  check(`3: every listed row is one the census finds (${LIVE ? 'the script' : 'its page'}): make the ledger again (state-census.mjs --ledger <system> --write)`, gone.length === 0, gone);
+  check(`3: every listed row is one the census finds (${census ? 'the script' : 'its page'}): make the ledger again (state-census.mjs --ledger <system> --write)`, gone.length === 0, gone);
 }
 {
   const placed = placeFiles();
   const unlisted = [...found.keys()].filter((k) => !listed.has(k));
   const n = unlisted.length;
   check(`4: unlisted rows at or under the line ${UNLISTED_LINE} (${n} of ${found.size}): a new row goes in its system's ledger (state-census.mjs --ledger <system> --write)`, n <= UNLISTED_LINE);
-  if (n < UNLISTED_LINE) info(`(room: ${n} under the line ${UNLISTED_LINE}; the gatekeeper may lower it)`);
+  if (n < UNLISTED_LINE) info(`(room: ${UNLISTED_LINE - n} under the line ${UNLISTED_LINE}, at ${n} unlisted; the gatekeeper may lower it)`);
   const by = new Map();
   const unsortedFiles = new Set();
   for (const k of unlisted) {
@@ -198,6 +242,24 @@ for (const [sys, rows] of ledgers) for (const row of rows) {
     if (!systems.includes(now)) moved.push(`${k} (in ${systems[0]}, now ${now})`);
   }
   if (moved.length) info(`listed rows whose system has moved (they stay where they are): ${moved.join('; ')}`);
+}
+
+/* ── 5. a listed row's machine columns are the script's (v2.3.5201) ──
+   The columns `--ledger` makes (state-census.mjs's LEDGER_MADE, less the
+   key): every one but the hand's, which are never compared. */
+const MACHINE = ['system', 'suggested', 'born', 'twoFiles', 'noRead', 'noSet', 'neverChanged', 'phase', 'flag', 'writers'];
+if (census) {
+  const made = new Map(census.json.ledger.map((row) => [keyOf(row), row]));
+  const hand = [];
+  for (const [sys, rows] of ledgers) for (const row of rows) {
+    const m = made.get(keyOf(row));
+    if (!m) continue;   /* 3 names it */
+    const cols = MACHINE.filter((c) => JSON.stringify(row[c]) !== JSON.stringify(m[c]));
+    if (cols.length) hand.push(`src/state/${sys}.js ${keyOf(row)}: ` + cols.map((c) => `${c} ${JSON.stringify(row[c])}, the script's ${JSON.stringify(m[c])}`).join('; '));
+  }
+  check(`5: every listed row's machine columns are the script's (${MACHINE.join(', ')}): make the ledger again (state-census.mjs --ledger <system> --write); by hand only lifetime and the hand's columns`, hand.length === 0, hand);
+} else {
+  info('5: not checked: the page carries no columns (only where the script cannot load)');
 }
 
 console.log(failed ? `\n${failed} failed` : '\nall green');

@@ -4,7 +4,9 @@
  *   node tools/dev/state-census.mjs            print the page (docs/plan/census/state.md)
  *   node tools/dev/state-census.mjs --write    write the page
  *   node tools/dev/state-census.mjs --check    exit 1 if the page on disk is not what this prints
- *   node tools/dev/state-census.mjs --json     the rows as JSON (for card U's ledger files)
+ *   node tools/dev/state-census.mjs --json     the rows as JSON (for card U's ledger files; v2.3.5201:
+ *                                              with `ledger`, every row as --ledger makes it, which
+ *                                              the ledger's guard holds the files to)
  *   node tools/dev/state-census.mjs --ledger [system] [--write]
  *                                              card U's ledger files (src/state/), made from these
  *                                              rows (v2.3.5160; its section is near the end)
@@ -43,8 +45,10 @@
  * no entry prints "?" and is counted.
  *
  * Needs `npm install` (it uses @babel/parser and @babel/traverse, which the
- * vite React plugin already brings).  Deterministic: files and rows are
- * sorted, nothing reads a clock.
+ * vite React plugin already brings; v2.3.5201: server/ carries the same two
+ * as devDependencies, at the root's exact versions, so it runs where only
+ * server/'s packages are installed, GitHub's `test` job).  Deterministic:
+ * files and rows are sorted, nothing reads a clock.
  */
 import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, dirname, relative, resolve as pathResolve, sep } from 'node:path';
@@ -54,15 +58,29 @@ import { createRequire } from 'node:module';
 const ROOT = pathResolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const SRC = join(ROOT, 'src');
 const PAGE = join(ROOT, 'docs', 'plan', 'census', 'state.md');
-const require = createRequire(join(ROOT, 'package.json'));
+/* v2.3.5201 (card L PR 1): THE LOADER tries the root's packages, then
+   server/'s, as tools/guards/lib/fourLines.mjs does for esbuild.  GitHub's
+   `test` job installs only server/'s, and server/ now carries the root's
+   exact @babel/parser and @babel/traverse as devDependencies, so the guards
+   read the code there and not this script's page (the gatekeeper's finding,
+   sitting 6: between rewrites of the page the ledger guard was blind).  Both
+   packages from ONE place, never one of each.  Neither loads: exit 3, the
+   one code a guard takes as "cannot run here" and reads the page instead; a
+   parse error and every other failure stay 1 or 2 (a red, never a fallback). */
 let parser, traverse;
-try {
-  parser = require('@babel/parser');
-  const t = require('@babel/traverse');
-  traverse = t.default || t;
-} catch (e) {
-  console.error('state-census: @babel/parser and @babel/traverse are not installed. Run `npm install` at the repository root first.');
-  process.exit(2);
+for (const pkg of ['package.json', 'server/package.json']) {
+  try {
+    const require = createRequire(join(ROOT, pkg));
+    const p = require('@babel/parser');
+    const t = require('@babel/traverse');
+    parser = p;
+    traverse = t.default || t;
+    break;
+  } catch { /* the next */ }
+}
+if (!parser || !traverse) {
+  console.error('state-census: @babel/parser and @babel/traverse are not installed. Run `npm install` at the repository root (or in server/) first.');
+  process.exit(3);
 }
 
 const ARGS = new Set(process.argv.slice(2));
@@ -2466,7 +2484,16 @@ if (process.argv[1] && pathResolve(process.argv[1]) === fileURLToPath(import.met
     await ledgerMain();
   } else if (ARGS.has('--json')) {
     const slim = (sites) => sites.map((s) => short(s.file) + ':' + s.line + ' ' + s.where);
+    /* v2.3.5201 (card L PR 1): `ledger`, every row as `--ledger` makes it
+       (ledgerFound, the map's systems): the state ledger's guard holds the
+       machine's columns of each listed row to it, so a row typed or changed
+       by hand fails (the gatekeeper's second finding, sitting 6).  An output,
+       not a reading rule: nothing above changes. */
+    const { placeFiles, systemOf: mapSystemOf } = await import(pathToFileURL(join(ROOT, 'tools', 'guards', 'lib', 'systems.mjs')).href);
+    const placed = placeFiles();
+    const made = ledgerFound((file) => mapSystemOf(file, placed) || 'unsorted');
     process.stdout.write(JSON.stringify({
+      ledger: [...made.values()].map((x) => x.made),
       fields: fieldRows.map((r) => ({
         name: r.name, system: short(r.system), born: r.born.how === 'never' ? null : { how: r.born.how, at: short(r.born.file) + ':' + r.born.line },
         marks: r.marks, states: r.states, writtenAt: r.at, shouldReset: r.reset,

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { PlayerDrawings, AccuracyDays } from './DevWatch.jsx';   /* v2.3.4545: what players drew, and every player's accuracy a day */
+import { ReportTable } from './ReportTable.jsx';   /* v2.3.5125: the smoothness table, copied (card A) */
 import { COL, getState } from '../mobile/dash/common.js';
 import { BT_API_BASE } from '../../networking/index.js';
 import { runSpeedTest } from '../../game/speedTest.js';   /* v2.3.3339: the speed test, measured on this phone */
@@ -318,7 +319,7 @@ const CAP_GATES = [
   'perfectStrike' /* v2.3.4615: the trial's perfect strike (server/src/freeswing.js): an attack timed to the full cycle is judged by the worker; v2.3.4800: the blade's glint (game/swordFeel.js) promises it only with it -- off with `freeswing: false` */,
   'bowDraw' /* v2.3.4801: the bow's draw (server/src/drawgather.js): an arrow carries its draw time and lands its share of a full draw, the perfect draw judged by the worker -- off with `bowdraw: false` */,
   'staffGather' /* v2.3.4801: the staff's gather (server/src/drawgather.js): a bolt carries its gather time and lands its share, its stage setting its splash and ring of force -- off with `staffgather: false` */,
-  'report' /* v2.3.5123: the field report (server/src/report.js; the phone's half debug/report.js): the phone sends its smoothness only to a worker that says this -- lower case, a kill switch */,
+  'report' /* v2.3.5123: the field report (server/src/report.js; the phone's half debug/report.js): the phone sends its smoothness only to a worker that says this -- lower case, a kill switch.  v2.3.5127: a count, 2 the Speed test's card too (takesSpeed; `reportspeed: false` 1) */,
   'accuracy' /* v2.3.4545: shots and hits a weapon (server/src/accuracy.js): the phone numbers its basic shots and the Journey page shows how many hit -- lower case, a kill switch */,
 ];
 /* v2.3.3732: caps that are OFF by default on purpose -- an opt-in, not a job
@@ -1611,6 +1612,7 @@ export const DevPanel = ({ onClose }) => {
             {/* ═══ v2.3.4545: WHAT PLAYERS DREW, AND HOW WELL THEY AIM (DevWatch.jsx) ═══ */}
             <PlayerDrawings call={call} busy={busy} setMsg={setMsg} COL={COL} btn={btn} chip={chip} label={label} />
             <AccuracyDays call={call} busy={busy} setMsg={setMsg} COL={COL} btn={btn} label={label} />
+            <ReportTable call={call} busy={busy} setMsg={setMsg} COL={COL} btn={btn} label={label} />{/* v2.3.5125: the smoothness table (ReportTable.jsx) */}
 
             <button type="button" style={{ ...btn(false), borderColor: COL.danger, color: COL.danger }} onClick={forgetKey}>
               Forget key on this device

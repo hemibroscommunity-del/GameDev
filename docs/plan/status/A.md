@@ -1,38 +1,39 @@
 card: A
-branch: claude/plan-a-4-report-worker (one branch a PR, each begun from the one before: -1- to -7-; merge them in order)
-prs: #1688, #1692, #1703 (merged); #1706 (5123, mended for sitting 4; ready), #1708 (5124), #1711 (5125): being mended
+branch: claude/plan-a-6-speed-card (one branch a PR, each begun from the one before: -1- to -7-; merge them in order)
+prs: #1688, #1692, #1703, #1706 (merged); #1708 (5124), #1711 (5125, its route in card N's wire table): mended for sitting 6, ready
 state: ready
 
 ## Done
 
-- #1688, #1692, #1703 (5120 to 5122): merged at sitting 3.
-- #1706 (5123): `server/src/report.js`, into the book's `dev` part by
-  cell; `caps.report` (a new cap line: list it apart). Sitting 3's four
-  mends (tag 5127: #1703 on `main` names 5123 ahead). Sitting 4's, a test
-  each (report.test 11): `report.js` in the system map (`debug`); a cell
-  half its size (2,392 to 1,272 bytes: 19 a day, was 10); a socket's
-  reports reach at most two cells; `died` only on a socket's first
-  report; a thawed page (a late poll, `pageshow`) is a return, not seen
-  time; another tab's switch off throws the open report away. A `report`
-  row in `docs/WIRE-PROTOCOL.md`.
+- #1688, #1692, #1703 (5120-5122) merged at sitting 3; #1706 (5123) at 5.
+- #1708 (5124): `roomrow.js` into the `room` part. Sitting 4's: in the
+  map (`server-core`); the last one out (`leave.js`, one line) writes
+  the book at once (roomrow.test 9). Sitting 5's: only after a join
+  since its last write (a socket that never joins, a kick's second
+  close: nothing); three turns in hand, one back each 5 minutes, every
+  put of the book spending one (the door's too: the storage's wrapper),
+  a turn beyond a put running; `roomrow: false` stops it; two last-outs
+  in one put never side by side. roomrow.test 10, cost-guard 15c (an
+  hour of storms: 14 rows, line 18), SHAPES's book row. Sitting 6's: a
+  save refused owes the book too (a `newer` refusal comes at the join);
+  roomrow §3 reads the stored book alone.
+- #1711 (5125): the Speed card into `speed`; GET /dev/daybook (its row
+  in card N's wire table); "Copy table". `caps.report` 2 takes the card.
 
 ## Next
 
-- #1708 (the room empties: its counts and the book's waiting sums are
-  written), then #1711 (the card gated on `caps.report` 2, its switch).
+- Sitting 7's list.
 
 ## Found
 
 - Card O: `split` goes only with `late`, where the pacer judges (over
   ~70 a second); when O's pacer judges at every rate, it follows.
-- Outside `deviceProfile.js`, still asking the device (card O's):
-  `paletteTex.js` `SOFTWARE_GL` (held equal to `SOFT_GL` by test),
-  `MAX_TEXTURE_SIZE` in `peerImpostor.js`, `crashTrap.js`;
-  `hardwareConcurrency` in `bodyBake.js`.
-- When card Q's sitting card keeps `soft`, `seen`, `drawn`, the About
-  row's "no name on it" must change with it (card Q).
-- Card E: the door reckons a part ~4 times its stored size (28 bytes a
-  number): a closer reckoning would give `dev` that much more room.
+- Card O: still asking the device outside `deviceProfile.js`:
+  `paletteTex.js` (`SOFTWARE_GL`, held to `SOFT_GL`), `peerImpostor.js`,
+  `crashTrap.js`, `bodyBake.js`.
+- Card Q: a sitting card keeping `soft`, `seen`, `drawn` changes the About row's "no name on it".
+- Card E: a part reckoned ~4 times its stored size (a closer one: more
+  room); a `bookFlush` export would spare `roomrow.js` the door's memory.
 
 ## Needs
 
