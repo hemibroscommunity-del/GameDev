@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6bdb9af1c6c547e0dee874d7094d5696c750f18d",
+  "tree": "94be31da6e3dc3a3f2dd38d3335ba2366c158184",
+  "committedAt": "2026-11-14T11:26:07-08:00",
+  "subject": "Merge pull request #1814 from hemibroscommunity-del/claude/plan-o-15-govoff",
+  "files": 7671,
+  "bytes": 953916494,
+  "listingSha256": "8e56643c8fc682717cb2f5f0c666dda6d99e4e357514b908c6f57f23b7b871e8",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

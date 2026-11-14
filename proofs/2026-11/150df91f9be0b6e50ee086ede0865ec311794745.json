@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "150df91f9be0b6e50ee086ede0865ec311794745",
+  "tree": "301e12e6815799870de928dc65a57a57059041bf",
+  "committedAt": "2026-11-14T11:26:17-08:00",
+  "subject": "Merge pull request #1812 from hemibroscommunity-del/claude/plan-tf-2-work-poses",
+  "files": 7690,
+  "bytes": 956053997,
+  "listingSha256": "00118344759dd89bddd9b5cc84fe79c81c3411133aecd474eb2d2055b942666a",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

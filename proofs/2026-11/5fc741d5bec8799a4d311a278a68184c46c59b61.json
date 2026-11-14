@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "5fc741d5bec8799a4d311a278a68184c46c59b61",
+  "tree": "856bf78431f2966dac5b8550468b6cdd8264af34",
+  "committedAt": "2026-11-14T11:25:34-08:00",
+  "subject": "Merge pull request #1820 from hemibroscommunity-del/claude/plan-k-3-hostile",
+  "files": 7670,
+  "bytes": 953797853,
+  "listingSha256": "9127fe8d8e4f5b46ebdcc79b91a509bb4ace52c08a5303ae51cad2abb842686e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

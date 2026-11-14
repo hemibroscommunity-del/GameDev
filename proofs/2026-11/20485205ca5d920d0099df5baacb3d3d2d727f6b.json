@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "20485205ca5d920d0099df5baacb3d3d2d727f6b",
+  "tree": "802fd8576579f1f9acef05b8ec64a904fc20f60a",
+  "committedAt": "2026-11-14T11:25:27-08:00",
+  "subject": "Merge pull request #1819 from hemibroscommunity-del/claude/plan-r-1-roads",
+  "files": 7668,
+  "bytes": 953769121,
+  "listingSha256": "25b6c1d5eef90df231b36ae60b11aaaf283caffd21bbdb4c0d4d7be48e5da74e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

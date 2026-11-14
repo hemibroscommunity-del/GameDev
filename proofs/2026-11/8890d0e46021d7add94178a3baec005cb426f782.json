@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8890d0e46021d7add94178a3baec005cb426f782",
+  "tree": "fd6e1f79ef07d8f4a16588822f7d651e9a5558e8",
+  "committedAt": "2026-11-14T11:25:52-08:00",
+  "subject": "Merge pull request #1794 from hemibroscommunity-del/claude/plan-o-4-rate",
+  "files": 7671,
+  "bytes": 953880001,
+  "listingSha256": "a38c1bbdfb0c59142cdf3f497aecef9c4d9ad7fb2cca36b1a55a38e6c1b55a76",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
