@@ -354,8 +354,22 @@ own cook strip's width. Its CI was green at 14a8c24.
 - VERIFIED by reading, low: the 2.6 MB set loads under `?lookfolk=0`, the
   Test panel's "Townsfolk drawn live" off, or `?folkwalk=0`, where nobody
   is drawn live (folkSkill.js ~59: gate on `lookFolkAtLoad`).
+- VERIFIED by reading, low-medium: precheck's `look-roles` runs
+  `--hashes` only for some paths (precheck.mjs ~935-938), not the set's
+  sources (`public/sprites/skills/*`, standInInk.js, standInGarb.js,
+  bodyRecolor.js, farmAnims.js): a re-export of the cook strip would leave
+  Chef Blaze stale without a red. `role-bake --hashes` reads the set fresh
+  today.
 - Low: the cook's quantising "mean 4.3" is another measure (per pixel,
-  straight RGB, 11.1 against 3.1 to 6.5 for the others).
+  straight RGB, 11.1 against 3.1 to 6.5 for the others); the spec's rows
+  say 5461 for what ships as 5462; a missing part falls back to the
+  pickup where the docs say "he stands".
+- Memory and preloading, sound: the +3.2 MB at the chip's peak is the
+  set's own size and does not grow with townsfolk or time; no full-colour
+  copy, no pixel read on the page; `?folkskills=0` and `?folkwork=0`
+  fetch nothing. Nobody walks anywhere new (every day's places and pauses
+  as on `main`, only the jobs changed). Suites: townsfolk-walk 60,
+  picture-door; twelve guards green.
 
 ## Card SK: #1782 (tag 5440): NOT LISTED (the owner's yes to its cost)
 
