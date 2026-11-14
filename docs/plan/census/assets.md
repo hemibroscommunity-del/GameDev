@@ -2,7 +2,7 @@
 
 Card P, PR 2 (grand plan step 9.1, part two); `docs/specs/asset-door.md`
 part 2 says how it is read. Written by `node tools/assets/fightmb.mjs <runs> --write`,
-never by hand, from 3 runs of `QA_MB_ROWS=1 node tools/qa/mp/run.mjs membudget` at `0f60b348a`.
+never by hand, from 3 runs of `QA_MB_ROWS=1 node tools/qa/mp/run.mjs membudget` at `4811c479c`.
 
 **MB at the fight** is the most a family held at any one fight stop of any
 run: on the graphics chip, the picture the page keeps, the colour numbers the
@@ -23,24 +23,24 @@ stops at the first family under 1 MB (the line below the table's marker).
 
 | family | kind | draw | files | MB on disk | MB at the fight | chip | page | numbers | sound | atlas | over bar | backlog | waits on H |
 |---|---|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|---|---|
-| `monster-fire-goblin` | made | strip | 14 | 1.32 | **7.79** | 2.25 | 0.00 | 5.54 | 0.00 | 14 |  | after H | zoneTextures.js, stripRead.js |
+| `monster-fire-goblin` | made | strip | 14 | 1.32 | **8.11** | 2.57 | 0.00 | 5.54 | 0.00 | 14 |  | after H | zoneTextures.js, stripRead.js |
 | `sfx-supplied` | supplied | sfx | 26 | 1.20 | **5.93** | 0.00 | 0.00 | 0.00 | 5.93 |  |  | no: sound | soundFold.js (the fold) |
-| `gear-walk-twins` | made | file | 69 | 1.76 | **4.99** | 4.99 | 0.00 | 0.00 | 0.00 |  | 62 | after H | gearSheets.js |
+| `gear-walk-twins` | made | file | 69 | 1.76 | **5.72** | 5.72 | 0.00 | 0.00 | 0.00 |  | 62 | after H | gearSheets.js |
 | `monster-slime` | made | file | 6 | 0.06 | **4.56** | 0.00 | 4.56 | 0.00 | 0.00 |  |  | yes, by its tool |  |
 | `look-standin` | data | look | 21 | 1.06 | **4.31** | 4.31 | 0.00 | 0.00 | 0.00 |  |  | no: data |  |
 | `look-gear` | data | look | 42 | 1.53 | **4.29** | 4.29 | 0.00 | 0.00 | 0.00 |  |  | no: data |  |
 | `sfx-m4a-twins` | made | sfx | 19 | 0.19 | **3.71** | 0.00 | 0.00 | 0.00 | 3.71 |  |  | no: sound | soundFold.js (the fold) |
 | `look-gearwalk` | data | look | 44 | 1.12 | **3.65** | 3.65 | 0.00 | 0.00 | 0.00 |  |  | no: data |  |
-| `fx-made` | made | file | 7 | 0.73 | **3.10** | 0.00 | 3.10 | 0.00 | 0.00 |  | 7 | yes, by its tool |  |
 | `sfx-footsteps` | supplied | sfx | 10 | 0.17 | **2.46** | 0.00 | 0.00 | 0.00 | 2.46 |  |  | no: sound | soundFold.js (the fold) |
 | `sfx-owner-cuts` | made | sfx | 36 | 0.38 | **2.22** | 0.00 | 0.00 | 0.00 | 2.22 |  |  | no: sound | soundFold.js (the fold) |
 | `icons-elements` | made | file | 18 | 0.12 | **2.16** | 0.02 | 2.14 | 0.00 | 0.00 |  |  | after H | entityRenderer.js |
-| `traits-hairmasks` | made | file | 155 | 0.07 | **2.13** | 0.24 | 1.89 | 0.00 | 0.00 |  | 155 | after H | entityRenderer.js |
+| `traits-hairmasks` | made | file | 155 | 0.07 | **2.07** | 0.18 | 1.89 | 0.00 | 0.00 |  | 155 | after H | entityRenderer.js |
 | `sfx-older` | made | sfx | 6 | 0.18 | **2.03** | 0.00 | 0.00 | 0.00 | 2.03 |  |  | no: sound | soundFold.js (the fold) |
 | `fx-sheets-supplied` | supplied | file | 6 | 1.16 | **2.00** | 0.00 | 2.00 | 0.00 | 0.00 |  | 6 | yes |  |
 | `look-standinlegs` | data | look | 8 | 0.42 | **2.00** | 2.00 | 0.00 | 0.00 | 0.00 |  |  | no: data |  |
 | `world-objects` | made | wheel | 40 | 5.14 | **1.78** | 0.89 | 0.00 | 0.89 | 0.00 | 1 |  | yes, by its tool |  |
 | `icons-items-world` | made | file | 19 | 0.11 | **1.62** | 0.00 | 1.62 | 0.00 | 0.00 |  | 6 | yes, by its tool |  |
+| `ambient-loops` | made | sfx | 6 | 0.33 | **1.53** | 0.00 | 0.00 | 0.00 | 1.53 |  |  | no: sound | soundFold.js (the fold) |
 | `pets` | made | file | 1 | 0.35 | **1.50** | 0.00 | 1.50 | 0.00 | 0.00 |  | 1 | yes, by its tool |  |
 | `world-fish-spot` | made | file | 1 | 0.03 | **1.50** | 0.00 | 1.50 | 0.00 | 0.00 |  | 1 | yes, by its tool |  |
 | `cape-hood` | made | file | 6 | 0.02 | **1.50** | 0.00 | 1.50 | 0.00 | 0.00 |  | 6 | yes, by its tool |  |
@@ -54,9 +54,9 @@ stops at the first family under 1 MB (the line below the table's marker).
 | `icons-from-uploads-world` | supplied | file | 3 | 0.08 | **1.25** | 0.00 | 1.25 | 0.00 | 0.00 |  | 3 | after H | entityRenderer.js |
 | `look-weapons` | data | look | 8 | 0.09 | **1.17** | 1.17 | 0.00 | 0.00 | 0.00 |  |  | no: data |  |
 | `ore-tiers` | made | file | 5 | 0.07 | **1.15** | 0.00 | 1.15 | 0.00 | 0.00 |  |  | yes, by its tool |  |
-| `ambient-loops` | made | sfx | 6 | 0.33 | **1.10** | 0.00 | 0.00 | 0.00 | 1.10 |  |  | no: sound | soundFold.js (the fold) |
 | `props-parts` | made | file | 2 | 0.14 | **1.10** | 0.00 | 1.10 | 0.00 | 0.00 |  | 2 | yes, by its tool |  |
 | `projectile-sheets` | made | file | 3 | 0.16 | **1.06** | 0.00 | 1.06 | 0.00 | 0.00 |  | 3 | yes, by its tool |  |
+| `fx-made` | made | none | 7 | 0.73 | **1.05** | 1.05 | 0.00 | 0.00 | 0.00 | 6 | 7 | yes, by its tool |  |
 | **under 1 MB at the fight: the backlog stops here** | | | | | | | | | | | | | |
 | `icons-coins` | made | file | 14 | 0.08 | **0.55** | 0.00 | 0.55 | 0.00 | 0.00 |  |  | yes, by its tool |  |
 | `weapons-greatsword` | supplied | file | 5 | 0.06 | **0.51** | 0.00 | 0.51 | 0.00 | 0.00 |  | 5 | yes |  |
@@ -120,6 +120,7 @@ default: removing any of its files but the 19 `.m4a` is the owner's yes.
 | `fx-levelup-numbers` | made | dom | 8 | 0.38 |  |
 | `monster-rotcap` | made | strip | 2 | 0.36 |  |
 | `traits-frames` | made | file | 285 | 0.36 | 285 |
+| `fx-made-twins` | made | numbers | 7 | 0.35 |  |
 | `icons-bag` | made | dom | 10 | 0.34 | 10 |
 | `monster-skeleton` | made | strip | 6 | 0.33 |  |
 | `ui-quest` | made | dom | 31 | 0.31 | 31 |
@@ -183,12 +184,12 @@ default: removing any of its files but the 19 `.m4a` is the owner's yes.
 | `gear-chop-originals` | supplied | none | 3 | 1.08 | 3 |
 | `player-standin-parts` | made | none | 13 | 1.03 | 13 |
 | `player-retired-twins` | made | none | 17 | 1.02 | 16 |
-| `p256-twins` | made | none | 18 | 0.97 |  |
 | `world-sprites-retired` | made | none | 36 | 0.96 | 36 |
 | `minigame-mining` | supplied | none | 2 | 0.86 |  |
 | `gear-walk-made` | made | none | 20 | 0.68 | 20 |
 | `ui-title-unwired` | made | none | 6 | 0.65 | 6 |
 | `player-standin-bodies` | supplied | none | 8 | 0.63 | 8 |
+| `p256-twins` | made | none | 11 | 0.61 |  |
 | `ui-cc-sheet` | made | none | 12 | 0.45 | 12 |
 | `fx-levelup-strip` | made | none | 1 | 0.41 | 1 |
 | `icons-ui-unwired` | made | none | 20 | 0.39 | 20 |
@@ -232,7 +233,6 @@ default: removing any of its files but the 19 `.m4a` is the owner's yes.
 | `traits-shirt-meta` | data | none | 1 | 0.00 |  |
 | `ui-cc-tab-species` | made | none | 1 | 0.00 | 1 |
 | `player-handles-stale` | data | none | 1 | 0.00 |  |
-| `sfx-m4a` | made | none | 0 | 0.00 |  |
 
 ## Made in play (no family holds these)
 
@@ -242,9 +242,9 @@ the door's to change. Digits in a label are folded to `#`.
 
 | label | MB at the fight | chip | page | numbers | sound | atlas |
 |---|--:|--:|--:|--:|--:|--:|
-| `unnamed` (on the chip: canvas 16.64, render 0.55, buffer 0.00) | 21.19 | 17.19 | 4.00 | 0.00 | 0.00 |  |
-| `blob: (a picture made in play from bytes)` | 12.72 | 12.72 | 0.00 | 0.00 | 0.00 |  |
-| `wheel-ground` | 8.40 | 8.40 | 0.00 | 0.00 | 0.00 | 56 |
+| `unnamed` (on the chip: canvas 16.64, render 1.55, buffer 0.00) | 22.19 | 18.19 | 4.00 | 0.00 | 0.00 |  |
+| `blob: (a picture made in play from bytes)` | 13.55 | 13.55 | 0.00 | 0.00 | 0.00 |  |
+| `wheel-ground` | 8.55 | 8.55 | 0.00 | 0.00 | 0.00 | 57 |
 | `bt-look:page/#-#-#` | 5.31 | 5.31 | 0.00 | 0.00 | 0.00 |  |
 | `bt-shadow-pieces` | 0.93 | 0.93 | 0.00 | 0.00 | 0.00 |  |
 | `worldfx/cloud#` | 0.47 | 0.00 | 0.47 | 0.00 | 0.00 |  |
@@ -261,12 +261,12 @@ still reach, so it can be higher.
 
 | run | stop | gpu line | chip rows | artCache line | page rows | numbers | sound line | soundHeld | sound rows | atlas rows used | rowsFull | monster bundles |
 |--:|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|---|
-| 1 | trip 1: a fight at the Flame Fields (4 swings; 0 px short af | 60.6 | 60.32 | 38.1 | 38.15 | 7.82 | 17.6 | 17.6 | 17.65 | 84 of 256 | 0 | fireGoblin |
-| 1 | trip 2: a fight at the Flame Fields (4 swings; 2 px short af | 64.8 | 64.61 | 38.1 | 38.15 | 7.82 | 17.6 | 17.6 | 17.65 | 78 of 256 | 0 | fireGoblin |
-| 1 | trip 3: a fight at the Flame Fields (8 swings; 0 px short af | 65.7 | 65.41 | 38.1 | 38.15 | 7.82 | 17.6 | 17.6 | 17.65 | 107 of 256 | 0 | fireGoblin |
-| 2 | trip 1: a fight at the Flame Fields (5 swings; 0 px short af | 65 | 64.71 | 38.1 | 38.15 | 7.82 | 17.6 | 17.6 | 17.65 | 91 of 256 | 0 | fireGoblin |
-| 2 | trip 2: a fight at the Flame Fields (6 swings; 0 px short af | 68.7 | 68.39 | 38.1 | 38.15 | 7.82 | 17.6 | 17.6 | 17.65 | 85 of 256 | 0 | fireGoblin |
-| 2 | trip 3: a fight at the Flame Fields (4 swings; 0 px short af | 68.6 | 68.37 | 38.1 | 38.15 | 7.82 | 17.6 | 17.6 | 17.65 | 101 of 256 | 0 | fireGoblin |
-| 3 | trip 1: a fight at the Flame Fields (2 swings; 0 px short af | 65.6 | 65.31 | 38.1 | 38.15 | 7.82 | 17.6 | 17.6 | 17.65 | 102 of 256 | 0 | fireGoblin |
-| 3 | trip 2: a fight at the Flame Fields (0 swings; 0 px short af | 66.1 | 65.86 | 38.1 | 38.15 | 7.82 | 17.6 | 17.6 | 17.65 | 88 of 256 | 0 | fireGoblin |
-| 3 | trip 3: a fight at the Flame Fields (4 swings; 0 px short af | 69.9 | 69.60 | 38.1 | 38.15 | 7.82 | 17.6 | 17.6 | 17.65 | 105 of 256 | 0 | fireGoblin |
+| 1 | trip 1: a fight at the Flame Fields (9 swings; 0 px short af | 61.6 | 61.37 | 35 | 35.05 | 7.82 | 17.5 | 17.5 | 17.48 | 114 of 256 | 0 | p256:/sprites/effects/jet-stream-v1.png, p256:/sprites/fx/portal-beam.webp, p256:/sprites/effects/arrow-blast-v1.webp, p256:/sprites/fx/fire-trail-v1.png, p256:/sprites/fx/smith-anvil.webp, p256:/sprites/fx/snow-footprints.webp, fireGoblin |
+| 1 | trip 2: a fight at the Flame Fields (11 swings; 0 px short a | 64.9 | 64.63 | 35 | 35.05 | 7.82 | 17.5 | 17.5 | 17.48 | 114 of 256 | 0 | p256:/sprites/effects/jet-stream-v1.png, p256:/sprites/fx/portal-beam.webp, p256:/sprites/effects/arrow-blast-v1.webp, p256:/sprites/fx/fire-trail-v1.png, p256:/sprites/fx/smith-anvil.webp, p256:/sprites/fx/snow-footprints.webp, fireGoblin |
+| 1 | trip 3: a fight at the Flame Fields (9 swings; 0 px short af | 68.1 | 67.82 | 35 | 35.05 | 7.82 | 18.1 | 17.6 | 17.65 | 114 of 256 | 0 | p256:/sprites/effects/jet-stream-v1.png, p256:/sprites/fx/portal-beam.webp, p256:/sprites/effects/arrow-blast-v1.webp, p256:/sprites/fx/fire-trail-v1.png, p256:/sprites/fx/smith-anvil.webp, p256:/sprites/fx/snow-footprints.webp, fireGoblin |
+| 2 | trip 1: a fight at the Flame Fields (6 swings; 0 px short af | 64.9 | 64.60 | 35 | 35.05 | 7.82 | 18.1 | 17.6 | 17.65 | 114 of 256 | 0 | p256:/sprites/effects/jet-stream-v1.png, p256:/sprites/fx/smith-anvil.webp, p256:/sprites/fx/fire-trail-v1.png, p256:/sprites/fx/portal-beam.webp, p256:/sprites/effects/arrow-blast-v1.webp, p256:/sprites/fx/snow-footprints.webp, fireGoblin |
+| 2 | trip 2: a fight at the Flame Fields (4 swings; 0 px short af | 72.4 | 72.09 | 35 | 35.05 | 7.82 | 17.6 | 17.6 | 17.65 | 115 of 256 | 0 | p256:/sprites/effects/jet-stream-v1.png, p256:/sprites/fx/smith-anvil.webp, p256:/sprites/fx/fire-trail-v1.png, p256:/sprites/fx/portal-beam.webp, p256:/sprites/effects/arrow-blast-v1.webp, p256:/sprites/fx/snow-footprints.webp, fireGoblin |
+| 2 | trip 3: a fight at the Flame Fields (3 swings; 0 px short af | 72.6 | 72.32 | 35 | 35.05 | 7.82 | 18.1 | 17.6 | 17.65 | 110 of 256 | 0 | p256:/sprites/effects/jet-stream-v1.png, p256:/sprites/fx/smith-anvil.webp, p256:/sprites/fx/fire-trail-v1.png, p256:/sprites/fx/portal-beam.webp, p256:/sprites/effects/arrow-blast-v1.webp, p256:/sprites/fx/snow-footprints.webp, fireGoblin |
+| 3 | trip 1: a fight at the Flame Fields (9 swings; 0 px short af | 66.2 | 65.90 | 35 | 35.05 | 7.82 | 18.1 | 18.1 | 18.07 | 114 of 256 | 0 | p256:/sprites/effects/jet-stream-v1.png, p256:/sprites/fx/smith-anvil.webp, p256:/sprites/fx/portal-beam.webp, p256:/sprites/fx/fire-trail-v1.png, p256:/sprites/effects/arrow-blast-v1.webp, p256:/sprites/fx/snow-footprints.webp, fireGoblin |
+| 3 | trip 2: a fight at the Flame Fields (7 swings; 0 px short af | 72.2 | 71.92 | 35 | 35.05 | 7.82 | 18.1 | 18.1 | 18.07 | 113 of 256 | 0 | p256:/sprites/effects/jet-stream-v1.png, p256:/sprites/fx/smith-anvil.webp, p256:/sprites/fx/portal-beam.webp, p256:/sprites/fx/fire-trail-v1.png, p256:/sprites/effects/arrow-blast-v1.webp, p256:/sprites/fx/snow-footprints.webp, fireGoblin |
+| 3 | trip 3: a fight at the Flame Fields (5 swings; 0 px short af | 72.8 | 72.49 | 35 | 35.05 | 7.82 | 18.1 | 17.6 | 17.65 | 111 of 256 | 0 | p256:/sprites/effects/jet-stream-v1.png, p256:/sprites/fx/smith-anvil.webp, p256:/sprites/fx/portal-beam.webp, p256:/sprites/fx/fire-trail-v1.png, p256:/sprites/effects/arrow-blast-v1.webp, p256:/sprites/fx/snow-footprints.webp, fireGoblin |

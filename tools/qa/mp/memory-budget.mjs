@@ -244,8 +244,16 @@
  * 424 + 570 x 530 + 345 x 636 + 855 x 847 at a byte a pixel, rows padded):
  * the planning session's rule for a numbers PR.  Net: 4.2 MB less.  The
  * chip counts a tree as numbers at a byte a pixel (r8unorm), when drawn. */
+/* v2.3.5249, the backlog's `fx-made` (card P; the owner: the effects'
+ * 256-colour twins on, a family a PR): the seven effects the game's tools
+ * made drawn from their twins as colour numbers (p256.js, `?fxmade=0` the
+ * pictures).  Three runs: `artCache` at its highest 38.1 -> 35.0 and its line
+ * 101.4 -> 98.3, LOWERED by the 3.1 MB saved.  The effects go to the chip
+ * up front at a byte a pixel (1.05 MB; `gpu` read 71.2-76.2, its line
+ * unchanged) and their numbers are kept packed in the page (`buffers`
+ * 22.9-23.1, within its line). */
 export const MEMORY_BUDGET = {
-  artCache: { name: 'art loaded from files', mb: 101.4, measured: 38.1,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB); v2.3.5247: 109.1 -> 107.0, Ace's coin strips (2.1 MB); v2.3.5248: 107.0 -> 101.4, the trees as numbers (5.6 MB), see the header */
+  artCache: { name: 'art loaded from files', mb: 98.3, measured: 35.0,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB); v2.3.5247: 109.1 -> 107.0, Ace's coin strips (2.1 MB); v2.3.5248: 107.0 -> 101.4, the trees as numbers (5.6 MB); v2.3.5249: 101.4 -> 98.3, the made effects as numbers (3.1 MB), see the header */
     what: 'pictures loaded from files, decoded (the asset cache, window.__btTex) -- its highest at the fight, the monsters\' looks loaded' },
   gpu: { name: 'textures on the graphics chip', mb: 115, measured: 95.0,   /* v2.3.4058: 105 -> 115, approved by the owner 2026-11-03, see the header */
     what: 'textures on the graphics chip (window.__btGpuTex) -- including what was drawn in the last minute, which Pixi unloads after 60 s unused' },
