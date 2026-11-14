@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8b24d4f8d3a557cb61bd2fcfd4b9a675f4dd6b7f",
+  "tree": "4d8cbe370c7901529905a609c5dd617f36187f0a",
+  "committedAt": "2026-11-14T03:18:44-08:00",
+  "subject": "Merge pull request #1762 from hemibroscommunity-del/claude/grand-plan-h-11-bake-ends",
+  "files": 7597,
+  "bytes": 952478045,
+  "listingSha256": "14deb23921e6afd755f00558ced941ce6a1783c174da86c0dfd913d83d65da6b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

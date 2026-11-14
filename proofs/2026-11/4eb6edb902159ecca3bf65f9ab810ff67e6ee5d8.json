@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4eb6edb902159ecca3bf65f9ab810ff67e6ee5d8",
+  "tree": "59727032552e3a3e9638ae3321153097661405d8",
+  "committedAt": "2026-11-14T03:18:37-08:00",
+  "subject": "Merge pull request #1769 from hemibroscommunity-del/claude/plan-o-card",
+  "files": 7562,
+  "bytes": 948997112,
+  "listingSha256": "1bab7046b6aab1a566a6ca24346371bc38df3b0942bd4ee0aee1fdc5bfdaac1d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

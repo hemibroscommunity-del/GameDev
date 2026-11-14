@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "99fb2e0276f5a139f677564bf5151a7617018ecc",
+  "tree": "ed174a2ec3d752c614734ba9fd15618cbbf79d8e",
+  "committedAt": "2026-11-14T03:18:41-08:00",
+  "subject": "Merge pull request #1771 from hemibroscommunity-del/claude/plan-lb-1-pieces",
+  "files": 7597,
+  "bytes": 952472440,
+  "listingSha256": "91cbfaa7fe712be5e6bf0c897e29a33281bc0ccba62ff8af1864ba0313b3e1fb",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
