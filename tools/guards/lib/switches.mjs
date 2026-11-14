@@ -301,9 +301,11 @@ export const SWITCHES = Object.freeze([
   /* ── the page: `?name=` reads (card T's PRs 2 and 3 row the rest; these came after PR 1 was written) ── */
   { name: '?bakeurl', side: 'page', system: 'render', kind: 'switch', born: 5043, thrown: '=0', risk: 'logic', needs: [], fallback: 'no', off: 'Every armour bake input is cut on the page again, not sent to the worker as its sheet\'s address.' },
   { name: '?coinflip', side: 'page', system: 'render', kind: 'switch', born: 5247, thrown: '=0', risk: 'memory', needs: [], fallback: 'no', off: 'Ace\'s coin strips keep their decoded copies, as before.' },
+  { name: '?fxmade', side: 'page', system: 'render', kind: 'switch', born: 5249, thrown: '=0', risk: 'memory', needs: [], fallback: 'no', off: 'The effects the game\'s tools made are drawn from their full-colour pictures, as before, not their 256-colour twins.' },
+  { name: '?p256', side: 'page', system: 'render', kind: 'switch', born: 3728, thrown: '=1 every twin on; =0 every twin off (v2.3.5249)', risk: 'memory', needs: [], fallback: 'no', off: 'With =0 every effect and icon is drawn from its full-colour picture; =1 turns on the twins not yet on by default.' },
   { name: '?equipredraw', side: 'page', system: 'economy', kind: 'switch', born: 5046, thrown: '=0', risk: 'logic', needs: [], fallback: 'no', off: 'A change of worn gear is set all at once again, not in pieces a frame apart.' },
   { name: '?foldgentle', side: 'page', system: 'audio', kind: 'switch', born: 5045, thrown: '=0, off, false', risk: 'logic', needs: [], fallback: 'no', off: 'A sound is folded to mono in one go again, not in turns between frames.' },
   { name: '?npcheads', side: 'page', system: 'render', kind: 'switch', born: 5246, thrown: '=0', risk: 'memory', needs: [], fallback: 'no', off: 'The townsfolk\'s head pictures keep their decoded copies, as before.' },
   { name: '?pixbudget', side: 'page', system: 'device', kind: 'switch', born: 5140, thrown: '=0 (off), or a number: the budget to try', risk: 'chip', needs: [], fallback: 'no', off: 'The drawing resolution is no longer held to the pixel budget.' },
-  { name: '?treenumbers', side: 'page', system: 'memory', kind: 'switch', born: 5247, thrown: '=0', risk: 'memory', needs: [], fallback: 'no', off: 'The trees are held as pictures again, not as colour numbers.' },
+  { name: '?treenumbers', side: 'page', system: 'memory', kind: 'switch', born: 5248, thrown: '=0', risk: 'memory', needs: [], fallback: 'no', off: 'The trees are held as pictures again, not as colour numbers.' },
 ]);

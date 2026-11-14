@@ -44,14 +44,16 @@ const _q = (() => { try { return typeof location !== 'undefined' ? (location.sea
    family of the asset door (tools/assets/families.mjs) its own PR, on by
    default with its own `?name=0`.  The first is `fx-made`, the effects the
    game's own tools made (the fire trail, the portal's beam, the anvil, the
-   snow's footprints, the arrow's blast, the jet stream, the snowball's
-   burst): 3.1 MB held as pictures in the page at the memory check's fight.
+   snow's footprints, the arrow's blast, the jet stream): 3.1 MB held as
+   pictures in the page at the memory check's fight.  Not the snowball's
+   burst (the gatekeeper's sitting 8): it loads as you walk toward the frost
+   land, in play, and a twin's numbers are read off a canvas on the page.
    `?fxmade=0` keeps them pictures.  `?p256=1` still turns every twin on to
    try (the gathering tools' and the owner's sheets too); `?p256=0` turns
    every one off. */
 const ALL_TWINS = /[?&]p256(=1)?(&|$)/.test(_q);
 const NO_TWINS = /[?&]p256=0(&|$)/.test(_q);
-const FX_MADE = /^\/sprites\/(?:fx\/(?:fire-trail-v1\.png|portal-beam\.webp|smith-anvil\.webp|snow-footprints\.webp)|effects\/(?:arrow-blast-v1\.webp|jet-stream-v1\.png|snowball-burst-v1\.png))$/;
+const FX_MADE = /^\/sprites\/(?:fx\/(?:fire-trail-v1\.png|portal-beam\.webp|smith-anvil\.webp|snow-footprints\.webp)|effects\/(?:arrow-blast-v1\.webp|jet-stream-v1\.png))$/;
 const FX_MADE_ON = !NO_TWINS && !/[?&]fxmade=0(&|$)/.test(_q);
 /** whether the picture at `path` (no host, no query) is read from its twin here */
 function wantedPath(path) { return !NO_TWINS && (ALL_TWINS || (FX_MADE_ON && FX_MADE.test(path))); }

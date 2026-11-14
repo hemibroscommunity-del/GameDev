@@ -1,6 +1,6 @@
 card: P
 branch: claude/plan-p-8-fx-made (one branch a PR, each begun from the one before)
-prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745 (5241-5248, merged); #1749 (5249) ready
+prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757 (5241-5248, 5251, merged); #1749 (5249) mended, ready; #1763, #1766 ready
 state: working
 
 ## Done
@@ -9,8 +9,8 @@ state: working
   the gate (its sitting-5 faults mended), the 19 `.m4a` removed.
 - 5246-5248 (merged): `npc-heads` and `fx-coinflip` let go of (2.9, 2.1
   MB); `tree-tiers` as numbers with the probe mended (net 4.2 MB).
-- #1749 (5249), `fx-made`: the effects' twins on for that family
-  (`?fxmade=0`); `artCache` line 101.4 -> 98.3.
+- #1749 (5249), `fx-made`: the effects' twins on (`?fxmade=0`), 3.1 MB;
+  mended at sitting 8: not the snowball (it loads in play), switch rows.
 
 ## Next
 

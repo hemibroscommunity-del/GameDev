@@ -20,7 +20,7 @@ addresses (`tools/qa/`), `localStorage` toggles, and the worker's `env` settings
 reads it as a flag or a comment promises it as a kill switch; any other cap's override is the emergency lever of
 `docs/specs/liveops.md` ("Caps override").
 
-250 rows: 243 switches, 6 values, 1 levers, in 23 systems.
+252 rows: 245 switches, 6 values, 1 levers, in 23 systems.
 
 ## audio
 
@@ -173,7 +173,7 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 |---|---|---|---|---|---|---|---|---|
 | `picnumbers` | both | switch | v2.3.3715 | off_picnumbers: true; ?picnumbers=0 | memory |  | no | Monster strips are held as pictures again, not as colour numbers. |
 | `gfxlean` | both | switch | v2.3.4033 | off_gfxlean: true; ?gfxlean=0, off, false | memory |  | no | A big drawing's building lists are kept after it is drawn. |
-| `?treenumbers` | page | switch | v2.3.5247 | =0 | memory |  | no | The trees are held as pictures again, not as colour numbers. |
+| `?treenumbers` | page | switch | v2.3.5248 | =0 | memory |  | no | The trees are held as pictures again, not as colour numbers. |
 
 ## monsters
 
@@ -243,6 +243,8 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 |---|---|---|---|---|---|---|---|---|
 | `?bakeurl` | page | switch | v2.3.5043 | =0 | logic |  | no | Every armour bake input is cut on the page again, not sent to the worker as its sheet's address. |
 | `?coinflip` | page | switch | v2.3.5247 | =0 | memory |  | no | Ace's coin strips keep their decoded copies, as before. |
+| `?fxmade` | page | switch | v2.3.5249 | =0 | memory |  | no | The effects the game's tools made are drawn from their full-colour pictures, as before, not their 256-colour twins. |
+| `?p256` | page | switch | v2.3.3728 | =1 every twin on; =0 every twin off (v2.3.5249) | memory |  | no | With =0 every effect and icon is drawn from its full-colour picture; =1 turns on the twins not yet on by default. |
 | `?npcheads` | page | switch | v2.3.5246 | =0 | memory |  | no | The townsfolk's head pictures keep their decoded copies, as before. |
 
 ## server-core
