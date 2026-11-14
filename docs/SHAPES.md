@@ -611,6 +611,13 @@ Not one field yet, so written by name and marked `implicit`: `fight` (a fight
 with a player), `duel`, `trade`, `party` (and its `leader`), `ride`,
 `harvest`, `cook`, `guard`, `pose`, `race`, `arena`, `fishing`.
 
+v2.3.5202: every machine, these and the plan's (`dungeon`, `connection`,
+`loading`, `window`, `monster`), is a row of step 5.3b's phase table,
+`src/state/phases.js` (card L; `docs/specs/phase-table.md`): its field, its
+states, its one function, `door` or `todo`. A name a row of the wire table
+writes here is a row there (`tools/guards/phase-table.test.mjs` §4). An
+`implicit` machine leaves this list when its row turns `door`.
+
 What a handler tests that is NOT the sender's phase goes in another column:
 "can pay" and "well-formed" in `bad`, "too soon" in `pace`, "the system is on"
 in `flag`, "seen before" in `reqId`.
@@ -794,6 +801,7 @@ row by the card that builds it, before it builds.**
 | A spoken line (11.4) | not named yet | A message the game speaks that carries a player's words: a template's id and its parts, a part that is a player's words marked as one. Today the worker builds the sentence itself (`server/src/store.js`: `label + ' sold to ' + buyerName + ' for ' + price`). The templates are step 8.8's table of every word a player reads. | card K | the phone; another player's assistant | the wire table's `trust: words` rows | none |
 | The public facts (11.6) | not named yet | The game's facts in players' words, made in the build from the shared tables, with a version. | the build | assistants | the build's output | none |
 | The pass's quote and receipt (11.8) | not named yet | A signed quote, a receipt, a public way to check. | the pass's own build | a helper | `docs/SUPPORTER-PASS-PLAN.md` | not built |
+| The phase table (5.3b; v2.3.5202) | `PHASES`, `NOT_A_MACHINE` (NEW) | One row a state machine a side: its one field, its states, its one transition function, what clears it, what a rejoin re-sends, `door` or `todo`. A page row names the state ledger's rows and never copies their writers. | card L, by hand (a row turns `door` in its machine's PR) | `tools/guards/phase-table.test.mjs`; part 5's `phase` column; the next door's card | `src/state/phases.js` | none |
 
 ### The asset door (step 9.1, card P; tag 5241)
 
@@ -918,6 +926,19 @@ the record is named by its path, `tools/assets/shipped.json`.
 |---|---|---|
 | `ASSET_FAMILIES`, `ASSET_REACH`, `ASSET_KINDS`, `ASSET_DRAWS` | the family table and its closed lists | 7 |
 | `tools/assets/shipped.json` | the record of what ships | 7 |
+
+**Chosen by card L (step 5.3b, tag 5202), free at its commit** (the same
+search): `PHASES` and `NOT_A_MACHINE`, the phase table's two lists, have no hit
+as a name (`PHASES` only inside other words: `GOO_PHASES`, `ART-ASSET-PHASES`).
+The table's machine names are words of a table, as the wire's `phase` column
+writes them, never identifiers: `dungeon`, `connection`, `loading` and
+`window` are common words in code and keep every meaning they have there;
+`monster`, a monster's life, is the one name the plan had not given.
+
+| Name | For | Part |
+|---|---|---|
+| `PHASES`, `NOT_A_MACHINE` | the phase table and the marked fields that are no machine's (`src/state/phases.js`) | 5 |
+| `dungeon`, `connection`, `loading`, `window`, `monster` | the phase table's machines beyond part 5's list (a row's `name`) | 5 |
 
 `report` is free as a message type and a common word elsewhere; part 4 says
 what it is not. `gid`, `pid` and `hz` are TODAY's names, used here for the
