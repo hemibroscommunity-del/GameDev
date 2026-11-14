@@ -105,3 +105,6 @@ until the map places their file; the guard lists those files by name.
   placed (`unsorted`): `src/game/characterCreatorEffects.js`, `rpgSave.js`,
   `spriteSheets.js` and `visualSystems.js`. They go in a ledger when the map
   gives their file a system.
+- Main merged in (sitting 5, v2.3.5168): the census page made again, and
+  the 20 rows main's merged work had added since put in their ledgers
+  (art 2, memory 2, debug 3, render 3, audio 4, device 6).
