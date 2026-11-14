@@ -81,7 +81,10 @@ The owner's standing answers (2026-11-14, tag 5057): the planning session
 may approve a session working in a file outside its card when the card's
 own job needs it, and may answer the sessions' technical questions (how to
 build what a card or the plan already holds). Never what a player sees,
-money or costs, or the deploy settings: those stay the owner's.
+money or costs, or the deploy settings: those stay the owner's, except
+while the owner is away (tag 5058: decided by the planning session's
+recommendation, behind a switch, listed for the owner; never a cost, the
+deploy settings or anything that cannot be undone).
 `docs/plan/README.md` ("Who answers a session's questions") has the words
 and the limits. A card the orchestrator writes names every file it can
 foresee and chooses its readings, so the questions come up rarely.

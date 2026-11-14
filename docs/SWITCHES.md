@@ -166,6 +166,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `toolshop` | worker | switch | v2.3.3316 | false | logic |  | no | Takes the tools off the shelf and refuses every buy. |
 | `trade2` | worker | switch | v2.3.4375 | false | logic |  | no | The trade window is off, so the old gift is open again. |
 | `tradeonewrite` | worker | switch | v2.3.4795 | false | logic |  | no | The trade's swap goes back to its old order of writes. |
+| `xfer` | worker | switch | v2.3.5092 | false | logic |  | no | No transfer ledger row (`xfer:`) is written; trades run exactly as before. |
 
 ## identity
 
@@ -296,8 +297,12 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 |---|---|---|---|---|---|---|---|---|
 | `?bakeurl` | page | switch | v2.3.5043 | =0 | logic |  | no | Every armour bake input is cut on the page again, not sent to the worker as its sheet's address. |
 | `?coinflip` | page | switch | v2.3.5247 | =0 | memory |  | no | Ace's coin strips keep their decoded copies, as before. |
+| `?fxmade` | page | switch | v2.3.5249 | =0 | memory |  | no | The effects the game's tools made are drawn from their full-colour pictures, as before, not their 256-colour twins. |
+| `?fxsheets` | page | switch | v2.3.5252 | =0 | memory |  | no | The effects cut from the owner's sheets (the stun stars, the whirlwind, the grease, woodchips, rocks and splash bursts) are drawn from their full-colour pictures, as before. |
 | `groundkeep` | both | switch | v2.3.3775 | off_groundkeep: true; ?groundkeep=0, off, false | chip |  | no | The world's ground is rebuilt on a return, not kept, as before. |
 | `?npcheads` | page | switch | v2.3.5246 | =0 | memory |  | no | The townsfolk's head pictures keep their decoded copies, as before. |
+| `?p256` | page | switch | v2.3.3728 | =1 every twin on; =0 every twin off (v2.3.5249) | memory |  | no | With =0 every effect and icon is drawn from its full-colour picture; =1 turns on the twins not yet on by default. |
+| `?worldicons` | page | switch | v2.3.5250 | =0 | memory |  | no | The icons drawn in the world (the ore, the shards, the heart and sword popups; the trap's box has no twin) are drawn from their full-colour pictures, as before. |
 
 ## server-core
 
@@ -378,6 +383,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `alliance` | worker | switch | v2.3.3313 | false | logic | `partykeep` | no | No alliance status, names, wars or board; tags come off at the next vitals echo. |
 | `arenaap` | worker | switch | v2.3.3481 | false | logic |  | no | The arena champion is paid gold alone, no AP, and the cap is un-advertised. |
 | `arenaeatgate` | worker | switch | v2.3.4413 | false | logic |  | no | Eating in an arena match is gated by the match flag alone, as before. |
+| `arenasettleplan` | worker | switch | v2.3.5089 | true | logic |  | no | Thrown (true), an arena match's stakes settle by a plan, one record a match (two rows: its put and its delete), so a restart mid-settlement loses nothing; off until the owner says yes. |
 | `arenastakeonewrite` | worker | switch | v2.3.4796 | false | logic |  | no | An arena sponsor's stake goes back to its old two writes. |
 | `boards2` | worker | switch | v2.3.4355 | false | logic |  | no | Un-advertises the boards with faces: records no spin, stamps no face or level, retires no row. |
 | `chatguard` | worker | switch | v2.3.3396 | false | logic |  | no | All three chat guards off: chat and emotes spend the relay bucket again, nothing filtered or cleaned. |
