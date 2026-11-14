@@ -18,21 +18,23 @@
  *  10. A HAND-EDITED RECORD is read safely; a full day fits a stored value.
  *  11. v2.3.5085 (the gatekeeper's finds): an array with GAPS is refused (a
  *      hole read as a number is NaN), and a `now` far from the room's clock
- *      is not believed (it would stop the puts or file under another day).
+ *      never sets the pace's mark (a far one would stop the puts); it names
+      only the day its count is filed under (card A's suite files a second
+      day that way, roomrow §10.5).
  *  12. v2.3.5085: THE `econ` PART, filled by the two doors as each road runs
  *      (gold.js, bag.js): minted and burned for the whole room, gold and each
  *      bag key; a move or an escrow adds nothing; it matches what the
  *      characters' own `_econ` counted.  BREAK PROOF: `room` dropped from
  *      _goldGive's econGold call -> FAIL 12.
- *  13. v2.3.5085: THE LAST ONE OUT writes what waits (leave.js bookFlush),
- *      inside the pace, so an empty room that sleeps loses nothing.
+ *  13. v2.3.5085: THE LAST ONE OUT writes the econ part's sums that wait,
+ *      inside the pace (card A's writer, roomrow.js _roomRowLastOut), so an
+ *      empty room that sleeps loses none of them.
  */
 import { GameRoom } from '../src/index.js';
-import { DAYBOOK, bookAdd as bookAdd0, bookBytes, bookDay, bookKey, bookMaybePut as bookMaybePut0, bookNormalize, bookPut as bookPut0, bookRead, bookNow, bookFlush } from '../src/daybook.js';
+import { DAYBOOK, bookAdd as bookAdd0, bookBytes, bookDay, bookKey, bookMaybePut as bookMaybePut0, bookNormalize, bookPut as bookPut0, bookRead } from '../src/daybook.js';
 
 /* v2.3.5085: the room's clock is the test's, and it follows the time each
-   call says (the door believes a caller's `now` only near the room's own
-   clock: DAYBOOK.SKEW_MS, the gatekeeper's find) */
+   call says (the pace runs on the room's own clock, the gatekeeper's find) */
 let NOW = Date.UTC(2026, 10, 14, 12, 0, 0);
 Date.now = () => NOW;
 const at = (t) => { if (typeof t === 'number') NOW = t; return t; };
@@ -365,12 +367,16 @@ const DAY0 = '20261114';
   await bookPut(room, T + 4);
   const rec = st._store.get(bookKey(DAY0));
   check('11. nothing stored is NaN', !JSON.stringify(rec).includes('null') && rec.dev.bins.join() === '1,0,3' && rec.over.dev === 2, rec);
-  /* a far `now`: the room's clock is used */
-  NOW = T + 10000;
-  check('11. a `now` a day ahead of the room\'s clock reads as the room\'s clock', bookNow(NOW + 86400000) === NOW && bookNow(NOW - 86400000) === NOW && bookNow('x') === NOW && bookNow(NOW + 1000) === NOW + 1000);
+  /* a far `now`: the pace's mark stays on the room's clock */
+  NOW = T + DAYBOOK.PACE_MS + 10000;
   bookAdd0(room, 'room', { far: 1 }, NOW + 86400000 * 30);
-  check('11. ...so a count with a far `now` is filed under today, not a month on', room._daybook.days.has(DAY0) && !room._daybook.days.has(bookDay(NOW + 86400000 * 30)));
-  check('11. ...and the pace\'s mark is not set ahead (the next pace still writes)', room._daybook.lastPut <= NOW);
+  await room._daybook.putting;
+  check('11. a count with a far `now` is filed under the day it names', !!st._store.get(bookKey(bookDay(NOW + 86400000 * 30))));
+  check('11. ...and the pace\'s mark is the room\'s clock, not a month on', room._daybook.lastPut === NOW, room._daybook.lastPut);
+  NOW += DAYBOOK.PACE_MS + 1;
+  bookAdd0(room, 'room', { next: 1 }, 'x');   /* not a number: the room's clock */
+  await room._daybook.putting;
+  check('11. ...so the next pace still writes (today\'s day, from the room\'s clock)', (st._store.get(bookKey(DAY0)).room || {}).next === 1, st._store.get(bookKey(DAY0)));
 }
 
 /* ── 12. the `econ` part, from the two doors ── */

@@ -17,6 +17,7 @@ import { installLayerUniforms } from './layerUniforms.js'; /* v2.3.3449: a layer
 import { SHADE } from './formShade.js';
 import { installP256Upload, startP256Pack } from './p256.js'; /* v2.3.3728: the effects' colour numbers packed once on the chip */
 import { installPicsOnceUpload, startPicsOnce, restoreAllPictures } from './picsOnce.js'; /* v2.3.3715: a picture from a file held once (?onecopy) */
+import { cacheSourceBytes } from './cacheBytes.js'; /* v2.3.5248: what a cached picture holds in the page (colour numbers: nothing here) */
 import { Application, Cache, Container, GlTextureSystem, TextureSource } from 'pixi.js';
 
 /* ═══ v2.3.3069: A DESTROYED TEXTURE LETS GO OF ITS PIXELS ═══
@@ -387,14 +388,23 @@ function buildScene(app) {
    * Reaching into Cache's private map is deliberate and is why every step is
    * wrapped: there is no public enumeration of what Assets is holding, and a
    * probe that silently returns null on a future Pixi is better than one that
-   * throws inside a renderer.  Nothing in the game calls this. */
+   * throws inside a renderer.  Nothing in the game calls this.
+   *
+   * v2.3.5248 (card P's backlog, the planning session's yes): what each
+   * source holds is cacheBytes.js cacheSourceBytes, one rule for the total,
+   * the list and the census (window.__btCacheBytes).  A source kept as colour
+   * NUMBERS counts nothing here: its numbers are the `buffers` line's, and
+   * counted here as well they were counted twice (the trees: 5.6 MB of
+   * artCache that held nothing).  `numbers` says how many there are and
+   * their numbers' MB (in buffers), so nothing goes unseen. */
   if (typeof window !== 'undefined') {
+    window.__btCacheBytes = cacheSourceBytes;
     window.__btTex = function (want) {
       try {
         const map = Cache && (Cache._cache || Cache.cache);
         if (!map || typeof map.forEach !== 'function') return null;
         const seen = new Set();
-        let bytes = 0, sources = 0, released = 0;
+        let bytes = 0, sources = 0, released = 0, numbers = 0, numberBytes = 0;
         const take = (src) => {
           if (!src || typeof src.uid === 'undefined' || seen.has(src.uid)) return;
           /* A DESTROYED source is not resident, whatever the cache still says.
@@ -409,15 +419,14 @@ function buildScene(app) {
           /* v2.3.3715: a picture whose page copy was let go of (?onecopy,
              picsOnce.js) holds nothing here: its only copy is on the chip */
           if (src.resource && src.resource.__btReleased) { released++; return; }
-          let w = src.pixelWidth || src.width || 0;
-          let h = src.pixelHeight || src.height || 0;
+          /* v2.3.5248: colour numbers, counted in `buffers`, named here */
+          if (src._btPal) { numbers++; numberBytes += (src.resource && src.resource.byteLength) || 0; }
           /* v2.3.3715: a canvas counts what it holds -- one emptied once its
              copy is on the chip (gpuOnly.js keepOnGpuOnly, heldNumbers.js)
              holds nothing, and was counted at its full size (22.8 MB of the
-             line at mp-picsonce's fight; docs/specs/pictures-once.md) */
-          const res = src.resource;
-          if (res && typeof res.getContext === 'function') { w = res.width | 0; h = res.height | 0; }
-          bytes += w * h * 4;
+             line at mp-picsonce's fight; docs/specs/pictures-once.md);
+             v2.3.5248: the rule is cacheBytes.js's */
+          bytes += cacheSourceBytes(src);
         };
         map.forEach((v) => {
           if (!v) return;
@@ -430,7 +439,7 @@ function buildScene(app) {
         /* `list` is opt-in because the answer is hundreds of URLs: __btTex()
            for the totals, __btTex(true) when a residue has to be NAMED.
            Sorted by size so the first rows are the ones worth reading. */
-        const out = { sources, mb: +(bytes / 1048576).toFixed(1), keys: map.size || null, released };
+        const out = { sources, mb: +(bytes / 1048576).toFixed(1), keys: map.size || null, released, numbers, numbersMB: +(numberBytes / 1048576).toFixed(2) };
         if (want) {
           const rows = [];
           const rseen = new Set();
@@ -441,10 +450,7 @@ function buildScene(app) {
                sliced into forty frame Textures prints forty rows of its full
                size and the list reads as a catastrophe that is not there. */
             rseen.add(src.uid);
-            let w = src.pixelWidth || src.width || 0, h = src.pixelHeight || src.height || 0;
-            const res = src.resource;
-            if (res && typeof res.getContext === 'function') { w = res.width | 0; h = res.height | 0; }   /* v2.3.3715: as the total */
-            rows.push({ k: String(k), mb: +((w * h * 4) / 1048576).toFixed(2) });
+            rows.push({ k: String(k), mb: +(cacheSourceBytes(src) / 1048576).toFixed(2) });   /* v2.3.5248: as the total */
           });
           rows.sort((a, b) => b.mb - a.mb);
           out.list = rows;

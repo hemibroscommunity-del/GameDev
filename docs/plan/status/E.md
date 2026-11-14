@@ -15,9 +15,9 @@ state: ready
   (`inbox.js`): the owner's own "Go recommended" (2026-11-14), read in
   the planning session's transcript. Unexplained 0; planted pays seen.
 - PR 6 (5085), the book's `econ` part: the doors add minted and burned
-  (gold, each key) as each road runs; the last one out writes the book
-  (`leave.js`, the owner's yes); the gatekeeper's two `daybook.js` finds;
-  `bookPut` waits its turn (two at once lost a day's sums).
+  (gold, each key) as each road runs; the gatekeeper's two `daybook.js`
+  finds (the pace on the room's own clock); `bookPut` waits its turn. The
+  last one out: card A's `_roomRowLastOut` (PR 6's own line dropped).
 
 ## Next
 
@@ -34,4 +34,7 @@ state: ready
 
 ## Needs
 
-- Nothing.
+- The owner: `roomrow.test` 9 (card A's file) wants no book row while
+  players are in; with PR 6 a new character's starting gold is counted at
+  join and a woken room's first count is written at once. Recommended:
+  PR 6 changes that one check to count only what the leave writes.

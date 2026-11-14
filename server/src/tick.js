@@ -249,7 +249,9 @@ export const tickMethods = {
        fresh loop. */
     this._tickPace = null;
     const tick = () => {
-      this._tickPaceStart(Date.now());
+      const _now = Date.now();
+      this._tickPaceStart(_now);
+      this._roomRowTick(_now);   /* v2.3.5124: the gap between ticks, and the room's row into the day's book (roomrow.js) */
       /* v2.3.4653: a throw that still escapes the guards below (the snapshot
          before them) is counted like theirs, once in the log, instead of an
          uncaught error every 22 ms (state-machine sweep VA, S3-1) */
