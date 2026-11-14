@@ -589,10 +589,13 @@ function sanitize(src, { jsxText = false } = {}) {
    -- a direct type is a row whose way sends it alone (`alone`, `claim`,
    `aftermove`), and a send through act() is a sender like any other. */
 {
-  let shimTypes = null;
+  let shimTypes = null, doorEvents = new Set();
   try {
     const door = await import(pathToFileURL(join(root, 'src/game/actions.js')).href);
     shimTypes = new Set(Object.keys(door.ACTIONS).filter((n) => door.ENV_OF_WAY[door.ACTIONS[n].way] === 'direct'));
+    /* v2.3.5187: an event's row (act() sends it as a broadcast, as the old
+       `{ type: 'broadcast', event }` did): not a direct sender */
+    doorEvents = new Set(Object.keys(door.ACTIONS).filter((n) => door.ENV_OF_WAY[door.ACTIONS[n].way] === 'event'));
   } catch { /* unreadable — fall through to the skip below */ }
   if (!shimTypes || !shimTypes.size) {
     add('WARN', 'shim-allowlist', 'could not read the action door\'s rows (src/game/actions.js) — check skipped');
@@ -614,6 +617,7 @@ function sanitize(src, { jsxText = false } = {}) {
              checked by tools/guards/action-door.test.mjs) */
           if (/import\s*\{[^}]*\bact\b[^}]*\}\s*from\s*'[^']*actions\.js'/.test(srcText)) {
             for (const mm of srcText.matchAll(/\bact\(\s*'([a-z_0-9]+)'/g)) {
+              if (doorEvents.has(mm[1])) continue;   /* v2.3.5187: a broadcast event, as `type: 'broadcast'` above */
               if (!senders.has(mm[1])) senders.set(mm[1], `${p}:${lineOf(srcText, mm.index)}`);
             }
           }
@@ -658,6 +662,13 @@ function sanitize(src, { jsxText = false } = {}) {
  * can only fire on something newly written. */
 {
   const ALLOWED = new Set(['monster_damage']);
+  /* v2.3.5187: an event sent through the door is the old `type: 'broadcast'`
+     (let through below), read from the door's rows */
+  let townEvents = new Set();
+  try {
+    const door = await import(pathToFileURL(join(root, 'src/game/actions.js')).href);
+    townEvents = new Set(Object.keys(door.ACTIONS).filter((n) => door.ENV_OF_WAY[door.ACTIONS[n].way] === 'event'));
+  } catch { /* unreadable: every act() send is judged by name, as before */ }
   const hits = [];
   const walk = (dir) => {
     for (const ent of readdirSync(join(root, dir), { withFileTypes: true })) {
@@ -685,7 +696,7 @@ function sanitize(src, { jsxText = false } = {}) {
           }
           if (!guard || !/_serverMonsters/.test(guard)) continue;
           const m = viaDoor ? /\bact\(\s*'([a-z_0-9]+)'/.exec(lines[i]) : /type:\s*'([a-z_0-9]+)'/.exec(lines.slice(i, i + 7).join('\n'));
-          if (m && (m[1] === 'broadcast' || ALLOWED.has(m[1]))) continue;
+          if (m && (m[1] === 'broadcast' || ALLOWED.has(m[1]) || (viaDoor && townEvents.has(m[1])))) continue;
           hits.push(m ? `'${m[1]}' at ${p2}:${i + 1}`
             : `an unnamed send at ${p2}:${i + 1} (the type is built elsewhere — check it by hand)`);
         }
