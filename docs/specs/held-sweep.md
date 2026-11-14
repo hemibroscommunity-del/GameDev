@@ -420,6 +420,20 @@ After the gatekeeper's sitting 5 (`docs/plan/census/review-z5.md`, v2.3.5050):
 The probe after (copper plate and greaves, steel plate, iron plate with steel
 greaves): 24 sent, 19 of 19 the same, none refused, none cut, no stuck kill.
 
+**Why `masked-bake` grew back** (card A's full tour: 23.7 ms twice at
+`peer`; asked by the planning session). Not at `peer` or `armour` alone (17
+runs here, 7.1 ms the most): in the WHOLE main tour, where this box keeps
+the worker busy past the 6 s stuck watch at `armour`. On `main` (two whole
+tours, `__btBakeWorker().byUrl` after each station): at `armour`, 2 stuck
+kills, 2 addresses refused, 1 input cut on the page, and `masked-bake` 18.6
+ms (10 of it `createImageBitmap`: the page's own cut of a refused address)
+and 28.3 ms (the worker's reply drawn, and 11 ms of the garbage collector).
+Each stuck kill refused addresses that had READ (a whole job's word, and the
+early reads' word came only after the wait for the sheet of numbers), and
+from then on those frames were cut on the page. With this PR (and its early
+reads saying `urlRead` as each is in): two whole tours, `masked-bake` none
+and 4.6 ms; at `armour` 1 stuck kill, 1 address refused, none cut.
+
 **The same pixels.** `window.__btBakeUrlCheck = true` before the page loads:
 the page cuts each input as well, and the worker compares its own rectangle
 with the page's cut, byte for byte (`__btBakeWorker().byUrl`). An armoured
