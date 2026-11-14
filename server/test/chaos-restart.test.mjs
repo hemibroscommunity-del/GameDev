@@ -60,7 +60,11 @@ const KNOWN = new Map([
      gladiator.js v2.3.4796 takes the stake and puts its arena_stake record in
      ONE synchronous run (_escrowDebitGoldTogether), and this suite has passed
      it at every write since (it printed NOTE). Its check counts again. */
-  ['arena-stake-settle-loss', 'gladiator.js _arenaSettleStakes: every losing stake is stamped settled FIRST, then the fighter\'s cut and the winners are paid in writes of their own; a restart between keeps the losing stakes (stamped, so never refunded) and pays nobody from them. By design in its own words ("a crash part-way costs a payout, never makes one twice"); listed so the owner sees it costs players gold on a deploy mid-arena.'],
+  /* v2.3.5089 (card E, PR 8c): 'arena-stake-settle-loss' is off the list --
+     gladiator.js _arenaSettleStakes writes the whole settlement as a plan on
+     every stake record in ONE run before a coin moves, pays each leg once by
+     its opId, and the sweep FINISHES a planned record rather than refunding
+     it.  KNOWN is empty: step 4.5's line. */
 ]);
 const COUNT_KNOWN = process.env.CHAOS_KNOWN === '1';
 
@@ -69,6 +73,9 @@ function check(name, cond, detail) {
   if (cond) console.log('PASS', name);
   else { failures++; console.log('FAIL', name, detail !== undefined ? JSON.stringify(detail).slice(0, 600) : ''); }
 }
+/* v2.3.5089: step 4.5's line -- no money path loses value to a restart, and
+   none is waived: a new red case is fixed, never listed (grand plan card E) */
+check('KNOWN is empty: no restart loss is waived (step 4.5)', KNOWN.size === 0, [...KNOWN.keys()]);
 function verdict(id, name, cond, detail) {
   if (!KNOWN.has(id) || COUNT_KNOWN) return check(name, cond, detail);
   if (cond) console.log('NOTE known case "' + id + '" passes now: take it off KNOWN --', name);

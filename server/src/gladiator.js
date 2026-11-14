@@ -106,6 +106,13 @@ export const arenaMethods = {
     const f = this._liveFlags;
     return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'arenastakeonewrite') && !f.arenastakeonewrite);
   },
+  /* v2.3.5089: a match's stakes settle by a PLAN written on every one of its
+     records in one run (_arenaSettleStakes); `arenasettleplan: false` in the
+     live flags puts back the old order, its hole included */
+  _arenaSettlePlanOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'arenasettleplan') && !f.arenasettleplan);
+  },
 
   /* HTTP surface -- the worker routes /api/arena/* here (old DO
    * retired from routing).  Response shapes mirror arena.js so the
@@ -572,6 +579,60 @@ export const arenaMethods = {
       const totalW = winners.reduce((n, x) => n + amt(x.rec), 0);
       const totalL = losers.reduce((n, x) => n + amt(x.rec), 0);
       const payout = new Map();   // sponsorId -> what this settlement returns them
+      /* ═══ v2.3.5089: THE SETTLEMENT IS A PLAN, WRITTEN IN ONE RUN ═══
+         (grand plan card E, PR 8c; chaos-restart's 'arena-stake-settle-loss'.)
+         Every losing stake was stamped settled FIRST, then the fighter's cut
+         and each winner were paid in writes of their own, then each record
+         deleted: a restart between kept the losing stakes (stamped, so never
+         refunded) and paid nobody from them -- players' gold gone on a
+         deploy mid-arena.  Now the whole settlement -- every leg, to whom
+         and how much, each by its own opId -- is written onto EVERY stake
+         record of the match in ONE synchronous run (with the losers' old
+         stamps, which a rolled-back worker's sweep still reads), before a
+         coin moves.  Then each leg pays by _creditPlayer (its credit and its
+         stamp one write: a retry pays it once, under the same opIds the old
+         order used), and the records go, in one run.  A
+         restart before the plan: no record says it settled, the sweep
+         refunds every stake.  After it: the sweep FINISHES the plan
+         (_arenaStakeFinish), every leg paid once, never a refund.  The
+         General Store's settle note is the same shape (market.js
+         v2.3.4505).  `arenasettleplan: false` puts back the old order. */
+      if (this._arenaSettlePlanOn()) {
+        const legs = [];
+        if (totalW > 0) {
+          const cut = Math.floor(totalL * ARENA.FIGHTER_CUT);
+          const pool = totalL - cut;
+          let shared = 0;
+          for (const x of winners) {
+            const share = Math.floor(pool * amt(x.rec) / totalW);
+            shared += share;
+            payout.set(x.rec.sponsorId, amt(x.rec) + share);
+          }
+          const toFighter = cut + (pool - shared);   /* the rounding's leftover coins: what is paid out is exactly what was staked */
+          /* a leg: whom, how much, and its kind and ids -- the opId each pays by is
+             `arenastake<kind>:<id>`, the very ids the old order paid by */
+          if (toFighter > 0) legs.push({ to: winnerId, amount: toFighter, kind: 'cut', id: tid + ':' + matchId, note: 'your cut of a sponsorship pool' });
+          for (const x of winners) legs.push({ to: x.rec.sponsorId, amount: payout.get(x.rec.sponsorId), kind: 'win', id: tid + ':' + matchId + ':' + x.rec.sponsorId, note: 'sponsorship paid off' });
+        } else {
+          for (const x of losers) legs.push({ to: winnerId, amount: amt(x.rec), kind: 'loss', id: tid + ':' + matchId + ':' + x.rec.sponsorId, note: 'claimed a failed sponsorship' });
+        }
+        const plan = { v: 1, winnerId, legs };
+        const writes = all.map((x) => this.state.storage.put(x.k, { ...x.rec, settle: plan }));
+        if (totalW > 0) for (const x of losers) writes.push(this._opStamp('arenastakeloss:' + tid + ':' + matchId + ':' + x.rec.sponsorId));
+        await Promise.all(writes);   /* one run: every record says how its match settles, or none does */
+        await this._arenaStakeFinish(all.map((x) => x.k), plan);
+        for (const x of all) {
+          const won = x.rec.targetId === winnerId;
+          const ws = this._wsBySessionId(x.rec.sponsorId);
+          if (ws) {
+            try {
+              ws.send(JSON.stringify({ type: 'arena_stake_result', payload: { matchId, targetId: x.rec.targetId, won, amount: x.rec.amount, payout: won ? (payout.get(x.rec.sponsorId) || 0) : 0 } }));
+            } catch (e) {}
+          }
+        }
+        await this._arenaBroadcastStakeBoard();
+        return;
+      }
       if (totalW > 0) {
         const cut = Math.floor(totalL * ARENA.FIGHTER_CUT);
         const pool = totalL - cut;
@@ -833,6 +894,27 @@ export const arenaMethods = {
    * A deploy wipes the in-memory bracket while stake escrows persist.
    * If the match DID settle (either win/loss opId stamped), only the
    * record is deleted -- never refund on top of a payout (rule 6). */
+  /* v2.3.5089: a settlement's plan, finished: each leg paid by its own opId
+     (_creditPlayer answers 'dup' for one already paid), then the records
+     gone in one write.  Run by the settlement itself, and by the sweep for a
+     record a restart left with its plan on it.  A leg that is not a leg (a
+     record a hand edited) is skipped, never paid. */
+  async _arenaStakeFinish(keys, plan) {
+    const legs = plan && Array.isArray(plan.legs) ? plan.legs : [];
+    for (const leg of legs) {
+      /* each kind of leg its own literal opId word (the opId audits: a credit's
+         id is never a value read back) and its own ids, checked */
+      if (!leg || typeof leg.to !== 'string' || !leg.to || typeof leg.id !== 'string' || !/^[A-Za-z0-9_:.-]{1,200}$/.test(leg.id)) continue;
+      const amount = Math.max(0, Math.floor(Number(leg.amount) || 0));
+      if (!amount) continue;
+      const note = typeof leg.note === 'string' ? leg.note.slice(0, 60) : 'arena';
+      if (leg.kind === 'cut') await this._creditPlayer(leg.to, { opId: 'arenastakecut:' + leg.id, source: 'arena', kind: 'gold', payload: { amount }, note });
+      else if (leg.kind === 'win') await this._creditPlayer(leg.to, { opId: 'arenastakewin:' + leg.id, source: 'arena', kind: 'gold', payload: { amount }, note });
+      else if (leg.kind === 'loss') await this._creditPlayer(leg.to, { opId: 'arenastakeloss:' + leg.id, source: 'arena', kind: 'gold', payload: { amount }, note });
+    }
+    await Promise.all(keys.map((k) => this.state.storage.delete(k)));   /* every record in one run */
+  },
+
   async _arenaStakeSweep() {
     const now = Date.now();
     if (this._lastStakeSweep && now - this._lastStakeSweep < 300000) return;
@@ -842,6 +924,9 @@ export const arenaMethods = {
       for (const [k, rec] of stakes) {
         if (this._arena && this._arena.id === rec.tid) continue; // live tournament
         if (now - (rec.ts || 0) < ARENA.STALE_STAKE_MS) continue;
+        /* v2.3.5089: a record carrying its match's plan settled: finish the
+           plan (every leg paid once), never refund it */
+        if (rec && rec.settle && rec.settle.v === 1) { await this._arenaStakeFinish([k], rec.settle); continue; }
         const settled = (await this._opSeen('arenastakewin:' + rec.tid + ':' + rec.matchId + ':' + rec.sponsorId))
           || (await this._opSeen('arenastakeloss:' + rec.tid + ':' + rec.matchId + ':' + rec.sponsorId));
         if (!settled) {

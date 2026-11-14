@@ -1,6 +1,6 @@
 card: E
-branch: claude/plan-e-8-known-stake (one branch a PR, each begun from the one before: merge #1752, #1756, #1758, #1759 first)
-prs: #1686, #1691, #1694, #1699 (merged); #1752, #1756, #1758, #1759 (ready); PR 8b on the branch above (ready)
+branch: claude/plan-e-8-known-settle (one branch a PR, each begun from the one before: merge #1752 to #1761 first)
+prs: #1686, #1691, #1694, #1699 (merged); #1752, #1756, #1758, #1759, #1761 (ready); PR 8c on the branch above (ready)
 state: ready
 
 ## Done
@@ -16,13 +16,15 @@ state: ready
 - PR 7 (5086, #1758), the shared test room and `DISTURBANCES`;
   `chaos-restart` moved onto it, its output the same.
 - PR 8a (5087, #1759), `trade-weapon-half` off `KNOWN` (v2.3.4795).
-- PR 8b (5088), `arena-stake-place` off `KNOWN` (v2.3.4796); break proof:
-  the old two writes fail case 5 again.
+- PR 8b (5088, #1761), `arena-stake-place` off `KNOWN` (v2.3.4796).
+- PR 8c (5089), `arena-stake-settle-loss` fixed: the settlement is a plan
+  on every stake record in one run, each leg paid once, the sweep finishes
+  it (`arenasettleplan: false` the old order). `KNOWN` empty, held empty.
 
 ## Next
 
-- PR 8c (5089), `arena-stake-settle-loss`, the one left to fix
-  (`gladiator.js` `_arenaSettleStakes`: the settle in one run).
+- PR 9 (5090), a refused save counted and a value road failing closed:
+  waits on card A's "saves refused" (`roomrow.js`); if not on main, PR 10.
 
 ## Found
 
