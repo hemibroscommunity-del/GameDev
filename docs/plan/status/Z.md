@@ -1,40 +1,40 @@
 card: Z
-branch: claude/plan-z-sitting-2
-prs: this PR, tag 5033, the last line of the list (ready)
+branch: claude/plan-z-sitting-4
+prs: this PR, tag 5360, the last line of the list (ready)
 state: ready
 
 ## Done
-- Sitting 2, 2026-11-14, `main` at d2e096a. 9 PRs ready, each `test` green.
-  Rehearsed by hand (W's script is in #1676): the 7 below merged on `main`,
-  then precheck 0 FAIL, `npm run build` green, `questline` 187 of 187 (all
-  9 too). `/repo-review` in full on #1681, #1686, #1691, #1694, #1699, #1700.
-  Ticked 8.6, 8.7, 9.0, 9.4, 10.1, 11.1, 11.2. No size line or census is due.
+- Sitting 4, `main` at 5eb94ec, 19 open PRs not drafts, each `test` green.
+  All 15 of B, P, N, H, G rehearsed together: precheck RED (B's guards beside
+  N, H, G). The 9 below: precheck 0 FAIL, build, questline 187/187 (d02b3ca).
+  Reviews with skeptics: `docs/plan/census/review-z4.md`. Ticked nothing.
 
 ## The list: merge in this order, in one sitting, each "Create a merge commit"
-1 #1676 W4 · 2 #1682 X1 · 3 #1683 X2 · 4 #1686 E1 (deploys the worker; the
-live flag `daybook`, the list's only flag or cap) · 5 #1691 E2 (deploys) · 6
-#1694 E3 (deploys) · 7 #1681 H3 (client only) · 8 this PR. Stacked: no squash.
+1 #1687 B2 · 2 #1689 B3 · 3 #1690 B4 · 4 #1693 B5 · 5 #1696 B6 · 6 #1698 B7 ·
+7 #1702 B8 · 8 #1707 P's card · 9 #1713 P1 · 10 this PR. Stacked: no squash.
+None touches `server/**`: no deploy. No cap, live flag or record's shape.
+B, not N, H, G: B is green on `main`, each guard names the mend; held, it meets
+this red each sitting. It unblocks U, T, V and P's PR 4.
 
-## Held (expires at sitting 3)
-- #1699 E4 (schema 21): nothing restores `_econ` at the join (`join.js`), so
-  its own worker saves a blank over a stored one (3 probes: 500, 900 to 0):
-  a rollback from PR 5 to it erases the counts. Mend: the join's restore
-  line in it (E's Needs: the owner's yes) or the bump moved to PR 5; a
-  join-then-save test; its PR says a rollback needs `newersave: false`.
-- #1700 H4: `maskedBakeWorker.js` "gear numbers not here" returns with no
-  `sheetsLetGo`/`closeInputs`: those sheets stay pinned past the 8 MB cap.
-  The kept sheets (8 MB) have no `MEMORY-MAP.md` slot, and `mp-membudget`
-  counts a worker's heap and buffers only, not its bitmaps (CLAUDE.md §7).
+## Held (expires at sitting 5): merge `main` after the list, then mend
+- N #1684, #1695, #1697: `systems` (`server/src/wire/` has no system),
+  `shapes-once` (`wayIn`, `mayStart`, `doesWhat` have no Where),
+  `tests-by-system` (`wire-table.test` names `wsClient.js`: `lib/filesOf.mjs`).
+- H #1700, #1709, #1712: `four-lines` (`entityRenderer.js` 9006 > 8968, H4;
+  `gameDisplay.js` 4285 > 4270, H6: a line only falls). Verified: H5's plan
+  taken by colour count (scrambled monster colours); H4's reads in series.
+- G #1701: `four-lines` (`BroTown.jsx` 8372 > 8371; `BroTown()` 7802 > 7801).
+- A #1706, #1708, #1711: `systems` (`report.js`, `roomrow.js`: 13 > 11).
+  The four faults mended where `visibilitychange` fires. Verified: A5 leaves
+  each sitting's last report (or a short one's first) in memory; A6's card
+  has no cap of its own; the `dev` part fills in ~6 live builds. A cap line.
+- Y #1705: still a DRAFT (its file says ready): not ready.
 
 ## Stalled
-- Y (`claude/plan-y-farm-gate`): `stalled`, waiting on the owner's A, B or C.
-
-## Found, no card owns it (owner: start a session, or put it on a card)
-- N, B, A, G say `ready` on DRAFT PRs: a draft is not ready (card Z step 2).
-  Mark each "Ready for review" for sitting 3 (G waits for your yes).
-- `mp-topaudit` red, the GAME's: `pixiRenderer.js:869` passes no `topInset`
-  to `wheelMinimap.js` (B's Found). `state-census.mjs --check` still stale.
-- For E: `daybook.js` takes an array with gaps and any `now` (a phone's clock
-  stops its puts); a dropped item's pile ends by no road; a key in `_econ`
-  bumps `ECON.V`. For H: a Leaderboard's faces a step at a time (unmeasured).
-- Waiting on the owner: E (2), Y (1), N (1), A (1), B (1), G (the pictures).
+- None.
+## Found
+- From sitting 5, B's guards are on `main`: a PR red against one mends it.
+- No card: `quests.js` 262, test mode takes a retired quest (`testmode.js`
+  says it is refused). `docs/WIRE-PROTOCOL.md` has no `report` row (A's).
+- The owner's answers: E (PR 5, in your own words), Y (`mp-topaudit`: a
+  second PR in `pixiRenderer.js`, yes or no), P (spec part 1's reading).

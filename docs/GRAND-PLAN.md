@@ -466,7 +466,7 @@ nothing known, and a restore copies nothing.
 
 ### Pillar 8. Keep working here cheap and checked
 
-- [ ] **8.0 [NOW] Wave 0: the rails** (part 11): scenarios found by file
+- [x] **8.0 [NOW] Wave 0: the rails** (part 11): scenarios found by file
   name, guards in files of their own, tag blocks, status files, the
   scoreboard, the gatekeeper's script, the baseline.
 - [ ] **8.1 [NOW] Red on `main` is zero.** Fixed, or deleted with its

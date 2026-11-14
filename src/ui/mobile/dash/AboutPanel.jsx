@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { COL, panelStyle } from './common.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
+import { reportOn, setReportOn } from '../../../debug/report.js';   /* v2.3.5122: the smoothness report's switch */
 
 /* ═══ v2.3.2820: ABOUT, PRIVACY, RULES, CREDITS ═══
  * The 2026-09-24 demo audit: a public demo with no privacy notice, no rules
@@ -35,6 +36,32 @@ const Section = ({ title, children }) => (
 const Li = ({ children }) => <li style={{ marginBottom: 4 }}>{children}</li>;
 const ul = { margin: 0, paddingLeft: 18 };
 
+/* v2.3.5122: THE SMOOTHNESS REPORT (debug/report.js; the grand plan's step
+   1.1).  On for every player (the owner's call 1), with this switch, kept on
+   this device.  What it holds is what debug/report.js sends; it is added into
+   the day's totals by device type with no name, id or address
+   (server/src/report.js), and the day's book is kept 60 days
+   (server/src/daybook.js). */
+const SmoothRow = () => {
+  const [on, setOn] = useState(() => reportOn());
+  return (
+    <Li><b style={{ color: COL.text }}>Smoothness reports</b> — every few minutes
+      while you play: how smoothly the game ran (frame times, what made it
+      stutter), the memory it used, which part of the world you were in, how
+      many players were near, and what the screen and graphics of your device
+      can do (never its name or model). They carry no name, character or
+      account, are added up with the reports of every other player, and are
+      kept for 60 days.{' '}
+      <button type="button" data-report-switch={on ? 'on' : 'off'}
+        onClick={() => { setReportOn(!on); setOn(!on); }}
+        style={{ minHeight: 32, padding: '0 10px', margin: '4px 0 0', fontSize: 12, fontWeight: 700, borderRadius: 8,
+          border: '1px solid ' + COL.accent, background: 'transparent', color: COL.accent, touchAction: 'manipulation', cursor: 'pointer' }}>
+        {on ? 'On: turn off' : 'Off: turn on'}
+      </button>
+    </Li>
+  );
+};
+
 export const AboutPanel = () => (
   <div style={panelStyle} data-about="">
     <Section title="BroTown">
@@ -61,6 +88,7 @@ export const AboutPanel = () => (
           chat message, we keep that message so it can be reviewed.</Li>
         <Li><b style={{ color: COL.text }}>A wallet address</b> — only if you choose
           to link one to verify a Hemi Bro.</Li>
+        <SmoothRow />
       </ul>
       <div style={{ marginTop: 6 }}>
         No ads, no selling your data, no email or real name required. Chat is
