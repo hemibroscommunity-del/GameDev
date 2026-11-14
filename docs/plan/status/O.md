@@ -15,7 +15,8 @@ state: ready
   asked of `deviceProfile.js` alone; `one-program.test` (new).
 - #1850 (5229): the passes (shine, shadows, still water) knobs of the chip
   axis after the rate; `?ladderpass=0`; (A) revised: a kept rung keeps the
-  rate only (the planning session's word); `ladder-passes.test` (new).
+  rate only (the planning session's word); `ladder-passes.test` (new);
+  sitting 17's medium mended (a work-bound phone never takes a pass).
 - #1854 (5230): the strip slice the lanes' `queue` knob (4 ms; `thirty` 8),
   never the frame's length; BUDGETS part 8's #6 gone.
 

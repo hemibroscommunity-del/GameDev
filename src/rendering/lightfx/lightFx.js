@@ -19,7 +19,7 @@
  */
 import { ShadowSystem, shadowSystemCount } from './shadows.js';
 import { GlintSystem, sheenOn, sheenLive, shineKnobOn } from './glint.js';   /* v2.3.5229: sheenLive, the switch and the lanes' knob */
-import { laneKnob, onKnob } from '@/game/drawLanes.js';   /* v2.3.5229: the shadows are a knob of the lanes (card O PR 9) */
+import { laneKnob, onKnob, seeKnob } from '@/game/drawLanes.js';   /* v2.3.5229: the shadows are a knob of the lanes (card O PR 9) */
 import { collectCasters, SELF_STAND_IN_FIELDS, SELF_STAND_IN_SETS } from './casters.js';
 import { Sprite } from 'pixi.js';
 import { zoneLight, sunLeft, WHEEL_SUN, wheelLandLight } from './zoneLight.js';
@@ -80,6 +80,15 @@ export function shadowsKnobOn() {
 export function lightFxLive() {
   return lightFxOn() && shadowsKnobOn();
 }
+/* v2.3.5229 (the gatekeeper's sitting 17, a low): A PASS THAT DRAWS NOTHING
+   HERE IS NO RUNG.  The governor steps only what changes the screen
+   (drawLanes.js knobSeen, as the crowd's): with this device's own switch
+   off (`?lightfx=0`, `?sheen=0`), the shadows' or the shine's step changes
+   nothing drawn and is passed, down and up.  The shine is decided here
+   (sheenLive's light is handed to the glint in update()), so both are said
+   here; glint.js cannot ask lightFxOn (it is imported by this file) */
+seeKnob('shadows', (v) => (lightFxOn() ? v : 'off'));
+seeKnob('shine', (v) => (lightFxOn() && sheenOn() ? v : 'off'));
 
 export class LightFx {
   /* v2.3.3458: `renderer` -- the shadows' pieces are drawn before the frame

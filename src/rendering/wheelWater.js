@@ -77,7 +77,7 @@
 import { Container, Mesh, MeshGeometry, Shader, GlProgram, UniformGroup, Texture, BufferImageSource, Rectangle } from 'pixi.js';
 import { setWheelWaterMoves } from '../game/wheelTrial.js';
 import { isPaletteSource, paletteAtlasSource, paletteOn, makePaletteSource } from './paletteTex.js';   /* v2.3.3190 */
-import { laneKnob, onKnob } from '../game/drawLanes.js';   /* v2.3.5229: the moving sea is a knob of the lanes (card O PR 9) */
+import { laneKnob, onKnob, seeKnob } from '../game/drawLanes.js';   /* v2.3.5229: the moving sea is a knob of the lanes (card O PR 9) */
 
 const VERT = `
 in vec2 aPosition;
@@ -560,6 +560,16 @@ export function waterKnobStill() {
 }
 /* the sea drawn still now: the live switch (QA, the Speed test) or the knob */
 function stillNow() { return _liveOff || waterKnobStill(); }
+/* v2.3.5229 (the gatekeeper's sitting 17, a low): a sea that cannot move
+   here -- `?nowaves`, WebGL 1, a program that did not link, the live switch
+   off, or no sea laid near you -- draws the same moving or still, so its
+   rung changes nothing on screen and the governor passes it (drawLanes.js
+   knobSeen, as the crowd's).  A sea that comes into view counts again */
+function seaMovesHere() {
+  if (!wavesOn() || !webgl2() || _ok === false || _liveOff) return false;
+  return !!(_live && !_live.dead && _live.meshes && _live.meshes.size > 0);
+}
+seeKnob('water', (v) => (seaMovesHere() ? v : 'still'));
 let _held = null;            /* QA: the clock held at one moment, for pictures */
 let _live = null;            /* QA: the WheelWater drawing now, for __btWaves.extract */
 /* ═══ v2.3.3452: THE GROUND UNDER OPEN SEA IS NOT DRAWN ═══

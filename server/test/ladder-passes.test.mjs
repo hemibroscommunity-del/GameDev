@@ -24,6 +24,12 @@
  *      light is withheld from the glint (null) every frame with nothing
  *      re-released, and the sea's layer is hidden and the ground under open
  *      sea shown once (WheelWater.tick, cover()).
+ *   6. v2.3.5229 (the gatekeeper's sitting 17): A PASS THAT DRAWS NOTHING
+ *      HERE IS NO RUNG: with the device's own switch off (`?sheen=0`,
+ *      `?lightfx=0`) or no sea that moves near you, the screen sees the pass
+ *      the same at its rung (drawLanes.js knobSeen), and the governor passes
+ *      it.  (The work-bound phone never reaching the passes: frame-pacer §21c,
+ *      §22c.)
  *   5. NOTHING LOADS ON THE WAY BACK (the preloading law): the sea's quads
  *      are laid whatever the knob (WheelWater.set reads none), the shine's
  *      and shadows' programs are warmed by the device's switch alone
@@ -36,6 +42,7 @@
  *   - the shine and the shadows swapped on the chip axis             -> FAIL 1 (and 2, 3, 4)
  *   - drawLanes.js liveKnobs without the passes' switch              -> FAIL 1
  *   - lightFx.js update: `this.clear();` every frame the knob is off  -> FAIL 4
+ *   - lightFx.js without its two seeKnob lines                       -> FAIL 6 (the governor steps the shine)
  */
 import { register } from 'node:module';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
@@ -210,6 +217,41 @@ const code = (p) => readFileSync(new URL(p, SRC), 'utf8').replace(/\/\*[\s\S]*?\
   const px = code('rendering/pixiRenderer.js');
   check('5. the shine\'s programs are warmed behind the loading screen by the device\'s switch alone, never the knob',
     /if \(lightFxOn\(\)\) prewarmGlintPipe/.test(px) && /if \(lightFxOn\(\)\) warmSheenBatch/.test(px) && !/lightFxLive|sheenLive/.test(px));
+}
+
+/* ── 6. v2.3.5229 (the gatekeeper's sitting 17, a low): a pass that draws nothing here is no rung ── */
+{
+  D._resetLanes();
+  LF.setLightFx(true, false); G.setSheen(true, false);
+  const on = [D.knobSeen('shine', 'on'), D.knobSeen('shine', 'off'), D.knobSeen('shadows', 'on'), D.knobSeen('shadows', 'off')];
+  check(`6. with the device's switches on, the screen sees the shine and the shadows as their knob (${on.join(', ')})`, on.join() === 'on,off,on,off', on);
+  G.setSheen(false, false);
+  const s1 = [D.knobSeen('shine', 'on'), D.knobSeen('shine', 'off')];
+  G.setSheen(true, false);
+  LF.setLightFx(false, false);
+  const s2 = [D.knobSeen('shadows', 'on'), D.knobSeen('shadows', 'off'), D.knobSeen('shine', 'on')];
+  LF.setLightFx(true, false);
+  check('6. `?sheen=0`: the shine\'s step changes nothing seen; `?lightfx=0`: nor the shadows\' (nor the shine\'s, which it carries)',
+    s1.join() === 'off,off' && s2.join() === 'off,off,off', { s1, s2 });
+  check('6. no sea that moves here (no WebGL 2 renderer, nothing laid): the water\'s step changes nothing seen',
+    D.knobSeen('water', 'moving') === 'still' && D.knobSeen('water', 'still') === 'still');
+  const ww = code('rendering/wheelWater.js');
+  check('6. ...a sea that moves is one laid near you, on WebGL 2, linked, its live switch on, `?nowaves` not asked',
+    /if \(!wavesOn\(\) \|\| !webgl2\(\) \|\| _ok === false \|\| _liveOff\) return false;/.test(ww) && /_live\.meshes\.size > 0/.test(ww) && /seeKnob\('water'/.test(ww));
+  /* the governor: a chip-bound phone with `?sheen=0` and no sea -- the rate, then the shadows; the shine and the water passed */
+  const FP = await import('../../src/game/framePacer.js');
+  G.setSheen(false, false);
+  D._resetLanes();
+  let kept = null;
+  const g = FP.makeGovernor({ on: true, store: { get: () => kept, set: (v) => { kept = v; } } });
+  g.veil(0);
+  let t = 0;
+  for (let i = 0; i < 10; i++) g.verdict(0.9, t += 1000, { axis: 'chip', atFloor: true });
+  const steps = g.read().steps.filter((x) => x.dir < 0).map((x) => x.knobs.join('+'));
+  G.setSheen(true, false);
+  D.setRung(0, 0, 0);
+  check(`6. ...so the governor passes them: a chip-bound phone with \`?sheen=0\` and no sea steps ${steps.join(', ')} (no try spent on the shine or the water)`,
+    steps[0] === 'rate' && steps[1] === 'shadows' && !steps.includes('shine') && !steps.includes('water'), g.read());
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);
