@@ -3,7 +3,7 @@
  * src/game/actions.js is the one way a request leaves the page: one row a
  * request, its way (alone, priority, the 33 ms batch, a rider, a route...)
  * and its flags, and act(), which makes a value request's id.  The page's
- * channel shim (src/networking/wsClient.js) is its transport and reads the
+ * channel shim (wsClient.js, system wire) is its transport and reads the
  * rows: its pass-through, PRIORITY_EVENTS and SETTLED_SENDS were three lists
  * kept by hand (TRAPS §18: a type the pass-through forgot was dropped in
  * silence).  The door never imports the worker's table (it would carry every
@@ -38,7 +38,7 @@
  * BREAK PROOF (rule 8), each tried by hand 2026-11-14:
  *   1. src/game/chat.js: `S.channel.send({ type: 'zz_probe' })`          -> FAIL 2 (and 7)
  *   2. src/game/actions.js: `cape_redeem: A('alone', { req: 1 })` -> no req -> FAIL 3
- *   3. src/networking/wsClient.js: `if (msg.type === 'zz_probe') { wsOut(msg); return; }` in the shim -> FAIL 4
+ *   3. the shim (wsClient.js): `if (msg.type === 'zz_probe') { wsOut(msg); return; }` in the shim -> FAIL 4
  *   4. src/game/actions.js: `stunned: A('priority')` -> A('batch')    -> FAIL 6
  *
  * Run from the repository's root: node tools/guards/action-door.test.mjs
@@ -47,6 +47,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { filesOf } from './lib/filesOf.mjs';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const read = (f) => readFileSync(join(ROOT, f), 'utf8');
@@ -103,7 +104,10 @@ for (const [f, s] of SRC) {
     fetches.push({ f, line: lineOf(s, m.index), path: pm ? pm[1] : null });
   }
 }
-const EXCEPT = (x) => x.f === 'src/debug/crashTrap.js' || x.f === 'src/networking/index.js' || (x.f === 'src/networking/wsClient.js' && x.path === '/api/lobby');
+/* the shim's file, found by what it holds among the wire system's files, never
+   by its path (tests-by-system: a big file is read by system) */
+const SHIM_FILE = filesOf('wire').find((f) => SRC.has(f) && SRC.get(f).includes('var channelShim = {'));
+const EXCEPT = (x) => x.f === 'src/debug/crashTrap.js' || x.f === 'src/networking/index.js' || (x.f === SHIM_FILE && x.path === '/api/lobby');
 {
   const missing = [...sent].filter(([n]) => !Object.prototype.hasOwnProperty.call(ACTIONS, n)).map(([n, w]) => n + ' (' + w + ')');
   check(`2: every type and event the page sends by name (${sent.size}) has a row`, missing.length === 0, missing);
@@ -125,7 +129,7 @@ const EXCEPT = (x) => x.f === 'src/debug/crashTrap.js' || x.f === 'src/networkin
 
 /* ── 4. the shim keeps no list by hand ── */
 {
-  const ws = read('src/networking/wsClient.js');
+  const ws = SHIM_FILE ? SRC.get(SHIM_FILE) : '';
   const from = ws.indexOf('var channelShim = {'), to = ws.indexOf('track: function track(', from);
   const shim = from >= 0 && to > from ? ws.slice(from, to) : '';
   const literal = [...shim.matchAll(/msg\.type === '([a-z_0-9]+)'/g)].map((m) => m[1]).filter((t) => t !== 'broadcast' && t !== 'node_strike');

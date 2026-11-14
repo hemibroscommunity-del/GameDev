@@ -33,6 +33,7 @@ import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
 import { POINTS_RESET, pointsPlaced } from '../src/pointsreset.js';
 import { PROG3, prog3RespecPoints } from '../src/prog3.js';
 import * as PR from '../../src/game/pointsReset.js';
+import * as DOOR from '../../src/game/actions.js';   /* v2.3.5185: the action door's rows */
 import { readFileSync } from 'fs';
 
 function makeState() {
@@ -336,7 +337,8 @@ const P = room.playerState.bp_pr_a;
   check('6: ...nor on the relay\'s list', !/['"]points_reset['"]/.test(relay));
   const cli = readFileSync(new URL('../../src/networking/wsClient.js', import.meta.url), 'utf8');
   check('6: the page sends it (the channel\'s allowlist names it) and takes the answer from the worker only',
-    /msg\.type === 'points_reset'\)/.test(cli) && /case 'points_reset_result':[\s\S]{0,600}if \(!msg\.from\)/.test(cli));
+    /* v2.3.5185: the channel's allowlist is the action door's rows */
+    DOOR.ACTIONS.points_reset && DOOR.ACTIONS.points_reset.way === 'alone' && /var _way = actionWay\(msg\.type\);[\s\S]*?if \(_way === 'alone'\) \{\s*wsOut\(msg\);\s*return;\s*\}/.test(cli) && /case 'points_reset_result':[\s\S]{0,600}if \(!msg\.from\)/.test(cli));
 }
 
 // ── 7. the page ──
