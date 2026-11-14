@@ -1,7 +1,7 @@
 {
   "about": "v2.3.5027: every file git tracks under assets/, named by the SHA-256 of its bytes (grand plan step 9.0). Written by tools/assets/weights.mjs --write-sources; never by hand.",
-  "files": 357,
-  "bytes": 409106513,
+  "files": 360,
+  "bytes": 411980591,
   "rows": [
     {"path":"assets/armor boards/fullset-steel-jog-east.png","bytes":2441342,"sha256":"c0b8f40f4f2345599442937916311a82d65ab4e00a98e8f99f1b5bb0cda2bbbc"},
     {"path":"assets/character animations/hit-east.mov","bytes":869586,"sha256":"5cb25f298075213288d907bf9c753026e5a8f8247348a6bbd443ac2e01ebe3f4"},
@@ -359,6 +359,9 @@
     {"path":"assets/ui/daily-spin/title-plate.png","bytes":1820629,"sha256":"3cfd94e8f6d3b92be0e8f969bb87a0d3d68cebe0b52f5ebc053363d1fb5f5f31"},
     {"path":"assets/ui/daily-spin/wheel-bulbs.png","bytes":1856534,"sha256":"8d34261b9575a7c7d35b99c9e2bebf82e139641f21a59901693fe99354ce22cc"},
     {"path":"assets/ui/daily-spin/wheel-plain.png","bytes":1855812,"sha256":"40b841c68a9d5e2f09b199b24ca159525dade1e213cd31c61cf610131d460b40"},
+    {"path":"assets/ui/leaderboard/art-sheet-2026-11-14.png","bytes":2183014,"sha256":"46e6b669a30efa74be1c00d58550fa45e76a8fb6e5a83cdf2c492a3d9ed6803a"},
+    {"path":"assets/ui/leaderboard/mockup-2-2026-11-14.jpg","bytes":254429,"sha256":"d45540912ae8f2438b4740f1f0e6050f3db1216dcdea9397dc4aa3507f77126d"},
+    {"path":"assets/ui/leaderboard/mockup-2026-11-14.jpg","bytes":436635,"sha256":"37509c0d63d48c4302605e639773a8504abb4fb505886532ccd594c69d5c4616"},
     {"path":"assets/weapons/bamboo-stick-source.png","bytes":1086359,"sha256":"3f090fe983a1e7a3c99085653d674814fbaf24885020d2f2709b9c2989049e5b"}
   ]
 }

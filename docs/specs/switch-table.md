@@ -40,9 +40,10 @@ read the same scanner: one copy of the rule (the plan's rule 2).
   `.mjs`. The scanner follows the NAME, not the call: a read that hands the
   address to a rule in `src/game/` (`frameSmoothOn(search)`) is found in the
   rule's file, where the name is. A page row's name has its `?` (`?guest`).
-- **A memory saver** (`CLIENT_SAVERS`, `src/game/clientOff.js`) is ONE row
-  under its id, side `both`: `off_<id>` on the worker and `?<id>=0` on the
-  page are the same switch.
+- **A switch the worker throws for the page** is ONE row under its id, side
+  `both`: a memory saver of `CLIENT_SAVERS` (`src/game/clientOff.js`), or any
+  other `clientOff('<id>')` the page asks (`groundkeep`). `off_<id>` on the
+  worker and `?<id>=0` on the page are the same switch.
 - **A cap** is a row only where the worker reads it as a flag or a comment
   promises it as a kill switch. Any other cap's override is the emergency
   lever of `docs/specs/liveops.md` ("Caps override") and stays out.
@@ -81,15 +82,40 @@ switch's reader asks besides its own flag, read in the code.
 Each of these may only fall; the gatekeeper alone makes one strict or lowers
 its line, in a PR of its own:
 
-- the names found with no row (`UNLISTED_LINE`: the page's names, until card
-  T's PRs 2 and 3 give each a row; every worker name is a row from PR 1);
+- the names found with no row (`UNLISTED_LINE`: the page's drawing side,
+  until card T's PR 3; every worker name is a row from PR 1, the page's game
+  side from PR 2);
 - the reads in a shape the scanner does not know (`UNKNOWN_LINE`, 0);
-- the rows born `unknown` (`BORN_UNKNOWN_LINE`, 0).
+- the rows born `unknown` (`BORN_UNKNOWN_LINE`, 2: `?debug` and `?nodebug`,
+  from April commits that carry no tag in the commit, its body or its merge).
 
-The scanner's excuses (a read of the whole map on purpose: `DYNAMIC`; a
-regex over another URL: `NOT_ADDRESS`; a local that is not the flags:
-`NOT_A_FLAG`) are each held found: an excuse that no longer matches fails,
+The scanner's excuses are each held used: one that no longer matches fails,
 so it can never excuse a new line.
+
+- `DYNAMIC`: the FUNCTIONS that read the flags with no name on purpose (the
+  doors `_flagOn`, `_flagNum`, the cache's load, the flags route, the join's
+  caps spread, a new contest's clearing, the savers' list). An excuse is a
+  function, never a line's text: a new door written like `_flagOn` in another
+  function is not excused, and every read through it is followed
+  (v2.3.5302, the gatekeeper's review of sitting 8).
+- `NOT_ADDRESS`: a page regex over another URL (an asset's).
+- `NOT_A_FLAG`: a local that is not the flags. The scanner keeps the name
+  (liveops.test §8f still holds it); the census leaves it out.
+- keepSwitches.js's copy of the address's own entries.
+
+## The scanner's shapes, held by fixtures
+
+The gatekeeper's review of sitting 8 found shapes that hid a switch:
+`_flagOn` at a constant (`disable_verify`, `hidden_off`) or in double quotes,
+`(this._liveFlags || {}).x`, a destructured local, `f?.x`, a local read more
+than eight lines below it, the flags handed on or reached through
+`_liveFlagsEnsure()`, and on the page `(?:^|&)x` over `search.slice(1)`,
+`.get("x")`, `searchParams`, `.includes('x=1')`, every name of a
+`[?&](a|b)` group, and `clientOff('x')`. Each is now read (or counted as
+unknown, where no name can be read), and each has a fixture in the guard
+(`SHAPES`, check 9): a few lines of code the scanner reads as a file, with the
+names it must find and the unknown reads it must count. A rule dropped from
+the scanner turns its fixture red on every PR.
 
 ## A new switch
 

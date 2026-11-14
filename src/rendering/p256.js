@@ -60,8 +60,11 @@ const FX_MADE_ON = !NO_TWINS && !/[?&]fxmade=0(&|$)/.test(_q);
    the heart and sword popups (1.6 MB held as pictures in the page at the
    fight).  Their twins: tools/art/reduce256.mjs, by name.  `?worldicons=0`
    keeps them pictures.  (The arrow, dice, spell and xp popups have no twin:
-   their widths need padding.) */
-const WORLD_ICONS = /^\/icons\/(?:items\/(?:ore-iron|ore-black-steel|ore-obsidian|trap-box)|shards\/shard_[a-z]+|popups\/(?:heart-256|sword))\.webp$/;
+   their widths need padding.)  Not the trap's box (the gatekeeper's sitting
+   9): a missed trap breaks it into pieces (trapFx.js _missBreak, wheelShatter
+   cutPicture), a read of its pixels long after the pack has emptied its
+   page copy -- it drew planks in their place. */
+const WORLD_ICONS = /^\/icons\/(?:items\/(?:ore-iron|ore-black-steel|ore-obsidian)|shards\/shard_[a-z]+|popups\/(?:heart-256|sword))\.webp$/;
 const WORLD_ICONS_ON = !NO_TWINS && !/[?&]worldicons=0(&|$)/.test(_q);
 /* v2.3.5252, `fx-sheets-supplied`: the effects cut from the owner's own
    sheets (the stun stars, the whirlwind, and the grease, woodchips, rocks

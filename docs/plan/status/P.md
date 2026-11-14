@@ -1,6 +1,6 @@
 card: P
-branch: claude/plan-p-11-fx-sheets (one branch a PR, each begun from the one before)
-prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757 (5241-5248, 5251, merged); #1749 (5249), #1763 (5250) mended, ready; #1766 (5252) ready
+branch: claude/plan-p-12-pack-page (one branch a PR, each begun from the one before)
+prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757 (5241-5248, 5251, merged); #1749 (5249), #1763 (5250), #1766 (5252) mended, T's #1768 merged in (sitting 10); pack-page (5253) measuring
 state: working
 
 ## Done
@@ -11,12 +11,15 @@ state: working
   icons' twins on (3.1, 1.2 MB); mended at sitting 8 (not the snowball:
   it loads in play; switch rows; the heart cut through drawSourceRect).
 - #1766 (5252), `fx-sheets-supplied`: the whirlwind's declined twin as numbers
-  (`gearSheets.js`); `artCache` 97.1 -> 95.1, `buffers` 23.7 -> 24.2.
+  (`gearSheets.js`); `artCache` 97.1 -> 95.1, `buffers` 23.7 -> 24.2;
+  0.49 MB by the census (chip counted). Sitting 9: not the trap's box.
 
 ## Next
 
-- `pack-page` (begun on the planning session's answer: H done in
-  substance, `gearSheets.js` is P's): waits on the question below.
+- `pack-page` (5253), road B: a gear sheet first drawn in play packed on
+  the body bake's worker (`?packworker=0`); measuring the wait, the holds.
+- Then a guard: a closed list of the CPU readers of picture pixels (the
+  planning session's yes, sitting 9).
 
 ## Found
 
@@ -29,12 +32,9 @@ state: working
 
 ## Needs
 
-- ASKED (2026-11-14, once): `pack-page` by the card's road (gear sheets
-  as numbers: 114 RGBA sheets, every pixel reader and the mips to change)
-  or packed on the bake worker as a PNG (readers unchanged)? B recommended.
-- Answered (2026-11-14): P mends the probe in the tree-tiers PR (a
-  numbers source counts 0 in `__btTex`), with the chip's count shown, the
-  lines moved by what was measured, and a break proof.
+- Answered (2026-11-14): `pack-page` by road B (packed on the worker),
+  never drawn bare while it waits; road A (sheets as numbers) a backlog row.
+- Answered (2026-11-14): P mends the probe (a numbers source counts 0 in
+  `__btTex`), the chip's count shown, with a break proof.
 - Answered: a numbers PR may raise `buffers` by what it moves there;
   slimes as you walk (after H), the effects' twins on.
-- The backlog's `pack-page` waits for card H's `done`.
