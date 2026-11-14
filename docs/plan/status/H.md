@@ -13,6 +13,7 @@ state: ready
 - PR 4 (tag 5043), `masked-bake` off the list: a frame of an image goes to
   the bake's worker as its address; the worker reads the sheet. 33 of 33
   inputs byte for byte; sample peer, armour, crowd armour x3: 7.7 ms.
+  Its read is on the picture door's list: its merge deploys the worker.
 
 ## Next
 

@@ -353,8 +353,9 @@ round you, four sets) was an image of a packed sheet at a `blob:` address
 **What it does now.** A frame of a sheet that is an image goes as its
 address and its rectangle (`{ url, sx, sy, ... }`); the worker fetches and
 decodes the sheet itself, keeps six at most (8 MB, on the worker, the least
-lately used closed when no job holds it: `maskedBakeWorker.js` `sheetOf`), and
-draws the rectangle where it drew the cut frame. Every draw of an input in the
+lately used closed when no job holds it: `maskedBakeWorker.js` `sheetOf`, a
+read cut after 4 s, on the picture door's list), and draws the rectangle where
+it drew the cut frame. Every draw of an input in the
 bake has smoothing off, so the texels are the cut's. A canvas, or an address
 the worker cannot read (it answers `urlFail`: the page cuts that one, once,
 and never sends that address again), goes as before. `?bakeurl=0`: every

@@ -153,15 +153,20 @@ async function lookBitmaps(j) {
    as before).  QA (`qaBm`, the page's own cut beside the address): the two
    compared here, input by input, and answered in `qa`. */
 const SHEET_KEEP_N = 6, SHEET_KEEP_BYTES = 8 * 1024 * 1024;
+/* a sheet not read in this long is a failure (picture-door: a time limit and
+   a retry): the page cuts that address's frames itself from then on */
+const SHEET_URL_MS = 4000;
 const sheetsKept = new Map();   /* url -> { p, bm, bytes, uses }, the newest last */
 function sheetOf(url) {
   let e = sheetsKept.get(url);
   if (e) { sheetsKept.delete(url); sheetsKept.set(url, e); return e; }
   e = { p: null, bm: null, bytes: 0, uses: 0 };
-  e.p = fetch(url).then((r) => { if (!r.ok) throw new Error('http ' + r.status); return r.blob(); })
+  const ac = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const cut = ac ? setTimeout(() => ac.abort(), SHEET_URL_MS) : 0;
+  e.p = fetch(url, ac ? { signal: ac.signal } : undefined).then((r) => { if (!r.ok) throw new Error('http ' + r.status); return r.blob(); })
     .then((b) => createImageBitmap(b))
-    .then((bm) => { e.bm = bm; e.bytes = bm.width * bm.height * 4; sheetsTrim(); return bm; },
-      () => { if (sheetsKept.get(url) === e) sheetsKept.delete(url); return null; });
+    .then((bm) => { clearTimeout(cut); e.bm = bm; e.bytes = bm.width * bm.height * 4; sheetsTrim(); return bm; },
+      () => { clearTimeout(cut); if (sheetsKept.get(url) === e) sheetsKept.delete(url); return null; });
   sheetsKept.set(url, e);
   return e;
 }
