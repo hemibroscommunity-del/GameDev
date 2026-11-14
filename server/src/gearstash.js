@@ -60,6 +60,7 @@
  */
 
 import { QUALITY_GRADES } from './data.js';   /* v2.3.2527 -- see sanitizeGearPiece */
+import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
 
 /* Per-list ceiling.  The client has NO cap on these four lists today
    (equipActions.js caps weaponStash alone, at WEAPON_STASH_MAX = 8), so
@@ -165,17 +166,15 @@ export function normalizeGearStashes(blob) {
   let changed = false;
   for (const f of GEAR_STASH_FIELDS) {
     const cur = blob[f];
-    if (!Array.isArray(cur)) {
-      /* Absent on every record written before this slice, which is the
-         common case; a non-array here is a corrupt or hand-restored
-         blob.  Either way the field lands as an empty list rather than
-         being left for the next reader to guess at. */
-      blob[f] = [];
-      changed = true;
-      continue;
-    }
-    const clean = cur.filter((e) => e && typeof e === 'object' && !Array.isArray(e)).slice(0, gearStashCap());
-    if (clean.length !== cur.length) { blob[f] = clean; changed = true; }
+    /* Absent on every record written before this slice, which is the
+       common case; a non-array here is a corrupt or hand-restored blob.
+       Either way the field lands as an empty list rather than being left
+       for the next reader to guess at.  v2.3.5281: one set through the
+       stashes' door, either way */
+    const next = !Array.isArray(cur) ? [] : cur.filter((e) => e && typeof e === 'object' && !Array.isArray(e)).slice(0, gearStashCap());
+    if (Array.isArray(cur) && next.length === cur.length) continue;
+    stashSet(blob, f, next, 'gear_migrate');
+    changed = true;
   }
   return changed;
 }
@@ -456,28 +455,27 @@ export const gearStashMethods = {
     const f = this._liveFlags;
     return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'armorstashlive') && !f.armorstashlive);
   },
-  _gearStashLiveAdd(ps, slot, piece) {
+  /* v2.3.5281: each through the stashes' door (stash.js), by the road its
+     caller names (stash-door.test holds that every caller names one) */
+  _gearStashLiveAdd(ps, slot, piece, road) {
     if (!ps || !piece || typeof piece !== 'object' || Array.isArray(piece)) return false;
     const field = liveField(slot);
     if (!field || !this._gearStashLiveOn()) return false;
-    if (!Array.isArray(ps[field])) ps[field] = [];
+    const list = Array.isArray(ps[field]) ? ps[field] : [];
     const sig = stashSig(field, piece);
-    if (!sig || ps[field].some((g) => stashSig(field, g) === sig)) return false;
-    if (ps[field].length >= gearStashCap()) return false;
+    if (!sig || list.some((g) => stashSig(field, g) === sig)) return false;
     const clean = sanitizeGearPiece(piece, false);
     if (!clean) return false;
-    ps[field].push(clean);
-    return true;
+    return stashGive(ps, field, clean, road, this);   /* false at the cap */
   },
-  _gearStashLiveTake(ps, slot, piece) {
+  _gearStashLiveTake(ps, slot, piece, road) {
     if (!ps || !piece || typeof piece !== 'object') return false;
     const field = liveField(slot);
     if (!field || !this._gearStashLiveOn() || !Array.isArray(ps[field])) return false;
     const sig = stashSig(field, piece);
     const i = ps[field].findIndex((g) => stashSig(field, g) === sig);
     if (i < 0) return false;
-    ps[field].splice(i, 1);
-    return true;
+    return stashTake(ps, field, i, road) !== null;
   },
 
   /* ═══ v2.3.2527: THE DOOR STAYS OPEN (review finding 1) ═══
@@ -559,7 +557,7 @@ export const gearStashMethods = {
       const strictSan = (g) => sanitizeStashList(f, [g], true, amuletSan)[0] || null;
       const ownSan = (g) => sanitizeStashList(f, [g], false, amuletSan)[0] || null;
       const own = stored ? stored[f] : ps[f];
-      ps[f] = this._gearProvResolveList(playerId, slot, Array.isArray(own) ? own.slice(0, gearStashCap()) : [], ownSan, !!stored);
+      stashSet(ps, f, this._gearProvResolveList(playerId, slot, Array.isArray(own) ? own.slice(0, gearStashCap()) : [], ownSan, !!stored), 'gear_join_own');   /* v2.3.5281 */
       /* GEAR_STASH_SEED_KEYS has no amuletStash entry on purpose
          (v2.3.2527 finding 3), so that list simply has no claim to read. */
       const key = GEAR_STASH_SEED_KEYS[f];
@@ -583,7 +581,7 @@ export const gearStashMethods = {
     let took = 0;
     for (const [f, list] of claimed) {
       const before = ps[f].length;
-      ps[f] = mergeStashLists(f, ps[f], list, report);
+      stashSet(ps, f, mergeStashLists(f, ps[f], list, report), 'gear_join_claim');   /* v2.3.5281 */
       took += ps[f].length - before;
     }
     /* Already stamped stays stamped; a fresh stamp needs a capture that

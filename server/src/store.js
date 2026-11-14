@@ -96,6 +96,7 @@ import { petPublic } from './petbook.js';   /* v2.3.3122: pet listings (what a b
 import { swordToGreatsword } from './swordconvert.js';   /* v2.3.3895: a sword's listing is rewritten once as a greatsword */
 import { oldGreatswordToMetal } from './gscopper.js';   /* v2.3.3980: ...and a wooden or base-less greatsword's as a metal one */
 import { bagTake } from './bag.js'; /* v2.3.4810: the bag door */
+import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
 
 /* v2.3.3525: the four remains keys in words (the game's src/data/remains.js) */
 const REMAINS_WORDS = Object.freeze({
@@ -758,7 +759,7 @@ export const storeMethods = {
       // Rule 16: the server's own copy by index — body.item is ignored.
       weapon = this._sanitizeWeapon(ps.weaponStash[idx]);
       if (!weapon) return { ok: false, settled: true, error: 'Item not in stash' };
-      ps.weaponStash.splice(idx, 1);
+      stashTake(ps, 'weaponStash', idx, 'store_list');
       this._saveRpg(playerId, ps);
       this._queuePlayerStateFlush(playerId);
     }

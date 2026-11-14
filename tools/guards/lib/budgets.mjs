@@ -147,8 +147,7 @@ export const ROWS = Object.freeze({
     reads: [],
     spends: { mb: null, 'page-ms': null },
     controls: [
-      c('page-ms', 'src/rendering/zoneTextures.js'),  /* stripTurn: a quarter of the frame, 3 to 50 ms */
-      c('lateness', 'src/rendering/zoneTextures.js'), /* the strip slice GROWS with the frame's length */
+      c('page-ms', 'src/rendering/zoneTextures.js'),  /* stripTurn: the lane's `queue` ms (v2.3.5230: 4, `thirty` 8; never the frame's length) */
       c('worker-idle', 'src/rendering/stripRead.js'),
       c('worker-stuck', 'src/rendering/stripRead.js'),
       c('worker-stuck', 'src/rendering/bodyBake.js'),
@@ -197,7 +196,6 @@ export const KNOWN_SECOND = Object.freeze([
   { n: 3, thing: 'page-ms', signal: 'worker-idle', what: 'one worker file started by three owners, three idle rules' },
   { n: 4, thing: 'page-ms', signal: 'worker-stuck', what: 'a worker\'s stuck watch written four times' },
   { n: 5, thing: 'lateness', signal: 'lateness', what: 'the frame\'s time measured by two clocks in one loop (the pacer\'s, the step\'s)' },
-  { n: 6, thing: 'lateness', signal: 'lateness', what: 'the strip slice reads the frame\'s length and grows with it' },
   { n: 7, thing: 'lateness', signal: 'world-in-play', what: '"is the world in play" asked four ways' },
   { n: 8, thing: 'mb', signal: 'mb', what: 'three byte caps, no sum; about 30 caps, each its own; nothing reads a total' },
   { n: 9, thing: 'rows', signal: 'regen-save', what: 'the regen\'s 10 s gate written twice' },
@@ -210,4 +208,4 @@ export const KNOWN_SECOND = Object.freeze([
   { n: 16, thing: 'loading-seconds', signal: 'loading-giveup', what: 'give-up caps, each its own; no budget' },
 ]);
 /* the census's line: only the gatekeeper lowers it */
-export const KNOWN_SECOND_LINE = 16;
+export const KNOWN_SECOND_LINE = 15;   /* v2.3.5230: #6 gone (the strip slice is the lane's ms, card O PR 10) */

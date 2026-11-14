@@ -25,6 +25,7 @@ import { ELEMENTS } from '@/data/index.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { cue } from '@/game/eventSounds.js';
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js';
+import { act } from '@/game/actions.js';   /* v2.3.5187: the page's requests leave through the action door (card K PR 7) */
 
 /* how long an unanswered ask holds the gem buttons */
 export const WEAPON_GEM_WAIT_MS = 4000;
@@ -75,7 +76,7 @@ export function weaponGemReasonText(reason) {
 export function askWeaponGem(S, slot, gem) {
   if (!weaponGemOnServer(S) || !S.rpg || !S.rpg[slot] || weaponGemBus.pending()) return null;
   const payload = { slot, gem };
-  try { S.channel.send({ type: 'weapon_gem', payload }); } catch (e) { return null; }
+  try { act('weapon_gem', payload); } catch (e) { return null; }   /* v2.3.5187: through the action door (actions.js) */
   _pending = { at: Date.now(), slot, gem };
   emit();
   return payload;
@@ -88,7 +89,7 @@ export function askWeaponGem(S, slot, gem) {
 export function askWeaponGemOut(S, slot) {
   if (!S || !S._serverCaps || !S._serverCaps.gemExtract || !S.channel || !S.rpg || !S.rpg[slot] || weaponGemBus.pending()) return null;
   const payload = { op: 'extract', target: slot };
-  try { S.channel.send({ type: 'amulet_forge_request', payload }); } catch (e) { return null; }
+  try { act('amulet_forge_request', payload); } catch (e) { return null; }   /* v2.3.5187: through the action door (actions.js) */
   _pending = { at: Date.now(), slot, out: true };
   emit();
   return payload;

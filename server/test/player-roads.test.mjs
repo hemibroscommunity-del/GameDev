@@ -28,7 +28,15 @@
  *      or listed DOORLESS, never both (a kind leaves DOORLESS in the PR that
  *      builds its door: weapons and gear, card R PR 2);
  *   6. THE GUARD SEES A PLANT: the checks above run on a copy of the tables
- *      with a `move` road on no row, and with a fee of 1, and fail each.
+ *      with a `move` road on no row, and with a fee of 1, and fail each;
+ *   7. v2.3.5281 (card R PR 2): THE STASHES' DOOR is one of the doors
+ *      (weapons and gear left DOORLESS): its escrows are on rows, and its
+ *      moves are within one player (`other: 'self'`), never a road between
+ *      players, never on a row;
+ *   8. v2.3.5281 (the gatekeeper's low, review-z13): AN `xfer` ROW HAS A
+ *      WRITER: its key is a `move` road it names, or it names its `writer`
+ *      ('file fn') and that file calls fn -- so no row claims the ledger
+ *      with nothing that writes it.
  *
  * (That XFER.ROADS and XFER.KILLS are this table's rows by ledger, and that
  * every `move` road writes an `xfer:` row or is a kill, is xfer.test §2's:
@@ -45,6 +53,8 @@ import { GOLD_ROADS } from '../src/gold.js';
 import { BAG_ROADS, BAG_WHOLE } from '../src/bag.js';
 import { marksOf } from '../src/storagemarks.js';
 import { PLAYER_ROADS, OWN_ROADS, ROAD_KINDS, KIND_DOORS, DOORLESS, ROAD_LEDGERS } from '../src/playerroads.js';
+import { STASH_ROADS, STASH_SELF } from '../src/stash.js';   /* v2.3.5281 */
+import { readFileSync, existsSync } from 'node:fs';
 
 let failures = 0, passes = 0;
 function check(name, cond, detail) {
@@ -59,7 +69,9 @@ const placesOf = (r) => (Array.isArray(r.other) ? r.other : [r.other]);
    planted copy.  Returns {zeros, rows, moves, escrows, kinds}: a list of
    faults for each section. */
 function faults({ doors, rows, ownRoads, kinds, kindDoors, doorless, ledgers }) {
-  const out = { zeros: [], rows: [], moves: [], escrows: [], kinds: [] };
+  const out = { zeros: [], rows: [], moves: [], escrows: [], kinds: [], xfer: [] };
+  /* v2.3.5281: a move within one player (the stashes' door's `other: 'self'`) */
+  const selfMove = (dr) => dr && dr.class === 'move' && dr.other === STASH_SELF;
   /* where each door road is named: 'gold:trade_window' -> [row keys] */
   const named = new Map();
   for (const [key, row] of Object.entries(rows)) {
@@ -83,18 +95,34 @@ function faults({ doors, rows, ownRoads, kinds, kindDoors, doorless, ledgers }) 
         const dr = own(doors[door], r) ? doors[door][r] : null;
         if (!dr) { out.rows.push(key + ': ' + door + ' road "' + r + '" does not exist'); continue; }
         if (dr.class !== 'move' && dr.class !== 'escrow') out.rows.push(key + ': ' + door + ' road "' + r + '" is a ' + dr.class + ' (a mint or a burn has no other account)');
+        if (selfMove(dr)) out.rows.push(key + ': ' + door + ' road "' + r + '" is a move within one player (`self`), no road between players');
         const id = door + ':' + r;
         if (!named.has(id)) named.set(id, []);
         named.get(id).push(key);
       }
     }
     if (!n) out.rows.push(key + ': names no road');
+    /* 8. an `xfer` row has a writer: its key a move road it names, or its `writer` */
+    if (row.ledger === 'xfer') {
+      const isMove = Object.entries(roads).some(([door, list]) => own(doors, door) && (list || []).includes(key) && own(doors[door], key) && doors[door][key].class === 'move' && !selfMove(doors[door][key]));
+      const w = typeof row.writer === 'string' ? /^([\w/.-]+\.js) ([A-Za-z_$][\w$]*)$/.exec(row.writer) : null;
+      if (!isMove && !w) out.xfer.push(key + ': ledger `xfer` but its key is no `move` road it names, and it names no `writer` (\'file fn\')');
+      if (w) {
+        const p = new URL('../src/' + w[1], import.meta.url);
+        const src = existsSync(p) ? readFileSync(p, 'utf8') : '';
+        if (!new RegExp('(?<![\\w$])' + w[2] + '\\(').test(src.replace(new RegExp('function\\s+' + w[2] + '\\s*\\(', 'g'), ''))) out.xfer.push(key + ': its writer "' + row.writer + '" is not called there');
+      }
+    }
     for (const k of (row.carries || [])) {
       const ds = own(kindDoors, k) ? kindDoors[k] : null;
       if (ds && !ds.some((d) => (roads[d] || []).length)) out.rows.push(key + ': carries ' + k + ' but names no road of its door (' + ds.join(' or ') + ')');
     }
-    for (const [k, ds] of Object.entries(kindDoors)) {
-      if (ds.some((d) => (roads[d] || []).length) && !(row.carries || []).includes(k)) out.rows.push(key + ': names a road of ' + ds.join('/') + ' but does not carry ' + k);
+    /* v2.3.5281: a door may be several kinds' (the stashes': weapons and
+       gear), so a door named asks for one kind it serves, not every one */
+    for (const d of Object.keys(roads)) {
+      if (!(roads[d] || []).length) continue;
+      const ks = Object.keys(kindDoors).filter((k) => kindDoors[k].includes(d));
+      if (ks.length && !ks.some((k) => (row.carries || []).includes(k))) out.rows.push(key + ': names a road of ' + d + ' but carries none of ' + ks.join(', '));
     }
   }
   /* the player's own escrows */
@@ -120,7 +148,7 @@ function faults({ doors, rows, ownRoads, kinds, kindDoors, doorless, ledgers }) 
   for (const [door, table] of Object.entries(doors)) {
     for (const [r, dr] of Object.entries(table)) {
       const id = door + ':' + r;
-      if (dr.class === 'move' && !named.has(id)) out.moves.push(id + ': a `move` road on no row of PLAYER_ROADS');
+      if (dr.class === 'move' && !selfMove(dr) && !named.has(id)) out.moves.push(id + ': a `move` road on no row of PLAYER_ROADS');
       if (dr.class !== 'escrow') continue;
       const between = placesOf(dr).filter((p) => { const m = marksOf(p); return m && m.whose === 'between'; });
       if (between.length && !named.has(id)) out.escrows.push(id + ': an escrow into ' + between.join(', ') + ' (marked `between`) on no row of PLAYER_ROADS');
@@ -137,7 +165,7 @@ function faults({ doors, rows, ownRoads, kinds, kindDoors, doorless, ledgers }) 
   return out;
 }
 
-const DOORS = { gold: GOLD_ROADS, bag: BAG_ROADS, bagWhole: BAG_WHOLE };
+const DOORS = { gold: GOLD_ROADS, bag: BAG_ROADS, bagWhole: BAG_WHOLE, stash: STASH_ROADS };   /* v2.3.5281: + the stashes' door */
 const REAL = { doors: DOORS, rows: PLAYER_ROADS, ownRoads: OWN_ROADS, kinds: ROAD_KINDS, kindDoors: KIND_DOORS, doorless: DOORLESS, ledgers: ROAD_LEDGERS };
 const f = faults(REAL);
 
@@ -177,6 +205,28 @@ check('5. every kind is behind a door or listed DOORLESS, never both', f.kinds.l
   check('6. ...the bank\'s escrows with no OWN_ROADS row fail §4', bank.escrows.filter((s) => s.includes('bank_')).length === 4, bank.escrows);
   const ownBetween = faults({ ...REAL, ownRoads: { ...OWN_ROADS, wrong: { roads: { gold: ['jackpot_ticket'] }, why: 'x' } } });
   check('6. ...an escrow into a `between` place listed as a player\'s own fails §4', ownBetween.escrows.some((s) => s.includes('jackpot_ticket') && s.includes('`between`')), ownBetween.escrows);
+}
+
+/* ══════════ 7. THE STASHES' DOOR (v2.3.5281) ══════════ */
+{
+  check('7. weapons and gear are behind the stashes\' door; only pets are DOORLESS', KIND_DOORS.weapon && KIND_DOORS.weapon.includes('stash') && KIND_DOORS.gear && KIND_DOORS.gear.includes('stash') && JSON.stringify(DOORLESS) === '["pet"]');
+  const stashEscrows = Object.keys(STASH_ROADS).filter((r) => STASH_ROADS[r].class === 'escrow');
+  const onRow = new Set(Object.values(PLAYER_ROADS).flatMap((row) => (row.roads && row.roads.stash) || []));
+  check('7. every stash escrow is on a row (' + stashEscrows.length + ')', stashEscrows.length >= 8 && stashEscrows.every((r) => onRow.has(r)), stashEscrows.filter((r) => !onRow.has(r)));
+  const selfRow = faults({ ...REAL, rows: { ...PLAYER_ROADS, market: { ...PLAYER_ROADS.market, roads: { ...PLAYER_ROADS.market.roads, stash: ['market_sell', 'equip_take'] } } } });
+  check('7. ...a move within one player named on a row fails §2', selfRow.rows.some((s) => s.includes('"equip_take" is a move within one player')), selfRow.rows);
+  const lost = faults({ ...REAL, rows: { ...PLAYER_ROADS, trade_window: { ...PLAYER_ROADS.trade_window, roads: { ...PLAYER_ROADS.trade_window.roads, stash: ['mail_weapon'] } } } });
+  check('7. ...the trade window\'s escrow (`trade2wpn:`, between) off its row fails §4', lost.escrows.some((s) => s.startsWith('stash:trade_put')), lost.escrows);
+}
+
+/* ══════════ 8. AN `xfer` ROW HAS A WRITER (v2.3.5281, the gatekeeper's low) ══════════ */
+{
+  check('8. every `xfer` row\'s key is a `move` road it names, or it names its writer, called there', f.xfer.length === 0 && Object.values(PLAYER_ROADS).some((r) => r.ledger === 'xfer'), f.xfer);
+  const claim = faults({ ...REAL, rows: { ...PLAYER_ROADS, market: { ...PLAYER_ROADS.market, ledger: 'xfer' } } });
+  check('8. ...a row that claims `xfer` with neither fails (the market, its key no move road)', claim.xfer.some((s) => s.startsWith('market:')), claim.xfer);
+  const named = faults({ ...REAL, rows: { ...PLAYER_ROADS, market: { ...PLAYER_ROADS.market, ledger: 'xfer', writer: 'trade2.js xferTradeWindow' } } });
+  const wrong = faults({ ...REAL, rows: { ...PLAYER_ROADS, market: { ...PLAYER_ROADS.market, ledger: 'xfer', writer: 'market.js xferTradeWindow' } } });
+  check('8. ...a writer that its file calls passes; one its file does not call fails', !named.xfer.some((s) => s.startsWith('market:')) && wrong.xfer.some((s) => s.includes('is not called there')), { named: named.xfer, wrong: wrong.xfer });
 }
 
 console.log('\n' + passes + ' passed, ' + failures + ' failed');

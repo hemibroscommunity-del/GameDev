@@ -298,9 +298,10 @@ const MON = join(ROOT, 'public/sprites/monsters');
     if (!/\/sprites\/monsters\//.test(t)) continue;
     /* a strip of frames is sliced by a frame count: Rectangle(i * w ...) on a picture it loaded itself is a strip
        brought in round the door */
-    if (!/loadTrackedStrip\(/.test(t) && /new Rectangle\(\s*i \* /.test(t) && f !== 'slimeSprites.js') loose.push(f);
+    if (!/loadTrackedStrip\(/.test(t) && /new Rectangle\(\s*i \* /.test(t)) loose.push(f);
   }
-  check('4h. every monster drawn from strips of frames loads them through the door (the slime\'s are the game\'s own art, loaded behind the first loading screen)', loose.length === 0, loose);
+  /* v2.3.5256: the slime's too, no longer excused: its strips load as you walk now (wheelMonsterArt.js) */
+  check('4h. every monster drawn from strips of frames loads them through the door', loose.length === 0, loose);
 }
 
 /* 5: C */

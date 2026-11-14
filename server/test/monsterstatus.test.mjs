@@ -307,14 +307,27 @@ function withFlags(flags, fn) {
      step starts from an empty one that has had 50 ms to refill -- 25 px at no
      speed buffs -- and a step is TAKEN when it reaches its claim: one the
      budget and the gust cannot cover is followed only as far as they reach */
+  /* v2.3.5432 (card J2): ON ONE CLOCK.  The step stamped its budget at
+     `Date.now() - 50` and the worker refilled it from its own Date.now() at
+     500 px a second: every ms of a slow runner between the two added half a
+     pixel, and the check's room is 2 (card L saw "moved 46, wanted 43" on
+     #1851's CI).  The stamp and the move read ONE pinned clock now, as
+     potions.test does (v2.3.5423); `wait` spends real time between them, as
+     a slow runner does: the break proof below */
+  const spin = (ms) => { if (!ms) return; const until = performance.now() + ms; while (performance.now() < until) { /* a slow runner */ } };
   let lastX0 = 0;
-  const moveBy = async (dx) => {
-    ps.lastMoveAt = Date.now() - 50;
-    ps._mvBudget = 0; ps._mvBudgetAt = Date.now() - 50;
-    const x0 = ps.x;
-    lastX0 = x0;
-    await room.webSocketMessage(ws, JSON.stringify({ type: 'move', x: ps.x + dx, y: ps.y, z: WHEEL_ZONE }));
-    return Math.abs(ps.x - (x0 + dx)) < 1e-6;
+  const moveBy = async (dx, wait) => {
+    const real = Date.now, t = real();
+    Date.now = () => t;
+    try {
+      ps.lastMoveAt = t - 50;
+      ps._mvBudget = 0; ps._mvBudgetAt = t - 50;
+      const x0 = ps.x;
+      lastX0 = x0;
+      spin(wait);
+      await room.webSocketMessage(ws, JSON.stringify({ type: 'move', x: ps.x + dx, y: ps.y, z: WHEEL_ZONE }));
+      return Math.abs(ps.x - (x0 + dx)) < 1e-6;
+    } finally { Date.now = real; }
   };
   const bound = 500 * 0.05;   /* 50 ms of the budget's refill, at no speed buffs */
   check('gust: a shove on top of a walk is accepted while the gust lasts', await moveBy(bound + 30), { left: ps._gustLeft });
@@ -323,6 +336,12 @@ function withFlags(flags, fn) {
   check('gust: ...so the rest cannot be used twice over', !(await moveBy(bound + leftNow + 20)), { left: ps._gustLeft });
   check('gust: ...the step followed only as far as the budget and the gust\'s rest reach, and the rest spent',
     Math.abs((ps.x - lastX0) - (bound + leftNow)) < 2 && ps._gustLeft === 0, { moved: ps.x - lastX0, want: bound + leftNow, left: ps._gustLeft });
+  /* v2.3.5432: the break proof -- 20 ms spent between the stamp and the move
+     (a slow runner's, ten times over), the gust spent: the ordinary bound
+     still, to the pixel.  With the clock not pinned this moves 35 and fails */
+  { const x0 = ps.x; await moveBy(bound + 30, 20);
+    check('gust: ...on a slow runner too: 20 ms between the stamp and the move change nothing (v2.3.5432)',
+      Math.abs((ps.x - x0) - bound) < 2, { moved: ps.x - x0, want: bound }); }
   ps._gustUntil = Date.now() - 1;
   check('gust: after ALLOW_MS the bound is the ordinary one again', !(await moveBy(bound + 30)) && ps._gustLeft === 0, ps._gustLeft);
   ps._gustLeft = 0; ps._gustUntil = 0;

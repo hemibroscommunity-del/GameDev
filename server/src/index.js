@@ -534,6 +534,7 @@ export function stripChatLaneMarks(name) {
    comment above its row (moved there from the literal list that stood here).
    Never written by hand again: wire-table.test fails a literal beside it. */
 import { PRIVILEGED_EVENTS } from './wire/lists.js';
+import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
 export { PRIVILEGED_EVENTS };
 
 /* v2.3.1465: `track` IS COSMETICS ONLY -- the allowlist that makes that
@@ -4361,14 +4362,12 @@ export class GameRoom {
     if (pile.weapon && !pile.weaponClaimed) {
       pile.weaponClaimed = true;
       weaponForMe = pile.weapon;
-      if (!Array.isArray(ps.weaponStash)) ps.weaponStash = [];
-      if (ps.weaponStash.length < this.WEAPON_STASH_CAP) {
+      if ((Array.isArray(ps.weaponStash) ? ps.weaponStash.length : 0) < this.WEAPON_STASH_CAP) {   /* v2.3.5281: the door makes the bag */
         /* v2.3.4012: a mystery grade waits in the bag, unrevealed, for a
            phone that can show it (revealbag.js); a blade sold for a full bag
            keeps today's at-once reveal (docs/specs/reveal-in-bag.md) */
         this._revealBagMark(session, weaponForMe);
-        ps.weaponStash.push(weaponForMe);
-        weaponStashed = true;
+        weaponStashed = stashGive(ps, 'weaponStash', weaponForMe, 'loot_weapon', this);   /* v2.3.5281: the stashes' door */
       } else {
         weaponSoldFor = this._weaponSellValue(weaponForMe);
         this._goldGive(ps, weaponSoldFor, 'loot_weapon_sold'); /* v2.3.4670: the gold door */
@@ -4409,7 +4408,7 @@ export class GameRoom {
       armorForMe = pile.armor.map((a) => this._gearProvRecord(
         session.id, (a && a.slot === 'legsArmor') ? 'legsArmor' : 'armor', this._revealBagMark(session, { ...a }), 'drop'));
       /* v2.3.4840: the worker's armour stash too (gearstash.js _gearStashLiveAdd) */
-      if (this._gearStashLiveAdd) for (const a of armorForMe) this._gearStashLiveAdd(ps, (a && a.slot === 'legsArmor') ? 'legsArmor' : 'armor', a);
+      if (this._gearStashLiveAdd) for (const a of armorForMe) this._gearStashLiveAdd(ps, (a && a.slot === 'legsArmor') ? 'legsArmor' : 'armor', a, 'gear_loot');
     }
     pile.claimedBy[session.id] = true;
 
