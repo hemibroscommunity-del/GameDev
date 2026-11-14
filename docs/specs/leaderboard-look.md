@@ -106,3 +106,56 @@ the owner before the window uses them.
 
 At tag 5500 nothing draws the pieces (the family's draw path is `none`):
 card LB's PR 2 (tag 5501) is the window.
+
+## 3. The window (tag 5501)
+
+`src/ui/mobile/dash/LeaderboardPanel.jsx` and `BoardRow.jsx`, after the
+second mockup (the planning session's reading, 2026-11-14: the layout is the
+second mockup's, the art the sheet's). What it looks like and why is
+`docs/UI-DESIGN-NOTES.md`, "The Leaderboards"; this part is how.
+
+- **The list** (`boardList`): `{title}`, the weapons' boards (`BATTLE`:
+  Overall with `caps.power`, Melee, Bow, Magic, Level), `{divider}`, Kills, AP (`caps.achievements`),
+  the Records (each its own switch, as before), the Skills. 108 px wide
+  (`RAIL_W`); side by side from 328 px wide and 140 tall, else one row of
+  pills over the board (`data-lb-page` `list` / `chips`).
+- **A pill** (`Pill`): the sheet's `pill-plain` (`pill-gold` lit) as a
+  border-image behind it (`BoardRow.jsx` `BarBack`: 40 px ends, the middle
+  stretched), its picture (`CatIcon`: the sheet's tile where the board has
+  `art`, else the game's icon by its opaque box) and its word.
+- **The podium** (`Podium`): the three shields at their CSS sizes (89, 112
+  and 86 wide), scaled by `podiumScale`: the board's width over 295, and its
+  height less the table's head and three rows over 100, at most 1.15; under
+  0.6 it is not drawn. The face sits in the field (29% down, a third of the
+  shield's height), the name on the ribbon (64-79% down, 19% in from each
+  side), "Lv N" at 79%: the boxes measured on the pieces.
+- **The table** (`TableHead`, `BoardRow.jsx` `TableRow`): one CSS grid, the
+  rank 28 px, the player the rest, then the board's columns (`tableOf`): Lv
+  32, Total or Power 34, the three weapons 22 each on the weapons' boards;
+  Lv and the record (54) on the others. The head sticks to the top as the
+  board scrolls. A row is 30 px on its bar (`rowBar`: gold, silver and bronze
+  for 1-3, plain for your own below them).
+- **The power index** (card PW; the worker's half #1776): `caps.power` is
+  the index's version (1 today). With it Overall is in the list
+  (`?category=power`, sorted by Power, `value` the Power) and the column is
+  Power; `powerCells` reads each row's `powerIndex {power, melee, bow, magic,
+  v}`, and only where `v` is the worker's version: any other row is "not yet
+  ranked", a dash, never a 0. The numbers are written short (`compact`: 17,
+  1,234, 12.3k, 123k, 1.23M) because the index's scale may change. Without
+  the cap the column is Total: the row's `series` melee, bow and magic
+  levels added up. The cap's row is in `CAP_GATES` (`src/ui/panels/
+  DevPanel.jsx`, its own line). The first mockup's five stat boards are
+  held (the planning session: retired stat names), and none is built.
+- **The rank** (`RankMark`): the medal for 1-3 (32 x 25 in a records row, 28
+  x 22 in the table), with v2.3.4393's shine and stars (game.css `.bt-rank-*`,
+  unchanged, the sizes inline); from 4 the number.
+- **The art**: `LB_ART(name)` (`?v=2.3.5500`, the pieces' tag); the twenty
+  pieces the window draws are asked for as `BoardRow.jsx` loads, which is
+  the Leaderboards' own script (`lazyPanels.js` `DashLeaderboardPanel`): the
+  window's own art loads with its window. The trophies, rosettes, title frame
+  and silver divider are cut but not drawn.
+
+**Tested** by `tools/qa/mp/mp-boardslook.mjs` (upright, every board, with
+`caps.power` set in the page, sideways, a computer with `wide: true`) and
+`mp-boards` (the boards' content, moved onto the medals and the first
+board's new place).

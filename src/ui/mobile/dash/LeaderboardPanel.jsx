@@ -3,10 +3,10 @@ import { COL, panelStyle, getState } from './common.js';
 import { BT_API_BASE } from '@/networking/index.js';
 import { FishBoard } from './FishBoard.jsx';   /* v2.3.4036: the Biggest fish board (server fishlog.js) */
 import { takeFishBoardWant, subscribeFishWeigh, fishWeighLive } from '@/game/fishWeigh.js';
-import { BoardRow, BoardEmpty, useBoardFaces } from './BoardRow.jsx';   /* v2.3.4393: the face, the level, the record */
+import { BoardRow, BoardEmpty, useBoardFaces, TableRow, BarBack, LB_ART, BoardFace, LvPill } from './BoardRow.jsx';   /* v2.3.4393: the face, the level, the record; v2.3.5501: the table, the bars, the pieces */
 import { askSpinBoard, subscribeSpinBoard, spinBoardLive, spinRowLine } from '@/game/spinBoard.js';
 import { aceFlipBus } from '../aceFlipBus.js';
-import { useBoxSize, railHeading } from './railKit.js';   /* v2.3.4394: the measuring and the headings this page and the Quests page share */
+import { useBoxSize, railHeading, FOOT_FADE } from './railKit.js';   /* v2.3.4394: the measuring and the headings this page and the Quests page share */
 
 /* v2.3.1671: a TRADITIONAL HISCORES BOARD — one ranking per skill.
    Owner: "a traditional high scores system that ranks each skill... I want
@@ -72,16 +72,54 @@ import { useBoxSize, railHeading } from './railKit.js';   /* v2.3.4394: the meas
    opaque box to fill its 20 px (NavRail's NAV_TRIM way).
    "Smithing", not "Blacksmithing": the Life Skills page's own word for the
    skill (skillsModel META), and thirteen letters do not fit a pill. */
+/* ═══ v2.3.5501: THE NEW LOOK, AFTER THE OWNER'S MOCKUPS (card LB) ═══
+   The owner, 2026-11-14: "I'd also like something more like this for
+   leaderboards (mockup and art assets attached)", and of the second
+   mockup, "This pic is better mock representation" (assets/ui/leaderboard/;
+   the planning session's reading of it, the same day: the LAYOUT is the
+   second mockup's, the art the sheet's).  docs/specs/leaderboard-look.md.
+
+   THE PAGE, in the dashboard's band as every page is (the world stays above):
+   - down the left, "RANKS" between two laurels, then the boards as pills on
+     the sheet's pill bars (the lit one gold): Overall, Melee, Bow, Magic
+     first (the sheet's crown, sword, bow and staff tiles), then Level, the
+     sheet's gold divider, and every board there was before under it (Kills,
+     AP; Records; Skills): nothing is dropped;
+   - beside them a PODIUM of the first three on the sheet's shields (2 left,
+     1 in the middle and raised, 3 right), each with the face, the name on the
+     ribbon and "Lv N" under it -- where the band is tall enough for it
+     (PODIUM_MIN_H); a phone on its side has no room and shows the table;
+   - under it the TABLE: #, Player, Lv, Power (Total before the index) and
+     the sword, bow and staff columns on the weapons' boards and Level; #, Player, Lv and the record on the
+     others.  Rows 1-3 on the gold, silver and bronze bars with the laurel
+     medals, a crown by the first name; your own row on the plain bar.
+   - NO PAGES: the board scrolls inside the band (fifty rows, the server's
+     limit), as every board did.  The first mockup's "Page 1 / 10" would add
+     a row of buttons to a band that has room for four rows: the scroll is
+     the band's own way.
+
+   OVERALL AND THE POWER WAIT FOR CARD PW (the power index, built beside
+   this; the worker's half #1776): until the worker says `caps.power`,
+   Overall is not in the list and the Power column is today's number, the
+   three weapons' levels added up, headed "Total".  With it, Overall ranks by
+   Power (`?category=power`), and Power and its three columns are the row's
+   own `powerIndex` (powerCells below).  The first mockup's five stat boards
+   (Might, Fortitude, Vitality, Agility, Mind) are HELD (the planning
+   session, 2026-11-14: retired stat names the worker no longer has; the
+   second mockup shows none): none is built. */
 const U = '/icons/ui/';
-const RANKS = [
+/* the boards the worker answers from `series` (leaderboard.js
+   SERIES_CATEGORIES): the weapons' boards draw the power table */
+const BATTLE = [
+  { id: 'power', label: 'Overall', full: 'Overall power', art: 'tile-crown', table: 'power', needs: 'power' },
+  { id: 'melee', label: 'Melee', art: 'tile-sword', table: 'power', rank: 'melee' },
+  { id: 'bow', label: 'Bow', art: 'tile-bow', table: 'power', rank: 'bow' },
+  { id: 'magic', label: 'Magic', art: 'tile-staff', table: 'power', rank: 'magic' },
   /* 'combat' is the level on the name plate: the highest of the three
      weapons (leaderboard.js seriesValue, v2.3.3538's one level) */
-  { id: 'combat',       label: 'Level',  icon: [U + 'hero/rec-xp.webp', 256, 30, 40, 226, 215] },
-  { id: 'melee',        label: 'Melee',  icon: [U + 'hero/melee.webp?v=2.3.1311', 256, 33, 30, 223, 226] },
-  { id: 'bow',          label: 'Bow',    icon: [U + 'hero/bow.webp?v=2.3.1311', 256, 38, 29, 218, 225] },
-  { id: 'magic',        label: 'Magic',  icon: [U + 'hero/magic.webp?v=2.3.1311', 256, 43, 29, 212, 225] },
-  { id: 'kills',        label: 'Kills',  icon: [U + 'hero/rec-kills.webp', 256, 0, 9, 256, 246] },
+  { id: 'combat', label: 'Level', icon: [U + 'hero/rec-xp.webp', 256, 30, 40, 226, 215], table: 'power', rank: 'lv' },
 ];
+const KILLS = { id: 'kills', label: 'Kills', icon: [U + 'hero/rec-kills.webp', 256, 0, 9, 256, 246] };
 const AP_CAT = { id: 'ap', label: 'AP', full: 'Achievement points', icon: ['/icons/achievements/achievements.webp', 150, 37, 21, 113, 129] };
 const SKILLS = [
   { id: 'woodcutting',  label: 'Woodcutting', icon: [U + 'skill-woodcutting.webp?v=2.3.1224', 256, 52, 32, 204, 221] },
@@ -101,8 +139,16 @@ const FLIP_CAT = { id: 'flip', label: 'Coin flip', kind: 'flip', icon: [U + 'cur
 const FISH_CAT = { id: 'fish', label: 'Biggest fish', kind: 'fish', icon: ['/icons/items/fish-trout.webp', 128, 1, 25, 127, 102] };
 
 /** A board's picture in a `px` box: the file scaled so its opaque box fills
- *  the box, centred. */
-export function CatIcon({ icon, px, dim }) {
+ *  the box, centred.  v2.3.5501: a board with `art` wears its tile from the
+ *  owner's sheet (the crown, the sword, the bow, the staff) instead. */
+export function CatIcon({ icon, art, px, dim }) {
+  if (art) {
+    return (
+      <span data-lb-icon="" aria-hidden="true" style={{ position: 'relative', flex: 'none', width: px, height: px, display: 'block' }}>
+        <img src={LB_ART(art)} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', opacity: dim ? 0.9 : 1 }} />
+      </span>
+    );
+  }
   if (!icon) return null;
   const [src, size, x0, y0, x1, y1] = icon;
   const k = px / Math.max(x1 - x0, y1 - y0);
@@ -116,59 +162,174 @@ export function CatIcon({ icon, px, dim }) {
   );
 }
 
-/** The list: `[{sec}, {id, label, kind?}, ...]`, by what this worker says it
- *  keeps (each cap read directly: caps-audit). */
+/** The list: `[{title}, {id, label, ...}, {divider}, {sec}, ...]`, by what
+ *  this worker says it keeps (each cap read directly: caps-audit). */
 export function boardList(S) {
   const caps = (S && S._serverCaps) || {};
+  const power = !!caps.power;
   const records = [
     ...(spinBoardLive(S) ? [SPIN_CAT] : []),
     ...(caps.aceItems ? [FLIP_CAT] : []),
     ...(fishWeighLive(S) ? [FISH_CAT] : []),
   ];
   return [
-    { sec: 'Ranks' }, ...RANKS, ...(caps.achievements ? [AP_CAT] : []),
+    { title: 'Ranks' },
+    ...BATTLE.filter((b) => !b.needs || power),
+    { divider: 'more' },
+    KILLS, ...(caps.achievements ? [AP_CAT] : []),
     ...(records.length ? [{ sec: 'Records' }, ...records] : []),
     { sec: 'Skills' }, ...SKILLS,
   ];
 }
 
-const rowValue = (cat, r) => {
-  if (cat === 'ap') { const v = Math.floor(Number(r.ap) || 0); return v > 0 ? [v.toLocaleString('en-US'), 'AP'] : ['-', '']; }
-  const v = r.value ?? r.score;
-  if (v == null) return ['-', ''];
-  return cat === 'kills' ? [Number(v).toLocaleString('en-US'), ''] : ['Lv ' + v, ''];
-};
+const num = (v) => Math.max(0, Math.floor(Number(v) || 0)).toLocaleString('en-US');
+/** a Power number in at most four figures and a letter: the index's scale
+ *  may change (card PW: the control is 1,000 today, the median character
+ *  reads 1 to 15 at low levels and millions from level 25), so 17 and
+ *  17,000,000 both fit a 34 px column -- 17, 999, 1,234, 12.3k, 123k, 1.23M */
+export function compact(v) {
+  const n = Math.max(0, Math.floor(Number(v) || 0));
+  if (n < 10000) return n.toLocaleString('en-US');
+  const [d, u] = n >= 1e9 ? [1e9, 'B'] : n >= 1e6 ? [1e6, 'M'] : [1e3, 'k'];
+  const x = n / d;
+  return (x >= 100 ? Math.floor(x) : x >= 10 ? Math.floor(x * 10) / 10 : Math.floor(x * 100) / 100) + u;
+}
+const series = (r) => (r && r.series && typeof r.series === 'object' ? r.series : {});
+/** the Power cell and the three weapons' cells of a row.  With caps.power
+ *  (the index's version, card PW) the row's own `powerIndex` {power, melee,
+ *  bow, magic, v} -- only where its `v` is the worker's: any other row is
+ *  "not yet ranked", a dash, never a 0 -- and without it today's three levels
+ *  and their sum. */
+function powerCells(r, power) {
+  if (power) {
+    const pi = r && r.powerIndex;
+    if (!pi || typeof pi !== 'object' || pi.v !== power) return null;
+    return { total: Number(pi.power) || 0, melee: Number(pi.melee) || 0, bow: Number(pi.bow) || 0, magic: Number(pi.magic) || 0 };
+  }
+  const s = series(r);
+  const melee = Number(s.melee) || 0, bow = Number(s.bow) || 0, magic = Number(s.magic) || 0;
+  return { total: melee + bow + magic, melee, bow, magic };
+}
 
-/* v2.3.1235: every interactive element is 44 px tall at least; the chip's
-   pill is the 32 px visual inside a transparent 44 px hit box. */
-const chipHit = {
-  flex: '0 0 auto', minHeight: 44, padding: 0, margin: 0, background: 'transparent', border: 'none',
-  display: 'inline-flex', alignItems: 'center', cursor: 'pointer', touchAction: 'manipulation',
-};
-const chip = (active) => ({
-  display: 'inline-flex', alignItems: 'center', gap: 5, height: 32, padding: '0 12px',
-  background: active ? COL.accentFill : 'transparent',
-  color: active ? COL.accent : COL.text2,
-  border: `1px solid ${active ? COL.accent : COL.border}`,
-  borderRadius: 999, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
-});
+/* the table's columns: [key, head, width] -- the head a word or a weapon's icon */
+const WEAPON_ICON = { melee: U + 'hero/melee.webp?v=2.3.1311', bow: U + 'hero/bow.webp?v=2.3.1311', magic: U + 'hero/magic.webp?v=2.3.1311' };
+/* sized for an upright phone's board (~260 px beside the list): the name
+   keeps ~80 px (the face and seven letters) */
+const tableOf = (board, power) => (board.table === 'power' ? [
+  ['lv', 'Lv', 32], ['total', power ? 'Power' : 'Total', 34], ['melee', 'melee', 22], ['bow', 'bow', 22], ['magic', 'magic', 22],
+] : [
+  ['lv', 'Lv', 32], ['record', board.id === 'ap' ? 'AP' : board.id === 'kills' ? 'Kills' : 'Level', 54],
+]);
+const RANK_COL = 28;
+const colsOf = (table) => RANK_COL + 'px minmax(0, 1fr) ' + table.map((c) => c[2] + 'px').join(' ');
+/** the cells of a row on `board` (the one it ranks by marked `value`) */
+function cellsOf(board, table, r, power) {
+  const p = powerCells(r, power);
+  const lv = Math.floor(Number(r && r.lv) || 0);
+  const ranked = board.rank || (board.id === 'power' ? 'total' : 'record');
+  return table.map(([key]) => {
+    if (key === 'lv') return { key, lv, value: ranked === 'lv' };
+    /* with the index: Power and the styles compact (k, M), a dash for a row
+       not yet ranked; without it, the levels whole */
+    const text = key === 'record' ? (board.id === 'ap' ? num(r.ap) : board.id === 'kills' ? num(r.value ?? r.score) : 'Lv ' + num(r.value ?? r.score))
+      : !p ? '-'
+      : power ? compact(p[key]) : num(p[key]);
+    return { key, text, strong: key === 'total', value: ranked === key };
+  });
+}
 
-/* the side list's width (122: "Woodworking", the longest word, whole in its
-   pill beside a 20 px picture), and the smallest page it stands beside the
-   board on: that + a board of ~220 wide (rank, face, a name of ten letters, the
-   record), and tall enough to show three boards of the list at once -- a
-   phone on its side has a band ~80 px tall, where a list would be one row
-   and a half and the chips show five */
-const RAIL_W = 122;
-const SIDE_BY_SIDE = 330;
+/* the side list's width (108: "Woodworking", the longest word, whole in its
+   pill beside a 20 px picture at 11.5 px -- 14 px narrower than v2.3.4393's
+   122, for the table's columns), and the smallest page it stands beside the
+   board on: that + a board of ~220 wide, and tall enough to show three boards
+   of the list at once -- a phone on its side has a band ~80 px tall, where a
+   list would be one row and a half and the chips show five */
+const RAIL_W = 108;
+const SIDE_BY_SIDE = 328;
 const LIST_MIN_H = 140;
+/* the podium: the three shields side by side at their full CSS size (89 +
+   112 + 86, the sheet's own sizes to each other), scaled to the board's
+   width; shown only where the band is tall enough for it AND four rows */
+const PODIUM_W = 287 + 8;
+const PODIUM_H = 88 + 12;
+/* the podium is scaled to the board's width AND its height: it leaves the
+   table's head and three rows (32 px each) in sight under it (the second
+   mockup's four rows, the first three on their bars), or it is not drawn
+   (a scale under 0.6: a phone on its side) */
+const PODIUM_ROWS_H = 22 + 3 * 32 + 6;
+const podiumScale = (w, h) => Math.min(1.15, w / PODIUM_W, h ? (h - PODIUM_ROWS_H) / PODIUM_H : 1);
+const SHIELD = { 1: ['shield-gold', 112, 88], 2: ['shield-silver', 89, 80], 3: ['shield-bronze', 86, 76] };
 
 /* the board you last looked at, kept while the game is open: closing the
-   page to fight and coming back lands where you were */
-let lastCat = 'combat';
+   page to fight and coming back lands where you were (null: the list's first) */
+let lastCat = null;
+
+/** The first three on their shields: 2, 1 (raised), 3.  Each shield's field
+ *  holds the face, its ribbon the name, "Lv N" under it (the shields' boxes,
+ *  measured on the pieces: the field 22-78% across and 27-62% down, the
+ *  ribbon 17-83% across and 64-84% down). */
+function Podium({ rows, faces, k, meId }) {
+  return (
+    <div data-lb-podium="" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: 4 * k, padding: `${4 * k}px 0 ${6 * k}px` }}>
+      {[2, 1, 3].map((place) => {
+        const r = rows[place - 1];
+        const [art, sw, sh] = SHIELD[place];
+        const W = Math.round(sw * k), Hh = Math.round(sh * k);
+        if (!r) return <span key={place} aria-hidden="true" style={{ width: W, height: Hh, flex: 'none' }} />;
+        const gone = !!r.gone;
+        const name = r.name || r.id || 'Bro';
+        const lv = Math.floor(Number(r.lv) || 0);
+        const facePx = Math.round(Hh * 0.33);
+        return (
+          <div key={place} data-lb-podium-place={place} data-lb-podium-mine={meId && r.id === meId ? '1' : undefined}
+            role="img" aria-label={`Rank ${place}: ${name}${lv ? ', level ' + lv : ''}${gone ? ', a deleted character' : ''}`}
+            style={{ position: 'relative', flex: 'none', width: W, height: Hh, marginBottom: place === 1 ? 0 : 6 * k }}>
+            <img src={LB_ART(art)} alt="" draggable={false} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', filter: gone ? 'grayscale(1)' : 'none' }} />
+            <span style={{ position: 'absolute', left: '50%', top: '29%', transform: 'translateX(-50%)' }}>
+              <BoardFace src={faces[place - 1]} name={name} gone={gone} px={facePx} />
+            </span>
+            <span data-lb-podium-name="" style={{
+              position: 'absolute', left: '19%', right: '19%', top: '64%', height: '15%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: Math.max(9.5, 11 * k), fontWeight: 800, color: '#FFF6E0', textShadow: '0 1px 2px rgba(0,0,0,.85)',
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1,
+            }}><span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span></span>
+            {lv > 0 ? (
+              <span style={{ position: 'absolute', left: 0, right: 0, top: '79%', display: 'flex', justifyContent: 'center', transform: `scale(${Math.min(1, 0.85 * k + 0.1)})` }}>
+                <LvPill lv={lv} gone={gone} />
+              </span>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** the table's head: #, Player, then each column's word or weapon */
+function TableHead({ table }) {
+  return (
+    <div data-lb-head="" style={{
+      position: 'sticky', top: 0, zIndex: 2, display: 'grid', gridTemplateColumns: colsOf(table), columnGap: 3, alignItems: 'center',
+      height: 22, padding: '0 9px 0 1px', background: COL.well, borderBottom: `1px solid ${COL.divider}`,
+      fontSize: 10.5, fontWeight: 800, color: COL.text2, letterSpacing: '.02em',
+    }}>
+      <span style={{ textAlign: 'center' }}>#</span>
+      <span>Player</span>
+      {table.map(([key, head]) => (WEAPON_ICON[head] ? (
+        <span key={key} data-lb-head-col={key} title={head === 'melee' ? 'Melee' : head === 'bow' ? 'Bow' : 'Magic'} style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <img src={WEAPON_ICON[head]} alt={head} draggable={false} style={{ width: 15, height: 15, objectFit: 'contain', display: 'block' }} />
+        </span>
+      ) : (
+        <span key={key} data-lb-head-col={key} title={key === 'total' && head === 'Total' ? 'Melee, Bow and Magic levels added up' : undefined}
+          style={{ textAlign: key === 'lv' ? 'center' : 'right', whiteSpace: 'nowrap', overflow: 'hidden' }}>{head}</span>
+      )))}
+    </div>
+  );
+}
 
 /* ── a ranks board: fetched from the Leaderboard object ── */
-function RankBoard({ cat }) {
+function RankBoard({ board, podium }) {
+  const cat = board.id;
   const [boards, setBoards] = useState(() => Object.create(null));
   const [loading, setLoading] = useState(true);
   /* Fetch per category, cache per category, refresh on a slow timer.  A
@@ -197,22 +358,43 @@ function RankBoard({ cat }) {
 
   const S = getState();
   const meId = S && S.myId;
+  /* the index's version (card PW: a number, 1 today), or 0 */
+  const power = (S && S._serverCaps && Number(S._serverCaps.power)) || 0;
   /* v2.3.3527: the AP board leaves off everyone at 0 */
-  const board = (boards[cat] || []).filter((r) => cat !== 'ap' || Math.floor(Number(r && r.ap) || 0) > 0);
-  const faces = useBoardFaces(board);
-  if (board.length === 0) {
+  const rows = (boards[cat] || []).filter((r) => cat !== 'ap' || Math.floor(Number(r && r.ap) || 0) > 0);
+  const faces = useBoardFaces(rows);
+  if (rows.length === 0) {
     return <BoardEmpty text={loading ? 'Loading…' : cat === 'ap' ? 'Nobody has achievement points yet.' : cat === 'kills' ? 'Nobody has a kill yet.' : 'Nobody has trained this yet.'} />;
   }
-  return board.map((r, i) => {
-    const [value, unit] = rowValue(cat, r);
-    return (
-      <BoardRow key={r.id || i} rank={i + 1} face={faces[i]} mine={!!meId && r.id === meId}
-        /* the Level board's record IS the level: no second "Lv" beside the name */
-        row={cat === 'combat' ? { ...r, lv: 0 } : r}
-        value={value} unit={unit} />
-    );
-  });
+  const table = tableOf(board, power);
+  const cols = colsOf(table);
+  return (
+    <>
+      {podium ? <Podium rows={rows.slice(0, 3)} faces={[faces[0], faces[1], faces[2]]} k={podium} meId={meId} /> : null}
+      <TableHead table={table} />
+      <div data-lb-rows="" style={{ paddingTop: 3 }}>
+        {rows.map((r, i) => (
+          <TableRow key={r.id || i} rank={i + 1} row={r} face={faces[i]} mine={!!meId && r.id === meId}
+            cols={cols} cells={cellsOf(board, table, r, power)} />
+        ))}
+      </div>
+    </>
+  );
 }
+
+/* v2.3.1235: every interactive element is 44 px tall at least; the chip's
+   pill is the 32 px visual inside a transparent 44 px hit box. */
+const chipHit = {
+  flex: '0 0 auto', minHeight: 44, padding: 0, margin: 0, background: 'transparent', border: 'none',
+  display: 'inline-flex', alignItems: 'center', cursor: 'pointer', touchAction: 'manipulation',
+};
+const chip = (active) => ({
+  display: 'inline-flex', alignItems: 'center', gap: 5, height: 32, padding: '0 12px',
+  background: active ? COL.accentFill : 'transparent',
+  color: active ? COL.accent : COL.text2,
+  border: `1px solid ${active ? COL.accent : COL.border}`,
+  borderRadius: 999, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
+});
 
 /* ── a wins / losses board (the daily spin, Ace's flip) ── */
 function WinLossBoard({ id, wins, losses, side, setSide, amountOf, lineOf, state, emptyWin, emptyLoss }) {
@@ -239,7 +421,6 @@ function WinLossBoard({ id, wins, losses, side, setSide, amountOf, lineOf, state
     </div>
   );
 }
-
 const REFRESH_MS = 30000;
 
 function SpinBoard({ side, setSide }) {
@@ -284,23 +465,69 @@ function FlipBoard({ side, setSide }) {
   );
 }
 
+/** a board's pill: the sheet's pill bar (the gold one when it is the board
+ *  showing), its picture and its word; `row` in the narrow page's row of chips */
+function Pill({ b, on, row }) {
+  return (
+    <span data-lb-pill="" data-lb-pill-on={on ? '1' : undefined} style={{
+      position: 'relative', display: 'flex', alignItems: 'center', gap: row ? 5 : 4, width: row ? 'auto' : '100%', height: row ? 34 : 36,
+      padding: row ? '0 14px 0 9px' : '0 6px 0 6px', boxSizing: 'border-box', borderRadius: 999,
+      /* 11 px for the eleven-letter words ("Woodworking", whose W's are the
+         widest), so each is whole in the 108 px list */
+      color: on ? '#FFE7A6' : COL.text, fontSize: row ? 13 : b.label.length >= 11 ? 11 : 11.5, fontWeight: 800, textAlign: 'left',
+      textShadow: '0 1px 2px rgba(0,0,0,.75)',
+    }}>
+      <BarBack name={on ? 'pill-gold' : 'pill-plain'} />
+      <span style={{ position: 'relative', display: 'flex' }}><CatIcon icon={b.icon} art={b.art} px={b.art ? 22 : 18} dim={!on} /></span>
+      <span style={{ position: 'relative', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.label}</span>
+    </span>
+  );
+}
+
+/** "RANKS" between the two laurels (the second mockup's title) */
+function Title() {
+  return (
+    <div data-lb-title="" role="heading" aria-level={2} aria-label="Ranks" style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, height: 34, flex: 'none',
+    }}>
+      <img src={LB_ART('laurel-left')} alt="" aria-hidden="true" draggable={false} style={{ width: 15, height: 'auto', display: 'block' }} />
+      <span style={{ fontSize: 15, fontWeight: 900, letterSpacing: '.08em', color: '#F2C462', textShadow: '0 1px 2px rgba(0,0,0,.8)' }}>RANKS</span>
+      <img src={LB_ART('laurel-right')} alt="" aria-hidden="true" draggable={false} style={{ width: 15, height: 'auto', display: 'block' }} />
+    </div>
+  );
+}
+
+const Divider = ({ row }) => (
+  <span data-lb-divider="" aria-hidden="true" style={row
+    ? { flex: 'none', width: 2, height: 26, margin: '0 4px', background: 'linear-gradient(180deg, transparent, #D8AA58, transparent)', display: 'block' }
+    : { display: 'block', margin: '5px 2px 3px' }}>
+    {row ? null : <img src={LB_ART('divider-gold')} alt="" draggable={false} style={{ width: '100%', height: 'auto', display: 'block' }} />}
+  </span>
+);
+
 export const LeaderboardPanel = () => {
   const S = getState();
   const list = boardList(S);
-  const ids = list.filter((b) => b.id).map((b) => b.id);
+  const boardsIn = list.filter((b) => b.id);
+  const ids = boardsIn.map((b) => b.id);
   /* v2.3.4036: the weigh-in card's Records opens this on the fish board */
   const [fishWant, setFishWant] = useState(() => takeFishBoardWant());
   const [catRaw, setCatRaw] = useState(() => (fishWant ? 'fish' : lastCat));
   /* ...and when it is already open (a Records tap with the page up) */
   useEffect(() => subscribeFishWeigh(() => { const w = takeFishBoardWant(); if (w) { setFishWant(w); setCatRaw('fish'); } }), []);
-  /* a board this worker does not keep (a switch thrown while it showed) falls back to Level */
-  const cat = ids.includes(catRaw) ? catRaw : 'combat';
+  /* a board this worker does not keep (a switch thrown while it showed), or
+     none chosen yet: the list's first (Overall, or Melee before caps.power) */
+  const cat = ids.includes(catRaw) ? catRaw : ids[0];
   const setCat = (id) => { lastCat = id; setCatRaw(id); };
-  const cur = list.find((b) => b.id === cat) || RANKS[0];
+  const cur = boardsIn.find((b) => b.id === cat) || boardsIn[0];
   const [side, setSide] = useState('wins');
   const [boxRef, boxW, boxH] = useBoxSize();
   /* until the box is measured, the shape an upright phone gets */
   const sideBySide = boxW === 0 || (boxW >= SIDE_BY_SIDE && boxH >= LIST_MIN_H);
+  const boardW = sideBySide ? Math.max(0, (boxW || 390) - RAIL_W - 12) : (boxW || 390);
+  /* the podium's scale, or 0: not drawn (the narrow page, or too short) */
+  const pk = sideBySide ? podiumScale(boardW, boxH) : 0;
+  const podium = pk >= 0.6 ? pk : 0;
   /* the board showing is on screen in the list or the chips: the page opens
      on the one you last looked at, which may be far down */
   const navRef = useRef(null);
@@ -313,22 +540,23 @@ export const LeaderboardPanel = () => {
   const board = cur.kind === 'fish' ? <FishBoard key={fishWant || 'fish'} initial={fishWant} />
     : cur.kind === 'spin' ? <SpinBoard side={side} setSide={setSide} />
     : cur.kind === 'flip' ? <FlipBoard side={side} setSide={setSide} />
-    : <RankBoard cat={cat} />;
+    : <RankBoard key={cat} board={cur} podium={podium} />;
 
   if (!sideBySide) {
-    /* the narrow page: the chips it always was, the headings between them */
+    /* the narrow page (a phone on its side): the pills in one row over the
+       board, the headings small between them; the table without its podium */
     return (
       <div ref={boxRef} data-lb-page="chips" data-lb-open={cat} style={panelStyle}>
-        <div ref={navRef} data-lb-chips="" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, overflowX: 'auto', padding: '2px 0' }}>
-          {list.map((b) => (b.sec ? (
+        <div ref={navRef} data-lb-chips="" style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4, overflowX: 'auto', padding: '2px 0' }}>
+          {list.map((b) => (b.title ? null : b.divider ? <Divider key="div" row /> : b.sec ? (
             <span key={'s:' + b.sec} aria-hidden="true" style={railHeading(true)}>{b.sec}</span>
           ) : (
             <button key={b.id} type="button" data-lb-cat={b.id} aria-pressed={b.id === cat} title={b.full || b.label} onClick={() => setCat(b.id)} style={chipHit}>
-              <span style={{ ...chip(b.id === cat), padding: '0 12px 0 8px' }}><CatIcon icon={b.icon} px={18} dim={b.id !== cat} />{b.label}</span>
+              <Pill b={b} on={b.id === cat} row />
             </button>
           )))}
         </div>
-        {board}
+        <div data-lb-board={cat}>{board}</div>
       </div>
     );
   }
@@ -342,10 +570,9 @@ export const LeaderboardPanel = () => {
       <div ref={navRef} data-lb-rail="" role="tablist" aria-label="Leaderboards" aria-orientation="vertical" style={{
         flex: 'none', width: RAIL_W, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', touchAction: 'pan-y',
         padding: '0 4px 18px 0', boxSizing: 'border-box', borderRight: `1px solid ${COL.divider}`,
-        WebkitMaskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)',
-        maskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)',
+        WebkitMaskImage: FOOT_FADE, maskImage: FOOT_FADE,
       }}>
-        {list.map((b, bi) => (b.sec ? (
+        {list.map((b, bi) => (b.title ? <Title key="title" /> : b.divider ? <Divider key="div" /> : b.sec ? (
           /* v2.3.4394: a heading headlines its section (railKit railHeading) */
           <div key={'s:' + b.sec} data-lb-sec={b.sec} role="presentation" style={railHeading(false, bi === 0)}>{b.sec}</div>
         ) : (
@@ -357,25 +584,14 @@ export const LeaderboardPanel = () => {
               display: 'flex', alignItems: 'center', width: '100%', minHeight: 44, margin: 0, padding: 0,
               background: 'transparent', border: 'none', fontFamily: 'inherit', cursor: 'pointer', touchAction: 'manipulation',
             }}>
-            <span data-lb-pill="" style={{
-              display: 'flex', alignItems: 'center', gap: 5, width: '100%', height: 36, padding: '0 7px 0 6px', boxSizing: 'border-box',
-              borderRadius: 999,
-              /* a lit pill is a tint over the same well, never a hole (NavRail, v2.3.2176) */
-              background: b.id === cat ? `linear-gradient(0deg, ${COL.accentFill}, ${COL.accentFill}), ${COL.wellSoft}` : COL.wellSoft,
-              border: `1px solid ${b.id === cat ? COL.accent : COL.tileBor}`,
-              color: b.id === cat ? COL.accent : COL.text, fontSize: 12.5, fontWeight: 700, textAlign: 'left',
-            }}>
-              <CatIcon icon={b.icon} px={20} dim={b.id !== cat} />
-              <span style={{ minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.label}</span>
-            </span>
+            <Pill b={b} on={b.id === cat} />
           </button>
         )))}
       </div>
       <div data-lb-board={cat} role="tabpanel" aria-label={cur.full || cur.label} style={{
         flex: 1, minWidth: 0, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', touchAction: 'pan-y',
-        padding: '0 0 18px 4px', boxSizing: 'border-box',
-        WebkitMaskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)',
-        maskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)',
+        padding: '0 0 18px 6px', boxSizing: 'border-box',
+        WebkitMaskImage: FOOT_FADE, maskImage: FOOT_FADE,
       }}>
         {board}
       </div>
