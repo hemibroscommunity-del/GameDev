@@ -183,6 +183,13 @@ export const liveopsMethods = {
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'roomrow') && !f.roomrow);
   },
 
+  /* v2.3.5422: a cape taken off kept on its ledger (eventcapes.js
+     _capeOffNow); `capeoffkept: false`: the old way, in memory only */
+  _capeOffKeptOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'capeoffkept') && !f.capeoffkept);
+  },
+
   // Synchronous by design (hot paths).  v2.3.4376: the cache is loaded
   // at the top of GameRoom.fetch, so every request reads it loaded; only a
   // failed storage read leaves it cold (fail-open, as before).  The old
