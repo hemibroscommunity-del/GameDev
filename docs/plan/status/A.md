@@ -1,28 +1,26 @@
 card: A
-branch: claude/plan-a-6-speed-card (one branch a PR, each begun from the one before: -1- to -7-; merge them in order)
-prs: #1688, #1692, #1703, #1706 (merged); #1708 (5124), #1711 (5125, its route in card N's wire table): mended for sitting 6, ready
-state: ready
+branch: claude/plan-a-7-heldsweep (PR 7, tag 5126, not begun: it waits on cards H and J)
+prs: #1688, #1692, #1703, #1706, #1708, #1711 (merged); PR 7 (5126) not begun
+state: stalled
 
 ## Done
 
-- #1688, #1692, #1703 (5120-5122) merged at sitting 3; #1706 (5123) at 5.
-- #1708 (5124): `roomrow.js` into the `room` part. Sitting 4's: in the
-  map (`server-core`); the last one out (`leave.js`, one line) writes
-  the book at once (roomrow.test 9). Sitting 5's: only after a join
-  since its last write (a socket that never joins, a kick's second
-  close: nothing); three turns in hand, one back each 5 minutes, every
-  put of the book spending one (the door's too: the storage's wrapper),
-  a turn beyond a put running; `roomrow: false` stops it; two last-outs
-  in one put never side by side. roomrow.test 10, cost-guard 15c (an
-  hour of storms: 14 rows, line 18), SHAPES's book row. Sitting 6's: a
-  save refused owes the book too (a `newer` refusal comes at the join);
-  roomrow §3 reads the stored book alone.
-- #1711 (5125): the Speed card into `speed`; GET /dev/daybook (its row
-  in card N's wire table); "Copy table". `caps.report` 2 takes the card.
+- #1688 (5120): one list of hold names (`src/debug/holdNames.js`).
+- #1692 (5121): the device class (`deviceProfile.js` `devClass`).
+- #1703 (5122): the field report, the phone's side (`src/debug/report.js`).
+- #1706 (5123; sitting 3's and 4's mends tagged 5127): the worker's side,
+  into the day's book's `dev` part by cell; `caps.report`.
+- #1708 (5124): the room's own row (`roomrow.js`) into the `room` part;
+  the last one out writes the book, after a join or a save refused, at
+  the book's pace (sittings 4 to 6).
+- #1711 (5125): the Speed test's card into `speed` (`caps.report` 2,
+  `reportspeed`); GET /dev/daybook (its wire row); "Copy table".
 
 ## Next
 
-- Sitting 7's list.
+- PR 7 (5126): mp-heldsweep fails a known hold that left no note (step
+  1.0, its second half; `tools/qa/mp/mp-heldsweep.mjs`), once H and J
+  are done.
 
 ## Found
 
@@ -37,4 +35,5 @@ state: ready
 
 ## Needs
 
-- PR 7 waits until cards H and J say `done`.
+- Cards H and J to say `done` (the card's own wait for PR 7): H is
+  `ready` (#1741, its PR 10); J's file on `main` says `ready`.
