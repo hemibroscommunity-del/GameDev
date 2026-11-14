@@ -20,7 +20,7 @@ addresses (`tools/qa/`), `localStorage` toggles, and the worker's `env` settings
 reads it as a flag or a comment promises it as a kill switch; any other cap's override is the emergency lever of
 `docs/specs/liveops.md` ("Caps override").
 
-240 rows: 233 switches, 6 values, 1 levers, in 22 systems.
+250 rows: 243 switches, 6 values, 1 levers, in 23 systems.
 
 ## audio
 
@@ -28,6 +28,7 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 |---|---|---|---|---|---|---|---|---|
 | `sfxcache` | both | switch | v2.3.3714 | off_sfxcache: true; ?sfxcache=0, off | memory |  | no | Sounds are held whole again, not only while needed. |
 | `voicecap` | both | switch | v2.3.3727 | off_voicecap: true; ?voicecap=0, off | memory |  | no | A crowd of one sound plays every voice again, not a few. |
+| `?foldgentle` | page | switch | v2.3.5045 | =0, off, false | logic |  | no | A sound is folded to mono in one go again, not in turns between frames. |
 
 ## bots
 
@@ -92,6 +93,7 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 |---|---|---|---|---|---|---|---|---|
 | `lookpalette` | both | switch | v2.3.3716 | off_lookpalette: true; ?lookpalette=0 (=1 builds it anyway) | chip |  | onWindows, onMac in src/game/lookPaletteChoice.js | Each look's copy is baked on first sight again, not coloured on the chip. |
 | `viewcap` | both | switch | v2.3.4054 | off_viewcap: true; ?viewcap=0 (=1 forces it) | logic |  | no | A wide screen sees its old wider view of the world. |
+| `?pixbudget` | page | switch | v2.3.5140 | =0 (off), or a number: the budget to try | chip |  | no | The drawing resolution is no longer held to the pixel budget. |
 
 ## economy
 
@@ -126,6 +128,7 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 | `toolshop` | worker | switch | v2.3.3316 | false | logic |  | no | Takes the tools off the shelf and refuses every buy. |
 | `trade2` | worker | switch | v2.3.4375 | false | logic |  | no | The trade window is off, so the old gift is open again. |
 | `tradeonewrite` | worker | switch | v2.3.4795 | false | logic |  | no | The trade's swap goes back to its old order of writes. |
+| `?equipredraw` | page | switch | v2.3.5046 | =0 | logic |  | no | A change of worn gear is set all at once again, not in pieces a frame apart. |
 
 ## identity
 
@@ -150,6 +153,9 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 | `bagonesum` | worker | switch | v2.3.4900 | false | logic |  | no | The bag door's one sum is off: every bag road back on its own sum. |
 | `daybook` | worker | switch | v2.3.5080 | false | logic |  | no | The day's book adds, writes and prunes nothing; what is stored stays and its reader says it is off. |
 | `disable_bigbags` | worker | switch | v2.3.4224 | true | logic |  | no | Thrown, the weapon and gear stashes go back to 8 and 32. |
+| `report` | worker | switch | v2.3.5122 | false | logic |  | no | Un-advertises the field report, so no phone sends its smoothness, and drops any that still comes. |
+| `reportspeed` | worker | switch | v2.3.5127 | false | logic | `report` | no | The Speed test's card is no longer taken (caps.report back to 1); the smoothness reports carry on. |
+| `roomrow` | worker | switch | v2.3.5124 | false | logic | `daybook` | no | Nothing of the room's own row is added into the day's book. |
 | `testmode` | worker | lever | v2.3.3430 | false | none |  | no | Turns every character's test mode off at once, every check back on. |
 
 ## look
@@ -167,6 +173,7 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 |---|---|---|---|---|---|---|---|---|
 | `picnumbers` | both | switch | v2.3.3715 | off_picnumbers: true; ?picnumbers=0 | memory |  | no | Monster strips are held as pictures again, not as colour numbers. |
 | `gfxlean` | both | switch | v2.3.4033 | off_gfxlean: true; ?gfxlean=0, off, false | memory |  | no | A big drawing's building lists are kept after it is drawn. |
+| `?treenumbers` | page | switch | v2.3.5247 | =0 | memory |  | no | The trees are held as pictures again, not as colour numbers. |
 
 ## monsters
 
@@ -229,6 +236,14 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 | `petwards` | worker | switch | v2.3.3120 | false | logic |  | no | Every pet ward off. |
 | `pointsreset` | worker | switch | v2.3.3541 | false | logic |  | no | Every points reset refused, and its cap off at the next join. |
 | `pointsresetroom` | worker | switch | v2.3.4372 | false | logic |  | no | The points reset's minute is the socket's alone, not kept by the room. |
+
+## render
+
+| name | side | kind | born | thrown | risk | needs | fallback | off |
+|---|---|---|---|---|---|---|---|---|
+| `?bakeurl` | page | switch | v2.3.5043 | =0 | logic |  | no | Every armour bake input is cut on the page again, not sent to the worker as its sheet's address. |
+| `?coinflip` | page | switch | v2.3.5247 | =0 | memory |  | no | Ace's coin strips keep their decoded copies, as before. |
+| `?npcheads` | page | switch | v2.3.5246 | =0 | memory |  | no | The townsfolk's head pictures keep their decoded copies, as before. |
 
 ## server-core
 
