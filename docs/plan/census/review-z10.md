@@ -37,8 +37,9 @@ merge `claude/plan-t-2-page-game` (sitting 9's chain) and write the
 blocks as TF's branch does (SK, TF, PW between J2 and LB). By 12:00 the
 fourteen on the list chained clean in its order, each `test` green on
 its head; card E's #1764 joined at 12:06 (948dc8d, its `test` green).
-Not mended at the list's writing: card E's #1772 and above, card L's
-three.
+#1772 (a88bc9e) and #1773 (a245beb) joined at 12:13, each `test` green.
+Not mended at the list's writing: card L's three; #1785's mend
+(fed858f) came at 12:20, too late to review.
 
 Found on the way: two branches that each change the page's count line the
 SAME way merge clean and leave it stale (PW's first heads with `main`'s
@@ -91,7 +92,15 @@ Merged today's `main` (11:28); their own diff is tests and documents
 (`testroom.mjs`, `testroom.test`, `chaos-restart.test`, SHAPES, E's
 status): sitting 8's review stands; each `test` green. They deploy.
 
-## Card E: #1764 (PR 8c, tag 5089): on the list at 948dc8d; #1772, #1773 HELD
+## Card E: #1764 (PR 8c, tag 5089), #1772, #1773: on the list
+
+#1772 (PR 10) at a88bc9e and #1773 (PR 11) at a245beb merged #1768 and
+#1764's head; #1772's own change since the review is its status file;
+#1773's is the empty window's row (`xfer.js` `sideEmpty`: a settlement
+that moved nothing either way writes no row; xfer.test checks it) and the
+cost lines' words (a row and its delete 90 days on: two rows a trade over
+its life). `xfer` is ON by default: one row a trade, plan step 10.3's own
+line (`cost-guard` §16).
 
 **Mended during the sitting (e86c17c, 948dc8d), read by the gatekeeper:**
 `arenasettleplan` is OFF unless the live flags say `true` (`gladiator.js`
@@ -150,6 +159,17 @@ chaos-restart 21, cost-guard 43, world-sum 34, storm 53, xfer 20, trade
   row; each row also costs its delete in 90 days.
 
 ## Card E: #1785 (PR 12, tag 5093): HELD
+
+The mend came at fed858f (about 12:20): `persistence.js`
+`_resetCharacterData` now books what a restart takes (`econcard.js`
+`econResetBook`: the record's and the vault's held less made, into the
+book's `econ` part) and the card adds the restarts back; `/dev/econcard`
+returns the open sittings' seconds (M3). Not reviewed this sitting: it is
+new code on the restart's road and a new import (`persistence.js` ->
+`econcard.js` -> `worldsum.js`, `daybook.js`). For sitting 11 to check:
+the finder's M1 also named gold the restarted character left in mail and
+listings, which the booking does not read. Card E's #1786 (PR 9, the
+pause) opened at 12:20: not reviewed.
 
 Read at f56d755. The route is behind `_adminAuth` and reads at most
 (n+1) metrics rows and n x 500 `xfer` rows; no new key, put or flag (the
