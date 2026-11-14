@@ -1,7 +1,7 @@
 card: E
 branch: claude/plan-e-14-switches-on (5095: the owner's yes to both switches)
-prs: #1686, #1691, #1694, #1699, #1752, #1756, #1758, #1759, #1761, #1764, #1772, #1773, #1785, #1786, #1802, #1811 (all merged); 5095 (ready, this branch)
-state: ready
+prs: #1686, #1691, #1694, #1699, #1752, #1756, #1758, #1759, #1761, #1764, #1772, #1773, #1785, #1786, #1802, #1811, #1852 (all merged)
+state: done
 
 ## Done
 
@@ -15,13 +15,13 @@ state: ready
 - PR 12 (5093, #1785): the owner's card in the Test panel.
 - 5094 (#1802): a restart's booking (its minted; an empty room's written at
   once); weapon staging pauses; docs/specs/value-pause.md.
-- 5095: both switches ON, the owner's "Just go recommended" (2026-11-14).
+- 5095 (#1852): both switches ON, the owner's "Just go recommended".
 - Live flags (rows in the switch table): `econ`, `xfer`, `arenasettleplan`,
   `valuepause`, `econresetput`.
 
 ## Next
 
-- The gatekeeper's next sitting, for 5095.
+- Nothing: the card is finished.
 
 ## Found
 
@@ -30,7 +30,7 @@ state: ready
   `gladiator.js`: the prize is paid before its entries are deleted.
 - A new key inside `_econ` (card Q's sitting card) bumps `ECON_V` (gold.js).
 - For the owner (sitting 11, F3): any refused save pauses every player's
-  value roads; narrowing it to value records is a design change.
+  value roads; narrowing it to value records is a design change (open).
 
 ## Needs
 
