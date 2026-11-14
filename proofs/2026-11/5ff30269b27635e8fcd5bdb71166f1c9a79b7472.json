@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "5ff30269b27635e8fcd5bdb71166f1c9a79b7472",
+  "tree": "64440e04bfc1b7ec57ce64b6580438f60a62bc07",
+  "committedAt": "2026-11-14T09:29:14-08:00",
+  "subject": "Merge pull request #1788 from hemibroscommunity-del/claude/plan-j2-2-npclooks",
+  "files": 7633,
+  "bytes": 952950540,
+  "listingSha256": "d4fb607ef67027b384927750808cee5584a77f192dcdc67c90c3ddbbd762c31e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
