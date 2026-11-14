@@ -65,9 +65,12 @@ export const KNOWN = {
        -> none (the longest hold of any family 10.5 / 7.7 / 36.1 ms).  Those three stations' lines are locked at the general
        line; the main tour (peer, armour) and the crowd's other stations were not run again here, and keep theirs */
     crowd: 'a player with a tattoo or a trouser print: every pose and facing they show is a body sheet baked on the page, 114 to 720 ms each, a dozen in the first 20 s (a-ink).  ANY player of a look not yet seen who fishes: the 32-frame fish sheet, 92 to 198 ms (b-fish, c-armour8: one per look, armour or not, a shirt or not).  Armoured players arriving: 36 to 267 ms per look and pose; walking about after, still 60 to 112 ms (h-eight).  The pickaxe made solid in the mining body (solidTool) is part of the same bake.  Fix: the bodies with drawings as a row of colours with the drawing stamped on the worker (the fish sheet too: it has no shirt or eye, lookBodyRefused already passes it), or the bake on a worker' },
-  'masked-bake': { ms: 24, whose: 'ours',
-    why: "v2.3.4870: no longer cut on the page in play (another player's armour drew it inline, in the frame, at first sight and each new facing: 17 to 107 ms; the crowd tour's c-armour stations 54 ms, 28 times).  What is left is the worker job's page-side part: the frames handed over as pictures (_frameInput > createImageBitmap) and the look sheets sent, 8 to 18 ms",
-    next: 'hand the worker the sheets once (as the look sheets are) and send it frame rectangles, not a picture a frame; prewarm the poses of what was just put on' },
+  /* v2.3.5043: 'masked-bake' (was 24; 140 before v2.3.4870) off the list.  What was left was the page cutting each
+     input out of its sheet for the bake's worker (entityRenderer.js _frameInput > createImageBitmap): 4 to 15 ms a
+     bake, 32.7 ms once at the main tour's `armour`, up to 12.9 at the crowd's armour stations.  Now a frame of a sheet
+     that is an image goes as its address and rectangle, and the worker reads the sheet itself (maskedBakeWorker.js
+     sheetOf).  The sample (peer and armour x3; c-armour1, c-armour8, h-eight and d-prints x3): 7.7 ms the longest,
+     5 holds in all (docs/specs/held-sweep.md, "Card H") */
   'pack-page': { ms: 20, whose: 'ours',
     why: "v2.3.4873: a gear sheet first drawn in play is packed a few ms at a time (gearSheets.js _gearPack > packTrimmedSliced; was one go, 21 to 59 ms).  What is left: one cell's read on this box (getImageData, up to 9 ms) and the packed sheet handed to the page as a file of its own (keepAsImage): 9 to 15 ms",
     next: 'the strip door: gear strips as 256-colour files read and packed on the worker, as the monsters are' },
