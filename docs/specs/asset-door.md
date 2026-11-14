@@ -201,7 +201,11 @@ door's to change.
 
 **The backlog column.** A data family is never the backlog's (the door never
 rewrites data: the look sheets are colour NUMBERS, and they hold real MB at
-the fight). A made family is taken only by changing its own tool. A family
+the fight). Nor is a sound (the door re-encodes no sound: decoding every
+sound at 24 kHz is the owner's call, MEMORY-MAP's list). A made family is
+taken only by changing its own tool, and a backlog PR may change a loader
+rather than a file (a family already on 256 colours but held at four bytes a
+pixel is put in its slot's form). A family
 whose loader, or whose draw path's module, is one of the files card P leaves
 alone while card H runs ("Files P waits on": `zoneTextures.js` and
 `stripRead.js` for a strip, `soundFold.js` for a sound, `entityRenderer.js`,

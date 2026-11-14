@@ -146,9 +146,12 @@ export function census(runs) {
     const waits = loaders.filter((l) => WAITS_ON_H.includes(l)).map((l) => l.split('/').pop());
     if (DRAW_WAITS[f.draw]) waits.push(DRAW_WAITS[f.draw]);
     /* whether a backlog PR may take it: never a data file (the door never
-       rewrites one: the look sheets are colour NUMBERS), a made one only by
-       its own tool, and one whose loader is card H's only after H */
-    const takes = f.kind === 'data' ? 'no: data' : waits.length ? 'after H' : f.kind === 'made' ? 'yes, by its tool' : 'yes';
+       rewrites one: the look sheets are colour NUMBERS), never a sound (the
+       door re-encodes no sound; every sound at 24 kHz is the owner's call,
+       MEMORY-MAP), a made one only by its own tool, and one whose loader is
+       card H's only after H */
+    const sound = f.draw === 'sfx' || f.draw === 'music';
+    const takes = f.kind === 'data' ? 'no: data' : sound ? 'no: sound' : waits.length ? 'after H' : f.kind === 'made' ? 'yes, by its tool' : 'yes';
     return { name: f.name, kind: f.kind, draw: f.draw, files: d.files, diskMB: d.bytes / 1048576, over: d.over,
       held: heldOf(e), chip: e.chip, page: e.page, numbers: e.numbers, sound: e.sound, rows: e.rows.size,
       waits: waits.join(', '), takes, at: b ? `run ${b.run}` : '' };
@@ -177,8 +180,11 @@ function text(c, files) {
   L.push('files the game\'s reader (`png8Decode.js`) does not read. **Waits on H**: its');
   L.push('loader is one of the files card P leaves alone while card H runs.');
   L.push('**Backlog**: whether a backlog PR may take it: never a data family (the door');
-  L.push('never rewrites data: the look sheets are colour NUMBERS), a made family only');
-  L.push('by changing its own tool, and a family waiting on card H only after H.');
+  L.push('never rewrites data: the look sheets are colour NUMBERS), never a sound (the');
+  L.push('door re-encodes no sound: every sound at 24 kHz is the owner\'s call), a made');
+  L.push('family only by changing its own tool, and a family waiting on card H only');
+  L.push('after H. A backlog PR may change a loader rather than a file: a family already');
+  L.push('on 256 colours that is held at four bytes a pixel is put in its slot\'s form.');
   L.push('');
   L.push('This is the backlog\'s order (card P, PR 6 on), most MB held first. The backlog');
   L.push('stops at the first family under 1 MB (the line below the table\'s marker).');
