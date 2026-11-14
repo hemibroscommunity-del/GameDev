@@ -261,7 +261,9 @@
  * exactly the icons' numbers moved there (0.30 MB: thirteen of 128 x 128,
  * 256 x 256 and 180 x 189 at a byte a pixel), the planning session's rule
  * for a numbers PR; net 0.9 MB less.  The chip holds them at a byte a
- * pixel (0.35 MB). */
+ * pixel (0.35 MB).  (The gatekeeper's sitting 9: not the trap's box, whose
+ * pieces are cut from its pixels after the pack; it stays a picture, 0.06
+ * MB of the 1.2, so the line is 0.06 tighter than the saving, never looser.) */
 export const MEMORY_BUDGET = {
   artCache: { name: 'art loaded from files', mb: 97.1, measured: 33.8,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB); v2.3.5247: 109.1 -> 107.0, Ace's coin strips (2.1 MB); v2.3.5248: 107.0 -> 101.4, the trees as numbers (5.6 MB); v2.3.5249: 101.4 -> 98.3, the made effects as numbers (3.1 MB); v2.3.5250: 98.3 -> 97.1, the world's icons (1.2 MB), see the header */
     what: 'pictures loaded from files, decoded (the asset cache, window.__btTex) -- its highest at the fight, the monsters\' looks loaded' },
