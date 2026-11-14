@@ -38,7 +38,7 @@ import { loadTownScenery, freeTownScenery, townSceneryReady, townSceneryLoading 
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2999: the Wheel's grid is read at your boots */
 import { FARM_FROM_WORKSHOP } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
 import { holdFarmUntilReady } from '@/game/farmTrip.js';
-import { runResets } from '@/game/resetOn.js'; /* v2.3.5203: the zone edge's one door runs the state's resets (card L) */
+import { runResets, resetOn } from '@/game/resetOn.js'; /* v2.3.5203: the zone edge's one door runs the state's resets (card L); v2.3.5208: + the world's own */
 
 /* ═══ v2.3.2272: FREE THE ZONE YOU LEFT, ONE BEAT LATE ═══
  *
@@ -425,6 +425,27 @@ export function clearZoneLocalFx(S) {
   S._dashStrike = null;
   S._fxBursts = [];
 }
+
+/* ═══ v2.3.5208: WHAT FLEW AND FELL IN THE PLACE YOU LEAVE (card L) ═══
+   Your arrows, the hit and death particles and the place's own air (snow,
+   leaves): world pixels with no place on them.  Today every way of changing
+   place wipes them in a clear block of its own (the town exits and the ways
+   back below, a dungeon's way in, the farm trip, a Wheel dungeon's; the
+   respawn's with its stairs trip, 0.4 s after its flip, under its veil).
+   Blocks pasted into each way are how the zone's leftovers drifted (five of
+   nine ways skipped the list, v2.3.4414 below), so the world system's reset
+   at the zone's door (resetOn.js, run by changeZone) empties them at the flip
+   itself, for every way, a new one included.  The blocks stay.
+   `?worldreset=0` leaves them to the blocks, as before.  Not in
+   clearZoneLocalFx: that is the door's own list, and the plan's resets live
+   beside their state, each under its system's switch. */
+function leavePlaceDebris(S) {
+  S.arrows = [];
+  S.hitParticles = [];
+  S.deathExplosions = [];
+  S._ambientParticles = [];
+}
+resetOn('zone', leavePlaceDebris, 'world');
 
 /* ═══ v2.3.4414: THE FLIP AND ITS WIPE, IN ONE CALL ═══
    The contract above ("called from every clear block") was written down and
