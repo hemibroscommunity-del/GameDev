@@ -1,7 +1,7 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: PR 1 tag 5181 (working), PR 3 tag 5183 (working)
-state: working
+prs: PR 1 tag 5181 (built, waits on a question), #1820 (PR 3, ready)
+state: ready
 
 ## Done
 
@@ -10,13 +10,13 @@ state: working
   (`server/src/wire/lists.js`); the column `privileged` (`echo` on 9 rows);
   the literals deleted, each type's why moved above its row. Bundle +88 KB
   (+12 KB gzipped). Deploys.
-- PR 3 (5183, claude/plan-k-3-hostile): `wire-hostile.test` (10,524 cases,
+- PR 3 (5183, #1820): `wire-hostile.test` (10,524 cases,
   ~9 s), census `docs/plan/census/hostile.md`: 19 failing, the line.
   Deploys (a new file in server/test/).
 
 ## Next
 
-- PR 6 (5186, free) while 1 and 3 wait; PR 2 (5182) after PR 1 merges (it
+- PR 6 (5186, free, the gain bench: researching each claim) while 1 and 3 wait; PR 2 (5182) after PR 1 merges (it
   takes wire-table.test §7, today's copy, out); PR 4 after 1 and 3.
 
 ## Found
