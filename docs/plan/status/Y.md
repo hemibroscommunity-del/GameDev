@@ -1,6 +1,6 @@
 card: Y
 branch: claude/plan-y-topaudit (PR 2, begun from PR 1's branch: merge in order)
-prs: #1705 (ready), PR 2 (tag 5401, ready)
+prs: #1705 (merged), #1739 (tag 5401, ready)
 state: ready
 
 ## Done
