@@ -17,7 +17,9 @@ state: ready
 ## Next
 
 - The gatekeeper's sitting for #1782. `skateboard` 26/26 with the pose
-  line; `boardwheels` 7/8, its one red main's (Found).
+  line; `boardwheels` 7/8, its one red main's (Found). Card T's #1768 is
+  merged into the branch (the planning session's ask), and the tag blocks
+  are TF's and PW's lines exactly.
 
 ## Found
 
@@ -28,7 +30,7 @@ state: ready
 - `mp-townride` (main, same numbers on main's build): its two page-hold
   checks are red (no 50 ms bake left to find; `pages: 0`).
 - `mp-boardwheels` check 2 (main, red on main's build too): stopped, the
-  drawn rider still drifts ~0.5 game px in 0.8 s (5.629 -> 5.635 turns).
+  drawn rider still drifts ~0.5 game px in 0.8 s (5.629 -> 5.635): card J2's.
 - The card's "dialogue" hold: there is none in the movement step.
 
 ## Needs
