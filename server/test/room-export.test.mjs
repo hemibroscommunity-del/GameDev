@@ -15,28 +15,32 @@
  *      order, a record of another prefix never in them (`rpg:` never gives
  *      `rpgsnap:`), `next` null at the end; a single-key entry (`shop_stock`)
  *      is its one record;
- *   3. NEVER A LOGIN KEY OR THE HIDDEN SETTINGS: asked for by prefix, a 400;
- *      a character's pages never hold their `auth:`;
- *   4. BY A PLAYER: every record the registry marks as a character's
- *      (`whose: 'player'`), the snapshots' ring, the login wheel's stamp and
- *      the streak included, and nothing of another character's -- an id
- *      that starts with theirs included;
+ *   3. AN ALLOW LIST (the gatekeeper's medium, sitting 16): only the
+ *      prefixes on EXPORT.ALLOW come out, each a character's own or one
+ *      holding the world's value; every other marked prefix asked for is
+ *      refused (so a mark added since is out until it is listed); a record
+ *      no mark owns, the logins, the device ids (`device:`, `lspin:`,
+ *      `botstat:`) and the hidden settings never come out of any page, even
+ *      a storage that hands one back; every character's record is on the
+ *      list or kept out with its why;
+ *   4. BY A PLAYER: every record of theirs the list gives, the snapshots'
+ *      ring and the streak included, and nothing of another character's --
+ *      an id that starts with theirs included;
  *   5. THE ASK: a cursor from another ask, a limit not a number, an id with
  *      a `:` are refused; a limit past the most is clamped;
  *   6. IT WRITES NOTHING, and a page reads at most its limit;
  *   7. THE REGISTRY: no marked prefix is the start of another (so a prefix's
- *      page is that prefix's alone), and every character's prefix but the
- *      login's is in their pages.
+ *      page is that prefix's alone), and every character's prefix the list
+ *      gives is in their pages.
  *
  * BREAK PROOF (rule 8), tried by hand, 2026-11-14:
- *   - `|| exportNever(p)` deleted from exportSources        -> FAIL 7 (the login's places read; the page's own
- *                                                              filter still drops them: a second wall)
- *   - ...and `exportNever(k) ||` deleted from exportPage too -> FAIL 3 (a character's pages give their `auth:`)
+ *   - the `!EXPORT.ALLOW.includes(prefix)` line made `if (false)` -> FAIL 3 (a prefix off the list given)
+ *   - `!exportAllowed(k) ||` deleted from exportPage          -> FAIL 3 (a record no mark owns, handed back, given)
  *   - `opt.startAfter = cursor` deleted from exportPage     -> FAIL 2 (a page given again: the walk never ends)
  *   - `hasOwnProperty.call(f, 'roomexport') &&` deleted     -> FAIL 1 (no flag reads as off)
  */
 import { makeStorage, settle } from './testroom.mjs';
-import { EXPORT, exportNever, exportSources, exportPage } from '../src/admin.js';
+import { EXPORT, exportAllowed, exportSources, exportPage } from '../src/admin.js';
 import { STORAGE_MARKS } from '../src/storagemarks.js';
 
 let failures = 0, passes = 0;
@@ -47,12 +51,14 @@ function check(name, cond, detail) {
 
 const A = 'bp_alpha', A2 = 'bp_alpha2', B = 'bp_beta';
 const playerPrefixes = Object.keys(STORAGE_MARKS).filter((p) => STORAGE_MARKS[p].whose === 'player');
+const allowedPlayer = EXPORT.ALLOW.filter((p) => STORAGE_MARKS[p] && STORAGE_MARKS[p].whose === 'player');
 /* where a character's record of each prefix is kept (the registry's shapes) */
 const keyOf = (p, id) => (p === 'rpgsnap:' ? p + id + ':20261114' : p === 'lspin:' ? 'lspin:p:' + id : p === 'cadence:' ? 'cadence:login:' + id : p === 'keyidx:' ? 'keyidx:h_' + id : p + id);
 
 /* a room's storage: three characters with a record of every kind, a second
-   snapshot and a parachute for A, three listings, the shop's pile, the hidden
-   settings, a device's login wheel */
+   snapshot and a parachute for A, three listings, the shop's pile, and what
+   must never come out: the hidden settings, a device's login wheel and its
+   record, the live flags, the owner's log, a record no mark owns */
 function seeded() {
   const seed = [];
   for (const id of [A, A2, B]) for (const p of playerPrefixes) seed.push([keyOf(p, id), { p, id }]);
@@ -62,6 +68,10 @@ function seeded() {
   seed.push(['shop_stock', { herb: 4 }]);
   seed.push(['hidden_settings', { v: 1, s: { SECRET: 7 } }]);
   seed.push(['lspin:d:dev1', { pid: A }]);
+  seed.push(['device:dev1', { ids: [A] }]);
+  seed.push(['liveflags', { roomexport: true }]);
+  seed.push(['admin_log', [{ op: 'grant' }]]);
+  seed.push(['zz_unmarked:1', { secret: 1 }]);
   return makeStorage(seed);
 }
 
@@ -128,16 +138,40 @@ const keysOf = (pages) => pages.flatMap((r) => (r.rows || []).map((x) => x.k));
   check('2. a prefix with no records: an empty page that ends', none.ok && none.rows.length === 0 && none.next === null && none.read === 0);
 }
 
-/* ══════════ 3. NEVER A LOGIN KEY OR THE HIDDEN SETTINGS ══════════ */
+/* ══════════ 3. AN ALLOW LIST ══════════ */
 {
   const st = seeded();
-  for (const p of ['auth:', 'keyidx:', 'hidden_settings']) {
-    const r = await exportPage(st.storage, { prefix: p });
-    check('3. `' + p + '` asked for: refused, nothing read', !r.ok && r.error === 'never' && !r.rows);
-  }
-  check('3. the list is the login\'s two and the hidden settings', JSON.stringify(EXPORT.NEVER) === JSON.stringify(['auth:', 'keyidx:', 'hidden_settings']) && exportNever('auth:' + A) && exportNever('keyidx:abc') && exportNever('hidden_settings') && !exportNever('hidden_settings2') && !exportNever('rpg:' + A));
-  const ks = keysOf(await walk(st.storage, { player: A, limit: 4 }));
-  check('3. a character\'s pages never give their login (`auth:`) nor a key\'s index', ks.length > 10 && !ks.some((k) => k.startsWith('auth:') || k.startsWith('keyidx:') || k === 'hidden_settings'), ks.filter((k) => /^(auth|keyidx):|hidden/.test(k)));
+  const marked = Object.keys(STORAGE_MARKS);
+  const offList = marked.filter((p) => !EXPORT.ALLOW.includes(p));
+  const given = [];
+  for (const p of offList) { const r = await exportPage(st.storage, { prefix: p }); if (r.ok || r.error !== 'never') given.push(p); }
+  check('3. every marked prefix off the list (' + offList.length + ') asked for: refused (a mark added since is out until it is listed)', offList.length > 20 && given.length === 0, given);
+  check('3. ...the logins, the device ids, the anti-bot evidence and the hidden settings among them', ['auth:', 'keyidx:', 'botstat:', 'lspin:', 'device:', 'hidden_settings', 'liveflags', 'admin_log'].every((p) => offList.includes(p)));
+  const badAllow = EXPORT.ALLOW.filter((p) => !STORAGE_MARKS[p] || (STORAGE_MARKS[p].whose !== 'player' && STORAGE_MARKS[p].value === 'none'));
+  check('3. the list holds only marked prefixes, each a character\'s own or one holding the world\'s value', badAllow.length === 0 && new Set(EXPORT.ALLOW).size === EXPORT.ALLOW.length, badAllow);
+  const both = playerPrefixes.filter((p) => EXPORT.ALLOW.includes(p) === Object.prototype.hasOwnProperty.call(EXPORT.KEPT_OUT, p));
+  check('3. every character\'s record is on the list or kept out with its why, never both', both.length === 0 && Object.keys(EXPORT.KEPT_OUT).every((p) => playerPrefixes.includes(p) && EXPORT.KEPT_OUT[p].length > 10), both);
+  check('3. a key is allowed only by the mark that owns it', exportAllowed('rpg:' + A) && exportAllowed('cadence:login:' + A) && exportAllowed('shop_stock')
+    && !exportAllowed('zz_unmarked:1') && !exportAllowed('hidden_settings') && !exportAllowed('device:dev1') && !exportAllowed('lspin:p:' + A) && !exportAllowed('auth:' + A) && !exportAllowed('__proto__') && !exportAllowed(null));
+  /* every page of every prefix on the list, and A's: never a key off it */
+  const all = [];
+  for (const p of EXPORT.ALLOW) all.push(...keysOf(await walk(st.storage, { prefix: p, limit: 7 })));
+  all.push(...keysOf(await walk(st.storage, { player: A, limit: 4 })));
+  const leaked = all.filter((k) => !exportAllowed(k) || /dev1|zz_|hidden|liveflags|admin_log|^auth:|^keyidx:|^botstat:|^lspin:|^friend_msg:|^bro_link:/.test(k));
+  check('3. every page of the list, and a character\'s, gives nothing off it (' + all.length + ' records)', all.length > 50 && leaked.length === 0, leaked);
+  /* a storage that hands back a record no mark owns, or a login, inside a
+     page: the page's own filter drops it (a second wall) */
+  const sly = seeded();
+  const list0 = sly.storage.list;
+  sly.storage.list = async (o) => { const m = await list0(o); m.set('zz_unmarked:1', { secret: 1 }); m.set('auth:' + A, { pfHash: 'x' }); return m; };
+  const r = await exportPage(sly.storage, { prefix: 'store_listing:', limit: 50 });
+  check('3. ...a storage that hands one back: left out, counted in `skipped`', r.ok && r.rows.length === 3 && r.skipped === 2 && !r.rows.some((x) => !exportAllowed(x.k)), r);
+  /* ...and in a character's pages, where no prefix's mark stands guard: the
+     snapshots' list hands them back too */
+  const pk = [];
+  let pskip = 0;
+  for (const pg of await walk(sly.storage, { player: A, limit: 200 })) { pk.push(...(pg.rows || []).map((x) => x.k)); pskip += pg.skipped || 0; }
+  check('3. ...in a character\'s pages too: left out, counted', pk.length > 20 && !pk.some((k) => !exportAllowed(k)) && pskip >= 2, { off: pk.filter((k) => !exportAllowed(k)), pskip });
 }
 
 /* ══════════ 4. BY A PLAYER ══════════ */
@@ -146,11 +180,11 @@ const keysOf = (pages) => pages.flatMap((r) => (r.rows || []).map((x) => x.k));
   for (const limit of [1, 3, 7, 200]) {
     const pages = await walk(st.storage, { player: A, limit });
     const ks = keysOf(pages);
-    const want = playerPrefixes.filter((p) => !exportNever(p)).map((p) => keyOf(p, A))
+    const want = allowedPlayer.map((p) => keyOf(p, A))
       .concat(['rpgsnap:' + A + ':20261113', 'rpgsnap:' + A + ':prerestore-1763100000000']).sort();
-    check('4. A\'s pages of ' + limit + ': every record marked a character\'s, each once, in key order, and nothing else', JSON.stringify(ks) === JSON.stringify(want) && pages.every((r) => r.ok && r.player === A), { missing: want.filter((k) => !ks.includes(k)), extra: ks.filter((k) => !want.includes(k)), pages: pages.length });
+    check('4. A\'s pages of ' + limit + ': every record of theirs the list gives, each once, in key order, and nothing else', JSON.stringify(ks) === JSON.stringify(want) && pages.every((r) => r.ok && r.player === A), { missing: want.filter((k) => !ks.includes(k)), extra: ks.filter((k) => !want.includes(k)), pages: pages.length });
     if (limit === 3) {
-      check('4. ...the snapshots\' ring, the login wheel\'s stamp and the streak in them', ks.includes('rpgsnap:' + A + ':prerestore-1763100000000') && ks.includes('lspin:p:' + A) && ks.includes('cadence:login:' + A) && !ks.includes('lspin:d:dev1'));
+      check('4. ...the snapshots\' ring and the streak in them; the login wheel\'s stamp (keyed by a device) not', ks.includes('rpgsnap:' + A + ':prerestore-1763100000000') && ks.includes('cadence:login:' + A) && !ks.includes('lspin:p:' + A) && !ks.includes('lspin:d:dev1'));
       check('4. ...nothing of `' + A2 + '` (an id that starts with A\'s) nor of B', !ks.some((k) => k.includes(A2) || k.includes(B)));
       check('4. ...each page at most its limit', pages.every((r) => r.rows.length <= 3 && r.read <= 3));
     }
@@ -203,8 +237,8 @@ const keysOf = (pages) => pages.flatMap((r) => (r.rows || []).map((x) => x.k));
   check('7. no marked prefix is the start of another (a prefix\'s page is its own)', nested.length === 0, nested);
   const src = exportSources({ player: A });
   const reached = new Set(src.sources.map((s) => (s.key || s.list)));
-  const lost = playerPrefixes.filter((p) => !exportNever(p) && ![...reached].some((k) => k.startsWith(p)));
-  check('7. every prefix marked a character\'s but the login\'s is in their pages (' + src.sources.length + ' places)', lost.length === 0 && src.sources.length === playerPrefixes.length - 2, lost);
+  const lost = allowedPlayer.filter((p) => ![...reached].some((k) => k.startsWith(p)));
+  check('7. every character\'s prefix the list gives is in their pages (' + src.sources.length + ' places), and no other', lost.length === 0 && src.sources.length === allowedPlayer.length && allowedPlayer.length === playerPrefixes.length - Object.keys(EXPORT.KEPT_OUT).length, lost);
 }
 
 console.log('\n' + passes + ' passed, ' + failures + ' failed');

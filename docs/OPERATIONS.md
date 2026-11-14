@@ -386,8 +386,10 @@ just freeze the new id too — their real character stays locked either way.
 ## A copy of the room's records, a page at a time (v2.3.5286)
 
 For keeping your own copy of the game's saved records, or reading exactly
-what one character has on file. It only reads: nothing changes. It never
-gives a login (a player's key or its fingerprint) or the hidden settings.
+what one character has on file. It only reads: nothing changes. It gives
+only the kinds of record on its list: the characters' own and everything
+that holds gold or goods. Never a login, a device's id, the anti-bot
+evidence, the words players sent each other, or the hidden settings.
 
 **Each run costs a little**: Cloudflare counts every record it reads (a page
 reads up to 50 by default, 200 at most, and the whole room once over is every
@@ -415,8 +417,8 @@ empty. `&limit=` sets a page's size (1 to 200).
 curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
   -d '{"name":"roomexport","value":false}' "https://WORKER/api/admin/flags"
 ```
-- Asked for a login's records (`auth:`, `keyidx:`) or the hidden settings,
-  it says no.
+- Asked for a kind of record not on its list (a login's `auth:`, a
+  device's `device:`, the hidden settings...), it says no.
 
 ## Fixing a broken save (restore from backup)
 

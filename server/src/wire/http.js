@@ -266,7 +266,7 @@ export const WIRE_HTTP = [
     trust: { prefix: 'request', player: 'request', cursor: 'request', limit: 'request' },
     absent: 'refused: no prefix and no player, or both, is a 400; default: no cursor is the first page; default: no limit is 50',
     bad: ['refused', 'clamped'], answer: 'http', flag: 'roomexport',
-    note: ['bad: a prefix the registry does not mark, a login key\'s or the hidden settings\', a cursor from another ask is refused; a limit past 200 is clamped'] },
+    note: ['bad: a prefix the registry does not mark or the export\'s allow list (EXPORT.ALLOW) does not give, a cursor from another ask is refused; a limit past 200 is clamped'] },
   { name: 'http:/api/admin/grant', dir: 'in', at: 'admin.js _adminFetch', wayIn: 'admin', envelope: 'http',
     phase: ['none checked'], mayStart: 'owner', doesWhat: ['speaks', 'others'], reqId: 'opId',
     trust: { playerId: 'request', kind: 'request', 'payload.amount': 'request', 'payload.invKey': 'request',

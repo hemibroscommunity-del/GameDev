@@ -55,19 +55,23 @@ export const SNAPSHOT = {
 /* ═══ v2.3.5286: THE PAGED EXPORT (card R PR 7; grand plan step 4.7) ═══
  * The owner's copy of the room's records, a page at a time, behind the admin
  * key: GET /api/admin/export?prefix=<a registry prefix>, or ?player=<an id>
- * for one character's own records (the registry's marks, storagemarks.js:
- * every prefix marked `whose: 'player'`), with `cursor` (the last key of
- * the page before: its answer's `next`) and `limit` (EXPORT.LIMIT, at most
+ * for one character's own records, with `cursor` (the last key of the page
+ * before: its answer's `next`) and `limit` (EXPORT.LIMIT, at most
  * EXPORT.MAX).  Read only: it writes nothing, not even its own log line.
  *
- *   - NEVER a login key (`auth:` holds the phrase's fingerprint and the
- *     keys', `keyidx:` finds a key's character) nor the hidden settings
- *     (`hidden_settings`, hidden.js: never anywhere but the Test panel's own
- *     page): asked for, a 400; met on a page, left out and counted
- *     (`skipped`).
- *   - A prefix is one the registry marks (STORAGE_MARKS), nothing typed
- *     free: a record a longer marked prefix owns is left out of a shorter
- *     one's page (none today; the suite holds it).
+ *   - AN ALLOW LIST (the gatekeeper's medium, sitting 16: a list of what it
+ *     never gives, written by hand, would give a new secret record by
+ *     default, and gave the device ids in `device:`, `lspin:` and
+ *     `botstat:`).  It gives only the registry's prefixes in EXPORT.ALLOW,
+ *     chosen one by one: a character's own records a copy of them needs, and
+ *     every record that holds the world's value.  Anything else -- a prefix
+ *     marked since, a record no mark owns, the logins (`auth:`, `keyidx:`),
+ *     the device ids and anti-bot evidence (`device:`, `lspin:`,
+ *     `botstat:`), the words players send each other, a wallet's address,
+ *     the hidden settings, the live flags, the owner's log -- is refused
+ *     when asked for by name (a 400), and left out of a page that meets it
+ *     (counted in `skipped`).  EXPORT.KEPT_OUT says why for each of a
+ *     character's records left out.
  *   - A READ THE OWNER PAYS FOR each time it runs: a page reads up to its
  *     `limit` rows (`read` in the answer), and the whole room once over is
  *     every row it holds.  It costs only when the owner runs it, behind the
@@ -82,25 +86,48 @@ import { STORAGE_MARKS, marksOf } from './storagemarks.js';
 export const EXPORT = Object.freeze({
   LIMIT: 50,
   MAX: 200,
-  /* the records it never gives: a login key's, the hidden settings */
-  NEVER: Object.freeze(['auth:', 'keyidx:', 'hidden_settings']),
+  /* WHAT IT GIVES, one by one (a registry prefix, as STORAGE_MARKS spells it).
+     A new mark is not given until it is added here. */
+  ALLOW: Object.freeze([
+    /* a character's own: what a copy of them needs */
+    'rpg:', 'bank:', 'inbox:', 'pets:', 'gear_prov:', 'char:', 'rpgsnap:', 'rpgsnap_at:',
+    'codex:', 'fishlog:', 'achv:', 'life:', 'aponce:', 'guild_claims:', 'gearlock:', 'nml_state:',
+    'farm:', 'farmorders:', 'harden_ledger:', 'frozen:', 'testmode:', 'cadence:', 'daily_rewards:',
+    'acc:', 'friends:', 'chat_mute:', 'chain_score:', 'clan_by_player:', 'party_by_player:',
+    /* the world's value held between players, or by the room */
+    'mkt_order:', 'store_listing:', 'duelEscrow:', 'arena_entry:', 'arena_stake:', 'bounty:',
+    'jackpot:draw', 'trade2wpn:', 'death_pile:', 'shop_stock',
+  ]),
+  /* a character's records it keeps out, and why (the suite holds that every
+     character's record is in one list or the other) */
+  KEPT_OUT: Object.freeze({
+    'auth:': 'the login: the phrase\'s fingerprint, the keys\' and the devices\'',
+    'keyidx:': 'a login key\'s fingerprint, to its character',
+    'botstat:': 'anti-bot evidence: device fingerprints and the signals\' numbers',
+    'lspin:': 'keyed by a device\'s id',
+    'friend_msg:': 'the words one player sent another',
+    'bro_link:': 'a wallet\'s address',
+  }),
   ID_RE: /^[A-Za-z0-9_.-]{1,120}$/,
   CURSOR_MAX: 400,
 });
 
+/* the marks the list allows: a key is given only when the mark that owns it
+   (the longest marked prefix it starts with, storagemarks.js marksOf) is one */
+const ALLOWED_MARKS = new Set(EXPORT.ALLOW.map((p) => STORAGE_MARKS[p]).filter(Boolean));
+
 /* a character's records keyed other than `<prefix><id>`: the snapshots'
-   ring (`rpgsnap:<id>:<day>`), the login wheel's stamp of a character with no
-   device (`lspin:p:<id>`; a device's own is `lspin:d:<device>`, not theirs by
-   its key), and the login streak (`cadence:login:<id>`, the one scope today) */
+   ring (`rpgsnap:<id>:<day>`) and the login streak (`cadence:login:<id>`,
+   the one scope today) */
 const PLAYER_KEY_WAYS = Object.freeze({
   'rpgsnap:': (id) => ({ list: 'rpgsnap:' + id + ':' }),
-  'lspin:': (id) => ({ key: 'lspin:p:' + id }),
   'cadence:': (id) => ({ key: 'cadence:login:' + id }),
 });
 
-/** True for a key the export never gives (EXPORT.NEVER). */
-export function exportNever(key) {
-  return typeof key !== 'string' || EXPORT.NEVER.some((n) => (n.endsWith(':') ? key.startsWith(n) : key === n));
+/** True only for a key the allow list gives (EXPORT.ALLOW, by the mark that
+ *  owns it): an unmarked key, or one a mark off the list owns, is false. */
+export function exportAllowed(key) {
+  return typeof key === 'string' && ALLOWED_MARKS.has(marksOf(key));
 }
 
 /** What a page reads: `{sources: [{key} | {list}], prefix?, player?}`, in key
@@ -111,13 +138,13 @@ export function exportSources(q) {
   if (!prefix === !player) return { error: 'ask', words: 'Say one of prefix (a registry prefix, as `rpg:`) or player (a character\'s id).' };
   if (prefix) {
     if (!Object.prototype.hasOwnProperty.call(STORAGE_MARKS, prefix)) return { error: 'prefix', words: 'Not a prefix the registry marks (storagemarks.js STORAGE_MARKS).' };
-    if (exportNever(prefix)) return { error: 'never', words: 'The export never gives the login keys or the hidden settings.' };
+    if (!EXPORT.ALLOW.includes(prefix)) return { error: 'never', words: 'The export gives only the records on its list (admin.js EXPORT.ALLOW): never the logins, device ids, anti-bot evidence, players\' words, the hidden settings or the room\'s own books.' };
     return { prefix, sources: [prefix.endsWith(':') ? { list: prefix } : { key: prefix }] };
   }
   if (!EXPORT.ID_RE.test(player)) return { error: 'player', words: 'A character\'s id: letters, digits, `_`, `.` or `-`.' };
   const sources = [];
-  for (const p of Object.keys(STORAGE_MARKS)) {
-    if (STORAGE_MARKS[p].whose !== 'player' || exportNever(p)) continue;
+  for (const p of EXPORT.ALLOW) {
+    if (!STORAGE_MARKS[p] || STORAGE_MARKS[p].whose !== 'player') continue;
     sources.push(PLAYER_KEY_WAYS[p] ? PLAYER_KEY_WAYS[p](player) : { key: p + player });
   }
   const at = (s) => s.key || s.list;
@@ -167,7 +194,7 @@ export async function exportPage(storage, q) {
   const rows = [];
   let skipped = 0;
   for (const [k, v] of got) {
-    if (exportNever(k) || (own && marksOf(k) !== own)) { skipped++; continue; }
+    if (!exportAllowed(k) || (own && marksOf(k) !== own)) { skipped++; continue; }
     rows.push({ k, v });
   }
   return {
