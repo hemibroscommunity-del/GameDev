@@ -492,7 +492,7 @@ async function onFile19(id) {
       && P.weaponStash[1].gearBase === 'steel' && P.weaponStash[1].tierMult === 1.5 && P.weaponStash[1].name === 'Black Steel Flame Great Sword' && P.weaponStash[2].gearBase === 'iron' && P.weaponStash[2].quality === 'rare'
       && P.weaponStash[3].type === 'bow', P && P.weaponStash);
   check('10: the Pine Shield is still wood (never a shield)', !!P && P.shield && P.shield.gearBase === 'wood' && P.shield.name === 'Pine Shield', P && P.shield);
-  check('10: stored at _v 20 with no wood greatsword left in it', RPG_SCHEMA_VERSION === 20 && stored._v === 20
+  check('10: stored at the current _v (20 or later) with no wood greatsword left in it', RPG_SCHEMA_VERSION >= 20 && stored._v === RPG_SCHEMA_VERSION   /* v2.3.5083: the schema moved on (21, econ-field), as check 2's did at 20 */
     && ![stored.weapon, ...stored.weaponStash].some((w) => w && w.type === 'greatsword' && w.gearBase === 'wood'), { v: stored._v });
   check('10: written by the load\'s one re-put (and the join\'s own save), never one put a weapon', state._counts.rpgPuts - puts0 <= 2, state._counts.rpgPuts - puts0);
   const echo = ws.sent.filter((m) => m.type === 'player_state').pop();
@@ -526,7 +526,7 @@ async function onFile19(id) {
   await join(ws2, id);
   const P2 = room.playerState[id];
   check('11: mended, the next login converts it and the record is current',
-    P2.weapon.gearBase === 'copper' && state._store.get('rpg:' + id)._v === 20, P2.weapon);
+    P2.weapon.gearBase === 'copper' && state._store.get('rpg:' + id)._v === RPG_SCHEMA_VERSION, P2.weapon);   /* v2.3.5083: current, 21 since econ-field */
   await leave(ws2);
 }
 

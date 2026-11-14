@@ -806,7 +806,7 @@ files in the repository, and cost no rows.
 | The family table (9.1) | `ASSET_FAMILIES` (NEW) | One row a family of files under `public/`: its path pattern (never a folder), its kind (`supplied`, `made`, `data`: closed, `ASSET_KINDS`), its tool and sources when made, its draw path (closed, `ASSET_DRAWS`), its bundle of colours, its pixel-size rule, its bar. With it, `ASSET_REACH`: which files are in reach. Data: no I/O, no imports. | a person, by hand, in `tools/assets/families.mjs` | `tools/assets/shipped.mjs`; `tools/assets/fightmb.mjs` (9.1, part two); `tools/assets/finish.mjs` (9.2); `tools/guards/asset-door.test.mjs` (9.3) | `tools/assets/families.mjs` | none |
 | The record of what ships (9.1) | `tools/assets/shipped.json` (NEW) | One row a file in reach: `path`, `bytes`, `sha256`, `family`, `kind`; a file the door made adds `door` (its sources' hashes, its recipe, the tool's tag). The head: the totals made from the rows, and the count of `unsorted` (a census: it only falls). | `node tools/assets/shipped.mjs --write` (never by hand); `finish.mjs` writes a made file's row | the gate (9.3); the census `docs/plan/census/assets.md` | `tools/assets/shipped.json` | none |
 
-### Open, to be ruled before the card that meets it builds
+### Open, to be ruled before the card that meets it builds (ruled below, 5083)
 
 **Where a per-player count that the sums read is kept.** Two rules meet:
 
@@ -828,6 +828,27 @@ cost:
 so it can hold the card's other counters and cannot hold anything the sums
 read. This page does not choose. Card E meets it first (step 10.4's `econ`),
 then card Q (10.2).
+
+**Ruled (the planning session, for the owner, who asked that server costs
+not go up; built by card E, tag 5083): the first way.** One field on the
+`rpg:` record, `_econ`, the second named exception to rule 1 beside `_v`: no
+new row. It holds the character's running minted and burned:
+
+```
+_econ: { v: 1, g: { m, b }, i: { <bag key>: { m, b } } }
+```
+
+`g` the gold, `i` each bag key by itself (part 3, "What is summed"); `m`
+minted, `b` burned, whole numbers, signed (a `set` road books its difference
+signed, part 3's edge 1). `move` and `escrow` roads change no world total
+and are not kept. Its one writer is the two doors (`gold.js`, `bag.js`, card
+E's next PR), through the purse's own put; `_saveRpg` writes it from its
+fixed list (`econClean`: known keys, finite numbers, at most 512 bag keys,
+a newer `v` kept whole); the `econ-field` migration (schema 21) gives every
+record one, so a worker rolled back past it refuses the record at the join
+rather than saving it without its counts. **The sitting's card (10.2) goes
+inside `_econ`, under a key of its own**: there is no third exception, and
+`migrations.test` §econ fails one.
 
 ## 8. Names: what is taken, and what was chosen
 
