@@ -2200,6 +2200,8 @@ not. And measure a preload's effect rather than assuming it helped.
 here the instrument did not exist at all until v2.3.2328), §51 (the other "the
 art is bigger than what we draw" finding from the same measurement pass).
 
+Held by: tools/guards/traps-screens.test.mjs (tag 5324).
+
 ---
 
 ## §53 — Measuring image fidelity through a `<canvas>` invents a catastrophe (v2.3.2328)
@@ -2664,6 +2666,8 @@ viewport" is the obvious fix for an iOS keyboard bug, and here it CAUSES this
 one.** It was the first thing written for v2.3.2391 and it had to be thrown
 away — it re-flows the column beautifully and hands you a 228px scroll
 container in exchange.
+
+Held by: tools/guards/traps-screens.test.mjs (tag 5324).
 
 ## 65. `getBoundingClientRect()` on a transformed element is not its layout box (v2.3.2391)
 
@@ -3263,6 +3267,8 @@ the request and never answers. Twelve of its twenty-three assertions go red
 against the pre-fix panel, and its captured panel text is character for
 character the owner's screenshot.
 
+Held by: tools/guards/traps-screens.test.mjs (tag 5324).
+
 ## 78. Freeing a gesture is not an invitation to put the old one back (v2.3.2542)
 
 Three versions of one control in four days, and the middle one is the trap.
@@ -3616,6 +3622,8 @@ whatever the layout looks like.
 
 **Related:** §61 (a still-frame assertion cannot see a frozen animation) — the
 same defect, found by the same instrument, one layer down.
+
+Held by: tools/guards/traps-screens.test.mjs (tag 5324).
 
 ---
 
@@ -5357,6 +5365,8 @@ too (QuestBannerLayer.jsx). And test the context, not just the numbers:
 mp-questbanner now asserts the banner is not inside `.brotown-wrap`. A hit
 test cannot do it for a `pointer-events:none` overlay, because
 `elementFromPoint` skips it.
+
+Held by: tools/guards/traps-screens.test.mjs (tag 5324).
 
 ## 135. Letting the grass into the town: it meets every street along a ruler line (v2.3.3031)
 
