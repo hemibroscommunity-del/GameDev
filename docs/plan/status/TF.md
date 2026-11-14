@@ -12,12 +12,13 @@ state: ready
   `folkSkill.js` from `_drawFolk`; `?folkskills=0` back to PR 1's poses.
   Runs: membudget +3.2 MB chip, no line raised; heldsweep (stand, town)
   0 over in 4 runs after the garbage cut (strip-made 7.3-9.1 ms);
-  questline 187/187; mp-folkwork 30/30 + the ghost check upright 11/11;
-  the ghost audit's fire 61 frames (same as `main`).
+  questline 187/187; mp-folkwork 41/41 (the ghost check after each of the
+  five, pictures); sitting 12's review mended (folkwalk 4, the light, the
+  load gate, 6d/6e); main 82fb78d merged in.
 
 ## Next
 
-- #1812 ready (checks green on 14a8c24): sitting 12's list. No PR 3.
+- #1812 ready again once its checks pass: the next batch. No PR 3.
 
 ## Found
 
@@ -28,8 +29,7 @@ state: ready
   the tag check counts it taken: PR 2 is 5462 (the card's spare).
 - `role-bake.mjs --hashes`: eight sets read "code changed" on `main` (a
   look-roles WARN for any PR touching the look sets).
-- PR 2 adds a switch row (`?folkskills`): it meets other row-adding PRs on
-  `docs/SWITCHES.md`'s count line (rule 3).
+- PR 2's switch row (`?folkskills`) meets other row-adding PRs on SWITCHES.md.
 - `mp-ghostaudit` `BT_GHOST_ONLY=fire,cook BT_GHOST_OUTFITS=bare` on `main`
   (96ffa005): the cook never starts (0 frames, 2 FAIL); the fire passes.
 - `mp-heldsweep` `stand,town` on `main` (96ffa005), 1 run in 5: `R > J`
