@@ -47,6 +47,9 @@ import { FARM_ANIM_TURN } from '@/game/farmWork.js';
 import { folkBeatOf } from '@/game/townsfolkWalk.js';
 import { Container, Sprite, Texture } from 'pixi.js';
 import { shirtFill } from './traits/shirtColorCatalog.js';
+import { SHADE } from './formShade.js';
+import { lookFolkWantedAtLoad } from './lookFolk.js';
+import { folkWalkWanted } from '@/game/townsfolkDay.js';
 
 /* `?folkwork=0` (folkPose.js's switch, read the same way): no work poses on
    this phone, so none of these figures is loaded either.  `?folkskills=0`
@@ -56,7 +59,13 @@ import { shirtFill } from './traits/shirtColorCatalog.js';
 const _workOff = (() => { try { return /(^|[?&])folkwork=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
 const _skillsOff = (() => { try { return /(^|[?&])folkskills=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
 const _off = _workOff || _skillsOff;
-const _reg = (!_off && lookPaletteWanted()) ? registerLookSheets('skills', '/sprites/look/skills/roles.json') : Promise.resolve(false);
+/* ...and only on a phone where somebody will be drawn doing them (the
+   gatekeeper's review, sitting 12): the townsfolk drawn live from their looks
+   (lookFolk.js lookFolkWantedAtLoad: `?lookfolk=0`, its switch and the look
+   palette's, as the world loads) and walking their days (`?folkwalk=0` keeps
+   them at their spots: no stop, so no trade) */
+const _load = !_off && lookPaletteWanted() && lookFolkWantedAtLoad() && folkWalkWanted();
+const _reg = _load ? registerLookSheets('skills', '/sprites/look/skills/roles.json') : Promise.resolve(false);
 
 /* effectsRenderer's numbers (held to it by townsfolk-walk.test 6) */
 export const FOLK_COOK_H = 73.9;    /* COOK_STANDIN_H: the crouching cook, world px */
@@ -247,6 +256,12 @@ export function drawFolkSkill(display, npc, look, pose, now, size, placeTraits) 
     F.label = 'npc_folk_skill';
     const mk = (anchored) => { const sp = new Sprite(Texture.EMPTY); if (anchored) sp.anchor.set(0.5, 1); sp.visible = false; F.addChild(sp); return sp; };
     F._body = mk(true); F._shirt = mk(true); F._prop = mk(true);
+    /* the world's light from above (formShade.js), as his walking figure and
+       a player's stand-ins take it (markStandIns): each across its own quad,
+       which is the figure's whole frame for all three, so one gradient.  Not
+       his head's pieces, as not a stand-in's (the gatekeeper's review, sitting
+       12: unshaded, Farmer Bro's legs jumped up to ~28% brighter at a stop) */
+    F._body._vShade = SHADE.figure; F._shirt._vShade = SHADE.figure; F._prop._vShade = SHADE.figure;
     F._traits = { hair: mk(false), beard: mk(false), species: mk(false), eyestyle: mk(false), eyewear: mk(false), hat: mk(false) };
     display.addChildAt(F, 0);
     display._folkSkill = F;
@@ -314,6 +329,6 @@ export function folkSkillProbe(display, live) {
 
 if (typeof window !== 'undefined') {
   /* QA (mp-folkwork): is this phone drawing them, and which parts are in */
-  window.__btFolkSkill = () => ({ off: _off, skillsOff: _skillsOff, on: lookPaletteOn(),
+  window.__btFolkSkill = () => ({ off: _off, skillsOff: _skillsOff, loaded: _load, on: lookPaletteOn(),
     sheets: FOLK_SKILL_POSES.map((p) => [p, lookHas('skills', SPEC[p].sheet)]) });
 }

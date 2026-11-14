@@ -72,7 +72,12 @@ const CHECK = process.argv.includes('--check');
 /* v2.3.3750: the 8-bit cut's bar -- the worst colour of a sheet within this
    many levels a channel of the 16-bit truth, in any look (the orchestrator's
    line for the owner's "I won't notice at all from anything at 256") */
-const CUT_BAR = Number(process.env.ROLE_BAKE_BAR || 16);
+/* v2.3.5462: the law's bar (WORLD-BIBLE: 16 levels a colour), and the bake's;
+   a sheet cut at any other is recorded in its manifest (`bar`), however it
+   came to be (the set module's `bars`, or ROLE_BAKE_BAR for a whole bake), so
+   townsfolk-walk.test 6e can ask for its written reason */
+const LAW_BAR = 16;
+const CUT_BAR = Number(process.env.ROLE_BAKE_BAR || LAW_BAR);
 /* ROLE_BAKE_PROBE=jog-east:948,53 -- one display texel's story, for debugging a bake */
 const PROBE_AT = process.env.ROLE_BAKE_PROBE ? ((m) => [m[1], [Number(m[2]), Number(m[3])]])(/^([a-z-]+):(\d+),(\d+)$/.exec(process.env.ROLE_BAKE_PROBE)) : null;
 
@@ -435,7 +440,7 @@ async function main() {
         + `  roles ${r.counts.join('/')}  unexplained ${r.unexplained}  ambiguous ${r.ambiguous}  pick ${r.pick}, ${r.split} split`
         + `  check ${r.check.texels} texels, ${r.check.over1} over 1, max ${r.check.max}, mean ${r.check.mean}${r.check.fickle ? ', ' + r.check.fickle + ' fickle' : ''}  (${Date.now() - t0} ms)`);
       const artFiles = meta.art[name] || [];
-      out.sheets[name] = { ...(sheetBits !== bits ? { bits: sheetBits } : {}), ...(BAR !== CUT_BAR ? { bar: BAR } : {}), ds: r.ds, frames: r.frames, ...(r.fw !== meta.fw || r.fh !== meta.fh ? { fw: r.fw, fh: r.fh } : {}), w: r.w, h: r.h, tableRows, entries: r.entries, ends: r.ends,
+      out.sheets[name] = { ...(sheetBits !== bits ? { bits: sheetBits } : {}), ...(BAR !== LAW_BAR ? { bar: BAR } : {}), ds: r.ds, frames: r.frames, ...(r.fw !== meta.fw || r.fh !== meta.fh ? { fw: r.fw, fh: r.fh } : {}), w: r.w, h: r.h, tableRows, entries: r.entries, ends: r.ends,
         cells: r.cells, split: r.split, quant: r.quant || undefined, artFiles, art: hashFiles(artFiles), bytes: png.length };
       const file = path.join(outDir, name + '.png');
       if (CHECK) {

@@ -120,9 +120,18 @@ the figure's crown. What is different is where the figure comes from.
 - **His place and size.** His boots on his spot (the figure's own boot
   point), at his size against a player's, at the figure's own height
   against a player's, as the player's figures are matched.
+- **His light.** His body, tee and tool take the world's light from above
+  (`formShade.js`), as his walking figure and a player's stand-ins do: each
+  across its own quad, which is the figure's whole frame for all three, so
+  one gradient (the gatekeeper's review, sitting 12: unshaded, Farmer Bro's
+  legs were up to ~28% brighter at a stop than walking to it). His head's
+  pieces are not shaded, as a stand-in's are not.
 - **Loading.** The set loads behind the loading screen with the other look
   sets; the crowns are read behind the world's (`prewarmFolkBodies` waits).
-  Nothing loads, and nothing is baked, in play. A part not in (no look
+  Nothing loads, and nothing is baked, in play. Only on a phone where
+  somebody will be drawn doing them: not under `?lookfolk=0` or its switch
+  (the photographs; `lookFolk.js` `lookFolkWantedAtLoad`) nor `?folkwalk=0`
+  (they stand at their spots: no day, no trade). A part not in (no look
   palette, the set missing, no crowns, the tee's strip missing): he stands
   where he would have worked.
 - **Memory, measured** (`mp-membudget`, this box, the same build with the
@@ -160,13 +169,17 @@ the figure's crown. What is different is where the figure comes from.
   `effectsRenderer`'s numbers, the set on disk, the switch, the wiring) and
   `mp-folkwork` (on a phone upright and sideways, and a computer: each trade
   drawn from the numbers, his tee on, the farmer's tools, no frame stood;
-  upright, the ghost check: off his trade his figure put away and his
-  walking body back, never both; `?folkskills=0` back to PR 1's pickup and
-  `?folkwork=0` standing, neither loading the set). Its pictures:
+  upright, the ghost check after EACH of the five trades, the card's ghost
+  sample for the townsfolk (the gatekeeper's ruling, sitting 12): nothing of
+  it left, his walking body back, never both; `?folkskills=0` back to PR 1's
+  pickup and `?folkwork=0` standing, neither loading the set, nor
+  `?lookfolk=0` or `?folkwalk=0`), and `mp-folkwalk` §4 (Chef Blaze cooks;
+  PR 1's pickup where the trades' figures are off). Its pictures:
   `tools/qa/mp/out/folkwork-*.png`; as they were when this shipped,
   `docs/specs/townsfolk-work/poses-upright.png`, `poses-sideways.png`,
   `poses-computer.png` (the cook, the chop, the farmer's kneel, hoe and
-  water) and `noskills-pickup.png`. `mp-ghostaudit` plays the PLAYER's
+  water), `after-each.png` (the moment after each), `shade.png` (the light
+  on him, before and after) and `noskills-pickup.png`. `mp-ghostaudit` plays the PLAYER's
   figures, which this does not change: its fire passes (61 frames) and its
   cook starts on neither this branch nor `main` (0 frames: the test's).
 

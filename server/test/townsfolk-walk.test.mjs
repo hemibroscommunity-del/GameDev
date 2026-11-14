@@ -33,7 +33,7 @@
  *   6. v2.3.5462, at their own trades (card TF PR 2): Chef Blaze cooks, Woodworker
  *      Bro chops, Farmer Bro hoes, waters and kneels, in the player's skill
  *      figures from the `skills` look set's colour numbers (rendering/folkSkill.js,
- *      entityRenderer _drawFolkSkill): its copies of effectsRenderer's numbers,
+ *      drawn from entityRenderer _drawFolk's hook): its copies of effectsRenderer's numbers,
  *      the set on disk, the switch, the wiring (no bake), behind the loading
  *      screen.  2j names a tool for each (the pan, the axe, the hoe, the can).
  *   5. v2.3.4098, townsfolk never block you (the owner, 2026-11-03: "I walked
@@ -394,7 +394,9 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
      bar and its written reason in its set module (`bars`).  BREAK PROOF:
      empty the cook's `why` in lookSets/skills.js -> 6e red; bake a sheet with
      ROLE_BAKE_BAR=23 and no `bars` entry -> 6e red (its manifest's bar has
-     no reason). */
+     no reason: role-bake.mjs records any bar off the law's 16, LAW_BAR,
+     however it came; v2.3.5462, the gatekeeper's review, sitting 12: it
+     recorded only one off the run's own, so a whole bake at 23 wrote none). */
   {
     const { readdirSync, existsSync } = await import('node:fs');
     const lookDir = new URL('public/sprites/look/', root);
@@ -417,7 +419,9 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
   /* 6c: the switch, and the memory: no `?folkwork` work poses, none of the set loaded */
   check('6c `?folkwork=0` stands them for the trades too; `?folkskills=0` (its row in the switch table) puts them back in PR 1\'s poses; either loads none of the set',
     /const _workOff = \(\(\) => \{ try \{ return \/\(\^\|\[\?&\]\)folkwork=0\(&\|\$\)\/\.test/.test(fs6) && /const _skillsOff = \(\(\) => \{ try \{ return \/\(\^\|\[\?&\]\)folkskills=0\(&\|\$\)\/\.test/.test(fs6)
-      && /const _off = _workOff \|\| _skillsOff;/.test(fs6) && /const _reg = \(!_off && lookPaletteWanted\(\)\) \? registerLookSheets\('skills'/.test(fs6)
+      && /const _off = _workOff \|\| _skillsOff;/.test(fs6)
+      && /const _load = !_off && lookPaletteWanted\(\) && lookFolkWantedAtLoad\(\) && folkWalkWanted\(\);/.test(fs6) && /const _reg = _load \? registerLookSheets\('skills'/.test(fs6)
+      && /export function lookFolkWantedAtLoad\(\)/.test(src('src/rendering/lookFolk.js')) && /if \(!lookFolkWantedAtLoad\(\)\) return false;/.test(src('src/rendering/lookFolk.js'))
       && /if \(_off\) return false;/.test(fs6) && /folkwork=0/.test(src('src/rendering/folkPose.js'))
       && /name: '\?folkskills', side: 'page', system: 'render', kind: 'switch', born: 5462, thrown: '=0', risk: 'memory'/.test(src('tools/guards/lib/switches.mjs'))
       && /if \(isFolkSkill\(work\)\) work = folkSkillFallback\(work\);/.test(src('src/rendering/systems/entityRenderer.js')));
@@ -439,7 +443,15 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
     /display\._folkSkill\.destroy\(\{ children: true \}\);/.test(fs6) && /dropFolkSkill\(display\);/.test(er6) && /if \(!_folkLive\) hideFolkSkill\(display\);/.test(er6));
   check('...his walking figure shown only once he is not at his trade (no visible flipped each frame: TRAPS §218)',
     (er6.match(/if \(!folk\.visible\) folk\.visible = true;/g) || []).length === 1
-      && er6.indexOf('if (!folk.visible) folk.visible = true;') > er6.indexOf('if (this._drawFolkSkill(npc, display, look, work, now)) return true;'));
+      && er6.indexOf('if (work && isFolkSkill(work) && drawFolkSkill(display, npc, look, work, now, size, placeSkillTraitsFor)) return true;') > 0
+      && er6.indexOf('if (!folk.visible) folk.visible = true;') > er6.indexOf('if (work && isFolkSkill(work) && drawFolkSkill(display, npc, look, work, now, size, placeSkillTraitsFor)) return true;'));
+  /* the gatekeeper's review, sitting 12: the world's light from above on his
+     figure, as on his walking one (formShade.js reads `_vShade`; a sprite
+     with neither it nor a figure's `_vShadeKids` above it is drawn unshaded).
+     BREAK PROOF: drop the three marks -> red. */
+  check('...in the world\'s light from above (formShade.js): his body, tee and tool shaded as a figure, as a player\'s stand-ins are (markStandIns)',
+    /F\._body\._vShade = SHADE\.figure; F\._shirt\._vShade = SHADE\.figure; F\._prop\._vShade = SHADE\.figure;/.test(fs6)
+      && /import \{ SHADE \} from '\.\/formShade\.js';/.test(fs6));
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

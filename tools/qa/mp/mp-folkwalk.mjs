@@ -103,12 +103,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 4. at work ── */
     await goNear('Chef Blaze', 30, 180);
-    /* v2.3.5460: the pickup at his counter, no longer the mining swing (the
-       owner, 2026-11-14: "chef blaze should cook, not hammer like an anvil";
-       docs/specs/townsfolk-work.md).  Only the blacksmith swings the pickaxe. */
-    const chef = await waitPose('Chef Blaze', 'pickup', 45000);
+    /* v2.3.5460: no longer the mining swing (the owner, 2026-11-14: "chef
+       blaze should cook, not hammer like an anvil"; docs/specs/townsfolk-work.md).
+       Only the blacksmith swings the pickaxe.  v2.3.5462: he cooks (card TF
+       PR 2); PR 1's pickup at his counter under `?folkskills=0` (or where the
+       trades' figures cannot be drawn: folkSkillFallback) */
+    const skillsOn = await P.page.evaluate(() => { const f = window.__btFolkSkill ? window.__btFolkSkill() : null; return !!(f && f.on && !f.off && !f.skillsOff && f.sheets.every((x) => x[1])); });
+    const chefPose = skillsOn ? 'cook' : 'pickup';
+    const chef = await waitPose('Chef Blaze', chefPose, 45000);
     await shot('chef-blaze');
-    rec.ok(`4. Chef Blaze works at his counter by the Cookhouse: drawn in the pickup, not the pickaxe's swing (${chef && chef.pose})`, !!chef && chef.pose === 'pickup' && chef.live, chef);
+    rec.ok(`4. Chef Blaze works at his counter by the Cookhouse: drawn ${skillsOn ? 'cooking' : 'in the pickup'}, not the pickaxe's swing (${chef && chef.pose})`, !!chef && chef.pose === chefPose && chef.live, chef);
     await goNear('Blacksmith Bro', 0, 260);   /* past the 200 px a giver stops for you at */
     const smith = await waitPose('Blacksmith Bro', 'mine', 45000);
     await shot('blacksmith');

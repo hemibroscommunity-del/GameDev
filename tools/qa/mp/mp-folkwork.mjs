@@ -19,9 +19,16 @@
  *   4. `?folkwork=0`: Chef Blaze never cooks, and the set is not loaded;
  *   5. `?folkskills=0` (the trades' own switch): Chef Blaze back in card TF
  *      PR 1's pickup at his stop, never the cook, and the set not loaded;
- *   6. no page errors.
+ *   6. no page errors;
+ *   7. (the gatekeeper's review, sitting 12) upright, after EACH of the five
+ *      trades, nothing of it left: his walking body back (or the next trade's
+ *      figure alone), never both -- the card's ghost sample for the
+ *      townsfolk (mp-ghostaudit plays the player's body); a picture of each
+ *      moment (out/folkwork-after-*.png);
+ *   8. where nobody is drawn doing them, the set is not loaded: `?lookfolk=0`
+ *      (the photographs) and `?folkwalk=0` (no day, so no trade).
  * Run after `npm run build`: node tools/qa/mp/run.mjs folkwork
- * (BT_FOLKWORK_ONLY=upright|sideways|computer|off|noskills runs one part.)
+ * (BT_FOLKWORK_ONLY=upright|sideways|computer|off|noskills|unseen runs one part.)
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -43,6 +50,7 @@ const WORKERS = [
 ];
 const watchFrom = (part, W) => (part.key === 'upright' ? W.from : W.side);
 const TOOL = { farmhoe: true, farmwater: true };
+const TRADES = WORKERS.flatMap((w) => w.poses);
 const HIDE = '.bt-quest-banner, .bt-quest-plate, *:has(> [data-coach-dismiss]) { visibility: hidden !important; }';
 
 export async function run({ browser, wsPort, webPort, rec }) {
@@ -136,22 +144,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
             const ok = !!d && d.pose === pose && d.live && !!sk && sk.shown === 'skill' && sk.pose === pose && sk.look === true && sk.shirt === true
               && (!TOOL[pose] || sk.prop === true) && sk.misses === 0 && sk.both === false;
             rec.ok(`${part.key}: ${W.name} ${pose === 'cook' ? 'cooks with his pan' : pose === 'chop' ? 'chops with his axe' : pose === 'farmkneel' ? 'kneels in the soil' : pose === 'farmhoe' ? 'hoes' : 'waters'}: the skill figure from the colour numbers, his tee on${TOOL[pose] ? ', the tool in his hands' : ''} (${d && d.pose}, ${sk ? `frame ${sk.frame}, ${sk.height} px tall, ${sk.misses} frames stood` : 'no figure'})`, ok, d);
-          }
-          /* the ghost check (the ghost audit's "after it, nothing of it is
-             left"): off his trade (walking on, or at a standing stop), the
-             trade's figure is put away and his walking body is back, never
-             both at once (upright: once a trade is enough) */
-          if (part.key === 'upright') {
-            let off = null;
-            const end = Date.now() + 90000;
-            while (Date.now() < end && !off) {
-              const q = await T.drawnOf(W.name);
-              if (q && q.live && !W.poses.includes(q.pose)) off = q;
-              else await T.P.page.waitForTimeout(300);
+            /* the ghost check, the card's ghost sample for the townsfolk's
+               trades (the gatekeeper's ruling, sitting 12: mp-ghostaudit plays
+               the PLAYER's body): after EACH of the five, nothing of it is left
+               -- his walking body back (or the next trade's figure, alone),
+               never both; a picture of each moment (upright: once a trade) */
+            if (part.key === 'upright') {
+              let off = null;
+              const end = Date.now() + 90000;
+              while (Date.now() < end && !off) {
+                const q = await T.drawnOf(W.name);
+                if (q && q.live && q.pose && q.pose !== pose) off = q;
+                else await T.P.page.waitForTimeout(250);
+              }
+              if (off) await T.shot(W.name, `folkwork-after-${pose}.png`);
+              const s2 = off && off.skill;
+              const next = off && TRADES.includes(off.pose) ? 'skill' : 'figure';
+              rec.ok(`${part.key}: ${W.name} after ${pose} (now ${off && off.pose}): nothing of it left, ${next === 'skill' ? "the next trade's figure alone" : 'his walking body back'}, never both (${s2 ? s2.shown : 'not seen'})`,
+                !!s2 && s2.shown === next && s2.both === false && (next === 'figure' || s2.pose === off.pose), off);
             }
-            const s2 = off && off.skill;
-            rec.ok(`${part.key}: ${W.name} off his trade (${off && off.pose}): the trade's figure put away, his walking body back, never both (${s2 ? s2.shown : 'not seen'})`,
-              !!s2 && s2.shown === 'figure' && s2.both === false, off);
           }
         }
       }
@@ -206,6 +217,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
     } finally {
       T.alive();
       await T.P.ctx.close().catch(() => {});
+    }
+  }
+
+  /* 8. nobody drawn doing them, so none of the set loaded (folkSkill.js _load) */
+  if (!ONLY || ONLY === 'unseen') {
+    for (const [q, why] of [['lookfolk=0', 'the townsfolk are their photographs'], ['folkwalk=0', 'they stand at their spots, no day and no trade']]) {
+      const T = await play(PARTS[0], q);
+      try {
+        rec.ok(`unseen ?${q}: in the world (guard)`, T.inWheel);
+        const fs = await T.P.page.evaluate(() => (window.__btFolkSkill ? window.__btFolkSkill() : null));
+        rec.ok(`8. ?${q} (${why}): none of the trades' figures is loaded (${fs && fs.sheets.filter((x) => x[1]).length} sheets, loaded ${fs && fs.loaded})`,
+          !!fs && fs.loaded === false && fs.sheets.every((x) => !x[1]), fs);
+        rec.ok(`unseen ?${q}: no page errors`, T.errors.length === 0, T.errors.slice(0, 5));
+      } finally {
+        T.alive();
+        await T.P.ctx.close().catch(() => {});
+      }
     }
   }
 }
