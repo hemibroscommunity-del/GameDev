@@ -1,6 +1,6 @@
 card: LB
 branch: claude/plan-lb-2-window (PR 2, begun from claude/plan-lb-1-pieces)
-prs: #1771 (5500, ready; the owner to see its pieces before PR 2 uses them); PR 2 (5501) working
+prs: #1771 (5500, ready; the owner's yes); #1783 (5501, draft until questline and membudget; after #1771)
 state: working
 
 ## Done
@@ -14,9 +14,9 @@ state: working
 
 ## Next
 
-- PR 2 (5501), the window after mockup 2: built; `mp-boardslook`, `mp-boards`
-  (moved to the medals), `questline`, `mp-membudget` running. No pages (the
-  board scrolls in the band; the spec says why).
+- #1783: `questline` and `mp-membudget` (before on main, after here), then
+  ready. PR 3 (5502): Overall and the Power rating (held in #1783:
+  caps-audit refuses a cap before #1776 sends it) and PW's stat pills.
 
 ## Found
 
