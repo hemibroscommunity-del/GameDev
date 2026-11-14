@@ -140,11 +140,135 @@ async function lookBitmaps(j) {
   const ins = (j.worn || []).map((w) => w && w.inp).filter((x) => x && x.look);
   for (const x of ins) x.lb = await lookBitmap(x);
 }
+/* ═══ v2.3.5043: AN INPUT AS AN ADDRESS AND A RECTANGLE ═══
+   held-budget.mjs `masked-bake`: the page cut each input out of its sheet
+   (createImageBitmap) for every bake, 5 to 15 ms a bake on the page.  An input
+   whose sheet is an image at an address now comes as { url, sx, sy, ... }
+   (entityRenderer.js _frameInput): the sheet is fetched and decoded HERE, kept
+   a few (sheetOf: SHEET_KEEP_N sheets and SHEET_KEEP_BYTES at most, the least
+   lately used let go and closed when no job holds it; docs/MEMORY-MAP.md
+   "Characters", and each reply says what is kept, `kept`), and the rectangle is
+   drawn where the cut frame was (drawer: `ub` at sx, sy).  Every draw of an
+   input in the bake has smoothing off, so the texels are the cut's.  An
+   address that will not read is answered `urlFail` (the page cuts that one,
+   as before).  QA (`qaBm`, the page's own cut beside the address): the two
+   compared here, input by input, and answered in `qa`. */
+/* v2.3.5043, after the gatekeeper's review: 4 and 4 MB (were 6 and 8 MB) -- a
+   job uses the body, the belt and its worn pieces, and the next frame of the
+   same pose the same sheets; mp-membudget cannot see a worker's bitmaps */
+const SHEET_KEEP_N = 4, SHEET_KEEP_BYTES = 4 * 1024 * 1024;
+/* a sheet not read in this long is a failure (picture-door: a time limit and
+   a retry): the page cuts that address's frames itself from then on */
+const SHEET_URL_MS = 4000;
+const sheetsKept = new Map();   /* url -> { p, bm, bytes, uses }, the newest last */
+function sheetOf(url) {
+  let e = sheetsKept.get(url);
+  if (e) { sheetsKept.delete(url); sheetsKept.set(url, e); return e; }
+  e = { p: null, bm: null, bytes: 0, uses: 0 };
+  const ac = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const cut = ac ? setTimeout(() => ac.abort(), SHEET_URL_MS) : 0;
+  e.p = fetch(url, ac ? { signal: ac.signal } : undefined).then((r) => { if (!r.ok) throw new Error('http ' + r.status); return r.blob(); })
+    .then((b) => createImageBitmap(b))
+    .then((bm) => { clearTimeout(cut); e.bm = bm; e.bytes = bm.width * bm.height * 4; sheetsTrim(); return bm; },
+      () => { clearTimeout(cut); if (sheetsKept.get(url) === e) sheetsKept.delete(url); return null; });
+  sheetsKept.set(url, e);
+  return e;
+}
+function sheetsKeptBytes() {
+  let bytes = 0;
+  for (const e of sheetsKept.values()) bytes += e.bytes;
+  return bytes;
+}
+function sheetsTrim() {
+  let bytes = sheetsKeptBytes();
+  for (const [u, e] of sheetsKept) {
+    if (bytes <= SHEET_KEEP_BYTES && sheetsKept.size <= SHEET_KEEP_N) break;
+    if (e.uses > 0 || !e.bm) continue;
+    sheetsKept.delete(u);
+    bytes -= e.bytes;
+    try { e.bm.close(); } catch (err) { /* gone */ }
+  }
+}
+/* the job's inputs by address, read (inp.ub); false, with the reply sent,
+   when one would not read.  v2.3.5043, after the gatekeeper's sitting 4
+   (#1700): every sheet's read is STARTED before the first wait.  They were
+   read one after another, each with its own 4 s (SHEET_URL_MS), so a job of
+   three sheets that would not come could sit 12 s -- past the page's 6 s
+   watch, which let the worker go as stuck.  Together, a job's reads take at
+   most one SHEET_URL_MS. */
+async function urlInputs(j, ins) {
+  const used = j._sheets = [];
+  const fail = [], qa = [];
+  const reads = ins.map((inp) => { const e = sheetOf(inp.url); e.uses++; used.push(e); return e.p; });
+  const bms = await Promise.all(reads);
+  ins.forEach((inp, i) => {
+    if (!bms[i]) { fail.push(inp.url); return; }
+    inp.ub = bms[i];
+    if (inp.qaBm) qa.push(sameCut(inp));
+  });
+  if (qa.length) j._qa = qa;
+  if (!fail.length) return true;
+  jobDone(j);
+  self.postMessage({ id: j.id, bitmap: null, cell: null, beltPending: false, raw: false, err: 'url', urlFail: fail, qa: j._qa || null, kept: sheetsKeptBytes() });
+  return false;
+}
+/* v2.3.5043, after the gatekeeper's review (#1700: the "gear numbers not
+   here" return pinned its sheets past the cap): EVERY way out of a job comes
+   through here -- its bitmaps closed, its sheets let go */
+function jobDone(j) {
+  closeInputs(j);
+  sheetsLetGo(j);
+}
+function sheetsLetGo(j) {
+  for (const e of j._sheets || []) e.uses--;
+  j._sheets = null;
+  sheetsTrim();
+  sheetsIdleSoon();
+}
+/* v2.3.5043, after the gatekeeper's sitting 4 (#1700: "freed where you leave
+   it"): the kept sheets are let go SHEET_IDLE_MS after the last job ends --
+   the armoured players gone from the screen, or the page's packed sheets
+   freed and their addresses revoked (nothing tells the worker that) */
+const SHEET_IDLE_MS = 15000;
+let sheetsIdleT = 0;
+function sheetsIdleSoon() {
+  if (sheetsIdleT) clearTimeout(sheetsIdleT);
+  sheetsIdleT = setTimeout(() => {
+    sheetsIdleT = 0;
+    for (const [u, e] of sheetsKept) {
+      if (e.uses > 0 || !e.bm) continue;
+      sheetsKept.delete(u);
+      try { e.bm.close(); } catch (err) { /* gone */ }
+    }
+  }, SHEET_IDLE_MS);
+}
+/* QA: the rectangle of the sheet read here against the page's own cut, byte for byte */
+function sameCut(inp) {
+  const w = inp.fw, h = inp.fh;
+  try {
+    const a = new OffscreenCanvas(w, h), b = new OffscreenCanvas(w, h);
+    const ax = a.getContext('2d'), bx = b.getContext('2d');
+    ax.drawImage(inp.ub, inp.sx, inp.sy, w, h, 0, 0, w, h);
+    bx.drawImage(inp.qaBm, 0, 0);
+    const da = ax.getImageData(0, 0, w, h).data, db = bx.getImageData(0, 0, w, h).data;
+    let diff = 0;
+    for (let i = 0; i < da.length; i++) if (da[i] !== db[i]) diff++;
+    return { same: diff === 0 && inp.qaBm.width === w && inp.qaBm.height === h, diff, w, h, url: String(inp.url).slice(0, 60) };
+  } catch (err) { return { same: false, err: String((err && err.message) || err) }; }
+}
+function closeInputs(j) {
+  for (const inp of [j.body, j.belt, ...((j.worn || []).map((w) => w && w.inp))]) {
+    try { if (inp && inp.bm && inp.bm.close) inp.bm.close(); } catch (e2) { /* already closed */ }
+    try { if (inp && inp.qaBm && inp.qaBm.close) inp.qaBm.close(); } catch (e2) { /* already closed */ }
+  }
+}
 const drawer = (inp) => {
-  const src = inp && (inp.bm || inp.lb);
+  const src = inp && (inp.bm || inp.lb || inp.ub);
+  /* v2.3.5043: a whole sheet (`ub`) is drawn from its rectangle; a cut one from its corner */
+  const ox = src && src === inp.ub ? inp.sx : 0, oy = src && src === inp.ub ? inp.sy : 0;
   return src ? (c, x, y, w, h) => {
     const sx = w / inp.ow, sy = h / inp.oh;
-    c.drawImage(src, 0, 0, inp.fw, inp.fh, x + inp.tx * sx, y + inp.ty * sy, inp.fw * sx, inp.fh * sy);
+    c.drawImage(src, ox, oy, inp.fw, inp.fh, x + inp.tx * sx, y + inp.ty * sy, inp.fw * sx, inp.fh * sy);
   } : null;
 };
 
@@ -245,10 +369,22 @@ self.onmessage = (e) => {
   takeJob(j);
 };
 function takeJob(j) {
+  /* v2.3.5043: inputs by address read first (urlInputs); the page told when
+     they are (`urlsRead`: an address being read when the worker is let go as
+     stuck is refused, bakeByAddress.js) */
+  if (!j._urlRead) {
+    const ins = [j.body, j.belt, ...((j.worn || []).map((w) => w && w.inp))].filter((x) => x && x.url);
+    if (ins.length) {
+      j._urlRead = true;
+      urlInputs(j, ins).then((ok) => { if (ok) { self.postMessage({ type: 'urlsRead', id: j.id }); takeJob(j); } }, () => { jobDone(j); self.postMessage({ id: j.id, bitmap: null, cell: null, beltPending: false, raw: false, err: 'url read', kept: sheetsKeptBytes() }); });
+      return;
+    }
+  }
   /* v2.3.5000: a piece drawn from numbers whose sheet is not here would be
      baked as if not worn: the job fails instead (the page asks again) */
   if ((j.worn || []).some((w) => w && w.inp && w.inp.look && !lookSheets.has(w.inp.look))) {
-    self.postMessage({ id: j.id, bitmap: null, cell: null, beltPending: false, raw: false, err: 'gear numbers not here' });
+    jobDone(j);   /* v2.3.5043: its sheets let go, its bitmaps closed (they were left pinned and open) */
+    self.postMessage({ id: j.id, bitmap: null, cell: null, beltPending: false, raw: false, err: 'gear numbers not here', qa: j._qa || null, kept: sheetsKeptBytes() });
     return;
   }
   /* v2.3.5000: the pieces from numbers made bitmaps first (the one wait: the
@@ -291,9 +427,9 @@ function runJob(j) {
   } catch (err) {
     reply.err = String((err && err.message) || err);
   }
-  for (const inp of [j.body, j.belt, ...((j.worn || []).map((w) => w.inp))]) {
-    try { if (inp && inp.bm && inp.bm.close) inp.bm.close(); } catch (e2) { /* already closed */ }
-  }
+  jobDone(j);   /* v2.3.5043: + the QA cuts, and its sheets let go */
+  if (j._qa) reply.qa = j._qa;
+  reply.kept = sheetsKeptBytes();
   self.postMessage(reply, transfer);
 };
 
@@ -325,8 +461,8 @@ function lookJob(j) {
   } catch (err) {
     reply.err = String((err && err.message) || err);
   }
-  for (const inp of [j.belt, ...((j.worn || []).map((w) => w.inp))]) {
-    try { if (inp && inp.bm && inp.bm.close) inp.bm.close(); } catch (e2) { /* already closed */ }
-  }
+  jobDone(j);   /* v2.3.5043: + the QA cuts, and its sheets let go */
+  if (j._qa) reply.qa = j._qa;
+  reply.kept = sheetsKeptBytes();
   self.postMessage(reply, transfer);
 }

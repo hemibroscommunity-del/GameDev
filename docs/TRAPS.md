@@ -19,6 +19,8 @@ mint counts FORGED remote amounts into `S.rpg.coins`. **Receipt:**
 case` lint; handoff item L. A real stake board is item A's caps-gated
 follow-up.
 
+Held by: tools/guards/traps-server-word.test.mjs (tag 5320).
+
 ## 2. Adding a field to the rpg blob ad hoc
 
 **Tempting:** the blob is right there — stick the new counter on `ps`
@@ -30,6 +32,8 @@ registered in the rule-2 table, or add to the fixed list + delta-emit
 list the way goldNuggets/goldBars did (v2.3.1192,
 `server/src/persistence.js`).
 
+Held by: tools/guards/traps-server-word.test.mjs (tag 5320).
+
 ## 3. Building a party XP-sharing system
 
 **Tempting:** parties shipped (v2.3.1185) with no XP split — obvious
@@ -39,6 +43,8 @@ roster-based split double-pays or re-derives what combat already
 settles. Item D's danger note pinned this: UI + roster only, do NOT
 touch the §7 share math. **Receipt:** `docs/specs/party.md`,
 `server/src/party.js` header, handoff item D.
+
+Held by: server/test/party.test.mjs (tag 5320).
 
 ## 4. Server-rolling the cook minigame outcome
 
@@ -1626,6 +1632,8 @@ point of damage.
 
 **Related:** §35 (a test that copies a value out of the game), §37 (measuring
 a drawing against the box that defines it).
+
+Held by: server/test/mirror-audit.test.mjs (tag 5322).
 
 ---
 
@@ -3375,6 +3383,8 @@ Related: §61 and §66 (a measurement taken in a state that cannot show the
 defect) — the first cut of the harness seeded `src:'tap'` by hand and so
 could only ever exercise the one path that worked.
 
+Held by: tools/guards/traps-fight.test.mjs (tag 5322).
+
 ## 80. A control run that still contains the fix (v2.3.2545)
 
 **Tempting, and correct as a method:** to prove a new assertion really catches
@@ -4596,6 +4606,8 @@ cleared by `joinTown`). And a "seen" flag that must survive a new build link
 goes on the shared-domain cookie too (`rosterCookie.readSharedValue` /
 `writeSharedValue`), not only in localStorage -- see the roster cookie's
 header for why every deploy is a different origin.
+
+Held by: tools/guards/traps-join-identity.test.mjs (tag 5321).
 
 ## 110. "WebGL2, so the batch shader can use textureSize / textureGrad" (v2.3.2770)
 
@@ -7378,6 +7390,8 @@ or the shared roster carrying one of those. The door's answer also corrects
 first refused, before the fix; after it, one join, let in. mp-charlock and
 mp-linger.
 
+Held by: tools/guards/traps-join-identity.test.mjs (tag 5321).
+
 ## 217. "Put a player out: forget their session, then close their socket" (v2.3.3356)
 
 **Tempting:** to put a player out of the room (the Test panel's Kick or
@@ -7589,6 +7603,8 @@ rock, into another monster, or past the target. After, every bow row landed
 every shot: the bow rows alone 49 of 49 checks, then the full run 128 of 129,
 its one miss a staff bolt into Frost Ridge's rock ridge, which the check now
 asks about at the boots (Frost Ridge again: 33 of 33).
+
+Held by: tools/guards/traps-fight.test.mjs (tag 5322).
 
 ## 223. "Move it by the transform: a shift is a shift" (v2.3.3458)
 
@@ -8772,6 +8788,8 @@ the screen only while the opening is still its own.
 
 **Receipt:** server/test/zone-entry.test.mjs §1-2; the sweep's V11 and its
 reviews (storage branch `claude/state-machine-sweep`, never merged).
+
+Held by: tools/guards/traps-fight.test.mjs (tag 5322).
 
 ## 263. "A blocked player's new request: add an isBlockedId check to its handler" (v2.3.4365)
 
