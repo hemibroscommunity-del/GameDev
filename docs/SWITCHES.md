@@ -20,7 +20,7 @@ addresses (`tools/qa/`), `localStorage` toggles, and the worker's `env` settings
 reads it as a flag or a comment promises it as a kill switch; any other cap's override is the emergency lever of
 `docs/specs/liveops.md` ("Caps override").
 
-251 rows: 244 switches, 6 values, 1 levers, in 23 systems.
+252 rows: 245 switches, 6 values, 1 levers, in 23 systems.
 
 ## audio
 
