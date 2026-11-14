@@ -951,6 +951,8 @@ bug report.
 it throws), `tools/qa/mp/mp-statpeek.mjs` + `HeroExpanded.jsx`
 (`data-section`), `tools/qa/mp/mp-layer.mjs`, `tools/qa/mp/mp-zonefx.mjs`.
 
+Held by: tools/guards/traps-test-tools.test.mjs (tag 5323).
+
 ## §30 — A generated sleeve for the bare trailing arm looks worse than the bare arm (v2.3.2016; CLOSED v2.3.2066)
 
 **The plausible-but-wrong move:** the owner has reported the bare arm on
@@ -2898,6 +2900,8 @@ identically is the tell.
 
 Related: §67 (the test ran, passed, and never touched the thing that was
 broken) — same family, one layer down.
+
+Held by: tools/guards/traps-test-tools.test.mjs (tag 5323).
 
 ---
 
@@ -5411,6 +5415,8 @@ rise: 0` so they sit where they spawned.
 emptying the list; and look at the picture, because a leak like this never fails
 an assertion.
 
+Held by: tools/guards/traps-test-tools.test.mjs (tag 5323).
+
 ## 137. A glyph atlas bake is a density knob, not a size knob (v2.3.3033)
 
 **The plausible move.** The damage numbers are drawn 1.75x bigger, so "bake the
@@ -6105,6 +6111,8 @@ changes in them, instead -- not merely fewer repeated bytes.  And do not trust
 measurement: the local runtime negotiated it anyway (tried 2026-10-13); the
 bots' `PlainWS` does it from the client side.
 
+Held by: tools/guards/traps-test-tools.test.mjs (tag 5323).
+
 ## 170. "setInterval(tick, 22) runs the tick 45 times a second" (v2.3.3202)
 
 Not in the Workers runtime.  Its `setInterval` waits the whole interval AFTER
@@ -6445,6 +6453,8 @@ same. The default room still worked, so CI's two phone checks stayed green.
 **The rule.** A rule that reads `request.url`'s host is tested against a worker
 started the way the tools start it, and a tool that starts a worker says what
 host it wants rather than taking wrangler's default.
+
+Held by: tools/guards/traps-test-tools.test.mjs (tag 5323).
 
 ## 182. "A socket's messages are taken one at a time, so a handler need not be awaited" (v2.3.3291)
 
@@ -6911,6 +6921,8 @@ nothing said so.
 fingerprinted address gets its own `_headers` rule in the same PR, beside its
 sibling's. **Receipt:** `/world/placed5/*` in public/_headers (with the world
 map's detail tiles under it, src/ui/worldMapDetail.js).
+
+Held by: tools/guards/traps-test-tools.test.mjs (tag 5323).
 
 ## 200. "The test watched for 1.4 s, so the shot had its chance" (v2.3.3321)
 
@@ -7795,6 +7807,8 @@ cut_owner_sounds.py renders in mp-cuelevels within 2% of its promise (hurtA
 0.71 of 0.7, notify 0.81 of 0.8, bossArrive 1.52 of 1.5); read with `-ac 1`,
 hurtA was 1.00 and notify 1.14, and bossEnrage (the roar with two thuds under
 it) 2.09 of its 1.3 -- the one mp-cuelevels failed.
+
+Held by: tools/guards/traps-test-tools.test.mjs (tag 5323).
 
 ## 231. "roundPixels puts the world on whole pixels, so the camera can stay fractional" (v2.3.3469)
 
