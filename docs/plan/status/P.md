@@ -30,8 +30,10 @@ state: ready
 
 ## Needs
 
-- Asked once (2026-11-14): may PR 5 (the 19 `.m4a`) open before PR 4,
+- Asked once (2026-11-14): (1) may PR 5 (the 19 `.m4a`) open before PR 4,
   begun from PR 3's branch, while PR 4 waits on card B? Until told, no.
+  (2) Hold 7 needs a sheet's spec, built only inside `lookPalette.js`: may
+  PR 4 export a pure `lookSheetSpec` there, or build it in the guard?
 - A reading to confirm (spec part 1, "Readings taken"): a file a repo tool
   cut from inputs the repository does not keep is `supplied` (the card's
   example, the bro's sheets); `made` needs kept sources or tool `unknown`.
