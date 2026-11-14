@@ -14,52 +14,32 @@
  * reads it changes.  Every file is read back and must hold the colours
  * written (256 or fewer), or the run stops.  Run it after every bake of a
  * townsperson (docs/specs/npc-cast.md).
+ *
+ * v2.3.5243: its decode, its colours and its WebP are the asset door's
+ * finishing tool's (tools/assets/finish.mjs readRgba, onColours,
+ * encodePng, writeWebp).  The decode is ffmpeg's where it was PIL's: the two
+ * give the same bytes for every one of public/sprites/npc/*.webp (all 65
+ * compared).  The same command line, the same colours (compared, card P
+ * PR 3), still in place: a townsperson is a MADE file, re-made by this tool.
  */
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { reduce256 } from '../../public/tools/style/quant256.js';
-import { encodeIndexedPng } from '../../public/tools/world/core/png8.js';
+import { readRgba, onColours, encodePng, verifyPng, writeWebp } from '../assets/finish.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const DIR = path.join(REPO, 'public/sprites/npc');
 const names = process.argv.slice(2).filter((a) => !a.startsWith('-'));
 if (!names.length) { console.error('usage: node tools/art/npc256.mjs <still> ...'); process.exit(2); }
 
-/* PIL reads and writes the WebP (as npc_looks_bake.py does): a WebP's own
-   pixels, no colour management */
-const PY = `
-import sys
-from PIL import Image
-src, png, out = sys.argv[1:4]
-if png == '-':
-    im = Image.open(src).convert('RGBA')
-    sys.stdout.write('%d %d\\n' % im.size); sys.stdout.flush()
-    sys.stdout.buffer.write(im.tobytes())
-else:
-    im = Image.open(png).convert('RGBA')
-    im.save(out, 'WEBP', lossless=True, quality=100, method=6)
-    back = Image.open(out).convert('RGBA')
-    n = len(back.getcolors(1 << 20))
-    if back.tobytes() != im.tobytes() or n > 256:
-        sys.exit('%s: read back %d colours, not as written' % (out, n))
-    print(n)
-`;
 for (const n of names) {
   const file = path.join(DIR, n + '.webp');
-  const raw = execFileSync('python3', ['-I', '-c', PY, file, '-', '-'], { maxBuffer: 1 << 28 });
-  const nl = raw.indexOf(10);
-  const [w, h] = raw.subarray(0, nl).toString().split(' ').map(Number);
-  const d = new Uint8Array(raw.subarray(nl + 1));
-  if (d.length !== w * h * 4) throw new Error(`${n}: read ${d.length} bytes for ${w}x${h}`);
+  const { w, h, d } = readRgba(file);
   const before = new Set();
   for (let i = 0; i < d.length; i += 4) if (d[i + 3]) before.add((d[i] << 24 | d[i + 1] << 16 | d[i + 2] << 8 | d[i + 3]) >>> 0);
-  const r = reduce256(d, w, h);
-  const png = path.join(os.tmpdir(), `npc256-${process.pid}-${n}.png`);
-  fs.writeFileSync(png, Buffer.from(await encodeIndexedPng(r.idx, r.pal, w, h)));
-  const after = execFileSync('python3', ['-I', '-c', PY, '-', png, file]).toString().trim();
-  fs.unlinkSync(png);
-  console.log(`${n}.webp: ${before.size} colours -> ${after}, ${(fs.statSync(file).size / 1024).toFixed(1)} KB` + (r.err !== undefined ? `, err ${(+r.err).toFixed(4)}` : ''));
+  const q = onColours([{ w, h, d }]);
+  const png = await encodePng(q.idx[0], q.pal, w, h);
+  await verifyPng(png, q.idx[0], q.pal, w, h, n);
+  const after = writeWebp(png, file);
+  console.log(`${n}.webp: ${before.size} colours -> ${after}, ${(fs.statSync(file).size / 1024).toFixed(1)} KB` + (q.err !== undefined ? `, err ${(+q.err).toFixed(4)}` : ''));
 }

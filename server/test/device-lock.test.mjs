@@ -16,7 +16,8 @@
  *   8. a fill that fails lets the join through and is tried again later;
  *   9. the kill switch; the overview;
  *  10. every place a key is checked asks the device (a scan). */
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { srcFiles } from './src-walk.mjs';
 import { GameRoom } from '../src/index.js';
 import { DEVICE_LOCK, cleanDevice } from '../src/devicelock.js';
 
@@ -359,7 +360,7 @@ const authOf = (room, id) => room.state._store.get('auth:' + id);
 // ── 10. every key check asks the device ──
 {
   const src = new URL('../src/', import.meta.url);
-  const files = readdirSync(src).filter((f) => f.endsWith('.js'));
+  const files = srcFiles();   /* v2.3.5060: in depth, a folder's files too (src-walk.mjs) */
   const offenders = [];
   for (const f of files) {
     const text = readFileSync(new URL(f, src), 'utf8');
