@@ -1,7 +1,7 @@
 card: U
 branch: claude/plan-u-7-look (one branch a PR, each begun from the one before)
-prs: #1721, #1722, #1723, #1725, #1727, #1728 (ready), PR 7 (working)
-state: working
+prs: #1721, #1722, #1723, #1725, #1727, #1728, #1730 (all ready)
+state: ready
 
 ## Done
 
@@ -13,7 +13,7 @@ state: working
   #1722 liveops..input 2109 (the census page made again); #1723 quests..
   social 1959; #1725 movement..memory 1760; #1727 debug, art, data 1578;
   #1728 wire, combat, world 1185.
-- PR 7 (5166): look (194), and the guard takes a phase's empty word: 991.
+- PR 7 (5166, #1730): look (194), and the guard takes a phase's empty word: 991.
 
 ## Next
 
