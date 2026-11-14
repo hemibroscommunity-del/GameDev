@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6eaa1635e368c4f2f926fca17f49b8d0cde52c83",
+  "tree": "51eeaaebba2a3ef70adf7148cf439372c709ac04",
+  "committedAt": "2026-11-14T02:02:51-08:00",
+  "subject": "Merge pull request #1751 from hemibroscommunity-del/claude/codebase-upgrade-plan-mk31p4",
+  "files": 7548,
+  "bytes": 948679387,
+  "listingSha256": "0a14f7ac6f8816f80e0224595d7555cb563760002ad50d36e59c49a63698247c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

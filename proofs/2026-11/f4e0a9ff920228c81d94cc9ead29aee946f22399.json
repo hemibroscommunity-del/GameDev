@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "f4e0a9ff920228c81d94cc9ead29aee946f22399",
+  "tree": "d1c6e8c63c7a59d7aae9aad1ebde0667189974be",
+  "committedAt": "2026-11-14T02:02:59-08:00",
+  "subject": "Merge pull request #1755 from hemibroscommunity-del/claude/plan-v-8-n-walker",
+  "files": 7549,
+  "bytes": 948683758,
+  "listingSha256": "2aa462c6b2dae73a734185c13d21d18aa3c8eb98c5cc62ea4f6f81de2ceda527",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
