@@ -80,7 +80,7 @@ value, the `full` row's.
 |---|---|---|---|---|---|---|---|
 | `rate` | the frame rate: the slowest frame, in ms, the pacer may hold a steady rate at, on a screen of 60 or slower (v2.3.5224: a fast screen keeps its own steps, down to about 40, whatever the lane or the rung) | `26`, `34` | `src/game/framePacer.js` | yes | 4 | `?ladderrate` | page-thread |
 | `pixels` | the pixels drawn, a share of the lowest of the screen's own and card G's budget (renderRes.js; v2.3.5225: of the pixels drawn, phones too: the planning session's (b)) | `1`, `0.75`, `0.5` | `src/game/renderRes.js` | yes | 5 | `?ladderpix` | device |
-| `crowd` | the most other players drawn in full (your party, your target, whoever fights you and your duel always) | `50`, `30`, `15` | `src/game/crowdCap.js` | not yet | 6 | `?crowd` | monsters |
+| `crowd` | the most other players drawn in full (your party, your target, whoever fights you and your duel always) | `50`, `30`, `15` | `src/game/crowdCap.js` | yes | 6 | `?laddercrowd` | monsters |
 | `program` | one drawing program for the world's sprites, or three (chosen behind the loading screen: never a rung; v2.3.5228: the three an override's, below) | `one`, `three` | `src/rendering/paletteTex.js` | yes | 8 | `?onebatch` | memory |
 | `look` | how a character's look is made: coloured on the chip, or each baked (chosen behind the loading screen: never a rung; v2.3.5228: baked an override's, below) | `palette`, `baked` | `src/game/lookPaletteChoice.js` | yes | 8 | `lookpalette` | device |
 | `shine` | the metal's shine on gear | `on`, `off` | `src/rendering/lightfx/glint.js` | not yet | 9 | `?sheen` | render |
@@ -91,7 +91,7 @@ value, the `full` row's.
 | `step` | the longest step, in ms, one frame may move the world (frameClock.js SMOOTH_MAX_MS; the loop's clamp) | `50` | `src/game/frameClock.js`, `src/ui/BroTown.jsx` | not yet | 13 | `?dtsmooth` | page-thread |
 | `prewarm` | the prewarm ring (step 3.3, LATER): one value and no reader until 3.3 builds the ring | `0` | none yet | - | - | - | - |
 
-Not yet moved: 7 of 11 knobs with a reader.
+Not yet moved: 6 of 11 knobs with a reader.
 
 ## The overrides
 
