@@ -1,6 +1,6 @@
 card: O
 branch: claude/plan-o-9-passes (one branch a PR: claude/plan-o-<n>-<word>; begun from main)
-prs: #1787, #1792, #1794, #1800, #1814, #1815 (merged); #1832 (5223, LAST in its sitting), #1836 (5226), #1841 (5228): ready; PR 9 (5229, ready)
+prs: #1787, #1792, #1794, #1800, #1814, #1815 (merged); #1832 (5223, LAST in its sitting), #1836 (5226), #1841 (5228), #1850 (5229): ready
 state: ready
 
 ## Done
@@ -16,7 +16,7 @@ state: ready
 - #1836 (5226): the crowd cap a knob (50, 30, 15); `?laddercrowd=0`.
 - #1841 (5228): `program` and `look` knobs; their fallbacks `OVERRIDES`
   asked of `deviceProfile.js` alone; `one-program.test` (new).
-- PR 9 (5229): the passes (shine, shadows, still water) knobs of the chip
+- #1850 (5229): the passes (shine, shadows, still water) knobs of the chip
   axis after the rate; `?ladderpass=0`; (A) revised: a kept rung keeps the
   rate only (the planning session's word); `ladder-passes.test` (new).
 
