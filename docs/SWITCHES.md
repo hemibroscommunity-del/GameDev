@@ -239,6 +239,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `elemhits` | worker | switch | v2.3.2996 | false | logic |  | no | Stops every new elemental status at once; a burn already burning finishes. |
 | `freezehit` | worker | switch | v2.3.3620 | false | logic |  | no | A chill is the plain chill, not frozen a moment first. |
 | `goohold` | worker | switch | v2.3.3620 | false | logic |  | no | The goo holds as the plain stuck hold, without its longer hold and sting. |
+| `?laddercrowd` | page | switch | v2.3.5226 | =0, off, false | logic | `govern` | no | The crowd rungs are off: the owner's 50 other players drawn, whatever the rung (`?crowd=K` as before). |
 | `monstercharge` | worker | switch | v2.3.3946 | false | logic | `monstermoves` | no | No monster charges. |
 | `monstercombo` | worker | switch | v2.3.3946 | false | logic | `monstermoves` | no | No monster swings its combo. |
 | `monsterenrage` | worker | switch | v2.3.3946 | false | logic | `monstermoves` | no | No monster enrages. |

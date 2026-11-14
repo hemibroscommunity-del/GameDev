@@ -14,8 +14,18 @@
  * for the crowd ON the screen.
  *
  * No imports: the renderer calls it every frame and server/test/crowd-cap
- * runs it in node.
+ * runs it in node.  (v2.3.5226: but the lanes' table, itself a leaf.)
+ *
+ * v2.3.5226 (card O PR 6): THE CAP IS A KNOB OF THE LADDER.  crowdK() is the
+ * cap now: `?crowd=K` where the address names one (its meaning kept until
+ * card O's PR 12 makes it an override), else the lane's `crowd` at the
+ * governor's rung, read through the lanes' one reader, laneKnob('crowd'):
+ * the owner's 50 in `full`'s row, then 30, then 15 -- the work axis's first
+ * two rungs, before the rate (docs/LANES.md).  `?laddercrowd=0`: the owner's
+ * 50 whatever the rung.  Always drawn, at every rung: your party, your
+ * target, whoever fights you, your duel (crowdPick's own rule).
  */
+import { laneKnob, ladderCrowdOn } from './drawLanes.js';   /* v2.3.5226: the crowd's knob (card O) */
 
 /* the owner's number */
 export const CROWD_K = 50;
@@ -36,6 +46,33 @@ export function crowdFromSearch(search) {
   const n = Math.round(Number(v));
   return Number.isFinite(n) && n >= 1 ? Math.min(500, n) : null;
 }
+
+/* v2.3.5226: the address's word, read once (undefined: not read yet) */
+let _urlK;
+function _search() {
+  try { return (typeof location !== 'undefined' && location.search) || ''; } catch (e) { return ''; }
+}
+/** v2.3.5226: the cap now -- `?crowd=K`, else the lane's crowd at the
+ *  ladder's rung (`?laddercrowd=0`: the owner's 50).  The renderer asks it
+ *  every frame: a read of the lanes' table, no allocation.  `search` (the
+ *  tests') in place of the page's address. */
+export function crowdK(search) {
+  if (search !== undefined) {
+    const q = crowdFromSearch(search);
+    return q != null ? q : ladderCrowdOn(search) ? _knob() : CROWD_K;
+  }
+  if (_urlK === undefined) {
+    const s = _search();
+    const q = crowdFromSearch(s);
+    _urlK = q != null ? q : ladderCrowdOn(s) ? null : CROWD_K;   /* null: the knob's, each ask */
+  }
+  return _urlK != null ? _urlK : _knob();
+}
+function _knob() {
+  try { const v = Number(laneKnob('crowd')); return v > 0 ? v : CROWD_K; } catch (e) { return CROWD_K; }
+}
+/** For the tests only: forget the address. */
+export function _resetCrowdK() { _urlK = undefined; }
 
 /**
  * Which players to draw in full.

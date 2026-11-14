@@ -93,7 +93,7 @@ export const KNOBS = Object.freeze({
     what: 'the most other players drawn in full (your party, your target, whoever fights you and your duel always)',
     steps: Object.freeze([50, 30, 15]),
     say: Object.freeze(['The 50 nearest other players drawn', 'The 30 nearest other players drawn', 'The 15 nearest other players drawn']),
-    reader: { files: Object.freeze(['src/game/crowdCap.js']), moved: false }, pr: 6, switch: '?crowd', system: 'monsters',
+    reader: { files: Object.freeze(['src/game/crowdCap.js']), moved: true }, pr: 6, switch: '?laddercrowd', system: 'monsters',
   },
   program: {
     what: 'one drawing program for the world\'s sprites, or three (chosen behind the loading screen: never a rung)',
@@ -337,12 +337,16 @@ export function ladderRateOn(search) {
 export function ladderPixOn(search) {
   return !/(^|[?&])ladderpix=(0|off|false)(&|$)/.test(typeof search === 'string' ? search : '');
 }
+/* v2.3.5226 (card O PR 6): the crowd's rungs, out of reach under `?laddercrowd=0` (crowdCap.js asks it too) */
+export function ladderCrowdOn(search) {
+  return !/(^|[?&])laddercrowd=(0|off|false)(&|$)/.test(typeof search === 'string' ? search : '');
+}
 /** The knobs a rung can change today: marked moved (the tests' list while
  *  one is set), less any this page's address takes off the ladder. */
 export function liveKnobs() {
   if (_liveNow) return _liveNow;
   const s = _search();
-  _liveNow = Object.freeze(_live.filter((k) => !(k === 'rate' && !ladderRateOn(s)) && !(k === 'pixels' && !ladderPixOn(s))));
+  _liveNow = Object.freeze(_live.filter((k) => !(k === 'rate' && !ladderRateOn(s)) && !(k === 'pixels' && !ladderPixOn(s)) && !(k === 'crowd' && !ladderCrowdOn(s))));
   return _liveNow;
 }
 /** For the tests only: play the ladder with these knobs live (null: the moved ones). */

@@ -11,8 +11,19 @@
  *      the drawn, and far less flicker at the edge (a player drawn again
  *      within a second of going) than with no hold;
  *   3. `?crowd=`.
+ * v2.3.5226 (card O PR 6), THE CAP IS A KNOB OF THE LADDER:
+ *   4. crowdK() at each rung of the work axis: the owner's 50 at `full`'s
+ *      row, 30, then 15; `?crowd=K` wins as before; `?laddercrowd=0` the 50
+ *      at any rung (and the knob off the governor's live set); at the
+ *      deepest rung the always-drawn are still drawn; the cap read through
+ *      laneKnob('crowd') in crowdCap.js, and the renderer asks it each frame.
+ * BREAK PROOF (rule 8), tried by hand 2026-11-14:
+ *   4. crowdK's `_knob()` as `CROWD_K` (the rung not read)  -> FAIL 4a
+ *      ...entityRenderer.js asking `_crowdK` once at load (the old const)  -> FAIL 4e
  */
-import { CROWD_K, CROWD_HOLD, crowdPick, crowdFromSearch } from '../../src/game/crowdCap.js';
+import { readFileSync } from 'node:fs';
+import { CROWD_K, CROWD_HOLD, crowdPick, crowdFromSearch, crowdK, _resetCrowdK } from '../../src/game/crowdCap.js';
+import { setRung, _resetLanes, liveKnobs, AXES, knobAt } from '../../src/game/drawLanes.js';   /* v2.3.5226: the crowd's knob */
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -105,6 +116,38 @@ check('3a. ?crowd=30 is a cap of 30', crowdFromSearch('?room=x&crowd=30') === 30
 check('3b. ?crowd=all, =0, =off: no cap', crowdFromSearch('?crowd=all') === Infinity && crowdFromSearch('?a=1&crowd=0') === Infinity && crowdFromSearch('?crowd=off') === Infinity);
 check('3c. not given, or nonsense: null (the default)', crowdFromSearch('?room=x') === null && crowdFromSearch('?crowd=abc') === null && crowdFromSearch('') === null);
 check('3d. capped at 500', crowdFromSearch('?crowd=99999') === 500);
+
+/* ── 4. the cap is a knob of the ladder (v2.3.5226) ───────────────────── */
+{
+  _resetLanes();
+  _resetCrowdK();
+  const crowdAt = AXES.work.map((r, i) => (r.knob === 'crowd' ? i + 1 : 0)).filter(Boolean);
+  const caps = [crowdK('')];
+  for (const n of crowdAt) { setRung(n, 0, 0); caps.push(crowdK('')); }
+  check(`4a. the cap at each rung of the work axis: ${caps.join(', ')} (the owner's 50 at the lane's row, then 30, then 15)`,
+    JSON.stringify(caps) === JSON.stringify([50, 30, 15]) && knobAt('full', 'crowd', null) === CROWD_K, caps);
+  check('4b. `?crowd=K` wins at any rung, as before (its meaning kept until card O\'s PR 12)', crowdK('?crowd=12') === 12 && crowdK('?crowd=all') === Infinity);
+  const hadLoc = Object.prototype.hasOwnProperty.call(globalThis, 'location'), wasLoc = globalThis.location;
+  globalThis.location = { search: '?laddercrowd=0' };
+  _resetLanes();
+  const liveOff = liveKnobs().slice();
+  if (hadLoc) globalThis.location = wasLoc; else delete globalThis.location;
+  _resetLanes();
+  setRung(crowdAt[crowdAt.length - 1], 0, 0);
+  check(`4c. \`?laddercrowd=0\`: the owner's 50 at any rung, and the crowd off the governor's live set (${liveOff.join('+')})`,
+    crowdK('?laddercrowd=0') === CROWD_K && !liveOff.includes('crowd') && liveKnobs().includes('crowd'), liveOff);
+  /* the deepest rung: 15, and the always-drawn still all drawn */
+  const far = Array.from({ length: 40 }, (_, i) => ({ id: 'p' + String(i).padStart(2, '0'), d2: (i + 1) * 100, prio: i >= 30 }));
+  const kept = crowdPick(far, crowdK(''), null);
+  check(`4d. at the deepest crowd rung (${crowdK('')}), every always-drawn player is drawn (10 far away), and the nearest fill the rest`,
+    !!kept && kept.size === 15 && far.filter((c) => c.prio).every((c) => kept.has(c.id)) && ['p00', 'p01', 'p02', 'p03', 'p04'].every((id) => kept.has(id)), kept && [...kept]);
+  _resetLanes();
+  const cc = readFileSync(new URL('../../src/game/crowdCap.js', import.meta.url), 'utf8');
+  const er = readFileSync(new URL('../../src/rendering/systems/entityRenderer.js', import.meta.url), 'utf8');
+  check('4e. the cap is read through the lanes\' one reader in crowdCap.js, and the renderer asks it every frame (no K fixed at load)',
+    /laneKnob\('crowd'\)/.test(cc) && /const _crowdK = \(\) => \(_noPeerCull \? Infinity : crowdK\(\)\);/.test(er) && /const _capK = _crowdK\(\);/.test(er)
+    && !/crowdFromSearch|CROWD_K\b(?! \(50\))/.test(er.replace(/\/\*[\s\S]*?\*\//g, '')));
+}
 
 console.log(`\ncrowd-cap: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

@@ -77,6 +77,26 @@ A profile of the page at 150 showed two causes.
 Nothing changes on the server. Under 50 players near you, nothing changes in
 what a phone shows on its screen.
 
+## The cap is a knob of the ladder (v2.3.5226, card O PR 6)
+
+The crowd's 50 is now the `crowd` knob of the lanes' table
+(`src/game/drawLanes.js`, `docs/LANES.md`): the owner's 50 in `full`'s
+row, then 30, then 15, the work axis's first two rungs (before the rate).
+The governor takes them for a phone whose own work makes its frames late,
+and gives them back first-in-last-out once it is cool.
+
+- `crowdCap.js` `crowdK()` is the cap: `?crowd=K` where the address names
+  one (its meaning kept until card O's PR 12 makes it an override), else
+  `laneKnob('crowd')`. `entityRenderer.js` asks it every frame (a read of
+  the table, no allocation), no longer a number fixed at load.
+- Always drawn, at every rung: your party, your target, whoever fights you,
+  your duel (`crowdPick`'s own rule, unchanged).
+- `?laddercrowd=0`: the owner's 50 whatever the rung, and the crowd off the
+  governor's live set.
+
+Held by `crowd-cap.test` §4 (each rung's cap, `?crowd=`, `?laddercrowd=0`,
+the always-drawn at 15, the read through `laneKnob`).
+
 ## Measured
 
 `mp-crowdbots` with the bots spread out (`BT_CROWD_WALKR=2400`), the frame's

@@ -657,10 +657,18 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
   };
   /* v2.3.5225: kept as [work, chip, pixels]; (A) loads none of the pixels */
   for (const kept of [[0, 4, 2], [3, 0, 0], [3, 4, 2]]) {
-    const r = back([...kept, key], 5);
-    const lastUp = r.ups.length ? r.ups[r.ups.length - 1].t : null;
-    check(`19c. kept [${kept}] after a hot sitting, a cool 60 phone is back at 60 in ONE try (${r.ups.length} step(s) up, at ${lastUp != null ? Math.round(lastUp / 1000) + ' s' : '-'}), not one a rung`,
-      r.ups.length === 1 && lastUp != null && lastUp <= 2000 + UP_WAIT_MS + 10000 && r.G.read().depth === 0 && r.G.read().work === 0 && r.G.read().chip === 0 && r.P.read().every === 1 && r.steps.every((x) => x.dir > 0), { steps: r.steps, end: r.G.read() });
+    /* v2.3.5226: the rungs the kept one loads that change something (the crowd's are live since card O's PR 6): one try
+       each, the rate's FIRST -- back at 60 on the first try, the rest one by one; none through a rung nothing reads */
+    _resetLanes();
+    const lst = memStore(); lst.set({ full: [...kept, key] });
+    const lg = makeGovernor({ on: true, store: lst }); lg.veil(0);
+    const want = lg.read().depth;
+    _resetLanes();
+    const r2 = back([...kept, key], 5);
+    const firstUp = r2.ups.length ? r2.ups[0] : null;
+    check(`19c. kept [${kept}] after a hot sitting (${want} live rung(s) loaded), a cool 60 phone is back at 60 on its FIRST try (${firstUp ? firstUp.knobs.join('+') + ' at ' + Math.round(firstUp.t / 1000) + ' s' : '-'}), then one try a live rung (${r2.ups.length} in all), none through a rung nothing reads`,
+      !!firstUp && firstUp.knobs.includes('rate') && firstUp.t <= 2000 + UP_WAIT_MS + 10000 && r2.ups.length === want && r2.ups.every((x) => x.knobs.length >= 1)
+      && r2.G.read().depth === 0 && r2.G.read().work === 0 && r2.G.read().chip === 0 && r2.P.read().every === 1 && r2.steps.every((x) => x.dir > 0), { want, steps: r2.steps, end: r2.G.read() });
   }
   /* a rung kept under another live set (the governor's first version: no set; a knob moved since) is not loaded */
   for (const kept of [[0, 6], [0, 1, 'rate,crowd'], [0, 1, key]]) {   /* v2.3.5225: + a rung kept as two axes */
@@ -819,8 +827,8 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
   const both = at('?ladderrate=0&ladderpix=0');
   if (hadLoc) globalThis.location = was; else delete globalThis.location;
   _resetLanes();
-  check(`21d. \`?ladderpix=0\` and \`?ladderrate=0\` take their knobs off the governor's live set (${noPix.join('+')}; ${noRate.join('+')}; both: ${both.join('+') || 'none'}); with \`?ladderpix=0\` a chip-bound phone takes no pixel rung, and cooled its rate comes back (every ${px.P.read().every})`,
-    !noPix.includes('pixels') && noPix.includes('rate') && !noRate.includes('rate') && noRate.includes('pixels') && both.length === 0
+  check(`21d. \`?ladderpix=0\` and \`?ladderrate=0\` take their knobs off the governor's live set (${noPix.join('+')}; ${noRate.join('+')}; both: ${both.join('+') || 'none'}: v2.3.5226, the crowd stays); with \`?ladderpix=0\` a chip-bound phone takes no pixel rung, and cooled its rate comes back (every ${px.P.read().every})`,
+    !noPix.includes('pixels') && noPix.includes('rate') && !noRate.includes('rate') && noRate.includes('pixels') && !both.includes('rate') && !both.includes('pixels')
     && !px.steps.some((x) => x.axis === 'pixels') && !px.G.read().pending && px.G.read().depth === 0 && px.P.read().every === 1, { noPix, noRate, both, steps: px.steps.slice(0, 6), end: px.G.read() });
   _resetLanes();
 }
