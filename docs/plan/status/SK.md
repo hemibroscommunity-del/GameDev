@@ -1,7 +1,7 @@
 card: SK
 branch: claude/plan-sk-1-rolloff
-prs: #1782 (tag 5440; a draft until the two questions below are answered)
-state: working
+prs: #1782 (tag 5440; ready)
+state: ready
 
 ## Done
 
@@ -16,8 +16,8 @@ state: working
 
 ## Next
 
-- The planning session's answers (Needs); then #1782 ready. Precheck: OK.
-  `townride` 8/10 here, the same two red on main's build.
+- The gatekeeper's sitting for #1782. `skateboard` 26/26 with the pose
+  line; `boardwheels` 7/8, its one red main's (Found).
 
 ## Found
 
@@ -27,13 +27,11 @@ state: working
   `RIDE_MULT` is: it cannot fail. Left.
 - `mp-townride` (main, same numbers on main's build): its two page-hold
   checks are red (no 50 ms bake left to find; `pages: 0`).
+- `mp-boardwheels` check 2 (main, red on main's build too): stopped, the
+  drawn rider still drifts ~0.5 game px in 0.8 s (5.629 -> 5.635 turns).
 - The card's "dialogue" hold: there is none in the movement step.
 
 ## Needs
 
-- The planning session (asked 2026-11-14):
-  - Q1: one line in `entityRenderer.js` (~14705: hand `S._ride` to
-    `rideLook`), so your pose pushes when the board does and glides as it
-    rolls. Without it a push can show mid-roll.
-  - Q2: two lines in `mp-boardwheels.mjs` (~122): wait for the roll to end
-    before "stopped" (its check 2 is red by design; 7 of 8 green).
+- Nothing. The planning session said yes to both (2026-11-14): the line in
+  `entityRenderer.js` (~14705) and the two in `mp-boardwheels.mjs`; made.

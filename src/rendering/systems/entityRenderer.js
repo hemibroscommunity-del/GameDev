@@ -14703,9 +14703,11 @@ export class EntityRenderer {
     const isHit = S._hitFlash && (now - S._hitFlash) < 250;
     /* v2.3.3776: on the board you stand sideways and push now and then
        (game/ride.js rideLook) -- AFTER the facing is published above, so the
-       others are sent the way you go and turn it themselves */
+       others are sent the way you go and turn it themselves.  v2.3.5440: and
+       your ride's record, so you push exactly when the board does and glide
+       while it rolls off (rideFeel; card SK) */
     const _rideLk = (S._ride && S._ride.on && !isHit)
-      ? rideLook(display._rideLook || (display._rideLook = {}), facing, isMoving, now) : null;
+      ? rideLook(display._rideLook || (display._rideLook = {}), facing, isMoving, now, S._ride) : null;
     if (_rideLk) facing = _rideLk.facing;
     /* v2.3.3017: in the air (game/jump.js) the body holds one leaping frame of
        the jog for the way it faces -- the owner's "just use the jog

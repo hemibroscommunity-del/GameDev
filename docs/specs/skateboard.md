@@ -356,6 +356,10 @@ bound; a slower start and a roll are inside it. The scenario proves it: the
 worker followed no move past its bound (its own count), and had the board where
 it stopped.
 
+**Your own figure** pushes exactly when the board does and glides while it
+rolls: `entityRenderer.js` hands `rideLook` your ride's record (one line; the
+planning session's yes, 2026-11-14).
+
 **Others see it** through the moves they already get: nothing new on the wire.
 Their pose of you keeps the rule from your moves: a push setting off, the
 start's second one 0.6 s later, then one every 2 s (a push may show once in
@@ -379,3 +383,9 @@ the instant start and stop, and the old pose rule. Its row is in
   1.2 s; let go, still rolling, slowing, stopped within about 2.5 s, still and
   silent; the worker followed no move; let go at top 100 px short of the edge,
   off at the edge with nothing past it.
+- `mp-boardwheels` check 2 ("stopped, the wheels hold still") waits for the
+  board's own speed to reach 0 before it looks, never a fixed wait (TRAPS
+  §177: the board rolls off now). It is red on `main` too, before this change
+  and the same after: the drawn rider drifts about half a game px in its
+  0.8 s once stopped (5.629 -> 5.635 turns on main's build), its own fault,
+  not the roll-off's.
