@@ -41,7 +41,8 @@ base with the `main` above it (`git merge-base --all`), this branch last
 included. Card T's #1817 carries #1816. R's #1823 and #1825 each carry
 #1817's head 0796e23 (merged in during the sitting, at the planning
 session's word): after T lands each has one base, 0796e23. #1826's and
-#1830's base is 82fb78d (sitting 12's `main`), the rest 1cce0b2 or T's.
+#1830's base with `main` is 82fb78d (sitting 12's `main`), the rest
+1cce0b2 or T's.
 
 **The collisions found and mended during the sitting** (each tried in a
 scratch copy, then re-tried on the new head):
@@ -110,7 +111,7 @@ and a fresh one the same.
   a second caller: each FAIL). CI `test`, `memory-budget` green at
   f0307d6.
 
-## Card R: #1825 (PR 8, tag 5287): listed, its own line
+## Card R: #1825 (PR 8, tag 5287): listed, the last deploy, its own line
 
 **The storage's size in the day's book (it DEPLOYS; a live flag), read at
 7636207, then 2273924 (T's head merged; the reader above): clean
@@ -175,7 +176,7 @@ row's texture: the `alphaMode` red). The test keeps the page alive
 (`H.keepAlive`, as `mp-elemhits`), and asks the atlas to grow first, on a
 fresh atlas. J2 ran the full test, 8 of 8. CI `test` green.
 
-## Card L: #1824 (PR 5's second, tag 5211)
+## Card L: #1824 (PR 5's second, tag 5211): HELD (a conflict), reviewed
 
 **The duel door (it DEPLOYS; a live flag), read at 80a7237: clean
 (lows).** `_resolveDuel`'s order is unchanged: its `!== 'active'` guard,
@@ -196,12 +197,15 @@ re-tried (each FAIL).
   duel.js and gladiator.js's `_makeDuel({` only; a hand-built
   `_duels.set` in gladiator.js passes; a caller's `status` wins in
   `_makeDuel`'s `Object.assign`.
-- Its conflict: `tools/guards/phase-table.test.mjs`'s `DOOR_SUITES` end
-  with card O's `_rung` row (on `main`). Kept both in a scratch copy
-  after T: `switches.test` and `phase-table.test` all green, `dueldoor`
-  in its name's place.
+- **Held: its conflict**, `tools/guards/phase-table.test.mjs`'s
+  `DOOR_SUITES` end with card O's `_rung` row (on `main` since sitting
+  13). Kept both in a scratch copy after T: `switches.test` and
+  `phase-table.test` all green, `dueldoor` in its name's place. The
+  planning session asked L to merge T's head in; no push had come when
+  the list was written (80a7237, 18:46). L merges the new `main` (keep
+  both); the next sitting lists it, reviewed.
 
-## Card K: #1829 (PR 5, tag 5185)
+## Card K: #1829 (PR 5, tag 5185): HELD (a conflict), reviewed
 
 **The action door (`src/game/actions.js`, 180 rows; the shim's chain one
 lookup; it DEPLOYS, five suites in `server/test/`), read at c0ca6cb
@@ -244,8 +248,11 @@ Client +1.9 KB gzipped (an esbuild estimate).
   quiet-phone, quest-kept, wire-audit, wire-hostile green; precheck's
   `shim-allowlist` and `town-gate` PASS; three break proofs re-tried
   (each FAIL).
-- **Its conflict:** `docs/SYSTEMS.md`'s `wire` system with T's #1816 (T's
-  switch link beside K's new file line), either order.
+- **Held: its conflict**, `docs/SYSTEMS.md`'s `wire` system with T's
+  #1816 (T's switch link beside K's new file line), either order. No T
+  merge had come when the list was written (c096522, K's status only).
+  K merges the new `main` (and may take the two lows above first); the
+  next sitting lists it, reviewed.
 
 ## Card K: #1831 (PR 2, tag 5182): HELD (a conflict), next batch
 
@@ -270,9 +277,27 @@ On `main` 1cce0b2, lowered in this PR (only the gatekeeper lowers one):
   since card L's #1809).
 - The switch table's unlisted line goes to 0 in card T's #1816 itself.
 
+## The list
+
+1 #1816 (T) · 2 #1817 (T) · 3 #1828 (TF) · 4 #1823 (R) · 5 #1826 (K) ·
+6 #1825 (R) · 7 #1830 (J2) · 8 this PR; each "Create a merge commit",
+in one sitting. Three deploy the worker (#1823, #1826, #1825): back to
+back. #1825 is the last of them, on its own line: a live flag
+(`storesize`, ON) and a part added to a stored record (the day's book),
+so a rollback of it alone is the dashboard's one step back.
+
 ## The whole
 
-Rehearsed with `tools/dev/gatekeeper.mjs` from `main` 1cce0b2.
+Rehearsed with `tools/dev/gatekeeper.mjs` from `main` 1cce0b2:
 
-1. #1816, #1817, #1828, #1823 (f0307d6), #1825 (2273924), #1826, #1830
-   (tree 0f04b30b): precheck 0 FAIL (3 WARN), build, questline (below).
+1. #1816, #1817, #1828, #1823 (f0307d6), #1825 (2273924), #1826, #1830,
+   at their final heads (tree 0f04b30b): precheck 0 FAIL (3 WARN: the
+   busy-branches count and two the session list names), build, questline
+   187 of 187 (421 s).
+2. **The list in its order** (#1826 before #1825): the same tree,
+   0f04b30b (a merge-tree run step by step); ONE merge base each.
+3. **The list with this branch last** (documents and two lines lowered):
+   its tree is in the list sent to the planning session (the file cannot
+   carry its own tree); precheck on this branch alone, 0 FAIL.
+
+Each listed head's `test` is green on GitHub; each base is `main`.
