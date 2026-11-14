@@ -24,7 +24,7 @@ import { MONSTER_NOISE_CLIPS } from './monsterNoiseClips.js';   /* v2.3.3340: th
 import { SPRINT_GRUNT } from './sprintGrunt.js';   /* v2.3.3455: the owner's sprint grunt */
 import { EVENT_SOUNDS } from './eventSounds.js';   /* v2.3.3343: each creature its own death (monsterDeath) */
 import { OWNER_SOUNDS, OWNER_LOOPS } from './ownerSoundClips.js';   /* v2.3.3462: the owner's recordings for the sounds still needed */
-import { foldToMono } from './soundFold.js';   /* v2.3.3706: a stereo sound whose two sides are one is kept as one */
+import { foldForGame } from './soundFold.js';   /* v2.3.3706: a stereo sound whose two sides are one is kept as one; v2.3.5045: a few ms at a time (`?foldgentle=0` in one go) */
 import { PINNED as SFX_PINNED, PREFETCH as SFX_PREFETCH, BUDGET_MB as SFX_BUDGET_MB, COLD_MS as SFX_COLD_MS, LATE_MS as SFX_LATE_MS, familyOf as sfxFamilyOf, makeLru as makeSfxLru, parseSfxCache } from './sfxCache.js';   /* v2.3.3714: decoded sound held only while it is needed (on by default since v2.3.3735; `?sfxcache=0` off) */
 import { AHEAD as SFX_AHEAD_KEYS, AHEAD_WHEN as SFX_AHEAD_WHEN, parseSfxAhead } from './sfxCache.js';   /* v2.3.5006: the four slow decodes decoded ahead, not pinned (`?sfxahead=0` pins them) */
 import { makeVoiceCap, parseVoiceCap, exempt as voiceExempt } from './voiceCap.js';   /* v2.3.3727: a crowd of one sound starts as a few (`?voicecap`) */
@@ -4377,12 +4377,13 @@ BT_AUDIO.loadSample = function (key, url) {
    `?stereosfx` keeps them stereo; `_folded` names the ones kept as one (the
    QA's window.__btSoundFold). */
 BT_AUDIO._folded = [];
+/* v2.3.5045: the fold a few ms at a time, a frame between (held-budget.mjs
+   `other: BT_AUDIO$1._fold > foldToMono`, 8 to 21 ms in one piece): soundFold.js
+   foldForGame, where the why is; `?foldgentle=0` in one go, as before */
 BT_AUDIO._fold = function (b, key) {
   if (!b || this._stereoSfx) return b;
-  var ctx = this.ctx;
-  var out = foldToMono(b, function (c, n, r) { return ctx.createBuffer(c, n, r); });
-  if (out !== b) this._folded.push({ key: key, savedBytes: b.length * 4 });
-  return out;
+  var ctx = this.ctx, self = this;
+  return foldForGame(b, function (c, n, r) { return ctx.createBuffer(c, n, r); }, function (out) { if (out !== b) self._folded.push({ key: key, savedBytes: b.length * 4 }); });
 };
 try {
   if (typeof location !== 'undefined' && /[?&]stereosfx\b/.test(location.search || '')) BT_AUDIO._stereoSfx = true;
