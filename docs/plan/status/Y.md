@@ -1,9 +1,12 @@
 card: Y
-branch: claude/plan-y-farm-gate
-prs: PR 1 (tag 5400, ready)
+branch: claude/plan-y-topaudit (PR 2, begun from PR 1's branch: merge in order)
+prs: #1705 (merged), #1739 (tag 5401, ready)
 state: ready
 
 ## Done
+
+- #1705 (tag 5400): `hopTo` stops at a zone change. `farmmusic` 12/12
+  x3 alone, `questline` 187/187.
 
 - Found the cause (tag 5400). The GAME keeps its word: out through the
   farm's gate the phone lands on the spot it left, (87168, 87456), by the
@@ -17,20 +20,21 @@ state: ready
   as written, the place traced 87111,87400 at arrival, then a straight
   march to 84383,84697 over 16 s. With a walk that stops when the zone
   changes: arrival 87168,87456, still; the town's track; 9 of 9.
-- #1534's one green: a race (a slow trip spends the hops in town).
 
 ## Next
 
-- Done: A, from the planning session: `hopTo` stops when its zone
-  changes (`tools/qa/mp/harness.mjs`). `farmmusic` 12/12 three runs of
-  three, alone; `questline` 187/187. Waiting for the gatekeeper.
+- PR 2 (tag 5401): the minimap's inset is measured again when the top
+  bar grows. `topaudit` 6/6 x2, `north` 9/9, `questline` 187/187,
+  `wheelmap` 40/41 (its one red is red on main too: Found).
 
 ## Found
+
+- `mp-wheelmap` Frost Ridge plate: wants "Lv 6–10", the game says
+  "No man's land 8" (`ZoneHeader.jsx`); red on main.
 
 - `docs/plan/census/red.md` row 3: the TEST's, not the GAME's.
 
 ## Needs
 
-- The owner: the planning session also asked for a second PR,
-  `mp-topaudit` (`pixiRenderer.js` ~869, no `topInset` to
-  `wheelMinimap.js`). Outside card Y and in a renderer: yes or no?
+- None. PR 2: the owner's yes (via the planning session). The fault was
+  `minimapRenderer.js` `_measureTopInset`, not `pixiRenderer.js` 869.

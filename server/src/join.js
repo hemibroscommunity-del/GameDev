@@ -13,7 +13,7 @@
  * (the deploy-order safety surface -- see docs/WIRE-PROTOCOL.md).
  * The switch case now delegates: `await this._handleJoin(...)`. */
 
-import { healLifeSkills, healLifeSkillLevels /* v2.3.3041 */, freshLifeSkills /* v2.3.3138 */ } from './migrations.js';
+import { healLifeSkills, healLifeSkillLevels /* v2.3.3041 */, freshLifeSkills /* v2.3.3138 */, econClean /* v2.3.5084 */ } from './migrations.js';
 import { trapBootstrapGuard } from './trapping.js'; /* v2.3.3120: no pets or Trapping level from a first connect */
 import { t2ReplayFlat, COOKING_RECIPES } from './data.js';   /* v2.3.3130: caps.cookRows */
 import { FARM_CROP_IDS } from './farm.js';   /* v2.3.3131: caps.farmCrops */
@@ -1039,6 +1039,11 @@ export const joinMethods = {
          they next want the badge (broverify.js). */
       try { await this._restoreBroLink(msg.id); } catch { /* badge is cosmetic — never block a join */ }
       if (stored) {
+        /* v2.3.5084: the character's running minted and burned (rule 1's second
+           exception) come back with it, BEFORE any door runs: the doors count
+           into it, and a blank here would be written over the stored counts
+           (grand plan card E PR 5; the owner's yes of 2026-11-14) */
+        this.playerState[msg.id]._econ = econClean(stored._econ);
         this._goldSet(this.playerState[msg.id], stored.coins || 0, 'join_stored'); /* v2.3.4670: the gold door */
         this.playerState[msg.id].inventory = stored.inventory || {};
         this.playerState[msg.id].lifeSkills = stored.lifeSkills || {};
@@ -1822,6 +1827,7 @@ export const joinMethods = {
     } catch (e) { /* never block a join on a cosmetic */ }
     /* v2.3.4545: the phone starts its shot counts again at every state_sync (src/game/accuracy.js accReset), so
        the worker's copy of them does too (accuracy.js) -- a reconnect never counts a shot twice */
+    this._roomRowJoin(session.protocolVersion);   /* v2.3.5124: a join taken, by its protocol (roomrow.js) */
     if (this._accJoin) this._accJoin(session.id, Date.now());
     ws.send(JSON.stringify({
       type: 'state_sync',
@@ -1898,8 +1904,8 @@ export const joinMethods = {
         bowDraw: this._bowDrawOn() ? 1 : undefined,
         /* v2.3.4801: THE STAFF'S GATHER (drawgather.js): a bolt's relay may carry its gather (`ga`, ms) and its claims name it (`sw`); its share, its stage (spark, orb, sphere: the splash and the ring of force).  Un-advertised under `staffgather: false` */
         staffGather: this._staffGatherOn() ? 1 : undefined,
-        /* v2.3.5123: THE FIELD REPORT (report.js): the phone sends its smoothness (src/debug/report.js) only to a worker that says this; `report: false` in liveflags un-advertises it and drops what still comes -- lower case, a kill switch */
-        report: this._reportOn() ? 1 : undefined,
+        /* v2.3.5123: THE FIELD REPORT (report.js): the phone sends its smoothness (src/debug/report.js) only to a worker that says this; `report: false` in liveflags un-advertises it and drops what still comes -- lower case, a kill switch.  v2.3.5127: a count -- 2 takes the Speed test's card too (`reportspeed: false`: 1) */
+        report: this._reportCap(),
         accuracy: this._accOn() /* v2.3.4545: ACCURACY (accuracy.js) -- the phone numbers its basic shots a weapon and sends the counts on `track` (`ac`) and each hit's shot (`sn`); `acc_request` answers `acc_state`; `accuracy: false` in liveflags un-advertises it and counts nothing -- lower case, a kill switch */ },
       // v2.3.1178: this session's private economy-endpoint token.
       // state_sync goes to the joining socket ONLY -- never broadcast.

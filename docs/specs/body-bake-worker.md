@@ -253,6 +253,39 @@ the whole test runs it last).
   (`READ_MS`, a timer a read). It is not this fault's size and is not fixed
   here: card H's status file has it under Found.
 
+### A worker that never ran here is not started again (v2.3.5049)
+
+The gatekeeper's sitting 1, on #1668: "a worker that hangs is restarted at
+each return, ~20 s of plain looks each time". A worker that hangs from its
+start (a device where it cannot run) was given its start back at every
+return, took the next sheets, said nothing, and was let go 20 s later; the
+looks waiting on it were drawn plain all that while, every return.
+
+Now a worker that is let go WITHOUT ever being heard from (no answer and no
+beat between steps: `slot.heard`) is counted (`_unheard`), and its slot is
+not started again at a return: the page bakes, as it does where there is no
+worker. A worker that ran here and was let go (stalled under a load, or
+ended while the page was away) is started again at each return, as before.
+At most one never-heard start a slot in a sitting. `__btBodyWorker().unheard`
+says how many.
+
+And `mp-bodyworker`'s `BT_BW_PARTS` took a name it did not know (a typo) as
+green, running nothing: such a name, or an empty list, is now a failed check.
+
+**How it was proven**: `mp-bodyworker` 6c (`BT_BW_PARTS=hung`): a second page
+whose body bake worker is a script that answers nothing. Its worker is let go
+after 20 s the page was there to see (2 let go, 2 never heard from, 0 beats),
+and at the return it is NOT started again (0 restarts, 0 at work, the next
+sheets the page's). Break proof: `_back`'s old rule (every let-go slot given
+its start back): 6c red, 1 restart, 2 at work, 6 sheets sent to the hung
+workers again. The whole scenario after: 101 of 101.
+
+**Seen once with the old rule, not fixed here:** the hung page's render loop
+threw (`Cannot read properties of null (reading 'addressModeU')`, a texture
+with no style drawn) after the restarted workers failed their second sheets.
+That is `main`'s path on such a device until this lands; card H's status file
+has it under Found.
+
 ## Not here (next)
 
 - The look palette for the fish in a shirt (a memory saving, not a hold:
