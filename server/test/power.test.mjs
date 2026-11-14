@@ -55,7 +55,7 @@ console.log('\n1. the control');
   /* its points: within the deal its levels give (the worker's own deal) */
   const deal = { sk: {} };
   for (const cat of PROG3.SKILLS) deal.sk[cat] = { level: POWER.CONTROL.sk[cat] };
-  prog3RespecPoints(deal, false);
+  prog3RespecPoints(deal, false, 'power_control');   /* v2.3.5283: a road of the skill points' door */
   const shared = Object.values(POWER.CONTROL.shared).reduce((a, b) => a + b, 0);
   const lane = Object.values(POWER.CONTROL.lane).reduce((a, b) => a + b, 0);
   check('1c. its shared points are within the deal (3 a level past 1)', shared <= deal.shared, { shared, deal: deal.shared });

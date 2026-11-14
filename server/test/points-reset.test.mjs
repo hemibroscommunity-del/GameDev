@@ -96,7 +96,7 @@ function trained(room, P) {
   P.lastDamageAt = 0; P._lastDealtAt = 0; P._pointsResetAt = 0;
   if (room._pointsResetAts) roomMinute(room).clear();   /* v2.3.4372: the room's minute too */
   P.prog3.sk.sword.level = 6; P.prog3.sk.bow.level = 3; P.prog3.sk.staff.level = 1;
-  prog3RespecPoints(P.prog3, false);
+  prog3RespecPoints(P.prog3, false, 'points_reset');   /* v2.3.5283: a road of the skill points' door */
   room._prog3Recompute(P);
 }
 /* points placed through the game's own spend path */
@@ -279,7 +279,7 @@ const P = room.playerState.bp_pr_a;
      the reset's row and a row a point respent */
   m.clear(); Q._pointsResetAt = 0;
   Q.prog3.sk.sword.level = 16; Q.prog3.sk.bow.level = 1; Q.prog3.sk.staff.level = 1;
-  prog3RespecPoints(Q.prog3, false); r8._prog3Recompute(Q);
+  prog3RespecPoints(Q.prog3, false, 'points_reset'); r8._prog3Recompute(Q);   /* v2.3.5283: a road of the skill points' door */
   const lane = Q.prog3.poolBy.sword, shared = Q.prog3.shared;
   /* every point respent, as a script would (a stat takes every point: v2.3.3578) */
   const respend = async () => {

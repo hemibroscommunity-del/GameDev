@@ -57,14 +57,23 @@ why: a QA tag, a direction, an input's source, a setting.
 | `monster` | worker | `m.alive` back to true (any name) | `_monsterNewLife` (`monsterlife.js`) | the table's scan |
 | `monster` | page | `m.alive` back to true | `monsterNewLife` (`monsterCarry.js`) | the table's scan |
 | `zone` | page | `S.currentZone` | `changeZone` (`zoneTransitions.js`) | `zone-leftovers.test` §6 |
+| `trade` | worker | a session's `s.state` | `_t2To` (`trade2.js`, v2.3.5210) | `trade-door.test` §2, and the guard's tree |
 
 **How a door is held.** What holds a door is a closed list in the guard
 (v2.3.5203, after the gatekeeper's sitting 8 found that a suite which merely
 named the field let a `todo` row turn `door` with nothing built):
 
 - `DOOR_SUITES`: the suites that fail a second writer of that field through
-  that function today (`life-door.test` §2, `zone-leftovers.test` §6). For
-  these the guard writes no second rule that could disagree.
+  that function today (`life-door.test` §2, `zone-leftovers.test` §6).
+  **v2.3.5209 (the gatekeeper's sitting 9):** a suite reads with its own
+  pattern. Zone-leftovers' is a regex, which passed
+  `Object.assign(S, { currentZone })`. So the guard ALSO reads each such door
+  off the syntax tree, the one reader below. Each `DOOR_SUITES` line names
+  the field's `prop`, and every write of it on the row's side must be in the
+  row's function and file, or in that line's `besides`, with why. Today
+  there are two: `monsterlife.js m.life` (a monster's lives) and
+  `tileRenderer.js this.currentZone` (the zone it drew). A stale door (its
+  function writes nothing) fails, and so does a stale `besides`.
 - `SCAN_DOORS`: the rows no suite holds. The guard runs the row's `scan`
   itself. It reads every write of the field off the syntax tree (@babel):
   `x.phase =`, `x['phase'] =`, `++`, `delete`, `Object.assign(x, { phase })`.

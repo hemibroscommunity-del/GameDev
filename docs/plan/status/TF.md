@@ -1,35 +1,36 @@
 card: TF
-branch: claude/plan-tf-1-townsfolk-tools
-prs: #1770 (5460, ready)
-state: ready
+branch: claude/plan-tf-3-done (v2.3.5463: the status, done, on main)
+prs: #1770 (5460), #1812 (5462; 5461 burnt, below): all merged
+state: done
 
 ## Done
 
-- #1770 (5460): the audit (`docs/specs/townsfolk-work.md`, 21 rows); the
-  pickaxe put away: Chef Blaze, Woodworker Bro and Gavel Greg take the
-  pickup, Farmer Bro stands (the pickup would bake his look: his eye
-  style); `townsfolk-walk.test` §2j (whose tool) and §2k (no new bake of a
-  refused look), both red with the pickaxe put back (in its header).
-  Touches `server/test/`: its merge deploys the worker.
-- With @parent's yes: `mp-folkwalk` §4 waits for the chef's pickup (12 of
-  12 on a phone); `living-town.md`'s table and two `UI-DESIGN-NOTES.md`
-  lines corrected, each pointing at the new spec.
+- #1770 (5460, merged): the audit (`docs/specs/townsfolk-work.md`); the
+  pickaxe put away; `townsfolk-walk.test` §2j, §2k; `mp-folkwalk` §4.
+- #1812 (5462, merged at sitting 13): Chef Blaze cooks, Woodworker Bro
+  chops, Farmer Bro kneels, hoes and waters, from the `skills` look set's
+  colour numbers (`folkSkill.js`; the cook at a bar of 23, its reason
+  written); `?folkskills=0` back to PR 1's poses. Membudget +3.2 MB chip,
+  no line raised; heldsweep town 0 over; questline, mp-folkwork 41/41 (the
+  ghost check after each trade), mp-folkwalk 12/12; sitting 12's review
+  mended (the light, the load gate, 6d/6e).
 
 ## Next
 
-- Sitting 9's two holds on #1770 met: `main` merged in, every block kept
-  (SK, TF, PW, LB; next 5520); the spec writes PR 2's tag bare. For
-  sitting 10.
-- PR 2 (5461): `entityRenderer.js` is free (#1762, card H's 5050, merged
-  at sitting 9). Begins from this branch.
+- Nothing: the card is done. The owner's later asks (the spec's "Not
+  drawn yet"): the blacksmith at the anvil, Beastmaster Bro by his
+  Snowling, the cook lighting his fire.
 
 ## Found
 
-- `docs/specs/living-town.md`'s quest givers paragraph still says the
-  woodworker chops and Farmer Bro hoes (the mining swing); left as asked
-  (only the table), the note under the table says what is true now.
-- `src/rendering/folkPose.js` header: the same list; PR 2's file, fixed there.
+- Routed (@parent): to card P, peers drawing cook/chop/farm from the
+  `skills` numbers instead of 1-5 MB bakes; to J2, `mp-ghostaudit`'s cook
+  never starting on `main`, and heldsweep's `R > J` 14.4 ms at town.
+- `review-z9.md:273` writes `v2.3.5461` in full on `main`: burnt, so PR 2
+  was 5462.
+- `role-bake.mjs --hashes`: eight sets read "code changed" on `main` (a
+  look-roles WARN for any PR touching the look sets).
 
 ## Needs
 
-- Nothing for PR 1 (@parent answered both, 2026-11-14).
+- Nothing.

@@ -1,40 +1,37 @@
 card: Z
-branch: claude/plan-z-sitting-11
-prs: #1799, tag 5367, the last line of the list (ready)
+branch: claude/plan-z-sitting-13
+prs: (this PR), tag 5370, the last line of the list (ready)
 state: ready
 
 ## Done
-- Sitting 11, `main` 90a91dbc (resumed 16:56 after the usage stop): the
-  list rehearsed in its order, this branch last (tree ba0e9e42): precheck
-  0 FAIL, build, questline 187/187; each branch ONE merge base. Review:
-  `census/review-z11.md`. 10.3 ticked; notes on 4.5, 7.1.
+- Sitting 13, `main` 82fb78da: the list rehearsed in its order (tree
+  301e12e6, this branch aside): precheck 0 FAIL, build, questline;
+  each base `main`, ONE merge base step by step. Review:
+  `census/review-z13.md`. Notes on 2.1, 5.3b, 9.5; no line to lower.
 
 ## The list: merge in this order, in one sitting, each "Create a merge commit"
-1 #1788 · 2 #1789 · 3 #1790 · 4 #1795 (J2) · 5 #1785 · 6 #1786 ·
-7 #1802 (E) · 8 #1787 (O) · 9 #1767 · 10 #1775 · 11 #1779 · 12 #1791 ·
-13 #1796 · 14 #1801 (L) · 15 #1783 (LB) · 16 this PR. Ten deploy (2, 3,
-5 to 10, 12, 15): back to back. Flags `capeoffkept` (ON),
-`valuepause` (ON), `econresetput` (OFF: the owner's cost word),
-`reportlanes` (ON; `caps.report` 3): each on a line of its own.
+1 #1821 (LB) · 2 #1822 (K) · 3 #1819 (R) · 4 #1820 (K) · 5 #1792 ·
+6 #1794 · 7 #1800 · 8 #1814 (O) · 9 #1812 (TF) · 10 this PR. Eight
+deploy (2 to 9): back to back. No cap, no live flag, no stored shape.
 
-## Held (expires at sitting 12)
-- #1792 O: red with L's #1767: `phase-table` FAIL 2 (`ladder`'s suite not
-  on `DOOR_SUITES`). Merge main, add its row there.
-- #1794 O: VERIFIED (probe), the ladder walks rungs nothing reads, kept
-  in `bt_rung`: a cool 60 phone at 30 for a sitting; steps mid-fight
-  (call 3); a cool computer too. #1800 waits on it.
-- #1797 T: conflicts at `switches.mjs`'s end after L: sitting 12.
-- #1782 SK: ready; the owner's yes to +8 to +10 moves a ride (one finding).
-- #1798 LB: ready after the rehearsal: sitting 12. TF's PR 2: none.
+## Held (expires at sitting 14)
+- #1816, #1817 T: conflict at `switches.mjs` and `SWITCHES.md` with
+  O's rows (#1792 on) and TF's, either order; T merges the new `main`
+  and goes FIRST at sitting 14 (its PR 4 sorts the rows by name).
+- #1823, #1825 R: add/add at `docs/plan/status/R.md` with #1819; R
+  merges the new `main` into each. Opened mid-sitting: unreviewed.
+- #1826 K: add/add at `docs/plan/status/K.md` with #1822, #1820; K
+  merges the new `main`. Opened mid-sitting: unreviewed.
+- #1824 L: conflict with #1792 at `phase-table.test.mjs`'s
+  `DOOR_SUITES` end; L merges the new `main`. Unreviewed.
+- #1782 SK: ready; the owner's yes to +8 to +10 moves a ride.
 
 ## Stalled
-- None (P, TF, LB-3 say `working`: cut by the usage stop at 14:38).
+- None. J2's PR 6 `working` (18:06), no PR; P's fire goblin, no branch.
 
 ## Found
-- All: switch rows appended at `switches.mjs`'s end collide (O with T, L
-  with T); card T's next PR sorts them by name.
-- J2: `mp-npclooks` check 2 holds the cast to its own median, no size.
-- O: `mp-governor`, `mp-loadinggate` leak `BT_QA_CPU_THROTTLE` onward.
-
-## Rule for later sittings
-- Quote other cards' tags BARE (`5461`): a full one counts as taken on `main`.
+- R: a row can claim `ledger: 'xfer'` with no writer (xfer.test's
+  move-only check gone): for R's next PR on the table.
+- K: `systems.mjs` and CLAUDE.md §5/§8 still name the hand lists.
+- T: the old `plan-t-3-page-draw`, `plan-t-4-thrown` carry 5222.
+- No card: `mp-ghostaudit`'s cook 0 frames; heldsweep `R > J` (TF's).
