@@ -1,6 +1,6 @@
 card: B
-branch: claude/plan-b-6-budgets (one branch a PR, each begun from the one before: -1- to -8-)
-prs: #1685 (ready), #1687 (ready), #1689 (ready), #1690 (ready), #1693 (ready), PR 6 (working)
+branch: claude/plan-b-7-asset-sources (one branch a PR, each begun from the one before: -1- to -8-)
+prs: #1685 (ready), #1687 (ready), #1689 (ready), #1690 (ready), #1693 (ready), #1696 (ready), PR 7 (working)
 state: working
 
 ## Done
@@ -10,12 +10,12 @@ state: working
 - PR 3 (5102, #1689): the system map (`lib/systems.mjs`), 31 systems.
 - PR 4 (5103, #1690): `lib/filesOf.mjs`; suites naming a big file: 222.
 - PR 5 (5104, #1693): rule 2's guard, five holds, all "not built yet".
+- PR 6 (5105, #1696): rule 6's table and guard; 16 known seconds.
 
 ## Next
-- PR 6 (5105): rule 6's table (`lib/budgets.mjs`, a row a system, from
-  BUDGETS parts 1-7) and guard `budgets.test.mjs`: 16 known seconds, 14
-  signals twice; no spend measured yet. Map fixes: `flood.js` to wire,
-  `steadymovers.js` to movement (PR 3 had them wrong).
+- PR 7 (5106): `asset-sources.test.mjs` holds `tools/assets/sources.json`
+  to `git ls-files assets` (a file with no row, a row with no file, a
+  hash or size changed, the totals); card F's Needs.
 
 ## Found
 - `mp-topaudit` red, the GAME's (suspected): at a faked 59 px top inset the
