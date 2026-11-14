@@ -71,6 +71,7 @@ const DIET_ASK = (function () {
   } catch (e) { return null; }   /* no page: a test */
 })();
 import { QUIET, quietOn, bundleOn, lookNews, peerNear, quietMoveGap, framesOf } from '@/game/quietPhone.js'; /* v2.3.3254: the quiet phone */
+import { reportJoined } from '@/debug/report.js'; /* v2.3.5122: the field report */
 import { nmlCanAttack, nmlHere } from '@/game/noMansLand.js'; /* v2.3.3254: a steady walk is not held near a player who may fight you */
 import { NML_CENTRE, NML_CENTRES } from '@/data/noMansLandRings.js'; /* v2.3.3204: the Wheel's middle, the safe ground's centre */
 import { wheelLong, setWheelLong, wheelSizesDrawn } from '@/game/wheelSize.js'; /* v2.3.3315: which Wheel the room plays */
@@ -1655,6 +1656,7 @@ export function setupWebSocket(ctx) {
               accReset(S);   /* v2.3.4545: the shot counts begin again with every state_sync, as the worker's copy does */
               S._serverCaps = msg.caps || {};
               _capsHere = true;
+              reportJoined(S);   /* v2.3.5122: the field report (debug/report.js): sent only to a worker that takes one */
               setWeaponStashMax(S._serverCaps.bagWeapons);   /* v2.3.4224: the weapon bag's size follows the worker (caps.bagWeapons; absent = 8) */
               bodyPlaceDue(S, msg);   /* v2.3.4455: a body_place follows: the trip waits for it (game/bodyPlace.js) */
               noteMoveCaps(S._serverCaps);   /* v2.3.4011: the monster moves' warnings and enrage, against a worker that has them (caps.monstermoves) */
@@ -6333,6 +6335,12 @@ export function setupWebSocket(ctx) {
           return;
         }
         if (msg.type === 'set_active_slot') {
+          wsOut(msg);
+          return;
+        }
+        /* v2.3.5122: the field report (debug/report.js), numbers and closed
+           lists only; sent only to a worker that takes one */
+        if (msg.type === 'report') {
           wsOut(msg);
           return;
         }

@@ -17,6 +17,20 @@ import { perfTracker } from '@/debug/perfTracker.js';
 import { worldViewport } from '@/game/worldViewport.js'; /* v2.3.1768b */
 import { checkQuestComplete } from './questComplete.js'; /* v2.3.1675 */
 
+/* ═══ v2.3.5122: HOW MANY OTHER PLAYERS ARE NEAR ═══
+   The frame's sample counted `others` as S.others.length, and S.others is
+   keyed by player id (an object): it was always 0, and the field report's
+   `near` (debug/report.js) reads it.  S.others holds everyone the worker
+   lists, the far ones parked (`_away`, game/presence2.js): the near ones are
+   the rest, every one the worker sends this phone (its near circle) and the
+   game draws when in view.  A count a frame, no list made. */
+export function nearOthers(S) {
+  var o = S && S.others, n = 0;
+  if (!o) return 0;
+  for (var k in o) { var p = o[k]; if (p && !p._away) n++; }
+  return n;
+}
+
 export function renderFrame(S, deps) {
   /* v2.3.1675: quest-completion watcher.  Self-throttled to 2 Hz inside, and
      it never throws — see questComplete.js for why this is a poll rather than
@@ -94,7 +108,7 @@ export function renderFrame(S, deps) {
           appMs: _stages ? _stages.appMs : 0,
           zone: S.currentZone,
           monsters: (S.monsters && S.monsters.length) || 0,
-          others: (S.others && S.others.length) || 0,
+          others: nearOthers(S),   /* v2.3.5122: was `S.others.length`, always 0 (S.others is keyed by id) */
           projectiles: (S.projectiles && S.projectiles.length) || 0,
           hitParticles: (S.hitParticles && S.hitParticles.length) || 0,
           slimeProj: (S.slimeProjectiles && S.slimeProjectiles.length) || 0,

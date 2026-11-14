@@ -43,7 +43,10 @@
  *   liveflags            {name: boolean|number}
  *   motd                 {text, ts}
  *   metrics:<yyyymmdd>   {totalGold, playerBlobs, escrowedGold,
- *                         pendingEntries, ts}                        */
+ *                         pendingEntries, ts}
+ *
+ * v2.3.5080: the day's book (`daybook:<yyyymmdd>`, daybook.js) has its kill
+ * switch here, `_daybookOff`; the book itself is daybook.js's.        */
 
 /* v2.3.2438: the daily metric walks the player table one page per tick
    slot (see _metricsMaybe).  A throw waits RETRY_MS before trying again
@@ -136,6 +139,14 @@ export const liveopsMethods = {
        handed down here because bag.js's plain functions cannot see the flags */
     const f = this._liveFlags;
     setBagOneSum(!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'bagonesum') && !f.bagonesum));
+  },
+
+  /* v2.3.5080: the day's book's kill switch (daybook.js), read the lower-case
+     way (TRAPS §117): `daybook: false` in the live flags adds, writes and
+     prunes nothing; what is stored stays, and the reader says it is off */
+  _daybookOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'daybook') && !f.daybook);
   },
 
   // Synchronous by design (hot paths).  v2.3.4376: the cache is loaded
