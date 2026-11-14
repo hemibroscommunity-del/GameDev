@@ -86,3 +86,53 @@ export function stampOn(id) {
 export function stampOff(id) {
   try { const d = document.getElementById(id); if (d) d.remove(); } catch (e) { /* gone already */ }
 }
+
+/* ═══ v2.3.5100: A SCENARIO IS A FILE (grand plan card B, PR 1) ═══
+   Since v2.3.5021 run.mjs finds ./mp-<name>.mjs by its name, with no line in
+   its table, so a check that read only the table never saw a new scenario:
+   old-map.test.mjs passed one that named no world.  These three read what
+   the checks and run.mjs read, the same way, from strings (no fs here: the
+   harness passes stampOn into the page). */
+
+/** run.mjs's table, as [name, file] pairs, from run.mjs's source. */
+export function scenarioTable(runSrc) {
+  return [...String(runSrc).matchAll(/^\s+([A-Za-z0-9_]+): \(\) => import\('\.\/([^']+)'\)/gm)].map((m) => [m[1], m[2]]);
+}
+
+/** A scenario exports `run`; a few mp-*.mjs are scripts of their own, never run by run.mjs. */
+export function isScenarioSource(src) {
+  return /^export\s+(?:async\s+)?function\s+run\b|^export\s+(?:const|let)\s+run\b/m.test(String(src));
+}
+
+/** The files a table line hides: an mp-<name>.mjs whose <name> is a table
+    line that imports ANOTHER file (`landview` is ./mp-landscape-view.mjs, so
+    a new mp-landview.mjs would never run by its name: `landview` runs the
+    table's).  `fileNames` are the folder's file names. */
+export function shadowedFiles(table, fileNames) {
+  const byName = new Map(table);
+  const out = [];
+  for (const f of fileNames) {
+    const m = /^mp-(.+)\.mjs$/.exec(f);
+    if (m && byName.has(m[1]) && byName.get(m[1]) !== f) out.push(`${f} (the table's \`${m[1]}\` runs ./${byName.get(m[1])})`);
+  }
+  return out;
+}
+
+/** Every scenario, by its file: [name, file] for each mp-*.mjs and each file
+    the table names, the table's name kept where it has one.  `read(file)`
+    gives a file's source or throws; only files that export `run` are kept. */
+export function scenarioFiles(table, fileNames, read) {
+  const byFile = new Map();
+  for (const f of [...fileNames].sort()) {
+    const m = /^mp-(.+)\.mjs$/.exec(f);
+    if (m) byFile.set(f, m[1]);
+  }
+  for (const [name, file] of table) byFile.set(file, name);
+  const out = [];
+  for (const [file, name] of byFile) {
+    let src;
+    try { src = read(file); } catch { continue; }
+    if (isScenarioSource(src)) out.push([name, file, src]);
+  }
+  return out;
+}

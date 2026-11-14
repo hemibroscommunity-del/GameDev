@@ -56,6 +56,30 @@ function restartLossesKnown() {
   return { say: String(m[1].split('\n').filter((l) => /^\s*\['[^']+',/.test(l)).length) };
 }
 
+/* v2.3.5101 (card B PR 2): the longest function and the largest file, read
+   by the four lines' guard's own measure (tools/guards/lib/fourLines.mjs,
+   where the rules are pinned: a code line holds a token, comments never
+   count; a function counts the functions inside it).  One measure, so the
+   scoreboard and the guard can never say two numbers. */
+let _fourLines = null;
+async function fourLines() {
+  if (!_fourLines) {
+    const lib = await import(pathToFileURL(join(ROOT, 'tools/guards/lib/fourLines.mjs')).href);
+    _fourLines = { m: lib.measureClient(), LINES: lib.LINES };
+  }
+  return _fourLines;
+}
+async function longestClientFunction() {
+  const { m, LINES } = await fourLines();
+  const f = m.functions[0];
+  return { say: String(f.lines), note: `code lines: ${f.file.slice(4)} ${f.name}; the line ${LINES.FUNCTION[f.file + '#' + f.name] ?? LINES.OTHER_FUNCTION}` };
+}
+async function largestFileCodeLines() {
+  const { m, LINES } = await fourLines();
+  const [f, n] = Object.entries(m.files).sort((a, b) => b[1] - a[1])[0];
+  return { say: String(n), note: `${f.slice(4)}; the line ${LINES.FILE[f] ?? LINES.OTHER_FILE}` };
+}
+
 /* part 3's rows, in its order, in its words */
 const ROWS = [
   { id: 'devices-reporting', measure: 'Devices that report their own smoothness', line: 'every sitting' },
@@ -67,8 +91,8 @@ const ROWS = [
   { id: 'unexplained-gold', measure: 'Unexplained gold in the whole world\'s sum', line: '0' },
   { id: 'restart-losses-known', measure: 'Losses the restart test knows of', line: '0', count: restartLossesKnown },
   { id: 'restore-covers', measure: 'Records of value a restore covers', line: 'all, by the registry' },
-  { id: 'longest-client-function', measure: 'Longest function in the client', line: 'a line that only falls' },
-  { id: 'largest-file-code-lines', measure: 'Code lines in the largest file, comments not counted', line: 'a line that only falls' },
+  { id: 'longest-client-function', measure: 'Longest function in the client', line: 'a line that only falls', count: longestClientFunction },
+  { id: 'largest-file-code-lines', measure: 'Code lines in the largest file, comments not counted', line: 'a line that only falls', count: largestFileCodeLines },
   { id: 'state-fields-owned', measure: 'State fields with an owner and a lifetime', line: 'all, by system' },
   { id: 'switch-rows', measure: 'Switches with a row (risk, what it needs, fallback or not)', line: 'all' },
   { id: 'art-mb-by-family', measure: 'Art: MB held at the memory check\'s fight, by family', line: 'by machine, each family at its bar' },
