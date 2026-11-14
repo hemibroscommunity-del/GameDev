@@ -481,6 +481,15 @@ export function reportJoined(S) {
   try {
     if (!S || typeof window === 'undefined') return;
     _S = S;
+    /* v2.3.5221 (card O PR 1; card P's held sweep found `wrapped > _poll >
+       _due` holding the page 18.4 ms in the town): the device class's chip
+       facts (deviceProfile.js chipFacts: getParameter and the precision,
+       which may wait for the chip) are asked ONCE a drawing context and kept.
+       The first ask was the first report's, a minute into play; now it is at
+       every join, behind its loading screen (cheap once kept; a renderer
+       rebuilt is a new context, asked again at the rejoin), and the lane
+       (drawLanes.js) is picked from that class then too */
+    try { drawLane(devClass()); } catch (e) { /* the first report asks */ }
     if (_timer) return;
     const now = Date.now();
     _joinedAt = now;
