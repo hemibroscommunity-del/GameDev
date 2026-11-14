@@ -1,4 +1,4 @@
-/* ═══ v2.3.5461: A TOWNSPERSON AT HIS OWN WORK, FROM THE COLOUR NUMBERS ═══
+/* ═══ v2.3.5462: A TOWNSPERSON AT HIS OWN WORK, FROM THE COLOUR NUMBERS ═══
  *
  * The owner, 2026-11-14: "make sure all NPCs do things that match their
  * characters. Like chef blaze should cook, not hammer like an anvil" (card TF,
@@ -50,7 +50,7 @@ import { shirtFill } from './traits/shirtColorCatalog.js';
 
 /* `?folkwork=0` (folkPose.js's switch, read the same way): no work poses on
    this phone, so none of these figures is loaded either.  `?folkskills=0`
-   (v2.3.5461, its row in tools/guards/lib/switches.mjs): these figures alone
+   (v2.3.5462, its row in tools/guards/lib/switches.mjs): these figures alone
    off, none of the set loaded, and the three back in card TF PR 1's poses
    (FOLK_SKILL_FALLBACK) */
 const _workOff = (() => { try { return /(^|[?&])folkwork=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();

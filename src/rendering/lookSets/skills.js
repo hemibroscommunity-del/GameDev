@@ -1,4 +1,4 @@
-/* ═══ v2.3.5461: THE TOWNSFOLK'S WORK, FOR THE ROLE BAKE (tools/art/role-bake.mjs --set skills) ═══
+/* ═══ v2.3.5462: THE TOWNSFOLK'S WORK, FOR THE ROLE BAKE (tools/art/role-bake.mjs --set skills) ═══
  *
  * The owner, 2026-11-14: "make sure all NPCs do things that match their
  * characters. Like chef blaze should cook, not hammer like an anvil" (card TF,
@@ -130,7 +130,7 @@ export default {
     const A = FARM_ANIMS[s.anim];
     return recolorStandInSkin(src.img, T[1] || null, A.fh, { frameW: A.fw, minBlob: SKILL_FARM_MIN_BLOB, art: null, regions: A.ink, patK: STANDIN_GARB_K.farm, ...clothes });
   },
-  /* v2.3.5461: a sheet's own bar for the 8-bit cut (tools/art/role-bake.mjs
+  /* v2.3.5462: a sheet's own bar for the 8-bit cut (tools/art/role-bake.mjs
      reads it; its manifest records it), never without its reason here
      (townsfolk-walk.test 6e fails one) */
   bars: {

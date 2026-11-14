@@ -18,7 +18,7 @@ In the Wheel's BroTown each of the 21 townsfolk has a day of his own
 
   | Who | His job | The pose |
   | --- | --- | --- |
-  | Chef Blaze | cooking with his pan, by the Cookhouse | the cook's figure (v2.3.5461; the mining swing until v2.3.5460, then the pickup) |
+  | Chef Blaze | cooking with his pan, by the Cookhouse | the cook's figure (v2.3.5462; the mining swing until v2.3.5460, then the pickup) |
   | Gavel Greg | holding up a lot | the pickup (the mining swing until v2.3.5460) |
   | Sterling | stacking his coins | the pickup |
   | Glint | a gem held up to the light | the pickup |
@@ -29,7 +29,7 @@ In the Wheel's BroTown each of the 21 townsfolk has a day of his own
 
   v2.3.5460 (the owner: *"chef blaze should cook, not hammer like an
   anvil"*): the mining swing holds a pickaxe, so only the blacksmith swings
-  it. v2.3.5461: the cook, the woodworker (the chop, his axe) and Farmer Bro
+  it. v2.3.5462: the cook, the woodworker (the chop, his axe) and Farmer Bro
   (kneeling, hoeing, watering) work in the player's own skill figures, from
   the look palette's colour numbers. Every townsperson's work, and what
   would make it right: `docs/specs/townsfolk-work.md`.

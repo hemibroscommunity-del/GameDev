@@ -30,7 +30,7 @@
  *      in FOLK_DAYS and 2g and 2j go red (2j names him with the pickaxe);
  *      give Farmer Bro the pickup and 2g and 2k go red (2k names him: his
  *      'wtf' eyes are blanked on the pickup's sheet, a bake of his look).
- *   6. v2.3.5461, at their own trades (card TF PR 2): Chef Blaze cooks, Woodworker
+ *   6. v2.3.5462, at their own trades (card TF PR 2): Chef Blaze cooks, Woodworker
  *      Bro chops, Farmer Bro hoes, waters and kneels, in the player's skill
  *      figures from the `skills` look set's colour numbers (rendering/folkSkill.js,
  *      entityRenderer _drawFolkSkill): its copies of effectsRenderer's numbers,
@@ -56,7 +56,7 @@ const root = new URL('../../', import.meta.url);
 const src = (p) => readFileSync(new URL(p, root), 'utf8');
 
 const W = await import('../../src/game/townsfolkWalk.js');
-const { readSystem } = await import('../../tools/guards/lib/filesOf.mjs');   /* v2.3.5461: code by system (§6) */
+const { readSystem } = await import('../../tools/guards/lib/filesOf.mjs');   /* v2.3.5462: code by system (§6) */
 const D = await import('../../src/game/townsfolkDay.js');
 const { QUEST_CHAINS } = await import('../../src/data/gameSystems.js');
 const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js');
@@ -113,7 +113,7 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
   const jobs = Object.fromEntries(names.map((n) => [n, [...new Set(W.FOLK_DAYS[n].stops.map((s) => s[3]).filter(Boolean))].join()]));
   /* v2.3.5460: the cook, the woodworker, the farmer and Gavel Greg swung the
      blacksmith's pickaxe ("chef blaze should cook, not hammer like an anvil");
-     v2.3.5461: each at his own trade now, in the player's skill figures, and
+     v2.3.5462: each at his own trade now, in the player's skill figures, and
      Gavel Greg holds up a lot (a gavel's bang is new art: the owner's list) */
   check('2g the owner\'s jobs: the blacksmith hammering, fishing by the river, the cook with his pan, the woodworker chopping, the farmer kneeling, hoeing and watering, Gavel Greg\'s lot (the pickup); never the pickaxe but the smith',
     jobs['Blacksmith Bro'] === 'mine' && jobs['Old Man Reel'] === 'fish'
@@ -122,7 +122,7 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
     && W.folkStops('Sterling', false) === W.FOLK_DAYS.Sterling.stops && W.folkStops('Nobody', false) === null && W.folkStops('__proto__', false) === null);
   const body = src('src/rendering/lookSets/body.js');
   const pd = /const POSE_DIRS = \{([^}]*)\}/.exec(body);
-  /* v2.3.5461: the trades' figures are not body sheets: the `skills` set's (6) */
+  /* v2.3.5462: the trades' figures are not body sheets: the `skills` set's (6) */
   const TRADES = { cook: ['cook-south', null, 'cook', 'south'], chop: ['chop-west', null, 'chop', 'west'], farmhoe: ['farmhoe-south', 'farmhoe-prop-south', 'farmhoe', 'south'],
     farmwater: ['farmwater-south', 'farmwater-prop-south', 'farmwater', 'south'], farmkneel: ['farmkneel-south', null, 'farmkneel', 'south'] };
   const bodyPoses = W.FOLK_WORK_POSES.filter((p) => !TRADES[p]);
@@ -144,7 +144,7 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
      tool: a new work pose adds its row here (its tool, and who may hold it),
      or this check names it.  docs/specs/townsfolk-work.md. */
   const TOOL_OF = { mine: 'the pickaxe', fish: 'the rod', pickup: null /* empty hands: anyone */,
-    /* v2.3.5461: the trades' figures (card TF PR 2) */
+    /* v2.3.5462: the trades' figures (card TF PR 2) */
     cook: 'the pan', chop: 'the axe', farmhoe: 'the hoe', farmwater: 'the watering can', farmkneel: null /* his hands in the soil */ };
   const MAY_HOLD = {
     /* the blacksmith at his forge: the player's own smithing is this very
@@ -156,7 +156,7 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
     'the hoe': ['Farmer Bro'],     /* the Feed & Seed */
     'the watering can': ['Farmer Bro'],
   };
-  /* v2.3.5461: a trade's figure not drawn (`?folkskills=0`, a part not in):
+  /* v2.3.5462: a trade's figure not drawn (`?folkskills=0`, a part not in):
      card TF PR 1's pose (folkSkill.js FOLK_SKILL_FALLBACK) -- held as every job is */
   const fbSrc = /const FOLK_SKILL_FALLBACK = Object\.freeze\((\{[^}]*\})\);/.exec(src('src/rendering/folkSkill.js'));
   const FALLBACK = fbSrc ? Function('return ' + fbSrc[1])() : null;
@@ -196,7 +196,7 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
         for (const job of jobsOf(s)) {
           if (!job || job === 'fish' || !L) continue;
           const pat = L.patterns || {};
-          /* v2.3.5461: a trade's figure takes his eye style as a piece of his
+          /* v2.3.5462: a trade's figure takes his eye style as a piece of his
              head (placeSkillTraitsFor), so only a pattern refuses its numbers */
           const refused = TRADES[job] ? (pat.pants || pat.shoes) : ((L.eyes && L.eyes !== 'none' && EYE_BLANK[job + '-south']) || pat.pants || pat.shoes);
           if (refused && !BAKED_BEFORE.has(n + '|' + job)) newBakes.push([n, job, L.eyes, pat.pants || pat.shoes || null]);
@@ -352,7 +352,7 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
     /const bump = folkStepBumps\(ox, oy, npc\.x, npc\.y,/.test(day) && /bumpsTotal: _bumpsTotal/.test(day));
 }
 
-/* ── 6. v2.3.5461: at their own trades (card TF PR 2) ─────────────────────── */
+/* ── 6. v2.3.5462: at their own trades (card TF PR 2) ─────────────────────── */
 {
   /* effectsRenderer's lines, found in the render system's files, never by the
      big file's path (tools/guards/tests-by-system.test.mjs: it will be split) */
@@ -419,7 +419,7 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
     /const _workOff = \(\(\) => \{ try \{ return \/\(\^\|\[\?&\]\)folkwork=0\(&\|\$\)\/\.test/.test(fs6) && /const _skillsOff = \(\(\) => \{ try \{ return \/\(\^\|\[\?&\]\)folkskills=0\(&\|\$\)\/\.test/.test(fs6)
       && /const _off = _workOff \|\| _skillsOff;/.test(fs6) && /const _reg = \(!_off && lookPaletteWanted\(\)\) \? registerLookSheets\('skills'/.test(fs6)
       && /if \(_off\) return false;/.test(fs6) && /folkwork=0/.test(src('src/rendering/folkPose.js'))
-      && /name: '\?folkskills', side: 'page', system: 'render', kind: 'switch', born: 5461, thrown: '=0', risk: 'memory'/.test(src('tools/guards/lib/switches.mjs'))
+      && /name: '\?folkskills', side: 'page', system: 'render', kind: 'switch', born: 5462, thrown: '=0', risk: 'memory'/.test(src('tools/guards/lib/switches.mjs'))
       && /if \(isFolkSkill\(work\)\) work = folkSkillFallback\(work\);/.test(src('src/rendering/systems/entityRenderer.js')));
   /* 6d: the renderer -- the figure from the numbers, no bake; behind the loading screen; gone when he is */
   const er6 = src('src/rendering/systems/entityRenderer.js');

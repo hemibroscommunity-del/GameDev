@@ -81,7 +81,7 @@ async function pageMeta({ set }) {
   const S = (await import(`/rendering/lookSets/${set}.js`)).default;
   return { mip: S.mip !== false, kind: S.kind, bits: S.bits, refScale: S.refScale || 1, fw: S.fw || 128, fh: S.fh || 128, out: S.out || null, roleDefs: S.roleDefs,
     sheets: S.sheets, code: S.code || [], art: Object.fromEntries(S.sheets.map((k) => [k, S.art(k)])),
-    /* v2.3.5461: a sheet's own bar, written beside its reason in the set module
+    /* v2.3.5462: a sheet's own bar, written beside its reason in the set module
        (`bars`, the skills set's cook: card TF, the planning session's answer) */
     bars: S.bars ? Object.fromEntries(Object.entries(S.bars).map(([k, v]) => [k, v && v.bar])) : null };
 }
@@ -409,7 +409,7 @@ async function main() {
     if (!CHECK) fs.mkdirSync(outDir, { recursive: true });
     for (const name of sheets) {
       const t0 = Date.now();
-      /* v2.3.5461: the sheet's own bar where its set module writes one (with
+      /* v2.3.5462: the sheet's own bar where its set module writes one (with
          its reason: townsfolk-walk.test 6e), else the line's */
       const BAR = (meta.bars && meta.bars[name]) || CUT_BAR;
       let r = await page.evaluate(pageBake, { set, sheet: name, bits, probeAt: PROBE_AT, bar: BAR, cutSrc: cutPerRole.toString() });

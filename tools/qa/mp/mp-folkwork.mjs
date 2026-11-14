@@ -1,4 +1,4 @@
-/* ═══ v2.3.5461: THE TOWNSFOLK AT THEIR OWN TRADES -- on a phone (card TF PR 2) ═══
+/* ═══ v2.3.5462: THE TOWNSFOLK AT THEIR OWN TRADES -- on a phone (card TF PR 2) ═══
  *
  * The owner, 2026-11-14: "make sure all NPCs do things that match their
  * characters. Like chef blaze should cook, not hammer like an anvil"

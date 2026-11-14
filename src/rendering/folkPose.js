@@ -20,7 +20,7 @@
  * The poses are authored facing south, so he faces you while he works.
  * Each townsperson works on his own beat (the caller's per-id phase).
  *
- * v2.3.5461: AND HIS OWN TRADE'S FIGURE (card TF; the owner, 2026-11-14:
+ * v2.3.5462: AND HIS OWN TRADE'S FIGURE (card TF; the owner, 2026-11-14:
  * "chef blaze should cook, not hammer like an anvil").  The cook, the chop and
  * the farmer's hoe, can and kneel are the player's skill figures, not body
  * sheets: rendering/folkSkill.js has them as colour numbers, and entityRenderer
@@ -42,7 +42,7 @@ const WORK_FRAMES = { mine: 14, fish: 32, pickup: 29 };
 const _workOff = (() => { try { return /(^|[?&])folkwork=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
 
 /** The work pose he is at and can be drawn in, or null (stand or walk).  A
- *  skill figure (v2.3.5461) is answered here and its parts asked for by the
+ *  skill figure (v2.3.5462) is answered here and its parts asked for by the
  *  renderer (folkSkillReady), which stands him if one is missing. */
 export function folkWorkPose(npc) {
   const w = npc && npc._folkWork;
@@ -57,7 +57,7 @@ export function folkWorkFrame(pose, t) {
   return Math.floor((((t / cyc) % 1) + 1) % 1 * fc) % fc;
 }
 
-/** v2.3.5461 (moved from entityRenderer _drawFolk, unchanged; folkFacing is
+/** v2.3.5462 (moved from entityRenderer _drawFolk, unchanged; folkFacing is
  *  its npcDirFromDelta, townsfolk-walk.test 1h): his facing and stride from
  *  where he has got to since his last frame (the photograph's rule: a floor,
  *  so a standing townsperson does not turn).  True while he jogs -- a
