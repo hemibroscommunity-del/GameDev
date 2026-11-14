@@ -243,7 +243,7 @@ Documents only (`docs/plan/status/LB.md`, `state: done`). True: #1771,
 #1783 and #1798 are on `main`. Its Found keeps the old rank trophies
 (`public/icons/ui/rank-<n>.webp`) for the owner's call, nothing removed.
 
-## Opened during the sitting: #1823 (R, tag 5283), #1824 (L, tag 5211), #1825 (R, tag 5287): HELD (conflicts)
+## Opened during the sitting: #1823 (R, tag 5283), #1824 (L, tag 5211), #1825 (R, tag 5287), #1826 (K, tag 5186): HELD (conflicts)
 
 Opened at 18:43, 18:44 and about 18:50, against `main` 82fb78d, `test`
 running when read; each changes worker code (two doors that move value,
@@ -261,6 +261,11 @@ once each merges the new `main`.
   with #1823 after it. R merges `main` into each in turn, one a sitting
   or one after another, as the next list orders them. It adds a switch
   row and touches `src/ui/panels/EconCard.jsx`.
+- **#1826 (card K, the gain bench: tests and a census, no judge
+  changed; it would deploy, new files in `server/test/`)**: add/add
+  conflict with #1822 and #1820 at `docs/plan/status/K.md` (its copy
+  differs from theirs, which agree); `test` running when read. K merges
+  the new `main` after its two land.
 - **#1824 (card L PR 5's second, the duel door)**: conflict with #1792 at
   `tools/guards/phase-table.test.mjs` (both add a `DOOR_SUITES` row at
   its end), in either order. Card L merges the new `main` after #1792

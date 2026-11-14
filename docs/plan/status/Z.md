@@ -20,6 +20,8 @@ deploy (2 to 9): back to back. No cap, no live flag, no stored shape.
   and goes FIRST at sitting 14 (its PR 4 sorts the rows by name).
 - #1823, #1825 R: add/add at `docs/plan/status/R.md` with #1819; R
   merges the new `main` into each. Opened mid-sitting: unreviewed.
+- #1826 K: add/add at `docs/plan/status/K.md` with #1822, #1820; K
+  merges the new `main`. Opened mid-sitting: unreviewed.
 - #1824 L: conflict with #1792 at `phase-table.test.mjs`'s
   `DOOR_SUITES` end; L merges the new `main`. Unreviewed.
 - #1782 SK: ready; the owner's yes to +8 to +10 moves a ride.
