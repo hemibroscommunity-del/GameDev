@@ -36,6 +36,8 @@
  */
 import { decodePng8 } from './png8Decode.js';
 import { packStripNumbers } from './stripPack.js';   /* v2.3.4470: a monster's strip, cropped and packed from its own numbers */
+import { planOnRows, remapToRow } from './stripRows.js';   /* v2.3.5044: ...and numbered for its bundle's row of colours */
+import { retintPalette } from './retintPalette.js';   /* v2.3.5044: ...a colour variant's palette retinted first (the page's own rule) */
 import { bottomsOfNumbers } from './artBottoms.js';   /* v2.3.4470: each frame's ground line, read here from the page's numbers */
 
 function imageUrlOf(sheetUrl, image) {
@@ -55,8 +57,20 @@ self.onmessage = async (ev) => {
       if (!dec) throw new Error('not a palette PNG');
       const out = packStripNumbers(dec, m.fw, m.fh, m.n || 0);
       if (!out) throw new Error('not a strip of ' + m.fw + ' x ' + m.fh + ' frames');
-      self.postMessage({ id: m.id, ok: true, w: out.w, h: out.h, idx: out.idx, pal: out.pal, cells: out.cells, n: out.n, fileW: dec.w, fileH: dec.h },
-        [out.idx.buffer, out.pal.buffer]);
+      /* v2.3.5044: the page sent its bundle's rows of colours (picsNumbers.js
+         stripRowsAsk): the strip numbered for its row here (stripRows.js),
+         its own numbers kept beside it for the page's way if the rows changed */
+      let onRow = null, palTint = null;
+      /* a colour variant (zoneTextures.js loadTrackedStripRetinted): its
+         palette retinted here, as the page would, and numbered as that */
+      if (m.rgb) palTint = retintPalette(out.pal, out.idx, m.rgb);
+      if (m.rows) {
+        const plan = planOnRows(palTint || out.pal, m.rows);
+        const st = (out.w + 3) & ~3;   /* paletteTex.js paletteStride */
+        onRow = { ri: plan.ri, n0: plan.n0, added: plan.added, st, out: remapToRow(out.idx, out.w, out.h, plan.to, st) };
+      }
+      self.postMessage({ id: m.id, ok: true, w: out.w, h: out.h, idx: out.idx, pal: out.pal, cells: out.cells, n: out.n, fileW: dec.w, fileH: dec.h, onRow, palTint },
+        [out.idx.buffer, out.pal.buffer].concat(onRow ? [onRow.out.buffer, onRow.added.buffer] : [], palTint ? [palTint.buffer] : []));
       return;
     }
     /* v2.3.5004: a palette PNG the page already holds, as a Blob (the level-up
