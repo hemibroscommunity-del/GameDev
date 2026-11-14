@@ -1,23 +1,23 @@
 card: P
-branch: claude/plan-p-2-fightmb (one branch a PR, each begun from the one before)
-prs: #1713 (tag 5241, ready), PR 2 (tag 5242, ready; its number goes here with PR 3's first commit)
+branch: claude/plan-p-3-finish (one branch a PR, each begun from the one before)
+prs: #1713 (tag 5241, ready), #1715 (tag 5242, ready), PR 3 (tag 5243, ready; its number goes here with PR 4's first commit)
 state: ready
 
 ## Done
 
-- #1713 (tag 5241), the family table and the record of what ships:
-  `tools/assets/families.mjs` (200 families), `shipped.mjs`,
-  `shipped.json` (3,225 rows: supplied 797, made 2,077, data 351,
-  unsorted 0), spec `docs/specs/asset-door.md` part 1, SHAPES part 7 and 8.
-
-- PR 2 (tag 5242), the measure: `QA_MB_ROWS=1` rows at the fights,
-  `tools/assets/fightmb.mjs`, the census `docs/plan/census/assets.md` from
-  three runs (11/11 each); a plain run within every line. 36 families hold
-  1 MB or more at the fight.
+- #1713 (tag 5241): `tools/assets/families.mjs` (200 families),
+  `shipped.mjs`, `shipped.json` (3,225 rows: supplied 797, made 2,077,
+  data 351, unsorted 0), spec `docs/specs/asset-door.md` part 1, SHAPES.
+- #1715 (tag 5242): `QA_MB_ROWS=1` rows at the fights, `fightmb.mjs`, the
+  census `docs/plan/census/assets.md` (three runs, 11/11 each; a plain run
+  within every line). 36 families hold 1 MB or more at the fight.
+- PR 3 (tag 5243): `tools/assets/finish.mjs`; strip256, reduce256 and
+  npc256 call it (each compared: the same bytes as before).
 
 ## Next
 
-- PR 3 (tag 5243), one finishing tool, `tools/assets/finish.mjs`.
+- PR 4 (tag 5244), the gate, once card B's #1698 and `tools/guards/lib/`
+  are on `main`; PR 5 (the 19 `.m4a`) meanwhile.
 
 ## Found
 

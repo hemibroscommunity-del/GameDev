@@ -249,3 +249,79 @@ read no rows at any stop and stayed within every line of
 72.1 of 115, `canvases` 15.4 of 56, `sound` 18.1 of 22, `heap` 36.4 of
 38.5, `buffers` 21.4 of 22, `workers` 19.4 of 36. No line changes in this
 PR.
+
+## 3. One finishing tool (step 9.2; tag 5243)
+
+`tools/assets/finish.mjs`: the colour and file step after the art step
+(`public/tools/style/process.js` keys out, splits and snaps new art to the
+grid). Four steps, each a function the old tools now call:
+
+1. **decode** (`readRgba`): ffmpeg, every pixel's own RGBA, no colour
+   management (`strip256.mjs`'s way). For the townsfolk's lossless WebPs,
+   ffmpeg and PIL give the same bytes: all 65 of `public/sprites/npc/*.webp`
+   compared.
+2. **the bundle on its colours** (`onColours`): `quant256.js` over every
+   pixel of the bundle at once (`strip256.mjs --shared`'s way), so a bundle
+   shares one row of the atlas. One picture alone is put on its own colours,
+   exactly as before.
+3. **encode** (`encodePng`, `writeWebp`): a palette PNG (`png8.js`); a
+   lossless WebP where the family's address is a `.webp` (PIL, as
+   `npc256.mjs`).
+4. **verify** (`verifyPng`): read back through the game's own reader
+   (`src/rendering/png8Decode.js`): exactly the colours written, at the
+   size. A WebP is read back by PIL (the game's reader reads palette PNGs
+   only). Then the row in `shipped.json` with `door`: its sources' hashes,
+   its recipe (bundle, colours, how far its pixels moved, encoder, pixel
+   rule and whether it held) and the tool's tag (`recordRows`).
+
+```
+node tools/assets/finish.mjs <family> <file> [...]        into the family's folder, under the file's own name
+node tools/assets/finish.mjs <family> <file> --to <path>  one file, to an address of the family
+  --shared   every file named on one list of colours        --dry   write nothing
+node tools/assets/finish.mjs --bounds
+```
+
+**What it refuses**, each with the reason and the numbers:
+
+- a family that is not **supplied** (a made one is re-made by its own tool,
+  named; data is never rewritten), and a family with no bar (a sound is
+  never encoded a second time);
+- an input over its **bounds**: the largest picture, sound and file in reach
+  at tag 5243, taken from what exists (`public/maps/farm_v2.png`, 2048 x 2816
+  = 5,767,168 pixels; 7,424 wide; 2,916,937 bytes,
+  `public/audio/music/world.mp3`). The owner's own limits replace them when
+  given;
+- an output that is not an address of the family (its pattern, matched by
+  `shipped.mjs`), and **an input written over**: the output goes to the
+  family's address, never the input's (an upload stays byte for byte);
+- a name that is not plain letters, digits, `-`, `_` and `.` (words in a
+  picture, a tag, a signed record or a file's name are data: `--to` says
+  where it goes);
+- a picture that is not whole frames of its family's pixel rule (`frame` or
+  `cells WxH`).
+
+**The three old tools keep their command lines** and call these steps:
+`tools/art/strip256.mjs` (decode, colours, encode; its read-back is now the
+game's reader, where it was ffmpeg), `tools/art/reduce256.mjs` (the same),
+`tools/art/npc256.mjs` (decode by ffmpeg where it was PIL, colours, encode,
+the WebP). A cut stays authored: each `cut_*` script holds one animal's cut
+and calls `strip256.mjs`.
+
+**Compared, not committed** (tag 5243, scratch worktrees of the commit before
+and after): each old tool and its new self on the same input gave **the same
+bytes**:
+
+- `strip256.mjs` on the stun stars alone (80,038 colours, 2048 x 256) and
+  `--shared` with the fire trail;
+- `reduce256.mjs` on the fire trail alone (30,324 colours): the same twin and
+  the same `src/data/p256Files.js`;
+- `npc256.mjs` on a 23,050-colour lossless WebP in a townsperson's place.
+
+And `finish.mjs fx-coinflip` on a 1408 x 192 picture: a lossless WebP of 256
+colours at `public/sprites/fx/coinflip-test.webp`, its row with `door`, the
+input untouched; every refusal above tried once. Nothing any of them made is
+made again in this PR.
+
+`shipped.mjs` (v2.3.5243): a tracked file deleted in the working tree is no
+longer in reach (its row reads as a row with no file), where the compare
+crashed reading it.
