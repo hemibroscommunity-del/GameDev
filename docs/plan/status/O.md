@@ -1,6 +1,6 @@
 card: O
 branch: claude/plan-o-6-crowd (one branch a PR: claude/plan-o-<n>-<word>; begun from main)
-prs: #1787, #1792, #1794, #1800, #1814, #1815 (merged); PR 3 (5223, ready, LAST in its sitting), PR 6 (5226, ready)
+prs: #1787, #1792, #1794, #1800, #1814, #1815 (merged); #1832 (5223, PR 3: ready, LAST in its sitting), PR 6 (5226, ready)
 state: ready
 
 ## Done
@@ -22,7 +22,7 @@ state: ready
 
 ## Next
 
-- PR 3 merges LAST in its sitting; the gatekeeper runs
+- #1832 (PR 3) merges LAST in its sitting; the gatekeeper runs
   `node tools/dev/name-lanes.mjs` on the rehearsal's tip first.
 - PR 8 (one program or three, how a look is made): TF is done (#1828).
 

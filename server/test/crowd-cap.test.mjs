@@ -24,6 +24,7 @@
 import { readFileSync } from 'node:fs';
 import { CROWD_K, CROWD_HOLD, crowdPick, crowdFromSearch, crowdK, _resetCrowdK } from '../../src/game/crowdCap.js';
 import { setRung, _resetLanes, liveKnobs, AXES, knobAt } from '../../src/game/drawLanes.js';   /* v2.3.5226: the crowd's knob */
+import { systemNames, findIn } from '../../tools/guards/lib/filesOf.mjs';   /* v2.3.5226: the renderer read by system, never by its path */
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -143,10 +144,13 @@ check('3d. capped at 500', crowdFromSearch('?crowd=99999') === 500);
     !!kept && kept.size === 15 && far.filter((c) => c.prio).every((c) => kept.has(c.id)) && ['p00', 'p01', 'p02', 'p03', 'p04'].every((id) => kept.has(id)), kept && [...kept]);
   _resetLanes();
   const cc = readFileSync(new URL('../../src/game/crowdCap.js', import.meta.url), 'utf8');
-  const er = readFileSync(new URL('../../src/rendering/systems/entityRenderer.js', import.meta.url), 'utf8');
-  check('4e. the cap is read through the lanes\' one reader in crowdCap.js, and the renderer asks it every frame (no K fixed at load)',
-    /laneKnob\('crowd'\)/.test(cc) && /const _crowdK = \(\) => \(_noPeerCull \? Infinity : crowdK\(\)\);/.test(er) && /const _capK = _crowdK\(\);/.test(er)
-    && !/crowdFromSearch|CROWD_K\b(?! \(50\))/.test(er.replace(/\/\*[\s\S]*?\*\//g, '')));
+  /* the renderer, found by system (tools/guards/lib/filesOf.mjs): whichever file draws the crowd */
+  const hits = (re) => systemNames().flatMap((sys) => findIn(sys, re));
+  const asks = hits(/const _crowdK = \(\) => \(_noPeerCull \? Infinity : crowdK\(\)\);/);
+  const perFrame = hits(/const _capK = _crowdK\(\);/);
+  const atLoad = hits(/crowdFromSearch\(location|_crowdKAtLoad/);
+  check(`4e. the cap is read through the lanes' one reader in crowdCap.js, and the renderer asks it every frame (no K fixed at load): ${asks.map((h) => h.file).join(', ')}`,
+    /laneKnob\('crowd'\)/.test(cc) && asks.length === 1 && perFrame.length === 1 && perFrame[0].file === asks[0].file && atLoad.length === 0, { asks, perFrame, atLoad });
 }
 
 console.log(`\ncrowd-cap: ${passed} passed, ${failed} failed`);
