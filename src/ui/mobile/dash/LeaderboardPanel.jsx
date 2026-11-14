@@ -6,6 +6,7 @@ import { takeFishBoardWant, subscribeFishWeigh, fishWeighLive } from '@/game/fis
 import { BoardRow, BoardEmpty, useBoardFaces, TableRow, BarBack, LB_ART, LB_PIECES, BoardFace, LvPill } from './BoardRow.jsx';   /* v2.3.4393: the face, the level, the record; v2.3.5501: the table, the bars, the pieces */
 import { askSpinBoard, subscribeSpinBoard, spinBoardLive, spinRowLine } from '@/game/spinBoard.js';
 import { aceFlipBus } from '../aceFlipBus.js';
+import { PROG3_BODY_META, PROG3_ATK_META } from '@/data/prog3.js';   /* v2.3.5502: the stat boards' labels and icons, the Bro tab's */
 import { useBoxSize, railHeading, FOOT_FADE } from './railKit.js';   /* v2.3.4394: the measuring and the headings this page and the Quests page share */
 
 /* v2.3.1671: a TRADITIONAL HISCORES BOARD — one ranking per skill.
@@ -126,6 +127,18 @@ const BATTLE = [
      weapons (leaderboard.js seriesValue, v2.3.3538's one level) */
   { id: 'combat', label: 'Level', icon: [U + 'hero/rec-xp.webp', 256, 30, 40, 226, 215], table: 'power', rank: 'lv' },
 ];
+/* v2.3.5502: THE STAT BOARDS (card PW, #1781: server/src/statboards.js
+   STAT_BOARD_IDS, in its order), each the points a player put in one shared
+   stat, and `pts_dmg` the weapons' damage points summed.  The label and the
+   icon are the Bro tab's own (src/data/prog3.js), so the board reads as the
+   stat it ranks; the damage points' board says "Damage", never "Power" (the
+   planning session, 2026-11-14: "Power" is Overall's), under a "Stats"
+   heading. */
+const STAT_ORDER = ['def', 'hp', 'dodge', 'stam', 'eres', 'mana', 'move', 'dmg'];
+const STAT_BOARDS = STAT_ORDER.map((k) => {
+  const m = k === 'dmg' ? PROG3_ATK_META.find((r) => r.key === 'dmg') : PROG3_BODY_META.find((r) => r.key === k);
+  return { id: 'pts_' + k, label: k === 'dmg' ? 'Damage' : (m && m.label) || k, full: (k === 'dmg' ? 'Damage' : (m && m.label) || k) + ' points', icon: m && m.iconSrc, table: 'stat' };
+});
 const KILLS = { id: 'kills', label: 'Kills', icon: [U + 'hero/rec-kills.webp', 256, 0, 9, 256, 246] };
 const AP_CAT = { id: 'ap', label: 'AP', full: 'Achievement points', icon: ['/icons/achievements/achievements.webp', 150, 37, 21, 113, 129] };
 const SKILLS = [
@@ -149,6 +162,14 @@ const FISH_CAT = { id: 'fish', label: 'Biggest fish', kind: 'fish', icon: ['/ico
  *  the box, centred.  v2.3.5501: a board with `art` wears its tile from the
  *  owner's sheet (the crown, the sword, the bow, the staff) instead. */
 export function CatIcon({ icon, art, px, dim }) {
+  /* a picture drawn to its own frame (the stats' icons, the Bro tab's): whole, contained */
+  if (typeof icon === 'string') {
+    return (
+      <span data-lb-icon="" aria-hidden="true" style={{ position: 'relative', flex: 'none', width: px, height: px, display: 'block' }}>
+        <img src={icon} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', opacity: dim ? 0.92 : 1 }} />
+      </span>
+    );
+  }
   if (art) {
     return (
       <span data-lb-icon="" aria-hidden="true" style={{ position: 'relative', flex: 'none', width: px, height: px, display: 'block' }}>
@@ -174,6 +195,9 @@ export function CatIcon({ icon, art, px, dim }) {
 export function boardList(S) {
   const caps = (S && S._serverCaps) || {};
   const power = powerVersion(S) > 0;
+  /* v2.3.5502: THE STATS GROUP (card PW's stat boards, #1781): as many as
+     the worker ranks, `caps.statboards` a count (TRAPS §9), in its order */
+  const stats = STAT_BOARDS.slice(0, Math.max(0, Math.floor(Number(S && S._serverCaps && S._serverCaps.statboards) || 0)));
   const records = [
     ...(spinBoardLive(S) ? [SPIN_CAT] : []),
     ...(caps.aceItems ? [FLIP_CAT] : []),
@@ -182,6 +206,7 @@ export function boardList(S) {
   return [
     { title: 'Ranks' },
     ...BATTLE.filter((b) => !b.needs || power),
+    ...(stats.length ? [{ sec: 'Stats' }, ...stats] : []),
     { divider: 'more' },
     KILLS, ...(caps.achievements ? [AP_CAT] : []),
     ...(records.length ? [{ sec: 'Records' }, ...records] : []),
@@ -204,14 +229,12 @@ export function compact(v) {
 }
 const series = (r) => (r && r.series && typeof r.series === 'object' ? r.series : {});
 /** The power index's version the worker sends (card PW: `caps.power`, a
- *  number), or 0.  HELD AT 0 IN THIS PR (v2.3.5501): the worker's half (card
- *  PW, #1776) is what advertises the cap, and caps-audit refuses a cap the
- *  phone reads before join.js sends it.  Card LB's PR 3 (tag 5502) reads
- *  `caps.power` here once #1776 is on main (with CAP_GATES' row and
- *  mp-boardslook's checks of Overall and the rating); until then every
- *  power path below is the "without" one: Total, no Overall. */
-function powerVersion(_S) {
-  return 0;
+ *  number, 2 since the rating), or 0.  v2.3.5502 (card LB, PR 3): read now
+ *  that card PW's #1776 advertises it (v2.3.5501 held it at 0: caps-audit
+ *  refuses a cap the phone reads before join.js sends it). */
+function powerVersion(S) {
+  const v = Number(S && S._serverCaps && S._serverCaps.power);
+  return v > 0 ? v : 0;
 }
 /** a weapon's score in a 24 px column: in full to 999, then one decimal and
  *  a k ("2.7k": a rating's style column runs to the thousands) */
@@ -325,7 +348,8 @@ function podiumValue(board, r, power) {
     return key === 'total' ? { text: num(p.total) } : { lv: p[key] };
   }
   const v = Math.floor(Number(board.id === 'ap' ? r.ap : (r.value ?? r.score)) || 0);
-  return board.id === 'ap' ? { text: num(v) + ' AP' } : board.id === 'kills' ? { text: num(v) + (v === 1 ? ' kill' : ' kills') } : { lv: v };
+  return board.id === 'ap' ? { text: num(v) + ' AP' } : board.id === 'kills' ? { text: num(v) + (v === 1 ? ' kill' : ' kills') }
+    : board.table === 'stat' ? { text: num(v) + (v === 1 ? ' pt' : ' pts') } : { lv: v };
 }
 
 /* a podium name's size: its own width measured once (a canvas's measureText
@@ -430,7 +454,7 @@ function HeadCell({ k, head, hint, setHint }) {
  *  Lv are one button that swaps the total for the three weapons and back
  *  (WIDE_TABLE above).  A head button's target reaches 44 px down over the
  *  first row, which takes no tap of its own. */
-function TableHead({ table, hint, setHint, swap }) {
+function TableHead({ table, hint, setHint, swap, hintHere }) {
   const [lv, ...rest] = table;
   return (
     <>
@@ -440,7 +464,22 @@ function TableHead({ table, hint, setHint, swap }) {
       fontSize: 10.5, fontWeight: 800, color: COL.text2, letterSpacing: '.02em',
     }}>
       <span style={{ textAlign: 'center' }}>#</span>
-      <span>Player</span>
+      {/* v2.3.5502: on a narrow table the swap button holds the Power
+          column, so the rating's reading is a small "?" at the end of the
+          Player head (`hintHere`), its target 44 px tall */}
+      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minWidth: 0 }}>
+        <span>Player</span>
+        {hintHere ? (
+          <button type="button" data-lb-power-head="" aria-expanded={!!hint} aria-label="What Power means" title={POWER_HINT}
+            onClick={() => setHint(!hint)} style={{
+              position: 'relative', width: 16, height: 16, padding: 0, margin: '0 2px 0 0', borderRadius: 8, boxSizing: 'border-box',
+              border: `1px solid ${hint ? COL.accent : COL.edgeWarm}`, background: 'transparent', color: hint ? COL.accent : COL.text2,
+              fontFamily: 'inherit', fontSize: 10, fontWeight: 900, lineHeight: '14px', cursor: 'pointer', touchAction: 'manipulation',
+            }}>?
+            <span aria-hidden="true" style={{ position: 'absolute', left: -14, right: -14, top: -14, height: 44 }} />
+          </button>
+        ) : null}
+      </span>
       <HeadCell k={lv[0]} head={lv[1]} />
       {swap ? (
         <button type="button" data-lb-swap={swap.view} aria-label={swap.view === 'styles' ? 'Show the total' : 'Show Melee, Bow and Magic'}
@@ -499,12 +538,17 @@ function RankBoard({ board, podium, w }) {
   const S = getState();
   const meId = S && S.myId;
   /* the index's version (card PW: a number, 1 today), or 0 */
-  const power = powerVersion(S);
+  /* v2.3.5502: the Power and its three styles' scores are OVERALL's
+     columns.  The weapons' boards rank by the weapon's LEVEL and Level by the
+     level (leaderboard.js SERIES_CATEGORIES), so they keep the levels: every
+     board shows the numbers it is ranked by */
+  const power = board.id === 'power' ? powerVersion(S) : 0;
   /* v2.3.3527: the AP board leaves off everyone at 0 */
   const rows = (boards[cat] || []).filter((r) => cat !== 'ap' || Math.floor(Number(r && r.ap) || 0) > 0);
   const faces = useBoardFaces(rows);
   if (rows.length === 0) {
-    return <BoardEmpty text={loading ? 'Loading…' : cat === 'ap' ? 'Nobody has achievement points yet.' : cat === 'kills' ? 'Nobody has a kill yet.' : 'Nobody has trained this yet.'} />;
+    return <BoardEmpty text={loading ? 'Loading…' : cat === 'ap' ? 'Nobody has achievement points yet.' : cat === 'kills' ? 'Nobody has a kill yet.'
+      : board.table === 'stat' ? 'Nobody has put points in this yet.' : 'Nobody has trained this yet.'} />;
   }
   const narrow = board.table === 'power' && w > 0 && w < WIDE_TABLE;
   const table = tableOf(board, power, narrow, view);
@@ -512,7 +556,7 @@ function RankBoard({ board, podium, w }) {
   return (
     <>
       {podium ? <Podium rows={rows.slice(0, 3)} faces={[faces[0], faces[1], faces[2]]} k={podium} meId={meId} board={board} power={power} /> : null}
-      <TableHead table={table} hint={hint} setHint={setHint}
+      <TableHead table={table} hint={hint} setHint={setHint} hintHere={narrow && power > 0 && view !== 'styles'}
         swap={narrow ? { view, onSwap: () => setView(view === 'styles' ? 'total' : 'styles') } : null} />
       <div data-lb-rows="" style={{ paddingTop: 3 }}>
         {rows.map((r, i) => (

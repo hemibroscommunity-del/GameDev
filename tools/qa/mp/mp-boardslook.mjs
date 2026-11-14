@@ -9,10 +9,11 @@
  * worker, and four plain-socket players so the podium and the table are full:
  *   1. Ranks opens the page in the dashboard's band: "RANKS" between the two
  *      laurels down the left, then the boards as pills on the sheet's pill
- *      bars (the lit one gold) -- Melee, Bow, Magic first (their sheet tiles),
- *      then Level; Overall is NOT there against a worker without caps.power
- *      (and no stat board at all: held); the gold divider, then Kills and every board
- *      there was (Records, Skills); each a 44 px target, its word whole;
+ *      bars (the lit one gold) -- Overall (v2.3.5502: the worker says
+ *      caps.power), Melee, Bow, Magic (their sheet tiles), Level; the Stats
+ *      group (caps.statboards' count: Defense ... Speed, and Damage, never
+ *      "Power"); the gold divider, then Kills and every board there was
+ *      (Records, Skills); each a 44 px target, its word whole; Overall open;
  *   2. the board: a podium of the first three on their shields (2, 1 raised,
  *      3), each with a face, its name and "Lv N"; under it the table -- #,
  *      Player, Lv, Total and the sword, bow and staff -- rows 1-3 on the gold,
@@ -20,15 +21,18 @@
  *      name; every piece loaded; all inside the screen;
  *   3. every board picked in turn: each opens (a table, its records, or "says
  *      so"), the list scrolling to it;
- *   4. (Overall, the Power rating and its hint: card LB's PR 3, tag 5502,
- *      once card PW's #1776 advertises caps.power; this PR reads no cap)
+ *   4. Overall (its rows served in card PW's shape): #, Player, Lv, Power
+ *      on an upright phone, the rating in full ("4,712"), a row of an older
+ *      index "-"; the swap shows each style's score short ("2.7k"); the "?"
+ *      by the head says "400 points ahead = 10x likelier to win"; the Damage
+ *      board opens;
  *   5. sideways (844 x 390, a band ~80 px tall): the pills are one row over
  *      the table, no podium, all inside the screen;
  *   6. a computer (1440 x 900, `wide: true`, the band at the bottom, a mouse):
  *      clicked open, the list beside the board with its podium;
  *   7. no page errors.
  * No pages: the board scrolls inside the band (the spec says why).
- * Pictures: tools/qa/mp/out/boardslook-{upright,sideways,computer}.png
+ * Pictures: tools/qa/mp/out/boardslook-{upright,upright-375,power,sideways,computer}.png
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -166,6 +170,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       bots.push(await bot(wsPort, room, { id, name, device: 'dev' + id, look: lookOf }));
     }
     rec.ok('four more players are in (guard)', bots.every((b) => b.ok), bots.map((b) => b.ok));
+    const capsPw = await H.readState(A, (S) => ({ power: Number(S._serverCaps && S._serverCaps.power) || 0, statboards: Number(S._serverCaps && S._serverCaps.statboards) || 0 }));
     await A.page.waitForTimeout(1500);
 
     /* ── 1 ── the list */
@@ -176,22 +181,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const t = document.querySelector('[data-lb-title]');
       const rows = document.querySelectorAll('[data-lb-board] [data-board-row]').length;
       const imgs = [...document.querySelectorAll('[data-lb-page] img')];
-      return { rows, laurels: t ? t.querySelectorAll('img').length : 0, loaded: imgs.every((i) => i.complete && i.naturalWidth > 0) };
-    }, (v) => v.rows >= 5 && v.loaded, { timeout: 30000, label: 'the board and its pieces' }).then(() => look(A)).catch(() => look(A));
+      const empty = ((document.querySelector('[data-lb-board] [data-board-empty]') || {}).textContent || '').trim();
+      return { rows, empty, laurels: t ? t.querySelectorAll('img').length : 0, loaded: imgs.every((i) => i.complete && i.naturalWidth > 0) };
+    }, (v) => (v.rows >= 1 || (v.empty && v.empty !== 'Loading…')) && v.loaded, { timeout: 30000, label: 'the board and its pieces' }).then(() => look(A)).catch(() => look(A));
     rec.ok('1a Ranks opens the page in the band: "RANKS" between its two laurels at the list\'s head',
       L.page === 'list' && !!L.title && L.title.text === 'RANKS' && L.title.laurels === 2 && L.pg.b <= L.vh, { page: L.page, title: L.title, pg: L.pg });
-    rec.ok('1b Melee, Bow, Magic lead the list (their sheet tiles), then Level; no Overall without caps.power, no stat boards',
-      JSON.stringify(L.order.slice(0, 4)) === JSON.stringify(['melee', 'bow', 'magic', 'combat'])
-      && L.pills.slice(0, 3).every((p) => p.tile && p.icon) && !L.order.includes('power') && !L.order.includes('might'), L.order);
+    /* v2.3.5502: the worker (card PW's #1776 and #1781 on main) says caps.power and caps.statboards */
+    const STATS = ['pts_def', 'pts_hp', 'pts_dodge', 'pts_stam', 'pts_eres', 'pts_mana', 'pts_move', 'pts_dmg'];
+    const STAT_WORDS = ['Defense', 'Max HP', 'Dodge', 'Stamina', 'Resist', 'Max Mana', 'Speed', 'Damage'];
+    rec.ok('1b Overall leads (the crown tile), then Melee, Bow, Magic (their tiles) and Level',
+      capsPw.power >= 1 && JSON.stringify(L.order.slice(0, 5)) === JSON.stringify(['power', 'melee', 'bow', 'magic', 'combat'])
+      && L.pills.slice(0, 4).every((p) => p.tile && p.icon), { order: L.order, caps: capsPw });
+    const statPills = L.pills.filter((p) => /^pts_/.test(p.id));
+    rec.ok(`1b2 the Stats group under Level, as many as the worker ranks (${capsPw.statboards}): ${statPills.map((p) => p.word).join(', ')} -- the damage points "Damage", never "Power"`,
+      capsPw.statboards === 8 && JSON.stringify(L.order.slice(5, 14)) === JSON.stringify(['#Stats', ...STATS])
+      && JSON.stringify(statPills.map((p) => p.word)) === JSON.stringify(STAT_WORDS) && statPills.every((p) => p.icon)
+      && L.pills.filter((p) => p.word === 'Power').length === 0, { order: L.order, stats: statPills });
+    const dv = L.order.indexOf('|');
     rec.ok('1c the gold divider, then Kills and every board there was: Records, Skills -- nothing dropped',
-      L.divider && L.order[4] === '|' && L.order[5] === 'kills' && ['spin', 'fish', 'woodcutting', 'trapping'].every((c) => L.order.includes(c))
+      L.divider && dv === 14 && L.order[dv + 1] === 'kills' && ['spin', 'fish', 'woodcutting', 'trapping'].every((c) => L.order.includes(c))
       && L.order.indexOf('#Records') > L.order.indexOf('|') && L.order.indexOf('#Skills') > L.order.indexOf('#Records'), L.order);
     rec.ok('1d each board a 44 px target on the sheet\'s pill bar, its word whole; the one showing (the first) on the gold one',
       L.pills.length >= 16 && L.pills.every((p) => p.hit >= 44 && p.word && !p.cut && /pill-(gold|plain)\.webp/.test(p.barArt) && p.icon)
-      && L.pills.filter((p) => p.on).length === 1 && L.pills.find((p) => p.on).id === 'melee' && L.pills.find((p) => p.on).bar === 'pill-gold'
-      && L.pills.filter((p) => !p.on).every((p) => p.bar === 'pill-plain') && L.open === 'melee', L.pills);
+      && L.pills.filter((p) => p.on).length === 1 && L.pills.find((p) => p.on).id === 'power' && L.pills.find((p) => p.on).bar === 'pill-gold'
+      && L.pills.filter((p) => !p.on).every((p) => p.bar === 'pill-plain') && L.open === 'power', L.pills);
 
-    /* ── 2 ── the podium and the table */
+    /* ── 2 ── the podium and the table, on Melee (every player has a melee level) */
+    await tap(A, '[data-lb-rail] [data-lb-cat="melee"]');
     const B = await H.waitFor(A, () => [...document.querySelectorAll('[data-lb-board] [data-board-face]')].filter((e) => e.dataset.boardFace === 'bust').length,
       (n) => n >= 6, { timeout: 30000, label: 'the faces' }).then(() => look(A)).catch(() => look(A));
     await shot(A, 'upright');
@@ -260,8 +276,48 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await tap(A, '[data-lb-rail] [data-lb-cat="melee"]');
     await A.page.waitForTimeout(600);
 
-    /* ── 4 ── Overall and the rating: card LB's PR 3 (tag 5502), once card PW's
-       worker (#1776) advertises caps.power on main -- this PR reads no cap */
+    /* ── 4 ── Overall and the rating (v2.3.5502): its rows served by the test
+       in PW's shape (#1776: `value` = powerIndex.power, the rows of the
+       worker's version only) -- the plain-socket players hold no weapon, so
+       none has an index of its own to rank */
+    const V = capsPw.power;
+    const names = ['Sunburn', 'Chunky Waffle', 'Chunky Pecs', 'Beefy Legend', 'Iron Mike'];
+    const fake = names.map((name, i) => ({ id: i === 0 ? me : 'bp_bl_fake' + i, name, lv: [12, 7, 7, 3, 2][i], look: lookOf,
+      value: [4712, 3421, 3319, 1887, 240][i], powerIndex: { power: [4712, 3421, 3319, 1887, 240][i], melee: [3248, 2083, 1902, 1391, 200][i], bow: [2716, 1711, 1904, 1247, 0][i], magic: [2978, 1627, 1513, 1249, 9][i], v: V } }));
+    /* one row of an older version: "not yet ranked", a dash, never a 0 */
+    fake.push({ id: 'bp_bl_fake_old', name: 'Old Index', lv: 1, look: lookOf, value: 999, powerIndex: { power: 999, melee: 1, bow: 1, magic: 1, v: V - 1 } });
+    await A.page.route(/\/api\/leaderboard\/top\?category=power/, (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, category: 'power', results: fake }) }));
+    await tap(A, '[data-lb-rail] [data-lb-cat="power"]');
+    await H.waitFor(A, () => document.querySelectorAll('[data-lb-board] [data-board-face="bust"]').length, (n) => n >= 6, { timeout: 20000, label: 'Overall\'s faces' }).catch(() => null);
+    const colsNow = () => A.page.evaluate(() => [...document.querySelectorAll('[data-lb-board] [data-board-row]')].map((el) => [...el.querySelectorAll('[data-lb-col]')].map((c) => c.textContent.trim())));
+    const Ov = await look(A);
+    const ov = await colsNow();
+    rec.ok(`4 Overall on an upright phone: #, Player, Lv, Power -- the rating in full (${(ov[0] || []).join(' | ')}), the podium's ribbons the Power, an older index "-"`,
+      JSON.stringify(Ov.head) === JSON.stringify(['#', 'Player', 'Lv', 'Power']) && Ov.swap === 'total'
+      && ov.length === 6 && ov[0][0] === '4,712' && ov[4][0] === '240' && ov[5][0] === '-'
+      && Ov.podium.length === 3 && Ov.podium.find((p) => p.place === 1).value === '4,712', { head: Ov.head, ov, podium: Ov.podium });
+    await tap(A, '[data-lb-swap]');
+    await A.page.waitForTimeout(400);
+    const ovs = await colsNow();
+    rec.ok(`4b ...the swap shows each style's score, short (${(ovs[0] || []).join(' | ')})`,
+      JSON.stringify(ovs[0]) === JSON.stringify(['3.2k', '2.7k', '2.9k']) && JSON.stringify(ovs[4]) === JSON.stringify(['200', '0', '9']) && JSON.stringify(ovs[5]) === JSON.stringify(['-', '-', '-']), ovs);
+    await tap(A, '[data-lb-swap]');
+    await A.page.waitForTimeout(300);
+    await tap(A, '[data-lb-power-head]');
+    await A.page.waitForTimeout(400);
+    const hint = await A.page.evaluate(() => ((document.querySelector('[data-lb-power-hint]') || {}).textContent || '').trim());
+    await shot(A, 'power');
+    rec.ok('4c a tap on the "?" by the head says what Power means: "400 points ahead = 10× likelier to win"', hint === 'Power: 400 points ahead = 10× likelier to win', hint);
+    await tap(A, '[data-lb-power-head]');
+    await A.page.unroute(/\/api\/leaderboard\/top\?category=power/);
+    /* the damage points' board: headed "Damage", the record the points */
+    await tap(A, '[data-lb-rail] [data-lb-cat="pts_dmg"]');
+    await A.page.waitForTimeout(1500);
+    const Dm = await look(A);
+    rec.ok(`4d the Damage board opens (${Dm.rows.length ? Dm.rows.length + ' rows, head ' + Dm.head.join(' | ') : Dm.empty})`,
+      Dm.open === 'pts_dmg' && (Dm.rows.length ? JSON.stringify(Dm.head) === JSON.stringify(['#', 'Player', 'Lv', 'Damage']) : Dm.empty === 'Nobody has put points in this yet.'), Dm);
+    await tap(A, '[data-lb-rail] [data-lb-cat="melee"]');
+    await A.page.waitForTimeout(600);
 
     /* ── 5 ── sideways */
     await A.page.setViewportSize({ width: 844, height: 390 });

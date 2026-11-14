@@ -184,3 +184,31 @@ second mockup's, the art the sheet's). What it looks like and why is
 `caps.power` set in the page, sideways, a computer with `wide: true`) and
 `mp-boards` (the boards' content, moved onto the medals and the first
 board's new place).
+
+## 4. Overall, the Power rating and the Stats group (tag 5502)
+
+Card PW's worker halves are on main: #1776 (the power index, `caps.power`
+its version, 2 since the rating) and #1781 (the stat boards,
+`caps.statboards` a count). PR 3 reads both.
+
+- **`powerVersion`** reads `caps.power`. Overall leads the list (the
+  sheet's crown tile) and opens first; `?category=power` ranks by Power.
+- **The Power is OVERALL's.** Its table is Lv, Power (in full), and each
+  style's score (short); a row whose `powerIndex.v` is not the worker's
+  reads "-". The weapons' boards rank by the weapon's level and Level by
+  the level (`leaderboard.js` `SERIES_CATEGORIES`), so they keep the
+  levels: every board shows the numbers it is ranked by.
+- **The hint on a narrow table**: the swap button holds the Power column,
+  so the rating's reading is a small "?" at the end of the Player head (a
+  44 px target), shown with the Power view.
+- **The Stats group** (`STAT_BOARDS`), under a "Stats" heading after Level:
+  `pts_def`, `pts_hp`, `pts_dodge`, `pts_stam`, `pts_eres`, `pts_mana`,
+  `pts_move`, `pts_dmg` (card PW's order, `statboards.js`
+  `STAT_BOARD_IDS`), the first `caps.statboards` of them. Each wears the Bro
+  tab's label and icon (`src/data/prog3.js` `PROG3_BODY_META`, and
+  `PROG3_ATK_META`'s `dmg` row); the damage points' board says "Damage",
+  never "Power" (the planning session: "Power" is Overall's). Its table is
+  Lv and the points under the stat's name; its podium says "N pts".
+- **The caps**: `power` and `statboards` in `CAP_GATES`, each on its own
+  line; their rows in `server/test/caps-audit.test.mjs`'s allowlist are
+  gone (the worker shipped first; card PW's reminder).
