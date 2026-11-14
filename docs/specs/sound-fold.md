@@ -93,3 +93,10 @@ stretch at a time with a frame let in between pieces of 4 ms
 the same buffer, sample for sample (`sound-fold.test` 4). `?foldgentle=0`
 folds in one go, as before. `docs/specs/held-sweep.md`, "Card H", has the
 measurements.
+
+After the gatekeeper's sitting 4 (`docs/plan/census/review-z4.md`): the
+game's fold (the turn, the choice of `?foldgentle=0`) is `foldForGame` here,
+moved out of `gameDisplay.js` to keep that file under its line
+(`tools/guards/four-lines`); and a sound with nothing to fold (one channel)
+never waits in the line behind a two-sided one being folded (it was about
+50 ms late on its first play). `sound-fold.test` 4e to 4g.

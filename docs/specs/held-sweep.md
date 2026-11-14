@@ -367,6 +367,20 @@ the worker cannot read (it answers `urlFail`: the page cuts that one, once,
 and never sends that address again), goes as before. `?bakeurl=0`: every
 input cut on the page, as before.
 
+After the gatekeeper's sitting 4 (`docs/plan/census/review-z4.md`): the
+worker STARTS every sheet's read of a job before it waits for any (they were
+read one after another, each with its own 4 s, so three sheets that would not
+come could sit 12 s, past the page's 6 s stuck watch); an address the worker
+was still reading when it was let go as stuck is refused (the worker says
+`urlsRead` once a job's sheets are in; only what is still being read is
+refused, because on this box the worker is let go as stuck about 3 times a
+minute past its reads); and its kept sheets are let go 15 s after its last
+job (the page frees its packed sheets and revokes their addresses with no word
+to the worker). The page's side moved out of `entityRenderer.js` into
+`src/rendering/bakeByAddress.js`, to keep that file under its line
+(`tools/guards/four-lines`). The same probe after: 16 sent, 11 of 11 the
+same, none refused, no stuck kill.
+
 **The same pixels.** `window.__btBakeUrlCheck = true` before the page loads:
 the page cuts each input as well, and the worker compares its own rectangle
 with the page's cut, byte for byte (`__btBakeWorker().byUrl`). An armoured
@@ -430,6 +444,18 @@ variants), none stale, no pixel wrong.
 `texSubImage2D`, the row's colours sent to this box's software chip; one hold
 just past the general line is the judge's noise.
 
+After the gatekeeper's sitting 4 (`docs/plan/census/review-z4.md`): a waiting
+plan was taken when its row's COUNT of colours was as described, never its
+colours, and the page's own way of numbering a strip (a read that failed:
+the 20 s `READ_MS` after an app switch, the worker's `onerror`) gave a row
+colours in its own order without a word. A later plan whose count came out
+the same then put a monster's pixels on places holding other colours: a rock
+golem's or a rotcap's pose scrambled until the land was left. Now rows the
+page changes its own way (a new row, or new colours) make every waiting plan
+of the bundle stale (`picsNumbers.js` `_rowsMoved`; `strip-door` 4l, its
+break proof by hand). The same ride after: 35 of 35 numbered on the worker,
+none stale, no pixel wrong, the rows never moved (no read failed).
+
 **Not run** (offered): the whole tours; Safari.
 
 ### `foldToMono` off the list (v2.3.5045)
@@ -460,6 +486,11 @@ its stereo file (five to the bit, fish-reel -65.8 dB), 7 of 7.
 
 **After**, the sample (`town` and `lands`, three runs): 5.2, 4.9 and 6.9 ms
 the longest, and every run within its whole budget.
+
+After the gatekeeper's sitting 4: the game's side of the fold moved into
+`soundFold.js` (`foldForGame`; `gameDisplay.js` under its `four-lines`
+line), and a one-channel sound no longer waits behind a fold in the line
+(`docs/specs/sound-fold.md`).
 
 ### The equip redraw (`other: R > J`) off the list (v2.3.5046)
 

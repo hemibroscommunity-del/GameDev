@@ -123,6 +123,11 @@ let _sa = null, _sb = null, _sm = null;
 let _slicedLine = Promise.resolve();
 const _now = () => (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now());
 export function foldToMonoSliced(buf, make, turn, sliceMs = 4, now = _now) {
+  /* v2.3.5045, after the gatekeeper's sitting 4 (#1712): a sound with nothing
+     to fold (one channel already, none, or no way to make the fold) never
+     waits in the line: it waited behind any two-sided sound being folded,
+     ~50 ms late on its first play */
+  if (!buf || buf.numberOfChannels !== 2 || typeof make !== 'function' || !(buf.length > 0)) return Promise.resolve(buf);
   const job = () => _foldSliced(buf, make, turn, sliceMs, now);
   const p = _slicedLine.then(job, job);
   _slicedLine = p.then(() => {}, () => {});
@@ -179,4 +184,26 @@ async function _foldSliced(buf, make, turn, sliceMs, now) {
     await pace();
   }
   return out;
+}
+
+/* ═══ v2.3.5045: THE FOLD THE GAME USES (gameDisplay.js BT_AUDIO._fold) ═══
+   Moved here from gameDisplay.js after the gatekeeper's sitting 4, to keep
+   that file under its line (tools/guards/four-lines).  In play the fold is
+   walked a few ms at a time, a frame let in between (foldToMonoSliced, the
+   turn below: the frame, then a timer, or a timer alone after 120 ms if no
+   frame comes); the sound is kept, and plays, when it is done.
+   `?foldgentle=0`: in one go, as before (foldToMono, the buffer itself, not
+   a promise).  `kept(out)` is told what was kept. */
+export const FOLD_GENTLE_OFF = (() => { try { return typeof location !== 'undefined' && /[?&]foldgentle=(0|off|false)\b/.test(location.search || ''); } catch (e) { return false; } })();
+export function foldTurn() {
+  return new Promise((res) => {
+    let done = false;
+    const go = () => { if (!done) { done = true; res(); } };
+    try { requestAnimationFrame(() => { setTimeout(go, 0); }); } catch (e) { /* the timer below */ }
+    setTimeout(go, 120);
+  });
+}
+export function foldForGame(b, make, kept, turn = foldTurn, gentleOff = FOLD_GENTLE_OFF) {
+  if (gentleOff) { const out = foldToMono(b, make); kept(out); return out; }
+  return foldToMonoSliced(b, make, turn).then((out) => { kept(out); return out; });
 }

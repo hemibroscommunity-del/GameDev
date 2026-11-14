@@ -190,18 +190,22 @@ function sheetsTrim() {
   }
 }
 /* the job's inputs by address, read (inp.ub); false, with the reply sent,
-   when one would not read */
+   when one would not read.  v2.3.5043, after the gatekeeper's sitting 4
+   (#1700): every sheet's read is STARTED before the first wait.  They were
+   read one after another, each with its own 4 s (SHEET_URL_MS), so a job of
+   three sheets that would not come could sit 12 s -- past the page's 6 s
+   watch, which let the worker go as stuck.  Together, a job's reads take at
+   most one SHEET_URL_MS. */
 async function urlInputs(j, ins) {
   const used = j._sheets = [];
   const fail = [], qa = [];
-  for (const inp of ins) {
-    const e = sheetOf(inp.url);
-    e.uses++; used.push(e);
-    const bm = await e.p;
-    if (!bm) { fail.push(inp.url); continue; }
-    inp.ub = bm;
+  const reads = ins.map((inp) => { const e = sheetOf(inp.url); e.uses++; used.push(e); return e.p; });
+  const bms = await Promise.all(reads);
+  ins.forEach((inp, i) => {
+    if (!bms[i]) { fail.push(inp.url); return; }
+    inp.ub = bms[i];
     if (inp.qaBm) qa.push(sameCut(inp));
-  }
+  });
   if (qa.length) j._qa = qa;
   if (!fail.length) return true;
   jobDone(j);
@@ -219,6 +223,24 @@ function sheetsLetGo(j) {
   for (const e of j._sheets || []) e.uses--;
   j._sheets = null;
   sheetsTrim();
+  sheetsIdleSoon();
+}
+/* v2.3.5043, after the gatekeeper's sitting 4 (#1700: "freed where you leave
+   it"): the kept sheets are let go SHEET_IDLE_MS after the last job ends --
+   the armoured players gone from the screen, or the page's packed sheets
+   freed and their addresses revoked (nothing tells the worker that) */
+const SHEET_IDLE_MS = 15000;
+let sheetsIdleT = 0;
+function sheetsIdleSoon() {
+  if (sheetsIdleT) clearTimeout(sheetsIdleT);
+  sheetsIdleT = setTimeout(() => {
+    sheetsIdleT = 0;
+    for (const [u, e] of sheetsKept) {
+      if (e.uses > 0 || !e.bm) continue;
+      sheetsKept.delete(u);
+      try { e.bm.close(); } catch (err) { /* gone */ }
+    }
+  }, SHEET_IDLE_MS);
 }
 /* QA: the rectangle of the sheet read here against the page's own cut, byte for byte */
 function sameCut(inp) {
@@ -347,12 +369,14 @@ self.onmessage = (e) => {
   takeJob(j);
 };
 function takeJob(j) {
-  /* v2.3.5043: inputs by address read first (urlInputs) */
+  /* v2.3.5043: inputs by address read first (urlInputs); the page told when
+     they are (`urlsRead`: an address being read when the worker is let go as
+     stuck is refused, bakeByAddress.js) */
   if (!j._urlRead) {
     const ins = [j.body, j.belt, ...((j.worn || []).map((w) => w && w.inp))].filter((x) => x && x.url);
     if (ins.length) {
       j._urlRead = true;
-      urlInputs(j, ins).then((ok) => { if (ok) takeJob(j); }, () => { jobDone(j); self.postMessage({ id: j.id, bitmap: null, cell: null, beltPending: false, raw: false, err: 'url read', kept: sheetsKeptBytes() }); });
+      urlInputs(j, ins).then((ok) => { if (ok) { self.postMessage({ type: 'urlsRead', id: j.id }); takeJob(j); } }, () => { jobDone(j); self.postMessage({ id: j.id, bitmap: null, cell: null, beltPending: false, raw: false, err: 'url read', kept: sheetsKeptBytes() }); });
       return;
     }
   }

@@ -37,5 +37,10 @@ source or counts things.
 - A table that lands as a census (rule 3) fails only when its count of
   unlisted things RISES; the gatekeeper alone makes it strict.
 - Keep it under a second or two: it runs on every PR.
+- **Helpers two guards (or a guard and a script) share** go in
+  `tools/guards/lib/*.mjs` (v2.3.5101): plain modules, never run as guards.
+  The only parser GitHub's `test` job has is esbuild (wrangler brings it to
+  `server/node_modules`); the root's packages (`@babel`) are not installed
+  there. `lib/fourLines.mjs` shows how to reach esbuild.
 
 `rails.test.mjs` is the example: it holds these rails themselves.
