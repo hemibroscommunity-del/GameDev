@@ -326,7 +326,8 @@ const t = clock;
     && /clearSwingHitFlags\(S\); \/\* v2\.3\.1421: fresh dedup per swing \*\/\s*accShot\(S, 'melee'\);/.test(mc)
     && /clearSwingHitFlags\(S\); \/\* v2\.3\.1421: fresh dedup per swing \(quick re-tap fix\) \*\/\s*accShot\(S, 'melee'\);/.test(pa));
   check('10j. a hit claim carries its shot\'s number -- never a special\'s',
-    /sn: S\._specialAttack \? undefined : \(accSn\(S, 'melee'\) \|\| undefined\),?\s*(\/\*[\s\S]*?\*\/\s*sw: [^\n]*\s*)?\}\}\);/.test(mc)
+    /* v2.3.5187: the send goes through the action door (act): its payload closes the call, `});` */
+    /sn: S\._specialAttack \? undefined : \(accSn\(S, 'melee'\) \|\| undefined\),?\s*(\/\*[\s\S]*?\*\/\s*sw: [^\n]*\s*)?\}\);/.test(mc)
     && (pr.match(/sn: \(!a\.isSpecial && a\._sn\) \|\| undefined,/g) || []).length === 2
     && (mc.match(/sn: S\._specialAttack \? undefined : \(accSn\(S, 'melee'\) \|\| undefined\)/g) || []).length === 2);
   check('10k. the counts ride the track; the answer is taken in the direct switch (never a relayed copy); the ask leaves the phone',

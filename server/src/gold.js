@@ -125,7 +125,8 @@ export const CLASSES = Object.freeze(['mint', 'burn', 'move', 'escrow']);
    on the ground (its row when one is saved, the room's memory while it is up:
    a dropped item's pile is a death pile's own, never saved -- itemdrop.js). */
 export const ESCROW_PLACES = Object.freeze(['bank:', 'mkt_order:', 'store_listing:', 'duelEscrow:', 'arena_entry:',
-  'arena_stake:', 'bounty:', 'jackpot:draw', 'death_pile:', 'inbox:', 'shop_stock']);
+  'arena_stake:', 'bounty:', 'jackpot:draw', 'death_pile:', 'inbox:', 'shop_stock',
+  'trade2wpn:']);   /* v2.3.5281: a weapon in a trade window (the stashes' door, stash.js trade_put) */
 
 /** v2.3.5081: what a road table's rows lack to be counted (gold-door.test
  *  and bag-door.test §8): a class, a move's other road (a row of

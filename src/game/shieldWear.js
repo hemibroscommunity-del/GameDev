@@ -16,6 +16,8 @@
  * advertises caps.shieldwear: an older one has no case for the type and would
  * rebroadcast it to the room.  No imports, so node can test it. */
 
+import { act } from './actions.js';   /* v2.3.5187: the action door (card K PR 7), the one import: it has none of its own, so node still reads this file */
+
 /** The shield's signature (wsClient.js `_shSig`, gearstash.js stashSig). */
 export function shieldSig(p) {
   return p && typeof p === 'object' ? [p.name || '', p.gearBase || '', p.tierMult == null ? '' : p.tierMult, p.tier || ''].join('|') : '';
@@ -34,7 +36,7 @@ export function shieldWearPayload(R) {
 export function syncShieldWorn(S) {
   if (!S || !S.rpg || !S.channel || !(S._serverCaps && S._serverCaps.shieldwear)) return null;
   const payload = shieldWearPayload(S.rpg);
-  try { S.channel.send({ type: 'shield_wear', payload }); } catch (e) { return null; }
+  try { act('shield_wear', payload); } catch (e) { return null; }   /* v2.3.5187: through the action door (actions.js) */
   /* QA (mp-nomansland), armed by the harness only: the last report */
   if (typeof window !== 'undefined' && window.__btProbe) window.__btShieldWear = { at: Date.now(), payload };
   return payload;

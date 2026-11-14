@@ -199,18 +199,17 @@ export const PHASES = [
     note: 'Nearly a door already: every end goes through _rideEnd, and _handleRide is the start. The worker stores nothing, so a join is off the board (the slot\'s why).',
   },
   {
-    name: 'harvest', side: 'worker', status: 'todo',
-    what: 'Gathering a node: started, its window open, struck (paid, missed, refused).',
-    field: null, states: ['idle', 'started', 'open', 'struck'], fn: null, file: null,
+    name: 'harvest', side: 'worker', status: 'door',
+    what: 'Gathering a node: a player\'s gather record, none or started (its window opening is a time on it; a strike ends it, paid or not).',
+    field: 'this.extractions', states: ['none', 'started'],
+    fn: '_harvestTo', file: 'server/src/gathering.js',
     clears: [
       { edge: 'end', at: 'server/src/gathering.js _handleNodeStrike' },
       { edge: 'end', at: 'server/src/gathering.js _endExtraction' },
     ],
     rejoin: 'none: the record outlives the socket on purpose (leave.js, v2.3.3322) and the phone replays a strike its dropped socket ate',
-    today: [
-      { field: 'this.extractions', file: 'server/src/gathering.js', writers: ['server/src/gathering.js _handleExtractionStart', 'server/src/gathering.js _handleNodeStrike', 'server/src/gathering.js _endExtraction', 'server/src/gathering.js _sweepStaleExtractions'] },
-    ],
-    note: 'ps.ex, the phone\'s claim on its moves (mine, chop, fish, cook, fire), is the cook row\'s door (v2.3.5213, movement.js _exTo); the harvest\'s own record is this.extractions.',
+    held: { suite: 'server/test/harvest-door.test.mjs' },
+    note: 'v2.3.5214: the door (HARVEST_WAYS start, strike, end, sweep; a started record carries its start, so the sweep can always end it; live flag harvestdoor). Mining, woodcutting and fishing share it (fishing\'s row is this door). ps.ex, the phone\'s claim, is the cook row\'s door (v2.3.5213, movement.js _exTo).',
   },
   {
     name: 'cook', side: 'worker', status: 'door',
@@ -282,31 +281,28 @@ export const PHASES = [
     note: 'A match is a wager-0 duel (this._duels, arenaMatch); _arenaInMatch reads the duel as the truth. arena.js is the retired class, kept for its binding.',
   },
   {
-    name: 'fishing', side: 'worker', status: 'todo',
-    what: 'Fishing: a gather extraction on a fishing spot, with no field of its own.',
-    field: null, states: ['idle', 'started', 'open', 'struck'], fn: null, file: null,
+    name: 'fishing', side: 'worker', status: 'door',
+    what: 'Fishing: a gather record on a fishing spot, with no field of its own.',
+    field: 'this.extractions', states: ['none', 'started'],
+    fn: '_harvestTo', file: 'server/src/gathering.js',
     clears: [{ edge: 'end', at: 'server/src/gathering.js _handleNodeStrike' }],
     rejoin: 'none: the extraction record outlives the socket (harvest\'s)',
-    today: [
-      { field: 'this.extractions', file: 'server/src/gathering.js', writers: ['server/src/gathering.js _handleExtractionStart', 'server/src/gathering.js _handleNodeStrike', 'server/src/gathering.js _endExtraction', 'server/src/gathering.js _sweepStaleExtractions'] },
-    ],
-    note: 'harvest\'s record with skill \'fishing\'; a door for harvest is fishing\'s too.',
+    held: { suite: 'server/test/harvest-door.test.mjs' },
+    note: 'v2.3.5214: harvest\'s record with skill \'fishing\', through harvest\'s door (harvest-door.test §3 plays a fishing start and its paid strike).',
   },
 
   {
-    name: 'dungeon', side: 'worker', status: 'todo',
+    name: 'dungeon', side: 'worker', status: 'door',
     what: 'A dungeon run: active (its waves), its boss, done; a player is in it by their place.',
-    field: null, states: ['active', 'boss', 'done'], fn: null, file: null,
+    field: 'inst.runPhase', states: ['active', 'boss', 'done'],
+    fn: '_dungeonTo', file: 'server/src/dungeon.js',
     clears: [
       { edge: 'end', at: 'server/src/dungeon.js _dungeonCleanup' },
       { edge: 'death', at: 'server/src/index.js _tickPlayerRespawn' },
     ],
     rejoin: 'none: the join lands back in its run by its place (ps.z dungeon:<id>), and the pass lives on the run (zonejudge.js R1)',
-    today: [
-      { field: 'this._dungeons', file: 'server/src/dungeon.js', writers: ['server/src/dungeon.js _handleDungeonStart', 'server/src/dungeon.js _dungeonCleanup'] },
-      { field: 'inst.state', file: 'server/src/dungeon.js', writers: ['server/src/dungeon.js _handleDungeonStart', 'server/src/dungeon.js _dungeonComplete'] },
-    ],
-    note: 'No field on the player: membership is the place (dungeon.js _dungeonZonePlayers). A death sends them to town at the respawn and the run empties; a leave deletes the body.',
+    held: { suite: 'server/test/dungeon-door.test.mjs' },
+    note: 'v2.3.5215: the door (DUNGEON_WAYS boss, clear; the end final, one boss after the waves; live flag dungeondoor). It writes the old pair for their readers: inst.state \'done\' at the end (\'active\' all through the boss), inst.bossSpawned at the boss. Not phases: the wave (a count), emptySince, the run\'s place in this._dungeons (born at the start, gone at _dungeonCleanup). No field on the player: membership is the place (dungeon.js _dungeonZonePlayers).',
   },
 
   /* ═══ TO DO, THE PAGE (card L PR 5: then connection, loading, window) ═══ */

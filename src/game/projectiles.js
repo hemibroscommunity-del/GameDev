@@ -1033,6 +1033,7 @@ import { pvpClaim } from '@/game/fightFood.js'; /* v2.3.3133: a duel claim witho
 import { nmlAsk, nmlAskOn, nmlAskCurrent } from '@/game/nmlAsk.js'; /* v2.3.3253: a stray shot through a player asks, once */
 import { nmlHere } from '@/game/noMansLand.js'; /* v2.3.3253: ...only while you stand in No man's land */
 import { shotPlayerTargets, isLiveFighter } from '@/game/sparTargets.js'; /* v2.3.3267: your sparring clones are hit like monsters, locked or not; v2.3.3268: and the players you chose to attack */
+import { act } from '@/game/actions.js';   /* v2.3.5187: the page's requests leave through the action door (card K PR 7) */
 
 /* ═══ v2.3.2217: THE SNOWBALL BURSTS WHERE ITS FLIGHT ENDS ═══
    The thrown ball had no impact at all — it simply stopped existing on the
@@ -1131,7 +1132,7 @@ function _arrowSendOff(S, a, bx, by) {
   a._blasted = true;   /* a re-entrant frame must not send twice */
   if (S.channel) {
     try {
-      S.channel.send({ type: 'arrow_blast', payload: { zone: S.currentZone, x: bx, y: by } });
+      act('arrow_blast', { zone: S.currentZone, x: bx, y: by });   /* v2.3.5187: through the action door (actions.js) */
     } catch (e) { /* the DoT already landed either way */ }
     return;
   }
@@ -1242,7 +1243,7 @@ export function updateArrows(S, deps) {
                      monster around (only the arrow's FIRST hit knocks back);
                      the worker zeroes kbForce when the flag is present.  Old
                      workers ignore it (knockback until the merge deploys). */
-                  S.channel.send({ type: 'monster_damage', payload: { monsterId: _sm.id, zone: S.currentZone, element: a.element || null, slot: a.isStaff ? 'staff' : 'ranged', special: false, noKb: true } });
+                  act('monster_damage', { monsterId: _sm.id, zone: S.currentZone, element: a.element || null, slot: a.isStaff ? 'staff' : 'ranged', special: false, noKb: true });   /* v2.3.5187: through the action door (actions.js) */
                 } else {
                   _sm.curHp -= _cBase;
                   if (_sm.curHp < 0) _sm.curHp = 0;
@@ -1333,7 +1334,7 @@ export function updateArrows(S, deps) {
                     if (_ldx * _ldx + _ldy * _ldy > 100 * 100) continue;   /* outside the 100px vicinity */
                     if (S._serverMonsters && S.channel) {
                       /* authoritative BASE ranged hit (special:false -> normal lane, 1/335ms; ticks are 500ms apart) */
-                      S.channel.send({ type: 'monster_damage', payload: { monsterId: _lm.id, zone: S.currentZone, element: _lElem, slot: 'ranged', special: false } });
+                      act('monster_damage', { monsterId: _lm.id, zone: S.currentZone, element: _lElem, slot: 'ranged', special: false });
                     } else {
                       _lm.curHp -= _lBase;
                       if (_lm.curHp < 0) _lm.curHp = 0;
@@ -1897,7 +1898,7 @@ export function updateArrows(S, deps) {
                 var _arrowDmg = a.dmg;
                 if (!S._serverMonsters) m.curHp -= _arrowDmg;
                 /* Client-local zones only -- server zones use monster_hit (Fix B). */
-                if (!S._serverMonsters && S.channel) S.channel.send({ type: 'broadcast', event: 'monster_dmg_at', payload: { id: S.myId, x: m.x, y: m.y, dmg: _arrowDmg, isCrit: false } });
+                if (!S._serverMonsters) act('monster_dmg_at', { id: S.myId, x: m.x, y: m.y, dmg: _arrowDmg, isCrit: false });   /* v2.3.5187: through the action door (actions.js) */
                 /* Hit-reaction (ranged variant) — mirrors the melee path.
                    ═══ v2.3.2844: THE PICTURE WAITS FOR THE SHOT TO LAND ═══
                    The recoil, the white flash, the material burst (v2.3.2843)
@@ -1937,7 +1938,7 @@ export function updateArrows(S, deps) {
                   }
                 }
                 if (S._serverMonsters && S.channel) {
-                  S.channel.send({ type: 'monster_damage', payload: {
+                  act('monster_damage', {
                     /* v2.3.1114: carry the projectile's element -- the
                        server now drives authoritative statuses/DoT/
                        collisions from it (melee always sent it; this was
@@ -1993,7 +1994,7 @@ export function updateArrows(S, deps) {
                          drawGather.js), so the worker lands its share and its stage's blast;
                          v2.3.4802: ...and a drawn arrow always (its share: drawGather.js) */
                       : (staffSw(S, a) ?? bowFeelSw(a))
-                  }});
+                  });
                 }
                 if (arrowCollision) {
                   var _ELEMENTS$arrowCollis;
@@ -2547,57 +2548,54 @@ export function updateArrows(S, deps) {
                   /* v2.3.3133: the brew it was fired with comes back out for a
                      worker that puts on its own (fightFood.js pvpClaim). */
                   var _pvpC = pvpClaim(S, Math.max(1, a.dmg || 1), a.brew);
-                  if (S.channel) S.channel.send({
-                    type: 'broadcast',
-                    event: 'player_attack',
-                    payload: {
-                      id: S.myId,
-                      sn: (!a.isSpecial && a._sn) || undefined,   /* v2.3.4545: the shot it belongs to (accuracy.js) */
-                      x: P.x,
-                      y: P.y,
-                      /* Exact bearing to the target + a narrow arc: the
-                         server re-checks angle from the ATTACKER, so a
-                         wide arc is unnecessary and exploitable. */
-                      angle: Math.atan2(_pvpDy, _pvpDx),
-                      /* a.dmg already includes any crit rolled at spawn —
-                         critChance 0 so the server can't double-crit it. */
-                      dmgBase: Math.max(1, Math.round(_pvpC.dmgBase)),
-                      nb: _pvpC.nb,   /* v2.3.3133: 1 = "the worker adds my brew" */
-                      critChance: 0,
-                      /* Server measures attacker→target distance and
-                         rejects hits past payload.range, so claim the
-                         actual distance + lag slack, capped just under
-                         the server's 950 ranged/staff clamp. */
-                      range: Math.min(940, Math.round(_pvpDist + 60)),
-                      arc: 0.9,
-                      ts: Date.now(),
-                      inDuel: !!S._inDuel,
-                      special: !!a.isSpecial,
-                      /* v2.3.3260: what the shot is, as a monster is told
-                         (monster_damage above), for a worker that rolls the
-                         hit between players itself (caps.pvpbalance,
-                         pvpbalance.js): the big staff bolt's orbs, a volley
-                         arrow's share, the retreat shot.  An older worker
-                         takes the claim and ignores all three. */
-                      orbs: a.orbs > 1 ? a.orbs : undefined,
-                      part: a.part > 1 ? a.part : undefined,
-                      rs: a.retreatShot ? 1 : undefined,
-                      /* v2.3.3264: the gem in the bow or staff, as a monster is
-                         told (monster_damage's `element`): a worker with
-                         caps.pvpextras puts its status on the player it hit,
-                         the same as on a monster.  An older one ignores it. */
-                      element: projElem || undefined,
-                      /* v2.3.4802: a drawn arrow names its shot (drawgather.js: its share lands as a sword's); absent, today's.
-                         v2.3.4803: a gathered bolt's share lands on a player as a sword's does.  ONE key: the two lanes each
-                         added an `sw:` here and in an object literal the second silently wins (the arrow's was lost). */
-                      sw: staffSw(S, a) ?? bowFeelSw(a),
-                      kind: isStaffProj ? 'staff' : 'ranged',
-                      /* v2.3.1306: declare the single intended target so
-                         the server skips everyone else in the cone — the
-                         "never a bystander" promise is now enforced
-                         server-side too.  Old workers ignore the field. */
-                      target: _pvpTid
-                    }
+                  /* v2.3.5187: through the action door (actions.js) */
+                  act('player_attack', {
+                    id: S.myId,
+                    sn: (!a.isSpecial && a._sn) || undefined,   /* v2.3.4545: the shot it belongs to (accuracy.js) */
+                    x: P.x,
+                    y: P.y,
+                    /* Exact bearing to the target + a narrow arc: the
+                       server re-checks angle from the ATTACKER, so a
+                       wide arc is unnecessary and exploitable. */
+                    angle: Math.atan2(_pvpDy, _pvpDx),
+                    /* a.dmg already includes any crit rolled at spawn —
+                       critChance 0 so the server can't double-crit it. */
+                    dmgBase: Math.max(1, Math.round(_pvpC.dmgBase)),
+                    nb: _pvpC.nb,   /* v2.3.3133: 1 = "the worker adds my brew" */
+                    critChance: 0,
+                    /* Server measures attacker→target distance and
+                       rejects hits past payload.range, so claim the
+                       actual distance + lag slack, capped just under
+                       the server's 950 ranged/staff clamp. */
+                    range: Math.min(940, Math.round(_pvpDist + 60)),
+                    arc: 0.9,
+                    ts: Date.now(),
+                    inDuel: !!S._inDuel,
+                    special: !!a.isSpecial,
+                    /* v2.3.3260: what the shot is, as a monster is told
+                       (monster_damage above), for a worker that rolls the
+                       hit between players itself (caps.pvpbalance,
+                       pvpbalance.js): the big staff bolt's orbs, a volley
+                       arrow's share, the retreat shot.  An older worker
+                       takes the claim and ignores all three. */
+                    orbs: a.orbs > 1 ? a.orbs : undefined,
+                    part: a.part > 1 ? a.part : undefined,
+                    rs: a.retreatShot ? 1 : undefined,
+                    /* v2.3.3264: the gem in the bow or staff, as a monster is
+                       told (monster_damage's `element`): a worker with
+                       caps.pvpextras puts its status on the player it hit,
+                       the same as on a monster.  An older one ignores it. */
+                    element: projElem || undefined,
+                    /* v2.3.4802: a drawn arrow names its shot (drawgather.js: its share lands as a sword's); absent, today's.
+                       v2.3.4803: a gathered bolt's share lands on a player as a sword's does.  ONE key: the two lanes each
+                       added an `sw:` here and in an object literal the second silently wins (the arrow's was lost). */
+                    sw: staffSw(S, a) ?? bowFeelSw(a),
+                    kind: isStaffProj ? 'staff' : 'ranged',
+                    /* v2.3.1306: declare the single intended target so
+                       the server skips everyone else in the cone — the
+                       "never a bystander" promise is now enforced
+                       server-side too.  Old workers ignore the field. */
+                    target: _pvpTid
                   });
                   /* Impact feedback — sound + a few particles at the
                      target; damage number waits for the server pvp_hit. */
@@ -2920,7 +2918,7 @@ export function updateSlimeProjectiles(S) {
             try { BT_AUDIO.monsterHitHero(isWearingArmor(), { vol: 0.7 }, 'slime-projectile-hit'); } catch (e) {}
             S.lastDamageTaken = Date.now();
             S._hitFlash = Date.now();
-            if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_hurt_by_monster', payload: { id: S.myId, dmg: _projDmg } });
+            act('player_hurt_by_monster', { id: S.myId, dmg: _projDmg });   /* v2.3.5187: through the action door (actions.js) */
             if (_R6P.hp > 0) addBuildUse(_R6P, 'vitality', _projDmg);
             pushDmgPopup(S, P.x, P.y - 20, '-' + toDisplayDamage(_projDmg), '#fff');   /* v2.3.2520: display scale */
             S.screenShake = Math.max(S.screenShake || 0, 4);
