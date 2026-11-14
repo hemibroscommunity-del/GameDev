@@ -65,7 +65,9 @@
  *     hold by hold: the profiler's clock is not the page's, and one job's
  *     note may cover the slices its hold came in.
  * A gap names the family and where: its job must call noteMade (or reach
- * the ring) with a string holdNames.js MADE_AS maps to that name.
+ * the ring) with a string holdNames.js MADE_AS maps to that name.  The first
+ * sample found one: `pack-page` (gearSheets.js _gearPack) wrote no note at
+ * all; its row (`pack ...`) is in MADE_AS, its noteMade line card P's.
  */
 import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';

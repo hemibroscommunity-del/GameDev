@@ -20,7 +20,7 @@ state: working
   phone's notes (its ring of holds); the run fails a debt-list hold the
   page runs, 12 ms or more, that left none (`noteGaps`). Begun at 09:18:
   cards H and J are finished, their `ready` files stale (the planning
-  session). The sample: `screen-check` noted; `pack-page` left none.
+  session). `pack-page` left none: its row in `holdNames.js` MADE_AS here.
 
 ## Found
 
@@ -35,5 +35,6 @@ state: working
 
 ## Needs
 
-- The planning session: `pack-page` has no note writer (gearSheets.js,
-  holdNames.js MADE_AS): add both in PR 7, or land it red for H?
+- Card P's `noteMade` line in `gearSheets.js` `_gearTurn` (its own PR,
+  the planning session's call): PR 7 opens when it is up, rehearsed on
+  top of it, and merges after it.
