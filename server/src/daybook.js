@@ -379,7 +379,10 @@ export function storeSizeOff(room) {
  *  null. */
 export function storeSizeRide(room) {
   try {
-    if (!room || off(room) || storeSizeOff(room)) return null;
+    /* v2.3.5287: the book's own switch asked here directly (not through
+       `off`), so the switch table's scan sees that `storesize` turns off with
+       `daybook` (its row's need: switches.test §11) */
+    if (!room || (typeof room._daybookOff === 'function' && room._daybookOff()) || storeSizeOff(room)) return null;
     const b = mem(room);
     const today = bookDay(roomNow());
     if (b.sizedDay === today) return null;
