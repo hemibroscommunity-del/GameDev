@@ -157,11 +157,14 @@ export const SYSTEMS = Object.freeze({
     what: 'quests, achievements, the codex, pets\' book, points',
     files: [
       f('server/src', 'quests|achievements|codex|petbook|pets|pointsreset|prog3'),
+      f('server/src', 'skillpoints'),   /* v2.3.5283 (card R): the skill points' door */
       f('src/game', 'quests|questCard|questComplete|questFly|questHandIn|questJournal|questKept|questPins|questRoute|questTrailStyle|questWays|trackedQuest|achievements|petBook|petFetch|pointsBubbles|pointsReset|pointsTips|tour|levelCelebration|xpBar|xpPop|welcomeBanner'),
     ],
     words: ['quest', 'achievement', 'codex', 'pet', 'points', 'tour', 'xp', 'level'],
     traps: ['quests'],
-    doors: [],
+    doors: [
+      { name: 'pointsGive', file: 'server/src/skillpoints.js', what: 'POINT_ROADS: every change to a player\'s build points (pointsGive, pointsTake, pointsSet, pointsDeal; v2.3.5283, card R)' },
+    ],
   },
   social: {
     what: 'parties, clans, guilds, friends, chat, emotes, duels, the arena, races, boards',

@@ -1015,6 +1015,18 @@ have no hit. The plain `KINDS` was taken (`CODEX.KINDS`, and words in
 | `playerroads.js`, `PLAYER_ROADS`, `OWN_ROADS` | the roads between players, and a player's own escrows | 3 |
 | `ROAD_KINDS`, `KIND_DOORS`, `DOORLESS`, `ROAD_LEDGERS`, `playerRoadsBy` | that table's closed lists, and its rows by ledger | 3 |
 
+**Chosen by card R (step 4.3, tag 5283), free at its commit** (the same
+search, with `docs`): `skillpoints`, `POINT_ROADS`, `POINT_READS`,
+`POINT_FIELDS`, `POINTS_WHOLE`, `DEAL_FIELDS`, `pointsGive`, `pointsTake`,
+`pointsSet`, `pointsDeal` and `pointsAfter` have no hit. The plain `points`
+is a common word (achievement points, the points reset) and names no file.
+
+| Name | For | Part |
+|---|---|---|
+| `skillpoints.js`, `POINT_ROADS` | the skill points' door and its table (step 4.3's "a table a door", part 7) | 7 |
+| `pointsGive`, `pointsTake`, `pointsSet`, `pointsDeal` | its four verbs | 7 |
+| `POINT_READS`, `POINT_FIELDS`, `POINTS_WHOLE`, `DEAL_FIELDS`, `pointsAfter` | its columns' closed lists, the whole-build assigns, the deal's fields, its pure sum | 7 |
+
 `report` is free as a message type and a common word elsewhere; part 4 says
 what it is not. `gid`, `pid` and `hz` are TODAY's names, used here for the
 thing they already mean.

@@ -139,7 +139,7 @@ export const pointsResetMethods = {
     }
     if (pointsPlaced(ps.prog3) === 0) { this._pointsResetSend(pid, { ok: false, err: 'none' }); return; }
     const sumRule = typeof this._oneLevelOn === 'function' ? !this._oneLevelOn() : false;
-    prog3RespecPoints(ps.prog3, sumRule);
+    prog3RespecPoints(ps.prog3, sumRule, 'points_reset');   /* v2.3.5283: the skill points' door */
     ps._pointsResetAt = now;
     this._pointsResetRoomStamp(pid, now);
     this._prog3Recompute(ps);
