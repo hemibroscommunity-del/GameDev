@@ -50,6 +50,129 @@ export const SNAPSHOT = {
                                  // real daily snapshots first)
 };
 
+/* ═══ v2.3.5286: THE PAGED EXPORT (card R PR 7; grand plan step 4.7) ═══
+ * The owner's copy of the room's records, a page at a time, behind the admin
+ * key: GET /api/admin/export?prefix=<a registry prefix>, or ?player=<an id>
+ * for one character's own records (the registry's marks, storagemarks.js:
+ * every prefix marked `whose: 'player'`), with `cursor` (the last key of
+ * the page before: its answer's `next`) and `limit` (EXPORT.LIMIT, at most
+ * EXPORT.MAX).  Read only: it writes nothing, not even its own log line.
+ *
+ *   - NEVER a login key (`auth:` holds the phrase's fingerprint and the
+ *     keys', `keyidx:` finds a key's character) nor the hidden settings
+ *     (`hidden_settings`, hidden.js: never anywhere but the Test panel's own
+ *     page): asked for, a 400; met on a page, left out and counted
+ *     (`skipped`).
+ *   - A prefix is one the registry marks (STORAGE_MARKS), nothing typed
+ *     free: a record a longer marked prefix owns is left out of a shorter
+ *     one's page (none today; the suite holds it).
+ *   - A READ THE OWNER PAYS FOR each time it runs: a page reads up to its
+ *     `limit` rows (`read` in the answer), and the whole room once over is
+ *     every row it holds.  So it is OFF until the owner sets
+ *     `roomexport: true` in the live flags (liveops.js _roomExportOn), and a
+ *     cost question in card R's Needs.
+ *
+ * Held by server/test/room-export.test.mjs.  The restore that would read
+ * such a copy back is not built (a page is the owner's to keep). */
+import { STORAGE_MARKS, marksOf } from './storagemarks.js';
+
+export const EXPORT = Object.freeze({
+  LIMIT: 50,
+  MAX: 200,
+  /* the records it never gives: a login key's, the hidden settings */
+  NEVER: Object.freeze(['auth:', 'keyidx:', 'hidden_settings']),
+  ID_RE: /^[A-Za-z0-9_.-]{1,120}$/,
+  CURSOR_MAX: 400,
+});
+
+/* a character's records keyed other than `<prefix><id>`: the snapshots'
+   ring (`rpgsnap:<id>:<day>`), the login wheel's stamp of a character with no
+   device (`lspin:p:<id>`; a device's own is `lspin:d:<device>`, not theirs by
+   its key), and the login streak (`cadence:login:<id>`, the one scope today) */
+const PLAYER_KEY_WAYS = Object.freeze({
+  'rpgsnap:': (id) => ({ list: 'rpgsnap:' + id + ':' }),
+  'lspin:': (id) => ({ key: 'lspin:p:' + id }),
+  'cadence:': (id) => ({ key: 'cadence:login:' + id }),
+});
+
+/** True for a key the export never gives (EXPORT.NEVER). */
+export function exportNever(key) {
+  return typeof key !== 'string' || EXPORT.NEVER.some((n) => (n.endsWith(':') ? key.startsWith(n) : key === n));
+}
+
+/** What a page reads: `{sources: [{key} | {list}], prefix?, player?}`, in key
+ *  order, or `{error, words}`. */
+export function exportSources(q) {
+  const prefix = q && typeof q.prefix === 'string' && q.prefix !== '' ? q.prefix : null;
+  const player = q && typeof q.player === 'string' && q.player !== '' ? q.player : null;
+  if (!prefix === !player) return { error: 'ask', words: 'Say one of prefix (a registry prefix, as `rpg:`) or player (a character\'s id).' };
+  if (prefix) {
+    if (!Object.prototype.hasOwnProperty.call(STORAGE_MARKS, prefix)) return { error: 'prefix', words: 'Not a prefix the registry marks (storagemarks.js STORAGE_MARKS).' };
+    if (exportNever(prefix)) return { error: 'never', words: 'The export never gives the login keys or the hidden settings.' };
+    return { prefix, sources: [prefix.endsWith(':') ? { list: prefix } : { key: prefix }] };
+  }
+  if (!EXPORT.ID_RE.test(player)) return { error: 'player', words: 'A character\'s id: letters, digits, `_`, `.` or `-`.' };
+  const sources = [];
+  for (const p of Object.keys(STORAGE_MARKS)) {
+    if (STORAGE_MARKS[p].whose !== 'player' || exportNever(p)) continue;
+    sources.push(PLAYER_KEY_WAYS[p] ? PLAYER_KEY_WAYS[p](player) : { key: p + player });
+  }
+  const at = (s) => s.key || s.list;
+  sources.sort((a, b) => (at(a) < at(b) ? -1 : at(a) > at(b) ? 1 : 0));
+  return { player, sources };
+}
+
+/** One page: `{ok, rows: [{k, v}], read, skipped, next}`.  `next` is the
+ *  last key read when the page is full (ask again with it as `cursor`; the
+ *  last page may come back empty), null when nothing is left. */
+export async function exportPage(storage, q) {
+  const s = exportSources(q);
+  if (s.error) return { ok: false, error: s.error, words: s.words };
+  let limit = q.limit === undefined || q.limit === null || q.limit === '' ? EXPORT.LIMIT : Math.floor(Number(q.limit));
+  if (!Number.isFinite(limit)) return { ok: false, error: 'limit', words: 'limit: a number.' };
+  limit = Math.max(1, Math.min(EXPORT.MAX, limit));
+  const cursor = q.cursor === undefined || q.cursor === null || q.cursor === '' ? null : q.cursor;
+  if (cursor !== null && (typeof cursor !== 'string' || cursor.length > EXPORT.CURSOR_MAX
+    || !s.sources.some((x) => (x.key ? x.key === cursor : cursor.startsWith(x.list))))) {
+    return { ok: false, error: 'cursor', words: 'cursor: the `next` an earlier page of this same ask gave.' };
+  }
+  const got = [];
+  let i = 0;
+  while (i < s.sources.length && got.length < limit) {
+    const x = s.sources[i];
+    if (x.list) {
+      i++;
+      /* a cursor inside this range starts after it; one past the range skips it */
+      if (cursor !== null && !cursor.startsWith(x.list) && cursor > x.list) continue;
+      const opt = { prefix: x.list, limit: limit - got.length };
+      if (cursor !== null && cursor.startsWith(x.list)) opt.startAfter = cursor;
+      for (const [k, v] of await storage.list(opt)) got.push([k, v]);
+    } else {
+      /* a run of single keys, one read for the run */
+      const run = [];
+      while (i < s.sources.length && s.sources[i].key && run.length < limit - got.length) {
+        const k = s.sources[i++].key;
+        if (cursor === null || k > cursor) run.push(k);
+      }
+      if (run.length) {
+        const m = await storage.get(run);
+        for (const k of run) if (m && m.has(k)) got.push([k, m.get(k)]);
+      }
+    }
+  }
+  const own = s.prefix ? STORAGE_MARKS[s.prefix] : null;
+  const rows = [];
+  let skipped = 0;
+  for (const [k, v] of got) {
+    if (exportNever(k) || (own && marksOf(k) !== own)) { skipped++; continue; }
+    rows.push({ k, v });
+  }
+  return {
+    ok: true, ...(s.prefix ? { prefix: s.prefix, marks: { value: own.value, whose: own.whose } } : { player: s.player }),
+    rows, read: got.length, skipped, limit, next: got.length >= limit ? got[got.length - 1][0] : null,
+  };
+}
+
 export const adminMethods = {
   async _adminAuth(request) {
     const key = this.env && this.env.ADMIN_KEY;
@@ -348,6 +471,18 @@ export const adminMethods = {
           inboxCount: Array.isArray(inbox) ? inbox.length : 0,
           snapshots: [...snaps.keys()],
         });
+      }
+
+      /* v2.3.5286: THE PAGED EXPORT (exportPage above; card R PR 7): a page
+         of records by a registry prefix or by one character, never a login
+         key or the hidden settings.  OFF until `roomexport: true` (a read
+         the owner pays for each time it runs). */
+      if (request.method === 'GET' && path === '/export') {
+        if (!this._roomExportOn()) return json({ ok: false, error: 'off', words: 'The export is off: set `roomexport: true` in the live flags to use it (and back to false after).' }, 409);
+        const q = {};
+        for (const n of ['prefix', 'player', 'cursor', 'limit']) { const v = url.searchParams.get(n); if (v !== null) q[n] = v; }
+        const r = await exportPage(this.state.storage, q);
+        return json(r, r.ok ? 200 : 400);
       }
 
       /* v2.3.2240: the owner's test kit.  Routed FIRST so it inherits the

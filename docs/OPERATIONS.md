@@ -383,6 +383,46 @@ Note: players running an old cached version of the game may end up on a
 fresh blank character instead of seeing the freeze message. If that happens,
 just freeze the new id too — their real character stays locked either way.
 
+## A copy of the room's records, a page at a time (v2.3.5286)
+
+For keeping your own copy of the game's saved records, or reading exactly
+what one character has on file. It only reads: nothing changes. It never
+gives a login (a player's key or its fingerprint) or the hidden settings.
+
+**Each run costs a little**: Cloudflare counts every record it reads (a page
+reads up to 50 by default, 200 at most, and the whole room once over is every
+record it holds). So it is **off** until you turn it on:
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"roomexport","value":true}' "https://WORKER/api/admin/flags"
+```
+Then ask for one kind of record by its prefix (the names in the registry,
+`docs/ARCHITECTURE-HANDOFF.md` rule 2: `rpg:` the characters, `bank:` the
+vaults, `store_listing:` the auction house, `shop_stock` Diego's pile...):
+```
+curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/export?prefix=rpg:"
+```
+or everything one character has on file (their save, bank, mail, pets,
+farm, backups...):
+```
+curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/export?player=bp_XXXX"
+```
+The answer is a page: `rows` (each record's name `k` and what it holds `v`),
+`read` (how many records it read) and `next`. While `next` is not null, ask
+again with `&cursor=` and that value for the next page; the last page may be
+empty. `&limit=` sets a page's size (1 to 200).
+
+When you are done, turn it off again:
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"roomexport","value":false}' "https://WORKER/api/admin/flags"
+```
+
+- Its switch is `roomexport` in the live flags (below): off unless it is
+  `true`; off, it answers "off" and reads nothing.
+- Asked for a login's records (`auth:`, `keyidx:`) or the hidden settings,
+  it says no.
+
 ## Fixing a broken save (restore from backup)
 
 The server now automatically keeps ~7 daily backups per player (taken at
