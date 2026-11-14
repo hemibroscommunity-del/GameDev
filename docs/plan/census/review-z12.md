@@ -105,8 +105,9 @@ the `ladder` row on `DOOR_SUITES`; O's own files unchanged but
 #1797 (tag 5303) and #1804 (tag 5304) carried card O's #1792 (0e3f823,
 merged in by mistake for sitting 11: #1797's red `test`). Card T rebuilt
 both on `main` 9fd5e580 without it: `claude/plan-t-3-page-draw-rebuilt`
-(a440c9b) and `claude/plan-t-4-thrown-rebuilt` (922b388, carrying the
-first), new PRs replacing #1797 and #1804. Step 3: the files are the
+(a440c9b) and `claude/plan-t-4-thrown-rebuilt` (922b388, then e0f5317, carrying the
+first): #1816 (tag 5303) and #1817 (tag 5304, after #1816), replacing
+#1797 and #1804 (closed). Step 3: the files are the
 card's (the switch table and its page, card B's map reading it, SHAPES'
 two lines, the spec, the thrown run's guard and preload, T's status); no
 `server/` or `src/` file; one merge base each, clean against `main`.
