@@ -125,3 +125,56 @@ guard's new Map branch adds no miss and no false alarm (9 doors green).
 - Its phone runs, in its words: `partykeep` 11 of 11, `clanparty` 21 of
   21, `questline` 187; `partychip` 14 of 15 (main 14 of 15, another
   check) and `alliance` 16, 14, 9 of 16 on `main` too (L's Found).
+
+## Card O: #1836 (PR 6, tag 5226): HELD (a conflict), reviewed
+
+**The crowd cap as a knob (it DEPLOYS: `server/test/`), read at
+32667ba: clean as code, one MEDIUM design question for the next
+sitting.** Held by the planning session's word: it conflicts with `main`
+at `tools/guards/lib/switches.mjs` (card T's rows now placed by name),
+no GitHub check has run on it, and next sitting T's #1837 lands first
+and #1836 merges its head.
+
+A finder ran `crowdK()` in node: with no rung taken the cap is 50 (the
+`full` and `thirty` lanes, and no address); `?crowd=12` gives 12 and
+`?crowd=all` no cap at any rung; `?laddercrowd=0` gives 50 at any rung
+and takes the crowd off the live knobs (a phone's saved rung from `main`
+still loads); `?nopeercull` still wins; the always-drawn set and the
+choosing code are unchanged; `crowdPick` draws every always-drawn
+player when the cap is full, and the minimap reads `S.others`
+(wheelMinimap.js ~924), so the hidden stay on it (VERIFIED). Per frame,
+after the first call: a cached read and three short loops, no address
+parse, no allocation. The cap moves only at a governor rung (two late
+verdicts down, 20 s clean before a try up, a failed try doubling to
+320 s): one change of who is drawn a rung, no see-saw.
+
+- **Medium, the mechanism VERIFIED (a design call: the planning
+  session's, or the owner's):** the governor counts a rung as useful when
+  its knob's value changes, not when the screen does
+  (drawLanes.js ~96 `moved: true`; the work axis ~147-151;
+  framePacer.js `next()`/`trim()`). With 30 or fewer players near, 50 ->
+  30 -> 15 hides no one and saves nothing, yet each rung costs two late
+  verdicts of 80 frames before the rate's. The governor in node at 60 Hz:
+  `main` reaches the rate at verdict 2 (2.7 s), the PR at verdict 6
+  (8.0 s): about 5 s more of late frames each hot spell, for the owner
+  alone on his iPhone. Coming back, the rate returns first (good), the
+  crowd 20 s and 40 s after. A cure the finder offers: pass a crowd rung
+  whose cap is at or above the players near. LANES.md's order (crowd
+  before rate) is the planning session's; this PR makes it act.
+- Low, VERIFIED: crowd-cap §4 calls only `crowdK('<search>')`, never the
+  renderer's `crowdK()` (the address read once, the knob each frame):
+  the step frozen at the first frame, or 50 whatever the ladder, both
+  pass 24 of 24. The code is right (50, 30, 15, 50 as the rung moves);
+  a test that moves the rung between bare calls closes it.
+- Low, PLAUSIBLE: until #1832 is on `main` the governor is on in phone
+  tests; a slow box judged late would measure `mp-crowdbots` and
+  `mp-crowdfight` at 30 or 15 (they report, assert nothing). #1832 is on
+  this list, so #1836 lands after it.
+- Not this PR: the old `?crowd` row (switches.mjs ~326) says it caps
+  monsters; it caps players.
+- Suites: crowd-cap 24, frame-pacer 124; guards draw-lanes, switches,
+  state-ledger green; break proofs: `_knob()` replaced by `CROWD_K` (4a,
+  4d red), the renderer reading once (4e red).
+- Decided for the owner while away (in its body): ON, switches
+  `?laddercrowd=0` (one screen) and the Test panel's "Speed ladder"
+  (`govern`, every phone, live). Not on this list.
