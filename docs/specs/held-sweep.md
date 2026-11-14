@@ -337,20 +337,23 @@ PR's: `pack-page` at `armour` 17 to 35 ms against its 20 ms line (waits for
 card P's asset door); one `masked-bake` hold of 32.7 ms at `armour` (its own
 PR is next).
 
-**The shirt, after (v2.3.5051; card H's second follow-up).** `gear-sheet`
-came back once, 22.4 ms at `armour` (#1733's sample): the figure shows the
-shirt's FIRST frame only, but the whole strip was upscaled and composed
-(`composeShirt`: read back, tinted, patterned and stamped, every frame of
-it). Now the first frame alone is cut, at the same nearest-neighbour scale,
-and composed (`characterPortrait.js` `_shirtFrame0`; the designer's grids,
-`?portraitshirt=0` and QA's `'whole'` take the whole strip, as before). The
-same pixels: `__btPortraitCompare(opts, 'whole', 'flat')`, six facings by a
-plain shirt, stripes, a check, a drawing, a drawing over stripes, and a figure
-under armour at 3x: 31 of 31 byte for byte, the control too. The fabric's
-lit mask falls back to the whole region when too little of it is lit, which
-it now judges on one frame rather than the strip: the 31 say no figure
-changed. The sample (`peer`, `armour` x3): `portrait` 5.3, 4.7 and 6.9 ms
-the longest (`composeShirt` 1 ms of the 6.9), no `gear-sheet` hold;
+**The shirt and the armour, after (v2.3.5051; card H's second follow-up).**
+`gear-sheet` came back once, 22.4 ms at `armour` (#1733's sample), and the
+whole main tour showed `portrait` 22.6 ms in `_drawGearLayer`: the figure
+shows each strip's FIRST frame only, but the shirt's whole strip was
+upscaled and composed (`composeShirt`: read back, tinted, patterned and
+stamped, every frame of it), and each armour piece's whole strip upscaled
+into a canvas. Now the first frame alone is cut, at the same
+nearest-neighbour scale (`characterPortrait.js` `_firstFrame`; the
+designer's grids, `?portraitframe=0` and QA's `'whole'` take the whole strip,
+as before). The same pixels: `__btPortraitCompare(opts, 'whole', 'flat')`,
+six facings by a plain shirt, stripes, a check, a drawing and a drawing over
+stripes, the six facings by four armour sets, and a figure under armour at
+3x: 55 of 55 byte for byte, the control too. The fabric's lit mask falls
+back to the whole region when too little of it is lit, which it now judges
+on one frame rather than the strip: the 55 say no figure changed. The sample
+of the shirt alone (`peer`, `armour` x3): `portrait` 5.3, 4.7 and 6.9 ms the
+longest (`composeShirt` 1 ms of the 6.9), no `gear-sheet` hold;
 `mp-geartab` 122 of 122.
 
 ### `masked-bake` off the list (v2.3.5043)
