@@ -26,8 +26,7 @@ state: ready
 
 ## Found
 
-- `stripRead.js`: its 20 s clock (`READ_MS`) is wall time: after a 20 s
-  freeze one strip is unpacked on the page. `_dead` after `onerror`: no restart.
+- `stripRead.js`: `READ_MS` (20 s) is wall time; `_dead` has no restart.
 - `pack-page` (card P's): 17 to 35 ms at `armour` against its 20 ms line.
 - `mp-heldsweep.mjs` FAMILIES: a hold is named by the first family on its
   stack (the figure read as `gear-sheet` or `body-bake`).
