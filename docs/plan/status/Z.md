@@ -5,8 +5,8 @@ state: ready
 
 ## Done
 - Sitting 17, `main` 59469b2: the list rehearsed in its order (tree
-  TREE_LIST, this branch aside): precheck PRECHECK, build, questline
-  QUESTLINE; each base `main`, ONE merge base step by step (each card's
+  d7a02deb, this branch aside): precheck 0 FAIL (2 WARN), build, questline
+  187 of 187; each base `main`, ONE merge base step by step (each card's
   PRs stacked at its session's hand). Review: `census/review-z17.md`.
   4.1 and 7.2 ticked; notes on 2.3, 4.2, 4.5, 4.7, 5.3b, 8.1, 9.5;
   `TODO_LINE` 28 -> 27; BroTown.jsx's four lines and entityRenderer.js

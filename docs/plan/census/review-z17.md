@@ -331,12 +331,49 @@ differs (a change of a head now would undo this rehearsal).
 
 ## The lines
 
-PLACEHOLDER_LINES
+On `main` 59469b2 the phase table's `todo` is 27 at its line 28: this PR
+lowers `TODO_LINE` 28 -> 27, the count since L's #1839 (break proof: 26
+fails check 7). L's #1851 and #1855 bring it to 24 on the list's tip; the
+next sitting may lower it again. The four lines' guard on `main` printed
+room sitting 16's merges earned: card SK's #1782 (the ride's per-frame
+rules moved into src/game/ride.js) took BroTown.jsx to 8370 code lines
+(its line 8371), its `BroTown` to 7800 (7801), its anonymous to 2132
+(2133) and its `gameLoop` to 1583 (1584); with O's #1836, entityRenderer.js
+to 8953 (8955). This PR lowers all five (break proof: `BroTown` 7799 fails
+check 2; the guard's header says so). On the whole list's tip the guard is
+green with these lines, and prints room in monsterCombat.js (1785, its
+line 1792; `updateMonsterCombat` 1724, 1732), K's #1861's: for the next
+sitting, once it has landed. No memory line moves but #1846's own
+(`artCache` 95.1 -> 90.6, measured, in its PR).
 
 ## The list
 
-PLACEHOLDER_LIST
+1 #1862 (R) · 2 #1851 (L) · 3 #1855 (L) · 4 #1861 (K) · 5 #1850 (O) ·
+6 #1854 (O) · 7 #1846 (P) · 8 #1859 (P) · 9 #1849 (J2) · 10 #1858 (J2) ·
+11 #1860 (J2) · 12 this PR; each "Create a merge commit", in one sitting.
+Eight deploy the worker (#1862, #1851, #1855 by `server/src/`; #1861,
+#1850, #1854, #1846, #1858 by `server/test/`): back to back. Two add a
+live flag (`harvestdoor`, `dungeondoor`, ON), L's, stacked, so they meet
+on no line; two add a page switch (`?ladderpass`, `?slimewalk`). No stored
+record changes its shape. The server's first, then the page's, then the
+tests, then this PR. Stacked within a card (each later PR carries the one
+before it): #1855 on #1851, #1854 on #1850, #1859 on #1846, #1858 on
+#1849, #1860 on #1858.
 
 ## The whole
 
-PLACEHOLDER_WHOLE
+Rehearsed with `tools/dev/gatekeeper.mjs` from `main` 59469b2:
+
+1. K's #1861, O's #1850 and #1854 (before O's mend), J2's three (tree
+   349b1652): precheck 0 FAIL. (A first pass, before every head was in.)
+2. **The list in its order**, eleven PRs at the heads above (tree
+   d7a02deb): precheck 0 FAIL (2 WARN), build, questline 187 of 187
+   (494 s); ONE merge base each, step by step (counted by hand too, the
+   same tree).
+3. **The list with this branch last** (documents and the guards' lines):
+   one merge base, a clean merge; the phase and four lines' guards green
+   on the whole. Its precheck and its tree are in the list sent to the
+   planning session (the file cannot carry its own tree).
+
+Each listed head's base is `main`; their `test` checks are in the list
+sent to the planning session.
