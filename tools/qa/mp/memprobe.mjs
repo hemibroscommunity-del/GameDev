@@ -16,6 +16,17 @@
  *                     GPU's textures (__btGpuTex), the 2D canvases, decoded
  *                     sound (and BT_AUDIO.decodedMB, the game's own count),
  *                     the main thread's JS heap and its ArrayBuffers.
+ *     .sample(label, { rows: true })
+ *                     v2.3.5242 (card P, the asset door's measure): the same
+ *                     reading, and with it EVERY row, not the top one, read
+ *                     in the same moment, after the same two collections:
+ *                     each texture on the chip, each picture the asset cache
+ *                     holds in the page, the colour numbers the page keeps,
+ *                     each decoded sound by its file, and the palette atlas's
+ *                     rows.  tools/assets/fightmb.mjs matches each row to its
+ *                     family by its label's path.  Opt-in only: without it the
+ *                     page is asked exactly what it is asked today (the
+ *                     memory check runs on every PR).
  *     .workers()      each background worker's heap and buffers (the ground
  *                     worker holds the Wheel's plan and pictures), after a GC
  *                     in each.
@@ -59,7 +70,7 @@ export const MEM_INIT = () => {
       return ab;
     };
   }
-  window.__memLedger = () => {
+  window.__memLedger = (wantRows) => {
     let cb = 0, cn = 0;
     const sizes = [];
     for (const r of canv) {
@@ -78,11 +89,90 @@ export const MEM_INIT = () => {
     const t = window.__btTex ? window.__btTex() : null;
     const g = window.__btGpuTex ? window.__btGpuTex(1) : null;
     const snd = window.BT_AUDIO && window.BT_AUDIO.decodedMB ? window.BT_AUDIO.decodedMB() : null;
-    return {
+    const out = {
       cache: t ? t.mb : null, gpu: g ? g.mb : null,
       canvasMB: +(cb / 1048576).toFixed(1), canvasN: cn, canvasTop: top,
       decodedMB: +(ab / 1048576).toFixed(1), decodedN: an, soundHeld: snd,
     };
+    if (wantRows) out.rows = window.__memRows();
+    return out;
+  };
+  /* ═══ v2.3.5242: EVERY ROW, FOR THE ASSET DOOR'S CENSUS (opt-in) ═══
+     Read only when a scenario asks (sample(label, { rows: true })).  Each row
+     is a label (an address without its host and query, or the name a picture
+     made in play was given) and its MB:
+       chip     every texture on the graphics chip (__btGpuTex's own list and
+                its own sizes: bytes a pixel by format, x 4/3 with mipmaps),
+                with its kind and, for colour numbers, its row of the atlas;
+       page     every picture the asset cache holds in the page, counted by
+                __btTex's own rule (four bytes a pixel, as the artCache line
+                counts it), named by its source's label or its file;
+       numbers  the colour numbers the page keeps beside a texture (a palette
+                source whose numbers are still its resource: one byte a
+                pixel), seen through the chip's and the cache's sources and
+                the monsters' strips (__btPicNumSources);
+       sound    each decoded sound by its file (BT_AUDIO's own maps: a
+                sample's file is its tag, a zone track its address), a buffer
+                two keys share counted once; `soundTotal` is BT_AUDIO's own
+                count, and the line (decodedMB above) counts every buffer the
+                page can still reach, so the two can differ;
+       palette  the atlas's rows: used, the most, how often it was full;
+                and the monsters' bundles (__btPicNumbers). */
+  window.__memRows = () => {
+    const clean = (u) => String(u || '').replace(/^https?:\/\/[^/]+/, '').split('?')[0].split('#')[0];
+    const r = { chip: [], page: [], numbers: [], sound: [], soundTotal: null, palette: null, picNumbers: null };
+    const byUid = new Map();
+    try {
+      for (const s of (window.__btGpuTexSources ? window.__btGpuTexSources() : [])) if (s && !s.destroyed) byUid.set(s.uid, s);
+      for (const s of (window.__btPicNumSources ? window.__btPicNumSources() : [])) if (s && !s.destroyed) byUid.set(s.uid, s);
+    } catch (e) { /* a probe that moved: the rows it gave stand */ }
+    /* a picture with no label is named by its own file where it has one */
+    const srcOf = (s) => { const res = s && s.resource; return clean(res && (res.currentSrc || res.src) || ''); };
+    try {
+      const g = window.__btGpuTex ? window.__btGpuTex(1e9) : null;
+      for (const x of (g && g.list) || []) {
+        const s = byUid.get(x.uid);
+        r.chip.push([x.label || srcOf(s), x.mb, x.kind, s && s._btPal ? s._btPal.row : null]);
+      }
+    } catch (e) { /* none */ }
+    /* the page's copies, counted by __btTex's own rule (a destroyed source
+       is not held, one let go of is not either, a canvas holds its own
+       size, four bytes a pixel) but each named by its source: __btTex's own
+       list names a picture the cache keys by its element "[object
+       HTMLImageElement]" */
+    try {
+      for (const s of (window.__btCacheSources ? window.__btCacheSources() : [])) {
+        if (!s || s.destroyed || (s.resource && s.resource.__btReleased)) continue;
+        let w = s.pixelWidth || s.width || 0, h = s.pixelHeight || s.height || 0;
+        const res = s.resource;
+        if (res && typeof res.getContext === 'function') { w = res.width | 0; h = res.height | 0; }
+        r.page.push([clean(s.label) || srcOf(s), +((w * h * 4) / 1048576).toFixed(3)]);
+      }
+    } catch (e) { /* none */ }
+    for (const s of byUid.values()) {
+      const res = s.resource;
+      if (!s._btPal || !res || !ArrayBuffer.isView(res)) continue;
+      r.numbers.push([clean(s.label), +(res.byteLength / 1048576).toFixed(3), s._btPal.row]);
+    }
+    try {
+      const A = window.BT_AUDIO;
+      if (A) {
+        const seen = new Set();
+        const add = (file, buf) => {
+          if (!buf || seen.has(buf)) return;
+          seen.add(buf);
+          r.sound.push([clean(String(file).replace(/@low$/, '')), +((buf.length * (buf.numberOfChannels || 1) * 4) / 1048576).toFixed(3)]);
+        };
+        const tags = A._sampleTag || {};
+        for (const k in (A._samples || {})) add(tags[k] || ('sample: ' + k), A._samples[k]);
+        for (const u in (A._zoneMusicBuffers || {})) add(u, A._zoneMusicBuffers[u]);
+        if (A._globalMusicBuffer) add(A.GLOBAL_MUSIC || 'music: the session track', A._globalMusicBuffer);   /* the session track's file (startGlobalMusic) */
+        r.soundTotal = A.decodedMB ? A.decodedMB() : null;
+      }
+    } catch (e) { /* a half-built audio state */ }
+    try { const p = window.__btPalette ? window.__btPalette() : null; if (p) r.palette = { rowsUsed: p.rowsUsed, rowsMax: p.rowsMax, rowsFull: p.rowsFull || 0 }; } catch (e) { /* none */ }
+    try { const n = window.__btPicNumbers ? window.__btPicNumbers() : null; if (n) r.picNumbers = { bundles: n.bundles, rows: n.rows, rowsFull: n.rowsFull, strips: n.strips }; } catch (e) { /* none */ }
+    return r;
   };
 };
 
@@ -114,15 +204,16 @@ export async function memSampler(P, browser) {
     } catch (e) { /* no worker targets here */ }
     return res;
   };
-  const sample = async (label) => {
+  const sample = async (label, opts) => {
     await cdp.send('HeapProfiler.collectGarbage').catch(() => {});
     await P.page.waitForTimeout(300);
     await cdp.send('HeapProfiler.collectGarbage').catch(() => {});
     const heap = await cdp.send('Runtime.getHeapUsage').catch(() => ({}));
-    const pg = await P.page.evaluate(() => {
+    /* v2.3.5242: the rows only when asked (the heap is read above, first) */
+    const pg = await P.page.evaluate((wantRows) => {
       const S = window._gameState.current;
-      return { zone: S.currentZone, ...window.__memLedger() };
-    });
+      return { zone: S.currentZone, ...(wantRows ? window.__memLedger(true) : window.__memLedger()) };
+    }, !!(opts && opts.rows));
     return { label, ...pg, heapMB: +((heap.usedSize || 0) / 1048576).toFixed(1),
       buffersMB: heap.backingStorageSize != null ? +(heap.backingStorageSize / 1048576).toFixed(1) : null };
   };

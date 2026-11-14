@@ -35,7 +35,8 @@
  *      _onMessage -- the static half of 8, so a new case cannot start the race
  *      again.
  */
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { srcFiles } from './src-walk.mjs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join as pjoin } from 'node:path';
 import { GameRoom } from '../src/index.js';
@@ -453,7 +454,7 @@ const capsOf = (p) => {
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
     .replace(/(^|[^:'"`\\])\/\/[^\n]*/g, (m, p1) => p1 + ' '.repeat(m.length - p1.length));
   const asyncNames = new Set();
-  for (const f of readdirSync(SRC).filter((n) => n.endsWith('.js'))) {
+  for (const f of srcFiles()) {   /* v2.3.5060: in depth, a folder's files too (src-walk.mjs) */
     for (const m of strip(readFileSync(pjoin(SRC, f), 'utf8')).matchAll(/^ {2}async\s+([A-Za-z_$][\w$]*)\s*\(/gm)) asyncNames.add(m[1]);
   }
   const index = strip(readFileSync(pjoin(SRC, 'index.js'), 'utf8'));

@@ -24,7 +24,8 @@
  * If extraction ever collapses (someone renames the helpers, switches
  * quote style, builds types dynamically), the ≥40 floor check fails
  * loudly instead of the audit rotting into a vacuous pass.           */
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { srcFiles } from './src-walk.mjs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { PRIVILEGED_EVENTS } from '../src/index.js';
@@ -60,7 +61,7 @@ const RELAY_ECHO_ALLOWLIST = new Map([
 ]);
 
 const srcDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
-const files = readdirSync(srcDir).filter((f) => f.endsWith('.js') && f !== 'data.js');
+const files = srcFiles().filter((f) => f !== 'data.js');   /* v2.3.5060: in depth, a folder's files too (src-walk.mjs) */
 
 const extracted = new Map(); // type -> [file:line, ...]
 const RE_A = /\btype:\s*'([a-z_0-9]+)'/g;
