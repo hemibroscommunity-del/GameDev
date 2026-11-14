@@ -1,6 +1,6 @@
 card: T
-branch: claude/plan-t-5-due (one branch a PR, each begun from main once the one before merged)
-prs: #1754, #1768, #1816, #1817 (5301-5304, merged); #1837 (5305, ready)
+branch: claude/plan-t-6-reader (one branch a PR, each begun from main once the one before merged)
+prs: #1754, #1768, #1816, #1817, #1837 (5301-5305, merged); PR 6 (5306, ready)
 state: ready
 
 ## Done
@@ -13,13 +13,14 @@ state: ready
   map reads the table; SHAPES' two lines point at it.
 - PR 4 (5304, #1817, for #1804): a row's place by its name (check 10);
   needs and readers (check 11); the thrown run (thrown.mjs, a preload).
+- PR 5 (5305, #1837): the end date (`on`, `--due`, the fallback hold).
 
 ## Next
 
-- #1837 (5305): the end date. `on` on every switch row (a day from git,
-  `onBy` where a later change turned it on, `'off'` for 2 opt-ins);
-  `--due` (101 may go today, nothing reaped); the fallback hold (check 12,
-  `FALLBACKS` a census of 5). Then PR 6 (5306), the page's one reader.
+- PR 6 (5306): the page's one reader, src/game/switches.js (`sw`, `swHas`,
+  `swValue`, `thrown`; forms and needs from the table, check 13); its guard
+  switch-reader.test (moves held to their old answers; outside reads 220).
+  First seven reads moved. Then PR 7 on: the reads moved, a few systems a PR.
 
 ## Found
 
@@ -30,11 +31,10 @@ state: ready
 - Card B's map files src/game/crowdCap.js under `monsters`; `?crowd` caps players.
 - Rule 4's sample: `ahonewrite` thrown beside store-heal-wait.test's own
   `storehealwait: false` fails its check 2 (two switches off, not one).
-- Card O (planning session, 2026-11-14): the device knobs' off-ramps
-  become overrides of O's ladder (step 2.4). PR 7 leaves their reads to O,
-  unmoved: `?pixbudget`, `?res`, `?onebatch`, `?lookpalette`, `?pace`,
-  `?crowd`, and the passes'. They keep their rows as they are today.
+- Card O's knobs stay O's reads (step 2.4): `?pixbudget`, `?res`,
+  `?onebatch`, `?lookpalette`, `?pace`, `?crowd`, the passes'; and `govern`
+  (a value on the page) is a need the reader cannot resolve.
 
 ## Needs
 
-- The gatekeeper: #1837.
+- The gatekeeper: PR 6.
