@@ -1,7 +1,7 @@
 card: R
 branch: claude/plan-r-8-size (one branch a PR, each begun from main)
-prs: #1819 (5280, ready), #1823 (5283, ready), PR 8 tag 5287 (working)
-state: working
+prs: #1819 (5280, ready), #1823 (5283, ready), #1825 (5287, ready)
+state: ready
 
 ## Done
 
@@ -12,7 +12,7 @@ state: working
 
 ## Next
 
-- PR 8 (5287): the storage's size in the day's book (part `size`, riding;
+- PR 8 (5287, #1825, ready): the storage's size (part `size`, riding;
   `databaseSize` reads no row); its line on the owner's card. New live
   flag `storesize` (a row of its own in the switch table).
 - Then PR 9 (5288), the room's way back: tested on a stand-in storage only
