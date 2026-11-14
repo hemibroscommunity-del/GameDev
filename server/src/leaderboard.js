@@ -12,6 +12,14 @@ import { boardFace, goneId } from './boards.js';   /* v2.3.4393: a face on each 
    character's stand-in, counted from the day it was deleted) */
 const STALE_MS = 7 * 86400000;
 
+/* v2.3.5483: a row's achievement points -- the room's own count when the
+   report carries it (a whole number, never below 0), else the blob's */
+const apOf = (data, rpgData) => {
+  const n = Number(data && data.ap);
+  if (Number.isFinite(n)) return Math.max(0, Math.min(Number.MAX_SAFE_INTEGER, Math.floor(n)));
+  return rpgData?.ap || 0;
+};
+
 export class Leaderboard {
   constructor(state, env) { this.state = state; this.env = env; }
 
@@ -98,7 +106,10 @@ export class Leaderboard {
     await this.state.storage.put('player:' + playerId, JSON.stringify({
       ...(look ? { look } : {}),
       id: playerId, name: name || 'Anon', color: color || '#5b52ff', level: level || 1,
-      lifeTotal: rpgData?.lifeTotal || 0, ap: rpgData?.ap || 0, kills: rpgData?.kills || 0,
+      /* v2.3.5483: `ap` is the room's own count (index.js reportToLeaderboard,
+         from ps.achievementPoints) -- the blob's only from a report that
+         carries none */
+      lifeTotal: rpgData?.lifeTotal || 0, ap: apOf(data, rpgData), kills: rpgData?.kills || 0,
       dungeons: rpgData?.dungeons || 0, goldEarned: rpgData?.goldEarned || 0, playtime: rpgData?.playtime || 0,
       clanTag: rpgData?.clanTag || null, lastSeen: ts || Date.now(),
       /* v2.3.1671: the per-skill board.  `series` is the SERVER's view —
