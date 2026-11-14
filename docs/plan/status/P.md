@@ -16,8 +16,8 @@ state: ready
 
 ## Next
 
-- PR 4 (tag 5244), the gate, once card B's #1698 and `tools/guards/lib/`
-  are on `main`; PR 5 (the 19 `.m4a`) meanwhile.
+- PR 4 (tag 5244), the gate, once card B's #1698 (stacked on #1685 to
+  #1696) and `tools/guards/lib/` are on `main`. Preparing it meanwhile.
 
 ## Found
 
@@ -30,9 +30,9 @@ state: ready
 
 ## Needs
 
+- Asked once (2026-11-14): may PR 5 (the 19 `.m4a`) open before PR 4,
+  begun from PR 3's branch, while PR 4 waits on card B? Until told, no.
 - A reading to confirm (spec part 1, "Readings taken"): a file a repo tool
   cut from inputs the repository does not keep is `supplied` (the card's
   example, the bro's sheets); `made` needs kept sources or tool `unknown`.
-- PR 4 waits for card B's #1698 (`tools/guards/asset-sources.test.mjs`)
-  and `tools/guards/lib/` on `main`.
 - The backlog's `pack-page` waits for card H's `done`.
