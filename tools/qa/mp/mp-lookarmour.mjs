@@ -53,6 +53,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'armourlooks', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel', query: 'lookpalette=1' });
   const errs = [];
   P.page.on('pageerror', (e) => errs.push(String(e).slice(0, 300)));
+  /* v2.3.5425 (card J2): a real key every 20 s.  The oracle holds the page
+     for minutes with no real input, and the page logs itself out after two
+     (wsClient idleLogout; mp-elemhits' and mp-npclooks' remedy): the live
+     switch below was thrown on the worker and never reached a phone with no
+     socket (the worker sent `client_off`; the page's caps stayed '') */
+  const stopAlive = H.keepAlive(P);
   try {
     await H.enterWorld(P);
     const ok = await H.waitFor(P, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }), (v) => v.zone === 'wheel' && !v.loading,
@@ -150,6 +156,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     rec.ok(`no page error (${errs.length})`, errs.length === 0, errs.slice(0, 4));
   } finally {
+    stopAlive();
     await P.ctx.close().catch(() => {});
   }
 }
