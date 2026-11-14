@@ -1,6 +1,6 @@
 card: L
 branch: claude/plan-l-4-resets (one branch a PR, each begun from the one before)
-prs: #1746, #1748 (merged), #1767 (ready), PR 4 (working)
+prs: #1746, #1748 (merged), #1767 (ready), PR 4 (opening)
 state: working
 
 ## Done
@@ -20,8 +20,8 @@ state: working
 ## Found
 
 - run.mjs: the census's two guards are not in SLOW_FIRST (81 s, not 72).
-- Red on main 7593b4e, not L's: ownersounds 3 (Quick Eat's munch),
-  deathzones 12 (a mire wisp's squash), mp-hitsound.mjs (6 voice checks).
+- Red on main, not L's: ownersounds 3 (Quick Eat's munch), deathzones 12
+  (a mire wisp), mp-hitsound.mjs (6), race (Lil Bro's start, his jog cells).
 - bodytake.js ~94 cites "rejoinresend's pose row": there is none.
 - session.phase: three writers, held by the phase table's scan (not its suite).
 - Dead fields: S._shieldStamina (never set), S.shieldActive and
