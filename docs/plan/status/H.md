@@ -1,39 +1,39 @@
 card: H
-branch: claude/grand-plan-h-7-equip-redraw (one branch a PR, each begun from the one before, as W's are: merge them in order)
-prs: #1668, #1675, #1681 (merged), #1700 (sitting 2's hold answered), #1709, #1712 (ready), PR 7 on the branch above (ready)
-state: ready
+branch: claude/grand-plan-h-8-ui (one branch a PR, each begun from the one before, as W's are: merge them in order)
+prs: #1668, #1675, #1681 (merged); #1700, #1709, #1712 (sitting 4's holds mended: ready); #1714 (ready); PR 8 (working)
+state: working
 
 ## Done
 
 - #1668 (5040) the worker's restart; #1675 (5041) whose row; #1681 (5042)
   `gear-sheet` and `portrait` off (the Equipment screen's figure).
-- #1700 (5043) `masked-bake` off: an image's frame goes to the bake's worker
-  as its address; 7.7 ms. Sitting 2's hold answered (`jobDone`, 4 sheets /
-  4 MB, `keptMB`, a MEMORY-MAP row). Deploys.
-- #1709 (5044) `strip-made` off: a strip numbered for its row on the
-  reader's worker (`stripRows.js`); town 34 holds -> 11. Deploys.
-- #1712 (5045) `foldToMono` off: the fold a stretch at a time, the same
-  buffer (sound-fold.test 4); 13.4 -> 6.9 ms. Deploys.
-- PR 7 (5046) the equip redraw `other: R > J` off: the root re-rendered on
-  every equip, now only on a worn flag's change, as a transition
-  (`gearWornSync.js`); 17.5 -> 8.6 ms. Client only.
+- #1700 (5043) `masked-bake` off. Sitting 4: `main` in; the page's side in
+  `bakeByAddress.js` (`four-lines`); a job's reads started together; what
+  is still being read when the worker is stuck refused; sheets let go 15 s
+  after the last job. Probe: 11 of 11 the same. Deploys.
+- #1709 (5044) `strip-made` off. Sitting 4: rows the page changes make the
+  waiting plans stale (`strip-door` 4l); the ride: 35 of 35. Deploys.
+- #1712 (5045) `foldToMono` off. Sitting 4: the game's fold in
+  `soundFold.js` (`four-lines`); a mono sound never waits (4g). Deploys.
+- #1714 (5046) the equip redraw `other: R > J` off. Client only.
+- PR 8 (5047) `ui:*` off: the gear tab's cells components, the formatter
+  readied at load; six runs, 9.9 ms the longest (13.4 before).
 
 ## Next
 
-- PR 8 (tag 5047), `ui:*` (16 ms). The `body-bake` PR (last) also takes
-  Z's finds on #1668 (a hung worker restarted each return; `BT_BW_PARTS`).
+- Sitting 4: #1714 (`main` in), then PR 8 opened. Then `sweepPicsOnce`
+  (5048), `body-bake` (5049, + Z's #1668 finds).
 
 ## Found
 
 - `stripRead.js`: `READ_MS` (20 s) is wall time; `_dead` has no restart.
 - `pack-page` (card P's): 17 to 35 ms at `armour` against its 20 ms line.
-- `mp-heldsweep.mjs` FAMILIES names a hold by the first family on its stack;
-  and `other: wrapped` is `perfTracker.js`'s timer wrapper (anonymous timer
-  jobs, 10 to 19.6 ms in 8 of ~30 runs): the sweep should look inside it.
-- `entityRenderer.js`: the masked bake's worker let go as stuck 3 times in a
-  2-player minute, with or without #1700 (`_BAKE_STUCK_MS` 6 s).
-- `wheelGround.js` `_sprite` (ground pieces uploaded as you ride): up to
-  14.3 ms, over the general line in two of six runs; unlisted.
+- `other: wrapped` (`perfTracker.js`'s timer wrapper, its own time): over
+  the line in 5 of ~40 runs, 19.6 ms the most; the sweep should look inside.
+- `gear-sheet` again once: 22.4 ms at `armour` (`composeShirt` of the WHOLE
+  upscaled shirt strip for the portrait's one frame): crop it first.
+- The Leaderboard's faces (since #1681): to measure at `g-boards`.
+- Bake worker stuck ~3/min here; `wheelGround.js` `_sprite` 14.3 ms.
 
 ## Needs
 

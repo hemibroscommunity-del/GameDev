@@ -279,6 +279,14 @@ const MON = join(ROOT, 'public/sprites/monsters');
     && /_rowsEpoch\.set\(bundle, \(_rowsEpoch\.get\(bundle\) \|\| 0\) \+ 1\);\s*_plansWaiting\.delete\(bundle\);/.test(pn)
     && /if \(!r \|\| r\.n !== plan\.n0\)/.test(pn)
     && /if \(m\.rgb\) palTint = retintPalette\(out\.pal, out\.idx, m\.rgb\);\s*if \(m\.rows\) \{\s*const plan = planOnRows\(palTint \|\| out\.pal, m\.rows\);/.test(wk));   /* v2.3.5044: a colour variant retinted by the page's own rule first */
+  /* v2.3.5044, after the gatekeeper's sitting 4 (#1709: a waiting plan taken by its row's COUNT after the page had
+     put other colours in those places).  Break proof, by hand: the `_rowsMoved(bundle)` after the page's colour
+     loop taken out -> 4l red. */
+  check('4l. ...and rows the page changes its own way (a new row, or new colours) make every waiting plan of the bundle stale',
+    /const rowsBefore = \(_rows\.get\(bundle\) \|\| \[\]\)\.length;\s*const r = rowFor\(bundle, pal\);/.test(pn)
+    && /if \(grew \|\| \(_rows\.get\(bundle\) \|\| \[\]\)\.length !== rowsBefore\) _rowsMoved\(bundle\);/.test(pn)
+    && /function _rowsMoved\(bundle\) \{\s*_rowsEpoch\.set\(bundle, \(_rowsEpoch\.get\(bundle\) \|\| 0\) \+ 1\);\s*_plansWaiting\.delete\(bundle\);/.test(pn)
+    && /export function releaseBundleNumbers\(bundle\) \{[\s\S]{0,120}?_rowsMoved\(bundle\);/.test(pn));
   const srw = src('src/rendering/stripRows.js');
   check('4k. ...and stripRows.js imports nothing (the worker and node run it)', !/^import /m.test(srw) && /export function planOnRows/.test(srw) && /export function remapToRow/.test(srw));
 

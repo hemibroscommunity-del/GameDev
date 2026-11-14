@@ -16,7 +16,7 @@
  *   4. (v2.3.5045) the fold a few ms at a time: the one-go fold's buffer,
  *      sample for sample, a frame let in between pieces. */
 import { readFileSync } from 'fs';
-import { sidesAreOne, foldToMono, foldToMonoSliced, SIDE_DB } from '../../src/data/soundFold.js';   /* v2.3.5045: + the fold in pieces */
+import { sidesAreOne, foldToMono, foldToMonoSliced, foldForGame, SIDE_DB } from '../../src/data/soundFold.js';   /* v2.3.5045: + the fold in pieces; + the game's (sitting 4) */
 
 let failures = 0;
 function check(name, cond, detail) {
@@ -113,11 +113,11 @@ check('1g. one channel, or none, is never "one of two"', !sidesAreOne(buf([L])) 
 /* 3. the wiring */
 {
   const gd = readFileSync(ROOT + 'src/data/gameDisplay.js', 'utf8');
-  check('3a. the sound module takes the fold from soundFold.js', /import \{ foldToMono, foldToMonoSliced \} from '\.\/soundFold\.js';/.test(gd));   /* v2.3.5045: + in pieces */
+  check('3a. the sound module takes the fold from soundFold.js', /import \{ foldForGame \} from '\.\/soundFold\.js';/.test(gd));   /* v2.3.5045: the game's fold (in pieces) */
   check('3b. every decode the sample loader makes goes through it',
     /\.then\(function \(b\) \{ delete self\._tagLoads\[tag\]; return self\._fold\(b, key\); \}/.test(gd));
   check('3c. the fold is made by the context\'s own createBuffer, and ?stereosfx keeps them stereo',
-    /foldToMono\(b, function \(c, n, r\) \{ return ctx\.createBuffer\(c, n, r\); \}\)/.test(gd)
+    /foldForGame\(b, function \(c, n, r\) \{ return ctx\.createBuffer\(c, n, r\); \}, function \(out\) \{ if \(out !== b\) self\._folded\.push/.test(gd)
     && /if \(!b \|\| this\._stereoSfx\) return b;/.test(gd) && /\[\?&\]stereosfx\\b/.test(gd));
 }
 
@@ -166,10 +166,33 @@ check('1g. one channel, or none, is never "one of two"', !sidesAreOne(buf([L])) 
   const eq = buf([l, Float32Array.from(l)]);
   check('4d. a make that throws, or no make, keeps it as it was', (await foldToMonoSliced(eq, () => { throw new Error('no'); }, turn)) === eq
     && (await foldToMonoSliced(eq, null, turn)) === eq && (await foldToMonoSliced(null, make, turn)) === null);
-  const gd = readFileSync(ROOT + 'src/data/gameDisplay.js', 'utf8');
-  check('4e. the sound module folds in pieces, a frame between (`_foldTurn`), and `?foldgentle=0` folds in one go',
-    /return foldToMonoSliced\(b, function \(c, n, r\) \{ return ctx\.createBuffer\(c, n, r\); \}, BT_AUDIO\._foldTurn\)/.test(gd)
-    && /if \(this\._foldGentleOff\) \{\s*var out = foldToMono\(b, function/.test(gd) && /foldgentle=\(0\|off\|false\)/.test(gd));
+  /* v2.3.5045, after the gatekeeper's sitting 4: the game's fold is soundFold.js foldForGame (moved out of
+     gameDisplay.js for four-lines) */
+  const sf = readFileSync(ROOT + 'src/data/soundFold.js', 'utf8');
+  check('4e. the game folds in pieces, a frame between (`foldTurn`), and `?foldgentle=0` folds in one go',
+    /return foldToMonoSliced\(b, make, turn\)\.then\(\(out\) => \{ kept\(out\); return out; \}\);/.test(sf)
+    && /if \(gentleOff\) \{ const out = foldToMono\(b, make\); kept\(out\); return out; \}/.test(sf)
+    && /foldgentle=\(0\|off\|false\)/.test(sf) && /turn = foldTurn, gentleOff = FOLD_GENTLE_OFF/.test(sf));
+  const keptIn = [], keptOff = [];
+  const gIn = await foldForGame(buf([l, Float32Array.from(l)]), make, (o) => keptIn.push(o), turn, false);
+  const gOffBuf = buf([l, Float32Array.from(l)]);
+  const gOff = foldForGame(gOffBuf, make, (o) => keptOff.push(o), turn, true);
+  check('4f. ...foldForGame: in pieces a promise of the fold, in one go the fold itself; each tells `kept` what it kept',
+    same(gIn, foldToMono(buf([l, Float32Array.from(l)]), make)) === true && keptIn[0] === gIn
+    && !(gOff instanceof Promise) && gOff.numberOfChannels === 1 && keptOff[0] === gOff);
+  /* #1712's small one: a sound with nothing to fold waited in the line behind a two-sided one being folded.  Break
+     proof, by hand: foldToMonoSliced's first line (the early return) taken out -> 4g red. */
+  let release = null;
+  const held = new Promise((r) => { release = r; });
+  const slow = foldToMonoSliced(buf([l, Float32Array.from(l)]), make, () => held, 0, now);
+  const mono = buf([l]);
+  let monoBack = null;
+  foldToMonoSliced(mono, make, turn, 0, now).then((o) => { monoBack = o; });
+  await new Promise((r) => setTimeout(r, 20));
+  const monoFirst = monoBack === mono;
+  release();
+  await slow;
+  check('4g. ...and a sound with nothing to fold (one channel) never waits behind a fold in the line', monoFirst);
 }
 
 if (failures) { console.log(`\n${failures} failure(s)`); process.exit(1); }
