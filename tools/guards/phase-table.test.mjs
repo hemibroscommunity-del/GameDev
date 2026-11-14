@@ -229,6 +229,13 @@ const DOOR_SUITES = Object.freeze({
     prop: 'life', besides: [{ file: 'server/src/monsterlife.js', text: 'm.life = ', why: 'a monster\'s count of lives, not a player\'s phase' }] },
   'server/test/zone-leftovers.test.mjs': { field: 'S.currentZone', fn: 'changeZone', holds: '§6a: the only writer of the game\'s place is changeZone',
     prop: 'currentZone', besides: [{ file: 'src/rendering/systems/tileRenderer.js', text: 'this.currentZone = ', why: 'the tile renderer\'s own note of the zone it drew' }] },
+  /* v2.3.5210: the trade door (card L PR 5's first) */
+  'server/test/trade-door.test.mjs': { field: 's.state', fn: '_t2To', holds: '§2: no .state written in server/src but in _t2To and NOT_A_TRADE\'s',
+    prop: 'state', besides: [
+      ...['server/src/index.js', 'server/src/marketplace.js', 'server/src/leaderboard.js', 'server/src/arena.js', 'server/src/feedback.js']
+        .map((file) => ({ file, text: 'this.state = state', why: 'the Durable Object\'s own handle' })),
+      { file: 'server/src/dungeon.js', text: 'inst.state = ', why: 'a dungeon instance: its own machine (the `dungeon` row)' },
+    ] },
 });
 const SCAN_DOORS = Object.freeze({
   'session (worker)': 'session-door.test plays the phases but fails no second writer of session.phase',

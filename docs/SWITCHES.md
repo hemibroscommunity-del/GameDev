@@ -167,6 +167,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `storehealwait` | worker | switch | v2.3.4842 | false | logic |  | no | The store's prune runs as before, without waiting for a leftover. |
 | `toolshop` | worker | switch | v2.3.3316 | false | logic |  | no | Takes the tools off the shelf and refuses every buy. |
 | `trade2` | worker | switch | v2.3.4375 | false | logic |  | no | The trade window is off, so the old gift is open again. |
+| `tradedoor` | worker | switch | v2.3.5210 | false | logic |  | no | A finished trade's end can be written again, as the two lines before the trade door would have (nothing does today). |
 | `tradeonewrite` | worker | switch | v2.3.4795 | false | logic |  | no | The trade's swap goes back to its old order of writes. |
 | `xfer` | worker | switch | v2.3.5092 | false | logic |  | no | No transfer ledger row (`xfer:`) is written; trades run exactly as before. |
 

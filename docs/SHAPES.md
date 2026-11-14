@@ -967,6 +967,7 @@ writes them, never identifiers: `dungeon`, `connection`, `loading` and
 | `PHASES`, `NOT_A_MACHINE` | the phase table and the marked fields that are no machine's (`src/state/phases.js`) | 5 |
 | `resetOn`, `runResets` (v2.3.5203) | a state's reset, registered beside it in its system's file, and the edge's one door's call (`src/game/resetOn.js`); the ledger's hand column `reset` | 5 (step 5.3) |
 | `dungeon`, `connection`, `loading`, `window`, `monster` | the phase table's machines beyond part 5's list (a row's `name`) | 5 |
+| `_t2To`, `TRADE_WAYS`, `TRADE_PHASES`, live flag `tradedoor` (v2.3.5210) | the trade door: a trade session's one phase writer, its ways and phases (`server/src/trade2.js`), and its kill switch; free at the commit (no hit for any in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |
 
 `report` is free as a message type and a common word elsewhere; part 4 says
 what it is not. `gid`, `pid` and `hz` are TODAY's names, used here for the

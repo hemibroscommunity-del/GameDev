@@ -285,6 +285,7 @@ export const SWITCHES = Object.freeze([
   { name: 'toolshop', side: 'worker', system: 'economy', kind: 'switch', born: 3316, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Takes the tools off the shelf and refuses every buy.' },
   { name: 'tour', side: 'worker', system: 'townsfolk', kind: 'switch', born: 3525, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Un-advertises the tour\'s two givers.' },
   { name: 'trade2', side: 'worker', system: 'economy', kind: 'switch', born: 4375, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'The trade window is off, so the old gift is open again.' },
+  { name: 'tradedoor', side: 'worker', system: 'economy', kind: 'switch', born: 5210, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'A finished trade\'s end can be written again, as the two lines before the trade door would have (nothing does today).' },
   { name: 'tradeonewrite', side: 'worker', system: 'economy', kind: 'switch', born: 4795, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'The trade\'s swap goes back to its old order of writes.' },
   { name: 'trapcraft', side: 'worker', system: 'skills', kind: 'switch', born: 3120, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Making traps is refused.' },
   { name: 'trapping', side: 'worker', system: 'skills', kind: 'switch', born: 3120, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Un-advertises trapping, refuses every arm and stops every roll.' },
