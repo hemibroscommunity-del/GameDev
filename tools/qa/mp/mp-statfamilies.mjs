@@ -6,6 +6,7 @@
    family pills; each opens on its members, one at a time; Health's parts add
    up to the bar; and with any one open nothing needs a scroll. */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const OUT = '/tmp/statfamilies';
 

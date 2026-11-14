@@ -33,6 +33,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 const ONLY = process.env.BT_FOLKWORK_ONLY || '';
 const PARTS = [

@@ -24,6 +24,7 @@
  */
 import { join } from 'node:path';
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 

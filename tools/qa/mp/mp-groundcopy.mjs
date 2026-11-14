@@ -33,6 +33,7 @@
  * colours exactly, and the page must keep neither its colours nor its numbers.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 

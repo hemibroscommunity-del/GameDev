@@ -24,6 +24,7 @@
  *   6. no page errors.
  * Pictures: tools/qa/mp/out/coachdesk-<view>-*.png. */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const VIEWS = [
   { id: '1440', viewport: { width: 1440, height: 900 }, desk: true },

@@ -26,6 +26,7 @@ import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { MEM_INIT, memSampler } from './memprobe.mjs';
 import { GL_INSTALL, GL_START, GL_READ, GL_UNINSTALL } from './mp-crowdfight.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const GL_MS = 6000;

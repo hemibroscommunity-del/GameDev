@@ -21,6 +21,7 @@
  */
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
+import { withLane } from './lane.mjs';   /* v2.3.5223: the game's page names its lane (card O PR 3) */
 
 const URL = process.env.QA_URL || 'http://127.0.0.1:4173/';
 const WS = process.env.QA_WS_URL || 'ws://127.0.0.1:8787';
@@ -63,7 +64,7 @@ async function newClient(name) {
   const page = await ctx.newPage();
   await page.addInitScript(`window.BROTOWN_WS_URL = ${JSON.stringify(WS)};`);
   await page.addInitScript(HOOK);
-  await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.goto(withLane(URL), { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.waitForTimeout(6000);
   try {
     const input = page.locator('input').first();

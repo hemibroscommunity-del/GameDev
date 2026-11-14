@@ -39,6 +39,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const ART_V = '2.3.3587';   /* NPC_ART_VERSION (npcSprites.js): v2.3.3587 the collection's pieces */

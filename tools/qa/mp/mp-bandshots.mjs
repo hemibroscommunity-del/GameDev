@@ -49,6 +49,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 /* v2.3.4172: the band's edges against the world's, the bars' colour, and the
    world's own furniture (to show none of it moved) */

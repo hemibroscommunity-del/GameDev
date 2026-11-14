@@ -26,6 +26,7 @@ import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { FARM_ANIMS } from '../../../src/data/farmAnims.js';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const LEFT_BLUE = Array.from({ length: 256 }, (_, i) => ((i % 16) < 8 ? '8' : '0')).join('');

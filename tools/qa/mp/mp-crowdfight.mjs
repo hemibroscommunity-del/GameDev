@@ -46,6 +46,7 @@ import { fork } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { MEM_INIT, memSampler } from './memprobe.mjs';
+export const lane = 'full';
 
 const ROOM = 'crowdfight';
 const PHONE = { width: 390, height: 844 };

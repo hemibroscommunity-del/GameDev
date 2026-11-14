@@ -23,6 +23,7 @@ import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { FARM_SPOTS } from '../../../src/data/farmLayout.js';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 

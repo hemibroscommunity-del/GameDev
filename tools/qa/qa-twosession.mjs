@@ -1,4 +1,5 @@
 import { chromium } from 'playwright-core';
+import { withLane } from './lane.mjs';   /* v2.3.5223: the game's page names its lane (card O PR 3) */
 const EXE = '/tmp/chrome-headless-shell-linux64/chrome-headless-shell';
 const URL = 'http://localhost:4173/';
 const SPY = `(() => {
@@ -30,7 +31,7 @@ async function startSession(label, context) {
   page.on('pageerror', (e) => events.push(label + ' PAGEERROR ' + e.message.slice(0, 140)));
   await page.addInitScript(SPY);
   await page.addInitScript(() => { window.BROTOWN_WS_URL = 'ws://127.0.0.1:8787'; });
-  await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.goto(withLane(URL), { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.waitForTimeout(8000);
   await page.screenshot({ path: '/tmp/qa2s-' + label + '.png' });
   console.log(label, 'body:', (await page.evaluate(() => document.body.innerText.slice(0, 120)).catch(() => 'EVALFAIL')));

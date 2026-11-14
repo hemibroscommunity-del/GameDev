@@ -41,6 +41,7 @@
  */
 import * as H from './harness.mjs';
 import { FARM_BEDS } from '../../../src/data/farmLayout.js';
+export const lane = 'full';
 
 const DESK = { width: 1280, height: 800 };
 const PHONE = { width: 390, height: 844 };

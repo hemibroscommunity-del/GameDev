@@ -176,10 +176,14 @@ export const WIRE_OUT = [
     note: ['data.rpgLv: the worker\'s own for a prog3 character, else as that phone wrote it'] },
   /* v2.3.3393: a roll or flip the WORKER made (dice.js).  Forged, one would
      put any number in any player's name in everyone's chat. */
+  /* placed: v2.3.3393: a /roll or /flip (dice.js): where the room has the roller,
+     who hears their own anywhere.  Words in the chat, kept as nothing but a
+     line, so a phone that walks up later misses nothing it would draw */
   { name: 'dice_roll', dir: 'out', at: 'dice.js _handleDice; phone: gameEvents processGameEvent',
     wayIn: 'socket', envelope: 'event', phase: ['none checked'], mayStart: 'system',
     doesWhat: ['reads', 'speaks'], reqId: 'none', trust: { name: 'words' },
-    absent: 'dropped: no id ignores it', bad: ['dropped:shape', 'dropped:mute'], answer: 'none' },
+    absent: 'dropped: no id ignores it', bad: ['dropped:shape', 'dropped:mute'], answer: 'none',
+    placed: { p: 'id', who: ['id'] }, muted: 'mutable' },
   /* v2.3.3525: Lil Bro's race (race.js) -- the course and the gun, a flag
      touched, the result.  Forged into a relay, one would start or win a race
      on another player's screen that the worker never ran. */
@@ -366,7 +370,8 @@ export const WIRE_OUT = [
     wayIn: 'socket', envelope: 'event', phase: ['none checked'], mayStart: 'system',
     doesWhat: ['reads', 'plays'], reqId: 'none', trust: {},
     absent: 'dropped: no playerId draws nothing; default: no radius is 240', bad: ['clamped', 'dropped:gone'],
-    answer: 'none' },
+    answer: 'none',
+    placed: { p: 'playerId', who: ['playerId'] } },
   { name: 'ability_rejected', dir: 'out',
     at: 'index.js _handleAbilityUse, abilities.js _handleAbility, abilities.js _abilityResolve, and 1 more; phone: wsClient direct',
     wayIn: 'socket', envelope: 'direct', phase: ['none checked'], mayStart: 'system', doesWhat: ['reads'],
@@ -383,7 +388,8 @@ export const WIRE_OUT = [
     wayIn: 'socket', envelope: 'event', phase: ['none checked'], mayStart: 'system',
     doesWhat: ['reads', 'plays'], reqId: 'none', trust: {},
     absent: 'dropped: no payload is ignored; default: no r is 70', bad: ['dropped:shape', 'dropped:gone'],
-    answer: 'none' },
+    answer: 'none',
+    placed: { xy: ['x', 'y'], who: ['id'] } },
   /* v2.3.2279: the bow special's blast finale.  Server-emitted and purely
      cosmetic -- every point of its damage rode monster_hit -- but forgeable
      it would let one client paint a 220px fireball on every screen in the
@@ -395,7 +401,8 @@ export const WIRE_OUT = [
     wayIn: 'socket', envelope: 'event', phase: ['none checked'], mayStart: 'system',
     doesWhat: ['reads', 'plays'], reqId: 'none', trust: {},
     absent: 'dropped: no payload, or no x or y, draws nothing',
-    bad: ['dropped:shape', 'dropped:gone', 'clamped'], answer: 'none' },
+    bad: ['dropped:shape', 'dropped:gone', 'clamped'], answer: 'none',
+    placed: { xy: ['x', 'y'], who: ['id'] } },
   /* v2.3.3473: the worker's answer to a drop (itemdrop.js).  Forged, one
      would tell a phone an item left its bag that never did. */
   { name: 'item_drop_result', dir: 'out', at: 'itemdrop.js _dropReply; phone: wsClient direct',
@@ -431,14 +438,16 @@ export const WIRE_OUT = [
     envelope: 'event', phase: ['none checked'], mayStart: 'system', doesWhat: ['reads', 'plays'],
     reqId: 'none', trust: {},
     absent: 'default: no dmgTaken, the phone works a figure out itself (dmg, default 5, less its own defence)',
-    bad: ['clamped', 'dropped:shape', 'dropped:gone', 'dropped:fight'], answer: 'none' },
+    bad: ['clamped', 'dropped:shape', 'dropped:gone', 'dropped:fight'], answer: 'none',
+    placed: { m: 'monsterId', xy: ['attackerX', 'attackerY'], who: ['targetId'] } },
   // Combat resolution
   { name: 'monster_hit', dir: 'out',
     at: 'combat.js _handleMonsterDamage, index.js _applyMonsterDot, abilities.js _abilityStrikeMonster, and 1 more; phone: gameEvents processGameEvent',
     wayIn: ['socket', 'room'], envelope: 'event', phase: ['none checked'], mayStart: 'system',
     doesWhat: ['reads', 'plays'], reqId: 'none', trust: {},
     absent: 'default: no hpPct is taken as it is, so the phone\'s copy of the health goes NaN',
-    bad: ['taken', 'dropped:gone'], answer: 'none' },
+    bad: ['taken', 'dropped:gone'], answer: 'none',
+    placed: { m: 'monsterId', who: ['attackerId'] } },
   // Combat resolution
   { name: 'monster_kill', dir: 'out', at: 'combat.js _resolveMonsterKill; phone: gameEvents processGameEvent',
     wayIn: ['socket', 'room'], envelope: 'event', phase: ['none checked'], mayStart: 'system',
@@ -461,7 +470,8 @@ export const WIRE_OUT = [
     envelope: 'event', phase: ['none checked'], mayStart: 'system', doesWhat: ['reads', 'plays'],
     reqId: 'none', trust: {},
     absent: 'default: no travelMs is 900, no kind slime; default: a missing x, y, tx or ty is 0',
-    bad: ['dropped:gone'], answer: 'none' },
+    bad: ['dropped:gone'], answer: 'none',
+    placed: { m: 'monsterId', xy: ['x', 'y'] } },
   /* v2.3.1730: telegraph/execute notice for standard-zone monster abilities.
      Display-only (damage rides monster_attack), but server-emitted, so it
      belongs here or a client could forge a fake wind-up. */
@@ -470,7 +480,8 @@ export const WIRE_OUT = [
     envelope: 'event', phase: ['none checked'], mayStart: 'system', doesWhat: ['reads', 'plays'],
     reqId: 'none', trust: {},
     absent: 'default: no x or y draws at the phone\'s own player; default: no ms, radius, scale or dazeMs takes the phone\'s default',
-    bad: ['clamped', 'dropped:shape', 'dropped:gone'], answer: 'none' },
+    bad: ['clamped', 'dropped:shape', 'dropped:gone'], answer: 'none',
+    placed: { m: 'monsterId', xy: ['x', 'y'], who: ['targetId'] } },
   /* v2.3.2238: the fire goblin's burning ground (firetrail.js).
      Display-only on the same terms as monster_projectile above -- every
      point of its damage rides monster_attack -- but a forged one would let
@@ -481,14 +492,18 @@ export const WIRE_OUT = [
     at: 'firetrail.js _maybeDropFirePatch, firetrail.js _sendFireTrailSnapshot; phone: gameEvents processGameEvent',
     wayIn: ['room', 'socket'], envelope: ['event', 'direct'], phase: ['none checked'], mayStart: 'system',
     doesWhat: ['reads', 'plays'], reqId: 'none', trust: {},
-    absent: 'default: no ms is 4000; default: no r is 26', bad: ['dropped:gone', 'clamped'], answer: 'none' },
+    absent: 'default: no ms is 4000; default: no r is 26', bad: ['dropped:gone', 'clamped'], answer: 'none',
+    placed: { xy: ['x', 'y'], m: 'monsterId' } },
   /* v2.3.1731: parry notice — display-only, but server-emitted. */
+  /* placed: v2.3.3264: a player's parry (pvpextras.js _pvpParry) also names the
+     player it staggers, who must hear it wherever the room has them */
   { name: 'parry', dir: 'out',
     at: 'index.js _applyParry, pvpextras.js _pvpParry; phone: gameEvents processGameEvent',
     wayIn: ['room', 'socket'], envelope: 'event', phase: ['none checked'], mayStart: 'system',
     doesWhat: ['reads', 'plays'], reqId: 'none', trust: {},
     absent: 'default: no ms is 1500; default: no x or y puts the ring at the phone\'s own player',
-    bad: ['clamped'], answer: 'none' },
+    bad: ['clamped'], answer: 'none',
+    placed: { xy: ['x', 'y'], m: 'monsterId', who: ['targetId', 'attackerId'] } },
   // v2.3.1147: server-emitted since the mummy->skeleton transform moved
   // server-side (v2.3.856 era) but never deny-listed -- a client could
   // forge cosmetic transforms on everyone's screen.  Closed.

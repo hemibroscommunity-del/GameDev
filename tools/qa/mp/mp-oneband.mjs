@@ -38,6 +38,7 @@ import { mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BAND_ASSEMBLY_MAX_W } from '../../../src/ui/mobile/sheet/sheetGeometry.js';   /* v2.3.4890: the band's one width */
+export const lane = 'full';
 
 /* pictures for the PR and the owner (tools/qa/mp/out/, not committed) */
 const OUT = join(dirname(fileURLToPath(import.meta.url)), 'out');
@@ -511,7 +512,7 @@ async function centredChecks(P, rec, { label }) {
 /* v2.3.4152: is the band on for this page load (html.bt-one-band, applied
    before the first render, so a bare load answers without entering the world) */
 async function loadAndRead(P, url) {
-  await P.page.goto(url, { waitUntil: 'domcontentloaded' });
+  await P.page.goto(H.withLane(url), { waitUntil: 'domcontentloaded' });
   await P.page.waitForFunction(() => document.documentElement.classList.length > 0 || document.readyState === 'complete', null, { timeout: 15000 }).catch(() => {});
   await P.page.waitForTimeout(600);
   return P.page.evaluate(() => ({ on: document.documentElement.classList.contains('bt-one-band'), key: (() => { try { return localStorage.getItem('bt_oneband'); } catch (e) { return 'n/a'; } })() }));

@@ -28,6 +28,7 @@
  *   node tools/qa/mp/run.mjs shardcrack
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const shot = (P, name) => P.page.screenshot({ path: `tools/qa/mp/out/shardcrack-${name}.png` }).catch(() => {});
