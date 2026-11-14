@@ -5,12 +5,14 @@ Taken 2026-11-14 on `main` at 75946b7. What sitting 4 reviewed in full
 since, and the PRs new since, that change `server/` or `src/`. A finder and
 its own disproof pass a target, each reading the code around the diff:
 card A's three mends (#1706 0b40299d0, #1708 205d62945, #1711 217d40420 and
-aa0410dec), card H's #1700 mend (fad1b967c), card P's #1718 (0f2b610fe, the
-gate and the move of a look sheet's shape) and #1719 (the 19 `.m4a`). Card
-N's mends (tests and guards only), card G's (one line joined in
-`BroTown.jsx`, the same statements) and card Y's harness change were read by
-the gatekeeper. Card U's #1721 and #1722 were not reviewed: held on a
-conflict, they are next sitting's.
+aa0410dec), card H's #1700 mend (fad1b967c), then #1709's and #1712's mends
+(81b26b8d9, b9e5d6e6c, pushed during the sitting) and #1714 (78d4d2c4f,
+never read before), card P's #1718 (0f2b610fe, the gate and the move of a
+look sheet's shape) and #1719 (the 19 `.m4a`). Card N's mends (tests and
+guards only), card G's (one line joined in `BroTown.jsx`, the same
+statements), card Y's harness change and card V's guards were read by the
+gatekeeper. Card U's PRs were not reviewed: held on a conflict, they are
+next sitting's.
 
 VERIFIED: the story runs, on the code path named. PLAUSIBLE: the code does
 it, what sets it off is unproven (it says what would settle it). DISPROVED
@@ -64,7 +66,7 @@ probes the reviewers ran are not in the repository.
   no code swaps an extension; the empty `sfx-m4a` family trips nothing.
   It waits only because it is begun from #1718.
 
-## Card H: #1700 listed
+## Card H: #1700
 
 Sitting 4's three: (1) MENDED: every `sheetOf` fetch starts before the
 `Promise.all` (`maskedBakeWorker.js` `urlInputs` ~202); on a stuck kill
@@ -104,6 +106,53 @@ resource). (3) NOT mended, still very unlikely (`?v=` on https sheets).
   memory freed (`_reading` capped at 64, cleared three ways; `jobDone` on
   every way out); nothing new measured or read back inside a frame; the
   move into `bakeByAddress.js` is the same returns, fallbacks and counters.
+
+## Card H: #1709, #1712 (mended during the sitting), #1714
+
+- **#1709 MENDED** (81b26b8d9): `picsNumbers.js` `stripAsNumbers` calls
+  `_rowsMoved(bundle)` when the page grows or adds a row, before it makes
+  the source; `releaseBundleNumbers` goes through it too (the epoch moves,
+  the waiting plans are dropped). `rowFor` has one caller; `p256:` bundles
+  carry no plans; a row belongs to one bundle; the worker keeps nothing
+  between reads. Simulated in node (the palette stubbed; asks, answers,
+  takes, failed reads finished on the page, releases interleaved): the
+  code before the mend scrambled colours on 2 of 6 seeds, the mend on 0 of
+  40. Cost, low: one failed read inside a look makes 5 to 10 of its 11 later
+  plans stale (each stale take changes the row on the page again): what
+  `main` costs today for those strips, and only after a failure.
+- **#1712 MENDED** (b9e5d6e6c): `foldToMonoSliced` returns a one-channel
+  sound (or an empty one) at once, before the fold's line (sound-fold 4g).
+  The move into `soundFold.js` `foldForGame` is the same behaviour
+  (`?foldgentle=0` folds at once; `_folded` only when the result differs);
+  its one caller is `BT_AUDIO._fold` from `loadSample`; no new
+  `getChannelData` (only the old fallback for a buffer with no
+  `copyFromChannel`); a sound is stored only after its fold, so it never
+  plays early or twice.
+- **#1712, PLAUSIBLE, low, memory.** `gameDisplay.js` ~4359 deletes
+  `_tagLoads[tag]` before the fold, and the fold now takes frames, not a
+  microtask: a second key for the same file asking in that window fetches,
+  decodes and folds it again, two copies held (v2.3.3462's one decode a
+  file undone): `fish-on-hook` / `fishing-fish-on-hook` (stereo, 2.59 s,
+  about 1 MB), `lure-drop` / `fishing-lure-drop`. Mend: delete after the
+  fold. (Sitting 4 DISPROVED this for the shared files' keys loading
+  together; the slices widen the window.)
+- **#1714, nothing of weight** (78d4d2c4f, first read this sitting).
+  `gearWorn`'s only reader is the legacy `panels/InventoryPanel.jsx` ~308,
+  opened by nothing in `src/`; the bro's look and the renderers read
+  `getEquip` / `onEquipChange`, never React state; the `player_state` echo
+  still sets the root's state with a new object (`wsClient.js` ~3372);
+  reconnects, trades and deaths reach the renderer through
+  `syncArmorLayers`. DISPROVED for players: `toggleGearSlot`'s updater
+  calls `setEquip` inside itself, and a pending transition could run it
+  twice (the legacy panel only).
+
+## Card V: #1724, #1726, #1729 (opened during the sitting; step 3)
+
+Guards and tests only: `tools/guards/traps-*.test.mjs`, their helpers
+(`lib/maskCode.mjs`, `lib/loadSrc.mjs`), the scoreboard's row, the README's
+section, `server/test/party.test.mjs` (§3) and `mirror-audit.test.mjs`
+(§43), and only "Held by" lines in `docs/TRAPS.md`. Tags 5320 to 5322, the
+card's (card V is in #1720). Each lands as a census where its card says so.
 
 ## Card A: #1706 listed; #1708 HELD, #1711 with it (stacked)
 
