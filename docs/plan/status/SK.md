@@ -1,6 +1,6 @@
 card: SK
 branch: claude/plan-sk-1-rolloff
-prs: #1782 (tag 5440; ready, waits for the owner's word on +10 moves a ride)
+prs: #1782 (tag 5440; ready: the owner's word given, for the next gatekeeper list)
 state: ready
 
 ## Done
@@ -16,10 +16,10 @@ state: ready
 
 ## Next
 
-- Sittings 10 and 11, mended: a harvest, a pose or a trap begun mid-roll
-  holds the board (`rideActVerb`); a slant into a wall slides; a rolling
-  board's moves ride the path: 80 -> 31 (instant 21; +10 the 1.9 s roll).
-  `skateboard` checks 13 (a real chop) and 14 (a real Sit) mid-roll.
+- The next gatekeeper list. Sittings 10 and 11 mended (a harvest, a pose or
+  a trap mid-roll holds the board; a slant slides; the roll's moves ride the
+  path: 80 -> 31, instant 21). The owner, 2026-11-14 ~21:5x UTC, through the
+  planning session: "Just go recommended" -- yes to the +10 moves a ride.
 
 ## Found
 
@@ -36,4 +36,4 @@ state: ready
 
 ## Needs
 
-- The owner's word on the +10 moves a ride (the planning session asked).
+- Nothing.
