@@ -13,6 +13,7 @@ export const SYSTEM = 'device';
 export const ROWS = [
   { variable: '_chipOf', file: 'src/game/deviceProfile.js', system: 'device', lifetime: 'sitting', suggested: '?', born: 'const WeakMap', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/deviceProfile.js'] },
   { variable: '_mq', file: 'src/game/deviceProfile.js', system: 'device', lifetime: 'sitting', suggested: 'never', born: 'const object', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/deviceProfile.js'] },
+  { variable: 'LANE', file: 'src/game/drawLanes.js', system: 'device', lifetime: 'sitting', suggested: '?', born: 'const object', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/drawLanes.js'] },
   { variable: '_classOf', file: 'src/game/drawLanes.js', system: 'device', lifetime: 'sitting', suggested: '?', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/drawLanes.js'] },
   { variable: '_lane', file: 'src/game/drawLanes.js', system: 'device', lifetime: 'sitting', suggested: '?', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/drawLanes.js'] },
   { variable: '_laneAskedAt', file: 'src/game/drawLanes.js', system: 'device', lifetime: 'sitting', suggested: '?', born: 'let number', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/drawLanes.js'] },

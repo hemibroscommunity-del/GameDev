@@ -21,6 +21,7 @@
 import { perfTracker } from './perfTracker.js';
 import { frameSmoothOn } from '../game/frameClock.js';   /* v2.3.4400: which step this tab moves by */
 import { startBusyBeat, busyIn } from './busyBeat.js';   /* v2.3.4400: was the page busy, or waiting? */
+import { AXES } from '../game/drawLanes.js';   /* v2.3.5222: the ladder's two axes (card O) */
 
 /* ═══ v2.3.4400: THE HITCHES THE AVERAGES HIDE, AND THE THUMB ═══
    The owner's iPhone on the skateboard, after the step was made steady: "a
@@ -179,6 +180,28 @@ const paceLines = (win) => {
     /* (told only where it means something: a known screen, or frames quick enough to be refreshes of one) */
     const quick = win.length && win.reduce((a, x) => a + (x.totalMs || 0), 0) / win.length < 40;
     if (rows.length && (refresh || quick)) out += '\nframes ' + rows.map(([k, n]) => `${Math.round(k * unit)} ms ${Math.round(100 * n / win.length)}%`).join('  ');
+    out += ladderLines(p);
+    return out;
+  } catch (e) { return ''; }
+};
+
+/* v2.3.5222: THE LADDER (card O's governor, game/framePacer.js): where it
+   stands, and a MARK for each step it took in the strip's ten seconds -- no
+   quality is lowered in silence (the grand plan's part 8).  Each step names
+   its axis and the knobs it moved (docs/LANES.md says each in a player's
+   words); a step that would move the pixels waits for a veil, said too. */
+const ladderLines = (p) => {
+  try {
+    const L = p && p.ladder;
+    if (!L) return '';
+    let out = `\nladder ${L.lane || '-'}${L.on ? '' : ' off'}${L.held ? ' held' : ''}  work ${L.work}/${AXES.work.length}  chip ${L.chip}/${AXES.chip.length}`
+      + (L.pending ? `  (${L.pending.dir < 0 ? 'down' : 'up'} ${L.pending.axis} waits for a veil)` : '');
+    const now = performance.now();
+    for (const st of L.steps || []) {
+      const ago = (now - st.t) / 1000;
+      if (!(ago >= 0 && ago <= 10)) continue;
+      out += `\n  STEP ${st.dir < 0 ? 'down' : 'up'} ${st.axis}: ${(st.knobs || []).join(', ') || '-'}  ${ago.toFixed(1)} s ago`;
+    }
     return out;
   } catch (e) { return ''; }
 };
