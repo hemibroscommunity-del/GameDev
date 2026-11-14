@@ -39,7 +39,35 @@
  *   - `program` put on the chip axis's end as a rung                 -> FAIL 4
  *   - the `?onebatch` row's fallback 'SOFTWARE_GL in src/game/deviceProfile.js' -> FAIL 5
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { register } from 'node:module';
+
+/* Server CI installs only server/'s packages: 'pixi.js' is not there to import
+   (this suite's first push failed on it; glint-peer-slots.test has the same
+   note).  paletteTex.js reaches it for its batcher; the choice read here draws
+   nothing.  So every name src/ imports from it is a do-nothing stand-in, the
+   same here as in CI, served before paletteTex.js is loaded. */
+{
+  const names = new Set();
+  (function walk(d) {
+    for (const f of readdirSync(d)) {
+      const u = new URL(f, d);
+      if (statSync(u).isDirectory()) walk(new URL(f + '/', d));
+      else if (/\.(js|jsx|mjs)$/.test(f)) {
+        for (const m of readFileSync(u, 'utf8').matchAll(/import\s*\{([^}]*)\}\s*from\s*['"]pixi\.js['"]/g)) {
+          for (const x of m[1].split(',')) { const k = x.trim().split(/\s+as\s+/)[0].trim(); if (/^[A-Za-z_$][\w$]*$/.test(k)) names.add(k); }
+        }
+      }
+    }
+  })(new URL('../../src/', import.meta.url));
+  const STUB = 'const P = new Proxy(function () {}, { get: (t, k) => (k === "prototype" ? t.prototype : k === Symbol.toPrimitive ? () => 0 : (typeof k === "symbol" ? undefined : P)), apply: () => P, construct: () => ({}) });\n'
+    + [...names].map((n) => `export const ${n} = P;`).join('\n');
+  register('data:text/javascript,' + encodeURIComponent(
+    `export async function resolve(s, c, next) {
+       if (s === 'pixi.js') return { url: 'data:text/javascript,' + encodeURIComponent(${JSON.stringify(STUB)}), shortCircuit: true };
+       return next(s, c);
+     }`));
+}
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
