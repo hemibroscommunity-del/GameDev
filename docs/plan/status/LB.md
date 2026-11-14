@@ -1,6 +1,6 @@
 card: LB
 branch: claude/plan-lb-3-power (PR 3, begun from claude/plan-lb-2-window)
-prs: #1771 (5500, merged); #1783 (5501, ready: sittings 10 and 11 mended); #1798 (5502, ready; after #1783)
+prs: #1771 (5500, merged); #1783 (5501, merged); #1798 (5502, ready)
 state: ready
 
 ## Done
