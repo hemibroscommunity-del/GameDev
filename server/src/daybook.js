@@ -15,7 +15,9 @@
  * are finite numbers, or arrays of them (a histogram's bins, added place by
  * place).  The door keeps the day's sums in memory and puts the record AT MOST
  * ONCE A PACE (DAYBOOK.PACE_MS) while the room is awake: the first add after a
- * worker starts writes at once, every later one waits for the pace.  The
+ * worker starts writes at once, every later one waits for the pace (a part
+ * of RIDES starts none: it rides the others' puts and the last one out's,
+ * v2.3.5085).  The
  * caller never awaits anything: an add is a few additions in memory, and the
  * put it may start runs on its own (it returns the put's promise for a test).
  * Only ever ADDS: a percentile is not a sum, so a part that wants one keeps
@@ -34,9 +36,11 @@
  * to a failed put and nothing is counted twice.  A day whose stored `v` is
  * NEWER than this worker's is left whole and its sums dropped (a rolled-back
  * worker must never rewrite what a newer one wrote: docs/specs/migrations.md).
- * A restart loses at most what was added since the last put: the book is the
- * owner's summary of a day, never what a sum is checked against (the world's
- * sum reads the characters' own records: step 4.4, SHAPES part 7).
+ * A restart loses at most what was added since the last put (v2.3.5085: and
+ * an empty room's worker, put to sleep, nothing: roomrow.js's last one out
+ * writes): the
+ * book is the owner's summary of a day, never what a sum is checked against
+ * (the world's sum reads the characters' own records: step 4.4, SHAPES 7).
  *
  * WHAT IT COSTS: one row (a put) a pace while anything is added, none while
  * nothing is (cost-guard.test §15 holds the line); one read with each put; a
@@ -49,6 +53,12 @@
  * Keys are the writer's (card A's cells are a device class, a lane, a
  * switch state and a build): every map here is made with Object.create(null),
  * and `__proto__`, `constructor` and `prototype` are refused outright.
+ *
+ * v2.3.5085: the `econ` part is the two doors' (gold.js, bag.js): minted and
+ * burned, gold and each bag key, for the whole room, added as each road runs.
+ * The LAST ONE OUT writes what waits: card A's one writer for it (roomrow.js
+ * _roomRowLastOut, v2.3.5124: after a join, a hand of turns at the book's
+ * pace), so an empty room that goes to sleep loses nothing.
  *
  * THE KILL SWITCH `daybook: false` in the live flags (liveops.js
  * `_daybookOff`): nothing is added, written or pruned; what is stored stays;
@@ -66,6 +76,13 @@ export const DAYBOOK = Object.freeze({
   PREFIX: 'daybook:',
   /* the parts, a closed list: a part not here is refused */
   PARTS: Object.freeze(['econ', 'room', 'dev', 'speed']),
+  /* v2.3.5085 (the gatekeeper's sitting 8): the parts whose adds never start
+     a put of their own: they RIDE the others' paced puts and the last one
+     out's (roomrow.js _roomRowLastOut).  The `econ` part is added at every
+     gold and bag change -- a new character's start gold at its join among
+     them -- so its first add wrote the book at once at a room's wake, a
+     write the pace did not count on.  Riding, it writes no row of its own */
+  RIDES: Object.freeze(['econ']),
   /* v2.3.5080: one put every five minutes at most -- 12 rows an hour the room
      is awake and counting, 288 on a day it never sleeps (the free plan's day
      is 100,000), and at most five minutes of counts lost to a restart */
@@ -105,7 +122,19 @@ function dayBefore(day, days) {
 
 const keyOk = (k) => typeof k === 'string' && k.length > 0 && k.length <= DAYBOOK.KEY_MAX && KEY_RE.test(k) && !BAD_KEYS.has(k);
 const numOk = (v) => typeof v === 'number' && Number.isFinite(v);
-const arrOk = (a) => Array.isArray(a) && a.length > 0 && a.length <= DAYBOOK.ARR_MAX && a.every(numOk);
+/* v2.3.5085 (the gatekeeper's find): every PLACE checked -- `every` skips the
+   holes of an array with gaps, and a hole read as a number is NaN */
+const arrOk = (a) => {
+  if (!Array.isArray(a) || a.length === 0 || a.length > DAYBOOK.ARR_MAX) return false;
+  for (let i = 0; i < a.length; i++) if (!numOk(a[i])) return false;
+  return true;
+};
+/* v2.3.5085 (the gatekeeper's find, sitting 2): THE PACE RUNS ON THE ROOM'S
+   OWN CLOCK.  A caller's `now` names the day its count is filed under (card
+   A's suite files a second day that way); it never sets the pace's mark: a
+   far one there would have stopped every put until it came round. */
+const roomNow = () => Date.now();
+const callerNow = (now) => (numOk(now) ? now : roomNow());
 
 /* What a number, an array or a tree under key `k` may take as JSON, at most
    (a number of NUM_MAX or a long fraction is ~22 characters; the quotes, the
@@ -269,7 +298,7 @@ export function bookAdd(room, part, nums, now) {
   try {
     if (!room || off(room)) return false;
     if (DAYBOOK.PARTS.indexOf(part) < 0) return false;
-    now = numOk(now) ? now : Date.now();
+    now = callerNow(now);
     const b = mem(room);
     const d = dayMem(b, bookDay(now));
     const over = () => { d.over[part] = (d.over[part] || 0) + 1; };
@@ -279,7 +308,7 @@ export function bookAdd(room, part, nums, now) {
     const budget = DAYBOOK.PART_BYTES - bookBytes(tgt);
     if (mergeInto(tgt, nums, budget, true).refused) { over(); return false; }
     mergeInto(tgt, nums, budget, false);
-    bookMaybePut(room, now);
+    if (DAYBOOK.RIDES.indexOf(part) < 0) bookMaybePut(room, now);   /* v2.3.5085: a riding part waits for another's put */
     return true;
   } catch (e) { return false; }   /* a count must never stop what it counts */
 }
@@ -289,10 +318,11 @@ export function bookAdd(room, part, nums, now) {
 export function bookMaybePut(room, now) {
   const b = mem(room);
   if (b.putting) return null;
-  now = numOk(now) ? now : Date.now();
-  if (b.lastPut && now - b.lastPut < DAYBOOK.PACE_MS) return null;
-  b.lastPut = now;   /* the attempt is the pace's mark: a storage that refuses is asked again a pace later, not at every add */
-  b.putting = bookPut(room, now).finally(() => { b.putting = null; });
+  const t = roomNow();   /* v2.3.5085: the pace on the room's own clock, never a caller's */
+  if (b.lastPut && t - b.lastPut < DAYBOOK.PACE_MS) return null;
+  b.lastPut = t;   /* the attempt is the pace's mark: a storage that refuses is asked again a pace later, not at every add */
+  now = callerNow(now);
+  b.putting = putDays(room, now).finally(() => { b.putting = null; });
   return b.putting;
 }
 
@@ -302,11 +332,24 @@ function giveBack(b, day, taken) {
   mergeDay(d.parts, d.over, taken);
 }
 
-/** Write every day with sums waiting, oldest first: read, add, put.  Then one
- *  page of the prune.  Awaited only by the put's own promise (and tests). */
+/** Write every day with sums waiting, NOW, whatever the pace: read, add, put.
+ *  v2.3.5085: it waits for a put already running first -- two read-add-puts of
+ *  one day at once would each read the day before the other wrote it, and the
+ *  later put would lose the earlier one's sums. */
 export async function bookPut(room, now) {
+  if (!room || off(room)) return;
   const b = mem(room);
-  now = numOk(now) ? now : Date.now();
+  while (b.putting) await b.putting.catch(() => {});
+  b.putting = putDays(room, now).finally(() => { b.putting = null; });
+  return b.putting;
+}
+
+/* The write itself: every day with sums waiting, oldest first; then one page
+   of the prune.  Only ever run as `b.putting` (one at a time). */
+async function putDays(room, now) {
+  if (off(room)) return;   /* v2.3.5085: switched off, nothing written or pruned */
+  const b = mem(room);
+  now = callerNow(now);
   const days = [...b.days.keys()].sort();
   for (const day of days) {
     const taken = b.days.get(day);
@@ -333,7 +376,7 @@ export async function bookPut(room, now) {
  *  runs a page each put until a page finds nothing to drop. */
 export async function bookPrunePage(room, now) {
   const b = mem(room);
-  const today = bookDay(numOk(now) ? now : Date.now());
+  const today = bookDay(roomNow());   /* v2.3.5085: the room's own day */
   if (b.prunedDay === today) return false;
   const line = bookKey(dayBefore(today, DAYBOOK.KEEP_DAYS - 1));   /* the oldest day kept */
   try {

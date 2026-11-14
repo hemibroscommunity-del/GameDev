@@ -47,7 +47,9 @@
  *
  * v2.3.5080: the day's book (`daybook:<yyyymmdd>`, daybook.js) has its kill
  * switch here, `_daybookOff`; the book itself is daybook.js's.
- * v2.3.5123: and the field report's, `_reportOff` (report.js).        */
+ * v2.3.5123: and the field report's, `_reportOff` (report.js); v2.3.5124:
+ * the room's own row's, `_roomRowOff` (roomrow.js); v2.3.5127: the Speed
+ * test's card's, `_reportSpeedOff` (report.js).                        */
 
 /* v2.3.2438: the daily metric walks the player table one page per tick
    slot (see _metricsMaybe).  A throw waits RETRY_MS before trying again
@@ -83,7 +85,8 @@ function boxEntries(box) {
 }
 
 import { setGearStashCap, GEAR_STASH_CAP, GEAR_STASH_CAP_LEGACY, WEAPON_STASH_CAP_NEW, WEAPON_STASH_CAP_LEGACY } from './gearstash.js';   /* v2.3.4224 */
-import { setBagOneSum } from './bag.js';   /* v2.3.4900: the bag door's step 2 switch */
+import { setBagOneSum, setBagBook, setBagEcon } from './bag.js';   /* v2.3.4900: the bag door's step 2 switch; v2.3.5085: + its book */
+import { bookAdd } from './daybook.js';   /* v2.3.5085 */
 
 export const LIVEOPS = {
   XP_MULT_MIN: 1,
@@ -140,6 +143,12 @@ export const liveopsMethods = {
        handed down here because bag.js's plain functions cannot see the flags */
     const f = this._liveFlags;
     setBagOneSum(!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'bagonesum') && !f.bagonesum));
+    /* v2.3.5085: and the day's book's door, for the `econ` part (bag.js
+       setBagBook: what a road mints and burns of each key, as it runs) */
+    setBagBook((cls, k, n) => bookAdd(this, 'econ', { i: { [cls]: { [k]: n } } }));
+    /* v2.3.5085 (the gatekeeper's sitting 8): and the counting's kill switch,
+       `econ: false` (gold.js _econOff) */
+    setBagEcon(!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'econ') && !f.econ));
   },
 
   /* v2.3.5080: the day's book's kill switch (daybook.js), read the lower-case
@@ -156,6 +165,22 @@ export const liveopsMethods = {
   _reportOff() {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'report') && !f.report);
+  },
+
+  /* v2.3.5127 (sitting 4's review: the Speed test's card had no switch of
+     its own): `reportspeed: false` takes the card no more -- caps.report
+     back to 1, so no phone sends one, and one that still comes is dropped;
+     the smoothness reports carry on (report.js _reportCap) */
+  _reportSpeedOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'reportspeed') && !f.reportspeed);
+  },
+
+  /* v2.3.5124: the room's own row's (roomrow.js), the same way: `roomrow:
+     false` adds nothing of the room's into the day's book */
+  _roomRowOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'roomrow') && !f.roomrow);
   },
 
   /* v2.3.5422: a cape taken off kept on its ledger (eventcapes.js
@@ -393,7 +418,7 @@ export const liveopsMethods = {
       if (name === 'monstermoves' && typeof this._monsterMovesFlagChanged === 'function') this._monsterMovesFlagChanged();   /* v2.3.4011: the tiers' stat step on or off every live monster (monstermoves.js) */
       /* v2.3.3755: a memory saver turned off or on for every phone (clientoff.js) */
       if (name.startsWith('off_') && typeof this._clientOffChanged === 'function') this._clientOffChanged();
-      if (name === 'disable_bigbags' || name === 'bagonesum') this._syncBagCaps();   /* v2.3.4224; v2.3.4900: + the bag door's one sum */
+      if (name === 'disable_bigbags' || name === 'bagonesum' || name === 'econ') this._syncBagCaps();   /* v2.3.4224; v2.3.4900: + the bag door's one sum; v2.3.5085: + the counting's switch */
       if (name === 'freeswing' && typeof this._freeSwingFlagChanged === 'function') this._freeSwingFlagChanged();   /* v2.3.4520: the free-swing trial, every phone told (freeswing.js) */
       if ((name === 'bowdraw' || name === 'staffgather') && typeof this._drawGatherFlagChanged === 'function') this._drawGatherFlagChanged();   /* v2.3.4799: the bow's draw and the staff's gather, every phone told (drawgather.js) */
       return json({ ok: true, flags });
@@ -409,7 +434,7 @@ export const liveopsMethods = {
         if ((name === 'movepath' || name === 'pathall') && typeof this._movePathFlagChanged === 'function') this._movePathFlagChanged();   /* v2.3.3732 */
         if (name === 'monstermoves' && typeof this._monsterMovesFlagChanged === 'function') this._monsterMovesFlagChanged();   /* v2.3.4011 */
         if (name.startsWith('off_') && typeof this._clientOffChanged === 'function') this._clientOffChanged();   /* v2.3.3755 */
-        if (name === 'disable_bigbags' || name === 'bagonesum') this._syncBagCaps();   /* v2.3.4224; v2.3.4900 */
+        if (name === 'disable_bigbags' || name === 'bagonesum' || name === 'econ') this._syncBagCaps();   /* v2.3.4224; v2.3.4900; v2.3.5085: + `econ` */
         if (name === 'freeswing' && typeof this._freeSwingFlagChanged === 'function') this._freeSwingFlagChanged();   /* v2.3.4520 */
         if ((name === 'bowdraw' || name === 'staffgather') && typeof this._drawGatherFlagChanged === 'function') this._drawGatherFlagChanged();   /* v2.3.4799 */
       }

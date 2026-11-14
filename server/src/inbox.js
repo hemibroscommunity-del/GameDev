@@ -3,6 +3,7 @@ import { isGearStashField, slotForGearField, PROV_MINTED, PROV_LEGACY } from './
 import { swordToGreatsword } from './swordconvert.js';   /* v2.3.3895: a sword in the post arrives a greatsword */
 import { oldGreatswordToMetal } from './gscopper.js';   /* v2.3.3980: ...and a wooden or base-less greatsword a metal one */
 import { bagGive, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
+import { mailMinted } from './gold.js'; /* v2.3.5085: a merged entry's minted part */
 
 /* ═══ v2.3.1117: INBOX + ESCROW PRIMITIVES (PR2 of the heavy-systems
  * plan; spec in docs/specs/inbox-escrow.md) ═══
@@ -389,7 +390,11 @@ export const inboxMethods = {
   _applyCreditToPs(ps, entry, playerId) {
     const p = entry.payload || {};
     if (entry.kind === 'gold') {
-      this._goldGive(ps, Math.max(0, Math.floor(p.amount || 0)), 'mail_gold'); /* v2.3.4670: the gold door */
+      /* v2.3.5084: the payout itself goes to the door, which counts it by its
+         own class (gold.js MAIL_CLASSES by its opId: a reward minted, a
+         sale's gold an escrow paid on) -- the world's sum (grand plan card E
+         PR 5; the owner's yes of 2026-11-14) */
+      this._goldGive(ps, Math.max(0, Math.floor(p.amount || 0)), 'mail_gold', entry); /* v2.3.4670: the gold door */
       /* v2.3.3481: a prize may carry ACHIEVEMENT POINTS with its gold (the
          arena's champion, gladiator.js ARENA.CHAMPION_AP) -- added here, in
          the same apply as the gold, so the points are paid exactly when the
@@ -452,7 +457,7 @@ export const inboxMethods = {
          than concatenating onto it. */
       if (Object.prototype.hasOwnProperty.call(Object.prototype, k)) return true;
       if (!ps.inventory) ps.inventory = {};
-      bagGive(ps.inventory, k, Math.max(1, Math.floor(p.count || 1)), 'mail_item'); /* v2.3.4810: the bag door */
+      bagGive(ps.inventory, k, Math.max(1, Math.floor(p.count || 1)), 'mail_item', undefined, entry); /* v2.3.4810: the bag door; v2.3.5084: the payout, counted by its own class */
       return true;
     }
     if (entry.kind === 'weapon') {
@@ -549,7 +554,13 @@ export const inboxMethods = {
         if (entry.kind === 'gold') {
           const g = box.find((e) => e.kind === 'gold');
           if (g) {
-            g.payload.amount = (g.payload.amount || 0) + Math.max(0, Math.floor(p.amount || 0));
+            /* v2.3.5085 (the gatekeeper's sitting 8): the merged entry keeps
+               its MINTED part beside it (gold.js mailMinted) -- counted by
+               its first credit's word, a reward merged into a parked sale
+               read as nothing minted, a false dupe in the world's sum */
+            const add = Math.max(0, Math.floor(p.amount || 0));
+            g.payload.minted = mailMinted(g, Math.max(0, Math.floor(g.payload.amount || 0))) + mailMinted(entry, add);
+            g.payload.amount = (g.payload.amount || 0) + add;
             g.note = 'merged payouts';
             merged = true;
           }
@@ -557,7 +568,9 @@ export const inboxMethods = {
         if (!merged && entry.kind === 'item' && typeof p.invKey === 'string') {
           const it = box.find((e) => e.kind === 'item' && e.payload && e.payload.invKey === p.invKey);
           if (it) {
-            it.payload.count = (it.payload.count || 1) + Math.max(1, Math.floor(p.count || 1));
+            const add = Math.max(1, Math.floor(p.count || 1));
+            it.payload.minted = mailMinted(it, Math.max(1, Math.floor(it.payload.count || 1))) + mailMinted(entry, add);   /* v2.3.5085: as the gold's */
+            it.payload.count = (it.payload.count || 1) + add;
             it.note = 'merged payouts';
             merged = true;
           }

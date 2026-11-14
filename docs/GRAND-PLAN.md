@@ -221,10 +221,14 @@ way: build the table from what exists, add the test, move no behaviour.
 
 ### Pillar 1. See: the field report
 
-- [ ] **1.0 [NOW] One list of hold names.** The phone's own notes
+- [x] **1.0 [NOW] One list of hold names.** The phone's own notes
   (`madeLog.js noteMade`) take only the debt list's names, and
   `mp-heldsweep` fails a known hold that left no note. Without this the
   report cannot name what the sweep names.
+  *Merged: #1688 (card A, `HOLD_NAMES` and `hold-names.test`), #1760 (card
+  A, the sweep fails a known hold that left no note; card P's #1757 gave
+  `pack-page` its note first). Ticked by the gatekeeper, sitting 9
+  (v2.3.5365).*
 - [x] **1.1 [NOW] The report**, one `report` message on the game's own
   socket (the crash road takes posts from anyone, limited only by an id the
   sender invents). Numbers and closed lists only: no free text reaches a
@@ -245,9 +249,13 @@ way: build the table from what exists, add the test, move no behaviour.
   *Merged: #1703 and #1706 (card A), the phone's side (`src/debug/report.js`)
   and the worker's (`server/src/report.js`). Ticked by the gatekeeper,
   sitting 6 (v2.3.5362).*
-- [ ] **1.2 [NOW] The Speed test sends its card**, with a model name the
+- [x] **1.2 [NOW] The Speed test sends its card**, with a model name the
   player picks from a list (a page cannot read it). Until 1.3's reader, the
   Test panel has "copy table" and the owner pastes it.
+  *Merged: #1711 (card A), the card into the day's book's `speed` part
+  (`caps.report` 2, the flag `reportspeed`), `SPEED_MODELS`, GET
+  /dev/daybook and "Copy table". Ticked by the gatekeeper, sitting 8
+  (v2.3.5364).*
 - [ ] **1.3 [NEXT] The reader and the device table.** A session cannot reach
   the live game, so the table needs a road into the repo: a workflow, in the
   owner's own words (call 6). Each cell prints how many reports it holds and
@@ -258,8 +266,11 @@ way: build the table from what exists, add the test, move no behaviour.
 - [ ] **1.5 [NEXT] Two slow profiles** from switches that exist ("a budget
   Android", "an old laptop on a hotel's line"); the `light` lane's sweeps
   run under them.
-- [ ] **1.6 [NOW] The room's own row**, in the day's book (10.4): the tick's
+- [x] **1.6 [NOW] The room's own row**, in the day's book (10.4): the tick's
   95th, rows written, saves refused, joins by protocol version, restarts.
+  *Merged: #1708 (card A), `server/src/roomrow.js` into the `room` part
+  (the flag `roomrow`); `restarts` is held in memory until the book's next
+  write (review-z7). Ticked by the gatekeeper, sitting 8 (v2.3.5364).*
 - [ ] **1.7 [NEXT] A self-test at the door.** The report cannot see a body
   that vanishes at perfect frame times. Each of the game's own drawing
   programs draws a known picture behind the loading screen and compares it
@@ -316,6 +327,10 @@ outside the profile.
   (`bodyBake.js`), so a phone back from its lock screen may bake on the
   page for the rest of the sitting. Watch clocks count visible time; one
   restart; `mp-bodyworker` survives a frozen page.
+  *Card H's part merged: #1668 to #1747 (ten PRs; the bake worker's restart
+  in #1668 and #1747). Open: `pack-page`, the one row left `ours`
+  (`tools/qa/mp/held-budget.mjs`), is card P's (the gatekeeper, sitting 8,
+  v2.3.5364).*
 - [ ] **3.2 [LATER] One queue for work that is not this frame's**, with
   priorities. It takes nothing while the frames are late or the pacer is
   trying a step up. Work put off (after a fight, at a veil) joins it one a
@@ -351,6 +366,9 @@ play, a number 1.1 can measure.
   First PR: the door tests read `server/src/` in depth, so a new folder is
   not invisible to them. Step 2 [NEXT]: the lists and the checks at the door
   are made FROM the table as checked-in source, with a hostile-values suite.
+  *Step 1 merged: #1667 (card C's census), #1684, #1695 and #1697 (card N:
+  the walker, the table `server/src/wire/`, its guard). Step 2 is card K's;
+  the box waits for it (the gatekeeper, sitting 7, v2.3.5363).*
 - [ ] **4.1b [NEXT] The send door**: one `_send` (132 places write to a
   socket today), counting bytes by type.
 - [ ] **4.2 [NEXT] Claims, bounded.** "No claims" can be met by calling a
@@ -368,7 +386,7 @@ play, a number 1.1 can measure.
 - [ ] **4.3 [NEXT] Doors for what is left of value**: experience and
   levels, the stashes, quest state, skill points. A weapon gets an id of its
   own, as gear has.
-- [ ] **4.4 [NOW] The whole world's sum.** "A purse equals its start plus
+- [x] **4.4 [NOW] The whole world's sum.** "A purse equals its start plus
   the roads that ran" is true by construction; past copies went through
   legal roads (ore sold 24 times in one bundle). So every road in
   `GOLD_ROADS` and `BAG_ROADS` is marked mint, burn, move or escrow, and the
@@ -376,6 +394,12 @@ play, a number 1.1 can measure.
   mail and every escrow equal the start, plus minted, less burned. Done
   when a planted double pay through a legal road fails the suite, and so
   does a value record nobody counts.
+  *Merged: #1691 (the roads' classes), #1694 (the registry's marks), #1699
+  (`_econ`), #1752 (`world-sum.test`), card E. On `main` 0a5149b:
+  world-sum 30 of 30; `WORLD_SUM_PLANT=1` fails it (unexplained gold 50);
+  §3 holds an unmarked key and an unread prefix. Value leaving by no road
+  (the respawn wipe, pile expiry, the bounty sweep) is E's storm, PR 10.
+  Ticked by the gatekeeper, sitting 9 (v2.3.5365).*
 - [ ] **4.5 [NOW the harness; NEXT the rest] The restart test, finished.**
   It exists (`chaos-restart.test.mjs`) and passes while it lists a known
   loss. One shared room for tests: a batch that commits or does not, a
@@ -417,6 +441,9 @@ nothing known, and a restore copies nothing.
   Rows live in one file a system. Step 2, a system at a time, each with its
   switch: a reset is a value, a function, or "kept, and why"; state outside
   `S` joins through `resetOn(edge, fn)` at the one zone door.
+  *Step 1 merged: #1721 to #1734 (card U), the ledgers in `src/state/` and
+  `tools/guards/state-ledger.test.mjs`, 16 rows left unlisted (four files
+  the map has not placed). Step 2 is card L's; the box waits for it.*
 - [ ] **5.3b [NEXT] The phase table** (the owner, 2026-11-13: every implicit
   state machine explicit, through one door). Every state machine one row:
   its one field, its states, the one function that changes it, what clears
@@ -424,6 +451,9 @@ nothing known, and a restore copies nothing.
   writer. Has one today: the life phase, the session, a monster's life, the
   zone. To do: duels, trades, parties, harvesting, cooking, the guard,
   dungeons, the arena, fishing, the connection, loading, the open window.
+  *Begun (card L): #1748, the table (36 rows: 5 `door`, 31 `todo`) and
+  its guard. The box waits for the `todo` rows (the gatekeeper, sitting 9,
+  v2.3.5365).*
 - [ ] **5.4 [LATER] The frame as named steps.** PR 1 moves nothing: the six
   calls the loop already makes, plus one `legacy` step, become the list;
   each counts its errors to the crash ring (a throw in the frame reaches
@@ -462,6 +492,9 @@ nothing known, and a restore copies nothing.
   risk (logic, memory, the chip), what it needs, and whether it is a
   **fallback** with the trigger that still uses it. One reader. Rule 4 is
   held here.
+  *Begun (card T): #1754, the table (250 rows), its scanner and guard,
+  `docs/SWITCHES.md`; 195 names still unlisted. The box waits for T's
+  PRs 2 and 3 (the gatekeeper, sitting 9, v2.3.5365).*
 - [ ] **7.2 [NEXT] The end date** (the owner: yes). For a logic switch: four
   weeks on with no revert, then the old way goes. A device off-ramp stays
   while its risk is live. A fallback stays while its trigger lives: a guard
@@ -482,6 +515,9 @@ nothing known, and a restore copies nothing.
   reason. Never skipped.
 - [ ] **8.2 [NEXT] Traps become guards**, each with a break proof. The count
   that matters is traps held by a proof, not traps of prose.
+  *Card V merged, #1724 to #1740: 31 traps held by a proof (25 the rule, 6
+  one case; its status names what is left for the next card). The step is
+  open: most traps are still prose.*
 - [ ] **8.3 [LATER] Docs by system**, with an index that keeps every §.
 - [x] **8.6 [NOW] The shapes page** (`docs/SHAPES.md`, rule 2): the actor,
   the ids, the roads' classes, the report's sinks, the wire's columns, the
@@ -540,12 +576,19 @@ the memory a family holds as the game draws it.
   colours, encode, verify, write the row. A cut stays authored (each
   `cut_*` script holds one animal's cut): recipes are data beside it.
   *Merged: #1716 (card P), `tools/assets/finish.mjs`.*
-- [ ] **9.3 [NEXT] The gate** compares recorded hashes and reads outputs
+- [x] **9.3 [NEXT] The gate** compares recorded hashes and reads outputs
   through the game's own reader. It never makes a file again to compare:
   two machines' encoders differ, and the gate would flap.
+  *Merged: #1718 (card P), `tools/guards/asset-door.test.mjs`,
+  `tools/assets/shipped.mjs`. Ticked by the gatekeeper, sitting 7
+  (v2.3.5363).*
 - [ ] **9.5 [LATER] The backlog, a family a PR**, the most MB held first.
   Sound is folded to one channel as it is decoded, not encoded a second
   time. The 19 `.m4a` files nothing plays are checked and removed.
+  *Begun (card P): #1719 (the 19 `.m4a` removed), #1736 (`npc-heads`),
+  #1743 (`fx-coinflip`), #1745 (`tree-tiers` as numbers); `artCache`'s
+  line 112 -> 101.4. The step is open (the gatekeeper, sitting 8,
+  v2.3.5364).*
 - [ ] **9.6 [LATER] An address that changes with the content**, by a
   `?h=` lookup (the client builds a hundred sprite addresses as it runs;
   renaming files would break them). A wrong hash on art that loads in play

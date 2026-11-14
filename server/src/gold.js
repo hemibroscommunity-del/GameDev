@@ -70,7 +70,9 @@
  *     on a live one through the `mail_gold` road.
  *
  * No imports: node tests it directly, and nothing here reaches the room yet.
+ * (v2.3.5085: but one, the day's book's door, which has none.)
  */
+import { bookAdd } from './daybook.js';   /* v2.3.5085: the book's `econ` part, as each road runs */
 
 /* ── HOW EACH ROAD READS THE PURSE (step 1: as it did before the door) ──
  * `c` is the purse as it is (`rec.coins`), `n` the amount, `take` the verb.
@@ -208,9 +210,13 @@ export const GOLD_ROADS = Object.freeze({
   trade_window:        R('take', 'plain', 'trade2.js _handleTrade2Confirm: each side\'s gold', 'move', 'mail_gold'),        /* credit `trade2:` */
   threat_levy:         R('take', 'plain', 'threat.js _interceptThreat: the 10% fine', 'escrow', 'bounty:'),
   /* v2.3.5081: a player's kill moves the purse to the killer's mail (credit
-     `nmlloot:`).  A red skull killed by a monster loses it to nobody -- a
-     burn through this same road (docs/plan/status/E.md, Needs: its own row) */
+     `nmlloot:`).  v2.3.5084: a red skull killed by a monster loses it to
+     nobody, by `nml_lost` below */
   nml_loss:            R('set', null, 'nomansland.js _nmlOnDeath: the purse goes to the killer\'s mail', 'move', 'mail_gold'),
+  /* v2.3.5084: ...and a red skull killed by anything but a player loses it
+     to nobody: the same loss, a road of its own, because it is a burn (one
+     class a road; card E PR 5, the owner's yes of 2026-11-14) */
+  nml_lost:            R('set', null, 'nomansland.js _nmlOnDeath: a red skull killed by no player, the purse lost', 'burn'),
 
   /* ── into escrow, and back ── */
   bank_deposit:        R('take', 'whole', 'bank.js _handleBankMove: in', 'escrow', 'bank:'),
@@ -337,7 +343,83 @@ export function goldLogOf(rec) {
   return list ? list.map((e) => ({ ...e })) : [];
 }
 
+/* ═══ v2.3.5084: THE DOOR COUNTS WHAT IT MINTS AND BURNS (grand plan step 4.4, card E PR 5) ═══
+ * Into the record's own `_econ` (migrations.js ECON: rule 1's second
+ * exception), so the count rides the purse's own put (the plan's rule 5).
+ * The difference is read the way the world's sum reads a purse: whole coins
+ * never below 0 (wholeGold).  A `mint` road books it under `m`, a `burn`
+ * road under `b`; a `move` or an `escrow` changes no world total and books
+ * nothing.  A `set` road books its difference signed (SHAPES part 3, edge
+ * 1); a LOAD (GOLD_LOADS) books nothing: the world held the stored purse
+ * while the character was away, and under the whole-coin reading the load
+ * changes nothing.  The mail (`mail_gold`) is an escrow of `inbox:`: what a
+ * payout carries is counted by its own class when its credit is handed to
+ * the door (`credit`, MAIL_CLASSES by its opId; `house`, the part minted). */
+export const GOLD_LOADS = Object.freeze(['join_stored']);
+/* v2.3.5085 (the gatekeeper's sitting 8): `_econ`'s shape number, in ONE
+   place -- this.  bag.js and migrations.js (ECON.V) import it: held in three
+   places by nothing, a bump in one stopped the doors' counting silently. */
+export const ECON_V = 1;
+/** The record's `_econ`, made if it has none; null for a NEWER one (never
+ *  counted into: a rolled-back worker leaves a newer shape alone). */
+export function econOn(rec) {
+  if (!rec || typeof rec !== 'object') return null;
+  let e = rec._econ;
+  if (e === undefined || e === null || typeof e !== 'object') {
+    e = rec._econ = { v: ECON_V, g: { m: 0, b: 0 }, i: Object.create(null) };
+  }
+  if (typeof e.v === 'number' && e.v > ECON_V) return null;
+  if (!e.g || typeof e.g !== 'object') e.g = { m: 0, b: 0 };
+  if (!e.i || typeof e.i !== 'object') e.i = Object.create(null);
+  return e;
+}
+const econNum = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+/* `d`: the purse after less the purse before, by the sum's reading.
+   v2.3.5085: `room`, when given, adds the same to the day's book's `econ`
+   part (daybook.js: minted and burned for the whole room, one door) -- the
+   one call card E's PR 6 makes in this door.  Minted as a positive `mint`,
+   burned as a positive `burn` (a set road's signed difference stays signed). */
+function econGold(rec, cls, d, room) {
+  if (!d || (cls !== 'mint' && cls !== 'burn')) return;
+  if (room && typeof room._econOff === 'function' && room._econOff()) return;   /* v2.3.5085: `econ: false` */
+  if (room) bookAdd(room, 'econ', { g: { [cls]: cls === 'mint' ? d : -d } });
+  const e = econOn(rec);
+  if (!e) return;
+  if (cls === 'mint') e.g.m = econNum(e.g.m) + d;
+  else e.g.b = econNum(e.g.b) - d;
+}
+/** v2.3.5084: what a payout landing by the mail counts: its class by its
+ *  opId's first word; a mint all of what landed, an escrow with `house` the
+ *  house's part of it (edge 3), a move or any other escrow nothing.  A payout
+ *  whose word has no row counts nothing (gold-door.test fails such a word). */
+export function mailMinted(credit, landed) {
+  if (!credit || typeof credit !== 'object' || !(landed > 0)) return 0;
+  /* v2.3.5085 (the gatekeeper's sitting 8): an entry the mailbox MERGED at
+     200 (inbox.js _inboxAppend) carries payouts of other words: it says its
+     minted part itself, kept as each was merged */
+  const mp = credit.payload && typeof credit.payload === 'object' ? credit.payload.minted : undefined;
+  if (typeof mp === 'number' && Number.isFinite(mp)) return Math.max(0, Math.min(landed, Math.floor(mp)));
+  const row = mailClassOf(credit.opId);
+  if (!row) return 0;
+  if (row.class === 'mint') return landed;
+  if (row.house) {
+    const p = credit.payload || {};
+    return Math.max(0, Math.min(landed, Math.floor(Number(p.house) || 0)));
+  }
+  return 0;
+}
+
 export const goldMethods = {
+  /** v2.3.5085 (the gatekeeper's sitting 8): the counting's kill switch --
+   *  `econ: false` in the live flags counts nothing into a character's
+   *  `_econ` and nothing into the day's book's `econ` part (both doors: the
+   *  bag's is handed down by liveops.js _syncBagCaps).  What was counted
+   *  stays; the gold moves exactly as before. */
+  _econOff() {
+    const f = this && this._liveFlags;
+    return !!(f && typeof f === 'object' && own(f, 'econ') && !f.econ);
+  },
+
   /** v2.3.4903: step 3's log switch -- on unless `goldlog: false` in the live flags */
   _goldLogOn() {
     const f = this && this._liveFlags;
@@ -354,11 +436,15 @@ export const goldMethods = {
     return !(f && typeof f === 'object' && own(f, 'goldonesum') && !f.goldonesum);
   },
 
-  /** Gold INTO `rec`'s purse (a live player's state or a stored record) by `road`. Returns the purse. */
-  _goldGive(rec, n, road) {
+  /** Gold INTO `rec`'s purse (a live player's state or a stored record) by `road`. Returns the purse.
+      v2.3.5084: `credit`, the payout the mail road lands (inbox.js), counted by its own class. */
+  _goldGive(rec, n, road, credit) {
     const row = roadFor(road, 'give');
     const before = rec.coins;
     rec.coins = this._goldOneSumOn() ? goldOneSum(rec.coins, n, false) : GOLD_SUMS[row.sum](rec.coins, n, false);   /* v2.3.4803 */
+    const d = wholeGold(rec.coins) - wholeGold(before);
+    econGold(rec, row.class, d, this);   /* v2.3.5084; v2.3.5085: + the day's book */
+    if (credit) econGold(rec, 'mint', mailMinted(credit, d), this);
     return this._goldLogged(rec, road, before);   /* v2.3.4903 */
   },
 
@@ -368,14 +454,16 @@ export const goldMethods = {
     const row = roadFor(road, 'take');
     const before = rec.coins;
     rec.coins = this._goldOneSumOn() ? goldOneSum(rec.coins, n, true) : GOLD_SUMS[row.sum](rec.coins, n, true);   /* v2.3.4803 */
+    econGold(rec, row.class, wholeGold(rec.coins) - wholeGold(before), this);   /* v2.3.5084; v2.3.5085: + the day's book */
     return this._goldLogged(rec, road, before);   /* v2.3.4903 */
   },
 
   /** The purse MADE `v` by `road`: a character loaded, or a purse lost whole. */
   _goldSet(rec, v, road) {
-    roadFor(road, 'set');
+    const row = roadFor(road, 'set');
     const before = rec.coins;
     rec.coins = this._goldOneSumOn() ? wholeGold(v) : v;   /* v2.3.4803: a broken purse heals as it loads */
+    if (!GOLD_LOADS.includes(road)) econGold(rec, row.class, wholeGold(rec.coins) - wholeGold(before), this);   /* v2.3.5084; v2.3.5085: + the day's book */
     return this._goldLogged(rec, road, before);   /* v2.3.4903 */
   },
 };
