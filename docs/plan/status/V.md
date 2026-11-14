@@ -17,8 +17,8 @@ state: ready
 - §2 stepped in: `ps.capeOff` (`server/src/eventcapes.js`) is saved by
   `_saveRpgPaced` but not in `_saveRpg`'s list (`persistence.js`, card A's)
   nor read back at the join: a cape taken off is worn again after a rejoin.
-- Card N's walker and wire table are not on `main`: §2 walks `server/src/`
-  itself, §1 reads `RELAY.TYPES`. Move onto N's.
+- Card N's walker and wire table landed (sitting 5) after PRs 1-2 merged: §2
+  walks `server/src/` itself, §1 reads `RELAY.TYPES` (see Needs).
 - §109: the coach (`QuestCoach.jsx`) needs the page. §222: which arrow a
   sight lets go hits first needs the page. §43: the starting kit's DPS ratio
   (`calcDisplayDps`) is not held; a node test could.
@@ -35,4 +35,5 @@ state: ready
 - §230 stepped in: `tools/audio/cut_monster_noises.py` decodes with `-ac 1`.
 
 ## Needs
-- Nothing.
+- The owner: move §2 onto `server/test/src-walk.mjs` and §1 onto N's wire
+  table in a PR of card V's (tag 5327) or leave it to the next card?
