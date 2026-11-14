@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "fccf6bbcdea0073d3981d0d966e4f7c4cfc5d2ed",
+  "tree": "2980bb714b844c3f8fd3f2965b21c818b7206763",
+  "committedAt": "2026-11-14T00:07:48-08:00",
+  "subject": "Merge pull request #1740 from hemibroscommunity-del/claude/plan-v-7-art-on-disk",
+  "files": 7557,
+  "bytes": 948702131,
+  "listingSha256": "8b8968191873085d23e9fd37989f7229f4e56046b077b75490d03606f986b272",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
