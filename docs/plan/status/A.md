@@ -1,31 +1,40 @@
 card: A
-branch: claude/plan-a-2-device-class (one branch a PR, each begun from the one before: -1- to -7-; merge them in order)
-prs: #1688 (5120, ready), PR 2 (5121, the device class; ready, its number with PR 3's commit)
+branch: claude/plan-a-3-report-phone (one branch a PR, each begun from the one before: -1- to -7-; merge them in order)
+prs: #1688 (5120, ready), #1692 (5121, ready), PR 3 (5122, the report's phone side; ready)
 state: ready
 
 ## Done
 
-- PR 1 (5120): one list of hold names, `src/debug/holdNames.js` (the
-  sweep's 20 families, the debt list's 13, and the two it let go of); its
-  table maps each note's string to a name; `noteMade` keeps the name and
-  drops a string off the list. `guards/hold-names`, four break proofs.
-  Commits the card (`docs/plan/cards/A.md`) byte for byte from #1682.
-- PR 2 (5121): `devClass()` in `deviceProfile.js`, SHAPES part 6's twelve
-  fields and key, facts only, `fill` always `none`; `device-profile.test`
-  5 to 7, three break proofs. Touches `server/test/`: its merge deploys.
+- #1688 (5120): one list of hold names (`holdNames.js`); `noteMade` keeps a
+  name of it; `guards/hold-names`. Commits the card byte for byte.
+- #1692 (5121): `devClass()` in `deviceProfile.js`, SHAPES part 6, facts
+  only; `device-profile.test` 5 to 7. Its merge deploys the worker.
+- PR 3 (5122): `src/debug/report.js` (SHAPES part 4, off the frame, every
+  5 min); the About row and its switch; `renderFrame.js` counts near
+  players; `crashTrap.js` keeps the dead page's numbers. It sends nothing:
+  `caps-audit` fails a cap the phone reads that no worker advertises, so
+  the cap's read (`takesReports`) lands with the worker's half, PR 4.
 
 ## Next
 
-- PR 3 (5122): the report, the phone's side.
+- PR 4 (5123): the worker's half once E's PR 1 is on `main`, with the
+  phone's read of `caps.report` (`takesReports`) and `CAP_GATES`, each a
+  new line before `accuracy`'s (its test wants it last): list it apart.
 
 ## Found
 
-- Asking the device outside `deviceProfile.js` (card O's to move): the
-  chip's name `paletteTex.js` `SOFTWARE_GL` (the class holds an equal copy,
-  `SOFT_GL`, by test), `MAX_TEXTURE_SIZE` in `peerImpostor.js` and
-  `crashTrap.js`, `hardwareConcurrency` in `bodyBake.js`.
+- Outside `deviceProfile.js`, still asking the device (card O's):
+  `paletteTex.js` `SOFTWARE_GL` (held equal to `SOFT_GL` by test),
+  `MAX_TEXTURE_SIZE` in `peerImpostor.js`, `crashTrap.js`;
+  `hardwareConcurrency` in `bodyBake.js`.
+- `framePacer.js` `read()` gives a share, not counts: the report applies
+  the pacer's own rule to the drawn frames (card O could hand counts).
+- When card Q's sitting card keeps `soft`, `seen`, `drawn`, the About
+  row's "no name on it" must change with it (card Q).
 
 ## Needs
 
-- PRs 4 and 5 wait for card E's PR 1 (the day's book's frame) on `main`.
+- PRs 4 and 5 wait for card E's PR 1 (the day's book) on `main`.
 - PR 7 waits until cards H and J say `done`.
+- The owner, once: `split` goes only with `late`, where the pacer judges
+  (screens over about 70 a second): none from a 60 a second phone. Keep?
