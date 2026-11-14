@@ -236,3 +236,27 @@ moved, and it stays in `combat`'s ledger.
 
 Left `sitting`: the death rows (`S._sf`, `S._stf`, `S._shieldUp`,
 `S._shieldAutoReleased`), until the page's death door (card L PR 5).
+
+## PR 4, tag 5207: wire (v2.3.5207)
+
+61 rows decided, which takes `SITTING_LINE` from 364 to 303. One reset
+(switch `?wirereset`):
+
+| Row | Decided |
+|---|---|
+| `S.slimeProjectiles`, `S._telegraphZones`, `S._impactRings` | `zone`, `value []`: `monsterMoveEvents.js leavePlaceHazards`. Drawn in world pixels with no place on them: some ways out emptied the balls by hand, the respawn and the farm trip did not, and none emptied the warnings or the rings |
+| `S._remoteProjectiles`, `S._peerCampfires`, `S._peerGatherNode`, `S._peerWhirlFx`, `S._peerWindups` | `zone`, `fn clearZoneLocalFx` |
+| `S._activeDuel`, `S._inDuel`, `S._t2Live` | `rejoin`, `fn rejoinClear`: the rejoin door's own list (against a worker that re-sends them) |
+| the dungeon's nine (`S._dungeonZone`, `S._preDungeonPos`, ...) | kept: written as you go in, the way back before the zone's door; the dungeon's door (PR 5) owns them |
+| `S._serverCaps`, `S._httpToken`, `S._joinedId`, `S._keyIdAsked`, `S._netHold`, `clientOff.js _live` | kept: said in `state_sync` itself, before the rejoin's door |
+| `S.others`, `S._serverMonsters`, `S._serverGatherNodes`, `S._serverLoot`, `S.gatherNodes`, `S.groundLoot` | kept: made again by `state_sync` just after the door, and by every way into a place |
+| the eight buffs (`S._hpBuff`, ... `S._xpBuffMul`) | kept: end times on their own clocks; the worker's `player_state` says them whole |
+| `S._party`, `S._t2DoneWatch` | kept: their own `state_sync` steps clear them before the door; the party's and the trade's doors (PR 5) move those |
+| `S._realtimeStatus`, `serverReady.js`'s four | kept: the connection's own; its door (PR 5) |
+| `S._activeClanWar`, `S._arenaStakeBoard`, `S._jackpotPool`, `S._jackpotTickets` | kept: the worker's word, which the join does not say again (or says unordered with `state_sync`) |
+| `S._pvpSkullType`, `S._pvpSkullUntil`, `S._threatMarks`, `broWallet.js _pending` | kept: marks and an ask that run out by their own clocks |
+| `S._fireTrail` | kept: its renderer drops a patch of another place |
+| `S.slimeShockwaves`, `S.snowballBursts`, `S.arrowBlasts` | kept: drained whole every frame by the renderer (card H) |
+| `S._nodeResyncT`, `S._pendingZoneNodes` | kept: the zone entry's own step (`nodeSync.js onZoneEntered`); a reset at the door would drop the snapshot it waits for |
+
+Left `sitting`: `S._stunEnd`, a death row.
