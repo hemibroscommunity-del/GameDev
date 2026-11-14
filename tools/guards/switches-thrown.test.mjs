@@ -60,7 +60,7 @@ export const KNOWN = Object.freeze({
 });
 
 /* page switches with no node suite or phone scenario that plays them thrown */
-const NO_PLAY_LINE = 77;   /* its first count, v2.3.5304: it only falls */
+const NO_PLAY_LINE = 76;   /* its first count, v2.3.5304: it only falls */
 
 const PRELOAD = join(ROOT, 'tools/guards/lib/thrown.mjs');
 const SERVER = join(ROOT, 'server');
