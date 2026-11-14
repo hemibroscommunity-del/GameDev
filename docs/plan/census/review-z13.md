@@ -89,6 +89,46 @@ tick; `chatmod.js` stores a mute of `__proto__` as an own key; the honest
 restart reads as value gone in E's sum): card K's PR 4 (`wiredoor`) and
 each row's own fix lower the line.
 
+## Card R: #1819 (PR 1, tag 5280): listed
+
+**The roads between players, one table (it DEPLOYS), read at 0b18482:
+clean (lows).** A finder imported both sides: the made `XFER.ROADS`
+(`trade_window`, `gift_trade`) and `XFER.KILLS` (`nml_loss`) equal
+main's literals, frozen arrays in the same order, every other `XFER` key
+the same; their one reader in the worker is `XFER.ROADS.indexOf(road)`
+(xfer.js), unchanged on an array. The table is true to the code: all 5
+`move` roads and all 24 `escrow` roads (gold, bag, `bagWhole`) are on a
+row, the bank's `own`; each settlement's door calls were read (the arena's
+entry and stakes, gladiator.js ~302, ~548, ~551; the duel's group road
+~223; the store's buy-now ~913, ~926, bid ~972, listing ~742; the
+offers, storeoffer.js ~173, ~234); each row's `at` function exists where
+it says; nothing is missing (gamble.js and dice.js are against the
+house; the war payouts mint; there is no mail between players).
+`playerroads.js` imports nothing. Every fee, hold and pace 0: no
+behaviour changes. Break proofs, each re-tried: a fee of 1 fails §1; a
+planted `move` road fails §3 (and xfer.test §2); `nml_loss` off its row
+fails §3; the `threat_bounty` row removed fails §4; `GOLD_ROADS`' `class`
+renamed fails §2, §4, §6 loudly.
+
+- Low, VERIFIED (a probe): a row can claim `ledger: 'xfer'` with nothing
+  behind it. xfer.test's removed check ("nothing on either list but a
+  `move` road") has no true successor (its new check restates
+  `playerRoadsBy`): `market.ledger` set to `'xfer'` stays green in
+  player-roads, xfer, cost-guard and world-sum, though no market
+  settlement writes an `xfer:` row. Before this PR such a list failed.
+  No effect today; mend in R's next PR that touches the table (each
+  `xfer` row's road must be a `move` road, or name its writer).
+- Low, VERIFIED: the approved line of SHAPES part 7 (its 10.5 row,
+  "three columns, not a table", ~854) is not in the PR: part 3's new
+  text (~482) calls it "the first reading", so the two disagree until R
+  changes it; R's status still lists it as asked.
+- Nit: `threat_bounty`'s ledger is `none` while its own why calls it a
+  kill (kept so `XFER.KILLS` stays as it was): R's PR 11 (`xferescrow`)
+  should read it.
+- Suites on the PR merged with `main`: player-roads 13, xfer 22,
+  gold-door 201, bag-door 263, world-sum 34; precheck 0 FAIL; the full
+  `npm test` green; CI `test` green at the head.
+
 ## Card O: #1792 (tag 5222), #1794 (5224), #1800 (5225), #1814 (5235): listed
 
 Read at fd0bae6, e06b7bd, 3b5a97a and 770e227 (a stack: each carries the
