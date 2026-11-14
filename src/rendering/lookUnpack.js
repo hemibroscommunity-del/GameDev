@@ -51,7 +51,7 @@ export function unpackLookSheet(px, spec) {
    (lookPalette.js make): 38 to 40 ms held at once on the stutter sweep's
    armour station (lookArmourFrame > setLookSheetBook > the upload > make).
    The header rows hold nothing but the header (the numbers end at row n, the
-   table before the header rows: lookPalette.js sheetRows), so they are made
+   table before the header rows: lookSheetRows below, v2.3.5244), so they are made
    here from the header alone, and only they are sent. */
 /** The sheet's last rows that hold its header: { y0, hr, bytes } (bytes:
  *  W x hr texels, the header written exactly as unpackLookSheet writes it). */
@@ -78,4 +78,48 @@ export function lookBytesHash(b) {
   let h = 2166136261 >>> 0;
   for (let i = 0; i < b.length; i++) { h ^= b[i]; h = Math.imul(h, 16777619) >>> 0; }
   return h;
+}
+
+/* ═══ v2.3.5244: A SHEET'S SHAPE FROM ITS MANIFEST, IN ONE PLACE ═══
+   Moved here from lookPalette.js (buildSheet, sheetRows) unchanged, so that
+   the asset door's gate (tools/guards/asset-door.test.mjs, card P) reads a
+   sheet the way the game does -- this file has no imports, and GitHub's test
+   job has no pixi.js -- and there is still one copy (the plan's rule 2).
+
+   The header's 16-bit values: 0 scale (| 128 for 8 bits, | 64 drawn without
+   mipmaps), 1 number rows, 2 the table's first row, 3 bits, 4 roles, 5-20
+   each role's end, 21-65 each role's entry / ref / under, 66 the refs' scale
+   (ref / refScale, P4's fractional refs), 67 the kind (LOOK_KIND_IDS), 68-69
+   the sheet's offset in a book (P3's masks, setLookSheetBook), low and high. */
+/* a kind's number in the header (the shader's per-kind hook, registerLookKind) */
+export const LOOK_KIND_IDS = Object.freeze({ body: 0, shirt: 1, armour: 2, head: 3, 'shirt-drawing': 4 });
+export const LOOK_MAX_ROLES = 15;
+const HEAD_VALUES = 5 + 16 + 3 * LOOK_MAX_ROLES + 4;
+/** A sheet's rows on the chip: its numbers, its table (two RG texels an
+ *  entry at 16 bits, four R texels at 8), its header in the last row(s); the
+ *  stand's texture (resolution 2) an even number of rows. */
+export function lookSheetRows(W, n, E, bits, ds) {
+  const bpt = bits === 8 ? 1 : 2;
+  const tRows = Math.ceil((E * 4 / bpt) / W);
+  const hRows = Math.ceil((HEAD_VALUES * 2 / bpt) / W);
+  let rows = n + tRows + hRows;
+  if (ds === 2 && (rows & 1)) rows++;
+  return rows;
+}
+/** The spec unpackLookSheet takes, from the sheet's manifest row `m` (w, h,
+ *  tableRows, entries, bits, ds, mip, ends, refScale, kind), its set's
+ *  `roles` and its offset in the armour's book. */
+export function lookSheetSpec(m, roles, book = 0) {
+  const W = m.w, n = m.h, T = m.tableRows, E = m.entries;
+  const bits = m.bits === 8 ? 8 : 16;
+  const rows = lookSheetRows(W, n, E, bits, m.ds);
+  const head = new Array(HEAD_VALUES).fill(0);
+  head[0] = m.ds | (bits === 8 ? 128 : 0) | (m.mip === false ? 64 : 0);   /* v2.3.3757: 64, a sheet drawn without mipmaps (the stand-ins) */ head[1] = n; head[2] = n; head[3] = bits; head[4] = roles.length;
+  const ends = m.ends || [];
+  for (let r = 0; r < 16; r++) head[5 + r] = ends[Math.min(r, ends.length - 1)] != null ? ends[Math.min(r, ends.length - 1)] : E;
+  roles.forEach((ro, i) => { head[21 + 3 * i] = ro.entry; head[22 + 3 * i] = Math.round(ro.ref || 0); head[23 + 3 * i] = ro.under || 0; });
+  head[66] = Math.max(1, Math.round(m.refScale || 1));
+  head[67] = LOOK_KIND_IDS[m.kind] || 0;
+  head[68] = book & 65535; head[69] = Math.floor(book / 65536) & 65535;
+  return { W, n, T, E, rows, bits, head };
 }
