@@ -58,7 +58,7 @@ const NAMES = Object.freeze({
   actor: { part: 1, where: null },
   principal: { part: '1, 2', where: null },
   stint: { part: '1, 2', where: null },
-  wayIn: { part: '1, 5', where: null },
+  wayIn: { part: '1, 5', where: 'server/src/wire/columns.js', carriers: ['server/src/wire/in.js', 'server/src/wire/relays.js', 'server/src/wire/out.js', 'server/src/wire/http.js'] },   /* v2.3.5061 (card N): the column's closed list; each row file carries its values */
   permit: { part: '1, 7', where: null },
   /* the action door (step 5.8; part 10).  Read in src/ only: the worker
      echoes a request's reqId in its answer, which carries it, not makes it */
@@ -69,8 +69,8 @@ const NAMES = Object.freeze({
      and until card O builds lanes `drawLane` is the one value 'full' */
   devClass: { part: 6, where: 'src/game/deviceProfile.js', carriers: ['src/debug/report.js'] },   /* part 6's row */
   drawLane: { part: '4, 6', where: null, carriers: ['src/debug/report.js'] },   /* card O's one function, when built */
-  mayStart: { part: 5, where: null },
-  doesWhat: { part: 5, where: null },
+  mayStart: { part: 5, where: 'server/src/wire/columns.js', carriers: ['server/src/wire/in.js', 'server/src/wire/relays.js', 'server/src/wire/out.js', 'server/src/wire/http.js'] },   /* v2.3.5061 (card N): the column's closed list; each row file carries its values */
+  doesWhat: { part: 5, where: 'server/src/wire/columns.js', carriers: ['server/src/wire/in.js', 'server/src/wire/relays.js', 'server/src/wire/out.js', 'server/src/wire/http.js'] },   /* v2.3.5061 (card N): the column's closed list; each row file carries its values */
   liarGain: { part: 7, where: null },
 });
 /* the storage prefixes of the page, and each one's writer (null: not built) */

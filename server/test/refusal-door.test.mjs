@@ -29,7 +29,8 @@
  *      marked `known` and must match a `known` line of the list: when one
  *      starts answering, this says so, and its line comes off. */
 import { GameRoom } from '../src/index.js';
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { srcFiles } from './src-walk.mjs';
 import { readRoom, switchCases, silentExits, callsOf, senderSet, blank, locate, DELTA } from './refusal-scan.mjs';
 import { ALLOW, CODES, STRUCTURAL, HANDLERS, INFRA, SWALLOWED, FROZEN } from './refusal-door-list.mjs';
 
@@ -100,7 +101,8 @@ const found = Object.create(null);   /* unit -> { key: {kw, line} } */
         const x = found[unit][key];
         if (!files) {
           const dir = new URL('../src/', import.meta.url);
-          files = readdirSync(dir).filter((f) => f.endsWith('.js')).map((f) => ['server/src/' + f, readFileSync(new URL(f, dir), 'utf8')]);
+          files = srcFiles().map(   /* v2.3.5060: in depth, a folder's files too (src-walk.mjs) */
+            (f) => ['server/src/' + f, readFileSync(new URL(f, dir), 'utf8')]);
         }
         fresh.push(`${unit} (${locate(files, room.src[x.method], x.lineIn)}): ${x.kw} under \`${key}\``);
       }
