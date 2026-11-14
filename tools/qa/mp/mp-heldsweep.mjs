@@ -42,11 +42,40 @@
  * length here says nothing about a phone's; the page's own JavaScript does
  * (a bake measured 91 ms here was 101 on the owner's iPhone), and that is
  * what is counted: time in the browser's own drawing calls is left out.
+ *
+ * v2.3.5126 -- A KNOWN HOLD LEAVES A NOTE (the grand plan's step 1.0, its
+ * second half; card A's PR 7).  The field report (src/debug/report.js) names
+ * the worst holds a phone met, from the phone's own ring of holds
+ * (perfTracker.recordExternal: a job's noteMade, a slow server message),
+ * under the one list's names (src/debug/holdNames.js).  It can name only
+ * what left a note.  So every station also keeps the notes the phone wrote
+ * into that ring while it played (makeStation: `notes`), and the run fails a
+ * KNOWN hold that left none (noteGaps):
+ *   - known: a family on the debt list (held-budget.mjs KNOWN), the families
+ *     let hold the page past the general line, so the ones the report must
+ *     be able to name -- a NEW family past the line fails the budget anyway;
+ *   - a hold of HOLD_MAX_MS or more, outside the frame, or a long frame the
+ *     family was most of (the black-screen check's read runs at the top of
+ *     the frame, framePacer.js beforeDraw: the first sample found all of its
+ *     holds there), of a family the page runs (whose 'ours' or 'box': the
+ *     browser's own garbage collector has no caller to note it; a frame's
+ *     own code, 'the frame itself', is the frame meter's, never a note);
+ *   - left a note: the station's notes hold at least one of that family's
+ *     name (holdOf, the report's own reading).  By family and station, not
+ *     hold by hold: the profiler's clock is not the page's, and one job's
+ *     note may cover the slices its hold came in.
+ * A gap names the family and where: its job must call noteMade (or reach
+ * the ring) with a string holdNames.js MADE_AS maps to that name (or the
+ * list's name itself).  The first sample found one: `pack-page`
+ * (gearSheets.js _gearPack) wrote no note at all; card P's #1757 notes each
+ * packing slice as `pack-page` (gearSheets.js _gearTurn), and PR 7 merges
+ * after it.
  */
 import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { HOLD_MAX_MS, FRAME_JS_MAX_MS, WINDOW_MAX_MS, KNOWN, judgeHeld } from './held-budget.mjs';
+import { holdOf } from '../../../src/debug/holdNames.js';   /* v2.3.5126: the report's own reading of a note */
 
 const PHONE = { width: 430, height: 932 };
 const STATION_NAMES = ['stand', 'town', 'lands', 'fight', 'windows', 'folk', 'peer', 'armour'];
@@ -176,7 +205,19 @@ export function analyse(profile) {
 export function makeStation(A, cdp, report, want) {
   return async (name, label, drive) => {
     if (want && !want.includes(name)) return;
-    await A.page.evaluate(() => { window.__btMade = []; });
+    await A.page.evaluate(() => {
+      window.__btMade = [];
+      /* v2.3.5126: the phone's own ring of holds, every note written into it while the station plays (the ring
+         itself keeps the last sixty: a busy station writes more).  The one door into it is recordExternal (a job's
+         noteMade, wsClient's slow message): wrapped once, the note still goes in */
+      window.__btNotes = [];
+      const P = window.perfTracker;
+      if (P && typeof P.recordExternal === 'function' && !P.__btNotesOn) {
+        const rec = P.recordExternal;
+        P.recordExternal = function (n, ms) { try { if (window.__btNotes) window.__btNotes.push(String(n), +ms || 0); } catch (e) { /* a test's tap */ } return rec.call(this, n, ms); };
+        P.__btNotesOn = true;
+      }
+    });
     await cdp.send('Profiler.start');
     const t0 = Date.now();
     let note = null;
@@ -187,16 +228,58 @@ export function makeStation(A, cdp, report, want) {
     const named = [];
     for (let i = 0; i < made.length; i += 2) named.push([String(made[i]).replace(/^(\w+ ?\w*) .*\/sprites\//, '$1 ').slice(0, 60), Math.round(made[i + 1])]);
     const held = an.held.filter((s) => s.ms >= 4).sort((a, b) => b.ms - a.ms);
+    /* v2.3.5126: the notes by the one list's name, as the report reads them: { name: [notes, longest ms] } */
+    const rawNotes = await A.page.evaluate(() => (window.__btNotes || []).slice()).catch(() => []);
+    const notes = notesByName(rawNotes);
     const row = { name, label, secs: Math.round((Date.now() - t0) / 1000), note, readable: an.sawLoop, held, frames: an.frames,
-      heldSum: Math.round(an.held.reduce((t, s) => t + s.ms, 0)), named: named.sort((a, b) => b[1] - a[1]).slice(0, 12) };
+      heldSum: Math.round(an.held.reduce((t, s) => t + s.ms, 0)), named: named.sort((a, b) => b[1] - a[1]).slice(0, 12), notes };
     report.stations.push(row);
     console.log(`\n  ── ${label} (${row.secs} s)${note ? ' ' + JSON.stringify(note).slice(0, 160) : ''}`);
     console.log(`     outside the frame: ${row.heldSum} ms in all; holds of 4 ms or more: ${held.length}, the longest ${held[0] ? held[0].ms : 0} ms`);
     for (const s of held.slice(0, 8)) console.log(`       ${String(s.ms).padStart(6)} ms  [${s.key}] ${s.what}   (${s.in})  via ${s.via}`);
+    const noteLine = Object.keys(notes).sort().map((k) => `${k} ${notes[k][0]}x`).join(', ');
+    console.log(`     the phone's notes (what its report can name): ${noteLine || 'none'}`);
     console.log(`     in the frame: ${an.frames.n} frames, the middle one ${an.frames.medJs} ms of the game's own code; long ones: ${an.frames.long.length}`);
     for (const f of an.frames.long.sort((a, b) => b.ms - a.ms).slice(0, 6)) console.log(`       ${String(f.ms).padStart(6)} ms  [${f.key}]   (${f.in})  via ${f.via}`);
     return row;
   };
+}
+
+/* ── v2.3.5126: a known hold leaves a note (the header's last part) ── */
+/** The ring's notes ([name, ms, name, ms, ...] as written) by the one list's name: { name: [notes, longest ms] }.
+ *  A note off the list is the report's to drop too (holdOf null). */
+export function notesByName(raw) {
+  const out = Object.create(null);
+  for (let i = 0; i + 1 < (raw || []).length; i += 2) {
+    const n = holdOf(raw[i]);
+    if (!n) continue;
+    const ms = Number(raw[i + 1]) || 0;
+    const was = out[n] || [0, 0];
+    out[n] = [was[0] + 1, Math.max(was[1], Math.round(ms * 10) / 10)];
+  }
+  return out;
+}
+/** The known holds that left no note: [{ key, where, ms, holds }], a family a station, worst first.  `known` the debt
+ *  list (KNOWN), `line` the general line (HOLD_MAX_MS). */
+export function noteGaps(stations, known, line) {
+  const gaps = [];
+  for (const st of stations || []) {
+    const by = new Map();
+    const take = (h, inFrame) => {
+      const k = known[h.key];
+      if (!k || k.whose === 'browser' || h.key === 'the frame itself' || !(h.ms >= line)) return;
+      const g = by.get(h.key) || { key: h.key, where: st.name, ms: 0, holds: 0, inFrame: 0 };
+      g.holds++; g.ms = Math.max(g.ms, h.ms);
+      if (inFrame) g.inFrame++;
+      by.set(h.key, g);
+    };
+    for (const h of st.held || []) take(h, false);
+    /* a long frame a known family was most of (the black-screen check's read runs at the top of the frame:
+       framePacer beforeDraw): its job notes the same ring */
+    for (const f of (st.frames && st.frames.long) || []) take(f, true);
+    for (const g of by.values()) if (!(st.notes && st.notes[g.key] && st.notes[g.key][0] > 0)) gaps.push(g);
+  }
+  return gaps.sort((a, b) => b.ms - a.ms);
 }
 
 /* ── small helpers of the tour ── */
@@ -400,6 +483,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
       fresh.length === 0, fresh);
     rec.ok(`...and nothing on the debt list has grown past its own line (${Object.keys(KNOWN).length} listed; ${listed.length} over${listed.length ? ': ' + say(listed) : ''})`,
       listed.length === 0, listed);
+    /* v2.3.5126: what the field report could not name */
+    const gaps = noteGaps(report.stations, KNOWN, HOLD_MAX_MS);
+    report.noteGaps = gaps;
+    writeFileSync(join(OUT, 'heldsweep.json'), JSON.stringify(report, null, 1));
+    const noted = report.stations.reduce((t, s) => t + Object.values(s.notes || {}).reduce((u, v) => u + v[0], 0), 0);
+    rec.ok(`every known hold left a note the field report can name (a debt-list family the page runs, ${HOLD_MAX_MS} ms or more outside the frame; ${noted} notes written; ${gaps.length} left none${gaps.length ? ': ' + gaps.slice(0, 6).map((g) => `${g.key} ${g.ms} ms at ${g.where}${g.holds > 1 ? ' (' + g.holds + ' holds)' : ''}`).join('; ') + ' -- its job must reach the ring under that name (holdNames.js MADE_AS)' : ''})`,
+      gaps.length === 0, gaps);
     rec.ok(`every station asked for was played (${report.stations.map((s) => s.name).filter((v, i, a) => a.indexOf(v) === i).join(', ')})`, WANT.every((w) => report.stations.some((s) => s.name === w)), WANT);
   } finally {
     stopA();
