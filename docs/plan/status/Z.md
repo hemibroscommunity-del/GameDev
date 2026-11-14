@@ -5,9 +5,10 @@ state: ready
 
 ## Done
 - Sitting 16, `main` 64bb498: the list rehearsed in its order (tree
-  WHOLE_TREE, this branch aside): REHEARSAL_SHORT; each base `main`, ONE
-  merge base step by step. Review: `census/review-z16.md`. 2.1 ticked;
-  notes on 4.1, 5.3b, 5.8, 8.1; `TODO_LINE` 30 -> 28.
+  02605dd3, this branch aside): precheck 0 FAIL, build, questline 187;
+  each base `main`, ONE merge base step by step. Review:
+  `census/review-z16.md`. 2.1 ticked; notes on 4.1, 5.3b, 5.8, 8.1;
+  `TODO_LINE` 30 -> 28; wsClient.js 3296 -> 3039, setupWebSocket -> 2839.
 
 ## The list: merge in this order, in one sitting, each "Create a merge commit"
 1 #1838 (K) · 2 #1842 (K) · 3 #1839 (L) · 4 #1844 (R) · 5 #1852 (E) ·

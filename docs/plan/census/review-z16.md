@@ -481,12 +481,41 @@ On `main` 64bb498 the phase table's `todo` is 28 at its line 30: this PR
 lowers `TODO_LINE` 30 -> 28 (break proof: 27 fails check 7). #1839 brings
 it to 27; the next sitting may lower it again. The hostile census's line
 goes 19 -> 1 in #1838 itself. No memory line moves (#1840). The four
-lines' guard: REHEARSAL_LINES
+lines' guard on `main` printed room the merged work earned: K's #1829 (the
+action door) took wsClient.js to 3039 code lines (its line 3296) and its
+`setupWebSocket` to 2839 (3097): this PR lowers both (break proof: 3038
+fails check 1). On the whole list's tip the guard is green, and prints
+room in BroTown.jsx (8370, its line 8371; `BroTown` 7800, 7801; the
+anonymous 2132, 2133; `gameLoop` 1583, 1584), SK's #1782's: for the next
+sitting, once it has landed. Cycles 5 (29 files), the writes to `S` from
+rendering 114: no room.
 
 ## The list
 
-LIST_LINE
+1 #1838 (K) · 2 #1842 (K) · 3 #1839 (L) · 4 #1844 (R) · 5 #1852 (E) ·
+6 #1840 (P) · 7 #1841 (O) · 8 #1782 (SK) · 9 #1845 (J2) · 10 this PR;
+each "Create a merge commit", in one sitting. Eight deploy the worker
+(#1838, #1842, #1839, #1844 and #1852 by `server/src/`; #1840, #1841 and
+#1782 by `server/test/`): back to back. Four add a live flag (`wiredoor`,
+`arrowlane`, `exdoor` ON; `roomrewind` OFF) and #1852 turns two ON; they
+meet on no line (each merged clean step by step). No stored record
+changes its shape. The server's first, then the page's, then the test,
+then this PR.
 
 ## The whole
 
-WHOLE_LINES
+Rehearsed with `tools/dev/gatekeeper.mjs` from `main` 64bb498:
+
+1. #1838, #1842, #1839, #1844 (at 3d925b8), #1840 (tree 2718d749):
+   precheck 0 FAIL, build. (A first pass, before every review was in.)
+2. **The list in its order**, nine PRs at the heads above (tree
+   02605dd3): precheck 0 FAIL (2 WARN: L's #1851 carries 5213 because it
+   carries #1839, the same commits, nothing to renumber; and the
+   busy-branches count), build, questline 187 of 187 (424 s); ONE merge
+   base each, step by step.
+3. **The list with this branch last** (documents and two guard lines):
+   precheck on the whole, 0 FAIL (the same 2 WARN); the four lines' guard
+   green with this PR's lines. Its tree is in the list sent to the
+   planning session (the file cannot carry its own tree).
+
+Each listed head's `test` is green on GitHub; each base is `main`.
