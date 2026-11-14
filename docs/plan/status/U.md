@@ -1,7 +1,7 @@
 card: U
 branch: claude/plan-u-5-three (one branch a PR, each begun from the one before)
-prs: #1721, #1722, #1723, #1725 (ready), PR 5 (working)
-state: working
+prs: #1721, #1722, #1723, #1725, #1727 (all ready)
+state: ready
 
 ## Done
 
@@ -15,7 +15,7 @@ state: working
   (150): unlisted 1959.
 - PR 4 (5163, #1725): movement, economy, preload, skills, memory (199):
   unlisted 1760.
-- PR 5 (5164): debug, art, data (182): unlisted 1578.
+- PR 5 (5164, #1727): debug, art, data (182): unlisted 1578.
 
 ## Next
 
