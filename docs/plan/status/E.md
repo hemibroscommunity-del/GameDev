@@ -13,6 +13,8 @@ state: ready
 - PR 6 (5085), the book's `econ` part; sitting 8's mend: one last-out
   writer (card A's), the part rides (no write at a wake), `econ: false`,
   `ECON_V` in one place, a merged mail entry's minted part (`inbox.js`).
+- New live flags (rule 3, one line each in the switch table): PR 6 `econ`,
+  PR 8c `arenasettleplan`, PR 11 `xfer`.
 
 ## Next
 
