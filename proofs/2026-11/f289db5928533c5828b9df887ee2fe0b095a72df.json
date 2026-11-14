@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "f289db5928533c5828b9df887ee2fe0b095a72df",
+  "tree": "c0de6268dc03141b3816f3b671384df513ca6554",
+  "committedAt": "2026-11-14T12:06:05-08:00",
+  "subject": "Merge pull request #1828 from hemibroscommunity-del/claude/plan-tf-3-done",
+  "files": 7693,
+  "bytes": 956146286,
+  "listingSha256": "3542bd64088c540ff3ab35d0998a19b7dfadf4a1c96167abb7e0222d3b847033",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

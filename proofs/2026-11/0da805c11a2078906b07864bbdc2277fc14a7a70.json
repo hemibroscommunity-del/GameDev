@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0da805c11a2078906b07864bbdc2277fc14a7a70",
+  "tree": "0f04b30b5815856f387f359a8aed3e06e3101c13",
+  "committedAt": "2026-11-14T12:06:33-08:00",
+  "subject": "Merge pull request #1830 from hemibroscommunity-del/claude/plan-j2-6-lookarmour",
+  "files": 7700,
+  "bytes": 956264326,
+  "listingSha256": "9393569021b3112b908fc22a0ce94eece18462b883bf9704e171488bb2c27b42",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "770ce7373c27345a2ca759bbbae3cc825dd1c2dc",
+  "tree": "e350685d8adf0da40b11c4482f572507998b2e3c",
+  "committedAt": "2026-11-14T12:06:25-08:00",
+  "subject": "Merge pull request #1825 from hemibroscommunity-del/claude/plan-r-8-size",
+  "files": 7700,
+  "bytes": 956263315,
+  "listingSha256": "0583741e551e0a8a90f27d8fcb9144a60df8f9428c3ee6f6a803c9daa6224148",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

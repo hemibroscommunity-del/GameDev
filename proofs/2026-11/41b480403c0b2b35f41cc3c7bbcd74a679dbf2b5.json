@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "41b480403c0b2b35f41cc3c7bbcd74a679dbf2b5",
+  "tree": "97353c9fd603e4cdee4ca22e4b7d799f232c25dc",
+  "committedAt": "2026-11-14T12:06:17-08:00",
+  "subject": "Merge pull request #1826 from hemibroscommunity-del/claude/plan-k-6-gain-bench",
+  "files": 7699,
+  "bytes": 956248588,
+  "listingSha256": "52734819145124e127b8d7a5d6904eebe926d47107dea24a4c8e2704f970de74",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
