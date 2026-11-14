@@ -269,9 +269,17 @@ function econTarget(bag) {
   if (!w) { w = Object.create(null); econWaiting.set(bag, w); }
   return w;
 }
+/* ═══ v2.3.5085: THE DAY'S BOOK, `econ` PART (card E PR 6) ═══
+   Plain functions cannot reach the room, so the room hands the bag door the
+   book's door (liveops.js _syncBagCaps, where it hands down the one sum's
+   switch): what each road mints and burns of each key is added to the day's
+   `econ` part as it runs -- the one call card E's PR 6 makes in this door. */
+let BOOK = null;
+export function setBagBook(fn) { BOOK = typeof fn === 'function' ? fn : null; }
 function econBag(bag, k, cls, d) {
   if (!d || (cls !== 'mint' && cls !== 'burn') || typeof k !== 'string' || !k || ECON_BAD.has(k)) return;
   if (!bag || typeof bag !== 'object') return;
+  if (BOOK) { try { BOOK(cls, k, cls === 'mint' ? d : -d); } catch (e) { /* a count never stops a road */ } }
   const into = econTarget(bag);
   if (!into) return;
   const p = Object.prototype.hasOwnProperty.call(into, k) ? into[k] : (into[k] = { m: 0, b: 0 });

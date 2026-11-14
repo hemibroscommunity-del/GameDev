@@ -34,9 +34,10 @@
  * to a failed put and nothing is counted twice.  A day whose stored `v` is
  * NEWER than this worker's is left whole and its sums dropped (a rolled-back
  * worker must never rewrite what a newer one wrote: docs/specs/migrations.md).
- * A restart loses at most what was added since the last put: the book is the
- * owner's summary of a day, never what a sum is checked against (the world's
- * sum reads the characters' own records: step 4.4, SHAPES part 7).
+ * A restart loses at most what was added since the last put (v2.3.5085: and
+ * an empty room's worker, put to sleep, nothing: the last one out writes): the
+ * book is the owner's summary of a day, never what a sum is checked against
+ * (the world's sum reads the characters' own records: step 4.4, SHAPES 7).
  *
  * WHAT IT COSTS: one row (a put) a pace while anything is added, none while
  * nothing is (cost-guard.test §15 holds the line); one read with each put; a
@@ -49,6 +50,11 @@
  * Keys are the writer's (card A's cells are a device class, a lane, a
  * switch state and a build): every map here is made with Object.create(null),
  * and `__proto__`, `constructor` and `prototype` are refused outright.
+ *
+ * v2.3.5085: the LAST ONE OUT writes what waits (bookFlush, leave.js), so an
+ * empty room that goes to sleep loses nothing; the `econ` part is the two
+ * doors' (gold.js, bag.js): minted and burned, gold and each bag key, for
+ * the whole room, added as each road runs.
  *
  * THE KILL SWITCH `daybook: false` in the live flags (liveops.js
  * `_daybookOff`): nothing is added, written or pruned; what is stored stays;
@@ -81,6 +87,11 @@ export const DAYBOOK = Object.freeze({
   KEY_MAX: 96,
   ARR_MAX: 64,
   NUM_MAX: 1e15,
+  /* v2.3.5085 (the gatekeeper's find, sitting 2): a caller's `now` further
+     than this from the room's own clock is not believed -- a far one would
+     set the pace's mark ahead and stop the puts, or file a count under
+     another day.  The room's clock is used instead. */
+  SKEW_MS: 5 * 60 * 1000,
 });
 
 const KEY_RE = /^[A-Za-z0-9_.:|,+=-]+$/;
@@ -105,7 +116,19 @@ function dayBefore(day, days) {
 
 const keyOk = (k) => typeof k === 'string' && k.length > 0 && k.length <= DAYBOOK.KEY_MAX && KEY_RE.test(k) && !BAD_KEYS.has(k);
 const numOk = (v) => typeof v === 'number' && Number.isFinite(v);
-const arrOk = (a) => Array.isArray(a) && a.length > 0 && a.length <= DAYBOOK.ARR_MAX && a.every(numOk);
+/* v2.3.5085 (the gatekeeper's find): every PLACE checked -- `every` skips the
+   holes of an array with gaps, and a hole read as a number is NaN */
+const arrOk = (a) => {
+  if (!Array.isArray(a) || a.length === 0 || a.length > DAYBOOK.ARR_MAX) return false;
+  for (let i = 0; i < a.length; i++) if (!numOk(a[i])) return false;
+  return true;
+};
+/** The time a call is filed under: the caller's `now` when it is near the
+ *  room's own clock, the room's clock when it is not (or not a number). */
+export function bookNow(now) {
+  const t = Date.now();
+  return numOk(now) && Math.abs(now - t) <= DAYBOOK.SKEW_MS ? now : t;
+}
 
 /* What a number, an array or a tree under key `k` may take as JSON, at most
    (a number of NUM_MAX or a long fraction is ~22 characters; the quotes, the
@@ -269,7 +292,7 @@ export function bookAdd(room, part, nums, now) {
   try {
     if (!room || off(room)) return false;
     if (DAYBOOK.PARTS.indexOf(part) < 0) return false;
-    now = numOk(now) ? now : Date.now();
+    now = bookNow(now);   /* v2.3.5085 */
     const b = mem(room);
     const d = dayMem(b, bookDay(now));
     const over = () => { d.over[part] = (d.over[part] || 0) + 1; };
@@ -289,10 +312,10 @@ export function bookAdd(room, part, nums, now) {
 export function bookMaybePut(room, now) {
   const b = mem(room);
   if (b.putting) return null;
-  now = numOk(now) ? now : Date.now();
+  now = bookNow(now);   /* v2.3.5085 */
   if (b.lastPut && now - b.lastPut < DAYBOOK.PACE_MS) return null;
   b.lastPut = now;   /* the attempt is the pace's mark: a storage that refuses is asked again a pace later, not at every add */
-  b.putting = bookPut(room, now).finally(() => { b.putting = null; });
+  b.putting = putDays(room, now).finally(() => { b.putting = null; });
   return b.putting;
 }
 
@@ -302,11 +325,24 @@ function giveBack(b, day, taken) {
   mergeDay(d.parts, d.over, taken);
 }
 
-/** Write every day with sums waiting, oldest first: read, add, put.  Then one
- *  page of the prune.  Awaited only by the put's own promise (and tests). */
+/** Write every day with sums waiting, NOW, whatever the pace: read, add, put.
+ *  v2.3.5085: it waits for a put already running first -- two read-add-puts of
+ *  one day at once would each read the day before the other wrote it, and the
+ *  later put would lose the earlier one's sums. */
 export async function bookPut(room, now) {
+  if (!room || off(room)) return;
   const b = mem(room);
-  now = numOk(now) ? now : Date.now();
+  while (b.putting) await b.putting.catch(() => {});
+  b.putting = putDays(room, now).finally(() => { b.putting = null; });
+  return b.putting;
+}
+
+/* The write itself: every day with sums waiting, oldest first; then one page
+   of the prune.  Only ever run as `b.putting` (one at a time). */
+async function putDays(room, now) {
+  if (off(room)) return;   /* v2.3.5085: switched off, nothing written or pruned */
+  const b = mem(room);
+  now = bookNow(now);   /* v2.3.5085 */
   const days = [...b.days.keys()].sort();
   for (const day of days) {
     const taken = b.days.get(day);
@@ -328,12 +364,29 @@ export async function bookPut(room, now) {
   await bookPrunePage(room, now);
 }
 
+/** v2.3.5085: write what waits NOW, whatever the pace -- the last one out
+ *  (leave.js): an empty room's worker may be put to sleep before another
+ *  add, and what it held only in memory would go with it.  Waits for a put
+ *  already running (never two read-add-puts of one day at once), and marks
+ *  the pace.  Never throws. */
+export async function bookFlush(room, now) {
+  try {
+    if (!room || off(room)) return;
+    const b = mem(room);
+    while (b.putting) await b.putting.catch(() => {});
+    if (!b.days.size) return;
+    now = bookNow(now);
+    b.lastPut = now;
+    await bookPut(room, now);
+  } catch (e) { /* a count must never stop the leave it rides */ }
+}
+
 /** One page of the prune: the days before the last KEEP_DAYS go, the oldest
  *  first, PRUNE_PAGE keys a call.  Starts once a worker's life a UTC day and
  *  runs a page each put until a page finds nothing to drop. */
 export async function bookPrunePage(room, now) {
   const b = mem(room);
-  const today = bookDay(numOk(now) ? now : Date.now());
+  const today = bookDay(bookNow(now));   /* v2.3.5085 */
   if (b.prunedDay === today) return false;
   const line = bookKey(dayBefore(today, DAYBOOK.KEEP_DAYS - 1));   /* the oldest day kept */
   try {

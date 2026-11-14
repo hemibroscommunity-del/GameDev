@@ -42,6 +42,7 @@
  * tick.  It is a body leaving, not a socket; it calls no duty of this table
  * but the body's own (the caches, player_leave, the save).
  */
+import { bookFlush } from './daybook.js';   /* v2.3.5085: the last one out writes the day's book (card E PR 6) */
 
 /* The duties, in the order the door runs them (the close's order):
      linger   the body stays if its fight is on (linger.js _lingerOnClose)
@@ -269,6 +270,10 @@ export const leaveMethods = {
         for (const id of [...this._lingerBodies.keys()]) { const _le = this._lingerEnd(id); if (_le && _le.catch) _le.catch(() => {}); }
       }
       if (this.sessions.size === 0 && this.tickInterval) { clearInterval(this.tickInterval); this.tickInterval = null; }
+      /* v2.3.5085: the day's book writes what waits (daybook.js bookFlush): an
+         empty room's worker may be put to sleep before the next add (card E
+         PR 6; the owner's yes of 2026-11-14) */
+      if (this.sessions.size === 0) { const _bk = bookFlush(this); if (_bk && _bk.catch) _bk.catch(() => {}); }
     }
     if (d.copies) {
       if (_petsLeft) await this._petbookPut(session.id, _petsLeft);

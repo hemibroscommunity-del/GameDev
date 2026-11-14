@@ -83,7 +83,8 @@ function boxEntries(box) {
 }
 
 import { setGearStashCap, GEAR_STASH_CAP, GEAR_STASH_CAP_LEGACY, WEAPON_STASH_CAP_NEW, WEAPON_STASH_CAP_LEGACY } from './gearstash.js';   /* v2.3.4224 */
-import { setBagOneSum } from './bag.js';   /* v2.3.4900: the bag door's step 2 switch */
+import { setBagOneSum, setBagBook } from './bag.js';   /* v2.3.4900: the bag door's step 2 switch; v2.3.5085: + its book */
+import { bookAdd } from './daybook.js';   /* v2.3.5085 */
 
 export const LIVEOPS = {
   XP_MULT_MIN: 1,
@@ -140,6 +141,9 @@ export const liveopsMethods = {
        handed down here because bag.js's plain functions cannot see the flags */
     const f = this._liveFlags;
     setBagOneSum(!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'bagonesum') && !f.bagonesum));
+    /* v2.3.5085: and the day's book's door, for the `econ` part (bag.js
+       setBagBook: what a road mints and burns of each key, as it runs) */
+    setBagBook((cls, k, n) => bookAdd(this, 'econ', { i: { [cls]: { [k]: n } } }));
   },
 
   /* v2.3.5080: the day's book's kill switch (daybook.js), read the lower-case
