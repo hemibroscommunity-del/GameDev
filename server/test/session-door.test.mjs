@@ -17,7 +17,8 @@
  *      end, and a way named by a caller that the table has not got (or a row
  *      nobody uses).
  */
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { SRC_DIR, srcFiles } from './src-walk.mjs';
 import { GameRoom } from '../src/index.js';
 import { LEAVE_WAYS } from '../src/leave.js';
 import { WHEEL_ZONE } from '../src/wheelzone.js';
@@ -223,8 +224,8 @@ for (const [why, play] of Object.entries(PLAYS)) {
 /* ── 3. ONE DOOR: the scan ── */
 const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
   .replace(/(^|[^:'"`\\])\/\/[^\n]*/g, (m, p1) => p1 + ' '.repeat(m.length - p1.length));
-const dir = new URL('../src/', import.meta.url);
-const files = readdirSync(dir).filter((f) => f.endsWith('.js')).sort();
+const dir = SRC_DIR;
+const files = srcFiles();   /* v2.3.5060: in depth, a folder's files too (src-walk.mjs) */
 const code = Object.create(null);
 for (const f of files) code[f] = strip(readFileSync(new URL(f, dir), 'utf8'));
 function where(re, allow) {

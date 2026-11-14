@@ -9,20 +9,17 @@
  * colours a picture at most") and written to <to dir>/<name>.png as a palette
  * PNG.  Each is read back and must give exactly the colours written.
  * Called by the cutting tools (tools/art/cut_water_frog.py).
+ *
+ * v2.3.5243: its four steps are the asset door's finishing tool's
+ * (tools/assets/finish.mjs: readRgba, onColours, encodePng, verifyPng), and
+ * the read-back is the game's own reader (src/rendering/png8Decode.js) where
+ * it was ffmpeg.  The same command line, the same colours (compared, card P
+ * PR 3), the same bytes.
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
-import { reduce256, toRgba } from '../../public/tools/style/quant256.js';
-import { encodeIndexedPng } from '../../public/tools/world/core/png8.js';
-
-function readRgba(file) {
-  const [w, h] = execFileSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height',
-    '-of', 'csv=p=0', file]).toString().trim().split(',').map(Number);
-  const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', file, '-f', 'rawvideo', '-pix_fmt', 'rgba', '-'], { maxBuffer: 1 << 30 });
-  if (raw.length !== w * h * 4) throw new Error(`${file}: read ${raw.length} bytes for ${w}x${h}`);
-  return { w, h, d: new Uint8Array(raw.buffer, raw.byteOffset, raw.length) };
-}
+import { reduce256 } from '../../public/tools/style/quant256.js';
+import { readRgba, onColours, joinPixels, splitIdx, encodePng, verifyPng } from '../assets/finish.mjs';
 
 /* --shared: ONE list of colours for every strip named (v2.3.4359).  The game
    holds a monster's strips as colour numbers on one row of colours a bundle
@@ -36,35 +33,29 @@ if (shared) argv.shift();
 const [from, to, ...names] = argv;
 if (!from || !to || !names.length) { console.error('usage: strip256.mjs [--shared] <from dir> <to dir> <name> ...'); process.exit(2); }
 async function write(name, w, h, idx, pal, note) {
-  const bytes = await encodeIndexedPng(idx, pal, w, h);
-  if (!bytes) throw new Error('no CompressionStream: Node 18 or later');
+  const bytes = await encodePng(idx, pal, w, h);
   const out = path.join(to, name + '.png');
   fs.writeFileSync(out, bytes);
-  const back = readRgba(out), want = toRgba(idx, pal);
-  for (let i = 0; i < want.length; i++) {
-    if (back.d[i] !== want[i] && !(want[(i & ~3) + 3] === 0 && back.d[(i & ~3) + 3] === 0)) {
-      throw new Error(`${out}: reads back differently at byte ${i}`);
-    }
-  }
+  await verifyPng(fs.readFileSync(out), idx, pal, w, h, out);   /* read back: exactly the colours written */
   console.log(`  ${name}.png ${w}x${h}: ${note}, ${Math.round(bytes.length / 1024)} KB`);
 }
 if (shared) {
   const pics = names.map((name) => Object.assign({ name }, readRgba(path.join(from, name + '.png'))));
-  const total = pics.reduce((a, p) => a + p.w * p.h, 0);
-  const all = new Uint8Array(total * 4);
-  let o = 0;
-  for (const p of pics) { all.set(p.d, o); o += p.d.length; }
+  /* every pixel of every strip as one picture (finish.mjs joinPixels, the
+     same join its onColours makes): server/test/monster-palettes.test.mjs
+     reads this call */
+  const { all, total } = joinPixels(pics);
   const r = reduce256(all, total, 1);
-  let at = 0;
-  for (const p of pics) {
-    await write(p.name, p.w, p.h, r.idx.subarray(at, at + p.w * p.h), r.pal, `the ${r.n} colours shared by all ${pics.length}`);
-    at += p.w * p.h;
+  const idx = splitIdx(r.idx, pics);
+  for (let k = 0; k < pics.length; k++) {
+    const p = pics[k];
+    await write(p.name, p.w, p.h, idx[k], r.pal, `the ${r.n} colours shared by all ${pics.length}`);
   }
   console.log(`  ${pics.length} strips on ${r.n} colours together${r.exact ? '' : `, moved ${r.err.toFixed(4)}`}`);
 } else {
   for (const name of names) {
-    const { w, h, d } = readRgba(path.join(from, name + '.png'));
-    const r = reduce256(d, w, h);
-    await write(name, w, h, r.idx, r.pal, `${r.n} colours${r.exact ? '' : `, moved ${r.err.toFixed(4)}`}`);
+    const pic = readRgba(path.join(from, name + '.png'));
+    const r = onColours([pic]);
+    await write(name, pic.w, pic.h, r.idx[0], r.pal, `${r.n} colours${r.exact ? '' : `, moved ${r.err.toFixed(4)}`}`);
   }
 }

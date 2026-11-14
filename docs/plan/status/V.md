@@ -1,6 +1,6 @@
 card: V
 branch: claude/plan-v-6-look-tables (PR 6; PRs 1-5: claude/plan-v-1 to -5)
-prs: #1724, #1726, #1729, #1731, #1735 (each ready), PR 6 tag 5325 (ready)
+prs: #1724-#1729 (merged), #1731, #1735 (ready), #1737 tag 5325 (ready)
 state: ready
 
 ## Done
@@ -17,7 +17,8 @@ state: ready
 ## Found
 - §2: `ps.capeOff` (`server/src/eventcapes.js`) is not in `_saveRpg`'s list
   (`persistence.js`, card A's): a cape taken off is worn again after a rejoin.
-- Card N's walker and wire table are not on `main` (§2, §1 read their own).
+- Card N's walker and wire table landed (sitting 5) after PRs 1-2 merged: §2
+  walks `server/src/` itself, §1 reads `RELAY.TYPES` (see Needs).
 - Need the page or the art: §109's coach (`QuestCoach.jsx`); §222's landing;
   §64's other boxes; §134's other overlays (`src/ui/LevelUpBurstStack.jsx` is
   no body portal: unsure it is under a scrim); §93/§94 beyond the eye styles.
@@ -25,8 +26,7 @@ state: ready
 - §262: the card's line read as the trap's break, as TRAPS §262's rule says.
 - §29: 120 label selectors in 66 files of `tools/qa/mp/` (card Y's).
 - §136: `tools/qa/mp/mp-rollhit.mjs`, `mp-blockcost.mjs` (card Y).
-- §181: `tools/lab/run.mjs`, `tools/qa/load/dobench/drive.mjs` (own workers,
-  no route: harmless today). No card.
+- §181: `tools/lab/run.mjs`, `tools/qa/load/dobench/drive.mjs` (harmless).
 - §199: `/world/arena/` (`src/data/arenaArt.js`) has no `_headers` rule.
 - §230: `tools/audio/cut_monster_noises.py` decodes with `-ac 1`. No card.
 - §52: the leaderboards' trophies (`src/ui/mobile/dash/BoardRow.jsx`) mask
@@ -36,4 +36,5 @@ state: ready
   fetches have none (a census).
 
 ## Needs
-- Nothing.
+- The owner: move §2 onto `server/test/src-walk.mjs` and §1 onto N's wire
+  table in a PR of card V's (tag 5327) or leave it to the next card?

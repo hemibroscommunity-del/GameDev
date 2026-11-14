@@ -54,6 +54,7 @@ import { BOSS_ABILITIES } from '../src/dungeon.js';
 import { SHOCK, BURN, POISON } from '../src/monsterstatus.js';
 import { FIRE_TRAIL } from '../src/firetrail.js';
 import { ZONE_PROPS } from '../src/props.js';
+import { srcFiles } from './src-walk.mjs';
 
 const mockState = () => ({
   storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} },
@@ -582,7 +583,7 @@ for (const src of ALL.filter((s) => s !== 'boss')) {
 /* Added with the door; §1-§9 above are the table it had to keep, unchanged. */
 {
   const { MONSTER_HITS } = await import('../src/hits.js');
-  const { readdirSync, readFileSync } = await import('node:fs');
+  const { readFileSync } = await import('node:fs');
   /* 10a. every way of being hit measured above is one row of the door's
      table, and every row of the table is measured above */
   /* v2.3.3748: + the heap, which no monster deals: measured in §11 below and
@@ -623,7 +624,7 @@ for (const src of ALL.filter((s) => s !== 'boss')) {
      player's extras.  A new way for a monster to hurt you goes through
      _monsterHit with its own row, or it fails here. */
   const dir = new URL('../src/', import.meta.url);
-  const callers = readdirSync(dir).filter((f) => f.endsWith('.js'))
+  const callers = srcFiles()   /* v2.3.5060: in depth, a folder's files too (src-walk.mjs) */
     .filter((f) => /this\._applyDamage\(/.test(readFileSync(new URL(f, dir), 'utf8')));
   check('10d. only hits.js, combat.js and pvpextras.js call _applyDamage', callers.sort().join(',') === 'combat.js,hits.js,pvpextras.js', callers);
   /* 10e. a row the table does not have hits nobody */
