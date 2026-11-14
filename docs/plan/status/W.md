@@ -25,7 +25,14 @@ state: working
   scripts of their own (no `run` export). `run.mjs` says so when asked for
   one by name, and never imports them.
 
+- The tag check refused every card's own tag: the cards on main print them
+  with the prefix, so it read them as used (card F stopped on it). PR 2
+  leaves `docs/plan/cards/` out of what main has used (precheck.mjs, one
+  line). PR 1 alone still fails that one check until PR 2 is merged with it.
+
 ## Needs
+- Owner: is that tag-check fix the one you want (the other is to rewrite the
+  cards with bare numbers)? It is in PR 2.
 - Owner: `mp-topaudit.mjs`: delete it, or move it to the world? (Not W's
   file.)
 - Owner: with no name given, `run.mjs` still runs the table only, and names
