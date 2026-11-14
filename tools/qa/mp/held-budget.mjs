@@ -91,16 +91,15 @@ export const KNOWN = {
        -> 9 ms, 3 times; its own line (100) is gone, the family's 60 stands */
     crowd: 'v2.3.4871 FIXED (was:) eight species-and-skin pairs on screen (e-species) churn their builds (speciesArt.js _BUILD_CAP 6: each frame lets go of one and builds another, and what it let go of is freed 30 s later): 566 pictures of 256 x 256 made in a minute, 187 MB, then 757 and 250 MB.  The collector holds the page 35 to 100 ms at a time, and when the first tours went on after it, 336 to 698 ms walking into the crowd and up to 1076 ms at the Leaderboards.  On an iPhone this is the black screen, not a hitch.  Fix: a cap that is never under the looks on screen (or the build kept while its player is), and a let-go freed at once when nothing draws it' },
   /* ── v2.3.4499: found by the crowd tour (mp-crowdsweep) ── */
-  'gear-sheet': { ms: 195, whose: 'ours',
-    /* v2.3.5014: d-prints 12 (none: the longest hold of any family 8.2 / 11.9 / 7.4 ms, three runs; was 180.7 to 238.9 ms,
-       7 to 15 times): a drawn shirt is dressed on the body bake's worker in play (gearSheets.js _buildShirtOnWorker,
-       effectsRenderer.js _dressedOnWorker).  The family's own 195 stands: only d-prints was run again */
-    at: { 'd-prints': 12 },
-    why: "a drawn shirt composed on the page for each player who wears one, the first time each pose is drawn (composeShirt > stampShirtArt): 121 to 192 ms each, 8 to 13 times as ten players in drawn shirts swung, rolled and mined beside you (d-prints).  gearSheets.js keeps 8 drawings baked: with ten on screen none were seen to bake again in the 25 s",
-    next: 'stamp the drawing on the worker (the shirt is a 256-colour file like the rest), or draw the drawing as its own layer over the plain shirt instead of baking it into a sheet' },
-  portrait: { ms: 40, whose: 'ours',   /* v2.3.4960: 150 -> 40: the Leaderboards' faces 11.3 ms (g-boards, was 149); the bag's own portrait as armour goes on 37 ms (armour) */
-    why: 'the Leaderboards draw the faces of the players on a board one after another in one piece (drawCharacterPortrait, a body recoloured for each): 140 to 149 ms held at once as a board of 56 faces opens',
-    next: 'draw a few faces a frame (an idle callback, the rest as plain circles until their turn), and keep the faces a board drew' },
+  /* v2.3.5042: 'gear-sheet' (was 195; 12 at d-prints) and 'portrait' (was 40) off the list.  The drawn shirts have
+     been dressed on the body bake's worker since v2.3.5014: the crowd tour's b-fish, c-armour1, c-armour8, h-eight and
+     d-prints, four runs, no gear-sheet hold.  What was left of both, and the body-bake hold over its line at the main
+     tour's `armour` (28.8 ms), was ONE thing: the Equipment screen's figure drawn again as armour goes on and off
+     (characterPortrait.js drawCharacterPortrait), in one piece of 10 to 29 ms, named by whichever family's function was
+     most of it (composeShirt, recolorBodyToCanvas, or the portrait's own).  Now it lets a frame in after every step and
+     keeps the recoloured body for the look: the figure's holds at `peer` and `armour`, three runs, the longest 7.9,
+     12.5 and 8.1 ms (the 12.5 with 3 ms of another job, prog3CharLevel, in the same hold: one hold just past the
+     general line is the judge's noise) (docs/specs/held-sweep.md, "Card H") */
   /* v2.3.4960: 'other: createObjectURL' off the list: 9.3 ms at most (h-eight; was 18) */
   'other: wrapped > sweepPicsOnce': { ms: 16, whose: 'ours',
     why: "picsOnce.js's sweep of the cache's pictures, up to 15 ms with the crowd's pictures in it",
