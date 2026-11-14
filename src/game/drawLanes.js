@@ -393,6 +393,31 @@ export function laneKnob(name) {
   return knobAt(drawLane(), name, LANE._rung);
 }
 
+/* ═══ v2.3.5226 (the gatekeeper's sitting 15 on #1836): WHAT THE SCREEN SEES OF A KNOB ═══
+   The governor counts a rung as useful when it changes what is drawn
+   (framePacer.js next(), trim()), and read that as "its knob's value
+   changes".  For the crowd it is not: with 30 or fewer players near, 50 ->
+   30 -> 15 hides no one and saves nothing, yet each rung cost two late
+   verdicts before the rate's (about 5 s more of late frames a hot spell,
+   the owner alone on his iPhone).  So a knob's reader may say what the
+   screen sees of a value (crowdCap.js: the cap, or the players near if
+   fewer), and the governor compares those: a crowd rung whose cap is at or
+   above the players near is passed, down and up (the finder's cure; the
+   planning session's word). */
+const _seen = Object.create(null);
+/** A knob's reader says what the screen sees of a value (fn(value) -> what
+ *  decides the picture).  One a knob. */
+export function seeKnob(name, fn) {
+  if (KNOBS[name] && typeof fn === 'function') _seen[name] = fn;
+}
+/** What the screen sees of a knob's value now (the value itself where its
+ *  reader says nothing). */
+export function knobSeen(name, value) {
+  const f = _seen[name];
+  if (!f) return value;
+  try { return f(value); } catch (e) { return value; }
+}
+
 /** Be told when a knob's value changes (a lane picked, a rung moved): fn(value,
  *  was).  Returns a function that stops it. */
 export function onKnob(name, fn) {

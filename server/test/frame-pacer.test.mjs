@@ -87,6 +87,11 @@
  *      pixel step wanted before the tab hid is dropped at its return; a
  *      work-bound phone never reaches the pixels; `?ladderrate=0` and
  *      `?ladderpix=0` take their knobs off the governor's live set.
+ *  22. THE GATEKEEPER'S SITTING 15 (v2.3.5226, on #1836): a crowd rung whose
+ *      cap is at or above the players near hides no one and is passed (the
+ *      governor compares what the screen sees, drawLanes.js knobSeen): 10
+ *      near, the rate first; 20, the 15-step then the rate; 40, both crowd
+ *      steps then the rate; cooled with 10 near, back in one try.
  *
  * BREAK PROOF (rule 8), tried by hand 2026-11-14:
  *  13. framePacer.js makeGovernor down(): `upWait = Math.min(UP_WAIT_MAX_MS, upWait * 2)`
@@ -107,6 +112,8 @@
  *      ...a work-bound order `['work', 'chip', 'pixels']` -> FAIL 21c; liveKnobs() unfiltered by the switches -> FAIL 21d
  *      v2.3.5225: load() taking the kept pixel count (`pixels: 0` as the kept `v[2]`: (A) undone)
  *                                  -> FAIL 19g and 19c ([0,4,2], [3,4,2]: no step up in three cool minutes, no veil)
+ *  22. (v2.3.5226, the gatekeeper's sitting 15) vec() without knobSeen (the knob's value, not what the screen sees)
+ *                                  -> FAIL 22a (crowd, crowd, rate: the rate at 27 s), 22b, 22c (3 tries up)
  *  20. verdict() without `if (switchedOff()) { rest(ts, false); return; }` -> FAIL 20a, 20b, 20d, 20e (a step taken, a rung kept)
  *      ...rest() with `const to = row;` (the pixels in play) -> FAIL 20d
  */
@@ -117,6 +124,7 @@ import { framePaceOn, refreshOf, makeFramePacer, noteDrawn, whenDrawn, WHEN_DRAW
   lateOver, governOn, makeGovernor, useFrameSamples, holdLadder, lateSplit, LATE_DOWN, ladderRateOn, _tabHid } from '../../src/game/framePacer.js';
 import { readdirSync, statSync } from 'node:fs';
 import { AXES, KNOBS, KNOB_NAMES, knobAt, ladderRung, rungDepth, useDevClass, drawLane, _resetLanes, liveKnobs, _liveKnobs, MOVED_KNOBS } from '../../src/game/drawLanes.js';
+import { noteCrowdNear } from '../../src/game/crowdCap.js';   /* v2.3.5226: the players near (§22) -- what the screen sees of a crowd cap */
 import { setClientOff, _resetClientOff, CLIENT_SAVERS } from '../../src/game/clientOff.js';   /* v2.3.5235: the owner's switch */   /* v2.3.5222; v2.3.5224 the live knobs */
 
 let passed = 0, failed = 0;
@@ -831,6 +839,33 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
     !noPix.includes('pixels') && noPix.includes('rate') && !noRate.includes('rate') && noRate.includes('pixels') && !both.includes('rate') && !both.includes('pixels')
     && !px.steps.some((x) => x.axis === 'pixels') && !px.G.read().pending && px.G.read().depth === 0 && px.P.read().every === 1, { noPix, noRate, both, steps: px.steps.slice(0, 6), end: px.G.read() });
   _resetLanes();
+}
+
+/* 22: THE GATEKEEPER'S SITTING 15 (v2.3.5226, on #1836; the planning session's word): a crowd rung whose cap is at or
+   above the players near hides no one and is passed -- a hot spell with 30 or fewer around goes straight to the rate,
+   as before the crowd was a knob; with 40 around the crowd's two rungs come first, as the table orders them */
+{
+  const work = (near, heat) => {
+    _resetLanes();
+    noteCrowdNear(near);
+    const r = model(B60, { work: 22, chip: 3 }, heat, 3 * MIN, { veil: (x) => x < 2000, seed: 31 });
+    const out = { steps: r.steps, end: r.G.read(), every: r.P.read().every };
+    noteCrowdNear(Infinity);
+    return out;
+  };
+  const hot = () => 2;
+  const downs = (r) => r.steps.filter((x) => x.dir < 0).map((x) => x.knobs.join('+'));
+  const few = work(10, hot), mid = work(20, hot), many = work(40, hot), none = work(Infinity, hot);
+  const rateT = (r) => { const x = r.steps.find((y) => y.dir < 0 && y.knobs.includes('rate')); return x ? x.t : null; };
+  check(`22a. 10 players near: the first step is the rate's (${downs(few).join(', ')}), at ${(rateT(few) / 1000).toFixed(1)} s -- where the crowd's steps counted with no one near, the rate came at ${(rateT(none) / 1000).toFixed(1)} s`,
+    downs(few)[0] === 'rate' && !downs(few).includes('crowd') && rateT(few) != null && rateT(none) != null && rateT(few) < rateT(none), { few: few.steps.slice(0, 4), none: none.steps.slice(0, 4) });
+  check(`22b. 20 near: the 30-step hides no one and is passed, the 15-step taken (${downs(mid).join(', ')}); 40 near: both, then the rate (${downs(many).join(', ')})`,
+    downs(mid)[0] === 'crowd' && downs(mid)[1] === 'rate' && mid.steps[0].work === 2
+    && downs(many).slice(0, 3).join() === 'crowd,crowd,rate', { mid: mid.steps.slice(0, 4), many: many.steps.slice(0, 4) });
+  const cooled = work(10, (x) => (x < 1 * MIN ? 2 : 0.3));
+  const ups = cooled.steps.filter((x) => x.dir > 0);
+  check(`22c. ...and cooled with 10 near, back at the row in ONE try (${ups.length} up), no try spent on a crowd step (every ${cooled.every})`,
+    ups.length === 1 && cooled.end.depth === 0 && cooled.end.work === 0 && cooled.every === 1, { steps: cooled.steps, end: cooled.end });
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

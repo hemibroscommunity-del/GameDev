@@ -94,8 +94,24 @@ and gives them back first-in-last-out once it is cool.
 - `?laddercrowd=0`: the owner's 50 whatever the rung, and the crowd off the
   governor's live set.
 
+- **A crowd step that hides no one is passed** (the gatekeeper's sitting
+  15; the planning session's word). The governor counts a rung as useful
+  when it changes what is drawn. With 30 or fewer players near, 50 → 30 →
+  15 hides no one, yet each rung cost two late verdicts before the rate's
+  (about 5 s more of late frames a hot spell). Now the renderer tells
+  `crowdCap.js` how many players it counted near (`noteCrowdNear`), the
+  screen sees a cap as the players it draws (`crowdSeen`: the cap, or the
+  players near if fewer; an address that pins the cap, any rung the same),
+  and the governor compares what the screen sees (`drawLanes.js`
+  `knobSeen`). With 10 near a hot spell takes the rate first, as before the
+  crowd was a knob; with 20 near the 30-step is passed and the 15-step
+  taken; with 40 near both, then the rate. Cooled, a phone with few near is
+  back at the row in one try.
+
 Held by `crowd-cap.test` §4 (each rung's cap, `?crowd=`, `?laddercrowd=0`,
-the always-drawn at 15, the read through `laneKnob`).
+the always-drawn at 15, the read through `laneKnob`; 4f the renderer's bare
+`crowdK()` as the rung moves; 4g what the screen sees) and `frame-pacer.test`
+§22 (the governor with 10, 20 and 40 near).
 
 ## Measured
 

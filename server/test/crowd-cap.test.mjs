@@ -17,13 +17,19 @@
  *      at any rung (and the knob off the governor's live set); at the
  *      deepest rung the always-drawn are still drawn; the cap read through
  *      laneKnob('crowd') in crowdCap.js, and the renderer asks it each frame.
+ *      v2.3.5226 (the gatekeeper's sitting 15): 4f the renderer's bare
+ *      crowdK() follows the rung as it moves; 4g the screen sees a cap as the
+ *      players it draws (the governor passes a step that hides no one;
+ *      frame-pacer §22), and the renderer tells its count each frame.
  * BREAK PROOF (rule 8), tried by hand 2026-11-14:
  *   4. crowdK's `_knob()` as `CROWD_K` (the rung not read)  -> FAIL 4a (50, 50, 50) and 4d
  *      ...entityRenderer.js asking crowdK() once at load (the old const's way)  -> FAIL 4e
+ *      ...crowdSeen's `return Math.min(k, _near);` as `return k;`  -> FAIL 4g (and frame-pacer 22a-c)
+ *      ...entityRenderer.js without `noteCrowdNear(_near);`         -> FAIL 4g
  */
 import { readFileSync } from 'node:fs';
-import { CROWD_K, CROWD_HOLD, crowdPick, crowdFromSearch, crowdK, _resetCrowdK } from '../../src/game/crowdCap.js';
-import { setRung, _resetLanes, liveKnobs, AXES, knobAt } from '../../src/game/drawLanes.js';   /* v2.3.5226: the crowd's knob */
+import { CROWD_K, CROWD_HOLD, crowdPick, crowdFromSearch, crowdK, _resetCrowdK, noteCrowdNear, crowdSeen } from '../../src/game/crowdCap.js';
+import { setRung, _resetLanes, liveKnobs, AXES, knobAt, knobSeen } from '../../src/game/drawLanes.js';   /* v2.3.5226: the crowd's knob */
 import { systemNames, findIn } from '../../tools/guards/lib/filesOf.mjs';   /* v2.3.5226: the renderer read by system, never by its path */
 
 let passed = 0, failed = 0;
@@ -151,6 +157,35 @@ check('3d. capped at 500', crowdFromSearch('?crowd=99999') === 500);
   const atLoad = hits(/crowdFromSearch\(location|_crowdKAtLoad/);
   check(`4e. the cap is read through the lanes' one reader in crowdCap.js, and the renderer asks it every frame (no K fixed at load): ${asks.map((h) => h.file).join(', ')}`,
     /laneKnob\('crowd'\)/.test(cc) && asks.length === 1 && perFrame.length === 1 && perFrame[0].file === asks[0].file && atLoad.length === 0, { asks, perFrame, atLoad });
+  /* v2.3.5226 (the gatekeeper's sitting 15, a low): the renderer's own ask -- the bare crowdK(), the address read
+     once and the knob each call -- follows the rung as it moves */
+  _resetLanes();
+  _resetCrowdK();
+  const bare = [crowdK()];
+  for (const n of crowdAt) { setRung(n, 0, 0); bare.push(crowdK()); }
+  setRung(0, 0, 0);
+  bare.push(crowdK());
+  check(`4f. the renderer's bare crowdK() follows the rung as it moves: ${bare.join(', ')} (never frozen at its first ask)`, JSON.stringify(bare) === JSON.stringify([50, 30, 15, 50]), bare);
+  /* v2.3.5226 (the gatekeeper's sitting 15, the medium; the planning session's word): what the screen sees of a cap
+     is the players it draws -- a cap at or above the players near draws them all, so its step changes nothing */
+  const seen = (near) => { noteCrowdNear(near); return [50, 30, 15].map((v) => knobSeen('crowd', v)); };
+  const s10 = seen(10), s20 = seen(20), s40 = seen(40), s0 = seen(0);
+  noteCrowdNear(Infinity);
+  const sNone = [50, 30, 15].map((v) => crowdSeen(v));
+  check(`4g. the screen sees a cap as the players it draws: 10 near ${s10.join('/')}, 20 near ${s20.join('/')}, 40 near ${s40.join('/')}, none counted yet ${sNone.join('/')} (every step may matter)`,
+    s10.join() === '10,10,10' && s20.join() === '20,20,15' && s40.join() === '40,30,15' && s0.join() === '0,0,0' && sNone.join() === '50,30,15', { s10, s20, s40, s0, sNone });
+  const hadLoc2 = Object.prototype.hasOwnProperty.call(globalThis, 'location'), wasLoc2 = globalThis.location;
+  globalThis.location = { search: '?crowd=12' };
+  _resetCrowdK();
+  noteCrowdNear(40);
+  const pinned = [50, 30, 15].map((v) => knobSeen('crowd', v));
+  if (hadLoc2) globalThis.location = wasLoc2; else delete globalThis.location;
+  _resetCrowdK();
+  noteCrowdNear(Infinity);
+  check(`4g. an address that pins the cap (\`?crowd=12\`) makes every crowd step change nothing (${pinned.join('/')})`, pinned.join() === '12,12,12', pinned);
+  const er = hits(/noteCrowdNear\(_near\);/);
+  check('4g. the renderer tells the count it makes each frame (noteCrowdNear), where it counts the players near', er.length === 1 && er[0].file === asks[0].file, er);
+  _resetLanes();
 }
 
 console.log(`\ncrowd-cap: ${passed} passed, ${failed} failed`);

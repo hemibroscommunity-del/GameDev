@@ -158,7 +158,7 @@ import { SHADE, propShade } from '../formShade.js'; /* v2.3.2767: light from abo
 import { fishRodAt, hasFishRodMask, fishRodMaskData } from '../toolRecolor.js';
 import { standInReady, farmFigureReady, peerStandInReady } from '../standIns.js';   /* v2.3.3077: a gathering pose hides the body only once it is made; v2.3.3314: a peer's, once made in their colours */
 import { parseFarmEx } from '@/game/farmWork.js';   /* v2.3.3439: a peer working a bed of their farm, off their `ex` */
-import { crowdPick, crowdK } from '../../game/crowdCap.js';   /* v2.3.3241: at most K other players drawn in full; v2.3.5226: K the ladder's knob (crowdK) */
+import { crowdPick, crowdK, noteCrowdNear } from '../../game/crowdCap.js';   /* v2.3.3241: at most K other players drawn in full; v2.3.5226: K the ladder's knob (crowdK) */
 import { SMALL_TEX, elemSmallKey } from '@/data/smallIcons.js';   /* v2.3.3279: the owner's party badge, threat skull and talk bubble */
 import { QUEST_PIN, QUEST_PIN_WORLD } from '@/data/ownerIcons.js';   /* v2.3.3481: the owner's quest pins over a townsperson */
 import { broBadgeOf } from '../../networking/broWallet.js';   /* v2.3.3255: the Hemi Bro checkmark -- the worn Bro verified, or a wallet holding one or more */
@@ -12452,6 +12452,7 @@ export class EntityRenderer {
       };
       let _near = 0;
       for (const id in others) if (_nearHere(others[id])) _near++;
+      noteCrowdNear(_near);   /* v2.3.5226: a crowd step that hides no one is passed (crowdCap.js) */
       if (_near > _capK) {
         const me = S.player || {};
         const party = (S._party && Array.isArray(S._party.members)) ? S._party.members : null;
@@ -12486,7 +12487,7 @@ export class EntityRenderer {
         _crowdKeep = crowdPick(cands, _capK, _prev, _out);
         cands.length = 0;
       }
-    }
+    } else noteCrowdNear(0);   /* v2.3.5226: no cap (`?nopeercull`): no crowd step changes what is drawn */
     this._crowdShown = _crowdKeep || 'all';
 
     for (const [id, other] of Object.entries(others)) {
