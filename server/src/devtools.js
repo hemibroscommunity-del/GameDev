@@ -55,6 +55,7 @@ import { PROG3, prog3RespecPoints } from './prog3.js'; /* v2.3.3313: the combat 
 import { bagGive, bagSet } from './bag.js'; /* v2.3.4810: the bag door */
 import { GOLD_LOG, goldLogOf } from './gold.js'; /* v2.3.4903: the gold log (/dev/goldlog) */
 import { bookRead } from './daybook.js'; /* v2.3.5125: the day's book's one reader (/dev/daybook) */
+import { econCardRead } from './econcard.js'; /* v2.3.5093: the owner's card's other read (/dev/econcard) */
 
 export const DEVKIT = {
   /* The tutorial's own starter weapons -- copper/pine/pine.  Deliberately
@@ -744,6 +745,12 @@ export const devToolsMethods = {
        (ReportTable.jsx) and card E's owner's card.  Read-only. */
     if (request.method === 'GET' && path === '/dev/daybook') {
       const r = await bookRead(this, new URL(request.url).searchParams.get('days') || 7);
+      return json(r, r.ok ? 200 : 500);
+    }
+    /* v2.3.5093: THE OWNER'S CARD'S OTHER READ (econcard.js, card E PR 12): the daily snapshots' world sums
+       and the transfer ledger's days, summed, for the economy card's numbers.  Read-only. */
+    if (request.method === 'GET' && path === '/dev/econcard') {
+      const r = await econCardRead(this, new URL(request.url).searchParams.get('days') || 1);
       return json(r, r.ok ? 200 : 500);
     }
     /* v2.3.4545: EVERY PLAYER'S ACCURACY, a day (accuracy.js) -- the Test panel's "Accuracy" box.  Read-only. */

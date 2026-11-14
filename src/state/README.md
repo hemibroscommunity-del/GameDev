@@ -34,7 +34,8 @@ A top-of-file variable has `variable` and `file` where a field has `field`,
 | `field` | the field's name: `S.<name>` (a nested path is its top field's row) | machine |
 | `variable`, `file` | the variable's name and its file | machine |
 | `system` | card B's map's system of a file: a variable's own; for a field, the file that sets it most (the census's provisional system) | machine |
-| `lifetime` | when it is reset. **`sitting`** ("the sitting, never reset") for every row until someone says otherwise | **hand** |
+| `lifetime` | when it is reset. **`sitting`** ("the sitting, never reset") for every row until someone says otherwise; else the edges it is reset at, joined by `+` (`zone`, `zone+rejoin`: v2.3.5203, card L) | **hand** |
+| `reset` | (v2.3.5203, card L; absent until someone decides) beside an edge, `value <v>` or `fn <name>`: what the reset registered with `resetOn` (src/game/resetOn.js) puts back; beside `sitting`, `kept: <why>`: why D's suggestion does not hold. `docs/specs/state-resets.md` | **hand** |
 | `suggested` | card D's suggested reset, copied: `never`, `zone`, `death`, `rejoin`, or two joined by `+`. A suggestion, **never** the lifetime | machine (D's table) |
 | `born` | a field: `first src/ui/BroTown.jsx` (the state's first object), `fly <file> <function>` (made on the fly, where it is first set), or `never` (only read, or changed inside). A variable: how it is declared and what it is made as (`let number`, `const Map`) | machine |
 | `twoFiles` | D's mark: `2+` written from two or more files; `2+~` only when writes through a name for the inside count; else `''` | machine |
@@ -81,6 +82,11 @@ copies their writers. Held by `tools/guards/phase-table.test.mjs`; the spec is
 - every row the census finds is listed, or counted as **unlisted**, and that
   count may only fall (the plan's rule 3: a census; the gatekeeper alone
   lowers its line, `UNLISTED_LINE`, and makes it strict);
+- (v2.3.5203) a row whose `lifetime` names an edge is reset there (a
+  `resetOn` whose function writes it, or the edge's door's own list), and
+  every reset writes only such rows; the rows D suggests a reset for that are
+  still `sitting` with no `kept:` may only fall (`SITTING_LINE`, which card
+  L's reset PRs lower: 468 after its PR 3);
 - (v2.3.5201) every listed row's **machine columns** are the script's, as
   `--ledger` makes them now: `system`, `suggested`, `born`, `twoFiles`,
   `noRead`, `noSet`, `neverChanged`, `phase`, `flag`, `writers`. A row typed
@@ -126,6 +132,8 @@ until the map places their file; the guard lists those files by name.
   placed (`unsorted`): `src/game/characterCreatorEffects.js`, `rpgSave.js`,
   `spriteSheets.js` and `visualSystems.js`. They go in a ledger when the map
   gives their file a system.
+- `state` (v2.3.5203, card L): `src/game/resetOn.js`'s row, the resets'
+  own (the map gives the file to this folder's system).
 - Main merged in (sitting 5, v2.3.5168): the census page made again, and
   the 20 rows main's merged work had added since put in their ledgers
   (art 2, memory 2, debug 3, render 3, audio 4, device 6).

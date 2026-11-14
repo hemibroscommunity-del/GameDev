@@ -26,6 +26,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 
 | name | side | kind | born | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|
+| `?audioreset` | page | switch | v2.3.5203 | =0 | logic |  | no | The balls' ends are kept across a change of place again (hitSounds.js forgetShotEnds no longer runs at the zone door). |
 | `?foldgentle` | page | switch | v2.3.5045 | =0, off, false | logic |  | no | A sound is folded to mono in one go again, not in turns between frames. |
 | `?nobeds` | page | switch | v2.3.3462 | present | logic |  | no | No ambient sound beds (sea, crowd, fire). |
 | `?noforge` | page | switch | v2.3.3434 | present | logic |  | no | No forge sounds in the town. |
@@ -56,6 +57,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `bigorb` | worker | switch | v2.3.2849 | false | logic |  | no | Un-advertises the staff's big orb: a phone that joins after fires the old three orbs, with no blast. |
 | `?bowfeel` | page | switch | v2.3.4802 | =0 (remembered; =1 forgets) | logic |  | no | The bow's old flick, not its draw, on this device. |
 | `bowvolley` | worker | switch | v2.3.2808 | false | logic |  | no | Un-advertises the bow's volley: a phone that joins after fires the old single arrow and blast. |
+| `?combatreset` | page | switch | v2.3.5206 | =0 | logic |  | no | A fight you picked, a roll or a lunge, the hit marks on the ground, a kill's XP still waiting and another player's damage numbers still queued carry over a change of place again, each ending on its own clock or its own check, not at the zone door. |
 | `disable_threats` | worker | switch | v2.3.1150 | true | logic |  | no | Thrown, every relayed threat handshake is dropped. |
 | `elemup` | worker | switch | v2.3.3518 | false | logic |  | no | Un-advertises the element bonus and takes it away. |
 | `fightlockarmor` | worker | switch | v2.3.4582 | false | logic |  | no | Armour put on or taken off in a fight is no longer refused. |
@@ -138,6 +140,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `ahonewrite` | worker | switch | v2.3.4500 | false | logic |  | no | An auction-house listing goes back to its old two writes, restart hole and all. |
 | `armorstashlive` | worker | switch | v2.3.4840 | false | logic |  | no | The armour stash list goes back to being sent only at the join. |
 | `bank` | worker | switch | v2.3.3785 | false | logic |  | no | Un-advertises the bank and refuses every deposit and withdrawal; what is in a vault stays and still shows. |
+| `capeoffkept` | worker | switch | v2.3.5422 | false | logic |  | no | A cape taken off is kept in memory only again, so it is worn again after a rejoin or a deploy. |
 | `dailyChest` | worker | switch | v2.3.2820 | false | logic |  | no | Un-advertises the daily chest and pays the day's reward as plain gold again (a chest in a bag waits). |
 | `dailyquests` | worker | switch | v2.3.3140 | true | logic |  | no | Thrown (true), the put-away daily quests come back: counting, rerolls and claims. |
 | `dailyspin` | worker | switch | v2.3.3140 | false | logic |  | no | Un-advertises the daily spin and refuses every spin (nothing taken away). |
@@ -147,6 +150,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `disable_offer_sweep_all` | worker | switch | v2.3.4412 | true | logic |  | no | Thrown, the store's offer sweep goes back to the old first-20 pass. |
 | `?droplines` | page | switch | v2.3.3627 | =0 | logic |  | no | No drop lines in the chat for what a kill drops. |
 | `econ` | worker | switch | v2.3.5085 | false | logic |  | no | Nothing is counted into a character's minted and burned (`_econ`) or the day's book's economy part; gold and items move as before. |
+| `econresetput` | worker | switch | v2.3.5094 | true | logic |  | no | Thrown (true), a character's restart with nobody in the room writes today's book at once, in the delete's own run (one put more): the owner's card then never reads it as a loss; off until the owner says yes. |
 | `?equipredraw` | page | switch | v2.3.5046 | =0 | logic |  | no | A change of worn gear is set all at once again, not in pieces a frame apart. |
 | `event_cape_rate` | worker | value | v2.3.2027 | a number | logic |  | no | The event cape's drop rate, a number in place of the shipped one. |
 | `gearlevel` | worker | switch | v2.3.3544 | false | logic | `onelevel` | no | Armour, shields and amulets ask Defense points and Magic again, not your level. |
@@ -167,6 +171,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `toolshop` | worker | switch | v2.3.3316 | false | logic |  | no | Takes the tools off the shelf and refuses every buy. |
 | `trade2` | worker | switch | v2.3.4375 | false | logic |  | no | The trade window is off, so the old gift is open again. |
 | `tradeonewrite` | worker | switch | v2.3.4795 | false | logic |  | no | The trade's swap goes back to its old order of writes. |
+| `valuepause` | worker | switch | v2.3.5090 | false | logic |  | no | An action that hands gold or goods on runs even in the minute after the storage refused a save (nothing pauses). |
 | `xfer` | worker | switch | v2.3.5092 | false | logic |  | no | No transfer ledger row (`xfer:`) is written; trades run exactly as before. |
 
 ## identity
@@ -254,6 +259,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?legsync` | page | switch | v2.3.4077 | =0 | logic |  | no | The legs keep their old fixed cadences, not synced to the speed. |
 | `monsterroll` | worker | switch | v2.3.3300 | false | logic |  | no | A monster gets no roll i-frames (the way before v2.3.3300). |
 | `movebudget` | worker | switch | v2.3.3325 | false | logic |  | no | The move budget off: the per-message 80, the refusals and the three bypasses as before. |
+| `?movementreset` | page | switch | v2.3.5204 | =0 | logic |  | no | A climb and a swim end a frame after a change of place again, on their own off-the-Wheel checks, not at the zone door. |
 | `movepath` | worker | switch | v2.3.3726 | false | logic |  | no | No glide from the next tick; every phone is told to send every move again. |
 | `pathall` | worker | switch | v2.3.3726 | false | logic | `movepath` | no | Only a phone that asks with ?diet=1 gets the move glide. |
 | `rest` | worker | switch | v2.3.3539 | false | logic |  | no | Un-advertises the Hotel's rest: it rests nobody and pays no Well Rested XP. |
@@ -369,6 +375,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `onetoone` | worker | switch | v2.3.3912 | false | logic |  | no | The old five-to-one smelting rows, and caps.onetoone taken back. |
 | `pvpheal` | worker | switch | v2.3.3133 | false | logic |  | no | The PvP bite rule (food held back in a fight between players) is off, and caps.pvpheal reads false. |
 | `shardcrack` | worker | switch | v2.3.3516 | false | logic |  | no | Un-advertises shard cracking, refuses every crack and combine, and puts the raw gem back on the kill roll. |
+| `?skillsreset` | page | switch | v2.3.5205 | =0 | logic |  | no | A smelt's or a forge's pose runs out its seconds after a change of place again, not ended at the zone door. |
 | `smelting` | worker | switch | v2.3.2820 | false | logic |  | no | Refuses every smelt and un-advertises the cap; ore and bars untouched. |
 | `staffgather` | worker | switch | v2.3.4801 | false | logic |  | no | No staff gather is counted and caps.staffGather is un-advertised. |
 | `strikesnap` | worker | switch | v2.3.4642 | false | logic |  | no | A refused harvest strike is silent again. |
@@ -397,6 +404,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `partykeep` | worker | switch | v2.3.3276 | false | logic |  | no | Parties are not kept: the old cap and the away window remove a dropped member. |
 | `power` | worker | switch | v2.3.5481 | false | logic |  | no | Un-advertises the power index: no board report carries one, so the Power board empties as players report and the other boards are as they were. |
 | `race` | worker | switch | v2.3.3525 | false | logic |  | no | Lil Bro's race un-advertised and none started. |
+| `?socialreset` | page | switch | v2.3.5204 | =0 | logic |  | no | A race the worker forgot at a reconnect stays on the phone until its own clock lets it go, as before. |
 | `spar` | worker | switch | v2.3.3265 | false | logic |  | no | No sparring clones: every live clone goes on the next tick and the cap is withdrawn. |
 | `statboards` | worker | switch | v2.3.5484 | false | logic |  | no | Un-advertises the stat boards: no board report carries the points allocated, so those boards empty as players report; every other board is as it was. |
 
@@ -407,6 +415,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?folkwalk` | page | switch | v2.3.3949 | =0 | logic |  | no | The townsfolk stand at their spots, not walk their day. |
 | `tour` | worker | switch | v2.3.3525 | false | logic |  | no | Un-advertises the tour's two givers. |
 | `?townchat` | page | switch | v2.3.3901 | =0 | logic |  | no | The townsfolk do not chat to each other. |
+| `?townsfolkreset` | page | switch | v2.3.5203 | =0 | logic |  | no | A held pose ends a frame after a change of place again, on its own check, not at the zone door. |
 
 ## ui
 
@@ -444,6 +453,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `relaylist` | worker | switch | v2.3.3304 | false | logic |  | no | Relays every type that is not privileged again (the old deny-list). |
 | `?room` | page | lever | v2.3.217 | a room's name | none |  | no | Joins the named room, not the lobby's. |
 | `?wheelwhole` | page | switch | v2.3.3318 | present | logic |  | no | Asks for every world monster on the way in, not only those near. |
+| `?wirereset` | page | switch | v2.3.5207 | =0 | logic |  | no | The monsters' balls in flight, their warnings on the ground and the impact rings carry over a change of place again, emptied only where a way out did it by hand or by their own clock. |
 
 ## world
 
@@ -500,4 +510,5 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `wheelrest` | worker | switch | v2.3.3299 | false | logic |  | no | Every monster runs every tick again (far monsters do not rest). |
 | `wheelslope` | worker | switch | v2.3.3320 | false | logic |  | no | A Wheel spawned after it is levels 1-2 again. |
 | `wheelstep` | worker | switch | v2.3.4540 | false | logic |  | no | A page that joins the Wheel off its step (a preview) is no longer kept out of harm and dealing nothing. |
+| `?worldreset` | page | switch | v2.3.5208 | =0 | logic |  | no | Your arrows, the hit and death particles and the place's air are emptied only by each way's own clear block again (the respawn's 0.4 s after its flip, under its veil), not at the zone door. |
 | `zonejudge` | worker | switch | v2.3.4565 | false | logic |  | no | The zone judge off (but its rule R3, the retired lands, stays: `retiredlands`). |
