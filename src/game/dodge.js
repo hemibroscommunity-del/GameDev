@@ -24,6 +24,7 @@ import { pvpExtrasTarget } from '@/game/abilities.js'; /* v2.3.3264: the player 
 import { brewMulNow } from '@/game/fightFood.js'; /* v2.3.3133: the retreat shot carries the damage brew */
 import { shotAimAt } from '@/game/projectiles.js'; /* v2.3.3501: what the retreat shot is fired at, boots to feet */
 import { shotAimWire } from '@/game/shotGround.js'; /* v2.3.3501: ...and on the wire */
+import { resetOn } from '@/game/resetOn.js';   /* v2.3.5206: a roll ends at the zone door (card L) */
 
 /* ═══ v2.3.2916: HOW LONG A ROLL LASTS -- ONE ANSWER, SENT WITH IT ═══
    Owner: "check all other broadcasted player animations to make sure they
@@ -59,6 +60,18 @@ export function walkingNow(S) {
   var P = S && S.player;
   return !!P && (Math.abs(P.vx || 0) > 0.01 || Math.abs(P.vy || 0) > 0.01);
 }
+
+/* ═══ v2.3.5206: A ROLL DOES NOT FOLLOW YOU THROUGH A DOOR (card L) ═══
+   The game loop moves you along a roll for its whole window (dodgeWindowMs,
+   250 to 700 ms, 6 px a frame), wherever you are: a roll begun in one place
+   went on sliding you from the spot you arrived at in the next.  The zone's
+   door (resetOn.js) ends it as the loop does when its window runs out
+   (BroTown.jsx: `S._dodgeRoll = null`).  `?combatreset=0` leaves it to its
+   window, as before. */
+function endRollAtDoor(S) {
+  S._dodgeRoll = null;
+}
+resetOn('zone', endRollAtDoor, 'combat');
 
 export var triggerContextualDodge = function (S, R, ang) {
     if (S._dodgeRoll) return;

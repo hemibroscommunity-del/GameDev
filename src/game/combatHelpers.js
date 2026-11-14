@@ -21,6 +21,7 @@ import { isDazed, isStaggered, isFrozen } from '@/game/elemHits.js';   /* v2.3.3
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3462: a refusal is heard (the owner's "denied" tick) */
 import { climbRefused } from '@/game/climbActions.js';   /* v2.3.3994: nor on the vines */
 import { noteBlow } from '@/game/deathBlow.js';   /* v2.3.3985: your own blow at its contact, for the monster's own death */
+import { resetOn } from '@/game/resetOn.js';   /* v2.3.5206: what a fight left on the place you leave goes at the zone door (card L) */
 
 /* ═══ v2.3.1979: WHERE A LOCKED TARGET ACTUALLY IS, FOR AIMING ═══
    Owner: "Tap to lock on enemy sometimes does not hit the target.  I was
@@ -1191,6 +1192,23 @@ export function spawnGroundDecal(S, x, y, arch, opts) {
   });
   if (S.groundSplatter.length > 80) S.groundSplatter.splice(0, S.groundSplatter.length - 80);
 }
+
+/* ═══ v2.3.5206: WHAT A FIGHT LEFT ON THE PLACE YOU LEAVE (card L) ═══
+   Each of these is a place's, and goes at the zone door (resetOn.js):
+   - the marks on the ground carry no zone, so for their 8 s (stateCleanup)
+     they lay on the new map where the old one had them;
+   - the other players' damage numbers still queued: releasePeerDamage's own
+     zone check drops them a frame later with the same two values, and stays
+     as the off-ramp (`?combatreset=0`);
+   - the per-monster damage mirror names the old place's monsters, and only
+     a kill ever took an entry out (applyMeleeLifesteal), so it only grew. */
+function leavePlaceFight(S) {
+  S.groundSplatter = [];
+  S._peerDmgQueue = {};
+  S._peerDmgLastRel = {};
+  S._dmgFromMonster = null;
+}
+resetOn('zone', leavePlaceFight, 'combat');
 
 export {
   clearSwingHitFlags,

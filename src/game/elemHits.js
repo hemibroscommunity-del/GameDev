@@ -330,14 +330,15 @@ export function gustStep(S, now) {
   return k > 0 ? { x: g.dx * k, y: g.dy * k } : null;
 }
 
-/** Death, a respawn or a zone change: every status ends. */
-export function clearElemStatuses(S) {
-  if (!S) return;
-  S._chillUntil = 0; S._stuckUntil = 0; S._burnUntil = 0; S._gust = null;
-  S._dazeUntil = 0; S._shockUntil = 0; S._shockFrom = null; S._soakUntil = 0; S._poisonUntil = 0;   /* v2.3.3014 */
-  S._slowUntil = 0; S._fractureUntil = 0; S._fractureStacks = 0; S._thornUntil = 0; S._staggerUntil = 0;   /* v2.3.3264 */
-  S._frozenUntil = 0; S._wobbleFrom = 0; S._wobbleUntil = 0;   /* v2.3.3620 */
-}
+/* v2.3.5206 (card L, card D's Found): clearElemStatuses ("death, a respawn
+   or a zone change: every status ends") is gone.  Nothing ever called it, and
+   it said the opposite of the game: these are the phone's copies of the
+   statuses the WORKER put on you, run out by their own clocks, and the worker
+   ends none at a change of place (server monsterstatus.js: only the safe
+   ground puts a burn out, and a respawn lands there).  Ending them on the
+   phone alone would hide a burn that still hurts.  The ledger keeps them
+   (src/state/combat.js), and state-resets.test §7 fails a clear of them that
+   nothing calls. */
 
 /* ═══ v2.3.4411: IS ANY STATUS'S LOOK STILL TO DRAW ON THIS FIGURE? ═══
    effectsRenderer asks this before it draws another player's statuses.  Its
