@@ -227,6 +227,7 @@ So:
 | | |
 |---|---|
 | The name | `reqId`, on the socket as `payload.reqId`, in an HTTP body as `reqId`. One name, one maker. |
+| The maker (built, v2.3.5185) | The action door, `src/game/actions.js` `makeReqId` (`rq-<clock>-<count>-<random>`), for every row whose wire row's `doesWhat` holds `value-out` or `final` (its `req` flag). It adds bytes, never a message; a worker that does not read it lets it pass. |
 | The form | A string of 1 to 64 of `A-Z a-z 0-9 _ -`. The bank's form today (`bk-<clock>-<count>-<random>`) fits. |
 | Its reach | The worker reads it only together with the actor's `pid`. One character's ids never meet another's. |
 | What it promises | A repeat with the same `reqId` acts once and gets the first answer again. An answer to a request that carried one echoes it. |
@@ -721,18 +722,18 @@ list can be made from the table and a guard can fail a second copy of it.
 | `privileged` | **Made from the table** (v2.3.5181, card K): the column `privileged` of `server/src/wire/` (left out on an `out` row: privileged; `echo`: the worker sends it and a phone's copy passes, its why in an `echo:` note). `server/src/wire/lists.js` makes `PRIVILEGED_EVENTS` (163) and wire-audit's echo list (9) from it | `server/src/wire/out.js`, `relays.js`; `lists.js` |
 | `relayed` | **Made from the table** (v2.3.5181): `RELAY.TYPES` (26) is every `relay` row (`lists.js`); what the default branch does on the way (a clean of its words, `chat`, `emote`; a settlement, the trade's, the duel's, the threat's, the clan invite's; a stamp, `player_projectile`) is the row's `at` | `server/src/wire/relays.js`; `lists.js` |
 | `body` | Where its fields sit. In: the top level (6 types), `payload`, `data` (`track`), or no body (16). Out: `payload`, or flat (about 20). | each handler |
-| `fight` | `FIGHT_LOCK` (38 rows, 6 of them routes: its switch) or `FIGHT_OPEN` (133: its reason) | `server/src/fightlock.js` |
-| `rideEnds` | `RIDE_ENDS_ON` (13) | `server/src/ride.js` |
+| `fight` | **Made from the table** (v2.3.5182, card K PR 2): `lock:<switch>` makes `FIGHT_LOCK`'s types and switches (38 rows, 6 of them routes; the refusal's code for each, `FIGHT_LOCK_HOW`, stays in `fightlock.js`), `open:<why>` makes `FIGHT_OPEN` (134; the whys `fightlock.js`'s closed `OPEN_WHY`) | `server/src/wire/`; `lists.js`; `server/src/fightlock.js` |
+| `rideEnds` | `RIDE_ENDS_ON` (13). Waits: `ride.js` is card SK's file while SK runs (card K, a small PR after) | `server/src/ride.js` |
 | `idle` | What stamps the idle clock: every type but `pong` (never), `track` (only when its `aw` is 0) and `move` (only when something changed). A rule written in line, in no list. | `server/src/index.js` `_onMessage` |
-| `pace` | The allowance it spends beside the socket's own: a `PACE` lane (6, and `reveal` beside them), the social allowance (`SOCIAL.TYPES`, 2), the relay bucket, or a gap of its handler's own | `server/src/flood.js`, `server/src/chatguard.js` |
-| `placed` | `ROOM_PLACED` (10) and `RELAY_PLACED` (8): sent by place, not to the room | `server/src/eventplace.js` |
-| `muted` | `MUTABLE_RELAY_TYPES` (3) on the worker; `BLOCKED_SOCIAL` (14) on the phone, with the field that names the sender | `server/src/chatmod.js`; `src/game/blockedAsks.js` |
-| `watch` | The anti-bot hook that counts it (6 types) | `server/src/index.js`, `server/src/botsig.js` |
+| `pace` | **Made from the table** (v2.3.5182): `social` makes `SOCIAL.TYPES` (2); any other word is a `PACE` lane its handler takes (8 rows; the guard holds each to its handler's `_paceTake`; `PACE` holds the lanes' rates, not their types, so no list moved from `flood.js`). Left out: the relay bucket, or a gap of its handler's own | `server/src/wire/`; `lists.js`; `server/src/chatguard.js` |
+| `placed` | **Made from the table** (v2.3.5182): `{ m, xy, p, who }` on an `out` row makes `ROOM_PLACED` (10), `sender` on a `relay` row `RELAY_PLACED` (8): sent by place, not to the room | `server/src/wire/`; `lists.js`; `server/src/eventplace.js` |
+| `muted` | **Made from the table** (v2.3.5182): `mutable` makes the worker's `MUTABLE_RELAY_TYPES` (3). The phone's `BLOCKED_SOCIAL` (14, with the field that names the sender) stays the page's | `server/src/wire/`; `lists.js`; `server/src/chatmod.js`; `src/game/blockedAsks.js` |
+| `watch` | **Made from the table** (v2.3.5182): the anti-bot hook that counts it (7 rows, `join`'s in `join.js`); `botsig.js` guards the made `WATCH_HOOKS` and the monster's `_sigOnWindup`. The guard fails a hook its router case never calls | `server/src/wire/`; `lists.js`; `server/src/botsig.js` |
 | `cap` | The cap the phone gates it on (`CAP_GATES`, 167 names) | `server/src/join.js` `caps`; `src/ui/panels/DevPanel.jsx` |
-| `flag` | The live flag that turns it off: a row of the switch table (`tools/guards/lib/switches.mjs`, side `worker` or `both`; card T, step 7.1), the one list of flag names. Any name is still stored, and each `_xxxOff()` reads its own; the table's guard fails a flag read with no row. | `server/src/liveops.js` |
+| `flag` | **A column** (v2.3.5182): the live flags its handler asks (62 rows), by their row's name in the switch table (`tools/guards/lib/switches.mjs`, side `worker` or `both`; card T, step 7.1), the one list of flag names; the wire-table guard fails a column's name that is not a row there. It makes no list. Any name is still stored, and each `_xxxOff()` reads its own; the switch table's guard fails a flag read with no row. | `server/src/wire/`; `tools/guards/lib/switches.mjs`; `server/src/liveops.js` |
 | `roads` | The gold, bag and health roads its handler names (the `at` of each road's row) | `server/src/gold.js`, `bag.js`, `life.js` |
 | `silent` | Its handler's silent exits, by code (`ALLOW`: 96 handlers, 270 exits, 19 codes) | `server/test/refusal-door-list.mjs` |
-| `phoneSend` | How the phone sends it: a send of its own (`join`, `pong`, `track`, `move`), the shim's pass-through (93 types: an allowlist), a priority event (31), the 33 ms batch; a rider (3); held for the rejoin (`node_strike`); expects an answer (`SETTLED_SENDS`, 9) | `src/networking/wsClient.js` |
+| `phoneSend` | **The action door's rows** (v2.3.5185, card K): each row's `way` (`own`: `join`, `pong`, `track`; `move`; `alone`, 91 types, the shim's old pass-through; `claim`, `monster_damage`; `aftermove`, `loot_pickup` and `ability`; `priority`, 31; `attack`, `player_attack`; `rider`, `gather_node`; `batch`, the 33 ms batch; `http`, a route) and its flags (`settled`, 9, the old `SETTLED_SENDS`; `held`, `node_strike`; `req`; `body: 'top'`; `legacy`). It lives on the page, never in the worker's table (`tools/guards/action-door.test.mjs` holds the two together) | `src/game/actions.js`; the shim reads it (`src/networking/wsClient.js`) |
 | `phoneCase` | Where the phone takes it: the direct switch (87 cases) or `processGameEvent` (106) | `src/networking/wsClient.js`, `gameEvents.js` |
 | `rejoin` | Sent again at a join: the join's own train of about 13 messages, and the two re-sends of `REJOIN.COUNT` | `server/src/join.js`, `server/src/rejoinresend.js` |
 | `pv` | The protocol version it belongs to: both, v1 only (`zone_monsters`, `zone_nodes`, `zone_loot`), v2 only (`zone_state`) | `server/src/movement.js` |
@@ -767,8 +768,8 @@ is the freeze a Windows laptop met).
 |---|---|---|
 | mouse or touch; a computer's window | `(pointer:fine)`, and the window's width | fact (`src/game/deviceProfile.js`) |
 | the "add to home screen" hint | the user agent: iPhone, iPad | name (`onIOS`; no drawing reads it) |
-| **the look palette, on or off** | the user agent: Windows, Macintosh | **name** (`src/game/lookPaletteChoice.js`: off on both) |
-| **one drawing program or three** | the same two names; and the chip's name against a list of software renderers | **name**, and one fact (`src/rendering/paletteTex.js` `oneBatchChoice`, `SOFTWARE_GL`) |
+| **the look palette, on or off** | the user agent: Windows, Macintosh | **name**, asked of `src/game/deviceProfile.js` alone (v2.3.5228: the lanes' `look` knob, pinned `baked` on both by an override; `lookPaletteChoice.js` reads `laneKnob('look')`) |
+| **one drawing program or three** | the same two names; and the chip's name against a list of software renderers | **name**, and one fact, asked of `src/game/deviceProfile.js` alone (v2.3.5228: the lanes' `program` knob, pinned `three` by an override; `paletteTex.js` `oneBatchChoice` reads `laneKnob('program')`, `softRenderer` is `SOFT_GL`) |
 | the colour numbers, the look palette, one program, moving water | WebGL 2 or not; whether the program built | fact |
 | how many bake workers | the processor's threads | fact (`src/rendering/bodyBake.js`) |
 | the crowd's shared picture's size | the largest picture the chip takes | fact (`src/rendering/peerImpostor.js`) |
@@ -1003,6 +1004,9 @@ writes them, never identifiers: `dungeon`, `connection`, `loading` and
 | `resetOn`, `runResets` (v2.3.5203) | a state's reset, registered beside it in its system's file, and the edge's one door's call (`src/game/resetOn.js`); the ledger's hand column `reset` | 5 (step 5.3) |
 | `dungeon`, `connection`, `loading`, `window`, `monster` | the phase table's machines beyond part 5's list (a row's `name`) | 5 |
 | `_t2To`, `TRADE_WAYS`, `TRADE_PHASES`, live flag `tradedoor` (v2.3.5210) | the trade door: a trade session's one phase writer, its ways and phases (`server/src/trade2.js`), and its kill switch; free at the commit (no hit for any in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |
+| `_duelTo`, `DUEL_WAYS`, `DUEL_PHASES`, live flag `dueldoor` (v2.3.5211) | the duel door: a duel's one phase writer, its way and phases (`server/src/duel.js`), and its kill switch; free at the commit (no hit in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |
+| `_partyIn`, `PARTY_WAYS`, live flag `partydoor` (v2.3.5212) | the party door: a player's place in a party, its one writer and its ways (`server/src/party.js`), and its kill switch; free at the commit (no hit in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |
+| `_exTo`, `_exDoorOff`, `EX_WAYS`, `EX_MAX`, live flag `exdoor` (v2.3.5213) | the cook door: the phone's claim on its moves (`ps.ex`), its one writer, its ways and its longest claim (`server/src/movement.js`), and its kill switch; free at the commit (no hit in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |
 
 **Chosen by card R (step 10.5, tag 5280), free at its commit** (the same
 search, with `docs`): `playerroads`, `PLAYER_ROADS`, `OWN_ROADS`,

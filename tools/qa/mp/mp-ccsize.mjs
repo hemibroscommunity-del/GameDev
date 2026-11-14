@@ -25,6 +25,7 @@
  * exists would miss the entire point.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 /* The rendered box, from the browser, not from the stylesheet. */
 const box = (P, sel) => P.page.evaluate((s) => {

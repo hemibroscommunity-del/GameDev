@@ -33,6 +33,7 @@
  *   BT_RJ_SHOTS=1   a picture of the bro at each facing of each step
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const FACINGS = {

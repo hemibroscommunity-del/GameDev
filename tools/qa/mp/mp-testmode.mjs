@@ -21,6 +21,7 @@
  *   5. a picture of the top bar with the tag (out/testmode.png).
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const JUMP = 2600;

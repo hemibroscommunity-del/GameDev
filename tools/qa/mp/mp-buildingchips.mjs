@@ -24,6 +24,7 @@
  *   5. no page errors
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const DESK = { width: 1280, height: 800 };
 const BOW_H = 30;     /* a shot flies this far above the ground line (the bow grip) */

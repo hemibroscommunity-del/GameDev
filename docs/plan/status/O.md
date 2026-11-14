@@ -1,29 +1,29 @@
 card: O
-branch: claude/plan-o-9-passes (one branch a PR: claude/plan-o-<n>-<word>; begun from main)
-prs: #1787, #1792, #1794, #1800, #1814, #1815 (merged); #1832 (5223, LAST in its sitting), #1836 (5226), #1841 (5228), #1850 (5229): ready
+branch: claude/plan-o-9-passes (one branch a PR: claude/plan-o-<n>-<word>; main 59469b2 merged in)
+prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836 (merged); #1850 (5229), #1854 (5230): ready (sitting 17)
 state: ready
 
 ## Done
 
-- #1787 (5221): the lane table, its reader and guard, the report's lane.
-- #1792 (5222): the governor (the pacer, grown), its model, `mp-governor`;
-  the rung on a module object (`LANE._rung`), its `DOOR_SUITES` row.
-- #1794 (5224): the rate's knob; sitting 11's hold mended (live knobs).
-- #1800 (5225): the pixels' knob, (b), (A); sitting 12's three mended.
-- #1814 (5235): `govern` on the Test panel's list (the owner's switch).
-- #1815 (5227): the device asked only in `deviceProfile.js`.
-- #1832 (5223): every phone test names its lane (381 files, the guard).
-- #1836 (5226): the crowd cap a knob (50, 30, 15); `?laddercrowd=0`.
-- #1841 (5228): `program` and `look` knobs; their fallbacks `OVERRIDES`
+- #1787 (5221) the lane table; #1792 (5222) the governor, `LANE._rung`.
+- #1794 (5224) the rate's knob, live knobs; #1800 (5225) the pixels', (A).
+- #1814 (5235) `govern` on the Test panel; #1815 (5227) the device asked
+  only in `deviceProfile.js`; #1832 (5223) every phone test names its lane.
+- #1836 (5226, merged): the crowd cap a knob (50, 30, 15); `?laddercrowd=0`; a
+  crowd step that hides no one is passed (sitting 15's medium).
+- #1841 (5228, merged): `program` and `look` knobs; their fallbacks `OVERRIDES`
   asked of `deviceProfile.js` alone; `one-program.test` (new).
 - #1850 (5229): the passes (shine, shadows, still water) knobs of the chip
   axis after the rate; `?ladderpass=0`; (A) revised: a kept rung keeps the
   rate only (the planning session's word); `ladder-passes.test` (new).
+- #1854 (5230): the strip slice the lanes' `queue` knob (4 ms; `thirty` 8),
+  never the frame's length; BUDGETS part 8's #6 gone.
 
 ## Next
 
-- #1836 waits for card T's #1837 head (the planning session sends it).
-- PR 10 (the queue's ms); 11 waits for card P.
+- #1850 and #1854 have main 59469b2 merged in (sitting 17).
+- PR 11 (caches) waits for card P; 12 for card T's PR 6; 13 for card SK;
+  14 (the self-test) after #1841 and #1850 (it meets every program's file).
 
 ## Found
 

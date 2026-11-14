@@ -29,7 +29,7 @@ async function main() {
   const ctx = await browser.newContext({ viewport: { width: 1000, height: 780 }, deviceScaleFactor: 3 });
   const page = await ctx.newPage();
   await page.addInitScript((p) => { window.BROTOWN_WS_URL = `ws://127.0.0.1:${p}`; }, wsPort);
-  await page.goto(`http://localhost:${webPort}/`, { waitUntil: 'domcontentloaded' });
+  await page.goto(H.withLane(`http://localhost:${webPort}/`), { waitUntil: 'domcontentloaded' });
   const P = { ctx, page, logs: [], name: 'Dazed' };
   await H.enterWorld(P);
   await page.waitForTimeout(1500);

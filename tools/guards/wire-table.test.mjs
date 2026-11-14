@@ -26,11 +26,16 @@
  *      `at` says `(fall-through)` (a handler's last answer, or a gate before
  *      any route: the lister does not look for those).
  *
- *   7. (v2.3.5181, card K PR 1 only: PR 2 takes it out) a made list that is
- *      not today's: TODAY below is each list as it stood on main 9fd5e58,
- *      written by hand in the one place it may be, for one PR;
- *   8. a row added to the table that does not reach its list with no other
- *      edit (`wireLists` with a probe row of each kind).
+ *   7. (v2.3.5182 to 5184: PR 2's copy of today's lists, taken out by
+ *      card K's PR 4, the next PR to make a list from the table);
+ *   8. a row added to the table, or a column changed, that does not reach
+ *      its list with no other edit (`wireLists` with a probe row of each);
+ *   9. (v2.3.5182) a machine's column that does not hold to the code: an
+ *      `open:` why that is not one of fightlock.js OPEN_WHY's, a `lock:`
+ *      switch that is not one of its LOCK_SWITCHES, a refusal's
+ *      code (FIGHT_LOCK_HOW) for a row the table does not lock, a `watch`
+ *      hook its router case never calls, a `pace` lane its handler never
+ *      takes, a `flag` that is not a row of card T's switch table.
  *
  * The plan's rule 3 (a census table fails only when its count of unlisted
  * things rises): that count is 0 today, so any key with no row fails.  A new
@@ -50,6 +55,11 @@
  *   9. server/src/wire/out.js: `privileged: 'echo',` on the `tick` row     -> FAIL 4 (no echo note), 7 and 8
  *  10. server/src/wire/lists.js: `out.filter((r) => !isEcho(r))` -> `out.filter((r) => isEcho(r))` -> FAIL 2, 7 and 8
  *      (v2.3.5181: 8 to 10 tried by hand, 2026-11-14)
+ *  11. server/src/wire/in.js: the `move` row's `watch: '_sigOnMove'` -> '_sigOnHit' -> FAIL 7 and 9
+ *  12. server/src/wire/in.js: `fight: 'open:moves no goods'` on `pose` -> 'open:moves no good' -> FAIL 7 and 9
+ *  13. server/src/chatguard.js: `TYPES: Object.freeze(new Set(['chat', 'emote']))` for its made Set -> FAIL 1
+ *  14. server/src/fightlock.js: `shop_sell: { sw: 'fightlock', at: ... }` in FIGHT_LOCK_HOW -> FAIL 1
+ *      (v2.3.5182: 11 to 14 tried by hand, 2026-11-14)
  *
  * Run from the repository's root: node tools/guards/wire-table.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
@@ -137,6 +147,17 @@ check('0: the counts read (the router\'s switch, the two lists, the echo list, t
   if (!/import \{[^}]*\bPRIVILEGED_EVENTS\b[^}]*\} from '\.\/wire\/lists\.js'/.test(idx)) byHand.push('index.js: PRIVILEGED_EVENTS not taken from ./wire/lists.js');
   if (/TYPES:\s*Object\.freeze\(new Set\(/.test(rel) || !/TYPES:\s*Object\.freeze\(RELAY_TYPES\)/.test(rel)) byHand.push('relay.js: RELAY.TYPES is not lists.js\'s RELAY_TYPES');
   if (/RELAY_ECHO_ALLOWLIST\s*=\s*new Map\(/.test(audit) || !/RELAY_ECHO_ALLOWLIST\s*=\s*RELAY_ECHOES\b/.test(audit)) byHand.push('wire-audit.test: RELAY_ECHO_ALLOWLIST is not lists.js\'s RELAY_ECHOES');
+  /* v2.3.5182: PR 2's lists */
+  const fl = stripC(read('server/src/fightlock.js')), ep = stripC(read('server/src/eventplace.js'));
+  const cm = stripC(read('server/src/chatmod.js')), cg = stripC(read('server/src/chatguard.js')), bs = stripC(read('server/src/botsig.js'));
+  if (/OPEN_GROUPS|FIGHT_OPEN\s*=\s*Object\.freeze\(Object\.fromEntries\(\s*\[/.test(fl) || !/FIGHT_OPEN = FIGHT_OPEN_MADE;/.test(fl)) byHand.push('fightlock.js: FIGHT_OPEN is not lists.js\'s');
+  /* a switch written beside a type (FIGHT_LOCK_HOW, or anywhere but the closed list of switches, LOCK_SWITCHES) is a second copy of the column */
+  const flLess = fl.replace(/export const LOCK_SWITCHES = Object\.freeze\(\[[\s\S]*?\]\.map\(Object\.freeze\)\);/, '');
+  if (/\bsw:\s*'fightlock/.test(flLess) || !/Object\.entries\(FIGHT_LOCK_SW\)/.test(fl)) byHand.push('fightlock.js: FIGHT_LOCK\'s types or switches written by hand');
+  if (!/const ROOM_PLACED = ROOM_PLACED_MADE;/.test(ep) || !/const RELAY_PLACED = RELAY_PLACED_MADE;/.test(ep)) byHand.push('eventplace.js: ROOM_PLACED or RELAY_PLACED written by hand');
+  if (/MUTABLE_RELAY_TYPES\s*=\s*new Set\(/.test(cm)) byHand.push('chatmod.js: MUTABLE_RELAY_TYPES = new Set(');
+  if (!/TYPES:\s*Object\.freeze\(SOCIAL_TYPES\)/.test(cg)) byHand.push('chatguard.js: SOCIAL.TYPES is not lists.js\'s');
+  if (!/for \(const name of \[\.\.\.WATCH_HOOKS, '_sigOnWindup'\]\)/.test(bs)) byHand.push('botsig.js: the hooks it guards are not lists.js\'s WATCH_HOOKS');
   check('1: the worker\'s lists are the ones server/src/wire/lists.js makes from the table, and none is written by hand beside it', byHand.length === 0, byHand);
 }
 
@@ -177,6 +198,18 @@ check('2: every HTTP row is an in row named http:/...', WIRE_HTTP.every((r) => r
       if (!(r.dir === 'out' || r.dir === 'relay') || !C.privileged.includes(r.privileged)) e(r, 'privileged ' + r.privileged);
       if (r.privileged === 'echo' && !(Array.isArray(r.note) && r.note.some((n) => typeof n === 'string' && /^echo: \S/.test(n)))) e(r, 'privileged echo with no `echo: ` note saying why');
     }
+    /* v2.3.5182: PR 2's machine columns, each on the rows it can be on */
+    const lst = (v) => (Array.isArray(v) ? v : [v]);
+    if (own(r, 'fight') && (r.dir === 'out' || typeof r.fight !== 'string' || !C.fight.test(r.fight))) e(r, 'fight ' + r.fight);
+    if (own(r, 'placed')) {
+      const okSender = r.dir === 'relay' && r.placed === C.placedSender;
+      const okRoom = r.dir === 'out' && r.placed && typeof r.placed === 'object' && !Array.isArray(r.placed) && Object.keys(r.placed).length > 0 && Object.keys(r.placed).every((k) => C.placedFields.includes(k));
+      if (!okSender && !okRoom) e(r, 'placed ' + JSON.stringify(r.placed));
+    }
+    if (own(r, 'muted') && !C.muted.includes(r.muted)) e(r, 'muted ' + r.muted);
+    if (own(r, 'pace') && (!lst(r.pace).length || !lst(r.pace).every((x) => typeof x === 'string' && C.pace.test(x)))) e(r, 'pace ' + r.pace);
+    if (own(r, 'watch') && (r.dir !== 'in' || typeof r.watch !== 'string' || !C.watch.test(r.watch))) e(r, 'watch ' + r.watch);
+    if (own(r, 'flag') && (r.dir !== 'in' || !lst(r.flag).length || !lst(r.flag).every((x) => typeof x === 'string' && C.flag.test(x)))) e(r, 'flag ' + r.flag);
     if (!C.dir.includes(r.dir)) e(r, 'dir ' + r.dir);
     if (typeof r.at !== 'string' || !r.at) e(r, 'at');
     const many = r.dir === 'out';
@@ -266,65 +299,10 @@ check('6: the lister finds the routes (guard)', tested.size > 60 && tested.has('
   check('6: every route row is a path a handler tests, or says (fall-through) in its `at`', unseen.length === 0, unseen);
 }
 
-/* ── 7. today's lists (v2.3.5181, card K PR 1 ONLY: card K's PR 2 takes this
-   copy out, and from then the table's rows are the lists) ──
-   Each list as it stood, written by hand on main 9fd5e58 (index.js's
-   PRIVILEGED_EVENTS, relay.js's RELAY.TYPES, wire-audit.test's
-   RELAY_ECHO_ALLOWLIST), sorted.  The made list equals it: the move changed
-   nothing. */
-{
-  const TODAY = {
-    PRIVILEGED_EVENTS: [
-      'ability_rejected', 'ability_windup', 'acc_state', 'ace_board', 'ace_flip_result',
-      'ace_item_flip_result', 'achv_state', 'alliance_error', 'alliance_rows', 'alliance_war_end',
-      'area_chat', 'arena_match_result', 'arena_match_start', 'arena_stake_board',
-      'arena_stake_error', 'arena_stake_placed', 'arena_stake_result', 'arena_tournament_complete',
-      'arrow_boom', 'bank_state', 'body_place', 'bro_nonce', 'bro_verify_result', 'cape_status',
-      'chain_score_recorded', 'character_reset_done', 'character_reset_refused', 'chat_mute_list',
-      'chat_report_ack', 'chest_opened', 'clan_error', 'clan_state', 'clan_war_end', 'clan_war_kill',
-      'client_off', 'codex_state', 'combat_credit', 'daily_progress', 'dice_roll', 'draw_gather',
-      'duel_end', 'duel_resume', 'dungeon_boss', 'dungeon_boss_ability', 'dungeon_complete',
-      'dungeon_error', 'dungeon_started', 'dungeon_wave', 'eat_refused', 'element_nova',
-      'essence_result', 'farm_state', 'fire_trail', 'firemaking_refused', 'fish_board', 'fish_weight',
-      'forge_armor_result', 'free_swing', 'friend_accepted', 'friend_dm', 'friend_dm_backlog',
-      'friend_error', 'friend_request_in', 'friend_sync', 'gamble_result', 'gather_hits',
-      'gear_locked', 'gem_combine_result', 'gem_cut_result', 'guild_quest_error',
-      'guild_quest_result', 'harden_result', 'hardened_wood_result', 'harvest_credit',
-      'inbox_delivered', 'item_drop_result', 'item_reveal', 'jackpot_result', 'jackpot_state',
-      'join_rejected', 'key_new', 'lifesteal_credit', 'linger_wait', 'loginspin_result',
-      'loginspin_round', 'loginspin_state', 'loot_claimed', 'loot_credit', 'loot_despawn',
-      'loot_drop', 'loot_pickup_rejected', 'make_traps_result', 'monster_ability', 'monster_attack',
-      'monster_hit', 'monster_kill', 'monster_projectile', 'monster_transform', 'move_path',
-      'nml_lock', 'nml_lock_ask', 'nml_loss', 'nml_skull', 'nml_take', 'parry', 'party_chat',
-      'party_error', 'party_invited', 'party_state', 'pet_capture_result', 'pets_state', 'ping',
-      'player_count', 'player_died', 'player_join', 'player_leave', 'player_state', 'player_update',
-      'points_reset_result', 'prog3_allocated', 'prog3_level', 'pvp_hit', 'quest_reward_stashed',
-      'race_cp', 'race_end', 'race_state', 'rest_result', 'rewards_state', 'ride_state', 'rise_chest',
-      'room_full', 'server_announce', 'shard_crack_result', 'shield_gem_result', 'shop_quoted',
-      'shop_result', 'shop_state', 'smelt_result', 'smith_salvage_result', 'spar_state', 'spin_board',
-      'stat_allocated', 'state_sync', 'store_dm', 'store_dm_error', 'store_dm_thread',
-      'store_offer_error', 'store_offer_state', 'test_mode', 'threat_expired', 'threat_penalty',
-      'tick', 'trade2_invite', 'trade2_state', 'trap_armed', 'trap_result', 'weapon_gem_result',
-      'whisper', 'whisper_error', 'zone_loot', 'zone_monsters', 'zone_nodes', 'zone_state',
-    ],
-    RELAY_TYPES: [
-      'campfire_lit', 'campfire_out', 'chat', 'clan_invite', 'duel_accept', 'duel_decline',
-      'duel_request', 'duel_wager_request', 'emote', 'gather_node', 'monster_dmg_at',
-      'player_died_to_monster', 'player_dodge', 'player_hurt_by_monster', 'player_jump',
-      'player_projectile', 'player_respawned', 'player_shield', 'player_swing', 'pvp_confirmed',
-      'pvp_threat', 'stunned', 'threat_response', 'trade_accept', 'trade_offer', 'trade_reject',
-    ],
-    RELAY_ECHOES: [
-      'clan_war_declare', 'duel_decline', 'player_died_to_monster', 'player_dodge',
-      'player_projectile', 'player_respawned', 'player_shield', 'player_swing', 'trade_reject',
-    ],
-  };
-  const same = (a, b) => { const x = [...a].sort(), y = [...b].sort(); return x.length === y.length && x.every((v, i) => v === y[i]); };
-  const diff = (a, b) => ({ more: [...a].filter((v) => !b.includes(v)), less: b.filter((v) => ![...a].includes(v)) });
-  check(`7: PRIVILEGED_EVENTS made from the table is today's (${TODAY.PRIVILEGED_EVENTS.length})`, same(MADE_PRIV, TODAY.PRIVILEGED_EVENTS), diff(MADE_PRIV, TODAY.PRIVILEGED_EVENTS));
-  check(`7: RELAY.TYPES made from the table is today's (${TODAY.RELAY_TYPES.length})`, same(MADE_RELAY, TODAY.RELAY_TYPES), diff(MADE_RELAY, TODAY.RELAY_TYPES));
-  check(`7: wire-audit's echo list made from the table is today's (${TODAY.RELAY_ECHOES.length})`, same(MADE_ECHOES.keys(), TODAY.RELAY_ECHOES), diff(MADE_ECHOES.keys(), TODAY.RELAY_ECHOES));
-}
+/* ── 7. (v2.3.5184: PR 2's copy of today's lists came out with card K's PR 4,
+   the next PR to make a list from the table, the wire door's rows.  From
+   here the rows are the lists, held by §1, §2, §8 and §9) ── */
+const L = await import(W('lists.js'));
 
 /* ── 8. a row added to the table reaches its list with no other edit ── */
 {
@@ -337,6 +315,48 @@ check('6: the lister finds the routes (guard)', tested.size > 60 && tested.has('
   check('8: a new relay row is a type a phone may relay', L.RELAY_TYPES.has('zz_probe_relay') && !L.PRIVILEGED_EVENTS.has('zz_probe_relay'));
   check('8: a row marked echo is on the echo list with its why, and not privileged', L.RELAY_ECHOES.get('zz_probe_echo') === 'a probe' && !L.PRIVILEGED_EVENTS.has('zz_probe_echo'));
   check('8: every echo has its why (the row\'s `echo:` note)', [...MADE_ECHOES.values()].every((w) => typeof w === 'string' && w.length > 10), [...MADE_ECHOES].filter(([, w]) => !w).map(([k]) => k));
+}
+
+/* ── 8 (v2.3.5182). a column changed reaches its list with no other edit ── */
+{
+  const P = (name, dir, extra) => ({ ...WIRE_IN[0], name, dir, ...extra });
+  const L2 = wireLists({
+    inn: [...WIRE_IN, P('zz_lock', 'in', { fight: 'lock:fightlocktable' }), P('zz_open', 'in', { fight: 'open:dormant' }), P('zz_watch', 'in', { watch: '_sigOnZz' })],
+    out: [...WIRE_OUT, P('zz_room', 'out', { placed: { m: 'monsterId' }, muted: 'mutable' })],
+    relay: [...WIRE_RELAY, P('zz_rel', 'relay', { placed: 'sender', pace: 'social' })],
+  });
+  check('8: a `lock:` row is locked under its switch, an `open:` row open with its why', L2.FIGHT_LOCK_SW.zz_lock === 'fightlocktable' && L2.FIGHT_OPEN.zz_open === 'dormant');
+  check('8: a `placed` out row is room-placed, a `sender` relay relay-placed', !!L2.ROOM_PLACED.zz_room && L2.RELAY_PLACED.has('zz_rel'));
+  check('8: `mutable` is muted, a `social` relay pays the social allowance, a `watch` hook is guarded', L2.MUTABLE_RELAY_TYPES.has('zz_room') && L2.SOCIAL_TYPES.has('zz_rel') && L2.WATCH_HOOKS.includes('_sigOnZz'));
+}
+
+/* ── 9 (v2.3.5182). each machine column holds to the code ── */
+{
+  const FL = await import(new URL('../../server/src/fightlock.js', import.meta.url));
+  const takes = [...WIRE_IN, ...WIRE_RELAY, ...WIRE_HTTP];
+  const badWhy = takes.filter((r) => typeof r.fight === 'string' && r.fight.startsWith('open:') && !own(FL.OPEN_WHY, r.fight.slice(5))).map((r) => r.name);
+  check('9: every `open:` why is one of fightlock.js OPEN_WHY\'s', badWhy.length === 0, badWhy);
+  const swOk = new Set(FL.LOCK_SWITCHES.map((x) => x.sw));
+  const badSw = Object.entries(L.FIGHT_LOCK_SW).filter(([, sw]) => !swOk.has(sw)).map(([n, sw]) => n + ' ' + sw);
+  check(`9: every \`lock:\` switch is one of fightlock.js LOCK_SWITCHES (${swOk.size}), where the switch scanner reads it`, badSw.length === 0, badSw);
+  const howless = FL.FIGHT_LOCK_HOW_KEYS.filter((k) => !own(L.FIGHT_LOCK_SW, k));
+  check('9: every refusal\'s code in fightlock.js (FIGHT_LOCK_HOW) is for a row the table locks', howless.length === 0, howless);
+  /* the router's case (join's: join.js) calls its row's hook */
+  const idx = read('server/src/index.js'), joinSrc = read('server/src/join.js');
+  const caseBody = (t) => { const i = idx.indexOf("      case '" + t + "':"); if (i < 0) return ''; const j = idx.indexOf('\n      case \'', i + 10); return idx.slice(i, j > i ? j : i + 4000); };
+  const unwatched = WIRE_IN.filter((r) => own(r, 'watch')).filter((r) => !(r.name === 'join' ? joinSrc : caseBody(r.name)).includes('this.' + r.watch + '(')).map((r) => r.name + ' ' + r.watch);
+  check('9: every `watch` hook is called by its row\'s router case', unwatched.length === 0, unwatched);
+  /* a lane: the handler named first in `at` takes it */
+  const fnBody = (at) => { const [file, fn] = at.split(/[;,>]/)[0].trim().split(' '); let f = ''; try { f = read('server/src/' + file); } catch { return ''; } const i = f.search(new RegExp('\\n  (async )?' + String(fn).replace(/[^A-Za-z0-9_]/g, '') + '\\(')); if (i < 0) return ''; const j = f.indexOf('\n  },', i); return f.slice(i, j > i ? j : undefined); };
+  const lst = (v) => (Array.isArray(v) ? v : [v]);
+  const paceless = WIRE_IN.filter((r) => own(r, 'pace')).flatMap((r) => lst(r.pace).filter((l) => !new RegExp("_pace(?:Take|d)\\(\\s*'" + l + "'").test(fnBody(r.at))).map((l) => r.name + ' ' + l));
+  const socialOff = [...WIRE_IN, ...WIRE_RELAY].filter((r) => own(r, 'pace') && lst(r.pace).includes('social') && r.dir !== 'relay').map((r) => r.name);
+  check('9: every `pace` lane is taken by its row\'s handler (`social` a relay\'s)', paceless.length === 0 && socialOff.length === 0, { paceless, socialOff });
+  const SW = await import(new URL('./lib/switches.mjs', import.meta.url));
+  const swRows = Object.values(SW).find((v) => Array.isArray(v) && v.length > 100 && v[0] && v[0].name) || [];
+  const swNames = new Set(swRows.map((r) => r.name));
+  const noFlag = WIRE_IN.filter((r) => own(r, 'flag')).flatMap((r) => lst(r.flag).filter((f) => !swNames.has(f)).map((f) => r.name + ' ' + f));
+  check(`9: every \`flag\` is a row of card T's switch table (${swNames.size} rows)`, swNames.size > 100 && noFlag.length === 0, noFlag);
 }
 
 const by = {};

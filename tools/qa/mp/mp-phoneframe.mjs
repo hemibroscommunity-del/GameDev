@@ -38,6 +38,7 @@ import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { SourceMap } from 'node:module';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const SCENE_MS = Number(process.env.BT_PF_MS || 8000);

@@ -1,37 +1,38 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: #1822 (PR 1, ready), #1820 (PR 3, ready), #1826 (PR 6, ready)
+prs: #1822, #1820, #1826, #1829, #1831 merged; ready: #1838 (PR 4), #1842 (5540), 5541 (sprint mark)
 state: ready
 
 ## Done
 
-- PR 1 (5181, #1822): `PRIVILEGED_EVENTS`, `RELAY.TYPES`, the echo list
-  made from the wire table (`wire/lists.js`); column `privileged`. Deploys.
-- PR 3 (5183, #1820): `wire-hostile.test` (10,524 cases), census
-  `hostile.md`: 19 failing, the line. Deploys.
-- PR 6 (5186, #1826): `claims-gain.test`, `claimbots.mjs`, census `claims.md`:
-  reach 2.96, bow label 3.76, guard 1.37, cook shield 0.67, move 4.35,
-  harvest 1.86, cook 1.59 (quest, sale, local 1); no honest refusal.
+- PR 1 (5181, #1822), PR 3 (5183, #1820), PR 6 (5186, #1826), PR 5 (5185,
+  #1829: the action door), PR 2 (5182, #1831: six lists made from the
+  table): merged.
+- PR 4 (5184, #1838): the wire door (`wiredoor`); hostile 19 -> 1. Sitting
+  15's MEDIUM mended: the refusal count keyed by the table's row (`(no
+  row)` for a name no row has), 2b a flood of random types; the README's
+  `fightlockgear` named right. Main 64bb498 merged in.
+- Claims 5540 (#1842): the archer's lane (`arrowlane`, ON); the stepping
+  archer keeps every arrow. The bow cheats' rise (bowlabel 3.91, the bot
+  lab's aimbot +12%) is for the bow claim's PR to bound, without costing
+  the stepping archer an arrow (the planning session).
+- Claims 5541: the sprint mark (`sprintmark`, ON, sprint.js only): a move on
+  the grace's wide bound keeps the run, so the next marked step bills its
+  gap; the move's gain 4.35 -> 3.43 (line lowered); the honest sprinter
+  meets no refusal.
 
 ## Next
 
-- PR 5 (5185) if the planning session says yes while SK's #1782 is held
-  (asked); PR 2 (5182) after PR 1 merges; PR 4 after 1 and 3.
+- PR 7 (5187-5192): the page's sends through the action door, a family a PR.
+- The move's walls (movement.js, movepath.js) once card L's #1839 is on
+  main; the sword's reach (index.js, after card R's 5281); the bow claim.
+- `rideEnds` (ride.js) its own small PR when card SK says done.
 
 ## Found
 
-- Six suites read `PRIVILEGED_EVENTS` from index.js's source; PR 1 reads
-  the Set (the planning session's yes).
-- `lib/systems.mjs`: the wire doors still name index.js and relay.js.
-- `movement.js` `_handleMove` keeps 7 fields as sent (hostile, 16).
-- `chatmod.js`: a mute of `__proto__` stored as an own key (PR 4 mends).
-- `worldsum.js`: an honest restart reads as value gone with no burn.
-- `combat.js` monster lane: an archer stepping in between two shots lands
-  both inside 210 ms; the second is dropped (honest play).
-- `sprint.js`: every other move marked `sp: 1` keeps the 1.33 bound with
-  no stamina spent (the move's liar).
+- The page sends `clan_war_kill`/`clan_war_end` for an older worker; this
+  one drops both (`legacy` door rows).
 
 ## Needs
 
-- Card R: will it take the restart's burn (persistence.js)? Asked.
-- PR 2 waits for PR 1's merge; PR 4 for PRs 1 and 3.
+- Nothing waiting.

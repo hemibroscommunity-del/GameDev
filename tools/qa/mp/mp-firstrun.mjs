@@ -40,6 +40,7 @@
  * a ResizeObserver to see — and requiring the game to come back on its own.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 
@@ -120,7 +121,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      commons (wheelHome.js wheelCommonsGate), 3,165 px from where he stood, and
      the camera was still easing after him (the sweep of 2026-10-17). */
   /* v2.3.4676: `?nospawn` alone (`trial=off` leads nowhere any more) */
-  await page.goto(`http://localhost:${webPort}/?nospawn`, { waitUntil: 'domcontentloaded' });
+  await page.goto(H.withLane(`http://localhost:${webPort}/?nospawn`), { waitUntil: 'domcontentloaded' });
   const P = { ctx, page, logs: [], name: 'Firsty' };
 
   /* Take the first-timer's door explicitly rather than letting the harness

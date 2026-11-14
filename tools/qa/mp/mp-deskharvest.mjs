@@ -35,6 +35,7 @@
  *      finishes it and the worker pays.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const DESK = { width: 1280, height: 800 };
 const LAND = { width: 844, height: 390 };

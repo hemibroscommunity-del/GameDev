@@ -20,6 +20,7 @@
  *   TOOLSOLID_PAL=0 node tools/qa/mp/run.mjs toolsolid
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const VIEW = { width: 900, height: 700 };
 const DPR = 2;

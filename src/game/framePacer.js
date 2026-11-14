@@ -49,7 +49,7 @@
  * GROWN -- see THE GOVERNOR below.  It imports one leaf, ./drawLanes.js (the
  * lanes' table, itself import-free), and node still tests it.
  */
-import { AXES, AXIS_NAMES, knobAt, drawLane, ladderRung, setRung, rungDepth, laneKnob, liveKnobs, ladderRateOn as laneRateOn } from './drawLanes.js';
+import { AXES, AXIS_NAMES, knobAt, knobSeen, drawLane, ladderRung, setRung, rungDepth, laneKnob, liveKnobs, ladderRateOn as laneRateOn } from './drawLanes.js';
 import { clientOff } from './clientOff.js';   /* v2.3.5235: the owner's switch for every phone (`govern`): a leaf with no imports */
 
 /* a refresh shorter than this is a fast screen (over about 70 a second) */
@@ -412,7 +412,10 @@ export function makeGovernor(opts) {
   /* v2.3.5224: the LIVE knobs only (drawLanes.js liveKnobs: those a PR
      reads through laneKnob) -- a rung that changes no knob anything reads is
      passed, going down and coming back (the gatekeeper's sitting 11) */
-  const vec = (r) => liveKnobs().map((k) => knobAt(lane || drawLane(), k, r));
+  /* v2.3.5226 (the gatekeeper's sitting 15): what the SCREEN sees of each
+     value (drawLanes.js knobSeen: a crowd cap at or above the players near
+     is the players near), so a rung that changes nothing drawn is passed */
+  const vec = (r) => liveKnobs().map((k) => knobSeen(k, knobAt(lane || drawLane(), k, r)));
   const same = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
   const movesPixels = (a, b) => liveKnobs().includes('pixels') && knobAt(lane || drawLane(), 'pixels', a) !== knobAt(lane || drawLane(), 'pixels', b);
   /* the live set, as a word: a rung kept under another (a knob moved since,

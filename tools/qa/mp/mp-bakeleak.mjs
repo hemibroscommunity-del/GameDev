@@ -33,6 +33,7 @@
  * array would be, TRAPS §49).  Each figure is read after a forced GC.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const REBUILDS = 3;

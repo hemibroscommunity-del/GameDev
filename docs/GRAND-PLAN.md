@@ -283,7 +283,7 @@ devices it waits for: with one player, the table is empty for weeks.
 
 ### Pillar 2. Adapt: one ladder, one controller
 
-- [ ] **2.1 [NEXT] The device class and the lanes.** The class is facts
+- [x] **2.1 [NEXT] The device class and the lanes.** The class is facts
   only: the chip's limits, software or not, a coarse timed fill, pixels,
   the screen's rate. Never a timed bake or a timed program build: a cold
   phone behind the loading screen always answers "fast", and timing the
@@ -299,6 +299,12 @@ devices it waits for: with one player, the table is empty for weeks.
   *Card O's PR 7, #1815 (the device asked only in `deviceProfile.js`:
   2.1's "facts only"), merged at sitting 12. The box still waits for O's
   PR 3 (the gatekeeper, sitting 13, v2.3.5370).*
+  *Ticked: card O's PR 3, #1832 (every phone scenario names its lane,
+  381 of them; `run.mjs` refuses one with none or one not in the table,
+  and fails a game page with no `lane=`; the guard `scenario-lanes`),
+  merged at sitting 15. The knobs the row still lacks (the crowd, how a
+  look is made, one program or three, the passes) are 2.3's and 2.4's
+  (the gatekeeper, sitting 16, tag 5373).*
 - [x] **2.2a [NOW] The pixel budget** for big screens (STATE-MACHINES A2
   item 1). Safe for phones: they are under it.
   *Merged: #1701 (card G), `src/game/renderRes.js`, `?pixbudget=0`.*
@@ -387,6 +393,10 @@ play, a number 1.1 can measure.
   19 failing, its line), merged at sitting 13. The box waits for the
   table's own lists (K's PR 2) and the door's checks (PR 4) (the
   gatekeeper, sitting 14, tag 5371).*
+  *K's PR 2, #1831 (the worker's other lists made from the table:
+  `FIGHT_LOCK`, the placed lists, `SOCIAL.TYPES`, botsig's hooks), merged
+  at sitting 15. The box waits for the door's checks (K's PR 4) (the
+  gatekeeper, sitting 16, tag 5373).*
 - [ ] **4.1b [NEXT] The send door**: one `_send` (132 places write to a
   socket today), counting bytes by type.
 - [ ] **4.2 [NEXT] Claims, bounded.** "No claims" can be met by calling a
@@ -401,9 +411,19 @@ play, a number 1.1 can measure.
   - the guard and cooking beyond #1530's limits; the quest hand-in and the
     weapon sale with no take-back; gold taken on the page in two panels;
     the local-monster mode; a sword's claim labelled a bow's (TRAPS §329).
+  *Step 1 merged (card K): #1826, the gain bench (`claims-gain.test`,
+  `claimbots.mjs`, `docs/plan/census/claims.md`; no honest refusal), at
+  sitting 14. Five gains are over 1.5 (the move 4.35, the bow label 3.76,
+  the reach 2.96, the harvest 1.86, the cook 1.59); the box waits for the
+  claims tightened, one judge a PR behind its flag (K's second block)
+  (the gatekeeper, sitting 15, tag 5372).*
 - [ ] **4.3 [NEXT] Doors for what is left of value**: experience and
   levels, the stashes, quest state, skill points. A weapon gets an id of its
   own, as gear has.
+  *Begun (card R): #1823, the skill points' door (`skillpoints.js`
+  `POINT_ROADS`, `skillpoints-door.test`), merged at sitting 14. The box
+  waits for the stashes, a weapon's id, quest state and experience (R's
+  PRs 2, 3, 5 and 10) (the gatekeeper, sitting 15, tag 5372).*
 - [x] **4.4 [NOW] The whole world's sum.** "A purse equals its start plus
   the roads that ran" is true by construction; past copies went through
   legal roads (ore sold 24 times in one bundle). So every road in
@@ -440,6 +460,11 @@ play, a number 1.1 can measure.
   (every record of theirs, not the character alone); a paged export; a
   restore tried in the Cloudflare lab; the storage's size in the day's
   book. Done when a lab restore to an hour ago balances 4.4's sum.
+  *Begun (card R): #1825, the storage's size in the day's book
+  (`storesize`, ON), merged at sitting 14. The box waits for the restore
+  from the registry, the paged export and the lab's try (R's PRs 6, 7 and
+  9; the lab's needs `.github/`, the owner's words) (the gatekeeper,
+  sitting 15, tag 5372).*
 
 (4.6 of version 1 is pillar 10.)
 
@@ -492,6 +517,10 @@ nothing known, and a restore copies nothing.
   *Card O's #1792 (the ladder's rung, a new row born `door`), merged at
   sitting 13: 37 rows, 7 `door`, 30 `todo`; the line lowered 31 -> 30,
   the count since #1809 (the gatekeeper, sitting 14, tag 5371).*
+  *Card L's #1824 (the duel door: `_duelTo`, `dueldoor`) and #1835 (the
+  party door: `_partyIn`, `partydoor`), both ON, merged at sitting 15:
+  28 `todo`; the line lowered 30 -> 28 (the gatekeeper, sitting 16, tag
+  5373).*
 - [ ] **5.4 [LATER] The frame as named steps.** PR 1 moves nothing: the six
   calls the loop already makes, plus one `legacy` step, become the list;
   each counts its errors to the crash ring (a throw in the frame reaches
@@ -509,6 +538,10 @@ nothing known, and a restore copies nothing.
   request row; a guard fails a send from anywhere else (150 places pass one
   allowlist today). Each call carries the request id. It is also where a
   helper would act (pillar 11), so it is built once.
+  *Begun (card K): #1829, step 1 (`src/game/actions.js`: `act()`, one
+  row a request, its guard; nothing calls it yet), merged at sitting 15.
+  The box waits for the page's sends moved through it (K's PR 7, a
+  family a PR) (the gatekeeper, sitting 16, tag 5373).*
 - [x] **5.9 [NOW] Pins.** PixiJS at an exact version; the places the game
   patches its inside, one table with a test.
   *Merged: #1702 (card B), PixiJS at 8.17.1, `tools/guards/pixi-pins.test.mjs`.*
@@ -535,6 +568,11 @@ nothing known, and a restore copies nothing.
   PRs 2 and 3 (the gatekeeper, sitting 9, v2.3.5365). PR 2, #1768 (the
   page's rows, no count line), merged at sitting 10: 113 unlisted; the box
   waits for PR 3 (the gatekeeper, sitting 11, v2.3.5367).*
+  *T's #1816 (the drawing side's rows: 0 unlisted, card B's map reads a
+  system's switches from the table) and #1817 (rule 4: a row's needs and
+  its reader, the thrown run, a row's place its name), merged at sitting
+  14: every switch found is a row, rule 4 held. The box waits for the
+  page's one reader (T's PR 6) (the gatekeeper, sitting 15, tag 5372).*
 - [ ] **7.2 [NEXT] The end date** (the owner: yes). For a logic switch: four
   weeks on with no revert, then the old way goes. A device off-ramp stays
   while its risk is live. A fallback stays while its trigger lives: a guard
@@ -556,6 +594,12 @@ nothing known, and a restore copies nothing.
   *Card J2 (round 2): #1788, #1789, #1790, #1795 merged at sitting 11.
   The step is open: card L's status names six reds on `main` that are not
   its own (the gatekeeper, sitting 12, v2.3.5369).*
+  *J2's #1830 (`mp-lookarmour`, the test's) and #1833 (`mp-townride`, the
+  test's), merged at sittings 14 and 15. Still open: L's status names
+  seven phone tests red on `main` (ownersounds, deathzones, hitsound,
+  race, desklunge, bowprops, alliance), and J2's next lines are
+  `mp-heldsweep`, `mp-alliance` and `mp-partychip` (the gatekeeper,
+  sitting 16, tag 5373).*
 - [ ] **8.2 [NEXT] Traps become guards**, each with a break proof. The count
   that matters is traps held by a proof, not traps of prose.
   *Card V merged, #1724 to #1740: 31 traps held by a proof (25 the rule, 6

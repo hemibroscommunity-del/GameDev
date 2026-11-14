@@ -4,5 +4,6 @@
    foot ended on its second frame, and walking into the chest never opened it
    (game/climbActions.js).  Same steps, same checks, its pictures named desk-. */
 import { play } from './mp-lagoonclimb.mjs';
+export const lane = 'full';
 
 export async function run(args) { return play(args, true); }

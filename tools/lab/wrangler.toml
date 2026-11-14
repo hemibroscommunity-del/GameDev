@@ -5,7 +5,8 @@
 #
 # Deployed ONLY by .github/workflows/lab.yml, started by hand from the Actions
 # tab, and deleted by the same run when it is done.  It has its own name, so it
-# never touches brotown-server, its room or anyone's saves; it stores nothing;
+# never touches brotown-server, its room or anyone's saves; it stores nothing
+# but the restore try's few records (v2.3.5288, the Vault);
 # and every request but "/" needs the run's own key (LAB_KEY, made by the run
 # and passed with --var).  It lives under tools/, so a merge never sets off
 # deploy-worker.yml (which deploys server/ only).
@@ -26,6 +27,11 @@ class_name = "World"
 name = "DOOR"
 class_name = "Door"
 
+# v2.3.5288 (card R PR 9): the restore try's room of its own (run.mjs --restore)
+[[durable_objects.bindings]]
+name = "VAULT"
+class_name = "Vault"
+
 # v2.3.3257: SQLite objects, the only kind the Workers FREE plan takes -- the
 # first run's deploy was refused: "In order to use Durable Objects with a free
 # plan, you must create a namespace using a `new_sqlite_classes` migration"
@@ -33,3 +39,10 @@ class_name = "Door"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Burner", "World", "Door"]
+
+# v2.3.5288: the Vault keeps a few records for the restore try (the worker,
+# and they with it, is deleted at the run's end); a SQLite object, the kind
+# whose storage Cloudflare can put back to an earlier time
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Vault"]

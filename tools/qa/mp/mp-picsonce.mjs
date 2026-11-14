@@ -20,6 +20,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const FIGHT_MS = 9000;
@@ -116,7 +117,7 @@ const CENSUS = (withColours) => {
     const reads = (img && img.__btReads) || (src.__btOnce && src.__btOnce.reads) || [];
     out.push({
       label: String(src.label || '').replace(/^https?:\/\/[^/]+/, ''), uid: src.uid, w, h, inCache: cached.has(src),
-      fmt: src.format, held: !!src._btNumbers, pal: !!src._btPal,
+      fmt: src.format, held: !!src._btNumbers || !!src.__btFP, pal: !!src._btPal,
       mb: +((w * h * 4) / 1048576).toFixed(2), as, onGpu,
       res: res ? [(res.constructor && res.constructor.name) || typeof res, res.width | 0, res.height | 0] : null, upload: src.uploadMethodId,
       scale: (src.style && src.style.scaleMode) || src.scaleMode, gc: src.autoGarbageCollect, colours,
@@ -144,7 +145,7 @@ const COMPARE = (maxStrips) => {
   const Sprite = sp.constructor, Texture = sp.texture.constructor, Rect = sp.texture.frame.constructor;
   const out = { strips: 0, cells: 0, px: 0, over1: 0, maxDiff: 0, worst: null };
   for (const src of srcs) {
-    const P = src._btPal, N = src._btNumbers;
+    const P = src._btPal, N = src._btNumbers || (window.__btStripNumbers ? window.__btStripNumbers(src) : null);   /* v2.3.5257: or kept deflated a frame at a time (framePack.js) */
     /* (an effect's numbers may be packed by now, p256.js: its canvas kept for
        the test is what it is compared against) */
     if (!P || (!N && !src.__btOrigCanvas)) continue;

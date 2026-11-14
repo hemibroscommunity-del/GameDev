@@ -24,6 +24,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 const VIEW = { width: 900, height: 700 };
 const MULT = 1.33;   /* SPRINT_MULT (game/sprint.js) */

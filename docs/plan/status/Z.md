@@ -1,39 +1,40 @@
 card: Z
-branch: claude/plan-z-sitting-14
-prs: (this PR), tag 5371, the last line of the list (ready)
+branch: claude/plan-z-sitting-16
+prs: (this PR), tag 5373, the last line of the list (ready)
 state: ready
 
 ## Done
-- Sitting 14, `main` 1cce0b2: the list rehearsed in its order (tree
-  0f04b30b, this branch aside): precheck 0 FAIL, build, questline 187;
+- Sitting 16, `main` 64bb498: the list rehearsed in its order (tree
+  02605dd3, this branch aside): precheck 0 FAIL, build, questline 187;
   each base `main`, ONE merge base step by step. Review:
-  `census/review-z14.md`. Lines lowered: entityRenderer 8955, the phase
-  table's `TODO_LINE` 30. Notes on 2.3, 4.1, 5.3b, 10.5.
+  `census/review-z16.md`. 2.1 ticked; notes on 4.1, 5.3b, 5.8, 8.1;
+  `TODO_LINE` 30 -> 28; wsClient.js 3296 -> 3039, setupWebSocket -> 2839.
 
 ## The list: merge in this order, in one sitting, each "Create a merge commit"
-1 #1816 (T) · 2 #1817 (T) · 3 #1828 (TF) · 4 #1823 (R) · 5 #1826 (K) ·
-6 #1825 (R) · 7 #1830 (J2) · 8 this PR. Three deploy (4, 5, 6): back
-to back. #1825 adds the live flag `storesize` (ON) and a part to the
-day's book (its shape number kept 1, a rollback loses one day's size):
-the last deploy, on its own line.
+1 #1838 (K) · 2 #1842 (K) · 3 #1839 (L) · 4 #1844 (R) · 5 #1852 (E) ·
+6 #1840 (P) · 7 #1841 (O) · 8 #1782 (SK) · 9 #1845 (J2) · 10 this PR.
+Eight deploy (1 to 8): back to back. New live flags `wiredoor`,
+`arrowlane`, `exdoor` (ON), `roomrewind` (OFF); #1852 turns two ON (the
+owner's yes); no stored record changes its shape.
 
-## Held (expires at sitting 15)
-- #1824 L: conflict at `phase-table.test.mjs`'s `DOOR_SUITES` end with
-  O's `_rung` row; L merges the new `main` (keep both). Reviewed: clean
-  (lows).
-- #1829 K: conflict at `docs/SYSTEMS.md`'s `wire` with T's #1816; K
-  merges the new `main`. Reviewed: clean (lows, for K before PR 7).
-- #1831 K: conflict at `docs/SHAPES.md` with T's #1816; opened during
-  the sitting, unreviewed.
-- #1782 SK: the owner's yes to +8 to +10 moves a ride.
+## Held (expires at sitting 17)
+- #1837 T: the planning session's (B): it conflicts with every PR adding
+  a switch row; T merges the new `main`, `on` on the new rows, a
+  one-PR sitting next. #1836 O carries its head: right after it.
+- #1848 K, #1847 R: each its card's second this sitting. #1848: two
+  MEDIUMs on its ON path before the owner's yes; #1847: one MEDIUM (a
+  hand deny list) and device ids out. In the review.
+- #1846 P: two MEDIUMs on screen (the stat demo's slime; the Workshop's
+  circles), `?slimewalk=0` restores both.
+- Not reviewed, opened during the sitting: #1849 J2, #1850 O (conflicts
+  with `main` at O.md), #1851 L (it carries #1839).
 
 ## Stalled
-- None. P `working` (17:44, under 3 h): its fire goblin, no branch.
+- None: P says `working` on two branches pushed within the hour.
 
 ## Found
-- K: `item_drop`, `report` rows want `body: 'top'`; the door's transport
-  is not cleared at a teardown; four friend events have no row.
-- L: duel-door's gladiator.js exception matches `mt.status = ` too.
-- R: the `daybook:` registry row and daybook.js's shape lines stale.
-- K: claims-gain is the slowest suite (48 s on CI); its margin passes a
-  reach of 500 px.
+- CLAUDE.md §7's "three sprite programs on every chip" is older than
+  5016 (one program the default): the owner's file.
+- K: three wire-table edits nothing catches since the guard's §7 left.
+- L: the cook door's guards miss destructuring and literal-built bodies.
+- O: an override with no `when` never pins, and draw-lanes §8 passes it.

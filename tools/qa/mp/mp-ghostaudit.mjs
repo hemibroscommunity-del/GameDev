@@ -54,6 +54,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 const VIEW = { width: 900, height: 700 };
 const DPR = 2;
@@ -225,6 +226,14 @@ const PAGE_TOOLS = () => {
           tex = (t && t.label) || (src && src.label) || (res && res.src ? String(res.src).split('/').pop().split('?')[0] : null)
             || (src ? `${src.width}x${src.height}` : null);
         } catch (e) { /* none */ }
+        /* v2.3.5428 (card J2): a world TREE is not a piece of the bro's
+           animation.  The depth sort moves a tree between `entities` and
+           `gatherNodesFront` (both watched) as the bro's ground line passes
+           its own (depthSort.js), and the gather layer draws a tree that
+           comes into view; one drawn after the action began read as its
+           leftover (two pines beside the fire: the cook's and the fire's
+           "after it", red once the cook ran again).  Its picture names it */
+        if (tex && /\/sprites\/trees\//.test(String(tex))) continue;   /* (its name: a tree's picture is colour numbers, its label the file) */
         out.push({ layer: layer.label, label, w: Math.round(b.width), h: Math.round(b.height), tex, alpha: +(c.alpha || 0).toFixed(2),
           x: Math.round(b.x - px), y: Math.round(b.y - py), kids: c.children ? c.children.length : 0 });
       }
@@ -768,16 +777,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
           await travel(P, wsPort, myId, me0.x, me0.y + 240);
           await page.waitForTimeout(800);
           await begin();
-          await page.evaluate(() => {
-            const bus = window._itemDetailBus;
-            const S = window._gameState && window._gameState.current;
-            if (bus && S && S.rpg) bus.open({ kind: 'inventory', key: 'wood_pine_log', count: (S.rpg.inventory || {}).wood_pine_log || 0 });
-          });
-          await page.locator('button:visible', { hasText: 'Light fire' }).first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
-          await page.evaluate(() => {
-            const b = [...document.querySelectorAll('button')].find((x) => /Light fire/.test(x.textContent || '') && x.offsetParent);
-            if (b) b.click();
-          });
+          /* v2.3.5428 (card J2): a log lit from the bag, through its item window -- one helper, as the cook below
+             may light the second (the label selector once: guards/traps-test-tools §29) */
+          const lightLog = async () => {
+            await page.evaluate(() => {
+              const bus = window._itemDetailBus;
+              const S = window._gameState && window._gameState.current;
+              if (bus && S && S.rpg) bus.open({ kind: 'inventory', key: 'wood_pine_log', count: (S.rpg.inventory || {}).wood_pine_log || 0 });
+            });
+            await page.locator('button:visible', { hasText: 'Light fire' }).first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
+            await page.evaluate(() => {
+              const b = [...document.querySelectorAll('button')].find((x) => /Light fire/.test(x.textContent || '') && x.offsetParent);
+              if (b) b.click();
+            });
+          };
+          await lightLog();
           const lit = await H.waitFor(P, (S) => !!S._firemaking && S._standInBody === true, (v) => v, { timeout: 8000, label: 'lighting' }).catch(() => null);
           summary[`${outfit}/fire`] = { frames: 0, started: !!lit };
           if (lit) {
@@ -795,6 +809,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
           }
           await end(outfit, 'fire');
           await page.keyboard.press('Escape').catch(() => {});
+          /* v2.3.5428 (card J2): a campfire burns 45 s on the phone, and on this
+             box the light's photographs and the check after them take longer
+             (142 s measured): the fire had gone out before the cook began, so
+             the cook never started (red on main).  A fire that is out is lit
+             again from the second log (granted above) before the cook */
+          const fireUp = () => H.readState(P, (S) => !!(S._campfire && S._campfire.alive) || !!S._firemaking);
+          if (want('cook') && !(await fireUp())) {
+            await lightLog();
+            await page.keyboard.press('Escape').catch(() => {});
+            summary[`${outfit}/fire`].relit = true;
+          }
           const camp = await H.waitFor(P, (S) => ({ fire: !!S._campfire, lighting: !!S._firemaking, cook: window.__btStandIns().cook }),
             (v) => v.fire && !v.lighting && v.cook.state === 'ready', { timeout: 20000, label: 'a campfire, and the cook made' }).catch(() => null);
           if (camp && want('cook')) {

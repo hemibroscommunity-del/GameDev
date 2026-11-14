@@ -33,6 +33,7 @@
  * spec.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const REF_AREA = 850 * 1330;   /* viewCap.js REF_W x REF_H at the default zoom */
 const SHORT_MIN = 680;         /* viewCap.js SHORT_MIN */

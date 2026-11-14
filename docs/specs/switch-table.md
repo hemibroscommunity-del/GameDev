@@ -63,10 +63,11 @@ Every row has every column (the guard fails one without):
 | `system` | card B's (`tools/guards/lib/systems.mjs`); a name that fits two takes the system of the file its read is in |
 | `kind` | `switch` (a way of the game turned off or on), `value` (a number or a word to try: `xp_mult`) or `lever` (a test's or the owner's tool: `testmode`, `?guest=1`) |
 | `born` | the tag of the change that made it, from the comment at its read or `git log -S`; `'unknown'` when neither says, counted and never guessed |
+| `on` | (a `switch` row's, v2.3.5305) the day its way went on for everyone (below); `'off'` for an opt-in not yet the default |
 | `thrown` | on the worker the value that throws it; on the page its form (`present`, `=1`, `=0` and the words its read also takes, or a value) |
 | `risk` | what the old way guards against: `logic`, `memory` or `chip`; `none` for a lever (and only a lever) |
 | `needs` | the names it needs: it turns off with them (rule 4) |
-| `fallback` | `'no'`, or the trigger that still uses its old way, as names in a file (`'onWindows, onMac in src/game/lookPaletteChoice.js'`) |
+| `fallback` | `'no'`, or the trigger that still uses its old way, as names in a file (`'onWindows, onMac in src/game/deviceProfile.js'`) |
 | `off` | one sentence: what throwing it turns off, or back on |
 
 How the worker's rows were judged (PR 1): `born` is the first commit on `main`
@@ -152,7 +153,11 @@ The plan's rule 4: all new, or exactly one switch thrown.
   - Anything else is a second configuration that breaks: listed as known in
     the guard (`KNOWN`, a census) and written under Found in card T's status
     file. Card T fixes none.
-  - On every PR only the rows born from tag 5301 on run (about 16 s today).
+  - On every PR only the rows born from tag 5301 on run, with no baseline
+    (`npm test` runs the same suites plain in that job, so a check red
+    unthrown is red there already): 17 s for 97 suite runs (v2.3.5305; 30 s
+    with the baseline). By hand, `--baseline` (on with `--all`, `--sample`,
+    `--only`) runs each suite unthrown first and sets its fails aside.
     `--sample` runs one switch of each risk in each system; `--all` every one
     (about 45 minutes here), the owner's to ask for.
 - **Page rows**: no browser run. The guard finds, for each page switch, the
@@ -160,10 +165,69 @@ The plan's rule 4: all new, or exactly one switch thrown.
   typed). The count with none only falls (`NO_PLAY_LINE`, 76 at its first
   count).
 
+## The end date (v2.3.5305; grand plan step 7.2)
+
+**The rule, as the plan writes it.**
+- A logic switch four weeks on for everyone, with no revert, may let its old
+  way go.
+- A device off-ramp (`risk` memory or chip) stays while its risk is live:
+  the owner's call, never by age.
+- A fallback stays while its trigger lives.
+
+**"No revert"** means two things:
+- no commit on `main` since `on` turned its default back;
+- the owner's live flags not holding it thrown. The repository cannot see
+  those, so the reaping card reads the Test panel first.
+
+**`on`** is a day, from git: the day the commit of the change that made the
+switch's way the default reached `main`'s first-parent line (UTC).
+- For most rows that change is `born`.
+- For an opt-in made the default later, `onBy` names the later change.
+  How PR 5 found them: every page row whose read once took `<name>=1` in
+  `src/`, and every worker row once read as `=== true`, were read by hand
+  in their history. Those whose way went on later:
+  - `pathall`, `movepath`, `?diet`: 3744, the message diet on for every
+    phone;
+  - `?hemiface`: 4049, the portrait off by default, which is the way it
+    turns back;
+  - `?lightfx`: 2711;
+  - `?sheen`: 2887;
+  - `?oneband`: 4092;
+  - `?onepic`, `?platelayer`: 4990;
+  - `?onebatch`: 5016;
+  - `?p256`: 5249, the first twins on by default.
+  - `arenasettleplan`, `econresetput`: 5095, card E's #1852 turned both
+    on (they were PR 5's first two opt-ins).
+- `'off'`: the way is not on for everyone yet. Two rows: `botsig_reverify`
+  and `?slimesplat`.
+- A row that brings an old way back (`?fishgrip=1`, `?figround=1`) has
+  been on since its birth.
+
+**`--due`** (`node tools/guards/switches.test.mjs --due [YYYY-MM-DD]`)
+prints the rows the rule would let go, and why the others stay (not yet
+four weeks on, a device off-ramp, a fallback, an opt-in, `never`).
+- A row that others need names them: their readers ask it, so a reap
+  changes them in the same PR.
+- It runs in no CI and no precheck, and changes nothing.
+- On 2026-11-14 it lists 101 that may go, and 252 under four weeks.
+- Reaping is step 7.3's, a later card: a batch a PR, each merged by the
+  owner.
+
+**The fallback hold** (the guard's check 12). `FALLBACKS`, in the table's file
+lists each fallback with its trigger (5 today). While a trigger is still in
+its file, two things stay:
+- the row, with the same fallback;
+- its read, found by the scanner.
+A fallback leaves the list, and its row's `fallback` goes to `'no'`, only
+in the PR that removes its trigger. The list only shrinks: a census
+(`FALLBACK_LINE`), the gatekeeper's to change.
+
 ## A new switch
 
 Its own PR adds its row (the guard fails it otherwise) and runs
-`node tools/guards/switches.test.mjs --write`. CLAUDE.md's same-change table
+`node tools/guards/switches.test.mjs --write`. A `switch` row carries `on`
+(v2.3.5305): the UTC day its way went on for everyone (the day its PR
+merges, for a switch on by default), or `'off'` for an opt-in. CLAUDE.md's same-change table
 says so.
 
 ## The scoreboard

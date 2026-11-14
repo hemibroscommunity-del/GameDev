@@ -11,10 +11,10 @@
 
 export const WIRE_COLUMNS = Object.freeze({
   /* the order a row writes its columns in; a row may leave out only the OPTIONAL ones */
-  ORDER: Object.freeze(['name', 'dir', 'at', 'wayIn', 'envelope', 'phase', 'mayStart', 'doesWhat', 'reqId', 'trust', 'absent', 'bad', 'answer', 'privileged', 'note']),
+  ORDER: Object.freeze(['name', 'dir', 'at', 'wayIn', 'envelope', 'phase', 'mayStart', 'doesWhat', 'reqId', 'trust', 'absent', 'bad', 'answer', 'privileged', 'fight', 'placed', 'muted', 'pace', 'watch', 'flag', 'note']),
   /* v2.3.5181: the machine's columns (SHAPES part 5's second table), each
      written only where it says something, then `note` */
-  OPTIONAL: Object.freeze(['privileged', 'note']),
+  OPTIONAL: Object.freeze(['privileged', 'fight', 'placed', 'muted', 'pace', 'watch', 'flag', 'note']),
 
   /* which way it travels: a relay is one row for both ways */
   dir: Object.freeze(['in', 'out', 'relay']),
@@ -84,6 +84,29 @@ export const WIRE_COLUMNS = Object.freeze({
      as a forgery (the 8 relays a sparring clone or a settlement also sends,
      and clan_war_declare); its why is the row's note that opens `echo: ` */
   privileged: Object.freeze(['echo']),
+
+  /* v2.3.5182 (card K PR 2): the worker's other lists, each a machine's
+     column (lists.js makes the list; README.md says how each reads):
+       fight   `lock:<its switch>` (fightlock.js FIGHT_LOCK: refused or
+               checked in a fight with a player) or `open:<why>` (FIGHT_OPEN:
+               allowed, the why one of fightlock.js OPEN_WHY's);
+       placed  an `out` row the room sends by place: `{ m, xy, p, who }`
+               (eventplace.js ROOM_PLACED); a relay placed where the room has
+               its sender: `sender` (RELAY_PLACED);
+       muted   `mutable`: a muter does not hear it (chatmod.js);
+       pace    the allowance it spends beside the socket's: `social`
+               (chatguard.js SOCIAL.TYPES) or a lane its handler takes
+               (flood.js `_paceTake('<lane>'`), one or a list;
+       watch   the anti-bot hook that counts it (botsig.js `_sigOn...`);
+       flag    the live flags its handler asks, by their row's name in the
+               switch table (tools/guards/lib/switches.mjs), one or a list */
+  fight: /^(lock:[a-z0-9_]{1,32}|open:[a-z' ,]+)$/,
+  placedSender: 'sender',
+  placedFields: Object.freeze(['m', 'xy', 'p', 'who']),
+  muted: Object.freeze(['mutable']),
+  pace: /^[a-z0-9]{1,16}$/,
+  watch: /^_sigOn[A-Z][A-Za-z]+$/,
+  flag: /^[a-z0-9_]{1,40}$/,
 
   /* the message that tells the sender what happened: a type (any row's
      name: `ping` is answered by `pong`), one of these, or a list of them */

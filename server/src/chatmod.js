@@ -61,7 +61,9 @@
  * deploy to get it).
  */
 
+import { MUTABLE_RELAY_TYPES } from './wire/lists.js';   /* v2.3.5182: from the wire table */
 import { PACE } from './flood.js';   /* v2.3.3274: the mute list is written at a pace */
+import { WIRE_DOOR } from './wire/door.js';   /* v2.3.5184: the names no player id is (the wire door's) */
 
 export const CHATMOD = {
   MUTE_MAX: 200,             // muted ids one player may hold
@@ -86,7 +88,9 @@ export const CHATMOD = {
    on every one (chat.js handleEmoteEvent). */
 /* v2.3.3393: and `dice_roll` -- the worker's event, not a relay, but stamped
    with its roller as `from` (dice.js): a line in the chat in their name */
-export const MUTABLE_RELAY_TYPES = new Set(['chat', 'emote', 'dice_roll']);
+/* v2.3.5182 (card K PR 2): every row whose `muted` is `mutable` in the wire
+   table (server/src/wire/lists.js) */
+export { MUTABLE_RELAY_TYPES };
 
 /* Reason codes.  An ALLOWLIST rather than free text, on purpose: the
    report record is read by the operator, and free text from a client is
@@ -123,6 +127,9 @@ export const chatModMethods = {
     const src = stored && stored.list;
     if (src && typeof src === 'object') {
       for (const id of Object.keys(src)) {
+        /* v2.3.5184: a mute of `__proto__` stored before the mend below is
+           not read back (an own key of the doc, kept in memory) */
+        if (WIRE_DOOR.BAD_KEYS.has(id) && !(this._wireDoorOff && this._wireDoorOff())) continue;
         const e = src[id];
         doc[id] = { name: cleanName(e && e.name, 'Bro'), at: (e && +e.at) || 0 };
       }
@@ -272,6 +279,13 @@ export const chatModMethods = {
     if (!validId(target, me)) return;
     const on = !!(payload && payload.on);
     const doc = await this._chatMuteDoc(me);
+    /* v2.3.5184 (card K PR 4; the hostile census's chat_mute, 2 cases): a
+       target named `__proto__`, `constructor` or `prototype` names no player,
+       and as a key of the list it was stored as an own key of the record
+       (`{ list: { ...doc } }`) and kept in memory.  The list is answered
+       unchanged, as for a mute that changes nothing.  `wiredoor: false`:
+       taken as before. */
+    if (WIRE_DOOR.BAD_KEYS.has(target) && !(this._wireDoorOff && this._wireDoorOff())) return this._chatModSendList(me, doc);
     /* v2.3.3274: nothing changed, nothing written -- un-muting someone never
        muted wrote a row a message (flood.js).  The list is answered all the
        same, as the window waits for it. */

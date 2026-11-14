@@ -47,6 +47,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 /* v2.3.3746: BT_QA_SIDEWAYS=1, the phone sideways */
 const SIDEWAYS = process.env.BT_QA_SIDEWAYS === '1';

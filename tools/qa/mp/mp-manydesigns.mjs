@@ -35,6 +35,7 @@
 import * as H from './harness.mjs';
 import { DESIGN_CATALOG } from '../../../src/rendering/traits/designCatalog.js';
 import { replay, copyOfOp, sameOp, sanitizeOp, recolorDesign } from '../../../src/rendering/traits/artOps.js';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const SHOTS = '/tmp/qa-manydesigns';

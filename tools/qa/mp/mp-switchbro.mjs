@@ -29,6 +29,7 @@
  * switcher" is only true while the destination really opens the list.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 /* Seed EXTRA rows beside the bro who is actually playing.
    The count that matters is not the number seeded: ensureChar puts the live
