@@ -25,8 +25,7 @@ state: working
 - Red on main 7593b4e, not L's: ownersounds 3 (Quick Eat's munch),
   deathzones 12 (a mire wisp's squash), mp-hitsound.mjs (6 voice checks).
 - bodytake.js ~94 cites "rejoinresend's pose row": there is none.
-- session.phase has three writers (fetch, _handleJoin, _leaveRun) and
-  session-door.test fails no second: the phase table's scan holds it.
+- session.phase: three writers, held by the phase table's scan (not its suite).
 - Dead fields: S._shieldStamina (never set), S.shieldActive and
   S._iceAttack (never read; playerActions.js writes them).
 - monsterCombat.js's own respawn (!S._serverMonsters): an old path.
