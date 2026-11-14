@@ -25,6 +25,7 @@ import { gearStashCap } from './gearstash.js';
 import { cleanApOnce } from './inbox.js';   /* v2.3.3488: the once-a-character prize marks */
 import { revealPublic, revealPublicList } from './revealbag.js';   /* v2.3.4012: a piece waiting in the bag goes out without its grade */
 import { bagEconOwn } from './bag.js';   /* v2.3.5084: the bag door's counts reach the record they belong on */
+import { econResetBook } from './econcard.js';   /* v2.3.5093: a restart booked for the owner's economy card */
 
 /* v2.3.2523: one bound for the five gear stashes, applied at BOTH the
    save and the echo below.  Handoff rule 3's warning is why it is a
@@ -495,7 +496,8 @@ export const persistenceMethods = {
       const current = await this.state.storage.get('rpg:' + pid);
       if (current) await this.state.storage.put('rpgsnap:' + pid + ':prereset-' + Date.now(), current);
     } catch (e) { /* snapshot is best-effort; the reset itself proceeds */ }
-    try { await this.state.storage.delete('rpg:' + pid); } catch (e) {}
+    const booked = await econResetBook(this, pid);   /* v2.3.5093: what goes with the character, booked for the owner's card (econcard.js; never throws) */
+    try { booked.put(); await this.state.storage.delete('rpg:' + pid); } catch (e) {}   /* v2.3.5094: an empty room's book in the delete's own run (`econresetput`) */
     /* ═══ v2.3.2421: AND THE QUEST-REWARD STAMPS GO WITH THE CHARACTER ═══
        v2.3.2420 made an unfittable quest weapon ride _creditPlayer into
        inbox:<pid> under a deterministic opId stamped in oplog: (rule 5), so a

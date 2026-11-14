@@ -135,8 +135,8 @@ export const SYSTEMS = Object.freeze({
   economy: {
     what: 'gold, the bag, the bank, the market and shops, trades, drops, chests and daily rewards',
     files: [
-      f('server/src', 'gold|bag|bank|market|marketplace|shop|store|storechat|storegear|storeoffer|trade|trade2|xfer|inbox|itemdrop|deathpile|gearstash|gear|gearprov|salvage|gamble|dice|dailychest|dailyrewards|risechest|revealbag|loginspin|eventcapes'),
-      f('src/game', 'bank|itemDrop|groundLoot|lootAsk|dropLines|dropLook|storeAnswer|storeSellTap|tradeSlot|weaponSell|salvage|postOffice|revealBag|dice|dailyRewards|bossChest|loginSpinWheel|coinArt|spinBoard|gearWornSync|arenaStakes'),
+      f('server/src', 'gold|bag|bank|market|marketplace|shop|store|storechat|storegear|storeoffer|trade|trade2|xfer|econcard|worldsum|valuepause|inbox|itemdrop|deathpile|gearstash|gear|gearprov|salvage|gamble|dice|dailychest|dailyrewards|risechest|revealbag|loginspin|eventcapes'),
+      f('src/game', 'bank|itemDrop|groundLoot|lootAsk|dropLines|dropLook|storeAnswer|storeSellTap|tradeSlot|weaponSell|salvage|postOffice|revealBag|dice|dailyRewards|bossChest|loginSpinWheel|coinArt|spinBoard|gearWornSync|arenaStakes|econCard'),
     ],
     words: ['gold', 'bag', 'bank', 'market', 'shop', 'store', 'trade', 'inbox', 'drop', 'loot', 'chest', 'salvage', 'gamble', 'dice', 'daily', 'auction', 'gear', 'coin'],
     traps: ['economy'],
@@ -248,7 +248,7 @@ export const SYSTEMS = Object.freeze({
   },
   device: {
     what: 'what kind of device this is and how much it can draw: the profile, resolution, the view cap',
-    files: [f('src/game', 'deviceProfile|renderRes|viewCap|speedTest|loadTimes|lookPaletteChoice')],
+    files: [f('src/game', 'deviceProfile|renderRes|viewCap|speedTest|loadTimes|lookPaletteChoice|drawLanes')],   /* v2.3.5221: + drawLanes (card O's lanes) */
     words: ['device', 'profile', 'viewcap', 'render-res', 'speed'],
     traps: [],
     doors: [{ name: 'deviceProfile', file: 'src/game/deviceProfile.js', what: 'the one place that asks what the device is (devClass, when SHAPES part 8 builds it)' }],
