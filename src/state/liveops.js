@@ -12,4 +12,5 @@
 export const SYSTEM = 'liveops';
 export const ROWS = [
   { field: '_testMode', system: 'liveops', lifetime: 'sitting', reset: 'kept: the worker says it again in state_sync itself (msg.testMode, wsClient.js applyTestMode), before the rejoin\'s door runs: a reset there would wipe what it just said', suggested: 'rejoin', born: 'fly src/game/testMode.js applyTestMode', twoFiles: '', noRead: false, noSet: false, phase: null, flag: false, writers: ['src/game/testMode.js'] },
+  { variable: '_page', file: 'src/game/switches.js', system: 'liveops', lifetime: 'sitting', suggested: '?', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/switches.js'] },
 ];
