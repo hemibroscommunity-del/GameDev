@@ -51,7 +51,7 @@ export function unpackLookSheet(px, spec) {
    (lookPalette.js make): 38 to 40 ms held at once on the stutter sweep's
    armour station (lookArmourFrame > setLookSheetBook > the upload > make).
    The header rows hold nothing but the header (the numbers end at row n, the
-   table before the header rows: lookPalette.js sheetRows), so they are made
+   table before the header rows: lookSheetRows below, v2.3.5244), so they are made
    here from the header alone, and only they are sent. */
 /** The sheet's last rows that hold its header: { y0, hr, bytes } (bytes:
  *  W x hr texels, the header written exactly as unpackLookSheet writes it). */

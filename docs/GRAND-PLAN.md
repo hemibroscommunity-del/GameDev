@@ -393,16 +393,20 @@ nothing known, and a restore copies nothing.
 
 ### Pillar 5. Give the client walls
 
-- [ ] **5.1 [NOW] Four lines**, as a guard: code lines by file (comments
+- [x] **5.1 [NOW] Four lines**, as a guard: code lines by file (comments
   are the project's memory and are not counted), the longest function,
   import cycles (five today), and writes to `S` from `src/rendering/` (89
   today). Only the gatekeeper lowers a line.
-- [ ] **5.2 [NOW] The system map**: each system's files, spec, traps,
+  *Merged: #1687 (card B), `tools/guards/four-lines.test.mjs`. Ticked by
+  the gatekeeper, sitting 5 (v2.3.5361).*
+- [x] **5.2 [NOW] The system map**: each system's files, spec, traps,
   tests, doors, switches. An `unsorted` bucket with a falling count, since
   `src/` gains a file every few hours.
-- [ ] **5.2b [NOW] Tests find code by system.** One helper reads "the files
+  *Merged: #1689 (card B), `docs/SYSTEMS.md` and `tools/guards/lib/systems.mjs`.*
+- [x] **5.2b [NOW] Tests find code by system.** One helper reads "the files
   of system X"; a suite that names a big file is listed, and the list only
   falls. No file moves before the suites that read it are converted.
+  *Merged: #1690 (card B), `tools/guards/lib/filesOf.mjs`.*
 - [ ] **5.3 [NEXT] The state ledger.** Step 1 is made by machine: every `S`
   field and every top-of-file variable that holds state, its writers, its
   system; lifetime "the sitting, never reset" until someone says otherwise.
@@ -433,8 +437,9 @@ nothing known, and a restore copies nothing.
   request row; a guard fails a send from anywhere else (150 places pass one
   allowlist today). Each call carries the request id. It is also where a
   helper would act (pillar 11), so it is built once.
-- [ ] **5.9 [NOW] Pins.** PixiJS at an exact version; the places the game
+- [x] **5.9 [NOW] Pins.** PixiJS at an exact version; the places the game
   patches its inside, one table with a test.
+  *Merged: #1702 (card B), PixiJS at 8.17.1, `tools/guards/pixi-pins.test.mjs`.*
 
 ### Pillar 6. One table per rule
 

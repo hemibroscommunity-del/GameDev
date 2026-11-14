@@ -64,8 +64,10 @@ draw path; its bundle of colours; its pixel-size rule; its bar.
 - **The pixel-size rule** is the art law's (2 px a game px,
   `public/tools/style/bible.js`) or the frame size the family's loader
   assumes.
-- **The bar**: at most 256 colours, that size, read back by the game's
-  reader (`src/rendering/png8Decode.js`). Recorded for every picture family;
+- **The bar**: at most 256 colours, that size, read from the file's own
+  bytes: a PNG by the game's reader (`src/rendering/png8Decode.js`), a WebP
+  by its colour index (`shipped.mjs` `webpColours`, tag 5244); a JPEG is
+  over it. Recorded for every picture family;
   held by the gate for supplied families only. A family over its bar today is
   counted in the census, not failed.
 
@@ -73,9 +75,24 @@ draw path; its bundle of colours; its pixel-size rule; its bar.
 
 One row a file in reach: its path, its bytes, the SHA-256 of its bytes, its
 family and its kind. A file the door made (part 3 on) also carries `door`:
-its sources' hashes, its recipe and the tool's tag. The head holds the
-totals (files, bytes, families, the count of each kind and of `unsorted`),
-made from the rows.
+its sources' hashes, its recipe and the tool's tag. One row a line, in path
+order, and no totals (tag 5244: the gatekeeper's sitting 5 found that two
+PRs changing a file in reach would both rewrite a `"bytes"` line, and the
+second could not merge with one press); the tool prints the totals, made
+from the rows.
+
+**A sprite's `.webp` twin is its PNG's row** (tag 5244, the same sitting). A
+push that changes `public/sprites/player/**` or `gear/**` gets a
+`github-actions[bot]` commit with each PNG's lossless twin
+(`optimize-assets.yml`, which runs on a push to any branch, `main` included,
+after a merge too); a twin is never committed by hand (precheck
+`sprite-webp`). A twin the bot puts on `main` after a merge would have no
+row, and turn every PR's gate red. So a `.webp` there whose `.png` is
+tracked beside it is not recorded and not held (`inReach` leaves it out,
+`botTwins` lists it; 195 at tag 5244). `--families` and `fightmb.mjs` still
+count the twins under their families: they are what the game fetches. A
+`.webp` there with no `.png` beside it (its PNG removed) is in reach like any
+other file.
 
 ```
 node tools/assets/shipped.mjs               how shipped.json compares with public/ today
@@ -346,11 +363,17 @@ guard and suite (1.2 s, the 150 MB hashed). It fails:
 4. a file two families match;
 5. a rise in `unsorted` (a census: at most 0 today; it only falls, and the
    gatekeeper alone makes it strict);
-6. a file of a supplied family that the game's reader (`png8Decode.js`) reads
-   over its bar: a census by family (`OVER_BAR`: 565 files in 32 families at
-   tag 5244, the bro's sheets, the head pieces' originals, the uploads' cuts),
-   each count only falls; and a supplied palette PNG the reader reads must be
-   whole frames of its family's pixel rule;
+6. a file of a supplied family over its bar: a PNG the game's reader
+   (`png8Decode.js`) does not read, a WebP whose own colour index does not
+   say 256 colours or fewer, a JPEG. A census by family (`OVER_BAR`: 565
+   files in 32 families at tag 5244, the bro's sheets, the head pieces'
+   originals, the uploads' cuts), each count only falls. A picture within its
+   bar must be whole frames of its family's pixel rule where the rule names
+   a frame or a cell (11 of the 36 supplied families with a bar; the others
+   state no size). `finish.mjs` writes a WebP with a colour index and checks
+   it (libwebp chooses: 25 of 25 tried kept one at effort 6; one without is
+   written again at the next effort down, or the run stops), so a file it
+   finishes is within the bar;
 7. a look sheet that `lookExpand.js` `lookSheetParse` will not read, or whose
    hash is not its row's. Read the game's way: the picture's pixels as a
    canvas gives them (a see-through texel reads 0,0,0,0; a partly see-through
@@ -358,8 +381,15 @@ guard and suite (1.2 s, the 150 MB hashed). It fails:
    (`roles.json`), the spec (`lookUnpack.js` `lookSheetSpec`), the bytes
    (`unpackLookSheet`), the parse (its rows, table start, scale and roles as
    the manifest says); and every colour number below its table's entries (a
-   shirt's number is its red: its green is its frame + 1, `shirt-bake.mjs`);
-8. `shipped.json` totals that are not its rows'.
+   shirt's number is its red: its green is its frame + 1, `shirt-bake.mjs`).
+   The sheets are every one a set's `roles.json` names, and every PNG of a
+   family drawn `look`; each must be in a family of kind `data` drawn `look`,
+   so a one-line change of the table's kind cannot take them out of the hold
+   (the gatekeeper's sitting 5);
+8. a record that would not merge with one press: totals in its head, rows out
+   of path order or twice, not one a line as `--write` writes them; or a row
+   whose family or kind is not the table's today (a family moved without
+   `--write`).
 
 It never makes a file again to compare: it compares recorded hashes and reads
 files through the game's own readers. Each hold's break proof is in the
