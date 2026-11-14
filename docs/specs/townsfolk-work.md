@@ -152,9 +152,10 @@ the figure's crown. What is different is where the figure comes from.
   (20.6, 14.4, 4.1 ms; `main` 5.2, 5.4, 4.4). His figure made garbage
   every frame (his colours' entries and their key, his head's record, the
   frame's textures, the probe's record): now worked out once a look, the
-  rest objects reused (`folkSkill.js` `lookBits`). Three runs after: 9.1,
-  7.6, 7.6 ms, nothing over any line; the collector 45.6, 13.0, 31.9 ms
-  at worst (its line 60; `main` 18 to 37 ms in five runs). No line raised.
+  rest objects reused, kept on his display (`folkSkill.js` `lookBits`).
+  Four runs after (the last on `main` as merged): 9.1, 7.6, 7.6, 7.3 ms,
+  nothing over any line; the collector 45.6, 13.0, 31.9, 23.1 ms at worst
+  (its line 60; `main` 18 to 37 ms in five runs). No line raised.
 - **Checked by** `townsfolk-walk.test` §2g, §2i-2k and §6 (the copies of
   `effectsRenderer`'s numbers, the set on disk, the switch, the wiring) and
   `mp-folkwork` (on a phone upright and sideways, and a computer: each trade

@@ -11,7 +11,7 @@ state: working
   the cook at a bar of 23, its reason written: @parent's A) drawn by
   `folkSkill.js` from `_drawFolk`; `?folkskills=0` back to PR 1's poses.
   Runs: membudget +3.2 MB chip, no line raised; heldsweep (stand, town)
-  0 over in 3 runs after the garbage cut (strip-made 9.1/7.6/7.6 ms);
+  0 over in 4 runs after the garbage cut (strip-made 7.3-9.1 ms);
   questline 187/187; mp-folkwork 30/30 + the ghost check upright 11/11;
   the ghost audit's fire 61 frames (same as `main`).
 

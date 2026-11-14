@@ -427,8 +427,8 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
   const b6 = a6 < 0 ? -1 : fs6.indexOf('\nexport function hideFolkSkill(', a6);
   const fn6 = a6 >= 0 && b6 > a6 ? fs6.slice(a6, b6) : '';
   check('6d the renderer draws a trade from folkSkill.js alone (its numbers, the gear set\'s tee, his head at its crown by entityRenderer\'s placeSkillTraitsFor, handed in): no body bake, no canvas, no load',
-    fn6.length > 500 && /if \(!folkSkillReady\(pose, look\)\) return miss\(display, 'ready'\);/.test(fn6) && /folkSkillTextures\(pose, look, fi\)/.test(fn6)
-      && /placeTraits\(F\._traits, lookBits\(look\)\.head, cwx, cwy, spec\.traitDir, false, k \* spec\.traitMul\);/.test(fn6)
+    fn6.length > 500 && /if \(!folkSkillReady\(pose, look\)\) return miss\(display, 'ready'\);/.test(fn6) && /folkSkillTextures\(pose, look, fi, display\)/.test(fn6)
+      && /placeTraits\(F\._traits, lookBits\(look, display\)\.head, cwx, cwy, spec\.traitDir, false, k \* spec\.traitMul\);/.test(fn6)
       && !/getBodyFrame|getLookBodyFrame|document\.createElement|getContext|fetch\(|new Image/.test(fs6)
       && /if \(work && isFolkSkill\(work\) && drawFolkSkill\(display, npc, look, work, now, size, placeSkillTraitsFor\)\) return true;/.test(er6)
       && /if \(isFolkSkill\(work\)\) work = folkSkillFallback\(work\);/.test(er6), { len: fn6.length });

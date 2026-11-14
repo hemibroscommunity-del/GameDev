@@ -161,12 +161,13 @@ const wearsTee = (look) => !!(look && look.equip && look.equip.shirt && look.equ
    his colours' entries and their key (lookPalette lookFrames's own key, so
    his row is shared with any caller of the same colours), his tee's tint, his
    head's pieces.  The page's thread is budgeted (CLAUDE.md section 7): a
-   frame's garbage is a later frame's collection. */
+   frame's garbage is a later frame's collection.  Kept on his display (no
+   module table: tools/guards/state-ledger), with the look it was worked
+   out for. */
 const _tk = (t) => (t ? t[0] + ',' + t[1] + ',' + t[2] + (t.length > 3 ? ',' + t[3] : '') : '-');   /* lookPalette tkey */
-const _ofLook = new WeakMap();
-function lookBits(look) {
-  let b = _ofLook.get(look);
-  if (b) return b;
+function lookBits(look, display) {
+  let b = display._folkSkillBits;
+  if (b && display._folkSkillBitsOf === look) return b;
   const e = entriesOf(look);
   const fill = wearsTee(look) ? shirtFill(look.shirt || 'tshirt', look.shirtColor) : null;
   b = {
@@ -181,7 +182,7 @@ function lookBits(look) {
       headwear: look.headwear, hatColor: look.hatColor, hatDy256: look.hatDy256 || 0,
     },
   };
-  _ofLook.set(look, b);
+  display._folkSkillBits = b; display._folkSkillBitsOf = look;
   return b;
 }
 
@@ -199,21 +200,21 @@ export function folkSkillReady(pose, look) {
 
 /** Frame `fi`'s pictures in his colours: { body, prop, shirt } (each a
  *  texture or null; `shirt` untinted -- the caller tints it his tee's colour).
- *  v2.3.5462: the SAME object every call (no frame's garbage): read it before
- *  the next. */
-const _tex = { body: null, prop: null, shirt: null };
-export function folkSkillTextures(pose, look, fi) {
+ *  v2.3.5462: the SAME object of his display's every call (no frame's
+ *  garbage): read it before the next. */
+export function folkSkillTextures(pose, look, fi, display) {
   const s = SPEC[pose];
-  if (!s || !look) return null;
-  const b = lookBits(look);
-  _tex.body = getLookPartFrame('skills', s.sheet, fi, b.e, b.opts);
-  _tex.prop = s.prop ? getLookPartFrame('skills', s.prop, fi, b.e, b.opts) : null;
-  _tex.shirt = null;
+  if (!s || !look || !display) return null;
+  const b = lookBits(look, display);
+  const t = display._folkSkillTex || (display._folkSkillTex = { body: null, prop: null, shirt: null });
+  t.body = getLookPartFrame('skills', s.sheet, fi, b.e, b.opts);
+  t.prop = s.prop ? getLookPartFrame('skills', s.prop, fi, b.e, b.opts) : null;
+  t.shirt = null;
   if (b.tee) {
     const list = gearStripFrames('shirt', 'tshirt', s.gearPose, s.gearDir);
-    if (Array.isArray(list) && list.length) _tex.shirt = list[Math.min(list.length - 1, s.shirtAt(fi))] || null;
+    if (Array.isArray(list) && list.length) t.shirt = list[Math.min(list.length - 1, s.shirtAt(fi))] || null;
   }
-  return _tex;
+  return t;
 }
 
 /* ═══ THE FIGURE, IN HIS DISPLAY ═══
@@ -236,7 +237,7 @@ export function drawFolkSkill(display, npc, look, pose, now, size, placeTraits) 
   const spec = SPEC[pose];
   if (display._folkBeat == null) display._folkBeat = folkBeatOf(npc.id);
   const fi = folkSkillFrame(pose, now + display._folkBeat);
-  const tex = folkSkillTextures(pose, look, fi);
+  const tex = folkSkillTextures(pose, look, fi, display);
   const cr = folkSkillCrown(pose, fi);
   if (!tex || !tex.body) return miss(display, 'body');
   if (!cr) return miss(display, 'crown');
@@ -259,14 +260,14 @@ export function drawFolkSkill(display, npc, look, pose, now, size, placeTraits) 
   body.y = (spec.fh - spec.foot[1]) * k;
   if (!body.visible) body.visible = true;
   overBody(F._shirt, tex.shirt, body, k);
-  if (tex.shirt) F._shirt.tint = lookBits(look).tint;
+  if (tex.shirt) F._shirt.tint = lookBits(look, display).tint;
   overBody(F._prop, tex.prop, body, k);
   /* his head at the figure's crown (effectsRenderer _placeSkillTraitsOnFor's
      arithmetic), his own hat nudge with it (Farmer Bro's bucket hat down on
      his brow, as his walking figure wears it: npcLooks hatDy256) */
   const cwx = body.x + (cr[0] - spec.fw / 2) * k;
   const cwy = body.y + (cr[1] - spec.fh) * k;
-  placeTraits(F._traits, lookBits(look).head, cwx, cwy, spec.traitDir, false, k * spec.traitMul);
+  placeTraits(F._traits, lookBits(look, display).head, cwx, cwy, spec.traitDir, false, k * spec.traitMul);
   if (!F.visible) F.visible = true;
   const folk = display._folk;
   if (folk) {
@@ -299,6 +300,7 @@ export function dropFolkSkill(display) {
   display.removeChild(display._folkSkill);
   display._folkSkill.destroy({ children: true });
   display._folkSkill = null;
+  display._folkSkillTex = null;   /* nothing held of the look palette's frames past the view */
 }
 /** The probe's (entityRenderer __btNpcSprites `skill`): which figure of his
  *  is on the screen, and his trade's while it is. */
