@@ -20,7 +20,7 @@ addresses (`tools/qa/`), `localStorage` toggles, and the worker's `env` settings
 reads it as a flag or a comment promises it as a kill switch; any other cap's override is the emergency lever of
 `docs/specs/liveops.md` ("Caps override").
 
-250 rows: 243 switches, 6 values, 1 levers, in 23 systems.
+251 rows: 244 switches, 6 values, 1 levers, in 23 systems.
 
 ## audio
 
@@ -166,6 +166,7 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 | `lookarmour` | both | switch | v2.3.3752 | off_lookarmour: true; ?lookarmour=0 | chip | `lookpalette` | no | Bodies under armour are baked again, not coloured on the chip. |
 | `lookfolk` | both | switch | v2.3.3809 | off_lookfolk: true; ?lookfolk=0 | memory | `lookpalette` | no | The townsfolk are drawn from their photographs again, loaded then. |
 | `lookdelta` | worker | switch | v2.3.3240 | false | logic |  | no | Every look track is relayed whole again. |
+| `?portraitframe` | page | switch | v2.3.5051 | =0, off, false | logic |  | no | The Equipment screen's figure takes its shirt and armour from their whole strips again, not their first frame. |
 
 ## memory
 
