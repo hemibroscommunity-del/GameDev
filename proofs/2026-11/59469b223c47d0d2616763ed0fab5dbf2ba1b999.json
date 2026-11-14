@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "59469b223c47d0d2616763ed0fab5dbf2ba1b999",
+  "tree": "d7c5418aa57d4b123826f4cb156389a6a829022f",
+  "committedAt": "2026-11-14T14:45:02-08:00",
+  "subject": "Merge pull request #1857 from hemibroscommunity-del/claude/plan-sk-2-done",
+  "files": 7728,
+  "bytes": 956853251,
+  "listingSha256": "c4b8feb97dfa2de9a412cd9a654290fe28b41083ee50b6edeb57615bda590faf",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

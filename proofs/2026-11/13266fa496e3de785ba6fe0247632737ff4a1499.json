@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "13266fa496e3de785ba6fe0247632737ff4a1499",
+  "tree": "5a099d05ed1217317abede1295d0a121e45675b7",
+  "committedAt": "2026-11-14T14:44:56-08:00",
+  "subject": "Merge pull request #1836 from hemibroscommunity-del/claude/plan-o-6-crowd",
+  "files": 7728,
+  "bytes": 956853668,
+  "listingSha256": "1633741afaad5f83f9178f5519e960a9cb0d0e66393a805cbabe8b23709f3421",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
