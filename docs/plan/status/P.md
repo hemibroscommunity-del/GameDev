@@ -1,7 +1,7 @@
 card: P
-branch: claude/plan-p-5-m4a (one branch a PR, each begun from the one before)
-prs: #1713 (5241, merged), #1715 (5242), #1716 (5243), #1718 (5244), PR 5 (5245): ready
-state: ready
+branch: claude/plan-p-6-npc-heads (one branch a PR, each begun from the one before)
+prs: #1713 (5241, merged); #1715, #1716, #1718, #1719 (5242-5245) ready; PR 6 (5246) working
+state: working
 
 ## Done
 
@@ -14,26 +14,27 @@ state: ready
   call it (each compared: the same bytes as before).
 - #1718 (5244): `tools/guards/asset-door.test.mjs`, eight holds, each break
   proof tried; `lookSheetSpec` in `lookUnpack.js` (446 specs the same).
-- PR 5 (5245): the 19 `.m4a` under `public/sfx/` removed (0.19 MB; nothing
+- #1719 (5245): the 19 `.m4a` under `public/sfx/` removed (0.19 MB; nothing
   named them; the MP3 beside each plays); `shipped.json` 3,206 rows.
 
 ## Next
 
-- The backlog (tag 5246 on), in the census's order, once PR 5 is merged.
+- PR 6 (5246), backlog `npc-heads` (2.96 MB): the dialogue portraits let go
+  of once loaded (`?npcheads=0` off); three runs of mp-membudget.
 
 ## Found
 
-- `public/sprites/tiles/*.tsx` are Tiled tile sets (XML), not code; the
-  card puts `.tsx` out of reach, so they are not in the table.
-- 545 files in reach are loaded by nothing on any device by default
-  (draw `none`); the census lists them (removal is the owner's yes).
+- 545 files in reach are loaded by nothing by default (draw `none`): the
+  census lists them; removing any is the owner's yes.
 - At the fight 22.2 MB of textures have no label (canvases 16.6 on the
   chip): the renderers' bakes, not a family; naming them is not card P's.
-- `families.mjs` keeps the `sfx-m4a` row, now matching no file, and the
-  twins' note "beside (the .m4a)": the next PR touching the table drops them.
+- `families.mjs` keeps the `sfx-m4a` row (now no file): the next PR
+  touching the table drops it.
 
 ## Needs
 
-- Answered (the planning session, 2026-11-14): the card's order; one
-  `lookSheetSpec` the guard imports; the supplied/made reading stands.
+- Asked the planning session (2026-11-14): (1) may a PR turning pictures
+  into colour numbers raise `buffers` (21.2 of 22) by what it moves there?
+  (`tree-tiers`: artCache -5.6, buffers +1.4); (2) slimes loaded as you
+  walk?; (3) the effects' p256 twins. Those wait; the next free one goes.
 - The backlog's `pack-page` waits for card H's `done`.
