@@ -155,6 +155,18 @@ for (const n of ['a', 'b', 'c']) {
 
 // ── 3. '__proto__' as a muted id is inert (rule H / TRAPS #6) ──
 {
+  /* v2.3.5184 (card K PR 4; the hostile census's chat_mute): it names no
+     player, so it is not taken: nothing stored or kept, the list answered
+     unchanged.  With the wire door's switch thrown (`wiredoor: false`), as
+     before (below): an own key, inert. */
+  wss.c.sent.length = 0;
+  await cmd(wss.c, 'chat_mute', { target: '__proto__', on: true, name: 'evil' });
+  const doc0 = await state.storage.get('chat_mute:' + P('c'));
+  check("v2.3.5184: '__proto__' is not muted: nothing stored", !doc0 || !Object.prototype.hasOwnProperty.call(doc0.list || {}, '__proto__'), doc0);
+  check('...nothing kept, and the list answered unchanged',
+    room._chatModMuted(P('c'), '__proto__') === false && !!lastOfType(wss.c, 'chat_mute_list') && lastOfType(wss.c, 'chat_mute_list').list.length === 0);
+  const _flags = room._liveFlags;
+  room._liveFlags = { ...(_flags || {}), wiredoor: false };
   await cmd(wss.c, 'chat_mute', { target: '__proto__', on: true, name: 'evil' });
   const doc = await state.storage.get('chat_mute:' + P('c'));
   check("'__proto__' lands as an OWN key, not through the prototype",
@@ -162,6 +174,7 @@ for (const n of ['a', 'b', 'c']) {
   check('...and Object.prototype is untouched', ({}).name === undefined && ({}).at === undefined);
   check('...and the fan-out lookup answers for it', room._chatModMuted(P('c'), '__proto__') === true);
   await cmd(wss.c, 'chat_mute', { target: '__proto__', on: false });
+  room._liveFlags = _flags;
 }
 
 // ── 4. fan-out: a muted line never reaches the muter's socket ──

@@ -49,7 +49,7 @@ function worker() {
   _w.onerror = () => { _dead = true; stop(); };
   return _w;
 }
-function ask(msg) {
+function ask(msg, transfer) {
   const w = worker();
   if (!w) return Promise.resolve(null);
   if (_idle) { clearTimeout(_idle); _idle = 0; }
@@ -57,7 +57,7 @@ function ask(msg) {
   return new Promise((resolve) => {
     const t = setTimeout(() => { if (_wait.delete(id)) resolve(null); }, READ_MS);
     _wait.set(id, (m) => { clearTimeout(t); resolve(m); });
-    try { w.postMessage({ id, ...msg }); } catch (e) { clearTimeout(t); _wait.delete(id); resolve(null); }
+    try { w.postMessage({ id, ...msg }, transfer || []); } catch (e) { clearTimeout(t); _wait.delete(id); resolve(null); }
   });
 }
 
@@ -79,6 +79,25 @@ export function readPaletteBlob(blob) {
   return ask({ pngBlob: blob }).then((m) => {
     letGoWhenIdle();
     return m && m.ok && m.idx ? m : null;
+  });
+}
+
+/** v2.3.5257: pieces of a strip's colour numbers DEFLATED on the same
+ *  worker (framePack.js: a monster strip's numbers kept a frame at a time
+ *  once the chip has it), off the page's thread, and each checked there to
+ *  come back as the very bytes it was (inflateRaw.js, the page's own
+ *  inflater).  Each piece is a Uint8Array of its own, HANDED OVER (it is
+ *  empty here after).  NOT in the strips' line: a pack waits behind no strip
+ *  and holds none of its bytes there.
+ *  -> Promise<{ zs: Uint8Array[] }> (raw DEFLATE, one a piece, in order),
+ *  { no: true } (a piece did not come back: keep the strip as it is), or
+ *  null (no worker here, or no answer). */
+export function deflateOnWorker(pieces) {
+  if (!stripReadOn() || !pieces || !pieces.length) return Promise.resolve(null);
+  return ask({ deflate: pieces }, pieces.map((u) => u.buffer)).then((m) => {
+    letGoWhenIdle();
+    if (m && m.no) return { no: true };
+    return m && m.ok && m.checked === true && Array.isArray(m.zs) && m.zs.length === pieces.length ? { zs: m.zs } : null;
   });
 }
 

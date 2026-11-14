@@ -1,6 +1,6 @@
 card: L
-branch: claude/plan-l-12-party-door (each PR on main, main merged in)
-prs: #1746 to #1809 (merged; #1791, #1796, #1801 through #1807), #1824 (5211), PR 5 tag 5212: ready
+branch: claude/plan-l-13-cook-door (each PR on main, main merged in)
+prs: #1746 to #1809 (merged; #1791, #1796, #1801 through #1807), #1824 (5211), #1835 (5212), #1839 (5213)
 state: ready
 
 ## Done
@@ -9,16 +9,16 @@ state: ready
   phase table and its guard (36 rows, 5 door).
 - PR 3 (5203, #1767): `resetOn` at the zone and rejoin doors, 16 rows
   (484 -> 468), state-resets.test; the phase guard's holes (sitting 8) shut.
-- PR 4 tags 5204 to 5208 (#1775, #1779, #1791, #1796, #1801, all merged):
-  235 rows, 468 -> 233; `clearElemStatuses` deleted (state-resets §7).
-- PR 4 tag 5209 (#1803, merged): the guard reads DOOR_SUITES' doors' trees.
-- PR 5 tags 5210 (#1809, merged), 5211 (#1824), 5212: the trade, duel and
-  party doors (worker): `_t2To`, `_duelTo`, `_partyIn`; live flags `*door`.
+- PR 4 tags 5204 to 5209 (#1775 to #1803, merged): 235 rows, 468 -> 233;
+  `clearElemStatuses` deleted; the guard reads DOOR_SUITES' trees.
+- PR 5 tags 5210 (#1809, merged), 5211 (#1824), 5212 (#1835), 5213: the
+  worker's trade, duel, party, cook doors (`_t2To`, `_duelTo`, `_partyIn`,
+  `_exTo`, the claim `ps.ex`); live flags `tradedoor` ... `exdoor`.
 
 ## Next
 
-- PR 5's next worker door, cook (5213); each page half after its worker
-  door, its own PR; `connection` after card K's last wsClient.js PR.
+- PR 5: harvest with fishing (5214); each page half after its worker door,
+  its own PR; `connection` after card K's last wsClient.js PR.
 
 ## Found
 
@@ -27,7 +27,7 @@ state: ready
   desklunge (1 to 4 of 12 by run), bowprops 3 (the Town Hall takes no arrow),
   alliance (16, 14, 9 of 16 by run: the typed name or the war's tap lost).
 - bodytake.js ~94 cites "rejoinresend's pose row" (none); session.phase:
-  three writers, held by the phase table's scan (not its suite).
+  three writers, held by the table's scan.
 - Dead: S._shieldStamina, S.shieldActive, S._iceAttack; monsterCombat.js's
   own respawn (!S._serverMonsters), an old path.
 

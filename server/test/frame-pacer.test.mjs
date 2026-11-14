@@ -123,7 +123,7 @@ import { fileURLToPath } from 'node:url';
 import { framePaceOn, refreshOf, makeFramePacer, noteDrawn, whenDrawn, WHEN_DRAWN_TRIES, PACE_FAST_MS, PACE_FLOOR_MS, UP_WAIT_MS, UP_WAIT_MAX_MS, JUDGE_RUNS,
   lateOver, governOn, makeGovernor, useFrameSamples, holdLadder, lateSplit, LATE_DOWN, ladderRateOn, _tabHid } from '../../src/game/framePacer.js';
 import { readdirSync, statSync } from 'node:fs';
-import { AXES, KNOBS, KNOB_NAMES, knobAt, ladderRung, rungDepth, useDevClass, drawLane, _resetLanes, liveKnobs, _liveKnobs, MOVED_KNOBS } from '../../src/game/drawLanes.js';
+import { AXES, KNOBS, KNOB_NAMES, knobAt, ladderRung, rungDepth, useDevClass, drawLane, _resetLanes, liveKnobs, _liveKnobs, MOVED_KNOBS, LADDER_KNOBS } from '../../src/game/drawLanes.js';
 import { noteCrowdNear } from '../../src/game/crowdCap.js';   /* v2.3.5226: the players near (§22) -- what the screen sees of a crowd cap */
 import { setClientOff, _resetClientOff, CLIENT_SAVERS } from '../../src/game/clientOff.js';   /* v2.3.5235: the owner's switch */   /* v2.3.5222; v2.3.5224 the live knobs */
 
@@ -642,8 +642,14 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
    sitting is back at 60 in one try */
 {
   _liveKnobs(null);
-  const moved = KNOB_NAMES.filter((k) => KNOBS[k].reader && KNOBS[k].reader.moved);
-  check(`19. the live knobs are those marked moved (${liveKnobs().join(', ')})`, liveKnobs().join() === moved.join() && MOVED_KNOBS.join() === moved.join() && moved.includes('rate'), liveKnobs());
+  /* v2.3.5228: ...and on an axis (the program and the look are moved, chosen
+     once behind the loading screen, never a rung: card O PR 8) */
+  const onAxis = new Set(Object.values(AXES).flat().map((r) => r.knob));
+  const allMoved = KNOB_NAMES.filter((k) => KNOBS[k].reader && KNOBS[k].reader.moved);
+  const moved = allMoved.filter((k) => onAxis.has(k));
+  check(`19. the live knobs are those marked moved, on the ladder (${liveKnobs().join(', ')}; ${allMoved.length - moved.length} moved off it)`,
+    liveKnobs().join() === moved.join() && LADDER_KNOBS.join() === moved.join() && MOVED_KNOBS.join() === allMoved.join() && moved.includes('rate')
+    && !liveKnobs().includes('program') && !liveKnobs().includes('look'), liveKnobs());
   const live = new Set(liveKnobs());
   /* a hot 60 phone, the chip its cost, then the game's work: every step changes a live knob, and none passes beyond */
   for (const [name, base] of [['the chip', { work: 3, chip: 8 }], ['its own work', { work: 13, chip: 2 }]]) {

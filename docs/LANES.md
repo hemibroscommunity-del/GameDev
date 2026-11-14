@@ -81,8 +81,8 @@ value, the `full` row's.
 | `rate` | the frame rate: the slowest frame, in ms, the pacer may hold a steady rate at, on a screen of 60 or slower (v2.3.5224: a fast screen keeps its own steps, down to about 40, whatever the lane or the rung) | `26`, `34` | `src/game/framePacer.js` | yes | 4 | `?ladderrate` | page-thread |
 | `pixels` | the pixels drawn, a share of the lowest of the screen's own and card G's budget (renderRes.js; v2.3.5225: of the pixels drawn, phones too: the planning session's (b)) | `1`, `0.75`, `0.5` | `src/game/renderRes.js` | yes | 5 | `?ladderpix` | device |
 | `crowd` | the most other players drawn in full (your party, your target, whoever fights you and your duel always) | `50`, `30`, `15` | `src/game/crowdCap.js` | yes | 6 | `?laddercrowd` | monsters |
-| `program` | one drawing program for the world's sprites, or three (chosen behind the loading screen: never a rung) | `one` | `src/rendering/paletteTex.js` | not yet | 8 | `?onebatch` | memory |
-| `look` | how a character's look is made: coloured on the chip, or each baked (chosen behind the loading screen: never a rung) | `palette` | `src/game/lookPaletteChoice.js` | not yet | 8 | `lookpalette` | device |
+| `program` | one drawing program for the world's sprites, or three (chosen behind the loading screen: never a rung; v2.3.5228: the three an override's, below) | `one`, `three` | `src/rendering/paletteTex.js` | yes | 8 | `?onebatch` | memory |
+| `look` | how a character's look is made: coloured on the chip, or each baked (chosen behind the loading screen: never a rung; v2.3.5228: baked an override's, below) | `palette`, `baked` | `src/game/lookPaletteChoice.js` | yes | 8 | `lookpalette` | device |
 | `shine` | the metal's shine on gear | `on`, `off` | `src/rendering/lightfx/glint.js` | not yet | 9 | `?sheen` | render |
 | `shadows` | the light and the shadows | `on`, `off` | `src/rendering/lightfx/lightFx.js` | not yet | 9 | `?lightfx` | render |
 | `water` | the sea's waves | `moving`, `still` | `src/rendering/wheelWater.js` | not yet | 9 | `?waves` | render |
@@ -91,13 +91,18 @@ value, the `full` row's.
 | `step` | the longest step, in ms, one frame may move the world (frameClock.js SMOOTH_MAX_MS; the loop's clamp) | `50` | `src/game/frameClock.js`, `src/ui/BroTown.jsx` | not yet | 13 | `?dtsmooth` | page-thread |
 | `prewarm` | the prewarm ring (step 3.3, LATER): one value and no reader until 3.3 builds the ring | `0` | none yet | - | - | - | - |
 
-Not yet moved: 8 of 11 knobs with a reader.
+Not yet moved: 6 of 11 knobs with a reader.
 
 ## The overrides
 
 An override pins a knob, over the lane and the ladder; the governor never moves a pinned knob.
 
-None yet: card O's PR 8 moves the fallbacks here, PR 12 the off-ramps.
+| Knob | Pinned to | When the device is | Why |
+|---|---|---|---|
+| `program` | `three` | `software` | a software renderer runs every branch of the one program for every pixel (TRAPS §225: 4.1 frames a second against 9.2) |
+| `program` | `three` | `computer` | a Windows or Mac computer builds programs through ANGLE, whose compilers took minutes over the look palette's; this one was never built there (v2.3.5016) |
+| `look` | `baked` | `windows` | Windows: ANGLE's FXC inlines the look palette's program, the loading screen stood at 75% for 5-10 minutes on the owner's laptop (v2.3.3838) |
+| `look` | `baked` | `mac` | a Mac: ANGLE's Metal inlines as FXC does, and a computer has the memory the palette saves (v2.3.3842) |
 
 ## The game's own drawing programs
 
