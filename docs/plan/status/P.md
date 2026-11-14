@@ -1,6 +1,6 @@
 card: P
 branch: claude/plan-p-15-slime-walk (made again from main, as the planning session asked from the fire goblin on)
-prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810 (5241-5255, merged); monster-fire-goblin (5257) first; monster-slime (5256) measuring
+prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810 (5241-5255, merged); #1840 (5257, monster-fire-goblin) ready; monster-slime (5256) measuring
 state: working
 
 ## Done
@@ -18,8 +18,8 @@ state: working
 
 - 5256 `monster-slime`: its strips a look of the walking loader
   (`?slimewalk=0`), through the strip door; three runs of the memory check.
-  Once 5257 (`framePack.js`) is in, they are packed a frame at a time once
-  drawn, as every strip through the door is: no code of the slime's own.
+  Once #1840 (5257, `framePack.js`) is in, they are packed a frame at a
+  time once drawn, as every strip through the door is: no code of their own.
 
 ## Found
 

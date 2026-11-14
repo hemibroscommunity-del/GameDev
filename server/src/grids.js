@@ -19,6 +19,7 @@
 
 import { computeCanonicalPools, computeBuildTotal } from './migrations.js';
 import { wornGradeLetter } from './gearprov.js';   /* v2.3.3142: the worn grade everyone else sees */
+import { pointsGive, pointsTake, pointsSet } from './skillpoints.js';   /* v2.3.5283: the skill points' door (the old grid's two counts) */
 import {
   t2CounterRate,
   // v2.3.1451: bench-locked T2 pricing (see the data.js block).
@@ -184,14 +185,14 @@ export const gridMethods = {
   _tryLevelUpFromBuildPoints(ps) {
     if (!ps) return { leveled: false, levelsGained: 0, newLevel: 1 };
     ps.level = ps.level || 1;
-    ps.unspentT2 = ps.unspentT2 || 0;
-    ps.buildPointsThisLvl = ps.buildPointsThisLvl || 0;
+    pointsSet(ps, ps.unspentT2 || 0, 'bp_level_heal_t2');   /* v2.3.5283: the skill points' door */
+    pointsSet(ps, ps.buildPointsThisLvl || 0, 'bp_level_heal_bp');
     let levelsGained = 0;
     const LEVEL_CAP = 100;
     while (ps.level < LEVEL_CAP && ps.buildPointsThisLvl >= 5) {
-      ps.buildPointsThisLvl -= 5;
+      pointsTake(ps, 5, 'bp_level_bp');   /* v2.3.5283: the skill points' door */
       ps.level += 1;
-      ps.unspentT2 += 5;
+      pointsGive(ps, 5, 'bp_level_t2');
       levelsGained += 1;
     }
     if (levelsGained > 0) {
@@ -261,7 +262,7 @@ export const gridMethods = {
     /* v2.3.4881: no point left -- the stats and the pool go back to the phone
        (it was a bare return: the refusal door, TRAPS §284) */
     if ((ps.unspentT2 || 0) <= 0) return this._refusalEcho(session, ['unspentT2', 'buildPointsThisLvl', 'power', 'vitality', 'endurance', 'agility', 'mind']);
-    ps.unspentT2 -= 1;
+    pointsTake(ps, 1, 'stat_allocate');   /* v2.3.5283: the skill points' door */
     this._saveRpg(session.id, ps);
     const ws = this._wsBySessionId(session.id);
     if (ws) {

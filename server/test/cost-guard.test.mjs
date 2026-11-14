@@ -41,6 +41,9 @@
  *  15. v2.3.5080: the day's book (daybook.js) writes nothing while nothing is
  *      added, and at most one row a DAYBOOK.PACE_MS (5 minutes) while its
  *      parts are added to on every tick -- 13 in an hour at most;
+ *  15d. v2.3.5287: the storage's size (daybook.js storeSizeRide, card R PR
+ *      8) rides the book's own puts: an hour of adds writes the book no more
+ *      often with the size read than without, and reads it once;
  *  16. v2.3.5092: the transfer ledger (xfer.js) writes ONE row a settlement
  *      between two players (the trade window: five trades, five rows; and
  *      its delete 90 days on, XFER.KEEP_DAYS), none a kill (a purse taken in
@@ -634,6 +637,28 @@ const FAST = 110;
      hand's line dropped from roomrow.js writes the book 354 times */
   const line = 18;
   check(`15c. an hour of sockets that never join and of ${joins} joins and leaves writes the book ${rows.length} times, at most ${line} (no write without a join; the book's pace on the whole)`, rows.length >= 1 && rows.length <= line, byPrefix(rows));
+}
+
+/* v2.3.5287 (card R PR 8): the storage's size rides the book's own puts --
+   15b's hour again, the storage reporting its size: the same line, and the
+   size read once (a riding part, once a worker's life a day; break proof:
+   `b.sizedDay = today;` deleted from storeSizeRide reads it at all 12
+   puts). */
+{
+  const { room, tickFn, state } = await makeRoom();
+  let asked = 0;
+  Object.defineProperty(state.storage, 'sql', { value: { get databaseSize() { asked++; return 5 * 1048576; } } });
+  await join(room, 'cg_size');
+  room._liveFlags = Object.assign(room._liveFlags || {}, { roomrow: false });
+  const w1 = state.writes.length;
+  await run(room, tickFn, 60 * 60000, async () => {
+    bookAdd(room, 'room', { tick: { n: 1 } }, NOW);
+    bookAdd(room, 'econ', { mint: { gold: 1 } }, NOW);
+    if (room._daybook && room._daybook.putting) await room._daybook.putting;
+  }, FAST);
+  const rows = state.writes.slice(w1).filter((k) => k.startsWith(DAYBOOK.PREFIX));
+  const line = 13;
+  check(`15d. the hour again with the storage's size read: the book written ${rows.length} times, at most ${line}, and the size read ${asked} time(s) (once a worker's life a day)`, rows.length >= 1 && rows.length <= line && asked === 1, { rows: byPrefix(rows), asked });
 }
 
 /* ── 16. v2.3.5092: the transfer ledger (xfer.js) ─────────────────────────── */

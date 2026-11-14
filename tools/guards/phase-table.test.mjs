@@ -85,8 +85,10 @@ import { pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import { ROOT } from './lib/systems.mjs';
 
-/* Set 2026-11-14 at its first count.  Only the gatekeeper lowers it. */
-export const TODO_LINE = 31;
+/* Set 2026-11-14 at its first count.  Only the gatekeeper lowers it.
+   v2.3.5371 (the gatekeeper, sitting 14, main 1cce0b2): 31 -> 30, the
+   count since card L's trade door (#1809). */
+export const TODO_LINE = 30;
 
 /* the machines every side must have a row for: SHAPES part 5's names and
    step 5.3b's list (the plan's own `dungeon`, `connection`, `loading`,
