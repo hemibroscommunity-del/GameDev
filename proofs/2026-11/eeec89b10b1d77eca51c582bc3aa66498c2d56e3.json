@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "eeec89b10b1d77eca51c582bc3aa66498c2d56e3",
+  "tree": "573d5a7671730920266706b2ed006ba6a429fe6c",
+  "committedAt": "2026-11-13T20:58:39-08:00",
+  "subject": "Merge pull request #1692 from hemibroscommunity-del/claude/plan-a-2-device-class",
+  "files": 7465,
+  "bytes": 946581582,
+  "listingSha256": "7e7df1707d9b445405196f8c9e3cc860d0e61612a5b7a6c591610ea4ebe56ca2",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
