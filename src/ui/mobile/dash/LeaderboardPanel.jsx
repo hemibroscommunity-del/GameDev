@@ -166,7 +166,7 @@ export function CatIcon({ icon, art, px, dim }) {
  *  this worker says it keeps (each cap read directly: caps-audit). */
 export function boardList(S) {
   const caps = (S && S._serverCaps) || {};
-  const power = !!caps.power;
+  const power = powerVersion(S) > 0;
   const records = [
     ...(spinBoardLive(S) ? [SPIN_CAT] : []),
     ...(caps.aceItems ? [FLIP_CAT] : []),
@@ -196,6 +196,16 @@ export function compact(v) {
   return (x >= 100 ? Math.floor(x) : x >= 10 ? Math.floor(x * 10) / 10 : Math.floor(x * 100) / 100) + u;
 }
 const series = (r) => (r && r.series && typeof r.series === 'object' ? r.series : {});
+/** The power index's version the worker sends (card PW: `caps.power`, a
+ *  number), or 0.  HELD AT 0 IN THIS PR (v2.3.5501): the worker's half (card
+ *  PW, #1776) is what advertises the cap, and caps-audit refuses a cap the
+ *  phone reads before join.js sends it.  Card LB's PR 3 (tag 5502) reads
+ *  `caps.power` here once #1776 is on main (with CAP_GATES' row and
+ *  mp-boardslook's checks of Overall and the rating); until then every
+ *  power path below is the "without" one: Total, no Overall. */
+function powerVersion(_S) {
+  return 0;
+}
 /** a weapon's score in a 24 px column: in full to 999, then one decimal and
  *  a k ("2.7k": a rating's style column runs to the thousands) */
 export function short(v) {
@@ -399,7 +409,7 @@ function RankBoard({ board, podium }) {
   const S = getState();
   const meId = S && S.myId;
   /* the index's version (card PW: a number, 1 today), or 0 */
-  const power = (S && S._serverCaps && Number(S._serverCaps.power)) || 0;
+  const power = powerVersion(S);
   /* v2.3.3527: the AP board leaves off everyone at 0 */
   const rows = (boards[cat] || []).filter((r) => cat !== 'ap' || Math.floor(Number(r && r.ap) || 0) > 0);
   const faces = useBoardFaces(rows);

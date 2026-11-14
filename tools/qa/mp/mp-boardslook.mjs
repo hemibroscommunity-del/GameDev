@@ -20,20 +20,15 @@
  *      name; every piece loaded; all inside the screen;
  *   3. every board picked in turn: each opens (a table, its records, or "says
  *      so"), the list scrolling to it;
- *   4. with caps.power (the index's version, 1, set in the page: card PW's
- *      worker is not merged yet) Overall leads the list with the crown tile,
- *      the column is headed Power, and a row with no powerIndex of that
- *      version reads "-" (not yet ranked), never 0; on Overall (its rows
- *      served by the test in PW's shape: the worker's half is not merged)
- *      the Power is a rating in full ("4,712"), each style short ("2.7k"),
- *      and a tap on the Power head says what it means;
+ *   4. (Overall, the Power rating and its hint: card LB's PR 3, tag 5502,
+ *      once card PW's #1776 advertises caps.power; this PR reads no cap)
  *   5. sideways (844 x 390, a band ~80 px tall): the pills are one row over
  *      the table, no podium, all inside the screen;
  *   6. a computer (1440 x 900, `wide: true`, the band at the bottom, a mouse):
  *      clicked open, the list beside the board with its podium;
  *   7. no page errors.
  * No pages: the board scrolls inside the band (the spec says why).
- * Pictures: tools/qa/mp/out/boardslook-{upright,power,sideways,computer}.png
+ * Pictures: tools/qa/mp/out/boardslook-{upright,sideways,computer}.png
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -142,8 +137,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
     stop = H.keepAlive(A);
     await A.page.addStyleTag({ content: '.bt-quest-banner, .bt-quest-plate, *:has(> [data-coach-dismiss]) { visibility: hidden !important; }' }).catch(() => {});
     const me = await H.readState(A, (S) => S.myId);
-    const power0 = await H.readState(A, (S) => !!(S._serverCaps && S._serverCaps.power));
-    rec.ok('the worker has no power index yet (caps.power off: card PW) (guard)', power0 === false, power0);
 
     /* four more players, wearing the phone's own look (ids the bust knows) */
     const api = `http://127.0.0.1:${wsPort}`;
@@ -224,38 +217,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await tap(A, '[data-lb-rail] [data-lb-cat="melee"]');
     await A.page.waitForTimeout(600);
 
-    /* ── 4 ── with caps.power (card PW's worker is not built: set in the page) */
-    const capSet = await H.readState(A, (S) => { if (S && S._serverCaps) S._serverCaps.power = 1; return !!(S && S._serverCaps && S._serverCaps.power === 1); });
-    await tap(A, '[data-lb-rail] [data-lb-cat="bow"]');
-    await A.page.waitForTimeout(400);
-    await tap(A, '[data-lb-rail] [data-lb-cat="melee"]');
-    await A.page.waitForTimeout(1200);
-    const Pw = await look(A);
-    const cells = await A.page.evaluate(() => [...document.querySelectorAll('[data-lb-board] [data-board-row]')].slice(0, 4)
-      .map((el) => [...el.querySelectorAll('[data-lb-col]')].map((c) => c.textContent.trim())));
-    rec.ok('4 with caps.power: Overall leads with the crown tile, the column says Power, and a row with no index of that version reads "-" (not yet ranked)',
-      capSet && JSON.stringify(Pw.order.slice(0, 6)) === JSON.stringify(['power', 'melee', 'bow', 'magic', 'combat', '|'])
-      && Pw.pills[0].tile && /^Power/.test(Pw.head[3]) && cells.length >= 4 && cells.every((r) => r.length === 4 && r.every((t) => t === '-')), { order: Pw.order, head: Pw.head, cells });
-    /* Overall, its rows in PW's shape (#1776: value = powerIndex.power, the rows of the worker's version only) */
-    const names = ['Sunburn', 'Chunky Waffle', 'Chunky Pecs', 'Beefy Legend', 'Iron Mike'];
-    const fake = names.map((name, i) => ({ id: i === 0 ? me : 'bp_bl_fake' + i, name, lv: [12, 7, 7, 3, 2][i], look: lookOf,
-      value: [4712, 3421, 3319, 1887, 240][i], powerIndex: { power: [4712, 3421, 3319, 1887, 240][i], melee: [3248, 2083, 1902, 1391, 200][i], bow: [2716, 1711, 1904, 1247, 0][i], magic: [2978, 1627, 1513, 1249, 9][i], v: 1 } }));
-    await A.page.route(/\/api\/leaderboard\/top\?category=power/, (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, category: 'power', results: fake }) }));
-    await tap(A, '[data-lb-rail] [data-lb-cat="power"]');
-    await H.waitFor(A, () => document.querySelectorAll('[data-lb-board] [data-board-face="bust"]').length, (n) => n >= 6, { timeout: 20000, label: 'Overall\'s faces' }).catch(() => null);
-    const ov = await A.page.evaluate(() => [...document.querySelectorAll('[data-lb-board] [data-board-row]')].map((el) => [...el.querySelectorAll('[data-lb-col]')].map((c) => c.textContent.trim())));
-    rec.ok(`4b Overall: the Power a rating in full, each style short (${(ov[0] || []).join(' | ')})`,
-      ov.length === 5 && JSON.stringify(ov[0]) === JSON.stringify(['4,712', '3.2k', '2.7k', '2.9k']) && JSON.stringify(ov[4]) === JSON.stringify(['240', '200', '0', '9']), ov);
-    await tap(A, '[data-lb-power-head]');
-    await A.page.waitForTimeout(400);
-    const hint = await A.page.evaluate(() => ((document.querySelector('[data-lb-power-hint]') || {}).textContent || '').trim());
-    await shot(A, 'power');
-    rec.ok('4c a tap on the Power head says what it means: "400 points ahead = 10\u00d7 likelier to win"', hint === 'Power: 400 points ahead = 10\u00d7 likelier to win', hint);
-    await tap(A, '[data-lb-power-head]');
-    await A.page.unroute(/\/api\/leaderboard\/top\?category=power/);
-    await H.readState(A, (S) => { if (S && S._serverCaps) delete S._serverCaps.power; return true; });
-    await tap(A, '[data-lb-rail] [data-lb-cat="bow"]');
-    await tap(A, '[data-lb-rail] [data-lb-cat="melee"]');
+    /* ── 4 ── Overall and the rating: card LB's PR 3 (tag 5502), once card PW's
+       worker (#1776) advertises caps.power on main -- this PR reads no cap */
 
     /* ── 5 ── sideways */
     await A.page.setViewportSize({ width: 844, height: 390 });

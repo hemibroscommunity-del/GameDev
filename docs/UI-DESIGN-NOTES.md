@@ -1171,8 +1171,7 @@ Screens: dash-leaderboard, leaderboard-skill, leaderboard-spin
 - (v2.3.1232's "brass is an accent, never a slab" is set aside here by the owner's own mockup: the first three rows on their metal bars.)
 
 **Still open:**
-- Overall and the Power column wait for the power index (card PW, the worker's #1776).
-- The stat boards: held until the owner says whether there will be any.
+- Overall and the Power column wait for the power index (card PW, the worker's #1776): card LB's PR 3 turns them on once it is live, with the stat boards PW builds (a "Stats" group under Level).
 - A "you are #37" line pinned under a board when you are below what it shows.
 - When each record was set ("3 days ago").
 - The picker's "Remove from this device" does not delete a character, so its rows stay live; only a restart makes a stand-in.

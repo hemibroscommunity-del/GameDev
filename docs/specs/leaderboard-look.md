@@ -135,7 +135,13 @@ second mockup's, the art the sheet's). What it looks like and why is
   Lv and the record (54) on the others. The head sticks to the top as the
   board scrolls. A row is 30 px on its bar (`rowBar`: gold, silver and bronze
   for 1-3, plain for your own below them).
-- **The power index** (card PW; the worker's half #1776): `caps.power` is
+- **The power index** (card PW; the worker's half #1776). HELD IN PR 2:
+  `powerVersion` returns 0, because `caps-audit` refuses a cap the phone
+  reads before `join.js` sends it, and #1776 is what sends it. Card LB's
+  PR 3 (tag 5502) reads the cap there once #1776 is on main, with its
+  `CAP_GATES` row and `mp-boardslook`'s checks of Overall and the rating
+  (written and run in PR 2's first cut against rows in PW's shape). Then:
+  `caps.power` is
   the index's version (1 today). With it Overall is in the list
   (`?category=power`, sorted by Power, `value` the Power) and the column is
   Power; `powerCells` reads each row's `powerIndex {power, melee, bow, magic,
