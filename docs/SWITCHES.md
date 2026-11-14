@@ -20,7 +20,7 @@ addresses (`tools/qa/`), `localStorage` toggles, and the worker's `env` settings
 reads it as a flag or a comment promises it as a kill switch; any other cap's override is the emergency lever of
 `docs/specs/liveops.md` ("Caps override").
 
-250 rows: 243 switches, 6 values, 1 levers, in 23 systems.
+251 rows: 244 switches, 6 values, 1 levers, in 23 systems.
 
 ## audio
 
@@ -109,6 +109,7 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 | `dice` | worker | switch | v2.3.3393 | false | logic |  | no | No dice roll, and caps.dice false at a phone's next join (/roll is a plain line again). |
 | `disable_event_capes` | worker | switch | v2.3.2028 | true | logic |  | no | Thrown, the event's capes stop dropping. |
 | `disable_offer_sweep_all` | worker | switch | v2.3.4412 | true | logic |  | no | Thrown, the store's offer sweep goes back to the old first-20 pass. |
+| `econ` | worker | switch | v2.3.5085 | false | logic |  | no | Nothing is counted into a character's minted and burned (`_econ`) or the day's book's economy part; gold and items move as before. |
 | `event_cape_rate` | worker | value | v2.3.2027 | a number | logic |  | no | The event cape's drop rate, a number in place of the shipped one. |
 | `gearlevel` | worker | switch | v2.3.3544 | false | logic | `onelevel` | no | Armour, shields and amulets ask Defense points and Magic again, not your level. |
 | `gearresend` | worker | switch | v2.3.4386 | false | logic |  | no | The level gate's refusal is silent again (no gear sent back). |
