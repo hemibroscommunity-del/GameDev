@@ -346,6 +346,10 @@ the same at 60 and 20 frames a second; the roll-off from top stopped at 1.9 s.
   slow frame and a quick one roll the same.
 - The step is judged on the next frame, so a wall and the Mayor gate's hold
   (which puts you back after the step) both stop it.
+- To make room in BroTown's loop (its size may only fall:
+  `tools/guards/four-lines`), the ride's fight test and its off-board line
+  moved into `ride.js` (`rideFighting`, `rideLineDue`), unchanged. BroTown no
+  longer writes `S._ride` at all.
 
 **The worker: no change.** It judges a rider's moves at `RIDE.MULT`, an upper
 bound; a slower start and a roll are inside it. The scenario proves it: the

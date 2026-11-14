@@ -486,7 +486,7 @@ import { elemMoveMult, gustStep, wobbleTurn } from '@/game/elemHits.js';   /* v2
 import { updateWheelSwim, isWheelSwimming, wheelSwimMult, swimGlide, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wheelSwim.js';   /* v2.3.3003: swimming in the Wheel */
 import { quietOn, keepaliveDue } from '@/game/quietPhone.js';   /* v2.3.3254: the quiet phone -- keepalives and the harvest heartbeat only when needed */
 import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust, sprintOutBreathTurn, stopSprint } from '@/game/sprint.js';
-import { rideMult, rideCheck, isRiding, rideFeel, rideStepped } from '@/game/ride.js';   /* v2.3.3776: the skateboard (server/src/ride.js); v2.3.5440: its push start and roll-off */
+import { rideMult, rideCheck, isRiding, rideFeel, rideStepped, rideLineDue } from '@/game/ride.js';   /* v2.3.3776: the skateboard (server/src/ride.js); v2.3.5440: its push start and roll-off */
 import { makeFrameClock, frameSmoothOn } from '@/game/frameClock.js';   /* v2.3.4400: a steady step on a steady screen */
 import { framePaceOn, makeFramePacer, noteDrawn, whenDrawn, beforeDraw, runBeforeDraw } from '@/game/framePacer.js';   /* v2.3.4400: a steady rate on a screen the game cannot keep up with */
 import { accTrack } from '@/game/accuracy.js';   /* v2.3.4545: the shot counts that ride the track */
@@ -5456,18 +5456,17 @@ export var BroTown = function BroTown(_ref0) {
            Off the board at the safe ground's edge, out of the Wheel, in the
            water, dead or fighting -- the phone's own step, ahead of the
            worker's word (game/ride.js; server/src/ride.js), with its one
-           line.  On the board there is no sprint: the board is the faster. */
+           line.  On the board there is no sprint: the board is the faster.
+           v2.3.5440: the fight's test (the shield, an attack, a swing, a bash,
+           a roll) and the line taken once are ride.js's own (rideFighting,
+           rideLineDue), to make room for the roll-off below. */
         try {
           if (isRiding(S)) {
-            var _rg = rideGround(S);
-            _rg.fighting = !!(S._shieldUp || S.autoAttack || S.isSwinging || S._bashDash || S._dodgeRoll);
-            rideCheck(S, _sprNow, _rg);
+            rideCheck(S, _sprNow, rideGround(S));
             if (isRiding(S) && S._sprint && S._sprint.on) stopSprint(S, 'ride', _sprNow);
           }
-          if (S._ride && S._ride.line && S.player) {
-            pushDmgPopup(S, S.player.x, S.player.y - 70, S._ride.line, '#F4E7C8');
-            S._ride.line = null;
-          }
+          var _rLine = rideLineDue(S);
+          if (_rLine) pushDmgPopup(S, S.player.x, S.player.y - 70, _rLine, '#F4E7C8');
         } catch (e) { /* on foot */ }
         var _sprEv = updateSprint(S, _sprNow, {
           moving: (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1)
@@ -5606,11 +5605,8 @@ export var BroTown = function BroTown(_ref0) {
            a step a wall stopped: the board stops at once (game/ride.js
            rideFeel).  1 and the stick as it is on foot; `?ridecoast=0`: the
            instant start and stop. */
-        if (isRiding(S)) {
-          var _rFeel = rideFeel(S, dx, dy, (S._dtScale || 1) * 16.667, !(finalSpd > 0) || !!_realStunned || !!_playerLootFrozen || _playerDead, P.x, P.y);
-          finalSpd *= _rFeel[0];
-          dx = _rFeel[1]; dy = _rFeel[2];
-        }
+        var _rFeel = isRiding(S) ? rideFeel(S, dx, dy, (S._dtScale || 1) * 16.667, !(finalSpd > 0) || !!_realStunned || !!_playerLootFrozen || _playerDead, P.x, P.y) : null;
+        if (_rFeel) { finalSpd *= _rFeel[0]; dx = _rFeel[1]; dy = _rFeel[2]; }
         /* v2.3.3620: a rock monster's bash leaves your steering swaying a
            second after the daze -- the stick's way turned to and fro
            (game/elemHits.js wobbleTurn; the worker said so on the hit) */

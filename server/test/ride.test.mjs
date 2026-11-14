@@ -497,6 +497,20 @@ async function step(dx, gapMs, extra) {
     check('7h. ...and the pose as before: a push setting off, then every PUSH_EVERY_MS (no start\'s second push)', look.push && !look2.push && !look3.push);
     C.setRideFeel(null);
   }
+  /* i: moved out of BroTown's loop to make room (tools/guards/four-lines) */
+  {
+    const S = board();
+    check('7i. rideCheck with no `fighting` asks rideFighting: the shield, an attack, a swing, a bash, a roll',
+      ['_shieldUp', 'autoAttack', 'isSwinging', '_bashDash', '_dodgeRoll'].every((k) => C.rideFighting({ [k]: true })) && !C.rideFighting({}));
+    S.player = { x: 0, y: 0 }; S.isSwinging = true;
+    C.rideCheck(S, 7, { centre: [0, 0], safeR: 999 });
+    check('7i. ...a swing on the board steps you off to fight, its line taken once', !C.isRiding(S) && S._ride.why === 'fight'
+      && C.rideLineDue(S) === 'Off the board to fight.' && C.rideLineDue(S) === null);
+    const S2 = board();
+    S2.player = { x: 0, y: 0 }; S2.isSwinging = true;
+    C.rideCheck(S2, 8, { centre: [0, 0], safeR: 999, fighting: false });
+    check('7i. ...and a caller\'s own `fighting` still decides', C.isRiding(S2));
+  }
 }
 
 Date.now = realNow;

@@ -126,7 +126,9 @@ export function stepOff(S, why, now) {
 }
 
 /** Each frame (BroTown): get off at the edge, out of the Wheel, in the water,
-    dead or fighting.  `f`: {centre, safeR, swimming, fighting}. */
+    dead or fighting.  `f`: {centre, safeR, swimming, fighting}.  v2.3.5440:
+    `fighting` left out is rideFighting's (moved here from BroTown's loop, to
+    make room for the roll-off there: tools/guards/four-lines). */
 export function rideCheck(S, now, f) {
   if (!isRiding(S)) return null;
   const dead = !!(S.rpg && typeof S.rpg.hp === 'number' && S.rpg.hp <= 0);
@@ -134,9 +136,25 @@ export function rideCheck(S, now, f) {
   if (!rideSupported(S)) { stepOff(S, 'off', now); return 'off'; }
   if (S.currentZone !== 'wheel' || !S.player) { stepOff(S, 'zone', now); return 'zone'; }
   if (f && f.swimming) { stepOff(S, 'edge', now); return 'edge'; }
-  if (f && f.fighting) { stepOff(S, 'fight', now); return 'fight'; }
+  if (f && typeof f.fighting === 'boolean' ? f.fighting : rideFighting(S)) { stepOff(S, 'fight', now); return 'fight'; }
   if (!onRideGround(S.player.x, S.player.y, f && f.centre, f && f.safeR)) { stepOff(S, 'edge', now); return 'edge'; }
   return null;
+}
+
+/** Fighting, on this phone: the shield up, a held attack, a swing, a bash
+    or a roll (v2.3.3776's test, BroTown's until v2.3.5440). */
+export function rideFighting(S) {
+  return !!(S && (S._shieldUp || S.autoAttack || S.isSwinging || S._bashDash || S._dodgeRoll));
+}
+
+/** The off-board line waiting to be shown (rideApply's), taken once: BroTown
+    shows it over your head.  v2.3.5440: moved here from BroTown's loop. */
+export function rideLineDue(S) {
+  const r = S && S._ride;
+  if (!r || !r.line || !S.player) return null;
+  const line = r.line;
+  r.line = null;
+  return line;
 }
 
 /* ═══ v2.3.3875: THE LINE NAMES WHAT YOU WERE DOING ═══
