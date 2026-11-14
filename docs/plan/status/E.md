@@ -1,6 +1,6 @@
 card: E
-branch: claude/plan-e-6-book-econ (one branch a PR; this one begun from PR 5's, merge #1752 first)
-prs: #1686, #1691, #1694, #1699 (merged); #1752 (ready); PR 6 the book's econ part on the branch above (ready)
+branch: claude/plan-e-6-book-econ (one branch a PR)
+prs: #1686, #1691, #1694, #1699, #1752 (merged); #1756 (ready, sitting 8's mend)
 state: ready
 
 ## Done
@@ -9,15 +9,10 @@ state: ready
 - PR 2 (5081, #1691), the roads' classes; SHAPES part 3's edges ruled.
 - PR 3 (5082, #1694), the registry's marks (`storagemarks.js`).
 - PR 4 (5083, #1699), `_econ`, schema 21; the gatekeeper's hold mended.
-- PR 5 (5084), the world's sum: the two doors count into `_econ`; the
-  join brings it back (`join.js`); `nml_lost` (`nomansland.js`); the
-  prize's `house` (`gladiator.js`); the payout handed to the door
-  (`inbox.js`): the owner's own "Go recommended" (2026-11-14), read in
-  the planning session's transcript. Unexplained 0; planted pays seen.
-- PR 6 (5085), the book's `econ` part: the doors add minted and burned
-  (gold, each key) as each road runs; the gatekeeper's two `daybook.js`
-  finds (the pace on the room's own clock); `bookPut` waits its turn. The
-  last one out: card A's `_roomRowLastOut` (PR 6's own line dropped).
+- PR 5 (5084, #1752), the world's sum: merged (sitting 8).
+- PR 6 (5085), the book's `econ` part; sitting 8's mend: one last-out
+  writer (card A's), the part rides (no write at a wake), `econ: false`,
+  `ECON_V` in one place, a merged mail entry's minted part (`inbox.js`).
 
 ## Next
 
@@ -34,7 +29,4 @@ state: ready
 
 ## Needs
 
-- The owner: `roomrow.test` 9 (card A's file) wants no book row while
-  players are in; with PR 6 a new character's starting gold is counted at
-  join and a woken room's first count is written at once. Recommended:
-  PR 6 changes that one check to count only what the leave writes.
+- Nothing for this PR (roomrow 9 and 10.5 pass unchanged after the mend).

@@ -15,7 +15,9 @@
  * are finite numbers, or arrays of them (a histogram's bins, added place by
  * place).  The door keeps the day's sums in memory and puts the record AT MOST
  * ONCE A PACE (DAYBOOK.PACE_MS) while the room is awake: the first add after a
- * worker starts writes at once, every later one waits for the pace.  The
+ * worker starts writes at once, every later one waits for the pace (a part
+ * of RIDES starts none: it rides the others' puts and the last one out's,
+ * v2.3.5085).  The
  * caller never awaits anything: an add is a few additions in memory, and the
  * put it may start runs on its own (it returns the put's promise for a test).
  * Only ever ADDS: a percentile is not a sum, so a part that wants one keeps
@@ -74,6 +76,13 @@ export const DAYBOOK = Object.freeze({
   PREFIX: 'daybook:',
   /* the parts, a closed list: a part not here is refused */
   PARTS: Object.freeze(['econ', 'room', 'dev', 'speed']),
+  /* v2.3.5085 (the gatekeeper's sitting 8): the parts whose adds never start
+     a put of their own: they RIDE the others' paced puts and the last one
+     out's (roomrow.js _roomRowLastOut).  The `econ` part is added at every
+     gold and bag change -- a new character's start gold at its join among
+     them -- so its first add wrote the book at once at a room's wake, a
+     write the pace did not count on.  Riding, it writes no row of its own */
+  RIDES: Object.freeze(['econ']),
   /* v2.3.5080: one put every five minutes at most -- 12 rows an hour the room
      is awake and counting, 288 on a day it never sleeps (the free plan's day
      is 100,000), and at most five minutes of counts lost to a restart */
@@ -299,7 +308,7 @@ export function bookAdd(room, part, nums, now) {
     const budget = DAYBOOK.PART_BYTES - bookBytes(tgt);
     if (mergeInto(tgt, nums, budget, true).refused) { over(); return false; }
     mergeInto(tgt, nums, budget, false);
-    bookMaybePut(room, now);
+    if (DAYBOOK.RIDES.indexOf(part) < 0) bookMaybePut(room, now);   /* v2.3.5085: a riding part waits for another's put */
     return true;
   } catch (e) { return false; }   /* a count must never stop what it counts */
 }
