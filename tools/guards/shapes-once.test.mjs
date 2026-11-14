@@ -76,7 +76,7 @@ const NAMES = Object.freeze({
 /* the storage prefixes of the page, and each one's writer (null: not built) */
 const PREFIXES = Object.freeze({
   'daybook:': { part: 7, writer: 'server/src/daybook.js' },   /* v2.3.5080, card E: bookAdd, the one door */
-  'xfer:': { part: 7, writer: null },
+  'xfer:': { part: 7, writer: 'server/src/xfer.js' },   /* v2.3.5092, card E: xferRow, in the settlement's own run */
   'play_trace:': { part: 7, writer: null },
   'permit:': { part: 7, writer: null },
 });

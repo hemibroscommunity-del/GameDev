@@ -60,6 +60,14 @@ const CAPS_ALLOWLIST = new Map([
      bow and staff lanes read them next -- delete each when its gate lands
      (v2.3.4802: the bow's landed, game/bowFeel.js bowFeelOn: its row is gone;
      v2.3.4803: the staff's landed, game/staffFeel.js: its row is gone) */
+  /* v2.3.5481: THE POWER INDEX (server/src/power.js, card PW): the worker's
+     half ships first -- every board row carries `powerIndex` and the Power
+     board is GET /api/leaderboard/top?category=power -- and card LB's panel
+     reads caps.power next: delete this row when its gate lands. */
+  ['power', 'the worker ships first (card PW); card LB\'s board panel gates its Power column on it next -- delete this row then'],
+  /* v2.3.5484: THE STAT BOARDS (server/src/statboards.js, card PW): the same --
+     card LB's panel adds their pills next and reads caps.statboards */
+  ['statboards', 'the worker ships first (card PW); card LB\'s board panel shows that many stat boards next -- delete this row then'],
   /* v2.3.1660: the prog3 entry added at v2.3.1659 is deleted — the
      client gate shipped (wsClient setProg3Enabled), so the audit
      enforces it for real now. */
