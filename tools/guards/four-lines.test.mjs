@@ -23,7 +23,8 @@
  * BREAK PROOF (rule 8), each tried by hand, 2026-11-14:
  *   1. LINES.OTHER_FILE 1500 -> 1300 (src/ui/mobile/sheet/HeroExpanded.jsx
  *      has 1336)                                            -> FAIL 1
- *   2. LINES.FUNCTION's BroTown 7801 -> 7800                -> FAIL 2
+ *   2. LINES.FUNCTION's BroTown 7800 -> 7799                -> FAIL 2
+ *      (v2.3.5374: its line 7800 since sitting 17; was 7801 -> 7800)
  *   3. `import './bagModel.js';` at the top of
  *      src/ui/mobile/dash/inventoryLocks.js (bagModel.js imports it: the file
  *      joins the bag's cycle)                               -> FAIL 3 (files)

@@ -27,6 +27,7 @@
 import { QUEST_REWARDS, QUEST_DORMANT, QUEST_FIRST, QUEST_RETIRED, WOODWORKING_TIERS } from './data.js';
 import { PROG3 } from './prog3.js';
 import { bagGive, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
+import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
 
 /* ═══ v2.3.3525: THE KINDS A QUEST COUNTS ═══
    One list for the credit and the check: each is a counter in _questKills,
@@ -546,7 +547,7 @@ export const questMethods = {
     const made = { ...w, gearBase: 'ww_' + trade.to, tierMult: tier.tierMult,
       name: wood + ' ' + (pick.type === 'bow' ? 'Bow' : pick.type === 'staff' ? 'Staff' : 'Weapon') };
     if (pick.slot) ps[pick.slot] = made;
-    else ps.weaponStash[pick.idx] = made;
+    else stashSet(ps, 'weaponStash', made, 'quest_wood', pick.idx);   /* v2.3.5281: the stashes' door */
     return true;
   },
 
@@ -683,7 +684,7 @@ export const questMethods = {
            announcement still leaves the ownership proof behind. */
         this._gearProvRecord(playerId, slot, _minted, 'quest');
         /* v2.3.4840: the worker's armour stash too (gearstash.js _gearStashLiveAdd) */
-        if (this._gearStashLiveAdd) this._gearStashLiveAdd(ps, slot, _minted);
+        if (this._gearStashLiveAdd) this._gearStashLiveAdd(ps, slot, _minted, 'gear_quest');   /* v2.3.5281: its road */
         ps._questGrantOverflow.push(_minted);
         return false;
       }
@@ -747,9 +748,8 @@ export const questMethods = {
            it still opens -- that is a deliberate design call to raise with
            the owner, not something to "fix" here by tightening the gate.
            Rule 3 of the handoff still applies: check capacity FIRST --
-           _saveRpg truncates weaponStash at cap, so pushing past it destroys
-           the weapon silently. */
-        if (!Array.isArray(ps.weaponStash)) ps.weaponStash = [];
+           v2.3.5281: the stashes' door refuses a give past the cap (false),
+           so the weapon is kept aside below, never lost. */
         /* ═══ v2.3.2420: A FULL STASH NO LONGER EATS THE REWARD ═══
            Owner: "didn't receive bow and staff after completing first quest",
            on a character old enough to be carrying eight weapons already.
@@ -773,12 +773,12 @@ export const questMethods = {
            list (rule 1), so this is dropped on the next save by construction
            -- which is what we want, since the credit happens in the same
            handler and rule 5's opId is what survives a crash, not this. */
-        if (ps.weaponStash.length >= this.WEAPON_STASH_CAP) {
+        /* v2.3.5281: the stashes' door refuses a full bag (false) */
+        if (!stashGive(ps, 'weaponStash', minted, 'quest_reward', this)) {
           if (!Array.isArray(ps._questWeaponUnfit)) ps._questWeaponUnfit = [];
           ps._questWeaponUnfit.push(minted);
           return false;
         }
-        ps.weaponStash.push(minted);
         return true;
       }
       /* v2.3.1680: a SET — several pieces in one reward slot, so the mining

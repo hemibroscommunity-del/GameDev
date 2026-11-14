@@ -79,7 +79,7 @@ they can add up to tens of ms, and nothing sums them. The ones that slice:
 
 | Rationer | Where | Its allowance |
 |---|---|---|
-| a monster strip unpacked in play | `src/rendering/zoneTextures.js` `stripTurn` | a quarter of the frame's length, 3 to 50 ms |
+| a monster strip unpacked in play | `src/rendering/zoneTextures.js` `stripTurn` | the lane's `queue` knob: 4 ms, `thirty` 8 (v2.3.5230; was a quarter of the frame's length, 3 to 50 ms) |
 | a gear sheet packed in play | `src/rendering/gearSheets.js` `_gearTurn` | 6 ms |
 | an object page's ground lines | `src/rendering/wheelObjects.js` `BASES_SLICE_MS` | 3 ms |
 | object shadows' reads | `wheelObjects.js` `BOTTOMS_A_FRAME` | 4 a frame |
@@ -152,7 +152,7 @@ Five definitions, one acting. The report (step 1.1) sends the pacer's alone
 | **the frame pacer** | the animation frame's own timestamps | how many refreshes are drawn | `src/game/framePacer.js` |
 | **the governor** (v2.3.5222: the pacer, grown) | the pacer's verdict; the late frames' split from the frame meter's samples (handed in by `perfTracker.js`) | the ladder's rung (`drawLanes.js setRung`): no knob reads it yet (card O's PRs 4 to 13) | `src/game/framePacer.js` `makeGovernor` |
 | the steady step | `performance.now()` at the loop's start: **a second clock of the same frame** | the length of the step the game takes: the mean of 10 frames, a frame over 50 ms a break | `src/game/frameClock.js`; the cap `S._dtScale`, `src/ui/BroTown.jsx` |
-| the strip slice | the steady step's length | a monster strip's slice: a quarter of the frame | `zoneTextures.js` `stripTurn` |
+| the strip slice | v2.3.5230: the lane's `queue` knob (`laneKnob`), the frame's length only to know the world is in play | a monster strip's slice: 4 ms, `thirty` 8, never growing with the frame | `zoneTextures.js` `stripTurn` |
 | about 20 effects | their own `now - last` | each clamps its own step: 50, 100 or 250 ms | the effects' files |
 
 - v2.3.5222: the pacer gives a verdict at 120, 60 and 30 (Low Power Mode's
@@ -160,8 +160,12 @@ Five definitions, one acting. The report (step 1.1) sends the pacer's alone
   apart (every gap a break). Its own rate still steps on a fast screen
   alone; the verdict moves the ladder on every one.
 - **SECOND**: the frame's time is measured twice in one loop, by two clocks.
-- **SECOND**, and the wrong way for a governor: the strip slice GROWS when
-  frames are long. Step 2.3 (card O) makes the pacer the one controller.
+- ~~**SECOND**, and the wrong way for a governor: the strip slice GROWS when
+  frames are long.~~ v2.3.5230 (card O PR 10): gone. The slice is the
+  lanes' `queue` knob (4 ms; `thirty` 8, a 30 screen's quarter as before):
+  a 60 phone the ladder paces to 30 keeps 4, where it took 8 on the frames
+  already late. Part 8's #6 is off the census (`budgets.mjs`
+  `KNOWN_SECOND_LINE` 15).
 - Nothing in `src/` lowers a quality, a cap, a crowd or a send rate because
   frames are late. v2.3.5222: the governor moves the ladder's rung, and each
   knob reads it in its own PR (card O's 4 to 13); until then the rung shows
@@ -446,7 +450,7 @@ Step 10.6 lists, for each signal, what changes it without cheating. Part 7 of
 | 3 | page ms | one worker file started by three owners, three idle rules | 1 |
 | 4 | page ms | a worker's stuck watch written four times | 1 |
 | 5 | lateness | the frame's time measured by two clocks in one loop (the pacer's, the step's) | 2 |
-| 6 | lateness | the strip slice reads the frame's length and grows with it | 2 |
+| ~~6~~ | lateness | ~~the strip slice reads the frame's length and grows with it~~ (v2.3.5230: gone, the lane's `queue` ms) | 2 |
 | 7 | lateness | "is the world in play" asked four ways | 2 |
 | 8 | MB | three byte caps, no sum; about 30 caps, each its own; nothing reads a total | 3 |
 | 9 | rows | the regen's 10 s gate written twice | 5 |

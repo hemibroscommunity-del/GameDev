@@ -222,8 +222,9 @@ const SETTLE = (P.DUEL_PENDING && P.DUEL_PENDING.SETTLE_MS) || 8000;
   S._inDuel = { opponent: FOE };
   check('6b in a duel: the swing names the foe', has('duelSwingTarget') && P.duelSwingTarget(S) === FOE);
   const MC = src('src/game/monsterCombat.js');
-  const at = MC.indexOf("event: 'player_attack'");
-  const body = cutBraces(MC, MC.indexOf('payload:', at));
+  /* v2.3.5187: the send goes through the action door (act): the claim is act('player_attack', { ... })'s payload */
+  const at = MC.indexOf("act('player_attack', {");
+  const body = cutBraces(MC, at);
   check('6c monsterCombat\'s melee claim sends it as `target`', /target:\s*duelSwingTarget\(S\)/.test(body) && /kind: 'melee'/.test(body));
 }
 /* ── 7. v2.3.4628: the challenge card's own clock ── */
