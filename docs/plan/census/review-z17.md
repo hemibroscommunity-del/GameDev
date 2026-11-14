@@ -193,7 +193,54 @@ grow, against the table's "each further step a step down" (harmless:
 
 ## Card P: #1846 (tag 5256): re-read, listed; #1859 (tag 5259); #1853 (tag 5258): held
 
-PLACEHOLDER_P
+**#1846, the slimes walk (`?slimewalk=0`), re-read at 842b395: sitting
+16's two MEDIUMs are mended on every path walked; lows and nits only.**
+
+- The stat window's demo reads `getSlimeFrame('hit', 0) ||
+  getSlimeHitStill()` (effectsRenderer.js ~18322, ~18394): a 128 px still
+  of the hit (64 KB), loaded behind the first loading screen
+  (`loadHitStill` in the `slime` group) and never freed, so the arrow
+  sticks and the gunk chips fly with no slime ever near, and after the
+  strips were let go. With `?slimewalk=0` the strips stay as before.
+- The farm's Workshop: `dungeon_started` goes through
+  `enterArenaWithLooks` (new `src/game/dungeonArt.js`): the run's
+  archetypes wear the slime, so its strips load behind the zone's screen
+  (8 s cap), a party member pulled in the same way; a rejoin mid-run
+  keeps them; a check once a second frees them on leaving.
+- Low, VERIFIED (a probe through picsOnce.js's real sweep): the still is an
+  ImageBitmap labelled with the hit strip's file, so while it is off the
+  chip each sweep (about a second) loads the whole 3072 x 128 strip as an
+  `<img>` to swap it, never matches its size, and tries again. The cure,
+  one line: `keepPageCopy` on it (picsOnce.js ~71). For P's next PR.
+- Low, PLAUSIBLE: the only file picture kept as an ImageBitmap, against
+  pixiRenderer.js ~85 (an iPhone's purge empties one): after a black-screen
+  rebuild the still could stay empty (sitting 16's symptom in the stat
+  window). Settled by a purge on the owner's iPhone, or a `keepAsImage`.
+- Low, PLAUSIBLE: a second Workshop run started within about a second of
+  leaving the first can have its strips freed by the first's check (a
+  new `dungeon:<uuid>` zone with no spawns reads as wearing no slime):
+  plain circles for that run.
+- Nits: a Workshop run left by a death keeps the strips in BroTown until a
+  slime comes and goes (cheap: colour numbers); wheelMonsterArt.js ~33's
+  comment on the mire wisp.
+- The memory line `artCache` 95.1 -> 90.6 stays right with the still kept
+  (27.5 measured; 4.44 MB saved). Break proofs (the finder's): the still's
+  load out of `loadSetLater` fails picture-door 3 and 3d; the strips
+  through `Assets.load` fail strip-door 4h. Suites: picture-door 33,
+  strip-door 36, monster-palettes 15, held-numbers, dungeon-art,
+  zone-entry, zone-leftovers, renderer-life, loader-retries, slime-shove,
+  slime-boss; guards pixel-readers, state-ledger, switches, four-lines.
+
+**#1859, the rank trophies removed (step 3), stacked on #1846 at
+051eea7.** The owner's own word tonight ("Just go recommended", relayed),
+so not a decision made while away; git keeps the files and the owner's
+sheet and cutter stay. Nothing in `src/`, `server/src/`, `public/tools/`
+or `CREDITS.md` names them; `BoardRow.jsx` draws the medals of
+`public/ui/leaderboard/`. Nit: families.mjs's comment "the files stay
+(removing art is the owner's call)" now sits above the next row.
+`docs/specs/leaderboards.md` ~151 still names the files (card LB's).
+
+**#1853 (the element marks): held (below).**
 
 ## Card J2: #1849 (PR 9, tag 5429), #1858 (PR 12, tag 5432), #1860 (PR 10, tag 5430): listed
 
@@ -255,12 +302,20 @@ Step 3 (a budget's row, a test, a test). Stacked at the gatekeeper's word.
 
 ## Not reviewed: opened during the sitting
 
-L's #1864 (5216, the pose door; it carries #1855 and #1851): the next
-sitting.
+L's #1864 (5216, the pose door, `posedoor`; it carries #1855 and #1851,
+head 7171908): the next sitting.
 
 ## Stalled
 
-PLACEHOLDER_STALLED
+None: P's status says `working`, on branches pushed within the hour.
+
+## The switch rows' days
+
+Each listed row carries its `on` (card T's 7.2). `harvestdoor`,
+`dungeondoor` and `?ladderpass` say 2026-11-15, `?slimewalk` 2026-11-14:
+the day this list merges is the true one; a day off is one day of 28 in
+`--due`'s count. The next sitting sets each to its merge day if it
+differs (a change of a head now would undo this rehearsal).
 
 ## Found (no card's, or another card's)
 
