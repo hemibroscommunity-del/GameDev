@@ -25,6 +25,7 @@ import { lockAimPoint, swimRefused /* v2.3.3003 */, dazeRefused /* v2.3.3014 */,
 import { isWheelSwimming } from '@/game/wheelSwim.js'; /* v2.3.3003: no button in the water */
 import { targetCandidates } from '@/game/targeting.js'; /* v2.3.2472: the nearest-monster fallback below */
 import { fightersNear, fightOn, FIGHT_R } from '@/game/sparTargets.js'; /* v2.3.3267: your sparring clones are a fight too; v2.3.3268: and a foe you chose, or the one who attacked you */
+import { act } from '@/game/actions.js';   /* v2.3.5187: the page's requests leave through the action door (card K PR 7) */
 
 /* Where the shield should point: at the locked target if there is one (the
    whole meaning of a lock), else wherever the body is facing.  Called on the
@@ -153,9 +154,7 @@ export function raiseShieldToggle(S) {
   S._shieldAngle = shieldAimAngle(S);
   S.shieldActive = now;
   S._shieldAutoReleased = false;
-  if (S.channel) {
-    try { S.channel.send({ type: 'broadcast', event: 'player_shield', payload: { id: S.myId, up: true } }); } catch (e) { /* offline: the local block still holds */ }
-  }
+  try { act('player_shield', { id: S.myId, up: true }); } catch (e) { /* offline: the local block still holds */ }   /* v2.3.5187: through the action door (actions.js) */
   try { blockRingBus.beginBlock(); } catch (e) { /* bus is display-only */ }
   /* v2.3.3343: the leather and buckle of the shield coming up -- these were
      two beep()s, which play nothing (SOUND-GAPS) */
@@ -176,9 +175,7 @@ export function dropShield(S, why) {
   S.shieldEnd = 0;
   S._shieldDroppedWhy = why || 'tap';
   S._shieldDroppedAt = Date.now();
-  if (S.channel) {
-    try { S.channel.send({ type: 'broadcast', event: 'player_shield', payload: { id: S.myId, up: false } }); } catch (e) { /* as above */ }
-  }
+  try { act('player_shield', { id: S.myId, up: false }); } catch (e) { /* as above */ }   /* v2.3.5187: through the action door (actions.js) */
   try { blockRingBus.endBlock(); } catch (e) { /* display-only */ }
   cue('shieldDown');   /* v2.3.3343: ...and going down, softer (it was silent) */
   return true;

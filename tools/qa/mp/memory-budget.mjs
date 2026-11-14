@@ -276,6 +276,21 @@
  * 75.0-77.2, its line unchanged).  By the census's own ruler, the chip's
  * share counted (the gatekeeper's sitting 9), the family is 2.00 -> 1.51 MB
  * at the fight: 0.49 MB less. */
+/* v2.3.5256, the backlog's `monster-slime`: the slimes' four strips a look
+ * of the walking loader (wheelMonsterArt.js), loaded through the strip door
+ * as one comes near and let go when none is (`?slimewalk=0`: loaded behind
+ * the first loading screen, as before).  They were pictures in the asset
+ * cache from the start, at the Flame Fields' fight too, where no slime
+ * lives.  Three runs: `artCache` at the fight 31.9 -> 27.4 and its line
+ * 95.1 -> 90.6, LOWERED by the 4.5 MB saved; `buffers` 21.0-21.9 at the
+ * fight and 23.7 at its highest, at home (line 24.2, unchanged); every
+ * other line unchanged.  By the census, monster-slime 4.56 -> 0 MB at the
+ * fight; the splat and the orb (monster-slime-stills, 0.13 MB) are kept.
+ * With sitting 16's mends and main's frame pack (three runs at fe3eb60b3):
+ * `artCache` 27.5 at the fight, the hit's first frame kept as a still for
+ * the stat window's films (slimeSprites.js `getHitStill`, 0.06 MB); its
+ * line stays 90.6 (never raised); `buffers` 19.4-21.3 at the fight, 23.5
+ * at its highest, at home; the census monster-slime 4.56 -> 0.06 MB. */
 /* v2.3.5257, the backlog's `monster-fire-goblin`: a monster strip's colour
  * numbers kept deflated a frame at a time once the chip has drawn it
  * (framePack.js, `?framepack=0` the numbers whole).  Three runs at
@@ -290,7 +305,7 @@
  * 6.65 MB at the fight (its numbers 5.54 -> 4.09): its strips not yet drawn
  * keep their numbers whole. */
 export const MEMORY_BUDGET = {
-  artCache: { name: 'art loaded from files', mb: 95.1, measured: 31.8,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB); v2.3.5247: 109.1 -> 107.0, Ace's coin strips (2.1 MB); v2.3.5248: 107.0 -> 101.4, the trees as numbers (5.6 MB); v2.3.5249: 101.4 -> 98.3, the made effects as numbers (3.1 MB); v2.3.5250: 98.3 -> 97.1, the world's icons (1.2 MB); v2.3.5252: 97.1 -> 95.1, the whirlwind as numbers (2.0 MB), see the header */
+  artCache: { name: 'art loaded from files', mb: 90.6, measured: 27.5,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB); v2.3.5247: 109.1 -> 107.0, Ace's coin strips (2.1 MB); v2.3.5248: 107.0 -> 101.4, the trees as numbers (5.6 MB); v2.3.5249: 101.4 -> 98.3, the made effects as numbers (3.1 MB); v2.3.5250: 98.3 -> 97.1, the world's icons (1.2 MB); v2.3.5252: 97.1 -> 95.1, the whirlwind as numbers (2.0 MB); v2.3.5256: 95.1 -> 90.6, the slimes' strips loaded as you walk (4.5 MB), see the header */
     what: 'pictures loaded from files, decoded (the asset cache, window.__btTex) -- its highest at the fight, the monsters\' looks loaded' },
   gpu: { name: 'textures on the graphics chip', mb: 115, measured: 95.0,   /* v2.3.4058: 105 -> 115, approved by the owner 2026-11-03, see the header */
     what: 'textures on the graphics chip (window.__btGpuTex) -- including what was drawn in the last minute, which Pixi unloads after 60 s unused' },

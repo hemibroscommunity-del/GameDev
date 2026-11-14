@@ -17,7 +17,7 @@ screen.
 |---|---|
 | `full` | What every device draws today |
 | `light` | A lighter picture, for tests and slow devices: picked only by `?lane=light` |
-| `thirty` | A screen of 30 a second (an iPhone in Low Power Mode): the full lane's row until its step's cap (card O PR 13) |
+| `thirty` | A screen of 30 a second (an iPhone in Low Power Mode): the full lane's row (v2.3.5230: but monsters' art 8 ms a frame, a 30 screen's quarter, as before) until its step's cap (card O PR 13) |
 
 A device picks `thirty` where its screen runs at 30 a second, else `full` (`pickLane`). Where nothing is known yet: `full`.
 `?lane=<name>` draws a page in that lane, whatever its facts.
@@ -32,7 +32,7 @@ A device picks `thirty` where its screen runs at 30 a second, else `full` (`pick
 | `shine` | Metal shines | No shine on metal | Metal shines |
 | `shadows` | Shadows drawn | Shadows drawn | Shadows drawn |
 | `water` | The sea moves | The sea moves | The sea moves |
-| `queue` | Monsters' art loads a quarter of each frame at most | Monsters' art loads a quarter of each frame at most | Monsters' art loads a quarter of each frame at most |
+| `queue` | Monsters' art loads 4 ms a frame at most (a 60 screen's quarter) | Monsters' art loads 4 ms a frame at most (a 60 screen's quarter) | Monsters' art loads 8 ms a frame at most (a 30 screen's quarter) |
 | `caches` | Every cache holds what its own cap allows | Every cache holds what its own cap allows | Every cache holds what its own cap allows |
 | `step` | A frame moves the world at most 50 ms (three frames at 60) | A frame moves the world at most 50 ms (three frames at 60) | A frame moves the world at most 50 ms (three frames at 60) |
 | `prewarm` | No prewarm ring (not built) | No prewarm ring (not built) | No prewarm ring (not built) |
@@ -83,15 +83,15 @@ value, the `full` row's.
 | `crowd` | the most other players drawn in full (your party, your target, whoever fights you and your duel always) | `50`, `30`, `15` | `src/game/crowdCap.js` | yes | 6 | `?laddercrowd` | monsters |
 | `program` | one drawing program for the world's sprites, or three (chosen behind the loading screen: never a rung; v2.3.5228: the three an override's, below) | `one`, `three` | `src/rendering/paletteTex.js` | yes | 8 | `?onebatch` | memory |
 | `look` | how a character's look is made: coloured on the chip, or each baked (chosen behind the loading screen: never a rung; v2.3.5228: baked an override's, below) | `palette`, `baked` | `src/game/lookPaletteChoice.js` | yes | 8 | `lookpalette` | device |
-| `shine` | the metal's shine on gear | `on`, `off` | `src/rendering/lightfx/glint.js` | not yet | 9 | `?sheen` | render |
-| `shadows` | the light and the shadows | `on`, `off` | `src/rendering/lightfx/lightFx.js` | not yet | 9 | `?lightfx` | render |
-| `water` | the sea's waves | `moving`, `still` | `src/rendering/wheelWater.js` | not yet | 9 | `?waves` | render |
-| `queue` | the ms a frame the strip queue may take loading monsters' art (today: a quarter of the frame, 3 to 50 ms) | `frame` | `src/rendering/zoneTextures.js` | not yet | 10 | `?stripslice` | art |
+| `shine` | the metal's shine on gear | `on`, `off` | `src/rendering/lightfx/glint.js` | yes | 9 | `?sheen` | render |
+| `shadows` | the light and the shadows | `on`, `off` | `src/rendering/lightfx/lightFx.js` | yes | 9 | `?lightfx` | render |
+| `water` | the sea's waves | `moving`, `still` | `src/rendering/wheelWater.js` | yes | 9 | `?waves` | render |
+| `queue` | the ms a frame the strip queue may take loading monsters' art in play (v2.3.5230: the lane's, never the frame's length; was a quarter of the frame, 3 to 50 ms) | `4`, `8` | `src/rendering/zoneTextures.js` | yes | 10 | `?stripslice` | art |
 | `caches` | the caches' caps, as a share of each cache's own (docs/BUDGETS.md part 3) | `1` | `src/rendering/lookPalette.js`, `src/rendering/gearNumbers.js`, `src/rendering/systems/entityRenderer.js`, `src/rendering/cacheBytes.js` | not yet | 11 | - | look |
 | `step` | the longest step, in ms, one frame may move the world (frameClock.js SMOOTH_MAX_MS; the loop's clamp) | `50` | `src/game/frameClock.js`, `src/ui/BroTown.jsx` | not yet | 13 | `?dtsmooth` | page-thread |
 | `prewarm` | the prewarm ring (step 3.3, LATER): one value and no reader until 3.3 builds the ring | `0` | none yet | - | - | - | - |
 
-Not yet moved: 6 of 11 knobs with a reader.
+Not yet moved: 2 of 11 knobs with a reader.
 
 ## The overrides
 

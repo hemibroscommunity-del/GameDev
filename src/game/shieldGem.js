@@ -35,6 +35,7 @@ import { BLACKSMITH_TIERS, BT_AUDIO, ELEMENTS, SHIELD_GEM_STATS, recalcDerived }
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { shieldSig, shieldWearPayload } from '@/game/shieldWear.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a gem set in a shield, heard */
+import { act } from '@/game/actions.js';   /* v2.3.5187: the page's requests leave through the action door (card K PR 7) */
 
 /* how long an unanswered ask holds the gem buttons */
 export const SHIELD_GEM_WAIT_MS = 4000;
@@ -84,7 +85,7 @@ export function askShieldGem(S, gem) {
   const named = shieldWearPayload(S.rpg);
   if (!named || named.none) return null;
   const payload = { gem, ...named };
-  try { S.channel.send({ type: 'shield_gem', payload }); } catch (e) { return null; }
+  try { act('shield_gem', payload); } catch (e) { return null; }   /* v2.3.5187: through the action door (actions.js) */
   _pending = { at: Date.now(), gem };
   emit();
   return payload;

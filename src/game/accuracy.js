@@ -19,6 +19,8 @@
  * This file also keeps the worker's answer (`acc_state`) for the Journey page.
  * No imports: node tests read it.  Spec: docs/specs/accuracy.md. */
 
+import { act } from './actions.js';   /* v2.3.5187: the action door (card K PR 7), the one import: it has none of its own, so node still reads this file */
+
 export const ACC_SLOTS = ['melee', 'ranged', 'staff'];
 export const ACC_NAMES = { melee: 'Sword', ranged: 'Bow', staff: 'Staff' };
 
@@ -65,7 +67,7 @@ export function subscribeAccuracy(fn) {
 /** Ask the worker for your own numbers. */
 export function askAccuracy(S) {
   if (!accLive(S) || !S.channel) return false;
-  try { S.channel.send({ type: 'acc_request', payload: {} }); } catch (_e) { return false; }
+  try { act('acc_request', {}); } catch (_e) { return false; }   /* v2.3.5187: through the action door (actions.js) */
   return true;
 }
 

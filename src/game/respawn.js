@@ -26,6 +26,7 @@ import { wantWheelSpawn } from '@/game/wheelHome.js'; /* v2.3.2990: and you come
 import { dropDungeonZone } from '@/game/wheelDungeons.js'; /* v2.3.3016: a dungeon's synthetic zone, dropped after its art is released */
 import { deathLine } from '@/game/deathCard.js'; /* v2.3.3817: the chat's line once you are back */
 import { chatLogBus } from '@/ui/mobile/chatLogBus.js';
+import { act } from '@/game/actions.js';   /* v2.3.5187: the page's requests leave through the action door (card K PR 7) */
 
 /**
  * Put the player back on their feet in `zone`.  Idempotent enough to call
@@ -104,8 +105,8 @@ export function applyLocalRespawn(S, zone) {
      clear our _isDead via the broadcast. */
   if (S.channel && S.player) {
     try {
-      S.channel.send({ type: 'broadcast', event: 'move', payload: { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 } });
-      S.channel.send({ type: 'broadcast', event: 'player_respawned', payload: { id: S.myId } });
+      act('move', { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 });   /* v2.3.5187: through the action door (actions.js) */
+      act('player_respawned', { id: S.myId });
     } catch (e) {}
   }
   try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}

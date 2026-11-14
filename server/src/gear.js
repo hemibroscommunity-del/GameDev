@@ -24,6 +24,7 @@ import { forgeLevelFor, forgeOffered } from './forgeladder.js'; /* v2.3.3524: th
 import { ELEMENT_STATUS } from './elemental.js'; /* v2.3.3513: a weapon's gems are checked on the way in */
 import { isVolatilePair } from './weapongem.js'; /* v2.3.3513 */
 import { bagTake } from './bag.js'; /* v2.3.4810: the bag door */
+import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
 
 export const gearMethods = {
   /* v2.3.4386: `gearresend: false` in the live flags is the way back to the
@@ -242,7 +243,7 @@ export const gearMethods = {
        fix is not a weapon and is not bought as one (_isGearNotWeapon). */
     if (this._isGearNotWeapon(weapon)) return refuse();
     const sellVal = this._weaponSellValue(weapon);
-    ps.weaponStash.splice(stashIdx, 1);
+    stashTake(ps, 'weaponStash', stashIdx, 'weapon_sell');   /* v2.3.5281: the stashes' door */
     this._goldGive(ps, sellVal, 'weapon_sell'); /* v2.3.4670: the gold door */
     this._saveRpg(session.id, ps);
     const ws = this._wsBySessionId(session.id);
@@ -620,18 +621,13 @@ export const gearMethods = {
     // be stashed but stash is full, reject (matches client where
     // stash.push silently no-ops at cap).  Future: auto-sell oldest.
     const current = ps[slot];
-    if (current) {
-      if (!Array.isArray(ps.weaponStash)) ps.weaponStash = [];
-      if (ps.weaponStash.length >= this.WEAPON_STASH_CAP) return refuse();
-    }
+    if (current && Array.isArray(ps.weaponStash) && ps.weaponStash.length >= this.WEAPON_STASH_CAP) return refuse();   /* v2.3.5281: the door makes the bag */
 
     // Apply: consume resources, mint new weapon, swap old to stash.
     bagTake(ps.inventory, resourceKey, cost, 'weapon_forge'); /* v2.3.4810: the bag door */
     this._goldTake(ps, tier.goldCost, 'weapon_forge'); /* v2.3.4670: the gold door */
 
-    if (current) {
-      ps.weaponStash.push(current);
-    }
+    if (current) stashGive(ps, 'weaponStash', current, 'forge_swap', this);   /* v2.3.5281: room checked above, before the cost */
     ps[slot] = {
       type: weaponType,
       tier: 'common',
@@ -702,15 +698,14 @@ export const gearMethods = {
     }
     // Weapons go to stash; armor/shield/amulet just null out.
     if (slot === 'weapon' || slot === 'rangedWeapon' || slot === 'staffWeapon') {
-      if (!Array.isArray(ps.weaponStash)) ps.weaponStash = [];
       /* v2.3.4883: stash full -- the phone took the weapon off its hand when it
-         asked, so the hand and the bag go back (a bare return: the refusal door) */
-      if (ps.weaponStash.length >= this.WEAPON_STASH_CAP) return this._refusalEcho(session, ['weapon', 'rangedWeapon', 'staffWeapon', 'weaponStash', 'activeSlot']); // stash full -- reject
-      ps.weaponStash.push(current);
+         asked, so the hand and the bag go back (a bare return: the refusal door).
+         v2.3.5281: the stashes' door refuses a full bag (false) */
+      if (!stashGive(ps, 'weaponStash', current, 'unequip_weapon', this)) return this._refusalEcho(session, ['weapon', 'rangedWeapon', 'staffWeapon', 'weaponStash', 'activeSlot']); // stash full -- reject
     }
     /* v2.3.4840: armour or legs taken off go to the bag: the worker's armour
        stash too (gearstash.js _gearStashLiveAdd) */
-    if ((slot === 'armor' || slot === 'legsArmor') && this._gearStashLiveAdd) this._gearStashLiveAdd(ps, slot, current);
+    if ((slot === 'armor' || slot === 'legsArmor') && this._gearStashLiveAdd) this._gearStashLiveAdd(ps, slot, current, 'gear_unequip');
     ps[slot] = null;
     // v2.3.1159: active-slot repair.  Unequipping the weapon the
     // activeSlot points at used to leave the pointer dangling — the
@@ -749,7 +744,6 @@ export const gearMethods = {
        shield and amulet slots never swap with the weapon bag. */
     if (!this._isWeaponSlot(slot)) return;
     if (!Number.isInteger(stashIdx) || stashIdx < 0) return;
-    if (!Array.isArray(ps.weaponStash)) ps.weaponStash = [];
     /* v2.3.3160: ...and refused OUT LOUD.  The game moves the weapon on its
        own screen before the worker answers (ItemDetailPopup), putting the old
        one at the END of the bag where the worker swaps in place -- so a
@@ -763,7 +757,7 @@ export const gearMethods = {
       const w = this._wsBySessionId(session.id);
       if (w) this._resendPlayerState(w, session.id, ['weapon', 'rangedWeapon', 'staffWeapon', 'weaponStash', 'activeSlot']);
     };
-    if (stashIdx >= ps.weaponStash.length) return refuseWeapons();
+    if (!Array.isArray(ps.weaponStash) || stashIdx >= ps.weaponStash.length) return refuseWeapons();   /* v2.3.5281: no bag, nothing to take up */
     // Swap stash entry with current active slot.  If active slot
     // empty, the stash item moves in and the stash entry becomes
     // null (which we then splice out so stash stays compact).
@@ -794,16 +788,12 @@ export const gearMethods = {
     this._revealBagOnWear(session.id, ps, slot, stashItem);
     const activeItem = ps[slot] || null;
     ps[slot] = stashItem;
-    if (activeItem) {
-      ps.weaponStash[stashIdx] = activeItem;
-    } else {
-      ps.weaponStash.splice(stashIdx, 1);
-    }
-    // Sanity cap so stash can't grow past the client-side limit even
-    // if a cheater somehow inflates it via prior bootstrap.
-    if (ps.weaponStash.length > this.WEAPON_STASH_CAP) {
-      ps.weaponStash.length = this.WEAPON_STASH_CAP;
-    }
+    /* v2.3.5281: the stashes' door.  The old cut to the cap here is gone: a
+       swap never grows the bag, and a bag over its cap (a cap lowered) keeps
+       every weapon until the next join cuts it (rule 3: the join's cut
+       remains) -- the door refuses a give past it */
+    if (activeItem) stashSet(ps, 'weaponStash', activeItem, 'equip_swap', stashIdx);
+    else stashTake(ps, 'weaponStash', stashIdx, 'equip_take');
     // v2.3.1697: armor no longer changes maxHp (see _handleUnequipRequest
     // above and grids.js _recomputeMaxes) — the recompute stays as the
     // single post-equipment re-derive of the pools.

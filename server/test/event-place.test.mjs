@@ -423,7 +423,8 @@ check('7a EVENT_PLACE.R is wheelzone.js INTEREST_OUT: a phone hears every monste
     ? walk(new URL(d.name + '/', dir))
     : (/\.(js|jsx)$/.test(d.name) ? [readFileSync(new URL(d.name, dir), 'utf8')] : [])));
   const clientText = walk(client).join('\n');
-  const missing = EVENT_PLACED_TYPES.filter((t) => !new RegExp(`type:\\s*'${t}'`).test(serverText) && !new RegExp(`event:\\s*'${t}'`).test(clientText));
+  /* v2.3.5187: the send goes through the action door (act): a phone's relay is `act('<event>'` too */
+  const missing = EVENT_PLACED_TYPES.filter((t) => !new RegExp(`type:\\s*'${t}'`).test(serverText) && !new RegExp(`(?:event:\\s*|\\bact\\(\\s*)'${t}'`).test(clientText));
   check('8a every placed type is pushed by the room or relayed by a phone (no typo places nothing)', missing.length === 0, missing);
 }
 

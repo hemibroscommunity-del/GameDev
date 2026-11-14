@@ -9,7 +9,7 @@
  *       blob from a fixed list -- runtime-only fields (dmgFromMonster,
  *       _lastGambleAt, arbitrary flags) must NOT persist.
  *   3.  _pruneBuffs on save: expired buff timers dropped, future kept.
- *   4.  weaponStash cap truncation: slice(0, WEAPON_STASH_CAP) keeps
+ *   4.  weaponStash at the save: v2.3.5281, never cut (the door refuses past the cap); was: slice(0, WEAPON_STASH_CAP) keeps
  *       the FIRST 8 -- the NEWEST entries are the ones silently
  *       dropped (documented quirk; see handoff item L / inbox weapon
  *       parking which exists to avoid exactly this).
@@ -127,16 +127,16 @@ check('runtime-only fields are NOT persisted (fixed-field rule)',
 // ── 3. buff pruning on save ──
 check('_pruneBuffs: expired buff dropped, future buff kept', blob._buffs.regen === FUTURE && blob._buffs.damage === undefined, blob._buffs);
 
-// ── 4. stash cap truncation ──
+// ── 4. the stash is never cut at the save (v2.3.5281: handoff rule 3 moved
+//    into the stashes' door, stash.js: a give past the cap is refused there) ──
 ps.weaponStash = Array.from({ length: room.WEAPON_STASH_CAP + 2 }, (_, i) => ({ type: 'sword', tierMult: 1, _idx: i }));
 await room._saveRpg('bp_pt_a', ps);
 const blob2 = state._store.get('rpg:bp_pt_a');
-// Documented quirk (handoff item L adjacent): slice(0, CAP) keeps the
-// FIRST 8 -- entries pushed past the cap are the ones destroyed.  The
-// inbox weapon-parking path exists to route around this; if the policy
-// ever changes to keep-newest, update this assertion deliberately.
-check('stash truncates to WEAPON_STASH_CAP keeping the FIRST entries',
-  blob2.weaponStash.length === room.WEAPON_STASH_CAP && blob2.weaponStash[0]._idx === 0 && blob2.weaponStash[room.WEAPON_STASH_CAP - 1]._idx === room.WEAPON_STASH_CAP - 1,
+// v2.3.5281: was "slice(0, CAP) keeps the FIRST 8 -- entries pushed past the
+// cap are the ones destroyed".  The door refuses a give past the cap now, so
+// a bag over it (a cap lowered under disable_bigbags) keeps every weapon.
+check('the save keeps every weapon of a bag over its cap, in order (never cut at the save)',
+  blob2.weaponStash.length === room.WEAPON_STASH_CAP + 2 && blob2.weaponStash[0]._idx === 0 && blob2.weaponStash[room.WEAPON_STASH_CAP + 1]._idx === room.WEAPON_STASH_CAP + 1,
   blob2.weaponStash.map((w) => w._idx));
 
 // ── 5. _healLifeSkills on load (v2.3.769 corruption shapes) ──

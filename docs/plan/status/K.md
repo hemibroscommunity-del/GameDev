@@ -1,6 +1,6 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842 merged; ready: #1848 (5541, mended) this branch, #1861 (7.1, 5187)
+prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861 merged; ready: #1848 (5541, mended) this branch
 state: ready
 
 ## Done
@@ -17,7 +17,7 @@ state: ready
   review-z16's two MEDIUMs mended on its ON path: a carried move billed as
   it moves if it needed the sprint; the sprint's bound only for what is
   billed; sprint.test §9. With it on, the move 4.35 -> 2.56.
-- PR 7.1 (5187, #1861): combat and moving through act(), 57 of 58 sends (census
+- PR 7.1 (5187, #1861, merged): combat and moving through act(), 57 of 58 sends (census
   203 -> 146); precheck reads an event through the door as a broadcast.
   Scenarios: jump, shieldgem, deathzones fail on main too (not this PR).
 

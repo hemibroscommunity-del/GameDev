@@ -134,8 +134,8 @@ export const gridMethods = {
     /* v2.3.4840: the worker's armour stash follows the swap: the piece put on
        leaves it, the piece taken off goes in (gearstash.js _gearStashLiveAdd) */
     if (this._gearStashLiveAdd) {
-      if (next) this._gearStashLiveTake(ps, slot, next);
-      if (ps[slot]) this._gearStashLiveAdd(ps, slot, ps[slot]);
+      if (next) this._gearStashLiveTake(ps, slot, next, 'gear_swap_on');   /* v2.3.5281: their roads */
+      if (ps[slot]) this._gearStashLiveAdd(ps, slot, ps[slot], 'gear_swap_off');
     }
     ps[slot] = next;
     /* v2.3.3142: a swap that changes the grade everyone else sees (tick.js

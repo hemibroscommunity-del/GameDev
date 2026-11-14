@@ -21,6 +21,10 @@
  *      parties' own lists agree;
  *   4. step 1 changes nothing: an invite is still no member.
  *
+ * v2.3.5214: a birth is the whole guarded line (`if (!...) ... = new Map();`);
+ * an unconditional `this._partyByPlayer = new Map();` in a new function of
+ * party.js -> FAIL 2.
+ *
  * Break proof, tried by hand: `this._partyByPlayer.set(accepterId, p);` put
  * back in _handlePartyAccept -> FAIL 2 (and the guard's §2).
  */
@@ -59,9 +63,13 @@ function check(name, cond, detail) {
 
 /* ── 2. no second writer ── */
 {
+  /* v2.3.5214 (the gatekeeper's low, sitting 15): a birth is the whole
+     guarded line, so it only ever makes a map that is missing; an
+     unconditional `this._partyByPlayer = new Map()` (a wipe) is no birth */
+  const BIRTH = /^\s*if \(!this\._partyByPlayer\) this\._partyByPlayer = new Map\(\);\s*$/;
   const BIRTHS = [
-    { file: 'server/src/party.js', text: 'this._partyByPlayer = new Map()', why: 'the map\'s birth, empty (a load, an accept)' },
-    { file: 'server/src/clanparty.js', text: 'this._partyByPlayer = new Map()', why: 'the map\'s birth, empty (a clan becoming a party)' },
+    { file: 'server/src/party.js', re: BIRTH, text: 'if (!this._partyByPlayer) this._partyByPlayer = new Map();', why: 'the map\'s birth, empty, only where missing (a load, an accept)' },
+    { file: 'server/src/clanparty.js', re: BIRTH, text: 'if (!this._partyByPlayer) this._partyByPlayer = new Map();', why: 'the map\'s birth, empty, only where missing (a clan becoming a party)' },
   ];
   const ROOT = new URL('../../', import.meta.url);
   const files = [];
@@ -90,7 +98,7 @@ function check(name, cond, detail) {
       }
       if (!WRITE.test(l)) continue;
       if (inDoor) { doorWrites++; continue; }
-      const b = BIRTHS.find((x) => x.file === f && l.includes(x.text));
+      const b = BIRTHS.find((x) => x.file === f && x.re.test(l));
       if (b) { seen.add(b); continue; }
       outside.push(f + ':' + (i + 1) + '  ' + l.trim().slice(0, 100));
     }

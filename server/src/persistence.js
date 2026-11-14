@@ -361,7 +361,10 @@ export const persistenceMethods = {
         legsArmor: ps.legsArmor || null,
         shield: ps.shield || null,
         amulet: ps.amulet || null,
-        weaponStash: Array.isArray(ps.weaponStash) ? ps.weaponStash.slice(0, this.WEAPON_STASH_CAP) : [],
+        /* v2.3.5281: the save no longer cuts the weapon bag (handoff rule
+           3: a give past the cap is refused at the stashes' door, stash.js;
+           the join's cut, the phone's copy and the gear lists' cuts remain) */
+        weaponStash: Array.isArray(ps.weaponStash) ? ps.weaponStash.slice() : [],
         /* v2.3.2523: THE GEAR STASHES (gearstash.js, spec
            docs/specs/gear-stash.md).  Armour, legs, shields, cosmetic
            gear and amulets were client-local -- the server held only the

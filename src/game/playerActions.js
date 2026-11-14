@@ -24,6 +24,7 @@ import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking bre
 import { cue, cueLater } from '@/game/eventSounds.js'; /* v2.3.3343: the specials' and the burst's own sounds; v2.3.3523: + cueLater, the volley's arrows */
 import { brewMulNow } from '@/game/fightFood.js'; /* v2.3.3133: a special carries the damage brew too */
 import { mcSwingGapMs, mcNoteSwing } from '@/game/manualCombat.js'; /* v2.3.4520: the free-swing trial's gap and share */
+import { act } from '@/game/actions.js';   /* v2.3.5187: the page's requests leave through the action door (card K PR 7) */
 
 export function swingAttack(S) {
     /* v2.3.1473: a corpse doesn't swing (see isPlayerDead). */
@@ -261,9 +262,7 @@ export function specialAttack(S) {
          moved, and its next player_state echo refunded it: a free ability
          anywhere outside a spoke zone.  _handleAbilityUse is zone-agnostic
          (it only reads the pool), so `S.channel` is the whole gate. */
-      if (S.channel) {
-        try { S.channel.send({ type: 'ability_use', payload: { type: 'swipe', tier: tierIdx } }); } catch (e) {}
-      }
+      try { act('ability_use', { type: 'swipe', tier: tierIdx }); } catch (e) {}   /* v2.3.5187: through the action door (actions.js), which sends nothing without a connection: that is still the whole gate */
       /* GDD §1.2 Mind: spending mana on swipe triggers. */
       addBuildUse(R, 'mind', manaCost);
     }
@@ -454,7 +453,7 @@ export function specialAttack(S) {
       var _shotTg = shotTargetId(S, (ZONES[S.currentZone] || {}).safe) || undefined;
       if (S.channel) {
         for (var bvj = 0; bvj < _bowN; bvj++) {
-          S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
+          act('player_projectile', {
             id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng, isStaff: false, isSpecial: true, ts: now, el: hasElement || undefined,   /* v2.3.2919: the element these shots are drawn in (hasElement above: the second element first); see monsterCombat's player_projectile */
             delayMs: Math.round(volleyDelayMs(bvj, BOW_VOLLEY.PEER_PX_PER_FRAME)),
             volley: _bowVolley ? 1 : undefined,   /* v2.3.2849: additive -- a peer burns it out on the volley's 2.5 s, not the lone arrow's 4 */
@@ -462,7 +461,7 @@ export function specialAttack(S) {
             gf: shotAimWire(_bowGf),   /* v2.3.3501: additive */
             life: Math.round(90 * _bowStat), /* v2.3.2592: peers see the stat's reach too; v2.3.2790 x depth */
             tg: _shotTg,   /* v2.3.3266: the player it is aimed at (monsterCombat's shot); it pierces, so it flies on through */
-          }});
+          });
         }
       }
       /* v2.3.3343: each arrow of the volley loosed as it leaves (its own
@@ -605,18 +604,16 @@ export function specialAttack(S) {
         S._staffCastAt = now;
         S._staffCastAng = aimAng;
         S._staffCastBig = now;
-        if (S.channel) {
-          S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
-            id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng, isStaff: true, isSpecial: true, el: hasElement || undefined,   /* v2.3.2919: the element these shots are drawn in (hasElement above: the second element first); see monsterCombat's player_projectile */
-            big: true,   /* additive: an older peer draws one charged orb, which is what one bolt is */
-            speedPx: _ORB_SPEED,
-            life: _bigLife,
-            lp: _orbLp ? [Math.round(_orbLp.x), Math.round(_orbLp.y)] : undefined,   /* v2.3.3206: additive */
-            gf: shotAimWire(_orbGf),   /* v2.3.3501: additive */
-            tg: shotTargetId(S, (ZONES[S.currentZone] || {}).safe) || undefined,   /* v2.3.3266: it chases them on every screen, as on yours */
-            ts: now
-          }});
-        }
+        act('player_projectile', {
+          id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng, isStaff: true, isSpecial: true, el: hasElement || undefined,   /* v2.3.2919: the element these shots are drawn in (hasElement above: the second element first); see monsterCombat's player_projectile */
+          big: true,   /* additive: an older peer draws one charged orb, which is what one bolt is */
+          speedPx: _ORB_SPEED,
+          life: _bigLife,
+          lp: _orbLp ? [Math.round(_orbLp.x), Math.round(_orbLp.y)] : undefined,   /* v2.3.3206: additive */
+          gf: shotAimWire(_orbGf),   /* v2.3.3501: additive */
+          tg: shotTargetId(S, (ZONES[S.currentZone] || {}).safe) || undefined,   /* v2.3.3266: it chases them on every screen, as on yours */
+          ts: now
+        });
         cue('staffSpecial');   /* v2.3.3343: the big bolt's own cast (two silent beep()s) */
         S.screenShake = 4;
       } else {
@@ -650,7 +647,7 @@ export function specialAttack(S) {
            it drew before. */
         if (S.channel) {
           for (var _bcj = 0; _bcj < 3; _bcj++) {
-            S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
+            act('player_projectile', {
               id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng, isStaff: true, isSpecial: true, el: hasElement || undefined,   /* v2.3.2919: the element these shots are drawn in (hasElement above: the second element first); see monsterCombat's player_projectile */
               delayMs: _bcj * _ORB_GAP_MS,
               speedPx: _ORB_SPEEDS[_bcj],   /* v2.3.2262: peers see the same fast/medium/slow spread */
@@ -659,7 +656,7 @@ export function specialAttack(S) {
               gf: shotAimWire(_orbGf),   /* v2.3.3501: additive */
               tg: shotTargetId(S, (ZONES[S.currentZone] || {}).safe) || undefined,   /* v2.3.3266 */
               ts: now
-            }});
+            });
           }
         }
         cue('staffSpecial');   /* v2.3.3343: as the big bolt's */
@@ -675,7 +672,7 @@ export function specialAttack(S) {
       /* Broadcast the special swing so peers render the wider arc +
          gold halo.  The regular auto-swing broadcast path is skipped
          because isSwinging is already true here. */
-      if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_swing', payload: { id: S.myId, ts: now, special: true, wpn: (activeWpn && activeWpn.type) || 'sword', ang: aimAng } });
+      act('player_swing', { id: S.myId, ts: now, special: true, wpn: (activeWpn && activeWpn.type) || 'sword', ang: aimAng });
     }
 
     /* ═══ v2.3.1798: THE SPECIAL HAS A REAL SOUND ═══
@@ -700,7 +697,7 @@ export function raiseShield(S, deps) {
     S._shieldUp = true;
     setShieldUp(true);
     S.shieldActive = now;
-    if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_shield', payload: { id: S.myId, up: true }});
+    act('player_shield', { id: S.myId, up: true });   /* v2.3.5187: through the action door (actions.js) */
     BT_AUDIO.beep(500, 0.1, 0.15, 'sine');
     setTimeout(function () {
       return BT_AUDIO.beep(700, 0.08, 0.1, 'sine');
@@ -769,7 +766,5 @@ export function elementBurst(S) {
   if (S._impactRings) {
     S._impactRings.push({ x: S.player.x, y: S.player.y, ts: now, duration: 220, maxR: 18, color: elemColor });
   }
-  if (S.channel) {
-    try { S.channel.send({ type: 'element_burst', payload: {} }); } catch (e) {}
-  }
+  try { act('element_burst', {}); } catch (e) {}   /* v2.3.5187: through the action door (actions.js) */
 }

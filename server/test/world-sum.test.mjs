@@ -362,6 +362,23 @@ for (const [what, plant, wantGold, wantGoods] of [
   check('4. the champion\'s prize says the house\'s part (payload.house)', /opId: 'arenapot:' \+ tid[^\n]*payload: \{ amount: prize, house: /.test(src));
 }
 
+/* ══════════ v2.3.5281: THE STASHES, BY THE DOOR'S CLASSES (card R PR 2) ══════════
+   The stashes' door (stash.js) classes every road as gold.js does; the sum
+   reads every place a stash road holds a piece in, and counts the gear lists
+   the door writes (each piece by its id, in one place).  The weapon bag is
+   counted once weapons carry an id (card R PR 3: the readers say so). */
+{
+  const { STASH_ROADS, STASH_FIELDS } = await import('../src/stash.js');
+  const { classFaults } = await import('../src/gold.js');
+  check('stash: every road of the stashes\' door is classed (a mint, a burn, a move within one player, an escrow into a place)', classFaults(STASH_ROADS, { self: true }).length === 0, classFaults(STASH_ROADS, { self: true }));
+  const places = [...new Set(Object.values(STASH_ROADS).filter((r) => r.class === 'escrow').map((r) => r.other))];
+  const unread = places.filter((p) => !Object.prototype.hasOwnProperty.call(READERS, p));
+  check('stash: every place a stash road holds a piece in is read by the sum (' + places.join(', ') + ')', places.length >= 4 && unread.length === 0, unread);
+  const src = (await import('node:fs')).readFileSync(new URL('../src/worldsum.js', import.meta.url), 'utf8');
+  const m = /const STASH_FIELDS = (\[[^\]]*\]);/.exec(src);
+  check('stash: the sum counts every gear list the door writes', !!m && JSON.stringify(JSON.parse(m[1].replace(/'/g, '"'))) === JSON.stringify(STASH_FIELDS.filter((f) => f !== 'weaponStash')), m && m[1]);
+}
+
 Math.random = realRandom;
 console.log(`\n${passes} passed, ${failures} failed`);
 if (failures) process.exit(1);
