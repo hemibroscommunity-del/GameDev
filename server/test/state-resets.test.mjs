@@ -45,9 +45,22 @@ setSearch('');
 /* any name a reset's text uses that is not the state or a global: a no-op
    that answers every property and every call with itself */
 const NOOP = new Proxy(function () {}, { get: (t, k) => (k === Symbol.toPrimitive ? () => 0 : NOOP), apply: () => NOOP });
+/* v2.3.5218 (card L PR 5, the page doors): ...but a page field's own DOOR
+   is the real one -- a phase-table row on the page turned `door` (its `fn`,
+   from its `file`, a module of no imports): a reset clears such a field by
+   asking it, and the census counts that call as its write
+   (state-census.mjs resetsFound) */
+const DOORS = Object.create(null);
+{
+  const { PHASES } = await import(pathToFileURL(new URL('src/state/phases.js', ROOT).pathname).href);
+  for (const r of PHASES) {
+    if (!r || r.side !== 'page' || r.status !== 'door' || typeof r.fn !== 'string' || typeof r.file !== 'string') continue;
+    try { const m = await import(pathToFileURL(new URL(r.file, ROOT).pathname).href); if (typeof m[r.fn] === 'function') DOORS[r.fn] = m[r.fn]; } catch (e) { /* a door with imports is no stub's to give */ }
+  }
+}
 const STUBS = new Proxy({}, {
   has: (t, k) => typeof k === 'string' && !(k in globalThis),
-  get: (t, k) => (k === Symbol.unscopables ? undefined : NOOP),
+  get: (t, k) => (k === Symbol.unscopables ? undefined : (typeof k === 'string' && Object.prototype.hasOwnProperty.call(DOORS, k) ? DOORS[k] : NOOP)),
 });
 
 /* the body of the block that opens at `start` (zone-leftovers.test's) */

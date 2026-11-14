@@ -413,12 +413,17 @@ export const PHASES = [
     today: [{ field: 'S._pose' }],
   },
   {
-    name: 'race', side: 'page', status: 'todo',
+    name: 'race', side: 'page', status: 'door',
     what: 'The race on the phone: asked, the countdown, running, its end card.',
-    field: null, states: ['none', 'countdown', 'running', 'ended'], fn: null, file: null,
-    clears: [{ edge: 'end', at: 'src/game/race.js dismissRace' }],
-    rejoin: 'none: not cleared at state_sync; the worker forgets a race at a join (its row)',
-    today: [{ field: 'S._race' }, { field: 'S._raceLil' }],
+    field: 'S._race', states: ['none', 'asked', 'count', 'run', 'done'],
+    fn: 'raceTo', file: 'src/game/raceDoor.js',
+    clears: [
+      { edge: 'end', at: 'src/game/race.js dismissRace' },
+      { edge: 'rejoin', at: 'src/game/race.js forgetRace' },
+    ],
+    rejoin: 'none: not a REJOIN_SLOTS row; the worker forgets a race at a join (its row), and the rejoin\'s resetOn forgets the phone\'s (forgetRace)',
+    held: { suite: 'server/test/race-page-door.test.mjs' },
+    note: 'v2.3.5218: the page door (RACE_PAGE_WAYS ask, fail, state, gun, end, dismiss, timeout, forget; the rules are race.js\'s own checks; ?racedoor=0). The phase is the record\'s own `phase`; the gun turns it in place. S._raceLil (Lil Bro\'s run, drawn) is a note beside it: it outlives the race until he is home.',
   },
   {
     name: 'arena', side: 'page', status: 'todo',
