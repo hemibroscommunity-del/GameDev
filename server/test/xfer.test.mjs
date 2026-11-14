@@ -1,7 +1,7 @@
 /* ═══ v2.3.5092: THE TRANSFER LEDGER `xfer:` (grand plan step 10.3, card E PR 11) ═══
  *
  *   1. THE ROW: one settlement, one row, its key beginning with the day; its
- *      shape (from, to, gold, goods, ids, the price, the actor); bounded
+ *      shape (from, to, gold, goods, ids, the price, `by`); bounded
  *      (`cut` when something did not fit); none for a road that writes none,
  *      a player trading with themself, or an id the key does not take.
  *   2. WHICH ROADS: every `move` road of the two doors (gold.js, bag.js)
@@ -10,8 +10,8 @@
  *   3. IN THE SETTLEMENT'S OWN RUN: the trade window's swap and its row
  *      commit in ONE batch (the shared test room's storage): a restart before
  *      it leaves neither, after it both.  One row whatever the swap carried
- *      (gold, goods, a staged weapon); the actor is the last confirm.
- *   4. THE GIFT TRADE: one row, the price empty, the accepter the actor.
+ *      (gold, goods, a staged weapon); `by` is the last confirm.
+ *   4. THE GIFT TRADE: one row, the price empty, `by` the accepter.
  *   5. KEPT 90 DAYS: the older days pruned a page at a time from a row's
  *      write, once a day; the kept days untouched.
  *   6. THE KILL SWITCH `xfer: false`: no row, and the trade settles as before.
@@ -42,15 +42,15 @@ const cmd = (r, ws, type, payload) => r.webSocketMessage(ws, JSON.stringify({ ty
 {
   const st = makeStorage();
   const room = await openRoom(st);
-  const p = xferRow(room, { road: 'trade_window', id: 't2-abc', from: 'bp_a', to: 'bp_b', gives: { _gold: 200, fish_minnow: 5 }, ids: ['pet:p1'], price: { ore_iron_ore: 2 }, priceIds: [], actor: 'bp_b' });
+  const p = xferRow(room, { road: 'trade_window', id: 't2-abc', from: 'bp_a', to: 'bp_b', gives: { _gold: 200, fish_minnow: 5 }, ids: ['pet:p1'], price: { ore_iron_ore: 2 }, priceIds: [], by: 'bp_b' });
   check('1. the row\'s put is issued at once (a promise, for the caller\'s run)', !!p && typeof p.then === 'function');
   await p; await settle();
   const key = xferKey(DAY, 't2-abc');
   const row = st._store.get(key);
   check('1. one row, its key the day and the settlement\'s id', rows(st).length === 1 && rows(st)[0] === key && key === 'xfer:' + DAY + ':t2-abc', rows(st));
-  check('1. ...its shape: from, to, gold, goods, ids, the price, the actor, the road, when',
+  check('1. ...its shape: from, to, gold, goods, ids, the price, `by`, the road, when',
     row && row.v === 1 && row.from === 'bp_a' && row.to === 'bp_b' && row.gold === 200 && row.goods.fish_minnow === 5 && !('_gold' in row.goods)
-    && row.ids.join() === 'pet:p1' && row.price.gold === 0 && row.price.goods.ore_iron_ore === 2 && row.actor === 'bp_b' && row.road === 'trade_window' && row.at === clock.now() && row.day === DAY && !row.cut, row);
+    && row.ids.join() === 'pet:p1' && row.price.gold === 0 && row.price.goods.ore_iron_ore === 2 && row.by === 'bp_b' && row.road === 'trade_window' && row.at === clock.now() && row.day === DAY && !row.cut, row);
   check('1. no row for a road that writes none (a kill; an escrow; an unknown)',
     xferRow(room, { road: 'nml_loss', id: 'k1', from: 'bp_a', to: 'bp_b', gives: { _gold: 9 } }) === null
     && xferRow(room, { road: 'bank_deposit', id: 'k2', from: 'bp_a', to: 'bp_b' }) === null
@@ -109,8 +109,8 @@ const world = () => {
   const ks = rows(st);
   const row = ks.length === 1 ? st._store.get(ks[0]) : null;
   check('3. the swap settled and wrote ONE row', room.playerState[B].coins === 420 && room.playerState[A].inventory.ore_iron_ore === 2 && ks.length === 1, { b: room.playerState[B].coins, rows: ks });
-  check('3. ...A to B, A\'s side its gold and goods, B\'s the price, B the actor (the last confirm)',
-    row && row.from === A && row.to === B && row.gold === 120 && row.goods.fish_minnow === 4 && row.price.goods.ore_iron_ore === 2 && row.price.gold === 0 && row.actor === B && row.road === 'trade_window', row);
+  check('3. ...A to B, A\'s side its gold and goods, B\'s the price, `by` B (the last confirm)',
+    row && row.from === A && row.to === B && row.gold === 120 && row.goods.fish_minnow === 4 && row.price.goods.ore_iron_ore === 2 && row.price.gold === 0 && row.by === B && row.road === 'trade_window', row);
 }
 {
   /* a restart before each batch of the confirm: the row and the swap
@@ -145,8 +145,8 @@ async function giftWorld() {
   await room._interceptTrade(B, { type: 'trade_accept', payload: { target: A } }); await settle();
   const ks = rows(st);
   const row = ks.length === 1 ? st._store.get(ks[0]) : null;
-  check('4. a gift trade writes ONE row: A to B, 50 gold, the price empty, B (the accepter) the actor',
-    room.playerState[B].coins === 150 && row && row.road === 'gift_trade' && row.from === A && row.to === B && row.gold === 50 && row.price.gold === 0 && Object.keys(row.price.goods).length === 0 && row.actor === B, { rows: ks, row, b: room.playerState[B].coins });
+  check('4. a gift trade writes ONE row: A to B, 50 gold, the price empty, `by` B (the accepter)',
+    room.playerState[B].coins === 150 && row && row.road === 'gift_trade' && row.from === A && row.to === B && row.gold === 50 && row.price.gold === 0 && Object.keys(row.price.goods).length === 0 && row.by === B, { rows: ks, row, b: room.playerState[B].coins });
 }
 
 /* ══════════ 5. KEPT 90 DAYS ══════════ */

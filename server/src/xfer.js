@@ -2,7 +2,9 @@
  *
  * One lasting row each time value settles between two players: when, the
  * road, from, to, the gold, the goods and their ids, the price (what came
- * back the other way), and the actor whose tap settled it.  The owner's
+ * back the other way), and `by`, the player whose tap settled it.  (SHAPES
+ * part 1's actor, "who started it", is not built yet: when it is, the row
+ * keeps it under one key beside `by`, never its fields flat.)  The owner's
  * cases read it ("unwind this transfer"), and card Q's signals; the owner's
  * card counts the share moved one way for nothing from it (step 10.4).
  * Before this a trade left no trace but the two purses it changed.
@@ -113,8 +115,8 @@ function sideOf(gives, ids, cut) {
  *    from    the player whose `gives` these are; `to` the other
  *    gives   what `from` gave: {_gold, key: n}; `ids` its pets' and weapons'
  *    price   what came back the other way, the same shape ({} for a gift)
- *    actor   whose tap settled it */
-export function xferRow(room, { road, id, from, to, gives, ids, price, priceIds, actor, now } = {}) {
+ *    by      the player whose tap settled it */
+export function xferRow(room, { road, id, from, to, gives, ids, price, priceIds, by, now } = {}) {
   try {
     if (!room || !room.state || !room.state.storage || xferOff(room)) return null;
     if (XFER.ROADS.indexOf(road) < 0) return null;
@@ -130,7 +132,7 @@ export function xferRow(room, { road, id, from, to, gives, ids, price, priceIds,
       v: XFER.V, at, day, road, from, to,
       gold: gave.gold, goods: gave.goods, ids: gave.ids,
       price: back,
-      actor: typeof actor === 'string' && actor ? actor : null,
+      by: typeof by === 'string' && by ? by : null,
     };
     if (cut.v) row.cut = true;
     const p = room.state.storage.put(key, row);
@@ -203,21 +205,21 @@ export async function xferList(room, day, limit = 200) {
 
 /** The trade window's commit (trade2.js): `s` the window, both sides'
  *  offers, pets and staged weapons; one row, `a` to `b`, b's side the
- *  price.  `actor` the confirm that settled it. */
-export function xferTradeWindow(room, s, actor) {
+ *  price.  `by` the confirm that settled it. */
+export function xferTradeWindow(room, s, by) {
   if (!s || typeof s !== 'object') return null;
   const idsOf = (pid) => [
     ...((s.pets && Array.isArray(s.pets[pid])) ? s.pets[pid] : []).map((id) => 'pet:' + id),
     ...((s.weapons && Array.isArray(s.weapons[pid])) ? s.weapons[pid] : []).map((e) => 'weapon:' + (e && e.seq)),
   ];
   const offers = s.offers || {};
-  return xferRow(room, { road: 'trade_window', id: 't2-' + s.id, from: s.a, to: s.b, gives: offers[s.a], ids: idsOf(s.a), price: offers[s.b], priceIds: idsOf(s.b), actor });
+  return xferRow(room, { road: 'trade_window', id: 't2-' + s.id, from: s.a, to: s.b, gives: offers[s.a], ids: idsOf(s.a), price: offers[s.b], priceIds: idsOf(s.b), by });
 }
 
 /** The gift trade's accept (trade.js): `pending` the offer, `from` its
- *  sender, `to` the accepter (the actor); nothing comes back (a gift's
- *  price is empty). */
+ *  sender, `to` the accepter (`by`); nothing comes back (a gift's price is
+ *  empty). */
 export function xferGift(room, pending, from, to) {
   if (!pending || typeof pending !== 'object') return null;
-  return xferRow(room, { road: 'gift_trade', id: 'gift-' + pending.id, from, to, gives: pending.offer, price: {}, actor: to });
+  return xferRow(room, { road: 'gift_trade', id: 'gift-' + pending.id, from, to, gives: pending.offer, price: {}, by: to });
 }
