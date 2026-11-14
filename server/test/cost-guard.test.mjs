@@ -38,6 +38,9 @@
  *      row a death, the owner's "save it"), and the pile's end -- taken or
  *      run out -- deletes it once (deathpile.js);
  *  14. v2.3.4401: a refused quest tap (now answered) writes nothing;
+ *  15. v2.3.5080: the day's book (daybook.js) writes nothing while nothing is
+ *      added, and at most one row a DAYBOOK.PACE_MS (5 minutes) while its
+ *      parts are added to on every tick -- 13 in an hour at most;
  * A line here may move when a feature really needs the rows: say so in the
  * PR, in plain words, as the memory budget asks (CLAUDE.md).
  */
@@ -47,6 +50,7 @@ import { CODEX } from '../src/codex.js';
 import { WHEEL_SPAWNS } from '../src/wheelspawns.js';
 import { PACE } from '../src/flood.js';
 import { shieldSig } from '../src/shieldwear.js';
+import { DAYBOOK, bookAdd } from '../src/daybook.js';
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -560,6 +564,32 @@ const FAST = 110;
   }
   const rows = mine(state, 'cg_quest', w0);
   check(`14. 100 refused quest taps (each answered, quest-echo.test) write nothing (${rows.length})`, rows.length === 0, byPrefix(rows));
+}
+
+/* ── 15. v2.3.5080: the day's book (daybook.js) ──────────────────────────── */
+/* One put a pace while anything is added: the owner asked that server costs
+   not go up, so the book is the one new row of the grand plan's step 10.4
+   (card E), and this is its line. */
+{
+  const { room, tickFn, state } = await makeRoom();
+  const p = await join(room, 'cg_book');
+  const w0 = state.writes.length;
+  await run(room, tickFn, 10 * 60000, null, FAST);
+  const none = state.writes.slice(w0).filter((k) => k.startsWith(DAYBOOK.PREFIX));
+  check(`15a. a room awake 10 minutes with nothing added to the book writes no book row (${none.length})`, none.length === 0 && !!p, none);
+  const w1 = state.writes.length;
+  /* every tick adds to two parts, as card A's room row and the economy's part will */
+  await run(room, tickFn, 60 * 60000, async () => {
+    bookAdd(room, 'room', { tick: { n: 1 } }, NOW);
+    bookAdd(room, 'econ', { mint: { gold: 1 } }, NOW);
+    if (room._daybook && room._daybook.putting) await room._daybook.putting;
+  }, FAST);
+  const rows = state.writes.slice(w1).filter((k) => k.startsWith(DAYBOOK.PREFIX));
+  /* the line is a number, not the pace's constant: a faster pace must fail
+     here, not move the line with it (the plan's rule 8, a break proof:
+     PACE_MS at one minute writes 60) */
+  const line = 13;
+  check(`15b. an hour of adds on every tick writes the book ${rows.length} times, at most ${line} (one a 5-minute pace, and the worker's first)`, rows.length >= 1 && rows.length <= line, byPrefix(rows));
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);
