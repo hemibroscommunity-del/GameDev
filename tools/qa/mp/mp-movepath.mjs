@@ -37,6 +37,7 @@
  *   node tools/qa/mp/run.mjs movepath
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const VIEW = { width: 900, height: 700 };
 const SPEED = 165;     /* px a second, a phone's walk */

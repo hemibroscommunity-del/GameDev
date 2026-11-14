@@ -10,5 +10,6 @@
  * Pictures: tools/qa/mp/out/foundryboss-{giant,swell,burst,split1,split2,split3,cleared}.png.
  */
 import { runAt } from './mp-slimeboss.mjs';
+export const lane = 'full';
 
 export async function run(ctx) { return runAt(ctx, 'thunder'); }

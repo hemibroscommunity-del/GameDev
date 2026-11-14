@@ -18,6 +18,7 @@
  *   node tools/qa/mp/run.mjs headlook        (after npm run build)
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const BAR = 16;

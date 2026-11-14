@@ -24,6 +24,7 @@
  *   node tools/qa/mp/run.mjs ridelay
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const DESK = { width: 1440, height: 900 };
 const SAFE = 2000;               /* how far from the centre a leg runs: well inside the safe ground (zones.js wheel.safeR 2937; at 2600 the board stepped off before the leg's end) */

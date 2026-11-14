@@ -25,6 +25,7 @@
  *      2026-10-19 UI review).
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const DESK = { width: 1440, height: 900 };
 const LAPTOP = { width: 1366, height: 768 };

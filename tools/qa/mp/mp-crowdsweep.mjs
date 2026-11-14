@@ -49,6 +49,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { makeStation } from './mp-heldsweep.mjs';
 import { HOLD_MAX_MS, FRAME_JS_MAX_MS, KNOWN, judgeHeld } from './held-budget.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 430, height: 932 };
 const STATION_NAMES = ['a-ink', 'b-fish', 'c-armour1', 'h-one', 'c-armour8', 'h-eight', 'd-prints', 'f-walkin', 'g-boards', 'e-species'];

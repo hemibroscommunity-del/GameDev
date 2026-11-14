@@ -14,6 +14,7 @@
  *   node tools/qa/mp/run.mjs clientoff
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const VIEW = { width: 900, height: 700 };
 

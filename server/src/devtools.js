@@ -548,7 +548,7 @@ export const devToolsMethods = {
        placed one back (the free points reset's own deal, prog3RespecPoints):
        a level set by this lever alone left the pools where they were, so the
        Points tab had nothing to spend (mp-pointsreset) */
-    if (b.deal === true) prog3RespecPoints(ps.prog3, typeof this._oneLevelOn === 'function' ? !this._oneLevelOn() : false);
+    if (b.deal === true) prog3RespecPoints(ps.prog3, typeof this._oneLevelOn === 'function' ? !this._oneLevelOn() : false, 'dev_deal');   /* v2.3.5283: the skill points' door */
     this._prog3Recompute(ps);
     this._devPush(playerId, ps);
     return { ok: true, skills: names, level, charLevel: ps.level, ...(b.deal === true ? { pool: ps.prog3.pool, shared: ps.prog3.shared } : {}) };

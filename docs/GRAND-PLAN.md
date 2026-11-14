@@ -316,6 +316,11 @@ devices it waits for: with one player, the table is empty for weeks.
   **Combat's timing and loading are never on the ladder.** Done when a node
   model of a heating and cooling phone settles and comes back at 30, 60 and
   120, with no see-saw.
+  *Begun (card O): #1792 (the governor and its rung), #1794 (the rate),
+  #1800 (the pixels, at a veil) and #1814 (`govern`, a row of the Test
+  panel's list), merged at sitting 13. The box waits for the crowd's, the
+  passes' and the memory's rungs (O's PRs 6, 8 to 11) (the gatekeeper,
+  sitting 14, tag 5371).*
 - [ ] **2.4 [NEXT] Off-ramps become overrides of the ladder**, through one
   reader (pillar 7's table).
 - [ ] **2.5 [NEXT] The 30 lane** (an iPhone in Low Power Mode): named by the
@@ -377,6 +382,11 @@ play, a number 1.1 can measure.
   *Step 1 merged: #1667 (card C's census), #1684, #1695 and #1697 (card N:
   the walker, the table `server/src/wire/`, its guard). Step 2 is card K's;
   the box waits for it (the gatekeeper, sitting 7, v2.3.5363).*
+  *Step 2 begun (card K): #1822 (`PRIVILEGED_EVENTS`, `RELAY.TYPES` and
+  the echo list made from the table) and #1820 (the hostile-values suite,
+  19 failing, its line), merged at sitting 13. The box waits for the
+  table's own lists (K's PR 2) and the door's checks (PR 4) (the
+  gatekeeper, sitting 14, tag 5371).*
 - [ ] **4.1b [NEXT] The send door**: one `_send` (132 places write to a
   socket today), counting bytes by type.
 - [ ] **4.2 [NEXT] Claims, bounded.** "No claims" can be met by calling a
@@ -391,9 +401,19 @@ play, a number 1.1 can measure.
   - the guard and cooking beyond #1530's limits; the quest hand-in and the
     weapon sale with no take-back; gold taken on the page in two panels;
     the local-monster mode; a sword's claim labelled a bow's (TRAPS §329).
+  *Step 1 merged (card K): #1826, the gain bench (`claims-gain.test`,
+  `claimbots.mjs`, `docs/plan/census/claims.md`; no honest refusal), at
+  sitting 14. Five gains are over 1.5 (the move 4.35, the bow label 3.76,
+  the reach 2.96, the harvest 1.86, the cook 1.59); the box waits for the
+  claims tightened, one judge a PR behind its flag (K's second block)
+  (the gatekeeper, sitting 15, tag 5372).*
 - [ ] **4.3 [NEXT] Doors for what is left of value**: experience and
   levels, the stashes, quest state, skill points. A weapon gets an id of its
   own, as gear has.
+  *Begun (card R): #1823, the skill points' door (`skillpoints.js`
+  `POINT_ROADS`, `skillpoints-door.test`), merged at sitting 14. The box
+  waits for the stashes, a weapon's id, quest state and experience (R's
+  PRs 2, 3, 5 and 10) (the gatekeeper, sitting 15, tag 5372).*
 - [x] **4.4 [NOW] The whole world's sum.** "A purse equals its start plus
   the roads that ran" is true by construction; past copies went through
   legal roads (ore sold 24 times in one bundle). So every road in
@@ -430,6 +450,11 @@ play, a number 1.1 can measure.
   (every record of theirs, not the character alone); a paged export; a
   restore tried in the Cloudflare lab; the storage's size in the day's
   book. Done when a lab restore to an hour ago balances 4.4's sum.
+  *Begun (card R): #1825, the storage's size in the day's book
+  (`storesize`, ON), merged at sitting 14. The box waits for the restore
+  from the registry, the paged export and the lab's try (R's PRs 6, 7 and
+  9; the lab's needs `.github/`, the owner's words) (the gatekeeper,
+  sitting 15, tag 5372).*
 
 (4.6 of version 1 is pillar 10.)
 
@@ -479,6 +504,9 @@ nothing known, and a restore copies nothing.
   too) and #1809 (the trade door: `s.state` through `_t2To`, `tradedoor`
   its switch), merged at sitting 12: 6 `door`, 30 `todo` (the gatekeeper,
   sitting 13, v2.3.5370).*
+  *Card O's #1792 (the ladder's rung, a new row born `door`), merged at
+  sitting 13: 37 rows, 7 `door`, 30 `todo`; the line lowered 31 -> 30,
+  the count since #1809 (the gatekeeper, sitting 14, tag 5371).*
 - [ ] **5.4 [LATER] The frame as named steps.** PR 1 moves nothing: the six
   calls the loop already makes, plus one `legacy` step, become the list;
   each counts its errors to the crash ring (a throw in the frame reaches
@@ -522,6 +550,11 @@ nothing known, and a restore copies nothing.
   PRs 2 and 3 (the gatekeeper, sitting 9, v2.3.5365). PR 2, #1768 (the
   page's rows, no count line), merged at sitting 10: 113 unlisted; the box
   waits for PR 3 (the gatekeeper, sitting 11, v2.3.5367).*
+  *T's #1816 (the drawing side's rows: 0 unlisted, card B's map reads a
+  system's switches from the table) and #1817 (rule 4: a row's needs and
+  its reader, the thrown run, a row's place its name), merged at sitting
+  14: every switch found is a row, rule 4 held. The box waits for the
+  page's one reader (T's PR 6) (the gatekeeper, sitting 15, tag 5372).*
 - [ ] **7.2 [NEXT] The end date** (the owner: yes). For a logic switch: four
   weeks on with no revert, then the old way goes. A device off-ramp stays
   while its risk is live. A fallback stays while its trigger lives: a guard
@@ -675,6 +708,10 @@ punishes by itself.
   pace, its ledger. All zero today (a trade moves 999,999 gold with no fee,
   and the daily spin pays a new character about 464 gold). A guard fails a
   road with no row. Turning any of them up is the owner's call.
+  *Begun (card R): #1819, the table (`server/src/playerroads.js`, every
+  fee, hold and pace 0) and its guard, merged at sitting 13. The box waits
+  for the escrow roads' ledger (R's PR 11) and for an `xfer` row to name
+  its writer (review-z13's low) (the gatekeeper, sitting 14, tag 5371).*
 - [ ] **10.6 [NEXT] What an honest player's trouble looks like.** Each
   signal lists what changes it without any cheating: the frame rate, the
   line's delay, a deploy, a hidden tab. Every Low Power iPhone shares one

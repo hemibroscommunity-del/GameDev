@@ -1,36 +1,40 @@
 card: T
-branch: claude/plan-t-2-page-game (one branch a PR, each begun from the one before: -1- to -7-; merge them in order)
-prs: #1754 (5301, merged), #1768 (5302, ready)
+branch: claude/plan-t-5-due (one branch a PR, each begun from main once the one before merged)
+prs: #1754, #1768, #1816, #1817 (5301-5304, merged); #1837 (5305, ready)
 state: ready
 
 ## Done
 
-- PR 1 (5301, #1754, merged): the table (250 rows), the scanner, the
-  census guard, `docs/SWITCHES.md`, the spec, the scoreboard row,
-  liveops.test §8f and §8g on the scanner.
-- PR 2 (5302): the page's game-side rows (81: all but the drawing
-  systems'; `?zoom` reads in `renderRes.js`, so it is PR 3's), and the
-  gatekeeper's sitting-8 mend: `disable_verify`, `hidden_off` and
-  `groundkeep` rowed; the scanner reads the shapes that hid a switch, each
-  held by a fixture (check 9); excuses are functions, not text. 334 rows;
-  unlisted 113; unknown births 2. No `server/` file: no deploy.
+- PR 1 (5301, #1754): the table, the scanner, the census guard, the page,
+  the spec, the scoreboard row, liveops.test §8f, §8g.
+- PR 2 (5302, #1768): the page's game-side rows; the scanner's shapes,
+  each a fixture (sitting 8); the page carries no count (sitting 9).
+- PR 3 (5303, #1816, for #1797): the drawing side's rows, unlisted 0; B's
+  map reads the table; SHAPES' two lines point at it.
+- PR 4 (5304, #1817, for #1804): a row's place by its name (check 10);
+  needs and readers (check 11); the thrown run (thrown.mjs, a preload).
 
 ## Next
 
-- PR 3 (5303), the drawing side's rows, once PR 2 is merged.
+- #1837 (5305): the end date. `on` on every switch row (a day from git,
+  `onBy` where a later change turned it on, `'off'` for 4 opt-ins);
+  `--due` (101 may go today, nothing reaped); the fallback hold (check 12,
+  `FALLBACKS` a census of 5). Then PR 6 (5306), the page's one reader.
 
 ## Found
 
-- liveops.test §8f missed flag reads in shapes it did not know (the
-  scanner reads them now): `this && this._liveFlags`, `room._liveFlags`
-  behind a helper, name-taking helpers, `f[HEAP_BURN.FLAG]`, and (sitting
-  8) `_flagOn(VERIFY.FLAG_OFF)` and `_flagOn(HIDDEN.OFF_FLAG)`.
-- `?debug`, `?nodebug` (src/debug/debugBus.js): born in April commits with
-  no tag in the commit, its body or its merge: `born: 'unknown'`, counted.
-- New switches add their own rows now (the table is on `main`): card L's
-  `?<system>reset=0`, card SK's `?ridecoast=0`; card TF's `?folkwork=0`
-  is already read (`src/rendering/folkPose.js`): PR 3 rows it.
+- The table is now the one list of switch names for card A's `sw` (the
+  report) and card K's `flag` (the wire table): each is to read it.
+- New switch rows: L's resets and doors, SK's, O's ladder; each needs `on`.
+- The thrown run: 17 s a PR with no baseline (#1837); `--all` (45 min) the owner's.
+- Card B's map files src/game/crowdCap.js under `monsters`; `?crowd` caps players.
+- Rule 4's sample: `ahonewrite` thrown beside store-heal-wait.test's own
+  `storehealwait: false` fails its check 2 (two switches off, not one).
+- Card O (planning session, 2026-11-14): the device knobs' off-ramps
+  become overrides of O's ladder (step 2.4). PR 7 leaves their reads to O,
+  unmoved: `?pixbudget`, `?res`, `?onebatch`, `?lookpalette`, `?pace`,
+  `?crowd`, and the passes'. They keep their rows as they are today.
 
 ## Needs
 
-- The gatekeeper: PR 2 merged.
+- The gatekeeper: #1837.

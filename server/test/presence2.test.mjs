@@ -35,6 +35,7 @@ import { GameRoom } from '../src/index.js';
 import { WHEEL_CENTRE } from '../src/wheelspawns.js';
 import { ROSTER, FAR_PLAYERS } from '../src/tick.js';
 import { PRESENCE2 } from '../src/presence2.js';
+import * as DOOR from '../../src/game/actions.js';   /* v2.3.5185: the action door's rows */
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -368,7 +369,8 @@ check('0b the session took pres: 2 from its join (v2)', sessionOf(room, A).pres2
     /if \(msg\.on && typeof msg\.on === 'object'\)[\s\S]{0,900}applyOnlineList\(S, msg\.on, Date\.now\(\), _p2Make\)/.test(ws) && /if \(!onlineListFresh\(S, Date\.now\(\)\)\) \{\s*var _gsNow/.test(ws));
   check('9q2 ...and its channel lets map_watch out (TRAPS #18: the allowlist drops a type it does not name)',
     /* v2.3.3254: through wsOut, the quiet phone's way out (one frame a moment) */
-    /if \(msg\.type === 'map_watch'\) \{\s*(ws\.send\(JSON\.stringify\(msg\)\)|wsOut\(msg\));\s*return;/.test(ws));
+    /* v2.3.5185: the shim's chain is the action door's rows: map_watch's row is `alone` and the shim sends an `alone` row through wsOut */
+    DOOR.ACTIONS.map_watch && DOOR.ACTIONS.map_watch.way === 'alone' && /var _way = actionWay\(msg\.type\);[\s\S]*?if \(_way === 'alone'\) \{\s*wsOut\(msg\);\s*return;\s*\}/.test(ws));
   check('9r ...parks whoever an `nr` roster leaves out, and un-parks anyone a tick updates',
     /if \(msg\.nr && presence2On\(S\)\) parkMissing\(S, msg\.players \|\| \{\}\)/.test(ws) && /_lastUpdate = (Date\.now\(\)|_now);[\s\S]{0,200}(S\.others\[pid\]|_o)\._away = false;/.test(ws));
   const vs = readFileSync(new URL('../../src/game/visualSystems.js', import.meta.url), 'utf8');

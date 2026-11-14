@@ -18,6 +18,7 @@
  * pad's question is whether the corner is empty, which (1) and (6) ask.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const look = (P) => P.page.evaluate(() => {
   const shell = document.querySelector('[data-world-chat]');

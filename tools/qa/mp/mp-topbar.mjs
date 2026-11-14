@@ -25,6 +25,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 const SWEEP = !!process.env.BT_TOPBAR_SWEEP;
 

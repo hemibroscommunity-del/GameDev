@@ -44,6 +44,7 @@
  */
 import * as H from './harness.mjs';
 import { writeFileSync } from 'node:fs';
+export const lane = 'full';
 
 const jsonIdx = process.argv.indexOf('--json');
 const jsonOut = jsonIdx > 0 ? process.argv[jsonIdx + 1] : null;

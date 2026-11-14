@@ -25,6 +25,7 @@ import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
 import { ACC, accAdd, accBlank, accDay, accDayKey, accKey, accNormalize, accView } from '../src/accuracy.js';
 import { accLive, accPct, accReset, accShot, accSn, accTrack, onAccState } from '../../src/game/accuracy.js';
 import { lookNews } from '../../src/game/quietPhone.js';
+import * as DOOR from '../../src/game/actions.js';   /* v2.3.5185: the action door's rows */
 
 function makeState() {
   const store = new Map();
@@ -330,7 +331,8 @@ const t = clock;
     && (mc.match(/sn: S\._specialAttack \? undefined : \(accSn\(S, 'melee'\) \|\| undefined\)/g) || []).length === 2);
   check('10k. the counts ride the track; the answer is taken in the direct switch (never a relayed copy); the ask leaves the phone',
     /S\.channel\.track\(\{\s*ac: accTrack\(S\),/.test(bt) && /case 'acc_state':\s*\{ if \(msg\.from\) break; try \{ onAccState\(S, msg\.payload\); \}/.test(ws)
-    && /if \(msg\.type === 'acc_request'\) \{\s*wsOut\(msg\);/.test(ws) && /accReset\(S\);[^\n]*\n\s*S\._serverCaps = msg\.caps \|\| \{\};/.test(ws));
+    /* v2.3.5185: the ask's way is the action door's row (`alone`: the shim sends it through wsOut) */
+    && DOOR.ACTIONS.acc_request && DOOR.ACTIONS.acc_request.way === 'alone' && /var _way = actionWay\(msg\.type\);[\s\S]*?if \(_way === 'alone'\) \{\s*wsOut\(msg\);\s*return;\s*\}/.test(ws) && /accReset\(S\);[^\n]*\n\s*S\._serverCaps = msg\.caps \|\| \{\};/.test(ws));
 }
 
 console.log(failures ? `\n${failures} FAILED` : '\nALL PASS');
