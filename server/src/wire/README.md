@@ -181,7 +181,8 @@ One value a field: `request`, `look`, `claim`, `words`, or
 `bounded:<its judge>` (`bounded:MOVE_BUDGET`). A route's query, body and
 header fields alike.
 
-A field is in `trust` only when the phone sent it and the worker reads it.
+A field is in `trust` only when the phone sent it and the worker reads it;
+the field a row names in `reqId` is one (`opId: 'request'`).
 Left out: a field the worker never reads (the census's "not read"), a field
 it writes itself (a relay's stamped `id` and `name`), and on an `out` row
 every field the worker made (its own, and an echo of the request). So an
