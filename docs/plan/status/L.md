@@ -1,6 +1,6 @@
 card: L
 branch: claude/plan-l-15-dungeon-door (each PR on main, main merged in)
-prs: #1746 to #1835 (merged; #1791, #1796, #1801 through #1809, #1824), #1839 (5213), #1851 (5214), PR 5 tag 5215: ready
+prs: #1746 to #1835 (merged; #1791, #1796, #1801 through #1809, #1824), #1839 (5213), #1851 (5214), #1855 (5215)
 state: ready
 
 ## Done
