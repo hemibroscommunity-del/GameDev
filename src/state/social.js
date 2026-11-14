@@ -1,0 +1,42 @@
+/* ═══ v2.3.5160: THE STATE LEDGER, system `social` (grand plan step 5.3; card U) ═══
+ *
+ * Every field of the state `S` and every top-of-file variable of the system
+ * `social` (card B's map, docs/SYSTEMS.md), one row a line.  The columns
+ * are in src/state/README.md.
+ *
+ * MADE BY MACHINE: node tools/dev/state-census.mjs --ledger social --write
+ * Never type a row.  By hand: `lifetime` alone ("sitting": the sitting, never
+ * reset, until someone says otherwise; card L).  tools/guards/state-ledger.test.mjs
+ * holds it.  No imports, plain data: nothing in the game imports it yet.
+ */
+export const SYSTEM = 'social';
+export const ROWS = [
+  { field: '_diceAskAt', system: 'social', lifetime: 'sitting', suggested: 'never', born: 'fly src/game/chat.js sendChatMessage', twoFiles: '', noRead: false, noSet: false, phase: null, flag: false, writers: ['src/game/chat.js'] },
+  { field: '_nmlFoes', system: 'social', lifetime: 'sitting', suggested: 'zone', born: 'fly src/game/sparTargets.js chooseFoe', twoFiles: '', noRead: false, noSet: false, phase: null, flag: false, writers: ['src/game/sparTargets.js'] },
+  { field: '_pvpBlows', system: 'social', lifetime: 'sitting', suggested: 'never', born: 'fly src/game/sparTargets.js notePvpBlow', twoFiles: '', noRead: false, noSet: false, phase: null, flag: false, writers: ['src/game/sparTargets.js'] },
+  { field: '_pvpBouts', system: 'social', lifetime: 'sitting', suggested: 'never', born: 'fly src/game/sparTargets.js notePvpBlow', twoFiles: '', noRead: false, noSet: false, phase: null, flag: false, writers: ['src/game/sparTargets.js'] },
+  { field: '_pvpHitBy', system: 'social', lifetime: 'sitting', suggested: 'never', born: 'fly src/game/sparTargets.js notePvpBlow', twoFiles: '', noRead: false, noSet: false, phase: null, flag: false, writers: ['src/game/sparTargets.js'] },
+  { field: '_race', system: 'social', lifetime: 'sitting', suggested: 'zone+rejoin', born: 'fly src/game/race.js requestRace', twoFiles: '', noRead: false, noSet: false, phase: null, flag: false, writers: ['src/game/race.js'] },
+  { field: '_raceLil', system: 'social', lifetime: 'sitting', suggested: 'zone+rejoin', born: 'fly src/game/race.js onRaceState', twoFiles: '', noRead: false, noSet: false, phase: null, flag: false, writers: ['src/game/race.js'] },
+  { field: '_serverMuteNames', system: 'social', lifetime: 'sitting', suggested: 'rejoin', born: 'fly src/game/chatMute.js applyServerMuteList', twoFiles: '', noRead: true, noSet: false, phase: null, flag: false, writers: ['src/game/chatMute.js'] },
+  { field: '_serverMutes', system: 'social', lifetime: 'sitting', suggested: 'rejoin', born: 'fly src/game/chatMute.js applyServerMuteList', twoFiles: '', noRead: true, noSet: false, phase: null, flag: false, writers: ['src/game/chatMute.js'] },
+  { field: '_spar', system: 'social', lifetime: 'sitting', suggested: 'zone+rejoin', born: 'fly src/game/spar.js applySparState', twoFiles: '', noRead: false, noSet: false, phase: null, flag: false, writers: ['src/game/spar.js'] },
+  { field: 'chatBubbles', system: 'social', lifetime: 'sitting', suggested: 'never', born: 'first src/ui/BroTown.jsx', twoFiles: '2+', noRead: false, noSet: false, phase: null, flag: false, writers: ['src/game/chat.js', 'src/game/interactions.js', 'src/game/stateCleanup.js', 'src/ui/mobile/ChatBubble.jsx'] },
+  { field: 'chatLog', system: 'social', lifetime: 'sitting', suggested: 'never', born: 'first src/ui/BroTown.jsx', twoFiles: '2+', noRead: false, noSet: false, phase: null, flag: false, writers: ['src/game/achievements.js', 'src/game/chat.js', 'src/game/farmFeedback.js', 'src/game/monsterCombat.js~', 'src/game/noMansLand.js', 'src/game/respawn.js', 'src/game/spar.js', 'src/networking/gameEvents.js', 'src/networking/wsClient.js', 'src/ui/mobile/ChatBubble.jsx'] },
+  { variable: 'listeners', file: 'src/game/alliance.js', system: 'social', lifetime: 'sitting', suggested: 'never', born: 'const Set', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/alliance.js'] },
+  { variable: 'CHAT_NAME_MAX', file: 'src/game/chat.js', system: 'social', lifetime: 'sitting', suggested: 'never', born: 'var number', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: true, writers: [] },
+  { variable: 'CHAT_TEXT_MAX', file: 'src/game/chat.js', system: 'social', lifetime: 'sitting', suggested: 'never', born: 'var number', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: true, writers: [] },
+  { variable: '_moveSender', file: 'src/game/chat.js', system: 'social', lifetime: 'sitting', suggested: 'never', born: 'var null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/chat.js'] },
+  { variable: '_mode', file: 'src/game/chatChannel.js', system: 'social', lifetime: 'sitting', suggested: 'never', born: 'let call', twoFiles: '', noRead: false, phase: ['area', 'party', 'whisper'], flag: false, neverChanged: false, writers: ['src/game/chatChannel.js'] },
+  { variable: '_to', file: 'src/game/chatChannel.js', system: 'social', lifetime: 'sitting', suggested: 'never', born: 'let string', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/chatChannel.js'] },
+  { variable: 'listeners', file: 'src/game/chatChannel.js', system: 'social', lifetime: 'sitting', suggested: 'never', born: 'const Set', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/chatChannel.js'] },
+  { variable: 'MIGRATED_KEY', file: 'src/game/chatMute.js', system: 'social', lifetime: 'sitting', suggested: 'never', born: 'var string', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: true, writers: [] },
+  { variable: 'MIGRATE_MAX', file: 'src/game/chatMute.js', system: 'social', lifetime: 'sitting', suggested: 'never', born: 'var number', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: true, writers: [] },
+  { variable: 'MUTE_KEY', file: 'src/game/chatMute.js', system: 'social', lifetime: 'sitting', suggested: 'never', born: 'var string', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: true, writers: [] },
+  { variable: '_blockSubs', file: 'src/game/chatMute.js', system: 'social', lifetime: 'sitting', suggested: 'never', born: 'var array', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/chatMute.js'] },
+  { variable: '_kept', file: 'src/game/chatMute.js', system: 'social', lifetime: 'sitting', suggested: 'rejoin', born: 'var Map', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/chatMute.js'] },
+  { variable: '_subs', file: 'src/game/chatMute.js', system: 'social', lifetime: 'sitting', suggested: 'never', born: 'var array', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/chatMute.js'] },
+  { variable: 'lastAt', file: 'src/game/friendErrors.js', system: 'social', lifetime: 'sitting', suggested: 'never', born: 'const Map', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/friendErrors.js'] },
+  { variable: '_subs', file: 'src/game/race.js', system: 'social', lifetime: 'sitting', suggested: 'never', born: 'const Set', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/race.js'] },
+  { variable: '_foeRule', file: 'src/game/sparTargets.js', system: 'social', lifetime: 'sitting', suggested: 'never', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/sparTargets.js'] },
+];

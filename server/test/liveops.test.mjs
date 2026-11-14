@@ -34,7 +34,8 @@
  *       refused; and two scans of server/src hold every flag the worker
  *       READS and every `<name>: false` a comment PROMISES to a name the
  *       route takes.                                                  */
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { srcFiles } from './src-walk.mjs';
 import { GameRoom } from '../src/index.js';
 import { LIVEOPS, METRICS, flagNameOk, orderEscrowGold } from '../src/liveops.js';
 import { ZONES } from '../src/data.js';
@@ -512,7 +513,7 @@ await req('DELETE', '/api/admin/flags?name=disable_threats');
   //     in a local (`const f = this._liveFlags;`) then read as f.<name>,
   //     f['<name>'] or hasOwnProperty.call(f, '<name>') a few lines on.
   const dir = new URL('../src/', import.meta.url);
-  const files = readdirSync(dir).filter((f) => f.endsWith('.js'));
+  const files = srcFiles();   /* v2.3.5060: in depth, a folder's files too (src-walk.mjs) */
   const reads = new Map();
   const note = (n, where) => { if (!reads.has(n)) reads.set(n, where); };
   for (const file of files) {

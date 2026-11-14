@@ -19,6 +19,8 @@ mint counts FORGED remote amounts into `S.rpg.coins`. **Receipt:**
 case` lint; handoff item L. A real stake board is item A's caps-gated
 follow-up.
 
+Held by: tools/guards/traps-server-word.test.mjs (tag 5320).
+
 ## 2. Adding a field to the rpg blob ad hoc
 
 **Tempting:** the blob is right there — stick the new counter on `ps`
@@ -30,6 +32,8 @@ registered in the rule-2 table, or add to the fixed list + delta-emit
 list the way goldNuggets/goldBars did (v2.3.1192,
 `server/src/persistence.js`).
 
+Held by: tools/guards/traps-server-word.test.mjs (tag 5320).
+
 ## 3. Building a party XP-sharing system
 
 **Tempting:** parties shipped (v2.3.1185) with no XP split — obvious
@@ -39,6 +43,8 @@ roster-based split double-pays or re-derives what combat already
 settles. Item D's danger note pinned this: UI + roster only, do NOT
 touch the §7 share math. **Receipt:** `docs/specs/party.md`,
 `server/src/party.js` header, handoff item D.
+
+Held by: server/test/party.test.mjs (tag 5320).
 
 ## 4. Server-rolling the cook minigame outcome
 
@@ -802,6 +808,8 @@ the pinned source rev), `tools/qa/mp/mp-shirtkeyline.mjs` (per-column
 outline widths and a near-black budget per sheet),
 `src/rendering/characterPortrait.js` (`SHIRT_ART_VER`).
 
+Held by: tools/guards/traps-art-on-disk.test.mjs (tag 5326).
+
 ---
 
 ## §28 — A test that reports "not found" is worse than no test (v2.3.2000)
@@ -944,6 +952,8 @@ bug report.
 **Receipt:** `tools/qa/mp/harness.mjs` (`acceptQuestFromGiver`, and why
 it throws), `tools/qa/mp/mp-statpeek.mjs` + `HeroExpanded.jsx`
 (`data-section`), `tools/qa/mp/mp-layer.mjs`, `tools/qa/mp/mp-zonefx.mjs`.
+
+Held by: tools/guards/traps-test-tools.test.mjs (tag 5323).
 
 ## §30 — A generated sleeve for the bare trailing arm looks worse than the bare arm (v2.3.2016; CLOSED v2.3.2066)
 
@@ -1627,6 +1637,8 @@ point of damage.
 **Related:** §35 (a test that copies a value out of the game), §37 (measuring
 a drawing against the box that defines it).
 
+Held by: server/test/mirror-audit.test.mjs (tag 5322).
+
 ---
 
 ## §44 — Asking a moving value about a past event (v2.3.2261)
@@ -2190,6 +2202,8 @@ not. And measure a preload's effect rather than assuming it helped.
 here the instrument did not exist at all until v2.3.2328), §51 (the other "the
 art is bigger than what we draw" finding from the same measurement pass).
 
+Held by: tools/guards/traps-screens.test.mjs (tag 5324).
+
 ---
 
 ## §53 — Measuring image fidelity through a `<canvas>` invents a catastrophe (v2.3.2328)
@@ -2313,6 +2327,8 @@ close to the thing being placed as the picture allows, and check the result
 against a measurement the game already owns rather than against a screenshot;
 and make sure the measurement measures the thing the eye judges.
 
+Held by: tools/guards/traps-art-on-disk.test.mjs (tag 5326).
+
 ## 56. Keying a piece as "everything that is not a key colour" (v2.3.2362)
 
 **Tempting:** the green-silhouette import is built on one clean rule — the
@@ -2350,6 +2366,8 @@ has no such bias: 100% / 100% / 96% on the shipped pair.
 
 **Related:** §55 (the same import, the axis it is calibrated on), §21 (an
 instrument that measures the wrong quantity reports green).
+
+Held by: tools/guards/traps-art-on-disk.test.mjs (tag 5326).
 
 ## 57. Separating drawn detail by colour after a generator has resampled (v2.3.2363)
 
@@ -2430,6 +2448,8 @@ the Eye Patch's five `hi/` frames in that commit.
 in the picker thumbnails — a re-import deletes the trait folder and the
 importer writes `thumb.png` but not `thumb-sw.png`, which is why
 `make-southwest-thumbs.mjs --check` is step 7 of `docs/specs/eyewear.md`.
+
+Held by: tools/guards/traps-art-on-disk.test.mjs (tag 5326).
 
 ---
 
@@ -2654,6 +2674,8 @@ viewport" is the obvious fix for an iOS keyboard bug, and here it CAUSES this
 one.** It was the first thing written for v2.3.2391 and it had to be thrown
 away — it re-flows the column beautifully and hands you a 228px scroll
 container in exchange.
+
+Held by: tools/guards/traps-screens.test.mjs (tag 5324).
 
 ## 65. `getBoundingClientRect()` on a transformed element is not its layout box (v2.3.2391)
 
@@ -2890,6 +2912,8 @@ identically is the tell.
 
 Related: §67 (the test ran, passed, and never touched the thing that was
 broken) — same family, one layer down.
+
+Held by: tools/guards/traps-test-tools.test.mjs (tag 5323).
 
 ---
 
@@ -3251,6 +3275,8 @@ the request and never answers. Twelve of its twenty-three assertions go red
 against the pre-fix panel, and its captured panel text is character for
 character the owner's screenshot.
 
+Held by: tools/guards/traps-screens.test.mjs (tag 5324).
+
 ## 78. Freeing a gesture is not an invitation to put the old one back (v2.3.2542)
 
 Three versions of one control in four days, and the middle one is the trap.
@@ -3374,6 +3400,8 @@ which is the desktop path.
 Related: §61 and §66 (a measurement taken in a state that cannot show the
 defect) — the first cut of the harness seeded `src:'tap'` by hand and so
 could only ever exercise the one path that worked.
+
+Held by: tools/guards/traps-fight.test.mjs (tag 5322).
 
 ## 80. A control run that still contains the fix (v2.3.2545)
 
@@ -3602,6 +3630,8 @@ whatever the layout looks like.
 
 **Related:** §61 (a still-frame assertion cannot see a frozen animation) — the
 same defect, found by the same instrument, one layer down.
+
+Held by: tools/guards/traps-screens.test.mjs (tag 5324).
 
 ---
 
@@ -3958,6 +3988,8 @@ material either).
 **Receipt:** `src/rendering/traits/eyeStyleColorCatalog.js`; `docs/specs/eyes.md`
 §6; the `flat` assertions in `mp-eyestyle.mjs` point 8.
 
+Held by: tools/guards/traps-look-tables.test.mjs (tag 5325).
+
 ## 94. A part that spans two materials cannot be named by a pin (v2.3.2646)
 
 **Tempting:** `traitMaterials.MAIN_MATERIAL` pins which material a swatch
@@ -3986,6 +4018,8 @@ is not; a percentage small enough to dismiss as anti-aliasing deserves a look at
 **Receipt:** `eyeStyleColorCatalog.EYE_STYLE_PAINTS`; the "spares the white"
 assertions in `mp-eyestyle.mjs` point 8; the two pins removed from
 `MAIN_MATERIAL`, with the reason left in their place.
+
+Held by: tools/guards/traps-look-tables.test.mjs (tag 5325).
 
 ## 95. A colour measured off the reference art is not the catalog target (v2.3.2665)
 
@@ -4047,6 +4081,8 @@ the repo references it, so the recolour never bakes it, and it is bright enough
 that leaving it in moved Alabaster's aggregate from 1.4% to 35% and drowned
 every real sheet. Excluded because it is not recoloured — not because the
 number was inconvenient.
+
+Held by: tools/guards/traps-look-tables.test.mjs (tag 5325).
 
 ## 96. Three head anchors that look load-bearing and are not (v2.3.2666)
 
@@ -4532,6 +4568,8 @@ Anything that reads it by position follows the same rule: size from `orig`,
 copy through `drawGearFrame`, cut through `subTexture`. And do not recover
 "which frame is this" as `frame.x / frame.width`: read `tex.__btIx`.
 
+Held by: tools/guards/traps-look-tables.test.mjs (tag 5325).
+
 ## 107. The harvest "demo" that animates the body contradicts the owner's freeze (v2.3.2760)
 
 **Tempting:** at `ready`, with no thumb down, loop a generated phase through
@@ -4596,6 +4634,8 @@ cleared by `joinTown`). And a "seen" flag that must survive a new build link
 goes on the shared-domain cookie too (`rosterCookie.readSharedValue` /
 `writeSharedValue`), not only in localStorage -- see the roster cookie's
 header for why every deploy is a different origin.
+
+Held by: tools/guards/traps-join-identity.test.mjs (tag 5321).
 
 ## 110. "WebGL2, so the batch shader can use textureSize / textureGrad" (v2.3.2770)
 
@@ -4878,6 +4918,8 @@ frame, flips honoured; identical to `getBounds()` for an uncropped texture.
 Keep `getBounds()` where you want the painted art (a probe asking where the
 figure actually is). The own-quad lighting gradient (formShade) had the same
 blind spot and reads the crop's rows inside `orig` since v2.3.2859.
+
+Held by: tools/guards/traps-look-tables.test.mjs (tag 5325).
 
 
 ## 120. A highlight added and clipped at white reads as white spots, and turning it down barely helps (v2.3.2914)
@@ -5342,6 +5384,8 @@ mp-questbanner now asserts the banner is not inside `.brotown-wrap`. A hit
 test cannot do it for a `pointer-events:none` overlay, because
 `elementFromPoint` skips it.
 
+Held by: tools/guards/traps-screens.test.mjs (tag 5324).
+
 ## 135. Letting the grass into the town: it meets every street along a ruler line (v2.3.3031)
 
 **The plausible move.** The owner asked for the green back between the town's
@@ -5398,6 +5442,8 @@ rise: 0` so they sit where they spawned.
 **The rule.** Clear popups by aging them (mp-dmgsize's `clearPops`), never by
 emptying the list; and look at the picture, because a leak like this never fails
 an assertion.
+
+Held by: tools/guards/traps-test-tools.test.mjs (tag 5323).
 
 ## 137. A glyph atlas bake is a density knob, not a size knob (v2.3.3033)
 
@@ -6093,6 +6139,8 @@ changes in them, instead -- not merely fewer repeated bytes.  And do not trust
 measurement: the local runtime negotiated it anyway (tried 2026-10-13); the
 bots' `PlainWS` does it from the client side.
 
+Held by: tools/guards/traps-test-tools.test.mjs (tag 5323).
+
 ## 170. "setInterval(tick, 22) runs the tick 45 times a second" (v2.3.3202)
 
 Not in the Workers runtime.  Its `setInterval` waits the whole interval AFTER
@@ -6433,6 +6481,8 @@ same. The default room still worked, so CI's two phone checks stayed green.
 **The rule.** A rule that reads `request.url`'s host is tested against a worker
 started the way the tools start it, and a tool that starts a worker says what
 host it wants rather than taking wrangler's default.
+
+Held by: tools/guards/traps-test-tools.test.mjs (tag 5323).
 
 ## 182. "A socket's messages are taken one at a time, so a handler need not be awaited" (v2.3.3291)
 
@@ -6899,6 +6949,8 @@ nothing said so.
 fingerprinted address gets its own `_headers` rule in the same PR, beside its
 sibling's. **Receipt:** `/world/placed5/*` in public/_headers (with the world
 map's detail tiles under it, src/ui/worldMapDetail.js).
+
+Held by: tools/guards/traps-test-tools.test.mjs (tag 5323).
 
 ## 200. "The test watched for 1.4 s, so the shot had its chance" (v2.3.3321)
 
@@ -7378,6 +7430,8 @@ or the shared roster carrying one of those. The door's answer also corrects
 first refused, before the fix; after it, one join, let in. mp-charlock and
 mp-linger.
 
+Held by: tools/guards/traps-join-identity.test.mjs (tag 5321).
+
 ## 217. "Put a player out: forget their session, then close their socket" (v2.3.3356)
 
 **Tempting:** to put a player out of the room (the Test panel's Kick or
@@ -7590,6 +7644,8 @@ every shot: the bow rows alone 49 of 49 checks, then the full run 128 of 129,
 its one miss a staff bolt into Frost Ridge's rock ridge, which the check now
 asks about at the boots (Frost Ridge again: 33 of 33).
 
+Held by: tools/guards/traps-fight.test.mjs (tag 5322).
+
 ## 223. "Move it by the transform: a shift is a shift" (v2.3.3458)
 
 **Tempting:** the shadows were drawn through a filter, the shadow layer moved
@@ -7779,6 +7835,8 @@ cut_owner_sounds.py renders in mp-cuelevels within 2% of its promise (hurtA
 0.71 of 0.7, notify 0.81 of 0.8, bossArrive 1.52 of 1.5); read with `-ac 1`,
 hurtA was 1.00 and notify 1.14, and bossEnrage (the roar with two thuds under
 it) 2.09 of its 1.3 -- the one mp-cuelevels failed.
+
+Held by: tools/guards/traps-test-tools.test.mjs (tag 5323).
 
 ## 231. "roundPixels puts the world on whole pixels, so the camera can stay fractional" (v2.3.3469)
 
@@ -8564,6 +8622,8 @@ stale twin is what every phone is served.
 **Receipt:** `mp-standinlegs` (no greaves: the trousers and boots stay;
 mp-ghostaudit's swing frames), docs/specs/standin-legs.md.
 
+Held by: tools/guards/traps-art-on-disk.test.mjs (tag 5326).
+
 ## 256. "The colour test finds the garment" (v2.3.3658)
 
 **The move.** A garment is found by its colour, the trousers' olive or the
@@ -8772,6 +8832,8 @@ the screen only while the opening is still its own.
 
 **Receipt:** server/test/zone-entry.test.mjs §1-2; the sweep's V11 and its
 reviews (storage branch `claude/state-machine-sweep`, never merged).
+
+Held by: tools/guards/traps-fight.test.mjs (tag 5322).
 
 ## 263. "A blocked player's new request: add an isBlockedId check to its handler" (v2.3.4365)
 

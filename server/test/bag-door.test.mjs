@@ -28,7 +28,8 @@
  * A new way to change the bag: a row in BAG_ROADS, one call that names it,
  * and its longhand line in EXPECT below.
  */
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { SRC_DIR, srcFiles } from './src-walk.mjs';
 import { BAG_ROADS, BAG_READS, BAG_EMPTY, BAG_WHOLE, bagAfter, bagGive, bagTake, bagSet, bagCount, bagOneSum, wholeCount, setBagOneSum, bagOneSumOn, bagEconOwn, bagEconPending } from '../src/bag.js';
 import { MAIL_CLASSES, classFaults, CLASSES, ESCROW_PLACES } from '../src/gold.js';
 import { GameRoom } from '../src/index.js';
@@ -184,8 +185,8 @@ const same = (a, b, k) => own(a, k) === own(b, k) && Object.is(a[k], b[k]) && a.
 /* Comments out, line numbers kept (gold-door.test's strip). */
 const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
   .replace(/(^|[^:'"`\\])\/\/[^\n]*/g, (m, p1) => p1 + ' '.repeat(m.length - p1.length));
-const dir = new URL('../src/', import.meta.url);
-const files = readdirSync(dir).filter((f) => f.endsWith('.js')).sort();
+const dir = SRC_DIR;
+const files = srcFiles();   /* v2.3.5060: in depth, a folder's files too (src-walk.mjs) */
 const code = Object.create(null);
 for (const f of files) code[f] = strip(readFileSync(new URL(f, dir), 'utf8'));
 const lineOf = (s, i) => s.slice(0, i).split('\n').length;

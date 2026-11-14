@@ -414,6 +414,71 @@ const FitName = ({ name, quality, size, lines }) => {
   );
 };
 
+/* ═══ v2.3.5047: ONE EQUIPMENT CELL, ITS OWN COMPONENT ═══
+   held-budget.mjs `ui:*`: one component of the band drawn in one piece.
+   React lets a frame in between components, never inside one, and the
+   band's beat is drawn as a transition (docs/specs/held-sweep.md fix 6).
+   The nine equipment cells were built by a function inside GearTab
+   (`cellEl`), so all nine, with each cell's own work (cellContent: the
+   weapon's rows, the amulet's stat card from getEquipContribs), were part of
+   GearTab's one piece: the held sweep's `ui:GearTab` holds name `cellEl` and
+   `cellContent > getEquipContribs` in them.  As a component each cell is a
+   piece of its own.  The cell is drawn exactly as before (the same body; its
+   key moved to the element that names it). */
+const EQ_TILE = ['sword', 'bow', 'staff', 'chest', 'legs', 'cape', 'shield', 'amulet', 'gem'];
+const GearCellView = ({ c, R, slots, selCell, hand, t }) => {
+  const ct = cellContent(R, c.id, slots);
+  const filled = !!ct.item;
+  const blue = selCell === c.id;
+  const gold = !!(c.active && c.active === hand && filled);
+  const edge = rarityEdge(ct.quality);
+  /* the weapon in hand gold-edged and glowing, as the mockups draw it (a
+     ring inside, so a rarity edge and the blue pick ring outside can both
+     still show) */
+  const ring = [gold ? `inset 0 0 0 2px ${COL.focus}` : null, gold && !blue ? '0 0 9px rgba(234, 198, 117, 0.55)' : null, blue ? GEAR_SEL_RING : null].filter(Boolean).join(', ');
+  /* v2.3.4151, the owner: "remove the points badges and thin xp lines from
+     those" -- a weapon cell is its picture (and the hand's gold) only; the
+     level and the XP live on the Bro page's skill tiles (v2.3.4191) */
+  const pic = c.id === 'gem'
+    ? null
+    : (ct.icon || GHOST_SRC[c.id === 'sword' || c.id === 'bow' || c.id === 'staff' ? 'weapon' : c.id]);
+  /* v2.3.4199, the owner's placeholder art: an EMPTY cell is its framed
+     tile (its own steel-and-gold frame is the cell's border, so no second
+     frame); 128 px webps, 256 colours, cut from the owner's sheet, loaded
+     as plain <img> like the slot-*.webp ghosts they replace */
+  const tile = (!filled || (c.id === 'gem' && !(ct.els && ct.els.length))) && EQ_TILE.includes(c.id) ? `/icons/bag/equip-${c.id}.webp?v=2.3.4199` : null;
+  return (
+    <div data-eqslot={c.id} data-gear-cell={c.id}
+      data-gear-sel={blue ? '1' : undefined} data-gear-active={gold ? '1' : undefined}
+      data-gear-filled={filled ? '1' : '0'}
+      className={edge.cls || undefined}
+      role="button" aria-pressed={blue} aria-label={c.label + (filled ? ': ' + ct.name : ', empty')}
+      title={c.label + (filled ? ' — ' + ct.name : '')}
+      onPointerUp={(e) => { e.stopPropagation(); gearTabBus.tapCell(c.id); }}
+      style={{
+        width: t, height: t, boxSizing: 'border-box', position: 'relative', flex: 'none',
+        background: tile ? 'transparent' : filled ? COL.slot : COL.wellSoft,
+        border: tile ? 'none' : `${filled ? edge.w : 1}px solid ${gold ? COL.accent : filled ? edge.c : COL.border}`, borderRadius: tile ? 0 : 8,
+        boxShadow: ring || undefined,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', touchAction: 'manipulation',
+      }}>
+      {tile ? (
+        <img src={tile} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: 'fill', pointerEvents: 'none' }} />
+      ) : c.id === 'gem' ? (
+        ct.els && ct.els.length ? (
+          <span style={{ display: 'flex', gap: 1, pointerEvents: 'none' }}>
+            {ct.els.map((el, i) => <img key={el + i} src={gemIcon(gemCutKey(el))} alt="" draggable={false} style={{ width: ct.els.length > 1 ? t * 0.42 : t * 0.66, height: ct.els.length > 1 ? t * 0.42 : t * 0.66, objectFit: 'contain' }} />)}
+          </span>
+        ) : (
+          <span aria-hidden="true" style={{ fontSize: t * 0.46, lineHeight: 1, opacity: 0.25, filter: 'grayscale(1)', pointerEvents: 'none' }}>{'💎'}</span>
+        )
+      ) : (
+        <img src={pic} alt="" draggable={false} style={{ width: filled ? '94%' : '78%', height: filled ? '94%' : '78%', objectFit: 'contain', opacity: filled ? 1 : 0.3, pointerEvents: 'none' }} />
+      )}
+    </div>
+  );
+};
+
 export const GearTab = ({ R: Rin, desk }) => {
   const R = Rin || {};
   const [rootRef, box] = useMeasure();
@@ -679,66 +744,13 @@ export const GearTab = ({ R: Rin, desk }) => {
   );
 
   /* ═════ EQUIPMENT ═════ */
-  const EQ_TILE = ['sword', 'bow', 'staff', 'chest', 'legs', 'cape', 'shield', 'amulet', 'gem'];
   const hand = R.activeSlot || 'melee';
-  const cellEl = (c) => {
-    const ct = cellContent(R, c.id, slots);
-    const filled = !!ct.item;
-    const blue = selCell === c.id;
-    const gold = !!(c.active && c.active === hand && filled);
-    const edge = rarityEdge(ct.quality);
-    /* the weapon in hand gold-edged and glowing, as the mockups draw it (a
-       ring inside, so a rarity edge and the blue pick ring outside can both
-       still show) */
-    const ring = [gold ? `inset 0 0 0 2px ${COL.focus}` : null, gold && !blue ? '0 0 9px rgba(234, 198, 117, 0.55)' : null, blue ? GEAR_SEL_RING : null].filter(Boolean).join(', ');
-    /* v2.3.4151, the owner: "remove the points badges and thin xp lines from
-       those" -- a weapon cell is its picture (and the hand's gold) only; the
-       level and the XP live on the Bro page's skill tiles (v2.3.4191) */
-    const pic = c.id === 'gem'
-      ? null
-      : (ct.icon || GHOST_SRC[c.id === 'sword' || c.id === 'bow' || c.id === 'staff' ? 'weapon' : c.id]);
-    /* v2.3.4199, the owner's placeholder art: an EMPTY cell is its framed
-       tile (its own steel-and-gold frame is the cell's border, so no second
-       frame); 128 px webps, 256 colours, cut from the owner's sheet, loaded
-       as plain <img> like the slot-*.webp ghosts they replace */
-    const tile = (!filled || (c.id === 'gem' && !(ct.els && ct.els.length))) && EQ_TILE.includes(c.id) ? `/icons/bag/equip-${c.id}.webp?v=2.3.4199` : null;
-    return (
-      <div key={c.id} data-eqslot={c.id} data-gear-cell={c.id}
-        data-gear-sel={blue ? '1' : undefined} data-gear-active={gold ? '1' : undefined}
-        data-gear-filled={filled ? '1' : '0'}
-        className={edge.cls || undefined}
-        role="button" aria-pressed={blue} aria-label={c.label + (filled ? ': ' + ct.name : ', empty')}
-        title={c.label + (filled ? ' — ' + ct.name : '')}
-        onPointerUp={(e) => { e.stopPropagation(); gearTabBus.tapCell(c.id); }}
-        style={{
-          width: t, height: t, boxSizing: 'border-box', position: 'relative', flex: 'none',
-          background: tile ? 'transparent' : filled ? COL.slot : COL.wellSoft,
-          border: tile ? 'none' : `${filled ? edge.w : 1}px solid ${gold ? COL.accent : filled ? edge.c : COL.border}`, borderRadius: tile ? 0 : 8,
-          boxShadow: ring || undefined,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', touchAction: 'manipulation',
-        }}>
-        {tile ? (
-          <img src={tile} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: 'fill', pointerEvents: 'none' }} />
-        ) : c.id === 'gem' ? (
-          ct.els && ct.els.length ? (
-            <span style={{ display: 'flex', gap: 1, pointerEvents: 'none' }}>
-              {ct.els.map((el, i) => <img key={el + i} src={gemIcon(gemCutKey(el))} alt="" draggable={false} style={{ width: ct.els.length > 1 ? t * 0.42 : t * 0.66, height: ct.els.length > 1 ? t * 0.42 : t * 0.66, objectFit: 'contain' }} />)}
-            </span>
-          ) : (
-            <span aria-hidden="true" style={{ fontSize: t * 0.46, lineHeight: 1, opacity: 0.25, filter: 'grayscale(1)', pointerEvents: 'none' }}>{'💎'}</span>
-          )
-        ) : (
-          <img src={pic} alt="" draggable={false} style={{ width: filled ? '94%' : '78%', height: filled ? '94%' : '78%', objectFit: 'contain', opacity: filled ? 1 : 0.3, pointerEvents: 'none' }} />
-        )}
-      </div>
-    );
-  };
   const equipment = (
     <div data-gear-pane="equip" style={panel({ width: sideW, height: sideH, flex: 'none', padding: `${pp}px ${pp + padX}px`, alignItems: 'center', justifyContent: 'flex-start' })}>
       {/* the mockup's "Equipped" head */}
       <div data-gear-eqhead="" style={{ height: EQ_HEAD, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11.5, fontWeight: 800, color: COL.text, letterSpacing: '.02em' }}>Equipped</div>
       <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, ${t}px)`, gridAutoRows: `${t}px`, gap: gg, marginTop: Math.max(0, Math.min(hdr + gg - EQ_HEAD, Math.floor((sideH - 2 * pp - 2 - EQ_HEAD - 3 * t - 2 * gg) / 2))) }}>
-        {GEAR_CELLS.map(cellEl)}
+        {GEAR_CELLS.map((c) => <GearCellView key={c.id} c={c} R={R} slots={slots} selCell={selCell} hand={hand} t={t} />)}
       </div>
     </div>
   );
