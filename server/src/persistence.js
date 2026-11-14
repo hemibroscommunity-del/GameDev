@@ -11,6 +11,7 @@
  *   - _saveRpg writes the blob from a FIXED field list (handoff rule
  *     1): any field not listed is silently dropped on the next save.
  *     _v = RPG_SCHEMA_VERSION is the one blessed exception.
+ *     v2.3.5083: and `_econ`, the second (migrations.js ECON).
  *   - _loadRpg runs the v2.3.1152 migration registry, re-putting a
  *     changed blob exactly once (fail-open).
  *   - _sendPlayerState is protocol-versioned: v2 sessions get a
@@ -19,7 +20,7 @@
  * The identity pair (_phraseHash/_verifyJoinAuth) and the join
  * bootstrap stay in index.js -- they belong to the join slice. */
 
-import { RPG_SCHEMA_VERSION, runRpgMigrations, healLifeSkills } from './migrations.js';
+import { RPG_SCHEMA_VERSION, runRpgMigrations, healLifeSkills, econClean } from './migrations.js';
 import { gearStashCap } from './gearstash.js';
 import { cleanApOnce } from './inbox.js';   /* v2.3.3488: the once-a-character prize marks */
 import { revealPublic, revealPublicList } from './revealbag.js';   /* v2.3.4012: a piece waiting in the bag goes out without its grade */
@@ -397,6 +398,13 @@ export const persistenceMethods = {
         // (_rpgSaveVFor; a newer worker's blob, let in by `newersave:
         // false`, keeps its own).
         _v: this._rpgSaveVFor(playerId),
+        /* v2.3.5083: the SECOND exception to rule 1 (grand plan card E,
+           PR 4): the character's running minted and burned (migrations.js
+           ECON), written in the purse's own put so the world's sum reads
+           what it counts with what it counts (the plan's rule 5).  Card Q's
+           sitting card goes inside it, under a key of its own: a third
+           field is refused (migrations.test §econ). */
+        _econ: econClean(ps._econ),
       });
     } catch (e) {}
   },

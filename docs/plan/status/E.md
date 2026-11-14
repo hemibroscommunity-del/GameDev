@@ -1,6 +1,6 @@
 card: E
-branch: claude/plan-e-3-marks (one branch a PR, each begun from the one before, as W's and H's are: merge them in order)
-prs: #1686 (ready), #1691 (ready), PR 3 the registry's marks on the branch above (ready; its number goes here with PR 4's commit)
+branch: claude/plan-e-4-econ (one branch a PR, each begun from the one before, as W's and H's are: merge them in order)
+prs: #1686, #1691, #1694 (ready), PR 4 `_econ` on the branch above (ready; MERGED BY ITSELF: it changes the stored record's shape)
 state: ready
 
 ## Done
@@ -11,21 +11,21 @@ state: ready
 - PR 2 (5081, #1691), the roads' classes: 44 gold and 69 bag roads; the
   mail by its credit's opId word (`MAIL_CLASSES`); `BAG_WHOLE`; SHAPES
   part 3's four edges ruled (the title says it changes SHAPES). Deploys.
-- PR 3 (5082), the registry's marks: `server/src/storagemarks.js` (value,
-  whose; 14 records hold value), held to the handoff's table by
-  `tools/guards/storage-marks.test.mjs` (3 break proofs). Deploys.
+- PR 3 (5082, #1694), the registry's marks: `storagemarks.js` (value,
+  whose; 14 hold value), held to the handoff's table by a guard. Deploys.
+- PR 4 (5083), `_econ`: rule 1's second exception, schema 21 (`econ-field`);
+  `migrations.test` §econ fails a third field. Two checks in
+  `sword-convert.test` pinned schema 20: they read the constant now.
 
 ## Next
 
-- PR 4 (tag 5083), the `_econ` field: the second exception to rule 1.
+- PR 5 (tag 5084), the world's sum: waits on the owner (Needs).
 
 ## Found
 
 - `inbox.js` / `index.js`: goods mailed to a player in the five dying
   seconds land in the bag the respawn's wipe empties (read, not reproduced).
-- `admin.js` `/grant` takes the operator's own `opId`; a grant under
-  another word than `admin:` is classed by that word.
-- CLAUDE.md §8's storage-key row could name the marks (the guard does).
+- `admin.js` `/grant` takes any `opId`: a grant is classed by its word.
 - `deathpilesave: false` keeps piles in memory only: the sum sees a death's
   bag leave and come back by no record (rule 4's two configurations).
 
@@ -34,7 +34,7 @@ state: ready
 - Owner: the book loses up to 5 minutes of counts when the empty room's
   worker sleeps before the next add. A one-line save at "the last one out"
   (`leave.js`) closes it; not card E's file. Add it, or is that fine?
-- Owner: `nml_loss` has two classes (a player's kill moves the purse to
-  the killer; a monster's kill of a red skull burns it): one line in
-  `nomansland.js` splits it. The arena prize's `payload.house` (SHAPES 3,
-  edge 3) is one line in `gladiator.js`. May PR 5 touch those two lines?
+- Owner: PR 5 needs three lines outside card E: `join.js` restores
+  `_econ` at the join; `nomansland.js` splits `nml_loss` (a monster's kill
+  of a red skull burns, a player's kill moves); `gladiator.js` writes the
+  prize's `payload.house` (SHAPES 3, edge 3). May PR 5 touch them?
