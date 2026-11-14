@@ -219,7 +219,7 @@ box's software graphics chip, and the quarter second of game it plays in one
 frame: a phone has neither) or **the browser's** (its garbage collector: the
 game can only give it less to do). The grand plan's step 3.1 is done when no
 row is ours (`held-budget.mjs` `debtOf('ours')`, the count its scoreboard
-reads). Today: ten ours, two the box's, one the browser's. A new family is
+reads). Today (v2.3.5042): eight ours, two the box's, one the browser's. A new family is
 ours until a measurement says otherwise: `held-sweep.test` 7b3 holds the
 box's and the browser's to the three below, and 7b4 holds this table to
 `KNOWN`, row for row. Their break proofs (the grand plan's rule 8), each run
@@ -227,13 +227,13 @@ by hand: `whose` taken off `strip-made` turns 7b2, 7b3 and 7b4 red;
 `pack-page` called the box's, in the list and this table both, turns 7b3
 red; the `sweepPicsOnce` row taken out of this table turns 7b4 red.
 
-All thirteen (the first five by their old rank, then the rest):
+All of them (the first five by their old rank, then the rest; a family off the list is struck through):
 
 | family (its key in `KNOWN`) | whose | its line | why it is over | what fixes it |
 |---|---|---|---|---|
 | `body-bake` | ours | 13 ms (v2.3.4960; was 220), 12 at the crowd's a-ink, b-fish, c-armour1, c-armour8, d-prints, h-eight (v2.3.5013; was 120) | v2.3.4930: in play every one of these bakes runs on a worker (`docs/specs/body-bake-worker.md`). Re-timed 2026-11-12 (v2.3.4960): none in the main tour or at c-armour1, c-armour8, d-prints. h-eight was 227 ms, 29 bakes on the page. **v2.3.5013: found and fixed.** Not the heads (the numbers draw them since v2.3.4961) and not a stalled worker: the 32-frame fish sheets of the armoured players who had cast at c-armour8, each job an async run of its own, so a worker's four answered only together, 19 to 25 s after the ask; the 20 s watch let both workers go and the page baked the rest (208 to 238 ms, 7 times). Now one job at a time with a beat between its steps: h-eight none, three runs (11.1 / 9.1 / 10.3 ms the longest of any family) | the fish sheet as colour numbers (lookBodyRefused passes it) would take the 4 to 6 s a sheet off this box's worker too |
-| `gear-sheet` | ours | 195 ms; 12 at the crowd's d-prints (v2.3.5014) | a drawn shirt composed on the page for each pose (the crowd tour). **v2.3.5014: on the body bake's worker in play** (`docs/specs/body-bake-worker.md`, "A drawn shirt"): d-prints none, three runs (was 180.7 to 238.9 ms, 7 to 15 times) | the rest of the family was not re-timed |
-| `portrait` | ours | 40 ms (v2.3.4960; was 150) | the Leaderboards' faces are 11 ms now (g-boards, was 149); what is left is the bag's own portrait drawn as armour goes on, 37 ms (armour) | draw it a few rows a frame |
+| ~~`gear-sheet`~~ | | off the list (v2.3.5042; was 195 ms, 12 at the crowd's d-prints) | a drawn shirt composed on the page for each pose (the crowd tour); on the body bake's worker in play since v2.3.5014 (`docs/specs/body-bake-worker.md`, "A drawn shirt") | **v2.3.5042**: what was left was the Equipment screen's figure (below, "Card H") |
+| ~~`portrait`~~ | | off the list (v2.3.5042; was 40 ms) | the Leaderboards' faces are 11 ms since v2.3.4960 (g-boards, was 149); what was left, the Equipment screen's figure drawn as armour goes on, 10 to 29 ms (armour) | **v2.3.5042**: drawn a step at a time in play, the body kept (below, "Card H") |
 | `masked-bake` | ours | 24 ms (v2.3.4870; was 140) | the worker job's page-side part (frames handed over as pictures): the cut itself no longer runs on the page in play -- another player's frame is drawn plain until the worker answers, as yours was | hand the worker the sheets once and send rectangles; prewarm the poses of what was just put on |
 | `pack-page` | ours | 20 ms (v2.3.4873; was 80) | a gear sheet first drawn in play, now packed a few ms at a time (`gearSheets.js` `_gearPack`; was one go, 21 to 59 ms): one cell's read and the hand-off, 9 to 15 ms | the strip door for gear strips (256-colour files, packed on the worker) |
 | `gc` | the browser's | 60 ms | the browser's garbage collector | make less garbage a frame (OPTIMIZATION-ROADMAP's pools) |
@@ -260,6 +260,82 @@ Not on that list because the tour cannot see them:
   own (the buttons round the stick, the weapon pill). Each is small; together
   they are the 45 holds of up to 10.7 ms in the table. One beat for all of
   them would halve it.
+
+## Card H: the debt list, ours first (the grand plan's step 3.1)
+
+The grand plan (`docs/GRAND-PLAN.md` pillar 3, card `docs/plan/cards/H.md`)
+takes the families that are ours off the list, one a PR, largest line first.
+Each is proven by a sample, as the owner's rule asks (CLAUDE.md §6): the
+stations that measure the family, three runs, not both whole tours.
+
+### `gear-sheet` and `portrait` off the list (v2.3.5042)
+
+**What the sample found first.** The crowd tour's `b-fish`, `c-armour1`,
+`c-armour8`, `h-eight` and `d-prints`, four runs: no `gear-sheet` hold at all
+(the drawn shirts are dressed on the body bake's worker since v2.3.5014).
+The main tour's `peer` and `armour`, three runs: one `gear-sheet` hold of
+24.9 ms, `portrait` 10.3 to 17.9 ms, and a `body-bake` hold of 28.8 ms (over
+its 13 ms line), all at `armour`, and all ONE thing: the Equipment screen's
+figure (`characterPortrait.js` `drawCharacterPortrait`, drawn by
+`CharacterView`) drawn again as armour goes on and off. It drew in one piece
+once its pictures were in: the body recoloured, the shirt, each armour layer,
+the weapon, the hair and the hat. The sweep names a hold by the first family
+whose function is on its stack, so the figure's hold read as `gear-sheet`
+(`> composeShirt`), `body-bake` (`> recolorBodyToCanvas`) or `portrait`,
+by which step was most of it. (Moving `portrait` up the families' order would
+have read better and fixed nothing: a number met by renaming is not met.)
+
+**What it does now** (`characterPortrait.js`; `?portraitgentle=0` is one go,
+as before, for one tab):
+
+- **In play, a frame is let in after every step** that took 1 ms or more
+  (the gear pack's way: a frame, then a task; a timer of 120 ms if no frame
+  comes), so a piece is one step. "In play" is the signal the gear and the
+  monsters' strips are packed by (`gearSheets.js` `playFrameMs`, from
+  BroTown's `setStripPlay`): not behind a loading screen, not before the
+  world is up, not in a hidden tab. On the login screen and in the creator it
+  draws in one go as before: the creator turns the figure on every move of a
+  finger, and a draw of three frames would be replaced before it finished.
+  A draw a newer one replaced meanwhile stops at its next step.
+- **The recoloured body is kept** for its look and facing (four at most,
+  256 x 256 each, 1 MB, none on the graphics chip): armour on or off never
+  changes it. It was the largest step: without it, the body alone was a
+  15 ms piece on the loaded page (three runs, the control). Each kept body is
+  witnessed at one solid pixel (`canvasWitness.js`, TRAPS §250) and that
+  pixel is read again before the body is used: Safari empties a parked tab's
+  canvases without a word, and a body read empty is recoloured anew.
+
+**The same picture** (`window.__btPortraitCompare(opts, a, b)`, five figures:
+plain, armour at 3x, armour and a sword and shield, a hat and a drawn shirt
+mirrored at 2x, north):
+
+- drawn twice the same way, and with the kept body against one recoloured
+  anew: the same, byte for byte;
+- in pieces against in one go: 1 to 73 edge pixels of a figure (of 589,824 at
+  3x) differ by one step of 255 (up to 6 on a nearly see-through pixel, read
+  back divided by its small alpha). Chrome rasterises draws onto a canvas it
+  flushed between two tasks a hair differently from draws it replays in one
+  go. A frame let in at only the last step changes nothing; earlier, more
+  pixels: it is the browser's, not the game's steps. Invisible;
+- the kept bodies emptied as Safari empties them
+  (`window.__btPortraitEmptyKept()`): the next draw notices, recolours anew,
+  and is the fresh figure byte for byte. Break proof: with that pixel's
+  re-read always "still there", the figure comes back with 17,621 pixels of
+  its body missing.
+
+**After**, the main tour's `peer` and `armour`, three runs: the figure's
+holds the longest 7.9, 12.5 and 8.1 ms (the 12.5 with 3 ms of another job,
+`prog3CharLevel`, in the same hold: one hold just past the general line is
+the judge's noise); no `gear-sheet` hold, and none of `body-bake` from
+the figure. On an iPhone the Equipment screen draws at 3x (nine times this
+box's pixels): the pieces are smaller there than one go was, by the same
+ratio.
+
+**Not run** (offered to the owner): the whole main tour and the whole crowd
+tour (about 30 minutes); Safari; Windows and Mac. Seen on the way and not this
+PR's: `pack-page` at `armour` 17 to 35 ms against its 20 ms line (waits for
+card P's asset door); one `masked-bake` hold of 32.7 ms at `armour` (its own
+PR is next).
 
 ## The standing check
 

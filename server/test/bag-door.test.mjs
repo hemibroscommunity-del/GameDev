@@ -15,6 +15,7 @@
  *   2. ONE DOOR: no bag count is written anywhere in server/src but bag.js,
  *      directly or through a name that holds the bag; the whole-bag assigns
  *      that stay (a new bag, the join's load, the death wipe) are listed;
+ *      v2.3.5081: each names its classed row of BAG_WHOLE;
  *   3. ONE ROW, ONE PLACE: every call names a road the table has, with that
  *      road's verb, from the file its row names; every road has one caller;
  *   4. A WRONG ROAD moves nothing: each throws, the bag untouched;
@@ -29,7 +30,8 @@
  */
 import { readFileSync } from 'node:fs';
 import { SRC_DIR, srcFiles } from './src-walk.mjs';
-import { BAG_ROADS, BAG_READS, BAG_EMPTY, bagAfter, bagGive, bagTake, bagSet, bagCount, bagOneSum, wholeCount, setBagOneSum, bagOneSumOn } from '../src/bag.js';
+import { BAG_ROADS, BAG_READS, BAG_EMPTY, BAG_WHOLE, bagAfter, bagGive, bagTake, bagSet, bagCount, bagOneSum, wholeCount, setBagOneSum, bagOneSumOn } from '../src/bag.js';
+import { MAIL_CLASSES, classFaults, CLASSES, ESCROW_PLACES } from '../src/gold.js';
 import { GameRoom } from '../src/index.js';
 import { flagNameOk } from '../src/liveops.js';
 setBagOneSum(false);   /* v2.3.4900: §1-5 hold the step-1 sums; §6 turns step 2 on */
@@ -192,11 +194,15 @@ const lineAt = (s, i) => { const a = s.lastIndexOf('\n', i) + 1; const e = s.ind
 
 /* The whole-bag assigns that stay in step 1, and why.  They make the bag;
    they do not change a count in it. */
+/* v2.3.5081: each names its row of bag.js BAG_WHOLE, which classes what it
+   does to what the bag holds (SHAPES part 3, edge 4); the death's two wipes,
+   one line before, are two entries now: they are two classes */
 const WHOLE_BAG = [
-  { file: '*', re: /\.inventory\s*=\s*(?:\{\s*\}|Object\.create\(null\))\s*;/, why: 'a new, empty bag for a player who has none (the callers\' own guard, as before)' },
-  { file: 'join.js', re: /\.inventory\s*=\s*stored\.inventory\s*\|\|\s*\{\}/, why: 'the join loads the stored character\'s bag' },
-  { file: 'join.js', re: /\.inventory\s*=\s*_cappedInv\b/, why: 'the join\'s first-connect bag, capped (trapping.js _trapJoinCap)' },
-  { file: 'index.js', re: /ps\.inventory\s*=\s*this\._wipeInventoryOnDeath\(/, why: 'the death wipe: the bag made what the dead keep (the tools); twice, the plain death and No man\'s land' },
+  { file: '*', re: /\.inventory\s*=\s*(?:\{\s*\}|Object\.create\(null\))\s*;/, row: 'new_bag', why: 'a new, empty bag for a player who has none (the callers\' own guard, as before)' },
+  { file: 'join.js', re: /\.inventory\s*=\s*stored\.inventory\s*\|\|\s*\{\}/, row: 'join_load', why: 'the join loads the stored character\'s bag' },
+  { file: 'join.js', re: /\.inventory\s*=\s*_cappedInv\b/, row: 'join_first', why: 'the join\'s first-connect bag, capped (trapping.js _trapJoinCap)' },
+  { file: 'index.js', re: /ps\.inventory\s*=\s*this\._wipeInventoryOnDeath\(ps,/, row: 'death_wipe', why: 'the death wipe: the bag made what the dead keep (the tools; nothing in No man\'s land), the rest to the pile' },
+  { file: 'index.js', re: /ps\.inventory\s*=\s*this\._wipeInventoryOnDeath\(ps\)/, row: 'respawn_wipe', why: 'the respawn wipe: the same, again, five seconds on' },
 ];
 {
   /* a name that holds the bag: `const inv = ps.inventory`, `= ...inventory : null`, `= bagOf(...)` */
@@ -408,6 +414,36 @@ setBagOneSum(true);
   const ps2 = { coins: 0, inventory: { wood_pine_log: 4 } };
   const res2 = await room._shopSell(ps2, 'wood_pine_log', 3, null);
   check('7. an honest sale: sold, paid, the rest left', res2 && res2.ok && ps2.inventory.wood_pine_log === 1 && ps2.coins > 0, { res2, ps2 });
+}
+
+/* ── 8. THE CLASSES (v2.3.5081, grand plan step 4.4, card E PR 2) ────────── */
+/* Every road is a mint, a burn, a move or an escrow, for the count of its
+   key (gold.js CLASSES and classFaults: gold-door.test §8 proves the
+   checker fails a planted fault).  A cook is two roads of two classes. */
+{
+  const bf = classFaults(BAG_ROADS, BAG_ROADS);
+  check('8. every BAG_ROADS row has a class, a move or an escrow its other side', bf.length === 0, bf);
+  const counts = {};
+  for (const r of Object.values(BAG_ROADS)) counts[r.class] = (counts[r.class] || 0) + 1;
+  check('8. at v2.3.5081: 32 mints, 25 burns, 10 escrows, 2 moves (a change of class is a change here)', counts.mint === 32 && counts.burn === 25 && counts.escrow === 10 && counts.move === 2, counts);
+  const moves = Object.entries(BAG_ROADS).filter(([, r]) => r.class === 'move');
+  check('8. every goods move lands by mail_item, the mail paid on (an escrow of inbox:)',
+    moves.every(([, r]) => r.other === 'mail_item') && BAG_ROADS.mail_item.class === 'escrow' && BAG_ROADS.mail_item.other === 'inbox:', moves.map(([n, r]) => n + '>' + r.other));
+  check('8. ...and each is the other side of a credit word (trade, trade2)',
+    moves.every(([n]) => Object.values(MAIL_CLASSES).some((m) => m.class === 'move' && m.other === n)));
+  check('8. a cook is two roads of two classes: the raw fish burned, the cooked minted', BAG_ROADS.cook_fish_used.class === 'burn' && BAG_ROADS.cook_fish_cooked.class === 'mint');
+  check('8. Diego\'s pile holds what he buys: selling to him and buying from it are its escrow', BAG_ROADS.shop_sell.other === 'shop_stock' && BAG_ROADS.shop_pile.other === 'shop_stock' && BAG_ROADS.shop_staple.class === 'mint');
+  check('8. a player\'s pile on the ground: a drop goes in, a pickup comes out', BAG_ROADS.item_drop.other === 'death_pile:' && BAG_ROADS.loot_death_items.other === 'death_pile:' && BAG_ROADS.loot_gem.class === 'mint');
+}
+{
+  /* edge 4: the whole-bag assigns -- not roads, but classed */
+  const rows = Object.keys(BAG_WHOLE);
+  const named = WHOLE_BAG.map((w) => w.row);
+  check('8. every WHOLE_BAG entry names a row of BAG_WHOLE, and every row is named once', named.every((r) => rows.includes(r)) && rows.every((r) => named.filter((x) => x === r).length === 1), { rows, named });
+  const bad = Object.entries(BAG_WHOLE).filter(([, w]) => w.class !== null && classFaults({ x: w }, BAG_ROADS).length).map(([n]) => n);
+  check('8. ...each is null (holds nothing new) or classed as a road is', bad.length === 0 && Object.values(BAG_WHOLE).every((w) => w.class === null || CLASSES.includes(w.class)), bad);
+  check('8. ...the death\'s wipe moves the bag to the pile on the ground (death_pile:)', BAG_WHOLE.death_wipe.class === 'escrow' && BAG_WHOLE.death_wipe.other === 'death_pile:' && ESCROW_PLACES.includes('death_pile:'));
+  check('8. ...a new bag and the join\'s load hold nothing the world did not', BAG_WHOLE.new_bag.class === null && BAG_WHOLE.join_load.class === null);
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);

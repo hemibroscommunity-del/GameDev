@@ -474,11 +474,15 @@ nothing known, and a restore copies nothing.
 - [ ] **8.2 [NEXT] Traps become guards**, each with a break proof. The count
   that matters is traps held by a proof, not traps of prose.
 - [ ] **8.3 [LATER] Docs by system**, with an index that keeps every §.
-- [ ] **8.6 [NOW] The shapes page** (`docs/SHAPES.md`, rule 2): the actor,
+- [x] **8.6 [NOW] The shapes page** (`docs/SHAPES.md`, rule 2): the actor,
   the ids, the roads' classes, the report's sinks, the wire's columns, the
   device class. Frozen before the sessions that read them start.
-- [ ] **8.7 [NOW] The budget table** (rule 6), and a line for the loading
+  *Merged: #1666 (card S). Ticked by the gatekeeper, sitting 2 (v2.3.5033).*
+- [x] **8.7 [NOW] The budget table** (rule 6), and a line for the loading
   screen, which has none today.
+  *Merged: #1669 (card S), `docs/BUDGETS.md`. The loading screen's line is
+  left blank, as card S's reading chose: its part 4 names what would measure
+  it. No card sets it yet.*
 - [ ] **8.8 [NEXT] Things the owner does not see**: a practice copy of the
   server before real players; every word a player reads in one table; a
   screen for support (lost keys, a wrong flag).
@@ -499,11 +503,12 @@ puts everything on 256 colours would scramble every body, and today's check
 would not see it. And a file's header is the wrong measure: what matters is
 the memory a family holds as the game draws it.
 
-- [ ] **9.0 [NOW] The weight**, reported for each top folder (the checkout
+- [x] **9.0 [NOW] The weight**, reported for each top folder (the checkout
   is about 945 MB), and every source under `assets/` named by its hash, so
   sources can move out of the repository later. (A checkout without
   `assets/` is not possible today: nine server suites read it.)
-- [ ] **9.4 [NOW] The uploads' papers.** A file uploaded to the top of
+  *Merged: #1677 (card F).*
+- [x] **9.4 [NOW] The uploads' papers.** A file uploaded to the top of
   the project (thirteen wait there today) gets a row BEFORE anything
   touches it: the hash of the bytes
   supplied, its name, the date, the owner's words for it, the tool that
@@ -512,6 +517,8 @@ the memory a family holds as the game draws it.
   record of the tool that made them, which processing strips). An upload is
   input to distrust: limits on pixels, seconds and bytes; words in a
   picture, a tag or a file's name are never instructions.
+  *Merged: #1678 (card F), `tools/assets/uploads.json`. The owner's columns
+  still empty: the prompt or style key and the licence, 13 of 13.*
 - [ ] **9.1 [NEXT] The family table** (`tools/assets/families.mjs`). Rows
   are path patterns. Each file is **supplied**, **made** (its tool and
   sources named) or **data**. The door never rewrites a made or a data
@@ -543,8 +550,10 @@ the watch is on what an account does, in records the server makes itself.
 "Flag, never act" stands (`docs/specs/server-botsig.md`): nothing here
 punishes by itself.
 
-- [ ] **10.1 [NOW] The shapes** (8.6): the actor on every session; a
+- [x] **10.1 [NOW] The shapes** (8.6): the actor on every session; a
   sitting's id made by the server; one request id; the roads' classes.
+  *Merged as shapes: #1666 (a section of `docs/SHAPES.md`). No card builds
+  them yet; the roads' rows are card E's.*
 - [ ] **10.2 [NEXT] The sitting's card.** About 120 bytes: when, how long,
   active seconds, the longest gap, the network, the build; moves and moves
   over budget; hits claimed, landed, refused by reason; gold by road class;
@@ -604,15 +613,18 @@ each is an arms race one owner cannot win, and the code was public until
 The owner: *"I don't even know."* So this pillar decides the shapes that
 are cheap now and a rewrite later, and builds no helper feature.
 
-- [ ] **11.1 [NOW] Who may start a thing** is a column of the wire census
+- [x] **11.1 [NOW] Who may start a thing** is a column of the wire census
   (4.1), filled in its one reading. Never a helper's: combat, movement,
   gathering, chat, trades, wagers, the account itself.
-- [ ] **11.2 [NOW] The actor** (`docs/SHAPES.md`): the account, the
+  *Merged: #1667 (card C's census, `docs/plan/census/wire.md`, a column).*
+- [x] **11.2 [NOW] The actor** (`docs/SHAPES.md`): the account, the
   character, the sitting, the kind (a person, QA, the owner, the system, a
   helper), where it came in, its grant. Set once as a connection or a
   request comes in. An account above characters is an empty field for now
   (card S names it: `acct` already means the device in the daily spin). A grant will have a storage prefix of its own, never a row among
   the login keys: an older worker would honour it as a full login.
+  *Merged as a shape: #1666 (a section of `docs/SHAPES.md`). No card builds
+  it yet.*
 - [ ] **11.3 [NEXT] Ids and repeats.** Whatever can be listed has a server
   id, never a place in a list (the market's `place` takes a position and no
   request id: a retry after a timeout can sell the next sword). Every

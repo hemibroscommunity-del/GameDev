@@ -53,6 +53,8 @@ import { getCape } from './traits/capeCatalog.js';        /* v2.3.2516: the worn
 import { speciesCanvases, loadSpeciesArt } from './traits/speciesArt.js';   /* v2.3.2682: the monkey, fur on the portrait's own skin */
 import { getWeaponHandle, getAnchor } from './playerAnchors.js'; /* v2.3.1841 */
 import { hemiBustUrl } from './hemiBust.js';   /* v2.3.3999: a headshot is a Hemi Bro */
+import { playFrameMs } from './gearSheets.js';   /* v2.3.5042: in play, the figure drawn a few ms at a time */
+import { witnessCanvas } from './canvasWitness.js';   /* v2.3.5042: a body kept between draws is witnessed (TRAPS §250) */
 
 const FRAME = 256;
 
@@ -376,6 +378,124 @@ function renderTraitCanvas(traitImg, meta, crown, dir, liftY, mulX) {
  *  (v2.3.2682), eye style (v2.3.2643), eyewear (v2.3.2361), headwear.
  *  Unknown / 'none' / 'default' selections are skipped.  Resolves when the
  *  draw completes (after async asset loads).  Safe to call repeatedly. */
+/* ═══ v2.3.5042: IN PLAY, THE FIGURE IS DRAWN A FEW MS AT A TIME ═══
+   The figure on the Equipment screen (CharacterView) is drawn again as armour
+   goes on or comes off, in ONE piece once its pictures are in (the body
+   recoloured, the shirt, each armour layer, the weapon, the hair and the
+   hat): 10 to 29 ms held on the QA box at the main tour's `armour` station,
+   three runs.  The sweep names such a hold by the first family on its stack,
+   so it was listed three ways: `portrait`, `gear-sheet` (the shirt:
+   `drawCharacterPortrait > composeShirt`, 24.9 ms, the only gear-sheet hold
+   left in the sample) and `body-bake` (the body: `> recolorBodyToCanvas`,
+   28.8 ms).  And the Equipment screen draws at the screen's own scale
+   (`scale`: 3 on an iPhone, nine times the pixels this box drew).  Now, while the world is in play
+   (gearSheets.js playFrameMs: the same signal the gear and the monsters'
+   strips are packed by), a draw lets the next frame in after each step that
+   took PORTRAIT_SLICE_MS or more (_portraitAfterFrame: the gear pack's way, a
+   frame then a task; a timer if no frame comes), so a piece is one step, and
+   a draw that a newer one has replaced meanwhile stops there (it would have
+   been thrown away at the end anyway: `__pseq`).  Timed on a quiet QA box
+   (__btPortraitCompare's 'every'), every step is 0 to 5.7 ms and the whole
+   figure about 10; in the sweep, on a page drawing the world in software,
+   two or three steps run together were the 13 to 16 ms pieces of the first
+   cut, which let a frame in only after 6 ms.
+   The largest step, the body recoloured for the look (recolorBodyToCanvas, 2
+   to 6 ms quiet), is KEPT for the look and facing (_bodyKeep): armour going
+   on or off never changes it.  Four at most (a 256 x 256 canvas each, 1 MB
+   in all, none on the graphics chip), the oldest let go and its canvas
+   emptied (`width = 0`); not when the caller asks for the drawing grids (the
+   body-ink designer reads them fresh).  Without it, a piece the body alone
+   was 15 ms on the loaded page (three runs, the sweep's `armour`).  A kept
+   canvas is a canvas Safari may empty while the tab is parked (TRAPS §250):
+   each is witnessed at one solid pixel as it is made (canvasWitness.js, so
+   the return-to-the-tab check counts it), and that pixel is read again before
+   the body is used (one pixel, a few microseconds): read empty, the body is
+   recoloured anew.  The finished picture is the same steps
+   on the same canvas, only not in one go, and the old picture stays up until
+   it is done, as since v2.3.715.  Measured (__btPortraitCompare, below, five
+   figures): drawn twice the same way, and with the body kept against
+   recoloured anew, the same byte for byte; drawn in pieces against in one
+   go, 1 to 73 edge pixels of a figure (of 589,824 at 3x) differ by one step
+   of 255 (up to 6 on a nearly see-through pixel, which is read back divided
+   by its small alpha): Chrome rasterises draws onto a canvas it flushed
+   between two tasks a hair differently from draws it replays in one go.
+   Invisible, and not the game's.
+   Not in play (the login screen and the creator, behind a loading screen) it
+   draws in one go, as before: the creator turns the figure on every move of a
+   finger, and a draw that took three frames would be replaced before it
+   finished, every time.  `?portraitgentle=0`: one go everywhere, for one
+   tab. */
+const PORTRAIT_SLICE_MS = 1, PORTRAIT_SLICE_WAIT_MS = 120, PORTRAIT_BODY_KEEP = 4;
+const _bodyKeep = new Map();   /* v2.3.5042: the body recoloured, by look and facing -> { cv, x, y } (a solid pixel); the newest last */
+/* v2.3.5042: a solid pixel of a body just recoloured (a column through the
+   middle), or null: a body with none in it is not kept */
+function _solidOf(cv) {
+  try {
+    const x = cv.width >> 1;
+    const col = cv.getContext('2d').getImageData(x, 0, 1, cv.height).data;
+    for (let y = 0; y < cv.height; y++) if (col[y * 4 + 3] === 255) return { x, y };
+  } catch (e) { /* no reading: not kept */ }
+  return null;
+}
+function _stillThere(k) {
+  try { return k.cv.width > k.x && k.cv.getContext('2d').getImageData(k.x, k.y, 1, 1).data[3] > 0; } catch (e) { return false; }
+}
+const _portraitGentleOff = (() => { try { return /(^|[?&])portraitgentle=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+const _portraitAfterFrame = () => new Promise((res) => {
+  let done = false;
+  const go = () => { if (!done) { done = true; res(); } };
+  try { requestAnimationFrame(() => setTimeout(go, 0)); } catch (e) { /* the timer below */ }
+  setTimeout(go, PORTRAIT_SLICE_WAIT_MS);
+});
+const _portraitStats = { draws: 0, turns: 0, stopped: 0, longest: 0, bodyKept: 0, bodyMade: 0, bodyEmptied: 0 };
+let _portraitForce = null;   /* QA (__btPortraitCompare): 'flat' one go, 'every' a frame let in at every step, 'fresh' one go with the body recoloured anew (not _bodyKeep's) */
+if (typeof window !== 'undefined') {
+  window.__btPortraitTurns = () => ({ ..._portraitStats, off: _portraitGentleOff, kept: _bodyKeep.size, longest: Math.round(_portraitStats.longest * 10) / 10 });
+  /* QA: the kept bodies emptied as Safari empties a parked tab's canvases
+     (their pixels gone, their size kept: TRAPS §250); the next draw must
+     recolour the body anew */
+  window.__btPortraitEmptyKept = () => {
+    let n = 0;
+    for (const k of _bodyKeep.values()) { try { k.cv.getContext('2d').clearRect(0, 0, k.cv.width, k.cv.height); n++; } catch (e) { /* gone */ } }
+    return n;
+  };
+  /* QA: one figure drawn twice, `a` and `b` each 'flat' (one go), 'every'
+     (a frame let in at every step; the default b) or 'fresh' (one go, the
+     body recoloured anew rather than kept), its bytes compared.  'flat'
+     against 'flat' is the control: what two draws of one figure differ by
+     anyway.  `most` is the largest difference in any value; `mostSolid` the
+     same over pixels at least half opaque in both (a nearly see-through edge
+     pixel read back is divided by its small alpha, which magnifies one step
+     of the browser's own premultiplied numbers) */
+  window.__btPortraitCompare = async (opts, a0, b0) => {
+    const one = document.createElement('canvas'), slow = document.createElement('canvas');
+    const t0 = performance.now();
+    try { _portraitForce = a0 || 'flat'; await drawCharacterPortrait(one, opts); } finally { _portraitForce = null; }
+    const t1 = performance.now(), turns0 = _portraitStats.turns;
+    try { _portraitForce = b0 || 'every'; await drawCharacterPortrait(slow, opts); } finally { _portraitForce = null; }
+    const t2 = performance.now();
+    const a = one.getContext('2d').getImageData(0, 0, one.width, one.height).data;
+    const b = slow.getContext('2d').getImageData(0, 0, slow.width, slow.height).data;
+    let diff = 0, ink = 0, px = 0, most = 0, mostSolid = 0;
+    for (let i = 0; i < a.length; i += 4) {
+      let d = false;
+      const solid = a[i + 3] >= 128 && b[i + 3] >= 128;
+      for (let c = 0; c < 4; c++) {
+        const e = Math.abs(a[i + c] - b[i + c]);
+        if (!e) continue;
+        diff++; d = true;
+        if (e > most) most = e;
+        if (solid && e > mostSolid) mostSolid = e;
+      }
+      if (d) px++;
+      if (a[i + 3] > 0) ink++;
+    }
+    const out = { w: one.width, h: one.height, w2: slow.width, h2: slow.height, diff, px, most, mostSolid, ink, turns: _portraitStats.turns - turns0, flatMs: Math.round(t1 - t0), slowMs: Math.round(t2 - t1) };
+    one.width = one.height = slow.width = slow.height = 0;
+    return out;
+  };
+}
+
 export async function drawCharacterPortrait(canvas, opts) {
   if (!canvas) return;
   const { skin, pants, shoes, hair, hairColor, facialHair, facialHairColor, headwear, hatColor, eyewear, eyewearColor, eyeStyle, species, shirt, shirtColor, dir, gear, weapon, shield } = opts || {};   /* v2.3.2361: + eyewear; v2.3.2424: + eyewearColor; v2.3.2643: + eyeStyle */
@@ -561,6 +681,23 @@ export async function drawCharacterPortrait(canvas, opts) {
        v2.3.2186 fixed in the world. */
     _capeSplit ? loadImage(`/sprites/traits/cape/${_capeId}/hood/hairmask-${DIR}.png?v=${CAPE_ART_VER}`).catch(() => null) : null,
   ]);
+  /* v2.3.5042: from here on the draw is the page's own work.  In play, a few
+     ms at a time (the note above this function): `_turn` lets a frame in once
+     a piece has run PORTRAIT_SLICE_MS, and answers false when a newer draw has
+     replaced this one meanwhile.  Not in play it never waits. */
+  const _gentle = _portraitForce ? _portraitForce === 'every' : (!_portraitGentleOff && playFrameMs() > 0);
+  const _slice = _portraitForce === 'every' ? 0 : PORTRAIT_SLICE_MS;
+  let _sliceT0 = performance.now();
+  _portraitStats.draws++;
+  const _piece = () => { const d = performance.now() - _sliceT0; if (_gentle && d > _portraitStats.longest) _portraitStats.longest = d; return d; };
+  const _turn = async () => {
+    if (!_gentle || _piece() < _slice) return true;
+    _portraitStats.turns++;
+    await _portraitAfterFrame();
+    _sliceT0 = performance.now();
+    if (canvas.__pseq !== seq) { _portraitStats.stopped++; return false; }
+    return true;
+  };
   /* Painted height of THIS facing's figure, so world px convert to frame px.
      crown[1] is measured (body-tops.json); the foot row is the measured
      lowest opaque row. */
@@ -757,9 +894,37 @@ export async function drawCharacterPortrait(canvas, opts) {
      one function the world body does, so the creator preview, the character
      sheet, the inspect card and the friends list cannot disagree with the
      sprite about whether a remnant shows. */
-  const _bodyCv = recolorBodyToCanvas(bodyImg, skinTarget(skin), pantsTarget(pants), shoesTarget(shoes), null, FRAME,
-    eyeColorTarget(_eyeId), EYE_MASK[`stand-${DIR}`], _bodyArt, undefined, undefined,
-    wantEs ? EYE_BLANK[`stand-${DIR}`] : null);
+  if (!(await _turn())) return;   /* v2.3.5042 */
+  /* v2.3.5042: kept for this look and facing (_bodyKeep, the note above
+     drawCharacterPortrait): every input of the recolour is in the key */
+  const _bodyKey = ((opts && opts.reportGrids) || _portraitForce === 'fresh') ? null : JSON.stringify([(bodyImg && (bodyImg.currentSrc || bodyImg.src)) || '',
+    skinTarget(skin), pantsTarget(pants), shoesTarget(shoes), eyeColorTarget(_eyeId), wantEs ? 1 : 0, DIR, _bodyArt]);
+  const _kept = _bodyKey ? _bodyKeep.get(_bodyKey) : null;
+  let _bodyCv = null;
+  if (_kept) {
+    _bodyKeep.delete(_bodyKey);
+    if (_stillThere(_kept)) { _bodyKeep.set(_bodyKey, _kept); _bodyCv = _kept.cv; _portraitStats.bodyKept++; }
+    else { _portraitStats.bodyEmptied++; try { _kept.cv.width = 0; _kept.cv.height = 0; } catch (e) { /* gone */ } }
+  }
+  if (!_bodyCv) {
+    _bodyCv = recolorBodyToCanvas(bodyImg, skinTarget(skin), pantsTarget(pants), shoesTarget(shoes), null, FRAME,
+      eyeColorTarget(_eyeId), EYE_MASK[`stand-${DIR}`], _bodyArt, undefined, undefined,
+      wantEs ? EYE_BLANK[`stand-${DIR}`] : null);
+    _portraitStats.bodyMade++;
+    const _at = _bodyKey ? _solidOf(_bodyCv) : null;
+    if (_at) {
+      _bodyKeep.set(_bodyKey, { cv: _bodyCv, x: _at.x, y: _at.y });
+      witnessCanvas(_bodyCv, _at.x, _at.y);
+      while (_bodyKeep.size > PORTRAIT_BODY_KEEP) {
+        const k = _bodyKeep.keys().next().value, old = _bodyKeep.get(k);
+        _bodyKeep.delete(k);
+        /* let go now (Safari counts a canvas's pixels until a collection; the
+           witnesses skip a canvas of width 0); a draw only ever uses its body
+           on the line below, never after a wait */
+        try { old.cv.width = 0; old.cv.height = 0; } catch (e) { /* gone */ }
+      }
+    }
+  }
   ctx.drawImage(_bodyCv, 0, 0);
   /* ═══ v2.3.2986: WHERE THIS FIGURE STANDS, FOR A FIGURE DRAWN ELSEWHERE ═══
      StatDemo's hero plays his ATTACKS from frames the world's own stand-in
@@ -801,6 +966,7 @@ export async function drawCharacterPortrait(canvas, opts) {
       canvas.__btGridXform = { a: _m.a, b: _m.b, c: _m.c, d: _m.d, e: _m.e, f: _m.f };
     } catch (e) { /* no DOMMatrix (very old Safari): the caller falls back */ }
   }
+  if (!(await _turn())) return;   /* v2.3.5042 */
   if (shirtImg) {
     /* v2.3.1110: restore a downscaled-on-disk shirt sheet to the 256px frame
        (these drawImage calls read a 256x256 source rect). No-op at native. */
@@ -876,8 +1042,11 @@ export async function drawCharacterPortrait(canvas, opts) {
     }
     ctx.drawImage(layer, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
   };
+  if (!(await _turn())) return;   /* v2.3.5042 */
   _drawGearLayer(legsImg, _wornLegs);
+  if (!(await _turn())) return;   /* v2.3.5042 */
   _drawGearLayer(chestImg, _wornChest);
+  if (!(await _turn())) return;   /* v2.3.5042 */
   _drawGearLayer(shouldersImg, _wornShoulders);
   /* ═══ v2.3.1841: THE WEAPON, IN THE HAND ═══
      After the armour so the blade reads in FRONT of the plate, which is what
@@ -894,6 +1063,7 @@ export async function drawCharacterPortrait(canvas, opts) {
      above with the zoom), so nothing extra is needed here — the hand anchor
      is asked for with the mirror flag and the whole layer flips with the
      body. */
+  if (!(await _turn())) return;   /* v2.3.5042 */
   if (wpnImg && _wpnType) {
     const th = wpnImg.naturalHeight || wpnImg.height || 0;
     const tw = wpnImg.naturalWidth || wpnImg.width || 0;
@@ -962,6 +1132,7 @@ export async function drawCharacterPortrait(canvas, opts) {
      v2.3.1934: ...and below the HAT too, except for the few the beard hangs in
      front of (headwearBehindBeard).  Drawn after the hat in that case -- see
      the drawBeard call below the headwear line. */
+  if (!(await _turn())) return;   /* v2.3.5042 */
   const _beardOverHat = wantHw && headwearBehindBeard(headwear);
   const drawBeard = () => {
     if (fhImg && fhMeta) placeTrait(ctx, facialHairColor ? recolorHairToCanvas(fhImg, facialHairColor) : fhImg, fhMeta, crown, DIR);
@@ -1028,6 +1199,7 @@ export async function drawCharacterPortrait(canvas, opts) {
      spelled out (the two child orders in entityRenderer, the stand-in key
      order in effectsRenderer, and this).  The stand pose has no baked
      per-frame overlays, so the portrait is always the crown-anchored piece. */
+  if (!(await _turn())) return;   /* v2.3.5042 */
   if (spArt && spArt.canvases[DIR]) placeTrait(ctx, spArt.canvases[DIR], spArt.meta, crown, DIR);
   if (esImg && esMeta) placeTrait(ctx, _esColor ? recolorHairToCanvas(esImg, _esColor, esRef) : esImg, esMeta, crown, DIR);
   /* v2.3.2361: eyewear -- after the hair (frames sit in front of a fringe) and
@@ -1055,6 +1227,7 @@ export async function drawCharacterPortrait(canvas, opts) {
      it, which is the whole point. */
   if (_beardOverHat) drawBeard();
   ctx.restore();
+  _piece();   /* v2.3.5042: the last piece, for __btPortraitTurns */
   if (canvas.__pseq !== seq) return;   /* a newer draw superseded this one */
   /* v2.3.1580: blit 1:1 -- `work` is already FRAME*S, so this adds no
      further resample.  At S=1 (every caller except the login preview) the
