@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "cadc883bcd881ea3e96f8af73da61cdfd557dfec",
+  "tree": "0f46b18a5c9f9979c15e0e9e9f7e84277f9d1c0c",
+  "committedAt": "2026-11-13T23:13:39-08:00",
+  "subject": "Merge pull request #1714 from hemibroscommunity-del/claude/grand-plan-h-7-equip-redraw",
+  "files": 7510,
+  "bytes": 947939338,
+  "listingSha256": "4b5dd5c5638bddca0bf0f6804e9cfd37e6353b1a1e77f46319c4c789d04561c6",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

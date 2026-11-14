@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "29a948d044dec1b8f2b0f60ab42059e7e6f7d097",
+  "tree": "be220c49792d4e7fa6475607d33c20a9927187b8",
+  "committedAt": "2026-11-13T23:13:31-08:00",
+  "subject": "Merge pull request #1712 from hemibroscommunity-del/claude/grand-plan-h-6-fold",
+  "files": 7510,
+  "bytes": 947935746,
+  "listingSha256": "42b8b47144146c242a4bf3dbe5141c54b0b9f45a0f6c9eeb2c93759b5518bcca",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

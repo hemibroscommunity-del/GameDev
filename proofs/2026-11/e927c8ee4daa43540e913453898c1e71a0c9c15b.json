@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e927c8ee4daa43540e913453898c1e71a0c9c15b",
+  "tree": "d00fe033d14cc58afab8424fff7ea0664827718b",
+  "committedAt": "2026-11-13T23:14:08-08:00",
+  "subject": "Merge pull request #1729 from hemibroscommunity-del/claude/plan-v-3-fight",
+  "files": 7517,
+  "bytes": 947994106,
+  "listingSha256": "beca741f6791994a6b9b5c06ad9320de05124c956a23d918b543873616ba1fcf",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
