@@ -1,19 +1,22 @@
 card: H
-branch: claude/grand-plan-h-1-worker-restart (one branch a PR, each begun from the one before, as W's are: merge them in order)
-prs: PR 1, the worker's restart, on the branch above (ready; its number goes here with PR 2's commit, to spare a paid run)
+branch: claude/grand-plan-h-2-whose-row (one branch a PR, each begun from the one before, as W's are: merge them in order)
+prs: #1668 (ready), PR 2 whose row on the branch above (ready; its number goes here with PR 3's commit, to spare a paid run)
 state: ready
 
 ## Done
 
-- PR 1 (v2.3.5040), the worker's restart: `bodyBake.js`'s watch counts
+- #1668 (v2.3.5040), the worker's restart: `bodyBake.js`'s watch counts
   only visible time; a worker let go is started again once each time the page
-  comes back. `mp-bodyworker` 6 freezes the page and its workers 25 s with a
-  job waiting: red on main (every worker let go, never started again), green
-  after; the whole test 97 of 97.
+  comes back. `mp-bodyworker` 6: red on main, green after; 97 of 97.
+- PR 2 (v2.3.5041), whose row: every row of `KNOWN` says `whose` (10 ours,
+  2 the box's, 1 the browser's); `debtOf('ours')` is step 3.1's count; the
+  spec's table lists all thirteen; `held-sweep.test` 7b2 to 7b4, each with a
+  break proof. Touches `server/test/`: its merge deploys the worker.
 
 ## Next
 
-- PR 2 (v2.3.5041), whose row: `whose` on every row of `KNOWN`.
+- PR 3 (v2.3.5042), `gear-sheet` (195 ms): the stations that measure it,
+  three runs.
 
 ## Found
 
