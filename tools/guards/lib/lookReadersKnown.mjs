@@ -5,10 +5,11 @@
 export const KNOWN_FRAME = Object.freeze({
   'arenaWorld.js': 13,
   'arrowPin.js': 5,
+  'bakeByAddress.js': 2,
   'blockArm.js': 1,
   'buildingFire.js': 1,
   'effectsRenderer.js': 14,
-  'entityRenderer.js': 20,
+  'entityRenderer.js': 18,
   'farmWorld.js': 1,
   'gearNumbers.js': 1,
   'gearSheets.js': 2,
