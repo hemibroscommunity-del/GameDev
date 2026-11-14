@@ -322,16 +322,22 @@ function podiumValue(board, r, power) {
     const key = board.rank || 'total';
     if (!p) return { text: '-' };
     if (power) return { text: key === 'total' ? compact(p[key]) : num(p[key]) };
-    return key === 'total' ? { text: num(p.total) } : { lv: p[key] };
+    /* the gatekeeper's sitting 11: a plain number, as the row prints it --
+       only the Level board's ribbon says "Lv" (the rule: one "Lv", the
+       name plate's) */
+    return { text: num(p[key]) };
   }
   const v = Math.floor(Number(board.id === 'ap' ? r.ap : (r.value ?? r.score)) || 0);
-  return board.id === 'ap' ? { text: num(v) + ' AP' } : board.id === 'kills' ? { text: num(v) + (v === 1 ? ' kill' : ' kills') } : { lv: v };
+  return board.id === 'ap' ? { text: num(v) + ' AP' } : board.id === 'kills' ? { text: num(v) + (v === 1 ? ' kill' : ' kills') } : { text: num(v) };
 }
 
 /* a podium name's size: its own width measured once (a canvas's measureText
    at 100 px in the page's font, no layout read), scaled to fit `maxW`, never
-   over `base` nor under 7 px; kept by name and size (a cap of 64) */
+   over `base` nor under 11 px (the notes' text floor; the gatekeeper's
+   sitting 11: it fell to 7 at 375 px) -- past that it ends in "..." -- kept
+   by name and size (a cap of 64) */
 const NAME_FIT = new Map();
+const NAME_FLOOR = 11;
 let _fitCtx = null;
 function fitName(name, maxW, base) {
   const key = name + '|' + Math.round(maxW) + '|' + base;
@@ -344,7 +350,7 @@ function fitName(name, maxW, base) {
       _fitCtx.font = '800 100px ' + ((document.body && getComputedStyle(document.body).fontFamily) || 'sans-serif');
     }
     const w100 = _fitCtx.measureText(name).width;
-    if (w100 > 0) px = Math.max(7, Math.min(base, Math.floor((maxW * 100 / w100) * 10) / 10));
+    if (w100 > 0) px = Math.max(NAME_FLOOR, Math.min(base, Math.floor((maxW * 100 / w100) * 10) / 10));
   } catch (_e) { /* the base size, cut if it must be */ }
   NAME_FIT.set(key, px);
   if (NAME_FIT.size > 64) NAME_FIT.delete(NAME_FIT.keys().next().value);
@@ -372,12 +378,13 @@ function Podium({ rows, faces, k, meId, board, power }) {
               <BoardFace src={faces[place - 1]} name={name} gone={gone} px={facePx} />
             </span>
             {/* the whole name on the ribbon and its tails: a long one's
-                letters shrink to fit (measured, to 7 px, then it is cut), as
-                the mockup shows "Chunky Waffle" whole (the gatekeeper's
-                sitting 10) */}
+                letters shrink to fit (measured, to 11 px, then it ends in
+                "..."), as the mockup shows "Chunky Waffle" whole where the
+                shields are big enough (the gatekeeper's sittings 10 and 11);
+                the table's row always has the whole name */}
             <span data-lb-podium-name="" style={{
               position: 'absolute', left: '6%', right: '6%', top: '64%', height: '15%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: fitName(name, W * 0.86, Math.max(9.5, 11 * k)), fontWeight: 800, color: '#FFF6E0', textShadow: '0 1px 2px rgba(0,0,0,.85)',
+              fontSize: fitName(name, W * 0.86, Math.max(NAME_FLOOR, 12 * k)), fontWeight: 800, color: '#FFF6E0', textShadow: '0 1px 2px rgba(0,0,0,.85)',
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1,
             }}><span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span></span>
             {pv.text || pv.lv > 0 ? (

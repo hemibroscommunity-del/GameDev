@@ -95,6 +95,7 @@ const look = (P) => P.page.evaluate(() => {
       face: (e.querySelector('[data-board-face]') || { dataset: {} }).dataset.boardFace || null,
       name: ((e.querySelector('[data-lb-podium-name]') || {}).textContent || '').trim(),
       nameWhole: (() => { const n = e.querySelector('[data-lb-podium-name] > span'); return !!n && n.scrollWidth <= n.clientWidth + 1; })(),
+      nameFont: parseFloat(getComputedStyle(e.querySelector('[data-lb-podium-name]') || document.body).fontSize),
       value: ((e.querySelector('[data-lb-podium-value]') || {}).textContent || '').trim() };
   });
   /* the head's cells, a narrow table's swap button opened into its own */
@@ -202,8 +203,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       && p2.box.r <= p1.box.l + 1 && p1.box.r <= p3.box.l + 1 && p1.box.t < p2.box.t && p1.box.t < p3.box.t
       && B.podium.every((p) => p.box.l >= B.board.l - 1 && p.box.r <= B.board.r + 1), B.podium);
     const digits = (t) => String(t || '').replace(/[^0-9]/g, '');
-    rec.ok('2b ...each with a face, its name on the ribbon and the BOARD\'s value under it (Melee: the melee level), the first three of the table',
-      B.podium.every((p) => p.face === 'bust' && p.name && /^Lv \d+$/.test(p.value))
+    rec.ok('2b ...each with a face, its name on the ribbon and the BOARD\'s value under it, a plain number (Melee: the melee level; only Level\'s says "Lv"), the first three of the table',
+      B.podium.every((p) => p.face === 'bust' && p.name && /^\d+$/.test(p.value))
       && [1, 2, 3].every((n) => { const p = B.podium.find((x) => x.place === n), r = B.rows[n - 1] || {}; return p.name === r.name && digits(p.value) === digits(r.value); }),
       { podium: B.podium, rows: B.rows.slice(0, 3) });
     rec.ok(`2c a narrow (upright) table opens Melee on the three weapons: ${B.head.join(' | ')}`,
@@ -231,11 +232,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await A.page.waitForTimeout(1200);
     const B375 = await look(A);
     await shot(A, 'upright-375');
-    rec.ok(`2f at 375 px every name is whole, on the podium and in the table, and every row inside the board (${B375.rows.length} rows)`,
+    rec.ok(`2f at 375 px every name in the table is whole (the podium's at 11 px or more, ending in "..." where its shield is too small), every row inside the board (${B375.rows.length} rows)`,
       B375.page === 'list' && B375.rows.length >= 5 && B375.rows.every((r) => r.whole && r.box.r <= B375.board.r + 1) && B375.pg.r <= B375.vw
-      && B375.podium.length === 3 && B375.podium.every((p) => p.nameWhole), { rows: B375.rows.map((r) => [r.name, r.whole]), podium: B375.podium.map((p) => [p.name, p.nameWhole]) });
+      && B375.podium.length === 3 && B375.podium.every((p) => p.nameFont >= 11), { rows: B375.rows.map((r) => [r.name, r.whole]), podium: B375.podium.map((p) => [p.name, p.nameWhole, p.nameFont]) });
     await A.page.setViewportSize(PHONE);
     await A.page.waitForTimeout(1200);
+
+    /* ── 2g ── one "Lv" a row (the gatekeeper's sitting 11): a skill's board
+       whose first player's name plate (Lv 40) is not the skill's level (3) --
+       its rows served by the test in the worker's shape (leaderboard.js
+       getTop: `lv` the plate's, `value` the skill's) */
+    const wood = [['Sunburn', 40, 3], ['Chunky Waffle', 12, 2], ['Chunky Pecs', 7, 1]].map(([name, lv, value], i) => ({ id: i === 0 ? me : 'bp_bl_wood' + i, name, lv, value, look: lookOf }));
+    await A.page.route(/\/api\/leaderboard\/top\?category=woodcutting/, (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, category: 'woodcutting', results: wood }) }));
+    await tap(A, '[data-lb-rail] [data-lb-cat="woodcutting"]');
+    await H.waitFor(A, () => document.querySelectorAll('[data-lb-board] [data-board-row]').length, (n) => n >= 3, { timeout: 15000, label: 'the Woodcutting board' }).catch(() => null);
+    const Wd = await look(A);
+    const wr = await A.page.evaluate(() => [...document.querySelectorAll('[data-lb-board] [data-board-row]')].map((el) => ({
+      lv: ((el.querySelector('[data-board-lv]') || {}).textContent || '').trim(), rec: ((el.querySelector('[data-lb-col="record"]') || {}).textContent || '').trim(),
+      lvs: (el.textContent.match(/Lv/g) || []).length })));
+    const w1 = Wd.podium.find((p) => p.place === 1) || {};
+    rec.ok(`2g a skill's board: the #1 shield says "${w1.value}", the row "${(wr[0] || {}).lv} ... ${(wr[0] || {}).rec}" -- one "Lv" a row, the plate's; the ribbon the skill's level, a plain number`,
+      w1.value === '3' && wr.length === 3 && wr[0].lv === 'Lv 40' && wr[0].rec === '3' && wr.every((r) => r.lvs === 1)
+      && Wd.podium.every((p) => !/Lv/.test(p.value)) && JSON.stringify(Wd.head) === JSON.stringify(['#', 'Player', 'Lv', 'Woodcutting']), { podium: Wd.podium, rows: wr, head: Wd.head });
+    await A.page.unroute(/\/api\/leaderboard\/top\?category=woodcutting/);
+    await tap(A, '[data-lb-rail] [data-lb-cat="melee"]');
+    await A.page.waitForTimeout(600);
 
     /* ── 3 ── every board in turn */
     const ids = L.pills.map((p) => p.id);
