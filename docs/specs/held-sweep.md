@@ -219,7 +219,7 @@ box's software graphics chip, and the quarter second of game it plays in one
 frame: a phone has neither) or **the browser's** (its garbage collector: the
 game can only give it less to do). The grand plan's step 3.1 is done when no
 row is ours (`held-budget.mjs` `debtOf('ours')`, the count its scoreboard
-reads). Today (v2.3.5044): six ours, two the box's, one the browser's. A new family is
+reads). Today (v2.3.5045): five ours, two the box's, one the browser's. A new family is
 ours until a measurement says otherwise: `held-sweep.test` 7b3 holds the
 box's and the browser's to the three below, and 7b4 holds this table to
 `KNOWN`, row for row. Their break proofs (the grand plan's rule 8), each run
@@ -241,7 +241,7 @@ All of them (the first five by their old rank, then the rest; a family off the l
 | `screen-check` | the box's | 260 ms | only with a second page on this box's one software chip; one page: 0 to 2 ms | nothing here; on a phone the frame strip names it if it is ever 4 ms |
 | ~~`strip-made`~~ | | off the list (v2.3.5044; was 24 ms) | the page put a monster strip's numbers on its bundle's row of colours, a loop over every byte (`picsNumbers.js` `stripAsNumbers`) | **v2.3.5044**: numbered for its row on the reader's worker (below, "Card H") |
 | `ui:*` | ours | 16 ms | one component drawn in one piece (the gear tab is one function of 10 ms) | split the gear tab |
-| `other: BT_AUDIO$1._fold > foldToMono` | ours | 20 ms (v2.3.4960; was 30) | a two-sided sound folded to one on its first play, 19 ms once | fold as it is decoded |
+| ~~`other: BT_AUDIO$1._fold > foldToMono`~~ | | off the list (v2.3.5045; was 20 ms) | a two-sided sound folded to one on its first play, in one piece | **v2.3.5045**: a stretch at a time, a frame between (below, "Card H") |
 | `other: R > J` | ours | 20 ms (v2.3.4872) | React working through the redraw an equip causes (the gear tab, the band and the bag at once) where no one of the game's components is the outermost named one: 15 to 17 ms at the `armour` station | name the components with React's profiler; then split or `startTransition` the redraw |
 | `other: wrapped > sweepPicsOnce` | ours | 16 ms (v2.3.4499) | `picsOnce.js`'s sweep of the cache's pictures, up to 15 ms with the crowd's pictures in it | sweep a slice a turn |
 | ~~`other: _flushOutbox > Wrapped.ws.send`~~ | | off the list (v2.3.4960) | 4.7 ms at most in the 2026-11-12 tours (was 18 once); `other: createObjectURL` came off too (9.3 at most) | |
@@ -431,6 +431,35 @@ variants), none stale, no pixel wrong.
 just past the general line is the judge's noise.
 
 **Not run** (offered): the whole tours; Safari.
+
+### `foldToMono` off the list (v2.3.5045)
+
+**What was left.** Six of the game's stereo sound files carry one signal on
+both sides, and each is kept as one channel after its first decode
+(`docs/specs/sound-fold.md`). The fold ran in one piece right after the
+decode, which with the sound cache is a sound's first play: both sides read
+and summed (`sidesAreOne`), then their mean copied into a new buffer. The
+main tour's `lands` and `town`, three runs: 8.1, 8.9 and 13.4 ms the longest
+(18.9 once in the list's last tours).
+
+**What it does now.** The same fold walked a stretch (16,384 samples) at a
+time, a frame let in once a piece has run 4 ms (`soundFold.js`
+`foldToMonoSliced`, the gear pack's way of waiting: a frame, then a task, a
+timer if no frame comes). Its own scratch arrays and one fold at a time, so
+two sounds decoded together never share a stretch. The sound is kept, and
+plays, when the fold is done, as it did after the one piece. `?foldgentle=0`:
+in one go.
+
+**The same sound.** `sound-fold.test` 4 (node): the fold in pieces against
+the one-go fold on equal sides, sides 66 dB apart, 41 dB apart, a wide sound,
+silence, one side silent and one channel: the same buffer, sample for sample,
+and the same ones kept as they were; two at once, each its own; a turn after
+every stretch at a slice of 0. Break proof: the mean as `* 0.499`, 4a and 4c
+red. In a page, `mp-soundfold`: exactly the six kept as one, each the same as
+its stereo file (five to the bit, fish-reel -65.8 dB), 7 of 7.
+
+**After**, the sample (`town` and `lands`, three runs): 5.2, 4.9 and 6.9 ms
+the longest, and every run within its whole budget.
 
 ## The standing check
 

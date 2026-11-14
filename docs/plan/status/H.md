@@ -1,6 +1,6 @@
 card: H
-branch: claude/grand-plan-h-5-strip-made (one branch a PR, each begun from the one before, as W's are: merge them in order)
-prs: #1668, #1675, #1681 (merged), #1700 (ready: sitting 2's hold answered), PR 5 on the branch above (ready; its number goes here with PR 6's commit)
+branch: claude/grand-plan-h-6-fold (one branch a PR, each begun from the one before, as W's are: merge them in order)
+prs: #1668, #1675, #1681 (merged), #1700 (ready: sitting 2's hold answered), #1709 (ready), PR 6 on the branch above (ready; its number goes here with PR 7's commit)
 state: ready
 
 ## Done
@@ -12,16 +12,17 @@ state: ready
   exit of a job lets its sheets go (`jobDone`), keep 4 sheets / 4 MB,
   `keptMB` reported, a `MEMORY-MAP.md` row; 31 of 31 inputs the same.
   Its merge deploys the worker (the picture door's list).
-- PR 5 (5044) `strip-made` off the list: a strip numbered for its row on the
-  reader's worker (`stripRows.js`): 1000 of 1000 made-up strips the page's
-  rule, 35 of 35 in play; town 34 holds -> 11. Its merge deploys the worker
-  (strip-door.test). Stacked on #1700: merge that first.
+- #1709 (5044) `strip-made` off the list: a strip numbered for its row on
+  the reader's worker (`stripRows.js`); town 34 holds -> 11. Deploys.
+- PR 6 (5045) `foldToMono` off the list: the fold a stretch at a time, the
+  same buffer sample for sample (sound-fold.test 4); 13.4 -> 6.9 ms. Its
+  merge deploys the worker (sound-fold.test).
 
 ## Next
 
-- PR 6 (tag 5045), `foldToMono` (20 ms). The `body-bake` PR (last) also
-  takes Z's two finds on #1668: a hung worker restarted at every return;
-  `BT_BW_PARTS` typos.
+- PR 7 (tag 5046), the equip redraw `other: R > J` (20 ms): naming its
+  components first (a development build keeps React's names). The
+  `body-bake` PR (last) also takes Z's finds on #1668.
 
 ## Found
 
