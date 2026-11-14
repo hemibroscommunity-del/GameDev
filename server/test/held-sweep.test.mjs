@@ -20,7 +20,9 @@
  *      animation frame of its own;
  *   6. the World map does not redraw every frame you move;
  *   7. the budget: its lines can only come down, every listed family says
- *      why it is listed, and the tour is registered;
+ *      why it is listed, and the tour is registered; (v2.3.5041) and whose
+ *      it is: ours, the box's or the browser's, the box's and the browser's
+ *      held to the three named today, and the spec's table to the list;
  *   8. a monster in another colour is its PALETTE in another colour
  *      (retintPalette.js): the canvas's rule, entry for entry, and the
  *      recolour comes through the strip door;
@@ -41,7 +43,7 @@ import { bottomsOfNumbers, BOTTOM_COLS, BOTTOM_SOLID } from '../../src/rendering
 import { beforeDraw, runBeforeDraw } from '../../src/game/framePacer.js';
 import { retintPalette, RETINT_ALPHA, RETINT_REF_K } from '../../src/rendering/retintPalette.js';
 import { packStripNumbers } from '../../src/rendering/stripPack.js';
-import { HOLD_MAX_MS, FRAME_JS_MAX_MS, WINDOW_MAX_MS, NOISE_K, AT_A_WINDOW, KNOWN, judgeHeld } from '../../tools/qa/mp/held-budget.mjs';
+import { HOLD_MAX_MS, FRAME_JS_MAX_MS, WINDOW_MAX_MS, NOISE_K, AT_A_WINDOW, KNOWN, judgeHeld, debtOf } from '../../tools/qa/mp/held-budget.mjs';
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -203,6 +205,23 @@ const rect = (set, x0, y0, x1, y1, c = 1) => { for (let y = y0; y <= y1; y++) fo
   const rows = Object.entries(KNOWN);
   const bad = rows.filter(([, v]) => !v || !(v.ms > 0) || typeof v.why !== 'string' || v.why.length < 30 || typeof v.next !== 'string' || v.next.length < 10);
   check(`7b. every listed family has its line, why it is over, and what fixes it (${rows.length} listed)`, bad.length === 0, bad.map(([k]) => k));
+  /* v2.3.5041: whose each row is (the grand plan's step 3.1 is done when no row is ours: debtOf('ours')) */
+  const WHOSE = ['ours', 'box', 'browser'];
+  const noWhose = rows.filter(([, v]) => !v || !WHOSE.includes(v.whose));
+  check(`7b2. every listed family says whose it is to bring down: ours, the box's or the browser's (${rows.length} listed)`, noWhose.length === 0, noWhose.map(([k]) => k));
+  /* a family is ours until a measurement says otherwise: calling a new one the box's or the browser's takes this line too */
+  const box = debtOf('box').sort().join(' | '), browser = debtOf('browser').sort().join(' | ');
+  check(`7b3. only the box's own (the screen check with two pages on one software chip, the frame of a quarter second) and the browser's (its collector) are not ours: ${debtOf('ours').length} ours`,
+    box === 'screen-check | the frame itself' && browser === 'gc' && debtOf('ours').length + debtOf('box').length + debtOf('browser').length === rows.length, { box, browser });
+  /* the spec's table (docs/specs/held-sweep.md "What is left") lists every row, with the same whose */
+  const spec = src('docs/specs/held-sweep.md');
+  const left = spec.slice(spec.indexOf('## What is left (the debt list)'), spec.indexOf('## The standing check'));
+  const SAY = { ours: 'ours', box: "the box's", browser: "the browser's" };
+  const table = new Map();
+  for (const m of left.matchAll(/^\| `([^`]+)` \| ([^|]*?) \|/gm)) table.set(m[1], m[2].trim());
+  const off = rows.filter(([k, v]) => table.get(k) !== SAY[v.whose]).map(([k, v]) => [k, SAY[v.whose], table.get(k)]);
+  const extra = [...table.keys()].filter((k) => !KNOWN[k]);
+  check(`7b4. the spec's debt table lists all ${rows.length} rows, each with its whose, and none the list does not have`, off.length === 0 && extra.length === 0 && table.size === rows.length, { off, extra });
   const low = rows.filter(([, v]) => v && v.ms <= HOLD_MAX_MS);
   check('7c. a family under the general line is not listed (a fixed one comes off the list)', low.length === 0, low.map(([k]) => k));
   /* the judge, on a made-up tour */

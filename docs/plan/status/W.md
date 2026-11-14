@@ -1,6 +1,6 @@
 card: W
 branch: claude/plan-w-4-gatekeeper (one branch a PR, each on top of the one before: -1- to -4-)
-prs: #1661 (ready), #1662 (ready), #1663 (ready), PR 4 (ready)
+prs: #1661 (merged), #1662 (merged), #1663 (merged), #1676 (ready)
 state: ready
 
 ## Done
@@ -33,8 +33,7 @@ state: ready
   measured" until card B pins it.
 
 ## Needs
-- Owner: `mp-topaudit.mjs`: delete it, or move it to the world?
-- Owner: should `run.mjs` with no name also run the scenario files that
-  have no line in the table? Today it names them and runs the table.
-- Owner: the later cards' blocks (N to M, twenty each from 5060, in the
-  plan's order; Z's second block 5360) are my reading of "blocks of twenty".
+- None. Answered by the planning session: `mp-topaudit.mjs` and a run of
+  everything go to card B; the later blocks stand as written.
+- #1676 was held at sitting 1 for a conflict in CLAUDE.md section 3 with
+  #1671: main merged in, both lines kept.

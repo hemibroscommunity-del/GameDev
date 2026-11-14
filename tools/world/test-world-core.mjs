@@ -3277,7 +3277,9 @@ console.log('the tap on the right stick (v2.3.3105 jumped; v2.3.3712 attacks)');
       /* v2.3.4453: the gate's line since manual combat (v2.3.4395): with the swipes a shot is a flick's
          (_mcFire); without them the held attack's own three wants, the tap's among them, as before */
       /var _tapAtkNow = tapAttackWaiting\(S, Date\.now\(\)\);/.test(mc)
-        && /var _wantAtk = _mcOn \? _mcFire : \(S\.autoAttack \|\| _engSwing \|\| _tapAtkNow\);\s*if \(_wantAtk && \(_mcOn \|\| !_flickWait\)/.test(mc)
+        /* v2.3.5037: since the staff's feel (v2.3.4803) its own ask (_sfFire) stands between the want and the
+           gate; the gate is the same (red on main, the test's: docs/plan/census/red.md) */
+        && /var _wantAtk = _mcOn \? _mcFire : \(S\.autoAttack \|\| _engSwing \|\| _tapAtkNow\);[\s\S]{0,900}?if \(_sfFire !== null\) _wantAtk = _sfFire;\s*if \(_wantAtk && \(_mcOn \|\| !_flickWait\)/.test(mc)
         && /if \(_tapAtkNow\) tapAttackDone\(S, S\.swingTimer, isStaff \? 'bolt' : 'arrow'\);/.test(mc)
         && /if \(_tapAtkNow\) tapAttackDone\(S, S\.swingTimer, 'swing', S\.swingTimer\);/.test(mc)
         && /if \(_tapAtkNow && !_mayLoose\) tapAttackDone\(/.test(mc)
@@ -3851,8 +3853,12 @@ console.log("the buildings' doors (v2.3.3032)");
     /objects\.doors = doorSpots\(PLAN, view, objects\)/.test(workerSrc2) && workerSrc2.indexOf('objects.present = foot.present') < workerSrc2.indexOf('objects.doors = doorSpots')
     && /info && info\.doors/.test(doorsSrc) && /wheelTownDoorAt\(S\)/.test(townSrc) && /S\.nearBuilding = _wtd\.index/.test(townSrc), {});
   ok('...the quests that need a door count the Wheel\'s while it is the world (worldTrial.js sets them with the zones it closes), and the farm\'s gate leads back out to the Wheel',
-    /setWheelDoorsOpen\(mode === 'wheel' && wheelObjectsOn\(\)\)/.test(trialSrc2) && /_wheelDoorActions/.test(sysSrc)
-    && /_farmOut = \(_leftZone === 'farm_home' && S\._farmBack && wheelIsHome\(\)\)/.test(zoneSrc) && /rememberFarmTrip\(S2\)/.test(townSrc), {});
+    /* v2.3.5037: the island's mode is gone (v2.3.4676), so the doors open with the Wheel's objects alone; and
+       the farm's one way in is game/farmTrip.js warpToFarm (v2.3.4366), which remembers the trip -- the check
+       still read the old copies (red on main, the test's: docs/plan/census/red.md) */
+    /setWheelDoorsOpen\(wheelObjectsOn\(\)\)/.test(trialSrc2) && /_wheelDoorActions/.test(sysSrc)
+    && /_farmOut = \(_leftZone === 'farm_home' && S\._farmBack && wheelIsHome\(\)\)/.test(zoneSrc)
+    && /export function warpToFarm\(S\) \{[\s\S]{0,200}?rememberFarmTrip\(S\);/.test(readSrc('../../src/game/farmTrip.js')) && /warpToFarm\(/.test(townSrc), {});
 }
 
 /* ── v2.3.3062: the gate signposts (src/data/wheelSignposts.js) ──
@@ -4065,9 +4071,11 @@ console.log("the buildings' insides (v2.3.3258)");
         && /data-hall-row="leaderboard" onClick=\{props\.onLeaderboard\}[\s\S]{0,400}src="\/icons\/ui\/panel-leaderboard\.webp"/.test(footSrc)
         && /data-hall-row="map" onClick=\{props\.onMap\}[\s\S]{0,400}src="\/icons\/ui\/nav-map\.webp"/.test(footSrc)
         && fs.existsSync(new URL('../../public/icons/ui/panel-leaderboard.webp', import.meta.url)) && fs.existsSync(new URL('../../public/icons/ui/nav-map.webp', import.meta.url))
-        && /leaderboard:\s+\{ title: 'Ranks',\s+Component: LeaderboardPanel \}/.test(read('../../src/ui/mobile/BottomDashboard.jsx'))   /* v2.3.3546: headed 'Ranks' since v2.3.3481, the More tile's word; the Town Hall's row keeps "Leaderboard" (BottomDashboard's note) */
+        /* v2.3.5037: 'Leaderboards' since v2.3.4172 (the owner's word in the More list), and the hall's row opens
+           the page as its own button since v2.3.4393, no drill under More (red on main, the test's: census/red.md) */
+        && /leaderboard:\s+\{ title: 'Leaderboards',\s+Component: LeaderboardPanel \}/.test(read('../../src/ui/mobile/BottomDashboard.jsx'))   /* v2.3.3546: headed 'Ranks' since v2.3.3481, the More tile's word; the Town Hall's row keeps "Leaderboard" (BottomDashboard's note) */
         && /export function openWorldMap\(\)/.test(read('../../src/ui/WorldMapOverlay.jsx'))
-        && /onLeaderboard: function onLeaderboard\(\) \{ setBuildingPanel\(null\); dashboardPanelBus\.open\('more'\); dashboardPanelBus\.push\('leaderboard'\); \}/.test(bt)
+        && /onLeaderboard: function onLeaderboard\(\) \{ setBuildingPanel\(null\); dashboardPanelBus\.open\('leaderboard'\); \}/.test(bt)
         && /onMap: function onMap\(\) \{ setBuildingPanel\(null\); openWorldMap\(\); \}/.test(bt)
         && /Object\.prototype\.hasOwnProperty\.call\(WHEEL_HALLS, buildingPanel\) && \/\*#__PURE__\*\/React\.createElement\(WheelHallPanel/.test(bt), {});
   }
@@ -4101,7 +4109,8 @@ console.log("the buildings' insides (v2.3.3258)");
        judge with pictures (the orchestrator, 2026-10-29).  v2.3.3835: and the
        Town Hall's board its own wider window first (v2.3.3802, #1277) -- every
        other building's card as before */
-    && /width: (?:buildingPanel === 'townhall' \? 'min\(800px, calc\(100% - 24px\)\)' : )?deskWideActive\(\) \? 'min\(470px, calc\(100% - 32px\)\)' : 'min\(360px, calc\(100vw - 24px\)\)'/.test(bt)
+    /* v2.3.5037: a computer's size in either layout is deskBigActive (v2.3.4152), no longer deskWideActive */
+    && /width: (?:buildingPanel === 'townhall' \? 'min\(800px, calc\(100% - 24px\)\)' : )?deskBigActive\(\) \? 'min\(470px, calc\(100% - 32px\)\)' : 'min\(360px, calc\(100vw - 24px\)\)'/.test(bt)
     && Math.abs(360 * (2 / 3) * 0.62 - 148.8) < 0.1 && Math.abs(24 * 0.4133 - 9.92) < 0.01
     && R.BAND_ROOMS.length === 1 && R.roomIdFor(R.BAND_ROOMS[0]) === 'blacksmith' && R.isBandRoom('forge');
   ok('...its stage is 62% of the room\'s height at the phone card\'s own width (148.8 px of 240 at 360 wide, 41.33vw - 9.92 px below it, at most 22vh; a computer\'s 470 px card keeps the same stage, ~47%), the forge\'s band a quarter of the width -- keyed on the forge\'s room, the one band', stageOk, {});
@@ -4552,7 +4561,11 @@ console.log('the Wheel five times longer (v2.3.3315)');
       s5.seats > 200 && s1.seats > 40 && s5.bad.length === 0 && s1.bad.length === 0, { long: s5.bad.slice(0, 4), short: s1.bad.slice(0, 4) });
   }
   /* 6. every copy the game keeps of either Wheel */
-  const { WHEELS } = await import('../../src/game/worldTrial.js');
+  /* v2.3.5037: READ, not imported.  worldTrial.js reaches the renderer as it loads (wheelMonsterArt.js ->
+     ... -> combatHelpers.js -> entityRenderer.js, whose ColorMatrixFilter wants a document), so node stopped
+     here and the 33 checks after it never ran (red on main, the test's: docs/plan/census/red.md).  The table is
+     a literal of numbers: its text is the table. */
+  const WHEELS = (0, eval)('(' + /export const WHEELS = (\{[\s\S]*?\n\});/.exec(fs.readFileSync(new URL('../../src/game/worldTrial.js', import.meta.url), 'utf8'))[1] + ')');
   const geomOk = (G, T) => G.w * 32 === T.WHEEL_WORLD[0] && G.h * 32 === T.WHEEL_WORLD[1] && G.safeR === T.WHEEL_SAFE_R
     && Object.keys(T.WHEEL_SPAWNS).every((h) => G.lands[h] && G.lands[h][0] === T.WHEEL_SPAWNS[h].anchor[0] && G.lands[h][1] === T.WHEEL_SPAWNS[h].anchor[1]);
   ok('the game\'s copies of each Wheel are its table\'s: its size, its safe ground and its lands\' middles (src/data/zones.js WHEEL_GEOM)',
