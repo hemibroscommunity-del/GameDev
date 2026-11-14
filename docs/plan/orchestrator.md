@@ -75,6 +75,15 @@ compute or another browser to test simultaneously."*
   reads their status files, so two never take the same files or the same
   card letter.
 
+## A file outside a card
+
+The owner's standing answer (2026-11-14, tag 5057): the planning session
+may approve, on the owner's behalf, a session working in a file outside its
+card when the card's own job needs it; the gatekeeper still reads it first.
+`docs/plan/README.md` ("A file outside the card") has the words and the
+limits. A card the orchestrator writes names every file it can foresee, so
+the question comes up rarely.
+
 ## What it does not do
 
 - Ask the owner about files, tags, cards or order.

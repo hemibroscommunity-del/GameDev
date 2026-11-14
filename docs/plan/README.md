@@ -34,6 +34,24 @@ state: working
   file. A session does not fix what is outside its card.
 - **Needs**: what it waits for, from the owner or from another card.
 
+## A file outside the card (tag 5057)
+
+A session changes only its card's files. When the card's own job needs a
+line in another file, it asks under Needs, and **the planning session (the
+one that starts the gatekeeper's sittings and merges their lists) answers
+for the owner**: the owner's standing answer, 2026-11-14. Asked *"May the
+planning session approve, on your behalf, a session working in a file
+outside its card when the card's own job needs it? Everything still goes
+through the gatekeeper first"*, the owner said *"Go recommended"* (yes).
+
+- The answer comes by message, naming the file and the lines; the session
+  names them in its PR's words, and the gatekeeper reads them there.
+- It never covers a file another running session holds (part 11's "never
+  side by side"), nor anything CLAUDE.md keeps for the owner's own words:
+  `.github/`, `server/wrangler.toml`, a deploy, the `provenance` branch.
+- A fault found outside the card is still Found, not fixed: the answer is
+  for what the card's job needs, not for tidying.
+
 ## How the gatekeeper finds a session
 
 The start-up brief lists the `claude/*` branches pushed in the last 72
