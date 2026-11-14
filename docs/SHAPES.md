@@ -946,8 +946,12 @@ the record is named by its path, `tools/assets/shipped.json`.
 | `ASSET_FAMILIES`, `ASSET_REACH`, `ASSET_KINDS`, `ASSET_DRAWS` | the family table and its closed lists | 7 |
 | `tools/assets/shipped.json` | the record of what ships | 7 |
 
-**Chosen by card L (step 5.3b, tag 5202), free at its commit** (the same
-search): `PHASES` and `NOT_A_MACHINE`, the phase table's two lists, have no hit
+**Chosen by card L (step 5.3b, tag 5202; step 5.3, tag 5203), free at its
+commit** (the same search): `runResets` has no hit, and `resetOn` one, a
+local: the parameter of `src/game/pointsTips.js` `firstSpendHint` (a
+boolean, "the points reset is on"), never a definition outside
+`resetOn.js`;
+`PHASES` and `NOT_A_MACHINE`, the phase table's two lists, have no hit
 as a name (`PHASES` only inside other words: `GOO_PHASES`, `ART-ASSET-PHASES`).
 The table's machine names are words of a table, as the wire's `phase` column
 writes them, never identifiers: `dungeon`, `connection`, `loading` and
@@ -957,6 +961,7 @@ writes them, never identifiers: `dungeon`, `connection`, `loading` and
 | Name | For | Part |
 |---|---|---|
 | `PHASES`, `NOT_A_MACHINE` | the phase table and the marked fields that are no machine's (`src/state/phases.js`) | 5 |
+| `resetOn`, `runResets` (v2.3.5203) | a state's reset, registered beside it in its system's file, and the edge's one door's call (`src/game/resetOn.js`); the ledger's hand column `reset` | 5 (step 5.3) |
 | `dungeon`, `connection`, `loading`, `window`, `monster` | the phase table's machines beyond part 5's list (a row's `name`) | 5 |
 
 `report` is free as a message type and a common word elsewhere; part 4 says

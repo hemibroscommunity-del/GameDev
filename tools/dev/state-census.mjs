@@ -6,7 +6,8 @@
  *   node tools/dev/state-census.mjs --check    exit 1 if the page on disk is not what this prints
  *   node tools/dev/state-census.mjs --json     the rows as JSON (for card U's ledger files; v2.3.5201:
  *                                              with `ledger`, every row as --ledger makes it, which
- *                                              the ledger's guard holds the files to)
+ *                                              the ledger's guard holds the files to; v2.3.5203:
+ *                                              `resets`, every resetOn() call and what it writes)
  *   node tools/dev/state-census.mjs --ledger [system] [--write]
  *                                              card U's ledger files (src/state/), made from these
  *                                              rows (v2.3.5160; its section is near the end)
@@ -2477,6 +2478,44 @@ async function ledgerMain() {
   }
 }
 
+/* ═══ v2.3.5203: THE RESETS (card L PR 3; grand plan step 5.3, step 2) ═══
+ *
+ * A NEW OUTPUT, no reading rule changed: every call of `resetOn(edge, fn,
+ * system)` (src/game/resetOn.js), with the fields and variables its named
+ * function writes, read off the rows above (a write whose `where` is that
+ * function, in that file).  The state ledger's guard holds each listed row's
+ * hand-made `lifetime` to them: a row reset at an edge has a reset there,
+ * and a reset writes only rows whose lifetime names its edge.  A call that is
+ * not ('<edge>', <a named function>, '<system>') is `bad`. */
+const RESET_DOOR = 'src/game/resetOn.js';
+function resetsFound() {
+  const resets = [], bad = [];
+  for (const f of FILES.values()) {
+    const names = [...f.imports].filter(([, v]) => v.from === RESET_DOOR && v.name === 'resetOn').map(([local]) => local);
+    if (!names.length) continue;
+    traverse(f.ast, {
+      CallExpression(path) {
+        const c = path.node.callee;
+        if (c.type !== 'Identifier' || !names.includes(c.name)) return;
+        const [e, fn, sys] = path.node.arguments;
+        const line = lineOf(path);
+        if (!e || e.type !== 'StringLiteral' || !fn || fn.type !== 'Identifier' || !sys || sys.type !== 'StringLiteral') {
+          bad.push(f.path + ':' + line + " resetOn(...) is not ('<edge>', <a named function>, '<system>')");
+          return;
+        }
+        const mine = (st) => st.file === f.path && (st.where === fn.name || st.where.startsWith(fn.name + ' case '));
+        resets.push({
+          file: f.path, line, edge: e.value, fn: fn.name, system: sys.value,
+          fields: fieldRows.filter((r) => [...r.sets, ...r.ins, ...r.vias].some(mine)).map((r) => r.name).sort(),
+          variables: varRows.filter((v) => v.writes.some(mine)).map((v) => v.file + ' ' + v.name).sort(),
+        });
+      },
+    });
+  }
+  resets.sort((a, b) => cmp(a.file, b.file) || a.line - b.line);
+  return { resets, bad };
+}
+
 export const census = { FILES, FIELDS, VARS, DYNAMIC, ESCAPES, WHOLE, REFUTED, REGIONS, fieldRows, varRows, rounds, solves };
 
 if (process.argv[1] && pathResolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -2492,8 +2531,11 @@ if (process.argv[1] && pathResolve(process.argv[1]) === fileURLToPath(import.met
     const { placeFiles, systemOf: mapSystemOf } = await import(pathToFileURL(join(ROOT, 'tools', 'guards', 'lib', 'systems.mjs')).href);
     const placed = placeFiles();
     const made = ledgerFound((file) => mapSystemOf(file, placed) || 'unsorted');
+    const R = resetsFound();
     process.stdout.write(JSON.stringify({
       ledger: [...made.values()].map((x) => x.made),
+      /* v2.3.5203 (card L PR 3): the resets, and any call not in their form */
+      resets: R.resets, resetsBad: R.bad,
       fields: fieldRows.map((r) => ({
         name: r.name, system: short(r.system), born: r.born.how === 'never' ? null : { how: r.born.how, at: short(r.born.file) + ':' + r.born.line },
         marks: r.marks, states: r.states, writtenAt: r.at, shouldReset: r.reset,

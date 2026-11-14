@@ -24,6 +24,7 @@
  * The code under test is cut from src/ and run here with stubs.
  */
 import { readFileSync } from 'node:fs';
+import { runResets } from '../../src/game/resetOn.js';   /* v2.3.5203: the zone door's new call (card L) */
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -53,8 +54,13 @@ const changeBody = block(zt, 'export function changeZone(S, to) {');
 check('1a clearZoneLocalFx found', !!clearBody);
 check('1b changeZone found in zoneTransitions.js', !!changeBody);
 const clearZoneLocalFx = new Function('return function (S) {' + clearBody + '};')();
+/* v2.3.5203: the door runs the state's resets on a real change of place
+   (game/resetOn.js, card L): handed in as the rest of its scope is.  No
+   system's module is loaded here, so none is registered: a no-op, as the
+   door's own behaviour above is what this suite holds (state-resets.test
+   holds the resets) */
 const changeZone = changeBody
-  ? new Function('clearZoneLocalFx', 'return function (S, to) {' + changeBody + '};')(clearZoneLocalFx)
+  ? new Function('clearZoneLocalFx', 'runResets', 'return function (S, to) {' + changeBody + '};')(clearZoneLocalFx, runResets)
   : function (S, to) { S.currentZone = to; };
 /* what a player leaves behind in a place: their fire, a peer's fire, a lunge,
    and the lock on a monster there */

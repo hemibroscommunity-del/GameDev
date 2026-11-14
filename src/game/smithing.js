@@ -17,6 +17,7 @@
  * Purely visual.  The smelt/forge itself is settled by the worker; this only
  * decides how long the smith is seen working.  Walking away ends it (the
  * joystick check in tickSmithing), exactly as it ends a harvest. */
+import { resetOn } from '@/game/resetOn.js';   /* v2.3.5205: the pose ends at the zone door (card L) */
 
 export const SMITH_STRIKE_MS = 650;     /* one mining-swing cycle (playerSprites MINE_DURATION_MS) */
 /* The mine sheet's contact frame (0-3 raised, 4-5 strike). */
@@ -33,6 +34,15 @@ export const SMITH_FIRE_DX = 44;
 export const SMITH_SCALE = 1.4;
 
 /** Work for `ms` (at least one full swing).  Re-pressing extends it. */
+/* v2.3.5205 (grand plan step 5.3, card L): a smelt's or a forge's pose is
+   struck where you stood (its x, y), so it ends at the zone edge's one door
+   (changeZone) and never runs on in the next place for the rest of its
+   seconds.  Nothing plays.  `?skillsreset=0` lets it run out, as before. */
+function leaveForge(S) {
+  S._smithing = null;
+}
+resetOn('zone', leaveForge, 'skills');
+
 export function startSmithing(S, ms, kind) {
   if (!S || !S.player) return;
   const now = Date.now();

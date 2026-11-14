@@ -20,7 +20,7 @@ addresses (`tools/qa/`), `localStorage` toggles, and the worker's `env` settings
 reads it as a flag or a comment promises it as a kill switch; any other cap's override is the emergency lever of
 `docs/specs/liveops.md` ("Caps override").
 
-250 rows: 243 switches, 6 values, 1 levers, in 23 systems.
+255 rows: 248 switches, 6 values, 1 levers, in 23 systems.
 
 ## audio
 
@@ -28,6 +28,7 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 |---|---|---|---|---|---|---|---|---|
 | `sfxcache` | both | switch | v2.3.3714 | off_sfxcache: true; ?sfxcache=0, off | memory |  | no | Sounds are held whole again, not only while needed. |
 | `voicecap` | both | switch | v2.3.3727 | off_voicecap: true; ?voicecap=0, off | memory |  | no | A crowd of one sound plays every voice again, not a few. |
+| `?audioreset` | page | switch | v2.3.5203 | =0 | logic |  | no | The balls' ends are kept across a change of place again (hitSounds.js forgetShotEnds no longer runs at the zone door). |
 | `?foldgentle` | page | switch | v2.3.5045 | =0, off, false | logic |  | no | A sound is folded to mono in one go again, not in turns between frames. |
 
 ## bots
@@ -210,6 +211,7 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 | `serverdead` | worker | switch | v2.3.4373 | false | logic |  | no | A phone's move may write `dead` again (the move's write back). |
 | `sprint` | worker | switch | v2.3.3003 | false | logic |  | no | No sprint step is allowed. |
 | `steadymovers` | worker | switch | v2.3.3203 | false | logic |  | no | Every move goes out again, from the next tick. |
+| `?movementreset` | page | switch | v2.3.5204 | =0 | logic |  | no | A climb and a swim end a frame after a change of place again, on their own off-the-Wheel checks, not at the zone door. |
 
 ## preload
 
@@ -314,6 +316,7 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 | `trapcraft` | worker | switch | v2.3.3120 | false | logic |  | no | Making traps is refused. |
 | `trapping` | worker | switch | v2.3.3120 | false | logic |  | no | Un-advertises trapping, refuses every arm and stops every roll. |
 | `volleychip` | worker | switch | v2.3.4385 | false | logic |  | no | A harvest ends on every chip, as before. |
+| `?skillsreset` | page | switch | v2.3.5205 | =0 | logic |  | no | A smelt's or a forge's pose runs out its seconds after a change of place again, not ended at the zone door. |
 
 ## social
 
@@ -332,6 +335,7 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 | `leaderidleat` | worker | switch | v2.3.4378 | false | logic |  | no | The party leader's idle clock counts only a `seen` above 0, as before. |
 | `partykeep` | worker | switch | v2.3.3276 | false | logic |  | no | Parties are not kept: the old cap and the away window remove a dropped member. |
 | `spar` | worker | switch | v2.3.3265 | false | logic |  | no | No sparring clones: every live clone goes on the next tick and the cap is withdrawn. |
+| `?socialreset` | page | switch | v2.3.5204 | =0 | logic |  | no | A race the worker forgot at a reconnect stays on the phone until its own clock lets it go, as before. |
 
 ## townsfolk
 
@@ -339,6 +343,7 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 |---|---|---|---|---|---|---|---|---|
 | `race` | worker | switch | v2.3.3525 | false | logic |  | no | Lil Bro's race un-advertised and none started. |
 | `tour` | worker | switch | v2.3.3525 | false | logic |  | no | Un-advertises the tour's two givers. |
+| `?townsfolkreset` | page | switch | v2.3.5203 | =0 | logic |  | no | A held pose ends a frame after a change of place again, on its own check, not at the zone door. |
 
 ## wire
 
