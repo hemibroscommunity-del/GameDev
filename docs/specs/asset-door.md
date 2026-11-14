@@ -419,3 +419,4 @@ and the effects' 256-colour twins go on, each family its own PR.
 |---|---|---|---|---|
 | 5245 | the 19 `.m4a` | removed: nothing named them, the MP3 beside each plays | nothing loaded them | none |
 | 5246 | `npc-heads` | the dialogue portraits let go of once loaded: an `<img>` reads them from the HTTP cache (`npcSprites.js`, `?npcheads=0`) | `artCache` 48.7 -> 45.8; `buffers` 21.1-21.3, unchanged | `artCache` 112 -> 109.1 |
+| 5247 | `fx-coinflip` | Ace's two coin strips let go of once loaded: his window draws them as a CSS background, and now asks for the address the loading screen warmed (`npcArtUrl`'s `?v=`: before, the warm never served it) (`npcSprites.js`, `AceFlipPanel.jsx`, `?coinflip=0`). Taken before `tree-tiers`, which waited on a question (the measure counted colour numbers twice) | `artCache` 45.8 -> 43.7; `buffers` 21.1-21.4, unchanged; atlas 58-104 rows, never full | `artCache` 109.1 -> 107.0 |
