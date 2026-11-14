@@ -416,13 +416,37 @@ One mark serves both.
 
 | Name | Values | One writer | Readers | Where | Rows |
 |---|---|---|---|---|---|
-| `value` (NEW column of the registry) | `gold`, `goods`, `both`, `none` | card E | the world's sum; a guard that fails a value record nobody counts | card E's choice, see below | none |
-| `whose` (NEW column of the registry) | `player` (keyed by one character: restored with them), `between` (held between two or more: an escrow, a listing, a pot), `room` (the room's own: a board, the shop's pile, a flag) | card E | the restore and the paged export (card R, 4.7) | the same | none |
+| `value` (NEW column of the registry; built 5082) | `gold`, `goods`, `both`, `none` | card E | the world's sum; a guard that fails a value record nobody counts | `server/src/storagemarks.js` (below) | none |
+| `whose` (NEW column of the registry; built 5082) | `player` (keyed by one character: restored with them), `between` (held between two or more: an escrow, a listing, a pot), `room` (the room's own: a board, the shop's pile, a flag) | card E | the restore and the paged export (card R, 4.7) | the same | none |
 
 Today's registry is a table in `docs/ARCHITECTURE-HANDOFF.md` (rule 2), and
 precheck's `storage-keys` check PARSES it: a new column there can break the
 gate. Whether the marks become columns of that table or a table in code that
 the document is checked against is card E's to decide and to write here.
+
+**Ruled and built (card E, tag 5082): a table in code.** The marks are
+`STORAGE_MARKS` in `server/src/storagemarks.js` (no imports), one row a
+record, keyed by the registry's own spelling: a prefix up to its first `<`
+(`rpg:` for `rpg:<playerId>`), or a single key whole (`shop_stock`,
+`jackpot:draw`). The handoff's markdown table gets no new column. A gate is
+a test GitHub runs, so `tools/guards/storage-marks.test.mjs` holds the two
+together: it fails a record registered and not marked, a mark for a record
+not registered, a value or a `whose` off its closed list, and an escrow's
+place (`ESCROW_PLACES`, part 3 above) marked as holding nothing.
+
+- **A copy of value is `none`**: a snapshot (`rpgsnap:`) and the provenance
+  ledger's copy of a piece (`gear_prov:`) hold what another record holds,
+  and counting them would count it twice.
+- **The daily spin's open pot (`daily_rewards:`) is `none`**: a stake in a
+  game still being played (double or nothing can end it), paid by
+  `spinpot:` as a mint (`MAIL_CLASSES`).
+- **14 records hold value** at tag 5082: `rpg:`, `bank:`, `inbox:`, `pets:`
+  (a player's); `mkt_order:`, `store_listing:`, `duelEscrow:`,
+  `arena_entry:`, `arena_stake:`, `bounty:`, `jackpot:draw`, `trade2wpn:`,
+  `death_pile:` (between players); `shop_stock` (the room's). The guard
+  holds the count, so a change to what the sum reads is seen.
+- `marksOf(key)` finds a stored key's marks by its longest marked prefix:
+  what the world's sum (4.4) and the restore (4.7) call.
 
 ## 4. The report's fields and sinks
 
