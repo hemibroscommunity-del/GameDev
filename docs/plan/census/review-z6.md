@@ -172,7 +172,41 @@ resize and zoom: covered. `main` has not touched the file since its base.
 
 ## Card U: #1721 to #1734 (first read)
 
-(see below)
+Step 3 met. The nine touch only `src/state/` (24 ledgers and the README),
+`state-census.mjs` (a `--ledger` output and its dispatch: no reading rule
+changed above its line ~2283), the guard, card B's map (`state`, +11) and
+its empty row in `budgets.mjs`, `docs/SYSTEMS.md` (what `systems.test
+--write` makes: no diff), `docs/plan/census/state.md`. Each PR's own
+commits carry only its tag, 5160 to 5168 in order (5160 also stands in
+every ledger's machine-made header, not a reuse). Nothing imports
+`src/state/` (`src/`, `vite.config.js`, `index.html`, no glob): no
+behaviour changes. All 26 ledgers made again by `--ledger <s>`: byte for
+byte the committed files, and the same from scratch twice. The guard is
+green on the branch, by the page and by `--live` (23 s): line 2128, count
+16 of 2169, all `unsorted`, in the four files B's map has not placed
+(`characterCreatorEffects.js`, `rpgSave.js`, `spriteSheets.js`,
+`visualSystems.js`), named in the README, the status and the guard's
+output: the card's "done when" is met. Its three fails tried by hand
+(`--live`): a row in two files, RED; a row the script no longer finds,
+RED; the unlisted count over its line, RED (with the line at 16).
+
+- **VERIFIED, low (a gap, not a hold): on GitHub the guard reads the
+  census page, not the code.** The `test` job has no root `@babel`, so
+  the guard takes its rows off `docs/plan/census/state.md`, as card B's
+  `four-lines` does for its fourth number: between rewrites of the page
+  it is blind (a new top-of-file `let`, a renamed variable: green by the
+  page, red by `--live`). Nothing runs `state-census --check`, though
+  `tools/guards/lib/fourLines.mjs` ~45 says something does (card U's
+  Found). No card owns it.
+- **VERIFIED, low.** The guard holds a ledger's keys and form, not its
+  content: a row's `system`, `suggested` or `writers` changed by hand, or
+  a row moved by hand into another system's file, stays green. "Made by
+  machine, never typed" is the card's reading, unenforced; a stale
+  `writers` after a code change passes too.
+- Cosmetic: the info line prints "(room: 16 under the line 2128": the
+  count, not the room (2112).
+- The line comes down to 16 once the nine are on `main` (the gatekeeper's,
+  next sitting). Strict (rule 3) waits for card L's card to open.
 
 ## Cards N, V (read by the gatekeeper)
 
@@ -188,6 +222,17 @@ resize and zoom: covered. `main` has not touched the file since its base.
 
 ## The whole
 
-Rehearsed twice from `main` f2351ab: all nineteen ready branches (tree
-6f9fadb4: precheck, build, questline 187/187), then the list without card
-A's two (below, in the status file).
+Rehearsed twice from `main` f2351ab, each with `tools/dev/gatekeeper.mjs`:
+all nineteen ready branches (tree 6f9fadb4: precheck 0 FAIL, build,
+questline 187/187), then the list, the seventeen without card A's two
+(tree 38fe6233: precheck 0 FAIL with every server suite and guard, build,
+questline 187/187). The only warnings were stacked branches carrying the
+tags of the PRs below them (P's 5244, H's 5047): the merge order settles
+them. Every listed PR's own `test` check was green on its head.
+
+In this sitting's order: card P's #1718 first (tools, and a table's move
+in `lookUnpack.js`); card U's nine (data and a guard, stacked); card N's
+#1697 (the one server change: it deploys, and its guard closes the wire's
+list); card H's #1733 and card Y's #1739 (the page); card V's four guards
+last (they read the whole). No cap, live flag or stored shape is on the
+list.
