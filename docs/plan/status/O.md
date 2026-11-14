@@ -1,6 +1,6 @@
 card: O
 branch: claude/plan-o-8-program (one branch a PR: claude/plan-o-<n>-<word>; begun from main)
-prs: #1787, #1792, #1794, #1800, #1814, #1815 (merged); #1832 (5223, LAST in its sitting), #1836 (5226): ready; PR 8 (5228, ready)
+prs: #1787, #1792, #1794, #1800, #1814, #1815 (merged); #1832 (5223, LAST in its sitting), #1836 (5226), #1841 (5228): ready
 state: ready
 
 ## Done
@@ -14,7 +14,7 @@ state: ready
 - #1815 (5227): the device asked only in `deviceProfile.js`.
 - #1832 (5223): every phone test names its lane (381 files, the guard).
 - #1836 (5226): the crowd cap a knob (50, 30, 15); `?laddercrowd=0`.
-- PR 8 (5228): `program` and `look` knobs read through `laneKnob`; their
+- #1841 (5228): `program` and `look` knobs read through `laneKnob`; their
   fallbacks are `OVERRIDES` asked of `deviceProfile.js` alone (`devAsk`);
   every device's answer as before (`one-program.test`, new).
 
