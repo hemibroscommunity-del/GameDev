@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "2fa322e38ad494a48c521cd00a88614ea8a3c538",
+  "tree": "cb1aa129def7212a773c307214e5e05dc932b958",
+  "committedAt": "2026-11-14T09:35:01-08:00",
+  "subject": "Merge pull request #1783 from hemibroscommunity-del/claude/plan-lb-2-window",
+  "files": 7651,
+  "bytes": 953368665,
+  "listingSha256": "48c10bb6b9a6b0269e698e3d827d193b1452b0366a148017827028a22db83611",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
