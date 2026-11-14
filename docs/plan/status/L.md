@@ -1,14 +1,14 @@
 card: L
 branch: claude/plan-l-3-resets (one branch a PR, each begun from the one before)
-prs: #1746 (merged), #1748 (ready), PR 3 (opening)
+prs: #1746, #1748 (merged), PR 3 (opening)
 state: working
 
 ## Done
 
-- PR 1 (5201, #1746): the ledger's guard and four-lines' fourth number read
-  the code on GitHub; the guard holds the machine's columns. Deploys.
+- PR 1 (5201, #1746): the ledger's guard reads the code on GitHub.
 - PR 2 (5202, #1748): the phase table (36 rows, 5 door, 31 todo) and its
-  guard; the spec; SHAPES parts 5, 7, 8. No game file.
+  guard. Its two holes (sitting 8) closed in PR 3: writes off the syntax
+  tree, and what holds a door a closed list (DOOR_SUITES, SCAN_DOORS).
 - PR 3 (5203): `resetOn` (src/game/resetOn.js, map system `state`), the
   zone door's call (changeZone, a real change only) and the rejoin door's
   (rejoinClear); the census's `resets`; the guard's §6-7, SITTING_LINE

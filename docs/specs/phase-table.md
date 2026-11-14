@@ -54,20 +54,30 @@ why: a QA tag, a direction, an input's source, a setting.
 |---|---|---|---|---|
 | `session` | worker | `session.phase`: open, joined, gone | `_playerLeaves` (`leave.js`) | the table's scan |
 | `life` | worker | `ps.life`: alive, dying | `_lifeTo` (`life.js`) | `life-door.test` §2 |
-| `monster` | worker | `m.life`, `m.alive` back to true | `_monsterNewLife` (`monsterlife.js`) | the table's scan |
+| `monster` | worker | `m.alive` back to true (any name) | `_monsterNewLife` (`monsterlife.js`) | the table's scan |
 | `monster` | page | `m.alive` back to true | `monsterNewLife` (`monsterCarry.js`) | the table's scan |
 | `zone` | page | `S.currentZone` | `changeZone` (`zoneTransitions.js`) | `zone-leftovers.test` §6 |
 
-**How a door is held.** Where the door's own suite already fails a second
-writer (`life-door.test` §2, `zone-leftovers.test` §6), the guard only checks
-that the suite names the field and the function. It never writes a second
-rule that could disagree with the suite. Where nothing holds it, the row's
-`scan` is the rule and the guard runs it. Each write its pattern finds in the
-side's code (`src/state/` is data and is left out) must sit in one of the
-row's places. A write that is not the machine's field goes in `besides`, with
-why, and a stale entry there fails. `born` is a place where the field is made
-with its first state, as a literal the pattern does not see; the guard checks
-it is still there.
+**How a door is held.** What holds a door is a closed list in the guard
+(v2.3.5203, after the gatekeeper's sitting 8 found that a suite which merely
+named the field let a `todo` row turn `door` with nothing built):
+
+- `DOOR_SUITES`: the suites that fail a second writer of that field through
+  that function today (`life-door.test` §2, `zone-leftovers.test` §6). For
+  these the guard writes no second rule that could disagree.
+- `SCAN_DOORS`: the rows no suite holds. The guard runs the row's `scan`
+  itself. It reads every write of the field off the syntax tree (@babel):
+  `x.phase =`, `x['phase'] =`, `++`, `delete`, `Object.assign(x, { phase })`.
+  Each write is placed in the function the tree says it is in, never by
+  indentation; the sitting found a method whose parameters ran over two lines
+  credited to the one above it. Each write must be in one of the row's
+  places. A write that is not the machine's field goes in `besides`, with
+  why. A stale `besides` entry fails, and so does a place that writes
+  nothing. `born` is a place where the field is made as a literal.
+
+A row turned `door` adds its line to one of the lists in its machine's PR,
+saying what holds it. A `door` row carrying `today` is refused. The table is
+read as plain data before it is imported (no import, no call).
 
 Three doors are scans, and why:
 
@@ -77,9 +87,9 @@ Three doors are scans, and why:
   _handleJoin`, and the door writes `gone` in `leave.js _leaveRun` (inside
   `_playerLeaves`). So the session has one field and one leave, but `joined`
   is written outside the door. The scan holds all three.
-- **A monster's life, on the worker.** The door is the new-life edge.
-  `m.life` counts lives, and `m.alive` comes back true only in
-  `_monsterNewLife`. The kill (`m.alive = false`: combat.js, devtools.js,
+- **A monster's life, on the worker.** The door is the new-life edge:
+  `m.alive` comes back true only in `_monsterNewLife`, under any name (which
+  also counts the lives, `m.life`). The kill (`m.alive = false`: combat.js, devtools.js,
   slimeboss.js) is the death edge, not the door. `monster-newlife.test` fails
   a per-monster field that is in no reset list, which is the reset's
   completeness, not a second writer. `life-door.test` §2 passes a monster's
