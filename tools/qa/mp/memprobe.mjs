@@ -151,6 +151,10 @@ export const MEM_INIT = () => {
     } catch (e) { /* none */ }
     for (const s of byUid.values()) {
       const res = s.resource;
+      /* v2.3.5257: a monster's strip kept deflated a frame at a time
+         (framePack.js): its numbers are what it holds so, the readers'
+         unpacked frames with them */
+      if (s._btPal && s.__btFP && window.__btFramePackHeld) { r.numbers.push([clean(s.label), +(window.__btFramePackHeld(s) / 1048576).toFixed(3), s._btPal.row]); continue; }
       if (!s._btPal || !res || !ArrayBuffer.isView(res)) continue;
       r.numbers.push([clean(s.label), +(res.byteLength / 1048576).toFixed(3), s._btPal.row]);
     }
