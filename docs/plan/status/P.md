@@ -1,6 +1,6 @@
 card: P
-branch: claude/plan-p-12-pack-page (one branch a PR, each begun from the one before)
-prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757 (5241-5248, 5251, merged); #1749 (5249), #1763 (5250), #1766 (5252) mended, T's #1768 merged in (sitting 10); pack-page (5253) measuring
+branch: claude/plan-p-13-pixel-readers (one branch a PR, each begun from the one before)
+prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757 (5241-5248, 5251, merged); #1749 (5249), #1763 (5250), #1766 (5252) mended, T's #1768 merged in (sitting 10); pack-page (5253) measuring; the pixel readers' guard (5254) written, opens after it
 state: working
 
 ## Done
@@ -18,8 +18,8 @@ state: working
 
 - `pack-page` (5253), road B: a gear sheet first drawn in play packed on
   the body bake's worker (`?packworker=0`); measuring the wait, the holds.
-- Then a guard: a closed list of the CPU readers of picture pixels (the
-  planning session's yes, sitting 9).
+- The guard (5254, `tools/guards/pixel-readers.test.mjs`): the CPU readers
+  of picture pixels a closed list; the trap back in WORLD_ICONS fails it.
 
 ## Found
 
