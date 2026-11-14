@@ -1,21 +1,21 @@
 card: E
-branch: claude/plan-e-11-xfer (one branch a PR, each begun from the one before: merge #1756 to #1764 first)
-prs: #1686, #1691, #1694, #1699, #1752 (merged); #1756, #1758, #1759, #1761, #1764 (ready); PR 10 (claude/plan-e-10-storm), PR 11 on the branch above (ready)
+branch: claude/plan-e-11-xfer (one branch a PR, each begun from the one before: merge #1758 to #1764 first)
+prs: #1686, #1691, #1694, #1699, #1752, #1756 (merged); #1758, #1759, #1761, #1764 (ready); PR 10 (claude/plan-e-10-storm), PR 11 on the branch above (ready)
 state: ready
 
 ## Done
 
 - PRs 1 to 4 (5080 to 5083: #1686, #1691, #1694, #1699), merged.
 - PR 5 (5084, #1752), the world's sum: merged (sitting 8).
-- PR 6 (5085, #1756), the book's `econ` part; sitting 8's mend: one
-  last-out writer (card A's), the part rides, `econ: false`, one `ECON_V`.
+- PR 6 (5085, #1756), the book's `econ` part: merged (sitting 9).
 - New live flags (rule 3, one line each in the switch table): PR 6 `econ`,
   PR 8c `arenasettleplan`, PR 11 `xfer`.
 - PR 7 (5086, #1758), the shared test room and `DISTURBANCES`;
   `chaos-restart` moved onto it, its output the same.
 - PRs 8a, 8b (5087, 5088: #1759, #1761), two cases off `KNOWN`.
 - PR 8c (5089, #1764), `arena-stake-settle-loss` fixed by a settlement
-  plan written in one run (`arenasettleplan: false` the old order).
+  plan, ONE record written in one run (sitting 9: one put more a match;
+  `arenasettleplan: false` the old order).
 - PR 10 (5091), the storm: the sum under every disturbance, a deploy
   before each message: all 0. Done before PR 9 (its Needs below).
 - PR 11 (5092), `xfer:`: a row a trade, in its own run (`trade2.js`,
