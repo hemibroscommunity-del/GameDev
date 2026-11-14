@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "9a7fbdbb243a0d1d5f88b113d07fe44c1eae72d6",
+  "tree": "7950ca297fbe38337ab9c4904c7a5dbe632fec5a",
+  "committedAt": "2026-11-13T23:12:08-08:00",
+  "subject": "Merge pull request #1705 from hemibroscommunity-del/claude/plan-y-farm-gate",
+  "files": 7492,
+  "bytes": 947510763,
+  "listingSha256": "510d57a350f05732dce7de7734651672a01fb8a61ae21c2d80df89a3c8571964",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

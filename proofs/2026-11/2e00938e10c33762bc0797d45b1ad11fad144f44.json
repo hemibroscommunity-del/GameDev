@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "2e00938e10c33762bc0797d45b1ad11fad144f44",
+  "tree": "3904fcac26c2764dff2f3d7ef5785549c87b1f54",
+  "committedAt": "2026-11-13T23:12:46-08:00",
+  "subject": "Merge pull request #1695 from hemibroscommunity-del/claude/grand-plan-n-2-wire-table",
+  "files": 7503,
+  "bytes": 947799058,
+  "listingSha256": "e93e6ae9b18b315de2ec6fc04f2fbff038efed203090dd53370fe2e34780f7b3",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
