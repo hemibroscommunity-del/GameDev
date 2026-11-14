@@ -9,7 +9,7 @@
 
 ## PRs, in order
 
-1. **(v2.3.5025) `docs/SHAPES.md`.** Steps 10.1 and 11.2 are sections of
+1. **(tag 5025) `docs/SHAPES.md`.** Steps 10.1 and 11.2 are sections of
    this page, not PRs of their own. One row a shape: its name, its one
    writer, its readers, where it lives in the code, its cost in rows. The
    sections:
@@ -31,7 +31,7 @@
    - **The device class** (step 2.1): its fields. Facts only.
    - Done when every shape pillars 1, 4, 10 and 11 name has a row, and
      each new name is free in the code (below).
-2. **(v2.3.5026) `docs/BUDGETS.md`** (rule 6). One row for each shared
+2. **(tag 5026) `docs/BUDGETS.md`** (rule 6). One row for each shared
    thing: ms on the page's thread, lateness, MB, the loading screen's
    seconds, rows, messages, how a player looks to the server. For each:
    today's line, the file that holds it (`held-budget.mjs`,
