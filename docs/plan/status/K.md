@@ -18,7 +18,7 @@ state: ready
 - Claims (5540, the second block 5540-5559): the archer's lane
   (`arrowlane`, ON): an arrow or bolt lets one claim in early; the stepping
   archer keeps every arrow (off: 6 to 11 lost in 4 minutes); a liar at the
-  lane's pace takes the same on or off.
+  lane's pace takes the same on or off; the bot lab's bow aimbot +12%.
 
 ## Next
 
