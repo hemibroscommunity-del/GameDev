@@ -6,8 +6,7 @@
  *      replay, a reconnect never pays twice.
  *   4. The next UTC day frees the spin.
  *   5. caps.loginspin and the kill switch; the two answers are privileged. */
-import { readFileSync } from 'node:fs';
-import { GameRoom } from '../src/index.js';
+import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
 import { LOGIN_SPIN, loginSpinPick } from '../src/loginspin.js';
 import { LOGIN_SPIN_SEGS, loginSpinBus } from '../../src/game/loginSpinWheel.js';
 
@@ -177,8 +176,8 @@ const coinsOf = (id) => room.playerState[id].coins;
   check('switched off: the cap is down', c.sent.find((m) => m.type === 'state_sync' && m.caps)?.caps.loginspin === false);
   const s = await ask(c, 'loginspin_ask'); const g = await ask(c, 'loginspin_go');
   check('...and every ask is refused', s.length === 0 && g.length === 0, [s, g]);
-  const src = readFileSync(new URL('../src/index.js', import.meta.url), 'utf8');
-  check('both answers are PRIVILEGED_EVENTS', /'loginspin_state', 'loginspin_result', 'loginspin_round'/.test(src.slice(src.indexOf('PRIVILEGED_EVENTS'))));
+  /* v2.3.5181: PRIVILEGED_EVENTS is made from the wire table (server/src/wire/lists.js) */
+  check('both answers are PRIVILEGED_EVENTS', ['loginspin_state', 'loginspin_result', 'loginspin_round'].every((t) => PRIVILEGED_EVENTS.has(t)));
 }
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nall loginspin checks passed');
 process.exit(failures ? 1 : 0);
