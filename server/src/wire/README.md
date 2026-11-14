@@ -23,20 +23,22 @@ worker sends.
 
 | File | Holds | Rows |
 |---|---|---|
-| `in.js` | `WIRE_IN`: the router's cases (`server/src/index.js` `_onMessage`), phone to worker | 139 |
+| `in.js` | `WIRE_IN`: the router's cases (`server/src/index.js` `_onMessage`), phone to worker | 140 |
 | `relays.js` | `WIRE_RELAY`: `RELAY.TYPES` (`server/src/relay.js`), phone to worker to phones, one row for both ways | 26 |
 | `out.js` | `WIRE_OUT`: `PRIVILEGED_EVENTS` (`server/src/index.js`) and `clan_war_declare`, worker to phone | 164 |
 | `http.js` | `WIRE_HTTP`: every HTTP method and path, and each handler's fall-through (`dir: 'in'`) | 107 |
 | `columns.js` | `WIRE_COLUMNS`: the closed lists every row is held to | |
 
-436 rows: the census's part 8. Count them by direction:
+437 rows: the census's part 8 (436), and card A's `report` (v2.3.5062: a
+message that lands after the census gets its row in the PR that adds it;
+the guard fails one with none). Count them by direction:
 
 ```
 node -e "Promise.all(['in','relays','out','http'].map((f) => import('./server/src/wire/' + f + '.js'))).then((ms) => { const rows = ms.flatMap((m) => Object.values(m)[0]); const by = {}; for (const r of rows) { const k = r.dir + (r.envelope === 'http' ? ' (http)' : ''); by[k] = (by[k] || 0) + 1; } console.log(rows.length, by, 'with a note:', rows.filter((r) => r.note).length); })"
 ```
 
-which prints `436 { in: 139, relay: 26, out: 164, 'in (http)': 107 } with a
-note: 118`: the census's counts, and how many rows carry a note (below).
+which prints `437 { in: 140, relay: 26, out: 164, 'in (http)': 107 } with a
+note: 119`: the counts, and how many rows carry a note (below).
 
 ## A row
 
