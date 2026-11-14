@@ -56,7 +56,16 @@ const CHECK = process.argv.includes('--check');
 /* --bits 8: each piece cut to 255 colours per role (lookCut.mjs, the owner's
    "anything at 256"), held to BAR8 levels of the old path on every texel, or
    kept at 16 bits (exact) where it cannot be */
-const BITS = (() => { const i = process.argv.indexOf('--bits'); return i > 0 && Number(process.argv[i + 1]) === 8 ? 8 : 16; })();
+/* v2.3.5038: --check with no --bits checks at the bits the sheets on disk were BAKED at
+   (roles.json's own `bits`).  They are 8 (the owner's 256 colours), and a bare --check baked at 16 and
+   called 49 of the 59 "STALE" -- every one a fresh bake at 8 (red on main, the command's:
+   docs/plan/census/red.md row 2) */
+const BITS = (() => {
+  const i = process.argv.indexOf('--bits');
+  if (i > 0) return Number(process.argv[i + 1]) === 8 ? 8 : 16;
+  if (CHECK) { try { return JSON.parse(fs.readFileSync(path.join(OUT, 'roles.json'), 'utf8')).bits === 8 ? 8 : 16; } catch (e) { /* none on disk: 16 */ } }
+  return 16;
+})();
 const BAR8 = 16;
 const VERSION = 'v2.3.3753';
 /* the row's entry for each category (LOOK_ROW_RANGES.head is 64-127) */
