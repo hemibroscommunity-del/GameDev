@@ -82,9 +82,9 @@ switch's reader asks besides its own flag, read in the code.
 Each of these may only fall; the gatekeeper alone makes one strict or lowers
 its line, in a PR of its own:
 
-- the names found with no row (`UNLISTED_LINE`: the page's drawing side,
-  until card T's PR 3; every worker name is a row from PR 1, the page's game
-  side from PR 2);
+- the names found with no row (`UNLISTED_LINE`, 0 since card T's PR 3:
+  every live flag and every page switch has its row; the gatekeeper may make
+  it strict);
 - the reads in a shape the scanner does not know (`UNKNOWN_LINE`, 0);
 - the rows born `unknown` (`BORN_UNKNOWN_LINE`, 2: `?debug` and `?nodebug`,
   from April commits that carry no tag in the commit, its body or its merge).

@@ -54,7 +54,7 @@ import { census, scanWorker, scanPage, DYNAMIC, NOT_ADDRESS, NOT_A_FLAG, ROOT } 
 import { SYSTEMS } from './lib/systems.mjs';
 
 /* the census lines: each only falls, and only the gatekeeper lowers one */
-const UNLISTED_LINE = 113;      /* the page's drawing side, until card T's PR 3 */
+const UNLISTED_LINE = 0;        /* every name a row since card T's PR 3: the gatekeeper may make it strict */
 const UNKNOWN_LINE = 0;
 const BORN_UNKNOWN_LINE = 2;    /* ?debug, ?nodebug: April commits with no tag in the commit, its body or its merge */
 

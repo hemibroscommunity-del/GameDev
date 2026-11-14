@@ -32,13 +32,18 @@
  * can sit in two systems' lists; the helper that finds a system's files for a
  * test is PR 4's (step 5.2b).
  *
- * SWITCHES.  The switch table is card T's.  Until it lands this column holds
- * only the switches a system is already known by (CAMEL_SWITCHES in
- * liveops.js, the switches CLAUDE.md names); T's table fills the rest.
+ * SWITCHES.  The switch table is card T's (tools/guards/lib/switches.mjs):
+ * a system's switches are the table's rows with its `system`, read from the
+ * table (v2.3.5303, card T PR 3), never typed here again
+ * (`node tools/guards/switches.test.mjs --list <system>` prints them).
+ * docs/SYSTEMS.md links to the system's section of docs/SWITCHES.md and
+ * lists no names: a list there would change, and conflict, with every
+ * switch added anywhere (the gatekeeper's sitting 9).
  */
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { SWITCHES } from './switches.mjs';   /* v2.3.5303: a system's switches are the switch table's rows (card T) */
 
 const re = (s) => new RegExp(s);
 /* a basename under a folder: f('server/src', 'gold|bag') */
@@ -59,7 +64,6 @@ export const SYSTEMS = Object.freeze({
       { name: 'PRIVILEGED_EVENTS', file: 'server/src/index.js', what: 'every type the server sends; anything else a client could forge' },
       { name: 'TYPES', file: 'server/src/relay.js', what: 'RELAY.TYPES: the relays a phone may send, rebuilt in its name' },
     ],
-    switches: [],
   },
   session: {
     what: 'a sitting: the join, leaving, lingering, the rejoin and what it re-sends',
@@ -70,7 +74,6 @@ export const SYSTEMS = Object.freeze({
       { name: '_playerLeaves', file: 'server/src/leave.js', what: 'LEAVE_WAYS: the one way a session leaves' },
       { name: 'REJOIN_SLOTS', file: 'src/game/rejoinSlots.js', what: 'what the phone clears at state_sync, with the worker\'s re-send' },
     ],
-    switches: [],
   },
   identity: {
     what: 'who a player is: ids, accounts, the device lock, login keys, the account check, the sites that may open a socket',
@@ -78,7 +81,6 @@ export const SYSTEMS = Object.freeze({
     words: ['account', 'login', 'devicelock', 'device-lock', 'identity', 'origin', 'verify', 'turnstile'],
     traps: ['identity'],
     doors: [],
-    switches: [],
   },
   bots: {
     what: 'telling a person from a script: bot signals, fingerprints, claims that are bounded',
@@ -86,7 +88,6 @@ export const SYSTEMS = Object.freeze({
     words: ['bot', 'antibot', 'anticheat', 'charwatch', 'hitproof', 'moveclaim'],
     traps: [],
     doors: [],
-    switches: [],
   },
   liveops: {
     what: 'the live flags, the admin and dev levers, test mode, feedback',
@@ -97,7 +98,6 @@ export const SYSTEMS = Object.freeze({
       { name: 'flagNameOk', file: 'server/src/liveops.js', what: 'the names a live flag (a kill switch) may take' },
       { name: '_testMode', file: 'server/src/testmode.js', what: 'the one question an honesty check asks' },
     ],
-    switches: [],
   },
   'server-core': {
     what: 'the worker\'s spine: saving, migrations, the tick, its pace, hidden settings, the room\'s own row',
@@ -108,7 +108,6 @@ export const SYSTEMS = Object.freeze({
       { name: 'HIDDEN_SPEC', file: 'server/src/hidden.js', what: 'a server-only number a copier would value' },
       { name: 'bookAdd', file: 'server/src/daybook.js', what: 'the day\'s book (`daybook:`): every part adds through it (v2.3.5080, card E)' },
     ],
-    switches: [],
   },
   combat: {
     what: 'hitting and being hit: weapons, abilities, the bow, shields, damage, PvP',
@@ -119,7 +118,6 @@ export const SYSTEMS = Object.freeze({
     words: ['combat', 'hit', 'ability', 'abilit', 'bow', 'arrow', 'sword', 'staff', 'shield', 'weapon', 'pvp', 'damage', 'whirl', 'dodge', 'elemental', 'accuracy'],
     traps: ['combat'],
     doors: [{ name: '_monsterHit', file: 'server/src/hits.js', what: 'MONSTER_HITS: every monster hit on a player' }],
-    switches: ['whirlWindup'],
   },
   monsters: {
     what: 'the monsters\' lives, moves, status, spawns and the boss',
@@ -130,7 +128,6 @@ export const SYSTEMS = Object.freeze({
     words: ['monster', 'slime', 'spawn', 'boss', 'aggro', 'mob'],
     traps: ['monsters'],
     doors: [],
-    switches: [],
   },
   economy: {
     what: 'gold, the bag, the bank, the market and shops, trades, drops, chests and daily rewards',
@@ -144,7 +141,6 @@ export const SYSTEMS = Object.freeze({
       { name: '_goldGive', file: 'server/src/gold.js', what: 'GOLD_ROADS: every change to a player\'s gold (_goldGive, _goldTake, _goldSet)' },
       { name: 'bagGive', file: 'server/src/bag.js', what: 'BAG_ROADS: every change to a bag count (bagGive, bagTake, bagSet)' },
     ],
-    switches: ['storeGear', 'dailyChest'],
   },
   skills: {
     what: 'the life skills: gathering, cooking, smithing, the farm, fishing, trapping',
@@ -155,7 +151,6 @@ export const SYSTEMS = Object.freeze({
     words: ['gather', 'cook', 'smelt', 'smith', 'forge', 'farm', 'fish', 'trap', 'harden', 'firemaking', 'skill', 'gem', 'ore', 'tree', 'shard'],
     traps: ['skills'],
     doors: [],
-    switches: [],
   },
   quests: {
     what: 'quests, achievements, the codex, pets\' book, points',
@@ -166,7 +161,6 @@ export const SYSTEMS = Object.freeze({
     words: ['quest', 'achievement', 'codex', 'pet', 'points', 'tour', 'xp', 'level'],
     traps: ['quests'],
     doors: [],
-    switches: [],
   },
   social: {
     what: 'parties, clans, guilds, friends, chat, emotes, duels, the arena, races, boards',
@@ -178,7 +172,6 @@ export const SYSTEMS = Object.freeze({
     words: ['party', 'clan', 'guild', 'alliance', 'friend', 'chat', 'emote', 'duel', 'arena', 'gladiator', 'spar', 'race', 'board', 'leaderboard', 'social'],
     traps: ['social'],
     doors: [],
-    switches: [],
   },
   world: {
     what: 'the Wheel: zones and their doors, lands, dungeons, No Man\'s Land, the map, props',
@@ -189,7 +182,6 @@ export const SYSTEMS = Object.freeze({
     words: ['wheel', 'zone', 'land', 'dungeon', 'nomansland', 'nml', 'map', 'world', 'town', 'door', 'prop'],
     traps: ['world'],
     doors: [],
-    switches: [],
   },
   movement: {
     what: 'moving: steps, sprinting, jumping, climbing, riding, swimming, resting',
@@ -200,7 +192,6 @@ export const SYSTEMS = Object.freeze({
     words: ['move', 'sprint', 'jump', 'climb', 'ride', 'swim', 'rest', 'stamina', 'walk', 'step'],
     traps: [],
     doors: [],
-    switches: [],
   },
   townsfolk: {
     what: 'the townspeople: their days, walks, talk and reactions',
@@ -208,7 +199,6 @@ export const SYSTEMS = Object.freeze({
     words: ['townsfolk', 'npc', 'mayor', 'folk'],
     traps: [],
     doors: [],
-    switches: [],
   },
   life: {
     what: 'a player\'s health and life phase: dying, the death card, respawning',
@@ -216,7 +206,6 @@ export const SYSTEMS = Object.freeze({
     words: ['life', 'death', 'respawn', 'die', 'hp'],
     traps: [],
     doors: [{ name: '_hpSet', file: 'server/src/life.js', what: 'HP_ROADS: every change to a player\'s health; the life phase only through _lifeTo' }],
-    switches: [],
   },
   audio: {
     what: 'sound and music: cues, voices, ambience, the music deck, the Sound Studio',
@@ -228,7 +217,6 @@ export const SYSTEMS = Object.freeze({
     words: ['sound', 'audio', 'music', 'sfx', 'voice', 'ambience', 'ambient', 'cue'],
     traps: ['audio'],
     doors: [],
-    switches: [],
   },
   input: {
     what: 'touch and the controls on a phone',
@@ -236,7 +224,6 @@ export const SYSTEMS = Object.freeze({
     words: ['touch', 'control', 'tap', 'thumb', 'swallow'],
     traps: ['input'],
     doors: [],
-    switches: [],
   },
   desktop: {
     what: 'a computer: keys, clicks, the wide window and its words',
@@ -244,15 +231,13 @@ export const SYSTEMS = Object.freeze({
     words: ['desk', 'desktop', 'keyboard', 'computer', 'mouse'],
     traps: ['desktop'],
     doors: [{ name: 'NAV_KEYS', file: 'src/game/deskKeys.js', what: 'every key a computer player presses lives here, worn by its button (data-key)' }],
-    switches: [],
   },
   device: {
     what: 'what kind of device this is and how much it can draw: the profile, resolution, the view cap',
-    files: [f('src/game', 'deviceProfile|renderRes|viewCap|speedTest|loadTimes|lookPaletteChoice')],
+    files: [f('src/game', 'deviceProfile|renderRes|viewCap|speedTest|loadTimes|lookPaletteChoice|drawLanes')],   /* v2.3.5221: + drawLanes (card O's lanes) */
     words: ['device', 'profile', 'viewcap', 'render-res', 'speed'],
     traps: [],
     doors: [{ name: 'deviceProfile', file: 'src/game/deviceProfile.js', what: 'the one place that asks what the device is (devClass, when SHAPES part 8 builds it)' }],
-    switches: [],
   },
   'page-thread': {
     what: 'the page\'s one thread: the frame\'s pace and clock, what holds the page',
@@ -260,7 +245,6 @@ export const SYSTEMS = Object.freeze({
     words: ['frame', 'held', 'pacer', 'thread', 'jank', 'smooth'],
     traps: ['page-thread'],
     doors: [{ name: 'beforeDraw', file: 'src/game/framePacer.js', what: 'a read that waits for the graphics chip runs at the top of a frame' }],
-    switches: [],
   },
   memory: {
     what: 'what the page holds: pictures kept on the chip or as images, colour numbers, trims and frees',
@@ -268,7 +252,6 @@ export const SYSTEMS = Object.freeze({
     words: ['memory', 'mem', 'gpu', 'heap', 'palette', 'trim', 'leak'],
     traps: ['memory'],
     doors: [{ name: 'keepOnGpuOnly', file: 'src/rendering/gpuOnly.js', what: 'a picture made on a canvas that nothing reads back' }],
-    switches: [],
   },
   preload: {
     what: 'what loads behind the loading screen, and what loads later on purpose',
@@ -276,7 +259,6 @@ export const SYSTEMS = Object.freeze({
     words: ['preload', 'loading', 'lazy', 'warm'],
     traps: ['preload'],
     doors: [{ name: 'preloadWorldAnimations', file: 'src/rendering/preloadAnimations.js', what: 'every animation and sprite loads behind the loading screen' }],
-    switches: [],
   },
   art: {
     what: 'loading art in play: strips of 256 colours, the readers off the page\'s thread, bakes on workers',
@@ -284,7 +266,6 @@ export const SYSTEMS = Object.freeze({
     words: ['art', 'strip', 'png', 'p256', 'bake', 'sprite', 'pic'],
     traps: ['art'],
     doors: [{ name: 'loadTrackedStrip', file: 'src/rendering/zoneTextures.js', what: 'art that loads while the world is in play' }],
-    switches: [],
   },
   look: {
     what: 'how a character looks: traits, the look palette, garments, heads, gear on the body',
@@ -292,7 +273,6 @@ export const SYSTEMS = Object.freeze({
     words: ['look', 'trait', 'hair', 'head', 'garment', 'cape', 'armour', 'armor', 'skin', 'stand-in', 'standin', 'portrait'],
     traps: ['look'],
     doors: [],
-    switches: [],
   },
   render: {
     what: 'drawing the world: the Pixi renderer, the entity and effects renderers, light, fx',
@@ -301,7 +281,6 @@ export const SYSTEMS = Object.freeze({
     words: ['render', 'draw', 'fx', 'pixi', 'batch', 'light', 'camera'],
     traps: ['render'],
     doors: [],
-    switches: [],
   },
   ui: {
     what: 'the screens: BroTown.jsx, the band and its panels, windows, banners',
@@ -310,7 +289,6 @@ export const SYSTEMS = Object.freeze({
     words: ['ui', 'panel', 'window', 'band', 'banner', 'screen', 'dash', 'sheet', 'popup'],
     traps: ['ui'],
     doors: [],
-    switches: [],
   },
   data: {
     what: 'the client\'s tables (src/data/): items, zones, abilities, the long display and systems tables',
@@ -319,7 +297,6 @@ export const SYSTEMS = Object.freeze({
     words: ['data', 'table', 'mirror'],
     traps: [],
     doors: [],
-    switches: [],
   },
   /* v2.3.5160 (card U PR 1, the planning session's call): the ledger's
      files, src/state/<system>.js and its README.  A ledger is plain data
@@ -330,7 +307,6 @@ export const SYSTEMS = Object.freeze({
     words: ['ledger'],
     traps: [],
     doors: [],
-    switches: [],
   },
   debug: {
     what: 'the crash ring, the perf HUD, the debug overlay, the field report (its worker half: server/src/report.js, v2.3.5127)',
@@ -338,7 +314,6 @@ export const SYSTEMS = Object.freeze({
     words: ['debug', 'crash', 'perf', 'report'],
     traps: [],
     doors: [],
-    switches: [],
   },
   shell: {
     what: 'the page itself: main.jsx, index.html, the QA harness pages, the public files',
@@ -346,7 +321,6 @@ export const SYSTEMS = Object.freeze({
     words: ['shell', 'main', 'index'],
     traps: [],
     doors: [],
-    switches: [],
   },
   vendor: {
     what: 'code from outside, kept as it came (with its licence)',
@@ -354,7 +328,6 @@ export const SYSTEMS = Object.freeze({
     words: [],
     traps: [],
     doors: [],
-    switches: [],
   },
 });
 
@@ -445,7 +418,7 @@ export function describe(root = ROOT) {
       scenarios: words.length ? scen.filter((x) => nameHolds(x.replace(/^mp-|\.mjs$/g, ''), words)) : [],
       specs: words.length ? specs.filter((x) => nameHolds(x, words)) : [],
       traps: traps.filter((t) => t.systems.some((v) => (s.traps || []).includes(v))).map((t) => t.n),
-      doors: s.doors, switches: s.switches,
+      doors: s.doors, switches: SWITCHES.filter((r) => r.system === name).map((r) => r.name),
     });
   }
   return { systems: out, unsorted: placed.unsorted, twice: placed.twice, trapCount: traps.length };
@@ -485,8 +458,8 @@ export function makePage() {
   L.push('  (`docs/specs/`): a file whose name holds one. A starting point, not a ruling.');
   L.push('- **Traps**: the rows of card I\'s census (`docs/plan/census/traps.md`) whose provisional system is one of');
   L.push('  these words.');
-  L.push('- **Doors**: the one function a kind of change goes through (CLAUDE.md part 5). **Switches**: the switch');
-  L.push('  table is card T\'s; until it lands, only the switches a system is known by.');
+  L.push('- **Doors**: the one function a kind of change goes through (CLAUDE.md part 5). **Switches**: the rows of');
+  L.push('  the switch table (`docs/SWITCHES.md`, card T) with the system\'s name: `node tools/guards/switches.test.mjs --list <system>`.');
   L.push('');
   L.push('| System | What |');
   L.push('|---|---|');
@@ -502,7 +475,7 @@ export function makePage() {
     for (const r of s.files) L.push(`- **Files**: ${patternWords(r)}`);
     for (const r of s.rest || []) L.push(`- **Rest of**: ${patternWords(r).replace(/^everything under /, '')}`);
     L.push(`- **Doors**: ${s.doors.length ? s.doors.map((x) => '`' + x.name + '` in `' + x.file + '` (' + x.what + ')').join('; ') : 'none named yet'}`);
-    L.push(`- **Switches**: ${list(s.switches)}`);
+    L.push(`- **Switches**: [its rows in the switch table](SWITCHES.md#${name})`);
     L.push(`- **Words**: ${list(s.words)}`);
     L.push(`- **Traps**: ${list(s.traps)}`);
     L.push('');

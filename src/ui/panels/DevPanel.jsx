@@ -319,7 +319,7 @@ const CAP_GATES = [
   'perfectStrike' /* v2.3.4615: the trial's perfect strike (server/src/freeswing.js): an attack timed to the full cycle is judged by the worker; v2.3.4800: the blade's glint (game/swordFeel.js) promises it only with it -- off with `freeswing: false` */,
   'bowDraw' /* v2.3.4801: the bow's draw (server/src/drawgather.js): an arrow carries its draw time and lands its share of a full draw, the perfect draw judged by the worker -- off with `bowdraw: false` */,
   'staffGather' /* v2.3.4801: the staff's gather (server/src/drawgather.js): a bolt carries its gather time and lands its share, its stage setting its splash and ring of force -- off with `staffgather: false` */,
-  'report' /* v2.3.5123: the field report (server/src/report.js; the phone's half debug/report.js): the phone sends its smoothness only to a worker that says this -- lower case, a kill switch.  v2.3.5127: a count, 2 the Speed test's card too (takesSpeed; `reportspeed: false` 1) */,
+  'report' /* v2.3.5123: the field report (server/src/report.js; the phone's half debug/report.js): the phone sends its smoothness only to a worker that says this -- lower case, a kill switch.  v2.3.5127: a count, 2 the Speed test's card too (takesSpeed; `reportspeed: false` 1).  v2.3.5221: 3 card O's lanes, rung and self too (takesLanes; `reportlanes: false` 2) */,
   'accuracy' /* v2.3.4545: shots and hits a weapon (server/src/accuracy.js): the phone numbers its basic shots and the Journey page shows how many hit -- lower case, a kill switch */,
 ];
 /* v2.3.3732: caps that are OFF by default on purpose -- an opt-in, not a job

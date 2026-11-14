@@ -498,7 +498,7 @@ So that each field below is defined by something that exists.
 | the line's delay | Measured by the WORKER, not the phone: `session.rtt`, a smoothed round trip from its own ping, 0 to 300 ms, memory only. | `server/src/index.js` `case 'pong'` |
 | how much it wavers | Measured nowhere. | |
 | the build | The page knows its own (`__GAME_VERSION__`, the newest `v2.3.N` in its commits; `__BUILD_COMMIT__`). The join carries neither: the worker learns a build only from a crash report. | `vite.config.js`, `src/ui/BuildBadge.jsx` |
-| the switches thrown | No one reader and no list: about 186 address names read in 132 files. One closed list exists: the 14 memory savers the owner can turn off from the Test panel. | `src/game/clientOff.js` `CLIENT_SAVERS` |
+| the switches thrown | ONE list: the switch table (`tools/guards/lib/switches.mjs`, page `docs/SWITCHES.md`; card T, step 7.1): every `?name=` the page reads and every live flag, one row a name, held by `tools/guards/switches.test.mjs`. The memory savers the owner can turn off from the Test panel (`CLIENT_SAVERS`) are its rows of side `both`. No one reader on the page yet (card T's PR 6). | `tools/guards/lib/switches.mjs` |
 | the zone | `S.currentZone`, and inside the world the land by direction (`wheelLandAt`). | `src/data/zones.js` |
 | how many players were near | Nothing that works: the sample's `others` reads the length of a map and is always 0. | `src/game/renderFrame.js` |
 
@@ -510,14 +510,15 @@ A report covers the seconds since the last one. `v` is 1.
 |---|---|---|---|
 | `v` | The report's shape number. A sink keeps it beside what it adds, so a new shape never adds into an old one's bins. | whole number | both |
 | `devClass` | The device class. | part 6's fields | smoothness (the cell); its `soft` also to the card |
-| `drawLane` | The lane the page draws in. | card O's closed list (step 2.1); until lanes exist, the one value `full` | smoothness (the cell) |
+| `drawLane` | The lane the page draws in. | card O's closed list (step 2.1; `src/game/drawLanes.js` `LANE_NAMES`): `full`, `light`, `thirty`. Sent to a worker whose `caps.report` is 3 or more; to an older one, `full` (v2.3.5221) | smoothness (the cell) |
 | `sw` | The switches thrown. | ids from ONE closed list: `CLIENT_SAVERS` today, the switch table's ids once step 7.1 has made it. Never a name read off the address bar. | smoothness (the cell: `none`, the one id, or `many`: rule 4's two configurations, and the rest apart) |
 | `build` | The page's build. | whole number: the N of its `v2.3.N` | smoothness (the cell); the card |
 | `secs` | Seconds this report covers. | whole number | both |
 | `seen` | Of those, seconds the page was visible. | whole number, at most `secs` | the card |
 | `drawn` | Frames drawn in those seconds. | whole number | the card (against the moves the worker counted itself) |
 | `gaps` | The time between drawn frames, as counts in fixed bins. | 10 whole numbers; the bins' edges are 10, 12.5, 15, 18.5, 24, 29, 42, 75 and 150 ms | smoothness |
-| `late` | Late frames by the ONE definition: the pacer's. | 2 whole numbers, late and judged. **Absent** where the pacer gives no verdict, which today is every screen at 60 a second or slower. Never the strip's count or `perfTracker`'s under this name. | smoothness |
+| `late` | Late frames by the ONE definition: the pacer's (`framePacer.js lateOver`, imported, never copied). | 2 whole numbers, late and judged. v2.3.5222 (card O PR 2): **present on every screen** whose refresh the pacer knows, 120, 60 and 30 alike; **absent** only where it knows none (the QA box's few frames a second). Never the strip's count or `perfTracker`'s under this name. | smoothness |
+| `rung` | The ladder in those seconds (card O's governor, step 2.3): the most rungs taken at once, and the seconds spent below the lane's row. Sent from card O's PR 2, to `caps.report` 3. | 2 whole numbers: rungs (0 to the worker's `RUNG.MAX`, wider than the page's ladder), seconds (at most `secs`) | smoothness, **beside the cell, never in it**: the cell's sums `[reports with one, rungs summed, seconds summed]` (v2.3.5221) |
 | `split` | Where the late frames' time went, each part summed. | whole ms, in this order: `sim`, `tile`, `entity`, `effects`, `fps`, `app`, `outside`. Where the busy beat runs, `busy` and `wait` in place of `outside`. | smoothness |
 | `holds` | The worst holds. | at most 5 of `[name, ms, where, near]`: `name` from the one list of hold names (step 1.0, part 7), `ms` whole, `where` and `near` as below | smoothness |
 | `where` | Where the player was for most of those seconds. | `town`, `farm`, `dungeon`, `commons`, `frost`, `ember`, `sky`, `hollows`, `thunder`, `tidal`, `mist`, `verdant`, `other` | smoothness |
@@ -525,7 +526,7 @@ A report covers the seconds since the last one. `v` is 1.
 | `mem` | The game's own memory count. | 3 whole MB: `tex`, `gpu`, `snd` | smoothness |
 | `lost` | Graphics lost in those seconds. | 2 whole numbers: contexts lost, renderers rebuilt | smoothness |
 | `died` | The tab died last time. Sent once, in the first report after a join. | `no`, `killed`, `evicted`; then the dead page's last mark as 3 whole numbers (MB of art, minutes up, renderers rebuilt) and its `where` | smoothness |
-| `self` | Drawing programs that failed their self-test (step 1.7). | names from the closed list of the game's own drawing programs (card O's) | smoothness |
+| `self` | Drawing programs that failed their self-test (step 1.7). Sent from card O's PR 14, to `caps.report` 3. | names from the closed list of the game's own drawing programs (card O's, `src/game/drawLanes.js` `PROGRAMS`): `one`, `palette`, `look`, `sharp`, `clip`, `fill`, `water`, `glint`, `sheen`, `shadow` (v2.3.5221) | smoothness: a count of reports a program |
 | `speed` | The Speed test's card (step 1.2). Only after a player runs it. | rows of `[step, fps, p50, p95, work]`: `step` from the test's own list (`all`, `noshadow`, `noshine`, `shinepass`, `threeprog`, `shadowpass`, `still`, `res2`, `bare`), the rest whole numbers; and `model`, a place in a list the player picks from (card A's list: a page cannot read its model) | the day's book, part `speed` |
 
 Three numbers the plan lists in the report are **the worker's own, and a
@@ -694,7 +695,7 @@ list can be made from the table and a guard can fail a second copy of it.
 | `muted` | `MUTABLE_RELAY_TYPES` (3) on the worker; `BLOCKED_SOCIAL` (14) on the phone, with the field that names the sender | `server/src/chatmod.js`; `src/game/blockedAsks.js` |
 | `watch` | The anti-bot hook that counts it (6 types) | `server/src/index.js`, `server/src/botsig.js` |
 | `cap` | The cap the phone gates it on (`CAP_GATES`, 167 names) | `server/src/join.js` `caps`; `src/ui/panels/DevPanel.jsx` |
-| `flag` | The live flag that turns it off. **No list of flag names exists**: any name is stored, and about 120 `_xxxOff()` functions each read their own. The switch table (step 7.1) makes the list. | `server/src/liveops.js` |
+| `flag` | The live flag that turns it off: a row of the switch table (`tools/guards/lib/switches.mjs`, side `worker` or `both`; card T, step 7.1), the one list of flag names. Any name is still stored, and each `_xxxOff()` reads its own; the table's guard fails a flag read with no row. | `server/src/liveops.js` |
 | `roads` | The gold, bag and health roads its handler names (the `at` of each road's row) | `server/src/gold.js`, `bag.js`, `life.js` |
 | `silent` | Its handler's silent exits, by code (`ALLOW`: 96 handlers, 270 exits, 19 codes) | `server/test/refusal-door-list.mjs` |
 | `phoneSend` | How the phone sends it: a send of its own (`join`, `pong`, `track`, `move`), the shim's pass-through (93 types: an allowlist), a priority event (31), the 33 ms batch; a rider (3); held for the rejoin (`node_strike`); expects an answer (`SETTLED_SENDS`, 9) | `src/networking/wsClient.js` |
@@ -770,7 +771,7 @@ reports.
 | Name | One writer | Readers | Where | Rows |
 |---|---|---|---|---|
 | `devClass` (NEW) | `src/game/deviceProfile.js`, grown: the one file allowed to ask the device a question (`server/test/device-profile.test.mjs`) | the lane's choice (card O), the report (card A), the Speed test's card | the phone's memory | none |
-| `drawLane` (NEW) | card O (step 2.1): one function that reads `devClass` and picks a row of knobs | every knob; the report; every phone test, which names its lane | card O's | none |
+| `drawLane` (NEW) | `src/game/drawLanes.js` (card O, step 2.1, v2.3.5221): `drawLane()`, the page's lane: `?lane=`, else `pickLane` of the `devClass` `deviceProfile.js` hands it | every knob (`laneKnob`); the report; every phone test, which names its lane | the page's memory (`docs/LANES.md` is the table) | none |
 
 Not in the class, and not to be added:
 

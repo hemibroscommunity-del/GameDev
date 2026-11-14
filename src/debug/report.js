@@ -14,7 +14,10 @@
  *
  *   v         1, the shape's number
  *   devClass  the device class's twelve facts (game/deviceProfile.js)
- *   drawLane  'full': the one lane until card O makes lanes (step 2.1)
+ *   drawLane  the lane this page draws in (game/drawLanes.js, card O's
+ *             step 2.1: `full`, `light` or `thirty`), to a worker whose
+ *             caps.report is 3 or more (takesLanes); to an older one `full`,
+ *             as every page sent before lanes (v2.3.5221)
  *   sw        the memory savers the worker has turned off for every phone,
  *             ids of game/clientOff.js CLIENT_SAVERS -- never a name read
  *             off the address bar
@@ -22,9 +25,12 @@
  *   secs      seconds this report covers; `seen` those the page was visible
  *   drawn     frames drawn in them
  *   gaps      the time between drawn frames, as counts in GAP_EDGES' bins
- *   late      [late, judged] by the frame pacer's own rule, only where the
- *             pacer judges (a screen faster than about 70 a second): ABSENT
- *             otherwise.  Never the strip's count or perfTracker's
+ *   late      [late, judged] by the frame pacer's own rule (framePacer.js
+ *             lateOver, never a copy), where the pacer judges: v2.3.5222,
+ *             EVERY screen whose refresh it knows (120, 60, 30; before, only
+ *             one faster than about 70 a second); ABSENT where it knows none
+ *             (the QA box's few frames a second).  Never the strip's count or
+ *             perfTracker's
  *   split     where the late frames' time went, whole ms: sim, tile, entity,
  *             effects, fps, app, then outside -- or busy and wait in its
  *             place where the busy beat runs (`?perf=1`)
@@ -38,6 +44,9 @@
  *   died      ONCE, in the first report after the page's first join: ['no'],
  *             or ['killed' | 'evicted', MB of art, minutes up, rebuilds,
  *             where] -- the last page's last mark (debug/crashTrap.js)
+ *   rung      v2.3.5222 (card O's governor): [the most rungs taken at once,
+ *             the seconds seen below the lane's row] (game/drawLanes.js), to
+ *             a worker that takes lanes (takesLanes) only
  *   speed     v2.3.5125: the Speed test's card, once, in the first report
  *             after a player runs it (game/speedTest.js): { model, rows },
  *             `model` a place in SPEED_MODELS the player picks (a page
@@ -76,8 +85,9 @@ import { busyIn } from './busyBeat.js';
 import { holdOf } from './holdNames.js';
 import { lastDeath, glLostCount, setMarkWhere } from './crashTrap.js';
 import { devClass } from '../game/deviceProfile.js';
+import { drawLane, rungDepth } from '../game/drawLanes.js';   /* v2.3.5221: card O's lanes; v2.3.5222 the rung */
 import { CLIENT_SAVERS, clientOff } from '../game/clientOff.js';
-import { PACE_FAST_MS, PACE_BREAK_MS } from '../game/framePacer.js';
+import { PACE_BREAK_MS, lateOver } from '../game/framePacer.js';   /* v2.3.5222: the pacer's one rule of a late frame */
 import { wheelHere } from '../game/wheelTrial.js';
 
 export const REPORT = Object.freeze({
@@ -96,7 +106,6 @@ export const REPORT = Object.freeze({
    and a freeze -- each edge between the whole-ms readings of two rates) */
 export const GAP_EDGES = Object.freeze([10, 12.5, 15, 18.5, 24, 29, 42, 75, 150]);
 export const WHERE = Object.freeze(['town', 'farm', 'dungeon', 'commons', 'frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', 'verdant', 'other']);
-export const DRAW_LANE = 'full';
 const OFF_KEY = 'bt_report';
 
 /* ── v2.3.5125: THE SPEED TEST'S CARD (the grand plan's step 1.2) ── */
@@ -267,8 +276,10 @@ function _restart(now) {
  *  sample's time, the near count at it).  Pure but for busyIn (the busy beat,
  *  `?perf=1` only): the suite's. */
 export function addFrames(a, samples, fromT, shows, pace) {
-  const judging = !!(pace && pace.refresh && pace.refresh < PACE_FAST_MS);
-  const lateOver = judging ? (pace.every || 1) * pace.refresh + pace.refresh / 2 : Infinity;
+  /* v2.3.5222: judged on every screen whose refresh the pacer knows, by its
+     own rule (lateOver): the report's `late` and the governor's are one */
+  const judging = !!(pace && pace.refresh);
+  const lateMs = judging ? lateOver(pace.refresh, pace.every || 1) : Infinity;
   let nearNow = 0, lastT = fromT;
   for (let i = 0; i < samples.length; i++) {
     const x = samples[i];
@@ -284,7 +295,7 @@ export function addFrames(a, samples, fromT, shows, pace) {
     if (nearNow > a.near) a.near = nearNow;
     if (!judging || !(total > 0) || total > PACE_BREAK_MS) continue;
     a.judged++;
-    if (!(total > lateOver)) continue;
+    if (!(total > lateMs)) continue;
     a.late++;
     /* the strip's split of a late frame (perfHud.js): the game's own parts,
        and the rest outside it -- busy or waiting where the beat can say */
@@ -308,6 +319,7 @@ export function blankBins(now) {
     late: 0, judged: 0, split: [0, 0, 0, 0, 0, 0, 0], busy: 0, wait: 0, beatAll: true,
     holds: [], whereMs: Object.create(null), near: 0,
     lost0: glLostCount(), rb0: _rebuilds(),
+    rungMax: 0, belowMs: 0,   /* v2.3.5222: the governor's rung (drawLanes.js) */
   };
 }
 function _reset(now) {
@@ -352,12 +364,18 @@ function _poll() {
     _lastPollP = typeof performance !== 'undefined' ? performance.now() : 0;
     const where = _whereNow(_S);
     /* v2.3.5127: only the seen time is time in a place (not a thawed spell) */
-    if (_visSince != null) a.whereMs[where] = (a.whereMs[where] || 0) + Math.max(0, now - Math.max(a.lastPoll, _visSince, a.t0) - Math.max(0, late > REPORT.THAW_MS ? late : 0));
+    const seenD = _visSince != null ? Math.max(0, now - Math.max(a.lastPoll, _visSince, a.t0) - Math.max(0, late > REPORT.THAW_MS ? late : 0)) : 0;
+    if (_visSince != null) a.whereMs[where] = (a.whereMs[where] || 0) + seenD;
+    /* v2.3.5222: the governor's rung -- the most rungs taken at once, and the
+       seen time spent below the lane's row */
+    const depth = rungDepth();
+    if (depth > a.rungMax) a.rungMax = depth;
+    if (depth > 0) a.belowMs += seenD;
     a.lastPoll = now;
     setMarkWhere(where);
     /* the pacer's own rule, with its own refresh and step (framePacer.js
-       take(): a run more than half a refresh past its frame is late), only
-       where it judges: a refresh it knows, faster than PACE_FAST_MS */
+       lateOver: a run more than half a refresh past its frame is late),
+       where it judges: v2.3.5222, a refresh it knows, on every screen */
     let pace = null;
     try { pace = typeof window !== 'undefined' && window.__btPace ? window.__btPace() : null; } catch (e) { pace = null; }
     const fr = addFrames(a, perfTracker.getSamples(), _lastFrameT, _shows, pace);
@@ -409,7 +427,10 @@ export function buildReport(now) {
     mem = [_w(t && t.mb), _w(g && g.mb), _w(d && d.mb)];
   } catch (e) { /* what it read stands */ }
   const r = {
-    type: 'report', v: REPORT.V, devClass: facts, drawLane: DRAW_LANE,
+    /* v2.3.5221: the lane from the same class the report sends (drawLanes.js
+       pickLane, through drawLane: `?lane=` wins), to a worker that takes
+       lanes; `full` to one that does not */
+    type: 'report', v: REPORT.V, devClass: facts, drawLane: takesLanes(_S) ? drawLane(cls) : 'full',
     sw: CLIENT_SAVERS.filter((c) => clientOff(c.id)).map((c) => c.id),
     build: buildOf(typeof __GAME_VERSION__ !== 'undefined' ? __GAME_VERSION__ : ''),
     secs, seen: Math.min(secs, _w(_seenMs(a, tNow) / 1000)), drawn: a.drawn, gaps: a.gaps.slice(),
@@ -422,6 +443,8 @@ export function buildReport(now) {
     r.split = a.beatAll && a.late > 0 ? s.slice(0, 6).concat([_w(a.busy), _w(a.wait)]) : s;
   }
   if (_died) r.died = _died;
+  /* v2.3.5222: the governor's rung, to a worker that takes lanes (caps.report 3) */
+  if (takesLanes(_S)) r.rung = [_w(a.rungMax), Math.min(secs, _w(a.belowMs / 1000))];
   /* v2.3.5127 (sitting 4): the card goes only to a worker that takes it;
      to one that does not, it waits (and is not cleared by the send) */
   if (_speed && takesSpeed(_S)) r.speed = { model: _speed.model, rows: _speed.rows.map((x) => x.slice()) };
@@ -441,6 +464,13 @@ export function takesReports(S) {
  *  card too (`reportspeed: false` in its live flags: back to 1). */
 export function takesSpeed(S) {
   return !!(S && S._serverCaps && Number(S._serverCaps.report) >= 2);
+}
+
+/** v2.3.5221: card O's lanes -- `caps.report` 3 takes a lane but `full`, the
+ *  governor's `rung` and the self-test's `self` (`reportlanes: false` in its
+ *  live flags: back to 2, and the page sends `full`, no `rung`, no `self`). */
+export function takesLanes(S) {
+  return !!(S && S._serverCaps && Number(S._serverCaps.report) >= 3);
 }
 
 /* a report is due: built, sent to a worker that takes one, and a new one opened */
@@ -468,6 +498,15 @@ export function reportJoined(S) {
   try {
     if (!S || typeof window === 'undefined') return;
     _S = S;
+    /* v2.3.5221 (card O PR 1; card P's held sweep found `wrapped > _poll >
+       _due` holding the page 18.4 ms in the town): the device class's chip
+       facts (deviceProfile.js chipFacts: getParameter and the precision,
+       which may wait for the chip) are asked ONCE a drawing context and kept.
+       The first ask was the first report's, a minute into play; now it is at
+       every join, behind its loading screen (cheap once kept; a renderer
+       rebuilt is a new context, asked again at the rejoin), and the lane
+       (drawLanes.js) is picked from that class then too */
+    try { drawLane(devClass()); } catch (e) { /* the first report asks */ }
     if (_timer) return;
     const now = Date.now();
     _joinedAt = now;
@@ -547,7 +586,7 @@ export function bookTableText(days) {
 if (typeof window !== 'undefined') {
   window.__btReport = (opt) => {
     if (opt && opt.send) { _poll(); _due(Date.now()); }
-    return { on: reportOn(), cap: takesReports(_S), speedCap: takesSpeed(_S), joinedAt: _joinedAt,
+    return { on: reportOn(), cap: takesReports(_S), speedCap: takesSpeed(_S), lanesCap: takesLanes(_S), joinedAt: _joinedAt,
       dueIn: _dueAt ? _dueAt - Date.now() : null, sent: _sent, dropped: _dropped, diedOwed: _diedOwed, speed: _speed,
       open: buildReport(Date.now()), last: _last };
   };
