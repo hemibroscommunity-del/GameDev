@@ -52,16 +52,17 @@ import { SYSTEMS, ROOT, placeFiles, systemOf } from './lib/systems.mjs';
 /* Set 2026-11-14 at its first count (the page at main 75946b7: 647 fields
    and 1,482 variables, 2,129 rows, less the one row of src/state/life.js).
    Only the gatekeeper lowers it.
-   v2.3.5363 (the gatekeeper, sitting 7): 2128 -> 21, card U's nine merged.
-   The count on sitting 7's rehearsed list (tree 51de3178): 16 by the page
-   (the four files the map has not placed), 21 by the code (`--live`): the
-   list brings five top-of-file variables no ledger lists yet,
-   src/debug/report.js `_speed`, `_lastSentAt` (#1711) and
-   src/rendering/picsOnce.js `_walk`, `_walkMap`, `_seen` (#1741).  The line
-   is the code's count, so card L's PR 1 (the guard reads the code) is not
-   made red by rows none of its files hold; the next `--ledger debug` and
-   `--ledger preload` take them, and the next sitting lowers it again. */
-export const UNLISTED_LINE = 21;
+   v2.3.5363 (the gatekeeper, sitting 7): 2128 -> 22, card U's nine merged.
+   The count on sitting 7's rehearsed list: 16 by the page (the four files
+   the map has not placed), 22 by the code (`--live`, and what card L's
+   #1746 reads): the list brings six top-of-file variables no ledger lists
+   yet, src/debug/report.js `_speed`, `_lastSentAt` (#1711),
+   src/rendering/picsOnce.js `_walk`, `_walkMap`, `_seen` (#1741) and
+   src/rendering/bodyBake.js `_unheard` (#1747).  The line is the code's
+   count, so the list merged with #1746 stays green; the next
+   `--ledger debug`, `--ledger preload` and `--ledger art` take them, and
+   the next sitting lowers it again. */
+export const UNLISTED_LINE = 22;
 
 const LIVE = process.argv.includes('--live');
 const PAGE = 'docs/plan/census/state.md';
