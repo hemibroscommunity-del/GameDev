@@ -21,8 +21,12 @@
  *      book at its pace only (13 rows at most, cost-guard's line);
  *   9. THE LAST ONE OUT (v2.3.5124, sitting 4's review): the last leave
  *      writes the book at once (the report that waited, the room's last
- *      counts), after a put already running; nothing when nothing waits,
- *      the book is off or someone is still in.
+ *      counts), after a put already running; nothing when someone is still
+ *      in, the room row is off or the book is;
+ *  10. ...PACED (v2.3.5124, sitting 5's review): sockets that never join
+ *      write nothing; an hour of joins and leaves at most 15 writes; a kick
+ *      once, not twice; a write with no turn waits for the next with what
+ *      came after; two last-outs in one put never put side by side.
  *
  * BREAK PROOF (rule 8), each tried by hand, 2026-11-14:
  *   2. roomrow.js rowsOf: `return 1;` for an object of entries      -> FAIL 2
@@ -33,6 +37,11 @@
  *   9. leave.js: drop the `_roomRowLastOut` line                    -> FAIL 9 (3)
  *      roomrow.js bookNow: `return run();` (a put beside the running
  *      one: the first's sums lost, n 2 of 3)                         -> FAIL 9 (2)
+ *  10. roomrow.js _roomRowLastOut: drop `!m.owed ||`                -> FAIL 10.1, 10.3
+ *      ...: drop the hand's line (no pace)                          -> FAIL 10.2, 10.4
+ *      ...: `< 1` for `< (running ? 2 : 1)`                         -> FAIL 10.4 (the third)
+ *      the storage's wrapper: drop the `_roomRowSpend` line          -> FAIL 10.2, 10.4
+ *      bookNow's run: drop `if (b.putting) return b.putting.then(run, run);` -> FAIL 9, 10.5
  * And in the real runtime (wrangler dev, a phone in the world for 75 s,
  * read through a throwaway admin route): the storage wrapped, 13 rows, one
  * v2 join, the restart and 2,454 tick gaps in the book's `room` part.
@@ -260,7 +269,6 @@ const roomPart = async (room) => {
      would keep only the second's) */
   const { room, state } = makeRoom();
   await join(room, 'bp_last2', 2);
-  room._liveFlags = { roomrow: false };   /* only the sums this check adds */
   if (room._daybook && room._daybook.putting) await room._daybook.putting;
   if (room._daybook) room._daybook.lastPut = 0;
   const w0 = state.writes.length;
@@ -280,21 +288,134 @@ const roomPart = async (room) => {
     !!mem && mem.days instanceof Map && 'putting' in mem && typeof mem.lastPut === 'number', mem && Object.keys(mem));
 }
 {
-  /* nothing waits, the book is off, or someone is still in: no write */
+  /* someone still in, the room row off (v2.3.5124, sitting 5: its kill
+     switch stops the last-out write too), the book off: no write */
   const { room, state } = makeRoom();
   const a = await join(room, 'bp_last3', 2);
   const b = await join(room, 'bp_last4', 2);
-  room._liveFlags = { roomrow: false };
-  if (room._daybook) room._daybook.days.clear();
+  const bookRows = () => state.writes.filter((k) => k.startsWith(DAYBOOK.PREFIX)).length;
   await room.webSocketClose(a, 1000, 'bye', true);
-  check('9. someone still in: no last-out write', !state.writes.some((k) => k.startsWith(DAYBOOK.PREFIX)) && !(room._daybook && room._daybook.putting));
-  await room.webSocketClose(b, 1000, 'bye', true);
-  check('9. the last out with nothing waiting (`roomrow: false`, no report): no book row', !state.writes.some((k) => k.startsWith(DAYBOOK.PREFIX)));
-  const c = await join(room, 'bp_last5', 2);
-  room._liveFlags = { daybook: false };
+  check('9. someone still in: no last-out write', bookRows() === 0 && !(room._daybook && room._daybook.putting));
+  room._liveFlags = { roomrow: false };
+  bookAdd(room, 'dev', { x: { n: 1 } }, NOW);   /* a report waiting (the add's own at-once put aside) */
+  if (room._daybook.putting) await room._daybook.putting;
+  const r0 = bookRows();
   bookAdd(room, 'dev', { x: { n: 1 } }, NOW);
+  await room.webSocketClose(b, 1000, 'bye', true);
+  check('9. `roomrow: false`: the last one out writes nothing, a join owed and a report waiting', bookRows() === r0 && !room._daybook.putting && room._roomRow.owed === true);
+  room._liveFlags = { daybook: false };
+  const c = await join(room, 'bp_last5', 2);
   await room.webSocketClose(c, 1000, 'bye', true);
-  check('9. the book switched off (`daybook: false`): the last out writes nothing', !state.writes.some((k) => k.startsWith(DAYBOOK.PREFIX)) && !(room._daybook && room._daybook.putting));
+  check('9. the book switched off (`daybook: false`): the last out writes nothing', bookRows() === r0 && !room._daybook.putting);
+}
+
+/* ── 10. THE LAST ONE OUT, PACED (v2.3.5124, sitting 5's review) ── */
+const bookRowsOf = (state, from = 0) => state.writes.slice(from).filter((k) => k.startsWith(DAYBOOK.PREFIX)).length;
+const drain = async (room) => { for (let i = 0; i < 4 && room._daybook && room._daybook.putting; i++) await room._daybook.putting; };
+{
+  /* the review's probe: sockets opened and closed into an empty room, none
+     joining -- each wrote the day's whole record */
+  const { room, state } = makeRoom();
+  const w0 = state.writes.length;
+  for (let i = 0; i < 100; i++) {
+    NOW += 3000;
+    const ws = fakeWs();
+    room.sessions.set(ws, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: NOW });
+    await room.webSocketClose(ws, 1000, 'bye', true);
+    await drain(room);
+  }
+  check(`10.1 a hundred sockets opened and closed into an empty room, none joining: ${bookRowsOf(state, w0)} book rows (none)`, bookRowsOf(state, w0) === 0);
+}
+{
+  /* a storm of joins and leaves for an hour: at the book's own pace on the
+     whole (the line is a number, not the constants: rule 8) */
+  const { room, state } = makeRoom();
+  const w0 = state.writes.length;
+  const end = NOW + 60 * 60000;
+  let n = 0;
+  while (NOW < end) {
+    NOW += 9000;
+    const ws = await join(room, 'bp_storm', 2);
+    NOW += 1000;
+    await room.webSocketClose(ws, 1000, 'bye', true);
+    await drain(room);
+    n++;
+  }
+  const rows = bookRowsOf(state, w0);
+  check(`10.2 an hour of joins and leaves (${n}, ten seconds apart) writes the book ${rows} times, at most 15 (three in hand, one each 5 minutes)`, rows >= 3 && rows <= 15, rows);
+}
+{
+  /* a kick: its own leave, then the runtime's close after it -- one write */
+  const { room, state } = makeRoom();
+  const ws = await join(room, 'bp_kick', 2);
+  const w0 = state.writes.length;
+  await room._playerLeaves(ws, 'kick');
+  await drain(room);
+  await room.webSocketClose(ws, 1000, 'bye', true);
+  await drain(room);
+  check(`10.3 a kick that empties the room writes the book once, not twice (${bookRowsOf(state, w0)})`, bookRowsOf(state, w0) === 1);
+}
+{
+  /* a write with no turn keeps waiting: owed, and taken at the next turn
+     with what came after it */
+  const { room, state } = makeRoom();
+  for (let i = 0; i < 3; i++) { NOW += 5000; const ws = await join(room, 'bp_turn', 2); await room.webSocketClose(ws, 1000, 'bye', true); await drain(room); }
+  const w0 = state.writes.length;
+  NOW += 5000;
+  let ws = await join(room, 'bp_turn', 2);
+  bookAdd(room, 'dev', { cellA: { n: 1 } }, NOW);
+  await room.webSocketClose(ws, 1000, 'bye', true);
+  await drain(room);
+  check('10.4 three sittings\' writes in hand spent: a fourth\'s last out has no turn, writes nothing, and stays owed', bookRowsOf(state, w0) === 0 && room._roomRow.owed === true, { rows: bookRowsOf(state, w0), owed: room._roomRow.owed });
+  NOW += ROOMROW.LASTOUT.EVERY_MS;
+  ws = await join(room, 'bp_turn', 2);
+  NOW += 20000;
+  await room.webSocketClose(ws, 1000, 'bye', true);
+  await drain(room);
+  const rec = state.store.get(state.writes.filter((k) => k.startsWith(DAYBOOK.PREFIX)).pop());
+  check('10.4 ...a pace later its turn comes: one write, carrying the report that waited', bookRowsOf(state, w0) === 1 && rec && rec.dev && rec.dev.cellA && rec.dev.cellA.n === 1 && room._roomRow.owed === false, { rows: bookRowsOf(state, w0), dev: rec && rec.dev });
+  /* a report a pace later starts the door's own put; the player leaving
+     while it runs: that put spends the turn, the last one out waits (one
+     write, not two) */
+  NOW += ROOMROW.LASTOUT.EVERY_MS;
+  const w1 = state.writes.length;
+  ws = await join(room, 'bp_turn', 2);
+  bookAdd(room, 'dev', { cellB: { n: 1 } }, NOW);
+  const running = room._daybook.putting;
+  await room.webSocketClose(ws, 1000, 'bye', true);
+  await drain(room);
+  const rec2 = state.store.get(state.writes.filter((k) => k.startsWith(DAYBOOK.PREFIX)).pop());
+  check('10.4 a leave while the door\'s own put runs (its turn spent as it lands): one write, the report in it, the rest owed',
+    !!running && bookRowsOf(state, w1) === 1 && rec2 && rec2.dev && rec2.dev.cellB && rec2.dev.cellB.n === 1 && room._roomRow.owed === true, { rows: bookRowsOf(state, w1), owed: room._roomRow.owed });
+}
+{
+  /* two last-outs inside one running put, across a UTC midnight (two days
+     waiting): never two puts of the book side by side */
+  const { room, state } = makeRoom();
+  await join(room, 'bp_mid', 2);
+  let inFlight = 0, most = 0;
+  const get = state.storage.get;
+  state.storage.get = async function (k) {
+    if (typeof k === 'string' && k.startsWith(DAYBOOK.PREFIX)) { inFlight++; most = Math.max(most, inFlight); await settle(); inFlight--; }
+    return get.call(this, k);
+  };
+  const b = room._daybook || (bookAdd(room, 'dev', { z: { n: 0 } }, NOW), room._daybook);
+  await drain(room);
+  b.lastPut = NOW + 86400000;   /* the door's own pace starts nothing here */
+  bookAdd(room, 'dev', { d1: { n: 1 } }, NOW);
+  bookAdd(room, 'dev', { d2: { n: 1 } }, NOW + 86400000);
+  let release;
+  const running = new Promise((r) => { release = r; }).finally(() => { if (b.putting === running) b.putting = null; });
+  b.putting = running;
+  room._roomRow.owed = true;
+  const l1 = room._roomRowLastOut(NOW);
+  room._roomRow.owed = true;
+  const l2 = room._roomRowLastOut(NOW + 1);
+  release();
+  await l1; await l2; await drain(room);
+  const days = state.writes.filter((k) => k.startsWith(DAYBOOK.PREFIX));
+  check(`10.5 two last-outs inside one running put, two days waiting: one put of the book at a time (most ${most}), both days written`,
+    !!l1 && !!l2 && most === 1 && new Set(days).size === 2, { most, days });
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);
