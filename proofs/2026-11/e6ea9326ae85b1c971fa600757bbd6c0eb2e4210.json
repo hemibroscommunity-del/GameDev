@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e6ea9326ae85b1c971fa600757bbd6c0eb2e4210",
+  "tree": "2551513a4f2ef62e100d2911934b5a9f6dd1d995",
+  "committedAt": "2026-11-14T00:05:30-08:00",
+  "subject": "Merge pull request #1718 from hemibroscommunity-del/claude/plan-p-4-gate",
+  "files": 7519,
+  "bytes": 947998299,
+  "listingSha256": "9a1b025cb4cf87c8df0d18ef6fa9e5f7d570cc0300c1084d8a450034f8d4d791",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
