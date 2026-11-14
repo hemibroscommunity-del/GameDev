@@ -55,8 +55,10 @@
  *     a listing: other records, each with its own rules;
  *   - a local tally that is not the bag (farm.js's harvest `items`).
  *
- * No imports: node tests it directly.
+ * No imports: node tests it directly.  (v2.3.5084: but one, gold.js's mail
+ * table, which has none: a payout's class is read where every class is.)
  */
+import { mailMinted } from './gold.js';   /* v2.3.5084: a payout's own class (MAIL_CLASSES) */
 
 const own = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 
@@ -233,6 +235,75 @@ function roadFor(road, dir) {
   return row;
 }
 
+/* ═══ v2.3.5084: THE DOOR COUNTS WHAT IT MINTS AND BURNS (grand plan step 4.4, card E PR 5) ═══
+ * Each bag key by itself, into the character's `_econ.i[key]` (migrations.js
+ * ECON), as the gold door counts gold: a `mint` road books the count's rise
+ * under `m`, a `burn` road its fall under `b`, a `set` its difference signed,
+ * a `move` or an `escrow` nothing; read the way the world's sum reads a bag
+ * (bagCount: own key, whole, never below 0).  A payout landing by the mail
+ * (`mail_item`, an escrow of `inbox:`) is counted by its own class when its
+ * credit is handed to the door (gold.js mailMinted).
+ *
+ * The door holds the BAG, not the record the count belongs on.  So the
+ * record is learned at its save: `_saveRpg` names the bag's record
+ * (bagEconOwn), and from then on the door counts straight into it.  A bag no
+ * save has named yet (a join's, a death's new one) keeps its counts beside it
+ * (memory only, keyed by the bag object itself) until its record's next
+ * save folds them in -- in that save's own put, so what the sum reads is
+ * written with what it counts (the plan's rule 5).  bagEconPending lets the
+ * world's sum read what waits. */
+const ECON_V = 1;
+const ECON_BAD = new Set(['__proto__', 'constructor', 'prototype']);
+const econOwner = new WeakMap();     /* bag -> the record that holds it (named at its save) */
+const econWaiting = new WeakMap();   /* bag -> { key: {m, b} } counted before its record was named */
+function econTarget(bag) {
+  const rec = econOwner.get(bag);
+  if (rec && rec.inventory === bag) {
+    let e = rec._econ;
+    if (e === undefined || e === null || typeof e !== 'object') e = rec._econ = { v: ECON_V, g: { m: 0, b: 0 }, i: Object.create(null) };
+    if (typeof e.v === 'number' && e.v > ECON_V) return null;   /* a newer worker's shape: never counted into */
+    if (!e.i || typeof e.i !== 'object') e.i = Object.create(null);
+    return e.i;
+  }
+  let w = econWaiting.get(bag);
+  if (!w) { w = Object.create(null); econWaiting.set(bag, w); }
+  return w;
+}
+function econBag(bag, k, cls, d) {
+  if (!d || (cls !== 'mint' && cls !== 'burn') || typeof k !== 'string' || !k || ECON_BAD.has(k)) return;
+  if (!bag || typeof bag !== 'object') return;
+  const into = econTarget(bag);
+  if (!into) return;
+  const p = Object.prototype.hasOwnProperty.call(into, k) ? into[k] : (into[k] = { m: 0, b: 0 });
+  if (cls === 'mint') p.m = (Number(p.m) || 0) + d;
+  else p.b = (Number(p.b) || 0) - d;
+}
+/** v2.3.5084: `rec` holds `bag` (persistence.js _saveRpg, before its put):
+ *  the door counts into `rec._econ` from now on, and what waited beside the
+ *  bag is folded in here. */
+export function bagEconOwn(bag, rec) {
+  if (!bag || typeof bag !== 'object' || !rec || typeof rec !== 'object') return;
+  econOwner.set(bag, rec);
+  const w = econWaiting.get(bag);
+  if (!w) return;
+  econWaiting.delete(bag);
+  const into = econTarget(bag);
+  if (!into) return;
+  for (const k of Object.keys(w)) {
+    const p = Object.prototype.hasOwnProperty.call(into, k) ? into[k] : (into[k] = { m: 0, b: 0 });
+    p.m = (Number(p.m) || 0) + w[k].m;
+    p.b = (Number(p.b) || 0) + w[k].b;
+  }
+}
+/** v2.3.5084: the counts waiting beside `bag` for its record's next save (a
+ *  copy), for the world's sum. */
+export function bagEconPending(bag) {
+  const w = bag && typeof bag === 'object' ? econWaiting.get(bag) : null;
+  const out = Object.create(null);
+  if (w) for (const k of Object.keys(w)) out[k] = { m: w[k].m, b: w[k].b };
+  return out;
+}
+
 /* Write `v` under `k` by the row's empty rule; the count left (undefined: gone). */
 function put(bag, k, v, empty) {
   if (empty === 'gtZero') {
@@ -282,11 +353,19 @@ export function bagAfter(bag, k, n, road, cap) {
 
 /** `n` of `k` INTO `bag` by `road` (a road with `cap` fills to at most `cap`).
     Returns the count left under `k`. */
-export function bagGive(bag, k, n, road, cap) {
+export function bagGive(bag, k, n, road, cap, credit) {
   const row = roadFor(road, 'give');
-  if (ONE_SUM) return put(bag, k, bagOneSum(bag, k, n, false, row.cap ? cap : undefined), 'gtZero');   /* v2.3.4900 */
-  const cur = BAG_READS[row.read](bag, k);
-  return put(bag, k, row.cap ? Math.min(cap, cur + n) : cur + n, row.empty);
+  const before = bagCount(bag, k);   /* v2.3.5084: the count, as the world's sum reads it */
+  let left;
+  if (ONE_SUM) left = put(bag, k, bagOneSum(bag, k, n, false, row.cap ? cap : undefined), 'gtZero');   /* v2.3.4900 */
+  else {
+    const cur = BAG_READS[row.read](bag, k);
+    left = put(bag, k, row.cap ? Math.min(cap, cur + n) : cur + n, row.empty);
+  }
+  const d = bagCount(bag, k) - before;
+  econBag(bag, k, row.class, d);   /* v2.3.5084 */
+  if (credit) econBag(bag, k, 'mint', mailMinted(credit, d));   /* v2.3.5084: a payout by its own class */
+  return left;
 }
 
 /** `n` of `k` OUT of `bag` by `road`.  The caller has already checked the bag
@@ -294,13 +373,19 @@ export function bagGive(bag, k, n, road, cap) {
     (undefined: the stack is gone). */
 export function bagTake(bag, k, n, road) {
   const row = roadFor(road, 'take');
-  if (ONE_SUM) return put(bag, k, bagOneSum(bag, k, n, true), 'gtZero');   /* v2.3.4900 */
-  return put(bag, k, BAG_READS[row.read](bag, k) - n, row.empty);
+  const before = bagCount(bag, k);   /* v2.3.5084 */
+  const left = ONE_SUM ? put(bag, k, bagOneSum(bag, k, n, true), 'gtZero')   /* v2.3.4900 */
+    : put(bag, k, BAG_READS[row.read](bag, k) - n, row.empty);
+  econBag(bag, k, row.class, bagCount(bag, k) - before);   /* v2.3.5084 */
+  return left;
 }
 
 /** The count under `k` MADE `v` by `road` (by its empty rule).  Returns it. */
 export function bagSet(bag, k, v, road) {
   const row = roadFor(road, 'set');
-  if (ONE_SUM) return put(bag, k, wholeCount(v), 'gtZero');   /* v2.3.4900: a set heals what it makes */
-  return put(bag, k, v, row.empty);
+  const before = bagCount(bag, k);   /* v2.3.5084 */
+  const left = ONE_SUM ? put(bag, k, wholeCount(v), 'gtZero')   /* v2.3.4900: a set heals what it makes */
+    : put(bag, k, v, row.empty);
+  econBag(bag, k, row.class, bagCount(bag, k) - before);   /* v2.3.5084: by its difference, signed */
+  return left;
 }

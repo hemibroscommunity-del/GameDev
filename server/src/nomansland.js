@@ -813,7 +813,12 @@ export const noMansLandMethods = {
        their own with no credit kind to carry them, so they stay -- written
        down in docs/specs/no-mans-land.md.) */
     lost.coins = Math.max(0, Math.floor(Number(ps.coins) || 0));
-    this._goldSet(ps, 0, 'nml_loss'); /* v2.3.4670: the gold door */
+    /* v2.3.5084: two roads, two classes (grand plan card E PR 5; the owner's
+       yes of 2026-11-14): a player's kill MOVES the purse to the killer's
+       mail (`nmlloot:` below), a red skull killed by anything else loses it
+       to nobody, a BURN */
+    if (to) this._goldSet(ps, 0, 'nml_loss'); /* v2.3.4670: the gold door */
+    else this._goldSet(ps, 0, 'nml_lost');
     if (lost.coins) credit('gold', { amount: lost.coins }, 'No man\'s land');
     this._nmlSave(playerId, ps);
     /* tell the victim's game what went, so it clears its own copies.

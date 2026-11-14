@@ -1,40 +1,38 @@
 card: A
-branch: claude/plan-a-6-speed-card (one branch a PR, each begun from the one before: -1- to -7-; merge them in order)
-prs: #1688, #1692, #1703, #1706 (merged); #1708 (5124), #1711 (5125, its route in card N's wire table): mended for sitting 6, ready
+branch: claude/plan-a-7-heldsweep (PR 7, tag 5126)
+prs: #1688, #1692, #1703, #1706, #1708, #1711 (merged); #1760 (5126, ready: after card P's #1757)
 state: ready
 
 ## Done
 
-- #1688, #1692, #1703 (5120-5122) merged at sitting 3; #1706 (5123) at 5.
-- #1708 (5124): `roomrow.js` into the `room` part. Sitting 4's: in the
-  map (`server-core`); the last one out (`leave.js`, one line) writes
-  the book at once (roomrow.test 9). Sitting 5's: only after a join
-  since its last write (a socket that never joins, a kick's second
-  close: nothing); three turns in hand, one back each 5 minutes, every
-  put of the book spending one (the door's too: the storage's wrapper),
-  a turn beyond a put running; `roomrow: false` stops it; two last-outs
-  in one put never side by side. roomrow.test 10, cost-guard 15c (an
-  hour of storms: 14 rows, line 18), SHAPES's book row. Sitting 6's: a
-  save refused owes the book too (a `newer` refusal comes at the join);
-  roomrow §3 reads the stored book alone.
-- #1711 (5125): the Speed card into `speed`; GET /dev/daybook (its row
-  in card N's wire table); "Copy table". `caps.report` 2 takes the card.
+- #1688 (5120) hold names; #1692 (5121) `devClass`; #1703 (5122) the
+  report, the phone's side.
+- #1706 (5123; mends tagged 5127): the worker's side, the `dev` part by
+  cell; `caps.report`.
+- #1708 (5124): the room's row; the last one out writes the book (after
+  a join or a save refused, at the book's pace).
+- #1711 (5125): the Speed card (`caps.report` 2, `reportspeed`); GET
+  /dev/daybook (its wire row); "Copy table".
 
 ## Next
 
-- Sitting 7's list.
+- #1760 (5126), `tools/qa/mp/mp-heldsweep.mjs`: a station keeps the
+  phone's notes (its ring of holds); the run fails a debt-list hold the
+  page runs, 12 ms or more, that left none (`noteGaps`). Begun at 09:18:
+  cards H and J are finished, their `ready` files stale (the planning
+  session). `pack-page` left none: card P's #1757 notes it; PR 7 after it.
 
 ## Found
 
 - Card O: `split` goes only with `late`, where the pacer judges (over
   ~70 a second); when O's pacer judges at every rate, it follows.
-- Card O: still asking the device outside `deviceProfile.js`:
-  `paletteTex.js` (`SOFTWARE_GL`, held to `SOFT_GL`), `peerImpostor.js`,
-  `crashTrap.js`, `bodyBake.js`.
+- Card O: still asking the device outside `deviceProfile.js`: `paletteTex.js`, `peerImpostor.js`, `crashTrap.js`, `bodyBake.js`.
 - Card Q: a sitting card keeping `soft`, `seen`, `drawn` changes the About row's "no name on it".
 - Card E: a part reckoned ~4 times its stored size (a closer one: more
   room); a `bookFlush` export would spare `roomrow.js` the door's memory.
+- Card H: on today's `main` `pack-page` is over its own line (30.6 ms >
+  20, 3 times at `armour`; held-budget.mjs).
 
 ## Needs
 
-- PR 7 waits until cards H and J say `done`.
+- #1757 (card P, 5251) merged first: PR 7's sweep is green on the pair.

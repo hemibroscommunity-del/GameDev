@@ -104,6 +104,23 @@ changed on purpose under each; then section 6 crashes the run.
   `_desktopShieldToggle`). The test's own header already said Q.
 - **Fix**: press Q to raise, Q to lower. Green alone: 24 of 24. Tag 5036.
 
+### 5. `mp-wheelmap` check 4: the Frost Ridge plate says "No man's land 8" (the TEST; card J2)
+
+- Failing check: "walking out onto Frost Ridge, the name plate says so":
+  wanted the plate's second line `Lv 6–10`; the game says
+  "No man's land 8". The words under the minimap still read
+  "the thaw line · Lv 6–10" (that half was green).
+- The game moved on purpose: since v2.3.4113 (the owner, 2026-11-03: the
+  minimap's plate says where you are and whether you are safe) the plate's
+  second line in No man's land is `No man's land N` in red
+  (`src/game/plateSafety.js`), N the monster level there under a worker
+  that says `caps.nmlsteps` (v2.3.3767; first ring `nmlnear`'s since
+  v2.3.3690), so the band it replaces is not lost.
+- **Fix**: the check reads the game's own number (`__btNmlBadge().lvl`,
+  `nmlHere`), wants `No man's land N` on the plate and, under
+  `nmlsteps`, N inside the band the words name; outside No man's land, the
+  band alone. Green alone 3 of 3 (41 of 41), `questline` green. Tag 5420.
+
 ## Not run (the sample's edges)
 
 The other ~370 phone tests. The owner can ask for the full run.

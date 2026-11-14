@@ -403,10 +403,29 @@ word has no class. Two words the first draft of this page did not have:
    (whatever came into a dead player's bag after the death's wipe: nothing,
    for an honest death).
 
+**Built (card E, tag 5084): the count and the sum.** The two doors book
+what they mint and burn into the record's own `_econ` (part 7) as they run:
+a `mint` road its rise under `m`, a `burn` road its fall under `b`, a `set`
+its difference signed, a `move` or an `escrow` nothing, each read the way
+the sum reads it (whole coins, whole counts never below 0). A LOAD
+(`join_stored`, `GOLD_LOADS`) books nothing. A payout landing by the mail
+is handed to the door with its credit and books its own class
+(`mailMinted`: a mint all of it, the champion's prize its `house` part).
+The bag door holds the bag, not the record: the record is learned at its
+save (`bagEconOwn`, in `_saveRpg` before its put), and a bag no save has
+named yet keeps its counts beside it until that save folds them in (the
+same put). The join brings `_econ` back before any door runs (`join.js`),
+and a red skull killed by no player burns its purse by `nml_lost`.
+`server/test/world-sum.test.mjs` plays the room and holds the sum to 0.
+
 **Where value leaves an escrow by no road** (for the sum's PR, not a class):
 a stale fine is deleted (`bounty:`, `_bountySweep`: "the gold evaporates"),
 and a pile on the ground nobody takes runs out (`_tickLoot`) or its dungeon
-run closes. Each is a burn the world's sum counts at the record's end.
+run closes. Each is a burn the world's sum counts at the record's end. And two
+windows a restart can land in, for the storm (4.5): the fine is taken from
+the caller and put on the head in two runs (`threat.js`, best-effort by its
+own comment), and the champion's prize is paid before the entries it pays
+from are deleted (`gladiator.js`, the sweep converging after).
 
 ### The mark on a record that holds value
 
