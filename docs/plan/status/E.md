@@ -9,6 +9,8 @@ state: ready
 - PR 5 (5084, #1752), the world's sum: merged (sitting 8).
 - PR 6 (5085, #1756), the book's `econ` part; sitting 8's mend: one
   last-out writer (card A's), the part rides, `econ: false`, one `ECON_V`.
+- New live flags (rule 3, one line each in the switch table): PR 6 `econ`,
+  PR 8c `arenasettleplan`, PR 11 `xfer`.
 - PR 7 (5086, #1758), the shared test room and `DISTURBANCES`;
   `chaos-restart` moved onto it, its output the same.
 - PRs 8a, 8b (5087, 5088: #1759, #1761), two cases off `KNOWN`.
