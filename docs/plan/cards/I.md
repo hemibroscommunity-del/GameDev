@@ -8,7 +8,7 @@
 
 ## PRs, in order
 
-1. **(v2.3.5031) `docs/plan/census/traps.md`**, with your status file. A
+1. **(tag 5031) `docs/plan/census/traps.md`**, with your status file. A
    docs PR.
    - **One row for each heading of `docs/TRAPS.md`** (339 headings; the
      numbers run to §341 with gaps, and one heading has no number: give it
