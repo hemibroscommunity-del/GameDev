@@ -100,72 +100,190 @@ export const GOLD_SUMS = Object.freeze({
   orZeroClamp: (c, n, take) => Math.max(0, take ? (c || 0) - n : (c || 0) + n),
 });
 
+/* ═══ v2.3.5081: EVERY ROAD HAS A CLASS (grand plan step 4.4, card E PR 2) ═══
+ * Where the gold came from or went (docs/SHAPES.md part 3, which rules the
+ * edges).  Exactly one a road:
+ *   mint    gold that was in no record before (a reward, a sale to the shop);
+ *   burn    gold no record holds after (a price paid to the game);
+ *   move    one side of gold passing from one player's holding to ANOTHER
+ *           player's -- `other` is the road the other side lands by;
+ *   escrow  one side of gold passing between a player's holding and a record
+ *           the WORKER keeps for a stated purpose (ESCROW_PLACES) -- `other`
+ *           names it (a list where one shared helper feeds several).
+ * The world's sum (step 4.4) is: everything held equals the start, plus
+ * what was minted, less what was burned; a move and its other side, and an
+ * escrow and its record, add to nothing.  A SET road is classed by its
+ * difference (the purse after, less what the world held for that character
+ * before: the live purse, or for a load the stored record), and its counter
+ * books that difference signed.  gold-door.test §8 fails a road with no
+ * class, and a move or escrow with no other. */
+export const CLASSES = Object.freeze(['mint', 'burn', 'move', 'escrow']);
+/* v2.3.5081: the records an escrow road may name (SHAPES part 3).  Each is a
+   storage prefix but for three single keys; `death_pile:` is a player's pile
+   on the ground (its row when one is saved, the room's memory while it is up:
+   a dropped item's pile is a death pile's own, never saved -- itemdrop.js). */
+export const ESCROW_PLACES = Object.freeze(['bank:', 'mkt_order:', 'store_listing:', 'duelEscrow:', 'arena_entry:',
+  'arena_stake:', 'bounty:', 'jackpot:draw', 'death_pile:', 'inbox:', 'shop_stock']);
+
+/** v2.3.5081: what a road table's rows lack to be counted (gold-door.test
+ *  and bag-door.test §8): a class, a move's other road (a row of
+ *  `roadsOfOther`), an escrow's place.  [] when every row is whole. */
+export function classFaults(table, roadsOfOther) {
+  const bad = [];
+  for (const [name, row] of Object.entries(table)) {
+    const c = row && row.class;
+    if (!CLASSES.includes(c)) { bad.push(name + ': no class (' + String(c) + ')'); continue; }
+    const other = row.other;
+    if (c === 'mint' || c === 'burn') { if (other != null) bad.push(name + ': a ' + c + ' has no other side, yet names ' + JSON.stringify(other)); continue; }
+    if (other == null || other === '' || (Array.isArray(other) && !other.length)) { bad.push(name + ': a ' + c + ' with no other side'); continue; }
+    if (c === 'move') {
+      if (typeof other !== 'string' || !Object.prototype.hasOwnProperty.call(roadsOfOther, other)) bad.push(name + ': a move whose other side "' + other + '" is no road');
+      continue;
+    }
+    for (const o of (Array.isArray(other) ? other : [other])) if (!ESCROW_PLACES.includes(o)) bad.push(name + ': an escrow into "' + o + '", which is not a place that holds (ESCROW_PLACES)');
+  }
+  return bad;
+}
+
 /* ── EVERY ROAD GOLD MOVES BY ──
- * dir: 'give' (into the purse), 'take' (out of it) or 'set' (the purse made
- *      this; a load or a loss).
- * sum: the GOLD_SUMS row (give and take only).
- * at:  where its one caller is, for people (the test checks the caller).
+ * dir:   'give' (into the purse), 'take' (out of it) or 'set' (the purse made
+ *        this; a load or a loss).
+ * sum:   the GOLD_SUMS row (give and take only).
+ * at:    where its one caller is, for people (the test checks the caller).
+ * class: v2.3.5081, CLASSES above; other: a move's other road, an escrow's
+ *        place (ESCROW_PLACES), or null.
  * A new way to change gold is a new row here and one call that names it. */
-const R = (dir, sum, at) => Object.freeze({ dir, sum, at });
+const R = (dir, sum, at, cls, other = null) => Object.freeze({ dir, sum, at, class: cls, other: Array.isArray(other) ? Object.freeze(other.slice()) : other });
 export const GOLD_ROADS = Object.freeze({
   /* ── a character arrives ── */
-  join_stored:         R('set', null, 'join.js _handleJoin: the stored character'),
-  join_new:            R('set', null, 'join.js _handleJoin: a new character (the server\'s defaults, capped)'),
+  /* v2.3.5081: a load changes nothing the world holds (the stored record IS
+     the character while away) but the coin's fraction step 2 heals: a burn,
+     booked signed (a negative purse healed to 0 books a negative burn) */
+  join_stored:         R('set', null, 'join.js _handleJoin: the stored character', 'burn'),
+  join_new:            R('set', null, 'join.js _handleJoin: a new character (the server\'s defaults, capped)', 'mint'),
 
   /* ── paying for things ── */
-  amulet_craft:        R('take', 'plain', 'amulet.js _handleAmuletForge: craft an amulet'),
-  gem_extract:         R('take', 'plain', 'amulet.js _handleAmuletForge: take the gems out of a piece'),
-  weapon_forge:        R('take', 'plain', 'gear.js _handleForgeWeapon'),
-  harden:              R('take', 'plain', 'hardening.js _handleHardenWeapon'),
-  tonic_buy:           R('take', 'plain', 'cooking.js _handleShopPurchase'),
-  tonic_refund:        R('give', 'plain', 'cooking.js _handleShopPurchase: the tonic would not apply (an arena match)'),
-  farm_buy:            R('take', 'plain', 'farm.js _handleFarmBuy'),
-  pet_house:           R('take', 'whole', 'petbook.js _handlePetHouseBuy'),
-  clan_create:         R('take', 'plain', 'clans.js _handleClanCreate'),
-  arena_entry:         R('take', 'plain', 'gladiator.js _arenaJoin'),
-  shop_tool:           R('take', 'whole', 'shop.js _shopBuy: a lost tool bought back'),
-  shop_staple:         R('take', 'whole', 'shop.js _shopBuy: a staple'),
-  shop_pile:           R('take', 'whole', 'shop.js _shopBuy: from his pile'),
+  amulet_craft:        R('take', 'plain', 'amulet.js _handleAmuletForge: craft an amulet', 'burn'),
+  gem_extract:         R('take', 'plain', 'amulet.js _handleAmuletForge: take the gems out of a piece', 'burn'),
+  weapon_forge:        R('take', 'plain', 'gear.js _handleForgeWeapon', 'burn'),
+  harden:              R('take', 'plain', 'hardening.js _handleHardenWeapon', 'burn'),
+  tonic_buy:           R('take', 'plain', 'cooking.js _handleShopPurchase', 'burn'),
+  tonic_refund:        R('give', 'plain', 'cooking.js _handleShopPurchase: the tonic would not apply (an arena match)', 'mint'),   /* tonic_buy's burn, given back */
+  farm_buy:            R('take', 'plain', 'farm.js _handleFarmBuy', 'burn'),
+  pet_house:           R('take', 'whole', 'petbook.js _handlePetHouseBuy', 'burn'),
+  clan_create:         R('take', 'plain', 'clans.js _handleClanCreate', 'burn'),
+  arena_entry:         R('take', 'plain', 'gladiator.js _arenaJoin', 'escrow', 'arena_entry:'),
+  shop_tool:           R('take', 'whole', 'shop.js _shopBuy: a lost tool bought back', 'burn'),
+  shop_staple:         R('take', 'whole', 'shop.js _shopBuy: a staple', 'burn'),
+  shop_pile:           R('take', 'whole', 'shop.js _shopBuy: from his pile', 'burn'),   /* the shop keeps goods, never gold */
 
   /* ── selling ── */
-  shop_sell:           R('give', 'wholeClamp', 'shop.js _shopSell'),
-  weapon_sell:         R('give', 'orZero', 'gear.js _handleSellWeapon'),
+  shop_sell:           R('give', 'wholeClamp', 'shop.js _shopSell', 'mint'),
+  weapon_sell:         R('give', 'orZero', 'gear.js _handleSellWeapon', 'mint'),
 
   /* ── rewards ── */
-  quest_reward:        R('give', 'orZero', 'quests.js _handleQuestTurnIn'),
-  guild_rung:          R('give', 'orZero', 'guilds.js _handleGuildTurnIn'),
-  farm_order:          R('give', 'wholeFloor', 'farmorders.js _handleFarmOrder'),
-  daily_chest:         R('give', 'orZero', 'dailychest.js _handleChestOpen'),
-  dungeon_clear:       R('give', 'orZero', 'dungeon.js _dungeonComplete'),
-  boss_chest:          R('give', 'orZero', 'dungeonreward.js _dungeonReward'),
-  loot_gold:           R('give', 'orZero', 'index.js _handleLootPickup: a pile\'s gold'),
-  loot_weapon_sold:    R('give', 'orZero', 'index.js _handleLootPickup: a full bag sells the pile\'s weapon'),
-  mail_gold:           R('give', 'orZeroClamp', 'inbox.js _applyCreditToPs: every _creditPlayer gold credit, landed'),
+  quest_reward:        R('give', 'orZero', 'quests.js _handleQuestTurnIn', 'mint'),
+  guild_rung:          R('give', 'orZero', 'guilds.js _handleGuildTurnIn', 'mint'),
+  farm_order:          R('give', 'wholeFloor', 'farmorders.js _handleFarmOrder', 'mint'),
+  daily_chest:         R('give', 'orZero', 'dailychest.js _handleChestOpen', 'mint'),
+  dungeon_clear:       R('give', 'orZero', 'dungeon.js _dungeonComplete', 'mint'),
+  boss_chest:          R('give', 'orZero', 'dungeonreward.js _dungeonReward', 'mint'),
+  loot_gold:           R('give', 'orZero', 'index.js _handleLootPickup: a pile\'s gold', 'mint'),   /* a monster's pile: a player's pile holds goods only */
+  loot_weapon_sold:    R('give', 'orZero', 'index.js _handleLootPickup: a full bag sells the pile\'s weapon', 'mint'),
+  /* v2.3.5081: every credit lands here, so its own class is the CREDIT's,
+     from MAIL_CLASSES below by its opId's first word; the landing itself is
+     the mail (an escrow) paid on -- a credit to a player away waits in
+     `inbox:` first, one to a player here lands at once */
+  mail_gold:           R('give', 'orZeroClamp', 'inbox.js _applyCreditToPs: every _creditPlayer gold credit, landed', 'escrow', 'inbox:'),
 
   /* ── chance ── */
-  ace_flip_win:        R('give', 'orZero', 'gamble.js _handleAceFlipRequest: won'),
-  ace_flip_loss:       R('take', 'orZero', 'gamble.js _handleAceFlipRequest: lost'),
-  gamble_win:          R('give', 'plain', 'gamble.js _handleGambleRequest: won'),
-  gamble_loss:         R('take', 'plain', 'gamble.js _handleGambleRequest: lost'),
-  jackpot_ticket:      R('take', 'plain', 'cadence.js _handleJackpotDeposit'),
+  ace_flip_win:        R('give', 'orZero', 'gamble.js _handleAceFlipRequest: won', 'mint'),
+  ace_flip_loss:       R('take', 'orZero', 'gamble.js _handleAceFlipRequest: lost', 'burn'),
+  gamble_win:          R('give', 'plain', 'gamble.js _handleGambleRequest: won', 'mint'),
+  gamble_loss:         R('take', 'plain', 'gamble.js _handleGambleRequest: lost', 'burn'),
+  jackpot_ticket:      R('take', 'plain', 'cadence.js _handleJackpotDeposit', 'escrow', 'jackpot:draw'),
 
   /* ── between players ── */
-  gift_trade:          R('take', 'plain', 'trade.js _interceptTrade: the old gift trade, the sender'),
-  trade_window:        R('take', 'plain', 'trade2.js _handleTrade2Confirm: each side\'s gold'),
-  threat_levy:         R('take', 'plain', 'threat.js _interceptThreat: the 10% fine'),
-  nml_loss:            R('set', null, 'nomansland.js _nmlOnDeath: the purse goes to the killer\'s mail'),
+  gift_trade:          R('take', 'plain', 'trade.js _interceptTrade: the old gift trade, the sender', 'move', 'mail_gold'),   /* credit `trade:` */
+  trade_window:        R('take', 'plain', 'trade2.js _handleTrade2Confirm: each side\'s gold', 'move', 'mail_gold'),        /* credit `trade2:` */
+  threat_levy:         R('take', 'plain', 'threat.js _interceptThreat: the 10% fine', 'escrow', 'bounty:'),
+  /* v2.3.5081: a player's kill moves the purse to the killer's mail (credit
+     `nmlloot:`).  A red skull killed by a monster loses it to nobody -- a
+     burn through this same road (docs/plan/status/E.md, Needs: its own row) */
+  nml_loss:            R('set', null, 'nomansland.js _nmlOnDeath: the purse goes to the killer\'s mail', 'move', 'mail_gold'),
 
   /* ── into escrow, and back ── */
-  bank_deposit:        R('take', 'whole', 'bank.js _handleBankMove: in'),
-  bank_withdraw:       R('give', 'whole', 'bank.js _handleBankMove: out'),
-  market_order:        R('take', 'plain', 'market.js _mktPlaceOrder: a buy order\'s gold'),
-  market_unwind:       R('give', 'orZero', 'market.js _mktUnwind: a buy order\'s gold back'),
-  ah_offer_back:       R('give', 'orZero', 'storeoffer.js _soPlaceOneWrite: the old offer\'s gold back'),
-  ah_offer:            R('take', 'plain', 'storeoffer.js _soPlaceOneWrite: the new offer'),
-  escrow_debit:        R('take', 'plain', 'inbox.js _escrowDebitGold: a live player'),
-  escrow_debit_stored: R('take', 'plain', 'inbox.js _escrowDebitGold: the stored record of one who is away'),
-  escrow_debit_group:  R('take', 'plain', 'inbox.js _escrowDebitGoldTogether'),
+  bank_deposit:        R('take', 'whole', 'bank.js _handleBankMove: in', 'escrow', 'bank:'),
+  bank_withdraw:       R('give', 'whole', 'bank.js _handleBankMove: out', 'escrow', 'bank:'),
+  market_order:        R('take', 'plain', 'market.js _mktPlaceOrder: a buy order\'s gold', 'escrow', 'mkt_order:'),
+  market_unwind:       R('give', 'orZero', 'market.js _mktUnwind: a buy order\'s gold back', 'escrow', 'mkt_order:'),
+  ah_offer_back:       R('give', 'orZero', 'storeoffer.js _soPlaceOneWrite: the old offer\'s gold back', 'escrow', 'store_listing:'),
+  ah_offer:            R('take', 'plain', 'storeoffer.js _soPlaceOneWrite: the new offer', 'escrow', 'store_listing:'),
+  /* one shared helper, several records: the opId says which (`arenastake:`,
+     `store:<id>:pay|bid|offer`, `duel:`) */
+  escrow_debit:        R('take', 'plain', 'inbox.js _escrowDebitGold: a live player', 'escrow', ['arena_stake:', 'store_listing:']),
+  escrow_debit_stored: R('take', 'plain', 'inbox.js _escrowDebitGold: the stored record of one who is away', 'escrow', ['arena_stake:', 'store_listing:']),
+  escrow_debit_group:  R('take', 'plain', 'inbox.js _escrowDebitGoldTogether', 'escrow', ['duelEscrow:', 'arena_stake:', 'store_listing:']),
 });
+
+/* ═══ v2.3.5081: THE MAIL'S CLASS IS ITS CREDIT'S (SHAPES part 3, edge 2) ═══
+ * Every settlement pays through _creditPlayer (handoff rule 4), and its gold
+ * and goods land by ONE road each (`mail_gold`, bag.js `mail_item`).  So the
+ * class of what a credit carries is not the road's: it is the credit's, from
+ * this closed table, keyed by the FIRST WORD OF THE CREDIT'S opId.
+ *
+ * Why the opId and not `source`: `source` has 15 values and is too coarse to
+ * carry a class (`arena` is an entry refunded, a pot, a stake's cut, a stake
+ * won and a stake lost; `market` is three records and two directions).  The
+ * opId's first word is finer -- every gold or goods credit of one word has
+ * one class (the auction house's eight legs are all its listing paid on or
+ * given back) -- and it is already the credit's identity: the same on a
+ * retry, written on the inbox entry with it, and a literal in every caller
+ * (gold-door.test §8 fails a credit whose word has no row here).
+ *
+ * A row: {class, other} as a road's, for the GOLD and GOODS a credit lands
+ * (a weapon, a piece of gear, a pet or an achievement is another kind, not
+ * summed by these roads).  `house` (edge 3): the champion's prize is the
+ * entries held (an escrow paid on) and the house's gold (a mint) in ONE
+ * credit, so it carries the two amounts -- `payload.house` the minted part
+ * -- rather than becoming two credits a restart could split (handoff rule
+ * 5).  The payload field is written by the PR that counts it (card E). */
+const M = (cls, other = null, house = false) => Object.freeze({ class: cls, other, house });
+export const MAIL_CLASSES = Object.freeze({
+  admin:            M('mint'),                          /* the owner's grant (admin.js) */
+  allywar:          M('mint'),                          /* an alliance war's flat pay */
+  clanwar:          M('mint'),                          /* a clan war's flat pay */
+  dq:               M('mint'),                          /* a daily quest's gold */
+  season:           M('mint'),                          /* a season tier's gold or goods */
+  loginspin:        M('mint'),                          /* the login wheel */
+  spinpot:          M('mint'),                          /* the daily spin's pot: a promise until paid (double or nothing can end it) */
+  questitem:        M('mint'),                          /* a quest's item, the bag full */
+  risechest:        M('mint'),                          /* the chest on a rise */
+  jackpotwin:       M('escrow', 'jackpot:draw'),        /* the weekly pool, paid on */
+  duelpot:          M('escrow', 'duelEscrow:'),
+  duelrefund:       M('escrow', 'duelEscrow:'),
+  arenarefund:      M('escrow', 'arena_entry:'),
+  arenapot:         M('escrow', 'arena_entry:', true),  /* the entries held, and the house's gold (`house`) minted */
+  arenastakecut:    M('escrow', 'arena_stake:'),
+  arenastakewin:    M('escrow', 'arena_stake:'),
+  arenastakeloss:   M('escrow', 'arena_stake:'),
+  arenastakerefund: M('escrow', 'arena_stake:'),
+  arenaachv:        M('mint'),                          /* an achievement, no gold or goods: listed so every word has a row */
+  settle:           M('escrow', 'mkt_order:'),          /* the General Store's legs: a buy order's gold paid on */
+  mktunwind:        M('escrow', 'mkt_order:'),
+  refund:           M('escrow', 'mkt_order:'),
+  store:            M('escrow', 'store_listing:'),      /* the Auction House: pay, goods, gold, bid and offer refunds, unwind, refund */
+  bountypay:        M('escrow', 'bounty:'),
+  nmlloot:          M('move', 'nml_loss'),              /* the dead player's purse (the gold); goods are a pile's */
+  trade:            M('move', 'gift_trade'),            /* the old gift trade (gold: GOLD_ROADS, goods: bag.js, the same name) */
+  trade2:           M('move', 'trade_window'),          /* the trade window's gold and goods (its weapons and pets: other kinds) */
+});
+/** The class of a credit by its opId, or null when its first word has no row. */
+export function mailClassOf(opId) {
+  if (typeof opId !== 'string') return null;
+  const w = opId.split(':')[0];
+  return Object.prototype.hasOwnProperty.call(MAIL_CLASSES, w) ? MAIL_CLASSES[w] : null;
+}
 
 const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
