@@ -1,6 +1,6 @@
 card: P
 branch: claude/plan-p-7-tree-tiers (one branch a PR, each begun from the one before)
-prs: #1713, #1715, #1716 (5241-5243, merged); #1718, #1719, #1736 (5244-5246) ready; PR 7 (5247) waits
+prs: #1713, #1715, #1716 (5241-5243, merged); #1718, #1719, #1736 (5244-5246) ready; #1743 (5247) ready; tree-tiers (5248) working
 state: working
 
 ## Done
@@ -12,11 +12,15 @@ state: working
   `shipped.json`; the sprite bot's twins read as their PNGs' rows.
 - #1719 (5245): the 19 `.m4a` removed. #1736 (5246), `npc-heads`: the
   portraits let go of once loaded; `artCache` line 112 -> 109.1.
+- #1743 (5247), `fx-coinflip`: Ace's coin
+  strips let go of; his window asks for the warmed address; `artCache`
+  45.8 -> 43.7, line 109.1 -> 107.0. Taken before `tree-tiers`, which
+  waited on its question.
 
 ## Next
 
-- PR 7 (5247), `tree-tiers` as colour numbers (`?treenumbers=0`): built,
-  measured, waits on the question below.
+- 5248, `tree-tiers` as colour numbers (`?treenumbers=0`), with the
+  probe mended (cacheBytes.js; guard cache-bytes): three runs going.
 
 ## Found
 
@@ -28,13 +32,9 @@ state: working
 
 ## Needs
 
-- ASKED (2026-11-14, once): `tree-tiers` as numbers is built and measured
-  (two runs): the trees' decoded pictures are gone, `buffers` +1.3 (21.2
-  -> 22.5), but `artCache` stays 45.8: `__btTex` (`pixiApp.js`, not card
-  P's) counts a numbers texture in Pixi's cache at 4 bytes a pixel (5.60
-  MB for the trees), though its page copy is the numbers `buffers` counts.
-  May P mend the probe (a numbers source counts 0 there, as an emptied
-  canvas does), or does the backlog only let go of pictures?
+- Answered (2026-11-14): P mends the probe in the tree-tiers PR (a
+  numbers source counts 0 in `__btTex`), with the chip's count shown, the
+  lines moved by what was measured, and a break proof.
 - Answered: a numbers PR may raise `buffers` by what it moves there;
   slimes as you walk (after H), the effects' twins on.
 - The backlog's `pack-page` waits for card H's `done`.
