@@ -1,21 +1,21 @@
 card: H
 branch: claude/grand-plan-h-5-strip-made (one branch a PR, each begun from the one before, as W's are: merge them in order)
-prs: #1668 (merged), #1675 (merged), #1681 (ready), #1700 (ready), PR 5 on the branch above (ready; its number goes here with PR 6's commit)
+prs: #1668, #1675, #1681 (merged), #1700 (ready: sitting 2's hold answered), PR 5 on the branch above (ready; its number goes here with PR 6's commit)
 state: ready
 
 ## Done
 
-- #1668 (tag 5040, merged) the worker's restart; #1675 (5041, merged) whose row.
-- #1681 (5042) `gear-sheet` and `portrait` off the list: both were the
-  Equipment screen's figure, now a step at a time in play, its body kept and
-  witnessed. One fix earned both lines (the card's `portrait` PR is this).
+- #1668 (5040) the worker's restart; #1675 (5041) whose row; #1681 (5042)
+  `gear-sheet` and `portrait` off the list (the Equipment screen's figure).
 - #1700 (5043) `masked-bake` off the list: a frame of an image goes to the
-  bake's worker as its address. 33 of 33 inputs byte for byte; 7.7 ms. Its
-  merge deploys the worker (the picture door's list).
+  bake's worker as its address; 7.7 ms. Sitting 2's hold answered: every
+  exit of a job lets its sheets go (`jobDone`), keep 4 sheets / 4 MB,
+  `keptMB` reported, a `MEMORY-MAP.md` row; 31 of 31 inputs the same.
+  Its merge deploys the worker (the picture door's list).
 - PR 5 (5044) `strip-made` off the list: a strip numbered for its row on the
   reader's worker (`stripRows.js`): 1000 of 1000 made-up strips the page's
   rule, 35 of 35 in play; town 34 holds -> 11. Its merge deploys the worker
-  (strip-door.test).
+  (strip-door.test). Stacked on #1700: merge that first.
 
 ## Next
 
