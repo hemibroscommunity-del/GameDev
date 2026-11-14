@@ -1,6 +1,6 @@
 card: L
 branch: claude/plan-l-14-harvest-door (each PR on main, main merged in)
-prs: #1746 to #1835 (merged; #1791, #1796, #1801 through #1809, #1824), #1839 (5213), PR 5 tag 5214: ready
+prs: #1746 to #1835 (merged; #1791, #1796, #1801 through #1809, #1824), #1839 (5213), #1851 (5214)
 state: ready
 
 ## Done
