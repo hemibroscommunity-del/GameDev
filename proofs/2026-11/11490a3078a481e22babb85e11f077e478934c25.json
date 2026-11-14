@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "11490a3078a481e22babb85e11f077e478934c25",
+  "tree": "bd49271846d1376437f2a4cdf91eb83625f0bcdb",
+  "committedAt": "2026-11-14T02:03:20-08:00",
+  "subject": "Merge pull request #1754 from hemibroscommunity-del/claude/plan-t-1-switches",
+  "files": 7560,
+  "bytes": 948943246,
+  "listingSha256": "5c2f019ea6aa89d6a3348ef9efab001105df1d7cfef80b165b1d5c2e925dd1b3",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

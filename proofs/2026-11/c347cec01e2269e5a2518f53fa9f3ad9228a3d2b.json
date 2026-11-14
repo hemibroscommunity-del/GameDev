@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c347cec01e2269e5a2518f53fa9f3ad9228a3d2b",
+  "tree": "815022bf71151e627854dc569c4c757d96d80da9",
+  "committedAt": "2026-11-14T02:03:17-08:00",
+  "subject": "Merge pull request #1752 from hemibroscommunity-del/claude/plan-e-5-worldsum",
+  "files": 7553,
+  "bytes": 948798448,
+  "listingSha256": "bd5af13d266cb245a5689fc6102851d3643ed7eb6d4a02e0cc75fa2304d634da",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

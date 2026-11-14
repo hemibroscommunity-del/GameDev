@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "f9f231dde4fba04541dee5c9728f6883c61b0ba9",
+  "tree": "67551fae783517b361acce8cbd7980bf4a7bedf4",
+  "committedAt": "2026-11-14T02:03:02-08:00",
+  "subject": "Merge pull request #1748 from hemibroscommunity-del/claude/plan-l-2-phase-table",
+  "files": 7552,
+  "bytes": 948744833,
+  "listingSha256": "bb9358845e65c028375dd3fd285f1e0990296f7e4e751aae1240d2cd00dfc82c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

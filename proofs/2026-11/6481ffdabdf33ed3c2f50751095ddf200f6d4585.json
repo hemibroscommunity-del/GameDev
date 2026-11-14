@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6481ffdabdf33ed3c2f50751095ddf200f6d4585",
+  "tree": "28a4b67255d655503c46a22bedf8d0fbbfba3a71",
+  "committedAt": "2026-11-14T02:03:05-08:00",
+  "subject": "Merge pull request #1757 from hemibroscommunity-del/claude/plan-p-10-pack-note",
+  "files": 7552,
+  "bytes": 948745233,
+  "listingSha256": "f8b05c2d8f96c5b9d3b71cabd8370ee070bcbc1a7634b986c06be147e4fc68b2",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

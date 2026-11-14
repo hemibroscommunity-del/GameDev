@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "49afa068fc26850edc93c2251396debfbedf8fb7",
+  "tree": "5a577f07c5f430854671ea5933eba531b110acdc",
+  "committedAt": "2026-11-14T02:03:08-08:00",
+  "subject": "Merge pull request #1760 from hemibroscommunity-del/claude/plan-a-7-heldsweep",
+  "files": 7552,
+  "bytes": 948750777,
+  "listingSha256": "ebd9a752dcae1e0bd3dadd6baa525d5615d5267167fbbdf47d07a51517b9d286",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
