@@ -75,6 +75,11 @@
  *  14. `ps.life = "alive"` in a new function of monsterlife.js -> FAIL 2
  *  15. tileRenderer.js's `this.currentZone =` renamed (its besides gone)
  *                                                         -> FAIL 2
+ * v2.3.5212 (the party door: a Map's set / delete / clear are writes):
+ *  16. `this._partyByPlayer.set(accepterId, p)` back in _handlePartyAccept
+ *                                                         -> FAIL 2
+ *  17. `room._partyByPlayer.delete(id)` in a new function of alliance.js
+ *                                                         -> FAIL 2
  *
  * Run from the repository's root: node tools/guards/phase-table.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
@@ -244,6 +249,13 @@ const DOOR_SUITES = Object.freeze({
       { file: 'server/src/gladiator.js', text: 't.status = ', why: 'an arena tournament: the `arena` row' },
       { file: 'server/src/arena.js', text: 'tournament.status = ', why: 'the old Arena object\'s tournament (kept for its binding)' },
     ] },
+  /* v2.3.5212: the party door -- a Map, so its set / delete / clear are
+     writes too (writesIn) */
+  'server/test/party-door.test.mjs': { field: 'this._partyByPlayer', fn: '_partyIn', holds: '§2: no set, delete, clear or new Map of _partyByPlayer in server/src but in _partyIn and its births',
+    prop: '_partyByPlayer', besides: [
+      { file: 'server/src/party.js', text: 'this._partyByPlayer = new Map()', why: 'the map\'s birth, empty, before a load or an accept fills it (through _partyIn)' },
+      { file: 'server/src/clanparty.js', text: 'this._partyByPlayer = new Map()', why: 'the map\'s birth, empty, before a clan becomes a party (through _partyIn)' },
+    ] },
 });
 const SCAN_DOORS = Object.freeze({
   'session (worker)': 'session-door.test plays the phases but fails no second writer of session.phase',
@@ -299,6 +311,9 @@ function writesIn(rel, prop, value) {
     UnaryExpression(path) { if (value === undefined && path.node.operator === 'delete' && propOf(path.node.argument) === prop) hit(path, path.node); },
     CallExpression(path) {
       const c = path.node.callee;
+      /* v2.3.5212: a door's field that is a Map (the party's
+         this._partyByPlayer) is written by its own set, delete and clear */
+      if (value === undefined && c.type === 'MemberExpression' && ['set', 'delete', 'clear'].includes(propOf(c)) && propOf(c.object) === prop) { hit(path, path.node); return; }
       if (!(c.type === 'MemberExpression' && c.object.type === 'Identifier' && c.object.name === 'Object' && propOf(c) === 'assign')) return;
       for (const a of path.node.arguments.slice(1)) {
         if (a.type !== 'ObjectExpression') continue;

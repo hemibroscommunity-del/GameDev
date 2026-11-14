@@ -404,6 +404,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `emotemoves` | worker | switch | v2.3.3392 | false | logic | `emotes` | no | No emote move is relayed and no pose kept; the plain emotes go on. |
 | `emotes` | worker | switch | v2.3.3391 | false | logic |  | no | No emote is relayed, and caps.emotes false shuts the picker at the next join. |
 | `leaderidleat` | worker | switch | v2.3.4378 | false | logic |  | no | The party leader's idle clock counts only a `seen` above 0, as before. |
+| `partydoor` | worker | switch | v2.3.5212 | false | logic |  | no | A player can be put in a party that does not list them, as the lines before the party door could have (nothing does today). |
 | `partykeep` | worker | switch | v2.3.3276 | false | logic |  | no | Parties are not kept: the old cap and the away window remove a dropped member. |
 | `power` | worker | switch | v2.3.5481 | false | logic |  | no | Un-advertises the power index: no board report carries one, so the Power board empties as players report and the other boards are as they were. |
 | `race` | worker | switch | v2.3.3525 | false | logic |  | no | Lil Bro's race un-advertised and none started. |
