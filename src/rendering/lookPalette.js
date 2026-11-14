@@ -132,9 +132,11 @@ const _atlasWanted = (() => { try { return !/(^|[?&])lookatlas=0(&|$)/.test(wind
 let _why = 'default';
 function wantedByAddress() {
   try {
-    const nav = typeof navigator !== 'undefined' ? navigator : null;
-    const c = lookPaletteChoice(window.location.search || '', nav && nav.userAgent, nav && nav.userAgentData && nav.userAgentData.platform,
-      nav && nav.maxTouchPoints);   /* v2.3.3842: a Mac too (an iPad, with touch, keeps it) */
+    /* v2.3.5228: this page's device, asked of game/deviceProfile.js by the
+       choice itself (the lanes' `look` knob and its overrides: card O PR 8);
+       this file reads no navigator.  v2.3.3842: a Mac too (an iPad, with
+       touch, keeps it) */
+    const c = lookPaletteChoice(window.location.search || '');
     _why = c.why;
     return c.on;
   } catch (e) { return true; }

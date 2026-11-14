@@ -51,7 +51,7 @@
  *  17. v2.3.5089: an arena match's settlement (gladiator.js), its plan on,
  *      writes the old order's puts and ONE more, its plan (and deletes it
  *      once paid: two rows a match): 6 puts in a 1 v 1; off (the default
- *      until the owner says yes) the old order's 5;
+ *      until the owner's yes, v2.3.5095) the old order's 5;
  * A line here may move when a feature really needs the rows: say so in the
  * PR, in plain words, as the memory budget asks (CLAUDE.md).
  */

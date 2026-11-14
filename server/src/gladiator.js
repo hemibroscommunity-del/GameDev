@@ -112,10 +112,13 @@ export const arenaMethods = {
      costs two rows a match, its put and its delete, and a cost is the
      owner's to say yes to.  Off, the old order runs, its hole included.  A
      plan already on file is finished either way (_arenaStakeSweep,
-     _arenaSettleWait): turning it off never strands one. */
+     _arenaSettleWait): turning it off never strands one.
+     v2.3.5095: ON -- the owner's yes, 2026-11-14 ("Just go recommended", the
+     planning session's recommendation being yes); `arenasettleplan: false`
+     puts back the old order. */
   _arenaSettlePlanOn() {
     const f = this._liveFlags;
-    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'arenasettleplan') && f.arenasettleplan);
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'arenasettleplan') && !f.arenasettleplan);
   },
 
   /* HTTP surface -- the worker routes /api/arena/* here (old DO
@@ -608,7 +611,7 @@ export const arenaMethods = {
          1 v 1, 32 became 52 in a 10 v 10).  Now a match's settlement costs
          TWO rows more than the old order whatever its size -- the plan's put
          and, when it is finished, its delete (cost-guard §17).  Sitting 10:
-         off until the owner says yes (`arenasettleplan: true` turns it on);
+         off until the owner said yes (on since v2.3.5095; `arenasettleplan: false` turns it off);
          and the oplog prune waits for every open plan (_arenaSettleWait), or
          a plan a deploy left and a join found 48 h later paid its legs
          again. */

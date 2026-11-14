@@ -65,9 +65,10 @@ const KNOWN = new Map([
      every stake record in ONE run before a coin moves, pays each leg once by
      its opId, and the sweep FINISHES a planned record rather than refunding
      it.  KNOWN is empty: step 4.5's line.
-     Sitting 10: the plan is OFF until the owner says yes to its cost (two
-     rows a match), so case 6 runs it ON (`arenasettleplan: true`); off, the
-     old order's hole is as it was. */
+     Sitting 10: the plan was OFF until the owner said yes to its cost (two
+     rows a match), so case 6 runs it ON (`arenasettleplan: true`), as it now
+     is by default (v2.3.5095, the owner's yes); off, the old order's hole is
+     as it was. */
 ]);
 const COUNT_KNOWN = process.env.CHAOS_KNOWN === '1';
 

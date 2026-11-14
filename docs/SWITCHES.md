@@ -66,6 +66,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 |---|---|---|---|---|---|---|---|---|
 | `accuracy` | worker | switch | v2.3.4480 | false | logic |  | no | Counts no hits for the accuracy record, answers its asks with off and un-advertises the cap (what is stored stays). |
 | `areachoice` | worker | switch | v2.3.3528 | false | logic |  | no | The PvP area rule counts a blow either way, not only one you landed. |
+| `arrowlane` | worker | switch | v2.3.5540 | false | logic |  | no | Arrows and bolts are back on the plain 210 ms floor: an archer who steps in between shots loses an arrow that lands too soon after the last. |
 | `bigorb` | worker | switch | v2.3.2849 | false | logic |  | no | Un-advertises the staff's big orb: a phone that joins after fires the old three orbs, with no blast. |
 | `?bowfeel` | page | switch | v2.3.4802 | =0 (remembered; =1 forgets) | logic |  | no | The bow's old flick, not its draw, on this device. |
 | `bowvolley` | worker | switch | v2.3.2808 | false | logic |  | no | Un-advertises the bow's volley: a phone that joins after fires the old single arrow and blast. |
@@ -142,7 +143,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 |---|---|---|---|---|---|---|---|---|
 | `?ladderpix` | page | switch | v2.3.5225 | =0, off, false | chip | `govern` | no | The pixel rungs are off: every pixel the screen and the budget allow, whatever the rung. |
 | `?lane` | page | lever | v2.3.5221 | =full, =light or =thirty | none |  | no | This page draws in the named lane, whatever its device's facts pick. |
-| `lookpalette` | both | switch | v2.3.3716 | off_lookpalette: true; ?lookpalette=0 (=1 builds it anyway) | chip |  | onWindows, onMac in src/game/lookPaletteChoice.js | Each look's copy is baked on first sight again, not coloured on the chip. |
+| `lookpalette` | both | switch | v2.3.3716 | off_lookpalette: true; ?lookpalette=0 (=1 builds it anyway) | chip |  | onWindows, onMac (v2.3.5228: the look's overrides, drawLanes.js) in src/game/deviceProfile.js | Each look's copy is baked on first sight again, not coloured on the chip. |
 | `?pixbudget` | page | switch | v2.3.5140 | =0 (off), or a number: the budget to try | chip |  | no | The drawing resolution is no longer held to the pixel budget. |
 | `?res` | page | value | v2.3.3339 | a number: the drawing resolution | chip |  | no | Sets the drawing resolution by hand. |
 | `?speedms` | page | lever | v2.3.3339 | a number of ms | none |  | no | The Speed test measures for this long, not 4 s. |
@@ -166,7 +167,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `disable_offer_sweep_all` | worker | switch | v2.3.4412 | true | logic |  | no | Thrown, the store's offer sweep goes back to the old first-20 pass. |
 | `?droplines` | page | switch | v2.3.3627 | =0 | logic |  | no | No drop lines in the chat for what a kill drops. |
 | `econ` | worker | switch | v2.3.5085 | false | logic |  | no | Nothing is counted into a character's minted and burned (`_econ`) or the day's book's economy part; gold and items move as before. |
-| `econresetput` | worker | switch | v2.3.5094 | true | logic |  | no | Thrown (true), a character's restart with nobody in the room writes today's book at once, in the delete's own run (one put more): the owner's card then never reads it as a loss; off until the owner says yes. |
+| `econresetput` | worker | switch | v2.3.5094 | false | logic |  | no | A character's restart with nobody in the room no longer writes today's book at once: the owner's card may read it as a loss until a later count. On since v2.3.5095 (the owner's yes; one put a restart in an empty room). |
 | `?equipredraw` | page | switch | v2.3.5046 | =0 | logic |  | no | A change of worn gear is set all at once again, not in pieces a frame apart. |
 | `event_cape_rate` | worker | value | v2.3.2027 | a number | logic |  | no | The event cape's drop rate, a number in place of the shipped one. |
 | `gearlevel` | worker | switch | v2.3.3544 | false | logic | `onelevel` | no | Armour, shields and amulets ask Defense points and Magic again, not your level. |
@@ -225,6 +226,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `report` | worker | switch | v2.3.5122 | false | logic |  | no | Un-advertises the field report, so no phone sends its smoothness, and drops any that still comes. |
 | `reportlanes` | worker | switch | v2.3.5221 | false | logic | `report`, `reportspeed` | no | The field report no longer takes a lane but full, the governor's rung or the self-test (caps.report back to 2). |
 | `reportspeed` | worker | switch | v2.3.5127 | false | logic | `report` | no | The Speed test's card is no longer taken (caps.report back to 1); the smoothness reports carry on. |
+| `roomrewind` | worker | lever | v2.3.5288 | true | none |  | no | Thrown (true), the owner's lever that puts the whole room back to an earlier time works (its dry run, then its do); unset or false, the default, both its steps answer "off". |
 | `roomrow` | worker | switch | v2.3.5124 | false | logic | `daybook` | no | Nothing of the room's own row is added into the day's book. |
 | `storesize` | worker | switch | v2.3.5287 | false | logic | `daybook` | no | The storage's size is not read into the day's book (its owner's card says "not read that day"); nothing else changes. |
 | `testmode` | worker | lever | v2.3.3430 | false | none |  | no | Turns every character's test mode off at once, every check back on. |
@@ -272,7 +274,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?keepimage` | page | switch | v2.3.3606 | =0 | memory |  | no | A canvas read back is kept as a canvas, not an image. |
 | `?loudclear` | page | switch | v2.3.3449 | present | chip |  | no | Every clear is made, not skipped when nothing changed. |
 | `?nopalette` | page | switch | v2.3.3190 | present | memory |  | no | No colour-number pictures: every picture held whole. |
-| `?onebatch` | page | switch | v2.3.3447 | =0 or =1 | chip |  | SOFTWARE_GL in src/rendering/paletteTex.js | The three sprite programs (=0), or the one program (=1), whatever the device. |
+| `?onebatch` | page | switch | v2.3.3447 | =0 or =1 | chip |  | softRenderer, onWindows, onMac (v2.3.5228: the program's overrides, drawLanes.js) in src/game/deviceProfile.js | The three sprite programs (=0), or the one program (=1), whatever the device. |
 | `picnumbers` | both | switch | v2.3.3715 | off_picnumbers: true; ?picnumbers=0 | memory |  | no | Monster strips are held as pictures again, not as colour numbers. |
 | `?poolkeep` | page | switch | v2.3.3152 | present | memory |  | no | The texture pool is not trimmed when idle. |
 | `?textkeep` | page | switch | v2.3.3633 | present | memory |  | no | A Text that is gone keeps its texture. |
@@ -314,6 +316,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `pathall` | worker | switch | v2.3.3726 | false | logic | `movepath` | no | Only a phone that asks with ?diet=1 gets the move glide. |
 | `rest` | worker | switch | v2.3.3539 | false | logic |  | no | Un-advertises the Hotel's rest: it rests nobody and pays no Well Rested XP. |
 | `ride` | worker | switch | v2.3.3776 | false | logic |  | no | Un-advertises riding and ends every ride on the rider's next move. |
+| `?ridecoast` | page | switch | v2.3.5440 | =0, off, false | logic |  | no | The board starts at top speed and stops the moment you let go, as before: no pushes to speed up, no roll-off. |
 | `rollwindow` | worker | switch | v2.3.3292 | false | logic |  | no | A roll claim is trusted as before, paid or not. |
 | `safeheal` | worker | switch | v2.3.3569 | false | logic |  | no | The safe ground's heal is the wilds' trickle again. |
 | `serverdead` | worker | switch | v2.3.4373 | false | logic |  | no | A phone's move may write `dead` again (the move's write back). |
@@ -389,6 +392,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?flipbake` | page | switch | v2.3.3577 | =0 | logic |  | no | Flipped facings are not baked from their source, as before. |
 | `?folkskills` | page | switch | v2.3.5462 | =0 | memory | `lookfolk` | folkSkillReady in src/rendering/folkSkill.js | The townsfolk work in card TF PR 1's poses again (Chef Blaze and Woodworker Bro the pickup, Farmer Bro standing), and the trades' figures (the `skills` look set) are not loaded. |
 | `?folkwork` | page | switch | v2.3.3949 | =0 | logic |  | no | The townsfolk walk but stand at their stops, not work. |
+| `?framepack` | page | switch | v2.3.5257 | =0, off, false | memory |  | no | A monster strip's colour numbers are kept whole in the page once on the chip, as before, not deflated a frame at a time. |
 | `?fxmade` | page | switch | v2.3.5249 | =0 | memory |  | no | The effects the game's tools made are drawn from their full-colour pictures, as before, not their 256-colour twins. |
 | `?fxsheets` | page | switch | v2.3.5252 | =0 | memory |  | no | The effects cut from the owner's sheets (the stun stars, the whirlwind, the grease, woodchips, rocks and splash bursts) are drawn from their full-colour pictures, as before. |
 | `?gripguess` | page | switch | v2.3.3399 | =0 | logic |  | no | The bow's grip between shots as it was, not guessed. |
@@ -523,7 +527,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `alliance` | worker | switch | v2.3.3313 | false | logic | `partykeep` | no | No alliance status, names, wars or board; tags come off at the next vitals echo. |
 | `arenaap` | worker | switch | v2.3.3481 | false | logic |  | no | The arena champion is paid gold alone, no AP, and the cap is un-advertised. |
 | `arenaeatgate` | worker | switch | v2.3.4413 | false | logic |  | no | Eating in an arena match is gated by the match flag alone, as before. |
-| `arenasettleplan` | worker | switch | v2.3.5089 | true | logic |  | no | Thrown (true), an arena match's stakes settle by a plan, one record a match (two rows: its put and its delete), so a restart mid-settlement loses nothing; off until the owner says yes. |
+| `arenasettleplan` | worker | switch | v2.3.5089 | false | logic |  | no | An arena match's stakes settle in the old order again (the losers stamped first, then each payout in a write of its own): a restart mid-settlement can lose the stakes. On since v2.3.5095 (the owner's yes; two rows a match). |
 | `arenastakeonewrite` | worker | switch | v2.3.4796 | false | logic |  | no | An arena sponsor's stake goes back to its old two writes. |
 | `boards2` | worker | switch | v2.3.4355 | false | logic |  | no | Un-advertises the boards with faces: records no spin, stamps no face or level, retires no row. |
 | `chatguard` | worker | switch | v2.3.3396 | false | logic |  | no | All three chat guards off: chat and emotes spend the relay bucket again, nothing filtered or cleaned. |
@@ -587,6 +591,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `relaylist` | worker | switch | v2.3.3304 | false | logic |  | no | Relays every type that is not privileged again (the old deny-list). |
 | `?room` | page | lever | v2.3.217 | a room's name | none |  | no | Joins the named room, not the lobby's. |
 | `?wheelwhole` | page | switch | v2.3.3318 | present | logic |  | no | Asks for every world monster on the way in, not only those near. |
+| `wiredoor` | worker | switch | v2.3.5184 | false | logic |  | no | Every message and the room's web routes reach their handlers unchecked again, as before the wire door; a mute of `__proto__` is taken again. |
 | `?wirereset` | page | switch | v2.3.5207 | =0 | logic |  | no | The monsters' balls in flight, their warnings on the ground and the impact rings carry over a change of place again, emptied only where a way out did it by hand or by their own clock. |
 
 ## world
