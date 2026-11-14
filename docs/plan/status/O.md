@@ -1,6 +1,6 @@
 card: O
-branch: claude/plan-o-8-program (one branch a PR: claude/plan-o-<n>-<word>; main 64bb498 merged in)
-prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832 (merged); #1841 (5228, sitting 16), #1836 (5226: after #1837), #1850 (5229): ready; PR 10 (5230, working)
+branch: claude/plan-o-6-crowd (one branch a PR: claude/plan-o-<n>-<word>; card T's #1837 head d7ce4ff merged in)
+prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841 (merged); #1836 (5226: right after #1837), #1850 (5229), #1854 (5230): ready
 state: ready
 
 ## Done
@@ -11,18 +11,20 @@ state: ready
   only in `deviceProfile.js`; #1832 (5223) every phone test names its lane.
 - #1836 (5226): the crowd cap a knob (50, 30, 15); `?laddercrowd=0`; a
   crowd step that hides no one is passed (sitting 15's medium).
-- #1841 (5228): `program` and `look` knobs; their fallbacks `OVERRIDES`
+- #1841 (5228, merged): `program` and `look` knobs; their fallbacks `OVERRIDES`
   asked of `deviceProfile.js` alone; `one-program.test` (new).
 - #1850 (5229): the passes (shine, shadows, still water) knobs of the chip
   axis after the rate; `?ladderpass=0`; (A) revised: a kept rung keeps the
   rate only (the planning session's word); `ladder-passes.test` (new).
-- PR 10 (5230): the strip slice the lanes' `queue` knob (4 ms; `thirty` 8),
+- #1854 (5230): the strip slice the lanes' `queue` knob (4 ms; `thirty` 8),
   never the frame's length; BUDGETS part 8's #6 gone.
 
 ## Next
 
-- #1836 has #1837's head (036d9b4) merged in: it lands right after #1837.
-- PR 11 (caches) waits for card P; 12 for card T's PR 6.
+- #1836 has #1837's head (d7ce4ff) merged in: it lands right after #1837;
+  then main into #1850 and #1854 (sitting 17).
+- PR 11 (caches) waits for card P; 12 for card T's PR 6; 13 for card SK;
+  14 (the self-test) after #1841 and #1850 (it meets every program's file).
 
 ## Found
 

@@ -484,7 +484,10 @@ export function stateWritesFromRendering({ live = false } = {}) {
    7593b4e): effectsRenderer.js 9871 -> 9870 (card P's #1745, the trees'
    numbers).  v2.3.5371 (the gatekeeper, sitting 14, main 1cce0b2):
    entityRenderer.js 8961 -> 8955 (card TF's #1812, the townsfolk's trades
-   drawn from the `skills` set). */
+   drawn from the `skills` set).  v2.3.5373 (the gatekeeper, sitting 16, main
+   64bb498): wsClient.js 3296 -> 3039 and its setupWebSocket 3097 -> 2839
+   (card K's #1829, the action door: the send lists became the door's rows
+   in src/game/actions.js). */
 export const LINES = Object.freeze({
   /* a file's code lines.  These files have a line of their own, at their
      count on the day; every other file under src/ stays at or under
@@ -495,7 +498,7 @@ export const LINES = Object.freeze({
     'src/ui/BroTown.jsx': 8371,
     'src/data/gameSystems.js': 5622,
     'src/data/gameDisplay.js': 4268,
-    'src/networking/wsClient.js': 3296,
+    'src/networking/wsClient.js': 3039,
     'src/networking/gameEvents.js': 2639,
     'src/game/monsterCombat.js': 1792,
   }),
@@ -505,7 +508,7 @@ export const LINES = Object.freeze({
      stays at or under OTHER_FUNCTION */
   FUNCTION: Object.freeze({
     'src/ui/BroTown.jsx#BroTown': 7801,
-    'src/networking/wsClient.js#setupWebSocket': 3097,
+    'src/networking/wsClient.js#setupWebSocket': 2839,
     'src/networking/gameEvents.js#processGameEvent': 2500,
     'src/ui/BroTown.jsx#(anonymous)': 2133,
     'src/networking/wsClient.js#connect': 2055,
