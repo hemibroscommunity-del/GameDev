@@ -21,7 +21,7 @@
  * `cut`).  `econ: false` reads nothing (the card says not counted). */
 import { xferDay, xferList } from './xfer.js';
 import { worldCtx, worldAdd } from './worldsum.js';
-import { bookAdd, bookDay } from './daybook.js';
+import { bookAdd, bookDay, bookStage } from './daybook.js';
 
 export const ECONCARD = Object.freeze({ DAYS_MAX: 7, XFER_ROWS: 500, METRICS_PREFIX: 'metrics:' });
 
@@ -54,9 +54,31 @@ export function xferSummary(day, list, cut) {
    the gold held less made, `n` the restarts) -- riding the book's own puts,
    no row of its own -- and the card adds back the restarts between its two
    daily counts (src/game/econCard.js).  `econ: false`: nothing booked. */
+/* v2.3.5094 (the gatekeeper's sitting 11):
+   F2 -- `m`, the character's minted to date, goes with `g` and `n`: the daily
+   count's "minted" loses it at a restart, and the share of new gold to the
+   richest read the drop as gold never made.
+   F1 -- a restart with NOBODY in the room (the picker's, while nothing is
+   played): the `econ` part rides the book's next write, and in an empty room
+   that write may never come before the room is put away; the deletes are
+   durable at once, so the card read the restart as a loss.  The restart road
+   writes one thing of its own (the parachute copy, `rpgsnap:`), which the
+   card could find only by listing every character's copies.  So with
+   `econresetput: true` in the live flags (off until the owner says yes: one
+   put more a restart in an empty room, none with anyone in it) today's book
+   is staged here and its put issued by the restart in the SAME run as the
+   record's delete (persistence.js): both land, or neither.
+   Returns the handle the restart calls: `put()` (a no-op when nothing is
+   staged), never throws. */
+const NO_PUT = Object.freeze({ put() { return null; } });
+const resetPutOn = (room) => {
+  const f = room && room._liveFlags;
+  return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'econresetput') && f.econresetput);
+};
+const roomEmpty = (room) => !(room && room.sessions && room.sessions.size > 0);
 export async function econResetBook(room, pid) {
   try {
-    if (!room || typeof pid !== 'string' || !pid || (typeof room._econOff === 'function' && room._econOff())) return false;
+    if (!room || typeof pid !== 'string' || !pid || (typeof room._econOff === 'function' && room._econOff())) return NO_PUT;
     const live = room.playerState && room.playerState[pid];
     const rec = live && !live._spar ? live : await room.state.storage.get('rpg:' + pid);
     const cached = typeof room._bankMap === 'function' ? room._bankMap().get(pid) : null;
@@ -64,8 +86,11 @@ export async function econResetBook(room, pid) {
     const ctx = worldCtx();
     if (rec) worldAdd(ctx, 'rpg:' + pid, rec);
     if (vault) worldAdd(ctx, 'bank:' + pid, vault);
-    return bookAdd(room, 'econ', { r: { g: ctx.gold - ctx.net.gold, n: 1 } });
-  } catch (e) { return false; }   /* a count must never stop a restart */
+    const m = Number(rec && rec._econ && rec._econ.g && rec._econ.g.m);
+    const stage = resetPutOn(room) && roomEmpty(room) ? await bookStage(room) : null;
+    if (!bookAdd(room, 'econ', { r: { g: ctx.gold - ctx.net.gold, n: 1, m: Number.isFinite(m) ? m : 0 } })) { if (stage) stage.release(); return NO_PUT; }
+    return stage || NO_PUT;
+  } catch (e) { return NO_PUT; }   /* a count must never stop a restart */
 }
 
 /* The seconds of the sittings still open, today's part (M3: the book counts

@@ -24,6 +24,8 @@
  *      the mail landing, a shop sale.
  *   7. THE KILL SWITCH, played: `valuepause: false`, a deposit in the pause
  *      goes through.
+ *      v2.3.5094: a spare weapon staged into the trade window waits too, and
+ *      every router case that stages into the window must (sitting 11, F2).
  *   8. THE PHONE'S WORDS: each copy of the owner's words on the phone (the
  *      wire's events, the trade window, the vault's and the drop's refusals)
  *      is PAUSE.WORDS.
@@ -32,7 +34,9 @@
  * -> FAIL 2 (a road on neither list); the router's line taken out of
  * index.js -> FAIL 3 and 5 (each action moved value in the pause); the
  * arena's /join line taken out -> FAIL 3 and 5 (the fee taken);
- * `bank_withdraw` added to PAUSE_REFUSE -> FAIL 3 and 6 (a payout refused).
+ * `bank_withdraw` added to PAUSE_REFUSE -> FAIL 3 and 6 (a payout refused);
+ * v2.3.5094: `trade2_stage_weapon`'s row taken out -> FAIL 3 and 5 (the
+ * weapon staged into the window's escrow in the pause).
  */
 import { readFileSync } from 'node:fs';
 import { PAUSE, VALUE_PAUSE, PAUSE_EXEMPT, PAUSE_REFUSE, PAUSE_GATED, valuePaused, pauseOff } from '../src/valuepause.js';
@@ -138,6 +142,14 @@ const clock = seededClock({ start: Date.UTC(2026, 10, 14, 12, 0, 0), seed: 9 }).
   const strays = [...PAUSE_GATED].filter((t) => !VALUE_PAUSE[t]);
   check('3. every row has its line: the router\'s one (before its switch) for a socket action, its route\'s for HTTP', bad.length === 0 && strays.length === 0, { bad, strays });
 }
+{
+  /* v2.3.5094 (sitting 11, F2): past the gold and bag roads -- every router
+     case that stages into the trade window (its weapons' escrow) waits too */
+  const src = readFileSync(new URL('../src/index.js', import.meta.url), 'utf8');
+  const staging = [...src.matchAll(/case '(trade2_stage[a-z_]*)'/g)].map((m) => m[1]);
+  const open = staging.filter((t) => !VALUE_PAUSE[t]);
+  check(`3. every way to stage into the trade window waits (${staging.join(', ')})`, staging.length >= 1 && open.length === 0, { staging, open });
+}
 
 /* ══════════ 4. THE THREAT LEVY STAYS SHUT ══════════ */
 {
@@ -151,7 +163,7 @@ const IDS = { a: 'bp_vp_a', b: 'bp_vp_b' };
 const rec = (coins, inventory) => ({ _v: 21, coins, inventory, level: 5, hp: 100, maxHp: 100, _econ: { v: 1, g: { m: 0, b: 0 }, i: {} } });
 async function world(flags) {
   const st = makeStorage(new Map([
-    ['rpg:' + IDS.a, rec(1000, { wood_oak: 10, fish_minnow: 20, 'slime-remnants': 10 })],
+    ['rpg:' + IDS.a, { ...rec(1000, { wood_oak: 10, fish_minnow: 20, 'slime-remnants': 10 }), weaponStash: [{ type: 'sword', gearBase: 'iron', tier: 'common', tierMult: 1, name: 'A-blade' }] }],
     ['rpg:' + IDS.b, rec(800, { ore_iron_ore: 6 })],
   ]));
   const inner = st.storage.put;
@@ -174,8 +186,8 @@ async function world(flags) {
     await settle();
     refuse = false;
   };
-  const snap = () => JSON.stringify(['a', 'b'].map((w) => { const p = room.playerState[IDS[w]]; return [p.coins, p.inventory]; }))
-    + '|' + [...st._store.keys()].filter((k) => /^(arena_stake|mkt_order|ah|offer|duel|jackpot)/.test(k)).sort().join(',');
+  const snap = () => JSON.stringify(['a', 'b'].map((w) => { const p = room.playerState[IDS[w]]; return [p.coins, p.inventory, (p.weaponStash || []).length]; }))
+    + '|' + [...st._store.keys()].filter((k) => /^(arena_stake|mkt_order|ah|offer|duel|jackpot|trade2wpn)/.test(k)).sort().join(',');
   const sent = (w, type) => ws[w].sent.filter((m) => m && m.type === type);
   const told = (type, target) => (room.eventBuffer || []).filter((e) => e && e.type === type && e.payload && e.payload.target === target);
   const http = async (fetch, url, body) => {
@@ -220,6 +232,9 @@ async function world(flags) {
     () => sent('a', 'store_offer_error').some((m) => m.payload && m.payload.error === PAUSE.WORDS));
   await play('item_drop', () => send('a', { type: 'item_drop', key: 'wood_oak', qty: 1 }),
     () => sent('a', 'item_drop_result').some((m) => m.payload && m.payload.reason === PAUSE.CODE));
+  const t2n = sent('a', 'trade2_state').length;   /* this step's own answer, not the confirm's */
+  await play('trade2_stage_weapon', () => send('a', { type: 'trade2_stage_weapon', payload: { stashIdx: 0 } }),
+    () => sent('a', 'trade2_state').slice(t2n).some((m) => m.payload && m.payload.reason === PAUSE.CODE) && W.ps('a').weaponStash.length === 1);
   for (const [route, fetch, body] of [
     ['/api/arena/join', '_arenaFetch', { playerId: IDS.a, playerName: 'a' }],
     ['/api/market/place', '_marketFetch', { playerId: IDS.a, side: 'sell', category: 'material', subtype: 'wood_oak', qty: 1, price: 10 }],
@@ -245,6 +260,14 @@ async function world(flags) {
   await send('a', { type: 'duel_accept', payload: { target: IDS.b, wager: 40 } });
   const duelOn = !!(room._duelFor && room._duelFor(IDS.a)) && W.ps('a').coins === a0 - 290;
   check('5. ...and the same presses settle: the window\'s trade, the gift, the duel\'s stakes', tradeDone && giftDone && duelOn, { a: W.ps('a').coins, b: W.ps('b').coins, a0, b0, tradeDone, giftDone, duelOn });
+  {
+    /* and staging a weapon, refused in the pause, moves it after (a window anew) */
+    await send('a', { type: 'trade2_open', payload: { target: IDS.b } });
+    await send('b', { type: 'trade2_open', payload: { target: IDS.a } });
+    clock.advance(5000);
+    await send('a', { type: 'trade2_stage_weapon', payload: { stashIdx: 0 } });
+    check('5. ...and a spare weapon staged into the window after the minute leaves the stash (the step above would have moved it)', W.ps('a').weaponStash.length === 0, W.ps('a').weaponStash);
+  }
 }
 {
   /* a duel with no stake moves nothing: it is not paused */

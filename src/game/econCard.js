@@ -109,20 +109,21 @@ const W = (o) => (o && typeof o === 'object' && typeof o.held === 'number' ? o :
    the day's `econ` part (`r.g`, `r.n`: econcard.js econResetBook), and each
    daily count says how much of its own day's it had seen (`world.gone`).
    Between count `b` (older) and `a`: the rest of b's day, every day between,
-   and a's day up to a.  `known` false when a day it needs is older than the
+   and a's day up to a.  v2.3.5094: `m`, their minted to date, the same way
+   (the share of new gold to the richest).  `known` false when a day it needs is older than the
    book's loaded days, or a count is from before `gone`. */
 function resetsBetween(a, b, days) {
   const ga = a && a.gone && typeof a.gone === 'object' ? a.gone : null;
   const gb = b && b.gone && typeof b.gone === 'object' ? b.gone : null;
-  if (!ga || !gb || typeof ga.day !== 'string' || typeof gb.day !== 'string') return { g: 0, n: 0, known: false };   /* a count from before `gone` */
-  if (ga.day === gb.day) return { g: num(ga.g) - num(gb.g), n: num(ga.n) - num(gb.n), known: true };
+  if (!ga || !gb || typeof ga.day !== 'string' || typeof gb.day !== 'string') return { g: 0, n: 0, m: 0, known: false };   /* a count from before `gone` */
+  if (ga.day === gb.day) return { g: num(ga.g) - num(gb.g), n: num(ga.n) - num(gb.n), m: num(ga.m) - num(gb.m), known: true };
   const byDay = new Map(days.filter((d) => d && typeof d.day === 'string').map((d) => [d.day, d]));
   const oldest = days.length ? days[days.length - 1].day : null;
   const rOf = (d) => { const e = d && d.econ && typeof d.econ === 'object' ? d.econ : {}; return e.r && typeof e.r === 'object' ? e.r : {}; };
-  let g = num(ga.g) - num(gb.g), n = num(ga.n) - num(gb.n);
+  let g = num(ga.g) - num(gb.g), n = num(ga.n) - num(gb.n), m = num(ga.m) - num(gb.m);
   let known = !!oldest && gb.day >= oldest;
-  for (const [day, d] of byDay) if (day >= gb.day && day < ga.day) { g += num(rOf(d).g); n += num(rOf(d).n); }
-  return { g, n, known };
+  for (const [day, d] of byDay) if (day >= gb.day && day < ga.day) { g += num(rOf(d).g); n += num(rOf(d).n); m += num(rOf(d).m); }
+  return { g, n, m, known };
 }
 export function econCompute(book, card) {
   const days = book && Array.isArray(book.days) ? book.days : [];
@@ -140,7 +141,9 @@ export function econCompute(book, card) {
     /* v2.3.5093 (sitting 10, M1): + the restarts between the two counts */
     const gone = resetsBetween(a.w, b.w, days);
     out.unexplained = { v: (a.w.held - a.w.net) - (b.w.held - b.w.net) + gone.g, why: gone.known ? null : 'a restart before the book\'s loaded days is not added back', since: b.day, restarts: gone.n };
-    const made = num(a.w.minted) - num(b.w.minted);
+    /* v2.3.5094 (sitting 11, F2): a restarted character's minted to date left
+       the count with it: added back, as the unexplained gold adds `g` */
+    const made = num(a.w.minted) - num(b.w.minted) + gone.m;
     const rich = (w) => (Array.isArray(w.richest) ? w.richest : []).reduce((t, r) => t + num(r && r[2]), 0);
     out.richest = made > 0 ? { v: Math.max(0, Math.min(1, (rich(a.w) - rich(b.w)) / made)), why: null } : none('no gold made between the last two counts');
   } else {
