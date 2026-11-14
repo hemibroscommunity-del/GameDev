@@ -17,6 +17,10 @@
  *      index names the winner more often than today's "Total Power" (the
  *      three levels summed) by a clear margin.  The report prints the plain
  *      level (the highest skill) beside both.
+ *   6. THE BOARDS (v2.3.5481, PR 2): a row keeps the index made safe; the
+ *      Power board sorts by it and leaves off a row with none or another
+ *      version's; the room's board report carries it, never sends a report
+ *      for it alone, and goes without it when it fails; `power: false`.
  *   5. THE BREAK PROOFS (the plan's rule 8).  A score computed from a copied
  *      formula fails here: each of these bends the WORKER's code in this
  *      process and needs the index to move with it.  The one-line change
@@ -25,7 +29,9 @@
 import { readFileSync } from 'node:fs';
 import { PROG3, prog3RespecPoints } from '../src/prog3.js';
 import { BLACKSMITH_TIERS, WOODWORKING_TIERS } from '../src/data.js';
-import { POWER, powerOf, ratiosOf, sideOf, controlBuild, cycleMs, DICE_SEEN } from '../src/power.js';
+import { POWER, powerOf, ratiosOf, sideOf, controlBuild, cycleMs, DICE_SEEN, cleanPowerIndex } from '../src/power.js';
+import { GameRoom } from '../src/index.js';
+import { Leaderboard } from '../src/leaderboard.js';
 import { makeRoom, seed, rnd, randomBuild, duel } from './power-sim.mjs';
 
 let failures = 0, passes = 0;
@@ -341,6 +347,94 @@ console.log('\n5. the break proofs: the index moves with the worker');
   const sig = JSON.stringify([POWER.CONTROL, POWER.ALPHA, POWER.RATING, POWER.SPECIAL_GAP_MS]);
   const SIG_V2 = '[{"sk":{"sword":20,"bow":20,"staff":20},"shared":{"hp":15,"def":12,"dodge":12,"stam":6,"mana":6,"eres":3,"move":3},"lane":{"dmg":18,"luck":15,"aspd":12,"special":9,"range":3,"elem":0},"gear":{"weapon":{"type":"greatsword","name":"Black Steel Great Sword","gearBase":"steel","tierMult":1.4,"quality":"normal"},"rangedWeapon":{"type":"bow","name":"Hardwood Bow","gearBase":"ww_hardwood","tierMult":1.25,"quality":"normal"},"staffWeapon":{"type":"staff","name":"Hardwood Staff","gearBase":"ww_hardwood","tierMult":1.25,"quality":"normal"},"armor":{"name":"Black Steel Torso","mat":"blacksteel","tierMult":3,"quality":"normal"},"legsArmor":{"name":"Black Steel Greaves","mat":"blacksteel","tierMult":3,"quality":"normal"},"shield":{"name":"Pine Shield","gearBase":"wood","tierMult":1},"amulet":null}},2,{"CONTROL":3000,"PER_TENFOLD":400},1500]';
   check('5f. the control, the exponent and the rating are version 2\'s: a change to any bumps POWER.V and this line', POWER.V === 2 && sig === SIG_V2, [POWER.V, sig]);
+}
+
+/* ═══ 6. THE BOARDS CARRY IT (v2.3.5481, PR 2) ═══ */
+console.log('\n6. the boards');
+{
+  const store = (seedRows) => {
+    const m = new Map(seedRows || []);
+    return { _store: m, storage: { get: async (k) => m.get(k), put: async (k, v) => { m.set(k, v); }, delete: async (k) => { m.delete(k); },
+      list: async (o) => { const out = new Map(); for (const [k, v] of m) if (!o || !o.prefix || k.startsWith(o.prefix)) out.set(k, v); return out; } },
+      getWebSockets: () => [], acceptWebSocket: () => {} };
+  };
+  /* 6a-6c: the Leaderboard object keeps it and ranks by it */
+  const L = new Leaderboard(store(), {});
+  const t0 = Date.now();
+  const ix = (power, v) => ({ power, melee: power, bow: 3, magic: 2, v: v === undefined ? POWER.V : v });
+  await L.updatePlayer({ playerId: 'bp_pw_a', name: 'Ann', level: 20, series: { melee: 20 }, powerIndex: ix(1000), ts: t0 });
+  await L.updatePlayer({ playerId: 'bp_pw_b', name: 'Bo', level: 30, series: { bow: 30 }, powerIndex: ix(52000), ts: t0 });
+  await L.updatePlayer({ playerId: 'bp_pw_c', name: 'Cy', level: 9, series: { magic: 9 }, ts: t0 });                       /* no index yet */
+  await L.updatePlayer({ playerId: 'bp_pw_d', name: 'Di', level: 12, series: { melee: 12 }, powerIndex: ix(7, POWER.V + 1), ts: t0 });   /* another version's */
+  await L.updatePlayer({ playerId: 'bp_pw_e', name: 'Ed', level: 5, series: { melee: 5 },
+    powerIndex: { power: 9e9, melee: -4, bow: 'x', magic: 12.7, v: POWER.V, junk: 1 }, ts: t0 });
+  const rowE = JSON.parse(L.state.storage ? await L.state.storage.get('player:bp_pw_e') : '{}');
+  check('6a. a row keeps the index made safe: whole numbers, the best style its power, nothing else',
+    JSON.stringify(rowE.powerIndex) === JSON.stringify({ power: 12, melee: 0, bow: 0, magic: 12, v: POWER.V }), rowE.powerIndex);
+  const top = await L.getTop('power', 50);
+  check('6b. the Power board: by power, each value the index\'s power, its styles beside it',
+    top.map((p) => p.id).join() === 'bp_pw_b,bp_pw_a,bp_pw_e' && top[0].value === 52000 && top[0].powerIndex.melee === 52000, top.map((p) => [p.id, p.value]));
+  check('6c. a row with no index, or another version\'s, is not yet ranked: off the board, never a 0',
+    !top.some((p) => p.id === 'bp_pw_c' || p.id === 'bp_pw_d') && top.every((p) => p.value > 0));
+  const lv = await L.getTop('combat', 50);
+  check('6c. ...and the other boards are as they were', lv.length === 5 && lv[0].id === 'bp_pw_b', lv.map((p) => p.id));
+  await L.markGone({ playerId: 'bp_pw_a', ts: t0 });
+  const after = await L.getTop('power', 50);
+  check('6d. a deleted character\'s stand-in keeps the index it was retired with', after.some((p) => p.gone && p.value === 1000), after.map((p) => [p.id, p.value, !!p.gone]));
+
+  /* 6e-6i: the room reports it, on the reports it already sends */
+  const sent = [];
+  const env = { LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async (req) => { sent.push(await req.clone().json().catch(() => null)); return new Response('{}'); } }) } };
+  const R6 = new GameRoom(store(), env);
+  clearInterval(R6.tickInterval); R6.tickInterval = null;
+  const joinIn = async (rm, id) => {
+    const ws = { sent: [], send(x) { this.sent.push(JSON.parse(x)); }, close() {} };
+    rm.sessions.set(ws, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
+    await rm.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: 'Pat', phrase: 'p-' + id, ws: [1, 5], data: { x: 0, y: 0, z: 'town', name: 'Pat' } }));
+    await new Promise((r) => setTimeout(r, 15));
+    return ws;
+  };
+  const ws = await joinIn(R6, 'bp_pw_p');
+  const sync = ws.sent.find((m) => m.type === 'state_sync' && m.caps);
+  check('6e. caps.power is the index\'s version', sync && sync.caps.power === POWER.V, sync && sync.caps.power);
+  const ps = R6.playerState.bp_pw_p;
+  const sess = R6._sessionById('bp_pw_p');
+  Object.assign(ps, controlBuild());
+  R6._prog3Recompute(ps);
+  sent.length = 0;
+  await R6.reportToLeaderboard(sess, true);
+  const want = cleanPowerIndex(powerOf(R6, ps));
+  check('6f. a board report carries the index of the build the worker holds', sent.length === 1 && JSON.stringify(sent[0].powerIndex) === JSON.stringify(want) && want.power === 3000, sent[0] && sent[0].powerIndex);
+  /* no new write occasion: a better blade sends nothing by itself... */
+  ps.weapon = { ...ps.weapon, gearBase: 'titanium', tierMult: BLACKSMITH_TIERS.titanium.tierMult };
+  sent.length = 0;
+  sess._lbAt = Date.now() - R6.LEADERBOARD_MIN_MS - 1000;
+  await R6.reportToLeaderboard(sess);
+  check('6g. a gear change alone sends no report (the index is not in the signature)', sent.length === 0, sent.length);
+  sess._lbAt = Date.now() - R6.LEADERBOARD_HEARTBEAT_MS - 1000;
+  await R6.reportToLeaderboard(sess);
+  check('6h. ...the next report that goes (here the heartbeat) carries the build as it is then',
+    sent.length === 1 && sent[0].powerIndex && sent[0].powerIndex.melee > want.melee, sent[0] && sent[0].powerIndex);
+  const roll = R6._rollHit;
+  R6._rollHit = function () { throw new Error('boom'); };
+  sent.length = 0;
+  await R6.reportToLeaderboard(sess, true);
+  R6._rollHit = roll;
+  check('6i. an index that fails never fails the report: it goes without one', sent.length === 1 && !('powerIndex' in sent[0]), sent);
+
+  /* 6j: the kill switch */
+  const R7 = new GameRoom(store(), env);
+  clearInterval(R7.tickInterval); R7.tickInterval = null;
+  R7._liveFlags = { power: false };
+  const ws7 = await joinIn(R7, 'bp_pw_q');
+  const sync7 = ws7.sent.find((m) => m.type === 'state_sync' && m.caps);
+  Object.assign(R7.playerState.bp_pw_q, controlBuild());
+  sent.length = 0;
+  await R7.reportToLeaderboard(R7._sessionById('bp_pw_q'), true);
+  check('6j. `power: false`: caps.power is not advertised and no report carries an index',
+    sync7 && sync7.caps.power === undefined && sent.length === 1 && !('powerIndex' in sent[0]), [sync7 && sync7.caps.power, sent]);
+  R7._liveFlags = {};
+  check('6j. ...cleared, it is on again', R7._powerOn() && R7._powerCap() === POWER.V);
 }
 
 console.log('\n' + passes + ' passed, ' + failures + ' failed');

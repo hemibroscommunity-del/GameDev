@@ -7,6 +7,7 @@
 //  LEADERBOARD — Global persistent rankings
 // ═══════════════════════════════════════
 import { boardFace, goneId } from './boards.js';   /* v2.3.4393: a face on each row, and the deleted stand-ins */
+import { POWER, cleanPowerIndex } from './power.js';   /* v2.3.5481: the power index on a row, and its board (card PW) */
 
 /* a player not seen for this long is off the boards (and a deleted
    character's stand-in, counted from the day it was deleted) */
@@ -103,8 +104,13 @@ export class Leaderboard {
     /* v2.3.4393: the face, as a look (boards.js FACE_KEYS: short ids, never
        an image) -- left off a row whose report carried none */
     const look = boardFace(data.look);
+    /* v2.3.5481: the power index, as the room worked it out (power.js) --
+       left off a row whose report carried none (the switch thrown), which
+       is then not yet ranked on the Power board */
+    const powerIndex = cleanPowerIndex(data.powerIndex);
     await this.state.storage.put('player:' + playerId, JSON.stringify({
       ...(look ? { look } : {}),
+      ...(powerIndex ? { powerIndex } : {}),
       id: playerId, name: name || 'Anon', color: color || '#5b52ff', level: level || 1,
       /* v2.3.5483: `ap` is the room's own count (index.js reportToLeaderboard,
          from ps.achievementPoints) -- the blob's only from a report that
@@ -206,11 +212,28 @@ export class Leaderboard {
        legacy columns keep to live characters: `level` is what the contest
        draw reads its entrants from (public/tools/draw.html), and a deleted
        character must never be drawn. */
-    const standIns = category === 'ap' || Object.prototype.hasOwnProperty.call(Leaderboard.SERIES_CATEGORIES, category);
+    const standIns = category === 'ap' || category === 'power' || Object.prototype.hasOwnProperty.call(Leaderboard.SERIES_CATEGORIES, category);
     if (standIns) try {
       const gone = await this.state.storage.list({ prefix: 'gone:' });
       for (const [, raw] of gone) { try { const p = JSON.parse(raw); if (p && p.gone && now - (p.lastSeen || 0) < STALE) players.push(withLv(p)); } catch {} }
     } catch { /* a board without its stand-ins is still a board */ }
+
+    /* ═══ v2.3.5481: THE POWER BOARD (power.js, card PW) ═══
+       Sorted by the power index's `power`; each row's `value` is it, and
+       its `powerIndex` the three styles beside it.  A row with no index, or
+       another version's (POWER.V), is NOT YET RANKED: left off, never a 0
+       on top of anything.  A deleted character's stand-in keeps the index
+       it was retired with, as its skill rows keep theirs. */
+    if (category === 'power') {
+      const val = (p) => {
+        const ix = cleanPowerIndex(p && p.powerIndex);
+        return ix && ix.v === POWER.V ? ix.power : 0;
+      };
+      return players.filter((p) => val(p) > 0)
+        .sort((a, b) => val(b) - val(a))
+        .slice(0, limit)
+        .map((p) => ({ ...p, value: val(p) }));
+    }
 
     if (Object.prototype.hasOwnProperty.call(Leaderboard.SERIES_CATEGORIES, category)) {
       const val = (p) => Leaderboard.seriesValue(p, category);
