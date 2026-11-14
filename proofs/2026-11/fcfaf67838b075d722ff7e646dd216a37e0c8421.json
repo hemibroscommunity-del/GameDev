@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "fcfaf67838b075d722ff7e646dd216a37e0c8421",
+  "tree": "d02b3ca7ec3197c7b4a13d9004f743a144d80518",
+  "committedAt": "2026-11-13T21:56:42-08:00",
+  "subject": "Merge pull request #1713 from hemibroscommunity-del/claude/plan-p-1-families",
+  "files": 7488,
+  "bytes": 947473750,
+  "listingSha256": "7e4cf5b366147c5b2b50dfecacd32c577c03ecb7352081298fe1fbf57df926d2",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
