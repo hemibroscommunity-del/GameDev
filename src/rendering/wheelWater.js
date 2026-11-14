@@ -77,6 +77,7 @@
 import { Container, Mesh, MeshGeometry, Shader, GlProgram, UniformGroup, Texture, BufferImageSource, Rectangle } from 'pixi.js';
 import { setWheelWaterMoves } from '../game/wheelTrial.js';
 import { isPaletteSource, paletteAtlasSource, paletteOn, makePaletteSource } from './paletteTex.js';   /* v2.3.3190 */
+import { laneKnob, onKnob, seeKnob } from '../game/drawLanes.js';   /* v2.3.5229: the moving sea is a knob of the lanes (card O PR 9) */
 
 const VERT = `
 in vec2 aPosition;
@@ -538,6 +539,37 @@ const TIME_WRAP = 7200;
 let _renderer = null;
 let _ok = null;              /* null: not built yet; true: built and linked; false: this device cannot */
 let _liveOff = false;
+/* ═══ v2.3.5229: THE MOVING SEA IS A KNOB OF THE LANES (card O PR 9) ═══
+   Still water is the chip axis's last rung, after the shine and the shadows
+   (drawLanes.js AXES; docs/LANES.md): the sea is drawn as its ground
+   pictures, as the live switch's off has always drawn it (the Speed test's
+   "Still water").  Read through laneKnob('water'), told on a move (onKnob);
+   tick() reads a boolean, and its quads' layer and the ground under open sea
+   change only on a change (Container.visible and cover() are no-ops on the
+   same value): one change a rung, never one a frame (TRAPS §218).  The
+   quads are still laid as the pieces are (nothing to load when the sea
+   moves again). */
+let _stillKnob = null;
+/** The lanes' water knob says 'still' (the lane's row at the governor's rung). */
+export function waterKnobStill() {
+  if (_stillKnob === null) {
+    try { _stillKnob = laneKnob('water') === 'still'; } catch (e) { _stillKnob = false; }
+    onKnob('water', (v) => { _stillKnob = v === 'still'; });
+  }
+  return _stillKnob;
+}
+/* the sea drawn still now: the live switch (QA, the Speed test) or the knob */
+function stillNow() { return _liveOff || waterKnobStill(); }
+/* v2.3.5229 (the gatekeeper's sitting 17, a low): a sea that cannot move
+   here -- `?nowaves`, WebGL 1, a program that did not link, the live switch
+   off, or no sea laid near you -- draws the same moving or still, so its
+   rung changes nothing on screen and the governor passes it (drawLanes.js
+   knobSeen, as the crowd's).  A sea that comes into view counts again */
+function seaMovesHere() {
+  if (!wavesOn() || !webgl2() || _ok === false || _liveOff) return false;
+  return !!(_live && !_live.dead && _live.meshes && _live.meshes.size > 0);
+}
+seeKnob('water', (v) => (seaMovesHere() ? v : 'still'));
 let _held = null;            /* QA: the clock held at one moment, for pictures */
 let _live = null;            /* QA: the WheelWater drawing now, for __btWaves.extract */
 /* ═══ v2.3.3452: THE GROUND UNDER OPEN SEA IS NOT DRAWN ═══
@@ -702,7 +734,7 @@ export class WheelWater {
     parent.addChild(this.root);
     this.meshes = new Map();   /* "i,j" -> { mesh, tex (its own, or null when shared), bytes, ground } */
     this.dead = false;
-    this._covering = _cover && !_liveOff;   /* v2.3.3452 */
+    this._covering = _cover && !stillNow();   /* v2.3.3452; v2.3.5229 the knob too */
     _live = this;
   }
 
@@ -753,7 +785,7 @@ export class WheelWater {
   /** Once a frame: the water's clock. */
   tick(now) {
     if (this.dead) return;
-    const off = _liveOff;
+    const off = stillNow();   /* v2.3.5229: the live switch, or the lanes' knob */
     this.root.visible = !off;
     this.cover(_cover && !off);   /* v2.3.3452: the ground shown the frame the quads go */
     if (off || !this.meshes.size) return;
@@ -791,10 +823,10 @@ export class WheelWater {
    strength (0 draws the pictures still, through the same quads) */
 if (typeof window !== 'undefined') {
   window.__btWaves = {
-    probe: () => ({ ..._stats, ok: _ok, webgl2: webgl2(), on: wavesOn() && !_liveOff, strength: _uni.uniforms.uStrength, caustics: _uni.uniforms.uCaustics, time: _uni.uniforms.uTime, webAll: _webAll, cover: _cover }),
+    probe: () => ({ ..._stats, ok: _ok, webgl2: webgl2(), on: wavesOn() && !_liveOff, still: waterKnobStill(), strength: _uni.uniforms.uStrength, caustics: _uni.uniforms.uCaustics, time: _uni.uniforms.uTime, webAll: _webAll, cover: _cover }),
     /* v2.3.3452: the ground under open sea hidden (true) or drawn (false),
        at once (mp-seacover draws one held frame both ways) */
-    cover: (on) => { _cover = !!on; if (_live && !_live.dead) _live.cover(_cover && !_liveOff); return _stats.covered; },
+    cover: (on) => { _cover = !!on; if (_live && !_live.dead) _live.cover(_cover && !stillNow()); return _stats.covered; },
     off: () => { _liveOff = true; },
     on: () => { _liveOff = false; },
     strength: (k) => { _uni.uniforms.uStrength = Math.max(0, Math.min(4, +k || 0)); },
