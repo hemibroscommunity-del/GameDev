@@ -58,6 +58,7 @@
  *
  * Every threshold and weight is a hidden setting (hidden.js HIDDEN_SPEC,
  * group 'botsig'); BOTSIG below holds the public placeholders. */
+import { WATCH_HOOKS } from './wire/lists.js';   /* v2.3.5182: the watch column */
 import { histNew, histAdd, histTotal, histSpread } from './botstats.js';
 
 export const BOTSIG = {
@@ -504,7 +505,10 @@ export const botsigMethods = {
    wrapped here, so a throw inside one is counted (`_sigErrors`, the first few
    logged) and swallowed -- the move, strike or tick that called it carries
    on as if the signals were not there (botsig.test §13). */
-for (const name of ['_sigOnJoin', '_sigOnMove', '_sigOnAbility', '_sigOnWindup', '_sigOnStart', '_sigOnStrike', '_sigOnCook', '_sigOnHit']) {
+/* v2.3.5182 (card K PR 2): the hooks a message calls are the wire table's
+   `watch` column (server/src/wire/lists.js WATCH_HOOKS); the wind-up's is a
+   monster's, called by the tick, so it is named here */
+for (const name of [...WATCH_HOOKS, '_sigOnWindup']) {
   const fn = botsigMethods[name];
   botsigMethods[name] = function guarded(a, b, c) {
     try { return fn.call(this, a, b, c); }
