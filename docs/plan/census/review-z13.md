@@ -215,6 +215,47 @@ stands (b72e715, carried into 3b5a97a and 770e227):
 - Suites: CI `test` green at each head. On the rehearsed tree: precheck
   (every server suite and guard), build, questline (below).
 
+## Card TF: #1812 (PR 2, tag 5462): listed (sitting 12's hold mended)
+
+Read at 854164b (the mends), then fc3cce4 (`main` 82fb78d merged in; the
+pictures of the mends; `mp-folkwork`'s after-picture taken while he still
+walks). The gatekeeper re-checked each part of the hold:
+
+- **The red on `main` (`mp-folkwalk` 4 waited for `pickup`): MENDED,
+  run.** §4 waits for `cook` where the trades' figures are drawn
+  (`__btFolkSkill`: on, not switched off, every sheet in), `pickup`
+  otherwise (`?folkskills=0`, a computer that draws photographs). On the
+  rehearsed tree: `mp-folkwalk` 12 of 12, §4 "drawn cooking (cook)".
+- **The form shade: MENDED, by reading.** folkSkill.js marks the body,
+  tee and tool `_vShade = SHADE.figure` (as `markStandIns` does a
+  player's stand-ins); formShade.js reads a sprite's own `_vShade` first
+  (~188). townsfolk-walk §6 holds the three marks and the import, with
+  its break proof. The head's pieces stay unshaded, as a stand-in's.
+- **The ghost sample: MENDED, run** (the planning session's ruling:
+  `mp-folkwork`'s own check is the card's ghost sample for the
+  townsfolk, `mp-ghostaudit` playing the player's body). Check 7, after
+  EACH of the five trades, upright: nothing of it left, his walking
+  body back or the next trade's figure alone, never both, a picture of
+  each moment. On the rehearsed tree: RESULT_UPRIGHT.
+- Lows mended: §6d reads the real hook (it was vacuous); §6e's second
+  break proof is true (role-bake.mjs records any bar off the law's 16,
+  `LAW_BAR`); the set loads only where somebody is drawn doing the
+  trades (`lookFolkWantedAtLoad() && folkWalkWanted()`: not under
+  `?lookfolk=0`, its live switch as the world loads, or `?folkwalk=0`),
+  check 8: RESULT_UNSEEN.
+- Low, not mended (sitting 12's): precheck's `look-roles` runs `--hashes`
+  for some paths only (precheck.mjs ~935), not the set's sources: a
+  re-export of the cook strip would leave Chef Blaze stale without a red
+  (`role-bake --hashes` reads the set fresh today). Precheck is no file
+  of card TF's: for the card that owns precheck's look checks.
+- No new import cycle from folkSkill.js's new imports (`formShade.js`,
+  `lookFolk.js`, `townsfolkDay.js`): the four-lines guard holds the
+  cycles at 5 groups, 29 files, and passed on the merged tree; the
+  module's top-level `_load` calls both askers as it loads, which the
+  build and questline ran.
+- Memory as at sitting 12 (+3.2 MB at the chip's peak, no line raised).
+  CI `test`, `playable`, `memory-budget` green at fc3cce4.
+
 ## Card T: #1816 (tag 5303) and #1817 (5304): HELD (a conflict)
 
 Read at 7ba13be and f03a1b3 (#1817 carries #1816; each `main` 82fb78d
