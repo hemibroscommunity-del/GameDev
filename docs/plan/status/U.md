@@ -1,7 +1,7 @@
 card: U
-branch: claude/plan-u-8-render (one branch a PR, each begun from the one before)
-prs: #1721, #1722, #1723, #1725, #1727, #1728, #1730, #1732 (all ready)
-state: ready
+branch: claude/plan-u-9-ui (one branch a PR, each begun from the one before)
+prs: #1721, #1722, #1723, #1725, #1727, #1728, #1730, #1732 (ready), PR 9 (working)
+state: working
 
 ## Done
 
@@ -15,11 +15,12 @@ state: ready
   #1728 wire, combat, world 1185.
 - PR 7 (5166, #1730): look (194), and the guard takes a phase's empty word: 991.
 - PR 8 (5167, #1732): render (453): unlisted 538.
+- PR 9 (5168): ui (522): unlisted 16, the unsorted rows (the card's finish).
 
 ## Next
 
-- PR 9 (5168): ui (522). Tried: it passes the guard, unlisted 16 (the
-  unsorted rows): the card's finish.
+- Nothing: the card's nine PRs wait for the gatekeeper, in order. Its line
+  (2128) can come down to 16 once they are merged.
 
 ## Found
 
