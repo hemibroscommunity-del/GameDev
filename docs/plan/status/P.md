@@ -1,7 +1,7 @@
 card: P
 branch: claude/plan-p-6-npc-heads (one branch a PR, each begun from the one before)
-prs: #1713 (5241, merged); #1715, #1716, #1718, #1719 (5242-5245) ready; PR 6 (5246) working
-state: working
+prs: #1713 (5241, merged); #1715, #1716, #1718, #1719 (5242-5245), PR 6 (5246): ready
+state: ready
 
 ## Done
 
@@ -17,24 +17,24 @@ state: working
 - #1719 (5245): the 19 `.m4a` under `public/sfx/` removed (0.19 MB; nothing
   named them; the MP3 beside each plays); `shipped.json` 3,206 rows.
 
+- PR 6 (5246), backlog `npc-heads`: the portraits let go of once loaded;
+  `artCache` 48.7 -> 45.8 (line 112 -> 109.1), `buffers` unchanged.
+
 ## Next
 
-- PR 6 (5246), backlog `npc-heads` (2.96 MB): the dialogue portraits let go
-  of once loaded (`?npcheads=0` off); three runs of mp-membudget.
+- PR 7 (5247), backlog `tree-tiers` as colour numbers (load order to mend).
 
 ## Found
 
-- 545 files in reach are loaded by nothing by default (draw `none`): the
-  census lists them; removing any is the owner's yes.
-- At the fight 22.2 MB of textures have no label (canvases 16.6 on the
-  chip): the renderers' bakes, not a family; naming them is not card P's.
+- 545 files in reach load by nothing (census; removal is the owner's yes);
+  22.2 MB at the fight have no label (the renderers' bakes, not card P's).
 - `families.mjs` keeps the `sfx-m4a` row (now no file): the next PR
   touching the table drops it.
+- `mp-npclooks` 2 and 2b (the figures' heights, `paintTop` null) are red
+  with PR 6's change on and off alike: a question about the test.
 
 ## Needs
 
-- Asked the planning session (2026-11-14): (1) may a PR turning pictures
-  into colour numbers raise `buffers` (21.2 of 22) by what it moves there?
-  (`tree-tiers`: artCache -5.6, buffers +1.4); (2) slimes loaded as you
-  walk?; (3) the effects' p256 twins. Those wait; the next free one goes.
+- Answered: a numbers PR may raise `buffers` by what it moves there; the
+  owner: slimes as you walk (after H: `zoneTextures.js`), effects' twins on.
 - The backlog's `pack-page` waits for card H's `done`.
