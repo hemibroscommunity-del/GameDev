@@ -6,7 +6,8 @@
  * exception).  Also covers fail-open ordering, the join bootstrap's
  * boundary heal, and the admin-restore re-migration path. */
 import { GameRoom } from '../src/index.js';
-import { RPG_SCHEMA_VERSION, MIGRATIONS, runRpgMigrations, healLifeSkills, computeCanonicalPools } from '../src/migrations.js';
+import { RPG_SCHEMA_VERSION, MIGRATIONS, runRpgMigrations, healLifeSkills, computeCanonicalPools, ECON, econBlank, econClean } from '../src/migrations.js';
+import { readFileSync } from 'node:fs';
 import { t2PointValue, t2BenchLevel } from '../src/data.js'; /* v2.3.1451: v9 bench-locked replay assertions */
 
 function makeState() {
@@ -605,6 +606,111 @@ const legacyBlob = () => ({
     state._store.get('rpg:' + id)._v === RPG_SCHEMA_VERSION + 1, state._store.get('rpg:' + id)._v);
   room._liveFlags = flags0;
   await room.webSocketClose(w6); room.sessions.delete(w6);
+}
+
+/* ── §econ. v2.3.5083: `_econ`, THE SECOND EXCEPTION TO RULE 1 (grand plan
+   card E, PR 4; docs/SHAPES.md part 7 ruled).  The character's running
+   minted and burned rides the `rpg:` record's own put, so the world's sum
+   reads what it counts with what it counts, and no row is added.  And the
+   record's field list is held here whole: a THIRD field beyond the game's
+   own (`_v`, `_econ`) fails.  BREAK PROOF (rule 8), tried by hand:
+   `_foo: 1,` added to _saveRpg's put -> FAIL "a third field". ── */
+{
+  check('econ: the schema is 21, its last migration econ-field',
+    RPG_SCHEMA_VERSION === 21 && MIGRATIONS[MIGRATIONS.length - 1].v === 21 && MIGRATIONS[MIGRATIONS.length - 1].name === 'econ-field');
+  /* a record from before: blank `_econ`, stamped 21, once */
+  const old = { _v: 20, coins: 5, inventory: { ore_copper: 2 } };
+  const r1 = runRpgMigrations(old);
+  check('econ: a v20 record gets a blank _econ and _v 21', r1.changed && old._v === 21 && JSON.stringify(old._econ) === JSON.stringify(econBlank()) && old.coins === 5, old);
+  const r2 = runRpgMigrations(old);
+  check('econ: ...and never again (current costs nothing)', !r2.changed);
+  /* a hand-edited or hostile one is cleaned, never reset */
+  const dirty = { _v: 20, _econ: JSON.parse('{"v":1,"g":{"m":"12","b":null},"i":{"ore_copper":{"m":3,"b":1},"__proto__":{"m":9},"":{"m":1},"zero":{"m":0,"b":0},"nan":{"m":"x"}},"extra":1}') };
+  runRpgMigrations(dirty);
+  const e = dirty._econ;
+  check('econ: a record\'s own _econ is cleaned: numbers made finite, known keys only, an empty pair and a bad key dropped',
+    e.g.m === 12 && e.g.b === 0 && e.i.ore_copper.m === 3 && e.i.ore_copper.b === 1 && Object.keys(e.i).join() === 'ore_copper' && !('extra' in e) && Object.getPrototypeOf(e.i) === null, e);
+  const many = { v: 1, g: { m: 1, b: 2 }, i: {} };
+  for (let k = 0; k < ECON.KEYS_MAX + 40; k++) many.i['k' + k] = { m: k + 1, b: 0 };
+  check('econ: at most KEYS_MAX bag keys', Object.keys(econClean(many).i).length === ECON.KEYS_MAX);
+  check('econ: a number past NUM_MAX is held to it, Infinity reads 0', econClean({ v: 1, g: { m: 1e20, b: Infinity } }).g.m === ECON.NUM_MAX && econClean({ v: 1, g: { m: 1e20, b: Infinity } }).g.b === 0);
+  const newer = { v: ECON.V + 1, future: { x: 1 } };
+  check('econ: a NEWER worker\'s _econ is kept whole (never rewritten by a rollback)', econClean(newer) === newer);
+  check('econ: nothing, or not an object, reads blank', JSON.stringify(econClean(undefined)) === JSON.stringify(econBlank()) && JSON.stringify(econClean(7)) === JSON.stringify(econBlank()));
+
+  /* _saveRpg writes it, in the purse's own put */
+  const st = makeState();
+  const r = new GameRoom(st, mockEnv);
+  const ps = { coins: 40, inventory: { ore_copper: 2 }, _econ: { v: 1, g: { m: 90, b: 50 }, i: Object.assign(Object.create(null), { ore_copper: { m: 2, b: 0 } }) } };
+  await r._saveRpg('bp_econ', ps);
+  const saved = st._store.get('rpg:bp_econ');
+  check('econ: _saveRpg writes _econ beside the purse, in the same put', !!saved && saved.coins === 40 && saved._econ.g.m === 90 && saved._econ.g.b === 50 && saved._econ.i.ore_copper.m === 2 && saved._v === RPG_SCHEMA_VERSION, saved && saved._econ);
+  ps._econ.i.__proto__x = { m: 'no' };
+  await r._saveRpg('bp_econ', { coins: 1 });
+  check('econ: a player with none yet saves a blank one (never a missing field)', JSON.stringify(st._store.get('rpg:bp_econ')._econ) === JSON.stringify(econBlank()));
+  {
+    const ps0 = readFileSync(new URL('../src/persistence.js', import.meta.url), 'utf8');
+    const echoAt = ps0.search(/^\s+_sendPlayerState\(/m);
+    check('econ: _econ is not echoed to the phone (the echo\'s list does not carry it)', echoAt > 0 && !/_econ/.test(ps0.slice(echoAt)), echoAt);
+  }
+
+  /* JOIN, THEN SAVE (the gatekeeper's hold on PR 4): the join builds the
+     live state field by field and does not copy `_econ`, so a save after a
+     join wrote a blank over the stored counts (500 and 900 became 0) -- and
+     a rollback from a worker that counts to this one would have erased them
+     all.  The join's load hands `_econ` to the next save (persistence.js
+     _econAtJoin / _econAdopt).  BREAK PROOF: the `this._econAdopt(...)`
+     line in _saveRpg deleted -> FAIL here. */
+  {
+    const id = 'bp_econ_join';
+    const counts = { v: 1, g: { m: 500, b: 900 }, i: { ore_copper: { m: 3, b: 1 } } };
+    state._store.set('rpg:' + id, { _v: RPG_SCHEMA_VERSION, coins: 77, inventory: { ore_copper: 2 }, level: 1, _econ: JSON.parse(JSON.stringify(counts)) });
+    const wsJ = fakeWs('econjoin');
+    await join(wsJ, id);
+    const P = room.playerState[id];
+    check('econ: a stored character joins (its purse loaded)', !!P && P.coins === 77, P && P.coins);
+    await room._saveRpg(id, P);
+    const s1 = state._store.get('rpg:' + id);
+    check('econ: join, then save: the stored counts are kept, never a blank written over them (500 and 900 stay)',
+      s1._econ.g.m === 500 && s1._econ.g.b === 900 && s1._econ.i.ore_copper.m === 3 && s1._econ.i.ore_copper.b === 1, s1._econ);
+    await room._saveRpg(id, P);
+    const s2 = state._store.get('rpg:' + id);
+    check('econ: ...and every save after it (the live state carries them now)', s2._econ.g.m === 500 && s2._econ.g.b === 900 && P._econ && P._econ.g.m === 500, s2._econ);
+    P._econ.g.m = 501;
+    await room._saveRpg(id, P);
+    check('econ: the live state\'s own count wins over the join\'s copy (used once, then gone)', state._store.get('rpg:' + id)._econ.g.m === 501 && !(room._econJoined && room._econJoined.has(id)));
+    await room.webSocketClose(wsJ); room.sessions.delete(wsJ);
+    /* a new character: blank */
+    const wsN = fakeWs('econnew');
+    await join(wsN, 'bp_econ_new');
+    await room._saveRpg('bp_econ_new', room.playerState.bp_econ_new);
+    check('econ: a new character joins and saves a blank _econ', JSON.stringify(state._store.get('rpg:bp_econ_new')._econ) === JSON.stringify(econBlank()));
+    await room.webSocketClose(wsN); room.sessions.delete(wsN);
+  }
+
+  /* THE FIELD LIST, WHOLE.  Rule 1: never add a field to the rpg blob;
+     the two named exceptions are `_v` and `_econ`.  A new key in _saveRpg's
+     put fails here: new state gets a record of its own (card Q's sitting
+     card goes INSIDE _econ). */
+  const src = readFileSync(new URL('../src/persistence.js', import.meta.url), 'utf8');
+  const at = src.indexOf("await this.state.storage.put('rpg:' + playerId, {");
+  let i = src.indexOf('{', at), depth = 0, j = i;
+  for (; j < src.length; j++) { const c = src[j]; if (c === '{') depth++; else if (c === '}') { depth--; if (depth === 0) break; } }
+  const body = src.slice(i + 1, j).replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+  const keys = [...body.matchAll(/^\s*([A-Za-z_$][\w$]*)\s*:/gm)].map((m) => m[1]);
+  const FIELDS = ['coins', 'inventory', 'lifeSkills', 'goldNuggets', 'goldBars', 'gemsCaptured', 'level', 'xp', 'unspentT2', 'buildPointsThisLvl',
+    'hp', 'maxHp', 'stamina', 'maxStamina', 'mana', 'maxMana', 'power', 'vitality', 'endurance', 'agility', 'mind', '_buffs',
+    'weapon', 'rangedWeapon', 'staffWeapon', 'activeSlot', 'armor', 'legsArmor', 'shield', 'amulet', 'weaponStash',
+    'armorStash', 'legsStash', 'shieldStash', 'gearStash', 'amuletStash', 'gearStashCaptured',
+    '_quests', '_questFlags', '_questKills', 'achievementPoints', '_perfectHistory', '_cookHistory',
+    'weaponSkills', 'weaponUnspent', 'weaponSpecs', 'defenseSkill', 'defenseUnspent', 'defenseSpec',
+    'hpSpec', 'hpUnspent', 'enduranceSpec', 'enduranceUnspent', 't2Flat', 'prog3', 'svKills'];
+  const EXCEPTIONS = ['_v', '_econ'];
+  const extra = keys.filter((k) => !FIELDS.includes(k) && !EXCEPTIONS.includes(k));
+  const gone = [...FIELDS, ...EXCEPTIONS].filter((k) => !keys.includes(k));
+  check('econ: the scan reads _saveRpg\'s put (58 keys at v2.3.5083)', keys.length === FIELDS.length + EXCEPTIONS.length && keys.length === 58, keys.length);
+  check('econ: rule 1 -- no third field beyond the game\'s own list and its two exceptions (_v, _econ): a new record gets its own key', extra.length === 0, extra);
+  check('econ: ...and every field and both exceptions are still written', gone.length === 0, gone);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

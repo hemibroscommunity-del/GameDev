@@ -306,6 +306,28 @@ That is what the planted double pay of step 4.4 turns on: the sum of every
 | Name | One writer | Readers | Where | Rows |
 |---|---|---|---|---|
 | a road's `class` and `other` (NEW columns) | card E, in the two road tables | the world's sum (4.4), the sitting's card ("gold by road class", 10.2), the day's book ("minted and burned by road class", 10.4), the transfer ledger (a row a `move`, 10.3) | `server/src/gold.js`, `server/src/bag.js` | none |
+| `MAIL_CLASSES` (built: 5081) | card E | the counting of a credit (4.4), the transfer ledger (10.3) | `server/src/gold.js` | none |
+| `ESCROW_PLACES` (built: 5081) | card E | an escrow road's `other`; the registry's marks (card E's next PR) | `server/src/gold.js` | none |
+| `BAG_WHOLE` (built: 5081) | card E | the world's sum, for the bag's whole assigns | `server/src/bag.js` | none |
+
+**Built (tag 5081).** Every row of `GOLD_ROADS` (44: 14 mint, 14 burn, 13
+escrow, 3 move) and `BAG_ROADS` (69: 32 mint, 25 burn, 10 escrow, 2 move)
+has `class` and `other`; `gold-door.test` and `bag-door.test` §8 fail a row
+with none, a `move` or an `escrow` with no other side, and a credit whose
+word has no class. Two words the first draft of this page did not have:
+
+- **`other` may be a list** for an escrow road behind ONE shared helper that
+  feeds several records (`escrow_debit`, `escrow_debit_stored`,
+  `escrow_debit_group`: `duelEscrow:`, `arena_stake:`, `store_listing:`;
+  the opId says which). A `move`'s other side is always one road.
+- **The places an escrow names** are one closed list, `ESCROW_PLACES`: the
+  prefixes above, less `trade2wpn:` (it holds weapons, which no gold or bag
+  road carries), and with `shop_stock`, Diego's one pile (`shop_sell` puts
+  in it what he buys and `shop_pile` sells it on, so goods pass through it
+  from one player to another). `death_pile:` means a player's pile on the
+  ground: its row when one is saved, the room's memory while it is up (a
+  dropped item's pile is a death pile's own and is never saved,
+  `itemdrop.js`).
 
 ### Four edges the words must cover, left for card E to rule on here
 
@@ -332,6 +354,60 @@ That is what the planted double pay of step 4.4 turns on: the sum of every
    death's wipe. The death's wipe moves a whole bag to the ground
    (`death_pile:`), so the sum needs it classed.
 
+
+#### Ruled (card E, tag 5081)
+
+1. **A `set` road is judged by its difference**: the purse (or count) after,
+   less what the world held for that character before the road ran: the live
+   purse, or for a LOAD the stored record it loads (a character is counted
+   once: stored while away, live while here). Its class is its honest
+   difference's, and its counter books the difference signed. So
+   `join_stored` is a `burn` (it heals a coin's fraction away; a negative
+   purse healed to 0 books a negative burn), `join_new` a `mint`, `nml_loss`
+   a `move` (the purse to the killer's mail, credit `nmlloot:`), the bag's
+   `shop_tool` a `mint` (one tool, from none), `trap_legacy_out` a `burn`,
+   and the Test panel's `dev_traps` and `dev_logs` `mint`s (signed: lowered,
+   a negative mint).
+   **Not ruled, asked (card E's status file):** a red skull killed by a
+   MONSTER loses the purse through `nml_loss` too, to nobody: a burn by a
+   `move` road. One road, two classes; splitting it is one line in
+   `nomansland.js`, a file card E does not own.
+2. **The mail's class is the credit's, keyed by the FIRST WORD OF ITS
+   `opId`**, in the closed table `MAIL_CLASSES` (`gold.js`). Not `source`:
+   its 15 values are too coarse (`arena` alone is an entry refunded, a pot,
+   a stake's cut, a stake won and a stake lost). The first word is finer
+   (every gold or goods credit under one word has one class: the auction
+   house's eight legs are all its listing paid on or given back), it is a
+   literal in every caller, and it is the credit's identity already: the
+   same on a retry, written on the inbox entry with it. `mail_gold` and
+   `mail_item` themselves are an `escrow` of `inbox:`: the mail paid on. A
+   credit to a player away waits there (its class counted as it is parked),
+   one to a player here lands at once (its class counted as it lands). 27
+   words today; the door test fails a credit whose word has no row, and a
+   row no credit uses. The operator's grant (`admin.js`) builds its opId a
+   line above the call, `admin:` and a uuid, and is listed so.
+3. **A mixed payment is ONE credit that carries two amounts**, not two
+   credits: two credits are two writes a restart can split (handoff rule
+   5), one credit keeps one opId and one stamp. The champion's prize
+   (`arenapot:`) is the only one today: its row is an `escrow` of
+   `arena_entry:` with `house` set, and the credit's `payload.house` is the
+   part the house minted. The PR that counts the mail writes that field in
+   `gladiator.js`.
+4. **The whole-bag assigns are classed in `BAG_WHOLE`** (`bag.js`), each tied
+   to its line by `bag-door.test`'s `WHOLE_BAG`: a new, empty bag and the
+   join's load hold nothing the world did not (class `null`); a new
+   character's first bag is empty since v2.3.3138 (were a starter kit put
+   there, a `mint`); **the death's wipe is an `escrow` into `death_pile:`**
+   (the bag, less the tools and the pickup shield it keeps, to the pile);
+   and the RESPAWN's wipe, the same helper five seconds on, is a `burn`
+   (whatever came into a dead player's bag after the death's wipe: nothing,
+   for an honest death).
+
+**Where value leaves an escrow by no road** (for the sum's PR, not a class):
+a stale fine is deleted (`bounty:`, `_bountySweep`: "the gold evaporates"),
+and a pile on the ground nobody takes runs out (`_tickLoot`) or its dungeon
+run closes. Each is a burn the world's sum counts at the record's end.
+
 ### The mark on a record that holds value
 
 Step 4.4: *the storage registry marks every record that holds value.* Step
@@ -340,13 +416,37 @@ One mark serves both.
 
 | Name | Values | One writer | Readers | Where | Rows |
 |---|---|---|---|---|---|
-| `value` (NEW column of the registry) | `gold`, `goods`, `both`, `none` | card E | the world's sum; a guard that fails a value record nobody counts | card E's choice, see below | none |
-| `whose` (NEW column of the registry) | `player` (keyed by one character: restored with them), `between` (held between two or more: an escrow, a listing, a pot), `room` (the room's own: a board, the shop's pile, a flag) | card E | the restore and the paged export (card R, 4.7) | the same | none |
+| `value` (NEW column of the registry; built 5082) | `gold`, `goods`, `both`, `none` | card E | the world's sum; a guard that fails a value record nobody counts | `server/src/storagemarks.js` (below) | none |
+| `whose` (NEW column of the registry; built 5082) | `player` (keyed by one character: restored with them), `between` (held between two or more: an escrow, a listing, a pot), `room` (the room's own: a board, the shop's pile, a flag) | card E | the restore and the paged export (card R, 4.7) | the same | none |
 
 Today's registry is a table in `docs/ARCHITECTURE-HANDOFF.md` (rule 2), and
 precheck's `storage-keys` check PARSES it: a new column there can break the
 gate. Whether the marks become columns of that table or a table in code that
 the document is checked against is card E's to decide and to write here.
+
+**Ruled and built (card E, tag 5082): a table in code.** The marks are
+`STORAGE_MARKS` in `server/src/storagemarks.js` (no imports), one row a
+record, keyed by the registry's own spelling: a prefix up to its first `<`
+(`rpg:` for `rpg:<playerId>`), or a single key whole (`shop_stock`,
+`jackpot:draw`). The handoff's markdown table gets no new column. A gate is
+a test GitHub runs, so `tools/guards/storage-marks.test.mjs` holds the two
+together: it fails a record registered and not marked, a mark for a record
+not registered, a value or a `whose` off its closed list, and an escrow's
+place (`ESCROW_PLACES`, part 3 above) marked as holding nothing.
+
+- **A copy of value is `none`**: a snapshot (`rpgsnap:`) and the provenance
+  ledger's copy of a piece (`gear_prov:`) hold what another record holds,
+  and counting them would count it twice.
+- **The daily spin's open pot (`daily_rewards:`) is `none`**: a stake in a
+  game still being played (double or nothing can end it), paid by
+  `spinpot:` as a mint (`MAIL_CLASSES`).
+- **14 records hold value** at tag 5082: `rpg:`, `bank:`, `inbox:`, `pets:`
+  (a player's); `mkt_order:`, `store_listing:`, `duelEscrow:`,
+  `arena_entry:`, `arena_stake:`, `bounty:`, `jackpot:draw`, `trade2wpn:`,
+  `death_pile:` (between players); `shop_stock` (the room's). The guard
+  holds the count, so a change to what the sum reads is seen.
+- `marksOf(key)` finds a stored key's marks by its longest marked prefix:
+  what the world's sum (4.4) and the restore (4.7) call.
 
 ## 4. The report's fields and sinks
 
@@ -695,7 +795,18 @@ row by the card that builds it, before it builds.**
 | The public facts (11.6) | not named yet | The game's facts in players' words, made in the build from the shared tables, with a version. | the build | assistants | the build's output | none |
 | The pass's quote and receipt (11.8) | not named yet | A signed quote, a receipt, a public way to check. | the pass's own build | a helper | `docs/SUPPORTER-PASS-PLAN.md` | not built |
 
-### Open, to be ruled before the card that meets it builds
+### The asset door (step 9.1, card P; tag 5241)
+
+Two shapes of the asset door (`docs/specs/asset-door.md`), each written by
+one tool and read by the gate. Neither is on the wire or in storage: they are
+files in the repository, and cost no rows.
+
+| Shape (step) | Name | What it holds | One writer | Readers | Where | Rows |
+|---|---|---|---|---|---|---|
+| The family table (9.1) | `ASSET_FAMILIES` (NEW) | One row a family of files under `public/`: its path pattern (never a folder), its kind (`supplied`, `made`, `data`: closed, `ASSET_KINDS`), its tool and sources when made, its draw path (closed, `ASSET_DRAWS`), its bundle of colours, its pixel-size rule, its bar. With it, `ASSET_REACH`: which files are in reach. Data: no I/O, no imports. | a person, by hand, in `tools/assets/families.mjs` | `tools/assets/shipped.mjs`; `tools/assets/fightmb.mjs` (9.1, part two); `tools/assets/finish.mjs` (9.2); `tools/guards/asset-door.test.mjs` (9.3) | `tools/assets/families.mjs` | none |
+| The record of what ships (9.1) | `tools/assets/shipped.json` (NEW) | One row a file in reach: `path`, `bytes`, `sha256`, `family`, `kind`; a file the door made adds `door` (its sources' hashes, its recipe, the tool's tag). The head: the totals made from the rows, and the count of `unsorted` (a census: it only falls). | `node tools/assets/shipped.mjs --write` (never by hand); `finish.mjs` writes a made file's row | the gate (9.3); the census `docs/plan/census/assets.md` | `tools/assets/shipped.json` | none |
+
+### Open, to be ruled before the card that meets it builds (ruled below, 5083)
 
 **Where a per-player count that the sums read is kept.** Two rules meet:
 
@@ -717,6 +828,27 @@ cost:
 so it can hold the card's other counters and cannot hold anything the sums
 read. This page does not choose. Card E meets it first (step 10.4's `econ`),
 then card Q (10.2).
+
+**Ruled (the planning session, for the owner, who asked that server costs
+not go up; built by card E, tag 5083): the first way.** One field on the
+`rpg:` record, `_econ`, the second named exception to rule 1 beside `_v`: no
+new row. It holds the character's running minted and burned:
+
+```
+_econ: { v: 1, g: { m, b }, i: { <bag key>: { m, b } } }
+```
+
+`g` the gold, `i` each bag key by itself (part 3, "What is summed"); `m`
+minted, `b` burned, whole numbers, signed (a `set` road books its difference
+signed, part 3's edge 1). `move` and `escrow` roads change no world total
+and are not kept. Its one writer is the two doors (`gold.js`, `bag.js`, card
+E's next PR), through the purse's own put; `_saveRpg` writes it from its
+fixed list (`econClean`: known keys, finite numbers, at most 512 bag keys,
+a newer `v` kept whole); the `econ-field` migration (schema 21) gives every
+record one, so a worker rolled back past it refuses the record at the join
+rather than saving it without its counts. **The sitting's card (10.2) goes
+inside `_econ`, under a key of its own**: there is no third exception, and
+`migrations.test` §econ fails one.
 
 ## 8. Names: what is taken, and what was chosen
 
@@ -774,6 +906,18 @@ principal axis"), `permit` once as a verb (`server/src/gathering.js`).
 | `xfer:` | the transfer ledger | 7 |
 | `play_trace:` | a recording of play | 7 |
 | `liarGain` | a bounded claim's gain | 7 |
+
+**Chosen by card P (step 9.1, tag 5241), free at its commit** (the same
+search, with `docs`): `ASSET_FAMILIES`, `ASSET_REACH`, `ASSET_KINDS` and
+`ASSET_DRAWS` have no hit outside `tools/assets/`. The plain `FAMILIES` was
+taken (the held sweep's, `mp-heldsweep.mjs`, and the hero sheet's stat
+families), as were `REACH` and `DRAWS`. `shipped` is a common word in code;
+the record is named by its path, `tools/assets/shipped.json`.
+
+| Name | For | Part |
+|---|---|---|
+| `ASSET_FAMILIES`, `ASSET_REACH`, `ASSET_KINDS`, `ASSET_DRAWS` | the family table and its closed lists | 7 |
+| `tools/assets/shipped.json` | the record of what ships | 7 |
 
 `report` is free as a message type and a common word elsewhere; part 4 says
 what it is not. `gid`, `pid` and `hz` are TODAY's names, used here for the

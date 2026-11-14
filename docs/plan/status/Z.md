@@ -1,40 +1,40 @@
 card: Z
-branch: claude/plan-z-sitting-1
-prs: this PR, tag 5032, the last line of the list (ready)
+branch: claude/plan-z-sitting-4
+prs: this PR, tag 5360, the last line of the list (ready)
 state: ready
 
 ## Done
-- Sitting 1, 2026-11-14, `main` at f27d1d8. 17 PRs ready, each `test` green.
-  Rehearsed by hand (W's script is in the held #1676): the 16 below merged
-  on `main`, then precheck 0 FAIL, `npm run build` green, `questline` 187
-  of 187. `/repo-review` in full on #1662, #1668, #1675: nothing holds one.
-  Nothing ticked: no step's PRs are merged on `main` yet (the card's word).
+- Sitting 4, `main` at 5eb94ec, 19 open PRs not drafts, each `test` green.
+  All 15 of B, P, N, H, G rehearsed together: precheck RED (B's guards beside
+  N, H, G). The 9 below: precheck 0 FAIL, build, questline 187/187 (d02b3ca).
+  Reviews with skeptics: `docs/plan/census/review-z4.md`. Ticked nothing.
 
 ## The list: merge in this order, in one sitting, each "Create a merge commit"
-1 #1661 W1 · 2 #1662 W2 (deploys the worker) · 3 #1663 W3 · 4 #1666 S1
-5 #1669 S2 · 6 #1677 F1 · 7 #1678 F2 · 8 #1667 C · 9 #1673 D · 10 #1665 I
-11 #1670 J · 12 #1672 J · 13 #1674 J · 14 #1679 J · 15 #1668 H1 (the only
-game code: `bodyBake.js`) · 16 #1675 H2 (deploys the worker) · 17 this PR
-- A squash of #1662, #1663, #1669, #1678 or #1675 conflicts on its status
-  file (the branches are stacked): merge commits only.
+1 #1687 B2 · 2 #1689 B3 · 3 #1690 B4 · 4 #1693 B5 · 5 #1696 B6 · 6 #1698 B7 ·
+7 #1702 B8 · 8 #1707 P's card · 9 #1713 P1 · 10 this PR. Stacked: no squash.
+None touches `server/**`: no deploy. No cap, live flag or record's shape.
+B, not N, H, G: B is green on `main`, each guard names the mend; held, it meets
+this red each sitting. It unblocks U, T, V and P's PR 4.
 
-## Held (expires at sitting 2)
-- #1676 W4: `git merge origin/main` into it conflicts in `CLAUDE.md` §3
-  (#1671's orchestrator line). W merges `main` in, keeping both lines.
+## Held (expires at sitting 5): merge `main` after the list, then mend
+- N #1684, #1695, #1697: `systems` (`server/src/wire/` has no system),
+  `shapes-once` (`wayIn`, `mayStart`, `doesWhat` have no Where),
+  `tests-by-system` (`wire-table.test` names `wsClient.js`: `lib/filesOf.mjs`).
+- H #1700, #1709, #1712: `four-lines` (`entityRenderer.js` 9006 > 8968, H4;
+  `gameDisplay.js` 4285 > 4270, H6: a line only falls). Verified: H5's plan
+  taken by colour count (scrambled monster colours); H4's reads in series.
+- G #1701: `four-lines` (`BroTown.jsx` 8372 > 8371; `BroTown()` 7802 > 7801).
+- A #1706, #1708, #1711: `systems` (`report.js`, `roomrow.js`: 13 > 11).
+  The four faults mended where `visibilitychange` fires. Verified: A5 leaves
+  each sitting's last report (or a short one's first) in memory; A6's card
+  has no cap of its own; the `dev` part fills in ~6 live builds. A cap line.
+- Y #1705: still a DRAFT (its file says ready): not ready.
 
 ## Stalled
-- None: every status file says ready; no branch is three hours quiet.
-
-## Found, no card owns it (owner: start a session, or put it on a card)
-- Red on `main`, the GAME's: `mp-farmmusic` step 4, out of the farm's gate
-  into Frost Ridge (`zoneTransitions.js`, `wheelTownDoors.js`; J's `red.md`).
-- `server/test/old-map.test.mjs` §1 reads only `run.mjs`'s table: since #1661
-  a new scenario with no world passes GitHub (precheck and the harness still
-  refuse it). For card B (a guard), with: precheck runs a check
-  `rails.test.mjs` refuses (an arrow export); `run.mjs`'s table names
-  `landview`, `thumbbtn` hide a new file of the same name.
-- Card H: a worker that hangs is restarted at each return, ~20 s of plain
-  looks each time (unproven on a device); `BT_BW_PARTS` takes a typo green.
-- After #1668, `state-census.mjs --check` says `state.md` is one row stale.
-- The readers' faults (the Found of S, C, D, I, J, H) wait for their cards.
-- Needs, the owner's: the questions in W's, S's and C's status files.
+- None.
+## Found
+- From sitting 5, B's guards are on `main`: a PR red against one mends it.
+- No card: `quests.js` 262, test mode takes a retired quest (`testmode.js`
+  says it is refused). `docs/WIRE-PROTOCOL.md` has no `report` row (A's).
+- The owner's answers: E (PR 5, in your own words), Y (`mp-topaudit`: a
+  second PR in `pixiRenderer.js`, yes or no), P (spec part 1's reading).
