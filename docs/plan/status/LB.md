@@ -1,11 +1,11 @@
 card: LB
 branch: claude/plan-lb-1-pieces (one branch a PR, PR 2's begun from this one)
-prs: PR 1 (5500) on the branch above (its number with the next commit)
-state: working
+prs: #1771 (5500, ready; the owner to see its pieces before PR 2 uses them)
+state: ready
 
 ## Done
 
-- PR 1 (5500), the pieces: the owner's sheet and two mockups under
+- #1771 (5500), the pieces: the owner's sheet and two mockups under
   `assets/ui/leaderboard/`; 27 pieces cut by the sheet's own alpha
   (`tools/ui/cut-leaderboard.mjs`, the door's four steps, family
   `ui-leaderboard`, draw `none`); the papers (`sources.json`, `CREDITS.md`),
