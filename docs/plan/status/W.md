@@ -1,7 +1,7 @@
 card: W
-branch: claude/plan-w-3-tags-scoreboard (one branch a PR, each on top of the one before: -1- to -4-)
-prs: #1661 (ready), #1662 (ready), #1663 (ready)
-state: working
+branch: claude/plan-w-4-gatekeeper (one branch a PR, each on top of the one before: -1- to -4-)
+prs: #1661 (ready), #1662 (ready), #1663 (ready), PR 4 (ready)
+state: ready
 
 ## Done
 - PR 1 (5021, #1661): a scenario is found by its file. A scratch
@@ -13,13 +13,17 @@ state: working
   plan's sessions by status file, `scoreboard.mjs` runs clean (1 of 17 rows
   measured; the rest say "not measured").
 
+- PR 4 (5024): `gatekeeper.mjs`, `baseline.md`, CLAUDE.md's four lines.
+  Two scratch branches (a scenario, a guard, a check each) merged clean in
+  both orders, the same tree; precheck and `npm test` green; the full run
+  (build, questline 187 of 187) green. A conflict is named and stops it.
+
 ## Next
-- PR 4 (5024): the gatekeeper's script, the baseline, the house rules.
+- Nothing: the card is done once the four PRs merge (gatekeeper's list).
 
 ## Found
 - `tools/qa/mp/mp-topaudit.mjs`: an old probe with no `world` and no line
   in the table. The harness refuses it; `old-map` names it and passes.
-- `mp-coldload`, `mp-cuelevels`, `mp-hitsound`: scripts, not scenarios.
 - The tag check refused every card's own tag (the cards printed them in
   full). Settled on main by v2.3.5055 (the cards write them bare); the
   check and the brief read tags as they did.
