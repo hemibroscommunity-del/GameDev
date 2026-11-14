@@ -1,18 +1,19 @@
 card: E
 branch: claude/plan-e-1-daybook (one branch a PR, each begun from the one before, as W's and H's are: merge them in order)
-prs: PR 1 the day's book (working)
-state: working
+prs: PR 1 the day's book on the branch above (ready; its number goes here with PR 2's commit, to spare a paid run)
+state: ready
 
 ## Done
 
-- (nothing merged yet)
+- PR 1 (5080), the day's book's frame: `server/src/daybook.js` (one door
+  `bookAdd`, one put a 5-minute pace, 60 days pruned a page at a time,
+  `daybook: false`), `daybook.test` (77), cost-guard §15 (13 rows an
+  hour; break proof: a 1-minute pace writes 60 and fails). Touches
+  `server/`: its merge deploys the worker. Card A may build on it.
 
 ## Next
 
-- PR 1 (tag 5080), the day's book's frame: `server/src/daybook.js` (one
-  door `bookAdd`, one put a 5-minute pace, 60 days pruned a page at a
-  time, `daybook: false`), its suite, cost-guard §15 (13 rows an hour at
-  most; the line is a number, so a faster pace fails it).
+- PR 2 (tag 5081), the roads' classes.
 
 ## Found
 
