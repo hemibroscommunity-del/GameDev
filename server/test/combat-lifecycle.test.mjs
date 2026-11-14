@@ -736,15 +736,24 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     room.eventBuffer.filter((e) => e.type === 'monster_hit' && e.payload.monsterId === rs.id).length === 3,
     room.eventBuffer.length);
 
-  // (c) the normal ranged lane is untouched: two rapid special:false
-  // bow hits on the same monster -> second dropped (old-client shape).
-  if (psA._monHitCad) psA._monHitCad.clear();
-  room.eventBuffer.length = 0;
-  await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: rs.id, zone: 'meadow', slot: 'ranged', special: false } }));
-  await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: rs.id, zone: 'meadow', slot: 'ranged', special: false } }));
-  check('ranged normal: rapid second special:false hit inside 335ms still dropped',
-    room.eventBuffer.filter((e) => e.type === 'monster_hit' && e.payload.monsterId === rs.id).length === 1,
-    room.eventBuffer.length);
+  // (c) the normal ranged lane: two rapid special:false bow hits on the same
+  // monster.  v2.3.5540 (card K, the archer's lane, `arrowlane`): an arrow's
+  // claim comes when it lands, so the lane lets ONE in early -- the second
+  // lands, a third inside the lane is dropped; with `arrowlane: false` the
+  // second is dropped, as before (the old-client shape).
+  const rapid = async (n) => {
+    if (psA._monHitCad) psA._monHitCad.clear();
+    room.eventBuffer.length = 0;
+    for (let i = 0; i < n; i++) await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: rs.id, zone: 'meadow', slot: 'ranged', special: false } }));
+    return room.eventBuffer.filter((e) => e.type === 'monster_hit' && e.payload.monsterId === rs.id).length;
+  };
+  const _three = await rapid(3);
+  check('ranged normal: v2.3.5540: of three rapid special:false hits the second lands (the archer\'s lane), the third is dropped', _three === 2, _three);
+  const _flagsC = room._liveFlags;
+  room._liveFlags = { ...(_flagsC || {}), arrowlane: false };
+  const _two = await rapid(2);
+  room._liveFlags = _flagsC;
+  check('ranged normal: rapid second special:false hit inside 335ms still dropped (arrowlane: false)', _two === 1, _two);
 
   // (b) the special roll is slot-agnostic.  Pin variance (0.5 -> staff
   // v=1.0, bow v=0.7) and no crit (power 0); mind=200 keeps the numbers

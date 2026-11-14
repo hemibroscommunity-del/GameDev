@@ -109,7 +109,7 @@ export const SWALLOWED = Object.freeze({
 
 /* The list's size when it was frozen (v2.3.4791).  Lower these as lines come
    off; raising one is a decision the PR names. */
-export const FROZEN = Object.freeze({ listed: 270, known: 0 });   /* v2.3.4801: +1, the draw and gather's quiet drop (drawgather.js); v2.3.4880: -22, the workshop answers (forge, amulet forge, gem cut, smelter, armour forge); v2.3.4881: -14, the points, the chest, the capes and the reroll; v2.3.4882: -4, the purses; v2.3.4883: -6, the weapon stash; v2.3.4884: the heap burn's 4 recoded `fight`, the fire's 1 off; v2.3.4885: -2, the last three answer (party accept, trade2's weapon cap, the relay trade's run-out offer; and a party accept with no invite map, after a deploy), two right silences beside them named */
+export const FROZEN = Object.freeze({ listed: 271, known: 0 });   /* v2.3.5540: +1, the archer's lane's own drop beside the plain floor's (combat.js; card K, step 4.2); v2.3.4801: +1, the draw and gather's quiet drop (drawgather.js); v2.3.4880: -22, the workshop answers (forge, amulet forge, gem cut, smelter, armour forge); v2.3.4881: -14, the points, the chest, the capes and the reroll; v2.3.4882: -4, the purses; v2.3.4883: -6, the weapon stash; v2.3.4884: the heap burn's 4 recoded `fight`, the fire's 1 off; v2.3.4885: -2, the last three answer (party accept, trade2's weapon cap, the relay trade's run-out offer; and a party accept with no invite map, after a deploy), two right silences beside them named */
 
 /* handler -> { guard: 'code[ code...][: note]' } */
 export const ALLOW = {
@@ -153,6 +153,7 @@ export const ALLOW = {
     "if (_hp && !isSpecial && !this._hitRateTake(attackerPs, _effSlot, _hpNow, _dg ? (_dg.drop ? 0 : _dg.f) : 1))": "rate",
     "if (cad.s.length >= 3)": "rate",
     "if (nowTs - cad.n < 210)": "rate",
+    "if (nowTs < cad.n)": "rate: v2.3.5540, the archer's lane (arrowlane): an arrow or bolt past its one early claim, the same lane",
     "if (_f === null)": "fight",
     "if (!_t)": "rate: v2.3.4801, a drawn arrow's or gathered bolt's claim on a shot that lands nothing (sooner than its floor) or on a target it took already (drawgather.js _dgTake): the sword's `_f === null`",
   },
