@@ -1,0 +1,32 @@
+card: LB
+branch: claude/plan-lb-1-pieces (one branch a PR, PR 2's begun from this one)
+prs: PR 1 (5500) on the branch above (its number with the next commit)
+state: working
+
+## Done
+
+- PR 1 (5500), the pieces: the owner's sheet and two mockups under
+  `assets/ui/leaderboard/`; 27 pieces cut by the sheet's own alpha
+  (`tools/ui/cut-leaderboard.mjs`, the door's four steps, family
+  `ui-leaderboard`, draw `none`); the papers (`sources.json`, `CREDITS.md`),
+  the MEMORY-MAP slot, `docs/specs/leaderboard-look.md`, the card, LB's
+  tag block.
+
+## Next
+
+- PR 2 (5501), the window, once PR 1's pictures are shown to the owner.
+
+## Found
+
+- The sheet is already see-through: its "gradient" is colour under alpha 0
+  (565,671 pixels), so the cut needs no key at all (the spec, part 2).
+- A second mockup came onto `claude/codebase-upgrade-plan-mk31p4` after the
+  card (2651b21fc, "This pic is better mock representation"): committed
+  with the first.
+- Today's rank trophies (`public/icons/ui/rank-<n>.webp`, the owner's
+  2026-11-09 sheet, `tools/ui/cut-rank-trophies.py`) are what the card's
+  medals 1-3 replace in PR 2.
+
+## Needs
+
+- (none yet)
