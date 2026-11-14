@@ -20,6 +20,8 @@
  * BREAK PROOF (rule 8), tried by hand: the row's line in trade2.js moved
  * after `await together` (a run of its own) -> FAIL 3 ("a restart at any
  * write of the confirm: the swap and its row both, or neither": paid, no row).
+ * And (sitting 10) the empty side's check taken out of xferRow -> FAIL 3
+ * (an empty window wrote a row).
  */
 import { makeStorage, openRoom, join, fakeWs, settle, seededClock } from './testroom.mjs';
 import { XFER, xferRow, xferKey, xferDay, xferList, xferPrunePage, xferOff } from '../src/xfer.js';
@@ -126,6 +128,25 @@ const world = () => {
     if (paid !== (row === 1) || row > 1) bad.push({ crashAt: k, paid, rows: row, coinsB: recB.coins });
   }
   check('3. a restart at any write of the confirm: the swap and its row both, or neither', bad.length === 0, bad);
+}
+{
+  /* v2.3.5092 (the gatekeeper's sitting 10): a window both sides confirmed
+     EMPTY moves nothing and writes no row */
+  const st = makeStorage(world());
+  const room = await openRoom(st);
+  const wa = fakeWs('a'), wb = fakeWs('b');
+  await join(room, wa, A, { loginTaken: true });
+  await join(room, wb, B, { loginTaken: true });
+  await cmd(room, wa, 'trade2_open', { target: B }); await settle();
+  await cmd(room, wb, 'trade2_open', { target: A }); await settle();
+  await cmd(room, wa, 'trade2_ready', { ready: true }); await settle();
+  await cmd(room, wb, 'trade2_ready', { ready: true }); await settle();
+  clock.advance(3000);
+  await cmd(room, wa, 'trade2_confirm'); await settle();
+  await cmd(room, wb, 'trade2_confirm'); await settle();
+  const done = wa.sent.some((m) => m && m.type === 'trade2_state' && m.payload && m.payload.state === 'done');
+  check('3. an empty window confirmed by both (it settles) writes no row', done && rows(st).length === 0, { done, rows: rows(st) });
+  check('3. ...and xferRow writes none for a settlement with nothing either way', xferRow(room, { road: 'gift_trade', id: 'g-empty', from: A, to: B, gives: { _gold: 0 }, price: {} }) === null && rows(st).length === 0);
 }
 
 /* ══════════ 4. THE GIFT TRADE ══════════ */
