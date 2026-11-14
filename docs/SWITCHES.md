@@ -20,15 +20,19 @@ addresses (`tools/qa/`), `localStorage` toggles, and the worker's `env` settings
 reads it as a flag or a comment promises it as a kill switch; any other cap's override is the emergency lever of
 `docs/specs/liveops.md` ("Caps override").
 
-251 rows: 244 switches, 6 values, 1 levers, in 23 systems.
+How many there are: `node tools/guards/switches.test.mjs` prints the count, and `node tools/dev/scoreboard.mjs` its row.
 
 ## audio
 
 | name | side | kind | born | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|
-| `sfxcache` | both | switch | v2.3.3714 | off_sfxcache: true; ?sfxcache=0, off | memory |  | no | Sounds are held whole again, not only while needed. |
-| `voicecap` | both | switch | v2.3.3727 | off_voicecap: true; ?voicecap=0, off | memory |  | no | A crowd of one sound plays every voice again, not a few. |
 | `?foldgentle` | page | switch | v2.3.5045 | =0, off, false | logic |  | no | A sound is folded to mono in one go again, not in turns between frames. |
+| `?nobeds` | page | switch | v2.3.3462 | present | logic |  | no | No ambient sound beds (sea, crowd, fire). |
+| `?noforge` | page | switch | v2.3.3434 | present | logic |  | no | No forge sounds in the town. |
+| `?sfxahead` | page | switch | v2.3.5006 | =0, off | memory |  | no | The four level sounds are pinned again, not loaded a level ahead. |
+| `sfxcache` | both | switch | v2.3.3714 | off_sfxcache: true; ?sfxcache=0, off | memory |  | no | Sounds are held whole again, not only while needed. |
+| `?sounds` | page | lever | v2.3.3523 | present | none |  | no | Opens the Sound Studio once the world is up. |
+| `voicecap` | both | switch | v2.3.3727 | off_voicecap: true; ?voicecap=0, off | memory |  | no | A crowd of one sound plays every voice again, not a few. |
 
 ## bots
 
@@ -50,6 +54,7 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 | `accuracy` | worker | switch | v2.3.4480 | false | logic |  | no | Counts no hits for the accuracy record, answers its asks with off and un-advertises the cap (what is stored stays). |
 | `areachoice` | worker | switch | v2.3.3528 | false | logic |  | no | The PvP area rule counts a blow either way, not only one you landed. |
 | `bigorb` | worker | switch | v2.3.2849 | false | logic |  | no | Un-advertises the staff's big orb: a phone that joins after fires the old three orbs, with no blast. |
+| `?bowfeel` | page | switch | v2.3.4802 | =0 (remembered; =1 forgets) | logic |  | no | The bow's old flick, not its draw, on this device. |
 | `bowvolley` | worker | switch | v2.3.2808 | false | logic |  | no | Un-advertises the bow's volley: a phone that joins after fires the old single arrow and blast. |
 | `disable_threats` | worker | switch | v2.3.1150 | true | logic |  | no | Thrown, every relayed threat handshake is dropped. |
 | `elemup` | worker | switch | v2.3.3518 | false | logic |  | no | Un-advertises the element bonus and takes it away. |
@@ -61,6 +66,7 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 | `freeswing` | worker | switch | v2.3.4520 | false | logic |  | no | No phone gets the free swing; every phone is told. |
 | `freeswingbonus` | worker | switch | v2.3.4520 | false | logic |  | no | The free swing never pays its timing bonus. |
 | `killroll` | worker | switch | v2.3.3209 | false | logic |  | no | Every drop on its own roll again, nothing sent over the monster. |
+| `?manual` | page | value | v2.3.4357 | =0 to =4 (remembered on the device) | logic |  | no | Picks the combat mode on this device: 0 the old, 1 to 4 the manual trials. |
 | `monsterguardbreak` | worker | switch | v2.3.4393 | false | logic |  | no | A monster's hit on no stamina no longer breaks the guard. |
 | `monsterhold` | worker | switch | v2.3.3513 | false | logic |  | no | The element hold rule off: monsters move as before real gems. |
 | `mummyroar` | worker | switch | v2.3.3621 | false | logic |  | no | Mummies swing as before, without the roar. |
@@ -71,29 +77,58 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 | `pvpbrew` | worker | switch | v2.3.3133 | false | logic |  | no | Un-advertises the brew in PvP: a new page folds it into its claims as before. |
 | `pvpextras` | worker | switch | v2.3.3264 | false | logic | `oneformula`, `pvpbalance` | no | Takes every PvP extra off players at once. |
 | `pvplunge` | worker | switch | v2.3.3262 | false | logic |  | no | No lunge at a player: caps.pvplunge false and the dazed gates off. |
+| `?shieldaim` | page | value | v2.3.3845 | =mouse | logic |  | no | On a computer, the shield's guard always follows the pointer. |
 | `shieldgem` | worker | switch | v2.3.3187 | false | logic |  | no | Un-advertises the shield gem and refuses every ask. |
 | `shieldwear` | worker | switch | v2.3.3091 | false | logic |  | no | Un-advertises shield wear, ignores every report, and No man's land takes no shield on a loss. |
 | `shockspark` | worker | switch | v2.3.3518 | false | logic |  | no | Un-advertises the storm gem's spark and sparks nothing. |
 | `slimeshove` | worker | switch | v2.3.3747 | false | logic |  | no | No slime shove. |
 | `soakhit` | worker | switch | v2.3.3518 | false | logic |  | no | A soaked monster hits as hard as a dry one, and the cap is off. |
+| `?stafffeel` | page | switch | v2.3.4803 | =0 (remembered; =1 forgets) | logic |  | no | The staff's old cast, not its gather, on this device. |
+| `?swingbonus` | page | switch | v2.3.4520 | =0 (remembered; =1 forgets) | logic |  | no | The free swing without its perfect-strike bonus on this device. |
 | `swordconvert` | worker | switch | v2.3.3895 | false | logic |  | no | Stops the sword conversion's boundary heals and the Forge's mapping. |
+| `?swordfeel` | page | switch | v2.3.4800 | =0 (remembered; =1 forgets) | logic |  | no | The sword's look before its feel (no dimming, glint, arc or weight), on this device. |
 | `weapongem` | worker | switch | v2.3.3513 | false | logic |  | no | Un-advertises the weapon gem, refuses every ask, and the fight goes back on the claimed element. |
 | `whirlWindup` | worker | switch | v2.3.2820 | false | logic |  | no | The whirlwind is instant again, with no wind-up. |
 | `xp_mult` | worker | value | v2.3.1150 | a number, 1 to 4 | logic |  | no | Multiplies kill XP (the 2x weekend lever), 1 to 4. |
+| `?xpfly` | page | switch | v2.3.3893 | =0 | logic |  | no | A kill's XP does not fly to the bar. |
 
 ## data
 
 | name | side | kind | born | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|
+| `?burstnumbers` | page | switch | v2.3.5004 | =0 | memory |  | DecompressionStream in src/rendering/levelUpBurstNumbers.js | The level-up burst plays from its picture strip, not its colour numbers. |
+| `?musicdecode` | page | switch | v2.3.3073 | present | memory |  | _deckFailed in src/data/gameDisplay.js | Music is decoded whole again, not streamed through the music deck. |
+| `?nolandmusic` | page | switch | v2.3.3064 | present | logic |  | no | One track everywhere in the world (the game's theme), not each land's own music. |
 | `soundgate` | both | switch | v2.3.3800 | off_soundgate: true; ?soundgate=0, off, false, no | logic |  | no | The world's sound plays under the loading screen again. |
+| `?stepvol` | page | value | v2.3.3470 | a number: the footsteps' loudness on a computer | logic |  | no | Sets how loud a computer's footsteps play (in place of 2.5). |
+| `?stereosfx` | page | switch | v2.3.3706 | present | memory |  | no | Sound effects are kept stereo, not folded to one channel. |
+
+## debug
+
+| name | side | kind | born | thrown | risk | needs | fallback | off |
+|---|---|---|---|---|---|---|---|---|
+| `?debug` | page | lever | unknown | =1 | none |  | no | Opens the debug console on load. |
+| `?dev` | page | lever | v2.3.222 | =1 | none |  | no | The owner's developer view: crash banners, the dev panels and their buttons. |
+| `?nodebug` | page | lever | unknown | =1 | none |  | no | Turns the debug overlay off for this browser (forgets it). |
+| `?perf` | page | lever | v2.3.324 | =1 | none |  | no | Shows the performance HUD. |
+| `?report` | page | switch | v2.3.5122 | =0 | logic |  | no | This phone sends no field report. |
+
+## desktop
+
+| name | side | kind | born | thrown | risk | needs | fallback | off |
+|---|---|---|---|---|---|---|---|---|
+| `?dbltap` | page | switch | v2.3.3711 | =0 | logic |  | no | A double tap of a key no longer rolls. |
+| `?deskwide` | page | switch | v2.3.3687 | =0, off, false | logic |  | no | On a computer, the narrow column, not the whole window. |
+| `?guidearrow` | page | switch | v2.3.3925 | =0 | logic |  | no | On a computer, no guiding arrow for a new player. |
+| `?narrow` | page | switch | v2.3.3687 | present | logic |  | no | On a computer, the narrow column (the same as ?deskwide=0). |
 
 ## device
 
 | name | side | kind | born | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|
 | `lookpalette` | both | switch | v2.3.3716 | off_lookpalette: true; ?lookpalette=0 (=1 builds it anyway) | chip |  | onWindows, onMac in src/game/lookPaletteChoice.js | Each look's copy is baked on first sight again, not coloured on the chip. |
-| `viewcap` | both | switch | v2.3.4054 | off_viewcap: true; ?viewcap=0 (=1 forces it) | logic |  | no | A wide screen sees its old wider view of the world. |
 | `?pixbudget` | page | switch | v2.3.5140 | =0 (off), or a number: the budget to try | chip |  | no | The drawing resolution is no longer held to the pixel budget. |
+| `viewcap` | both | switch | v2.3.4054 | off_viewcap: true; ?viewcap=0 (=1 forces it) | logic |  | no | A wide screen sees its old wider view of the world. |
 
 ## economy
 
@@ -109,7 +144,9 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 | `dice` | worker | switch | v2.3.3393 | false | logic |  | no | No dice roll, and caps.dice false at a phone's next join (/roll is a plain line again). |
 | `disable_event_capes` | worker | switch | v2.3.2028 | true | logic |  | no | Thrown, the event's capes stop dropping. |
 | `disable_offer_sweep_all` | worker | switch | v2.3.4412 | true | logic |  | no | Thrown, the store's offer sweep goes back to the old first-20 pass. |
+| `?droplines` | page | switch | v2.3.3627 | =0 | logic |  | no | No drop lines in the chat for what a kill drops. |
 | `econ` | worker | switch | v2.3.5085 | false | logic |  | no | Nothing is counted into a character's minted and burned (`_econ`) or the day's book's economy part; gold and items move as before. |
+| `?equipredraw` | page | switch | v2.3.5046 | =0 | logic |  | no | A change of worn gear is set all at once again, not in pieces a frame apart. |
 | `event_cape_rate` | worker | value | v2.3.2027 | a number | logic |  | no | The event cape's drop rate, a number in place of the shipped one. |
 | `gearlevel` | worker | switch | v2.3.3544 | false | logic | `onelevel` | no | Armour, shields and amulets ask Defense points and Magic again, not your level. |
 | `gearresend` | worker | switch | v2.3.4386 | false | logic |  | no | The level gate's refusal is silent again (no gear sent back). |
@@ -129,7 +166,6 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 | `toolshop` | worker | switch | v2.3.3316 | false | logic |  | no | Takes the tools off the shelf and refuses every buy. |
 | `trade2` | worker | switch | v2.3.4375 | false | logic |  | no | The trade window is off, so the old gift is open again. |
 | `tradeonewrite` | worker | switch | v2.3.4795 | false | logic |  | no | The trade's swap goes back to its old order of writes. |
-| `?equipredraw` | page | switch | v2.3.5046 | =0 | logic |  | no | A change of worn gear is set all at once again, not in pieces a frame apart. |
 
 ## identity
 
@@ -137,7 +173,15 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 |---|---|---|---|---|---|---|---|---|
 | `broCount` | worker | switch | v2.3.3255 | false | logic |  | no | The phone falls back to the worn-Bro check instead of counting a wallet's Bros (links and counts stored keep showing). |
 | `devicelock` | worker | switch | v2.3.3344 | false | logic |  | no | The join, the login check and the restart as they were: no device lock read or written. |
+| `disable_verify` | worker | switch | v2.3.3275 | true | logic |  | no | Thrown, the account check (Turnstile) is not asked at the join. |
 | `keys2` | worker | switch | v2.3.3355 | false | logic |  | no | No new login key is handed out (keys already made still work). |
+| `?tabid` | page | switch | v2.3.4521 | =0 | logic |  | no | This phone takes the old road: the shared slot at every join, not its tab's own id. |
+
+## input
+
+| name | side | kind | born | thrown | risk | needs | fallback | off |
+|---|---|---|---|---|---|---|---|---|
+| `?tapthrough` | page | switch | v2.3.3560 | present | logic |  | no | A tap that closes a window lets its click through, as before. |
 
 ## life
 
@@ -163,24 +207,25 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 
 | name | side | kind | born | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|
-| `lookshirt` | both | switch | v2.3.3751 | off_lookshirt: true; ?lookshirt=0 | chip | `lookpalette` | no | Printed shirts are baked again, not coloured on the chip. |
 | `lookarmour` | both | switch | v2.3.3752 | off_lookarmour: true; ?lookarmour=0 | chip | `lookpalette` | no | Bodies under armour are baked again, not coloured on the chip. |
-| `lookfolk` | both | switch | v2.3.3809 | off_lookfolk: true; ?lookfolk=0 | memory | `lookpalette` | no | The townsfolk are drawn from their photographs again, loaded then. |
 | `lookdelta` | worker | switch | v2.3.3240 | false | logic |  | no | Every look track is relayed whole again. |
+| `lookfolk` | both | switch | v2.3.3809 | off_lookfolk: true; ?lookfolk=0 | memory | `lookpalette` | no | The townsfolk are drawn from their photographs again, loaded then. |
+| `lookshirt` | both | switch | v2.3.3751 | off_lookshirt: true; ?lookshirt=0 | chip | `lookpalette` | no | Printed shirts are baked again, not coloured on the chip. |
 
 ## memory
 
 | name | side | kind | born | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|
-| `picnumbers` | both | switch | v2.3.3715 | off_picnumbers: true; ?picnumbers=0 | memory |  | no | Monster strips are held as pictures again, not as colour numbers. |
 | `gfxlean` | both | switch | v2.3.4033 | off_gfxlean: true; ?gfxlean=0, off, false | memory |  | no | A big drawing's building lists are kept after it is drawn. |
-| `?treenumbers` | page | switch | v2.3.5247 | =0 | memory |  | no | The trees are held as pictures again, not as colour numbers. |
+| `picnumbers` | both | switch | v2.3.3715 | off_picnumbers: true; ?picnumbers=0 | memory |  | no | Monster strips are held as pictures again, not as colour numbers. |
+| `?treenumbers` | page | switch | v2.3.5248 | =0 | memory |  | no | The trees are held as pictures again, not as colour numbers. |
 
 ## monsters
 
 | name | side | kind | born | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|
 | `aggrogrid` | worker | switch | v2.3.3201 | false | logic |  | no | Monsters look for targets with the full loop everywhere instead of the grid. |
+| `?crowd` | page | value | v2.3.3241 | a number (1 to 500), or 0 or all for no cap | logic |  | no | Caps how many monsters are drawn around you. |
 | `elemhits` | worker | switch | v2.3.2996 | false | logic |  | no | Stops every new elemental status at once; a burn already burning finishes. |
 | `freezehit` | worker | switch | v2.3.3620 | false | logic |  | no | A chill is the plain chill, not frozen a moment first. |
 | `goohold` | worker | switch | v2.3.3620 | false | logic |  | no | The goo holds as the plain stuck hold, without its longer hold and sting. |
@@ -199,7 +244,11 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 | name | side | kind | born | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|
 | `amuletregen` | worker | switch | v2.3.3536 | false | logic |  | no | The regeneration tick goes back to the phone's claim and Endurance for everyone (the amulet's multipliers off). |
+| `?avatarholdms` | page | lever | v2.3.3520 | a number of ms (1 to 180 s) | none |  | no | A slow test machine's longer wait for the avatar's pictures. |
 | `entrygrace` | worker | switch | v2.3.4453 | false | logic |  | no | The zone-entry grace is given on every entry again. |
+| `?jumpbtn` | page | switch | v2.3.3681 | =0 | logic |  | no | No jump button. |
+| `?jumpms` | page | lever | v2.3.3017 | a number of ms | none |  | no | A test's own jump length. |
+| `?legsync` | page | switch | v2.3.4077 | =0 | logic |  | no | The legs keep their old fixed cadences, not synced to the speed. |
 | `monsterroll` | worker | switch | v2.3.3300 | false | logic |  | no | A monster gets no roll i-frames (the way before v2.3.3300). |
 | `movebudget` | worker | switch | v2.3.3325 | false | logic |  | no | The move budget off: the per-message 80, the refusals and the three bypasses as before. |
 | `movepath` | worker | switch | v2.3.3726 | false | logic |  | no | No glide from the next tick; every phone is told to send every move again. |
@@ -211,13 +260,14 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 | `serverdead` | worker | switch | v2.3.4373 | false | logic |  | no | A phone's move may write `dead` again (the move's write back). |
 | `sprint` | worker | switch | v2.3.3003 | false | logic |  | no | No sprint step is allowed. |
 | `steadymovers` | worker | switch | v2.3.3203 | false | logic |  | no | Every move goes out again, from the next tick. |
+| `?tapms` | page | lever | v2.3.3105 | a number of ms | none |  | no | A test's own longest tap that still counts as free. |
 
 ## preload
 
 | name | side | kind | born | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|
-| `onecopy` | both | switch | v2.3.3715 | off_onecopy: true; ?onecopy=0 | memory |  | no | Pictures are held in more than one copy again. |
 | `codelazy` | both | switch | v2.3.3717 | off_codelazy: true; ?codelazy=0, off, false | memory |  | no | Every window's code loads with the game again, not when opened. |
+| `onecopy` | both | switch | v2.3.3715 | off_onecopy: true; ?onecopy=0 | memory |  | no | Pictures are held in more than one copy again. |
 
 ## quests
 
@@ -235,8 +285,10 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 | `petshow` | worker | switch | v2.3.3120 | false | logic |  | no | Takes `pw` off every record (pets not shown to others). |
 | `pettrade` | worker | switch | v2.3.3120 | false | logic |  | no | Stops new pet trades and listings (one on its way still arrives). |
 | `petwards` | worker | switch | v2.3.3120 | false | logic |  | no | Every pet ward off. |
+| `?pointsfly` | page | switch | v2.3.3971 | =0 | logic |  | no | Points earned do not fly to their bar. |
 | `pointsreset` | worker | switch | v2.3.3541 | false | logic |  | no | Every points reset refused, and its cap off at the next join. |
 | `pointsresetroom` | worker | switch | v2.3.4372 | false | logic |  | no | The points reset's minute is the socket's alone, not kept by the room. |
+| `?questpath` | page | switch | v2.3.2992 | present | logic |  | no | The quest's road on the ground comes back, with its Settings row. |
 
 ## render
 
@@ -244,6 +296,7 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 |---|---|---|---|---|---|---|---|---|
 | `?bakeurl` | page | switch | v2.3.5043 | =0 | logic |  | no | Every armour bake input is cut on the page again, not sent to the worker as its sheet's address. |
 | `?coinflip` | page | switch | v2.3.5247 | =0 | memory |  | no | Ace's coin strips keep their decoded copies, as before. |
+| `groundkeep` | both | switch | v2.3.3775 | off_groundkeep: true; ?groundkeep=0, off, false | chip |  | no | The world's ground is rebuilt on a return, not kept, as before. |
 | `?npcheads` | page | switch | v2.3.5246 | =0 | memory |  | no | The townsfolk's head pictures keep their decoded copies, as before. |
 
 ## server-core
@@ -254,6 +307,7 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 | `far_ms` | worker | value | v2.3.3243 | a number, 100 to 5000 | logic |  | no | How often far players go out on their own, in ms (100 to 5000). |
 | `farplayers` | worker | switch | v2.3.3197 | false | logic |  | no | Sends everyone every far player every tick again. |
 | `heapburn` | worker | switch | v2.3.3748 | false | logic |  | no | Un-advertises the burning heap: the phone sends nothing and nobody burns. |
+| `hidden_off` | worker | switch | v2.3.3723 | true | logic |  | no | Thrown, the hidden settings are not read: the public placeholders are used. |
 | `newersave` | worker | switch | v2.3.3303 | false | logic |  | no | A save from a newer worker is let through the join, the newer `_v` kept. |
 | `roundpos` | worker | switch | v2.3.3197 | false | logic |  | no | Positions go out as the phones sent them, not rounded. |
 | `skillfreeze` | worker | switch | v2.3.4380 | false | logic |  | no | A prog3 character's reported skill tracks are stored and restored again. |
@@ -269,7 +323,7 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 | `joinstandup` | worker | switch | v2.3.4374 | false | logic |  | no | The join restores 0 health and the sweep kills again, as before. |
 | `lastplace` | worker | switch | v2.3.3327 | false | logic | `movebudget` | no | Every join takes its place again, and the first move after it is free. |
 | `linger` | worker | switch | v2.3.3260 | false | logic |  | no | Every leaver leaves at once again; a lingering body ends on the next sweep. |
-| `lingeracc` | worker | switch | v2.3.4921 | false | logic |  | no | A lingering player's account cache is left in memory, as before. |
+| `lingeracc` | worker | switch | v2.3.4921 | false | logic |  | no | A lingering player's unwritten shot and hit counts (the accuracy record) are left in memory, as before. |
 | `max_players` | worker | value | v2.3.1982 | a number, 1 to the ceiling | logic |  | no | The room's cap on players, never above its bandwidth ceiling. |
 | `nearjoin` | worker | switch | v2.3.3276 | false | logic |  | no | New joins get the whole snapshot again, cap off. |
 | `presence2` | worker | switch | v2.3.3250 | false | logic |  | no | Un-advertises presence 2: every phone back on the v2.3.3246 roster. |
@@ -314,6 +368,7 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 | `tierxp` | worker | switch | v2.3.3251 | false | logic | `nodehp` | no | Every harvest back on the old XP, cap un-advertised. |
 | `trapcraft` | worker | switch | v2.3.3120 | false | logic |  | no | Making traps is refused. |
 | `trapping` | worker | switch | v2.3.3120 | false | logic |  | no | Un-advertises trapping, refuses every arm and stops every roll. |
+| `?treefade` | page | switch | v2.3.3345 | =0 | logic |  | no | Trees stay solid when you walk behind them. |
 | `volleychip` | worker | switch | v2.3.4385 | false | logic |  | no | A harvest ends on every chip, as before. |
 
 ## social
@@ -332,33 +387,60 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 | `emotes` | worker | switch | v2.3.3391 | false | logic |  | no | No emote is relayed, and caps.emotes false shuts the picker at the next join. |
 | `leaderidleat` | worker | switch | v2.3.4378 | false | logic |  | no | The party leader's idle clock counts only a `seen` above 0, as before. |
 | `partykeep` | worker | switch | v2.3.3276 | false | logic |  | no | Parties are not kept: the old cap and the away window remove a dropped member. |
+| `race` | worker | switch | v2.3.3525 | false | logic |  | no | Lil Bro's race un-advertised and none started. |
 | `spar` | worker | switch | v2.3.3265 | false | logic |  | no | No sparring clones: every live clone goes on the next tick and the cap is withdrawn. |
 
 ## townsfolk
 
 | name | side | kind | born | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|
-| `race` | worker | switch | v2.3.3525 | false | logic |  | no | Lil Bro's race un-advertised and none started. |
+| `?folkwalk` | page | switch | v2.3.3949 | =0 | logic |  | no | The townsfolk stand at their spots, not walk their day. |
 | `tour` | worker | switch | v2.3.3525 | false | logic |  | no | Un-advertises the tour's two givers. |
+| `?townchat` | page | switch | v2.3.3901 | =0 | logic |  | no | The townsfolk do not chat to each other. |
+
+## ui
+
+| name | side | kind | born | thrown | risk | needs | fallback | off |
+|---|---|---|---|---|---|---|---|---|
+| `?bandbeat` | page | switch | v2.3.4450 | =0, off, false | logic |  | no | The band's 200 ms redraw runs in one piece, as before. |
+| `?create` | page | lever | v2.3.1861 | =1 | none |  | no | Goes straight to the character creator. |
+| `?guest` | page | lever | v2.3.1116 | =1 | none |  | no | This tab plays as a fresh guest with its own id. |
+| `?jumpicon` | page | value | v2.3.3721 | a glyph's name | logic |  | no | Picks the jump button's glyph. |
+| `?login` | page | lever | v2.3.1839 | =1 | none |  | no | Shows the login door. |
+| `?loginspin` | page | switch | v2.3.4295 | =0 | logic |  | no | The login wheel does not open by itself (its button still opens it). |
+| `?nomapdetail` | page | switch | v2.3.3319 | present | memory |  | no | No detail tiles on the world map. |
+| `?noresume` | page | lever | v2.3.781 | =1 | none |  | no | Does not walk back into the world on load. |
+| `?npcprox` | page | switch | v2.3.3583 | present | logic |  | no | Walking up to a townsperson opens them again (the old opener), to compare. |
+| `?oneband` | page | switch | v2.3.4012 | =0 | logic |  | no | The old side column, not the one band at the bottom. |
+| `?owedrebuild` | page | switch | v2.3.3886 | =0 | logic |  | no | A second graphics loss inside a rebuild is not owed a rebuild. |
+| `?p3colour` | page | switch | v2.3.2597 | =0 | logic |  | no | The hero sheet's stats lose their colours. |
+| `?p3cols` | page | lever | v2.3.2597 | =1 | none |  | no | The hero sheet in one column, for the comparison. |
+| `?playvwlive` | page | switch | v2.3.4875 | =1 | logic |  | no | The play view is measured on every read, as before. |
+| `?starcue` | page | switch | v2.3.3872 | =0 | logic |  | no | No star cue over what to do next. |
+| `?tradeside` | page | value | v2.3.3856 | =0 or =1 | logic |  | no | Picks which side the trade window's lanes are on. |
+| `?wdgeterror` | page | switch | v2.3.3450 | present | logic |  | no | The world map's thumbnail asks the chip for errors every time, as before. |
 
 ## wire
 
 | name | side | kind | born | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|
 | `bundle` | worker | switch | v2.3.3254 | false | logic |  | no | Stops advertising message bundles: each phone sends its messages one by one from its next join. |
+| `?diet` | page | switch | v2.3.3726 | =1 or =0 (kept for the tab) | logic |  | no | Puts this phone on the move diet (=1) or keeps it off (=0), whatever the worker says for everyone. |
 | `disable_weapon_drops` | worker | switch | v2.3.1150 | true | logic |  | no | Thrown, weapon drops stop rolling (caps.weaponDrops stays true, so no phone mints its own). |
 | `ip_joins_min` | worker | value | v2.3.3274 | a number, 0 to 10000 | logic |  | no | Joins an address may make a minute (0 to 10000; 0 is no limit). |
 | `ip_sockets` | worker | value | v2.3.3274 | a number, 0 to 1000 | logic |  | no | Sockets an address may hold at once (0 to 1000; 0 is no limit). |
 | `movediet` | worker | switch | v2.3.3204 | false | logic |  | no | Un-advertises the move diet: each phone sends every move again from its next join. |
 | `pileleft` | worker | switch | v2.3.4383 | false | logic |  | no | Stops the death pile's time-left fields on the wire. |
 | `relaylist` | worker | switch | v2.3.3304 | false | logic |  | no | Relays every type that is not privileged again (the old deny-list). |
+| `?room` | page | lever | v2.3.217 | a room's name | none |  | no | Joins the named room, not the lobby's. |
+| `?wheelwhole` | page | switch | v2.3.3318 | present | logic |  | no | Asks for every world monster on the way in, not only those near. |
 
 ## world
 
 | name | side | kind | born | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|
-| `groundlean` | both | switch | v2.3.3717 | off_groundlean: true; ?groundlean=0 (read by the ground worker in public/tools/ground/: out of reach) | memory |  | no | The ground is built by the old builder, not the lean one. |
-| `heaplean` | both | switch | v2.3.3717 | off_heaplean: true; ?heaplean=0, off, false | memory |  | no | The map's leftovers are kept, not let go. |
+| `?bigtown` | page | lever | v2.3.3299 | present (or =a number) | none |  | no | A preview: the short world drawn in the long room. |
+| `?bodyhere` | page | switch | v2.3.4831 | =0 | logic |  | no | The body is placed the old way after a reconnect, for one phone. |
 | `bosschest` | worker | switch | v2.3.3565 | false | logic |  | no | A dungeon boss drops no chest. |
 | `clearxp` | worker | switch | v2.3.3565 | false | logic |  | no | A dungeon clear's XP goes to the old counter only. |
 | `disable_dungeons` | worker | switch | v2.3.1150 | true | logic |  | no | Thrown, every dungeon start is refused with a message. |
@@ -367,14 +449,36 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 | `eventplace` | worker | switch | v2.3.3245 | false | logic |  | no | Every event goes to everyone again, from the next tick. |
 | `fightlock` | worker | switch | v2.3.3183 | false | logic |  | no | The bag is no longer locked in a fight on the roads the fight lock's table names `fightlock`. |
 | `fightlockmonster` | worker | switch | v2.3.4841 | false | logic |  | no | A fight with a monster no longer locks the bag in No man's land. |
+| `?folkbake` | page | switch | v2.3.4355 | =0 | logic |  | no | The townsfolk are baked when first met, not behind the loading screen. |
+| `groundlean` | both | switch | v2.3.3717 | off_groundlean: true; ?groundlean=0 (read by the ground worker in public/tools/ground/: out of reach) | memory |  | no | The ground is built by the old builder, not the lean one. |
+| `?groundwait` | page | switch | v2.3.3709 | =0 | logic |  | no | The ground starts building at once, not after the renderer is ready. |
+| `?halloween` | page | lever | v2.3.3395 | =1, =0, on or off | none |  | no | Forces the Halloween season on or off. |
+| `?healms` | page | lever | v2.3.3230 | a number of ms | none |  | no | A test's own time for a building's hits to be forgotten. |
+| `heaplean` | both | switch | v2.3.3717 | off_heaplean: true; ?heaplean=0, off, false | memory |  | no | The map's leftovers are kept, not let go. |
+| `?mappin` | page | switch | v2.3.3879 | =0 | logic |  | no | No pins on the world map. |
+| `?nmlask` | page | switch | v2.3.3253 | =0 | logic |  | no | No man's land never asks before a fight. |
+| `?nmlaskms` | page | lever | v2.3.3253 | a number of ms (1 to 60 s) | none |  | no | A test's own length for No man's land's question. |
 | `nmlchoice` | worker | switch | v2.3.3530 | false | logic |  | no | The No man's land choice is ignored: the first blow starts the skulls; cap off. |
 | `nmlgroup` | worker | switch | v2.3.3530 | false | logic |  | no | The last giver alone, as before, no `bys`; cap off. |
 | `nmllock` | worker | switch | v2.3.3770 | false | logic |  | no | No No man's land lock set or enforced; the red skull stays at a death; cap off. |
 | `nmlnear` | worker | switch | v2.3.3690 | false | logic |  | no | No man's land's rule as it was (FIRST_TIER 2). |
 | `nmlsteps` | worker | switch | v2.3.3767 | false | logic |  | no | No man's land climbs by the tier's number, not a step a monster level. |
+| `?nolife` | page | lever | v2.3.2990 | present | none |  | no | Leaves the buildings still (no smoke, lamps, sparks), to tell their cost. |
 | `nomansland` | worker | switch | v2.3.3058 | false | logic |  | no | No man's land off: no hit, no skull, nothing taken on a death; the safe Wheel of v2.3.3057. |
+| `?noobjects` | page | lever | v2.3.2990 | present | none |  | no | Leaves the world bare, the ground alone, to tell the objects' cost. |
+| `?nospawn` | page | lever | v2.3.2990 | present | none |  | no | The world trial: no monsters spawned. |
+| `?noswim` | page | switch | v2.3.3003 | present | logic |  | no | All the water is a wall again: no swimming. |
+| `?onepic` | page | switch | v2.3.4885 | =0 | memory |  | no | Every calm player is drawn in layers, not as one picture. |
+| `?onepicnear` | page | lever | v2.3.4885 | a number (0 to 999) | none |  | no | QA: keeps only the nearest N players layered, the rest a picture. |
 | `partydungeon` | worker | switch | v2.3.3573 | false | logic |  | no | The Grotto of v2.3.3540 again, cap off. |
+| `?placing` | page | lever | v2.3.2999 | =2 | none |  | no | A preview: the second placing of the world's objects, on the short world. |
+| `?plaintown` | page | lever | v2.3.3299 | present | none |  | no | A preview: the town with no objects, on the short world. |
+| `?repairms` | page | lever | v2.3.2995 | a number of ms | none |  | no | A test's own time for a broken object to mend. |
 | `retiredlands` | worker | switch | v2.3.4675 | false | logic |  | no | Opens the retired lands again at once. |
+| `?tod` | page | lever | v2.3.2703 | a phase name or a number (0 to 1) | none |  | no | Sets the time of day. |
+| `?trial` | page | lever | v2.3.2990 | present | none |  | no | The world trial's on-screen readout. |
+| `?trialhud` | page | lever | v2.3.2990 | present | none |  | no | The world trial's on-screen readout (the same as ?trial). |
+| `?wayback` | page | lever | v2.3.3021 | present | none |  | no | The world trial: the way back shown. |
 | `wheel5x` | worker | switch | v2.3.3299 | false | logic |  | no | A room that has not yet chosen plays the short Wheel for its whole life. |
 | `wheeldeep` | worker | switch | v2.3.3013 | false | logic |  | no | A Wheel spawned after it has the first tier's 48 monsters alone. |
 | `wheeldungeons` | worker | switch | v2.3.3013 | false | logic |  | no | Closes every Wheel dungeon mouth and un-advertises them. |
