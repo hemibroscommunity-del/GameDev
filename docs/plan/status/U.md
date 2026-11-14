@@ -10,7 +10,7 @@ state: ready
   name; `S._deathCard`); `state-census.mjs --ledger`; the guard
   `tools/guards/state-ledger.test.mjs` (unlisted 2128, its line 2128).
   B's map gains the system `state` for `src/state/` (the planning
-  session's call: B is finished).
+  session's call: B is finished), and its empty row in `budgets.mjs`.
 
 ## Next
 
