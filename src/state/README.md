@@ -91,3 +91,6 @@ until the map places their file; the guard lists those files by name.
   (it lagged main by 20 variables).
 - `quests`, `townsfolk`, `desktop`, `monsters`, `audio`, `social`
   (v2.3.5162): the next six, 150 rows.
+- `movement`, `economy`, `preload`, `skills`, `memory` (v2.3.5163): the next
+  five, 199 rows. `S.player` is in `skills`: the census gives it
+  `src/game/lifeSkillRewards.js`, the file that changes inside it most.
