@@ -17,6 +17,10 @@
  * escrow roads between players (the market, the auction house, a duel's
  * pot) are not on it: a price is their whole point, and card R's table of
  * the roads between players (step 10.5) says later which of them write one.
+ * v2.3.5280: that table is built (playerroads.js PLAYER_ROADS), and ROADS
+ * and KILLS are MADE from its `ledger` column (`xfer`, `kill`): the list is
+ * written once (the plan's rule 2).  A row's key is the `road` an `xfer:`
+ * row keeps.
  *
  * IN THE SETTLEMENT'S OWN RUN (handoff rule 5): `xferRow` issues the put
  * and hands back its promise, never awaiting, so the caller puts it in the
@@ -46,6 +50,8 @@
  * the settlement's path).
  */
 
+import { playerRoadsBy } from './playerroads.js';   /* v2.3.5280: the roads between players, one table */
+
 export const XFER = Object.freeze({
   V: 1,
   PREFIX: 'xfer:',
@@ -54,10 +60,12 @@ export const XFER = Object.freeze({
   GOODS_MAX: 64,
   IDS_MAX: 32,
   KEY_MAX: 64,
-  /** The `move` roads that write a row, one a settlement. */
-  ROADS: Object.freeze(['trade_window', 'gift_trade']),
-  /** The `move` roads that never do: a kill (the owner's "none a kill"). */
-  KILLS: Object.freeze(['nml_loss']),
+  /** The roads between players that write a row, one a settlement
+   *  (v2.3.5280: PLAYER_ROADS' rows whose ledger is `xfer`). */
+  ROADS: Object.freeze(playerRoadsBy('xfer')),
+  /** The ones that never do: a kill (the owner's "none a kill"; v2.3.5280:
+   *  PLAYER_ROADS' rows whose ledger is `kill`). */
+  KILLS: Object.freeze(playerRoadsBy('kill')),
 });
 
 /** The UTC day of `ts`, 'yyyymmdd' (daybook.js's, so a day's rows and its

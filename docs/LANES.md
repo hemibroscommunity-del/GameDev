@@ -24,7 +24,7 @@ A device picks `thirty` where its screen runs at 30 a second, else `full` (`pick
 
 | Knob | `full` | `light` | `thirty` |
 |---|---|---|---|
-| `rate` | Steady down to about 40 frames a second, on a screen faster than 60 | Steady at 30 frames a second, where 40 is not a whole number of refreshes | Steady down to about 40 frames a second, on a screen faster than 60 |
+| `rate` | Every frame the screen offers (a faster screen: steady down to about 40 a second) | A steady 30 frames a second on a 60 screen (a faster screen: as before) | Every frame the screen offers (a faster screen: steady down to about 40 a second) |
 | `pixels` | Every pixel of the budget | Every pixel of the budget | Every pixel of the budget |
 | `crowd` | The 50 nearest other players drawn | The 30 nearest other players drawn | The 50 nearest other players drawn |
 | `program` | One drawing program for the world's sprites | One drawing program for the world's sprites | One drawing program for the world's sprites |
@@ -42,7 +42,8 @@ A device picks `thirty` where its screen runs at 30 a second, else `full` (`pick
 Two axes. The game's own work (the crowd, then the rate) is stepped down when the late frames' time was the
 game's own; waiting for the graphics chip (the rate, then the passes, then the pixels) when it was the rest. A steady
 lower frame rate comes before a softer picture (the owner's call 16). The rate's rung is on both axes: whichever
-takes it first lowers the rate. The pixels change only behind a loading screen, a window or a tab's return.
+takes it first lowers the rate (on a screen of 60 or slower: a faster one keeps its own steps). The pixels change only behind
+a loading screen or a tab's return.
 
 ### The game's own work
 
@@ -50,18 +51,23 @@ takes it first lowers the rate. The pixels change only behind a loading screen, 
 |---|---|---|
 | 1 | `crowd` | The 30 nearest other players drawn |
 | 2 | `crowd` | The 15 nearest other players drawn |
-| 3 | `rate` | Steady at 30 frames a second, where 40 is not a whole number of refreshes |
+| 3 | `rate` | A steady 30 frames a second on a 60 screen (a faster screen: as before) |
 
 ### Waiting for the graphics chip
 
 | Rung | Knob | What a player sees |
 |---|---|---|
-| 1 | `rate` | Steady at 30 frames a second, where 40 is not a whole number of refreshes |
+| 1 | `rate` | A steady 30 frames a second on a 60 screen (a faster screen: as before) |
 | 2 | `shine` | No shine on metal |
 | 3 | `shadows` | No shadows |
 | 4 | `water` | The sea is still |
-| 5 | `pixels` | A quarter fewer pixels (a little softer) |
-| 6 | `pixels` | Half the pixels (softer) |
+
+### Waiting for the graphics chip
+
+| Rung | Knob | What a player sees |
+|---|---|---|
+| 1 | `pixels` | A quarter fewer pixels (a little softer) |
+| 2 | `pixels` | Half the pixels (softer) |
 
 Every rung of both axes: 9 (the report's `rung` counts the rungs taken at once).
 
@@ -72,8 +78,8 @@ value, the `full` row's.
 
 | Knob | What it is | Steps | Read by | Moved | PR | Switch | System |
 |---|---|---|---|---|---|---|---|
-| `rate` | the frame rate: the slowest frame, in ms, the pacer may hold a steady rate at | `26`, `34` | `src/game/framePacer.js` | not yet | 4 | `?pace` | page-thread |
-| `pixels` | the pixel budget, as a share of the budget (card G's, renderRes.js) | `1`, `0.75`, `0.5` | `src/game/renderRes.js` | not yet | 5 | `?pixbudget` | device |
+| `rate` | the frame rate: the slowest frame, in ms, the pacer may hold a steady rate at, on a screen of 60 or slower (v2.3.5224: a fast screen keeps its own steps, down to about 40, whatever the lane or the rung) | `26`, `34` | `src/game/framePacer.js` | yes | 4 | `?ladderrate` | page-thread |
+| `pixels` | the pixels drawn, a share of the lowest of the screen's own and card G's budget (renderRes.js; v2.3.5225: of the pixels drawn, phones too: the planning session's (b)) | `1`, `0.75`, `0.5` | `src/game/renderRes.js` | yes | 5 | `?ladderpix` | device |
 | `crowd` | the most other players drawn in full (your party, your target, whoever fights you and your duel always) | `50`, `30`, `15` | `src/game/crowdCap.js` | not yet | 6 | `?crowd` | monsters |
 | `program` | one drawing program for the world's sprites, or three (chosen behind the loading screen: never a rung) | `one` | `src/rendering/paletteTex.js` | not yet | 8 | `?onebatch` | memory |
 | `look` | how a character's look is made: coloured on the chip, or each baked (chosen behind the loading screen: never a rung) | `palette` | `src/game/lookPaletteChoice.js` | not yet | 8 | `lookpalette` | device |
@@ -85,7 +91,7 @@ value, the `full` row's.
 | `step` | the longest step, in ms, one frame may move the world (frameClock.js SMOOTH_MAX_MS; the loop's clamp) | `50` | `src/game/frameClock.js`, `src/ui/BroTown.jsx` | not yet | 13 | `?dtsmooth` | page-thread |
 | `prewarm` | the prewarm ring (step 3.3, LATER): one value and no reader until 3.3 builds the ring | `0` | none yet | - | - | - | - |
 
-Not yet moved: 11 of 11 knobs with a reader.
+Not yet moved: 9 of 11 knobs with a reader.
 
 ## The overrides
 

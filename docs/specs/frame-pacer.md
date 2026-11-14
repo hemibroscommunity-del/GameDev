@@ -123,3 +123,145 @@ is counted, moved or drawn.
 - `looks palette` is asked every time. It was asked once, before the
   palette's sheets had loaded, so the owner's phone read "looks baked
   (default)" all session while drawing from the palette.
+
+## The governor: the pacer, grown (v2.3.5222, card O PR 2; the grand plan's 2.3)
+
+The pacer used to judge only a screen faster than about 70 a second, and
+nothing in the game lowered a quality, a cap or a crowd because frames were
+late. Now:
+
+- **One verdict, every screen.** `lateOver(refresh, every)` is the one rule
+  of a late frame: more than half a refresh past its frame (12.5 ms at 120,
+  25 at 60, 50 at 30). The pacer judges on every screen whose refresh it
+  knows; the report's `late` imports the rule (`src/debug/report.js`), and
+  so has a verdict at 60 and 30 now. The QA box (frames 400 ms and more
+  apart: every gap a break) is still never judged. The screen's own rate
+  still steps on a fast screen alone, exactly as before.
+- **The ladder** (`src/game/drawLanes.js`, `docs/LANES.md`): the same verdict
+  moves the governor's rung, one rung of one axis a step. The axis comes
+  from the late frames' split, out of the frame meter's samples
+  (`perfTracker.js` hands them in by a setter, `useFrameSamples`: no import
+  into the pacer, nothing new timed): the game's own work takes the work
+  axis (the crowd, then the rate); the rest, or where the busy beat runs the
+  time the page WAITED, the chip axis (the rate, the shine, the shadows, the
+  water), then the pixels' own axis (v2.3.5225: last down and last up, a
+  chip-bound phone's only; `docs/specs/pixel-budget.md`).
+- **Down and up as the pacer**: two bad verdicts, a step down; clean for
+  `UP_WAIT_MS`, a try up (undoing the last step); a step down after a step
+  up doubles the wait, to `UP_WAIT_MAX_MS`. On a fast screen the ladder
+  steps down only once the screen's own rate is at its floor, and never on a
+  verdict the rate stepped on (one step a verdict).
+- **Pixels only behind a veil**: a step that would change the pixels waits
+  for a loading screen (`judge` false) or a tab's return
+  (`visibilitychange`); a clean verdict meanwhile drops a wanted step down,
+  a bad one a wanted step up. A window covering the world is not a veil
+  yet: no one field says so (the phase table's `window` row is todo).
+- **A full memory** (its count is card O's PR 11) is a bad verdict whose
+  step is the work axis's, never the chip's: it frees, never resizes.
+- **Kept by lane** in `localStorage` (`bt_rung`, a convenience: every read
+  and write in a `try`, the page right without it), loaded at a veil: the
+  next sitting starts where the last settled and tries up as above.
+- **Off in the test box**: `?lane=` holds the ladder still (the lane's row),
+  unless `?govern=1`; `?govern=0` turns it off on one phone. The Speed test
+  holds it while it runs (`holdLadder`): it turns the same knobs.
+- **It moves no knob yet.** Each knob reads `laneKnob` in its own PR (card
+  O's 4 to 13). Until then the rung shows on the strip (`ladder full  work
+  1/3  chip 0/6`, and a `STEP down work: crowd` mark for each step in the
+  last ten seconds), in the report's `rung` (to `caps.report` 3) and to QA
+  (`__btPace().ladder`, `__btLane()`).
+- **No new loop and no step of the frame**: it runs inside the loop's one
+  `take(ts, judge)`; `BroTown.jsx` is unchanged. Its verdict comes once in
+  80 frames and walks at most a verdict's samples. `read()` builds the
+  ladder's part only when asked (a getter): the loop reads `read().every`
+  every frame.
+
+Held by `server/test/frame-pacer.test.mjs` §12 to §17: a node model of a
+phone heating over minutes and cooling, at 30, 60 and 120 (two seeds
+each), that settles, comes back to the lane's row, and does not see-saw
+(the doubling taken out: 17 failed tries at 60 where 8 are allowed); a
+pixel step only behind a veil; a full memory on the work axis alone; the
+switches, the Speed test's hold and the kept rung; the door (`setRung`'s
+one caller); and `tools/qa/mp/mp-governor.mjs` on the page.
+
+## The rate is a knob (v2.3.5224, card O PR 4)
+
+The ladder's first knob that moves anything: the rate (`docs/LANES.md`,
+`rate`). On a screen of 60 a second or slower the pacer reads it through
+the lanes' one reader, `laneKnob('rate')`: the slowest frame it holds a
+steady rate at. The lane's row is 26 ms, `PACE_FLOOR_MS`: every refresh, as
+ever. The rung is 34 ms: on a 60 screen a whole number of refreshes, every
+second one, **a steady 30**; on a 30 screen still every one (no rung). It is
+the chip axis's first rung and the work axis's last: a steady lower rate
+before a softer picture (the owner's call 16).
+
+**A fast screen (90, 120, 144) is unchanged: its own steps stop at about 40
+a second, whatever the lane or the rung.** That is the planning session's
+reading (a) of the card, 2026-11-14; a rate rung below 40 on a fast screen
+would be a decision of its own, not an accident of this one.
+
+The pacer's own steps are a fast screen's alone now; on any other screen
+the rate is the knob's. `?ladderrate=0` is the rate as before, whatever the
+rung (a switch that needs `?govern`). Held by `frame-pacer.test` §18: a 60
+screen too hot for 60 takes the rate's rung first and comes back to 60 once
+cool with no see-saw (two seeds); at the rung, nine frames in ten are the
+same 33 ms; a 120 screen too hot for 40 is never paced below 40;
+`?ladderrate=0`; the read through `laneKnob`.
+
+### Only the rungs something reads (v2.3.5224, the gatekeeper's sitting 11)
+
+The governor first counted every knob in the table, read or not. So it
+stepped through rungs nothing read (the crowd, the passes, the pixels),
+kept them in `bt_rung`, and climbed back one 20-second try a rung, the rate
+last. After a hot sitting, a cool 60 phone started the next one at 30 and
+stayed there for minutes; where a pixel rung waited for a veil, for the
+whole sitting. Now:
+
+- **It walks only the LIVE knobs** (`drawLanes.js` `liveKnobs()`: the
+  knobs whose row marks them moved, read through `laneKnob`). A rung that
+  changes no live knob is passed, down and up, and `rungDepth` (the strip,
+  the report's `rung`) counts only rungs that change one. A step's rung is
+  trimmed to what it changes.
+- **A kept rung carries its live set** (`bt_rung`: `[work, chip, 'rate']`).
+  A rung kept under another set (the first version's, with none; a knob
+  moved since) is not loaded: the sitting starts at the lane's row.
+- **A try up that moves the pixels waits for its veil, and the other axis
+  may try meanwhile** (before, the wait stopped every try).
+- Today a cool phone after a hot sitting is back at 60 in ONE try, about
+  20 seconds in.
+- **A kept rung loads WITHOUT its pixel rungs** (v2.3.5225, card O PR 5; the
+  planning session's (A), 2026-11-14): the rate and the passes are kept, and
+  if the phone is still hot the pixels are taken again at the next veil.
+  This departs from the card's "the next sitting starts there", for the
+  pixels only: a pixel rung moves only behind a veil, both ways, so a kept
+  one would hold a cool phone on a softer picture (and 30) until its next
+  loading screen or tab's return. In the Wheel that can be a whole sitting,
+  for the last sitting's heat. Held by §19g (and §19c).
+
+Held by `frame-pacer.test` §19, with its break proofs. §13 to §16 play the
+whole ladder live (`_liveKnobs`), as card O's later PRs will make it.
+
+A fight is not a reason to hold a step: the card's call 3 reads "a step
+may come in a fight (a hot phone needs it then): it changes no timing, and
+pixels still wait for a veil". The rate's rung changes how often a frame is
+DRAWN, never a swing's clock, a cooldown or the tick (`draw-lanes` guard: no
+knob read in `combat`).
+
+## The owner's switch (v2.3.5235)
+
+`govern` is a row of the Test panel's list (`src/game/clientOff.js`, the
+"Memory savers" block): the owner turns the governor off **for every
+phone, live, with no deploy**. The worker keeps `off_govern: true` and
+tells every phone at join (`caps.clientoff`) and at once when it changes
+(`client_off`); nothing on the worker reads the name. It is one name on
+both sides: `?govern=0` is the same switch for one tab.
+
+This is the planning session's word (2026-11-14) in place of the card's
+cap `ladder`: the same lever every memory saver already has, live where a
+cap is read only at a join, and no change to the worker.
+
+Off, the ladder goes back to the lane's row at the next verdict and takes
+no step, however late the frames. A pixel rung (and with it the rest of
+its axis) waits for the next veil, as every pixel step does. The row is
+kept for the next sitting. Switched on again, it steps as before. The
+strip says `switched off`; `__btPace().ladder.off` tells QA. Held by
+`frame-pacer.test` §20, its break proofs in the suite's header.

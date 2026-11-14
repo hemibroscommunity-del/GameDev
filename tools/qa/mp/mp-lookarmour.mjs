@@ -53,6 +53,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'armourlooks', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel', query: 'lookpalette=1' });
   const errs = [];
   P.page.on('pageerror', (e) => errs.push(String(e).slice(0, 300)));
+  /* v2.3.5425 (card J2): a real key every 20 s.  The oracle holds the page
+     for minutes with no real input, and the page logs itself out after two
+     (wsClient idleLogout; mp-elemhits' and mp-npclooks' remedy): the live
+     switch below was thrown on the worker and never reached a phone with no
+     socket (the worker sent `client_off`; the page's caps stayed '') */
+  const stopAlive = H.keepAlive(P);
   try {
     await H.enterWorld(P);
     const ok = await H.waitFor(P, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }), (v) => v.zone === 'wheel' && !v.loading,
@@ -62,6 +68,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const st = await P.page.evaluate(() => ({ lp: window.__btLookPalette && window.__btLookPalette(), la: window.__btLookArmour && window.__btLookArmour(), oracle: !!window.__btArmourOracle }));
     rec.ok(`the look palette and its armour are on: ${JSON.stringify({ on: st.lp && st.lp.on, armour: st.la && st.la.on, oracle: st.oracle })}`,
       !!(st.lp && st.lp.on && st.la && st.la.on && st.oracle), st);
+    /* v2.3.3752 (M3's review): the mask atlas grows under a figure already
+       drawn, and that figure, drawn again untouched, is the same.
+       v2.3.5425 (card J2): FIRST, on a fresh atlas -- after the full oracle
+       (every look and set) the atlas held free rows its six other looks
+       fitted in (384 -> 384, "grew false", red on main): a growth asked of
+       an atlas the oracle has filled and swept is a question about the
+       oracle, not the atlas */
+    {
+      const g = await P.page.evaluate(([look, set, others]) => window.__btArmourOracle.growth({ look, set, others }),
+        [LOOKS[0], EXTRA.chest, [['honey', 'navy', 'tan', 'default'], ['olive', 'teal', 'black', 'default'], ['rosy', 'yellow', 'tan', 'default'], ['snow', 'red', 'black', 'default'], ['deep', 'white', 'tan', 'default'], ['purple', 'navy', 'black', 'default']]]);
+      rec.ok(`a figure drawn before the mask atlas grew (${g.rowsBefore} -> ${g.rowsAfter} rows) draws the same after, its draw list untouched: ${g.differ} of ${g.drawn} px differ`,
+        g.grew === true && g.drawn > 0 && g.differ === 0, g);
+    }
     /* the full oracle on the page's CPU canvas: a worker's canvas on this box's
        software chip is ~200x slower (BT_LA_WORKER=1 runs it all there); the
        worker is sampled below */
@@ -128,14 +147,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
       frames > 0 && exactOver === 0 && report.every((x) => !x.notDecided), { frames, exactDrawn, exactOver, wE, shape, colour, wA, wC });
     rec.ok(`no palette row or mask book refused (rows ${la.rows}, books ${la.books}, atlas ${la.atlasMB} MB): rowsFull ${la.rowsFull}, booksFull ${la.booksFull}`,
       la.rowsFull === 0 && la.booksFull === 0, la);
-    /* v2.3.3752 (M3's review): the mask atlas grows under a figure already
-       drawn, and that figure, drawn again untouched, is the same */
-    {
-      const g = await P.page.evaluate(([look, set, others]) => window.__btArmourOracle.growth({ look, set, others }),
-        [LOOKS[0], EXTRA.chest, [['honey', 'navy', 'tan', 'default'], ['olive', 'teal', 'black', 'default'], ['rosy', 'yellow', 'tan', 'default'], ['snow', 'red', 'black', 'default'], ['deep', 'white', 'tan', 'default'], ['purple', 'navy', 'black', 'default']]]);
-      rec.ok(`a figure drawn before the mask atlas grew (${g.rowsBefore} -> ${g.rowsAfter} rows) draws the same after, its draw list untouched: ${g.differ} of ${g.drawn} px differ`,
-        g.grew === true && g.drawn > 0 && g.differ === 0, g);
-    }
     /* v2.3.3752: its own switch, live (the Test panel's Memory savers row
        "Bodies under armour coloured on the chip"): off, the armour's look path
        answers no (the old masked bake draws); cleared, it is back */
@@ -150,6 +161,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     rec.ok(`no page error (${errs.length})`, errs.length === 0, errs.slice(0, 4));
   } finally {
+    stopAlive();
     await P.ctx.close().catch(() => {});
   }
 }
