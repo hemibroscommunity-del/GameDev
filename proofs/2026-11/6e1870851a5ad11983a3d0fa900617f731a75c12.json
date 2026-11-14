@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6e1870851a5ad11983a3d0fa900617f731a75c12",
+  "tree": "5d17a7752aa9eadec99a9cdb8425589fecea5389",
+  "committedAt": "2026-11-13T18:12:56-08:00",
+  "subject": "Merge pull request #1661 from hemibroscommunity-del/claude/plan-w-1-scenario-by-file",
+  "files": 7420,
+  "bytes": 944808210,
+  "listingSha256": "cf91524dbf088817008bcf84ae621c5780d759aba5351cab71428099a0b9788f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "197c1d309777b057e39fed3b8960a796017aee19",
+  "tree": "fc62937e4d30d6e99bd6e423e3d47418a061eb89",
+  "committedAt": "2026-11-13T18:13:02-08:00",
+  "subject": "Merge pull request #1662 from hemibroscommunity-del/claude/plan-w-2-guards-and-checks",
+  "files": 7424,
+  "bytes": 944821196,
+  "listingSha256": "faaa996a6ac3dc8a590f0be92be98ab4bc83e3923fdfbd8697229125c5614333",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
