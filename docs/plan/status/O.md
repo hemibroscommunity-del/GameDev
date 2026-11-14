@@ -19,7 +19,8 @@ state: ready
 
 ## Next
 
-- PR 5 (#1800): the mend merged up. Then PR 3 once #1792 is merged; PR 6.
+- #1800: the mend merged up, and (A) (a kept pixel rung loads without it).
+  The live flag `ladder` (5235). Then PR 3 once #1792 is merged; PR 6.
 
 ## Found
 
@@ -34,7 +35,5 @@ state: ready
 
 ## Needs
 
-- Asked the planning session, 2026-11-14: a cool slow COMPUTER on a 60
-  screen steps to 30 too: under "Decided for the owner while away"
-  (`?govern=0`, `?ladderrate=0`), and a live flag? And #1800: a kept pixel
-  rung (A: loaded without it, recommended; B: as the card).
+- #1792 held to sitting 12 (with it #1794, #1800): its `DOOR_SUITES` row
+  once today's list lands (card L's guard; the planning session's answer).

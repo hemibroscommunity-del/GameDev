@@ -645,14 +645,20 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
   /* the whole ladder: a try up that moves the pixels waits for its veil, and the work axis tries meanwhile */
   _liveKnobs(KNOB_NAMES);
   _resetLanes();
-  const st = memStore();
-  st.set({ full: [2, AXES.chip.length, KNOB_NAMES.join(',')] });
-  const g = makeGovernor({ on: true, store: st });
+  const g = makeGovernor({ on: true, store: memStore() });
   g.veil(0);
+  /* down by its own steps (two bad verdicts a step): the work axis's two crowd rungs, then the chip's to the pixels,
+     each pixel rung at a veil */
+  let t = 0;
+  const bad = (axis, n) => { for (let i = 0; i < n; i++) g.verdict(0.9, t += 1000, { axis, atFloor: true }); };
+  bad('work', 4);
+  bad('chip', 8);
+  bad('chip', 2); g.veil(t += 1000);
+  bad('chip', 2); g.veil(t += 1000);
   const at0 = { ...ladderRung() };
-  for (let i = 0; i < 4; i++) g.verdict(0, UP_WAIT_MS + 1000 * (i + 1), { axis: 'chip', atFloor: true });
+  for (let i = 0; i < 4; i++) g.verdict(0, t + UP_WAIT_MS + 1000 * (i + 1), { axis: 'chip', atFloor: true });
   const mid = g.read();
-  g.veil(UP_WAIT_MS + 9000);
+  g.veil(t + UP_WAIT_MS + 9000);
   const after = g.read();
   check(`19f. (the whole ladder) a try up that moves the pixels waits for a veil, and meanwhile the work axis tries (from ${at0.work}/${at0.chip}: ${mid.work}/${mid.chip}, waiting ${!!mid.pending}; at the veil ${after.work}/${after.chip})`,
     at0.work === 2 && at0.chip === AXES.chip.length && mid.pending && mid.pending.dir > 0 && mid.work < 2 && mid.chip === AXES.chip.length && after.chip < AXES.chip.length && !after.pending, { mid, after });
