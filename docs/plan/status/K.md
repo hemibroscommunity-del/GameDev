@@ -1,11 +1,11 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: PR 1 tag 5181 (ready), #1820 (PR 3, ready)
+prs: #1822 (PR 1, ready), #1820 (PR 3, ready)
 state: ready
 
 ## Done
 
-- PR 1 (5181, claude/plan-k-1-wire-lists): `PRIVILEGED_EVENTS`,
+- PR 1 (5181, #1822): `PRIVILEGED_EVENTS`,
   `RELAY.TYPES` and wire-audit's echo list made from the wire table
   (`server/src/wire/lists.js`); the column `privileged` (`echo` on 9 rows);
   the literals deleted, each type's why moved above its row. Bundle +88 KB
