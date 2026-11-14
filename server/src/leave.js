@@ -269,6 +269,10 @@ export const leaveMethods = {
         for (const id of [...this._lingerBodies.keys()]) { const _le = this._lingerEnd(id); if (_le && _le.catch) _le.catch(() => {}); }
       }
       if (this.sessions.size === 0 && this.tickInterval) { clearInterval(this.tickInterval); this.tickInterval = null; }
+      /* v2.3.5124: the last one out writes the day's book (roomrow.js
+         _roomRowLastOut): an empty room has no tick, and is put away with
+         what waits in memory -- the sitting's last report and counts */
+      if (this.sessions.size === 0) this._roomRowLastOut(Date.now());
     }
     if (d.copies) {
       if (_petsLeft) await this._petbookPut(session.id, _petsLeft);

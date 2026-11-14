@@ -403,10 +403,29 @@ word has no class. Two words the first draft of this page did not have:
    (whatever came into a dead player's bag after the death's wipe: nothing,
    for an honest death).
 
+**Built (card E, tag 5084): the count and the sum.** The two doors book
+what they mint and burn into the record's own `_econ` (part 7) as they run:
+a `mint` road its rise under `m`, a `burn` road its fall under `b`, a `set`
+its difference signed, a `move` or an `escrow` nothing, each read the way
+the sum reads it (whole coins, whole counts never below 0). A LOAD
+(`join_stored`, `GOLD_LOADS`) books nothing. A payout landing by the mail
+is handed to the door with its credit and books its own class
+(`mailMinted`: a mint all of it, the champion's prize its `house` part).
+The bag door holds the bag, not the record: the record is learned at its
+save (`bagEconOwn`, in `_saveRpg` before its put), and a bag no save has
+named yet keeps its counts beside it until that save folds them in (the
+same put). The join brings `_econ` back before any door runs (`join.js`),
+and a red skull killed by no player burns its purse by `nml_lost`.
+`server/test/world-sum.test.mjs` plays the room and holds the sum to 0.
+
 **Where value leaves an escrow by no road** (for the sum's PR, not a class):
 a stale fine is deleted (`bounty:`, `_bountySweep`: "the gold evaporates"),
 and a pile on the ground nobody takes runs out (`_tickLoot`) or its dungeon
-run closes. Each is a burn the world's sum counts at the record's end.
+run closes. Each is a burn the world's sum counts at the record's end. And two
+windows a restart can land in, for the storm (4.5): the fine is taken from
+the caller and put on the head in two runs (`threat.js`, best-effort by its
+own comment), and the champion's prize is paid before the entries it pays
+from are deleted (`gladiator.js`, the sweep converging after).
 
 ### The mark on a record that holds value
 
@@ -611,6 +630,13 @@ Not one field yet, so written by name and marked `implicit`: `fight` (a fight
 with a player), `duel`, `trade`, `party` (and its `leader`), `ride`,
 `harvest`, `cook`, `guard`, `pose`, `race`, `arena`, `fishing`.
 
+v2.3.5202: every machine, these and the plan's (`dungeon`, `connection`,
+`loading`, `window`, `monster`), is a row of step 5.3b's phase table,
+`src/state/phases.js` (card L; `docs/specs/phase-table.md`): its field, its
+states, its one function, `door` or `todo`. A name a row of the wire table
+writes here is a row there (`tools/guards/phase-table.test.mjs` §4). An
+`implicit` machine leaves this list when its row turns `door`.
+
 What a handler tests that is NOT the sender's phase goes in another column:
 "can pay" and "well-formed" in `bad`, "too soon" in `pace`, "the system is on"
 in `flag`, "seen before" in `reqId`.
@@ -767,7 +793,7 @@ row by the card that builds it, before it builds.**
 |---|---|---|---|---|---|---|
 | The hold names (1.0) | one list (NEW as one list) | The names a hold may have. Today there are three lists that do not agree: the debt list's 13 (`KNOWN`), the sweep's 20 families (`FAMILIES`), and `noteMade`'s free strings (`'strip made'` on the phone is `strip-made` in the sweep). | `tools/qa/mp/held-budget.mjs` (card H's file; step 1.0 is card A's, with H for the names) | `noteMade` (`src/debug/madeLog.js`), `mp-heldsweep`, the report's `holds` | that file | none |
 | The room's own row (1.6) | part `room` of the day's book (NEW) | The tick's 95th, rows written, saves refused, joins by protocol version, restarts; with 4.1b, bytes and messages sent by type; with 4.7, the storage's size. **None of these is counted today**: the room never counts its own puts, a save a newer worker refuses is only logged, a failed put is swallowed, and nothing marks a restart. | card A (1.6); `_send` adds its counts (card K, 4.1b) | the owner's card; the reader | `server/src/`, a file of card A's | rides the day's book |
-| The day's book (10.4) | `daybook:<yyyymmdd>` (NEW) | One record a UTC day, in parts: `econ` (minted and burned by road class), `room` (above), `dev` (the smoothness cells, part 4), `speed` (the Speed test's rows). | each part's own writer: card E `econ`, card A `room`, `dev` and `speed` | the owner's card in the Test panel; the reader of step 1.3; the restore's check | `server/src/`, a file of card E's | at most one put a pace while the room is awake (card E's number, with a line in `cost-guard.test.mjs`); see "Open" below for `econ` |
+| The day's book (10.4) | `daybook:<yyyymmdd>` (NEW) | One record a UTC day, in parts: `econ` (minted and burned by road class), `room` (above), `dev` (the smoothness cells, part 4), `speed` (the Speed test's rows). | each part's own writer: card E `econ`, card A `room`, `dev` and `speed` | the owner's card in the Test panel; the reader of step 1.3; the restore's check | `server/src/`, a file of card E's | at most one put a pace while the room is awake (card E's number, with a line in `cost-guard.test.mjs`); v2.3.5124: and at a room's last one out after a join, at once (card A's `roomrow.js`), its turns spent by every put, so the two keep the pace on the whole (`cost-guard` 15c); see "Open" below for `econ` |
 | The device table (1.3) | no name in the room | The day's books' `dev` and `speed` parts, added over days, a cell blank under 20 reports. | the reader: a workflow, which is the owner's call 6 | every perf PR | the repository, once a road into it exists | none in the room |
 | The sitting's card (10.2) | the card of a `stint` (NEW) | About 120 bytes: when (the `stint`), how long, active seconds, the longest gap, the network (`asn`), the build; moves and moves over budget; hits claimed, landed, refused by reason; gold by road class; the hours of the day played; and the report's `soft`, `seen`, `drawn`. The last 32 of a character are kept (call 13). | one function of card Q's. Card A's handler hands it facts and writes no field itself. **Until card Q has built it, the report's card facts are dropped**: they still ride the message, so the phone's side is built once. | card Q's signals; the owner's cases | "Open" below | none new: it rides a save that is already paced |
 | The transfer ledger (10.3) | `xfer:` (NEW) | One lasting row each time value settles between two players: when, the road, from, to, gold, goods and their ids, the price, and the actor that started it. Kept 90 days. | the settlement's own write (card E): the row goes out in the same run as the payment and its stamp (handoff rule 5) | the owner's cases ("unwind this transfer"); card Q | `server/src/`, card E's; its key begins with the day, so old days are pruned a page a tick slot (handoff rule 9) | 1 a settlement, none a kill (`cost-guard`) |
@@ -794,6 +820,7 @@ row by the card that builds it, before it builds.**
 | A spoken line (11.4) | not named yet | A message the game speaks that carries a player's words: a template's id and its parts, a part that is a player's words marked as one. Today the worker builds the sentence itself (`server/src/store.js`: `label + ' sold to ' + buyerName + ' for ' + price`). The templates are step 8.8's table of every word a player reads. | card K | the phone; another player's assistant | the wire table's `trust: words` rows | none |
 | The public facts (11.6) | not named yet | The game's facts in players' words, made in the build from the shared tables, with a version. | the build | assistants | the build's output | none |
 | The pass's quote and receipt (11.8) | not named yet | A signed quote, a receipt, a public way to check. | the pass's own build | a helper | `docs/SUPPORTER-PASS-PLAN.md` | not built |
+| The phase table (5.3b; v2.3.5202) | `PHASES`, `NOT_A_MACHINE` (NEW) | One row a state machine a side: its one field, its states, its one transition function, what clears it, what a rejoin re-sends, `door` or `todo`. A page row names the state ledger's rows and never copies their writers. | card L, by hand (a row turns `door` in its machine's PR) | `tools/guards/phase-table.test.mjs`; part 5's `phase` column; the next door's card | `src/state/phases.js` | none |
 
 ### The asset door (step 9.1, card P; tag 5241)
 
@@ -918,6 +945,19 @@ the record is named by its path, `tools/assets/shipped.json`.
 |---|---|---|
 | `ASSET_FAMILIES`, `ASSET_REACH`, `ASSET_KINDS`, `ASSET_DRAWS` | the family table and its closed lists | 7 |
 | `tools/assets/shipped.json` | the record of what ships | 7 |
+
+**Chosen by card L (step 5.3b, tag 5202), free at its commit** (the same
+search): `PHASES` and `NOT_A_MACHINE`, the phase table's two lists, have no hit
+as a name (`PHASES` only inside other words: `GOO_PHASES`, `ART-ASSET-PHASES`).
+The table's machine names are words of a table, as the wire's `phase` column
+writes them, never identifiers: `dungeon`, `connection`, `loading` and
+`window` are common words in code and keep every meaning they have there;
+`monster`, a monster's life, is the one name the plan had not given.
+
+| Name | For | Part |
+|---|---|---|
+| `PHASES`, `NOT_A_MACHINE` | the phase table and the marked fields that are no machine's (`src/state/phases.js`) | 5 |
+| `dungeon`, `connection`, `loading`, `window`, `monster` | the phase table's machines beyond part 5's list (a row's `name`) | 5 |
 
 `report` is free as a message type and a common word elsewhere; part 4 says
 what it is not. `gid`, `pid` and `hz` are TODAY's names, used here for the
