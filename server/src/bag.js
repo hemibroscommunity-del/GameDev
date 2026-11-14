@@ -58,7 +58,7 @@
  * No imports: node tests it directly.  (v2.3.5084: but one, gold.js's mail
  * table, which has none: a payout's class is read where every class is.)
  */
-import { mailMinted } from './gold.js';   /* v2.3.5084: a payout's own class (MAIL_CLASSES) */
+import { mailMinted, ECON_V } from './gold.js';   /* v2.3.5084: a payout's own class (MAIL_CLASSES); v2.3.5085: `_econ`'s shape number, one place */
 
 const own = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 
@@ -252,7 +252,6 @@ function roadFor(road, dir) {
  * save folds them in -- in that save's own put, so what the sum reads is
  * written with what it counts (the plan's rule 5).  bagEconPending lets the
  * world's sum read what waits. */
-const ECON_V = 1;
 const ECON_BAD = new Set(['__proto__', 'constructor', 'prototype']);
 const econOwner = new WeakMap();     /* bag -> the record that holds it (named at its save) */
 const econWaiting = new WeakMap();   /* bag -> { key: {m, b} } counted before its record was named */
@@ -269,9 +268,22 @@ function econTarget(bag) {
   if (!w) { w = Object.create(null); econWaiting.set(bag, w); }
   return w;
 }
+/* ═══ v2.3.5085: THE DAY'S BOOK, `econ` PART (card E PR 6) ═══
+   Plain functions cannot reach the room, so the room hands the bag door the
+   book's door (liveops.js _syncBagCaps, where it hands down the one sum's
+   switch): what each road mints and burns of each key is added to the day's
+   `econ` part as it runs -- the one call card E's PR 6 makes in this door. */
+let BOOK = null;
+export function setBagBook(fn) { BOOK = typeof fn === 'function' ? fn : null; }
+/* v2.3.5085 (the gatekeeper's sitting 8): the counting's kill switch,
+   `econ: false` (gold.js _econOff), handed down as the one sum's is */
+let ECON_ON = true;
+export function setBagEcon(on) { ECON_ON = on !== false; }
 function econBag(bag, k, cls, d) {
+  if (!ECON_ON) return;
   if (!d || (cls !== 'mint' && cls !== 'burn') || typeof k !== 'string' || !k || ECON_BAD.has(k)) return;
   if (!bag || typeof bag !== 'object') return;
+  if (BOOK) { try { BOOK(cls, k, cls === 'mint' ? d : -d); } catch (e) { /* a count never stops a road */ } }
   const into = econTarget(bag);
   if (!into) return;
   const p = Object.prototype.hasOwnProperty.call(into, k) ? into[k] : (into[k] = { m: 0, b: 0 });

@@ -1,39 +1,40 @@
 card: Z
-branch: claude/plan-z-sitting-8
-prs: this PR, tag 5364, the last line of the list (ready)
+branch: claude/plan-z-sitting-10
+prs: this PR, tag 5366, the last line of the list (ready)
 state: ready
 
 ## Done
-- Sitting 8, `main` at 7593b4e (sitting 7's twelve merged). The eight
-  below and this branch rehearsed in this order (tree 261ad2be): precheck
-  0 FAIL, build, questline 187/187. Review: `census/review-z8.md`.
-  Ticked 1.2, 1.6; notes on 3.1, 9.5. `effectsRenderer.js` 9871 -> 9870.
+- Sitting 10, `main` 6f9e740. The list below rehearsed in its order with
+  this branch last (tree 1c823622): precheck 0 FAIL, build, questline
+  187/187; again with P's census-only heads (5805f3bc): precheck, build.
+  Mends made during the sitting: census, "What GitHub showed".
+  Review: `census/review-z10.md`. Notes on 3.1, 10.4; nothing to tick.
 
 ## The list: merge in this order, in one sitting, each "Create a merge commit"
-1 #1751 answers · 2 #1750 J2-1 · 3 #1755 V8 · 4 #1748 L2 · 5 #1757 P ·
-6 #1760 A7 · 7 #1752 E5 · 8 #1754 T1 · 9 this PR. #1760 needs #1757
-first. Two deploy (#1752, #1754: back to back). No cap, no live flag, no
-stored shape (#1752 fills `_econ`; schema 21).
+1 #1768 T2 · 2 #1784 (planning) · 3 #1770 TF · 4 #1774 · 5 #1778 ·
+6 #1776 · 7 #1781 (PW) · 8 #1758 · 9 #1759 · 10 #1761 · 11 #1764 ·
+12 #1772 · 13 #1773 (E) · 14 #1777 H · 15 #1749 · 16 #1763 · 17 #1766
+(P) · 18 this PR. 3 to 14 deploy (twelve): back to back. Caps `power`,
+`statboards` (8); flags `power`, `statboards`, `xfer` (ON: a row a trade,
+step 10.3), `arenasettleplan` (OFF: the owner's yes, two rows a match).
 
-## Held (expires at sitting 9)
-- #1749 P fx-made: the snowball burst's twin is read on the page in
-  play (`p256.js` ~164; CLAUDE.md §7, §8; no `mp-heldsweep`); and after
-  #1754 its `?fxmade` needs a row (switch guard 196 of 195).
-- #1756 E6, #1758 E7, #1759 E8a, #1761 E8b: #1756 conflicts with `main`
-  in `leave.js`; its `bookFlush` is unpaced (361 writes an hour) where
-  #1708's `_roomRowLastOut` already writes: drop it, mend roomrow 9, 10.5.
-- Not ready, left alone: L's PR 3 (`plan-l-3-resets`, no PR yet).
+## Held (expires at sitting 11)
+- #1785 E12: a restart turned "unexplained gold" red; gold a player-hour
+  counted open sittings' gold, not their hours. Mended at fed858f (12:20,
+  `persistence.js` books a restart): not reviewed. #1786 E9: not reviewed.
+- #1782 SK: a harvest pressed while the board rolls is cancelled
+  (BroTown ~6928 reads the roll's dx); "Off the board to fight." again.
+- #1783 LB: top names cut to a few letters upright; the podium shows Lv
+  on every board; two "Lv" on a skill board.
+- #1767, #1775, #1779 L: not merged with #1768 (the page's count line).
+- Not reviewed (ready too late): O's #1787, #1792. No J2 PR open.
 
 ## Stalled
-- None.
+- None (card L's last commit 11:00).
 
 ## Found
-- Red on `main`, card P's: `mp-heldsweep` `pack-page` 30.6 ms at `armour`
-  (line 20); the combat strips' pack (`effectsRenderer.js` ~15201)
-  leaves no note.
-- A (`report.js` `_speed`, `_lastSentAt`), H (`picsOnce.js` `_walk`,
-  `_walkMap`, `_seen`; `bodyBake.js` `_unheard`): sitting 7's six are in
-  no ledger yet (the unlisted line stays 22).
-- T: `disable_verify`, `hidden_off` (read through constants) have no row
-  and are not counted; shapes that hide a switch (review-z8).
-- L: the phase guard's function finder and door check (review-z8).
+- All: two branches changing the switch page's count line the same way
+  merged clean and stale (guard check 8); #1768 ends the count line.
+- E: the stamp prune's waits live at its caller (tick.js), not in it.
+- PW: the stat boards' order is pinned by an expression (statboards.js).
+- H: `worn-bake` §5 reads the source; the probe that runs it is by hand.
