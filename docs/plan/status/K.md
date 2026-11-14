@@ -34,7 +34,6 @@ state: ready
   lane; `sprint.js`: `sp: 1` every other move costs no stamina (both ON).
 - The page sends `clan_war_kill`/`clan_war_end` for an older worker; this
   one drops both (`legacy` door rows).
-- `worldsum.js`: the honest restart reads as value gone (card R's PR 6).
 
 ## Needs
 
