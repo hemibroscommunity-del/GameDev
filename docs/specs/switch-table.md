@@ -157,7 +157,7 @@ The plan's rule 4: all new, or exactly one switch thrown.
     (about 45 minutes here), the owner's to ask for.
 - **Page rows**: no browser run. The guard finds, for each page switch, the
   server suite or phone scenario whose text holds its address (found, never
-  typed). The count with none only falls (`NO_PLAY_LINE`, 69 at its first
+  typed). The count with none only falls (`NO_PLAY_LINE`, 76 at its first
   count).
 
 ## A new switch
