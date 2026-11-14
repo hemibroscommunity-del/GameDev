@@ -59,6 +59,7 @@ line), every door is in its system's files, and this page is what the table make
 The socket and the messages: the router, the relay, the client's connection and its event switch, what each side can do (caps).
 
 - **Files**: `server/src/`: index, relay, bundle, clientoff, flood
+- **Files**: everything under `server/src/wire/`
 - **Files**: everything under `src/networking/`
 - **Files**: `src/game/`: clientOff, clientOffApply, blockedAsks, workerClock, t1Sync, tooFar
 - **Doors**: `PRIVILEGED_EVENTS` in `server/src/index.js` (every type the server sends; anything else a client could forge); `TYPES` in `server/src/relay.js` (RELAY.TYPES: the relays a phone may send, rebuilt in its name)
