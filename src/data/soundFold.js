@@ -105,3 +105,105 @@ export function foldToMono(buf, make) {
   });
   return out;
 }
+
+/* ═══ v2.3.5045: THE FOLD A FEW MS AT A TIME, A FRAME BETWEEN ═══
+   held-budget.mjs `other: BT_AUDIO$1._fold > foldToMono`: the fold runs once,
+   right after a sound's first decode (its first play, as the sound cache
+   loads them), in ONE piece: the two sides read and summed (sidesAreOne),
+   then their mean copied into a new buffer -- 8 to 21 ms held on the QA box
+   for the long ones (fish-reel, quest-complete), at the held sweep's `lands`
+   and `town`.  foldToMonoSliced is the same fold, the same sums in the same
+   order and the same copy (so the same buffer, sample for sample:
+   sound-fold.test 4), walked a stretch at a time: once a piece has run
+   `sliceMs`, `await turn()` lets the page draw a frame before the next
+   stretch.  Its own scratch arrays (foldToMono's are shared), and one fold at
+   a time (a line), so two sounds folding at once never share a stretch.
+   Resolves to what foldToMono would return. */
+let _sa = null, _sb = null, _sm = null;
+let _slicedLine = Promise.resolve();
+const _now = () => (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now());
+export function foldToMonoSliced(buf, make, turn, sliceMs = 4, now = _now) {
+  /* v2.3.5045, after the gatekeeper's sitting 4 (#1712): a sound with nothing
+     to fold (one channel already, none, or no way to make the fold) never
+     waits in the line: it waited behind any two-sided sound being folded,
+     ~50 ms late on its first play */
+  if (!buf || buf.numberOfChannels !== 2 || typeof make !== 'function' || !(buf.length > 0)) return Promise.resolve(buf);
+  const job = () => _foldSliced(buf, make, turn, sliceMs, now);
+  const p = _slicedLine.then(job, job);
+  _slicedLine = p.then(() => {}, () => {});
+  return p;
+}
+async function _foldSliced(buf, make, turn, sliceMs, now) {
+  if (!buf || buf.numberOfChannels !== 2 || typeof make !== 'function') return buf;
+  if (!_sa) { _sa = new Float32Array(CHUNK); _sb = new Float32Array(CHUNK); _sm = new Float32Array(CHUNK); }
+  const len = buf.length;
+  if (!(len > 0)) return buf;
+  const copy = typeof buf.copyFromChannel === 'function';
+  const L = copy ? null : buf.getChannelData(0), R = copy ? null : buf.getChannelData(1);
+  /* stretch s of the two sides, as eachStretch hands them */
+  const sides = (s, n) => {
+    if (copy) { buf.copyFromChannel(_sa, 0, s); buf.copyFromChannel(_sb, 1, s); return [_sa, _sb]; }
+    return [L.subarray(s, s + n), R.subarray(s, s + n)];
+  };
+  let t0 = now();
+  const pace = async () => {
+    if (typeof turn !== 'function' || now() - t0 < sliceMs) return;
+    await turn();
+    t0 = now();
+  };
+  /* 1: sidesAreOne's sums, stretch by stretch */
+  let sum = 0, diff = 0;
+  for (let s = 0; s < len; s += CHUNK) {
+    const n = Math.min(CHUNK, len - s);
+    const [l, r] = sides(s, n);
+    let s2 = 0, d2 = 0;
+    for (let i = 0; i < n; i++) {
+      const a = l[i], b = r[i];
+      const x = a + b, d = a - b;
+      s2 += x * x;
+      d2 += d * d;
+    }
+    sum += s2;
+    diff += d2;
+    await pace();
+  }
+  const one = sum === 0 ? diff === 0 : diff <= sum * SIDE_RATIO;
+  if (!one) return buf;
+  /* 2: foldToMono's copy, stretch by stretch */
+  let out = null;
+  try { out = make(1, buf.length, buf.sampleRate); } catch (e) { return buf; }
+  if (!out || out.numberOfChannels !== 1 || out.length !== buf.length) return buf;
+  const put = typeof out.copyToChannel === 'function';
+  const dst = put ? null : out.getChannelData(0);
+  for (let s = 0; s < len; s += CHUNK) {
+    const n = Math.min(CHUNK, len - s);
+    const [l, r] = sides(s, n);
+    for (let i = 0; i < n; i++) _sm[i] = (l[i] + r[i]) * 0.5;
+    if (put) out.copyToChannel(n === CHUNK ? _sm : _sm.subarray(0, n), 0, s);
+    else dst.set(_sm.subarray(0, n), s);
+    await pace();
+  }
+  return out;
+}
+
+/* ═══ v2.3.5045: THE FOLD THE GAME USES (gameDisplay.js BT_AUDIO._fold) ═══
+   Moved here from gameDisplay.js after the gatekeeper's sitting 4, to keep
+   that file under its line (tools/guards/four-lines).  In play the fold is
+   walked a few ms at a time, a frame let in between (foldToMonoSliced, the
+   turn below: the frame, then a timer, or a timer alone after 120 ms if no
+   frame comes); the sound is kept, and plays, when it is done.
+   `?foldgentle=0`: in one go, as before (foldToMono, the buffer itself, not
+   a promise).  `kept(out)` is told what was kept. */
+export const FOLD_GENTLE_OFF = (() => { try { return typeof location !== 'undefined' && /[?&]foldgentle=(0|off|false)\b/.test(location.search || ''); } catch (e) { return false; } })();
+export function foldTurn() {
+  return new Promise((res) => {
+    let done = false;
+    const go = () => { if (!done) { done = true; res(); } };
+    try { requestAnimationFrame(() => { setTimeout(go, 0); }); } catch (e) { /* the timer below */ }
+    setTimeout(go, 120);
+  });
+}
+export function foldForGame(b, make, kept, turn = foldTurn, gentleOff = FOLD_GENTLE_OFF) {
+  if (gentleOff) { const out = foldToMono(b, make); kept(out); return out; }
+  return foldToMonoSliced(b, make, turn).then((out) => { kept(out); return out; });
+}

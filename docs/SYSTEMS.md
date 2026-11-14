@@ -49,7 +49,7 @@ line), every door is in its system's files, and this page is what the table make
 | [render](#render) | drawing the world: the Pixi renderer, the entity and effects renderers, light, fx |
 | [ui](#ui) | the screens: BroTown.jsx, the band and its panels, windows, banners |
 | [data](#data) | the client's tables (src/data/): items, zones, abilities, the long display and systems tables |
-| [debug](#debug) | the crash ring, the perf HUD, the debug overlay |
+| [debug](#debug) | the crash ring, the perf HUD, the debug overlay, the field report (its worker half: server/src/report.js, v2.3.5127) |
 | [shell](#shell) | the page itself: main.jsx, index.html, the QA harness pages, the public files |
 | [vendor](#vendor) | code from outside, kept as it came (with its licence) |
 | unsorted | no system yet: the count only falls |
@@ -59,6 +59,7 @@ line), every door is in its system's files, and this page is what the table make
 The socket and the messages: the router, the relay, the client's connection and its event switch, what each side can do (caps).
 
 - **Files**: `server/src/`: index, relay, bundle, clientoff, flood
+- **Files**: everything under `server/src/wire/`
 - **Files**: everything under `src/networking/`
 - **Files**: `src/game/`: clientOff, clientOffApply, blockedAsks, workerClock, t1Sync, tooFar
 - **Doors**: `PRIVILEGED_EVENTS` in `server/src/index.js` (every type the server sends; anything else a client could forge); `TYPES` in `server/src/relay.js` (RELAY.TYPES: the relays a phone may send, rebuilt in its name)
@@ -361,12 +362,13 @@ The client's tables (src/data/): items, zones, abilities, the long display and s
 
 ## debug
 
-The crash ring, the perf HUD, the debug overlay.
+The crash ring, the perf HUD, the debug overlay, the field report (its worker half: server/src/report.js, v2.3.5127).
 
 - **Files**: everything under `src/debug/`
+- **Files**: `server/src/`: report
 - **Doors**: none named yet
 - **Switches**: none
-- **Words**: `debug`, `crash`, `perf`
+- **Words**: `debug`, `crash`, `perf`, `report`
 - **Traps**: none
 
 ## shell

@@ -10,7 +10,8 @@
  *   4. what is kept is kept (a kit's cooldown)
  *   5. `monsterlife: false`: the old list only, no count
  */
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { srcFiles } from './src-walk.mjs';
 import { GameRoom } from '../src/index.js';
 import { WHEEL_ZONE } from '../src/wheelzone.js';
 
@@ -27,8 +28,7 @@ try { ML = (await import('../src/monsterlife.js')).MONSTER_LIFE; } catch (e) { M
 {
   const dir = new URL('../src/', import.meta.url);
   const seen = new Map();
-  for (const f of readdirSync(dir)) {
-    if (!f.endsWith('.js')) continue;
+  for (const f of srcFiles()) {   /* v2.3.5060: in depth, a folder's files too (src-walk.mjs) */
     const src = readFileSync(new URL(f, dir), 'utf8');
     for (const mt of src.matchAll(/\bm\.(_[A-Za-z0-9]+)\s*(?:=(?!=)|\+=|-=)/g)) if (!seen.has(mt[1])) seen.set(mt[1], f);
   }

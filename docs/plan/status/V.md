@@ -1,6 +1,6 @@
 card: V
 branch: claude/plan-v-5-screens (PR 5; PRs 1-4: claude/plan-v-1 to -4)
-prs: #1724, #1726, #1729, #1731 (each ready), PR 5 tag 5324 (ready)
+prs: #1724, #1726, #1729 (merged), #1731 (ready), #1735 tag 5324 (ready)
 state: ready
 
 ## Done
@@ -16,7 +16,8 @@ state: ready
 ## Found
 - §2: `ps.capeOff` (`server/src/eventcapes.js`) is not in `_saveRpg`'s list
   (`persistence.js`, card A's): a cape taken off is worn again after a rejoin.
-- Card N's walker and wire table are not on `main` (§2, §1 read their own).
+- Card N's walker and wire table landed (sitting 5) after PRs 1-2 merged: §2
+  walks `server/src/` itself, §1 reads `RELAY.TYPES` (see Needs).
 - Need the page: §109's coach (`QuestCoach.jsx`); §222's landing; §64's
   other boxes; §134's other overlays (the level-up burst,
   `src/ui/LevelUpBurstStack.jsx`, is no body portal: unsure it is under a
@@ -35,4 +36,5 @@ state: ready
   fetches have none (a census).
 
 ## Needs
-- Nothing.
+- The owner: move §2 onto `server/test/src-walk.mjs` and §1 onto N's wire
+  table in a PR of card V's (tag 5327) or leave it to the next card?
