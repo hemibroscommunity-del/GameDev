@@ -33,7 +33,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?garmentspecks` | page | switch | v2.3.3658 | 2026-10-27 | =0 | logic |  | no | A garment's specks are drawn the old way (and the body bake goes back to the page). |
 | `?sharp` | page | switch | v2.3.2741 | 2026-09-24 | =0 | chip |  | no | Pictures are not routed to sharp pixels. |
 | `?stripgentle` | page | switch | v2.3.4400 | 2026-11-10 | =0, off, false | logic |  | no | Strips are packed in one go, not a slice at a time. |
-| `?stripslice` | page | lever | v2.3.4400 |  | a number of ms | none |  | no | QA: a fixed slice for strip packing (a phone's, on a slow box). |
+| `?stripslice` | page | lever | v2.3.4400 |  | a number of ms | none |  | no | QA: a fixed slice for strip packing (a phone's, on a slow box), in place of the lane's `queue` ms (v2.3.5230). |
 | `?stripworker` | page | switch | v2.3.4450 | 2026-11-10 | =0, off, false | logic |  | no | Every strip is unpacked on the page, not the worker. |
 
 ## audio
@@ -403,6 +403,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?groundbg` | page | switch | v2.3.3452 | 2026-10-18 | =1 | chip |  | no | The black under the world's ground is drawn every frame, as it was. |
 | `groundkeep` | both | switch | v2.3.3775 | 2026-10-29 | off_groundkeep: true; ?groundkeep=0, off, false | chip |  | no | The world's ground is rebuilt on a return, not kept, as before. |
 | `?iconretry` | page | switch | v2.3.4431 | 2026-11-10 | =0 | logic | `?retrylooks` | no | Icons that failed are not asked for again. |
+| `?ladderpass` | page | switch | v2.3.5229 | 2026-11-15 | =0, off, false | chip | `govern` | no | The passes' rungs are off: the metal shines, the shadows are drawn and the sea moves, whatever the rung. |
 | `?layerpush` | page | switch | v2.3.3449 | 2026-10-18 | present | chip |  | no | Every layer's uniforms are pushed as Pixi does, to compare. |
 | `?legslook` | page | switch | v2.3.4450 | 2026-11-10 | =0, off, false | chip | `lookpalette` | no | Legs under greaves are baked the old way. |
 | `?lightfx` | page | switch | v2.3.2710 | 2026-09-23 (v2.3.2711) | =1, =0, on or off | chip |  | no | Turns the light effects on or off. |
@@ -440,6 +441,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?sheenpass` | page | switch | v2.3.3453 | 2026-10-18 | present | chip |  | no | The sheen is drawn without its batch. |
 | `?shieldretry` | page | switch | v2.3.4431 | 2026-11-10 | =0 | logic | `?retrylooks` | no | Shield sheets that failed are not asked for again. |
 | `?slimesplat` | page | switch | v2.3.4127 | off | =0 or =1 | logic |  | no | The slime's splat turned off (=0) or on (=1) for this phone. |
+| `?slimewalk` | page | switch | v2.3.5256 | 2026-11-14 | =0, off, false | memory |  | no | The slimes' sheets load behind the first loading screen and are kept, as before, not as a slime comes near. |
 | `?sootms` | page | lever | v2.3.3679 |  | a number of ms | none |  | no | QA: soot marks lie this long. |
 | `?standinlegs` | page | switch | v2.3.3640 | 2026-10-27 | =0 | logic |  | no | The sword and bow bodies keep their legs under greaves, as before. |
 | `?traitretry` | page | switch | v2.3.3606 | 2026-10-26 | =0 | logic | `?retrylooks` | no | A trait picture that failed is not asked for again. |
@@ -506,6 +508,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `hardenkeep` | worker | switch | v2.3.3529 | 2026-10-20 | false | logic |  | no | A failed hardening loses its level again (the old band). |
 | `hardenmats` | worker | switch | v2.3.3139 | 2026-10-07 | false | logic |  | no | Hardening asks no material and charges the old x4 gold. |
 | `hardenwoodskill` | worker | switch | v2.3.3481 | 2026-10-19 | false | logic |  | no | Bows and staffs are gated on Blacksmithing again for hardening. |
+| `harvestdoor` | worker | switch | v2.3.5214 | 2026-11-15 | false | logic |  | no | A gather record without its start time is written again, as the line before the harvest door did (no start builds one today); the sweep could never end such a record. |
 | `harvestproof` | worker | switch | v2.3.3322 | 2026-10-17 | false | logic |  | no | The old permissive strike and the old perfect, at once. |
 | `hitladder` | worker | switch | v2.3.3229 | 2026-10-14 | false | logic |  | no | The harvest's hit dice go back to 1..level, cap un-advertised. |
 | `meals` | worker | switch | v2.3.3130 | 2026-10-07 | false | logic |  | no | Only the old instant recipes cook; dishes in bags still eat. |
@@ -606,6 +609,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `clearxp` | worker | switch | v2.3.3565 | 2026-10-22 | false | logic |  | no | A dungeon clear's XP goes to the old counter only. |
 | `disable_dungeons` | worker | switch | v2.3.1150 | 2026-07-03 | true | logic |  | no | Thrown, every dungeon start is refused with a message. |
 | `dungeonbag` | worker | switch | v2.3.3556 | 2026-10-22 | false | logic |  | no | A dungeon death drops its pile and empties the bag, as before. |
+| `dungeondoor` | worker | switch | v2.3.5215 | 2026-11-15 | false | logic |  | no | A dungeon run's end and its boss can be written again, as the lines before the dungeon door could have (the tick asks neither twice today). |
 | `dungeonlive` | worker | switch | v2.3.4423 | 2026-11-10 | false | logic |  | no | Any `dungeon:` id on its shape is taken again, live run or not. |
 | `eventplace` | worker | switch | v2.3.3245 | 2026-10-14 | false | logic |  | no | Every event goes to everyone again, from the next tick. |
 | `fightlock` | worker | switch | v2.3.3183 | 2026-10-12 | false | logic |  | no | The bag is no longer locked in a fight on the roads the fight lock's table names `fightlock`. |

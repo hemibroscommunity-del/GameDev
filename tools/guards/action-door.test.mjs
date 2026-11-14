@@ -25,21 +25,21 @@
  *      `payload` (or at the top, `body: 'top'`), an event as a broadcast, a
  *      route with its method and the session's token, a request id on a
  *      `req` row in SHAPES' form, a name with no row refused and counted;
- *   6. (v2.3.5185, card K PR 5 ONLY: PR 7's first takes it out) a name whose
- *      way is not today's: TODAY below is the shim's way for each name as it
- *      stood on main 82fb78d, made from its source once;
+ *   6. (v2.3.5185 to 5187: PR 5's copy of the shim's ways, taken out by
+ *      PR 7's first);
  *   7. THE CENSUS (the plan's rule 3): a send to the socket (`channel.send(`)
  *      or a fetch of '/api/' anywhere but the door, counted against LINE.
  *      It only falls: card K's PR 7 moves the page's sends to act(), a
  *      family a PR.  The exceptions, named: src/debug/crashTrap.js and
  *      src/networking/index.js (they run before a session), and wsClient.js's
  *      fetch of /api/lobby (the connection's own).
+ *      v2.3.5187 (PR 7.1, combat and moving): 57 moved
  *
  * BREAK PROOF (rule 8), each tried by hand 2026-11-14:
  *   1. src/game/chat.js: `S.channel.send({ type: 'zz_probe' })`          -> FAIL 2 (and 7)
  *   2. src/game/actions.js: `cape_redeem: A('alone', { req: 1 })` -> no req -> FAIL 3
  *   3. the shim (wsClient.js): `if (msg.type === 'zz_probe') { wsOut(msg); return; }` in the shim -> FAIL 4
- *   4. src/game/actions.js: `stunned: A('priority')` -> A('batch')    -> FAIL 6
+ *   4. (retired with §6, v2.3.5187: the ways are the rows' now)
  *   5. src/game/actions.js: `item_drop`'s `body: 'top'` taken off      -> FAIL 2b (v2.3.5185, sitting 14)
  *
  * Run from the repository's root: node tools/guards/action-door.test.mjs
@@ -174,38 +174,11 @@ const EXCEPT = (x) => x.f === 'src/debug/crashTrap.js' || x.f === 'src/networkin
   check('5: act() sends each way as the shim does, makes a request id in SHAPES\' form on a req row, and refuses (counts) a name with no row', ok.every(Boolean), ok);
 }
 
-/* ── 6. today's way for every name (card K PR 5 only) ──
-   The shim's way for each name, from main 82fb78d's wsClient.js: its
-   pass-through chain (alone; monster_damage `claim`; loot_pickup and
-   ability `aftermove`), PRIORITY_EVENTS, SETTLED_SENDS, and its broadcast
-   tail (move, player_attack, gather_node; every other event the batch). */
-{
-  const TODAY_ALONE = 'cape_redeem cape_equip chest_open loginspin_ask loginspin_go loginspin_double loginspin_collect rewards_get daily_spin daily_reroll season_claim smelt_bar farm_open farm_act farm_buy farm_order make_hardened_wood race_start ride rest_request bank_open bank_deposit bank_withdraw heap_burn make_traps trap_arm pet_active pet_name pet_release pet_house_buy forge_armor smith_salvage essence_apply reveal_item shield_wear pose dice item_drop achv_title fish_inspect fish_board_request spin_board_request acc_request rise_chest_open shield_gem weapon_gem shard_crack gem_combine map_watch nml_attack nml_lock_ask nml_lock_allow alliance_name alliance_war alliance_board potion_drink extraction_start node_strike arrow_blast shop_list shop_sell shop_buy shop_quote store_offer store_offer_cancel store_offer_reply store_dm store_dm_open stat_allocate prog3_allocate points_reset cook_request stats_update ability_use eat_request element_burst gem_cut_request amulet_forge_request build_point_earned firemaking_request shop_purchase cook_recipe equip_request unequip_request sell_weapon forge_weapon quest_accept character_reset quest_turn_in set_active_slot report'.split(' ');
-  const TODAY_PRIORITY = 'pvp_confirmed stunned duel_accept duel_decline duel_wager_request pvp_threat threat_response trade_offer trade_accept trade_reject clan_war_kill clan_war_end clan_war_declare clan_invite trade2_open trade2_set trade2_ready trade2_confirm trade2_cancel trade2_stage_weapon trade2_unstage_weapon trade2_pets party_invite party_accept party_decline party_leave party_kick party_chat clan_leave area_chat whisper'.split(' ');
-  const TODAY_SETTLED = 'node_strike extraction_start prog3_allocate stat_allocate cook_request farm_open farm_act farm_buy farm_order'.split(' ');
-  const today = new Map();
-  for (const n of TODAY_ALONE) today.set(n, 'alone');
-  today.set('monster_damage', 'claim'); today.set('loot_pickup', 'aftermove'); today.set('ability', 'aftermove');
-  for (const n of TODAY_PRIORITY) today.set(n, 'priority');
-  today.set('move', 'move'); today.set('player_attack', 'attack'); today.set('gather_node', 'rider');
-  const todayOf = (n) => (today.has(n) ? today.get(n) : null);
-  /* every name the door or today knows; an event today knows is the batch,
-     a direct type it does not is dropped: the door's `batch` and no row */
-  const all = new Set([...names, ...today.keys(), ...sent.keys()]);
-  const diff = [];
-  for (const n of all) {
-    const r = ACTIONS[n];
-    if (r && (r.way === 'own' || r.way === 'http')) continue;
-    const t = todayOf(n) || (r && r.way === 'batch' ? 'batch' : null);
-    const d = r ? r.way : null;
-    if (t !== d) diff.push(n + ': today ' + t + ', door ' + d);
-    if (!!(r && r.settled) !== TODAY_SETTLED.includes(n)) diff.push(n + ': settled today ' + TODAY_SETTLED.includes(n));
-  }
-  check(`6: every name takes today's way through the door (${all.size} names: ${TODAY_ALONE.length + 3} alone, ${TODAY_PRIORITY.length} priority, the batch, the rest)`, diff.length === 0, diff);
-}
+/* ── 6. (v2.3.5185's copy of the shim's ways, card K PR 5's only, taken out by
+   PR 7's first, v2.3.5187: from here the rows are the ways, held by §1 to §5) ── */
 
 /* ── 7. the census: sends and fetches outside the door ── */
-const LINE = { sends: 203, fetches: 25 };
+const LINE = { sends: 146, fetches: 25 };   /* v2.3.5187: 203 less PR 7.1's 57 */
 {
   let sends = 0; const byFile = new Map();
   for (const [f, s] of SRC) {

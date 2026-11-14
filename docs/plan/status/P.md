@@ -1,6 +1,6 @@
 card: P
 branch: claude/plan-p-19-worn-gear (begun from main)
-prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810, #1840 (5241-5255, 5257, merged); #1846 (5256), #1853 (5258), #1859 (5259) ready; the belt's stand-in (5560) ready
+prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810, #1840, #1846, #1859 (5241-5257, 5259, merged); #1853 (5258) ready; the belt's stand-in (5560) ready
 state: working
 
 ## Done
@@ -14,8 +14,7 @@ state: working
 
 ## Next
 
-- #1846 (5256) and #1859 (5259) for sitting 17, #1846 first. #1853 (5258)
-  waits for sitting 18: main merged in, `artCache` to 88.6.
+- #1853 (5258) for sitting 18: main merged in, `artCache` to 88.6.
 - 5560, the owner's gear item: the belt's idle frame held while its jog
   sheets pack (`beltHold.js`, `?beltstandin=0`); P's second block taken.
 - Then the backlog by the census: `traits-hairmasks` (2.13 MB) next; the

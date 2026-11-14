@@ -327,6 +327,12 @@ devices it waits for: with one player, the table is empty for weeks.
   panel's list), merged at sitting 13. The box waits for the crowd's, the
   passes' and the memory's rungs (O's PRs 6, 8 to 11) (the gatekeeper,
   sitting 14, tag 5371).*
+  *O's #1841 (one program or three, and how a look is made: knobs of the
+  lanes, their fallbacks asked of `deviceProfile.js` alone) merged at
+  sitting 16; #1836 (the crowd's rung: the cap a knob, 50, 30, 15; a step
+  that hides no one is passed; `?laddercrowd=0`) at sitting 16b. The box
+  waits for the passes' and the queue's knobs (O's PRs 9, 10) and the
+  memory's rung (PR 11) (the gatekeeper, sitting 17, tag 5374).*
 - [ ] **2.4 [NEXT] Off-ramps become overrides of the ladder**, through one
   reader (pillar 7's table).
 - [ ] **2.5 [NEXT] The 30 lane** (an iPhone in Low Power Mode): named by the
@@ -366,7 +372,7 @@ play, a number 1.1 can measure.
 
 ### Pillar 4. The server's word
 
-- [ ] **4.1 [NOW] The wire census.** Every message both ways, the HTTP
+- [x] **4.1 [NOW] The wire census.** Every message both ways, the HTTP
   routes too (the market's, the store's, the arena's are in no list today),
   one row. The columns are in `docs/SHAPES.md`. These need the handler read,
   so they are filled in the one reading:
@@ -397,6 +403,10 @@ play, a number 1.1 can measure.
   `FIGHT_LOCK`, the placed lists, `SOCIAL.TYPES`, botsig's hooks), merged
   at sitting 15. The box waits for the door's checks (K's PR 4) (the
   gatekeeper, sitting 16, tag 5373).*
+  *Ticked: K's PR 4, #1838 (the door's checks made from the table, before
+  any handler at the router and the routes; `wiredoor`, ON; the hostile
+  census 19 -> 1), merged at sitting 16: step 2's lists and checks are
+  made from the table (the gatekeeper, sitting 17, tag 5374).*
 - [ ] **4.1b [NEXT] The send door**: one `_send` (132 places write to a
   socket today), counting bytes by type.
 - [ ] **4.2 [NEXT] Claims, bounded.** "No claims" can be met by calling a
@@ -417,6 +427,10 @@ play, a number 1.1 can measure.
   the reach 2.96, the harvest 1.86, the cook 1.59); the box waits for the
   claims tightened, one judge a PR behind its flag (K's second block)
   (the gatekeeper, sitting 15, tag 5372).*
+  *K's #1842 (the archer's lane: an arrow lands when it lands; `arrowlane`,
+  ON), merged at sitting 16: a stepping archer keeps every arrow; the bow
+  cheats' rise it allows is for the bow claim's PR to bound. The box waits
+  for the other judges (the gatekeeper, sitting 17, tag 5374).*
 - [ ] **4.3 [NEXT] Doors for what is left of value**: experience and
   levels, the stashes, quest state, skill points. A weapon gets an id of its
   own, as gear has.
@@ -456,6 +470,8 @@ play, a number 1.1 can measure.
   11; card E is finished. Two costs stay OFF for the owner's word:
   `arenasettleplan` (two rows a match) and `econresetput` (one put an empty
   room's restart) (the gatekeeper, sitting 12, v2.3.5369).*
+  *Both ON by the owner's yes: E's #1852, merged at sitting 16 (the
+  gatekeeper, sitting 17, tag 5374).*
 - [ ] **4.7 [NEXT] The way back.** A player's restore made from the registry
   (every record of theirs, not the character alone); a paged export; a
   restore tried in the Cloudflare lab; the storage's size in the day's
@@ -465,6 +481,11 @@ play, a number 1.1 can measure.
   from the registry, the paged export and the lab's try (R's PRs 6, 7 and
   9; the lab's needs `.github/`, the owner's words) (the gatekeeper,
   sitting 15, tag 5372).*
+  *R's PR 9, #1844 (the room's way back to an earlier time, `roomrewind`
+  OFF until the owner sets it; the lab's restore try as files only, the
+  owner's "not now"), merged at sitting 16. The box waits for the restore
+  from the registry (R's PR 6), the paged export (PR 7) and the lab's try
+  (the gatekeeper, sitting 17, tag 5374).*
 
 (4.6 of version 1 is pillar 10.)
 
@@ -521,6 +542,9 @@ nothing known, and a restore copies nothing.
   party door: `_partyIn`, `partydoor`), both ON, merged at sitting 15:
   28 `todo`; the line lowered 30 -> 28 (the gatekeeper, sitting 16, tag
   5373).*
+  *L's #1839 (the cook door: the activity claim's one writer, `exdoor`,
+  ON), merged at sitting 16: 27 `todo`; the line lowered 28 -> 27 (the
+  gatekeeper, sitting 17, tag 5374).*
 - [ ] **5.4 [LATER] The frame as named steps.** PR 1 moves nothing: the six
   calls the loop already makes, plus one `legacy` step, become the list;
   each counts its errors to the crash ring (a throw in the frame reaches
@@ -573,11 +597,17 @@ nothing known, and a restore copies nothing.
   its reader, the thrown run, a row's place its name), merged at sitting
   14: every switch found is a row, rule 4 held. The box waits for the
   page's one reader (T's PR 6) (the gatekeeper, sitting 15, tag 5372).*
-- [ ] **7.2 [NEXT] The end date** (the owner: yes). For a logic switch: four
+- [x] **7.2 [NEXT] The end date** (the owner: yes). For a logic switch: four
   weeks on with no revert, then the old way goes. A device off-ramp stays
   while its risk is live. A fallback stays while its trigger lives: a guard
   fails reaping one. Nothing is reaped by age in the first sprint: every
   step is adding switches.
+  *Ticked: card T's PR 5, #1837 (`on` on every switch row, the day its way
+  went on for everyone or `off`; `--due` prints what the rule would let
+  go and changes nothing; the fallback hold, the switch guard's check 12,
+  a census of 5), merged at sitting 16b. Every new switch row now carries
+  its `on`, the day its PR merges (the gatekeeper, sitting 17, tag
+  5374).*
 - [ ] **7.3 [LATER] Reap by system**, a batch a PR, each saying the bytes
   and MB that went.
 - [ ] **7.4 [LATER] The big leftovers**, each the owner's call: protocol v1
@@ -600,6 +630,9 @@ nothing known, and a restore copies nothing.
   race, desklunge, bowprops, alliance), and J2's next lines are
   `mp-heldsweep`, `mp-alliance` and `mp-partychip` (the gatekeeper,
   sitting 16, tag 5373).*
+  *J2's #1845 (`mp-ghostaudit`: the cook's fire lit again, a world tree no
+  leftover), merged at sitting 16. Still open: L's status names seven
+  phone tests red on `main` (the gatekeeper, sitting 17, tag 5374).*
 - [ ] **8.2 [NEXT] Traps become guards**, each with a break proof. The count
   that matters is traps held by a proof, not traps of prose.
   *Card V merged, #1724 to #1740: 31 traps held by a proof (25 the rule, 6
@@ -680,6 +713,10 @@ the memory a family holds as the game draws it.
   its switch; off the held list), #1806 (the CPU pixel readers' guard) and
   #1810 (the figure hold's note), merged at sitting 12. The step is open
   (the gatekeeper, sitting 13, v2.3.5370).*
+  *Card P: #1840 (`monster-fire-goblin`: a strip's numbers kept deflated a
+  frame at a time once drawn, `?framepack=0`; the census 8.10 -> 6.65 MB
+  at the fight), merged at sitting 16. The step is open (the gatekeeper,
+  sitting 17, tag 5374).*
 - [ ] **9.6 [LATER] An address that changes with the content**, by a
   `?h=` lookup (the client builds a hundred sprite addresses as it runs;
   renaming files would break them). A wrong hash on art that loads in play
