@@ -108,7 +108,8 @@ each row's own fix lower the line.
 
 ## Card R: #1819 (PR 1, tag 5280): listed
 
-**The roads between players, one table (it DEPLOYS), read at 0b18482:
+**The roads between players, one table (it DEPLOYS), read at 0b18482,
+then 64ad279 (documents: SHAPES part 7's approved line, R's status):
 clean (lows).** A finder imported both sides: the made `XFER.ROADS`
 (`trade_window`, `gift_trade`) and `XFER.KILLS` (`nml_loss`) equal
 main's literals, frozen arrays in the same order, every other `XFER` key
@@ -135,10 +136,11 @@ renamed fails §2, §4, §6 loudly.
   settlement writes an `xfer:` row. Before this PR such a list failed.
   No effect today; mend in R's next PR that touches the table (each
   `xfer` row's road must be a `move` road, or name its writer).
-- Low, VERIFIED: the approved line of SHAPES part 7 (its 10.5 row,
-  "three columns, not a table", ~854) is not in the PR: part 3's new
-  text (~482) calls it "the first reading", so the two disagree until R
-  changes it; R's status still lists it as asked.
+- Low, VERIFIED at 0b18482, MENDED at 64ad279: the approved line of
+  SHAPES part 7 (its 10.5 row, "three columns, not a table", ~854) was
+  not in the PR, so part 3's new text (~482) and part 7 disagreed; R
+  pushed it during the sitting (the planning session's yes), with part
+  3's line to match.
 - Nit: `threat_bounty`'s ledger is `none` while its own why calls it a
   kill (kept so `XFER.KILLS` stays as it was): R's PR 11 (`xferescrow`)
   should read it.
@@ -282,3 +284,22 @@ and function at its line exactly (effectsRenderer 9870, entityRenderer
 8961, BroTown 8371, `BroTown#BroTown` 7801, ...), the import cycles at
 5 (29 files), the writes to `S` from rendering at 114: nothing to lower.
 The switch table's unlisted line is card T's #1816 (held).
+
+## The whole
+
+Rehearsed with `tools/dev/gatekeeper.mjs` from `main` 82fb78d, the list
+in its order (#1821, #1822, #1819, #1820, #1792, #1794, #1800, #1814,
+#1812):
+
+1. With #1812 at 854164b (tree c6d86f3f): precheck 0 FAIL (4 WARN),
+   build, questline 187 of 187.
+2. **The list as written, #1812 at fc3cce4, without this branch (tree
+   ad355e20)**: precheck 0 FAIL (4 WARN: card T's two old closed
+   branches carrying 5222; the busy-branches note; `look-roles`' "code
+   changed" for `standin`, as on `main`), build, questline 187 of 187.
+3. **The list with this branch last** (documents only): precheck and
+   build on the whole; its tree is in the list sent to the planning
+   session (the file cannot carry its own tree).
+
+Each listed head's `test` is green on GitHub; each base is `main`; ONE
+merge base each, step by step down the list.

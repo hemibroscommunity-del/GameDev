@@ -29,7 +29,7 @@ deploy (2 to 9): back to back. No cap, no live flag, no stored shape.
 
 ## Found
 - R: a row can claim `ledger: 'xfer'` with no writer (xfer.test's
-  move-only check gone); SHAPES part 7's approved line not made.
+  move-only check gone): for R's next PR on the table.
 - K: `systems.mjs` and CLAUDE.md §5/§8 still name the hand lists.
 - T: the old `plan-t-3-page-draw`, `plan-t-4-thrown` carry 5222.
 - No card: `mp-ghostaudit`'s cook 0 frames; heldsweep `R > J` (TF's).
