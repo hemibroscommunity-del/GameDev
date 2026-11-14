@@ -21,24 +21,33 @@
  *   6. THE WORKER'S OWN: the round trip's waver kept at each pong, and
  *      `delay` and `waver` binned from the session, never the message;
  *   7. THE BOOK'S ROOM: one cell with every field, against the part's line
- *      (daybook.js PART_BYTES), so a day holds several devices and builds.
+ *      (daybook.js PART_BYTES), so a day holds several devices and builds;
+ *  10. v2.3.5127, THE GATEKEEPER'S REVIEW (sitting 3), a test each: the
+ *      first frame after a hidden spell is not a freeze; the switch back on
+ *      sends nothing of the time it was off; the build in a cell is the
+ *      worker's call (a preview is `preview`); hidden time is not play time;
+ *      a report is not the player's input (the AFK clock); `near` is the
+ *      near circle's.
  *
  * BREAK PROOF (rule 8), each tried by hand, 2026-11-14:
  *   2. report.js: drop `!HOLD_NAMES.includes(name) ||`          -> FAIL 2
  *   3. report.js: `tree[session.id + '|' + r.cell] = r.sums`      -> FAIL 3
  *   4. report.js: `PACE_MS: 0`                                    -> FAIL 4
  *   5. join.js: `report: 1,` in place of the method's answer      -> FAIL 5
+ *  10. src/debug/report.js addFrames: drop `if (spansShow) continue;` -> FAIL 10
+ *      report.js: `(o.site === 'live' ? build : 'preview')` as `build` -> FAIL 10
+ *      index.js: `msg.type === 'pong'` alone (a report stamps the AFK clock) -> FAIL 10
  */
 import { readFileSync } from 'node:fs';
 import { GameRoom } from '../src/index.js';
 import { REPORT, DEV_CLASS, SAVERS, WHERE, GAP_BINS, HOLD_NAMES as W_HOLDS, DRAW_LANES, DELAY_EDGES, WAVER_EDGES,
-  reportSums, swCell, holdKey, classOfReport, rttWaverNext } from '../src/report.js';
+  reportSums, swCell, holdKey, classOfReport, rttWaverNext, reportSiteOf } from '../src/report.js';
 import { DAYBOOK, bookBytes, bookRead } from '../src/daybook.js';
 import { flagNameOk } from '../src/liveops.js';
 import { DEV_CLASS as P_CLASS } from '../../src/game/deviceProfile.js';
 import { CLIENT_SAVERS } from '../../src/game/clientOff.js';
 import { HOLD_NAMES as P_HOLDS } from '../../src/debug/holdNames.js';
-import { WHERE as P_WHERE, GAP_EDGES, DRAW_LANE, takesReports, gapBin, whereOf, buildOf } from '../../src/debug/report.js';
+import { WHERE as P_WHERE, GAP_EDGES, DRAW_LANE, takesReports, gapBin, whereOf, buildOf, addFrames, blankBins } from '../../src/debug/report.js';
 
 let failures = 0, passes = 0;
 function check(name, cond, detail) {
@@ -103,7 +112,7 @@ const KEY = '2-1-8192-16-32-1-2-other-none-touch-0-4';
 
 /* ── 2. THE CHECKS ── */
 {
-  const r = reportSums(PHONE(), { delay: 80, waver: 12 });
+  const r = reportSums(PHONE(), { delay: 80, waver: 12, site: 'live' });
   check('2. a phone\'s report makes its cell: the shape, the class\'s key, the lane, the switches, the build',
     r && r.cell === '1|' + KEY + '|full|none|5122', r && r.cell);
   const s = r && r.sums;
@@ -113,7 +122,7 @@ const KEY = '2-1-8192-16-32-1-2-other-none-touch-0-4';
   check('2. the holds by name and place: [count, ms, near]', s && same(s.holds[holdKey('body-bake', 'other')], [1, 115, 0]) && same(s.holds[holdKey('screen-check', 'town')], [1, 91, 1]), s && s.holds);
   check('2. the worker\'s own delay and waver, binned', s && same(s.delay, [0, 0, 1, 0, 0, 0, 0]) && same(s.waver, [0, 0, 1, 0, 0, 0]), s && [s.delay, s.waver]);
   check('2. no late where the pacer gave no verdict, and no split', s && !('late' in s) && !('split' in s));
-  check('2. nothing of the card\'s (seen, drawn) is added to smoothness', s && !('seen' in s) && !('drawn' in s));
+  check('2. the seen seconds are the time played (v2.3.5127); `drawn` is the card\'s, not added', s && s.seen === 46 && !('drawn' in s));
 
   const drop = (mut) => { const m = PHONE(); mut(m); return reportSums(m, {}); };
   check('2. no cell, no report: a class off its list (a chip\'s name in a field)', drop((m) => { m.devClass.gl = 'Apple GPU'; }) === null);
@@ -159,7 +168,7 @@ const room = new GameRoom(state, mockEnv);
 room._liveFlags = {};
 async function join(id, name) {
   const ws = fakeWs();
-  room.sessions.set(ws, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now(), ip: '203.0.113.7' });
+  room.sessions.set(ws, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now(), ip: '203.0.113.7', site: 'live' });
   await room.webSocketMessage(ws, JSON.stringify({
     type: 'join', id, name, phrase: 'p-' + id, device: { id: 'dev' + id }, ws: [1, 5],
     data: { x: 0, y: 0, z: 'town', name, sk: 'tan', hr: 'mop' },
@@ -244,12 +253,67 @@ const A = await join('bp_rep_a', 'Repo');
   m.split = m.split.slice(0, 8);
   m.holds = [['body-bake', 115, 'town', 3], ['strip-made', 20, 'ember', 1], ['other: BT_AUDIO$1._fold > foldToMono', 19, 'farm', 0], ['screen-check', 30, 'commons', 0], ['gc', 40, 'frost', 9]];
   m.died = ['killed', 230, 14, 1, 'ember'];
-  const r = reportSums(m, { delay: 80, waver: 12 });
+  const r = reportSums(m, { delay: 80, waver: 12, site: 'live' });
   const tree = { [r.cell]: r.sums };
   const bytes = bookBytes(tree);
   const cells = Math.floor(DAYBOOK.PART_BYTES / bytes);
   console.log(`     one cell with every field: ${bytes} bytes as the book reckons it; the part holds ${cells} such a day`);
   check('7. a cell with every field leaves room for at least six cells a day (devices times builds)', cells >= 6, { bytes, cells });
+}
+
+/* ── 10. THE GATEKEEPER'S REVIEW (v2.3.5127, sitting 3) ── */
+{
+  /* (1) the first frame after a hidden spell spans the spell: not a freeze */
+  const a = blankBins(0);
+  const frames = [];
+  let t = 1000;
+  for (let i = 0; i < 30; i++) { t += 16.7; frames.push({ t, totalMs: 16.7, workMs: 3, others: 2 }); }
+  const backAt = t + 40000;   /* hidden 40 s, back in view at backAt */
+  t = backAt + 5; frames.push({ t, totalMs: t - frames[frames.length - 1].t, workMs: 3, others: 2 });
+  for (let i = 0; i < 10; i++) { t += 16.7; frames.push({ t, totalMs: 16.7, workMs: 3, others: 3 }); }
+  const out = addFrames(a, frames, 0, [backAt], null);
+  check('10.1 the first frame after a hidden spell is not counted (no freeze in the bins); the rest are',
+    a.drawn === 40 && a.gaps[GAP_BINS - 1] === 0 && a.gaps[gapBin(16.7)] === 40 && out.lastT === t && a.near === 3, { drawn: a.drawn, gaps: a.gaps });
+  const b = blankBins(0);
+  addFrames(b, frames, 0, [], null);
+  check('10.1 ...and without the return\'s mark it would have been one (the fault, shown)', b.drawn === 41 && b.gaps[GAP_BINS - 1] === 1);
+  /* (2) the switch back on: a fresh report, nothing of the time it was off */
+  const ph = readFileSync(new URL('../../src/debug/report.js', import.meta.url), 'utf8');
+  check('10.2 the switch turned off throws the open report away, and the poll starts a fresh one from the rings\' newest',
+    /export function setReportOn[\s\S]{0,600}?\n {2}_a = null;\n\}/.test(ph) && /if \(!_a\) _restart\(now\);/.test(ph)
+      && /function _restart\(now\) \{\s*_reset\(now\);[\s\S]{0,200}_lastFrameT = fr\[fr\.length - 1\]\.t;[\s\S]{0,80}_lastHoldT = ex\[ex\.length - 1\]\.t;/.test(ph));
+  /* (3) the build is the worker's call */
+  const live = reportSums(PHONE(), { site: 'live' }), prev = reportSums(PHONE(), { site: 'preview' }), none = reportSums(PHONE(), {});
+  check('10.3 the build in a cell: the page\'s on the game\'s own site, `preview` anywhere else',
+    live.cell.endsWith('|5122') && prev.cell.endsWith('|preview') && none.cell.endsWith('|preview'), [live.cell, prev.cell]);
+  const many = new Set();
+  for (let bld = 4000; bld < 4100; bld++) many.add(reportSums({ ...PHONE(), build: bld }, { site: 'preview' }).cell);
+  check('10.3 a hundred preview builds make one cell, not a hundred', many.size === 1);
+  check('10.3 the site from the Origin: brotown.net (and www.) live; a preview, a local page, a look-alike or none, preview',
+    reportSiteOf('https://brotown.net') === 'live' && reportSiteOf('https://www.brotown.net') === 'live'
+      && reportSiteOf('https://abc123.gamedev-aix.pages.dev') === 'preview' && reportSiteOf('http://localhost:5173') === 'preview'
+      && reportSiteOf('https://brotown.net.evil.com') === 'preview' && reportSiteOf(null) === 'preview' && reportSiteOf('not a url') === 'preview');
+  /* (4) hidden time is not play time */
+  const h = reportSums({ ...PHONE(), secs: 300, seen: 30, drawn: 105 }, { site: 'live' });
+  check('10.4 a report of 300 s with 30 seen: 30 is the time played and the time in its place, 300 the time covered',
+    h && h.sums.seen === 30 && h.sums.secs === 300 && h.sums.where[WHERE.indexOf('town')] === 30, h && h.sums);
+  check('10.4 seen past secs, or none, drops the report; frames past the seen time drop the frames',
+    reportSums({ ...PHONE(), seen: 47 }, {}) === null && reportSums({ ...PHONE(), seen: undefined }, {}) === null
+      && !('gaps' in reportSums({ ...PHONE(), secs: 300, seen: 1, drawn: 600, gaps: [0, 0, 0, 0, 0, 0, 0, 0, 0, 600] }, {}).sums));
+  check('10.4 the phone sends a report only with MIN_SECS seen', /const ok = r\.seen >= REPORT\.MIN_SECS/.test(ph));
+}
+{
+  /* (5) a report is not the player's input: the AFK clock stands */
+  const S = room.sessions.get(A);
+  S.lastRecv = clock - 90000;
+  const was = S.lastRecv;
+  clock += REPORT.PACE_MS;
+  await send(A, PHONE());
+  check('10.5 a report leaves the AFK clock where it was (an idle tab is still let go of)', S.lastRecv === was, { was, now: S.lastRecv });
+  /* (6) near: the near circle's */
+  const rf = readFileSync(new URL('../../src/game/renderFrame.js', import.meta.url), 'utf8');
+  check('10.6 the frame\'s `others` (the report\'s `near`) counts only this zone\'s players within the near circle',
+    /others: nearOthers\(S\)/.test(rf) && /r2 = QUIET\.NEAR_R \* QUIET\.NEAR_R/.test(rf) && /p\.zone !== z/.test(rf) && /dx \* dx \+ dy \* dy > r2/.test(rf));
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);

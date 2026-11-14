@@ -109,7 +109,7 @@ import { fishlogMethods } from './fishlog.js';   /* v2.3.4036: the rare fish, we
 import { riseChestMethods } from './risechest.js';   /* v2.3.4453: the chest on a rise pays, once a character */
 import { boardMethods, boardFace } from './boards.js';   /* v2.3.4393: the daily spin's records, a face and a level on every board, the deleted stand-ins */
 import { accuracyMethods } from './accuracy.js';   /* v2.3.4545: how many of your shots hit, a weapon */
-import { reportMethods, rttWaverNext } from './report.js';   /* v2.3.5123: the field report, the worker's side */
+import { reportMethods, rttWaverNext, reportSiteOf } from './report.js';   /* v2.3.5123: the field report, the worker's side */
 import { charWatchMethods } from './charwatch.js';   /* v2.3.4545: what players drew, for the owner to look at (the Test panel) */
 import { achievementMethods } from './achievements.js';   /* v2.3.3527 */
 import { killRollMethods } from './killroll.js';   /* v2.3.3209: one roll a kill, each drop its own numbers */
@@ -4962,7 +4962,9 @@ export class GameRoom {
     const _cf = (request && request.cf) || {};
     const _asn = Number(_cf.asn);
     this.sessions.set(server, { phase: 'open', /* v2.3.4830: the session's life (leave.js) */ id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now(), moveSig: '', ip: _ip, openedAt: Date.now(),
-      asn: Number.isFinite(_asn) && _asn > 0 ? _asn : null, asOrg: typeof _cf.asOrganization === 'string' ? _cf.asOrganization.slice(0, 64) : null });
+      asn: Number.isFinite(_asn) && _asn > 0 ? _asn : null, asOrg: typeof _cf.asOrganization === 'string' ? _cf.asOrganization.slice(0, 64) : null,
+      /* v2.3.5127: the game's own site or not, from the page's Origin -- the field report's build (report.js) */
+      site: reportSiteOf(request && request.headers ? request.headers.get('Origin') : null) });
     if (!this.tickInterval && this.sessions.size === 1) this.startTickLoop();
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -5129,8 +5131,9 @@ export class GameRoom {
        is a bare timer), but the AWAY flag it carries does -- see below.
        Everything else -- attacks, harvest strikes, zone changes, chat,
        panel actions -- is input and stamps the clock. */
-    if (msg.type === 'pong') {
-      /* keepalive, never activity */
+    if (msg.type === 'pong' || msg.type === 'report') {
+      /* keepalive, never activity -- v2.3.5127: nor the field report, a timer's (report.js): an idle tab sends
+         one every five minutes and must still be let go of */
     } else if (msg.type === 'track') {
       /* `track` is a 2 s telemetry timer, so its ARRIVAL says nothing.
          Its `aw` flag does: the client stamps _lastInputAt from

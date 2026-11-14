@@ -1,26 +1,24 @@
 card: A
 branch: claude/plan-a-4-report-worker (one branch a PR, each begun from the one before: -1- to -7-; merge them in order)
-prs: #1688 (5120, ready), #1692 (5121, ready), #1703 (5122, ready), PR 4 (5123, the report's worker side; ready)
+prs: #1688, #1692, #1703 (merged); #1706 (5123, mended; ready), #1708, #1711 (ready)
 state: ready
 
 ## Done
 
-- #1688 (5120): one list of hold names (`holdNames.js`); `noteMade` keeps a
-  name of it; `guards/hold-names`. Commits the card byte for byte.
-- #1692 (5121): `devClass()` in `deviceProfile.js`, SHAPES part 6, facts
-  only; `device-profile.test` 5 to 7. Its merge deploys the worker.
-- #1703 (5122): `src/debug/report.js`, the phone's side; the About row
-  and its switch; `renderFrame.js` counts near players; `crashTrap.js`
-  keeps the dead page's numbers. Sends nothing without `caps.report`.
-- PR 4 (5123): `server/src/report.js`: each field checked, one a socket a
-  50 s, into the book's `dev` part by cell with no player; `waver` kept
-  at each pong; `report: false`. The cap (`join.js`, `CAP_GATES`, each a
-  new line before `accuracy`'s) and the phone's read come together: list
-  it apart. Also the router's lists (`fightlock.js` open, refusal INFRA).
+- #1688, #1692, #1703 (5120 to 5122): merged at sitting 3.
+- #1706 (5123): `server/src/report.js`, into the book's `dev` part by
+  cell; `caps.report` (a new cap line: list it apart). Mended for sitting
+  3's hold, a test each (report.test 10): the frame after a hidden spell
+  is not a freeze; the switch back on starts fresh; a cell's build is
+  `preview` off the game's own site (the Origin, `session.site`); `seen`
+  is the time played; a report never stamps the AFK clock; `near` is the
+  near circle's (tag 5127: #1703 on `main` names 5123 ahead, so the tag
+  rule counts it taken). Not mended: `waver` takes the phone's `hd`, as
+  `rtt` does; the hold ring names the hold, not the pose (step 1.0).
 
 ## Next
 
-- PR 5 (5124): the room's own row, the book's `room` part.
+- #1708 and #1711 take this mend (merged up), then the gatekeeper.
 
 ## Found
 
@@ -34,6 +32,8 @@ state: ready
 - When card Q's sitting card keeps `soft`, `seen`, `drawn`, the About
   row's "no name on it" must change with it (card Q).
 - The book's `dev` part (24 KB a day) holds about 10 full cells.
+- No report at pagehide (the gatekeeper's Found): the last minutes of a
+  closed tab are lost, as the plan's "a session is a sitting" allows.
 
 ## Needs
 

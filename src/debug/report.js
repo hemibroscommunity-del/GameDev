@@ -53,6 +53,14 @@
  * house's caps-audit fails a cap the phone reads that no worker advertises,
  * so the cap and its read came together).
  *
+ * v2.3.5127, the gatekeeper's review (sitting 3): a report is of the time
+ * the page was SEEN.  The first frame after a hidden spell spans the whole
+ * spell (the loop's own gap: BroTown.jsx `S._perf.prevT`), so a frame whose
+ * gap holds a return to view is not counted (addFrames); `seen` is counted
+ * at each change of visibility, not guessed at the timer; `where` adds only
+ * seen time; a report with under MIN_SECS seen is not sent; and the switch
+ * turned back on starts a fresh report (nothing of the time it was off).
+ *
  * THE SWITCH: on for every player (the owner's call 1), off from the About
  * panel (kept on this device, OFF_KEY) or with `?report=0` for one tab.  The
  * worker's kill switch is `report: false` in the live flags.
@@ -115,7 +123,10 @@ export function reportOn() {
 /** The About panel's switch, kept on this device. */
 export function setReportOn(on) {
   try { if (on) localStorage.removeItem(OFF_KEY); else localStorage.setItem(OFF_KEY, 'off'); } catch (e) { /* this tab only */ }
-  if (!on) _reset(Date.now());
+  /* v2.3.5127: off throws the open report away; on starts a fresh one at the
+     poll (_poll: no report open), from the rings' newest -- never the time
+     it was off */
+  _a = null;
 }
 
 /* ── the open report ── */
@@ -127,17 +138,96 @@ let _died = null;         /* the first report's `died` (null: sent, or not yet d
 let _diedOwed = false;
 let _lastFrameT = -Infinity, _lastHoldT = -Infinity;
 let _a = null;            /* the bins */
+/* v2.3.5127: the page's visibility: since when it is in view (Date.now(),
+   null while hidden), and when it came back to view the last few times
+   (performance.now(), the frame meter's clock: a frame whose gap holds one
+   is the hidden spell, not a frame) */
+let _visSince = null;
+const _shows = [];
+const SHOWS_KEEP = 8;
 let _last = null;         /* QA: the last report built, sent or not */
 let _sent = 0, _dropped = 0;
 
-function _reset(now) {
-  _a = {
+function _visibleNow() {
+  return typeof document === 'undefined' || document.visibilityState === 'visible';
+}
+/* v2.3.5127: the seen time of the open report, to `now` */
+function _seenMs(a, now) {
+  return a.seenMs + (_visSince != null ? Math.max(0, now - Math.max(_visSince, a.t0)) : 0);
+}
+function _onVisibility() {
+  try {
+    const now = Date.now();
+    if (_visibleNow()) {
+      if (_visSince == null) _visSince = now;
+      _shows.push(typeof performance !== 'undefined' ? performance.now() : 0);
+      if (_shows.length > SHOWS_KEEP) _shows.shift();
+    } else {
+      if (_a && _visSince != null) _a.seenMs += Math.max(0, now - Math.max(_visSince, _a.t0));
+      _visSince = null;
+    }
+  } catch (e) { /* the report's own */ }
+}
+/* a fresh report from now: the rings read from their newest */
+function _restart(now) {
+  _reset(now);
+  const fr = perfTracker.getSamples(), ex = perfTracker.getExtEvents();
+  if (fr.length) _lastFrameT = fr[fr.length - 1].t;
+  if (ex.length) _lastHoldT = ex[ex.length - 1].t;
+}
+
+/** The frame meter's new samples (after `fromT`) into the bins `a`: a frame
+ *  whose gap holds a return to view (`shows`, the frame meter's clock) is the
+ *  hidden spell, and not counted; the pacer's rule judges where it judges
+ *  (`pace`: framePacer.js read()).  Returns { lastT, near } (the newest
+ *  sample's time, the near count at it).  Pure but for busyIn (the busy beat,
+ *  `?perf=1` only): the suite's. */
+export function addFrames(a, samples, fromT, shows, pace) {
+  const judging = !!(pace && pace.refresh && pace.refresh < PACE_FAST_MS);
+  const lateOver = judging ? (pace.every || 1) * pace.refresh + pace.refresh / 2 : Infinity;
+  let nearNow = 0, lastT = fromT;
+  for (let i = 0; i < samples.length; i++) {
+    const x = samples[i];
+    if (!x || !(x.t > fromT)) continue;
+    lastT = x.t;
+    const total = x.totalMs || 0;
+    nearNow = x.others || 0;
+    let spansShow = false;
+    for (let k = 0; k < (shows ? shows.length : 0); k++) if (shows[k] > x.t - total && shows[k] <= x.t) { spansShow = true; break; }
+    if (spansShow) continue;   /* the hidden spell, not a frame */
+    a.drawn++;
+    a.gaps[gapBin(total)]++;
+    if (nearNow > a.near) a.near = nearNow;
+    if (!judging || !(total > 0) || total > PACE_BREAK_MS) continue;
+    a.judged++;
+    if (!(total > lateOver)) continue;
+    a.late++;
+    /* the strip's split of a late frame (perfHud.js): the game's own parts,
+       and the rest outside it -- busy or waiting where the beat can say */
+    const work = x.workMs || 0, outside = Math.max(0, total - work);
+    const sp = a.split;
+    sp[0] += x.simMs || 0; sp[1] += x.tileMs || 0; sp[2] += x.entityMs || 0;
+    sp[3] += x.effectsMs || 0; sp[4] += x.fpsMs || 0; sp[5] += x.appMs || 0; sp[6] += outside;
+    const start = x.t - work, prev = i > 0 ? samples[i - 1] : null;
+    const b = busyIn(start - total, start, prev ? [_frameOf(prev)] : null);
+    if (b == null) a.beatAll = false;
+    else { const bb = Math.min(outside, b); a.busy += bb; a.wait += Math.max(0, outside - bb); }
+  }
+  return { lastT, near: nearNow };
+}
+
+/** A blank report's bins (the suite's). */
+export function blankBins(now) {
+  return {
     t0: now, seenMs: 0, lastPoll: now,
     drawn: 0, gaps: new Array(GAP_EDGES.length + 1).fill(0),
     late: 0, judged: 0, split: [0, 0, 0, 0, 0, 0, 0], busy: 0, wait: 0, beatAll: true,
     holds: [], whereMs: Object.create(null), near: 0,
     lost0: glLostCount(), rb0: _rebuilds(),
   };
+}
+function _reset(now) {
+  _a = blankBins(now);
 }
 function _rebuilds() {
   try { return (typeof window !== 'undefined' && window.__btGlRebuilds) || 0; } catch (e) { return 0; }
@@ -161,47 +251,21 @@ function _poll() {
   try {
     const now = Date.now();
     if (!reportOn() || !_S) return;
-    if (!_a) _reset(now);
+    if (!_a) _restart(now);   /* v2.3.5127: turned back on: a fresh report */
     const a = _a;
-    const visible = typeof document === 'undefined' || document.visibilityState === 'visible';
-    if (visible) a.seenMs += now - a.lastPoll;
-    a.lastPoll = now;
     const where = _whereNow(_S);
-    a.whereMs[where] = (a.whereMs[where] || 0) + REPORT.POLL_MS;
+    /* v2.3.5127: only the seen time is time in a place */
+    if (_visSince != null) a.whereMs[where] = (a.whereMs[where] || 0) + Math.max(0, now - Math.max(a.lastPoll, _visSince, a.t0));
+    a.lastPoll = now;
     setMarkWhere(where);
     /* the pacer's own rule, with its own refresh and step (framePacer.js
        take(): a run more than half a refresh past its frame is late), only
        where it judges: a refresh it knows, faster than PACE_FAST_MS */
     let pace = null;
     try { pace = typeof window !== 'undefined' && window.__btPace ? window.__btPace() : null; } catch (e) { pace = null; }
-    const judging = !!(pace && pace.refresh && pace.refresh < PACE_FAST_MS);
-    const lateOver = judging ? (pace.every || 1) * pace.refresh + pace.refresh / 2 : Infinity;
-    const samples = perfTracker.getSamples();
-    let nearNow = 0;
-    for (let i = 0; i < samples.length; i++) {
-      const x = samples[i];
-      if (!x || !(x.t > _lastFrameT)) continue;
-      const total = x.totalMs || 0;
-      a.drawn++;
-      a.gaps[gapBin(total)]++;
-      if ((x.others || 0) > a.near) a.near = x.others || 0;
-      nearNow = x.others || 0;
-      if (!judging || !(total > 0) || total > PACE_BREAK_MS) continue;
-      a.judged++;
-      if (!(total > lateOver)) continue;
-      a.late++;
-      /* the strip's split of a late frame (perfHud.js): the game's own parts,
-         and the rest outside it -- busy or waiting where the beat can say */
-      const work = x.workMs || 0, outside = Math.max(0, total - work);
-      const sp = a.split;
-      sp[0] += x.simMs || 0; sp[1] += x.tileMs || 0; sp[2] += x.entityMs || 0;
-      sp[3] += x.effectsMs || 0; sp[4] += x.fpsMs || 0; sp[5] += x.appMs || 0; sp[6] += outside;
-      const start = x.t - work, prev = i > 0 ? samples[i - 1] : null;
-      const b = busyIn(start - total, start, prev ? [_frameOf(prev)] : null);
-      if (b == null) a.beatAll = false;
-      else { const bb = Math.min(outside, b); a.busy += bb; a.wait += Math.max(0, outside - bb); }
-    }
-    if (samples.length) _lastFrameT = samples[samples.length - 1].t;
+    const fr = addFrames(a, perfTracker.getSamples(), _lastFrameT, _shows, pace);
+    _lastFrameT = fr.lastT;
+    const nearNow = fr.near;
     /* the holds: the ring's new entries that have a name of the list */
     const ext = perfTracker.getExtEvents();
     for (let i = 0; i < ext.length; i++) {
@@ -236,7 +300,8 @@ export function buildReport(now) {
   const cls = devClass();
   if (!cls) return null;
   const { key, ...facts } = cls;   /* the worker makes the key */
-  const secs = _w(((now || Date.now()) - a.t0) / 1000);
+  const tNow = now || Date.now();
+  const secs = _w((tNow - a.t0) / 1000);
   let where = 'other', most = -1;
   for (const k in a.whereMs) if (a.whereMs[k] > most) { most = a.whereMs[k]; where = k; }
   let mem = [0, 0, 0];
@@ -250,7 +315,7 @@ export function buildReport(now) {
     type: 'report', v: REPORT.V, devClass: facts, drawLane: DRAW_LANE,
     sw: CLIENT_SAVERS.filter((c) => clientOff(c.id)).map((c) => c.id),
     build: buildOf(typeof __GAME_VERSION__ !== 'undefined' ? __GAME_VERSION__ : ''),
-    secs, seen: Math.min(secs, _w(a.seenMs / 1000)), drawn: a.drawn, gaps: a.gaps.slice(),
+    secs, seen: Math.min(secs, _w(_seenMs(a, tNow) / 1000)), drawn: a.drawn, gaps: a.gaps.slice(),
     holds: a.holds.slice().sort((x, y) => y[1] - x[1]), where, near: _w(a.near), mem,
     lost: [_w(glLostCount() - a.lost0), _w(_rebuilds() - a.rb0)],
   };
@@ -277,7 +342,8 @@ function _due(now) {
   const r = buildReport(now);
   if (!r) return;   /* no drawing context yet: the bins carry on */
   _last = r;
-  const ok = r.secs >= REPORT.MIN_SECS && takesReports(S) && S.channel && typeof S.channel.send === 'function';
+  /* v2.3.5127: a report of under MIN_SECS SEEN is not worth a message (a hidden tab's) */
+  const ok = r.seen >= REPORT.MIN_SECS && takesReports(S) && S.channel && typeof S.channel.send === 'function';
   if (ok && S.channel.send(r) !== false) {
     _sent++;
     if (_died) { _died = null; _diedOwed = false; }   /* once */
@@ -297,11 +363,11 @@ export function reportJoined(S) {
     _joinedAt = now;
     _dueAt = now + REPORT.FIRST_MS;
     _diedOwed = true;
-    _reset(now);
     /* the report begins at the join: nothing the loading screen drew */
-    const fr = perfTracker.getSamples(), ex = perfTracker.getExtEvents();
-    if (fr.length) _lastFrameT = fr[fr.length - 1].t;
-    if (ex.length) _lastHoldT = ex[ex.length - 1].t;
+    _restart(now);
+    /* v2.3.5127: the seen time, at each change of visibility */
+    _visSince = _visibleNow() ? now : null;
+    try { if (typeof document !== 'undefined') document.addEventListener('visibilitychange', _onVisibility); } catch (e) { /* none */ }
     _timer = setInterval(_poll, REPORT.POLL_MS);
   } catch (e) { /* never the game's trouble */ }
 }

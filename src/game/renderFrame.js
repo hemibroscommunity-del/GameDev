@@ -16,6 +16,7 @@
 import { perfTracker } from '@/debug/perfTracker.js';
 import { worldViewport } from '@/game/worldViewport.js'; /* v2.3.1768b */
 import { checkQuestComplete } from './questComplete.js'; /* v2.3.1675 */
+import { QUIET } from './quietPhone.js'; /* v2.3.5127: the worker's near circle, for `near` */
 
 /* ═══ v2.3.5122: HOW MANY OTHER PLAYERS ARE NEAR ═══
    The frame's sample counted `others` as S.others.length, and S.others is
@@ -23,11 +24,24 @@ import { checkQuestComplete } from './questComplete.js'; /* v2.3.1675 */
    `near` (debug/report.js) reads it.  S.others holds everyone the worker
    lists, the far ones parked (`_away`, game/presence2.js): the near ones are
    the rest, every one the worker sends this phone (its near circle) and the
-   game draws when in view.  A count a frame, no list made. */
+   game draws when in view.  A count a frame, no list made.
+   v2.3.5127 (the gatekeeper's review): a far player is parked only against
+   a worker with presence v2 (and only once its roster says so), so `near`
+   counted far players who were not parked: now only those in this zone
+   within the worker's own near circle (QUIET.NEAR_R). */
 export function nearOthers(S) {
   var o = S && S.others, n = 0;
   if (!o) return 0;
-  for (var k in o) { var p = o[k]; if (p && !p._away) n++; }
+  var me = S.player, z = S.currentZone, r2 = QUIET.NEAR_R * QUIET.NEAR_R;
+  for (var k in o) {
+    var p = o[k];
+    if (!p || p._away || (p.zone && z && p.zone !== z)) continue;
+    if (me && typeof p.x === 'number' && typeof p.y === 'number') {
+      var dx = p.x - me.x, dy = p.y - me.y;
+      if (dx * dx + dy * dy > r2) continue;
+    }
+    n++;
+  }
   return n;
 }
 

@@ -37,6 +37,17 @@
  *   - `moves`: the card's, the worker's count (movement's ps._sprintTally),
  *     read when card Q's card exists.
  *
+ * v2.3.5127, the gatekeeper's review (sitting 3):
+ *   - THE BUILD IN A CELL IS THE WORKER'S CALL: a page on the game's own
+ *     site (`live`: the socket's Origin, which a browser sets and no page
+ *     can change; session.site) keeps its build; every other page -- each
+ *     pull request's preview, a developer's build, a program -- is the one
+ *     build `preview`, so previews cannot fill the day's few `dev` cells;
+ *   - SEEN TIME: `seen` (checked, at most `secs`) is what the cell adds as
+ *     time played and time in a place; `secs` (covered) is kept beside it;
+ *   - a report is not the player's input: it never stamps the AFK clock
+ *     (index.js), so an idle tab is still let go of.
+ *
  * THE PACE: one report a socket each PACE_MS (the phone sends one a minute
  * after its join and then every five).  One sooner is dropped, and nothing
  * is written for it.  The book itself writes at most one row a pace
@@ -111,7 +122,8 @@ export const NEAR_EDGES = Object.freeze([1, 2, 4, 8, 16]);
 
 /* ── a cell's sums (each a number or an array of numbers, so days add) ──
  *   n        reports
- *   secs     seconds covered
+ *   secs     seconds covered (v2.3.5127: hidden time included)
+ *   seen     seconds the page was seen: the time played
  *   gaps     the frames' gaps, in the phone's ten bins
  *   late     [late, judged]: only reports that carried a verdict add here
  *   split    [sim, tile, entity, effects, fps, app, outside, busy, wait] ms:
@@ -119,7 +131,7 @@ export const NEAR_EDGES = Object.freeze([1, 2, 4, 8, 16]);
  *            `outside` is every report's and busy + wait the beat's share
  *   holds    { '<name>|<where>': [count, ms, near] }, the name made safe for
  *            a key (holdKey)
- *   where    seconds by WHERE's order
+ *   where    seen seconds by WHERE's order
  *   near     reports by NEAR_EDGES' bins
  *   mem      [tex, gpu, snd] MB summed (a mean: / n)
  *   lost     [contexts lost, renderers rebuilt]
@@ -139,6 +151,18 @@ const ints = (a, n, lo, hi) => {
 };
 const binOf = (edges, v) => { let i = 0; while (i < edges.length && v >= edges[i]) i++; return i; };
 const oneHot = (n, i, by = 1) => { const a = new Array(n).fill(0); a[i] = by; return a; };
+
+/* v2.3.5127: the game's own site: a page there is `live` */
+export const LIVE_HOSTS = Object.freeze(['brotown.net', 'www.brotown.net']);
+/** A socket's page, from its Origin: 'live' (the game's own site) or
+ *  'preview' (anything else, or none). */
+export function reportSiteOf(origin) {
+  try {
+    if (typeof origin !== 'string' || !origin) return 'preview';
+    const host = new URL(origin).hostname.toLowerCase();
+    return LIVE_HOSTS.includes(host) ? 'live' : 'preview';
+  } catch (e) { return 'preview'; }
+}
 
 /** A hold's key in the book: its name made safe (daybook.js takes letters,
  *  digits and _.:|,+=- in a key) and its place. */
@@ -188,12 +212,18 @@ export function reportSums(msg, own) {
   if (build === null) return null;
   const secs = int(msg.secs, 1, REPORT.SECS_MAX);
   if (secs === null) return null;
-  const cell = REPORT.V + '|' + cls.key + '|' + msg.drawLane + '|' + swCell(msg.sw) + '|' + build;
+  /* v2.3.5127: the seen seconds, at most those covered: the time played */
+  const seen = int(msg.seen, 0, secs);
+  if (seen === null) return null;
+  const o = own || {};
+  /* v2.3.5127: the build is the page's only on the game's own site */
+  const cell = REPORT.V + '|' + cls.key + '|' + msg.drawLane + '|' + swCell(msg.sw) + '|' + (o.site === 'live' ? build : 'preview');
   const s = Object.create(null);
   s.n = 1;
   s.secs = secs;
-  /* the frames: drawn at most FPS_MAX a second, and the gaps' bins add to it */
-  const drawn = int(msg.drawn, 0, secs * REPORT.FPS_MAX);
+  s.seen = seen;
+  /* the frames: drawn only while seen, at most FPS_MAX a second, and the gaps' bins add to it */
+  const drawn = int(msg.drawn, 0, (seen + 1) * REPORT.FPS_MAX);
   const gaps = drawn === null ? null : ints(msg.gaps, GAP_BINS, 0, drawn);
   if (gaps && gaps.reduce((a, b) => a + b, 0) === drawn) s.gaps = gaps;
   /* the pacer's verdict, only where it gave one: late <= judged <= drawn */
@@ -205,7 +235,7 @@ export function reportSums(msg, own) {
     if (sp) s.split = sp.length === 7 ? sp.concat([0, 0]) : sp.slice(0, 6).concat([sp[6] + sp[7], sp[6], sp[7]]);
   }
   const where = WHERE.includes(msg.where) ? msg.where : null;
-  if (where) s.where = oneHot(WHERE.length, WHERE.indexOf(where), secs);
+  if (where && seen > 0) s.where = oneHot(WHERE.length, WHERE.indexOf(where), seen);
   const near = int(msg.near, 0, REPORT.NEAR_MAX);
   if (near !== null) s.near = oneHot(NEAR_EDGES.length + 1, binOf(NEAR_EDGES, near));
   /* the worst holds: names of the one list only */
@@ -242,7 +272,6 @@ export function reportSums(msg, own) {
     }
   }
   /* the worker's own */
-  const o = own || {};
   if (typeof o.delay === 'number' && o.delay >= 0) s.delay = oneHot(DELAY_EDGES.length + 1, binOf(DELAY_EDGES, o.delay));
   if (typeof o.waver === 'number' && o.waver >= 0) s.waver = oneHot(WAVER_EDGES.length + 1, binOf(WAVER_EDGES, o.waver));
   return { cell, sums: s, soft: cls.soft };
@@ -262,7 +291,7 @@ export const reportMethods = {
       if (!session || !session.id) return 'who';
       if (session.reportAt && now - session.reportAt < REPORT.PACE_MS) return 'pace';
       session.reportAt = now;
-      const r = reportSums(msg, { delay: session.rtt, waver: session.rttWaver });
+      const r = reportSums(msg, { delay: session.rtt, waver: session.rttWaver, site: session.site });
       if (!r) return 'bad';
       /* smoothness: the cell, and nothing of who sent it */
       const tree = Object.create(null);
