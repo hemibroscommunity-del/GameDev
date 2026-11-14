@@ -1,6 +1,6 @@
 card: P
 branch: claude/plan-p-17-elem-icons (begun from main, as the planning session asked from the fire goblin on)
-prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810 (5241-5255, merged); #1846 (5256), #1840 (5257) ready; icons-elements (5258) measuring
+prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810 (5241-5255, merged); #1846 (5256), #1840 (5257) ready; icons-elements (5258) ready
 state: working
 
 ## Done
@@ -17,8 +17,9 @@ state: working
 
 ## Next
 
-- 5258 `icons-elements`: the eight element marks after a hit's number read
-  from 256-colour twins (exact: on 256 colours already), `?elemicons=0`.
+- 5258 `icons-elements`: the element marks from exact 256-colour twins
+  (`?elemicons=0`): `artCache` 31.9 -> 29.9, line 95.1 -> 93.1; census
+  2.16 -> 0.64 MB. The PR.
 - Then the census's next family over 1 MB that is not a sound or data
   (gear's road A waits for after the families, the planning session's word).
 
