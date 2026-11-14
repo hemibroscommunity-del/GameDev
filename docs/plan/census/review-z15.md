@@ -355,7 +355,9 @@ Rehearsed with `tools/dev/gatekeeper.mjs` from `main` d6b8acd:
 2. **The list in its order**, #1833 at 740d058 before #1832 (tree
    db4ea362): precheck 0 FAIL (the same 3 WARN), build, questline 187
    of 187 (519 s); `name-lanes.mjs --check` on the tip: every scenario
-   names its lane; ONE merge base each.
+   names its lane; ONE merge base each. And `mp-townride` (#1833's,
+   with #1832's lanes) on that tip: 10 of 10 (341 s), its two pages
+   each naming `lane=full`.
 3. **The list with this branch last** (documents only): precheck on the
    whole, 0 FAIL. Its tree is in the list sent to the planning session
    (the file cannot carry its own tree).
