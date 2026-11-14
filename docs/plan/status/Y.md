@@ -1,7 +1,7 @@
 card: Y
 branch: claude/plan-y-topaudit (PR 2, begun from PR 1's branch: merge in order)
-prs: #1705 (ready), PR 2 (tag 5401, testing)
-state: working
+prs: #1705 (ready), PR 2 (tag 5401, ready)
+state: ready
 
 ## Done
 
@@ -20,20 +20,21 @@ state: working
   as written, the place traced 87111,87400 at arrival, then a straight
   march to 84383,84697 over 16 s. With a walk that stops when the zone
   changes: arrival 87168,87456, still; the town's track; 9 of 9.
-- #1534's one green: a race (a slow trip spends the hops in town).
 
 ## Next
 
 - PR 2 (tag 5401): the minimap's inset is measured again when the top
-  bar grows. `topaudit` 6/6 twice, `north` 9/9; `wheelmap` 1 red (the
-  plate's words, checking it on main); `questline` running.
+  bar grows. `topaudit` 6/6 x2, `north` 9/9, `questline` 187/187,
+  `wheelmap` 40/41 (its one red is red on main too: Found).
 
 ## Found
+
+- `mp-wheelmap` Frost Ridge plate: wants "Lv 6–10", the game says
+  "No man's land 8" (`ZoneHeader.jsx`); red on main.
 
 - `docs/plan/census/red.md` row 3: the TEST's, not the GAME's.
 
 ## Needs
 
-- None. PR 2 is the owner's yes (relayed by the planning session, 06:30
-  UTC): the fault is `minimapRenderer.js` `_measureTopInset` (cached by
-  canvas height alone), not `pixiRenderer.js` 869. `topaudit` 6/6 x2.
+- None. PR 2: the owner's yes (via the planning session). The fault was
+  `minimapRenderer.js` `_measureTopInset`, not `pixiRenderer.js` 869.
