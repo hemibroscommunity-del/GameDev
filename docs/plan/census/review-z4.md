@@ -80,7 +80,46 @@ The probes the reviewers ran are not in the repository.
 
 ## Card A
 
-(see below)
+Sitting 3's four faults, at the head of #1711: mended where the page is
+told it was hidden (`visibilitychange`), in the tab whose switch is pressed,
+and for previews; the gaps are below. The mend's lines carry tag 5127 inside
+PR 4 (5123): unused elsewhere, but #1706 now carries two tags.
+
+- **#1708, VERIFIED, medium.** The room row's first flush (60 s after the
+  room wakes) takes `daybook.js`'s "first add writes at once" put, so every
+  report after it waits up to a pace (5 min) in memory; the last leave
+  (`leave.js` 266-272) flushes nothing and there are no alarms. Each sitting
+  loses its last report and the room's last counts; a sitting under ~6
+  minutes loses its FIRST report, the one carrying `died` (simulated: put at
+  60.0 s and 360.0 s, the report at 362.3 s lost; with `roomrow: false` it is
+  stored at 61.8 s). The headers accept losing the tail to a restart or a
+  deploy, not to every emptied room.
+- **#1706, VERIFIED, medium-low.** The day's `dev` part holds ~10 full cells
+  (the door reckons ~4 times the stored size) and a cell's build is its live
+  build (SHAPES part 4): two devices over ~6 builds (18 to 31 merges a day)
+  fill it, and the day's NEWEST builds go to `over` (written, and printed:
+  the refusal is by design, the size is the gap). A forging program fills it
+  with `devClass` alone. `gamedev-aix.pages.dev` counts as `preview`.
+- **#1711, VERIFIED, low.** The Speed card has no cap and no kill switch of
+  its own: an A4 or A5 worker advertises `caps.report` and drops `speed`,
+  and the phone clears its card on the send (`report.js` 429) while telling
+  the player it "goes to the game". CLAUDE.md §5; TRAPS §9: grow the cap
+  (`report: 2`) and gate the card on it.
+- **#1706, VERIFIED, low (on the iPhone).** Only `visibilitychange` marks a
+  return (no `pageshow`, no late-poll check); iOS may thaw a page with no
+  event (`docs/specs/return-to-game.md` §2), so the first frame after it is
+  binned as a freeze (bin 9) and `seen` counts the frozen spell.
+- **#1706, VERIFIED, negligible.** A second tab's `_poll` returns at
+  `!reportOn()` keeping its bins, and sends the off stretch when the switch
+  is back on. `died` is taken on any report (the comments say once a join).
+- PLAUSIBLE: a hidden computer tab's `server-message` holds fill the worst
+  five (settle: hide a `wide: true` tab five minutes, read
+  `__btReport().open.holds`). DISPROVED: bounding `seen` by the socket's age
+  (one open report spans reconnects by design, `SECS_MAX`).
+- Clean: no free text reaches the book (closed lists, whole numbers,
+  `Object.create(null)`); an unjoined socket's report is dropped; the pace is
+  per socket and nothing is sent back; `GET /dev/daybook` is behind the
+  admin check and writes nothing; cost-guard 15a proves the row off at 0.
 
 ## Found on the way, no card's PR
 
