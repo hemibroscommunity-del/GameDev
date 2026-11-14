@@ -15,7 +15,9 @@ state: ready
 
 ## Next
 
-- Nothing: the card stops when the three merge, in order.
+- Nothing: the card stops when the three merge, in order. `main` merged
+  into each (card E's #1691 had changed `bag-door` and `gold-door`: their
+  imports, both kept); the guard is green on it, and card E added no row.
 
 ## Found
 
@@ -34,7 +36,5 @@ state: ready
 
 ## Needs
 
-- From the owner, asked once: SHAPES' columns were written for a message a
-  phone sends. For a message the WORKER sends, the table reads them turned
-  round, as the census does (what the phone checks, does and answers).
-  Keep that reading, or another?
+- Nothing. The question (an out row reads the columns turned round, as the
+  census does) was answered by the planning session: keep it.
