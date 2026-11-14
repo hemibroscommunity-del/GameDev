@@ -26,6 +26,10 @@
  *      so a new pose (card TF PR 2's pan, axe, hoe) says whose it is; 2k, and
  *      no job makes a new bake of a look the colour numbers refuse.
  *      docs/specs/townsfolk-work.md is every townsperson's day.
+ *      THE BREAK PROOF (the grand plan's rule 8): put Chef Blaze's 'mine' back
+ *      in FOLK_DAYS and 2g and 2j go red (2j names him with the pickaxe);
+ *      give Farmer Bro the pickup and 2g and 2k go red (2k names him: his
+ *      'wtf' eyes are blanked on the pickup's sheet, a bake of his look).
  *   5. v2.3.4098, townsfolk never block you (the owner, 2026-11-03: "I walked
  *      into Npc who walked into me and I got stuck"): the player's walk test
  *      (BroTown isSolid) reads no townsperson, and a walker whose step would
