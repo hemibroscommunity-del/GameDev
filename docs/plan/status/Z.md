@@ -5,7 +5,8 @@ state: ready
 
 ## Done
 - Sitting 10, `main` 6f9e740. The list below rehearsed in its order with
-  this branch last (REHEARSAL): precheck 0 FAIL, build, questline 187/187.
+  this branch last (tree 1c823622): precheck 0 FAIL, build, questline
+  187/187; again with P's census-only heads (5805f3bc): precheck, build.
   Mends made during the sitting: census, "What GitHub showed".
   Review: `census/review-z10.md`. Notes on 3.1, 10.4; nothing to tick.
 

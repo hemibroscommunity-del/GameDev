@@ -317,4 +317,10 @@ Rehearsed with `tools/dev/gatekeeper.mjs` from `main` 6f9e740:
 4. The same with #1764 (948dc8d) after #1761, this branch at d8a1f28
    (tree 6748e8ed): precheck 0 FAIL (8 WARN), build, questline 187 of 187.
 5. The list as written: #1772 (a88bc9e) and #1773 (a245beb) after #1764,
-   this branch last (f905997): see `status/Z.md`.
+   this branch last (f905997; tree 1c823622): precheck 0 FAIL (6 WARN),
+   build, questline 187 of 187.
+6. Card P pushed census-only heads during 5 (#1763 51ce9da, #1766
+   e5fa8c1: `census/assets.md`, MEMORY-MAP, `asset-door.md` rewritten
+   from three runs); the list again with them and this branch at 3db2df1
+   (tree 5805f3bc), `--until=build`: precheck 0 FAIL (6 WARN), build.
+   Their `test` green. This branch has gained documents only since.
