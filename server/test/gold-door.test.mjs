@@ -28,12 +28,17 @@
  *      other side lands by, an escrow the record it is held in; and every
  *      credit in server/src is classed by its opId's first word
  *      (MAIL_CLASSES), so a new credit with no class fails here.
+ *   9. THE COUNT (v2.3.5084, card E PR 5): the door books what it mints
+ *      and burns into the record's own `_econ`, by the road's class; a move
+ *      or an escrow books nothing; a payout by the mail books its own class.
+ *      BREAK PROOF: `econGold(rec, row.class, d)` removed from _goldGive ->
+ *      FAIL 9 (a reward books nothing).
  *
  * A new way to change gold: a row in GOLD_ROADS, one call that names it, and
  * its longhand line in EXPECT below.
  */
 import { readdirSync, readFileSync } from 'node:fs';
-import { GOLD_ROADS, GOLD_SUMS, goldAfter, goldMethods, goldOneSum, wholeGold, GOLD_LOG, goldLogOf, CLASSES, ESCROW_PLACES, MAIL_CLASSES, mailClassOf, classFaults } from '../src/gold.js';
+import { GOLD_ROADS, GOLD_SUMS, goldAfter, goldMethods, goldOneSum, wholeGold, GOLD_LOG, goldLogOf, CLASSES, ESCROW_PLACES, MAIL_CLASSES, mailClassOf, classFaults, GOLD_LOADS, mailMinted } from '../src/gold.js';
 import { BAG_ROADS } from '../src/bag.js';
 import { flagNameOk } from '../src/liveops.js';
 import { GameRoom } from '../src/index.js';
@@ -365,7 +370,10 @@ function callsIn(s) {
     && log[0].road === 'quest_reward' && log[0].d === 25 && log[0].c === 125 && log[0].at === 5000
     && log[1].road === 'harden' && log[1].d === -40 && log[1].c === 85
     && log[2].road === 'nml_loss' && log[2].d === -78 && log[2].c === 7, log);
-  check('7. memory only: no storage write, and nothing on the purse a save could carry', writes.length === 0 && JSON.stringify(Object.keys(ps)) === '["coins"]', { writes, keys: Object.keys(ps) });
+  /* v2.3.5084: `_econ` is on the purse now on purpose -- the running minted
+     and burned, which DOES ride the save (rule 1's second exception, card E);
+     the log is still never a field */
+  check('7. memory only: no storage write, and nothing of the log on the purse a save could carry', writes.length === 0 && JSON.stringify(Object.keys(ps).filter((k) => k !== '_econ')) === '["coins"]', { writes, keys: Object.keys(ps) });
   for (let i = 0; i < GOLD_LOG.KEEP + 10; i++) room._goldGive(ps, 1, 'loot_gold');
   const l2 = goldLogOf(ps);
   check('7. capped at GOLD_LOG.KEEP, the oldest dropped', l2.length === GOLD_LOG.KEEP && l2[l2.length - 1].c === 7 + GOLD_LOG.KEEP + 10 && l2.every((e) => e.road === 'loot_gold'), l2.length);
@@ -407,7 +415,7 @@ function callsIn(s) {
   check('8. every GOLD_ROADS row has a class, a move or an escrow its other side', gf.length === 0, gf);
   const counts = {};
   for (const r of Object.values(GOLD_ROADS)) counts[r.class] = (counts[r.class] || 0) + 1;
-  check('8. at v2.3.5081: 14 mints, 14 burns, 13 escrows, 3 moves (a change of class is a change here)', counts.mint === 14 && counts.burn === 14 && counts.escrow === 13 && counts.move === 3, counts);
+  check('8. at v2.3.5084: 14 mints, 15 burns (+ nml_lost), 13 escrows, 3 moves (a change of class is a change here)', counts.mint === 14 && counts.burn === 15 && counts.escrow === 13 && counts.move === 3, counts);
   /* a move lands on the other player by the mail; the mail is the escrow
      every credit passes */
   const moves = Object.entries(GOLD_ROADS).filter(([, r]) => r.class === 'move');
@@ -472,6 +480,58 @@ function callsIn(s) {
   check('8. ...every NOT_LITERAL entry still exists', notLitSeen.size === NOT_LITERAL.length);
   const stale = Object.keys(MAIL_CLASSES).filter((w) => !words.has(w));
   check('8. every MAIL_CLASSES row is a word some credit uses (a stale row is deleted)', stale.length === 0, stale);
+}
+
+/* ── 9. THE COUNT (v2.3.5084) ─────────────────────────────────────────────── */
+{
+  const room = new GameRoom({ storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} }, getWebSockets: () => [], acceptWebSocket: () => {} },
+    { LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async () => ({}) }) } });
+  room._liveFlags = {};
+  const g = (rec) => (rec._econ ? [rec._econ.g.m, rec._econ.g.b] : null);
+  const a = { coins: 100 };
+  room._goldGive(a, 40, 'quest_reward');
+  check('9. a mint road books what it gave under m', JSON.stringify(g(a)) === '[40,0]', g(a));
+  room._goldTake(a, 30, 'harden');
+  check('9. a burn road books what it took under b', JSON.stringify(g(a)) === '[40,30]' && a.coins === 110, g(a));
+  room._goldTake(a, 50, 'bank_deposit'); room._goldGive(a, 20, 'bank_withdraw');
+  room._goldTake(a, 10, 'trade_window'); room._goldTake(a, 5, 'arena_entry');
+  check('9. an escrow or a move books nothing (the world\'s total did not change)', JSON.stringify(g(a)) === '[40,30]' && a.coins === 65, { e: g(a), coins: a.coins });
+  room._goldTake(a, 999, 'gamble_loss');
+  check('9. a burn books what really left (the purse never below 0): 65, not 999', JSON.stringify(g(a)) === '[40,95]' && a.coins === 0, g(a));
+  /* sets, by their difference */
+  const n = {};
+  room._goldSet(n, 25, 'join_new');
+  check('9. join_new books the start gold as minted', JSON.stringify(g(n)) === '[25,0]', g(n));
+  const st = { coins: 0 };
+  room._goldSet(st, 300, 'join_stored');
+  check('9. a load books nothing (GOLD_LOADS: the stored purse was the world\'s while away)', !st._econ && GOLD_LOADS.join() === 'join_stored');
+  const red = { coins: 80, _econ: { v: 1, g: { m: 80, b: 0 }, i: Object.create(null) } };
+  room._goldSet(red, 0, 'nml_lost');
+  const kill = { coins: 80 };
+  room._goldSet(kill, 0, 'nml_loss');
+  check('9. a red skull killed by no player burns the purse (nml_lost); a kill moves it (nml_loss, nothing booked)', JSON.stringify(g(red)) === '[80,80]' && !kill._econ, { red: g(red) });
+  /* the mail: the payout's own class */
+  const m = { coins: 0 };
+  room._goldGive(m, 50, 'mail_gold', { opId: 'dq:bp:20261114:0', payload: { amount: 50 } });
+  room._goldGive(m, 70, 'mail_gold', { opId: 'duelpot:d1', payload: { amount: 70 } });
+  room._goldGive(m, 30, 'mail_gold', { opId: 'trade2:s:p:gold', payload: { amount: 30 } });
+  check('9. a payout by the mail books its own class: a daily quest\'s 50 minted, a duel\'s pot (escrow) and a trade (move) nothing', JSON.stringify(g(m)) === '[50,0]' && m.coins === 150, g(m));
+  room._goldGive(m, 1000, 'mail_gold', { opId: 'arenapot:t1', payload: { amount: 1000, house: 400 } });
+  check('9. the champion\'s prize books only the house\'s part (edge 3): 400 of 1000', JSON.stringify(g(m)) === '[450,0]', g(m));
+  room._goldGive(m, 10, 'mail_gold', { opId: 'nosuchword:1', payload: {} });
+  room._goldGive(m, 10, 'mail_gold');
+  check('9. a payout with no class, or none handed over, books nothing', JSON.stringify(g(m)) === '[450,0]', g(m));
+  check('9. mailMinted: the house\'s part is held to what landed', mailMinted({ opId: 'arenapot:x', payload: { house: 900 } }, 300) === 300 && mailMinted({ opId: 'arenapot:x', payload: {} }, 300) === 0 && mailMinted(null, 5) === 0);
+  /* a newer worker's shape is never counted into */
+  const nv = { coins: 0, _econ: { v: 2, future: 1 } };
+  room._goldGive(nv, 10, 'quest_reward');
+  check('9. a NEWER _econ is left whole (never counted into by a rolled-back worker)', JSON.stringify(nv._econ) === '{"v":2,"future":1}' && nv.coins === 10);
+  /* step 1's sums: counted by the whole-coin difference all the same */
+  room._liveFlags = { goldonesum: false };
+  const f = { coins: 10.5 };
+  room._goldGive(f, 1, 'quest_reward');
+  room._liveFlags = {};
+  check('9. with `goldonesum: false` the count is the whole-coin difference (10 -> 11: one)', JSON.stringify(g(f)) === '[1,0]', g(f));
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);

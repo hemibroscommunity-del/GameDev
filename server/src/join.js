@@ -13,7 +13,7 @@
  * (the deploy-order safety surface -- see docs/WIRE-PROTOCOL.md).
  * The switch case now delegates: `await this._handleJoin(...)`. */
 
-import { healLifeSkills, healLifeSkillLevels /* v2.3.3041 */, freshLifeSkills /* v2.3.3138 */ } from './migrations.js';
+import { healLifeSkills, healLifeSkillLevels /* v2.3.3041 */, freshLifeSkills /* v2.3.3138 */, econClean /* v2.3.5084 */ } from './migrations.js';
 import { trapBootstrapGuard } from './trapping.js'; /* v2.3.3120: no pets or Trapping level from a first connect */
 import { t2ReplayFlat, COOKING_RECIPES } from './data.js';   /* v2.3.3130: caps.cookRows */
 import { FARM_CROP_IDS } from './farm.js';   /* v2.3.3131: caps.farmCrops */
@@ -1039,6 +1039,11 @@ export const joinMethods = {
          they next want the badge (broverify.js). */
       try { await this._restoreBroLink(msg.id); } catch { /* badge is cosmetic — never block a join */ }
       if (stored) {
+        /* v2.3.5084: the character's running minted and burned (rule 1's second
+           exception) come back with it, BEFORE any door runs: the doors count
+           into it, and a blank here would be written over the stored counts
+           (grand plan card E PR 5; the owner's yes of 2026-11-14) */
+        this.playerState[msg.id]._econ = econClean(stored._econ);
         this._goldSet(this.playerState[msg.id], stored.coins || 0, 'join_stored'); /* v2.3.4670: the gold door */
         this.playerState[msg.id].inventory = stored.inventory || {};
         this.playerState[msg.id].lifeSkills = stored.lifeSkills || {};

@@ -782,7 +782,10 @@ export const arenaMethods = {
     (async () => {
       try {
         if (house) await this.state.storage.put('arena_house', house);
-        await this._creditPlayer(champion.playerId, { opId: 'arenapot:' + tid, source: 'arena', kind: 'gold', payload: { amount: prize }, note: 'Gladiator Arena champion' });
+        /* v2.3.5084: `house`, the part of the prize the house added (a mint);
+           the rest is the entries held, paid on (an escrow): ONE payout that
+           carries both amounts (SHAPES part 3, edge 3; gold.js MAIL_CLASSES) */
+        await this._creditPlayer(champion.playerId, { opId: 'arenapot:' + tid, source: 'arena', kind: 'gold', payload: { amount: prize, house: topUp > 0 ? topUp : 0 }, note: 'Gladiator Arena champion' });
         /* v2.3.3527: and the Gladiator achievement, its own credit (inbox.js
            `achv`): it stays queued until the champion's achievements record is
            loaded, while the gold above never waits on it */

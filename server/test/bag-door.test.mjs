@@ -29,7 +29,7 @@
  * and its longhand line in EXPECT below.
  */
 import { readdirSync, readFileSync } from 'node:fs';
-import { BAG_ROADS, BAG_READS, BAG_EMPTY, BAG_WHOLE, bagAfter, bagGive, bagTake, bagSet, bagCount, bagOneSum, wholeCount, setBagOneSum, bagOneSumOn } from '../src/bag.js';
+import { BAG_ROADS, BAG_READS, BAG_EMPTY, BAG_WHOLE, bagAfter, bagGive, bagTake, bagSet, bagCount, bagOneSum, wholeCount, setBagOneSum, bagOneSumOn, bagEconOwn, bagEconPending } from '../src/bag.js';
 import { MAIL_CLASSES, classFaults, CLASSES, ESCROW_PLACES } from '../src/gold.js';
 import { GameRoom } from '../src/index.js';
 import { flagNameOk } from '../src/liveops.js';
@@ -443,6 +443,56 @@ setBagOneSum(true);
   check('8. ...each is null (holds nothing new) or classed as a road is', bad.length === 0 && Object.values(BAG_WHOLE).every((w) => w.class === null || CLASSES.includes(w.class)), bad);
   check('8. ...the death\'s wipe moves the bag to the pile on the ground (death_pile:)', BAG_WHOLE.death_wipe.class === 'escrow' && BAG_WHOLE.death_wipe.other === 'death_pile:' && ESCROW_PLACES.includes('death_pile:'));
   check('8. ...a new bag and the join\'s load hold nothing the world did not', BAG_WHOLE.new_bag.class === null && BAG_WHOLE.join_load.class === null);
+}
+
+/* ── 9. THE COUNT (v2.3.5084, card E PR 5) ─────────────────────────────── */
+/* The door books each key's mint and burn into the record's `_econ.i`: a bag
+   no save has named waits beside the bag, and its save folds it in.
+   BREAK PROOF: `econBag(bag, k, row.class, d)` removed from bagGive -> FAIL 9. */
+{
+  setBagOneSum(true);
+  const pair = (rec, k) => (rec._econ && rec._econ.i[k] ? [rec._econ.i[k].m, rec._econ.i[k].b] : null);
+  const bag = { ore_copper: 2 };
+  bagGive(bag, 'ore_copper', 3, 'harvest');
+  const w = bagEconPending(bag);
+  check('9. a bag no save has named keeps its count beside it (3 minted, waiting)', w.ore_copper && w.ore_copper.m === 3 && w.ore_copper.b === 0, w);
+  const rec = { inventory: bag };
+  bagEconOwn(bag, rec);
+  check('9. its save names the record: the waiting count is folded into rec._econ, none left waiting', JSON.stringify(pair(rec, 'ore_copper')) === '[3,0]' && Object.keys(bagEconPending(bag)).length === 0, rec._econ);
+  bagTake(bag, 'ore_copper', 4, 'smelt_ore');
+  bagGive(bag, 'bar_copper', 4, 'smelt_bar');
+  check('9. from then on, straight into the record: 4 ore burned, 4 bars minted', JSON.stringify(pair(rec, 'ore_copper')) === '[3,4]' && JSON.stringify(pair(rec, 'bar_copper')) === '[4,0]', rec._econ.i);
+  bagTake(bag, 'bar_copper', 2, 'bank_deposit');
+  bagTake(bag, 'bar_copper', 1, 'trade_window');
+  bagGive(bag, 'bar_copper', 1, 'bank_withdraw');
+  check('9. an escrow or a move books nothing', JSON.stringify(pair(rec, 'bar_copper')) === '[4,0]' && bag.bar_copper === 2);
+  bagTake(bag, 'ore_copper', 50, 'eat_meal');
+  check('9. a burn books what really left (1, never below 0)', JSON.stringify(pair(rec, 'ore_copper')) === '[3,5]' && !('ore_copper' in bag), rec._econ.i.ore_copper);
+  bagSet(bag, 'trap_old', 0, 'trap_legacy_out');
+  bag.trap_old2 = 3; bagSet(bag, 'trap_old2', 0, 'trap_legacy_out');
+  bagSet(bag, 'tool_axe', 1, 'shop_tool');
+  check('9. sets book their difference: the old traps burned (3), the tool bought back minted (1)', JSON.stringify(pair(rec, 'trap_old2')) === '[0,3]' && JSON.stringify(pair(rec, 'tool_axe')) === '[1,0]' && !pair(rec, 'trap_old'), rec._econ.i);
+  bagGive(bag, 'fish_minnow', 5, 'mail_item', undefined, { opId: 'season:bp:1:2:3', payload: { invKey: 'fish_minnow', count: 5 } });
+  bagGive(bag, 'fish_minnow', 2, 'mail_item', undefined, { opId: 'trade2:s:p:fish_minnow', payload: {} });
+  bagGive(bag, 'fish_minnow', 1, 'mail_item', undefined, { opId: 'store:l1:goods', payload: {} });
+  check('9. a payout by the mail books its own class: a season\'s 5 minted, a trade (move) and a sale\'s goods (escrow) nothing', JSON.stringify(pair(rec, 'fish_minnow')) === '[5,0]' && bag.fish_minnow === 8, rec._econ.i.fish_minnow);
+  const bad = { };
+  bagGive(bad, '__proto__', 1, 'harvest');
+  check('9. a prototype name is never counted', Object.keys(bagEconPending(bad)).length === 0);
+  const nv = { inventory: { a: 1 }, _econ: { v: 2, x: 1 } };
+  bagEconOwn(nv.inventory, nv);
+  bagGive(nv.inventory, 'a', 1, 'harvest');
+  check('9. a NEWER _econ is left whole', JSON.stringify(nv._econ) === '{"v":2,"x":1}');
+  /* a record whose bag was replaced (a death's wipe): the old bag no longer
+     counts into it, the new one waits for its save */
+  const r2 = { inventory: { log_pine: 1 } };
+  const old = r2.inventory;
+  bagEconOwn(old, r2);
+  r2.inventory = { log_pine: 0 };
+  bagGive(r2.inventory, 'log_pine', 2, 'harvest');
+  check('9. a replaced bag: its record is learned again at the next save (the count waits beside it)', !pair(r2, 'log_pine') && bagEconPending(r2.inventory).log_pine.m === 2);
+  bagEconOwn(r2.inventory, r2);
+  check('9. ...and is folded in there', JSON.stringify(pair(r2, 'log_pine')) === '[2,0]');
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);
