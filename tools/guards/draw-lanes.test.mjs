@@ -52,7 +52,7 @@ import { systemOf, placeFiles, ROOT } from './lib/systems.mjs';
 
 /* the census line: knobs with a reader not yet read through laneKnob.  Only
    falls, with each knob's PR (card O's 4 to 13); the gatekeeper alone lowers it */
-const UNMOVED_LINE = 6;   /* v2.3.5224: the rate moved (card O PR 4); v2.3.5225 the pixels (PR 5); v2.3.5228 the program and the look (PR 8); v2.3.5226 the crowd (PR 6) */
+const UNMOVED_LINE = 3;   /* v2.3.5224: the rate moved (card O PR 4); v2.3.5225 the pixels (PR 5); v2.3.5228 the program and the look (PR 8); v2.3.5226 the crowd (PR 6); v2.3.5229 the shine, the shadows, the water (PR 9) */
 const NEVER = Object.freeze(['combat', 'preload']);
 const PAGE = join(ROOT, 'docs/LANES.md');
 const TABLE = 'src/game/drawLanes.js';
