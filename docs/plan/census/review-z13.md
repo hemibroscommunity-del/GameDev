@@ -76,6 +76,20 @@ stands (b72e715, carried into 3b5a97a and 770e227):
   order falls to the chip's, pixels included; the frame meter hands its
   samples at module load (perfTracker.js, always imported), so only a
   bad verdict with no late sample in the ring meets it.
+- **#1800's three axes, re-read as new code** (the planning session's
+  ask): `knobAt` takes a knob's deepest `to` over every axis, so the
+  rate (chip's first, work's last) and the pixels (their own axis) each
+  move one knob; `ladderDepth` sums the three (9, under the worker's
+  `RUNG.MAX` 31, mirror-audit); `trim` and `next` walk each axis; the
+  light lane's `LIGHT_AT` (work 1, chip 2) is unchanged, the pixels
+  having been the chip axis's last rungs. frame-pacer §21a is sitting
+  12's probe (a 60 phone that cannot keep 30 takes the pixels at a veil;
+  cooled, the rate back in play at ~545 s, before the next veil; the
+  pixels at it), with its break proof in the header. Low, for later: a
+  chip-bound phone whose pixel step waits for a veil takes no other step
+  meanwhile (`'pending'` is truthy, so the order's loop stops there):
+  harmless today (the work axis's one live rung is the rate, already
+  taken); to re-read when O's PR 6 makes the crowd's rungs live.
 - #1800's lows from sitting 12: `?ladderrate=0` and `?ladderpix=0` take
   their knobs off the governor's live set (drawLanes.js `liveKnobs`);
   the resize runs at the top of the next frame. The kept rung's shape is
