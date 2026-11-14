@@ -90,11 +90,13 @@ spec. Add a line here only for a new RULE every session must follow.
 
 ## 3. How to work here
 
-- A SessionStart hook prints `tools/dev/session-brief.mjs`: a free tag and the
-  `claude/*` branches in flight. Claim ONE `v2.3.N` tag UNUSED on main (it need
-  not be above main's highest: never renumber because someone merged first;
-  owner, 2026-11-11, v2.3.4790), tag every change with it, and check the
-  branches for your topic first. ONE system per PR.
+- A SessionStart hook prints `tools/dev/session-brief.mjs`: the tag blocks and
+  the `claude/*` branches in flight. A `v2.3.N` tag comes from your card
+  (`docs/plan/cards/`) or its block in `tools/dev/tag-blocks.json`, one a PR,
+  never a number of your own choosing (v2.3.5024); it only has to be UNUSED on
+  main (never renumber because someone merged first; owner, 2026-11-11,
+  v2.3.4790). Tag every change with its PR's, and check the branches for your
+  topic first. ONE system per PR.
 - Run **`node tools/dev/precheck.mjs`** before EVERY push (syntax, lint, the
   server suites, duplicate cases, tag collisions, the storage-key registry,
   caps, look keys, old-map tests, QA handles...). It must pass.
@@ -134,7 +136,9 @@ spec. Add a line here only for a new RULE every session must follow.
   - never run a deploy or the Cloudflare lab from a branch;
   - never make a path-filtered check required, and never turn on "up to date
     before merging" (TRAPS §238);
-  - a PR merges once Server CI's `test` passes.
+  - a PR merges from the gatekeeper's list (`docs/plan/status/Z.md`, rehearsed
+    by `tools/dev/gatekeeper.mjs`), never on its own green (v2.3.5024); Server
+    CI's `test` passes first.
 - **GitHub Actions costs money** since the repo went private (2026-10-28): every
   check runs on the account's paid minutes. Jobs that fail in about 2 seconds
   with "The job was not started because ... spending limit" are billing: tell
@@ -225,8 +229,8 @@ spec. Add a line here only for a new RULE every session must follow.
   `npm test -- name` for some). A new system adds a suite (nothing to register);
   touching a wire format extends the nearest suite.
 - **Phone scenarios**: `node tools/qa/mp/run.mjs <name>` after
-  `npm run build` (a real worker and Chromium; each scenario registered in
-  run.mjs's `SCENARIOS`). Two run on every PR: `playable` (mp-questline) and
+  `npm run build` (a real worker and Chromium; a new scenario is its file,
+  `tools/qa/mp/mp-<name>.mjs`, found by its name: no line in run.mjs). Two run on every PR: `playable` (mp-questline) and
   `memory-budget` (mp-membudget). The primary platform is **iPhone Safari**:
   touch, upright AND sideways (TRAPS §175); every element is `touch-action:
   manipulation` unless it says otherwise (TRAPS §229).
@@ -386,7 +390,7 @@ spec. Add a line here only for a new RULE every session must follow.
 | a field on the tick | both tick builders (`tick-share.test`) |
 | a sound | its Sound Studio label and its `CREDITS.md` row |
 | a screen or window | `states.mjs` and `UI-DESIGN-NOTES.md`; `data-esc` on its ✕; any key in `deskKeys.js` |
-| a phone test | `world: 'wheel'` (and `wide: true` on a computer); its line in run.mjs |
+| a phone test | `world: 'wheel'` (and `wide: true` on a computer); its file `mp-<name>.mjs` (no line in run.mjs) |
 | a picture made on a canvas | `keepOnGpuOnly`, `keepAsImage` or colour numbers (the memory law) |
 | a monster, or any art that loads as you walk | 256-colour palette PNGs (`tools/art/strip256.mjs --shared`), loaded through `loadTrackedStrip` (`strip-door.test`) |
 | a stored look key | its restore and its blank (precheck `look-parity`, `look-blank`) |
