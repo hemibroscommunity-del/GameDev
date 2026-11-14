@@ -21,12 +21,12 @@ state: working
 
 ## Next
 
-- PR 9 (5048) `sweepPicsOnce`, working: the walk over Pixi's cache a slice
-  a turn. Then `body-bake` (5049, + Z's #1668 finds).
+- PR 9 (5048) `sweepPicsOnce`, a slice a turn; then 5049 (+ Z's finds).
 
 ## Found
 
 - `stripRead.js`: `READ_MS` (20 s) is wall time; `_dead` has no restart.
+  Bake worker stuck ~3/min here; `wheelGround.js` `_sprite` 14.3 ms.
 - `pack-page` (card P's): 17 to 35 ms at `armour` against its 20 ms line.
 - `other: wrapped` (`perfTracker.js`'s timer wrapper, its own time): over
   the line in 5 of ~40 runs, 19.6 ms the most; the sweep should look inside.
@@ -34,7 +34,6 @@ state: working
   upscaled shirt strip for the portrait's one frame): crop it first.
 - The Leaderboard's faces (since #1681), `g-boards`: 19 boards, 25 faces,
   no `portrait` hold over 4 ms (run 1 of 3).
-- Bake worker stuck ~3/min here; `wheelGround.js` `_sprite` 14.3 ms.
 
 ## Needs
 
