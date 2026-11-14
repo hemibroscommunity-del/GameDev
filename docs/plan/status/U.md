@@ -1,7 +1,7 @@
 card: U
 branch: claude/plan-u-2-small (one branch a PR, each begun from the one before)
-prs: #1721 (ready), PR 2 (working)
-state: working
+prs: #1721 (ready), #1722 (ready)
+state: ready
 
 ## Done
 
