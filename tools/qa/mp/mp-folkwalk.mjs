@@ -7,9 +7,10 @@
  *   2. over ~14 s the keepers and locals move along their loops while every
  *      quest giver stays within a step or two of his spot (tethered);
  *   3. at most six walk near the screen at once (sampled every half second);
- *   4. a keeper and a giver at work, in the player's own poses: Chef Blaze's
- *      cleaver and the blacksmith's hammer (the mining swing), Old Man Reel
- *      fishing (pictures: out/folkwalk-*.png);
+ *   4. a keeper and a giver at work, in the player's own poses: Chef Blaze at
+ *      his counter (the pickup; v2.3.5460: it was the mining swing), the
+ *      blacksmith's hammer (the mining swing), Old Man Reel fishing
+ *      (pictures: out/folkwalk-*.png);
  *   5. a quest giver stops and turns to face you when you come near (Mayor
  *      Bro, within 200 px);
  *   6. walk up to a MOVING keeper and tap him: Sterling, walking, opens the
@@ -102,9 +103,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 4. at work ── */
     await goNear('Chef Blaze', 30, 180);
-    const chef = await waitPose('Chef Blaze', 'mine', 45000);
+    /* v2.3.5460: the pickup at his counter, no longer the mining swing (the
+       owner, 2026-11-14: "chef blaze should cook, not hammer like an anvil";
+       docs/specs/townsfolk-work.md).  Only the blacksmith swings the pickaxe. */
+    const chef = await waitPose('Chef Blaze', 'pickup', 45000);
     await shot('chef-blaze');
-    rec.ok(`4. Chef Blaze works his cleaver at the Cookhouse: drawn in the mining swing (${chef && chef.pose})`, !!chef && chef.pose === 'mine' && chef.live, chef);
+    rec.ok(`4. Chef Blaze works at his counter by the Cookhouse: drawn in the pickup, not the pickaxe's swing (${chef && chef.pose})`, !!chef && chef.pose === 'pickup' && chef.live, chef);
     await goNear('Blacksmith Bro', 0, 260);   /* past the 200 px a giver stops for you at */
     const smith = await waitPose('Blacksmith Bro', 'mine', 45000);
     await shot('blacksmith');

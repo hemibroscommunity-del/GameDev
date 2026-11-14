@@ -335,5 +335,63 @@ const a = await join('bp_bd_a', 'devbda', 'Ada');
   check('10f a failed read is locked and not cached (the next ask reads again)', failed.locked === true && !r4._spinBoardBook && r4._spinBoardEnter(failed, 'p', { name: 'P' }, 5, true, 0, 1) === 0);
 }
 
+// ── 11. the AP board: the worker's own count, from the first report ──
+/* v2.3.5483 (card PW): the owner, 2026-11-14: "achievement points aren't
+   working correctly only one character shows with 30 and I know there are
+   others with more.  On leaderboards".  Every join's report wrote `ap: 0`:
+   the AP rode the phone's `rpgData`, which a join's data never carries (the
+   join sanitiser keeps strings and numbers), so _achvStamp had nothing to
+   stamp and the row got the blob's 0 -- and the next report that could put
+   it right goes LEADERBOARD_MIN_MS (5 min) later.  A character played for
+   less than that read 0, and the panel leaves a 0 off the AP board. */
+{
+  const st = makeState();
+  const L2 = new Leaderboard(makeState(), {});
+  const env = { LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async (req) => L2.fetch(req) }) } };
+  const r5 = new GameRoom(st, env);
+  clearInterval(r5.tickInterval); r5.tickInterval = null;
+  const AP = { bp_ap_a: 40, bp_ap_b: 25, bp_ap_c: 30 };
+  const wss = {};
+  for (const [id, ap] of Object.entries(AP)) {
+    st._store.set('rpg:' + id, { achievementPoints: ap });   /* a character on file with its points */
+    const w = fakeWs();
+    r5.sessions.set(w, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
+    await r5.webSocketMessage(w, JSON.stringify({ type: 'join', id, name: id.slice(-1).toUpperCase(), phrase: 'p-' + id, ws: [1, 5], data: { x: 0, y: 0, z: 'town', name: id } }));
+    await settle();
+    wss[id] = w;
+  }
+  check('11a each character joined with its points on file', Object.entries(AP).every(([id, ap]) => r5.playerState[id] && r5.playerState[id].achievementPoints === ap),
+    Object.keys(AP).map((id) => r5.playerState[id] && r5.playerState[id].achievementPoints));
+  /* the panel's AP board: by `ap`, a 0 left off (LeaderboardPanel.jsx) */
+  const apBoard = async () => (await L2.getTop('ap', 50)).filter((p) => Math.floor(Number(p.ap) || 0) > 0).map((p) => [p.id, p.ap]);
+  check('11b straight after joining, every character is on the AP board with its own points',
+    JSON.stringify(await apBoard()) === JSON.stringify([['bp_ap_a', 40], ['bp_ap_c', 30], ['bp_ap_b', 25]]), await apBoard());
+  /* a phone's `track` claims any AP it likes in its blob: the board keeps the worker's */
+  for (const id of Object.keys(AP)) {
+    await r5.webSocketMessage(wss[id], JSON.stringify({ type: 'track', data: { x: 0, y: 0, rpgData: { ap: 99999, kills: 1 } } }));
+  }
+  await settle();
+  for (const id of Object.keys(AP)) await r5.reportToLeaderboard(r5._sessionById(id), true);
+  check('11c a phone\'s claimed AP never reaches the board', JSON.stringify(await apBoard()) === JSON.stringify([['bp_ap_a', 40], ['bp_ap_c', 30], ['bp_ap_b', 25]]), await apBoard());
+  /* points earned: the report's change signature sees them (the next report
+     goes as before -- MIN_MS after the last -- and carries them) */
+  const sB = r5._sessionById('bp_ap_b');
+  r5.playerState.bp_ap_b.achievementPoints = 55;
+  sB._lbAt = Date.now() - r5.LEADERBOARD_MIN_MS - 1000;
+  await r5.reportToLeaderboard(sB);
+  check('11d points earned reach the board at the next report, which they make due', (await apBoard())[0][0] === 'bp_ap_b' && (await apBoard())[0][1] === 55, await apBoard());
+  sB._lbAt = Date.now() - r5.LEADERBOARD_MIN_MS - 1000;
+  const putsBefore = L2.state._puts.length;
+  await r5.reportToLeaderboard(sB);
+  check('11e the same points again write nothing (the signature is unchanged)', L2.state._puts.length === putsBefore, L2.state._puts.length - putsBefore);
+  const L3 = new Leaderboard(makeState(), {});
+  await L3.updatePlayer({ playerId: 'bp_ap_x', ap: 12.9, rpgData: { ap: 500 }, ts: Date.now() });
+  await L3.updatePlayer({ playerId: 'bp_ap_y', ap: -4, rpgData: { ap: 500 }, ts: Date.now() });
+  await L3.updatePlayer({ playerId: 'bp_ap_z', rpgData: { ap: 7 }, ts: Date.now() });
+  const row = async (id) => JSON.parse(await L3.state.storage.get('player:' + id)).ap;
+  check('11f a row takes the room\'s count, whole and never below 0; the blob\'s only from a report with none',
+    (await row('bp_ap_x')) === 12 && (await row('bp_ap_y')) === 0 && (await row('bp_ap_z')) === 7, [await row('bp_ap_x'), await row('bp_ap_y'), await row('bp_ap_z')]);
+}
+
 if (failures) { console.log(failures + ' FAILED'); process.exit(1); }
 console.log('boards: all passed');
