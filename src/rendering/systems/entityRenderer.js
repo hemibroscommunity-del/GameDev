@@ -91,7 +91,9 @@ import { getLookShirtFrame } from '../lookShirtFrame.js';   /* v2.3.3751: the te
 import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt, getFishFrame, MIRRORED_SOURCE_DIRS, getLookBodyFrame, getLookBodyEntries, awaitBodyBuilds, lookBodyRefused } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo; v2.3.2854: + the inked fish frame; v2.3.3716: + the look-palette frame */
 import { lookPaletteWanted, lookPaletteOn } from '../lookPalette.js';   /* v2.3.3716: on unless `?lookpalette=0`; v2.3.3809: + drawing now */
 import { lookFolkOn, folkFaceOverride } from '../lookFolk.js';   /* v2.3.3809: the townsfolk drawn live */
-import { folkWorkPose, folkWorkFrame, folkStandFacing } from '../folkPose.js';   /* v2.3.4058: the townsfolk at work */
+import { folkWorkPose, folkWorkFrame, folkStandFacing, folkStride } from '../folkPose.js';   /* v2.3.4058: the townsfolk at work */
+import { isFolkSkill, drawFolkSkill, hideFolkSkill, dropFolkSkill, folkSkillProbe, folkSkillPrepare } from '../folkSkill.js';   /* v2.3.5461: ...at their own trades (card TF) */
+import { folkBeatOf } from '../../game/townsfolkWalk.js';   /* v2.3.5461: his beat */
 import { npcLookAsPeer, npcLookByName } from '../../data/npcLooks.js';   /* v2.3.3809: their looks */
 import { lookArmourOn, lookArmourFrame, lookArmourPrewarm, lookArmourDecided, lookArmourJob, setLookArmourBaker, lookSheetForWorker, lookSheetFetchFailed, lookSheetFetchDone } from '../lookArmour.js';   /* v2.3.3752: the body under armour from the numbers */
 import { lookBake } from '../lookBake.js';   /* v2.3.3752: the same bake on the page when there is no worker */
@@ -2361,10 +2363,11 @@ export function prewarmFolkBodies(jobs) {
       if (!look) continue;
       const { dir, mirror } = resolveDirection(j.facing);
       const art = _remoteBodyArt(look, mirror);
+      if (isFolkSkill(j.pose)) continue;   /* v2.3.5461: a trade's figure is never a body sheet: its numbers (folkSkill.js), or he stands */
       if (!lookBodyRefused(j.pose, dir, art, look.eyeStyle)) continue;   /* drawn from the numbers: nothing to bake */
       getBodyFrame(look.skin, look.pants, look.shoes, j.pose, dir, 0, null, 'none', look.eyeColor, art, look.eyeStyle);
     }
-  });
+  }).then((n) => folkSkillPrepare().then(() => n, () => n));   /* v2.3.5461: and the trades' figures in, their crowns read, behind the same screen */
 }
 /* v2.3.4881: the answer is memoised on the player's record, one slot a mirror.
    It was rebuilt for every drawn player every frame (nine sanitiser runs, a
@@ -5857,8 +5860,10 @@ export function placeSkillTraitsFor(sprites, looks, cwx, cwy, dir, mirror, scale
   if (hwCol2 && hwEntry2) hwEntry2 = { tex: hwCol2, meta: hwEntry2.meta, fallbackTex: hwEntry2.tex }; /* v2.3.1305 */
   /* v2.3.1959: ONE fit for the hat and for the mask it clips the hair to. */
   const hwFit2 = _hatHairFit(looks.headwear, hwEntry2 && hwEntry2.meta, looks.hair, 'stand', dir, mirror);
+  /* v2.3.5461: + a townsperson's own hat nudge (`looks.hatDy256`: Farmer
+     Bro's bucket hat down on his brow, folkSkill.js); no player has one */
   _placeStandaloneTrait(sprites.hat, hwEntry2, dir, mirror, cwx, cwy, scaleVal,
-    hwFit2.dy256, hwFit2.mulX); /* v2.3.1561; v2.3.1943 */
+    (hwFit2.dy256 || 0) + (+looks.hatDy256 || 0), hwFit2.mulX); /* v2.3.1561; v2.3.1943 */
   _clipStandInHair(sprites, looks.headwear, dir, mirror, cwx, cwy, scaleVal, hwFit2); /* v2.3.1776 */
 }
 
@@ -17887,31 +17892,26 @@ export class EntityRenderer {
       display.addChildAt(folk, 0);   /* behind his bars and labels, as the photograph was */
       display._folk = folk;
     }
-    if (!folk.visible) folk.visible = true;
-    /* his facing and stride, from where he has got to (the photograph's
-       rule below: a floor, so a standing townsperson does not turn) */
-    const hadLast = typeof display._lastX === 'number';
-    const dx = hadLast ? npc.x - display._lastX : 0;
-    const dy = hadLast ? npc.y - display._lastY : 0;
-    display._lastX = npc.x; display._lastY = npc.y;
-    const step = Math.hypot(dx, dy);
-    const moving = step > 0.08;
-    if (moving) {
-      display._walkDir = npcDirFromDelta(dx, dy);
-      display._walkPhase = (display._walkPhase || 0) + step;
-      display._folkMovedAt = now;
-    }
-    /* a stride's last few px lands him on the stand, not frozen mid-step */
-    const jogging = moving || (now - (display._folkMovedAt || -1e9)) < 120;
+    /* his facing and stride, from where he has got to: folkPose.js folkStride
+       (v2.3.5461: moved there, unchanged) */
+    const jogging = folkStride(display, npc, now);
     /* v2.3.4058: at a job of his day, one of the player's work poses; standing,
        his day's facing (toward you when he stops for you): rendering/folkPose.js */
-    const work = (jogging || folkFaceOverride()) ? null : folkWorkPose(npc);
-    const facing = work ? 'south' : (folkFaceOverride() || (jogging ? display._walkDir : folkStandFacing(npc, display._walkDir)) || 'south');   /* QA may turn him (lookFolk.js) */
-    const { dir, mirror } = resolveDirection(facing);
-    const pose = work || (jogging ? 'jog' : 'stand');
+    let work = (jogging || folkFaceOverride()) ? null : folkWorkPose(npc);
     /* his size against a bro's: the photographs' own table, so the Mayor
        stays the owner's 10% larger (v2.3.1822) and Lil Bro a child */
     const size = (NPC_SCALE_MULT[npc.sprite] || NPC_BRO_MULT) / PLAYER_SIZE_MULT * npcFigureSize(npc);
+    /* v2.3.5461: ...or his own trade's figure (rendering/folkSkill.js), his
+       walking figure hidden; a part not in stands him where he works.  The
+       walking figure is shown only once he is not at it (a visible flipped
+       each frame rebuilds the layer's draw list: TRAPS §218) */
+    if (work && isFolkSkill(work) && drawFolkSkill(display, npc, look, work, now, size, placeSkillTraitsFor)) return true;
+    if (isFolkSkill(work)) work = null;
+    hideFolkSkill(display);
+    if (!folk.visible) folk.visible = true;
+    const facing = work ? 'south' : (folkFaceOverride() || (jogging ? display._walkDir : folkStandFacing(npc, display._walkDir)) || 'south');   /* QA may turn him (lookFolk.js) */
+    const { dir, mirror } = resolveDirection(facing);
+    const pose = work || (jogging ? 'jog' : 'stand');
     let frameIdx = 0;
     if (pose === 'jog') {
       const fc = playerFrameCount('jog', dir) || 24;
@@ -17920,12 +17920,9 @@ export class EntityRenderer {
     } else {
       const fc = playerFrameCount('stand', dir) || 1;
       const cyc = cycleMs('stand', dir) || 1000;
-      /* each townsperson breathes on his own beat (his id), not in step */
-      if (display._folkBeat == null) {
-        let h = 0;
-        for (const c of String(npc.id)) h = (h * 31 + c.charCodeAt(0)) % 9973;
-        display._folkBeat = h * 7;
-      }
+      /* each townsperson breathes on his own beat (his id), not in step
+         (townsfolkWalk.js folkBeatOf, v2.3.5461: moved there, unchanged) */
+      if (display._folkBeat == null) display._folkBeat = folkBeatOf(npc.id);
       frameIdx = work ? folkWorkFrame(work, now + display._folkBeat) : Math.floor(((now + display._folkBeat) / cyc) * fc) % fc;   /* v2.3.4058 */
     }
     const spriteBody = folk._spriteBody;
@@ -18194,12 +18191,14 @@ export class EntityRenderer {
               display._folk.destroy({ children: true });
               display._folk = null;
             }
+            dropFolkSkill(display);   /* v2.3.5461: his trade's figure goes with it */
             _folkLive = true;   /* live, and nothing of him to draw out there */
           } else _folkLive = this._drawFolk(S, now, npc, display);
         }
       }
       display._folkLive = _folkLive;
       if (!_folkLive && display._folk && display._folk.visible) display._folk.visible = false;
+      if (!_folkLive) hideFolkSkill(display);   /* v2.3.5461 */
       if (display._fig && display._fig.visible === _folkLive) display._fig.visible = !_folkLive;
 
       /* v2.3.2048: keep the plate's text current. Cheap: _updateNamePill
@@ -18324,6 +18323,7 @@ export class EntityRenderer {
             width: _folkLive ? _folkBodyPx(display._folk, 'width') : fig.texture.width * fig.scale.x,
             live: _folkLive,
             pose: _folkLive && display._folk ? display._folk._animPose || null : null,   /* v2.3.4058: stand, jog or a work pose (mp-folkwalk) */
+            skill: folkSkillProbe(display, _folkLive),   /* v2.3.5461: which of his figures is up, his trade's (mp-folkwork) */
             /* world y of the figure's feet — anchor is the frame's foot row */
             footY: display.y,
             src: display._figSrc,

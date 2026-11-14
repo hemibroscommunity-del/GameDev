@@ -312,6 +312,7 @@ const LIST = {
   },
   'src/rendering/gearLookProbe.js': { '*': ['off', 2, "a QA probe (`?lookprobe`, v2.3.4998): the armour's oracle loads each combat strip the old way (v2.3.5002: and the bow's draw, through Assets.load as the game does)"] },
   'src/rendering/lookSets/gear.js': { '*': ['off', 1, 'the offline role bake (tools/art/role-bake.mjs, v2.3.4998)'] },
+  'src/rendering/lookSets/skills.js': { '*': ['off', 1, 'the offline role bake (tools/art/role-bake.mjs --set skills, v2.3.5461): the townsfolk\'s trades\' strips'] },
   'src/rendering/lookSets/weapons.js': { '*': ['off', 1, "the offline role bake (tools/art/role-bake.mjs, v2.3.5002): the bow's draw as its PNG"] },
   'src/rendering/lookPaletteProbe.js': { '*': ['off', 2, 'a QA probe (`?lookprobe`): the stand-ins\' and (v2.3.4961) the body heads\' manifests'] },
   'src/rendering/lookSets/standinlegs.js': { '*': ['off', 1, 'the offline role bake (tools/art/role-bake.mjs)'] },

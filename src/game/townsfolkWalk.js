@@ -27,9 +27,10 @@
  *     cleaver, Gavel Greg's gavel, the woodworker's axe and the farmer's hoe
  *     were all one pickaxe.  Now only the blacksmith at his forge swings it
  *     (the player's own smithing is that very swing: effectsRenderer
- *     _updateSmithing); the cook, the woodworker and Gavel Greg take the
- *     pickup, empty-handed, and the farmer stands, until their own poses come
- *     (card TF PR 2: the pan, the axe, the hoe).  Who may hold
+ *     _updateSmithing); Gavel Greg holds up a lot (the pickup) and, since
+ *     v2.3.5461, Chef Blaze cooks with his pan, Woodworker Bro chops with his
+ *     axe and Farmer Bro hoes, waters and kneels in the soil: the player's own
+ *     skill figures (rendering/folkSkill.js).  Who may hold
  *     which tool is townsfolk-walk.test §2j's table; every townsperson's
  *     day, today's and what would make it right, is docs/specs/townsfolk-work.md.
  *   Every stop is an OFFSET from his own spot ([dx, dy], +y south), never a
@@ -91,8 +92,11 @@ export const FOLK_BUMP_PX = 22;
 /* walkers near the screen at once */
 export const FOLK_MAX_WALKERS = 6;
 /* the work poses: each a body sheet of the player's own, south only, from
-   the look palette's numbers (lookSets/body.js POSE_DIRS) */
-export const FOLK_WORK_POSES = Object.freeze(['mine', 'fish', 'pickup']);
+   the look palette's numbers (lookSets/body.js POSE_DIRS) -- and (v2.3.5461,
+   card TF) the player's skill figures, the cook, the lumberjack and the
+   farmer's hoe, can and kneel, from the `skills` set's numbers
+   (rendering/folkSkill.js FOLK_SKILL_POSES) */
+export const FOLK_WORK_POSES = Object.freeze(['mine', 'fish', 'pickup', 'cook', 'chop', 'farmhoe', 'farmwater', 'farmkneel']);
 
 /* A giver's default day: his spot, a step either side and back (four stops,
    about 22 s round). */
@@ -111,21 +115,20 @@ export const FOLK_DAYS = Object.freeze({
   'Blacksmith Bro': { tether: true, stops: [[0, 0, 8000, 'mine'], [18, 8, 4000], [0, 0, 7000, 'mine'], [-16, 10, 4000]] },
   /* the store's shelves: the pickup */
   'Diego': { tether: true, stops: [[0, 0, 7000], [14, 8, 5000, 'pickup'], [0, 0, 6000], [-12, 10, 4000]] },
-  /* at his bench, a plank off the pile: the pickup (v2.3.5460: it was the
-     mining swing, his axe a pickaxe; the chop is card TF PR 2's) */
-  'Woodworker Bro': { tether: true, stops: [[0, 0, 8000, 'pickup'], [16, 8, 4000], [0, 0, 6000, 'pickup'], [-14, 8, 4000]] },
-  /* by the Feed & Seed, looking over the crop: he stands (v2.3.5460: it was
-     the mining swing, his hoe a pickaxe.  Not the pickup: his wide eyes
-     ('wtf') have a blank on the pickup's sheet and none on the swing's
-     (rendering/eyeBlankMask.json), so the pickup would bake a copy of the
-     sheet for his look behind the loading screen, new memory; the hoe, the
-     can and the kneel are card TF PR 2's) */
-  'Farmer Bro': { tether: true, stops: [[0, 0, 6000], [18, 10, 8000], [0, 0, 5000], [-12, 12, 4000]] },
+  /* at his bench, chopping: the lumberjack's swing, his axe (v2.3.5461; it
+     was the mining swing's pickaxe until v2.3.5460, then a plank lifted) */
+  'Woodworker Bro': { tether: true, stops: [[0, 0, 8000, 'chop'], [16, 8, 4000], [0, 0, 6000, 'chop'], [-14, 8, 4000]] },
+  /* by the Feed & Seed: on his knees in the soil, hoeing, then watering
+     (v2.3.5461: the farmer's own three moves; it was the mining swing's
+     pickaxe until v2.3.5460, then he stood -- the pickup's sheet blanks his
+     wide 'wtf' eyes, a bake of his look; these figures take his eyes as a
+     piece of his head, so nothing is baked) */
+  'Farmer Bro': { tether: true, stops: [[0, 0, 6000, 'farmkneel'], [18, 10, 8000, 'farmhoe'], [0, 0, 5000, 'farmwater'], [-12, 12, 4000]] },
   /* the keepers: a short loop by the door */
   'Ace': { stops: [[0, 0, 7000], [-120, 40, 5000], [-40, 90, 4000], [60, 40, 5000]] },
   'Sterling': { stops: [[0, 0, 6000], [-150, 50, 5000], [-70, 90, 7000, 'pickup'], [60, 40, 4000]] },   /* stacking his coins */
   'Slim': { stops: [[0, 0, 7000], [120, 40, 5000], [60, 90, 5000], [-80, 50, 4000]] },
-  'Chef Blaze': { stops: [[0, 0, 8000, 'pickup'], [140, 30, 4000], [60, 80, 4000], [-60, 40, 5000]] },   /* at his counter (v2.3.5460: was the mining swing, "hammer like an anvil"; the pan is card TF PR 2's) */
+  'Chef Blaze': { stops: [[0, 0, 8000, 'cook'], [140, 30, 4000], [60, 80, 4000], [-60, 40, 5000]] },   /* cooking, his pan (v2.3.5461; the mining swing until v2.3.5460, "hammer like an anvil", then the pickup) */
   'Glint': { stops: [[0, 0, 6000], [120, 30, 6000, 'pickup'], [40, 60, 4000], [-110, 30, 5000]] },   /* a gem held up to the light */
   'Postmaster Pete': { stops: [[0, 0, 7000, 'pickup'], [-120, 60, 4000], [-40, 120, 5000], [80, 60, 4000]] },   /* a parcel */
   'Deed Dave': { stops: [[0, 0, 6000], [-150, 40, 7000, 'pickup'], [-70, 60, 4000], [110, 30, 5000]] },   /* planting a SOLD sign */
@@ -147,6 +150,15 @@ export function folkStops(name, giver) {
   if (!row) return giver ? TETHER : null;
   if (giver && !row.tether) return TETHER;
   return row.stops;
+}
+
+/** v2.3.5461: his own beat, ms, from his id: each townsperson breathes and
+ *  works on his own, not in step (moved from entityRenderer _drawFolk,
+ *  unchanged: rendering/folkSkill.js reads it too). */
+export function folkBeatOf(id) {
+  let h = 0;
+  for (const c of String(id)) h = (h * 31 + c.charCodeAt(0)) % 9973;
+  return h * 7;
 }
 
 /** A number from his name (FNV-1a), the same on every phone. */

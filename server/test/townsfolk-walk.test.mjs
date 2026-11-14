@@ -30,6 +30,12 @@
  *      in FOLK_DAYS and 2g and 2j go red (2j names him with the pickaxe);
  *      give Farmer Bro the pickup and 2g and 2k go red (2k names him: his
  *      'wtf' eyes are blanked on the pickup's sheet, a bake of his look).
+ *   6. v2.3.5461, at their own trades (card TF PR 2): Chef Blaze cooks, Woodworker
+ *      Bro chops, Farmer Bro hoes, waters and kneels, in the player's skill
+ *      figures from the `skills` look set's colour numbers (rendering/folkSkill.js,
+ *      entityRenderer _drawFolkSkill): its copies of effectsRenderer's numbers,
+ *      the set on disk, the switch, the wiring (no bake), behind the loading
+ *      screen.  2j names a tool for each (the pan, the axe, the hoe, the can).
  *   5. v2.3.4098, townsfolk never block you (the owner, 2026-11-03: "I walked
  *      into Npc who walked into me and I got stuck"): the player's walk test
  *      (BroTown isSolid) reads no townsperson, and a walker whose step would
@@ -50,6 +56,7 @@ const root = new URL('../../', import.meta.url);
 const src = (p) => readFileSync(new URL(p, root), 'utf8');
 
 const W = await import('../../src/game/townsfolkWalk.js');
+const { readSystem } = await import('../../tools/guards/lib/filesOf.mjs');   /* v2.3.5461: code by system (§6) */
 const D = await import('../../src/game/townsfolkDay.js');
 const { QUEST_CHAINS } = await import('../../src/data/gameSystems.js');
 const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js');
@@ -102,23 +109,32 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
   check('2e every loop starts at his own spot', fromSpot.length === 0, fromSpot);
   const badStop = names.flatMap((n) => W.FOLK_DAYS[n].stops.filter((s) => !(Array.isArray(s) && Number.isFinite(s[0]) && Number.isFinite(s[1]) && s[2] >= 2000 && s[2] <= 12000
     && (s[3] === undefined || W.FOLK_WORK_POSES.includes(s[3])))).map((s) => [n, s]));
-  check('2f every stop an offset, a pause of 2-12 s, and any job one of the work poses (mine, fish, pickup)', badStop.length === 0, badStop);
+  check(`2f every stop an offset, a pause of 2-12 s, and any job one of the work poses (${W.FOLK_WORK_POSES.join(', ')})`, badStop.length === 0, badStop);
   const jobs = Object.fromEntries(names.map((n) => [n, [...new Set(W.FOLK_DAYS[n].stops.map((s) => s[3]).filter(Boolean))].join()]));
   /* v2.3.5460: the cook, the woodworker, the farmer and Gavel Greg swung the
      blacksmith's pickaxe ("chef blaze should cook, not hammer like an anvil");
-     until their own poses (card TF PR 2) three work empty-handed, the pickup,
-     and the farmer stands (the pickup's sheet blanks his eye style: a bake of
-     his look, new memory; docs/specs/townsfolk-work.md) */
-  check('2g the owner\'s jobs: the blacksmith hammering, fishing by the river; the cook at his counter, the woodworker at his bench and Gavel Greg\'s lot empty-handed (the pickup); the farmer standing; never the pickaxe',
+     v2.3.5461: each at his own trade now, in the player's skill figures, and
+     Gavel Greg holds up a lot (a gavel's bang is new art: the owner's list) */
+  check('2g the owner\'s jobs: the blacksmith hammering, fishing by the river, the cook with his pan, the woodworker chopping, the farmer kneeling, hoeing and watering, Gavel Greg\'s lot (the pickup); never the pickaxe but the smith',
     jobs['Blacksmith Bro'] === 'mine' && jobs['Old Man Reel'] === 'fish'
-      && jobs['Chef Blaze'] === 'pickup' && jobs['Woodworker Bro'] === 'pickup' && jobs['Gavel Greg'] === 'pickup' && jobs['Farmer Bro'] === '', jobs);
+      && jobs['Chef Blaze'] === 'cook' && jobs['Woodworker Bro'] === 'chop' && jobs['Farmer Bro'] === 'farmkneel,farmhoe,farmwater' && jobs['Gavel Greg'] === 'pickup', jobs);
   check('2h a giver whose row walks (a quest given later) is held to the givers\' tether', W.folkStops('Sterling', true).every((s) => Math.hypot(s[0], s[1]) <= W.FOLK_TETHER_PX)
     && W.folkStops('Sterling', false) === W.FOLK_DAYS.Sterling.stops && W.folkStops('Nobody', false) === null && W.folkStops('__proto__', false) === null);
   const body = src('src/rendering/lookSets/body.js');
   const pd = /const POSE_DIRS = \{([^}]*)\}/.exec(body);
-  check('2i every work pose is a body sheet in colour numbers, facing south (lookSets/body.js POSE_DIRS)', !!pd && W.FOLK_WORK_POSES.every((p) => new RegExp(p + ": \\['south'\\]").test(pd[1])), pd && pd[1]);
+  /* v2.3.5461: the trades' figures are not body sheets: the `skills` set's (6) */
+  const TRADES = { cook: ['cook-south', null, 'cook', 'south'], chop: ['chop-west', null, 'chop', 'west'], farmhoe: ['farmhoe-south', 'farmhoe-prop-south', 'farmhoe', 'south'],
+    farmwater: ['farmwater-south', 'farmwater-prop-south', 'farmwater', 'south'], farmkneel: ['farmkneel-south', null, 'farmkneel', 'south'] };
+  const bodyPoses = W.FOLK_WORK_POSES.filter((p) => !TRADES[p]);
+  check('2i every work pose but a trade\'s is a body sheet in colour numbers, facing south (lookSets/body.js POSE_DIRS)', !!pd && bodyPoses.length === 3 && bodyPoses.every((p) => new RegExp(p + ": \\['south'\\]").test(pd[1])), pd && pd[1]);
   const gs = src('src/rendering/gearSheets.js');
-  check('...and its tee\'s sheet is warmed behind the loading screen (gearSheets preloadGear SETS)', W.FOLK_WORK_POSES.every((p) => new RegExp("\\['" + p + "', \\['south'\\]\\]").test(gs)));
+  check('...and its tee\'s sheet is warmed behind the loading screen (gearSheets preloadGear SETS)', bodyPoses.every((p) => new RegExp("\\['" + p + "', \\['south'\\]\\]").test(gs)));
+  const skillRoles = JSON.parse(src('public/sprites/look/skills/roles.json'));
+  const gearSet = src('src/rendering/lookSets/gear.js');
+  const tradeOut = W.FOLK_WORK_POSES.filter((p) => TRADES[p] && !(skillRoles.sheets[TRADES[p][0]] && (!TRADES[p][1] || skillRoles.sheets[TRADES[p][1]])
+    && new RegExp(TRADES[p][2] + ": \\{ " + TRADES[p][3] + ": \\[").test(gearSet)));
+  check('...and every trade\'s figure (and the farmer\'s tools) is a sheet of the `skills` set, its tee a strip of the `gear` set (lookSets/gear.js POSES): in colour numbers, behind the loading screen',
+    tradeOut.length === 0 && Object.keys(TRADES).every((p) => W.FOLK_WORK_POSES.includes(p)), tradeOut);
   /* ═══ v2.3.5460: EACH WORKS WITH HIS OWN TOOL ═══
      The owner, 2026-11-14: "make sure all NPCs do things that match their
      characters. Like chef blaze should cook, not hammer like an anvil".  A
@@ -127,12 +143,18 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
      table is the test's own, not the code's, so a day cannot hand itself a
      tool: a new work pose adds its row here (its tool, and who may hold it),
      or this check names it.  docs/specs/townsfolk-work.md. */
-  const TOOL_OF = { mine: 'the pickaxe', fish: 'the rod', pickup: null /* empty hands: anyone */ };
+  const TOOL_OF = { mine: 'the pickaxe', fish: 'the rod', pickup: null /* empty hands: anyone */,
+    /* v2.3.5461: the trades' figures (card TF PR 2) */
+    cook: 'the pan', chop: 'the axe', farmhoe: 'the hoe', farmwater: 'the watering can', farmkneel: null /* his hands in the soil */ };
   const MAY_HOLD = {
     /* the blacksmith at his forge: the player's own smithing is this very
        swing (effectsRenderer _updateSmithing); nobody else in the town mines */
     'the pickaxe': ['Blacksmith Bro'],
     'the rod': ['Old Man Reel'],   /* by the river */
+    'the pan': ['Chef Blaze'],     /* the Cookhouse */
+    'the axe': ['Woodworker Bro'], /* the Woodworker's bench */
+    'the hoe': ['Farmer Bro'],     /* the Feed & Seed */
+    'the watering can': ['Farmer Bro'],
   };
   const untold = W.FOLK_WORK_POSES.filter((p) => !Object.prototype.hasOwnProperty.call(TOOL_OF, p) || (TOOL_OF[p] !== null && !MAY_HOLD[TOOL_OF[p]]));
   check('2j every work pose names its tool, and every tool who may hold it (a new pose adds its row)', untold.length === 0, untold);
@@ -145,7 +167,7 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
       }
     }
   }
-  check('...and a townsperson works only with a tool that is his: nobody but the blacksmith swings the pickaxe, nobody but Old Man Reel casts the rod',
+  check('...and a townsperson works only with a tool that is his: nobody but the blacksmith swings the pickaxe, nobody but Old Man Reel casts the rod, the pan the cook\'s, the axe the woodworker\'s, the hoe and the can the farmer\'s',
     wrongHands.length === 0, wrongHands);
   /* v2.3.5460: ...and no job bakes a look the colour numbers refuse (the
      memory law).  A look is refused in a pose when his eye style has a blank
@@ -166,7 +188,9 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
       for (const s of (W.folkStops(n, giver) || [])) {
         if (!s[3] || s[3] === 'fish' || !L) continue;
         const pat = L.patterns || {};
-        const refused = (L.eyes && L.eyes !== 'none' && EYE_BLANK[s[3] + '-south']) || pat.pants || pat.shoes;
+        /* v2.3.5461: a trade's figure takes his eye style as a piece of his
+           head (placeSkillTraitsFor), so only a pattern refuses its numbers */
+        const refused = TRADES[s[3]] ? (pat.pants || pat.shoes) : ((L.eyes && L.eyes !== 'none' && EYE_BLANK[s[3] + '-south']) || pat.pants || pat.shoes);
         if (refused && !BAKED_BEFORE.has(n + '|' + s[3])) newBakes.push([n, s[3], L.eyes, pat.pants || pat.shoes || null]);
       }
     }
@@ -272,10 +296,11 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
       && /if \(!_folkWalked && nDist > 2\) \{/.test(bt) && bt.indexOf('townsfolkStep(S, npc') > bt.indexOf('if (raceDriveNpc(S, npc, Date.now()))'));
   const er = src('src/rendering/systems/entityRenderer.js');
   check('4c the renderer draws a job in the work pose (south), standing his day\'s facing, the tee plain at work',
-    /const work = \(jogging \|\| folkFaceOverride\(\)\) \? null : folkWorkPose\(npc\);/.test(er) && /const pose = work \|\| \(jogging \? 'jog' : 'stand'\);/.test(er)
+    /let work = \(jogging \|\| folkFaceOverride\(\)\) \? null : folkWorkPose\(npc\);/.test(er) && /const pose = work \|\| \(jogging \? 'jog' : 'stand'\);/.test(er)
       && /folkWorkFrame\(work, now \+ display\._folkBeat\)/.test(er) && /folk\._shirtLook = work \? null : _shirtLook\(/.test(er));
   const fp = src('src/rendering/folkPose.js');
-  check('4d ...only a pose the look palette has in numbers (else he stands: no bake of his look)', /return \(w && !_workOff && WORK\.has\(w\) && lookPose\(w\)\) \? w : null;/.test(fp));
+  check('4d ...only a pose the look palette has in numbers (else he stands: no bake of his look); a trade\'s figure asked of folkSkill.js',
+    /return \(w && !_workOff && WORK\.has\(w\) && lookPose\(w\)\) \? w : null;/.test(fp) && /if \(w && !_workOff && isFolkSkill\(w\)\) return w;/.test(fp));
   check('4e the far-off rule stands: a townsperson past the view has no figure (v2.3.3809)', /display\._folk\.destroy\(\{ children: true \}\);/.test(er));
 }
 
@@ -316,6 +341,67 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
   const day = src('src/game/townsfolkDay.js');
   check('5i the frame\'s step asks folkStepBumps, and the probe counts the pauses (bumpsTotal, mp-folkpass)',
     /const bump = folkStepBumps\(ox, oy, npc\.x, npc\.y,/.test(day) && /bumpsTotal: _bumpsTotal/.test(day));
+}
+
+/* ── 6. v2.3.5461: at their own trades (card TF PR 2) ─────────────────────── */
+{
+  /* effectsRenderer's lines, found in the render system's files, never by the
+     big file's path (tools/guards/tests-by-system.test.mjs: it will be split) */
+  const er = [...readSystem('render').values()].join('\n');
+  const fs6 = src('src/rendering/folkSkill.js');
+  const set = src('src/rendering/lookSets/skills.js');
+  /* 6a: effectsRenderer's numbers, copied (folkSkill.js cannot import it: it is
+     imported by entityRenderer, which effectsRenderer imports), held here */
+  const theirs = [/export const COOK_STANDIN_H = 73\.9;/, /export const CHOP_STANDIN_H = 136\.8;/, /const COOK_FW = 213, COOK_FH = 220;/,
+    /const FARM_MIN_BLOB = 12;/, /const FW = 240, FH = 220, FROM = 12, COUNT = 12;/, /this\._skillTraitMul = \{ chop: 0\.91, cook: 1\.65,/,
+    /_skillTraitMul\[FARM_ANIMS\[a\]\.pose\] = FARM_ANIM_HEAD \/ 51;/, /chop: \{ h: CHOP_STANDIN_H, fh: 220, ms: 45, traitDir: 'east', from: 12, count: 12,/,
+    /cook: \{ h: COOK_STANDIN_H, fh: 220, ms: 60, traitDir: 'south',/, /const _shirtIx = \(code === 'cook'\) \? 22 : _gi;/];
+  const ours = [/export const FOLK_COOK_H = 73\.9;/, /export const FOLK_CHOP_H = 136\.8;/, /const TRAIT_MUL = \{ cook: 1\.65, chop: 0\.91, farm: FARM_ANIM_HEAD \/ 51 \};/,
+    /cook: Object\.freeze\(\{ sheet: 'cook-south', prop: null, fw: 213, fh: 220, n: 24, ms: 60,/,
+    /chop: Object\.freeze\(\{ sheet: 'chop-west', prop: null, fw: 240, fh: 220, n: 12, ms: 45,/,
+    /traitDir: 'east', traitMul: TRAIT_MUL\.chop,\s*crownKey: 'chop',/, /shirtAt: \(\) => 22/];
+  const setOurs = [/SKILL_COOK = Object\.freeze\(\{ fw: 213, fh: 220,/, /SKILL_CHOP = Object\.freeze\(\{ fw: 240, fh: 220, from: 12, count: 12,/, /SKILL_FARM_MIN_BLOB = 12;/];
+  const off6a = [...theirs.filter((r) => !r.test(er)).map(String), ...ours.filter((r) => !r.test(fs6)).map(String), ...setOurs.filter((r) => !r.test(set)).map(String)];
+  /* ...and the cook's and the lumberjack's crowns, copied (no load in play), held to crowns.json */
+  const crowns = JSON.parse(src('public/sprites/skills/crowns.json'));
+  const cookC = /cook: Array\(24\)\.fill\(\[(\d+), (\d+)\]\)/.exec(fs6), chopC = /chop: (\[\[[\d, \[\]]+\]\]),/.exec(fs6);
+  if (!(cookC && crowns.cook.n === 24 && crowns.cook.crowns.every((c) => c[0] === +cookC[1] && c[1] === +cookC[2]))) off6a.push('the cook\'s crowns');
+  if (!(chopC && JSON.stringify(JSON.parse(chopC[1])) === JSON.stringify(crowns.chop.crowns.slice(12, 24)))) off6a.push('the lumberjack\'s crowns (12-23)');
+  check('6a the trades\' figures at the player\'s own numbers: effectsRenderer\'s heights, frames, head sizes, tee frame and the bake\'s crop and floor, copied in folkSkill.js and lookSets/skills.js and held to it',
+    off6a.length === 0, off6a);
+  /* 6b: the set on disk, baked from these strips by the game's own recolour */
+  const roles = JSON.parse(src('public/sprites/look/skills/roles.json'));
+  const want = ['cook-south', 'chop-west', 'farmhoe-south', 'farmwater-south', 'farmkneel-south', 'farmhoe-prop-south', 'farmwater-prop-south'];
+  const missing6 = want.filter((n) => !roles.sheets[n]);
+  check('6b the `skills` set holds the five figures and the farmer\'s two tools as colour numbers (tools/art/role-bake.mjs --set skills; precheck look-roles keeps them fresh), the lumberjack his twelve played frames',
+    roles.set === 'skills' && roles.bits === 8 && missing6.length === 0 && roles.sheets['chop-west'].frames === 12 && roles.sheets['cook-south'].frames === 24
+      && roles.roles.join() === 'keep,skin,pants,boots', { missing6, set: roles.set, bits: roles.bits });
+  check('...its recolour the game\'s own for another player in his colours (STANDIN_INK\'s cook and farm rows, _bakeChopStrip): no drawings, no patterns, the axe kept as painted',
+    /recolorStandInSkin\(src\.img, T\[1\] \|\| null, s\.fh, \{ keepX: COOK_KEEP_X, art: null, regions: COOK_INK_REGIONS, frameW: s\.fw, patK: STANDIN_GARB_K\.cook, \.\.\.clothes \}\)/.test(set)
+      && /recolorToolKeyCanvas\(cv, TOOL_SPECS\.axe, 1, src\.keyMask\)/.test(set) && /keepFromDefault: true/.test(set) && /garb: null/.test(set));
+  /* 6c: the switch, and the memory: no `?folkwork` work poses, none of the set loaded */
+  check('6c `?folkwork=0` stands them for the trades too, and loads none of the set (no new switch: the one the card names)',
+    /const _off = \(\(\) => \{ try \{ return \/\(\^\|\[\?&\]\)folkwork=0\(&\|\$\)\/\.test/.test(fs6) && /const _reg = \(!_off && lookPaletteWanted\(\)\) \? registerLookSheets\('skills'/.test(fs6)
+      && /folkwork=0/.test(src('src/rendering/folkPose.js')));
+  /* 6d: the renderer -- the figure from the numbers, no bake; behind the loading screen; gone when he is */
+  const er6 = src('src/rendering/systems/entityRenderer.js');
+  const a6 = fs6.indexOf('export function drawFolkSkill(display, npc, look, pose, now, size, placeTraits) {');
+  const b6 = a6 < 0 ? -1 : fs6.indexOf('\nexport function hideFolkSkill(', a6);
+  const fn6 = a6 >= 0 && b6 > a6 ? fs6.slice(a6, b6) : '';
+  check('6d the renderer draws a trade from folkSkill.js alone (its numbers, the gear set\'s tee, his head at its crown by entityRenderer\'s placeSkillTraitsFor, handed in): no body bake, no canvas, no load',
+    fn6.length > 500 && /if \(!folkSkillReady\(pose, look\)\) return miss\(display, 'ready'\);/.test(fn6) && /folkSkillTextures\(pose, look, fi\)/.test(fn6)
+      && /placeTraits\(F\._traits, \{/.test(fn6) && /\}, cwx, cwy, spec\.traitDir, false, k \* spec\.traitMul\);/.test(fn6)
+      && !/getBodyFrame|getLookBodyFrame|document\.createElement|getContext|fetch\(|new Image/.test(fs6)
+      && /if \(work && isFolkSkill\(work\) && drawFolkSkill\(display, npc, look, work, now, size, placeSkillTraitsFor\)\) return true;/.test(er6)
+      && /if \(isFolkSkill\(work\)\) work = null;/.test(er6), { len: fn6.length });
+  check('...behind the world\'s loading screen (prewarmFolkBodies awaits folkSkillPrepare: the set in, the crowns read), never baked as a body (a trade skipped there)',
+    /if \(isFolkSkill\(j\.pose\)\) continue;/.test(er6) && /\.then\(\(n\) => folkSkillPrepare\(\)\.then\(\(\) => n, \(\) => n\)\);/.test(er6)
+      && /er\.prewarmFolkBodies\(tw\.folkBakeJobs\(\)\)/.test(src('src/game/worldTrial.js')));
+  check('...and destroyed with his figure past the view (v2.3.3809\'s rule), hidden when his figure is (a computer\'s photographs)',
+    /display\._folkSkill\.destroy\(\{ children: true \}\);/.test(fs6) && /dropFolkSkill\(display\);/.test(er6) && /if \(!_folkLive\) hideFolkSkill\(display\);/.test(er6));
+  check('...his walking figure shown only once he is not at his trade (no visible flipped each frame: TRAPS §218)',
+    (er6.match(/if \(!folk\.visible\) folk\.visible = true;/g) || []).length === 1
+      && er6.indexOf('if (!folk.visible) folk.visible = true;') > er6.indexOf('if (this._drawFolkSkill(npc, display, look, work, now)) return true;'));
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

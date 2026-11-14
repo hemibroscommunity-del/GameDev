@@ -1,7 +1,7 @@
 card: TF
-branch: claude/plan-tf-1-townsfolk-tools
-prs: #1770 (5460, ready)
-state: ready
+branch: claude/plan-tf-2-work-poses (PR 2, begun from PR 1's)
+prs: #1770 (5460, ready); PR 2 (5461) on the branch above (working)
+state: working
 
 ## Done
 
@@ -17,11 +17,14 @@ state: ready
 
 ## Next
 
-- Sitting 9's two holds on #1770 met: `main` merged in, every block kept
-  (SK, TF, PW, LB; next 5520); the spec writes PR 2's tag bare. For
-  sitting 10.
-- PR 2 (5461): `entityRenderer.js` is free (#1762, card H's 5050, merged
-  at sitting 9). Begins from this branch.
+- #1770: sitting 9's holds met (`main` merged, blocks SK/TF/PW/LB, next
+  5520; PR 2's tag bare). For sitting 10.
+- PR 2 (5461), on the branch: the `skills` look set (seven sheets, ~2.7 MB
+  r8 on a phone, none on a computer) drawn by `folkSkill.js` from
+  `_drawFolk`; Chef Blaze cooks, Woodworker Bro chops, Farmer Bro kneels,
+  hoes, waters. `mp-folkwork` 27 of 27 (upright, sideways, computer,
+  `?folkwork=0`). Now: the ghost sample, membudget off/on, heldsweep
+  (town), questline; then the PR.
 
 ## Found
 
@@ -32,4 +35,5 @@ state: ready
 
 ## Needs
 
-- Nothing for PR 1 (@parent answered both, 2026-11-14).
+- @parent: the cook's bar (A: his sheet at 23, a few lines in role-bake;
+  B: Chef Blaze keeps the pickup). Asked 2026-11-14 ~11:30.
