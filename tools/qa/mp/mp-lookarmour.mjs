@@ -137,8 +137,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* v2.3.3752 (M3's review): the mask atlas grows under a figure already
        drawn, and that figure, drawn again untouched, is the same */
     {
+      /* v2.3.5425 (card J2): enough other looks to make the atlas grow
+         whatever it holds already -- after the full oracle (every look and
+         set) six fitted in rows it had free (384 -> 384, "grew false", red);
+         the probe stops at the first growth, so the rest cost nothing */
+      const OTHERS = [['honey', 'navy', 'tan', 'default'], ['olive', 'teal', 'black', 'default'], ['rosy', 'yellow', 'tan', 'default'], ['snow', 'red', 'black', 'default'], ['deep', 'white', 'tan', 'default'], ['purple', 'navy', 'black', 'default']];
+      for (const sk of ['honey', 'olive', 'rosy', 'snow', 'deep', 'purple']) for (const pa of ['teal', 'yellow', 'red', 'white']) for (const sh of ['black', 'tan']) {
+        if (OTHERS.length < 54 && !OTHERS.some((o) => o[0] === sk && o[1] === pa && o[2] === sh)) OTHERS.push([sk, pa, sh, 'default']);
+      }
       const g = await P.page.evaluate(([look, set, others]) => window.__btArmourOracle.growth({ look, set, others }),
-        [LOOKS[0], EXTRA.chest, [['honey', 'navy', 'tan', 'default'], ['olive', 'teal', 'black', 'default'], ['rosy', 'yellow', 'tan', 'default'], ['snow', 'red', 'black', 'default'], ['deep', 'white', 'tan', 'default'], ['purple', 'navy', 'black', 'default']]]);
+        [LOOKS[0], EXTRA.chest, OTHERS]);
       rec.ok(`a figure drawn before the mask atlas grew (${g.rowsBefore} -> ${g.rowsAfter} rows) draws the same after, its draw list untouched: ${g.differ} of ${g.drawn} px differ`,
         g.grew === true && g.drawn > 0 && g.differ === 0, g);
     }
