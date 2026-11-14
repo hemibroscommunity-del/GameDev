@@ -1,0 +1,442 @@
+/* ═══ v2.3.5084: THE WORLD'S SUM (grand plan step 4.4, card E PR 5) ═══
+ *
+ * "A purse equals its start plus the roads that ran" is true by
+ * construction, and past copies went through LEGAL roads (one stack of ore
+ * sold 24 times in one bundle).  So the whole world is summed, one kind of
+ * value at a time (docs/SHAPES.md part 3, "What is summed"):
+ *
+ *     everything held  ==  the start  +  minted  -  burned
+ *
+ * "Held" is every record the registry's marks say holds value
+ * (server/src/storagemarks.js): purses and bags (a character live in the
+ * room, or stored while away), vaults, mail waiting, every escrow, Diego's
+ * pile, the piles on the ground.  "Minted" and "burned" are each character's
+ * own `_econ` (rule 1's second exception, written in the purse's own put by
+ * the two doors: gold.js, bag.js), what the bag door counted beside a bag no
+ * save has named yet, and the minted part of mail still waiting (its class by
+ * its opId: gold.js MAIL_CLASSES).  `unexplained` is how far the two sides
+ * have moved apart since the start: it must stay 0.
+ *
+ *   1. THE SCENARIO: a room plays the bank, the gamble, Diego's pile, the
+ *      trade window, a death and its pile, the mail (a grant waiting, a
+ *      daily quest landing, a duel's pot) -- through the real handlers.
+ *      Unexplained gold 0, every bag key 0; no gear or pet held twice.
+ *   2. A PLANTED DOUBLE PAY THROUGH A LEGAL ROAD is seen: a vault paid out
+ *      with no vault behind it, a pile's goods given with no pile, a
+ *      duel's pot paid twice by the mail, a trade's gold taken with no
+ *      other side.
+ *   3. A VALUE RECORD THE MARKS DO NOT COUNT is seen: a stored key with no
+ *      marks, and a marked value prefix the sum has no reader for.
+ *   4. The three lines outside card E's own files the sum needed (the
+ *      owner's yes, 2026-11-14): the join brings `_econ` back before any
+ *      door runs, a red skull killed by a monster BURNS its purse
+ *      (nml_lost), and the champion's prize says the house's part.
+ *
+ * BREAK PROOF (rule 8), tried by hand: `WORLD_SUM_PLANT=1 node
+ * test/world-sum.test.mjs` plants §2's vault double pay INTO §1's world,
+ * and §1 fails ("unexplained gold 50").
+ */
+import { GameRoom } from '../src/index.js';
+import { STORAGE_MARKS, marksOf } from '../src/storagemarks.js';
+import { mailMinted, wholeGold } from '../src/gold.js';
+import { bagGive, bagEconPending, wholeCount } from '../src/bag.js';
+import { orderEscrowGold } from '../src/liveops.js';
+import { BANK } from '../src/bank.js';
+
+let failures = 0, passes = 0;
+function check(name, cond, detail) {
+  if (cond) { passes++; console.log('PASS', name); }
+  else { failures++; console.log('FAIL', name, detail !== undefined ? JSON.stringify(detail).slice(0, 900) : ''); }
+}
+
+let NOW = 1_800_000_000_000;
+Date.now = () => NOW;
+let seed = 7;
+const realRandom = Math.random;
+Math.random = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+
+/* storage as a Durable Object's: a copy of what is put, listed in key order */
+function makeState() {
+  const store = new Map();
+  const clone = (v) => (v === undefined ? undefined : structuredClone(v));
+  return {
+    _store: store,
+    storage: {
+      async get(k) {
+        if (Array.isArray(k)) { const r = new Map(); for (const x of k) if (store.has(x)) r.set(x, clone(store.get(x))); return r; }
+        return clone(store.get(k));
+      },
+      async put(k, v) {
+        if (k && typeof k === 'object') { for (const [kk, vv] of Object.entries(k)) store.set(kk, clone(vv)); return; }
+        store.set(k, clone(v));
+      },
+      async delete(k) { if (Array.isArray(k)) { let n = 0; for (const x of k) if (store.delete(x)) n++; return n; } return store.delete(k); },
+      async list(o) {
+        let keys = [...store.keys()].filter((k) => !o?.prefix || k.startsWith(o.prefix)).sort();
+        if (o?.startAfter) keys = keys.filter((k) => k > o.startAfter);
+        if (o?.reverse) keys.reverse();
+        if (o?.limit) keys = keys.slice(0, o.limit);
+        const out = new Map();
+        for (const k of keys) out.set(k, clone(store.get(k)));
+        return out;
+      },
+    },
+    getWebSockets: () => [], acceptWebSocket: () => {},
+  };
+}
+const mockEnv = { LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async () => new Response('{}') }) } };
+const fakeWs = () => ({ sent: [], send(s) { this.sent.push(JSON.parse(s)); }, close() {} });
+const settle = () => new Promise((r) => setTimeout(r, 5));
+
+/* ══════════════════════════ THE SUM ══════════════════════════ */
+/* One reader a marked value prefix (storagemarks.js `value` not `none`).  Each
+   adds what its record HOLDS to `held`: gold, each bag key, and the ids of
+   the things counted as one (a piece of gear by its gid, a pet by its id). */
+const add = (o, k, n) => { if (n) o[k] = (o[k] || 0) + n; };
+function holdBag(ctx, bag) {
+  if (!bag || typeof bag !== 'object') return;
+  for (const k of Object.keys(bag)) add(ctx.goods, k, wholeCount(bag[k]));
+}
+const GEAR_FIELDS = ['armor', 'legsArmor', 'shield', 'amulet', 'weapon', 'rangedWeapon', 'staffWeapon'];
+const STASH_FIELDS = ['armorStash', 'legsStash', 'shieldStash', 'gearStash', 'amuletStash'];
+function holdGear(ctx, rec, where) {
+  for (const f of GEAR_FIELDS) { const p = rec && rec[f]; if (p && typeof p === 'object' && typeof p.gid === 'string' && p.gid) ctx.ids.push(['gear', p.gid, where]); }
+  for (const f of STASH_FIELDS) for (const p of (rec && Array.isArray(rec[f]) ? rec[f] : [])) if (p && typeof p.gid === 'string' && p.gid) ctx.ids.push(['gear', p.gid, where]);
+}
+/* a character's own count: what it minted less what it burned */
+function netOf(ctx, econ) {
+  if (!econ || typeof econ !== 'object') return;
+  ctx.net.gold += (Number(econ.g && econ.g.m) || 0) - (Number(econ.g && econ.g.b) || 0);
+  const i = econ.i && typeof econ.i === 'object' ? econ.i : {};
+  for (const k of Object.keys(i)) add(ctx.net.goods, k, (Number(i[k].m) || 0) - (Number(i[k].b) || 0));
+}
+function holdCharacter(ctx, rec, where) {
+  ctx.gold += wholeGold(rec.coins);
+  holdBag(ctx, rec.inventory);
+  holdGear(ctx, rec, where);
+  netOf(ctx, rec._econ);
+  /* the bag door's counts still beside a bag no save has named (bag.js) */
+  const w = bagEconPending(rec.inventory);
+  for (const k of Object.keys(w)) add(ctx.net.goods, k, w[k].m - w[k].b);
+}
+export const READERS = {
+  'rpg:': (ctx, key, v) => { if (!ctx.live.has(key.slice(4))) holdCharacter(ctx, v || {}, key); },
+  'bank:': (ctx, key, v) => {
+    ctx.gold += Math.max(0, Math.floor(Number(v && v.gold) || 0));
+    for (const it of (v && Array.isArray(v.items) ? v.items : [])) add(ctx.goods, it.key, Math.max(0, Math.floor(Number(it.n) || 0)));
+  },
+  'inbox:': (ctx, key, v) => {
+    for (const e of (Array.isArray(v) ? v : [])) {
+      const p = (e && e.payload) || {};
+      if (e.kind === 'gold') { const n = Math.max(0, Math.floor(p.amount || 0)); ctx.gold += n; ctx.net.gold += mailMinted(e, n); }
+      else if (e.kind === 'item' && typeof p.invKey === 'string') { const n = Math.max(1, Math.floor(p.count || 1)); add(ctx.goods, p.invKey, n); add(ctx.net.goods, p.invKey, mailMinted(e, n)); }
+      else if (e.kind === 'gear' && p.piece && typeof p.piece.gid === 'string') ctx.ids.push(['gear', p.piece.gid, key]);
+      else if (e.kind === 'pet' && p.pet && typeof p.pet.id === 'string') ctx.ids.push(['pet', p.pet.id, key]);
+    }
+  },
+  'pets:': (ctx, key, v) => { for (const pet of (v && Array.isArray(v.list) ? v.list : [])) if (pet && typeof pet.id === 'string') ctx.ids.push(['pet', pet.id, key]); },
+  'mkt_order:': (ctx, key, v) => { ctx.gold += orderEscrowGold(v); /* a sell order holds a weapon: summed once weapons carry a gid (step 4.3) */ },
+  'store_listing:': (ctx, key, v) => {
+    if (!v) return;
+    if (v.kind === 'item' && typeof v.invKey === 'string' && !(v.sale && v.sale.goodsPaid)) add(ctx.goods, v.invKey, Math.max(0, Math.floor(Number(v.qty) || 0)));
+    if (v.kind === 'gear' && v.gear && typeof v.gear.gid === 'string') ctx.ids.push(['gear', v.gear.gid, key]);
+    if (v.kind === 'pet' && v.pet && typeof v.pet.id === 'string') ctx.ids.push(['pet', v.pet.id, key]);
+    if (v.topBid && Number(v.topBid.amount) > 0) ctx.gold += Math.floor(Number(v.topBid.amount));
+    for (const o of Object.values(v.offers || {})) if (o && Number(o.gold) > 0) ctx.gold += Math.floor(Number(o.gold));
+    if (v.sale && v.sale.paid && !v.sale.goldPaid) ctx.gold += Math.max(0, Math.floor(Number(v.sale.price) || 0));
+  },
+  'duelEscrow:': (ctx, key, v) => { ctx.gold += 2 * Math.max(0, Math.floor(Number(v && v.wager) || 0)); },
+  'arena_entry:': (ctx, key, v) => { ctx.gold += Math.max(0, Math.floor(Number(v && v.wager) || 0)); },
+  'arena_stake:': (ctx, key, v) => { ctx.gold += Math.max(0, Math.floor(Number(v && v.amount) || 0)); },
+  'bounty:': (ctx, key, v) => { ctx.gold += Math.max(0, Math.floor(Number(v && v.amount) || 0)); },
+  'jackpot:draw': (ctx, key, v) => { ctx.gold += Math.max(0, Math.floor(Number(v && v.pool) || 0)); },
+  'trade2wpn:': () => { /* a weapon: summed once weapons carry a gid (step 4.3) */ },
+  'death_pile:': (ctx, key, v) => {
+    /* a pile is counted once: from the ground while the room holds it, from
+       its row only before the room has restored it */
+    if (!v || ctx.piles.has(v.id || key.slice('death_pile:'.length))) return;
+    for (const it of (Array.isArray(v.items) ? v.items : [])) add(ctx.goods, it.key, Math.max(0, Math.floor(Number(it.qty) || 0)));
+  },
+  'shop_stock': (ctx, key, v) => { for (const k of Object.keys(v || {})) add(ctx.goods, k, Math.max(0, Math.floor(Number(v[k]) || 0))); },
+};
+
+/** Every marked value prefix with no reader, and every stored key with no
+ *  marks: what the sum cannot count. */
+function coverage(readers, keys) {
+  const noReader = Object.entries(STORAGE_MARKS).filter(([p, m]) => m.value !== 'none' && !readers[p]).map(([p]) => p);
+  const unmarked = keys.filter((k) => !marksOf(k));
+  return { noReader, unmarked };
+}
+
+/** The world counted: held and net (minted less burned), gold and each bag
+ *  key; every id held; and what could not be counted. */
+function count(room, state, readers = READERS) {
+  const ctx = { gold: 0, goods: Object.create(null), net: { gold: 0, goods: Object.create(null) }, ids: [], live: new Set(), piles: new Set() };
+  /* the characters in the room: live (a sparring clone is no one's) */
+  for (const [pid, ps] of Object.entries(room.playerState || {})) {
+    if (!ps || ps._spar) continue;
+    ctx.live.add(pid);
+    holdCharacter(ctx, ps, 'live:' + pid);
+  }
+  /* the piles on the ground: a player's (a death's, a drop's) */
+  for (const list of Object.values(room.loot || {})) {
+    for (const pile of (list || [])) {
+      if (!pile || !pile.isDeathDrop) continue;
+      ctx.piles.add(pile.lootId);
+      if (pile.inventoryClaimed) continue;
+      for (const it of (pile.deathItems || [])) add(ctx.goods, it.key, Math.max(0, Math.floor(Number(it.qty) || 0)));
+    }
+  }
+  const keys = [...state._store.keys()].sort();
+  for (const key of keys) {
+    const m = marksOf(key);
+    if (!m || m.value === 'none') continue;
+    const prefix = Object.prototype.hasOwnProperty.call(readers, key) ? key : Object.keys(readers).filter((p) => p.endsWith(':') && key.startsWith(p)).sort((a, b) => b.length - a.length)[0];
+    if (prefix) readers[prefix](ctx, key, state._store.get(key));
+  }
+  const dup = [];
+  const seen = new Map();
+  for (const [kind, id, where] of ctx.ids) { const k = kind + ':' + id; if (seen.has(k)) dup.push([k, seen.get(k), where]); else seen.set(k, where); }
+  return { gold: ctx.gold, goods: ctx.goods, net: ctx.net, dup, ...coverage(readers, keys) };
+}
+
+/** How far held and net have moved apart since `start`: gold, and each bag
+ *  key that moved (0 everywhere when nothing went unexplained). */
+function unexplained(start, now) {
+  const gold = (now.gold - now.net.gold) - (start.gold - start.net.gold);
+  const goods = Object.create(null);
+  const keys = new Set([...Object.keys(start.goods), ...Object.keys(now.goods), ...Object.keys(start.net.goods), ...Object.keys(now.net.goods)]);
+  for (const k of keys) {
+    const d = ((now.goods[k] || 0) - (now.net.goods[k] || 0)) - ((start.goods[k] || 0) - (start.net.goods[k] || 0));
+    if (d) goods[k] = d;
+  }
+  return { gold, goods };
+}
+
+/* ══════════════════════════ THE ROOM ══════════════════════════ */
+async function world() {
+  const state = makeState();
+  /* the characters, on file before anyone joins (a test seeds a character
+     by putting its record first: CLAUDE.md §5); D stays away */
+  const rec = (coins, inventory) => ({ _v: 21, coins, inventory, level: 5, hp: 100, maxHp: 100, _econ: { v: 1, g: { m: 0, b: 0 }, i: {} } });
+  state._store.set('rpg:bp_ws_a', rec(1000, { wood_oak: 10, fish_minnow: 20, 'slime-remnants': 10 }));
+  state._store.set('rpg:bp_ws_b', rec(800, { ore_iron_ore: 6 }));
+  state._store.set('rpg:bp_ws_d', rec(50, {}));
+  const room = new GameRoom(state, mockEnv);
+  room._liveFlags = {};
+  const ws = {};
+  for (const n of ['a', 'b']) {
+    ws[n] = fakeWs();
+    room.sessions.set(ws[n], { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
+    await room.webSocketMessage(ws[n], JSON.stringify({ type: 'join', id: 'bp_ws_' + n, name: n.toUpperCase(), phrase: 'p-' + n, protocolVersion: 2, ws: [1, 5], data: { x: 0, y: 0, z: 'town' } }));
+    await settle();
+  }
+  await room._shopStock();   /* Diego's pile seeds itself once, the first time it is read: before the start */
+  await settle();
+  return { room, state, ws, A: room.playerState.bp_ws_a, B: room.playerState.bp_ws_b };
+}
+const send = async (room, w, type, payload) => { await room.webSocketMessage(w, JSON.stringify({ type, payload: payload || {} })); await settle(); };
+
+/* ══════════════════════════ 1. THE SCENARIO ══════════════════════════ */
+{
+  const { room, state, ws, A, B } = await world();
+  check('1. the room holds A and B, D is away', !!A && !!B && !room.playerState.bp_ws_d && A.coins === 1000);
+  const start = count(room, state);
+  check('1. at the start, every record is marked and every marked value record has a reader', start.unmarked.length === 0 && start.noReader.length === 0, { unmarked: start.unmarked, noReader: start.noReader });
+  const steps = [];
+  const note = (what) => { const u = unexplained(start, count(room, state)); steps.push([what, u.gold, Object.keys(u.goods).length ? u.goods : 0]); };
+
+  /* the bank: gold and goods in and out (escrow) */
+  {
+    const c = room._wheelT().WHEEL_CENTRE;
+    A.z = 'wheel'; A.x = c[0] + BANK.DOOR[0] + 40; A.y = c[1] + BANK.DOOR[1] + 150; A.dead = false; A.dying = false;
+    await send(room, ws.a, 'bank_open');
+    await send(room, ws.a, 'bank_deposit', { kind: 'gold', n: 300, opId: 'ws-1' });
+    await send(room, ws.a, 'bank_deposit', { kind: 'item', id: 'wood_oak', n: 4, opId: 'ws-2' });
+    await send(room, ws.a, 'bank_withdraw', { kind: 'gold', n: 120, opId: 'ws-3' });
+    await send(room, ws.a, 'bank_withdraw', { kind: 'item', id: 'wood_oak', n: 1, opId: 'ws-4' });
+    check('1. the bank moved gold and goods (a vault on file)', A.coins === 820 && A.inventory.wood_oak === 7 && !!state._store.get('bank:bp_ws_a'), { coins: A.coins, wood: A.inventory.wood_oak });
+    note('bank');
+  }
+  /* the gamble: a win (mint) and a loss (burn) */
+  {
+    Math.random = () => 0.0; await send(room, ws.a, 'gamble_request', { wager: 100 });
+    A._lastGambleAt = 0;
+    Math.random = () => 0.99; await send(room, ws.a, 'gamble_request', { wager: 50 });
+    Math.random = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+    check('1. the gamble won 100 and lost 50', A.coins === 870, A.coins);
+    note('gamble');
+  }
+  /* Diego: A sells into his pile, B buys from it (goods in escrow, gold minted and burned) */
+  {
+    await send(room, ws.a, 'shop_sell', { key: 'slime-remnants', qty: 10 });
+    await send(room, ws.b, 'shop_buy', { key: 'slime-remnants', qty: 2 });
+    check('1. A sold 10 to Diego, B bought 2 from his pile', !A.inventory['slime-remnants'] && B.inventory['slime-remnants'] === 2, { a: A.inventory['slime-remnants'], b: B.inventory['slime-remnants'] });
+    note('shop');
+  }
+  /* the trade window: gold and goods both ways (moves, by the mail) */
+  {
+    for (const p of [A, B]) { p.z = 'town'; p.x = 0; p.y = 0; }
+    const a0 = A.coins, b0 = B.coins;
+    await send(room, ws.a, 'trade2_open', { target: 'bp_ws_b' });
+    await send(room, ws.b, 'trade2_open', { target: 'bp_ws_a' });
+    await send(room, ws.a, 'trade2_set', { offer: { fish_minnow: 5, _gold: 200 } });
+    await send(room, ws.b, 'trade2_set', { offer: { ore_iron_ore: 2 } });
+    await send(room, ws.a, 'trade2_ready', { ready: true });
+    await send(room, ws.b, 'trade2_ready', { ready: true });
+    for (const s2 of (room._trades2 || new Map()).values()) s2.changedAt = Date.now() - 999999;
+    await send(room, ws.a, 'trade2_confirm');
+    await send(room, ws.b, 'trade2_confirm');
+    check('1. the trade settled: 200 gold and 5 fish to B, 2 ore to A', B.inventory.fish_minnow === 5 && A.inventory.ore_iron_ore === 2 && A.coins === a0 - 200 && B.coins === b0 + 200, { a: A.coins - a0, b: B.coins - b0, fish: B.inventory.fish_minnow, ore: A.inventory.ore_iron_ore });
+    note('trade');
+  }
+  /* the mail: a grant to D, who is away (a mint waiting), D comes in and it
+     lands; a daily quest's gold lands on B at once (a mint); a duel's pot,
+     its escrow on file, lands on A (an escrow paid on) */
+  {
+    await room._creditPlayer('bp_ws_d', { opId: 'admin:g1', source: 'admin', kind: 'gold', payload: { amount: 75 }, note: 'grant' });
+    check('1. a grant to D, away, waits in the mail', Array.isArray(state._store.get('inbox:bp_ws_d')) && state._store.get('inbox:bp_ws_d').length === 1);
+    note('grant waiting');
+    ws.d = fakeWs();
+    room.sessions.set(ws.d, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
+    await room.webSocketMessage(ws.d, JSON.stringify({ type: 'join', id: 'bp_ws_d', name: 'D', phrase: 'p-d', protocolVersion: 2, ws: [1, 5], data: { x: 0, y: 0, z: 'town' } }));
+    await settle();
+    check('1. D comes in and the grant lands', room.playerState.bp_ws_d && room.playerState.bp_ws_d.coins === 125, room.playerState.bp_ws_d && room.playerState.bp_ws_d.coins);
+    note('grant landed');
+    await room._creditPlayer('bp_ws_b', { opId: 'dq:bp_ws_b:20270115:0', source: 'daily', kind: 'gold', payload: { amount: 40 }, note: 'a daily quest' });
+    note('daily quest');
+    /* the duel's start, as duel.js makes it: both stakes and the escrow's
+       record in one run (_escrowDebitGoldTogether) */
+    const staked = await room._escrowDebitGoldTogether(
+      [{ id: 'bp_ws_a', amount: 30, opId: 'duel:d1:a' }, { id: 'bp_ws_b', amount: 30, opId: 'duel:d1:b' }],
+      [['duelEscrow:d1', { a: 'bp_ws_a', b: 'bp_ws_b', wager: 30, startedAt: NOW }]]);
+    check('1. a duel\'s two stakes went into its escrow together', !!staked && staked.ok && !!state._store.get('duelEscrow:d1'), staked);
+    note('duel staked');
+    await room._creditPlayer('bp_ws_a', { opId: 'duelpot:d1', source: 'duel', kind: 'gold', payload: { amount: 60 }, note: 'duel won' });
+    await state.storage.delete('duelEscrow:d1');
+    note('duel pot');
+    /* goods by the mail: a quest's item, the bag full (a mint) */
+    await room._creditPlayer('bp_ws_b', { opId: 'questitem:bp_ws_b:q1:fish_minnow#1', source: 'quest', kind: 'item', payload: { invKey: 'fish_minnow', count: 3 }, note: 'a quest item' });
+    note('quest item by the mail');
+    /* the champion's prize: three entries held (escrow), and the house's
+       gold on top (a mint), in ONE payout that says the house's part */
+    const D = room.playerState.bp_ws_d;
+    for (const [id, ps] of [['bp_ws_a', A], ['bp_ws_b', B], ['bp_ws_d', D]]) {
+      room._goldTake(ps, 100, 'arena_entry');
+      state._store.set('arena_entry:t9:' + id, { wager: 100, paidAt: NOW, n: 1 });
+    }
+    note('arena entries');
+    await room._creditPlayer('bp_ws_d', { opId: 'arenapot:t9', source: 'arena', kind: 'gold', payload: { amount: 500, house: 200 }, note: 'Gladiator Arena champion' });
+    for (const id of ['bp_ws_a', 'bp_ws_b', 'bp_ws_d']) await state.storage.delete('arena_entry:t9:' + id);
+    check('1. the champion was paid 500: 300 from the entries, 200 the house\'s', D.coins === 125 - 100 + 500, D.coins);
+    note('arena prize');
+  }
+  /* a death outside town: the bag to the pile on the ground (escrow), B takes it (escrow) */
+  {
+    const c = room._wheelT().WHEEL_CENTRE;
+    A.z = 'wheel'; A.x = c[0] + 4000; A.y = c[1] + 4000;
+    NOW += 60000;
+    room._handlePlayerDeath(A, 'bp_ws_a', 'monster');
+    await settle();
+    const pile = (room.loot[A.z] || []).find((p) => p.isDeathDrop && !p.inventoryClaimed);
+    check('1. A died: the bag went to a pile on the ground', !!pile && (pile.deathItems || []).length > 0, pile && pile.deathItems);
+    note('death');
+    NOW += (room.DEATH_OWNER_ONLY_MS || 60000) + 1000;
+    B.z = A.z; B.x = pile.x; B.y = pile.y; B.dead = false; B.dying = false; B.hp = 100;
+    const sessB = [...room.sessions.values()].find((x) => x.id === 'bp_ws_b');
+    room._handleLootPickup(sessB, { lootId: pile.lootId, zone: pile.zone });
+    await settle();
+    check('1. B took the pile whole', pile.inventoryClaimed === true, pile.inventoryClaimed);
+    note('pickup');
+  }
+  /* saves and a leave: what is written must say what memory said */
+  {
+    for (const id of ['bp_ws_a', 'bp_ws_b', 'bp_ws_d']) room._saveRpg(id, room.playerState[id]);
+    await settle();
+    note('saves');
+    room.sessions.delete(ws.b);
+    delete room.playerState.bp_ws_b;
+    note('B away (counted from the record on file)');
+  }
+  if (process.env.WORLD_SUM_PLANT === '1') { room._goldGive(A, 50, 'bank_withdraw'); note('PLANTED: a vault paid out twice'); }
+  const end = count(room, state);
+  const u = unexplained(start, end);
+  const bad = steps.filter(([, g, s]) => g !== 0 || s !== 0);
+  check('1. after every step, unexplained gold 0 and every bag key 0', bad.length === 0, bad);
+  check(`1. at the end: unexplained gold ${u.gold}`, u.gold === 0, u);
+  check('1. ...and no bag key unexplained', Object.keys(u.goods).length === 0, u.goods);
+  check('1. no piece of gear or pet is held twice', end.dup.length === 0, end.dup);
+  check('1. every record is marked and every marked value record has a reader, at the end too', end.unmarked.length === 0 && end.noReader.length === 0, { unmarked: end.unmarked, noReader: end.noReader });
+  check('1. value moved: gold was minted and burned (the scenario is not empty)', end.net.gold !== start.net.gold, end.net);
+}
+
+/* ══════════════════════════ 2. PLANTED DOUBLE PAYS ══════════════════════════ */
+for (const [what, plant, wantGold, wantGoods] of [
+  ['a vault paid out with no vault behind it (bank_withdraw, an escrow road)', ({ room, A }) => room._goldGive(A, 50, 'bank_withdraw'), 50, null],
+  ['a pile\'s goods given with no pile (loot_death_items, an escrow road)', ({ B }) => bagGive(B.inventory, 'ore_copper', 3, 'loot_death_items'), 0, { ore_copper: 3 }],
+  ['a duel\'s pot paid twice by the mail (duelpot, an escrow by its word)', async ({ room }) => {
+    await room._creditPlayer('bp_ws_b', { opId: 'duelpot:twice', source: 'duel', kind: 'gold', payload: { amount: 100 }, note: 'x' });
+  }, 100, null],
+  ['a trade\'s gold taken with no other side (trade_window, a move road)', ({ room, A }) => room._goldTake(A, 40, 'trade_window'), -40, null],
+]) {
+  const w = await world();
+  const s0 = count(w.room, w.state);
+  await plant(w);
+  await settle();
+  const u = unexplained(s0, count(w.room, w.state));
+  const goodsOk = wantGoods ? JSON.stringify(Object.fromEntries(Object.entries(u.goods))) === JSON.stringify(wantGoods) : Object.keys(u.goods).length === 0;
+  check('2. PLANTED, and seen: ' + what + ` -> unexplained gold ${u.gold}` + (wantGoods ? ', goods ' + JSON.stringify(u.goods) : ''), u.gold === wantGold && goodsOk, u);
+}
+{
+  /* the same roads, honestly run, are not seen */
+  const w = await world();
+  const s0 = count(w.room, w.state);
+  w.room._goldGive(w.A, 25, 'quest_reward');                    /* a mint: counted */
+  bagGive(w.B.inventory, 'ore_copper', 2, 'harvest');           /* a mint: counted */
+  const u = unexplained(s0, count(w.room, w.state));
+  check('2. ...while an honest mint of gold and of goods is explained (0)', u.gold === 0 && Object.keys(u.goods).length === 0, u);
+}
+
+/* ══════════════════════════ 3. VALUE THE MARKS DO NOT COUNT ══════════════════════════ */
+{
+  const w = await world();
+  w.state._store.set('vault2:bp_ws_a', { gold: 10 });
+  const c = count(w.room, w.state);
+  check('3. a stored record with no marks is seen (it holds what nobody counts)', c.unmarked.includes('vault2:bp_ws_a'), c.unmarked);
+  const fewer = { ...READERS };
+  delete fewer['bounty:'];
+  const c2 = count(w.room, makeState(), fewer);
+  check('3. a marked value record with no reader is seen (bounty: without its reader)', c2.noReader.join() === 'bounty:', c2.noReader);
+  check('3. every marked value prefix has its reader today, and no reader is for a prefix not marked as value',
+    Object.entries(STORAGE_MARKS).filter(([, m]) => m.value !== 'none').every(([p]) => READERS[p]) && Object.keys(READERS).every((p) => STORAGE_MARKS[p] && STORAGE_MARKS[p].value !== 'none'));
+}
+
+/* ══════════════════════════ 4. THE THREE LINES OUTSIDE ══════════════════════════ */
+{
+  /* the join brings _econ back before any door runs */
+  const w = await world();
+  const stored = w.state._store.get('rpg:bp_ws_a');
+  check('4. the join brought A\'s _econ back (it was on file; the start\'s join counted nothing over it)', !!w.A._econ && w.A._econ.g.m === stored._econ.g.m, { live: w.A._econ, stored: stored._econ });
+  /* a red skull killed by a monster burns its purse; by a player it moves */
+  const { NML } = await import('../src/nomansland.js').catch(() => ({}));
+  const ps = w.A;
+  ps._nml = { red: 60000, white: 0 };
+  const c = w.room._wheelT().WHEEL_CENTRE;
+  ps.z = 'wheel'; ps.x = c[0] + 4000; ps.y = c[1] + 4000;
+  const s0 = count(w.room, w.state);
+  const before = ps.coins;
+  if (typeof w.room._nmlOnDeath === 'function') w.room._nmlOnDeath(ps, 'bp_ws_a', 'monster');
+  const u = unexplained(s0, count(w.room, w.state));
+  check(`4. a red skull killed by a monster: the purse (${before}) burned through nml_lost, nothing unexplained`, ps.coins === 0 && u.gold === 0 && w.A._econ.g.b >= before, { coins: ps.coins, u, econ: w.A._econ && w.A._econ.g, NML: !!NML });
+  /* the champion's prize carries the house's part */
+  const { GOLD_ROADS } = await import('../src/gold.js');
+  check('4. nml_lost is its own burn road', GOLD_ROADS.nml_lost && GOLD_ROADS.nml_lost.class === 'burn' && GOLD_ROADS.nml_loss.class === 'move');
+  const src = (await import('node:fs')).readFileSync(new URL('../src/gladiator.js', import.meta.url), 'utf8');
+  check('4. the champion\'s prize says the house\'s part (payload.house)', /opId: 'arenapot:' \+ tid[^\n]*payload: \{ amount: prize, house: /.test(src));
+}
+
+Math.random = realRandom;
+console.log(`\n${passes} passed, ${failures} failed`);
+if (failures) process.exit(1);
+console.log('all world-sum checks passed');
+process.exit(0);

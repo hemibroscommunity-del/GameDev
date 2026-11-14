@@ -34,6 +34,37 @@ state: working
   file. A session does not fix what is outside its card.
 - **Needs**: what it waits for, from the owner or from another card.
 
+## Who answers a session's questions (tag 5057)
+
+A session asks its questions under Needs, once. Two kinds are answered by
+**the planning session** (the one that starts the gatekeeper's sittings and
+merges their lists), for the owner, by the owner's standing answers of
+2026-11-14:
+
+1. **A file outside the card.** Asked *"May the planning session approve,
+   on your behalf, a session working in a file outside its card when the
+   card's own job needs it? Everything still goes through the gatekeeper
+   first"*, the owner said *"Go recommended"* (yes).
+2. **A technical question.** Asked *"May the planning session answer the
+   sessions' technical questions for you? That means how to build what is
+   already on their card or in the plan. It never covers anything you'd
+   see on screen, anything about money or costs, or the deploy settings"*,
+   the owner said *"Yes"*.
+
+The limits, for both:
+
+- The answer comes by message, naming what it allows (the file and its
+  lines, or the reading chosen); the session names it in its PR's words,
+  and the gatekeeper reads it there.
+- It never covers a file another running session holds (part 11's "never
+  side by side"), nor anything CLAUDE.md keeps for the owner's own words:
+  `.github/`, `server/wrangler.toml`, a deploy, the `provenance` branch.
+- The owner still answers, in their own words: what a player sees or hears
+  (TRAPS §305: nothing dormant turned on), money and the game's costs (a
+  fee, a price, a pace that writes more), and a new card's scope.
+- A fault found outside the card is still Found, not fixed: the answer is
+  for what the card's job needs, not for tidying.
+
 ## How the gatekeeper finds a session
 
 The start-up brief lists the `claude/*` branches pushed in the last 72

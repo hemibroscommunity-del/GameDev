@@ -245,9 +245,13 @@ way: build the table from what exists, add the test, move no behaviour.
   *Merged: #1703 and #1706 (card A), the phone's side (`src/debug/report.js`)
   and the worker's (`server/src/report.js`). Ticked by the gatekeeper,
   sitting 6 (v2.3.5362).*
-- [ ] **1.2 [NOW] The Speed test sends its card**, with a model name the
+- [x] **1.2 [NOW] The Speed test sends its card**, with a model name the
   player picks from a list (a page cannot read it). Until 1.3's reader, the
   Test panel has "copy table" and the owner pastes it.
+  *Merged: #1711 (card A), the card into the day's book's `speed` part
+  (`caps.report` 2, the flag `reportspeed`), `SPEED_MODELS`, GET
+  /dev/daybook and "Copy table". Ticked by the gatekeeper, sitting 8
+  (v2.3.5364).*
 - [ ] **1.3 [NEXT] The reader and the device table.** A session cannot reach
   the live game, so the table needs a road into the repo: a workflow, in the
   owner's own words (call 6). Each cell prints how many reports it holds and
@@ -258,8 +262,11 @@ way: build the table from what exists, add the test, move no behaviour.
 - [ ] **1.5 [NEXT] Two slow profiles** from switches that exist ("a budget
   Android", "an old laptop on a hotel's line"); the `light` lane's sweeps
   run under them.
-- [ ] **1.6 [NOW] The room's own row**, in the day's book (10.4): the tick's
+- [x] **1.6 [NOW] The room's own row**, in the day's book (10.4): the tick's
   95th, rows written, saves refused, joins by protocol version, restarts.
+  *Merged: #1708 (card A), `server/src/roomrow.js` into the `room` part
+  (the flag `roomrow`); `restarts` is held in memory until the book's next
+  write (review-z7). Ticked by the gatekeeper, sitting 8 (v2.3.5364).*
 - [ ] **1.7 [NEXT] A self-test at the door.** The report cannot see a body
   that vanishes at perfect frame times. Each of the game's own drawing
   programs draws a known picture behind the loading screen and compares it
@@ -316,6 +323,10 @@ outside the profile.
   (`bodyBake.js`), so a phone back from its lock screen may bake on the
   page for the rest of the sitting. Watch clocks count visible time; one
   restart; `mp-bodyworker` survives a frozen page.
+  *Card H's part merged: #1668 to #1747 (ten PRs; the bake worker's restart
+  in #1668 and #1747). Open: `pack-page`, the one row left `ours`
+  (`tools/qa/mp/held-budget.mjs`), is card P's (the gatekeeper, sitting 8,
+  v2.3.5364).*
 - [ ] **3.2 [LATER] One queue for work that is not this frame's**, with
   priorities. It takes nothing while the frames are late or the pacer is
   trying a step up. Work put off (after a fight, at a veil) joins it one a
@@ -558,6 +569,10 @@ the memory a family holds as the game draws it.
 - [ ] **9.5 [LATER] The backlog, a family a PR**, the most MB held first.
   Sound is folded to one channel as it is decoded, not encoded a second
   time. The 19 `.m4a` files nothing plays are checked and removed.
+  *Begun (card P): #1719 (the 19 `.m4a` removed), #1736 (`npc-heads`),
+  #1743 (`fx-coinflip`), #1745 (`tree-tiers` as numbers); `artCache`'s
+  line 112 -> 101.4. The step is open (the gatekeeper, sitting 8,
+  v2.3.5364).*
 - [ ] **9.6 [LATER] An address that changes with the content**, by a
   `?h=` lookup (the client builds a hundred sprite addresses as it runs;
   renaming files would break them). A wrong hash on art that loads in play

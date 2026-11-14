@@ -445,10 +445,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
      it (wheelHere) still name the stage. */
   /* v2.3.3108: the plate's line is the level band alone (the stage's name did
      not fit) -- in No man's land too, which has its own badge (v2.3.3107) */
-  const FROST_SUB = /^Lv 6–10$/;
-  for (let i = 0; i < 10; i++) { fb = await bar(P); if (barHolds(fb, 'Frost Ridge', FROST_SUB)) break; await P.page.waitForTimeout(300); }
-  rec.ok(`walking out onto Frost Ridge, the name plate says so: the land and the levels there ("${fb && fb.place && fb.place.text}" over "${fb && fb.sub && fb.sub.text}", whole)`,
-    fw.words && fw.words.title === 'Frost Ridge' && /the thaw line · Lv 6–10/.test(fw.words.sub) && barHolds(fb, 'Frost Ridge', FROST_SUB), { fb, words: fw.words });
+  /* v2.3.5420 (card J2): since v2.3.4113 (the owner, 2026-11-03: the
+     minimap's plate says where you are and whether you are safe) the
+     plate's second line in No man's land is "No man's land N" in red
+     (src/game/plateSafety.js), N the monster level there under a worker
+     that says caps.nmlsteps (v2.3.3767): the band it replaces is not lost.
+     The test reads the game's own number (__btNmlBadge, nmlHere) and holds
+     it inside the land's band the words name; outside No man's land, the
+     band alone, as before.  Red on main since v2.3.4113: the TEST's
+     (docs/plan/census/red.md row 5). */
+  const FROST_BAND = /^Lv 6–10$/;
+  const nmlNow = () => P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    const b = typeof window.__btNmlBadge === 'function' ? window.__btNmlBadge() : null;
+    return { lvl: b ? b.lvl : 0, steps: !!(S && S._serverCaps && S._serverCaps.nmlsteps === true) };
+  });
+  const band = (fw.words && /Lv (\d+)–(\d+)/.exec(fw.words.sub || '')) || null;
+  let nml = null;
+  const frostSub = (n) => (n && n.lvl > 0) ? new RegExp(`^No man's land ${n.lvl}$`) : FROST_BAND;
+  const nmlFits = (n) => !n || !(n.lvl > 0) || !n.steps || (!!band && n.lvl >= Number(band[1]) && n.lvl <= Number(band[2]));
+  for (let i = 0; i < 10; i++) { nml = await nmlNow(); fb = await bar(P); if (barHolds(fb, 'Frost Ridge', frostSub(nml))) break; await P.page.waitForTimeout(300); }
+  rec.ok(`walking out onto Frost Ridge, the name plate says so: the land and the levels there ("${fb && fb.place && fb.place.text}" over "${fb && fb.sub && fb.sub.text}", whole; No man's land ${nml ? nml.lvl : '?'}${nml && nml.steps ? ', the monster level' : ''})`,
+    fw.words && fw.words.title === 'Frost Ridge' && /the thaw line · Lv 6–10/.test(fw.words.sub) && barHolds(fb, 'Frost Ridge', frostSub(nml)) && nmlFits(nml), { fb, words: fw.words, nml });
   await shot(P, '04-frost');
   /* v2.3.3024, owner: "There might need to be flat colors on the minimap to
      help orient you to what elemental zone you're in" and "elemental zones
