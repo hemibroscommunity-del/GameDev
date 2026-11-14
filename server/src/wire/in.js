@@ -1,6 +1,6 @@
 /* THE WIRE TABLE: the router's cases (server/src/index.js _onMessage's switch), phone to worker, in the router's order -- v2.3.5061 (grand plan step 4.1, step 1; card N).
  *
- * 139 rows, made from card C's census (docs/plan/census/wire.md), its prose
+ * 140 rows (v2.3.5062: card A's `report` joined the census's 139), made from card C's census (docs/plan/census/wire.md), its prose
  * turned into docs/SHAPES.md part 5's closed values.  How each column reads:
  * README.md beside this file; the closed lists: columns.js.  A row says what
  * the code does today.  A leaf (no imports, plain data); nothing in the
@@ -50,6 +50,21 @@ export const WIRE_IN = [
          'vx, vy: bounded claim when pd is 1 (cut to the walk\'s bound and MOVE_PATH.HORIZON_MS), else look',
          'ex: bounded claim for \'cook\' and \'fire\' (judge _extractionShielded), else look',
          'd, f: look (the facing the others draw) and claim (the front arc of a raised guard that carries no ba)'] },
+  { name: 'report', dir: 'in', at: 'report.js _reportTake', wayIn: 'socket', envelope: 'frame',
+    phase: ['session:joined'], mayStart: 'person', doesWhat: ['own'], reqId: 'none',
+    trust: { v: 'request', devClass: 'bounded:classOfReport', drawLane: 'bounded:DRAW_LANES',
+         build: 'bounded:reportSums', secs: 'bounded:reportSums', seen: 'bounded:reportSums',
+         sw: 'bounded:reportSums', drawn: 'bounded:reportSums', gaps: 'bounded:reportSums',
+         late: 'bounded:reportSums', split: 'bounded:reportSums', where: 'bounded:reportSums',
+         near: 'bounded:reportSums', holds: 'bounded:reportSums', mem: 'bounded:reportSums',
+         lost: 'bounded:reportSums', died: 'bounded:reportSums' },
+    absent: 'dropped: no v, devClass, drawLane, build, secs or seen drops the report; default: a missing later part (drawn, gaps, split, where, near, holds, mem, lost, died) is left out of the sums',
+    bad: ['dropped:shape'], answer: 'none',
+    note: ['v2.3.5062: card A\'s #1706 (step 1.1), added when it reached main',
+         'mayStart: the phone sends it by itself, a minute after its join and every five minutes after (src/debug/report.js)',
+         'doesWhat: its sums go into the day\'s book (daybook.js bookAdd, the dev part) and lose who sent them; nothing of the player\'s changes',
+         'reqId: one report a socket each REPORT.PACE_MS; one sooner is dropped, and a socket reaches at most REPORT.CELLS_A_SOCKET cells',
+         'build: the worker\'s call off the game\'s own site (session.site): every other page counts as preview'] },
   { name: 'pong', dir: 'in', at: 'index.js _onMessage', wayIn: 'socket', envelope: 'frame',
     phase: ['none checked'], mayStart: 'never-helper', doesWhat: ['own'], reqId: 'none',
     trust: { ts: 'request', hd: 'bounded:LAGCOMP_RTT_CAP' },

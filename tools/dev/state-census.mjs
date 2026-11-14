@@ -5,6 +5,9 @@
  *   node tools/dev/state-census.mjs --write    write the page
  *   node tools/dev/state-census.mjs --check    exit 1 if the page on disk is not what this prints
  *   node tools/dev/state-census.mjs --json     the rows as JSON (for card U's ledger files)
+ *   node tools/dev/state-census.mjs --ledger [system] [--write]
+ *                                              card U's ledger files (src/state/), made from these
+ *                                              rows (v2.3.5160; its section is near the end)
  *   node tools/dev/state-census.mjs --dossier [folder]
  *                                              one line a row with its writers by function: what a
  *                                              reader needs to fill the hand-made column
@@ -45,7 +48,7 @@
  */
 import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, dirname, relative, resolve as pathResolve, sep } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 
 const ROOT = pathResolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -2283,10 +2286,185 @@ function dossier(filter) {
   return L.join('\n') + '\n';
 }
 
+/* ═══ v2.3.5160: THE LEDGER'S ROWS (--ledger; card U, step 5.3's step 1) ═══
+ *
+ *   node tools/dev/state-census.mjs --ledger                  the rows by system: listed and not
+ *   node tools/dev/state-census.mjs --ledger <system>         print src/state/<system>.js as made now
+ *   node tools/dev/state-census.mjs --ledger <system> --write write it
+ *
+ * The ledger (src/state/README.md) is one file a system of card B's map
+ * (tools/guards/lib/systems.mjs), one row a line, and its rows are made HERE,
+ * never typed: this script stays the one reader of the code (the plan's rule
+ * 2).  A row's system is the map's system of a file: a variable's own file, a
+ * field's provisional system above (the file that sets it most).
+ *
+ * Every column is this script's but `lifetime` ("sitting" for every row until
+ * someone says otherwise: card L's step 2) and any column a later card adds by
+ * hand beside it.  Made again, a ledger file:
+ *   - keeps each of its rows the script still finds, with its hand-made
+ *     columns as they are and the rest made afresh; a row whose system has
+ *     moved since stays where it is (the guard names it);
+ *   - drops a row the script no longer finds, and names it;
+ *   - adds every row of its system that no ledger file lists, `sitting`.
+ * It writes only src/state/<system>.js: the page is `--write`'s alone.
+ */
+const LEDGER_DIR = join(ROOT, 'src', 'state');
+/* the columns this script makes; any other column of a row is hand-made and kept */
+const LEDGER_MADE = new Set(['field', 'variable', 'file', 'system', 'suggested', 'born', 'twoFiles', 'noRead', 'noSet', 'phase', 'flag', 'neverChanged', 'writers']);
+const ledgerKey = (row) => (row.field !== undefined ? 'S ' + row.field : row.file + ' ' + row.variable);
+
+/* a value as a JS literal on one line: single quotes, bare keys (plain data) */
+function lit(v) {
+  if (v === null || typeof v === 'boolean' || typeof v === 'number') return String(v);
+  if (typeof v === 'string') return "'" + v.replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'";
+  if (Array.isArray(v)) return '[' + v.map(lit).join(', ') + ']';
+  return '{ ' + Object.entries(v).map(([k, x]) => (/^[A-Za-z_$][\w$]*$/.test(k) ? k : lit(k)) + ': ' + lit(x)).join(', ') + ' }';
+}
+
+/* every row the script finds, made as a ledger row: Map(key -> { system, made }) */
+function ledgerFound(systemOf) {
+  const out = new Map();
+  for (const r of fieldRows) {
+    let born = 'never';
+    if (r.born.how === 'first') born = 'first ' + r.born.file;
+    else if (r.born.how === 'fly') {
+      const at = r.sets.find((s) => s.file === r.born.file && s.line === r.born.line);
+      born = 'fly ' + r.born.file + (at && at.where ? ' ' + at.where : '');
+    }
+    const made = {
+      field: r.name, system: systemOf(r.system), suggested: r.reset, born,
+      twoFiles: r.marks.includes('2+') ? '2+' : r.marks.includes('2+~') ? '2+~' : '',
+      noRead: r.marks.includes('no-read (tests)') ? 'tests' : r.marks.includes('no-read'),
+      noSet: r.marks.includes('no-set'), phase: r.phase ? r.states : null, flag: r.flag,
+      writers: r.writers.map(([f]) => f + (r.viaOnly.includes(f) ? '~' : '')).sort(),
+    };
+    out.set(ledgerKey(made), { system: made.system, made });
+  }
+  for (const v of varRows) {
+    const made = {
+      variable: v.name, file: v.file, system: systemOf(v.file), suggested: v.reset, born: v.decl + ' ' + v.init,
+      twoFiles: v.marks.includes('2+') ? '2+' : '', noRead: v.marks.includes('no-read'), phase: v.phase ? v.states : null,
+      flag: v.flag, neverChanged: !v.changed,
+      writers: v.writers.map(([f]) => f).sort(),
+    };
+    out.set(ledgerKey(made), { system: made.system, made });
+  }
+  return out;
+}
+
+/* the ledger files on disk: Map(system -> rows) */
+async function ledgerFiles() {
+  const out = new Map();
+  if (!existsSync(LEDGER_DIR)) return out;
+  for (const name of readdirSync(LEDGER_DIR).sort()) {
+    if (!name.endsWith('.js')) continue;
+    const mod = await import(pathToFileURL(join(LEDGER_DIR, name)).href);
+    out.set(name.replace(/\.js$/, ''), mod.ROWS || []);
+  }
+  return out;
+}
+
+/* a row in the column order the README gives: who, its system, its lifetime
+   and any hand-made column, D's suggestion, then the rest of the machine's */
+function ledgerLine(made, kept) {
+  const row = {};
+  if (made.field !== undefined) row.field = made.field; else { row.variable = made.variable; row.file = made.file; }
+  row.system = made.system;
+  row.lifetime = kept && kept.lifetime !== undefined ? kept.lifetime : 'sitting';
+  for (const [k, x] of Object.entries(kept || {})) if (!LEDGER_MADE.has(k) && k !== 'lifetime') row[k] = x;
+  for (const k of ['suggested', 'born', 'twoFiles', 'noRead', 'noSet', 'phase', 'flag', 'neverChanged', 'writers']) if (made[k] !== undefined) row[k] = made[k];
+  return '  ' + lit(row) + ',';
+}
+
+function ledgerText(system, rows) {
+  const L = [];
+  L.push('/* ═══ v2.3.5160: THE STATE LEDGER, system `' + system + '` (grand plan step 5.3; card U) ═══');
+  L.push(' *');
+  L.push(' * Every field of the state `S` and every top-of-file variable of the system');
+  L.push(' * `' + system + '` (card B\'s map, docs/SYSTEMS.md), one row a line.  The columns');
+  L.push(' * are in src/state/README.md.');
+  L.push(' *');
+  L.push(' * MADE BY MACHINE: node tools/dev/state-census.mjs --ledger ' + system + ' --write');
+  L.push(' * Never type a row.  By hand: `lifetime` alone ("sitting": the sitting, never');
+  L.push(' * reset, until someone says otherwise; card L).  tools/guards/state-ledger.test.mjs');
+  L.push(' * holds it.  No imports, plain data: nothing in the game imports it yet.');
+  L.push(' */');
+  L.push('export const SYSTEM = ' + lit(system) + ';');
+  L.push('export const ROWS = [');
+  for (const x of rows) L.push(x);
+  L.push('];');
+  return L.join('\n') + '\n';
+}
+
+async function ledgerMain() {
+  const { placeFiles, systemOf: mapSystemOf, SYSTEMS } = await import(pathToFileURL(join(ROOT, 'tools', 'guards', 'lib', 'systems.mjs')).href);
+  const placed = placeFiles();
+  const systemOf = (file) => mapSystemOf(file, placed) || 'unsorted';
+  const found = ledgerFound(systemOf);
+  const files = await ledgerFiles();
+  const listedIn = new Map();   /* key -> [systems whose file lists it] */
+  for (const [sys, rows] of files) for (const row of rows) {
+    const k = ledgerKey(row);
+    if (!listedIn.has(k)) listedIn.set(k, []);
+    listedIn.get(k).push(sys);
+  }
+  const i = process.argv.indexOf('--ledger');
+  const want = process.argv[i + 1] && !process.argv[i + 1].startsWith('--') ? process.argv[i + 1] : '';
+
+  if (!want) {
+    /* the rows by system, fewest first: what a ledger PR picks from */
+    const by = new Map();
+    for (const [k, { system }] of found) {
+      if (!by.has(system)) by.set(system, { rows: 0, listed: 0 });
+      by.get(system).rows++;
+      if (listedIn.has(k)) by.get(system).listed++;
+    }
+    const L = ['system\trows\tlisted\tunlisted\tledger file'];
+    for (const [s, n] of [...by].sort((a, b) => a[1].rows - b[1].rows || cmp(a[0], b[0]))) {
+      L.push(s + '\t' + n.rows + '\t' + n.listed + '\t' + (n.rows - n.listed) + '\t' + (files.has(s) ? 'src/state/' + s + '.js' : '-'));
+    }
+    const unlisted = [...found.keys()].filter((k) => !listedIn.has(k)).length;
+    const gone = [...listedIn.keys()].filter((k) => !found.has(k));
+    L.push('');
+    L.push('rows ' + found.size + ', listed ' + (found.size - unlisted) + ', unlisted ' + unlisted + (gone.length ? ', listed but not found ' + gone.length + ': ' + gone.join('; ') : ''));
+    process.stdout.write(L.join('\n') + '\n');
+    return;
+  }
+  if (want === 'unsorted' || !Object.hasOwn(SYSTEMS, want)) {
+    console.error('state-census --ledger: "' + want + '" is not a system of card B\'s map (have: ' + Object.keys(SYSTEMS).join(', ') + ')');
+    process.exit(2);
+  }
+  const mine = files.get(want) || [];
+  const kept = new Map(mine.map((row) => [ledgerKey(row), row]));
+  const lines = [];
+  const dropped = [];
+  for (const [k, row] of kept) {
+    if (found.has(k)) lines.push({ k, made: found.get(k).made, row });
+    else dropped.push(k);
+  }
+  for (const [k, { system, made }] of found) {
+    if (system === want && !kept.has(k) && !listedIn.has(k)) lines.push({ k, made, row: null });
+  }
+  /* fields by name, then variables by file and name */
+  lines.sort((a, b) => (a.made.field !== undefined) !== (b.made.field !== undefined) ? (a.made.field !== undefined ? -1 : 1)
+    : cmp(a.made.field !== undefined ? a.made.field : a.made.file + ' ' + a.made.variable, b.made.field !== undefined ? b.made.field : b.made.file + ' ' + b.made.variable));
+  const text = ledgerText(want, lines.map((x) => ledgerLine(x.made, x.row)));
+  if (ARGS.has('--write')) {
+    const out = join(LEDGER_DIR, want + '.js');
+    writeFileSync(out, text);
+    console.log('state-census: wrote ' + rel(out) + ' (' + lines.length + ' rows' + (dropped.length ? '; dropped, no longer found: ' + dropped.join('; ') : '') + ').');
+  } else {
+    process.stdout.write(text);
+    if (dropped.length) console.error('state-census: dropped, no longer found: ' + dropped.join('; '));
+  }
+}
+
 export const census = { FILES, FIELDS, VARS, DYNAMIC, ESCAPES, WHOLE, REFUTED, REGIONS, fieldRows, varRows, rounds, solves };
 
 if (process.argv[1] && pathResolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  if (ARGS.has('--json')) {
+  if (ARGS.has('--ledger')) {
+    await ledgerMain();
+  } else if (ARGS.has('--json')) {
     const slim = (sites) => sites.map((s) => short(s.file) + ':' + s.line + ' ' + s.where);
     process.stdout.write(JSON.stringify({
       fields: fieldRows.map((r) => ({
