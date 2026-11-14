@@ -197,7 +197,36 @@ families guards green; `artCache` 101.4 -> 98.3 is the 3.1 MB measured.
 
 ## Card P #1757 and card A #1760 (the pair)
 
-FINDER_PAIR
+#1757 adds one `noteMade('pack-page', ...)` in `gearSheets.js` `_gearPack`
+(~347), a note a slice of 6 ms or more, timed by `performance.now()` at
+both ends: nothing a frame, no layout read. `'pack-page'` is on
+`HOLD_NAMES` (exact), and `hold-names.test` is green on the pair. #1760
+fails a known hold of 12 ms or more at a station that left no note of its
+name; the notes are read from `__btNotes` (no cap), matched exactly, and a
+failed read counts as no notes, so it fails safe. #1760 needs #1757 (on
+`main` nothing writes `pack-page`): they merge in that order. #1760's net
+files are `mp-heldsweep.mjs` and A's status.
+
+- **VERIFIED by reading, medium-low, not a hold: the combat strips' pack
+  leaves no note.** `pack-page`'s pattern (`packTrimmed\w*|trimScanCell|
+  numbersOf\w*|sliceCropped`) also takes `effectsRenderer.js` ~15201,
+  `_gearStripFrame`'s `_img.then(... packTrimmed(img, w, H, n))`: an
+  armoured player's swing and bow strips, packed in one go in an unnamed
+  callback. #1760 passes at `peer` because one walking-sheet note covers
+  the family there; a run with none fails it, and the field report cannot
+  name the combat strips' pack. `_gearPack`'s flat path
+  (`?gearpackgentle=0`) writes no note either. Card P's, its next PR.
+- **Low:** `noteGaps` reads `known[h.key]` as it is, where `judgeHeld`
+  first maps `other` and `ui:X`: those families (back on the list, which
+  `holdNames.js` says can happen) would be skipped silently, and they can
+  never leave a note: an exemption in words. `noteGaps` has no node test
+  (`held-sweep.test` 7c holds `judgeHeld` only). A note covers its slice
+  only (the PR's run: 11 ms noted, 24.5 ms held), so the report shows
+  `pack-page` under its line.
+- **Info:** `mp-heldsweep` is red on `main` already: `pack-page` 30.6 ms
+  at `armour` against its 20. A's status still says PR 7 "not opened"
+  (#1760). Card A's PR 7 waits on H and J `done` (both say `ready`); the
+  go-ahead is the planning session's, in A's status and #1757's words.
 
 ## Step 3 only
 
