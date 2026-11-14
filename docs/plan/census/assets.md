@@ -2,7 +2,7 @@
 
 Card P, PR 2 (grand plan step 9.1, part two); `docs/specs/asset-door.md`
 part 2 says how it is read. Written by `node tools/assets/fightmb.mjs <runs> --write`,
-never by hand, from 3 runs of `QA_MB_ROWS=1 node tools/qa/mp/run.mjs membudget` at `b930a8e29`.
+never by hand, from 3 runs of `QA_MB_ROWS=1 node tools/qa/mp/run.mjs membudget` at `8f3596990`.
 
 **MB at the fight** is the most a family held at any one fight stop of any
 run: on the graphics chip, the picture the page keeps, the colour numbers the
@@ -11,8 +11,11 @@ the rows of the palette atlas its pictures took there. **Over bar** counts its
 files the game's reader (`png8Decode.js`) does not read. **Waits on H**: its
 loader is one of the files card P leaves alone while card H runs.
 **Backlog**: whether a backlog PR may take it: never a data family (the door
-never rewrites data: the look sheets are colour NUMBERS), a made family only
-by changing its own tool, and a family waiting on card H only after H.
+never rewrites data: the look sheets are colour NUMBERS), never a sound (the
+door re-encodes no sound: every sound at 24 kHz is the owner's call), a made
+family only by changing its own tool, and a family waiting on card H only
+after H. A backlog PR may change a loader rather than a file: a family already
+on 256 colours that is held at four bytes a pixel is put in its slot's form.
 
 This is the backlog's order (card P, PR 6 on), most MB held first. The backlog
 stops at the first family under 1 MB (the line below the table's marker).
@@ -20,27 +23,27 @@ stops at the first family under 1 MB (the line below the table's marker).
 | family | kind | draw | files | MB on disk | MB at the fight | chip | page | numbers | sound | atlas | over bar | backlog | waits on H |
 |---|---|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|---|---|
 | `monster-fire-goblin` | made | strip | 14 | 1.32 | **8.11** | 2.57 | 0.00 | 5.54 | 0.00 | 14 |  | after H | zoneTextures.js, stripRead.js |
-| `sfx-supplied` | supplied | sfx | 26 | 1.20 | **5.93** | 0.00 | 0.00 | 0.00 | 5.93 |  |  | after H | soundFold.js (the fold) |
+| `sfx-supplied` | supplied | sfx | 26 | 1.20 | **5.93** | 0.00 | 0.00 | 0.00 | 5.93 |  |  | no: sound | soundFold.js (the fold) |
 | `tree-tiers` | made | file | 5 | 0.31 | **5.57** | 0.00 | 5.57 | 0.00 | 0.00 |  |  | yes, by its tool |  |
 | `gear-walk-twins` | made | file | 69 | 1.76 | **4.99** | 4.99 | 0.00 | 0.00 | 0.00 |  | 69 | after H | gearSheets.js |
 | `monster-slime` | made | file | 6 | 0.06 | **4.56** | 0.00 | 4.56 | 0.00 | 0.00 |  |  | yes, by its tool |  |
 | `look-standin` | data | look | 21 | 1.06 | **4.31** | 4.31 | 0.00 | 0.00 | 0.00 |  |  | no: data |  |
 | `look-gear` | data | look | 42 | 1.53 | **4.29** | 4.29 | 0.00 | 0.00 | 0.00 |  |  | no: data |  |
-| `sfx-m4a-twins` | made | sfx | 19 | 0.19 | **3.71** | 0.00 | 0.00 | 0.00 | 3.71 |  |  | after H | soundFold.js (the fold) |
+| `sfx-m4a-twins` | made | sfx | 19 | 0.19 | **3.71** | 0.00 | 0.00 | 0.00 | 3.71 |  |  | no: sound | soundFold.js (the fold) |
 | `look-gearwalk` | data | look | 44 | 1.12 | **3.65** | 3.65 | 0.00 | 0.00 | 0.00 |  |  | no: data |  |
 | `fx-made` | made | file | 7 | 0.73 | **3.10** | 0.00 | 3.10 | 0.00 | 0.00 |  | 7 | yes, by its tool |  |
 | `npc-heads` | made | dom | 21 | 0.01 | **2.96** | 0.00 | 2.96 | 0.00 | 0.00 |  | 21 | yes, by its tool |  |
-| `sfx-footsteps` | supplied | sfx | 10 | 0.17 | **2.46** | 0.00 | 0.00 | 0.00 | 2.46 |  |  | after H | soundFold.js (the fold) |
-| `sfx-owner-cuts` | made | sfx | 36 | 0.38 | **2.22** | 0.00 | 0.00 | 0.00 | 2.22 |  |  | after H | soundFold.js (the fold) |
+| `sfx-footsteps` | supplied | sfx | 10 | 0.17 | **2.46** | 0.00 | 0.00 | 0.00 | 2.46 |  |  | no: sound | soundFold.js (the fold) |
+| `sfx-owner-cuts` | made | sfx | 36 | 0.38 | **2.22** | 0.00 | 0.00 | 0.00 | 2.22 |  |  | no: sound | soundFold.js (the fold) |
 | `icons-elements` | made | file | 18 | 0.12 | **2.16** | 0.02 | 2.14 | 0.00 | 0.00 |  | 18 | after H | entityRenderer.js |
 | `traits-hairmasks` | made | file | 155 | 0.07 | **2.13** | 0.24 | 1.89 | 0.00 | 0.00 |  | 155 | after H | entityRenderer.js |
 | `fx-coinflip` | supplied | dom | 2 | 0.08 | **2.06** | 0.00 | 2.06 | 0.00 | 0.00 |  | 2 | yes |  |
-| `sfx-older` | made | sfx | 6 | 0.18 | **2.03** | 0.00 | 0.00 | 0.00 | 2.03 |  |  | after H | soundFold.js (the fold) |
+| `sfx-older` | made | sfx | 6 | 0.18 | **2.03** | 0.00 | 0.00 | 0.00 | 2.03 |  |  | no: sound | soundFold.js (the fold) |
 | `fx-sheets-supplied` | supplied | file | 6 | 1.16 | **2.00** | 0.00 | 2.00 | 0.00 | 0.00 |  | 6 | yes |  |
 | `look-standinlegs` | data | look | 8 | 0.42 | **2.00** | 2.00 | 0.00 | 0.00 | 0.00 |  |  | no: data |  |
 | `world-objects` | made | wheel | 40 | 5.14 | **1.78** | 0.89 | 0.00 | 0.89 | 0.00 | 1 |  | yes, by its tool |  |
 | `icons-items-world` | made | file | 19 | 0.11 | **1.62** | 0.00 | 1.62 | 0.00 | 0.00 |  | 19 | yes, by its tool |  |
-| `ambient-loops` | made | sfx | 6 | 0.33 | **1.53** | 0.00 | 0.00 | 0.00 | 1.53 |  |  | after H | soundFold.js (the fold) |
+| `ambient-loops` | made | sfx | 6 | 0.33 | **1.53** | 0.00 | 0.00 | 0.00 | 1.53 |  |  | no: sound | soundFold.js (the fold) |
 | `pets` | made | file | 1 | 0.35 | **1.50** | 0.00 | 1.50 | 0.00 | 0.00 |  | 1 | yes, by its tool |  |
 | `world-fish-spot` | made | file | 1 | 0.03 | **1.50** | 0.00 | 1.50 | 0.00 | 0.00 |  | 1 | yes, by its tool |  |
 | `cape-hood` | made | file | 6 | 0.02 | **1.50** | 0.00 | 1.50 | 0.00 | 0.00 |  | 6 | yes, by its tool |  |
@@ -61,7 +64,7 @@ stops at the first family under 1 MB (the line below the table's marker).
 | `monster-stills` | made | file | 5 | 0.03 | **0.50** | 0.00 | 0.50 | 0.00 | 0.00 |  | 1 | after H | zoneTextures.js |
 | `weapons-sword-256` | made | file | 2 | 0.01 | **0.50** | 0.00 | 0.50 | 0.00 | 0.00 |  | 2 | yes, by its tool |  |
 | `icons-hero-crit` | made | file | 1 | 0.04 | **0.25** | 0.00 | 0.25 | 0.00 | 0.00 |  | 1 | yes, by its tool |  |
-| `sfx-hand-cuts` | made | sfx | 5 | 0.10 | **0.19** | 0.00 | 0.00 | 0.00 | 0.19 |  |  | after H | soundFold.js (the fold) |
+| `sfx-hand-cuts` | made | sfx | 5 | 0.10 | **0.19** | 0.00 | 0.00 | 0.00 | 0.19 |  |  | no: sound | soundFold.js (the fold) |
 | `weapons-wood` | made | file | 7 | 0.03 | **0.17** | 0.00 | 0.17 | 0.00 | 0.00 |  | 7 | yes, by its tool |  |
 | `icons-owner-world` | made | file | 6 | 0.02 | **0.17** | 0.00 | 0.17 | 0.00 | 0.00 |  | 6 | after H | entityRenderer.js |
 | `ride` | made | file | 3 | 0.00 | **0.10** | 0.00 | 0.10 | 0.00 | 0.00 |  |  | yes, by its tool |  |
