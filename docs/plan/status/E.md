@@ -5,14 +5,12 @@ state: working
 
 ## Done
 
-- PRs 1 to 4 (5080 to 5083: #1686, #1691, #1694, #1699), merged.
-- PR 5 (5084, #1752), the world's sum: merged (sitting 8).
+- PRs 1 to 5 (5080 to 5084: #1686, #1691, #1694, #1699, #1752), merged.
 - PR 6 (5085, #1756), the book's `econ` part; sitting 8's mend: one
   last-out writer (card A's), the part rides, `econ: false`, one `ECON_V`.
 - New live flags (rule 3, one line each in the switch table): PR 6 `econ`,
   PR 8c `arenasettleplan`, PR 11 `xfer`.
-- PR 7 (5086, #1758), the shared test room and `DISTURBANCES`;
-  `chaos-restart` moved onto it, its output the same.
+- PR 7 (5086, #1758), the shared test room and `DISTURBANCES`.
 - PRs 8a to 8c (5087 to 5089: #1759, #1761, #1764), `KNOWN` empty; 8c
   a settlement plan in one run (`arenasettleplan: false` the old order).
 - PR 10 (5091, #1772), the storm: the sum under every disturbance, a
