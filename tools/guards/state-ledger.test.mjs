@@ -6,10 +6,11 @@
  * made by card D's script (`node tools/dev/state-census.mjs --ledger <system>
  * --write`), never typed.  This guard holds it:
  *
- *   1. every file in src/state/ is the README or a ledger named for a system
- *      of the map; a ledger is plain data (no import, no call, nothing but
- *      `SYSTEM`, `ROWS` and literals), says its own system, and every row
- *      has the README's columns;
+ *   1. every file in src/state/ is the README, the phase table (phases.js,
+ *      v2.3.5202: step 5.3b, held by phase-table.test.mjs) or a ledger named
+ *      for a system of the map; a ledger is plain data (no import, no call,
+ *      nothing but `SYSTEM`, `ROWS` and literals), says its own system, and
+ *      every row has the README's columns;
  *   2. no row is in two ledger files, or twice in one;
  *   3. every row of a ledger is a row the census finds (a field gone from
  *      the code, a variable moved to another file: make the ledger again);
@@ -82,6 +83,7 @@ const LIVE = process.argv.includes('--live');
 const PAGE_ONLY = process.argv.includes('--page');
 const PAGE = 'docs/plan/census/state.md';
 const DIR = 'src/state';
+const NOT_LEDGER = 'phases.js';
 
 let failed = 0;
 const check = (name, ok, detail) => {
@@ -176,11 +178,14 @@ const found = census ? fromScript(census.json) : fromPage();
 const ledgers = new Map();   /* system -> rows */
 {
   const names = existsSync(join(ROOT, DIR)) ? readdirSync(join(ROOT, DIR)).sort() : [];
-  const stray = names.filter((n) => n !== 'README.md' && !(n.endsWith('.js') && Object.hasOwn(SYSTEMS, n.slice(0, -3))));
-  check(`1: every file in ${DIR}/ is the README or a ledger named for a system of the map (${names.length} files)`, stray.length === 0 && names.includes('README.md'), stray.length ? stray : 'no README.md');
+  /* v2.3.5202 (card L PR 2): the phase table, src/state/phases.js, is the
+     one file here that is not a ledger (step 5.3b; its own guard,
+     phase-table.test.mjs) */
+  const stray = names.filter((n) => n !== 'README.md' && n !== NOT_LEDGER && !(n.endsWith('.js') && Object.hasOwn(SYSTEMS, n.slice(0, -3))));
+  check(`1: every file in ${DIR}/ is the README, the phase table or a ledger named for a system of the map (${names.length} files)`, stray.length === 0 && names.includes('README.md'), stray.length ? stray : 'no README.md');
   const bad = [];
   for (const n of names) {
-    if (n === 'README.md' || stray.includes(n)) continue;
+    if (n === 'README.md' || n === NOT_LEDGER || stray.includes(n)) continue;
     const sys = n.slice(0, -3);
     const notData = plainData(readFileSync(join(ROOT, DIR, n), 'utf8'));
     if (notData) { bad.push(`${n}: not plain data (${notData})`); continue; }
