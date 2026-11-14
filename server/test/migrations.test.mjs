@@ -654,6 +654,40 @@ const legacyBlob = () => ({
     check('econ: _econ is not echoed to the phone (the echo\'s list does not carry it)', echoAt > 0 && !/_econ/.test(ps0.slice(echoAt)), echoAt);
   }
 
+  /* JOIN, THEN SAVE (the gatekeeper's hold on PR 4): the join builds the
+     live state field by field and does not copy `_econ`, so a save after a
+     join wrote a blank over the stored counts (500 and 900 became 0) -- and
+     a rollback from a worker that counts to this one would have erased them
+     all.  The join's load hands `_econ` to the next save (persistence.js
+     _econAtJoin / _econAdopt).  BREAK PROOF: the `this._econAdopt(...)`
+     line in _saveRpg deleted -> FAIL here. */
+  {
+    const id = 'bp_econ_join';
+    const counts = { v: 1, g: { m: 500, b: 900 }, i: { ore_copper: { m: 3, b: 1 } } };
+    state._store.set('rpg:' + id, { _v: RPG_SCHEMA_VERSION, coins: 77, inventory: { ore_copper: 2 }, level: 1, _econ: JSON.parse(JSON.stringify(counts)) });
+    const wsJ = fakeWs('econjoin');
+    await join(wsJ, id);
+    const P = room.playerState[id];
+    check('econ: a stored character joins (its purse loaded)', !!P && P.coins === 77, P && P.coins);
+    await room._saveRpg(id, P);
+    const s1 = state._store.get('rpg:' + id);
+    check('econ: join, then save: the stored counts are kept, never a blank written over them (500 and 900 stay)',
+      s1._econ.g.m === 500 && s1._econ.g.b === 900 && s1._econ.i.ore_copper.m === 3 && s1._econ.i.ore_copper.b === 1, s1._econ);
+    await room._saveRpg(id, P);
+    const s2 = state._store.get('rpg:' + id);
+    check('econ: ...and every save after it (the live state carries them now)', s2._econ.g.m === 500 && s2._econ.g.b === 900 && P._econ && P._econ.g.m === 500, s2._econ);
+    P._econ.g.m = 501;
+    await room._saveRpg(id, P);
+    check('econ: the live state\'s own count wins over the join\'s copy (used once, then gone)', state._store.get('rpg:' + id)._econ.g.m === 501 && !(room._econJoined && room._econJoined.has(id)));
+    await room.webSocketClose(wsJ); room.sessions.delete(wsJ);
+    /* a new character: blank */
+    const wsN = fakeWs('econnew');
+    await join(wsN, 'bp_econ_new');
+    await room._saveRpg('bp_econ_new', room.playerState.bp_econ_new);
+    check('econ: a new character joins and saves a blank _econ', JSON.stringify(state._store.get('rpg:bp_econ_new')._econ) === JSON.stringify(econBlank()));
+    await room.webSocketClose(wsN); room.sessions.delete(wsN);
+  }
+
   /* THE FIELD LIST, WHOLE.  Rule 1: never add a field to the rpg blob;
      the two named exceptions are `_v` and `_econ`.  A new key in _saveRpg's
      put fails here: new state gets a record of its own (card Q's sitting

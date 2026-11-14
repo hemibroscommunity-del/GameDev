@@ -31,6 +31,9 @@ import { revealPublic, revealPublicList } from './revealbag.js';   /* v2.3.4012:
    cap is a silent item loss, so the cap lives in exactly one place and
    every writer that could push past it (adoption, and M3's escrow
    return path) checks the same constant. */
+/* v2.3.5083: players whose join's `_econ` waits for their first save (_econAtJoin) */
+const ECON_JOINED_MAX = 4096;
+
 function capStash(v) {
   return Array.isArray(v) ? v.slice(0, gearStashCap()) : [];
 }
@@ -96,6 +99,9 @@ export const persistenceMethods = {
          is what this player's saves stamp until a load gets further, and
          the failure is said in the log. */
       this._rpgSaveVNote(playerId, stored, mig, newer);
+      /* v2.3.5083: the join's load (the one caller with throwOnError) hands
+         the record's `_econ` to this player's next save (_econAdopt below) */
+      if (opts && opts.throwOnError) this._econAtJoin(playerId, stored);
       if (mig && mig.changed) {
         try { await this.state.storage.put('rpg:' + playerId, stored); } catch (e) { /* best-effort */ }
       }
@@ -120,6 +126,33 @@ export const persistenceMethods = {
     } else {
       this._rpgSaveV.delete(playerId);
     }
+  },
+
+  /* ═══ v2.3.5083: THE JOIN'S `_econ` REACHES THE NEXT SAVE ═══
+     `_saveRpg` writes `_econ` from the live state, and the join builds that
+     state field by field (join.js), which does not copy `_econ`.  So a
+     record's counts were written over with a blank by its own worker's first
+     save after the join (the gatekeeper's hold on PR 4: 500 and 900 became
+     0), and a rollback from a worker that counts to this one would have
+     erased every count.  The join's load keeps the stored `_econ` here, by
+     player, and the player's next save adopts it when the live state has
+     none: memory only, one small object a player between a join and its
+     first save, at most ECON_JOINED_MAX (the oldest dropped). */
+  _econAtJoin(playerId, stored) {
+    if (!playerId) return;
+    if (!this._econJoined) this._econJoined = new Map();
+    this._econJoined.delete(playerId);
+    this._econJoined.set(playerId, econClean(stored ? stored._econ : undefined));
+    if (this._econJoined.size > ECON_JOINED_MAX) this._econJoined.delete(this._econJoined.keys().next().value);
+  },
+  /* Called by _saveRpg, synchronously, before its put: the live state's own
+     `_econ` wins (it is newer); the join's copy is used once, then gone. */
+  _econAdopt(playerId, ps) {
+    const m = this._econJoined;
+    if (!m || !m.has(playerId)) return;
+    const loaded = m.get(playerId);
+    m.delete(playerId);
+    if (ps._econ === undefined) ps._econ = loaded;
   },
 
   _rpgSaveVFor(playerId) {
@@ -248,6 +281,7 @@ export const persistenceMethods = {
     ps._regenSaveAt = Date.now();
     ps._regenDirty = false;
     this._pruneBuffs(ps);
+    this._econAdopt(playerId, ps);   /* v2.3.5083: the join's `_econ`, before the put (never a blank over a stored one) */
     /* ═══ v2.3.3488: A ONCE-A-CHARACTER PRIZE'S MARK, WITH ITS POINTS ═══
        inbox.js pays the arena champion's points the first time only, and
        marks it (`ps._apOnceDirty`).  The mark is its own record (rule 1: no
