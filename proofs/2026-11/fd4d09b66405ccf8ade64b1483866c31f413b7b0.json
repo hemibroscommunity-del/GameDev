@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "fd4d09b66405ccf8ade64b1483866c31f413b7b0",
+  "tree": "2fa90a2cb7e40a93c781f27560763e94e24f65cf",
+  "committedAt": "2026-11-13T16:35:54-08:00",
+  "subject": "v2.3.5055: the session cards write their tags bare, and card F has the owner's answers (docs only) (#1664)",
+  "files": 7418,
+  "bytes": 944797256,
+  "listingSha256": "36c9de0873b67e1761dce05c1aac843319a4f0816e78281802486364f22ffdb0",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
