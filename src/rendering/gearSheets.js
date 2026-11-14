@@ -910,7 +910,9 @@ if (typeof window !== 'undefined') {
       const g = gearSheetCanvas(raw, slot);
       const cv = stamp ? dressShirtSheet(g.img, g.fw, g.fh, pose, stamp) : g.img;
       const packed = pack ? packTrimmed(cv, g.fw, g.fh) : null;
-      const pc = packed ? packed.canvas : cv;
+      let pc = packed ? packed.canvas : cv;
+      /* v2.3.5253: a plain sheet left unpacked is the file's own Image: read through a canvas */
+      if (typeof pc.getContext !== 'function') { const c = document.createElement('canvas'); c.width = pc.naturalWidth || pc.width; c.height = pc.naturalHeight || pc.height; c.getContext('2d').drawImage(pc, 0, 0); pc = c; }
       const page = pc.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, pc.width, pc.height).data;
       const pageMs = performance.now() - t0;
       /* the plain sheet's pixels too: a drawing that changed nothing would compare equal and prove nothing */
@@ -918,7 +920,7 @@ if (typeof window !== 'undefined') {
       const plc = document.createElement('canvas'); plc.width = pl.naturalWidth || pl.width; plc.height = pl.naturalHeight || pl.height;
       plc.getContext('2d').drawImage(pl, 0, 0);
       const plain = plc.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, plc.width, plc.height).data;
-      const dressed = cv.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, cv.width, cv.height).data;
+      const dressed = stamp ? cv.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, cv.width, cv.height).data : plain;
       let dressedPx = 0;
       if (plain.length === dressed.length) for (let i = 0; i < plain.length; i += 4) if (plain[i] !== dressed[i] || plain[i + 1] !== dressed[i + 1] || plain[i + 2] !== dressed[i + 2]) dressedPx++;
       const w = await window.__btBodyWorkerBytes(spriteUrls(url), { slot, pose, stamp, pack }, 0, 0, 'shirt');
