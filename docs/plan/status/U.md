@@ -20,14 +20,16 @@ state: working
 
 ## Next
 
-- PR 5 (5164): debug, art, data. Then wire, combat, world; look; render; ui (the systems of
-  BroTown.jsx and the two renderers last, as the card says).
+- PR 5 (5164): debug, art, data. Then wire, combat, world; look; render;
+  ui (the systems of BroTown.jsx and the two renderers last, as the card
+  says).
 
 ## Found
 
 - Nothing runs `state-census --check`, though `tools/guards/lib/fourLines.mjs:45`
-  says it does: `docs/plan/census/state.md` lags main (885 files, not 883;
-  20 variables more, e.g. `debug/report.js`). For a later card.
+  says it does: `docs/plan/census/state.md` drifts from the code between
+  rewrites (at main 75946b7 it lagged by 20 variables, e.g.
+  `debug/report.js`; PR 2 made it again). For a later card.
 
 ## Needs
 
