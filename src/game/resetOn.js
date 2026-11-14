@@ -60,6 +60,9 @@ function resetSwitches(search) {
     movement: q.get('movementreset') !== '0',   /* v2.3.5204 */
     social: q.get('socialreset') !== '0',       /* v2.3.5204 */
     skills: q.get('skillsreset') !== '0',       /* v2.3.5205 */
+    combat: q.get('combatreset') !== '0',       /* v2.3.5206 */
+    wire: q.get('wirereset') !== '0',           /* v2.3.5207 */
+    world: q.get('worldreset') !== '0',         /* v2.3.5208 */
   };
 }
 

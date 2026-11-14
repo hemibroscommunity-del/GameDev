@@ -57,6 +57,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `bigorb` | worker | switch | v2.3.2849 | false | logic |  | no | Un-advertises the staff's big orb: a phone that joins after fires the old three orbs, with no blast. |
 | `?bowfeel` | page | switch | v2.3.4802 | =0 (remembered; =1 forgets) | logic |  | no | The bow's old flick, not its draw, on this device. |
 | `bowvolley` | worker | switch | v2.3.2808 | false | logic |  | no | Un-advertises the bow's volley: a phone that joins after fires the old single arrow and blast. |
+| `?combatreset` | page | switch | v2.3.5206 | =0 | logic |  | no | A fight you picked, a roll or a lunge, the hit marks on the ground, a kill's XP still waiting and another player's damage numbers still queued carry over a change of place again, each ending on its own clock or its own check, not at the zone door. |
 | `disable_threats` | worker | switch | v2.3.1150 | true | logic |  | no | Thrown, every relayed threat handshake is dropped. |
 | `elemup` | worker | switch | v2.3.3518 | false | logic |  | no | Un-advertises the element bonus and takes it away. |
 | `fightlockarmor` | worker | switch | v2.3.4582 | false | logic |  | no | Armour put on or taken off in a fight is no longer refused. |
@@ -449,6 +450,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `relaylist` | worker | switch | v2.3.3304 | false | logic |  | no | Relays every type that is not privileged again (the old deny-list). |
 | `?room` | page | lever | v2.3.217 | a room's name | none |  | no | Joins the named room, not the lobby's. |
 | `?wheelwhole` | page | switch | v2.3.3318 | present | logic |  | no | Asks for every world monster on the way in, not only those near. |
+| `?wirereset` | page | switch | v2.3.5207 | =0 | logic |  | no | The monsters' balls in flight, their warnings on the ground and the impact rings carry over a change of place again, emptied only where a way out did it by hand or by their own clock. |
 
 ## world
 
@@ -505,4 +507,5 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `wheelrest` | worker | switch | v2.3.3299 | false | logic |  | no | Every monster runs every tick again (far monsters do not rest). |
 | `wheelslope` | worker | switch | v2.3.3320 | false | logic |  | no | A Wheel spawned after it is levels 1-2 again. |
 | `wheelstep` | worker | switch | v2.3.4540 | false | logic |  | no | A page that joins the Wheel off its step (a preview) is no longer kept out of harm and dealing nothing. |
+| `?worldreset` | page | switch | v2.3.5208 | =0 | logic |  | no | Your arrows, the hit and death particles and the place's air are emptied only by each way's own clear block again (the respawn's 0.4 s after its flip, under its veil), not at the zone door. |
 | `zonejudge` | worker | switch | v2.3.4565 | false | logic |  | no | The zone judge off (but its rule R3, the retired lands, stays: `retiredlands`). |

@@ -1,31 +1,33 @@
 card: L
-branch: claude/plan-l-5-resets (one branch a PR, each begun from the one before)
-prs: #1746, #1748 (merged), #1767, #1775 (ready), PR 5 (working)
-state: working
+branch: claude/plan-l-8-resets (one branch a PR, each begun from the one before)
+prs: #1746, #1748 (merged), #1767, #1775, #1779, #1791, #1796 (ready), PR 4 tag 5208 (ready)
+state: ready
 
 ## Done
 
 - PR 1 (5201, #1746): the ledger's guard reads the code on GitHub.
 - PR 2 (5202, #1748): the phase table and its guard (36 rows, 5 door).
-- PR 3 (5203, #1767): `resetOn` at the zone and rejoin doors; the census's
-  `resets`; the guard's §6-7; 16 rows (484 -> 468); state-resets.test
-  (deploys); the phase guard's two holes (sitting 8) closed.
-- PR 4 (5204, #1775): desktop, social, movement: 22 rows, 468 -> 446.
-- PR 5 (5205): economy, skills: 17 rows (a smelt's pose), 446 -> 429.
+- PR 3 (5203, #1767): `resetOn` at the zone and rejoin doors, 16 rows
+  (484 -> 468), state-resets.test; the phase guard's holes (sitting 8) shut.
+- PR 4 tags 5204 (#1775), 5205 (#1779): desktop, social, movement; economy,
+  skills: 39 rows, 468 -> 429.
+- PR 4 tags 5206 (#1791), 5207 (#1796), 5208: data, combat, wire, world:
+  196 rows, 429 -> 233; `clearElemStatuses` deleted (state-resets §7).
 
 ## Next
 
-- PR 6 (5206): data, combat (card PR 4's list).
+- PR 4 tag 5209: the phase guard reads DOOR_SUITES' fields off the tree;
+  then PR 5's worker doors (trade first), and `ui`/`render` (H is done).
 
 ## Found
 
-- run.mjs: the census's two guards are not in SLOW_FIRST (81 s, not 72).
 - Red on main, not L's: ownersounds 3 (Quick Eat's munch), deathzones 12
-  (a mire wisp), mp-hitsound.mjs (6), race (Lil Bro's start, his jog cells).
-- bodytake.js ~94 cites "rejoinresend's pose row": there is none.
-- session.phase: three writers, held by the phase table's scan (not its suite).
-- Dead fields: S._shieldStamina (never set), S.shieldActive and
-  S._iceAttack (never read; playerActions.js writes them).
+  (a mire wisp), mp-hitsound.mjs (6), race (Lil Bro's start, his jog cells),
+  desklunge (1 to 4 of 12 by run: the lunge does not leave), bowprops 3
+  (the Town Hall takes no arrow).
+- bodytake.js ~94 cites "rejoinresend's pose row" (none); session.phase:
+  three writers, held by the phase table's scan (not its suite).
+- Dead: S._shieldStamina (never set), S.shieldActive, S._iceAttack (unread).
 - monsterCombat.js's own respawn (!S._serverMonsters): an old path.
 
 ## Needs
@@ -35,4 +37,4 @@ state: working
 - Card SK's ride.js (S._ride). S._spar: the takeover's leave, unread.
 - Card H's `done` (9 rows under src/rendering/**); card A (perfTracker.js
   `zoneStats`). The page's death door (phase table `life`, page) heads
-  PR 5's page doors; the 3 death rows land with it.
+  PR 5's page doors; the 8 death rows land with it.
