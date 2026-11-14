@@ -74,6 +74,7 @@ export const persistenceMethods = {
          keeping the newer `_v` (_rpgSaveV below). */
       const newer = !!stored && typeof stored._v === 'number' && stored._v > RPG_SCHEMA_VERSION;
       if (newer && opts && opts.throwOnError && !this._newerSaveOff()) {
+        this._roomRowRefused('newer');   /* v2.3.5124: counted, as well as logged (roomrow.js) */
         const err = new Error('rpg:' + playerId + ' was saved by a newer worker (_v ' + stored._v + ' > ' + RPG_SCHEMA_VERSION + ')');
         err.code = 'newer';
         throw err;

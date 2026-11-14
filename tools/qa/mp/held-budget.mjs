@@ -53,21 +53,19 @@ export const AT_A_WINDOW = ['windows', 'folk', 'g-boards'];   /* v2.3.4499: + th
 export const NOISE_K = 1.5;
 
 export const KNOWN = {
-  'body-bake': { ms: 13, whose: 'ours',   /* v2.3.4960: 220 -> 13: none in the main tour (peer, armour) since v2.3.4930's worker; held to just over the general line while h-eight keeps the family listed */
-    why: 'the head an armoured player shows (<pose>-<dir>-head sheets) is recoloured on the page for each look the first time it is drawn: 28 to 164 ms a sheet as an armoured player circles you.  v2.3.5013: in play, only where the body bake\'s worker is off or let go of (bodyBake.js); the heads are drawn from colour numbers since v2.3.4961',
-    next: 'key them by skin alone (they take no trouser or boot colour), then keep them as numbers like the bodies (a look set); the same for a body with an eye style or a drawing (STATE-MACHINES A2)',
-    /* v2.3.4499: the crowd tour (mp-crowdsweep, docs/specs/held-sweep.md "The crowd tour"), five runs, the worst of each */
-    at: { 'a-ink': 12, 'b-fish': 12, 'c-armour1': 12,   /* v2.3.4872: the pickaxe's outline turned round (toolWood.js solidTool): c-armour1 179 -> 62 ms, the crowd's armour stations 229 -> 169.  v2.3.4960: 90 -> 12 (none) */
-      'c-armour8': 12, 'h-eight': 12, 'd-prints': 12 },   /* v2.3.5013: h-eight 120 -> 12 (none; 11.1 / 9.1 / 10.3 ms the longest hold of any family, three runs; was 208 to 238 ms, 7 times).  Not the heads (the numbers draw those since v2.3.4961): the fish sheets of the armoured players who had cast, baked on the page because the watch let both busy workers go.  bodyBakeWorker.js: one job at a time and a beat between its steps */   /* v2.3.4960: d-prints 190 -> 12 (none).  h-eight NOT lowered: 2026-11-12 it measured 227 ms, 29 bakes on the page (bakeBodyFull and mostly bakeHeadFull): with eight armoured players the body bake's worker stalls past its 20 s watch (bodyBake.js WORKER_MS), is let go of, and the page bakes.  Over its line, left as it was (never raised silently) */
-    /* v2.3.4930: in play every one of these bakes runs on the body bake's worker (bodyBake.js, docs/specs/body-bake-worker.md):
-       the body sheets (a drawing, an eye style, the fish), the armoured heads, a peer's drawn stand-ins.  The crowd tour,
-       a-ink, b-fish and c-armour8, before (`?bodyworker=0`) and after: 546 / 179 / 202 ms longest, 53 holds and 6.2 s in all
-       -> none (the longest hold of any family 10.5 / 7.7 / 36.1 ms).  Those three stations' lines are locked at the general
-       line; the main tour (peer, armour) and the crowd's other stations were not run again here, and keep theirs */
-    crowd: 'a player with a tattoo or a trouser print: every pose and facing they show is a body sheet baked on the page, 114 to 720 ms each, a dozen in the first 20 s (a-ink).  ANY player of a look not yet seen who fishes: the 32-frame fish sheet, 92 to 198 ms (b-fish, c-armour8: one per look, armour or not, a shirt or not).  Armoured players arriving: 36 to 267 ms per look and pose; walking about after, still 60 to 112 ms (h-eight).  The pickaxe made solid in the mining body (solidTool) is part of the same bake.  Fix: the bodies with drawings as a row of colours with the drawing stamped on the worker (the fish sheet too: it has no shirt or eye, lookBodyRefused already passes it), or the bake on a worker' },
-  'masked-bake': { ms: 24, whose: 'ours',
-    why: "v2.3.4870: no longer cut on the page in play (another player's armour drew it inline, in the frame, at first sight and each new facing: 17 to 107 ms; the crowd tour's c-armour stations 54 ms, 28 times).  What is left is the worker job's page-side part: the frames handed over as pictures (_frameInput > createImageBitmap) and the look sheets sent, 8 to 18 ms",
-    next: 'hand the worker the sheets once (as the look sheets are) and send it frame rectangles, not a picture a frame; prewarm the poses of what was just put on' },
+  /* v2.3.5049: 'body-bake' (was 13; 220 before v2.3.4960, 12 at the crowd's a-ink, b-fish, c-armour1, c-armour8,
+     h-eight, d-prints) off the list.  A body or head sheet recoloured on the page for one look: in play every such bake
+     runs on the body bake's worker since v2.3.4930 (docs/specs/body-bake-worker.md), and h-eight's last page bakes
+     went with v2.3.5013.  The sample (the main tour's `peer` and `armour`, the crowd's a-ink, b-fish, c-armour1,
+     c-armour8, h-eight and d-prints, three runs each, every crowd group there): not one body-bake hold.  And a worker
+     never heard from is no longer started again at every return (the gatekeeper's sitting 1 on #1668: bodyBake.js
+     _back, mp-bodyworker 6c) */
+  /* v2.3.5043: 'masked-bake' (was 24; 140 before v2.3.4870) off the list.  What was left was the page cutting each
+     input out of its sheet for the bake's worker (entityRenderer.js _frameInput > createImageBitmap): 4 to 15 ms a
+     bake, 32.7 ms once at the main tour's `armour`, up to 12.9 at the crowd's armour stations.  Now a frame of a sheet
+     that is an image goes as its address and rectangle, and the worker reads the sheet itself (maskedBakeWorker.js
+     sheetOf).  The sample (peer and armour x3; c-armour1, c-armour8, h-eight and d-prints x3): 7.7 ms the longest,
+     5 holds in all (docs/specs/held-sweep.md, "Card H") */
   'pack-page': { ms: 20, whose: 'ours',
     why: "v2.3.4873: a gear sheet first drawn in play is packed a few ms at a time (gearSheets.js _gearPack > packTrimmedSliced; was one go, 21 to 59 ms).  What is left: one cell's read on this box (getImageData, up to 9 ms) and the packed sheet handed to the page as a file of its own (keepAsImage): 9 to 15 ms",
     next: 'the strip door: gear strips as 256-colour files read and packed on the worker, as the monsters are' },
@@ -75,9 +73,11 @@ export const KNOWN = {
     why: "only with a SECOND page open on this box (the other player's own browser): both pages draw on one software graphics chip, and the black-screen check's collect waits for the other page's frames too, 106 to 208 ms.  With one page it is 0 to 2 ms since the collect moved to the top of the frame (it was 110 to 206)",
     next: 'nothing here: two pages are never on one phone.  On a phone the frame strip names it ("screen check N ms") if it is ever 4 ms or more',
     crowd: "(no line of its own: the crowd tour now plays the species last) with one page, when the chip is swamped (the first crowd tours, after the species churn, 377 MB on it): the fenced read is not back within its frames and the check falls back to its OLD way, a drawImage copy of the canvas that waits for the chip: 465 to 625 ms, a dozen times.  Fix the churn first (speciesArt, below); then the old way should not run in play at all (skip a check rather than copy)" },
-  'strip-made': { ms: 24, whose: 'ours',
-    why: "the page's own part of a monster's strip coming in: its numbers put on its bundle's row of colours and handed to the graphics chip, 5 to 19 ms for the biggest strips (the reading and packing are off the page)",
-    next: "send the bundle's row with the ask so the worker numbers the strip for it, and the page only hands it to the chip" },
+  /* v2.3.5044: 'strip-made' (was 24) off the list.  What was left was the page putting a monster strip's numbers on its
+     bundle's row of colours (picsNumbers.js stripAsNumbers: a loop over every byte of the strip) as its look came in:
+     the main tour's `town`, three runs, 9.4 / 17.9 / 10.0 ms the longest, 34 holds.  Now the reader's worker numbers
+     the strip for its row (stripRows.js; a colour variant retinted there first) and the page only checks the rows and
+     makes the texture.  The sample (`town`, `lands` x3): 6.1 / 12.4 / 4.5 ms the longest, 11 holds in all (the 12.4: 9 ms of it the row's upload to this box's software chip; one hold just past the general line is the judge's noise) (docs/specs/held-sweep.md, "Card H") */
   'the frame itself': { ms: 70, whose: 'box',
     why: "one frame's own code on this box, which plays a quarter of a second of game in each (it draws four a second): every monster, bubble and name plate that changed in that time is done in one frame",
     next: 'mp-phoneframe is the measure of a frame at a phone\'s rate; here the line only stops it growing',
@@ -101,20 +101,37 @@ export const KNOWN = {
      12.5 and 8.1 ms (the 12.5 with 3 ms of another job, prog3CharLevel, in the same hold: one hold just past the
      general line is the judge's noise) (docs/specs/held-sweep.md, "Card H") */
   /* v2.3.4960: 'other: createObjectURL' off the list: 9.3 ms at most (h-eight; was 18) */
-  'other: wrapped > sweepPicsOnce': { ms: 16, whose: 'ours',
-    why: "picsOnce.js's sweep of the cache's pictures, up to 15 ms with the crowd's pictures in it",
-    next: 'sweep a slice a turn' },
-  'ui:*': { ms: 16, whose: 'ours',
-    why: 'one component of the band drawn in one piece (the gear tab is 10 ms of one function): React lets a frame in between components, not inside one',
-    next: 'split the gear tab so no one piece of it is over 5 ms' },
-  'other: BT_AUDIO$1._fold > foldToMono': { ms: 20, whose: 'ours',   /* v2.3.4960: 30 -> 20 (18.9 ms once, lands) */
-    why: 'a sound with two sides folded to one the first time it plays: 14 to 21 ms',
-    next: 'fold as it is decoded, behind the loading screen or off the first play'},
-  /* v2.3.4872: found over the general line on main (mp-heldsweep `armour`, 15.4 and 16.5 ms, two runs; the crowd tour's
-     armour stations up to 8 ms) */
-  'other: R > J': { ms: 20, whose: 'ours',
-    why: "React's scheduler working through a redraw (R > J > Gk is performConcurrentWorkOnRoot in the vendor chunk) where no one of the game's components is the outermost named one, so the sweep cannot say whose: 15 to 17 ms at the armour station (putting armour on and off: the gear tab, the band and the bag at once), most of it in React's own commit (Bj) and a createObjectURL",
-    next: 'profile the armour station with React\'s profiler to name the components; then split or startTransition the redraw an equip causes' },
+  /* v2.3.5048: 'other: wrapped > sweepPicsOnce' (was 16) off the list.  picsOnce.js's sweep of the cache's pictures
+     had a 4 ms budget, but the budget only stopped the work on a picture: the walk went on over the WHOLE of Pixi's
+     cache every second (Map.forEach cannot stop), and the cache holds a texture under each of its names.  Before:
+     23.9, 17.6 and 13.7 ms at the main tour's `peer` and `armour`.  Now one walker is kept from turn to turn, a
+     slice of 3 ms a turn (the next 100 ms later until the round ends), and a picture's address is read once, after
+     the cheaper checks (its hold is now `wrapped > sweepPicsOnceTurn`).  The sample (`town`, `lands`, `peer`,
+     `armour`, and the crowd's `c-armour8`, `h-eight`, `g-boards`, x3): 20 holds, 7.2 ms the longest but one of
+     12.1 that the Leaderboard's faces shared (docs/specs/held-sweep.md, "Card H").
+     v2.3.5049, SEEN BEFORE (the planning session's call: it stays off): #1747's sample showed three holds named
+     `wrapped > sweepPicsOnceTurn` over the line, 18.3 ms once at `armour` (5 ms of it inside the browser's own
+     setTimeout) and 12.1 + 12.3 ms in one crowd run (a-ink, b-fish).  `releasable` timed call by call there: 1.4 ms at
+     most.  This box's pauses landing in the sweep's short turns, not the sweep: a line on this list says why
+     something holds, and here nothing does.  If a later sweep TIMES a turn's own work over 12 ms, it goes on the list */
+  /* v2.3.5047: 'ui:*' (was 16) off the list.  One component of the band drawn in one piece: React lets a frame in
+     between components, never inside one.  The gear tab built its nine equipment cells in its own body (each with its
+     rows, the amulet's stat card), and its gold badge said the page's first number with commas (about 10 ms, the
+     browser readying its formatter).  Now each cell is a component (GearTab.jsx GearCellView) and the formatter is
+     readied with the game's code, behind the loading screen (barNumbers.js).  Before, six runs of `town`, `lands`,
+     `peer` and `armour`: 13.4 ms the longest.  The sample (the same, x3): 34 holds of a component, 9.9 ms the longest
+     (docs/specs/held-sweep.md, "Card H") */
+  /* v2.3.5045: 'other: BT_AUDIO$1._fold > foldToMono' (was 20) off the list.  A two-sided sound folded to one on its
+     first play (soundFold.js), in one piece: 8.1 / 8.9 / 13.4 ms at the main tour's `lands` and `town`, three runs
+     (18.9 once before).  Now walked a stretch at a time, a frame let in once a piece has run 4 ms (foldToMonoSliced:
+     the same buffer, sample for sample, sound-fold.test 4).  The sample (`town`, `lands` x3): 5.2 / 4.9 / 6.9 ms the
+     longest (docs/specs/held-sweep.md, "Card H") */
+  /* v2.3.5046: 'other: R > J' (was 20) off the list.  React working through one redraw in one piece: every equip
+     change set BroTown's own `gearWorn` (gearWornSync.js), a blocking re-render of the game's root and all under it
+     (named on a development build: BroTown, the GearTab, the band's keys, the ride button, the quest coach...).
+     Before, twelve runs of `peer` and `armour`: 17.5 / 17.5 / 15.9 ms at `armour`, 12.4 at `peer`.  Now an equip that
+     leaves the worn flags as they were sets nothing, and one that changes them is a transition (sliced, a frame
+     between).  The sample (`peer`, `armour` x3): 8.6 ms the longest (docs/specs/held-sweep.md, "Card H") */
   /* v2.3.4960: 'other: _flushOutbox > Wrapped.ws.send' off the list: 4.7 ms at most (lands, fight; was 18 once) */
 };
 

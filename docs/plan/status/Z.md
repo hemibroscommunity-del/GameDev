@@ -1,40 +1,40 @@
 card: Z
-branch: claude/plan-z-sitting-4
-prs: this PR, tag 5360, the last line of the list (ready)
+branch: claude/plan-z-sitting-7
+prs: this PR, tag 5363, the last line of the list (ready)
 state: ready
 
 ## Done
-- Sitting 4, `main` at 5eb94ec, 19 open PRs not drafts, each `test` green.
-  All 15 of B, P, N, H, G rehearsed together: precheck RED (B's guards beside
-  N, H, G). The 9 below: precheck 0 FAIL, build, questline 187/187 (d02b3ca).
-  Reviews with skeptics: `docs/plan/census/review-z4.md`. Ticked nothing.
+- Sitting 7, `main` at b9f7218 (sitting 6's sixteen merged; #1739 dropped
+  then). Rehearsed the 11 below and this branch in this order (tree
+  9a9d5dc9): precheck, build, questline 187/187. Review:
+  `census/review-z7.md`. Ticked 9.3; notes on 4.1, 5.3, 8.2 (step 1 or
+  part merged). The ledger's unlisted line 2128 -> 22 (the code's count).
 
 ## The list: merge in this order, in one sitting, each "Create a merge commit"
-1 #1687 B2 · 2 #1689 B3 · 3 #1690 B4 · 4 #1693 B5 · 5 #1696 B6 · 6 #1698 B7 ·
-7 #1702 B8 · 8 #1707 P's card · 9 #1713 P1 · 10 this PR. Stacked: no squash.
-None touches `server/**`: no deploy. No cap, live flag or record's shape.
-B, not N, H, G: B is green on `main`, each guard names the mend; held, it meets
-this red each sitting. It unblocks U, T, V and P's PR 4.
+1 #1744 L+J2 cards · 2 #1719 P5 · 3 #1736 P6 · 4 #1743 P7 · 5 #1745 P8 ·
+6 #1741 H9 · 7 #1708 A5 · 8 #1711 A6 · 9 #1747 H10 · 10 #1746 L1 ·
+11 #1739 Y2 · 12 this PR. Stacked: no squash. Four touch `server/**`
+(#1708, #1711, #1747, #1746: each deploys; merge them back to back). One
+live flag and one cap (`roomrow`, `caps.report` 2), both A's, stacked. No
+stored shape.
 
-## Held (expires at sitting 5): merge `main` after the list, then mend
-- N #1684, #1695, #1697: `systems` (`server/src/wire/` has no system),
-  `shapes-once` (`wayIn`, `mayStart`, `doesWhat` have no Where),
-  `tests-by-system` (`wire-table.test` names `wsClient.js`: `lib/filesOf.mjs`).
-- H #1700, #1709, #1712: `four-lines` (`entityRenderer.js` 9006 > 8968, H4;
-  `gameDisplay.js` 4285 > 4270, H6: a line only falls). Verified: H5's plan
-  taken by colour count (scrambled monster colours); H4's reads in series.
-- G #1701: `four-lines` (`BroTown.jsx` 8372 > 8371; `BroTown()` 7802 > 7801).
-- A #1706, #1708, #1711: `systems` (`report.js`, `roomrow.js`: 13 > 11).
-  The four faults mended where `visibilitychange` fires. Verified: A5 leaves
-  each sitting's last report (or a short one's first) in memory; A6's card
-  has no cap of its own; the `dev` part fills in ~6 live builds. A cap line.
-- Y #1705: still a DRAFT (its file says ready): not ready.
+## Held (expires at sitting 8)
+- None. Not ready, left alone: #1748 (L2, opening).
 
 ## Stalled
-- None.
+- None. T: `working`, no commit since 06:40 (2 h 20 at the list); PR 1
+  may open (#1684 is on `main`); its scanner meets the new switches
+  (`npcheads`, `coinflip`, `treenumbers`, the flag `roomrow`).
+
 ## Found
-- From sitting 5, B's guards are on `main`: a PR red against one mends it.
-- No card: `quests.js` 262, test mode takes a retired quest (`testmode.js`
-  says it is refused). `docs/WIRE-PROTOCOL.md` has no `report` row (A's).
-- The owner's answers: E (PR 5, in your own words), Y (`mp-topaudit`: a
-  second PR in `pixiRenderer.js`, yes or no), P (spec part 1's reading).
+- P: #1745's trees wait 20 s from page LOAD (`whenPaletteDecided`): a slow
+  creator or login keeps them pictures. `__btTex` counts an undrawn `<img>`
+  at w x h x 4 (settle on Safari). The Town Hall's heads lack `?v=`.
+- L: six new top-of-file rows unlisted (`debug` 2, `preload` 3, `art` 1):
+  the next `--ledger` of those systems takes them; the line follows.
+- No card (H's is done with #1747): `bodyBake.js` marks a worker heard on
+  its first beat, and spends a slot on a fast `onerror` (review-z7);
+  `picsOnce.js` keeps the old round after a rebuild; H's dropped Found:
+  bake worker stuck ~3/min here, `wheelGround.js` `_sprite` 14.3 ms.
+- Sitting 6's three "no card" finds have owners once #1744 is merged:
+  J2 (`ps.capeOff`, `mp-wheelmap`, `mp-npclooks`), L (the ledger guard).

@@ -1,37 +1,37 @@
 card: H
-branch: claude/grand-plan-h-3-gear-sheet (one branch a PR, each begun from the one before, as W's are: merge them in order)
-prs: #1668 (ready), #1675 (ready), PR 3 on the branch above (ready; its number goes here with PR 4's commit)
+branch: claude/grand-plan-h-10-body-bake (one branch a PR, each begun from the one before, as W's are: merge them in order)
+prs: #1668, #1675, #1681, #1700, #1709, #1712, #1714, #1733 (merged); #1741 (ready); PR 10 on the branch above (ready; its number with the next commit)
 state: ready
 
 ## Done
 
-- #1668 (tag 5040), the worker's restart: the watch counts only visible
-  time; a let-go worker restarts once a return. `mp-bodyworker` 6: red on
-  main, green after; 97 of 97.
-- #1675 (tag 5041), whose row: `whose` on every row of `KNOWN`; spec table;
-  `held-sweep.test` 7b2 to 7b4. Its merge deploys the worker.
-- PR 3 (tag 5042), `gear-sheet` and `portrait` off the list: what was left
-  of both was the Equipment screen's figure (`characterPortrait.js`), now a
-  step at a time in play with the body kept and witnessed. Sample: peer and
-  armour x3, crowd b-fish to d-prints x4. One fix earned both lines, so the
-  card's `portrait` PR is this one; PR 4 is `masked-bake`.
+- #1668 (5040) the worker's restart; #1675 (5041) whose row; #1681 (5042)
+  `gear-sheet` and `portrait`; #1700 (5043) `masked-bake`; #1709 (5044)
+  `strip-made`; #1712 (5045) `foldToMono`; #1714 (5046) the equip redraw;
+  #1733 (5047) `ui:*`: off the list, merged.
+- #1741 (5048) `sweepPicsOnce` off: a slice a turn, the address read last.
+  The Leaderboard's faces measured: 32 faces, 9.7 ms.
+- PR 10 (5049) `body-bake` off: none in six runs, every crowd group there.
+  Z's #1668 finds: a worker never heard from is not restarted at a return
+  (6c, its break proof); `BT_BW_PARTS` refuses a typo. 101 of 101.
+- Card H's part of step 3.1 is done: `pack-page` (card P's) is the one row
+  left that is ours.
 
 ## Next
 
-- PR 4 (tag 5043), `masked-bake` (24 ms): one hold of 32.7 ms at `armour`
-  seen in PR 3's runs.
+- The planning session's answers: the sweep stays off (its spikes noted in
+  `held-budget.mjs`); both follow-ups, one PR each: 5050 sitting 5's loose
+  ends on #1700, then 5051 the portrait's shirt composed for one frame.
 
 ## Found
 
-- `src/rendering/stripRead.js`: its 20 s clock (`READ_MS`) is wall time:
-  after a 20 s freeze with a strip asked, that one strip is unpacked on the
-  page (the worker is kept). Its `_dead` after `onerror` has no restart.
-- `pack-page` (card P's): 17 to 35 ms at the main tour's `armour` against
-  its 20 ms line, in most runs of PR 3's sample (`getImageData` in
-  `packTrimmedSliced`). Not touched.
-- `tools/qa/mp/mp-heldsweep.mjs` FAMILIES: a hold is named by the first
-  family on its stack, so the figure read as `gear-sheet` or `body-bake`.
+- `stripRead.js`: `READ_MS` (20 s) is wall time; `_dead` has no restart.
+- `other: wrapped` (`perfTracker.js`'s timer wrapper): over the line in 5
+  of ~40 runs; the sweep should look inside it. `QuestCoach > loadDone`
+  23.3 ms once at `town` (measures the page).
+- Pixi's render threw (`addressModeU` of null) once, a hung worker's jobs
+  failing twice (the old restart rule, as on `main` until PR 10).
 
 ## Needs
 
-- Nothing.
+- Nothing (both questions answered by the planning session, 2026-11-14).

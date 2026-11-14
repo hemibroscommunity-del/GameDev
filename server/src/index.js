@@ -109,6 +109,8 @@ import { fishlogMethods } from './fishlog.js';   /* v2.3.4036: the rare fish, we
 import { riseChestMethods } from './risechest.js';   /* v2.3.4453: the chest on a rise pays, once a character */
 import { boardMethods, boardFace } from './boards.js';   /* v2.3.4393: the daily spin's records, a face and a level on every board, the deleted stand-ins */
 import { accuracyMethods } from './accuracy.js';   /* v2.3.4545: how many of your shots hit, a weapon */
+import { reportMethods, rttWaverNext, reportSiteOf } from './report.js';   /* v2.3.5123: the field report, the worker's side */
+import { roomRowMethods } from './roomrow.js';   /* v2.3.5124: the room's own row in the day's book */
 import { charWatchMethods } from './charwatch.js';   /* v2.3.4545: what players drew, for the owner to look at (the Test panel) */
 import { achievementMethods } from './achievements.js';   /* v2.3.3527 */
 import { killRollMethods } from './killroll.js';   /* v2.3.3209: one roll a kill, each drop its own numbers */
@@ -1068,6 +1070,7 @@ export class GameRoom {
   constructor(state, env) {
     this.state = state;
     this.env = env;
+    this._roomRowStart(Date.now());   /* v2.3.5124: a restart, and every row the room writes counted (roomrow.js) */
     this.sessions = new Map();
     // v2.3.1202: keyed by CLIENT-CHOSEN join ids -- Object.create(null)
     // so a magic id ('__proto__') can't write through Object.prototype
@@ -4961,7 +4964,9 @@ export class GameRoom {
     const _cf = (request && request.cf) || {};
     const _asn = Number(_cf.asn);
     this.sessions.set(server, { phase: 'open', /* v2.3.4830: the session's life (leave.js) */ id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now(), moveSig: '', ip: _ip, openedAt: Date.now(),
-      asn: Number.isFinite(_asn) && _asn > 0 ? _asn : null, asOrg: typeof _cf.asOrganization === 'string' ? _cf.asOrganization.slice(0, 64) : null });
+      asn: Number.isFinite(_asn) && _asn > 0 ? _asn : null, asOrg: typeof _cf.asOrganization === 'string' ? _cf.asOrganization.slice(0, 64) : null,
+      /* v2.3.5127: the game's own site or not, from the page's Origin -- the field report's build (report.js) */
+      site: reportSiteOf(request && request.headers ? request.headers.get('Origin') : null) });
     if (!this.tickInterval && this.sessions.size === 1) this.startTickLoop();
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -5128,8 +5133,9 @@ export class GameRoom {
        is a bare timer), but the AWAY flag it carries does -- see below.
        Everything else -- attacks, harvest strikes, zone changes, chat,
        panel actions -- is input and stamps the clock. */
-    if (msg.type === 'pong') {
-      /* keepalive, never activity */
+    if (msg.type === 'pong' || msg.type === 'report') {
+      /* keepalive, never activity -- v2.3.5127: nor the field report, a timer's (report.js): an idle tab sends
+         one every five minutes and must still be let go of */
     } else if (msg.type === 'track') {
       /* `track` is a 2 s telemetry timer, so its ARRIVAL says nothing.
          Its `aw` flag does: the client stamps _lastInputAt from
@@ -5245,6 +5251,12 @@ export class GameRoom {
         this._sigOnMove(session, msg);   /* v2.3.3731: the place, the streak, a wind-up's answer (botsig.js) */
         break;
 
+      /* v2.3.5123: THE FIELD REPORT (report.js): a phone's smoothness, numbers and closed lists only, checked,
+         paced and added into the day's book with no name on it.  Nothing is sent back */
+      case 'report':
+        this._reportTake(session, msg);
+        break;
+
       case 'pong':
         if (session.lastPing > 0) {
           /* v2.3.3254: the quiet phone (bundle.js) answers a ping on the next
@@ -5256,6 +5268,9 @@ export class GameRoom {
           if (typeof msg.ts === 'number' && msg.ts !== session.lastPing) break;
           let sample = Date.now() - session.lastPing;
           if (typeof msg.hd === 'number' && msg.hd > 0) sample -= Math.min(msg.hd, sample);
+          /* v2.3.5123: how much the round trip wavers, for the field report (report.js): this sample's distance
+             from the smoothed round trip before it, smoothed the same way */
+          session.rttWaver = rttWaverNext(session.rttWaver, sample, session.rtt, this.LAGCOMP_RTT_ALPHA, this.LAGCOMP_RTT_CAP);
           session.rtt = session.rtt * (1 - this.LAGCOMP_RTT_ALPHA) + sample * this.LAGCOMP_RTT_ALPHA;
           session.rtt = Math.min(session.rtt, this.LAGCOMP_RTT_CAP);
         }
@@ -6674,6 +6689,8 @@ Object.assign(GameRoom.prototype, deathPileMethods); /* v2.3.4384 */
 Object.assign(GameRoom.prototype, fishlogMethods); /* v2.3.4036 */
 Object.assign(GameRoom.prototype, boardMethods); /* v2.3.4393 */
 Object.assign(GameRoom.prototype, accuracyMethods); /* v2.3.4545 */
+Object.assign(GameRoom.prototype, reportMethods); /* v2.3.5123 */
+Object.assign(GameRoom.prototype, roomRowMethods); /* v2.3.5124 */
 Object.assign(GameRoom.prototype, charWatchMethods); /* v2.3.4545 */
 Object.assign(GameRoom.prototype, riseChestMethods); /* v2.3.4453 */
 Object.assign(GameRoom.prototype, achievementMethods); /* v2.3.3527 */
