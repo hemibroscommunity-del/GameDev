@@ -8,6 +8,8 @@
     "test": "node test/run.mjs"
   },
   "devDependencies": {
+    "@babel/parser": "7.29.2",
+    "@babel/traverse": "7.29.0",
     "wrangler": "^4.96.0"
   }
 }

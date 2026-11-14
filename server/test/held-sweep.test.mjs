@@ -234,10 +234,12 @@ const rect = (set, x0, y0, x1, y1, c = 1) => { for (let y = y0; y <= y1; y++) fo
   const j2 = judgeHeld(made([[AT_A_WINDOW[0], [hold(40, 'other', 'a window opening'), hold(WINDOW_MAX_MS * 2, 'other', 'too slow even for a window')]], ['town', [hold(40, 'other', 'a window opening')]]]));
   check(`7c3. ...at a window a tap's own redraw may take ${WINDOW_MAX_MS} ms; the same hold in play may not`,
     j2.over.length === 2 && j2.over.some((o) => /too slow/.test(o.key)) && j2.over.some((o) => o.where === 'town'), j2.over);
-  const j3 = judgeHeld(made([['peer', [hold(KNOWN['body-bake'].ms - 5, 'body-bake'), hold(15, 'ui:GearTab', 'the GearTab')], [{ ms: 15, key: 'the frame itself', via: '' }, { ms: 30, key: 'new-in-frame', via: '' }]]]));
-  check('7c4. ...a listed family is held to its own line (and a kind of them, `ui:*`, to that kind\'s); a frame to the frame\'s line',
+  /* v2.3.5049: the listed family here is `gc` (the browser's, held to the list by 7b3): `body-bake` came off the
+     list, and `ui:*` before it (v2.3.5047), so one 15 ms hold of the gear tab is the noise rule's now */
+  const j3 = judgeHeld(made([['peer', [hold(KNOWN.gc.ms - 5, 'gc'), hold(15, 'ui:GearTab', 'the GearTab')], [{ ms: 15, key: 'the frame itself', via: '' }, { ms: 30, key: 'new-in-frame', via: '' }]]]));
+  check('7c4. ...a listed family is held to its own line, and one unlisted hold just past the general line is noise; a frame to the frame\'s line',
     j3.over.length === 1 && j3.over[0].key === 'new-in-frame', j3.over);
-  const j4 = judgeHeld(made([['peer', [hold(KNOWN['body-bake'].ms * 2, 'body-bake')]]]));
+  const j4 = judgeHeld(made([['peer', [hold(KNOWN.gc.ms * 2, 'gc')]]]));
   check('7c5. ...and a listed family that GROWS past its own line fails, as listed', j4.over.length === 1 && j4.over[0].listed === true, j4.over);
   check('7c6. the families come back ranked by their longest hold', j1.ranked[0].key === 'new-bake' && j1.ranked[0].longest === 30 && j1.ranked.find((r) => r.key === 'twice').n === 2, j1.ranked.map((r) => r.key));
   check(`7c7. the window's line is a tap's, not a licence: no more than ${45} ms`, WINDOW_MAX_MS <= 45 && NOISE_K <= 1.5);
