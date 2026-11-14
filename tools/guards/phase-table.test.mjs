@@ -101,6 +101,14 @@
  *      besides is the door's own, `fn`)                   -> FAIL 2
  * v2.3.5216 (the pose door):
  *  25. `ps.po = id;` back in _handlePose                  -> FAIL 2
+ * v2.3.5216 (the gatekeeper's low, sitting 16: destructuring, template keys
+ * and reflective writes, read off the tree):
+ *  26. `({ ex: ps.ex } = msg);` in a new function of movement.js -> FAIL 2
+ *  27. `[ps.po] = ['sit'];` in a new function of ride.js  -> FAIL 2
+ *  28. ``ps[`po`] = 'robot';`` in the same                 -> FAIL 2
+ *  29. `Reflect.set(ps, 'po', 'sit');` in admin.js        -> FAIL 2
+ *  30. `Reflect.deleteProperty(room.extractions, id);` in admin.js
+ *      (a keyed field's key)                              -> FAIL 2
  *
  * Run from the repository's root: node tools/guards/phase-table.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
