@@ -26,6 +26,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 
 | name | side | kind | born | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|
+| `?audioreset` | page | switch | v2.3.5203 | =0 | logic |  | no | The balls' ends are kept across a change of place again (hitSounds.js forgetShotEnds no longer runs at the zone door). |
 | `?foldgentle` | page | switch | v2.3.5045 | =0, off, false | logic |  | no | A sound is folded to mono in one go again, not in turns between frames. |
 | `?nobeds` | page | switch | v2.3.3462 | present | logic |  | no | No ambient sound beds (sea, crowd, fire). |
 | `?noforge` | page | switch | v2.3.3434 | present | logic |  | no | No forge sounds in the town. |
@@ -126,6 +127,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 
 | name | side | kind | born | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|
+| `?lane` | page | lever | v2.3.5221 | =full, =light or =thirty | none |  | no | This page draws in the named lane, whatever its device's facts pick. |
 | `lookpalette` | both | switch | v2.3.3716 | off_lookpalette: true; ?lookpalette=0 (=1 builds it anyway) | chip |  | onWindows, onMac in src/game/lookPaletteChoice.js | Each look's copy is baked on first sight again, not coloured on the chip. |
 | `?pixbudget` | page | switch | v2.3.5140 | =0 (off), or a number: the budget to try | chip |  | no | The drawing resolution is no longer held to the pixel budget. |
 | `viewcap` | both | switch | v2.3.4054 | off_viewcap: true; ?viewcap=0 (=1 forces it) | logic |  | no | A wide screen sees its old wider view of the world. |
@@ -201,6 +203,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `daybook` | worker | switch | v2.3.5080 | false | logic |  | no | The day's book adds, writes and prunes nothing; what is stored stays and its reader says it is off. |
 | `disable_bigbags` | worker | switch | v2.3.4224 | true | logic |  | no | Thrown, the weapon and gear stashes go back to 8 and 32. |
 | `report` | worker | switch | v2.3.5122 | false | logic |  | no | Un-advertises the field report, so no phone sends its smoothness, and drops any that still comes. |
+| `reportlanes` | worker | switch | v2.3.5221 | false | logic | `report`, `reportspeed` | no | The field report no longer takes a lane but full, the governor's rung or the self-test (caps.report back to 2). |
 | `reportspeed` | worker | switch | v2.3.5127 | false | logic | `report` | no | The Speed test's card is no longer taken (caps.report back to 1); the smoothness reports carry on. |
 | `roomrow` | worker | switch | v2.3.5124 | false | logic | `daybook` | no | Nothing of the room's own row is added into the day's book. |
 | `testmode` | worker | lever | v2.3.3430 | false | none |  | no | Turns every character's test mode off at once, every check back on. |
@@ -253,6 +256,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?legsync` | page | switch | v2.3.4077 | =0 | logic |  | no | The legs keep their old fixed cadences, not synced to the speed. |
 | `monsterroll` | worker | switch | v2.3.3300 | false | logic |  | no | A monster gets no roll i-frames (the way before v2.3.3300). |
 | `movebudget` | worker | switch | v2.3.3325 | false | logic |  | no | The move budget off: the per-message 80, the refusals and the three bypasses as before. |
+| `?movementreset` | page | switch | v2.3.5204 | =0 | logic |  | no | A climb and a swim end a frame after a change of place again, on their own off-the-Wheel checks, not at the zone door. |
 | `movepath` | worker | switch | v2.3.3726 | false | logic |  | no | No glide from the next tick; every phone is told to send every move again. |
 | `pathall` | worker | switch | v2.3.3726 | false | logic | `movepath` | no | Only a phone that asks with ?diet=1 gets the move glide. |
 | `rest` | worker | switch | v2.3.3539 | false | logic |  | no | Un-advertises the Hotel's rest: it rests nobody and pays no Well Rested XP. |
@@ -396,6 +400,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `partykeep` | worker | switch | v2.3.3276 | false | logic |  | no | Parties are not kept: the old cap and the away window remove a dropped member. |
 | `power` | worker | switch | v2.3.5481 | false | logic |  | no | Un-advertises the power index: no board report carries one, so the Power board empties as players report and the other boards are as they were. |
 | `race` | worker | switch | v2.3.3525 | false | logic |  | no | Lil Bro's race un-advertised and none started. |
+| `?socialreset` | page | switch | v2.3.5204 | =0 | logic |  | no | A race the worker forgot at a reconnect stays on the phone until its own clock lets it go, as before. |
 | `spar` | worker | switch | v2.3.3265 | false | logic |  | no | No sparring clones: every live clone goes on the next tick and the cap is withdrawn. |
 | `statboards` | worker | switch | v2.3.5484 | false | logic |  | no | Un-advertises the stat boards: no board report carries the points allocated, so those boards empty as players report; every other board is as it was. |
 
@@ -406,6 +411,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?folkwalk` | page | switch | v2.3.3949 | =0 | logic |  | no | The townsfolk stand at their spots, not walk their day. |
 | `tour` | worker | switch | v2.3.3525 | false | logic |  | no | Un-advertises the tour's two givers. |
 | `?townchat` | page | switch | v2.3.3901 | =0 | logic |  | no | The townsfolk do not chat to each other. |
+| `?townsfolkreset` | page | switch | v2.3.5203 | =0 | logic |  | no | A held pose ends a frame after a change of place again, on its own check, not at the zone door. |
 
 ## ui
 

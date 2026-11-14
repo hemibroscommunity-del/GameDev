@@ -269,7 +269,7 @@ A computer: keys, clicks, the wide window and its words.
 
 What kind of device this is and how much it can draw: the profile, resolution, the view cap.
 
-- **Files**: `src/game/`: deviceProfile, renderRes, viewCap, speedTest, loadTimes, lookPaletteChoice
+- **Files**: `src/game/`: deviceProfile, renderRes, viewCap, speedTest, loadTimes, lookPaletteChoice, drawLanes
 - **Doors**: `deviceProfile` in `src/game/deviceProfile.js` (the one place that asks what the device is (devClass, when SHAPES part 8 builds it))
 - **Switches**: none
 - **Words**: `device`, `profile`, `viewcap`, `render-res`, `speed`
@@ -366,6 +366,7 @@ The client's tables (src/data/): items, zones, abilities, the long display and s
 The state ledger: every field of S and top-of-file variable, a file a system.
 
 - **Files**: everything under `src/state/`
+- **Files**: `src/game/`: resetOn
 - **Doors**: none named yet
 - **Switches**: none
 - **Words**: `ledger`
