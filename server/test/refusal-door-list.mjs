@@ -96,6 +96,7 @@ export const INFRA = Object.freeze({
   _relayBuild: 'rebuilds a relay in the sender\'s name', _clanPartyOn: 'the clans-are-parties switch: read by the default case\'s own guard',
   _observeClanInvite: 'records a clan invite\'s pending half; refuses nothing',
   _sparSeen: 'shows a spar clone what it saw; refuses nothing',
+  _reportTake: 'v2.3.5123: the field report (report.js): numbers into the day\'s book; nothing is ever sent back, a dropped report included (a phone is told nothing)',
 });
 
 /* A case with no code at all: the type is swallowed on purpose. */

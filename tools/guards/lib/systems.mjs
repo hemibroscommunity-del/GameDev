@@ -321,9 +321,9 @@ export const SYSTEMS = Object.freeze({
     switches: [],
   },
   debug: {
-    what: 'the crash ring, the perf HUD, the debug overlay',
-    files: [re('^src/debug/')],
-    words: ['debug', 'crash', 'perf'],
+    what: 'the crash ring, the perf HUD, the debug overlay, the field report (its worker half: server/src/report.js, v2.3.5127)',
+    files: [re('^src/debug/'), f('server/src', 'report')],
+    words: ['debug', 'crash', 'perf', 'report'],
     traps: [],
     doors: [],
     switches: [],
