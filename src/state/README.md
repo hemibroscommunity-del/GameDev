@@ -89,3 +89,5 @@ until the map places their file; the guard lists those files by name.
 - `liveops`, `session`, `device`, `page-thread`, `input` (v2.3.5161): the
   next five by fewest rows, 39 in all. The census page made again with them
   (it lagged main by 20 variables).
+- `quests`, `townsfolk`, `desktop`, `monsters`, `audio`, `social`
+  (v2.3.5162): the next six, 150 rows.

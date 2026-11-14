@@ -1,6 +1,6 @@
 card: U
-branch: claude/plan-u-2-small (one branch a PR, each begun from the one before)
-prs: #1721 (ready), #1722 (ready)
+branch: claude/plan-u-3-six (one branch a PR, each begun from the one before)
+prs: #1721 (ready), #1722 (ready), #1723 (ready)
 state: ready
 
 ## Done
@@ -13,10 +13,14 @@ state: ready
   session's call: B is finished), and its empty row in `budgets.mjs`.
 - PR 2 (5161): `liveops`, `session`, `device`, `page-thread`, `input`
   (39 rows), the census page made again (`--write`): unlisted 2109.
+- PR 3 (5162): `quests`, `townsfolk`, `desktop`, `monsters`, `audio`,
+  `social` (150 rows; the page already held them): unlisted 1959.
 
 ## Next
 
-- PR 3 (5162): quests, townsfolk, desktop, monsters, audio, social.
+- PR 4 (5163): movement, economy, preload, skills, memory. Then debug,
+  art, data; wire, combat, world; look; render; ui (the systems of
+  BroTown.jsx and the two renderers last, as the card says).
 
 ## Found
 
