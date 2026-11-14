@@ -391,12 +391,9 @@ gives a login (a player's key or its fingerprint) or the hidden settings.
 
 **Each run costs a little**: Cloudflare counts every record it reads (a page
 reads up to 50 by default, 200 at most, and the whole room once over is every
-record it holds). So it is **off** until you turn it on:
-```
-curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
-  -d '{"name":"roomexport","value":true}' "https://WORKER/api/admin/flags"
-```
-Then ask for one kind of record by its prefix (the names in the registry,
+record it holds). It costs nothing when you do not use it, so it is on.
+
+Ask for one kind of record by its prefix (the names in the registry,
 `docs/ARCHITECTURE-HANDOFF.md` rule 2: `rpg:` the characters, `bank:` the
 vaults, `store_listing:` the auction house, `shop_stock` Diego's pile...):
 ```
@@ -412,14 +409,12 @@ The answer is a page: `rows` (each record's name `k` and what it holds `v`),
 again with `&cursor=` and that value for the next page; the last page may be
 empty. `&limit=` sets a page's size (1 to 200).
 
-When you are done, turn it off again:
+- Its switch is `roomexport` in the live flags (below): on unless it is
+  `false`; off, it answers "off" and reads nothing. To turn it off:
 ```
 curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
   -d '{"name":"roomexport","value":false}' "https://WORKER/api/admin/flags"
 ```
-
-- Its switch is `roomexport` in the live flags (below): off unless it is
-  `true`; off, it answers "off" and reads nothing.
 - Asked for a login's records (`auth:`, `keyidx:`) or the hidden settings,
   it says no.
 

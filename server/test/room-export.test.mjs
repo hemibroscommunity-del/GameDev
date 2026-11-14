@@ -1,14 +1,16 @@
 /* ═══ v2.3.5286: THE PAGED EXPORT (grand plan step 4.7, card R PR 7) ═══
  * (the code: server/src/admin.js exportSources / exportPage and its route
- *  GET /api/admin/export; the switch: liveops.js _roomExportOn; the owner's
+ *  GET /api/admin/export; the switch: liveops.js _roomExportOff; the owner's
  *  steps: docs/OPERATIONS.md, "A copy of the room's records, a page at a time")
  *
  * The owner's copy of the room's records, a page at a time, by a registry
- * prefix or by one character's id, behind the admin key, OFF by default.
+ * prefix or by one character's id, behind the admin key.  ON (the owner,
+ * 2026-11-14: "Just go recommended": it costs only when the owner runs it);
+ * `roomexport: false` turns it off.
  *
- *   1. OFF BY DEFAULT: with no flag, `roomexport: false` or anything but
- *      `true`, the route answers "off" (409) and reads nothing; without the
- *      owner's key, 401;
+ *   1. ON, AND ITS SWITCH: with no flag or `roomexport: true`, a page; with
+ *      `roomexport: false` (or 0), the route answers "off" (409) and reads
+ *      nothing; without the owner's key, 401, on or off;
  *   2. BY A PREFIX: pages walk every record of that prefix once, in key
  *      order, a record of another prefix never in them (`rpg:` never gives
  *      `rpgsnap:`), `next` null at the end; a single-key entry (`shop_stock`)
@@ -31,7 +33,7 @@
  *                                                              filter still drops them: a second wall)
  *   - ...and `exportNever(k) ||` deleted from exportPage too -> FAIL 3 (a character's pages give their `auth:`)
  *   - `opt.startAfter = cursor` deleted from exportPage     -> FAIL 2 (a page given again: the walk never ends)
- *   - `f.roomexport === true` made `!!f.roomexport`         -> FAIL 1 (`'yes'` turns it on)
+ *   - `hasOwnProperty.call(f, 'roomexport') &&` deleted     -> FAIL 1 (no flag reads as off)
  */
 import { makeStorage, settle } from './testroom.mjs';
 import { EXPORT, exportNever, exportSources, exportPage } from '../src/admin.js';
@@ -88,20 +90,24 @@ const keysOf = (pages) => pages.flatMap((r) => (r.rows || []).map((x) => x.k));
   const realList = st.storage.list, realGet = st.storage.get;
   st.storage.list = async (o) => { if (o && o.prefix && o.prefix !== 'liveflags') read++; return realList(o); };
   st.storage.get = async (k) => { if (Array.isArray(k) || (typeof k === 'string' && !['liveflags', 'admin_log'].includes(k))) read++; return realGet(k); };
-  for (const [what, set] of [['no flag (the default)', () => { delete room._liveFlags.roomexport; }], ['`roomexport: false`', () => { room._liveFlags.roomexport = false; }], ['`roomexport: \'yes\'`', () => { room._liveFlags.roomexport = 'yes'; }], ['`roomexport: 1`', () => { room._liveFlags.roomexport = 1; }]]) {
+  for (const [what, set] of [['`roomexport: false`', () => { room._liveFlags.roomexport = false; }], ['`roomexport: 0`', () => { room._liveFlags.roomexport = 0; }]]) {
     set();
     read = 0;
     const r = await ask('k-owner', 'prefix=rpg:');
     const j = await r.json();
-    check('1. ' + what + ': "off" (409), nothing read', r.status === 409 && j.error === 'off' && /roomexport: true/.test(j.words) && read === 0, { status: r.status, j, read });
+    check('1. ' + what + ': "off" (409), nothing read', r.status === 409 && j.error === 'off' && /roomexport: false/.test(j.words) && read === 0, { status: r.status, j, read });
   }
-  room._liveFlags.roomexport = true;
-  check('1. ...on only with `roomexport: true`', room._roomExportOn() === true);
+  for (const [what, set] of [['no flag (the default)', () => { delete room._liveFlags.roomexport; }], ['`roomexport: true`', () => { room._liveFlags.roomexport = true; }]]) {
+    set();
+    const r = await ask('k-owner', 'prefix=rpg:&limit=1');
+    check('1. ' + what + ': on, a page', r.status === 200 && (await r.json()).rows.length === 1 && room._roomExportOff() === false);
+  }
+  delete room._liveFlags.roomexport;
   const noKey = await ask(null, 'prefix=rpg:'), badKey = await ask('nope', 'prefix=rpg:');
   check('1. without the owner\'s key: 401, on or off', noKey.status === 401 && badKey.status === 401);
   const good = await ask('k-owner', 'prefix=rpg:&limit=2');
   const gj = await good.json();
-  check('1. with the key and the flag: a page', good.status === 200 && gj.ok && gj.rows.length === 2 && gj.rows[0].k === 'rpg:' + A && gj.next === 'rpg:' + A2 && gj.marks.whose === 'player', gj);
+  check('1. with the key: a page', good.status === 200 && gj.ok && gj.rows.length === 2 && gj.rows[0].k === 'rpg:' + A && gj.next === 'rpg:' + A2 && gj.marks.whose === 'player', gj);
   const bad = await ask('k-owner', 'prefix=auth:');
   check('1. ...a refused ask is a 400 with its words', bad.status === 400 && (await bad.json()).error === 'never');
   await settle();

@@ -259,8 +259,8 @@ export const WIRE_HTTP = [
   { name: 'http:/api/admin/player', dir: 'in', at: 'admin.js _adminFetch', wayIn: 'admin', envelope: 'http',
     phase: ['none checked'], mayStart: 'owner', doesWhat: ['reads'], reqId: 'harmless',
     trust: { id: 'request' }, absent: 'refused: no id is a 400', bad: ['taken'], answer: 'http' },
-  /* v2.3.5286 (card R PR 7): the paged export (admin.js exportPage).  Off
-     until the owner sets `roomexport`; never a login key or the hidden settings */
+  /* v2.3.5286 (card R PR 7): the paged export (admin.js exportPage).  On;
+     `roomexport: false` turns it off; never a login key or the hidden settings */
   { name: 'http:/api/admin/export', dir: 'in', at: 'admin.js _adminFetch', wayIn: 'admin', envelope: 'http',
     phase: ['none checked'], mayStart: 'owner', doesWhat: ['reads'], reqId: 'harmless',
     trust: { prefix: 'request', player: 'request', cursor: 'request', limit: 'request' },

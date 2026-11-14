@@ -3,7 +3,7 @@
 Grand plan step 4.7, card R PR 7. The owner's copy of the room's records, a
 page at a time. The code: `server/src/admin.js` (`EXPORT`, `exportSources`,
 `exportPage`, the route `GET /api/admin/export`); its switch:
-`server/src/liveops.js` `_roomExportOn`; its suite:
+`server/src/liveops.js` `_roomExportOff`; its suite:
 `server/test/room-export.test.mjs`; the owner's steps: `docs/OPERATIONS.md`,
 "A copy of the room's records, a page at a time".
 
@@ -45,10 +45,10 @@ page at a time. The code: `server/src/admin.js` (`EXPORT`, `exportSources`,
 It writes nothing (not even a line in the owner's log). It reads: a page
 reads up to its `limit` rows (`read` in the answer), one storage call for a
 run of single keys and one for each prefix's list; the whole room once over
-reads every row it holds. So it is **OFF** until the owner sets
-`roomexport: true` in the live flags (anything else, the default included,
-answers `off`, 409, and reads nothing), and card R's Needs carries it as a
-cost question.
+reads every row it holds. It costs only when the owner runs it, behind the
+admin key, so it is **ON**: the owner's word, 2026-11-14, on the planning
+session's recommendation, *"Just go recommended"*. `roomexport: false` in the
+live flags turns it off (it answers `off`, 409, and reads nothing).
 
 ## Not built
 

@@ -68,9 +68,10 @@ export const SNAPSHOT = {
  *     one's page (none today; the suite holds it).
  *   - A READ THE OWNER PAYS FOR each time it runs: a page reads up to its
  *     `limit` rows (`read` in the answer), and the whole room once over is
- *     every row it holds.  So it is OFF until the owner sets
- *     `roomexport: true` in the live flags (liveops.js _roomExportOn), and a
- *     cost question in card R's Needs.
+ *     every row it holds.  It costs only when the owner runs it, behind the
+ *     admin key, so it is ON (the owner, 2026-11-14, on the planning
+ *     session's recommendation: "Just go recommended"); `roomexport: false`
+ *     in the live flags turns it off (liveops.js _roomExportOff).
  *
  * Held by server/test/room-export.test.mjs.  The restore that would read
  * such a copy back is not built (a page is the owner's to keep). */
@@ -475,10 +476,10 @@ export const adminMethods = {
 
       /* v2.3.5286: THE PAGED EXPORT (exportPage above; card R PR 7): a page
          of records by a registry prefix or by one character, never a login
-         key or the hidden settings.  OFF until `roomexport: true` (a read
-         the owner pays for each time it runs). */
+         key or the hidden settings.  On; `roomexport: false` turns it off
+         (a read the owner pays for each time it runs). */
       if (request.method === 'GET' && path === '/export') {
-        if (!this._roomExportOn()) return json({ ok: false, error: 'off', words: 'The export is off: set `roomexport: true` in the live flags to use it (and back to false after).' }, 409);
+        if (this._roomExportOff()) return json({ ok: false, error: 'off', words: 'The export is off: `roomexport: false` is in the live flags (clear it to use the export).' }, 409);
         const q = {};
         for (const n of ['prefix', 'player', 'cursor', 'limit']) { const v = url.searchParams.get(n); if (v !== null) q[n] = v; }
         const r = await exportPage(this.state.storage, q);
