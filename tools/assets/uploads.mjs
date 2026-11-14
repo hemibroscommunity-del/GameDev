@@ -245,15 +245,15 @@ function report() {
   const names = uploadsToday();
   if (!file) { console.log(`${OUT} is not written yet: run with --write (${names.length} uploads at the top).`); return; }
   const was = new Map(file.rows.map((r) => [r.name, r]));
-  let differ = 0, unanswered = 0;
+  let differ = 0;
+  const empty = Object.fromEntries(OWNER.map((k) => [k, 0]));
   console.log(`${names.length} uploads at the top of the repository; ${file.rows.length} rows in ${OUT}.`);
   for (const name of names) {
     const old = was.get(name);
     if (!old) { console.log(`  no row yet:        ${name}`); differ++; continue; }
     const now = computed(name, old);
     if (now.sha256 !== old.sha256) { console.log(`  BYTES CHANGED:     ${name} (an upload is kept byte for byte: find what touched it)`); differ++; }
-    const empty = OWNER.filter((k) => old[k] === '');
-    if (empty.length) unanswered++;
+    for (const k of OWNER) if (old[k] === '') empty[k]++;
     const size = now.pixels ? `${now.pixels[0]}x${now.pixels[1]}` : '';
     const secs = now.seconds != null ? ` ${now.seconds}s` : '';
     console.log(`  ${String(now.bytes).padStart(9)}  ${(old.firstCommitDate || '').slice(0, 10).padEnd(10)}  ${(size + secs).padEnd(16)}  ${(now.signedRecord ? 'signed: ' + now.signedRecordTool : 'no signed record').padEnd(44)}  ${name}`);
@@ -261,7 +261,13 @@ function report() {
   const here = new Set(names);
   for (const r of file.rows) if (!here.has(r.name)) { console.log(`  row with no file:  ${r.name}`); differ++; }
   console.log(differ ? `${differ} differ. This is a report, not a gate.` : 'Every upload has its row, and every row its file, byte for byte.');
-  console.log(`${unanswered} of ${file.rows.length} rows wait for the owner's answers.`);
+  /* v2.3.5028: an owner's column left empty is named, not counted as a
+   * row "waiting": the owner may have answered that it is not known (the
+   * prompt and the licence, 2026-11-14: docs/plan/cards/F.md) */
+  const open = OWNER.filter((k) => empty[k]);
+  console.log(open.length
+    ? `The owner's columns still empty: ${open.map((k) => `${k} (${empty[k]} of ${file.rows.length})`).join(', ')}.`
+    : 'Every owner\'s column is filled.');
   if (shallow) console.log('(A shallow checkout: the first-commit dates are the ones on file, not read again.)');
 }
 
