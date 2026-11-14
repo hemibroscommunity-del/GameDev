@@ -29,14 +29,26 @@
  *      its software list is paletteTex.js's own; no other file in src/ asks
  *      the chip its middle precision (the class's one new question).
  *
+ * v2.3.5227 (card O PR 7; card A's Found for O; 2.1's "facts only"): §3
+ * also fails a CHIP OR BROWSER question outside the profile -- the largest
+ * picture side through `getParameter`, the processor's threads, the user
+ * agent, the chip's name (RENDERER, the unmasked one) -- but for the files
+ * on STILL_ASKS (a census: the count only falls, each with its reason);
+ *   3b. every answer the four movers get from the profile is the one they
+ *       got by asking themselves (the chip's name three ways, the largest
+ *       side and a lost context's, the threads, the user agent).
+ *
  * BREAK PROOF (rule 8), each tried by hand, 2026-11-14:
+ *   3. each of the four as it was (paletteTex.js's own rendererName; peerImpostor.js's
+ *      gl.getParameter(gl.MAX_TEXTURE_SIZE); bodyBake.js's navigator.hardwareConcurrency;
+ *      crashTrap.js's navigator.userAgent)                     -> FAIL 3, naming the file each time
  *   5. classOf: `prec: _num(f.precBits) >= 10 ? 32 : 16`          -> FAIL 5
  *   6. chipFacts: `soft: name,` in place of `soft: SOFT_GL.test(name),` -> FAIL 6
  *   7. devClass: `cores: nav ? nav.userAgent.length : 0,`           -> FAIL 7
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { FINE_QUERY, COMPUTER_FRAME_QUERY, fineInput, computerFrame, onIOS, deviceProfile,
-  DEV_CLASS, DEV_CLASS_FIELDS, classOf, classKey, devClass, SOFT_GL } from '../../src/game/deviceProfile.js';
+  DEV_CLASS, DEV_CLASS_FIELDS, classOf, classKey, devClass, SOFT_GL, rendererName, maxTextureSize, cores, userAgent } from '../../src/game/deviceProfile.js';
 import { onComputer } from '../../src/game/deskWords.js';
 
 let failures = 0, passes = 0;
@@ -92,7 +104,22 @@ check('1. nothing at all is not', !onIOS('', '', 0));
       else if (/\.(js|jsx|mjs)$/.test(name)) files.push(u);
     }
   })(root);
+  /* v2.3.5227: a chip or browser question, and the files that still ask one (a census: only falls) */
+  const CHIP_OR_BROWSER = [
+    [/getParameter\([^)]*MAX_TEXTURE_SIZE/, 'asks the chip its largest picture side'],
+    [/\.hardwareConcurrency\b/, 'asks the processor\'s threads'],
+    [/\.userAgent\b/, 'reads the user agent'],
+    [/UNMASKED_RENDERER_WEBGL|WEBGL_debug_renderer_info|getParameter\([^)]*\bRENDERER\b/, 'asks the chip its name'],
+  ];
+  const STILL_ASKS = Object.freeze({
+    'networking/index.js': 'the identity\'s fingerprint parts (the user agent): who, not what it can draw',
+    'debug/perfHud.js': 'the strip\'s chip name (the owner\'s eyes, `?perf=1`)',
+    'debug/DebugOverlay.jsx': 'the debug overlay\'s "UA" cell',
+    'rendering/lookPalette.js': 'the look\'s choice (lookPaletteChoice): card O\'s PR 8 moves it into the lanes\' table',
+  });
+  const STILL_LINE = 4;   /* v2.3.5227: only falls */
   const bad = [];
+  const still = new Set();
   for (const u of files) {
     const rel = u.pathname.slice(root.pathname.length);
     if (rel === 'game/deviceProfile.js') continue;
@@ -101,9 +128,57 @@ check('1. nothing at all is not', !onIOS('', '', 0));
       if (/matchMedia\(\s*['"`]\(pointer:\s*(fine|coarse)\)/.test(line)) bad.push(rel + ':' + (i + 1) + ' asks matchMedia about the pointer');
       if (line.includes("'(pointer:fine) and (min-width:1000px)'")) bad.push(rel + ':' + (i + 1) + ' writes the computer-window query');
       if (/iPad\|iPhone|iPhone\|iPad/.test(line) && /navigator|userAgent|\bua\b/.test(line)) bad.push(rel + ':' + (i + 1) + ' tests the user agent for an iPhone by hand');
+      for (const [re, what] of CHIP_OR_BROWSER) {
+        if (!re.test(line)) continue;
+        if (STILL_ASKS[rel]) still.add(rel);
+        else bad.push(rel + ':' + (i + 1) + ' ' + what);
+      }
     });
   }
-  check('3. every device question in src/ is the profile\'s (game/deviceProfile.js)', bad.length === 0, bad);
+  check('3. every device question in src/ is the profile\'s (game/deviceProfile.js): the pointer, the computer window, an iPhone, and (v2.3.5227) the chip\'s largest side, the threads, the user agent, the chip\'s name', bad.length === 0, bad);
+  const gone = Object.keys(STILL_ASKS).filter((f) => !still.has(f));
+  check(`3. ...but for the census of files that still ask (${Object.keys(STILL_ASKS).length}, the line ${STILL_LINE}: only falls), each still asking (one that no longer does leaves the list)`,
+    Object.keys(STILL_ASKS).length <= STILL_LINE && gone.length === 0, { gone, still: [...still] });
+}
+
+/* ── 3b. THE SAME ANSWERS (v2.3.5227): the four movers' questions, asked of the profile ── */
+{
+  /* a renderer whose chip answers as each browser's does */
+  const fakeR = ({ renderer, unmasked, ext = true, maxTex = 8192, lost = false }) => ({ gl: {
+    RENDERER: 0x1F01, MAX_TEXTURE_SIZE: 0x0D33,
+    getParameter(p) { if (lost) return null; if (p === 0x1F01) return renderer; if (p === 0x0D33) return maxTex; if (p === 0x9246) return unmasked; return null; },
+    getExtension(n) { return ext && n === 'WEBGL_debug_renderer_info' ? { UNMASKED_RENDERER_WEBGL: 0x9246 } : null; },
+  } });
+  /* the copy paletteTex.js kept, as it was (its answer is the one to keep) */
+  const asWas = (r) => {
+    try {
+      const gl = r && r.gl;
+      if (!gl) return '';
+      const plain = String(gl.getParameter(gl.RENDERER) || '');
+      if (plain && !/^webkit webgl$/i.test(plain)) return plain;
+      const ext = gl.getExtension('WEBGL_debug_renderer_info');
+      return ext ? String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || '') : plain;
+    } catch (e) { return ''; }
+  };
+  const chips = [
+    fakeR({ renderer: 'Mali-G78 MC24' }),                                    /* Firefox: the name as RENDERER */
+    fakeR({ renderer: 'WebKit WebGL', unmasked: 'Apple GPU' }),              /* Safari, Chrome: through the extension */
+    fakeR({ renderer: 'WebKit WebGL', unmasked: 'x', ext: false }),          /* no extension: the plain answer */
+    fakeR({ renderer: '', unmasked: 'ANGLE (SwiftShader)' }),                /* none plain */
+    fakeR({ renderer: 'WebKit WebGL', unmasked: '' }),                       /* the extension, empty */
+    null, {},
+  ];
+  check('3b. the chip\'s name: the profile\'s answer is paletteTex.js\'s old one, every way a browser gives it', chips.every((r) => rendererName(r) === asWas(r)), chips.map((r) => [rendererName(r), asWas(r)]));
+  const peerWas = (R) => { let m = 4096; try { const gl = R && R.gl; if (gl) m = Math.min(m, gl.getParameter(gl.MAX_TEXTURE_SIZE) || 4096); } catch (e) { /* 4096 */ } return m; };
+  const peerNow = (R) => { let m = 4096; try { if (R && R.gl) m = Math.min(m, maxTextureSize(R) || 4096); } catch (e) { /* 4096 */ } return m; };
+  const sides = [fakeR({ maxTex: 16384 }), fakeR({ maxTex: 2048 }), fakeR({ maxTex: 0 }), fakeR({ lost: true }), null];
+  check('3b. the largest side: peerImpostor.js\'s and crashTrap.js\'s answers as before (a lost context\'s too)',
+    sides.every((R) => peerNow(R) === peerWas(R)) && sides.filter((R) => R && R.gl).every((R) => String(maxTextureSize(R)) === String(R.gl.getParameter(R.gl.MAX_TEXTURE_SIZE))),
+    sides.map((R) => [peerNow(R), peerWas(R), R && R.gl ? maxTextureSize(R) : null]));
+  const nav = typeof navigator !== 'undefined' ? navigator : null;
+  const poolOf = (n) => Math.max(1, Math.min(2, (n || 2) - 2));
+  check('3b. the threads: bodyBake.js\'s pool as before', poolOf(cores()) === poolOf(nav && nav.hardwareConcurrency) && cores() === (nav ? nav.hardwareConcurrency : undefined), { cores: cores() });
+  check('3b. the user agent: crashTrap.js\'s as before', userAgent() === ((nav && nav.userAgent) || ''), userAgent());
 }
 
 /* ── 4. THE WORDS ── */

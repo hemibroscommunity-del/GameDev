@@ -17,6 +17,7 @@
  */
 
 import { ringUploadKey } from './crashRing.js';
+import { userAgent, maxTextureSize } from '../game/deviceProfile.js';   /* v2.3.5227: the device asked in one place (card O PR 7) */
 const KEY = 'bt-crashlog';
 
 function read() {
@@ -71,7 +72,7 @@ function _doFlush() {
          `v` alone already tells tagged deploys apart. */
       v: typeof __GAME_VERSION__ !== 'undefined' ? __GAME_VERSION__ : 'dev',
       sha: typeof __BUILD_COMMIT__ !== 'undefined' ? __BUILD_COMMIT__ : '',
-      ua: (navigator && navigator.userAgent) || '',
+      ua: userAgent(),   /* v2.3.5227: the profile's (game/deviceProfile.js) */
       zone: (window._gameState && window._gameState.current && window._gameState.current.currentZone) || '',
       /* v2.3.1384: GPU caps + context state ride along — an invisible
          character from a failed big-texture upload is only diagnosable
@@ -86,7 +87,7 @@ function _doFlush() {
          library file first) -- at the login, as the character is played
          from the list: the owner's "loading from a saved character will
          show the game as an enlarged minimap" (TRAPS §194). */
-      gl: (function () { try { var R = window._pixiRenderer; var r = R && R.app && R.app.renderer; var g = r && r.gl; return g ? (g.getParameter(g.MAX_TEXTURE_SIZE) + '/' + (g.isContextLost() ? 'lost' : 'ok')) : ''; } catch (e) { return ''; } })(),
+      gl: (function () { try { var R = window._pixiRenderer; var r = R && R.app && R.app.renderer; var g = r && r.gl; return g ? (maxTextureSize(r) + '/' + (g.isContextLost() ? 'lost' : 'ok')) : ''; } catch (e) { return ''; } })(),   /* v2.3.5227: the largest side, the profile's */
       log: log.slice(-16),
     });
     const url = _apiBase() + '/api/feedback/crash';
