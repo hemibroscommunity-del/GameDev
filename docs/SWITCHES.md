@@ -142,7 +142,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 |---|---|---|---|---|---|---|---|---|
 | `?ladderpix` | page | switch | v2.3.5225 | =0, off, false | chip | `govern` | no | The pixel rungs are off: every pixel the screen and the budget allow, whatever the rung. |
 | `?lane` | page | lever | v2.3.5221 | =full, =light or =thirty | none |  | no | This page draws in the named lane, whatever its device's facts pick. |
-| `lookpalette` | both | switch | v2.3.3716 | off_lookpalette: true; ?lookpalette=0 (=1 builds it anyway) | chip |  | onWindows, onMac in src/game/lookPaletteChoice.js | Each look's copy is baked on first sight again, not coloured on the chip. |
+| `lookpalette` | both | switch | v2.3.3716 | off_lookpalette: true; ?lookpalette=0 (=1 builds it anyway) | chip |  | onWindows, onMac (v2.3.5228: the look's overrides, drawLanes.js) in src/game/deviceProfile.js | Each look's copy is baked on first sight again, not coloured on the chip. |
 | `?pixbudget` | page | switch | v2.3.5140 | =0 (off), or a number: the budget to try | chip |  | no | The drawing resolution is no longer held to the pixel budget. |
 | `?res` | page | value | v2.3.3339 | a number: the drawing resolution | chip |  | no | Sets the drawing resolution by hand. |
 | `?speedms` | page | lever | v2.3.3339 | a number of ms | none |  | no | The Speed test measures for this long, not 4 s. |
@@ -272,7 +272,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?keepimage` | page | switch | v2.3.3606 | =0 | memory |  | no | A canvas read back is kept as a canvas, not an image. |
 | `?loudclear` | page | switch | v2.3.3449 | present | chip |  | no | Every clear is made, not skipped when nothing changed. |
 | `?nopalette` | page | switch | v2.3.3190 | present | memory |  | no | No colour-number pictures: every picture held whole. |
-| `?onebatch` | page | switch | v2.3.3447 | =0 or =1 | chip |  | SOFTWARE_GL in src/rendering/paletteTex.js | The three sprite programs (=0), or the one program (=1), whatever the device. |
+| `?onebatch` | page | switch | v2.3.3447 | =0 or =1 | chip |  | softRenderer, onWindows, onMac (v2.3.5228: the program's overrides, drawLanes.js) in src/game/deviceProfile.js | The three sprite programs (=0), or the one program (=1), whatever the device. |
 | `picnumbers` | both | switch | v2.3.3715 | off_picnumbers: true; ?picnumbers=0 | memory |  | no | Monster strips are held as pictures again, not as colour numbers. |
 | `?poolkeep` | page | switch | v2.3.3152 | present | memory |  | no | The texture pool is not trimmed when idle. |
 | `?textkeep` | page | switch | v2.3.3633 | present | memory |  | no | A Text that is gone keeps its texture. |

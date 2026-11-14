@@ -767,8 +767,8 @@ is the freeze a Windows laptop met).
 |---|---|---|
 | mouse or touch; a computer's window | `(pointer:fine)`, and the window's width | fact (`src/game/deviceProfile.js`) |
 | the "add to home screen" hint | the user agent: iPhone, iPad | name (`onIOS`; no drawing reads it) |
-| **the look palette, on or off** | the user agent: Windows, Macintosh | **name** (`src/game/lookPaletteChoice.js`: off on both) |
-| **one drawing program or three** | the same two names; and the chip's name against a list of software renderers | **name**, and one fact (`src/rendering/paletteTex.js` `oneBatchChoice`, `SOFTWARE_GL`) |
+| **the look palette, on or off** | the user agent: Windows, Macintosh | **name**, asked of `src/game/deviceProfile.js` alone (v2.3.5228: the lanes' `look` knob, pinned `baked` on both by an override; `lookPaletteChoice.js` reads `laneKnob('look')`) |
+| **one drawing program or three** | the same two names; and the chip's name against a list of software renderers | **name**, and one fact, asked of `src/game/deviceProfile.js` alone (v2.3.5228: the lanes' `program` knob, pinned `three` by an override; `paletteTex.js` `oneBatchChoice` reads `laneKnob('program')`, `softRenderer` is `SOFT_GL`) |
 | the colour numbers, the look palette, one program, moving water | WebGL 2 or not; whether the program built | fact |
 | how many bake workers | the processor's threads | fact (`src/rendering/bodyBake.js`) |
 | the crowd's shared picture's size | the largest picture the chip takes | fact (`src/rendering/peerImpostor.js`) |
