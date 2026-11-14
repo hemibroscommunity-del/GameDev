@@ -49,7 +49,7 @@ import { FpsOverlay } from './systems/fpsOverlay.js';
 import { MinimapRenderer } from './systems/minimapRenderer.js'; /* v2.3.1781 */
 import { loadPlayerSprites } from './playerSprites.js';
 import { loadPlayerAnchors } from './playerAnchors.js';
-import { loadSlimeSprites } from './slimeSprites.js';
+import { loadSlimeSprites, loadSlimeSingles, SLIME_WALK } from './slimeSprites.js';   /* v2.3.5256: + whether they load as you walk, and the singles that do not */
 import { loadPlayerDeathSprites } from './playerDeathSprites.js';
 import { loadWeaponSprites } from './weaponSprites.js';
 import { loadShieldSprites } from './shieldSprites.js';
@@ -441,7 +441,8 @@ export async function initPixiRenderer(canvas) {
   // Player death animation — 21-frame transformation (alive -> skeleton -> bone pile).
   loadPlayerDeathSprites().catch((err) => console.warn('Player death sprites failed to load, using fade-rotate fallback:', err));
   // Same for slime monsters (idle / shoot / hit / death / remnants).
-  loadSlimeSprites().catch((err) => console.warn('Slime sprites failed to load, using procedural fallback:', err));
+  /* v2.3.5256: walking, only the splat and the orb here (wheelMonsterArt.js loads the strips as a slime comes near) */
+  (SLIME_WALK ? loadSlimeSingles() : loadSlimeSprites()).catch((err) => console.warn('Slime sprites failed to load, using procedural fallback:', err));
   /* v2.3.1406: the snowman kick that lived here (pre-v2.3.1358 legacy) is
      GONE — it decoded the frost-only sheets at startup on every session,
      silently defeating the v2.3.1405 per-zone move.  preloadZoneAssets('frost')

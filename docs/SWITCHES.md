@@ -440,6 +440,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?sheenpass` | page | switch | v2.3.3453 | 2026-10-18 | present | chip |  | no | The sheen is drawn without its batch. |
 | `?shieldretry` | page | switch | v2.3.4431 | 2026-11-10 | =0 | logic | `?retrylooks` | no | Shield sheets that failed are not asked for again. |
 | `?slimesplat` | page | switch | v2.3.4127 | off | =0 or =1 | logic |  | no | The slime's splat turned off (=0) or on (=1) for this phone. |
+| `?slimewalk` | page | switch | v2.3.5256 | 2026-11-14 | =0, off, false | memory |  | no | The slimes' sheets load behind the first loading screen and are kept, as before, not as a slime comes near. |
 | `?sootms` | page | lever | v2.3.3679 |  | a number of ms | none |  | no | QA: soot marks lie this long. |
 | `?standinlegs` | page | switch | v2.3.3640 | 2026-10-27 | =0 | logic |  | no | The sword and bow bodies keep their legs under greaves, as before. |
 | `?traitretry` | page | switch | v2.3.3606 | 2026-10-26 | =0 | logic | `?retrylooks` | no | A trait picture that failed is not asked for again. |
