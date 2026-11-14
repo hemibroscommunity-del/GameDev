@@ -10,7 +10,7 @@ gone).
 
 ## PRs, in order
 
-1. **(v2.3.5035) The census: `docs/plan/census/red.md`**, with your status
+1. **(tag 5035) The census: `docs/plan/census/red.md`**, with your status
    file. A docs PR.
    - **Ask the owner first, once** (CLAUDE.md §6): the sample now, about
      an hour; or every phone test, about 375 of them at a minute or more
