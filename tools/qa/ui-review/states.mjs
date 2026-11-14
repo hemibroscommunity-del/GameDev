@@ -1477,4 +1477,48 @@ export const STATES = [
     },
     after: async ({ P }) => { await evalIn(P, () => { clearInterval(window.__uiDeathStage); const S = window._gameState.current; if (S) S._deathCard = null; }).catch(() => {}); await wait(P, 400); },
   },
+  /* v2.3.5093: THE OWNER'S CARD, THE ECONOMY (src/ui/panels/EconCard.jsx; the
+     grand plan's step 10.4, card E PR 12): a box of the Test panel, the
+     owner's own.  The panel is opened the owner's way (a long press on the
+     top bar's centre) and keyed with the QA worker's admin key, as
+     H.warpToZone does; then "Show the economy" reads the day's book */
+  {
+    id: 'dev-econ-card', group: 'The owner\'s Test panel', title: 'The owner\'s card: the economy',
+    about: 'The owner\'s Test panel, its economy box: the five numbers (those nothing counts yet say so), then each day of the book: gold and items the game made and destroyed, and the room\'s own counts.',
+    run: async ({ P }) => {
+      const up = () => evalIn(P, () => !!Array.from(document.querySelectorAll('strong')).find((n) => n.textContent === 'Test panel'));
+      if (!(await up())) {
+        await evalIn(P, async () => {
+          const el = document.querySelector('.bt-zone-header__title');
+          if (!el) return;
+          const r = el.getBoundingClientRect();
+          const o = { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1, pointerType: 'touch' };
+          el.dispatchEvent(new PointerEvent('pointerdown', o));
+          await new Promise((res) => setTimeout(res, 1500));
+          el.dispatchEvent(new PointerEvent('pointerup', o));
+        });
+        for (let i = 0; i < 40 && !(await up()); i++) await wait(P, 250);
+        if (!(await up())) return 'the Test panel did not open';
+      }
+      await evalIn(P, (k) => {
+        const inp = document.querySelector('input[type="password"]');
+        if (!inp) return;
+        Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(inp, k);
+        inp.dispatchEvent(new Event('input', { bubbles: true }));
+        const b = Array.from(document.querySelectorAll('button')).find((n) => (n.textContent || '').indexOf('Save key on this device') >= 0);
+        if (b) b.click();
+      }, H.ADMIN_KEY);
+      await wait(P, 1200);
+      /* the box is far down the panel: brought into view first */
+      const there = await evalIn(P, () => { const b = document.querySelector('[data-econ-load]'); if (b) b.scrollIntoView({ block: 'center' }); return !!b; });
+      if (!there) return 'the Test panel has no economy box (the key not taken?)';
+      await wait(P, 300);
+      const e = await tapSel(P, '[data-econ-load]');
+      if (e) return 'no Show the economy button (' + e + ')';
+      await P.page.waitForSelector('[data-econ-card]', { timeout: 8000 }).catch(() => {});
+      await evalIn(P, () => { const c = document.querySelector('[data-econ-card]'); if (c) c.scrollIntoView({ block: 'start' }); });
+      await wait(P, 400);
+    },
+    after: async ({ P }) => { await tapSel(P, '[data-dev-close]').catch(() => {}); await wait(P, 400); },
+  },
 ];

@@ -148,8 +148,8 @@ The monsters' lives, moves, status, spawns and the boss.
 
 Gold, the bag, the bank, the market and shops, trades, drops, chests and daily rewards.
 
-- **Files**: `server/src/`: gold, bag, bank, market, marketplace, shop, store, storechat, storegear, storeoffer, trade, trade2, xfer, inbox, itemdrop, deathpile, gearstash, gear, gearprov, salvage, gamble, dice, dailychest, dailyrewards, risechest, revealbag, loginspin, eventcapes
-- **Files**: `src/game/`: bank, itemDrop, groundLoot, lootAsk, dropLines, dropLook, storeAnswer, storeSellTap, tradeSlot, weaponSell, salvage, postOffice, revealBag, dice, dailyRewards, bossChest, loginSpinWheel, coinArt, spinBoard, gearWornSync, arenaStakes
+- **Files**: `server/src/`: gold, bag, bank, market, marketplace, shop, store, storechat, storegear, storeoffer, trade, trade2, xfer, econcard, worldsum, inbox, itemdrop, deathpile, gearstash, gear, gearprov, salvage, gamble, dice, dailychest, dailyrewards, risechest, revealbag, loginspin, eventcapes
+- **Files**: `src/game/`: bank, itemDrop, groundLoot, lootAsk, dropLines, dropLook, storeAnswer, storeSellTap, tradeSlot, weaponSell, salvage, postOffice, revealBag, dice, dailyRewards, bossChest, loginSpinWheel, coinArt, spinBoard, gearWornSync, arenaStakes, econCard
 - **Doors**: `_goldGive` in `server/src/gold.js` (GOLD_ROADS: every change to a player's gold (_goldGive, _goldTake, _goldSet)); `bagGive` in `server/src/bag.js` (BAG_ROADS: every change to a bag count (bagGive, bagTake, bagSet))
 - **Switches**: `storeGear`, `dailyChest`
 - **Words**: `gold`, `bag`, `bank`, `market`, `shop`, `store`, `trade`, `inbox`, `drop`, `loot`, `chest`, `salvage`, `gamble`, `dice`, `daily`, `auction`, `gear`, `coin`

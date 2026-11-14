@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { PlayerDrawings, AccuracyDays } from './DevWatch.jsx';   /* v2.3.4545: what players drew, and every player's accuracy a day */
 import { ReportTable } from './ReportTable.jsx';   /* v2.3.5125: the smoothness table, copied (card A) */
+import { EconCard } from './EconCard.jsx';   /* v2.3.5093: the owner's card, the economy (card E) */
 import { COL, getState } from '../mobile/dash/common.js';
 import { BT_API_BASE } from '../../networking/index.js';
 import { runSpeedTest } from '../../game/speedTest.js';   /* v2.3.3339: the speed test, measured on this phone */
@@ -1613,6 +1614,7 @@ export const DevPanel = ({ onClose }) => {
             <PlayerDrawings call={call} busy={busy} setMsg={setMsg} COL={COL} btn={btn} chip={chip} label={label} />
             <AccuracyDays call={call} busy={busy} setMsg={setMsg} COL={COL} btn={btn} label={label} />
             <ReportTable call={call} busy={busy} setMsg={setMsg} COL={COL} btn={btn} label={label} />{/* v2.3.5125: the smoothness table (ReportTable.jsx) */}
+            <EconCard call={call} busy={busy} setMsg={setMsg} COL={COL} btn={btn} label={label} />{/* v2.3.5093: the owner's card, the economy (EconCard.jsx) */}
 
             <button type="button" style={{ ...btn(false), borderColor: COL.danger, color: COL.danger }} onClick={forgetKey}>
               Forget key on this device
