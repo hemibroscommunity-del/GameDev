@@ -1,6 +1,6 @@
 card: E
 branch: claude/plan-e-11-xfer (one branch a PR, each begun from the one before: merge #1756 to #1764 first)
-prs: #1686, #1691, #1694, #1699, #1752 (merged); #1756, #1758, #1759, #1761, #1764 (ready); PRs 10, 11 pushed, opened once main merges in (Needs)
+prs: #1686, #1691, #1694, #1699, #1752 (merged); #1756, #1758, #1759, #1761, #1764 (ready); PR 10 (claude/plan-e-10-storm), PR 11 on the branch above (ready)
 state: ready
 
 ## Done
@@ -30,7 +30,7 @@ state: ready
 - `inbox.js`: goods mailed in the five dying seconds meet the respawn wipe.
 - `threat.js`: the fine's take and its `bounty:` put are two runs.
 - `gladiator.js`: the prize is paid before its entries are deleted.
-- A new key inside `_econ` (card Q's sitting card) bumps `ECON.V`.
+- A new key inside `_econ` (card Q's sitting card) bumps `ECON_V` (gold.js).
 
 ## Needs
 
