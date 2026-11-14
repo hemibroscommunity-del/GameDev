@@ -160,6 +160,13 @@ O's PR 12 makes it an override); `?ladderpix=0` turns the pixel rungs off
 for one screen. The Speed test's `res2` still works: it holds the ladder
 while it runs.
 
+A pixel rung is never KEPT for the next sitting (the planning session's
+(A), 2026-11-14): the governor keeps the rate and the passes, and loads a
+kept rung without its pixel rungs. A rung that moves only behind a veil
+would otherwise hold a cool phone on a softer picture until its next veil,
+which in the Wheel can be the whole sitting (`docs/specs/frame-pacer.md`,
+`frame-pacer.test` §19g).
+
 `render-res.test` §6: a phone under its budget and a computer held to it
 each lose a quarter, then half; the four callers agree after a rung moves;
 back at the row as before; `?ladderpix=0`. Break proofs in its header.

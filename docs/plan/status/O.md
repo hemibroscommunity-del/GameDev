@@ -1,40 +1,40 @@
 card: O
 branch: claude/plan-o-5-pixels (one branch a PR: claude/plan-o-<n>-<word>; each begun from the one before)
-prs: #1787 (5221), #1792 (5222), #1794 (5224), PR 5 (5225): ready, merged in that order
+prs: #1787 (5221), #1792 (5222), #1794 (5224, hold mended), #1800 (5225): ready, merged in that order
 state: ready
 
 ## Done
 
-- #1787 (5221) `claude/plan-o-1-lanes`: the lane table and its reader
-  (`src/game/drawLanes.js`), its guard, `docs/LANES.md`, the report's lane
-  (`caps.report` 3, `reportlanes`), the worker's lists for the card, the
-  wire row, the class asked at the join (card P's 18.4 ms). Deploys.
+- #1787 (5221) `claude/plan-o-1-lanes`: the lane table and its reader, its
+  guard, `docs/LANES.md`, the report's lane (`caps.report` 3,
+  `reportlanes`), the worker's lists, the wire row. Deploys.
 - #1792 (5222) `claude/plan-o-2-governor`: the governor (the pacer, grown),
   its model (30, 60, 120), `mp-governor`. Deploys (server tests).
+- #1794 (5224): the rate's knob (a 60 screen to a steady 30; a fast screen
+  as before: (a)). Sitting 11's hold mended: the governor walks only the
+  rungs of knobs marked moved (`liveKnobs`); a kept rung carries its live
+  set; a cool phone after a hot sitting is back at 60 in one try
+  (frame-pacer §19). `mp-governor` expects the rate's rung; its slow CPU
+  no longer leaks into later scenarios.
 
 ## Next
 
-- #1794 (5224) the rate's knob, (a); PR 5 (5225) the pixels' knob, (b): a
-  quarter, then half, of the pixels drawn. Then PR 3 once #1792 is merged.
-  PR 6 waits: the crowd cap is fixed in `entityRenderer.js` (H, TF).
+- #1800 (5225), the pixels' knob, (b); the mend merged up, and (A): a kept
+  rung loads without its pixel rungs. The live flag `ladder` (5235). Then
+  PR 3 once #1792 is merged; PR 6 waits (the crowd cap, `entityRenderer.js`).
 
 ## Found
 
-- Shared lists (rule 3, TRAPS §333), each in a place of its own:
-  `liveops.js`'s header (#1787 `reportlanes`); `switches.mjs` (#1787
-  `?lane`, `reportlanes`; PR 2 `?govern`); `systems.mjs` (`drawLanes` in
-  `device`); `src/state/phases.js` (PR 2, `ladder`).
-- A `light` lane by facts (step 1.3) needs 20 reports or more from each of
-  two classes that differ only in a fact a lane can read (say `mp` 3 and 9,
-  the same `gl`, `soft`, `hz`), their `late` apart by more than a few points.
-- No one field says a window covers the world (the phase table's `window`
-  row is todo): pixels move at a loading screen or a tab's return only.
-- Card L: the `ladder` row's `reset` is "kept: the device's" once L's
-  `reset` column lands. Card M: two clocks (BUDGETS #5), "in play" four ways
-  (#7), untouched.
-- The QA box: React's redraw (`R > J`) holds 12 to 17 ms in the held sweep's
-  `town`, on `main` too (noise: one run of two counted it).
+- Shared lists (rule 3, TRAPS §333): `liveops.js`'s header (#1787
+  `reportlanes`); `switches.mjs` (#1787 `?lane`, `reportlanes`; #1792
+  `?govern`); `systems.mjs` (`drawLanes`); `src/state/phases.js` (`ladder`).
+- No one field says a window covers the world: pixels move at a loading
+  screen or a tab's return only.
+- Card L: `ladder`'s `reset` is "kept: the device's"; M's BUDGETS #5, #7 kept.
+- A 60 screen whose every frame costs 33 ms reads as 30 (`refreshOf` reads
+  every call, drawn or passed: the rate's rung alone never does it).
 
 ## Needs
 
-- (none) Merged in order: #1787, #1792, #1794, PR 5 (each begun from the one before).
+- #1792 held to sitting 12 (with it #1794, #1800): its `DOOR_SUITES` row
+  once today's list lands (card L's guard; the planning session's answer).

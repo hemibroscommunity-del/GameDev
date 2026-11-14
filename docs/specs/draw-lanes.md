@@ -41,7 +41,10 @@ controller**.
   a fallback for a known bug). None yet: PR 8 moves the fallbacks into the
   table, PR 12 the off-ramps.
 - The **rung** (PR 2) is where the governor stands on the ladder: rungs taken
-  on each axis. Until PR 2 it is always the row.
+  on each axis. Until PR 2 it is always the row. v2.3.5224 (the gatekeeper's
+  sitting 11): a knob is **live** once its row marks it moved (`liveKnobs()`);
+  the governor walks only rungs that change a live knob, and `rungDepth`
+  counts only those (`docs/specs/frame-pacer.md`).
 
 ## The reader
 
@@ -111,7 +114,8 @@ so it deploys once for the card:
 
 - `drawLane`: `full`, `light`, `thirty` (`DRAW_LANES`), each its own cell;
 - `rung` (sent from PR 2): two whole numbers, the most rungs taken at once
-  and the seconds below the lane's row; summed beside the cell, never in it;
+  (v2.3.5224: rungs that change a live knob) and the seconds below the
+  lane's row; summed beside the cell, never in it;
 - `self` (sent from PR 14): names from `SELF_PROGRAMS`.
 
 `caps.report` 3 takes them (a cap that grows gates by its count, TRAPS §9).

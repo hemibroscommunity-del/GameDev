@@ -49,7 +49,7 @@
  * GROWN -- see THE GOVERNOR below.  It imports one leaf, ./drawLanes.js (the
  * lanes' table, itself import-free), and node still tests it.
  */
-import { AXES, AXIS_NAMES, KNOB_NAMES, knobAt, drawLane, ladderRung, setRung, rungDepth, laneKnob } from './drawLanes.js';
+import { AXES, AXIS_NAMES, knobAt, drawLane, ladderRung, setRung, rungDepth, laneKnob, liveKnobs } from './drawLanes.js';
 
 /* a refresh shorter than this is a fast screen (over about 70 a second) */
 export const PACE_FAST_MS = 14;
@@ -402,9 +402,25 @@ export function makeGovernor(opts) {
   const steps = [];             /* the last STEPS_KEPT steps, for the strip: { t, axis, dir, knobs, work, chip } */
   let stepsN = 0;
 
-  const vec = (r) => KNOB_NAMES.map((k) => knobAt(lane || drawLane(), k, r));
-  const same = (a, b) => a.every((v, i) => v === b[i]);
-  const movesPixels = (a, b) => knobAt(lane || drawLane(), 'pixels', a) !== knobAt(lane || drawLane(), 'pixels', b);
+  /* v2.3.5224: the LIVE knobs only (drawLanes.js liveKnobs: those a PR
+     reads through laneKnob) -- a rung that changes no knob anything reads is
+     passed, going down and coming back (the gatekeeper's sitting 11) */
+  const vec = (r) => liveKnobs().map((k) => knobAt(lane || drawLane(), k, r));
+  const same = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+  const movesPixels = (a, b) => liveKnobs().includes('pixels') && knobAt(lane || drawLane(), 'pixels', a) !== knobAt(lane || drawLane(), 'pixels', b);
+  /* the live set, as a word: a rung kept under another (a knob moved since,
+     or the governor's first version, which counted every knob) is not
+     loaded -- its rungs meant something else */
+  const liveKey = () => liveKnobs().join(',');
+  /* the shallowest rung that changes the same: the rungs past an axis's last
+     live change are let go (rungDepth's count, and a try up that has
+     something to undo) */
+  const trim = (r) => {
+    let w = r.work, c = r.chip;
+    while (w > 0 && same(vec({ work: w, chip: c }), vec({ work: w - 1, chip: c }))) w--;
+    while (c > 0 && same(vec({ work: w, chip: c }), vec({ work: w, chip: c - 1 }))) c--;
+    return { work: w, chip: c };
+  };
   /* the rung one effective step from `r` on `axis` (down: dir -1, a rung
      more; up: dir +1, a rung less), passing rungs that change nothing; null:
      none that changes anything */
@@ -420,16 +436,17 @@ export function makeGovernor(opts) {
   };
   const save = () => {
     if (!store || !lane) return;
-    try { const all = store.get() || {}; const r = ladderRung(); all[lane] = [r.work, r.chip]; store.set(all); } catch (e) { /* this sitting only */ }
+    try { const all = store.get() || {}; const r = ladderRung(); all[lane] = [r.work, r.chip, liveKey()]; store.set(all); } catch (e) { /* this sitting only */ }
   };
   const apply = (to, axis, dir, ts) => {
     const before = vec(ladderRung());
-    setRung(to.work, to.chip);
+    const t = trim(to);
+    setRung(t.work, t.chip);
     const after = vec(ladderRung());
-    const knobs = KNOB_NAMES.filter((k, i) => before[i] !== after[i]);
+    const knobs = liveKnobs().filter((k, i) => before[i] !== after[i]);
     if (dir < 0) stack.push(axis);
     else { const i = stack.lastIndexOf(axis); if (i >= 0) stack.splice(i, 1); }
-    steps.push({ t: ts, axis, dir, knobs, work: to.work, chip: to.chip });
+    steps.push({ t: ts, axis, dir, knobs, work: t.work, chip: t.chip });
     if (steps.length > STEPS_KEPT) steps.shift();
     stepsN++;
     changedAt = ts;
@@ -453,16 +470,30 @@ export function makeGovernor(opts) {
     if (done && wasUp) { upWait = Math.min(UP_WAIT_MAX_MS, upWait * 2); wasUp = false; }
     return done;
   };
-  /* the lane's kept rung, loaded (at a veil: it may move the pixels) */
+  /* the lane's kept rung, loaded (at a veil).  v2.3.5224: only a rung kept
+     under today's live knobs (a kept rung from before is the row), and
+     trimmed to what it changes; v2.3.5225, without its pixel rungs */
   const load = (L, ts) => {
     lane = L;
     let w = 0, c = 0;
-    try { const all = store && store.get(); const v = all && all[L]; if (Array.isArray(v)) { w = v[0]; c = v[1]; } } catch (e) { w = 0; c = 0; }
-    setRung(w, c);
+    try { const all = store && store.get(); const v = all && all[L]; if (Array.isArray(v) && v[2] === liveKey()) { w = v[0]; c = v[1]; } } catch (e) { w = 0; c = 0; }
+    let t = trim({ work: Math.max(0, Math.min(AXES.work.length, Math.floor(Number(w) || 0))), chip: Math.max(0, Math.min(AXES.chip.length, Math.floor(Number(c) || 0))) });
+    /* v2.3.5225 (the planning session's (A), 2026-11-14): a kept rung loads
+       WITHOUT its pixel rungs -- the rate and the passes kept.  A pixel rung
+       moves only behind a veil, both ways, so a kept one would hold a cool
+       phone on a softer picture (and 30) until its next loading screen or
+       tab's return: in the Wheel, a whole sitting, for the last sitting's
+       heat.  If the phone is still hot, the pixels are taken again at the
+       next veil.  The card's "the next sitting starts there", for pixels
+       only. */
+    const row = { work: t.work, chip: 0 };
+    while (t.chip > 0 && movesPixels(row, t)) t = { work: t.work, chip: t.chip - 1 };
+    t = trim(t);
+    setRung(t.work, t.chip);
     const r = ladderRung();
     stack = [];
-    for (let i = 0; i < r.work; i++) stack.push('work');
-    for (let i = 0; i < r.chip; i++) stack.push('chip');
+    if (r.work > 0) stack.push('work');
+    if (r.chip > 0) stack.push('chip');
     pending = null; bad = 0; trial = false; wasUp = false; upWait = UP_WAIT_MS; changedAt = ts;
   };
   /* the axis the late frames' time says, or null (no samples handed in) */
@@ -528,8 +559,16 @@ export function makeGovernor(opts) {
       bad = 0; trial = false;
       if (pending && pending.dir < 0) pending = null;
       if (wasUp && ts - changedAt >= upWait) { wasUp = false; upWait = UP_WAIT_MS; }
-      if (c.rateMoved || share > LATE_CLEAN || rungDepth() === 0 || pending || ts - changedAt < upWait) return;
-      const back = stack.length ? stack[stack.length - 1] : (ladderRung().chip > 0 ? 'chip' : 'work');
+      if (c.rateMoved || share > LATE_CLEAN || rungDepth() === 0 || ts - changedAt < upWait) return;
+      /* the axis to try: the last stepped down, if it has a rung to undo, else
+         whichever has (the chip's first) */
+      const r = ladderRung();
+      let back = stack.length ? stack[stack.length - 1] : null;
+      if (!back || !(r[back] > 0)) back = r.chip > 0 ? 'chip' : 'work';
+      /* v2.3.5224: a try up that moves the pixels waits for its veil; the
+         other axis may try meanwhile (it stopped every try before: the
+         gatekeeper's sitting 11) */
+      if (pending) { back = pending.axis === 'work' ? 'chip' : 'work'; if (!(r[back] > 0)) return; }
       const done = step(back, +1, ts, false);
       if (done === true) { trial = true; wasUp = true; }
     },
