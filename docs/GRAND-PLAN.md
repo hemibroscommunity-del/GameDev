@@ -221,10 +221,14 @@ way: build the table from what exists, add the test, move no behaviour.
 
 ### Pillar 1. See: the field report
 
-- [ ] **1.0 [NOW] One list of hold names.** The phone's own notes
+- [x] **1.0 [NOW] One list of hold names.** The phone's own notes
   (`madeLog.js noteMade`) take only the debt list's names, and
   `mp-heldsweep` fails a known hold that left no note. Without this the
   report cannot name what the sweep names.
+  *Merged: #1688 (card A, `HOLD_NAMES` and `hold-names.test`), #1760 (card
+  A, the sweep fails a known hold that left no note; card P's #1757 gave
+  `pack-page` its note first). Ticked by the gatekeeper, sitting 9
+  (v2.3.5365).*
 - [x] **1.1 [NOW] The report**, one `report` message on the game's own
   socket (the crash road takes posts from anyone, limited only by an id the
   sender invents). Numbers and closed lists only: no free text reaches a
@@ -382,7 +386,7 @@ play, a number 1.1 can measure.
 - [ ] **4.3 [NEXT] Doors for what is left of value**: experience and
   levels, the stashes, quest state, skill points. A weapon gets an id of its
   own, as gear has.
-- [ ] **4.4 [NOW] The whole world's sum.** "A purse equals its start plus
+- [x] **4.4 [NOW] The whole world's sum.** "A purse equals its start plus
   the roads that ran" is true by construction; past copies went through
   legal roads (ore sold 24 times in one bundle). So every road in
   `GOLD_ROADS` and `BAG_ROADS` is marked mint, burn, move or escrow, and the
@@ -390,6 +394,12 @@ play, a number 1.1 can measure.
   mail and every escrow equal the start, plus minted, less burned. Done
   when a planted double pay through a legal road fails the suite, and so
   does a value record nobody counts.
+  *Merged: #1691 (the roads' classes), #1694 (the registry's marks), #1699
+  (`_econ`), #1752 (`world-sum.test`), card E. On `main` 0a5149b:
+  world-sum 30 of 30; `WORLD_SUM_PLANT=1` fails it (unexplained gold 50);
+  §3 holds an unmarked key and an unread prefix. Value leaving by no road
+  (the respawn wipe, pile expiry, the bounty sweep) is E's storm, PR 10.
+  Ticked by the gatekeeper, sitting 9 (v2.3.5365).*
 - [ ] **4.5 [NOW the harness; NEXT the rest] The restart test, finished.**
   It exists (`chaos-restart.test.mjs`) and passes while it lists a known
   loss. One shared room for tests: a batch that commits or does not, a
@@ -441,6 +451,9 @@ nothing known, and a restore copies nothing.
   writer. Has one today: the life phase, the session, a monster's life, the
   zone. To do: duels, trades, parties, harvesting, cooking, the guard,
   dungeons, the arena, fishing, the connection, loading, the open window.
+  *Begun (card L): #1748, the table (36 rows: 5 `door`, 31 `todo`) and
+  its guard. The box waits for the `todo` rows (the gatekeeper, sitting 9,
+  v2.3.5365).*
 - [ ] **5.4 [LATER] The frame as named steps.** PR 1 moves nothing: the six
   calls the loop already makes, plus one `legacy` step, become the list;
   each counts its errors to the crash ring (a throw in the frame reaches
@@ -479,6 +492,9 @@ nothing known, and a restore copies nothing.
   risk (logic, memory, the chip), what it needs, and whether it is a
   **fallback** with the trigger that still uses it. One reader. Rule 4 is
   held here.
+  *Begun (card T): #1754, the table (250 rows), its scanner and guard,
+  `docs/SWITCHES.md`; 195 names still unlisted. The box waits for T's
+  PRs 2 and 3 (the gatekeeper, sitting 9, v2.3.5365).*
 - [ ] **7.2 [NEXT] The end date** (the owner: yes). For a logic switch: four
   weeks on with no revert, then the old way goes. A device off-ramp stays
   while its risk is live. A fallback stays while its trigger lives: a guard
