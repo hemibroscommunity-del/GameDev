@@ -23,7 +23,10 @@ is tried here, never on the game.
    the GAME's own `worldsum.js`.
 3. A wait of an hour (62 minutes, `--restore-wait`), then three plays more.
 4. The game's own rewind, `rewindPlan` to an hour ago (after the first plays,
-   before the second), then `rewindDo`: the Vault restarts restored.
+   before the second), then `rewindDo` with the hour typed back as the
+   game's lever asks (the Vault's own room has its way back switched on; the
+   game's is off until the owner sets `roomrewind: true`): the Vault
+   restarts restored.
 5. Counted again: every purse must be as it was before the wait, and the
    world's sum balanced (unexplained gold 0) against the seed.
 6. The undo (the do's answer), planned and done: every purse as after the

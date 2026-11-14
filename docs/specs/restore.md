@@ -29,14 +29,26 @@ and Cloudflare keeps every change of its storage for 30 days
 
 ### The two steps
 
-1. **The plan**, `{step: 'plan', minutesAgo | at | bookmark}`: what it would
-   do, and nothing changes. The answer: the time (`at`), the storage's
+Both behind the owner's key, by hand only (never a timer, never a
+refusal's answer), and only while `roomrewind: true` is in the live flags
+(OFF by default): the planning session's limits for it, 2026-11-14.
+
+1. **The plan** (the dry run), `{step: 'plan', minutesAgo | at | bookmark}`,
+   and what any ask that is not a do gets: what it would do, and nothing
+   changes. The answer: what it would RESTORE (`restore`: the time, in
+   words) and what it would LOSE (`lose`: everything written since, how
+   many minutes, who is in the room now, in words), the time (`at`), the storage's
    bookmark for it (`target`, from `getBookmarkForTime`), the bookmark of now
    (`now`, from `getCurrentBookmark`: the way back to this moment), how many
-   sockets and players it would close, words saying all of it, and a one-time
-   `token` good for 10 minutes (`REWIND.PLAN_TTL_MS`). `bookmark` takes an
-   earlier answer's bookmark: that is how an undo is planned.
-2. **The do**, `{step: 'do', token}`, once:
+   sockets and players it would close, words saying all of it, the words to
+   type back (`confirm`: the hour, "2026-11-14 11:02 UTC"; for a bookmark,
+   "bookmark" and its first eight characters) and a one-time `token` good for
+   10 minutes (`REWIND.PLAN_TTL_MS`). `bookmark` takes an earlier answer's
+   bookmark: that is how an undo is planned.
+2. **The do**, `{step: 'do', token, confirm}`, the hour typed back exactly
+   as the plan wrote it (a slip changes nothing and keeps the plan), once.
+   Its answer repeats what it restores and what is lost, written before it
+   acts:
    - every socket is closed with code 1012 and the words "the room is being
      restored to an earlier time"; each player leaves through the leave door
      (`admin.js` `_adminPutOut`, `leave.js` `kick`), so their last state is
@@ -86,6 +98,7 @@ rewind through the lever to the middle of the play leaves unexplained gold 0.
   own (`tools/lab/`, `run.mjs --restore`); `docs/specs/cloudflare-lab.md`,
   "The restore try". The owner runs it, from the Actions tab, on `main`.
 
-### Kill switch
+### Its switch
 
-`roomrewind: false` in the live flags: both steps answer `off`.
+`roomrewind: true` in the live flags turns the lever on; unset or `false`
+(the default), both steps answer `off`.

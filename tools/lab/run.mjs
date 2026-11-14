@@ -351,7 +351,7 @@ async function restoreTry() {
   const plan = await v('op=plan&at=' + (after.now - ago));
   R.plan = { ok: !!plan.ok, error: plan.error || null, words: plan.words || null, target: plan.target || null, now: plan.now || null };
   if (!plan.ok) { R.verdict = plan.error === 'no-pitr' ? 'no-pitr' : 'plan-refused'; out.error = 'the restore try: ' + R.verdict + ' (' + (plan.words || '') + ')'; return; }
-  const done = await v('op=do&token=' + plan.token);
+  const done = await v('op=do&token=' + plan.token + '&confirm=' + encodeURIComponent(plan.confirm));
   R.do = { ok: !!done.ok, error: done.error || null, words: done.words || null, undo: done.undo || null };
   if (!done.ok) { R.verdict = 'do-refused'; out.error = 'the restore try: ' + R.verdict; return; }
   const settled = async () => {
@@ -364,7 +364,7 @@ async function restoreTry() {
   pb.samePursesAsBefore = JSON.stringify(back.purses) === JSON.stringify(before.purses);
   /* the way back: the do's undo, planned and done */
   const uplan = await v('op=plan&bookmark=' + encodeURIComponent(done.undo));
-  const udo = uplan.ok ? await v('op=do&token=' + uplan.token) : null;
+  const udo = uplan.ok ? await v('op=do&token=' + uplan.token + '&confirm=' + encodeURIComponent(uplan.confirm)) : null;
   R.undo = { ok: !!(uplan.ok && udo && udo.ok), error: uplan.error || (udo && udo.error) || null };
   let pu = null;
   if (R.undo.ok) {

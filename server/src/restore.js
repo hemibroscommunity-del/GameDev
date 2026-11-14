@@ -10,14 +10,20 @@
  * every change of its storage for 30 days: it can be put back to any moment
  * in them (point-in-time recovery).  This is the owner's lever for it.
  *
- * TWO STEPS, behind the owner's key (admin.js POST /api/admin/rewind), never
- * on a word from a page:
- *   1. THE PLAN  `{step: 'plan', minutesAgo | at | bookmark}`: answers what it
- *      would do -- the time, the storage's bookmark for it (`target`), the
- *      bookmark of NOW (`now`: the way back to this moment), how many sockets
- *      and players it would close -- and a one-time `token`, good for
- *      PLAN_TTL_MS.  Nothing changes.
- *   2. THE DO    `{step: 'do', token}`: every socket is told and closed (code
+ * TWO STEPS, behind the owner's key (admin.js POST /api/admin/rewind), by
+ * hand only (never a timer, never a refusal's answer), never on a word from a
+ * page -- and only once the owner has set `roomrewind: true` in the live
+ * flags (OFF by default: the planning session's limits, 2026-11-14):
+ *   1. THE PLAN  `{step: 'plan', minutesAgo | at | bookmark}`, and what any
+ *      ask that is not a do gets (the dry run is the default): answers what
+ *      it would do -- what it would RESTORE (the time) and what it would LOSE
+ *      (everything written since: how long, who is in the room now), the
+ *      storage's bookmark for it (`target`), the bookmark of NOW (`now`: the
+ *      way back to this moment), how many sockets and players it would close
+ *      -- the words to type back (`confirm`: the hour, "2026-11-14 11:02 UTC")
+ *      and a one-time `token`, good for PLAN_TTL_MS.  Nothing changes.
+ *   2. THE DO    `{step: 'do', token, confirm}`, the hour typed back exactly
+ *      as the plan wrote it: every socket is told and closed (code
  *      CLOSE_CODE, reason CLOSE_WHY; each player leaves through the leave
  *      door, so their last state is saved first), the storage is asked to be
  *      the target's at the room's next start
@@ -47,8 +53,8 @@
  * the logic is tested in node on a stand-in storage, and the real try is the
  * Cloudflare lab's, for the owner to run (tools/lab/, --restore).
  *
- * KILL SWITCH `roomrewind: false` in the live flags: the lever answers `off`
- * to both steps.
+ * ITS SWITCH `roomrewind: true` in the live flags turns the lever ON; unset or
+ * false (the default) it answers `off` to both steps.
  *
  * No imports: the lab worker (tools/lab/src/index.js) runs these same
  * functions on its own object. */
@@ -71,10 +77,41 @@ export const REWIND = Object.freeze({
 const BOOKMARK_RE = /^[0-9a-fA-F-]+$/;
 const bookmarkOk = (b) => typeof b === 'string' && b.length > 0 && b.length <= REWIND.BOOKMARK_MAX && BOOKMARK_RE.test(b);
 
-/** `roomrewind: false` in the live flags. */
-export function rewindOff(room) {
+/** The lever works only with `roomrewind: true` in the live flags (OFF by
+ *  default: the planning session's limits for it, 2026-11-14). */
+export function rewindOn(room) {
   const f = room && room._liveFlags;
-  return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'roomrewind') && !f.roomrewind);
+  return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'roomrewind') && f.roomrewind === true);
+}
+const OFF = Object.freeze({ ok: false, error: 'off', words: 'The room\'s way back is off: set `roomrewind: true` in the live flags to use it (and back to false after).' });
+
+/** The words the do must have typed back: the hour, to the minute, in UTC
+ *  ("2026-11-14 11:02 UTC"), or for an earlier answer's bookmark its first
+ *  eight characters ("bookmark 0000002a"). */
+export function rewindConfirm(t) {
+  if (t && t.at !== undefined && t.at !== null) return new Date(t.at).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+  return 'bookmark ' + String(t && t.bookmark || '').slice(0, 8);
+}
+
+/* What it would restore and what it would lose, in numbers and words, for
+   the plan's answer and the do's. */
+function restoreLose(room, at, now) {
+  const players = [];
+  for (const [pid, ps] of Object.entries((room && room.playerState) || {})) {
+    if (players.length >= 20) break;
+    players.push((ps && typeof ps.name === 'string' && ps.name) || pid);
+  }
+  const here = Object.keys((room && room.playerState) || {}).length;
+  const when = at === null || at === undefined ? 'the moment that bookmark was taken' : new Date(at).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+  const minutes = at === null || at === undefined ? null : Math.max(0, Math.round((now - at) / 60000));
+  return {
+    restore: { at: at === undefined ? null : at, words: 'The whole room as it was at ' + when + ': every character, vault, mail, listing, order and pile on the ground.' },
+    lose: {
+      minutes, players, playersHere: here,
+      words: 'Everything written after ' + when + (minutes === null ? '' : ' (' + minutes + ' minute(s))') + ': every save, trade, purchase and reward since, for everyone.'
+        + (here ? ' The ' + here + ' player(s) in the room now are disconnected and come back to that time: ' + players.join(', ') + (here > players.length ? ', ...' : '') + '.' : ' Nobody is in the room now.'),
+    },
+  };
 }
 
 /** Where the plan goes back to, from the ask: a bookmark an earlier answer
@@ -110,7 +147,7 @@ const randomToken = () => {
  *  nothing but the plan kept in memory (one at a time; a new plan replaces
  *  the last). */
 export async function rewindPlan(room, body, now = Date.now()) {
-  if (rewindOff(room)) return { ok: false, error: 'off', words: 'The room\'s way back is switched off (the roomrewind flag).' };
+  if (!rewindOn(room)) return { ...OFF };
   const t = rewindTarget(body, now);
   if (t.error) return { ok: false, error: 'ask', words: t.error };
   const st = room && room.state && room.state.storage;
@@ -128,14 +165,16 @@ export async function rewindPlan(room, body, now = Date.now()) {
   const sockets = socketsOf(room).length;
   const players = room.playerState && typeof room.playerState === 'object' ? Object.keys(room.playerState).length : 0;
   const token = randomToken();
-  room._rewind = { token, target, at: t.at === undefined ? null : t.at, made: now };
-  const when = t.at === undefined ? 'the time of that bookmark' : new Date(t.at).toISOString();
+  const confirm = rewindConfirm(t);
+  room._rewind = { token, target, confirm, at: t.at === undefined ? null : t.at, made: now };
+  const rl = restoreLose(room, room._rewind.at, now);
   return {
-    ok: true, step: 'plan', at: room._rewind.at, target, now: here, sockets, players, token,
+    ok: true, step: 'plan', dryRun: true, at: room._rewind.at, target, now: here, sockets, players, token, confirm,
+    restore: rl.restore, lose: rl.lose,
     expiresAt: now + REWIND.PLAN_TTL_MS,
-    words: 'This would close ' + sockets + ' connection(s) (' + players + ' player(s) in the room), put the whole room back to '
-      + when + ', and restart it. Everything written after that is gone. Keep `now`: run the plan again with {bookmark: now} to come back to this moment.'
-      + ' To go ahead, send {step: "do", token} within ' + Math.round(REWIND.PLAN_TTL_MS / 60000) + ' minutes.',
+    words: 'A dry run: nothing has changed. It would RESTORE ' + rl.restore.words.replace(/^The whole room/, 'the whole room') + ' It would LOSE ' + rl.lose.words.replace(/^Everything/, 'everything')
+      + ' It would close ' + sockets + ' connection(s) and restart the room. Keep `now`: the plan run again with {bookmark: now} comes back to this moment.'
+      + ' To go ahead, send {step: "do", token, confirm: "' + confirm + '"} within ' + Math.round(REWIND.PLAN_TTL_MS / 60000) + ' minutes.',
   };
 }
 
@@ -143,12 +182,17 @@ export async function rewindPlan(room, body, now = Date.now()) {
  *  (each player saved through the leave door first), the restore set for
  *  the next start, and the restart a moment after the answer goes. */
 export async function rewindDo(room, body, now = Date.now()) {
-  if (rewindOff(room)) return { ok: false, error: 'off', words: 'The room\'s way back is switched off (the roomrewind flag).' };
+  if (!rewindOn(room)) return { ...OFF };
   const p = room && room._rewind;
-  const token = body && typeof body === 'object' ? body.token : null;
-  if (!p || typeof token !== 'string' || token !== p.token) return { ok: false, error: 'token', words: 'No plan with that token: make the plan first.' };
+  const b = body && typeof body === 'object' ? body : {};
+  if (!p || typeof b.token !== 'string' || b.token !== p.token) return { ok: false, error: 'token', words: 'No plan with that token: make the plan first.' };
+  /* the hour typed back exactly as the plan wrote it (a slip keeps the plan:
+     type it again) */
+  if (b.confirm !== p.confirm) return { ok: false, error: 'confirm', words: 'Nothing done. Type the time back exactly as the plan wrote it: confirm: "' + p.confirm + '".' };
   room._rewind = null;   /* one use, whatever happens next */
   if (now - p.made > REWIND.PLAN_TTL_MS) return { ok: false, error: 'stale', words: 'That plan is too old: make it again.' };
+  /* what it restores and what it loses, written into the answer before it acts */
+  const rl = restoreLose(room, p.at, now);
   const st = room.state.storage;
   /* 1. every socket told and closed; a player leaves through the leave door
      (admin.js _adminPutOut: the close, the leaving with its save, the
@@ -166,9 +210,9 @@ export async function rewindDo(room, body, now = Date.now()) {
   try { undo = await st.onNextSessionRestoreBookmark(p.target); } catch (e) {
     return { ok: false, error: 'restore', words: 'The storage refused the restore: ' + String(e && e.message || e).slice(0, 200) + '. Nothing was put back; the players reconnect into the room as it is.', closed };
   }
-  const out = { ok: true, step: 'do', at: p.at, target: p.target, undo, closed,
-    words: 'The room restarts now, as it was at ' + (p.at === null ? 'that bookmark' : new Date(p.at).toISOString())
-      + '. KEEP `undo`: the plan run again with {bookmark: undo} puts back everything up to this moment.' };
+  const out = { ok: true, step: 'do', at: p.at, target: p.target, undo, closed, restore: rl.restore, lose: rl.lose,
+    words: 'Done. RESTORED: ' + rl.restore.words + ' LOST: ' + rl.lose.words + ' The room restarts now.'
+      + ' KEEP `undo`: the plan run again with {bookmark: undo} puts back everything up to this moment.' };
   try { if (typeof room._adminLog === 'function') await room._adminLog({ op: 'rewind', at: p.at, target: p.target, undo, closed }); } catch (e) { /* the log goes back with the room anyway */ }
   try { console.log(JSON.stringify({ rewind: { at: p.at, target: p.target, undo, closed } })); } catch (e) { /* no log */ }
   /* 3. the restart, once the answer is on its way */

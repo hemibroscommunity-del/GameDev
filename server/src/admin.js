@@ -431,15 +431,16 @@ export const adminMethods = {
 
       /* v2.3.5288: THE ROOM'S WAY BACK (restore.js; card R PR 9): the whole
          room put back to an earlier time, in two steps -- {step: 'plan',
-         minutesAgo | at | bookmark} answers what it would do and the
-         bookmark of now; {step: 'do', token} does it (every socket closed,
-         the restore at the next start, the restart).  Behind this key only,
-         never a page's word.  `roomrewind: false` answers `off`. */
+         minutesAgo | at | bookmark}, the dry run and the default for any ask
+         that is not a do, answers what it would restore and lose, the
+         bookmark of now and the words to type back; {step: 'do', token,
+         confirm} does it (every socket closed, the restore at the next start,
+         the restart).  Behind this key only, by hand, never a page's word;
+         OFF until `roomrewind: true` is in the live flags. */
       if (request.method === 'POST' && path === '/rewind') {
         let body = null;
         try { body = await request.json(); } catch (e) { body = null; }
-        const step = body && body.step;
-        if (step !== 'plan' && step !== 'do') return json({ ok: false, error: 'step: plan or do' }, 400);
+        const step = body && body.step === 'do' ? 'do' : 'plan';
         const r = step === 'plan' ? await rewindPlan(this, body) : await rewindDo(this, body);
         if (r.ok && step === 'plan') await this._adminLog({ op: 'rewind-plan', at: r.at, target: r.target, now: r.now });
         return json(r, r.ok ? 200 : (r.error === 'off' || r.error === 'no-pitr' ? 409 : 400));

@@ -416,37 +416,56 @@ whole room can be put back to any moment in them. **Everything after that
 moment is gone**: every save, trade and purchase since. So it comes with its
 own way back.
 
-It takes two steps, so nothing happens by mistake:
+It is **off** until you turn it on, and takes two steps, so nothing happens
+by mistake:
 
-1. **Ask what it would do** (nothing changes yet). For an hour ago:
+0. **Turn it on** (and off again after: see the last command below):
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"roomrewind","value":true}' "https://WORKER/api/admin/flags"
+```
+1. **Ask what it would do** (a dry run: nothing changes). For an hour ago:
 ```
 curl -X POST -H "Authorization: Bearer YOUR_KEY" \
   -d '{"step":"plan","minutesAgo":60}' "https://WORKER/api/admin/rewind"
 ```
-   The answer says how many players it would disconnect, the time it goes
-   back to, and two codes: `now` (the way back to this very moment) and
+   The answer says, in words, what it would **restore** (the room as it was
+   at that time) and what it would **lose** (everything since: how many
+   minutes, and who is in the room now), how many players it would
+   disconnect, and three things to keep: `now` (the way back to this very
+   moment), `confirm` (the time, written like `2026-11-14 11:02 UTC`) and
    `token` (the key for step 2, good for 10 minutes).
-2. **Do it**, with that token:
+2. **Do it**, with that token, typing the time back exactly as step 1 wrote
+   it:
 ```
 curl -X POST -H "Authorization: Bearer YOUR_KEY" \
-  -d '{"step":"do","token":"THE_TOKEN"}' "https://WORKER/api/admin/rewind"
+  -d '{"step":"do","token":"THE_TOKEN","confirm":"2026-11-14 11:02 UTC"}' "https://WORKER/api/admin/rewind"
 ```
+   If the time is not typed exactly, nothing happens and the answer says
+   what to type.
    Every player is disconnected (their game reconnects by itself, as after
    an update), the room restarts, and it comes back as it was then.
 
 **Keep the `undo` code from step 2's answer** (copy it somewhere safe): the
 room's own storage, its log included, goes back with everything else, so the
 answer is the only place it is written. To change your mind, run step 1 with
-it, then step 2:
+it, then step 2 (its `confirm` is then `bookmark` and the code's first eight
+characters: the answer says):
 ```
 curl -X POST -H "Authorization: Bearer YOUR_KEY" \
   -d '{"step":"plan","bookmark":"THE_UNDO_CODE"}' "https://WORKER/api/admin/rewind"
 ```
 
+When you are done, turn it off again:
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"roomrewind","value":false}' "https://WORKER/api/admin/flags"
+```
+
 - Only the game's room goes back: the leaderboards and the feedback board
   keep what they have.
-- It has its own off switch, `roomrewind: false` in the live flags (below):
-  then both steps answer "off".
+- Its switch is `roomrewind` in the live flags (below): off unless it is
+  `true`; off, both steps answer "off".
 - It can be tried on Cloudflare in the lab first, never on the game: see
   "The restore try" in `docs/specs/cloudflare-lab.md`.
 

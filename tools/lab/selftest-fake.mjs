@@ -88,7 +88,7 @@ function fakeVault(name) {
   };
   if (PITR !== 'none') storage.getBookmarkForTime = async (t) => (PITR === 'wrong' ? note() : V.moments.filter((m) => m.t <= t).pop() || V.moments[0]).bm;
   else storage.getBookmarkForTime = async () => { throw new Error('This Durable Object\'s storage back-end does not implement point-in-time recovery.'); };
-  V.room = { state: { storage, abort: () => { V.restart = true; }, getWebSockets: () => [] }, _liveFlags: {} };
+  V.room = { state: { storage, abort: () => { V.restart = true; }, getWebSockets: () => [] }, _liveFlags: { roomrewind: true } };
   V.note = note;
   V.wake = () => { if (V.restart) { V.restart = false; if (V.pending) { V.store = clone(V.pending.store); V.pending = null; note(); } } };
   vaults.set(name, V);
@@ -117,7 +117,7 @@ async function vaultOp(u) {
   if (op === 'count') return vaultCount(V);
   if (op === 'plan') return rewindPlan(V.room, u.searchParams.get('bookmark') ? { bookmark: u.searchParams.get('bookmark') } : { at: Number(u.searchParams.get('at')) });
   if (op === 'do') {
-    const r = await rewindDo(V.room, { token: u.searchParams.get('token') });
+    const r = await rewindDo(V.room, { token: u.searchParams.get('token'), confirm: u.searchParams.get('confirm') });
     /* the restart a moment after the answer (restore.js ABORT_MS): the
        runner's own wait for it is fast-forwarded here, so wait it out */
     await new Promise((res) => realSetTimeout(res, 120));

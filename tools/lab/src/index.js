@@ -218,15 +218,15 @@ export class Door extends DurableObject {
             record it changed (the plan's rule 5): a mint (quest_reward), a
             burn (farm_buy), a move between two (trade_window, mail_gold)
      count  the world's sum of its records, and each purse
-     plan   rewindPlan: {at} or {bookmark}
-     do     rewindDo: {token} (the object restarts a moment after) */
+     plan   rewindPlan: {at} or {bookmark} (the dry run)
+     do     rewindDo: {token, confirm} (the object restarts a moment after) */
 const VAULT = Object.freeze({ N_MAX: 32, PREFIX: 'rpg:bp_lab_' });
 const vaultRec = () => ({ coins: 1000, inventory: {}, _econ: { v: 1, g: { m: 0, b: 0 }, i: {} } });
 export class Vault extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
     this.state = ctx;            /* what restore.js reads: state.storage, state.abort */
-    this._liveFlags = {};        /* the room's live flags: none thrown */
+    this._liveFlags = { roomrewind: true };   /* the lab's own room: its way back switched on (the game's is OFF until the owner says) */
     /* the game's gold door on these records: no day's book (a lab has none) */
     this.door = Object.assign({ _liveFlags: {}, _daybookOff: () => true }, goldMethods);
   }
@@ -271,7 +271,7 @@ export class Vault extends DurableObject {
       const body = q('bookmark') ? { bookmark: q('bookmark') } : { at: Number(q('at')) };
       return Response.json(await rewindPlan(this, body));
     }
-    if (op === 'do') return Response.json(await rewindDo(this, { token: q('token') }));
+    if (op === 'do') return Response.json(await rewindDo(this, { token: q('token'), confirm: q('confirm') }));
     return new Response('unknown op', { status: 400 });
   }
 }
