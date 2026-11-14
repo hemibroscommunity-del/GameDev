@@ -242,6 +242,7 @@ const OPEN_GROUPS = [
     'cape_equip', 'pet_active', 'pet_name', 'pet_release', 'pet_capture', 'trap_arm', 'fish_inspect',
     'fish_board_request', 'spin_board_request', 'ace_board_request',
     'acc_request',   /* v2.3.4545: your own accuracy, read (accuracy.js) */
+    'report',   /* v2.3.5123: the field report, numbers into the day's book (report.js) */
   ]],
   ['the fight itself', [
     'player_attack', 'monster_damage', 'extraction_start', 'arrow_blast', 'node_strike', 'ability_use', 'ability',

@@ -32,6 +32,7 @@
  *      place nothing and fail here.
  */
 import { readFileSync, readdirSync } from 'node:fs';
+import { srcFiles } from './src-walk.mjs';
 import { GameRoom } from '../src/index.js';
 import { EVENT_PLACE, EVENT_PLACED_TYPES, placeOf, eventHeardBy } from '../src/eventplace.js';
 import { WHEEL, WHEEL_ZONE } from '../src/wheelzone.js';
@@ -416,7 +417,8 @@ check('7a EVENT_PLACE.R is wheelzone.js INTEREST_OUT: a phone hears every monste
 {
   const srv = new URL('../src/', import.meta.url);
   const client = new URL('../../src/', import.meta.url);
-  const serverText = readdirSync(srv).filter((f) => f.endsWith('.js')).map((f) => readFileSync(new URL(f, srv), 'utf8')).join('\n');
+  const serverText = srcFiles().map(   /* v2.3.5060: in depth, a folder's files too (src-walk.mjs) */
+    (f) => readFileSync(new URL(f, srv), 'utf8')).join('\n');
   const walk = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((d) => (d.isDirectory()
     ? walk(new URL(d.name + '/', dir))
     : (/\.(js|jsx)$/.test(d.name) ? [readFileSync(new URL(d.name, dir), 'utf8')] : [])));

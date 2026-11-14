@@ -16,9 +16,10 @@
  * count may only fall (rule 3 of the plan's part 5).
  *
  * A file the door itself made (tools/assets/finish.mjs, PR 3 on) carries a
- * `door` field: its sources' hashes, its recipe and the tool's tag.  This
- * tool never writes one; --write keeps it while the file's bytes are the
- * ones the door wrote, and drops it (and says so) when they are not.
+ * `door` field: its sources' hashes, its recipe and the tool's tag, written
+ * through recordRows below (v2.3.5243) and never by --write, which keeps it
+ * while the file's bytes are the ones the door wrote, and drops it (and says
+ * so) when they are not.
  *
  * It REPORTS: every run exits 0, a stale shipped.json included.  The gate
  * is tools/guards/asset-door.test.mjs (card P, PR 4), which imports the
@@ -51,10 +52,12 @@ export const UNSORTED = 'unsorted';
 const reachRe = new RegExp(`^${ASSET_REACH.under.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}.*\\.(?:${ASSET_REACH.ext.join('|')})$`, 'i');
 
 /** every path git tracks in reach, sorted by its bytes (the same order on
- *  every machine) */
+ *  every machine).  v2.3.5243: a tracked file deleted in the working tree is
+ *  not in reach (weights.mjs's way: it weighs nothing), so its row reads as
+ *  a row with no file, never a crash. */
 export function inReach(root = ROOT) {
   const out = execFileSync('git', ['ls-files', '-z', '--', ASSET_REACH.under], { cwd: root, maxBuffer: 256 * 1024 * 1024 });
-  return out.toString('utf8').split('\0').filter((p) => p && reachRe.test(p))
+  return out.toString('utf8').split('\0').filter((p) => p && reachRe.test(p) && existsSync(join(root, p)))
     .sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
 }
 
@@ -151,6 +154,23 @@ function text(rows) {
     + '  "rows": [\n'
     + rows.map((r) => '    ' + JSON.stringify(r)).join(',\n')
     + '\n  ]\n}\n';
+}
+
+/** v2.3.5243: the door's own rows (tools/assets/finish.mjs): each { path,
+ *  door } is written as the file now is (its bytes, hash, family, kind) with
+ *  its `door` field, every other row kept, the totals made again. */
+export function recordRows(doorRows, root = ROOT) {
+  const file = readShipped(root);
+  const by = new Map((file ? file.rows : []).map((r) => [r.path, r]));
+  for (const d of doorRows) {
+    const r = rowOf(d.path, root);
+    delete r.twice;
+    r.door = d.door;
+    by.set(d.path, r);
+  }
+  const rows = [...by.values()].sort((a, b) => Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)));
+  writeFileSync(join(root, OUT), text(rows));
+  return rows.length;
 }
 
 /* ---- over its bar -------------------------------------------------------- */
