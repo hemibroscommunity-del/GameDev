@@ -373,6 +373,7 @@ export const SWITCHES = Object.freeze([
   { name: '?nospawn', side: 'page', system: 'world', kind: 'lever', born: 2990, thrown: 'present', risk: 'none', needs: [], fallback: 'no', off: 'The world trial: no monsters spawned.' },
   { name: '?noswim', side: 'page', system: 'world', kind: 'switch', born: 3003, thrown: 'present', risk: 'logic', needs: [], fallback: 'no', off: 'All the water is a wall again: no swimming.' },
   { name: '?npcheads', side: 'page', system: 'render', kind: 'switch', born: 5246, thrown: '=0', risk: 'memory', needs: [], fallback: 'no', off: 'The townsfolk\'s head pictures keep their decoded copies, as before.' },
+  { name: '?slimewalk', side: 'page', system: 'render', kind: 'switch', born: 5256, thrown: '=0', risk: 'memory', needs: [], fallback: 'no', off: 'The slimes\' sheets load behind the first loading screen and are kept, as before, not as a slime comes near.' },
   { name: '?npcprox', side: 'page', system: 'ui', kind: 'switch', born: 3583, thrown: 'present', risk: 'logic', needs: [], fallback: 'no', off: 'Walking up to a townsperson opens them again (the old opener), to compare.' },
   { name: '?oneband', side: 'page', system: 'ui', kind: 'switch', born: 4012, thrown: '=0', risk: 'logic', needs: [], fallback: 'no', off: 'The old side column, not the one band at the bottom.' },
   { name: '?onepic', side: 'page', system: 'world', kind: 'switch', born: 4885, thrown: '=0', risk: 'memory', needs: [], fallback: 'no', off: 'Every calm player is drawn in layers, not as one picture.' },

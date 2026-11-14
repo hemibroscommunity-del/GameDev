@@ -17,6 +17,29 @@
  */
 
 import { Assets, Rectangle, Texture } from 'pixi.js';
+import { loadTrackedStrip, unloadBundle } from './zoneTextures.js';   /* v2.3.5256 */
+
+/* ═══ v2.3.5256: THE SLIMES LOAD AS YOU WALK (card P's backlog, monster-slime) ═══
+   The owner, 2026-11-14 ("Go recommended"): the slimes load as you walk in
+   the Wheel.  Their six sheets were loaded behind the first loading screen
+   through Assets.load and kept for the sitting at four bytes a pixel: 4.56 MB
+   in the page at the memory check's fight in the Flame Fields, where no slime
+   lives (its fodder is the fire goblin).  Now they are a look like every
+   other monster's (wheelMonsterArt.js `slime`): loaded through the strip door
+   (zoneTextures.js loadTrackedStrip, the files' own colour numbers read off
+   the page's thread, one byte a pixel) when a slime comes near, and let go
+   when none has been near for a while (unloadSlimeSprites).  A slime whose
+   sheets are not in is not drawn (the preloading law's Wheel exception).
+   A Wheel dungeon loads them behind its loading screen with its land's other
+   looks.  The two single frames stay global, loaded behind the first loading
+   screen as before (loadSlimeSingles): the splat is every monster's remnants
+   that has none of its own, the orb a thrown ball, 64 KB each.
+   `?slimewalk=0`: all six as before, Assets.load behind the loading screen,
+   kept. */
+const WALKING = ['idle', 'shoot', 'hit', 'death'];   /* v2.3.5256: the strips; the rest are SINGLES */
+export const SLIME_WALK = (() => {
+  try { return !/(^|[?&])slimewalk=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return true; }
+})();
 
 const FRAME_W = 128;
 const FRAME_H = 128;
@@ -75,6 +98,17 @@ const SHEETS = {
 
 let loadPromise = null;
 
+/* v2.3.5256: a strip through the strip door, as a look (above) */
+async function loadSheetTracked(state) {
+  const entry = SHEETS[state];
+  try {
+    const frames = await loadTrackedStrip('slime', entry.url, FRAME_W, FRAME_H);
+    if (frames && frames.length) entry.frames = frames;
+  } catch {
+    /* sheet missing: the slime is not drawn (its look never ready) */
+  }
+}
+
 async function loadSheet(state) {
   const entry = SHEETS[state];
   try {
@@ -102,8 +136,27 @@ async function loadSheet(state) {
  *  completion (the renderer doesn't — it polls hasState() per frame). */
 export function loadSlimeSprites() {
   if (loadPromise) return loadPromise;
-  loadPromise = Promise.all(Object.keys(SHEETS).map(loadSheet));
+  /* v2.3.5256: walking, the four strips through the door (the singles are loadSlimeSingles') */
+  loadPromise = SLIME_WALK ? Promise.all(WALKING.map(loadSheetTracked)) : Promise.all(Object.keys(SHEETS).map(loadSheet));
   return loadPromise;
+}
+
+/** v2.3.5256: the splat and the orb, global (behind the first loading
+ *  screen, kept), on the walking road; `?slimewalk=0` loads them with the
+ *  rest (loadSlimeSprites). */
+let singlesPromise = null;
+export function loadSlimeSingles() {
+  if (!singlesPromise) singlesPromise = Promise.all(Object.keys(SHEETS).filter((k) => !WALKING.includes(k)).map(loadSheet));
+  return singlesPromise;
+}
+
+/** v2.3.5256: let the strips go (wheelMonsterArt.js: no slime near, or the
+ *  Wheel left).  Only on the walking road: `?slimewalk=0` keeps them. */
+export function unloadSlimeSprites() {
+  if (!SLIME_WALK) return Promise.resolve([]);
+  loadPromise = null;
+  for (const k of WALKING) SHEETS[k].frames = [];
+  return unloadBundle('slime');
 }
 
 /** Pick the frame Texture for (state, frameIdx).  Returns null until the

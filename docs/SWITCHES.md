@@ -321,6 +321,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?npcheads` | page | switch | v2.3.5246 | =0 | memory |  | no | The townsfolk's head pictures keep their decoded copies, as before. |
 | `?p256` | page | switch | v2.3.3728 | =1 every twin on; =0 every twin off (v2.3.5249) | memory |  | no | With =0 every effect and icon is drawn from its full-colour picture; =1 turns on the twins not yet on by default. |
 | `?packworker` | page | switch | v2.3.5253 | =0 | logic |  | no | A gear sheet first drawn in play is packed on the page a few ms at a time, as before, not on the body bake's worker. |
+| `?slimewalk` | page | switch | v2.3.5256 | =0 | memory |  | no | The slimes' sheets load behind the first loading screen and are kept, as before, not as a slime comes near. |
 | `?worldicons` | page | switch | v2.3.5250 | =0 | memory |  | no | The icons drawn in the world (the ore, the shards, the heart and sword popups; the trap's box has no twin) are drawn from their full-colour pictures, as before. |
 
 ## server-core

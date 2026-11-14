@@ -327,7 +327,7 @@ const LIST = {
   'src/rendering/playerDeathSprites.js': { loadPlayerDeathSprites: ['once', 1, "the player's death strip: asked once a page, no time limit"] },
   'src/rendering/png8Worker.js': { onmessage: ['limit', 4, "the reader's worker: a strip's read is bounded by the page's 20 s (stripRead READ_MS, then the page loads it itself); the other reads (palette pictures, object pages) by nothing; no retry"] },
   'src/rendering/rideFx.js': { preloadRideArt: ['once', 1, "the ride's effects: no time limit, no retry"] },
-  'src/rendering/slimeSprites.js': { loadSheet: ['once', 1, "the slime's sheets (behind the first loading screen): no time limit, no retry"] },
+  'src/rendering/slimeSprites.js': { loadSheet: ['once', 1, "the slime's splat and orb (behind the first loading screen), and with ?slimewalk=0 its strips too (v2.3.5256): no time limit, no retry"] },
   'src/rendering/statDemoPreload.js': {
     bakeBlueSlime: ['once', 1, "the stat scene's blue slime: baked once a page (v2.3.4452), no time limit"],
     warm: ['warm', 1, "the stat scene's pictures, warmed and held"],
@@ -432,7 +432,8 @@ const SHARED = {
   },
   loadTrackedStrip: {
     why: "zoneTextures.js, the monsters' door (strip-door.test): the reader's 20 s limit, then the page's own load with none; no retry",
-    callers: Object.fromEntries(['fireGoblinSprites', 'mummySprites', 'rockGolemSprites', 'rotcapSprites', 'skeletonSprites', 'snowmanSprites', 'stormEyeSprites', 'waterFrogSprites']
+    /* v2.3.5256: + the slime's (card P: its strips load as you walk now, wheelMonsterArt.js) */
+    callers: Object.fromEntries(['fireGoblinSprites', 'mummySprites', 'rockGolemSprites', 'rotcapSprites', 'skeletonSprites', 'slimeSprites', 'snowmanSprites', 'stormEyeSprites', 'waterFrogSprites']
       .map((m) => ['src/rendering/' + m + '.js', "a monster's strips: no retry"])),
   },
   loadTracked: {
