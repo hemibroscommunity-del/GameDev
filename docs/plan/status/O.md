@@ -1,6 +1,6 @@
 card: O
-branch: claude/plan-o-4-rate (one branch a PR: claude/plan-o-<n>-<word>; each begun from the one before)
-prs: #1787 (5221, ready), #1792 (5222, ready: after #1787), PR 4 (5224, ready: after #1792)
+branch: claude/plan-o-5-pixels (one branch a PR: claude/plan-o-<n>-<word>; each begun from the one before)
+prs: #1787 (5221), #1792 (5222), PR 4 (5224), PR 5 (5225): ready, merged in that order
 state: ready
 
 ## Done
@@ -14,9 +14,9 @@ state: ready
 
 ## Next
 
-- PR 4 (5224) `claude/plan-o-4-rate`: the rate's knob (a 60 screen to a
-  steady 30 at the rung; a fast screen as before: the planning session's
-  (a)). Then PR 3 once PR 2 is merged; PRs 5 and 6.
+- PR 4 (5224) the rate's knob, (a); PR 5 (5225) the pixels' knob, (b): a
+  quarter, then half, of the pixels drawn. Then PR 3 once #1792 is merged.
+  PR 6 waits: the crowd cap is fixed in `entityRenderer.js` (H, TF).
 
 ## Found
 
@@ -37,4 +37,4 @@ state: ready
 
 ## Needs
 
-- (none) Merged in order: #1787, #1792, PR 4 (each begun from the one before).
+- (none) Merged in order: #1787, #1792, PR 4, PR 5 (each begun from the one before).

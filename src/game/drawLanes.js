@@ -78,10 +78,10 @@ export const KNOBS = Object.freeze({
     reader: { files: Object.freeze(['src/game/framePacer.js']), moved: true }, pr: 4, switch: '?ladderrate', system: 'page-thread',
   },
   pixels: {
-    what: 'the pixel budget, as a share of the budget (card G\'s, renderRes.js)',
+    what: 'the pixels drawn, a share of the lowest of the screen\'s own and card G\'s budget (renderRes.js; v2.3.5225: of the pixels drawn, phones too: the planning session\'s (b))',
     steps: Object.freeze([1, 0.75, 0.5]),
     say: Object.freeze(['Every pixel of the budget', 'A quarter fewer pixels (a little softer)', 'Half the pixels (softer)']),
-    reader: { files: Object.freeze(['src/game/renderRes.js']), moved: false }, pr: 5, switch: '?pixbudget', system: 'device',
+    reader: { files: Object.freeze(['src/game/renderRes.js']), moved: true }, pr: 5, switch: '?ladderpix', system: 'device',
   },
   crowd: {
     what: 'the most other players drawn in full (your party, your target, whoever fights you and your duel always)',

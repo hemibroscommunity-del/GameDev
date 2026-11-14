@@ -68,10 +68,28 @@
  *     budget for one screen, whatever its class, so the owner can try a value
  *     without a code change.  docs/specs/pixel-budget.md;
  *     server/test/render-res.test.mjs.
+ *
+ * ═══ v2.3.5225: THE PIXELS ARE A KNOB OF THE LADDER (card O PR 5) ═══
+ *
+ * The lanes' table (drawLanes.js, docs/LANES.md) has a `pixels` knob: 1 in
+ * every lane's row, and the chip axis's last two rungs take it to 0.75, then
+ * 0.5.  It is a share of the pixels ACTUALLY DRAWN -- the lowest of the
+ * screen's own, ?res=, the speed test's and the budget above -- so a rung
+ * takes a quarter, then half, of them on every device, a phone under its
+ * budget included (the planning session's (b), 2026-11-14: a chip-bound phone
+ * is the one a rung should help; the owner's iPhone, where a third fewer
+ * pixels made no difference, is not chip-bound, so the governor's split never
+ * takes it there).  Read through the lanes' one reader, laneKnob('pixels'),
+ * and told when it changes (onKnob); the governor (framePacer.js) moves the
+ * pixel rungs only behind a veil -- a loading screen, a tab's return -- and
+ * this file follows the way the speed test's ratio does (the renderer's
+ * resolution, the soft look, a resize so resize() agrees).  `?ladderpix=0`:
+ * the pixel rungs off for one screen, every pixel the budget allows.
  */
 
 import { VIEW_CAP } from './viewCap.js';   /* v2.3.5140: the reference area of world (no imports: node reads it too) */
 import { phoneScreen } from './deviceProfile.js';   /* v2.3.5140: the budget's class */
+import { laneKnob, onKnob } from './drawLanes.js';   /* v2.3.5225: the pixels' knob (card O) */
 
 /* v2.3.5140: game px per picture px (public/tools/style/bible.js
    PIXEL.gamePxPerArtPx; render-res.test holds the two together) */
@@ -91,6 +109,8 @@ let _budgetOn = null; /* v2.3.5140: ?pixbudget=0 off, read once */
 let _urlBudget = null; /* v2.3.5140: ?pixbudget=<pixels>, read once; 0 = none */
 let _phone = false;   /* v2.3.5140: the class, kept with the size (noteCanvasCss) */
 let _viewOut = null;  /* v2.3.5140: ?zoom=, read once, as worldViewport's VIEW_OUT */
+let _pixF = 1;        /* v2.3.5225: the ladder's share of the pixels drawn (laneKnob('pixels')) */
+let _pixOff = null;   /* v2.3.5225: ?ladderpix=0, read once */
 
 function search() {
   try { return (typeof location !== 'undefined' && location.search) || ''; } catch (e) { return ''; }
@@ -163,8 +183,22 @@ function urlRes() {
   return _url;
 }
 
+/* v2.3.5225: the ladder's pixel rungs, on unless ?ladderpix=0 */
+function ladderPixOn() {
+  if (_pixOff === null) _pixOff = /(?:^|[?&])ladderpix=(?:0|off|false)(?:&|$)/.test(search());
+  return !_pixOff;
+}
+/* v2.3.5225: the share of the pixels drawn the ladder keeps (1, 0.75, 0.5) */
+function pixFactor() {
+  return ladderPixOn() ? _pixF : 1;
+}
+function readPixels() {
+  try { const v = Number(laneKnob('pixels')); _pixF = v > 0 && v <= 1 ? v : 1; } catch (e) { _pixF = 1; }
+}
+
 /** The canvas's pixels per CSS px: the screen's own, unless lowered -- the
- *  lowest of the screen's, ?res=, the speed test's and the pixel budget's. */
+ *  lowest of the screen's, ?res=, the speed test's and the pixel budget's;
+ *  v2.3.5225, then the ladder's share of those pixels (each way its root). */
 export function renderDpr() {
   let r = deviceRatio();
   const u = urlRes();
@@ -172,6 +206,8 @@ export function renderDpr() {
   if (_live) r = Math.min(r, _live);
   const b = budgetRatio();
   if (b) r = Math.min(r, b);
+  const f = pixFactor();
+  if (f < 1) r *= Math.sqrt(f);
   return r;
 }
 
@@ -222,7 +258,23 @@ export function setRenderResLive(r) {
   return res;
 }
 
+/* v2.3.5225: the ladder moved the pixels (the governor, behind a veil): the
+   renderer and resize() follow, as they follow the speed test's ratio */
+readPixels();
+try {
+  onKnob('pixels', () => {
+    const was = renderDpr();
+    readPixels();
+    const res = renderDpr();
+    if (Math.abs(res - was) < 1e-9) return;
+    followRenderer(res);
+    markSoft();
+    try { window.dispatchEvent(new Event('resize')); } catch (e) { /* the next resize settles it */ }
+  });
+} catch (e) { /* the row's pixels, always */ }
+
 /** v2.3.5140: for the test only -- forget the kept size and the read address. */
 export function _resetRenderRes() {
   _url = null; _live = 0; _cssW = 0; _cssH = 0; _budgetOn = null; _viewOut = null; _urlBudget = null; _phone = false;
+  _pixOff = null; readPixels();   /* v2.3.5225 */
 }

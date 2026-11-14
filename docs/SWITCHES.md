@@ -20,7 +20,7 @@ addresses (`tools/qa/`), `localStorage` toggles, and the worker's `env` settings
 reads it as a flag or a comment promises it as a kill switch; any other cap's override is the emergency lever of
 `docs/specs/liveops.md` ("Caps override").
 
-255 rows: 247 switches, 6 values, 2 levers, in 24 systems.
+256 rows: 248 switches, 6 values, 2 levers, in 24 systems.
 
 ## audio
 
@@ -95,6 +95,7 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 | `viewcap` | both | switch | v2.3.4054 | off_viewcap: true; ?viewcap=0 (=1 forces it) | logic |  | no | A wide screen sees its old wider view of the world. |
 | `?pixbudget` | page | switch | v2.3.5140 | =0 (off), or a number: the budget to try | chip |  | no | The drawing resolution is no longer held to the pixel budget. |
 | `?lane` | page | lever | v2.3.5221 | =full, =light or =thirty | none |  | no | This page draws in the named lane, whatever its device's facts pick. |
+| `?ladderpix` | page | switch | v2.3.5225 | =0, off, false | chip | `?govern` | no | The pixel rungs are off: every pixel the screen and the budget allow, whatever the rung. |
 
 ## economy
 
