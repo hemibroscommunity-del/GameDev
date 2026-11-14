@@ -50,6 +50,7 @@
  * lanes' table, itself import-free), and node still tests it.
  */
 import { AXES, AXIS_NAMES, knobAt, drawLane, ladderRung, setRung, rungDepth, laneKnob, liveKnobs } from './drawLanes.js';
+import { clientOff } from './clientOff.js';   /* v2.3.5235: the owner's switch for every phone (`govern`): a leaf with no imports */
 
 /* a refresh shorter than this is a fast screen (over about 70 a second) */
 export const PACE_FAST_MS = 14;
@@ -496,6 +497,22 @@ export function makeGovernor(opts) {
     if (r.chip > 0) stack.push('chip');
     pending = null; bad = 0; trial = false; wasUp = false; upWait = UP_WAIT_MS; changedAt = ts;
   };
+  /* v2.3.5235: THE OWNER'S SWITCH (clientOff 'govern': the Test panel's
+     list, every phone, live, no deploy -- the planning session's word in
+     place of the card's cap `ladder`).  Off: back to the lane's row and no
+     step.  At once, but a pixel rung (and with it the rest of its axis)
+     waits for a veil, as every pixel step does; the row is kept for the
+     next sitting. */
+  const switchedOff = () => { try { return clientOff('govern'); } catch (e) { return false; } };
+  const rest = (ts, veil) => {
+    pending = null; bad = 0; trial = false; wasUp = false; upWait = UP_WAIT_MS;
+    const r = ladderRung();
+    if (r.work === 0 && r.chip === 0) return;
+    const to = veil || !movesPixels(r, { work: 0, chip: 0 }) ? { work: 0, chip: 0 } : { work: 0, chip: r.chip };
+    if (to.work === r.work && to.chip === r.chip) return;
+    apply(to, to.chip !== r.chip ? 'chip' : 'work', +1, ts);
+    stack = ladderRung().chip > 0 ? ['chip'] : [];
+  };
   /* the axis the late frames' time says, or null (no samples handed in) */
   const axisNow = (refresh, every) => {
     if (!_samples || !refresh) return null;
@@ -516,7 +533,8 @@ export function makeGovernor(opts) {
       if (!on) return;
       try {
         const L = drawLane();
-        if (L !== lane) { load(L, ts); return; }
+        if (L !== lane) { load(L, ts); if (switchedOff()) rest(ts, true); return; }
+        if (switchedOff()) { rest(ts, true); return; }   /* v2.3.5235: the owner's switch */
         if (pending && !_held) { const p = pending; pending = null; step(p.axis, p.dir, ts, true); }
       } catch (e) { /* the ladder stands */ }
     },
@@ -531,6 +549,7 @@ export function makeGovernor(opts) {
     verdict(share, ts, ctx) {
       const c = ctx || {};
       if (!on || lane == null) return;
+      if (switchedOff()) { rest(ts, false); return; }   /* v2.3.5235: the owner's switch: the row, no step */
       if (_held) { bad = 0; return; }
       let axis = c.axis !== undefined ? c.axis : axisNow(c.refresh, c.every);
       if (axis) lastAxis = axis;
@@ -575,7 +594,7 @@ export function makeGovernor(opts) {
     /** The strip, the report and QA. */
     read() {
       const r = ladderRung();
-      return { on, held: _held, lane, work: r.work, chip: r.chip, depth: rungDepth(), pending: pending ? { ...pending } : null,
+      return { on, off: switchedOff(), held: _held, lane, work: r.work, chip: r.chip, depth: rungDepth(), pending: pending ? { ...pending } : null,
         trial, upWait, bad, steps: steps.slice(), stepsN, axis: lastAxis, split: lastSplit };
     },
   };

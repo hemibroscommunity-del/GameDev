@@ -244,3 +244,23 @@ may come in a fight (a hot phone needs it then): it changes no timing, and
 pixels still wait for a veil". The rate's rung changes how often a frame is
 DRAWN, never a swing's clock, a cooldown or the tick (`draw-lanes` guard: no
 knob read in `combat`).
+
+## The owner's switch (v2.3.5235)
+
+`govern` is a row of the Test panel's list (`src/game/clientOff.js`, the
+"Memory savers" block): the owner turns the governor off **for every
+phone, live, with no deploy**. The worker keeps `off_govern: true` and
+tells every phone at join (`caps.clientoff`) and at once when it changes
+(`client_off`); nothing on the worker reads the name. It is one name on
+both sides: `?govern=0` is the same switch for one tab.
+
+This is the planning session's word (2026-11-14) in place of the card's
+cap `ladder`: the same lever every memory saver already has, live where a
+cap is read only at a join, and no change to the worker.
+
+Off, the ladder goes back to the lane's row at the next verdict and takes
+no step, however late the frames. A pixel rung (and with it the rest of
+its axis) waits for the next veil, as every pixel step does. The row is
+kept for the next sitting. Switched on again, it steps as before. The
+strip says `switched off`; `__btPace().ladder.off` tells QA. Held by
+`frame-pacer.test` §20, its break proofs in the suite's header.

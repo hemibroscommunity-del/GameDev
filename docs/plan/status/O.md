@@ -1,6 +1,6 @@
 card: O
-branch: claude/plan-o-5-pixels (one branch a PR: claude/plan-o-<n>-<word>; each begun from the one before)
-prs: #1787 (5221), #1792 (5222), #1794 (5224, hold mended), #1800 (5225): ready, merged in that order
+branch: claude/plan-o-15-govoff (one branch a PR: claude/plan-o-<n>-<word>; this one begun from #1800)
+prs: #1787 (merged); #1792, #1794, #1800, the switch (5222-5225, 5235; in that order); PR 7
 state: ready
 
 ## Done
@@ -19,15 +19,15 @@ state: ready
 
 ## Next
 
-- #1800 (5225), the pixels' knob, (b); the mend merged up, and (A): a kept
-  rung loads without its pixel rungs. The live flag `ladder` (5235). Then
-  PR 3 once #1792 is merged; PR 6 waits (the crowd cap, `entityRenderer.js`).
+- The switch (5235): `govern` on the Test panel's list, in place of the
+  card's cap (the planning session's word). PR 7 (5227): the device asked in
+  one place. PR 3 once #1792 merges; PR 6 waits (`entityRenderer.js`).
 
 ## Found
 
 - Shared lists (rule 3, TRAPS §333): `liveops.js`'s header (#1787
-  `reportlanes`); `switches.mjs` (#1787 `?lane`, `reportlanes`; #1792
-  `?govern`); `systems.mjs` (`drawLanes`); `src/state/phases.js` (`ladder`).
+  `reportlanes`); `switches.mjs` (`?lane`, `reportlanes`; `?govern`, made
+  `govern` both sides by 5235); `systems.mjs`; `phases.js` (`ladder`).
 - No one field says a window covers the world: pixels move at a loading
   screen or a tab's return only.
 - Card L: `ladder`'s `reset` is "kept: the device's"; M's BUDGETS #5, #7 kept.

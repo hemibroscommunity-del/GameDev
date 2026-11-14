@@ -126,7 +126,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 
 | name | side | kind | born | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|
-| `?ladderpix` | page | switch | v2.3.5225 | =0, off, false | chip | `?govern` | no | The pixel rungs are off: every pixel the screen and the budget allow, whatever the rung. |
+| `?ladderpix` | page | switch | v2.3.5225 | =0, off, false | chip | `govern` | no | The pixel rungs are off: every pixel the screen and the budget allow, whatever the rung. |
 | `?lane` | page | lever | v2.3.5221 | =full, =light or =thirty | none |  | no | This page draws in the named lane, whatever its device's facts pick. |
 | `lookpalette` | both | switch | v2.3.3716 | off_lookpalette: true; ?lookpalette=0 (=1 builds it anyway) | chip |  | onWindows, onMac in src/game/lookPaletteChoice.js | Each look's copy is baked on first sight again, not coloured on the chip. |
 | `?pixbudget` | page | switch | v2.3.5140 | =0 (off), or a number: the budget to try | chip |  | no | The drawing resolution is no longer held to the pixel budget. |
@@ -270,8 +270,8 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 
 | name | side | kind | born | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|
-| `?govern` | page | switch | v2.3.5222 | =0 (off), =1 (on where `?lane=` holds it) | logic |  | no | The governor no longer moves the ladder: the lane's row, however late the frames. |
-| `?ladderrate` | page | switch | v2.3.5224 | =0, off, false | logic | `?govern` | no | The rate as before the ladder: a 60 screen is never paced, whatever the rung. |
+| `govern` | both | switch | v2.3.5222 | off_govern: true (v2.3.5235: every phone, live, the Test panel's list); ?govern=0 (off), =1 (on where `?lane=` holds it) | logic |  | no | The governor no longer moves the ladder: the lane's row, however late the frames. |
+| `?ladderrate` | page | switch | v2.3.5224 | =0, off, false | logic | `govern` | no | The rate as before the ladder: a 60 screen is never paced, whatever the rung. |
 
 ## preload
 
