@@ -285,7 +285,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | name | side | kind | born | on | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|---|
 | `aggrogrid` | worker | switch | v2.3.3201 | 2026-10-13 | false | logic |  | no | Monsters look for targets with the full loop everywhere instead of the grid. |
-| `?crowd` | page | value | v2.3.3241 |  | a number (1 to 500), or 0 or all for no cap | logic |  | no | Caps how many monsters are drawn around you. |
+| `?crowd` | page | value | v2.3.3241 |  | a number (1 to 500), or 0, all or off for no cap | logic |  | no | Caps how many OTHER PLAYERS are drawn in full on this phone (the nearest 50 by default; your party, your target, whoever fights you and your duel always): another number, or none. Monsters are not counted (v2.3.5305: the row said monsters; the gatekeeper's low, sitting 15). |
 | `elemhits` | worker | switch | v2.3.2996 | 2026-10-03 | false | logic |  | no | Stops every new elemental status at once; a burn already burning finishes. |
 | `freezehit` | worker | switch | v2.3.3620 | 2026-10-27 | false | logic |  | no | A chill is the plain chill, not frozen a moment first. |
 | `goohold` | worker | switch | v2.3.3620 | 2026-10-27 | false | logic |  | no | The goo holds as the plain stuck hold, without its longer hold and sting. |
@@ -528,10 +528,12 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `boards2` | worker | switch | v2.3.4355 | 2026-11-10 | false | logic |  | no | Un-advertises the boards with faces: records no spin, stamps no face or level, retires no row. |
 | `chatguard` | worker | switch | v2.3.3396 | 2026-10-18 | false | logic |  | no | All three chat guards off: chat and emotes spend the relay bucket again, nothing filtered or cleaned. |
 | `clanparty` | worker | switch | v2.3.3321 | 2026-10-17 | false | logic | `partykeep` | no | No clan is turned into a party; clans work as they did. |
+| `dueldoor` | worker | switch | v2.3.5211 | 2026-11-14 | false | logic |  | no | A resolved duel's end can be written again, as the line before the duel door would have (nothing does today). |
 | `duelzone` | worker | switch | v2.3.4371 | 2026-11-10 | false | logic |  | no | No zone starts a duel's clock (one running is cleared at the next zone write). |
 | `emotemoves` | worker | switch | v2.3.3392 | 2026-10-18 | false | logic | `emotes` | no | No emote move is relayed and no pose kept; the plain emotes go on. |
 | `emotes` | worker | switch | v2.3.3391 | 2026-10-18 | false | logic |  | no | No emote is relayed, and caps.emotes false shuts the picker at the next join. |
 | `leaderidleat` | worker | switch | v2.3.4378 | 2026-11-10 | false | logic |  | no | The party leader's idle clock counts only a `seen` above 0, as before. |
+| `partydoor` | worker | switch | v2.3.5212 | 2026-11-14 | false | logic |  | no | A player can be put in a party that does not list them, as the lines before the party door could have (nothing does today). |
 | `partykeep` | worker | switch | v2.3.3276 | 2026-10-17 | false | logic |  | no | Parties are not kept: the old cap and the away window remove a dropped member. |
 | `power` | worker | switch | v2.3.5481 | 2026-11-14 | false | logic |  | no | Un-advertises the power index: no board report carries one, so the Power board empties as players report and the other boards are as they were. |
 | `race` | worker | switch | v2.3.3525 | 2026-10-20 | false | logic |  | no | Lil Bro's race un-advertised and none started. |

@@ -23,6 +23,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 /* v2.3.3101: the ruler lives in memprobe.mjs, shared with mp-membudget */
 import { MEM_INIT, memSampler } from './memprobe.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const LAPS = +(process.env.QA_ML_LAPS || 2);

@@ -223,7 +223,9 @@ in the PR that removes its trigger. The list only shrinks: a census
 ## A new switch
 
 Its own PR adds its row (the guard fails it otherwise) and runs
-`node tools/guards/switches.test.mjs --write`. CLAUDE.md's same-change table
+`node tools/guards/switches.test.mjs --write`. A `switch` row carries `on`
+(v2.3.5305): the UTC day its way went on for everyone (the day its PR
+merges, for a switch on by default), or `'off'` for an opt-in. CLAUDE.md's same-change table
 says so.
 
 ## The scoreboard

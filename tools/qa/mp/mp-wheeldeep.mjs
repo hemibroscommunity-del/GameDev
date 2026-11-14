@@ -26,6 +26,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const TIERS = { 2: [6, 10], 3: [11, 15], 4: [16, 20], 5: [21, 25], 6: [26, 30], 7: [31, 35], 8: [36, 40] };   /* v2.3.3093: + the second stage */

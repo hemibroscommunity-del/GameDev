@@ -18,6 +18,7 @@
  *   3. the art loaded again, a new burst plays as before.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const threw = (P) => P.logs.filter((l) => /app\.render threw/.test(l)).length;

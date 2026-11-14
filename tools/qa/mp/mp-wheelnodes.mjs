@@ -44,6 +44,7 @@ import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { ORE_ART } from '../../../src/data/oreArt.js';   /* v2.3.3345: each metal its own rock */
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 /* where the body's centre stands to work each kind (mp-gatherhits' STAND):

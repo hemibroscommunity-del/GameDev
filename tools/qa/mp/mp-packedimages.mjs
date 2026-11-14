@@ -28,6 +28,7 @@
  *   BT_PI_QUERY=keepimage=0   the game as it was (1 and 2 then fail)
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const FACINGS = {

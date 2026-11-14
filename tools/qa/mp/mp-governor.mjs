@@ -35,6 +35,10 @@
  *   node tools/qa/mp/run.mjs governor
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
+/* v2.3.5223 (card O PR 3): every test's page names its lane, which holds the ladder still -- this one asks for the
+   governor (the harness adds `govern=1`) */
+export const govern = true;
 
 const PHONE = { width: 390, height: 844 };
 const B = 1000 / 60;
@@ -65,7 +69,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.5224: the slow CPU for this page alone (the harness reads it as the page is made): put back after */
   const setThr = !process.env.BT_QA_CPU_THROTTLE;
   if (setThr) process.env.BT_QA_CPU_THROTTLE = '2';
-  const P = await H.newPlayer(browser, { name: 'Governed', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, dpr: 1, query: 'govern=1&perf=1' })
+  const P = await H.newPlayer(browser, { name: 'Governed', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, dpr: 1, query: 'perf=1' })
     .finally(() => { if (setThr) delete process.env.BT_QA_CPU_THROTTLE; });
   const stopAlive = H.keepAlive(P);
   const said = [];

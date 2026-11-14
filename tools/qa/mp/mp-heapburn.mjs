@@ -24,6 +24,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 /* the heap lies long enough for the checks, then is mended (step 5) */

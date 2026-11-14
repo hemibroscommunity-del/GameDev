@@ -21,6 +21,7 @@
  * component was reading the trait catalog of the same name.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const openHero = async (P) => {
   await P.page.evaluate(() => { (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero')); });

@@ -1,4 +1,5 @@
 import { chromium } from 'playwright-core';
+import { withLane } from './lane.mjs';   /* v2.3.5223: the game's page names its lane (card O PR 3) */
 const EXE = '/tmp/chrome-headless-shell-linux64/chrome-headless-shell';
 const browser = await chromium.launch({ executablePath: EXE, headless: true, args: ['--no-sandbox','--enable-unsafe-swiftshader','--mute-audio'] });
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
@@ -6,7 +7,7 @@ const page = await ctx.newPage();
 const fetched = [];
 page.on('request', r => { if (/\/sfx\/footstep\//.test(r.url())) fetched.push(r.url().split('/').pop()); });
 await page.addInitScript(`window.BROTOWN_WS_URL='ws://127.0.0.1:8787'`);
-await page.goto('http://localhost:4173/?noresume=1',{waitUntil:'domcontentloaded',timeout:60000});
+await page.goto(withLane('http://localhost:4173/?noresume=1'),{waitUntil:'domcontentloaded',timeout:60000});
 await page.waitForTimeout(9000);
 await page.locator('input').first().fill('FsBot',{timeout:30000});
 await page.locator('input').first().press('Enter');

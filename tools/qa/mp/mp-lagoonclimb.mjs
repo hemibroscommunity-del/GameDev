@@ -32,6 +32,7 @@ import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { CLIMB_FRAMES, CLIMB_MULT, CHEST_WORDS, chestPrizeNote } from '../../../src/game/climb.js';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 /* v2.3.4139: the same climb on a computer (mp-lagoonclimbdesk): its walk stops

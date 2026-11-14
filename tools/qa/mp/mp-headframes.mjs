@@ -33,6 +33,7 @@
  *   BT_HF_ONLY=fight|peer|ctx  that phase alone (BT_HF_ROUNDS=n the fight's rounds, 3)
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 /* 1x by default: this box draws a 3x phone's 1170 x 2532 canvas at about two

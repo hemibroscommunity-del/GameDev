@@ -27,6 +27,7 @@ import { FARM, FARM_CROP_ORDER, farmIconFor } from '../../../src/data/farmCrops.
 import { DISHES } from '../../../src/data/dishes.js';
 import { SALVAGE, essenceKey, essenceIcon } from '../../../src/data/salvage.js';
 import { HARDENED_WOOD_RECIPES, hardenedWoodIcon } from '../../../src/data/hardenedWood.js';
+export const lane = 'full';
 
 const VIEW = { width: 900, height: 700 };
 

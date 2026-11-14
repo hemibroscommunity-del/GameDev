@@ -18,6 +18,7 @@
  *   5. no page errors
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const OUT = `${H.REPO}/tools/qa/mp/out`;
 

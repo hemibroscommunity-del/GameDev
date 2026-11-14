@@ -6,6 +6,7 @@
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 import zlib from 'node:zlib';
+import { withLane } from './lane.mjs';   /* v2.3.5223: the game's page names its lane (card O PR 3) */
 
 function pngBrightness(buf) {
   // crude PNG decode: use the IDAT raw data only for a relative measure is
@@ -30,7 +31,7 @@ const cdpNet = await ctx.newCDPSession(page);
 await cdpNet.send('Network.enable');
 await cdpNet.send('Network.setCacheDisabled', { cacheDisabled: true });
 await page.addInitScript(`window.BROTOWN_WS_URL = 'ws://127.0.0.1:8787'`);
-await page.goto('http://localhost:4173/?dev=1', { waitUntil: 'domcontentloaded', timeout: 60000 });
+await page.goto(withLane('http://localhost:4173/?dev=1'), { waitUntil: 'domcontentloaded', timeout: 60000 });
 await page.waitForTimeout(9000);
 await page.locator('input').first().fill('PixelBot', { timeout: 30000 });
 await page.locator('input').first().press('Enter');

@@ -25,9 +25,9 @@ state: ready
 
 - The table is now the one list of switch names for card A's `sw` (the
   report) and card K's `flag` (the wire table): each is to read it.
-- New switches add their own rows (L's resets, SK's, O's ladder rows).
-- The thrown run's share on every PR is about 30 s (the card's line; the
-  gatekeeper's call). The full run (about 45 min) is the owner's to ask for.
+- New switch rows: L's resets and doors, SK's, O's ladder; each needs `on`.
+- The thrown run: 17 s a PR with no baseline (#1837); `--all` (45 min) the owner's.
+- Card B's map files src/game/crowdCap.js under `monsters`; `?crowd` caps players.
 - Rule 4's sample: `ahonewrite` thrown beside store-heal-wait.test's own
   `storehealwait: false` fails its check 2 (two switches off, not one).
 - Card O (planning session, 2026-11-14): the device knobs' off-ramps

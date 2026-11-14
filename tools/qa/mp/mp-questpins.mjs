@@ -20,6 +20,7 @@
  * zoomed out and in).
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const TOWN = ['Farmer Bro', 'Blacksmith Bro', 'Woodworker Bro', 'Diego', 'Lil Bro', 'Beastmaster Bro'];
 const shot = (P, name, clip) => P.page.screenshot({ path: `tools/qa/mp/out/questpins-${name}.png`, clip: clip || undefined }).catch(() => {});

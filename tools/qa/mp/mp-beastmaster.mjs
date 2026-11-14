@@ -26,6 +26,7 @@
  * Pictures: tools/qa/mp/out/beastmaster-*.png.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const HOME = 'frost';

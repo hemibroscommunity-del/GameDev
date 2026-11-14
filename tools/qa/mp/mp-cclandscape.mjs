@@ -28,6 +28,7 @@
  *      sideways rule does not reach them).
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const SIDEWAYS = [
   { w: 844, h: 390, tag: '844x390 (iPhone 13/14)' },

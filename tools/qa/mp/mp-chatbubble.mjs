@@ -44,6 +44,7 @@
  * And this scenario plays the world (`world: 'wheel'`), off the old map's list.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const UNBROKEN = 'ha'.repeat(30);

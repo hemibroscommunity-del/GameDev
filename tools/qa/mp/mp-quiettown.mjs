@@ -13,6 +13,7 @@
  * The quest lines (isQuest) are not counted: they are not idle chatter.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 /* the idle bubbles shown since `since` (their own stamps), by townsperson */
 const idleSince = (P, since) => P.page.evaluate((t0) => {
