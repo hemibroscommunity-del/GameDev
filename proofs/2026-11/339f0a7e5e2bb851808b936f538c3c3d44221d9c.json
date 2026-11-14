@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "339f0a7e5e2bb851808b936f538c3c3d44221d9c",
+  "tree": "6af7fbba74360f7a64cb647a48b816acb6d1c60a",
+  "committedAt": "2026-11-14T04:41:51-08:00",
+  "subject": "Merge pull request #1758 from hemibroscommunity-del/claude/plan-e-7-testroom",
+  "files": 7609,
+  "bytes": 952683507,
+  "listingSha256": "93b694ac62bb68b11caa4bc8ee6d2171467cd031bc70e3b97bf82ef38a6ac676",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

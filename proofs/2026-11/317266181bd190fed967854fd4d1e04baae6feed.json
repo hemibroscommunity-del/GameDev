@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "317266181bd190fed967854fd4d1e04baae6feed",
+  "tree": "0bdad868b048a90c6fcd6c23ed5568905a277163",
+  "committedAt": "2026-11-14T04:40:59-08:00",
+  "subject": "Merge pull request #1774 from hemibroscommunity-del/claude/plan-pw-1-power",
+  "files": 7607,
+  "bytes": 952657802,
+  "listingSha256": "ade01567bcdd0331fdc8bcb9de2caf7f324aff235594248433980b29fc4348e1",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

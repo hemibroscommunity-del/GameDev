@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "36de4bb8d8a6fe55d4908bd464a0bcdd105cd4ea",
+  "tree": "eb112ca245ebb50e5f8a3a6e700ef16401cd498c",
+  "committedAt": "2026-11-14T04:41:02-08:00",
+  "subject": "Merge pull request #1778 from hemibroscommunity-del/claude/plan-pw-3-apboard",
+  "files": 7607,
+  "bytes": 952664079,
+  "listingSha256": "7088ecc3b04d7979d9e2e8b28aa79f56ec86bd036ac27bb1242a0de54af817c5",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
