@@ -44,6 +44,15 @@ check('1. nothing at all is not', !onIOS('', '', 0));
     && typeof p.windows === 'boolean' && typeof p.mac === 'boolean' && typeof p.palette === 'string' && p.dpr === 1, p);
 }
 
+/* v2.3.5140: the phone question (the pixel budget's class) */
+{
+  const { phoneScreen, PHONE_SHORT_MAX } = await import('../../src/game/deviceProfile.js');
+  check('1. phoneScreen: an iPhone (390 x 844, touch) is a phone, sideways too', phoneScreen(390, 844, false) && phoneScreen(844, 390, false) && phoneScreen(440, 956, false));
+  check('1. phoneScreen: an iPad (744 / 820 / 1024 short side) is not', !phoneScreen(744, 1133, false) && !phoneScreen(820, 1180, false) && !phoneScreen(1024, 1366, false));
+  check('1. phoneScreen: a mouse is never a phone, whatever the screen', !phoneScreen(390, 844, true) && !phoneScreen(1920, 1080, true));
+  check('1. phoneScreen: no screen read is not a phone', !phoneScreen(0, 0, false) && PHONE_SHORT_MAX === 600);
+}
+
 /* ── 2. THE QUERIES ── */
 {
   const css = readFileSync(new URL('../../src/styles/game.css', import.meta.url), 'utf8');

@@ -1,6 +1,6 @@
 card: G
 branch: claude/plan-g-pixel-budget
-prs: #1701 (ready; waits for the owner's yes on the two pictures)
+prs: #1701 (ready; the owner's yes given, the budget lowered as asked)
 state: ready
 
 ## Done
@@ -9,15 +9,20 @@ state: ready
 
 ## Next
 
-- PR 1 (tag 5140), the pixel budget: `renderDpr()` holds a canvas to the
-  view cap's reference at the art's 2 px a game px (~4.52 million).
-  Suite `render-res.test` 21 of 21; `landview` 55 of 55; `questline` 187
-  of 187; `desksmooth` 27 of 29 (see Found); the two pictures taken.
+- #1701 (tag 5140), the pixel budget. The owner's answer (relayed by the
+  planning session, 2026-11-14): "decrease it much further". A phone keeps
+  the art's budget (~4.52M, touches none); anything else is capped at a
+  1920 x 1080 screen's (~2.07M); `?pixbudget=<pixels>` tries another.
+  `render-res.test` 34 of 34; `device-profile.test` green; `desksmooth` 29
+  of 29; `landview` 55 of 55; `questline` 187 of 187; the new picture taken.
 
 ## Found
 
 - STATE-MACHINES A2 point 1 ("no pixel budget"): settled by PR 1 once
   merged (`docs/specs/pixel-budget.md`); the gatekeeper ticks it.
+- `src/game/deviceProfile.js`: gained `phoneScreen()` (the budget's class:
+  no mouse, the screen's short side under 600), the one file outside the
+  card's list, because CLAUDE.md puts every device question there.
 - Card H's open branches (`claude/grand-plan-h-2-whose-row`,
   `-h-3-gear-sheet`) do not touch `src/ui/BroTown.jsx`, so PR 1 tells
   `renderRes.js` the canvas's size from `resize()`, in one line (and the
@@ -30,4 +35,4 @@ state: ready
 
 ## Needs
 
-- The owner's yes on the two pictures (PR 1's question) before merge.
+- Nothing: the gatekeeper's merge.

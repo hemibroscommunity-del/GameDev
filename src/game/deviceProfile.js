@@ -21,6 +21,10 @@
  *                    (deskWide.js, the canvas's shell).
  *   onIOS()          an iPhone or iPad, an iPad asking for the desktop site
  *                    included (it says "Macintosh" but has touch points).
+ *   phoneScreen()    v2.3.5140: a phone, not a tablet or a computer -- no
+ *                    mouse, and the SCREEN's short side under PHONE_SHORT_MAX
+ *                    CSS px (the biggest phones are ~440, the smallest iPad
+ *                    744): the pixel budget's class (renderRes.js).
  *   deviceProfile()  all of it, plus the look palette's choice
  *                    (lookPaletteChoice.js) and the screen's pixel ratio, in
  *                    one object: what the Speed test's card names, so one
@@ -80,6 +84,25 @@ export function onIOS(ua, platform, touchPoints) {
     || (p === 'MacIntel' && Number(t) > 1);
 }
 
+/* v2.3.5140: the short side of a phone's screen is under this (CSS px) */
+export const PHONE_SHORT_MAX = 600;
+
+/** v2.3.5140: a phone -- touch, and a screen whose short side is under
+ *  PHONE_SHORT_MAX.  The SCREEN, never the window (a small computer window is
+ *  not a phone).  The arguments are for the tests; the page's own by default. */
+export function phoneScreen(screenW, screenH, fine) {
+  let w = screenW, h = screenH, f = fine;
+  if (w === undefined) {
+    try {
+      const sc = typeof window !== 'undefined' && window.screen;
+      w = sc ? sc.width : 0; h = sc ? sc.height : 0;
+    } catch (e) { w = 0; h = 0; }
+  }
+  if (f === undefined) f = fineInput();
+  const short = Math.min(Number(w) || 0, Number(h) || 0);
+  return !f && short > 0 && short < PHONE_SHORT_MAX;
+}
+
 /** Everything this file knows about the machine, in one object (the Speed
  *  test's card; QA). */
 export function deviceProfile() {
@@ -94,6 +117,7 @@ export function deviceProfile() {
     input: fineInput() ? 'mouse' : 'touch',
     computerFrame: computerFrame(),
     ios: onIOS(),
+    phone: phoneScreen(),   /* v2.3.5140 */
     windows: onWindows(ua, plat),
     mac: onMac(ua, plat, touch),
     palette: palette.on ? 'on' : 'off (' + palette.why + ')',
