@@ -1,7 +1,7 @@
 card: R
 branch: claude/plan-r-1-roads (one branch a PR, each begun from main)
-prs: PR 1 tag 5280 (working)
-state: working
+prs: #1819 (5280, ready)
+state: ready
 
 ## Done
 
@@ -9,7 +9,7 @@ state: working
 
 ## Next
 
-- PR 1 (5280): the roads between players, one table (`playerroads.js`,
+- PR 1 (5280, #1819, ready): the roads between players (`playerroads.js`,
   `PLAYER_ROADS`, 14 rows, all zero); `XFER.ROADS`/`KILLS` made from it;
   `player-roads.test` strict, both break proofs red by hand.
 - Then the free PRs while PR 2 waits: 4 (skill points' door, 5283).
