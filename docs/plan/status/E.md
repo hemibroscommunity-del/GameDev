@@ -1,6 +1,6 @@
 card: E
 branch: claude/plan-e-9-pause (one branch a PR, each begun from the one before: merge #1758 to #1773 first)
-prs: #1686, #1691, #1694, #1699, #1752, #1756 (merged); #1758, #1759, #1761, #1764, #1772, #1773, #1785 (ready); PR 9 on this branch (ready)
+prs: #1686, #1691, #1694, #1699, #1752, #1756 (merged); #1758, #1759, #1761, #1764, #1772, #1773, #1785 (ready); #1786 (ready, this branch)
 state: ready
 
 ## Done
@@ -19,7 +19,7 @@ state: ready
 - PR 11 (5092, #1773), `xfer:`: a row a trade, in its own run (`trade2.js`,
   `trade.js`: the planning session's yes); none a kill; 90 days.
 - PR 12 (5093, #1785), the owner's card in the Test panel.
-- PR 9 (5090), on PR 11: for a minute after the storage refuses a save
+- PR 9 (5090, #1786), on PR 11: for a minute after the storage refuses a save
   (card A's count), the 13 actions that hand value on refuse with the
   owner's words; payouts keep paying (the owner's "Go recommended").
 
