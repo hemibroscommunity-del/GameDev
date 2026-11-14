@@ -27,6 +27,7 @@
  * draws a few frames a second: TRAPS §200). */
 import * as H from './harness.mjs';
 import { FRAME_JS_MAX_MS, HOLD_MAX_MS } from './held-budget.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 /* the feel's own share of a frame: a quarter of the game's line at worst

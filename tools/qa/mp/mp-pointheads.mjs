@@ -38,6 +38,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 const OUT = join(H.REPO, 'tools/qa/mp/out');
 /* every coach lesson already done in this browser (QuestCoach.jsx LESSONS),

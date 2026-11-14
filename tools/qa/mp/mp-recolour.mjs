@@ -19,6 +19,7 @@
  *   node tools/qa/mp/run.mjs recolour
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 430, height: 932 };
 const MEAN_MAX = 3;

@@ -31,6 +31,7 @@ import { join } from 'node:path';
 import { FARM_BEDS, FARM_GATE } from '../../../src/data/farmLayout.js';
 import { FARM_ANIMS } from '../../../src/data/farmAnims.js';
 import { FARM_BEAT_SOUND } from '../../../src/game/farmWork.js';   /* v2.3.3960: the dig's sound */
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const FOOT_DY = 52;   /* a body's middle to its boots on the farm */

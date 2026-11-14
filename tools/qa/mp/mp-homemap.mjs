@@ -22,6 +22,7 @@
 import * as H from './harness.mjs';
 import { WHEEL_SPAWNS } from '../../../server/src/wheelspawns.js';
 import { ZONES } from '../../../src/data/zones.js';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 

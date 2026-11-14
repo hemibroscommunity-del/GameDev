@@ -19,6 +19,7 @@
  *   5. no page errors.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const DESK = { width: 1280, height: 800 };
 const PRESS_MS = 90;

@@ -38,6 +38,7 @@ import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { XP_BAR_SHOW_MS, XP_FILL_DELAY_MS, XP_FILL_MS, xpToNextWords } from '../../../src/game/xpBar.js';
+export const lane = 'full';
 /* v2.3.3796: "45 / 120" as numbers */
 const parseNum = (t) => { const m = /^([\d.,]+) \/ ([\d.,]+)$/.exec(String(t || '').trim()); return m ? { v: Number(m[1].replace(/,/g, '')), of: Number(m[2].replace(/,/g, '')) } : null; };
 import { XP_BAR_ICONS } from '../../../src/ui/mobile/xpBarArt.js';

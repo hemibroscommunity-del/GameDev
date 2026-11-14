@@ -36,6 +36,7 @@
  */
 import * as H from './harness.mjs';
 import { WHEEL_SPAWNS } from '../../../server/src/wheelspawns.js';
+export const lane = 'full';
 
 const VIEW = { width: 390, height: 844 };
 const G = await H.wheelGeom();

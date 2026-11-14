@@ -23,6 +23,7 @@
  *      copy it read at load, erasing it), and the card agrees it is blocked.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const VIEW = { width: 390, height: 844 };
 const PEST = 'bp_qapest', FRIEND = 'bp_qafriend';

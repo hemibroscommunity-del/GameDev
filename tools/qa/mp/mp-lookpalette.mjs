@@ -34,6 +34,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { MEM_INIT, memSampler } from './memprobe.mjs';
 import { encode } from '../../png.mjs';
+export const lane = 'full';
 
 const OUT = join(process.cwd(), 'tools/qa/mp/out');
 /* v2.3.3750: every body pose with numbers (the walk and sprint are the jog,

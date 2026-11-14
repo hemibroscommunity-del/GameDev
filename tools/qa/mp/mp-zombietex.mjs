@@ -22,6 +22,7 @@
  *      game still draws them (a live source made from the same picture).
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const LANDS = ['frost', 'ember', 'sky', 'hollows'];

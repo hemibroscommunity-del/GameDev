@@ -53,6 +53,7 @@
  * test.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const SIZES = [{ w: 390, h: 844 }, { w: 390, h: 664 }];
 /* Which canvases the tattoo target spans -- the card's empty state reads all

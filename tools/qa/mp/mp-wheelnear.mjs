@@ -22,6 +22,7 @@
  *   6. no page errors and no render errors.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 

@@ -37,6 +37,7 @@ import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { FARM_BEDS, FARM_THINGS, FARM_GATE } from '../../../src/data/farmLayout.js';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const FOOT_DY = 52;   /* a body's middle to its boots on the farm (no perspective) */

@@ -24,6 +24,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 /* the pine bow as it was before v2.3.3526 (owner-icons.test §8f) and the
