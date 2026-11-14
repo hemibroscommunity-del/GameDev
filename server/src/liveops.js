@@ -48,7 +48,8 @@
  * v2.3.5080: the day's book (`daybook:<yyyymmdd>`, daybook.js) has its kill
  * switch here, `_daybookOff`; the book itself is daybook.js's.
  * v2.3.5123: and the field report's, `_reportOff` (report.js); v2.3.5124:
- * the room's own row's, `_roomRowOff` (roomrow.js).                    */
+ * the room's own row's, `_roomRowOff` (roomrow.js); v2.3.5127: the Speed
+ * test's card's, `_reportSpeedOff` (report.js).                        */
 
 /* v2.3.2438: the daily metric walks the player table one page per tick
    slot (see _metricsMaybe).  A throw waits RETRY_MS before trying again
@@ -157,6 +158,15 @@ export const liveopsMethods = {
   _reportOff() {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'report') && !f.report);
+  },
+
+  /* v2.3.5127 (sitting 4's review: the Speed test's card had no switch of
+     its own): `reportspeed: false` takes the card no more -- caps.report
+     back to 1, so no phone sends one, and one that still comes is dropped;
+     the smoothness reports carry on (report.js _reportCap) */
+  _reportSpeedOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'reportspeed') && !f.reportspeed);
   },
 
   /* v2.3.5124: the room's own row's (roomrow.js), the same way: `roomrow:

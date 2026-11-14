@@ -40,7 +40,8 @@
  * card asks which device this is, from a list (debug/report.js
  * SPEED_MODELS: a page cannot read its model), kept on the device; only its
  * place in the list is sent.  Nothing is sent with the reports switched off
- * (About).
+ * (About), or to a worker that does not take the card (v2.3.5127: its
+ * `caps.report` 2; the card says which).
  */
 import { COL } from '@/ui/mobile/dash/common.js';
 import { lightFxOn, setLightFx } from '@/rendering/lightfx/lightFx.js';
@@ -270,7 +271,8 @@ function showResult(r) {
     + '</select></label>'
     + '<div data-speed-sent style="color:' + COL.muted + ';margin-top:4px;font-size:11px">'
     + (r.queued ? 'This card goes to the game with the next smoothness report (no name on it, kept 60 days).'
-      : 'Not sent: smoothness reports are off (About).') + '</div>';
+      : r.unsent === 'server' ? 'Not sent: the game\'s server does not take Speed cards right now.'   /* v2.3.5127: caps.report 2 */
+        : 'Not sent: smoothness reports are off (About).') + '</div>';
   const b = el.querySelector('[data-speed-close]');
   if (b) b.addEventListener('click', () => { try { el.remove(); } catch (e) { /* gone */ } _card = null; });
   const sel = el.querySelector('[data-speed-model]');
@@ -363,6 +365,7 @@ export async function runSpeedTest() {
   const result = { rows, notes, device, at: Date.now() };
   /* v2.3.5125: the card rides the next smoothness report (debug/report.js) */
   result.queued = reportOn() && queueSpeedCard(result);
+  result.unsent = result.queued ? null : (reportOn() ? 'server' : 'off');   /* v2.3.5127: why not, in the card's words */
   try { window.__btSpeedTest = result; } catch (e) { /* QA only */ }
   showResult(result);
   return result;

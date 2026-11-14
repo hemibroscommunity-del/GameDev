@@ -9,6 +9,9 @@
  *      a guard saved as `x.mjs` or `x.test.js` would never run, and nothing
  *      else would say so;
  *   2. server/test/run.mjs still runs tools/guards/*.test.mjs;
+ *      (v2.3.5101: and `lib/`, the guards' shared helpers: plain *.mjs
+ *      modules, never run as guards; tools/guards/lib/fourLines.mjs is the
+ *      first, and card B's "files of system X" helper goes there too);
  *   3. every file in tools/dev/checks/ is a check (`*.mjs` with a default
  *      export) or the README, and precheck still loads that folder.
  *
@@ -43,8 +46,13 @@ const check = (name, ok, detail) => {
 /* ── 1. nothing in tools/guards/ that would never run ── */
 {
   const files = readdirSync(join(ROOT, 'tools/guards'));
-  const stray = files.filter((f) => f !== 'README.md' && !f.endsWith('.test.mjs'));
-  check('1: every file in tools/guards/ is a *.test.mjs guard or the README', stray.length === 0, stray);
+  const stray = files.filter((f) => f !== 'README.md' && f !== 'lib' && !f.endsWith('.test.mjs'));
+  check('1: every file in tools/guards/ is a *.test.mjs guard, the README or lib/', stray.length === 0, stray);
+  /* v2.3.5101: lib/ holds helpers only: a guard saved there would never run */
+  let lib = [];
+  try { lib = readdirSync(join(ROOT, 'tools/guards/lib')); } catch { /* none */ }
+  const badLib = lib.filter((f) => !f.endsWith('.mjs') || f.endsWith('.test.mjs'));
+  check('1: tools/guards/lib/ holds only helpers (*.mjs, never a *.test.mjs that would not run)', badLib.length === 0, badLib);
   check('1: this guard is among them (the folder is the one read)', files.includes('rails.test.mjs'));
 }
 

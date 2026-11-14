@@ -87,6 +87,8 @@ export const REPORT = Object.freeze({
   EVERY_MS: 5 * 60 * 1000,
   /* a report of less than this is not worth a message (a tab that left) */
   MIN_SECS: 20,
+  /* v2.3.5127: a poll this far past its time is a page that was frozen */
+  THAW_MS: 8000,
   HOLDS: 5,
 });
 /* the bins' upper edges, ms (docs/SHAPES.md part 4: each bin one rate a frame
@@ -153,7 +155,7 @@ export function speedCardOf(result, model) {
  *  and that report goes soon.  Nothing goes with the report switched off. */
 export function queueSpeedCard(result) {
   try {
-    if (!reportOn()) return false;
+    if (!reportOn() || !takesSpeed(_S)) return false;   /* v2.3.5127: a worker that takes the card (caps.report 2) */
     const card = speedCardOf(result, speedModel());
     if (!card) return false;
     _speed = card;
@@ -232,13 +234,18 @@ function _visibleNow() {
 function _seenMs(a, now) {
   return a.seenMs + (_visSince != null ? Math.max(0, now - Math.max(_visSince, a.t0)) : 0);
 }
-function _onVisibility() {
+function _markShow(p) {
+  _shows.push(p);
+  if (_shows.length > SHOWS_KEEP) _shows.shift();
+}
+let _lastPollP = 0;
+function _onVisibility(ev) {
   try {
     const now = Date.now();
-    if (_visibleNow()) {
+    /* v2.3.5127: `pageshow` too (a page back from the browser's cache) */
+    if (_visibleNow() || (ev && ev.type === 'pageshow')) {
       if (_visSince == null) _visSince = now;
-      _shows.push(typeof performance !== 'undefined' ? performance.now() : 0);
-      if (_shows.length > SHOWS_KEEP) _shows.shift();
+      _markShow(typeof performance !== 'undefined' ? performance.now() : 0);
     } else {
       if (_a && _visSince != null) _a.seenMs += Math.max(0, now - Math.max(_visSince, _a.t0));
       _visSince = null;
@@ -327,12 +334,25 @@ const _frameOf = (x) => [x.t - (x.workMs || 0), x.t];
 function _poll() {
   try {
     const now = Date.now();
-    if (!reportOn() || !_S) return;
+    /* v2.3.5127 (sitting 4): switched off -- here, or in another tab -- the
+       open report is thrown away, so on again starts fresh */
+    if (!reportOn()) { _a = null; return; }
+    if (!_S) return;
     if (!_a) _restart(now);   /* v2.3.5127: turned back on: a fresh report */
     const a = _a;
+    /* v2.3.5127 (sitting 4): a page iOS froze and thawed with no word to the
+       page (docs/specs/return-to-game.md section 2) shows as a poll far past
+       its time: the spell is a return to view (its first frame is not a
+       frame) and not seen time */
+    const late = now - a.lastPoll - REPORT.POLL_MS;
+    if (late > REPORT.THAW_MS && _visSince != null) {
+      _markShow(_lastPollP + REPORT.POLL_MS);
+      a.seenMs -= Math.min(late, Math.max(0, now - Math.max(_visSince, a.t0)));
+    }
+    _lastPollP = typeof performance !== 'undefined' ? performance.now() : 0;
     const where = _whereNow(_S);
-    /* v2.3.5127: only the seen time is time in a place */
-    if (_visSince != null) a.whereMs[where] = (a.whereMs[where] || 0) + Math.max(0, now - Math.max(a.lastPoll, _visSince, a.t0));
+    /* v2.3.5127: only the seen time is time in a place (not a thawed spell) */
+    if (_visSince != null) a.whereMs[where] = (a.whereMs[where] || 0) + Math.max(0, now - Math.max(a.lastPoll, _visSince, a.t0) - Math.max(0, late > REPORT.THAW_MS ? late : 0));
     a.lastPoll = now;
     setMarkWhere(where);
     /* the pacer's own rule, with its own refresh and step (framePacer.js
@@ -402,7 +422,9 @@ export function buildReport(now) {
     r.split = a.beatAll && a.late > 0 ? s.slice(0, 6).concat([_w(a.busy), _w(a.wait)]) : s;
   }
   if (_died) r.died = _died;
-  if (_speed) r.speed = { model: _speed.model, rows: _speed.rows.map((x) => x.slice()) };
+  /* v2.3.5127 (sitting 4): the card goes only to a worker that takes it;
+     to one that does not, it waits (and is not cleared by the send) */
+  if (_speed && takesSpeed(_S)) r.speed = { model: _speed.model, rows: _speed.rows.map((x) => x.slice()) };
   return r;
 }
 
@@ -411,6 +433,14 @@ export function buildReport(now) {
  *  un-advertises it). */
 export function takesReports(S) {
   return !!(S && S._serverCaps && S._serverCaps.report);
+}
+
+/** v2.3.5127 (sitting 4's review: the card had no cap of its own, and a
+ *  worker that took reports dropped it while the player read that it "goes
+ *  to the game"): the cap grew -- `caps.report` 2 takes the Speed test's
+ *  card too (`reportspeed: false` in its live flags: back to 1). */
+export function takesSpeed(S) {
+  return !!(S && S._serverCaps && Number(S._serverCaps.report) >= 2);
 }
 
 /* a report is due: built, sent to a worker that takes one, and a new one opened */
@@ -448,6 +478,7 @@ export function reportJoined(S) {
     /* v2.3.5127: the seen time, at each change of visibility */
     _visSince = _visibleNow() ? now : null;
     try { if (typeof document !== 'undefined') document.addEventListener('visibilitychange', _onVisibility); } catch (e) { /* none */ }
+    try { if (typeof window !== 'undefined') window.addEventListener('pageshow', _onVisibility); } catch (e) { /* none */ }
     _timer = setInterval(_poll, REPORT.POLL_MS);
   } catch (e) { /* never the game's trouble */ }
 }
@@ -464,7 +495,7 @@ export function bookTableText(days) {
   const out = [];
   const list = Array.isArray(days) ? days : [];
   out.push('BroTown smoothness table (v' + REPORT.V + '): ' + list.length + ' day(s), newest first. A cell is: shape | device class '
-    + '(gl-soft-maxTex-prec-units-mp-dpr-hz-fill-input-frame-cores) | lane | switches | build (`preview`: any page off brotown.net).');
+    + '(gl-soft-maxTex-prec-units-mp-dpr-hz-fill-input-frame-cores) | lane | switches | build (`preview`: any page off the game\'s own site).');
   out.push('gaps bins (ms): <' + GAP_EDGES.join(', <') + ', more.  where: ' + WHERE.join(' ') + '.  speed rows: step fps p50 p95 work (means of the runs).');
   for (const d of list) {
     out.push('');
@@ -478,16 +509,19 @@ export function bookTableText(days) {
       out.push(k + '  reports ' + n + '  seen secs ' + (c.seen || 0) + ' (of ' + (c.secs || 0) + ' covered)');
       if (c.gaps) out.push('  gaps ' + c.gaps.join(' '));
       if (c.late) out.push('  late ' + c.late[0] + ' of ' + c.late[1] + ' judged' + (c.split ? '  split ms sim,tile,entity,effects,fps,app,outside,busy,wait ' + c.split.join(' ') : ''));
-      if (c.where) out.push('  where (seen secs) ' + WHERE.map((w, i) => (c.where[i] ? w + ' ' + c.where[i] : '')).filter(Boolean).join(', '));
-      if (c.near) out.push('  near bins 0,1,2-3,4-7,8-15,16+: ' + c.near.join(' '));
+      /* v2.3.5127 (sitting 4): the cell's smaller shape -- places and deaths
+         as maps, `near` and the line as sums (a mean: / n), holds by name */
+      const map = (o) => Object.keys(o).sort().map((w) => w + ' ' + o[w]).join(', ');
+      if (c.where && typeof c.where === 'object') out.push('  where (seen secs) ' + map(c.where));
+      if (typeof c.near === 'number') out.push('  near (the most others at once, mean) ' + _mean(c.near, n));
       if (c.mem) out.push('  mem mean MB tex ' + _mean(c.mem[0], n) + ' gpu ' + _mean(c.mem[1], n) + ' snd ' + _mean(c.mem[2], n));
       if (c.lost) out.push('  lost contexts ' + c.lost[0] + ', rebuilt ' + c.lost[1]);
-      if (c.died) out.push('  died no ' + c.died[0] + ' killed ' + c.died[1] + ' evicted ' + c.died[2] + (c.diedMem ? '  (their MB ' + c.diedMem[0] + ', min up ' + c.diedMem[1] + ', rebuilds ' + c.diedMem[2] + ')' : ''));
-      if (c.delay) out.push('  delay bins <25,<50,<100,<150,<200,<300,more: ' + c.delay.join(' '));
-      if (c.waver) out.push('  waver bins <5,<10,<20,<40,<80,more: ' + c.waver.join(' '));
+      if (c.died) out.push('  died no ' + c.died[0] + ' killed ' + c.died[1] + ' evicted ' + c.died[2] + (c.diedMem ? '  (their MB ' + c.diedMem[0] + ', min up ' + c.diedMem[1] + ', rebuilds ' + c.diedMem[2] + ')' : '')
+        + (c.diedAt && typeof c.diedAt === 'object' ? '  where ' + map(c.diedAt) : ''));
+      if (c.line) out.push('  line mean ms: delay ' + _mean(c.line[0], n) + ', waver ' + _mean(c.line[1], n));
       if (c.holds) {
         const hs = Object.keys(c.holds).map((h) => [h, c.holds[h]]).sort((a, b) => b[1][1] - a[1][1]);
-        out.push('  holds (name|where: times, ms in all, mean near) ' + hs.map(([h, v]) => h + ' ' + v[0] + 'x ' + v[1] + 'ms ' + _mean(v[2], v[0])).join('; '));
+        out.push('  holds (name: times, ms in all) ' + hs.map(([h, v]) => h + ' ' + v[0] + 'x ' + v[1] + 'ms').join('; '));
       }
     }
     const sp = (d && d.speed) || {};

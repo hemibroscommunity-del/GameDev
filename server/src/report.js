@@ -28,7 +28,9 @@
  *     phone's list), the device class and the build -- a step's runs and
  *     sums (speedSums).  The book is read by ONE admin route, GET
  *     /dev/daybook (devtools.js): the Test panel's "Copy table" and card E's
- *     owner's card;
+ *     owner's card.  v2.3.5127 (sitting 4's review): its own cap and switch
+ *     -- `caps.report` 2 (_reportCap), `reportspeed: false` back to 1, and
+ *     a card that still comes dropped;
  *   - THE SITTING'S CARD (card Q, step 10.2): `soft`, `build`, `seen`,
  *     `drawn` against the worker's own count of moves.  Card Q builds the
  *     card; until then these facts are DROPPED here (they ride the message
@@ -83,6 +85,8 @@ export const REPORT = Object.freeze({
   UP_MAX: 100000,               /* minutes a dead page had been up */
   BUILD_MAX: 99999,
   HOLDS_MAX: 5,
+  /* v2.3.5127: the cells one socket's reports may reach */
+  CELLS_A_SOCKET: 2,
   SW_MAX: 32,
 });
 
@@ -127,12 +131,6 @@ export const SPEED_STEPS = Object.freeze(['all', 'noshadow', 'noshine', 'shinepa
 export const SPEED_MODELS_N = 22;
 export const SPEED = Object.freeze({ FPS_MAX: 1000, MS_MAX: 10000 });
 
-/* ── the worker's own numbers, binned (upper edges, ms; one more bin past the last) ── */
-export const DELAY_EDGES = Object.freeze([25, 50, 100, 150, 200, 300]);
-export const WAVER_EDGES = Object.freeze([5, 10, 20, 40, 80]);
-/* the most other players near at once: 0, 1, 2-3, 4-7, 8-15, 16 or more */
-export const NEAR_EDGES = Object.freeze([1, 2, 4, 8, 16]);
-
 /* ── a cell's sums (each a number or an array of numbers, so days add) ──
  *   n        reports
  *   secs     seconds covered (v2.3.5127: hidden time included)
@@ -142,17 +140,19 @@ export const NEAR_EDGES = Object.freeze([1, 2, 4, 8, 16]);
  *   split    [sim, tile, entity, effects, fps, app, outside, busy, wait] ms:
  *            a report with busy and wait adds their sum to `outside` too, so
  *            `outside` is every report's and busy + wait the beat's share
- *   holds    { '<name>|<where>': [count, ms, near] }, the name made safe for
- *            a key (holdKey)
- *   where    seen seconds by WHERE's order
- *   near     reports by NEAR_EDGES' bins
+ *   holds    { '<name>': [times, ms in all] }, the name made safe for a key
+ *            (holdKey)
+ *   where    { '<place>': seen seconds }, the places of WHERE it was in
+ *   near     the most other players near, summed (a mean: / n)
  *   mem      [tex, gpu, snd] MB summed (a mean: / n)
  *   lost     [contexts lost, renderers rebuilt]
  *   died     reports by DIED's order (the first report after a join only)
  *   diedMem  [MB, minutes up, rebuilds] of the pages that died, summed
- *   diedAt   the pages that died by WHERE's order
- *   delay    reports by DELAY_EDGES' bins (the worker's)
- *   waver    reports by WAVER_EDGES' bins (the worker's) */
+ *   diedAt   { '<place>': pages that died there }
+ *   line     [delay, waver] ms summed, the worker's own (means: / n)
+ *   v2.3.5127 (sitting 4): maps and sums, not a bin a word, so a cell is
+ *   about half its first size and the day's 24 KB holds about twice the
+ *   devices and builds */
 
 const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 const isObj = (o) => !!o && typeof o === 'object' && !Array.isArray(o);
@@ -162,11 +162,13 @@ const ints = (a, n, lo, hi) => {
   for (const x of a) if (int(x, lo, hi) === null) return null;
   return a.slice();
 };
-const binOf = (edges, v) => { let i = 0; while (i < edges.length && v >= edges[i]) i++; return i; };
 const oneHot = (n, i, by = 1) => { const a = new Array(n).fill(0); a[i] = by; return a; };
 
-/* v2.3.5127: the game's own site: a page there is `live` */
-export const LIVE_HOSTS = Object.freeze(['brotown.net', 'www.brotown.net']);
+/* v2.3.5127: the game's own site: a page there is `live`.  Sitting 4's
+   review: and Cloudflare Pages' own name for the project, bare -- the same
+   build of `main` as brotown.net (origin.js ORIGIN_LOCK.SITES); its
+   `<hash>.` and `<branch>.` addresses are the previews, and stay `preview` */
+export const LIVE_HOSTS = Object.freeze(['brotown.net', 'www.brotown.net', 'gamedev-aix.pages.dev']);
 /** A socket's page, from its Origin: 'live' (the game's own site) or
  *  'preview' (anything else, or none). */
 export function reportSiteOf(origin) {
@@ -178,9 +180,11 @@ export function reportSiteOf(origin) {
 }
 
 /** A hold's key in the book: its name made safe (daybook.js takes letters,
- *  digits and _.:|,+=- in a key) and its place. */
-export function holdKey(name, where) {
-  return String(name).replace(/[^A-Za-z0-9_.:,+=-]/g, '_') + '|' + where;
+ *  digits and _.:|,+=- in a key).  v2.3.5127: by name alone (the cell's
+ *  `where` says where its time went), so a cell holds a few keys, not a key
+ *  a name and a place. */
+export function holdKey(name) {
+  return String(name).replace(/[^A-Za-z0-9_.:,+=-]/g, '_');
 }
 
 /** The device class, checked: every field on its list, or null.  -> {key}. */
@@ -269,11 +273,16 @@ export function reportSums(msg, own) {
     const sp = Array.isArray(msg.split) && (msg.split.length === 7 || msg.split.length === 8) ? ints(msg.split, msg.split.length, 0, msMax) : null;
     if (sp) s.split = sp.length === 7 ? sp.concat([0, 0]) : sp.slice(0, 6).concat([sp[6] + sp[7], sp[6], sp[7]]);
   }
+  /* v2.3.5127 (sitting 4: the day's `dev` part filled in about six live
+     builds): a cell's few places and deaths are maps of what happened, not a
+     place for every word of WHERE; `near`, `delay` and `waver` are sums (a
+     mean: / n), not bins; holds by name alone.  A full cell is about half
+     the size it was (report.test 7) */
   const where = WHERE.includes(msg.where) ? msg.where : null;
-  if (where && seen > 0) s.where = oneHot(WHERE.length, WHERE.indexOf(where), seen);
+  if (where && seen > 0) { s.where = Object.create(null); s.where[where] = seen; }
   const near = int(msg.near, 0, REPORT.NEAR_MAX);
-  if (near !== null) s.near = oneHot(NEAR_EDGES.length + 1, binOf(NEAR_EDGES, near));
-  /* the worst holds: names of the one list only */
+  if (near !== null) s.near = near;
+  /* the worst holds: names of the one list only, each [times, ms in all] */
   if (Array.isArray(msg.holds)) {
     const hs = Object.create(null);
     for (const h of msg.holds.slice(0, REPORT.HOLDS_MAX)) {
@@ -282,9 +291,9 @@ export function reportSums(msg, own) {
       if (!HOLD_NAMES.includes(name) || !WHERE.includes(at)) continue;
       const m = int(ms, 0, REPORT.HOLD_MS_MAX), n = int(nr, 0, REPORT.NEAR_MAX);
       if (m === null || n === null) continue;
-      const k = holdKey(name, at);
-      const was = hs[k] || [0, 0, 0];
-      hs[k] = [was[0] + 1, was[1] + m, was[2] + n];
+      const k = holdKey(name);
+      const was = hs[k] || [0, 0];
+      hs[k] = [was[0] + 1, was[1] + m];
     }
     if (Object.keys(hs).length) s.holds = hs;
   }
@@ -292,8 +301,9 @@ export function reportSums(msg, own) {
   if (mem) s.mem = mem;
   const lost = ints(msg.lost, 2, 0, REPORT.LOST_MAX);
   if (lost) s.lost = lost;
-  /* the last page's death, once a join */
-  if (Array.isArray(msg.died) && DIED.includes(msg.died[0])) {
+  /* the last page's death: once a page, so only on a socket's first report
+     (v2.3.5127: `own.first`; a later one's `died` is not counted) */
+  if (o.first && Array.isArray(msg.died) && DIED.includes(msg.died[0])) {
     const kind = msg.died[0];
     if (kind === 'no' && msg.died.length === 1) s.died = oneHot(DIED.length, 0);
     else if (kind !== 'no' && msg.died.length === 5) {
@@ -302,23 +312,32 @@ export function reportSums(msg, own) {
       if (nums && nums[0] <= REPORT.MB_MAX && nums[2] <= REPORT.LOST_MAX && at) {
         s.died = oneHot(DIED.length, DIED.indexOf(kind));
         s.diedMem = nums;
-        s.diedAt = oneHot(WHERE.length, WHERE.indexOf(at));
+        s.diedAt = Object.create(null);
+        s.diedAt[at] = 1;
       }
     }
   }
-  /* the worker's own */
-  if (typeof o.delay === 'number' && o.delay >= 0) s.delay = oneHot(DELAY_EDGES.length + 1, binOf(DELAY_EDGES, o.delay));
-  if (typeof o.waver === 'number' && o.waver >= 0) s.waver = oneHot(WAVER_EDGES.length + 1, binOf(WAVER_EDGES, o.waver));
+  /* the worker's own, summed: [delay, waver] ms (means: / n) */
+  if (typeof o.delay === 'number' && o.delay >= 0 && typeof o.waver === 'number' && o.waver >= 0) s.line = [Math.round(o.delay), Math.round(o.waver)];
+  else if (typeof o.delay === 'number' && o.delay >= 0) s.line = [Math.round(o.delay), 0];
   const speed = has(msg, 'speed') ? speedSums(msg.speed, cls.key, o.site === 'live' ? build : 'preview') : null;   /* v2.3.5127: the build is the worker's call */
   return { cell, sums: s, soft: cls.soft, speed };
 }
 
 export const reportMethods = {
   /* the kill switch is liveops.js `_reportOff` */
-  _reportOn() { return !this._reportOff(); },   /* the caps literal reads a method call (caps-audit) */
+  _reportOn() { return !this._reportOff(); },
+  /** join.js's `caps.report` (the caps literal reads a method call:
+   *  caps-audit).  v2.3.5127 (sitting 4's review): a count, as a cap that
+   *  grows is (TRAPS §9) -- 1 the smoothness reports, 2 the Speed test's
+   *  card too; `report: false` none, `reportspeed: false` 1. */
+  _reportCap() {
+    if (this._reportOff()) return undefined;
+    return this._reportSpeedOff() ? 1 : 2;
+  },
 
   /** index.js `case 'report'`: checked, paced, added into the day's book.
-   *  Returns why it went nowhere ('off', 'who', 'pace', 'bad') or 'ok'
+   *  Returns why it went nowhere ('off', 'who', 'pace', 'bad', 'cells') or 'ok'
    *  (the suite's).  Sends nothing back. */
   _reportTake(session, msg, now) {
     try {
@@ -327,15 +346,26 @@ export const reportMethods = {
       if (!session || !session.id) return 'who';
       if (session.reportAt && now - session.reportAt < REPORT.PACE_MS) return 'pace';
       session.reportAt = now;
-      const r = reportSums(msg, { delay: session.rtt, waver: session.rttWaver, site: session.site });
+      const first = !session.reportCells;
+      const r = reportSums(msg, { delay: session.rtt, waver: session.rttWaver, site: session.site, first });
       if (!r) return 'bad';
+      /* v2.3.5127 (sitting 4: a program could fill the day's part with one
+         device class a report): a socket's reports reach at most
+         CELLS_A_SOCKET cells (a phone's class can change once, its rate
+         settling or a window resized) */
+      if (!session.reportCells) session.reportCells = [];
+      if (!session.reportCells.includes(r.cell)) {
+        if (session.reportCells.length >= REPORT.CELLS_A_SOCKET) return 'cells';
+        session.reportCells.push(r.cell);
+      }
       /* smoothness: the cell, and nothing of who sent it */
       const tree = Object.create(null);
       tree[r.cell] = r.sums;
       bookAdd(this, 'dev', tree, now);
       /* v2.3.5125: the Speed test's card, into the book's `speed` part: by
-         the model the player picked, the device class and the build */
-      if (r.speed) {
+         the model the player picked, the device class and the build
+         (v2.3.5127: not with `reportspeed: false`) */
+      if (r.speed && !this._reportSpeedOff()) {
         const st = Object.create(null);
         st[r.speed.key] = r.speed.sums;
         bookAdd(this, 'speed', st, now);
