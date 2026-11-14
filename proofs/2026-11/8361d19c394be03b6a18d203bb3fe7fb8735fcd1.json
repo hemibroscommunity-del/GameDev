@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8361d19c394be03b6a18d203bb3fe7fb8735fcd1",
+  "tree": "fec6685062bf6cd5aedd153b7f2aac0df12f1bf4",
+  "committedAt": "2026-11-13T18:13:19-08:00",
+  "subject": "Merge pull request #1663 from hemibroscommunity-del/claude/plan-w-3-tags-scoreboard",
+  "files": 7426,
+  "bytes": 944833143,
+  "listingSha256": "23053e00edfeb560a0d46cabf1f93a0d09bc11c896205a92cabcd66b1fd7945d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "525cfa0f19b465c1297370bf4a75b17f93a3bd6f",
+  "tree": "32e670f3391e73661cb506f8a26646c3c1a96554",
+  "committedAt": "2026-11-13T18:13:30-08:00",
+  "subject": "Merge pull request #1666 from hemibroscommunity-del/claude/plan-s-shapes",
+  "files": 7428,
+  "bytes": 944901479,
+  "listingSha256": "b228716ec6b70a8418568ea320ad4cae22afad7345d4be3f22180d848a96d008",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
