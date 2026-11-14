@@ -1,13 +1,13 @@
 card: E
-branch: claude/plan-e-12-card (one branch a PR, each begun from the one before: merge #1758 to #1773 first)
-prs: #1686, #1691, #1694, #1699, #1752, #1756 (merged); #1758, #1759, #1761, #1764, #1772, #1773 (ready); #1785 (ready, this branch)
+branch: claude/plan-e-9-pause (on #1785's branch: merge #1785 first)
+prs: #1686 to #1773 (all twelve merged); #1785 (ready); #1786 (ready, this branch)
 state: ready
 
 ## Done
 
-- PRs 1 to 6 (5080 to 5085: #1686, #1691, #1694, #1699, #1752, #1756), merged.
+- PRs 1 to 8, 10, 11 (5080 to 5089, 5091, 5092), merged (sittings 5-10).
 - New live flags (rule 3, one line each in the switch table): PR 6 `econ`,
-  PR 8c `arenasettleplan`, PR 11 `xfer`.
+  PR 8c `arenasettleplan`, PR 11 `xfer`, PR 9 `valuepause`.
 - PR 7 (5086, #1758), the shared test room and `DISTURBANCES`.
 - PRs 8a to 8c (5087 to 5089: #1759, #1761, #1764), `KNOWN` empty; 8c one
   plan record a match, OFF until the owner says yes (two rows a match).
@@ -18,11 +18,12 @@ state: ready
 - PR 12 (5093, #1785), the owner's card: the book's parts and the five
   numbers. Sitting 10: a restart booked and added back (one line in
   `persistence.js`), open sittings' seconds, the count's limit in words.
-- PR 9 (5090, #1786), on PR 11: value roads pause after a refused save.
+- PR 9 (5090, #1786), on #1785: value roads pause after a refused save.
 
 ## Next
 
-- Waiting on the gatekeeper's next sitting.
+- Follow-up (5094): sitting 11's F1 (a restart in an empty room) and
+  F2 (`m` booked with a restart).
 
 ## Found
 
