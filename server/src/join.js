@@ -1822,6 +1822,7 @@ export const joinMethods = {
     } catch (e) { /* never block a join on a cosmetic */ }
     /* v2.3.4545: the phone starts its shot counts again at every state_sync (src/game/accuracy.js accReset), so
        the worker's copy of them does too (accuracy.js) -- a reconnect never counts a shot twice */
+    this._roomRowJoin(session.protocolVersion);   /* v2.3.5124: a join taken, by its protocol (roomrow.js) */
     if (this._accJoin) this._accJoin(session.id, Date.now());
     ws.send(JSON.stringify({
       type: 'state_sync',
@@ -1898,6 +1899,8 @@ export const joinMethods = {
         bowDraw: this._bowDrawOn() ? 1 : undefined,
         /* v2.3.4801: THE STAFF'S GATHER (drawgather.js): a bolt's relay may carry its gather (`ga`, ms) and its claims name it (`sw`); its share, its stage (spark, orb, sphere: the splash and the ring of force).  Un-advertised under `staffgather: false` */
         staffGather: this._staffGatherOn() ? 1 : undefined,
+        /* v2.3.5123: THE FIELD REPORT (report.js): the phone sends its smoothness (src/debug/report.js) only to a worker that says this; `report: false` in liveflags un-advertises it and drops what still comes -- lower case, a kill switch.  v2.3.5127: a count -- 2 takes the Speed test's card too (`reportspeed: false`: 1) */
+        report: this._reportCap(),
         accuracy: this._accOn() /* v2.3.4545: ACCURACY (accuracy.js) -- the phone numbers its basic shots a weapon and sends the counts on `track` (`ac`) and each hit's shot (`sn`); `acc_request` answers `acc_state`; `accuracy: false` in liveflags un-advertises it and counts nothing -- lower case, a kill switch */ },
       // v2.3.1178: this session's private economy-endpoint token.
       // state_sync goes to the joining socket ONLY -- never broadcast.

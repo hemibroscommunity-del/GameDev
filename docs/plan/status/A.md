@@ -1,40 +1,40 @@
 card: A
-branch: claude/plan-a-3-report-phone (one branch a PR, each begun from the one before: -1- to -7-; merge them in order)
-prs: #1688 (5120, ready), #1692 (5121, ready), PR 3 (5122, the report's phone side; ready)
+branch: claude/plan-a-6-speed-card (one branch a PR, each begun from the one before: -1- to -7-; merge them in order)
+prs: #1688, #1692, #1703, #1706 (merged); #1708 (5124), #1711 (5125, its route in card N's wire table): mended for sitting 6, ready
 state: ready
 
 ## Done
 
-- #1688 (5120): one list of hold names (`holdNames.js`); `noteMade` keeps a
-  name of it; `guards/hold-names`. Commits the card byte for byte.
-- #1692 (5121): `devClass()` in `deviceProfile.js`, SHAPES part 6, facts
-  only; `device-profile.test` 5 to 7. Its merge deploys the worker.
-- PR 3 (5122): `src/debug/report.js` (SHAPES part 4, off the frame, every
-  5 min); the About row and its switch; `renderFrame.js` counts near
-  players; `crashTrap.js` keeps the dead page's numbers. It sends nothing:
-  `caps-audit` fails a cap the phone reads that no worker advertises, so
-  the cap's read (`takesReports`) lands with the worker's half, PR 4.
+- #1688, #1692, #1703 (5120-5122) merged at sitting 3; #1706 (5123) at 5.
+- #1708 (5124): `roomrow.js` into the `room` part. Sitting 4's: in the
+  map (`server-core`); the last one out (`leave.js`, one line) writes
+  the book at once (roomrow.test 9). Sitting 5's: only after a join
+  since its last write (a socket that never joins, a kick's second
+  close: nothing); three turns in hand, one back each 5 minutes, every
+  put of the book spending one (the door's too: the storage's wrapper),
+  a turn beyond a put running; `roomrow: false` stops it; two last-outs
+  in one put never side by side. roomrow.test 10, cost-guard 15c (an
+  hour of storms: 14 rows, line 18), SHAPES's book row. Sitting 6's: a
+  save refused owes the book too (a `newer` refusal comes at the join);
+  roomrow §3 reads the stored book alone.
+- #1711 (5125): the Speed card into `speed`; GET /dev/daybook (its row
+  in card N's wire table); "Copy table". `caps.report` 2 takes the card.
 
 ## Next
 
-- PR 4 (5123): the worker's half once E's PR 1 is on `main`, with the
-  phone's read of `caps.report` (`takesReports`) and `CAP_GATES`, each a
-  new line before `accuracy`'s (its test wants it last): list it apart.
+- Sitting 7's list.
 
 ## Found
 
-- Outside `deviceProfile.js`, still asking the device (card O's):
-  `paletteTex.js` `SOFTWARE_GL` (held equal to `SOFT_GL` by test),
-  `MAX_TEXTURE_SIZE` in `peerImpostor.js`, `crashTrap.js`;
-  `hardwareConcurrency` in `bodyBake.js`.
-- `framePacer.js` `read()` gives a share, not counts: the report applies
-  the pacer's own rule to the drawn frames (card O could hand counts).
-- When card Q's sitting card keeps `soft`, `seen`, `drawn`, the About
-  row's "no name on it" must change with it (card Q).
+- Card O: `split` goes only with `late`, where the pacer judges (over
+  ~70 a second); when O's pacer judges at every rate, it follows.
+- Card O: still asking the device outside `deviceProfile.js`:
+  `paletteTex.js` (`SOFTWARE_GL`, held to `SOFT_GL`), `peerImpostor.js`,
+  `crashTrap.js`, `bodyBake.js`.
+- Card Q: a sitting card keeping `soft`, `seen`, `drawn` changes the About row's "no name on it".
+- Card E: a part reckoned ~4 times its stored size (a closer one: more
+  room); a `bookFlush` export would spare `roomrow.js` the door's memory.
 
 ## Needs
 
-- PRs 4 and 5 wait for card E's PR 1 (the day's book) on `main`.
 - PR 7 waits until cards H and J say `done`.
-- The owner, once: `split` goes only with `late`, where the pacer judges
-  (screens over about 70 a second): none from a 60 a second phone. Keep?

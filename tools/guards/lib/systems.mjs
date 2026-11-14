@@ -51,7 +51,8 @@ const f = (dir, names) => {
 export const SYSTEMS = Object.freeze({
   wire: {
     what: 'the socket and the messages: the router, the relay, the client\'s connection and its event switch, what each side can do (caps)',
-    files: [f('server/src', 'index|relay|bundle|clientoff|flood'), re('^src/networking/'), f('src/game', 'clientOff|clientOffApply|blockedAsks|workerClock|t1Sync|tooFar')],
+    /* v2.3.5061 (card N): server/src/wire/, the wire table (one row a message or route) */
+    files: [f('server/src', 'index|relay|bundle|clientoff|flood'), re('^server/src/wire/'), re('^src/networking/'), f('src/game', 'clientOff|clientOffApply|blockedAsks|workerClock|t1Sync|tooFar')],
     words: ['wire', 'protocol', 'relay', 'caps', 'bundle', 'privileged', 'clientoff', 'flood'],
     traps: ['wire'],
     doors: [
@@ -99,9 +100,9 @@ export const SYSTEMS = Object.freeze({
     switches: [],
   },
   'server-core': {
-    what: 'the worker\'s spine: saving, migrations, the tick, its pace, hidden settings',
-    files: [f('server/src', 'persistence|migrations|tick|tickpace|cadence|data|grids|heapburn|hidden|daybook|storagemarks')],
-    words: ['persistence', 'migration', 'tick', 'storage', 'save', 'hidden', 'cost-guard', 'costguard', 'daybook'],
+    what: 'the worker\'s spine: saving, migrations, the tick, its pace, hidden settings, the room\'s own row',
+    files: [f('server/src', 'persistence|migrations|tick|tickpace|cadence|data|grids|heapburn|hidden|daybook|storagemarks|roomrow')],
+    words: ['persistence', 'migration', 'tick', 'storage', 'save', 'hidden', 'cost-guard', 'costguard', 'daybook', 'roomrow'],
     traps: ['server-core'],
     doors: [
       { name: 'HIDDEN_SPEC', file: 'server/src/hidden.js', what: 'a server-only number a copier would value' },
@@ -319,10 +320,21 @@ export const SYSTEMS = Object.freeze({
     doors: [],
     switches: [],
   },
+  /* v2.3.5160 (card U PR 1, the planning session's call): the ledger's
+     files, src/state/<system>.js and its README.  A ledger is plain data
+     about another system's state; nothing imports it yet */
+  state: {
+    what: 'the state ledger: every field of S and top-of-file variable, a file a system',
+    files: [re('^src/state/')],
+    words: ['ledger'],
+    traps: [],
+    doors: [],
+    switches: [],
+  },
   debug: {
-    what: 'the crash ring, the perf HUD, the debug overlay',
-    files: [re('^src/debug/')],
-    words: ['debug', 'crash', 'perf'],
+    what: 'the crash ring, the perf HUD, the debug overlay, the field report (its worker half: server/src/report.js, v2.3.5127)',
+    files: [re('^src/debug/'), f('server/src', 'report')],
+    words: ['debug', 'crash', 'perf', 'report'],
     traps: [],
     doors: [],
     switches: [],

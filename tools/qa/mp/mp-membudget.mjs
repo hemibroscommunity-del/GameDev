@@ -53,6 +53,16 @@
  * real regression: `gpucopies` keeps the gear strips' and the damage font's
  * canvases (v2.3.3088), ~25 MB -- `canvases` goes red; `musicdecode` decodes
  * the music again (as before v2.3.3073), ~63 MB -- `sound` goes red.
+ *
+ * v2.3.5242 (card P, the asset door's measure): QA_MB_ROWS=1 takes, at each
+ * of the three fights and nowhere else, EVERY row of what the page holds
+ * (memprobe.mjs sample(label, { rows: true })): each texture on the chip,
+ * each picture in the page, the colour numbers kept, each decoded sound by
+ * its file, the atlas's rows.  They go into membudget.json's fight stops
+ * (`rows`), read after the same two collections as the lines, and
+ * tools/assets/fightmb.mjs turns three runs of them into the census by
+ * family (docs/plan/census/assets.md).  Without QA_MB_ROWS the check reads
+ * exactly what it read before: it runs on every PR.
  */
 import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -62,6 +72,8 @@ import { MEMORY_BUDGET } from './memory-budget.mjs';
 
 const PHONE = { width: 390, height: 844 };
 const QUERY = process.env.QA_MB_QUERY || '';
+/* v2.3.5242: every row at the fights, for the asset door's census (header) */
+const ROWS = process.env.QA_MB_ROWS === '1';
 const FIGHT_MS = 10000;
 /* v2.3.3644: a trip that ends further than this from the fight's spot never
    reached the fight (the fight looks for a monster within 900 px) */
@@ -307,10 +319,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     })();
     await P.page.waitForTimeout(8000);
     const { sample, workers } = await memSampler(P, browser);
-    const take = async (label0) => {
+    const take = async (label0, opts) => {
       const tr = trailSince();
       const label = label0 + (tr.words ? ` [${tr.words} since the last stop]` : '');
-      const s = await sample(label);
+      const s = await sample(label, opts);
       s.trail = tr.seen;
       s.workers = await workers();
       /* v2.3.3717: what the ground worker was asked (ground-worker.js DIET) -- v2.3.5005: and
@@ -374,7 +386,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const hopS = Math.round((Date.now() - t0) / 1000);
       const swings = await fight(P, FIGHT_MS);
       const atFight = await take(`trip ${k}: a fight at the Flame Fields (${swings} swings; ${there.d} px short after ${hopS} s, `
-        + `${looks ? looks.ready : '?'} looks in, the gate ${there.gate}, its flag put back ${there.putBack})`);
+        + `${looks ? looks.ready : '?'} looks in, the gate ${there.gate}, its flag put back ${there.putBack})`, ROWS ? { rows: true } : undefined);
       atFight.reach = there.d;
       await H.glideTo(P, home.x, home.y);
       await P.page.waitForTimeout(HOME_MS);
