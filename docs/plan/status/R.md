@@ -1,7 +1,7 @@
 card: R
 branch: claude/plan-r-4-points (one branch a PR, each begun from main)
-prs: #1819 (5280, ready), PR 4 tag 5283 (working)
-state: working
+prs: #1819 (5280, ready), #1823 (5283, ready)
+state: ready
 
 ## Done
 
@@ -10,7 +10,7 @@ state: working
 
 ## Next
 
-- PR 4 (5283): the skill points' door (`skillpoints.js`, `POINT_ROADS`, 26
+- PR 4 (5283, #1823, ready): the skill points' door (`skillpoints.js`, 26
   roads; step 1, no sum changes); `skillpoints-door.test`.
 - Then the next free PR while PR 2 waits.
 
