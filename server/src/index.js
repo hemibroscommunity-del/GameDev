@@ -6548,11 +6548,27 @@ export class GameRoom {
          the short ids a bust is drawn from, off the character record, which
          is written once -- so it never moves the signature by itself) */
       const look = this._boardsOff() ? null : boardFace(session.char && session.char.look);
+      /* ═══ v2.3.5483: THE AP IS THE WORKER'S OWN COUNT (card PW) ═══
+         The owner, 2026-11-14: "achievement points aren't working correctly
+         only one character shows with 30 and I know there are others with
+         more.  On leaderboards".  The AP board read `rpgData.ap`, the phone's
+         blob as _achvStamp (achievements.js) stamped it -- and a JOIN's data
+         never carries `rpgData` (the join sanitiser keeps strings and
+         numbers), so the stamp had nothing to stamp and every join's report
+         (force, below) wrote `ap: 0`; the next report that could put it
+         right goes MIN_MS later, so a character played for less than five
+         minutes read 0, and the panel leaves a 0 off the AP board.  Now the
+         count is ps.achievementPoints itself, its own field on the report
+         (leaderboard.js updatePlayer prefers it), and the signature reads it
+         in the blob's place: a report goes when it changes exactly as one
+         went when the stamped blob changed.  The blob's 0 only where the
+         room has no player state yet (none of today's callers). */
+      const apOwn = lbPs ? Math.max(0, Math.floor(Number(lbPs.achievementPoints) || 0)) : null;
 
       const sig = JSON.stringify([
         look,
         name, color, lbLevel,
-        rpgData.lifeTotal || 0, rpgData.ap || 0, rpgData.kills || 0,
+        rpgData.lifeTotal || 0, apOwn === null ? (rpgData.ap || 0) : apOwn, rpgData.kills || 0,
         rpgData.dungeons || 0, rpgData.goldEarned || 0, rpgData.playtime || 0,
         rpgData.clanTag || null,
         /* The series MUST be inside the change signature or a level-up would
@@ -6575,6 +6591,7 @@ export class GameRoom {
           playerId: session.id, name, color, level: lbLevel,
           rpgData, series, ts: now,
           ...(look ? { look } : {}),
+          ...(apOwn !== null ? { ap: apOwn } : {}),
         }),
       }));
     } catch {}

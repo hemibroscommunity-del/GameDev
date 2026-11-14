@@ -81,16 +81,20 @@ export const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const _read = new Map();
 const read = (f) => { if (!_read.has(f)) _read.set(f, readFileSync(join(ROOT, f), 'utf8')); return _read.get(f); };
 
-/* Reads of `_liveFlags` that name no flag on purpose: the doors themselves
-   and the two readers of the WHOLE map.  Each must still be found (the
-   guard fails one that is not: a stale excuse would excuse a new line). */
+/* The functions that read the flags with no name on purpose: the doors
+   themselves and the readers of the WHOLE map.  v2.3.5302 (the gatekeeper's
+   review, sitting 8): an excuse is a FUNCTION, never a line's text (a new
+   `_xFlagOff(name)` door written like `_flagOn` was excused by its text, and
+   every read through it hid).  Each must still be used (the guard fails one
+   that is not: a stale excuse would excuse a new line). */
 export const DYNAMIC = Object.freeze([
-  Object.freeze({ file: 'server/src/liveops.js', text: 'this._liveFlags[name]', why: '_flagOn and _flagNum, the live flags\' own doors: the name is their caller\'s (shape `call`)' }),
-  Object.freeze({ file: 'server/src/liveops.js', text: 'this._liveFlags = (await', why: 'the cache\'s one load' }),
-  Object.freeze({ file: 'server/src/liveops.js', text: 'flags[name] = value', why: 'POST /flags, the route that sets a flag (any name flagNameOk takes)' }),
-  Object.freeze({ file: 'server/src/liveops.js', text: 'delete flags[name]', why: 'DELETE /flags, the route that clears one' }),
-  Object.freeze({ file: 'server/src/join.js', text: '..._liveFlags', why: 'the caps override: every flag spread over state_sync.caps, the emergency lever of docs/specs/liveops.md ("Caps override"), out of the table by the card' }),
-  Object.freeze({ file: 'server/src/clientoff.js', text: 'f[k] === true', why: 'the memory savers\' `off_<id>` list, every one at once: the savers are the table\'s by CLIENT_SAVERS' }),
+  Object.freeze({ file: 'server/src/liveops.js', fn: '_flagOn', why: 'the live flags\' own door: the name is its caller\'s (shape `call`)' }),
+  Object.freeze({ file: 'server/src/liveops.js', fn: '_flagNum', why: 'the live flags\' own door for a number: the name is its caller\'s' }),
+  Object.freeze({ file: 'server/src/liveops.js', fn: '_liveFlagsEnsure', why: 'the cache\'s one load, which hands the whole map back' }),
+  Object.freeze({ file: 'server/src/liveops.js', fn: '_liveopsRoutes', why: 'POST and DELETE /flags, the route that sets or clears a flag (any name flagNameOk takes)' }),
+  Object.freeze({ file: 'server/src/join.js', fn: '_handleJoin', why: 'the caps override: every flag spread over state_sync.caps, the emergency lever of docs/specs/liveops.md ("Caps override"), out of the table by the card' }),
+  Object.freeze({ file: 'server/src/eventcapes.js', fn: '_capeStartFresh', why: 'a new contest clears its two flags (read by name above it) and writes the map back' }),
+  Object.freeze({ file: 'server/src/clientoff.js', fn: '_clientOffList', why: 'the memory savers\' `off_<id>` list, every one at once: the savers are the table\'s by CLIENT_SAVERS' }),
 ]);
 
 /* Page regexes that run over another URL than the address: no switch. */
@@ -100,7 +104,10 @@ export const NOT_ADDRESS = Object.freeze([
 ]);
 
 /* A worker name a shape finds that is not a flag (a local reused).  None
-   today: the guard fails an entry here that the scanner no longer finds. */
+   today.  The scanner keeps the name (liveops.test §8f still holds it to the
+   route's names); the census leaves it out; the guard fails an entry the
+   scanner no longer finds (v2.3.5302: it used to delete the name first, so
+   no entry could ever be used). */
 export const NOT_A_FLAG = Object.freeze([]);
 
 /* ── the code, comments blanked, every line kept ── */
@@ -119,7 +126,7 @@ function regexHere(src, i, last) {
 export function blankComments(src) {
   const parts = [];
   let from = 0;
-  const blank = (a, b) => { parts.push(src.slice(from, a)); parts.push(src.slice(a, b).replace(/[^\n]/g, ' ')); from = b; };
+  const blank = (a, b) => { parts.push(src.slice(from, a)); parts.push(src.slice(a, b).split('\n').map((l) => ' '.repeat(l.length)).join('\n')); from = b; };
   const n = src.length;
   const tpl = [];      /* a template's ${ depth stack */
   let last = -1;       /* the last code character before i */
@@ -220,16 +227,57 @@ function add(map, name, where) {
 }
 
 
+/* ── the functions of a file, by their braces ──
+   [{ name, params, from, to }] (lines, 0-based, `to` its closing brace's),
+   from the blanked code: the innermost one holding a line is its function.
+   A local holding the flags is followed through its whole function, never a
+   fixed count of lines (v2.3.5302, the gatekeeper's review: `f.x` nine lines
+   below its local hid from §8f's eight). */
+/* the text before `(` is a call's (`fn(`, `a.b(`, `x)(`), not `if (` or `!(` */
+const isCallArg = (before) => /(?:[\])]|(?:^|[^\w$])(?!(?:if|while|switch|return|typeof|case|in|of|await|new)\b)[A-Za-z_$][\w$]*)\s*\(\s*$/.test(before);
+/* the offset of line `i` (0-based) in `src` */
+const lineStart = (src, i) => { lineAt(src, 0); return _starts.get(src)[i] ?? src.length; };
+const _spans = new Map();
+function functionsOf(src) {
+  if (_spans.has(src)) return _spans.get(src);
+  const lines = src.split('\n');
+  const out = [];
+  lines.forEach((L, i) => {
+    let m = null;
+    for (const re of HEAD) { m = re.exec(L); if (m) break; }
+    if (!m || /^(?:if|for|while|switch|catch|return|with)$/.test(m[1])) return;
+    /* the `{` that opens it, on its line or the next two */
+    const start = lineStart(src, i);
+    let k = src.indexOf('{', start + m.index + m[0].length - (m[0].endsWith('{') ? 1 : 0));
+    if (k < 0 || lineAt(src, k) - 1 > i + 2) return;
+    let d = 0;
+    for (let j = k; j < src.length; j++) {
+      const c = src.charCodeAt(j);
+      if (c === 39 || c === 34 || c === 96) { const q = src[j]; j++; while (j < src.length && src[j] !== q && src[j] !== '\n') j += src[j] === '\\' ? 2 : 1; continue; }
+      if (c === 123) d++;
+      else if (c === 125 && --d === 0) { out.push({ name: m[1], params: m[2].split(',').map((p) => p.trim().replace(/=.*$/, '').replace(/^\.\.\./, '').trim()).filter(Boolean), from: i, to: lineAt(src, j) - 1 }); break; }
+    }
+  });
+  _spans.set(src, out);
+  return out;
+}
+function fnAt(src, i) {
+  let best = null;
+  for (const f of functionsOf(src)) if (f.from <= i && i <= f.to && (!best || f.from >= best.from)) best = f;
+  return best;
+}
+
 /* ── helpers: a function that takes the NAME, and every call of it ──
    A call's argument at the helper's place is resolved:
-     'x'                 a name;
+     'x' or "x"          a name;
      p   (a parameter)   the function it sits in passes the name on: a helper too;
      p.field             the same, the name a field of what it is handed:
                          its callers' `{ field: 'x' }`;
      x.field             a table: every `field: 'x'` written in the call's file;
    anything else is UNKNOWN.  A method (`.name(`) is matched in every file; a
    plain function (`name(`) in its own file and the files that import it.  */
-function resolveHelpers(code, seeds, note, unknown) {
+const tableOf = (raw, field) => [...raw.matchAll(new RegExp('(?<![\\w$])' + esc(field) + ':\\s*([\'"])([^\'"]+)\\1', 'g'))];
+function resolveHelpers(code, raws, seeds, note, unknown) {
   const seen = new Set();
   const queue = [...seeds];
   const key = (h) => h.file + '#' + h.name + '#' + h.at + '#' + (h.field || '');
@@ -250,30 +298,29 @@ function resolveHelpers(code, seeds, note, unknown) {
         const line = lineAt(src, m.index);
         const L = lines[line - 1];
         if (!m[1] && /^\s*(?:async\s+)?[A-Za-z_$][\w$]*\s*\([^)]*\)\s*\{/.test(L) && L.trim().startsWith(h.name)) continue;   /* a method's header */
-        let a = (args[h.at] || '').replace(/\s*\|\|\s*(?:null|''|""|undefined)\s*$/, '');
+        const a = (args[h.at] || '').replace(/\s*\|\|\s*(?:null|''|""|undefined)\s*$/, '');
+        const fn = fnAt(src, line - 1);
         if (h.field) {
           if (!/^\{/.test(a)) {
-            const fn = enclosing(lines, line - 1, 12);
             const at = fn ? fn.params.indexOf(a) : -1;
             if (at >= 0) { queue.push({ name: fn.name, at, file, field: h.field }); continue; }
             unknown.push({ file, line, text: L.trim().slice(0, 140) }); continue;
           }
-          const fm = new RegExp('(?<![\\w$])' + esc(h.field) + ":\\s*'([^']+)'").exec(a);
-          if (fm) note(fm[1], { file, line, shape: 'helper' });
+          const fm = new RegExp('(?<![\\w$])' + esc(h.field) + ':\\s*([\'"])([^\'"]+)\\1').exec(a);
+          if (fm) note(fm[2], { file, line, shape: 'helper' });
           continue;   /* an object without the field: no switch named */
         }
         const name = lit(a);
         if (name) { note(name, { file, line, shape: 'helper' }); continue; }
-        const fn = enclosing(lines, line - 1, 12);
         if (fn && fn.params.includes(a)) { queue.push({ name: fn.name, at: fn.params.indexOf(a), file }); continue; }
         const pf = /^([A-Za-z_$][\w$]*)\.([A-Za-z_$][\w$]*)$/.exec(a);
         if (pf && fn && fn.params.includes(pf[1])) { queue.push({ name: fn.name, at: fn.params.indexOf(pf[1]), file, field: pf[2] }); continue; }
         const field = /^[A-Za-z_$][\w$.]*\.([A-Za-z_$][\w$]*)$/.exec(a);
         if (field) {
-          const raw = read(file);
-          const found = [...raw.matchAll(new RegExp('(?<![\\w$])' + esc(field[1]) + ":\\s*'([^']+)'", 'g'))];
-          for (const t of found) note(t[1], { file, line: lineAt(raw, t.index), shape: 'table' });
-          if (found.length) continue;
+          const raw = raws(file);
+          const t = tableOf(raw, field[1]);
+          for (const x of t) note(x[2], { file, line: lineAt(raw, x.index), shape: 'table' });
+          if (t.length) continue;
         }
         unknown.push({ file, line, text: L.trim().slice(0, 140) });
       }
@@ -282,86 +329,141 @@ function resolveHelpers(code, seeds, note, unknown) {
   return [...seen];
 }
 
+/* the sources: the working tree, or a test's own (`source`: Map(path -> text)) */
+function sourcesOf(files, source) {
+  const raws = (f) => (source && source.has(f) ? source.get(f) : read(f));
+  const code = new Map();
+  for (const f of files) code.set(f, blankComments(raws(f)));
+  return { raws, code };
+}
+
 /* ═══ the worker ═══ */
 export function workerFiles() {
   return srcFiles().map((f) => 'server/src/' + f);
 }
 
-export function scanWorker(files = workerFiles()) {
+const OBJ = '(?:this|room|self|r|rm|that)';
+/* a local holding the flags: `const f = this._liveFlags`, `= this && this._liveFlags`,
+   `= (this._liveFlags || {})`, `= await this._liveFlagsEnsure()` */
+const LOCAL = new RegExp('(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*\\(?\\s*(?:' + OBJ + '\\s*&&\\s*)?(?:await\\s+)?' + OBJ + '\\._liveFlags(?:Ensure\\(\\))?(?![\\w$])\\s*(?:\\|\\|\\s*\\{\\s*\\}\\s*\\)?)?');
+/* `const { a, b: c, d = 1 } = this._liveFlags || {}` */
+const DESTRUCT = new RegExp('(?:const|let|var)\\s*\\{([^}]*)\\}\\s*=\\s*\\(?\\s*(?:' + OBJ + '\\s*&&\\s*)?(?:await\\s+)?' + OBJ + '\\._liveFlags(?:Ensure\\(\\))?(?![\\w$])');
+
+export function scanWorker(files = workerFiles(), { source = null } = {}) {
   const names = new Map();
   const unknown = [];
   const helpers = [];        /* { name, at, file } */
   const dynamicSeen = new Set();
-  const code = new Map();
-  for (const file of files) code.set(file, blankComments(read(file)));
+  const { raws, code } = sourcesOf(files, source);
+  const excused = (file, src, i) => {
+    const fn = fnAt(src, i);
+    const d = fn && DYNAMIC.find((x) => x.file === file && x.fn === fn.name);
+    if (d) dynamicSeen.add(d);
+    return !!d;
+  };
+  /* a read with no name in it (`f[k]`, `_flagOn(k)`): a helper's parameter,
+     a constant's field (the file's `FIELD: 'x'`), an excused function, or
+     UNKNOWN */
+  const dynamicRead = (file, src, lines, i, expr) => {
+    const e = expr.trim();
+    const fn = fnAt(src, i);
+    const at = fn ? fn.params.indexOf(e) : -1;
+    if (at >= 0) { if (!excused(file, src, i)) helpers.push({ name: fn.name, at, file }); return; }
+    const cf = /^[A-Za-z_$][\w$]*\.([A-Za-z_$][\w$]*)$/.exec(e);
+    if (cf) {
+      const raw = raws(file);
+      const t = tableOf(raw, cf[1]);
+      for (const x of t) add(names, x[2], { file, line: lineAt(raw, x.index), shape: 'table' });
+      if (t.length) return;
+    }
+    if (excused(file, src, i)) return;
+    unknown.push({ file, line: i + 1, text: lines[i].trim().slice(0, 140) });
+  };
 
-  const LOCAL = /(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:this\s*&&\s*)?(?:(?:this|room|self|r)\._liveFlags\b(?!\w)|await\s+this\._liveFlagsEnsure\(\))/;
   for (const [file, src] of code) {
     const lines = src.split('\n');
-    const covered = new Set();   /* lines whose `_liveFlags` a shape explains */
     lines.forEach((line, i) => {
-      for (const m of line.matchAll(/_flag(?:On|Num)\(\s*'([^']+)'/g)) add(names, m[1], { file, line: i + 1, shape: 'call' });
-      for (const m of line.matchAll(/\._liveFlags\s*(?:\.\s*([A-Za-z_$][\w$]*)|\[\s*'([^']+)'\s*\])/g)) {
-        add(names, m[1] || m[2], { file, line: i + 1, shape: 'member' });
+      /* call: _flagOn('x') / _flagNum("x", ...); any other argument is dynamic */
+      for (const m of line.matchAll(/(?<![\w$])_flag(?:On|Num)\s*\(/g)) {
+        if (/^\s*(?:async\s+)?_flag(?:On|Num)\s*\([^)]*\)\s*\{/.test(line)) continue;   /* the door's own header */
+        const args = callArgs(src, lineStart(src, i) + m.index + m[0].length - 1);
+        const a = args ? args[0] : '';
+        const n = lit(a);
+        if (n) add(names, n, { file, line: i + 1, shape: 'call' });
+        else dynamicRead(file, src, lines, i, a || '?');
       }
-      const decl = LOCAL.exec(line);
-      if (!decl) return;
-      covered.add(i);
-      const v = esc(decl[1]);
-      for (let j = i; j < Math.min(lines.length, i + 8); j++) {
-        const L = lines[j];
-        for (const m of L.matchAll(new RegExp('(?:own|has|hasOwn|hasOwnProperty\\.call|Object\\.hasOwn)\\(\\s*' + v + "\\s*,\\s*'([^']+)'", 'g'))) add(names, m[1], { file, line: j + 1, shape: 'local' });
-        for (const m of L.matchAll(new RegExp('(?<![\\w$.])' + v + '\\.([A-Za-z_$][\\w$]*)', 'g'))) add(names, m[1], { file, line: j + 1, shape: 'local' });
-        for (const m of L.matchAll(new RegExp('(?<![\\w$.])' + v + "\\[\\s*'([^']+)'\\s*\\]", 'g'))) add(names, m[1], { file, line: j + 1, shape: 'local' });
-        /* any other index: a helper's parameter, or unknown */
-        for (const m of L.matchAll(new RegExp('(?<![\\w$.])' + v + "\\[(?!\\s*'[^']+'\\s*\\])([^\\]]*)\\]", 'g'))) {
-          const fn = enclosing(lines, j);
-          const at = fn ? fn.params.indexOf(m[1].trim()) : -1;
-          if (at >= 0) { helpers.push({ name: fn.name, at, file }); continue; }
-          /* a constant's field (`f[HEAP_BURN.FLAG]`): the file's `FLAG: 'x'` */
-          const cf = /^\s*[A-Za-z_$][\w$]*\.([A-Za-z_$][\w$]*)\s*$/.exec(m[1]);
-          if (cf) {
-            const raw = read(file);
-            const t = [...raw.matchAll(new RegExp('(?<![\\w$])' + esc(cf[1]) + ":\\s*'([^']+)'", 'g'))];
-            for (const x of t) add(names, x[1], { file, line: lineAt(raw, x.index), shape: 'table' });
-            if (t.length) continue;
+      if (line.indexOf('_liveFlags') < 0) return;
+      /* destructured */
+      const ds = DESTRUCT.exec(line);
+      if (ds) {
+        for (const part of ds[1].split(',')) { const k = part.trim().split(/[:=]/)[0].trim(); if (/^[A-Za-z_$][\w$]*$/.test(k)) add(names, k, { file, line: i + 1, shape: 'local' }); else if (part.trim()) unknown.push({ file, line: i + 1, text: line.trim().slice(0, 140) }); }
+      }
+      /* a local: its reads, through its whole function */
+      const decl = ds ? null : LOCAL.exec(line);
+      if (decl) {
+        const v = esc(decl[1]);
+        const fn = fnAt(src, i);
+        const to = fn ? fn.to : Math.min(lines.length - 1, i + 40);
+        for (let j = i; j <= to; j++) {
+          const L = j === i ? line.slice(decl.index + decl[0].length) : lines[j];
+          if (L.indexOf(decl[1]) < 0) continue;
+          for (const m of L.matchAll(new RegExp('(?:own|has|hasOwn|hasOwnProperty\\.call|Object\\.hasOwn|Object\\.prototype\\.hasOwnProperty\\.call)\\(\\s*' + v + '\\s*,\\s*([\'"])([^\'"]+)\\1', 'g'))) add(names, m[2], { file, line: j + 1, shape: 'local' });
+          for (const m of L.matchAll(new RegExp('(?<![\\w$.])' + v + '\\s*\\??\\.\\s*([A-Za-z_$][\\w$]*)', 'g'))) add(names, m[1], { file, line: j + 1, shape: 'local' });
+          for (const m of L.matchAll(new RegExp('(?<![\\w$.])' + v + '\\s*(?:\\?\\.)?\\[\\s*([\'"])([^\'"]+)\\1\\s*\\]', 'g'))) add(names, m[2], { file, line: j + 1, shape: 'local' });
+          for (const m of L.matchAll(new RegExp('(?<![\\w$.])' + v + '\\s*(?:\\?\\.)?\\[(?!\\s*[\'"][^\'"]+[\'"]\\s*\\])([^\\]]*)\\]', 'g'))) dynamicRead(file, src, lines, j, m[1]);
+          /* the local handed on whole (`fn(f)`, `return f`, `...f`): unknown */
+          for (const m of L.matchAll(new RegExp('(?<![\\w$.])' + v + '(?![\\w$])', 'g'))) {
+            const after = L.slice(m.index + m[0].length), before = L.slice(0, m.index);
+            if (/^\s*(?:\?\.|\.|\[)/.test(after)) continue;                                   /* a read, above */
+            if (/(?:own|has|hasOwn|hasOwnProperty\.call|Object\.hasOwn|Object\.prototype\.hasOwnProperty\.call)\(\s*$/.test(before)) continue;
+            if (/(?:typeof\s+|!\s*|\(\s*|&&\s*|\|\|\s*)$/.test(before) && !isCallArg(before) && /^\s*(?:&&|\|\||\)|===|!==|\?|;|$)/.test(after)) continue;   /* a presence test */
+            if (excused(file, src, j)) continue;
+            unknown.push({ file, line: j + 1, text: lines[j].trim().slice(0, 140) });
           }
-          const dyn = DYNAMIC.find((d) => d.file === file && L.includes(d.text));
-          if (dyn) { dynamicSeen.add(dyn); continue; }
-          unknown.push({ file, line: j + 1, text: L.trim().slice(0, 140) });
         }
       }
-    });
-    /* every `_liveFlags` no shape explains */
-    lines.forEach((line, i) => {
-      if (covered.has(i)) return;
-      for (const m of line.matchAll(/_liveFlags\b(?!Ensure|Ready|Load)/g)) {
+      /* every other `<obj>._liveFlags` and `_liveFlagsEnsure(` */
+      for (const m of line.matchAll(/\._liveFlags(Ensure)?(?![\w$])/g)) {
         const after = line.slice(m.index + m[0].length);
-        const before = line.slice(0, m.index);
-        if (/^\s*(?:\.\s*[A-Za-z_$]|\[\s*')/.test(after)) continue;                 /* member: a name */
-        if (/^\s*(?:&&|\)|\|\||;|$)/.test(after) && !/=\s*$/.test(before)) continue;  /* a presence test */
-        const dyn = DYNAMIC.find((d) => d.file === file && line.includes(d.text));
-        if (dyn) { dynamicSeen.add(dyn); continue; }
+        const before = line.slice(0, m.index).replace(/[\w$]+\s*$/, '');
+        if (decl && m.index < decl.index + decl[0].length && m.index > decl.index) continue;
+        if (ds && m.index > ds.index) continue;
+        if (m[1]) {   /* _liveFlagsEnsure */
+          if (/^\s*\(\)\s*;/.test(after) && /await\s*$/.test(before)) continue;         /* `await this._liveFlagsEnsure();`: loads, reads nothing */
+          if (/typeof\s*$/.test(before) || /^\s*!==|^\s*===/.test(after)) continue;  /* is it there? */
+          if (/^\s*\([^)]*\)\s*\{/.test(after) && /^\s*(?:async\s+)?$/.test(before)) continue;   /* its definition */
+          if (excused(file, src, i)) continue;
+          unknown.push({ file, line: i + 1, text: line.trim().slice(0, 140) });
+          continue;
+        }
+        const mem = /^\s*(?:\?\.|\.)\s*([A-Za-z_$][\w$]*)|^\s*(?:\?\.)?\[\s*(['"])([^'"]+)\2\s*\]/.exec(after);
+        if (mem) { add(names, mem[1] || mem[3], { file, line: i + 1, shape: 'member' }); continue; }
+        const grp = /^\s*\|\|\s*\{\s*\}\s*\)\s*(?:\?\.|\.)\s*([A-Za-z_$][\w$]*)/.exec(after);
+        if (grp) { add(names, grp[1], { file, line: i + 1, shape: 'member' }); continue; }
+        if (/(?:!\s*|\bif\s*\(\s*|&&\s*|\|\|\s*|\?\s*|!!\s*\(\s*|^\s*\(\s*)$/.test(before) && !isCallArg(before) && /^\s*(?:&&|\|\||\)|\?|;)/.test(after)) continue;   /* a presence test */
+        const idx = /^\s*(?:\?\.)?\[([^\]]*)\]/.exec(after);
+        if (idx) { dynamicRead(file, src, lines, i, idx[1]); continue; }
+        if (excused(file, src, i)) continue;
         unknown.push({ file, line: i + 1, text: line.trim().slice(0, 140) });
       }
     });
   }
 
-  const noteW = (name, where) => add(names, name, where);
-  const resolved = resolveHelpers(code, helpers, noteW, unknown);
+  const resolved = resolveHelpers(code, raws, helpers, (name, where) => add(names, name, where), unknown);
 
   /* promises: §8g's rule, over the raw text (it reads the comments) */
   for (const file of files) {
-    const s = read(file);
+    const s = raws(file);
     for (const m of s.matchAll(/`([A-Za-z_$][\w$]*): ?false`/g)) {
       const ctx = s.slice(Math.max(0, m.index - 160), m.index + m[0].length + 160);
       if (/live ?flags|liveflags|kill[ -]?switch/i.test(ctx)) add(names, m[1], { file, line: lineAt(s, m.index), shape: 'promise' });
     }
   }
 
-  for (const n of NOT_A_FLAG) names.delete(n.name);
-  const staleDynamic = DYNAMIC.filter((d) => d.file.startsWith('server/') && !dynamicSeen.has(d));
-  return { names, unknown, helpers: resolved, staleDynamic };
+  const staleDynamic = source ? [] : DYNAMIC.filter((d) => d.file.startsWith('server/') && !dynamicSeen.has(d));
+  const notAFlag = new Set(NOT_A_FLAG.map((x) => x.name));
+  const staleNotAFlag = NOT_A_FLAG.filter((x) => !names.has(x.name));
+  return { names, unknown, helpers: resolved, staleDynamic, notAFlag, staleNotAFlag };
 }
 
 /* ═══ the page ═══ */
@@ -376,18 +478,20 @@ export function pageFiles() {
   return out.sort();
 }
 
-const PAGE_REGEX = [
-  /\[\?&\]\(?(?:\?:)?([A-Za-z][\w-]*)/g,          /* [?&]x  [?&](x  [?&](?:x */
-  /\(\^\|\[\?&\]\)([A-Za-z][\w-]*)/g,             /* (^|[?&])x */
-  /\(\?:\^\|\[\?&\]\)([A-Za-z][\w-]*)/g,          /* (?:^|[?&])x */
-];
-export function scanPage(files = pageFiles()) {
+/* the openings of a read of the address in a regular expression, then the
+   name, or several in a group: `[?&]x`, `[?&](x|y)`, `(^|[?&])x`,
+   `(?:^|[?&])x`, `(?:^|&)x` and `(^|&)x` (over `location.search.slice(1)`),
+   `[&?]x` (v2.3.5302: the last three, and every name of a group, after the
+   gatekeeper's review) */
+const PAGE_REGEX = /(?:\[\?&\]|\[&\?\]|\(\^\|\[\?&\]\)|\(\?:\^\|\[\?&\]\)|\(\?:\^\|&\)|\(\^\|&\))\(?(?:\?:)?([A-Za-z][\w-]*(?:\|[A-Za-z][\w-]*)*)/g;
+export function scanPage(files = pageFiles(), { source = null } = {}) {
   const names = new Map();
+  const offNames = new Map();   /* clientOff('x') / clientOffAtLoad('x'): the worker's `off_x` */
   const unknown = [];
   const helpers = [];   /* { name, at, file } */
-  const code = new Map();
-  for (const file of files) code.set(file, blankComments(read(file)));
+  const { raws, code } = sourcesOf(files, source);
   const notAddressSeen = new Set();
+  let ownEntriesSeen = false;
   const note = (name, where) => {
     const na = NOT_ADDRESS.find((x) => x.name === name && x.file === where.file);
     if (na) { notAddressSeen.add(na); return; }
@@ -398,38 +502,43 @@ export function scanPage(files = pageFiles()) {
     const usp = new Set();
     lines.forEach((line, i) => {
       /* a helper: a function that builds the read from a parameter */
-      if (/new RegExp\(/.test(line) && /\[\?&\]/.test(line)) {
-        const fn = enclosing(lines, i, 8);
-        const p = fn && fn.params.find((x) => new RegExp("\\+\\s*\\(?\\s*" + esc(x) + '\\b').test(line));
-        if (p) { helpers.push({ name: fn.name, at: fn.params.indexOf(p), file }); }
+      if (/new RegExp\(/.test(line) && /\[\?&\]|\(\?:\^\|&\)|\(\^\|&\)/.test(line)) {
+        const fn = fnAt(src, i);
+        const p = fn && fn.params.find((x) => new RegExp('\\+\\s*\\(?\\s*' + esc(x) + '\\b').test(line));
+        if (p) helpers.push({ name: fn.name, at: fn.params.indexOf(p), file });
       }
-      for (const re of PAGE_REGEX) for (const m of line.matchAll(re)) note(m[1], { file, line: i + 1, shape: 'regex' });
-      if (line.indexOf('[?&]') < 0 && line.indexOf('URLSearchParams') < 0 && !usp.size && line.indexOf('RegExp') < 0) return;
-      const d = line.indexOf('URLSearchParams') >= 0 ? /([A-Za-z_$][\w$]*)\s*=\s*[^;]{0,60}?new URLSearchParams\(/.exec(line) : null;
+      if (line.indexOf('[?&]') >= 0 || line.indexOf('[&?]') >= 0 || line.indexOf('|&)') >= 0) for (const m of line.matchAll(PAGE_REGEX)) for (const n of m[1].split('|')) note(n, { file, line: i + 1, shape: 'regex' });
+      if (line.indexOf('clientOff') >= 0) for (const m of line.matchAll(/(?<![\w$.])clientOff(?:AtLoad)?\(\s*(['"])([a-z0-9_]+)\1/g)) add(offNames, m[2], { file, line: i + 1, shape: 'saver' });
+      /* `.includes('x=1')`, `.indexOf('?x')`: a string that reads as an address's */
+      if (/\.(?:includes|indexOf|startsWith)\(\s*['"]/.test(line)) for (const m of line.matchAll(/\.(?:includes|indexOf|startsWith)\(\s*(['"])(?:[?&]([A-Za-z][\w-]*)(?:=[^'"]*)?|([A-Za-z][\w-]*)=[^'"]*)\1\s*\)/g)) note(m[2] || m[3], { file, line: i + 1, shape: 'string' });
+      if (line.indexOf('URLSearchParams') < 0 && line.indexOf('searchParams') < 0 && !usp.size) return;
+      const d = /([A-Za-z_$][\w$]*)\s*=\s*[^;]{0,80}?(?:new URLSearchParams\(|\.searchParams\b)/.exec(line);
       if (d) usp.add(d[1]);
-      for (const m of line.matchAll(/URLSearchParams\([^()]*(?:\([^()]*\)[^()]*)*\)\)?\s*\.(?:get|has|getAll)\(\s*'([^']+)'/g)) note(m[1], { file, line: i + 1, shape: 'params' });
+      for (const m of line.matchAll(/(?:URLSearchParams\([^()]*(?:\([^()]*\)[^()]*)*\)\)?|\.searchParams)\s*\.(?:get|has|getAll)\(\s*(['"])([^'"]+)\1/g)) note(m[2], { file, line: i + 1, shape: 'params' });
       for (const v of usp) {
-        for (const m of line.matchAll(new RegExp('(?<![\\w$.])' + esc(v) + "\\.(?:get|has|getAll)\\(\\s*'([^']+)'", 'g'))) note(m[1], { file, line: i + 1, shape: 'params' });
-        for (const m of line.matchAll(new RegExp('(?<![\\w$.])' + esc(v) + '\\.(?:get|has|getAll)\\(\\s*([A-Za-z_$][\\w$]*)\\s*\\)', 'g'))) {
+        for (const m of line.matchAll(new RegExp('(?<![\\w$.])' + esc(v) + '\\s*\\??\\.(?:get|has|getAll)\\(\\s*([\'"])([^\'"]+)\\1', 'g'))) note(m[2], { file, line: i + 1, shape: 'params' });
+        for (const m of line.matchAll(new RegExp('(?<![\\w$.])' + esc(v) + '\\s*\\??\\.(?:get|has|getAll)\\(\\s*(?![\'"])([^)]*)\\)', 'g'))) {
           /* a parameter: its function is a helper; else the census, unless
              it is a loop over the address's own entries (keepSwitches.js
              writes, reads no switch) */
-          const fn = enclosing(lines, i, 8);
-          if (fn && fn.params.includes(m[1])) { helpers.push({ name: fn.name, at: fn.params.indexOf(m[1]), file }); continue; }
-          unknown.push({ file, line: i + 1, text: line.trim().slice(0, 140), via: m[1] });
+          const fn = fnAt(src, i);
+          const a = m[1].trim();
+          if (fn && fn.params.includes(a)) { helpers.push({ name: fn.name, at: fn.params.indexOf(a), file }); continue; }
+          if (isOwnEntries(file, a)) { ownEntriesSeen = true; continue; }
+          unknown.push({ file, line: i + 1, text: line.trim().slice(0, 140) });
         }
       }
     });
   }
-  const resolved = resolveHelpers(code, helpers, note, unknown);
-  const staleNotAddress = NOT_ADDRESS.filter((x) => !notAddressSeen.has(x));
-  return { names, unknown: unknown.filter((u) => !isOwnEntries(u)), helpers: resolved, staleNotAddress };
+  const resolved = resolveHelpers(code, raws, helpers, note, unknown);
+  const staleNotAddress = source ? [] : NOT_ADDRESS.filter((x) => !notAddressSeen.has(x));
+  return { names, offNames, unknown, helpers: resolved, staleNotAddress, staleOwnEntries: !source && !ownEntriesSeen };
 }
 /* keepSwitches.js copies the address's own entries into a new one
    (`out.has(k)` over `for (const [k, v] of q)`): it writes, reads no
-   switch, and is no census line */
-function isOwnEntries(u) {
-  return u.file === 'src/ui/keepSwitches.js' && u.via === 'k';
+   switch, and is no census line.  Held to be used, as every excuse is. */
+function isOwnEntries(file, via) {
+  return file === 'src/ui/keepSwitches.js' && via === 'k';
 }
 
 /* ═══ the savers ═══ */
@@ -439,9 +548,11 @@ export async function scanSavers() {
 }
 
 /* ═══ the census: every name found, keyed as the table keys them ═══
-   A live flag by its name; a page name with its `?`; a memory saver by its
-   id, its page read folded in.  { worker, page, savers, found: Map(name ->
-   { side, reads }) } */
+   A live flag by its name; a page name with its `?`; a switch the worker
+   throws for the page (a memory saver of CLIENT_SAVERS, or any other
+   `clientOff('x')` the page asks: the worker's `off_x`) by its id, its page
+   read folded in.  NOT_A_FLAG's names are left out.
+   { worker, page, savers, found: Map(name -> { side, reads }) } */
 export async function census() {
   const worker = scanWorker();
   const page = scanPage();
@@ -451,13 +562,13 @@ export async function census() {
     const was = found.get(name);
     if (was) { was.reads.push(...reads); if (was.side !== side) was.side = 'both'; } else found.set(name, { side, reads: [...reads] });
   };
-  const saverIds = new Set(savers);
+  const both = new Set([...savers, ...page.offNames.keys()]);
   for (const id of savers) put(id, 'both', []);
-  for (const [n, reads] of worker.names) put(n, 'worker', reads);
+  for (const [id, reads] of page.offNames) put(id, 'both', reads);
+  for (const [n, reads] of worker.names) if (!worker.notAFlag.has(n)) put(n, 'worker', reads);
   for (const [n, reads] of page.names) {
-    if (saverIds.has(n)) found.get(n).reads.push(...reads);
+    if (both.has(n)) found.get(n).reads.push(...reads);
     else put('?' + n, 'page', reads);
   }
   return { worker, page, savers, found };
 }
-
