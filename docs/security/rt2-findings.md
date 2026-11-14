@@ -146,10 +146,10 @@ and turns "a bug" into "nobody can log in". The way out is the live switch
 `docs/OPERATIONS.md` names it: OPERATIONS has no rollback section at all.
 
 **Smallest fix.**
-1. *(docs, tiny; card R or a new card)* a "Rolling back" section in
-   `docs/OPERATIONS.md`: before or right after a dashboard rollback, set
-   `newersave` to false in the Test panel's switches; after the fix is
-   deployed, set it back.
+1. *(docs, tiny)* a "Rolling back" section in `docs/OPERATIONS.md`: right
+   after a dashboard rollback, set `newersave` to false (a curl: the Test
+   panel cannot set a switch); hold server merges; once the fix is
+   deployed, clear it (the Test panel can). **Done: #1872 (v2.3.5588).**
 2. *(server, small)* count the newer-save refusals in the day's book and on
    the deep health route (F3), so a rollback that locks people out shows.
 
@@ -171,12 +171,12 @@ and turns "a bug" into "nobody can log in". The way out is the live switch
   takeover) takes all of it.
 
 **Smallest fix.**
-1. *(server suite, tiny, a new card or card R)* a test that reads
-   `wrangler.toml` and fails unless `[[migrations]]` is exactly the known
-   list, with no `deleted_classes`, `renamed_classes` or
-   `transferred_classes`. It runs in the deploy's own `test` job, so a bad
-   line never deploys. Cost: nothing to run. (A test that READS wrangler.toml
-   does not change it.)
+1. *(a guard, tiny)* a test that reads `wrangler.toml` and fails unless
+   `[[migrations]]` is exactly the known list, with no `deleted_classes`,
+   `renamed_classes` or `transferred_classes`. It runs in the deploy's own
+   `test` job, so a bad line never deploys. Cost: nothing to run. **Done:
+   #1871 (v2.3.5587), `tools/guards/do-migrations.test.mjs`: a guard, so
+   merging it deploys nothing.**
 2. *(card R)* land the export, and give it a Test panel button that saves a
    file, so the owner keeps a copy off Cloudflare (weekly; cost per run is in
    card R's numbers).
@@ -230,19 +230,24 @@ with F1 (a held seat keeps a slower cadence fair to the people inside).
   `getBookmarkForTime` throws (card R's finding; `rewind.test.mjs` covers the
   logic with a stand-in).
 - **One player's restore** (`/api/admin/restore`, the 7 daily backups): curl.
-- **The Test panel** (`DevPanel.jsx`) can set the live switches, so
-  `max_players`, `ip_sockets` and `newersave` are reachable without a
-  terminal. The rewind and the restore are not. The owner is new to coding
-  (CLAUDE.md: never ask them to run terminal commands), so in an incident
-  these wait for a session.
+- **The Test panel** (`DevPanel.jsx`, "Live flags") can SHOW and CLEAR the
+  live switches, and has buttons for a few (the expo's one-Wi-Fi limits,
+  the message diet, the stats' switches). It cannot set a switch to a value:
+  `newersave` (F4), `max_players` and `roomrewind` are curl only, as are
+  the rewind and the restore. The owner is new to coding (CLAUDE.md: never
+  ask them to run terminal commands), so in an incident these wait for a
+  session. *(corrected 2026-11-15: the first version of this file said the
+  panel could set them)*
 - **The other objects:** the Leaderboard and the Feedback board have no
   rewind (OPERATIONS says so). Low harm: the boards refill as players come
   back (rows live 7 days); the feedback board holds reports. The Marketplace
   and Arena classes hold nothing live.
 
 **Smallest fix.** *(card R)* Test panel buttons for "plan a rewind" and "do
-it" (they wrap the two curl steps; the typed confirmation stays). *(owner)*
-run the lab's restore try once.
+it" (they wrap the two curl steps; the typed confirmation stays), and a
+"set a switch" row beside the panel's Clear (a name and a value, through the
+same `/flags` POST the curl uses), so `newersave` and `max_players` need no
+terminal. *(owner)* run the lab's restore try once.
 
 ---
 
@@ -365,6 +370,7 @@ exist and are documented (flood.js header). Owner: know them for the showing.
    `newersave` set false and back (F4), so the first one is not during an
    incident.
 5. **Launch and judging days:** no server merges while people play (F1, F3).
-6. **Know four switches** (the Test panel): `max_players` (fewer seats),
-   `ip_sockets` (a hall on one Wi-Fi), `newersave` (after a rollback),
-   `roomrewind` (the rewind's lock).
+6. **Know four switches:** `max_players` (fewer seats), `ip_sockets` (a
+   hall on one Wi-Fi: the Test panel's "Expo" button), `newersave` (after a
+   rollback: OPERATIONS, "Rolling back"), `roomrewind` (the rewind's lock).
+   Only the expo's has a button; the others are a curl a session can run.
