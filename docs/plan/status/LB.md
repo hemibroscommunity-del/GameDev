@@ -1,6 +1,6 @@
 card: LB
 branch: claude/plan-lb-2-window (PR 2, begun from claude/plan-lb-1-pieces)
-prs: #1771 (5500, merged); #1783 (5501, ready); PR 3 (5502) working on claude/plan-lb-3-power
+prs: #1771 (5500, merged); #1783 (5501, ready); #1798 (5502, draft until its phone tests)
 state: working
 
 ## Done
