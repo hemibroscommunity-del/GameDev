@@ -27,10 +27,12 @@
  *           `end` (its own end), `never` -- and the function, "<file> <fn>"
  *   rejoin  the slots of REJOIN_SLOTS (src/game/rejoinSlots.js) a rejoin
  *           clears and the worker says again, or 'none: <why>'
- *   held    a door: { suite } -- the door's own suite fails a second writer,
- *           and the guard only checks it names the field and the function --
- *           or { scan, born, besides } where nothing else holds it: every
- *           write the scan's pattern finds is in one of its places
+ *   held    a door: { suite } -- a suite on the guard's closed DOOR_SUITES
+ *           list, which fails a second writer of the field today -- or, for a
+ *           row on its SCAN_DOORS list, { scan: [{ prop, value?, at }], born,
+ *           besides }: every write of `.prop` the syntax tree finds (of
+ *           `value`, when given) is in one of the `at` places, "<file> <fn>"
+ *           (v2.3.5203: the gatekeeper's sitting 8)
  *   today   a todo: today's fields.  A page field is `S.<name>` or a variable
  *           and its file: a ledger row, whose writers are the ledger's own
  *           (`writers`, held to the code by state-ledger.test; by function:
@@ -40,7 +42,6 @@
  *   note    where a row needs words
  */
 
-const W = (field, file, writers) => ({ field, file, writers });
 
 export const PHASES = [
   /* ═══ THE DOORS (step 5.3b: "Has one today") ═══ */
@@ -52,7 +53,7 @@ export const PHASES = [
     clears: [{ edge: 'leave', at: 'server/src/leave.js _playerLeaves' }],
     rejoin: 'none: a rejoin is a new socket, born open (index.js fetch)',
     held: {
-      scan: [{ write: '\\.phase\\s*=(?!=)', at: ['server/src/join.js _handleJoin', 'server/src/leave.js _leaveRun'] }],
+      scan: [{ prop: 'phase', at: ['server/src/join.js _handleJoin', 'server/src/leave.js _leaveRun'] }],
       born: [{ at: 'server/src/index.js fetch', text: 'phase: \'open\'' }],
     },
     note: 'Three edges, three places: born open in fetch, joined in _handleJoin, gone in _leaveRun (inside the door _playerLeaves). session-door.test plays the phases but fails no second writer of the field, so this table\'s scan does.',
@@ -69,17 +70,17 @@ export const PHASES = [
   {
     name: 'monster', side: 'worker', status: 'door',
     what: 'A world monster\'s life: alive, dead until its respawn, then a new life of the same object.',
-    field: 'm.life', states: ['alive', 'dead'],
+    field: 'm.alive', states: ['alive', 'dead'],
     fn: '_monsterNewLife', file: 'server/src/monsterlife.js',
     clears: [{ edge: 'end', at: 'server/src/monsterlife.js _monsterNewLife' }],
     rejoin: 'none: a monster is the room\'s, sent in every tick',
     held: {
-      scan: [
-        { write: '\\b(?:m|mn)\\.life\\s*(?:=(?!=)|\\+=|\\+\\+)', at: ['server/src/monsterlife.js _monsterNewLife'] },
-        { write: '\\b(?:m|mn)\\.alive\\s*=\\s*true', at: ['server/src/monsterlife.js _monsterNewLife'] },
+      scan: [{ prop: 'alive', value: true, at: ['server/src/monsterlife.js _monsterNewLife'] }],
+      besides: [
+        { file: 'server/src/gathering.js', text: 'n.alive = true', why: 'a gather node coming back, not a monster' },
       ],
     },
-    note: 'The door is the new-life edge: m.life counts lives and m.alive comes back true only in _monsterNewLife. The kill (m.alive = false: combat.js, devtools.js, slimeboss.js) is the death edge, not the door. monster-newlife.test fails a per-monster field in no reset list; this scan fails a second new life.',
+    note: 'The door is the new-life edge: m.alive comes back true only in _monsterNewLife (which also counts the lives, m.life). The kill (m.alive = false: combat.js, devtools.js, slimeboss.js) is the death edge, not the door. monster-newlife.test fails a per-monster field in no reset list; this scan fails a second new life, under any name (v2.3.5203, the gatekeeper\'s sitting 8).',
   },
   {
     name: 'monster', side: 'page', status: 'door',
@@ -89,7 +90,7 @@ export const PHASES = [
     clears: [{ edge: 'end', at: 'src/game/monsterCarry.js monsterNewLife' }],
     rejoin: 'none: the worker\'s monsters come back in its zone state at every state_sync',
     held: {
-      scan: [{ write: '\\.alive\\s*=\\s*true', at: ['src/game/monsterCarry.js monsterNewLife'] }],
+      scan: [{ prop: 'alive', value: true, at: ['src/game/monsterCarry.js monsterNewLife'] }],
       besides: [
         { file: 'src/ui/BroTown.jsx', text: '_gn.alive = true', why: 'a gather node coming back, not a monster' },
         { file: 'src/ui/BroTown.jsx', text: 'npc.alive = true', why: 'a townsperson, not a monster' },
@@ -116,7 +117,7 @@ export const PHASES = [
     clears: [{ edge: 'death', at: 'server/src/index.js _tickPlayerRespawn' }],
     rejoin: 'none: the join writes the place afresh (join.js _handleJoin)',
     today: [
-      W('ps.z', 'server/src/movement.js', ['server/src/movement.js _handleMove', 'server/src/join.js _handleJoin', 'server/src/index.js _tickPlayerRespawn']),
+      { field: 'ps.z', file: 'server/src/movement.js', writers: ['server/src/movement.js _handleMove', 'server/src/join.js _handleJoin', 'server/src/index.js _tickPlayerRespawn'] },
     ],
     note: 'Three functions, five places (the join\'s three: the fresh body, the stand-up, a kept body). A sparring clone copies its owner\'s (spar.js), not a player\'s place. The leave remembers it (lastplace.js) with the body.',
   },
@@ -127,8 +128,8 @@ export const PHASES = [
     clears: [{ edge: 'never', at: 'server/src/cooking.js _pvpHealPrune' }],
     rejoin: 'none: the clock is the room\'s and survives a rejoin on purpose (cooking.js); refusals say it per action',
     today: [
-      W('this._pvpHealClocks', 'server/src/cooking.js', ['server/src/cooking.js _pvpHealClock', 'server/src/cooking.js _notePvpExchange', 'server/src/cooking.js _pvpHealPrune', 'server/src/spar.js _sparRemove']),
-      W('ps.lastDamageAt', 'server/src/combat.js', ['server/src/combat.js _applyDamage', 'server/src/join.js _handleJoin', 'server/src/index.js _tickPlayerRespawn']),
+      { field: 'this._pvpHealClocks', file: 'server/src/cooking.js', writers: ['server/src/cooking.js _pvpHealClock', 'server/src/cooking.js _notePvpExchange', 'server/src/cooking.js _pvpHealPrune', 'server/src/spar.js _sparRemove'] },
+      { field: 'ps.lastDamageAt', file: 'server/src/combat.js', writers: ['server/src/combat.js _applyDamage', 'server/src/join.js _handleJoin', 'server/src/index.js _tickPlayerRespawn'] },
     ],
     note: 'fightlock.js _fightLockHolds reads the duel, this clock (10 s), the red skull (ps._nml.red with ps.lastDamageAt) and the place (No man\'s land).',
   },
@@ -143,9 +144,9 @@ export const PHASES = [
     ],
     rejoin: ['duel'],
     today: [
-      W('this._duelChallenges', 'server/src/duel.js', ['server/src/duel.js _interceptDuel', 'server/src/duel.js _tickDuels']),
-      W('this._duels', 'server/src/duel.js', ['server/src/duel.js _interceptDuel', 'server/src/duel.js _resolveDuel', 'server/src/gladiator.js _arenaTryActivate']),
-      W('d.away', 'server/src/duel.js', ['server/src/duel.js _duelOnDisconnect', 'server/src/duel.js _duelOnRejoin', 'server/src/duel.js _duelZoneMoved']),
+      { field: 'this._duelChallenges', file: 'server/src/duel.js', writers: ['server/src/duel.js _interceptDuel', 'server/src/duel.js _tickDuels'] },
+      { field: 'this._duels', file: 'server/src/duel.js', writers: ['server/src/duel.js _interceptDuel', 'server/src/duel.js _resolveDuel', 'server/src/gladiator.js _arenaTryActivate'] },
+      { field: 'd.away', file: 'server/src/duel.js', writers: ['server/src/duel.js _duelOnDisconnect', 'server/src/duel.js _duelOnRejoin', 'server/src/duel.js _duelZoneMoved'] },
     ],
     note: 'The record\'s status is the natural one field (_duelFor reads `active`); the leave starts a 15 s away clock, not an end.',
   },
@@ -159,8 +160,8 @@ export const PHASES = [
     ],
     rejoin: ['trade', 'trade-invite'],
     today: [
-      W('this._t2Invites', 'server/src/trade2.js', ['server/src/trade2.js _handleTrade2Open', 'server/src/trade2.js _t2ClearInvites', 'server/src/trade2.js _tickTrades2']),
-      W('this._trades2', 'server/src/trade2.js', ['server/src/trade2.js _handleTrade2Open', 'server/src/trade2.js _t2Cancel', 'server/src/trade2.js _handleTrade2Confirm']),
+      { field: 'this._t2Invites', file: 'server/src/trade2.js', writers: ['server/src/trade2.js _handleTrade2Open', 'server/src/trade2.js _t2ClearInvites', 'server/src/trade2.js _tickTrades2'] },
+      { field: 'this._trades2', file: 'server/src/trade2.js', writers: ['server/src/trade2.js _handleTrade2Open', 'server/src/trade2.js _t2Cancel', 'server/src/trade2.js _handleTrade2Confirm'] },
     ],
     note: 'A death does not cancel the window (fightlock.js); the takeover way skips the leave\'s cancel on purpose (TRAPS §162).',
   },
@@ -174,9 +175,9 @@ export const PHASES = [
     ],
     rejoin: ['party'],
     today: [
-      W('this._partyInvites', 'server/src/party.js', ['server/src/party.js _handlePartyInvite', 'server/src/party.js _handlePartyAccept', 'server/src/party.js _handlePartyDecline', 'server/src/party.js _tickParties']),
-      W('this._partyByPlayer', 'server/src/party.js', ['server/src/party.js _handlePartyAccept', 'server/src/party.js _partyLoad', 'server/src/party.js _partyRemoveMember', 'server/src/clanparty.js _clanToParty']),
-      W('p.leader', 'server/src/party.js', ['server/src/party.js _handlePartyAccept', 'server/src/party.js _partyLoad', 'server/src/party.js _partyRemoveMember', 'server/src/party.js _partyOnRejoin', 'server/src/clanparty.js _clanToParty']),
+      { field: 'this._partyInvites', file: 'server/src/party.js', writers: ['server/src/party.js _handlePartyInvite', 'server/src/party.js _handlePartyAccept', 'server/src/party.js _handlePartyDecline', 'server/src/party.js _tickParties'] },
+      { field: 'this._partyByPlayer', file: 'server/src/party.js', writers: ['server/src/party.js _handlePartyAccept', 'server/src/party.js _partyLoad', 'server/src/party.js _partyRemoveMember', 'server/src/clanparty.js _clanToParty'] },
+      { field: 'p.leader', file: 'server/src/party.js', writers: ['server/src/party.js _handlePartyAccept', 'server/src/party.js _partyLoad', 'server/src/party.js _partyRemoveMember', 'server/src/party.js _partyOnRejoin', 'server/src/clanparty.js _clanToParty'] },
     ],
     note: 'The leave marks the member away, it does not remove them (partykeep). A rejoin re-sends the roster (join.js _partyOnRejoin, before rejoinresend.js existed).',
   },
@@ -190,7 +191,7 @@ export const PHASES = [
     ],
     rejoin: 'none: the worker stores nothing and a join is off the board (the ride slot\'s why: the phone clears its own)',
     today: [
-      W('ps._ride', 'server/src/ride.js', ['server/src/ride.js _handleRide', 'server/src/ride.js _rideEnd']),
+      { field: 'ps._ride', file: 'server/src/ride.js', writers: ['server/src/ride.js _handleRide', 'server/src/ride.js _rideEnd'] },
     ],
     note: 'Nearly a door already: every end goes through _rideEnd, and _handleRide is the start. The worker stores nothing, so a join is off the board (the slot\'s why).',
   },
@@ -204,8 +205,8 @@ export const PHASES = [
     ],
     rejoin: 'none: the record outlives the socket on purpose (leave.js, v2.3.3322) and the phone replays a strike its dropped socket ate',
     today: [
-      W('this.extractions', 'server/src/gathering.js', ['server/src/gathering.js _handleExtractionStart', 'server/src/gathering.js _handleNodeStrike', 'server/src/gathering.js _endExtraction', 'server/src/gathering.js _sweepStaleExtractions']),
-      W('ps.ex', 'server/src/movement.js', ['server/src/movement.js _handleMove', 'server/src/linger.js _lingerOnClose', 'server/src/bodytake.js _bodyTakeStart']),
+      { field: 'this.extractions', file: 'server/src/gathering.js', writers: ['server/src/gathering.js _handleExtractionStart', 'server/src/gathering.js _handleNodeStrike', 'server/src/gathering.js _endExtraction', 'server/src/gathering.js _sweepStaleExtractions'] },
+      { field: 'ps.ex', file: 'server/src/movement.js', writers: ['server/src/movement.js _handleMove', 'server/src/linger.js _lingerOnClose', 'server/src/bodytake.js _bodyTakeStart'] },
     ],
     note: 'ps.ex is the phone\'s claim on its moves (mine, chop, fish, cook, fire), shared with fishing and cooking.',
   },
@@ -216,9 +217,9 @@ export const PHASES = [
     clears: [{ edge: 'end', at: 'server/src/cooking.js _handleCookRequest' }],
     rejoin: 'none: a fresh body has no fire or plan; only the rate\'s history is stored',
     today: [
-      W('ps.ex', 'server/src/movement.js', ['server/src/movement.js _handleMove', 'server/src/linger.js _lingerOnClose', 'server/src/bodytake.js _bodyTakeStart']),
-      W('ps._fireLit', 'server/src/moveclaims.js', ['server/src/moveclaims.js _fireLitNote']),
-      W('ps._cookHits', 'server/src/gathering.js', ['server/src/gathering.js _planCookHits', 'server/src/cooking.js _handleCookRequest']),
+      { field: 'ps.ex', file: 'server/src/movement.js', writers: ['server/src/movement.js _handleMove', 'server/src/linger.js _lingerOnClose', 'server/src/bodytake.js _bodyTakeStart'] },
+      { field: 'ps._fireLit', file: 'server/src/moveclaims.js', writers: ['server/src/moveclaims.js _fireLitNote'] },
+      { field: 'ps._cookHits', file: 'server/src/gathering.js', writers: ['server/src/gathering.js _planCookHits', 'server/src/cooking.js _handleCookRequest'] },
     ],
     note: 'No record is held to a cook on purpose (gathering.js): ps.ex === \'cook\' is the only "is cooking", the phone\'s claim.',
   },
@@ -232,10 +233,10 @@ export const PHASES = [
     ],
     rejoin: 'none: the phone says `blocking` again on every move',
     today: [
-      W('ps.blocking', 'server/src/movement.js', ['server/src/join.js _handleJoin', 'server/src/movement.js _handleMove', 'server/src/moveclaims.js _swingDropsGuard', 'server/src/combat.js _resolvePvPAttack', 'server/src/pvpextras.js _strikePlayer', 'server/src/hits.js _hitStopped', 'server/src/index.js _tickPlayerRegen', 'server/src/linger.js _lingerOnClose', 'server/src/bodytake.js _bodyTakeStart']),
-      W('ps._guardBrokenUntil', 'server/src/hits.js', ['server/src/combat.js _resolvePvPAttack', 'server/src/pvpextras.js _strikePlayer', 'server/src/hits.js _hitStopped', 'server/src/index.js _tickPlayerRegen']),
+      { field: 'ps.blocking', file: 'server/src/movement.js', writers: ['server/src/join.js _handleJoin', 'server/src/movement.js _handleMove', 'server/src/moveclaims.js _swingDropsGuard', 'server/src/combat.js _resolvePvPAttack', 'server/src/pvpextras.js _strikePlayer', 'server/src/hits.js _hitStopped', 'server/src/index.js _tickPlayerRegen', 'server/src/linger.js _lingerOnClose', 'server/src/bodytake.js _bodyTakeStart'] },
+      { field: 'ps._guardBrokenUntil', file: 'server/src/hits.js', writers: ['server/src/combat.js _resolvePvPAttack', 'server/src/pvpextras.js _strikePlayer', 'server/src/hits.js _hitStopped', 'server/src/index.js _tickPlayerRegen'] },
     ],
-    note: 'ps.blocking has nine writers in seven files (and five more for the sparring clone in spar.js); a death touches none of it.',
+    note: 'ps.blocking has nine writers in nine files (and five more for the sparring clone in spar.js); a death touches none of it.',
   },
   {
     name: 'pose', side: 'worker', status: 'todo',
@@ -247,7 +248,7 @@ export const PHASES = [
     ],
     rejoin: 'none: every join makes the body afresh with no po (the pose slot\'s why: the phone stands up too)',
     today: [
-      W('ps.po', 'server/src/poses.js', ['server/src/poses.js _handlePose', 'server/src/movement.js _handleMove', 'server/src/bodytake.js _bodyTakeStart']),
+      { field: 'ps.po', file: 'server/src/poses.js', writers: ['server/src/poses.js _handlePose', 'server/src/movement.js _handleMove', 'server/src/bodytake.js _bodyTakeStart'] },
     ],
     note: 'Memory only ("a deploy stands everyone up"); the join makes the body afresh with none.',
   },
@@ -258,7 +259,7 @@ export const PHASES = [
     clears: [{ edge: 'end', at: 'server/src/race.js _raceEnd' }],
     rejoin: 'none: "a race lost to a reconnect is a race run again" (race.js); the join makes the body afresh',
     today: [
-      W('ps._race', 'server/src/race.js', ['server/src/race.js _handleRaceStart', 'server/src/race.js _raceEnd']),
+      { field: 'ps._race', file: 'server/src/race.js', writers: ['server/src/race.js _handleRaceStart', 'server/src/race.js _raceEnd'] },
     ],
     note: 'Nearly a door: two writers, one file. A death or a leave of the Wheel ends it at the next move (_raceOnMove, \'left\').',
   },
@@ -272,8 +273,8 @@ export const PHASES = [
     ],
     rejoin: ['arena'],
     today: [
-      W('this._arena', 'server/src/gladiator.js', ['server/src/gladiator.js _arenaJoin', 'server/src/gladiator.js _arenaLeave', 'server/src/gladiator.js _arenaLazyTick', 'server/src/gladiator.js _tickArena']),
-      W('ps._arenaMatch', 'server/src/gladiator.js', ['server/src/gladiator.js _arenaTryActivate', 'server/src/gladiator.js _arenaOnMatchResolved']),
+      { field: 'this._arena', file: 'server/src/gladiator.js', writers: ['server/src/gladiator.js _arenaJoin', 'server/src/gladiator.js _arenaLeave', 'server/src/gladiator.js _arenaLazyTick', 'server/src/gladiator.js _tickArena'] },
+      { field: 'ps._arenaMatch', file: 'server/src/gladiator.js', writers: ['server/src/gladiator.js _arenaTryActivate', 'server/src/gladiator.js _arenaOnMatchResolved'] },
     ],
     note: 'A match is a wager-0 duel (this._duels, arenaMatch); _arenaInMatch reads the duel as the truth. arena.js is the retired class, kept for its binding.',
   },
@@ -284,7 +285,7 @@ export const PHASES = [
     clears: [{ edge: 'end', at: 'server/src/gathering.js _handleNodeStrike' }],
     rejoin: 'none: the extraction record outlives the socket (harvest\'s)',
     today: [
-      W('this.extractions', 'server/src/gathering.js', ['server/src/gathering.js _handleExtractionStart', 'server/src/gathering.js _handleNodeStrike', 'server/src/gathering.js _endExtraction', 'server/src/gathering.js _sweepStaleExtractions']),
+      { field: 'this.extractions', file: 'server/src/gathering.js', writers: ['server/src/gathering.js _handleExtractionStart', 'server/src/gathering.js _handleNodeStrike', 'server/src/gathering.js _endExtraction', 'server/src/gathering.js _sweepStaleExtractions'] },
     ],
     note: 'harvest\'s record with skill \'fishing\'; a door for harvest is fishing\'s too.',
   },
@@ -299,8 +300,8 @@ export const PHASES = [
     ],
     rejoin: 'none: the join lands back in its run by its place (ps.z dungeon:<id>), and the pass lives on the run (zonejudge.js R1)',
     today: [
-      W('this._dungeons', 'server/src/dungeon.js', ['server/src/dungeon.js _handleDungeonStart', 'server/src/dungeon.js _dungeonCleanup']),
-      W('inst.state', 'server/src/dungeon.js', ['server/src/dungeon.js _handleDungeonStart', 'server/src/dungeon.js _dungeonComplete']),
+      { field: 'this._dungeons', file: 'server/src/dungeon.js', writers: ['server/src/dungeon.js _handleDungeonStart', 'server/src/dungeon.js _dungeonCleanup'] },
+      { field: 'inst.state', file: 'server/src/dungeon.js', writers: ['server/src/dungeon.js _handleDungeonStart', 'server/src/dungeon.js _dungeonComplete'] },
     ],
     note: 'No field on the player: membership is the place (dungeon.js _dungeonZonePlayers). A death sends them to town at the respawn and the run empties; a leave deletes the body.',
   },

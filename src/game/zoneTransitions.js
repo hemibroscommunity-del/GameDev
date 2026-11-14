@@ -38,6 +38,7 @@ import { loadTownScenery, freeTownScenery, townSceneryReady, townSceneryLoading 
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2999: the Wheel's grid is read at your boots */
 import { FARM_FROM_WORKSHOP } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
 import { holdFarmUntilReady } from '@/game/farmTrip.js';
+import { runResets } from '@/game/resetOn.js'; /* v2.3.5203: the zone edge's one door runs the state's resets (card L) */
 
 /* ═══ v2.3.2272: FREE THE ZONE YOU LEFT, ONE BEAT LATE ═══
  *
@@ -445,9 +446,16 @@ export function clearZoneLocalFx(S) {
    §1-2, §6 (no other writer). */
 export function changeZone(S, to) {
   if (!S) return;
+  const from = S.currentZone;
   S.currentZone = to;
   clearZoneLocalFx(S);
   S.lockedTarget = null;
+  /* v2.3.5203 (grand plan step 5.3, card L): the zone edge's one door.  The
+     state that belongs to a place, registered by its own system
+     (game/resetOn.js resetOn('zone', ...)), goes back here -- on a REAL
+     change of place only: a flip to the zone you are in keeps what belongs
+     to it (the list above still runs, as before).  docs/specs/state-resets.md */
+  if (from !== to) runResets('zone', S, { from, to });
 }
 
 /* v2.3.4802: the Test panel's zone teleport (v2.3.2308, driveDevWarp) went with
