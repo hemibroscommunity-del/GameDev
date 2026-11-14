@@ -459,6 +459,23 @@ async function step(dx, gapMs, extra) {
       rolling > 0.5 && S._ride.spd === 0 && o[0] === 0 && o[1] === 0 && o[2] === 0, o);
     C.rideApply(S, { on: false, why: 'fight' }, 1000100);
     check('7e. ...and the worker\'s "fight" then names it: "Off the board to chop."', S._ride.line === 'Off the board to chop.', S._ride.line);
+    /* the gatekeeper's sitting 11: a pose struck mid-roll was ended by the
+       roll (interactions.js POSE_SHIFT_PX, 4 px) -- the board holds for
+       whatever rideActVerb names: a pose, a trap set */
+    for (const [what, set, line] of [
+      ['a pose struck', (Q) => { Q._pose = { id: 'sit', at: Date.now(), x: 0, y: 0 }; }, 'Off the board to strike a pose.'],
+      ['a trap set', (Q) => { Q._trap = { pending: { monsterId: 'm1', at: Date.now() } }; }, 'Off the board to set a trap.'],
+    ]) {
+      const Q = board();
+      run(Q, 1, 1500);
+      run(Q, 0, 200);
+      const was = Q._ride.spd;
+      set(Q);
+      const q = C.rideFeel(Q, 0, 0, 16.667, false);
+      C.rideApply(Q, { on: false, why: 'fight' }, Date.now());
+      check(`7e. ${what} mid-roll (at ${was.toFixed(2)}): the board stops at once, no way to roll, and the worker's "fight" reads "${line}"`,
+        was > 0.5 && q[0] === 0 && q[1] === 0 && q[2] === 0 && Q._ride.line === line, { q, line: Q._ride.line });
+    }
   }
   /* f: a wall stops it at once; along one it slides */
   {

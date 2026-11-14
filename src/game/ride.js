@@ -289,7 +289,8 @@ export function rideLook(st, facing, moving, now, r) {
  *   - STOPPED AT ONCE (speed 0, no coast): off the board for any reason
  *     (rideApply: stepOff, the worker's ride_state off, a tap); a hold
  *     (`held`: the loading veils, the race line, a stun, the loot freeze,
- *     anything that made the walk 0 this frame); a harvest begun (v2.3.5440,
+ *     anything that made the walk 0 this frame); a harvest begun, a pose
+ *     struck or a trap set (whatever rideActVerb names; v2.3.5440,
  *     the gatekeeper's sitting 10: the roll's way in dx/dy cancelled it the
  *     next frame, BroTown's "moved away" test, and the worker's 'fight' then
  *     read "Off the board to fight." -- the owner's old wrong line); a step
@@ -367,7 +368,11 @@ export function rideFeel(S, dx, dy, dtMs, held, x, y) {
     }
     r.tl = 0;
   }
-  if (held || S._extraction) { r.spd = 0; r.push = -1; return [0, dx, dy]; }   /* v2.3.5440: a harvest begun holds the board (above) */
+  /* v2.3.5440: a harvest begun holds the board, and so does whatever
+     rideActVerb names -- a pose struck (sit, a dance: interactions.js ends it
+     past POSE_SHIFT_PX, 4 px, so the roll ended it; the gatekeeper's sitting
+     11), a trap set -- until the worker's word puts you off with its line */
+  if (held || S._extraction || rideActVerb(S) !== null) { r.spd = 0; r.push = -1; return [0, dx, dy]; }
   if (hold) {
     r.wx = dx; r.wy = dy;
     const L = RIDE_LOOK;

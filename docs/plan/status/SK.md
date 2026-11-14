@@ -1,6 +1,6 @@
 card: SK
 branch: claude/plan-sk-1-rolloff
-prs: #1782 (tag 5440; ready: sitting 10's hold mended)
+prs: #1782 (tag 5440; ready, waits for the owner's word on +10 moves a ride)
 state: ready
 
 ## Done
@@ -16,10 +16,10 @@ state: ready
 
 ## Next
 
-- Sitting 10's hold, mended: a harvest mid-roll holds the board; a slant
-  into a wall slides (BLOCK_K 0.05 by length); a rolling board's speed
-  rides the path (`pathWaits`): 80 moves -> 31 (instant 21; +10 the roll's
-  1.9 s). `skateboard` 28/28 with check 13 (a real chop mid-roll).
+- Sittings 10 and 11, mended: a harvest, a pose or a trap begun mid-roll
+  holds the board (`rideActVerb`); a slant into a wall slides; a rolling
+  board's moves ride the path: 80 -> 31 (instant 21; +10 the 1.9 s roll).
+  `skateboard` checks 13 (a real chop) and 14 (a real Sit) mid-roll.
 
 ## Found
 
@@ -36,5 +36,4 @@ state: ready
 
 ## Needs
 
-- Nothing. The planning session said yes to both (2026-11-14): the line in
-  `entityRenderer.js` (~14705) and the two in `mp-boardwheels.mjs`; made.
+- The owner's word on the +10 moves a ride (the planning session asked).

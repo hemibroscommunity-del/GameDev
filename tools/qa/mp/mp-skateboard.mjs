@@ -45,7 +45,12 @@
  *      while the board rolls (a tree in the commons): the board stops at once,
  *      the harvest is not cancelled by the roll, and the worker's 'fight'
  *      reads "Off the board to chop." -- not the owner's old wrong "...to
- *      fight." (v2.3.3875).
+ *      fight." (v2.3.3875);
+ *  14. (v2.3.5440, the gatekeeper's sitting 11) a REAL pose -- Sit, from the
+ *      emote picker (B, then a click) -- struck while the board rolls: the
+ *      board stops at once, the pose holds (the roll ended it: a pose ends
+ *      past 4 px, interactions.js), and the worker's word reads "Off the
+ *      board to strike a pose.".
  * Pictures: tools/qa/mp/out/skateboard-*.png (the 8 directions, the button
  * upright, sideways and on a computer).
  */
@@ -448,6 +453,43 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !!h13.atE && h13.atE.spd > 0 && h13.atE.reach && !!h13.justAfter && h13.justAfter.spd === 0 && !!h13.justAfter.ex && h13.justAfter.ex.skill === 'woodcutting', h13);
     rec.ok(`13. ...the worker puts you off (${h13.off && h13.off.why}) with "${h13.seen}", and the roll never cancelled the harvest (${h13.later && h13.later.ex && h13.later.ex.status} 1.5 s on)`,
       !!h13.off && h13.off.why === 'fight' && h13.seen === 'Off the board to chop.' && !!(h13.later && h13.later.ex), h13);
+
+    /* ── 14. v2.3.5440: a real pose struck while the board rolls ──
+       (the gatekeeper's sitting 11: the roll moved you past the pose's 4 px
+       and ended it, and the line read "Off the board to fight.") */
+    await B.page.keyboard.down('a'); await B.page.waitForTimeout(400); await B.page.keyboard.up('a');   /* off the chop (a step ends it) */
+    await H.waitFor(B, (S) => !!S._extraction, (v) => v === false, { timeout: 8000, label: 'the chop let go' }).catch(() => null);
+    await H.glideTo(B, G.cx + R - 1300, G.cy, { speed: 600, timeoutMs: 30000 });
+    await B.page.waitForTimeout(800);
+    await B.page.keyboard.press('z');
+    await H.waitFor(B, () => window.__btRideBtn(), (v) => v.on === true, { timeout: 5000, label: 'on, for the pose' }).catch(() => null);
+    await H.waitFor(B, (S) => (S._ride ? S._ride.spd : -1), (v) => v === 0, { timeout: 8000 }).catch(() => null);
+    const look14 = () => B.page.evaluate(() => {
+      const S = window._gameState.current, r = S._ride || {};
+      return { on: !!r.on, why: r.why || null, spd: r.spd || 0, pose: S._pose ? S._pose.id : null, x: S.player.x,
+        picker: !!document.querySelector('[data-emote-picker]'),
+        line: (S.dmgNumbers || []).map((d) => d && d.text).filter((t) => typeof t === 'string' && /^Off the board/.test(t)).slice(-1)[0] || null };
+    });
+    await B.page.keyboard.down('d');
+    let p14 = await look14();
+    for (let t0 = Date.now(); Date.now() - t0 < 40000 && p14.on && p14.spd < 1; ) { await B.page.waitForTimeout(15); p14 = await look14(); }
+    await B.page.keyboard.up('d');
+    /* the picker, then Sit, while it rolls */
+    await B.page.keyboard.press('b');
+    await H.waitFor(B, () => !!document.querySelector('[data-emote-move="sit"]'), (v) => v === true, { timeout: 5000, label: 'the picker' }).catch(() => null);
+    const atSit = await look14();
+    await B.page.click('[data-emote-move="sit"]').catch(() => {});
+    await B.page.waitForTimeout(300);
+    const sat = await look14();
+    let off14 = null, seen14 = sat.line;
+    for (let t0 = Date.now(); Date.now() - t0 < 8000; ) { const w = await look14(); seen14 = w.line || seen14; if (!w.on) { off14 = w; break; } await B.page.waitForTimeout(100); }
+    let late14 = await look14();
+    for (let t0 = Date.now(); Date.now() - t0 < 1500; ) { late14 = await look14(); seen14 = late14.line || seen14; await B.page.waitForTimeout(100); }
+    console.log(`    pose mid-roll: ${JSON.stringify({ atSit, sat, off14, late14, seen14 })}`);
+    rec.ok(`14. Sit struck from the picker while the board rolls (at ${atSit.spd.toFixed(2)} of top): the board stops at once (${sat.spd}) and he sits (${sat.pose})`,
+      atSit.on && atSit.spd > 0 && sat.spd === 0 && sat.pose === 'sit', { atSit, sat });
+    rec.ok(`14. ...the worker puts you off (${off14 && off14.why}) with "${seen14}", and the roll never ended the pose (${late14.pose} 1.5 s on, ${Math.round(Math.abs(late14.x - sat.x))} px from where he sat)`,
+      !!off14 && off14.why === 'fight' && seen14 === 'Off the board to strike a pose.' && late14.pose === 'sit' && Math.abs(late14.x - sat.x) <= 4, { off14, late14, seen14 });
 
     /* 6. sideways: back in town, the phone turned */
     await H.glideTo(A, G.arrival.x + 200, G.arrival.y, { speed: 450, timeoutMs: 30000 });

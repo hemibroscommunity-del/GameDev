@@ -316,6 +316,9 @@ and getting off stops you at once.
   worker's word reads "Off the board to chop." (the gatekeeper's sitting 10:
   the roll cancelled the harvest the next frame and the line came back as
   the owner's old wrong "...to fight.");
+- a pose struck (sit, sleep, a dance) or a trap set while it rolls: the same,
+  for whatever `rideActVerb` names (sitting 11: a pose ends past 4 px of
+  movement, so the roll ended it; "Off the board to strike a pose.");
 - every hold that stops the walk: the loading veils, the race line, a stun, the
   loot freeze;
 - the shield, a swing or a roll step you off the board first, as before;
@@ -407,7 +410,9 @@ the instant start and stop, and the old pose rule. Its row is in
   silent; the worker followed no move; let go at top 100 px short of the edge,
   off at the edge with nothing past it; (13) a REAL chop begun with E while the
   board rolls: the board stops, the harvest goes on, and the line reads "Off
-  the board to chop.".
+  the board to chop."; (14) a REAL Sit from the emote picker while it rolls:
+  the board stops, he sits on, and the line reads "Off the board to strike a
+  pose.".
 - `mp-boardwheels` check 2 ("stopped, the wheels hold still") waits for the
   board's own speed to reach 0 before it looks, never a fixed wait (TRAPS
   §177: the board rolls off now). It is red on `main` too, before this change
