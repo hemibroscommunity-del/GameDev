@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "ccd43e276ae2b6e5c29ad355025f4835726d8808",
+  "tree": "72a58d5fbf7052a6e78e62977f9631f57d441e18",
+  "committedAt": "2026-11-13T18:15:36-08:00",
+  "subject": "Merge pull request #1675 from hemibroscommunity-del/claude/grand-plan-h-2-whose-row",
+  "files": 7444,
+  "bytes": 946358149,
+  "listingSha256": "13034a18921d42c6d88b41da0cde66a7fe93a36e4f9156b902ecac44c9ae2349",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

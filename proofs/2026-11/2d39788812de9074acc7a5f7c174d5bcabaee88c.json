@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "2d39788812de9074acc7a5f7c174d5bcabaee88c",
+  "tree": "9dab22e8595766d0c4ab5b8ef4f9adcf90f368dc",
+  "committedAt": "2026-11-13T18:15:12-08:00",
+  "subject": "Merge pull request #1679 from hemibroscommunity-del/claude/grand-plan-J-headbake",
+  "files": 7443,
+  "bytes": 946334157,
+  "listingSha256": "3748b002b316e6db96d59b57a47a6b90d39bb24aff6c7ce2164d85815346c684",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

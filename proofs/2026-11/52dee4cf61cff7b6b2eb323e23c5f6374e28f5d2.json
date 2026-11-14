@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "52dee4cf61cff7b6b2eb323e23c5f6374e28f5d2",
+  "tree": "5d0e60b8292fdaf813c0b7012882cf4cc05493e5",
+  "committedAt": "2026-11-13T18:15:02-08:00",
+  "subject": "Merge pull request #1674 from hemibroscommunity-del/claude/grand-plan-J-worldcore",
+  "files": 7443,
+  "bytes": 946333661,
+  "listingSha256": "a50d4796342952dab1a0f92e631d7601eddc9b1896f1d476685294370d5f9ea7",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
