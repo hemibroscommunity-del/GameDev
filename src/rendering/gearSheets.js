@@ -239,7 +239,13 @@ if (typeof window !== 'undefined') {
 export function packTrimmed(img, fw, fh, n) {
   /* v2.3.4930: the steps are trimPack.js packTrimmedCore (moved verbatim, a
      worker packs by them too); the witness is the page's */
+  const t0 = performance.now();
   const p = packTrimmedCore(img, fw, fh, n);
+  /* v2.3.5253 (card P, pack-page; the planning session's review): a pack in
+     one go in play -- the combat strips (effectsRenderer.js _gearStrips), a
+     stand-in's, a cropped strip's -- noted by its hold's name, as the sliced
+     one's turns are, so the field report and mp-heldsweep name it */
+  if (_gearInPlay()) noteMade('pack-page', performance.now() - t0, 'pack whole');
   /* v2.3.3574: if Safari empties this canvas while the tab is parked, the
      return's check reads this pixel back empty (canvasWitness.js) */
   if (p && p.witness) witnessCanvas(p.canvas, p.witness[0], p.witness[1]);
@@ -313,7 +319,7 @@ export async function packTrimmedSliced(img, fw, fh, n, turn) {
    Behind a loading screen (setGearPackPlay's fn says 0) it packs flat out,
    as before.  `?gearpackgentle=0`: the old way for one tab. */
 const GEAR_SLICE_MS = 6, GEAR_SLICE_WAIT_MS = 120;
-let _gearPlay = null, _gearLine = Promise.resolve(), _gearT0 = 0;
+let _gearPlay = null, _gearLine = Promise.resolve(), _gearT0 = 0, _gearPending = 0;   /* v2.3.5253: + the packs asked for and not done */
 const _gearGentleOff = (() => { try { return /(^|[?&])gearpackgentle=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
 /** zoneTextures.setStripPlay hands the same `fn` here: the frame's length in
  *  ms while the world is in play, 0 behind a loading screen. */
@@ -348,11 +354,17 @@ async function _gearTurn() {
   await _gearAfterFrame();
   _gearT0 = performance.now();
 }
-function _gearPack(img, fw, fh) {
+function _gearPack(img, fw, fh, t0) {
   if (!_gearInPlay()) return packTrimmed(img, fw, fh);
-  const job = () => { _gearT0 = performance.now(); return packTrimmedSliced(img, fw, fh, 0, _gearTurn); };
+  /* v2.3.5253: the first stretch from where the sheet's own work began (its
+     frame restored, a shirt dressed) when no other pack is between, so one
+     stretch of the page is one note at its whole length */
+  const idle = _gearPending === 0;
+  _gearPending++;
+  const job = () => { _gearT0 = idle && t0 > 0 ? t0 : performance.now(); return packTrimmedSliced(img, fw, fh, 0, _gearTurn); };
   const p = _gearLine.then(job, job);
-  _gearLine = p.then(() => {}, () => {});
+  const done = () => { _gearPending--; };
+  _gearLine = p.then(done, done);
   return p;
 }
 
@@ -658,6 +670,30 @@ export function preloadBeltSheets() {
    the worker could not do (its file, an error: the page's bake, with its own
    retries). */
 const _SHIRT_WORKER_OFF = (() => { try { return /(^|[?&])shirtworker=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+/* ═══ v2.3.5253: EVERY SHEET PACKED IN PLAY, ON THE WORKER (pack-page) ═══
+   Card P's `pack-page` (tools/qa/mp/held-budget.mjs's debt list, line 20):
+   a gear sheet first drawn in play was packed on the page a few ms at a time
+   (_gearPack), and still held it 25 to 31 ms at the sweep's armour station --
+   a cell's getImageData, the texture, the packed canvas handed back as an
+   image of itself.  The planning session chose this road (2026-11-14, its
+   road B): the plain sheet goes the drawn shirt's way above, to the body
+   bake's worker, which restores its frame, packs it (trimPack.js
+   packTrimmedCore) and hands back the packed sheet as an image decoded off
+   the page; the page makes the texture.  (The worker's shirt job with no
+   drawing: gearBake.js dressShirtSheet copies the sheet as it is --
+   playerDecal.js composeShirt with nothing to draw -- so the same pixels,
+   the copy on the worker.)  The same picture, the same mips,
+   the same readers (drawGearFrame, the masked bake by address).  Meanwhile
+   the sheet is 'loading', as while the page packed it.  Behind a loading
+   screen the page packs it flat out, as before; `?packworker=0` keeps the
+   page's own pack in play (and `?shirtworker=0`, `?bodyworker=0` with it).
+   (Gear sheets as colour numbers -- the card's first road -- is a memory
+   project, not a page-hold one: the backlog's, later.) */
+const _PACK_WORKER_OFF = (() => { try { return /(^|[?&])packworker=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+/* QA (the planning session's condition): how long a sheet waited for the
+   worker, asked to answered -- it may queue behind a fish bake */
+const _workerWait = { sheets: 0, maxMs: 0, sumMs: 0, last: [] };
+if (typeof window !== 'undefined') window.__btGearWorkerWait = () => ({ ..._workerWait, last: _workerWait.last.slice() });
 export function shirtWorkerOff() { return _SHIRT_WORKER_OFF; }   /* effectsRenderer.js's stand-ins ask too */
 /* v2.3.5014: a sheet's job while it is on its way.  Ten drawings on screen
    and eight kept (MAX_ART_KEYS): a sheet let go of while it waited was asked
@@ -672,6 +708,7 @@ function _buildShirtOnWorker(key, slot, item, pose, dir, stampArt) {
   if (was) return was;
   const bust = _gearRound[key] ? `&g=${_gearRound[key]}` : '';
   const job = { slot, pose, stamp: stampArt, pack: TRIM_SLOTS.has(slot) && TRIM_POSES.has(pose) };
+  const asked = performance.now();
   const p = bakeOnWorker('shirt', spriteUrls(`/sprites/gear/${slot}/${item}/${pose}-${dir}.png?v=${GEAR_VERSION}${bust}`), job, 0, 0,
     () => _sheets[key] === 'loading').then((r) => {
     _shirtOnWay.delete(key);
@@ -681,6 +718,9 @@ function _buildShirtOnWorker(key, slot, item, pose, dir, stampArt) {
     /* the file did not load, or anything else: the page's own bake, with its retries */
     if (!r) return _buildSheet(key, slot, item, pose, dir, 0, stampArt, true);
     const t0 = performance.now();
+    const waited = t0 - asked;   /* v2.3.5253: the wait, for QA */
+    _workerWait.sheets++; _workerWait.sumMs += waited; _workerWait.maxMs = Math.max(_workerWait.maxMs, waited);
+    _workerWait.last.push(Math.round(waited)); if (_workerWait.last.length > 40) _workerWait.last.shift();
     const fw = r.fw, fh = r.fh;
     if (r.cells) { _trimStats.sheets++; _trimStats.fullBytes += r.fullW * fh * 4; _trimStats.packedBytes += r.W * r.H * 4; }
     else { _trimStats.uncropped++; }
@@ -702,19 +742,23 @@ function _buildShirtOnWorker(key, slot, item, pose, dir, stampArt) {
       out.push(new Texture({ source: src, frame: new Rectangle(i * fw, 0, fw, fh) }));
     }
     _sheets[key] = out;
-    noteWorkerSheet(`shirt ${pose}-${dir}`, performance.now() - t0);
+    if (stampArt) noteWorkerSheet(`shirt ${pose}-${dir}`, performance.now() - t0);
+    else noteWorkerSheet('gear-sheet', performance.now() - t0);   /* v2.3.5253: a plain sheet's page part, by its hold's name */
   });
   _shirtOnWay.set(key, p);
   return p;
 }
 function _buildSheet(key, slot, item, pose, dir, attempt = 0, stampArt = null, onPage = false) {
-  /* v2.3.5014: a drawn shirt in play, on the worker (above) */
-  if (stampArt && attempt === 0 && !onPage && !_SHIRT_WORKER_OFF && bodyWorkerWanted()) return _buildShirtOnWorker(key, slot, item, pose, dir, stampArt);
+  /* v2.3.5014: a drawn shirt in play, on the worker (above); v2.3.5253: and
+     every sheet the page would pack in play (pack-page, above) */
+  const packInPlay = !stampArt && !_PACK_WORKER_OFF && TRIM_SLOTS.has(slot) && TRIM_POSES.has(pose) && _gearInPlay();
+  if ((stampArt || packInPlay) && attempt === 0 && !onPage && !_SHIRT_WORKER_OFF && bodyWorkerWanted()) return _buildShirtOnWorker(key, slot, item, pose, dir, stampArt);
   _sheets[key] = 'loading';
   /* Returns a promise that ALWAYS resolves (missing sheet -> []), so callers
      that want to await a full preload don't hang on a 404. */
   const bust = (attempt > 0 ? `&r=${attempt}` : '') + (_gearRound[key] ? `&g=${_gearRound[key]}` : '');   /* v2.3.3870: + the later round */
   return loadImg(`/sprites/gear/${slot}/${item}/${pose}-${dir}.png?v=${GEAR_VERSION}${bust}`).then(async rawImg => {   /* v2.3.4873: async, for the gentle pack */
+    const tJob = performance.now();   /* v2.3.5253: where this stretch of the page began */
     /* v2.3.5014: the sheet restored to its frame, and a drawn shirt dressed:
        gearBake.js (moved there verbatim, with their notes), which the body
        bake's worker runs too */
@@ -724,7 +768,7 @@ function _buildSheet(key, slot, item, pose, dir, attempt = 0, stampArt = null, o
        packTrimmed below.  Falls through to the plain strip for the sheets it
        does not cover, or if the pixels cannot be read. */
     /* v2.3.4873: in play, a few ms at a time (_gearPack): held-budget `pack-page` */
-    const packed = TRIM_SLOTS.has(slot) && TRIM_POSES.has(pose) ? await _gearPack(img, fw, fh) : null;
+    const packed = TRIM_SLOTS.has(slot) && TRIM_POSES.has(pose) ? await _gearPack(img, fw, fh, tJob) : null;
     if (packed) { _trimStats.sheets++; _trimStats.fullBytes += img.width * fh * 4; _trimStats.packedBytes += packed.canvas.width * packed.canvas.height * 4; }
     else { _trimStats.uncropped++; }
     const src = Texture.from(packed ? packed.canvas : img).source;
@@ -766,6 +810,11 @@ function _buildSheet(key, slot, item, pose, dir, attempt = 0, stampArt = null, o
        for this sheet alone) as an image of itself; the file's own Image, for a
        sheet sliced raw and not packed, is one already */
     keepPackedAsImage(src);
+    /* v2.3.5253 (the planning session: the notes undercounted, 11 ms noted of
+       a 24.5 ms hold): the job's last stretch -- the pack's last cells, the
+       texture, the hand-off -- noted at its whole length, as each turn notes
+       the stretch before it */
+    if (packed && _gearInPlay()) noteMade('pack-page', performance.now() - _gearT0, 'pack rest');
   }).catch(() => {
     if (attempt < _GEAR_RETRY_MS.length) {
       /* v2.3.1398: retry CHAINS into the returned promise so the intro
@@ -850,14 +899,16 @@ if (typeof window !== 'undefined') {
     const out = [];
     for (const L of looks) {
       if (L.strip) { out.push(await _shirtStripCompare(L)); continue; }
-      const item = gearArt(L.item || 'tshirt'), pose = L.pose, dir = L.dir;
-      const stamp = { art: L.art || null, pattern: L.pattern ? parsePattern(L.pattern, 'shirt') : null, tint: L.tint || null, mirror: !!L.mirror };
-      const pack = TRIM_SLOTS.has('shirt') && TRIM_POSES.has(pose);
-      const url = `/sprites/gear/shirt/${item}/${pose}-${dir}.png?v=${GEAR_VERSION}`;
+      /* v2.3.5253: `L.slot` and `L.plain` -- any slot's sheet, and a plain one
+         (no drawing: pack-page's sheets in play, gearSheets.js above) */
+      const slot = L.slot || 'shirt', item = L.slot ? L.item : gearArt(L.item || 'tshirt'), pose = L.pose, dir = L.dir;
+      const stamp = L.plain ? null : { art: L.art || null, pattern: L.pattern ? parsePattern(L.pattern, 'shirt') : null, tint: L.tint || null, mirror: !!L.mirror };
+      const pack = TRIM_SLOTS.has(slot) && TRIM_POSES.has(pose);
+      const url = `/sprites/gear/${slot}/${item}/${pose}-${dir}.png?v=${GEAR_VERSION}`;
       const t0 = performance.now();
       const raw = await loadImg(url);
-      const g = gearSheetCanvas(raw, 'shirt');
-      const cv = dressShirtSheet(g.img, g.fw, g.fh, pose, stamp);
+      const g = gearSheetCanvas(raw, slot);
+      const cv = stamp ? dressShirtSheet(g.img, g.fw, g.fh, pose, stamp) : g.img;
       const packed = pack ? packTrimmed(cv, g.fw, g.fh) : null;
       const pc = packed ? packed.canvas : cv;
       const page = pc.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, pc.width, pc.height).data;
@@ -870,7 +921,7 @@ if (typeof window !== 'undefined') {
       const dressed = cv.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, cv.width, cv.height).data;
       let dressedPx = 0;
       if (plain.length === dressed.length) for (let i = 0; i < plain.length; i += 4) if (plain[i] !== dressed[i] || plain[i + 1] !== dressed[i + 1] || plain[i + 2] !== dressed[i + 2]) dressedPx++;
-      const w = await window.__btBodyWorkerBytes(spriteUrls(url), { slot: 'shirt', pose, stamp, pack }, 0, 0, 'shirt');
+      const w = await window.__btBodyWorkerBytes(spriteUrls(url), { slot, pose, stamp, pack }, 0, 0, 'shirt');
       let diff = 0, worst = 0;
       if (w && w.raw && w.W === pc.width && w.H === pc.height) {
         for (let i = 0; i < page.length; i++) {
@@ -883,7 +934,7 @@ if (typeof window !== 'undefined') {
         frames: pcells ? pcells.length : Math.max(1, Math.floor(cv.width / g.fw)), wFrames: w && w.frames,
         cellsSame: JSON.stringify(pcells) === JSON.stringify((w && w.cells) || null),
         diff, worst, dressedPx, pageMs: Math.round(pageMs), workerMs: Math.round((w && w.ms) || 0), why: w && w.why });
-      try { cv.width = 0; plc.width = 0; } catch (e) { /* ok */ }
+      try { if (cv !== g.img) cv.width = 0; plc.width = 0; } catch (e) { /* ok */ }
     }
     return out;
   };
