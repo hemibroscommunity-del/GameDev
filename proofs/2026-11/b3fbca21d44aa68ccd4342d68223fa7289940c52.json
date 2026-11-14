@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b3fbca21d44aa68ccd4342d68223fa7289940c52",
+  "tree": "fb44f8374dc90cf60dff84e1be14b1871d3017e9",
+  "committedAt": "2026-11-14T15:38:52-08:00",
+  "subject": "Merge pull request #1855 from hemibroscommunity-del/claude/plan-l-15-dungeon-door",
+  "files": 7735,
+  "bytes": 956946953,
+  "listingSha256": "c827158d88bfa389da6c128d142bd3c3c2335bb964d0fe5c8dce061a100de4a8",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

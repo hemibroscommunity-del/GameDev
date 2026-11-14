@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "1d49da471cad14a9aeebb2771d81a5c4616a9859",
+  "tree": "7b984ce4d9ff8e01b855df01ad1cfd0e132c07b0",
+  "committedAt": "2026-11-14T15:39:30-08:00",
+  "subject": "Merge pull request #1849 from hemibroscommunity-del/claude/plan-j2-9-heldredraw",
+  "files": 7731,
+  "bytes": 956977251,
+  "listingSha256": "72fe3151cb2bb92838979e09421bc85c26cf5741567762c8b54487c8e5a35fc3",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

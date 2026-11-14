@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "28e415ed635cc8323725404a7a96fab282d9841a",
+  "tree": "b7e89acf740a7974fb856c034a078ead159bdb6e",
+  "committedAt": "2026-11-14T15:38:46-08:00",
+  "subject": "Merge pull request #1851 from hemibroscommunity-del/claude/plan-l-14-harvest-door",
+  "files": 7733,
+  "bytes": 956926392,
+  "listingSha256": "20bd1140823d5c6d63815d5928615d70c0012a97da8c525cd670cd3d86bd2c23",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

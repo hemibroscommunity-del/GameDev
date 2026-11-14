@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e25af8e78a4ebbde3ece01a3fe106703c1239a98",
+  "tree": "71e1c5d442906d3ef672a1257e039b682ad1338c",
+  "committedAt": "2026-11-14T15:39:05-08:00",
+  "subject": "Merge pull request #1850 from hemibroscommunity-del/claude/plan-o-9-passes",
+  "files": 7736,
+  "bytes": 956976878,
+  "listingSha256": "363bb9557c6945044674e2d86dfe8263d28ee8ba491e0d0ffd8fec5916b5f339",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

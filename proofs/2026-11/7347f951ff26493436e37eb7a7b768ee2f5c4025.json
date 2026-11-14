@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7347f951ff26493436e37eb7a7b768ee2f5c4025",
+  "tree": "ca6a39404dc92025efb4421a37be0bbf8fa64cdb",
+  "committedAt": "2026-11-14T15:39:17-08:00",
+  "subject": "Merge pull request #1846 from hemibroscommunity-del/claude/plan-p-15-slime-walk",
+  "files": 7736,
+  "bytes": 956999701,
+  "listingSha256": "41e08ecd4325501f254cc7f8398e10b3150439a12c89890acd16773272aee4dc",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

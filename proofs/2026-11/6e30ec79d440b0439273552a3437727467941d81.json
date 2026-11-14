@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6e30ec79d440b0439273552a3437727467941d81",
+  "tree": "a6dcf11addc2d1b3cae0be84e854a892a4619989",
+  "committedAt": "2026-11-14T15:38:59-08:00",
+  "subject": "Merge pull request #1861 from hemibroscommunity-del/claude/plan-k-7-combat-act",
+  "files": 7735,
+  "bytes": 956946956,
+  "listingSha256": "fbba0f1f0644b6bb80ee3508ebf29e2a721d59c3450d89f2996a1e833221d966",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

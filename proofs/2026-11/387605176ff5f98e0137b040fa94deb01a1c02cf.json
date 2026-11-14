@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "387605176ff5f98e0137b040fa94deb01a1c02cf",
+  "tree": "6cf7acb2c52081bb915b5645513d04b5783a140d",
+  "committedAt": "2026-11-14T15:39:36-08:00",
+  "subject": "Merge pull request #1858 from hemibroscommunity-del/claude/plan-j2-12-gustclock",
+  "files": 7731,
+  "bytes": 956978322,
+  "listingSha256": "e1609db11aa077aa08238a23c95c32813dae9d175e9aa7b75bbf8c8bd381fc45",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
