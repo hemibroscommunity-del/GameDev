@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "870a72b9370311f9d3ae12c845531ef2f20732a0",
+  "tree": "167375d75357aca840959c49198aea77f60648d0",
+  "committedAt": "2026-11-14T04:42:20-08:00",
+  "subject": "Merge pull request #1749 from hemibroscommunity-del/claude/plan-p-8-fx-made",
+  "files": 7615,
+  "bytes": 952777346,
+  "listingSha256": "c35a963f1bbc4a999362a7ccc38f3e519d5d43ad98af4c6a3b11686a75eef96f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

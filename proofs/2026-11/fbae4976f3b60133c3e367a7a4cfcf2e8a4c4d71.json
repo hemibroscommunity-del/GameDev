@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "fbae4976f3b60133c3e367a7a4cfcf2e8a4c4d71",
+  "tree": "8cbff77bd47082a5833dd09f94cfc3e8438947bd",
+  "committedAt": "2026-11-14T04:42:03-08:00",
+  "subject": "Merge pull request #1764 from hemibroscommunity-del/claude/plan-e-8-known-settle",
+  "files": 7610,
+  "bytes": 952717186,
+  "listingSha256": "2c871e282e84e4ec099255f2cd59d3d99538596c45e2621ae0efc10e9abf265f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "fbade7099b8d3e263f447e0442c3ce401b7244dc",
+  "tree": "8976b24ac886a5b81e2202d39733a52696a3cbe7",
+  "committedAt": "2026-11-14T04:41:57-08:00",
+  "subject": "Merge pull request #1759 from hemibroscommunity-del/claude/plan-e-8-known-trade",
+  "files": 7609,
+  "bytes": 952683429,
+  "listingSha256": "71cc584db84be1023b34050357a81fbb557237988245bdbc9e0d9cad0b8cf1f9",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

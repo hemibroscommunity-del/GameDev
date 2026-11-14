@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "842319aba9a24fc9cce0e89e7ea9cae87799b2c7",
+  "tree": "5f0f45d587ea6b29c1760db1e08b85140679cd6a",
+  "committedAt": "2026-11-14T04:42:24-08:00",
+  "subject": "Merge pull request #1763 from hemibroscommunity-del/claude/plan-p-9-world-icons",
+  "files": 7629,
+  "bytes": 952879929,
+  "listingSha256": "9b308568d8c49080ab9ee7c2624a14d62bb09b9d251a83eae8e9cfb1b9e2b023",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b0208bc91d40b27bd1653073a543734b8965a819",
+  "tree": "c06d1778b68261b3b058b031c8dfc3baf648b6a6",
+  "committedAt": "2026-11-14T04:42:13-08:00",
+  "subject": "Merge pull request #1777 from hemibroscommunity-del/claude/grand-plan-h-12-portrait-shirt",
+  "files": 7615,
+  "bytes": 952770131,
+  "listingSha256": "68f1f595a6bb3b73eea3c875941eceda58f22ff93ddd91af9b55942f891379a0",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

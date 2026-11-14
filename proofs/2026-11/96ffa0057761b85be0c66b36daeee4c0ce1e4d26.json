@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "96ffa0057761b85be0c66b36daeee4c0ce1e4d26",
+  "tree": "bdd1c3da0e1ccad8f92e02ddd4d70536bd956907",
+  "committedAt": "2026-11-14T04:42:27-08:00",
+  "subject": "Merge pull request #1766 from hemibroscommunity-del/claude/plan-p-11-fx-sheets",
+  "files": 7629,
+  "bytes": 952887407,
+  "listingSha256": "70a86fb5304842566c302b29d1c8bb6b5bd82d564dbbadb2f00726acaedc1da6",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
