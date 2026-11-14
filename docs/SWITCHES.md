@@ -29,7 +29,6 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?bodyworker` | page | switch | v2.3.4930 | =0 | logic |  | no | Bodies are baked on the page, not on the bake worker. |
 | `?figround` | page | switch | v2.3.2922 | =1 | chip |  | no | The old per-sprite pixel snap comes back. |
 | `?garmentspecks` | page | switch | v2.3.3658 | =0 | logic |  | no | A garment's specks are drawn the old way (and the body bake goes back to the page). |
-| `?p256` | page | switch | v2.3.3728 | =1 every twin on, =0 every twin off | memory |  | no | Turns every 256-colour twin on to try (=1), or off (=0). |
 | `?sharp` | page | switch | v2.3.2741 | =0 | chip |  | no | Pictures are not routed to sharp pixels. |
 | `?stripgentle` | page | switch | v2.3.4400 | =0, off, false | logic |  | no | Strips are packed in one go, not a slice at a time. |
 | `?stripslice` | page | lever | v2.3.4400 | a number of ms | none |  | no | QA: a fixed slice for strip packing (a phone's, on a slow box). |
@@ -182,6 +181,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `toolshop` | worker | switch | v2.3.3316 | false | logic |  | no | Takes the tools off the shelf and refuses every buy. |
 | `trade2` | worker | switch | v2.3.4375 | false | logic |  | no | The trade window is off, so the old gift is open again. |
 | `tradeonewrite` | worker | switch | v2.3.4795 | false | logic |  | no | The trade's swap goes back to its old order of writes. |
+| `xfer` | worker | switch | v2.3.5092 | false | logic |  | no | No transfer ledger row (`xfer:`) is written; trades run exactly as before. |
 
 ## identity
 
@@ -375,6 +375,8 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?fishgriptrousers` | page | switch | v2.3.3657 | =1 | logic |  | no | The fishing grip lifts the trousers too. |
 | `?flipbake` | page | switch | v2.3.3577 | =0 | logic |  | no | Flipped facings are not baked from their source, as before. |
 | `?folkwork` | page | switch | v2.3.3949 | =0 | logic |  | no | The townsfolk walk but stand at their stops, not work. |
+| `?fxmade` | page | switch | v2.3.5249 | =0 | memory |  | no | The effects the game's tools made are drawn from their full-colour pictures, as before, not their 256-colour twins. |
+| `?fxsheets` | page | switch | v2.3.5252 | =0 | memory |  | no | The effects cut from the owner's sheets (the stun stars, the whirlwind, the grease, woodchips, rocks and splash bursts) are drawn from their full-colour pictures, as before. |
 | `?gripguess` | page | switch | v2.3.3399 | =0 | logic |  | no | The bow's grip between shots as it was, not guessed. |
 | `?groundbg` | page | switch | v2.3.3452 | =1 | chip |  | no | The black under the world's ground is drawn every frame, as it was. |
 | `groundkeep` | both | switch | v2.3.3775 | off_groundkeep: true; ?groundkeep=0, off, false | chip |  | no | The world's ground is rebuilt on a return, not kept, as before. |
@@ -400,6 +402,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?nowindupfx` | page | switch | v2.3.3619 | present | logic |  | no | No elemental wind-up effects. |
 | `?npcheads` | page | switch | v2.3.5246 | =0 | memory |  | no | The townsfolk's head pictures keep their decoded copies, as before. |
 | `?orebreakms` | page | lever | v2.3.3345 | a number of ms | none |  | no | QA: an ore's pieces lie this long (a slow machine's screenshot). |
+| `?p256` | page | switch | v2.3.3728 | =1 every twin on; =0 every twin off (v2.3.5249) | memory |  | no | With =0 every effect and icon is drawn from its full-colour picture; =1 turns on the twins not yet on by default. |
 | `?pagebases` | page | switch | v2.3.4450 | =0, off, false | logic |  | no | A page's ground lines are read on the page, not the worker. |
 | `?pixidelay` | page | lever | v2.3.3709 | a number of ms | none |  | no | QA: the renderer arrives this much later, as a slow phone's. |
 | `?platelayer` | page | switch | v2.3.4886 | =0 | memory |  | no | Armour plates are not drawn as their own layer. |
@@ -420,6 +423,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?waves` | page | value | v2.3.3019 | a number, 0.25 to 3 | logic |  | no | The water's motion this many times as strong. |
 | `?weaponretry` | page | switch | v2.3.4431 | =0 | logic | `?retrylooks` | no | Weapon sheets that failed are not asked for again. |
 | `?webskip` | page | switch | v2.3.3448 | =0 | chip |  | no | The water's light web is drawn on every quad, not skipped. |
+| `?worldicons` | page | switch | v2.3.5250 | =0 | memory |  | no | The icons drawn in the world (the ore, the shards, the heart and sword popups; the trap's box has no twin) are drawn from their full-colour pictures, as before. |
 | `?zindexall` | page | switch | v2.3.3449 | present | logic |  | no | Every depth key goes through Pixi's setter every sort, to compare. |
 
 ## server-core
@@ -501,6 +505,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `alliance` | worker | switch | v2.3.3313 | false | logic | `partykeep` | no | No alliance status, names, wars or board; tags come off at the next vitals echo. |
 | `arenaap` | worker | switch | v2.3.3481 | false | logic |  | no | The arena champion is paid gold alone, no AP, and the cap is un-advertised. |
 | `arenaeatgate` | worker | switch | v2.3.4413 | false | logic |  | no | Eating in an arena match is gated by the match flag alone, as before. |
+| `arenasettleplan` | worker | switch | v2.3.5089 | true | logic |  | no | Thrown (true), an arena match's stakes settle by a plan, one record a match (two rows: its put and its delete), so a restart mid-settlement loses nothing; off until the owner says yes. |
 | `arenastakeonewrite` | worker | switch | v2.3.4796 | false | logic |  | no | An arena sponsor's stake goes back to its old two writes. |
 | `boards2` | worker | switch | v2.3.4355 | false | logic |  | no | Un-advertises the boards with faces: records no spin, stamps no face or level, retires no row. |
 | `chatguard` | worker | switch | v2.3.3396 | false | logic |  | no | All three chat guards off: chat and emotes spend the relay bucket again, nothing filtered or cleaned. |
@@ -510,8 +515,10 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `emotes` | worker | switch | v2.3.3391 | false | logic |  | no | No emote is relayed, and caps.emotes false shuts the picker at the next join. |
 | `leaderidleat` | worker | switch | v2.3.4378 | false | logic |  | no | The party leader's idle clock counts only a `seen` above 0, as before. |
 | `partykeep` | worker | switch | v2.3.3276 | false | logic |  | no | Parties are not kept: the old cap and the away window remove a dropped member. |
+| `power` | worker | switch | v2.3.5481 | false | logic |  | no | Un-advertises the power index: no board report carries one, so the Power board empties as players report and the other boards are as they were. |
 | `race` | worker | switch | v2.3.3525 | false | logic |  | no | Lil Bro's race un-advertised and none started. |
 | `spar` | worker | switch | v2.3.3265 | false | logic |  | no | No sparring clones: every live clone goes on the next tick and the cap is withdrawn. |
+| `statboards` | worker | switch | v2.3.5484 | false | logic |  | no | Un-advertises the stat boards: no board report carries the points allocated, so those boards empty as players report; every other board is as it was. |
 
 ## townsfolk
 
