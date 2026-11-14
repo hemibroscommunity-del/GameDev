@@ -795,6 +795,17 @@ row by the card that builds it, before it builds.**
 | The public facts (11.6) | not named yet | The game's facts in players' words, made in the build from the shared tables, with a version. | the build | assistants | the build's output | none |
 | The pass's quote and receipt (11.8) | not named yet | A signed quote, a receipt, a public way to check. | the pass's own build | a helper | `docs/SUPPORTER-PASS-PLAN.md` | not built |
 
+### The asset door (step 9.1, card P; tag 5241)
+
+Two shapes of the asset door (`docs/specs/asset-door.md`), each written by
+one tool and read by the gate. Neither is on the wire or in storage: they are
+files in the repository, and cost no rows.
+
+| Shape (step) | Name | What it holds | One writer | Readers | Where | Rows |
+|---|---|---|---|---|---|---|
+| The family table (9.1) | `ASSET_FAMILIES` (NEW) | One row a family of files under `public/`: its path pattern (never a folder), its kind (`supplied`, `made`, `data`: closed, `ASSET_KINDS`), its tool and sources when made, its draw path (closed, `ASSET_DRAWS`), its bundle of colours, its pixel-size rule, its bar. With it, `ASSET_REACH`: which files are in reach. Data: no I/O, no imports. | a person, by hand, in `tools/assets/families.mjs` | `tools/assets/shipped.mjs`; `tools/assets/fightmb.mjs` (9.1, part two); `tools/assets/finish.mjs` (9.2); `tools/guards/asset-door.test.mjs` (9.3) | `tools/assets/families.mjs` | none |
+| The record of what ships (9.1) | `tools/assets/shipped.json` (NEW) | One row a file in reach: `path`, `bytes`, `sha256`, `family`, `kind`; a file the door made adds `door` (its sources' hashes, its recipe, the tool's tag). The head: the totals made from the rows, and the count of `unsorted` (a census: it only falls). | `node tools/assets/shipped.mjs --write` (never by hand); `finish.mjs` writes a made file's row | the gate (9.3); the census `docs/plan/census/assets.md` | `tools/assets/shipped.json` | none |
+
 ### Open, to be ruled before the card that meets it builds
 
 **Where a per-player count that the sums read is kept.** Two rules meet:
@@ -874,6 +885,18 @@ principal axis"), `permit` once as a verb (`server/src/gathering.js`).
 | `xfer:` | the transfer ledger | 7 |
 | `play_trace:` | a recording of play | 7 |
 | `liarGain` | a bounded claim's gain | 7 |
+
+**Chosen by card P (step 9.1, tag 5241), free at its commit** (the same
+search, with `docs`): `ASSET_FAMILIES`, `ASSET_REACH`, `ASSET_KINDS` and
+`ASSET_DRAWS` have no hit outside `tools/assets/`. The plain `FAMILIES` was
+taken (the held sweep's, `mp-heldsweep.mjs`, and the hero sheet's stat
+families), as were `REACH` and `DRAWS`. `shipped` is a common word in code;
+the record is named by its path, `tools/assets/shipped.json`.
+
+| Name | For | Part |
+|---|---|---|
+| `ASSET_FAMILIES`, `ASSET_REACH`, `ASSET_KINDS`, `ASSET_DRAWS` | the family table and its closed lists | 7 |
+| `tools/assets/shipped.json` | the record of what ships | 7 |
 
 `report` is free as a message type and a common word elsewhere; part 4 says
 what it is not. `gid`, `pid` and `hz` are TODAY's names, used here for the

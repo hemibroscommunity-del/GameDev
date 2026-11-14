@@ -13,7 +13,7 @@
  * row's files (the `.p256.png` twins beside the `.png` files they are made
  * from), the wider row names them in its `not`.
  *
- * THE KINDS:
+ * THE ASSET_KINDS:
  *   supplied  came from outside the repository: a ChatGPT sheet, an upload, a
  *             recording, the owner's own art.  THE DOOR FINISHES ONLY THESE
  *             (tools/assets/finish.mjs, PR 3).
@@ -36,7 +36,7 @@
  *   sources  made: what the tool reads (paths or globs; under assets/, by
  *            path, as tools/assets/sources.json names them by hash), or
  *            'beside' (the file of the same name beside it); else null
- *   draw     the draw path today, every switch at its default (DRAWS below)
+ *   draw     the draw path today, every switch at its default (ASSET_DRAWS below)
  *   loader   the module that loads it (null for `none`)
  *   bundle   the bundle of colours: the group that shares one row of the
  *            palette atlas (picsNumbers.js rowFor), or null
@@ -58,15 +58,15 @@
    picture, a sound, a video or data.  Code is out (.js, .html, the Tiled
    tile sets' .tsx, _headers, the manifest).  `jpg` is the one JPEG not
    spelled `jpeg` (public/intro/mayor-welcome-poster.jpg). */
-export const REACH = Object.freeze({
+export const ASSET_REACH = Object.freeze({
   under: 'public/',
   ext: Object.freeze(['png', 'webp', 'jpeg', 'jpg', 'svg', 'mp3', 'm4a', 'mp4', 'json', 'bin', 'tmx']),
 });
 
-export const KINDS = Object.freeze(['supplied', 'made', 'data']);
+export const ASSET_KINDS = Object.freeze(['supplied', 'made', 'data']);
 
 /* THE DRAW PATHS: a closed list taken from the code, each naming its module */
-export const DRAWS = Object.freeze({
+export const ASSET_DRAWS = Object.freeze({
   file: 'a picture on its own colours: a Pixi texture from the file (Assets.load, a sheet .json); src/rendering/pixiApp.js counts it',
   numbers: 'colour numbers on the palette atlas: src/rendering/paletteTex.js, picsNumbers.js',
   strip: 'a strip loaded as you walk: src/rendering/zoneTextures.js loadTrackedStrip (stripRead.js reads its numbers off the page)',
@@ -100,7 +100,7 @@ const ER = 'src/rendering/systems/effectsRenderer.js';
 const TWIN = 'tools/optimize-sprites.mjs';   /* the bot's .webp twins (.github/workflows/optimize-assets.yml) */
 const FALLBACK = 'fetched only if its .webp twin fails (webpImage.js loadWebpOrPng): the twin is what is drawn';
 
-export const FAMILIES = Object.freeze([
+export const ASSET_FAMILIES = Object.freeze([
   /* ── the bro: public/sprites/player/ ── */
   fam('player-sheets', 'supplied', 'public/sprites/player/{stand,jog,hit,dodge,mine,fish,pickup,attack}-{east,north,northeast,south,southwest}.png',
     { draw: 'none', px: 'frame 256x256', note: `the bro's sheets (attack-* via tools/build_player_attack_sheets.py, dodge-* via tools/repack-dodge-grid.mjs, from uploads not kept); ${FALLBACK}; the source of look/*.png` }),

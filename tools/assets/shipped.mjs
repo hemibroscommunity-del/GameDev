@@ -7,7 +7,7 @@
  *   node tools/assets/shipped.mjs --write       write tools/assets/shipped.json again
  *
  * THE REACH is every file git tracks under public/ that is a picture, a
- * sound, a video or data (families.mjs REACH: png webp jpeg/jpg svg mp3 m4a
+ * sound, a video or data (families.mjs ASSET_REACH: png webp jpeg/jpg svg mp3 m4a
  * mp4 json bin tmx).  Code is out (.js, .html, the Tiled .tsx sets,
  * _headers, the manifest).  Each file in reach is matched to ONE family of
  * tools/assets/families.mjs by its path, and gets one row here: its path,
@@ -39,7 +39,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { REACH, KINDS, DRAWS, FAMILIES } from './families.mjs';
+import { ASSET_REACH, ASSET_KINDS, ASSET_DRAWS, ASSET_FAMILIES } from './families.mjs';
 import { readPng8Chunks } from '../../src/rendering/png8Decode.js';
 
 export const ROOT = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
@@ -48,12 +48,12 @@ export const UNSORTED = 'unsorted';
 
 /* ---- the reach ---------------------------------------------------------- */
 
-const reachRe = new RegExp(`^${REACH.under.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}.*\\.(?:${REACH.ext.join('|')})$`, 'i');
+const reachRe = new RegExp(`^${ASSET_REACH.under.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}.*\\.(?:${ASSET_REACH.ext.join('|')})$`, 'i');
 
 /** every path git tracks in reach, sorted by its bytes (the same order on
  *  every machine) */
 export function inReach(root = ROOT) {
-  const out = execFileSync('git', ['ls-files', '-z', '--', REACH.under], { cwd: root, maxBuffer: 256 * 1024 * 1024 });
+  const out = execFileSync('git', ['ls-files', '-z', '--', ASSET_REACH.under], { cwd: root, maxBuffer: 256 * 1024 * 1024 });
   return out.toString('utf8').split('\0').filter((p) => p && reachRe.test(p))
     .sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
 }
@@ -81,7 +81,7 @@ export function globRe(glob) {
 }
 
 const listOf = (v) => (v == null ? [] : Array.isArray(v) ? v : [v]);
-const famRes = FAMILIES.map((fam) => ({ fam, res: listOf(fam.pattern).map(globRe), not: listOf(fam.not).map(globRe) }));
+const famRes = ASSET_FAMILIES.map((fam) => ({ fam, res: listOf(fam.pattern).map(globRe), not: listOf(fam.not).map(globRe) }));
 
 /** every family whose pattern matches `path` and whose `not` does not (one,
  *  when the table is right) */
@@ -94,12 +94,12 @@ export function familiesOf(path) {
 export function tableFaults() {
   const faults = [];
   const seen = new Set();
-  for (const f of FAMILIES) {
+  for (const f of ASSET_FAMILIES) {
     if (!f.name || seen.has(f.name)) faults.push(`family name missing or twice: ${f.name}`);
     seen.add(f.name);
     if (f.name === UNSORTED) faults.push(`"${UNSORTED}" is the census, never a family`);
-    if (!KINDS.includes(f.kind)) faults.push(`${f.name}: kind ${f.kind} is not one of ${KINDS.join(', ')}`);
-    if (!Object.hasOwn(DRAWS, f.draw)) faults.push(`${f.name}: draw path ${f.draw} is not one of ${Object.keys(DRAWS).join(', ')}`);
+    if (!ASSET_KINDS.includes(f.kind)) faults.push(`${f.name}: kind ${f.kind} is not one of ${ASSET_KINDS.join(', ')}`);
+    if (!Object.hasOwn(ASSET_DRAWS, f.draw)) faults.push(`${f.name}: draw path ${f.draw} is not one of ${Object.keys(ASSET_DRAWS).join(', ')}`);
     if (f.kind === 'made' && !f.tool) faults.push(`${f.name}: a made family names its tool (or 'unknown')`);
     if (f.kind === 'supplied' && f.tool) faults.push(`${f.name}: a supplied family has no tool (made by a tool is 'made')`);
   }
@@ -124,7 +124,7 @@ export function rowOf(path, root = ROOT) {
 
 /** the head's totals, made from the rows (the gate holds them equal) */
 export function totalsOf(rows) {
-  const kinds = Object.fromEntries([...KINDS, UNSORTED].map((k) => [k, 0]));
+  const kinds = Object.fromEntries([...ASSET_KINDS, UNSORTED].map((k) => [k, 0]));
   for (const r of rows) kinds[r.kind] = (kinds[r.kind] || 0) + 1;
   return {
     files: rows.length,
@@ -187,7 +187,7 @@ function compare() {
   for (const r of file.rows) if (!here.has(r.path)) lines.push(`  row with no file:   ${r.path}`);
   const t = totalsOf(now);
   console.log(`In reach today: ${t.files} files, ${t.bytes} bytes (${mb(t.bytes)} MB), ${t.families} families.`);
-  console.log(`  ${KINDS.map((k) => `${k} ${t.kinds[k]}`).join(', ')}, ${UNSORTED} ${t.unsorted} (on file: ${file.unsorted}).`);
+  console.log(`  ${ASSET_KINDS.map((k) => `${k} ${t.kinds[k]}`).join(', ')}, ${UNSORTED} ${t.unsorted} (on file: ${file.unsorted}).`);
   const head = totalsOf(file.rows);
   if (head.files !== file.files || head.bytes !== file.bytes || head.unsorted !== file.unsorted) lines.push(`  ${OUT}'s totals are not its rows' (files ${file.files}/${head.files}, bytes ${file.bytes}/${head.bytes}, unsorted ${file.unsorted}/${head.unsorted})`);
   for (const l of lines) console.log(l);
@@ -203,9 +203,9 @@ function families() {
     if (withinBar(r.path) === false) e.over++;
     by.set(r.family, e);
   }
-  const wide = Math.max(10, ...FAMILIES.map((f) => f.name.length));
+  const wide = Math.max(10, ...ASSET_FAMILIES.map((f) => f.name.length));
   console.log(`${'family'.padEnd(wide)}  ${'kind'.padEnd(8)}  ${'draw'.padEnd(7)}  ${'files'.padStart(5)}  ${'MB'.padStart(7)}  over bar`);
-  const list = [...FAMILIES].sort((a, b) => ((by.get(b.name) || {}).bytes || 0) - ((by.get(a.name) || {}).bytes || 0));
+  const list = [...ASSET_FAMILIES].sort((a, b) => ((by.get(b.name) || {}).bytes || 0) - ((by.get(a.name) || {}).bytes || 0));
   for (const f of list) {
     const e = by.get(f.name) || { files: 0, bytes: 0, over: 0 };
     console.log(`${f.name.padEnd(wide)}  ${f.kind.padEnd(8)}  ${f.draw.padEnd(7)}  ${String(e.files).padStart(5)}  ${mb(e.bytes).padStart(7)}  ${e.over}${e.files ? '' : '   (matches no file)'}`);
@@ -232,7 +232,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
     });
     writeFileSync(join(ROOT, OUT), text(rows));
     const t = totalsOf(rows);
-    console.log(`${OUT}: ${rows.length} rows written (${KINDS.map((k) => `${k} ${t.kinds[k]}`).join(', ')}, ${UNSORTED} ${t.unsorted}).`);
+    console.log(`${OUT}: ${rows.length} rows written (${ASSET_KINDS.map((k) => `${k} ${t.kinds[k]}`).join(', ')}, ${UNSORTED} ${t.unsorted}).`);
     if (dropped) console.log(`${dropped} door fields dropped.`);
     for (const f of tableFaults()) console.log(`  table: ${f}`);
   } else if (args.includes('--families')) {
