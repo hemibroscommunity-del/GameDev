@@ -108,6 +108,7 @@ const REFUSED = Object.freeze({
   busy: 'One moment, the bank is busy',
   off: 'The vault is closed for now',
   newer: 'The vault is closed for now',
+  paused: 'Saving is paused for a moment, try again.',   /* v2.3.5090: server valuepause.js */
   bad: "That didn't go through",
 });
 

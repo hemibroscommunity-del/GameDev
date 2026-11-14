@@ -474,7 +474,10 @@ export const ASSET_FAMILIES = Object.freeze([
     { draw: 'none', note: 'tools/slice_badge_sheet.mjs from a sheet not kept; replaced by the Points art' }),
   fam('icons-points', 'made', 'public/icons/ui/points/*.png',
     { tool: 'tools/ui/cut-points-heads.py', sources: 'assets/icons-source/sheet-points-{heads,weapons}.png', draw: 'dom', loader: 'src/data/pointsHeadArt.js' }),
-  fam('icons-made-dom', 'made', ['public/icons/ui/rank-*.webp', 'public/icons/ui/soc-{block,duel,friend,mute,party,report,trade}.webp', 'public/icons/ui/buff-rested.webp', 'public/icons/ui/homestead-preview.webp', 'public/icons/ui/nav-dashboard.png'],
+  /* v2.3.5501 (card LB): the owner's 2026-11-09 rank trophies, drawn by nothing since the leaderboards' new look (the sheet's medals); the files stay (removing art is the owner's call) */
+  fam('icons-rank-unwired', 'made', 'public/icons/ui/rank-*.webp',
+    { tool: 'tools/ui/cut-rank-trophies.py', sources: 'assets/icons-source/rank-trophies-2026-11-09/rank-trophies.png', draw: 'none', note: 'unused since v2.3.5501: BoardRow.jsx draws the medals of public/ui/leaderboard/' }),
+  fam('icons-made-dom', 'made', ['public/icons/ui/soc-{block,duel,friend,mute,party,report,trade}.webp', 'public/icons/ui/buff-rested.webp', 'public/icons/ui/homestead-preview.webp', 'public/icons/ui/nav-dashboard.png'],
     { tool: ['tools/ui/cut-rank-trophies.py', 'tools/ui/slice-social-icons.mjs', 'tools/ui/make-rested-badge.py', 'tools/ui/make-homestead-preview.mjs', 'tools/ui/make-dash-bag-icon.mjs'], sources: 'assets/icons-source/{rank-trophies-2026-11-09/rank-trophies.png,sheet-social.png}, public/ui/controls/sleep.webp, the farm\'s art, public/icons/ui/{nav-inventory,combat-*}.webp', draw: 'dom', loader: 'src/ui/' }),
   fam('icons-from-uploads-world', 'supplied', ['public/icons/ui/blocks-{mp,stam}.webp', 'public/icons/ui/verified-bro-small.webp'],
     { draw: 'file', loader: ['src/rendering/fxStrips.js', 'src/rendering/systems/entityRenderer.js'], note: 'tools/slice_block_bars.py, tools/build-verified-badge.mjs from the owner\'s pictures, not kept' }),
@@ -499,7 +502,7 @@ export const ASSET_FAMILIES = Object.freeze([
     { tool: 'unknown', sources: 'assets/ui/daily-spin/*.png', draw: 'dom', loader: 'src/ui/mobile/LoginSpinWindow.jsx' }),
   /* v2.3.5500 (card LB): the leaderboards' new look, cut by the sheet's own alpha from the owner's sheet; nothing draws them until LB's PR 2 */
   fam('ui-leaderboard', 'made', 'public/ui/leaderboard/*.webp',
-    { tool: 'tools/ui/cut-leaderboard.mjs', sources: 'assets/ui/leaderboard/art-sheet-2026-11-14.png', draw: 'none', px: '2 picture px a CSS px (each piece its scale, tools/ui/cut-leaderboard.mjs PIECES)', note: 'the window draws them from card LB\'s PR 2' }),
+    { tool: 'tools/ui/cut-leaderboard.mjs', sources: 'assets/ui/leaderboard/art-sheet-2026-11-14.png', draw: 'dom', loader: 'src/ui/mobile/dash/BoardRow.jsx', px: '2 picture px a CSS px (each piece its scale, tools/ui/cut-leaderboard.mjs PIECES)', note: 'the Leaderboards window (v2.3.5501); the trophies, rosettes, title frame and silver divider are cut but not drawn' }),
   fam('ui-paint', 'made', 'public/ui/paint/*.png',
     { tool: 'tools/ui/slice-zone-picker.mjs', sources: 'tools/gear/src-art/creator/tattoo-zone-ui.png', draw: 'dom', loader: 'src/ui/panels/PlayerPaint.jsx' }),
   fam('ui-quest', 'made', 'public/ui/quest/{badge-done,banner*,burst,check,chip-*,claim*,close,divider,flourish,frame-*,green,slot*,spark-*}.webp',
