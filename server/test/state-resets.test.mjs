@@ -23,8 +23,8 @@
  *      its own text: its field goes back (`value v` to v; `fn f` away from
  *      what it was), and with ITS SYSTEM'S SWITCH THROWN (the plan's rule
  *      4: its node suite run once with it thrown) the field stays as it was.
- *      A reset that needs more than the state it is handed fails here: it
- *      writes its state itself.
+ *      A reset writes its state itself (the census holds that); a module
+ *      helper it also calls (a card told to hide) is a no-op here.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -39,6 +39,14 @@ const ROOT = new URL('../../', import.meta.url);
 const src = (p) => readFileSync(new URL(p, ROOT), 'utf8');
 const setSearch = (q) => { globalThis.location = { search: q }; };
 setSearch('');
+
+/* any name a reset's text uses that is not the state or a global: a no-op
+   that answers every property and every call with itself */
+const NOOP = new Proxy(function () {}, { get: (t, k) => (k === Symbol.toPrimitive ? () => 0 : NOOP), apply: () => NOOP });
+const STUBS = new Proxy({}, {
+  has: (t, k) => typeof k === 'string' && !(k in globalThis),
+  get: (t, k) => (k === Symbol.unscopables ? undefined : NOOP),
+});
 
 /* the body of the block that opens at `start` (zone-leftovers.test's) */
 function block(text, start) {
@@ -154,7 +162,11 @@ function block(text, start) {
     const hm = head.exec(c.text);
     const body = hm ? block(c.text.slice(hm.index), hm[0]) : null;
     let fn = null;
-    try { fn = body !== null ? new Function('return function ' + c.fn + '(' + hm[1] + ') {' + body + '};')() : null; } catch (e) { fn = null; }
+    /* v2.3.5204: a free name in its text (a module's own helper: race.js's
+       raceBus.emit(), which tells a card its state went) is a no-op here --
+       the state it writes is what this suite plays, and the census holds that
+       it writes it itself */
+    try { fn = body !== null ? new Function('stubs', 'with (stubs) { return function ' + c.fn + '(' + hm[1] + ') {' + body + '}; }')(STUBS) : null; } catch (e) { fn = null; }
     check(`5. ${c.file} ${c.fn}: a named function whose text builds on its own`, typeof fn === 'function');
     if (fn) built.set(c.file + ' ' + c.fn, { ...c, fn });
   }

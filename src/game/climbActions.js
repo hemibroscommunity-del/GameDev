@@ -30,6 +30,7 @@
 import { wheelRises } from '@/game/wheelTrial.js';
 import { jumpActive } from '@/game/jump.js';
 import { cue } from '@/game/eventSounds.js';
+import { resetOn } from '@/game/resetOn.js';   /* v2.3.5204: off the rises at the zone door (card L) */
 import {
   CLIMB_MULT, CLIMB_NOTE, CHEST_NOTE, CHEST_WORDS, chestPrizeNote, FEET_HS,
   riseCellAt, riseShuts, feetInBand, onRamp, faceEntry, faceLanding, footOf, climbStartAt, climbWay, climbOut, CLIMB_REACH,
@@ -143,6 +144,18 @@ export function climbRefused(S, say) {
 
 /** After the walk: the climb's end, a face-crossing jump's landing, a drop's
     progress, feet stuck in a face, the chest.  `gdy` playerGroundDy. */
+/* v2.3.5204 (grand plan step 5.3, card L): a climb, a drop, a crossing and
+   the chest in reach belong to the Wheel's rises, so they go at the zone
+   edge's one door (changeZone), the frame the place changes.  BroTown's own
+   off-the-Wheel clear did it a frame later, the same four nulls; it stays,
+   and is what clears them with `?movementreset=0` thrown. */
+function leaveRises(S) {
+  S._climb = null;
+  S._climbDrop = null;
+  S._riseCross = null;
+  S._nearChest = null;
+}
+resetOn('zone', leaveRises, 'movement');
 let _lastS = null;   /* the game's state, for the QA probe */
 export function climbTick(S, now, gdy, popup) {
   _lastS = S;

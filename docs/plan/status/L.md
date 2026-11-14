@@ -1,23 +1,21 @@
 card: L
-branch: claude/plan-l-3-resets (one branch a PR, each begun from the one before)
-prs: #1746, #1748 (merged), PR 3 (opening)
+branch: claude/plan-l-4-resets (one branch a PR, each begun from the one before)
+prs: #1746, #1748 (merged), #1767 (ready), PR 4 (working)
 state: working
 
 ## Done
 
 - PR 1 (5201, #1746): the ledger's guard reads the code on GitHub.
-- PR 2 (5202, #1748): the phase table (36 rows, 5 door, 31 todo) and its
-  guard. Its two holes (sitting 8) closed in PR 3: writes off the syntax
-  tree, and what holds a door a closed list (DOOR_SUITES, SCAN_DOORS).
-- PR 3 (5203): `resetOn` (src/game/resetOn.js, map system `state`), the
-  zone door's call (changeZone, a real change only) and the rejoin door's
-  (rejoinClear); the census's `resets`; the guard's §6-7, SITTING_LINE
-  484 -> 468; 16 rows decided (2 resets: the pose, the shots' ends; 14
-  kept:); state-resets.test (deploys). Planning session's calls, 2026-11-14.
+- PR 2 (5202, #1748): the phase table and its guard (36 rows, 5 door).
+- PR 3 (5203, #1767): `resetOn` at the zone and rejoin doors; the census's
+  `resets`; the guard's §6-7; 16 rows (484 -> 468); state-resets.test
+  (deploys); the phase guard's two holes (sitting 8) closed.
+- PR 4 (5204): desktop, social, movement: 22 rows (3 resets: the rises,
+  the Wheel's water, a race at a rejoin), SITTING_LINE 468 -> 446.
 
 ## Next
 
-- PR 4 (5204): desktop, social, economy, movement, skills (by fewest rows).
+- PR 5 (5205): economy, skills; then data, combat (card PR 4's list).
 
 ## Found
 
@@ -32,9 +30,9 @@ state: working
 
 ## Needs
 
-- The owner: wheelMusic.js `_m` reset at the zone door would make a return
-  to the Wheel pick its land's music at once (resetWheelMusic's words);
-  today the last visit's wait may hold. Left `sitting` until asked.
+- The owner: wheelMusic `_m` (a return to the Wheel's music at once) and
+  deskTeach `_armed` (no "Almost!" after a change of place): `sitting`.
+- Card SK's ride.js (S._ride). S._spar: the takeover's leave, unread.
 - Card H's `done` (9 rows under src/rendering/**); card A (perfTracker.js
   `zoneStats`). The page's death door (phase table `life`, page) heads
   PR 5's page doors; the 3 death rows land with it.

@@ -137,3 +137,33 @@ Left `sitting`:
 - `perfTracker.js zoneStats` (debug), which waits for card A.
 
 The 40 `?` rows (nobody has read them yet) are outside the 484.
+
+## PR 4 (v2.3.5204): desktop, social, movement
+
+22 rows decided, which takes `SITTING_LINE` from 468 to 446. Three systems'
+resets:
+
+| Row | Decided |
+|---|---|
+| `S._climb`, `S._climbDrop`, `S._riseCross`, `S._nearChest` (movement) | `zone`, `value null`: `climbActions.js leaveRises`, the same four nulls BroTown's off-the-Wheel clear wrote a frame later (it stays, as the off-ramp) |
+| `S._wheelSwim` (movement) | `zone`, `value null`: `wheelSwim.js leaveWheelWater`, as `updateWheelSwim`'s own off-the-Wheel clear (it stays) |
+| `S._race`, `S._raceLil` (social) | `rejoin`, `fn forgetRace`: the worker forgets a race at a join and says nothing of it again; its card is told. Its zone half is the worker's: `race_end` `left` at the next move |
+| `S._jump`, `S._jumpOver`, `S._sprint` (movement) | kept: each ends itself at a change of place, through `endJump` / `stopSprint`, which do more than clear it |
+| `S._restAsked`, `S._riseChestAsk` (movement) | kept: an ask's throttle, and where the last ask was made |
+| `S._nmlFoes`, `S._serverMutes`, `S._serverMuteNames`, `chatMute.js _kept` (social) | kept: a choice that lapses by itself; copies replaced whole by the rejoin's echo; what a rejoin carries |
+| `S._teachNode` and the lesson's page elements, `_nextEnc` (desktop) | kept: set afresh every tick; made and removed by the tick itself; its own clock |
+
+Left `sitting`:
+
+- `deskTeach.js _armed`: a zone reset would drop the "Almost!" lesson that a
+  change of place in a harvest's window gives today. That is a screen, so it
+  is the owner's question.
+- `S._spar`: the takeover's leave skips most duties, so whether the worker's
+  clones outlive a reconnect needs reading first.
+- `S._ride`: card SK is changing `ride.js`.
+- `economy` and `skills` are the next tag's.
+
+The suite's built resets may call a module's own helper (the race's
+`raceBus.emit()`, a card told to hide). In the suite that helper is a no-op;
+the census still holds that the reset writes its state itself.
+
