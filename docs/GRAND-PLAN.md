@@ -296,6 +296,9 @@ devices it waits for: with one player, the table is empty for weeks.
   `docs/LANES.md`, the report's lane (`caps.report` 3, `reportlanes`),
   merged at sitting 11. The box waits for O's PR 3 (every test page names
   its lane) (the gatekeeper, sitting 12, v2.3.5369).*
+  *Card O's PR 7, #1815 (the device asked only in `deviceProfile.js`:
+  2.1's "facts only"), merged at sitting 12. The box still waits for O's
+  PR 3 (the gatekeeper, sitting 13, v2.3.5370).*
 - [x] **2.2a [NOW] The pixel budget** for big screens (STATE-MACHINES A2
   item 1). Safe for phones: they are under it.
   *Merged: #1701 (card G), `src/game/renderRes.js`, `?pixbudget=0`.*
@@ -472,6 +475,10 @@ nothing known, and a restore copies nothing.
   *Begun (card L): #1748, the table (36 rows: 5 `door`, 31 `todo`) and
   its guard. The box waits for the `todo` rows (the gatekeeper, sitting 9,
   v2.3.5365).*
+  *Card L: #1803 (the guard reads a suite-held door off the syntax tree
+  too) and #1809 (the trade door: `s.state` through `_t2To`, `tradedoor`
+  its switch), merged at sitting 12: 6 `door`, 30 `todo` (the gatekeeper,
+  sitting 13, v2.3.5370).*
 - [ ] **5.4 [LATER] The frame as named steps.** PR 1 moves nothing: the six
   calls the loop already makes, plus one `legacy` step, become the list;
   each counts its errors to the crash ring (a throw in the frame reaches
@@ -612,6 +619,10 @@ the memory a family holds as the game draws it.
   #1743 (`fx-coinflip`), #1745 (`tree-tiers` as numbers); `artCache`'s
   line 112 -> 101.4. The step is open (the gatekeeper, sitting 8,
   v2.3.5364).*
+  *Card P: #1805 (`pack-page` on the body bake's worker, `?packworker=0`
+  its switch; off the held list), #1806 (the CPU pixel readers' guard) and
+  #1810 (the figure hold's note), merged at sitting 12. The step is open
+  (the gatekeeper, sitting 13, v2.3.5370).*
 - [ ] **9.6 [LATER] An address that changes with the content**, by a
   `?h=` lookup (the client builds a hundred sprite addresses as it runs;
   renaming files would break them). A wrong hash on art that loads in play
