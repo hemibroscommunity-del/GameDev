@@ -1,31 +1,33 @@
 card: T
-branch: claude/plan-t-4-thrown-rebuilt (PR 3: claude/plan-t-3-page-draw-rebuilt)
-prs: #1754 (5301, merged), #1768 (5302, merged), #1816 (5303, ready), #1817 (5304, ready: after #1816)
+branch: claude/plan-t-5-due (one branch a PR, each begun from main once the one before merged)
+prs: #1754, #1768, #1816, #1817 (5301-5304, merged); PR 5 (5305, ready)
 state: ready
 
 ## Done
 
-- PR 1 (5301, #1754, merged): the table, the scanner, the census guard,
-  `docs/SWITCHES.md`, the spec, the scoreboard row, liveops.test §8f, §8g.
-- PR 2 (5302, #1768, merged): the page's game-side rows (81); sitting 8's
-  mend (the scanner's shapes, each a fixture; excuses are functions);
-  sitting 9's (the page carries no count: row-adding PRs merge side by side).
+- PR 1 (5301, #1754): the table, the scanner, the census guard, the page,
+  the spec, the scoreboard row, liveops.test §8f, §8g.
+- PR 2 (5302, #1768): the page's game-side rows; the scanner's shapes,
+  each a fixture (sitting 8); the page carries no count (sitting 9).
+- PR 3 (5303, #1816, for #1797): the drawing side's rows, unlisted 0; B's
+  map reads the table; SHAPES' two lines point at it.
+- PR 4 (5304, #1817, for #1804): a row's place by its name (check 10);
+  needs and readers (check 11); the thrown run (thrown.mjs, a preload).
 
 ## Next
 
-- #1816 (5303): the drawing side's rows, unlisted 0; B's map reads them.
-- PR 4 (5304): rule 4. A row's place set by its name (check 10, sitting
-  11); needs and readers (check 11); the thrown run (thrown.mjs, a preload;
-  on every PR the rows born from 5301, 16 s). The sample (17 switches):
-  every fail is the switch's own but one two-switch case. The full run
-  (about 45 min) is the owner's to ask for.
+- PR 5 (5305): the end date. `on` on every switch row (a day from git,
+  `onBy` where a later change turned it on, `'off'` for 4 opt-ins);
+  `--due` (106 may go today, nothing reaped); the fallback hold (check 12,
+  `FALLBACKS` a census of 5). Then PR 6 (5306), the page's one reader.
 
 ## Found
 
-- New switches add their own rows (the table is on `main`): card L's
-  `?<system>reset=0`, card SK's `?ridecoast=0`.
-- The thrown run's share on every PR is 29 s with sitting 11's switches
-  (3 born from 5301 on): at the card's 30 s line (the gatekeeper's call).
+- The table is now the one list of switch names for card A's `sw` (the
+  report) and card K's `flag` (the wire table): each is to read it.
+- New switches add their own rows (L's resets, SK's, O's ladder rows).
+- The thrown run's share on every PR is about 30 s (the card's line; the
+  gatekeeper's call). The full run (about 45 min) is the owner's to ask for.
 - Rule 4's sample: `ahonewrite` thrown beside store-heal-wait.test's own
   `storehealwait: false` fails its check 2 (two switches off, not one).
 - Card O (planning session, 2026-11-14): the device knobs' off-ramps
@@ -35,5 +37,4 @@ state: ready
 
 ## Needs
 
-- The gatekeeper: #1816, then #1817. They replace #1797 and #1804 (closed),
-  which held card O's #1792 by mistake; #1816, #1817 hold none of it.
+- The gatekeeper: PR 5.

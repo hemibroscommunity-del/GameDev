@@ -29,6 +29,12 @@
  *      reads each need (switchScan.mjs readsOf: directly or through the
  *      functions it calls); a row that may never go off needs no switch
  *      still in the table;
+ *  12. the fallback hold (v2.3.5305): while a fallback's trigger is still
+ *      in its file, its row stays (with the same fallback) and its read is
+ *      still found; an entry whose trigger is gone leaves FALLBACKS (and its
+ *      row's fallback goes to 'no') in that PR; the list only shrinks
+ *      (FALLBACK_LINE, the gatekeeper's).  Check 4 holds each switch row's
+ *      `on` (the end date: a day, 'off', or 'unknown' with its born).
  *
  * BREAK PROOF (rule 8), each tried by hand once, 2026-11-14:
  *   - a method `_zzz() { if (this._flagOn('zzz')) return; }` in
@@ -54,6 +60,15 @@
  *     of `this._moveBudgetOn()`: a need left unread in its reader
  *                                        -> FAIL 11 (lastplace's reader does
  *                                           not read movebudget)
+ *   (v2.3.5305, tried by hand once, 2026-11-14:)
+ *   - `?onebatch`'s read in src/rendering/paletteTex.js renamed away,
+ *     SOFTWARE_GL kept                   -> FAIL 12 (its read is gone while
+ *                                           SOFTWARE_GL still uses its old
+ *                                           way), and 1, 3
+ *   - the same, with the `?onebatch` row deleted too
+ *                                        -> FAIL 12 (its row is gone)
+ *   - SOFTWARE_GL renamed away in that file, the list kept
+ *                                        -> FAIL 12 (its trigger is gone)
  *   Rehearsed: two branches from one table, one adding `?aardvark`, the
  *   other `?minnow`, each in its place: merged in both orders, clean, and
  *   the merged page is what --write makes.
@@ -63,18 +78,86 @@
  *   node tools/guards/switches.test.mjs --write      write docs/SWITCHES.md from the table
  *   node tools/guards/switches.test.mjs --list farm  a system's rows (`unlisted`: the names with no row)
  *   node tools/guards/switches.test.mjs --where farm where the code reads a name
+ *   node tools/guards/switches.test.mjs --due [YYYY-MM-DD]
+ *                                                    the rows the end date's rule would let go, and
+ *                                                    why (today, or the day given); in no CI and
+ *                                                    no precheck, and it changes nothing
  * (cd server && npm test runs it with every other guard and suite).
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { SWITCHES, SIDES, KINDS, RISKS, COLUMNS, OPTIONAL } from './lib/switches.mjs';
-import { census, scanWorker, scanPage, readsOf, DYNAMIC, NOT_ADDRESS, NOT_A_FLAG, ROOT } from './lib/switchScan.mjs';
+import { SWITCHES, SIDES, KINDS, RISKS, COLUMNS, OPTIONAL, FALLBACKS } from './lib/switches.mjs';
+import { census, scanWorker, scanPage, readsOf, blankComments, DYNAMIC, NOT_ADDRESS, NOT_A_FLAG, ROOT } from './lib/switchScan.mjs';
 import { SYSTEMS } from './lib/systems.mjs';
 
 /* the census lines: each only falls, and only the gatekeeper lowers one */
 const UNLISTED_LINE = 0;        /* every name a row since card T's PR 3: the gatekeeper may make it strict */
 const UNKNOWN_LINE = 0;
 const BORN_UNKNOWN_LINE = 2;    /* ?debug, ?nodebug: April commits with no tag in the commit, its body or its merge */
+
+const FALLBACK_LINE = 5;       /* FALLBACKS (lib/switches.mjs): the list only shrinks, the gatekeeper's */
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+const DUE_DAYS = 28;            /* the plan's rule: four weeks on for everyone */
+
+/* a fallback's trigger, read: its names and its file, and whether each name
+   is still in the file's code (comments blanked) */
+function trigger(fb) {
+  const m = /^(.+) in (\S+)$/.exec(fb);
+  const names = m[1].split(',').map((s) => s.trim());
+  const path = join(ROOT, m[2]);
+  const code = existsSync(path) ? blankComments(readFileSync(path, 'utf8')) : '';
+  const lives = names.filter((n) => new RegExp('(^|[^\\w$])' + n.replace(/[$]/g, '\\$') + '([^\\w$]|$)').test(code));
+  return { names, file: m[2], lives };
+}
+function fallbackHold(found) {
+  const by = new Map(SWITCHES.map((r) => [r.name, r]));
+  const held = [], stale = [], added = [];
+  for (const [name, fb] of Object.entries(FALLBACKS)) {
+    const t = trigger(fb);
+    if (!t.lives.length) { stale.push(`${name}: its trigger (${fb}) is gone: take it from FALLBACKS, and the row's fallback to 'no'`); continue; }
+    const r = by.get(name);
+    if (!r) held.push(`${name}: its row is gone while ${t.lives.join(', ')} still in ${t.file} uses its old way`);
+    else if (r.fallback !== fb) held.push(`${name}: its row says fallback ${JSON.stringify(r.fallback)}, the list ${JSON.stringify(fb)}, while the trigger lives`);
+    else if (!found.has(name)) held.push(`${name}: its read is gone while ${t.lives.join(', ')} still in ${t.file} uses its old way`);
+  }
+  for (const r of SWITCHES) if (r.fallback !== 'no' && !Object.hasOwn(FALLBACKS, r.name)) added.push(`${r.name}: ${r.fallback}`);
+  return { held, stale, added };
+}
+
+/* ── --due: the rows the end date's rule would let go, and why.  It runs in
+   no CI and no precheck, and changes nothing: reaping is a later card's
+   (7.3), a batch a PR, each merged by the owner ── */
+function due(asOf) {
+  const day = (s) => Date.parse(s + 'T00:00:00Z');
+  const now = asOf ? day(asOf) : Date.now();
+  const by = new Map(SWITCHES.map((r) => [r.name, r]));
+  const neededBy = new Map();
+  for (const r of SWITCHES) for (const n of r.needs) { if (!neededBy.has(n)) neededBy.set(n, []); neededBy.get(n).push(r.name); }
+  const go = [], stay = { young: [], device: [], fallback: [], off: [], never: [], other: [] };
+  for (const r of SWITCHES.filter((x) => x.kind === 'switch')) {
+    const dep = (neededBy.get(r.name) || []).filter((n) => by.has(n));
+    if (r.never !== undefined) { stay.never.push(`${r.name}: may never go off (${r.never})`); continue; }
+    if (!DAY.test(r.on)) { stay.off.push(`${r.name}: on ${r.on}`); continue; }
+    if (r.fallback !== 'no') { stay.fallback.push(`${r.name}: its trigger lives (${r.fallback})`); continue; }
+    if (r.risk === 'memory' || r.risk === 'chip') { stay.device.push(`${r.name}: a ${r.risk} off-ramp, kept while its risk is live (the owner's call, never by age)`); continue; }
+    const days = Math.floor((now - day(r.on)) / 864e5);
+    if (days < DUE_DAYS) { stay.young.push(`${r.name}: on ${r.on}, ${days} days (due at ${DUE_DAYS})`); continue; }
+    go.push(`${r.name.padEnd(22)} ${r.side.padEnd(6)} on ${r.on}${r.onBy ? ' (v2.3.' + r.onBy + ')' : ''}, ${days} days${dep.length ? '; needed by ' + dep.join(', ') + ' (each one\'s reader asks it: the reap changes them in the same PR)' : ''}`);
+  }
+  const asText = asOf || new Date(now).toISOString().slice(0, 10);
+  console.log(`THE END DATE (docs/specs/switch-table.md), as of ${asText}: a logic switch ${DUE_DAYS} days on for everyone, with no revert, may let its old way go.`);
+  console.log('Nothing here is reaped: reaping is a later card\'s, a batch a PR, each merged by the owner.');
+  console.log('"No revert" is checked by hand before a reap: no commit on main since `on` turned its default back (`git log --since=<on> -S<name>`),');
+  console.log('and the owner\'s live flags (the Test panel) not holding it thrown: the repository cannot see them.\n');
+  console.log(`MAY GO (${go.length}):`);
+  for (const l of go) console.log('  ' + l);
+  const say = (t, l) => { console.log(`\nSTAYS, ${t} (${l.length}):`); for (const x of l) console.log('  ' + x); };
+  say('not yet four weeks on', stay.young);
+  say('a device off-ramp', stay.device);
+  say('its fallback\'s trigger lives', stay.fallback);
+  say('not on for everyone (an opt-in) or no day known', stay.off);
+  say('may never go off', stay.never);
+}
 
 const PAGE = join(ROOT, 'docs/SWITCHES.md');
 
@@ -105,7 +188,9 @@ function makePage(rows = SWITCHES) {
   L.push('- **name**: as it is thrown. A live flag by its name (`farm`); a page switch with its `?`; a memory saver by its id');
   L.push('  (`sfxcache`: `off_sfxcache` on the worker and `?sfxcache=0` on the page are one row).');
   L.push('- **kind**: `switch` (a way of the game turned off or on), `value` (a number to try) or `lever` (a test\'s or the owner\'s tool).');
-  L.push('- **born**: the change that made it (v2.3.N). **thrown**: what throws it (on the worker the value; on the page its form).');
+  L.push('- **born**: the change that made it (v2.3.N). **on**: the day its way went on for everyone (a switch\'s; `off`: an opt-in,');
+  L.push('  not on for everyone yet; the change that turned it on, where it is not its birth). **thrown**: what throws it (on the');
+  L.push('  worker the value; on the page its form).');
   L.push('- **risk**: what the old way guards against: `logic`, `memory`, `chip` (`none` for a lever). **needs**: the switches it');
   L.push('  turns off with. **fallback**: the trigger that still uses its old way, or no.');
   L.push('');
@@ -127,10 +212,10 @@ function makePage(rows = SWITCHES) {
   for (const sys of names) {
     L.push(`## ${sys}`);
     L.push('');
-    L.push('| name | side | kind | born | thrown | risk | needs | fallback | off |');
-    L.push('|---|---|---|---|---|---|---|---|---|');
+    L.push('| name | side | kind | born | on | thrown | risk | needs | fallback | off |');
+    L.push('|---|---|---|---|---|---|---|---|---|---|');
     for (const r of by.get(sys)) {
-      L.push(`| \`${cell(r.name)}\` | ${r.side} | ${r.kind} | ${typeof r.born === 'number' ? 'v2.3.' + r.born : r.born} | ${cell(r.thrown)} | ${r.risk} | ${r.needs.length ? r.needs.map((n) => '`' + n + '`').join(', ') : ''} | ${cell(r.fallback)} | ${cell(r.off)} |`);
+      L.push(`| \`${cell(r.name)}\` | ${r.side} | ${r.kind} | ${typeof r.born === 'number' ? 'v2.3.' + r.born : r.born} | ${r.on === undefined ? '' : r.on + (r.onBy ? ' (v2.3.' + r.onBy + ')' : '')} | ${cell(r.thrown)} | ${r.risk} | ${r.needs.length ? r.needs.map((n) => '`' + n + '`').join(', ') : ''} | ${cell(r.fallback)} | ${cell(r.off)} |`);
     }
     L.push('');
   }
@@ -221,6 +306,12 @@ async function main() {
     for (const r of rows) console.log(`${r.name.padEnd(22)} ${r.side.padEnd(6)} ${r.kind.padEnd(6)} ${String(r.born).padEnd(7)} ${r.risk.padEnd(6)} ${r.thrown}  -- ${r.off}`);
     process.exit(0);
   }
+  const di = argv.indexOf('--due');
+  if (di >= 0) {
+    const asOf = argv[di + 1] && DAY.test(argv[di + 1]) ? argv[di + 1] : null;
+    due(asOf);
+    process.exit(0);
+  }
   const wi = argv.indexOf('--where');
   if (wi >= 0) {
     const want = argv[wi + 1];
@@ -289,6 +380,13 @@ async function checks() {
       if (!Array.isArray(r.needs) || !r.needs.every(str)) why.push('needs');
       if (!(r.fallback === 'no' || (str(r.fallback) && / in \S+$/.test(r.fallback)))) why.push('fallback (no, or "<trigger> in <file>")');
       if (!str(r.off)) why.push('off');
+      /* v2.3.5305: the end date.  A switch row says when its way went on
+         for everyone (a day, 'off', or 'unknown' with its born); no other
+         row has a way to date */
+      if (r.kind === 'switch') {
+        if (!(DAY.test(r.on) || r.on === 'off' || (r.on === 'unknown' && r.born === 'unknown'))) why.push('on (a day YYYY-MM-DD, \'off\', or \'unknown\' where born is)');
+      } else if (r.on !== undefined) why.push('on is a switch row\'s alone');
+      if (r.onBy !== undefined && !(Number.isInteger(r.onBy) && DAY.test(r.on) && Number.isInteger(r.born) && r.onBy > r.born)) why.push('onBy (the later tag that turned it on, with its day in on)');
       if (why.length) bad.push(`${r.name || '?'}: ${why.join(', ')}`);
     }
     check(`4: every row has every column (${COLUMNS.join(', ')})`, bad.length === 0, bad);
@@ -364,6 +462,16 @@ async function checks() {
     const badNever = never.filter((r) => typeof r.never !== 'string' || !r.never.trim() || r.needs.some((n) => by.has(n)))
       .map((r) => `${r.name} may never go off (${r.never}) but needs ${r.needs.filter((n) => by.has(n)).join(', ')}: the switch beneath is removed first`);
     check(`11: a row that may never go off needs no switch still in the table (${never.length} such rows)`, badNever.length === 0, badNever);
+  }
+
+  /* 12. the fallback hold (v2.3.5305): a fallback leaves only with its
+     trigger.  While a trigger is still in its file, its row stays, says
+     the same, and its read is still found; the list only shrinks */
+  {
+    const { held, stale, added } = fallbackHold(found);
+    check(`12: a fallback's read stays while its trigger lives (${Object.keys(FALLBACKS).length} fallbacks, the line ${FALLBACK_LINE})`, held.length === 0, held);
+    check('12: every fallback in the list still has its trigger (one whose trigger is gone leaves the list, with its row\'s fallback, in that PR)', stale.length === 0, stale);
+    check(`12: the list of fallbacks only shrinks (a new fallback is the gatekeeper's to add: FALLBACKS in tools/guards/lib/switches.mjs)`, added.length === 0 && Object.keys(FALLBACKS).length <= FALLBACK_LINE, added);
   }
 
   const sw = SWITCHES.filter((r) => r.kind === 'switch').length;
