@@ -17,7 +17,8 @@
  * A phone in the world rides a loop right through the town on the board,
  * every first-sight job on the page naming itself and how long it held it
  * (debug/madeLog.js, window.__btMade).  Two pages: the game as it ships, and
- * `?folkbake=0` (the townsfolk baked when first met, as before).  Asserted:
+ * `?folkbake=0` (the townsfolk baked when first met, as before; v2.3.5426:
+ * with `?bodyworker=0`, the bake on the page, as before the worker).  Asserted:
  *   - as before: at least one moving body sheet is baked on the ride and
  *     holds the page OLD_HOLD_MS or more (the fault, reproduced);
  *   - as it ships: the bakes were done behind the loading screen, no moving
@@ -72,7 +73,9 @@ async function ride(browser, wsPort, webPort, rec, label, query) {
     for (let i = 0; i < made.length; i += 2) jobs.push({ name: made[i], ms: made[i + 1] });
     const folk = await P.page.evaluate(() => (window._gameState.current.npcs || []).filter((n) => /Blacksmith Bro|Farmer Bro|Beastmaster Bro|Old Man Reel/.test(n.name)).map((n) => ({ name: n.name, day: !!n._folkDay })));
     const off = await offLoop(P);
-    return { gate, jobs, folk, off };
+    /* v2.3.5426 (card J2): the pages whose ground lines came from the worker (wheelObjects.js, v2.3.4470) */
+    const bases = await P.page.evaluate(() => (window.__btPageBases ? window.__btPageBases() : null));
+    return { gate, jobs, folk, off, bases };
   } finally {
     stopAlive();
     await P.ctx.close().catch(() => {});
@@ -126,7 +129,13 @@ const read = (r) => {
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const now = await ride(browser, wsPort, webPort, rec, 'as it ships', '');
-  const old = await ride(browser, wsPort, webPort, rec, 'as before (?folkbake=0)', 'folkbake=0');
+  /* v2.3.5426 (card J2): "as before" is two switches now.  Since v2.3.4930
+     a body sheet is baked on a WORKER (rendering/bodyBake.js), so
+     `?folkbake=0` alone still bakes the townsfolk's sheets on the ride but
+     holds the page 0-2 ms each (red on main: "the longest holding it 0
+     ms"); `?bodyworker=0` puts the bake back on the page, the fault this
+     scenario reproduces */
+  const old = await ride(browser, wsPort, webPort, rec, 'as before (?folkbake=0&bodyworker=0)', 'folkbake=0&bodyworker=0');
   if (!now || !old) return;
   const a = read(now), b = read(old);
   console.log(`    as it ships: ${JSON.stringify(a)}; at the gate ${JSON.stringify(now.gate)}`);
@@ -136,8 +145,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`as it ships: the townsfolk's sheets were baked behind the loading screen -- ${now.gate.bakes && now.gate.bakes.n} of them in ${now.gate.bakes && now.gate.bakes.ms} ms (guard)`,
     !!now.gate.bakes && now.gate.bakes.n >= 4, now.gate);
   rec.ok(`as it ships: the ride bakes no moving body sheet (${a.moving}; ${b.moving} before)`, a.moving === 0, a);
-  rec.ok(`as it ships: no job holds the page past ${HOLD_MAX_MS} ms (the longest ${a.longest}; ${b.longest} before), nor all ${a.jobs} together past ${SUM_MAX_MS} ms (${a.sum}; ${b.sum} before)`,
-    a.longest <= HOLD_MAX_MS && a.sum <= SUM_MAX_MS && a.pages > 0, a);
+  /* v2.3.5426 (card J2): an object page's ground lines are worked out on the
+     worker since v2.3.4470 (wheelObjects.js, artBottoms.js): no "page bases"
+     job holds the page as it ships (the check wanted one: red on main), and
+     the pages that came are counted by the game's own probe instead */
+  const wb = now.bases || {};
+  rec.ok(`as it ships: no job holds the page past ${HOLD_MAX_MS} ms (the longest ${a.longest}; ${b.longest} before), nor all ${a.jobs} together past ${SUM_MAX_MS} ms (${a.sum}; ${b.sum} before); ${wb.pages || 0} object pages' ground lines from the worker, ${a.pages} read on the page`,
+    a.longest <= HOLD_MAX_MS && a.sum <= SUM_MAX_MS && wb.way === true && wb.pages > 0 && a.pages === 0, { a, bases: { way: wb.way, pages: wb.pages } });
   const offBody = (r) => r.off.jobs.filter((j) => /^body /.test(j.name));
   const oa = offBody(now), ob = offBody(old);
   const tell = (l) => l.map((j) => `${j.who.split(' ')[0]} ${j.name.split('|')[1]} ${Math.round(j.ms)} ms`).slice(0, 10).join(', ');
