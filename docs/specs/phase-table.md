@@ -62,6 +62,7 @@ why: a QA tag, a direction, an input's source, a setting.
 | `party` | worker | a player's entry in `this._partyByPlayer` | `_partyIn` (`party.js`, v2.3.5212) | `party-door.test` §2, and the guard's tree (a Map's calls too) |
 | `cook` | worker | the phone's claim on its moves, `ps.ex` (cook, fire, mine, chop, fish, a farm step) | `_exTo` (`movement.js`, v2.3.5213) | `cook-door.test` §2, and the guard's tree |
 | `harvest`, `fishing` | worker | a player's gather record, `this.extractions[pid]` (mining, woodcutting, fishing) | `_harvestTo` (`gathering.js`, v2.3.5214) | `harvest-door.test` §2, and the guard's tree (a record's keys too) |
+| `dungeon` | worker | a run's `inst.runPhase` (active, boss, done); the old `state` and `bossSpawned` written by the door | `_dungeonTo` (`dungeon.js`, v2.3.5215) | `dungeon-door.test` §2, and the guard's tree |
 
 **How a door is held.** What holds a door is a closed list in the guard
 (v2.3.5203, after the gatekeeper's sitting 8 found that a suite which merely

@@ -292,19 +292,17 @@ export const PHASES = [
   },
 
   {
-    name: 'dungeon', side: 'worker', status: 'todo',
+    name: 'dungeon', side: 'worker', status: 'door',
     what: 'A dungeon run: active (its waves), its boss, done; a player is in it by their place.',
-    field: null, states: ['active', 'boss', 'done'], fn: null, file: null,
+    field: 'inst.runPhase', states: ['active', 'boss', 'done'],
+    fn: '_dungeonTo', file: 'server/src/dungeon.js',
     clears: [
       { edge: 'end', at: 'server/src/dungeon.js _dungeonCleanup' },
       { edge: 'death', at: 'server/src/index.js _tickPlayerRespawn' },
     ],
     rejoin: 'none: the join lands back in its run by its place (ps.z dungeon:<id>), and the pass lives on the run (zonejudge.js R1)',
-    today: [
-      { field: 'this._dungeons', file: 'server/src/dungeon.js', writers: ['server/src/dungeon.js _handleDungeonStart', 'server/src/dungeon.js _dungeonCleanup'] },
-      { field: 'inst.state', file: 'server/src/dungeon.js', writers: ['server/src/dungeon.js _handleDungeonStart', 'server/src/dungeon.js _dungeonComplete'] },
-    ],
-    note: 'No field on the player: membership is the place (dungeon.js _dungeonZonePlayers). A death sends them to town at the respawn and the run empties; a leave deletes the body.',
+    held: { suite: 'server/test/dungeon-door.test.mjs' },
+    note: 'v2.3.5215: the door (DUNGEON_WAYS boss, clear; the end final, one boss after the waves; live flag dungeondoor). It writes the old pair for their readers: inst.state \'done\' at the end (\'active\' all through the boss), inst.bossSpawned at the boss. Not phases: the wave (a count), emptySince, the run\'s place in this._dungeons (born at the start, gone at _dungeonCleanup). No field on the player: membership is the place (dungeon.js _dungeonZonePlayers).',
   },
 
   /* ═══ TO DO, THE PAGE (card L PR 5: then connection, loading, window) ═══ */

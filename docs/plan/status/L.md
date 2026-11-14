@@ -1,24 +1,24 @@
 card: L
-branch: claude/plan-l-14-harvest-door (each PR on main, main merged in)
-prs: #1746 to #1839 (merged), #1851 (5214)
+branch: claude/plan-l-15-dungeon-door (each PR on main, main merged in)
+prs: #1746 to #1839 (merged), #1851 (5214), #1855 (5215)
 state: ready
 
 ## Done
 
-- PR 1 (5201, #1746), PR 2 (5202, #1748): the ledger's guard on GitHub; the
-  phase table and its guard (36 rows, 5 door).
+- PR 1, 2 (#1746, #1748): the ledger's guard; the phase table and guard.
 - PR 3 (5203, #1767): `resetOn` at the zone and rejoin doors, 16 rows
   (484 -> 468), state-resets.test; the phase guard's holes (sitting 8) shut.
 - PR 4 tags 5204 to 5209 (#1775 to #1803, merged): 235 rows, 468 -> 233;
   `clearElemStatuses` deleted; the guard reads DOOR_SUITES' trees.
-- PR 5 tags 5210 to 5212 (merged), 5213, 5214: the worker's trade, duel, party,
-  cook, harvest+fishing doors (`_t2To`, `_duelTo`, `_partyIn`, `_exTo`,
-  `_harvestTo`); live flags `tradedoor` ... `harvestdoor`.
+- PR 5 tags 5210 to 5212 (merged), 5213 to 5215: the worker's trade, duel,
+  party, cook, harvest+fishing, dungeon doors (`_t2To` ... `_dungeonTo`, a
+  run's `runPhase`); live flags `tradedoor` ... `dungeondoor`.
 
 ## Next
 
-- PR 5: the dungeon door (5215); each page half after its worker door,
-  its own PR; `connection` after card K's last wsClient.js PR.
+- PR 5: pose (5216), race (5217); guard waits for card K (combat.js,
+  index.js), ride for SK, arena for E's e-14 (gladiator.js); each page half
+  after its worker door; `connection` after card K's last wsClient.js PR.
 
 ## Found
 
