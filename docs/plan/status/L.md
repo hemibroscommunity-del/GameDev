@@ -1,6 +1,6 @@
 card: L
-branch: claude/plan-l-10-trade-door (each PR on main, main merged in: sitting 11)
-prs: #1746 to #1801 (merged; #1791, #1796, #1801 through #1807), #1803 (5209), #1809 (5210): ready
+branch: claude/plan-l-11-duel-door (each PR on main, main merged in)
+prs: #1746 to #1809 (merged; #1791, #1796, #1801 through #1807), #1824 (5211, ready)
 state: ready
 
 ## Done
@@ -11,13 +11,14 @@ state: ready
   (484 -> 468), state-resets.test; the phase guard's holes (sitting 8) shut.
 - PR 4 tags 5204 to 5208 (#1775, #1779, #1791, #1796, #1801, all merged):
   235 rows, 468 -> 233; `clearElemStatuses` deleted (state-resets §7).
-- PR 4 tag 5209 (#1803): the phase guard reads DOOR_SUITES' doors off the tree.
-- PR 5 tag 5210 (#1809): the trade door (worker): `_t2To`, `tradedoor`.
+- PR 4 tag 5209 (#1803, merged): the guard reads DOOR_SUITES' doors' trees.
+- PR 5 tags 5210 (#1809, merged), 5211 (#1824): the trade and duel doors
+  (worker): `_t2To`, `_duelTo`, their live flags `tradedoor`, `dueldoor`.
 
 ## Next
 
-- PR 5's next worker door, duel (5211); each page half after its worker
-  door, its own PR (planning); PR 4's `ui`/`render` (H is done).
+- PR 5's next worker door, party (5212); each page half after its worker
+  door, its own PR; `connection` after card K's last wsClient.js PR.
 
 ## Found
 

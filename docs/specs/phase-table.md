@@ -58,6 +58,7 @@ why: a QA tag, a direction, an input's source, a setting.
 | `monster` | page | `m.alive` back to true | `monsterNewLife` (`monsterCarry.js`) | the table's scan |
 | `zone` | page | `S.currentZone` | `changeZone` (`zoneTransitions.js`) | `zone-leftovers.test` §6 |
 | `trade` | worker | a session's `s.state` | `_t2To` (`trade2.js`, v2.3.5210) | `trade-door.test` §2, and the guard's tree |
+| `duel` | worker | a duel's `d.status` | `_duelTo` (`duel.js`, v2.3.5211) | `duel-door.test` §2, and the guard's tree |
 
 **How a door is held.** What holds a door is a closed list in the guard
 (v2.3.5203, after the gatekeeper's sitting 8 found that a suite which merely

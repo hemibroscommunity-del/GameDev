@@ -526,6 +526,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `boards2` | worker | switch | v2.3.4355 | false | logic |  | no | Un-advertises the boards with faces: records no spin, stamps no face or level, retires no row. |
 | `chatguard` | worker | switch | v2.3.3396 | false | logic |  | no | All three chat guards off: chat and emotes spend the relay bucket again, nothing filtered or cleaned. |
 | `clanparty` | worker | switch | v2.3.3321 | false | logic | `partykeep` | no | No clan is turned into a party; clans work as they did. |
+| `dueldoor` | worker | switch | v2.3.5211 | false | logic |  | no | A resolved duel's end can be written again, as the line before the duel door would have (nothing does today). |
 | `duelzone` | worker | switch | v2.3.4371 | false | logic |  | no | No zone starts a duel's clock (one running is cleared at the next zone write). |
 | `emotemoves` | worker | switch | v2.3.3392 | false | logic | `emotes` | no | No emote move is relayed and no pose kept; the plain emotes go on. |
 | `emotes` | worker | switch | v2.3.3391 | false | logic |  | no | No emote is relayed, and caps.emotes false shuts the picker at the next join. |

@@ -242,6 +242,14 @@ const DOOR_SUITES = Object.freeze({
      the rung is a property of a module object, so the tree reads its writes as every other door's */
   'server/test/frame-pacer.test.mjs': { field: '_rung', fn: 'setRung', holds: '§17: setRung is called by the governor alone (framePacer.js), and the rung is written in setRung and the tests\' reset, nowhere else',
     prop: '_rung', besides: [{ file: 'src/game/drawLanes.js', text: 'LANE._rung = ROW', why: 'the tests\' reset (_resetLanes), never the page\'s' }] },
+  /* v2.3.5211: the duel door */
+  'server/test/duel-door.test.mjs': { field: 'd.status', fn: '_duelTo', holds: '§2: no .status written in server/src but in _duelTo and NOT_A_DUEL\'s',
+    prop: 'status', besides: [
+      { file: 'server/src/alliance.js', text: 'w.status = ', why: 'an alliance war\'s end, its own record' },
+      { file: 'server/src/clans.js', text: 'war.status = ', why: 'a clan war\'s end, its own record' },
+      { file: 'server/src/gladiator.js', text: ' t.status = ', why: 'an arena tournament: the `arena` row (the space before `t` keeps out `mt.status =`, the gatekeeper\'s low)' },
+      { file: 'server/src/arena.js', text: 'tournament.status = ', why: 'the old Arena object\'s tournament (kept for its binding)' },
+    ] },
 });
 const SCAN_DOORS = Object.freeze({
   'session (worker)': 'session-door.test plays the phases but fails no second writer of session.phase',
