@@ -22,9 +22,9 @@ state: ready
   34 test levers (`server/src/devtools.js`).
 - `clan_war_declare` is sent by the worker and is on neither list (it is
   on `server/test/wire-audit.test.mjs`'s allowlist): it has a row of its own.
-- Precheck's `version-tag` fails a card's own tag written in full (cards
-  F and I found the same), and also a diff whose only tags are old ones.
-  So this card's files write every tag as a bare number ("tag 4850").
+- Precheck's `version-tag` fails a diff whose only tags are old ones (a
+  card's own tag written in full on `main` was one; tag 5055 wrote the
+  cards bare). So this card's files write every tag as a bare number.
 - The page is 754 KB (rows of about 1,700 bytes): read it by grep, a row
   at a time, as its part 1 says.
 
