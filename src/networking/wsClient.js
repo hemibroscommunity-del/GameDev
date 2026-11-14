@@ -41,7 +41,7 @@ import { onAccState, accReset } from '@/game/accuracy.js'; /* v2.3.4545: your ow
 import { fishCatchWords } from '@/data/fishVariants.js'; /* v2.3.4036: "An albino Trout!" */
 import { onRaceState, onRaceCheckpoint, onRaceEnd } from '@/game/race.js'; /* v2.3.3525: Lil Bro's race (server/src/race.js) */
 import { onBankState } from '@/game/bank.js'; /* v2.3.3785: the Bank's vault (server/src/bank.js) */
-import { rideApply, clearRide } from '@/game/ride.js'; /* v2.3.3776: the skateboard (server/src/ride.js) */
+import { rideApply, clearRide, isRiding, rideFeelOn } from '@/game/ride.js'; /* v2.3.3776: the skateboard (server/src/ride.js) */
 import { onRestResult, restMapsBuffs } from '@/game/rest.js'; /* v2.3.3539: a real rest at the Hotel or your farm's bed (server/src/rest.js) */
 import { setWheelHallCaps } from '@/game/wheelTownDoors.js'; /* v2.3.3539: the Hotel opens against a worker that rests */
 import { cue, cueAt, cuePeer, peerOwn, cueLater } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, from recordings already in the game */
@@ -59,7 +59,7 @@ import { sprintStepFlag } from '@/game/sprint.js'; /* v2.3.3006: a sprinting mov
 import { peerEntrySlim, broCountOf } from '@/networking/broWallet.js'; /* v2.3.3255: the Hemi Bro check, theirs and yours */
 import { setClientOff } from '@/game/clientOff.js'; /* v2.3.3755: each memory saver off from the Test panel */
 import '@/game/clientOffApply.js'; /* v2.3.3755: ...the sound savers switched by it */
-import { MOVE_DIET, dietMayWait, steadyMove, MOVE_PATH, pathMayWait, pathTurned } from '@/game/moveDiet.js'; /* v2.3.3204: a steady walk on the safe ground, half as often; v2.3.3732: + the message diet's path */
+import { MOVE_DIET, dietMayWait, steadyMove, MOVE_PATH, pathWaits, pathTurned } from '@/game/moveDiet.js'; /* v2.3.3204: a steady walk on the safe ground, half as often; v2.3.3732: + the message diet's path */
 /* v2.3.3732: `?diet=1` (or `?diet=0`) in the address, read as the page loads
    -- before anything tidies the address -- and kept for the tab's reloads
    (sessionStorage), so the owner's own phone stays on the path it asked for */
@@ -5742,9 +5742,11 @@ export function setupWebSocket(ctx) {
         var _nowMv = Date.now();
         var _gapMv = moveGapMs();
         /* v2.3.3732: the path (movePathOn above): a steady move waits to
-           GAP_MS, a change goes now, the rest keep the rate */
+           GAP_MS, a change goes now, the rest keep the rate.  v2.3.5440: a
+           rolling board's speed change rides it too (moveDiet.js
+           pathWaits; the board pushes off and rolls off, game/ride.js) */
         if (_pendingMove.pd === 1 && _moveSent && _moveSent.pd === 1) {
-          if (pathMayWait(movePathOn(), _pendingMove, _pendingMoveAt, _moveSent, _moveSentMadeAt)) {
+          if (pathWaits(movePathOn(), isRiding(stateRef.current) && rideFeelOn(), _pendingMove, _pendingMoveAt, _moveSent, _moveSentMadeAt)) {
             _gapMv = MOVE_PATH.GAP_MS;
             if (_nowMv - _lastMoveSentAt < _gapMv) _pathStats.waited++;
           } else if (pathTurned(_moveSent, _pendingMove)) {

@@ -29,6 +29,23 @@
  *      quick computer: ui/TimedBanner.jsx);
  *   9. ...and once the first quest is taken, the same ride rolls out past the
  *      edge, off the board with "Off the board: boards stay in BroTown.".
+ *  10. (v2.3.5440, card SK) the owner, 2026-11-14: "letting go of skateboard
+ *      button makes it roll for a while down to a slow stop.  Also let the
+ *      skateboard take a push or two before reaching max speed when starting
+ *      from a stop".  On the computer's keys, timed by the game's own clock
+ *      (the board's `clk`, the steady step's ms; TRAPS §200): from a stand,
+ *      below top early and at top by about 1.2 s; let go, still rolling,
+ *      slower and slower, stopped within about 2.5 s; the worker followed no
+ *      move past its bound (its own count) and has the board where it is;
+ *  11. ...ridden at the safe ground's edge and let go short of it: off at the
+ *      edge, with no roll past it;
+ *  12. ...and the same start and roll-off on the phone's stick, upright and
+ *      sideways;
+ *  13. (v2.3.5440, the gatekeeper's sitting 10) a REAL harvest begun with E
+ *      while the board rolls (a tree in the commons): the board stops at once,
+ *      the harvest is not cancelled by the roll, and the worker's 'fight'
+ *      reads "Off the board to chop." -- not the owner's old wrong "...to
+ *      fight." (v2.3.3875).
  * Pictures: tools/qa/mp/out/skateboard-*.png (the 8 directions, the button
  * upright, sideways and on a computer).
  */
@@ -66,6 +83,103 @@ const overlaps = (P) => P.page.evaluate(() => {
   return { box: { l: a.left, r: a.right, t: a.top, b: a.bottom }, vw: innerWidth, vh: innerHeight, over: out };
 });
 
+/* v2.3.5440: a real tap on the board button, until the worker has you on
+   (three at most).  The button takes a tap whose touchend comes within
+   TAP_MAX_MS (600 ms) of its touchstart (RideButton.jsx), and on this box,
+   with two pages and a worker loading, the page's thread can be held longer
+   than that between the two: a tap then reaches nothing.  Returns the
+   button's state and the taps it took, or null. */
+async function tapOn(P, el) {
+  for (let taps = 1; taps <= 3; taps++) {
+    await P.page.touchscreen.tap((el.l + el.r) / 2, (el.t + el.b) / 2);
+    const v = await H.waitFor(P, () => window.__btRideBtn(), (q) => q.on === true, { timeout: 5000, label: 'on the board' }).catch(() => null);
+    if (v) return Object.assign({ taps }, v);
+  }
+  return null;
+}
+
+/* ── v2.3.5440 (card SK): the push start and the roll-off ──
+   Timed by the game's own clock: the board's `clk` is the steady step's ms
+   summed while you ride (game/ride.js rideFeel), so a box drawing a few
+   frames a second reads the same seconds a phone does (TRAPS §200). */
+const feel = (P) => P.page.evaluate(() => {
+  const S = window._gameState.current, r = S._ride || {};
+  return { on: !!r.on, why: r.why || null, spd: typeof r.spd === 'number' ? +r.spd.toFixed(4) : null, push: r.push, clk: r.clk || 0,
+    x: S.player.x, y: S.player.y, snd: window.__btRideSound ? window.__btRideSound.state() : null };
+});
+/* the worker's own count of moves it had to follow past its bound
+   (movement.js _moveBudgetInfo): an honest move is never one */
+const followedBy = async (wsPort) => {
+  try {
+    const o = await (await fetch(`http://127.0.0.1:${wsPort}/api/admin/overview`, { headers: { Authorization: `Bearer ${H.ADMIN_KEY}` } })).json();
+    return o && o.moveBudget ? o.moveBudget.followed : null;
+  } catch (e) { return null; }
+};
+/* on the board and standing: hold the way (`press`) until the board has been
+   at top a while, let go (`release`), watch it roll to a stop */
+async function feelRun(P, id, wsPort, press, release) {
+  await H.waitFor(P, (S) => (S._ride ? S._ride.spd : -1), (v) => v === 0, { timeout: 8000, label: 'standing on the board' }).catch(() => null);
+  const f0 = await followedBy(wsPort);
+  const s0 = await feel(P);
+  await press();
+  const up = [];
+  for (let t0 = Date.now(); Date.now() - t0 < 40000;) {
+    const q = await feel(P);
+    up.push(q);
+    if (!q.on || (q.spd >= 1 && q.clk - s0.clk >= 1600)) break;
+    await P.page.waitForTimeout(15);
+  }
+  const r0 = await feel(P);
+  await release();
+  const down = [];
+  for (let t0 = Date.now(); Date.now() - t0 < 60000;) {
+    const q = await feel(P);
+    down.push(q);
+    if (!q.on || (q.spd === 0 && q.clk - r0.clk >= 3200)) break;
+    await P.page.waitForTimeout(15);
+  }
+  /* the worker's copy: its rest packet may land a frame or two late */
+  let gap = null;
+  for (let i = 0; i < 20; i++) {
+    const sv = await H.serverPlayer(wsPort, id).catch(() => null);
+    const me = await feel(P);
+    gap = sv ? Math.round(Math.hypot(sv.x - me.x, sv.y - me.y)) : null;
+    if (gap != null && gap <= 4) break;
+    await P.page.waitForTimeout(200);
+  }
+  const f1 = await followedBy(wsPort);
+  const top = up.find((q) => q.spd >= 1);
+  const early = up.filter((q) => q.clk - s0.clk <= 500 && q.spd > 0 && q.spd < 0.9);
+  const stop = down.find((q) => q.spd === 0);
+  const moved = down.find((q) => q.spd > 0 && Math.hypot(q.x - r0.x, q.y - r0.y) > 2);
+  const rolling = down.filter((q) => q.spd > 0);
+  const last = down[down.length - 1];
+  return {
+    tTop: top ? Math.round(top.clk - s0.clk) : null,
+    early: early.length ? early[0].spd : null,
+    atRelease: r0.spd,
+    tStop: stop ? Math.round(stop.clk - r0.clk) : null,
+    rolled: stop ? Math.round(Math.hypot(stop.x - r0.x, stop.y - r0.y)) : null,
+    moving: !!moved,
+    slowing: rolling.every((q, i) => i === 0 || q.spd <= rolling[i - 1].spd + 1e-6),
+    still: !!(stop && last && Math.hypot(last.x - stop.x, last.y - stop.y) < 0.5),
+    hush: last && last.snd ? last.snd.k : null,
+    on: !!(last && last.on),
+    followed: f0 != null && f1 != null ? f1 - f0 : null,
+    gap,
+    samples: { up: up.length, down: down.length },
+  };
+}
+/* the four lines of a run, the same for the keys and the stick */
+function feelChecks(rec, n, how, R) {
+  rec.ok(`${n}. ${how}, from a stand: below top early (${R.early} of top in the first 0.5 s) and at top at ${R.tTop} ms of the game's clock (by about 1.2 s)`,
+    R.early != null && R.tTop != null && R.tTop >= 550 && R.tTop <= 1250, R);
+  rec.ok(`${n}. ...let go at top (${R.atRelease}): still rolling (${R.moving}), slower and slower (${R.slowing}), stopped at ${R.tStop} ms (within about 2.5 s), ${R.rolled} px on, then still (${R.still}) and silent (${R.hush})`,
+    R.atRelease >= 0.99 && R.moving && R.slowing && R.tStop != null && R.tStop >= 1500 && R.tStop <= 2500 && R.rolled > 40 && R.still && R.hush === 0 && R.on, R);
+  rec.ok(`${n}. ...and the worker refused no move of it: followed none past its bound (${R.followed}), and has the board where it stopped (${R.gap} px apart)`,
+    R.followed === 0 && R.gap != null && R.gap <= 4, R);
+}
+
 export async function run({ browser, wsPort, webPort, rec }) {
   mkdirSync(OUT, { recursive: true });
   const errors = [];
@@ -76,9 +190,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.enterWorld(A);
   const B = await H.newPlayer(browser, { name: 'Watcher', wsPort, webPort, viewport: { width: 1366, height: 768 }, world: 'wheel', wide: true });
   B.page.on('pageerror', (e) => errors.push('computer: ' + String((e && e.message) || e).slice(0, 200)));
-  /* an idle page logs out after 2 minutes (mp-trapping's keep-alive) */
+  /* an idle page logs out after 2 minutes (mp-trapping's keep-alive).
+     v2.3.5440: the phone's too -- on a slow box the computer's way in took
+     over two minutes and the phone, waiting, was logged out ("You were away"),
+     so its first tap on the board button reached nothing */
   let alive = true;
-  (async () => { while (alive) { await B.page.keyboard.press('Control').catch(() => {}); for (let i = 0; i < 40 && alive; i++) await B.page.waitForTimeout(500).catch(() => {}); } })();
+  for (const P of [A, B]) (async () => { while (alive) { await P.page.keyboard.press('Control').catch(() => {}); for (let i = 0; i < 40 && alive; i++) await P.page.waitForTimeout(500).catch(() => {}); } })();
   try {
     await H.enterWorld(B);
     const inA = await H.waitFor(A, (S) => ({ z: S.currentZone, l: !!S._zoneLoading }), (v) => v.z === 'wheel' && !v.l, { timeout: 120000, label: 'phone in the world' }).catch(() => null);
@@ -98,11 +215,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`1. the worker carries boards (caps.ride ${s0.caps}) and the phone shows the board button in town`, s0.caps && !!s0.btn && s0.btn.shown && !!s0.el, s0);
     if (!s0.el) return;
     await A.page.screenshot({ path: join(OUT, 'skateboard-button-upright.png') }).catch(() => {});
-    await A.page.touchscreen.tap((s0.el.l + s0.el.r) / 2, (s0.el.t + s0.el.b) / 2);
-    const on = await H.waitFor(A, () => window.__btRideBtn(), (v) => v.on === true, { timeout: 5000, label: 'on the board' }).catch(() => null);
+    const on = await tapOn(A, s0.el);
     await A.page.waitForTimeout(600);
     const s1 = await state(A);
-    rec.ok(`1. a real tap puts the phone's bro on the board (the worker's word), drawn under him (${JSON.stringify(s1.fx && s1.fx.self)})`,
+    rec.ok(`1. a real tap puts the phone's bro on the board (the worker's word; ${on ? on.taps : '?'} tap), drawn under him (${JSON.stringify(s1.fx && s1.fx.self)})`,
       !!on && s1.ride && s1.ride.on && !!(s1.fx && s1.fx.self), s1);
     await A.page.screenshot({ path: join(OUT, 'skateboard-riding-upright.png') }).catch(() => {});
 
@@ -136,10 +252,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const snd = () => B.page.evaluate(() => ({ ctx: !!(window.BT_AUDIO && window.BT_AUDIO.ctx) || !!(window.__btRideSound), s: window.__btRideSound ? window.__btRideSound.state() : null }));
     await B.page.keyboard.down('d');
     let rolling = null;
-    for (let i = 0; i < 20; i++) { await B.page.waitForTimeout(200); const q = await snd(); if (q.s && q.s.playing && q.s.k === 1 && q.s.gain > 0.01) { rolling = q; break; } rolling = q; }
+    /* v2.3.5440: the level follows the board's speed, so wait for the start's
+       two pushes (about 0.8 s of the game's clock: several seconds here) */
+    for (let i = 0; i < 50; i++) { await B.page.waitForTimeout(200); const q = await snd(); if (q.s && q.s.playing && q.s.k >= 0.99 && q.s.gain > 0.01) { rolling = q; break; } rolling = q; }
     await B.page.keyboard.up('d');
-    rec.ok(`5b. riding and rolling, the board is heard (playing ${rolling && rolling.s && rolling.s.playing}, gain ${rolling && rolling.s && rolling.s.gain} of ${rolling && rolling.s && rolling.s.vol})`,
-      !!(rolling && rolling.s && rolling.s.playing && rolling.s.k === 1 && rolling.s.gain > 0.01), rolling);
+    rec.ok(`5b. riding and rolling, the board is heard (playing ${rolling && rolling.s && rolling.s.playing}, gain ${rolling && rolling.s && rolling.s.gain} of ${rolling && rolling.s && rolling.s.vol}, at ${rolling && rolling.s && rolling.s.k} of its speed)`,
+      !!(rolling && rolling.s && rolling.s.playing && rolling.s.k >= 0.99 && rolling.s.gain > 0.01), rolling);
     /* the eight ways, on the computer's keys, for the owner's picture */
     const ways = [['s'], ['s', 'd'], ['d'], ['w', 'd'], ['w'], ['w', 'a'], ['a'], ['s', 'a']];
     for (let i = 0; i < ways.length; i++) {
@@ -184,6 +302,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const gone = await B.page.evaluate(() => window.__btRideSound.state());
     rec.ok(`5c. off the board the roll falls silent (gain ${hush.gain} after 0.4 s) and stops (playing ${gone.playing} after 2.6 s)`,
       hush.gain < 0.01 && !hush.riding && gone.playing === false, { hush, gone });
+
+    /* ── 10. v2.3.5440: the push start and the roll-off, on the computer's keys ──
+       along the east road, well inside the safe ground and the Mayor gate */
+    await H.glideTo(B, G.cx + R - 1300, G.cy, { speed: 600, timeoutMs: 30000 });
+    await B.page.waitForTimeout(800);
+    await B.page.keyboard.press('z');
+    const on10 = await H.waitFor(B, () => window.__btRideBtn(), (v) => v.on === true, { timeout: 5000, label: 'on, for the roll' }).catch(() => null);
+    const R10 = on10 ? await feelRun(B, idB, wsPort, () => B.page.keyboard.down('d'), () => B.page.keyboard.up('d')) : null;
+    console.log(`    keys: ${JSON.stringify(R10)}`);
+    if (R10) feelChecks(rec, 10, 'On the computer\'s keys', R10);
+    else rec.ok('10. on the board for the roll (guard)', false, { on10 });
+    await B.page.keyboard.press('z');
+    await H.waitFor(B, () => window.__btRideBtn(), (v) => v.on === false, { timeout: 5000, label: 'off, after the roll' }).catch(() => null);
 
     /* ── 8. v2.3.3839: the Mayor gate, ridden into on the computer's keys ── */
     const gateLook = () => B.page.evaluate((c) => {
@@ -241,6 +372,83 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`9. the first quest taken (${!!tut}), the computer rides out past the edge (r ${g9 && g9.r} of ${R}) and off the board (${g9 && g9.ride && g9.ride.why}) with "Off the board: boards stay in BroTown." (${pop9})`,
       !!tut && !!g9 && g9.r > R && !!g9.ride && !g9.ride.on && g9.ride.why === 'edge' && pop9, g9);
 
+    /* ── 11. v2.3.5440: let go short of the edge at top: off AT the edge,
+       with no roll past it (game/ride.js rideCheck, then no roll after) ── */
+    await H.glideTo(B, G.cx + R - 800, G.cy, { speed: 600, timeoutMs: 30000 });
+    await B.page.waitForTimeout(800);
+    await B.page.keyboard.press('z');
+    await H.waitFor(B, () => window.__btRideBtn(), (v) => v.on === true, { timeout: 5000, label: 'on, for the edge' }).catch(() => null);
+    await H.waitFor(B, (S) => (S._ride ? S._ride.spd : -1), (v) => v === 0, { timeout: 8000 }).catch(() => null);
+    await B.page.keyboard.down('d');
+    let e0 = await feel(B);
+    for (let t0 = Date.now(); Date.now() - t0 < 40000 && e0.on && e0.x < G.cx + R - 110;) { await B.page.waitForTimeout(15); e0 = await feel(B); }
+    await B.page.keyboard.up('d');
+    const e11 = [];
+    for (let t0 = Date.now(); Date.now() - t0 < 30000;) { const q = await feel(B); e11.push(q); if (!q.on) break; await B.page.waitForTimeout(15); }
+    await B.page.waitForTimeout(1500);
+    const eEnd = await feel(B);
+    const eOff = e11.find((q) => !q.on) || null;
+    const rOff = eOff ? Math.round(Math.hypot(eOff.x - G.cx, eOff.y - G.cy) - R) : null;
+    const rEnd = Math.round(Math.hypot(eEnd.x - G.cx, eEnd.y - G.cy) - R);
+    console.log(`    edge: ${JSON.stringify({ letGo: { spd: e0.spd, r: Math.round(Math.hypot(e0.x - G.cx, e0.y - G.cy) - R) }, off: eOff && { why: eOff.why, r: rOff }, end: rEnd, n: e11.length })}`);
+    rec.ok(`11. let go at top (${e0.spd}) ${Math.round(R - Math.hypot(e0.x - G.cx, e0.y - G.cy))} px short of the safe ground's edge, a roll that would carry ~200 px: off at the edge (${eOff && eOff.why}, ${rOff} px past it), and no roll after (${rEnd} px past it 1.5 s later)`,
+      e0.spd >= 0.99 && !!eOff && eOff.why === 'edge' && rOff != null && rOff >= 0 && rOff <= 20 && rEnd <= rOff + 1, { e0, eOff, eEnd, rOff, rEnd });
+
+    /* ── 13. v2.3.5440: a real harvest begun with E while the board rolls ──
+       (the gatekeeper's sitting 10: the roll's way cancelled it the next
+       frame, and the worker's 'fight' read "Off the board to fight.") */
+    await H.grant(wsPort, idB, 'item', { invKey: 'woodcutting_axe', count: 1 }).catch(() => {});
+    await H.waitFor(B, (S) => (((S.rpg || {}).inventory || {}).woodcutting_axe || 0), (v) => v > 0, { timeout: 20000, label: 'the axe' }).catch(() => null);
+    const tree = await B.page.evaluate(([cx, cy, r]) => {
+      const S = window._gameState.current, p = S.player;
+      let best = null, d = Infinity;
+      for (const n of S.gatherNodes || []) {
+        if (n.nodeType !== 'tree' || !n.alive || (n.gatherLvl || 1) !== 1) continue;
+        if (Math.hypot(n.x - cx, n.y - 130 - cy) > r - 400) continue;   /* its stand well inside the safe ground */
+        const dd = Math.hypot(n.x - p.x, n.y - p.y);
+        if (dd < d) { d = dd; best = { id: n.id, x: n.x, y: n.y }; }
+      }
+      return best;
+    }, [G.cx, G.cy, R]);
+    let h13 = { tree: !!tree };
+    if (tree) {
+      await H.hopTo(B, tree.x, tree.y - 130);   /* mp-deskharvest's stand for a tree */
+      await B.page.waitForTimeout(1200);
+      await H.closeNpcDialogue(B).catch(() => {});
+      await B.page.keyboard.press('z');
+      await H.waitFor(B, () => window.__btRideBtn(), (v) => v.on === true, { timeout: 5000, label: 'on, by the tree' }).catch(() => null);
+      await H.waitFor(B, (S) => (S._ride ? S._ride.spd : -1), (v) => v === 0, { timeout: 8000 }).catch(() => null);
+      /* a short push along the stand's line, so it rolls a little and stays in reach */
+      const look13 = () => B.page.evaluate((id) => {
+        const S = window._gameState.current, r = S._ride || {};
+        return { on: !!r.on, why: r.why || null, spd: r.spd || 0, ex: S._extraction ? { skill: S._extraction.skill, status: S._extraction.status } : null,
+          reach: !!(S._proxNode && S._proxNode.id === id), x: S.player.x,
+          line: (S.dmgNumbers || []).map((d) => d && d.text).filter((t) => typeof t === 'string' && /^Off the board/.test(t)).slice(-1)[0] || null };
+      }, tree.id);
+      let q = await look13();
+      for (let tries = 0; tries < 4 && !(q.spd > 0 && q.reach); tries++) {
+        await B.page.keyboard.down('d');
+        for (let t0 = Date.now(); Date.now() - t0 < 4000; ) { q = await look13(); if (q.spd > 0) break; await B.page.waitForTimeout(10); }
+        await B.page.keyboard.up('d');
+        q = await look13();
+      }
+      const atE = q;
+      await B.page.keyboard.press('e');
+      await B.page.waitForTimeout(300);
+      const justAfter = await look13();
+      let off = null;
+      let seen = justAfter.line;
+      for (let t0 = Date.now(); Date.now() - t0 < 8000; ) { const w = await look13(); seen = w.line || seen; if (!w.on) { off = w; break; } await B.page.waitForTimeout(100); }
+      let later = await look13();
+      for (let t0 = Date.now(); Date.now() - t0 < 1500; ) { later = await look13(); seen = later.line || seen; await B.page.waitForTimeout(100); }
+      h13 = { tree: true, atE, justAfter, off, later, seen };
+    }
+    console.log(`    harvest mid-roll: ${JSON.stringify(h13)}`);
+    rec.ok(`13. E pressed by a tree while the board rolls (at ${h13.atE && h13.atE.spd.toFixed(2)} of top): the board stops at once (${h13.justAfter && h13.justAfter.spd}) and the harvest begins (${h13.justAfter && h13.justAfter.ex && h13.justAfter.ex.skill})`,
+      !!h13.atE && h13.atE.spd > 0 && h13.atE.reach && !!h13.justAfter && h13.justAfter.spd === 0 && !!h13.justAfter.ex && h13.justAfter.ex.skill === 'woodcutting', h13);
+    rec.ok(`13. ...the worker puts you off (${h13.off && h13.off.why}) with "${h13.seen}", and the roll never cancelled the harvest (${h13.later && h13.later.ex && h13.later.ex.status} 1.5 s on)`,
+      !!h13.off && h13.off.why === 'fight' && h13.seen === 'Off the board to chop.' && !!(h13.later && h13.later.ex), h13);
+
     /* 6. sideways: back in town, the phone turned */
     await H.glideTo(A, G.arrival.x + 200, G.arrival.y, { speed: 450, timeoutMs: 30000 });
     await A.page.setViewportSize({ width: 844, height: 390 });
@@ -253,6 +461,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await A.page.waitForTimeout(800);
     const ov2 = await overlaps(A);
     rec.ok(`6. ...and upright on no other control (${ov2 && ov2.over.join(', ')})`, !!ov2 && ov2.over.length === 0, ov2);
+
+    /* ── 12. v2.3.5440: the same start and roll-off on the phone's stick,
+       upright and sideways (the stick's own numbers: S.stickX, as the
+       joystick sets them; the east road, as 10) ── */
+    const stick = (x) => () => A.page.evaluate((v) => { const S = window._gameState.current; S.stickX = v; S.stickY = 0; }, x);
+    for (const [how, vp] of [['upright', { width: 390, height: 844 }], ['sideways', { width: 844, height: 390 }]]) {
+      await A.page.setViewportSize(vp);
+      await H.glideTo(A, G.cx + R - 1300, G.cy, { speed: 450, timeoutMs: 30000 });
+      await A.page.waitForTimeout(1000);
+      if (!(await A.page.evaluate(() => window.__btRideBtn().on))) {
+        const b12 = await state(A);
+        if (b12.el) await tapOn(A, b12.el);
+      }
+      const R12 = await feelRun(A, idA, wsPort, stick(1), stick(0));
+      console.log(`    stick ${how}: ${JSON.stringify(R12)}`);
+      feelChecks(rec, 12, `The phone ${how}, on its stick`, R12);
+    }
+    await A.page.setViewportSize({ width: 390, height: 844 });
   } finally {
     alive = false;
     rec.ok('7. no page errors', errors.length === 0, errors.slice(0, 4));

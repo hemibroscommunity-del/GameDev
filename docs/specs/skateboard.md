@@ -276,3 +276,141 @@ would make every gather on the board take two presses.
 Client-only: the worker's word is unchanged. Test: `server/test/ride.test.mjs`
 §6b (each skill's line, a pose, a trap, a swing, a harvest long over, and the
 worker's `fight` mid-harvest reading "Off the board to fish.").
+
+## v2.3.5440: it pushes off, and rolls off (card SK)
+
+The owner, 2026-11-14: *"on skateboard create a roll off effect where letting
+go of skateboard button makes it roll for a while down to a slow stop. Also let
+the skateboard take a push or two before reaching max speed when starting from
+a stop"*.
+
+**The reading chosen** (the owner may correct it): "letting go" is letting go
+of the MOVEMENT while on the board: the stick on a phone, the keys on a
+computer. The board button is as it was: a tap gets on, a tap again gets off,
+and getting off stops you at once.
+
+**What you feel:**
+
+- **From a stand, two pushes.** The first kick takes you to about half your top
+  speed, the second to top: about a second in all, the bro's jog legs down for
+  each push. At top the push every 2 s stays, for the look.
+- **Let go, it rolls off.** The board rolls on the way you were going, quick to
+  slow at first and gentlest at the end, and stops about 2 s after you let go
+  from top (about 200 game px on). He stands sideways on it as it glides.
+- **Steer again while it rolls:** it carries on from the speed it has, with a
+  push. It never starts again from nothing.
+- **The wheels' sound follows the speed** (`rideSound.js`): it rises with the
+  pushes and fades as the board slows. No new sound.
+
+**It stops at once** (no roll):
+
+- off the board for any reason: the edge, a hit, a fight, a duel, death, a zone
+  change, the kill switch, a tap;
+- a wall, a prop, a monster or the Mayor gate head-on: a step that went
+  under 5% of its length. At a slant into a wall the board slides along it as
+  a walk does, at the board's speed times the slant's share (150 px a second
+  at 60 degrees, as the instant board did; v2.3.5440's first cut crawled
+  there at 10.5, the gatekeeper's sitting 10);
+- a harvest begun while it rolls (E, or a tap on a resource): the board
+  stops, so the roll never carries you off the harvest you started, and the
+  worker's word reads "Off the board to chop." (the gatekeeper's sitting 10:
+  the roll cancelled the harvest the next frame and the line came back as
+  the owner's old wrong "...to fight.");
+- every hold that stops the walk: the loading veils, the race line, a stun, the
+  loot freeze;
+- the shield, a swing or a roll step you off the board first, as before;
+- at the safe ground's edge you step off there, as before, and nothing rolls on
+  past it.
+
+**The numbers** are one table, `RIDE_FEEL` in `src/game/ride.js`, one line a
+number, so "longer" or "fewer pushes" is one line:
+
+| number | now | what |
+|---|---|---|
+| `PUSH_ADD` | 0.55 | what one push adds, a share of top (1: one push) |
+| `PUSH_GAP_MS` | 600 | from one push's start to the next, below top |
+| `COAST_MS` | 2000 | let go at top, stopped this long after |
+| `COAST_EASE` | 2 | the roll-off's curve (1 a straight line) |
+| `STOP` | 0.0025 | under this share it has stopped (under a px a second) |
+| `HOLD` | 0.1 | the stick past this is held |
+| `BLOCK_K` | 0.05 | a step under this share of its length was blocked (head-on) |
+| `BLOCK_MIN_PX` | 0.5 | a step judged only from this long |
+
+A push is the pose's own length (`RIDE_LOOK.PUSH_MS`, 0.4 s), and its speed
+comes in over it with an ease-out. Measured: top at about 0.83 s from a stand,
+the same at 60 and 20 frames a second; the roll-off from top stopped at 1.9 s.
+
+**How it works** (`rideFeel`, `rideStepped`):
+
+- The board's speed is `S._ride.spd`, a share of top, in the ride's one record
+  with its push clock (`push`), its way (`wx`, `wy`), its own clock (`clk`, the
+  steady step's ms) and the last step (`fx`..`tl`). No second phase beside
+  `on`.
+- BroTown's movement step takes the walk's `RIDE_MULT` at that share. Let go,
+  the stick's way is the roll's, through the SAME step: the collision, the
+  water and everything after it see a walk.
+- The roll is memoryless: the square root of the speed falls in a straight line
+  over `COAST_MS`, so a roll from part way is the tail of one from top, and a
+  slow frame and a quick one roll the same.
+- The step is judged on the next frame, so a wall and the Mayor gate's hold
+  (which puts you back after the step) both stop it.
+- To make room in BroTown's loop (its size may only fall:
+  `tools/guards/four-lines`), the ride's fight test and its off-board line
+  moved into `ride.js` (`rideFighting`, `rideLineDue`), unchanged. BroTown no
+  longer writes `S._ride` at all.
+
+**The worker: no change.** It judges a rider's moves at `RIDE.MULT`, an upper
+bound; a slower start and a roll are inside it. The scenario proves it: the
+worker followed no move past its bound (its own count), and had the board where
+it stopped.
+
+**Your own figure** pushes exactly when the board does and glides while it
+rolls: `entityRenderer.js` hands `rideLook` your ride's record (one line; the
+planning session's yes, 2026-11-14).
+
+**The moves it sends** (the gatekeeper's sitting 10): a changing speed is
+not a steady walk to the message diet, so the start and the roll-off sent a
+move nearly every batch: a start, 4 s held and a stop sent 80 moves where the
+instant board sent 21. On the board, a move that keeps its heading and its
+line now waits like a steady walk's (200 ms) however its speed changed, while
+the worker's glide at the last speed sent is within 8 px of you along the line
+(`moveDiet.js` `pathRideMayWait`, asked with `pathMayWait` through
+`pathWaits` by `wsClient.js`'s batcher). Now 31: the same 5.3 a second of motion as a walk; the 10 over
+21 are the ~1.9 s more the board moves as it rolls off. `ride.test` §7j counts
+them with the real functions at 60 frames a second and holds the line (32).
+The worker judges every move from the last one's place, as ever: nothing on
+the wire changes.
+
+**Others see it** through the moves they already get: nothing new on the wire.
+Their pose of you keeps the rule from your moves: a push setting off, the
+start's second one 0.6 s later, then one every 2 s (a push may show once in
+your roll on their screen).
+
+**The switch:** `?ridecoast=0` (or `off`, `false`) in the address brings back
+the instant start and stop, and the old pose rule. Its row is in
+`docs/SWITCHES.md`.
+
+**Tests:**
+
+- `server/test/ride.test.mjs` §7: top within two pushes; the roll from top to a
+  stop in about 2 s, slowest at the end, the same at any frame rate; stopped at
+  once on a step-off, the worker's word, a hold, a wall, past the edge; at a
+  slant along a wall it slides (60 and 80 degrees held: the board's speed
+  times the slant's share); a harvest begun mid-roll stops it and its line
+  names the skill; a resume with no new start; the pose's pushes the model's;
+  the switch thrown gives the old way; §7j the moves sent (above). This touches
+  `server/test/`, so its merge deploys the worker.
+- `node tools/qa/mp/run.mjs skateboard` checks 10 to 12, timed by the game's
+  own clock (`clk`; TRAPS §200): on the computer's keys and the phone's stick,
+  upright and sideways, from a stand below top early and at top by about
+  1.2 s; let go, still rolling, slowing, stopped within about 2.5 s, still and
+  silent; the worker followed no move; let go at top 100 px short of the edge,
+  off at the edge with nothing past it; (13) a REAL chop begun with E while the
+  board rolls: the board stops, the harvest goes on, and the line reads "Off
+  the board to chop.".
+- `mp-boardwheels` check 2 ("stopped, the wheels hold still") waits for the
+  board's own speed to reach 0 before it looks, never a fixed wait (TRAPS
+  §177: the board rolls off now). It is red on `main` too, before this change
+  and the same after: the drawn rider drifts about half a game px in its
+  0.8 s once stopped (5.629 -> 5.635 turns on main's build), its own fault,
+  not the roll-off's.

@@ -255,6 +255,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `pathall` | worker | switch | v2.3.3726 | false | logic | `movepath` | no | Only a phone that asks with ?diet=1 gets the move glide. |
 | `rest` | worker | switch | v2.3.3539 | false | logic |  | no | Un-advertises the Hotel's rest: it rests nobody and pays no Well Rested XP. |
 | `ride` | worker | switch | v2.3.3776 | false | logic |  | no | Un-advertises riding and ends every ride on the rider's next move. |
+| `?ridecoast` | page | switch | v2.3.5440 | =0, off, false | logic |  | no | The board starts at top speed and stops the moment you let go, as before: no pushes to speed up, no roll-off. |
 | `rollwindow` | worker | switch | v2.3.3292 | false | logic |  | no | A roll claim is trusted as before, paid or not. |
 | `safeheal` | worker | switch | v2.3.3569 | false | logic |  | no | The safe ground's heal is the wilds' trickle again. |
 | `serverdead` | worker | switch | v2.3.4373 | false | logic |  | no | A phone's move may write `dead` again (the move's write back). |

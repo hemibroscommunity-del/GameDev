@@ -486,7 +486,7 @@ import { elemMoveMult, gustStep, wobbleTurn } from '@/game/elemHits.js';   /* v2
 import { updateWheelSwim, isWheelSwimming, wheelSwimMult, swimGlide, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wheelSwim.js';   /* v2.3.3003: swimming in the Wheel */
 import { quietOn, keepaliveDue } from '@/game/quietPhone.js';   /* v2.3.3254: the quiet phone -- keepalives and the harvest heartbeat only when needed */
 import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust, sprintOutBreathTurn, stopSprint } from '@/game/sprint.js';
-import { rideMult, rideCheck, isRiding } from '@/game/ride.js';   /* v2.3.3776: the skateboard (server/src/ride.js) */
+import { rideMult, rideCheck, isRiding, rideFeel, rideStepped, rideLineDue } from '@/game/ride.js';   /* v2.3.3776: the skateboard (server/src/ride.js); v2.3.5440: its push start and roll-off */
 import { makeFrameClock, frameSmoothOn } from '@/game/frameClock.js';   /* v2.3.4400: a steady step on a steady screen */
 import { framePaceOn, makeFramePacer, noteDrawn, whenDrawn, beforeDraw, runBeforeDraw } from '@/game/framePacer.js';   /* v2.3.4400: a steady rate on a screen the game cannot keep up with */
 import { accTrack } from '@/game/accuracy.js';   /* v2.3.4545: the shot counts that ride the track */
@@ -5456,18 +5456,17 @@ export var BroTown = function BroTown(_ref0) {
            Off the board at the safe ground's edge, out of the Wheel, in the
            water, dead or fighting -- the phone's own step, ahead of the
            worker's word (game/ride.js; server/src/ride.js), with its one
-           line.  On the board there is no sprint: the board is the faster. */
+           line.  On the board there is no sprint: the board is the faster.
+           v2.3.5440: the fight's test (the shield, an attack, a swing, a bash,
+           a roll) and the line taken once are ride.js's own (rideFighting,
+           rideLineDue), to make room for the roll-off below. */
         try {
           if (isRiding(S)) {
-            var _rg = rideGround(S);
-            _rg.fighting = !!(S._shieldUp || S.autoAttack || S.isSwinging || S._bashDash || S._dodgeRoll);
-            rideCheck(S, _sprNow, _rg);
+            rideCheck(S, _sprNow, rideGround(S));
             if (isRiding(S) && S._sprint && S._sprint.on) stopSprint(S, 'ride', _sprNow);
           }
-          if (S._ride && S._ride.line && S.player) {
-            pushDmgPopup(S, S.player.x, S.player.y - 70, S._ride.line, '#F4E7C8');
-            S._ride.line = null;
-          }
+          var _rLine = rideLineDue(S);
+          if (_rLine) pushDmgPopup(S, S.player.x, S.player.y - 70, _rLine, '#F4E7C8');
         } catch (e) { /* on foot */ }
         var _sprEv = updateSprint(S, _sprNow, {
           moving: (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1)
@@ -5579,7 +5578,7 @@ export var BroTown = function BroTown(_ref0) {
            both were 1 */
         var finalSpd = S._sled ? 0 : baseSpd * terrainMult * spdBuff * amuletSpdMult * swimMult * shieldMult; /* sled overrides movement */
         finalSpd *= wheelSwimMult(S);   /* v2.3.3003: the Wheel's water, in strokes (1 on land) */
-        finalSpd *= rideMult(S);   /* v2.3.3776: RIDE_MULT on the skateboard; the worker judges the moves at the same (server/src/ride.js) */
+        finalSpd *= rideMult(S);   /* v2.3.3776: RIDE_MULT on the skateboard; the worker judges the moves at the same (server/src/ride.js); v2.3.5440: x the board's speed below (rideFeel) */
         finalSpd *= sprintMult(S);   /* v2.3.3006: SPRINT_MULT while you sprint; the worker widens its bound by the same for the moves it paid for (server/src/sprint.js) */
         /* v2.3.1405: per-zone loading gate — while a zone's assets warm
            behind the loading overlay (zoneTransitions.js), freeze the
@@ -5594,6 +5593,20 @@ export var BroTown = function BroTown(_ref0) {
            (game/elemHits.js; the worker said so on the hit). */
         finalSpd *= elemMoveMult(S, Date.now());
         finalSpd *= bowFeelWalkMult(S);   /* v2.3.4802: a drawn bow slows the walk, settled it plants you (game/bowDraw.js; slower only) */
+        /* ═══ v2.3.5440: THE BOARD PUSHES OFF, AND ROLLS OFF ═══
+           The owner: "letting go of skateboard button makes it roll for a
+           while down to a slow stop.  Also let the skateboard take a push or
+           two before reaching max speed when starting from a stop".  On the
+           board the walk's RIDE_MULT is taken at the board's speed, a share
+           of top: two pushes from a stand, and let go (the stick, the keys)
+           it rolls on the way it went down to a stop in about 2 s -- through
+           THIS step, so the walls, the water and everything below see a walk.
+           A hold above (the veils, the race line), a stun, the loot freeze or
+           a step a wall stopped: the board stops at once (game/ride.js
+           rideFeel).  1 and the stick as it is on foot; `?ridecoast=0`: the
+           instant start and stop. */
+        var _rFeel = isRiding(S) ? rideFeel(S, dx, dy, (S._dtScale || 1) * 16.667, !(finalSpd > 0) || !!_realStunned || !!_playerLootFrozen || _playerDead, P.x, P.y) : null;
+        if (_rFeel) { finalSpd *= _rFeel[0]; dx = _rFeel[1]; dy = _rFeel[2]; }
         /* v2.3.3620: a rock monster's bash leaves your steering swaying a
            second after the daze -- the stick's way turned to and fro
            (game/elemHits.js wobbleTurn; the worker said so on the hit) */
@@ -5691,6 +5704,7 @@ export var BroTown = function BroTown(_ref0) {
         var _step = finalSpd * (S._dtScale || 1);
         var nx = P.x + dx * _step;
         var ny = P.y + dy * _step;
+        rideStepped(S, P.x, P.y, nx, ny);   /* v2.3.5440: judged next frame: a step a wall or the Mayor gate stopped ends the roll */
 
         /* Store velocity for facing/mirroring code */
         P.vx = dx * finalSpd;

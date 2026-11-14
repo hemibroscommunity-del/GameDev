@@ -368,6 +368,7 @@ export const SWITCHES = Object.freeze([
   { name: '?questpath', side: 'page', system: 'quests', kind: 'switch', born: 2992, thrown: 'present', risk: 'logic', needs: [], fallback: 'no', off: 'The quest\'s road on the ground comes back, with its Settings row.' },
   { name: '?repairms', side: 'page', system: 'world', kind: 'lever', born: 2995, thrown: 'a number of ms', risk: 'none', needs: [], fallback: 'no', off: 'A test\'s own time for a broken object to mend.' },
   { name: '?report', side: 'page', system: 'debug', kind: 'switch', born: 5122, thrown: '=0', risk: 'logic', needs: [], fallback: 'no', off: 'This phone sends no field report.' },
+  { name: '?ridecoast', side: 'page', system: 'movement', kind: 'switch', born: 5440, thrown: '=0, off, false', risk: 'logic', needs: [], fallback: 'no', off: 'The board starts at top speed and stops the moment you let go, as before: no pushes to speed up, no roll-off.' },
   { name: '?room', side: 'page', system: 'wire', kind: 'lever', born: 217, thrown: 'a room\'s name', risk: 'none', needs: [], fallback: 'no', off: 'Joins the named room, not the lobby\'s.' },
   { name: '?sfxahead', side: 'page', system: 'audio', kind: 'switch', born: 5006, thrown: '=0, off', risk: 'memory', needs: [], fallback: 'no', off: 'The four level sounds are pinned again, not loaded a level ahead.' },
   { name: '?shieldaim', side: 'page', system: 'combat', kind: 'value', born: 3845, thrown: '=mouse', risk: 'logic', needs: [], fallback: 'no', off: 'On a computer, the shield\'s guard always follows the pointer.' },

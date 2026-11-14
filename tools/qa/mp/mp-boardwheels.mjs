@@ -118,7 +118,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.screenshot({ path: join(OUT, `boardwheels-${label}-${String(i).padStart(2, '0')}.png`), clip: await clip(P) }).catch(() => {});
     }
 
-    /* 2. stopped: still */
+    /* 2. stopped: still.  v2.3.5440: the board rolls off when you let go
+       (game/ride.js rideFeel; card SK), so "stopped" is its own speed at 0 by
+       the game's state, never a fixed wait (TRAPS §177) */
+    await H.waitFor(P, (S) => (S._ride && S._ride.spd) || 0, (v) => !(v > 0), { timeout: 30000, label: 'the board rolled to a stop' }).catch(() => null);
     await P.page.waitForTimeout(1200);
     const s0 = await fx(P);
     await P.page.waitForTimeout(800);
