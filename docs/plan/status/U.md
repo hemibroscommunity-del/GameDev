@@ -1,6 +1,6 @@
 card: U
-branch: claude/plan-u-4-five (one branch a PR, each begun from the one before)
-prs: #1721 (ready), #1722 (ready), #1723 (ready), #1725 (ready)
+branch: claude/plan-u-5-three (one branch a PR, each begun from the one before)
+prs: #1721, #1722, #1723, #1725, #1727 (all ready)
 state: ready
 
 ## Done
@@ -15,11 +15,12 @@ state: ready
   (150): unlisted 1959.
 - PR 4 (5163, #1725): movement, economy, preload, skills, memory (199):
   unlisted 1760.
+- PR 5 (5164, #1727): debug, art, data (182): unlisted 1578.
 
 ## Next
 
-- PR 5 (5164): debug, art, data. Then wire, combat, world; look; render;
-  ui (the systems of BroTown.jsx and the two renderers last).
+- PR 6 (5165): wire, combat, world. Then look; render; ui (the systems of
+  BroTown.jsx and the two renderers last).
 
 ## Found
 

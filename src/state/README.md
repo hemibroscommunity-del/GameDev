@@ -94,3 +94,4 @@ until the map places their file; the guard lists those files by name.
 - `movement`, `economy`, `preload`, `skills`, `memory` (v2.3.5163): the next
   five, 199 rows. `S.player` is in `skills`: the census gives it
   `src/game/lifeSkillRewards.js`, the file that changes inside it most.
+- `debug`, `art`, `data` (v2.3.5164): the next three, 182 rows.
