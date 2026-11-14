@@ -211,8 +211,10 @@ function callsIn(s) {
       else if (ch === ')') depth--;
     }
     const args = s.slice(m.index + m[0].length, i - 1);
-    const lit = /,\s*'([A-Za-z0-9_]+)'\s*$/.exec(args);
-    out.push({ verb: m[1].toLowerCase(), road: lit ? lit[1] : null, line: lineOf(s, m.index) });
+    /* v2.3.5084: a give may hand the door its payout after the road (inbox.js,
+       the mail): `..., 'mail_gold', entry)` -- the road is then the one before */
+    const lit = /,\s*'([A-Za-z0-9_]+)'\s*(,\s*[A-Za-z_$][\w$.]*\s*)?$/.exec(args);
+    out.push({ verb: m[1].toLowerCase(), road: lit ? lit[1] : null, credit: !!(lit && lit[2]), line: lineOf(s, m.index) });
   }
   return out;
 }
@@ -228,6 +230,7 @@ function callsIn(s) {
       const row = GOLD_ROADS[c.road];
       if (row.dir !== c.verb) bad.push(where + ' ' + c.road + ' is a ' + row.dir + ', called as a ' + c.verb);
       if (row.at.split(' ')[0] !== f) bad.push(where + ' ' + c.road + '\'s row says it is in ' + row.at.split(' ')[0]);
+      if (c.credit && row.other !== 'inbox:') bad.push(where + ' ' + c.road + ' hands the door a payout, and only the mail\'s road may (v2.3.5084)');
       (byRoad[c.road] = byRoad[c.road] || []).push(where);
     }
   }

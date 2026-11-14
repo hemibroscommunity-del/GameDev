@@ -315,6 +315,21 @@ const send = async (room, w, type, payload) => { await room.webSocketMessage(w, 
     await room._creditPlayer('bp_ws_a', { opId: 'duelpot:d1', source: 'duel', kind: 'gold', payload: { amount: 60 }, note: 'duel won' });
     await state.storage.delete('duelEscrow:d1');
     note('duel pot');
+    /* goods by the mail: a quest's item, the bag full (a mint) */
+    await room._creditPlayer('bp_ws_b', { opId: 'questitem:bp_ws_b:q1:fish_minnow#1', source: 'quest', kind: 'item', payload: { invKey: 'fish_minnow', count: 3 }, note: 'a quest item' });
+    note('quest item by the mail');
+    /* the champion's prize: three entries held (escrow), and the house's
+       gold on top (a mint), in ONE payout that says the house's part */
+    const D = room.playerState.bp_ws_d;
+    for (const [id, ps] of [['bp_ws_a', A], ['bp_ws_b', B], ['bp_ws_d', D]]) {
+      room._goldTake(ps, 100, 'arena_entry');
+      state._store.set('arena_entry:t9:' + id, { wager: 100, paidAt: NOW, n: 1 });
+    }
+    note('arena entries');
+    await room._creditPlayer('bp_ws_d', { opId: 'arenapot:t9', source: 'arena', kind: 'gold', payload: { amount: 500, house: 200 }, note: 'Gladiator Arena champion' });
+    for (const id of ['bp_ws_a', 'bp_ws_b', 'bp_ws_d']) await state.storage.delete('arena_entry:t9:' + id);
+    check('1. the champion was paid 500: 300 from the entries, 200 the house\'s', D.coins === 125 - 100 + 500, D.coins);
+    note('arena prize');
   }
   /* a death outside town: the bag to the pile on the ground (escrow), B takes it (escrow) */
   {
@@ -346,23 +361,9 @@ const send = async (room, w, type, payload) => { await room.webSocketMessage(w, 
   if (process.env.WORLD_SUM_PLANT === '1') { room._goldGive(A, 50, 'bank_withdraw'); note('PLANTED: a vault paid out twice'); }
   const end = count(room, state);
   const u = unexplained(start, end);
-  /* KNOWN, and only while it is so: a payout by the mail is counted by its
-     own class only when inbox.js hands it to the door (`'mail_gold', entry`).
-     Until those two lines land (asked of the owner, 2026-11-14) the two
-     mints this scenario lands by the mail -- the grant (75) and the daily
-     quest (40) -- are the one thing unexplained, and nothing else may be.
-     The day the lines land this is 0 and the line below says so. */
-  const inboxSrc = (await import('node:fs')).readFileSync(new URL('../src/inbox.js', import.meta.url), 'utf8');
-  const mailCounted = /'mail_gold',\s*entry\)/.test(inboxSrc);
-  const KNOWN_GOLD = mailCounted ? 0 : 75 + 40;
-  if (KNOWN_GOLD) console.log('KNOWN: ' + KNOWN_GOLD + ' gold of mail mints not counted until inbox.js hands the payout to the door (card E, Needs)');
-  /* the known part at each step: nothing before the grant lands, its 75
-     from then, and the daily quest's 40 on top from then */
-  const at = (w) => steps.findIndex(([x]) => x === w);
-  const knownAt = (i) => (mailCounted || i < at('grant landed') ? 0 : i < at('daily quest') ? 75 : 115);
-  const bad = steps.filter(([, g, s], i) => g !== knownAt(i) || s !== 0);
-  check('1. after every step, unexplained gold 0 (but the known mail mints) and every bag key 0', bad.length === 0, bad);
-  check(`1. at the end: unexplained gold ${u.gold}` + (KNOWN_GOLD ? ` (${KNOWN_GOLD} of it the known mail mints)` : ''), u.gold === KNOWN_GOLD, u);
+  const bad = steps.filter(([, g, s]) => g !== 0 || s !== 0);
+  check('1. after every step, unexplained gold 0 and every bag key 0', bad.length === 0, bad);
+  check(`1. at the end: unexplained gold ${u.gold}`, u.gold === 0, u);
   check('1. ...and no bag key unexplained', Object.keys(u.goods).length === 0, u.goods);
   check('1. no piece of gear or pet is held twice', end.dup.length === 0, end.dup);
   check('1. every record is marked and every marked value record has a reader, at the end too', end.unmarked.length === 0 && end.noReader.length === 0, { unmarked: end.unmarked, noReader: end.noReader });
