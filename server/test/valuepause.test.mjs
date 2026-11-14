@@ -228,7 +228,7 @@ async function world(flags) {
     ['/api/store/bid', '_storeFetch', { playerId: IDS.a, listingId: 'vp-listing', amount: 10 }],
   ]) {
     let out = null;
-    await play('http:' + route, async () => { out = await http(fetch, route, body); }, () => out && out.ok === false && out.error === PAUSE.WORDS && out.reason === PAUSE.CODE);
+    await play('http:' + route, async () => { out = await http(fetch, route, body); }, () => out && out.ok === false && out.error === PAUSE.WORDS && !('reason' in out));   /* no reason: the store's popup maps any reason to its own gear words */
   }
   const bad = steps.filter((x) => x.moved || !x.heard);
   check(`5. every covered action (${steps.length}) answered with its own refusal and the words, nothing moved`, steps.length === Object.keys(VALUE_PAUSE).length && bad.length === 0 && snap() === before, { bad, n: steps.length });

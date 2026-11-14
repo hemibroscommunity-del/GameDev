@@ -119,9 +119,13 @@ export function valuePaused(room, now) {
   } catch (e) { return false; }   /* a broken read never stops the game */
 }
 
-/** The HTTP routes' answer, their own shape ({ok:false, settled:true, error}). */
+/** The HTTP routes' answer, their own shape ({ok:false, settled:true, error}).
+ *  No `reason`: the Auction House's popup reads any reason through its own
+ *  map of gear refusals (gearSellReason.js), whose fallback says "That piece
+ *  cannot be sold" -- the gatekeeper's sitting 11.  Without one, every
+ *  screen shows the route's `error`, the owner's words. */
 export function pauseHttpBody() {
-  return { ok: false, settled: true, error: PAUSE.WORDS, reason: PAUSE.CODE };
+  return { ok: false, settled: true, error: PAUSE.WORDS };
 }
 
 const own = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
