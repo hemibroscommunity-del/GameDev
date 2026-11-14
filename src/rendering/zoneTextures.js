@@ -48,7 +48,8 @@ import { Assets, Cache, Rectangle, Texture } from 'pixi.js';
 import { packTrimmed, packTrimmedSliced, setGearPackPlay } from './gearSheets.js';   /* v2.3.2870: monster strips load cropped; v2.3.4400: a few ms at a time in play */
 import { holdOnceDrawn, forgetHeld, numbersOfSliced, numbersOf } from './heldNumbers.js';   /* v2.3.3699: held once drawn, as colour numbers */
 import { stripAsNumbers, releaseBundleNumbers, picNumbersOn, stripRowsAsk, stripPlanAnswered, stripPlanDone } from './picsNumbers.js';   /* v2.3.3715: ?picnumbers, colour numbers on the chip; v2.3.5044: + the rows sent with a read */
-import { noteMade } from '../debug/madeLog.js';   /* v2.3.4400: a strip packed on the page says its name and its time */
+import { noteMade } from '../debug/madeLog.js';
+import { laneKnob } from '../game/drawLanes.js';   /* v2.3.5230: the slice is the lane's `queue` knob (card O PR 10) */   /* v2.3.4400: a strip packed on the page says its name and its time */
 import { readStrip, stripReadOn } from './stripRead.js';   /* v2.3.4470: a strip read from its 256-colour file's own numbers, off the page's thread */
 import { retintPalette } from './retintPalette.js';   /* v2.3.4470: a strip in another colour is its palette in another colour */
 
@@ -272,7 +273,26 @@ function _stripByImage(bundle, url, fw, fh, gen) {
    waits: a zone's art loads flat out, as it always did.
    `?stripgentle=0`: the old way for one tab.  `?stripslice=4`: a fixed slice
    in ms (QA, to play a phone's on a slow box). */
-const SLICE_MIN_MS = 3, SLICE_MAX_MS = 50, SLICE_SHARE = 0.25, SLICE_WAIT_MS = 120;
+/* ═══ v2.3.5230 (card O PR 10): THE SLICE IS THE LANE'S, NEVER THE FRAME'S LENGTH ═══
+   The slice was a quarter of the frame's length (3 to 50 ms): when frames
+   came slow, it GREW -- a second controller of lateness, and the wrong way
+   for a governor (docs/BUDGETS.md part 8, #6): a 60 phone the ladder paced
+   to 30 unpacked 8 ms a frame instead of 4, on the frames that were already
+   late.  Now it is the lanes' `queue` knob (drawLanes.js, docs/LANES.md):
+   `full` 4 ms (a 60 screen's quarter, as before), `thirty` 8 (a 30 screen's
+   quarter, as before).  The frame's length is read only to know the world is
+   in play (stripFrameMs > 0).  `?stripslice=N` still pins it (QA). */
+const SLICE_MIN_MS = 3, SLICE_MAX_MS = 50, SLICE_WAIT_MS = 120;
+function sliceMs() {
+  try { const v = Number(laneKnob('queue')); return v > 0 ? Math.max(SLICE_MIN_MS, Math.min(SLICE_MAX_MS, v)) : SLICE_MIN_MS; } catch (e) { return SLICE_MIN_MS; }
+}
+/** v2.3.5230: the slice a strip may take in play now, in ms (`?stripslice=N`,
+ *  else the lane's `queue`); 0 behind a loading screen (nothing waits).  The
+ *  tests' and QA's: stripTurn spends exactly this. */
+export function stripSliceMs() {
+  if (!stripFrameMs()) return 0;
+  return _sliceFixed || sliceMs();
+}
 const _search = (() => { try { return window.location.search || ''; } catch (e) { return ''; } })();
 const _gentleOff = /(^|[?&])stripgentle=(0|off|false)(&|$)/.test(_search);
 const _sliceFixed = (() => { const m = /(^|[?&])stripslice=(\d+)(&|$)/.exec(_search); return m ? Math.max(1, +m[2]) : 0; })();
@@ -303,9 +323,8 @@ const _afterFrame = () => new Promise((res) => {
 });
 /* asked between two small pieces of work: this slice's ms spent -> the next frame first */
 async function stripTurn() {
-  const frameMs = stripFrameMs();
-  if (!frameMs) return;                       /* a loading screen came up: no more waiting */
-  const budget = _sliceFixed || Math.max(SLICE_MIN_MS, Math.min(SLICE_MAX_MS, frameMs * SLICE_SHARE));
+  const budget = stripSliceMs();              /* v2.3.5230: the lane's ms, never the frame's length */
+  if (!budget) return;                        /* a loading screen came up: no more waiting */
   const spent = performance.now() - _sliceT0;
   if (spent < budget) return;
   _slices.slices++;
