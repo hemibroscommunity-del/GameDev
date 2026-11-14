@@ -14,8 +14,7 @@ import { recordCrash } from '@/debug/crashTrap.js';   /* v2.3.3689: crowns.json'
 import { Assets, BitmapFont, BitmapText, Cache, CanvasTextMetrics, Container, DynamicBitmapFont, FillGradient, Graphics, Matrix, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
 import { LockReticle, nearestInMeleeReach } from '@/rendering/lockReticle.js';   /* v2.3.3876: the lock you chose wears a reticle */
 import { keepOnGpuOnly, emptyOnceDrawn } from '../gpuOnly.js';   /* v2.3.3088: pictures kept on the graphics chip only; v2.3.3698: or once drawn */
-import { emptyHeldOnceDrawn } from '../heldNumbers.js';   /* v2.3.3699: the monsters' strips, held as colour numbers once drawn */
-import { drawSourceRect } from '../paletteTex.js';   /* v2.3.5250: a popup kept as colour numbers is read through it (the cut to its own edge) */
+import { emptyHeldOnceDrawn, readSourceRect } from '../heldNumbers.js';   /* v2.3.3699: the monsters' strips, held as colour numbers once drawn; v2.3.5250: and a popup kept as numbers, read for its cut */
 import { readbackFrames } from '../photoSheet.js';   /* v2.3.2987: the stat scene's photographs, one readback */
 
 /* v2.3.1358 (owner directive: ALL animations ready before first use —
@@ -1635,7 +1634,7 @@ function _tightPopupIcon(tex) {
     const cv = document.createElement('canvas');
     cv.width = w; cv.height = h;
     const g = cv.getContext('2d', { willReadFrequently: true });
-    drawSourceRect(g, src, 0, 0, w, h, 0, 0, w, h);   /* v2.3.5250: a popup kept as colour numbers too (p256.js, the world's icons): never its resource drawn as a picture */
+    if (!readSourceRect(g, src, 0, 0, w, h, 0, 0, 'popup-cut')) { cv.width = cv.height = 0; return tex; }   /* v2.3.5250: a popup kept as colour numbers too (p256.js, the world's icons): its resource is never drawn as a picture */
     const d = g.getImageData(0, 0, w, h).data;
     let x0 = w, y0 = h, x1 = -1, y1 = -1;
     for (let y = 0; y < h; y++) {
