@@ -496,7 +496,7 @@ So that each field below is defined by something that exists.
 | the line's delay | Measured by the WORKER, not the phone: `session.rtt`, a smoothed round trip from its own ping, 0 to 300 ms, memory only. | `server/src/index.js` `case 'pong'` |
 | how much it wavers | Measured nowhere. | |
 | the build | The page knows its own (`__GAME_VERSION__`, the newest `v2.3.N` in its commits; `__BUILD_COMMIT__`). The join carries neither: the worker learns a build only from a crash report. | `vite.config.js`, `src/ui/BuildBadge.jsx` |
-| the switches thrown | No one reader and no list: about 186 address names read in 132 files. One closed list exists: the 14 memory savers the owner can turn off from the Test panel. | `src/game/clientOff.js` `CLIENT_SAVERS` |
+| the switches thrown | ONE list: the switch table (`tools/guards/lib/switches.mjs`, page `docs/SWITCHES.md`; card T, step 7.1): every `?name=` the page reads and every live flag, one row a name, held by `tools/guards/switches.test.mjs`. The memory savers the owner can turn off from the Test panel (`CLIENT_SAVERS`) are its rows of side `both`. No one reader on the page yet (card T's PR 6). | `tools/guards/lib/switches.mjs` |
 | the zone | `S.currentZone`, and inside the world the land by direction (`wheelLandAt`). | `src/data/zones.js` |
 | how many players were near | Nothing that works: the sample's `others` reads the length of a map and is always 0. | `src/game/renderFrame.js` |
 
@@ -692,7 +692,7 @@ list can be made from the table and a guard can fail a second copy of it.
 | `muted` | `MUTABLE_RELAY_TYPES` (3) on the worker; `BLOCKED_SOCIAL` (14) on the phone, with the field that names the sender | `server/src/chatmod.js`; `src/game/blockedAsks.js` |
 | `watch` | The anti-bot hook that counts it (6 types) | `server/src/index.js`, `server/src/botsig.js` |
 | `cap` | The cap the phone gates it on (`CAP_GATES`, 167 names) | `server/src/join.js` `caps`; `src/ui/panels/DevPanel.jsx` |
-| `flag` | The live flag that turns it off. **No list of flag names exists**: any name is stored, and about 120 `_xxxOff()` functions each read their own. The switch table (step 7.1) makes the list. | `server/src/liveops.js` |
+| `flag` | The live flag that turns it off: a row of the switch table (`tools/guards/lib/switches.mjs`, side `worker` or `both`; card T, step 7.1), the one list of flag names. Any name is still stored, and each `_xxxOff()` reads its own; the table's guard fails a flag read with no row. | `server/src/liveops.js` |
 | `roads` | The gold, bag and health roads its handler names (the `at` of each road's row) | `server/src/gold.js`, `bag.js`, `life.js` |
 | `silent` | Its handler's silent exits, by code (`ALLOW`: 96 handlers, 270 exits, 19 codes) | `server/test/refusal-door-list.mjs` |
 | `phoneSend` | How the phone sends it: a send of its own (`join`, `pong`, `track`, `move`), the shim's pass-through (93 types: an allowlist), a priority event (31), the 33 ms batch; a rider (3); held for the rejoin (`node_strike`); expects an answer (`SETTLED_SENDS`, 9) | `src/networking/wsClient.js` |
