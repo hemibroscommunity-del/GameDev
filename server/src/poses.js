@@ -98,8 +98,10 @@ export const poseMethods = {
       session._poseAt = now;
     }
     if ((ps.po || null) === id) return;
-    if (!this._poseTo(ps, id, id ? 'hold' : 'stand')) return;   /* v2.3.5216: the pose door */
-    this.dirtyPlayers.add(sid);
+    /* v2.3.5216: the pose door.  Dirty only when it wrote: a refusal there
+       (unreachable today, the checks above are its own) changes nothing,
+       and the tick's `po` stays the answer -- no new exit (refusal-door) */
+    if (this._poseTo(ps, id, id ? 'hold' : 'stand')) this.dirtyPlayers.add(sid);
   },
 
   /* movement.js, on an accepted move: whether this move ends the pose */
