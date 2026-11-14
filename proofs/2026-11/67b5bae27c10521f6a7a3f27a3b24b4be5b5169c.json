@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "67b5bae27c10521f6a7a3f27a3b24b4be5b5169c",
+  "tree": "ee6e610a7fdebde25e1d008468a02256ba503a28",
+  "committedAt": "2026-11-13T20:06:01-08:00",
+  "subject": "Merge pull request #1681 from hemibroscommunity-del/claude/grand-plan-h-3-gear-sheet",
+  "files": 7461,
+  "bytes": 946518669,
+  "listingSha256": "b8927438ef0d9146cd5370d3309e0fe0117c92053de14cae3829e5baa95903bc",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

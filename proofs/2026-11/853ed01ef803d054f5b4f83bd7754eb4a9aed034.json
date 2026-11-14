@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "853ed01ef803d054f5b4f83bd7754eb4a9aed034",
+  "tree": "4390b3c3ea11dd7900bdc8f3e93283f9d2a98700",
+  "committedAt": "2026-11-13T20:05:40-08:00",
+  "subject": "Merge pull request #1691 from hemibroscommunity-del/claude/plan-e-2-classes",
+  "files": 7459,
+  "bytes": 946487297,
+  "listingSha256": "1859eabb7dbd14ca0e30a2143cb7a7f85c8cae867222ed26c07678a9899e4805",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

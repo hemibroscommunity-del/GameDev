@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "235041e5a15bbc84fad0cfd39c7f35cc05efd08e",
+  "tree": "5f13356f95eb123245471a12af6ee390050897f3",
+  "committedAt": "2026-11-13T20:05:50-08:00",
+  "subject": "Merge pull request #1694 from hemibroscommunity-del/claude/plan-e-3-marks",
+  "files": 7461,
+  "bytes": 946502934,
+  "listingSha256": "23f80fb17fc885223b88becef15c0d05d7dd9d9c506d868806286b6faf55e4a0",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
