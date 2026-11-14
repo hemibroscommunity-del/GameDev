@@ -547,7 +547,7 @@ export function bookTableText(days) {
 if (typeof window !== 'undefined') {
   window.__btReport = (opt) => {
     if (opt && opt.send) { _poll(); _due(Date.now()); }
-    return { on: reportOn(), cap: takesReports(_S), joinedAt: _joinedAt,
+    return { on: reportOn(), cap: takesReports(_S), speedCap: takesSpeed(_S), joinedAt: _joinedAt,
       dueIn: _dueAt ? _dueAt - Date.now() : null, sent: _sent, dropped: _dropped, diedOwed: _diedOwed, speed: _speed,
       open: buildReport(Date.now()), last: _last };
   };
