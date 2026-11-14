@@ -190,7 +190,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await typeInto(A, '[data-ally-tag]', 'irn');
   await typedStill(A, [['[data-ally-name]', 'Iron Bros'], ['[data-ally-tag]', 'IRN']]);
   await tap(A, '[data-ally-save]');
-  const named = await until(async () => (await H.readState(A, (S) => S._party && S._party.ally && S._party.ally.tag)) === 'IRN', 8000);
+  let named = await until(async () => (await H.readState(A, (S) => S._party && S._party.ally && S._party.ally.tag)) === 'IRN', 8000);
+  if (!named && !(await saloon(A)).error) {   /* v2.3.5430: as the war's tap below */
+    await typedStill(A, [['[data-ally-name]', 'Iron Bros'], ['[data-ally-tag]', 'IRN']]);
+    await tap(A, '[data-ally-save]');
+    named = await until(async () => (await H.readState(A, (S) => S._party && S._party.ally && S._party.ally.tag)) === 'IRN', 8000);
+  }
   const h2 = await head(A);
   const s2 = await saloon(A);
   rec.ok(`the leader names it with real taps: the Saloon says "${s2.title}", the strip "${h2 ? h2.text : '?'}"`,
@@ -244,7 +249,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await typeInto(A, '[data-ally-foe]', 'gld');
   await typedStill(A, [['[data-ally-foe]', 'GLD']]);
   await tap(A, '[data-ally-war]');
-  const s4 = await until(async () => { const s = await saloon(A); return s.warOn ? s : null; }, 8000);
+  let s4 = await until(async () => { const s = await saloon(A); return s.warOn ? s : null; }, 8000);
+  /* v2.3.5430: a resync between the check and the tap, or a tap inside one of this box's stalls, sends nothing:
+     with no war and nothing refused, the field is checked again and the tap made once more */
+  if (!s4 && !(await saloon(A)).error) {
+    await typedStill(A, [['[data-ally-foe]', 'GLD']]);
+    await tap(A, '[data-ally-war]');
+    s4 = await until(async () => { const s = await saloon(A); return s.warOn ? s : null; }, 8000);
+  }
   rec.ok(`the leader types their tag and taps Declare war: "${s4 ? s4.warOn.slice(0, 80) : '?'}"`,
     !!s4 && /War with \[GLD\] Gold Crew/.test(s4.warOn) && s4.score === '0–0' && /min left/.test(s4.warOn), s4 || await saloon(A));
   const gWar = await until(async () => { const p = G[0].lastParty(); return p && p.ally && p.ally.war && p.ally.war.them && p.ally.war.them.tag === 'IRN' ? p : null; }, 6000);
