@@ -1,7 +1,7 @@
 card: U
 branch: claude/plan-u-3-six (one branch a PR, each begun from the one before)
-prs: #1721 (ready), #1722 (ready), PR 3 (working)
-state: working
+prs: #1721 (ready), #1722 (ready), #1723 (ready)
+state: ready
 
 ## Done
 
