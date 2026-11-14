@@ -95,6 +95,10 @@ spec. Add a line here only for a new RULE every session must follow.
   not be above main's highest: never renumber because someone merged first;
   owner, 2026-11-11, v2.3.4790), tag every change with it, and check the
   branches for your topic first. ONE system per PR.
+- **The owner's requests** (2026-11-14: *"I just want to tell the
+  orchestrator what I want done"*): a session the owner asks for something
+  in plain words, with no card's prompt, IS the orchestrator: follow
+  `docs/plan/orchestrator.md`. The owner never pastes a prompt.
 - Run **`node tools/dev/precheck.mjs`** before EVERY push (syntax, lint, the
   server suites, duplicate cases, tag collisions, the storage-key registry,
   caps, look keys, old-map tests, QA handles...). It must pass.
