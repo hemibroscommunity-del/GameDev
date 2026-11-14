@@ -380,6 +380,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?depthbuf` | page | switch | v2.3.3072 | present | chip |  | no | The depth buffer is kept, to compare. |
 | `?dmgscale` | page | value | v2.3.3033 | a number | logic |  | no | Scales the damage numbers. |
 | `?dmgwords` | page | switch | v2.3.5008 | =0 | logic |  | no | Damage numbers are not shortened to words (K, M). |
+| `?elemicons` | page | switch | v2.3.5258 | =0 | memory |  | no | The eight element marks drawn after a hit's number are drawn from their full-colour pictures, as before, not from their 256-colour twins. |
 | `?fill` | page | switch | v2.3.3577 | =0 | chip |  | no | The fill batch is off: fills drawn as Pixi does. |
 | `?firelegless` | page | switch | v2.3.3684 | =0 | logic |  | no | The fire armour keeps the legs under its greaves, as before. |
 | `?firelit` | page | switch | v2.3.3684 | =0 | logic |  | no | The fire log's lit key pixels stay pink, as before. |
