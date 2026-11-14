@@ -633,7 +633,10 @@ are cheap now and a rewrite later, and builds no helper feature.
   game, on a known device, by an account that passed the human check; with
   scopes (read my things, list, buy), a gold limit a day, an end date, the
   player's own list and "take it back", a kill switch, and a mark other
-  players can see. Through the action door's rows (5.8).
+  players can see. Through the action door's rows (5.8). The 91 actions
+  card C's wire census marks as started by "a person", with no ruling on
+  helpers, stay open until this step (the owner, 2026-11-14: *"Leave
+  open"*; v2.3.5056).
 - [ ] **11.8 [LATER] The pass, safe for a helper to buy**: a signed quote,
   a receipt, a public way to check. With the pass's own build.
 
