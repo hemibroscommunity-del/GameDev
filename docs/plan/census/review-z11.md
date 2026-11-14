@@ -33,6 +33,9 @@ No open PR carries the heading. The nearest, each named with its switch:
 - **#1782** (card SK, not listed): "letting go" read as the stick or the
   keys, not the board's button; `?ridecoast=0`. Its cost (below) waits
   for the owner's own yes, as the README requires of a new pace.
+- **#1802** (card E, listed): the empty room's restart written at once
+  (one put a restart) is built OFF behind the live flag `econresetput`:
+  a new write pace is the owner's own word (the README), not decided.
 - Card E's `arenasettleplan` stays OFF (the owner's yes to two rows a
   match pending); card TF's PR 2 (its cook's bar of 23, `?folkskills=0`)
   has no PR open yet.
@@ -50,7 +53,21 @@ with each other (`tools/guards/lib/systems.mjs`, `docs/SYSTEMS.md`, E's
 status: each adds a file to the economy's list). The gatekeeper sent
 these to the planning session at 12:52 and 13:12.
 
-MENDS (filled in at the list's writing).
+**The mends.** By 13:15: J2's three (74ef318, 39993c9, e816c7e), O's
+three (f90e392, 0e3f823, a9fcaec), #1786 (cb690b3, #1785 merged in),
+#1783 (bce509f: sitting 11's ribbon and 11 px floor), #1797 (587faaa:
+O's #1787 and #1792 merged in, a second collision at `switches.mjs`'s
+end). The account's usage limit stopped every session from about 14:38
+to 16:55. After it: #1786 at ffce416 (its F1), #1802 at 5ab1569, card
+L's six (af6b29b, df534df, 5f48576, 8ece503, 6636d4e, 023ab5c: each its
+own diff unchanged outside the two switch files, `main` merged in).
+`main` did not move (90a91dbc); every listed head has ONE merge base
+with it, checked again at 17:05.
+
+**Card T's #1797 goes to sitting 12.** Chained after card L's mended
+heads it conflicts again at `switches.mjs`'s end (rows appended there by
+every row-adding PR). It merges `main` after today's list; card T's next
+PR sorts the rows by name, which ends these collisions.
 
 ## Card J2: #1788, #1789, #1790, #1795 (tags 5421 to 5424)
 
@@ -140,7 +157,7 @@ leaves, a duel waiting on Accept drops, the trade window is the
 server's). No new message (`wire-audit`), no cap (the fight lock's way,
 4510), no write; the clock in memory (a deploy loses nothing).
 
-- **VERIFIED (probe), low-medium, MENDED (see the list): an Auction
+- **VERIFIED (probe), low-medium, MENDED at ffce416: an Auction
   House listing refused in the pause read "That piece cannot be sold"**
   (`pauseHttpBody`'s `reason: 'paused'` read by `gearSellReasonText`,
   whose fallback is that sentence; ItemDetailPopup ~1616).
@@ -158,6 +175,35 @@ server's). No new message (`wire-audit`), no cap (the fight lock's way,
 - Suites: valuepause 26, trade, trade2, trade-onewrite, market,
   market-settle, store-* (7), storeoffer, arena, arena-settle, liveops,
   cost-guard, opid-audit; wire-audit, fight-lock; switches 338 rows.
+
+**#1802 (follow-up, tag 5094), read at 4ff570c and 5ab1569.** It
+merges after #1786 (it carries ffce416).
+
+- #1785's F1 mended behind `econresetput` (OFF): with it on, an empty
+  room's restart puts `daybook:<today>` once, issued in the same run as
+  the record's delete (not awaited, rightly: an await would split the
+  run); a fresh room on the same storage then reads 0 with 1 restart
+  (probe; -100 with 0 with it off). OFF: nothing more written
+  (`cost-guard` 43). No shape bump (a `DAYBOOK.V` bump would make a
+  rolled-back worker drop its own sums); an older worker keeps `r.m`.
+- **VERIFIED (probe), low-medium, for E's next follow-up: "new gold to
+  the richest" still wrong when the restarted character was among the
+  ten** (`src/game/econCard.js` ~146-148 adds `gone.m` to `made`, not to
+  the top line): A (minted 1000) restarts as C makes 50: the card says
+  0%, the truth 100%. The owner's world has fewer than ten characters,
+  so every restart hits it; §10's character is outside the ten.
+- Low: `ARCHITECTURE-HANDOFF.md` ~132 puts `econ.r` in a fourth cell of a
+  three-column table (it never shows); `bookStage`'s `put()` frees
+  `b.putting` without a `finally`; `roomEmpty` counts sockets, not
+  joined players (the owner's picker opens none).
+- 5ab1569: `trade2_stage_weapon` paused before anything moves (the
+  router's gate before the handler: no pace token, stash change,
+  `trade2wpn:` put or save), unstage and cancel ungated; its break proof
+  fails 3 checks. It is #1786's system on #1802's branch: merge the two
+  back to back (the list does).
+- Suites: econ-card 41, daybook 97, world-sum 34, storm 53, liveops 110,
+  cost-guard 43, persistence 41, account 33; at 5ab1569 valuepause 28,
+  trade2 50; switches 345 rows.
 
 ## Card O: #1787, #1792 (tags 5221, 5222) listed; #1794 (tag 5224) HELD
 
@@ -204,6 +250,8 @@ Read at the -4- head ee7453d. Probe: the suite's own `model()`
   as a 30 screen (`refreshOf`) and is named `thirty`.
 - Suites at ee7453d: report 115, frame-pacer 102, mirror-audit 399,
   caps-audit 6, liveops 110, cost-guard 40; draw-lanes, switches green.
+- Card O's #1800 (PR 5, tag 5225, the pixels) is built on #1794: not
+  reviewed, not listed, until #1794 is mended.
 
 ## Card L: #1767, #1775, #1779, #1791, #1796 (tags 5203 to 5207)
 
@@ -231,7 +279,21 @@ questions (`wheelMusic` `_m`, `deskTeach` `_armed`) untouched.
 - Suites at cf72255: state-resets 77, zone-leftovers 36; state-ledger
   (303 rows sitting, at its line), phase-table, switches 257 rows.
 
-## Card LB: #1783 (PR 2, tag 5501)
+**#1801 (tag 5208, the resets of world), read at 2c22a71, clean.** One
+reset, `leavePlaceDebris` (zoneTransitions.js ~442: `S.arrows`,
+`S.hitParticles`, `S.deathExplosions`, `S._ambientParticles` at a zone
+change); 65 rows `kept:` in words. Every door but one already empties
+the first three in the same run; the respawn's now empties them at the
+change, ~0.4 s sooner, behind the veil (no one sees it). An arrow's
+pending hit after a door is dropped, as `projectiles.js` ~1110 already
+intends. Not at a rejoin (`REJOIN_SLOTS` untouched); `?worldreset=0`
+rowed; `S._nmlAsked`, `wheelMusic` `_m`, `deskTeach` `_armed` left to the
+owner. Info: `S._ambientParticles` is a list nothing fills ("the place's
+own air" describes no effect today). Suites: state-resets 86,
+zone-leftovers 36, zone-entry, rejoin-resend; state-ledger 234 rows
+sitting, at its line; switches 258.
+
+## Card LB: #1783 (PR 2, tag 5501): listed at bce509f
 
 Sitting 10's three holds, mended at db48e83: whole names in the table
 (two lines, cut past the second); the podium's ribbon shows the board's
@@ -243,15 +305,16 @@ PR 3's `CAP_GATES`. Fewer than 3 rows, an old worker's rows, the art
 freed on close, `touch-action`: clean. `picture-door.test` ~386: the one
 top-level `new Image()` loop moved file; it DEPLOYS.
 
-- **VERIFIED by reading, low-medium: on a weapon or skill board the
-  ribbon prints the board's value AS "Lv N"** (`podiumValue` returns
+- **VERIFIED by reading, low-medium, MENDED at bce509f (a plain number;
+  "Lv" on the Level board's ribbon only; mp-boardslook 2g, 19 of 19):
+  on a weapon or skill board the ribbon printed the board's value AS "Lv N"** (`podiumValue` returns
   `{ lv: v }`, LeaderboardPanel.jsx ~325-328, drawn by `LvPill`), while
   the same player's row prints the name plate's "Lv": on Woodcutting the
   #1 shield "Lv 3", his row "Lv 40 ... 3"; against the rule the PR's
   own notes restore ("never two numbers that both read Lv"). mp-boardslook
   2b cannot tell: every test player is level 1 with melee 1.
-- Measured, low: podium names fall to 7 px on a 375 px phone (`fitName`'s
-  floor), under the notes' 11 px text floor; a name of 14 letters or
+- Measured, low, MENDED at bce509f (never under 11 px, then "..."):
+  podium names fell to 7 px on a 375 px phone (`fitName`'s floor); a name of 14 letters or
   more on a side shield is cut even there (names go to 20).
 - Low: the "about 105 px" for a name holds on the Total view only (the
   weapon boards' three columns leave ~71, ~52 on row 1 by the crown).
@@ -288,14 +351,16 @@ rides the path.
 - Suites: ride 94, ridersort, move-diet, move-path, mirror-audit;
   switches 336, four-lines, state-ledger, tests-by-system.
 
-## Card T: #1797 (PR 3, tag 5303): step 3
+## Card T: #1797 (PR 3, tag 5303): step 3, to sitting 12
 
 Its files are the card's (the drawing side's rows, the table and page,
 card B's map reading a system's switches from the table, SHAPES' two
 lines, the spec, T's status); `main` merged in; no `server/` file.
 Unlisted 0: from its merge every new `?name=` needs its row, so it goes
-after every other row-adding PR on the list (a guard that closes a list
-last).
+after every other row-adding PR (a guard that closes a list last). Its
+`test` green at 587faaa; rehearsal 1 (below) passed with it. Chained after
+card L's mended heads it conflicts at `switches.mjs`'s end: sitting 12,
+after `main` is merged in.
 
 ## The lines
 
