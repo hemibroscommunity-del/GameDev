@@ -65,6 +65,9 @@ const CAPS_ALLOWLIST = new Map([
      board is GET /api/leaderboard/top?category=power -- and card LB's panel
      reads caps.power next: delete this row when its gate lands. */
   ['power', 'the worker ships first (card PW); card LB\'s board panel gates its Power column on it next -- delete this row then'],
+  /* v2.3.5484: THE STAT BOARDS (server/src/statboards.js, card PW): the same --
+     card LB's panel adds their pills next and reads caps.statboards */
+  ['statboards', 'the worker ships first (card PW); card LB\'s board panel shows that many stat boards next -- delete this row then'],
   /* v2.3.1660: the prog3 entry added at v2.3.1659 is deleted — the
      client gate shipped (wsClient setProg3Enabled), so the audit
      enforces it for real now. */

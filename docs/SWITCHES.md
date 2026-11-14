@@ -396,6 +396,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `power` | worker | switch | v2.3.5481 | false | logic |  | no | Un-advertises the power index: no board report carries one, so the Power board empties as players report and the other boards are as they were. |
 | `race` | worker | switch | v2.3.3525 | false | logic |  | no | Lil Bro's race un-advertised and none started. |
 | `spar` | worker | switch | v2.3.3265 | false | logic |  | no | No sparring clones: every live clone goes on the next tick and the cap is withdrawn. |
+| `statboards` | worker | switch | v2.3.5484 | false | logic |  | no | Un-advertises the stat boards: no board report carries the points allocated, so those boards empty as players report; every other board is as it was. |
 
 ## townsfolk
 

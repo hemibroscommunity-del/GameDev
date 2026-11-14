@@ -1908,6 +1908,8 @@ export const joinMethods = {
         report: this._reportCap(),
         /* v2.3.5481: THE POWER INDEX ON THE BOARDS (power.js, card PW): every board row carries `powerIndex` {power, melee, bow, magic, v} and GET /api/leaderboard/top?category=power is the Power board.  The index's VERSION (POWER.V): the phone shows only rows of it.  `power: false` in liveflags un-advertises it and no report carries one. */
         power: this._powerCap(),
+        /* v2.3.5484: THE STAT BOARDS (statboards.js, card PW): GET /api/leaderboard/top?category=pts_<stat> ranks the points allocated to each shared stat (and `pts_dmg` the weapons' damage points summed), from every board row's `statPoints`.  HOW MANY boards (STAT_BOARD_IDS, in order): a count that grows (TRAPS §9).  `statboards: false` in liveflags un-advertises it and no report carries the points. */
+        statboards: this._statBoardsCap(),
         accuracy: this._accOn() /* v2.3.4545: ACCURACY (accuracy.js) -- the phone numbers its basic shots a weapon and sends the counts on `track` (`ac`) and each hit's shot (`sn`); `acc_request` answers `acc_state`; `accuracy: false` in liveflags un-advertises it and counts nothing -- lower case, a kill switch */ },
       // v2.3.1178: this session's private economy-endpoint token.
       // state_sync goes to the joining socket ONLY -- never broadcast.
