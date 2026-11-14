@@ -633,7 +633,10 @@ are cheap now and a rewrite later, and builds no helper feature.
   game, on a known device, by an account that passed the human check; with
   scopes (read my things, list, buy), a gold limit a day, an end date, the
   player's own list and "take it back", a kill switch, and a mark other
-  players can see. Through the action door's rows (5.8).
+  players can see. Through the action door's rows (5.8). The 91 actions
+  card C's wire census marks as started by "a person", with no ruling on
+  helpers, stay open until this step (the owner, 2026-11-14: *"Leave
+  open"*; v2.3.5056).
 - [ ] **11.8 [LATER] The pass, safe for a helper to buy**: a signed quote,
   a receipt, a public way to check. With the pass's own build.
 
@@ -931,6 +934,14 @@ renderers; K with E's fixes still open; G or O with H in the same file; two
 sessions writing `GOLD_ROADS`; the wire moved, the action door and 6.2
 half-done together; the state's resets and the frame's steps half-done
 together.
+
+### The owner's requests
+
+The owner opens a session and says what they want in plain words, with
+no prompt to paste (CLAUDE.md §3): that session is the orchestrator, and
+it does the rest: checks what is running, writes the card, starts the
+session, and says what will land and when (`docs/plan/orchestrator.md`,
+its job and its prompt).
 
 ### The owner's ten minutes a day
 
