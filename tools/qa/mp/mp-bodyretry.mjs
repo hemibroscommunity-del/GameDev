@@ -19,6 +19,7 @@
  *   node tools/qa/mp/run.mjs bodyretry
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const VIEW = { width: 1280, height: 800 };
 const FACINGS = [['east', 0], ['southeast', 1], ['south', 2], ['southwest', 3], ['west', 4], ['northwest', 5], ['north', 6], ['northeast', 7]];

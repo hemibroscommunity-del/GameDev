@@ -24,6 +24,7 @@ import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { WHEEL_STAGE_LOOKS } from '../../../src/data/wheelStageLooks.js';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const tierOf = (id) => { const m = /-t(\d+)-\d+$/.exec(id); return m ? +m[1] : 1; };

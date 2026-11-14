@@ -64,6 +64,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { deathZonesFor, MAX_PIECES, MAX_LIVE } from '../../../src/data/monsterDeathZones.js';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const OUT = `${H.REPO}/tools/qa/mp/out/deathzones`;

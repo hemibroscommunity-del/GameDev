@@ -14,6 +14,7 @@
    (`calc(10px + var(--sat, 0px))`, v2.3.2255).  Run it by its name:
    node tools/qa/mp/run.mjs topaudit */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const SAT = 59;
 

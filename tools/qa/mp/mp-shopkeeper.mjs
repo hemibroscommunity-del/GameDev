@@ -38,6 +38,7 @@
  * not what this scenario is about.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const KEY = 'slime-remnants';
 const openShop  = (P) => P.page.evaluate(() => window.__broShopBus.setOpen(true));

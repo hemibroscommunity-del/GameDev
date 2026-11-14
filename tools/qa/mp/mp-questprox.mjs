@@ -37,6 +37,7 @@
  * Moved to the world (it was on the old map's frozen list) as it was touched.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 

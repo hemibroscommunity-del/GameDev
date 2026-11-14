@@ -21,6 +21,7 @@
  * God mode while out there: the noises are the test, not surviving the pack.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const LANDS = [

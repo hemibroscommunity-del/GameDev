@@ -24,6 +24,7 @@
  *   node tools/qa/mp/run.mjs soundfold
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const FOLD = ['coin-pickup', 'flip-lose', 'footstep-v2', 'pan-sizzle', 'quest-complete', 'fish-reel'];

@@ -19,6 +19,7 @@
  *   6. no page errors.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const fly = (P) => P.page.evaluate(() => {
   const q = window.__btQuestFly || { flown: 0, landed: 0, last: [] };

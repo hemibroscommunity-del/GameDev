@@ -62,6 +62,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GEAR_CATALOG, GEAR_SLOTS } from '../../src/rendering/gearCatalog.js';
+import { withLane } from './lane.mjs';   /* v2.3.5223: the game's page names its lane (card O PR 3) */
 
 const VERSION = 'v2.3.1195';
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -169,7 +170,7 @@ if (process.env.QA_WS_URL) {
 }
 /* nodebug=1 keeps the floating debug button out of frame (window.debug —
    which carries the `gear` equip command — is exposed unconditionally). */
-await page.goto(URL + (URL.includes('?') ? '&' : '?') + 'noresume=1&nodebug=1', { waitUntil: 'domcontentloaded', timeout: 60000 });
+await page.goto(withLane(URL + (URL.includes('?') ? '&' : '?') + 'noresume=1&nodebug=1'), { waitUntil: 'domcontentloaded', timeout: 60000 });
 await sleep(7000);
 /* v2.3.1964: the splash has no name box — it has a login door.
    legacyLogin takes the same route a player takes (see

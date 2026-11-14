@@ -33,6 +33,7 @@
  * Times that matter are held by the page's clock in one task (TRAPS §200). */
 import * as H from './harness.mjs';
 import { FRAME_JS_MAX_MS, HOLD_MAX_MS } from './held-budget.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const FEEL_MAX_MS = FRAME_JS_MAX_MS / 4;

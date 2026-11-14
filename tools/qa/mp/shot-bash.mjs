@@ -43,7 +43,7 @@ async function main() {
   });
   const page = await ctx.newPage();
   await page.addInitScript((p) => { window.BROTOWN_WS_URL = `ws://127.0.0.1:${p}`; }, wsPort);
-  await page.goto(`http://localhost:${webPort}/`, { waitUntil: 'domcontentloaded' });
+  await page.goto(H.withLane(`http://localhost:${webPort}/`), { waitUntil: 'domcontentloaded' });
   const P = { ctx, page, logs: [], name: 'Basher' };
   await H.enterWorld(P);
   await P.page.waitForTimeout(1500);

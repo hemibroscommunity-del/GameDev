@@ -22,6 +22,7 @@ import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { FARM_BEDS, FARM_GATE } from '../../../src/data/farmLayout.js';
+export const lane = 'full';
 
 const TRIPS = +(process.env.BT_LS_TRIPS || 4);
 const TRIP = process.env.BT_LS_TRIP || 'farm';

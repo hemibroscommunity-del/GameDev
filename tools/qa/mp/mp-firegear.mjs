@@ -26,6 +26,7 @@
  * wiring assertion would happily pass.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 /* The table under test, mirrored here on purpose: a copy that has to be updated
    in two places is the point.  If someone edits FIRE_GEAR_REG without a reason

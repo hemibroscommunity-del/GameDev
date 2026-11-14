@@ -38,6 +38,7 @@ import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { FLIP_FRAMES } from '../../../src/game/jump.js';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const AIR_MS = 3000;   /* ?jumpms= (mp-jump's: a few frames a second here) */

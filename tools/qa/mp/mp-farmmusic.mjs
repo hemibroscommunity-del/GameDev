@@ -21,6 +21,7 @@
  */
 import * as H from './harness.mjs';
 import { FARM_GATE } from '../../../src/data/farmLayout.js';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const FOOT_DY = 52;   /* a body's middle to its boots on the farm (mp-farmwalk's) */
