@@ -96,3 +96,5 @@ until the map places their file; the guard lists those files by name.
   `src/game/lifeSkillRewards.js`, the file that changes inside it most.
 - `debug`, `art`, `data` (v2.3.5164): the next three, 182 rows.
 - `wire`, `combat`, `world` (v2.3.5165): the next three, 393 rows.
+- `look` (v2.3.5166): 194 rows. Its `_bakeTag` is a phase with an empty
+  word (`''` and `'jog-east'`), which the guard now takes.

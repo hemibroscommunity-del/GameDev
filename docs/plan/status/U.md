@@ -1,7 +1,7 @@
 card: U
-branch: claude/plan-u-6-wire-combat-world (one branch a PR, each begun from the one before)
-prs: #1721, #1722, #1723, #1725, #1727, #1728 (all ready)
-state: ready
+branch: claude/plan-u-7-look (one branch a PR, each begun from the one before)
+prs: #1721, #1722, #1723, #1725, #1727, #1728 (ready), PR 7 (working)
+state: working
 
 ## Done
 
@@ -17,11 +17,13 @@ state: ready
   unlisted 1760.
 - PR 5 (5164, #1727): debug, art, data (182): unlisted 1578.
 - PR 6 (5165, #1728): wire, combat, world (393): unlisted 1185.
+- PR 7 (5166): look (194), and the guard takes a phase's empty word:
+  unlisted 991.
 
 ## Next
 
-- PR 7 (5166): look. Then render; ui (the systems of BroTown.jsx and the
-  two renderers last).
+- PR 8 (5167): render. PR 9 (5168): ui. Tried: both pass the guard,
+  unlisted 16 (the unsorted rows).
 
 ## Found
 
