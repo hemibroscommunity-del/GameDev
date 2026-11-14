@@ -20,7 +20,7 @@ addresses (`tools/qa/`), `localStorage` toggles, and the worker's `env` settings
 reads it as a flag or a comment promises it as a kill switch; any other cap's override is the emergency lever of
 `docs/specs/liveops.md` ("Caps override").
 
-254 rows: 246 switches, 6 values, 2 levers, in 24 systems.
+255 rows: 247 switches, 6 values, 2 levers, in 24 systems.
 
 ## audio
 
@@ -218,6 +218,7 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 
 | name | side | kind | born | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|
+| `?ladderrate` | page | switch | v2.3.5224 | =0, off, false | logic | `?govern` | no | The rate as before the ladder: a 60 screen is never paced, whatever the rung. |
 | `?govern` | page | switch | v2.3.5222 | =0 (off), =1 (on where `?lane=` holds it) | logic |  | no | The governor no longer moves the ladder: the lane's row, however late the frames. |
 
 ## preload

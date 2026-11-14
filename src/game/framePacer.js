@@ -49,7 +49,7 @@
  * GROWN -- see THE GOVERNOR below.  It imports one leaf, ./drawLanes.js (the
  * lanes' table, itself import-free), and node still tests it.
  */
-import { AXES, AXIS_NAMES, KNOB_NAMES, knobAt, drawLane, ladderRung, setRung, rungDepth } from './drawLanes.js';
+import { AXES, AXIS_NAMES, KNOB_NAMES, knobAt, drawLane, ladderRung, setRung, rungDepth, laneKnob } from './drawLanes.js';
 
 /* a refresh shorter than this is a fast screen (over about 70 a second) */
 export const PACE_FAST_MS = 14;
@@ -78,6 +78,12 @@ const REFRESH_EVERY = 30; /* ...and how often it is read again */
  *  never a copy. */
 export function lateOver(refresh, every) {
   return (every || 1) * refresh + refresh / 2;
+}
+
+/** v2.3.5224: does the ladder move the rate (card O PR 4)?  `ladderrate=0`
+ *  in the address: the rate as before it, whatever the rung. */
+export function ladderRateOn(search) {
+  return !/(^|[?&])ladderrate=(0|off|false)(&|$)/.test(typeof search === 'string' ? search : '');
 }
 
 /** Is the pacer on?  The address: `pace=0` (or off, false) is the old way. */
@@ -128,6 +134,25 @@ export function refreshOf(gaps) {
 export function makeFramePacer(opts) {
   /* v2.3.5222: the governor (opts: the tests' { gov } in place of the page's own) */
   const gov = (opts && opts.gov) || makeGovernor();
+  /* ═══ v2.3.5224: THE RATE IS A KNOB (card O PR 4; docs/LANES.md `rate`) ═══
+     On a screen of 60 or slower, the slowest frame the pacer holds a steady
+     rate at is the lane's knob at its rung, read through the lanes' one
+     reader: the row's 26 ms (PACE_FLOOR_MS, `full`'s) is every refresh, as
+     ever; the rung's 34 ms is a whole number of refreshes on a 60 screen,
+     every second one -- a steady 30 -- and on a 30 screen still every one
+     (no rung).  ON A FAST SCREEN (90, 120, 144) NOTHING CHANGES: the
+     pacer's own steps, down to about 40 a second (PACE_FLOOR_MS), whatever
+     the lane or the rung -- the planning session's (a), 2026-11-14: a rate
+     rung for fast screens would be a decision of its own, not an accident.
+     Read again where the rung or the lane can change: after the governor's
+     verdict and at a veil.  `?ladderrate=0` is the rate as before (opts:
+     the tests' { rateOn }). */
+  const rateOn = opts && opts.rateOn !== undefined ? !!opts.rateOn : ladderRateOn(_search());
+  let rateAt = PACE_FLOOR_MS;
+  const readRate = () => {
+    try { const a = laneKnob('rate'); rateAt = typeof a === 'number' && a > 0 ? a : PACE_FLOOR_MS; } catch (e) { rateAt = PACE_FLOOR_MS; }
+  };
+  readRate();
   const gaps = new Float64Array(CB_KEEP);
   let gapN = 0, gapAt = 0, calls = 0;
   let last = null, lastRun = null;
@@ -163,18 +188,22 @@ export function makeFramePacer(opts) {
     lastShare = share;
     clearJudge();
     const was = changes;
-    rateVerdict(share, ts);
+    /* v2.3.5224: the rate's own steps are a fast screen's alone; any other's
+       rate is the knob's (take(), below) */
+    if (refresh != null && refresh < PACE_FAST_MS) rateVerdict(share, ts);
+    else { bad = 0; trial = false; }
     /* v2.3.5222: then the ladder, on the same verdict (THE GOVERNOR): it
        steps down only once this screen's own rate is at its floor, and never
        on a verdict the rate itself stepped on (one step a verdict) */
     gov.verdict(share, ts, { refresh, every, atFloor: every >= most, rateMoved: changes !== was });
+    readRate();   /* v2.3.5224: the rung may have moved the rate */
   };
   return {
     take(ts, judge = true) {
       /* v2.3.5222: a veil (a loading screen; a tab's return): where the
          governor may move pixels, and keeps its rung for the lane */
-      if (!judge) gov.veil(ts);
-      else if (_returned) { _returned = false; gov.veil(ts); }
+      if (!judge) { gov.veil(ts); readRate(); }
+      else if (_returned) { _returned = false; gov.veil(ts); readRate(); }
       if (last == null) { last = ts; lastRun = ts; return true; }
       const gap = ts - last;
       last = ts;
@@ -196,10 +225,14 @@ export function makeFramePacer(opts) {
       }
       if (refresh >= PACE_FAST_MS) {
         /* not a fast screen: every refresh, as ever -- but v2.3.5222, JUDGED
-           (one verdict, every screen: the governor's) */
-        if (every !== 1) { trial = false; wasUp = false; bad = 0; change(1, ts); }
-        most = 1;
+           (one verdict, every screen: the governor's); v2.3.5224, the rate's
+           knob at its rung: a whole number of refreshes (a 60 screen's rung,
+           every second one: a steady 30) */
+        const want = rateOn ? Math.max(1, Math.floor((rateAt + 0.5) / refresh)) : 1;
+        if (every !== want) { trial = false; wasUp = false; bad = 0; change(want, ts); }
+        most = want;
       } else {
+        /* a fast screen: its own steps as before, whatever the lane or the rung (v2.3.5224, (a)) */
         most = Math.max(1, Math.floor((PACE_FLOOR_MS + 0.5) / refresh));
         if (every > most) change(most, ts);
       }

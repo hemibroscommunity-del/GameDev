@@ -181,3 +181,27 @@ each), that settles, comes back to the lane's row, and does not see-saw
 pixel step only behind a veil; a full memory on the work axis alone; the
 switches, the Speed test's hold and the kept rung; the door (`setRung`'s
 one caller); and `tools/qa/mp/mp-governor.mjs` on the page.
+
+## The rate is a knob (v2.3.5224, card O PR 4)
+
+The ladder's first knob that moves anything: the rate (`docs/LANES.md`,
+`rate`). On a screen of 60 a second or slower the pacer reads it through
+the lanes' one reader, `laneKnob('rate')`: the slowest frame it holds a
+steady rate at. The lane's row is 26 ms, `PACE_FLOOR_MS`: every refresh, as
+ever. The rung is 34 ms: on a 60 screen a whole number of refreshes, every
+second one, **a steady 30**; on a 30 screen still every one (no rung). It is
+the chip axis's first rung and the work axis's last: a steady lower rate
+before a softer picture (the owner's call 16).
+
+**A fast screen (90, 120, 144) is unchanged: its own steps stop at about 40
+a second, whatever the lane or the rung.** That is the planning session's
+reading (a) of the card, 2026-11-14; a rate rung below 40 on a fast screen
+would be a decision of its own, not an accident of this one.
+
+The pacer's own steps are a fast screen's alone now; on any other screen
+the rate is the knob's. `?ladderrate=0` is the rate as before, whatever the
+rung (a switch that needs `?govern`). Held by `frame-pacer.test` §18: a 60
+screen too hot for 60 takes the rate's rung first and comes back to 60 once
+cool with no see-saw (two seeds); at the rung, nine frames in ten are the
+same 33 ms; a 120 screen too hot for 40 is never paced below 40;
+`?ladderrate=0`; the read through `laneKnob`.

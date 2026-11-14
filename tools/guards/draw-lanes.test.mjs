@@ -50,7 +50,7 @@ import { systemOf, placeFiles, ROOT } from './lib/systems.mjs';
 
 /* the census line: knobs with a reader not yet read through laneKnob.  Only
    falls, with each knob's PR (card O's 4 to 13); the gatekeeper alone lowers it */
-const UNMOVED_LINE = 11;
+const UNMOVED_LINE = 10;   /* v2.3.5224: the rate moved (card O PR 4) */
 const NEVER = Object.freeze(['combat', 'preload']);
 const PAGE = join(ROOT, 'docs/LANES.md');
 const TABLE = 'src/game/drawLanes.js';
@@ -100,7 +100,8 @@ export function makePage() {
   L.push('Two axes. The game\'s own work (the crowd, then the rate) is stepped down when the late frames\' time was the');
   L.push('game\'s own; waiting for the graphics chip (the rate, then the passes, then the pixels) when it was the rest. A steady');
   L.push('lower frame rate comes before a softer picture (the owner\'s call 16). The rate\'s rung is on both axes: whichever');
-  L.push('takes it first lowers the rate. The pixels change only behind a loading screen, a window or a tab\'s return.');
+  L.push('takes it first lowers the rate (on a screen of 60 or slower: a faster one keeps its own steps). The pixels change only behind');
+  L.push('a loading screen or a tab\'s return.');
   L.push('');
   for (const a of AXIS_NAMES) {
     L.push(a === 'work' ? '### The game\'s own work' : '### Waiting for the graphics chip');

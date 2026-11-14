@@ -72,10 +72,10 @@
 /* ── the knobs (the plan's 2.1 list), each step in a player's words ── */
 export const KNOBS = Object.freeze({
   rate: {
-    what: 'the frame rate: the slowest frame, in ms, the pacer may hold a steady rate at',
+    what: 'the frame rate: the slowest frame, in ms, the pacer may hold a steady rate at, on a screen of 60 or slower (v2.3.5224: a fast screen keeps its own steps, down to about 40, whatever the lane or the rung)',
     steps: Object.freeze([26, 34]),
-    say: Object.freeze(['Steady down to about 40 frames a second, on a screen faster than 60', 'Steady at 30 frames a second, where 40 is not a whole number of refreshes']),
-    reader: { files: Object.freeze(['src/game/framePacer.js']), moved: false }, pr: 4, switch: '?pace', system: 'page-thread',
+    say: Object.freeze(['Every frame the screen offers (a faster screen: steady down to about 40 a second)', 'A steady 30 frames a second on a 60 screen (a faster screen: as before)']),
+    reader: { files: Object.freeze(['src/game/framePacer.js']), moved: true }, pr: 4, switch: '?ladderrate', system: 'page-thread',
   },
   pixels: {
     what: 'the pixel budget, as a share of the budget (card G\'s, renderRes.js)',

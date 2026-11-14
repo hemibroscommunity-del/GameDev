@@ -1,6 +1,6 @@
 card: O
-branch: claude/plan-o-2-governor (one branch a PR: claude/plan-o-<n>-<word>; PR 2 begun from PR 1's)
-prs: #1787 (5221, ready), PR 2 (5222, ready: after #1787)
+branch: claude/plan-o-4-rate (one branch a PR: claude/plan-o-<n>-<word>; each begun from the one before)
+prs: #1787 (5221, ready), PR 2 (5222, ready: after #1787), PR 4 (5224, ready: after PR 2)
 state: ready
 
 ## Done
@@ -10,13 +10,13 @@ state: ready
   (`caps.report` 3, `reportlanes`), the worker's lists for the card, the
   wire row, the class asked at the join (card P's 18.4 ms). Deploys.
 - PR 2 (5222) `claude/plan-o-2-governor`: the governor (the pacer, grown),
-  its model (30, 60, 120), `mp-governor`; the held-sweep sample shows no
-  hold of its own. Deploys (server tests).
+  its model (30, 60, 120), `mp-governor`. Deploys (server tests).
 
 ## Next
 
-- PR 4 (5224), the rate's knob: (a) by the planning session's answer -- a
-  fast screen's own steps stop at about 40, the rung moves a 60 screen.
+- PR 4 (5224) `claude/plan-o-4-rate`: the rate's knob (a 60 screen to a
+  steady 30 at the rung; a fast screen as before: the planning session's
+  (a)). Then PR 3 once PR 2 is merged; PRs 5 and 6.
 
 ## Found
 
@@ -37,4 +37,4 @@ state: ready
 
 ## Needs
 
-- (none) #1787 merged before PR 2 (PR 2 is begun from it).
+- (none) Merged in order: #1787, PR 2, PR 4 (each begun from the one before).
