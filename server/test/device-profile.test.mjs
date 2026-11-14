@@ -26,8 +26,9 @@
  *      asks the chip once a context, is null with no context or a lost one,
  *      and keeps nothing of the chip's name but `soft`;
  *   7. FACTS ONLY: the class's code reads no user agent, platform or clock;
- *      its software list is paletteTex.js's own; no other file in src/ asks
- *      the chip its middle precision (the class's one new question).
+ *      its software list is the one program's fallback too (v2.3.5228:
+ *      paletteTex.js keeps no copy, it asks softRenderer); no other file in
+ *      src/ asks the chip its middle precision (the class's one new question).
  *
  * v2.3.5227 (card O PR 7; card A's Found for O; 2.1's "facts only"): §3
  * also fails a CHIP OR BROWSER question outside the profile -- the largest
@@ -48,7 +49,7 @@
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { FINE_QUERY, COMPUTER_FRAME_QUERY, fineInput, computerFrame, onIOS, deviceProfile,
-  DEV_CLASS, DEV_CLASS_FIELDS, classOf, classKey, devClass, SOFT_GL, rendererName, maxTextureSize, cores, userAgent } from '../../src/game/deviceProfile.js';
+  DEV_CLASS, DEV_CLASS_FIELDS, classOf, classKey, devClass, SOFT_GL, softRenderer, rendererName, maxTextureSize, cores, userAgent } from '../../src/game/deviceProfile.js';
 import { onComputer } from '../../src/game/deskWords.js';
 
 let failures = 0, passes = 0;
@@ -115,9 +116,10 @@ check('1. nothing at all is not', !onIOS('', '', 0));
     'networking/index.js': 'the identity\'s fingerprint parts (the user agent): who, not what it can draw',
     'debug/perfHud.js': 'the strip\'s chip name (the owner\'s eyes, `?perf=1`)',
     'debug/DebugOverlay.jsx': 'the debug overlay\'s "UA" cell',
-    'rendering/lookPalette.js': 'the look\'s choice (lookPaletteChoice): card O\'s PR 8 moves it into the lanes\' table',
   });
-  const STILL_LINE = 4;   /* v2.3.5227: only falls */
+  /* v2.3.5228: rendering/lookPalette.js left the census (card O PR 8: the
+     look's choice asks the profile for this page's device) */
+  const STILL_LINE = 3;   /* v2.3.5227: only falls */
   const bad = [];
   const still = new Set();
   for (const u of files) {
@@ -252,9 +254,16 @@ check('5. twelve fields, in SHAPES part 6\'s order', DEV_CLASS_FIELDS.join() ===
   const code = src.slice(at).replace(/\/\*[\s\S]*?\*\//g, '');
   check('7. the class\'s code reads no user agent, platform, vendor or clock', at > 0 && !/userAgent|platform|vendor|performance\.now|Date\.now|requestAnimationFrame/.test(code),
     (code.match(/userAgent|platform|vendor|performance\.now|Date\.now|requestAnimationFrame/g) || []));
-  const pal = readFileSync(new URL('../../src/rendering/paletteTex.js', import.meta.url), 'utf8');
-  const m = /const SOFTWARE_GL = (\/.*\/[a-z]*);/.exec(pal);
-  check('7. its software list is paletteTex.js SOFTWARE_GL, written the same', m && m[1] === String(SOFT_GL), { paletteTex: m && m[1], here: String(SOFT_GL) });
+  const strip7 = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\/[^\n]*/g, '$1');
+  /* v2.3.5228 (card O PR 8): the one program's fallback asks softRenderer,
+     this list; paletteTex.js keeps no copy (the copy was held equal here) */
+  const pal = strip7(readFileSync(new URL('../../src/rendering/paletteTex.js', import.meta.url), 'utf8'));
+  check('7. its software list is the one program\'s fallback too: paletteTex.js keeps no list of its own, and softRenderer is SOFT_GL',
+    !/SOFTWARE_GL|swiftshader|llvmpipe/i.test(pal) && /\bdevAsk\(/.test(pal)
+      && softRenderer('Google SwiftShader') && softRenderer('llvmpipe (LLVM 15.0.7, 256 bits)') && softRenderer('Microsoft Basic Render Driver')
+      && !softRenderer('Apple GPU') && !softRenderer('ANGLE (NVIDIA GeForce RTX 3060 Direct3D11)') && !softRenderer(undefined)
+      && String(SOFT_GL) === '/swiftshader|llvmpipe|softpipe|software|basic render|\\bwarp\\b/i',
+    { list: String(SOFT_GL) });
   const root = new URL('../../src/', import.meta.url);
   const askers = [];
   (function walk(dir) {

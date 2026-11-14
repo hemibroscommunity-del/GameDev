@@ -1476,6 +1476,20 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
  */
 {
   const LONG = 'z'.repeat(4000);
+  /* v2.3.5184 (card K PR 4): the wire door (wire/door.js) refuses a `words`
+     field past WIRE_DOOR.WORDS_MAX (2,000) before any handler: this name
+     never reaches the join, and no input box of the game can hold it.  The
+     clamps below are each handler's own, under the door: this block plays
+     them with its switch thrown (`wiredoor: false`). */
+  {
+    const wsD = fakeWs('longname-door');
+    room.sessions.set(wsD, baseSession());
+    await room.webSocketMessage(wsD, JSON.stringify({ type: 'join', id: 'p_name_door', name: LONG, protocolVersion: 2, data: { x: 0, y: 0, z: 'town' } }));
+    check('join: v2.3.5184: the wire door refuses a 4,000-character name before the join', !room.sessions.get(wsD).id && room.sessions.get(wsD).wireDoor === 1, room.sessions.get(wsD));
+    room.sessions.delete(wsD);
+  }
+  const _flags9 = room._liveFlags;
+  room._liveFlags = { ...(_flags9 || {}), wiredoor: false };
   const wsN = fakeWs('longname');
   room.sessions.set(wsN, baseSession());
   await room.webSocketMessage(wsN, JSON.stringify({
@@ -1612,6 +1626,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   await room.webSocketMessage(wsN, JSON.stringify({ type: 'chat' }));
   check('chat: whitespace-only / non-string / missing text relay nothing', chatOf().length === 0,
     chatOf().map((e) => e.payload));
+  room._liveFlags = _flags9;   /* v2.3.5184: the door's switch back */
 }
 
 /* ── 10. v2.3.3292: a roll is only as long as the one you paid for ──

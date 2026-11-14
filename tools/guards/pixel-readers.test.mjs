@@ -59,6 +59,7 @@ const text = (p) => readFileSync(join(ROOT, p), 'utf8');
 const READERS = {
   'src/rendering/bakeByAddress.js': 'frameInput: a bake\'s frame cut from its sheet (a body or armour sheet), never a p256 picture',
   'src/rendering/cacheBytes.js': 'counts the page copy\'s bytes; reads no pixel',
+  'src/rendering/framePack.js': 'the monsters\' strips kept deflated a frame at a time once on the chip (v2.3.5257): reads a strip\'s numbers to pack them and gives the readers each frame back exactly; never a p256 picture',
   'src/rendering/gearSheets.js': 'the gear and effect strips it loads and packs itself, read before they are drawn (a twin through packedTwinAsNumbers)',
   'src/rendering/gpuOnly.js': 'lets a canvas copy go once the chip has it; reads no pixel',
   'src/rendering/headFrames.js': 'names a source for the probe; reads no pixel',
@@ -71,7 +72,7 @@ const READERS = {
   'src/rendering/npcSprites.js': 'lets the townsfolk\'s cropped canvases go; reads no pixel',
   'src/rendering/p256.js': 'the pack itself, and the twins\' first read',
   'src/rendering/paletteDraw.js': 'drawSourceRect: draws a picture or its colour numbers',
-  'src/rendering/paletteTex.js': 'sends colour numbers to the chip (a packed one is unpacked first: p256.js installP256Upload)',
+  'src/rendering/paletteTex.js': 'sends colour numbers to the chip (a packed one is unpacked first: p256.js installP256Upload; a strip kept a frame at a time, framePack.js __btFPUnpack)',
   'src/rendering/picsOnce.js': 'puts pictures back after a lost chip',
   'src/rendering/pixiApp.js': 'the asset cache\'s count (__btTex); reads no pixel',
   'src/rendering/pixiRenderer.js': 'QA probes of the player\'s own figure (a baked body), never a p256 picture',

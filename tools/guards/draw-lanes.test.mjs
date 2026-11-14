@@ -20,7 +20,9 @@
  *   7. the programs (the report's `self`): a name each, once; every program
  *      a listed file builds (`name: 'bt-...'` / `'batch-...'`) is listed
  *      under its file, and every listed one is built there;
- *   8. an override pins a knob of the table to one of its steps;
+ *   8. an override pins a knob of the table to one of its steps, says why,
+ *      and asks one of DEV_ASKS (v2.3.5228: deviceProfile.js answers each;
+ *      server/test/one-program.test.mjs);
  *   9. every file the table names exists;
  *  10. docs/LANES.md is what the table makes.
  *
@@ -43,14 +45,14 @@
 import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  KNOBS, KNOB_NAMES, LANES, LANE_NAMES, AXES, AXIS_NAMES, LIGHT_AT, PROGRAMS, PROGRAM_NAMES, OVERRIDES,
+  KNOBS, KNOB_NAMES, LANES, LANE_NAMES, AXES, AXIS_NAMES, LIGHT_AT, PROGRAMS, PROGRAM_NAMES, OVERRIDES, DEV_ASKS,
   knobAt, ladderDepth, pickLane, DEFAULT_LANE,
 } from '../../src/game/drawLanes.js';
 import { systemOf, placeFiles, ROOT } from './lib/systems.mjs';
 
 /* the census line: knobs with a reader not yet read through laneKnob.  Only
    falls, with each knob's PR (card O's 4 to 13); the gatekeeper alone lowers it */
-const UNMOVED_LINE = 9;   /* v2.3.5224: the rate moved (card O PR 4); v2.3.5225 the pixels (PR 5) */
+const UNMOVED_LINE = 6;   /* v2.3.5224: the rate moved (card O PR 4); v2.3.5225 the pixels (PR 5); v2.3.5228 the program and the look (PR 8); v2.3.5226 the crowd (PR 6) */
 const NEVER = Object.freeze(['combat', 'preload']);
 const PAGE = join(ROOT, 'docs/LANES.md');
 const TABLE = 'src/game/drawLanes.js';
@@ -134,9 +136,10 @@ export function makePage() {
   L.push('');
   if (!OVERRIDES.length) L.push('None yet: card O\'s PR 8 moves the fallbacks here, PR 12 the off-ramps.');
   else {
-    L.push('| Knob | Pinned to | Why |');
-    L.push('|---|---|---|');
-    for (const o of OVERRIDES) L.push(`| \`${o.knob}\` | \`${o.value}\` | ${cell(o.why)} |`);
+    /* v2.3.5228: a fallback's row says when (a question deviceProfile.js answers) */
+    L.push('| Knob | Pinned to | When the device is | Why |');
+    L.push('|---|---|---|---|');
+    for (const o of OVERRIDES) L.push(`| \`${o.knob}\` | \`${o.value}\` | ${o.when ? '`' + o.when + '`' : '-'} | ${cell(o.why)} |`);
   }
   L.push('');
   L.push('## The game\'s own drawing programs');
@@ -283,8 +286,9 @@ const placed = placeFiles();
 
 /* ── 8. overrides ── */
 {
-  const off = OVERRIDES.filter((o) => !o || !KNOBS[o.knob] || !KNOBS[o.knob].steps.includes(o.value) || typeof o.why !== 'string' || !o.why).map((o) => JSON.stringify(o));
-  check(`8: every override pins a knob of the table to one of its steps, and says why (${OVERRIDES.length})`, off.length === 0, off);
+  const off = OVERRIDES.filter((o) => !o || !KNOBS[o.knob] || !KNOBS[o.knob].steps.includes(o.value) || typeof o.why !== 'string' || !o.why
+    || (o.when !== undefined && !DEV_ASKS.includes(o.when))).map((o) => JSON.stringify(o));
+  check(`8: every override pins a knob of the table to one of its steps, says why, and asks a question of DEV_ASKS (${OVERRIDES.length})`, off.length === 0, off);
 }
 
 /* ── 9. every file named exists ── */

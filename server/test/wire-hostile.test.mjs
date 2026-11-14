@@ -28,7 +28,11 @@
  * test/wire-hostile.test.mjs --write` makes it) and LINE below is their
  * count: the suite fails when the count rises, and says so when it falls
  * (lower LINE in that PR).  Fix no handler here: card K's PR 4 (the door's
- * checks, `wiredoor`) lowers it, and each row's own fix after.
+ * checks, `wiredoor`) lowered it to 1, and each row's own fix after.
+ * v2.3.5184: a frame the wire door drops (server/src/wire/door.js, before any
+ * handler) is a silent exit by design, as the size gate's is (4 below);
+ * `WIRE_HOSTILE_DOOR=off` runs every case with `wiredoor: false` and holds
+ * the count to the line before the door (19: the plan's rule 4).
  *
  * HOW FAR A CASE REACHES.  The sender is a joined player in the town with
  * gold and a few bag stacks; the other fields are plausible, not a scene: a
@@ -56,10 +60,17 @@ import { makeStorage, openRoom, fakeWs, join, seededClock, settle } from './test
 import { performance } from 'node:perf_hooks';
 import { count, unexplained } from '../src/worldsum.js';
 
-/* the count of failing cases today (main 9fd5e58): it only falls */
-const LINE = 19;
+/* the count of failing cases today: it only falls.  v2.3.5183, main 9fd5e58:
+   19.  v2.3.5184 (card K PR 4): 1 -- the wire door drops `move`'s 16 (a key
+   named like the prototype's) and chatmod.js answers a mute of `__proto__`
+   unchanged (its 2); left, card R's honest restart (worldsum.js).  With the
+   door's switch thrown (WIRE_HOSTILE_DOOR=off, the plan's rule 4) the count
+   is the line before the door, LINE_DOOR_OFF. */
+const LINE = 1;
+const LINE_DOOR_OFF = 19;
 const WRITE = process.argv.includes('--write');
 const PLANT = process.env.WIRE_HOSTILE_PLANT === '1';
+const DOOR_OFF = process.env.WIRE_HOSTILE_DOOR === 'off';
 const CENSUS = new URL('../../docs/plan/census/hostile.md', import.meta.url);
 
 let failures = 0;
@@ -182,6 +193,9 @@ async function newRoom() {
     return put.call(this, k, v);
   };
   const room = await openRoom(st);
+  /* v2.3.5184: WIRE_HOSTILE_DOOR=off throws the wire door's switch (the
+     plan's rule 4): the count is the line before the door, 19 */
+  if (DOOR_OFF) room._liveFlags = { ...(room._liveFlags || {}), wiredoor: false };
   const wa = await join(room, fakeWs('a'), A, { loginTaken: true, name: 'Ada' });
   const wb = await join(room, fakeWs('b'), B, { loginTaken: true, name: 'Bob' });
   await settle();
@@ -194,6 +208,7 @@ const sessionOf = (room, ws) => room.sessions.get(ws);
 async function judge(w, row, run, extraMemory = []) {
   const before = w.wa.sent.length;
   const oversize0 = (sessionOf(w.room, w.wa) || {}).oversize || 0;
+  const door0 = (sessionOf(w.room, w.wa) || {}).wireDoor || 0;
   w.writes.length = 0;
   const errs = [];
   let threw = null, status = null;
@@ -219,10 +234,13 @@ async function judge(w, row, run, extraMemory = []) {
   for (const p of mem.slice(0, 2)) faults.push('kept in memory: ' + p);
   /* 4: a row that names only `refused` answers -- unless the router's own
      size gate dropped the frame before any handler (MAX_INBOUND_BYTES,
-     v2.3.1618: every row's, silent by design) */
+     v2.3.1618: every row's, silent by design), or (v2.3.5184) the wire door
+     did, before any handler too (wire/door.js: only a script sends what it
+     drops; refusal-door-list.mjs CODES `door`) */
   const bad = row.bad || [];
   const silent = w.wa.sent.length === before;
-  const gated = ((sessionOf(w.room, w.wa) || {}).oversize || 0) > oversize0;
+  const gated = ((sessionOf(w.room, w.wa) || {}).oversize || 0) > oversize0
+    || ((sessionOf(w.room, w.wa) || {}).wireDoor || 0) > door0;
   if (row.envelope !== 'http' && silent && !gated && bad.includes('refused') && !bad.some((b) => b.startsWith('dropped:')) && !threw)
     faults.push('silent, and the row says a wrong value is refused');
   if (faults.length) w.start = now;   /* the next case is judged from here */
@@ -399,8 +417,7 @@ console.log('     ' + failing + ' failing cases: ' + JSON.stringify(kinds) + ', 
 /* what a row's failing cases are, read from the handler (the census's Why
    column; a row with no line here is read from its cases alone) */
 const WHY = {
-  move: 'movement.js _handleMove keeps `vx`, `vy`, `d`, `f`, `eqc`, `eql` and `ex` on the record as sent (`ps.vx = msg.vx || 0`, `ps.f = msg.f`): an object stays in memory, and rides the tick to the others',
-  chat_mute: 'chatmod.js keeps the mutes in a list keyed by the target\'s id and stores `{ list: { ...doc } }`: a target named `__proto__` becomes an own key of the stored record',
+  /* v2.3.5184: move's 16 and chat_mute's 2 fell (card K PR 4: the wire door, chatmod's mend) */
   character_reset: 'not the handler: the honest restart (`confirm: true`) deletes the character, and the world\'s sum (worldsum.js) reads it as value gone with no burn written: card E\'s sum or card R\'s roads',
 };
 if (WRITE) {
@@ -416,9 +433,17 @@ if (WRITE) {
     'each value of one closed list (the suite\'s header). A line is a case that',
     'fails today; the suite\'s `LINE` is their count, and it only falls (the',
     'plan\'s rule 3). Fix no handler from this page alone: card K\'s PR 4 (the',
-    'door\'s checks) lowers it, and each row\'s own fix after.',
+    'door\'s checks) lowered it, and each row\'s own fix after.',
     '',
-    `**${failing} failing cases** of ${cases}, on main 9fd5e58. By kind: ` + Object.entries(kinds).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join('; ') + '.',
+    `**${failing} failing cases** of ${cases}. By kind: ` + Object.entries(kinds).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join('; ') + '.',
+    '',
+    'v2.3.5183 (main 9fd5e58): 19. v2.3.5184 (card K PR 4): the wire door',
+    '(`server/src/wire/door.js`) drops a key named `__proto__`, `constructor`',
+    'or `prototype` at any depth before any handler, which took `move`\'s 16',
+    '(movement.js kept `vx`, `vy`, `d`, `f`, `eqc`, `eql`, `eqs` and `ex` as',
+    'sent); chatmod.js answers a mute of `__proto__` unchanged, which took',
+    '`chat_mute`\'s 2. With `wiredoor: false` the count is 19 again',
+    '(`WIRE_HOSTILE_DOOR=off`, the plan\'s rule 4).',
     '',
     '## By row',
     '',
@@ -428,7 +453,8 @@ if (WRITE) {
     '',
     'Not failing, and why: a frame of 1 MB is dropped by the router\'s size gate',
     'before any handler (`MAX_INBOUND_BYTES`, v2.3.1618), silent by design for',
-    'every row; NaN cannot arrive in a frame or a JSON body (the parse refuses',
+    'every row; a frame the wire door drops is silent by design too (its code',
+    '`door`); NaN cannot arrive in a frame or a JSON body (the parse refuses',
     'it), so it is sent only as the text `NaN` in a query or a header.',
     '',
     '## Every case',
@@ -442,7 +468,11 @@ if (WRITE) {
   console.log('     wrote docs/plan/census/hostile.md');
 }
 
-check(`2: the failing cases do not rise past the line (${failing} <= ${LINE}: docs/plan/census/hostile.md)`, failing <= LINE, census.slice(0, 8));
-if (failing < LINE) console.log(`NOTE the failing cases fell (${failing} < ${LINE}): lower LINE in this suite, and the census with --write`);
+if (DOOR_OFF) {
+  check(`2: with the wire door's switch thrown (wiredoor: false), the failing cases are the line before the door (${failing} = ${LINE_DOOR_OFF})`, failing === LINE_DOOR_OFF, census.slice(0, 8));
+} else {
+  check(`2: the failing cases do not rise past the line (${failing} <= ${LINE}: docs/plan/census/hostile.md)`, failing <= LINE, census.slice(0, 8));
+  if (failing < LINE) console.log(`NOTE the failing cases fell (${failing} < ${LINE}): lower LINE in this suite, and the census with --write`);
+}
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

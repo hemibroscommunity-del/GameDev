@@ -1,6 +1,6 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: #1822, #1820, #1826, #1829, #1831 merged; ready: #1838, #1842 (5540), #1848 (5541), 7.1 (5187) this branch
+prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842 merged; ready: #1848 (5541, held: two mends), 7.1 (5187) this branch
 state: ready
 
 ## Done
@@ -8,18 +8,17 @@ state: ready
 - PR 1 (5181, #1822), PR 3 (5183, #1820), PR 6 (5186, #1826), PR 5 (5185,
   #1829: the action door), PR 2 (5182, #1831: six lists made from the
   table): merged.
-- PR 4 (5184, #1838): the wire door (`wiredoor`); hostile 19 -> 1. Sitting
-  15's MEDIUM mended: the refusal count keyed by the table's row (`(no
-  row)` for a name no row has), 2b a flood of random types; the README's
-  `fightlockgear` named right. Main 64bb498 merged in.
-- Claims 5540 (#1842): the archer's lane (`arrowlane`, ON); the stepping
+- PR 4 (5184, #1838, merged): the wire door (`wiredoor`); hostile 19 -> 1.
+- Claims 5540 (#1842, merged): the archer's lane (`arrowlane`, ON); the stepping
   archer keeps every arrow. The bow cheats' rise (bowlabel 3.91, the bot
   lab's aimbot +12%) is for the bow claim's PR to bound, without costing
   the stepping archer an arrow (the planning session).
 - Claims 5541 (#1848): the sprint mark, OFF (the owner: "Just go
-  recommended", off for now); with it on, the move 4.35 -> 3.43.
+  recommended", off for now). Held: two MEDIUMs on its ON path
+  (review-z16): mends next, OFF throughout.
 - PR 7.1 (5187): combat and moving through act(), 57 of 58 sends (census
   203 -> 146); precheck reads an event through the door as a broadcast.
+  Scenarios: jump, shieldgem, deathzones fail on main too (not this PR).
 
 ## Next
 
