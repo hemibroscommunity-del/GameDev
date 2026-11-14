@@ -32,10 +32,10 @@
  * A new way to change gold: a row in GOLD_ROADS, one call that names it, and
  * its longhand line in EXPECT below.
  */
-import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { readFileSync, readdirSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { SRC_DIR, srcFiles, LEFT_OUT } from './src-walk.mjs';
+import { SRC_DIR, srcFiles, LEFT_OUT, LEFT_OUT_HOLDS } from './src-walk.mjs';
 import { GOLD_ROADS, GOLD_SUMS, goldAfter, goldMethods, goldOneSum, wholeGold, GOLD_LOG, goldLogOf, CLASSES, ESCROW_PLACES, MAIL_CLASSES, mailClassOf, classFaults } from '../src/gold.js';
 import { BAG_ROADS } from '../src/bag.js';
 import { flagNameOk } from '../src/liveops.js';
@@ -176,11 +176,14 @@ const lineOf = (s, i) => s.slice(0, i).split('\n').length;
   const tmp = mkdtempSync(join(tmpdir(), 'srcwalk-'));
   try {
     for (const d of ['zz', 'zz/deep', 'vendor', 'zz/vendor']) mkdirSync(join(tmp, d));
-    for (const f of ['a.js', 'zz/x.js', 'zz/deep/y.js', 'vendor/v.js', 'zz/vendor/w.js', 'zz/notes.md']) writeFileSync(join(tmp, f), '');
+    for (const f of ['a.js', 'zz/x.js', 'zz/m.mjs', 'zz/deep/y.js', 'vendor/v.js', 'zz/vendor/w.js', 'zz/notes.md']) writeFileSync(join(tmp, f), '');
     const got = srcFiles(tmp);
-    check('2. the walker reads a folder in depth, and leaves out the top\'s vendor/ only (src-walk.mjs)',
-      JSON.stringify(got) === JSON.stringify(['a.js', 'zz/deep/y.js', 'zz/vendor/w.js', 'zz/x.js']), got);
+    check('2. the walker reads a folder in depth (.js and .mjs), and leaves out the top\'s vendor/ only (src-walk.mjs)',
+      JSON.stringify(got) === JSON.stringify(['a.js', 'zz/deep/y.js', 'zz/m.mjs', 'zz/vendor/w.js', 'zz/x.js']), got);
   } finally { rmSync(tmp, { recursive: true, force: true }); }
+  const held = Object.keys(LEFT_OUT).map((d) => [d, readdirSync(new URL(d + '/', SRC_DIR)).sort()]);
+  check('2. ...a folder left out holds what LEFT_OUT_HOLDS names, and nothing of ours (src-walk.mjs)',
+    held.every(([d, fs]) => JSON.stringify(fs) === JSON.stringify([...(LEFT_OUT_HOLDS[d] || [])].sort())), held);
   check('2. ...and server/src: every top file, nothing under a folder LEFT_OUT names',
     files.includes('gold.js') && files.includes('index.js') && !files.some((f) => Object.keys(LEFT_OUT).some((d) => f.startsWith(d + '/'))), files.filter((f) => f.includes('/')));
 }

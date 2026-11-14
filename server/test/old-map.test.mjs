@@ -15,9 +15,26 @@
  *      `world`, run.mjs tells it which scenario is running, and a picture saved
  *      from the old map is stamped;
  *   4. the finder reads calls as the harness writes them (a call with no
- *      world, one with, joinPair's, the function's own definition left out). */
-import { readFileSync } from 'fs';
-import { OLD_MAP_LEGACY, OLD_MAP_LEGACY_FROZEN_AT, callsWithoutWorld, playerCalls, oldMapRefusal } from '../../tools/qa/mp/oldMap.mjs';
+ *      world, one with, joinPair's, the function's own definition left out);
+ *   5. (v2.3.5100) no file hides behind a table line: an mp-<name>.mjs whose
+ *      <name> is a line importing another file would never run by its name.
+ *
+ * v2.3.5100 (grand plan card B, PR 1): §1 reads the FILES.  Since v2.3.5021
+ * a scenario needs no line in run.mjs's table (run.mjs finds
+ * ./mp-<name>.mjs by its name), and §1 read only the table, so a new
+ * scenario that named no world passed GitHub's check (precheck and the
+ * harness still refused it).  It now reads every tools/qa/mp/mp-*.mjs and
+ * every file the table names, keeping those that export `run`, as precheck
+ * does.
+ *
+ * BREAK PROOF (rule 8), tried by hand 2026-11-14:
+ *   §1: a tools/qa/mp/mp-zzz.mjs holding
+ *       `export async function run(){ await H.newPlayer(b, { name: 'Z' }); }`
+ *       and no line in run.mjs                                -> FAIL 1
+ *   §5: `touch tools/qa/mp/mp-landview.mjs`                    -> FAIL 5 */
+import { readFileSync, readdirSync } from 'fs';
+import { OLD_MAP_LEGACY, OLD_MAP_LEGACY_FROZEN_AT, callsWithoutWorld, playerCalls, oldMapRefusal,
+  scenarioTable, scenarioFiles, shadowedFiles } from '../../tools/qa/mp/oldMap.mjs';
 
 let failures = 0;
 function check(name, cond, detail) {
@@ -27,18 +44,24 @@ function check(name, cond, detail) {
 
 const mp = (f) => readFileSync(new URL('../../tools/qa/mp/' + f, import.meta.url), 'utf8');
 const runSrc = mp('run.mjs');
-const scenarios = [...runSrc.matchAll(/^\s+([A-Za-z0-9_]+): \(\) => import\('\.\/([^']+)'\)/gm)].map((m) => [m[1], m[2]]);
+const scenarios = scenarioTable(runSrc);
+const mpFiles = readdirSync(new URL('../../tools/qa/mp/', import.meta.url));
+/* v2.3.5100: every scenario, by its file (the table's and the ones with no line) */
+const byFile = scenarioFiles(scenarios, mpFiles, mp);
 
 /* ── 1. every scenario off the list names its world ── */
 {
   /* v2.3.4674: 362 once the 397 old-map scenarios were deleted (docs/OLD-MAP-TESTS.md) */
   check('1: run.mjs lists its scenarios (guard)', scenarios.length > 300, scenarios.length);
+  /* v2.3.5100: the files, not the table: at least every line's file, plus those with none */
+  const listed = new Set(scenarios.map(([, f]) => f));
+  const unlisted = byFile.filter(([, f]) => !listed.has(f)).map(([n]) => n);
+  check(`1: the scenarios are read by their files (${byFile.length}, of which ${unlisted.length} have no line in the table)`,
+    byFile.length >= scenarios.length - 5 && byFile.some(([n]) => n === 'questline'), { files: byFile.length, table: scenarios.length });
   const bad = [];
   let named = 0;
-  for (const [name, file] of scenarios) {
+  for (const [name, file, src] of byFile) {
     if (OLD_MAP_LEGACY.has(name)) continue;
-    let src = '';
-    try { src = mp(file); } catch { continue; }
     const n = callsWithoutWorld(src).length;
     if (n) bad.push(name + ' (' + file + ')');
     else if (playerCalls(src).length) named++;
@@ -93,6 +116,17 @@ const scenarios = [...runSrc.matchAll(/^\s+([A-Za-z0-9_]+): \(\) => import\('\.\
   check('4: four calls found, the definition left out', calls.length === 4, calls);
   const none = callsWithoutWorld(src);
   check('4: the two with no world (a newPlayer and a joinPair)', none.length === 2 && /name: 'A'/.test(none[0]) && /nameA: 'C'/.test(none[1]), none);
+}
+
+/* ── 5. no file hides behind a table line (v2.3.5100) ── */
+{
+  const hidden = shadowedFiles(scenarios, mpFiles);
+  check('5: no mp-<name>.mjs shares its name with a table line that imports another file (rename the file)', hidden.length === 0, hidden);
+  const demo = shadowedFiles([['landview', 'mp-landscape-view.mjs'], ['farm', 'mp-farm.mjs']], ['mp-landview.mjs', 'mp-farm.mjs', 'mp-new.mjs']);
+  check('5: the finder names a hidden file, and only that one', demo.length === 1 && /^mp-landview\.mjs /.test(demo[0]), demo);
+  const found = scenarioFiles([['thumbbtn', 'shot-thumbbtn.mjs']], ['mp-a.mjs', 'mp-script.mjs', 'shot-thumbbtn.mjs'],
+    (f) => ({ 'mp-a.mjs': 'export async function run() {}', 'mp-script.mjs': 'await main();', 'shot-thumbbtn.mjs': 'export const run = 1;' })[f]);
+  check('5: a scenario is a file that exports run, by its file or its line', JSON.stringify(found.map(([n, f]) => n + ':' + f)) === '["a:mp-a.mjs","thumbbtn:shot-thumbbtn.mjs"]', found.map(([n, f]) => n + ':' + f));
 }
 
 if (failures) { console.log(`\n${failures} TEST(S) FAILED`); process.exit(1); }
