@@ -185,17 +185,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const t = TELL[n.name];
         if (t) {
           let count = (await H.screenshotPixels(P, clip)).count(t[1]);
-          /* v2.3.5421 (card J2): he walks his day (v2.3.4058), and where he
-             stops the scenery may stand in front of him -- Diego, 2 runs of
-             5, under the General Store's sign, his head alone in the crop
-             (census row 6; Found).  A crop that reads nothing of his look is
-             read again once he has moved on, beside where he is then, the
-             same bar (25 px) each time: up to four looks, 4 s apart. */
+          /* v2.3.5421 (card J2): stood 120 px east of him, you may be at a
+             DOOR -- Diego keeps the General Store's counter 105 px west of
+             its steps (wheelBuildingDoors.js WHEEL_TOWNSFOLK), and stood
+             there the store's name band lies dark across his body: his tee
+             read 0 to 6 px, 3 runs of 8 (census row 6).  A crop that reads
+             nothing of his look is read again from his other side and
+             further south, the same bar (25 px) each time. */
+          const SIDES = [[-120, 40], [120, 150], [-120, 150]];
           let tries = 1;
-          for (; count <= 25 && tries < 4; tries++) {
-            await P.page.waitForTimeout(4000);
+          for (; count <= 25 && tries <= SIDES.length; tries++) {
+            const [ox, oy] = SIDES[tries - 1];
             const at = await P.page.evaluate((nm) => { const q = (window._gameState.current.npcs || []).find((m) => m.name === nm); return q ? { x: q.x, y: q.y } : null; }, n.name);
-            if (at) await H.hopTo(P, at.x + 120, at.y + 40, { step: 100, gap: 260, tries: 90 });
+            if (at) await H.hopTo(P, at.x + ox, at.y + oy, { step: 100, gap: 260, tries: 90 });
+            await P.page.waitForTimeout(900);
             await P.page.evaluate(() => { const b = document.querySelector('[data-shop-close]'); if (b) b.click(); });
             await H.closeNpcDialogue(P).catch(() => {});
             await cameraStill(P);
