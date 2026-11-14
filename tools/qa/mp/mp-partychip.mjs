@@ -90,11 +90,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const ids = {};
     for (const [k, P] of [['A', A], ['B', B], ['C', C]]) ids[k] = await H.readState(P, (S) => S.myId);
     /* the party, by the game's own messages (mp-party drives the invite card) */
-    for (const k of ['B', 'C']) {
-      await A.page.evaluate((t) => window._gameState.current.channel.send({ type: 'broadcast', event: 'party_invite', payload: { target: t } }), ids[k]);
-      await (k === 'B' ? B : C).page.waitForTimeout(1500);
-      await (k === 'B' ? B : C).page.evaluate((t) => window._gameState.current.channel.send({ type: 'broadcast', event: 'party_accept', payload: { target: t } }), ids.A);
-      await A.page.waitForTimeout(1500);
+    /* v2.3.5431 (card J2): each accept once its invite has ARRIVED (the friend's own "invites you" popup), not after
+       a fixed 1.5 s: with three pages on this box a stall held an invite past it, the accept met no invite on the
+       worker, and the party never formed (1 run in 3, the guard).  A friend still out after a round is asked again */
+    const members = () => H.readState(A, (S) => (S._party && S._party.members ? S._party.members.map((m) => m.id) : []));
+    for (let round = 0; round < 3; round++) {
+      const inParty = await members();
+      for (const k of ['B', 'C']) {
+        if (inParty.includes(ids[k])) continue;
+        const F = k === 'B' ? B : C;
+        await A.page.evaluate((t) => window._gameState.current.channel.send({ type: 'broadcast', event: 'party_invite', payload: { target: t } }), ids[k]);
+        await H.waitFor(F, (S) => (S.dmgNumbers || []).some((d) => /invites you to a party/.test(d.text || '')), (v) => v, { timeout: 8000, label: 'the invite' }).catch(() => null);
+        await F.page.evaluate((t) => window._gameState.current.channel.send({ type: 'broadcast', event: 'party_accept', payload: { target: t } }), ids.A);
+        await A.page.waitForTimeout(1500);
+      }
+      if ((await members()).length === 3) break;
     }
     const formed = await H.waitFor(A, (S) => (S._party && S._party.members ? S._party.members.length : 0), (n) => n === 3,
       { timeout: 20000, label: 'a party of three' }).catch(() => null);
