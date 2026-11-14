@@ -20,11 +20,10 @@ state: ready
 - The census's own Found list: 93 traps name a test not in the repo (all
   but four went with the old map at tag 4674); 29 traps are untrue in
   whole or part.
-- `docs/plan/cards/*.md` write each day-one tag in full, so precheck's
-  `version-tag` check reads every one as used on `main`, and a session
-  that writes its own card's tag in a file fails it
-  (`tools/dev/tagRule.mjs`). This card's files write the tag as a bare
-  number; the commit titles carry it in full.
+- The day-one cards wrote their tags in full, so precheck's `version-tag`
+  check read every one as used on `main`. Mended on `main` by tag 5055
+  (#1664: the cards write them bare). This card's files write the tag
+  bare too; the commit titles carry it in full.
 - `tools/world/test-world-core.mjs` is run by no workflow, no precheck
   check and not by `npm test`; eight traps rest on it.
 - `CLAUDE.md` §7 still says three sprite programs on every chip; since
