@@ -795,6 +795,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
           }
           await end(outfit, 'fire');
           await page.keyboard.press('Escape').catch(() => {});
+          /* v2.3.5428 (card J2): a campfire burns 45 s on the phone, and on this
+             box the light's photographs and the check after them take longer
+             (142 s measured): the fire had gone out before the cook began, so
+             the cook never started (red on main).  A fire that is out is lit
+             again from the second log (granted above) before the cook */
+          const fireUp = () => H.readState(P, (S) => !!(S._campfire && S._campfire.alive) || !!S._firemaking);
+          if (want('cook') && !(await fireUp())) {
+            await page.evaluate(() => {
+              const bus = window._itemDetailBus;
+              const S = window._gameState && window._gameState.current;
+              if (bus && S && S.rpg) bus.open({ kind: 'inventory', key: 'wood_pine_log', count: (S.rpg.inventory || {}).wood_pine_log || 0 });
+            });
+            await page.locator('button:visible', { hasText: 'Light fire' }).first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
+            await page.evaluate(() => {
+              const b = [...document.querySelectorAll('button')].find((x) => /Light fire/.test(x.textContent || '') && x.offsetParent);
+              if (b) b.click();
+            });
+            await page.keyboard.press('Escape').catch(() => {});
+            summary[`${outfit}/fire`].relit = true;
+          }
           const camp = await H.waitFor(P, (S) => ({ fire: !!S._campfire, lighting: !!S._firemaking, cook: window.__btStandIns().cook }),
             (v) => v.fire && !v.lighting && v.cook.state === 'ready', { timeout: 20000, label: 'a campfire, and the cook made' }).catch(() => null);
           if (camp && want('cook')) {
