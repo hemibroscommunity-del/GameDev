@@ -99,6 +99,8 @@
  *                                                         -> FAIL 2
  *  24. `inst.state = 'done';` back in _dungeonComplete (the trade line's
  *      besides is the door's own, `fn`)                   -> FAIL 2
+ * v2.3.5216 (the pose door):
+ *  25. `ps.po = id;` back in _handlePose                  -> FAIL 2
  *
  * Run from the repository's root: node tools/guards/phase-table.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
@@ -297,6 +299,9 @@ const DOOR_SUITES = Object.freeze({
      suite holds those) */
   'server/test/dungeon-door.test.mjs': { field: 'inst.runPhase', fn: '_dungeonTo', holds: '§2: no write of .runPhase or .bossSpawned in server/src, nor of a run\'s .state, outside _dungeonTo',
     prop: 'runPhase', besides: [] },
+  /* v2.3.5216: the pose door */
+  'server/test/pose-door.test.mjs': { field: 'ps.po', fn: '_poseTo', holds: '§2: no write of .po in server/src outside _poseTo',
+    prop: 'po', besides: [] },
 });
 const SCAN_DOORS = Object.freeze({
   'session (worker)': 'session-door.test plays the phases but fails no second writer of session.phase',

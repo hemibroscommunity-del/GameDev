@@ -535,6 +535,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `leaderidleat` | worker | switch | v2.3.4378 | false | logic |  | no | The party leader's idle clock counts only a `seen` above 0, as before. |
 | `partydoor` | worker | switch | v2.3.5212 | false | logic |  | no | A player can be put in a party that does not list them, as the lines before the party door could have (nothing does today). |
 | `partykeep` | worker | switch | v2.3.3276 | false | logic |  | no | Parties are not kept: the old cap and the away window remove a dropped member. |
+| `posedoor` | worker | switch | v2.3.5216 | false | logic |  | no | A held pose takes any id a caller asks, and the dead can be written posing, as the line before the pose door could have (the phone's pose handler still checks both first). |
 | `power` | worker | switch | v2.3.5481 | false | logic |  | no | Un-advertises the power index: no board report carries one, so the Power board empties as players report and the other boards are as they were. |
 | `race` | worker | switch | v2.3.3525 | false | logic |  | no | Lil Bro's race un-advertised and none started. |
 | `?socialreset` | page | switch | v2.3.5204 | =0 | logic |  | no | A race the worker forgot at a reconnect stays on the phone until its own clock lets it go, as before. |

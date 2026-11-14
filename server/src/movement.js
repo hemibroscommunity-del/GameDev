@@ -857,7 +857,7 @@ export const movementMethods = {
       if (msg.dead !== undefined && this._serverDeadOff()) this._lifeDeadClaim(ps, msg.dead);   /* v2.3.4820: the life door's one claim road */
       /* v2.3.3392: a held pose ends when the player really moves (poses.js):
          the worker's own word, so a walker is never drawn sitting */
-      if (ps.po && this._poseEndsOn(ps, _stepPx, zoneChanged, msg)) ps.po = null;
+      if (ps.po && this._poseEndsOn(ps, _stepPx, zoneChanged, msg)) this._poseTo(ps, null, 'move');   /* v2.3.5216: the pose door */
       /* v2.3.3525: a race under way judges the step the worker just took
          (race.js) -- one property read when there is none */
       /* v2.3.3776: off the board past the safe ground's edge, out of the
