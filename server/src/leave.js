@@ -76,6 +76,8 @@ const FULL = Object.freeze({
   leave: true, count: true, lastOut: true, copies: true,
 });
 
+import { bookAdd } from './daybook.js';   /* v2.3.5093: a sitting's seconds into the book's riding `econ` part */
+
 export const LEAVE_WAYS = Object.freeze({
   /* the runtime's close: the socket has gone (index.js webSocketClose) */
   close:      Object.freeze({ ...FULL, rethrow: true }),
@@ -148,6 +150,10 @@ export const leaveMethods = {
     let _fishLeft = null;   /* v2.3.4036: and the catches to weigh (fishlog.js) */
     let _accLeft = null;    /* v2.3.4545: and the shots and hits not yet written (accuracy.js) */
     if (first && session.id) {
+      /* v2.3.5093: the sitting's seconds into the day's book's `econ` part, which
+         rides the book's own puts (daybook.js RIDES): the owner's card reads gold
+         made a player-hour from it (card E PR 12; no put of its own) */
+      if (session.openedAt > 0 && !(this._econOff && this._econOff())) bookAdd(this, 'econ', { p: { s: Math.max(0, Math.round((Date.now() - session.openedAt) / 1000)) } });
       if (d.botfp === 'safe') {
         /* v2.3.3174: the takeover writes the bot fingerprint's summary first,
            as a clean close does.  _botfpOnJoin re-reads botstat: (written at
