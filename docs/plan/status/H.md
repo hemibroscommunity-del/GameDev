@@ -1,7 +1,7 @@
 card: H
-branch: claude/grand-plan-h-8-ui (one branch a PR, each begun from the one before, as W's are: merge them in order)
-prs: #1668, #1675, #1681 (merged); #1700, #1709, #1712 (sitting 4's holds mended: ready); #1714 (ready); PR 8, the branch above (ready; its number with the next commit)
-state: ready
+branch: claude/grand-plan-h-9-picsonce (one branch a PR, each begun from the one before, as W's are: merge them in order)
+prs: #1668, #1675, #1681 (merged); #1700, #1709, #1712 (sitting 4's holds mended: ready); #1714, #1733 (ready); PR 9 on the branch above (working)
+state: working
 
 ## Done
 
@@ -16,13 +16,13 @@ state: ready
 - #1712 (5045) `foldToMono` off. Sitting 4: the game's fold in
   `soundFold.js` (`four-lines`); a mono sound never waits (4g). Deploys.
 - #1714 (5046) the equip redraw `other: R > J` off. Client only.
-- PR 8 (5047) `ui:*` off: the gear tab's cells components, the formatter
+- #1733 (5047) `ui:*` off: the gear tab's cells components, the formatter
   readied at load; six runs, 9.9 ms the longest (13.4); geartab 122 of 122.
 
 ## Next
 
-- `sweepPicsOnce` (5048), then `body-bake` (5049, + Z's #1668 finds).
-  Sitting 4's holds: `main` in, mended, ready for sitting 5.
+- PR 9 (5048) `sweepPicsOnce`, working: the walk over Pixi's cache a slice
+  a turn. Then `body-bake` (5049, + Z's #1668 finds).
 
 ## Found
 
@@ -32,7 +32,8 @@ state: ready
   the line in 5 of ~40 runs, 19.6 ms the most; the sweep should look inside.
 - `gear-sheet` again once: 22.4 ms at `armour` (`composeShirt` of the WHOLE
   upscaled shirt strip for the portrait's one frame): crop it first.
-- The Leaderboard's faces (since #1681): to measure at `g-boards`.
+- The Leaderboard's faces (since #1681), `g-boards`: 19 boards, 25 faces,
+  no `portrait` hold over 4 ms (run 1 of 3).
 - Bake worker stuck ~3/min here; `wheelGround.js` `_sprite` 14.3 ms.
 
 ## Needs

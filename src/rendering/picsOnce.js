@@ -52,8 +52,10 @@ const ON = !/[?&]onecopy=0\b/.test(_q) && !/[?&]gpucopies\b/.test(_q) && !client
 export function picsOnceOn() { return ON && !(typeof window !== 'undefined' && window.__btTrimVerify === true); }
 
 const SWEEP_MS = 1000;
-const SWEEP_BUDGET_MS = 4;
-const _stats = { bitmapsSwapped: 0, bitmapsSwappedMB: 0, bitmapsReleased: 0, released: 0, releasedMB: 0, restored: 0, restoreFailed: 0, restoreRetries: 0, blankUploads: 0, unloads: 0, lostRestores: 0, kept: 0, sweeps: 0 };
+/* v2.3.5048: a slice of the walk a turn (the sweep's note, below) */
+const SWEEP_SLICE_MS = 3;
+const SLICE_GAP_MS = 100;
+const _stats = { bitmapsSwapped: 0, bitmapsSwappedMB: 0, bitmapsReleased: 0, released: 0, releasedMB: 0, restored: 0, restoreFailed: 0, restoreRetries: 0, blankUploads: 0, unloads: 0, lostRestores: 0, kept: 0, sweeps: 0, rounds: 0, slices: 0, sliceMaxMs: 0 };
 const _released = new Set();   /* sources whose page copy is let go of */
 const _loading = new Map();    /* source -> the promise of its <img> again */
 
@@ -273,43 +275,80 @@ export function installPicsOnceUpload(GlTextureSystem) {
 }
 
 /* ── the sweep: what is on this renderer's chip lets go of its page copy ── */
-function cacheSources(each) {
+/* ═══ v2.3.5048: THE SWEEP A SLICE A TURN ═══
+   held-budget.mjs `other: wrapped > sweepPicsOnce`: the sweep held the page
+   up to 15 ms with the crowd's pictures in the cache (8.4 ms in a main tour's
+   town, all of it the walk's own callback).  It had a 4 ms budget, but the
+   budget only stopped the work on a picture: the walk itself went on over
+   the WHOLE of Pixi's cache, every sweep, from its first entry (Map.forEach
+   cannot stop) -- and the cache holds a texture under each of its names, a
+   sheet's every frame among them, so it is long.  Now the walk is a slice a
+   turn: one walker over the cache's entries is kept from turn to turn
+   (`_walk`, a Map iterator: an entry added meanwhile is still met, one gone
+   is not), each turn walks it for SWEEP_SLICE_MS and stops, and the next
+   turn goes on where it stopped (SLICE_GAP_MS later while a round is
+   unfinished, SWEEP_MS after one ends).  A round sees each picture once
+   (`_seen`).  QA's window.__btPicsOnceSweep() is still one whole round. */
+let _walk = null, _walkMap = null, _seen = null;
+function cacheMap() {
   const map = Cache && (Cache._cache || Cache.cache);
-  if (!map || typeof map.forEach !== 'function') return;
-  map.forEach((v) => {
-    if (!v) return;
-    if (v instanceof Texture || v.source) { each(v.source); return; }
-    if (v.textures && typeof v.textures === 'object') {
-      for (const k in v.textures) { const t = v.textures[k]; if (t && t.source) each(t.source); }
-    }
-  });
+  return map && typeof map.values === 'function' ? map : null;
+}
+function sweepOne(src, renderer) {
+  if (!src || _seen.has(src)) return 0;
+  _seen.add(src);
+  if (src.__btKeepPage && !isReleased(src)) return 0;
+  if (!releasable(src, renderer)) {
+    if (src && !src.destroyed && !src.__btSwapping && !src.__btKeepPage && src.uploadMethodId === 'image' && isBitmap(src.resource)
+      && src.resource.width > 0 && !(src._gpuData && src._gpuData[renderer.uid]) && FILE.test(urlOf(src))) swapBitmap(src);
+    return 0;
+  }
+  release(src);
+  return 1;
 }
 
 let _timer = 0;
 let _renderer = null;
-export function sweepPicsOnce(renderer) {
-  if (!picsOnceOn() || !renderer || !renderer.texture) return 0;
+/** One slice of the sweep (`sliceMs`; Infinity: the rest of the round) ->
+ *  { n: pictures let go of, more: the round is unfinished }.  `fresh`: a new
+ *  round from the cache's first entry. */
+function sweepSlice(renderer, sliceMs, fresh) {
+  const map = cacheMap();
+  if (!map) return { n: 0, more: false };
+  if (fresh || !_walk || _walkMap !== map) { _walk = map.values(); _walkMap = map; _seen = new Set(); _stats.rounds++; }
+  _stats.slices++;
+  const t0 = performance.now();
+  let n = 0;
+  for (;;) {
+    const it = _walk.next();
+    if (it.done) { _walk = null; _seen = null; break; }
+    const v = it.value;
+    if (v) {
+      if (v instanceof Texture || v.source) n += sweepOne(v.source, renderer);
+      else if (v.textures && typeof v.textures === 'object') {
+        for (const k in v.textures) { const t = v.textures[k]; if (t && t.source) n += sweepOne(t.source, renderer); }
+      }
+    }
+    if (performance.now() - t0 >= sliceMs) break;
+  }
+  const ms = performance.now() - t0;
+  if (ms > _stats.sliceMaxMs && sliceMs !== Infinity) _stats.sliceMaxMs = +ms.toFixed(1);
+  return { n, more: !!_walk };
+}
+function sweepable(renderer) {
+  if (!picsOnceOn() || !renderer || !renderer.texture) return false;
   try {
     const gl = renderer.gl;
-    if (gl && typeof gl.isContextLost === 'function' && gl.isContextLost()) return 0;
-  } catch (e) { return 0; }
+    if (gl && typeof gl.isContextLost === 'function' && gl.isContextLost()) return false;
+  } catch (e) { return false; }
+  return true;
+}
+/** A whole round of the sweep at once (QA: window.__btPicsOnceSweep) ->
+ *  the pictures let go of */
+export function sweepPicsOnce(renderer) {
+  if (!sweepable(renderer)) return 0;
   _stats.sweeps++;
-  const t0 = performance.now();
-  const seen = new Set();
-  let n = 0;
-  cacheSources((src) => {
-    if (!src || seen.has(src) || performance.now() - t0 > SWEEP_BUDGET_MS) return;
-    seen.add(src);
-    if (src.__btKeepPage && !isReleased(src)) return;
-    if (!releasable(src, renderer)) {
-      if (src && !src.destroyed && !src.__btSwapping && !src.__btKeepPage && src.uploadMethodId === 'image' && isBitmap(src.resource)
-        && src.resource.width > 0 && !(src._gpuData && src._gpuData[renderer.uid]) && FILE.test(urlOf(src))) swapBitmap(src);
-      return;
-    }
-    release(src);
-    n++;
-  });
-  return n;
+  return sweepSlice(renderer, Infinity, true).n;
 }
 
 /** The renderer the game draws with (createPixiApp): swept now and then; a
@@ -317,11 +356,17 @@ export function sweepPicsOnce(renderer) {
 export function startPicsOnce(renderer, canvas) {
   if (!picsOnceOn()) return;
   _renderer = renderer;
-  if (_timer) clearInterval(_timer);
-  _timer = setInterval(() => {
+  if (_timer) clearTimeout(_timer);
+  /* v2.3.5048: a slice a turn (the sweep's note, above); named so the held
+     sweep still names its holds `sweepPicsOnce...` */
+  const sweepPicsOnceTurn = () => {
+    _timer = 0;
     if (!_renderer || _renderer !== renderer) return;
-    try { sweepPicsOnce(renderer); } catch (e) { /* next time */ }
-  }, SWEEP_MS);
+    let more = false;
+    try { if (sweepable(renderer)) { _stats.sweeps++; more = sweepSlice(renderer, SWEEP_SLICE_MS, false).more; } } catch (e) { /* next time */ }
+    _timer = setTimeout(sweepPicsOnceTurn, more ? SLICE_GAP_MS : SWEEP_MS);
+  };
+  _timer = setTimeout(sweepPicsOnceTurn, SWEEP_MS);
   try {
     canvas.addEventListener('webglcontextlost', () => { if (_renderer === renderer) restoreAllPictures(); });
   } catch (e) { /* the rebuild still waits on it */ }
