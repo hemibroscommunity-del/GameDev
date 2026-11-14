@@ -401,9 +401,19 @@ play, a number 1.1 can measure.
   - the guard and cooking beyond #1530's limits; the quest hand-in and the
     weapon sale with no take-back; gold taken on the page in two panels;
     the local-monster mode; a sword's claim labelled a bow's (TRAPS §329).
+  *Step 1 merged (card K): #1826, the gain bench (`claims-gain.test`,
+  `claimbots.mjs`, `docs/plan/census/claims.md`; no honest refusal), at
+  sitting 14. Five gains are over 1.5 (the move 4.35, the bow label 3.76,
+  the reach 2.96, the harvest 1.86, the cook 1.59); the box waits for the
+  claims tightened, one judge a PR behind its flag (K's second block)
+  (the gatekeeper, sitting 15, tag 5372).*
 - [ ] **4.3 [NEXT] Doors for what is left of value**: experience and
   levels, the stashes, quest state, skill points. A weapon gets an id of its
   own, as gear has.
+  *Begun (card R): #1823, the skill points' door (`skillpoints.js`
+  `POINT_ROADS`, `skillpoints-door.test`), merged at sitting 14. The box
+  waits for the stashes, a weapon's id, quest state and experience (R's
+  PRs 2, 3, 5 and 10) (the gatekeeper, sitting 15, tag 5372).*
 - [x] **4.4 [NOW] The whole world's sum.** "A purse equals its start plus
   the roads that ran" is true by construction; past copies went through
   legal roads (ore sold 24 times in one bundle). So every road in
@@ -440,6 +450,11 @@ play, a number 1.1 can measure.
   (every record of theirs, not the character alone); a paged export; a
   restore tried in the Cloudflare lab; the storage's size in the day's
   book. Done when a lab restore to an hour ago balances 4.4's sum.
+  *Begun (card R): #1825, the storage's size in the day's book
+  (`storesize`, ON), merged at sitting 14. The box waits for the restore
+  from the registry, the paged export and the lab's try (R's PRs 6, 7 and
+  9; the lab's needs `.github/`, the owner's words) (the gatekeeper,
+  sitting 15, tag 5372).*
 
 (4.6 of version 1 is pillar 10.)
 
@@ -535,6 +550,11 @@ nothing known, and a restore copies nothing.
   PRs 2 and 3 (the gatekeeper, sitting 9, v2.3.5365). PR 2, #1768 (the
   page's rows, no count line), merged at sitting 10: 113 unlisted; the box
   waits for PR 3 (the gatekeeper, sitting 11, v2.3.5367).*
+  *T's #1816 (the drawing side's rows: 0 unlisted, card B's map reads a
+  system's switches from the table) and #1817 (rule 4: a row's needs and
+  its reader, the thrown run, a row's place its name), merged at sitting
+  14: every switch found is a row, rule 4 held. The box waits for the
+  page's one reader (T's PR 6) (the gatekeeper, sitting 15, tag 5372).*
 - [ ] **7.2 [NEXT] The end date** (the owner: yes). For a logic switch: four
   weeks on with no revert, then the old way goes. A device off-ramp stays
   while its risk is live. A fallback stays while its trigger lives: a guard
