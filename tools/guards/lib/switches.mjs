@@ -43,10 +43,14 @@
  * `dailyChest`, `whirlWindup`, `broCount` among them).  Any other cap's
  * override is the emergency lever of docs/specs/liveops.md, and stays out.
  *
- * ORDER.  The switches the worker throws for the page (both sides), then
- * the worker by name, then the page by name (card T's PR 2 gave the game's
- * side its rows, PR 3 the drawing side).  A new switch adds its row in its
- * own PR (the guard fails it otherwise).
+ * ORDER.  Three sections, by side: the switches the worker throws for
+ * the page (`both`), then the worker, then the page; in each, the rows sorted
+ * by name (its `?` aside, lower case).  A new row goes where its name puts
+ * it, never at the end: two PRs that each add a row then touch the same
+ * lines only when their names are neighbours (the gatekeeper's sitting 11:
+ * every row-adding PR used to collide at the array's end).  The guard fails
+ * a row out of its place (check 10).  A new switch adds its row in its own
+ * PR (the guard fails it otherwise).
  */
 export const SIDES = Object.freeze(['worker', 'page', 'both']);
 export const KINDS = Object.freeze(['switch', 'value', 'lever']);
@@ -55,21 +59,21 @@ export const COLUMNS = Object.freeze(['name', 'side', 'system', 'kind', 'born', 
 
 export const SWITCHES = Object.freeze([
   /* ── the switches the worker throws for the page: one row each, both sides: the memory savers (CLIENT_SAVERS, src/game/clientOff.js) and any other `clientOff('<id>')` the page asks; `off_<id>: true` on the worker, `?<id>=0` on the page ── */
-  { name: 'groundkeep', side: 'both', system: 'render', kind: 'switch', born: 3775, thrown: 'off_groundkeep: true; ?groundkeep=0, off, false', risk: 'chip', needs: [], fallback: 'no', off: 'The world\'s ground is rebuilt on a return, not kept, as before.' },
-  { name: 'sfxcache', side: 'both', system: 'audio', kind: 'switch', born: 3714, thrown: 'off_sfxcache: true; ?sfxcache=0, off', risk: 'memory', needs: [], fallback: 'no', off: 'Sounds are held whole again, not only while needed.' },
-  { name: 'voicecap', side: 'both', system: 'audio', kind: 'switch', born: 3727, thrown: 'off_voicecap: true; ?voicecap=0, off', risk: 'memory', needs: [], fallback: 'no', off: 'A crowd of one sound plays every voice again, not a few.' },
-  { name: 'onecopy', side: 'both', system: 'preload', kind: 'switch', born: 3715, thrown: 'off_onecopy: true; ?onecopy=0', risk: 'memory', needs: [], fallback: 'no', off: 'Pictures are held in more than one copy again.' },
-  { name: 'picnumbers', side: 'both', system: 'memory', kind: 'switch', born: 3715, thrown: 'off_picnumbers: true; ?picnumbers=0', risk: 'memory', needs: [], fallback: 'no', off: 'Monster strips are held as pictures again, not as colour numbers.' },
   { name: 'codelazy', side: 'both', system: 'preload', kind: 'switch', born: 3717, thrown: 'off_codelazy: true; ?codelazy=0, off, false', risk: 'memory', needs: [], fallback: 'no', off: 'Every window\'s code loads with the game again, not when opened.' },
+  { name: 'gfxlean', side: 'both', system: 'memory', kind: 'switch', born: 4033, thrown: 'off_gfxlean: true; ?gfxlean=0, off, false', risk: 'memory', needs: [], fallback: 'no', off: 'A big drawing\'s building lists are kept after it is drawn.' },
+  { name: 'groundkeep', side: 'both', system: 'render', kind: 'switch', born: 3775, thrown: 'off_groundkeep: true; ?groundkeep=0, off, false', risk: 'chip', needs: [], fallback: 'no', off: 'The world\'s ground is rebuilt on a return, not kept, as before.' },
   { name: 'groundlean', side: 'both', system: 'world', kind: 'switch', born: 3717, thrown: 'off_groundlean: true; ?groundlean=0 (read by the ground worker in public/tools/ground/: out of reach)', risk: 'memory', needs: [], fallback: 'no', off: 'The ground is built by the old builder, not the lean one.' },
   { name: 'heaplean', side: 'both', system: 'world', kind: 'switch', born: 3717, thrown: 'off_heaplean: true; ?heaplean=0, off, false', risk: 'memory', needs: [], fallback: 'no', off: 'The map\'s leftovers are kept, not let go.' },
-  { name: 'lookpalette', side: 'both', system: 'device', kind: 'switch', born: 3716, thrown: 'off_lookpalette: true; ?lookpalette=0 (=1 builds it anyway)', risk: 'chip', needs: [], fallback: 'onWindows, onMac in src/game/lookPaletteChoice.js', off: 'Each look\'s copy is baked on first sight again, not coloured on the chip.' },
-  { name: 'lookshirt', side: 'both', system: 'look', kind: 'switch', born: 3751, thrown: 'off_lookshirt: true; ?lookshirt=0', risk: 'chip', needs: ['lookpalette'], fallback: 'no', off: 'Printed shirts are baked again, not coloured on the chip.' },
-  { name: 'soundgate', side: 'both', system: 'data', kind: 'switch', born: 3800, thrown: 'off_soundgate: true; ?soundgate=0, off, false, no', risk: 'logic', needs: [], fallback: 'no', off: 'The world\'s sound plays under the loading screen again.' },
   { name: 'lookarmour', side: 'both', system: 'look', kind: 'switch', born: 3752, thrown: 'off_lookarmour: true; ?lookarmour=0', risk: 'chip', needs: ['lookpalette'], fallback: 'no', off: 'Bodies under armour are baked again, not coloured on the chip.' },
   { name: 'lookfolk', side: 'both', system: 'look', kind: 'switch', born: 3809, thrown: 'off_lookfolk: true; ?lookfolk=0', risk: 'memory', needs: ['lookpalette'], fallback: 'no', off: 'The townsfolk are drawn from their photographs again, loaded then.' },
-  { name: 'gfxlean', side: 'both', system: 'memory', kind: 'switch', born: 4033, thrown: 'off_gfxlean: true; ?gfxlean=0, off, false', risk: 'memory', needs: [], fallback: 'no', off: 'A big drawing\'s building lists are kept after it is drawn.' },
+  { name: 'lookpalette', side: 'both', system: 'device', kind: 'switch', born: 3716, thrown: 'off_lookpalette: true; ?lookpalette=0 (=1 builds it anyway)', risk: 'chip', needs: [], fallback: 'onWindows, onMac in src/game/lookPaletteChoice.js', off: 'Each look\'s copy is baked on first sight again, not coloured on the chip.' },
+  { name: 'lookshirt', side: 'both', system: 'look', kind: 'switch', born: 3751, thrown: 'off_lookshirt: true; ?lookshirt=0', risk: 'chip', needs: ['lookpalette'], fallback: 'no', off: 'Printed shirts are baked again, not coloured on the chip.' },
+  { name: 'onecopy', side: 'both', system: 'preload', kind: 'switch', born: 3715, thrown: 'off_onecopy: true; ?onecopy=0', risk: 'memory', needs: [], fallback: 'no', off: 'Pictures are held in more than one copy again.' },
+  { name: 'picnumbers', side: 'both', system: 'memory', kind: 'switch', born: 3715, thrown: 'off_picnumbers: true; ?picnumbers=0', risk: 'memory', needs: [], fallback: 'no', off: 'Monster strips are held as pictures again, not as colour numbers.' },
+  { name: 'sfxcache', side: 'both', system: 'audio', kind: 'switch', born: 3714, thrown: 'off_sfxcache: true; ?sfxcache=0, off', risk: 'memory', needs: [], fallback: 'no', off: 'Sounds are held whole again, not only while needed.' },
+  { name: 'soundgate', side: 'both', system: 'data', kind: 'switch', born: 3800, thrown: 'off_soundgate: true; ?soundgate=0, off, false, no', risk: 'logic', needs: [], fallback: 'no', off: 'The world\'s sound plays under the loading screen again.' },
   { name: 'viewcap', side: 'both', system: 'device', kind: 'switch', born: 4054, thrown: 'off_viewcap: true; ?viewcap=0 (=1 forces it)', risk: 'logic', needs: [], fallback: 'no', off: 'A wide screen sees its old wider view of the world.' },
+  { name: 'voicecap', side: 'both', system: 'audio', kind: 'switch', born: 3727, thrown: 'off_voicecap: true; ?voicecap=0, off', risk: 'memory', needs: [], fallback: 'no', off: 'A crowd of one sound plays every voice again, not a few.' },
   /* ── the worker: the live flags (server/src/liveops.js) ── */
   { name: 'accuracy', side: 'worker', system: 'combat', kind: 'switch', born: 4480, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Counts no hits for the accuracy record, answers its asks with off and un-advertises the cap (what is stored stays).' },
   { name: 'achievements', side: 'worker', system: 'quests', kind: 'switch', born: 3527, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Grants, counts and sweeps no achievement and un-advertises the cap (what was earned stays).' },
@@ -242,6 +246,7 @@ export const SWITCHES = Object.freeze([
   { name: 'rejoinresend', side: 'worker', system: 'session', kind: 'switch', born: 4382, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'No re-sends after state_sync, the cap un-advertised.' },
   { name: 'relaylist', side: 'worker', system: 'wire', kind: 'switch', born: 3304, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Relays every type that is not privileged again (the old deny-list).' },
   { name: 'report', side: 'worker', system: 'liveops', kind: 'switch', born: 5122, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Un-advertises the field report, so no phone sends its smoothness, and drops any that still comes.' },
+  { name: 'reportlanes', side: 'worker', system: 'liveops', kind: 'switch', born: 5221, thrown: 'false', risk: 'logic', needs: ['report', 'reportspeed'], fallback: 'no', off: 'The field report no longer takes a lane but full, the governor\'s rung or the self-test (caps.report back to 2).' },
   { name: 'reportspeed', side: 'worker', system: 'liveops', kind: 'switch', born: 5127, thrown: 'false', risk: 'logic', needs: ['report'], fallback: 'no', off: 'The Speed test\'s card is no longer taken (caps.report back to 1); the smoothness reports carry on.' },
   { name: 'rest', side: 'worker', system: 'movement', kind: 'switch', born: 3539, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Un-advertises the Hotel\'s rest: it rests nobody and pays no Well Rested XP.' },
   { name: 'retiredlands', side: 'worker', system: 'world', kind: 'switch', born: 4675, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Opens the retired lands again at once.' },
@@ -307,7 +312,7 @@ export const SWITCHES = Object.freeze([
   { name: 'xp_mult', side: 'worker', system: 'combat', kind: 'value', born: 1150, thrown: 'a number, 1 to 4', risk: 'logic', needs: [], fallback: 'no', off: 'Multiplies kill XP (the 2x weekend lever), 1 to 4.' },
   { name: 'xpdecay', side: 'worker', system: 'life', kind: 'switch', born: 3251, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'Full XP everywhere again, harvests and fights, cap un-advertised.' },
   { name: 'zonejudge', side: 'worker', system: 'world', kind: 'switch', born: 4565, thrown: 'false', risk: 'logic', needs: [], fallback: 'no', off: 'The zone judge off (but its rule R3, the retired lands, stays: `retiredlands`).' },
-  /* ── the page: `?name=` reads (card T's PR 2 the game's side, PR 3 the drawing side) ── */
+  /* ── the page: `?name=` reads ── */
   { name: '?alphaclip', side: 'page', system: 'look', kind: 'switch', born: 3459, thrown: 'present', risk: 'chip', needs: [], fallback: 'no', off: 'Hair is clipped by the alpha mask, as it was, not the stencil.' },
   { name: '?avatarholdms', side: 'page', system: 'movement', kind: 'lever', born: 3520, thrown: 'a number of ms (1 to 180 s)', risk: 'none', needs: [], fallback: 'no', off: 'A slow test machine\'s longer wait for the avatar\'s pictures.' },
   { name: '?bakeread', side: 'page', system: 'look', kind: 'switch', born: 4355, thrown: '=0', risk: 'logic', needs: [], fallback: 'no', off: 'The body bake reads its canvas the old way, to compare.' },
@@ -365,6 +370,7 @@ export const SWITCHES = Object.freeze([
   { name: '?gearpackgentle', side: 'page', system: 'look', kind: 'switch', born: 4873, thrown: '=0, off, false', risk: 'logic', needs: [], fallback: 'no', off: 'Gear sheets are packed flat out, not a few ms at a time.' },
   { name: '?gearretry', side: 'page', system: 'look', kind: 'switch', born: 3870, thrown: '=0', risk: 'logic', needs: ['?retrylooks'], fallback: 'no', off: 'Gear sheets that failed are not asked for again.' },
   { name: '?gearwalk', side: 'page', system: 'look', kind: 'switch', born: 4999, thrown: '=0', risk: 'chip', needs: ['lookpalette'], fallback: 'no', off: 'Armour\'s walk frames are baked, not coloured on the chip.' },
+  { name: '?govern', side: 'page', system: 'page-thread', kind: 'switch', born: 5222, thrown: '=0 (off), =1 (on where `?lane=` holds it)', risk: 'logic', needs: [], fallback: 'no', off: 'The governor no longer moves the ladder: the lane\'s row, however late the frames.' },
   { name: '?gpucopies', side: 'page', system: 'memory', kind: 'switch', born: 3088, thrown: 'present', risk: 'memory', needs: [], fallback: 'no', off: 'Every canvas keeps its page copy, not only the chip\'s.' },
   { name: '?gripguess', side: 'page', system: 'render', kind: 'switch', born: 3399, thrown: '=0', risk: 'logic', needs: [], fallback: 'no', off: 'The bow\'s grip between shots as it was, not guessed.' },
   { name: '?groundbg', side: 'page', system: 'render', kind: 'switch', born: 3452, thrown: '=1', risk: 'chip', needs: [], fallback: 'no', off: 'The black under the world\'s ground is drawn every frame, as it was.' },
@@ -383,6 +389,7 @@ export const SWITCHES = Object.freeze([
   { name: '?jumpicon', side: 'page', system: 'ui', kind: 'value', born: 3721, thrown: 'a glyph\'s name', risk: 'logic', needs: [], fallback: 'no', off: 'Picks the jump button\'s glyph.' },
   { name: '?jumpms', side: 'page', system: 'movement', kind: 'lever', born: 3017, thrown: 'a number of ms', risk: 'none', needs: [], fallback: 'no', off: 'A test\'s own jump length.' },
   { name: '?keepimage', side: 'page', system: 'memory', kind: 'switch', born: 3606, thrown: '=0', risk: 'memory', needs: [], fallback: 'no', off: 'A canvas read back is kept as a canvas, not an image.' },
+  { name: '?lane', side: 'page', system: 'device', kind: 'lever', born: 5221, thrown: '=full, =light or =thirty', risk: 'none', needs: [], fallback: 'no', off: 'This page draws in the named lane, whatever its device\'s facts pick.' },
   { name: '?layerpush', side: 'page', system: 'render', kind: 'switch', born: 3449, thrown: 'present', risk: 'chip', needs: [], fallback: 'no', off: 'Every layer\'s uniforms are pushed as Pixi does, to compare.' },
   { name: '?legslook', side: 'page', system: 'render', kind: 'switch', born: 4450, thrown: '=0, off, false', risk: 'chip', needs: ['lookpalette'], fallback: 'no', off: 'Legs under greaves are baked the old way.' },
   { name: '?legsync', side: 'page', system: 'movement', kind: 'switch', born: 4077, thrown: '=0', risk: 'logic', needs: [], fallback: 'no', off: 'The legs keep their old fixed cadences, not synced to the speed.' },
@@ -512,8 +519,4 @@ export const SWITCHES = Object.freeze([
   { name: '?xpfly', side: 'page', system: 'combat', kind: 'switch', born: 3893, thrown: '=0', risk: 'logic', needs: [], fallback: 'no', off: 'A kill\'s XP does not fly to the bar.' },
   { name: '?zindexall', side: 'page', system: 'render', kind: 'switch', born: 3449, thrown: 'present', risk: 'logic', needs: [], fallback: 'no', off: 'Every depth key goes through Pixi\'s setter every sort, to compare.' },
   { name: '?zoom', side: 'page', system: 'device', kind: 'value', born: 2997, thrown: 'a number', risk: 'chip', needs: [], fallback: 'no', off: 'Sets how far out the camera sees (in place of the view cap\'s).' },
-  /* ── card O's (the lanes and the governor, src/game/drawLanes.js): its rows in a place of their own ── */
-  { name: '?lane', side: 'page', system: 'device', kind: 'lever', born: 5221, thrown: '=full, =light or =thirty', risk: 'none', needs: [], fallback: 'no', off: 'This page draws in the named lane, whatever its device\'s facts pick.' },
-  { name: '?govern', side: 'page', system: 'page-thread', kind: 'switch', born: 5222, thrown: '=0 (off), =1 (on where `?lane=` holds it)', risk: 'logic', needs: [], fallback: 'no', off: 'The governor no longer moves the ladder: the lane\'s row, however late the frames.' },
-  { name: 'reportlanes', side: 'worker', system: 'liveops', kind: 'switch', born: 5221, thrown: 'false', risk: 'logic', needs: ['report', 'reportspeed'], fallback: 'no', off: 'The field report no longer takes a lane but full, the governor\'s rung or the self-test (caps.report back to 2).' },
 ]);
