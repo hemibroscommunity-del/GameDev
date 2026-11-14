@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d8aa4ac276df7c99813424b67c427d22e7493196",
+  "tree": "0cd50f1613ac5df030c78f88c994ab634fc245e4",
+  "committedAt": "2026-11-14T09:33:32-08:00",
+  "subject": "Merge pull request #1785 from hemibroscommunity-del/claude/plan-e-12-card",
+  "files": 7637,
+  "bytes": 953010398,
+  "listingSha256": "fd8e4bcef8a595db32e6829b91520adb42c1733365b31a5e6043ce7a1e374bcd",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

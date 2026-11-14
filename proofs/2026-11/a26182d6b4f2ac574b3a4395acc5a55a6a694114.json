@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "a26182d6b4f2ac574b3a4395acc5a55a6a694114",
+  "tree": "c224f4431f25e84e294cd0140222570165d60f85",
+  "committedAt": "2026-11-14T09:33:38-08:00",
+  "subject": "Merge pull request #1787 from hemibroscommunity-del/claude/plan-o-1-lanes",
+  "files": 7642,
+  "bytes": 953078168,
+  "listingSha256": "aa754604a3722cbff2e70cbb2ae1af764fae18ffb9acaa9f4a86601c4053e14a",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
