@@ -223,15 +223,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
         openCat: pg.dataset.lbOpen,
       };
     });
-    rec.ok('3a the boards are a list under the RANKS title, Records and Skills: the level, the weapons, kills, the spin, the flip, the fish, the ten skills',
-      page.title === 'RANKS' && JSON.stringify(page.secs) === JSON.stringify(['Records', 'Skills'])
+    rec.ok('3a the boards are a list under the RANKS title, Stats, Records and Skills: the level, the weapons, kills, the spin, the flip, the fish, the ten skills',
+      page.title === 'RANKS' && JSON.stringify(page.secs) === JSON.stringify(['Stats', 'Records', 'Skills'])
       && ['combat', 'melee', 'bow', 'magic', 'kills', 'spin', 'fish', 'woodcutting', 'trapping'].every((c) => page.cats.includes(c))
       && page.cats.indexOf('spin') < page.cats.indexOf('woodcutting'), page);
     rec.ok('3b every board in the list is a 44 px target; the list and the board stand side by side inside the screen',
       page.hits.every((h) => h >= 44) && page.rail.l >= 0 && page.rail.r <= page.board.l + 1 && page.board.r <= page.vw && page.pg.b <= page.vh, page);
-    rec.ok('3c the list scrolls by itself; the page does not; it opens on the list\'s first board (Melee)', page.railScrolls && !page.pageScrolls && page.openCat === 'melee', page);
-    rec.ok('3c2 the headings (Records, Skills) headline their sections: brass, 13 px, heavy, a rule under each',
-      page.heads.length === 2 && page.heads.every((h) => h.color === 'rgb(216, 170, 88)' && h.px >= 13 && h.weight >= 700 && h.rule >= 1), page.heads);
+    rec.ok('3c the list scrolls by itself; the page does not; it opens on the list\'s first board (Overall, v2.3.5502)', page.railScrolls && !page.pageScrolls && page.openCat === 'power', page);
+    rec.ok('3c2 the headings (Stats, Records, Skills) headline their sections: brass, 13 px, heavy, a rule under each',
+      page.heads.length === 3 && page.heads.every((h) => h.color === 'rgb(216, 170, 88)' && h.px >= 13 && h.weight >= 700 && h.rule >= 1), page.heads);
     /* each board a pill with its own picture */
     const pills = await H.waitFor(A, () => [...document.querySelectorAll('[data-lb-rail] [data-lb-cat]')].map((b) => {
       const pill = b.querySelector('[data-lb-pill]'), img = b.querySelector('[data-lb-icon] img'), word = pill && pill.lastElementChild;
@@ -248,7 +248,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !!pills && pills.length >= 15 && pills.every((p) => p.h === 36 && p.radius >= 18 && p.word && !p.cut), pills);
     rec.ok('3e ...each with its own picture, loaded, no two alike; the one showing on the gold pill (v2.3.5501)',
       !!pills && pills.every((p) => p.icon && p.iw >= 18 && p.iw <= 22) && new Set(pills.map((p) => p.src)).size === pills.length
-      && pills.filter((p) => p.on).length === 1 && pills.find((p) => p.on).id === 'melee' && pills.find((p) => p.on).rim === 'pill-gold' && pills.filter((p) => !p.on).every((p) => p.rim === 'pill-plain'), pills);
+      && pills.filter((p) => p.on).length === 1 && pills.find((p) => p.on).id === 'power' && pills.find((p) => p.on).rim === 'pill-gold' && pills.filter((p) => !p.on).every((p) => p.rim === 'pill-plain'), pills);
 
     /* v2.3.5501: the Level board is no longer the first: picked */
     await tap(A, '[data-lb-rail] [data-lb-cat="combat"]');
