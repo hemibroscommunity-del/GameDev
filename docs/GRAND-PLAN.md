@@ -779,8 +779,10 @@ happen in one sitting a day; and a play window with no deploy follows it.
     when the game has changed.** YES.
 18. **Can you open one address on a Windows laptop and on a Mac**, once the
     Speed test sends its card? It is the only way to real numbers there.
-19. **What made each kind of art, and may the game say "AI-made"?** The
-    papers (9.4) need it.
+19. **What made each kind of art, and may the game say "AI-made"?**
+    DECIDED (2026-11-14): *"Yes you can say the art assets were generated
+    by ChatGPT."* The uploads at the top are sprite-sheet sources, some
+    outdated by newer designs.
 
 **Yours outside the code:** two-step login on GitHub and Cloudflare, and
 the wallet key that deployed the scores contract kept safe; a spending
