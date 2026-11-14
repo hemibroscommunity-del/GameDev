@@ -40,7 +40,7 @@ const settle = () => new Promise((r) => setTimeout(r, 15));
 const record = (levels, alloc, dmg) => {
   const p3 = { sk: {} };
   for (const cat of PROG3.SKILLS) p3.sk[cat] = { level: levels[cat] || 1, xp: 0 };
-  prog3RespecPoints(p3, false);
+  prog3RespecPoints(p3, false, 'power_control');   /* v2.3.5283: a road of the skill points' door */
   Object.assign(p3.alloc, alloc || {});
   for (const cat of PROG3.SKILLS) p3.atk[cat].dmg = (dmg && dmg[cat]) || 0;
   return p3;

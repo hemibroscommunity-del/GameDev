@@ -469,6 +469,40 @@ place (`ESCROW_PLACES`, part 3 above) marked as holding nothing.
 - `marksOf(key)` finds a stored key's marks by its longest marked prefix:
   what the world's sum (4.4) and the restore (4.7) call.
 
+### The roads between players (step 10.5; built: card R, tag 5280)
+
+Every way value passes from one account to another, one row of
+`PLAYER_ROADS` (`server/src/playerroads.js`, no imports): its `fee`, its
+`hold`, its `pace` (all 0: the owner's call 12), its `ledger` (`xfer`,
+`kill`, or `none` with why), what it `carries` (`gold`, `bag`, `weapon`,
+`gear`, `pet`) and the door roads it runs on (`roads`, by door: `gold`,
+`bag`, `bagWhole`). A row is a SETTLEMENT (the trade window, the Auction
+House's sale), not a road: it NAMES the door roads it runs on, so each road
+is still written once, in its door, and no second list of roads is made
+(part 7's first reading, before 5280, was "three columns, not a table": a settlement
+runs on several roads, and one road (`escrow_debit`) serves several
+settlements, so the columns could not sit on the roads themselves).
+
+- **Read by** `xfer.js`: `XFER.ROADS` and `XFER.KILLS` are the rows whose
+  ledger is `xfer` and `kill`. A row's key is the `road` an `xfer:` row
+  keeps (`trade_window`, `gift_trade`: the names they always had).
+- **Held by** `server/test/player-roads.test.mjs`: every `move` road on a
+  row; every `escrow` road on a row, or a player's own (`OWN_ROADS`, with
+  why: the bank), and one into a place marked `between` (the registry's
+  `whose`, above) always on a row; only `move` and `escrow` roads on a row
+  (a `mint` or a `burn` has no other account); 0 in every `fee`, `hold`
+  and `pace`.
+- **Weapons, gear and pets** have no door table yet: a row names them in
+  `carries`, `DOORLESS` lists them, and the guard holds their roads from
+  the PR that builds their door (weapons and gear: card R PR 2).
+- 14 rows at tag 5280: `trade_window`, `gift_trade` (ledger `xfer`);
+  `nml_loss` (`kill`); `market`, `auction_sale`, `auction_bid`,
+  `auction_offer`, `duel_pot`, `arena_entries`, `arena_stakes`,
+  `threat_bounty`, `jackpot`, `ground`, `diego_pile` (`none`, each with
+  why). Not a road between players: the gamble hall (every wager is
+  against the house), mail (no player sends mail to another: it is every
+  row's landing), a party's shares (each a mint). `docs/specs/player-roads.md`.
+
 ## 4. The report's fields and sinks
 
 Step 1.1, built by card A. One message, type `report`, from a phone to the
@@ -498,7 +532,7 @@ So that each field below is defined by something that exists.
 | the line's delay | Measured by the WORKER, not the phone: `session.rtt`, a smoothed round trip from its own ping, 0 to 300 ms, memory only. | `server/src/index.js` `case 'pong'` |
 | how much it wavers | Measured nowhere. | |
 | the build | The page knows its own (`__GAME_VERSION__`, the newest `v2.3.N` in its commits; `__BUILD_COMMIT__`). The join carries neither: the worker learns a build only from a crash report. | `vite.config.js`, `src/ui/BuildBadge.jsx` |
-| the switches thrown | No one reader and no list: about 186 address names read in 132 files. One closed list exists: the 14 memory savers the owner can turn off from the Test panel. | `src/game/clientOff.js` `CLIENT_SAVERS` |
+| the switches thrown | ONE list: the switch table (`tools/guards/lib/switches.mjs`, page `docs/SWITCHES.md`; card T, step 7.1): every `?name=` the page reads and every live flag, one row a name, held by `tools/guards/switches.test.mjs`. The memory savers the owner can turn off from the Test panel (`CLIENT_SAVERS`) are its rows of side `both`. No one reader on the page yet (card T's PR 6). | `tools/guards/lib/switches.mjs` |
 | the zone | `S.currentZone`, and inside the world the land by direction (`wheelLandAt`). | `src/data/zones.js` |
 | how many players were near | Nothing that works: the sample's `others` reads the length of a map and is always 0. | `src/game/renderFrame.js` |
 
@@ -517,8 +551,8 @@ A report covers the seconds since the last one. `v` is 1.
 | `seen` | Of those, seconds the page was visible. | whole number, at most `secs` | the card |
 | `drawn` | Frames drawn in those seconds. | whole number | the card (against the moves the worker counted itself) |
 | `gaps` | The time between drawn frames, as counts in fixed bins. | 10 whole numbers; the bins' edges are 10, 12.5, 15, 18.5, 24, 29, 42, 75 and 150 ms | smoothness |
-| `late` | Late frames by the ONE definition: the pacer's. | 2 whole numbers, late and judged. **Absent** where the pacer gives no verdict, which today is every screen at 60 a second or slower. Never the strip's count or `perfTracker`'s under this name. | smoothness |
-| `rung` | The ladder in those seconds (card O's governor, step 2.3): the most rungs taken at once, and the seconds spent below the lane's row. Sent from card O's PR 2, to `caps.report` 3. | 2 whole numbers: rungs (0 to the worker's `RUNG.MAX`, wider than the page's ladder), seconds (at most `secs`) | smoothness, **beside the cell, never in it**: the cell's sums `[reports with one, rungs summed, seconds summed]` (v2.3.5221) |
+| `late` | Late frames by the ONE definition: the pacer's (`framePacer.js lateOver`, imported, never copied). | 2 whole numbers, late and judged. v2.3.5222 (card O PR 2): **present on every screen** whose refresh the pacer knows, 120, 60 and 30 alike; **absent** only where it knows none (the QA box's few frames a second). Never the strip's count or `perfTracker`'s under this name. | smoothness |
+| `rung` | The ladder in those seconds (card O's governor, step 2.3): the most rungs taken at once (v2.3.5224: rungs that change a knob something reads), and the seconds spent below the lane's row. Sent from card O's PR 2, to `caps.report` 3. | 2 whole numbers: rungs (0 to the worker's `RUNG.MAX`, wider than the page's ladder), seconds (at most `secs`) | smoothness, **beside the cell, never in it**: the cell's sums `[reports with one, rungs summed, seconds summed]` (v2.3.5221) |
 | `split` | Where the late frames' time went, each part summed. | whole ms, in this order: `sim`, `tile`, `entity`, `effects`, `fps`, `app`, `outside`. Where the busy beat runs, `busy` and `wait` in place of `outside`. | smoothness |
 | `holds` | The worst holds. | at most 5 of `[name, ms, where, near]`: `name` from the one list of hold names (step 1.0, part 7), `ms` whole, `where` and `near` as below | smoothness |
 | `where` | Where the player was for most of those seconds. | `town`, `farm`, `dungeon`, `commons`, `frost`, `ember`, `sky`, `hollows`, `thunder`, `tidal`, `mist`, `verdant`, `other` | smoothness |
@@ -684,8 +718,8 @@ list can be made from the table and a guard can fail a second copy of it.
 
 | Column | Today's list | Where |
 |---|---|---|
-| `privileged` | `PRIVILEGED_EVENTS` (163), and the 9 relay types the worker also sends (`RELAY_ECHO_ALLOWLIST`) | `server/src/index.js`; `server/test/wire-audit.test.mjs` |
-| `relayed` | `RELAY.TYPES` (26), and what the default branch does on the way: a clean of its words (`chat`, `emote`), a settlement (the trade's, the duel's, the threat's, the clan invite's), a stamp (`player_projectile`) | `server/src/relay.js`, `server/src/index.js` |
+| `privileged` | **Made from the table** (v2.3.5181, card K): the column `privileged` of `server/src/wire/` (left out on an `out` row: privileged; `echo`: the worker sends it and a phone's copy passes, its why in an `echo:` note). `server/src/wire/lists.js` makes `PRIVILEGED_EVENTS` (163) and wire-audit's echo list (9) from it | `server/src/wire/out.js`, `relays.js`; `lists.js` |
+| `relayed` | **Made from the table** (v2.3.5181): `RELAY.TYPES` (26) is every `relay` row (`lists.js`); what the default branch does on the way (a clean of its words, `chat`, `emote`; a settlement, the trade's, the duel's, the threat's, the clan invite's; a stamp, `player_projectile`) is the row's `at` | `server/src/wire/relays.js`; `lists.js` |
 | `body` | Where its fields sit. In: the top level (6 types), `payload`, `data` (`track`), or no body (16). Out: `payload`, or flat (about 20). | each handler |
 | `fight` | `FIGHT_LOCK` (38 rows, 6 of them routes: its switch) or `FIGHT_OPEN` (133: its reason) | `server/src/fightlock.js` |
 | `rideEnds` | `RIDE_ENDS_ON` (13) | `server/src/ride.js` |
@@ -695,7 +729,7 @@ list can be made from the table and a guard can fail a second copy of it.
 | `muted` | `MUTABLE_RELAY_TYPES` (3) on the worker; `BLOCKED_SOCIAL` (14) on the phone, with the field that names the sender | `server/src/chatmod.js`; `src/game/blockedAsks.js` |
 | `watch` | The anti-bot hook that counts it (6 types) | `server/src/index.js`, `server/src/botsig.js` |
 | `cap` | The cap the phone gates it on (`CAP_GATES`, 167 names) | `server/src/join.js` `caps`; `src/ui/panels/DevPanel.jsx` |
-| `flag` | The live flag that turns it off. **No list of flag names exists**: any name is stored, and about 120 `_xxxOff()` functions each read their own. The switch table (step 7.1) makes the list. | `server/src/liveops.js` |
+| `flag` | The live flag that turns it off: a row of the switch table (`tools/guards/lib/switches.mjs`, side `worker` or `both`; card T, step 7.1), the one list of flag names. Any name is still stored, and each `_xxxOff()` reads its own; the table's guard fails a flag read with no row. | `server/src/liveops.js` |
 | `roads` | The gold, bag and health roads its handler names (the `at` of each road's row) | `server/src/gold.js`, `bag.js`, `life.js` |
 | `silent` | Its handler's silent exits, by code (`ALLOW`: 96 handlers, 270 exits, 19 codes) | `server/test/refusal-door-list.mjs` |
 | `phoneSend` | How the phone sends it: a send of its own (`join`, `pong`, `track`, `move`), the shim's pass-through (93 types: an allowlist), a priority event (31), the 33 ms batch; a rider (3); held for the rejoin (`node_strike`); expects an answer (`SETTLED_SENDS`, 9) | `src/networking/wsClient.js` |
@@ -708,7 +742,7 @@ list can be made from the table and a guard can fail a second copy of it.
 | Name | One writer | Readers | Where | Rows |
 |---|---|---|---|---|
 | the wire census (NEW) | card C, once, as a document | card N | `docs/plan/census/wire.md` | none |
-| the wire table (NEW) | card N: one row a message or route, in code | the door tests; the lists made from it (card K); the action door (5.8); the send door (4.1b) | `server/src/wire/` (the folder does not exist yet) | none |
+| the wire table (NEW) | card N: one row a message or route, in code | the door tests; the lists made from it (card K: `server/src/wire/lists.js`, the one reader, v2.3.5181); the action door (5.8); the send door (4.1b) | `server/src/wire/` | none |
 
 Three things no list holds today, for cards N and K:
 
@@ -796,7 +830,7 @@ row by the card that builds it, before it builds.**
 |---|---|---|---|---|---|---|
 | The hold names (1.0) | one list (NEW as one list) | The names a hold may have. Today there are three lists that do not agree: the debt list's 13 (`KNOWN`), the sweep's 20 families (`FAMILIES`), and `noteMade`'s free strings (`'strip made'` on the phone is `strip-made` in the sweep). | `tools/qa/mp/held-budget.mjs` (card H's file; step 1.0 is card A's, with H for the names) | `noteMade` (`src/debug/madeLog.js`), `mp-heldsweep`, the report's `holds` | that file | none |
 | The room's own row (1.6) | part `room` of the day's book (NEW) | The tick's 95th, rows written, saves refused, joins by protocol version, restarts; with 4.1b, bytes and messages sent by type; with 4.7, the storage's size. **None of these is counted today**: the room never counts its own puts, a save a newer worker refuses is only logged, a failed put is swallowed, and nothing marks a restart. | card A (1.6); `_send` adds its counts (card K, 4.1b) | the owner's card; the reader | `server/src/`, a file of card A's | rides the day's book |
-| The day's book (10.4) | `daybook:<yyyymmdd>` (NEW) | One record a UTC day, in parts: `econ` (minted and burned by road class), `room` (above), `dev` (the smoothness cells, part 4), `speed` (the Speed test's rows). | each part's own writer: card E `econ`, card A `room`, `dev` and `speed` | the owner's card in the Test panel; the reader of step 1.3; the restore's check | `server/src/`, a file of card E's | at most one put a pace while the room is awake (card E's number, with a line in `cost-guard.test.mjs`); v2.3.5124: and at a room's last one out after a join, at once (card A's `roomrow.js`), its turns spent by every put, so the two keep the pace on the whole (`cost-guard` 15c); see "Open" below for `econ` |
+| The day's book (10.4) | `daybook:<yyyymmdd>` (NEW) | One record a UTC day, in parts: `econ` (minted and burned by road class), `room` (above), `dev` (the smoothness cells, part 4), `speed` (the Speed test's rows), `size` (built 5287: the storage's size, `{b, n}`, bytes summed and readings, read once a worker's life a day riding the book's own put; its own part, not the room row's, so the room row's writer stays one). | each part's own writer: card E `econ`, card A `room`, `dev` and `speed`, card R `size` (`daybook.js` storeSizeRide) | the owner's card in the Test panel; the reader of step 1.3; the restore's check | `server/src/`, a file of card E's | at most one put a pace while the room is awake (card E's number, with a line in `cost-guard.test.mjs`); v2.3.5124: and at a room's last one out after a join, at once (card A's `roomrow.js`), its turns spent by every put, so the two keep the pace on the whole (`cost-guard` 15c); see "Open" below for `econ` |
 | The device table (1.3) | no name in the room | The day's books' `dev` and `speed` parts, added over days, a cell blank under 20 reports. | the reader: a workflow, which is the owner's call 6 | every perf PR | the repository, once a road into it exists | none in the room |
 | The sitting's card (10.2) | the card of a `stint` (NEW) | About 120 bytes: when (the `stint`), how long, active seconds, the longest gap, the network (`asn`), the build; moves and moves over budget; hits claimed, landed, refused by reason; gold by road class; the hours of the day played; and the report's `soft`, `seen`, `drawn`. The last 32 of a character are kept (call 13). | one function of card Q's. Card A's handler hands it facts and writes no field itself. **Until card Q has built it, the report's card facts are dropped**: they still ride the message, so the phone's side is built once. | card Q's signals; the owner's cases | "Open" below | none new: it rides a save that is already paced |
 | The transfer ledger (10.3) | `xfer:` (built 5092: `server/src/xfer.js`) | One lasting row each time value settles between two players: when, the road, from, to, gold, goods and their ids, the price, and the actor that started it. Kept 90 days. | the settlement's own write (card E): the row goes out in the same run as the payment and its stamp (handoff rule 5) | the owner's cases ("unwind this transfer"); card Q | `server/src/`, card E's; its key begins with the day, so old days are pruned a page at a time (handoff rule 9), from a row's write once a day (as the day's book's are: no tick of an empty room pays for it) | 1 a settlement, none a kill (`cost-guard` §16) |
@@ -817,7 +851,7 @@ row by the card that builds it, before it builds.**
 | The test room (4.5) | `server/test/testroom.mjs` (built 5086) | One room for tests: `makeStorage` (a batch that commits or does not: every write of one synchronous run one batch, `crashAt(n)` the room dying before batch n), `roomQueue` (the input gate: one message at a time, each to its writes' commit), `seededClock`, `openRoom`, `join`. Suites move onto it one at a time; `chaos-restart` first. | card E | every suite that plays the room | `server/test/`, a helper (not a `*.test.mjs`); its suite `testroom.test.mjs` | none |
 | The disturbances (4.5, 10.6, 10.7, 1.5) | `DISTURBANCES` (built 5086) | What changes how an honest player looks without any cheating: a deploy (at any message), a hidden tab, the frame rate (60, 30, 20 and 4 a second), the line (its delay and its loss), and each `drawLane`. **Four steps name this list in four ways; it is one list.** Step 1.5's two slow profiles are two named members of it. Its ids: `deploy`, `hidden`, `fps60`, `fps30`, `fps20`, `fps4`, `delay`, `loss`, `lane_full` (one a lane; card O adds its lanes here). `schedule(script, d)` says how each delivers a script of messages. | card E, with the test room | the storm of 4.5 (built 5091: `storm.test.mjs`); each signal's honest troubles (10.6); the league's replays (10.7); the sweeps under a slow profile (1.5) | `server/test/testroom.mjs`, beside the test room | none |
 | The doors of 4.3 | a table a door, as `GOLD_ROADS` | Experience and levels, the stashes, quest state, skill points. | card R | their own tests | a file a door | none |
-| The roads between players (10.5) | three columns, not a table | For each way value passes from one player to another: its `fee`, its `hold`, its `pace`, all nothing today, and whether it writes an `xfer:` row. Its rows are the `move` rows card E classes (part 3): the same key, so no second list of roads. | card R, on card E's table | a guard that fails a `move` row without them | with the classes | none |
+| The roads between players (10.5) | `PLAYER_ROADS` (built 5280: `server/src/playerroads.js`) | For each way value passes from one player to another (a settlement): its `fee`, its `hold`, its `pace` (all 0), its ledger (`xfer`, `kill` or `none` with why), what it carries and the door roads it runs on. A table of settlements that NAME their roads, so a road is still written once, in its door: part 3, "The roads between players", says why it is not three columns on the roads. | card R | `player-roads.test` (every `move` road, and every `escrow` into a `between` place, on a row; 0 in every fee, hold and pace); `xfer.js` (its two lists) | `server/src/playerroads.js` | none |
 | A signal's honest troubles (10.6) | a column of the signals' list | For each anti-bot signal (`SIG_REASONS`, 8 today, and the fingerprint's flags), the disturbances that move it. | card Q | card Q's scoring | `server/src/botsig.js` | none |
 | The league's rungs (10.7) | one closed list (NEW) | The house's own bots, each harder: a script on the wire; one with noise; the real page driven by a script; a person's recorded play replayed; a model driving the browser. | card Q | `npm test` | `tools/qa/` | none |
 | A report's reason (10.9) | `REPORT_REASONS` (TODAY) | `spam`, `abuse`, `harassment`, `cheating`, `other`. Step 10.9 adds `scam`. | `server/src/chatmod.js` | the Test panel's reports | that file | none |
@@ -970,6 +1004,29 @@ writes them, never identifiers: `dungeon`, `connection`, `loading` and
 | `dungeon`, `connection`, `loading`, `window`, `monster` | the phase table's machines beyond part 5's list (a row's `name`) | 5 |
 | `_t2To`, `TRADE_WAYS`, `TRADE_PHASES`, live flag `tradedoor` (v2.3.5210) | the trade door: a trade session's one phase writer, its ways and phases (`server/src/trade2.js`), and its kill switch; free at the commit (no hit for any in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |
 | `_duelTo`, `DUEL_WAYS`, `DUEL_PHASES`, live flag `dueldoor` (v2.3.5211) | the duel door: a duel's one phase writer, its way and phases (`server/src/duel.js`), and its kill switch; free at the commit (no hit in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |
+
+**Chosen by card R (step 10.5, tag 5280), free at its commit** (the same
+search, with `docs`): `playerroads`, `PLAYER_ROADS`, `OWN_ROADS`,
+`KIND_DOORS`, `DOORLESS`, `ROAD_KINDS`, `ROAD_LEDGERS` and `playerRoadsBy`
+have no hit. The plain `KINDS` was taken (`CODEX.KINDS`, and words in
+`quests.js`), as was `LEDGERS` (a comment in `join.js`, "the cape ledgers").
+
+| Name | For | Part |
+|---|---|---|
+| `playerroads.js`, `PLAYER_ROADS`, `OWN_ROADS` | the roads between players, and a player's own escrows | 3 |
+| `ROAD_KINDS`, `KIND_DOORS`, `DOORLESS`, `ROAD_LEDGERS`, `playerRoadsBy` | that table's closed lists, and its rows by ledger | 3 |
+
+**Chosen by card R (step 4.3, tag 5283), free at its commit** (the same
+search, with `docs`): `skillpoints`, `POINT_ROADS`, `POINT_READS`,
+`POINT_FIELDS`, `POINTS_WHOLE`, `DEAL_FIELDS`, `pointsGive`, `pointsTake`,
+`pointsSet`, `pointsDeal` and `pointsAfter` have no hit. The plain `points`
+is a common word (achievement points, the points reset) and names no file.
+
+| Name | For | Part |
+|---|---|---|
+| `skillpoints.js`, `POINT_ROADS` | the skill points' door and its table (step 4.3's "a table a door", part 7) | 7 |
+| `pointsGive`, `pointsTake`, `pointsSet`, `pointsDeal` | its four verbs | 7 |
+| `POINT_READS`, `POINT_FIELDS`, `POINTS_WHOLE`, `DEAL_FIELDS`, `pointsAfter` | its columns' closed lists, the whole-build assigns, the deal's fields, its pure sum | 7 |
 
 `report` is free as a message type and a common word elsewhere; part 4 says
 what it is not. `gid`, `pid` and `hz` are TODAY's names, used here for the

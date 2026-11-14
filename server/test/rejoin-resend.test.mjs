@@ -22,7 +22,7 @@
  *   7. a rejoin's re-sends add no storage write.
  */
 import { readFileSync } from 'node:fs';
-import { GameRoom } from '../src/index.js';
+import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
 import { flagNameOk } from '../src/liveops.js';
 
 let passed = 0, failed = 0;
@@ -320,7 +320,7 @@ if (typeof R.rejoinClear === 'function') {
   check('5p duel_resume is in the direct switch and refuses a relayed copy',
     /case 'duel_resume':\s*\{\s*if \(!msg\.from\)/.test(ws));
   const idx = src('server/src/index.js');
-  check('5q duel_resume is PRIVILEGED', /PRIVILEGED_EVENTS[\s\S]*'duel_resume'/.test(idx));
+  check('5q duel_resume is PRIVILEGED', PRIVILEGED_EVENTS.has('duel_resume'));   /* v2.3.5181: made from the wire table */
   const ge = src('src/networking/gameEvents.js');
   const ia = ge.indexOf("case 'trade2_invite':"), ib = ge.indexOf("case 'trade2_state':", ia);
   check('5r an invite said again after a rejoin raises no second popup or sound', /if \(payload\.rejoin\) break;/.test(ge.slice(ia, ib)));

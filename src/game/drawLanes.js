@@ -23,14 +23,19 @@
  *                     Mode): full's row until card O's PR 13 gives it its
  *                     step's cap.  A word, never the number: no page sends
  *                     30 where a name is checked.
- *   AXES    the LADDER: the rungs below a lane's row, on two axes -- the
+ *   AXES    the LADDER: the rungs below a lane's row, on two axes (v2.3.5225: three, below) -- the
  *           game's own work (the crowd, then the rate) and waiting for the
  *           chip (the rate, then the passes, then the pixels).  A rung
  *           lowers ONE knob ONE step (`{ knob, to }`: the step it takes the
  *           knob to); the rate's rung is on both axes, so whichever axis
  *           takes it first lowers the rate, and the other's is then taken
  *           already.  The order is data (call 16: a steady lower rate before
- *           a softer picture).
+ *           a softer picture).  v2.3.5225 (the gatekeeper's sitting 12): the
+ *           pixels are an axis of their OWN, after the chip's -- a rung is an
+ *           axis's first n, so on the chip axis the rate could not come back
+ *           while a pixel rung waited for a veil (a cooled phone at 30 until
+ *           its next loading screen); now the rate comes back in play, and
+ *           the pixels at a veil.
  *   PROGRAMS the game's own drawing programs, a name each (the report's
  *           `self`, step 1.7), read from the code (the guard holds each
  *           program's names to its file); Pixi's own are not the game's.
@@ -38,9 +43,17 @@
  * THE READER.  laneKnob(name) is the ONE way a knob's value is read: an
  * override if one pins it (OVERRIDES: none yet -- card O's PRs 8 and 12 move
  * the fallbacks and the off-ramps here), else the lane's row at the ladder's
- * rung.  The rung is the governor's (card O's PR 2, the pacer grown): until
- * then it is always the row.  A knob that must be told when it changes (a
- * resolution, a pass) subscribes: onKnob(name, fn).
+ * rung.  A knob that must be told when it changes (a resolution, a pass)
+ * subscribes: onKnob(name, fn).
+ *
+ * v2.3.5222, THE RUNG (card O PR 2): where the governor stands on the
+ * ladder, rungs taken on each axis ({ work, chip }; the row: none).  ONE
+ * WRITER: setRung, called by the governor alone (game/framePacer.js, the
+ * pacer grown); server/test/frame-pacer.test.mjs fails a second caller, and
+ * src/state/phases.js has its row (`ladder`).  Kept: the device's, not the
+ * zone's (the governor keeps it by lane in localStorage for the next
+ * sitting).  The rung moves no knob until each knob's PR reads laneKnob
+ * (v2.3.5224: and the governor walks only the rungs of knobs read: LIVE).
  *
  * THE LANE.  pickLane(cls) is the lane a device class picks: `thirty` where
  * the screen's rate is 30, else `full`.  FACTS ONLY, never a name (a system,
@@ -65,16 +78,16 @@
 /* ── the knobs (the plan's 2.1 list), each step in a player's words ── */
 export const KNOBS = Object.freeze({
   rate: {
-    what: 'the frame rate: the slowest frame, in ms, the pacer may hold a steady rate at',
+    what: 'the frame rate: the slowest frame, in ms, the pacer may hold a steady rate at, on a screen of 60 or slower (v2.3.5224: a fast screen keeps its own steps, down to about 40, whatever the lane or the rung)',
     steps: Object.freeze([26, 34]),
-    say: Object.freeze(['Steady down to about 40 frames a second, on a screen faster than 60', 'Steady at 30 frames a second, where 40 is not a whole number of refreshes']),
-    reader: { files: Object.freeze(['src/game/framePacer.js']), moved: false }, pr: 4, switch: '?pace', system: 'page-thread',
+    say: Object.freeze(['Every frame the screen offers (a faster screen: steady down to about 40 a second)', 'A steady 30 frames a second on a 60 screen (a faster screen: as before)']),
+    reader: { files: Object.freeze(['src/game/framePacer.js']), moved: true }, pr: 4, switch: '?ladderrate', system: 'page-thread',
   },
   pixels: {
-    what: 'the pixel budget, as a share of the budget (card G\'s, renderRes.js)',
+    what: 'the pixels drawn, a share of the lowest of the screen\'s own and card G\'s budget (renderRes.js; v2.3.5225: of the pixels drawn, phones too: the planning session\'s (b))',
     steps: Object.freeze([1, 0.75, 0.5]),
     say: Object.freeze(['Every pixel of the budget', 'A quarter fewer pixels (a little softer)', 'Half the pixels (softer)']),
-    reader: { files: Object.freeze(['src/game/renderRes.js']), moved: false }, pr: 5, switch: '?pixbudget', system: 'device',
+    reader: { files: Object.freeze(['src/game/renderRes.js']), moved: true }, pr: 5, switch: '?ladderpix', system: 'device',
   },
   crowd: {
     what: 'the most other players drawn in full (your party, your target, whoever fights you and your duel always)',
@@ -158,7 +171,7 @@ export const LANE_NAMES = Object.freeze(Object.keys(LANES));
 /* the lane where nothing is known yet, and the one a worker below caps.report 3 is sent */
 export const DEFAULT_LANE = 'full';
 
-/* ── the ladder: two axes, each rung one knob one step ── */
+/* ── the ladder: three axes (v2.3.5225: the pixels their own), each rung one knob one step ── */
 export const AXES = Object.freeze({
   work: Object.freeze([
     Object.freeze({ knob: 'crowd', to: 1 }),
@@ -170,6 +183,10 @@ export const AXES = Object.freeze({
     Object.freeze({ knob: 'shine', to: 1 }),
     Object.freeze({ knob: 'shadows', to: 1 }),
     Object.freeze({ knob: 'water', to: 1 }),
+  ]),
+  /* v2.3.5225: the pixels, after the chip's (a chip-bound phone's last two
+     rungs, only behind a veil); never a work-bound phone's (framePacer.js) */
+  pixels: Object.freeze([
     Object.freeze({ knob: 'pixels', to: 1 }),
     Object.freeze({ knob: 'pixels', to: 2 }),
   ]),
@@ -178,7 +195,7 @@ export const AXIS_NAMES = Object.freeze(Object.keys(AXES));
 /* the light lane's row is full's at this rung (the guard holds the two equal) */
 export const LIGHT_AT = Object.freeze({ work: 1, chip: 2 });
 
-/** The deepest the ladder goes: every rung of both axes taken.  The report's
+/** The deepest the ladder goes: every rung of every axis taken.  The report's
  *  `rung` counts rungs taken, at most this (the worker's bound is wider:
  *  mirror-audit holds this under it). */
 export function ladderDepth() {
@@ -286,6 +303,78 @@ export function drawLane(cls) {
   }
 }
 
+/* ── v2.3.5222: the rung, the governor's alone ── */
+const ROW = Object.freeze({ work: 0, chip: 0, pixels: 0 });
+/* the governor's (setRung): rungs taken on each axis.  v2.3.5222 (the
+   gatekeeper's sitting 12): a property of a module object, not a module
+   `let` -- card L's phase guard reads a door's writes off the syntax tree as
+   `.prop` writes (DOOR_SUITES), and only setRung and the tests' reset write it */
+const LANE = { _rung: ROW };
+
+/* v2.3.5224: THE LIVE KNOBS -- a rung counts only if something reads its
+   knob (the gatekeeper's sitting 11 on #1794, verified by a probe: the
+   governor counted every knob in KNOB_NAMES, read or not, so it stepped
+   through rungs nothing read -- the crowd, the passes, the pixels -- kept
+   them in bt_rung, and climbed back one 20 s try a rung, the rate (chip
+   rung 1) last: after a hot sitting a cool 60 phone started at 30 and stayed
+   there for minutes, a whole sitting where a pixel rung waited for a veil).
+   A knob is LIVE once its row marks it moved (its PR reads it through
+   laneKnob); the governor walks only rungs that change a live knob, and
+   rungDepth counts only those.  The tests may play the whole ladder, as the
+   knobs' PRs will make it (_liveKnobs). */
+export const MOVED_KNOBS = Object.freeze(KNOB_NAMES.filter((k) => KNOBS[k].reader && KNOBS[k].reader.moved));
+let _live = MOVED_KNOBS;
+let _liveNow = null;      /* _live less the knobs this page's address takes off the ladder (read once) */
+/* v2.3.5225 (the gatekeeper's sitting 12): a knob's ladder switch takes its
+   rungs out of the governor's reach, not only out of its reader's -- with
+   `?ladderpix=0` the governor took a pixel rung nothing read and its try up
+   then held the rate (sitting 11's class); with `?ladderrate=0` a slow 60
+   computer was never paced but softened at the next veil.  The two
+   switches are read here, once (framePacer.js and renderRes.js ask these) */
+export function ladderRateOn(search) {
+  return !/(^|[?&])ladderrate=(0|off|false)(&|$)/.test(typeof search === 'string' ? search : '');
+}
+export function ladderPixOn(search) {
+  return !/(^|[?&])ladderpix=(0|off|false)(&|$)/.test(typeof search === 'string' ? search : '');
+}
+/** The knobs a rung can change today: marked moved (the tests' list while
+ *  one is set), less any this page's address takes off the ladder. */
+export function liveKnobs() {
+  if (_liveNow) return _liveNow;
+  const s = _search();
+  _liveNow = Object.freeze(_live.filter((k) => !(k === 'rate' && !ladderRateOn(s)) && !(k === 'pixels' && !ladderPixOn(s))));
+  return _liveNow;
+}
+/** For the tests only: play the ladder with these knobs live (null: the moved ones). */
+export function _liveKnobs(list) { _live = Array.isArray(list) ? Object.freeze(list.slice()) : MOVED_KNOBS; _liveNow = null; }
+
+/** Where the ladder stands now: { work, chip, pixels }, rungs taken on each axis. */
+export function ladderRung() { return LANE._rung; }
+/** Rungs taken that change something, every axis: 0 is the lane's row (the
+ *  report's `rung`).  v2.3.5224: a rung whose knob nothing reads yet counts
+ *  none. */
+export function rungDepth(r) {
+  const x = r || LANE._rung;
+  let n = 0;
+  for (const a of AXIS_NAMES) {
+    const m = Math.max(0, Math.min(AXES[a].length, x[a] | 0));
+    for (let j = 0; j < m; j++) if (liveKnobs().includes(AXES[a][j].knob)) n++;
+  }
+  return n;
+}
+/** THE ONE WRITER of the rung: the governor's (framePacer.js), never another
+ *  file's.  Each axis held to its rungs.  Subscribed knobs are told.
+ *  v2.3.5225: three axes (the pixels' own). */
+export function setRung(work, chip, pixels) {
+  const w = Math.max(0, Math.min(AXES.work.length, Math.floor(Number(work) || 0)));
+  const c = Math.max(0, Math.min(AXES.chip.length, Math.floor(Number(chip) || 0)));
+  const p = Math.max(0, Math.min(AXES.pixels.length, Math.floor(Number(pixels) || 0)));
+  if (w === LANE._rung.work && c === LANE._rung.chip && p === LANE._rung.pixels) return LANE._rung;
+  LANE._rung = w === 0 && c === 0 && p === 0 ? ROW : Object.freeze({ work: w, chip: c, pixels: p });
+  _tell();
+  return LANE._rung;
+}
+
 /** The override pinning a knob, or null. */
 export function pinOf(name) {
   for (const o of OVERRIDES) if (o.knob === name) return o;
@@ -293,12 +382,11 @@ export function pinOf(name) {
 }
 
 /** THE ONE WAY a knob's value is read: an override if one pins it, else this
- *  page's lane's row at the ladder's rung (the row, until the governor:
- *  card O PR 2). */
+ *  page's lane's row at the ladder's rung (v2.3.5222: the governor's). */
 export function laneKnob(name) {
   const p = pinOf(name);
   if (p) return p.value;
-  return knobAt(drawLane(), name, null);
+  return knobAt(drawLane(), name, LANE._rung);
 }
 
 /** Be told when a knob's value changes (a lane picked, a rung moved): fn(value,
@@ -323,7 +411,7 @@ function _tell() {
 
 /** For the tests only: forget the address, the class and the subscribers. */
 export function _resetLanes() {
-  _classOf = null; _lane = null; _laneAskedAt = -Infinity; _urlLane = undefined;
+  _classOf = null; _lane = null; _laneAskedAt = -Infinity; _urlLane = undefined; LANE._rung = ROW; _liveNow = null;
   for (const k in _subs) delete _subs[k];
   for (const k in _told) delete _told[k];
 }
@@ -333,6 +421,6 @@ if (typeof window !== 'undefined') {
   window.__btLane = () => {
     const knobs = Object.create(null);
     for (const n of KNOB_NAMES) knobs[n] = laneKnob(n);
-    return { lane: drawLane(), fromAddress: !!laneFromSearch(_search()), knobs };
+    return { lane: drawLane(), fromAddress: !!laneFromSearch(_search()), rung: { ...LANE._rung }, depth: rungDepth(), live: liveKnobs().slice(), knobs };
   };
 }

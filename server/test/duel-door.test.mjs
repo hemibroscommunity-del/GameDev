@@ -56,7 +56,7 @@ function check(name, cond, detail) {
   const NOT_A_DUEL = [
     { file: 'server/src/alliance.js', text: 'w.status = ', why: 'an alliance war\'s end, its own record' },
     { file: 'server/src/clans.js', text: 'war.status = ', why: 'a clan war\'s end, its own record' },
-    { file: 'server/src/gladiator.js', text: 't.status = ', why: 'an arena tournament: the phase table\'s `arena` row' },
+    { file: 'server/src/gladiator.js', text: ' t.status = ', why: 'an arena tournament: the phase table\'s `arena` row (the space before `t` keeps out `mt.status =`)' },
     { file: 'server/src/arena.js', text: 'tournament.status = ', why: 'the old Arena object\'s tournament (kept for its binding)' },
   ];
   const ROOT = new URL('../../', import.meta.url);
