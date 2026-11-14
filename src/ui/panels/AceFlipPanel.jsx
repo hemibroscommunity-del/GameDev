@@ -28,7 +28,9 @@ import { npcArtUrl } from '@/rendering/npcSprites.js';   /* v2.3.3580: his head,
  *
  * THE COIN IS A CSS SPRITE WALK over an 11-frame strip, not a GIF and not a
  * per-frame <img> swap: one background-position step per frame off one
- * already-warm image (npcSprites.js NPC_DIALOG_FX), so the landing frame
+ * already-warm image (npcSprites.js NPC_DIALOG_FX; v2.3.5247: warm in the
+ * HTTP cache at the address asked for here, decoded when the window shows
+ * it, a few ms for one strip, not held decoded for good), so the landing frame
  * cannot arrive late.  It stops ON the last frame rather than looping -- the
  * last frame IS the answer (blue head, or red skull), so looping past it
  * would throw away the only thing the animation is for.
@@ -268,7 +270,10 @@ export function AceFlipPanel() {
   var youPct = Math.round(ACE_FLIP_WIN_CHANCE * 100);
   var acePct = 100 - youPct;
   var res = aceFlipBus.result;
-  var strip = res && res.won ? '/sprites/fx/coinflip-win.webp' : '/sprites/fx/coinflip-lose.webp';
+  /* v2.3.5247: the address the loading screen warmed (npcSprites.js
+     NPC_DIALOG_FX, through npcArtUrl): without its `?v=` the coin was
+     fetched the first time it flew */
+  var strip = npcArtUrl(res && res.won ? '/sprites/fx/coinflip-win.webp' : '/sprites/fx/coinflip-lose.webp');
 
   var close = function () { aceFlipBus.setOpen(false); };
   var send = function () {
