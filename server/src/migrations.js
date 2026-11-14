@@ -61,7 +61,66 @@ import { convertRecordGreatswords } from './gscopper.js';   /* v2.3.3980: v20, o
 /* v2.3.2592: 17 — the four-column points redesign (luck fold + shared pool). */
 /* v2.3.3538: 18 — one level (the highest skill): every character's points
    dealt again once (prog3Redeal). */
-export const RPG_SCHEMA_VERSION = 20;   /* v2.3.3895: 18 -> 19, swords-become-greatswords; v2.3.3980: 19 -> 20, wooden-greatswords-become-copper */
+export const RPG_SCHEMA_VERSION = 21;   /* v2.3.3895: 18 -> 19, swords-become-greatswords; v2.3.3980: 19 -> 20, wooden-greatswords-become-copper; v2.3.5083: 20 -> 21, econ-field */
+
+/* ═══ v2.3.5083: `_econ`, THE SECOND EXCEPTION TO RULE 1 ═══
+ * (grand plan step 4.4, card E PR 4; docs/SHAPES.md part 7, "Open", ruled;
+ * ARCHITECTURE-HANDOFF rule 1.)  The character's running MINTED and BURNED,
+ * by kind of value: what the world's sum (step 4.4) and the day's book's
+ * `econ` part read.  The plan's rule 5 -- what the sums read is written with
+ * what it counts, in the same put -- and the owner's "server costs must not
+ * go up" together leave one place for it: a field on the `rpg:` record, the
+ * one record written with a player's gold and bag, so no new row.  The
+ * second named exception to rule 1, beside `_v`; the third is refused by
+ * migrations.test §econ.  Card Q puts the open sitting's card inside it,
+ * under a key of its own (step 10.2): never a third field.
+ *
+ *   _econ: { v: 1,
+ *            g: { m, b },              gold minted, burned (whole coins)
+ *            i: { <bag key>: { m, b } } each bag key's, by itself }
+ *
+ * A `set` road books its difference signed (SHAPES part 3, edge 1), so a
+ * count may be below 0.  `move` and `escrow` roads change no world total and
+ * are not kept here.  Written ONLY by the two doors (gold.js, bag.js: card
+ * E PR 5) and `_saveRpg`'s fixed list; read back through econClean, which
+ * keeps what it knows and bounds the rest (ECON.KEYS_MAX keys, finite
+ * numbers, never an Object.prototype name). */
+export const ECON = Object.freeze({
+  V: 1,
+  KEYS_MAX: 512,       /* bag keys a character's record carries (the game has a few hundred) */
+  KEY_MAX: 64,
+  NUM_MAX: 1e15,
+});
+const ECON_BAD_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+const econNum = (v) => { const n = Number(v); return Number.isFinite(n) ? Math.max(-ECON.NUM_MAX, Math.min(ECON.NUM_MAX, n)) : 0; };
+const econPair = (o) => ({ m: econNum(o && o.m), b: econNum(o && o.b) });
+/** A blank `_econ`. */
+export function econBlank() {
+  return { v: ECON.V, g: { m: 0, b: 0 }, i: Object.create(null) };
+}
+/** A stored or live `_econ` made safe: known keys only, numbers finite and
+ *  bounded, at most KEYS_MAX bag keys.  A NEWER `v` is kept whole (a rolled
+ *  back worker never rewrites what a newer one wrote; the join refuses that
+ *  record anyway, through `_v`). */
+export function econClean(raw) {
+  if (raw && typeof raw === 'object' && typeof raw.v === 'number' && raw.v > ECON.V) return raw;
+  const out = econBlank();
+  if (!raw || typeof raw !== 'object') return out;
+  out.g = econPair(raw.g);
+  const i = raw.i && typeof raw.i === 'object' ? raw.i : null;
+  if (i) {
+    let n = 0;
+    for (const k of Object.keys(i)) {
+      if (n >= ECON.KEYS_MAX) break;
+      if (typeof k !== 'string' || !k || k.length > ECON.KEY_MAX || ECON_BAD_KEYS.has(k)) continue;
+      const p = econPair(i[k]);
+      if (!p.m && !p.b) continue;
+      out.i[k] = p;
+      n++;
+    }
+  }
+  return out;
+}
 
 /* Pure version of the v2.3.769 heal (was GameRoom._healLifeSkills):
  * records bootstrapped from pre-fix clients carry lifeSkills with
@@ -730,6 +789,23 @@ export const MIGRATIONS = [
     run(blob) {
       if (!blob || typeof blob !== 'object') return false;
       return convertRecordGreatswords(blob);
+    },
+  },
+  {
+    v: 21,
+    name: 'econ-field',
+    /* v2.3.5083 (grand plan card E, PR 4): the record carries `_econ`, the
+       character's running minted and burned (ECON above), blank until the
+       doors count (card E PR 5).  A record that has one is cleaned, never
+       reset.  The shape number is the point as much as the field: a worker
+       rolled back past this one refuses the record at the join (handoff
+       rule 1, v2.3.3303) instead of saving it without `_econ`, which would
+       lose the counts silently. */
+    run(blob) {
+      if (!blob || typeof blob !== 'object') return false;
+      const had = blob._econ;
+      blob._econ = econClean(had);
+      return true;
     },
   },
 ];
