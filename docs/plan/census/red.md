@@ -141,6 +141,13 @@ changed on purpose under each; then section 6 crashes the run.
   (within 3%: all 143.2 px, the mayor 1.1 and Lil Bro 0.8 of it); one at
   his work is drawn, feet on his spot; 2b: Lil Bro drawn 0.8 of Diego. The
   photographs' way (`?lookfolk=0`) keeps the old checks. Tag 5421.
+- **And check 3, found on the way** (red 2 runs of 5, green 3): Diego's
+  tee read 0 and 6 px, the crop showing his head over the General Store's
+  sign, his body behind it, where his day's walk had stopped him. The
+  check now looks again, up to four times 4 s apart, beside where he has
+  walked to, the same bar of 25 px. Whether his walk should take him behind
+  the store's front is the game's question: under Found in
+  `docs/plan/status/J2.md`, with the picture.
 
 ## Not run (the sample's edges)
 

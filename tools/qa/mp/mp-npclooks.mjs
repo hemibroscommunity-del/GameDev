@@ -184,9 +184,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await P.page.screenshot({ path: join(OUT, `npclooks-${tag}.png`), clip }).catch(() => {});
         const t = TELL[n.name];
         if (t) {
-          const px = await H.screenshotPixels(P, clip);
-          const count = px.count(t[1]);
-          tells.push({ name: n.name, what: t[0], count, ok: count > 25 });
+          let count = (await H.screenshotPixels(P, clip)).count(t[1]);
+          /* v2.3.5421 (card J2): he walks his day (v2.3.4058), and where he
+             stops the scenery may stand in front of him -- Diego, 2 runs of
+             5, under the General Store's sign, his head alone in the crop
+             (census row 6; Found).  A crop that reads nothing of his look is
+             read again once he has moved on, beside where he is then, the
+             same bar (25 px) each time: up to four looks, 4 s apart. */
+          let tries = 1;
+          for (; count <= 25 && tries < 4; tries++) {
+            await P.page.waitForTimeout(4000);
+            const at = await P.page.evaluate((nm) => { const q = (window._gameState.current.npcs || []).find((m) => m.name === nm); return q ? { x: q.x, y: q.y } : null; }, n.name);
+            if (at) await H.hopTo(P, at.x + 120, at.y + 40, { step: 100, gap: 260, tries: 90 });
+            await P.page.evaluate(() => { const b = document.querySelector('[data-shop-close]'); if (b) b.click(); });
+            await H.closeNpcDialogue(P).catch(() => {});
+            await cameraStill(P);
+            const d2 = await look();
+            if (!d2) continue;
+            const fh2 = d2.h * 0.8 * d2.k, fw2 = d2.h * 0.34 * d2.k;
+            const clip2 = { x: Math.max(0, Math.round(d2.sx - fw2)), y: Math.max(0, Math.round(d2.sy - fh2)), width: Math.round(fw2 * 2), height: Math.round(fh2) };
+            await P.page.screenshot({ path: join(OUT, `npclooks-${tag}-${tries + 1}.png`), clip: clip2 }).catch(() => {});
+            count = (await H.screenshotPixels(P, clip2)).count(t[1]);
+          }
+          tells.push({ name: n.name, what: t[0], count, tries, ok: count > 25 });
         }
       } else tells.push({ name: n.name, what: 'not drawn', count: 0, ok: false });
     }
@@ -217,7 +237,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       : (both && dg.h ? +(lil.h / dg.h).toFixed(3) : (lil.paintTop && dg.paintTop ? +(lil.paintTop / dg.paintTop).toFixed(3) : null));
     rec.ok(`2b. Lil Bro is a child: figure size ${lil && lil.size}, ${both ? `drawn ${lil.h} world px to Diego's ${dg.h}` : `painted ${lil && lil.paintTop} world px over his feet to Diego's ${dg && dg.paintTop}`} (${kid})`,
       !!lil && lil.size === 0.8 && kid != null && (both ? (kid > 0.77 && kid < 0.83) : (kid > 0.8 && kid < 0.92)), { lil, dg });
-    rec.ok(`3. each one's creator look is what is painted: ${tells.map((t) => `${t.name}'s ${t.what} ${t.count} px`).join(', ')}`,
+    rec.ok(`3. each one's creator look is what is painted: ${tells.map((t) => `${t.name}'s ${t.what} ${t.count} px${t.tries > 1 ? ' (look ' + t.tries + ')' : ''}`).join(', ')}`,
       tells.length >= 6 && tells.every((t) => t.ok), tells);
 
     /* ── 4. the Mayor's head in his dialogue ── */
