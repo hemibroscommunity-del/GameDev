@@ -40,6 +40,12 @@
  *  12. v2.3.5127, THE SPEED CARD'S OWN CAP AND SWITCH (sitting 4): caps.report
  *      2 takes the card, `reportspeed: false` 1 (the card dropped, the report
  *      counted); the phone sends it only to 2, and says why not.
+ *  13. v2.3.5221, CARD O'S LANES (step 2.1; src/game/drawLanes.js): caps.report
+ *      3 takes a lane but `full` -- `thirty` and `light` each in a cell of its
+ *      own -- the governor's `rung` and the self-test's `self`; an unknown
+ *      lane is dropped; `reportlanes: false` advertises 2, drops a lane other
+ *      than `full` and the two fields; the phone sends a lane but `full` only
+ *      to 3.
  *
  * BREAK PROOF (rule 8), each tried by hand, 2026-11-14:
  *   2. report.js: drop `!HOLD_NAMES.includes(name) ||`          -> FAIL 2
@@ -56,18 +62,24 @@
  *  12. report.js _reportTake: `if (r.speed)` (no switch)            -> FAIL 12.2
  *      report.js _reportCap: `return 1;` (the old cap)              -> FAIL 3
  *      src/debug/report.js buildReport: `if (_speed)` alone         -> FAIL 12.3
+ *  13. (v2.3.5221, tried 2026-11-14)
+ *      report.js reportSums: drop `if (!lanes && msg.drawLane !== 'full') return null;` -> FAIL 13.4
+ *      report.js _reportCap: `return this._reportLanesOff() ? 2 : 2;` -> FAIL 3, 13.1 (and 13.2)
+ *      report.js reportSums: `if (true) {` for `if (lanes) {` (rung and self always) -> FAIL 13.4
+ *      src/debug/report.js buildReport: `drawLane: drawLane(cls),`  -> FAIL 13.6
  */
 import { readFileSync } from 'node:fs';
 import { GameRoom } from '../src/index.js';
-import { REPORT, DEV_CLASS, SAVERS, WHERE, GAP_BINS, HOLD_NAMES as W_HOLDS, DRAW_LANES,
+import { REPORT, DEV_CLASS, SAVERS, WHERE, GAP_BINS, HOLD_NAMES as W_HOLDS, DRAW_LANES, SELF_PROGRAMS, RUNG,
   reportSums, swCell, holdKey, classOfReport, rttWaverNext, reportSiteOf, SPEED_STEPS, SPEED_MODELS_N, speedSums } from '../src/report.js';
 import { DAYBOOK, bookBytes, bookRead } from '../src/daybook.js';
 import { flagNameOk } from '../src/liveops.js';
 import { DEV_CLASS as P_CLASS } from '../../src/game/deviceProfile.js';
 import { CLIENT_SAVERS } from '../../src/game/clientOff.js';
 import { HOLD_NAMES as P_HOLDS } from '../../src/debug/holdNames.js';
-import { WHERE as P_WHERE, GAP_EDGES, DRAW_LANE, takesReports, gapBin, whereOf, buildOf, addFrames, blankBins,
-  SPEED_STEPS as P_STEPS, SPEED_MODELS, speedCardOf, bookTableText, takesSpeed, queueSpeedCard } from '../../src/debug/report.js';
+import { WHERE as P_WHERE, GAP_EDGES, takesReports, gapBin, whereOf, buildOf, addFrames, blankBins,
+  SPEED_STEPS as P_STEPS, SPEED_MODELS, speedCardOf, bookTableText, takesSpeed, queueSpeedCard, takesLanes } from '../../src/debug/report.js';
+import { LANE_NAMES, PROGRAM_NAMES, ladderDepth } from '../../src/game/drawLanes.js';   /* v2.3.5221: card O's lanes */
 
 let failures = 0, passes = 0;
 function check(name, cond, detail) {
@@ -122,7 +134,7 @@ const KEY = '2-1-8192-16-32-1-2-other-none-touch-0-4';
   check('1. the places are the phone\'s (report.js WHERE)', same(WHERE, P_WHERE));
   check('1. the gaps\' bins are the phone\'s (one past its ' + GAP_EDGES.length + ' edges)', GAP_BINS === GAP_EDGES.length + 1 && gapBin(0) === 0 && gapBin(16.7) === 3 && gapBin(500) === GAP_BINS - 1);
   check('1. the holds\' names are the one list (holdNames.js HOLD_NAMES)', same(W_HOLDS, P_HOLDS));
-  check('1. the lane is the phone\'s one', same(DRAW_LANES, [DRAW_LANE]));
+  check('1. the lanes are the phone\'s (v2.3.5221: card O\'s, drawLanes.js LANE_NAMES)', same(DRAW_LANES, LANE_NAMES), { here: DRAW_LANES, phone: LANE_NAMES });
   check('1. every hold name makes a key the day\'s book takes', W_HOLDS.every((n) => /^[A-Za-z0-9_.:|,+=-]+$/.test(holdKey(n)) && holdKey(n).length <= DAYBOOK.KEY_MAX));
   check('1. the phone\'s where: a dungeon, the farm, a region of the world, else other',
     whereOf('dungeon:x', null) === 'dungeon' && whereOf('farm_home', null) === 'farm' && whereOf('wheel', 'ember') === 'ember' && whereOf('wheel', 'sea') === 'other' && whereOf('town', 'town') === 'other');
@@ -208,7 +220,7 @@ const send = async (ws, msg) => { await room.webSocketMessage(ws, JSON.stringify
 const A = await join('bp_rep_a', 'Repo');
 {
   const sync = A.sent.find((m) => m.type === 'state_sync');
-  check('3. a join is told caps.report (2: the Speed test\'s card too, v2.3.5127)', sync && sync.caps && sync.caps.report === 2, sync && sync.caps && sync.caps.report);
+  check('3. a join is told caps.report (3: the Speed test\'s card too, v2.3.5127; card O\'s lanes too, v2.3.5221)', sync && sync.caps && sync.caps.report === 3, sync && sync.caps && sync.caps.report);
   const before = A.sent.length;
   await send(A, PHONE());
   const dev = await devPart();
@@ -273,7 +285,9 @@ const A = await join('bp_rep_a', 'Repo');
   m.split = m.split.slice(0, 8);
   m.holds = [['body-bake', 115, 'town', 3], ['strip-made', 20, 'ember', 1], ['other: BT_AUDIO$1._fold > foldToMono', 19, 'farm', 0], ['screen-check', 30, 'commons', 0], ['gc', 40, 'frost', 9]];
   m.died = ['killed', 230, 14, 1, 'ember'];
-  const r = reportSums(m, { delay: 80, waver: 12, site: 'live', first: true });
+  /* v2.3.5221: card O's two (the governor's rung, two programs failed) */
+  m.drawLane = 'thirty'; m.rung = [5, 120]; m.self = ['sheen', 'shadow'];
+  const r = reportSums(m, { delay: 80, waver: 12, site: 'live', first: true, lanes: true });
   const tree = { [r.cell]: r.sums };
   const bytes = bookBytes(tree);
   const cells = Math.floor(DAYBOOK.PART_BYTES / bytes);
@@ -452,6 +466,60 @@ const A = await join('bp_rep_a', 'Repo');
       && queueSpeedCard({ rows: [{ k: 'all', fps: 60, p50: 16, p95: 18, work: 2 }] }) === false);
   const st = readFileSync(new URL('../../src/game/speedTest.js', import.meta.url), 'utf8');
   check('12.3 ...and the Speed card tells the player it was not sent, and why', /r\.unsent === 'server' \? 'Not sent: the game\\'s server does not take Speed cards right now\.'/.test(st));
+}
+
+/* ── 13. CARD O'S LANES (v2.3.5221) ── */
+{
+  const lane = (l, over) => ({ ...PHONE(), drawLane: l, ...(over || {}) });
+  const cellOf = (r) => r && r.cell;
+  /* 13.1 the cap and its switch's name */
+  check('13.1 `reportlanes` is a name POST /flags takes', flagNameOk('reportlanes'));
+  check('13.1 caps.report is 3 with nothing thrown', room._reportCap() === 3);
+  /* 13.2 thirty and light in their own cells */
+  const t = reportSums(lane('thirty'), { lanes: true }), l = reportSums(lane('light'), { lanes: true }), f = reportSums(lane('full'), { lanes: true });
+  check('13.2 `thirty` and `light` each make a cell of their own, beside `full`\'s',
+    cellOf(t) === '1|' + KEY + '|thirty|none|preview' && cellOf(l) === '1|' + KEY + '|light|none|preview' && cellOf(f) === '1|' + KEY + '|full|none|preview',
+    [cellOf(t), cellOf(l), cellOf(f)]);
+  const ws = await join('bp_rep_lane', 'Lanie');
+  const S = room.sessions.get(ws);
+  clock += REPORT.PACE_MS;
+  const why = room._reportTake(S, lane('thirty'), clock);
+  const dev = await devPart();
+  check('13.2 ...through the room: a `thirty` report is in the book in its own cell', why === 'ok' && dev['1|' + KEY + '|thirty|none|5122'] && dev['1|' + KEY + '|thirty|none|5122'].n === 1, { why, keys: Object.keys(dev) });
+  /* 13.3 an unknown lane */
+  check('13.3 a lane off the list is dropped, lanes taken or not', reportSums(lane('lite'), { lanes: true }) === null && reportSums(lane('30'), { lanes: true }) === null && reportSums(lane(30), { lanes: true }) === null);
+  /* 13.5 rung and self (card O's PRs 2 and 14: learned now, one deploy for the card) */
+  const rs = reportSums(lane('full', { rung: [4, 30], self: ['sheen', 'water', 'sheen', 'DROP TABLE'] }), { lanes: true });
+  check('13.5 `rung` sums beside the cell: [reports with one, the most rungs, seconds below]', rs && same(rs.sums.rung, [1, 4, 30]), rs && rs.sums.rung);
+  check('13.5 `self`: each program of the list once, free text dropped', rs && same({ ...rs.sums.self }, { sheen: 1, water: 1 }), rs && rs.sums.self);
+  const bad = (over) => reportSums(lane('full', over), { lanes: true }).sums;
+  check('13.5 a rung past the worker\'s bound, or more seconds below than the report covers, or a fraction, is dropped (the report counts)',
+    !('rung' in bad({ rung: [RUNG.MAX + 1, 0] })) && !('rung' in bad({ rung: [1, 47] })) && !('rung' in bad({ rung: [1.5, 2] })) && !('rung' in bad({ rung: [1] })) && bad({ rung: [99, 0] }).n === 1);
+  check('13.5 a `self` of no program on the list, or longer than the list, is dropped',
+    !('self' in bad({ self: ['bt-one-batch'] })) && !('self' in bad({ self: new Array(SELF_PROGRAMS.length + 1).fill('one') })) && !('self' in bad({ self: 'one' })));
+  check('13.5 the worker\'s lists are card O\'s: the programs, and a rung bound over the page\'s ladder',
+    same(SELF_PROGRAMS, PROGRAM_NAMES) && ladderDepth() <= RUNG.MAX, { here: SELF_PROGRAMS, phone: PROGRAM_NAMES, depth: ladderDepth(), max: RUNG.MAX });
+  /* 13.4 the kill switch */
+  room._liveFlags = { reportlanes: false };
+  const ws2 = await join('bp_rep_nolane', 'Nolan');
+  const sync = ws2.sent.find((m) => m.type === 'state_sync');
+  check('13.4 `reportlanes: false`: a join is told caps.report 2', sync && sync.caps && sync.caps.report === 2, sync && sync.caps && sync.caps.report);
+  const S2 = room.sessions.get(ws2);
+  clock += REPORT.PACE_MS;
+  const w1 = room._reportTake(S2, lane('light'), clock);
+  clock += REPORT.PACE_MS;
+  const w2 = room._reportTake(S2, lane('full'), clock);
+  check('13.4 ...a lane other than `full` is dropped; `full` is taken', w1 === 'bad' && w2 === 'ok', [w1, w2]);
+  const off = reportSums(lane('full', { rung: [4, 30], self: ['sheen'] }), { lanes: false });
+  check('13.4 ...and `rung` and `self` are dropped from a report that still comes', off && !('rung' in off.sums) && !('self' in off.sums) && off.sums.n === 1, off && off.sums);
+  room._liveFlags = { reportspeed: false };
+  check('13.4 `reportspeed: false` is 1, and takes no lane either', room._reportCap() === 1 && reportSums(lane('thirty'), { lanes: room._reportCap() >= 3 }) === null);
+  room._liveFlags = {};
+  /* 13.6 the phone */
+  check('13.6 the phone sends a lane but `full` only to caps.report 3 (takesLanes)',
+    takesLanes({ _serverCaps: { report: 3 } }) && !takesLanes({ _serverCaps: { report: 2 } }) && !takesLanes({ _serverCaps: {} }) && !takesLanes(null));
+  const ph = readFileSync(new URL('../../src/debug/report.js', import.meta.url), 'utf8');
+  check('13.6 ...and `full`, as every page before lanes, to a worker below 3', /drawLane: takesLanes\(_S\) \? drawLane\(cls\) : 'full'/.test(ph));
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);

@@ -51,6 +51,7 @@ import { oneBatchOn, setOneBatchLive } from '@/rendering/paletteTex.js';   /* v2
 import { shadowPrepassOn, setShadowPrepass } from '@/rendering/lightfx/shadows.js';   /* v2.3.3458 */
 import { renderDpr, setRenderResLive } from './renderRes.js';
 import { deviceProfile } from './deviceProfile.js';   /* v2.3.4804: the device profile */
+import { drawLane } from './drawLanes.js';   /* v2.3.5221: card O's lanes: the card names this page's */
 import { queueSpeedCard, SPEED_MODELS, speedModel, setSpeedModel, reportOn } from '@/debug/report.js';   /* v2.3.5125: the card is sent */
 
 const SETTLE_MS = 1500;
@@ -361,7 +362,9 @@ export async function runSpeedTest() {
     + (cv ? ', drawn ' + cv.width + ' x ' + cv.height + ' px' : '')
     + (renderDpr() < dev ? ' (lowered to ' + renderDpr() + 'x)' : '')
     /* v2.3.4804: the device profile's lanes, so one screenshot says which this machine is in */
-    + (() => { try { const d = deviceProfile(); return ', ' + d.input + (d.computerFrame ? ', computer window' : '') + (d.ios ? ', iOS' : '') + ', looks palette ' + d.palette; } catch (e) { return ''; } })();
+    + (() => { try { const d = deviceProfile(); return ', ' + d.input + (d.computerFrame ? ', computer window' : '') + (d.ios ? ', iOS' : '') + ', looks palette ' + d.palette; } catch (e) { return ''; } })()
+    /* v2.3.5221: and the lane it draws in (game/drawLanes.js) */
+    + (() => { try { return ', lane ' + drawLane(); } catch (e) { return ''; } })();
   const result = { rows, notes, device, at: Date.now() };
   /* v2.3.5125: the card rides the next smoothness report (debug/report.js) */
   result.queued = reportOn() && queueSpeedCard(result);
