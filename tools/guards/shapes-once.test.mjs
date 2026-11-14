@@ -40,6 +40,10 @@
  *   4. `const w = payload.wayIn;` in server/src/join.js            -> FAIL 4
  *   5. `export const x = { devClass: 'a' };` in src/game/xpPop.js  -> FAIL 5 (and 1)
  *
+ *   (v2.3.5104, again at main 0c83972: card A's report carries devClass and
+ *   drawLane as its fields, and card E's daybook.js writes `daybook:`; the
+ *   five above still turn red, and a `{ 'daybook:': 1 }` key, a name, does not)
+ *
  * Run from the repository's root: node tools/guards/shapes-once.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
  */
@@ -59,15 +63,19 @@ const NAMES = Object.freeze({
   /* the action door (step 5.8; part 10).  Read in src/ only: the worker
      echoes a request's reqId in its answer, which carries it, not makes it */
   reqId: { part: 2, where: 'src/game/actions.js', scope: 'src/' },
-  devClass: { part: 6, where: 'src/game/deviceProfile.js' },   /* part 6's row */
-  drawLane: { part: '4, 6', where: null },
+  /* v2.3.5104: `carriers` are a shape's own listed readers that carry it
+     as a field of THEIR shape, by SHAPES' design: the report's fields are
+     `devClass` and `drawLane` (part 4; part 6 lists the report as a reader),
+     and until card O builds lanes `drawLane` is the one value 'full' */
+  devClass: { part: 6, where: 'src/game/deviceProfile.js', carriers: ['src/debug/report.js'] },   /* part 6's row */
+  drawLane: { part: '4, 6', where: null, carriers: ['src/debug/report.js'] },   /* card O's one function, when built */
   mayStart: { part: 5, where: null },
   doesWhat: { part: 5, where: null },
   liarGain: { part: 7, where: null },
 });
 /* the storage prefixes of the page, and each one's writer (null: not built) */
 const PREFIXES = Object.freeze({
-  'daybook:': { part: 7, writer: null },
+  'daybook:': { part: 7, writer: 'server/src/daybook.js' },   /* v2.3.5080, card E: bookAdd, the one door */
   'xfer:': { part: 7, writer: null },
   'play_trace:': { part: 7, writer: null },
   'permit:': { part: 7, writer: null },
@@ -95,15 +103,18 @@ const definers = (name) => [...code].filter(([, c]) => definesRe(name).test(c)).
 
 /* ── 1. each new name: one file, its Where ── */
 for (const [name, row] of Object.entries(NAMES)) {
-  const files = definers(name).filter((f) => !row.scope || f.startsWith(row.scope));
-  if (!files.length) { notBuilt(`1: \`${name}\` (SHAPES part ${row.part})`); continue; }
+  const carriers = row.carriers || [];
+  const files = definers(name).filter((f) => (!row.scope || f.startsWith(row.scope)) && !carriers.includes(f));
+  if (!files.length) { notBuilt(`1: \`${name}\` (SHAPES part ${row.part})` + (carriers.length ? `, carried by ${carriers.join(', ')}` : '')); continue; }
   if (!row.where) { check(`1: \`${name}\` is defined, so its row needs its one file: write it as NAMES.${name}.where in tools/guards/shapes-once.test.mjs (rule 2)`, false, files); continue; }
   check(`1: \`${name}\` is defined in one file, its Where (${row.where})`, files.length === 1 && files[0] === row.where, files);
 }
 
 /* ── 2. storage prefixes: only their one writer ── */
 for (const [prefix, row] of Object.entries(PREFIXES)) {
-  const re = new RegExp(`["'\`]${esc(prefix)}`);
+  /* v2.3.5104: a string that is an object's KEY names the prefix (the
+     storage registry's marks, storagemarks.js), it writes nothing */
+  const re = new RegExp(`["'\`]${esc(prefix)}[^"'\`]*["'\`](?!\\s*:)`);
   const files = [...code].filter(([f, c]) => f.startsWith('server/src/') && re.test(c)).map(([f]) => f);
   if (!files.length) { notBuilt(`2: the storage prefix \`${prefix}\``); continue; }
   if (!row.writer) { check(`2: \`${prefix}\` is written, so its row needs its one writer: write it as PREFIXES['${prefix}'].writer (and its key in ARCHITECTURE-HANDOFF's registry)`, false, files); continue; }
@@ -134,7 +145,7 @@ for (const [prefix, row] of Object.entries(PREFIXES)) {
 
 /* ── 5. the device profile ── */
 {
-  const files = definers('devClass');
+  const files = definers('devClass').filter((f) => !(NAMES.devClass.carriers || []).includes(f));
   if (!files.length) notBuilt('5: `devClass`, only in deviceProfile.js');
   else check(`5: only ${PROFILE} returns a \`devClass\` field`, files.every((f) => f === PROFILE), files.filter((f) => f !== PROFILE));
   const suite = readFileSync(join(ROOT, 'server/test/device-profile.test.mjs'), 'utf8');

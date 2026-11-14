@@ -100,10 +100,13 @@ export const SYSTEMS = Object.freeze({
   },
   'server-core': {
     what: 'the worker\'s spine: saving, migrations, the tick, its pace, hidden settings',
-    files: [f('server/src', 'persistence|migrations|tick|tickpace|cadence|data|grids|heapburn|hidden')],
-    words: ['persistence', 'migration', 'tick', 'storage', 'save', 'hidden', 'cost-guard', 'costguard'],
+    files: [f('server/src', 'persistence|migrations|tick|tickpace|cadence|data|grids|heapburn|hidden|daybook|storagemarks')],
+    words: ['persistence', 'migration', 'tick', 'storage', 'save', 'hidden', 'cost-guard', 'costguard', 'daybook'],
     traps: ['server-core'],
-    doors: [{ name: 'HIDDEN_SPEC', file: 'server/src/hidden.js', what: 'a server-only number a copier would value' }],
+    doors: [
+      { name: 'HIDDEN_SPEC', file: 'server/src/hidden.js', what: 'a server-only number a copier would value' },
+      { name: 'bookAdd', file: 'server/src/daybook.js', what: 'the day\'s book (`daybook:`): every part adds through it (v2.3.5080, card E)' },
+    ],
     switches: [],
   },
   combat: {

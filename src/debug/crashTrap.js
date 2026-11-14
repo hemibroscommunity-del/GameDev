@@ -176,6 +176,25 @@ function _chan() {
   try { _aliveChan = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('bt-alive') : false; } catch (e) { _aliveChan = false; }
   return _aliveChan;
 }
+/* ═══ v2.3.5122: WHAT THE FIELD REPORT READS OF A DEATH (debug/report.js) ═══
+   The report's `died` is sent once, in the first report after a join: no, or
+   killed / evicted with the dead page's last mark as numbers (its MB of art,
+   minutes up, renderers rebuilt) and where it was, from the report's own
+   closed list -- never the sentence the crash ring keeps.  So the check
+   below keeps what it found (lastDeath), and the mark carries the report's
+   `where` (setMarkWhere).  And the report's `lost` counts the contexts lost
+   (glLostCount, watchContextLoss below). */
+let _markWhere = null;
+let _death = null;     /* null: not decided yet (the other tabs are asked, 700 ms) */
+let _glLost = 0;
+/** debug/report.js: where the page is now, a word of its closed list, put in the next mark. */
+export function setMarkWhere(w) { _markWhere = typeof w === 'string' ? w : null; }
+/** debug/report.js: { kind: 'no' } or { kind: 'killed' | 'evicted', mb, up, rb, where } (numbers or null;
+ *  `where` a word or null), or null while the check runs. */
+export function lastDeath() { return _death; }
+/** debug/report.js: contexts lost on this page (a teardown's own loss not counted). */
+export function glLostCount() { return _glLost; }
+
 export function markAlive(info) {
   try {
     const now = Date.now();
@@ -185,7 +204,8 @@ export function markAlive(info) {
        The textures come in `info` already (BroTown's watchdog reads __btTex
        for it), so they are not walked a second time here. */
     const m = _memNow(false);
-    localStorage.setItem(ALIVE_KEY, JSON.stringify(Object.assign({ sid: _SID, t: now, vis: document.visibilityState, up: m.up, rb: m.rb, snd: m.snd }, info || {})));
+    /* v2.3.5122: + where, the report's word for the place (debug/report.js) */
+    localStorage.setItem(ALIVE_KEY, JSON.stringify(Object.assign({ sid: _SID, t: now, vis: document.visibilityState, up: m.up, rb: m.rb, snd: m.snd, where: _markWhere }, info || {})));
   } catch (e) { /* storage unavailable */ }
 }
 /* this page's own mark, if the key holds it (another tab may have written last) */
@@ -201,10 +221,13 @@ function _ownMark(fn) {
 function _checkLastAlive() {
   let last = null;
   try { const raw = localStorage.getItem(ALIVE_KEY); last = raw ? JSON.parse(raw) : null; } catch (e) { last = null; }
-  if (!last || typeof last.t !== 'number' || last.sid === _SID || Date.now() - last.t > 15 * 60 * 1000) return;
+  if (!last || typeof last.t !== 'number' || last.sid === _SID || Date.now() - last.t > 15 * 60 * 1000) { _death = { kind: 'no' }; return; }
   const report = () => {
     const ago = Math.round((Date.now() - last.t) / 1000);
     const hidden = last.vis === 'hidden';
+    /* v2.3.5122: kept for the field report (lastDeath, above) */
+    const num = (v) => (typeof v === 'number' && isFinite(v) ? v : null);
+    _death = { kind: hidden ? 'evicted' : 'killed', mb: num(last.mb), up: num(last.up), rb: num(last.rb), where: typeof last.where === 'string' ? last.where : null };
     recordCrash(hidden ? 'evicted' : 'killed', `the last page stopped without closing ${ago}s before this one, `
       + `${hidden ? 'in the background' : 'ON SCREEN'}: zone ${last.zone || '?'} at ${last.x},${last.y}, hp ${last.hp}, `
       + `${last.mb != null ? last.mb + ' MB of textures' : 'textures unknown'}`
@@ -222,7 +245,7 @@ function _checkLastAlive() {
   const onMsg = (ev) => { if (ev && ev.data && ev.data.pong === last.sid) alive = true; };
   ch.addEventListener('message', onMsg);
   try { ch.postMessage({ ping: last.sid }); } catch (e) { /* ignore */ }
-  setTimeout(() => { ch.removeEventListener('message', onMsg); if (!alive) report(); }, 700);
+  setTimeout(() => { ch.removeEventListener('message', onMsg); if (!alive) report(); else _death = { kind: 'no' }; }, 700);
 }
 
 function banner(text) {
@@ -296,6 +319,7 @@ export function watchContextLoss(canvas) {
        synthetic loss re-arms __btGlLostAt and every later tab switch
        triggers a spurious full rebuild. */
     if (!canvas.isConnected) return;
+    _glLost++;   /* v2.3.5122: the field report's `lost` (glLostCount) */
     /* v2.3.771: preventDefault tells the browser we want the context BACK --
        without it 'webglcontextrestored' never fires and the canvas stays
        black forever (the iPhone background-tab symptom). */
