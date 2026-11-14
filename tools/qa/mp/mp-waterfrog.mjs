@@ -42,6 +42,7 @@ import * as H from './harness.mjs';
 import { mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { MONSTER_VARIANTS } from '../../../src/data/monsterVariants.js';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const OUT = `${H.REPO}/tools/qa/mp/out/waterfrog`;

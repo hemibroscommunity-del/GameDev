@@ -33,6 +33,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { TREE_ART } from '../../../src/data/treeArt.js';
 import { gatheringMethods } from '../../../server/src/gathering.js';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 /* game/tierTrees.js: 2 picture px a game px, the foot 27 north of the node,

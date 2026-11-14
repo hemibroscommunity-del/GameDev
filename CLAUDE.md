@@ -187,6 +187,7 @@ spec. Add a line here only for a new RULE every session must follow.
   or a client can forge it, and the client handles it in `wsClient.js`'s DIRECT
   switch. A phone's relay reaches others only if its type is in `RELAY.TYPES`
   (`server/src/relay.js`), rebuilt in the sender's name.
+- **One way out of the page**: a request leaves through `act()`, a row in `src/game/actions.js` (the action door, v2.3.5185).
 - **A reconnect**: the phone clears its copy of a worker session (a duel, a
   trade, the party) at `state_sync` only together with the worker's re-send:
   a row in `REJOIN_SLOTS` (`src/game/rejoinSlots.js`; TRAPS §278).
@@ -245,7 +246,8 @@ spec. Add a line here only for a new RULE every session must follow.
   `wide: true` (a computer plays the whole window, the band at the bottom); a townsperson is reached
   with `H.approachNpc` (talking is a tap only: never add a walk-up opener); a
   character brought back in a second browser passes its `device`; a probe a test
-  reads (`window.__bt*`) must exist (precheck `qa-handles`).
+  reads (`window.__bt*`) must exist (precheck `qa-handles`); a scenario names
+  its `lane`.
 - A phone test red on `main` is a question about the TEST first (TRAPS §177).
   This box draws a few frames a second: time a check by the renderer's clock,
   never a 60 fps window (TRAPS §200; `BT_QA_CPU_THROTTLE` plays a slow phone).
@@ -387,6 +389,7 @@ spec. Add a line here only for a new RULE every session must follow.
 | an animation or sprite | its loader in `preloadWorldAnimations` (per zone: `preloadZoneAssets`, freed on exit); a body pose through `mp-ghostaudit` |
 | a message the server sends | `PRIVILEGED_EVENTS`; the client's direct switch |
 | a relay a phone sends | `RELAY.TYPES` |
+| a request the page makes | its row in `src/game/actions.js` (the action door) |
 | a server behaviour | a cap the client gates on (`CAP_GATES`) and a lower-case kill switch |
 | a `?name=` or a live flag | its row in the switch table (`tools/guards/lib/switches.mjs`; `node tools/guards/switches.test.mjs --write`) |
 | a storage key | ARCHITECTURE-HANDOFF's rule-2 registry table (precheck `storage-keys`) |
@@ -399,7 +402,7 @@ spec. Add a line here only for a new RULE every session must follow.
 | a field on the tick | both tick builders (`tick-share.test`) |
 | a sound | its Sound Studio label and its `CREDITS.md` row |
 | a screen or window | `states.mjs` and `UI-DESIGN-NOTES.md`; `data-esc` on its ✕; any key in `deskKeys.js` |
-| a phone test | `world: 'wheel'` (and `wide: true` on a computer); its file `mp-<name>.mjs` (no line in run.mjs) |
+| a phone test | `world: 'wheel'` (and `wide: true` on a computer); its file `mp-<name>.mjs` (no line in run.mjs); its `lane` |
 | a picture made on a canvas | `keepOnGpuOnly`, `keepAsImage` or colour numbers (the memory law) |
 | a monster, or any art that loads as you walk | 256-colour palette PNGs (`tools/art/strip256.mjs --shared`), loaded through `loadTrackedStrip` (`strip-door.test`) |
 | a stored look key | its restore and its blank (precheck `look-parity`, `look-blank`) |

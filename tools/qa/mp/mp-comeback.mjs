@@ -32,6 +32,7 @@
  *   node tools/qa/mp/run.mjs comeback
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 

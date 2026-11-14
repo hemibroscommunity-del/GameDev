@@ -29,6 +29,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 const VIEW = { width: 1000, height: 780 };
 const LINGER_MS = 20000;   /* server/src/linger.js LINGER.MS */

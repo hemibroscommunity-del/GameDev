@@ -31,6 +31,7 @@
  *   node tools/qa/mp/run.mjs lookgear
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const VIEW = { width: 390, height: 844 };
 const COPPER = [212, 140, 96];

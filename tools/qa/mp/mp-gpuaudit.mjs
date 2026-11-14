@@ -23,6 +23,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const WAIT_S = +(process.env.GA_WAIT || 20);

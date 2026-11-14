@@ -30,6 +30,7 @@
  *      why 1 and 2 are the ones that prove the fix.)
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 /* What it sells him: a key NO other shop scenario trades.  One run shares one
    worker, and Diego's pile is per key and kept -- with slime remains, this

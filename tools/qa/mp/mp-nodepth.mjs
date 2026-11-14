@@ -26,6 +26,7 @@
 import { join } from 'node:path';
 import { mkdirSync } from 'node:fs';
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const DEPTH_TEST = 0x0B71;

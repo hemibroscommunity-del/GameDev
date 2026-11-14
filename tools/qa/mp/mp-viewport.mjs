@@ -24,6 +24,7 @@
  * is a layout race between CSS, React's first paint and a ResizeObserver.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 /* iPhone 12/13/14 CSS viewport — the size the whole UI was designed against
    (game.css says so in several places). */
@@ -40,7 +41,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   const page = await ctx.newPage();
   await page.addInitScript((p) => { window.BROTOWN_WS_URL = `ws://127.0.0.1:${p}`; }, wsPort);
-  await page.goto(`http://localhost:${webPort}/`, { waitUntil: 'domcontentloaded' });
+  await page.goto(H.withLane(`http://localhost:${webPort}/`), { waitUntil: 'domcontentloaded' });
   const P = { ctx, page, logs: [], name: 'Pocket' };
 
   await H.enterWorld(P);
@@ -116,7 +117,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       } catch (e) { /* if it cannot be stubbed the case simply does not apply */ }
     }
   }, wsPort);
-  await page2.goto(`http://localhost:${webPort}/`, { waitUntil: 'domcontentloaded' });
+  await page2.goto(H.withLane(`http://localhost:${webPort}/`), { waitUntil: 'domcontentloaded' });
   const P2 = { ctx: ctx2, page: page2, logs: [], name: 'Pocket2' };
   await H.enterWorld(P2);
   await page2.waitForTimeout(2500);

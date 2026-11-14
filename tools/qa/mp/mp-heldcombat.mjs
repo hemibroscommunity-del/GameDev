@@ -18,6 +18,7 @@
  * old combat's lines, played by the ~120 scenarios that run `?manual=0`.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 

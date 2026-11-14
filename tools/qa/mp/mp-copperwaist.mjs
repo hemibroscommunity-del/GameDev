@@ -27,6 +27,7 @@
  *   BT_CW_METALS=copper,iron   BT_CW_DIRS=northeast,east   pick the runs
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const VIEW = { width: 900, height: 700 };
 const DPR = 2;

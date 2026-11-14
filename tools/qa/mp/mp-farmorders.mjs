@@ -32,6 +32,7 @@ import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { drawFarmOrders, farmOrderById } from '../../../server/src/farmorders.js';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 /* What each order's goods are called in the bag -- independent of the

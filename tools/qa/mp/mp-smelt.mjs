@@ -17,6 +17,7 @@
  */
 import * as H from './harness.mjs';
 import { skillXpRequired } from '../../../src/data/items.js'; /* v2.3.3090: the game's own life-skill curve */
+export const lane = 'full';
 
 const shot = (P, name) => P.page.screenshot({ path: `tools/qa/mp/out/smelt-${name}.png` }).catch(() => {});
 const bag = (P) => H.readState(P, (S) => {

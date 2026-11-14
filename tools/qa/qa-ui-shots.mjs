@@ -27,6 +27,7 @@
  */
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { withLane } from './lane.mjs';   /* v2.3.5223: the game's page names its lane (card O PR 3) */
 
 const OUT = process.argv[2] || '/tmp/ui-shots';
 const URL = process.env.QA_URL || 'http://127.0.0.1:4173/';
@@ -100,7 +101,7 @@ async function capture(view) {
   page.on('pageerror', () => {});
   mkdirSync(`${OUT}/${view.dir}`, { recursive: true });
 
-  await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.goto(withLane(URL), { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.waitForTimeout(7000);
   await page.screenshot({ path: `${OUT}/${view.dir}/00-login.png` });
 

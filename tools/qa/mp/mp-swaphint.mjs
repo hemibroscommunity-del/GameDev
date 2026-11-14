@@ -19,6 +19,7 @@
 import * as H from './harness.mjs';
 import { join } from 'node:path';
 import { mkdirSync } from 'node:fs';
+export const lane = 'full';
 
 const OUT = join(H.REPO, 'tools/qa/mp/out');
 

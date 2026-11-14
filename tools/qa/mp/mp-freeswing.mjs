@@ -18,6 +18,7 @@
  * The times that matter are held by the page's clock in one task (this box's
  * timers run late: TRAPS §200). */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 

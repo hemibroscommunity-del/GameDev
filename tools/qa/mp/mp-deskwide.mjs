@@ -48,6 +48,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 const DESK = { width: 1440, height: 900 };
 const LAPTOP = { width: 1366, height: 768 };
