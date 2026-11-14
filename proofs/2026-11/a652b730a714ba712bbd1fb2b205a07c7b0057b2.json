@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "a652b730a714ba712bbd1fb2b205a07c7b0057b2",
+  "tree": "eb6ae76e136f20847056e1284e9878ee7a5f40b4",
+  "committedAt": "2026-11-14T01:16:52-08:00",
+  "subject": "Merge pull request #1736 from hemibroscommunity-del/claude/plan-p-6-npc-heads",
+  "files": 7541,
+  "bytes": 948534122,
+  "listingSha256": "52c8402a2b8936c54ae90d2219bd411d26f493cf17ff580f14fa0157961d22eb",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

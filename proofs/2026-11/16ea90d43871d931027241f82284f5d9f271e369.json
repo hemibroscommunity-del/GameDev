@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "16ea90d43871d931027241f82284f5d9f271e369",
+  "tree": "0ef5d53351baf4a45889cc4aa002aadd140fdf27",
+  "committedAt": "2026-11-14T01:16:45-08:00",
+  "subject": "Merge pull request #1744 from hemibroscommunity-del/claude/plan-l-j2-cards",
+  "files": 7560,
+  "bytes": 948735619,
+  "listingSha256": "e00b422889b9724a1e329cfc14f20b52db876e029b3a84a658a243b6f48346c2",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

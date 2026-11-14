@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "92bc4108db4a51bfe6a897c2a470618103879a7a",
+  "tree": "410591a8d6b4e6dff721471b3c97bd76468d4b9c",
+  "committedAt": "2026-11-14T01:16:49-08:00",
+  "subject": "Merge pull request #1719 from hemibroscommunity-del/claude/plan-p-5-m4a",
+  "files": 7541,
+  "bytes": 948531048,
+  "listingSha256": "37eb0aec020cfd7ce0b3f56e2e7f6789ceb316227f7774b5d43be810b895b93d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
