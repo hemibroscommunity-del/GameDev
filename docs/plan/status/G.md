@@ -1,7 +1,7 @@
 card: G
 branch: claude/plan-g-pixel-budget
-prs: PR 1 (tag 5140) on the branch above (working)
-state: working
+prs: #1701 (ready; waits for the owner's yes on the two pictures)
+state: ready
 
 ## Done
 
