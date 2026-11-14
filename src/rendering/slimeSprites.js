@@ -18,6 +18,7 @@
 
 import { Assets, Rectangle, Texture } from 'pixi.js';
 import { loadTrackedStrip, unloadBundle } from './zoneTextures.js';   /* v2.3.5256 */
+import { loadSetLater } from './loadSetLater.js';   /* v2.3.5256: the hit's still, through the picture door */
 
 /* ═══ v2.3.5256: THE SLIMES LOAD AS YOU WALK (card P's backlog, monster-slime) ═══
    The owner, 2026-11-14 ("Go recommended"): the slimes load as you walk in
@@ -160,24 +161,27 @@ export function loadSlimeSingles() {
    the film it made).  So that one 128 px frame is cut from the strip's file
    once, behind the first loading screen with the splat and the orb, and
    kept (64 KB, in the asset cache under the strip's address): getHitStill.
-   The strip itself is let go as it is cut. */
-let _hitStill = null;
-async function loadHitStill() {
-  try {
-    const url = SHEETS.hit.url;
+   The strip itself is let go as it is cut.
+   v2.3.5256 (sitting 16's mends, the picture door): through loadSetLater,
+   so a request that fails or never answers is asked for again, later, while
+   the films ask for it (its 20 s limit and retryLooks.js's rounds). */
+const _still = { hit: null };
+let _stillSet = null;
+function loadHitStill() {
+  /* the strip's file, its first frame cut and kept; the rest let go */
+  if (!_stillSet) _stillSet = loadSetLater({ files: { hit: SHEETS.hit.url }, into: _still, load: async (url) => {
     const r = await fetch(url);
-    if (!r.ok || typeof createImageBitmap !== 'function') return;
-    const bmp = await createImageBitmap(await r.blob(), 0, 0, FRAME_W, FRAME_H);
-    const tex = Texture.from(bmp);
-    tex.source.label = url + '#still';
-    _hitStill = tex;
-  } catch {
-    /* none: the demo's films go without the slime, as before it loaded */
-  }
+    if (!r.ok || typeof createImageBitmap !== 'function') return null;
+    const tex = Texture.from(await createImageBitmap(await r.blob(), 0, 0, FRAME_W, FRAME_H));
+    tex.source.label = SHEETS.hit.url + '#still';
+    return tex;
+  } });
+  /* none in: the demo's films go without the slime, as before it loaded */
+  return _stillSet.start();
 }
 /** The hit strip's first frame, a still kept for the game (null on the
  *  `?slimewalk=0` road, where the strip itself is kept). */
-export function getHitStill() { return _hitStill; }
+export function getHitStill() { if (_stillSet) _stillSet.ensure(); return _still.hit; }
 
 /** v2.3.5256: let the strips go (wheelMonsterArt.js: no slime near, or the
  *  Wheel left).  Only on the walking road: `?slimewalk=0` keeps them. */
