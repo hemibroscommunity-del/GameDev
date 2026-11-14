@@ -684,8 +684,8 @@ list can be made from the table and a guard can fail a second copy of it.
 
 | Column | Today's list | Where |
 |---|---|---|
-| `privileged` | `PRIVILEGED_EVENTS` (163), and the 9 relay types the worker also sends (`RELAY_ECHO_ALLOWLIST`) | `server/src/index.js`; `server/test/wire-audit.test.mjs` |
-| `relayed` | `RELAY.TYPES` (26), and what the default branch does on the way: a clean of its words (`chat`, `emote`), a settlement (the trade's, the duel's, the threat's, the clan invite's), a stamp (`player_projectile`) | `server/src/relay.js`, `server/src/index.js` |
+| `privileged` | **Made from the table** (v2.3.5181, card K): the column `privileged` of `server/src/wire/` (left out on an `out` row: privileged; `echo`: the worker sends it and a phone's copy passes, its why in an `echo:` note). `server/src/wire/lists.js` makes `PRIVILEGED_EVENTS` (163) and wire-audit's echo list (9) from it | `server/src/wire/out.js`, `relays.js`; `lists.js` |
+| `relayed` | **Made from the table** (v2.3.5181): `RELAY.TYPES` (26) is every `relay` row (`lists.js`); what the default branch does on the way (a clean of its words, `chat`, `emote`; a settlement, the trade's, the duel's, the threat's, the clan invite's; a stamp, `player_projectile`) is the row's `at` | `server/src/wire/relays.js`; `lists.js` |
 | `body` | Where its fields sit. In: the top level (6 types), `payload`, `data` (`track`), or no body (16). Out: `payload`, or flat (about 20). | each handler |
 | `fight` | `FIGHT_LOCK` (38 rows, 6 of them routes: its switch) or `FIGHT_OPEN` (133: its reason) | `server/src/fightlock.js` |
 | `rideEnds` | `RIDE_ENDS_ON` (13) | `server/src/ride.js` |
@@ -708,7 +708,7 @@ list can be made from the table and a guard can fail a second copy of it.
 | Name | One writer | Readers | Where | Rows |
 |---|---|---|---|---|
 | the wire census (NEW) | card C, once, as a document | card N | `docs/plan/census/wire.md` | none |
-| the wire table (NEW) | card N: one row a message or route, in code | the door tests; the lists made from it (card K); the action door (5.8); the send door (4.1b) | `server/src/wire/` (the folder does not exist yet) | none |
+| the wire table (NEW) | card N: one row a message or route, in code | the door tests; the lists made from it (card K: `server/src/wire/lists.js`, the one reader, v2.3.5181); the action door (5.8); the send door (4.1b) | `server/src/wire/` | none |
 
 Three things no list holds today, for cards N and K:
 

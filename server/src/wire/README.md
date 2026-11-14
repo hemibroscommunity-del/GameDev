@@ -1,4 +1,4 @@
-# The wire table (v2.3.5061)
+# The wire table (v2.3.5061; the lists made from it, v2.3.5181)
 
 Grand plan step 4.1, step 1, as code: card N (`docs/plan/cards/N.md`). One
 row for every message a phone and the worker trade, and for every HTTP
@@ -6,17 +6,37 @@ route. Made from card C's census (`docs/plan/census/wire.md`), its prose
 turned into the closed values of `docs/SHAPES.md` part 5. A row says what the
 code does today. It is not a design.
 
-**Nothing in the worker imports it yet.** Today's lists (`PRIVILEGED_EVENTS`,
-`RELAY.TYPES`, the router's cases, the phone's switches) stay the truth until
-card K makes each of them FROM this table (step 4.1, step 2).
+**The worker's lists are made from it** (card K, step 4.1, step 2), in one
+file, `lists.js`: the one place that reads the rows and makes a list.
+
+| List | Made from | Read by |
+|---|---|---|
+| `PRIVILEGED_EVENTS` | every `out` row but those marked `privileged: 'echo'` | `index.js` (the relay's default branch drops a phone's copy) |
+| `RELAY.TYPES` | every `relay` row | `relay.js` (`_relayAllowed`) |
+| `RELAY_ECHOES` | every row marked `privileged: 'echo'`, with its why | `server/test/wire-audit.test.mjs` |
+
+So a new message the worker sends is an `out` row and nothing else: it is
+privileged with no other edit (deny by default). A new relay is a `relay`
+row. A list is never ALSO written by hand: the guard fails a literal beside a
+made one. The router's cases and the phone's switches are still the code's
+own (the guard holds the rows to them); card K's PR 2 makes the worker's
+other lists (`fight`, `placed`, `muted`, `pace`, `watch`) the same way.
+
+The table ships in the worker now: `index.js` imports `lists.js`, which
+imports `out.js` and `relays.js`. Measured with the bundler wrangler uses
+(esbuild, no minify), v2.3.5181: the bundle grew from 2,659,358 bytes to
+2,747,149 (+88 KB, 3.3%; gzipped 788,716 to 800,369, +12 KB). The rows'
+comments ship (wrangler does not minify), but they were index.js's and
+relay.js's before: moved, not added.
+
 `tools/guards/wire-table.test.mjs` (card N's PR 3) holds the table to the
 code: a key with no row, a row with no key, two rows for one key, a value off
-its column's list.
+its column's list, a list written by hand beside a made one.
 
 ## The files: one a direction
 
-Every file is a leaf: no imports, plain data, so node and the worker can both
-read it. The door tests read these files like any other in `server/src/`
+Every file of rows is a leaf: no imports, plain data, so node and the worker
+can both read it (`lists.js` is the one file that reads them). The door tests read these files like any other in `server/src/`
 (`server/test/src-walk.mjs`), so a field named `type` is written quoted
 (`'type': 'request'`): `wire-audit` reads `type: '<name>'` as a message the
 worker sends.
@@ -24,8 +44,9 @@ worker sends.
 | File | Holds | Rows |
 |---|---|---|
 | `in.js` | `WIRE_IN`: the router's cases (`server/src/index.js` `_onMessage`), phone to worker | 140 |
-| `relays.js` | `WIRE_RELAY`: `RELAY.TYPES` (`server/src/relay.js`), phone to worker to phones, one row for both ways | 26 |
-| `out.js` | `WIRE_OUT`: `PRIVILEGED_EVENTS` (`server/src/index.js`) and `clan_war_declare`, worker to phone | 164 |
+| `relays.js` | `WIRE_RELAY`: phone to worker to phones, one row for both ways (`RELAY.TYPES` is made from it) | 26 |
+| `out.js` | `WIRE_OUT`: every type the worker sends, worker to phone (`PRIVILEGED_EVENTS` is made from it) | 164 |
+| `lists.js` | not rows: the lists made from the rows (above). It imports the table; nothing in the table imports it | |
 | `http.js` | `WIRE_HTTP`: every HTTP method and path, and each handler's fall-through (`dir: 'in'`) | 107 |
 | `columns.js` | `WIRE_COLUMNS`: the closed lists every row is held to | |
 
@@ -63,15 +84,21 @@ Columns in this order; only `note` may be left out.
 | `absent` | what a missing field or body means, in words |
 | `bad` | what a wrong value gets, a list |
 | `answer` | the message that tells the sender what happened |
+| `privileged` | a machine's column (v2.3.5181): written only as `echo`, below |
 | `note` | the census's words, where a row fits no closed value |
 
-The machine-filled columns of SHAPES part 5's second table (`privileged`,
-`relayed`, `body`, `fight`, `rideEnds`, `idle`, `pace`, `placed`, `muted`,
-`watch`, `cap`, `flag`, `roads`, `silent`, `phoneSend`, `phoneCase`,
-`rejoin`, `pv`) are NOT here: each is a list in the code today, and a copy
-would be a second definition (the plan's rule 2). Card K makes each list from
-the table. A handler's live flag, pace lane and fight lock are therefore
-never in `phase`.
+The machine-filled columns of SHAPES part 5's second table are each a list in
+the code until card K moves it here, in the PR that deletes the literal (a
+copy beside the list would be a second definition: the plan's rule 2). Moved
+so far: `privileged` (v2.3.5181). `relayed` needs no column: it is every row
+of `relays.js`, and what the default branch does on the way is in the row's
+`at`. Still lists in the code: `body`, `fight`, `rideEnds`, `idle`, `pace`,
+`placed`, `muted`, `watch`, `cap`, `flag`, `roads`, `silent`, `phoneSend`,
+`phoneCase`, `rejoin`, `pv`. A handler's live flag, pace lane and fight lock
+are therefore never in `phase`.
+
+A machine's column is written on a row only where it says something, after
+`answer` and before `note` (`columns.js` `OPTIONAL`).
 
 ## How each column reads
 
@@ -222,8 +249,24 @@ own answer), with any message it also sends to the caller's phone. `out`:
 what the phone sends back (`ping` is answered by `pong`, an `in` row), else
 `none`.
 
+### `privileged` (v2.3.5181, card K)
+
+Left out on an `out` row: the type is privileged, and the relay's default
+branch drops a phone's copy (`PRIVILEGED_EVENTS`). Left out on a `relay`
+row: the worker never sends it itself.
+
+`echo`, on an `out` or a `relay` row: the worker sends the type AND a phone's
+copy is not dropped as a forgery. Today the 8 relays a sparring clone or a
+settlement also sends (`player_swing`, `trade_reject`, ...), and
+`clan_war_declare` (an `out` row: an older worker's relay of it must keep
+passing). Its why is a note that opens `echo: `; the guard fails an echo
+with none. These rows are wire-audit's echo list.
+
 ### `note`
 
 A list of the census's words, where a row fits no closed value and took the
 safer one (`person` for `mayStart`, `claim` for a field's `trust`, `none` for
 `reqId`), or where a column reads by a rule above that loses a fact.
+
+v2.3.5181: a note that opens `echo: ` is the why of a `privileged: 'echo'`
+(above), read by `lists.js` into wire-audit's echo list.

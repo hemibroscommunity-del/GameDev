@@ -29,6 +29,7 @@ import { srcFiles } from './src-walk.mjs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { PRIVILEGED_EVENTS } from '../src/index.js';
+import { RELAY_ECHOES } from '../src/wire/lists.js';   /* v2.3.5181 */
 
 let failures = 0;
 function check(name, cond, detail) {
@@ -41,24 +42,12 @@ function check(name, cond, detail) {
  * would break the live handshake it belongs to.  Every entry needs a
  * WHY; grow this list only when a new server emission mirrors an
  * existing client relay (rare — new systems should use fresh
- * server-only type names instead). */
-const RELAY_ECHO_ALLOWLIST = new Map([
-  ['player_respawned', 'clients broadcast it to peers to clear the corpse sprite; blocking it would leave respawned players rendered dead forever. Forgery is purely visual (index.js deny-list comment).'],
-  ['duel_decline', 'client-initiated relay (declining a duel); the server also synthesizes both halves when it cancels a duel (duel.js:82). Deny-listing breaks the client decline.'],
-  ['trade_reject', 'client-initiated relay (rejecting a trade offer); the server also emits it as its validation-failure answer (trade.js:90).'],
-  ['clan_war_declare', 'the server echoes the declare in the exact shape the client relay already renders (clans.js:249); the legacy client->client declare must keep relaying against old workers.'],
-  /* v2.3.3265: a sparring clone of the test panel (spar.js) has no page, so
-     the worker sends what a player's page relays about its own fight -- the
-     same types, the same shapes, drawn by the same code.  Each is a live
-     client->client relay that every player's page sends; deny-listing one
-     would stop every player's swings, shots, rolls, guard or knockout being
-     drawn on anyone else's screen.  Forgery is what it always was: visual. */
-  ['player_swing', 'a sparring clone\'s swing (spar.js); the client relay every player\'s swing rides (monsterCombat.js, abilities.js).'],
-  ['player_projectile', 'a sparring clone\'s arrow or bolt (spar.js); the client relay every player\'s shot rides (monsterCombat.js, playerActions.js).'],
-  ['player_dodge', 'a sparring clone\'s roll or sword dash (spar.js); the client relay every player\'s roll and dash ride (dodge.js, abilities.js).'],
-  ['player_shield', 'a sparring clone\'s raised and lowered guard (spar.js); the client relay every player\'s guard rides.'],
-  ['player_died_to_monster', 'a sparring clone knocked out (spar.js); the client relay a player\'s page sends when it dies, drawn as their knockout.'],
-]);
+ * server-only type names instead).
+ * v2.3.5181: MADE FROM THE WIRE TABLE (server/src/wire/lists.js
+ * RELAY_ECHOES; card K): every row marked `privileged: 'echo'`, its why the
+ * row's `echo:` note (wire-table.test §4 fails an echo row with none).  An
+ * entry is that mark on the row, never a line here. */
+const RELAY_ECHO_ALLOWLIST = RELAY_ECHOES;
 
 const srcDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 const files = srcFiles().filter((f) => f !== 'data.js');   /* v2.3.5060: in depth, a folder's files too (src-walk.mjs) */
@@ -88,7 +77,7 @@ check('extraction found a plausible type population (>=40)', extracted.size >= 4
   const unregistered = [...extracted.keys()]
     .filter((t) => !PRIVILEGED_EVENTS.has(t) && !RELAY_ECHO_ALLOWLIST.has(t))
     .map((t) => ({ type: t, sites: extracted.get(t) }));
-  check('every server-emitted type is in PRIVILEGED_EVENTS (or the documented allowlist) — an unregistered type is CLIENT-FORGEABLE via the default rebroadcast; add it to the deny-list in index.js',
+  check('every server-emitted type is in PRIVILEGED_EVENTS (or the documented allowlist) — an unregistered type is CLIENT-FORGEABLE via the default rebroadcast; give it its row in server/src/wire/out.js (it is then privileged)',
     unregistered.length === 0, unregistered);
 }
 

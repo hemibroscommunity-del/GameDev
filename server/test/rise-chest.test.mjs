@@ -17,7 +17,7 @@
  *      and its way out, the cap's gate, the rises laid for everyone.
  */
 import fs from 'node:fs';
-import { GameRoom } from '../src/index.js';
+import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
 import { WHEEL_ZONE } from '../src/wheelzone.js';
 import { WHEEL_FACES, WHEEL_FACES_LONG } from '../src/wheelfaces.js';
 import { RISE_CHEST, riseWithChest, feetAtRiseChest } from '../src/risechest.js';
@@ -201,7 +201,7 @@ async function setup(opts = {}) {
 // ── 6. the wiring ──
 {
   const idx = read('../src/index.js');
-  check('6a the router awaits the chest\'s handler; its answer is PRIVILEGED', /case 'rise_chest_open':\s*\n\s*if \(session\.id\) await this\._handleRiseChest\(session, msg\);/.test(idx) && /\n {2}'rise_chest',/.test(idx));
+  check('6a the router awaits the chest\'s handler; its answer is PRIVILEGED', /case 'rise_chest_open':\s*\n\s*if \(session\.id\) await this\._handleRiseChest\(session, msg\);/.test(idx) && PRIVILEGED_EVENTS.has('rise_chest'));   /* v2.3.5181: made from the wire table */
   const wsc = read('../../src/networking/wsClient.js');
   check('6b the phone takes the answer in its direct switch (never a relayed copy) and lets the ask out', /case 'rise_chest':\s*\n\s*\{ if \(msg\.from\) break; try \{ onRiseChest\(S, msg\.payload,/.test(wsc) && /if \(msg\.type === 'rise_chest_open'\) \{\s*\n\s*wsOut\(msg\);/.test(wsc));
   const act = read('../../src/game/climbActions.js');
