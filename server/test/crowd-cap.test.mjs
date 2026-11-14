@@ -11,8 +11,26 @@
  *      the drawn, and far less flicker at the edge (a player drawn again
  *      within a second of going) than with no hold;
  *   3. `?crowd=`.
+ * v2.3.5226 (card O PR 6), THE CAP IS A KNOB OF THE LADDER:
+ *   4. crowdK() at each rung of the work axis: the owner's 50 at `full`'s
+ *      row, 30, then 15; `?crowd=K` wins as before; `?laddercrowd=0` the 50
+ *      at any rung (and the knob off the governor's live set); at the
+ *      deepest rung the always-drawn are still drawn; the cap read through
+ *      laneKnob('crowd') in crowdCap.js, and the renderer asks it each frame.
+ *      v2.3.5226 (the gatekeeper's sitting 15): 4f the renderer's bare
+ *      crowdK() follows the rung as it moves; 4g the screen sees a cap as the
+ *      players it draws (the governor passes a step that hides no one;
+ *      frame-pacer §22), and the renderer tells its count each frame.
+ * BREAK PROOF (rule 8), tried by hand 2026-11-14:
+ *   4. crowdK's `_knob()` as `CROWD_K` (the rung not read)  -> FAIL 4a (50, 50, 50) and 4d
+ *      ...entityRenderer.js asking crowdK() once at load (the old const's way)  -> FAIL 4e
+ *      ...crowdSeen's `return Math.min(k, _near);` as `return k;`  -> FAIL 4g (and frame-pacer 22a-c)
+ *      ...entityRenderer.js without `noteCrowdNear(_near);`         -> FAIL 4g
  */
-import { CROWD_K, CROWD_HOLD, crowdPick, crowdFromSearch } from '../../src/game/crowdCap.js';
+import { readFileSync } from 'node:fs';
+import { CROWD_K, CROWD_HOLD, crowdPick, crowdFromSearch, crowdK, _resetCrowdK, noteCrowdNear, crowdSeen } from '../../src/game/crowdCap.js';
+import { setRung, _resetLanes, liveKnobs, AXES, knobAt, knobSeen } from '../../src/game/drawLanes.js';   /* v2.3.5226: the crowd's knob */
+import { systemNames, findIn } from '../../tools/guards/lib/filesOf.mjs';   /* v2.3.5226: the renderer read by system, never by its path */
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -105,6 +123,70 @@ check('3a. ?crowd=30 is a cap of 30', crowdFromSearch('?room=x&crowd=30') === 30
 check('3b. ?crowd=all, =0, =off: no cap', crowdFromSearch('?crowd=all') === Infinity && crowdFromSearch('?a=1&crowd=0') === Infinity && crowdFromSearch('?crowd=off') === Infinity);
 check('3c. not given, or nonsense: null (the default)', crowdFromSearch('?room=x') === null && crowdFromSearch('?crowd=abc') === null && crowdFromSearch('') === null);
 check('3d. capped at 500', crowdFromSearch('?crowd=99999') === 500);
+
+/* ── 4. the cap is a knob of the ladder (v2.3.5226) ───────────────────── */
+{
+  _resetLanes();
+  _resetCrowdK();
+  const crowdAt = AXES.work.map((r, i) => (r.knob === 'crowd' ? i + 1 : 0)).filter(Boolean);
+  const caps = [crowdK('')];
+  for (const n of crowdAt) { setRung(n, 0, 0); caps.push(crowdK('')); }
+  check(`4a. the cap at each rung of the work axis: ${caps.join(', ')} (the owner's 50 at the lane's row, then 30, then 15)`,
+    JSON.stringify(caps) === JSON.stringify([50, 30, 15]) && knobAt('full', 'crowd', null) === CROWD_K, caps);
+  check('4b. `?crowd=K` wins at any rung, as before (its meaning kept until card O\'s PR 12)', crowdK('?crowd=12') === 12 && crowdK('?crowd=all') === Infinity);
+  const hadLoc = Object.prototype.hasOwnProperty.call(globalThis, 'location'), wasLoc = globalThis.location;
+  globalThis.location = { search: '?laddercrowd=0' };
+  _resetLanes();
+  const liveOff = liveKnobs().slice();
+  if (hadLoc) globalThis.location = wasLoc; else delete globalThis.location;
+  _resetLanes();
+  setRung(crowdAt[crowdAt.length - 1], 0, 0);
+  check(`4c. \`?laddercrowd=0\`: the owner's 50 at any rung, and the crowd off the governor's live set (${liveOff.join('+')})`,
+    crowdK('?laddercrowd=0') === CROWD_K && !liveOff.includes('crowd') && liveKnobs().includes('crowd'), liveOff);
+  /* the deepest rung: 15, and the always-drawn still all drawn */
+  const far = Array.from({ length: 40 }, (_, i) => ({ id: 'p' + String(i).padStart(2, '0'), d2: (i + 1) * 100, prio: i >= 30 }));
+  const kept = crowdPick(far, crowdK(''), null);
+  check(`4d. at the deepest crowd rung (${crowdK('')}), every always-drawn player is drawn (10 far away), and the nearest fill the rest`,
+    !!kept && kept.size === 15 && far.filter((c) => c.prio).every((c) => kept.has(c.id)) && ['p00', 'p01', 'p02', 'p03', 'p04'].every((id) => kept.has(id)), kept && [...kept]);
+  _resetLanes();
+  const cc = readFileSync(new URL('../../src/game/crowdCap.js', import.meta.url), 'utf8');
+  /* the renderer, found by system (tools/guards/lib/filesOf.mjs): whichever file draws the crowd */
+  const hits = (re) => systemNames().flatMap((sys) => findIn(sys, re));
+  const asks = hits(/const _crowdK = \(\) => \(_noPeerCull \? Infinity : crowdK\(\)\);/);
+  const perFrame = hits(/const _capK = _crowdK\(\);/);
+  const atLoad = hits(/crowdFromSearch\(location|_crowdKAtLoad/);
+  check(`4e. the cap is read through the lanes' one reader in crowdCap.js, and the renderer asks it every frame (no K fixed at load): ${asks.map((h) => h.file).join(', ')}`,
+    /laneKnob\('crowd'\)/.test(cc) && asks.length === 1 && perFrame.length === 1 && perFrame[0].file === asks[0].file && atLoad.length === 0, { asks, perFrame, atLoad });
+  /* v2.3.5226 (the gatekeeper's sitting 15, a low): the renderer's own ask -- the bare crowdK(), the address read
+     once and the knob each call -- follows the rung as it moves */
+  _resetLanes();
+  _resetCrowdK();
+  const bare = [crowdK()];
+  for (const n of crowdAt) { setRung(n, 0, 0); bare.push(crowdK()); }
+  setRung(0, 0, 0);
+  bare.push(crowdK());
+  check(`4f. the renderer's bare crowdK() follows the rung as it moves: ${bare.join(', ')} (never frozen at its first ask)`, JSON.stringify(bare) === JSON.stringify([50, 30, 15, 50]), bare);
+  /* v2.3.5226 (the gatekeeper's sitting 15, the medium; the planning session's word): what the screen sees of a cap
+     is the players it draws -- a cap at or above the players near draws them all, so its step changes nothing */
+  const seen = (near) => { noteCrowdNear(near); return [50, 30, 15].map((v) => knobSeen('crowd', v)); };
+  const s10 = seen(10), s20 = seen(20), s40 = seen(40), s0 = seen(0);
+  noteCrowdNear(Infinity);
+  const sNone = [50, 30, 15].map((v) => crowdSeen(v));
+  check(`4g. the screen sees a cap as the players it draws: 10 near ${s10.join('/')}, 20 near ${s20.join('/')}, 40 near ${s40.join('/')}, none counted yet ${sNone.join('/')} (every step may matter)`,
+    s10.join() === '10,10,10' && s20.join() === '20,20,15' && s40.join() === '40,30,15' && s0.join() === '0,0,0' && sNone.join() === '50,30,15', { s10, s20, s40, s0, sNone });
+  const hadLoc2 = Object.prototype.hasOwnProperty.call(globalThis, 'location'), wasLoc2 = globalThis.location;
+  globalThis.location = { search: '?crowd=12' };
+  _resetCrowdK();
+  noteCrowdNear(40);
+  const pinned = [50, 30, 15].map((v) => knobSeen('crowd', v));
+  if (hadLoc2) globalThis.location = wasLoc2; else delete globalThis.location;
+  _resetCrowdK();
+  noteCrowdNear(Infinity);
+  check(`4g. an address that pins the cap (\`?crowd=12\`) makes every crowd step change nothing (${pinned.join('/')})`, pinned.join() === '12,12,12', pinned);
+  const er = hits(/noteCrowdNear\(_near\);/);
+  check('4g. the renderer tells the count it makes each frame (noteCrowdNear), where it counts the players near', er.length === 1 && er[0].file === asks[0].file, er);
+  _resetLanes();
+}
 
 console.log(`\ncrowd-cap: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
