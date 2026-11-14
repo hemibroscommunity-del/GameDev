@@ -1,7 +1,7 @@
 card: N
 branch: claude/grand-plan-n-3-wire-guard (one branch a PR, each begun from the one before: merge them in order)
-prs: #1684 (merged), #1695 (merged), #1697 (ready)
-state: ready
+prs: #1684 (merged), #1695 (merged), #1697 (merged)
+state: done
 
 ## Done
 
@@ -18,9 +18,8 @@ state: ready
 
 ## Next
 
-- Nothing: the card stops when #1697 merges. It adds card A's `report`
-  row (#1706), so it deploys. A's held #1711 adds `/api/admin/dev/daybook`:
-  merged after #1697, it brings its row; merged first, I add it here.
+- Nothing: the card is finished (#1697 merged, 2026-11-14). A's #1711
+  adds `/api/admin/dev/daybook`: it now brings its own row.
 
 ## Found
 
