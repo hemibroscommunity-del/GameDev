@@ -1,6 +1,6 @@
 card: H
-branch: claude/grand-plan-h-10-body-bake (one branch a PR, each begun from the one before, as W's are: merge them in order)
-prs: #1668, #1675, #1681, #1700, #1709, #1712, #1714, #1733 (merged); #1741 (ready); PR 10 on the branch above (ready; its number with the next commit)
+branch: claude/grand-plan-h-11-bake-ends (one branch a PR, each begun from the one before, as W's are: merge them in order)
+prs: #1668, #1675, #1681, #1700, #1709, #1712, #1714, #1733, #1741, #1747 (merged); PR 11 on the branch above (ready; its number with the next commit)
 state: ready
 
 ## Done
@@ -11,7 +11,7 @@ state: ready
   #1733 (5047) `ui:*`: off the list, merged.
 - #1741 (5048) `sweepPicsOnce` off: a slice a turn, the address read last.
   The Leaderboard's faces measured: 32 faces, 9.7 ms.
-- PR 10 (5049) `body-bake` off: none in six runs, every crowd group there.
+- #1747 (5049) `body-bake` off: none in six runs, every crowd group there.
   Z's #1668 finds: a worker never heard from is not restarted at a return
   (6c, its break proof); `BT_BW_PARTS` refuses a typo. 101 of 101.
 - Card H's part of step 3.1 is done: `pack-page` (card P's) is the one row
@@ -19,9 +19,11 @@ state: ready
 
 ## Next
 
-- The planning session's answers: the sweep stays off (its spikes noted in
-  `held-budget.mjs`); both follow-ups, one PR each: 5050 sitting 5's loose
-  ends on #1700, then 5051 the portrait's shirt composed for one frame.
+- PR 11 (5050), ready: sitting 5's loose ends on #1700 (a dead worker
+  not posted to, the stuck clock from the post, `urlRead` per address, the
+  decode under the 4 s, blob: only). Probe: 19 of 19 the same.
+- Then PR 12 (5051): the portrait's shirt composed for its one frame.
+  (The planning session's answers; the sweep stays off, its spikes noted.)
 
 ## Found
 
@@ -30,7 +32,8 @@ state: ready
   of ~40 runs; the sweep should look inside it. `QuestCoach > loadDone`
   23.3 ms once at `town` (measures the page).
 - Pixi's render threw (`addressModeU` of null) once, a hung worker's jobs
-  failing twice (the old restart rule, as on `main` until PR 10).
+  failing twice (the old restart rule). `mp-lookarmour` red on `main` too:
+  its side-by-side picture throws (`alphaMode` of null): card J's first.
 
 ## Needs
 

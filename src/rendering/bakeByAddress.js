@@ -23,9 +23,9 @@
  * still READING when it was let go as stuck (entityRenderer.js
  * _bakeWorkerWatch, 6 s on one job) is refused: a stuck kill answers no
  * `urlFail`, so an address it hung on was sent again to the next worker, and
- * the next.  The page keeps each job's addresses until the worker says they
- * are read (`urlsRead`, maskedBakeWorker.js) or answers; only those still
- * being read are refused (bakeWorkerStuck).  Not every address of a stuck
+ * the next.  The page keeps each job's addresses until the worker says each
+ * is read (`urlRead`, v2.3.5050; `urlsRead`, all of them; maskedBakeWorker.js)
+ * or answers; only those still being read are refused (bakeWorkerStuck).  Not every address of a stuck
  * job: on this QA box the worker is let go as stuck about 3 times a minute
  * beside two armoured players, past its reads, and refusing those would send
  * every input back to being cut on the page.
@@ -37,8 +37,15 @@ const _refused = new Set();
 /* keptMB: the sheets the worker holds (its last reply; mp-membudget cannot see a worker's bitmaps) */
 const _stats = { sent: 0, cut: 0, refused: 0, retried: 0, stuck: 0, checked: 0, same: 0, differ: 0, lastDiffer: null, keptMB: 0, keptMaxMB: 0 };
 
+/* v2.3.5050 (the gatekeeper's sitting 5): a full list lets its oldest go
+   (it stopped taking new ones at 1024: a new failing address was then sent,
+   failed and was retried every bake) */
 function _refuse(urls) {
-  for (const u of urls) if (_refused.size < 1024) _refused.add(u);
+  for (const u of urls) {
+    if (_refused.has(u)) continue;
+    if (_refused.size >= 1024) _refused.delete(_refused.values().next().value);
+    _refused.add(u);
+  }
   _stats.refused += urls.length;
 }
 
@@ -52,8 +59,16 @@ export function bakeTransfer(list, id) {
   if (urls.length && id) { if (_reading.size >= 64) _reading.clear(); _reading.set(id, urls); }
   return out;
 }
-/** The worker read job `id`'s addresses (its `urlsRead`) */
-export function bakeUrlsRead(id) { _reading.delete(id); }
+/** The worker read job `id`'s address `url` (its `urlRead`, v2.3.5050: the
+ *  gatekeeper's sitting 5 found a whole job's word refused, at a stuck kill,
+ *  addresses that had read fine), or all of them (`urlsRead`, no url) */
+export function bakeUrlsRead(id, url) {
+  if (!url) { _reading.delete(id); return; }
+  const urls = _reading.get(id);
+  if (!urls) return;
+  const left = urls.filter((u) => u !== url);
+  if (left.length) _reading.set(id, left); else _reading.delete(id);
+}
 /** The worker let go as stuck: what it was still reading is refused */
 export function bakeWorkerStuck() {
   for (const urls of _reading.values()) { _refuse(urls); _stats.stuck++; }
@@ -92,7 +107,10 @@ export function frameInput(tex) {
   if (!f || !o || !res || !(f.width > 0) || !(f.height > 0)) return Promise.resolve(null);
   const t = tex.trim;
   const url = (!OFF && typeof HTMLImageElement !== 'undefined' && res instanceof HTMLImageElement) ? (res.currentSrc || res.src || '') : '';
-  if (url && !_refused.has(url)) {
+  /* v2.3.5050 (sitting 5): a `blob:` address only -- the page's own packed
+     sheets, every one measured.  A file's address can change under a deploy
+     while the worker keeps the old sheet: such a frame is cut here, as before */
+  if (url && url.startsWith('blob:') && !_refused.has(url)) {
     _stats.sent++;
     const inp = { url, sx: f.x, sy: f.y, tx: t ? t.x : 0, ty: t ? t.y : 0, fw: f.width, fh: f.height, ow: o.width, oh: o.height };
     let qa = false;
