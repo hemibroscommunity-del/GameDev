@@ -60,7 +60,10 @@ O's #1787 and #1792 merged in, a second collision at `switches.mjs`'s
 end). The account's usage limit stopped every session from about 14:38
 to 16:55. After it: #1786 at ffce416 (its F1), #1802 at 5ab1569, card
 L's six (af6b29b, df534df, 5f48576, 8ece503, 6636d4e, 023ab5c: each its
-own diff unchanged outside the two switch files, `main` merged in).
+own diff unchanged outside the two switch files, `main` merged in), then
+#1801 at e3d622d: `S._nmlAsked` written down as kept, in the owner's own
+words ("the window won't pop up again"): a ledger row and its line
+(234 -> 233), no code; the planning session's call, the owner's way kept.
 `main` did not move (90a91dbc); every listed head has ONE merge base
 with it, checked again at 17:05.
 
@@ -380,4 +383,23 @@ lower (no PR on the list moves them down).
 
 ## The whole
 
-REHEARSALS (filled in at the list's writing).
+Rehearsed with `tools/dev/gatekeeper.mjs` from `main` 90a91dbc, this
+branch last each time:
+
+1. #1788, #1785, #1783 at their first heads, `--until=build`: precheck
+   0 FAIL (4 WARN), build.
+2. The same with #1797 (tree 84f057d2), `--until=precheck`: 0 FAIL.
+3. J2's four, #1785, #1786 (cb690b3), #1787, #1792, #1783 (bce509f)
+   (tree 2408e5d5), `--until=build`: precheck 0 FAIL (5 WARN), build.
+4. J2's four, #1785, #1787, #1792, #1783, #1797 (587faaa) (tree
+   13fb5185): precheck 0 FAIL (8 WARN), build, questline 187 of 187.
+5. The list with #1792 and card L's six (tree 9f3018c2): precheck
+   **FAIL** (`server-tests`: `guards/phase-table` FAIL 2, #1792's `ladder`
+   against #1767's `DOOR_SUITES`), build. #1792 held.
+6. **The list as written** (J2's four, #1785, #1786 ffce416, #1802
+   5ab1569, #1787, L's six, #1783, this branch; tree ba0e9e42): precheck
+   0 FAIL (11 WARN), build, questline 187 of 187.
+
+Each listed head's `test` is green on GitHub, and each has ONE merge base
+with `main` (checked at 17:05). #1798 (card LB's PR 3, ready at 53027f7
+after this rehearsal began) is sitting 12's.

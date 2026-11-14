@@ -5,8 +5,9 @@ state: ready
 
 ## Done
 - Sitting 11, `main` 90a91dbc (resumed 16:56 after the usage stop): the
-  list rehearsed in its order, this branch last; each branch ONE merge
-  base. Review: `census/review-z11.md`. 10.3 ticked; notes on 4.5, 7.1.
+  list rehearsed in its order, this branch last (tree ba0e9e42): precheck
+  0 FAIL, build, questline 187/187; each branch ONE merge base. Review:
+  `census/review-z11.md`. 10.3 ticked; notes on 4.5, 7.1.
 
 ## The list: merge in this order, in one sitting, each "Create a merge commit"
 1 #1788 · 2 #1789 · 3 #1790 · 4 #1795 (J2) · 5 #1785 · 6 #1786 ·
@@ -22,9 +23,9 @@ state: ready
 - #1794 O: VERIFIED (probe), the ladder walks rungs nothing reads, kept
   in `bt_rung`: a cool 60 phone at 30 for a sitting; steps mid-fight
   (call 3); a cool computer too. #1800 waits on it.
-- #1797 T: conflicts at `switches.mjs`'s end after card L: sitting 12.
+- #1797 T: conflicts at `switches.mjs`'s end after L: sitting 12.
 - #1782 SK: ready; the owner's yes to +8 to +10 moves a ride (one finding).
-- #1798 LB: a draft; TF's PR 2: no PR yet.
+- #1798 LB: ready after the rehearsal: sitting 12. TF's PR 2: none.
 
 ## Stalled
 - None (P, TF, LB-3 say `working`: cut by the usage stop at 14:38).
@@ -36,5 +37,4 @@ state: ready
 - O: `mp-governor`, `mp-loadinggate` leak `BT_QA_CPU_THROTTLE` onward.
 
 ## Rule for later sittings
-- Quote other cards' tags BARE in a review or status (`5461`): a full tag
-  counts as taken on `main` (`review-z9.md` cost card TF its 5461).
+- Quote other cards' tags BARE (`5461`): a full one counts as taken on `main`.
