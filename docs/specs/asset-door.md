@@ -150,3 +150,49 @@ files over it are the bot's lossless `.webp` twins of RGBA sheets. The bar's
 size (the pixel-size rule) is read by the gate (part 4), not here. Bytes on
 disk are not the measure: part 2 measures what each family holds at the
 memory check's fight.
+
+## 2. The measure: MB held at the memory check's fight (step 9.1, part two; tag 5242)
+
+The measure is **MB held at the fight, not a file's bytes**. The `.p256.png`
+twins taught it (`docs/specs/pictures-256.md`): 256 colours in a file saved
+nothing on the chip until the picture was held as colour numbers.
+
+### One ruler
+
+The memory check's own trip (`tools/qa/mp/mp-membudget.mjs`: a phone, 390 x
+844 at dpr 3, BroTown to a fight at the Flame Fields' inner end and home,
+three times), read its own way (`memprobe.mjs`: two forced collections), at
+its three fights. With **`QA_MB_ROWS=1`** each fight stop also carries every
+row of what the page holds, read in the same moment (`memprobe.mjs`
+`__memRows`):
+
+| column | what | read from |
+|---|---|---|
+| chip | every texture on the graphics chip, at its own size (bytes a pixel by format, x 4/3 with mipmaps) | `window.__btGpuTex()`, all rows (the check reads only its total) |
+| page | every picture the asset cache holds in the page, four bytes a pixel | `window.__btTex(true)` |
+| numbers | the colour numbers the page keeps beside a texture, one byte a pixel | the chip's and the cache's sources (`__btGpuTexSources`) and the monsters' strips (`__btPicNumSources`) whose numbers are still their resource |
+| sound | each decoded sound, by its file | BT_AUDIO's own maps: a sample's file is its tag (`_sampleTag`), a zone track its address, the session track `GLOBAL_MUSIC`; a buffer two keys share counted once |
+| atlas | the palette atlas's rows: used, the most, how often it was full; the monsters' bundles | `__btPalette()`, `__btPicNumbers()` |
+
+**Without `QA_MB_ROWS` the check asks the page exactly what it asked
+before**: it runs on every PR, and its lines are unchanged.
+
+### Rows to families
+
+`tools/assets/fightmb.mjs` matches each row to its family by its label's
+path: `/sprites/x.png` is `public/sprites/x.png`, a row of `shipped.json`,
+and that row's family. A label that is not a file in reach is a texture
+**made in play** (a canvas, a render texture, a Wheel ground piece, a look
+atlas page): `in play: <label>`, its digits folded to `#`, and
+`in play: unnamed` with no label. Those are the renderers' bakes: listed for
+reading, never a family, never the door's to change.
+
+A family's **MB at the fight** is the most it held at any one fight stop of
+any run (chip + page + numbers + sound at that stop): the highest of three
+runs. The census is `docs/plan/census/assets.md`, one row a family, most MB
+held first: the backlog's order.
+
+```
+QA_MB_ROWS=1 node tools/qa/mp/run.mjs membudget      three times, keeping each out/membudget.json
+node tools/assets/fightmb.mjs a.json b.json c.json --write
+```

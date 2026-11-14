@@ -1,11 +1,11 @@
 card: P
-branch: claude/plan-p-1-families (one branch a PR, each begun from the one before)
-prs: PR 1 (tag 5241, ready; its number goes here with PR 2's first commit)
-state: ready
+branch: claude/plan-p-2-fightmb (one branch a PR, each begun from the one before)
+prs: #1713 (tag 5241, ready), PR 2 (tag 5242, working)
+state: working
 
 ## Done
 
-- PR 1 (tag 5241), the family table and the record of what ships:
+- #1713 (tag 5241), the family table and the record of what ships:
   `tools/assets/families.mjs` (200 families), `shipped.mjs`,
   `shipped.json` (3,225 rows: supplied 797, made 2,077, data 351,
   unsorted 0), spec `docs/specs/asset-door.md` part 1, SHAPES part 7 and 8.
