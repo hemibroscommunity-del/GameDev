@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6a60410b05a4642f6ff9ea0d9bdb2146c4e10f01",
+  "tree": "5e9b93d984e5f67fe3cfd0eaad81c32bbe241402",
+  "committedAt": "2026-11-13T21:55:50-08:00",
+  "subject": "Merge pull request #1693 from hemibroscommunity-del/claude/plan-b-5-shapes-once",
+  "files": 7477,
+  "bytes": 946721281,
+  "listingSha256": "8670ef781bf1641b1247bd64b904ff84f548facf73d3bebf2be47254281860a5",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

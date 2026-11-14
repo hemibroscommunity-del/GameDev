@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4c7df7cef4c78dbd733e7900978f17e41542529e",
+  "tree": "441c4f47de24a6f0ca6f7aa78cc24ddb6fc557b3",
+  "committedAt": "2026-11-13T21:55:41-08:00",
+  "subject": "Merge pull request #1690 from hemibroscommunity-del/claude/plan-b-4-tests-by-system",
+  "files": 7475,
+  "bytes": 946709370,
+  "listingSha256": "d6654d17ada5983fc49160ed8e2f07c761998d30c7a818b6c90ded166ddd2f22",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

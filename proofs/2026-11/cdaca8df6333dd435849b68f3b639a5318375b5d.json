@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "cdaca8df6333dd435849b68f3b639a5318375b5d",
+  "tree": "0ae27e88baad891b16797c8e5cae63ae2ed5df62",
+  "committedAt": "2026-11-13T21:56:10-08:00",
+  "subject": "Merge pull request #1698 from hemibroscommunity-del/claude/plan-b-7-asset-sources",
+  "files": 7480,
+  "bytes": 946742620,
+  "listingSha256": "c1c070e3d60ae33d22716ea3855e332b93ce7a4674ae54b9d72c97c06f385d69",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

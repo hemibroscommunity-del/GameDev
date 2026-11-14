@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "30ae69de0413f6fd8493c96757f80002507c1471",
+  "tree": "d840f8eee80232704ced650e83be72826b4d645f",
+  "committedAt": "2026-11-13T21:56:00-08:00",
+  "subject": "Merge pull request #1696 from hemibroscommunity-del/claude/plan-b-6-budgets",
+  "files": 7479,
+  "bytes": 946738739,
+  "listingSha256": "01e214e7713c451410b4d87690c719b4b7fdb0e4d8347c267b8a2bb1ffed6877",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
