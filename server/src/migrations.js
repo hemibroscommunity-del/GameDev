@@ -48,6 +48,7 @@
  */
 
 import { t2ReplayFlat } from './data.js';
+import { ECON_V } from './gold.js';   /* v2.3.5085: `_econ`'s shape number, one place */
 import { prog3FromLegacy, prog3SplitAtk, prog3GrantRetroPoints, prog3MoveElemToAtk,
   prog3FoldLuck, prog3GrantSharedPoints /* v2.3.2592 */, prog3Redeal /* v2.3.3538 */ } from './prog3.js';
 import { normalizeGearStashes } from './gearstash.js';
@@ -86,7 +87,12 @@ export const RPG_SCHEMA_VERSION = 21;   /* v2.3.3895: 18 -> 19, swords-become-gr
  * keeps what it knows and bounds the rest (ECON.KEYS_MAX keys, finite
  * numbers, never an Object.prototype name). */
 export const ECON = Object.freeze({
-  V: 1,
+  /* v2.3.5085 (the gatekeeper's sitting 8): ONE number, gold.js's ECON_V --
+     the shape the doors write into and the shape this reads back are the
+     same by construction (a bump here alone made the doors stop counting
+     for everyone, silently).  gold.js is the place: this file reaches
+     gold.js through its imports, so the number cannot live here */
+  V: ECON_V,
   KEYS_MAX: 512,       /* bag keys a character's record carries (the game has a few hundred) */
   KEY_MAX: 64,
   NUM_MAX: 1e15,
