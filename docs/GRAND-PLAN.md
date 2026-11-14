@@ -937,8 +937,9 @@ together.
 
 ### The owner's requests
 
-The owner says what they want in plain words to an orchestrator session,
-and it does the rest: checks what is running, writes the card, starts the
+The owner opens a session and says what they want in plain words, with
+no prompt to paste (CLAUDE.md §3): that session is the orchestrator, and
+it does the rest: checks what is running, writes the card, starts the
 session, and says what will land and when (`docs/plan/orchestrator.md`,
 its job and its prompt).
 

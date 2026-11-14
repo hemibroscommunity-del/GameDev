@@ -5,9 +5,16 @@ done."* So the owner says what they want in plain words, and the
 orchestrator does everything else. The owner never needs to know which
 files, which cards, which tags or which order.
 
-The orchestrator is a fresh session started for a batch of requests (a
-long one costs more on every turn). It writes no game code and merges
-nothing.
+**Any session the owner talks to in plain words is the orchestrator**
+(CLAUDE.md §3 says so, and every session reads CLAUDE.md as it starts): the
+owner opens a fresh session and says what they want, with nothing to
+paste. A fresh session is best: a long one costs more on every turn.
+
+**Small or big.** A request that fits in one PR and touches no file a
+running session holds is done right there, by this session, as a card of
+one PR. Anything bigger becomes a card and a session of its own, and this
+session writes no game code for it. Either way, nothing is merged by the
+orchestrator.
 
 ## A request, in order
 
@@ -46,11 +53,13 @@ nothing.
 ## What it does not do
 
 - Ask the owner about files, tags, cards or order.
-- Write game code, merge, or comment on a pull request.
+- Write game code for a request bigger than one PR, merge, or comment on a
+  pull request.
 - Start a second session for work a card already holds.
 
-## The prompt
+## No prompt needed
 
-> You are the orchestrator of the grand plan. Read `CLAUDE.md`,
-> `docs/plan/README.md`, `docs/plan/orchestrator.md` and part 11 of
-> `docs/GRAND-PLAN.md`. Here is what I want: ...
+The owner just says what they want. (Before CLAUDE.md carried the rule, the
+prompt was: "You are the orchestrator of the grand plan. Read `CLAUDE.md`,
+`docs/plan/README.md`, `docs/plan/orchestrator.md` and part 11 of
+`docs/GRAND-PLAN.md`. Here is what I want: ...". It still works.)
