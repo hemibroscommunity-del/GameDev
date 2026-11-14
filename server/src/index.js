@@ -108,6 +108,7 @@ import { deathPileMethods } from './deathpile.js';   /* v2.3.4384: a dead player
 import { fishlogMethods } from './fishlog.js';   /* v2.3.4036: the rare fish, weighed, with records */
 import { riseChestMethods } from './risechest.js';   /* v2.3.4453: the chest on a rise pays, once a character */
 import { boardMethods, boardFace } from './boards.js';   /* v2.3.4393: the daily spin's records, a face and a level on every board, the deleted stand-ins */
+import { powerMethods } from './power.js';   /* v2.3.5481: the power index on the boards (card PW) */
 import { accuracyMethods } from './accuracy.js';   /* v2.3.4545: how many of your shots hit, a weapon */
 import { reportMethods, rttWaverNext, reportSiteOf } from './report.js';   /* v2.3.5123: the field report, the worker's side */
 import { roomRowMethods } from './roomrow.js';   /* v2.3.5124: the room's own row in the day's book */
@@ -6568,6 +6569,13 @@ export class GameRoom {
         && !(sig !== session._lbSig && since >= this.LEADERBOARD_MIN_MS)) return;
       session._lbSig = sig;
       session._lbAt = now;
+      /* v2.3.5481: THE POWER INDEX (power.js), worked out only now that a
+         report goes, and NOT in the signature above: a gear or points change
+         sends no report of its own (no new write occasion, card PW), and the
+         next one that goes -- a level, a kill or the face (MIN_MS apart at
+         most), else the heartbeat (HEARTBEAT_MS) -- carries the build as it
+         is then.  Null under `power: false`, or with no player state yet. */
+      const powerIndex = lbPs ? this._powerFor(lbPs) : null;
 
       await stub.fetch(new Request('https://internal/api/leaderboard/update', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -6575,6 +6583,7 @@ export class GameRoom {
           playerId: session.id, name, color, level: lbLevel,
           rpgData, series, ts: now,
           ...(look ? { look } : {}),
+          ...(powerIndex ? { powerIndex } : {}),
         }),
       }));
     } catch {}
@@ -6688,6 +6697,7 @@ Object.assign(GameRoom.prototype, codexMethods); /* v2.3.3209 */
 Object.assign(GameRoom.prototype, deathPileMethods); /* v2.3.4384 */
 Object.assign(GameRoom.prototype, fishlogMethods); /* v2.3.4036 */
 Object.assign(GameRoom.prototype, boardMethods); /* v2.3.4393 */
+Object.assign(GameRoom.prototype, powerMethods); /* v2.3.5481: the power index on the boards (power.js) */
 Object.assign(GameRoom.prototype, accuracyMethods); /* v2.3.4545 */
 Object.assign(GameRoom.prototype, reportMethods); /* v2.3.5123 */
 Object.assign(GameRoom.prototype, roomRowMethods); /* v2.3.5124 */

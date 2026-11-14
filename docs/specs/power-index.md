@@ -9,8 +9,8 @@ Code: `server/src/power.js` (`POWER`, `powerOf`). Suite:
 `server/test/power.test.mjs`, with its duel simulator
 `server/test/power-sim.mjs`. Card: `docs/plan/cards/PW.md`.
 
-PR 1 (this) is the model and its proof: nothing a player sees changes. PR 2
-puts it on the boards (the row, `getTop('power')`, the live flag `power`,
+PR 1 is the model and its proof: nothing a player sees changes. PR 2 puts it
+on the boards (below: the row, `getTop('power')`, the live flag `power`,
 `caps.power`); card LB draws it.
 
 ## In plain words
@@ -155,6 +155,39 @@ control itself is strong for its level (its points go where they count: a
 random level-20 character reads about 8). How the board shows a scale this
 wide, and whether the odds should be the scale at all, is the owner's (it is
 what a player sees): asked in `docs/plan/status/PW.md`.
+
+## On the boards (v2.3.5481, PR 2)
+
+- **The row.** Every board row (`player:<pid>` in the Leaderboard object)
+  carries `powerIndex: {power, melee, bow, magic, v}`, exactly what
+  `powerOf` returns, made safe by `cleanPowerIndex` (whole numbers; `power`
+  the best of the three).
+- **The Power board** is `GET /api/leaderboard/top?category=power`: rows by
+  `powerIndex.power`, each result's `value` that number. A row with no index,
+  or another version's, is **not yet ranked**: left off, never shown as 0. A
+  deleted character's stand-in keeps the index it was retired with, as its
+  skill rows keep theirs.
+- **No new write occasion.** The index rides the board reports the room
+  already sends (`index.js reportToLeaderboard`) and is not in their change
+  signature, so a gear or points change sends nothing by itself. The next
+  report that goes carries the build as it is then: a level, a kill or the
+  face moving sends one five minutes after the last at most
+  (`LEADERBOARD_MIN_MS`), and otherwise the heartbeat every ten
+  (`LEADERBOARD_HEARTBEAT_MS`), and every join. So a player in play is on the
+  board within ten minutes of a change, and a change made in the last minutes
+  before leaving waits for their next join. The index is worked out only when
+  a report goes (about 2 ms); one that fails sends the report without it.
+  `cost-guard` holds the line: no row more.
+- **`caps.power`** (its own line in `join.js`, and in `CAP_GATES`) is the
+  index's version: card LB's panel shows Power only against a worker that
+  says it, and only rows of that version.
+- **The kill switch** `power: false` in the live flags un-advertises the cap
+  and no report carries an index, so the Power board empties as players
+  report and every other board is as it was (`docs/SWITCHES.md`).
+- **The five stat boards** of the card (`might`, `fortitude`, `vitality`,
+  `agility`, `mind`) wait for an answer: those stats are nowhere in the
+  worker (they were the old tier-1 stats). What the worker stores is prog3's
+  points (`docs/plan/status/PW.md`, Needs).
 
 ## The break proofs (§5, the plan's rule 8)
 
