@@ -80,6 +80,8 @@
  *                                                         -> FAIL 2
  *  17. `room._partyByPlayer.delete(id)` in a new function of alliance.js
  *                                                         -> FAIL 2
+ * v2.3.5213 (the cook door):
+ *  18. `ps.ex = msg.ex || null;` back in _handleMove      -> FAIL 2
  *
  * Run from the repository's root: node tools/guards/phase-table.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
@@ -262,6 +264,11 @@ const DOOR_SUITES = Object.freeze({
       { file: 'server/src/party.js', text: 'this._partyByPlayer = new Map()', why: 'the map\'s birth, empty, before a load or an accept fills it (through _partyIn)' },
       { file: 'server/src/clanparty.js', text: 'this._partyByPlayer = new Map()', why: 'the map\'s birth, empty, before a clan becomes a party (through _partyIn)' },
     ] },
+  /* v2.3.5213: the cook door -- the phone's claim on its moves, cooking's
+     only phase on the worker (and mining's, chopping's, fishing's and a
+     farm step's) */
+  'server/test/cook-door.test.mjs': { field: 'ps.ex', fn: '_exTo', holds: '§2: no write of .ex in server/src outside _exTo',
+    prop: 'ex', besides: [] },
 });
 const SCAN_DOORS = Object.freeze({
   'session (worker)': 'session-door.test plays the phases but fails no second writer of session.phase',

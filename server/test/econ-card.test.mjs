@@ -34,10 +34,11 @@
  *      and the share of new gold to the richest adds it back to the gold
  *      made between the two counts.
  *  11. v2.3.5094 (sitting 11, F1): A RESTART IN AN EMPTY ROOM (the picker's,
- *      nobody playing), `econresetput: true`: today's book is written in the
+ *      nobody playing), on by default since v2.3.5095 (the owner's yes):
+ *      today's book is written in the
  *      same run as the record's delete -- a restart at any batch leaves both
  *      or neither, and the booking survives the room being put away.  Off
- *      (the default until the owner's yes): nothing more is written.  With
+ *      (`econresetput: false`): nothing more is written.  With
  *      anyone in the room: nothing more either (the booking rides).
  *
  * BREAK PROOFS (rule 8), tried by hand: econNumbers returning 0 for a number
@@ -350,10 +351,18 @@ function check(name, cond, detail) {
   }
   {
     const st = makeStorage(seed());
-    const room = await openRoom(st, {});
+    const room = await openRoom(st, { econresetput: false });
     const p = puts(st);
     await room._resetCharacterData(P); await settle();
-    check('11. off (the default until the owner\'s yes): no put more than today (the parachute copy only)', p.length === 1 && p[0].startsWith('rpgsnap:'), p);
+    check('11. `econresetput: false`: no put more than today (the parachute copy only)', p.length === 1 && p[0].startsWith('rpgsnap:'), p);
+  }
+  {
+    /* v2.3.5095: the default is on (the owner's yes) */
+    const st = makeStorage(seed());
+    const room = await openRoom(st, {});
+    await room._resetCharacterData(P); await settle();
+    const r = await rOf(st);
+    check('11. no flag (on: the owner\'s yes, v2.3.5095): the booking is on file when the room is put away', !!r && r.n === 1 && r.g === -50, r);
   }
   {
     const st = makeStorage(seed());

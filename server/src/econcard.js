@@ -63,17 +63,19 @@ export function xferSummary(day, list, cut) {
    that write may never come before the room is put away; the deletes are
    durable at once, so the card read the restart as a loss.  The restart road
    writes one thing of its own (the parachute copy, `rpgsnap:`), which the
-   card could find only by listing every character's copies.  So with
-   `econresetput: true` in the live flags (off until the owner says yes: one
-   put more a restart in an empty room, none with anyone in it) today's book
+   card could find only by listing every character's copies.  So (on since
+   v2.3.5095, the owner's yes; `econresetput: false` turns it off: one put
+   more a restart in an empty room, none with anyone in it) today's book
    is staged here and its put issued by the restart in the SAME run as the
    record's delete (persistence.js): both land, or neither.
    Returns the handle the restart calls: `put()` (a no-op when nothing is
    staged), never throws. */
 const NO_PUT = Object.freeze({ put() { return null; } });
+/* v2.3.5095: ON -- the owner's yes, 2026-11-14 ("Just go recommended");
+   `econresetput: false` turns it off (the booking then rides, as before) */
 const resetPutOn = (room) => {
   const f = room && room._liveFlags;
-  return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'econresetput') && f.econresetput);
+  return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'econresetput') && !f.econresetput);
 };
 const roomEmpty = (room) => !(room && room.sessions && room.sessions.size > 0);
 export async function econResetBook(room, pid) {
