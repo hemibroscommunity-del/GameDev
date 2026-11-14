@@ -83,15 +83,15 @@ value, the `full` row's.
 | `crowd` | the most other players drawn in full (your party, your target, whoever fights you and your duel always) | `50`, `30`, `15` | `src/game/crowdCap.js` | not yet | 6 | `?crowd` | monsters |
 | `program` | one drawing program for the world's sprites, or three (chosen behind the loading screen: never a rung) | `one` | `src/rendering/paletteTex.js` | not yet | 8 | `?onebatch` | memory |
 | `look` | how a character's look is made: coloured on the chip, or each baked (chosen behind the loading screen: never a rung) | `palette` | `src/game/lookPaletteChoice.js` | not yet | 8 | `lookpalette` | device |
-| `shine` | the metal's shine on gear | `on`, `off` | `src/rendering/lightfx/glint.js` | not yet | 9 | `?sheen` | render |
-| `shadows` | the light and the shadows | `on`, `off` | `src/rendering/lightfx/lightFx.js` | not yet | 9 | `?lightfx` | render |
-| `water` | the sea's waves | `moving`, `still` | `src/rendering/wheelWater.js` | not yet | 9 | `?waves` | render |
+| `shine` | the metal's shine on gear | `on`, `off` | `src/rendering/lightfx/glint.js` | yes | 9 | `?sheen` | render |
+| `shadows` | the light and the shadows | `on`, `off` | `src/rendering/lightfx/lightFx.js` | yes | 9 | `?lightfx` | render |
+| `water` | the sea's waves | `moving`, `still` | `src/rendering/wheelWater.js` | yes | 9 | `?waves` | render |
 | `queue` | the ms a frame the strip queue may take loading monsters' art (today: a quarter of the frame, 3 to 50 ms) | `frame` | `src/rendering/zoneTextures.js` | not yet | 10 | `?stripslice` | art |
 | `caches` | the caches' caps, as a share of each cache's own (docs/BUDGETS.md part 3) | `1` | `src/rendering/lookPalette.js`, `src/rendering/gearNumbers.js`, `src/rendering/systems/entityRenderer.js`, `src/rendering/cacheBytes.js` | not yet | 11 | - | look |
 | `step` | the longest step, in ms, one frame may move the world (frameClock.js SMOOTH_MAX_MS; the loop's clamp) | `50` | `src/game/frameClock.js`, `src/ui/BroTown.jsx` | not yet | 13 | `?dtsmooth` | page-thread |
 | `prewarm` | the prewarm ring (step 3.3, LATER): one value and no reader until 3.3 builds the ring | `0` | none yet | - | - | - | - |
 
-Not yet moved: 9 of 11 knobs with a reader.
+Not yet moved: 6 of 11 knobs with a reader.
 
 ## The overrides
 

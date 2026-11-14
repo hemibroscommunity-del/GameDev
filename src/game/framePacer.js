@@ -479,6 +479,9 @@ export function makeGovernor(opts) {
   /* the lane's kept rung, loaded (at a veil).  v2.3.5224: only a rung kept
      under today's live knobs (a kept rung from before is the row), and
      trimmed to what it changes; v2.3.5225, without its pixel rungs */
+  /* v2.3.5229: the chip axis's rungs a kept rung may hold: through the
+     rate's last rung (data: AXES.chip), never a pass's */
+  const CHIP_KEPT = (() => { let n = 0; AXES.chip.forEach((r, i) => { if (r.knob === 'rate') n = i + 1; }); return n; })();
   const load = (L, ts) => {
     lane = L;
     let w = 0, c = 0;
@@ -492,8 +495,17 @@ export function makeGovernor(opts) {
        heat.  If the phone is still hot, the pixels are taken again at the
        next veil.  The card's "the next sitting starts there", for pixels
        only.  (The pixels are an axis of their own: the kept pixel count is
-       not read at all.) */
-    const t = trim({ work: Math.max(0, Math.min(AXES.work.length, Math.floor(Number(w) || 0))), chip: Math.max(0, Math.min(AXES.chip.length, Math.floor(Number(c) || 0))), pixels: 0 });
+       not read at all.)
+       v2.3.5229: (A) REVISED (the planning session, 2026-11-14, card O PR 9):
+       a kept rung keeps THE RATE ONLY on the chip axis -- its passes (the
+       shine, the shadows, still water: the chip axis's rungs after the
+       rate) start drawn, as its pixels do.  A rung is an axis's first n and
+       comes back last-taken first, so a kept chip 4 gave back three passes,
+       one 20 s try each, before its rate: a cool 60 phone at 30 for ~85 s
+       after a hot sitting (sitting 11's hold, live rungs this time).  Still
+       hot, the passes are taken again within the sitting (~2 s a step
+       down).  §19c holds as written. */
+    const t = trim({ work: Math.max(0, Math.min(AXES.work.length, Math.floor(Number(w) || 0))), chip: Math.max(0, Math.min(CHIP_KEPT, Math.floor(Number(c) || 0))), pixels: 0 });
     setRung(t.work, t.chip, t.pixels);
     const r = ladderRung();
     stack = [];

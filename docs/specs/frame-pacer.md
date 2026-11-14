@@ -236,6 +236,47 @@ whole sitting. Now:
   one would hold a cool phone on a softer picture (and 30) until its next
   loading screen or tab's return. In the Wheel that can be a whole sitting,
   for the last sitting's heat. Held by §19g (and §19c).
+- **(A) revised: a kept rung keeps the rate only** (v2.3.5229, card O PR 9;
+  the planning session, 2026-11-14). The passes (the shine, the shadows,
+  still water) are the chip axis's rungs after the rate, and an axis comes
+  back last-taken first: a kept chip 4 gave back three passes, one 20 s try
+  each, before its rate, so a cool 60 phone played at 30 for about 85 s
+  after a hot sitting (sitting 11's hold, live rungs this time). Now a kept
+  rung loads the chip axis through the rate's rung only (`CHIP_KEPT`, from
+  the table); its passes start drawn, as its pixels do, and a phone still
+  hot takes them again within the sitting (about 2 s a step down). Held by
+  §19g and §19c, as written.
+
+## The passes (v2.3.5229, card O PR 9)
+
+The chip axis is the rate, then the metal's shine, then the shadows, then
+still water (`drawLanes.js` AXES, `docs/LANES.md`). Each pass is read
+through `laneKnob` in its own file and told when it moves (`onKnob`), so a
+frame reads a boolean: `glint.js` `shineKnobOn` (`sheenLive`),
+`lightFx.js` `shadowsKnobOn` (`lightFxLive`), `wheelWater.js`
+`waterKnobStill`. The device's own switch (`?sheen`, `?lightfx`, the
+water's live switch; the Speed test's steps) still wins: a pass is drawn
+when both say so, and the Speed test reads and puts back the switch, never
+the knob.
+
+What a player sees, a step at a time, on a phone whose frames wait on the
+graphics chip and are still late at 30:
+
+| Rung (chip axis) | What changes on screen |
+|---|---|
+| 1, the rate | 30 frames a second (as before this PR) |
+| 2, the shine | metal armour and weapons stop catching the light; a grade's own colour stays |
+| 3, the shadows | no shadows under players, monsters, trees or buildings |
+| 4, still water | the sea stops moving: no swell, river flow, rings, whitecaps or moving web of light; it is drawn as its calm ground pictures (as the Speed test's "Still water" step draws it) |
+
+Then the pixels (their own axis, at a veil). Each change is ONE structural
+change when the rung moves (the shine's pieces released once; the shadows
+cleared once; the sea's layer hidden and the ground under open sea shown
+once), never one a frame (TRAPS §218). Nothing loads when a pass comes
+back (the sea's quads stay laid; the shine's programs are warmed behind the
+loading screen by the device's switch). `?ladderpass=0` takes the three
+off the ladder for one screen. Held by `ladder-passes.test` and
+`frame-pacer.test` §21.
 
 Held by `frame-pacer.test` §19, with its break proofs. §13 to §16 play the
 whole ladder live (`_liveKnobs`), as card O's later PRs will make it.

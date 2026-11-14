@@ -75,7 +75,9 @@
  *      try up that moves the pixels waits for its veil while the other axis
  *      tries.  v2.3.5225 (the planning session's (A), card O PR 5): a kept
  *      rung loads WITHOUT its pixel rungs, the rate and the passes kept
- *      (19g).
+ *      (19g).  v2.3.5229, (A) REVISED (the planning session, card O PR 9):
+ *      the chip axis keeps the rate only, its passes start drawn (19g; 19c
+ *      as written, with the passes live).
  *  20. THE OWNER'S SWITCH (v2.3.5235): `govern` on the Test panel's list
  *      (clientOff.js), every phone, live: off, back to the lane's row at the
  *      next verdict and no step (a pixel rung at the next veil); the row is
@@ -107,6 +109,8 @@
  *      ...a work-bound order `['work', 'chip', 'pixels']` -> FAIL 21c; liveKnobs() unfiltered by the switches -> FAIL 21d
  *      v2.3.5225: load() taking the kept pixel count (`pixels: 0` as the kept `v[2]`: (A) undone)
  *                                  -> FAIL 19g and 19c ([0,4,2], [3,4,2]: no step up in three cool minutes, no veil)
+ *      v2.3.5229: load() keeping the whole chip axis (`CHIP_KEPT` as `AXES.chip.length`: (A)'s revision undone)
+ *                                  -> FAIL 19c ([0,4,2], [3,4,2]: 4 tries up, 60 at 85 s) and 19g (the passes kept)
  *  20. verdict() without `if (switchedOff()) { rest(ts, false); return; }` -> FAIL 20a, 20b, 20d, 20e (a step taken, a rung kept)
  *      ...rest() with `const to = row;` (the pixels in play) -> FAIL 20d
  */
@@ -683,11 +687,14 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
   const today = loaded([0, AXES.chip.length, AXES.pixels.length, liveKnobs().join(',')]);
   _liveKnobs(KNOB_NAMES);
   const whole = loaded([2, AXES.chip.length, AXES.pixels.length, KNOB_NAMES.join(',')]);
-  const wantWhole = KNOB_NAMES.map((k) => knobAt('full', k, { work: 2, chip: AXES.chip.length, pixels: 0 }));
+  /* v2.3.5229, (A) revised: the chip axis through the rate's rung only, the passes drawn */
+  const rateAt = AXES.chip.map((x) => x.knob).lastIndexOf('rate') + 1;
+  const wantWhole = KNOB_NAMES.map((k) => knobAt('full', k, { work: 2, chip: rateAt, pixels: 0 }));
   _liveKnobs(null);
-  check(`19g. a kept pixel rung loads WITHOUT it (the planning session's (A)): kept [0,${AXES.chip.length},${AXES.pixels.length}] loads ${today.r.work}/${today.r.chip}/${today.r.pixels}, the pixels ${today.pixels} and the rate kept (${today.rate}); the whole ladder's [2,${AXES.chip.length},${AXES.pixels.length}] loads ${whole.r.work}/${whole.r.chip}/${whole.r.pixels}, everything but the pixels kept`,
-    liveKnobs().includes('pixels') && today.pixels === 1 && today.rate === 34 && today.r.pixels === 0
-    && whole.pixels === 1 && whole.r.work === 2 && whole.r.chip === AXES.chip.length && whole.r.pixels === 0 && whole.knobs.join() === wantWhole.join(), { today, whole });
+  const passesAt = (x) => ['shine', 'shadows', 'water'].map((k) => knobAt('full', k, x.r)).join('/');
+  check(`19g. a kept rung loads WITHOUT its pixel rungs or its passes (the planning session's (A), revised for card O PR 9): kept [0,${AXES.chip.length},${AXES.pixels.length}] loads ${today.r.work}/${today.r.chip}/${today.r.pixels}, the pixels ${today.pixels}, the passes ${passesAt(today)} and the rate kept (${today.rate}); the whole ladder's [2,${AXES.chip.length},${AXES.pixels.length}] loads ${whole.r.work}/${whole.r.chip}/${whole.r.pixels}, the work's and the rate's kept`,
+    liveKnobs().includes('pixels') && today.pixels === 1 && today.rate === 34 && today.r.pixels === 0 && today.r.chip === rateAt && passesAt(today) === 'on/on/moving'
+    && whole.pixels === 1 && whole.r.work === 2 && whole.r.chip === rateAt && whole.r.pixels === 0 && passesAt(whole) === 'on/on/moving' && whole.knobs.join() === wantWhole.join(), { today, whole });
   /* the whole ladder: a try up that moves the pixels waits for its veil, and every other axis comes back meanwhile, in
      play (v2.3.5225: the pixels last -- the rate before them) */
   _liveKnobs(KNOB_NAMES);
@@ -792,7 +799,10 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
   g.veil(0);
   let t = 0;
   const bad = (n) => { for (let i = 0; i < n; i++) g.verdict(0.9, t += 1000, { axis: 'chip', atFloor: true }); };
-  bad(2);                 /* the rate */
+  /* v2.3.5229: the chip axis's live rungs first (the rate; with card O PR 9
+     the shine, the shadows, still water), then the pixels: wanted */
+  const chipLive = AXES.chip.filter((x) => liveKnobs().includes(x.knob)).length;
+  bad(2 * chipLive);      /* the rate (and the passes) */
   bad(2);                 /* the pixels: wanted */
   const wanted = g.read().pending;
   _tabHid();
@@ -816,11 +826,14 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
   const noPix = at('?ladderpix=0');
   const px = model(B60, { work: 3, chip: 20 }, (x) => (x < 4 * MIN ? 2 : 0.6), 8 * MIN, { veil: (x) => x < 2000 || [3, 5].some((m) => x >= m * MIN && x < m * MIN + 2000), seed: 23 });
   const noRate = at('?ladderrate=0');
-  const both = at('?ladderrate=0&ladderpix=0');
+  /* v2.3.5229: and `?ladderpass=0` the passes (card O PR 9) */
+  const noPass = at('?ladderpass=0');
+  const both = at('?ladderrate=0&ladderpix=0&ladderpass=0');
   if (hadLoc) globalThis.location = was; else delete globalThis.location;
   _resetLanes();
-  check(`21d. \`?ladderpix=0\` and \`?ladderrate=0\` take their knobs off the governor's live set (${noPix.join('+')}; ${noRate.join('+')}; both: ${both.join('+') || 'none'}); with \`?ladderpix=0\` a chip-bound phone takes no pixel rung, and cooled its rate comes back (every ${px.P.read().every})`,
-    !noPix.includes('pixels') && noPix.includes('rate') && !noRate.includes('rate') && noRate.includes('pixels') && both.length === 0
+  check(`21d. \`?ladderpix=0\`, \`?ladderrate=0\` and \`?ladderpass=0\` take their knobs off the governor's live set (${noPix.join('+')}; ${noRate.join('+')}; ${noPass.join('+')}; all three: ${both.join('+') || 'none'}); with \`?ladderpix=0\` a chip-bound phone takes no pixel rung, and cooled its rate comes back (every ${px.P.read().every})`,
+    !noPix.includes('pixels') && noPix.includes('rate') && !noRate.includes('rate') && noRate.includes('pixels')
+    && noPass.includes('rate') && noPass.includes('pixels') && !['shine', 'shadows', 'water'].some((k) => noPass.includes(k)) && both.length === 0
     && !px.steps.some((x) => x.axis === 'pixels') && !px.G.read().pending && px.G.read().depth === 0 && px.P.read().every === 1, { noPix, noRate, both, steps: px.steps.slice(0, 6), end: px.G.read() });
   _resetLanes();
 }
