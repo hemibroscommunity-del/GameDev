@@ -449,10 +449,11 @@ const _portraitAfterFrame = () => new Promise((res) => {
 });
 const _portraitStats = { draws: 0, turns: 0, stopped: 0, longest: 0, bodyKept: 0, bodyMade: 0, bodyEmptied: 0 };
 let _portraitForce = null;   /* QA (__btPortraitCompare): 'flat' one go, 'every' a frame let in at every step, 'fresh' one go with the body recoloured anew (not _bodyKeep's) */
-/* v2.3.5051: the shirt's first frame cut alone (the shirt step's note); 'whole' (QA) and `?portraitshirt=0` the old way */
-let _shirtWhole = false;
-const _shirtWholeOff = (() => { try { return /(^|[?&])portraitshirt=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
-function _shirtFrame0(img) {
+/* v2.3.5051: a strip's first frame cut alone, for the shirt and the armour
+   (the shirt step's note); 'whole' (QA) and `?portraitframe=0` the old way */
+let _stripWhole = false;
+const _stripWholeOff = (() => { try { return /(^|[?&])portraitframe=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+function _firstFrame(img) {
   const h = (img && (img.naturalHeight || img.height)) || 0, w = (img && (img.naturalWidth || img.width)) || 0;
   if (!h || !w) return null;
   /* the strip's frames are square: frame 0 is x 0 to h (upscaleToFrameHeight
@@ -488,10 +489,10 @@ if (typeof window !== 'undefined') {
   window.__btPortraitCompare = async (opts, a0, b0) => {
     const one = document.createElement('canvas'), slow = document.createElement('canvas');
     const t0 = performance.now();
-    /* v2.3.5051: 'whole' -- one go, the shirt composed from its whole strip (the old way) */
-    try { _shirtWhole = a0 === 'whole'; _portraitForce = a0 === 'whole' ? 'flat' : (a0 || 'flat'); await drawCharacterPortrait(one, opts); } finally { _portraitForce = null; _shirtWhole = false; }
+    /* v2.3.5051: 'whole' -- one go, the shirt and the armour from their whole strips (the old way) */
+    try { _stripWhole = a0 === 'whole'; _portraitForce = a0 === 'whole' ? 'flat' : (a0 || 'flat'); await drawCharacterPortrait(one, opts); } finally { _portraitForce = null; _stripWhole = false; }
     const t1 = performance.now(), turns0 = _portraitStats.turns;
-    try { _shirtWhole = b0 === 'whole'; _portraitForce = b0 === 'whole' ? 'flat' : (b0 || 'every'); await drawCharacterPortrait(slow, opts); } finally { _portraitForce = null; _shirtWhole = false; }
+    try { _stripWhole = b0 === 'whole'; _portraitForce = b0 === 'whole' ? 'flat' : (b0 || 'every'); await drawCharacterPortrait(slow, opts); } finally { _portraitForce = null; _stripWhole = false; }
     const t2 = performance.now();
     const a = one.getContext('2d').getImageData(0, 0, one.width, one.height).data;
     const b = slow.getContext('2d').getImageData(0, 0, slow.width, slow.height).data;
@@ -999,9 +1000,10 @@ export async function drawCharacterPortrait(canvas, opts) {
        nearest-neighbour scale, and composed: the same pixels
        (__btPortraitCompare 'whole' against 'flat', byte for byte).  The
        designer's grids (`reportGrids`) still take the whole strip, as do
-       `?portraitshirt=0` and QA's 'whole'. */
-    const _whole = _shirtWholeOff || _shirtWhole || !!(opts && opts.reportGrids);
-    const shirtUp = (!_whole && _shirtFrame0(shirtImg)) || upscaleToFrameHeight(shirtImg, FRAME);
+       `?portraitframe=0` and QA's 'whole'.  The armour's layers the same
+       (_drawGearLayer, below). */
+    const _whole = _stripWholeOff || _stripWhole || !!(opts && opts.reportGrids);
+    const shirtUp = (!_whole && _firstFrame(shirtImg)) || upscaleToFrameHeight(shirtImg, FRAME);
     /* v2.3.1938: the player's own drawing, stamped on the fabric AFTER the
        tint, so the drawing keeps its own colours instead of being multiplied by
        the shirt colour — a print does not take the dye of the shirt under it.
@@ -1053,7 +1055,10 @@ export async function drawCharacterPortrait(canvas, opts) {
      armour renders as the steel art it borrows. */
   const _drawGearLayer = (img, item) => {
     if (!img) return;
-    const up = upscaleToFrameHeight(img, FRAME);
+    /* v2.3.5051: the first frame alone, as the shirt (its note above): the
+       whole strip was upscaled into a canvas for the one frame read from it
+       (the main tour's `armour`: `portrait` 22.6 ms in _drawGearLayer) */
+    const up = (!(_stripWholeOff || _stripWhole) && _firstFrame(img)) || upscaleToFrameHeight(img, FRAME);
     const rgb = materialRgb(gearMaterial(item));
     let layer = up;
     if (rgb) {
