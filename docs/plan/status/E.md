@@ -13,9 +13,9 @@ state: ready
 - PR 7 (5086, #1758), the shared test room and `DISTURBANCES`;
   `chaos-restart` moved onto it, its output the same.
 - PRs 8a, 8b (5087, 5088: #1759, #1761), two cases off `KNOWN`.
-- PR 8c (5089, #1764), `arena-stake-settle-loss` fixed by a settlement
-  plan, ONE record written in one run (sitting 9: one put more a match;
-  `arenasettleplan: false` the old order).
+- PR 8c (5089, #1764), `arena-stake-settle-loss` fixed: ONE plan record a
+  match, the prune waits while one is open, a kept plan pays nothing
+  (sittings 9, 10). Two rows a match: OFF until the owner says yes.
 - PR 10 (5091), the storm: the sum under every disturbance, a deploy
   before each message: all 0. Done before PR 9 (its Needs below).
 - PR 11 (5092), `xfer:`: a row a trade, in its own run (`trade2.js`,

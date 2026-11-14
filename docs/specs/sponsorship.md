@@ -88,10 +88,17 @@ forfeits, walkovers, shot-clock timeouts) fire-and-forgets
   refunds every stake. After it: the sweep finishes the plan
   (`_arenaStakeFinish`), each leg once, never a refund; a winner a
   rolled-back worker refunded is paid only the share after. A plan the
-  sweep cannot read is kept, with its stakes, for the owner. The cost: one
-  put more a match than the old order (5 → 6 in a 1 v 1, 10 → 11 at
-  3 v 2, 32 → 33 at 10 v 10; `cost-guard` §17). `arenasettleplan: false`
-  in the live flags puts back the old order. Tests: `arena-settle.test`.
+  sweep cannot read is kept, with its stakes, for the owner, and pays
+  nothing at all (not even its good legs). The oplog prune waits while a
+  plan is open (`_arenaSettleWait`, asked by the tick's housekeeping slot
+  beside the General Store's and the Auction House's): a plan found after
+  48 h would otherwise read its paid legs as unpaid. The cost: TWO rows a
+  match more than the old order, the plan's put and its delete (the puts:
+  5 → 6 in a 1 v 1, 10 → 11 at 3 v 2, 32 → 33 at 10 v 10; `cost-guard`
+  §17). **Off until the owner says yes** (the gatekeeper's sitting 10):
+  `arenasettleplan: true` in the live flags turns it on; off, the old order
+  runs, its hole included. A plan on file is finished either way. Tests:
+  `arena-settle.test`.
 
 Examples (FIGHTER_CUT 10%): 1,000 on the winner, 1,000 on the loser → the
 winning backer gets 1,900, the fighter 100. Two backers of the winner at
