@@ -1,6 +1,6 @@
 card: P
 branch: claude/plan-p-15-slime-walk (made again from main, as the planning session asked from the fire goblin on)
-prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810, #1840 (5241-5255, 5257, merged); #1846 (5256), #1853 (5258) ready
+prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810, #1840 (5241-5255, 5257, merged); #1846 (5256), #1853 (5258), #1859 (5259) ready
 state: working
 
 ## Done
@@ -18,12 +18,12 @@ state: working
 ## Next
 
 - 5256 `monster-slime` (#1846), mended at sitting 16: the stat window's
-  films keep the hit's first frame as a still; a workshop dungeon of slimes
-  loads their look behind its screen and lets it go once out. Main (#1840)
-  merged in; three runs again. `artCache` 95.1 -> 90.6 holds.
-- Then the owner's two ("go recommended"): gear worn at login loaded
-  behind the loading screen, a piece put on mid-play its stand-in until its
-  sheet is in; the rank trophy icons drawn by nothing removed.
+  films keep the hit's first frame as a still (0.06 MB); a workshop
+  dungeon of slimes loads their look behind its screen and lets it go once
+  out. Main (#1840) merged in; three runs again at fe3eb60b3: `artCache`
+  27.5 at the fight, its line 90.6 holds.
+- The owner's gear item (P's second block, 5560 on): measured on main, the
+  question below.
 
 ## Found
 
@@ -34,6 +34,16 @@ state: working
 
 ## Needs
 
+- Asked of the planning session (2026-11-14): the owner's gear item.
+  Measured on main (a phone page and a computer-size one, copper chest and
+  greaves, a QA probe): worn at login, every sheet is in behind the loading
+  screen, the chain belt too; put on mid-play, the only sheets first asked
+  for in play are the chain belt's five jog sheets (5.5-12.3 s each on the
+  worker), and the jog bakes made meanwhile go out without the chain (not
+  kept: `beltPending`).
+  Proposed stand-in: the belt's own file read by the bake while the worker
+  packs it (about 8 MB at most, let go when the packed sheet lands);
+  `?beltstandin=0`. Is that the stand-in meant?
 - Answered (2026-11-14): the fire goblin by road A', then the slimes;
   each branch from main from the fire goblin on.
 - Answered: `pack-page` by road B; P mends the probe; a numbers PR may
