@@ -229,20 +229,29 @@ export function installArmourProbe(dep) {
     await loadGear(rows.map((r) => r.set));
     const r = paletteRendererOf();
     const cell = Math.ceil(128 * scale);
-    const box = new Container();
     const { Graphics } = await import('pixi.js');
-    const bg = new Graphics().rect(0, 0, cell * 4, cell * rows.length).fill(0x2a2f3a);
-    box.addChild(bg);
-    let y = 0;
+    /* v2.3.5425 (card J2): EACH ROW DRAWN AS SOON AS IT IS MADE.  The rows
+       were all made first and drawn in one render at the end; a later row's
+       wait for its look's bake (up to two minutes on this box, longer after
+       the worker's sample) let lookArmour.js's sweep free an earlier row's
+       masked look (IDLE_MS, 30 s undrawn): its residue destroyed under its
+       sprite, and the one render read a texture with no source ("Cannot
+       read properties of null (reading 'alphaMode')", mp-lookarmour red on
+       main).  Now nothing waits between a row's making and its drawing. */
+    const rt = RenderTexture.create({ width: cell * 4, height: cell * rows.length, resolution: 1 });
+    let y = 0, first = true;
     for (const row of rows) {
       const L = row.look, set = row.set, pose = row.pose, dir = row.dir, f = row.f || 0;
       await baked(L);
       const worn = wornOf(set, pose, dir, f);
       const pi = { pose, dir, frameIdx: f };
-      const ob = oldBody(L, pose, dir, f);
-      const ot = maskedFrame(ob, worn, 6, pi);
       const ents = entriesOf(L, pose, dir);
       await lookArmourPrewarm(ents, worn, pi);
+      /* from here to the render, no await */
+      const box = new Container();
+      box.addChild(new Graphics().rect(0, y, cell * 4, cell).fill(0x2a2f3a));
+      const ob = oldBody(L, pose, dir, f);
+      const ot = maskedFrame(ob, worn, 6, pi);
       const nw = lookArmourFrame(ents, worn, pi, 0);
       const put = (tex, col, tint) => {
         if (!tex) return;
@@ -259,12 +268,12 @@ export function installArmourProbe(dep) {
       if (nw) { put(nw.tex, 1); put(nw.residue, 1); gear(1); }
       put(ot, 2);
       if (nw) { put(nw.tex, 3); put(nw.residue, 3); }
+      r.render({ container: box, target: rt, clear: first, clearColor: [0, 0, 0, 0] });
+      first = false;
+      box.destroy({ children: true });
       y += cell;
     }
-    const rt = RenderTexture.create({ width: cell * 4, height: cell * rows.length, resolution: 1 });
-    r.render({ container: box, target: rt, clear: true, clearColor: [0, 0, 0, 0] });
     const url = r.extract.base64 ? await r.extract.base64(rt) : r.extract.canvas(rt).toDataURL('image/png');
-    box.destroy({ children: true });
     rt.destroy(true);
     return url;
   }

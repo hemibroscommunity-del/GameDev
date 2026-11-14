@@ -49,6 +49,15 @@ function roomOf(part) {
   };
 }
 
+/** v2.3.5287 (card R PR 8): the `size` part, `{ b, n }` (daybook.js:
+ *  the storage's bytes summed over the day's readings, and how many): the
+ *  day's size, b / n, or null when it was not read that day. */
+export function sizeOf(part) {
+  const p = part && typeof part === 'object' ? part : {};
+  const n = num(p.n), b = num(p.b);
+  return n > 0 && b >= 0 ? { bytes: Math.round(b / n), reads: n } : null;
+}
+
 /** One day of the book, as the card shows it. */
 export function econDay(day) {
   const d = day && typeof day === 'object' ? day : {};
@@ -57,6 +66,7 @@ export function econDay(day) {
     newer: d.newer === true,
     ...econOf(d.econ),
     room: roomOf(d.room),
+    size: sizeOf(d.size),   /* v2.3.5287: the storage's size, or null */
     devCells: Object.keys(d.dev && typeof d.dev === 'object' ? d.dev : {}).length,
     speedCards: Object.keys(d.speed && typeof d.speed === 'object' ? d.speed : {}).length,
     over: Object.keys(d.over && typeof d.over === 'object' ? d.over : {}).filter((k) => num(d.over[k]) > 0).map((k) => [k, num(d.over[k])]),
