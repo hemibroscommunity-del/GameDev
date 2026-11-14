@@ -935,6 +935,13 @@ sessions writing `GOLD_ROADS`; the wire moved, the action door and 6.2
 half-done together; the state's resets and the frame's steps half-done
 together.
 
+### The owner's requests
+
+The owner says what they want in plain words to an orchestrator session,
+and it does the rest: checks what is running, writes the card, starts the
+session, and says what will land and when (`docs/plan/orchestrator.md`,
+its job and its prompt).
+
 ### The owner's ten minutes a day
 
 1. Start a fresh Z; read its list.
