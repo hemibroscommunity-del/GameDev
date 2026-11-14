@@ -1,7 +1,7 @@
 card: PW
 branch: claude/plan-pw-4-statboards (from -pw-2-boards; merge #1774, #1778, #1776 first)
 prs: #1774 (5480), #1778 (5483), #1776 (5481), #1781 (5484): all ready, in that order
-state: ready
+state: done
 
 ## Done
 
@@ -21,20 +21,18 @@ state: ready
 
 ## Next
 
-- The gatekeeper: #1774, #1778, #1776, #1781. PR 3 (5482) has nothing left.
+- Nothing: the gatekeeper, #1774, #1778, #1776, #1781. PR 3 (5482) unneeded.
 
 ## Found
 
-- The join report also zeroes `lifeTotal`, `dungeons`, `goldEarned` and
-  `playtime` (the blob's other columns) until 5 min after each login (told
-  the planning session; left as they are).
+- `lifeTotal`, `dungeons`, `goldEarned`, `playtime` (zeroed by the join
+  report too): columns nobody reads. Only the old panel (panels/
+  LeaderboardPanel.jsx) shows them, and no button opens it; left as they are.
 - The level edge (prog3.js prog3Edge): a weaker player's points are gone
   five levels down, so the level alone calls 99.7% of fights 4+ apart.
 
 ## Needs
 
-- (owner, via the planning session; told 2026-11-14) The rating's floor: a
-  few level-1 staffs fall under 0 at a control of 3,000, so a fightable
-  style floors at 1; a control at 3,200 would clear the floor.
+- None. The floor at 1 and the control at 3,000: confirmed (11:17).
 - Files outside the card (named in the PRs): guards/lib/systems.mjs,
   caps-audit.test, guards/lib/switches.mjs, SHAPES.md.

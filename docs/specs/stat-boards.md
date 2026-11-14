@@ -23,14 +23,17 @@ Code: `server/src/statboards.js`. Suite: `server/test/statboards.test.mjs`.
 | `pts_eres` | Elemental resist | Resist |
 | `pts_mana` | Max mana | Max Mana |
 | `pts_move` | Move speed | Speed |
-| `pts_dmg` | Damage, the three weapons' points summed | Power (`PROG3_ATK_META`) |
+| `pts_dmg` | Damage, the three weapons' points summed | **Damage** on the board (the Bro tab says "Power": see below) |
 
 The ids follow `PROG3.BODY` (the shared stats as the worker lists them), so
 a new shared stat gets its board and the count grows. The names are the ones
 players already read: never the retired Might, Fortitude, Vitality, Agility
-or Mind, and nothing invented. **One clash for the panel**: the game calls
-the damage points "Power", and the Power board (the power index,
-`docs/specs/power-index.md`) is also "Power"; card LB shows them apart.
+or Mind, and nothing invented. **One exception, ruled by the planning
+session**: the Bro tab calls the damage points "Power", which is also the
+Power board's name (the power index, `docs/specs/power-index.md`), so the
+damage board reads **"Damage"** (the owner was told "one Damage board"), and
+the eight sit under the heading **"Stats"**. The labels are the phone's
+(card LB's panel); the worker sends only the ids.
 
 Each result is the usual board row plus `value` (the points). A row with
 none in that stat is off its board, as on the skill boards (a list of fifty

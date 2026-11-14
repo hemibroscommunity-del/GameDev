@@ -6,10 +6,12 @@
  * STAT a player allocates points into (prog3.js PROG3.BODY: whatever that
  * list is, so a new shared stat gets its board and the count grows), ranked
  * by the points allocated, plus ONE board summing the three weapons' damage
- * points (PROG3.ATK `dmg`, "Power" on the Bro tab).  No other per-weapon
- * board: three of each would bury the list.  The names the phone shows are
- * the game's own (src/data/prog3.js PROG3_BODY_META / PROG3_ATK_META), never
- * the retired Might / Fortitude / Vitality / Agility / Mind.
+ * points (PROG3.ATK `dmg`).  No other per-weapon board: three of each would
+ * bury the list.  The names the phone shows are the game's own
+ * (src/data/prog3.js PROG3_BODY_META), never the retired Might / Fortitude /
+ * Vitality / Agility / Mind -- but the damage board reads "Damage" (the Bro
+ * tab's "Power" is the Power board's name too), under the heading "Stats":
+ * the planning session's ruling.  The worker sends ids, never labels.
  *
  * THE SERVER'S WORD.  The points are the worker's prog3 record (ps.prog3:
  * `alloc` and `atk`, server-owned end to end), never the phone's; a board
