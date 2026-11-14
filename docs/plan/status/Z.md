@@ -1,40 +1,40 @@
 card: Z
-branch: claude/plan-z-sitting-2
-prs: this PR, tag 5033, the last line of the list (ready)
+branch: claude/plan-z-sitting-3
+prs: this PR, tag 5034, the last line of the list (ready)
 state: ready
 
 ## Done
-- Sitting 2, 2026-11-14, `main` at d2e096a. 9 PRs ready, each `test` green.
-  Rehearsed by hand (W's script is in #1676): the 7 below merged on `main`,
-  then precheck 0 FAIL, `npm run build` green, `questline` 187 of 187 (all
-  9 too). `/repo-review` in full on #1681, #1686, #1691, #1694, #1699, #1700.
-  Ticked 8.6, 8.7, 9.0, 9.4, 10.1, 11.1, 11.2. No size line or census is due.
+- Sitting 3, `main` at 67a6f3d, 18 open PRs green. The 5 below on `main`:
+  precheck 0 FAIL, build green, `questline` (running). `/repo-review`, 7 angles:
+  N1, N2, B1, A1 to A4, E4. Ticked 8.0 (card W's four are merged).
 
 ## The list: merge in this order, in one sitting, each "Create a merge commit"
-1 #1676 W4 · 2 #1682 X1 · 3 #1683 X2 · 4 #1686 E1 (deploys the worker; the
-live flag `daybook`, the list's only flag or cap) · 5 #1691 E2 (deploys) · 6
-#1694 E3 (deploys) · 7 #1681 H3 (client only) · 8 this PR. Stacked: no squash.
+1 #1699 E4 BY ITSELF (schema 21: a rollback past it needs `newersave: false`);
+wait for its "Deploy worker" run to go green · 2 #1688 A1 · 3 #1685 B1
+(deploys) · 4 #1692 A2 (deploys) · 5 #1703 A3 (sends nothing until A4) · 6
+this PR. Stacked: no squash. No cap or live flag on the list.
 
-## Held (expires at sitting 3)
-- #1699 E4 (schema 21): nothing restores `_econ` at the join (`join.js`), so
-  its own worker saves a blank over a stored one (3 probes: 500, 900 to 0):
-  a rollback from PR 5 to it erases the counts. Mend: the join's restore
-  line in it (E's Needs: the owner's yes) or the bump moved to PR 5; a
-  join-then-save test; its PR says a rollback needs `newersave: false`.
-- #1700 H4: `maskedBakeWorker.js` "gear numbers not here" returns with no
-  `sheetsLetGo`/`closeInputs`: those sheets stay pinned past the 8 MB cap.
-  The kept sheets (8 MB) have no `MEMORY-MAP.md` slot, and `mp-membudget`
-  counts a worker's heap and buffers only, not its bitmaps (CLAUDE.md §7).
+## Held (expires at sitting 4)
+- #1706 A4, wrong numbers (verified; mend on its branch): a frame after a
+  hidden page is a freeze (`BroTown.jsx:4914` prevT); off then on sends the
+  off stretch (`setReportOn` keeps `_a`, `_lastFrameT`); `build` is the
+  phone's (previews fill the day's ~10 cells); `secs` counts hidden time.
+- #1684, #1695, #1697 N: conflict with `main` in `bag-door`, `gold-door`
+  tests (#1691): `git merge-tree origin/main <N1>`. Merge main into each.
+- #1687 to #1702 B2-B8: on `main`, `systems.test` (unsorted 13 > 11:
+  `daybook.js`, `storagemarks.js`) and `shapes-once` (`daybook:` no row) red;
+  with A3, `four-lines` (`wsClient.js` 3296 > 3290) and `shapes-once`
+  (`report.js` devClass, drawLane) red. Merge main after this list, re-measure.
+- #1700 H4: unchanged since sitting 2 (41ce16e): that hold stands. #1701 G:
+  the owner's yes on the two pictures.
 
 ## Stalled
-- Y (`claude/plan-y-farm-gate`): `stalled`, waiting on the owner's A, B or C.
-
-## Found, no card owns it (owner: start a session, or put it on a card)
-- N, B, A, G say `ready` on DRAFT PRs: a draft is not ready (card Z step 2).
-  Mark each "Ready for review" for sitting 3 (G waits for your yes).
-- `mp-topaudit` red, the GAME's: `pixiRenderer.js:869` passes no `topInset`
-  to `wheelMinimap.js` (B's Found). `state-census.mjs --check` still stale.
-- For E: `daybook.js` takes an array with gaps and any `now` (a phone's clock
-  stops its puts); a dropped item's pile ends by no road; a key in `_econ`
-  bumps `ECON.V`. For H: a Leaderboard's faces a step at a time (unmeasured).
-- Waiting on the owner: E (2), Y (1), N (1), A (1), B (1), G (the pictures).
+- None. #1705 Y is a DRAFT though its file says ready: mark it for sitting 4.
+## Found
+- E's PR 5: a live `_econ` wins at `_econAdopt`, and `join.js` ~1042
+  `join_stored` runs first: a door booking it blanks the stored counts.
+- A: `near` counts unparked far players; no send at pagehide; a report resets
+  the AFK clock; `waver` takes the phone's `hd`; `madeLog` drops the pose.
+- N: A4 lands, `report` needs its row. B: old-map lets 5 files go unread.
+  No card: `mp-topaudit` red, the GAME's (`pixiRenderer.js:869`); census
+  check. The owner's answers: N, B, A, Y (1 each), E (PR 5), G (pictures).
