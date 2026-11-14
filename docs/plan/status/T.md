@@ -1,7 +1,7 @@
 card: T
 branch: claude/plan-t-3-page-draw (one branch a PR, each begun from the one before: -1- to -7-; merge them in order)
-prs: #1754 (5301, merged), #1768 (5302, merged), PR 3 (5303, working)
-state: working
+prs: #1754 (5301, merged), #1768 (5302, merged), #1797 (5303, ready)
+state: ready
 
 ## Done
 
@@ -13,7 +13,7 @@ state: working
 
 ## Next
 
-- PR 3 (5303): the drawing side's rows (113: 448 rows, unlisted 0); card
+- #1797 (5303, ready): the drawing side's rows (455 rows, unlisted 0); card
   B's map reads a system's switches from the table (SYSTEMS.md links to
   the table, lists no names); SHAPES.md's two lines point at the table.
   Then PR 4 (5304), rule 4's two configurations.
@@ -31,4 +31,4 @@ state: working
 
 ## Needs
 
-- Nothing.
+- The gatekeeper: #1797 merged. Then PR 4 (5304).
