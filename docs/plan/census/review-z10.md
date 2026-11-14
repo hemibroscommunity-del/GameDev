@@ -36,8 +36,9 @@ The gatekeeper sent these to the planning session, which had each branch
 merge `claude/plan-t-2-page-game` (sitting 9's chain) and write the
 blocks as TF's branch does (SK, TF, PW between J2 and LB). By 12:00 the
 fourteen on the list chained clean in its order, each `test` green on
-its head. Not mended at the list's writing: card E's #1764 and above,
-card L's three.
+its head; card E's #1764 joined at 12:06 (948dc8d, its `test` green).
+Not mended at the list's writing: card E's #1772 and above, card L's
+three.
 
 Found on the way: two branches that each change the page's count line the
 SAME way merge clean and leave it stale (PW's first heads with `main`'s
@@ -288,4 +289,8 @@ Rehearsed with `tools/dev/gatekeeper.mjs` from `main` 6f9e740:
 2. #1768, #1784, #1770, #1774, #1778, #1776, #1781, #1758, #1759, #1761,
    #1749, #1763, #1766 (tree 5c4c41c1): precheck 0 FAIL (8 WARN), build,
    questline 187 of 187.
-3. The list as written, this branch last: see `status/Z.md`.
+3. The fourteen of the list without #1764, this branch last (d8a1f28's
+   parent; tree c64f9120): precheck 0 FAIL (9 WARN), build, questline 187
+   of 187.
+4. The list as written, #1764 (948dc8d) after #1761, this branch last
+   (d8a1f28): see `status/Z.md`.
