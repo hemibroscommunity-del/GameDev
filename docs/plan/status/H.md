@@ -1,26 +1,26 @@
 card: H
 branch: claude/grand-plan-h-12-portrait-shirt (one branch a PR, each begun from the one before, as W's are: merge them in order)
-prs: #1668, #1675, #1681, #1700, #1709, #1712, #1714, #1733, #1741, #1747, #1762 (merged); #1777 (ready, this branch)
-state: ready
+prs: #1668, #1675, #1681, #1700, #1709, #1712, #1714, #1733, #1741, #1747, #1762, #1777 (all merged)
+state: done
 
 ## Done
 
-- #1668 (5040) the worker's restart; #1675 (5041) whose row; #1681 (5042)
-  `gear-sheet` and `portrait`; #1700 (5043) `masked-bake`; #1709 (5044)
-  `strip-made`; #1712 (5045) `foldToMono`; #1714 (5046) the equip redraw;
-  #1733 (5047) `ui:*`: off the list, merged.
-- #1741 (5048) `sweepPicsOnce` off (the faces: 32, 9.7 ms); #1747 (5049)
-  `body-bake` off, Z's #1668 finds (6c; `BT_BW_PARTS`). Card H's part of
-  step 3.1 is done: `pack-page` (card P's) is the one row left that is ours.
+- #1668 (5040) the worker's restart; #1675 (5041) whose row; then off the
+  list: #1681 `gear-sheet`, `portrait`; #1700 `masked-bake`; #1709
+  `strip-made`; #1712 `foldToMono`; #1714 the equip redraw; #1733 `ui:*`;
+  #1741 `sweepPicsOnce`; #1747 `body-bake` (5042 to 5049). Step 3.1's part
+  is done: `pack-page` (card P's) is the one row left that is ours.
 - #1762 (5050) sitting 5's loose ends on #1700, and why `masked-bake` grew
   back (card A: 23.7 ms): the whole tour's stuck kills refused addresses
   that had read (two whole tours after: none, 4.6 ms; `main` 18.6, 28.3).
+- #1777 (5051) the page's own armour bake refuses a piece not readable
+  (sitting 9; `worn-bake.test` §5, `tools/qa/belt-unreadable.mjs`). Its
+  figure cut was withdrawn (its sheets are one frame each).
 
 ## Next
 
-- #1777 (5051), ready: sitting 9's low find, the page's own armour bake
-  draws the body plain for a piece not readable (`worn-bake.test` §5). It
-  deploys. The figure's cut is dropped (sitting 10: its sheets are 1 frame).
+- Nothing: every PR of the card is on main (#1777 at sitting 10). Tags
+  5052 to 5054 unused. The figure's 22 ms (below) waits for whoever takes it.
 
 ## Found
 
