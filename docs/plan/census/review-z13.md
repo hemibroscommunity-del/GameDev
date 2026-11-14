@@ -42,6 +42,53 @@ Each with its switch, for the planning session to read to the owner:
   card SK's #1782 (+8 to +10 move messages a ride; `?ridecoast=0`), not
   listed; card E's `arenasettleplan` and `econresetput` (both OFF).
 
+## Card K: #1822 (PR 1, tag 5181) and #1820 (PR 3, tag 5183): listed
+
+**#1822, the worker's two lists made from the wire table (it DEPLOYS),
+read at 1f1494f: clean (lows).** A finder computed both sides: main's
+literals (82fb78d) against the made Sets, `PRIVILEGED_EVENTS` 163 and
+163, `RELAY.TYPES` 26 and 26, wire-audit's echo list 9 and 9, none
+missing, none extra (VERIFIED, a script). `index.js` re-exports the very
+object `lists.js` makes; `RELAY.TYPES` the same frozen object; the
+router's order is unchanged (privileged first, index.js ~6011, then the
+relay list or `relaylist: false`). No cycle: `lists.js` reads two leaves
+(`out.js`, `relays.js`), `relay.js` reads `lists.js`; the Sets are built
+before either file's body runs and read only in handlers, by `.has`.
+`index.js`'s one hunk is the list's definition alone (its comments
+stripped: `export const PRIVILEGED_EVENTS = new Set([]);`); `relay.js`'s
+is `TYPES` alone; every why moved above its row. Break proofs re-tried
+in a scratch copy: a `type: 'zz_new'` send with no row fails wire-audit,
+naming it; with its `out` row it is privileged with no other edit (the
+card's done-when). The six suites outside the card (the planning
+session's yes) each read the made Set, one check each. Bundle: +95 KB
+raw, +12.4 KB gzipped by the finder's esbuild (the PR says +88 KB: the
+options' noise), far under the worker's limits; start-up 3 to 6 ms.
+
+- Low, VERIFIED: stale pointers, nothing at runtime.
+  `tools/guards/lib/systems.mjs` (~59-60) still names `index.js` and
+  `relay.js` as the lists' homes (K's Found); `CLAUDE.md` §5 and §8,
+  ARCHITECTURE-HANDOFF rule 13, a TRAPS line and WIRE-PROTOCOL still say
+  "a line in `RELAY.TYPES`"; the two files' comments point to the
+  table. Card K's later PR updates CLAUDE.md.
+- Low, by design: wire-table §7 holds today's lists for this PR only;
+  until K's PR 2 takes it out, a PR adding an `out` or `relay` row edits
+  that copy too (none in flight does).
+- Suites: the full `npm test` (409 suites) green at the head; wire-audit,
+  wire-table 27, the six; CI `test` green.
+
+**#1820, the hostile-values census (a test and a page; it DEPLOYS, a new
+file in `server/test/`), read at 785fd62 by the gatekeeper.** 10,524
+cases on card E's test room, a seeded clock, about 9 s; `LINE = 19`, the
+census page made by `--write`, the break proof (`WIRE_HOSTILE_PLANT=1`)
+in the header. It changes no handler. Its count holds on the whole list
+merged (precheck runs it). Low: the PR's words and K's status name seven
+`move` fields (`vx`, `vy`, `d`, `f`, `eqc`, `eql`, `ex`) where the census
+lists eight (with `eqs`: 16 cases, two a field). The 19 are K's Found
+(`movement.js` keeps a sent object on the record and relays it on the
+tick; `chatmod.js` stores a mute of `__proto__` as an own key; the honest
+restart reads as value gone in E's sum): card K's PR 4 (`wiredoor`) and
+each row's own fix lower the line.
+
 ## Card O: #1792 (tag 5222), #1794 (5224), #1800 (5225), #1814 (5235): listed
 
 Read at fd0bae6, e06b7bd, 3b5a97a and 770e227 (a stack: each carries the
