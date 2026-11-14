@@ -328,6 +328,29 @@ function podiumValue(board, r, power) {
   return board.id === 'ap' ? { text: num(v) + ' AP' } : board.id === 'kills' ? { text: num(v) + (v === 1 ? ' kill' : ' kills') } : { lv: v };
 }
 
+/* a podium name's size: its own width measured once (a canvas's measureText
+   at 100 px in the page's font, no layout read), scaled to fit `maxW`, never
+   over `base` nor under 7 px; kept by name and size (a cap of 64) */
+const NAME_FIT = new Map();
+let _fitCtx = null;
+function fitName(name, maxW, base) {
+  const key = name + '|' + Math.round(maxW) + '|' + base;
+  if (NAME_FIT.has(key)) return NAME_FIT.get(key);
+  let px = base;
+  try {
+    if (!_fitCtx) {
+      /* the page's font read once (the first podium), never again */
+      _fitCtx = document.createElement('canvas').getContext('2d');
+      _fitCtx.font = '800 100px ' + ((document.body && getComputedStyle(document.body).fontFamily) || 'sans-serif');
+    }
+    const w100 = _fitCtx.measureText(name).width;
+    if (w100 > 0) px = Math.max(7, Math.min(base, Math.floor((maxW * 100 / w100) * 10) / 10));
+  } catch (_e) { /* the base size, cut if it must be */ }
+  NAME_FIT.set(key, px);
+  if (NAME_FIT.size > 64) NAME_FIT.delete(NAME_FIT.keys().next().value);
+  return px;
+}
+
 function Podium({ rows, faces, k, meId, board, power }) {
   return (
     <div data-lb-podium="" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: 4 * k, padding: `${4 * k}px 0 ${6 * k}px` }}>
@@ -348,12 +371,13 @@ function Podium({ rows, faces, k, meId, board, power }) {
             <span style={{ position: 'absolute', left: '50%', top: '29%', transform: 'translateX(-50%)' }}>
               <BoardFace src={faces[place - 1]} name={name} gone={gone} px={facePx} />
             </span>
-            {/* the whole name on the ribbon: a long one's letters shrink to
-                fit (to 8 px, then it is cut), as the mockup shows "Chunky
-                Waffle" whole (the gatekeeper's sitting 10) */}
+            {/* the whole name on the ribbon and its tails: a long one's
+                letters shrink to fit (measured, to 7 px, then it is cut), as
+                the mockup shows "Chunky Waffle" whole (the gatekeeper's
+                sitting 10) */}
             <span data-lb-podium-name="" style={{
-              position: 'absolute', left: '12%', right: '12%', top: '64%', height: '15%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: Math.max(8, Math.min(11 * k, (W * 0.76) / (Math.max(1, name.length) * 0.6))), fontWeight: 800, color: '#FFF6E0', textShadow: '0 1px 2px rgba(0,0,0,.85)',
+              position: 'absolute', left: '6%', right: '6%', top: '64%', height: '15%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: fitName(name, W * 0.86, Math.max(9.5, 11 * k)), fontWeight: 800, color: '#FFF6E0', textShadow: '0 1px 2px rgba(0,0,0,.85)',
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1,
             }}><span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span></span>
             {pv.text || pv.lv > 0 ? (
