@@ -528,9 +528,12 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
   check('17. THE DOOR: setRung (the rung\'s one writer) is called by the governor alone (game/framePacer.js), defined in drawLanes.js',
     callers.sort().join() === 'src/game/drawLanes.js,src/game/framePacer.js', callers);
   const dl = strip(readFileSync(join(ROOT, 'src/game/drawLanes.js'), 'utf8'));
+  /* v2.3.5222 (the gatekeeper's sitting 12): the rung is a module object's property (`LANE._rung`), so card L's phase
+     guard reads its writes off the syntax tree (DOOR_SUITES); this reads the text, beside it */
   const writes = [...dl.matchAll(/\b_rung\s*=(?!=)/g)].length;
-  check('17. ...and `_rung` is written in setRung, and reset for the tests (_resetLanes), nowhere else', writes === 3
-    && /export function setRung\([^)]*\) \{[\s\S]*?_rung = w === 0 && c === 0 \? ROW : Object\.freeze/.test(dl) && /export function _resetLanes\(\) \{[^}]*_rung = ROW;/.test(dl), writes);
+  check('17. ...and the rung (`LANE._rung`) is written in setRung, and reset for the tests (_resetLanes), nowhere else', writes === 2
+    && /const LANE = \{ _rung: ROW \};/.test(dl)
+    && /export function setRung\([^)]*\) \{[\s\S]*?LANE\._rung = w === 0 && c === 0 \? ROW : Object\.freeze/.test(dl) && /export function _resetLanes\(\) \{[^}]*LANE\._rung = ROW;/.test(dl), writes);
   const fp = strip(readFileSync(join(ROOT, 'src/game/framePacer.js'), 'utf8'));
   check('17b. the pacer imports the lanes\' table alone (a leaf with no imports)', [...fp.matchAll(/^import .* from '([^']+)';/gm)].map((m) => m[1]).join() === './drawLanes.js'
     && ![...dl.matchAll(/^import /gm)].length);

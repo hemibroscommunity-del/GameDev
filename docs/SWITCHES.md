@@ -170,6 +170,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `storehealwait` | worker | switch | v2.3.4842 | false | logic |  | no | The store's prune runs as before, without waiting for a leftover. |
 | `toolshop` | worker | switch | v2.3.3316 | false | logic |  | no | Takes the tools off the shelf and refuses every buy. |
 | `trade2` | worker | switch | v2.3.4375 | false | logic |  | no | The trade window is off, so the old gift is open again. |
+| `tradedoor` | worker | switch | v2.3.5210 | false | logic |  | no | A finished trade's end can be written again, as the two lines before the trade door would have (nothing does today). |
 | `tradeonewrite` | worker | switch | v2.3.4795 | false | logic |  | no | The trade's swap goes back to its old order of writes. |
 | `valuepause` | worker | switch | v2.3.5090 | false | logic |  | no | An action that hands gold or goods on runs even in the minute after the storage refused a save (nothing pauses). |
 | `xfer` | worker | switch | v2.3.5092 | false | logic |  | no | No transfer ledger row (`xfer:`) is written; trades run exactly as before. |
@@ -317,6 +318,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `groundkeep` | both | switch | v2.3.3775 | off_groundkeep: true; ?groundkeep=0, off, false | chip |  | no | The world's ground is rebuilt on a return, not kept, as before. |
 | `?npcheads` | page | switch | v2.3.5246 | =0 | memory |  | no | The townsfolk's head pictures keep their decoded copies, as before. |
 | `?p256` | page | switch | v2.3.3728 | =1 every twin on; =0 every twin off (v2.3.5249) | memory |  | no | With =0 every effect and icon is drawn from its full-colour picture; =1 turns on the twins not yet on by default. |
+| `?packworker` | page | switch | v2.3.5253 | =0 | logic |  | no | A gear sheet first drawn in play is packed on the page a few ms at a time, as before, not on the body bake's worker. |
 | `?worldicons` | page | switch | v2.3.5250 | =0 | memory |  | no | The icons drawn in the world (the ore, the shards, the heart and sword popups; the trap's box has no twin) are drawn from their full-colour pictures, as before. |
 
 ## server-core

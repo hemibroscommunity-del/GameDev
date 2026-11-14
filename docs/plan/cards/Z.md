@@ -27,6 +27,19 @@ every time: its memory is the status files and the last list, not itself.
    `node tools/qa/mp/run.mjs questline`. The order: tools and tables;
    server changes together; client changes; a guard that closes a list
    last. On a red, drop one branch and run that command again.
+5b. **Check what GitHub will merge** (sitting 11, tag 5368: three of its
+   PRs were opened against another card's branch, and five were refused
+   halfway down the list):
+   - each listed PR's BASE is `main` (the PR's `base.ref`); a PR based on
+     another branch merges into that branch, not `main`: its session
+     retargets it to `main` before it is listed;
+   - count merge bases STEP BY STEP down the list: each branch against
+     `main` with every PR above it merged in (`git merge-base --all`
+     prints one line), not only against the starting `main`. A stacked
+     branch that merged `main` AND the PR before it gets two bases once
+     that PR lands as a merge commit, and GitHub refuses it ("merge
+     conflicts"). Its session merges the new `main` in after the PR
+     before it lands; the list says so on its line.
 6. **Write the list** for the owner, in chat and in
    `docs/plan/status/Z.md`: what to merge and in what order; what is held,
    each with the command that fails or the review's finding in one line;

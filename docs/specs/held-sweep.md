@@ -219,12 +219,12 @@ box's software graphics chip, and the quarter second of game it plays in one
 frame: a phone has neither) or **the browser's** (its garbage collector: the
 game can only give it less to do). The grand plan's step 3.1 is done when no
 row is ours (`held-budget.mjs` `debtOf('ours')`, the count its scoreboard
-reads). Today (v2.3.5049): one ours (`pack-page`, card P's to bring down: card H's part of step 3.1 is done), two the box's, one the browser's. A new family is
+reads). Today (v2.3.5253): none ours (`pack-page`, the last, off the list: card P's road B), two the box's, one the browser's. A new family is
 ours until a measurement says otherwise: `held-sweep.test` 7b3 holds the
 box's and the browser's to the three below, and 7b4 holds this table to
 `KNOWN`, row for row. Their break proofs (the grand plan's rule 8), each run
 by hand: `whose` taken off `strip-made` turns 7b2, 7b3 and 7b4 red;
-`pack-page` called the box's, in the list and this table both, turns 7b3
+`pack-page` (then listed) called the box's, in the list and this table both, turned 7b3
 red; the `sweepPicsOnce` row taken out of this table turns 7b4 red.
 
 All of them (the first five by their old rank, then the rest; a family off the list is struck through):
@@ -235,7 +235,7 @@ All of them (the first five by their old rank, then the rest; a family off the l
 | ~~`gear-sheet`~~ | | off the list (v2.3.5042; was 195 ms, 12 at the crowd's d-prints) | a drawn shirt composed on the page for each pose (the crowd tour); on the body bake's worker in play since v2.3.5014 (`docs/specs/body-bake-worker.md`, "A drawn shirt") | **v2.3.5042**: what was left was the Equipment screen's figure (below, "Card H") |
 | ~~`portrait`~~ | | off the list (v2.3.5042; was 40 ms) | the Leaderboards' faces are 11 ms since v2.3.4960 (g-boards, was 149); what was left, the Equipment screen's figure drawn as armour goes on, 10 to 29 ms (armour) | **v2.3.5042**: drawn a step at a time in play, the body kept (below, "Card H") |
 | ~~`masked-bake`~~ | | off the list (v2.3.5043; was 24 ms) | the page cut each input out of its sheet for the bake's worker (`_frameInput`, `createImageBitmap`): 4 to 15 ms a bake | **v2.3.5043**: a frame of an image goes as its address, the worker reads the sheet (below, "Card H") |
-| `pack-page` | ours | 20 ms (v2.3.4873; was 80) | a gear sheet first drawn in play, now packed a few ms at a time (`gearSheets.js` `_gearPack`; was one go, 21 to 59 ms): one cell's read and the hand-off, 9 to 15 ms | the strip door for gear strips (256-colour files, packed on the worker) |
+| ~~`pack-page`~~ | | off the list (v2.3.5253; was 20 ms; 21 to 59 before v2.3.4873, 17 to 35 at `armour` at card H's Found) | a gear sheet first drawn in play, cropped and packed on the page | **v2.3.5253** (card P, the planning session's road B): packed on the body bake's worker in play, which hands back the packed sheet (`gearSheets.js` `_buildShirtOnWorker`; `?packworker=0` the page's). The sample (fight, peer and armour once; peer and armour four times more): not one hold (`docs/specs/asset-door.md` part 5, 5253) |
 | `gc` | the browser's | 60 ms | the browser's garbage collector | make less garbage a frame (OPTIMIZATION-ROADMAP's pools) |
 | `the frame itself` | the box's | 70 ms | this box plays a quarter of a second of game in each frame | `mp-phoneframe` is the measure at a phone's rate; here the line stops it growing |
 | `screen-check` | the box's | 260 ms | only with a second page on this box's one software chip; one page: 0 to 2 ms | nothing here; on a phone the frame strip names it if it is ever 4 ms |
@@ -354,6 +354,29 @@ draw of an image not yet decoded (the decode lands inside `drawImage`), or
 chip holds. To settle it: the figure drawn cold and warm with each step
 timed (`loadImage`'s `decode()` awaited, and `willReadFrequently` on the
 canvases read back, one at a time).
+
+**Settled: the box, not the figure (v2.3.5255, card P, measured as asked).**
+A scratch build (not merged) timed every step of the figure (`_turn`'s
+pieces, a frame let in at each: `__btPortraitCompare(opts, 'every',
+'every')`), cold (its pictures never drawn) and then warm, a tee and greaves
+and then the plate on them, in four ways: as it is, `decode()` awaited in
+`loadImage`, `willReadFrequently` on `composeShirt`'s canvas, and both. Each
+way on a facing of its own, so each cold draw was cold.
+
+- **One page on the box** (the phone's own), at the sweep's scale and at 3x:
+  every step 5.2 ms at most cold and 2 ms warm. The longest is the shirt
+  (`composeShirt`) or the body, cold. Neither remedy moves it past the noise:
+  as it is 4.9 and 2.9 ms, `decode()` 3.6 and 5.1, `willReadFrequently` 2.0
+  and 5.2.
+- **A second page on the box** (an armoured player riding round nearby, as at
+  the sweep's `peer` and `armour`), twice: steps of 7 to 15.7 ms, at any step
+  (the body 14.9, the shirt 15.7, the legs 12, the chest 11.7), cold or warm,
+  and with either remedy or both as often as without.
+
+So neither candidate: the figure's steps are a few ms, and the 22 ms is a
+step that ran while the other page drew on the same four cores and the one
+software graphics chip (`screen-check`'s cause, its line the box's). On a
+phone there is one page. Nothing changed in the game for it.
 
 ### `masked-bake` off the list (v2.3.5043)
 
