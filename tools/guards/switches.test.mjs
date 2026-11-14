@@ -21,6 +21,9 @@
  *      below: v2.3.5302, after the gatekeeper's review of sitting 8 found
  *      shapes that hid a switch).  Each fixture is a break proof that runs
  *      on every PR.
+ *  10. every row is in its place: by side, then by name (v2.3.5304:
+ *      the gatekeeper's sitting 11; a new row goes where its name puts
+ *      it, so two row-adding PRs meet only when their names are neighbours).
  *
  * BREAK PROOF (rule 8), each tried by hand once, 2026-11-14:
  *   - a method `_zzz() { if (this._flagOn('zzz')) return; }` in
@@ -39,6 +42,12 @@
  *                                        -> FAIL 9 (W8)
  *   - only the first name of a `[?&](a|b)` group kept
  *                                        -> FAIL 9 (P5)
+ *   (v2.3.5304, tried by hand once, 2026-11-14:)
+ *   - the `farm` row moved above `accuracy`
+ *                                        -> FAIL 10 (accuracy is after farm)
+ *   Rehearsed: two branches from one table, one adding `?aardvark`, the
+ *   other `?minnow`, each in its place: merged in both orders, clean, and
+ *   the merged page is what --write makes.
  *
  * Run from the repository's root:
  *   node tools/guards/switches.test.mjs              the checks
@@ -158,6 +167,25 @@ function shapeCheck(sh) {
   if (r.unknown.length !== (sh.unknown || 0)) bad.push(`unknown ${r.unknown.length}, want ${sh.unknown || 0}`);
   if (sh.off && off !== sh.off.join(',')) bad.push(`clientOff ${off || '(none)'}, want ${sh.off.join(',')}`);
   return bad.length ? `${sh.id}: ${bad.join('; ')}` : null;
+}
+
+/* ── a row's place (v2.3.5304, the gatekeeper's sitting 11) ──
+   The table's rows run by side (both, worker, page) and, in each, by name
+   (its `?` aside, lower case).  Returns one line a row out of its place,
+   naming the row it should follow. */
+const SIDE_ORDER = ['both', 'worker', 'page'];
+export const placeKey = (r) => r.name.replace(/^\?/, '').toLowerCase();
+export function placeFaults(rows) {
+  const bad = [];
+  for (let i = 1; i < rows.length; i++) {
+    const a = rows[i - 1], b = rows[i];
+    const sa = SIDE_ORDER.indexOf(a.side), sb = SIDE_ORDER.indexOf(b.side);
+    if (sb < sa || (sb === sa && placeKey(b) < placeKey(a))) {
+      const after = rows.filter((r) => SIDE_ORDER.indexOf(r.side) === sb && placeKey(r) < placeKey(b)).pop();
+      bad.push(`${b.name} (${b.side}) is after ${a.name}: it belongs ${after ? 'after ' + after.name : 'first in its side'}`);
+    }
+  }
+  return bad;
 }
 
 /* ── command lines ── */
@@ -287,6 +315,12 @@ async function checks() {
   {
     const bad = SHAPES.map(shapeCheck).filter(Boolean);
     check(`9: the scanner reads each of its ${SHAPES.length} shapes (the fixtures above)`, bad.length === 0, bad);
+  }
+
+  /* 10. every row in its place: by side (both, worker, page), then by name */
+  {
+    const bad = placeFaults(SWITCHES);
+    check('10: every row is in its place in the table (by side, then by name: a new row goes where its name puts it)', bad.length === 0, bad);
   }
 
   const sw = SWITCHES.filter((r) => r.kind === 'switch').length;

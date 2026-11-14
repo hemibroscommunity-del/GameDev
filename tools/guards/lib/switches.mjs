@@ -43,10 +43,14 @@
  * `dailyChest`, `whirlWindup`, `broCount` among them).  Any other cap's
  * override is the emergency lever of docs/specs/liveops.md, and stays out.
  *
- * ORDER.  The switches the worker throws for the page (both sides), then
- * the worker by name, then the page by name (card T's PR 2 gave the game's
- * side its rows, PR 3 the drawing side).  A new switch adds its row in its
- * own PR (the guard fails it otherwise).
+ * ORDER.  Three sections, by side: the switches the worker throws for
+ * the page (`both`), then the worker, then the page; in each, the rows sorted
+ * by name (its `?` aside, lower case).  A new row goes where its name puts
+ * it, never at the end: two PRs that each add a row then touch the same
+ * lines only when their names are neighbours (the gatekeeper's sitting 11:
+ * every row-adding PR used to collide at the array's end).  The guard fails
+ * a row out of its place (check 10).  A new switch adds its row in its own
+ * PR (the guard fails it otherwise).
  */
 export const SIDES = Object.freeze(['worker', 'page', 'both']);
 export const KINDS = Object.freeze(['switch', 'value', 'lever']);
@@ -371,6 +375,7 @@ export const SWITCHES = Object.freeze([
   { name: '?gearpackgentle', side: 'page', system: 'look', kind: 'switch', born: 4873, thrown: '=0, off, false', risk: 'logic', needs: [], fallback: 'no', off: 'Gear sheets are packed flat out, not a few ms at a time.' },
   { name: '?gearretry', side: 'page', system: 'look', kind: 'switch', born: 3870, thrown: '=0', risk: 'logic', needs: ['?retrylooks'], fallback: 'no', off: 'Gear sheets that failed are not asked for again.' },
   { name: '?gearwalk', side: 'page', system: 'look', kind: 'switch', born: 4999, thrown: '=0', risk: 'chip', needs: ['lookpalette'], fallback: 'no', off: 'Armour\'s walk frames are baked, not coloured on the chip.' },
+  { name: '?govern', side: 'page', system: 'page-thread', kind: 'switch', born: 5222, thrown: '=0 (off), =1 (on where `?lane=` holds it)', risk: 'logic', needs: [], fallback: 'no', off: 'The governor no longer moves the ladder: the lane\'s row, however late the frames.' },
   { name: '?gpucopies', side: 'page', system: 'memory', kind: 'switch', born: 3088, thrown: 'present', risk: 'memory', needs: [], fallback: 'no', off: 'Every canvas keeps its page copy, not only the chip\'s.' },
   { name: '?gripguess', side: 'page', system: 'render', kind: 'switch', born: 3399, thrown: '=0', risk: 'logic', needs: [], fallback: 'no', off: 'The bow\'s grip between shots as it was, not guessed.' },
   { name: '?groundbg', side: 'page', system: 'render', kind: 'switch', born: 3452, thrown: '=1', risk: 'chip', needs: [], fallback: 'no', off: 'The black under the world\'s ground is drawn every frame, as it was.' },
