@@ -41,8 +41,8 @@ import * as B from './claimbots.mjs';
 const BAR = 1.5;
 /* today's gains (main 82fb78d, the default seed): a line only falls */
 const LINES = {
-  reach: 2.96, bowlabel: 3.76, guard: 1.37, cookshield: 0.67, move: 4.35, harvest: 1.86, cook: 1.59, quest: 1, sale: 1, local: 1,
-};
+  reach: 2.96, bowlabel: 3.76, guard: 1.37, cookshield: 0.67, move: 3.43, harvest: 1.86, cook: 1.59, quest: 1, sale: 1, local: 1,
+};   /* v2.3.5541: move 4.35 -> 3.43 (the sprint mark: the run goes on through the grace, sprint.js) */
 /* each gain's spread over five other seeds (CLAIMS_SEED=a..e, --gains:
    the highest less the lowest, rounded up), measured 2026-11-14.  A gain
    fails only past its line by more than its spread, so a change elsewhere in
@@ -90,7 +90,9 @@ const CLAIMS = [
     liar: ['its own fire by the field; after each kill `ex: \'cook\'` with no fish, the 3 s re-arm waited out', B.liarCookShield] },
   { id: 'move', what: 'the move', judge: '`MOVE_BUDGET`: 500 px a second and a 3 s burst (movement.js), the sprint mark (sprint.js), and no walls on the worker',
     take: 'px', world: { tickMs: 200 },
-    honest: [['the honest walker: 150 px a second, point to point', B.mover, { speed: B.WALK }]],
+    honest: [['the honest walker: 150 px a second, point to point', B.mover, { speed: B.WALK }],
+      /* v2.3.5541: the sprint mark's honest bot (sprint.js, `sprintmark`) */
+      ['the honest sprinter: 3 s sprinting (every move marked), 0.8 s walking, again', B.mover, { speed: B.WALK, sprinter: true }]],
     liar: ['point to point at 660 px a second, every other step marked a sprint', B.mover, { speed: 660, sprintHole: true }] },
   { id: 'harvest', what: 'the harvest\'s grade', judge: 'the phone\'s `accuracy` on `node_strike` (gathering.js), believed when its swipe looks a person\'s (botfp.js); a perfect pays 2 ore',
     take: 'ore', world: { tickMs: 200, recs: () => ({ bp_bench_h: B.harvestRec() }) },
@@ -119,13 +121,13 @@ const UNREACHED = [
 
 /* one bot's run: its world, its phone (on a disturbance), its take */
 const blank = () => ({ kills: 0, xp: 0, ore: 0, cooked: 0, gold: 0, px: 0, points: 0, hurt: 0 });
-async function runBot(c, [who, bot, opts], { d = null, ms, plant = null } = {}) {
+async function runBot(c, [who, bot, opts], { d = null, ms, plant = null, flags = undefined } = {}) {
   const w = c.world || {};
   const clock = seededClock({ seed: seedOf(SEED + c.id + '|' + who + '|' + (d ? d.id : 'gain')) }).install();
-  try { return await runIn(clock, c, w, bot, opts, { d, ms, plant }); } finally { clock.restore(); }
+  try { return await runIn(clock, c, w, bot, opts, { d, ms, plant, flags }); } finally { clock.restore(); }
 }
-async function runIn(clock, c, w, bot, opts, { d, ms, plant }) {
-  const W = await B.makeWorld(clock, { tickMs: w.tickMs || 200, prep: w.prep || null, recs: w.recs ? w.recs() : {}, plant });
+async function runIn(clock, c, w, bot, opts, { d, ms, plant, flags }) {
+  const W = await B.makeWorld(clock, { tickMs: w.tickMs || 200, prep: w.prep || null, recs: w.recs ? w.recs() : {}, plant, ...(flags ? { flags } : {}) });
   const ph = new B.Phone(W, null, d, ms);
   const take = blank();
   const quiet = { l: console.log, w: console.warn, e: console.error };
@@ -176,6 +178,19 @@ check(`2: the honest bots meet no refusal on any disturbance (${dist.length} run
   refused.map((x) => x.claim + ' / ' + x.d + ': ' + x.refusals[0] + (x.refusals.length > 1 ? ' (+' + (x.refusals.length - 1) + ')' : '')));
 const gainRuns = rows.flatMap((r) => r.hon.filter((h) => h.refusals.length).map((h) => r.c.id + ': ' + h.refusals[0]));
 check('2: ...nor on the gain runs', gainRuns.length === 0, gainRuns);
+/* v2.3.5541 (card K, step 4.2): THE SPRINT MARK.  The move's liar marks
+   every other step a sprint; with the run going on through the grace
+   (sprint.js) it pays for its sprint and takes less ground; with the switch
+   thrown (`sprintmark: false`, the plan's rule 4) it takes what it took. */
+{
+  const mc = CLAIMS.find((c) => c.id === 'move');
+  const on = rows.find((r) => r.c.id === 'move');
+  const off = GAINS_ONLY ? null : await runBot(mc, mc.liar, { ms: GAIN_MIN * B.MIN, flags: { sprintmark: false } });
+  if (off && on) {
+    const offV = perHour(mc, valueOf(mc, off.take), off.ms);
+    check(`2c: the sprint mark: the move's liar takes ${Math.round(on.liar.v)} px an hour, and ${Math.round(offV)} with \`sprintmark: false\``, offV > on.liar.v * 1.1, { on: on.liar.v, off: offV });
+  }
+}
 for (const r of rows) {
   const line = LINES[r.c.id];
   check(`3: ${r.c.id}: its gain ${r.gain} is within its line ${line} and its spread ${SPREAD[r.c.id]} (${r.gain <= BAR ? 'under' : 'over'} the bar ${BAR})`, r.gain <= line + SPREAD[r.c.id] + 1e-9, { honest: Math.round(r.best.v), liar: Math.round(r.liar.v) });

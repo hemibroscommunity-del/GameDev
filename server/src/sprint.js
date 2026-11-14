@@ -114,7 +114,7 @@ export const sprintMethods = {
     /* Was the move before this one a paid sprint step?  Asked of EVERY move,
        so any other move in between -- a rest packet, a keepalive, a walk, a
        refused move -- ends the run and the gap before it is not billed. */
-    ps._sprintPrevPaid = !!ps._sprintLastPaid;
+    ps._sprintPrevPaid = ps._sprintLastPaid || false;   /* v2.3.5541: true, or 'carry' (a grace move kept the run) */
     ps._sprintLastPaid = false;
     /* what happened to the moves, for the admin view (QA: mp-sprint) */
     const d = ps._sprintTally || (ps._sprintTally = { moves: 0, marked: 0, steps: 0, paid: 0, still: 0, ms: 0 });
@@ -125,8 +125,21 @@ export const sprintMethods = {
       d.steps++;
       return SPRINT.MULT;
     }
-    if (ps._sprintAt && now - ps._sprintAt < SPRINT.GRACE_MS && !this._sprintOff() && !ps._ride) return SPRINT.MULT;
+    if (ps._sprintAt && now - ps._sprintAt < SPRINT.GRACE_MS && !this._sprintOff() && !ps._ride) {
+      /* v2.3.5541: a move on the grace's wide bound is paid for too, if it
+         moves (_sprintPay: it bills nothing itself, and keeps the run going) */
+      if (!this._sprintMarkOff()) ps._sprintStep = 'grace';
+      return SPRINT.MULT;
+    }
     return 1;
+  },
+
+  /* v2.3.5541: the sprint mark's kill switch, the lower-case way:
+     `sprintmark: false` and a move on the grace's wide bound ends the run,
+     as before (the hole below open again) */
+  _sprintMarkOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && own(f, 'sprintmark') && !f.sprintmark);
   },
 
   /* The move was accepted and moved the player `dist` px: pay for the step.
@@ -134,13 +147,36 @@ export const sprintMethods = {
      player_state carries what changed); the fraction is carried over. */
   _sprintPay(ps, dist, now, pid) {
     if (!ps || !ps._sprintStep) return;
+    /* ═══ v2.3.5541 (card K, step 4.2: the claims' bench found it): THE RUN
+       GOES ON THROUGH THE GRACE ═══
+       A move between two marked ones rode the grace's wide bound (1.5 s
+       after the last paid step) and ENDED the run, so the next marked one
+       billed nothing: every other move marked `sp: 1` kept the sprint's
+       bound and spent no stamina (the bench's move liar).  Now a move on the
+       grace's bound that moves bills nothing itself, and keeps the run: the
+       next marked step bills the time since the last paid one (at most
+       STEP_MAX_MS), as if every move between had been marked.  A move that
+       does not move, or one on the walking bound, still ends it, so standing
+       still is never billed.  An honest sprint, marked on every move, is
+       billed as before; one let go and pressed again inside 1.5 s, still
+       moving, pays for that gap (at most 11 stamina).  A run carried this
+       way bills a marked step only inside the grace (GRACE_MS of the last
+       paid step): the rest packet as a player stops moves a pixel or two,
+       and the step after standing a while bills nothing, as before.
+       `sprintmark: false`: the grace's moves end the run, as before. */
+    if (ps._sprintStep === 'grace') {
+      if (dist > 0.5 && ps._sprintPrevPaid) ps._sprintLastPaid = 'carry';
+      ps._sprintStep = false;
+      return;
+    }
     ps._sprintStep = false;
     const d = ps._sprintTally;
     if (!(dist > 0.5)) { if (d) d.still++; return; }
     /* the time since the move before, if that one was a paid sprint step:
        he ran through it.  The first step of a run bills nothing. */
     const last = ps._sprintAt || 0;
-    const ms = ps._sprintPrevPaid && last ? Math.max(0, Math.min(now - last, SPRINT.STEP_MAX_MS)) : 0;
+    const ms = ps._sprintPrevPaid && last && !(ps._sprintPrevPaid === 'carry' && now - last >= SPRINT.GRACE_MS)
+      ? Math.max(0, Math.min(now - last, SPRINT.STEP_MAX_MS)) : 0;   /* v2.3.5541: a carried run, inside the grace */
     ps._sprintAt = now;
     ps._sprintLastPaid = true;
     if (d) { d.paid++; d.ms += ms; }
