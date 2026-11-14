@@ -75,6 +75,7 @@
 
 import { gemGive } from './gems.js'; /* v2.3.3516: gems live in the bag */
 import { bagGive, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
+import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
 
 export const SALVAGE = Object.freeze({
   /* metal id (the armour's `mat`, materialTints.js) -> its bar (smelting.js),
@@ -227,7 +228,7 @@ export const salvageMethods = {
     if (field === 'weaponStash') {
       const at = this._salvageWeaponAt(ps, payload || {});
       if (!at.w) return refuse(at.reason, { idx: payload && Number.isInteger(payload.idx) ? payload.idx : null });
-      ps.weaponStash.splice(at.idx, 1);
+      stashTake(ps, 'weaponStash', at.idx, 'salvage_weapon');
       metal = at.metal;
       grade = SALVAGE.GRADES.indexOf(at.w.quality) >= 0 ? at.w.quality : 'normal';
       ref = { idx: at.idx, name: typeof at.w.name === 'string' ? at.w.name.slice(0, 40) : null };

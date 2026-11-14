@@ -25,6 +25,8 @@
 import { Assets, Texture, Rectangle } from 'pixi.js';
 import { DUNGEON_ART, DUNGEON_ART_V, BOSS_CHEST_ART } from '@/data/dungeonArt.js';
 import { mintGrottoFx, freeGrottoFx } from '@/rendering/grottoFx.js';   /* v2.3.3567: what moves in it */
+import { archsWearSlime, loadSlimeLook, zoneWearsSlime } from '@/rendering/wheelMonsterArt.js';   /* v2.3.5256: a workshop's slimes */
+import { unloadSlimeSprites } from '@/rendering/slimeSprites.js';
 
 const own = (o, k) => !!o && typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
 
@@ -103,3 +105,48 @@ export function dungeonArtLive() {
 }
 /* QA (mp-grottoart), armed by the harness only */
 if (typeof window !== 'undefined' && window.__btProbe) window.__btDungeonArtLive = dungeonArtLive;
+
+/* ═══ v2.3.5256: A WORKSHOP'S DUNGEON, ITS SLIMES LOADED BEFORE YOU STEP IN ═══
+   The farm's Dungeon Workshop opens an arena of no land (networking/
+   gameEvents.js dungeon_started, no `home`): its monsters are the archetypes
+   its config names, and nothing loaded looks for it.  The slimes' strips load
+   as you walk in the Wheel only now (rendering/wheelMonsterArt.js), so an
+   arena of slime-sheet monsters (the fodder, a variant on its sheets; its
+   boss too) loads them first, behind the arena's own loading screen (the
+   zone-art law; the gatekeeper's sitting 16: they drew as plain circles the
+   whole run).  A dungeon's way out frees no zone's art (changeZone; the
+   clear's trip to the farm, the door back), so the arena lets them go itself
+   once you are out of it, unless where you are wears slimes too (the Wheel's
+   walking loader keeps them there).  Any other arena is entered at once, as
+   before.  `enter` builds the arena and steps in; `overlay` is the zone
+   screen's { show, hide } (game/zoneTransitions.js), handed in by the caller. */
+export function enterArenaWithLooks(S, cfg, zone, enter, overlay) {
+  const archs = ((cfg && cfg.monsters) || []).map((g) => g && g.archetype).concat(cfg && cfg.hasBoss ? [cfg.bossArchetype] : []);
+  if (!archsWearSlime(archs)) { enter(); return; }
+  const from = S.currentZone;
+  S._wheelDungeonOpening = zone;
+  overlay.show((cfg && cfg.name) || 'Dungeon');
+  Promise.race([
+    Promise.resolve().then(() => loadSlimeLook()).catch(() => null),
+    new Promise((r) => setTimeout(r, 8000)),
+  ]).then(() => {
+    /* only the opening that is still this one; died or gone meanwhile: the
+       worker sweeps the instance nobody entered (as a Wheel dungeon's) */
+    if (S._wheelDungeonOpening !== zone) return;
+    S._wheelDungeonOpening = null;
+    const letGo = () => { if (!zoneWearsSlime(S.currentZone)) Promise.resolve(unloadSlimeSprites()).catch(() => []); };
+    if (S.currentZone !== from || S._dying || !S.player) {
+      if (!S._wheelTripVeil && !S._zoneLoading && !S._townArtHold && !S._farmArtHold) overlay.hide();
+      letGo();
+      return;
+    }
+    overlay.hide();
+    enter();
+    /* out of it: the strips go (a look once a second, reads only) */
+    const iv = setInterval(() => {
+      if (S.currentZone === zone) return;
+      clearInterval(iv);
+      letGo();
+    }, 1000);
+  });
+}

@@ -19,6 +19,7 @@ import vm from 'node:vm';
 import { resolveCollision, lookupCollision } from '../../src/data/gameSystems.js';
 import { ELEMENTS } from '../../src/data/elements.js';
 import { weaponHitElement } from '../src/weapongem.js';
+import { act, setActionTransport } from '../../src/game/actions.js';   /* v2.3.5187: the send goes through the action door (act) */
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -60,6 +61,7 @@ const ctx = vm.createContext({
   /* v2.3.4520: the free-swing trial's two (manualCombat.js), as they are off it */
   mcSwingGapMs: () => null, mcNoteSwing: () => {},
   swordFeelSwing: () => {},   /* v2.3.4800: the sword's feel (swordFeel.js), as it is off the trial */
+  act,   /* v2.3.5187: the sweep's relay leaves through the action door */
 });
 vm.runInContext(swingSrc + '\nthis.swingAttack = swingAttack;\n'
   + 'this.sweep = function (S, baseAngle) { ' + relaySrc + ' };', ctx);
@@ -72,6 +74,7 @@ function bro(over) {
     channel: { send: (m) => sent.push(m) },
     ...over,
   };
+  setActionTransport({ send: (m) => { sent.push(m); return true; } });   /* v2.3.5187: the door's transport is this bro's channel */
   return { S, sent };
 }
 const swings = (sent) => sent.filter((m) => m.type === 'broadcast' && m.event === 'player_swing');

@@ -45,7 +45,11 @@ setSearch('');
 /* any name a reset's text uses that is not the state or a global: a no-op
    that answers every property and every call with itself */
 const NOOP = new Proxy(function () {}, { get: (t, k) => (k === Symbol.toPrimitive ? () => 0 : NOOP), apply: () => NOOP });
-/* v2.3.5218 (card L PR 5, the page doors): ...but a page field's own DOOR
+/* v2.3.5187: `act` (the action door, src/game/actions.js) records the
+   request as the shim would send it: the pose's word to the worker below */
+let ACT_SENT = null;
+const ACT_TOP = new Set(['pose']);   /* its row's `body: 'top'` */
+/* v2.3.5218 (card L PR 5, the page doors): ...and a page field's own DOOR
    is the real one -- a phase-table row on the page turned `door` (its `fn`,
    from its `file`, a module of no imports): a reset clears such a field by
    asking it, and the census counts that call as its write
@@ -60,7 +64,9 @@ const DOORS = Object.create(null);
 }
 const STUBS = new Proxy({}, {
   has: (t, k) => typeof k === 'string' && !(k in globalThis),
-  get: (t, k) => (k === Symbol.unscopables ? undefined : (typeof k === 'string' && Object.prototype.hasOwnProperty.call(DOORS, k) ? DOORS[k] : NOOP)),
+  get: (t, k) => (k === Symbol.unscopables ? undefined
+    : k === 'act' ? (name, p) => { if (ACT_SENT) ACT_SENT.push(ACT_TOP.has(name) ? { ...(p || {}), type: name } : { type: name, payload: p || {} }); return true; }
+      : (typeof k === 'string' && Object.prototype.hasOwnProperty.call(DOORS, k) ? DOORS[k] : NOOP)),
 });
 
 /* the body of the block that opens at `start` (zone-leftovers.test's) */
@@ -212,6 +218,7 @@ function block(text, start) {
       if (!mine.length) continue;
       for (const b of mine) {
         const msgs = [];
+        ACT_SENT = msgs;   /* v2.3.5187: a request through the door lands here too */
         const make = () => ({ [row.field]: SENT, channel: { send: (m) => { msgs.push(m); return true; } } });
         const want = /^value /.test(row.reset) ? JSON.parse(row.reset.slice(6)) : undefined;
         /* on: the field goes back */
@@ -228,6 +235,7 @@ function block(text, start) {
         check(`5. ${row.field}: with ?${b.system.replace(/-/g, '')}reset=0 thrown it stays as it was`, S2[row.field] === k);
         setSearch('');
         played++;
+        /* v2.3.5187: the word goes through the action door (act), recorded by STUBS above */
         if (row.field === '_pose') check('5. the pose\'s reset is its own end, with its word to the worker (as the frame check\'s)', msgs.some((m) => m && m.type === 'pose' && m.id === null), msgs);
       }
     }

@@ -114,6 +114,7 @@ import { WHEEL_ZONE } from './wheelzone.js';
 import { wheelTable } from './wheeltables.js';   /* v2.3.3315 */
 import { GEAR_PROV_FIELD, GEAR_PROV_SLOTS } from './gearprov.js';
 import { PVP_HEAL } from './data.js';   /* v2.3.4841: the lock's window */
+import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
 
 export const NML = Object.freeze({
   /* the Wheel's rings, game px (plan.js wheel: hub 2.7 zones, tierZones 1,
@@ -722,7 +723,7 @@ export const noMansLandMethods = {
     };
     /* spare weapons; a red skull's worn ones too, when a player killed them */
     const weapons = Array.isArray(ps.weaponStash) ? ps.weaponStash.filter(Boolean) : [];
-    ps.weaponStash = [];
+    stashSet(ps, 'weaponStash', [], 'nml_weapons');   /* v2.3.5281: the stashes' door */
     if (takeWorn) {
       for (const f of WORN_WEAPONS) {
         if (ps[f]) { weapons.push(ps[f]); lost.worn.push(f); }
@@ -806,7 +807,7 @@ export const noMansLandMethods = {
         }
         take(slot, piece);
       }
-      ps[field] = keep;
+      stashSet(ps, field, keep, 'nml_gear');
     }
     /* the gold -- every loss's since v2.3.3316 (a red skull's only before).
        (The amulet forge's gold NUGGETS and BARS are ingredient counters of

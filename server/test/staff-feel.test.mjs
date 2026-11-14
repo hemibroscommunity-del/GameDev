@@ -340,7 +340,8 @@ const T0 = 1000000;
     && /ga: _sfShot \? _sfShot\.ga : undefined,/.test(MC) && (MC.match(/speedPx: _sfShot \? _sfShot\.speedPx : undefined,/g) || []).length === 2
     && /_gs: _sfShot \? _sfShot\.stage : undefined,/.test(MC) && (MC.match(/staffShotLife\(/g) || []).length === 3);
   check('10c its claims name the shot on monster_damage AND the duel\'s player_attack (staffSw)',
-    /: \(staffSw\(S, a\) \?\? bowFeelSw\(a\)\)\s*\n\s*\}\}\);/.test(PJ) && /sw: staffSw\(S, a\) \?\? bowFeelSw\(a\),/.test(PJ) && /staffFeelImpact\(S, a, tx \+ vdx, ty \+ vdy\);/.test(PJ));
+    /* v2.3.5187: the send goes through the action door (act): the claim's payload closes the call, `});` */
+    /: \(staffSw\(S, a\) \?\? bowFeelSw\(a\)\)\s*\n\s*\}\);/.test(PJ) && /sw: staffSw\(S, a\) \?\? bowFeelSw\(a\),/.test(PJ) && /staffFeelImpact\(S, a, tx \+ vdx, ty \+ vdy\);/.test(PJ));
   check('10d the presses: the stick, the disc and the left mouse button gather (each naming itself: v2.3.4799); their lifts blast their own; a tap another job took cancels; any other end aborts; the flick and the tap no longer make the special or a held bolt',
     /staffGatherStart\(stateRef\.current, rts\.startAt, t\.clientX, t\.clientY, 'r'\);/.test(BRO) && /if \(staffGatherStart\(stateRef\.current, bSwipe\.st, t\.clientX, t\.clientY, 'b'\)\) return;/.test(BRO)
     && /if \(staffGatherStart\(S, Date\.now\(\), null, null, 'desk'\)\) return;/.test(BRO) && /var _sfEnd = _rCancel \? null : staffGatherEnd\(stateRef\.current, Date\.now\(\), undefined, 'r'\);/.test(BRO)

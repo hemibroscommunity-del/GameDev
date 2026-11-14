@@ -20,6 +20,7 @@ import { isStuck, isDazed } from '@/game/elemHits.js';
 import { isWheelSwimming } from '@/game/wheelSwim.js';
 import { footstepSurface } from '@/game/worldTrial.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js';
+import { act } from '@/game/actions.js';   /* v2.3.5187: the page's requests leave through the action door (card K PR 7) */
 
 /* QA, the `?repairms=` habit (wheelBreak.js): `?jumpms=` lengthens the jump
    (200-3000 ms) -- a test machine drawing a frame every ~200 ms gets three
@@ -86,12 +87,9 @@ export function triggerJump(S) {
   /* the push-off: a step on the ground you are standing on */
   try { if (BT_AUDIO.footstep) BT_AUDIO.footstep(isWearingArmor(), footstepSurface(S)); } catch (e) { /* audio is best-effort */ }
   cue('jumpUp');   /* v2.3.3343: ...and a rush of air over it (one plain step was all; SOUND-GAPS) */
-  if (S.channel) {
-    try {
-      S.channel.send({ type: 'broadcast', event: 'player_jump',
-        payload: { id: S.myId, ts: now, dur: j.dur || JUMP_MS, peak: j.peak || JUMP_PEAK } });
-    } catch (e) { /* a lost relay costs a peer the picture, nothing else */ }
-  }
+  try {
+    act('player_jump', { id: S.myId, ts: now, dur: j.dur || JUMP_MS, peak: j.peak || JUMP_PEAK });   /* v2.3.5187: through the action door (actions.js) */
+  } catch (e) { /* a lost relay costs a peer the picture, nothing else */ }
   return true;
 }
 
@@ -135,13 +133,11 @@ export function triggerFlip(S, now, extra) {
   /* v2.3.3738: no "Perfect!" over you any more -- the owner: "You can remove
      the 'perfect!' after a well timed jump."  The well-timed flip still
      carries you further (its grade and boost); only the words went. */
-  if (S.channel) {
-    try {
-      S.channel.send({ type: 'broadcast', event: 'player_jump',
-        payload: { id: S.myId, ts: now, dur: f.dur, peak: f.peak, flip: 1,
-          h0: +f.h0.toFixed(2), v: +f.v.toFixed(5), g: +f.g.toFixed(7), ang: +f.ang.toFixed(3) } });
-    } catch (e) { /* a lost relay costs a peer the picture, nothing else */ }
-  }
+  try {
+    /* v2.3.5187: through the action door (actions.js) */
+    act('player_jump', { id: S.myId, ts: now, dur: f.dur, peak: f.peak, flip: 1,
+      h0: +f.h0.toFixed(2), v: +f.v.toFixed(5), g: +f.g.toFixed(7), ang: +f.ang.toFixed(3) });
+  } catch (e) { /* a lost relay costs a peer the picture, nothing else */ }
   return true;
 }
 

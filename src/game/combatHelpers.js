@@ -22,6 +22,7 @@ import { cue } from '@/game/eventSounds.js';   /* v2.3.3462: a refusal is heard 
 import { climbRefused } from '@/game/climbActions.js';   /* v2.3.3994: nor on the vines */
 import { noteBlow } from '@/game/deathBlow.js';   /* v2.3.3985: your own blow at its contact, for the monster's own death */
 import { resetOn } from '@/game/resetOn.js';   /* v2.3.5206: what a fight left on the place you leave goes at the zone door (card L) */
+import { act } from '@/game/actions.js';   /* v2.3.5187: the page's requests leave through the action door (card K PR 7) */
 
 /* ═══ v2.3.1979: WHERE A LOCKED TARGET ACTUALLY IS, FOR AIMING ═══
    Owner: "Tap to lock on enemy sometimes does not hit the target.  I was
@@ -481,12 +482,9 @@ function addBuildProg(R, stat, amount) {
        (S.channel may be null). Server doesn't need to echo back --
        its level-up will arrive via the existing combat_credit +
        player_state events. */
-    try {
-      var _S = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
-      if (_S && _S.channel && typeof _S.channel.send === 'function') {
-        _S.channel.send({ type: 'build_point_earned' });
-      }
-    } catch (e) {}
+    /* v2.3.5187: through the action door (actions.js), which sends nothing
+       without a connection: the game state was read here only for its channel */
+    try { act('build_point_earned'); } catch (e) {}
     var beforeMax = { hp: R.maxHp, mp: R.maxMana, stam: R.maxStamina };
     if (typeof recalcDerived === 'function') recalcDerived(R);
     pushStatIncreaseNotice(R, stat, beforeMax);
