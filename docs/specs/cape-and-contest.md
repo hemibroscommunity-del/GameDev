@@ -325,6 +325,20 @@ have looked correct for exactly one session. Ownership lives in the ledger
 (`capegrant:<capeId>`), which already had to record who redeemed — one record,
 so the count and the owners cannot disagree.
 
+**Taking it off is kept there too** (v2.3.5422, card J2). The take-off
+(`cape_equip`, v2.3.2109) set `ps.capeOff`, which is not in `_saveRpg`'s fixed
+list either, so a cape taken off was worn again after a rejoin or a deploy.
+The preference now rides the same record: `off`, the redeemers who took it
+off (only ever an id in `redeemed`, so it is never longer than that list;
+absent means worn, so nobody's cape came off with the change). `_capeLedger`
+keeps it when it loads, `_capeLedgerSave` writes it when it changes, at the
+player's pace (`_paced`, a leave flushes it), and `_capeWornBy` reads it, so
+the join's `cape` is right with no change to the join. Kill switch:
+`capeoffkept: false` in the live flags (`_capeOffKeptOff`): the old way,
+`ps.capeOff` in memory only. No cap: the phone is sent the worn cape, as
+before. Test: `eventcapes.test` (take it off, a new room on the same storage,
+rejoin: still off; on again: worn; switch off: the old way).
+
 ### 4.5 The merch draw has no level threshold
 
 Owner decision, 2026-08-27. Everyone seen during the event window is an entry;
