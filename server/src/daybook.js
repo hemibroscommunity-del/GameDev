@@ -399,6 +399,61 @@ export async function bookPrunePage(room, now) {
   }
 }
 
+/** v2.3.5094 (the gatekeeper's sitting 11, F1): today's book written NOW, its
+ *  put issued by the caller in a run of its own writes.  Reads the stored day
+ *  (after any put already running), holds the pace's put meanwhile, and
+ *  returns `{ put() }`: a SYNCHRONOUS call that takes what waits for that day
+ *  (whatever was added since the read, too) and issues the day's one put,
+ *  giving the sums back if it fails, as the paced put does.  `release()` lets
+ *  the pace go without writing.  For a count that must be on file in the
+ *  same run as the write it explains (econcard.js econResetBook: a restart
+ *  in an empty room, whose deletes are durable at once while the riding
+ *  `econ` part waits for a write that may never come). */
+export async function bookStage(room, now) {
+  if (!room || off(room)) return null;
+  const b = mem(room);
+  while (b.putting) await b.putting.catch(() => {});
+  let done;
+  b.putting = new Promise((r) => { done = r; });   /* the pace waits for this one */
+  const free = () => { b.putting = null; done(); };
+  const day = bookDay(callerNow(now));
+  let rec;
+  try { rec = bookNormalize(await room.state.storage.get(bookKey(day)), day); } catch (e) { free(); return null; }
+  if (rec.newer) { free(); return null; }
+  let used = false;
+  return {
+    day,
+    put() {
+      if (used) return null;
+      used = true;
+      const taken = b.days.get(day);
+      b.days.delete(day);
+      if (taken) mergeDay(rec, rec.over, taken);
+      rec.at = roomNow();
+      const out = { v: DAYBOOK.V, day, at: rec.at, over: { ...rec.over } };
+      for (const p of DAYBOOK.PARTS) out[p] = rec[p];
+      let w;
+      try { w = room.state.storage.put(bookKey(day), out); } catch (e) { w = Promise.reject(e); }
+      b.lastPut = roomNow();
+      return Promise.resolve(w).catch(() => { if (taken) giveBack(b, day, taken); }).finally(free);
+    },
+    release() { if (!used) { used = true; free(); } },
+  };
+}
+
+/** One day as it stands: the stored record plus the sums waiting, read
+ *  after any put already running (so a sum being written is counted once,
+ *  never neither).  v2.3.5093: the daily economy snapshot reads today's
+ *  restarts with it (liveops.js, econcard.js econResetBook). */
+export async function bookSoFar(room, day) {
+  const b = mem(room);
+  while (b.putting) await b.putting.catch(() => {});
+  const r = bookNormalize(await room.state.storage.get(bookKey(day)), day);
+  const d = b.days.get(day);
+  if (d && !r.newer) mergeDay(r, r.over, d);   /* reads `d`, never changes it */
+  return r;
+}
+
 /** THE READ: the newest `n` days (1 to KEEP_DAYS, 7 when not said), each the
  *  stored record plus the sums counted and not yet written.  Newest first. */
 export async function bookRead(room, n) {

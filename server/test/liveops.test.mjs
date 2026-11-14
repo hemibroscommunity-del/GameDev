@@ -377,8 +377,12 @@ await req('DELETE', '/api/admin/flags?name=disable_threats');
   const r10 = new GameRoom(s10, mockEnv);
   check('7b. an empty room writes its record in one call, all zeros',
     (await r10._metricsMaybe(T9)) === false
-    && JSON.stringify(Object.entries(s10._store.get('metrics:' + r10._cadencePeriodDaily(T9)) || {}).filter(([k]) => k !== 'ts'))
-      === JSON.stringify([['totalGold', 0], ['playerBlobs', 0], ['escrowedGold', 0], ['pendingEntries', 0]]),
+    && JSON.stringify(Object.entries(s10._store.get('metrics:' + r10._cadencePeriodDaily(T9)) || {}).filter(([k]) => k !== 'ts' && k !== 'world'))
+      === JSON.stringify([['totalGold', 0], ['playerBlobs', 0], ['escrowedGold', 0], ['pendingEntries', 0]])
+    /* v2.3.5093: and the world's sum (card E PR 12), all zeros too -- with
+       its day's restarts so far (sitting 10): none */
+    && JSON.stringify((s10._store.get('metrics:' + r10._cadencePeriodDaily(T9)) || {}).world) === JSON.stringify({ v: 1, held: 0, net: 0, minted: 0, richest: [], gone: { day: (s10._store.get('metrics:' + r10._cadencePeriodDaily(T9)) || { world: { gone: {} } }).world.gone.day, g: 0, n: 0, m: 0 } })
+    && /^\d{8}$/.test(((s10._store.get('metrics:' + r10._cadencePeriodDaily(T9)) || { world: { gone: {} } }).world.gone || {}).day),
     s10._store.get('metrics:' + r10._cadencePeriodDaily(T9)));
   // exactly a full page of mail: the next page comes back empty, and that ends it
   const s11 = makeState();
