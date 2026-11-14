@@ -1,37 +1,37 @@
 card: Z
-branch: claude/plan-z-sitting-12
-prs: #1818, tag 5369, the last line of the list (ready)
+branch: claude/plan-z-sitting-13
+prs: (this PR), tag 5370, the last line of the list (ready)
 state: ready
 
 ## Done
-- Sitting 12, `main` 9fd5e580: the list rehearsed in its order (tree
-  51656f8b, this branch aside): precheck 0 FAIL, build, questline
-  187/187; each base `main`, ONE merge base step by step. Review:
-  `census/review-z12.md`. 4.5 and 10.4 ticked; notes on 2.1, 5.3, 8.1.
+- Sitting 13, `main` 82fb78da: the list rehearsed in its order (tree
+  301e12e6, this branch aside): precheck 0 FAIL, build, questline;
+  each base `main`, ONE merge base step by step. Review:
+  `census/review-z13.md`. Notes on 2.1, 5.3b, 9.5; no line to lower.
 
 ## The list: merge in this order, in one sitting, each "Create a merge commit"
-1 #1808 (Z) · 2 #1811 (E) · 3 #1813 (K, R) · 4 #1803 · 5 #1809 (L) ·
-6 #1798 (LB) · 7 #1815 (O) · 8 #1805 · 9 #1806 · 10 #1810 (P) ·
-11 this PR. Three deploy (5, 6, 7): back to back. One live flag,
-`tradedoor` (ON). No cap, no stored shape.
+1 #1821 (LB) · 2 #1822 (K) · 3 #1819 (R) · 4 #1820 (K) · 5 #1792 ·
+6 #1794 · 7 #1800 · 8 #1814 (O) · 9 #1812 (TF) · 10 this PR. Eight
+deploy (2 to 9): back to back. No cap, no live flag, no stored shape.
 
-## Held (expires at sitting 13)
-- #1812 TF: red on `main` after it (`mp-folkwalk` 4 waits for `pickup`,
-  Chef Blaze now `cook`); no form shade on the working figure; no
-  `mp-ghostaudit` sample of the new poses.
-- #1792, #1794, #1800, #1814 O: the next batch (#1792's row meets #1803's
-  `prop` form; O merges the new `main`). #1800: a pixel rung holds a
-  cooled phone at 30 until a veil; a pending step outlives a hidden tab;
-  a work-bound phone reaches the pixels.
-- #1816, #1817 T: conflict at `switches.mjs`'s end after #1809, #1805.
-- #1782 SK: ready (mended); the owner's yes to +8 to +10 moves a ride.
+## Held (expires at sitting 14)
+- #1816, #1817 T: conflict at `switches.mjs` and `SWITCHES.md` with
+  O's rows (#1792 on) and TF's, either order; T merges the new `main`
+  and goes FIRST at sitting 14 (its PR 4 sorts the rows by name).
+- #1823, #1825 R: add/add at `docs/plan/status/R.md` with #1819; R
+  merges the new `main` into each. Opened mid-sitting: unreviewed.
+- #1826 K: add/add at `docs/plan/status/K.md` with #1822, #1820; K
+  merges the new `main`. Opened mid-sitting: unreviewed.
+- #1824 L: conflict with #1792 at `phase-table.test.mjs`'s
+  `DOOR_SUITES` end; L merges the new `main`. Unreviewed.
+- #1782 SK: ready; the owner's yes to +8 to +10 moves a ride.
 
 ## Stalled
-- None.
+- None. J2's PR 6 `working` (18:06), no PR; P's fire goblin, no branch.
 
 ## Found
-- P: a gear piece first worn in play is not drawn while its sheet
-  waits (seconds), as on `main`: the owner's list (road A).
-- L: the swap ignores `_t2To`'s answer; an await before it would pay
-  a cancelled trade (trade2.js ~351).
-- LB: a ninth stat before `dmg` breaks the stat boards' count gate.
+- R: a row can claim `ledger: 'xfer'` with no writer (xfer.test's
+  move-only check gone): for R's next PR on the table.
+- K: `systems.mjs` and CLAUDE.md §5/§8 still name the hand lists.
+- T: the old `plan-t-3-page-draw`, `plan-t-4-thrown` carry 5222.
+- No card: `mp-ghostaudit`'s cook 0 frames; heldsweep `R > J` (TF's).
