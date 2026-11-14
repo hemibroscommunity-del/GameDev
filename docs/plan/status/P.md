@@ -1,5 +1,5 @@
 card: P
-branch: claude/plan-p-15-slime-walk (made again from main, as the planning session asked from the fire goblin on)
+branch: claude/plan-p-18-rank-icons (begun from main; #1846's head merged in for sitting 17)
 prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810, #1840 (5241-5255, 5257, merged); #1846 (5256), #1853 (5258), #1859 (5259) ready
 state: working
 
@@ -14,10 +14,11 @@ state: working
 
 ## Next
 
-- #1846 (5256), mended at sitting 16 (the hit's still through the picture
-  door; a workshop dungeon's slimes behind its screen); main merged in;
-  three runs at fe3eb60b3: `artCache` 27.5, its line 90.6 holds.
-- The owner's gear item (P's second block, 5560 on): the question below.
+- #1846 (5256), mended at sitting 16; #1859 (5259) the rank icons, with
+  #1846's head merged in: both for sitting 17, #1846 first. #1853 (5258)
+  waits for sitting 18: main merged in, `artCache` to 88.6.
+- The owner's gear item (5560, P's second block): the belt's last baked
+  frame held while its jog sheets pack; `?beltstandin=0`.
 
 ## Found
 
@@ -27,12 +28,7 @@ state: working
 
 ## Needs
 
-- Asked of the planning session (2026-11-14), the owner's gear item.
-  Measured on main (copper chest and greaves, a QA probe): worn at login,
-  every sheet is in behind the loading screen, the chain belt too; put on
-  mid-play, the only sheets first asked for in play are the chain belt's
-  five jog sheets (5.5-12.3 s each on the worker), and the jog bakes made
-  meanwhile go without the chain (not kept: `beltPending`). Proposed
-  stand-in: the belt's own file read by the bake while the worker packs
-  it (about 8 MB at most, let go when the packed sheet lands);
-  `?beltstandin=0`. Is that the stand-in meant?
+- Answered (2026-11-14), the owner's gear item: option B, the belt's last
+  baked frame (or the idle frame) held while its jog sheets pack, no new
+  memory; `?beltstandin=0`; the PR body says what a player sees.
+- Answered: the fire goblin by road A', then the slimes, each from main.

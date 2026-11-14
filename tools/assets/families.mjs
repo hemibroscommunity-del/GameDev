@@ -481,8 +481,6 @@ export const ASSET_FAMILIES = Object.freeze([
   fam('icons-points', 'made', 'public/icons/ui/points/*.png',
     { tool: 'tools/ui/cut-points-heads.py', sources: 'assets/icons-source/sheet-points-{heads,weapons}.png', draw: 'dom', loader: 'src/data/pointsHeadArt.js' }),
   /* v2.3.5501 (card LB): the owner's 2026-11-09 rank trophies, drawn by nothing since the leaderboards' new look (the sheet's medals); the files stay (removing art is the owner's call) */
-  fam('icons-rank-unwired', 'made', 'public/icons/ui/rank-*.webp',
-    { tool: 'tools/ui/cut-rank-trophies.py', sources: 'assets/icons-source/rank-trophies-2026-11-09/rank-trophies.png', draw: 'none', note: 'unused since v2.3.5501: BoardRow.jsx draws the medals of public/ui/leaderboard/' }),
   fam('icons-made-dom', 'made', ['public/icons/ui/soc-{block,duel,friend,mute,party,report,trade}.webp', 'public/icons/ui/buff-rested.webp', 'public/icons/ui/homestead-preview.webp', 'public/icons/ui/nav-dashboard.png'],
     { tool: ['tools/ui/cut-rank-trophies.py', 'tools/ui/slice-social-icons.mjs', 'tools/ui/make-rested-badge.py', 'tools/ui/make-homestead-preview.mjs', 'tools/ui/make-dash-bag-icon.mjs'], sources: 'assets/icons-source/{rank-trophies-2026-11-09/rank-trophies.png,sheet-social.png}, public/ui/controls/sleep.webp, the farm\'s art, public/icons/ui/{nav-inventory,combat-*}.webp', draw: 'dom', loader: 'src/ui/' }),
   fam('icons-from-uploads-world', 'supplied', ['public/icons/ui/blocks-{mp,stam}.webp', 'public/icons/ui/verified-bro-small.webp'],
