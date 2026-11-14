@@ -120,3 +120,67 @@ so the gatekeeper does not lower it today (112 on `main`: a change there
 would collide with T). For the owner: the thrown run adds about 16 s to
 every PR's `test` (paid minutes); the full run (about 45 minutes) is the
 owner's to ask for.
+
+## Card P: #1805 (tag 5253), #1806 (5254), #1810 (5255): listed
+
+Read at 3d0594d, 3c35e04, 1077b22 (a stack: #1810 carries #1806 carries
+#1805; each one merge base with `main`, clean on it). None touches
+`server/`: no deploy.
+
+**#1805, pack-page on the body bake's worker (`?packworker=0` the page's
+road).** The end form is the page road's: a PNG image freed through its
+blob address when the source goes; the worker road holds no page canvas.
+A re-ask, a dropped job, a dead or failing worker each fall back to the
+page road; behind the loading screen it still packs on the page; the
+`pack-page` row's removal agrees with `held-sweep.test` 7b4; the QA probe
+`__btGearWorkerWait` is defined. No removed behaviour found.
+
+- **For the owner, through the planning session (medium, VERIFIED by
+  reading; not a hold): the planning session's condition "never drawn
+  bare while it waits" is not met, and was not before.** A gear piece
+  first drawn in play is not drawn while its sheet waits (`getGearFrame`
+  gives nothing for a sheet still loading): 5 to 37 s on this box by the
+  worker, 2 to 36 s by the page (`?packworker=0`), so the two roads'
+  spreads overlap and main's way is the same. Commit 3d0594d writes it as
+  a backlog row (road A) "for the owner's list"; it is on no list yet.
+- Low (memory accounting VERIFIED; what stays held PLAUSIBLE): the worker
+  road's `Texture.from(img)` (gearSheets.js ~738) keeps Pixi's cache
+  entry, and `img.decode()` (bodyBake.js ~281) decodes on the page, where
+  the page road's `keepAsImage` drops both: each sheet first drawn in play
+  counts W x H x 4 in `artCache`, the form drawn shirts have had since
+  5014. To settle: `mp-membudget` at the armour station, default against
+  `?packworker=0`.
+- PLAUSIBLE, low: gear sheets now wait in the body bake's one line
+  (`_line`) behind a peer's body, head and shirt bakes (their own page
+  line before); the "gear first" try measured an empty line only.
+- VERIFIED by reading, low: the worker's download (`bodyBakeWorker.js`
+  `loadBitmap`, ~52-63) has no time limit (TRAPS §123): a fetch that never
+  answers stalls a worker, and a two-core phone has one.
+- PLAUSIBLE, low: the worker answer's handler (`_buildShirtOnWorker`
+  ~723-758) has no catch: a throw leaves the sheet `loading` for the visit
+  (drawn shirts had this before).
+- Low: the byte-for-byte claim is a one-off probe (no scenario reads
+  `__btGearWorkerWait`); `?packworker=0` gives the old pixels and cells,
+  not the old timing (the first slice's clock starts at `tJob`, ~364,
+  ~774); `?gearpackgentle=0` now turns the worker road off too, which its
+  row does not say.
+
+**#1806, the CPU-pixel-readers guard.** Its four break proofs each fail
+as claimed (tried by hand). Gaps, low: an alias (`const ts = t.source;
+ts.resource`, or `const { resource } = t.source`) passes check 1
+(`lookPaletteProbe.js` reads so, off the list: a probe reading no
+pixel); the guard is by file, so a fourth CPU read in
+`effectsRenderer.js` passes; `wantedPath`'s lines are read with their
+comments, and checks 3a, 3b and `framePx` match exact shapes (a correct
+refactor fails loudly).
+
+**#1810, documents.** Every name in its text exists in the code. It
+leaves one call open for the planning session: with `gear-sheet` and
+`portrait` off the list, a 22 ms hold with a second page open is past the
+noise line of 18 ms.
+
+Suites on #1810's head merged with `main`: pixel-readers, state-ledger,
+hold-names, switches, tests-by-system, rails; armorgrade, canvas-witness,
+fish-forearm, held-sweep, iron-waist, keep-as-image, look-load, mine-hem,
+mine-look, picture-door, strip-door, strip-slices, townsfolk-walk,
+traps-look-tables: green. CI green at each head.
