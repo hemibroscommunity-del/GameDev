@@ -57,6 +57,9 @@ export const CACHE_BYTES = 1 << 20;
    are cut once a strip and kept (hitMaterialFx.js chipsFor). */
 export const UNPACK_MS = 4;
 let _budget = UNPACK_MS;
+/** QA (server/test/inflate-raw.test.mjs, v2.3.5561): one strip's pack, as
+ *  the line runs it, so a test can lose the chip while it is on its way. */
+export function packStrip(src) { return _pack(src); }
 /** QA (server/test/inflate-raw.test.mjs): the spread tried at another budget. */
 export function setUnpackBudget(ms) { _budget = ms > 0 ? ms : UNPACK_MS; }
 
@@ -65,7 +68,7 @@ const _want = new Set();     /* strips made, waiting for the chip */
 const _packed = new Set();
 const _cache = new Map();    /* 'uid:x,y' -> a frame's numbers (Uint8Array, w x h) */
 let _cacheBytes = 0;
-const _st = { wanted: 0, packed: 0, packedMB: 0, packedKB: 0, declined: 0, unpacked: 0, reads: 0, hits: 0, misses: 0, failed: 0, readMsMax: 0, readMsSum: 0, deferred: 0, warmed: 0, taskMsMax: 0, onWorker: 0 };
+const _st = { wanted: 0, packed: 0, packedMB: 0, packedKB: 0, declined: 0, unpacked: 0, reads: 0, hits: 0, misses: 0, failed: 0, readMsMax: 0, readMsSum: 0, deferred: 0, warmed: 0, taskMsMax: 0, onWorker: 0, lostMidPack: 0 };
 let _spent = 0, _spentReset = false;   /* this task's unpacking, ms */
 const _warm = [];                      /* [source, frame] put off to the next task */
 let _warming = false;
@@ -183,10 +186,27 @@ async function _deflateAll(pieces) {
   return { zs };
 }
 
+/* v2.3.5561: the lost chip's rebuilds so far (unpackAllFrames) */
+let _restores = 0;
+function _rebuiltSince(src, r0) {
+  if (_restores === r0) return false;
+  _want.add(src);   /* packed once the new chip has it */
+  _st.lostMidPack++;
+  return true;
+}
 async function _pack(src) {
   const nums = src._btNumbers;
   if (!nums || !src._btPal || src.__btFP || src.__btFPNo || src.destroyed) return;
-  const gone = () => src.destroyed || src._btNumbers !== nums || src.resource !== nums.idx;
+  /* v2.3.5561 (the gatekeeper's sitting-16 low): a lost chip rebuilt while
+     this pack was being made.  The rebuild's restorer (unpackAllFrames) has
+     already run, so a pack that finished now would empty the strip before
+     the new chip is sent it, and its first draw would unpack the whole strip
+     at once in the upload (paletteTex.js: about 25 ms for a goblin's here,
+     100 ms on a phone four times slower).  The pack is let go instead, the
+     strip's numbers kept whole, and it is packed again once the new chip
+     has drawn it. */
+  const r0 = _restores;
+  const gone = () => src.destroyed || src._btNumbers !== nums || src.resource !== nums.idx || _rebuiltSince(src, r0);
   const no = () => { src.__btFPNo = true; _st.declined++; };
   const idx = nums.idx, st = nums.w, h = nums.h;
   /* each frame once (a strip may show one frame twice), inside the strip; a
@@ -371,6 +391,7 @@ export function packedFrame(src, sx, sy, sw, sh, who) {
  *  A strip still sent to a chip before its turn is unpacked there and then
  *  (paletteTex.js's upload). */
 export async function unpackAllFrames() {
+  _restores++;   /* v2.3.5561: a pack on its way now is let go (_rebuiltSince) */
   for (const s of [..._packed]) await _unpackSliced(s);
   return 0;
 }
