@@ -20,7 +20,7 @@ addresses (`tools/qa/`), `localStorage` toggles, and the worker's `env` settings
 reads it as a flag or a comment promises it as a kill switch; any other cap's override is the emergency lever of
 `docs/specs/liveops.md` ("Caps override").
 
-252 rows: 245 switches, 6 values, 1 levers, in 23 systems.
+253 rows: 246 switches, 6 values, 1 levers, in 23 systems.
 
 ## audio
 
@@ -129,6 +129,7 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 | `toolshop` | worker | switch | v2.3.3316 | false | logic |  | no | Takes the tools off the shelf and refuses every buy. |
 | `trade2` | worker | switch | v2.3.4375 | false | logic |  | no | The trade window is off, so the old gift is open again. |
 | `tradeonewrite` | worker | switch | v2.3.4795 | false | logic |  | no | The trade's swap goes back to its old order of writes. |
+| `xfer` | worker | switch | v2.3.5092 | false | logic |  | no | No transfer ledger row (`xfer:`) is written; trades run exactly as before. |
 | `?equipredraw` | page | switch | v2.3.5046 | =0 | logic |  | no | A change of worn gear is set all at once again, not in pieces a frame apart. |
 
 ## identity
