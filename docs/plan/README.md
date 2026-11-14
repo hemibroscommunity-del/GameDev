@@ -9,6 +9,8 @@ and write while they carry it out.
   not start.
 - **`status/<letter>.md`**: a session's status file. It lives on the
   session's own branch and is committed with the work.
+- **`orchestrator.md`**: how the owner's requests, in plain words, become
+  cards and sessions.
 - **`census/<name>.md`**: a session's long output (a table of hundreds of
   rows). Never in the status file: the gatekeeper reads every status file at
   each sitting, and must be able to.
