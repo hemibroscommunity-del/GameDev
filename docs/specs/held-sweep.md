@@ -412,8 +412,15 @@ After the gatekeeper's sitting 5 (`docs/plan/census/review-z5.md`, v2.3.5050):
 - the 4 s covers the decode as well as the fetch (a decode that ends later
   has its bitmap closed), and a job's sheets start reading as it arrives,
   beside the wait for its sheets of numbers;
-- `_runBake` asks again, as `_runLookBake` did, when a piece is not readable
-  (it baked the set without it and kept that under the whole set's key);
+- `_runBake` fails a job, as `_runLookBake` did, when a piece is not
+  readable (it baked the set without it and kept that under the whole set's
+  key). Two failures send a frame to the page's own bake, which still baked
+  it without the piece (the gatekeeper's sitting 9): that bake
+  (`_maskedBodyFrameInner`) now draws the body plain and asks again, v2.3.5051
+  (`worn-bake.test` §5). Not reachable today (sitting 9: a sheet still loading
+  never enters the worn list; a `urlFail` is cut from the decoded image; the
+  chest and legs sheets are never freed), so this closes the door, it mends
+  no picture seen;
 - the refused list lets its oldest go when full (1024), and only `blob:`
   addresses go to the worker (a file's address can change under a deploy).
 

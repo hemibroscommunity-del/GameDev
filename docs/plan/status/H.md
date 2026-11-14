@@ -20,6 +20,8 @@ state: ready
 
 - #1777 (5051), ready: the figure's shirt and armour from their first
   frame (55 of 55 the same); `portrait` 8.2 ms the longest in two tours.
+  With sitting 9's low find (asked): the page's own armour bake draws the
+  body plain for a piece not readable (`worn-bake.test` §5). It deploys.
 
 ## Found
 
