@@ -19,12 +19,14 @@
  *      Codex, More -- each inside the screen, none over another, their
  *      words showing; Ranks opens the Leaderboards and is lit; More has no
  *      Leaderboards tile any more;
- *   3. the page: a list of boards down the left (Ranks, Records, Skills),
- *      the board beside it, each scrolling by itself; each board a
- *      pill-shaped button with its own picture and its word whole;
- *   4. the Level board: every row a face, the phone's own row lit, Ghost's
+ *   3. the page: a list of boards down the left (v2.3.5501: under the
+ *      "RANKS" title, then Records, Skills), the board beside it, each
+ *      scrolling by itself; each board a pill-shaped button with its own
+ *      picture and its word whole;
+ *   4. the Level board: every row a face, the phone's own row marked, Ghost's
  *      row grey with DELETED across its face; the first places wear the
- *      owner's trophies where the rank was, each shining and sparkling (a
+ *      laurel medals where the rank was (v2.3.5501, card LB: the owner's new
+ *      sheet; the trophies until then), each shining and sparkling (a
  *      deleted character's grey and still);
  *   5. Daily spin: Biggest wins has Winnie (the gold the worker paid, her
  *      level pill) and Ghost's stand-in; Biggest losses has Lou;
@@ -33,7 +35,9 @@
  *      board, the board showing among them, all inside the screen; at 375
  *      px the six buttons still wear their words;
  *   8. no page errors.
- * Pictures: tools/qa/mp/out/leaderboards-{row,row-375,level,trophies,spin-wins,spin-losses,sideways}.png
+ * Pictures: tools/qa/mp/out/leaderboards-{row,row-375,level,medals,spin-wins,spin-losses,sideways}.png
+ * (v2.3.5501: the new look's own scenario is mp-boardslook; this one keeps
+ * the boards' content: the faces, the stand-ins, the records)
  * (docs/shots/leaderboards-*.webp are four of them, kept with the PR).
  */
 import * as H from './harness.mjs';
@@ -99,7 +103,7 @@ const rows = (P) => P.page.evaluate(() => [...document.querySelectorAll('[data-l
   face: (el.querySelector('[data-board-face]') || { dataset: {} }).dataset.boardFace || null,
   gone: el.dataset.boardGone === '1',
   stamp: ((el.querySelector('[data-board-deleted]') || {}).textContent || '').trim(),
-  lit: getComputedStyle(el).backgroundColor !== 'rgba(0, 0, 0, 0)',
+  lit: el.dataset.boardMine === '1',
 })));
 
 export async function run({ browser, wsPort, webPort, rec }) {
@@ -210,6 +214,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const b = (e) => { const r = e.getBoundingClientRect(); return { l: Math.round(r.left), r: Math.round(r.right), t: Math.round(r.top), b: Math.round(r.bottom) }; };
       return {
         secs: [...rail.querySelectorAll('[data-lb-sec]')].map((e) => e.dataset.lbSec),
+        title: ((rail.querySelector('[data-lb-title]') || {}).textContent || '').trim(),
         heads: [...rail.querySelectorAll('[data-lb-sec]')].map((e) => { const cs = getComputedStyle(e); return { color: cs.color, px: parseFloat(cs.fontSize), weight: +cs.fontWeight, rule: parseFloat(cs.borderBottomWidth) }; }),
         cats: [...rail.querySelectorAll('[data-lb-cat]')].map((e) => e.dataset.lbCat),
         hits: [...rail.querySelectorAll('[data-lb-cat]')].map((e) => Math.round(e.getBoundingClientRect().height)),
@@ -218,14 +223,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
         openCat: pg.dataset.lbOpen,
       };
     });
-    rec.ok('3a the boards are a list under Ranks, Records and Skills: the level, the weapons, kills, the spin, the flip, the fish, the ten skills',
-      JSON.stringify(page.secs) === JSON.stringify(['Ranks', 'Records', 'Skills'])
+    rec.ok('3a the boards are a list under the RANKS title, Stats, Records and Skills: the level, the weapons, kills, the spin, the flip, the fish, the ten skills',
+      page.title === 'RANKS' && JSON.stringify(page.secs) === JSON.stringify(['Stats', 'Records', 'Skills'])
       && ['combat', 'melee', 'bow', 'magic', 'kills', 'spin', 'fish', 'woodcutting', 'trapping'].every((c) => page.cats.includes(c))
       && page.cats.indexOf('spin') < page.cats.indexOf('woodcutting'), page);
     rec.ok('3b every board in the list is a 44 px target; the list and the board stand side by side inside the screen',
       page.hits.every((h) => h >= 44) && page.rail.l >= 0 && page.rail.r <= page.board.l + 1 && page.board.r <= page.vw && page.pg.b <= page.vh, page);
-    rec.ok('3c the list scrolls by itself; the page does not', page.railScrolls && !page.pageScrolls && page.openCat === 'combat', page);
-    rec.ok('3c2 the headings (Ranks, Records, Skills) headline their sections: brass, 13 px, heavy, a rule under each',
+    rec.ok('3c the list scrolls by itself; the page does not; it opens on the list\'s first board (Overall, v2.3.5502)', page.railScrolls && !page.pageScrolls && page.openCat === 'power', page);
+    rec.ok('3c2 the headings (Stats, Records, Skills) headline their sections: brass, 13 px, heavy, a rule under each',
       page.heads.length === 3 && page.heads.every((h) => h.color === 'rgb(216, 170, 88)' && h.px >= 13 && h.weight >= 700 && h.rule >= 1), page.heads);
     /* each board a pill with its own picture */
     const pills = await H.waitFor(A, () => [...document.querySelectorAll('[data-lb-rail] [data-lb-cat]')].map((b) => {
@@ -234,16 +239,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const ib = b.querySelector('[data-lb-icon]') ? b.querySelector('[data-lb-icon]').getBoundingClientRect() : null;
       return {
         id: b.dataset.lbCat, radius: cs ? parseFloat(cs.borderTopLeftRadius) : 0, h: pill ? Math.round(pill.getBoundingClientRect().height) : 0,
-        rim: cs ? cs.borderTopColor : '', on: b.getAttribute('aria-selected') === 'true',
+        rim: (pill && pill.querySelector('[data-lb-bar]') || { dataset: {} }).dataset.lbBar || '', on: b.getAttribute('aria-selected') === 'true',
         icon: !!img && img.complete && img.naturalWidth > 0, src: img ? img.getAttribute('src').split('?')[0] : null, iw: ib ? Math.round(ib.width) : 0,
         word: word ? word.textContent : '', cut: !!word && word.scrollWidth > word.clientWidth + 1,
       };
     }), (v) => v.length >= 15 && v.every((p) => p.icon), { timeout: 15000, label: 'the boards\' pictures loaded' }).catch(() => null);
     rec.ok(`3d each board is a pill-shaped button (36 px tall, fully rounded) with its word whole: ${(pills || []).map((p) => p.word).join(', ')}`,
       !!pills && pills.length >= 15 && pills.every((p) => p.h === 36 && p.radius >= 18 && p.word && !p.cut), pills);
-    rec.ok('3e ...each with its own picture, loaded, no two alike; the one showing has the brass rim',
-      !!pills && pills.every((p) => p.icon && p.iw === 20) && new Set(pills.map((p) => p.src)).size === pills.length
-      && pills.filter((p) => p.on).length === 1 && pills.find((p) => p.on).id === 'combat' && pills.find((p) => p.on).rim !== pills.find((p) => !p.on).rim, pills);
+    rec.ok('3e ...each with its own picture, loaded, no two alike; the one showing on the gold pill (v2.3.5501)',
+      !!pills && pills.every((p) => p.icon && p.iw >= 18 && p.iw <= 22) && new Set(pills.map((p) => p.src)).size === pills.length
+      && pills.filter((p) => p.on).length === 1 && pills.find((p) => p.on).id === 'power' && pills.find((p) => p.on).rim === 'pill-gold' && pills.filter((p) => !p.on).every((p) => p.rim === 'pill-plain'), pills);
+
+    /* v2.3.5501: the Level board is no longer the first: picked */
+    await tap(A, '[data-lb-rail] [data-lb-cat="combat"]');
 
     /* ── 4 ── the Level board */
     const lvl = await H.waitFor(A, () => [...document.querySelectorAll('[data-lb-board] [data-board-row]')].map((el) => ({
@@ -253,7 +261,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const ada = lvl.find((r) => r.name === 'Ada'), ghostRow = lvl.find((r) => r.name === 'Ghost');
     rec.ok('4a the Level board lists the players, each with a face and "Lv N"',
       ['Ada', 'Winnie', 'Lou'].every((n) => lvl.some((r) => r.name === n && !r.gone && r.face === 'bust' && /^Lv \d+$/.test(r.value))), lvl);
-    rec.ok('4b the phone\'s own row is lit', !!ada && ada.lit && !lvl.some((r) => r.name !== 'Ada' && r.lit), lvl);
+    rec.ok('4b the phone\'s own row is marked (v2.3.5501: the plain bar below the first three)', !!ada && ada.lit && !lvl.some((r) => r.name !== 'Ada' && r.lit), lvl);
     rec.ok('4c the deleted character keeps its row: grey, its face under a DELETED stamp',
       !!ghostRow && ghostRow.gone && ghostRow.face === 'gone' && ghostRow.stamp === 'DELETED' && /^Lv \d+$/.test(ghostRow.value), ghostRow);
     const grey = await A.page.evaluate(() => {
@@ -263,43 +271,51 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     rec.ok('4d ...really greyed (desaturated and dimmed)', !!grey && /grayscale\(1\)/.test(grey.filter) && Number(grey.opacity) < 0.8, grey);
 
-    /* ── 4e-4g ── the owner's trophies, in the rank's place, shining */
+    /* ── 4e-4g ── v2.3.5501: the laurel medals (the owner's 2026-11-14 sheet), in the rank's place, shining */
     const cups = await H.waitFor(A, () => [...document.querySelectorAll('[data-lb-board] [data-board-row]')].map((el) => {
-      const t = el.querySelector('[data-rank-trophy]');
+      const t = el.querySelector('[data-rank-medal]');
       const img = t && t.querySelector('img');
       const face = el.querySelector('[data-board-face]');
       const b = t ? t.getBoundingClientRect() : null, f = face ? face.getBoundingClientRect() : null;
       const shine = t && t.querySelector('.bt-rank-shine');
       const anims = t ? t.getAnimations({ subtree: true }) : [];
       return {
-        rank: +el.dataset.boardRow, trophy: t ? +t.dataset.rankTrophy : 0, label: t ? t.getAttribute('aria-label') : null,
-        loaded: !!img && img.complete && img.naturalWidth === 120, src: img ? img.getAttribute('src') : null,
-        w: b ? Math.round(b.width) : 0, h: b ? Math.round(b.height) : 0, leftOfFace: !!b && !!f && b.right <= f.left + 1 && b.left >= 0,
+        rank: +el.dataset.boardRow, medal: t ? +t.dataset.rankMedal : 0, label: t ? t.getAttribute('aria-label') : null,
+        loaded: !!img && img.complete && img.naturalWidth > 0, src: img ? img.getAttribute('src') : null,
+        w: b ? Math.round(b.width) : 0, leftOfFace: !!b && !!f && b.right <= f.left + 1 && b.left >= 0,
         shine: !!shine && getComputedStyle(shine).display !== 'none', mask: shine ? (getComputedStyle(shine).webkitMaskImage || getComputedStyle(shine).maskImage || '') : '',
         sparks: t ? t.querySelectorAll('.bt-rank-spark').length : 0, running: anims.filter((a) => a.playState === 'running').length,
         gone: el.dataset.boardGone === '1', grey: img ? getComputedStyle(img).filter : '',
         number: ((el.querySelector('[data-rank-mark="number"]') || {}).textContent || '').trim(),
+        numberColor: el.querySelector('[data-rank-mark="number"]') ? getComputedStyle(el.querySelector('[data-rank-mark="number"]')).color : '',
       };
-    }), (v) => v.length >= 4 && v.slice(0, 4).every((r) => r.loaded), { timeout: 15000, label: 'the trophies loaded' }).catch(() => null);
-    rec.ok('4e the first places wear the owner\'s trophies where the rank was: the gold cup on #1, silver #2, bronze #3, the rosette #4, each left of its face',
-      !!cups && cups.slice(0, 4).every((r, i) => r.trophy === i + 1 && r.label === 'Rank ' + (i + 1) && r.loaded && r.w === 40 && r.h === 40 && r.leftOfFace && !r.number
-        && new RegExp('/icons/ui/rank-' + (i + 1) + '\\.webp').test(r.src)), cups);
-    const live = (cups || []).filter((r) => !r.gone && r.trophy);
-    rec.ok(`4f ...shining: a band of light cut to the trophy's own shape, and its stars (${live.map((r) => r.sparks).join(', ')}), all running`,
-      live.length >= 3 && live.every((r) => r.shine && /rank-\d\.webp/.test(r.mask) && r.sparks === ({ 1: 3, 2: 2, 3: 2, 4: 1, 5: 1 })[r.trophy] && r.running === r.sparks + 1), live);
+    }), (v) => v.length >= 4 && v.slice(0, 3).every((r) => r.loaded), { timeout: 15000, label: 'the medals loaded' }).catch(() => null);
+    rec.ok('4e the first places wear the laurel medals where the rank was: 1, 2, 3, each left of its face; the fourth its number',
+      !!cups && cups.slice(0, 3).every((r, i) => r.medal === i + 1 && r.label === 'Rank ' + (i + 1) && r.loaded && r.w >= 26 && r.leftOfFace && !r.number
+        && new RegExp('/ui/leaderboard/medal-' + (i + 1) + '\\.webp').test(r.src)) && cups[3].medal === 0 && cups[3].number === '4', cups);
+    const live = (cups || []).filter((r) => !r.gone && r.medal);
+    rec.ok(`4f ...shining: a band of light cut to the medal's own shape, and its stars (${live.map((r) => r.sparks).join(', ')}), all running`,
+      live.length >= 2 && live.every((r) => r.shine && /medal-\d\.webp/.test(r.mask) && r.sparks === ({ 1: 3, 2: 2, 3: 2 })[r.medal] && r.running === r.sparks + 1), live);
+    /* v2.3.5501 (the gatekeeper's sitting 10: it passed with nothing checked
+       when Ghost ranked 4th or lower): Ghost's row is always checked -- a
+       medal grey and still in the first three, below them its number in the
+       muted grey (COL.disabled) */
     const dead = (cups || []).find((r) => r.gone);
-    rec.ok('4g a deleted character\'s trophy is grey and still', !!dead && dead.trophy >= 1 && /grayscale\(1\)/.test(dead.grey) && !dead.shine && dead.sparks === 0 && dead.running === 0, dead);
+    rec.ok(`4g a deleted character's rank is grey and still (Ghost at ${dead ? dead.rank : '?'}: ${dead && dead.medal ? 'a medal' : 'a number'})`,
+      !!dead && (dead.medal
+        ? /grayscale\(1\)/.test(dead.grey) && !dead.shine && dead.sparks === 0 && dead.running === 0
+        : dead.number === String(dead.rank) && dead.numberColor === 'rgb(102, 120, 117)' && dead.sparks === 0 && dead.running === 0), dead);
     /* a still of the shine mid-pass and the stars lit, for the picture */
     await A.page.evaluate(() => {
-      for (const t of document.querySelectorAll('[data-rank-trophy]')) for (const a of t.getAnimations({ subtree: true })) {
+      for (const t of document.querySelectorAll('[data-rank-medal]')) for (const a of t.getAnimations({ subtree: true })) {
         const name = a.animationName || '';
         a.pause();
         a.currentTime = name === 'bt-rank-shine' ? 4200 * 0.79 + (parseFloat(getComputedStyle(t).getPropertyValue('--rank-delay')) || 0) * 1000 : 3300 * 0.74 + (parseFloat(getComputedStyle(a.effect.target).animationDelay) || 0) * 1000;
       }
     });
     await A.page.waitForTimeout(250);
-    await shot(A, 'trophies');
-    await A.page.evaluate(() => { for (const t of document.querySelectorAll('[data-rank-trophy]')) for (const a of t.getAnimations({ subtree: true })) a.play(); });
+    await shot(A, 'medals');
+    await A.page.evaluate(() => { for (const t of document.querySelectorAll('[data-rank-medal]')) for (const a of t.getAnimations({ subtree: true })) a.play(); });
 
     /* ── 5 ── the daily spin */
     await tap(A, '[data-lb-rail] [data-lb-cat="spin"]');

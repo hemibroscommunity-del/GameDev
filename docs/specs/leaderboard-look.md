@@ -106,3 +106,109 @@ the owner before the window uses them.
 
 At tag 5500 nothing draws the pieces (the family's draw path is `none`):
 card LB's PR 2 (tag 5501) is the window.
+
+## 3. The window (tag 5501)
+
+`src/ui/mobile/dash/LeaderboardPanel.jsx` and `BoardRow.jsx`, after the
+second mockup (the planning session's reading, 2026-11-14: the layout is the
+second mockup's, the art the sheet's). What it looks like and why is
+`docs/UI-DESIGN-NOTES.md`, "The Leaderboards"; this part is how.
+
+- **The list** (`boardList`): `{title}`, the weapons' boards (`BATTLE`:
+  Overall with `caps.power`, Melee, Bow, Magic, Level), `{divider}`, Kills, AP (`caps.achievements`),
+  the Records (each its own switch, as before), the Skills. 108 px wide
+  (`RAIL_W`); side by side from 328 px wide and 140 tall, else one row of
+  pills over the board (`data-lb-page` `list` / `chips`).
+- **A pill** (`Pill`): the sheet's `pill-plain` (`pill-gold` lit) as a
+  border-image behind it (`BoardRow.jsx` `BarBack`: 40 px ends, the middle
+  stretched), its picture (`CatIcon`: the sheet's tile where the board has
+  `art`, else the game's icon by its opaque box) and its word.
+- **The podium** (`Podium`): the three shields at their CSS sizes (89, 112
+  and 86 wide), scaled by `podiumScale`: the board's width over 295, and its
+  height less the table's head and three rows over 100, at most 1.15; under
+  0.6 it is not drawn. The face sits in the field (29% down, a third of the
+  shield's height), the name on the ribbon (64-79% down, 19% in from each
+  side), the BOARD's value at 79% (`podiumValue`: the level on Level, the
+  weapon's level on its board, the Power on Overall, "1,234 kills",
+  "1,234 AP", the skill's level), so the shields read in the board's order:
+  the boxes measured on the pieces.
+- **The table** (`TableHead`, `BoardRow.jsx` `TableRow`): one CSS grid, the
+  rank 28 px, the player the rest, then the board's columns (`tableOf`). On a
+  board narrower than `WIDE_TABLE` (330 px: an upright phone's, ~250-265 px)
+  the weapons' boards and Level show Lv and EITHER the Total (36) OR the three
+  weapons (24 each), never both: the head's columns after Lv are one button
+  (`data-lb-swap`) that swaps them, its target 44 px tall; Melee, Bow and Magic
+  open on the weapons, Level on the Total. A wider board (a computer, a phone
+  on its side) shows all four. The name then has about 105 px and takes two
+  lines before it is cut (the gatekeeper's sitting 10: at 375 px it had
+  ~16 px). Other boards: Lv (32) and the record (54; a skill's 66, headed by
+  the skill's name, its level a plain number, so a row never shows two "Lv":
+  v2.3.4393's rule). The head sticks to the top as the board scrolls. A row
+  is 30 px on its bar (`rowBar`: gold, silver and bronze for 1-3, plain for
+  your own below them; your own in 1-3 wears a light ring, `mineRing`).
+- **The power index** (card PW; the worker's half #1776). HELD IN PR 2:
+  `powerVersion` returns 0, because `caps-audit` refuses a cap the phone
+  reads before `join.js` sends it, and #1776 is what sends it. Card LB's
+  PR 3 (tag 5502) reads the cap there once #1776 is on main, with its
+  `CAP_GATES` row and `mp-boardslook`'s checks of Overall and the rating
+  (written and run in PR 2's first cut against rows in PW's shape). Then:
+  `caps.power` is
+  the index's version (1 today). With it Overall is in the list
+  (`?category=power`, sorted by Power, `value` the Power) and the column is
+  Power; `powerCells` reads each row's `powerIndex {power, melee, bow, magic,
+  v}`, and only where `v` is the worker's version: any other row is "not yet
+  ranked", a dash, never a 0. The Power is a rating (the owner, through the
+  planning session: the control 3,000, about 200 to 4,700), in full in a
+  38 px column ("4,712"; `compact` only past 9,999, should the scale change);
+  each style short in 24 px (`short`: "2.7k"). The head's "Power?" is a
+  button: a tap shows "400 points ahead = 10× likelier to win" under the head
+  (`POWER_HINT`, the owner's own reading; the head's tooltip too). Without
+  the cap the column is Total: the row's `series` melee, bow and magic
+  levels added up. `CAP_GATES` gets the cap's row in PR 3, not here (no
+  cap is read here). The first mockup's five stat boards are held (the
+  planning session: retired stat names); PW's stat boards (`caps.statboards`)
+  come in PR 3 as a "Stats" group. On a narrow table the "Power?" hint button
+  is not drawn (the swap button holds the column): PR 3 decides where the
+  hint goes there.
+- **The rank** (`RankMark`): the medal for 1-3 (32 x 25 in a records row, 28
+  x 22 in the table), with v2.3.4393's shine and stars (game.css `.bt-rank-*`,
+  unchanged, the sizes inline); from 4 the number.
+- **The art**: `LB_ART(name)` (`?v=2.3.5500`, the pieces' tag); the twenty
+  pieces the window draws (`LB_PIECES`) are asked for as `LeaderboardPanel.jsx`
+  loads (not `BoardRow.jsx`, which the Test panel imports for its faces), the
+  Leaderboards' own script (`lazyPanels.js` `DashLeaderboardPanel`): the
+  window's own art loads with its window. The trophies, rosettes, title frame
+  and silver divider are cut but not drawn.
+
+**Tested** by `tools/qa/mp/mp-boardslook.mjs` (upright, every board, with
+`caps.power` set in the page, sideways, a computer with `wide: true`) and
+`mp-boards` (the boards' content, moved onto the medals and the first
+board's new place).
+
+## 4. Overall, the Power rating and the Stats group (tag 5502)
+
+Card PW's worker halves are on main: #1776 (the power index, `caps.power`
+its version, 2 since the rating) and #1781 (the stat boards,
+`caps.statboards` a count). PR 3 reads both.
+
+- **`powerVersion`** reads `caps.power`. Overall leads the list (the
+  sheet's crown tile) and opens first; `?category=power` ranks by Power.
+- **The Power is OVERALL's.** Its table is Lv, Power (in full), and each
+  style's score (short); a row whose `powerIndex.v` is not the worker's
+  reads "-". The weapons' boards rank by the weapon's level and Level by
+  the level (`leaderboard.js` `SERIES_CATEGORIES`), so they keep the
+  levels: every board shows the numbers it is ranked by.
+- **The hint on a narrow table**: the swap button holds the Power column,
+  so the rating's reading is a small "?" at the end of the Player head (a
+  44 px target), shown with the Power view.
+- **The Stats group** (`STAT_BOARDS`), under a "Stats" heading after Level:
+  `pts_def`, `pts_hp`, `pts_dodge`, `pts_stam`, `pts_eres`, `pts_mana`,
+  `pts_move`, `pts_dmg` (card PW's order, `statboards.js`
+  `STAT_BOARD_IDS`), the first `caps.statboards` of them. Each wears the Bro
+  tab's label and icon (`src/data/prog3.js` `PROG3_BODY_META`, and
+  `PROG3_ATK_META`'s `dmg` row); the damage points' board says "Damage",
+  never "Power" (the planning session: "Power" is Overall's). Its table is
+  Lv and the points under the stat's name; its podium says "N pts".
+- **The caps**: `power` and `statboards` in `CAP_GATES`, each on its own
+  line; their rows in `server/test/caps-audit.test.mjs`'s allowlist are
+  gone (the worker shipped first; card PW's reminder).

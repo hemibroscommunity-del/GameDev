@@ -105,81 +105,113 @@ export function useBoardFaces(rows) {
 
 const FACE_PX = 40;
 
-/* ═══ v2.3.4393: THE FIRST FIVE PLACES WEAR THE OWNER'S TROPHIES ═══
- * The owner, of the first pictures of this page: "This is looking good.  Add
- * these trophies to the left of the ranks.  Add a cool code based effect for
- * shine or slight sparkling."  His sheet: a crowned gold cup (1), a silver
- * cup (2), a bronze cup (3), a yellow rosette (4), a pink rosette (5), each
- * with its number on it (tools/ui/cut-rank-trophies.py -> /icons/ui/
- * rank-<n>.webp, 120 px, 256 colours).
+/* ═══ v2.3.5501: THE LEADERBOARDS' NEW LOOK (card LB; docs/specs/leaderboard-look.md) ═══
+ * The owner, 2026-11-14: "I'd also like something more like this for
+ * leaderboards (mockup and art assets attached)", and of the second mockup,
+ * "This pic is better mock representation".  The pieces are the owner's
+ * sheet cut by tools/ui/cut-leaderboard.mjs (v2.3.5500) into
+ * public/ui/leaderboard/, each at 2 picture px a CSS px on 256 colours.
  *
- * IN THE RANK'S PLACE, at the row's left edge: the trophy carries its number,
- * so "#1" beside it would say it twice, and a phone's row has no 40 px to
- * spare (the name beside "10,000 gold" would be four letters).  From sixth
- * place down the column is the "#6" it was, the same width, so the faces
- * stay in one line.
- *
- * THE SHINE AND THE SPARKLE ARE CODE (game.css .bt-rank-*), nothing drawn or
- * loaded: a band of light crosses the picture every few seconds, cut to the
- * trophy's own shape (the picture is its own CSS mask), and small four-point
- * stars wink on its rim -- three on the gold cup, two on the silver and the
- * bronze, one on each rosette, each in its metal's light.  Transforms and
- * opacity only; each place starts a beat after the one above, so a board's
- * top five glint down the column in turn rather than all at once.  Still
- * under `prefers-reduced-motion`, and on a deleted character's row, whose
- * trophy is grey like the rest of it. */
-const RANK_ART = (n) => '/icons/ui/rank-' + n + '.webp?v=2.3.4355';
-export const RANK_TROPHIES = 5;
-/* where each place's stars sit on its picture (percent of the 40 px box), and
-   how big: on the cup's lip and handles, the rosette's upper petals */
-const SPARKS = {
-  1: [[22, 16, 9], [78, 34, 7], [50, 4, 6]],
-  2: [[24, 22, 8], [76, 40, 6]],
-  3: [[70, 24, 8], [28, 44, 6]],
-  4: [[72, 18, 8]],
-  5: [[28, 18, 8]],
-};
-/* the page's five pictures asked for as its script loads (this file is in the
-   Leaderboards' own chunk), so the first board's rows do not pop them in */
-try {
-  if (typeof Image !== 'undefined') for (let n = 1; n <= RANK_TROPHIES; n++) { const im = new Image(); im.decoding = 'async'; im.src = RANK_ART(n); }
-} catch (_e) { /* a row's own <img> loads it */ }
+ * THE MEMORY MAP'S SLOT ("a window's own art, bigger than an icon"): the
+ * pieces are files in the page, shown by <img> and CSS backgrounds only while
+ * the window is open.  They are asked for as LeaderboardPanel.jsx loads (the
+ * Leaderboards' own piece, loaded the first time the window opens: lazyPanels.js
+ * DashLeaderboardPanel), as the trophies were, so the first board does not pop
+ * them in; nothing holds them once the window is gone but the browser's own
+ * cache.  Not behind the loading screen: a window's own art loads with its
+ * window (lazyPanels.js's rule). */
+export const LB_ART = (name) => '/ui/leaderboard/' + name + '.webp?v=2.3.5500';
+/* every piece the window draws (the trophies, rosettes, title frame and the
+   silver divider are cut but not drawn: the mockups do not use them).  Asked
+   for by LeaderboardPanel.jsx as its script loads, never here: the Test
+   panel (DevWatch.jsx) imports this file for its faces and must not fetch
+   the pieces (the gatekeeper's sitting 10). */
+export const LB_PIECES = ['laurel-left', 'laurel-right', 'crown', 'shield-silver', 'shield-gold', 'shield-bronze',
+  'medal-1', 'medal-2', 'medal-3', 'pill-gold', 'pill-plain', 'bar-gold', 'bar-silver', 'bar-bronze', 'bar-plain',
+  'tile-crown', 'tile-sword', 'tile-bow', 'tile-staff', 'divider-gold'];
 
-/** The rank column: the trophy for the first five places, "#N" below. */
-export function RankMark({ rank, gone }) {
-  if (!(rank >= 1 && rank <= RANK_TROPHIES)) {
+/* THE BARS AND PILLS are kept as their two round ends and a strip of middle
+   (96 px wide; `ends` 40 px, cut-leaderboard.mjs), so a row or a pill of any
+   width wears one as a CSS border-image: the ends whole, the middle stretched.
+   Its own span behind the content (absolute, inset 0), so the border it
+   needs never pushes the content in.  `h` is the picture's height. */
+const BAR_H = { 'bar-gold': 63, 'bar-silver': 63, 'bar-bronze': 61, 'bar-plain': 65, 'pill-gold': 70, 'pill-plain': 63 };
+export function BarBack({ name, dim }) {
+  const h = BAR_H[name] || 63;
+  const v = Math.floor(h / 2) - 1;   /* the slice's top and bottom: the ends' whole curve, a pixel of middle */
+  return (
+    <span aria-hidden="true" data-lb-bar={name} style={{
+      position: 'absolute', inset: 0, pointerEvents: 'none', boxSizing: 'border-box',
+      borderStyle: 'solid', borderColor: 'transparent', borderWidth: `${v / 2}px 20px`,
+      borderImage: `url(${LB_ART(name)}) ${v} 40 ${v} 40 fill / ${v / 2}px 20px stretch`,
+      opacity: dim ? 0.55 : 1,
+    }} />
+  );
+}
+
+/* ═══ THE RANK: the laurel medals for the first three, the number below ═══
+ * (v2.3.4393's trophies for the first five, the owner's 2026-11-09 sheet,
+ * give way to the new sheet's medals 1-3, as both mockups show.)  The
+ * medal's shine and sparkle are v2.3.4393's code (game.css .bt-rank-*: a band
+ * of light cut to the picture's own shape, small stars on the rim), moved onto
+ * the medals: the stars on the laurel's leaves.  From fourth place down the
+ * column is the plain number.  A deleted character's medal is grey and still. */
+export const RANK_MEDALS = 3;
+const MEDAL_PX = { 1: [32, 25], 2: [30, 24], 3: [30, 23] };
+const MEDAL_PX_SMALL = { 1: [28, 22], 2: [27, 21], 3: [27, 21] };   /* a table's 28 px column */
+const SPARKS = {
+  1: [[16, 24, 7], [84, 30, 6], [50, 4, 5]],
+  2: [[18, 28, 6], [82, 40, 5]],
+  3: [[80, 26, 6], [20, 46, 5]],
+};
+
+/** The rank column: the medal for the first three places, the number below.
+ *  `w` the column's width. */
+export function RankMark({ rank, gone, w = 34 }) {
+  if (!(rank >= 1 && rank <= RANK_MEDALS)) {
     return (
       <span data-rank-mark="number" style={{
-        width: 40, flex: 'none', textAlign: 'center', fontSize: 15, fontWeight: 800,
-        color: gone ? COL.disabled : COL.muted, fontVariantNumeric: 'tabular-nums',
-      }}>#{rank}</span>
+        position: 'relative', width: w, flex: 'none', textAlign: 'center', fontSize: 14, fontWeight: 800,
+        color: gone ? COL.disabled : COL.text2, fontVariantNumeric: 'tabular-nums',
+      }}>{rank}</span>
     );
   }
-  const art = RANK_ART(rank);
+  const art = LB_ART('medal-' + rank);
+  const [mw, mh] = (w < 32 ? MEDAL_PX_SMALL : MEDAL_PX)[rank];
   return (
-    <span className={'bt-rank-trophy bt-rank-' + rank + (gone ? ' bt-rank-gone' : '')} data-rank-mark="trophy" data-rank-trophy={rank}
-      role="img" aria-label={'Rank ' + rank}
-      style={{ '--rank-art': 'url(' + art + ')', '--rank-delay': ((rank - 1) * 0.35).toFixed(2) + 's' }}>
-      <img src={art} alt="" draggable={false} />
-      {gone ? null : <span className="bt-rank-shine" aria-hidden="true" />}
-      {gone ? null : SPARKS[rank].map((s, i) => (
-        <span key={i} className="bt-rank-spark" aria-hidden="true"
-          style={{ left: s[0] + '%', top: s[1] + '%', width: s[2], height: s[2], animationDelay: ((rank - 1) * 0.35 + 0.9 + i * 1.1).toFixed(2) + 's' }} />
-      ))}
+    <span style={{ position: 'relative', width: w, flex: 'none', display: 'flex', justifyContent: 'center' }}>
+      <span className={'bt-rank-trophy bt-rank-' + rank + (gone ? ' bt-rank-gone' : '')} data-rank-mark="medal" data-rank-medal={rank}
+        role="img" aria-label={'Rank ' + rank}
+        style={{ width: mw, height: mh, '--rank-art': 'url(' + art + ')', '--rank-delay': ((rank - 1) * 0.35).toFixed(2) + 's' }}>
+        <img src={art} alt="" draggable={false} />
+        {gone ? null : <span className="bt-rank-shine" aria-hidden="true" />}
+        {gone ? null : SPARKS[rank].map((s, i) => (
+          <span key={i} className="bt-rank-spark" aria-hidden="true"
+            style={{ left: s[0] + '%', top: s[1] + '%', width: s[2], height: s[2], animationDelay: ((rank - 1) * 0.35 + 0.9 + i * 1.1).toFixed(2) + 's' }} />
+        ))}
+      </span>
     </span>
   );
 }
 
+/* the row's bar: gold, silver and bronze for the first three, your own row
+   the plain bar, every other row none (the second mockup's plain rows) */
+export const rowBar = (rank, mine) => (rank === 1 ? 'bar-gold' : rank === 2 ? 'bar-silver' : rank === 3 ? 'bar-bronze' : mine ? 'bar-plain' : null);
+/* your own row in the first three has its metal's bar like the others: a
+   light ring round it marks it yours (the gatekeeper's sitting 10).  An
+   outline follows the row's round ends and takes no room. */
+export const mineRing = (mine, rank) => (mine && rank <= 3 ? { outline: '2px solid #F4F0E7', outlineOffset: -1 } : null);
+
 /** The picture tile: the bust, or the name's initial; grey with DELETED
  *  across it for a deleted character. */
-export function BoardFace({ src, name, gone }) {
+export function BoardFace({ src, name, gone, px = FACE_PX }) {
   const initial = String(name || '?').trim().slice(0, 1).toUpperCase() || '?';
   return (
     <span data-board-face={gone ? 'gone' : src ? 'bust' : 'initial'} style={{
-      position: 'relative', flex: 'none', width: FACE_PX, height: FACE_PX, display: 'block',
+      position: 'relative', flex: 'none', width: px, height: px, display: 'block',
     }}>
       <span style={{
-        position: 'absolute', inset: 0, borderRadius: 9, overflow: 'hidden',
+        position: 'absolute', inset: 0, borderRadius: Math.round(px * 0.22), overflow: 'hidden',
         background: COL.wellSoft, border: `1px solid ${gone ? COL.border : COL.borderStrong}`, boxSizing: 'border-box',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         /* the stand-in: desaturated and dimmed, never hidden */
@@ -188,7 +220,7 @@ export function BoardFace({ src, name, gone }) {
         {src ? (
           <img src={src} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover', imageRendering: 'pixelated' }} />
         ) : (
-          <span aria-hidden="true" style={{ fontSize: 18, fontWeight: 800, color: COL.text2 }}>{initial}</span>
+          <span aria-hidden="true" style={{ fontSize: Math.round(px * 0.45), fontWeight: 800, color: COL.text2 }}>{initial}</span>
         )}
       </span>
       {gone ? (
@@ -208,53 +240,118 @@ export function BoardFace({ src, name, gone }) {
   );
 }
 
+/* the name plate's level, as the world draws it beside a name: a small pill */
+export function LvPill({ lv, gone, value, small, text }) {
+  if (!(lv > 0) && !text) return null;
+  return (
+    <span {...(text ? { 'data-lb-pill-value': '' } : { 'data-board-lv': lv })} {...(value ? { 'data-lb-value': '' } : null)} title={text ? undefined : 'Level ' + lv} style={{
+      flex: 'none', minWidth: 18, height: small ? 16 : 18, padding: small ? '0 4px' : '0 5px', borderRadius: 9, boxSizing: 'border-box',
+      background: gone ? 'transparent' : 'rgba(11, 22, 27, 0.72)', border: `1px solid ${gone ? COL.border : COL.edgeWarm}`,
+      color: gone ? COL.muted : COL.text, fontSize: small ? 10.5 : 11.5, fontWeight: 800, lineHeight: small ? '14px' : '16px', textAlign: 'center',
+      fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+    }}>{text || 'Lv ' + lv}</span>
+  );
+}
+
 /** One row.  `rank` 1-based; `row` {name, lv, gone}; `face` its bust (or
  *  none); `line` the words under the name (a node or a string, optional);
- *  `value` the record, `unit` a small word after it; `mine` lights it. */
+ *  `value` the record, `unit` a small word after it; `mine` lights it.
+ *  v2.3.5501: the new look's row -- the medal, the bar under the first three
+ *  (and your own), a crown by the first name.  The records' boards (the spin,
+ *  Ace's flips, the fish) draw this one; the ranks' boards draw TableRow. */
 export function BoardRow({ rank, row, face, line, value, unit, mine, hook }) {
   const gone = !!(row && row.gone);
   const name = (row && (row.name || row.id || row.pid)) || 'Bro';
   const lv = Math.floor(Number(row && row.lv) || 0);
+  const bar = gone ? null : rowBar(rank, mine);
   return (
-    <div {...(hook || null)} data-board-row={rank} data-board-gone={gone ? '1' : undefined}
+    <div {...(hook || null)} data-board-row={rank} data-board-gone={gone ? '1' : undefined} data-board-mine={mine ? '1' : undefined}
       aria-label={gone ? name + ', a deleted character' : undefined}
       style={{
-        display: 'flex', alignItems: 'center', gap: 8, minHeight: 52, padding: '0 8px 0 4px',
-        borderBottom: `1px solid ${COL.divider}`,
+        position: 'relative', display: 'flex', alignItems: 'center', gap: 8, minHeight: 48, padding: '2px 12px 2px 6px', margin: '0 0 3px',
+        borderBottom: bar ? 'none' : `1px solid ${COL.divider}`,
         /* Finding yourself on a fifty-row board is the whole reason to open
-           it; without this you scan every name. */
-        background: mine ? COL.accentFill : 'transparent',
+           it; without this you scan every name.  (Below the first three your
+           own row wears the plain bar too.) */
+        background: mine ? COL.accentFill : 'transparent', borderRadius: bar ? 999 : 0,
+        ...mineRing(mine, rank),
       }}>
-      <RankMark rank={rank} gone={gone} />
-      <BoardFace src={face} name={name} gone={gone} />
-      <span style={{ flex: 1, minWidth: 0, display: 'block' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-          <span data-board-name="" style={{
-            minWidth: 0, fontSize: 15, fontWeight: 700, color: gone ? COL.muted : COL.text,
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>{name}</span>
-          {/* the name plate's level, as the world draws it beside a name */}
-          {lv > 0 ? (
-            <span data-board-lv={lv} title={'Level ' + lv} style={{
-              flex: 'none', minWidth: 18, height: 18, padding: '0 5px', borderRadius: 9, boxSizing: 'border-box',
-              background: gone ? 'transparent' : COL.well, border: `1px solid ${gone ? COL.border : COL.edgeWarm}`,
-              color: gone ? COL.muted : COL.accent, fontSize: 12, fontWeight: 800, lineHeight: '16px', textAlign: 'center',
-              fontVariantNumeric: 'tabular-nums',
-            }}><span style={{ fontWeight: 700, opacity: 0.8 }}>Lv </span>{lv}</span>
+      {bar ? <BarBack name={bar} /> : null}
+      <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+        <RankMark rank={rank} gone={gone} />
+        <BoardFace src={face} name={name} gone={gone} px={36} />
+        <span style={{ flex: 1, minWidth: 0, display: 'block' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+            <span data-board-name="" style={{
+              minWidth: 0, fontSize: 14, fontWeight: 700, color: gone ? COL.muted : COL.text,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textShadow: bar ? '0 1px 2px rgba(0,0,0,.7)' : 'none',
+            }}>{name}</span>
+            {rank === 1 && !gone ? <Crown /> : null}
+            <LvPill lv={lv} gone={gone} />
+          </span>
+          {line ? (
+            <span data-board-line="" style={{
+              display: 'block', marginTop: 1, fontSize: 12, fontWeight: 600, color: gone ? COL.disabled : COL.text2,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>{line}</span>
           ) : null}
         </span>
-        {line ? (
-          <span data-board-line="" style={{
-            display: 'block', marginTop: 1, fontSize: 12.5, fontWeight: 600, color: gone ? COL.disabled : COL.text2,
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>{line}</span>
-        ) : null}
+        {/* the record: last in the row, so a row reads "1 name ... value" */}
+        <span data-lb-value="" style={{
+          flex: 'none', textAlign: 'right', fontSize: 15, fontWeight: 800, color: gone ? COL.muted : rank <= 3 ? '#FFE7A6' : COL.text,
+          fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', textShadow: bar ? '0 1px 2px rgba(0,0,0,.7)' : 'none',
+        }}>{value}{unit ? <span style={{ fontSize: 11.5, fontWeight: 700, color: gone ? COL.disabled : COL.text2 }}> {unit}</span> : null}</span>
       </span>
-      {/* the record: last in the row, so a row reads "#1 name ... value" */}
-      <span data-lb-value="" style={{
-        flex: 'none', textAlign: 'right', fontSize: 16, fontWeight: 800, color: gone ? COL.muted : COL.text,
-        fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
-      }}>{value}{unit ? <span style={{ fontSize: 12, fontWeight: 700, color: gone ? COL.disabled : COL.text2 }}> {unit}</span> : null}</span>
+    </div>
+  );
+}
+
+/** the crown by the first name (the second mockup) */
+export function Crown() {
+  return <img data-lb-crown="" src={LB_ART('crown')} alt="" aria-hidden="true" draggable={false} style={{ flex: 'none', width: 15, height: 'auto', display: 'block' }} />;
+}
+
+/** One row of a ranks board's table (v2.3.5501): the rank, the face, the name
+ *  (a crown by the first), then `cells` [{ key, text, strong, value, w }]:
+ *  the columns the board's head names (TableHead), each `w` px wide, `value`
+ *  marking the one the board ranks by.  The level is a cell too (`lv`). */
+export function TableRow({ rank, row, face, cells, mine, cols }) {
+  const gone = !!(row && row.gone);
+  const name = (row && (row.name || row.id || row.pid)) || 'Bro';
+  const bar = gone ? null : rowBar(rank, mine);
+  return (
+    <div data-board-row={rank} data-board-gone={gone ? '1' : undefined} data-board-mine={mine ? '1' : undefined}
+      aria-label={gone ? name + ', a deleted character' : mine ? name + ', you' : undefined}
+      style={{
+        position: 'relative', display: 'grid', gridTemplateColumns: cols, alignItems: 'center', columnGap: 3,
+        minHeight: 30, padding: '0 9px 0 1px', margin: '0 0 2px',
+        borderBottom: bar ? 'none' : `1px solid ${COL.divider}`,
+        background: mine && !bar ? COL.accentFill : 'transparent', borderRadius: bar ? 999 : 0,
+        ...mineRing(mine, rank),
+      }}>
+      {bar ? <BarBack name={bar} /> : null}
+      <RankMark rank={rank} gone={gone} w={28} />
+      <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+        <BoardFace src={face} name={name} gone={gone} px={22} />
+        {/* the whole name: on two lines where one is too narrow (an upright
+            375 px phone), cut only past the second (the gatekeeper's sitting 10) */}
+        <span data-board-name="" style={{
+          minWidth: 0, fontSize: 12, fontWeight: 700, lineHeight: '13px', color: gone ? COL.muted : COL.text,
+          display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, overflow: 'hidden', overflowWrap: 'anywhere',
+          textShadow: bar ? '0 1px 2px rgba(0,0,0,.7)' : 'none',
+        }}>{name}</span>
+        {rank === 1 && !gone ? <Crown /> : null}
+      </span>
+      {cells.map((c) => (c.key === 'lv' ? (
+        <span key="lv" style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}><LvPill lv={c.lv} gone={gone} value={c.value} small /></span>
+      ) : (
+        <span key={c.key} data-lb-col={c.key} {...(c.value ? { 'data-lb-value': '' } : null)} style={{
+          position: 'relative', textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums',
+          fontSize: c.strong ? 13 : 11.5, fontWeight: c.strong || c.value ? 800 : 600,
+          color: gone ? COL.muted : c.strong ? '#FFE7A6' : c.value ? COL.text : COL.text2,
+          textShadow: bar ? '0 1px 2px rgba(0,0,0,.7)' : 'none',
+        }}>{c.text}</span>
+      )))}
     </div>
   );
 }
