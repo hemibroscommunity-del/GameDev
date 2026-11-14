@@ -693,7 +693,17 @@ const _PACK_WORKER_OFF = (() => { try { return /(^|[?&])packworker=(0|off|false)
 /* QA (the planning session's condition): how long a sheet waited for the
    worker, asked to answered -- it may queue behind a fish bake */
 const _workerWait = { sheets: 0, maxMs: 0, sumMs: 0, last: [] };
-if (typeof window !== 'undefined') window.__btGearWorkerWait = () => ({ ..._workerWait, last: _workerWait.last.slice() });
+/* ...and the page's own road for the same sheets (?packworker=0), asked to
+   drawable: the same piece hidden as long, so the two compare */
+const _pageWait = { sheets: 0, maxMs: 0, sumMs: 0, last: [] };
+function _noteWait(W, ms) {
+  W.sheets++;
+  W.sumMs += ms;
+  W.maxMs = Math.max(W.maxMs, ms);
+  W.last.push(Math.round(ms));
+  if (W.last.length > 40) W.last.shift();
+}
+if (typeof window !== 'undefined') window.__btGearWorkerWait = () => ({ ..._workerWait, last: _workerWait.last.slice(), page: { ..._pageWait, last: _pageWait.last.slice() } });
 export function shirtWorkerOff() { return _SHIRT_WORKER_OFF; }   /* effectsRenderer.js's stand-ins ask too */
 /* v2.3.5014: a sheet's job while it is on its way.  Ten drawings on screen
    and eight kept (MAX_ART_KEYS): a sheet let go of while it waited was asked
@@ -719,8 +729,7 @@ function _buildShirtOnWorker(key, slot, item, pose, dir, stampArt) {
     if (!r) return _buildSheet(key, slot, item, pose, dir, 0, stampArt, true);
     const t0 = performance.now();
     const waited = t0 - asked;   /* v2.3.5253: the wait, for QA */
-    _workerWait.sheets++; _workerWait.sumMs += waited; _workerWait.maxMs = Math.max(_workerWait.maxMs, waited);
-    _workerWait.last.push(Math.round(waited)); if (_workerWait.last.length > 40) _workerWait.last.shift();
+    _noteWait(_workerWait, waited);
     const fw = r.fw, fh = r.fh;
     if (r.cells) { _trimStats.sheets++; _trimStats.fullBytes += r.fullW * fh * 4; _trimStats.packedBytes += r.W * r.H * 4; }
     else { _trimStats.uncropped++; }
@@ -754,6 +763,8 @@ function _buildSheet(key, slot, item, pose, dir, attempt = 0, stampArt = null, o
   const packInPlay = !stampArt && !_PACK_WORKER_OFF && TRIM_SLOTS.has(slot) && TRIM_POSES.has(pose) && _gearInPlay();
   if ((stampArt || packInPlay) && attempt === 0 && !onPage && !_SHIRT_WORKER_OFF && bodyWorkerWanted()) return _buildShirtOnWorker(key, slot, item, pose, dir, stampArt);
   _sheets[key] = 'loading';
+  /* v2.3.5253: a sheet the worker would have packed, packed here instead: its wait, for QA */
+  const askedOnPage = (attempt === 0 && !stampArt && TRIM_SLOTS.has(slot) && TRIM_POSES.has(pose) && _gearInPlay()) ? performance.now() : 0;
   /* Returns a promise that ALWAYS resolves (missing sheet -> []), so callers
      that want to await a full preload don't hang on a 404. */
   const bust = (attempt > 0 ? `&r=${attempt}` : '') + (_gearRound[key] ? `&g=${_gearRound[key]}` : '');   /* v2.3.3870: + the later round */
@@ -806,6 +817,7 @@ function _buildSheet(key, slot, item, pose, dir, attempt = 0, stampArt = null, o
       out.push(new Texture({ source: src, frame: new Rectangle(i * fw, 0, fw, fh) }));
     }
     _sheets[key] = out;
+    if (askedOnPage) _noteWait(_pageWait, performance.now() - askedOnPage);   /* v2.3.5253 */
     /* v2.3.3702: the packed sheet (or the upscale / dressed-shirt canvas made
        for this sheet alone) as an image of itself; the file's own Image, for a
        sheet sliced raw and not packed, is one already */
