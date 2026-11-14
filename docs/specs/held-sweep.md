@@ -211,23 +211,40 @@ The beat stays, but as a React **transition**: React draws it in pieces of
 
 `tools/qa/mp/held-budget.mjs` `KNOWN` lists every family still over a general
 line, with its line, why, and what fixes it. The tour fails when a listed
-family grows past its line or an unlisted one passes the general line. In
-rank order:
+family grows past its line or an unlisted one passes the general line.
 
-| family (its key in `KNOWN`) | its line | why it is over | what fixes it |
-|---|---|---|---|
-| `body-bake` | 13 ms (v2.3.4960; was 220), 12 at the crowd's a-ink, b-fish, c-armour1, c-armour8, d-prints, h-eight (v2.3.5013; was 120) | v2.3.4930: in play every one of these bakes runs on a worker (`docs/specs/body-bake-worker.md`). Re-timed 2026-11-12 (v2.3.4960): none in the main tour or at c-armour1, c-armour8, d-prints. h-eight was 227 ms, 29 bakes on the page. **v2.3.5013: found and fixed.** Not the heads (the numbers draw them since v2.3.4961) and not a stalled worker: the 32-frame fish sheets of the armoured players who had cast at c-armour8, each job an async run of its own, so a worker's four answered only together, 19 to 25 s after the ask; the 20 s watch let both workers go and the page baked the rest (208 to 238 ms, 7 times). Now one job at a time with a beat between its steps: h-eight none, three runs (11.1 / 9.1 / 10.3 ms the longest of any family) | the fish sheet as colour numbers (lookBodyRefused passes it) would take the 4 to 6 s a sheet off this box's worker too |
-| `gear-sheet` | 195 ms; 12 at the crowd's d-prints (v2.3.5014) | a drawn shirt composed on the page for each pose (the crowd tour). **v2.3.5014: on the body bake's worker in play** (`docs/specs/body-bake-worker.md`, "A drawn shirt"): d-prints none, three runs (was 180.7 to 238.9 ms, 7 to 15 times) | the rest of the family was not re-timed |
-| `portrait` | 40 ms (v2.3.4960; was 150) | the Leaderboards' faces are 11 ms now (g-boards, was 149); what is left is the bag's own portrait drawn as armour goes on, 37 ms (armour) | draw it a few rows a frame |
-| `masked-bake` | 24 ms (v2.3.4870; was 140) | the worker job's page-side part (frames handed over as pictures): the cut itself no longer runs on the page in play -- another player's frame is drawn plain until the worker answers, as yours was | hand the worker the sheets once and send rectangles; prewarm the poses of what was just put on |
-| `pack-page` | 20 ms (v2.3.4873; was 80) | a gear sheet first drawn in play, now packed a few ms at a time (`gearSheets.js` `_gearPack`; was one go, 21 to 59 ms): one cell's read and the hand-off, 9 to 15 ms | the strip door for gear strips (256-colour files, packed on the worker) |
-| `gc` | 60 ms | the browser's garbage collector | make less garbage a frame (OPTIMIZATION-ROADMAP's pools) |
-| `the frame itself` | 70 ms | this box plays a quarter of a second of game in each frame | `mp-phoneframe` is the measure at a phone's rate; here the line stops it growing |
-| `screen-check` | 260 ms | only with a second page on this box's one software chip; one page: 0 to 2 ms | nothing here; on a phone the frame strip names it if it is ever 4 ms |
-| `strip-made` | 24 ms | the page's part of a strip coming in (its numbers put on its bundle's row, handed to the chip) | number the strip for its row on the worker |
-| `ui:*` | 16 ms | one component drawn in one piece (the gear tab is one function of 10 ms) | split the gear tab |
-| `other: BT_AUDIO$1._fold > foldToMono` | 20 ms (v2.3.4960; was 30) | a two-sided sound folded to one on its first play, 19 ms once | fold as it is decoded |
-| ~~`other: _flushOutbox > Wrapped.ws.send`~~ | off the list (v2.3.4960) | 4.7 ms at most in the 2026-11-12 tours (was 18 once); `other: createObjectURL` came off too (9.3 at most) | |
+**Whose it is (v2.3.5041).** Each row also says whose it is to bring down
+(`whose`): **ours** (the game's own work on the page), **the box's** (this QA
+box's software graphics chip, and the quarter second of game it plays in one
+frame: a phone has neither) or **the browser's** (its garbage collector: the
+game can only give it less to do). The grand plan's step 3.1 is done when no
+row is ours (`held-budget.mjs` `debtOf('ours')`, the count its scoreboard
+reads). Today: ten ours, two the box's, one the browser's. A new family is
+ours until a measurement says otherwise: `held-sweep.test` 7b3 holds the
+box's and the browser's to the three below, and 7b4 holds this table to
+`KNOWN`, row for row. Their break proofs (the grand plan's rule 8), each run
+by hand: `whose` taken off `strip-made` turns 7b2, 7b3 and 7b4 red;
+`pack-page` called the box's, in the list and this table both, turns 7b3
+red; the `sweepPicsOnce` row taken out of this table turns 7b4 red.
+
+All thirteen (the first five by their old rank, then the rest):
+
+| family (its key in `KNOWN`) | whose | its line | why it is over | what fixes it |
+|---|---|---|---|---|
+| `body-bake` | ours | 13 ms (v2.3.4960; was 220), 12 at the crowd's a-ink, b-fish, c-armour1, c-armour8, d-prints, h-eight (v2.3.5013; was 120) | v2.3.4930: in play every one of these bakes runs on a worker (`docs/specs/body-bake-worker.md`). Re-timed 2026-11-12 (v2.3.4960): none in the main tour or at c-armour1, c-armour8, d-prints. h-eight was 227 ms, 29 bakes on the page. **v2.3.5013: found and fixed.** Not the heads (the numbers draw them since v2.3.4961) and not a stalled worker: the 32-frame fish sheets of the armoured players who had cast at c-armour8, each job an async run of its own, so a worker's four answered only together, 19 to 25 s after the ask; the 20 s watch let both workers go and the page baked the rest (208 to 238 ms, 7 times). Now one job at a time with a beat between its steps: h-eight none, three runs (11.1 / 9.1 / 10.3 ms the longest of any family) | the fish sheet as colour numbers (lookBodyRefused passes it) would take the 4 to 6 s a sheet off this box's worker too |
+| `gear-sheet` | ours | 195 ms; 12 at the crowd's d-prints (v2.3.5014) | a drawn shirt composed on the page for each pose (the crowd tour). **v2.3.5014: on the body bake's worker in play** (`docs/specs/body-bake-worker.md`, "A drawn shirt"): d-prints none, three runs (was 180.7 to 238.9 ms, 7 to 15 times) | the rest of the family was not re-timed |
+| `portrait` | ours | 40 ms (v2.3.4960; was 150) | the Leaderboards' faces are 11 ms now (g-boards, was 149); what is left is the bag's own portrait drawn as armour goes on, 37 ms (armour) | draw it a few rows a frame |
+| `masked-bake` | ours | 24 ms (v2.3.4870; was 140) | the worker job's page-side part (frames handed over as pictures): the cut itself no longer runs on the page in play -- another player's frame is drawn plain until the worker answers, as yours was | hand the worker the sheets once and send rectangles; prewarm the poses of what was just put on |
+| `pack-page` | ours | 20 ms (v2.3.4873; was 80) | a gear sheet first drawn in play, now packed a few ms at a time (`gearSheets.js` `_gearPack`; was one go, 21 to 59 ms): one cell's read and the hand-off, 9 to 15 ms | the strip door for gear strips (256-colour files, packed on the worker) |
+| `gc` | the browser's | 60 ms | the browser's garbage collector | make less garbage a frame (OPTIMIZATION-ROADMAP's pools) |
+| `the frame itself` | the box's | 70 ms | this box plays a quarter of a second of game in each frame | `mp-phoneframe` is the measure at a phone's rate; here the line stops it growing |
+| `screen-check` | the box's | 260 ms | only with a second page on this box's one software chip; one page: 0 to 2 ms | nothing here; on a phone the frame strip names it if it is ever 4 ms |
+| `strip-made` | ours | 24 ms | the page's part of a strip coming in (its numbers put on its bundle's row, handed to the chip) | number the strip for its row on the worker |
+| `ui:*` | ours | 16 ms | one component drawn in one piece (the gear tab is one function of 10 ms) | split the gear tab |
+| `other: BT_AUDIO$1._fold > foldToMono` | ours | 20 ms (v2.3.4960; was 30) | a two-sided sound folded to one on its first play, 19 ms once | fold as it is decoded |
+| `other: R > J` | ours | 20 ms (v2.3.4872) | React working through the redraw an equip causes (the gear tab, the band and the bag at once) where no one of the game's components is the outermost named one: 15 to 17 ms at the `armour` station | name the components with React's profiler; then split or `startTransition` the redraw |
+| `other: wrapped > sweepPicsOnce` | ours | 16 ms (v2.3.4499) | `picsOnce.js`'s sweep of the cache's pictures, up to 15 ms with the crowd's pictures in it | sweep a slice a turn |
+| ~~`other: _flushOutbox > Wrapped.ws.send`~~ | | off the list (v2.3.4960) | 4.7 ms at most in the 2026-11-12 tours (was 18 once); `other: createObjectURL` came off too (9.3 at most) | |
 
 Not on that list because the tour cannot see them:
 
