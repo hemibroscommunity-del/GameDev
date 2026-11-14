@@ -225,6 +225,14 @@ const PAGE_TOOLS = () => {
           tex = (t && t.label) || (src && src.label) || (res && res.src ? String(res.src).split('/').pop().split('?')[0] : null)
             || (src ? `${src.width}x${src.height}` : null);
         } catch (e) { /* none */ }
+        /* v2.3.5428 (card J2): a world TREE is not a piece of the bro's
+           animation.  The depth sort moves a tree between `entities` and
+           `gatherNodesFront` (both watched) as the bro's ground line passes
+           its own (depthSort.js), and the gather layer draws a tree that
+           comes into view; one drawn after the action began read as its
+           leftover (two pines beside the fire: the cook's and the fire's
+           "after it", red once the cook ran again).  Its picture names it */
+        try { const rs = c.texture && c.texture.source && c.texture.source.resource; if (rs && /\/sprites\/trees\//.test(String(rs.src || ''))) continue; } catch (e) { /* not a picture */ }
         out.push({ layer: layer.label, label, w: Math.round(b.width), h: Math.round(b.height), tex, alpha: +(c.alpha || 0).toFixed(2),
           x: Math.round(b.x - px), y: Math.round(b.y - py), kids: c.children ? c.children.length : 0 });
       }
