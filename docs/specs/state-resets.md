@@ -260,3 +260,28 @@ Left `sitting`: the death rows (`S._sf`, `S._stf`, `S._shieldUp`,
 | `S._nodeResyncT`, `S._pendingZoneNodes` | kept: the zone entry's own step (`nodeSync.js onZoneEntered`); a reset at the door would drop the snapshot it waits for |
 
 Left `sitting`: `S._stunEnd`, a death row.
+
+## PR 4, tag 5208: world (v2.3.5208)
+
+70 rows decided, which takes `SITTING_LINE` from 303 to 233. One reset
+(switch `?worldreset`):
+
+| Row | Decided |
+|---|---|
+| `S.arrows`, `S.hitParticles`, `S.deathExplosions`, `S._ambientParticles` | `zone`, `value []`: `zoneTransitions.js leavePlaceDebris`. Every way wipes them in a clear block of its own today (the respawn's 0.4 s after its flip, under its veil); the door does it at the flip, for every way, a new one included. The blocks stay |
+| the trip's own (`S._enteredFromHub`, `S._zoneLoading`, `S._farmBack`, ...) | kept: written by the way that moves you on both sides of the door (`_enteredFromHub` on the line before `changeZone`) |
+| the dungeon's six (`S._inDungeon`, `S._dungeonBack`, ...) | kept: the dungeon's door (PR 5) owns them |
+| the Wheel's ground (`wheelTrial.js`'s fifteen, `worldTrial.js _ready`, `_lastSurface`) | kept: kept on purpose for 5 s after you leave, then stopped whole |
+| `wheelBreak.js`'s four | kept: a broken object mends by its own clock; a reset would mend everything on a step into a dungeon |
+| the old map's tidal and hollows fields (`S._swimming`, `S._diveAir`, ...) | kept: lands the world no longer opens |
+| No man's land's (`S._nmlLevel`, `S._nmlLocks`, `S._nmlSelf`, `nmlAsk.js _ask`, `noMansLand.js _note`) | kept: worked out from where you stand, or the worker's word on its own clocks. No man's land is a region of the Wheel, not a place: the zone's door never marks leaving it |
+| `S.currentZone`, `S.map`, `S.monsters`, `S._currentDepth`, `S._spawn*`, `S._bodyPlaceDue`, and the rest | kept: the door's own field; made by every way in; trips that span the door by design; said in `state_sync` before the rejoin's door |
+
+**Card D's Found, `S._nmlAsked`, is kept** (the planning session's call:
+the owner's own words decide it). The window that asks "Attack <name>?" comes
+once per player and answer. Only a window let go unanswered comes off the set
+(`nmlAskClose`), and their new attack re-opens the question
+(`nmlAttackedSince`). Card D read its note ("this visit") as a fault. But the
+owner's words, when the window was made, were "the window won't pop up again".
+Clearing the set would bring the window back. It is also not a change of place,
+so the zone's door could not do it. 70 of 70 rows decided, 303 -> 233.

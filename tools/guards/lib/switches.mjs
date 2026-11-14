@@ -406,5 +406,6 @@ export const SWITCHES = Object.freeze([
   { name: '?wayback', side: 'page', system: 'world', kind: 'lever', born: 3021, thrown: 'present', risk: 'none', needs: [], fallback: 'no', off: 'The world trial: the way back shown.' },
   { name: '?wdgeterror', side: 'page', system: 'ui', kind: 'switch', born: 3450, thrown: 'present', risk: 'logic', needs: [], fallback: 'no', off: 'The world map\'s thumbnail asks the chip for errors every time, as before.' },
   { name: '?wheelwhole', side: 'page', system: 'wire', kind: 'switch', born: 3318, thrown: 'present', risk: 'logic', needs: [], fallback: 'no', off: 'Asks for every world monster on the way in, not only those near.' },
+  { name: '?worldreset', side: 'page', system: 'world', kind: 'switch', born: 5208, thrown: '=0', risk: 'logic', needs: [], fallback: 'no', off: 'Your arrows, the hit and death particles and the place\'s air are emptied only by each way\'s own clear block again (the respawn\'s 0.4 s after its flip, under its veil), not at the zone door.' },
   { name: '?xpfly', side: 'page', system: 'combat', kind: 'switch', born: 3893, thrown: '=0', risk: 'logic', needs: [], fallback: 'no', off: 'A kill\'s XP does not fly to the bar.' },
 ]);
