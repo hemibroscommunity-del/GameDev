@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "3da9f23118c7095af1a4325d27c151f9327ce8a9",
+  "tree": "73aec039ed587cdc7de89b9e099b569c7a2edeac",
+  "committedAt": "2026-11-14T00:06:40-08:00",
+  "subject": "Merge pull request #1732 from hemibroscommunity-del/claude/plan-u-8-render",
+  "files": 7547,
+  "bytes": 948475458,
+  "listingSha256": "b3ffcb2c9296050e998da9efceb90f2f256c00e88dd9f48d5eda310210fd57a0",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

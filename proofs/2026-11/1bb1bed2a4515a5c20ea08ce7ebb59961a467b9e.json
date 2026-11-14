@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "1bb1bed2a4515a5c20ea08ce7ebb59961a467b9e",
+  "tree": "027ce50220ebaf359a79618cd9c00187320487d7",
+  "committedAt": "2026-11-14T00:07:06-08:00",
+  "subject": "Merge pull request #1733 from hemibroscommunity-del/claude/grand-plan-h-8-ui",
+  "files": 7549,
+  "bytes": 948637218,
+  "listingSha256": "05e22263a628e17f032ca074ace8c0898ebffc96754201e43a55f4130e5b1166",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

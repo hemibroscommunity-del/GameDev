@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "002c40893a8786ba131599cfbfe20ca46b4be809",
+  "tree": "b036d2dd1133cfb337450737889caf84b7311a0e",
+  "committedAt": "2026-11-14T00:07:37-08:00",
+  "subject": "Merge pull request #1737 from hemibroscommunity-del/claude/plan-v-6-look-tables",
+  "files": 7556,
+  "bytes": 948687341,
+  "listingSha256": "6c07cc37ec518cdfb08bbff5decb40ecdbc3fd39911354b67f624d792bcde400",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
