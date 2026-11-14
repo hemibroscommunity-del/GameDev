@@ -1,6 +1,6 @@
 card: A
 branch: claude/plan-a-5-room-row (one branch a PR, each begun from the one before: -1- to -7-; merge them in order)
-prs: #1688, #1692, #1703, #1706 (merged); #1708 (5124): mended for sitting 5, ready; #1711 (5125) brought in line
+prs: #1688, #1692, #1703, #1706 (merged); #1708 (5124): mended for sitting 6, ready; #1711 (5125) brought in line
 state: ready
 
 ## Done
@@ -15,7 +15,9 @@ state: ready
   put of the book spending one (the door's too: the storage's wrapper),
   a turn beyond a put running; `roomrow: false` stops it; two last-outs
   in one put never side by side. roomrow.test 10, cost-guard 15c (an
-  hour of storms: 14 rows, line 18), SHAPES's book row.
+  hour of storms: 14 rows, line 18), SHAPES's book row. Sitting 6's: a
+  save refused owes the book too (a `newer` refusal comes at the join);
+  roomrow §3 reads the stored book alone.
 
 ## Next
 

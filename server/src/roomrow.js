@@ -57,11 +57,19 @@
  * room, no join needed, rewrote the day's whole record: up to 28,800 a day
  * from one address, where the book writes at most 288; and a kick wrote it
  * twice, its own leave and the runtime's close after it):
- *   - only after a JOIN since the last such write (`owed`, set where a join
- *     is counted).  Every report and every coin the book keeps comes from a
- *     joined socket, and a joined socket never outlives an emptying, so a
- *     join is what makes anything new; a socket that never joins writes
- *     nothing, and the runtime's close after a kick finds nothing owed;
+ *   - only after a JOIN or a SAVE REFUSED since the last such write
+ *     (`owed`, set where each is counted).  Every report and every coin the
+ *     book keeps comes from a joined socket, and a joined socket never
+ *     outlives an emptying, so a join is what makes most of it new; a save
+ *     refused is the one count that comes without one (sitting 6: a
+ *     character a newer worker saved is refused AT the join, so after a
+ *     rollback the owner's join was never counted and the refusal never
+ *     reached the book).  Neither is a client's to cause at will (a refused
+ *     put is the storage's, `newer` a newer worker's save).  A socket that
+ *     never joins writes nothing, and the runtime's close after a kick finds
+ *     nothing owed.  A wake with no join keeps its `restarts` in memory
+ *     only, lost when the room is put away (accepted: a wake nobody joined
+ *     is not worth a row);
  *   - at the book's own pace on the whole: LASTOUT.HAND turns in hand (a
  *     sitting's reloads), one more each LASTOUT.EVERY_MS, and EVERY put of
  *     the book spends one as it lands, the door's own paced puts included
@@ -213,6 +221,10 @@ export const roomRowMethods = {
     m.c.refused[i]++;
     m.refused[why === 'newer' ? 'newer' : 'put']++;
     m.refused.lastAt = typeof now === 'number' ? now : Date.now();
+    /* v2.3.5124 (sitting 6's review): something new for the book at the last
+       one out -- a character refused as `newer` is refused AT the join,
+       before any state_sync, so no join is ever counted to owe it */
+    m.owed = true;
   },
 
   /** Card E's step 4.5 (its PR 9) reads this, and counts nothing itself:

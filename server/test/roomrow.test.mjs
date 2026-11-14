@@ -31,6 +31,7 @@
  * BREAK PROOF (rule 8), each tried by hand, 2026-11-14:
  *   2. roomrow.js rowsOf: `return 1;` for an object of entries      -> FAIL 2
  *   3. persistence.js: drop the `_roomRowRefused('newer')` line     -> FAIL 3
+ *      roomrow.js _roomRowRefused: drop `m.owed = true;`            -> FAIL 3 (the stored book)
  *   5. roomrow.js: `GAP_MAX_MS: 20` (every gap thrown away)         -> FAIL 5, 6
  *   8. daybook.js: `PACE_MS: 60 * 1000` (the book's pace, card E's; the
  *      row must ride it, never add a row of its own)                -> FAIL 8
@@ -165,11 +166,17 @@ const roomPart = async (room) => {
   state.store.set('rpg:bp_newer', { coins: 3, _v: RPG_SCHEMA_VERSION + 1 });
   const ws = await join(room, 'bp_newer', 2);
   check('3. a newer worker\'s character: the join refused (the socket closed, no state_sync)', ws.closed === true && !ws.sent.some((m) => m.type === 'state_sync'));
-  /* v2.3.5124: the refused socket was the room's last one out, so its
-     counts went into the book with it (THE LAST ONE OUT): read both */
-  const inBook = await roomPart(room);
-  const newer = room._roomRow.c.refused[1] + ((inBook && inBook['1'] && inBook['1'].refused) ? inBook['1'].refused[1] : 0);
-  check('3. ...and counted once, as `newer`', newer === 1 && room._savesRefused().newer === 1, { newer, s: room._savesRefused() });
+  check('3. ...and counted once, as `newer`', room._savesRefused().newer === 1, room._savesRefused());
+  /* v2.3.5124 (sitting 6's review): the refused socket was the room's last
+     one out, and the refusal comes AT the join, before any join is counted:
+     it owes the book on its own, so the STORED book holds it (memory alone
+     never counts here) */
+  await settle();
+  if (room._daybook && room._daybook.putting) await room._daybook.putting;
+  const stored = [...state.store.entries()].filter(([k]) => k.startsWith(DAYBOOK.PREFIX)).map(([, v]) => v);
+  const sRef = stored.length && stored[stored.length - 1].room && stored[stored.length - 1].room['1'] && stored[stored.length - 1].room['1'].refused;
+  check('3. ...and the refusal reaches the STORED book at the last one out, no join needed (refused [put, newer] = [2, 1])',
+    stored.length === 1 && Array.isArray(sRef) && sRef[1] === 1 && sRef[0] === 2 && room._roomRow.owed === false, { stored: stored.length, sRef, owed: room._roomRow.owed });
 }
 
 /* ── 4. JOINS by protocol version ── */
