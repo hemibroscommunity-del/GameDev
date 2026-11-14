@@ -63,6 +63,9 @@ const PAGE = join(ROOT, 'docs/SWITCHES.md');
 function rowsBySystem(rows = SWITCHES) {
   const by = new Map();
   for (const r of rows) { if (!by.has(r.system)) by.set(r.system, []); by.get(r.system).push(r); }
+  /* sorted by name (its `?` aside), whatever the table file's order */
+  const key = (r) => r.name.replace(/^\?/, '').toLowerCase() + (r.name.startsWith('?') ? ' ?' : '');
+  for (const list of by.values()) list.sort((a, b) => (key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0));
   return by;
 }
 
@@ -95,8 +98,13 @@ function makePage(rows = SWITCHES) {
   L.push('');
   const by = rowsBySystem(rows);
   const names = [...by.keys()].sort();
-  const kinds = (k) => rows.filter((r) => r.kind === k).length;
-  L.push(`${rows.length} rows: ${kinds('switch')} switches, ${kinds('value')} values, ${kinds('lever')} levers, in ${names.length} systems.`);
+  /* v2.3.5302 (the gatekeeper's sitting 9): no count and no total on the
+     page.  A count changes with every row added anywhere, so any two PRs
+     that each add a row conflicted on it, and one merged a sitting.  Rows
+     are one a line, sorted by name within their system: a row added to one
+     place touches nothing else.  The counts are the guard's to print, and
+     the scoreboard's (tools/dev/scoreboard/switch-rows.mjs). */
+  L.push('How many there are: `node tools/guards/switches.test.mjs` prints the count, and `node tools/dev/scoreboard.mjs` its row.');
   L.push('');
   for (const sys of names) {
     L.push(`## ${sys}`);
