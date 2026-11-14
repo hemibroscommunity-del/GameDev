@@ -1,5 +1,5 @@
 card: E
-branch: claude/plan-e-11-xfer (one branch a PR, each begun from the one before: merge #1758 to #1764 first)
+branch: claude/plan-e-9-pause (one branch a PR, each begun from the one before: merge #1758 to #1764 first)
 prs: #1686, #1691, #1694, #1699, #1752, #1756 (merged); #1758, #1759, #1761, #1764 (ready); PR 10 (claude/plan-e-10-storm), PR 11 on the branch above (ready)
 state: ready
 
