@@ -45,6 +45,7 @@
 import { PETBOOK, petPublic } from './petbook.js';   /* v2.3.3122: the pet lane */
 import { PACE } from './flood.js';   /* v2.3.3293: the weapon lane's pace */
 import { bagTake } from './bag.js'; /* v2.3.4810: the bag door */
+import { xferTradeWindow } from './xfer.js'; /* v2.3.5092: the transfer ledger */
 
 export const TRADE2 = {
   INVITE_TTL: 60000,    // open-toward-you offer lifetime
@@ -380,7 +381,10 @@ export const trade2Methods = {
        what each side gave and paid neither: the window lives in memory, and
        nothing comes back for it.  Not both in the room: as before. */
     const wpnInRun = wpnLive.length > 0 || wpnOwed.length > 0;
-    const together = this._creditLiveTogether(credits, [s.a, s.b], wpnInRun ? wpnRecords : undefined);
+    /* v2.3.5092: the transfer ledger's row (xfer.js) rides the swap's own
+       write, a restart taking both or neither (`xfer: false`: no row) */
+    const inRun = () => { const w = wpnInRun ? wpnRecords() : []; const x = xferTradeWindow(this, s, session.id); if (x) w.push(x); return w; };
+    const together = this._creditLiveTogether(credits, [s.a, s.b], inRun);
     if (together) {
       await together;
       /* v2.3.4795: the weapons are now delivered, or owed on file; an owed
@@ -392,6 +396,7 @@ export const trade2Methods = {
     } else {
       this._saveRpg(s.a, psA);
       this._saveRpg(s.b, psB);
+      xferTradeWindow(this, s, session.id);   /* v2.3.5092: the row in the debits' run */
       this._queuePlayerStateFlush(s.a);
       this._queuePlayerStateFlush(s.b);
       for (const side of sides) {
