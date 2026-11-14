@@ -298,8 +298,12 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 |---|---|---|---|---|---|---|---|---|
 | `?bakeurl` | page | switch | v2.3.5043 | =0 | logic |  | no | Every armour bake input is cut on the page again, not sent to the worker as its sheet's address. |
 | `?coinflip` | page | switch | v2.3.5247 | =0 | memory |  | no | Ace's coin strips keep their decoded copies, as before. |
+| `?fxmade` | page | switch | v2.3.5249 | =0 | memory |  | no | The effects the game's tools made are drawn from their full-colour pictures, as before, not their 256-colour twins. |
+| `?fxsheets` | page | switch | v2.3.5252 | =0 | memory |  | no | The effects cut from the owner's sheets (the stun stars, the whirlwind, the grease, woodchips, rocks and splash bursts) are drawn from their full-colour pictures, as before. |
 | `groundkeep` | both | switch | v2.3.3775 | off_groundkeep: true; ?groundkeep=0, off, false | chip |  | no | The world's ground is rebuilt on a return, not kept, as before. |
 | `?npcheads` | page | switch | v2.3.5246 | =0 | memory |  | no | The townsfolk's head pictures keep their decoded copies, as before. |
+| `?p256` | page | switch | v2.3.3728 | =1 every twin on; =0 every twin off (v2.3.5249) | memory |  | no | With =0 every effect and icon is drawn from its full-colour picture; =1 turns on the twins not yet on by default. |
+| `?worldicons` | page | switch | v2.3.5250 | =0 | memory |  | no | The icons drawn in the world (the ore, the shards, the heart and sword popups; the trap's box has no twin) are drawn from their full-colour pictures, as before. |
 
 ## server-core
 
@@ -390,8 +394,10 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `emotes` | worker | switch | v2.3.3391 | false | logic |  | no | No emote is relayed, and caps.emotes false shuts the picker at the next join. |
 | `leaderidleat` | worker | switch | v2.3.4378 | false | logic |  | no | The party leader's idle clock counts only a `seen` above 0, as before. |
 | `partykeep` | worker | switch | v2.3.3276 | false | logic |  | no | Parties are not kept: the old cap and the away window remove a dropped member. |
+| `power` | worker | switch | v2.3.5481 | false | logic |  | no | Un-advertises the power index: no board report carries one, so the Power board empties as players report and the other boards are as they were. |
 | `race` | worker | switch | v2.3.3525 | false | logic |  | no | Lil Bro's race un-advertised and none started. |
 | `spar` | worker | switch | v2.3.3265 | false | logic |  | no | No sparring clones: every live clone goes on the next tick and the cap is withdrawn. |
+| `statboards` | worker | switch | v2.3.5484 | false | logic |  | no | Un-advertises the stat boards: no board report carries the points allocated, so those boards empty as players report; every other board is as it was. |
 
 ## townsfolk
 
