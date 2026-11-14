@@ -25,9 +25,12 @@
  *   secs      seconds this report covers; `seen` those the page was visible
  *   drawn     frames drawn in them
  *   gaps      the time between drawn frames, as counts in GAP_EDGES' bins
- *   late      [late, judged] by the frame pacer's own rule, only where the
- *             pacer judges (a screen faster than about 70 a second): ABSENT
- *             otherwise.  Never the strip's count or perfTracker's
+ *   late      [late, judged] by the frame pacer's own rule (framePacer.js
+ *             lateOver, never a copy), where the pacer judges: v2.3.5222,
+ *             EVERY screen whose refresh it knows (120, 60, 30; before, only
+ *             one faster than about 70 a second); ABSENT where it knows none
+ *             (the QA box's few frames a second).  Never the strip's count or
+ *             perfTracker's
  *   split     where the late frames' time went, whole ms: sim, tile, entity,
  *             effects, fps, app, then outside -- or busy and wait in its
  *             place where the busy beat runs (`?perf=1`)
@@ -41,6 +44,9 @@
  *   died      ONCE, in the first report after the page's first join: ['no'],
  *             or ['killed' | 'evicted', MB of art, minutes up, rebuilds,
  *             where] -- the last page's last mark (debug/crashTrap.js)
+ *   rung      v2.3.5222 (card O's governor): [the most rungs taken at once,
+ *             the seconds seen below the lane's row] (game/drawLanes.js), to
+ *             a worker that takes lanes (takesLanes) only
  *   speed     v2.3.5125: the Speed test's card, once, in the first report
  *             after a player runs it (game/speedTest.js): { model, rows },
  *             `model` a place in SPEED_MODELS the player picks (a page
@@ -79,9 +85,9 @@ import { busyIn } from './busyBeat.js';
 import { holdOf } from './holdNames.js';
 import { lastDeath, glLostCount, setMarkWhere } from './crashTrap.js';
 import { devClass } from '../game/deviceProfile.js';
-import { drawLane } from '../game/drawLanes.js';   /* v2.3.5221: card O's lanes */
+import { drawLane, rungDepth } from '../game/drawLanes.js';   /* v2.3.5221: card O's lanes; v2.3.5222 the rung */
 import { CLIENT_SAVERS, clientOff } from '../game/clientOff.js';
-import { PACE_FAST_MS, PACE_BREAK_MS } from '../game/framePacer.js';
+import { PACE_BREAK_MS, lateOver } from '../game/framePacer.js';   /* v2.3.5222: the pacer's one rule of a late frame */
 import { wheelHere } from '../game/wheelTrial.js';
 
 export const REPORT = Object.freeze({
@@ -270,8 +276,10 @@ function _restart(now) {
  *  sample's time, the near count at it).  Pure but for busyIn (the busy beat,
  *  `?perf=1` only): the suite's. */
 export function addFrames(a, samples, fromT, shows, pace) {
-  const judging = !!(pace && pace.refresh && pace.refresh < PACE_FAST_MS);
-  const lateOver = judging ? (pace.every || 1) * pace.refresh + pace.refresh / 2 : Infinity;
+  /* v2.3.5222: judged on every screen whose refresh the pacer knows, by its
+     own rule (lateOver): the report's `late` and the governor's are one */
+  const judging = !!(pace && pace.refresh);
+  const lateMs = judging ? lateOver(pace.refresh, pace.every || 1) : Infinity;
   let nearNow = 0, lastT = fromT;
   for (let i = 0; i < samples.length; i++) {
     const x = samples[i];
@@ -287,7 +295,7 @@ export function addFrames(a, samples, fromT, shows, pace) {
     if (nearNow > a.near) a.near = nearNow;
     if (!judging || !(total > 0) || total > PACE_BREAK_MS) continue;
     a.judged++;
-    if (!(total > lateOver)) continue;
+    if (!(total > lateMs)) continue;
     a.late++;
     /* the strip's split of a late frame (perfHud.js): the game's own parts,
        and the rest outside it -- busy or waiting where the beat can say */
@@ -311,6 +319,7 @@ export function blankBins(now) {
     late: 0, judged: 0, split: [0, 0, 0, 0, 0, 0, 0], busy: 0, wait: 0, beatAll: true,
     holds: [], whereMs: Object.create(null), near: 0,
     lost0: glLostCount(), rb0: _rebuilds(),
+    rungMax: 0, belowMs: 0,   /* v2.3.5222: the governor's rung (drawLanes.js) */
   };
 }
 function _reset(now) {
@@ -355,12 +364,18 @@ function _poll() {
     _lastPollP = typeof performance !== 'undefined' ? performance.now() : 0;
     const where = _whereNow(_S);
     /* v2.3.5127: only the seen time is time in a place (not a thawed spell) */
-    if (_visSince != null) a.whereMs[where] = (a.whereMs[where] || 0) + Math.max(0, now - Math.max(a.lastPoll, _visSince, a.t0) - Math.max(0, late > REPORT.THAW_MS ? late : 0));
+    const seenD = _visSince != null ? Math.max(0, now - Math.max(a.lastPoll, _visSince, a.t0) - Math.max(0, late > REPORT.THAW_MS ? late : 0)) : 0;
+    if (_visSince != null) a.whereMs[where] = (a.whereMs[where] || 0) + seenD;
+    /* v2.3.5222: the governor's rung -- the most rungs taken at once, and the
+       seen time spent below the lane's row */
+    const depth = rungDepth();
+    if (depth > a.rungMax) a.rungMax = depth;
+    if (depth > 0) a.belowMs += seenD;
     a.lastPoll = now;
     setMarkWhere(where);
     /* the pacer's own rule, with its own refresh and step (framePacer.js
-       take(): a run more than half a refresh past its frame is late), only
-       where it judges: a refresh it knows, faster than PACE_FAST_MS */
+       lateOver: a run more than half a refresh past its frame is late),
+       where it judges: v2.3.5222, a refresh it knows, on every screen */
     let pace = null;
     try { pace = typeof window !== 'undefined' && window.__btPace ? window.__btPace() : null; } catch (e) { pace = null; }
     const fr = addFrames(a, perfTracker.getSamples(), _lastFrameT, _shows, pace);
@@ -428,6 +443,8 @@ export function buildReport(now) {
     r.split = a.beatAll && a.late > 0 ? s.slice(0, 6).concat([_w(a.busy), _w(a.wait)]) : s;
   }
   if (_died) r.died = _died;
+  /* v2.3.5222: the governor's rung, to a worker that takes lanes (caps.report 3) */
+  if (takesLanes(_S)) r.rung = [_w(a.rungMax), Math.min(secs, _w(a.belowMs / 1000))];
   /* v2.3.5127 (sitting 4): the card goes only to a worker that takes it;
      to one that does not, it waits (and is not cleared by the send) */
   if (_speed && takesSpeed(_S)) r.speed = { model: _speed.model, rows: _speed.rows.map((x) => x.slice()) };

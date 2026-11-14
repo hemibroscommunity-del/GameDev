@@ -140,6 +140,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 
 | name | side | kind | born | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|
+| `?ladderpix` | page | switch | v2.3.5225 | =0, off, false | chip | `govern` | no | The pixel rungs are off: every pixel the screen and the budget allow, whatever the rung. |
 | `?lane` | page | lever | v2.3.5221 | =full, =light or =thirty | none |  | no | This page draws in the named lane, whatever its device's facts pick. |
 | `lookpalette` | both | switch | v2.3.3716 | off_lookpalette: true; ?lookpalette=0 (=1 builds it anyway) | chip |  | onWindows, onMac in src/game/lookPaletteChoice.js | Each look's copy is baked on first sight again, not coloured on the chip. |
 | `?pixbudget` | page | switch | v2.3.5140 | =0 (off), or a number: the budget to try | chip |  | no | The drawing resolution is no longer held to the pixel budget. |
@@ -324,6 +325,8 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | name | side | kind | born | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|
 | `?dtsmooth` | page | switch | v2.3.4355 | =0, off, false | logic |  | no | The frame's step is the raw time, not the steady step. |
+| `govern` | both | switch | v2.3.5222 | off_govern: true (v2.3.5235: every phone, live, the Test panel's list); ?govern=0 (off), =1 (on where `?lane=` holds it) | logic |  | no | The governor no longer moves the ladder: the lane's row, however late the frames. |
+| `?ladderrate` | page | switch | v2.3.5224 | =0, off, false | logic | `govern` | no | The rate as before the ladder: a 60 screen is never paced, whatever the rung. |
 | `?pace` | page | switch | v2.3.4355 | =0, off, false | logic |  | no | No frame pacer: the frames are drawn as the browser calls, as before. |
 
 ## preload
@@ -383,6 +386,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?fishgrip` | page | switch | v2.3.3623 | =1 | logic |  | no | The fishing grip is drawn over the plate. |
 | `?fishgriptrousers` | page | switch | v2.3.3657 | =1 | logic |  | no | The fishing grip lifts the trousers too. |
 | `?flipbake` | page | switch | v2.3.3577 | =0 | logic |  | no | Flipped facings are not baked from their source, as before. |
+| `?folkskills` | page | switch | v2.3.5462 | =0 | memory | `lookfolk` | folkSkillReady in src/rendering/folkSkill.js | The townsfolk work in card TF PR 1's poses again (Chef Blaze and Woodworker Bro the pickup, Farmer Bro standing), and the trades' figures (the `skills` look set) are not loaded. |
 | `?folkwork` | page | switch | v2.3.3949 | =0 | logic |  | no | The townsfolk walk but stand at their stops, not work. |
 | `?fxmade` | page | switch | v2.3.5249 | =0 | memory |  | no | The effects the game's tools made are drawn from their full-colour pictures, as before, not their 256-colour twins. |
 | `?fxsheets` | page | switch | v2.3.5252 | =0 | memory |  | no | The effects cut from the owner's sheets (the stun stars, the whirlwind, the grease, woodchips, rocks and splash bursts) are drawn from their full-colour pictures, as before. |
