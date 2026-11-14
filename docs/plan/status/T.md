@@ -1,6 +1,6 @@
 card: T
 branch: claude/plan-t-2-page-game (one branch a PR, each begun from the one before: -1- to -7-; merge them in order)
-prs: #1754 (5301, merged), PR 2 (5302, ready)
+prs: #1754 (5301, merged), #1768 (5302, ready)
 state: ready
 
 ## Done
