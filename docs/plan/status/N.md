@@ -18,8 +18,9 @@ state: ready
 
 ## Next
 
-- Nothing: the card stops when #1697 merges. It now adds card A's
-  `report` row (#1706), so its merge deploys the worker (nothing reads it).
+- Nothing: the card stops when #1697 merges. It adds card A's `report`
+  row (#1706), so it deploys. A's held #1711 adds `/api/admin/dev/daybook`:
+  merged after #1697, it brings its row; merged first, I add it here.
 
 ## Found
 
@@ -29,10 +30,8 @@ state: ready
 - `join_rejected` is also sent when the owner's `device-forget` or
   `key-new` puts out a character being played (`server/src/devicelock.js:315`);
   the census's "who starts it" names only the join.
-- `docs/SHAPES.md` part 5 left open what the table fills (its README), and
-  still says `server/src/wire/` "does not exist yet". When the actor's
-  `wayIn` (part 1) is built, `shapes-once` gives the name one Where: decide
-  then which file it is.
+- `docs/SHAPES.md` part 5 still says `server/src/wire/` "does not exist
+  yet". When the actor's `wayIn` is built, `shapes-once` needs its Where.
 
 ## Needs
 
