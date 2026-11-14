@@ -457,7 +457,20 @@ export function loadCroppedStrip(url, n, opts) {
        cells' copy then IS the source, and stays) */
     if (packed && cut) { cut.width = 0; cut.height = 0; }
     const packedBytes = packed ? packed.canvas.width * packed.canvas.height * 4 : 0;
-    const numSrc = packed && addr !== url ? packedTwinAsNumbers(url, packed.canvas) : null;
+    let numSrc = packed && addr !== url ? packedTwinAsNumbers(url, packed.canvas) : null;
+    /* v2.3.5252 (card P's backlog, fx-sheets-supplied): a twin whose pack
+       was declined (cells too full to crop: the whirlwind's) is read as
+       colour numbers whole, where it was kept a picture, four bytes a pixel
+       (2 MB at the memory check's fight).  Behind the loading screen, as the
+       pack would have been; the copy goes as soon as it is read. */
+    if (!numSrc && !packed && !cut && addr !== url && fw > 0) {
+      const cv = document.createElement('canvas');
+      cv.width = W; cv.height = H;
+      cv.getContext('2d', { willReadFrequently: true }).drawImage(img, 0, 0);
+      numSrc = packedTwinAsNumbers(url, cv);
+      /* (kept only for QA's comparison: picsNumbers.js __btPicNumVerify) */
+      if (!(numSrc && numSrc.__btOrigCanvas === cv)) { cv.width = 0; cv.height = 0; }
+    }
     const src = numSrc || Texture.from(packed ? packed.canvas : from).source;
     src.scaleMode = 'linear';
     const frames = [];
