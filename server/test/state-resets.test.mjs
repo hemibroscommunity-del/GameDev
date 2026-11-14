@@ -215,7 +215,8 @@ function block(text, start) {
         check(`5. ${row.field}: with ?${b.system.replace(/-/g, '')}reset=0 thrown it stays as it was`, S2[row.field] === k);
         setSearch('');
         played++;
-        if (row.field === '_pose') check('5. the pose\'s reset is its own end, with its word to the worker (as the frame check\'s)', msgs.some((m) => m && m.type === 'pose' && m.id === null), msgs);
+        /* v2.3.5187: the send goes through the action door (act), a free name here (a no-op): the word is read from its act call */
+        if (row.field === '_pose') check('5. the pose\'s reset is its own end, with its word to the worker (as the frame check\'s)', /\bact\(\s*'pose',\s*\{\s*id:\s*null\s*\}\s*\)/.test(b.body), msgs);
       }
     }
   }

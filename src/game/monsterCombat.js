@@ -75,6 +75,7 @@ import { nmlSwingAsk } from '@/game/nmlAsk.js'; /* v2.3.3316: a swing at a playe
 import { arrowEdgeRoom } from '@/game/arrowEdge.js'; /* v2.3.3489: where an arrow comes down at the screen's edge */
 import { changeZone } from '@/game/zoneTransitions.js';   /* v2.3.4651: the one door (TRAPS §304) */
 import { shotAimWire } from '@/game/shotGround.js';   /* v2.3.3501: what a shot is fired at, on the wire */
+import { act } from '@/game/actions.js';   /* v2.3.5187: the page's requests leave through the action door (card K PR 7) */
 
 /* ═══ v2.3.3206: HOW FAR A PLAIN ARROW FLIES BEFORE THE SCREEN'S EDGE ═══
    projectiles.js plants a bow arrow before its drawn point leaves the view
@@ -677,7 +678,7 @@ export function updateMonsterCombat(S, deps) {
                         try { BT_AUDIO.monsterHitHero(isWearingArmor(), { vol: 0.85 }); } catch (e) {}
                         S.lastDamageTaken = Date.now();
                         S._hitFlash = Date.now();
-                        if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_hurt_by_monster', payload: { id: S.myId, dmg: finalDmg } });
+                        act('player_hurt_by_monster', { id: S.myId, dmg: finalDmg });   /* v2.3.5187: through the action door (actions.js) */
                         /* v2.3.1137: Poise channel shortens the stagger */
                         S._playerStunUntil = Math.max(S._playerStunUntil || 0, Date.now() + Math.max(0, Math.round(250 - poiseStunFlatMs(S.rpg)))); /* v2.3.1345: flat ms */
                       }
@@ -722,7 +723,7 @@ export function updateMonsterCombat(S, deps) {
                         try { BT_AUDIO.monsterHitHero(isWearingArmor(), { vol: 0.85 }); } catch (e) {}
                         S.lastDamageTaken = Date.now();
                         S._hitFlash = Date.now();
-                        if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_hurt_by_monster', payload: { id: S.myId, dmg: _finalDmg } });
+                        act('player_hurt_by_monster', { id: S.myId, dmg: _finalDmg });
                         /* v2.3.1137: Poise channel shortens the stagger */
                         S._playerStunUntil = Math.max(S._playerStunUntil || 0, Date.now() + Math.max(0, Math.round(250 - poiseStunFlatMs(S.rpg)))); /* v2.3.1345: flat ms */
                       }
@@ -964,7 +965,7 @@ export function updateMonsterCombat(S, deps) {
                     if (window.__dmgLog) try { console.log('[dmg] volatile-explode', { amt: explodeDmg, archetype: m.archetype || m.type, shielded: shielded, mPos: { x: m.x, y: m.y }, pPos: { x: P.x, y: P.y } }); } catch (e) {}
                     if (!shielded) {
                       S._hitFlash = Date.now();
-                      if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_hurt_by_monster', payload: { id: S.myId, dmg: explodeDmg } });
+                      act('player_hurt_by_monster', { id: S.myId, dmg: explodeDmg });
                     }
                     S.screenShake = 8;
                     /* v2.3.2521: was full-size — v2.3.2520 converted the ordinary
@@ -1005,7 +1006,7 @@ export function updateMonsterCombat(S, deps) {
                       try { BT_AUDIO.monsterHitHero(isWearingArmor(), { vol: 0.85 }); } catch (e) {}
                       S.lastDamageTaken = Date.now();
                       S._hitFlash = Date.now();
-                      if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_hurt_by_monster', payload: { id: S.myId, dmg: dmgTaken } });
+                      act('player_hurt_by_monster', { id: S.myId, dmg: dmgTaken });
                     }
                     /* GDD §1.2 Vitality: taking damage AND surviving.
                        Tracked as use-frequency; resolved on next kill. */
@@ -1145,8 +1146,8 @@ export function updateMonsterCombat(S, deps) {
                        so sending a move now (while hp is still 0) gives
                        the server a fresh playerState.dead = true.  Without
                        this, server-monster AI keeps targeting us. */
-                    if (S.channel) S.channel.send({ type: 'broadcast', event: 'move', payload: { x: P.x, y: P.y, z: S.currentZone, vx: 0, vy: 0 } });
-                    if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_died_to_monster', payload: { id: S.myId, x: P.x, y: P.y } });
+                    act('move', { x: P.x, y: P.y, z: S.currentZone, vx: 0, vy: 0 });   /* v2.3.5187: through the action door (actions.js) */
+                    act('player_died_to_monster', { id: S.myId, x: P.x, y: P.y });
                     var deathX = P.x,
                       deathY = P.y;
                     var deathZone = S.currentZone;
@@ -1275,8 +1276,8 @@ export function updateMonsterCombat(S, deps) {
                       S._ambientParticles = [];
                       /* Server learns dead=false + new zone via this move;
                          other clients clear our _isDead via the broadcast. */
-                      if (S.channel) S.channel.send({ type: 'broadcast', event: 'move', payload: { x: P.x, y: P.y, z: S.currentZone, vx: 0, vy: 0 } });
-                      if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_respawned', payload: { id: S.myId } });
+                      act('move', { x: P.x, y: P.y, z: S.currentZone, vx: 0, vy: 0 });
+                      act('player_respawned', { id: S.myId });
                       setRpgState(_objectSpread({}, _R6));
                       try { localStorage.setItem('bt_rpg', JSON.stringify(_R6)); } catch (e) {}
                     }, 3500);
@@ -1931,7 +1932,8 @@ export function updateMonsterCombat(S, deps) {
                   _rangeMult: isStaff ? 1 : bowRangeMult(S.rpg)   /* v2.3.4862: was x depthK (v2.3.2790), gone with the old map's dunes */
                 });
                 /* Broadcast projectile to other players */
-                if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
+                /* v2.3.5187: through the action door (actions.js) */
+                act('player_projectile', {
                   id: S.myId, x: Math.round(P.x), y: Math.round(P.y), ang: arrAngle, isStaff: isStaff, ts: _shotTs,
                   /* v2.3.2919: the shot's ELEMENT.  Your own arrow is tipped in
                      your weapon's element colour and your bolt glows in it
@@ -1970,7 +1972,7 @@ export function updateMonsterCombat(S, deps) {
                      ignores both. */
                   tg: shotTargetId(S, (ZONES[S.currentZone] || {}).safe) || undefined,
                   pc: (!isStaff && bowPierceCount(S.rpg) > 0) ? 1 : undefined,
-                }});
+                });
                 S.swingTimer = Date.now(); /* Staff cooldown penalty applied at the gate above, not here */
                 if (_tapAtkNow) tapAttackDone(S, S.swingTimer, isStaff ? 'bolt' : 'arrow');   /* v2.3.3712 */
                 if (isStaff) {
@@ -2061,9 +2063,10 @@ export function updateMonsterCombat(S, deps) {
               S._swingBcastPending = false;
               if (S.channel) {
                 var _bcWpn = getActiveWeapon(S.rpg);
-                try { S.channel.send({ type: 'broadcast', event: 'player_swing', payload: {
+                /* v2.3.5187: through the action door (actions.js) */
+                try { act('player_swing', {
                   id: S.myId, ts: Date.now(), wpn: (_bcWpn && _bcWpn.type) || 'sword', ang: baseAngle
-                } }); } catch (e) {}
+                }); } catch (e) {}
               }
             }
             /* ═══ v2.3.1747: THE COMBO CHAIN IS GONE (owner: "I think I want
@@ -2486,7 +2489,8 @@ export function updateMonsterCombat(S, deps) {
                    only.  Collision/combo damage is intentionally not sent
                    (server has no status model yet -- follow-up slice). */
                 if (S._serverMonsters && S.channel) {
-                  S.channel.send({ type: 'monster_damage', payload: {
+                  /* v2.3.5187: through the action door (actions.js) */
+                  act('monster_damage', {
                     monsterId: m.id, zone: S.currentZone, element: activeWpn.element1,
                     /* slot=melee tells the worker this hit was a real
                        melee swing, so the lifesteal gate fires even if
@@ -2499,7 +2503,7 @@ export function updateMonsterCombat(S, deps) {
                     /* v2.3.4520: the free-swing trial: which swing (its own
                        clock), so the worker gives its other targets its share */
                     sw: mcFreeSwing(S) ? S.swingTimer : undefined
-                  }});
+                  });
                 }
 
                 /* Collision damage + feedback */
@@ -3295,67 +3299,64 @@ export function updateMonsterCombat(S, deps) {
                 /* Track threat — attacking a player starts the threat counter */
                 S._pvpThreat = Date.now() + PVP_THREAT_DURATION;
                 var _pvpClaim = pvpClaim(S, pDmg * specialMult2, _brewK);   /* v2.3.3133 */
-                if (S.channel) S.channel.send({
-                  type: 'broadcast',
-                  event: 'player_attack',
-                  payload: {
-                    id: S.myId,
-                    sn: S._specialAttack ? undefined : (accSn(S, 'melee') || undefined),   /* v2.3.4545: the swing it belongs to (accuracy.js) */
-                    x: P.x,
-                    y: P.y,
-                    angle: pvpAngle,
-                    /* v2.3.3133: without the brew and `nb: 1` against a worker
-                       with caps.pvpbrew, which multiplies by its own after the
-                       clamp; as before against an older one (fightFood.js). */
-                    dmgBase: _pvpClaim.dmgBase,
-                    nb: _pvpClaim.nb,
-                    /* v2.3.3260: a PERCENTAGE, which is what the worker has
-                       always read -- the fraction (0.01) it was sent as made
-                       the sword's crit 0.01% in a fight with a player.  A
-                       worker with caps.pvpbalance rolls the crit itself. */
-                    critChance: Math.round(critChance * 1000) / 10,
-                    /* v2.3.1135: Longshot stretches PvE flight, but PvP
-                       reach is hard-capped at the server's 250px clamp
-                       (_resolvePvPAttack) — clamp here too so the claimed
-                       range matches what the worker will honor. */
-                    range: _pvpReach, /* v2.3.2592: melee reach claims its stat too, still clamped; v2.3.2790: x depth (the worker honours min(claim, 250), so claiming less is always safe) */
-                    arc: wpnType.arc || SWING_ARC,
-                    ts: Date.now(),
-                    inDuel: !!S._inDuel,
-                    /* v2.3.4361: a duel's swing names its foe, so the worker
-                       lands it on them only (combat.js `onlyTarget`) -- never
-                       on a bystander in the cone, which in No man's land gave
-                       the swinger a red skull (the sweep's V6).  Absent outside
-                       a duel: free-fire keeps its cone. */
-                    target: duelSwingTarget(S) || undefined,
-                    /* v2.3.3260: which swing (its own clock) -- the worker
-                       lands one hit a swing (pvpbalance.js); an older one
-                       ignores it */
-                    sw: S.swingTimer,
-                    /* v2.3.3260: the special swing says so, to a worker that
-                       counts it only after the swipe it charged and lands one
-                       hit a swing -- never to an older one (below). */
-                    special: (_pvpBal && S._specialAttack) ? true : undefined,
-                    /* v2.3.3264: the gem in the sword, as a monster is told
-                       (monster_damage's `element`): a worker with
-                       caps.pvpextras puts its status on the player it hit,
-                       the same as on a monster.  An older one ignores it. */
-                    element: _activeWpn.element1 || undefined,
-                    /* v2.3.1302: kind tags the attack for the server's
-                       per-kind range clamp.  Old servers ignore it. */
-                    kind: 'melee'
-                    /* v2.3.3133 (review): NO `special` here, on purpose  [v2.3.3260:
-                       against an OLDER worker -- see `special` above].  This
-                       send runs on every frame of the 400 ms sweep, and the
-                       worker's lanes are what turn that into hits: an ordinary
-                       claim gets one hit per 300 ms (two a swing), a special
-                       one THREE per 1200 ms.  Marking the special swing put it
-                       in that lane -- three hits at the special's ceiling, up
-                       to 4.5x the swing before.  It stays held to the ordinary
-                       ceiling, as it always was: a PvP balance call for the
-                       owner (docs/specs/fight-food.md "Found, not changed"),
-                       not a side effect of the brew. */
-                  }
+                /* v2.3.5187: through the action door (actions.js) */
+                act('player_attack', {
+                  id: S.myId,
+                  sn: S._specialAttack ? undefined : (accSn(S, 'melee') || undefined),   /* v2.3.4545: the swing it belongs to (accuracy.js) */
+                  x: P.x,
+                  y: P.y,
+                  angle: pvpAngle,
+                  /* v2.3.3133: without the brew and `nb: 1` against a worker
+                     with caps.pvpbrew, which multiplies by its own after the
+                     clamp; as before against an older one (fightFood.js). */
+                  dmgBase: _pvpClaim.dmgBase,
+                  nb: _pvpClaim.nb,
+                  /* v2.3.3260: a PERCENTAGE, which is what the worker has
+                     always read -- the fraction (0.01) it was sent as made
+                     the sword's crit 0.01% in a fight with a player.  A
+                     worker with caps.pvpbalance rolls the crit itself. */
+                  critChance: Math.round(critChance * 1000) / 10,
+                  /* v2.3.1135: Longshot stretches PvE flight, but PvP
+                     reach is hard-capped at the server's 250px clamp
+                     (_resolvePvPAttack) — clamp here too so the claimed
+                     range matches what the worker will honor. */
+                  range: _pvpReach, /* v2.3.2592: melee reach claims its stat too, still clamped; v2.3.2790: x depth (the worker honours min(claim, 250), so claiming less is always safe) */
+                  arc: wpnType.arc || SWING_ARC,
+                  ts: Date.now(),
+                  inDuel: !!S._inDuel,
+                  /* v2.3.4361: a duel's swing names its foe, so the worker
+                     lands it on them only (combat.js `onlyTarget`) -- never
+                     on a bystander in the cone, which in No man's land gave
+                     the swinger a red skull (the sweep's V6).  Absent outside
+                     a duel: free-fire keeps its cone. */
+                  target: duelSwingTarget(S) || undefined,
+                  /* v2.3.3260: which swing (its own clock) -- the worker
+                     lands one hit a swing (pvpbalance.js); an older one
+                     ignores it */
+                  sw: S.swingTimer,
+                  /* v2.3.3260: the special swing says so, to a worker that
+                     counts it only after the swipe it charged and lands one
+                     hit a swing -- never to an older one (below). */
+                  special: (_pvpBal && S._specialAttack) ? true : undefined,
+                  /* v2.3.3264: the gem in the sword, as a monster is told
+                     (monster_damage's `element`): a worker with
+                     caps.pvpextras puts its status on the player it hit,
+                     the same as on a monster.  An older one ignores it. */
+                  element: _activeWpn.element1 || undefined,
+                  /* v2.3.1302: kind tags the attack for the server's
+                     per-kind range clamp.  Old servers ignore it. */
+                  kind: 'melee'
+                  /* v2.3.3133 (review): NO `special` here, on purpose  [v2.3.3260:
+                     against an OLDER worker -- see `special` above].  This
+                     send runs on every frame of the 400 ms sweep, and the
+                     worker's lanes are what turn that into hits: an ordinary
+                     claim gets one hit per 300 ms (two a swing), a special
+                     one THREE per 1200 ms.  Marking the special swing put it
+                     in that lane -- three hits at the special's ceiling, up
+                     to 4.5x the swing before.  It stays held to the ordinary
+                     ceiling, as it always was: a PvP balance call for the
+                     owner (docs/specs/fight-food.md "Found, not changed"),
+                     not a side effect of the brew. */
                 });
               }
               /* ═══ v2.3.3267: AND EVERY ONE OF YOUR CLONES IN THE ARC ═══
@@ -3375,22 +3376,18 @@ export function updateMonsterCombat(S, deps) {
                 if (!pvpSwingClaimOk(S, S.swingTimer, Date.now(), true, _spC.id)) continue;
                 S._pvpThreat = Date.now() + PVP_THREAT_DURATION;
                 var _spClaim = pvpClaim(S, pDmg * specialMult2, _brewK);
-                S.channel.send({
-                  type: 'broadcast',
-                  event: 'player_attack',
-                  payload: {
-                    id: S.myId, x: P.x, y: P.y,
-                    angle: _spC.ang,
-                    dmgBase: _spClaim.dmgBase, nb: _spClaim.nb,
-                    critChance: Math.round(critChance * 1000) / 10,
-                    range: _pvpReach, arc: wpnType.arc || SWING_ARC,
-                    ts: Date.now(), inDuel: !!S._inDuel,
-                    sw: S.swingTimer,
-                    special: (_pvpBal && S._specialAttack) ? true : undefined,
-                    element: _activeWpn.element1 || undefined,
-                    kind: 'melee',
-                    target: String(_spC.id)
-                  }
+                act('player_attack', {
+                  id: S.myId, x: P.x, y: P.y,
+                  angle: _spC.ang,
+                  dmgBase: _spClaim.dmgBase, nb: _spClaim.nb,
+                  critChance: Math.round(critChance * 1000) / 10,
+                  range: _pvpReach, arc: wpnType.arc || SWING_ARC,
+                  ts: Date.now(), inDuel: !!S._inDuel,
+                  sw: S.swingTimer,
+                  special: (_pvpBal && S._specialAttack) ? true : undefined,
+                  element: _activeWpn.element1 || undefined,
+                  kind: 'melee',
+                  target: String(_spC.id)
                 });
                 if (typeof window !== 'undefined') {
                   /* QA probe (mp-sparfight): the claims a swing sent at clones */

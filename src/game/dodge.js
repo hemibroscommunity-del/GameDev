@@ -25,6 +25,7 @@ import { brewMulNow } from '@/game/fightFood.js'; /* v2.3.3133: the retreat shot
 import { shotAimAt } from '@/game/projectiles.js'; /* v2.3.3501: what the retreat shot is fired at, boots to feet */
 import { shotAimWire } from '@/game/shotGround.js'; /* v2.3.3501: ...and on the wire */
 import { resetOn } from '@/game/resetOn.js';   /* v2.3.5206: a roll ends at the zone door (card L) */
+import { act } from '@/game/actions.js';   /* v2.3.5187: the page's requests leave through the action door (card K PR 7) */
 
 /* ═══ v2.3.2916: HOW LONG A ROLL LASTS -- ONE ANSWER, SENT WITH IT ═══
    Owner: "check all other broadcasted player animations to make sure they
@@ -139,9 +140,7 @@ export var doStandardDodge = function (S, R, ang) {
     R.stamina -= dodgeCost;
     /* v2.3.1702: see the note in playerActions.js — `_serverMonsters` is
        false in town, so the worker never saw this spend and refunded it. */
-    if (S.channel) {
-      try { S.channel.send({ type: 'ability_use', payload: { type: 'dodge' } }); } catch (e) {}
-    }
+    try { act('ability_use', { type: 'dodge' }); } catch (e) {}   /* v2.3.5187: through the action door (actions.js) */
     /* GDD §1.2 Endurance + Agility — tracked as use-frequency and
        resolved when the next monster dies. */
     addBuildUse(R, 'endurance', dodgeCost);
@@ -151,9 +150,7 @@ export var doStandardDodge = function (S, R, ang) {
     /* v2.3.1011: broadcast so peers see the dodge (trail + movement). */
     /* v2.3.1702: `_serverMonsters` dropped here too — it is false in town, so
        nobody standing in the hub ever saw anybody else dodge. */
-    if (S.channel) {
-      try { S.channel.send({ type: 'broadcast', event: 'player_dodge', payload: { id: S.myId, kind: 'dodge', angle: ang, ts: Date.now(), dur: dodgeWindowMs(R), walk: walkingNow(S) } }); } catch (e) {}
-    }
+    try { act('player_dodge', { id: S.myId, kind: 'dodge', angle: ang, ts: Date.now(), dur: dodgeWindowMs(R), walk: walkingNow(S) }); } catch (e) {}
     S._hasDodged = true;
     S._dodgeFlash = Date.now();
     if (!S.respawnTimer || Date.now() > S.respawnTimer) S.respawnTimer = Date.now() + 400;
@@ -199,9 +196,9 @@ export var doLunge = function (S, R, ang) {
       /* v2.3.3264: ...or the player you are fighting, named as `pid` (never
          `targetId`, which is a monster's: the sword lunge's way, v2.3.3262) */
       try {
-        S.channel.send({ type: 'ability_use', payload: _ltPlayer
+        act('ability_use', _ltPlayer   /* v2.3.5187: through the action door (actions.js) */
           ? { type: 'lunge', pid: String(S.lockedTarget.id) }
-          : { type: 'lunge', targetId: _lungeTargetId } });
+          : { type: 'lunge', targetId: _lungeTargetId });
       } catch (e) {}
     }
     addBuildUse(R, 'endurance', lungeCost);
@@ -219,9 +216,7 @@ export var doLunge = function (S, R, ang) {
     /* v2.3.1011: broadcast the lunge so peers see it. */
     /* v2.3.1702: `_serverMonsters` dropped here too — it is false in town, so
        nobody standing in the hub ever saw anybody else dodge. */
-    if (S.channel) {
-      try { S.channel.send({ type: 'broadcast', event: 'player_dodge', payload: { id: S.myId, kind: 'lunge', angle: dirAng, ts: Date.now(), dur: dodgeWindowMs(R), walk: walkingNow(S) } }); } catch (e) {}
-    }
+    try { act('player_dodge', { id: S.myId, kind: 'lunge', angle: dirAng, ts: Date.now(), dur: dodgeWindowMs(R), walk: walkingNow(S) }); } catch (e) {}
     S._lungeIFramesUntil = Date.now() + (LUNGE_IFRAMES_MS || 150);
     S._dodgeFlash = Date.now();
     S._hasDodged = true;
@@ -299,9 +294,7 @@ export var doRetreatShot = function (S, R, ang) {
     R.stamina -= retCost;
     /* v2.3.1702: see the note in playerActions.js — `_serverMonsters` is
        false in town, so the worker never saw this spend and refunded it. */
-    if (S.channel) {
-      try { S.channel.send({ type: 'ability_use', payload: { type: 'retreat' } }); } catch (e) {}
-    }
+    try { act('ability_use', { type: 'retreat' }); } catch (e) {}   /* v2.3.5187: through the action door (actions.js) */
     addBuildUse(R, 'endurance', retCost);
     addBuildUse(R, 'agility', retCost);
     /* §12.2 cert — first retreat shot executed. */
@@ -317,9 +310,7 @@ export var doRetreatShot = function (S, R, ang) {
     /* v2.3.1011: broadcast the retreat shot so peers see it. */
     /* v2.3.1702: `_serverMonsters` dropped here too — it is false in town, so
        nobody standing in the hub ever saw anybody else dodge. */
-    if (S.channel) {
-      try { S.channel.send({ type: 'broadcast', event: 'player_dodge', payload: { id: S.myId, kind: 'retreat_shot', angle: ang, ts: Date.now(), dur: dodgeWindowMs(R), walk: walkingNow(S) } }); } catch (e) {}
-    }
+    try { act('player_dodge', { id: S.myId, kind: 'retreat_shot', angle: ang, ts: Date.now(), dur: dodgeWindowMs(R), walk: walkingNow(S) }); } catch (e) {}
     S._dodgeFlash = Date.now();
     S._hasDodged = true;
     /* Fire a setup shot at the locked target. */
@@ -371,20 +362,18 @@ export var doRetreatShot = function (S, R, ang) {
          element and its snap stamp), plus `retreat`, because your own screen
          plays no draw or cast pose for it and keeps you facing the way you
          roll, and the watcher must not add either (gameEvents). */
-      if (S.channel) {
-        try {
-          S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
-            id: S.myId, x: Math.round(P.x), y: Math.round(P.y), ang: a, isStaff: isStaff, ts: _shotTs,
-            el: activeWpn.element1 || undefined,
-            life: Math.round(isStaff ? staffOrbLife(R) : 90 * (bowRangeMult(R) || 1)),
-            retreat: 1,
-            gf: shotAimWire(_rGf),   /* v2.3.3501: additive */
-            /* v2.3.3266: the player it is aimed at, as monsterCombat's shot
-               says (game/peerShots.js).  Additive. */
-            tg: shotTargetId(S, (ZONES[S.currentZone] || {}).safe) || undefined,
-          } });
-        } catch (e) {}
-      }
+      try {
+        act('player_projectile', {
+          id: S.myId, x: Math.round(P.x), y: Math.round(P.y), ang: a, isStaff: isStaff, ts: _shotTs,
+          el: activeWpn.element1 || undefined,
+          life: Math.round(isStaff ? staffOrbLife(R) : 90 * (bowRangeMult(R) || 1)),
+          retreat: 1,
+          gf: shotAimWire(_rGf),   /* v2.3.3501: additive */
+          /* v2.3.3266: the player it is aimed at, as monsterCombat's shot
+             says (game/peerShots.js).  Additive. */
+          tg: shotTargetId(S, (ZONES[S.currentZone] || {}).safe) || undefined,
+        });
+      } catch (e) {}
     };
     if (isStaff) {
       var c = RETREAT_STAFF_CONE_RAD || (25 * Math.PI / 180);

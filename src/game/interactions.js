@@ -14,6 +14,7 @@ import { swimRefused, airRefused } from '@/game/combatHelpers.js'; /* v2.3.3392 
 import { seasonOn } from '@/game/season.js'; /* v2.3.3395 */
 import { ownEmoteSound, ownMoveSound } from '@/game/moveSounds.js'; /* v2.3.3434: the emotes and moves heard */
 import { resetOn } from '@/game/resetOn.js'; /* v2.3.5203: a held pose ends at the zone edge's one door (card L) */
+import { act } from '@/game/actions.js';   /* v2.3.5187: the page's requests leave through the action door (card K PR 7) */
 
 export function sendEmote(S, emoji, deps) {
   var setShowEmotes = deps.setShowEmotes;
@@ -41,13 +42,10 @@ export function sendEmote(S, emoji, deps) {
       if (!S.chatBubbles) S.chatBubbles = {};
       S.chatBubbles[S.myId] = { text: emoji, ts: now };
     }
-    if (S.channel) S.channel.send({
-      type: 'broadcast',
-      event: 'emote',
-      payload: {
-        id: S.myId,
-        emoji: emoji
-      }
+    /* v2.3.5187: through the action door (actions.js) */
+    act('emote', {
+      id: S.myId,
+      emoji: emoji
     });
     setShowEmotes(false);
 }
@@ -85,14 +83,14 @@ export function sendMove(S, id, deps) {
   if (kind === 'once') {
     if (S._pose) endOwnPose(S);
     S._emoteMove = { id: id, at: now };
-    if (S.channel) S.channel.send({ type: 'broadcast', event: 'emote', payload: { id: S.myId, move: id } });
+    act('emote', { id: S.myId, move: id });   /* v2.3.5187: through the action door (actions.js) */
   } else {
     S._emoteMove = null;
     /* where and in which zone it began: anything that moves you -- a step,
        a shove, a door -- stands you up (updateOwnEmote), as the worker's
        movement.js stands up its copy */
     S._pose = { id: id, at: now, popAt: now, x: S.player.x, y: S.player.y, zone: S.currentZone };
-    if (S.channel) S.channel.send({ type: 'pose', id: id });
+    act('pose', { id: id });
   }
   return true;
 }
@@ -103,7 +101,7 @@ export function sendMove(S, id, deps) {
 export function endOwnPose(S) {
   if (!S || !S._pose) return;
   S._pose = null;
-  if (S.channel) S.channel.send({ type: 'pose', id: null });
+  act('pose', { id: null });   /* v2.3.5187: through the action door (actions.js) */
 }
 /* v2.3.5203 (grand plan step 5.3, card L): a held pose belongs to its place
    (the worker stands its copy up at a change of zone, movement.js

@@ -34,6 +34,7 @@
  *      family a PR.  The exceptions, named: src/debug/crashTrap.js and
  *      src/networking/index.js (they run before a session), and wsClient.js's
  *      fetch of /api/lobby (the connection's own).
+ *      v2.3.5187 (PR 7.1, combat and moving): 54 moved
  *
  * BREAK PROOF (rule 8), each tried by hand 2026-11-14:
  *   1. src/game/chat.js: `S.channel.send({ type: 'zz_probe' })`          -> FAIL 2 (and 7)
@@ -205,7 +206,7 @@ const EXCEPT = (x) => x.f === 'src/debug/crashTrap.js' || x.f === 'src/networkin
 }
 
 /* ── 7. the census: sends and fetches outside the door ── */
-const LINE = { sends: 203, fetches: 25 };
+const LINE = { sends: 149, fetches: 25 };   /* v2.3.5187: 203 less PR 7.1's 54 */
 {
   let sends = 0; const byFile = new Map();
   for (const [f, s] of SRC) {

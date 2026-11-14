@@ -196,8 +196,14 @@ for (const type of RELAY.TYPES) {
   };
   const files = walk(join(root, 'src'), []);
   const sent = new Map();
+  /* v2.3.5187: the send goes through the action door (act): a phone's
+     broadcast is also `act('<event>'`, a door row whose way is an event */
+  const DOOR = await import(new URL('../../src/game/actions.js', import.meta.url));
+  const doorEvent = (n) => !!DOOR.actionRow(n) && DOOR.ENV_OF_WAY[DOOR.actionRow(n).way] === 'event';
   for (const f of files) {
-    for (const m of readFileSync(f, 'utf8').matchAll(/event:\s*'([a-z_0-9]+)'/g)) {
+    const t = readFileSync(f, 'utf8');
+    const acts = relative(root, f) !== join('src', 'game', 'actions.js') ? [...t.matchAll(/\bact\(\s*'([a-z_0-9]+)'/g)].filter((m) => doorEvent(m[1])) : [];
+    for (const m of [...t.matchAll(/event:\s*'([a-z_0-9]+)'/g), ...acts]) {
       if (!sent.has(m[1])) sent.set(m[1], new Set());
       sent.get(m[1]).add(relative(root, f));
     }
