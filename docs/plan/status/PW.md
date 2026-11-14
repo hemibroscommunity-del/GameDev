@@ -1,6 +1,6 @@
 card: PW
-branch: claude/plan-pw-4-statboards (from -pw-2-boards; merge #1774, #1778, #1776 first)
-prs: #1774 (5480), #1778 (5483), #1776 (5481), #1781 (5484): all ready, in that order
+branch: claude/plan-pw-4-statboards (from -pw-2-boards; merge #1776 first)
+prs: #1774 (5480, merged), #1778 (5483, merged), #1776 (5481, ready), #1781 (5484, ready; after #1776)
 state: done
 
 ## Done
@@ -21,7 +21,7 @@ state: done
 
 ## Next
 
-- Nothing: the gatekeeper, #1774, #1778, #1776, #1781. PR 3 (5482) unneeded.
+- Nothing: the gatekeeper, #1776 then #1781 (#1774, #1778 merged). PR 3 (5482) unneeded.
 
 ## Found
 
