@@ -1,7 +1,18 @@
-/* TEMPORARY AUDIT PROBE — the TOP of the screen on an installed iPhone.
+/* AUDIT PROBE — the TOP of the screen on an installed iPhone.
    Simulates env(safe-area-inset-top)=59 by re-declaring the ONE rule that
    reads it (.bt-zone-header), then measures every top-pinned overlay
-   against the rail's real painted bottom and against the status-bar strip. */
+   against the rail's real painted bottom and against the status-bar strip.
+
+   v2.3.5100 (grand plan card B, PR 1): moved to the world.  It was an old
+   probe with no `world` and no line in run.mjs's table, so the harness
+   refused it and only precheck named it (docs/plan/status/W.md, Found).
+   What it checks is still in the game (ZoneHeader.jsx's .bt-zone-header,
+   resize()'s --sat, wsClient.js's away banner), so it plays BroTown now
+   (`world: 'wheel'`), the probe's own top padding is set too (resize()
+   reads --sat off #bt-sab-probe, the harness's way of faking an inset),
+   and the away banner's copy takes wsClient.js's padding as it is today
+   (`calc(10px + var(--sat, 0px))`, v2.3.2255).  Run it by its name:
+   node tools/qa/mp/run.mjs topaudit */
 import * as H from './harness.mjs';
 
 const SAT = 59;
@@ -42,9 +53,12 @@ const survey = (P, sat) => P.page.evaluate((SAT) => {
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'TopAudit', wsPort, webPort,
-    viewport: { width: 390, height: 844 }, touch: true });
+    viewport: { width: 390, height: 844 }, touch: true, world: 'wheel' });
   await H.enterWorld(P);
   await P.page.waitForTimeout(2500);
+  /* v2.3.5100: the world, never the retired map (its top bar says "BroTown") */
+  const bar = await P.page.evaluate(() => (document.querySelector('.bt-zone-header') || {}).textContent || '');
+  rec.ok('the top bar is the world\'s (it says "BroTown")', /BroTown/.test(bar), bar.slice(0, 80));
 
   /* make the optional top-region HUDs real */
   await P.page.evaluate(() => {
@@ -66,7 +80,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
         st.id = 'bt-fake-notch';
         /* exactly what the browser computes for .bt-zone-header when
            env(safe-area-inset-top) resolves to v */
-        st.textContent = `.bt-zone-header{height:calc(50px + ${v}px)!important;padding:${v + 4}px 5px 0!important}`;
+        st.textContent = `.bt-zone-header{height:calc(50px + ${v}px)!important;padding:${v + 4}px 5px 0!important}`
+          /* v2.3.5100: and the probe resize() measures --sat off */
+          + `#bt-sab-probe{padding-top:${v}px!important}`;
         document.head.appendChild(st);
         window.dispatchEvent(new Event('resize'));
       }, sat);
@@ -96,11 +112,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
     }
   }
-  /* the away/idle banner, built from wsClient.js's own cssText */
+  /* the away/idle banner, built from wsClient.js's own cssText (v2.3.5100:
+     as it is today, its top padding clearing --sat) */
   const banner = await P.page.evaluate(() => {
     const el = document.createElement('div');
     el.id = 'bt-resume-banner';
-    el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#1b2536;color:#fff;font:13px/1.5 sans-serif;padding:10px 12px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.5);';
+    el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#1b2536;color:#fff;font:13px/1.5 sans-serif;padding:calc(10px + var(--sat, 0px)) 12px 10px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.5);';
     el.textContent = 'You were away, so your character logged out. ';
     const b = document.createElement('button');
     b.textContent = "I'm back";

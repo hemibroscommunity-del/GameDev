@@ -484,8 +484,28 @@ function unlistedScenarios() {
   return out;
 }
 
+/* v2.3.5100 (grand plan card B, PR 1): a file a table line hides is refused
+   before anything runs: `landview` imports ./mp-landscape-view.mjs, so a new
+   mp-landview.mjs would never run by its name (old-map.test.mjs §5 holds it
+   on GitHub). */
+{
+  const hidden = [];
+  for (const f of readdirSync(join(H.REPO, 'tools/qa/mp')).sort()) {
+    const m = /^mp-(.+)\.mjs$/.exec(f);
+    if (!m || !Object.hasOwn(SCENARIOS, m[1])) continue;
+    const line = /import\('\.\/([^']+)'\)/.exec(String(SCENARIOS[m[1]]));
+    if (line && line[1] !== f) hidden.push(`${f} (the table's \`${m[1]}\` runs ./${line[1]})`);
+  }
+  if (hidden.length) {
+    console.error(`a scenario file hides behind a table line of the same name, so it would never run: rename it.\n  ${hidden.join('\n  ')}`);
+    process.exit(2);
+  }
+}
+
 const want = process.argv.slice(2).filter((a) => !a.startsWith('-'));
-const names = want.length ? want : Object.keys(SCENARIOS);
+/* v2.3.5100 (card B, PR 1): with no name, the table AND the scenario files
+   with no line in it (a scenario is a file: v2.3.5021) */
+const names = want.length ? want : [...Object.keys(SCENARIOS), ...unlistedScenarios()];
 const LOAD = Object.create(null);
 for (const n of names) {
   if (Object.hasOwn(SCENARIOS, n)) { LOAD[n] = SCENARIOS[n]; continue; }
@@ -497,12 +517,6 @@ for (const n of names) {
   }
   console.error(`unknown scenario "${n}": not in run.mjs's table, and there is no tools/qa/mp/mp-${n}.mjs; have: ${[...Object.keys(SCENARIOS), ...unlistedScenarios()].join(', ')}`);
   process.exit(2);
-}
-/* with no name given, the run is still the table's: the files with no line
-   are named, never silently left out (run one by its name) */
-if (!want.length) {
-  const un = unlistedScenarios();
-  if (un.length) console.log(`  (${un.length} scenario file(s) with no line in the table are run by name only: ${un.join(', ')})`);
 }
 
 console.log(`booting worker + dist for ${names.length} scenario(s): ${names.join(', ')}`);
