@@ -56,6 +56,7 @@ import * as H from './harness.mjs';
 /* v2.3.3335: which steps pay XP (and so put the skill chooser on the claim
    panel) is the worker's own table's to say, not this file's */
 import { QUEST_REWARDS } from '../../../server/src/data.js';
+export const lane = 'full';
 
 /* ═══ v2.3.3525: THE TOUR, GIVER TO GIVER ═══
    The owner: "Mayor bro would hand off the quest to the next person", then

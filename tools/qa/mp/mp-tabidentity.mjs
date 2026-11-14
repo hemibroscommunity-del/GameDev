@@ -20,6 +20,7 @@
  *      playing B; tab 1's Play here plays A.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const NEW_KEY = /^[a-z]{3,5}(?:-[a-z]{3,5}){7}$/;
@@ -114,7 +115,7 @@ async function secondTab(P, { wsPort, webPort, old }) {
     window.__btTod = 'day'; window.__btAmbienceOff = true; window.__btCoachGapMs = 2600;
   });
   await page.addInitScript(SPY(old));
-  await page.goto(`http://localhost:${webPort}/?loginspin=0&manual=0`, { waitUntil: 'domcontentloaded' });
+  await page.goto(H.withLane(`http://localhost:${webPort}/?loginspin=0&manual=0`), { waitUntil: 'domcontentloaded' });
   return { ctx: P.ctx, page, logs: [], name: P.name + '-tab2', seeded: true, touch: true };
 }
 

@@ -41,6 +41,7 @@
  * flags sends every event to everyone again from the next tick.
  */
 
+import { ROOM_PLACED as ROOM_PLACED_MADE, RELAY_PLACED as RELAY_PLACED_MADE } from './wire/lists.js';   /* v2.3.5182: from the wire table */
 export const EVENT_PLACE = Object.freeze({
   /* game px: wheelzone.js WHEEL.INTEREST_OUT (test/event-place.test.mjs pins
      the two together) */
@@ -56,36 +57,16 @@ export const EVENT_PLACE = Object.freeze({
              when neither of the above gives one;
      who  -- payload fields naming players who always get it.
    A zone is the payload's `zone`; without one the event stays room-wide. */
-const ROOM_PLACED = Object.freeze({
-  monster_hit: { m: 'monsterId', who: ['attackerId'] },
-  monster_attack: { m: 'monsterId', xy: ['attackerX', 'attackerY'], who: ['targetId'] },
-  monster_ability: { m: 'monsterId', xy: ['x', 'y'], who: ['targetId'] },
-  monster_projectile: { m: 'monsterId', xy: ['x', 'y'] },
-  fire_trail: { xy: ['x', 'y'], m: 'monsterId' },
-  /* v2.3.3264: a player's parry (pvpextras.js _pvpParry) also names the
-     player it staggers, who must hear it wherever the room has them */
-  parry: { xy: ['x', 'y'], m: 'monsterId', who: ['targetId', 'attackerId'] },
-  arrow_boom: { xy: ['x', 'y'], who: ['id'] },
-  element_nova: { xy: ['x', 'y'], who: ['id'] },
-  ability_windup: { p: 'playerId', who: ['playerId'] },
-  /* v2.3.3393: a /roll or /flip (dice.js): where the room has the roller,
-     who hears their own anywhere.  Words in the chat, kept as nothing but a
-     line, so a phone that walks up later misses nothing it would draw */
-  dice_roll: { p: 'id', who: ['id'] },
-});
+/* v2.3.5182 (card K PR 2): WHICH TYPES, AND HOW, ARE THE WIRE TABLE'S: each
+   `out` row's `placed` column (server/src/wire/lists.js ROOM_PLACED); the
+   comment above a row says why it is placed */
+const ROOM_PLACED = ROOM_PLACED_MADE;
 
 /* what a phone relays about what it does where it stands (index.js's default
    branch, which stamps `from` with the sender's session id): placed where the
    ROOM has the sender, never where the payload says */
-const RELAY_PLACED = new Set([
-  'player_swing', 'player_projectile', 'player_dodge', 'player_jump',
-  'monster_dmg_at', 'player_hurt_by_monster', 'gather_node',
-  /* v2.3.3391: an emote is drawn now, for 2.6 s (an emoji) or 5 s (a quick
-     line's bubble), and kept by nothing -- chat.js handleEmoteEvent only
-     stamps it for the renderer -- so a phone too far to see it misses nothing
-     (emotes.js) */
-  'emote',
-]);
+/* v2.3.5182: every relay row whose `placed` is `sender` (lists.js RELAY_PLACED) */
+const RELAY_PLACED = RELAY_PLACED_MADE;
 /* NOT placed, though they happen at a place, because a phone keeps what they
    say until the next one (a client audit of every handler, 2026-10-13): a
    phone that missed one would draw it wrong when it walked up later --

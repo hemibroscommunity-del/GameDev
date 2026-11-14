@@ -14,6 +14,7 @@
  *   6. no page errors.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const WIDE = { width: 1280, height: 800 };
 

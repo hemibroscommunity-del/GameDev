@@ -16,6 +16,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 const DESK = { width: 1280, height: 800 };
 const nearestTree = (P) => P.page.evaluate(() => {

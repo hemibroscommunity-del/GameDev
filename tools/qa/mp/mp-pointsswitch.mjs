@@ -22,6 +22,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 /* the worker mints the points: every weapon to level 6 and the points those
    levels give, each weapon's own (/dev/combat `deal`, the free reset's deal;

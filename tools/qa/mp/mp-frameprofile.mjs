@@ -21,6 +21,7 @@ import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { TraceMap, originalPositionFor } from '@jridgewell/trace-mapping';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const SECS = 10;

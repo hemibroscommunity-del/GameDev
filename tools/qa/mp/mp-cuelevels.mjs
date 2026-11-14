@@ -37,6 +37,7 @@
  */
 import * as H from './harness.mjs';
 import { EVENT_SOUNDS } from '../../../src/data/eventSounds.js';
+export const lane = 'full';
 
 /* the levels the table's comments promise (data/eventSounds.js) */
 const PROMISED = {
@@ -92,7 +93,7 @@ try {
   const p = await b.newPage();
   const errs = [];
   p.on('pageerror', (e) => errs.push(String(e).slice(0, 160)));
-  await p.goto(`http://localhost:${WEB}/`, { waitUntil: 'domcontentloaded' });
+  await p.goto(H.withLane(`http://localhost:${WEB}/`), { waitUntil: 'domcontentloaded' });
   await p.waitForFunction(() => !!(window.BT_AUDIO && window.BT_AUDIO.SFX_MANIFEST), null, { timeout: 30000 });
 
   const res = await p.evaluate(async (table) => {

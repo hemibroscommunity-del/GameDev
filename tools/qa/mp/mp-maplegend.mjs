@@ -25,6 +25,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 const VIEWS = [
   { id: 'upright', viewport: { width: 390, height: 844 }, touch: true },

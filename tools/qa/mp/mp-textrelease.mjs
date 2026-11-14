@@ -20,6 +20,7 @@
  *     Texts are held and no more (5, the same after five trips), on the
  *     other they pile up (42 -> 154 over two trips). */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 /* every AbstractText (Text, BitmapText, HTMLText) in the heap after a GC,
    and how many of them are already destroyed */

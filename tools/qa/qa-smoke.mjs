@@ -1,6 +1,7 @@
 import { chromium } from 'playwright-core';
 import { legacyLogin } from './legacy-login.mjs';
 import { existsSync } from 'node:fs';
+import { withLane } from './lane.mjs';   /* v2.3.5223: the game's page names its lane (card O PR 3) */
 
 // v2.3.1105: browser resolution — QA_CHROME env > the session-side /tmp
 // shell (when present) > undefined, which lets playwright-core pick its
@@ -27,7 +28,7 @@ if (process.env.QA_WS_URL) {
   await page.addInitScript(`window.BROTOWN_WS_URL = ${JSON.stringify(process.env.QA_WS_URL)};`);
 }
 
-await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+await page.goto(withLane(URL), { waitUntil: 'domcontentloaded', timeout: 60000 });
 await page.waitForTimeout(6000);
 
 await page.screenshot({ path: '/tmp/qa-login.png' });

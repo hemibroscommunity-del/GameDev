@@ -38,6 +38,7 @@ import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { FARM_BEDS, FARM_KNEEL_DX, FARM_KNEEL_DY } from '../../../src/data/farmLayout.js';
 import { FARM_STEP_ANIM, FARM_ANIM_TURN, FARM_WORK_MS } from '../../../src/game/farmWork.js';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const FOOT_DY = 52;   /* a body's middle to its boots on the farm (mp-farmanim) */

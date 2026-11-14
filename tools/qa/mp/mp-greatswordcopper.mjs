@@ -35,6 +35,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execSync } from 'node:child_process';
+export const lane = 'full';
 
 const OUT = join(H.REPO, 'tools/qa/mp/out');
 const COPPER = 0xFF9E58;

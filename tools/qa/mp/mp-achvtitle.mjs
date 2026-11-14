@@ -22,6 +22,7 @@
  *   6. Titled's own card (window.__broInspectSelf) shows the title and rarest.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const ID = 'story_done', NAME = 'Storyteller';
 

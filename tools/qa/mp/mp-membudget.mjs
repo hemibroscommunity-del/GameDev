@@ -69,6 +69,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { MEM_INIT, memSampler } from './memprobe.mjs';
 import { MEMORY_BUDGET } from './memory-budget.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const QUERY = process.env.QA_MB_QUERY || '';
