@@ -212,6 +212,8 @@ const keyOf = (r) => r.name + ' (' + r.side + ')';
 const DOOR_SUITES = Object.freeze({
   'server/test/life-door.test.mjs': { field: 'ps.life', fn: '_lifeTo', holds: '§2: no .life / .dying / .dead written in server/src but in life.js' },
   'server/test/zone-leftovers.test.mjs': { field: 'S.currentZone', fn: 'changeZone', holds: '§6a: the only writer of the game\'s place is changeZone' },
+  /* v2.3.5222: card O's ladder (the governor's rung, drawLanes.js) -- the planning session's word, sitting 12 */
+  'server/test/frame-pacer.test.mjs': { field: '_rung', fn: 'setRung', holds: '§17: setRung is called by the governor alone (framePacer.js), and `_rung` is written in setRung and the tests\' reset, nowhere else' },
 });
 const SCAN_DOORS = Object.freeze({
   'session (worker)': 'session-door.test plays the phases but fails no second writer of session.phase',
