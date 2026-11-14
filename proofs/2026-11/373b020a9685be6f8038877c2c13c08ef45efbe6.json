@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "373b020a9685be6f8038877c2c13c08ef45efbe6",
+  "tree": "a5fc486bf9eaa16407af2e5d7e880b6bd4e420db",
+  "committedAt": "2026-11-14T14:20:02-08:00",
+  "subject": "Merge pull request #1839 from hemibroscommunity-del/claude/plan-l-13-cook-door",
+  "files": 7717,
+  "bytes": 956497823,
+  "listingSha256": "a0bbd530b9fd7b0514e95cdf95a39249b63991d0cbae5887b35183b9f6e1ea87",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

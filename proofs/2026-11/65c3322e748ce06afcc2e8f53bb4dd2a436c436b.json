@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "65c3322e748ce06afcc2e8f53bb4dd2a436c436b",
+  "tree": "d297e9139139ad512baf3ce3b81806894791ef9c",
+  "committedAt": "2026-11-14T14:20:08-08:00",
+  "subject": "Merge pull request #1844 from hemibroscommunity-del/claude/plan-r-9-rewind",
+  "files": 7720,
+  "bytes": 956576650,
+  "listingSha256": "76b31ccc7f0e360fe9da10b608cc9dad74ab2b61087306d88b948e39484ac781",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

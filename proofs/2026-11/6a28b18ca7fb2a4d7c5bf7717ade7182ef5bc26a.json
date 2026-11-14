@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6a28b18ca7fb2a4d7c5bf7717ade7182ef5bc26a",
+  "tree": "ad738a10c8f94c25f048bdfc6709cfa3c650642b",
+  "committedAt": "2026-11-14T14:20:27-08:00",
+  "subject": "Merge pull request #1841 from hemibroscommunity-del/claude/plan-o-8-program",
+  "files": 7725,
+  "bytes": 956699146,
+  "listingSha256": "d4e82d2c962bca8c23882ecf959273cfbff85e71a795b60eeead3b530113935f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

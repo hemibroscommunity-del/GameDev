@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "57a35fee4a482d030e63990ffa172b4860e50f20",
+  "tree": "02605dd3830a9b7ff2cba3d00dfa827651dba03d",
+  "committedAt": "2026-11-14T14:20:40-08:00",
+  "subject": "Merge pull request #1845 from hemibroscommunity-del/claude/plan-j2-8-ghostcook",
+  "files": 7727,
+  "bytes": 956773578,
+  "listingSha256": "f1320ba9c2f3445b354ef25822041f597cc4368b5bc25eb4453df59c565660bd",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

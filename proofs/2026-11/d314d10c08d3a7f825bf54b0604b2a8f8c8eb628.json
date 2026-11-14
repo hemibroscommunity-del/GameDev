@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d314d10c08d3a7f825bf54b0604b2a8f8c8eb628",
+  "tree": "3f0db11af87663c6560480227ee01d294b39183a",
+  "committedAt": "2026-11-14T14:20:21-08:00",
+  "subject": "Merge pull request #1840 from hemibroscommunity-del/claude/plan-p-16-frame-pack",
+  "files": 7724,
+  "bytes": 956663353,
+  "listingSha256": "3f0a2650160eb82f23aab13814c858ca8e6e084707815210630ce9c49f69a6bd",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
