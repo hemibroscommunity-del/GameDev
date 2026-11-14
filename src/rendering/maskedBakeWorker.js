@@ -146,13 +146,17 @@ async function lookBitmaps(j) {
    whose sheet is an image at an address now comes as { url, sx, sy, ... }
    (entityRenderer.js _frameInput): the sheet is fetched and decoded HERE, kept
    a few (sheetOf: SHEET_KEEP_N sheets and SHEET_KEEP_BYTES at most, the least
-   lately used let go and closed when no job holds it), and the rectangle is
+   lately used let go and closed when no job holds it; docs/MEMORY-MAP.md
+   "Characters", and each reply says what is kept, `kept`), and the rectangle is
    drawn where the cut frame was (drawer: `ub` at sx, sy).  Every draw of an
    input in the bake has smoothing off, so the texels are the cut's.  An
    address that will not read is answered `urlFail` (the page cuts that one,
    as before).  QA (`qaBm`, the page's own cut beside the address): the two
    compared here, input by input, and answered in `qa`. */
-const SHEET_KEEP_N = 6, SHEET_KEEP_BYTES = 8 * 1024 * 1024;
+/* v2.3.5043, after the gatekeeper's review: 4 and 4 MB (were 6 and 8 MB) -- a
+   job uses the body, the belt and its worn pieces, and the next frame of the
+   same pose the same sheets; mp-membudget cannot see a worker's bitmaps */
+const SHEET_KEEP_N = 4, SHEET_KEEP_BYTES = 4 * 1024 * 1024;
 /* a sheet not read in this long is a failure (picture-door: a time limit and
    a retry): the page cuts that address's frames itself from then on */
 const SHEET_URL_MS = 4000;
@@ -170,9 +174,13 @@ function sheetOf(url) {
   sheetsKept.set(url, e);
   return e;
 }
-function sheetsTrim() {
+function sheetsKeptBytes() {
   let bytes = 0;
   for (const e of sheetsKept.values()) bytes += e.bytes;
+  return bytes;
+}
+function sheetsTrim() {
+  let bytes = sheetsKeptBytes();
   for (const [u, e] of sheetsKept) {
     if (bytes <= SHEET_KEEP_BYTES && sheetsKept.size <= SHEET_KEEP_N) break;
     if (e.uses > 0 || !e.bm) continue;
@@ -196,10 +204,16 @@ async function urlInputs(j, ins) {
   }
   if (qa.length) j._qa = qa;
   if (!fail.length) return true;
-  sheetsLetGo(j);
-  self.postMessage({ id: j.id, bitmap: null, cell: null, beltPending: false, raw: false, err: 'url', urlFail: fail, qa: j._qa || null });
-  closeInputs(j);
+  jobDone(j);
+  self.postMessage({ id: j.id, bitmap: null, cell: null, beltPending: false, raw: false, err: 'url', urlFail: fail, qa: j._qa || null, kept: sheetsKeptBytes() });
   return false;
+}
+/* v2.3.5043, after the gatekeeper's review (#1700: the "gear numbers not
+   here" return pinned its sheets past the cap): EVERY way out of a job comes
+   through here -- its bitmaps closed, its sheets let go */
+function jobDone(j) {
+  closeInputs(j);
+  sheetsLetGo(j);
 }
 function sheetsLetGo(j) {
   for (const e of j._sheets || []) e.uses--;
@@ -338,14 +352,15 @@ function takeJob(j) {
     const ins = [j.body, j.belt, ...((j.worn || []).map((w) => w && w.inp))].filter((x) => x && x.url);
     if (ins.length) {
       j._urlRead = true;
-      urlInputs(j, ins).then((ok) => { if (ok) takeJob(j); }, () => { sheetsLetGo(j); self.postMessage({ id: j.id, bitmap: null, cell: null, beltPending: false, raw: false, err: 'url read' }); closeInputs(j); });
+      urlInputs(j, ins).then((ok) => { if (ok) takeJob(j); }, () => { jobDone(j); self.postMessage({ id: j.id, bitmap: null, cell: null, beltPending: false, raw: false, err: 'url read', kept: sheetsKeptBytes() }); });
       return;
     }
   }
   /* v2.3.5000: a piece drawn from numbers whose sheet is not here would be
      baked as if not worn: the job fails instead (the page asks again) */
   if ((j.worn || []).some((w) => w && w.inp && w.inp.look && !lookSheets.has(w.inp.look))) {
-    self.postMessage({ id: j.id, bitmap: null, cell: null, beltPending: false, raw: false, err: 'gear numbers not here' });
+    jobDone(j);   /* v2.3.5043: its sheets let go, its bitmaps closed (they were left pinned and open) */
+    self.postMessage({ id: j.id, bitmap: null, cell: null, beltPending: false, raw: false, err: 'gear numbers not here', qa: j._qa || null, kept: sheetsKeptBytes() });
     return;
   }
   /* v2.3.5000: the pieces from numbers made bitmaps first (the one wait: the
@@ -388,9 +403,9 @@ function runJob(j) {
   } catch (err) {
     reply.err = String((err && err.message) || err);
   }
-  closeInputs(j);   /* v2.3.5043: + the QA cuts */
-  sheetsLetGo(j);
+  jobDone(j);   /* v2.3.5043: + the QA cuts, and its sheets let go */
   if (j._qa) reply.qa = j._qa;
+  reply.kept = sheetsKeptBytes();
   self.postMessage(reply, transfer);
 };
 
@@ -422,8 +437,8 @@ function lookJob(j) {
   } catch (err) {
     reply.err = String((err && err.message) || err);
   }
-  closeInputs(j);   /* v2.3.5043: + the QA cuts */
-  sheetsLetGo(j);
+  jobDone(j);   /* v2.3.5043: + the QA cuts, and its sheets let go */
   if (j._qa) reply.qa = j._qa;
+  reply.kept = sheetsKeptBytes();
   self.postMessage(reply, transfer);
 }

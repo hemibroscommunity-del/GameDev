@@ -352,10 +352,16 @@ round you, four sets) was an image of a packed sheet at a `blob:` address
 
 **What it does now.** A frame of a sheet that is an image goes as its
 address and its rectangle (`{ url, sx, sy, ... }`); the worker fetches and
-decodes the sheet itself, keeps six at most (8 MB, on the worker, the least
+decodes the sheet itself, keeps four at most (4 MB, on the worker, the least
 lately used closed when no job holds it: `maskedBakeWorker.js` `sheetOf`, a
 read cut after 4 s, on the picture door's list), and draws the rectangle where
-it drew the cut frame. Every draw of an input in the
+it drew the cut frame. After the gatekeeper's review (sitting 2): every way out
+of a job lets its sheets go and closes its bitmaps (`jobDone`; the "gear
+numbers not here" return had left them pinned past the cap), the keep went
+from six and 8 MB to four and 4 MB, the worker says what it holds in each
+reply (`__btBakeWorker().byUrl.keptMB`, `keptMaxMB`: 0.9 MB at most over the
+four sets below), and the slot is in `docs/MEMORY-MAP.md` ("Characters"):
+`mp-membudget` cannot see a worker's bitmaps. Every draw of an input in the
 bake has smoothing off, so the texels are the cut's. A canvas, or an address
 the worker cannot read (it answers `urlFail`: the page cuts that one, once,
 and never sends that address again), goes as before. `?bakeurl=0`: every
@@ -366,7 +372,8 @@ the page cuts each input as well, and the worker compares its own rectangle
 with the page's cut, byte for byte (`__btBakeWorker().byUrl`). An armoured
 player in copper plate and greaves, steel plate alone, steel greaves alone,
 and iron plate with steel greaves walking round you: 33 of 33 inputs the
-same, 38 sent by address, none cut on the page, none refused.
+same, 38 sent by address, none cut on the page, none refused (after the
+review's fix: 31 of 31, 34 sent).
 
 **After**, the sample (the main tour's `peer` and `armour` x3; the crowd's
 `c-armour1`, `c-armour8`, `h-eight`, `d-prints` x3): `masked-bake` 7.7 ms the

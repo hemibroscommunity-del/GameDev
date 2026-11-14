@@ -3486,7 +3486,7 @@ function _gearReadable(tex) {
    every input cut here, as before. */
 const _BAKE_URL_OFF = (() => { try { return typeof location !== 'undefined' && /[?&]bakeurl=0\b/.test(location.search || ''); } catch (e) { return false; } })();
 const _bakeUrlRefused = new Set();
-const _bakeUrlStats = { sent: 0, cut: 0, refused: 0, retried: 0, checked: 0, same: 0, differ: 0, lastDiffer: null };
+const _bakeUrlStats = { sent: 0, cut: 0, refused: 0, retried: 0, checked: 0, same: 0, differ: 0, lastDiffer: null, keptMB: 0, keptMaxMB: 0 };   /* keptMB: the sheets the worker holds (its last reply; mp-membudget cannot see a worker's bitmaps) */
 /* v2.3.5043: the bitmaps a job hands over: each input's own, and (QA) the
    page's cut beside an address */
 function _bakeTransfer(list) {
@@ -3498,6 +3498,10 @@ function _bakeTransfer(list) {
    true when one could not be read and the job is to run again with every
    such input cut here (once: the address is refused from now on) */
 function _bakeUrlAnswer(reply, job) {
+  if (reply && typeof reply.kept === 'number') {
+    _bakeUrlStats.keptMB = Math.round(reply.kept / 104857.6) / 10;
+    if (_bakeUrlStats.keptMB > _bakeUrlStats.keptMaxMB) _bakeUrlStats.keptMaxMB = _bakeUrlStats.keptMB;
+  }
   if (reply && reply.qa) {
     for (const q of reply.qa) { _bakeUrlStats.checked++; if (q.same) _bakeUrlStats.same++; else { _bakeUrlStats.differ++; _bakeUrlStats.lastDiffer = q; } }
   }

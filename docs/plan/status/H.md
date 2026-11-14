@@ -1,6 +1,6 @@
 card: H
 branch: claude/grand-plan-h-4-masked-bake (one branch a PR, each begun from the one before, as W's are: merge them in order)
-prs: #1668 (merged), #1675 (merged), #1681 (ready), PR 4 on the branch above (ready; its number goes here with PR 5's commit)
+prs: #1668 (merged), #1675 (merged), #1681 (merged), #1700 (ready: the gatekeeper's hold answered)
 state: ready
 
 ## Done
@@ -10,10 +10,11 @@ state: ready
 - #1681 (tag 5042), `gear-sheet` and `portrait` off the list: both were the
   Equipment screen's figure, now a step at a time in play, its body kept and
   witnessed. One fix earned both lines (the card's `portrait` PR is this).
-- PR 4 (tag 5043), `masked-bake` off the list: a frame of an image goes to
-  the bake's worker as its address; the worker reads the sheet. 33 of 33
-  inputs byte for byte; sample peer, armour, crowd armour x3: 7.7 ms.
-  Its read is on the picture door's list: its merge deploys the worker.
+- #1700 (tag 5043), `masked-bake` off the list: a frame of an image goes to
+  the bake's worker as its address. 33 of 33 inputs byte for byte; 7.7 ms.
+  Its merge deploys the worker. Sitting 2's hold answered: every exit of a
+  job lets its sheets go (`jobDone`), keep 4 sheets / 4 MB, `keptMB`
+  reported, a `MEMORY-MAP.md` row; 31 of 31 again, 0.9 MB held at most.
 
 ## Next
 
