@@ -1,7 +1,7 @@
 card: A
-branch: claude/plan-a-7-heldsweep (PR 7, tag 5126)
-prs: #1688, #1692, #1703, #1706, #1708, #1711 (merged); #1760 (5126, ready: after card P's #1757)
-state: ready
+branch: claude/plan-a-7-heldsweep (the card's last; every PR merged)
+prs: #1688, #1692, #1703, #1706, #1708, #1711, #1760 (all merged)
+state: done
 
 ## Done
 
@@ -13,14 +13,12 @@ state: ready
   a join or a save refused, at the book's pace).
 - #1711 (5125): the Speed card (`caps.report` 2, `reportspeed`); GET
   /dev/daybook (its wire row); "Copy table".
+- #1760 (5126): mp-heldsweep fails a debt-list hold that left no note
+  (`noteGaps`), after card P's #1757 (`pack-page` noted). Sitting 8.
 
 ## Next
 
-- #1760 (5126), `tools/qa/mp/mp-heldsweep.mjs`: a station keeps the
-  phone's notes (its ring of holds); the run fails a debt-list hold the
-  page runs, 12 ms or more, that left none (`noteGaps`). Begun at 09:18:
-  cards H and J are finished, their `ready` files stale (the planning
-  session). `pack-page` left none: card P's #1757 notes it; PR 7 after it.
+- Nothing: the card is finished.
 
 ## Found
 
@@ -35,4 +33,4 @@ state: ready
 
 ## Needs
 
-- #1757 (card P, 5251) merged first: PR 7's sweep is green on the pair.
+- Nothing.
