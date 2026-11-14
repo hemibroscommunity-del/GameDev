@@ -181,7 +181,7 @@ Quests, achievements, the codex, pets' book, points.
 
 Parties, clans, guilds, friends, chat, emotes, duels, the arena, races, boards.
 
-- **Files**: `server/src/`: party, clanparty, clans, guilds, alliance, friends, chatlanes, chatmod, chatguard, emotes, boards, arena, gladiator, duel, spar, race, leaderboard
+- **Files**: `server/src/`: party, clanparty, clans, guilds, alliance, friends, chatlanes, chatmod, chatguard, emotes, boards, arena, gladiator, duel, spar, race, leaderboard, power
 - **Files**: `src/game/`: alliance, chat, chatChannel, chatColor, chatMute, emotes, emoteMoves, gesturePose, friendErrors, duelLock, duelPending, partyChip, partyEq, partyMarks, partyRows, peerDot, race, spar, sparTargets, bubbleSkins, boardBumps, dictation
 - **Doors**: none named yet
 - **Switches**: none
