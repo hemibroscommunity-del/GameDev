@@ -247,7 +247,7 @@ export const SYSTEMS = Object.freeze({
   },
   device: {
     what: 'what kind of device this is and how much it can draw: the profile, resolution, the view cap',
-    files: [f('src/game', 'deviceProfile|renderRes|viewCap|speedTest|loadTimes|lookPaletteChoice')],
+    files: [f('src/game', 'deviceProfile|renderRes|viewCap|speedTest|loadTimes|lookPaletteChoice|drawLanes')],   /* v2.3.5221: + drawLanes (card O's lanes) */
     words: ['device', 'profile', 'viewcap', 'render-res', 'speed'],
     traps: [],
     doors: [{ name: 'deviceProfile', file: 'src/game/deviceProfile.js', what: 'the one place that asks what the device is (devClass, when SHAPES part 8 builds it)' }],

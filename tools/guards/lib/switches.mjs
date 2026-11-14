@@ -306,4 +306,7 @@ export const SWITCHES = Object.freeze([
   { name: '?npcheads', side: 'page', system: 'render', kind: 'switch', born: 5246, thrown: '=0', risk: 'memory', needs: [], fallback: 'no', off: 'The townsfolk\'s head pictures keep their decoded copies, as before.' },
   { name: '?pixbudget', side: 'page', system: 'device', kind: 'switch', born: 5140, thrown: '=0 (off), or a number: the budget to try', risk: 'chip', needs: [], fallback: 'no', off: 'The drawing resolution is no longer held to the pixel budget.' },
   { name: '?treenumbers', side: 'page', system: 'memory', kind: 'switch', born: 5247, thrown: '=0', risk: 'memory', needs: [], fallback: 'no', off: 'The trees are held as pictures again, not as colour numbers.' },
+  /* ── card O's (the lanes and the governor, src/game/drawLanes.js): its rows in a place of their own ── */
+  { name: '?lane', side: 'page', system: 'device', kind: 'lever', born: 5221, thrown: '=full, =light or =thirty', risk: 'none', needs: [], fallback: 'no', off: 'This page draws in the named lane, whatever its device\'s facts pick.' },
+  { name: 'reportlanes', side: 'worker', system: 'liveops', kind: 'switch', born: 5221, thrown: 'false', risk: 'logic', needs: ['report', 'reportspeed'], fallback: 'no', off: 'The field report no longer takes a lane but full, the governor\'s rung or the self-test (caps.report back to 2).' },
 ]);

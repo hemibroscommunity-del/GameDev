@@ -14,7 +14,10 @@
  *
  *   v         1, the shape's number
  *   devClass  the device class's twelve facts (game/deviceProfile.js)
- *   drawLane  'full': the one lane until card O makes lanes (step 2.1)
+ *   drawLane  the lane this page draws in (game/drawLanes.js, card O's
+ *             step 2.1: `full`, `light` or `thirty`), to a worker whose
+ *             caps.report is 3 or more (takesLanes); to an older one `full`,
+ *             as every page sent before lanes (v2.3.5221)
  *   sw        the memory savers the worker has turned off for every phone,
  *             ids of game/clientOff.js CLIENT_SAVERS -- never a name read
  *             off the address bar
@@ -76,6 +79,7 @@ import { busyIn } from './busyBeat.js';
 import { holdOf } from './holdNames.js';
 import { lastDeath, glLostCount, setMarkWhere } from './crashTrap.js';
 import { devClass } from '../game/deviceProfile.js';
+import { drawLane } from '../game/drawLanes.js';   /* v2.3.5221: card O's lanes */
 import { CLIENT_SAVERS, clientOff } from '../game/clientOff.js';
 import { PACE_FAST_MS, PACE_BREAK_MS } from '../game/framePacer.js';
 import { wheelHere } from '../game/wheelTrial.js';
@@ -96,7 +100,6 @@ export const REPORT = Object.freeze({
    and a freeze -- each edge between the whole-ms readings of two rates) */
 export const GAP_EDGES = Object.freeze([10, 12.5, 15, 18.5, 24, 29, 42, 75, 150]);
 export const WHERE = Object.freeze(['town', 'farm', 'dungeon', 'commons', 'frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', 'verdant', 'other']);
-export const DRAW_LANE = 'full';
 const OFF_KEY = 'bt_report';
 
 /* ── v2.3.5125: THE SPEED TEST'S CARD (the grand plan's step 1.2) ── */
@@ -409,7 +412,10 @@ export function buildReport(now) {
     mem = [_w(t && t.mb), _w(g && g.mb), _w(d && d.mb)];
   } catch (e) { /* what it read stands */ }
   const r = {
-    type: 'report', v: REPORT.V, devClass: facts, drawLane: DRAW_LANE,
+    /* v2.3.5221: the lane from the same class the report sends (drawLanes.js
+       pickLane, through drawLane: `?lane=` wins), to a worker that takes
+       lanes; `full` to one that does not */
+    type: 'report', v: REPORT.V, devClass: facts, drawLane: takesLanes(_S) ? drawLane(cls) : 'full',
     sw: CLIENT_SAVERS.filter((c) => clientOff(c.id)).map((c) => c.id),
     build: buildOf(typeof __GAME_VERSION__ !== 'undefined' ? __GAME_VERSION__ : ''),
     secs, seen: Math.min(secs, _w(_seenMs(a, tNow) / 1000)), drawn: a.drawn, gaps: a.gaps.slice(),
@@ -441,6 +447,13 @@ export function takesReports(S) {
  *  card too (`reportspeed: false` in its live flags: back to 1). */
 export function takesSpeed(S) {
   return !!(S && S._serverCaps && Number(S._serverCaps.report) >= 2);
+}
+
+/** v2.3.5221: card O's lanes -- `caps.report` 3 takes a lane but `full`, the
+ *  governor's `rung` and the self-test's `self` (`reportlanes: false` in its
+ *  live flags: back to 2, and the page sends `full`, no `rung`, no `self`). */
+export function takesLanes(S) {
+  return !!(S && S._serverCaps && Number(S._serverCaps.report) >= 3);
 }
 
 /* a report is due: built, sent to a worker that takes one, and a new one opened */
@@ -547,7 +560,7 @@ export function bookTableText(days) {
 if (typeof window !== 'undefined') {
   window.__btReport = (opt) => {
     if (opt && opt.send) { _poll(); _due(Date.now()); }
-    return { on: reportOn(), cap: takesReports(_S), speedCap: takesSpeed(_S), joinedAt: _joinedAt,
+    return { on: reportOn(), cap: takesReports(_S), speedCap: takesSpeed(_S), lanesCap: takesLanes(_S), joinedAt: _joinedAt,
       dueIn: _dueAt ? _dueAt - Date.now() : null, sent: _sent, dropped: _dropped, diedOwed: _diedOwed, speed: _speed,
       open: buildReport(Date.now()), last: _last };
   };
