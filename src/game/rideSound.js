@@ -10,7 +10,10 @@
  *
  * WHEN: YOUR board only, while the worker has you on it (game/ride.js
  * isRiding) and you roll -- it rises as you move and falls as you stand still
- * on it; the instant the ride ends, for any reason (off the safe ground, a hit,
+ * on it (v2.3.5440: its level follows the board's speed, game/ride.js
+ * rideSpeed: it rises with the start's pushes and fades as the board rolls
+ * off to a stop; with `?ridecoast=0`, up while you move, down as you stand, as
+ * before); the instant the ride ends, for any reason (off the safe ground, a hit,
  * a swing, death, a zone change, the kill switch, a tap), it falls to nothing
  * in a tenth of a second and its source is stopped.  Other riders are not
  * heard: in a busy town a loop for every board would be a pile of noise, and
@@ -30,7 +33,7 @@
 import { BT_AUDIO } from '@/data/index.js';
 import { OWNER_LOOPS, LOOP_REFS } from '@/data/ownerSoundClips.js';
 import { RIVER_VOL } from '@/game/waterAmbience.js';
-import { isRiding, rideButtonWanted } from '@/game/ride.js';
+import { isRiding, rideButtonWanted, rideFeelOn, rideSpeed } from '@/game/ride.js';
 import { rideGround } from '@/game/rideGround.js';
 
 export const ROLL_CLIP = 'skate-roll';
@@ -40,6 +43,9 @@ export const ROLL_K = 0.9;
 /* how fast it rises and falls (Web Audio's time constants, s) */
 const RISE_S = 0.15;
 const FALL_S = 0.35;
+/* v2.3.5440: falling with the board's speed as it rolls off, a step behind
+   it (the speed is looked at every EVERY_MS) */
+const FOLLOW_S = 0.12;
 const END_S = 0.04;
 const EVERY_MS = 100;
 const STOP_AFTER_MS = 1500;
@@ -121,10 +127,15 @@ export function tickRideSound(S, now) {
     }
     const P = S.player;
     const moving = Math.abs(P.vx || 0) > 0.05 || Math.abs(P.vy || 0) > 0.05;
-    st.k = moving ? 1 : 0;
+    /* v2.3.5440: the level is the board's speed (rideFeel), so it fades as
+       the board slows; the switch thrown, all or nothing as before */
+    const feel = rideFeelOn();
+    const k = feel ? rideSpeed(S) : (moving ? 1 : 0);
+    const rise = feel ? k > st.k : moving;
+    st.k = k;
     if (!ensure(B)) return;
     st.quietSince = 0;
-    st.gain.gain.setTargetAtTime(rollVol() * st.k, B.ctx.currentTime, moving ? RISE_S : FALL_S);
+    st.gain.gain.setTargetAtTime(rollVol() * st.k, B.ctx.currentTime, rise ? RISE_S : (feel ? FOLLOW_S : FALL_S));
   } catch (e) { /* sound only: never into the game loop */ }
 }
 
@@ -132,7 +143,7 @@ export function tickRideSound(S, now) {
 if (typeof window !== 'undefined') {
   window.__btRideSound = {
     state: () => ({
-      playing: !!st.src, k: st.k, riding: st.riding, plays: st.plays,
+      playing: !!st.src, k: +st.k.toFixed(3), riding: st.riding, plays: st.plays,
       gain: st.gain ? +st.gain.gain.value.toFixed(4) : 0,
       held: !!(BT_AUDIO._samples && BT_AUDIO._samples[ROLL_KEY]), vol: +rollVol().toFixed(4),
     }),

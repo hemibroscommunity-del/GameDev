@@ -66,7 +66,7 @@ Every row has every column (the guard fails one without):
 | `thrown` | on the worker the value that throws it; on the page its form (`present`, `=1`, `=0` and the words its read also takes, or a value) |
 | `risk` | what the old way guards against: `logic`, `memory` or `chip`; `none` for a lever (and only a lever) |
 | `needs` | the names it needs: it turns off with them (rule 4) |
-| `fallback` | `'no'`, or the trigger that still uses its old way, as names in a file (`'onWindows, onMac in src/game/lookPaletteChoice.js'`) |
+| `fallback` | `'no'`, or the trigger that still uses its old way, as names in a file (`'onWindows, onMac in src/game/deviceProfile.js'`) |
 | `off` | one sentence: what throwing it turns off, or back on |
 
 How the worker's rows were judged (PR 1): `born` is the first commit on `main`

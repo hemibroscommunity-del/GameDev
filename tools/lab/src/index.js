@@ -19,12 +19,27 @@
  *     (`flood-*`).  How Cloudflare BILLS the socket's messages is read off the
  *     account's own figures afterwards (run.mjs, GraphQL).
  *
- * It stores nothing.  Every path but "/" needs this run's key (LAB_KEY, made
- * by the workflow and passed with --var), so nobody else can make it work in
- * the ten minutes it exists.  Never the game: a worker of its own name,
- * deployed and deleted by .github/workflows/lab.yml only.
+ *   - Vault (v2.3.5288, card R PR 9): THE ROOM'S WAY BACK, TRIED.  A few
+ *     characters' records of its own (`rpg:bp_lab_<n>`), changed by the
+ *     GAME's own gold door (server/src/gold.js) and counted by the game's own
+ *     world's sum (server/src/worldsum.js), put back to an earlier time by the
+ *     game's own lever (server/src/restore.js rewindPlan, rewindDo) through
+ *     Cloudflare's point-in-time recovery -- which `wrangler dev --local`
+ *     does not have.  run.mjs --restore drives it (docs/specs/cloudflare-
+ *     lab.md, "The restore try").
+ *
+ * It stores nothing but the Vault's few records, deleted with the worker.
+ * Every path but "/" needs this run's key (LAB_KEY, made by the workflow and
+ * passed with --var), so nobody else can make it work in the minutes it
+ * exists.  Never the game: a worker of its own name, deployed and deleted by
+ * .github/workflows/lab.yml only.
  */
 import { DurableObject } from 'cloudflare:workers';
+/* v2.3.5288: the game's own code, for the Vault (wrangler bundles it; none
+   of it reaches the game's object or storage) */
+import { rewindPlan, rewindDo } from '../../../server/src/restore.js';
+import { worldCtx, worldAdd } from '../../../server/src/worldsum.js';
+import { goldMethods } from '../../../server/src/gold.js';
 
 /* made on first use, not at load (Workers refuse random numbers in global
    scope); every object in one isolate sees the same one */
@@ -194,6 +209,73 @@ export class Door extends DurableObject {
   }
 }
 
+/* ═══ v2.3.5288: THE VAULT -- the room's way back, tried on Cloudflare ═══
+   A room of its own for the game's rewind: `this.state` is its own state, as
+   a GameRoom's is, so restore.js runs on it unchanged (no sockets, no
+   players: it closes nothing).  One request an op:
+     seed   N characters, 1000 gold each, in one put
+     play   a step of the game's roads on them, each step ONE put of every
+            record it changed (the plan's rule 5): a mint (quest_reward), a
+            burn (farm_buy), a move between two (trade_window, mail_gold)
+     count  the world's sum of its records, and each purse
+     plan   rewindPlan: {at} or {bookmark} (the dry run)
+     do     rewindDo: {token, confirm} (the object restarts a moment after) */
+const VAULT = Object.freeze({ N_MAX: 32, PREFIX: 'rpg:bp_lab_' });
+const vaultRec = () => ({ coins: 1000, inventory: {}, _econ: { v: 1, g: { m: 0, b: 0 }, i: {} } });
+export class Vault extends DurableObject {
+  constructor(ctx, env) {
+    super(ctx, env);
+    this.state = ctx;            /* what restore.js reads: state.storage, state.abort */
+    this._liveFlags = { roomrewind: true };   /* the lab's own room: its way back switched on (the game's is OFF until the owner says) */
+    /* the game's gold door on these records: no day's book (a lab has none) */
+    this.door = Object.assign({ _liveFlags: {}, _daybookOff: () => true }, goldMethods);
+  }
+  async _all() {
+    const m = await this.ctx.storage.list({ prefix: VAULT.PREFIX });
+    return m;
+  }
+  async _count() {
+    const recs = await this._all();
+    const c = worldCtx();
+    const purses = {};
+    for (const [k, v] of recs) { worldAdd(c, k, v); purses[k.slice(VAULT.PREFIX.length)] = v && v.coins; }
+    return { gold: c.gold, goods: c.goods, net: c.net, purses, records: recs.size, now: Date.now() };
+  }
+  async fetch(req) {
+    const url = new URL(req.url);
+    const q = (k) => url.searchParams.get(k);
+    const op = q('op');
+    if (op === 'seed') {
+      const n = clamp(+q('n'), 2, VAULT.N_MAX, 8);
+      const all = {};
+      for (let i = 0; i < n; i++) all[VAULT.PREFIX + i] = vaultRec();
+      await this.ctx.storage.put(all);
+      return Response.json(await this._count());
+    }
+    if (op === 'play') {
+      const step = clamp(+q('step'), 0, 1e6, 0);
+      const recs = await this._all();
+      const keys = [...recs.keys()].sort();
+      if (keys.length < 2) return Response.json({ error: 'seed first' }, { status: 400 });
+      const a = keys[step % keys.length], b = keys[(step + 1) % keys.length];
+      const A = recs.get(a), B = recs.get(b);
+      this.door._goldGive(A, 100 + step, 'quest_reward');     /* a mint */
+      this.door._goldTake(B, 20, 'farm_buy');                 /* a burn */
+      this.door._goldTake(A, 50, 'trade_window');             /* a move: A's side... */
+      this.door._goldGive(B, 50, 'mail_gold');                /* ...and B's, by the mail */
+      await this.ctx.storage.put({ [a]: A, [b]: B });         /* both in one put */
+      return Response.json(await this._count());
+    }
+    if (op === 'count') return Response.json(await this._count());
+    if (op === 'plan') {
+      const body = q('bookmark') ? { bookmark: q('bookmark') } : { at: Number(q('at')) };
+      return Response.json(await rewindPlan(this, body));
+    }
+    if (op === 'do') return Response.json(await rewindDo(this, { token: q('token'), confirm: q('confirm') }));
+    return new Response('unknown op', { status: 400 });
+  }
+}
+
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
@@ -215,6 +297,12 @@ export default {
         const name = (url.searchParams.get('door') || 'd0').slice(0, 64);
         const stub = env.DOOR.get(env.DOOR.idFromName(name));
         return await stub.fetch('http://d/door' + url.search);
+      }
+      /* v2.3.5288: the restore try (run.mjs --restore) */
+      if (url.pathname === '/vault') {
+        const name = (url.searchParams.get('vault') || 'v0').slice(0, 64);
+        const stub = env.VAULT.get(env.VAULT.idFromName(name));
+        return await stub.fetch('http://v/vault' + url.search);
       }
     } catch (e) {
       return Response.json({ refused: String((e && e.message) || e).slice(0, 500), name: (e && e.name) || null }, { status: 503 });
