@@ -172,20 +172,17 @@ export const PHASES = [
     note: 'v2.3.5210: the door (TRADE_WAYS cancel, swap; both ends final; live flag tradedoor). A death does not cancel the window (fightlock.js); the takeover way skips the leave\'s cancel on purpose (TRAPS §162).',
   },
   {
-    name: 'party', side: 'worker', status: 'todo',
-    what: 'A party and its leader: invited, a member (away, offline), none.',
-    field: null, states: ['invited', 'member', 'leader', 'away', 'none'], fn: null, file: null,
+    name: 'party', side: 'worker', status: 'door',
+    what: 'A player\'s place in a party: a member, or none; an invite is a key of _partyInvites, the leader is the party record\'s own pointer, and away is a member whose body is offline.',
+    field: 'this._partyByPlayer', states: ['member', 'none'],
+    fn: '_partyIn', file: 'server/src/party.js',
     clears: [
       { edge: 'end', at: 'server/src/party.js _partyRemoveMember' },
       { edge: 'leave', at: 'server/src/party.js _partyOnDisconnect' },
     ],
     rejoin: ['party'],
-    today: [
-      { field: 'this._partyInvites', file: 'server/src/party.js', writers: ['server/src/party.js _handlePartyInvite', 'server/src/party.js _handlePartyAccept', 'server/src/party.js _handlePartyDecline', 'server/src/party.js _tickParties'] },
-      { field: 'this._partyByPlayer', file: 'server/src/party.js', writers: ['server/src/party.js _handlePartyAccept', 'server/src/party.js _partyLoad', 'server/src/party.js _partyRemoveMember', 'server/src/clanparty.js _clanToParty'] },
-      { field: 'p.leader', file: 'server/src/party.js', writers: ['server/src/party.js _handlePartyAccept', 'server/src/party.js _partyLoad', 'server/src/party.js _partyRemoveMember', 'server/src/party.js _partyOnRejoin', 'server/src/clanparty.js _clanToParty'] },
-    ],
-    note: 'The leave marks the member away, it does not remove them (partykeep). A rejoin re-sends the roster (join.js _partyOnRejoin, before rejoinresend.js existed).',
+    held: { suite: 'server/test/party-door.test.mjs' },
+    note: 'v2.3.5212: the door (PARTY_WAYS load, join, clan, leave, disband; a member stands in the party\'s own list; live flag partydoor). The leave marks the member away, it does not remove them (partykeep). A rejoin re-sends the roster (join.js _partyOnRejoin, before rejoinresend.js existed).',
   },
   {
     name: 'ride', side: 'worker', status: 'todo',
