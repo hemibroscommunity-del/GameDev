@@ -64,7 +64,9 @@ and the later rounds are unchanged.
   `__btTrimVerify`).
 - A job the worker could not do: no worker, or any error; or a worker that
   answered nothing for 20 s while it had work (`WORKER_MS`: let go of, its
-  jobs the page's). A job has no time limit of its own: the first tour with
+  jobs the page's; v2.3.5040: 20 s the page was there to see, and started
+  again when the page next comes back: "The worker's restart" below). A job
+  has no time limit of its own: the first tour with
   one worker and a limit a job sent b-fish's jobs, queued behind a-ink's, back
   to the page (344 ms holds). Two workers where the device has the cores. A file that did not load goes on to the page's own second try
   after its backoff, as a failed first download always did.
@@ -174,6 +176,82 @@ players and the page drawing in software beside it: in d-prints' 25 s, 6 of
 the 60 were dressed and the rest drew the plain tinted shirt meanwhile, as a
 shirt always did while it baked. A phone has two more cores and a graphics
 chip of its own.
+
+## The worker's restart (v2.3.5040)
+
+Found by the grand plan's review (`docs/GRAND-PLAN.md` step 3.1) and first on
+card H.
+
+**What was wrong.** The watch compared the wall's clock with a worker's last
+sign (`now - slot.sign > WORKER_MS`). A phone behind its lock screen runs
+nothing, and its workers sleep with the page. Back after 20 s or more with a
+job waiting, the watch's first tick read every worker as silent that long and
+let them all go; and a worker let go was never started again (`_dead`). From
+then on every sheet was baked on the page (114 to 720 ms each, the `body-bake`
+family of `held-budget.mjs`) **for the rest of the sitting**.
+
+**What it does now** (`bodyBake.js`, the page's side only; the worker's file
+is unchanged):
+
+- **The watch counts only time the page was there.** A worker's silence is
+  counted by the watch's own ticks (`slot.quiet`; a message or a beat sets it
+  to 0). A tick adds the time since the last tick only while the page is
+  visible, and never more than two ticks' worth (4 s). So a lock screen, a
+  tab behind another, a laptop's lid, and a freeze the browser sent no
+  visibility event for (an iPhone does not always send one: `mp-comeback` 5)
+  add nothing or one tick. `WORKER_MS` is unchanged (20 s): one step of one
+  job silent for 20 s the page was there to see.
+- **A worker let go is started again once each time the page comes back**
+  (`_back`: `visibilitychange` to visible, or `pageshow` out of Safari's
+  parked-page cache). Each empty slot gets its one start back, and the next
+  bake that needs a worker starts it, as the first was. A worker that is
+  truly broken costs one start a return, never a loop. Until a return, a slot
+  let go bakes on the page, as before.
+
+`window.__btBodyWorker()` now also says `restarts` (the returns that gave a
+start back).
+
+**How it was proven**: `mp-bodyworker` 6
+(`BT_BW_PARTS=restart node tools/qa/mp/run.mjs bodyworker`, about 4 minutes;
+the whole test runs it last).
+
+- 6a. With a job in a worker's hands and more in line, the page **and its
+  workers** are frozen for 25 s: the browser's page process is stopped
+  (`SIGSTOP`), because a thread held in a loop (`mp-tabsleep`'s way) leaves the
+  worker running beside it, and it answers. Twice: hidden first, as a lock
+  screen is, and with no visibility event at all.
+- 6b. A worker that IS stuck (a job of a kind it does not know is never
+  answered) for 25 s hidden and running, then shown; then the page's return;
+  then stuck again with no return.
+
+| | before (main at v2.3.5020) | after |
+|---|---|---|
+| frozen 25 s, hidden first (2 in hand, 3 in line) | 1 of 2 workers let go at the wake (the other's beat was heard first), 1 sheet left to the page | none let go, 10 of 10 sheets the worker's |
+| frozen 25 s, no visibility event | the last worker let go, 5 of 5 sheets left to the page | none let go, 10 of 10 the worker's |
+| after that, the page hidden and shown twice | no worker at work, every later sheet the page's | (not needed) |
+| a stuck worker, the page hidden and running 25 s | (let go) | kept; let go 20 s after the page is shown |
+| a stuck worker, the page there | (let go at 20 s) | let go at 20.1 and 21.0 s |
+| the page's return after a let-go | nothing | started again, the next 5 sheets the worker's; twice |
+| stuck again, no return | | stays gone, the page bakes |
+
+**Its break proofs** (part 5's rule 8: the one-line change that turns it red):
+
+- the watch counting the wall's clock again (`slot.quiet += now - _watchAt`,
+  no cap): 6a red, both ways (the "before" column);
+- the watch counting hidden time (`_pageShown` always true): 6b's "hidden
+  and running" red, 2 of 2 let go behind the hidden tab (run once, by hand);
+- no `_back`: 6b's "started again" red (the "before" column).
+
+**What it costs, and what it does not do.**
+
+- A stuck worker behind a hidden tab keeps its job until the page has been
+  shown for 20 s. Nothing is drawn meanwhile, so nothing waits for it.
+- Not a phone's own lock: an iPhone cannot be driven from here. The freeze is
+  this box's Chromium stopped whole, which is what a suspended page is to its
+  script (no timer, no message, the wall's clock going on).
+- `stripRead.js` (the monsters' strips) has a 20 s clock of its own
+  (`READ_MS`, a timer a read). It is not this fault's size and is not fixed
+  here: card H's status file has it under Found.
 
 ## Not here (next)
 

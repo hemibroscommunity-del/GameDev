@@ -21,7 +21,10 @@
  *     page sets, is the stand-ins' own: buildBodySheet's bake never reads it.)
  * A job the worker could not do (it failed to start, the file did not load,
  * any error, a worker silent for 20 s with work) answers null, and the caller bakes that sheet on the page as
- * before, with its own retries.
+ * before, with its own retries.  v2.3.5040: those 20 s are time the page was
+ * there and running (a phone behind its lock screen runs nothing, and its
+ * worker sleeps with it), and a worker let go is started again when the page
+ * next comes back (_back, below).
  *
  * QA: window.__btBodyWorker() (what it did), and
  * window.__btBodyWorkerCompare(jobs) (the same sheets baked both ways, byte
@@ -39,7 +42,7 @@ const _OFF = (() => {
   return null;
 })();
 
-const _stats = { off: _OFF, asked: 0, done: 0, failed: 0, inlineProbe: 0, loading: 0, stalled: 0, beats: 0, dropped: 0, ms: 0, pageMs: 0, lastWhy: null,
+const _stats = { off: _OFF, asked: 0, done: 0, failed: 0, inlineProbe: 0, loading: 0, stalled: 0, restarts: 0, beats: 0, dropped: 0, ms: 0, pageMs: 0, lastWhy: null,   /* v2.3.5040: + restarts (the page's returns that gave a let-go worker its start back) */
   shirt: { asked: 0, done: 0 } };   /* v2.3.5014: a drawn shirt's jobs (gearSheets.js), counted apart for mp-bodyworker 5 */
 let _dead = false, _seq = 0, _started = 0;
 /* ═══ TWO WORKERS, AND A WATCH THAT TELLS A DEAD ONE FROM A BUSY ONE ═══
@@ -57,9 +60,35 @@ let _dead = false, _seq = 0, _started = 0;
    watch let two busy workers go (the crowd tour's h-eight: 208 to 288 ms
    holds as the page baked what they had). */
 const POOL = (() => { try { return Math.max(1, Math.min(2, ((navigator && navigator.hardwareConcurrency) || 2) - 2)); } catch (e) { return 1; } })();
-const _pool = [];   /* { w, pending: Map(id -> res), sign: ms } */
+const _pool = [];   /* { w, pending: Map(id -> res), quiet: ms } */
 const _pending = { get size() { let n = 0; for (const s of _pool) n += s.pending.size; return n; } };
 let _watchT = null;
+/* ═══ v2.3.5040: THE WATCH COUNTS ONLY TIME THE PAGE WAS THERE, AND A WORKER LET GO IS STARTED AGAIN WHEN THE PAGE COMES BACK ═══
+   The grand plan's review (docs/GRAND-PLAN.md 3.1): the watch compared the
+   wall's clock with a worker's last sign (`now - slot.sign > WORKER_MS`).  A
+   phone behind its lock screen runs nothing, and its workers sleep with the
+   page; back after 20 s or more with a job waiting, the watch's first tick
+   read every worker as silent that long and let them all go, and a worker let
+   go was never started again (`_dead`): every sheet from then on was baked on
+   the page (114 to 720 ms each: held-budget.mjs body-bake) for the rest of
+   the sitting.  mp-bodyworker 6a, before: 2 of 2 let go at the wake.
+   Now:
+     - a worker's silence is counted by the watch's own ticks (`slot.quiet`),
+       a tick adding the time since the last one only while the page is
+       visible, and never more than two ticks' worth: a page that did not run
+       for a minute (a lock with no visibility event: an iPhone does not always
+       send one, mp-comeback 5; a laptop's lid) heard nothing from anyone, and
+       that minute is not its worker's silence;
+     - a worker let go is started again once each time the page comes back
+       (visible again, or out of Safari's parked-page cache): `_back` gives
+       each empty slot its one start back, and the next bake that needs a
+       worker starts it, as the first was.  One that is truly broken costs a
+       start a return, never a loop.
+   WORKER_MS is unchanged (20 s), and what it means: one step of one job
+   silent for 20 s the page was there to see. */
+const WATCH_MS = 2000;
+let _watchAt = 0;
+const _pageShown = () => { try { return typeof document === 'undefined' || document.visibilityState !== 'hidden'; } catch (e) { return true; } };
 
 function _kill(slot, why) {
   try { slot.w.terminate(); } catch (e) { /* gone */ }
@@ -72,19 +101,43 @@ function _kill(slot, why) {
 }
 function _watch() {
   if (_watchT) return;
+  _watchAt = Date.now();
   _watchT = setInterval(() => {
     const now = Date.now();
-    for (const slot of _pool.slice()) if (slot.pending.size && now - slot.sign > WORKER_MS) { _stats.stalled++; _kill(slot, 'stalled'); }
+    /* v2.3.5040: what this tick may count (the note above) */
+    const dt = _pageShown() ? Math.min(Math.max(0, now - _watchAt), 2 * WATCH_MS) : 0;
+    _watchAt = now;
+    for (const slot of _pool.slice()) {
+      if (!slot.pending.size) continue;
+      slot.quiet += dt;
+      if (slot.quiet > WORKER_MS) { _stats.stalled++; _kill(slot, 'stalled'); }
+    }
     if (!_pool.length) { clearInterval(_watchT); _watchT = null; }
-  }, 2000);
+  }, WATCH_MS);
+}
+/* v2.3.5040: the page is back.  Each worker let go since (stalled, died, or
+   never started) may be started once more; the time away is no tick's */
+function _back() {
+  _watchAt = Date.now();
+  if (_OFF || (_started <= _pool.length && !_dead)) return;
+  _stats.restarts++;
+  _started = _pool.length;
+  _dead = false;
+  _pump();   /* a line waiting on the one worker left goes to the new one too */
+}
+if (!_OFF && typeof document !== 'undefined' && typeof window !== 'undefined') {
+  try {
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') _back(); });
+    window.addEventListener('pageshow', (e) => { if (e && e.persisted) _back(); });
+  } catch (e) { /* nothing to hear: as before, a worker let go stays gone */ }
 }
 function _start() {
   let w;
   try { w = new Worker(new URL('./bodyBakeWorker.js', import.meta.url), { type: 'module' }); } catch (e) { return null; }
-  const slot = { w, pending: new Map(), sign: Date.now(), dead: false };
+  const slot = { w, pending: new Map(), quiet: 0, dead: false };
   w.onmessage = (ev) => {
     const m = ev.data || {};
-    slot.sign = Date.now();
+    slot.quiet = 0;   /* v2.3.5040: heard from (was a wall-clock stamp, `sign`) */
     /* v2.3.5013: a job's beat between its steps (bodyBakeWorker.js): alive,
        nothing to hand back */
     if (m.beat) { _stats.beats++; return; }
@@ -106,7 +159,8 @@ function _start() {
 function _worker() {
   if (_dead) return null;
   for (const s of _pool) if (!s.pending.size) return s;
-  /* a worker let go of is not started again: its slot bakes on the page */
+  /* a worker let go of is not started again until the page next comes back
+     (v2.3.5040, _back): till then its slot bakes on the page */
   if (_started < POOL) {
     _started++;
     const s = _start();
@@ -141,7 +195,7 @@ function _pump() {
     try { want = !q.wanted || !!q.wanted(); } catch (e) { want = true; }
     if (!want) { _stats.dropped++; q.res({ ok: false, why: 'dropped', dropped: true }); continue; }
     const id = ++_seq;
-    slot.sign = Date.now();   /* idle until now: its clock starts with this job */
+    slot.quiet = 0;   /* idle until now: its clock starts with this job */
     slot.pending.set(id, q.res);
     try { slot.w.postMessage({ ...q.msg, id }, q.transfer || []); } catch (e) { slot.pending.delete(id); q.res({ ok: false, why: 'post' }); }
   }
@@ -174,7 +228,8 @@ function _abs(u) { try { return new URL(u, location.href).href; } catch (e) { re
 /* a worker that answers nothing for this long while it has work is let go
    of (the watch above); its jobs are the page's, with their own retries.
    v2.3.5013: a beat counts, so this is one STEP of one job silent this long
-   (the longest measured, a fish sheet's recolour on this box: 5.6 s) */
+   (the longest measured, a fish sheet's recolour on this box: 5.6 s).
+   v2.3.5040: of time the page was visible and running (the watch's ticks) */
 const WORKER_MS = 20000;
 function _ask(msg, transfer, wanted) {
   if (_dead) return Promise.resolve({ ok: false, why: 'no worker' });
