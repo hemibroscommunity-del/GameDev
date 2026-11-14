@@ -1,31 +1,36 @@
 card: H
-branch: claude/grand-plan-h-2-whose-row (one branch a PR, each begun from the one before, as W's are: merge them in order)
-prs: #1668 (ready), PR 2 whose row on the branch above (ready; its number goes here with PR 3's commit, to spare a paid run)
+branch: claude/grand-plan-h-3-gear-sheet (one branch a PR, each begun from the one before, as W's are: merge them in order)
+prs: #1668 (ready), #1675 (ready), PR 3 on the branch above (ready; its number goes here with PR 4's commit)
 state: ready
 
 ## Done
 
-- #1668 (v2.3.5040), the worker's restart: `bodyBake.js`'s watch counts
-  only visible time; a worker let go is started again once each time the page
-  comes back. `mp-bodyworker` 6: red on main, green after; 97 of 97.
-- PR 2 (v2.3.5041), whose row: every row of `KNOWN` says `whose` (10 ours,
-  2 the box's, 1 the browser's); `debtOf('ours')` is step 3.1's count; the
-  spec's table lists all thirteen; `held-sweep.test` 7b2 to 7b4, each with a
-  break proof. Touches `server/test/`: its merge deploys the worker.
+- #1668 (tag 5040), the worker's restart: the watch counts only visible
+  time; a let-go worker restarts once a return. `mp-bodyworker` 6: red on
+  main, green after; 97 of 97.
+- #1675 (tag 5041), whose row: `whose` on every row of `KNOWN`; spec table;
+  `held-sweep.test` 7b2 to 7b4. Its merge deploys the worker.
+- PR 3 (tag 5042), `gear-sheet` and `portrait` off the list: what was left
+  of both was the Equipment screen's figure (`characterPortrait.js`), now a
+  step at a time in play with the body kept and witnessed. Sample: peer and
+  armour x3, crowd b-fish to d-prints x4. One fix earned both lines, so the
+  card's `portrait` PR is this one; PR 4 is `masked-bake`.
 
 ## Next
 
-- PR 3 (tag 5042), `gear-sheet` (195 ms): the stations that measure it,
-  three runs.
+- PR 4 (tag 5043), `masked-bake` (24 ms): one hold of 32.7 ms at `armour`
+  seen in PR 3's runs.
 
 ## Found
 
-- `src/rendering/stripRead.js`: its 20 s clock (`READ_MS`) is a timer a read
-  on the wall's clock. Back from a freeze of 20 s with a strip asked, that
-  ONE strip is unpacked on the page and the worker's late answer is thrown
-  away; the worker itself is kept, so it is not PR 1's fault ("for the rest of
-  the sitting"). Its `_dead` after a worker's `onerror` is for the rest of
-  the sitting, with no restart.
+- `src/rendering/stripRead.js`: its 20 s clock (`READ_MS`) is wall time:
+  after a 20 s freeze with a strip asked, that one strip is unpacked on the
+  page (the worker is kept). Its `_dead` after `onerror` has no restart.
+- `pack-page` (card P's): 17 to 35 ms at the main tour's `armour` against
+  its 20 ms line, in most runs of PR 3's sample (`getImageData` in
+  `packTrimmedSliced`). Not touched.
+- `tools/qa/mp/mp-heldsweep.mjs` FAMILIES: a hold is named by the first
+  family on its stack, so the figure read as `gear-sheet` or `body-bake`.
 
 ## Needs
 

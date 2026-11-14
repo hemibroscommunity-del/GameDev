@@ -317,6 +317,15 @@ const _gearGentleOff = (() => { try { return /(^|[?&])gearpackgentle=(0|off|fals
 /** zoneTextures.setStripPlay hands the same `fn` here: the frame's length in
  *  ms while the world is in play, 0 behind a loading screen. */
 export function setGearPackPlay(fn) { _gearPlay = typeof fn === 'function' ? fn : null; }
+/** v2.3.5042: the same signal for anything else the page draws a few ms at a
+ *  time while the world is in play (characterPortrait.js): this frame's length
+ *  in ms in play, 0 behind a loading screen, before the world is up, in a
+ *  hidden tab (BroTown.jsx setStripPlay).  Not `?gearpackgentle=0`'s: that is
+ *  the gear pack's own. */
+export function playFrameMs() {
+  if (!_gearPlay) return 0;
+  try { const v = +_gearPlay(); return v > 0 ? v : 0; } catch (e) { return 0; }
+}
 function _gearInPlay() {
   if (_gearGentleOff || !_gearPlay) return false;
   try { return +_gearPlay() > 0; } catch (e) { return false; }
