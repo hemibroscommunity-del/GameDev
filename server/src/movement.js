@@ -125,7 +125,54 @@ export const MOVE_BUDGET = Object.freeze({
    (_entryGraceGive below) -- no honest walk changes place twice in it */
 export const ENTRY_GRACE_GAP_MS = 10000;
 
+/* ═══ v2.3.5213: THE COOK DOOR -- THE ACTIVITY CLAIM'S ONE WRITER (card L PR 5) ═══
+   (docs/specs/cook-door.md; held by server/test/cook-door.test.mjs and the
+   phase table's guard, tools/guards/phase-table.test.mjs)
+   A cook's only phase on the worker is the phone's claim on its moves,
+   `ps.ex` ('cook'; gathering.js _extractionShielded reads it): no record is
+   held to a cook on purpose (gathering.js).  The same claim says 'fire',
+   'mine', 'chop', 'fish' and a farm step ('farm:<step>:<n>',
+   farmWork.js farmExCode), relayed to the others on the tick so they see the
+   work.  So the cook's door is the claim's: ONE field, `ps.ex`, written only
+   by _exTo, by a way of EX_WAYS -- `move` (the phone's claim, the move
+   handler's `ex`), `linger` and `take` (a body nobody holds: nothing) --
+   with its edge stamps (_exAt, _exX, _exY: where and when an activity began,
+   on the nothing->something edge only, as the move handler wrote them).
+   A CLAIM, NOT A PHASE (CLAUDE.md §5: a move's field is a request): what it
+   buys is judged where it is read, as before.  The door's one rule is its
+   shape: a claim is a short string (EX_MAX) or nothing, as every claim the
+   game sends is; `exdoor: false` in the live flags takes any value the old
+   line took (`msg.ex || null`).  The fire's note (ps._fireLit, moveclaims.js)
+   and the cook's plan (ps._cookHits, gathering.js) are notes, not phases. */
+export const EX_WAYS = Object.freeze({ move: 'claim', linger: 'none', take: 'none' });
+export const EX_MAX = 32;
+
 export const movementMethods = {
+  /* v2.3.5213: the cook door's kill switch (live flag `exdoor: false`) */
+  _exDoorOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'exdoor') && !f.exdoor);
+  },
+
+  /* v2.3.5213: THE ONE WRITER of the activity claim.  `ex` is the claim (the
+     move's), ignored for the ways to nothing.  True when it wrote. */
+  _exTo(ps, ex, way) {
+    if (!ps || typeof ps !== 'object' || !Object.prototype.hasOwnProperty.call(EX_WAYS, way)) return false;
+    let next = null;
+    if (EX_WAYS[way] === 'claim') {
+      next = this._exDoorOff() ? (ex || null) : ((typeof ex === 'string' && ex.length > 0 && ex.length <= EX_MAX) ? ex : null);
+    }
+    const was = ps.ex || null;
+    ps.ex = next;
+    if (next && !was) {
+      ps._exAt = Date.now();
+      ps._exX = ps.x || 0; ps._exY = ps.y || 0;
+    } else if (!next) {
+      ps._exAt = 0;
+    }
+    return true;
+  },
+
   /* v2.3.3325: the kill switch (MOVE_BUDGET above) */
   _moveBudgetOn() {
     const f = this._liveFlags;
@@ -756,14 +803,7 @@ export const movementMethods = {
            never expire for anybody, honest or not.
            Stamped from ps.x/ps.y, which this handler has just written from the
            validated move, rather than from anything the ex message carries. */
-        const _exWas = ps.ex || null;
-        ps.ex = msg.ex || null;
-        if (ps.ex && !_exWas) {
-          ps._exAt = Date.now();
-          ps._exX = ps.x || 0; ps._exY = ps.y || 0;
-        } else if (!ps.ex) {
-          ps._exAt = 0;
-        }
+        this._exTo(ps, msg.ex, 'move');   /* v2.3.5213: the cook door (the claim and its edge stamps) */
       }
       if (msg.dodging !== undefined) ps.dodging = !!msg.dodging;
       if (msg.blocking !== undefined) {

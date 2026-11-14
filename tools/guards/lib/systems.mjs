@@ -63,8 +63,10 @@ export const SYSTEMS = Object.freeze({
     words: ['wire', 'protocol', 'relay', 'caps', 'bundle', 'privileged', 'clientoff', 'flood'],
     traps: ['wire'],
     doors: [
-      { name: 'PRIVILEGED_EVENTS', file: 'server/src/index.js', what: 'every type the server sends; anything else a client could forge' },
-      { name: 'TYPES', file: 'server/src/relay.js', what: 'RELAY.TYPES: the relays a phone may send, rebuilt in its name' },
+      /* v2.3.5184 (the gatekeeper, sitting 13): the two lists are made from the wire table now (lists.js, card K PR 1) */
+      { name: 'PRIVILEGED_EVENTS', file: 'server/src/wire/lists.js', what: 'every type the server sends (every out row of the wire table); anything else a client could forge' },
+      { name: 'RELAY_TYPES', file: 'server/src/wire/lists.js', what: 'RELAY.TYPES: the relays a phone may send (every relay row), rebuilt in its name' },
+      { name: 'wireDoorJudge', file: 'server/src/wire/door.js', what: 'the wire door: the table\'s checks on every message and the room\'s routes, before any handler (v2.3.5184)' },
       { name: 'act', file: 'src/game/actions.js', what: 'ACTIONS: the one way a request leaves the page, and its request id (v2.3.5185)' },
     ],
   },
@@ -94,7 +96,9 @@ export const SYSTEMS = Object.freeze({
   },
   liveops: {
     what: 'the live flags, the admin and dev levers, test mode, feedback',
-    files: [f('server/src', 'liveops|admin|devtools|testmode|feedback'), f('src/game', 'testMode')],
+    files: [f('server/src', 'liveops|admin|devtools|testmode|feedback'), f('src/game', 'testMode'),
+      f('server/src', 'restore'),   /* v2.3.5288 (card R): the room's way back, the owner's lever */
+    ],
     words: ['liveops', 'admin', 'devtools', 'test-mode', 'testmode', 'feedback', 'flags'],
     traps: ['liveops'],
     doors: [

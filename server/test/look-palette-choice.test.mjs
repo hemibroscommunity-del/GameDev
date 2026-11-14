@@ -14,8 +14,18 @@
  *   2. the address wins either way: `lookpalette=0` off anywhere,
  *      `lookpalette=1` on even on Windows (QA);
  *   3. the wiring, read from the source: lookPalette.js's switch is this
- *      choice (with the userAgent, Chromium's platform and the touch points),
- *      and the QA probe reports why.
+ *      choice, and the QA probe reports why.
+ *
+ * v2.3.5228 (card O PR 8): the choice is the lanes' `look` knob, its
+ * Windows and Mac an override's, asked of deviceProfile.js:
+ *   3. lookPalette.js asks the choice with the search alone (this page's
+ *      device, asked of the profile: it reads no navigator);
+ *   4. the choice reads laneKnob('look'), and no device's name: onWindows
+ *      and onMac are the profile's (re-exported, the same functions); the
+ *      search alone answers for the device the lanes are asked about.
+ * Each device's answer, with the one program's: one-program.test.
+ * BREAK PROOF (rule 8), tried by hand 2026-11-14: the look's Mac override
+ * taken out of drawLanes.js OVERRIDES -> FAIL 1 (each Mac 'default').
  */
 import { readFileSync } from 'node:fs';
 
@@ -28,6 +38,8 @@ function check(name, cond, detail) {
 const root = new URL('../../', import.meta.url);
 const src = (p) => readFileSync(new URL(p, root), 'utf8');
 const C = await import('../../src/game/lookPaletteChoice.js');
+const P = await import('../../src/game/deviceProfile.js');
+const D = await import('../../src/game/drawLanes.js');
 
 const UA = {
   winChrome: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
@@ -71,10 +83,28 @@ check('?xlookpalette=1 is not the switch', C.lookPaletteChoice('?xlookpalette=1'
 /* ── 3. the wiring ── */
 const lp = src('src/rendering/lookPalette.js');
 check("lookPalette.js imports the choice", /import \{ lookPaletteChoice \} from '\.\.\/game\/lookPaletteChoice\.js'/.test(lp));
-check('its switch is the choice, with the userAgent, Chromium\'s platform and the touch points', /lookPaletteChoice\(window\.location\.search \|\| '', nav && nav\.userAgent, nav && nav\.userAgentData && nav\.userAgentData\.platform,\s*nav && nav\.maxTouchPoints\)/.test(lp)
-  && /const _wanted = wantedByAddress\(\);/.test(lp));
+/* v2.3.5228: the search alone -- this page's device, asked of the profile */
+const code = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\/[^\n]*/g, '$1');
+check('its switch is the choice, with the search alone (this page\'s device, asked of the profile), and lookPalette.js reads no navigator',
+  /lookPaletteChoice\(window\.location\.search \|\| ''\)/.test(lp) && /const _wanted = wantedByAddress\(\);/.test(lp) && !/navigator/.test(code(lp)));
 check('the program is built only when wanted (the prewarm asks _wanted first)', /function prewarmProgram\(\) \{\s*const r = paletteRendererOf\(\);\s*if \(!_wanted \|\|/.test(lp));
 check('the QA probe says why', /why: _why/.test(lp));
+
+/* ── 4. v2.3.5228: the lanes' `look` knob; no name here ── */
+const lc = code(src('src/game/lookPaletteChoice.js'));
+/* a name, as a word (the profile's onWindows / onMac, imported, are not) */
+const NAMES = /\b(Windows|Win64|Win32|Macintosh|macOS|iPhone|iPad)\b|userAgent|navigator/i;
+check("lookPaletteChoice.js reads laneKnob('look')", /\blaneKnob\('look'\)/.test(lc));
+check('...and no device\'s name (Windows, a Mac, an iPhone, a user agent): the profile answers', !NAMES.test(lc), lc.match(new RegExp(NAMES.source, 'gi')));
+check('onWindows and onMac are the profile\'s own (re-exported for the old importers)', C.onWindows === P.onWindows && C.onMac === P.onMac);
+check('the search alone answers for the device the lanes are asked about: Windows',
+  D.askingAs(P.devAsk({ ua: UA.winChrome }), () => JSON.stringify(C.lookPaletteChoice(''))) === JSON.stringify({ on: false, why: 'windows' }));
+check('...a Mac', D.askingAs(P.devAsk({ ua: UA.macSafari, touch: 0 }), () => C.lookPaletteChoice('').why) === 'mac');
+check('...an iPad asking for the desktop site', D.askingAs(P.devAsk({ ua: UA.ipad, touch: 5 }), () => C.lookPaletteChoice('').why) === 'default');
+check('...and the address still first', D.askingAs(P.devAsk({ ua: UA.winChrome }), () => C.lookPaletteChoice('?lookpalette=1').why) === 'address');
+check('this process (node, Linux): built, the page\'s own answers handed to the lanes', C.lookPaletteChoice('').on === true);
+check('the profile\'s `palette` is this choice (handed in, never imported: one way only)',
+  P.deviceProfile().palette === 'on' && !/lookPaletteChoice/.test(code(src('src/game/deviceProfile.js')).replace(/useLookChoice/g, '')));
 
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);

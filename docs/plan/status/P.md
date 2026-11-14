@@ -1,6 +1,6 @@
 card: P
-branch: claude/plan-p-14-figure-hold (one branch a PR, each begun from the one before)
-prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766 (5241-5252, merged); #1805 (5253), #1806 (5254) ready; the figure's hold (5255) measured
+branch: claude/plan-p-16-frame-pack (begun from main, as the planning session asked from the fire goblin on)
+prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810 (5241-5255, merged); monster-fire-goblin (5257) ready; monster-slime (5256) built, waits
 state: working
 
 ## Done
@@ -11,30 +11,29 @@ state: working
   0.80 by the census); sittings 8 and 9: not the snowball, not the trap.
 - #1766 (5252), `fx-sheets-supplied`: the whirlwind's declined twin as numbers
   (`gearSheets.js`): `artCache` 97.1 -> 95.1; 0.49 MB by the census.
+- #1805 (5253) `pack-page` on the worker; #1806 (5254) the pixel readers'
+  guard; #1810 (5255) the Equipment figure's 22 ms named (the box).
 
 ## Next
 
-- #1805 (5253) `pack-page`, road B: in play on the bake worker
-  (`?packworker=0`), byte for byte; no pack-page hold; off held-budget.
-- The guard (5254, `tools/guards/pixel-readers.test.mjs`): the CPU readers
-  of picture pixels a closed list; the trap back in WORLD_ICONS fails it.
+- 5257 `monster-fire-goblin`, road A' (`framePack.js`, `?framepack=0`): a
+  strip's numbers kept deflated a frame at a time once drawn (deflated and
+  checked on the reader's worker); census 8.10 -> 6.65 MB at the fight; no
+  line moved (`buffers`' highest is at home). The PR, then the slimes.
+- 5256 `monster-slime` (walks; made again from main): its three runs next.
 
 ## Found
 
 - 545 files in reach load by nothing (census; removal is the owner's yes);
   22.2 MB at the fight have no label (the renderers' bakes, not card P's).
-- Hold 6 checks sizes only where a family names a frame.
-- `pack-page` on today's main (A's sample): 30.6 ms at armour, 15.9 at
-  peer, against its line of 20 (not raised).
+- `pack-page` on main (A's sample): 30.6 ms at armour, 15.9 at peer.
 - `mp-npclooks` 2 and 2b are red with PR 6's change on and off alike.
-- The Equipment figure's 22 ms (5255): the box, not the figure (steps 5 ms
-  at most on one page; 7-16 ms at any step with a second page on the box).
+- 5257: the fire goblin's strips not yet drawn keep their numbers (packing
+  them would unpack a whole strip at its first draw, mid-fight).
 
 ## Needs
 
-- Answered (2026-11-14): `pack-page` by road B (packed on the worker),
-  never drawn bare while it waits; road A (sheets as numbers) a backlog row.
-- Answered (2026-11-14): P mends the probe (a numbers source counts 0 in
-  `__btTex`), the chip's count shown, with a break proof.
-- Answered: a numbers PR may raise `buffers` by what it moves there;
-  slimes as you walk (after H), the effects' twins on.
+- Answered (2026-11-14): the fire goblin by road A' (road C as asked
+  measured 9.61 MB for the pins alone, over the 4.81 it would save).
+- Answered: `pack-page` by road B; P mends the probe; a numbers PR may
+  raise `buffers` by what it moves there; slimes as you walk.
