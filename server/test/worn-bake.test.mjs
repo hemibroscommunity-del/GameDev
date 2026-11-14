@@ -100,7 +100,10 @@ check(`3c. the rule alone keeps them too (${ruleOnly.worn} of 177)`, ruleOnly.wo
    no worker, or a frame the worker failed twice) baked it without the piece.
    In the page (the belt harness, the real bake) with one unreadable piece:
    before, the frame was baked and kept, and asked again gave that frame;
-   after, the plain body both times, nothing kept. */
+   after, the plain body both times, nothing kept.  This READS the text (node
+   cannot load the renderer), so a guard short-circuited with its words kept
+   would pass here: tools/qa/belt-unreadable.mjs RUNS the path (the vite dev
+   server and a browser), the check to run after a change to this bake. */
 {
   const er = readFileSync(ROOT + 'src/rendering/systems/entityRenderer.js', 'utf8');
   const fnBody = (name) => {

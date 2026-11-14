@@ -365,7 +365,6 @@ export const SWITCHES = Object.freeze([
   { name: '?plaintown', side: 'page', system: 'world', kind: 'lever', born: 3299, thrown: 'present', risk: 'none', needs: [], fallback: 'no', off: 'A preview: the town with no objects, on the short world.' },
   { name: '?playvwlive', side: 'page', system: 'ui', kind: 'switch', born: 4875, thrown: '=1', risk: 'logic', needs: [], fallback: 'no', off: 'The play view is measured on every read, as before.' },
   { name: '?pointsfly', side: 'page', system: 'quests', kind: 'switch', born: 3971, thrown: '=0', risk: 'logic', needs: [], fallback: 'no', off: 'Points earned do not fly to their bar.' },
-  { name: '?portraitframe', side: 'page', system: 'look', kind: 'switch', born: 5051, thrown: '=0, off, false', risk: 'logic', needs: [], fallback: 'no', off: 'The Equipment screen\'s figure takes its shirt and armour from their whole strips again, not their first frame.' },
   { name: '?questpath', side: 'page', system: 'quests', kind: 'switch', born: 2992, thrown: 'present', risk: 'logic', needs: [], fallback: 'no', off: 'The quest\'s road on the ground comes back, with its Settings row.' },
   { name: '?repairms', side: 'page', system: 'world', kind: 'lever', born: 2995, thrown: 'a number of ms', risk: 'none', needs: [], fallback: 'no', off: 'A test\'s own time for a broken object to mend.' },
   { name: '?report', side: 'page', system: 'debug', kind: 'switch', born: 5122, thrown: '=0', risk: 'logic', needs: [], fallback: 'no', off: 'This phone sends no field report.' },

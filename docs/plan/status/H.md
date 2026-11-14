@@ -18,20 +18,22 @@ state: ready
 
 ## Next
 
-- #1777 (5051), ready: the figure's shirt and armour from their first
-  frame (55 of 55 the same); `portrait` 8.2 ms the longest in two tours.
-  With sitting 9's low find (asked): the page's own armour bake draws the
-  body plain for a piece not readable (`worn-bake.test` §5). It deploys.
+- #1777 (5051), ready: sitting 9's low find, the page's own armour bake
+  draws the body plain for a piece not readable (`worn-bake.test` §5). It
+  deploys. The figure's cut is dropped (sitting 10: its sheets are 1 frame).
 
 ## Found
+
+- The figure's 22 ms (`gear-sheet` 22.4, `portrait` 22.6) is NOT explained:
+  its sheets are one 128x128 frame each. Candidates, unmeasured: a cold
+  decode inside `drawImage`; `composeShirt`'s and the tint's `getImageData`.
 
 - `stripRead.js`: `READ_MS` (20 s) is wall time; `_dead` has no restart.
 - `other: wrapped` (`perfTracker.js`'s timer wrapper): over the line in 5
   of ~40 runs; the sweep should look inside it. `QuestCoach > loadDone`
   23.3 ms once at `town` (measures the page).
-- Pixi's render threw (`addressModeU` of null) once, a hung worker's jobs
-  failing twice (the old restart rule). `mp-lookarmour` red on `main` too:
-  its side-by-side picture throws (`alphaMode` of null): card J's first.
+- Pixi's render threw (`addressModeU` of null) once. `mp-lookarmour` red
+  on `main` too: its side-by-side picture throws (`alphaMode` of null).
 
 ## Needs
 

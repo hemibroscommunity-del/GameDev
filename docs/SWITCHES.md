@@ -211,7 +211,6 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `lookdelta` | worker | switch | v2.3.3240 | false | logic |  | no | Every look track is relayed whole again. |
 | `lookfolk` | both | switch | v2.3.3809 | off_lookfolk: true; ?lookfolk=0 | memory | `lookpalette` | no | The townsfolk are drawn from their photographs again, loaded then. |
 | `lookshirt` | both | switch | v2.3.3751 | off_lookshirt: true; ?lookshirt=0 | chip | `lookpalette` | no | Printed shirts are baked again, not coloured on the chip. |
-| `?portraitframe` | page | switch | v2.3.5051 | =0, off, false | logic |  | no | The Equipment screen's figure takes its shirt and armour from their whole strips again, not their first frame. |
 
 ## memory
 
