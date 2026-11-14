@@ -1,7 +1,7 @@
 card: PW
 branch: claude/plan-pw-4-statboards (from -pw-2-boards; merge #1774, #1778, #1776 first)
-prs: #1774 (5480, ready), #1778 (5483, ready), #1776 (5481, ready), stat boards (5484, working)
-state: working
+prs: #1774 (5480), #1778 (5483), #1776 (5481), #1781 (5484): all ready, in that order
+state: ready
 
 ## Done
 
@@ -15,13 +15,13 @@ state: working
 - #1776 (5481): the row's `powerIndex`, the Power board, `caps.power`, the
   live flag `power` and its switch row, wire notes, a SHAPES row; no new
   write (cost-guard green); suite §6. Holds #1778 merged in.
-- Stat boards (5484): `pts_<stat>` a shared stat and `pts_dmg`, the game's
+- #1781 (5484): `pts_<stat>` a shared stat and `pts_dmg`, the game's
   own names, `statPoints` on the row inside the signature, `caps.statboards`
   (a count), the flag `statboards`; statboards.test (20).
 
 ## Next
 
-- The stat boards' PR to the gatekeeper, after #1776.
+- The gatekeeper: #1774, #1778, #1776, #1781. PR 3 (5482) has nothing left.
 
 ## Found
 
