@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "a5781799d3014833a4905b57b0358b41a157b324",
+  "tree": "73ebf2fd52f13c6be53a66c0f2a7e7dcf090696d",
+  "committedAt": "2026-11-14T11:25:14-08:00",
+  "subject": "Merge pull request #1822 from hemibroscommunity-del/claude/plan-k-1-wire-lists",
+  "files": 7664,
+  "bytes": 953731178,
+  "listingSha256": "3e4fb48ffaaa37e0a494cadee0ef4011dd47ca5d29523096943b3580f1e0c9b5",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
