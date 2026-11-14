@@ -1361,11 +1361,625 @@ const varRows = VARS.filter((v) => v.decl !== 'const' || (v.mutated > 0 && !NOT_
 /* SUGGESTED:BEGIN */
 const SUGGESTED = {
   fields: {
+    'never': `
+      __aliveAt __btNoIdleMoves __introLiftedAt __introLiftedZone __pixiErrStreak __wdArmedAt __wdDark
+      __wdEverLit __wdFastRebuiltAt __wdFirstNext __wdHb __wdNext __wdReloading _abilCd _abilityFx
+      _abilitySwingUntil _aimActive _arenaHistoryLoaded _arenaLastBgPoll _arenaLastPoll _arenaNotified
+      _atkEnergy _atkHoldUntil _atkPressAt _authRejects _avatarArtHold _backpedaling _bfPose _blockFlash
+      _blockPose _blockShieldBehind _blocked _bodyAnimDir _bodyAnimFrame _bodyAnimMirror _bodyDrawH _bodyFootY
+      _bodyMoving _bodyPlacedAt _bowArtReady _bowDir _bowGripDX _bowGripDY _bowHoldFrame _bowJogLegs
+      _bowShotAng _bowShotAt _bowShowing _bowSight _bowSpecialQueued _btnHarvest _burstMsgAt _camPunch
+      _capeStatusLine _characterReset _chatBySelfTap _clanPaintColor _clanPainting _climbFrame _climbNoteAt
+      _currentRoom _damageFlash _dayNightCache _dazeNoteAt _dblTap _dblTapRolls _dead _dealtAt _deathDrops
+      _deathFlash _deskPressBash _diceAskAt _discGhost _discRect _discRectAt _dodgeFlash _dropLast
+      _dropLinesAt _dtScale _eTalkHints _emoteAt _emoteHudDrop _emoteMove _evErrLogged _facing _facingAngle
+      _facingSrc _farmAskedAt _farmLastSeed _farmLastStep _farmSeedPick _farmSteps _fbLastFilter _figureScaleY
+      _flipCount _footstepTimer _frameCount _frameMs _friends _frozenAt _frozenByAdmin _gambleResult
+      _gambleWager _gatherHitSeq _gustAng _gustAt _hardenedWoodSeen _harvestKeys _hasDodged _hasSled
+      _hasUsedSwipe _heapBurnSentAt _heapBurnUntil _hitFlash _hitStop _hudPopups _idleChatAt _idleChatSeq
+      _instantHealAt _interactNow _isDesktop _jogBodyH _joinId _joinKey _joinRejectedFatal _jumpCount
+      _jumpLandAt _jumpLandFx _jumpWhy _keyFellBack _keyNewAt _killSlowmo _killSlowmoDuration _killXpFlewAt
+      _killXpKillAt _lJoyHeld _lJoyLiveUntil _lJoyPreviewUntil _lJoyShown _lastAbilityReject _lastAimAngle
+      _lastArrowBoom _lastBurstAt _lastDrownTick _lastExBroadcast _lastFlip _lastGatherNodeAt _lastGhostSweep
+      _lastHarvestOkAt _lastInputAt _lastJumpRun _lastMoveBroadcast _lastReportAck _lastSwipe _lastTrack
+      _lbLastTab _lbServerData _levelShownBaselined _levelUpFlash _lockDroppedAt _lockDroppedWhy
+      _lootFreezeUntil _lungeIFramesUntil _mail _mapPins _mapWatchSent _mayorGateAt _mc _mcEarly _mcTeachAt
+      _mcTeachN _miningOpen _mktLastRefresh _mktPlaceBusy _monNoiseAt _monstersArtWait _monstersFarHidden
+      _mouseAimAngle _mouseScreen _nmlAskAgain _nmlAskMarks _nmlAskedAt _nmlConfiscatedAt _nmlLockAskAt
+      _offlineNoteAt _onlineAt _ownCollisionRecent _ownSpecialRecent _peerArmTex _peerBlockPose
+      _peerBowFacingsReady _peerDmgZone _peerShieldHeld _peerStandGeom _peersCrowdHidden _peersFarHidden
+      _peersNotDrawn _perf _perimeterPx _petBookRev _petLevelSaid _petLevelUps _petPrevPX _petPrevPY
+      _petXpGained _playtimeTick _propSwingAt _pushY _pvpAt _pvpBlows _pvpBouts _pvpHitBy _pvpReputation
+      _pvpSrvHits _pvpSwSent _pvpSwSentBy _pvpThreat _pvpThreatCdUntil _qcNextPoll _qcSeen _rBtnLiveUntil
+      _rBtnPressUntil _rBtnShown _rJoyLiveUntil _raft _railCss _railCssAt _renderFacing _rendererKind
+      _resetRefused _restPending _resumeSpot _revealLast _riseChestGot _rpgFromServer _rpgSaveTimer
+      _selfBandBotY _selfBandHalfW _selfBandTopY _selfChatTipY _shieldAimMouse _shieldDroppedAt
+      _shieldDroppedWhy _shieldThreat _shockAt _slowMult _smithyTab _snowballCd _spinBoard _splitLog
+      _sprintRunOuts _staffCadenceMs _staffCastAng _staffCastAt _staffCastBig _staffTipBehind _staggerNoteAt
+      _staleTouches _standInBody _standInBodyH _standInFootY _statsSavedJson _stuckNoteAt _swingAng
+      _swingBcastPending _swingSfxKey _swingSfxPending _swordBodyH _swordFootY _swordJogLegs _swordSwingDir
+      _swordSwinging _t1Seeded _t2LocalEnd _tabClaim _tabKey _tabKeyOld _tabMoved _tapActs _tapAtk _tapAtkWhy
+      _tapAttacks _tapEmptySeq _targetCands _targetFacingAngle _tickCount _tiledWalkable _tooFarAt
+      _touchHandledAt _tourStarted _trailTimer _trapArms _trapCatches _trapLast _trapReveal _trapRolls
+      _trapsMade _tutorialDoneAt _tutorialStep _uiBusy _userCycledSlot _verifyToken _viewH _viewW _warTarget
+      _warTargetData _warZone _wardAt _wardElem _wardHits _wardPct _wardSaid _wardSaidAt _wasMovingBcast
+      _weaponSwapFlash _wheelDoorAskedAt _wheelGateHits _wheelMem _wheelSpawnInit _worldScaleX _worldScaleY
+      _wwType _xpBar _xpBarLastGainTs _xpCarry _zoneLockAt _zoneWarnAt _zoneWipe activeQuest blocked bodyLegs
+      bodySize bodyTorso channel chatBubbles chatLog collectedIds emote friends isSwinging journey keys
+      lastBroadcast lastDamageTaken myAvatar myBroData myColor myId myName player playerId respawnTimer rpg
+      rpgState score screenShake stats stickX stickY swingAngle swingTimer tickCount visitedZones weapon zone`,
+    'zone': `
+      _aimAngle _aimSrc _aiming _ambientParticles _arrowSnaps _atkPending _bashDash _bashPose _bf _bloodBursts
+      _bowGripX _bowGripY _burnUntil _campfire _catchFlights _chillUntil _climb _climbDrop _currentDepth
+      _customDungeonTerrain _dashStrike _dazeUntil _debrisBursts _deskPressLock _diveAir _diveStarted
+      _dlCredits _dmgFromMonster _dodgeRoll _dodgeTrail _dropLines _dungeonBossSpawned _dungeonClear
+      _dungeonDepth _dungeonEnteredAt _dungeonMaxWaves _dungeonWave _dungeonZone _dustPuffs _echoActive
+      _engaged _engagedGapAt _engagedId _enteredFromDir _enteredFromExit _enteredFromHub _extraction
+      _farmArtHold _farmBack _farmHands _farmLeaving _farmWork _feelFx _fireTrail _firemaking _fractureStacks
+      _fractureUntil _frozenUntil _fxBursts _gust _hubExitDisarm _iceAttack _impactRings _jump _jumpOver
+      _killXpWait _lastGatherNodeId _mouseWorldX _mouseWorldY _nearBed _nearChest _nearHouse _nearNode
+      _nearNpc _nearPetHouse _nearWheelBuilding _nearWheelDoor _nearWorkshop _nmlAsked _nmlFoes _nmlLevel
+      _nodeResyncT _npcProxLatch _particles _peerCampfires _peerDmgLastRel _peerDmgQueue _peerGatherNode
+      _peerPrintLast _peerWhirlFx _peerWindups _petFetch _petX _petY _poisonUntil _preDungeonMap
+      _preDungeonMonsters _preDungeonNodes _preDungeonPos _printLast _propMarks _proxNode _remoteProjectiles
+      _riseCross _shockFrom _shockUntil _shotEnds _shotImpacts _sled _sleeping _slideVx _slideVy _slowUntil
+      _smithing _snowballs _snowmen _soakUntil _sootQueue _sparkArcs _spawnAskedAt _spawnSince _spawnToWheel
+      _specialAttack _sprint _staffCrashes _staffTipAt _staffTipX _staffTipY _staggerUntil _stormZaps
+      _stuckUntil _swimming _teachNode _telegraphZones _thornUntil _tideLevel _torch _townArtHold _waterBlows
+      _wheelDungeonOpening _wheelSwim _wheelTripVeil _whirlCatch _whirlFx _whirlWindup _wobbleFrom
+      _wobbleUntil _zoneLoading arrowBlasts arrows autoAttack camera campfires collectibles currentZone
+      deathExplosions destroyedTrees dmgNumbers fishTimer footprints groundSplatter hitParticles map
+      nearBuilding npcs peerFootprints projectiles slimeProjectiles slimeShockwaves snowballBursts trail`,
+    'death': `
+      _bleedUntil _cursedUntil _dazeGritAt _deathCard _deathStart _dying _frozenChipAt _gustDustAt
+      _playerStunUntil _respawnInvuln _sf _shieldAngle _shieldAutoReleased _shieldCdUntil _shieldKb
+      _shieldMouse _shieldStamina _shieldUp _stf _stunEnd _wellRestedUntil shieldActive shieldEnd`,
+    'rejoin': `
+      _acc _accState _achv _activeClanWar _activeDuel _arenaInvolved _arenaMatch _arenaStakeBoard
+      _arenaTournamentId _bank _bankPending _bodyPlaceDue _clanData _codex _dailyRewards _dmgBuff _dmgBuffMul
+      _fishBoard _hpBuff _httpToken _inDuel _jackpotPool _jackpotTickets _joinedId _kaConfirmed _keyIdAsked
+      _lastBroadcastBa _lastBroadcastBlocking _lastBroadcastDead _lastBroadcastEx _lastBroadcastFacing
+      _lastBroadcastGear _lastBroadcastX _lastBroadcastY _lastBroadcastZone _lastStatsUpdateSig _manaBuff
+      _manaFlat _netHold _nmlLocks _nmlSelf _party _pendingClanInvite _petBook _playerCount
+      _pointsResetAskedAt _pvpSkullType _pvpSkullUntil _realtimeStatus _regenBuff _resistBuff _restAsked
+      _riseChestAsk _serverCaps _serverGatherNodes _serverLoot _serverMuteNames _serverMutes _spdBuff
+      _spdBuffMul _t2DoneWatch _t2Leave _t2Live _t2QuietUntil _testMode _threatMarks _xpBuff _xpBuffMul others`,
+    'zone+rejoin': `
+      _customDungeonConfig _dungeonBack _dungeonComplete _inCustomDungeon _inDungeon _pendingZoneNodes _pose
+      _race _raceLil _ride _serverDungeon _serverMonsters _spar _trap _trapTries gatherNodes groundLoot
+      lockedTarget monsters`,
   },
   vars: {
+    'data/abilities.js': { rejoin: '_blockScale _enabled' },
+    'data/achievements.js': { never: 'BY_ID' },
+    'data/bowFeelSound.js': { never: '_noise' },
+    'data/effects.js': { never: 'WORLDVIEW_ARRIVAL WORLDVIEW_EXITS' },
+    'data/fishVariants.js': { never: 'NAME' },
+    'data/footstepClips.js': { never: 'FOOTSTEP_CLIPS' },
+    'data/gameDisplay.js': { never: 'BT_AUDIO' },
+    'data/gameSystems.js': {
+      never: `
+        discoveredCollisions discoveredMonsters discoveredMaterials visitedZones _npcHasQuestCache _doorCache
+        _doorCount _closedDoorZones _wheelDoorActions _questsByNpc _questEntries`,
+      zone: `
+        TOWN_W TOWN_H COLS ROWS`,
+      rejoin: `
+        _fishHealLadder WEAPON_STASH_MAX _t2BenchEnabled _gridCapsEnabled _t2SimpleEnabled _gearQ _grottoParty`,
+    },
+    'data/monsterDeathZones.js': { never: '_resolved' },
+    'data/oneFormula.js': { rejoin: '_on _oneLevel _gearOnLevel' },
+    'data/ownerIcons.js': { never: 'SCENES' },
+    'data/prog3.js': { rejoin: '_enabled _prog3x _prog3elem _prog3shared _prog3rel _statFree _burstCaps _milestonesRetired' },
+    'data/raceTally.js': { never: 'lost' },
+    'data/soundFold.js': { never: '_a _b _m' },
+    'data/statDemoAssets.js': { never: '_blueSheets' },
+    'data/weaponFeelSound.js': { never: '_noise' },
+    'data/wheelLands.js': { never: 'LOOK' },
+    'data/worldProps.js': { never: '_blockerCache', zone: '_blockerHook' },
+    'data/zoneBanner.js': { never: 'ZONE_BANNER_THEME ZONE_BANNER_STRIPS' },
+    'data/zones.js': { never: 'ZONES' },
+    'debug/busyBeat.js': { never: '_base _last _n _on _gaps _gi _gn _held' },
+    'debug/crashTrap.js': { never: '_flushTimer _flushAt _lastSentKey _rebuilds _aliveAt _aliveChan' },
+    'debug/debugBus.js': { never: 'listeners logs wsFrames commands commandHistory state consoleHooked wsHooked debugBus' },
+    'debug/perfHud.js': { never: '_stickHi _stickLo _stickOn el _chip' },
+    'debug/perfTracker.js': {
+      never: `
+        ring ringIdx ringCount longFrames longTasks extEvents spikeLastT spikeWorst longTaskObserver
+        timersHooked`,
+      zone: `
+        zoneStats`,
+    },
+    'game/accuracy.js': { never: 'listeners' },
+    'game/achievements.js': { never: '_titlePick' },
+    'game/alliance.js': { never: 'listeners' },
+    'game/ambientBeds.js': { never: 'st' },
+    'game/bank.js': { never: 'listeners rev seq' },
+    'game/bowFeel.js': { never: '_wanted' },
+    'game/buildingRooms.js': { never: '_prefetchStarted', zone: '_held' },
+    'game/characterCreatorEffects.js': { never: '_offCanvas _cam _figBounds' },
+    'game/chat.js': { never: '_moveSender' },
+    'game/chatChannel.js': { never: '_mode _to listeners' },
+    'game/chatMute.js': { never: '_subs _blockSubs', rejoin: '_kept' },
+    'game/clientOff.js': { never: '_atLoad _subs', rejoin: '_live' },
+    'game/climbActions.js': { never: 'climbStats _lastS' },
+    'game/combatHelpers.js': { never: '_propSlashFlip' },
+    'game/controlVisibility.js': { never: 'HOLDS' },
+    'game/dailyRewards.js': { never: '_lastSpin _win _listeners _spinSeq', rejoin: '_state' },
+    'game/dashSidePref.js': { never: '_pref' },
+    'game/deskKeys.js': { never: 'NAV_BY_CODE' },
+    'game/deviceProfile.js': { never: '_mq' },
+    'game/dropLook.js': { never: 'thumb' },
+    'game/dungeonArt.js': { zone: '_live' },
+    'game/dungeonClear.js': { never: 'subs' },
+    'game/eventSounds.js': { never: 'cueStats _lastAt _peerAt _stepAt' },
+    'game/farmFeedback.js': { never: 'toldRipe' },
+    'game/farmTrip.js': { never: '_seq' },
+    'game/fishWeigh.js': { never: 'listeners', rejoin: 'st' },
+    'game/framePacer.js': { never: '_drawnAt _before' },
+    'game/friendErrors.js': { never: 'lastAt' },
+    'game/hitSounds.js': { never: 'hitSoundStats _echoAt' },
+    'game/jumpActions.js': { never: '_jumpMs' },
+    'game/loadTimes.js': { never: '_marks _seen _groups _groupsFrom' },
+    'game/loginSpinWheel.js': { never: 'listeners', rejoin: '_st' },
+    'game/manualCombat.js': { never: '_mode _bowHook' },
+    'game/mastery.js': { never: '_level _certs _timestamps subscribers' },
+    'game/monsterMoves.js': { rejoin: '_caps' },
+    'game/nmlAsk.js': { never: '_subs _msOverride _joins', zone: '_ask' },
+    'game/nmlExplainOnce.js': { never: '_told' },
+    'game/noMansLand.js': { zone: '_note' },
+    'game/npcVoices.js': { never: 'st' },
+    'game/ownSounds.js': { never: 'st' },
+    'game/pinSlots.js': { never: '_ask _subs' },
+    'game/projectiles.js': { never: '_segHitX _segHitY PROJ_BODY _capAx _capAy _capBx _capBy' },
+    'game/questHandIn.js': { rejoin: '_pending' },
+    'game/questKept.js': { rejoin: '_kept' },
+    'game/questTrailStyle.js': { never: '_style _lastShown' },
+    'game/race.js': { never: '_subs' },
+    'game/renderRes.js': { never: '_url _live' },
+    'game/revealBag.js': { never: '_held _after', rejoin: '_then' },
+    'game/rideSound.js': { never: 'st' },
+    'game/rpgSave.js': { never: '_timer _lastWrite' },
+    'game/salvage.js': { never: '_last _listeners' },
+    'game/season.js': { never: '_forced' },
+    'game/shardCrack.js': { never: '_last _seq _listeners', rejoin: '_pending' },
+    'game/shieldGem.js': { never: '_last _listeners', rejoin: '_pending' },
+    'game/soundStudio.js': { never: '_ring _next _seq _installed _host _root _opening' },
+    'game/sparTargets.js': { never: '_foeRule' },
+    'game/speedTest.js': { never: '_card _running' },
+    'game/spinBoard.js': { never: 'listeners' },
+    'game/staffFeel.js': { never: '_wanted _audio' },
+    'game/storeAnswer.js': { never: 'sellsOut' },
+    'game/swordFeel.js': { never: '_wanted' },
+    'game/tapJump.js': { never: '_tapMs' },
+    'game/timeOfDay.js': { never: 'OUTDOOR _alwaysDay' },
+    'game/townAmbience.js': { never: 'st' },
+    'game/townChatter.js': { never: '_off' },
+    'game/townsfolkDay.js': { never: '_givers _giverSrc _frame _bumpsTotal' },
+    'game/townsfolkWalk.js': { never: '_loops' },
+    'game/trackedQuest.js': { never: '_read _id _subs' },
+    'game/trapping.js': { never: '_petVoiceLast' },
+    'game/waterAmbience.js': { never: 'st' },
+    'game/weaponGem.js': { never: '_last _listeners', rejoin: '_pending' },
+    'game/wheelBreak.js': { never: '_catKind wheelBreakStats _listeners', zone: '_dmg _broken _events _src' },
+    'game/wheelDungeons.js': { never: '_doors _doorsOf _open _openN _openOf' },
+    'game/wheelMusic.js': { zone: '_m' },
+    'game/wheelNoticeboard.js': { never: '_board _doors _src' },
+    'game/wheelSize.js': { never: '_listeners', zone: '_built', rejoin: '_long _told _waiters' },
+    'game/wheelTownDoors.js': { never: '_doors _src', rejoin: '_hallCapsOn' },
+    'game/wheelTrial.js': {
+      never: `
+        _seq _gotFns wheelStats wheelObjectStats _stopFns _waterMoves _palette _waitOn _heapLean _said
+        _sayWaiters wheelSayStats _warmGen _fills _landsVer`,
+      zone: `
+        _w _initP _info _grid _blocks _rowsMade _overview _overviewLands _pending _warm _filling _here
+        _hereAsked _under _failP _retryAt _retryWait _local`,
+    },
+    'game/worldTrial.js': {
+      never: `
+        WHEEL _on _mode _spawnOff _wayBack _hudOn _wheelAwayAt _readyGen _hud _hudAt`,
+      zone: `
+        _ready _arriveAt _lastSurface`,
+    },
+    'game/xpBar.js': { never: '_listeners' },
+    'game/zoneTransitions.js': { never: '_townFreeTimer', zone: '_zoneLoadEl' },
+    'networking/broWallet.js': { never: 'state listeners', rejoin: '_pending' },
+    'networking/charRoster.js': { never: '_lookAsked _mirrorSeeded' },
+    'networking/gameEvents.js': { never: '_peerShotGame _collisionNames' },
+    'networking/rosterCookie.js': { never: '_probedHost _domain' },
+    'networking/serverReady.js': { never: '_subs _installed', rejoin: '_state _waiters _veil _veilTimer' },
+    'rendering/arenaWorld.js': { zone: '_live' },
+    'rendering/arrowPin.js': { never: '_frameBytes _frames' },
+    'rendering/arrowWound.js': { never: '_renderer' },
+    'rendering/batchIdsLean.js': { never: '_stats' },
+    'rendering/bindGroupFix.js': { never: '_installed _swaps' },
+    'rendering/blockArm.js': { never: '_sheets _cache _sleeveCache _peerArmCache' },
+    'rendering/bodyBake.js': { never: '_stats _dead _seq _started _pool _watchT _line' },
+    'rendering/bodyBakeWorker.js': { never: '_line' },
+    'rendering/bodyRecolor.js': { never: '_eyeT _garmentLeft _pickWoodKept _toolSolid _bakeTag' },
+    'rendering/buildingFire.js': { zone: '_liveFires' },
+    'rendering/campfireFx.js': { never: '_atlas _fireSerial' },
+    'rendering/canvasWitness.js': { never: '_w _last' },
+    'rendering/capeSprites.js': { never: '_sets' },
+    'rendering/characterPortrait.js': { never: '_imgCache _metaCache _bodyTopsPromise' },
+    'rendering/chestPreload.js': { never: '_held _p' },
+    'rendering/coinPileArt.js': { never: 'TEX _p' },
+    'rendering/deathCrumble.js': { never: '_shake' },
+    'rendering/depthSort.js': { never: '_keys _probe' },
+    'rendering/drawLists.js': { never: '_root' },
+    'rendering/dropIcons.js': { never: 'icons' },
+    'rendering/elemWindup.js': { never: '_cells' },
+    'rendering/farmWorld.js': { never: '_gen farmArtStats', zone: '_tex _sheets _loadP _ready _live' },
+    'rendering/fieldLean.js': { never: '_stats _done' },
+    'rendering/fighterCapture.js': { never: '_effects _entities _films' },
+    'rendering/fillBatch.js': { never: '_on _urlOff _pinned _built _shader _maxTex' },
+    'rendering/fireGoblinSprites.js': {
+      zone: `
+        walkSheets attackSheets hitSheets deathFrames remnantsTex fireballTex loadPromise`,
+    },
+    'rendering/footprintSprites.js': { never: 'FOOTPRINT_ART', zone: '_frames' },
+    'rendering/formShade.js': { never: '_on _count _refreshed', zone: '_figs' },
+    'rendering/fxStrips.js': { never: 'PORTAL_BEAM _pending' },
+    'rendering/gearCatalog.js': { never: '_stores' },
+    'rendering/gearLookFrame.js': { never: '_stats _waitFrom' },
+    'rendering/gearNumbers.js': { never: '_sheets _frames _stats' },
+    'rendering/gearSheets.js': {
+      never: `
+        _sheets _gearRetryOn _gaveUp _gearRound _trimStats _gearLine _gearPlay _gearT0 _fxTrimStats
+        _fxTrimFrames _bodyTrimStats _bodyTrimFrames _sheetLoads _shirtOnWay _artSeen _artTick _preloadSkip
+        _skipDecided _extraSources _drawnElsewhere _upStats`,
+    },
+    'rendering/gearWalkFrame.js': { never: '_stats _waitFrom' },
+    'rendering/gfxLean.js': { never: '_stats' },
+    'rendering/gpuOnly.js': { never: '_n _bytes _onceN _onceBytes' },
+    'rendering/grottoFx.js': { zone: '_live _swayers' },
+    'rendering/hairClip.js': { never: '_alpha _installed _maxTex _stats _shader _alphaShader', zone: '_boxes' },
+    'rendering/headFrames.js': { never: '_hf _oth _box _boxAt _px' },
+    'rendering/heapTrim.js': { never: '_on' },
+    'rendering/heldNumbers.js': { never: '_pending _held _heldBytes _numberBytes _many _refills _reads _readsBy _installed' },
+    'rendering/hemiBust.js': { never: '_layers _loading _choice _cache _stats _css' },
+    'rendering/hitMaterialFx.js': { never: 'ART _atlas _chipCache _softPuff _softShadow', zone: '_propChips' },
+    'rendering/hotArrowFx.js': { never: 'ART' },
+    'rendering/keepAsImage.js': { never: '_on _stats' },
+    'rendering/landAuras.js': { never: '_live', zone: '_tex' },
+    'rendering/layerUniforms.js': { never: '_installed _all _empty _pushed _shared' },
+    'rendering/levelUpBurstNumbers.js': { never: '_frames _opening _listeners _set _first _stats _scratch _users' },
+    'rendering/levelUpBurstPreload.js': { never: '_stopPortraitWatch _portraitHeld' },
+    'rendering/lightfx/casters.js': { never: '_worldCasts' },
+    'rendering/lightfx/glint.js': { never: '_warmFilters _warmStats _sheen _chain' },
+    'rendering/lightfx/lightFx.js': { never: '_on' },
+    'rendering/lightfx/shadows.js': { never: '_lockOn _prepassOn _noSnapOn _unsnapped _shadeProgram _chain _systems' },
+    'rendering/lightfx/sheenBatch.js': { never: '_urlOff _passAll _built _packed _shader _installed' },
+    'rendering/lookArmour.js': {
+      never: `
+        _stats _layout _rows _src _free _books _mlooks _baker _sweepAt _sweepTimer _sent _fetchStats _qaHashes`,
+    },
+    'rendering/lookFolk.js': { never: '_stats _face' },
+    'rendering/lookPalette.js': {
+      never: `
+        _why _sets _sheets _loading _settled _ok _stats _pages _dirData _dirN _dirSrc _maskSource _inPrewarm
+        _looks _sweepAt _kinds _built _shader _sheenShader _okSheen _patched _prewarmedFor`,
+    },
+    'rendering/lookSets/gear.js': { never: 'SHEETS' },
+    'rendering/lookSets/gearwalk.js': { never: 'SHEETS' },
+    'rendering/lookSets/standin.js': { never: 'FRAME' },
+    'rendering/lookSets/standinlegs.js': { never: 'GREAVES' },
+    'rendering/lookSets/weapons.js': { never: 'SHEETS' },
+    'rendering/lookShirtFrame.js': { never: '_dress _hashes' },
+    'rendering/lootIcons.js': { never: 'LOOT_ICONS _p _beam' },
+    'rendering/maskedBake.js': { never: '_medB _medG _medR' },
+    'rendering/maskedBakeWorker.js': { never: 'lookSheets rod _tables _bms pending' },
+    'rendering/monsterDeathFx.js': { never: '_renderer _covCache' },
+    'rendering/monsterDeathZonesFx.js': { never: '_freed _made', zone: '_live' },
+    'rendering/monsterRecolor.js': { zone: '_cache' },
+    'rendering/monsterShotFx.js': { never: '_atlas _atlasPromise' },
+    'rendering/monsterSilhouette.js': { never: '_on' },
+    'rendering/monsterVariantSprites.js': { zone: '_variantLoadKicked _kicksOn' },
+    'rendering/mummySprites.js': { zone: 'walkSheets transformFrames loadPromise' },
+    'rendering/nftAvatars.js': { never: 'cache loading' },
+    'rendering/nodeLabels.js': { never: 'NODE_LABEL_ICONS NODE_LABEL_ICONS_GRAY _p' },
+    'rendering/npcSprites.js': {
+      never: `
+        _done`,
+      zone: `
+        _tex _walk _wheelWalk _propAnim _town _townReady _townUnload _townKeys _townCrops _townAnimIds _wheelTex
+        _wheelArt`,
+    },
+    'rendering/p256.js': { never: '_stats _decided _toPack _packed _pk _upInstalled _timer' },
+    'rendering/paletteDraw.js': { never: '_thumbs' },
+    'rendering/paletteLoad.js': { never: '_idle _seq _w _wait stats _t0' },
+    'rendering/paletteTex.js': {
+      never: `
+        _renderer _ok _stats _live _atlas _batchShader _clipBatchShader _oneWanted _oneRoute _oneOk _oneStats
+        _oneR _oneShader _patched _meshShader _fillBatchShader`,
+    },
+    'rendering/petSprites.js': { never: '_tex _loading _frames' },
+    'rendering/picsNumbers.js': { never: '_stats _warm', zone: '_live _rows' },
+    'rendering/picsOnce.js': { never: '_stats _released _loading _restorers _installed _timer _renderer' },
+    'rendering/pixiRenderer.js': { never: '_headFrames _appRef _playerGround _groundKeep _depthProbe _camSnapOff _camProbe' },
+    'rendering/playerAnchors.js': { never: 'anchors weaponHandles loadPromise' },
+    'rendering/playerDeathSprites.js': { never: 'state' },
+    'rendering/playerSkins.js': {
+      never: `
+        _bodySheets _buildSink _fishFollows _pickupHeadSheets _headTrimStats _headTrimFrames _artPrewarmT`,
+    },
+    'rendering/playerSprites.js': { never: 'manifest loadPromise' },
+    'rendering/propGround.js': { never: '_canvas _ctx _budgetFrame' },
+    'rendering/quietClear.js': { never: '_installed _skipped' },
+    'rendering/renderHeal.js': { never: '_heals' },
+    'rendering/rideFx.js': { never: '_tex' },
+    'rendering/rockGolemSprites.js': { zone: 'walkFrames deathFrames loadPromise' },
+    'rendering/rotcapSprites.js': { zone: 'walkFrames deathFrames loadPromise' },
+    'rendering/sharpPixels.js': { never: '_enabled _maxTex _routed _urlOff _figRound _shader _figureSpec _sheenName' },
+    'rendering/shieldSprites.js': { never: 'SHEETS loadPromise _set' },
+    'rendering/skeletonSprites.js': { zone: 'runSheets deathFrames remnantsTex loadPromise' },
+    'rendering/slimeSprites.js': { never: 'loadPromise' },
+    'rendering/snowmanSprites.js': {
+      zone: `
+        SHEETS ATTACK_SHEETS remnantsTex hitFrames deathFrames loadPromise snowballTex PHASE_SHEETS`,
+    },
+    'rendering/sootMarks.js': { never: '_tex' },
+    'rendering/staffCastFx.js': { never: '_genRamps _charge _gp _glowTex _sqTex _boltOut' },
+    'rendering/standInGarb.js': { never: '_mine _mineRaw' },
+    'rendering/standIns.js': { never: '_gen _make _st _peerCheck' },
+    'rendering/statDemoPreload.js': { never: '_held _blueBaked _blueBaking _warm' },
+    'rendering/stormEyeSprites.js': { zone: 'viewFrames deathFrames loadPromise' },
+    'rendering/stormSparksFx.js': { never: '_cells', zone: '_wanted' },
+    'rendering/stripRead.js': { never: '_dead _idle _seq _w _wait _stats _line' },
+    'rendering/systems/ambientFx.js': { never: '_TEX' },
+    'rendering/systems/bowFeelFx.js': { never: '_last _drawn' },
+    'rendering/systems/effectsRenderer.js': {
+      never: `
+        _fxPreload _combatTrimStats _combatTrimFrames _standInTrimStats _standInTrimFrames _farmCrownMid
+        _standInLegsUse _fireLogWood _capeProbe _standInTints POPUP_ICONS SHARD_ICONS MAGIC_BOLT_FRAMES _trapArt
+        ARROW_PINE JET_STREAM _DEBRIS_DOT_TEX ARROW_BLAST _arrowBlastLoad _PROP_SLASH_TEX _SPLINTER_TEX
+        _HARD_DOT_TEX _GROUND_DECAL_TEX NODE_SPRITE_TEX TREE_TEX ORE_TEX ORE_ICON_TIER_TEX ORE_ICON_TEX
+        _dmgBmpReady _dmgFontSig _dmgPagesGone _chatBubbleGrad _bubbleGrads _hexMemo _bakeFrame SMITH_ANVIL`,
+      zone: `
+        SNOWBALL_BURST _snowballBurstLoad`,
+    },
+    'rendering/systems/entityRenderer.js': {
+      never: `
+        STATUS_TO_ELEMENT SPAWN_WHITE_FILTER _propsDrawn _fgDrawn _entityLayerRef _frontLayerRef _selfDisplayRef
+        _traitCache _traitRetryOn _looksRetryOn _headWatch _bodyAnchors _bodyTops _bodyDataPromise
+        _bodyDataRounds _folkHatDy256 _qaHatDy256 _crownOverride _lastGearDisplay _lastWeaponSprite _bodyArtMemo
+        _regionTexCache _bandTexCache _maskedBodyCache _spareSkipped _bakeSeq _bakeWorker _bakeWorkerDead
+        _rodSent _bakeJobs _bakeWorkerStats _bakeQueue _bakeByKey _bakeBusy _bakeStartedAt _lookSheetsHere
+        _localBakeStats _maskedFails _localMisses _localEpoch _localMissKey _peerBakeStats _peerPending
+        _peerRunning prewarmProgress _localBakeDir _ownedRpg _ownedAt _ownedSig _uploadedSources
+        _prewarmRenderer _altPrewarmSeq _equipPrewarmTimer _equipPrewarmRunning _equipPrewarmAgain _fishTopCache
+        _FISH_GRIP_TROUSERS _hairMaskCache _lastHairDisplay _standInHairClip _monsterDisplaysRef _traitTex
+        _mannequinTex _traitMeta _traitLoadStarted _broBadgeTex _broBadgeSet _smallTexHeld _smallSet _pinTexHeld
+        _pinSet _plateWorldScale _cueZoom`,
+      zone: `
+        _npcDrawn _lastPeerWeaponSprite _peerQueue`,
+    },
+    'rendering/systems/minimapRenderer.js': { never: '_propMarks _allMarks' },
+    'rendering/systems/staffFeelFx.js': { never: '_st' },
+    'rendering/systems/tileRenderer.js': { never: '_footTex _liveTileRenderers' },
+    'rendering/systems/weaponFeelFx.js': { never: '_drawers _live' },
+    'rendering/textRelease.js': { never: '_installed _stats' },
+    'rendering/texturePoolTrim.js': { never: '_installed _stats' },
+    'rendering/tiledMaps.js': { never: '_walkPromise _maps _images _tilesetPromises _mapPromises', zone: '_residentZoneMaps' },
+    'rendering/toolRecolor.js': { never: '_rod' },
+    'rendering/traitThumbs.js': { never: '_warmed _imgs' },
+    'rendering/traits/artOps.js': { never: '_docs' },
+    'rendering/traits/buildCatalog.js': { never: '_height _frame _listeners' },
+    'rendering/traits/capeCatalog.js': { never: '_listeners _active' },
+    'rendering/traits/designCatalog.js': { never: '_seenId _seenName' },
+    'rendering/traits/eyeColorCatalog.js': { never: '_active _listeners' },
+    'rendering/traits/eyeStyleCatalog.js': { never: '_active _listeners' },
+    'rendering/traits/eyeStyleColorCatalog.js': { never: 'EYE_STYLE_PAINTS _cache _refCache _building _probeBakes' },
+    'rendering/traits/eyewearCatalog.js': { never: '_active _listeners' },
+    'rendering/traits/eyewearColorCatalog.js': {
+      never: `
+        EYEWEAR_PAINTS EYEWEAR_COLOR_EXCLUDE _active _listeners OMITS _cache _refCache _building`,
+    },
+    'rendering/traits/facialHairCatalog.js': { never: '_active _listeners' },
+    'rendering/traits/facialHairColorCatalog.js': { never: '_active _listeners _cache _building' },
+    'rendering/traits/hairCatalog.js': { never: '_active _listeners' },
+    'rendering/traits/hairColorCatalog.js': { never: '_active _listeners _cache _building' },
+    'rendering/traits/hatColorCatalog.js': { never: 'HAT_COLOR_EXCLUDE _active _listeners _cache _refCache _building' },
+    'rendering/traits/headLook.js': { never: '_maps _stats _forceOld' },
+    'rendering/traits/headwearCatalog.js': { never: '_active _listeners' },
+    'rendering/traits/patternCatalog.js': { never: '_BY_ID _active _listeners' },
+    'rendering/traits/playerArt.js': { never: '_active _listeners _slots' },
+    'rendering/traits/shirtCatalog.js': { never: '_active _listeners' },
+    'rendering/traits/shirtColorCatalog.js': { never: '_active _listeners _cache' },
+    'rendering/traits/speciesArt.js': { never: '_art _artReady _builds _canvases _speciesStats _retryOn _lastSweep' },
+    'rendering/traits/speciesCatalog.js': { never: '_active _listeners' },
+    'rendering/traits/traitMaterials.js': { never: 'MAIN_MATERIAL' },
+    'rendering/warmOnce.js': { never: '_on' },
+    'rendering/waterAttackFx.js': { never: '_cells', zone: '_wanted' },
+    'rendering/waterFrogSprites.js': { zone: 'idleSheets hopSheets attackSheets deathFrames loadPromise' },
+    'rendering/weaponLookFrame.js': { never: '_stats _waitFrom' },
+    'rendering/weaponSprites.js': { never: 'SHEETS loadPromise _set _softened' },
+    'rendering/wheelBuildingIcons.js': { zone: '_canvas _grey _tex _loading _live' },
+    'rendering/wheelDoors.js': { never: '_picVer _liveDoors', zone: '_pics' },
+    'rendering/wheelGround.js': { zone: '_liveGround' },
+    'rendering/wheelLife.js': { never: '_flagStats', zone: '_flagCuts _flags _tex' },
+    'rendering/wheelMonsterArt.js': { never: 'wheelArtStats _curZone _gen _lastTick', zone: '_zone _waitSince _looks' },
+    'rendering/wheelObjects.js': {
+      never: `
+        _pwSeq _basesStats _basesWorst _loading _pageLog _gen _bottomsLeft _castFrame`,
+      zone: `
+        _idx _pw _pwWait _pages _live _bottoms`,
+    },
+    'rendering/wheelShatter.js': { zone: '_puff' },
+    'rendering/wheelSignposts.js': { zone: '_icons _iconsLoading _live _found' },
+    'rendering/wheelWater.js': {
+      never: `
+        _webAll _allProgram _program _palAllProgram _palProgram _uni _renderer _ok _liveOff _held _cover _stats
+        _uniformTex`,
+      zone: `
+        _live`,
+    },
+    'rendering/worldFx.js': { never: 'ZONE_AIR PROP_LIGHTS _groundCache' },
+    'rendering/worldFxTextures.js': { never: '_tex' },
+    'rendering/worldLife.js': { never: 'FX PART _ready FG_SWAY FALLS SMOKE SPARKS_EXTRA' },
+    'rendering/zoneBannerPreload.js': { never: '_failAt _stats _near _lastTick', zone: '_held _inflight _want' },
+    'rendering/zoneTextures.js': {
+      never: `
+        _gen _readStats _play _line _sliceT0 _waiting _slices _stripStats _verify`,
+      zone: `
+        _bundles _crops`,
+    },
+    'ui/BroTown.jsx': { never: 'BT_AUDIO' },
+    'ui/DeviceScreen.js': { never: 'el' },
+    'ui/LevelUpBurst.jsx': { never: '_lastSting' },
+    'ui/LingerScreen.js': { rejoin: 'el timer nextAt' },
+    'ui/OriginScreen.js': { never: 'el' },
+    'ui/PlayerIcon.jsx': { never: 'PORTRAIT_CACHE PORTRAIT_INFLIGHT' },
+    'ui/RoomFullScreen.js': { rejoin: 'el timer nextAt attempts' },
+    'ui/WorldMapOverlay.jsx': { never: '_pinImgs _openMap _toggleMap' },
+    'ui/XpFlyOverlay.jsx': { never: '_landAB _landT' },
+    'ui/afterFrame.js': { never: '_fns _ranAt' },
+    'ui/deskTeach.js': {
+      never: `
+        _getS _t _timer _who _tipsEl _toastEl _cursorOn _encUntil _lastMouse _tipsUntil _toastUntil qa`,
+      zone: `
+        _edgeEl _keyEl _labelEl _rings _armed _nextEnc`,
+    },
+    'ui/guideArrow.js': {
+      never: `
+        _pace _bob _el _label _side _timer _seen _swapFrom _done _lastTick _who qa _followS _followAt
+        _stopFollow`,
+    },
+    'ui/lazyPanel.js': { never: '_loaded _failed _named _cards' },
+    'ui/levelUpBursts.js': { never: 'slots seq listeners seen' },
+    'ui/levelUpIcons.js': { never: 'SKILL_ICON SKILL_LABEL' },
+    'ui/loadingGate.js': { never: '_worldIn _up _readyAt _timer _waiting qa _introList _veilList' },
+    'ui/mapGlyphs.js': { never: '_paths' },
+    'ui/mayorScreen.js': { never: '_box _boxAt _cv _ro _wired' },
+    'ui/mobile/BottomDashboard.jsx': { never: '_deskOpened' },
+    'ui/mobile/ChestReveal.jsx': { never: 'listeners _state _warm' },
+    'ui/mobile/DungeonClearHud.jsx': { never: '_held' },
+    'ui/mobile/ItemTooltip.jsx': { never: 'toastQueue toastListeners' },
+    'ui/mobile/QuestCoach.jsx': { never: '_oversize _cardPressAt' },
+    'ui/mobile/aceFlipBus.js': { never: 'listeners' },
+    'ui/mobile/actionBus.js': { never: '_cycleWeapon _selectSlot' },
+    'ui/mobile/bandSideways.js': { never: '_side _started' },
+    'ui/mobile/blockRingBus.js': { never: 'listeners', death: 'state blockRingBus' },
+    'ui/mobile/capeStatusBus.js': { never: 'listeners', rejoin: 'capeStatusBus' },
+    'ui/mobile/chatBubbleBus.js': { never: 'listeners' },
+    'ui/mobile/chatLogBus.js': { never: 'listeners' },
+    'ui/mobile/controlsTutorialBus.js': { never: '_open listeners' },
+    'ui/mobile/dash/BoardRow.jsx': { never: 'FACES _faceLine _faceT0' },
+    'ui/mobile/dash/InventoryPanel.jsx': { never: 'ITEM_NAMES _lastBagTab' },
+    'ui/mobile/dash/ItemDetailPopup.jsx': { never: 'SMELT_ORE_TO_BAR' },
+    'ui/mobile/dash/LeaderboardPanel.jsx': { never: 'lastCat' },
+    'ui/mobile/dash/QuestsPanel.jsx': { never: 'lastPick' },
+    'ui/mobile/dash/T2Panel.jsx': { never: '_pendingCat' },
+    'ui/mobile/dash/bagFilterBus.js': { never: '_filter subs bagFilterBus' },
+    'ui/mobile/dash/bagLife.js': { never: 'stats _timer _users' },
+    'ui/mobile/dash/bagModel.js': { never: 'clk itemStamp prevCount stashStamp' },
+    'ui/mobile/dash/gearTabBus.js': { never: 'state subs' },
+    'ui/mobile/dash/inventoryLocks.js': { never: 'locks listeners' },
+    'ui/mobile/dash/itemDetailBus.js': { never: 'state listeners' },
+    'ui/mobile/dash/spendConfirmBus.js': { never: 'state listeners' },
+    'ui/mobile/dashMinBus.js': { never: 'listeners dashMinBus' },
+    'ui/mobile/dashboardPanelBus.js': { never: 'listeners dashboardPanelBus' },
+    'ui/mobile/eatBus.js': { never: 'listeners' },
+    'ui/mobile/farmBus.js': { never: 'listeners' },
+    'ui/mobile/firemakingBus.js': { never: 'listeners' },
+    'ui/mobile/gearFlash.js': { never: '_timer _lit' },
+    'ui/mobile/infoPopupBus.js': { never: '_open listeners' },
+    'ui/mobile/inspectCardBus.js': { never: 'listeners state' },
+    'ui/mobile/installHintBus.js': { never: 'listeners' },
+    'ui/mobile/inventoryBus.js': { never: 'listeners state inventoryBus' },
+    'ui/mobile/mockItems.js': { never: 'seq' },
+    'ui/mobile/modalGuardBus.js': { never: '_depth _listeners _muted' },
+    'ui/mobile/notifBus.js': { never: 'listeners notifBus' },
+    'ui/mobile/placeName.js': { zone: '_lastLand' },
+    'ui/mobile/playViewport.js': { never: '_ro _roEl _sh _sw _vh _vw _wired _sizes' },
+    'ui/mobile/sheet/BroCard.jsx': { never: '_pick' },
+    'ui/mobile/sheet/HeroExpanded.jsx': { never: '_lastSection _lastFam' },
+    'ui/mobile/sheet/StatCaption.jsx': { never: '_ctx' },
+    'ui/mobile/sheet/StatDemo.jsx': { never: '_kicks' },
+    'ui/mobile/sheet/bagUnseenModel.js': { never: 'UNSEEN epoch listeners bagUnseen' },
+    'ui/mobile/sheet/friendPortraits.js': { never: 'cache' },
+    'ui/mobile/sheet/friendsModel.js': { never: 'liveAt' },
+    'ui/mobile/sheet/friendsSync.js': { never: 'listeners openThread lastError', rejoin: 'doc' },
+    'ui/mobile/sheet/heroSectionBus.js': { never: '_pending listeners heroSectionBus' },
+    'ui/mobile/sheet/motion.js': { never: '_mq' },
+    'ui/mobile/sheet/portraitStore.js': { never: 'url listeners portraitStore' },
+    'ui/mobile/sheet/questDetailBus.js': { never: 'id' },
+    'ui/mobile/sheet/skillDetailBus.js': { never: 'key openEpoch consumedEpoch listeners' },
+    'ui/mobile/sheet/slimePins.js': { never: '_fd _loading _sets' },
+    'ui/mobile/shopBus.js': { never: 'listeners' },
+    'ui/mobile/storeChatBus.js': { never: 'listeners' },
+    'ui/mobile/storeToastBus.js': { never: 'listeners items seq storeToastBus' },
+    'ui/mobile/tradeBagBus.js': { never: 'listeners' },
+    'ui/mobile/uiBusyBus.js': { never: 'listeners uiBusyBus' },
+    'ui/mobile/wheelBus.js': { never: 'listeners state' },
+    'ui/onboardingPace.js': {
+      never: `
+        _skipped _worldInAt _coachUp _coachEndAt _welcomeEndAt _welcomePending _firstStepsOpen _inTutorial`,
+    },
+    'ui/panels/AchievementBanner.jsx': { never: '_icons' },
+    'ui/panels/TradeWindowPanel.jsx': { never: '_tradeSide' },
+    'ui/panels/WeaponPill.jsx': { never: '_qaTapMs qa' },
+    'ui/panels/buildings/TownBoard.jsx': { never: 'THUMB_FIT' },
+    'ui/panels/controlSkin.jsx': { never: 'WEAPON_KEYS' },
+    'ui/panels/paintTools.js': { never: '_ink _brush _listeners' },
+    'ui/petPortrait.jsx': { never: '_img _imgReady' },
+    'ui/reveal/revealBus.js': { never: '_queue _notify revealBus' },
+    'ui/starCue.js': { never: 'lastKey live qa' },
+    'ui/swallowTapClick.js': { never: '_armed _off _bound _qa' },
+    'ui/uiSfxDelegate.js': { never: 'installed' },
+    'ui/wheelMiniSize.js': { never: '_at _k' },
+    'ui/worldMapDetail.js': { never: '_tiles _loading _gen _frame _stats' },
+    'ui/xpLanding.js': { never: '_state _cards' },
+    'ui/zoneBannerOverlay.js': { never: '_el _timers _lastShown _beatLog', zone: '_playing _lastZone _wl' },
   },
 };
 const MACHINES = {
+  life: `
+    _deathCard _deathStart _dying`,
+  zone: `
+    _spawnToWheel currentZone data/gameSystems.js:COLS data/gameSystems.js:ROWS data/gameSystems.js:TOWN_H
+    data/gameSystems.js:TOWN_W ui/zoneBannerOverlay.js:_lastZone`,
+  duel: `
+    _activeDuel _inDuel`,
+  trade: `
+    _t2DoneWatch _t2Leave _t2Live _t2QuietUntil`,
+  party: `
+    _party`,
+  harvest: `
+    _extraction _nearNode _proxNode`,
+  guard: `
+    _blockPose _shieldAngle _shieldAutoReleased _shieldCdUntil _shieldKb _shieldMouse _shieldStamina
+    _shieldUp shieldActive shieldEnd ui/mobile/blockRingBus.js:blockRingBus ui/mobile/blockRingBus.js:state`,
+  dungeon: `
+    _customDungeonConfig _customDungeonTerrain _dungeonBack _dungeonBossSpawned _dungeonClear
+    _dungeonComplete _dungeonDepth _dungeonEnteredAt _dungeonMaxWaves _dungeonWave _dungeonZone
+    _inCustomDungeon _inDungeon _preDungeonMap _preDungeonMonsters _preDungeonNodes _preDungeonPos
+    _serverDungeon _wheelDungeonOpening`,
+  arena: `
+    _arenaInvolved _arenaMatch _arenaStakeBoard _arenaTournamentId`,
+  fishing: `
+    fishTimer`,
+  connection: `
+    _authRejects _frozenByAdmin _httpToken _joinId _joinKey _joinRejectedFatal _joinedId _keyFellBack
+    _keyIdAsked _netHold _realtimeStatus _tabClaim _tabMoved _verifyToken channel
+    networking/serverReady.js:_state networking/serverReady.js:_veil networking/serverReady.js:_veilTimer
+    networking/serverReady.js:_waiters ui/DeviceScreen.js:el ui/LingerScreen.js:el ui/LingerScreen.js:nextAt
+    ui/LingerScreen.js:timer ui/OriginScreen.js:el ui/RoomFullScreen.js:attempts ui/RoomFullScreen.js:el
+    ui/RoomFullScreen.js:nextAt ui/RoomFullScreen.js:timer`,
+  loading: `
+    __introLiftedAt __introLiftedZone _avatarArtHold _bodyPlaceDue _farmArtHold _townArtHold _wheelTripVeil
+    _zoneLoading game/worldTrial.js:_ready game/zoneTransitions.js:_zoneLoadEl
+    rendering/systems/effectsRenderer.js:_fxPreload rendering/systems/entityRenderer.js:prewarmProgress
+    rendering/tiledMaps.js:_residentZoneMaps ui/loadingGate.js:_readyAt ui/loadingGate.js:_up
+    ui/loadingGate.js:_waiting ui/loadingGate.js:_worldIn`,
+  window: `
+    _miningOpen _npcProxLatch _uiBusy game/dailyRewards.js:_win game/loginSpinWheel.js:_st
+    ui/mobile/ChestReveal.jsx:_state ui/mobile/controlsTutorialBus.js:_open
+    ui/mobile/dash/itemDetailBus.js:state ui/mobile/dash/spendConfirmBus.js:state
+    ui/mobile/dashboardPanelBus.js:dashboardPanelBus ui/mobile/infoPopupBus.js:_open
+    ui/mobile/inspectCardBus.js:state ui/mobile/inventoryBus.js:inventoryBus ui/mobile/inventoryBus.js:state
+    ui/mobile/modalGuardBus.js:_depth ui/mobile/sheet/friendsSync.js:openThread
+    ui/mobile/sheet/heroSectionBus.js:_pending ui/mobile/sheet/heroSectionBus.js:heroSectionBus
+    ui/mobile/uiBusyBus.js:uiBusyBus ui/mobile/wheelBus.js:state`,
 };
 /* SUGGESTED:END */
 const WORDS = new Set(['never', 'zone', 'death', 'rejoin']);
@@ -1611,7 +2225,8 @@ function page() {
   const constRows = changedVars.filter((v) => v.decl === 'const').length;
   const letRows = varRows.filter((v) => v.decl !== 'const').length;
   const by = (rows, w) => rows.filter((r) => r.reset === w).length;
-  const words = uniq([...fieldRows, ...varRows].map((r) => r.reset)).sort();
+  const ORDER = ['never', 'zone', 'death', 'rejoin', 'zone+rejoin', 'death+rejoin', '?'];
+  const words = uniq([...fieldRows, ...varRows].map((r) => r.reset)).sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
   L.push('The plan\'s part 2 quoted a reviewer\'s numbers. These replace them; each says how it was counted.');
   L.push('');
   L.push('| what | the plan said | counted | how |');
@@ -1634,7 +2249,7 @@ function page() {
   L.push('');
   L.push('| suggestion | fields | variables |');
   L.push('|---|---|---|');
-  for (const w of words) L.push('| ' + w + ' | ' + by(fieldRows, w) + ' | ' + by(varRows, w) + ' |');
+  for (const w of words) L.push('| ' + w + ' | ' + by(fieldRows, w) + ' | ' + by(varRows, w) + (w === 'never' ? ' (' + quietVars.length + ' of them by machine: never changed)' : '') + ' |');
   L.push('');
   L.push('Rows not yet read (`?`): ' + unjudged + '. Suggestions whose row is gone: ' + stale + '. Suggested to reset where nothing writes it today: ' + un.length + '.');
   L.push('');
