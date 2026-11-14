@@ -50,7 +50,7 @@ export function picNumbersWanted() { return WANTED; }
 export function picNumbersOn() { return WANTED && paletteOn() && !(typeof window !== 'undefined' && window.__btTrimVerify === true); }
 
 const _live = new Set();   /* QA: the strips kept this way (mp-picsonce compares them) */
-const _stats = { strips: 0, canvasMB: 0, numbersMB: 0, many: 0, rowsFull: 0, rows: 0, onRow: 0, onRowStale: 0, onRowChecked: 0, onRowBad: 0 };   /* v2.3.5044: + the strips numbered on the reader's worker (stripRows.js) */
+const _stats = { strips: 0, canvasMB: 0, numbersMB: 0, many: 0, rowsFull: 0, rows: 0, onRow: 0, onRowStale: 0, onRowChecked: 0, onRowBad: 0, rowsMoved: 0 };   /* v2.3.5044: + the strips numbered on the reader's worker (stripRows.js) */
 /* bundle -> its rows: [{ row, map: colour -> number, n, rgba (premultiplied, the atlas's), pal (as a canvas reads back) }] */
 const _rows = new Map();
 
@@ -88,6 +88,13 @@ function rowFor(bundle, colours) {
    onRowBad). */
 const _plansWaiting = new Map();   /* bundle -> [plan]: answered, not yet taken (in order) */
 const _rowsEpoch = new Map();      /* bundle -> how many times its rows were given back */
+/* the bundle's rows changed other than as its waiting plans described them:
+   those plans, and any answered for the rows as they were, are stale */
+function _rowsMoved(bundle) {
+  _rowsEpoch.set(bundle, (_rowsEpoch.get(bundle) || 0) + 1);
+  _plansWaiting.delete(bundle);
+  _stats.rowsMoved++;
+}
 export function stripRowsAsk(bundle) {
   if (!picNumbersOn()) return null;
   const send = (_rows.get(bundle) || []).map((r) => ({ n: r.n, pal: r.pal.slice(0, r.n) }));
@@ -197,6 +204,7 @@ export function stripAsNumbers(bundle, canvas, label, read) {
   const nums = read === undefined ? numbersOf(canvas) : (read || null);
   if (!nums) { _stats.many++; return null; }
   const { w, h, idx, pal } = nums;
+  const rowsBefore = (_rows.get(bundle) || []).length;
   const r = rowFor(bundle, pal);
   if (!r) { _stats.rowsFull++; return null; }
   /* the strip's own numbers -> its row's */
@@ -220,6 +228,16 @@ export function stripAsNumbers(bundle, canvas, label, read) {
     to[k] = n;
   }
   if (grew) paletteRowWrite(r.row, r.rgba);
+  /* v2.3.5044, after the gatekeeper's sitting 4 (#1709): rows changed here,
+     the page's own way (a new row, or new colours in this one, in the page's
+     order), are not the rows a waiting plan was told of: every plan of the
+     bundle is stale from now on.  _onPlannedRow checked a row's COUNT, never
+     its colours, so after one strip numbered here (a read that failed: the
+     20 s READ_MS after an app switch, the worker's onerror) a later plan
+     whose count came out the same took places that held other colours -- a
+     rock golem's or a rotcap's pose in scrambled colours until the land was
+     left (docs/plan/census/review-z4.md) */
+  if (grew || (_rows.get(bundle) || []).length !== rowsBefore) _rowsMoved(bundle);
   /* rows padded to 4 bytes (WebGL's unpacking) with copies of each row's last
      pixel, so the right edge samples as the canvas's clamped edge did */
   const st = paletteStride(w);
@@ -252,8 +270,7 @@ export function stripAsNumbers(bundle, canvas, label, read) {
  *  go back to the atlas. */
 export function releaseBundleNumbers(bundle) {
   /* v2.3.5044: a plan answered for these rows is stale from now on */
-  _rowsEpoch.set(bundle, (_rowsEpoch.get(bundle) || 0) + 1);
-  _plansWaiting.delete(bundle);
+  _rowsMoved(bundle);
   const list = _rows.get(bundle);
   if (!list) return;
   _rows.delete(bundle);
