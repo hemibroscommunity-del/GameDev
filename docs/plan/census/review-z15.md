@@ -12,9 +12,30 @@ throwaway copy, or a reading). PLAUSIBLE: the code does it, what sets it
 off is unproven (it says what would settle it). The probes are not in the
 repository.
 
-(A DRAFT: the reviews and the rehearsal are running.)
+## Decided for the owner while away
 
-## Card L: #1824 (PR 5's second, tag 5211): re-read
+Each with its switch, for the planning session to read to the owner:
+
+- **None on this list.** The two under the heading are held, so they
+  do not land this sitting: **#1836** (card O) the crowd rungs ON,
+  switches `?laddercrowd=0` (one screen) and the Test panel's "Speed
+  ladder" (`govern`, every phone, live); **#1838** (card K) the wire door
+  ON, switch `wiredoor: false`.
+- Not under the heading, the nearest: L's #1824 and #1835 say nothing a
+  player sees changes (each door refuses nothing today), each behind a
+  live flag, ON: `dueldoor: false`, `partydoor: false` turn them off.
+  #1829, #1831 and #1833 change nothing a player sees; #1832 is tools
+  (every test page names its lane, `lane=full`, today's drawing).
+- For the owner, costs (never decided this way): #1831 makes the
+  worker's bundle +137 KB (+19 KB gzipped), the table's rows shipped
+  (#1838 ships the same files, so it is paid once). No game cost: no
+  write, no message added.
+- Still waiting for the owner's own word: card SK's #1782 (+8 to +10
+  move messages a ride; `?ridecoast=0`), not listed; card R's PR 9 needs
+  `lab.yml` changed (`.github/`: the owner's words only); card E's
+  `arenasettleplan` and `econresetput` (both OFF).
+
+## Card L: #1824 (PR 5's second, tag 5211): re-read, listed FIRST
 
 Reviewed clean at sitting 14 (80a7237). Since then: `main` d6b8acd merged
 in (both `DOOR_SUITES` rows kept, card O's ladder and the duel), and
@@ -24,7 +45,7 @@ sitting 14's low mended: the gladiator.js exception is now ` t.status = `
 gladiator.js 373 and 852. Nothing else in L's files changed (diffed file
 by file against 80a7237's own diff).
 
-## Card K: #1829 (PR 5, tag 5185): re-read
+## Card K: #1829 (PR 5, tag 5185): re-read, listed
 
 Reviewed clean at sitting 14 (c096522). Since then (c0042a9): `main`
 0da805c merged in, and sitting 14's two lows mended:
@@ -39,7 +60,7 @@ Reviewed clean at sitting 14 (c096522). Since then (c0042a9): `main`
   one's would go. Nothing calls `act()` until K's PR 7, where comparing
   before clearing settles it.
 
-## Card K: #1831 (PR 2, tag 5182): reviewed
+## Card K: #1831 (PR 2, tag 5182): reviewed, listed
 
 **The worker's other lists made from the wire table (it DEPLOYS; no cap,
 no flag), read at cfe57ce: clean (nits).** A finder loaded each list from
@@ -178,3 +199,118 @@ verdicts down, 20 s clean before a try up, a failed try doubling to
 - Decided for the owner while away (in its body): ON, switches
   `?laddercrowd=0` (one screen) and the Test panel's "Speed ladder"
   (`govern`, every phone, live). Not on this list.
+
+## Card K: #1838 (PR 4, tag 5184): HELD (conflicts), reviewed in full
+
+**The wire door (it DEPLOYS; a live flag `wiredoor`, ON), read at
+ddfb2fd: no honest message refused; one MEDIUM to mend before it is
+listed.** Held by the planning session's word: it conflicts with #1829
+(CLAUDE.md, `docs/SYSTEMS.md`, `tools/guards/lib/systems.mjs`, K's
+status) and with #1831 (`server/src/wire/README.md`, `wire/lists.js`,
+K's status), in either order; K merges the new `main` after this list.
+
+- **Medium, VERIFIED: the refusal count grows without a bound.**
+  door.js ~190-197 `_wireDoorCount` keeps one entry per message type
+  (its first 64 characters) and reason, and the routes' door ~226 one
+  per `'http:' + pathname` for a path with no row; both are the
+  client's to choose, and nothing caps, clears or reads the store. A
+  finder sent 432,000 refused frames of random types from one joined
+  socket (the flood line's 120 a second, an hour) under `node
+  --expose-gc`: 420,001 entries, +59.3 MB; the room's memory is 128 MB,
+  so one script resets the room (every player thrown out) in about two
+  hours; anonymous `GET /api/store/<random>?__proto__=1` does the same
+  more slowly. Before this PR nothing in `server/src` kept a count keyed
+  by a client's type. Mend: key by the row's name where there is one,
+  else `'(no row)'` (about 275 rows times 5 reasons), or cap the
+  entries; a suite line that sends many random types and reads the
+  store's size holds it.
+- Low (the same exposure as `/api/account/login` today): the routes'
+  door reads the whole body of every non-GET `/api/` request (a clone, a
+  JSON parse) before a route checks its key; admin and botstat answered
+  401 or 404 unread before.
+- Clean (VERIFIED): all 203 `channel.send` sites in `src/` and the direct
+  sends (join, pong, track, report, move): every payload an object or
+  null, 0 refused; every `words` input capped well under 2,000 (chat 200
+  or 120, friend messages 280, names 16 to 20); no page sends a `reqId`;
+  a page's JSON never writes Infinity; a real phone frame
+  (`track-sample.json`) passes; every room route's body is a JSON
+  object, a text or binary body passes; bundles are judged part by part
+  (each through `_onMessage`); no await on the socket's path (rule 9),
+  one on the routes' where they already awaited their body; 2.9 µs a
+  move, 10 µs a track, a 1 MB body 11 ms and refused at the 50,000-node
+  cap; the route reads its body intact after the door's clone (a real
+  `Request`); `__proto__`, `constructor`, `prototype`, `toString` as a
+  type read no row; `wiredoor` missing or the flags unread: ON; `false`:
+  `main`'s path (the chatmod fix under it too); the owner's flag call
+  passes the door. The five older suites keep every old check, the old
+  defences played with the switch thrown.
+- Suites: wire-door 44, relay 54, quiet-phone 64, cost-guard 44, chatmod
+  65, anticheat 213, trade2 51, fresh-start 28, liveops 110, wire-audit;
+  wire-hostile 1 (its line 1; 19 with `WIRE_HOSTILE_DOOR=off`); guards
+  switches 476 rows, wire-table 439. Break proofs: the body read without
+  a clone (market, liveops, login-keys and more FAIL); `constructor` off
+  the bad keys (trade2, wire-door FAIL); bundle parts skipped (wire-door
+  §2 FAIL; wire-hostile sends no bundle).
+- Decided for the owner while away (its body): the door ON; switch
+  `wiredoor: false`. Not on this list.
+
+## Card J2: #1833 (PR 7, tag 5426): listed
+
+Step 3 (a test and its status; no deploy). `mp-townride`'s "as before"
+page is now `?folkbake=0&bodyworker=0` (since 4930 a body sheet bakes on a
+worker, so `?folkbake=0` alone held the page 0 to 2 ms: red on `main`),
+and "as it ships" reads the object pages' ground lines from the game's
+own probe `window.__btPageBases` (wheelObjects.js ~340, on `main`; since
+4470 no "page bases" job holds the page): `way === true`, `pages > 0`,
+none read on the page. J2's runs: 10 of 10, three times. Tag 5426 from
+J2's block; the line is its status file's own (the card's first three
+lines are its PRs 1 to 3, the rest routed by sittings). Mended during the
+sitting: its status-file conflict with `main` (740d058, `main` d6b8acd
+merged in, one base). CI `test` green at 740d058.
+
+## Card O: #1832 (PR 3, tag 5223): listed LAST before this PR
+
+Step 3 (tools, and one server test: it DEPLOYS). Its files are card O's
+PR 3 line: `run.mjs` refuses a scenario with no `lane` or one not in
+`LANE_NAMES` (read from drawLanes.js) before anything boots, and fails a
+game page a scenario loaded with no `lane=`; the harness puts `lane=` (and
+`govern=1` where asked) on every page `newPlayer` opens (a page with no
+scenario plays `full`); 381 scenarios each `export const lane = 'full'`
+(`tools/dev/name-lanes.mjs`, `--check` read-only); `tools/qa/lane.mjs` for
+the other tools; the guard `scenario-lanes`; CLAUDE.md §6 and §8 ("its
+`lane`", nothing else); DEV-TOOLS. One file beyond the line:
+`server/test/old-map.test.mjs`, whose check reads run.mjs's
+`H.setScenario(name)` and now allows its `{ lane, govern }`, so its merge
+deploys the worker (TRAPS §277). `ui-review/capture.mjs` opens the game
+through `H.newPlayer`, so it carries its lane; the load tools open no
+page. `name-lanes.mjs --check` on the rehearsal's tip (with #1833's
+change to `mp-townride`): every scenario names its lane. CI `test`
+green at 665f30e.
+
+## Card T: #1837 (PR 5, tag 5305): HELD (a conflict)
+
+Opened during the sitting (the end dates: `on` on every row, `--due`,
+check 12). It conflicts with `main` itself (`docs/SWITCHES.md`,
+`tools/guards/lib/switches.mjs`: `main`'s rows since 41b4804, R's
+`storesize` among them), so no GitHub check has run, and it rewrites
+every row, so it meets every PR adding one (`dueldoor`, `partydoor`,
+`?laddercrowd`, `wiredoor`). The planning session's word: next sitting
+FIRST, after T merges the new `main`; O's #1836 then merges its head.
+Step 3 then.
+
+## Not open
+
+- Card P's fire goblin (A'): no branch, no PR. P's status `working`, its
+  branch `plan-p-14-figure-hold` quiet since 17:44: past three hours at
+  this list, so named stalled.
+- Card R's PR 9 (`plan-r-9-rewind`, built): no PR; it opens after #1831
+  (its route's row) and needs `lab.yml` (the owner's words).
+
+## The lines
+
+On `main` d6b8acd: the four lines' guard prints no room (every file and
+function at its line; cycles 5, 29 files; the writes to `S` from
+rendering 114), and the phase table's `todo` is 30 at its line 30.
+Nothing to lower here. When #1824 and #1835 have landed, `todo` is 28:
+the next sitting lowers `TODO_LINE` 30 -> 28; the hostile census's line
+goes 19 -> 1 in #1838 itself.

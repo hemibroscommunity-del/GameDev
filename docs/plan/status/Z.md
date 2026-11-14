@@ -23,7 +23,8 @@ test): back to back. #1824 and #1835 each add a live flag (`dueldoor`,
 - #1837 T: conflict with `main` (`docs/SWITCHES.md`, `switches.mjs`);
   next sitting FIRST, after merging the new `main`. Step 3 then.
 - #1838 K: conflicts with #1829 and #1831 either way; K merges the new
-  `main` after this list. Reviewed in full here.
+  `main` after this list. Reviewed: one medium to mend first (the
+  refusal count keyed by the client's type or path, no bound).
 - #1782 SK: the owner's yes to +8 to +10 moves a ride.
 
 ## Stalled
