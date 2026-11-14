@@ -38,10 +38,15 @@
  * (a touchscreen laptop, an iPad with a trackpad, a small window), listed in
  * docs/specs/device-profile.md.
  *
- * No imports but the look palette's pure choice, so node can test it
+ * No imports but the look palette's pure choice (and, v2.3.5221, the lanes'
+ * table, which has none), so node can test it
  * (server/test/device-profile.test.mjs).
  */
 import { lookPaletteChoice, onWindows, onMac } from './lookPaletteChoice.js';
+/* v2.3.5221: the lanes (card O): the class picks a lane, so it is handed to
+   drawLanes.js from here, the one file that asks the device anything (that
+   file has no imports: node tests it) */
+import { useDevClass } from './drawLanes.js';
 
 /* the two media questions, written once (game.css carries the same two in
    its @media rules; device-profile.test holds them to it) */
@@ -290,6 +295,11 @@ export function devClass(opts) {
     return null;
   }
 }
+
+/* v2.3.5221: the lane is picked from this class (drawLanes.js pickLane):
+   handed over once, asked again by the lane at most every few seconds.  It
+   asks nothing new of the device */
+useDevClass(devClass);
 
 /* QA: the profile, as the page sees it */
 if (typeof window !== 'undefined') window.__btDevice = () => deviceProfile();

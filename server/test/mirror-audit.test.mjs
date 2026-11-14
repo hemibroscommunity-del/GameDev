@@ -2823,5 +2823,26 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     { phone: CI.QUEST_AP_REWARD, worker: apRoom.QUEST_AP_REWARD });
 }
 
+/* ═══ v2.3.5221: CARD O'S LANES -- THE WORKER'S THREE LISTS ARE THE PAGE'S ═══
+   The field report's worker (server/src/report.js) checks every report
+   against closed lists: card O's lanes (`drawLane`), the game's own drawing
+   programs (`self`, step 1.7) and the governor's `rung` (the most rungs taken
+   at once).  The page's are src/game/drawLanes.js.  A lane the page draws in
+   that the worker lacks is a report dropped and a cell never filled; a
+   program the worker lacks is a failure never counted.  The worker learned
+   all three in card O's PR 1, so it deploys once for the card: its rung's
+   bound is wider than the page's ladder, which may grow without a deploy.
+   Break: server/src/report.js DRAW_LANES without 'light' -> FAIL (tried 2026-11-14). */
+{
+  const SR = await import('../src/report.js');
+  const DL = await import('../../src/game/drawLanes.js');
+  check('lanes: the worker takes every lane the page draws in, and no other (DRAW_LANES is drawLanes.js LANE_NAMES)',
+    JSON.stringify(SR.DRAW_LANES) === JSON.stringify(DL.LANE_NAMES), { worker: SR.DRAW_LANES, page: DL.LANE_NAMES });
+  check('lanes: the worker counts every drawing program the page can name in `self`, and no other (SELF_PROGRAMS is drawLanes.js PROGRAM_NAMES)',
+    JSON.stringify(SR.SELF_PROGRAMS) === JSON.stringify(DL.PROGRAM_NAMES), { worker: SR.SELF_PROGRAMS, page: DL.PROGRAM_NAMES });
+  check('lanes: the worker takes a `rung` as deep as the page\'s whole ladder (RUNG.MAX at or over drawLanes.js ladderDepth())',
+    Number.isInteger(SR.RUNG.MAX) && DL.ladderDepth() <= SR.RUNG.MAX, { worker: SR.RUNG.MAX, page: DL.ladderDepth() });
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

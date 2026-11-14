@@ -51,6 +51,8 @@ import { oneBatchOn, setOneBatchLive } from '@/rendering/paletteTex.js';   /* v2
 import { shadowPrepassOn, setShadowPrepass } from '@/rendering/lightfx/shadows.js';   /* v2.3.3458 */
 import { renderDpr, setRenderResLive } from './renderRes.js';
 import { deviceProfile } from './deviceProfile.js';   /* v2.3.4804: the device profile */
+import { drawLane } from './drawLanes.js';   /* v2.3.5221: card O's lanes: the card names this page's */
+import { holdLadder } from './framePacer.js';   /* v2.3.5222: the ladder held still while it measures */
 import { queueSpeedCard, SPEED_MODELS, speedModel, setSpeedModel, reportOn } from '@/debug/report.js';   /* v2.3.5125: the card is sent */
 
 const SETTLE_MS = 1500;
@@ -304,6 +306,10 @@ export function frameNote(base) {
 export async function runSpeedTest() {
   if (_running) return null;
   _running = true;
+  /* v2.3.5222: the governor (framePacer.js) holds the ladder still while the
+     test turns the same knobs off and on: two controllers would fight, and a
+     step mid-test would be measured as the test's own */
+  holdLadder(true);
   const was = snapshot();
   const list = steps();
   const ms = stepMs();
@@ -319,6 +325,7 @@ export async function runSpeedTest() {
     }
   } finally {
     restore(was);
+    holdLadder(false);
     _running = false;
   }
   const base = rows[0];
@@ -361,7 +368,9 @@ export async function runSpeedTest() {
     + (cv ? ', drawn ' + cv.width + ' x ' + cv.height + ' px' : '')
     + (renderDpr() < dev ? ' (lowered to ' + renderDpr() + 'x)' : '')
     /* v2.3.4804: the device profile's lanes, so one screenshot says which this machine is in */
-    + (() => { try { const d = deviceProfile(); return ', ' + d.input + (d.computerFrame ? ', computer window' : '') + (d.ios ? ', iOS' : '') + ', looks palette ' + d.palette; } catch (e) { return ''; } })();
+    + (() => { try { const d = deviceProfile(); return ', ' + d.input + (d.computerFrame ? ', computer window' : '') + (d.ios ? ', iOS' : '') + ', looks palette ' + d.palette; } catch (e) { return ''; } })()
+    /* v2.3.5221: and the lane it draws in (game/drawLanes.js) */
+    + (() => { try { return ', lane ' + drawLane(); } catch (e) { return ''; } })();
   const result = { rows, notes, device, at: Date.now() };
   /* v2.3.5125: the card rides the next smoothness report (debug/report.js) */
   result.queued = reportOn() && queueSpeedCard(result);
