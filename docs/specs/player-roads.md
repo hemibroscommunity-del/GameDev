@@ -1,0 +1,118 @@
+# The roads between players, one table (v2.3.5280)
+
+`server/src/playerroads.js` (`PLAYER_ROADS`, `OWN_ROADS`); held by
+`server/test/player-roads.test.mjs`. Grand plan step 10.5, card R PR 1.
+
+## Why
+
+Gold and goods can pass from one player to another in a dozen ways: the
+trade window, the old gift, the General Store's order book, the Auction
+House, a duel, the arena, a fine on a threatener's head, the jackpot, a pile
+on the ground, Diego's pile, No man's land. Before this, the answer to "what
+are they all?" was spread over those files. A way nobody had listed was a way
+nobody could slow, record or unwind. A trade moved 999,999 gold with no fee,
+and nothing said so in one place (`docs/GRAND-PLAN.md` part 10).
+
+## The table
+
+One row a way value passes from one account to another (a settlement, from
+its start to its landing). Each row says:
+
+| Column | What it holds |
+|---|---|
+| `at` | where its code is, for people |
+| `carries` | what it moves: `gold`, `bag` (counts in a bag), a `weapon`, a piece of `gear`, a `pet` |
+| `roads` | the door roads it runs on: `gold` (`GOLD_ROADS`), `bag` (`BAG_ROADS`), `bagWhole` (`BAG_WHOLE`, the bag's whole assigns). Only `move` and `escrow` roads: a `mint` or a `burn` has no other account. The mail's landing (`mail_gold`, `mail_item`) is named on every row that pays through it |
+| `fee` | the part the game keeps. **0** |
+| `hold` | how long the value waits before it lands. **0** |
+| `pace` | how many such settlements an account may make. **0** |
+| `ledger` | `xfer` (one row a settlement in the transfer ledger, `xfer:`), `kill` (a kill writes none), or `none`, with why in `ledgerWhy` |
+| `why` | what it is |
+
+**Everything at zero, as today.** The owner's call 12 (`docs/GRAND-PLAN.md`
+part 9): *"YES to building the table with everything at zero; turning one up
+is a later call."* No settlement reads `fee`, `hold` or `pace` yet. 0 means
+none, whatever unit the reader chooses: the PR that turns one up builds its
+reader and says its unit there, and it is the owner's call, never decided
+while away.
+
+| Row | What it is | Carries | Ledger |
+|---|---|---|---|
+| `trade_window` | the trade window: both sides staged and confirmed, swapped in one write | gold, bag, weapon, pet | `xfer` |
+| `gift_trade` | the old one-way gift | gold, bag | `xfer` |
+| `nml_loss` | No man's land: a player killed under its rule loses the purse, the spare weapons (a red skull the worn gear too) to the killer's mail | gold, weapon, gear | `kill` |
+| `market` | the General Store's order book: a buy order's gold and a sell order's weapon rest in `mkt_order:`; a cross pays each side by the mail | gold, weapon | `none` |
+| `auction_sale` | the Auction House, bought now | gold, bag, weapon, gear, pet | `none` |
+| `auction_bid` | the Auction House, a bid won | gold, bag, weapon, gear, pet | `none` |
+| `auction_offer` | the Auction House, an offer taken | gold, bag, weapon, gear, pet | `none` |
+| `duel_pot` | a duel's two wagers, held in `duelEscrow:`, the pot to the winner | gold | `none` |
+| `arena_entries` | the arena's entry fees, held in `arena_entry:`, paid to the champion with the house's part | gold | `none` |
+| `arena_stakes` | the arena's sponsorship stakes, held in `arena_stake:`, paid as the cut, the winnings and a failed sponsorship's claim | gold | `none` |
+| `threat_bounty` | the threat's 10% fine, held on the threatener's head in `bounty:`, paid to whoever kills them | gold | `none` (a kill) |
+| `jackpot` | the weekly pool: every ticket's gold in `jackpot:draw`, paid to one winner | gold | `none` (a draw among many) |
+| `ground` | a pile on the ground: a death's bag or a dropped stack (`death_pile:`), taken by whoever picks it up | bag | `none` (nobody chose the other side) |
+| `diego_pile` | Diego's pile (`shop_stock`): what one player sells him, the next buys | bag | `none` (each side trades with the shop) |
+
+The escrow rows' `none` (the market, the Auction House, a duel, the arena)
+waits for card R's last PR (tag 5290): each settlement writing one `xfer:`
+row is more rows a day, a cost question for the owner, built OFF behind
+`xferescrow`.
+
+**A player's own escrow** is not a road between players. `OWN_ROADS` lists
+those with why: today the bank (`bank:<pid>`, marked `player` in the storage
+registry: nothing in it reaches another account).
+
+## What is not a road between players, and why
+
+- **The gamble hall**: every wager (the Ace flip, the item flip, the gamble)
+  is against the house: a `mint` when won, a `burn` when lost. No player is
+  on the other side. The jackpot is (its row above).
+- **Mail between players**: there is none. The mail (`inbox:`) is where every
+  settlement lands (`mail_gold`, `mail_item`), named on each row that pays
+  through it; no player sends mail to another.
+- **A party's or a dungeon's shared rewards**: each share is a `mint` to its
+  player.
+
+## Read by
+
+- `server/src/xfer.js`: `XFER.ROADS` is the rows whose `ledger` is `xfer`,
+  `XFER.KILLS` the rows whose `ledger` is `kill` (the plan's rule 2: the list
+  is written once). A row's key is the `road` an `xfer:` row keeps; the two
+  that write one keep the names they always had (`trade_window`,
+  `gift_trade`). `xfer.test` §2 holds that every `move` road is on a row
+  whose ledger is `xfer` or `kill`.
+
+## The guard
+
+`server/test/player-roads.test.mjs`, strict from the start (the plan's rule
+3: a set that value hangs on). It fails:
+
+1. a `fee`, `hold` or `pace` that is not 0;
+2. a row that is not whole (no `at` or `why`, a kind off the list, a ledger
+   off its list or `none` with no why, no road, a road no door has, a `mint`
+   or `burn` road, a kind with a door and no road of that door);
+3. a `move` road (`GOLD_ROADS`, `BAG_ROADS`, `BAG_WHOLE`) on no row;
+4. an `escrow` road on no row and not a player's own; an escrow into a place
+   the registry marks `between` (`storagemarks.js`) is always on a row; a
+   player's own escrow holds only in places marked `player`;
+5. a kind neither behind a door nor listed `DOORLESS`;
+6. its own checks, run on a planted copy of the tables, not failing.
+
+Break proofs, tried by hand (its header): a `move` road planted in
+`GOLD_ROADS` fails §3; `fee: 1` on `trade_window` fails §1.
+
+## Weapons, gear and pets
+
+They move between players (the trade window, the Auction House, the order
+book, No man's land) on roads with no door table yet, so a row names them in
+`carries` and the guard cannot hold their roads. `DOORLESS` lists them; a
+kind leaves it in the PR that builds its door, and from then on the guard
+holds its roads as it holds gold's. Weapons and gear: card R PR 2, the stash
+door. Pets: no card names their door yet.
+
+## Kill switch
+
+None: the table changes no behaviour. Nothing reads `fee`, `hold` or `pace`,
+and `XFER.ROADS` and `XFER.KILLS` are the same lists as before
+(`trade_window` and `gift_trade`; `nml_loss`). The ledger's own switch stays
+`xfer: false`.

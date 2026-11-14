@@ -469,6 +469,40 @@ place (`ESCROW_PLACES`, part 3 above) marked as holding nothing.
 - `marksOf(key)` finds a stored key's marks by its longest marked prefix:
   what the world's sum (4.4) and the restore (4.7) call.
 
+### The roads between players (step 10.5; built: card R, tag 5280)
+
+Every way value passes from one account to another, one row of
+`PLAYER_ROADS` (`server/src/playerroads.js`, no imports): its `fee`, its
+`hold`, its `pace` (all 0: the owner's call 12), its `ledger` (`xfer`,
+`kill`, or `none` with why), what it `carries` (`gold`, `bag`, `weapon`,
+`gear`, `pet`) and the door roads it runs on (`roads`, by door: `gold`,
+`bag`, `bagWhole`). A row is a SETTLEMENT (the trade window, the Auction
+House's sale), not a road: it NAMES the door roads it runs on, so each road
+is still written once, in its door, and no second list of roads is made
+(part 7's "three columns, not a table" was the first reading: a settlement
+runs on several roads, and one road (`escrow_debit`) serves several
+settlements, so the columns could not sit on the roads themselves).
+
+- **Read by** `xfer.js`: `XFER.ROADS` and `XFER.KILLS` are the rows whose
+  ledger is `xfer` and `kill`. A row's key is the `road` an `xfer:` row
+  keeps (`trade_window`, `gift_trade`: the names they always had).
+- **Held by** `server/test/player-roads.test.mjs`: every `move` road on a
+  row; every `escrow` road on a row, or a player's own (`OWN_ROADS`, with
+  why: the bank), and one into a place marked `between` (the registry's
+  `whose`, above) always on a row; only `move` and `escrow` roads on a row
+  (a `mint` or a `burn` has no other account); 0 in every `fee`, `hold`
+  and `pace`.
+- **Weapons, gear and pets** have no door table yet: a row names them in
+  `carries`, `DOORLESS` lists them, and the guard holds their roads from
+  the PR that builds their door (weapons and gear: card R PR 2).
+- 14 rows at tag 5280: `trade_window`, `gift_trade` (ledger `xfer`);
+  `nml_loss` (`kill`); `market`, `auction_sale`, `auction_bid`,
+  `auction_offer`, `duel_pot`, `arena_entries`, `arena_stakes`,
+  `threat_bounty`, `jackpot`, `ground`, `diego_pile` (`none`, each with
+  why). Not a road between players: the gamble hall (every wager is
+  against the house), mail (no player sends mail to another: it is every
+  row's landing), a party's shares (each a mint). `docs/specs/player-roads.md`.
+
 ## 4. The report's fields and sinks
 
 Step 1.1, built by card A. One message, type `report`, from a phone to the
@@ -968,6 +1002,17 @@ writes them, never identifiers: `dungeon`, `connection`, `loading` and
 | `PHASES`, `NOT_A_MACHINE` | the phase table and the marked fields that are no machine's (`src/state/phases.js`) | 5 |
 | `resetOn`, `runResets` (v2.3.5203) | a state's reset, registered beside it in its system's file, and the edge's one door's call (`src/game/resetOn.js`); the ledger's hand column `reset` | 5 (step 5.3) |
 | `dungeon`, `connection`, `loading`, `window`, `monster` | the phase table's machines beyond part 5's list (a row's `name`) | 5 |
+
+**Chosen by card R (step 10.5, tag 5280), free at its commit** (the same
+search, with `docs`): `playerroads`, `PLAYER_ROADS`, `OWN_ROADS`,
+`KIND_DOORS`, `DOORLESS`, `ROAD_KINDS`, `ROAD_LEDGERS` and `playerRoadsBy`
+have no hit. The plain `KINDS` was taken (`CODEX.KINDS`, and words in
+`quests.js`), as was `LEDGERS` (a comment in `join.js`, "the cape ledgers").
+
+| Name | For | Part |
+|---|---|---|
+| `playerroads.js`, `PLAYER_ROADS`, `OWN_ROADS` | the roads between players, and a player's own escrows | 3 |
+| `ROAD_KINDS`, `KIND_DOORS`, `DOORLESS`, `ROAD_LEDGERS`, `playerRoadsBy` | that table's closed lists, and its rows by ledger | 3 |
 
 `report` is free as a message type and a common word elsewhere; part 4 says
 what it is not. `gid`, `pid` and `hz` are TODAY's names, used here for the
