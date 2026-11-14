@@ -4001,8 +4001,8 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.2157: the canvas is the PLAY width, not the viewport width --
          identical in portrait (playW == vw always), narrower in landscape
          while a sheet is open. */
-      noteCanvasCss(_fp.playW, vh); dpr = renderDpr();   /* v2.3.5140: the pixel budget reads the canvas's CSS size, told here (game/renderRes.js) */
-      var tw = Math.round(_fp.playW * dpr), th = Math.round(vh * dpr);
+      /* v2.3.5140: the pixel budget reads the canvas's CSS size, told here first (game/renderRes.js); one line, so the file keeps its four-lines count */
+      noteCanvasCss(_fp.playW, vh); dpr = renderDpr(); var tw = Math.round(_fp.playW * dpr), th = Math.round(vh * dpr);
       if (canvas.width === tw && canvas.height === th) return;
       canvas.width = tw;
       canvas.height = th;

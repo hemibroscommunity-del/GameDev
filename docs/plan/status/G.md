@@ -1,6 +1,6 @@
 card: G
 branch: claude/plan-g-pixel-budget
-prs: #1701 (ready; the owner's yes given, the budget lowered as asked)
+prs: #1701 (ready; sitting 4's hold answered: main merged, four-lines green)
 state: ready
 
 ## Done
