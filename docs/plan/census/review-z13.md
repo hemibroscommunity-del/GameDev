@@ -63,7 +63,8 @@ status file, its copy different); L's #1824 with #1792 (the
 ## Card K: #1822 (PR 1, tag 5181) and #1820 (PR 3, tag 5183): listed
 
 **#1822, the worker's two lists made from the wire table (it DEPLOYS),
-read at 1f1494f (8286ce6 adds K's status only): clean (lows).** A
+read at 1f1494f (8286ce6, then af955a9, add K's status only): clean
+(lows).** A
 finder computed both sides: main's literals (82fb78d) against the made Sets, `PRIVILEGED_EVENTS` 163 and
 163, `RELAY.TYPES` 26 and 26, wire-audit's echo list 9 and 9, none
 missing, none extra (VERIFIED, a script). `index.js` re-exports the very
@@ -95,8 +96,8 @@ options' noise), far under the worker's limits; start-up 3 to 6 ms.
   wire-table 27, the six; CI `test` green.
 
 **#1820, the hostile-values census (a test and a page; it DEPLOYS, a new
-file in `server/test/`), read at 785fd62 by the gatekeeper (44be44d
-adds K's status only).** 10,524 cases on card E's test room, a seeded clock, about 9 s; `LINE = 19`, the
+file in `server/test/`), read at 785fd62 by the gatekeeper (44be44d,
+then c58f424, add K's status only).** 10,524 cases on card E's test room, a seeded clock, about 9 s; `LINE = 19`, the
 census page made by `--write`, the break proof (`WIRE_HOSTILE_PLANT=1`)
 in the header. It changes no handler. Its count holds on the whole list
 merged (precheck runs it). Low: the PR's words and K's status name seven
@@ -349,11 +350,12 @@ in its order (#1821, #1822, #1819, #1820, #1792, #1794, #1800, #1814,
    build, questline 187 of 187; on that tree `mp-folkwalk` 12 of 12 and
    `mp-folkwork` upright 13 of 13, unseen 6 of 6.
 3. **The list as written, at its final heads, without this branch (tree
-   4ec47d5d)**: from 2, only documents moved (#1819's SHAPES line and
-   R's status, K's status on #1822 and #1820).
-4. **The list with this branch last** (documents only): precheck, build
-   and questline on the whole; its tree is in the list sent to the
-   planning session (the file cannot carry its own tree).
+   301e12e6)**: from 2, only documents moved (#1819's SHAPES line and
+   R's status; K's status on #1822 and #1820, twice).
+4. **The list with this branch last** (documents only; this branch at
+   7e02211, its later commit these numbers): precheck, build and
+   questline on the whole; its tree is in the list sent to the planning
+   session (the file cannot carry its own tree).
 
 Each listed head's `test` is green on GitHub; each base is `main`; ONE
 merge base each, step by step down the list.
