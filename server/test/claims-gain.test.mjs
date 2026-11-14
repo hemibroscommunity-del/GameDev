@@ -89,7 +89,8 @@ const CLAIMS = [
     honest: [['the honest sword, its guard down while it swings', B.honestSword]],
     liar: ['its own fire by the field; after each kill `ex: \'cook\'` with no fish, the 3 s re-arm waited out', B.liarCookShield] },
   { id: 'move', what: 'the move', judge: '`MOVE_BUDGET`: 500 px a second and a 3 s burst (movement.js), the sprint mark (sprint.js), and no walls on the worker',
-    take: 'px', world: { tickMs: 200 },
+    /* v2.3.5541: measured with the sprint mark ON (`sprintmark: true`), which lands OFF until the owner's yes: the line is what the yes gives */
+    take: 'px', world: { tickMs: 200, flags: { sprintmark: true } },
     honest: [['the honest walker: 150 px a second, point to point', B.mover, { speed: B.WALK }],
       /* v2.3.5541: the sprint mark's honest bot (sprint.js, `sprintmark`) */
       ['the honest sprinter: 3 s sprinting (every move marked), 0.8 s walking, again', B.mover, { speed: B.WALK, sprinter: true }]],
@@ -127,7 +128,7 @@ async function runBot(c, [who, bot, opts], { d = null, ms, plant = null, flags =
   try { return await runIn(clock, c, w, bot, opts, { d, ms, plant, flags }); } finally { clock.restore(); }
 }
 async function runIn(clock, c, w, bot, opts, { d, ms, plant, flags }) {
-  const W = await B.makeWorld(clock, { tickMs: w.tickMs || 200, prep: w.prep || null, recs: w.recs ? w.recs() : {}, plant, ...(flags ? { flags } : {}) });
+  const W = await B.makeWorld(clock, { tickMs: w.tickMs || 200, prep: w.prep || null, recs: w.recs ? w.recs() : {}, plant, ...((flags || w.flags) ? { flags: flags || w.flags } : {}) });
   const ph = new B.Phone(W, null, d, ms);
   const take = blank();
   const quiet = { l: console.log, w: console.warn, e: console.error };
@@ -180,15 +181,16 @@ const gainRuns = rows.flatMap((r) => r.hon.filter((h) => h.refusals.length).map(
 check('2: ...nor on the gain runs', gainRuns.length === 0, gainRuns);
 /* v2.3.5541 (card K, step 4.2): THE SPRINT MARK.  The move's liar marks
    every other step a sprint; with the run going on through the grace
-   (sprint.js) it pays for its sprint and takes less ground; with the switch
-   thrown (`sprintmark: false`, the plan's rule 4) it takes what it took. */
+   (sprint.js, `sprintmark: true`: the move's world above) it pays for its
+   sprint and takes less ground; with the switch as it lands, OFF (the
+   owner's yes waits), it takes what it took. */
 {
   const mc = CLAIMS.find((c) => c.id === 'move');
   const on = rows.find((r) => r.c.id === 'move');
-  const off = GAINS_ONLY ? null : await runBot(mc, mc.liar, { ms: GAIN_MIN * B.MIN, flags: { sprintmark: false } });
+  const off = GAINS_ONLY ? null : await runBot(mc, mc.liar, { ms: GAIN_MIN * B.MIN, flags: {} });
   if (off && on) {
     const offV = perHour(mc, valueOf(mc, off.take), off.ms);
-    check(`2c: the sprint mark: the move's liar takes ${Math.round(on.liar.v)} px an hour, and ${Math.round(offV)} with \`sprintmark: false\``, offV > on.liar.v * 1.1, { on: on.liar.v, off: offV });
+    check(`2c: the sprint mark: the move's liar takes ${Math.round(on.liar.v)} px an hour with \`sprintmark: true\`, and ${Math.round(offV)} as it lands (off)`, offV > on.liar.v * 1.1, { on: on.liar.v, off: offV });
   }
 }
 for (const r of rows) {

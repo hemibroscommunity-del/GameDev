@@ -1,6 +1,6 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: #1822, #1820, #1826, #1829, #1831 merged; ready: #1838 (PR 4), #1842 (5540), 5541 (sprint mark)
+prs: #1822, #1820, #1826, #1829, #1831 merged; ready: #1838 (PR 4), #1842 (5540), #1848 (5541)
 state: ready
 
 ## Done
@@ -16,10 +16,10 @@ state: ready
   archer keeps every arrow. The bow cheats' rise (bowlabel 3.91, the bot
   lab's aimbot +12%) is for the bow claim's PR to bound, without costing
   the stepping archer an arrow (the planning session).
-- Claims 5541: the sprint mark (`sprintmark`, ON, sprint.js only): a move on
-  the grace's wide bound keeps the run, so the next marked step bills its
-  gap; the move's gain 4.35 -> 3.43 (line lowered); the honest sprinter
-  meets no refusal.
+- Claims 5541 (#1848): the sprint mark (`sprintmark`, OFF until the owner's
+  yes, sprint.js only): a move on the grace's wide bound keeps the run; the
+  bench measured with it on (move 4.35 -> 3.43; the honest sprinter meets
+  no refusal).
 
 ## Next
 
@@ -30,9 +30,11 @@ state: ready
 
 ## Found
 
-- The page sends `clan_war_kill`/`clan_war_end` for an older worker; this
-  one drops both (`legacy` door rows).
+- The page sends `clan_war_kill`/`clan_war_end`; this worker drops both.
 
 ## Needs
 
-- Nothing waiting.
+- The owner: turn on `sprintmark`? A sprint marked on every other move then
+  pays its stamina (the move cheat's gain 4.35 -> 3.43); an honest sprint
+  let go and pressed again within 1.5 s, still moving, pays for that gap
+  (at most 11 stamina). Off, as it lands, the cheat keeps the hole.

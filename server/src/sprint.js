@@ -128,18 +128,20 @@ export const sprintMethods = {
     if (ps._sprintAt && now - ps._sprintAt < SPRINT.GRACE_MS && !this._sprintOff() && !ps._ride) {
       /* v2.3.5541: a move on the grace's wide bound is paid for too, if it
          moves (_sprintPay: it bills nothing itself, and keeps the run going) */
-      if (!this._sprintMarkOff()) ps._sprintStep = 'grace';
+      if (this._sprintMarkOn()) ps._sprintStep = 'grace';
       return SPRINT.MULT;
     }
     return 1;
   },
 
-  /* v2.3.5541: the sprint mark's kill switch, the lower-case way:
-     `sprintmark: false` and a move on the grace's wide bound ends the run,
-     as before (the hole below open again) */
-  _sprintMarkOff() {
+  /* v2.3.5541: the sprint mark's switch, OFF until the owner says yes (an
+     honest re-press inside the grace pays for the gap: something a player
+     can feel, so the owner's call -- the planning session, 2026-11-14):
+     only `sprintmark: true` in the live flags turns it on.  Off, a move on
+     the grace's wide bound ends the run, as before (the hole open) */
+  _sprintMarkOn() {
     const f = this._liveFlags;
-    return !!(f && typeof f === 'object' && own(f, 'sprintmark') && !f.sprintmark);
+    return !!(f && typeof f === 'object' && own(f, 'sprintmark') && f.sprintmark === true);
   },
 
   /* The move was accepted and moved the player `dist` px: pay for the step.
@@ -163,7 +165,8 @@ export const sprintMethods = {
        way bills a marked step only inside the grace (GRACE_MS of the last
        paid step): the rest packet as a player stops moves a pixel or two,
        and the step after standing a while bills nothing, as before.
-       `sprintmark: false`: the grace's moves end the run, as before. */
+       OFF until the owner's yes (`sprintmark: true`): off, the grace's
+       moves end the run, as before. */
     if (ps._sprintStep === 'grace') {
       if (dist > 0.5 && ps._sprintPrevPaid) ps._sprintLastPaid = 'carry';
       ps._sprintStep = false;
