@@ -49,7 +49,7 @@
  * GROWN -- see THE GOVERNOR below.  It imports one leaf, ./drawLanes.js (the
  * lanes' table, itself import-free), and node still tests it.
  */
-import { AXES, AXIS_NAMES, KNOB_NAMES, knobAt, drawLane, ladderRung, setRung, rungDepth } from './drawLanes.js';
+import { AXES, AXIS_NAMES, knobAt, drawLane, ladderRung, setRung, rungDepth, laneKnob, liveKnobs } from './drawLanes.js';
 
 /* a refresh shorter than this is a fast screen (over about 70 a second) */
 export const PACE_FAST_MS = 14;
@@ -78,6 +78,12 @@ const REFRESH_EVERY = 30; /* ...and how often it is read again */
  *  never a copy. */
 export function lateOver(refresh, every) {
   return (every || 1) * refresh + refresh / 2;
+}
+
+/** v2.3.5224: does the ladder move the rate (card O PR 4)?  `ladderrate=0`
+ *  in the address: the rate as before it, whatever the rung. */
+export function ladderRateOn(search) {
+  return !/(^|[?&])ladderrate=(0|off|false)(&|$)/.test(typeof search === 'string' ? search : '');
 }
 
 /** Is the pacer on?  The address: `pace=0` (or off, false) is the old way. */
@@ -128,6 +134,25 @@ export function refreshOf(gaps) {
 export function makeFramePacer(opts) {
   /* v2.3.5222: the governor (opts: the tests' { gov } in place of the page's own) */
   const gov = (opts && opts.gov) || makeGovernor();
+  /* ═══ v2.3.5224: THE RATE IS A KNOB (card O PR 4; docs/LANES.md `rate`) ═══
+     On a screen of 60 or slower, the slowest frame the pacer holds a steady
+     rate at is the lane's knob at its rung, read through the lanes' one
+     reader: the row's 26 ms (PACE_FLOOR_MS, `full`'s) is every refresh, as
+     ever; the rung's 34 ms is a whole number of refreshes on a 60 screen,
+     every second one -- a steady 30 -- and on a 30 screen still every one
+     (no rung).  ON A FAST SCREEN (90, 120, 144) NOTHING CHANGES: the
+     pacer's own steps, down to about 40 a second (PACE_FLOOR_MS), whatever
+     the lane or the rung -- the planning session's (a), 2026-11-14: a rate
+     rung for fast screens would be a decision of its own, not an accident.
+     Read again where the rung or the lane can change: after the governor's
+     verdict and at a veil.  `?ladderrate=0` is the rate as before (opts:
+     the tests' { rateOn }). */
+  const rateOn = opts && opts.rateOn !== undefined ? !!opts.rateOn : ladderRateOn(_search());
+  let rateAt = PACE_FLOOR_MS;
+  const readRate = () => {
+    try { const a = laneKnob('rate'); rateAt = typeof a === 'number' && a > 0 ? a : PACE_FLOOR_MS; } catch (e) { rateAt = PACE_FLOOR_MS; }
+  };
+  readRate();
   const gaps = new Float64Array(CB_KEEP);
   let gapN = 0, gapAt = 0, calls = 0;
   let last = null, lastRun = null;
@@ -163,18 +188,22 @@ export function makeFramePacer(opts) {
     lastShare = share;
     clearJudge();
     const was = changes;
-    rateVerdict(share, ts);
+    /* v2.3.5224: the rate's own steps are a fast screen's alone; any other's
+       rate is the knob's (take(), below) */
+    if (refresh != null && refresh < PACE_FAST_MS) rateVerdict(share, ts);
+    else { bad = 0; trial = false; }
     /* v2.3.5222: then the ladder, on the same verdict (THE GOVERNOR): it
        steps down only once this screen's own rate is at its floor, and never
        on a verdict the rate itself stepped on (one step a verdict) */
     gov.verdict(share, ts, { refresh, every, atFloor: every >= most, rateMoved: changes !== was });
+    readRate();   /* v2.3.5224: the rung may have moved the rate */
   };
   return {
     take(ts, judge = true) {
       /* v2.3.5222: a veil (a loading screen; a tab's return): where the
          governor may move pixels, and keeps its rung for the lane */
-      if (!judge) gov.veil(ts);
-      else if (_returned) { _returned = false; gov.veil(ts); }
+      if (!judge) { gov.veil(ts); readRate(); }
+      else if (_returned) { _returned = false; gov.veil(ts); readRate(); }
       if (last == null) { last = ts; lastRun = ts; return true; }
       const gap = ts - last;
       last = ts;
@@ -196,10 +225,14 @@ export function makeFramePacer(opts) {
       }
       if (refresh >= PACE_FAST_MS) {
         /* not a fast screen: every refresh, as ever -- but v2.3.5222, JUDGED
-           (one verdict, every screen: the governor's) */
-        if (every !== 1) { trial = false; wasUp = false; bad = 0; change(1, ts); }
-        most = 1;
+           (one verdict, every screen: the governor's); v2.3.5224, the rate's
+           knob at its rung: a whole number of refreshes (a 60 screen's rung,
+           every second one: a steady 30) */
+        const want = rateOn ? Math.max(1, Math.floor((rateAt + 0.5) / refresh)) : 1;
+        if (every !== want) { trial = false; wasUp = false; bad = 0; change(want, ts); }
+        most = want;
       } else {
+        /* a fast screen: its own steps as before, whatever the lane or the rung (v2.3.5224, (a)) */
         most = Math.max(1, Math.floor((PACE_FLOOR_MS + 0.5) / refresh));
         if (every > most) change(most, ts);
       }
@@ -369,9 +402,25 @@ export function makeGovernor(opts) {
   const steps = [];             /* the last STEPS_KEPT steps, for the strip: { t, axis, dir, knobs, work, chip } */
   let stepsN = 0;
 
-  const vec = (r) => KNOB_NAMES.map((k) => knobAt(lane || drawLane(), k, r));
-  const same = (a, b) => a.every((v, i) => v === b[i]);
-  const movesPixels = (a, b) => knobAt(lane || drawLane(), 'pixels', a) !== knobAt(lane || drawLane(), 'pixels', b);
+  /* v2.3.5224: the LIVE knobs only (drawLanes.js liveKnobs: those a PR
+     reads through laneKnob) -- a rung that changes no knob anything reads is
+     passed, going down and coming back (the gatekeeper's sitting 11) */
+  const vec = (r) => liveKnobs().map((k) => knobAt(lane || drawLane(), k, r));
+  const same = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+  const movesPixels = (a, b) => liveKnobs().includes('pixels') && knobAt(lane || drawLane(), 'pixels', a) !== knobAt(lane || drawLane(), 'pixels', b);
+  /* the live set, as a word: a rung kept under another (a knob moved since,
+     or the governor's first version, which counted every knob) is not
+     loaded -- its rungs meant something else */
+  const liveKey = () => liveKnobs().join(',');
+  /* the shallowest rung that changes the same: the rungs past an axis's last
+     live change are let go (rungDepth's count, and a try up that has
+     something to undo) */
+  const trim = (r) => {
+    let w = r.work, c = r.chip;
+    while (w > 0 && same(vec({ work: w, chip: c }), vec({ work: w - 1, chip: c }))) w--;
+    while (c > 0 && same(vec({ work: w, chip: c }), vec({ work: w, chip: c - 1 }))) c--;
+    return { work: w, chip: c };
+  };
   /* the rung one effective step from `r` on `axis` (down: dir -1, a rung
      more; up: dir +1, a rung less), passing rungs that change nothing; null:
      none that changes anything */
@@ -387,16 +436,17 @@ export function makeGovernor(opts) {
   };
   const save = () => {
     if (!store || !lane) return;
-    try { const all = store.get() || {}; const r = ladderRung(); all[lane] = [r.work, r.chip]; store.set(all); } catch (e) { /* this sitting only */ }
+    try { const all = store.get() || {}; const r = ladderRung(); all[lane] = [r.work, r.chip, liveKey()]; store.set(all); } catch (e) { /* this sitting only */ }
   };
   const apply = (to, axis, dir, ts) => {
     const before = vec(ladderRung());
-    setRung(to.work, to.chip);
+    const t = trim(to);
+    setRung(t.work, t.chip);
     const after = vec(ladderRung());
-    const knobs = KNOB_NAMES.filter((k, i) => before[i] !== after[i]);
+    const knobs = liveKnobs().filter((k, i) => before[i] !== after[i]);
     if (dir < 0) stack.push(axis);
     else { const i = stack.lastIndexOf(axis); if (i >= 0) stack.splice(i, 1); }
-    steps.push({ t: ts, axis, dir, knobs, work: to.work, chip: to.chip });
+    steps.push({ t: ts, axis, dir, knobs, work: t.work, chip: t.chip });
     if (steps.length > STEPS_KEPT) steps.shift();
     stepsN++;
     changedAt = ts;
@@ -420,16 +470,19 @@ export function makeGovernor(opts) {
     if (done && wasUp) { upWait = Math.min(UP_WAIT_MAX_MS, upWait * 2); wasUp = false; }
     return done;
   };
-  /* the lane's kept rung, loaded (at a veil: it may move the pixels) */
+  /* the lane's kept rung, loaded (at a veil: it may move the pixels).
+     v2.3.5224: only a rung kept under today's live knobs (a kept rung from
+     before is the row), and trimmed to what it changes */
   const load = (L, ts) => {
     lane = L;
     let w = 0, c = 0;
-    try { const all = store && store.get(); const v = all && all[L]; if (Array.isArray(v)) { w = v[0]; c = v[1]; } } catch (e) { w = 0; c = 0; }
-    setRung(w, c);
+    try { const all = store && store.get(); const v = all && all[L]; if (Array.isArray(v) && v[2] === liveKey()) { w = v[0]; c = v[1]; } } catch (e) { w = 0; c = 0; }
+    const t = trim({ work: Math.max(0, Math.min(AXES.work.length, Math.floor(Number(w) || 0))), chip: Math.max(0, Math.min(AXES.chip.length, Math.floor(Number(c) || 0))) });
+    setRung(t.work, t.chip);
     const r = ladderRung();
     stack = [];
-    for (let i = 0; i < r.work; i++) stack.push('work');
-    for (let i = 0; i < r.chip; i++) stack.push('chip');
+    if (r.work > 0) stack.push('work');
+    if (r.chip > 0) stack.push('chip');
     pending = null; bad = 0; trial = false; wasUp = false; upWait = UP_WAIT_MS; changedAt = ts;
   };
   /* the axis the late frames' time says, or null (no samples handed in) */
@@ -495,8 +548,16 @@ export function makeGovernor(opts) {
       bad = 0; trial = false;
       if (pending && pending.dir < 0) pending = null;
       if (wasUp && ts - changedAt >= upWait) { wasUp = false; upWait = UP_WAIT_MS; }
-      if (c.rateMoved || share > LATE_CLEAN || rungDepth() === 0 || pending || ts - changedAt < upWait) return;
-      const back = stack.length ? stack[stack.length - 1] : (ladderRung().chip > 0 ? 'chip' : 'work');
+      if (c.rateMoved || share > LATE_CLEAN || rungDepth() === 0 || ts - changedAt < upWait) return;
+      /* the axis to try: the last stepped down, if it has a rung to undo, else
+         whichever has (the chip's first) */
+      const r = ladderRung();
+      let back = stack.length ? stack[stack.length - 1] : null;
+      if (!back || !(r[back] > 0)) back = r.chip > 0 ? 'chip' : 'work';
+      /* v2.3.5224: a try up that moves the pixels waits for its veil; the
+         other axis may try meanwhile (it stopped every try before: the
+         gatekeeper's sitting 11) */
+      if (pending) { back = pending.axis === 'work' ? 'chip' : 'work'; if (!(r[back] > 0)) return; }
       const done = step(back, +1, ts, false);
       if (done === true) { trial = true; wasUp = true; }
     },

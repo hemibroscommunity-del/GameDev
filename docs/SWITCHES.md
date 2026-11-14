@@ -277,6 +277,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | name | side | kind | born | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|
 | `?govern` | page | switch | v2.3.5222 | =0 (off), =1 (on where `?lane=` holds it) | logic |  | no | The governor no longer moves the ladder: the lane's row, however late the frames. |
+| `?ladderrate` | page | switch | v2.3.5224 | =0, off, false | logic | `?govern` | no | The rate as before the ladder: a 60 screen is never paced, whatever the rung. |
 
 ## preload
 
