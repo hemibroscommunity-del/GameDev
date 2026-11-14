@@ -1,39 +1,37 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: #1822 (PR 1, ready), #1820 (PR 3, ready)
+prs: #1822 (PR 1, ready), #1820 (PR 3, ready), #1826 (PR 6, ready)
 state: ready
 
 ## Done
 
-- PR 1 (5181, #1822): `PRIVILEGED_EVENTS`,
-  `RELAY.TYPES` and wire-audit's echo list made from the wire table
-  (`server/src/wire/lists.js`); the column `privileged` (`echo` on 9 rows);
-  the literals deleted, each type's why moved above its row. Bundle +88 KB
-  (+12 KB gzipped). Deploys.
-- PR 3 (5183, #1820): `wire-hostile.test` (10,524 cases,
-  ~9 s), census `docs/plan/census/hostile.md`: 19 failing, the line.
-  Deploys (a new file in server/test/).
+- PR 1 (5181, #1822): `PRIVILEGED_EVENTS`, `RELAY.TYPES`, the echo list
+  made from the wire table (`wire/lists.js`); column `privileged`. Deploys.
+- PR 3 (5183, #1820): `wire-hostile.test` (10,524 cases), census
+  `hostile.md`: 19 failing, the line. Deploys.
+- PR 6 (5186, #1826): `claims-gain.test`, `claimbots.mjs`, census `claims.md`:
+  reach 2.96, bow label 3.76, guard 1.37, move 4.35, harvest 1.86, cook
+  1.59 (quest, sale, local 1); no honest refusal in 81 disturbance runs.
 
 ## Next
 
-- PR 6 (5186, free, the gain bench: researching each claim) while 1 and 3 wait; PR 2 (5182) after PR 1 merges (it
-  takes wire-table.test §7, today's copy, out); PR 4 after 1 and 3.
+- The cook shield's bot (its line beside the guard's); PR 2 (5182) after
+  PR 1 merges (takes wire-table.test §7 out); PR 4 after 1 and 3.
 
 ## Found
 
-- Six suites read `PRIVILEGED_EVENTS` from index.js's source, not the Set:
-  accuracy, achievements-client, boards, loginspin, rejoin-resend,
-  rise-chest (`server/test/`). PR 1 points each at the made Set (the
-  planning session's yes, 2026-11-14).
-- `tools/guards/lib/systems.mjs`: the wire system's two doors still name
-  index.js and relay.js; both still hold the names (now made in lists.js).
-- `server/src/movement.js` `_handleMove` keeps `vx`, `vy`, `d`, `f`, `eqc`,
-  `eql`, `ex` as sent (an object kept, and relayed): hostile census, 16.
-- `server/src/chatmod.js`: a mute of a target named `__proto__` is stored
-  as an own key of `chat_mute:<pid>`.
-- `server/src/worldsum.js` (card E): an honest character restart reads as
-  value gone with no burn written (`character_reset`).
+- Six suites read `PRIVILEGED_EVENTS` from index.js's source; PR 1 reads
+  the Set (the planning session's yes).
+- `lib/systems.mjs`: the wire doors still name index.js and relay.js.
+- `movement.js` `_handleMove` keeps 7 fields as sent (hostile, 16).
+- `chatmod.js`: a mute of `__proto__` stored as an own key (PR 4 mends).
+- `worldsum.js`: an honest restart reads as value gone with no burn.
+- `combat.js` monster lane: an archer stepping in between two shots lands
+  both inside 210 ms; the second is dropped (honest play).
+- `sprint.js`: every other move marked `sp: 1` keeps the 1.33 bound with
+  no stamina spent (the move's liar).
 
 ## Needs
 
-- Nothing asked. PR 2 waits for PR 1's merge; PR 4 for 1 and 3.
+- Card R: will it take the restart's burn (persistence.js)? Asked.
+- PR 2 waits for PR 1's merge; PR 4 for PRs 1 and 3.
