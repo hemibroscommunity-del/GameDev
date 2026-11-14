@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4574b553938e863a0dcdd103c2b36fa87449dd6f",
+  "tree": "fde86aeb606db58319a21afd47ba136c55a22b30",
+  "committedAt": "2026-11-13T23:13:13-08:00",
+  "subject": "Merge pull request #1700 from hemibroscommunity-del/claude/grand-plan-h-4-masked-bake",
+  "files": 7509,
+  "bytes": 947898468,
+  "listingSha256": "f1685e96d4c279dbf8c8c0fdeac4beee2a7a24b150b03e56c12be5f97fc5d24c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

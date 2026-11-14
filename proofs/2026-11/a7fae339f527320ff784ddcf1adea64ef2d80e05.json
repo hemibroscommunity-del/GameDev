@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "a7fae339f527320ff784ddcf1adea64ef2d80e05",
+  "tree": "9ccc4620dfe2c0163901865cc10b24a654af39ac",
+  "committedAt": "2026-11-13T23:13:21-08:00",
+  "subject": "Merge pull request #1709 from hemibroscommunity-del/claude/grand-plan-h-5-strip-made",
+  "files": 7510,
+  "bytes": 947921924,
+  "listingSha256": "bd8278c1fcfaeaa355db055da47ea1f7741c7416c4a62660b46d7903d4e9d10d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

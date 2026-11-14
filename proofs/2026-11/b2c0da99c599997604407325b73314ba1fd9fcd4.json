@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b2c0da99c599997604407325b73314ba1fd9fcd4",
+  "tree": "b953c279091ef0c4239a5a34678a1cfe1f92fef1",
+  "committedAt": "2026-11-13T23:13:04-08:00",
+  "subject": "Merge pull request #1701 from hemibroscommunity-del/claude/plan-g-pixel-budget",
+  "files": 7508,
+  "bytes": 947879626,
+  "listingSha256": "6c4d44f98a112b17e44965a34b93eff0be90f6d75d20dd56e18b8781dfe37403",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
