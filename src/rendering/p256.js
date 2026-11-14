@@ -39,7 +39,43 @@ const _q = (() => { try { return typeof location !== 'undefined' ? (location.sea
    arrival the chip 2.8 MB more (every effect sent up front) -- a picture this
    small at play is not worth its colours yet.  `?p256=1` turns it on to try;
    the docs/specs/pictures-256.md numbers. */
-const WANTED = /[?&]p256(=1)?(&|$)/.test(_q);
+/* ═══ v2.3.5249: ON FOR ONE FAMILY AT A TIME (card P's backlog) ═══
+   The owner, 2026-11-14 ("Go recommended"): the effects' twins go on, each
+   family of the asset door (tools/assets/families.mjs) its own PR, on by
+   default with its own `?name=0`.  The first is `fx-made`, the effects the
+   game's own tools made (the fire trail, the portal's beam, the anvil, the
+   snow's footprints, the arrow's blast, the jet stream): 3.1 MB held as
+   pictures in the page at the memory check's fight.  Not the snowball's
+   burst (the gatekeeper's sitting 8): it loads as you walk toward the frost
+   land, in play, and a twin's numbers are read off a canvas on the page.
+   `?fxmade=0` keeps them pictures.  `?p256=1` still turns every twin on to
+   try (the gathering tools' and the owner's sheets too); `?p256=0` turns
+   every one off. */
+const ALL_TWINS = /[?&]p256(=1)?(&|$)/.test(_q);
+const NO_TWINS = /[?&]p256=0(&|$)/.test(_q);
+const FX_MADE = /^\/sprites\/(?:fx\/(?:fire-trail-v1\.png|portal-beam\.webp|smith-anvil\.webp|snow-footprints\.webp)|effects\/(?:arrow-blast-v1\.webp|jet-stream-v1\.png))$/;
+const FX_MADE_ON = !NO_TWINS && !/[?&]fxmade=0(&|$)/.test(_q);
+/* v2.3.5250, the next family: `icons-items-world`, the icons drawn in the
+   world -- the ore that pops from a rock, the trap's box, the nine shards,
+   the heart and sword popups (1.6 MB held as pictures in the page at the
+   fight).  Their twins: tools/art/reduce256.mjs, by name.  `?worldicons=0`
+   keeps them pictures.  (The arrow, dice, spell and xp popups have no twin:
+   their widths need padding.)  Not the trap's box (the gatekeeper's sitting
+   9): a missed trap breaks it into pieces (trapFx.js _missBreak, wheelShatter
+   cutPicture), a read of its pixels long after the pack has emptied its
+   page copy -- it drew planks in their place. */
+const WORLD_ICONS = /^\/icons\/(?:items\/(?:ore-iron|ore-black-steel|ore-obsidian)|shards\/shard_[a-z]+|popups\/(?:heart-256|sword))\.webp$/;
+const WORLD_ICONS_ON = !NO_TWINS && !/[?&]worldicons=0(&|$)/.test(_q);
+/* v2.3.5252, `fx-sheets-supplied`: the effects cut from the owner's own
+   sheets (the stun stars, the whirlwind, and the grease, woodchips, rocks
+   and splash bursts): 2.0 MB held at the fight, all of it the whirlwind,
+   whose pack the packer declines (gearSheets.js loadCroppedStrip now reads
+   such a twin as numbers whole).  `?fxsheets=0` keeps them pictures. */
+const FX_SHEETS = /^\/sprites\/(?:fx\/(?:stun-stars-v1|whirl-vortex-v1)\.png|effects\/(?:grease|woodchips|rocks|splash)-burst-v1\.webp)$/;
+const FX_SHEETS_ON = !NO_TWINS && !/[?&]fxsheets=0(&|$)/.test(_q);
+/** whether the picture at `path` (no host, no query) is read from its twin here */
+function wantedPath(path) { return !NO_TWINS && (ALL_TWINS || (FX_MADE_ON && FX_MADE.test(path)) || (WORLD_ICONS_ON && WORLD_ICONS.test(path)) || (FX_SHEETS_ON && FX_SHEETS.test(path))); }
+const WANTED = !NO_TWINS && (ALL_TWINS || FX_MADE_ON || WORLD_ICONS_ON || FX_SHEETS_ON);
 /* (never while QA compares cropped strips against their files: __btTrimVerify) */
 export function p256On() { return WANTED && picNumbersOn(); }
 
@@ -59,7 +95,7 @@ function queryOf(url) {
 
 /* a picture with a twin, wanted */
 function listed(url) {
-  if (!WANTED) return null;
+  if (!WANTED || !wantedPath(pathOf(url))) return null;
   const e = P256_FILES[pathOf(url)];
   return e && !(e.w % 4) ? e : null;
 }
@@ -100,7 +136,7 @@ export async function p256Address(url) {
 /** The twin's address for `url` (its own query kept, so a cache-busting
  *  version still busts), or null: no twin, or not read that way here. */
 export function p256Twin(url) {
-  if (!p256On()) return null;
+  if (!p256On() || !wantedPath(pathOf(url))) return null;
   const e = P256_FILES[pathOf(url)];
   if (!e) return null;
   /* a texture's frames are cut by its width: a twin is used only where its
@@ -296,6 +332,6 @@ export function startP256Pack(renderer, canvas) {
 }
 
 if (typeof window !== 'undefined') {
-  window.__btP256 = () => ({ wanted: WANTED, on: p256On(), twins: Object.keys(P256_FILES).length, ..._stats,
+  window.__btP256 = () => ({ wanted: WANTED, on: p256On(), all: ALL_TWINS, fxMade: FX_MADE_ON, worldIcons: WORLD_ICONS_ON, fxSheets: FX_SHEETS_ON, twins: Object.keys(P256_FILES).length, ..._stats,
     pack: { ..._pk, packedNow: _packed.size, waiting: _toPack.size } });
 }

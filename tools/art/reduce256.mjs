@@ -53,6 +53,17 @@ const SCOPE = [
   { dir: 'sprites/fx', skip: /^(levelup-burst|zonebanner-|coinflip-)/ },
   { dir: 'sprites/effects', skip: null },
   { dir: 'sprites/tools', skip: null },
+  /* v2.3.5250 (card P's backlog, icons-items-world): the icons drawn in the
+     world -- the ore and the trap, the shards, the hit popups -- by name, the
+     rest of their folders being the windows' <img>s.  Twinned even on 256
+     colours or fewer (`always`): they are WebPs, and the game reads only a
+     palette PNG as colour numbers (png8Decode.js).  Not the popups whose
+     width is not a multiple of four (the arrow, the dice, the spell, the
+     xp): p256.js reads no twin that needs padding, so theirs would never be
+     read. */
+  { dir: 'icons/items', only: /^(ore-iron|ore-black-steel|ore-obsidian)\.webp$/, always: true },   /* not the trap's box: its pieces are cut from its pixels (p256.js) */
+  { dir: 'icons/shards', only: /^shard_[a-z]+\.webp$/, always: true },
+  { dir: 'icons/popups', only: /^(heart-256|sword)\.webp$/, always: true },
 ];
 
 function colourCount(d) {
@@ -68,11 +79,11 @@ for (const s of SCOPE) {
   const dir = path.join(PUB, s.dir);
   if (!fs.existsSync(dir)) continue;
   for (const f of fs.readdirSync(dir).sort()) {
-    if (!/\.(png|webp)$/i.test(f) || /\.p256\.png$/i.test(f) || (s.skip && s.skip.test(f))) continue;
+    if (!/\.(png|webp)$/i.test(f) || /\.p256\.png$/i.test(f) || (s.skip && s.skip.test(f)) || (s.only && !s.only.test(f))) continue;
     const rel = `/${s.dir}/${f}`;
     const { w, h, d } = readRgba(path.join(PUB, rel));
     const colours = colourCount(d);
-    if (colours <= 256) { console.log(`  as it is  ${rel} (${colours} colours)`); continue; }
+    if (colours <= 256 && !s.always) { console.log(`  as it is  ${rel} (${colours} colours)`); continue; }
     const t0 = Date.now();
     const q = onColours([{ w, h, d }]);
     const r = { idx: q.idx[0], pal: q.pal, n: q.n, err: q.err };
