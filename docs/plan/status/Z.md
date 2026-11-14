@@ -1,40 +1,40 @@
 card: Z
-branch: claude/plan-z-sitting-1
-prs: this PR, tag 5032, the last line of the list (ready)
+branch: claude/plan-z-sitting-3
+prs: this PR, tag 5034, the last line of the list (ready)
 state: ready
 
 ## Done
-- Sitting 1, 2026-11-14, `main` at f27d1d8. 17 PRs ready, each `test` green.
-  Rehearsed by hand (W's script is in the held #1676): the 16 below merged
-  on `main`, then precheck 0 FAIL, `npm run build` green, `questline` 187
-  of 187. `/repo-review` in full on #1662, #1668, #1675: nothing holds one.
-  Nothing ticked: no step's PRs are merged on `main` yet (the card's word).
+- Sitting 3, `main` at 67a6f3d, 18 open PRs green. The 5 below on `main`:
+  precheck 0 FAIL, build green, questline 187 of 187. `/repo-review`, 7 angles:
+  N1, N2, B1, A1 to A4, E4. Ticked 8.0 (card W's four are merged).
 
 ## The list: merge in this order, in one sitting, each "Create a merge commit"
-1 #1661 W1 · 2 #1662 W2 (deploys the worker) · 3 #1663 W3 · 4 #1666 S1
-5 #1669 S2 · 6 #1677 F1 · 7 #1678 F2 · 8 #1667 C · 9 #1673 D · 10 #1665 I
-11 #1670 J · 12 #1672 J · 13 #1674 J · 14 #1679 J · 15 #1668 H1 (the only
-game code: `bodyBake.js`) · 16 #1675 H2 (deploys the worker) · 17 this PR
-- A squash of #1662, #1663, #1669, #1678 or #1675 conflicts on its status
-  file (the branches are stacked): merge commits only.
+1 #1699 E4 BY ITSELF (schema 21: a rollback past it needs `newersave: false`);
+wait for its "Deploy worker" run to go green · 2 #1688 A1 · 3 #1685 B1
+(deploys) · 4 #1692 A2 (deploys) · 5 #1703 A3 (sends nothing until A4) · 6
+this PR. Stacked: no squash. No cap or live flag on the list.
 
-## Held (expires at sitting 2)
-- #1676 W4: `git merge origin/main` into it conflicts in `CLAUDE.md` §3
-  (#1671's orchestrator line). W merges `main` in, keeping both lines.
+## Held (expires at sitting 4)
+- #1706 A4, wrong numbers (verified; mend on its branch): a frame after a
+  hidden page is a freeze (`BroTown.jsx:4914` prevT); off then on sends the
+  off stretch (`setReportOn` keeps `_a`, `_lastFrameT`); `build` is the
+  phone's (previews fill the day's ~10 cells); `secs` counts hidden time.
+- #1684, #1695, #1697 N: conflict with `main` in `bag-door`, `gold-door`
+  tests (#1691): `git merge-tree origin/main <N1>`. Merge main into each.
+- #1687 to #1702 B2-B8: on `main`, `systems.test` (unsorted 13 > 11:
+  `daybook.js`, `storagemarks.js`) and `shapes-once` (`daybook:` no row) red;
+  with A3, `four-lines` (`wsClient.js` 3296 > 3290) and `shapes-once`
+  (`report.js` devClass, drawLane) red. Merge main after this list, re-measure.
+- #1700 H4: unchanged since sitting 2 (41ce16e): that hold stands. #1701 G:
+  the owner's yes on the two pictures.
 
 ## Stalled
-- None: every status file says ready; no branch is three hours quiet.
-
-## Found, no card owns it (owner: start a session, or put it on a card)
-- Red on `main`, the GAME's: `mp-farmmusic` step 4, out of the farm's gate
-  into Frost Ridge (`zoneTransitions.js`, `wheelTownDoors.js`; J's `red.md`).
-- `server/test/old-map.test.mjs` §1 reads only `run.mjs`'s table: since #1661
-  a new scenario with no world passes GitHub (precheck and the harness still
-  refuse it). For card B (a guard), with: precheck runs a check
-  `rails.test.mjs` refuses (an arrow export); `run.mjs`'s table names
-  `landview`, `thumbbtn` hide a new file of the same name.
-- Card H: a worker that hangs is restarted at each return, ~20 s of plain
-  looks each time (unproven on a device); `BT_BW_PARTS` takes a typo green.
-- After #1668, `state-census.mjs --check` says `state.md` is one row stale.
-- The readers' faults (the Found of S, C, D, I, J, H) wait for their cards.
-- Needs, the owner's: the questions in W's, S's and C's status files.
+- None. #1705 Y is a DRAFT though its file says ready: mark it for sitting 4.
+## Found
+- E's PR 5: a live `_econ` wins at `_econAdopt`, and `join.js` ~1042
+  `join_stored` runs first: a door booking it blanks the stored counts.
+- A: `near` counts unparked far players; no send at pagehide; a report resets
+  the AFK clock; `waver` takes the phone's `hd`; `madeLog` drops the pose.
+- N: A4 lands, `report` needs its row. B: old-map lets 5 files go unread.
+  No card: `mp-topaudit` red, the GAME's (`pixiRenderer.js:869`); census
+  check. The owner's answers: N, B, A, Y (1 each), E (PR 5), G (pictures).
