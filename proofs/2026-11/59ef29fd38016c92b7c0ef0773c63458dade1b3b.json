@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "59ef29fd38016c92b7c0ef0773c63458dade1b3b",
+  "tree": "04a925ac9a189419a213046e211e6e8b6fc918d3",
+  "committedAt": "2026-11-14T09:48:02-08:00",
+  "subject": "Merge pull request #1789 from hemibroscommunity-del/claude/plan-j2-3-capeoff",
+  "files": 7655,
+  "bytes": 953509602,
+  "listingSha256": "857f40370cb1dc63397de88d597f431ee043c3118ddc6165961ad0a7d2110250",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

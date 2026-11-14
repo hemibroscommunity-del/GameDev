@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "af154f6c4f687a56a319956c43fa76c0a7011c49",
+  "tree": "2d6aabc6014553687be6192443416b1de117ceb4",
+  "committedAt": "2026-11-14T09:48:09-08:00",
+  "subject": "Merge pull request #1790 from hemibroscommunity-del/claude/plan-j2-4-potions",
+  "files": 7655,
+  "bytes": 953510887,
+  "listingSha256": "de532474bcaaa607cbbde7c140ed476ece3d389dc9936331d75d28fd85f3b32b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
