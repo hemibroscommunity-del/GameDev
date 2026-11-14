@@ -10,13 +10,13 @@ state: ready
 - PR 3 (5183, #1820): `wire-hostile.test` (10,524 cases), census
   `hostile.md`: 19 failing, the line. Deploys.
 - PR 6 (5186, #1826): `claims-gain.test`, `claimbots.mjs`, census `claims.md`:
-  reach 2.96, bow label 3.76, guard 1.37, move 4.35, harvest 1.86, cook
-  1.59 (quest, sale, local 1); no honest refusal in 81 disturbance runs.
+  reach 2.96, bow label 3.76, guard 1.37, cook shield 0.67, move 4.35,
+  harvest 1.86, cook 1.59 (quest, sale, local 1); no honest refusal.
 
 ## Next
 
-- The cook shield's bot (its line beside the guard's); PR 2 (5182) after
-  PR 1 merges (takes wire-table.test §7 out); PR 4 after 1 and 3.
+- PR 5 (5185) if the planning session says yes while SK's #1782 is held
+  (asked); PR 2 (5182) after PR 1 merges; PR 4 after 1 and 3.
 
 ## Found
 
