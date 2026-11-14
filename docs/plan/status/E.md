@@ -1,6 +1,6 @@
 card: E
-branch: claude/plan-e-8-known-trade (one branch a PR, each begun from the one before: merge #1752, #1756, #1758 first)
-prs: #1686, #1691, #1694, #1699, #1752 (merged); #1756, #1758 (ready); PR 8a on the branch above (ready)
+branch: claude/plan-e-8-known-trade (one branch a PR, each begun from the one before: merge #1756, #1758 first)
+prs: #1686, #1691, #1694, #1699, #1752 (merged); #1756, #1758 (ready); #1759 (ready, this branch)
 state: ready
 
 ## Done
