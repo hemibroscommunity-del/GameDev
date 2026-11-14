@@ -38,18 +38,25 @@
  *   (rule 2): `node tools/dev/state-census.mjs --json`, the places under
  *   rendering/ that set a field of the state or change inside one (its
  *   `sets` and `inside`; writes through a name for the inside are listed
- *   apart).  The guard reads it off the page that script writes
- *   (docs/plan/census/state.md, "The counts"): the script takes about 16 s
- *   and needs the root's @babel, which GitHub's `test` job does not install
- *   (it installs only server/'s).  So the line holds what the page says;
- *   the page is held to the code by `state-census.mjs --check` (card D's),
- *   and `node tools/guards/four-lines.test.mjs --live` runs the script.
+ *   apart).  v2.3.5201 (card L PR 1): the guard reads it off the SCRIPT
+ *   wherever the script loads, GitHub's `test` job included (server/ carries
+ *   the root's @babel since; the script's loader tries the root's packages,
+ *   then server/'s).  The script takes about 18 s, so it runs ONCE a
+ *   `npm test`, shared with the state ledger's guard (stateCensus() below).
+ *   Only where it cannot load (no @babel in either place) does the guard
+ *   read the page the script writes (docs/plan/census/state.md, "The
+ *   counts"), and it says which it read.  Nothing holds the page to the
+ *   code (this said `state-census.mjs --check` did: nothing ran it, the
+ *   gatekeeper's finding, sitting 6); the page is a census the script
+ *   rewrites, its line numbers stale by the next PR, never a gate.
  */
-import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync, statSync, mkdirSync, openSync, closeSync, writeFileSync, renameSync, unlinkSync } from 'node:fs';
 import { join, dirname, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
-import { execFileSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { tmpdir } from 'node:os';
 
 export const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 
@@ -350,24 +357,120 @@ export function measureClient() {
   return { files: byFile, functions, cycles: cycles(graph) };
 }
 
+/* ═══ v2.3.5201: CARD D'S SCRIPT, ONE RUN A `npm test` (card L PR 1) ═══
+ *
+ * Two guards read `state-census.mjs --json`: this file's fourth number and
+ * the state ledger's (tools/guards/state-ledger.test.mjs).  Server CI's
+ * runner starts each guard in a process of its own, side by side, and the
+ * script takes about 18 s, so they share ONE run: its output is kept in the
+ * system's temporary folder under a hash of everything the script reads
+ * (below), and a lock file says a run is under way.  The first guard to want
+ * it runs it; the other waits for the file.  Kept by content, never by time
+ * or by run: the same inputs make the same rows (the script is
+ * deterministic, its header says), and an edit anywhere it reads makes a new
+ * hash, so a stale copy cannot be read.
+ *
+ * Returns { json, by } or, ONLY where the script cannot load its @babel
+ * (it exits 3: neither the root's nor server/'s packages), null, and the
+ * caller reads the page instead and says so.  Any other failure of the
+ * script (a file it cannot parse, the flow not settling) throws: a red,
+ * never a fallback to the page.
+ */
+export const CENSUS_SCRIPT = 'tools/dev/state-census.mjs';
+/* what the script reads: every file under src/, and the names QA tools and
+   tests use under tools/ and server/test/ (its `no-read (tests)` mark), the
+   script and the map (tools/guards/lib/systems.mjs) among them.  A superset
+   is harmless (a needless run); a gap would let a stale copy through, so
+   these are the script's folders whole, by its own extensions. */
+const CENSUS_READS = ['src', 'tools', join('server', 'test')];
+const CENSUS_EXT = /\.(js|jsx|mjs|cjs|html)$/;
+function censusKey() {
+  const h = createHash('sha256');
+  h.update(process.version + '\0');
+  const visit = (rel) => {
+    let names;
+    try { names = readdirSync(join(ROOT, rel)).sort(); } catch { return; }
+    for (const name of names) {
+      if (name === 'node_modules' || name.startsWith('.')) continue;
+      const r = rel + '/' + name;
+      const st = statSync(join(ROOT, r));
+      if (st.isDirectory()) visit(r);
+      else if (CENSUS_EXT.test(name)) { h.update(r + '\0'); h.update(readFileSync(join(ROOT, r))); h.update('\0'); }
+    }
+  };
+  for (const d of CENSUS_READS) visit(d.split(sep).join('/'));
+  return h.digest('hex').slice(0, 32);
+}
+const sleep = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+let _census;
+export function stateCensus() {
+  if (_census !== undefined) return _census;
+  const dir = join(tmpdir(), 'brotown-state-census');
+  mkdirSync(dir, { recursive: true });
+  const key = censusKey();
+  const out = join(dir, key + '.json');
+  const lock = join(dir, key + '.lock');
+  const t0 = Date.now();
+  for (;;) {
+    if (existsSync(out)) {
+      _census = { json: JSON.parse(readFileSync(out, 'utf8')), by: CENSUS_SCRIPT + ' --json' };
+      return _census;
+    }
+    let fd = null;
+    try { fd = openSync(lock, 'wx'); } catch (e) { if (e.code !== 'EEXIST') throw e; }
+    if (fd !== null) {
+      let r;
+      try {
+        if (existsSync(out)) continue;   /* another finished between the two looks */
+        r = spawnSync(process.execPath, [join(ROOT, CENSUS_SCRIPT), '--json'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 256 << 20 });
+        if (r.status === 0) {
+          JSON.parse(r.stdout);   /* never keep a half-written run */
+          const tmp = out + '.' + process.pid;
+          writeFileSync(tmp, r.stdout);
+          renameSync(tmp, out);
+          /* an old run's copy goes after a day: the folder never grows */
+          for (const n of readdirSync(dir)) {
+            const p = join(dir, n);
+            try { if (p !== out && Date.now() - statSync(p).mtimeMs > 864e5) unlinkSync(p); } catch { /* gone */ }
+          }
+        }
+      } finally {
+        closeSync(fd);
+        try { unlinkSync(lock); } catch { /* gone */ }
+      }
+      if (r.status === 3) { _census = null; return null; }   /* cannot load here: never kept, it costs ~0.1 s */
+      if (r.status !== 0) throw new Error(`${CENSUS_SCRIPT} --json failed (exit ${r.status}${r.signal ? ', ' + r.signal : ''}): ${String(r.stderr || r.error || '').slice(-800)}`);
+      continue;
+    }
+    /* another guard is running it: wait for its file.  A lock older than
+       five minutes is a run that died (the script takes ~18 s): take it. */
+    let age;
+    try { age = Date.now() - statSync(lock).mtimeMs; } catch { continue; }
+    if (age > 300e3) { try { unlinkSync(lock); } catch { /* taken */ } continue; }
+    if (Date.now() - t0 > 600e3) throw new Error(`waited ten minutes for ${CENSUS_SCRIPT} (its lock ${lock})`);
+    sleep(200);
+  }
+}
+
 /** Card D's count of writes to `S` from src/rendering/ (rule 2: its number,
-    never a second one).  Read off the page its script writes; `live` runs
-    the script instead (about 16 s, and it needs the root's @babel). */
+    never a second one).  Read off the script (stateCensus(), one run a
+    `npm test`) wherever it loads, and off the page it writes only where it
+    cannot; `live` insists on the script (it throws where it cannot load). */
 export function stateWritesFromRendering({ live = false } = {}) {
-  if (live) {
-    const out = execFileSync(process.execPath, [join(ROOT, 'tools/dev/state-census.mjs'), '--json'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 256 << 20 });
-    const j = JSON.parse(out);
+  const c = stateCensus();
+  if (c) {
     let sets = 0, inside = 0;
-    for (const r of j.fields) {
+    for (const r of c.json.fields) {
       sets += (r.sets || []).filter((s) => s.startsWith('rendering/')).length;
       inside += (r.inside || []).filter((s) => s.startsWith('rendering/')).length;
     }
-    return { count: sets + inside, by: 'state-census.mjs --json', sets, inside };
+    return { count: sets + inside, by: c.by, sets, inside };
   }
+  if (live) throw new Error(`${CENSUS_SCRIPT} cannot load its @babel here (run \`npm install\` at the root or in server/)`);
   const page = readFileSync(join(ROOT, 'docs/plan/census/state.md'), 'utf8');
   const m = /^\| writes to `S` from `src\/rendering\/` \| [^|]* \| \*\*(\d+)\*\* \|/m.exec(page);
   if (!m) throw new Error('docs/plan/census/state.md has no "writes to `S` from `src/rendering/`" row in The counts');
-  return { count: Number(m[1]), by: 'docs/plan/census/state.md (the page state-census.mjs writes)' };
+  return { count: Number(m[1]), by: 'docs/plan/census/state.md (the page state-census.mjs writes: the script cannot load here)' };
 }
 
 /* ═══ THE LINES ═══  Each only falls.  Only the gatekeeper lowers one, in a
@@ -377,13 +480,15 @@ export function stateWritesFromRendering({ live = false } = {}) {
    (the gatekeeper, sitting 6, main f2351ab): entityRenderer.js 8968 -> 8961
    (card H's #1700 moved the page's side of the masked bake into
    bakeByAddress.js), gameDisplay.js 4270 -> 4268 (#1712: the fold into
-   src/data/soundFold.js). */
+   src/data/soundFold.js).  v2.3.5364 (the gatekeeper, sitting 8, main
+   7593b4e): effectsRenderer.js 9871 -> 9870 (card P's #1745, the trees'
+   numbers). */
 export const LINES = Object.freeze({
   /* a file's code lines.  These files have a line of their own, at their
      count on the day; every other file under src/ stays at or under
      OTHER_FILE (a new file too) */
   FILE: Object.freeze({
-    'src/rendering/systems/effectsRenderer.js': 9871,
+    'src/rendering/systems/effectsRenderer.js': 9870,
     'src/rendering/systems/entityRenderer.js': 8961,
     'src/ui/BroTown.jsx': 8371,
     'src/data/gameSystems.js': 5622,

@@ -389,7 +389,11 @@ export const inboxMethods = {
   _applyCreditToPs(ps, entry, playerId) {
     const p = entry.payload || {};
     if (entry.kind === 'gold') {
-      this._goldGive(ps, Math.max(0, Math.floor(p.amount || 0)), 'mail_gold'); /* v2.3.4670: the gold door */
+      /* v2.3.5084: the payout itself goes to the door, which counts it by its
+         own class (gold.js MAIL_CLASSES by its opId: a reward minted, a
+         sale's gold an escrow paid on) -- the world's sum (grand plan card E
+         PR 5; the owner's yes of 2026-11-14) */
+      this._goldGive(ps, Math.max(0, Math.floor(p.amount || 0)), 'mail_gold', entry); /* v2.3.4670: the gold door */
       /* v2.3.3481: a prize may carry ACHIEVEMENT POINTS with its gold (the
          arena's champion, gladiator.js ARENA.CHAMPION_AP) -- added here, in
          the same apply as the gold, so the points are paid exactly when the
@@ -452,7 +456,7 @@ export const inboxMethods = {
          than concatenating onto it. */
       if (Object.prototype.hasOwnProperty.call(Object.prototype, k)) return true;
       if (!ps.inventory) ps.inventory = {};
-      bagGive(ps.inventory, k, Math.max(1, Math.floor(p.count || 1)), 'mail_item'); /* v2.3.4810: the bag door */
+      bagGive(ps.inventory, k, Math.max(1, Math.floor(p.count || 1)), 'mail_item', undefined, entry); /* v2.3.4810: the bag door; v2.3.5084: the payout, counted by its own class */
       return true;
     }
     if (entry.kind === 'weapon') {

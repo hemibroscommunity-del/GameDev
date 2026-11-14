@@ -1,14 +1,15 @@
 card: P
 branch: claude/plan-p-9-world-icons (one branch a PR, each begun from the one before)
-prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745 (5241-5248, merged); #1749 (5249), #1757 (5251) ready; world icons (5250) ready
+prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757 (5241-5248, 5251, merged); #1749 (5249), #1763 (5250) mended, ready
 state: working
 
 ## Done
 
 - 5241-5248 (merged): the family table, record, census, `finish.mjs`, the
   gate; `.m4a` gone; portraits, coin strips let go; trees as numbers.
-- #1749 (5249), `fx-made`: the effects' twins on (`?fxmade=0`), 3.1 MB.
-- 5250, `icons-items-world`: 15 world icons from 256-colour twins
+- #1749 (5249), `fx-made`: the effects' twins on (`?fxmade=0`), 3.1 MB;
+  mended at sitting 8: not the snowball (it loads in play), switch rows.
+- #1763 (5250), `icons-items-world`: 15 world icons from 256-colour twins
   (`?worldicons=0`); `artCache` 98.3 -> 97.1, `buffers` 23.4 -> 23.7.
 - #1757 (5251): `pack-page` noted by name (`noteMade`), the planning
   session's ask, begun from main.

@@ -1,39 +1,39 @@
 card: Z
-branch: claude/plan-z-sitting-6
-prs: this PR, tag 5362, the last line of the list (ready)
+branch: claude/plan-z-sitting-8
+prs: this PR, tag 5364, the last line of the list (ready)
 state: ready
 
 ## Done
-- Sitting 6, `main` at f2351ab (sitting 5's sixteen merged). Rehearsed the
-  17 below in this order (tree 38fe6233): precheck, build, questline
-  187/187; all 19 with card A's (6f9fadb4): green too. Review:
-  `census/review-z6.md`. Ticked 1.1, 2.2a, 9.1, 9.2. Lines lowered:
-  `entityRenderer.js` 8968 -> 8961, `gameDisplay.js` 4270 -> 4268.
+- Sitting 8, `main` at 7593b4e (sitting 7's twelve merged). The eight
+  below and this branch rehearsed in this order (tree 261ad2be): precheck
+  0 FAIL, build, questline 187/187. Review: `census/review-z8.md`.
+  Ticked 1.2, 1.6; notes on 3.1, 9.5. `effectsRenderer.js` 9871 -> 9870.
 
 ## The list: merge in this order, in one sitting, each "Create a merge commit"
-1 #1718 P4 · 2 #1721 U1 · 3 #1722 U2 · 4 #1723 U3 · 5 #1725 U4 ·
-6 #1727 U5 · 7 #1728 U6 · 8 #1730 U7 · 9 #1732 U8 · 10 #1734 U9 ·
-11 #1697 N3 · 12 #1733 H8 · 13 #1739 Y2 · 14 #1731 V4 · 15 #1735 V5 ·
-16 #1737 V6 · 17 #1740 V7 · 18 this PR. Stacked: no squash. One touches
-`server/**` (#1697: deploys). No cap, no flag, no shape.
+1 #1751 answers · 2 #1750 J2-1 · 3 #1755 V8 · 4 #1748 L2 · 5 #1757 P ·
+6 #1760 A7 · 7 #1752 E5 · 8 #1754 T1 · 9 this PR. #1760 needs #1757
+first. Two deploy (#1752, #1754: back to back). No cap, no live flag, no
+stored shape (#1752 fills `_econ`; schema 21).
 
-## Held (expires at sitting 7)
-- A #1708, #1711: a save refused as `newer` (at the join) never reaches
-  the book: `roomrow.js` `_roomRowRefused` sets no `owed`. Mend: `m.owed =
-  true` there; roomrow §3 reading the stored book alone.
-- P #1719, #1736: CONFLICT with the mended #1718 (`shipped.json`): merge
-  `claude/plan-p-4-gate` in, `shipped.mjs --write`. #1736 not reviewed.
+## Held (expires at sitting 9)
+- #1749 P fx-made: the snowball burst's twin is read on the page in
+  play (`p256.js` ~164; CLAUDE.md §7, §8; no `mp-heldsweep`); and after
+  #1754 its `?fxmade` needs a row (switch guard 196 of 195).
+- #1756 E6, #1758 E7, #1759 E8a, #1761 E8b: #1756 conflicts with `main`
+  in `leave.js`; its `bookFlush` is unpaced (361 writes an hour) where
+  #1708's `_roomRowLastOut` already writes: drop it, mend roomrow 9, 10.5.
+- Not ready, left alone: L's PR 3 (`plan-l-3-resets`, no PR yet).
 
 ## Stalled
-- None. (T: PR 1 may open now, #1684 is on `main`.)
+- None.
 
 ## Found
-- No card: `ps.capeOff` not in `_saveRpg`'s list (card V's Found, §2).
-- No card: red on `main`, `mp-wheelmap`'s Frost Ridge plate (card Y's
-  Found) and `mp-npclooks` 2, 2b (card P's): questions about the TESTS.
-- No card: nothing runs `state-census --check`; on GitHub the ledger
-  guard reads the census page, not the code (card U's Found).
-- P: the bot's twins held by nothing; a PR changing `families.mjs` is
-  listed alone (review-z6). E PR 5 and #1708 share the last one out.
-- The owner's call: card V's question (§2 and §1 moved in a PR 8, or
-  left to the next card).
+- Red on `main`, card P's: `mp-heldsweep` `pack-page` 30.6 ms at `armour`
+  (line 20); the combat strips' pack (`effectsRenderer.js` ~15201)
+  leaves no note.
+- A (`report.js` `_speed`, `_lastSentAt`), H (`picsOnce.js` `_walk`,
+  `_walkMap`, `_seen`; `bodyBake.js` `_unheard`): sitting 7's six are in
+  no ledger yet (the unlisted line stays 22).
+- T: `disable_verify`, `hidden_off` (read through constants) have no row
+  and are not counted; shapes that hide a switch (review-z8).
+- L: the phase guard's function finder and door check (review-z8).

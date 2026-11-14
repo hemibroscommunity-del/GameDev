@@ -208,9 +208,13 @@ export const GOLD_ROADS = Object.freeze({
   trade_window:        R('take', 'plain', 'trade2.js _handleTrade2Confirm: each side\'s gold', 'move', 'mail_gold'),        /* credit `trade2:` */
   threat_levy:         R('take', 'plain', 'threat.js _interceptThreat: the 10% fine', 'escrow', 'bounty:'),
   /* v2.3.5081: a player's kill moves the purse to the killer's mail (credit
-     `nmlloot:`).  A red skull killed by a monster loses it to nobody -- a
-     burn through this same road (docs/plan/status/E.md, Needs: its own row) */
+     `nmlloot:`).  v2.3.5084: a red skull killed by a monster loses it to
+     nobody, by `nml_lost` below */
   nml_loss:            R('set', null, 'nomansland.js _nmlOnDeath: the purse goes to the killer\'s mail', 'move', 'mail_gold'),
+  /* v2.3.5084: ...and a red skull killed by anything but a player loses it
+     to nobody: the same loss, a road of its own, because it is a burn (one
+     class a road; card E PR 5, the owner's yes of 2026-11-14) */
+  nml_lost:            R('set', null, 'nomansland.js _nmlOnDeath: a red skull killed by no player, the purse lost', 'burn'),
 
   /* ── into escrow, and back ── */
   bank_deposit:        R('take', 'whole', 'bank.js _handleBankMove: in', 'escrow', 'bank:'),
@@ -337,6 +341,57 @@ export function goldLogOf(rec) {
   return list ? list.map((e) => ({ ...e })) : [];
 }
 
+/* ═══ v2.3.5084: THE DOOR COUNTS WHAT IT MINTS AND BURNS (grand plan step 4.4, card E PR 5) ═══
+ * Into the record's own `_econ` (migrations.js ECON: rule 1's second
+ * exception), so the count rides the purse's own put (the plan's rule 5).
+ * The difference is read the way the world's sum reads a purse: whole coins
+ * never below 0 (wholeGold).  A `mint` road books it under `m`, a `burn`
+ * road under `b`; a `move` or an `escrow` changes no world total and books
+ * nothing.  A `set` road books its difference signed (SHAPES part 3, edge
+ * 1); a LOAD (GOLD_LOADS) books nothing: the world held the stored purse
+ * while the character was away, and under the whole-coin reading the load
+ * changes nothing.  The mail (`mail_gold`) is an escrow of `inbox:`: what a
+ * payout carries is counted by its own class when its credit is handed to
+ * the door (`credit`, MAIL_CLASSES by its opId; `house`, the part minted). */
+export const GOLD_LOADS = Object.freeze(['join_stored']);
+export const ECON_V = 1;   /* migrations.js ECON.V: the shape the doors write into */
+/** The record's `_econ`, made if it has none; null for a NEWER one (never
+ *  counted into: a rolled-back worker leaves a newer shape alone). */
+export function econOn(rec) {
+  if (!rec || typeof rec !== 'object') return null;
+  let e = rec._econ;
+  if (e === undefined || e === null || typeof e !== 'object') {
+    e = rec._econ = { v: ECON_V, g: { m: 0, b: 0 }, i: Object.create(null) };
+  }
+  if (typeof e.v === 'number' && e.v > ECON_V) return null;
+  if (!e.g || typeof e.g !== 'object') e.g = { m: 0, b: 0 };
+  if (!e.i || typeof e.i !== 'object') e.i = Object.create(null);
+  return e;
+}
+const econNum = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+/* `d`: the purse after less the purse before, by the sum's reading */
+function econGold(rec, cls, d) {
+  if (!d || (cls !== 'mint' && cls !== 'burn')) return;
+  const e = econOn(rec);
+  if (!e) return;
+  if (cls === 'mint') e.g.m = econNum(e.g.m) + d;
+  else e.g.b = econNum(e.g.b) - d;
+}
+/** v2.3.5084: what a payout landing by the mail counts: its class by its
+ *  opId's first word; a mint all of what landed, an escrow with `house` the
+ *  house's part of it (edge 3), a move or any other escrow nothing.  A payout
+ *  whose word has no row counts nothing (gold-door.test fails such a word). */
+export function mailMinted(credit, landed) {
+  const row = credit && typeof credit === 'object' ? mailClassOf(credit.opId) : null;
+  if (!row || !(landed > 0)) return 0;
+  if (row.class === 'mint') return landed;
+  if (row.house) {
+    const p = credit.payload || {};
+    return Math.max(0, Math.min(landed, Math.floor(Number(p.house) || 0)));
+  }
+  return 0;
+}
+
 export const goldMethods = {
   /** v2.3.4903: step 3's log switch -- on unless `goldlog: false` in the live flags */
   _goldLogOn() {
@@ -354,11 +409,15 @@ export const goldMethods = {
     return !(f && typeof f === 'object' && own(f, 'goldonesum') && !f.goldonesum);
   },
 
-  /** Gold INTO `rec`'s purse (a live player's state or a stored record) by `road`. Returns the purse. */
-  _goldGive(rec, n, road) {
+  /** Gold INTO `rec`'s purse (a live player's state or a stored record) by `road`. Returns the purse.
+      v2.3.5084: `credit`, the payout the mail road lands (inbox.js), counted by its own class. */
+  _goldGive(rec, n, road, credit) {
     const row = roadFor(road, 'give');
     const before = rec.coins;
     rec.coins = this._goldOneSumOn() ? goldOneSum(rec.coins, n, false) : GOLD_SUMS[row.sum](rec.coins, n, false);   /* v2.3.4803 */
+    const d = wholeGold(rec.coins) - wholeGold(before);
+    econGold(rec, row.class, d);   /* v2.3.5084 */
+    if (credit) econGold(rec, 'mint', mailMinted(credit, d));
     return this._goldLogged(rec, road, before);   /* v2.3.4903 */
   },
 
@@ -368,14 +427,16 @@ export const goldMethods = {
     const row = roadFor(road, 'take');
     const before = rec.coins;
     rec.coins = this._goldOneSumOn() ? goldOneSum(rec.coins, n, true) : GOLD_SUMS[row.sum](rec.coins, n, true);   /* v2.3.4803 */
+    econGold(rec, row.class, wholeGold(rec.coins) - wholeGold(before));   /* v2.3.5084 */
     return this._goldLogged(rec, road, before);   /* v2.3.4903 */
   },
 
   /** The purse MADE `v` by `road`: a character loaded, or a purse lost whole. */
   _goldSet(rec, v, road) {
-    roadFor(road, 'set');
+    const row = roadFor(road, 'set');
     const before = rec.coins;
     rec.coins = this._goldOneSumOn() ? wholeGold(v) : v;   /* v2.3.4803: a broken purse heals as it loads */
+    if (!GOLD_LOADS.includes(road)) econGold(rec, row.class, wholeGold(rec.coins) - wholeGold(before));   /* v2.3.5084 */
     return this._goldLogged(rec, road, before);   /* v2.3.4903 */
   },
 };
