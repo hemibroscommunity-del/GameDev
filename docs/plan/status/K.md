@@ -1,6 +1,6 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: #1822 (PR 1), #1820 (PR 3), #1826 (PR 6): merged; #1829 (PR 5), #1831 (PR 2), PR 4 tag 5184: ready
+prs: #1822, #1820, #1826: merged; ready: #1829 (PR 5) c0042a9, #1831 (PR 2) cfe57ce, #1838 (PR 4) this branch
 state: ready
 
 ## Done
@@ -13,11 +13,11 @@ state: ready
   `claims.md`; no honest refusal.
 - PR 5 (5185, #1829): the action door, `src/game/actions.js` (180 rows); the
   shim reads them; guard `action-door.test` (2b: `body: 'top'`), census 203
-  sends, 25 fetches. The gatekeeper's two notes mended (sitting 14).
+  sends, 25 fetches. Sitting 14's two notes mended (review-z14.md).
 - PR 2 (5182, #1831): columns `fight`, `placed`, `muted`, `pace`, `watch`,
   `flag`; six lists made from them. Worker +137 KB (+19 gz).
 
-- PR 4 (5184): the wire door (`wire/door.js`, `wiredoor`): the router and
+- PR 4 (5184, #1838): the wire door (`wire/door.js`, `wiredoor`): the router and
   the room's routes (GameRoom.fetch: the planning session's yes); hostile
   19 -> 1; questline 187/187 and the bot lab refused nothing; chatmod's
   `__proto__` mute mended; the stale pointers (systems.mjs, CLAUDE.md §5/§8).
