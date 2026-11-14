@@ -53,18 +53,13 @@ export const AT_A_WINDOW = ['windows', 'folk', 'g-boards'];   /* v2.3.4499: + th
 export const NOISE_K = 1.5;
 
 export const KNOWN = {
-  'body-bake': { ms: 13, whose: 'ours',   /* v2.3.4960: 220 -> 13: none in the main tour (peer, armour) since v2.3.4930's worker; held to just over the general line while h-eight keeps the family listed */
-    why: 'the head an armoured player shows (<pose>-<dir>-head sheets) is recoloured on the page for each look the first time it is drawn: 28 to 164 ms a sheet as an armoured player circles you.  v2.3.5013: in play, only where the body bake\'s worker is off or let go of (bodyBake.js); the heads are drawn from colour numbers since v2.3.4961',
-    next: 'key them by skin alone (they take no trouser or boot colour), then keep them as numbers like the bodies (a look set); the same for a body with an eye style or a drawing (STATE-MACHINES A2)',
-    /* v2.3.4499: the crowd tour (mp-crowdsweep, docs/specs/held-sweep.md "The crowd tour"), five runs, the worst of each */
-    at: { 'a-ink': 12, 'b-fish': 12, 'c-armour1': 12,   /* v2.3.4872: the pickaxe's outline turned round (toolWood.js solidTool): c-armour1 179 -> 62 ms, the crowd's armour stations 229 -> 169.  v2.3.4960: 90 -> 12 (none) */
-      'c-armour8': 12, 'h-eight': 12, 'd-prints': 12 },   /* v2.3.5013: h-eight 120 -> 12 (none; 11.1 / 9.1 / 10.3 ms the longest hold of any family, three runs; was 208 to 238 ms, 7 times).  Not the heads (the numbers draw those since v2.3.4961): the fish sheets of the armoured players who had cast, baked on the page because the watch let both busy workers go.  bodyBakeWorker.js: one job at a time and a beat between its steps */   /* v2.3.4960: d-prints 190 -> 12 (none).  h-eight NOT lowered: 2026-11-12 it measured 227 ms, 29 bakes on the page (bakeBodyFull and mostly bakeHeadFull): with eight armoured players the body bake's worker stalls past its 20 s watch (bodyBake.js WORKER_MS), is let go of, and the page bakes.  Over its line, left as it was (never raised silently) */
-    /* v2.3.4930: in play every one of these bakes runs on the body bake's worker (bodyBake.js, docs/specs/body-bake-worker.md):
-       the body sheets (a drawing, an eye style, the fish), the armoured heads, a peer's drawn stand-ins.  The crowd tour,
-       a-ink, b-fish and c-armour8, before (`?bodyworker=0`) and after: 546 / 179 / 202 ms longest, 53 holds and 6.2 s in all
-       -> none (the longest hold of any family 10.5 / 7.7 / 36.1 ms).  Those three stations' lines are locked at the general
-       line; the main tour (peer, armour) and the crowd's other stations were not run again here, and keep theirs */
-    crowd: 'a player with a tattoo or a trouser print: every pose and facing they show is a body sheet baked on the page, 114 to 720 ms each, a dozen in the first 20 s (a-ink).  ANY player of a look not yet seen who fishes: the 32-frame fish sheet, 92 to 198 ms (b-fish, c-armour8: one per look, armour or not, a shirt or not).  Armoured players arriving: 36 to 267 ms per look and pose; walking about after, still 60 to 112 ms (h-eight).  The pickaxe made solid in the mining body (solidTool) is part of the same bake.  Fix: the bodies with drawings as a row of colours with the drawing stamped on the worker (the fish sheet too: it has no shirt or eye, lookBodyRefused already passes it), or the bake on a worker' },
+  /* v2.3.5049: 'body-bake' (was 13; 220 before v2.3.4960, 12 at the crowd's a-ink, b-fish, c-armour1, c-armour8,
+     h-eight, d-prints) off the list.  A body or head sheet recoloured on the page for one look: in play every such bake
+     runs on the body bake's worker since v2.3.4930 (docs/specs/body-bake-worker.md), and h-eight's last page bakes
+     went with v2.3.5013.  The sample (the main tour's `peer` and `armour`, the crowd's a-ink, b-fish, c-armour1,
+     c-armour8, h-eight and d-prints, three runs each, every crowd group there): not one body-bake hold.  And a worker
+     never heard from is no longer started again at every return (the gatekeeper's sitting 1 on #1668: bodyBake.js
+     _back, mp-bodyworker 6c) */
   /* v2.3.5043: 'masked-bake' (was 24; 140 before v2.3.4870) off the list.  What was left was the page cutting each
      input out of its sheet for the bake's worker (entityRenderer.js _frameInput > createImageBitmap): 4 to 15 ms a
      bake, 32.7 ms once at the main tour's `armour`, up to 12.9 at the crowd's armour stations.  Now a frame of a sheet
@@ -113,7 +108,12 @@ export const KNOWN = {
      slice of 3 ms a turn (the next 100 ms later until the round ends), and a picture's address is read once, after
      the cheaper checks (its hold is now `wrapped > sweepPicsOnceTurn`).  The sample (`town`, `lands`, `peer`,
      `armour`, and the crowd's `c-armour8`, `h-eight`, `g-boards`, x3): 20 holds, 7.2 ms the longest but one of
-     12.1 that the Leaderboard's faces shared (docs/specs/held-sweep.md, "Card H") */
+     12.1 that the Leaderboard's faces shared (docs/specs/held-sweep.md, "Card H").
+     v2.3.5049, SEEN BEFORE (the planning session's call: it stays off): #1747's sample showed three holds named
+     `wrapped > sweepPicsOnceTurn` over the line, 18.3 ms once at `armour` (5 ms of it inside the browser's own
+     setTimeout) and 12.1 + 12.3 ms in one crowd run (a-ink, b-fish).  `releasable` timed call by call there: 1.4 ms at
+     most.  This box's pauses landing in the sweep's short turns, not the sweep: a line on this list says why
+     something holds, and here nothing does.  If a later sweep TIMES a turn's own work over 12 ms, it goes on the list */
   /* v2.3.5047: 'ui:*' (was 16) off the list.  One component of the band drawn in one piece: React lets a frame in
      between components, never inside one.  The gear tab built its nine equipment cells in its own body (each with its
      rows, the amulet's stat card), and its gold badge said the page's first number with commas (about 10 ms, the

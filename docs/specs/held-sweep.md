@@ -219,7 +219,7 @@ box's software graphics chip, and the quarter second of game it plays in one
 frame: a phone has neither) or **the browser's** (its garbage collector: the
 game can only give it less to do). The grand plan's step 3.1 is done when no
 row is ours (`held-budget.mjs` `debtOf('ours')`, the count its scoreboard
-reads). Today (v2.3.5048): two ours (`body-bake`, and `pack-page`, card P's to bring down), two the box's, one the browser's. A new family is
+reads). Today (v2.3.5049): one ours (`pack-page`, card P's to bring down: card H's part of step 3.1 is done), two the box's, one the browser's. A new family is
 ours until a measurement says otherwise: `held-sweep.test` 7b3 holds the
 box's and the browser's to the three below, and 7b4 holds this table to
 `KNOWN`, row for row. Their break proofs (the grand plan's rule 8), each run
@@ -231,7 +231,7 @@ All of them (the first five by their old rank, then the rest; a family off the l
 
 | family (its key in `KNOWN`) | whose | its line | why it is over | what fixes it |
 |---|---|---|---|---|
-| `body-bake` | ours | 13 ms (v2.3.4960; was 220), 12 at the crowd's a-ink, b-fish, c-armour1, c-armour8, d-prints, h-eight (v2.3.5013; was 120) | v2.3.4930: in play every one of these bakes runs on a worker (`docs/specs/body-bake-worker.md`). Re-timed 2026-11-12 (v2.3.4960): none in the main tour or at c-armour1, c-armour8, d-prints. h-eight was 227 ms, 29 bakes on the page. **v2.3.5013: found and fixed.** Not the heads (the numbers draw them since v2.3.4961) and not a stalled worker: the 32-frame fish sheets of the armoured players who had cast at c-armour8, each job an async run of its own, so a worker's four answered only together, 19 to 25 s after the ask; the 20 s watch let both workers go and the page baked the rest (208 to 238 ms, 7 times). Now one job at a time with a beat between its steps: h-eight none, three runs (11.1 / 9.1 / 10.3 ms the longest of any family) | the fish sheet as colour numbers (lookBodyRefused passes it) would take the 4 to 6 s a sheet off this box's worker too |
+| ~~`body-bake`~~ | | off the list (v2.3.5049; was 13 ms, 12 at the crowd's armour and ink stations; 220 before v2.3.4960) | a body or head sheet recoloured on the page for one look; on the body bake's worker in play since v2.3.4930 (`docs/specs/body-bake-worker.md`), h-eight's last page bakes gone with v2.3.5013 | **v2.3.5049**: none in the sample (below, "Card H") |
 | ~~`gear-sheet`~~ | | off the list (v2.3.5042; was 195 ms, 12 at the crowd's d-prints) | a drawn shirt composed on the page for each pose (the crowd tour); on the body bake's worker in play since v2.3.5014 (`docs/specs/body-bake-worker.md`, "A drawn shirt") | **v2.3.5042**: what was left was the Equipment screen's figure (below, "Card H") |
 | ~~`portrait`~~ | | off the list (v2.3.5042; was 40 ms) | the Leaderboards' faces are 11 ms since v2.3.4960 (g-boards, was 149); what was left, the Equipment screen's figure drawn as armour goes on, 10 to 29 ms (armour) | **v2.3.5042**: drawn a step at a time in play, the body kept (below, "Card H") |
 | ~~`masked-bake`~~ | | off the list (v2.3.5043; was 24 ms) | the page cut each input out of its sheet for the bake's worker (`_frameInput`, `createImageBitmap`): 4 to 15 ms a bake | **v2.3.5043**: a frame of an image goes as its address, the worker reads the sheet (below, "Card H") |
@@ -611,6 +611,44 @@ at `armour` in four of six runs (26.6 to 42.5 ms; once inside a React render,
 named `R > J`); `QuestCoach > loadDone` 23.3 ms once at `town`
 (`getBoundingClientRect`, `get cookie`, `matchMedia`); a combat tick
 (`attackTick`) 25.4 ms once; an unnamed function 20.9 ms once at `peer`.
+
+### `body-bake` off the list (v2.3.5049)
+
+**What was left.** Nothing measured. A body or head sheet recoloured on the
+page for one look was the crowd tour's worst family (114 to 720 ms a sheet),
+and every such bake has run on the body bake's worker in play since
+v2.3.4930; `h-eight`'s last page bakes (a watch that let busy workers go)
+went with v2.3.5013. The row was kept at 13 ms (12 at the crowd's stations)
+until the stations that measured it were played again.
+
+**The sample** (the main tour's `peer` and `armour`, and the crowd's
+`a-ink`, `b-fish`, `c-armour1`, `c-armour8`, `h-eight` and `d-prints`, three
+runs each, every crowd group there: 3, 2, 1, 7, 8 and 10 players): not one
+`body-bake` hold, in a frame or outside one. The family comes off the list.
+
+**And the gatekeeper's two finds on #1668** (sitting 1), in the same files:
+a body bake worker never heard from is not started again at every return
+(`bodyBake.js` `_back`: it cost 20 s of plain looks each return on a device
+where the worker cannot run), and `mp-bodyworker`'s `BT_BW_PARTS` refuses a
+name it does not know (a typo ran nothing and passed).
+`docs/specs/body-bake-worker.md`, "A worker that never ran here...": part 6c,
+its break proof, 101 of 101.
+
+**Seen in the sample, not this PR's.** Three of the six runs failed the
+tour's budget on other families:
+
+- `pack-page` (card P's) over its line at `armour` (35.5 ms twice);
+- `server-message` 30.1 ms once at `armour`: a message handler with the gear
+  pack's `getImageData` and a socket `send` in the same gap between frames;
+- the picture sweep's turn (`other: wrapped > sweepPicsOnceTurn`, v2.3.5048):
+  18.3 ms once at `armour` (5 ms of it inside the browser's own `setTimeout`,
+  the rest React and others), and 12.1 and 12.3 ms at the crowd's `a-ink` and
+  `b-fish` in one run (the judge's two over). The profiles put 7 to 11 ms in
+  `releasable`; timed call by call at those two stations with the crowd there,
+  `releasable` took 1.4 ms at most (one call, a 128 px picture). The walk is
+  sliced to 3 ms, so these are this box's pauses landing in the sweep's
+  frequent short turns. Kept off the list; if the gatekeeper would rather it
+  listed at 13 ms (which every run of both samples passes), it is one row.
 
 ## The standing check
 
