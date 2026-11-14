@@ -194,7 +194,8 @@ const ladderLines = (p) => {
   try {
     const L = p && p.ladder;
     if (!L) return '';
-    let out = `\nladder ${L.lane || '-'}${L.on ? '' : ' off'}${L.held ? ' held' : ''}  work ${L.work}/${AXES.work.length}  chip ${L.chip}/${AXES.chip.length}  pixels ${L.pixels || 0}/${AXES.pixels.length}`   /* v2.3.5225: the pixels' axis */
+    /* v2.3.5235: ' switched off' -- the owner's switch for every phone (the Test panel's `govern`); v2.3.5225: the pixels' axis */
+    let out = `\nladder ${L.lane || '-'}${L.on ? '' : ' off'}${L.off ? ' switched off' : ''}${L.held ? ' held' : ''}  work ${L.work}/${AXES.work.length}  chip ${L.chip}/${AXES.chip.length}  pixels ${L.pixels || 0}/${AXES.pixels.length}`
       + (L.pending ? `  (${L.pending.dir < 0 ? 'down' : 'up'} ${L.pending.axis} waits for a veil)` : '');
     const now = performance.now();
     for (const st of L.steps || []) {

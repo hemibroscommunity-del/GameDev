@@ -76,6 +76,11 @@
  *      tries.  v2.3.5225 (the planning session's (A), card O PR 5): a kept
  *      rung loads WITHOUT its pixel rungs, the rate and the passes kept
  *      (19g).
+ *  20. THE OWNER'S SWITCH (v2.3.5235): `govern` on the Test panel's list
+ *      (clientOff.js), every phone, live: off, back to the lane's row at the
+ *      next verdict and no step (a pixel rung at the next veil); the row is
+ *      kept; on again, it steps again; a hot phone switched off all sitting
+ *      is never paced.
  *  21. THE GATEKEEPER'S SITTING 12 (v2.3.5225): the pixels are an axis of
  *      their own, tried up LAST -- a cooled phone gets its rate back in play
  *      before its next veil, the pixels at it (the gatekeeper's probe); a
@@ -102,6 +107,8 @@
  *      ...a work-bound order `['work', 'chip', 'pixels']` -> FAIL 21c; liveKnobs() unfiltered by the switches -> FAIL 21d
  *      v2.3.5225: load() taking the kept pixel count (`pixels: 0` as the kept `v[2]`: (A) undone)
  *                                  -> FAIL 19g and 19c ([0,4,2], [3,4,2]: no step up in three cool minutes, no veil)
+ *  20. verdict() without `if (switchedOff()) { rest(ts, false); return; }` -> FAIL 20a, 20b, 20d, 20e (a step taken, a rung kept)
+ *      ...rest() with `const to = row;` (the pixels in play) -> FAIL 20d
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -109,7 +116,8 @@ import { fileURLToPath } from 'node:url';
 import { framePaceOn, refreshOf, makeFramePacer, noteDrawn, whenDrawn, WHEN_DRAWN_TRIES, PACE_FAST_MS, PACE_FLOOR_MS, UP_WAIT_MS, UP_WAIT_MAX_MS, JUDGE_RUNS,
   lateOver, governOn, makeGovernor, useFrameSamples, holdLadder, lateSplit, LATE_DOWN, ladderRateOn, _tabHid } from '../../src/game/framePacer.js';
 import { readdirSync, statSync } from 'node:fs';
-import { AXES, KNOBS, KNOB_NAMES, knobAt, ladderRung, rungDepth, useDevClass, drawLane, _resetLanes, liveKnobs, _liveKnobs, MOVED_KNOBS } from '../../src/game/drawLanes.js';   /* v2.3.5222; v2.3.5224 the live knobs */
+import { AXES, KNOBS, KNOB_NAMES, knobAt, ladderRung, rungDepth, useDevClass, drawLane, _resetLanes, liveKnobs, _liveKnobs, MOVED_KNOBS } from '../../src/game/drawLanes.js';
+import { setClientOff, _resetClientOff, CLIENT_SAVERS } from '../../src/game/clientOff.js';   /* v2.3.5235: the owner's switch */   /* v2.3.5222; v2.3.5224 the live knobs */
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -549,8 +557,10 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
     && /const LANE = \{ _rung: ROW \};/.test(dl)
     && /export function setRung\([^)]*\) \{[\s\S]*?LANE\._rung = w === 0 && c === 0 && p === 0 \? ROW : Object\.freeze/.test(dl) && /export function _resetLanes\(\) \{[^}]*LANE\._rung = ROW;/.test(dl), writes);
   const fp = strip(readFileSync(join(ROOT, 'src/game/framePacer.js'), 'utf8'));
-  check('17b. the pacer imports the lanes\' table alone (a leaf with no imports)', [...fp.matchAll(/^import .* from '([^']+)';/gm)].map((m) => m[1]).join() === './drawLanes.js'
-    && ![...dl.matchAll(/^import /gm)].length);
+  /* v2.3.5235: and the owner's switch's list (clientOff.js), a leaf too */
+  const co = strip(readFileSync(join(ROOT, 'src/game/clientOff.js'), 'utf8'));
+  check('17b. the pacer imports the lanes\' table and the owner\'s switches alone (leaves with no imports)', [...fp.matchAll(/^import .* from '([^']+)';/gm)].map((m) => m[1]).join() === './drawLanes.js,./clientOff.js'
+    && ![...dl.matchAll(/^import /gm)].length && ![...co.matchAll(/^import /gm)].length);
   const pt = readFileSync(join(ROOT, 'src/debug/perfTracker.js'), 'utf8');
   check('17c. the frame meter hands the pacer its samples by a setter (no import into the pacer)', /useFrameSamples\(eachSince, busyIn\);/.test(pt));
   const st = readFileSync(join(ROOT, 'src/game/speedTest.js'), 'utf8');
@@ -702,6 +712,60 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
     at0.work === 2 && at0.chip === AXES.chip.length && at0.pixels === AXES.pixels.length && mid.work === 0 && mid.chip === 0 && mid.pixels === AXES.pixels.length
     && knobAt('full', 'rate', mid) === PACE_FLOOR_MS && mid.pending && mid.pending.dir > 0 && mid.pending.axis === 'pixels' && after.pixels === AXES.pixels.length - 1, { at0, mid, after });
   _liveKnobs(null);
+  _resetLanes();
+}
+
+/* 20: THE OWNER'S SWITCH (v2.3.5235; the planning session's word in place of the card's cap `ladder`): `govern` on the
+   Test panel's list (clientOff.js), every phone, live -- off, the ladder goes back to the lane's row and takes no step;
+   a pixel rung waits for its veil; on again, it steps again */
+{
+  _resetClientOff();
+  check('20. the switch is a row of the Test panel\'s list, followed live (one name: `off_govern` on the worker, `?govern=0` on the page)',
+    CLIENT_SAVERS.some((c) => c.id === 'govern' && c.live === true));
+  /* a 60 phone at the rate's rung (today's knobs) */
+  _resetLanes();
+  const store = memStore();
+  const g = makeGovernor({ on: true, store });
+  g.veil(0);
+  let t = 0;
+  const bad = (G, axis, n) => { for (let i = 0; i < n; i++) G.verdict(0.9, t += 1000, { axis, atFloor: true }); };
+  bad(g, 'chip', 2);
+  const at = rungDepth();
+  setClientOff('govern');
+  g.verdict(0.9, t += 1000, { axis: 'chip', atFloor: true });
+  const offNow = { ...ladderRung(), off: g.read().off };
+  bad(g, 'chip', 8);
+  bad(g, 'work', 8);
+  const still = rungDepth();
+  check(`20a. switched off, a phone at the rate's rung (${at} below) is back at the lane's row at its next verdict, and takes no step however late the frames (${still} below after 16 bad verdicts)`,
+    at === 1 && offNow.work === 0 && offNow.chip === 0 && offNow.off === true && still === 0, { at, offNow, still });
+  check('20b. ...and the row is what it keeps for the next sitting', JSON.stringify(store.peek()) === JSON.stringify({ full: [0, 0, 0, liveKnobs().join(',')] }), store.peek());
+  setClientOff('');
+  bad(g, 'chip', 2);
+  check(`20c. switched on again, it steps again (${rungDepth()} below)`, rungDepth() === 1 && g.read().off === false, ladderRung());
+  /* the whole ladder: a pixel rung waits for its veil, the rest of its axis with it; the work axis at once */
+  _liveKnobs(KNOB_NAMES);
+  _resetLanes();
+  const g2 = makeGovernor({ on: true, store: memStore() });
+  g2.veil(0);
+  bad(g2, 'work', 4);
+  bad(g2, 'chip', 8);
+  bad(g2, 'chip', 2); g2.veil(t += 1000);
+  const deep = { ...ladderRung() };
+  setClientOff('govern');
+  g2.verdict(0.9, t += 1000, { axis: 'chip', atFloor: true });
+  const inPlay = { ...ladderRung() };
+  g2.veil(t += 1000);
+  const atVeil = { ...ladderRung() };
+  check(`20d. (the whole ladder) switched off on a pixel rung (${deep.work}/${deep.chip}/${deep.pixels}): the work's and the chip's axes back at once (${inPlay.work}/${inPlay.chip}/${inPlay.pixels}: the rate too), the pixels at the next veil (${atVeil.work}/${atVeil.chip}/${atVeil.pixels})`,
+    deep.work === 2 && deep.chip === AXES.chip.length && deep.pixels === 1 && knobAt('full', 'pixels', deep) < 1 && inPlay.work === 0 && inPlay.chip === 0 && inPlay.pixels === deep.pixels
+    && atVeil.work === 0 && atVeil.chip === 0 && atVeil.pixels === 0, { deep, inPlay, atVeil });
+  /* a whole sitting of a hot 60 phone, switched off from the start: never paced, never a step */
+  _liveKnobs(null);
+  _resetLanes();
+  const { P, steps } = model(B60, { work: 3, chip: 8 }, () => 2.2, 4 * MIN, { veil: (x) => x < 2000, seed: 3 });
+  check(`20e. a hot 60 phone with the switch off all sitting: every refresh drawn (${P.read().every}), no step (${steps.length})`, P.read().every === 1 && steps.length === 0, { pace: P.read(), steps });
+  _resetClientOff();
   _resetLanes();
 }
 
