@@ -23,6 +23,14 @@
  *     IT LOSES ITS PLAYER: no pid, no sitting, no address, no time finer than
  *     the day reaches it.  Under a cell, every leaf is a sum, so days and
  *     phones add (DEV below);
+ *   - v2.3.5125: THE SPEED TEST'S CARD, once after a player runs it: the
+ *     book's `speed` part, by the model the player picked (a place in the
+ *     phone's list), the device class and the build -- a step's runs and
+ *     sums (speedSums).  The book is read by ONE admin route, GET
+ *     /dev/daybook (devtools.js): the Test panel's "Copy table" and card E's
+ *     owner's card.  v2.3.5127 (sitting 4's review): its own cap and switch
+ *     -- `caps.report` 2 (_reportCap), `reportspeed: false` back to 1, and
+ *     a card that still comes dropped;
  *   - THE SITTING'S CARD (card Q, step 10.2): `soft`, `build`, `seen`,
  *     `drawn` against the worker's own count of moves.  Card Q builds the
  *     card; until then these facts are DROPPED here (they ride the message
@@ -116,6 +124,12 @@ export const HOLD_NAMES = Object.freeze([
   'other: createObjectURL', 'other: _flushOutbox > Wrapped.ws.send',
 ]);
 
+/* v2.3.5125: the Speed test's card (src/debug/report.js SPEED_STEPS; and
+   SPEED_MODELS' length: the worker keeps only the count, the names are the
+   phone's, and only a place in the list is ever sent) */
+export const SPEED_STEPS = Object.freeze(['all', 'noshadow', 'noshine', 'shinepass', 'threeprog', 'shadowpass', 'still', 'res2', 'bare']);
+export const SPEED_MODELS_N = 22;
+export const SPEED = Object.freeze({ FPS_MAX: 1000, MS_MAX: 10000 });
 
 /* ── a cell's sums (each a number or an array of numbers, so days add) ──
  *   n        reports
@@ -150,8 +164,11 @@ const ints = (a, n, lo, hi) => {
 };
 const oneHot = (n, i, by = 1) => { const a = new Array(n).fill(0); a[i] = by; return a; };
 
-/* v2.3.5127: the game's own site: a page there is `live` */
-export const LIVE_HOSTS = Object.freeze(['brotown.net', 'www.brotown.net']);
+/* v2.3.5127: the game's own site: a page there is `live`.  Sitting 4's
+   review: and Cloudflare Pages' own name for the project, bare -- the same
+   build of `main` as brotown.net (origin.js ORIGIN_LOCK.SITES); its
+   `<hash>.` and `<branch>.` addresses are the previews, and stay `preview` */
+export const LIVE_HOSTS = Object.freeze(['brotown.net', 'www.brotown.net', 'gamedev-aix.pages.dev']);
 /** A socket's page, from its Origin: 'live' (the game's own site) or
  *  'preview' (anything else, or none). */
 export function reportSiteOf(origin) {
@@ -200,9 +217,31 @@ export function rttWaverNext(waver, sample, rttBefore, alpha, cap) {
   return Math.min(cap, w * (1 - alpha) + d * alpha);
 }
 
+/** v2.3.5125: a report's `speed`, checked, as what it adds to the book's
+ *  `speed` part under `key` -- or null.  { model: a place in the phone's
+ *  list, rows: [step, fps, p50, p95, work] } (work -1: not measured).  A
+ *  step's sums: [runs, fps, p50, p95, work, runs with no work]. */
+export function speedSums(speed, classKey, build) {
+  if (!isObj(speed)) return null;
+  const model = int(speed.model, 0, SPEED_MODELS_N - 1);
+  if (model === null || !Array.isArray(speed.rows) || !speed.rows.length || speed.rows.length > SPEED_STEPS.length) return null;
+  const s = Object.create(null);
+  for (const r of speed.rows) {
+    if (!Array.isArray(r) || r.length !== 5 || !SPEED_STEPS.includes(r[0]) || has(s, r[0])) return null;
+    const fps = int(r[1], 0, SPEED.FPS_MAX), p50 = int(r[2], 0, SPEED.MS_MAX), p95 = int(r[3], 0, SPEED.MS_MAX);
+    const work = r[4] === -1 ? -1 : int(r[4], 0, SPEED.MS_MAX);
+    if (fps === null || p50 === null || p95 === null || work === null) return null;
+    s[r[0]] = [1, fps, p50, p95, work === -1 ? 0 : work, work === -1 ? 1 : 0];
+  }
+  s.n = 1;
+  return { key: REPORT.V + '|' + model + '|' + classKey + '|' + build, sums: s };
+}
+
 /** A report, checked, as what it adds to its cell -- or null (dropped: no
  *  cell can be made).  `own`: the worker's own numbers ({ delay, waver }).
- *  Pure: the suite reads it. */
+ *  v2.3.5125: and `speed`, the Speed test's card for the book's `speed`
+ *  part, when it carries one that passes (else none).  Pure: the suite reads
+ *  it. */
 export function reportSums(msg, own) {
   if (!isObj(msg) || msg.v !== REPORT.V) return null;
   const cls = classOfReport(msg.devClass);
@@ -281,12 +320,21 @@ export function reportSums(msg, own) {
   /* the worker's own, summed: [delay, waver] ms (means: / n) */
   if (typeof o.delay === 'number' && o.delay >= 0 && typeof o.waver === 'number' && o.waver >= 0) s.line = [Math.round(o.delay), Math.round(o.waver)];
   else if (typeof o.delay === 'number' && o.delay >= 0) s.line = [Math.round(o.delay), 0];
-  return { cell, sums: s, soft: cls.soft };
+  const speed = has(msg, 'speed') ? speedSums(msg.speed, cls.key, o.site === 'live' ? build : 'preview') : null;   /* v2.3.5127: the build is the worker's call */
+  return { cell, sums: s, soft: cls.soft, speed };
 }
 
 export const reportMethods = {
   /* the kill switch is liveops.js `_reportOff` */
-  _reportOn() { return !this._reportOff(); },   /* the caps literal reads a method call (caps-audit) */
+  _reportOn() { return !this._reportOff(); },
+  /** join.js's `caps.report` (the caps literal reads a method call:
+   *  caps-audit).  v2.3.5127 (sitting 4's review): a count, as a cap that
+   *  grows is (TRAPS §9) -- 1 the smoothness reports, 2 the Speed test's
+   *  card too; `report: false` none, `reportspeed: false` 1. */
+  _reportCap() {
+    if (this._reportOff()) return undefined;
+    return this._reportSpeedOff() ? 1 : 2;
+  },
 
   /** index.js `case 'report'`: checked, paced, added into the day's book.
    *  Returns why it went nowhere ('off', 'who', 'pace', 'bad', 'cells') or 'ok'
@@ -314,6 +362,14 @@ export const reportMethods = {
       const tree = Object.create(null);
       tree[r.cell] = r.sums;
       bookAdd(this, 'dev', tree, now);
+      /* v2.3.5125: the Speed test's card, into the book's `speed` part: by
+         the model the player picked, the device class and the build
+         (v2.3.5127: not with `reportspeed: false`) */
+      if (r.speed && !this._reportSpeedOff()) {
+        const st = Object.create(null);
+        st[r.speed.key] = r.speed.sums;
+        bookAdd(this, 'speed', st, now);
+      }
       /* the sitting's card (soft, build, seen, drawn against moves): card
          Q's, not built yet -- dropped here (SHAPES part 7) */
       return 'ok';

@@ -54,6 +54,7 @@ import { GATHER_HITS } from './gathering.js'; /* v2.3.3229: 'hits' -- the skills
 import { PROG3, prog3RespecPoints } from './prog3.js'; /* v2.3.3313: the combat skills a level can be set on; v2.3.3541: + the deal (/dev/combat `deal`) */
 import { bagGive, bagSet } from './bag.js'; /* v2.3.4810: the bag door */
 import { GOLD_LOG, goldLogOf } from './gold.js'; /* v2.3.4903: the gold log (/dev/goldlog) */
+import { bookRead } from './daybook.js'; /* v2.3.5125: the day's book's one reader (/dev/daybook) */
 
 export const DEVKIT = {
   /* The tutorial's own starter weapons -- copper/pine/pine.  Deliberately
@@ -736,6 +737,13 @@ export const devToolsMethods = {
        time -- the Test panel's "Player drawings" page.  Read-only. */
     if (request.method === 'GET' && path === '/dev/looks') {
       const r = await this._watchLooks(new URL(request.url).searchParams);
+      return json(r, r.ok ? 200 : 500);
+    }
+    /* v2.3.5125: THE DAY'S BOOK (daybook.js), the newest `days` (1 to 60, 7 when not said): its parts as
+       stored plus what waits to be written.  The ONE route the book is read by: the Test panel's "Copy table"
+       (ReportTable.jsx) and card E's owner's card.  Read-only. */
+    if (request.method === 'GET' && path === '/dev/daybook') {
+      const r = await bookRead(this, new URL(request.url).searchParams.get('days') || 7);
       return json(r, r.ok ? 200 : 500);
     }
     /* v2.3.4545: EVERY PLAYER'S ACCURACY, a day (accuracy.js) -- the Test panel's "Accuracy" box.  Read-only. */

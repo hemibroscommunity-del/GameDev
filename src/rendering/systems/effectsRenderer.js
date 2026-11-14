@@ -337,6 +337,7 @@ import { FARM_ANIM_HEAD_WORLD } from '@/data/farmLayout.js';   /* v2.3.3960 */
 import { treeArtSources, treeArtLevelFor, treeGeom, treeMarkY, treeChopOffset, behindTree, TREE_PX, TREE_FOOT_DY, TREE_FADE, TREE_SEE_ALPHA, TREE_SEE_MS } from '@/game/tierTrees.js';   /* v2.3.3345: each wood its own tree */
 import { oreArtSources, oreArtLevelFor, oreGeom, ORE_PX } from '@/game/tierOre.js';   /* v2.3.3345: each metal its own rock */
 import { WheelShatter } from '../wheelShatter.js';
+import { treesWhenReady } from '../paletteLoad.js';   /* v2.3.5248: the trees asked for once pictures-as-numbers is decided, read as their numbers */
 import { LandAuras, AURAS_ON, AURA_MAX } from '../landAuras.js';   /* v2.3.3402: each land's resources wear its element */   /* v2.3.3345: a rock mined out breaks into pieces of its own picture */
 import { gesturePose01, extractionMeter01, gestureLoopFrame, COOK_FLICKS_PER_LOOP } from '@/game/gesturePose.js'; /* v2.3.2245; extractionMeter01 v2.3.2514 (the harvest's bar reads the button ring's own numbers -- the node's HP bar since v2.3.2956) */
 import { bodyWorkerWanted, bakeOnWorker, noteWorkerSheet } from '../bodyBake.js';   /* v2.3.4930: a peer's stand-ins with drawings, baked on a worker */
@@ -2477,11 +2478,15 @@ const NODE_SPRITE_TEX = {};
    gathering tier, each drawn at its own size from src/data/treeArt.js -- 5.6
    MB decoded for the five.  On the loading screen's gate with the others
    (_fxLoad), as the preloading law wants. */
+/* v2.3.5248 (card P's backlog, tree-tiers): asked once the renderer has said
+   whether pictures are drawn as colour numbers (paletteLoad.js
+   treesWhenReady), so they are read as their numbers, a byte a pixel -- asked
+   for as this file loads, before the renderer is made, they were held as
+   pictures (5.6 MB at the memory check's fight).  Still on the loading
+   screen's gate: the wait is pushed as it starts. */
 const TREE_TEX = {};
-for (const { lvl, url } of treeArtSources()) {
-  _fxLoad(url).then((tex) => { if (tex) TREE_TEX[lvl] = tex; })
-    .catch((err) => console.warn('[tree-art] load failed', url, err));
-}
+_fxPreload.push(treesWhenReady().then(() => Promise.allSettled(treeArtSources().map(({ lvl, url }) => _fxLoad(url).then((tex) => { if (tex) TREE_TEX[lvl] = tex; })
+  .catch((err) => console.warn('[tree-art] load failed', url, err))))));
 /* ═══ v2.3.3345: ...AND EACH METAL ITS OWN ROCK ═══
    The owner's five ore rocks (copper, iron, black steel, titanium,
    obsidian), one a gathering tier, each at its own size from
