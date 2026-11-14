@@ -20,7 +20,7 @@ addresses (`tools/qa/`), `localStorage` toggles, and the worker's `env` settings
 reads it as a flag or a comment promises it as a kill switch; any other cap's override is the emergency lever of
 `docs/specs/liveops.md` ("Caps override").
 
-251 rows: 244 switches, 6 values, 1 levers, in 23 systems.
+252 rows: 245 switches, 6 values, 1 levers, in 23 systems.
 
 ## audio
 
@@ -333,6 +333,7 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 | `partykeep` | worker | switch | v2.3.3276 | false | logic |  | no | Parties are not kept: the old cap and the away window remove a dropped member. |
 | `power` | worker | switch | v2.3.5481 | false | logic |  | no | Un-advertises the power index: no board report carries one, so the Power board empties as players report and the other boards are as they were. |
 | `spar` | worker | switch | v2.3.3265 | false | logic |  | no | No sparring clones: every live clone goes on the next tick and the cap is withdrawn. |
+| `statboards` | worker | switch | v2.3.5484 | false | logic |  | no | Un-advertises the stat boards: no board report carries the points allocated, so those boards empty as players report; every other board is as it was. |
 
 ## townsfolk
 

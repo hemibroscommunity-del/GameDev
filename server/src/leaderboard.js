@@ -8,6 +8,7 @@
 // ═══════════════════════════════════════
 import { boardFace, goneId } from './boards.js';   /* v2.3.4393: a face on each row, and the deleted stand-ins */
 import { POWER, cleanPowerIndex } from './power.js';   /* v2.3.5481: the power index on a row, and its board (card PW) */
+import { cleanStatPoints, statOfBoard } from './statboards.js';   /* v2.3.5484: the stat boards (card PW) */
 
 /* a player not seen for this long is off the boards (and a deleted
    character's stand-in, counted from the day it was deleted) */
@@ -108,9 +109,13 @@ export class Leaderboard {
        left off a row whose report carried none (the switch thrown), which
        is then not yet ranked on the Power board */
     const powerIndex = cleanPowerIndex(data.powerIndex);
+    /* v2.3.5484: the points allocated, as the room read its own record
+       (statboards.js) -- left off a row whose report carried none */
+    const statPoints = cleanStatPoints(data.statPoints);
     await this.state.storage.put('player:' + playerId, JSON.stringify({
       ...(look ? { look } : {}),
       ...(powerIndex ? { powerIndex } : {}),
+      ...(statPoints ? { statPoints } : {}),
       id: playerId, name: name || 'Anon', color: color || '#5b52ff', level: level || 1,
       /* v2.3.5483: `ap` is the room's own count (index.js reportToLeaderboard,
          from ps.achievementPoints) -- the blob's only from a report that
@@ -212,7 +217,7 @@ export class Leaderboard {
        legacy columns keep to live characters: `level` is what the contest
        draw reads its entrants from (public/tools/draw.html), and a deleted
        character must never be drawn. */
-    const standIns = category === 'ap' || category === 'power' || Object.prototype.hasOwnProperty.call(Leaderboard.SERIES_CATEGORIES, category);
+    const standIns = category === 'ap' || category === 'power' || !!statOfBoard(category) || Object.prototype.hasOwnProperty.call(Leaderboard.SERIES_CATEGORIES, category);
     if (standIns) try {
       const gone = await this.state.storage.list({ prefix: 'gone:' });
       for (const [, raw] of gone) { try { const p = JSON.parse(raw); if (p && p.gone && now - (p.lastSeen || 0) < STALE) players.push(withLv(p)); } catch {} }
@@ -229,6 +234,19 @@ export class Leaderboard {
         const ix = cleanPowerIndex(p && p.powerIndex);
         return ix && ix.v === POWER.V ? ix.power : 0;
       };
+      return players.filter((p) => val(p) > 0)
+        .sort((a, b) => val(b) - val(a))
+        .slice(0, limit)
+        .map((p) => ({ ...p, value: val(p) }));
+    }
+
+    /* ═══ v2.3.5484: THE STAT BOARDS (statboards.js, card PW) ═══
+       `pts_<stat>`: by the points the row's player allocated to that stat
+       (`pts_dmg`: the three weapons' damage points summed); a row without
+       them, or with none in it, is off the board, as on the skill boards. */
+    const stat = statOfBoard(category);
+    if (stat) {
+      const val = (p) => { const sp = cleanStatPoints(p && p.statPoints); return sp ? sp[stat] : 0; };
       return players.filter((p) => val(p) > 0)
         .sort((a, b) => val(b) - val(a))
         .slice(0, limit)
