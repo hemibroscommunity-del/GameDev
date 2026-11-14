@@ -1,6 +1,6 @@
 card: P
-branch: claude/plan-p-13-pixel-readers (one branch a PR, each begun from the one before)
-prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766 (5241-5252, merged); #1805 (5253) ready; the guard (5254) ready
+branch: claude/plan-p-14-figure-hold (one branch a PR, each begun from the one before)
+prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766 (5241-5252, merged); #1805 (5253), #1806 (5254) ready; the figure's hold (5255) measured
 state: working
 
 ## Done
@@ -27,8 +27,8 @@ state: working
 - `pack-page` on today's main (A's sample): 30.6 ms at armour, 15.9 at
   peer, against its line of 20 (not raised).
 - `mp-npclooks` 2 and 2b are red with PR 6's change on and off alike.
-- The Equipment screen's figure holds 22 ms (card H's, now P's; the
-  planning session, low): after pack-page and the guard, a profile first.
+- The Equipment figure's 22 ms (5255): the box, not the figure (steps 5 ms
+  at most on one page; 7-16 ms at any step with a second page on the box).
 
 ## Needs
 
