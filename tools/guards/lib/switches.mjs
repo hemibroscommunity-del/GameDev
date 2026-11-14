@@ -512,4 +512,8 @@ export const SWITCHES = Object.freeze([
   { name: '?xpfly', side: 'page', system: 'combat', kind: 'switch', born: 3893, thrown: '=0', risk: 'logic', needs: [], fallback: 'no', off: 'A kill\'s XP does not fly to the bar.' },
   { name: '?zindexall', side: 'page', system: 'render', kind: 'switch', born: 3449, thrown: 'present', risk: 'logic', needs: [], fallback: 'no', off: 'Every depth key goes through Pixi\'s setter every sort, to compare.' },
   { name: '?zoom', side: 'page', system: 'device', kind: 'value', born: 2997, thrown: 'a number', risk: 'chip', needs: [], fallback: 'no', off: 'Sets how far out the camera sees (in place of the view cap\'s).' },
+  /* ── card O's (the lanes and the governor, src/game/drawLanes.js): its rows in a place of their own ── */
+  { name: '?lane', side: 'page', system: 'device', kind: 'lever', born: 5221, thrown: '=full, =light or =thirty', risk: 'none', needs: [], fallback: 'no', off: 'This page draws in the named lane, whatever its device\'s facts pick.' },
+  { name: '?govern', side: 'page', system: 'page-thread', kind: 'switch', born: 5222, thrown: '=0 (off), =1 (on where `?lane=` holds it)', risk: 'logic', needs: [], fallback: 'no', off: 'The governor no longer moves the ladder: the lane\'s row, however late the frames.' },
+  { name: 'reportlanes', side: 'worker', system: 'liveops', kind: 'switch', born: 5221, thrown: 'false', risk: 'logic', needs: ['report', 'reportspeed'], fallback: 'no', off: 'The field report no longer takes a lane but full, the governor\'s rung or the self-test (caps.report back to 2).' },
 ]);
