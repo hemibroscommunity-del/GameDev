@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8918bab3a76d9f58993440852cddf162407253b5",
+  "tree": "233f5e16c6ea6c037095c03b22aa9a96fd48d2c3",
+  "committedAt": "2026-11-14T10:27:46-08:00",
+  "subject": "Merge pull request #1808 from hemibroscommunity-del/claude/plan-z-11-card-steps",
+  "files": 7655,
+  "bytes": 953514342,
+  "listingSha256": "6c9f1942a780ad63b427aede99840b6e431510cb31965ee84db449d97730cf51",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

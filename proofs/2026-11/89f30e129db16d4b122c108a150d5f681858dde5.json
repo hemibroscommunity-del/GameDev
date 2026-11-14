@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "89f30e129db16d4b122c108a150d5f681858dde5",
+  "tree": "4005f30f877e3fa8e87b84853ff6e47aa8a8ee8a",
+  "committedAt": "2026-11-14T10:27:54-08:00",
+  "subject": "Merge pull request #1811 from hemibroscommunity-del/claude/plan-e-13-restart",
+  "files": 7655,
+  "bytes": 953514244,
+  "listingSha256": "2569bafd37728840bbd7d55747e839b6122db05043227ce2fee91ee2c2d82503",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
