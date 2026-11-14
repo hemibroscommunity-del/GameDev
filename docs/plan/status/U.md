@@ -1,6 +1,6 @@
 card: U
-branch: claude/plan-u-6-wire-combat-world (one branch a PR, each begun from the one before)
-prs: #1721, #1722, #1723, #1725, #1727, #1728 (all ready)
+branch: claude/plan-u-7-look (one branch a PR, each begun from the one before)
+prs: #1721, #1722, #1723, #1725, #1727, #1728, #1730 (all ready)
 state: ready
 
 ## Done
@@ -9,19 +9,16 @@ state: ready
   `state-census.mjs`, the guard `state-ledger.test.mjs` (line 2128), the
   first ledger `life` (fewest rows, tied with `liveops`; the tie by name).
   B's map gains the system `state`, and its empty row in `budgets.mjs`.
-- PR 2 (5161, #1722): liveops, session, device, page-thread, input (39);
-  the census page made again: unlisted 2109.
-- PR 3 (5162, #1723): quests, townsfolk, desktop, monsters, audio, social
-  (150): unlisted 1959.
-- PR 4 (5163, #1725): movement, economy, preload, skills, memory (199):
-  unlisted 1760.
-- PR 5 (5164, #1727): debug, art, data (182): unlisted 1578.
-- PR 6 (5165, #1728): wire, combat, world (393): unlisted 1185.
+- PRs 2 to 6 (5161-5165), the systems by fewest rows, unlisted after each:
+  #1722 liveops..input 2109 (the census page made again); #1723 quests..
+  social 1959; #1725 movement..memory 1760; #1727 debug, art, data 1578;
+  #1728 wire, combat, world 1185.
+- PR 7 (5166, #1730): look (194), and the guard takes a phase's empty word: 991.
 
 ## Next
 
-- PR 7 (5166): look. Then render; ui (the systems of BroTown.jsx and the
-  two renderers last).
+- PR 8 (5167): render. PR 9 (5168): ui. Tried: both pass the guard,
+  unlisted 16 (the unsorted rows).
 
 ## Found
 

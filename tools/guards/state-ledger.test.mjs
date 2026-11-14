@@ -127,7 +127,9 @@ function rowFault(row) {
   if (![true, false, 'tests'].includes(row.noRead)) return 'noRead';
   if (isField && typeof row.noSet !== 'boolean') return 'noSet';
   if (!isField && typeof row.neverChanged !== 'boolean') return 'neverChanged';
-  if (row.phase !== null && !(Array.isArray(row.phase) && row.phase.every(str))) return 'phase';
+  /* v2.3.5166: a phase's word may be '' -- the code sets look's _bakeTag
+     (bodyRecolor.js) to '' and to 'jog-east', and the census keeps both */
+  if (row.phase !== null && !(Array.isArray(row.phase) && row.phase.length > 0 && row.phase.every((w) => typeof w === 'string'))) return 'phase';
   if (typeof row.flag !== 'boolean') return 'flag';
   if (!Array.isArray(row.writers) || !row.writers.every(str)) return 'writers';
   return null;
