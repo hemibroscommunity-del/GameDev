@@ -32,7 +32,11 @@
  *      changes: a comment counted as code turns 5 red.
  *
  * Run from the repository's root: node tools/guards/four-lines.test.mjs
- *   --live   take card D's count by running its script (16 s), not its page
+ *   --live   insist on card D's script for 4 (it fails where the script
+ *            cannot load).  v2.3.5201 (card L PR 1): without it, 4 reads the
+ *            script wherever it loads (GitHub's `test` job included), one
+ *            run a `npm test` shared with the state ledger's guard, and the
+ *            page only where it cannot (lib/fourLines.mjs, stateCensus())
  * (cd server && npm test runs it with every other guard and suite).
  */
 import { measureClient, measureSource, stateWritesFromRendering, LINES } from './lib/fourLines.mjs';

@@ -70,14 +70,25 @@ system has moved since it was listed stays in its file (the guard names it).
 - every listed row is one the census finds;
 - every row the census finds is listed, or counted as **unlisted**, and that
   count may only fall (the plan's rule 3: a census; the gatekeeper alone
-  lowers its line, `UNLISTED_LINE`, and makes it strict).
+  lowers its line, `UNLISTED_LINE`, and makes it strict);
+- (v2.3.5201) every listed row's **machine columns** are the script's, as
+  `--ledger` makes them now: `system`, `suggested`, `born`, `twoFiles`,
+  `noRead`, `noSet`, `neverChanged`, `phase`, `flag`, `writers`. A row typed
+  or changed by hand fails, and so does one left stale by a change to the code
+  (a new writer): make the ledger again. The hand's columns (`lifetime`, and
+  card L's `reset`) are never compared.
 
-On GitHub the guard reads the rows off the census's page
-(`docs/plan/census/state.md`): the script needs the root's packages, which the
-`test` job does not install. `node tools/guards/state-ledger.test.mjs --live`
-runs the script instead. The page is only as true as its last
-`node tools/dev/state-census.mjs --write`: a ledger PR whose rows the page
-lacks rewrites it.
+**The guard reads the code** (v2.3.5201, card L; the gatekeeper's finding,
+sitting 6), on GitHub too: `server/` carries the root's exact `@babel/parser`
+and `@babel/traverse` as devDependencies, and the script's loader tries the
+root's packages, then `server/`'s. The script (about 18 s) runs once a
+`npm test`, shared with the four-lines guard (`tools/guards/lib/fourLines.mjs`,
+`stateCensus()`). Only where neither place has the packages does the guard
+read the census page (`docs/plan/census/state.md`), say so, and skip the
+machine columns; `--live` fails there instead, `--page` reads the page
+anyway. The page stays a census the script rewrites
+(`node tools/dev/state-census.mjs --write`), never a gate: it carries line
+numbers, so `--check` would fail every PR that moves a line under `src/`.
 
 Rows of files the map has not placed (`unsorted`) have no ledger to go in
 until the map places their file; the guard lists those files by name.
