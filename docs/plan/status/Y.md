@@ -1,7 +1,7 @@
 card: Y
 branch: claude/plan-y-farm-gate
-prs: none (the card's one PR waits on the owner's answer below)
-state: stalled
+prs: PR 1 (tag 5400, testing)
+state: working
 
 ## Done
 
@@ -21,20 +21,15 @@ state: stalled
 
 ## Next
 
-- Waiting for the owner's answer (Needs). No game file needs a change.
+- A, from the planning session: `hopTo` stops when its zone changes
+  (`tools/qa/mp/harness.mjs`). `farmmusic` 3 of 3 alone, `questline`.
 
 ## Found
 
-- `harness.mjs` `hopTo` moves the player on after a zone change.
 - `docs/plan/census/red.md` row 3: the TEST's, not the GAME's.
 
 ## Needs
 
-- The owner: the mend is in a test file, which the card gives to card J.
-  Which one?
-  A. `hopTo` stops when the zone it started in changes (one line in
-     `harness.mjs`; every test that walks through a door gains). My pick.
-  B. `mp-farmmusic.mjs` alone walks to the gate with a hop that stops
-     when it leaves the farm.
-  C. Card J does it. Either way no game file changes and the worker is
-     not deployed.
+- The owner: the planning session also asked for a second PR,
+  `mp-topaudit` (`pixiRenderer.js` ~869, no `topInset` to
+  `wheelMinimap.js`). Outside card Y and in a renderer: yes or no?
