@@ -1,6 +1,6 @@
 card: E
-branch: claude/plan-e-7-testroom (one branch a PR, each begun from the one before: merged main)
-prs: #1686, #1691, #1694, #1699, #1752, #1756 (merged); #1758 (ready, this branch)
+branch: claude/plan-e-8-known-trade (one branch a PR, each begun from the one before: merge #1758 first)
+prs: #1686, #1691, #1694, #1699, #1752, #1756 (merged); #1758 (ready); #1759 (ready, this branch)
 state: ready
 
 ## Done
@@ -13,14 +13,15 @@ state: ready
 - PR 6 (5085, #1756), the book's `econ` part: merged (sitting 9).
 - New live flags (rule 3, one line each in the switch table): PR 6 `econ`,
   PR 8c `arenasettleplan`, PR 11 `xfer`.
-- PR 7 (5086), the shared test room (`server/test/testroom.mjs`, its suite)
-  and `DISTURBANCES`; `chaos-restart` moved onto it, its output the same.
+- PR 7 (5086, #1758), the shared test room and `DISTURBANCES`;
+  `chaos-restart` moved onto it, its output the same.
+- PR 8a (5087), `trade-weapon-half` off `KNOWN` (trade2.js v2.3.4795 made
+  it one write); break proof: the old order fails case 3 again.
 
 ## Next
 
-- PR 8 (5087 to 5089), `KNOWN` empty: two of its three cases already pass
-  on main (`trade-weapon-half`, `arena-stake-place`: chaos-restart says so);
-  `arena-stake-settle-loss` is the one left to fix.
+- PR 8b (5088) `arena-stake-place` off `KNOWN` (v2.3.4796); PR 8c (5089)
+  `arena-stake-settle-loss`, the one left to fix (`gladiator.js`).
 
 ## Found
 

@@ -52,7 +52,10 @@ import { mockEnv, fakeWs, baseSession, makeStorage, settle } from './testroom.mj
 /* v2.3.4793: what is red on today's code, each with its reason.  The ids are
    the ones the checks below pass to `verdict`. */
 const KNOWN = new Map([
-  ['trade-weapon-half', 'trade2.js _handleTrade2Confirm: the gold and goods move in ONE write, but each staged weapon is delivered in a write of its own AFTER it; a restart between leaves the window gone and the escrow record standing, so the restart sweep hands the weapon BACK to its owner -- who also kept the other side\'s gold. The other side paid and got nothing (a half trade; handoff rule 7). Report: money path, not fixed here.'],
+  /* v2.3.5087 (grand plan card E, PR 8): 'trade-weapon-half' is off the list --
+     trade2.js v2.3.4795 delivers each staged weapon, or marks it OWED on file,
+     in the swap's own one write, and this suite has passed it at every write
+     since (it printed NOTE). Its checks count again. */
   ['arena-stake-place', 'gladiator.js _handleArenaSponsor: _escrowDebitGold (the purse and its stamp, one write) is awaited, THEN the arena_stake record is put in a second write; a restart between takes the stake and leaves no record, so _arenaStakeSweep has nothing to refund from. The arena ENTRY had the same shape and was fixed in v2.3.3185 (arena.test §15). Report: money path, not fixed here.'],
   ['arena-stake-settle-loss', 'gladiator.js _arenaSettleStakes: every losing stake is stamped settled FIRST, then the fighter\'s cut and the winners are paid in writes of their own; a restart between keeps the losing stakes (stamped, so never refunded) and pays nobody from them. By design in its own words ("a crash part-way costs a payout, never makes one twice"); listed so the owner sees it costs players gold on a deploy mid-arena.'],
 ]);
