@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "36f7193df8142c6be37f77fac62833e70b0b583d",
+  "tree": "31d17e8c3c2a09fdd094040c76274f53d9771cb2",
+  "committedAt": "2026-11-14T03:18:47-08:00",
+  "subject": "Merge pull request #1756 from hemibroscommunity-del/claude/plan-e-6-book-econ",
+  "files": 7597,
+  "bytes": 952499371,
+  "listingSha256": "bbb96cd49afcfd7dff998e945f57e85d3c9252ed4f59cc984e2990e3becfac81",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
