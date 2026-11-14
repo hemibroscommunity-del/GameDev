@@ -61,9 +61,32 @@ The limits, for both:
   `.github/`, `server/wrangler.toml`, a deploy, the `provenance` branch.
 - The owner still answers, in their own words: what a player sees or hears
   (TRAPS §305: nothing dormant turned on), money and the game's costs (a
-  fee, a price, a pace that writes more), and a new card's scope.
+  fee, a price, a pace that writes more), and a new card's scope; except
+  as the third answer below says, while the owner is away.
 - A fault found outside the card is still Found, not fixed: the answer is
   for what the card's job needs, not for tidying.
+
+### While the owner is away (tag 5058)
+
+The owner, 2026-11-14, on spending a banked reset of the usage allowance:
+*"if I reset you'd need to keep going autonomously with your
+recommendations, I could lose hours by being away from the phone as you
+wait for my input"*. So a question that is the owner's (what a player sees
+or hears, a new card's scope) does not wait for them: the planning session
+decides it by its own recommendation, and the work goes on.
+
+- The decision is made only as the planning session's message names it;
+  the session builds it **behind its switch** (a `?name=0` or a lower-case
+  live flag), so the owner can turn it off in one tap.
+- The PR's words carry it under **"Decided for the owner while away"**,
+  with the switch; the gatekeeper's review lists them, and the planning
+  session reads the list to the owner when they are back.
+- **Never decided this way**, whatever the wait: `.github/`,
+  `server/wrangler.toml`, a deploy from a branch, the `provenance` branch
+  (CLAUDE.md §4); anything that cannot be undone (a player's record
+  deleted, a board removed, art thrown away); and anything that makes the
+  game cost more to run (a `cost-guard` line raised, a new write pace, a
+  fee or a price). Those wait for the owner's own words.
 
 ## How the gatekeeper finds a session
 
