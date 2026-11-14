@@ -18,10 +18,11 @@ state: working
 - #1762 (5050), ready: sitting 5's loose ends on #1700 (a dead worker
   not posted to, the stuck clock from the post, `urlRead` per address, the
   decode under the 4 s, blob: only). Probe: 19 of 19 the same.
-- PR 12 (5051), ready: the portrait's shirt composed from its one frame
-  (31 of 31 the same); `portrait` 6.9 ms the longest, no `gear-sheet`.
-- `masked-bake` 23.7 ms at `peer` in card A's full tour: none in 17 runs
-  of `peer`/`armour` here; the whole main tour running, on `main`, to find it.
+- PR 12 (5051), ready: the figure's shirt and armour from their first
+  frame (55 of 55 the same); `portrait` 8.2 ms the longest in two tours.
+- `masked-bake` grew back (card A: 23.7 ms): the whole tour's stuck kills
+  refused addresses that had read; mended in #1762 (two whole tours: none,
+  4.6 ms; on `main` 18.6 and 28.3).
 
 ## Found
 
