@@ -124,7 +124,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 2. a tap opens it, a tap on its head folds it ── */
     await tapAt(A, '[data-party-chip="folded"]');
-    const h2 = await hud(A);
+    let h2 = await hud(A);
+    /* v2.3.5431 (card J2): a tap inside one of this box's stalls (the page held for seconds) can come to nothing:
+       still folded and nothing stored, it is made once more (1 run in 4 here; the open itself unchanged) */
+    if (h2.state === 'folded' && h2.stored === null) { await A.page.waitForTimeout(1500); await tapAt(A, '[data-party-chip="folded"]'); h2 = await hud(A); }
     await shot(A, 'upright-open');
     rec.ok(`2. a tap opens the list: ${h2.rows} rows and the ✖, kept on the device (${h2.stored})`, h2.state === 'open' && h2.why === 'you' && h2.rows === 3 && h2.leave && h2.stored === 'open', h2);
     await A.page.waitForTimeout(5000);
@@ -143,6 +146,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return { state: c ? c.getAttribute('data-party-chip') : null, why: c ? c.getAttribute('data-party-open') : null, attn: window.__btPartyAttn || null,
         hp: m ? [m.hp, m.maxHp] : null };
     }, ids.C);
+    /* v2.3.5431 (card J2): WATCHED, not sampled.  The list opens by itself for ATTN_MS (4 s, game/partyChip.js) when
+       a friend first drops under a quarter; a read every 0.9 s on this box, which can hold the page for seconds,
+       missed that window, and every roster after it was low already, so never news again (and a rejoin in a stall
+       starts the news over: `null` in seen3) -- "26 of 250, never open", red on main 1 run in 3.  The chip's own
+       attribute is watched from now on, and its first opening by itself is what is judged */
+    await A.page.evaluate(() => {
+      window.__qaChipOpen = null;
+      const look = () => {
+        const c = document.querySelector('[data-party-chip]');
+        if (!window.__qaChipOpen && c && c.getAttribute('data-party-chip') === 'open') {
+          window.__qaChipOpen = { state: 'open', why: c.getAttribute('data-party-open'), attn: window.__btPartyAttn || null };
+        }
+      };
+      new MutationObserver(look).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-party-chip', 'data-party-open'] });
+      look();
+    });
     let h3 = null;
     const seen3 = [];
     for (let i = 0; i < 14 && !h3; i++) {
@@ -150,7 +169,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await A.page.waitForTimeout(900);
       const v = await read3();
       seen3.push(v.hp);
-      if (v.state === 'open') h3 = v;
+      const o = await A.page.evaluate(() => window.__qaChipOpen);
+      if (o) h3 = Object.assign({}, v, o);
+      else if (v.state === 'open') h3 = v;
     }
     await shot(A, 'upright-attention');
     rec.ok(`3. a friend under a quarter of their health: the list opens by itself (${JSON.stringify(h3)})`, !!h3 && h3.why === 'attention' && !!h3.attn && h3.attn.why === 'low', { h3, seen3 });
