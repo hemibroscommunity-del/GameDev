@@ -8,7 +8,7 @@
 
 ## PRs, in order
 
-1. **(v2.3.5027) The weight.**
+1. **(tag 5027) The weight.**
    - Files: new `tools/assets/weights.mjs`, new `tools/assets/sources.json`.
    - `weights.mjs` prints the bytes git tracks under each top folder. It
      REPORTS; it fails nothing (a gate is a guard, and `tools/guards/` is
@@ -16,7 +16,7 @@
    - `sources.json`: one row for each file under `assets/`: its path, its
      bytes, the SHA-256 of its bytes. Nothing is renamed or moved.
    - Done when both run clean and the PR's words give today's numbers.
-2. **(v2.3.5028) The uploads' papers.**
+2. **(tag 5028) The uploads' papers.**
    - Files: new `tools/assets/uploads.mjs`, new `tools/assets/uploads.json`.
    - One row for each loose file at the top of the repository that the
      owner uploaded: today 13 (7 PNG, 3 JPEG, a video, 2 JSON files of

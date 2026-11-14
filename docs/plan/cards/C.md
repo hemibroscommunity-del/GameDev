@@ -9,7 +9,7 @@
 
 ## PRs, in order
 
-1. **(v2.3.5029) `docs/plan/census/wire.md`**, with your status file. A
+1. **(tag 5029) `docs/plan/census/wire.md`**, with your status file. A
    docs PR: it deploys nothing.
    - **One row for each of these, counted from the code** (the counts are
      a guide; yours are the truth):
