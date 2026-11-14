@@ -444,6 +444,18 @@ variants), none stale, no pixel wrong.
 `texSubImage2D`, the row's colours sent to this box's software chip; one hold
 just past the general line is the judge's noise.
 
+After the gatekeeper's sitting 4 (`docs/plan/census/review-z4.md`): a waiting
+plan was taken when its row's COUNT of colours was as described, never its
+colours, and the page's own way of numbering a strip (a read that failed:
+the 20 s `READ_MS` after an app switch, the worker's `onerror`) gave a row
+colours in its own order without a word. A later plan whose count came out
+the same then put a monster's pixels on places holding other colours: a rock
+golem's or a rotcap's pose scrambled until the land was left. Now rows the
+page changes its own way (a new row, or new colours) make every waiting plan
+of the bundle stale (`picsNumbers.js` `_rowsMoved`; `strip-door` 4l, its
+break proof by hand). The same ride after: 35 of 35 numbered on the worker,
+none stale, no pixel wrong, the rows never moved (no read failed).
+
 **Not run** (offered): the whole tours; Safari.
 
 ## The standing check
