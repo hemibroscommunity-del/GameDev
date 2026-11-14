@@ -188,9 +188,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const h4a = await hud(A);
     rec.ok(`4. the leader's first tap on a kick says "${(h4a.kick.find((k) => k.armed === 'armed') || {}).text}" and kicks nobody (${h4a.n} in the party)`,
       nKick === 2 && h4a.kick.some((k) => k.armed === 'armed' && k.text === 'Kick?') && h4a.n === 3, { nKick, h4a });
-    await tapAt(A, '[data-party-kick="armed"]');
-    const n4 = await H.waitFor(A, (S) => (S._party && S._party.members ? S._party.members.length : 0), (n) => n === 2,
+    const kicked = () => H.waitFor(A, (S) => (S._party && S._party.members ? S._party.members.length : 0), (n) => n === 2,
       { timeout: 8000, label: 'the kick' }).catch(() => null);
+    const tapped = await tapAt(A, '[data-party-kick="armed"]');
+    let n4 = tapped ? await kicked() : null;
+    /* v2.3.5431 (card J2): the kick stays armed 3 s (KICK_ARM_MS); the two taps are about a second apart, and one
+       of this box's stalls between them let it disarm, so the second tap found no armed kick (1 run in 3 here, once
+       on main for card L).  Armed again and tapped at once -- the first tap's "kicks nobody" is checked above */
+    if (n4 !== 2) { await tapAt(A, kickSel); await tapAt(A, '[data-party-kick="armed"]'); n4 = await kicked(); }
     rec.ok('4. ...the second tap kicks', n4 === 2, n4);
     await tapAt(A, '[data-party-fold]');
 
