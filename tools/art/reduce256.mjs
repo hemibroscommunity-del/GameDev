@@ -31,13 +31,17 @@
  * draws with <img> or CSS (a browser keeps every picture at four bytes a
  * pixel whatever its colours: levelup-burst, the zone banners, the coin flip),
  * not a picture something reads back on the CPU until its readers are moved.
+ *
+ * v2.3.5243: its decode, its colours, its encode and its read-back are the
+ * asset door's finishing tool's (tools/assets/finish.mjs), the read-back the
+ * game's own reader (src/rendering/png8Decode.js) where it was ffmpeg.  The
+ * same command line, the same colours (compared, card P PR 3).
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { reduce256, toRgba } from '../../public/tools/style/quant256.js';
-import { encodeIndexedPng } from '../../public/tools/world/core/png8.js';
+import { toRgba } from '../../public/tools/style/quant256.js';
+import { readRgba, onColours, encodePng, verifyPng } from '../assets/finish.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const PUB = path.join(REPO, 'public');
@@ -51,14 +55,6 @@ const SCOPE = [
   { dir: 'sprites/tools', skip: null },
 ];
 
-function readRgba(file) {
-  const dims = execFileSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height',
-    '-of', 'csv=p=0', file]).toString().trim().split(',').map(Number);
-  const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', file, '-f', 'rawvideo', '-pix_fmt', 'rgba', '-'], { maxBuffer: 1 << 30 });
-  const [w, h] = dims;
-  if (raw.length !== w * h * 4) throw new Error(`${file}: read ${raw.length} bytes for ${w}x${h}`);
-  return { w, h, d: new Uint8Array(raw.buffer, raw.byteOffset, raw.length) };
-}
 function colourCount(d) {
   const s = new Set();
   for (let i = 0; i < d.length; i += 4) s.add(d[i + 3] ? ((d[i] << 24) | (d[i + 1] << 16) | (d[i + 2] << 8) | d[i + 3]) >>> 0 : 0);
@@ -78,20 +74,14 @@ for (const s of SCOPE) {
     const colours = colourCount(d);
     if (colours <= 256) { console.log(`  as it is  ${rel} (${colours} colours)`); continue; }
     const t0 = Date.now();
-    const r = reduce256(d, w, h);
+    const q = onColours([{ w, h, d }]);
+    const r = { idx: q.idx[0], pal: q.pal, n: q.n, err: q.err };
     const twin = twinOf(rel);
-    const bytes = await encodeIndexedPng(r.idx, r.pal, w, h);
-    if (!bytes) throw new Error('no CompressionStream: Node 18 or later');
+    const bytes = await encodePng(r.idx, r.pal, w, h);
     if (!DRY) {
       fs.writeFileSync(path.join(PUB, twin), bytes);
-      /* read back: exactly the colours written */
-      const back = readRgba(path.join(PUB, twin));
-      const want = toRgba(r.idx, r.pal);
-      for (let i = 0; i < want.length; i++) {
-        if (back.d[i] !== want[i] && !(want[(i & ~3) + 3] === 0 && back.d[(i & ~3) + 3] === 0)) {
-          throw new Error(`${twin}: reads back differently at byte ${i} (${back.d[i]} for ${want[i]})`);
-        }
-      }
+      /* read back: exactly the colours written (the game's own reader) */
+      await verifyPng(fs.readFileSync(path.join(PUB, twin)), r.idx, r.pal, w, h, twin);
     }
     out[rel] = { twin, w, h, colours, n: r.n, err: +r.err.toFixed(4) };
     hard.push({ rel, twin, w, h, colours, err: r.err, d, r });
