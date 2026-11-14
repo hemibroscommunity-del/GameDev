@@ -47,7 +47,7 @@
 import { Assets, Cache, Rectangle, Texture } from 'pixi.js';
 import { packTrimmed, packTrimmedSliced, setGearPackPlay } from './gearSheets.js';   /* v2.3.2870: monster strips load cropped; v2.3.4400: a few ms at a time in play */
 import { holdOnceDrawn, forgetHeld, numbersOfSliced, numbersOf } from './heldNumbers.js';   /* v2.3.3699: held once drawn, as colour numbers */
-import { stripAsNumbers, releaseBundleNumbers, picNumbersOn } from './picsNumbers.js';   /* v2.3.3715: ?picnumbers, colour numbers on the chip */
+import { stripAsNumbers, releaseBundleNumbers, picNumbersOn, stripRowsAsk, stripPlanAnswered, stripPlanDone } from './picsNumbers.js';   /* v2.3.3715: ?picnumbers, colour numbers on the chip; v2.3.5044: + the rows sent with a read */
 import { noteMade } from '../debug/madeLog.js';   /* v2.3.4400: a strip packed on the page says its name and its time */
 import { readStrip, stripReadOn } from './stripRead.js';   /* v2.3.4470: a strip read from its 256-colour file's own numbers, off the page's thread */
 import { retintPalette } from './retintPalette.js';   /* v2.3.4470: a strip in another colour is its palette in another colour */
@@ -112,13 +112,22 @@ export function loadTrackedStrip(bundle, url, fw, fh) {
   /* (never while QA compares a strip's numbers with its packed canvas: __btPicNumVerify, mp-picsonce -- the reader
      makes no canvas) */
   if (stripReadOn() && picNumbersOn() && !(typeof window !== 'undefined' && window.__btPicNumVerify === true)) {
-    return readStrip(url, fw, fh).then((m) => {
+    /* v2.3.5044: the bundle's rows of colours go with the ask (described
+       when the read starts), and the strip comes back numbered for its row
+       (stripRows.js): the page only checks the rows are as described
+       (picsNumbers.js _onPlannedRow).  A plan waits, in order, until taken */
+    let rows = null, plan = null;
+    const p = readStrip(url, fw, fh, 0, () => { rows = stripRowsAsk(bundle); return rows && rows.send; }).then((m) => {
+      if (m && m.onRow && rows) { plan = m.onRow; plan.asked = rows; stripPlanAnswered(bundle, plan); }
       if ((_gen.get(bundle) || 0) !== gen) return [];   /* its zone was left while it was read */
       if (!m) return _stripByImage(bundle, url, fw, fh, gen);
       /* in play, one strip's texture a slice (the same line and clock as the strips unpacked gently) */
       if (stripFrameMs() > 0) return _inLine(async () => { await stripTurn(); return _stripOfNumbers(bundle, url, fw, fh, gen, m); });
       return _stripOfNumbers(bundle, url, fw, fh, gen, m);
     }).catch(() => []);
+    /* v2.3.5044: taken or not (a zone left meanwhile), the plan is done with */
+    p.then(() => { if (plan) stripPlanDone(bundle, plan); });
+    return p;
   }
   return _stripByImage(bundle, url, fw, fh, gen);
 }
@@ -135,13 +144,22 @@ export function loadTrackedStrip(bundle, url, fw, fh) {
 export function loadTrackedStripRetinted(bundle, url, fw, fh, rgb) {
   const gen = _gen.get(bundle) || 0;
   if (!stripReadOn() || !picNumbersOn() || (typeof window !== 'undefined' && window.__btPicNumVerify === true)) return Promise.resolve(null);
-  return readStrip(url, fw, fh).then((m) => {
+  /* v2.3.5044: retinted AND numbered for its row on the reader's worker (the
+     rows described as the read starts, as loadTrackedStrip's); a strip the
+     worker did not retint is retinted here, as before */
+  let rows = null, plan = null;
+  const p = readStrip(url, fw, fh, 0, () => { rows = stripRowsAsk(bundle); return rows && rows.send; }, rgb).then((m) => {
+    if (m && m.palTint && m.onRow && rows) { plan = m.onRow; plan.asked = rows; stripPlanAnswered(bundle, plan); }
     if ((_gen.get(bundle) || 0) !== gen) return [];
     if (!m) return null;
-    const m2 = { w: m.w, h: m.h, idx: m.idx, cells: m.cells, n: m.n, fileW: m.fileW, fileH: m.fileH, pal: retintPalette(m.pal, m.idx, rgb) };
+    const m2 = m.palTint
+      ? { w: m.w, h: m.h, idx: m.idx, cells: m.cells, n: m.n, fileW: m.fileW, fileH: m.fileH, pal: m.palTint, onRow: plan || undefined }
+      : { w: m.w, h: m.h, idx: m.idx, cells: m.cells, n: m.n, fileW: m.fileW, fileH: m.fileH, pal: retintPalette(m.pal, m.idx, rgb) };
     if (stripFrameMs() > 0) return _inLine(async () => { await stripTurn(); return _stripOfNumbers(bundle, url, fw, fh, gen, m2, true); });
     return _stripOfNumbers(bundle, url, fw, fh, gen, m2, true);
   }).catch(() => null);
+  p.then(() => { if (plan) stripPlanDone(bundle, plan); });
+  return p;
 }
 /* the strip's texture and frames from the numbers the worker read (packed, or whole when its art fills its cells) --
    or, when the bundle's rows of colours have no room for it, the page's own way (`noImage`: null instead: the
@@ -149,7 +167,7 @@ export function loadTrackedStripRetinted(bundle, url, fw, fh, rgb) {
 function _stripOfNumbers(bundle, url, fw, fh, gen, m, noImage) {
   if ((_gen.get(bundle) || 0) !== gen) return [];
   const _madeT0 = performance.now();
-  const numSrc = stripAsNumbers(bundle, null, url, { w: m.w, h: m.h, idx: m.idx, pal: m.pal });
+  const numSrc = stripAsNumbers(bundle, null, url, { w: m.w, h: m.h, idx: m.idx, pal: m.pal, onRow: m.onRow });   /* v2.3.5044: + onRow */
   if (!numSrc) return noImage ? null : _stripByImage(bundle, url, fw, fh, gen);
   let set = _crops.get(bundle);
   if (!set) { set = new Set(); _crops.set(bundle, set); }

@@ -32,7 +32,8 @@
  *
  * THE KILL SWITCH `roomrow: false` in the live flags (liveops.js
  * `_roomRowOff`): nothing of the room's is added into the book (the counts
- * are dropped; _savesRefused still answers, card E's read).
+ * are dropped; _savesRefused still answers, card E's read), and the last one
+ * out writes nothing (v2.3.5124).
  *
  * Into the book: the counts kept in memory are added (bookAdd) at most
  * every FLUSH_MS, from the tick; the book writes its own row at most once a
@@ -47,10 +48,35 @@
  * sitting lost its last report and the room's last counts, and a sitting
  * under the pace its FIRST report too, the one carrying `died`.  So the
  * last leave (leave.js, where the tick stops) adds the counts and writes
- * the book at once, after any put already running (_roomRowLastOut): one
- * read and one put a room emptied, nothing when nothing waits or the book
- * is switched off (`daybook: false`).  What it cannot carry is its own
- * put's count in `rows`, taken after the write.
+ * the book at once, after any put already running (_roomRowLastOut).  What
+ * it cannot carry is its own put's count in `rows`, taken after the write.
+ *
+ * ...PACED, AND ONLY FOR WHAT IS NEW (v2.3.5124, sitting 5's review: the
+ * first cut had no pace, and since the book's own put is counted in `rows`
+ * something always waited -- every socket opened and closed into an empty
+ * room, no join needed, rewrote the day's whole record: up to 28,800 a day
+ * from one address, where the book writes at most 288; and a kick wrote it
+ * twice, its own leave and the runtime's close after it):
+ *   - only after a JOIN since the last such write (`owed`, set where a join
+ *     is counted).  Every report and every coin the book keeps comes from a
+ *     joined socket, and a joined socket never outlives an emptying, so a
+ *     join is what makes anything new; a socket that never joins writes
+ *     nothing, and the runtime's close after a kick finds nothing owed;
+ *   - at the book's own pace on the whole: LASTOUT.HAND turns in hand (a
+ *     sitting's reloads), one more each LASTOUT.EVERY_MS, and EVERY put of
+ *     the book spends one as it lands, the door's own paced puts included
+ *     (counted in the storage's wrapper).  So the book's puts, the last
+ *     one out's and the door's together, keep near its pace however the
+ *     joins and leaves come: an hour of them writes at most HAND + 12.  A
+ *     long sitting's paced puts spend what each pace gives back, so its
+ *     end still finds a turn.  A last one out with no turn keeps waiting
+ *     (`owed` stays) for the next turn, the next pace, or the room's
+ *     putting away (a room woken anew starts with HAND);
+ *   - never with the room row switched off (`roomrow: false` stops all of
+ *     this file's adds and writes), the book off (`daybook: false`), or
+ *     nothing waiting.
+ *   One read and one put a write.  cost-guard.test 15c holds the line,
+ *   roomrow.test 10 the storms.
  *
  * The part's tree, under the shape's number (a new shape never adds into an
  * old one's numbers):  room: { '1': { gap: [11], rows: [2], refused: [2],
@@ -58,11 +84,14 @@
  *
  * Suite: server/test/roomrow.test.mjs.
  */
-import { bookAdd, bookPut } from './daybook.js';
+import { bookAdd, bookPut, DAYBOOK } from './daybook.js';
 
 export const ROOMROW = Object.freeze({
   V: 1,
   FLUSH_MS: 60 * 1000,
+  /* v2.3.5124 (sitting 5): the last one out's writes -- HAND in hand, one
+     more each EVERY_MS (the book's own pace, daybook.js PACE_MS) */
+  LASTOUT: Object.freeze({ HAND: 3, EVERY_MS: 5 * 60 * 1000 }),
   /* ms between two ticks' starts, upper edges: a quiet room's ticks come
      about 23 apart (tickpace.js TARGET), a full thread's further */
   GAP_EDGES: Object.freeze([22, 24, 26, 28, 32, 40, 50, 75, 100, 200]),
@@ -101,26 +130,35 @@ export function roomRowTree(c) {
 
 /* v2.3.5124: the book written now, after the put already running if one
    is (a second read-add-put of the same day beside it would lose the first's
-   sums).  It reads the door's own memory (daybook.js `mem`: `days` waiting,
-   `putting` the running put, `lastPut` the pace's mark): roomrow.test 9
-   fails when that shape moves.  Nothing waits, or the book is off: null. */
+   sums), asking again when its turn comes (sitting 5: two last-outs inside
+   one put must not run side by side).  It reads the door's own memory
+   (daybook.js `mem`: `days` waiting, `putting` the running put, `lastPut`
+   the pace's mark): roomrow.test 9 fails when that shape moves.  Nothing
+   waits, or the book is off: null.  A put's failure is the door's (it gives
+   the sums back); nothing here throws. */
 function bookNow(room, now) {
   const b = room && room._daybook;
   if (!b || !b.days || !b.days.size) return null;
   if (typeof room._daybookOff === 'function' && room._daybookOff()) return null;
   const run = () => {
+    if (b.putting) return b.putting.then(run, run);
     if (!b.days.size) return null;
     b.lastPut = now;
-    const p = bookPut(room, now).finally(() => { if (b.putting === p) b.putting = null; });
+    const p = bookPut(room, now).catch(() => {}).finally(() => { if (b.putting === p) b.putting = null; });
     b.putting = p;
     return p;
   };
-  return b.putting ? b.putting.then(run, run) : run();
+  return run();
 }
 
 export const roomRowMethods = {
   _roomRowMem() {
-    if (!this._roomRow) this._roomRow = { c: blank(), flushedAt: 0, lastTick: 0, refused: { put: 0, newer: 0, lastAt: 0 } };
+    if (!this._roomRow) {
+      this._roomRow = { c: blank(), flushedAt: 0, lastTick: 0, refused: { put: 0, newer: 0, lastAt: 0 },
+        /* v2.3.5124 (sitting 5): the last one out's -- a join since its last
+           write, and its writes in hand ([turns, when counted]) */
+        owed: false, hand: [ROOMROW.LASTOUT.HAND, 0] };
+    }
     return this._roomRow;
   },
 
@@ -147,6 +185,10 @@ export const roomRowMethods = {
           const p = put.call(st, keyOrEntries, ...rest);
           try {
             room._roomRowMem().c.rows[0] += rowsOf(keyOrEntries);
+            /* v2.3.5124 (sitting 5): every put of the book, the door's own
+               included, spends a turn of the last one out's hand, so the two
+               together keep the book's pace (THE LAST ONE OUT, PACED) */
+            if (typeof keyOrEntries === 'string' && keyOrEntries.startsWith(DAYBOOK.PREFIX)) room._roomRowSpend(Date.now());
             if (p && typeof p.then === 'function') p.then(null, () => room._roomRowRefused('put'));
           } catch (e) { /* a count never stops a write */ }
           return p;
@@ -182,7 +224,9 @@ export const roomRowMethods = {
 
   /** join.js, as a join's state_sync goes: one join, by its protocol. */
   _roomRowJoin(protocolVersion) {
-    this._roomRowMem().c.joins[protocolVersion === 2 ? 1 : 0]++;
+    const m = this._roomRowMem();
+    m.c.joins[protocolVersion === 2 ? 1 : 0]++;
+    m.owed = true;   /* v2.3.5124: something new for the book at the last one out */
   },
 
   /** tick.js, at each tick's start: its gap from the last, and the counts
@@ -197,13 +241,44 @@ export const roomRowMethods = {
     if (now - m.flushedAt >= ROOMROW.FLUSH_MS) this._roomRowFlush(now);
   },
 
+  /** v2.3.5124 (sitting 5): the last one out's hand at `now`: [turns,
+   *  when counted], a turn back each LASTOUT.EVERY_MS up to HAND. */
+  _roomRowHand(now) {
+    const L = ROOMROW.LASTOUT;
+    const h = this._roomRowMem().hand;
+    if (h[1]) h[0] = Math.min(L.HAND, h[0] + Math.max(0, now - h[1]) / L.EVERY_MS);
+    h[1] = now;
+    return h;
+  },
+
+  /** ...a put of the book (the storage's wrapper): one turn spent, whoever
+   *  put it (owed, at most HAND below none: the door's own pace never
+   *  waits for the hand, the last one out does). */
+  _roomRowSpend(now) {
+    const h = this._roomRowHand(typeof now === 'number' ? now : Date.now());
+    h[0] = Math.max(-ROOMROW.LASTOUT.HAND, h[0] - 1);
+  },
+
   /** v2.3.5124: the last one out (leave.js): the counts into the book, and
-   *  the book written now, whatever its pace (the header's "THE LAST ONE
-   *  OUT").  Returns the put's promise (a test awaits it), or null. */
+   *  the book written now, whatever the book's pace -- after a join since
+   *  the last such write, and with a turn in hand (the header's "THE LAST
+   *  ONE OUT" and "PACED").  The put it starts, or the door's that its
+   *  own add started, spends the turn as it lands.  Returns the put's
+   *  promise (a test awaits it), or null. */
   _roomRowLastOut(now) {
     now = typeof now === 'number' ? now : Date.now();
+    const m = this._roomRowMem();
+    if (!m.owed || this._roomRowOff()) return null;
+    /* a put already running spends its turn as it lands: a turn beyond it */
+    const running = !!(this._daybook && this._daybook.putting);
+    if (this._roomRowHand(now)[0] < (running ? 2 : 1)) return null;   /* no turn: it stays owed */
     this._roomRowFlush(now);
-    return bookNow(this, now);
+    /* the flush's own add may have started the door's put (its first add,
+       or a pace come round), taking all that waited: that put is the write */
+    const p = bookNow(this, now) || (this._daybook && this._daybook.putting) || null;
+    if (!p) return null;
+    m.owed = false;
+    return p;
   },
 
   /** The counts into the day's book's `room` part, and a fresh start

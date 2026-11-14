@@ -595,6 +595,37 @@ const FAST = 110;
   const line = 13;
   check(`15b. an hour of adds on every tick writes the book ${rows.length} times, at most ${line} (one a 5-minute pace, and the worker's first)`, rows.length >= 1 && rows.length <= line, byPrefix(rows));
 }
+/* v2.3.5124 (card A, sitting 5's review): the room's last one out writes
+   the book at once (roomrow.js) -- only after a join, and at the book's
+   pace on the whole.  An hour of sockets opened and closed into the room,
+   none joining, and of a player joining, playing a few seconds and
+   leaving, every ten seconds each, the room row on and the tick running:
+   the book's rows, the door's and the last one out's together. */
+{
+  const { room, tickFn, state } = await makeRoom();
+  const w0 = state.writes.length;
+  const end = NOW + 60 * 60000;
+  let joins = 0;
+  while (NOW < end) {
+    const s = fakeWs();
+    room.sessions.set(s, baseSession());
+    await run(room, tickFn, 1000, null, FAST);
+    await room.webSocketClose(s, 1000, 'bye', true);
+    await run(room, tickFn, 4000, null, 1000);
+    const p = await join(room, 'cg_lastout');
+    joins++;
+    await run(room, tickFn, 3000, null, FAST);
+    await room.webSocketClose(p.ws, 1000, 'bye', true);
+    for (let i = 0; i < 4 && room._daybook && room._daybook.putting; i++) await room._daybook.putting;
+    await run(room, tickFn, 2000, null, 1000);
+  }
+  const rows = state.writes.slice(w0).filter((k) => k.startsWith(DAYBOOK.PREFIX));
+  /* a number, not the constants (rule 8): three in hand, twelve paces, and
+     the debt a running put can leave (the hand's floor).  Break proof: the
+     hand's line dropped from roomrow.js writes the book 354 times */
+  const line = 18;
+  check(`15c. an hour of sockets that never join and of ${joins} joins and leaves writes the book ${rows.length} times, at most ${line} (no write without a join; the book's pace on the whole)`, rows.length >= 1 && rows.length <= line, byPrefix(rows));
+}
 
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);
