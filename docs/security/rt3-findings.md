@@ -19,7 +19,7 @@ Nothing here touched the live game: local worker and node test rooms only.
 - The trade window moves any gold with no fee, hold or pace (`playerroads.js:82`
   `fee: 0, hold: 0, pace: 0`), and a character can trade the second it exists.
 - **Proof** (local, the real GameRoom in memory, card E's test room;
-  `scratchpad/bots/fleet-funnel.mjs`, copied to `docs/security/rt3-fleet-funnel.mjs`):
+  `scratchpad/bots/fleet-funnel.mjs`, copied to `docs/security/rt3-proofs/fleet-funnel.mjs`):
   200 new characters, each a new device id: join, spin, collect, trade-window all
   gold to one main. Result: `{"N":200,"mainGain":91500,"perAlt":458,"msgsPerAlt":12,"refused":{}}`.
   Nothing refused, nothing flagged. 2,208 storage rows (11 a throwaway).
@@ -217,3 +217,155 @@ Bot lab today (`node tools/qa/load/bot-lab.mjs 60`, seed 1, this checkout, 5 min
   style is generally not protected. LOW.
 - Fonts: OFL, from Google Fonts (`src/index.html:66`): the licence is fine; the
   privacy side (players' addresses sent to Google) is in the privacy part.
+
+### B6. Eight addresses of joined throwaways fill the one room (MEDIUM, from reading the code; availability, shared with RT-1/RT-2)
+
+- One room for the whole world, `MAX_PLAYERS = 120` (`index.js:766`); one address
+  holds at most 16 places (`flood.js:76` `IP_SOCKETS: 16`); a joined socket that
+  sends a real move now and then stays (the AFK sweep, `index.js:1202`, resets on
+  real input). Throwaways are free (B1). So 8 addresses (a phone hotspot and a few
+  cheap VPN exits) hold 128 places and every real player is told `room_full`.
+- Not run here (it needs many addresses; the node room has none). Suspected, not
+  proven by a run; each step is a quoted line.
+- **Owner's lever today**: the `ip_sockets` live flag (lower it to 4: 30
+  addresses needed) and `max_players`. **Smallest fix**: B1's account check; then
+  a place in the room held by a character with some play behind it ahead of a
+  new one (a fresh character is the first to give its place up). Route: the
+  server split's room door (SERVER-SPLIT-PLAN), or RT-1/RT-2's list.
+
+## Player safety
+
+Proof scripts: `docs/security/rt3-proofs/` (each runs with `node <file>` from the
+repo root against the node test room; written for this review, not suites).
+
+### S1. One troll cannot be stopped: no word filter, no silence, and a frozen player is back in a second (HIGH, proven)
+
+- **No lane filters words**: room chat (the whole world), area, whispers to any
+  stranger by name, party, friend messages, shop threads. `chatguard.js`
+  `cleanChatText` strips invisible and right-to-left characters, stacked accents,
+  emoji runs; no word list anywhere in `server/src` or `src`
+  (`docs/specs/chat-guard.md:194` "No word filter. That is a later choice for the
+  owner.").
+- **The owner's levers**: kick and freeze one `bp_` id (`admin.js` ~375-394). No
+  silence or timeout, no rename, no ban by device or address.
+- **Proof** (`t4-ban.mjs`): a frozen id is refused `frozen`; a NEW id from the SAME
+  device and SAME address is let in. The account check is off (B1).
+- **Harm**: slurs and sexual content reach every player, 13-year-olds included
+  (About says 13+), and the owner has no way to remove the person. The About panel
+  promises "Harassment, hate and spam get muted or removed" (`AboutPanel.jsx`),
+  a promise the tools cannot keep. **Likelihood**: near certain once strangers play.
+- **Plan**: `docs/FUN-SOCIAL-PLAN.md:233-240` Phase 4 (a word filter, timeouts, a
+  server block) starts "at ~20 regular players or the first spam complaint": a
+  trigger, no card. 10.9 (card Q) has a server-kept block; Q has no card file.
+- **Smallest fix** (a new card, "the moderator's levers", ~150 lines + suites):
+  1. `silenced:<pid>{until}` set from admin.js and the Test panel, checked at the
+     chat entry points (the mute's own list, `MUTABLE_RELAY_TYPES`, already names
+     them): ~40 lines;
+  2. a freeze also refuses the frozen character's known device ids
+     (`auth:<pid>.devs`): ~30 lines; plus B1's account check (owner);
+  3. a short slur list in `cleanChatText`, matched after folding look-alike
+     letters, digits-for-letters and spacing; the line dropped: ~80 lines plus
+     the list. The list's words are the owner's call.
+
+### S2. A name can be anything, and changed mid-game into "SYSTEM: send your login" (HIGH, proven)
+
+- `track` carries `name` among its look keys (`index.js` ~588-594
+  `TRACK_COSMETIC_KEYS`), cut to length only (~5014), written to the player's state
+  and sent to everyone (~5061-5071). The owner's "names are permanent"
+  (`join.js` ~855-867) is defeated after join.
+- **Proof** (`t1-names.mjs`, re-run by me): after one `track`, the name was
+  `"Owner‮ (admin)\n\n\nSYSTEM: your account is banned, send your login"`;
+  the victim got it in `player_update`, and room chat used it as the speaker's
+  name. At creation a zero-width space, a right-to-left override and a newline
+  were stored for good in `char:<pid>`; a second character took the victim's exact
+  name, which makes every whisper to that name "ambiguous" (`chatlanes.js` ~172).
+- Also: the honest name box (`NameModal.jsx:1350`) checks nothing but 20
+  characters; the arena takes the request's own claimed name (`gladiator.js:312`)
+  and everyone reads "<name> is the Gladiator champion!"; no owner badge anywhere.
+- **Harm**: posing as the game or the owner to scam login keys or gold; slurs on
+  name tags and the public boards. The device lock blunts a stolen key
+  (`devicelock.js`, on by default), but not a gold scam or a slur.
+- **Plan**: 11.4 (card K PR 12, tag 5197) templates the game's mail sentences
+  only; it does not say what a name may be, nor the rename through `track`.
+- **Smallest fix** (~100 lines; card K takes `track`'s row, or a new card):
+  `name` out of `TRACK_COSMETIC_KEYS` (or stamped from `session.char.name`, as the
+  look is); one `cleanCharName` modelled on `cleanPetName` (`petbook.js` ~228-235:
+  letters, digits, space, `'-`, 3-16); a reserved list (brotown, admin, system,
+  owner, mod, gm, after folding); unique names through a `name:<folded>` key (a
+  storage-key registry row); an owner rename lever.
+
+### S3. The feedback board: anyone on the internet writes to it, nobody can delete, and one post blanks the game for whoever opens it (HIGH, proven)
+
+- `/api/feedback` goes straight to the Feedback object (`index.js:412-414`), before
+  the origin lock and outside the room's wire door; `playerId` and `playerName` are
+  taken as given; no type or length check on the name (`feedback.js` ~106-130);
+  the 5-an-hour limit is keyed on the claimed id; no delete route.
+- **Proof** (`t2-feedback.mjs`, re-run by me): 20 of 20 posts as "BroTown Team
+  (official) ... whisper your Login Key" accepted; a 5,000-character name accepted;
+  an OBJECT as the name accepted and served back by `/list`; 50 up-votes from
+  made-up ids counted; `DELETE` 404.
+- **The crash** (`react-object-name.cjs`, React 18.3.1 as the game uses):
+  rendering the panel's `{t.playerName || 'Bro'}` with an object THROWS "Objects
+  are not valid as a React child". `src/` has no error boundary
+  (no `componentDidCatch` / `getDerivedStateFromError`; one root, `main.jsx`), so
+  React unmounts the whole UI. Every player who opens Feedback while that ticket
+  is among the newest shown loses the game's screens until they reload; the owner
+  cannot remove it without a code change. Not run in a browser; each step proven.
+- **Harm**: a scam notice in the game's own board; the board turned into a crash
+  for everyone. **Likelihood**: medium (the route is in the page's network tab).
+- **Plan**: not covered (card K's hostile-values suite, PR 3, covers rows the
+  ROOM handles; this route never reaches the room).
+- **Smallest fix** (~30 lines, `feedback.js` and `FeedbackPanel.jsx`; a new card or
+  card K's door, routed by the planning session): the name a string cut to 24
+  (else refused); render `String(...)`; an owner DELETE behind the admin key; and
+  later a room-issued token (the session) for a post. Plus one error boundary
+  round each window (~20 lines) so no one panel can blank the game.
+
+### S4. A harasser flushes the evidence before the report (MEDIUM, proven)
+
+- A report quotes the speaker's last 3 lines across all lanes, in memory
+  (`chatmod.js:33` `CONTEXT_LINES 3`, `_chatModRemember`). Proof (`t5-evidence.mjs`):
+  two abusive whispers, then three harmless lines to someone else: the report held
+  "nice weather / lol / gg". A deploy wipes the lines too. The owner gets no alert;
+  reports wait in the Test panel. Reporting is only from the player card
+  (`InspectPlayerPanel.jsx` ~711-721), not from a chat line.
+- **Smallest fix** (~20 lines, `chatmod.js`): keep the lines each player RECEIVED
+  (a ring per recipient, 10), and save those with the report. Route: card Q (10.9
+  evidence) or the moderator's-levers card.
+
+### S5. Trade requests can be spammed, each with a popup and a sound (MEDIUM, proven)
+
+- `trade2.js` ~216: every `trade2_open` sends the card again. Proof
+  (`t6-invites.mjs`): 100 cards in 10 s at the victim, each "<name> wants to
+  trade!" and a sound; party invites are paced (5 s, 2 got through); duel
+  challenges ~4.7 a second (the relay bucket); `friend_request` unpaced. Block is
+  the phone's only (`docs/specs/block-list.md:3-5`), and a new character is not on
+  it; `store_dm` is in neither block table.
+- **Smallest fix** (~10 lines): party.js's `INVITE_REPEAT_MS` copied into
+  `trade2.js` and `friends.js`. Route: card Q (10.9's server block) or a new card.
+
+### S6. A new player can be killed and stripped at the town's edge (owner's design; MEDIUM)
+
+- No man's land starts at the level-1 ring (`nomansland.js` ~17-24, `FIRST_TIER: 1`
+  ~131); a player kill takes the whole bag, gathering tools, all gold and spare gear.
+  No protection for a new character; a level-1 throwaway can camp the exit.
+- The owner's call. A one-check option: no player-kill on a character under
+  level 3 or in its first 30 minutes (`_nmlAllowed`).
+
+### S7. Minors (owner and LAWYER)
+
+- Nothing asks an age or shows terms at creation; "meant for players aged 13 and
+  over" is only in About, two taps deep. Whispers from any stranger by name are on
+  by default; no setting hides world chat. Gold-only gambling (L6).
+- Smallest fix: a rules-and-age line at character creation, and whispers from
+  friends only for a new character (both cheap); the age and its consequences are
+  the owner's and a lawyer's.
+
+### Ruled out (safety)
+
+- Markup through names or chat (no `dangerouslySetInnerHTML`; every `innerHTML` is
+  a constant or escaped); a last-second trade swap (`trade2.js` ~229-236, 262-272);
+  a duel stake raised after the card (`duel.js` ~239-250); body-blocking (players do
+  not collide); emote text (fixed lists); forging the board from outside (read-only
+  route); a non-string name through `track` (the wire door refuses it,
+  `t3-numname.mjs`); a stolen login key alone (the device lock).
