@@ -256,7 +256,7 @@ so node tests it and any file may ask it.
   and `sw` only one with a form. The addresses also throw each switch the
   moved read's row needs: a move that would add a need's meaning fails.
 - **The outside reads** (a census, only falls): `location.search` in the
-  page's code outside the reader, 220 at its first count (227 before the
+  page's code outside the reader, 221 at its first count (228 before the
   first seven reads moved). Card T's PRs 7 on lower it as reads move in.
 - The first reads moved (PR 6): `?starcue`, `?guidearrow` (two files),
   `?nmlask`, `?loginspin`, `?nomapdetail`, `?tapthrough`, chosen in files no

@@ -43,7 +43,7 @@ import { SWITCHES } from './lib/switches.mjs';
 import { blankComments, pageFiles, pageForm, READER_FILE, ROOT } from './lib/switchScan.mjs';
 
 /* the outside reads: only falls */
-const OUTSIDE_LINE = 220;   /* its first count, v2.3.5306 (227 before the first seven reads moved) */
+const OUTSIDE_LINE = 221;   /* its first count, v2.3.5306: 228 with sitting 17's `?slimewalk` (card P's slimeSprites.js, P still running: not moved), 221 after the first seven reads moved */
 
 /* ── the reads moved into the reader: each old test word for word, as a
    function of the address (S) ── */

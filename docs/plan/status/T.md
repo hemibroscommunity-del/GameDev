@@ -19,7 +19,7 @@ state: ready
 
 - #1863 (5306): the page's one reader, src/game/switches.js (`sw`, `swHas`,
   `swValue`, `thrown`; forms and needs from the table, check 13); its guard
-  switch-reader.test (moves held to their old answers; outside reads 220).
+  switch-reader.test (moves held to their old answers; outside reads 221).
   First seven reads moved. Then PR 7 on: the reads moved, a few systems a PR.
 
 ## Found
