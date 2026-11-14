@@ -13,10 +13,29 @@
  * A line counts only when its § is a heading of docs/TRAPS.md, its <file>
  * is in the repository and its date is a date: a line with no break tried
  * is not a proof (the plan's rule 8).  A trap two tests hold counts once.
+ * <file> is a path from the root, or a file's name alone (v2.3.5321): a
+ * suite never names one of the big files by its folder (card B's
+ * tests-by-system), so a break in `BroTown.jsx` is written by its name, and
+ * counts when a file of that name is under src/, server/ or tools/.
  * tools/guards/README.md says the form.
  */
 import { readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+
+/* every file's name under the folders a break can be in */
+function namesUnder(root, dirs) {
+  const out = new Set();
+  const walk = (d) => {
+    let es = [];
+    try { es = readdirSync(join(root, d), { withFileTypes: true }); } catch { return; }
+    for (const e of es) {
+      if (e.name === 'node_modules' || e.name.startsWith('.')) continue;
+      if (e.isDirectory()) walk(d + '/' + e.name); else out.add(e.name);
+    }
+  };
+  for (const d of dirs) walk(d);
+  return out;
+}
 
 export const LINE = /TRAPS §(\d+) \((the rule|one case)\): .+? Break: (\S+?): .+ -> FAIL \(tried (\d{4}-\d{2}-\d{2})\)\./;
 
@@ -27,6 +46,8 @@ export function heldLines({ root, read }) {
     for (const f of readdirSync(join(root, dir)).sort()) if (f.endsWith('.test.mjs')) tests.push(dir + '/' + f);
   }
   const headings = new Set([...read('docs/TRAPS.md').matchAll(/^## (\d+)\. /gm)].map((m) => m[1]));
+  let names = null;
+  const isFile = (f) => (f.includes('/') ? existsSync(join(root, f)) : (names || (names = namesUnder(root, ['src', 'server', 'tools']))).has(f));
   const out = [];
   for (const test of tests) {
     const src = read(test);
@@ -34,7 +55,7 @@ export function heldLines({ root, read }) {
     if (a < 0 || b < a || src.slice(0, a).trim() !== '') continue;   /* the header is the file's first thing */
     for (const l of src.slice(a, b).split('\n')) {
       const m = LINE.exec(l);
-      if (!m || !headings.has(m[1]) || !existsSync(join(root, m[3]))) continue;
+      if (!m || !headings.has(m[1]) || !isFile(m[3])) continue;
       out.push({ trap: Number(m[1]), kind: m[2], file: m[3], test, tried: m[4] });
     }
   }
