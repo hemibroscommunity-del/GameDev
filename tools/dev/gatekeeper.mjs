@@ -37,7 +37,7 @@
  * another phone test.
  */
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -90,7 +90,10 @@ const cleanup = () => {
   if (cleaned) return; cleaned = true;
   if (keep) { console.log(`\nthe worktree is kept: ${tree}\n  take it away with: git worktree remove --force ${tree}`); return; }
   try { git(['worktree', 'remove', '--force', tree], root); } catch { /* best effort */ }
+  /* the commands' logs stay only when one was red (their path is printed) */
+  if (!keepLogs) try { rmSync(work, { recursive: true, force: true }); } catch { /* best effort */ }
 };
+let keepLogs = false;
 process.on('SIGINT', () => { cleanup(); process.exit(130); });
 process.on('SIGTERM', () => { cleanup(); process.exit(143); });
 
@@ -162,6 +165,6 @@ for (const s of STEPS.slice(steps.length)) console.log(`not run  ${s.say}   (--u
 console.log(red.length
   ? `\n${red.length} command(s) RED on the whole.  Drop one branch and run again to find whose it is.`
   : `\nall green on the whole${steps.length < STEPS.length ? ' (as far as it was run)' : ''}.  Nothing was merged: the list is the owner's to merge.`);
-if (red.length || keep) console.log(`the commands' whole output: ${logs}`);
+if (red.length || keep) { keepLogs = true; console.log(`the commands' whole output: ${logs}`); }
 cleanup();
 process.exit(red.length ? 1 : 0);
