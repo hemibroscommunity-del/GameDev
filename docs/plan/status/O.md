@@ -1,6 +1,6 @@
 card: O
 branch: claude/plan-o-10-queue (one branch a PR: claude/plan-o-<n>-<word>; begun from main)
-prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832 (merged); #1841 (5228, sitting 16), #1836 (5226: after #1837), #1850 (5229), PR 10 (5230): ready
+prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832 (merged); #1841 (5228, sitting 16), #1836 (5226: after #1837), #1850 (5229), #1854 (5230): ready
 state: ready
 
 ## Done
@@ -16,7 +16,7 @@ state: ready
 - #1850 (5229): the passes (shine, shadows, still water) knobs of the chip
   axis after the rate; `?ladderpass=0`; (A) revised: a kept rung keeps the
   rate only (the planning session's word); `ladder-passes.test` (new).
-- PR 10 (5230): the strip slice the lanes' `queue` knob (4 ms; `thirty` 8),
+- #1854 (5230): the strip slice the lanes' `queue` knob (4 ms; `thirty` 8),
   never the frame's length; BUDGETS part 8's #6 gone.
 
 ## Next
