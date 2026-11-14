@@ -42,8 +42,17 @@ controller**.
   a pixel rung waited for a veil. The governor tries them up last and steps
   them only for a chip-bound phone (`docs/specs/pixel-budget.md`).
 - An **override** pins a knob, over the lane and the ladder (an off-ramp, or
-  a fallback for a known bug). None yet: PR 8 moves the fallbacks into the
-  table, PR 12 the off-ramps.
+  a fallback for a known bug). v2.3.5228 (PR 8): the fallbacks. A row says
+  `when`, a question of `DEV_ASKS` (`software`, `computer`, `windows`,
+  `mac`) that `deviceProfile.js` alone answers (`devAsk`; the page's own
+  answers handed in with `useDevAsk`). `program` is pinned to `three` for a
+  software renderer and for a computer; `look` to `baked` on Windows and on
+  a Mac. The two choices (`paletteTex.js` `oneBatchChoice`,
+  `lookPaletteChoice.js`) read the address first, then `laneKnob`, with the
+  device's facts in hand (`askingAs`), and give every device the answer and
+  the `why` it got before (`server/test/one-program.test.mjs`). Neither is a
+  rung: both are chosen once behind the loading screen. PR 12 brings the
+  off-ramps.
 - The **rung** (PR 2) is where the governor stands on the ladder: rungs taken
   on each axis. Until PR 2 it is always the row. v2.3.5224 (the gatekeeper's
   sitting 11): a knob is **live** once its row marks it moved (`liveKnobs()`);

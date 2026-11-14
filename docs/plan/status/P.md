@@ -1,6 +1,6 @@
 card: P
 branch: claude/plan-p-15-slime-walk (made again from main, as the planning session asked from the fire goblin on)
-prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810 (5241-5255, merged); #1840 (5257, monster-fire-goblin) ready; monster-slime (5256) ready
+prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810, #1840 (5241-5255, 5257, merged); #1846 (5256), #1853 (5258) ready
 state: working
 
 ## Done
@@ -13,13 +13,14 @@ state: working
   (`gearSheets.js`): `artCache` 97.1 -> 95.1; 0.49 MB by the census.
 - #1805 (5253) `pack-page` on the worker; #1806 (5254) the pixel readers'
   guard; #1810 (5255) the Equipment figure's 22 ms named (the box).
+- #1840 (5257) the fire goblin's frame pack: census 8.10 -> 6.65 MB.
 
 ## Next
 
 - 5256 `monster-slime` (#1846), mended at sitting 16: the stat window's
   films keep the hit's first frame as a still; a workshop dungeon of slimes
-  loads their look behind its screen and lets it go once out. Three runs
-  again (the still, 64 KB); `artCache` 95.1 -> 90.6 holds.
+  loads their look behind its screen and lets it go once out. Main (#1840)
+  merged in; three runs again. `artCache` 95.1 -> 90.6 holds.
 - Then the owner's two ("go recommended"): gear worn at login loaded
   behind the loading screen, a piece put on mid-play its stand-in until its
   sheet is in; the rank trophy icons drawn by nothing removed.
@@ -33,7 +34,7 @@ state: working
 
 ## Needs
 
-- Answered (2026-11-14): the fire goblin by road A', then the slimes on
-  the same road; each branch from main from the fire goblin on.
+- Answered (2026-11-14): the fire goblin by road A', then the slimes;
+  each branch from main from the fire goblin on.
 - Answered: `pack-page` by road B; P mends the probe; a numbers PR may
   raise `buffers` by what it moves there; slimes as you walk.
