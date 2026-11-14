@@ -33,8 +33,10 @@
  *   2. server/src/wire/in.js: `name: 'pose'` -> `name: 'posex'`         -> FAIL 1 and 2
  *   3. server/src/wire/out.js: a copy of the `tick` row                 -> FAIL 3
  *   4. server/src/wire/in.js: the first `mayStart: 'never-helper'` -> 'robot' -> FAIL 4
- *   5. src/networking/wsClient.js: a `case 'zz_probe':` above `case 'tick':` -> FAIL 5
+ *   5. the phone's wsClient.js: a `case 'zz_probe':` above `case 'tick':` -> FAIL 5
  *   6. server/src/market.js: `if (request.method === 'GET' && path.startsWith('/zz')) {}` -> FAIL 6
+ *   7. server/src/wire/out.js: a note `"the phone reads type: 'tick'"` on a row -> FAIL 4
+ *      (v2.3.5062, the gatekeeper's review: tried by hand, 2026-11-14)
  *
  * Run from the repository's root: node tools/guards/wire-table.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
@@ -42,6 +44,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
+import { readSystem } from './lib/filesOf.mjs';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const read = (f) => readFileSync(join(ROOT, f), 'utf8');
@@ -78,27 +81,34 @@ const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
 /* ── the keys, from the code ── */
 /* a switch's cases: every `case '<type>':` one indent in from the
-   `switch (msg.type) {` that follows `start`, up to its `default:` */
-function switchCases(file, start) {
-  const lines = read(file).split('\n');
-  const at = lines.findIndex((l) => start.test(l));
-  const sw = lines.findIndex((l, i) => i > at && /switch \(msg\.type\) \{/.test(l));
-  const ind = /^(\s*)/.exec(lines[sw])[1].length + 2;
-  const caseRe = new RegExp('^ {' + ind + "}case '([a-z0-9_]+)':");
-  const endRe = new RegExp('^ {' + ind + '}default:');
-  const out = [];
-  let i = sw + 1;
-  for (; i < lines.length && !endRe.test(lines[i]); i++) { const m = caseRe.exec(lines[i]); if (m) out.push(m[1]); }
-  return { cases: out, found: at >= 0 && sw > at && i < lines.length };
+   `switch (msg.type) {` that follows `start`, up to its `default:`, in the
+   file of the `wire` system that holds `start` (read by system, never by a
+   path: v2.3.5062, card B's tests-by-system) */
+function switchCases(start) {
+  for (const [file, src] of readSystem('wire', { only: /\.m?jsx?$/ })) {
+    const lines = src.split('\n');
+    const at = lines.findIndex((l) => start.test(l));
+    if (at < 0) continue;
+    const sw = lines.findIndex((l, i) => i > at && /switch \(msg\.type\) \{/.test(l));
+    if (sw < 0) continue;
+    const ind = /^(\s*)/.exec(lines[sw])[1].length + 2;
+    const caseRe = new RegExp('^ {' + ind + "}case '([a-z0-9_]+)':");
+    const endRe = new RegExp('^ {' + ind + '}default:');
+    const out = [];
+    let i = sw + 1;
+    for (; i < lines.length && !endRe.test(lines[i]); i++) { const m = caseRe.exec(lines[i]); if (m) out.push(m[1]); }
+    return { file, cases: out, found: i < lines.length };
+  }
+  return { file: null, cases: [], found: false };
 }
 const setOf = (file, re) => { const m = re.exec(read(file)); return m ? [...stripC(m[1]).matchAll(/'([a-z0-9_]+)'/g)].map((x) => x[1]) : []; };
-const router = switchCases('server/src/index.js', /^ {2}async _onMessage\(/);
+const router = switchCases(/^ {2}async _onMessage\(/);
 const PRIV = setOf('server/src/index.js', /PRIVILEGED_EVENTS = new Set\(\[([\s\S]*?)\]\)/);
 const RELAY = setOf('server/src/relay.js', /TYPES:\s*Object\.freeze\(new Set\(\[([\s\S]*?)\]\)\)/);
 const echoes = [...(/RELAY_ECHO_ALLOWLIST = new Map\(\[([\s\S]*?)\n\]\);/.exec(read('server/test/wire-audit.test.mjs')) || [, ''])[1]
   .matchAll(/^\s*\['([a-z0-9_]+)',/gm)].map((m) => m[1]);
 const OUT_EXTRA = echoes.filter((t) => !RELAY.includes(t));
-const direct = switchCases('src/networking/wsClient.js', /ws\.onmessage\s*=/);
+const direct = switchCases(/ws\.onmessage\s*=/);
 check('0: the counts read (the router\'s switch, the two lists, the echo list, the phone\'s switch)',
   router.found && router.cases.length > 100 && PRIV.length > 100 && RELAY.length > 10 && echoes.length > 3 && direct.found && direct.cases.length > 50,
   { router: router.cases.length, priv: PRIV.length, relay: RELAY.length, echoes: echoes.length, direct: direct.cases.length });
@@ -161,6 +171,22 @@ check('2: every HTTP row is an in row named http:/...', WIRE_HTTP.every((r) => r
     if (own(r, 'note') && (!Array.isArray(r.note) || !r.note.length || !r.note.every((n) => typeof n === 'string' && n))) e(r, 'note');
   }
   check('4: every value is on its column\'s closed list (columns.js; CODES)', bad.length === 0, bad.slice(0, 20));
+}
+
+/* ── 4b. the table reads to wire-audit as data, never as a send ──
+   v2.3.5062 (the gatekeeper's review, sitting 4): wire-audit gathers every
+   `type: '<name>'` and `_xxxSend(x, '<name>'` in server/src as a message the
+   worker sends.  A field named `type` is written quoted (`'type':`), but a
+   note quoting `type: 'tick'` would add a send nobody makes, and could let
+   that suite pass for a type nothing sends. */
+{
+  const said = [];
+  for (const [file, src] of readSystem('wire', { only: /^server\/src\/wire\// })) {
+    src.split('\n').forEach((ln, i) => {
+      if (/\btype:\s*['"][a-z_0-9]+['"]/.test(ln) || /_[A-Za-z0-9]+Send\([^,)]+,\s*'[a-z_0-9]+'/.test(ln)) said.push(file + ':' + (i + 1));
+    });
+  }
+  check('4: no line of the table reads to wire-audit as a message sent (`type: \'<name>\'`, `_xxxSend(x, \'<name>\'`)', said.length === 0, said);
 }
 
 /* ── 5. the phone's direct switch ── */
