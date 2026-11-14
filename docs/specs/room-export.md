@@ -58,6 +58,18 @@ any record it meets that the list does not give (a second wall, counted in
 `skipped`). The suite §3 walks every page of the list and checks nothing
 off it comes out, even from a storage that hands one back.
 
+## A value it must not give, inside a record it gives
+
+The gatekeeper's second medium (sitting 17, verified by a node probe): a
+mail entry from the login wheel's pot carries the opId
+`loginspin:d:<device id>:<day>` (the wheel counts a device as one account,
+`loginspin.js` `_loginSpinAcct`), so a device id rode out in `inbox:`, by
+prefix and in a character's pages. The export masks it on the page's copy
+(`EXPORT_MASKS` in `server/src/admin.js`: `loginspin:d:masked:<day>`). The
+stored opId is never changed: a pot retried after a deploy finds its stamp
+by that exact id, and a new id would pay it twice. `room-export.test` §6b
+is the probe.
+
 ## What it costs
 
 It writes nothing (not even a line in the owner's log). It reads: a page

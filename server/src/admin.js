@@ -72,6 +72,9 @@ export const SNAPSHOT = {
  *     when asked for by name (a 400), and left out of a page that meets it
  *     (counted in `skipped`).  EXPORT.KEPT_OUT says why for each of a
  *     character's records left out.
+ *   - A VALUE IT MUST NOT GIVE inside a record it gives is masked on the
+ *     page's copy (EXPORT_MASKS: a login-wheel pot's opId in the mail holds
+ *     a device id), never in storage.
  *   - A READ THE OWNER PAYS FOR each time it runs: a page reads up to its
  *     `limit` rows (`read` in the answer), and the whole room once over is
  *     every row it holds.  It costs only when the owner runs it, behind the
@@ -111,6 +114,27 @@ export const EXPORT = Object.freeze({
   ID_RE: /^[A-Za-z0-9_.-]{1,120}$/,
   CURSOR_MAX: 400,
 });
+
+/* v2.3.5286 (the gatekeeper's second medium, sitting 17, verified by a node
+   probe): a record the list gives may still hold a value it must not give.
+   One today: a mail entry's opId from the login wheel's pot is
+   'loginspin:d:<device id>:<day>' (loginspin.js _loginSpinAcct: the wheel
+   counts a DEVICE as one account), so a device id rode out in `inbox:`.  The
+   export masks it on its copy; the stored opId is never changed (a pot
+   retried after a deploy finds its stamp by that exact id: changed, it
+   would pay twice).  Each mask: the prefix of the records it reads, and a
+   function from a record to its copy for the page. */
+const DEVICE_OPID = /^(loginspin:d:)[^:]*(:.*)?$/;
+export const EXPORT_MASKS = Object.freeze({
+  'inbox:': (v) => (Array.isArray(v) ? v.map((e) => (e && typeof e === 'object' && typeof e.opId === 'string' && DEVICE_OPID.test(e.opId)
+    ? { ...e, opId: e.opId.replace(DEVICE_OPID, (m, a, b) => a + 'masked' + (b || '')) } : e)) : v),
+});
+
+/** A record as a page gives it: masked by EXPORT_MASKS where its prefix has one. */
+export function exportMasked(key, v) {
+  for (const p of Object.keys(EXPORT_MASKS)) if (typeof key === 'string' && key.startsWith(p)) return EXPORT_MASKS[p](v);
+  return v;
+}
 
 /* the marks the list allows: a key is given only when the mark that owns it
    (the longest marked prefix it starts with, storagemarks.js marksOf) is one */
@@ -195,7 +219,7 @@ export async function exportPage(storage, q) {
   let skipped = 0;
   for (const [k, v] of got) {
     if (!exportAllowed(k) || (own && marksOf(k) !== own)) { skipped++; continue; }
-    rows.push({ k, v });
+    rows.push({ k, v: exportMasked(k, v) });
   }
   return {
     ok: true, ...(s.prefix ? { prefix: s.prefix, marks: { value: own.value, whose: own.whose } } : { player: s.player }),

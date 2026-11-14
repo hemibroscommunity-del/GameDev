@@ -29,6 +29,10 @@
  *   5. THE ASK: a cursor from another ask, a limit not a number, an id with
  *      a `:` are refused; a limit past the most is clamped;
  *   6. IT WRITES NOTHING, and a page reads at most its limit;
+ *   6b. A VALUE IT MUST NOT GIVE (the gatekeeper's second medium, sitting 17,
+ *      its node probe): a login-wheel pot's opId in the mail,
+ *      'loginspin:d:<device id>:<day>', comes out masked by prefix and by
+ *      player; the stored opId is unchanged; other entries as they are;
  *   7. THE REGISTRY: no marked prefix is the start of another (so a prefix's
  *      page is that prefix's alone), and every character's prefix the list
  *      gives is in their pages.
@@ -38,9 +42,10 @@
  *   - `!exportAllowed(k) ||` deleted from exportPage          -> FAIL 3 (a record no mark owns, handed back, given)
  *   - `opt.startAfter = cursor` deleted from exportPage     -> FAIL 2 (a page given again: the walk never ends)
  *   - `hasOwnProperty.call(f, 'roomexport') &&` deleted     -> FAIL 1 (no flag reads as off)
+ *   - `v: exportMasked(k, v)` made `v` in exportPage          -> FAIL 6b (the device id comes out)
  */
 import { makeStorage, settle } from './testroom.mjs';
-import { EXPORT, exportAllowed, exportSources, exportPage } from '../src/admin.js';
+import { EXPORT, EXPORT_MASKS, exportAllowed, exportSources, exportPage } from '../src/admin.js';
 import { STORAGE_MARKS } from '../src/storagemarks.js';
 
 let failures = 0, passes = 0;
@@ -227,6 +232,26 @@ const keysOf = (pages) => pages.flatMap((r) => (r.rows || []).map((x) => x.k));
   await walk(st.storage, { prefix: 'rpgsnap:', limit: 2 });
   await settle();
   check('6. a whole walk writes nothing', st.batches() === before && JSON.stringify([...st._store.entries()].sort()) === snap);
+}
+
+/* ══════════ 6b. A VALUE IT MUST NOT GIVE ══════════ */
+{
+  const DEV = 'devsecret9x';
+  const box = [
+    { opId: 'loginspin:d:' + DEV + ':20261114', ts: 1, source: 'dailyspin', kind: 'gold', payload: { amount: 30 }, note: 'Free daily spin' },
+    { opId: 'loginspin:p:' + A + ':20261113', ts: 2, source: 'dailyspin', kind: 'gold', payload: { amount: 20 }, note: 'Free daily spin' },
+    { opId: 'questitem:' + A + ':7', ts: 3, source: 'quest', kind: 'item', payload: { key: 'herb', count: 2 }, note: '' },
+  ];
+  const st = makeStorage([['inbox:' + A, box], ['rpg:' + A, { coins: 5 }]]);
+  const stored = JSON.stringify(st._store.get('inbox:' + A));
+  const byPrefix = await walk(st.storage, { prefix: 'inbox:' });
+  const byPlayer = await walk(st.storage, { player: A });
+  const out = JSON.stringify([byPrefix, byPlayer]);
+  check('6b. a login-wheel pot\'s device id never comes out of the mail, by prefix or by player (the probe)', !out.includes(DEV) && byPrefix[0].rows.length === 1 && byPlayer.some((p) => p.rows.some((r) => r.k === 'inbox:' + A)), out.slice(0, 300));
+  const got = byPrefix[0].rows[0].v;
+  check('6b. ...masked, its day kept; the character\'s own wheel and the other entries as they are', got[0].opId === 'loginspin:d:masked:20261114' && got[1].opId === box[1].opId && JSON.stringify(got[2]) === JSON.stringify(box[2]) && got[0].payload.amount === 30, got);
+  check('6b. ...the stored opId unchanged (a retried pot finds its stamp by it)', JSON.stringify(st._store.get('inbox:' + A)) === stored && st._store.get('inbox:' + A)[0].opId.includes(DEV));
+  check('6b. ...the masks are on records the list gives', Object.keys(EXPORT_MASKS).every((p) => EXPORT.ALLOW.includes(p)));
 }
 
 /* ══════════ 7. THE REGISTRY ══════════ */
