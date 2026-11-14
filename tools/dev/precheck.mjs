@@ -56,10 +56,10 @@
  *                      whole service (v2.3.1945 cost a red `playable` to
  *                      find). Sets/objects are fine — they coerce to a
  *                      handler with no handlers in it.
- *   8. shim-allowlist — WARN: repo-wide. Every `.send({ type: 'x' })` in
- *                      src/ must have a passthrough line in
- *                      `channelShim.send` (src/networking/wsClient.js),
- *                      which is an ALLOWLIST, not a transport. A type
+ *   8. shim-allowlist — WARN: repo-wide. Every `.send({ type: 'x' })` (and
+ *                      `act('x')`) in src/ must have a row in the action
+ *                      door (src/game/actions.js, v2.3.5185) that sends it
+ *                      alone: the shim reads those rows. A type
  *                      with no line there never leaves the browser and
  *                      the failure is silent in both directions —
  *                      TRAPS #18. Ate `firemaking_request` (v2.3.1702)
@@ -584,18 +584,18 @@ function sanitize(src, { jsxText = false } = {}) {
  * pre-existing one that this diff never touched.  A type listed here is either
  * a real dead send or a deliberate no-op — either way it should be a decision,
  * not an accident. */
+/* v2.3.5185: the pass-through is the action door's rows now
+   (src/game/actions.js, card K): the shim reads them, so this reads them too
+   -- a direct type is a row whose way sends it alone (`alone`, `claim`,
+   `aftermove`), and a send through act() is a sender like any other. */
 {
   let shimTypes = null;
   try {
-    const ws = read('src/networking/wsClient.js');
-    const from = ws.indexOf('var channelShim = {');
-    const to = ws.indexOf('track: function track(', from);
-    if (from !== -1 && to > from) {
-      shimTypes = new Set([...ws.slice(from, to).matchAll(/msg\.type === '([a-z_0-9]+)'/g)].map((m) => m[1]));
-    }
+    const door = await import(pathToFileURL(join(root, 'src/game/actions.js')).href);
+    shimTypes = new Set(Object.keys(door.ACTIONS).filter((n) => door.ENV_OF_WAY[door.ACTIONS[n].way] === 'direct'));
   } catch { /* unreadable — fall through to the skip below */ }
   if (!shimTypes || !shimTypes.size) {
-    add('WARN', 'shim-allowlist', 'could not locate channelShim.send in src/networking/wsClient.js — check skipped');
+    add('WARN', 'shim-allowlist', 'could not read the action door\'s rows (src/game/actions.js) — check skipped');
   } else {
     /* Every client file that calls .send({ type: '…' }).  wsClient itself is
        exempt: it talks to the raw socket, it is not a caller of the shim. */
@@ -610,6 +610,13 @@ function sanitize(src, { jsxText = false } = {}) {
             if (mm[1] === 'broadcast') continue; // the shim's own event tail
             if (!senders.has(mm[1])) senders.set(mm[1], `${p}:${lineOf(srcText, mm.index)}`);
           }
+          /* v2.3.5185: and a direct send through the door (an event's row is
+             checked by tools/guards/action-door.test.mjs) */
+          if (/import\s*\{[^}]*\bact\b[^}]*\}\s*from\s*'[^']*actions\.js'/.test(srcText)) {
+            for (const mm of srcText.matchAll(/\bact\(\s*'([a-z_0-9]+)'/g)) {
+              if (!senders.has(mm[1])) senders.set(mm[1], `${p}:${lineOf(srcText, mm.index)}`);
+            }
+          }
         }
       }
     };
@@ -617,9 +624,9 @@ function sanitize(src, { jsxText = false } = {}) {
     const missing = [...senders].filter(([t]) => !shimTypes.has(t));
     if (missing.length) {
       for (const [t, where] of missing) {
-        add('WARN', 'shim-allowlist', `'${t}' is sent at ${where} but has no passthrough in channelShim.send — it never reaches the worker (TRAPS #18)`);
+        add('WARN', 'shim-allowlist', `'${t}' is sent at ${where} but has no row in the action door (src/game/actions.js) that sends it alone — it never reaches the worker (TRAPS #18)`);
       }
-    } else add('PASS', 'shim-allowlist', `all ${senders.size} client->server message type(s) have a channelShim passthrough`);
+    } else add('PASS', 'shim-allowlist', `all ${senders.size} client->server message type(s) have an action door row that sends them (src/game/actions.js)`);
   }
 }
 
@@ -662,7 +669,9 @@ function sanitize(src, { jsxText = false } = {}) {
           /* The type can sit several lines below the `.send(` — two of the
              game's sends are written that way (prog3_allocate, stats_update),
              and a single-line regex silently skips them. Scan a window. */
-          if (!lines[i].includes('.send(')) continue;
+          /* v2.3.5185: a send through the action door is a send too */
+          const viaDoor = /\bact\(\s*'/.test(lines[i]);
+          if (!lines[i].includes('.send(') && !viaDoor) continue;
           /* The type can sit several lines below the `.send(` — two of the
              game's sends are written that way (prog3_allocate, stats_update)
              — and three more pass a msg OBJECT built elsewhere, where no type
@@ -671,11 +680,11 @@ function sanitize(src, { jsxText = false } = {}) {
              visible here. */
           let guard = null;
           for (let j = i; j > Math.max(-1, i - 12); j--) {
-            const g = /if \(([^)]*channel[^)]*)\)/.exec(lines[j]);
+            const g = (viaDoor ? /if \(([^)]*_serverMonsters[^)]*)\)/ : /if \(([^)]*channel[^)]*)\)/).exec(lines[j]);
             if (g) { guard = g[1]; break; }
           }
           if (!guard || !/_serverMonsters/.test(guard)) continue;
-          const m = /type:\s*'([a-z_0-9]+)'/.exec(lines.slice(i, i + 7).join('\n'));
+          const m = viaDoor ? /\bact\(\s*'([a-z_0-9]+)'/.exec(lines[i]) : /type:\s*'([a-z_0-9]+)'/.exec(lines.slice(i, i + 7).join('\n'));
           if (m && (m[1] === 'broadcast' || ALLOWED.has(m[1]))) continue;
           hits.push(m ? `'${m[1]}' at ${p2}:${i + 1}`
             : `an unnamed send at ${p2}:${i + 1} (the type is built elsewhere — check it by hand)`);

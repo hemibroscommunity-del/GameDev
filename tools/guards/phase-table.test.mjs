@@ -66,6 +66,20 @@
  *      shield-guard.test, its `today` left in)  -> FAIL 2 (twice: not on
  *      DOOR_SUITES, and a door carrying today)
  *  11. `import x from "./y.js";` at the top of phases.js    -> FAIL 2b
+ * v2.3.5209 (the gatekeeper's sitting 9: a suite-held door was held only by
+ * that suite's pattern; now the tree reads it too), each tried by hand:
+ *  12. `S.currentZone = "wheel"` in a new function of wheelHome.js -> FAIL 2
+ *      (and zone-leftovers §6a)
+ *  13. `Object.assign(S, { currentZone: "wheel" })` there   -> FAIL 2 (the
+ *      suite's regex passes it: the hole this closes)
+ *  14. `ps.life = "alive"` in a new function of monsterlife.js -> FAIL 2
+ *  15. tileRenderer.js's `this.currentZone =` renamed (its besides gone)
+ *                                                         -> FAIL 2
+ * v2.3.5212 (the party door: a Map's set / delete / clear are writes):
+ *  16. `this._partyByPlayer.set(accepterId, p)` back in _handlePartyAccept
+ *                                                         -> FAIL 2
+ *  17. `room._partyByPlayer.delete(id)` in a new function of alliance.js
+ *                                                         -> FAIL 2
  *
  * Run from the repository's root: node tools/guards/phase-table.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
@@ -76,8 +90,10 @@ import { pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import { ROOT } from './lib/systems.mjs';
 
-/* Set 2026-11-14 at its first count.  Only the gatekeeper lowers it. */
-export const TODO_LINE = 31;
+/* Set 2026-11-14 at its first count.  Only the gatekeeper lowers it.
+   v2.3.5371 (the gatekeeper, sitting 14, main 1cce0b2): 31 -> 30, the
+   count since card L's trade door (#1809). */
+export const TODO_LINE = 30;
 
 /* the machines every side must have a row for: SHAPES part 5's names and
    step 5.3b's list (the plan's own `dungeon`, `connection`, `loading`,
@@ -209,9 +225,43 @@ const keyOf = (r) => r.name + ' (' + r.side + ')';
      phase })`, each in the function the tree says it is in (a method whose
      parameters run over two lines is its own name, not the one above).
    - every place a scan names must still write it (a stale place fails). */
+/* v2.3.5209 (the gatekeeper's sitting 9, a Found for card L's PR 4): a
+   suite's own reading is a pattern (zone-leftovers §6a, a regex over the
+   text), so a door it holds is ALSO read here off the syntax tree, the one
+   reader: every write of the field's `prop` on the row's side is in the
+   row's function and file, or is one of the `besides` (another object's
+   property of the same name, named with why). */
 const DOOR_SUITES = Object.freeze({
-  'server/test/life-door.test.mjs': { field: 'ps.life', fn: '_lifeTo', holds: '§2: no .life / .dying / .dead written in server/src but in life.js' },
-  'server/test/zone-leftovers.test.mjs': { field: 'S.currentZone', fn: 'changeZone', holds: '§6a: the only writer of the game\'s place is changeZone' },
+  'server/test/life-door.test.mjs': { field: 'ps.life', fn: '_lifeTo', holds: '§2: no .life / .dying / .dead written in server/src but in life.js',
+    prop: 'life', besides: [{ file: 'server/src/monsterlife.js', text: 'm.life = ', why: 'a monster\'s count of lives, not a player\'s phase' }] },
+  'server/test/zone-leftovers.test.mjs': { field: 'S.currentZone', fn: 'changeZone', holds: '§6a: the only writer of the game\'s place is changeZone',
+    prop: 'currentZone', besides: [{ file: 'src/rendering/systems/tileRenderer.js', text: 'this.currentZone = ', why: 'the tile renderer\'s own note of the zone it drew' }] },
+  /* v2.3.5210: the trade door (card L PR 5's first) */
+  'server/test/trade-door.test.mjs': { field: 's.state', fn: '_t2To', holds: '§2: no .state written in server/src but in _t2To and NOT_A_TRADE\'s',
+    prop: 'state', besides: [
+      ...['server/src/index.js', 'server/src/marketplace.js', 'server/src/leaderboard.js', 'server/src/arena.js', 'server/src/feedback.js']
+        .map((file) => ({ file, text: 'this.state = state', why: 'the Durable Object\'s own handle' })),
+      { file: 'server/src/dungeon.js', text: 'inst.state = ', why: 'a dungeon instance: its own machine (the `dungeon` row)' },
+    ] },
+  /* v2.3.5222: card O's ladder (the governor's rung, drawLanes.js `LANE._rung`) -- the planning session's word, sitting 12:
+     the rung is a property of a module object, so the tree reads its writes as every other door's */
+  'server/test/frame-pacer.test.mjs': { field: '_rung', fn: 'setRung', holds: '§17: setRung is called by the governor alone (framePacer.js), and the rung is written in setRung and the tests\' reset, nowhere else',
+    prop: '_rung', besides: [{ file: 'src/game/drawLanes.js', text: 'LANE._rung = ROW', why: 'the tests\' reset (_resetLanes), never the page\'s' }] },
+  /* v2.3.5211: the duel door */
+  'server/test/duel-door.test.mjs': { field: 'd.status', fn: '_duelTo', holds: '§2: no .status written in server/src but in _duelTo and NOT_A_DUEL\'s',
+    prop: 'status', besides: [
+      { file: 'server/src/alliance.js', text: 'w.status = ', why: 'an alliance war\'s end, its own record' },
+      { file: 'server/src/clans.js', text: 'war.status = ', why: 'a clan war\'s end, its own record' },
+      { file: 'server/src/gladiator.js', text: ' t.status = ', why: 'an arena tournament: the `arena` row (the space before `t` keeps out `mt.status =`, the gatekeeper\'s low)' },
+      { file: 'server/src/arena.js', text: 'tournament.status = ', why: 'the old Arena object\'s tournament (kept for its binding)' },
+    ] },
+  /* v2.3.5212: the party door -- a Map, so its set / delete / clear are
+     writes too (writesIn) */
+  'server/test/party-door.test.mjs': { field: 'this._partyByPlayer', fn: '_partyIn', holds: '§2: no set, delete, clear or new Map of _partyByPlayer in server/src but in _partyIn and its births',
+    prop: '_partyByPlayer', besides: [
+      { file: 'server/src/party.js', text: 'this._partyByPlayer = new Map()', why: 'the map\'s birth, empty, before a load or an accept fills it (through _partyIn)' },
+      { file: 'server/src/clanparty.js', text: 'this._partyByPlayer = new Map()', why: 'the map\'s birth, empty, before a clan becomes a party (through _partyIn)' },
+    ] },
 });
 const SCAN_DOORS = Object.freeze({
   'session (worker)': 'session-door.test plays the phases but fails no second writer of session.phase',
@@ -267,6 +317,9 @@ function writesIn(rel, prop, value) {
     UnaryExpression(path) { if (value === undefined && path.node.operator === 'delete' && propOf(path.node.argument) === prop) hit(path, path.node); },
     CallExpression(path) {
       const c = path.node.callee;
+      /* v2.3.5212: a door's field that is a Map (the party's
+         this._partyByPlayer) is written by its own set, delete and clear */
+      if (value === undefined && c.type === 'MemberExpression' && ['set', 'delete', 'clear'].includes(propOf(c)) && propOf(c.object) === prop) { hit(path, path.node); return; }
       if (!(c.type === 'MemberExpression' && c.object.type === 'Identifier' && c.object.name === 'Object' && propOf(c) === 'assign')) return;
       for (const a of path.node.arguments.slice(1)) {
         if (a.type !== 'ObjectExpression') continue;
@@ -292,6 +345,22 @@ function writesIn(rel, prop, value) {
       if (!want) bad.push(`${keyOf(r)}: ${held.suite} is not on DOOR_SUITES (the suites that fail a second writer of a door\'s field): a door is built, then listed`);
       else if (want.field !== r.field || want.fn !== r.fn) bad.push(`${keyOf(r)}: ${held.suite} holds ${want.field} through ${want.fn}, not ${r.field} through ${r.fn}`);
       else if (!existsSync(join(ROOT, held.suite))) bad.push(`${keyOf(r)}: its suite ${held.suite} is gone`);
+      /* v2.3.5209: and the tree's own reading of it, beside the suite's */
+      if (want && want.field === r.field && want.fn === r.fn) {
+        if (!str(want.prop)) { bad.push(`${keyOf(r)}: its DOOR_SUITES line names no prop to read off the tree`); continue; }
+        let mine = 0;
+        const seen = new Set();
+        for (const f of filesUnder(SRC_OF[r.side])) {
+          for (const w of writesIn(f, want.prop)) {
+            if (f === r.file && w.fn === r.fn) { mine++; continue; }
+            const b = (want.besides || []).find((x) => x.file === f && w.text.includes(x.text));
+            if (b) { seen.add(b); continue; }
+            bad.push(`${keyOf(r)}: ${f}:${w.line} (in ${w.fn || 'no function'}) writes .${want.prop} outside ${r.file} ${r.fn}, read off the tree: ${w.text.trim().slice(0, 90)}`);
+          }
+        }
+        if (!mine) bad.push(`${keyOf(r)}: ${r.file} ${r.fn} writes no .${want.prop} any more (a stale door)`);
+        for (const b of want.besides || []) if (!seen.has(b)) bad.push(`${keyOf(r)}: its besides entry ${b.file} "${b.text}" is gone (delete it)`);
+      }
       continue;
     }
     if (!Object.prototype.hasOwnProperty.call(SCAN_DOORS, keyOf(r))) { bad.push(`${keyOf(r)}: held by a scan, but not on SCAN_DOORS: a door is built, then listed`); continue; }

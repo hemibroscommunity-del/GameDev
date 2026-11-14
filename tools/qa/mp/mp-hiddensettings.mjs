@@ -19,6 +19,7 @@
  *      (out/hiddensettings.png).
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const MARK = 9.137421;   /* FLAG_AT's value for this test: a number nothing else carries */

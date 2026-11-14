@@ -28,6 +28,7 @@
  * and 20 of 26 looks north-east and north-west the plain body.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const SETTLE_MS = +(process.env.BT_WB_SETTLE_MS || 600000);

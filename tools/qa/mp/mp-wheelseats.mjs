@@ -35,6 +35,7 @@
  */
 import * as H from './harness.mjs';
 import { SWIM_IN, SWIM_OUT } from '../../../src/game/wheelSwim.js';
+export const lane = 'full';
 
 const VIEW = { width: 390, height: 844 };
 

@@ -572,3 +572,72 @@ export async function census() {
   }
   return { worker, page, savers, found };
 }
+
+/* ═══ v2.3.5304: what a worker function reads (rule 4's readers, card T PR 4) ═══
+   readsOf(file, fn) -> Set of the flag names the function `fn` in `file`
+   reads: directly (any read the scanner finds inside its body) or through
+   the methods it calls (`this._x(`, `room._x(`, `_x(` in the same file), to
+   `depth` calls deep.  A row with needs names its reader; the guard asks
+   that the reader reads each need (a dependent turns off with what it
+   needs only if its reader asks).  */
+let _readIndex = null;
+function readIndex() {
+  if (_readIndex) return _readIndex;
+  const w = scanWorker();
+  const code = new Map();
+  const byFn = new Map();      /* name -> [{ file, from, to, flags:Set }] */
+  for (const file of workerFiles()) {
+    const src = blankComments(read(file));
+    code.set(file, src);
+    for (const f of functionsOf(src)) {
+      if (!byFn.has(f.name)) byFn.set(f.name, []);
+      byFn.get(f.name).push({ file, from: f.from, to: f.to, flags: new Set() });
+    }
+  }
+  for (const [n, reads] of w.names) {
+    for (const r of reads) {
+      if (r.shape === 'promise' || r.shape === 'table') continue;
+      const src = code.get(r.file);
+      if (!src) continue;
+      const fn = fnAt(src, r.line - 1);
+      if (!fn) continue;
+      const e = (byFn.get(fn.name) || []).find((x) => x.file === r.file && x.from === fn.from);
+      if (e) e.flags.add(n);
+    }
+  }
+  _readIndex = { code, byFn, names: w.names };
+  return _readIndex;
+}
+export function readsOf(file, fn, depth = 4) {
+  const { code, byFn } = readIndex();
+  const out = new Set();
+  const seen = new Set();
+  (function visit(f, fname, d) {
+    const key = f + '#' + fname;
+    if (seen.has(key)) return;
+    seen.add(key);
+    const e = (byFn.get(fname) || []).find((x) => x.file === f) || (byFn.get(fname) || [])[0];
+    if (!e) return;
+    for (const n of e.flags) out.add(n);
+    if (d <= 0) return;
+    const lines = code.get(e.file).split('\n').slice(e.from, e.to + 1).join('\n');
+    for (const m of lines.matchAll(/(?:\b(?:this|room|self|r)\s*\.\s*(_[A-Za-z][\w$]*)|(?<![\w$.])([A-Za-z_$][\w$]*))\s*\(/g)) {
+      const callee = m[1] || m[2];
+      if (callee === fname || /^(?:if|for|while|switch|catch|return|typeof|function)$/.test(callee)) continue;
+      /* a method anywhere; a plain function in this file only */
+      if (m[1]) visit(e.file, callee, d - 1);
+      else if ((byFn.get(callee) || []).some((x) => x.file === e.file)) visit(e.file, callee, d - 1);
+    }
+  })(file, fn, depth);
+  return out;
+}
+/* the functions whose reads include all of `flags` (for finding a reader) */
+export function readersOf(flags) {
+  const { byFn } = readIndex();
+  const out = [];
+  for (const [name, list] of byFn) for (const e of list) {
+    const got = readsOf(e.file, name);
+    if (flags.every((f) => got.has(f))) out.push(e.file + ' ' + name);
+  }
+  return out;
+}

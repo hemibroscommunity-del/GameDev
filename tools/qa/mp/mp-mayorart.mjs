@@ -8,6 +8,7 @@
  * the player's scale with its feet on the NPC's own y.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 /* v2.3.3399: the WELCOME plate marked seen and the coach's tips done, with the
    game's own flags (welcomeBanner.js, QuestCoach), before the first script.

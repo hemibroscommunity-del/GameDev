@@ -22,6 +22,7 @@
  * Pictures: tools/qa/mp/out/killxp-<view>-{after,before}.png (the label in
  * the air, the flight stretched x8; a kill with ?xpfly=0, the lines at once). */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const VIEWS = [
   { id: 'phone', opts: { viewport: { width: 390, height: 844 }, touch: true } },

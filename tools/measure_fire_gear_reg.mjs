@@ -47,7 +47,7 @@ const WEB = await H.freePort();
 const srv = await H.serveDist(WEB);
 const browser = await H.launch();
 const page = await (await browser.newContext({ deviceScaleFactor: 2 })).newPage();
-await page.goto(`http://localhost:${WEB}/`, { waitUntil: 'domcontentloaded' });
+await page.goto(H.withLane(`http://localhost:${WEB}/`), { waitUntil: 'domcontentloaded' });
 
 const fit = await page.evaluate(async () => {
   const FW = 384, FH = 512, N = 8, RANGE = 120;

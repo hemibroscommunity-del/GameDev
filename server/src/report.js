@@ -131,9 +131,12 @@ export const SELF_PROGRAMS = Object.freeze(['one', 'palette', 'look', 'sharp', '
    MAX (wider than the page's ladder, drawLanes.js ladderDepth(): the page's
    ladder may grow without a deploy; mirror-audit holds it under) */
 export const RUNG = Object.freeze({ MAX: 31 });
-/* src/game/clientOff.js CLIENT_SAVERS' ids */
+/* src/game/clientOff.js CLIENT_SAVERS' ids.  v2.3.5235: + `govern` (card O's
+   governor switched off for every phone): a report then says the ladder
+   stood still.  An older worker drops a name it does not list (swCell), so
+   either side ships first */
 export const SAVERS = Object.freeze(['sfxcache', 'voicecap', 'onecopy', 'picnumbers', 'codelazy', 'groundlean', 'heaplean',
-  'lookpalette', 'lookshirt', 'soundgate', 'lookarmour', 'lookfolk', 'gfxlean', 'viewcap']);
+  'lookpalette', 'lookshirt', 'soundgate', 'lookarmour', 'lookfolk', 'gfxlean', 'viewcap', 'govern']);
 /* src/debug/report.js WHERE and GAP_EDGES (ten bins) */
 export const WHERE = Object.freeze(['town', 'farm', 'dungeon', 'commons', 'frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', 'verdant', 'other']);
 export const GAP_BINS = 10;

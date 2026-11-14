@@ -122,7 +122,7 @@ const A = room.playerState.bp_ol_a;
   const stranded = [];
   for (const [sw, bw, st] of [[10, 10, 10], [20, 20, 20], [40, 40, 40], [30, 1, 1], [5, 25, 12], [100, 100, 100]]) {
     setSkills(A, sw, bw, st);
-    prog3RespecPoints(A.prog3, false);
+    prog3RespecPoints(A.prog3, false, 'points_reset');   /* v2.3.5283: a road of the skill points' door */
     room._prog3Recompute(A);
     let guard = 0;
     while (A.prog3.shared > 0 && guard++ < 5000) {
@@ -135,7 +135,7 @@ const A = room.playerState.bp_ol_a;
   check('3: every shared point can be spent (the per-stat bound has room) -- 10/10/10, 20/20/20, 40/40/40, 30/1/1, 5/25/12, 100/100/100',
     stranded.length === 0, stranded);
   setSkills(A, 1, 1, 1);
-  prog3RespecPoints(A.prog3, false);
+  prog3RespecPoints(A.prog3, false, 'points_reset');   /* v2.3.5283: a road of the skill points' door */
   room._prog3Recompute(A);
 }
 

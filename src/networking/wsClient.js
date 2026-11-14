@@ -16,6 +16,7 @@
    body is untouched. Returns the effect cleanup (or undefined when gated
    by showNameModal/showLogin — same as the original early return). */
 import { processGameEvent } from '@/networking/gameEvents.js';
+import { actionWay, namesOfWay, settledSends, doorRefuse, setActionTransport } from '@/game/actions.js'; /* v2.3.5185: the action door's rows (grand plan step 5.8) */
 import { chestRevealBus } from '@/ui/mobile/ChestReveal.jsx'; /* v2.3.2820: the daily chest's reveal */
 import { loginSpinBus } from '@/game/loginSpinWheel.js'; /* v2.3.4295: the login wheel */
 import { applyRewardsState, applyDailyProgress } from '@/game/dailyRewards.js'; /* v2.3.3140: the free spin, daily quests, the season */
@@ -5440,24 +5441,10 @@ export function setupWebSocket(ctx) {
      * Combat-critical actions (attacks, PvP, duels, trades) flush immediately.
      * Track calls pass through unchanged (already throttled to 2s).
      */
-    var PRIORITY_EVENTS = new Set(['pvp_confirmed', 'stunned', 'duel_accept', 'duel_decline', 'duel_wager_request', 'pvp_threat', 'threat_response', 'trade_offer', 'trade_accept', 'trade_reject', 'clan_war_kill', 'clan_war_end', 'clan_war_declare', 'clan_invite',
-    /* v2.3.1132: two-sided trade commands -- the window is a
-       server-truth renderer, so a 33ms batch delay would make every
-       stage/confirm click feel laggy. */
-    'trade2_open', 'trade2_set', 'trade2_ready', 'trade2_confirm', 'trade2_cancel', 'trade2_stage_weapon', 'trade2_unstage_weapon', /* v2.3.1754: trade2_ready — TRAPS #18, the third leg */
-    'trade2_pets', /* v2.3.3122: the trade window's pet lane (trade2.js _handleTrade2Pets) */
-    /* v2.3.1185: party commands -- same server-truth-renderer posture
-       as trade2; invite/accept clicks should not sit in a batch. */
-    'party_invite', 'party_accept', 'party_decline', 'party_leave', 'party_kick', 'party_chat',
-    /* v2.3.2301: clan_leave, for the same reason party_leave is here.  The
-       Leave button became a server-truth renderer (it no longer clears its own
-       UI and waits for the clan_state echo), so a 33ms batch behind position
-       updates is 33ms of a button that looks broken. */
-    'clan_leave',
-    /* v2.3.2136: the two new chat lanes.  Priority for the same reason
-       party_chat is -- a line you just typed should not sit in the 33ms
-       input batch behind position updates. */
-    'area_chat', 'whisper']);
+    /* v2.3.5185: MADE FROM THE ACTION DOOR'S ROWS (src/game/actions.js, way
+       'priority'): the names this Set held by hand, and their comments, are rows
+       there now.  A new priority event is a row, nothing here. */
+    var PRIORITY_EVENTS = namesOfWay('priority');
     var INPUT_BATCH_WINDOW = 33; // ms — match server tick rate for smooth remote movement
     /* ═══ v2.3.1635: ADAPTIVE POSITION RATE ═══
        Position updates were ~87% of this game's entire Cloudflare request
@@ -5831,7 +5818,8 @@ export function setupWebSocket(ctx) {
        answer yet" (farmBus.js).  One the worker ignores (a script's junk)
        raises no false alarm: any frame clears the watch, and the worker
        pings every ~3 s. */
-    var SETTLED_SENDS = { node_strike: 1, extraction_start: 1, prog3_allocate: 1, stat_allocate: 1, cook_request: 1, farm_open: 1, farm_act: 1, farm_buy: 1, farm_order: 1 };
+    /* v2.3.5185: made from the action door's rows (their `settled` flag) */
+    var SETTLED_SENDS = settledSends();
     var channelShim = {
       send: function send(msg) {
         if (!ws || ws.readyState !== WebSocket.OPEN) {
@@ -5852,8 +5840,15 @@ export function setupWebSocket(ctx) {
           if (!_settleSentAt) _settleSentAt = Date.now();
           if (msg.type === 'node_strike') _lastStrike = { msg: msg, at: Date.now(), answered: false };
         }
-        /* Direct message types — sent immediately to server, not as broadcast events */
-        if (msg.type === 'monster_damage') {
+        /* Direct message types — sent immediately to server, not as broadcast events.
+           v2.3.5185: WHICH, AND HOW, ARE THE ACTION DOOR'S ROWS (src/game/actions.js,
+           grand plan step 5.8, card K).  This was a chain of 66 `if (msg.type ===
+           ...)` lines kept by hand -- an ALLOWLIST, where a type with no line was
+           silently dropped (TRAPS #18) -- and every line's comment moved to its
+           row there, word for word.  The three that do more than pass through
+           keep their code, and their notes, here. */
+        var _way = actionWay(msg.type);
+        if (_way === 'claim') {   /* monster_damage */
           /* v2.3.3254: in one frame with whatever is waiting -- the move, if
              one is due, rides along in the claim's frame (no extra frame, so
              v2.3.1765's "an extra packet per swing" no longer applies) */
@@ -5861,279 +5856,8 @@ export function setupWebSocket(ctx) {
           wsOut(msg);
           return;
         }
-        /* v2.3.2026: opening a golden ticket.  This list is an ALLOWLIST — a
-           type with no line here is silently dropped and the feature runs on
-           nothing, which is what TRAPS #18 and the harvest handshake below
-           record.  The redeem is the only way a cape is granted, so a missing
-           case would mean tickets that never open, in public, during the
-           event. */
-        if (msg.type === 'cape_redeem') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.2109: equipping/unequipping the cape you won. Same allowlist
-           rule as the redeem above -- a type with no line here is silently
-           dropped and the feature runs on nothing (TRAPS #18). */
-        if (msg.type === 'cape_equip') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.2127: drinking a potion out of the bag. Same allowlist rule --
-           a type with no line here is silently dropped and the feature runs on
-           nothing (TRAPS #18). This one would fail in the worst way: the
-           bottle stays in the bag and nothing happens, which reads as a broken
-           item rather than as a broken send. */
-        /* v2.3.2820: Open Chest (ItemDetailPopup) -> dailychest.js.  The shim
-           passes only the types it names, so without this the button sent
-           nothing at all -- caught by mp-polish opening a real chest. */
-        if (msg.type === 'chest_open') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.3140: the daily rewards' four asks (dailyRewards.js) ->
-           dailyrewards.js.  TRAPS #18: a type this allowlist does not name never
-           leaves the browser, and the Spin button would turn a wheel nothing
-           answers. */
-        /* v2.3.4295: the login wheel's two asks (loginSpinWheel.js) -> loginspin.js */
-        if (msg.type === 'loginspin_ask' || msg.type === 'loginspin_go' || msg.type === 'loginspin_double' || msg.type === 'loginspin_collect') {
-          wsOut(msg);
-          return;
-        }
-        if (msg.type === 'rewards_get' || msg.type === 'daily_spin' || msg.type === 'daily_reroll' || msg.type === 'season_claim') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.2822: Smelt at the blacksmith (SmithyPanel) -> smelting.js. */
-        if (msg.type === 'smelt_bar') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.3127: the farm (FarmPanel's Feed & Seed window) -> farm.js.
-           Without these three lines the window would ask and never hear back
-           -- TRAPS #18, the allowlist's one way to fail silently. */
-        /* v2.3.3134: + farm_order, the Feed & Seed's order board (farmorders.js). */
-        if (msg.type === 'farm_open' || msg.type === 'farm_act' || msg.type === 'farm_buy' || msg.type === 'farm_order') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.3120: pet trapping -- the Woodworker's Traps tab, the TRAP
-           pop-up and the Pets page (game/trapping.js, game/petBook.js) ->
-           trapping.js / petbook.js.  TRAPS #18: a type with no line here is
-           silently dropped, and the button would do nothing at all. */
-        /* v2.3.3139: five logs into one hardened wood (the Woodworker's
-           Harden tab, HardenedWoodTab.jsx) -> hardenedwood.js.  TRAPS #18:
-           without this line the Make button would send nothing at all. */
-        if (msg.type === 'make_hardened_wood') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.3525: Lil Bro's race (game/race.js) -> race.js.  TRAPS #18:
-           without this line Race! would send nothing at all. */
-        if (msg.type === 'race_start') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.3776: the skateboard (game/ride.js) -> ride.js.  TRAPS #18:
-           without this line the board button would send nothing at all. */
-        if (msg.type === 'ride') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.3539: a rest at the Hotel or on your farm's bed (game/rest.js)
-           -> rest.js.  TRAPS #18: without this line Rest would send nothing
-           at all. */
-        if (msg.type === 'rest_request') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.3785: the Bank's vault (game/bank.js) -> bank.js.  TRAPS #18:
-           without these the window would send nothing at all. */
-        if (msg.type === 'bank_open' || msg.type === 'bank_deposit' || msg.type === 'bank_withdraw') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.3748: standing in a burning heap (game/heapBurn.js) ->
-           heapburn.js.  TRAPS #18: without this line the worker never hears
-           and nobody burns. */
-        if (msg.type === 'heap_burn') {
-          wsOut(msg);
-          return;
-        }
-        if (msg.type === 'make_traps' || msg.type === 'trap_arm' || msg.type === 'pet_active'
-            || msg.type === 'pet_name' || msg.type === 'pet_release'
-            || msg.type === 'pet_house_buy') {   /* v2.3.3123: more room in the Pet House */
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.3092: Forge armor from bars (SmithyPanel's Armor tab) ->
-           armorforge.js.  TRAPS #18: without this the request never leaves. */
-        if (msg.type === 'forge_armor') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.3141: Salvage and Use an essence (SmithyPanel's Salvage tab) ->
-           salvage.js.  TRAPS #18: without these the requests never leave. */
-        if (msg.type === 'smith_salvage' || msg.type === 'essence_apply') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.4012: Reveal on a mystery piece's card (game/revealBag.js) ->
-           revealbag.js.  TRAPS #18: without this the ask never leaves. */
-        if (msg.type === 'reveal_item') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.3091: the shield on the arm (game/shieldWear.js) -> shieldwear.js.
-           TRAPS #18: without this line the report never leaves the browser. */
-        if (msg.type === 'shield_wear') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.3392: a held pose -- sit, sleep, flop, a dance
-           (game/emoteMoves.js) -> poses.js, which keeps it on the player.
-           TRAPS #18: without this line the pose never leaves the browser. */
-        if (msg.type === 'pose') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.3393: "/roll" or "/flip" (game/dice.js) -> dice.js, which rolls.
-           TRAPS #18: without this line the ask never leaves the browser. */
-        if (msg.type === 'dice') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.3473: Drop, from the bag's item card (game/itemDrop.js) ->
-           itemdrop.js.  TRAPS #18: without this line the ask never leaves the
-           browser, and the item would stay in the bag with nothing said. */
-        if (msg.type === 'item_drop') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.3527: the title on your card, from the Achievements page
-           (game/achievements.js sendAchvTitle) -> achievements.js _achvTitle,
-           which answers with a fresh achv_state.  TRAPS #18: without this line
-           the ask never leaves the browser and "Use as title" waits for an
-           answer that never comes. */
-        if (msg.type === 'achv_title') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.4036: Inspect on a fish and the biggest-fish boards
-           (game/fishWeigh.js) -> fishlog.js.  TRAPS #18: without these the
-           asks never leave the browser and the weigh-in card waits forever. */
-        if (msg.type === 'fish_inspect' || msg.type === 'fish_board_request') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.4393: the daily spin's records (game/spinBoard.js) -> boards.js.
-           TRAPS #18: without this the ask never leaves the browser. */
-        if (msg.type === 'spin_board_request') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.4545: the Journey page's ask (game/accuracy.js askAccuracy) -> accuracy.js.  TRAPS #18. */
-        if (msg.type === 'acc_request') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.4453: the chest's ask (game/climbActions.js openRiseChest) -> risechest.js.  TRAPS #18. */
-        if (msg.type === 'rise_chest_open') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.3187: a gem into the shield (game/shieldGem.js) -> shieldgem.js.
-           TRAPS #18: without this line the ask never leaves the browser. */
-        if (msg.type === 'shield_gem') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.3513: a gem into a weapon (game/weaponGem.js) -> weapongem.js.
-           TRAPS #18: without this line the ask never leaves the browser. */
-        if (msg.type === 'weapon_gem') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.3516: a land's shards cracked, raw gems combined
-           (game/shardCrack.js) -> shardcrack.js.  TRAPS #18: without these
-           lines the asks never leave the browser. */
-        if (msg.type === 'shard_crack' || msg.type === 'gem_combine') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.3250: the open world map's watch (game/presence2.js
-           sendMapWatch: open, every 4 s, shut) -> presence2.js.  TRAPS #18:
-           without this line the watch never left the browser and the open map
-           was sent no far player at all -- mp-presence2's first run. */
-        if (msg.type === 'map_watch') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.3530: the window's Attack is the attack (game/nmlAsk.js
-           sendChoice) -> nomansland.js _handleNmlAttack: both skulls at
-           once.  TRAPS #18: without this line the choice never leaves the
-           browser. */
-        if (msg.type === 'nml_attack') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.3770: the lock after a red skull's death (game/noMansLand.js
-           nmlLockAsk, nmlLockAllow) -> nomansland.js _handleNmlLockAsk,
-           _handleNmlLockAllow.  TRAPS #18: mp-nmllock's first run found the
-           rematch's "?" and "Let them attack you again" never left the
-           browser without this line. */
-        if (msg.type === 'nml_lock_ask' || msg.type === 'nml_lock_allow') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.3313: the alliance (game/alliance.js, the Saloon's Alliance
-           part) -> alliance.js: the leader's Name and Declare war, and anyone's
-           board.  TRAPS #18: without this line all three would send nothing. */
-        if (msg.type === 'alliance_name' || msg.type === 'alliance_war' || msg.type === 'alliance_board') {
-          wsOut(msg);
-          return;
-        }
-        if (msg.type === 'potion_drink') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.1704: THE HARVEST HANDSHAKE'S MISSING HALF.  TRAPS #18 again,
-           and this one had been silently dead since v2.3.229: the client has
-           always sent `extraction_start` (lifeSkillRewards.js startExtraction)
-           and the worker has always had a `case` for it, but there was never a
-           line HERE — so the message fell off the bottom of this allowlist and
-           never left the browser.  Two systems were quietly running on nothing
-           as a result:
-             1. the swipe-timing anticheat (gathering.js) — with no
-                extraction_start record, EVERY node_strike in production took
-                the permissive "legacy client" branch and just incremented
-                session._extractionMissing;
-             2. the v2.3.1690 harvest shield, whose whole job is to stop
-                monsters interrupting a harvest — `this.extractions` was empty
-                for every player, so it never once engaged.  That is the owner's
-                report ("the monsters keep attacking you while harvesting
-                resources") in one missing line.
-           Invisible to server/test/*, which send this straight down a socket
-           and so never exercise the shim; caught by mp-harvest.mjs, which asks
-           the worker. */
-        if (msg.type === 'extraction_start') {
-          wsOut(msg);
-          return;
-        }
-        if (msg.type === 'node_strike') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.2279: the bow special's blast.  Same allowlist rule as every
-           line around it -- a type with no passthrough here is silently
-           dropped and the feature runs on nothing (TRAPS #18).  This one
-           would fail in the quietest way of all: the DoT would tick out
-           exactly as before and the explosion simply would never happen, with
-           no error anywhere. */
-        if (msg.type === 'arrow_blast') {
-          wsOut(msg);
-          return;
-        }
-        if (msg.type === 'loot_pickup') {
+        if (_way === 'aftermove') {   /* loot_pickup, ability */
+          /* loot_pickup: */
           /* ═══ v2.3.2545: THE PICKUP IS MEASURED FROM ps, SO SEND ps FIRST ═══
              Owner, still: "coins sometimes magnetize toward the player without
              ever being picked up."
@@ -6167,64 +5891,7 @@ export function setupWebSocket(ctx) {
              Widening LOOT_PICKUP_RANGE was the alternative and it is worse --
              160 px is already sized for this lag (see the constant's note) and
              raising it buys cross-screen theft. */
-          flushPendingMoveNow();
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.2047: Shopkeeper Bro. Three asks, no answers -- the client
-           never states a price or a coin total, it names an item and a
-           quantity and takes whatever the server echoes back. */
-        if (msg.type === 'shop_list' || msg.type === 'shop_sell' || msg.type === 'shop_buy'
-            || msg.type === 'shop_quote') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.2621: the auction house's per-listing message threads
-           (storechat.js). Passthrough only -- the client names a listing and
-           a line of text; the server stamps the sender, clamps the text and
-           decides who may see it. */
-        if (msg.type === 'store_offer' || msg.type === 'store_offer_cancel'
-            || msg.type === 'store_offer_reply') {   /* v2.3.2623 */
-          wsOut(msg);
-          return;
-        }
-        if (msg.type === 'store_dm' || msg.type === 'store_dm_open') {
-          wsOut(msg);
-          return;
-        }
-        if (msg.type === 'stat_allocate') {
-          wsOut(msg);
-          return;
-        }
-        if (msg.type === 'prog3_allocate') { /* v2.3.1660: trained-rebuild point spend */
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.3541: the free points reset (game/pointsReset.js -> the
-           worker's pointsreset.js).  TRAPS #18: without this line the Reset
-           button would ask and never hear back. */
-        if (msg.type === 'points_reset') {
-          wsOut(msg);
-          return;
-        }
-        if (msg.type === 'cook_request') {
-          wsOut(msg);
-          return;
-        }
-        if (msg.type === 'stats_update') {
-          wsOut(msg);
-          return;
-        }
-        if (msg.type === 'ability_use') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.1733: the stamina-ability cast (Shield Bash / Whirlwind).
-           THIS LINE IS ONE OF THE THREE LEGS — server case + handler +
-           this passthrough (TRAPS #18).  Without it the send returns
-           normally, the worker never hears it, and the ability is a button
-           that drains a predicted bar and does nothing. */
-        if (msg.type === 'ability') {
+          /* ability: */
           /* v2.3.1765: the held position goes FIRST — see flushPendingMoveNow.
              Bash measures 70px from the worker's copy of where you are, and
              solo play holds that copy up to 198ms stale. */
@@ -6232,117 +5899,7 @@ export function setupWebSocket(ctx) {
           wsOut(msg);
           return;
         }
-        if (msg.type === 'eat_request') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.1734: Element Burst (COMBAT-OVERHAUL-PLAN PR 6).  This
-           line is the whole difference between the ability working and
-           the ability silently not existing — TRAPS #18, and precheck
-           rule 8 exists because the same omission ate extraction_start
-           for 1400 versions. */
-        if (msg.type === 'element_burst') {
-          wsOut(msg);
-          return;
-        }
-        /* ═══ v2.3.1706: THREE MORE THE ALLOWLIST WAS EATING ═══
-           Found by the precheck rule added in v2.3.1704 to mechanise TRAPS
-           #18 — every one of these has a server `case`, a written handler and
-           a spec, and not one of them has ever reached the worker.
-
-           gem_cut_request is the worst of the three and is a live economy
-           bug, not a dormant one: caps.gems is advertised (join.js), so
-           GemcutPanel takes the server-settled branch — it consumes the RAW
-           gem locally as prediction, returns early, and waits for the
-           private gem_cut_result event to tell it polished-or-shattered.
-           That event can never arrive, so cutting a gem destroys it and pays
-           nothing, every time.
-
-           amulet_forge_request (op:'gem') is the same shape one step milder:
-           the local slot happens anyway, so the amulet LOOKS gemmed until the
-           worker's next player_state echo — which has never heard of the gem
-           — puts it back.  The gem is gone either way.
-
-           build_point_earned is the harmless one: its handler only recomputes
-           maxes early.  Included because leaving one known-dead send in place
-           re-teaches the next reader that the warning is noise.
-
-           No double-spend from switching them on: all three clients already
-           treat their local mutation as PREDICTION against a server that
-           settles from its own copy (rule 20), which is exactly why they were
-           written this way and exactly what has been going unused. */
-        if (msg.type === 'gem_cut_request') {
-          wsOut(msg);
-          return;
-        }
-        if (msg.type === 'amulet_forge_request') {
-          wsOut(msg);
-          return;
-        }
-        if (msg.type === 'build_point_earned') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.1702: firemaking (light a campfire from a wood_* log).  THIS
-           SHIM IS AN ALLOWLIST -- a message type with no case here does not
-           reach the worker, it falls through to the broadcast/drop tail
-           below.  A new client->server type therefore needs BOTH a server
-           `case` and a line here, and the failure mode is silent: the send
-           looks fine from the client, the worker simply never hears it.
-           Caught in the headless run for this exact message. */
-        if (msg.type === 'firemaking_request') {
-          wsOut(msg);
-          return;
-        }
-        if (msg.type === 'shop_purchase') {
-          wsOut(msg);
-          return;
-        }
-        if (msg.type === 'cook_recipe') {
-          wsOut(msg);
-          return;
-        }
-        if (msg.type === 'equip_request') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.1159: the loadout menu now mirrors unequips to the worker
-           (the handler predates this but no client path ever sent it, so
-           the shim had no passthrough — a locally-unequipped weapon kept
-           swinging server-side). */
-        if (msg.type === 'unequip_request') {
-          wsOut(msg);
-          return;
-        }
-        if (msg.type === 'sell_weapon') {
-          wsOut(msg);
-          return;
-        }
-        if (msg.type === 'forge_weapon') {
-          wsOut(msg);
-          return;
-        }
-        if (msg.type === 'quest_accept') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.1347: self-service character restart (SettingsPanel
-           confirmation flow -> persistence.js _handleCharacterReset). */
-        if (msg.type === 'character_reset') {
-          wsOut(msg);
-          return;
-        }
-        if (msg.type === 'quest_turn_in') {
-          wsOut(msg);
-          return;
-        }
-        if (msg.type === 'set_active_slot') {
-          wsOut(msg);
-          return;
-        }
-        /* v2.3.5122: the field report (debug/report.js), numbers and closed
-           lists only; sent only to a worker that takes one */
-        if (msg.type === 'report') {
+        if (_way === 'alone') {
           wsOut(msg);
           return;
         }
@@ -6441,6 +5998,10 @@ export function setupWebSocket(ctx) {
           }
           return true;   /* v2.3.4402: on its way (the open socket, or its batch) */
         }
+        /* v2.3.5185: a direct type with no row in the action door is still not
+           sent, as before -- but counted, and said aloud on a QA page (TRAPS
+           #18's silent drop, gone: src/game/actions.js doorRefuse) */
+        if (msg.type !== 'broadcast') doorRefuse(msg.type, 'shim');
       },
       track: function track(data) {
         if (!ws || ws.readyState !== WebSocket.OPEN) return;
@@ -6545,6 +6106,8 @@ export function setupWebSocket(ctx) {
       }
     };
     S.channel = channelShim;
+    /* v2.3.5185: the shim is the action door's transport (src/game/actions.js act) */
+    setActionTransport({ send: function (m) { return channelShim.send(m); }, http: function (path, init) { return fetch(API_BASE + path, init); }, token: function () { return S._httpToken || null; } });
     connect();
     return function () {
       stopBatchTimer();
@@ -6565,6 +6128,10 @@ export function setupWebSocket(ctx) {
       ws = null;
       retireSocket(_lastWs, 1000, 'teardown');
       S.channel = null;
+      /* v2.3.5185 (the gatekeeper, sitting 14): the action door's transport
+         goes with the shim it sends through -- an act() after the teardown
+         is refused (nothing leaves), never sent through a closed set-up */
+      setActionTransport(null);
       S._realtimeStatus = 'disconnected';
     };
 }

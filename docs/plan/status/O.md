@@ -1,34 +1,39 @@
 card: O
-branch: claude/plan-o-1-lanes (one branch a PR: claude/plan-o-<n>-<word>)
-prs: PR 1 (5221, ready)
+branch: claude/plan-o-3-scenario-lanes (one branch a PR: claude/plan-o-<n>-<word>; main merged in)
+prs: #1787, #1792, #1794, #1800, #1814, #1815 (5221-5225, 5227, 5235: merged); PR 3 (5223): ready, LAST in its sitting
 state: ready
 
 ## Done
 
-- PR 1 (5221): the lane table and its reader (`src/game/drawLanes.js`), its
-  guard and `docs/LANES.md`, the report's lane (`caps.report` 3,
-  `reportlanes`), the worker's lists for the whole card (lanes, programs,
-  `rung`); the wire table's `report` row gains `speed`, `rung`, `self`; the
-  device class's chip facts asked at the join, behind the loading screen
-  (card P's `wrapped > _poll > _due`, 18.4 ms). Deploys the worker.
+- #1787 (5221): the lane table, its reader and guard, the report's lane.
+- #1792 (5222): the governor (the pacer, grown), its model, `mp-governor`;
+  the rung on a module object (`LANE._rung`), its `DOOR_SUITES` row.
+- #1794 (5224): the rate's knob; sitting 11's hold mended (live knobs).
+- #1800 (5225): the pixels' knob, (b), (A); sitting 12's three mended (the
+  pixels an axis of their own, tried up last).
+- #1814 (5235): `govern` on the Test panel's list (the owner's switch).
+- #1815 (5227): the device asked only in `deviceProfile.js`.
+- PR 3 (5223): every phone test names its lane: 381 scenario files
+  (`tools/dev/name-lanes.mjs`), `run.mjs` refuses one without, the harness
+  puts `lane=` on every page, `tools/qa/lane.mjs` for the other tools, the
+  guard `scenario-lanes`; `mp-governor` asks `govern`.
 
 ## Next
 
-- PR 2 (5222), the governor, on `claude/plan-o-2-governor` (begun from this
-  branch: merge PR 1 first).
+- PR 3 merges LAST in its sitting; the gatekeeper runs
+  `node tools/dev/name-lanes.mjs` on the rehearsal's tip first.
+- PR 6 (the crowd, `entityRenderer.js`: TF's #1812 merged); PR 8 after TF.
 
 ## Found
 
-- Shared lists (rule 3, TRAPS §333): PR 1 adds a line of its own to
-  `server/src/liveops.js`'s header (`reportlanes`), two rows in their own
-  block of `tools/guards/lib/switches.mjs` (`?lane`, `reportlanes`), and
-  `drawLanes` to the `device` system of `tools/guards/lib/systems.mjs`.
-- A `light` lane picked by facts (step 1.3) needs two device classes that
-  run differently: 20 reports or more from each, from at least two classes
-  that differ only in a fact a lane could read (say `mp` 3 against 9 with the
-  same `gl`, `soft` and `hz`), with `late` apart by more than a few points.
+- Shared lists (rule 3, TRAPS §333): `liveops.js`'s header (`reportlanes`);
+  `switches.mjs` (`?lane`, `reportlanes`, `govern` both sides, `?ladder*`);
+  `systems.mjs`; `phases.js` (`ladder`); `DOOR_SUITES` (frame-pacer).
+- PR 3 touches every `tools/qa/mp/mp-*.mjs`: any branch adding or changing
+  a scenario meets it (the script writes a new file's line).
+- No one field says a window covers the world: pixels move at a veil only.
+- A 60 screen whose frames all cost 33 ms reads as 30 (`refreshOf`).
 
 ## Needs
 
-- (none) The planning session allowed, 2026-11-14: `shapes-once.test.mjs`
-  `NAMES.drawLane.where`; the wire table's `report` row.
+- (none)

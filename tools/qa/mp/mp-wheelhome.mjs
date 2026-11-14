@@ -42,6 +42,7 @@
  *      back from a death shows "The Wheel" over today's town the whole time.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const WHEELISH = (z) => z === 'worldview' || z === 'wheel';

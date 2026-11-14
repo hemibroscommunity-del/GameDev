@@ -1,40 +1,39 @@
 card: Z
-branch: claude/plan-z-sitting-11
-prs: #1799, tag 5367, the last line of the list (ready)
+branch: claude/plan-z-sitting-15
+prs: (this PR), tag 5372, the last line of the list (ready)
 state: ready
 
 ## Done
-- Sitting 11, `main` 90a91dbc (resumed 16:56 after the usage stop): the
-  list rehearsed in its order, this branch last (tree ba0e9e42): precheck
-  0 FAIL, build, questline 187/187; each branch ONE merge base. Review:
-  `census/review-z11.md`. 10.3 ticked; notes on 4.5, 7.1.
+- Sitting 15, `main` d6b8acd: the list rehearsed in its order (tree
+  db4ea362, this branch aside): precheck 0 FAIL, build, questline 187;
+  each base `main`, ONE merge base step by step. Review:
+  `census/review-z15.md`. Notes on 4.2, 4.3, 4.7, 7.1; no line to lower.
 
 ## The list: merge in this order, in one sitting, each "Create a merge commit"
-1 #1788 · 2 #1789 · 3 #1790 · 4 #1795 (J2) · 5 #1785 · 6 #1786 ·
-7 #1802 (E) · 8 #1787 (O) · 9 #1767 · 10 #1775 · 11 #1779 · 12 #1791 ·
-13 #1796 · 14 #1801 (L) · 15 #1783 (LB) · 16 this PR. Ten deploy (2, 3,
-5 to 10, 12, 15): back to back. Flags `capeoffkept` (ON),
-`valuepause` (ON), `econresetput` (OFF: the owner's cost word),
-`reportlanes` (ON; `caps.report` 3): each on a line of its own.
+1 #1824 (L) · 2 #1835 (L) · 3 #1829 (K) · 4 #1831 (K) · 5 #1833 (J2) ·
+6 #1832 (O) · 7 this PR. Five deploy (1 to 4, and 6 by its old-map
+test): back to back. #1824 and #1835 each add a live flag (`dueldoor`,
+`partydoor`, ON); #1835 carries #1824.
 
-## Held (expires at sitting 12)
-- #1792 O: red with L's #1767: `phase-table` FAIL 2 (`ladder`'s suite not
-  on `DOOR_SUITES`). Merge main, add its row there.
-- #1794 O: VERIFIED (probe), the ladder walks rungs nothing reads, kept
-  in `bt_rung`: a cool 60 phone at 30 for a sitting; steps mid-fight
-  (call 3); a cool computer too. #1800 waits on it.
-- #1797 T: conflicts at `switches.mjs`'s end after L: sitting 12.
-- #1782 SK: ready; the owner's yes to +8 to +10 moves a ride (one finding).
-- #1798 LB: ready after the rehearsal: sitting 12. TF's PR 2: none.
+## Held (expires at sitting 16)
+- #1836 O: conflict with `main` at `tools/guards/lib/switches.mjs`; next
+  sitting after T's #1837 (it merges #1837's head). Reviewed: one medium
+  (crowd rungs that hide no one delay the rate's ~5 s), for the planning
+  session.
+- #1837 T: conflict with `main` (`docs/SWITCHES.md`, `switches.mjs`);
+  next sitting FIRST, after merging the new `main`. Step 3 then.
+- #1838 K: conflicts with #1829 and #1831 either way; K merges the new
+  `main` after this list. Reviewed: one medium to mend first (the
+  refusal count keyed by the client's type or path, no bound).
+- #1782 SK: the owner's yes to +8 to +10 moves a ride.
 
 ## Stalled
-- None (P, TF, LB-3 say `working`: cut by the usage stop at 14:38).
+- P `working`, its branch quiet since 17:44 (over 3 h at the list).
 
 ## Found
-- All: switch rows appended at `switches.mjs`'s end collide (O with T, L
-  with T); card T's next PR sorts them by name.
-- J2: `mp-npclooks` check 2 holds the cast to its own median, no size.
-- O: `mp-governor`, `mp-loadinggate` leak `BT_QA_CPU_THROTTLE` onward.
-
-## Rule for later sittings
-- Quote other cards' tags BARE (`5461`): a full one counts as taken on `main`.
+- L: the party door's births matched by text (an unconditional new map
+  in party.js passes); `?.delete` and an alias pass too.
+- K: wire/README.md ~307 names `fightlockgear` (no such switch).
+- O: crowd-cap §4 never calls the renderer's bare `crowdK()`.
+- T: the old `?crowd` row (switches.mjs ~326) says monsters; it caps
+  players.

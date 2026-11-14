@@ -51,6 +51,13 @@ export const CLIENT_SAVERS = Object.freeze([
      it for everyone now"), kept switchable the same way; off, a wide screen
      sees its old wider view at once */
   Object.freeze({ id: 'viewcap', words: 'Same view for every screen', live: true }),
+  /* v2.3.5235: card O's governor (game/framePacer.js), the speed ladder.  Not
+     a memory saver: the owner's switch for every phone, kept the same way
+     (the planning session's word, 2026-11-14, in place of the card's cap
+     `ladder`); off, the ladder goes back to the lane's row and takes no
+     step -- at once, but for a pixel rung, which waits for a veil.  One
+     name, both sides: `off_govern` on the worker, `?govern=0` on the page */
+  Object.freeze({ id: 'govern', words: 'Speed ladder: a steady 30 when a screen cannot keep up', live: true }),
 ]);
 
 const KEY = 'bt_clientoff';

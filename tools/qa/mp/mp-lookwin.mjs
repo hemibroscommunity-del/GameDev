@@ -21,6 +21,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 const OUT = join(H.REPO, 'tools/qa/mp/out');
 const shot = async (P, name) => { try { mkdirSync(OUT, { recursive: true }); await P.page.screenshot({ path: join(OUT, `lookwin-${name}.png`) }); } catch (e) { /* a picture only */ } };

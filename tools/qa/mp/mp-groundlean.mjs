@@ -39,6 +39,7 @@ import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { memSampler } from './memprobe.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 /* a piece's time is the worker's, on a box drawing a 3x phone in software:

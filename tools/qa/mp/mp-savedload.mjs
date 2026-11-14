@@ -38,6 +38,7 @@
 import { join } from 'node:path';
 import { mkdirSync } from 'node:fs';
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const N = Math.max(1, Number(process.env.BT_SAVEDLOAD_N) || 3);

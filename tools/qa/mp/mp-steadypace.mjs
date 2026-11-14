@@ -33,6 +33,7 @@
  *   node tools/qa/mp/run.mjs steadypace
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const B = 1000 / 120;

@@ -24,6 +24,7 @@
  *   8. no page errors.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const WIDE = { width: 1280, height: 800 };
 const angGap = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));

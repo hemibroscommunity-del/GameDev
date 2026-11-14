@@ -350,7 +350,7 @@ async function main() {
       const page = await ctx.newPage();
       await page.addInitScript((p) => { window.BROTOWN_WS_URL = `ws://127.0.0.1:${p}`; }, wsPort);
       await seedCoachDone(page);
-      await page.goto(`http://localhost:${webPort}/`, { waitUntil: 'domcontentloaded' });
+      await page.goto(H.withLane(`http://localhost:${webPort}/`), { waitUntil: 'domcontentloaded' });
       const P = { ctx, page, logs: [], name: 'LevelUp' };
       await H.enterWorld(P);
       await page.waitForTimeout(2500);
@@ -388,7 +388,7 @@ async function main() {
       const page = await ctx.newPage();
       await page.addInitScript((p) => { window.BROTOWN_WS_URL = `ws://127.0.0.1:${p}`; }, wsPort);
       await seedCoachDone(page);
-      await page.goto(`http://localhost:${webPort}/`, { waitUntil: 'domcontentloaded' });
+      await page.goto(H.withLane(`http://localhost:${webPort}/`), { waitUntil: 'domcontentloaded' });
       const P = { ctx, page, logs: [], name: 'Filmstrip' };
       await H.enterWorld(P);
       await page.waitForTimeout(2500);
@@ -455,7 +455,7 @@ async function main() {
       const page = await ctx.newPage();
       await page.addInitScript((p) => { window.BROTOWN_WS_URL = `ws://127.0.0.1:${p}`; }, wsPort);
       await seedCoachDone(page);
-      await page.goto(`http://localhost:${webPort}/`, { waitUntil: 'domcontentloaded' });
+      await page.goto(H.withLane(`http://localhost:${webPort}/`), { waitUntil: 'domcontentloaded' });
       const P = { ctx, page, logs: [], name: 'Pair' };
       await H.enterWorld(P);
       await page.waitForTimeout(2500);
@@ -603,7 +603,7 @@ async function main() {
       const page = await ctx.newPage();
       await page.addInitScript((p) => { window.BROTOWN_WS_URL = `ws://127.0.0.1:${p}`; }, wsPort);
       await seedCoachDone(page);
-      await page.goto(`http://localhost:${webPort}/`, { waitUntil: 'domcontentloaded' });
+      await page.goto(H.withLane(`http://localhost:${webPort}/`), { waitUntil: 'domcontentloaded' });
       const P = { ctx, page, logs: [], name: 'StatNotice' };
       await H.enterWorld(P);
       await page.waitForTimeout(2500);
@@ -725,7 +725,7 @@ async function main() {
       const page = await ctx.newPage();
       await page.addInitScript((p) => { window.BROTOWN_WS_URL = `ws://127.0.0.1:${p}`; }, wsPort);
       await seedCoachDone(page);
-      await page.goto(`http://localhost:${webPort}/`, { waitUntil: 'domcontentloaded' });
+      await page.goto(H.withLane(`http://localhost:${webPort}/`), { waitUntil: 'domcontentloaded' });
       const P = { ctx, page, logs: [], name: 'Baseline' };
       await H.enterWorld(P);
       await page.waitForTimeout(3000);
@@ -779,7 +779,7 @@ async function main() {
       const page = await ctx.newPage();
       await page.addInitScript((p) => { window.BROTOWN_WS_URL = `ws://127.0.0.1:${p}`; }, wsPort);
       await seedCoachDone(page);
-      await page.goto(`http://localhost:${webPort}/`, { waitUntil: 'domcontentloaded' });
+      await page.goto(H.withLane(`http://localhost:${webPort}/`), { waitUntil: 'domcontentloaded' });
       const P = { ctx, page, logs: [], name: 'Preload' };
       await H.enterWorld(P);
       await page.waitForTimeout(2500);

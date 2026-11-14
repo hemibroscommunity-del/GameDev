@@ -13,6 +13,7 @@
  *      "Too far away: walk closer".
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const STAND = [0, -70];   /* mp-deskharvest's spot by a vein */
 const FAR = [0, 300];     /* a few strides south of it: on screen, out of reach */

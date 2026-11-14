@@ -292,6 +292,13 @@ devices it waits for: with one player, the table is empty for weeks.
   program or three, the pacer's target, the queue's ms, the prewarm ring,
   the cache caps. The speed rung starts where the last sitting settled.
   Every phone test names its lane; `run.mjs` refuses one that does not.
+  *Begun (card O): #1787, the lane table and its one reader, its guard,
+  `docs/LANES.md`, the report's lane (`caps.report` 3, `reportlanes`),
+  merged at sitting 11. The box waits for O's PR 3 (every test page names
+  its lane) (the gatekeeper, sitting 12, v2.3.5369).*
+  *Card O's PR 7, #1815 (the device asked only in `deviceProfile.js`:
+  2.1's "facts only"), merged at sitting 12. The box still waits for O's
+  PR 3 (the gatekeeper, sitting 13, v2.3.5370).*
 - [x] **2.2a [NOW] The pixel budget** for big screens (STATE-MACHINES A2
   item 1). Safe for phones: they are under it.
   *Merged: #1701 (card G), `src/game/renderRes.js`, `?pixbudget=0`.*
@@ -309,6 +316,11 @@ devices it waits for: with one player, the table is empty for weeks.
   **Combat's timing and loading are never on the ladder.** Done when a node
   model of a heating and cooling phone settles and comes back at 30, 60 and
   120, with no see-saw.
+  *Begun (card O): #1792 (the governor and its rung), #1794 (the rate),
+  #1800 (the pixels, at a veil) and #1814 (`govern`, a row of the Test
+  panel's list), merged at sitting 13. The box waits for the crowd's, the
+  passes' and the memory's rungs (O's PRs 6, 8 to 11) (the gatekeeper,
+  sitting 14, tag 5371).*
 - [ ] **2.4 [NEXT] Off-ramps become overrides of the ladder**, through one
   reader (pillar 7's table).
 - [ ] **2.5 [NEXT] The 30 lane** (an iPhone in Low Power Mode): named by the
@@ -370,6 +382,11 @@ play, a number 1.1 can measure.
   *Step 1 merged: #1667 (card C's census), #1684, #1695 and #1697 (card N:
   the walker, the table `server/src/wire/`, its guard). Step 2 is card K's;
   the box waits for it (the gatekeeper, sitting 7, v2.3.5363).*
+  *Step 2 begun (card K): #1822 (`PRIVILEGED_EVENTS`, `RELAY.TYPES` and
+  the echo list made from the table) and #1820 (the hostile-values suite,
+  19 failing, its line), merged at sitting 13. The box waits for the
+  table's own lists (K's PR 2) and the door's checks (PR 4) (the
+  gatekeeper, sitting 14, tag 5371).*
 - [ ] **4.1b [NEXT] The send door**: one `_send` (132 places write to a
   socket today), counting bytes by type.
 - [ ] **4.2 [NEXT] Claims, bounded.** "No claims" can be met by calling a
@@ -384,9 +401,19 @@ play, a number 1.1 can measure.
   - the guard and cooking beyond #1530's limits; the quest hand-in and the
     weapon sale with no take-back; gold taken on the page in two panels;
     the local-monster mode; a sword's claim labelled a bow's (TRAPS §329).
+  *Step 1 merged (card K): #1826, the gain bench (`claims-gain.test`,
+  `claimbots.mjs`, `docs/plan/census/claims.md`; no honest refusal), at
+  sitting 14. Five gains are over 1.5 (the move 4.35, the bow label 3.76,
+  the reach 2.96, the harvest 1.86, the cook 1.59); the box waits for the
+  claims tightened, one judge a PR behind its flag (K's second block)
+  (the gatekeeper, sitting 15, tag 5372).*
 - [ ] **4.3 [NEXT] Doors for what is left of value**: experience and
   levels, the stashes, quest state, skill points. A weapon gets an id of its
   own, as gear has.
+  *Begun (card R): #1823, the skill points' door (`skillpoints.js`
+  `POINT_ROADS`, `skillpoints-door.test`), merged at sitting 14. The box
+  waits for the stashes, a weapon's id, quest state and experience (R's
+  PRs 2, 3, 5 and 10) (the gatekeeper, sitting 15, tag 5372).*
 - [x] **4.4 [NOW] The whole world's sum.** "A purse equals its start plus
   the roads that ran" is true by construction; past copies went through
   legal roads (ore sold 24 times in one bundle). So every road in
@@ -401,7 +428,7 @@ play, a number 1.1 can measure.
   §3 holds an unmarked key and an unread prefix. Value leaving by no road
   (the respawn wipe, pile expiry, the bounty sweep) is E's storm, PR 10.
   Ticked by the gatekeeper, sitting 9 (v2.3.5365).*
-- [ ] **4.5 [NOW the harness; NEXT the rest] The restart test, finished.**
+- [x] **4.5 [NOW the harness; NEXT the rest] The restart test, finished.**
   It exists (`chaos-restart.test.mjs`) and passes while it lists a known
   loss. One shared room for tests: a batch that commits or does not, a
   queue that knows the room's gates, a seeded clock. Then: `KNOWN` empty; a
@@ -414,10 +441,20 @@ play, a number 1.1 can measure.
   #1764 (the arena plan OFF until the owner's yes), the storm #1772, all
   merged at sitting 10. The box waits for a refused save failing closed
   (E's PR 9, #1786) (the gatekeeper, sitting 11, v2.3.5367).*
+  *Done (card E): #1786, a refused save pauses the value roads a minute
+  (`valuepause: false` its switch), with #1785 and #1802, merged at sitting
+  11; card E is finished. Two costs stay OFF for the owner's word:
+  `arenasettleplan` (two rows a match) and `econresetput` (one put an empty
+  room's restart) (the gatekeeper, sitting 12, v2.3.5369).*
 - [ ] **4.7 [NEXT] The way back.** A player's restore made from the registry
   (every record of theirs, not the character alone); a paged export; a
   restore tried in the Cloudflare lab; the storage's size in the day's
   book. Done when a lab restore to an hour ago balances 4.4's sum.
+  *Begun (card R): #1825, the storage's size in the day's book
+  (`storesize`, ON), merged at sitting 14. The box waits for the restore
+  from the registry, the paged export and the lab's try (R's PRs 6, 7 and
+  9; the lab's needs `.github/`, the owner's words) (the gatekeeper,
+  sitting 15, tag 5372).*
 
 (4.6 of version 1 is pillar 10.)
 
@@ -449,6 +486,10 @@ nothing known, and a restore copies nothing.
   *Step 1 merged: #1721 to #1734 (card U), the ledgers in `src/state/` and
   `tools/guards/state-ledger.test.mjs`, 16 rows left unlisted (four files
   the map has not placed). Step 2 is card L's; the box waits for it.*
+  *Step 2 begun (card L): #1767, #1775, #1779 and, through #1807, #1791,
+  #1796, #1801 merged at sitting 11: `resetOn` at the zone and rejoin
+  doors, rows sitting 468 -> 233 (the gatekeeper, sitting 12,
+  v2.3.5369).*
 - [ ] **5.3b [NEXT] The phase table** (the owner, 2026-11-13: every implicit
   state machine explicit, through one door). Every state machine one row:
   its one field, its states, the one function that changes it, what clears
@@ -459,6 +500,13 @@ nothing known, and a restore copies nothing.
   *Begun (card L): #1748, the table (36 rows: 5 `door`, 31 `todo`) and
   its guard. The box waits for the `todo` rows (the gatekeeper, sitting 9,
   v2.3.5365).*
+  *Card L: #1803 (the guard reads a suite-held door off the syntax tree
+  too) and #1809 (the trade door: `s.state` through `_t2To`, `tradedoor`
+  its switch), merged at sitting 12: 6 `door`, 30 `todo` (the gatekeeper,
+  sitting 13, v2.3.5370).*
+  *Card O's #1792 (the ladder's rung, a new row born `door`), merged at
+  sitting 13: 37 rows, 7 `door`, 30 `todo`; the line lowered 31 -> 30,
+  the count since #1809 (the gatekeeper, sitting 14, tag 5371).*
 - [ ] **5.4 [LATER] The frame as named steps.** PR 1 moves nothing: the six
   calls the loop already makes, plus one `legacy` step, become the list;
   each counts its errors to the crash ring (a throw in the frame reaches
@@ -502,6 +550,11 @@ nothing known, and a restore copies nothing.
   PRs 2 and 3 (the gatekeeper, sitting 9, v2.3.5365). PR 2, #1768 (the
   page's rows, no count line), merged at sitting 10: 113 unlisted; the box
   waits for PR 3 (the gatekeeper, sitting 11, v2.3.5367).*
+  *T's #1816 (the drawing side's rows: 0 unlisted, card B's map reads a
+  system's switches from the table) and #1817 (rule 4: a row's needs and
+  its reader, the thrown run, a row's place its name), merged at sitting
+  14: every switch found is a row, rule 4 held. The box waits for the
+  page's one reader (T's PR 6) (the gatekeeper, sitting 15, tag 5372).*
 - [ ] **7.2 [NEXT] The end date** (the owner: yes). For a logic switch: four
   weeks on with no revert, then the old way goes. A device off-ramp stays
   while its risk is live. A fallback stays while its trigger lives: a guard
@@ -520,6 +573,9 @@ nothing known, and a restore copies nothing.
   scoreboard, the gatekeeper's script, the baseline.
 - [ ] **8.1 [NOW] Red on `main` is zero.** Fixed, or deleted with its
   reason. Never skipped.
+  *Card J2 (round 2): #1788, #1789, #1790, #1795 merged at sitting 11.
+  The step is open: card L's status names six reds on `main` that are not
+  its own (the gatekeeper, sitting 12, v2.3.5369).*
 - [ ] **8.2 [NEXT] Traps become guards**, each with a break proof. The count
   that matters is traps held by a proof, not traps of prose.
   *Card V merged, #1724 to #1740: 31 traps held by a proof (25 the rule, 6
@@ -596,6 +652,10 @@ the memory a family holds as the game draws it.
   #1743 (`fx-coinflip`), #1745 (`tree-tiers` as numbers); `artCache`'s
   line 112 -> 101.4. The step is open (the gatekeeper, sitting 8,
   v2.3.5364).*
+  *Card P: #1805 (`pack-page` on the body bake's worker, `?packworker=0`
+  its switch; off the held list), #1806 (the CPU pixel readers' guard) and
+  #1810 (the figure hold's note), merged at sitting 12. The step is open
+  (the gatekeeper, sitting 13, v2.3.5370).*
 - [ ] **9.6 [LATER] An address that changes with the content**, by a
   `?h=` lookup (the client builds a hundred sprite addresses as it runs;
   renaming files would break them). A wrong hash on art that loads in play
@@ -629,7 +689,7 @@ punishes by itself.
   switch). It writes for the `move` roads (the trade window, a gift); the
   escrow roads (the market, the auction house, a duel's pot) are 10.5's
   table to say (the gatekeeper, sitting 11, v2.3.5367).*
-- [ ] **10.4 [NOW its room and device rows; NEXT the economy's] The day's
+- [x] **10.4 [NOW its room and device rows; NEXT the economy's] The day's
   book and the owner's card.** One book a day: minted and burned by road
   class, the room's numbers (1.6), the device bins (1.1). The owner's card
   in the Test panel reads it. Five numbers for the economy: unexplained
@@ -639,11 +699,19 @@ punishes by itself.
   road runs (`econ: false` its switch); the room's row is 1.6's. The box
   waits for the owner's card (E's PR 12, #1785, held at sitting 10) and the
   device bins (the gatekeeper, sitting 10, v2.3.5366).*
+  *Done: the owner's card (#1785, card E) merged at sitting 11, reading the
+  book's four parts (`econ`; the room's row, 1.6; the device bins,
+  `report.js`'s `dev`, 1.1; `speed`). "Cases waiting" is blank until card Q
+  (10.9) (the gatekeeper, sitting 12, v2.3.5369).*
 - [ ] **10.5 [NEXT] The roads between players, one table.** Every road that
   moves value from one account to another, one row: its fee, its hold, its
   pace, its ledger. All zero today (a trade moves 999,999 gold with no fee,
   and the daily spin pays a new character about 464 gold). A guard fails a
   road with no row. Turning any of them up is the owner's call.
+  *Begun (card R): #1819, the table (`server/src/playerroads.js`, every
+  fee, hold and pace 0) and its guard, merged at sitting 13. The box waits
+  for the escrow roads' ledger (R's PR 11) and for an `xfer` row to name
+  its writer (review-z13's low) (the gatekeeper, sitting 14, tag 5371).*
 - [ ] **10.6 [NEXT] What an honest player's trouble looks like.** Each
   signal lists what changes it without any cheating: the frame rate, the
   line's delay, a deploy, a hidden tab. Every Low Power iPhone shares one

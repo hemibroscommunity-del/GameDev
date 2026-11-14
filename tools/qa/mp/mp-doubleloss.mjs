@@ -33,6 +33,7 @@
  *   DL_VIEW=phone|desk   one of the two (both)
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const VIEWS = {
   phone: { viewport: { width: 390, height: 844 }, touch: true, dpr: 3 },

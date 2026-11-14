@@ -52,6 +52,7 @@ import * as H from './harness.mjs';
 import { LOOKS as CROWD_LOOKS } from './mp-crowdfight.mjs';   /* v2.3.4991: BT_CROWD_LOOKS */
 import { fork } from 'node:child_process';
 import { join } from 'node:path';
+export const lane = 'full';
 
 const ROOM = 'crowdbots';
 const VIEW = { width: 390, height: 844 };

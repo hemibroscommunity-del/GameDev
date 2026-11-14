@@ -29,6 +29,7 @@
  * fallback — is the failure they would see first.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 /* The whole notification: its caption text and which icon it seated. */
 const burst = (P) => P.page.evaluate(() => {

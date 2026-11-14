@@ -27,6 +27,7 @@
  *   node tools/qa/mp/run.mjs farpeer
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const VIEW = { width: 900, height: 700 };
 const NEAR_R = 2400;   /* server/src/tick.js FAR_PLAYERS.NEAR_R */
