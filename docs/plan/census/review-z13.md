@@ -137,17 +137,24 @@ Documents only (`docs/plan/status/LB.md`, `state: done`). True: #1771,
 #1783 and #1798 are on `main`. Its Found keeps the old rank trophies
 (`public/icons/ui/rank-<n>.webp`) for the owner's call, nothing removed.
 
-## Opened during the sitting: #1823 (R, tag 5283) and #1824 (L, tag 5211): HELD (conflicts)
+## Opened during the sitting: #1823 (R, tag 5283), #1824 (L, tag 5211), #1825 (R, tag 5287): HELD (conflicts)
 
-Both opened at 18:43 and 18:44, against `main` 82fb78d, `test` running
-when read; both change worker code that moves value (a door), so both
-want a full review: the next sitting's, once each merges the new `main`.
+Opened at 18:43, 18:44 and about 18:50, against `main` 82fb78d, `test`
+running when read; each changes worker code (two doors that move value,
+and the day's book), so each wants a full review: the next sitting's,
+once each merges the new `main`.
 
 - **#1823 (card R PR 4, the skill points' door)**: add/add conflict with
   #1819 at `docs/plan/status/R.md` (each R branch begun from `main` adds
   the file). Card R merges the new `main` after #1819 lands. It also
   adds lines to `CLAUDE.md` (a new door's rule) and changes `join.js`:
   the next sitting reads both.
+- **#1825 (card R, the storage's size in the day's book; `storesize`
+  ON, the planning session's word, as `cost-guard` shows no added put)**:
+  the same add/add conflict with #1819 at `docs/plan/status/R.md`, and
+  with #1823 after it. R merges `main` into each in turn, one a sitting
+  or one after another, as the next list orders them. It adds a switch
+  row and touches `src/ui/panels/EconCard.jsx`.
 - **#1824 (card L PR 5's second, the duel door)**: conflict with #1792 at
   `tools/guards/phase-table.test.mjs` (both add a `DOOR_SUITES` row at
   its end), in either order. Card L merges the new `main` after #1792
