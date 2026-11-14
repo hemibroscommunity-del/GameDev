@@ -22,6 +22,19 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 
 How many there are: `node tools/guards/switches.test.mjs` prints the count, and `node tools/dev/scoreboard.mjs` its row.
 
+## art
+
+| name | side | kind | born | thrown | risk | needs | fallback | off |
+|---|---|---|---|---|---|---|---|---|
+| `?bodyworker` | page | switch | v2.3.4930 | =0 | logic |  | no | Bodies are baked on the page, not on the bake worker. |
+| `?figround` | page | switch | v2.3.2922 | =1 | chip |  | no | The old per-sprite pixel snap comes back. |
+| `?garmentspecks` | page | switch | v2.3.3658 | =0 | logic |  | no | A garment's specks are drawn the old way (and the body bake goes back to the page). |
+| `?p256` | page | switch | v2.3.3728 | =1 every twin on, =0 every twin off | memory |  | no | Turns every 256-colour twin on to try (=1), or off (=0). |
+| `?sharp` | page | switch | v2.3.2741 | =0 | chip |  | no | Pictures are not routed to sharp pixels. |
+| `?stripgentle` | page | switch | v2.3.4400 | =0, off, false | logic |  | no | Strips are packed in one go, not a slice at a time. |
+| `?stripslice` | page | lever | v2.3.4400 | a number of ms | none |  | no | QA: a fixed slice for strip packing (a phone's, on a slow box). |
+| `?stripworker` | page | switch | v2.3.4450 | =0, off, false | logic |  | no | Every strip is unpacked on the page, not the worker. |
+
 ## audio
 
 | name | side | kind | born | thrown | risk | needs | fallback | off |
@@ -128,7 +141,10 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 |---|---|---|---|---|---|---|---|---|
 | `lookpalette` | both | switch | v2.3.3716 | off_lookpalette: true; ?lookpalette=0 (=1 builds it anyway) | chip |  | onWindows, onMac in src/game/lookPaletteChoice.js | Each look's copy is baked on first sight again, not coloured on the chip. |
 | `?pixbudget` | page | switch | v2.3.5140 | =0 (off), or a number: the budget to try | chip |  | no | The drawing resolution is no longer held to the pixel budget. |
+| `?res` | page | value | v2.3.3339 | a number: the drawing resolution | chip |  | no | Sets the drawing resolution by hand. |
+| `?speedms` | page | lever | v2.3.3339 | a number of ms | none |  | no | The Speed test measures for this long, not 4 s. |
 | `viewcap` | both | switch | v2.3.4054 | off_viewcap: true; ?viewcap=0 (=1 forces it) | logic |  | no | A wide screen sees its old wider view of the world. |
+| `?zoom` | page | value | v2.3.2997 | a number | chip |  | no | Sets how far out the camera sees (in place of the view cap's). |
 
 ## economy
 
@@ -207,17 +223,49 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 
 | name | side | kind | born | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|
+| `?alphaclip` | page | switch | v2.3.3459 | present | chip |  | no | Hair is clipped by the alpha mask, as it was, not the stencil. |
+| `?bakeread` | page | switch | v2.3.4355 | =0 | logic |  | no | The body bake reads its canvas the old way, to compare. |
+| `?bodyretry` | page | switch | v2.3.3882 | =0 | logic | `?retrylooks` | no | Body sheets that failed are not asked for again. |
+| `?caperetry` | page | switch | v2.3.4431 | =0 | logic | `?retrylooks` | no | Cape sheets that failed are not asked for again. |
+| `?gearlook` | page | switch | v2.3.4998 | =0 | chip | `lookpalette` | no | Armour is baked, not coloured on the chip from its numbers. |
+| `?gearpackgentle` | page | switch | v2.3.4873 | =0, off, false | logic |  | no | Gear sheets are packed flat out, not a few ms at a time. |
+| `?gearretry` | page | switch | v2.3.3870 | =0 | logic | `?retrylooks` | no | Gear sheets that failed are not asked for again. |
+| `?gearwalk` | page | switch | v2.3.4999 | =0 | chip | `lookpalette` | no | Armour's walk frames are baked, not coloured on the chip. |
+| `?headframes` | page | lever | v2.3.3852 | present | none |  | no | QA: counts the head frames drawn (mp-headframes). |
+| `?headlook` | page | switch | v2.3.4961 | =0, off, false | chip | `lookpalette` | no | Heads are baked the old way, not from the look's numbers. |
+| `?hemiface` | page | switch | v2.3.3957 | =1 | logic |  | no | The Hemi Bro portrait comes back for this tab. |
 | `lookarmour` | both | switch | v2.3.3752 | off_lookarmour: true; ?lookarmour=0 | chip | `lookpalette` | no | Bodies under armour are baked again, not coloured on the chip. |
+| `?lookatlas` | page | switch | v2.3.4993 | =0 | memory | `lookpalette` | no | The look palette's sheets are not packed into an atlas. |
 | `lookdelta` | worker | switch | v2.3.3240 | false | logic |  | no | Every look track is relayed whole again. |
 | `lookfolk` | both | switch | v2.3.3809 | off_lookfolk: true; ?lookfolk=0 | memory | `lookpalette` | no | The townsfolk are drawn from their photographs again, loaded then. |
+| `?lookprobe` | page | lever | v2.3.3716 | present or =1 | none |  | no | QA: loads the look palette's probe (an oracle a test reads). |
 | `lookshirt` | both | switch | v2.3.3751 | off_lookshirt: true; ?lookshirt=0 | chip | `lookpalette` | no | Printed shirts are baked again, not coloured on the chip. |
+| `?pickwood` | page | switch | v2.3.3671 | =0 | logic |  | no | The pickaxe's wood is painted with the skin, as before. |
+| `?plaintee` | page | switch | v2.3.4992 | =0 | chip | `lookshirt` | no | A plain tee is baked, not coloured from its numbers. |
+| `?portraitgentle` | page | switch | v2.3.5042 | =0, off, false | logic |  | no | The portrait is made in one go, not a few ms at a time. |
+| `?retrylooks` | page | switch | v2.3.3865 | =0 | logic |  | no | No art loader asks again for a picture that failed (every loader's retries). |
+| `?sheetfetch` | page | switch | v2.3.5015 | =0 | logic |  | no | Armour sheets are fetched on the page, not the worker. |
+| `?shirtworker` | page | switch | v2.3.5014 | =0, off, false | logic |  | no | Printed shirts are baked on the page, not the worker. |
+| `?toolsolid` | page | switch | v2.3.3873 | =0, off, false | logic |  | no | The pickaxe is drawn as the sheet draws it, thin and pale. |
+| `?traittimeoutms` | page | lever | v2.3.3689 | a number of ms (1 to 60 s) | none |  | no | QA: a trait picture's load gives up after this long. |
+| `?weaponlook` | page | switch | v2.3.5002 | =0 | chip | `lookpalette` | no | Weapons are baked, not coloured on the chip. |
 
 ## memory
 
 | name | side | kind | born | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|
+| `?canvascheck` | page | switch | v2.3.3574 | =0 | chip |  | no | A black screen's rebuild does not first ask whether Safari emptied the pictures. |
 | `gfxlean` | both | switch | v2.3.4033 | off_gfxlean: true; ?gfxlean=0, off, false | memory |  | no | A big drawing's building lists are kept after it is drawn. |
+| `?gpucopies` | page | switch | v2.3.3088 | present | memory |  | no | Every canvas keeps its page copy, not only the chip's. |
+| `?heaptrim` | page | switch | v2.3.5007 | =0, off, false | memory |  | no | The heap is not trimmed. |
+| `?held` | page | switch | v2.3.3699 | =0 | memory |  | no | Pictures are not held as colour numbers. |
+| `?keepimage` | page | switch | v2.3.3606 | =0 | memory |  | no | A canvas read back is kept as a canvas, not an image. |
+| `?loudclear` | page | switch | v2.3.3449 | present | chip |  | no | Every clear is made, not skipped when nothing changed. |
+| `?nopalette` | page | switch | v2.3.3190 | present | memory |  | no | No colour-number pictures: every picture held whole. |
+| `?onebatch` | page | switch | v2.3.3447 | =0 or =1 | chip |  | SOFTWARE_GL in src/rendering/paletteTex.js | The three sprite programs (=0), or the one program (=1), whatever the device. |
 | `picnumbers` | both | switch | v2.3.3715 | off_picnumbers: true; ?picnumbers=0 | memory |  | no | Monster strips are held as pictures again, not as colour numbers. |
+| `?poolkeep` | page | switch | v2.3.3152 | present | memory |  | no | The texture pool is not trimmed when idle. |
+| `?textkeep` | page | switch | v2.3.3633 | present | memory |  | no | A Text that is gone keeps its texture. |
 | `?treenumbers` | page | switch | v2.3.5248 | =0 | memory |  | no | The trees are held as pictures again, not as colour numbers. |
 
 ## monsters
@@ -262,12 +310,22 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `steadymovers` | worker | switch | v2.3.3203 | false | logic |  | no | Every move goes out again, from the next tick. |
 | `?tapms` | page | lever | v2.3.3105 | a number of ms | none |  | no | A test's own longest tap that still counts as free. |
 
+## page-thread
+
+| name | side | kind | born | thrown | risk | needs | fallback | off |
+|---|---|---|---|---|---|---|---|---|
+| `?dtsmooth` | page | switch | v2.3.4355 | =0, off, false | logic |  | no | The frame's step is the raw time, not the steady step. |
+| `?pace` | page | switch | v2.3.4355 | =0, off, false | logic |  | no | No frame pacer: the frames are drawn as the browser calls, as before. |
+
 ## preload
 
 | name | side | kind | born | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|
+| `?banners` | page | switch | v2.3.5003 | =all | memory |  | no | All four zone banners held while in the world, as before. |
 | `codelazy` | both | switch | v2.3.3717 | off_codelazy: true; ?codelazy=0, off, false | memory |  | no | Every window's code loads with the game again, not when opened. |
 | `onecopy` | both | switch | v2.3.3715 | off_onecopy: true; ?onecopy=0 | memory |  | no | Pictures are held in more than one copy again. |
+| `?picsretry` | page | switch | v2.3.4431 | =0 | logic | `?retrylooks` | no | Pictures that failed are not asked for again. |
+| `?warmonce` | page | switch | v2.3.4652 | =0 | logic |  | no | A fresh warm every pass, as before. |
 
 ## quests
 
@@ -295,9 +353,74 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | name | side | kind | born | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|
 | `?bakeurl` | page | switch | v2.3.5043 | =0 | logic |  | no | Every armour bake input is cut on the page again, not sent to the worker as its sheet's address. |
+| `?barretry` | page | switch | v2.3.4415 | =0 | logic | `?retrylooks` | no | HUD bar pictures that failed are not asked for again. |
+| `?bindfix` | page | switch | v2.3.3152 | =0 | chip |  | no | The graphics bind-group fix is not installed. |
+| `?bladesoft` | page | value | v2.3.2927 | a number, off or on | logic |  | no | Sets how soft a blade's edge is drawn. |
+| `?boardroll` | page | switch | v2.3.3855 | =0, off, false | logic |  | no | The board rolls as it was: no spots, dip or bumps. |
+| `?burnfire` | page | switch | v2.3.3878 | =0 | logic |  | no | A burn draws its old flames, not the building's fire. |
+| `?camsnap` | page | switch | v2.3.3469 | =0 | chip |  | no | The camera is not snapped to whole device pixels. |
+| `?caustics` | page | value | v2.3.3021 | a number, 0 to 2 | logic |  | no | The water's light web this many times as bright. |
 | `?coinflip` | page | switch | v2.3.5247 | =0 | memory |  | no | Ace's coin strips keep their decoded copies, as before. |
+| `?deathbig` | page | lever | v2.3.3954 | =1 or =0 | none |  | no | QA: every kill's death is the big one (=1) or the ordinary one (=0). |
+| `?deathkind` | page | lever | v2.3.3954 | own, normal, slice, decap, leg or topple | none |  | no | QA: every monster dies this way on this phone. |
+| `?deathzones` | page | switch | v2.3.3954 | =0 | logic |  | no | No death zones' effects. |
+| `?depthbuf` | page | switch | v2.3.3072 | present | chip |  | no | The depth buffer is kept, to compare. |
+| `?dmgscale` | page | value | v2.3.3033 | a number | logic |  | no | Scales the damage numbers. |
+| `?dmgwords` | page | switch | v2.3.5008 | =0 | logic |  | no | Damage numbers are not shortened to words (K, M). |
+| `?fill` | page | switch | v2.3.3577 | =0 | chip |  | no | The fill batch is off: fills drawn as Pixi does. |
+| `?firelegless` | page | switch | v2.3.3684 | =0 | logic |  | no | The fire armour keeps the legs under its greaves, as before. |
+| `?firelit` | page | switch | v2.3.3684 | =0 | logic |  | no | The fire log's lit key pixels stay pink, as before. |
+| `?firelog` | page | switch | v2.3.3660 | =0 | logic |  | no | The fire's log is drawn the old way. |
+| `?fishgrip` | page | switch | v2.3.3623 | =1 | logic |  | no | The fishing grip is drawn over the plate. |
+| `?fishgriptrousers` | page | switch | v2.3.3657 | =1 | logic |  | no | The fishing grip lifts the trousers too. |
+| `?flipbake` | page | switch | v2.3.3577 | =0 | logic |  | no | Flipped facings are not baked from their source, as before. |
+| `?folkwork` | page | switch | v2.3.3949 | =0 | logic |  | no | The townsfolk walk but stand at their stops, not work. |
+| `?gripguess` | page | switch | v2.3.3399 | =0 | logic |  | no | The bow's grip between shots as it was, not guessed. |
+| `?groundbg` | page | switch | v2.3.3452 | =1 | chip |  | no | The black under the world's ground is drawn every frame, as it was. |
 | `groundkeep` | both | switch | v2.3.3775 | off_groundkeep: true; ?groundkeep=0, off, false | chip |  | no | The world's ground is rebuilt on a return, not kept, as before. |
+| `?iconretry` | page | switch | v2.3.4431 | =0 | logic | `?retrylooks` | no | Icons that failed are not asked for again. |
+| `?layerpush` | page | switch | v2.3.3449 | present | chip |  | no | Every layer's uniforms are pushed as Pixi does, to compare. |
+| `?legslook` | page | switch | v2.3.4450 | =0, off, false | chip | `lookpalette` | no | Legs under greaves are baked the old way. |
+| `?lightfx` | page | switch | v2.3.2710 | =1, =0, on or off | chip |  | no | Turns the light effects on or off. |
+| `?lookinline` | page | lever | v2.3.3752 | present or =1 | none |  | no | QA: looks are baked on the page, inline (the QA box's software chip). |
+| `?lootbeam` | page | switch | v2.3.3805 | =0 | logic |  | no | No beam over a loot pile. |
+| `?lootpop` | page | switch | v2.3.4124 | =0 | logic |  | no | Loot falls the v2.3.2771 way, no hop and bounce. |
+| `?magicburst` | page | switch | v2.3.3892 | =0 | logic |  | no | The staff's crash is the old small burst. |
+| `?noauras` | page | switch | v2.3.3402 | present | logic |  | no | No land auras. |
+| `?nobuildingfire` | page | switch | v2.3.3230 | present | logic |  | no | No building burns. |
+| `?nofade` | page | switch | v2.3.2999 | present | logic |  | no | Tree canopies do not fade over you. |
+| `?noheal` | page | switch | v2.3.3152 | present | chip |  | no | The renderer's heal after a lost context is off. |
+| `?nolayergroups` | page | switch | v2.3.3449 | present | chip |  | no | World layers are not each their own render group, to compare. |
+| `?nopeercull` | page | switch | v2.3.3241 | present | logic |  | no | Every other player in the world is drawn wherever they stand. |
+| `?norendergroups` | page | switch | v2.3.3079 | present | chip |  | no | No render groups: the world and screen share one draw list. |
+| `?nosilhouette` | page | switch | v2.3.3707 | present | logic |  | no | Monsters under a canopy are not shown as silhouettes. |
+| `?nostormfx` | page | switch | v2.3.4356 | present | logic |  | no | No storm sparks. |
+| `?nowaterfx` | page | switch | v2.3.4355 | present | logic |  | no | No water attack effects. |
+| `?nowaves` | page | switch | v2.3.3019 | present | logic |  | no | The water stays still. |
+| `?nowindupfx` | page | switch | v2.3.3619 | present | logic |  | no | No elemental wind-up effects. |
 | `?npcheads` | page | switch | v2.3.5246 | =0 | memory |  | no | The townsfolk's head pictures keep their decoded copies, as before. |
+| `?orebreakms` | page | lever | v2.3.3345 | a number of ms | none |  | no | QA: an ore's pieces lie this long (a slow machine's screenshot). |
+| `?pagebases` | page | switch | v2.3.4450 | =0, off, false | logic |  | no | A page's ground lines are read on the page, not the worker. |
+| `?pixidelay` | page | lever | v2.3.3709 | a number of ms | none |  | no | QA: the renderer arrives this much later, as a slow phone's. |
+| `?platelayer` | page | switch | v2.3.4886 | =0 | memory |  | no | Armour plates are not drawn as their own layer. |
+| `?popupworld` | page | switch | v2.3.3192 | present | logic |  | no | Popups drawn in the world, not on the screen. |
+| `?seacover` | page | switch | v2.3.3452 | =0 | chip |  | no | The ground is drawn under every sea quad, as it was. |
+| `?shade` | page | switch | v2.3.2740 | =0 | logic |  | no | No form shading on objects. |
+| `?shadowhp` | page | switch | v2.3.3338 | =0 | chip |  | no | The shadow filter at the half precision it had. |
+| `?shadowlock` | page | switch | v2.3.3149 | =0 | logic |  | no | Shadows are not locked to their casters. |
+| `?shadowpass` | page | switch | v2.3.3458 | present | chip |  | no | The shadow filter runs in the middle of the frame, as it was. |
+| `?shadowsnap` | page | switch | v2.3.3338 | =1 | logic |  | no | Shadow pieces snap to pixels again, as before. |
+| `?sheen` | page | switch | v2.3.2736 | =1, =0, on or off | logic |  | no | Turns the sheen on gear on or off. |
+| `?sheenpass` | page | switch | v2.3.3453 | present | chip |  | no | The sheen is drawn without its batch. |
+| `?shieldretry` | page | switch | v2.3.4431 | =0 | logic | `?retrylooks` | no | Shield sheets that failed are not asked for again. |
+| `?slimesplat` | page | switch | v2.3.4127 | =0 or =1 | logic |  | no | The slime's splat turned off (=0) or on (=1) for this phone. |
+| `?sootms` | page | lever | v2.3.3679 | a number of ms | none |  | no | QA: soot marks lie this long. |
+| `?standinlegs` | page | switch | v2.3.3640 | =0 | logic |  | no | The sword and bow bodies keep their legs under greaves, as before. |
+| `?traitretry` | page | switch | v2.3.3606 | =0 | logic | `?retrylooks` | no | A trait picture that failed is not asked for again. |
+| `?waves` | page | value | v2.3.3019 | a number, 0.25 to 3 | logic |  | no | The water's motion this many times as strong. |
+| `?weaponretry` | page | switch | v2.3.4431 | =0 | logic | `?retrylooks` | no | Weapon sheets that failed are not asked for again. |
+| `?webskip` | page | switch | v2.3.3448 | =0 | chip |  | no | The water's light web is drawn on every quad, not skipped. |
+| `?zindexall` | page | switch | v2.3.3449 | present | logic |  | no | Every depth key goes through Pixi's setter every sort, to compare. |
 
 ## server-core
 

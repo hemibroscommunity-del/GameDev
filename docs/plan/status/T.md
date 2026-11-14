@@ -13,9 +13,10 @@ state: working
 
 ## Next
 
-- PR 3 (5303): the drawing side's rows (113, the unlisted line to 0);
-  card B's map reads a system's switches from the table (SYSTEMS.md links
-  to the table, lists no names: no new conflict); SHAPES.md's two lines.
+- PR 3 (5303): the drawing side's rows (113: 448 rows, unlisted 0); card
+  B's map reads a system's switches from the table (SYSTEMS.md links to
+  the table, lists no names); SHAPES.md's two lines point at the table.
+  Then PR 4 (5304), rule 4's two configurations.
 
 ## Found
 
