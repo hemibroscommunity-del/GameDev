@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "f6b7d76771b5872c1608512332e6773c17a4a4a0",
+  "tree": "4d086c04f3d4c12e979de0753fe5b2d8fe577fe1",
+  "committedAt": "2026-11-14T01:17:10-08:00",
+  "subject": "Merge pull request #1711 from hemibroscommunity-del/claude/plan-a-6-speed-card",
+  "files": 7546,
+  "bytes": 948626493,
+  "listingSha256": "346b72d71d351fb5bcaa96a2d6d285df27a29f9062997a6b26191513a13d28bc",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "124ad7075ec1f952526f042451e053b190aa8c36",
+  "tree": "3372dd4772f37f54e80b22bb38a16316e3942a8a",
+  "committedAt": "2026-11-14T01:17:01-08:00",
+  "subject": "Merge pull request #1741 from hemibroscommunity-del/claude/grand-plan-h-9-picsonce",
+  "files": 7543,
+  "bytes": 948555482,
+  "listingSha256": "747c1dd775903cb1dc3d6f7a75deff0b8ca7838a9c98a13bf24ca4d3a018172f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

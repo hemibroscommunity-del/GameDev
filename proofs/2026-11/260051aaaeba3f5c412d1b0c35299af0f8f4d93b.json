@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "260051aaaeba3f5c412d1b0c35299af0f8f4d93b",
+  "tree": "1c12b1eeec7e333804bfa48d6da7edcd41f94802",
+  "committedAt": "2026-11-14T01:17:07-08:00",
+  "subject": "Merge pull request #1708 from hemibroscommunity-del/claude/plan-a-5-room-row",
+  "files": 7545,
+  "bytes": 948597212,
+  "listingSha256": "90ed0c635a140523ba045b205dd23a2f5339bff8631a005d3970d8dfdc709aac",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

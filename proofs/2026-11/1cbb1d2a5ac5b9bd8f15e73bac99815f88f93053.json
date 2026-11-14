@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "1cbb1d2a5ac5b9bd8f15e73bac99815f88f93053",
+  "tree": "6f719f41a4c72df044c9f45f8e1a9e473c5f6b6e",
+  "committedAt": "2026-11-14T01:17:16-08:00",
+  "subject": "Merge pull request #1746 from hemibroscommunity-del/claude/plan-l-1-ledger-reads-code",
+  "files": 7547,
+  "bytes": 948654687,
+  "listingSha256": "9d869c54a0616fed2eba5ad2bf33591b2aa3cc2f0e2d62104924e5f32eb24922",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

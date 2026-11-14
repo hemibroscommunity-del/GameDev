@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0b15103aa658c82330d65f788ee31a5a74172ecf",
+  "tree": "54a2adcfea5f8b2e8f1fe7c09f6b4358efb223a7",
+  "committedAt": "2026-11-14T01:16:58-08:00",
+  "subject": "Merge pull request #1745 from hemibroscommunity-del/claude/plan-p-7-tree-tiers",
+  "files": 7543,
+  "bytes": 948549033,
+  "listingSha256": "1557718861a35f6d37267103babd25bc376d9a0f3b8c6ba53034cd97508f775c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

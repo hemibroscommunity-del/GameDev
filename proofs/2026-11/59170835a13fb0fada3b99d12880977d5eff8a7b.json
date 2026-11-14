@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "59170835a13fb0fada3b99d12880977d5eff8a7b",
+  "tree": "3a50c67c23cb84882044aae7da26b8090f15f1e4",
+  "committedAt": "2026-11-14T01:17:13-08:00",
+  "subject": "Merge pull request #1747 from hemibroscommunity-del/claude/grand-plan-h-10-body-bake",
+  "files": 7546,
+  "bytes": 948633620,
+  "listingSha256": "5853c7dd6fcc18a82024991b499c2c27f11a59bc40b0e8e165488e4277419b6f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
