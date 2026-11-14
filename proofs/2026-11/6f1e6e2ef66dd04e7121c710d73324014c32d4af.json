@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6f1e6e2ef66dd04e7121c710d73324014c32d4af",
+  "tree": "d7a02deb45e28e6f0c8e08dc68afd6daffe8b691",
+  "committedAt": "2026-11-14T15:39:42-08:00",
+  "subject": "Merge pull request #1860 from hemibroscommunity-del/claude/plan-j2-10-alliance",
+  "files": 7731,
+  "bytes": 956980366,
+  "listingSha256": "a27b4f896faf245eeca5f0032f8eb46f4bea39d6e34e27ee22ba51aa22477df4",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
