@@ -291,13 +291,16 @@ so a rollback of it alone is the dashboard's one step back.
 Rehearsed with `tools/dev/gatekeeper.mjs` from `main` 1cce0b2:
 
 1. #1816, #1817, #1828, #1823 (f0307d6), #1825 (2273924), #1826, #1830,
-   at their final heads (tree 0f04b30b): precheck 0 FAIL (3 WARN: the
-   busy-branches count and two the session list names), build, questline
-   187 of 187 (421 s).
+   at their final heads (tree 0f04b30b): precheck 0 FAIL (3 WARN: card
+   T's old closed branches `plan-t-3-page-draw` and `plan-t-4-thrown`
+   carry 5303 and 5304, which #1816 and #1817 replace, so nothing to
+   renumber; the busy-branches count), build, questline 187 of 187
+   (421 s).
 2. **The list in its order** (#1826 before #1825): the same tree,
    0f04b30b (a merge-tree run step by step); ONE merge base each.
 3. **The list with this branch last** (documents and two lines lowered):
-   its tree is in the list sent to the planning session (the file cannot
-   carry its own tree); precheck on this branch alone, 0 FAIL.
+   precheck on the whole, 0 FAIL (the same 3 WARN). Its tree is in the
+   list sent to the planning session (the file cannot carry its own
+   tree).
 
 Each listed head's `test` is green on GitHub; each base is `main`.
