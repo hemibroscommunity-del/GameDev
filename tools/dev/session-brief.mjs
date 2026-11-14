@@ -14,7 +14,7 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { tagsIn, suggestTag } from './tagRule.mjs';
+import { tagsIn } from './tagRule.mjs';
 
 function git(args) {
   try { return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024, timeout: 8000 }).trim(); }
@@ -39,7 +39,9 @@ try {
   if (m) usedOnMain.add(+m[1]);
 } catch { /* ignore */ }
 tagsIn(git(['log', mainRef, '--format=%s']), usedOnMain);
-tagsIn(git(['grep', '-h', '-oE', 'v2\\.3\\.[0-9]+', mainRef]), usedOnMain);
+/* v2.3.5023: a card hands its tag out, it does not use it: docs/plan/cards/
+   is left out, as in precheck's tag check (v2.3.5022) */
+tagsIn(git(['grep', '-h', '-oE', 'v2\\.3\\.[0-9]+', mainRef, '--', '.', ':(exclude)docs/plan/cards']), usedOnMain);
 let high = 0;
 for (const n of usedOnMain) if (n > high) high = n;
 
@@ -57,7 +59,38 @@ for (const [, ref] of inflight) tagsIn(git(['log', `${mainRef}..${ref}`, '--form
 console.log('=== BroTown session brief ===');
 console.log(`refs: ${fetched ? 'fetched origin just now' : 'OFFLINE/slow — using local refs (may be stale)'}`);
 console.log(`version high-water on ${mainRef}: v2.3.${high}`);
-console.log(`SUGGESTED free tag: v2.3.${suggestTag(usedOnMain, inFlightTags)}  (unused on main and on every branch below; a tag only has to be UNUSED on main, never higher than it: no renumbering when someone else merges first; precheck says if yours was taken)`);
+/* v2.3.5023: THE TAG BLOCKS, IN PLACE OF ONE SUGGESTED TAG (the grand plan's
+   wave 0).  The brief offered every new session the same free number, so
+   sessions started side by side all claimed it.  A session of the plan takes
+   its tags from its card's block (tools/dev/tag-blocks.json), one a PR, in
+   order; the table says which of a block are still free (not on main, not
+   on a branch below). */
+let blocks = null;
+try { blocks = JSON.parse(readFileSync(join(root, 'tools/dev/tag-blocks.json'), 'utf8')); } catch { /* said below */ }
+if (blocks && blocks.blocks) {
+  console.log('\nTAG BLOCKS (tools/dev/tag-blocks.json) -- take your tags from YOUR CARD\'s block, one a PR, in order.  No tag is suggested here: every new session would be offered the same one.');
+  console.log('  card  block        free');
+  for (const [card, list] of Object.entries(blocks.blocks)) {
+    for (const [first, last] of list) {
+      const free = [], onBranch = [];
+      for (let n = first; n <= last; n++) {
+        if (usedOnMain.has(n)) continue;
+        if (inFlightTags.has(n)) onBranch.push(n); else free.push(n);
+      }
+      const size = last - first + 1;
+      const span = first === last ? String(first) : first + ' to ' + last;
+      const few = (a) => (a.length <= 6 ? a.join(', ') : a.slice(0, 3).join(', ') + ' ... ' + a[a.length - 1]);
+      const merged = size - free.length - onBranch.length;
+      const say = (free.length === size ? 'all ' + size : free.length ? free.length + ' of ' + size + ': ' + few(free) : 'none')
+        + (onBranch.length ? '   (on a branch, not merged: ' + few(onBranch) + ')' : '')
+        + (merged === size ? '   (all merged: a second block from nextBlock, see _rules)' : '');
+      console.log('  ' + card.padEnd(6) + span.padEnd(13) + say);
+    }
+  }
+  console.log(`  a new card's block starts at ${blocks.nextBlock} (twenty numbers).  A tag only has to be UNUSED on main, never higher than it; precheck says if yours was taken.`);
+} else {
+  console.log('\nTAG BLOCKS: tools/dev/tag-blocks.json could not be read -- take your tag from your card (docs/plan/cards/), never a number of your own choosing.');
+}
 if (inflight.length) {
   console.log(`\nIN-FLIGHT work — remote claude/* branches pushed in the last 72h (${inflight.length}). Someone may already be building your feature or holding your tag:`);
   for (const [ts, ref, subj] of inflight.slice(0, 15)) {
@@ -67,13 +100,38 @@ if (inflight.length) {
 } else {
   console.log('\nno claude/* branches pushed in the last 72h (or offline — verify before claiming a tag).');
 }
+
+/* v2.3.5023: THE PLAN'S SESSIONS, BY THEIR STATUS FILES (docs/plan/README.md).
+   A session's status file lives on its own branch.  For each branch above,
+   the status files it changes against main, with their card and state; a
+   branch that says `working` and has had no commit for three hours is named
+   as stalled (the gatekeeper's rule). */
+{
+  const rows = [];
+  for (const [ts, ref] of inflight) {
+    const files = git(['diff', '--name-only', `${mainRef}...${ref}`, '--', 'docs/plan/status']).split('\n').filter((f) => /\.md$/.test(f));
+    for (const f of files) {
+      const head = git(['show', `${ref}:${f}`]).split('\n').slice(0, 4);
+      const val = (k) => { const l = head.find((x) => x.startsWith(k + ': ')); return l ? l.slice(k.length + 2).trim() : '?'; };
+      const hours = (now - +ts) / 3600;
+      const state = val('state');
+      rows.push(`  ${val('card').padEnd(4)} ${state.padEnd(8)} ${String(Math.round(hours)).padStart(3)}h  ${ref.replace('origin/', '')}  prs: ${val('prs')}`
+        + (state === 'working' && hours >= 3 ? '   <-- STALLED? says working, no commit for 3 hours' : ''));
+    }
+  }
+  if (rows.length) {
+    console.log(`\nPLAN SESSIONS -- status files on the branches above (docs/plan/status/<card>.md; the newest branch of a card is its word):`);
+    for (const r of rows.slice(0, 30)) console.log(r);
+    if (rows.length > 30) console.log(`  ... ${rows.length - 30} more`);
+  }
+}
 console.log(`
 Protocol (6 lines):
   1. ONE system per PR; check open PRs + the branches above before claiming a backlog item.
   2. Run \`node tools/dev/precheck.mjs\` before EVERY push (the sandbox blocks npm install — this is your local gate).
   3. Read docs/ARCHITECTURE-HANDOFF.md before ANY server change; it is load-bearing.
   4. Objects keyed by client-supplied ids: Object.create(null) or Map — plain {} no-ops on '__proto__' (3 incidents on 2026-07-07).
-  5. Claim ONE v2.3.N tag not used on main or a branch above (the SUGGESTED one) and tag every change with it (rule 25).
+  5. Take your v2.3.N tags from your card's block above (one a PR, in order) and tag every change with its PR's (rule 25).
   6. THE OLD MAP IS RETIRED (owner, 2026-10-21: "You keep making that mistake").  The world is the Wheel's
      BroTown ("BroTown" on the top bar, the Town Hall); "Town" on the top bar is the retired map.  Every phone
      test passes world: 'wheel' -- the harness refuses a new one that does not (tools/qa/mp/oldMap.mjs).`);
