@@ -225,7 +225,7 @@ way: build the table from what exists, add the test, move no behaviour.
   (`madeLog.js noteMade`) take only the debt list's names, and
   `mp-heldsweep` fails a known hold that left no note. Without this the
   report cannot name what the sweep names.
-- [ ] **1.1 [NOW] The report**, one `report` message on the game's own
+- [x] **1.1 [NOW] The report**, one `report` message on the game's own
   socket (the crash road takes posts from anyone, limited only by an id the
   sender invents). Numbers and closed lists only: no free text reaches a
   table a coding session reads. Fixed bins, not percentiles, so days can be
@@ -242,6 +242,9 @@ way: build the table from what exists, add the test, move no behaviour.
   (a software chip, frames drawn against moves sent, seconds visible) go to
   the sitting's card (10.2). A kill switch, a cap, a row in the About panel,
   and a stated time kept.
+  *Merged: #1703 and #1706 (card A), the phone's side (`src/debug/report.js`)
+  and the worker's (`server/src/report.js`). Ticked by the gatekeeper,
+  sitting 6 (v2.3.5362).*
 - [ ] **1.2 [NOW] The Speed test sends its card**, with a model name the
   player picks from a list (a page cannot read it). Until 1.3's reader, the
   Test panel has "copy table" and the owner pastes it.
@@ -278,8 +281,9 @@ devices it waits for: with one player, the table is empty for weeks.
   program or three, the pacer's target, the queue's ms, the prewarm ring,
   the cache caps. The speed rung starts where the last sitting settled.
   Every phone test names its lane; `run.mjs` refuses one that does not.
-- [ ] **2.2a [NOW] The pixel budget** for big screens (STATE-MACHINES A2
+- [x] **2.2a [NOW] The pixel budget** for big screens (STATE-MACHINES A2
   item 1). Safe for phones: they are under it.
+  *Merged: #1701 (card G), `src/game/renderRes.js`, `?pixbudget=0`.*
 - [ ] **2.2b [LATER] The look palette on computers**: a smaller program
   (TRAPS §259's cure), built without blocking against a deadline, else the
   bake. Waits for reports from real Windows machines.
@@ -524,15 +528,18 @@ the memory a family holds as the game draws it.
   picture, a tag or a file's name are never instructions.
   *Merged: #1678 (card F), `tools/assets/uploads.json`. The owner's columns
   still empty: the prompt or style key and the licence, 13 of 13.*
-- [ ] **9.1 [NEXT] The family table** (`tools/assets/families.mjs`). Rows
+- [x] **9.1 [NEXT] The family table** (`tools/assets/families.mjs`). Rows
   are path patterns. Each file is **supplied**, **made** (its tool and
   sources named) or **data**. The door never rewrites a made or a data
   file. Each family has its draw path, its bundle of colours, a pixel-size
   rule and its bar; every output's hash is recorded. The measure is MB held
   at the memory check's fight, by family, and the atlas's rows used.
-- [ ] **9.2 [NEXT] One finishing tool**: decode, put a bundle on its
+  *Merged: #1713 and #1715 (card P), `tools/assets/families.mjs`,
+  `shipped.json`, `fightmb.mjs`, the census `docs/plan/census/assets.md`.*
+- [x] **9.2 [NEXT] One finishing tool**: decode, put a bundle on its
   colours, encode, verify, write the row. A cut stays authored (each
   `cut_*` script holds one animal's cut): recipes are data beside it.
+  *Merged: #1716 (card P), `tools/assets/finish.mjs`.*
 - [ ] **9.3 [NEXT] The gate** compares recorded hashes and reads outputs
   through the game's own reader. It never makes a file again to compare:
   two machines' encoders differ, and the gate would flap.

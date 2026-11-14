@@ -109,9 +109,13 @@ export const KNOWN = {
   'other: wrapped > sweepPicsOnce': { ms: 16, whose: 'ours',
     why: "picsOnce.js's sweep of the cache's pictures, up to 15 ms with the crowd's pictures in it",
     next: 'sweep a slice a turn' },
-  'ui:*': { ms: 16, whose: 'ours',
-    why: 'one component of the band drawn in one piece (the gear tab is 10 ms of one function): React lets a frame in between components, not inside one',
-    next: 'split the gear tab so no one piece of it is over 5 ms' },
+  /* v2.3.5047: 'ui:*' (was 16) off the list.  One component of the band drawn in one piece: React lets a frame in
+     between components, never inside one.  The gear tab built its nine equipment cells in its own body (each with its
+     rows, the amulet's stat card), and its gold badge said the page's first number with commas (about 10 ms, the
+     browser readying its formatter).  Now each cell is a component (GearTab.jsx GearCellView) and the formatter is
+     readied with the game's code, behind the loading screen (barNumbers.js).  Before, six runs of `town`, `lands`,
+     `peer` and `armour`: 13.4 ms the longest.  The sample (the same, x3): 34 holds of a component, 9.9 ms the longest
+     (docs/specs/held-sweep.md, "Card H") */
   /* v2.3.5045: 'other: BT_AUDIO$1._fold > foldToMono' (was 20) off the list.  A two-sided sound folded to one on its
      first play (soundFold.js), in one piece: 8.1 / 8.9 / 13.4 ms at the main tour's `lands` and `town`, three runs
      (18.9 once before).  Now walked a stretch at a time, a frame let in once a piece has run 4 ms (foldToMonoSliced:
