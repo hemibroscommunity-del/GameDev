@@ -1,6 +1,6 @@
 card: L
-branch: claude/plan-l-4-resets (one branch a PR, each begun from the one before)
-prs: #1746, #1748 (merged), #1767 (ready), PR 4 (opening)
+branch: claude/plan-l-5-resets (one branch a PR, each begun from the one before)
+prs: #1746, #1748 (merged), #1767, #1775 (ready), PR 5 (working)
 state: working
 
 ## Done
@@ -13,9 +13,12 @@ state: working
 - PR 4 (5204): desktop, social, movement: 22 rows (3 resets: the rises,
   the Wheel's water, a race at a rejoin), SITTING_LINE 468 -> 446.
 
+- PR 5 (5205): economy, skills: 17 rows (1 reset: a smelt's pose),
+  SITTING_LINE 446 -> 429.
+
 ## Next
 
-- PR 5 (5205): economy, skills; then data, combat (card PR 4's list).
+- PR 6 (5206): data, combat (card PR 4's list).
 
 ## Found
 

@@ -20,7 +20,7 @@ addresses (`tools/qa/`), `localStorage` toggles, and the worker's `env` settings
 reads it as a flag or a comment promises it as a kill switch; any other cap's override is the emergency lever of
 `docs/specs/liveops.md` ("Caps override").
 
-254 rows: 247 switches, 6 values, 1 levers, in 23 systems.
+255 rows: 248 switches, 6 values, 1 levers, in 23 systems.
 
 ## audio
 
@@ -316,6 +316,7 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 | `trapcraft` | worker | switch | v2.3.3120 | false | logic |  | no | Making traps is refused. |
 | `trapping` | worker | switch | v2.3.3120 | false | logic |  | no | Un-advertises trapping, refuses every arm and stops every roll. |
 | `volleychip` | worker | switch | v2.3.4385 | false | logic |  | no | A harvest ends on every chip, as before. |
+| `?skillsreset` | page | switch | v2.3.5205 | =0 | logic |  | no | A smelt's or a forge's pose runs out its seconds after a change of place again, not ended at the zone door. |
 
 ## social
 
