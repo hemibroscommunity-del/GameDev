@@ -47,11 +47,11 @@
  * (600 frames: over 4 s at 144 a second) and the ring of holds, and adds
  * what is new into the open report's bins; building and sending one is done
  * on the same timer, every EVERY_MS (the first FIRST_MS after the first
- * join).  Sent only to a worker that takes one (takesReports): either side
- * ships first.  v2.3.5122 is the phone's half alone: no worker takes one
- * yet, so it builds each report and sends nothing (the house's caps-audit
- * fails a cap the phone reads that no worker advertises: the worker's half,
- * v2.3.5123, adds `caps.report` and its read below together).
+ * join).  Sent only to a worker that takes one (takesReports: its
+ * state_sync says `caps.report`, v2.3.5123): either side ships first, and an
+ * older worker is sent nothing (v2.3.5122 was the phone's half alone; the
+ * house's caps-audit fails a cap the phone reads that no worker advertises,
+ * so the cap and its read came together).
  *
  * THE SWITCH: on for every player (the owner's call 1), off from the About
  * panel (kept on this device, OFF_KEY) or with `?report=0` for one tab.  The
@@ -263,10 +263,11 @@ export function buildReport(now) {
   return r;
 }
 
-/** Does this socket's worker take a report?  v2.3.5122: none does yet (the
- *  worker's half, v2.3.5123, reads its cap here). */
+/** Does this socket's worker take a report?  v2.3.5123: one that says
+ *  `caps.report` (server/src/report.js; `report: false` in its live flags
+ *  un-advertises it). */
 export function takesReports(S) {
-  return !!(S && false);
+  return !!(S && S._serverCaps && S._serverCaps.report);
 }
 
 /* a report is due: built, sent to a worker that takes one, and a new one opened */
