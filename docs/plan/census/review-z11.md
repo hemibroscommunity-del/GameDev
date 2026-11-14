@@ -205,7 +205,7 @@ merges after #1786 (it carries ffce416).
   cost-guard 43, persistence 41, account 33; at 5ab1569 valuepause 28,
   trade2 50; switches 345 rows.
 
-## Card O: #1787, #1792 (tags 5221, 5222) listed; #1794 (tag 5224) HELD
+## Card O: #1787 (tag 5221) listed; #1792 (5222) and #1794 (5224) HELD
 
 Read at the -4- head ee7453d. Probe: the suite's own `model()`
 (frame-pacer §13) with the rate knob live, as on merge.
@@ -216,7 +216,17 @@ Read at the -4- head ee7453d. Probe: the suite's own `model()`
   header (thrown: back to 2). `rung` clamped, `self` a closed list of at
   most 10 in `Object.create(null)`; no key, no pace; mirror rows. It
   DEPLOYS.
-- **#1792, nothing a player sees.** The governor walks the ladder, but
+- **#1792 HELD: red together with card L's #1767 (each green alone).**
+  On the merged tree `node tools/guards/phase-table.test.mjs` FAILS 2:
+  "ladder (page): server/test/frame-pacer.test.mjs is not on DOOR_SUITES
+  (the suites that fail a second writer of a door's field): a door is
+  built, then listed". #1792 adds the `ladder` door (src/state/phases.js
+  ~112-119, held by frame-pacer.test §17: a second caller of `setRung`,
+  a second write of `_rung`); #1767 closes the guard with `DOOR_SUITES`
+  (phase-table.test ~212: life-door and zone-leftovers only). Mend, for
+  sitting 12: #1792 merges `main` after today's list and adds its row to
+  `DOOR_SUITES` (card L's file: the planning session's to allow).
+- **#1792, read: nothing a player sees.** The governor walks the ladder, but
   no knob is read (PR 4 moves the first). Nothing measures the page; a
   verdict once in 80 frames, no allocation a frame. It DEPLOYS (its
   tests). Note for O: it saves its rung (`bt_rung`) already, so a phone
