@@ -41,8 +41,8 @@ import * as B from './claimbots.mjs';
 const BAR = 1.5;
 /* today's gains (main 82fb78d, the default seed): a line only falls */
 const LINES = {
-  reach: 2.96, bowlabel: 3.76, guard: 1.37, cookshield: 0.67, move: 3.43, harvest: 1.86, cook: 1.59, quest: 1, sale: 1, local: 1,
-};   /* v2.3.5541: move 4.35 -> 3.43 (the sprint mark: the run goes on through the grace, sprint.js) */
+  reach: 2.96, bowlabel: 3.76, guard: 1.37, cookshield: 0.67, move: 2.56, harvest: 1.86, cook: 1.59, quest: 1, sale: 1, local: 1,
+};   /* v2.3.5541: move 4.35 -> 2.56 (the sprint mark, ON: the run goes on through the grace, and the sprint's bound only for what is billed; review-z16) */
 /* each gain's spread over five other seeds (CLAIMS_SEED=a..e, --gains:
    the highest less the lowest, rounded up), measured 2026-11-14.  A gain
    fails only past its line by more than its spread, so a change elsewhere in
