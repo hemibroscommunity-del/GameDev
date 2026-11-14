@@ -231,8 +231,21 @@
  * let go of as they land (npcSprites.js, `?coinflip=0` the old way).  Three
  * runs: its highest 45.8 -> 43.7 (2.1 MB, the census's 2.06), `buffers`
  * 21.1-21.4, unchanged. */
+/* v2.3.5248, the backlog's `tree-tiers` (card P): the woods' five trees
+ * (public/sprites/trees/wood-*.png, on 256 colours) read as colour numbers
+ * (paletteLoad.js, `?treenumbers=0` the pictures, as before), and __btTex
+ * mended to count a numbers picture at nothing (cacheBytes.js: its page
+ * copy is its numbers, an ArrayBuffer, `buffers`' already; counted here as
+ * well, the trees read 5.6 MB of `artCache` that held nothing; the
+ * planning session's yes, 2026-11-14).  Three runs: `artCache` at its
+ * highest 43.7 -> 38.1 and its line 107.0 -> 101.4, LOWERED by the 5.6 MB
+ * saved; `buffers` 21.1-21.4 -> 22.5-22.6 and its line 22 -> 23.4, RAISED by
+ * exactly what moved there, the trees' numbers (1.40 MB: 171 x 318 + 381 x
+ * 424 + 570 x 530 + 345 x 636 + 855 x 847 at a byte a pixel, rows padded):
+ * the planning session's rule for a numbers PR.  Net: 4.2 MB less.  The
+ * chip counts a tree as numbers at a byte a pixel (r8unorm), when drawn. */
 export const MEMORY_BUDGET = {
-  artCache: { name: 'art loaded from files', mb: 107.0, measured: 43.7,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB); v2.3.5247: 109.1 -> 107.0, Ace's coin strips (2.1 MB), see the header */
+  artCache: { name: 'art loaded from files', mb: 101.4, measured: 38.1,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB); v2.3.5247: 109.1 -> 107.0, Ace's coin strips (2.1 MB); v2.3.5248: 107.0 -> 101.4, the trees as numbers (5.6 MB), see the header */
     what: 'pictures loaded from files, decoded (the asset cache, window.__btTex) -- its highest at the fight, the monsters\' looks loaded' },
   gpu: { name: 'textures on the graphics chip', mb: 115, measured: 95.0,   /* v2.3.4058: 105 -> 115, approved by the owner 2026-11-03, see the header */
     what: 'textures on the graphics chip (window.__btGpuTex) -- including what was drawn in the last minute, which Pixi unloads after 60 s unused' },
@@ -242,7 +255,7 @@ export const MEMORY_BUDGET = {
     what: 'sound decoded into memory (music streams from its file and is not in it, v2.3.3073)' },
   heap: { name: 'the page\'s JavaScript objects', mb: 38.5, measured: 36.4,   /* v2.3.3595: 32 -> 33; v2.3.3657: 33 -> 34; v2.3.3807: 34 -> 36; v2.3.4005: 36 -> 38; v2.3.4080: 38 -> 37.5; v2.3.4483: 37.5 -> 38.5; v2.3.5007: unchanged, measured 37.7 -> 36.4 by the heap trim, see the header */
     what: 'the page\'s JavaScript objects' },
-  buffers: { name: 'the page\'s raw data buffers', mb: 22, measured: 20.4,   /* v2.3.3703: 24 -> 22, see the header */
+  buffers: { name: 'the page\'s raw data buffers', mb: 23.4, measured: 22.6,   /* v2.3.3703: 24 -> 22, see the header; v2.3.5248: 22 -> 23.4, RAISED by the trees' colour numbers moved here (1.40 MB) as artCache fell 5.6 (net 4.2 less), see the header */
     what: 'the page\'s raw data buffers (ArrayBuffers), and the text of its scripts, which the same reading counts (v2.3.3703)' },
   workers: { name: 'the background workers', mb: 36, measured: 30.5,
     what: 'the background workers (the ground builder): their objects and buffers' },
