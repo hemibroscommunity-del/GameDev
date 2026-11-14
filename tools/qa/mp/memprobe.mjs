@@ -104,8 +104,9 @@ export const MEM_INIT = () => {
        chip     every texture on the graphics chip (__btGpuTex's own list and
                 its own sizes: bytes a pixel by format, x 4/3 with mipmaps),
                 with its kind and, for colour numbers, its row of the atlas;
-       page     every picture the asset cache holds in the page (__btTex's own
-                list, four bytes a pixel, as the artCache line counts it);
+       page     every picture the asset cache holds in the page, counted by
+                __btTex's own rule (four bytes a pixel, as the artCache line
+                counts it), named by its source's label or its file;
        numbers  the colour numbers the page keeps beside a texture (a palette
                 source whose numbers are still its resource: one byte a
                 pixel), seen through the chip's and the cache's sources and
@@ -125,16 +126,28 @@ export const MEM_INIT = () => {
       for (const s of (window.__btGpuTexSources ? window.__btGpuTexSources() : [])) if (s && !s.destroyed) byUid.set(s.uid, s);
       for (const s of (window.__btPicNumSources ? window.__btPicNumSources() : [])) if (s && !s.destroyed) byUid.set(s.uid, s);
     } catch (e) { /* a probe that moved: the rows it gave stand */ }
+    /* a picture with no label is named by its own file where it has one */
+    const srcOf = (s) => { const res = s && s.resource; return clean(res && (res.currentSrc || res.src) || ''); };
     try {
       const g = window.__btGpuTex ? window.__btGpuTex(1e9) : null;
       for (const x of (g && g.list) || []) {
         const s = byUid.get(x.uid);
-        r.chip.push([x.label, x.mb, x.kind, s && s._btPal ? s._btPal.row : null]);
+        r.chip.push([x.label || srcOf(s), x.mb, x.kind, s && s._btPal ? s._btPal.row : null]);
       }
     } catch (e) { /* none */ }
+    /* the page's copies, counted by __btTex's own rule (a destroyed source
+       is not held, one let go of is not either, a canvas holds its own
+       size, four bytes a pixel) but each named by its source: __btTex's own
+       list names a picture the cache keys by its element "[object
+       HTMLImageElement]" */
     try {
-      const t = window.__btTex ? window.__btTex(true) : null;
-      for (const x of (t && t.list) || []) r.page.push([clean(x.k), x.mb]);
+      for (const s of (window.__btCacheSources ? window.__btCacheSources() : [])) {
+        if (!s || s.destroyed || (s.resource && s.resource.__btReleased)) continue;
+        let w = s.pixelWidth || s.width || 0, h = s.pixelHeight || s.height || 0;
+        const res = s.resource;
+        if (res && typeof res.getContext === 'function') { w = res.width | 0; h = res.height | 0; }
+        r.page.push([clean(s.label) || srcOf(s), +((w * h * 4) / 1048576).toFixed(3)]);
+      }
     } catch (e) { /* none */ }
     for (const s of byUid.values()) {
       const res = s.resource;

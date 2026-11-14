@@ -61,9 +61,19 @@ function familyByPath() {
   return { rec, of: new Map(rec.rows.map((r) => [r.path, r.family])) };
 }
 
-/** a row's label -> its family's name, or `in play: <label>` */
+/** a row's label -> its family's name, or `in play: <label>`.  A label
+ *  names a file in reach in two forms: its address (`/sprites/x.png`), and
+ *  a look sheet's texture, `bt-look:<set>/<sheet>` (`bt-look:<sheet>` for
+ *  the body set: src/rendering/lookPalette.js), which is the file
+ *  public/sprites/look/<set>/<sheet>.png drawn as it is.  A look atlas page
+ *  (`bt-look:page/...`) holds many sheets laid out in play: made in play. */
 export function keyOf(label, of) {
   const l = String(label || '').trim();
+  const look = /^bt-look:(?!page\/)(.+)$/.exec(l);
+  if (look) {
+    const f = of.get(`public/sprites/look/${look[1]}.png`);
+    if (f) return f;
+  }
   if (l.startsWith('/')) {
     let path = 'public' + l;
     try { path = 'public' + decodeURIComponent(l); } catch (e) { /* not an address */ }
@@ -82,7 +92,13 @@ function perStop(rows, of) {
     if (!e) { e = { chip: 0, page: 0, numbers: 0, sound: 0, rows: new Set() }; out.set(k, e); }
     return e;
   };
-  for (const [label, m, , row] of rows.chip || []) { const e = at(keyOf(label, of)); e.chip += m || 0; if (row != null) e.rows.add(row); }
+  for (const [label, m, kind, row] of rows.chip || []) {
+    const e = at(keyOf(label, of));
+    e.chip += m || 0;
+    if (row != null) e.rows.add(row);
+    /* `in play: unnamed` stays one line (the card), with its kinds beside it */
+    if (!String(label || '').trim()) (e.kinds || (e.kinds = {}))[kind || '?'] = ((e.kinds || {})[kind || '?'] || 0) + (m || 0);
+  }
   for (const [label, m] of rows.page || []) at(keyOf(label, of)).page += m || 0;
   for (const [label, m, row] of rows.numbers || []) { const e = at(keyOf(label, of)); e.numbers += m || 0; if (row != null) e.rows.add(row); }
   for (const [label, m] of rows.sound || []) at(keyOf(label, of)).sound += m || 0;
@@ -126,13 +142,18 @@ export function census(runs) {
     const loaders = [].concat(f.loader || []);
     const waits = loaders.filter((l) => WAITS_ON_H.includes(l)).map((l) => l.split('/').pop());
     if (DRAW_WAITS[f.draw]) waits.push(DRAW_WAITS[f.draw]);
+    /* whether a backlog PR may take it: never a data file (the door never
+       rewrites one: the look sheets are colour NUMBERS), a made one only by
+       its own tool, and one whose loader is card H's only after H */
+    const takes = f.kind === 'data' ? 'no: data' : waits.length ? 'after H' : f.kind === 'made' ? 'yes, by its tool' : 'yes';
     return { name: f.name, kind: f.kind, draw: f.draw, files: d.files, diskMB: d.bytes / 1048576, over: d.over,
       held: heldOf(e), chip: e.chip, page: e.page, numbers: e.numbers, sound: e.sound, rows: e.rows.size,
-      waits: waits.join(', '), at: b ? `run ${b.run}` : '' };
+      waits: waits.join(', '), takes, at: b ? `run ${b.run}` : '' };
   });
   fams.sort((a, b) => b.held - a.held || b.diskMB - a.diskMB);
   const inPlay = [...best.entries()].filter(([k]) => k.startsWith('in play: '))
-    .map(([k, b]) => ({ name: k, held: heldOf(b.e), chip: b.e.chip, page: b.e.page, numbers: b.e.numbers, sound: b.e.sound, rows: b.e.rows.size }))
+    .map(([k, b]) => ({ name: k, held: heldOf(b.e), chip: b.e.chip, page: b.e.page, numbers: b.e.numbers, sound: b.e.sound, rows: b.e.rows.size,
+      kinds: b.e.kinds ? Object.entries(b.e.kinds).sort((x, y) => y[1] - x[1]).map(([kk, v]) => `${kk} ${mb(v)}`).join(', ') : '' }))
     .sort((a, b) => b.held - a.held);
   return { fams, inPlay, stops };
 }
@@ -152,19 +173,22 @@ function text(c, files) {
   L.push('the rows of the palette atlas its pictures took there. **Over bar** counts its');
   L.push('files the game\'s reader (`png8Decode.js`) does not read. **Waits on H**: its');
   L.push('loader is one of the files card P leaves alone while card H runs.');
+  L.push('**Backlog**: whether a backlog PR may take it: never a data family (the door');
+  L.push('never rewrites data: the look sheets are colour NUMBERS), a made family only');
+  L.push('by changing its own tool, and a family waiting on card H only after H.');
   L.push('');
   L.push('This is the backlog\'s order (card P, PR 6 on), most MB held first. The backlog');
   L.push('stops at the first family under 1 MB (the line below the table\'s marker).');
   L.push('');
-  L.push('| family | kind | draw | files | MB on disk | MB at the fight | chip | page | numbers | sound | atlas | over bar | waits on H |');
-  L.push('|---|---|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|---|');
+  L.push('| family | kind | draw | files | MB on disk | MB at the fight | chip | page | numbers | sound | atlas | over bar | backlog | waits on H |');
+  L.push('|---|---|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|---|---|');
   let marked = false;
   for (const f of c.fams.filter((x) => x.held > 0)) {
     if (!marked && f.held < 1) {
-      L.push('| **under 1 MB at the fight: the backlog stops here** | | | | | | | | | | | | |');
+      L.push('| **under 1 MB at the fight: the backlog stops here** | | | | | | | | | | | | | |');
       marked = true;
     }
-    L.push(`| \`${f.name}\` | ${f.kind} | ${f.draw} | ${f.files} | ${mb(f.diskMB)} | **${mb(f.held)}** | ${mb(f.chip)} | ${mb(f.page)} | ${mb(f.numbers)} | ${mb(f.sound)} | ${f.rows || ''} | ${f.over || ''} | ${f.waits} |`);
+    L.push(`| \`${f.name}\` | ${f.kind} | ${f.draw} | ${f.files} | ${mb(f.diskMB)} | **${mb(f.held)}** | ${mb(f.chip)} | ${mb(f.page)} | ${mb(f.numbers)} | ${mb(f.sound)} | ${f.rows || ''} | ${f.over || ''} | ${f.takes} | ${f.waits} |`);
   }
   L.push('');
   const zero = c.fams.filter((x) => x.held === 0);
@@ -188,7 +212,7 @@ function text(c, files) {
   L.push('');
   L.push('| label | MB at the fight | chip | page | numbers | sound | atlas |');
   L.push('|---|--:|--:|--:|--:|--:|--:|');
-  for (const f of c.inPlay) L.push(`| \`${f.name.slice(9).replace(/\|/g, '/')}\` | ${mb(f.held)} | ${mb(f.chip)} | ${mb(f.page)} | ${mb(f.numbers)} | ${mb(f.sound)} | ${f.rows || ''} |`);
+  for (const f of c.inPlay) L.push(`| \`${f.name.slice(9).replace(/\|/g, '/')}\`${f.kinds ? ` (on the chip: ${f.kinds})` : ''} | ${mb(f.held)} | ${mb(f.chip)} | ${mb(f.page)} | ${mb(f.numbers)} | ${mb(f.sound)} | ${f.rows || ''} |`);
   L.push('');
   L.push('## The fight stops read');
   L.push('');
