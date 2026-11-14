@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "5be5f2b92c3a762a6b3b3511020615163723ae2e",
+  "tree": "7153e0b4413a3f312cd599160fc8f6c9712ffd9a",
+  "committedAt": "2026-11-14T09:34:26-08:00",
+  "subject": "Merge pull request #1775 from hemibroscommunity-del/claude/plan-l-4-resets",
+  "files": 7646,
+  "bytes": 953137310,
+  "listingSha256": "17e2a5c806406c26b8b4093ed11c77b8641067fd99cf5dc00ac5bc0ff2575707",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
