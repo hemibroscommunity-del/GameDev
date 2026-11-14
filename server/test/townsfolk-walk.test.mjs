@@ -18,6 +18,14 @@
  *   4. the wiring, read from the source: the game loop's hook, the renderer's
  *      work poses (no bake: the palette's pose, the tee's colour without its
  *      print), the poses' sheets warmed behind the loading screen.
+ *   2j. v2.3.5460, each works with his own tool (the owner, 2026-11-14: "make
+ *      sure all NPCs do things that match their characters. Like chef blaze
+ *      should cook, not hammer like an anvil"): a work pose that holds a tool
+ *      (the mining swing's pickaxe, the cast's rod) is worn only by those who
+ *      may hold it (TOOL_OF, MAY_HOLD below); every work pose names its tool,
+ *      so a new pose (card TF PR 2's pan, axe, hoe) says whose it is; 2k, and
+ *      no job makes a new bake of a look the colour numbers refuse.
+ *      docs/specs/townsfolk-work.md is every townsperson's day.
  *   5. v2.3.4098, townsfolk never block you (the owner, 2026-11-03: "I walked
  *      into Npc who walked into me and I got stuck"): the player's walk test
  *      (BroTown isSolid) reads no townsperson, and a walker whose step would
@@ -92,8 +100,14 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
     && (s[3] === undefined || W.FOLK_WORK_POSES.includes(s[3])))).map((s) => [n, s]));
   check('2f every stop an offset, a pause of 2-12 s, and any job one of the work poses (mine, fish, pickup)', badStop.length === 0, badStop);
   const jobs = Object.fromEntries(names.map((n) => [n, [...new Set(W.FOLK_DAYS[n].stops.map((s) => s[3]).filter(Boolean))].join()]));
-  check('2g the owner\'s jobs: the blacksmith hammering, the cook at his cookhouse, chopping, fishing by the river, hoeing',
-    jobs['Blacksmith Bro'] === 'mine' && jobs['Chef Blaze'] === 'mine' && jobs['Woodworker Bro'] === 'mine' && jobs['Old Man Reel'] === 'fish' && jobs['Farmer Bro'] === 'mine', jobs);
+  /* v2.3.5460: the cook, the woodworker, the farmer and Gavel Greg swung the
+     blacksmith's pickaxe ("chef blaze should cook, not hammer like an anvil");
+     until their own poses (card TF PR 2) three work empty-handed, the pickup,
+     and the farmer stands (the pickup's sheet blanks his eye style: a bake of
+     his look, new memory; docs/specs/townsfolk-work.md) */
+  check('2g the owner\'s jobs: the blacksmith hammering, fishing by the river; the cook at his counter, the woodworker at his bench and Gavel Greg\'s lot empty-handed (the pickup); the farmer standing; never the pickaxe',
+    jobs['Blacksmith Bro'] === 'mine' && jobs['Old Man Reel'] === 'fish'
+      && jobs['Chef Blaze'] === 'pickup' && jobs['Woodworker Bro'] === 'pickup' && jobs['Gavel Greg'] === 'pickup' && jobs['Farmer Bro'] === '', jobs);
   check('2h a giver whose row walks (a quest given later) is held to the givers\' tether', W.folkStops('Sterling', true).every((s) => Math.hypot(s[0], s[1]) <= W.FOLK_TETHER_PX)
     && W.folkStops('Sterling', false) === W.FOLK_DAYS.Sterling.stops && W.folkStops('Nobody', false) === null && W.folkStops('__proto__', false) === null);
   const body = src('src/rendering/lookSets/body.js');
@@ -101,6 +115,60 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
   check('2i every work pose is a body sheet in colour numbers, facing south (lookSets/body.js POSE_DIRS)', !!pd && W.FOLK_WORK_POSES.every((p) => new RegExp(p + ": \\['south'\\]").test(pd[1])), pd && pd[1]);
   const gs = src('src/rendering/gearSheets.js');
   check('...and its tee\'s sheet is warmed behind the loading screen (gearSheets preloadGear SETS)', W.FOLK_WORK_POSES.every((p) => new RegExp("\\['" + p + "', \\['south'\\]\\]").test(gs)));
+  /* ═══ v2.3.5460: EACH WORKS WITH HIS OWN TOOL ═══
+     The owner, 2026-11-14: "make sure all NPCs do things that match their
+     characters. Like chef blaze should cook, not hammer like an anvil".  A
+     work pose's tool is drawn into its sheet: the mining swing holds a
+     pickaxe over a rock, the cast a rod; the pickup's hands are empty.  The
+     table is the test's own, not the code's, so a day cannot hand itself a
+     tool: a new work pose adds its row here (its tool, and who may hold it),
+     or this check names it.  docs/specs/townsfolk-work.md. */
+  const TOOL_OF = { mine: 'the pickaxe', fish: 'the rod', pickup: null /* empty hands: anyone */ };
+  const MAY_HOLD = {
+    /* the blacksmith at his forge: the player's own smithing is this very
+       swing (effectsRenderer _updateSmithing); nobody else in the town mines */
+    'the pickaxe': ['Blacksmith Bro'],
+    'the rod': ['Old Man Reel'],   /* by the river */
+  };
+  const untold = W.FOLK_WORK_POSES.filter((p) => !Object.prototype.hasOwnProperty.call(TOOL_OF, p) || (TOOL_OF[p] !== null && !MAY_HOLD[TOOL_OF[p]]));
+  check('2j every work pose names its tool, and every tool who may hold it (a new pose adds its row)', untold.length === 0, untold);
+  const wrongHands = [];
+  for (const n of Object.keys(W.FOLK_DAYS)) {
+    for (const giver of [false, true]) {
+      for (const s of (W.folkStops(n, giver) || [])) {
+        const tool = s[3] ? TOOL_OF[s[3]] : null;
+        if (tool && !(MAY_HOLD[tool] || []).includes(n)) wrongHands.push([n, s[3], tool]);
+      }
+    }
+  }
+  check('...and a townsperson works only with a tool that is his: nobody but the blacksmith swings the pickaxe, nobody but Old Man Reel casts the rod',
+    wrongHands.length === 0, wrongHands);
+  /* v2.3.5460: ...and no job bakes a look the colour numbers refuse (the
+     memory law).  A look is refused in a pose when his eye style has a blank
+     on that pose's sheet, or his trousers or shoes wear a pattern
+     (playerSkins.js lookBodyRefused; the cast is never refused): then the
+     loading screen bakes a copy of the sheet for him (entityRenderer
+     prewarmFolkBodies), new memory.  The blacksmith's striped trousers in
+     the swing are the one such job (v2.3.4400); the pickup's sheet blanks an
+     eye style and the swing's does not, which is why Farmer Bro (his wide
+     'wtf' eyes) stands rather than take the pickup. */
+  const { npcLookByName } = await import('../../src/data/npcLooks.js');
+  const EYE_BLANK = JSON.parse(src('src/rendering/eyeBlankMask.json'));
+  const BAKED_BEFORE = new Set(['Blacksmith Bro|mine']);
+  const newBakes = [];
+  for (const n of Object.keys(W.FOLK_DAYS)) {
+    const L = npcLookByName(n);
+    for (const giver of [false, true]) {
+      for (const s of (W.folkStops(n, giver) || [])) {
+        if (!s[3] || s[3] === 'fish' || !L) continue;
+        const pat = L.patterns || {};
+        const refused = (L.eyes && L.eyes !== 'none' && EYE_BLANK[s[3] + '-south']) || pat.pants || pat.shoes;
+        if (refused && !BAKED_BEFORE.has(n + '|' + s[3])) newBakes.push([n, s[3], L.eyes, pat.pants || pat.shoes || null]);
+      }
+    }
+  }
+  check('2k no job makes a new bake of a look the colour numbers refuse (only the blacksmith\'s striped trousers in the swing, as before)',
+    newBakes.length === 0 && Object.keys(W.FOLK_DAYS).every((n) => !!npcLookByName(n)), newBakes);
 }
 
 /* ── 3. a frame ──────────────────────────────────────────────────────────── */
