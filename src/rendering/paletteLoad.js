@@ -45,7 +45,7 @@
  */
 import { extensions, ExtensionType, LoaderParserPriority, Texture, Rectangle, Cache, loadTextures } from 'pixi.js';
 import { paletteOn, makePaletteSource, isPaletteSource } from './paletteTex.js';
-import { whenPaletteDecided } from './p256.js';   /* v2.3.5247: the trees wait for the renderer's word, as the effects' twins do */
+import { whenPaletteDecided } from './p256.js';   /* v2.3.5248: the trees wait for the renderer's word, as the effects' twins do */
 
 /* the farm's ground and its palette twin (the address the game asks for ->
    the file read as numbers) */
@@ -63,7 +63,7 @@ function pathOf(url) {
   return m ? m[1] : p;
 }
 
-/* ═══ v2.3.5247: THE TREES' PICTURES TOO (card P's backlog, tree-tiers) ═══
+/* ═══ v2.3.5248: THE TREES' PICTURES TOO (card P's backlog, tree-tiers) ═══
    The five woods' trees (public/sprites/trees/wood-*.png, cut on 256 colours
    by tools/world/add-tree-art.mjs) were held as pictures, four bytes a pixel
    in the page: 5.6 MB at the memory check's fight, where no tree is drawn.
