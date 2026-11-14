@@ -1,6 +1,6 @@
 card: B
-branch: claude/plan-b-2-four-lines (one branch a PR, each begun from the one before: -1- to -8-)
-prs: #1685 (ready), PR 2 four lines (working)
+branch: claude/plan-b-3-system-map (one branch a PR, each begun from the one before: -1- to -8-)
+prs: #1685 (ready), #1687 (ready), PR 3 system map (working)
 state: working
 
 ## Done
@@ -10,14 +10,16 @@ state: working
   no name runs the unlisted files; `rails` takes precheck's rule;
   `mp-topaudit` plays the world: 5 of 6 green, 1 red the game's (Found).
 
+- PR 2 (5101, #1687): the four lines guard, rules pinned in
+  `tools/guards/lib/fourLines.mjs` (esbuild; GitHub has no @babel): 9,871
+  (`effectsRenderer.js`), 7,801 (`BroTown`), 5 cycles over 29 files, 114.
+
 ## Next
-- PR 2 (5101): the four lines, `tools/guards/four-lines.test.mjs`, its
-  rules and table in `tools/guards/lib/fourLines.mjs` (esbuild: GitHub's
-  job has no @babel). Code lines: a line esbuild's map points at. Today:
-  largest file 9,871 (`effectsRenderer.js`), longest function 7,801
-  (`BroTown`), 5 import cycles over 29 files, 114 writes to `S` from
-  rendering (card D's page). `rails` now allows `tools/guards/lib/`
-  (helpers; PR 4's goes there too). Each break proof tried.
+- PR 3 (5102): the system map, `tools/guards/lib/systems.mjs` (31 systems,
+  1,050 files, `unsorted` 11, 17 doors), `docs/SYSTEMS.md` made from it
+  (the rules only, so a new test or file elsewhere never stales it;
+  `--list <system>` prints today's files, tests, specs, traps), its guard
+  `systems.test.mjs`. Card U: read the names in `SYSTEMS`.
 
 ## Found
 - `mp-topaudit` red, the GAME's (suspected): at a faked 59 px top inset the
