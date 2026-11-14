@@ -263,7 +263,7 @@ Left `sitting`: `S._stunEnd`, a death row.
 
 ## PR 4, tag 5208: world (v2.3.5208)
 
-69 rows decided, which takes `SITTING_LINE` from 303 to 234. One reset
+70 rows decided, which takes `SITTING_LINE` from 303 to 233. One reset
 (switch `?worldreset`):
 
 | Row | Decided |
@@ -277,10 +277,11 @@ Left `sitting`: `S._stunEnd`, a death row.
 | No man's land's (`S._nmlLevel`, `S._nmlLocks`, `S._nmlSelf`, `nmlAsk.js _ask`, `noMansLand.js _note`) | kept: worked out from where you stand, or the worker's word on its own clocks. No man's land is a region of the Wheel, not a place: the zone's door never marks leaving it |
 | `S.currentZone`, `S.map`, `S.monsters`, `S._currentDepth`, `S._spawn*`, `S._bodyPlaceDue`, and the rest | kept: the door's own field; made by every way in; trips that span the door by design; said in `state_sync` before the rejoin's door |
 
-**Card D's Found, `S._nmlAsked`, is the owner's question** (under L's
-Needs). The window that asks "Attack <name>?" comes once per player and
-answer, and the set that remembers who was asked is never cleared. Card D read
-its note ("this visit") as a fault. The owner's own words were "the window won't
-pop up again". Clearing it on leaving No man's land would let the window come
-back. That is a change a player sees. It is also not a change of place, so the
-zone's door could not do it. The row stays `sitting`.
+**Card D's Found, `S._nmlAsked`, is kept** (the planning session's call:
+the owner's own words decide it). The window that asks "Attack <name>?" comes
+once per player and answer. Only a window let go unanswered comes off the set
+(`nmlAskClose`), and their new attack re-opens the question
+(`nmlAttackedSince`). Card D read its note ("this visit") as a fault. But the
+owner's words, when the window was made, were "the window won't pop up again".
+Clearing the set would bring the window back. It is also not a change of place,
+so the zone's door could not do it. 70 of 70 rows decided, 303 -> 233.

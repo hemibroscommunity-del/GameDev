@@ -12,11 +12,12 @@ state: ready
 - PR 4 tags 5204 (#1775), 5205 (#1779): desktop, social, movement; economy,
   skills: 39 rows, 468 -> 429.
 - PR 4 tags 5206 (#1791), 5207 (#1796), 5208: data, combat, wire, world:
-  195 rows, 429 -> 234; `clearElemStatuses` deleted (state-resets §7).
+  196 rows, 429 -> 233; `clearElemStatuses` deleted (state-resets §7).
 
 ## Next
 
-- PR 4's `ui`, `render` wait for card H. Asked planning: PR 5 meanwhile?
+- PR 4 tag 5209: the phase guard reads DOOR_SUITES' fields off the tree;
+  then PR 5's worker doors (trade first), and `ui`/`render` (H is done).
 
 ## Found
 
@@ -31,9 +32,8 @@ state: ready
 
 ## Needs
 
-- The owner: wheelMusic `_m` (a return to the Wheel's music at once),
-  deskTeach `_armed` (no "Almost!" after a change of place), `S._nmlAsked`
-  (No man's land's window again for a player once asked?): `sitting`.
+- The owner: wheelMusic `_m` (a return to the Wheel's music at once) and
+  deskTeach `_armed` (no "Almost!" after a change of place): `sitting`.
 - Card SK's ride.js (S._ride). S._spar: the takeover's leave, unread.
 - Card H's `done` (9 rows under src/rendering/**); card A (perfTracker.js
   `zoneStats`). The page's death door (phase table `life`, page) heads
