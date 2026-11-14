@@ -51,8 +51,8 @@ const f = (dir, names) => {
 export const SYSTEMS = Object.freeze({
   wire: {
     what: 'the socket and the messages: the router, the relay, the client\'s connection and its event switch, what each side can do (caps)',
-    files: [f('server/src', 'index|relay|bundle|clientoff'), re('^src/networking/'), f('src/game', 'clientOff|clientOffApply|blockedAsks|workerClock|t1Sync|tooFar')],
-    words: ['wire', 'protocol', 'relay', 'caps', 'bundle', 'privileged', 'clientoff'],
+    files: [f('server/src', 'index|relay|bundle|clientoff|flood'), re('^src/networking/'), f('src/game', 'clientOff|clientOffApply|blockedAsks|workerClock|t1Sync|tooFar')],
+    words: ['wire', 'protocol', 'relay', 'caps', 'bundle', 'privileged', 'clientoff', 'flood'],
     traps: ['wire'],
     doors: [
       { name: 'PRIVILEGED_EVENTS', file: 'server/src/index.js', what: 'every type the server sends; anything else a client could forge' },
@@ -123,7 +123,7 @@ export const SYSTEMS = Object.freeze({
   monsters: {
     what: 'the monsters\' lives, moves, status, spawns and the boss',
     files: [
-      f('server/src', 'monsterlife|monstermoves|monsterstatus|slimeboss|spawnscale|steadymovers|wheelspawns|wheelspawns1|aggrogrid'),
+      f('server/src', 'monsterlife|monstermoves|monsterstatus|slimeboss|spawnscale|wheelspawns|wheelspawns1|aggrogrid'),
       f('src/game', 'monsterCarry|monsterCodex|monsterCombat|monsterMoves|monsterNoises|monsterStrips|slimeBlast|slimeSplatPose|crowdCap'),
     ],
     words: ['monster', 'slime', 'spawn', 'boss', 'aggro', 'mob'],
@@ -181,10 +181,10 @@ export const SYSTEMS = Object.freeze({
   world: {
     what: 'the Wheel: zones and their doors, lands, dungeons, No Man\'s Land, the map, props',
     files: [
-      f('server/src', 'wheelzone|wheelnear|wheelfaces|wheeltables|wheeldungeon|dungeon|dungeonreward|zonejudge|nomansland|props|eventplace|flood'),
+      f('server/src', 'wheelzone|wheelnear|wheelfaces|wheeltables|wheeldungeon|dungeon|dungeonreward|zonejudge|nomansland|props|eventplace'),
       f('src/game', 'wheelBreak|wheelDungeons|wheelHome|wheelNoticeboard|wheelSize|wheelTownDoors|wheelTrial|worldTrial|worldViewport|zoneGate|zoneMechanics|zoneTransitions|dungeonArt|dungeonClear|dungeonWaves|noMansLand|nmlAsk|nmlExplainOnce|mapPinPlaces|mapPins|pinSlots|buildingRooms|placeSafety|plateSafety|bodyPlace|timeOfDay|season|expoAddress|onePic|bannerReach'),
     ],
-    words: ['wheel', 'zone', 'land', 'dungeon', 'nomansland', 'nml', 'map', 'world', 'town', 'door', 'prop', 'flood'],
+    words: ['wheel', 'zone', 'land', 'dungeon', 'nomansland', 'nml', 'map', 'world', 'town', 'door', 'prop'],
     traps: ['world'],
     doors: [],
     switches: [],
@@ -192,7 +192,7 @@ export const SYSTEMS = Object.freeze({
   movement: {
     what: 'moving: steps, sprinting, jumping, climbing, riding, swimming, resting',
     files: [
-      f('server/src', 'movement|movepath|sprint|rest|ride|staminaregen|safeheal'),
+      f('server/src', 'movement|movepath|steadymovers|sprint|rest|ride|staminaregen|safeheal'),
       f('src/game', 'sprint|jump|jumpActions|tapJump|climb|climbActions|ride|rideGround|rest|wheelSwim|moveDiet|legSync|orientationSync|avatarHold'),
     ],
     words: ['move', 'sprint', 'jump', 'climb', 'ride', 'swim', 'rest', 'stamina', 'walk', 'step'],

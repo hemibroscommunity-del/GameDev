@@ -1,38 +1,34 @@
 card: B
-branch: claude/plan-b-5-shapes-once (one branch a PR, each begun from the one before: -1- to -8-)
-prs: #1685 (ready), #1687 (ready), #1689 (ready), #1690 (ready), PR 5 (working)
+branch: claude/plan-b-6-budgets (one branch a PR, each begun from the one before: -1- to -8-)
+prs: #1685 (ready), #1687 (ready), #1689 (ready), #1690 (ready), #1693 (ready), PR 6 (working)
 state: working
 
 ## Done
 - PR 1 (5100, #1685): a scenario is a file (`old-map.test` reads files,
   refuses a hidden file); `mp-topaudit` on the world, 5/6, 1 red (Found).
-
 - PR 2 (5101, #1687): the four lines: 9,871, 7,801, 5 cycles, 114.
-
 - PR 3 (5102, #1689): the system map (`lib/systems.mjs`), 31 systems.
-
-- PR 4 (5103, #1690): `lib/filesOf.mjs`; the census of suites naming a
-  big file by path (222 pairs, 117 suites), only falls.
+- PR 4 (5103, #1690): `lib/filesOf.mjs`; suites naming a big file: 222.
+- PR 5 (5104, #1693): rule 2's guard, five holds, all "not built yet".
 
 ## Next
-- PR 5 (5104): rule 2's guard, `shapes-once.test.mjs`: SHAPES part 10's
-  five holds, all "not built yet" today; a name that appears with no Where
-  fails until its builder writes its one file in the guard's table.
+- PR 6 (5105): rule 6's table (`lib/budgets.mjs`, a row a system, from
+  BUDGETS parts 1-7) and guard `budgets.test.mjs`: 16 known seconds, 14
+  signals twice; no spend measured yet. Map fixes: `flood.js` to wire,
+  `steadymovers.js` to movement (PR 3 had them wrong).
 
 ## Found
 - `mp-topaudit` red, the GAME's (suspected): at a faked 59 px top inset the
-  world map's button (the Wheel minimap) stays at top 53, 6 px under the
-  status bar and inside the taller top bar. `wheelMinimap.js` `update()`
-  takes a `topInset` that `pixiRenderer.js:869` never passes. Unproven on a
-  device; no card owns it.
+  world map's button (the Wheel minimap) stays at top 53, under the status
+  bar. `wheelMinimap.js` `update()` takes a `topInset` that
+  `pixiRenderer.js:869` never passes. Unproven on a device; no card owns it.
 - Nothing holds `docs/plan/census/state.md` to the code on a PR (card D's
-  `--check` is not in precheck or `npm test`): rule 4 of the four lines
-  holds what the page says. Its script takes 16 s and needs @babel.
-- `tools/dev/precheck.mjs`'s old-map block still names `mp-topaudit.mjs` in
-  `LEFT_BEFORE_5021` (harmless now: the file names its world). Not my file.
-
-- SHAPES part 10's "nothing a phone sends is stamped into `oplog:`
-  without the worker's prefix and `pid`" is not in card B's five holds.
+  `--check` is in neither precheck nor `npm test`): the four lines' rule 4
+  holds what the page says.
+- `precheck.mjs`'s old-map block still names `mp-topaudit.mjs` in
+  `LEFT_BEFORE_5021` (harmless: it names its world now). Not my file.
+- SHAPES part 10's `oplog:` hold (the worker's prefix and `pid`) is not
+  among card B's five.
 
 ## Needs
 - Owner: `mp-topaudit` was to be "run once green": it is kept on the world

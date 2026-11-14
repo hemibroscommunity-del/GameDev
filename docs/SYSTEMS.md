@@ -58,12 +58,12 @@ line), every door is in its system's files, and this page is what the table make
 
 The socket and the messages: the router, the relay, the client's connection and its event switch, what each side can do (caps).
 
-- **Files**: `server/src/`: index, relay, bundle, clientoff
+- **Files**: `server/src/`: index, relay, bundle, clientoff, flood
 - **Files**: everything under `src/networking/`
 - **Files**: `src/game/`: clientOff, clientOffApply, blockedAsks, workerClock, t1Sync, tooFar
 - **Doors**: `PRIVILEGED_EVENTS` in `server/src/index.js` (every type the server sends; anything else a client could forge); `TYPES` in `server/src/relay.js` (RELAY.TYPES: the relays a phone may send, rebuilt in its name)
 - **Switches**: none
-- **Words**: `wire`, `protocol`, `relay`, `caps`, `bundle`, `privileged`, `clientoff`
+- **Words**: `wire`, `protocol`, `relay`, `caps`, `bundle`, `privileged`, `clientoff`, `flood`
 - **Traps**: `wire`
 
 ## session
@@ -135,7 +135,7 @@ Hitting and being hit: weapons, abilities, the bow, shields, damage, PvP.
 
 The monsters' lives, moves, status, spawns and the boss.
 
-- **Files**: `server/src/`: monsterlife, monstermoves, monsterstatus, slimeboss, spawnscale, steadymovers, wheelspawns, wheelspawns1, aggrogrid
+- **Files**: `server/src/`: monsterlife, monstermoves, monsterstatus, slimeboss, spawnscale, wheelspawns, wheelspawns1, aggrogrid
 - **Files**: `src/game/`: monsterCarry, monsterCodex, monsterCombat, monsterMoves, monsterNoises, monsterStrips, slimeBlast, slimeSplatPose, crowdCap
 - **Doors**: none named yet
 - **Switches**: none
@@ -190,18 +190,18 @@ Parties, clans, guilds, friends, chat, emotes, duels, the arena, races, boards.
 
 The Wheel: zones and their doors, lands, dungeons, No Man's Land, the map, props.
 
-- **Files**: `server/src/`: wheelzone, wheelnear, wheelfaces, wheeltables, wheeldungeon, dungeon, dungeonreward, zonejudge, nomansland, props, eventplace, flood
+- **Files**: `server/src/`: wheelzone, wheelnear, wheelfaces, wheeltables, wheeldungeon, dungeon, dungeonreward, zonejudge, nomansland, props, eventplace
 - **Files**: `src/game/`: wheelBreak, wheelDungeons, wheelHome, wheelNoticeboard, wheelSize, wheelTownDoors, wheelTrial, worldTrial, worldViewport, zoneGate, zoneMechanics, zoneTransitions, dungeonArt, dungeonClear, dungeonWaves, noMansLand, nmlAsk, nmlExplainOnce, mapPinPlaces, mapPins, pinSlots, buildingRooms, placeSafety, plateSafety, bodyPlace, timeOfDay, season, expoAddress, onePic, bannerReach
 - **Doors**: none named yet
 - **Switches**: none
-- **Words**: `wheel`, `zone`, `land`, `dungeon`, `nomansland`, `nml`, `map`, `world`, `town`, `door`, `prop`, `flood`
+- **Words**: `wheel`, `zone`, `land`, `dungeon`, `nomansland`, `nml`, `map`, `world`, `town`, `door`, `prop`
 - **Traps**: `world`
 
 ## movement
 
 Moving: steps, sprinting, jumping, climbing, riding, swimming, resting.
 
-- **Files**: `server/src/`: movement, movepath, sprint, rest, ride, staminaregen, safeheal
+- **Files**: `server/src/`: movement, movepath, steadymovers, sprint, rest, ride, staminaregen, safeheal
 - **Files**: `src/game/`: sprint, jump, jumpActions, tapJump, climb, climbActions, ride, rideGround, rest, wheelSwim, moveDiet, legSync, orientationSync, avatarHold
 - **Doors**: none named yet
 - **Switches**: none
