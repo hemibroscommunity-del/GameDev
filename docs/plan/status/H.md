@@ -1,7 +1,7 @@
 card: H
-branch: claude/grand-plan-h-7-equip-redraw (one branch a PR, each begun from the one before, as W's are: merge them in order)
-prs: #1668, #1675, #1681 (merged), #1700 (sitting 2's hold answered), #1709, #1712 (ready), PR 7 on the branch above (ready)
-state: ready
+branch: claude/grand-plan-h-8-ui (one branch a PR, each begun from the one before, as W's are: merge them in order)
+prs: #1668, #1675, #1681 (merged), #1700 (sitting 2's hold answered), #1709, #1712, #1714 (ready), PR 8 on the branch above (working)
+state: working
 
 ## Done
 
@@ -14,14 +14,14 @@ state: ready
   reader's worker (`stripRows.js`); town 34 holds -> 11. Deploys.
 - #1712 (5045) `foldToMono` off: the fold a stretch at a time, the same
   buffer (sound-fold.test 4); 13.4 -> 6.9 ms. Deploys.
-- PR 7 (5046) the equip redraw `other: R > J` off: the root re-rendered on
+- #1714 (5046) the equip redraw `other: R > J` off: the root re-rendered on
   every equip, now only on a worn flag's change, as a transition
   (`gearWornSync.js`); 17.5 -> 8.6 ms. Client only.
 
 ## Next
 
-- PR 8 (tag 5047), `ui:*` (16 ms). The `body-bake` PR (last) also takes
-  Z's finds on #1668 (a hung worker restarted each return; `BT_BW_PARTS`).
+- PR 8 (5047) `ui:*`: the cells their own components, the formatter warmed;
+  sample running. Then `sweepPicsOnce`, `body-bake` (+ Z's #1668 finds).
 
 ## Found
 

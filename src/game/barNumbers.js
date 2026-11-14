@@ -31,3 +31,15 @@ export function barNumber(n, narrow, min) {
 /* the numbers past which each is said short on a narrow bar */
 export const BAR_GOLD_SHORT = 100000;
 export const BAR_AP_SHORT = 10000;
+
+/* ═══ v2.3.5047: THE NUMBER FORMATTER WARMED BEHIND THE LOADING SCREEN ═══
+   held-budget.mjs `ui:*`: the first number a page says with commas
+   (toLocaleString) costs about 10 ms on this box -- the browser readies its
+   number formatter for the locale -- and every one after it about 10 us.  In
+   play that first one was the gear tab's gold badge (barNumber above, and the
+   badge's own coins.toLocaleString()), inside the gear tab's one piece of
+   drawing: 6 to 8 ms of the held sweep's `ui:GearTab` holds.  This module is
+   read with the game's code (DashColumns.jsx > GearTab.jsx), behind the
+   loading screen, so saying one number here, both ways the game asks (the
+   phone's own locale, and 'en-US'), pays it there.  The text is never used. */
+try { (1234.5).toLocaleString(); (1234.5).toLocaleString('en-US'); } catch (e) { /* a page with no formatter says numbers plainly anyway */ }
