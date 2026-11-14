@@ -31,34 +31,38 @@
  * asking for the desktop site says "Macintosh" but has touch points: it keeps
  * the palette, as an iPhone does.  Linux (the QA box) is unchanged.
  *
- * No imports, so node can test it (server/test/look-palette-choice.test.mjs).
+ * v2.3.5228 (card O PR 8): THE CHOICE IS A KNOB OF THE LANES.  The address
+ * first, as before; then `laneKnob('look')`, the lanes' `look` knob, which is
+ * 'palette' in every lane and pinned to 'baked' by an override where the
+ * device is Windows or a Mac (drawLanes.js OVERRIDES).  Windows and a Mac
+ * are asked of deviceProfile.js alone (onWindows, onMac moved there; they are
+ * re-exported here for the old importers).  Every device gets the answer it
+ * got before, with the same `why` (server/test/one-program.test.mjs).
+ *
+ * Imports only the lanes' table and the device profile (neither imports this
+ * file), so node can test it (server/test/look-palette-choice.test.mjs).
  */
+import { laneKnob, pinOf, askingAs } from './drawLanes.js';
+import { devAsk, onWindows, onMac, useLookChoice } from './deviceProfile.js';
 
-const WINDOWS_UA = /\bWindows\b|\bWin64\b|\bWin32\b/;
-
-/** Is this browser on Windows (its user agent, or Chromium's own platform)? */
-export function onWindows(ua, platform) {
-  if (typeof platform === 'string' && /^windows$/i.test(platform.trim())) return true;
-  return WINDOWS_UA.test(typeof ua === 'string' ? ua : '');
-}
-
-/** v2.3.3842: is this browser on a Mac -- not an iPad asking for the desktop
- *  site (it says "Macintosh" too, but has touch points), not an iPhone (whose
- *  "like Mac OS X" is no Macintosh)? */
-export function onMac(ua, platform, touchPoints) {
-  const s = typeof ua === 'string' ? ua : '';
-  if (/\b(iPhone|iPad|iPod)\b/.test(s) || Number(touchPoints) > 1) return false;
-  if (typeof platform === 'string' && /^macos$/i.test(platform.trim())) return true;
-  return /\bMacintosh\b/.test(s);
-}
+export { onWindows, onMac };
 
 /** The look palette here, or not: the address first (`lookpalette=0|1`), then
- *  Windows and a Mac (not built: a computer's compiler may take minutes, and
- *  a computer has the memory), else on.  `{ on, why }`. */
+ *  the lanes' `look` knob for the device these facts are (pinned 'baked' on
+ *  Windows and a Mac: a computer's compiler may take minutes, and a computer
+ *  has the memory), else on.  `{ on, why }`, why 'address' | 'windows' |
+ *  'mac' | 'default'.  The search alone: this page's own device. */
 export function lookPaletteChoice(search, ua, platform, touchPoints) {
   const m = /(^|[?&])lookpalette=([01])(&|$)/.exec(typeof search === 'string' ? search : '');
   if (m) return { on: m[2] === '1', why: 'address' };
-  if (onWindows(ua, platform)) return { on: false, why: 'windows' };
-  if (onMac(ua, platform, touchPoints)) return { on: false, why: 'mac' };
-  return { on: true, why: 'default' };
+  const read = () => {
+    const pin = pinOf('look');
+    return { on: laneKnob('look') === 'palette', why: pin ? pin.when : 'default' };
+  };
+  /* the search alone: this page's own device (deviceProfile.js's answers,
+     handed to the lanes); facts given, those facts, even an empty user agent */
+  return arguments.length <= 1 ? read() : askingAs(devAsk({ ua, platform, touch: touchPoints }), read);
 }
+
+/* the device profile's `palette` (the Speed test's card) */
+useLookChoice(lookPaletteChoice);

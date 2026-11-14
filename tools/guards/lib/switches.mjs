@@ -35,7 +35,7 @@
  *             way guards against.
  *   needs     the names it needs (rule 4: it turns off with them).
  *   fallback  `'no'`, or the trigger that still uses its old way, as names in
- *             a file (`'onWindows, onMac in src/game/lookPaletteChoice.js'`).
+ *             a file (`'onWindows, onMac in src/game/deviceProfile.js'`).
  *   reader    (a worker row with needs, v2.3.5304) the function that decides
  *             it, as `fn in file`: the guard asks that it reads each need
  *             (rule 4: a dependent turns off with what it needs only if its
@@ -76,7 +76,7 @@ export const SWITCHES = Object.freeze([
   { name: 'heaplean', side: 'both', system: 'world', kind: 'switch', born: 3717, thrown: 'off_heaplean: true; ?heaplean=0, off, false', risk: 'memory', needs: [], fallback: 'no', off: 'The map\'s leftovers are kept, not let go.' },
   { name: 'lookarmour', side: 'both', system: 'look', kind: 'switch', born: 3752, thrown: 'off_lookarmour: true; ?lookarmour=0', risk: 'chip', needs: ['lookpalette'], fallback: 'no', off: 'Bodies under armour are baked again, not coloured on the chip.' },
   { name: 'lookfolk', side: 'both', system: 'look', kind: 'switch', born: 3809, thrown: 'off_lookfolk: true; ?lookfolk=0', risk: 'memory', needs: ['lookpalette'], fallback: 'no', off: 'The townsfolk are drawn from their photographs again, loaded then.' },
-  { name: 'lookpalette', side: 'both', system: 'device', kind: 'switch', born: 3716, thrown: 'off_lookpalette: true; ?lookpalette=0 (=1 builds it anyway)', risk: 'chip', needs: [], fallback: 'onWindows, onMac in src/game/lookPaletteChoice.js', off: 'Each look\'s copy is baked on first sight again, not coloured on the chip.' },
+  { name: 'lookpalette', side: 'both', system: 'device', kind: 'switch', born: 3716, thrown: 'off_lookpalette: true; ?lookpalette=0 (=1 builds it anyway)', risk: 'chip', needs: [], fallback: 'onWindows, onMac (v2.3.5228: the look\'s overrides, drawLanes.js) in src/game/deviceProfile.js', off: 'Each look\'s copy is baked on first sight again, not coloured on the chip.' },
   { name: 'lookshirt', side: 'both', system: 'look', kind: 'switch', born: 3751, thrown: 'off_lookshirt: true; ?lookshirt=0', risk: 'chip', needs: ['lookpalette'], fallback: 'no', off: 'Printed shirts are baked again, not coloured on the chip.' },
   { name: 'onecopy', side: 'both', system: 'preload', kind: 'switch', born: 3715, thrown: 'off_onecopy: true; ?onecopy=0', risk: 'memory', needs: [], fallback: 'no', off: 'Pictures are held in more than one copy again.' },
   { name: 'picnumbers', side: 'both', system: 'memory', kind: 'switch', born: 3715, thrown: 'off_picnumbers: true; ?picnumbers=0', risk: 'memory', needs: [], fallback: 'no', off: 'Monster strips are held as pictures again, not as colour numbers.' },
@@ -463,7 +463,7 @@ export const SWITCHES = Object.freeze([
   { name: '?npcheads', side: 'page', system: 'render', kind: 'switch', born: 5246, thrown: '=0', risk: 'memory', needs: [], fallback: 'no', off: 'The townsfolk\'s head pictures keep their decoded copies, as before.' },
   { name: '?npcprox', side: 'page', system: 'ui', kind: 'switch', born: 3583, thrown: 'present', risk: 'logic', needs: [], fallback: 'no', off: 'Walking up to a townsperson opens them again (the old opener), to compare.' },
   { name: '?oneband', side: 'page', system: 'ui', kind: 'switch', born: 4012, thrown: '=0', risk: 'logic', needs: [], fallback: 'no', off: 'The old side column, not the one band at the bottom.' },
-  { name: '?onebatch', side: 'page', system: 'memory', kind: 'switch', born: 3447, thrown: '=0 or =1', risk: 'chip', needs: [], fallback: 'SOFTWARE_GL in src/rendering/paletteTex.js', off: 'The three sprite programs (=0), or the one program (=1), whatever the device.' },
+  { name: '?onebatch', side: 'page', system: 'memory', kind: 'switch', born: 3447, thrown: '=0 or =1', risk: 'chip', needs: [], fallback: 'softRenderer, onWindows, onMac (v2.3.5228: the program\'s overrides, drawLanes.js) in src/game/deviceProfile.js', off: 'The three sprite programs (=0), or the one program (=1), whatever the device.' },
   { name: '?onepic', side: 'page', system: 'world', kind: 'switch', born: 4885, thrown: '=0', risk: 'memory', needs: [], fallback: 'no', off: 'Every calm player is drawn in layers, not as one picture.' },
   { name: '?onepicnear', side: 'page', system: 'world', kind: 'lever', born: 4885, thrown: 'a number (0 to 999)', risk: 'none', needs: [], fallback: 'no', off: 'QA: keeps only the nearest N players layered, the rest a picture.' },
   { name: '?orebreakms', side: 'page', system: 'render', kind: 'lever', born: 3345, thrown: 'a number of ms', risk: 'none', needs: [], fallback: 'no', off: 'QA: an ore\'s pieces lie this long (a slow machine\'s screenshot).' },
@@ -493,6 +493,7 @@ export const SWITCHES = Object.freeze([
   { name: '?report', side: 'page', system: 'debug', kind: 'switch', born: 5122, thrown: '=0', risk: 'logic', needs: [], fallback: 'no', off: 'This phone sends no field report.' },
   { name: '?res', side: 'page', system: 'device', kind: 'value', born: 3339, thrown: 'a number: the drawing resolution', risk: 'chip', needs: [], fallback: 'no', off: 'Sets the drawing resolution by hand.' },
   { name: '?retrylooks', side: 'page', system: 'look', kind: 'switch', born: 3865, thrown: '=0', risk: 'logic', needs: [], fallback: 'no', off: 'No art loader asks again for a picture that failed (every loader\'s retries).' },
+  { name: '?ridecoast', side: 'page', system: 'movement', kind: 'switch', born: 5440, thrown: '=0, off, false', risk: 'logic', needs: [], fallback: 'no', off: 'The board starts at top speed and stops the moment you let go, as before: no pushes to speed up, no roll-off.' },
   { name: '?room', side: 'page', system: 'wire', kind: 'lever', born: 217, thrown: 'a room\'s name', risk: 'none', needs: [], fallback: 'no', off: 'Joins the named room, not the lobby\'s.' },
   { name: '?seacover', side: 'page', system: 'render', kind: 'switch', born: 3452, thrown: '=0', risk: 'chip', needs: [], fallback: 'no', off: 'The ground is drawn under every sea quad, as it was.' },
   { name: '?sfxahead', side: 'page', system: 'audio', kind: 'switch', born: 5006, thrown: '=0, off', risk: 'memory', needs: [], fallback: 'no', off: 'The four level sounds are pinned again, not loaded a level ahead.' },
