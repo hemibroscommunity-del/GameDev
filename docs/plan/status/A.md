@@ -1,38 +1,38 @@
 card: A
-branch: claude/plan-a-5-room-row (one branch a PR, each begun from the one before: -1- to -7-; merge them in order)
-prs: #1688, #1692, #1703 (merged); #1706 (5123, mended; ready), #1708 (5124, ready), #1711 (ready)
+branch: claude/plan-a-4-report-worker (one branch a PR, each begun from the one before: -1- to -7-; merge them in order)
+prs: #1688, #1692, #1703 (merged); #1706 (5123, mended for sitting 4; ready), #1708 (5124), #1711 (5125): being mended
 state: ready
 
 ## Done
 
 - #1688, #1692, #1703 (5120 to 5122): merged at sitting 3.
 - #1706 (5123): `server/src/report.js`, into the book's `dev` part by
-  cell; `caps.report` (a new cap line: list it apart). Mended for sitting
-  3's hold, a test each (report.test 10), tag 5127 (#1703 on `main`
-  names 5123 ahead, so the tag rule counts it taken): the frame after a
-  hidden spell; the switch back on; a cell's build `preview` off the
-  game's own site; `seen` is the time played; no AFK stamp; `near`.
-- #1708 (5124): `roomrow.js`, the book's `room` part; saves refused is
-  `_savesRefused` (E's PR 9); cost-guard 15a turns the row off. Takes
-  #1706's mend (merged up).
+  cell; `caps.report` (a new cap line: list it apart). Sitting 3's four
+  mends (tag 5127: #1703 on `main` names 5123 ahead). Sitting 4's, a test
+  each (report.test 11): `report.js` in the system map (`debug`); a cell
+  half its size (2,392 to 1,272 bytes: 19 a day, was 10); a socket's
+  reports reach at most two cells; `died` only on a socket's first
+  report; a thawed page (a late poll, `pageshow`) is a return, not seen
+  time; another tab's switch off throws the open report away. A `report`
+  row in `docs/WIRE-PROTOCOL.md`.
 
 ## Next
 
-- #1711 takes the mend too; then the gatekeeper.
+- #1708 (the room empties: its counts and the book's waiting sums are
+  written), then #1711 (the card gated on `caps.report` 2, its switch).
 
 ## Found
 
-- Card O: the report's `split` goes only with `late`, where the pacer
-  judges (over ~70 a second); when O makes the pacer judge at every rate
-  (step 2.3), the split follows (the planning session's ruling).
+- Card O: `split` goes only with `late`, where the pacer judges (over
+  ~70 a second); when O's pacer judges at every rate, it follows.
 - Outside `deviceProfile.js`, still asking the device (card O's):
   `paletteTex.js` `SOFTWARE_GL` (held equal to `SOFT_GL` by test),
   `MAX_TEXTURE_SIZE` in `peerImpostor.js`, `crashTrap.js`;
   `hardwareConcurrency` in `bodyBake.js`.
 - When card Q's sitting card keeps `soft`, `seen`, `drawn`, the About
   row's "no name on it" must change with it (card Q).
-- Not mended: `waver` takes the phone's `hd`, as `rtt` does; the hold
-  ring names the hold, not the pose (step 1.0); no report at pagehide.
+- Card E: the door reckons a part ~4 times its stored size (28 bytes a
+  number): a closer reckoning would give `dev` that much more room.
 
 ## Needs
 

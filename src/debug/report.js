@@ -81,6 +81,8 @@ export const REPORT = Object.freeze({
   EVERY_MS: 5 * 60 * 1000,
   /* a report of less than this is not worth a message (a tab that left) */
   MIN_SECS: 20,
+  /* v2.3.5127: a poll this far past its time is a page that was frozen */
+  THAW_MS: 8000,
   HOLDS: 5,
 });
 /* the bins' upper edges, ms (docs/SHAPES.md part 4: each bin one rate a frame
@@ -155,13 +157,18 @@ function _visibleNow() {
 function _seenMs(a, now) {
   return a.seenMs + (_visSince != null ? Math.max(0, now - Math.max(_visSince, a.t0)) : 0);
 }
-function _onVisibility() {
+function _markShow(p) {
+  _shows.push(p);
+  if (_shows.length > SHOWS_KEEP) _shows.shift();
+}
+let _lastPollP = 0;
+function _onVisibility(ev) {
   try {
     const now = Date.now();
-    if (_visibleNow()) {
+    /* v2.3.5127: `pageshow` too (a page back from the browser's cache) */
+    if (_visibleNow() || (ev && ev.type === 'pageshow')) {
       if (_visSince == null) _visSince = now;
-      _shows.push(typeof performance !== 'undefined' ? performance.now() : 0);
-      if (_shows.length > SHOWS_KEEP) _shows.shift();
+      _markShow(typeof performance !== 'undefined' ? performance.now() : 0);
     } else {
       if (_a && _visSince != null) _a.seenMs += Math.max(0, now - Math.max(_visSince, _a.t0));
       _visSince = null;
@@ -250,12 +257,25 @@ const _frameOf = (x) => [x.t - (x.workMs || 0), x.t];
 function _poll() {
   try {
     const now = Date.now();
-    if (!reportOn() || !_S) return;
+    /* v2.3.5127 (sitting 4): switched off -- here, or in another tab -- the
+       open report is thrown away, so on again starts fresh */
+    if (!reportOn()) { _a = null; return; }
+    if (!_S) return;
     if (!_a) _restart(now);   /* v2.3.5127: turned back on: a fresh report */
     const a = _a;
+    /* v2.3.5127 (sitting 4): a page iOS froze and thawed with no word to the
+       page (docs/specs/return-to-game.md section 2) shows as a poll far past
+       its time: the spell is a return to view (its first frame is not a
+       frame) and not seen time */
+    const late = now - a.lastPoll - REPORT.POLL_MS;
+    if (late > REPORT.THAW_MS && _visSince != null) {
+      _markShow(_lastPollP + REPORT.POLL_MS);
+      a.seenMs -= Math.min(late, Math.max(0, now - Math.max(_visSince, a.t0)));
+    }
+    _lastPollP = typeof performance !== 'undefined' ? performance.now() : 0;
     const where = _whereNow(_S);
-    /* v2.3.5127: only the seen time is time in a place */
-    if (_visSince != null) a.whereMs[where] = (a.whereMs[where] || 0) + Math.max(0, now - Math.max(a.lastPoll, _visSince, a.t0));
+    /* v2.3.5127: only the seen time is time in a place (not a thawed spell) */
+    if (_visSince != null) a.whereMs[where] = (a.whereMs[where] || 0) + Math.max(0, now - Math.max(a.lastPoll, _visSince, a.t0) - Math.max(0, late > REPORT.THAW_MS ? late : 0));
     a.lastPoll = now;
     setMarkWhere(where);
     /* the pacer's own rule, with its own refresh and step (framePacer.js
@@ -368,6 +388,7 @@ export function reportJoined(S) {
     /* v2.3.5127: the seen time, at each change of visibility */
     _visSince = _visibleNow() ? now : null;
     try { if (typeof document !== 'undefined') document.addEventListener('visibilitychange', _onVisibility); } catch (e) { /* none */ }
+    try { if (typeof window !== 'undefined') window.addEventListener('pageshow', _onVisibility); } catch (e) { /* none */ }
     _timer = setInterval(_poll, REPORT.POLL_MS);
   } catch (e) { /* never the game's trouble */ }
 }
