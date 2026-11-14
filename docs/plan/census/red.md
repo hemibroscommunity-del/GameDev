@@ -1,4 +1,4 @@
-# Red on `main`: the census (card J, step 8.1; tag 5035)
+# Red on `main`: the census (card J, step 8.1; v2.3.5035)
 
 Taken 2026-11-13/14 on `main` at 2d4138e (v2.3.5020) in one cloud session:
 4 vCPUs, the pre-installed Chromium, `npm run build` fresh. The owner chose
