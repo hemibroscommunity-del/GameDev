@@ -188,21 +188,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
       S.channel.send({ type: 'shield_wear', payload: { gid } });
       window.__btCues.reset();
     }, pine.gid);
-    /* v2.3.3735: on a computer the shield is the RIGHT MOUSE BUTTON held over
-       the world (v2.3.3711, desktopControls: Q is the special now): down
-       raises it, up lowers it */
+    /* v2.3.3735: on a computer the shield was the RIGHT MOUSE BUTTON held
+       over the world (v2.3.3711).  v2.3.5036: since v2.3.4323 (the owner:
+       "right click should be special attack instead. Block should be moved
+       to something else") the right button is the special and Q TOGGLES the
+       shield (desktopControls.js KeyQ, BroTown _desktopShieldToggle): one
+       press raises it, the next lowers it.  The check pressed the right
+       button ever since and heard no buckle (red on main: the
+       test's, not the game's -- docs/plan/census/red.md) */
     const at = await P.page.evaluate(() => {
       const c = Array.from(document.querySelectorAll('canvas')).map((e) => e.getBoundingClientRect()).sort((a, b) => b.width * b.height - a.width * a.height)[0];
       return c ? { x: Math.round(c.left + c.width / 2 + 60), y: Math.round(c.top + c.height / 2 + 40) } : { x: 400, y: 300 };
     });
     await P.page.mouse.move(at.x, at.y);
-    await P.page.mouse.down({ button: 'right' });
+    await P.page.keyboard.press('q');
     await P.page.waitForTimeout(500);
     const up = await P.page.evaluate(() => ({ on: !!window._gameState.current._shieldUp, n: window.__btCues.stats.played.shieldUp || 0, d: window.__btCues.stats.played.shieldDown || 0 }));
-    await P.page.mouse.up({ button: 'right' });
+    await P.page.keyboard.press('q');
     await P.page.waitForTimeout(500);
     const down = await P.page.evaluate(() => ({ on: !!window._gameState.current._shieldUp, n: window.__btCues.stats.played.shieldDown || 0 }));
-    rec.ok('2c. the shield held up (the right mouse button) and let down: the buckle each way, once each', up.on && up.n === 1 && up.d === 0 && !down.on && down.n === 1, { up, down, at });
+    rec.ok('2c. the shield raised (Q) and lowered (Q again): the buckle each way, once each', up.on && up.n === 1 && up.d === 0 && !down.on && down.n === 1, { up, down, at });
   } else {
     rec.ok('2c. the admin panel\'s shield reached the bag (guard)', false, null);
   }
