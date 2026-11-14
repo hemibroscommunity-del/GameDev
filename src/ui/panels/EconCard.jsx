@@ -94,6 +94,7 @@ export function EconCard({ call, busy, setMsg, COL, btn, label }) {
                 Joins {fmt(d.room.joins[0] + d.room.joins[1])}, restarts {fmt(d.room.restarts)}, rows written {fmt(d.room.rows[0])} and deleted {fmt(d.room.rows[1])},
                 saves refused {fmt(d.room.refused[0] + d.room.refused[1])}; {fmt(d.devCells)} smoothness cell(s), {fmt(d.speedCards)} speed card(s).
               </div>
+              <div style={sub} data-econ-size="1">Storage: {d.size ? (Math.round(d.size.bytes / 10485.76) / 100) + ' MB' + (d.size.reads > 1 ? ' (the mean of ' + d.size.reads + ' readings)' : '') : 'not read that day'}</div>{/* v2.3.5287 (card R PR 8): the room's whole storage, read once a day */}
               {d.over.length > 0 && <div style={{ ...sub, color: COL.danger }}>A full part left numbers out: {d.over.map(([k, n]) => k + ' ' + n).join(', ')}</div>}
             </div>
           ))}
