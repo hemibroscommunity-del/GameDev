@@ -46,7 +46,7 @@ A top-of-file variable has `variable` and `file` where a field has `field`,
 | `writers` | the files that write it, from the root; `~` after a file that writes it only through a name for the inside | machine |
 
 Marks are **marked, not judged**: a row written from two files is not a fault
-here. The phases go to step 5.3b's table (card L). Rows card D found wrong
+here. The phases go to step 5.3b's table (card L): `src/state/phases.js`. Rows card D found wrong
 (`S._nmlAsked`, `S._preDungeonMap`, `_npcDrawn`, `_stripStats`, the statuses
 `clearElemStatuses` never clears) carry D's suggestion like any other row;
 card L acts on them.
@@ -62,9 +62,19 @@ rest afresh; it drops a row the script no longer finds (and names it), and
 adds every row of the system that no ledger lists, as `sitting`. A row whose
 system has moved since it was listed stays in its file (the guard names it).
 
+## The phase table
+
+`phases.js` (v2.3.5202, card L PR 2; grand plan step 5.3b) is the one file
+here that is not a ledger: one row a state machine a side, its one field, its
+states, its one transition function, what clears it, what a rejoin re-sends,
+`door` or `todo`. A page row names its fields as this ledger's rows and never
+copies their writers. Held by `tools/guards/phase-table.test.mjs`; the spec is
+`docs/specs/phase-table.md`.
+
 ## The guard
 
-- every file here is this README or a ledger named for a system of the map;
+- every file here is this README, the phase table or a ledger named for a
+  system of the map;
   a ledger is plain data and every row has the columns above;
 - no row is in two ledgers, or twice in one;
 - every listed row is one the census finds;

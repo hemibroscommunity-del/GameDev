@@ -403,10 +403,29 @@ word has no class. Two words the first draft of this page did not have:
    (whatever came into a dead player's bag after the death's wipe: nothing,
    for an honest death).
 
+**Built (card E, tag 5084): the count and the sum.** The two doors book
+what they mint and burn into the record's own `_econ` (part 7) as they run:
+a `mint` road its rise under `m`, a `burn` road its fall under `b`, a `set`
+its difference signed, a `move` or an `escrow` nothing, each read the way
+the sum reads it (whole coins, whole counts never below 0). A LOAD
+(`join_stored`, `GOLD_LOADS`) books nothing. A payout landing by the mail
+is handed to the door with its credit and books its own class
+(`mailMinted`: a mint all of it, the champion's prize its `house` part).
+The bag door holds the bag, not the record: the record is learned at its
+save (`bagEconOwn`, in `_saveRpg` before its put), and a bag no save has
+named yet keeps its counts beside it until that save folds them in (the
+same put). The join brings `_econ` back before any door runs (`join.js`),
+and a red skull killed by no player burns its purse by `nml_lost`.
+`server/test/world-sum.test.mjs` plays the room and holds the sum to 0.
+
 **Where value leaves an escrow by no road** (for the sum's PR, not a class):
 a stale fine is deleted (`bounty:`, `_bountySweep`: "the gold evaporates"),
 and a pile on the ground nobody takes runs out (`_tickLoot`) or its dungeon
-run closes. Each is a burn the world's sum counts at the record's end.
+run closes. Each is a burn the world's sum counts at the record's end. And two
+windows a restart can land in, for the storm (4.5): the fine is taken from
+the caller and put on the head in two runs (`threat.js`, best-effort by its
+own comment), and the champion's prize is paid before the entries it pays
+from are deleted (`gladiator.js`, the sweep converging after).
 
 ### The mark on a record that holds value
 
@@ -611,6 +630,13 @@ Not one field yet, so written by name and marked `implicit`: `fight` (a fight
 with a player), `duel`, `trade`, `party` (and its `leader`), `ride`,
 `harvest`, `cook`, `guard`, `pose`, `race`, `arena`, `fishing`.
 
+v2.3.5202: every machine, these and the plan's (`dungeon`, `connection`,
+`loading`, `window`, `monster`), is a row of step 5.3b's phase table,
+`src/state/phases.js` (card L; `docs/specs/phase-table.md`): its field, its
+states, its one function, `door` or `todo`. A name a row of the wire table
+writes here is a row there (`tools/guards/phase-table.test.mjs` §4). An
+`implicit` machine leaves this list when its row turns `door`.
+
 What a handler tests that is NOT the sender's phase goes in another column:
 "can pay" and "well-formed" in `bad`, "too soon" in `pace`, "the system is on"
 in `flag`, "seen before" in `reqId`.
@@ -794,6 +820,7 @@ row by the card that builds it, before it builds.**
 | A spoken line (11.4) | not named yet | A message the game speaks that carries a player's words: a template's id and its parts, a part that is a player's words marked as one. Today the worker builds the sentence itself (`server/src/store.js`: `label + ' sold to ' + buyerName + ' for ' + price`). The templates are step 8.8's table of every word a player reads. | card K | the phone; another player's assistant | the wire table's `trust: words` rows | none |
 | The public facts (11.6) | not named yet | The game's facts in players' words, made in the build from the shared tables, with a version. | the build | assistants | the build's output | none |
 | The pass's quote and receipt (11.8) | not named yet | A signed quote, a receipt, a public way to check. | the pass's own build | a helper | `docs/SUPPORTER-PASS-PLAN.md` | not built |
+| The phase table (5.3b; v2.3.5202) | `PHASES`, `NOT_A_MACHINE` (NEW) | One row a state machine a side: its one field, its states, its one transition function, what clears it, what a rejoin re-sends, `door` or `todo`. A page row names the state ledger's rows and never copies their writers. | card L, by hand (a row turns `door` in its machine's PR) | `tools/guards/phase-table.test.mjs`; part 5's `phase` column; the next door's card | `src/state/phases.js` | none |
 
 ### The asset door (step 9.1, card P; tag 5241)
 
@@ -918,6 +945,19 @@ the record is named by its path, `tools/assets/shipped.json`.
 |---|---|---|
 | `ASSET_FAMILIES`, `ASSET_REACH`, `ASSET_KINDS`, `ASSET_DRAWS` | the family table and its closed lists | 7 |
 | `tools/assets/shipped.json` | the record of what ships | 7 |
+
+**Chosen by card L (step 5.3b, tag 5202), free at its commit** (the same
+search): `PHASES` and `NOT_A_MACHINE`, the phase table's two lists, have no hit
+as a name (`PHASES` only inside other words: `GOO_PHASES`, `ART-ASSET-PHASES`).
+The table's machine names are words of a table, as the wire's `phase` column
+writes them, never identifiers: `dungeon`, `connection`, `loading` and
+`window` are common words in code and keep every meaning they have there;
+`monster`, a monster's life, is the one name the plan had not given.
+
+| Name | For | Part |
+|---|---|---|
+| `PHASES`, `NOT_A_MACHINE` | the phase table and the marked fields that are no machine's (`src/state/phases.js`) | 5 |
+| `dungeon`, `connection`, `loading`, `window`, `monster` | the phase table's machines beyond part 5's list (a row's `name`) | 5 |
 
 `report` is free as a message type and a common word elsewhere; part 4 says
 what it is not. `gid`, `pid` and `hz` are TODAY's names, used here for the

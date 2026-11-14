@@ -6,7 +6,7 @@
  * §13).  The census of what holds each trap: docs/plan/census/traps.md.
  *
  * TRAPS §2 (the rule): every field a handler writes on a player's `ps` under server/src/ is in _saveRpg's fixed list (persistence.js) or in SCRATCH below (memory only, or a record of its own, on purpose); the count in neither only falls. Break: server/src/dice.js: `ps.diceWins = (ps.diceWins || 0) + 1;` in _handleDice -> FAIL (tried 2026-11-14).
- * TRAPS §1 (the rule): `arena_bet` is not in RELAY.TYPES, the server names it nowhere, and one place in src/'s code names it: the router's case, which only breaks. Break: server/src/relay.js: `'arena_bet',` back in RELAY.TYPES -> FAIL (tried 2026-11-14).
+ * TRAPS §1 (the rule): card N's wire table (server/src/wire/, held to the code by wire-table.test) has no `arena_bet` row in any direction, the server's code names it nowhere, and one place in src/'s code names it: the router's case, which only breaks. Break: server/src/wire/relays.js: an `arena_bet` row beside 'campfire_lit's, with `'arena_bet',` back in RELAY.TYPES -> FAIL (tried 2026-11-14).
  *
  * §2, HOW IT READS.  The code of every file under server/src/, comments
  * dropped (lib/codeOnly.mjs) and strings blanked (lib/maskCode.mjs).  A
@@ -19,8 +19,11 @@
  * slots and stashes, all saved) and the join's allowlisted copy of the
  * phone's own data (`...cleanJoinData`: the wire's again at every join).
  * The saved list is read off the `put('rpg:' + playerId, {...})` itself.
- * card N's walker (server/test/src-walk.mjs) was not on `main`: this walks
- * server/src/ on its own (codeOnly's), and moves onto N's when it lands.
+ * v2.3.5327 (card V PR 8): the files are card N's walker's
+ * (server/test/src-walk.mjs `srcFiles`: every .js and .mjs file in depth,
+ * its LEFT_OUT folders skipped, the vendored signer), one list of the
+ * worker's files for every door (the plan's rule 2: a shape is designed
+ * once), compiled by codeOnly's one build.
  *
  * §2 IS A CENSUS (the plan's rule 3): a field in neither list is KNOWN
  * (stepped in today, each one under Found in docs/plan/status/V.md) or new;
@@ -35,7 +38,9 @@
  *       (a rename does not dodge it: the scan follows every name bound to
  *       the room's playerState)
  *   §2  persistence.js: drop `svKills` from the put                       -> FAIL §2 census (svKills)
- *   §1  relay.js: `'arena_bet',` back in RELAY.TYPES                      -> FAIL §1 relay
+ *   §1  wire/relays.js: an `arena_bet` row                                -> FAIL §1 table
+ *       relay.js: `'arena_bet',` back in RELAY.TYPES (and its row)        -> FAIL §1 server
+ *       (and card N's wire-table guard fails a key with no row)
  *   §1  PartyPanel.jsx: `sendGameEvent('arena_bet', { amount })`          -> FAIL §1 senders
  *   §1  gameEvents.js: `case 'arena_bet': setArenaBets(payload); break;`  -> FAIL §1 ignore
  *
@@ -48,6 +53,7 @@ import { pathToFileURL } from 'node:url';
 import { ROOT } from './lib/fourLines.mjs';
 import { codeOf } from './lib/codeOnly.mjs';
 import { maskCode, blockEnd } from './lib/maskCode.mjs';
+import { srcFiles } from '../../server/test/src-walk.mjs';   /* v2.3.5327: card N's walker, the one list of the worker's files */
 
 let failed = 0;
 const check = (name, ok, detail) => {
@@ -131,7 +137,11 @@ function literalKeys(m, open) {
 }
 
 function scanServer() {
-  const code = codeOf(['server/src']);
+  /* v2.3.5327: the worker's files are card N's walker's; codeOnly compiles them */
+  const walked = srcFiles().map((f) => 'server/src/' + f);
+  const built = codeOf(['server/src']);
+  const code = new Map(walked.filter((f) => built.has(f)).map((f) => [f, built.get(f)]));
+  if (code.size !== walked.length) throw new Error('codeOnly gave no code for: ' + walked.filter((f) => !built.has(f)).join(', '));
   const fields = new Map();   /* field -> Set(file) */
   const add = (f, file) => { if (!fields.has(f)) fields.set(f, new Set()); fields.get(f).add(file); };
   for (const [file, c] of code) {
@@ -188,8 +198,17 @@ const { fields, saved, code } = scanServer();
 
 /* ── §1: the arena_bet relay stays dead ── */
 {
-  const { RELAY } = await import(pathToFileURL(join(ROOT, 'server/src/relay.js')).href);
-  check(`§1 relay: 'arena_bet' is not in RELAY.TYPES (${RELAY.TYPES.size} types)`, RELAY.TYPES.size > 5 && !RELAY.TYPES.has('arena_bet'));
+  /* v2.3.5327: card N's wire table, every message a phone and the worker
+     trade (wire-table.test holds it to RELAY.TYPES, PRIVILEGED_EVENTS and the
+     router's cases): no row of `arena_bet`, in any direction */
+  const rows = [];
+  for (const f of ['in', 'relays', 'out', 'http']) {
+    const m = await import(pathToFileURL(join(ROOT, `server/src/wire/${f}.js`)).href);
+    for (const list of Object.values(m)) if (Array.isArray(list)) rows.push(...list);
+  }
+  const bet = rows.filter((r) => r && /(?:^|:)arena_bet$/.test(String(r.name)));
+  check(`§1 table: card N's wire table has no \`arena_bet\` row, relayed, routed or sent (${rows.length} rows, ${rows.filter((r) => r.dir === 'relay').length} relays)`,
+    rows.length > 100 && rows.some((r) => r.dir === 'relay') && bet.length === 0, bet.map((r) => r.dir + ' ' + r.name));
   const page = codeOf(['src']);
   const named = [];
   for (const [file, c] of page) {

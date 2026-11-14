@@ -24,6 +24,7 @@ import { RPG_SCHEMA_VERSION, runRpgMigrations, healLifeSkills, econClean } from 
 import { gearStashCap } from './gearstash.js';
 import { cleanApOnce } from './inbox.js';   /* v2.3.3488: the once-a-character prize marks */
 import { revealPublic, revealPublicList } from './revealbag.js';   /* v2.3.4012: a piece waiting in the bag goes out without its grade */
+import { bagEconOwn } from './bag.js';   /* v2.3.5084: the bag door's counts reach the record they belong on */
 
 /* v2.3.2523: one bound for the five gear stashes, applied at BOTH the
    save and the echo below.  Handoff rule 3's warning is why it is a
@@ -283,6 +284,10 @@ export const persistenceMethods = {
     ps._regenDirty = false;
     this._pruneBuffs(ps);
     this._econAdopt(playerId, ps);   /* v2.3.5083: the join's `_econ`, before the put (never a blank over a stored one) */
+    /* v2.3.5084: the bag's record is named (the bag door counts straight into
+       it from now on), and what the door counted beside a bag no save had
+       named yet is folded in -- in this put, with what it counts (bag.js) */
+    if (ps.inventory && typeof ps.inventory === 'object') bagEconOwn(ps.inventory, ps);
     /* ═══ v2.3.3488: A ONCE-A-CHARACTER PRIZE'S MARK, WITH ITS POINTS ═══
        inbox.js pays the arena champion's points the first time only, and
        marks it (`ps._apOnceDirty`).  The mark is its own record (rule 1: no

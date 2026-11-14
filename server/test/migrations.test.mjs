@@ -684,7 +684,10 @@ const legacyBlob = () => ({
     const wsN = fakeWs('econnew');
     await join(wsN, 'bp_econ_new');
     await room._saveRpg('bp_econ_new', room.playerState.bp_econ_new);
-    check('econ: a new character joins and saves a blank _econ', JSON.stringify(state._store.get('rpg:bp_econ_new')._econ) === JSON.stringify(econBlank()));
+    /* v2.3.5084: the gold door counts now (card E PR 5): a new character's
+       start gold is its first mint (join_new), nothing burned, no goods */
+    const nw = state._store.get('rpg:bp_econ_new');
+    check('econ: a new character joins and saves its start gold as minted, nothing else', nw._econ.g.m === nw.coins && nw._econ.g.b === 0 && Object.keys(nw._econ.i).length === 0, nw._econ);
     await room.webSocketClose(wsN); room.sessions.delete(wsN);
   }
 
