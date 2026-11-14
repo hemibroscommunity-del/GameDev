@@ -483,6 +483,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `bowdraw` | worker | switch | v2.3.4801 | false | logic |  | no | No bow draw is counted and caps.bowDraw is un-advertised. |
 | `cropeat` | worker | switch | v2.3.3537 | false | logic |  | no | No crop is eaten, and caps.cropeat reads false so the bag offers no Eat. |
 | `dropgrades` | worker | switch | v2.3.3952 | false | logic |  | no | A monster drop's grade is rolled on the forge's odds again. |
+| `exdoor` | worker | switch | v2.3.5213 | false | logic |  | no | The claim on a move (cook, fire, mine, chop, fish, a farm step) takes any value a phone sends again, as the line before the cook door did; the game's own claims pass either way. |
 | `farm` | worker | switch | v2.3.3127 | false | logic |  | no | Un-advertises the farm and answers every farm message off; beds, seeds and crops keep their times. |
 | `farmorders` | worker | switch | v2.3.3134 | false | logic |  | no | The farm's order board is off: the cap reads false and an order is answered off. |
 | `firerefuse` | worker | switch | v2.3.4886 | false | logic |  | no | A fire refused for its log sends only the bag back, not `firemaking_refused`. |

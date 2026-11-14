@@ -90,7 +90,7 @@ export const bodyTakeMethods = {
        the stick until the phone stands at it (no moment of safety) */
     ps.vx = 0; ps.vy = 0; ps._mvFollow = undefined;
     ps.blocking = false; ps.blockStartT = 0; ps.dodging = false;
-    ps.ex = null; ps._exAt = 0; ps._sprintStep = false;
+    this._exTo(ps, null, 'take'); ps._sprintStep = false;   /* v2.3.5213: the cook door */
     ps.po = null;   /* and stands up: no pose crosses a join (the phone clears its own: rejoinresend's pose row) */
     this.dirtyPlayers.add(id);
     if (!this._bodyTakes) this._bodyTakes = new Set();
