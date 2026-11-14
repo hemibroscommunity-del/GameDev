@@ -1898,7 +1898,7 @@ export function updateArrows(S, deps) {
                 var _arrowDmg = a.dmg;
                 if (!S._serverMonsters) m.curHp -= _arrowDmg;
                 /* Client-local zones only -- server zones use monster_hit (Fix B). */
-                if (!S._serverMonsters && S.channel) S.channel.send({ type: 'broadcast', event: 'monster_dmg_at', payload: { id: S.myId, x: m.x, y: m.y, dmg: _arrowDmg, isCrit: false } });
+                if (!S._serverMonsters) act('monster_dmg_at', { id: S.myId, x: m.x, y: m.y, dmg: _arrowDmg, isCrit: false });   /* v2.3.5187: through the action door (actions.js) */
                 /* Hit-reaction (ranged variant) — mirrors the melee path.
                    ═══ v2.3.2844: THE PICTURE WAITS FOR THE SHOT TO LAND ═══
                    The recoil, the white flash, the material burst (v2.3.2843)

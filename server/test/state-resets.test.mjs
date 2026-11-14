@@ -45,9 +45,15 @@ setSearch('');
 /* any name a reset's text uses that is not the state or a global: a no-op
    that answers every property and every call with itself */
 const NOOP = new Proxy(function () {}, { get: (t, k) => (k === Symbol.toPrimitive ? () => 0 : NOOP), apply: () => NOOP });
+/* v2.3.5187: `act` (the action door, src/game/actions.js) records the
+   request as the shim would send it: the pose's word to the worker below */
+let ACT_SENT = null;
+const ACT_TOP = new Set(['pose']);   /* its row's `body: 'top'` */
 const STUBS = new Proxy({}, {
   has: (t, k) => typeof k === 'string' && !(k in globalThis),
-  get: (t, k) => (k === Symbol.unscopables ? undefined : NOOP),
+  get: (t, k) => (k === Symbol.unscopables ? undefined
+    : k === 'act' ? (name, p) => { if (ACT_SENT) ACT_SENT.push(ACT_TOP.has(name) ? { ...(p || {}), type: name } : { type: name, payload: p || {} }); return true; }
+      : NOOP),
 });
 
 /* the body of the block that opens at `start` (zone-leftovers.test's) */
@@ -199,6 +205,7 @@ function block(text, start) {
       if (!mine.length) continue;
       for (const b of mine) {
         const msgs = [];
+        ACT_SENT = msgs;   /* v2.3.5187: a request through the door lands here too */
         const make = () => ({ [row.field]: SENT, channel: { send: (m) => { msgs.push(m); return true; } } });
         const want = /^value /.test(row.reset) ? JSON.parse(row.reset.slice(6)) : undefined;
         /* on: the field goes back */
@@ -215,8 +222,8 @@ function block(text, start) {
         check(`5. ${row.field}: with ?${b.system.replace(/-/g, '')}reset=0 thrown it stays as it was`, S2[row.field] === k);
         setSearch('');
         played++;
-        /* v2.3.5187: the send goes through the action door (act), a free name here (a no-op): the word is read from its act call */
-        if (row.field === '_pose') check('5. the pose\'s reset is its own end, with its word to the worker (as the frame check\'s)', /\bact\(\s*'pose',\s*\{\s*id:\s*null\s*\}\s*\)/.test(b.body), msgs);
+        /* v2.3.5187: the word goes through the action door (act), recorded by STUBS above */
+        if (row.field === '_pose') check('5. the pose\'s reset is its own end, with its word to the worker (as the frame check\'s)', msgs.some((m) => m && m.type === 'pose' && m.id === null), msgs);
       }
     }
   }

@@ -2395,7 +2395,7 @@ export function updateMonsterCombat(S, deps) {
                    the worker's monster_hit is the single source of truth, so
                    this p2p echo would double-count (smooth-peer-damage-numbers
                    Fix B). */
-                if (!S._serverMonsters && S.channel) S.channel.send({ type: 'broadcast', event: 'monster_dmg_at', payload: { id: S.myId, x: m.x, y: m.y, dmg: dmg, isCrit: isCrit } });
+                if (!S._serverMonsters) act('monster_dmg_at', { id: S.myId, x: m.x, y: m.y, dmg: dmg, isCrit: isCrit });   /* v2.3.5187: through the action door (actions.js) */
                 /* Hit-reaction sheet plays once per non-fatal hit.  Use
                    (archetype||type) so server-synced monsters without an
                    archetype field still get the reaction.  Snowman gets a
@@ -2521,7 +2521,7 @@ export function updateMonsterCombat(S, deps) {
                      the elemental system, which the combo only amplified. */
                   if (!S._serverMonsters) m.curHp -= collisionResult.damage;
                   /* Client-local zones only -- server zones use monster_hit (Fix B). */
-                  if (!S._serverMonsters && S.channel) S.channel.send({ type: 'broadcast', event: 'monster_dmg_at', payload: { id: S.myId, x: m.x, y: m.y, dmg: collisionResult.damage, isCrit: true } });
+                  if (!S._serverMonsters) act('monster_dmg_at', { id: S.myId, x: m.x, y: m.y, dmg: collisionResult.damage, isCrit: true });   /* v2.3.5187: through the action door (actions.js) */
                   var coll = collisionResult.collision;
                   var elemColor = ((_ELEMENTS$collisionRe = ELEMENTS[collisionResult.triggerElement]) === null || _ELEMENTS$collisionRe === void 0 ? void 0 : _ELEMENTS$collisionRe.color) || '#fff';
                   /* §5.7 Resonance — brighten color and prefix the burst
