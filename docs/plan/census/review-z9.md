@@ -203,9 +203,57 @@ It changes a line in `server/test/`, so it deploys the worker.
   declined (a plain file, `gearSheets.js` ~708) back to the page's cut,
   5 to 15 ms; `__btBakeWorker().byUrl` in the crowd tour would settle it.
 
-## Card P: #1763 (world icons) and #1766 (fx-sheets)
+## Card P: #1763 (world icons) and #1766 (fx-sheets): HELD
 
-(the finder's report below)
+Reviewed at bbc2ded3 and 83638df1 (card P's heads of 10:43 and 10:50, now
+stacked on #1749 and green). The 15 icons' DOM users (the bag's ores, the
+trap's `<img>`s, `controlsPreload`, the ore flying to the bag, StatDemo's
+heart) still load the original files; every twin and the whirlwind's
+whole read load at module read, behind the loading screen; the whirlwind
+as numbers has no CPU reader, and WebGL1, `?nopalette`, `?fxsheets=0`
+and `?p256=0` keep the old path. Its memory lines match what was
+measured (`artCache` 98.3 -> 97.1 -> 95.1; `buffers` +0.3 and +0.5, each
+said with its MB). On #1766's head: switches.test (254 rows, 194
+unlisted), strip-door 36, asset-door, picture-door 33, four-lines,
+cache-bytes green.
+
+- **VERIFIED (trace and probe), medium-low, the hold: a missed trap no
+  longer breaks into its picture's pieces.** #1763 puts `trap-box` in
+  `WORLD_ICONS`: `_fxLoad(TRAP_ICON_URL)` gives a source of colour
+  numbers, queued to pack; about 1 s later `pack()` (`p256.js` ~240-255)
+  sets `src.resource` to an empty array and `_btNumbers` to null. In
+  play `trapFx.js` ~296 `_missBreak` -> `wheelShatter.js` ~140
+  `cutPicture` -> `drawSourceRect` -> `paletteDraw.js`
+  `paletteRegionRGBA` reads the empty (truthy) resource: every pixel
+  clear (a probe: 64 of 64 opaque live, 0 of 64 packed), no seeds, no
+  pieces, and the drawn planks stand in for the owner's box, in silence.
+  Every missed trap on a WebGL2 phone with `CompressionStream` (the
+  owner's iPhone, iOS 16.4 on); `mp-trapping` never reads
+  `__btTrapArt.broken`. CLAUDE.md §7 (a picture of colour numbers is not
+  read back on the CPU; TRAPS §165, §166); `p256.js`'s header (~215)
+  says nothing reads an effect back, true of `fx-made`, not of the trap
+  box. Mend: the trap box out of `WORLD_ICONS`, or no pack for a source
+  with a CPU reader, or `paletteRegionRGBA` refusing a packed source.
+  #1766 is stacked on #1763 and held with it.
+- **VERIFIED, low-medium: "net 1.5 MB" leaves out the chip.**
+  `startP256Pack` sends every numbers source to the chip: the census has
+  `fx-sheets-supplied` 2.00 MB (page) -> 1.51 MB (chip), 0.49 MB saved by
+  the card's own ruler, not 1.5 (the PR's `gpu` readings rise 1.2 to
+  1.6). No line broken (`gpu` 115). It matters to the backlog's order
+  (it stops at the first family under 1 MB). #1763's 0.9 is near the
+  census's 0.84.
+- **PLAUSIBLE, low:** the heart and sword popups, and the shards among
+  the coin and Remains sprites, now break the layer's batch (the number
+  in the default batcher, the icon in the numbers batcher); a draw-call
+  count in a fight, `?worldicons=0` against the default, would settle it.
+- **Low:** `strip-door.test` cannot see the whirlwind's new page read
+  (it reaches `stripAsNumbers` through `packedTwinAsNumbers`, a wrapper
+  no list names: TRAPS §317's "cannot arrive unnoticed" stepped round;
+  behind the loading screen, so no law broken today); `gearSheets.js` is
+  on card P's "files P waits on" while card H says `ready` (the planning
+  session's answer is cited); P's status says `drawSourceRect`, the code
+  `readSourceRect`; the numbers held unpacked on a renderer rebuild or an
+  iOS before 16.4 are now about 2.9 MB (1.05, 0.35, 1.51).
 
 ## Card TF: #1770 (PR 1): HELD, a conflict
 
@@ -295,7 +343,11 @@ Rehearsed three times from `main` 0a5149b with `tools/dev/gatekeeper.mjs`.
    2f81a204): precheck 0 FAIL (5 WARN: stacked branches carrying the tags
    of the PRs below them), build, questline 187 of 187. The `potions`
    flake card J2 has did not show in any rehearsal.
-3. The list as written and this branch: REHEARSAL3.
+3. The list as written and this branch at b6b697f9 (tree 72434929):
+   precheck 0 FAIL (8 WARN: stacked branches carrying the tags of the
+   PRs below them), build, questline 187 of 187. Since then this branch
+   has gained documents only; #1777 (card H's second follow-up) opened
+   after this rehearsal began: sitting 10.
 
 Between 2 and 3: card L's 015845b6 (its rows) and card E's 04004bf3
 (`main` merged, `econ`'s row) each made a row-adding pair conflict (the

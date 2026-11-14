@@ -5,7 +5,8 @@ state: ready
 
 ## Done
 - Sitting 9, `main` at 0a5149b (sitting 8's nine merged). The four below
-  and this branch rehearsed in this order (tree 72434929): REHEARSAL3.
+  and this branch rehearsed in this order (tree 72434929): precheck
+  0 FAIL, build, questline 187/187.
   Review: `census/review-z9.md`. Ticked 1.0, 4.4; notes on 5.3b, 7.1.
 
 ## The list: merge in this order, in one sitting, each "Create a merge commit"
@@ -25,7 +26,7 @@ a rolled-back worker; no shape refused). No cap.
 - #1764 E8c: `arenasettleplan` has no row; each settle writes every stake
   record again (5 puts -> 7, 32 -> 52), undeclared, no cost-guard line.
 - #1770 TF: `tag-blocks.json` conflicts with #1771 (keep both; next 5520).
-- Not reviewed (opened during the sitting, on #1764): #1772, #1773.
+- Not reviewed (opened during the sitting): #1772, #1773 (on #1764), #1777.
 
 ## Stalled
 - None.
