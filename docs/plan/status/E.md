@@ -1,6 +1,6 @@
 card: E
 branch: claude/plan-e-13-restart (on #1786's branch: merge #1785, #1786 first)
-prs: #1686 to #1773 (all twelve merged); #1785, #1786 (ready); 5094 (ready, this branch)
+prs: #1686 to #1773 (all twelve merged); #1785, #1786 (ready); #1802 (5094, ready, this branch)
 state: ready
 
 ## Done
@@ -19,7 +19,7 @@ state: ready
   numbers. Sitting 10: a restart booked and added back (one line in
   `persistence.js`), open sittings' seconds, the count's limit in words.
 - PR 9 (5090, #1786), on #1785: value roads pause after a refused save.
-- 5094 (sitting 11's follow-up): a restart books its minted (F2); an
+- 5094 (#1802, sitting 11): a restart books its minted (F2); an
   empty room's restart written at once, `econresetput` (F1), OFF.
 
 ## Next
