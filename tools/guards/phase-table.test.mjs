@@ -236,6 +236,10 @@ const DOOR_SUITES = Object.freeze({
         .map((file) => ({ file, text: 'this.state = state', why: 'the Durable Object\'s own handle' })),
       { file: 'server/src/dungeon.js', text: 'inst.state = ', why: 'a dungeon instance: its own machine (the `dungeon` row)' },
     ] },
+  /* v2.3.5222: card O's ladder (the governor's rung, drawLanes.js `LANE._rung`) -- the planning session's word, sitting 12:
+     the rung is a property of a module object, so the tree reads its writes as every other door's */
+  'server/test/frame-pacer.test.mjs': { field: '_rung', fn: 'setRung', holds: '§17: setRung is called by the governor alone (framePacer.js), and the rung is written in setRung and the tests\' reset, nowhere else',
+    prop: '_rung', besides: [{ file: 'src/game/drawLanes.js', text: 'LANE._rung = ROW', why: 'the tests\' reset (_resetLanes), never the page\'s' }] },
 });
 const SCAN_DOORS = Object.freeze({
   'session (worker)': 'session-door.test plays the phases but fails no second writer of session.phase',
