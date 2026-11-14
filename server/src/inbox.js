@@ -3,6 +3,7 @@ import { isGearStashField, slotForGearField, PROV_MINTED, PROV_LEGACY } from './
 import { swordToGreatsword } from './swordconvert.js';   /* v2.3.3895: a sword in the post arrives a greatsword */
 import { oldGreatswordToMetal } from './gscopper.js';   /* v2.3.3980: ...and a wooden or base-less greatsword a metal one */
 import { bagGive, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
+import { mailMinted } from './gold.js'; /* v2.3.5085: a merged entry's minted part */
 
 /* ═══ v2.3.1117: INBOX + ESCROW PRIMITIVES (PR2 of the heavy-systems
  * plan; spec in docs/specs/inbox-escrow.md) ═══
@@ -553,7 +554,13 @@ export const inboxMethods = {
         if (entry.kind === 'gold') {
           const g = box.find((e) => e.kind === 'gold');
           if (g) {
-            g.payload.amount = (g.payload.amount || 0) + Math.max(0, Math.floor(p.amount || 0));
+            /* v2.3.5085 (the gatekeeper's sitting 8): the merged entry keeps
+               its MINTED part beside it (gold.js mailMinted) -- counted by
+               its first credit's word, a reward merged into a parked sale
+               read as nothing minted, a false dupe in the world's sum */
+            const add = Math.max(0, Math.floor(p.amount || 0));
+            g.payload.minted = mailMinted(g, Math.max(0, Math.floor(g.payload.amount || 0))) + mailMinted(entry, add);
+            g.payload.amount = (g.payload.amount || 0) + add;
             g.note = 'merged payouts';
             merged = true;
           }
@@ -561,7 +568,9 @@ export const inboxMethods = {
         if (!merged && entry.kind === 'item' && typeof p.invKey === 'string') {
           const it = box.find((e) => e.kind === 'item' && e.payload && e.payload.invKey === p.invKey);
           if (it) {
-            it.payload.count = (it.payload.count || 1) + Math.max(1, Math.floor(p.count || 1));
+            const add = Math.max(1, Math.floor(p.count || 1));
+            it.payload.minted = mailMinted(it, Math.max(1, Math.floor(it.payload.count || 1))) + mailMinted(entry, add);   /* v2.3.5085: as the gold's */
+            it.payload.count = (it.payload.count || 1) + add;
             it.note = 'merged payouts';
             merged = true;
           }
