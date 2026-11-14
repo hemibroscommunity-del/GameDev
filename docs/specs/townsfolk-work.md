@@ -125,6 +125,19 @@ the figure's crown. What is different is where the figure comes from.
   Nothing loads, and nothing is baked, in play. A part not in (no look
   palette, the set missing, no crowns, the tee's strip missing): he stands
   where he would have worked.
+- **Memory, measured** (`mp-membudget`, this box, the same build with the
+  set off by `?folkwork=0` and on): the graphics chip's highest 73.2 MB off
+  against 76.4 on (+3.2 MB: the set's 2.7 MB of numbers and its pages);
+  the page's objects 35.8 / 35.5, its buffers 22.8 / 22.5, art from files
+  38.1 / 38.1; the canvases 14.4 / 15.4, the second after two reconnects in
+  that run (the change makes no canvas). Every line passes; none is raised.
+  What would bring it down, the owner's call: the cook at every other
+  frame (12 of 24, about 0.5 MB less, a choppier stir); or the set loaded
+  only on a first sight of a working townsperson (off the loading screen:
+  the preloading law's exception, the owner's to make). And a saving
+  beyond this card: another player's cook, chop or farm figure in other
+  colours is a 1 to 5 MB canvas bake today (`PEER_FIG_EST`); drawn from
+  this set's numbers it would be a palette row (card P's to take).
 - **A computer** (Windows, a Mac) draws the townsfolk's photographs,
   standing, as before: no look palette, so none of this is loaded there.
 - **The switches.** `?folkskills=0` (its row in the switch table,
