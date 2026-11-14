@@ -1,6 +1,6 @@
 card: L
 branch: claude/plan-l-13-cook-door (each PR on main, main merged in)
-prs: #1746 to #1809 (merged; #1791, #1796, #1801 through #1807), #1824 (5211), #1835 (5212), PR 5 tag 5213: ready
+prs: #1746 to #1809 (merged; #1791, #1796, #1801 through #1807), #1824 (5211), #1835 (5212), #1839 (5213)
 state: ready
 
 ## Done
