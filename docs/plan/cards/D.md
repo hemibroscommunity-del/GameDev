@@ -9,7 +9,7 @@
 
 ## PRs, in order
 
-1. **(v2.3.5030) `tools/dev/state-census.mjs` and
+1. **(tag 5030) `tools/dev/state-census.mjs` and
    `docs/plan/census/state.md`**, with your status file.
    - The script makes the table, so anyone can make it again. The page is
      its output.

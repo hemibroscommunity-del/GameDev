@@ -358,15 +358,7 @@ function sanitize(src, { jsxText = false } = {}) {
     if (mv) used.add(+mv[1]);
   } catch { /* no package.json at base */ }
   try { tagsIn(git(['log', baseRef, '--format=%s'], { cwd: root }), used); } catch { /* ignore */ }
-  /* v2.3.5022: A CARD HANDS A TAG OUT; IT DOES NOT USE IT.  The grand plan's
-     cards (docs/plan/cards/<letter>.md, on main since v2.3.5020) name each
-     PR's tag with its prefix, so this check read every tag a card gives its
-     session as already used on main, and refused the session's first push:
-     card F stopped on it on day one, and wave 0's own first two PRs passed
-     only against a stale copy of main.  The cards' folder is left out of
-     what main has USED; a tag is used once its PR is merged (the commit's
-     subject, the code's comments), as before. */
-  try { tagsIn(git(['grep', '-h', '-oE', 'v2\\.3\\.[0-9]+([[:space:]]*[-–—][[:space:]]*(v2\\.3\\.)?[0-9]+)?', baseRef, '--', '.', ':(exclude)docs/plan/cards'], { cwd: root }), used); }
+  try { tagsIn(git(['grep', '-h', '-oE', 'v2\\.3\\.[0-9]+([[:space:]]*[-–—][[:space:]]*(v2\\.3\\.)?[0-9]+)?', baseRef], { cwd: root }), used); }
   catch { /* git grep exits 1 on no match */ }
 
   // tags ADDED by this diff, with file:line via unified=0 hunk headers

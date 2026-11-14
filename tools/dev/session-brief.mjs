@@ -39,9 +39,7 @@ try {
   if (m) usedOnMain.add(+m[1]);
 } catch { /* ignore */ }
 tagsIn(git(['log', mainRef, '--format=%s']), usedOnMain);
-/* v2.3.5023: a card hands its tag out, it does not use it: docs/plan/cards/
-   is left out, as in precheck's tag check (v2.3.5022) */
-tagsIn(git(['grep', '-h', '-oE', 'v2\\.3\\.[0-9]+', mainRef, '--', '.', ':(exclude)docs/plan/cards']), usedOnMain);
+tagsIn(git(['grep', '-h', '-oE', 'v2\\.3\\.[0-9]+', mainRef]), usedOnMain);
 let high = 0;
 for (const n of usedOnMain) if (n > high) high = n;
 
