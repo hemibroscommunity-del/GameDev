@@ -83,6 +83,13 @@ named the field let a `todo` row turn `door` with nothing built):
   `keyed` (the harvest's `this.extractions`, a record keyed by id) counts a
   write of one of its keys as a write of the field: `x.prop[k] =`,
   `delete x.prop[k]`, `x.prop[k]++`, `Object.assign(x.prop, ...)`.
+  **v2.3.5214 (the gatekeeper's low, sitting 15):** a `besides` entry
+  matched by its text alone let a wipe through (an unconditional
+  `this._partyByPlayer = new Map()` read as the map's birth). An entry may
+  now say where and how, read off the tree: `fn`, the function it must be
+  in (a Durable Object's `this.state = state`, the room's
+  `this.extractions`: the `constructor`), and `ifMissing`, a birth only
+  (the write is the consequent of `if (!<the same field>)`).
 - `SCAN_DOORS`: the rows no suite holds. The guard runs the row's `scan`
   itself. It reads every write of the field off the syntax tree (@babel):
   `x.phase =`, `x['phase'] =`, `++`, `delete`, `Object.assign(x, { phase })`.

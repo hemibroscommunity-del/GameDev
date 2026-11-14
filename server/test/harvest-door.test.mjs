@@ -22,8 +22,9 @@
  *      record outlives its socket (leave.js, v2.3.3322); a cook asks for its
  *      hits and is given no record.
  *
- * Break proof, tried by hand: `this.extractions[session.id] = rec;` put back
- * in _handleExtractionStart -> FAIL 2 (and the guard's §2).
+ * Break proofs, tried by hand: `this.extractions[session.id] = rec;` put back
+ * in _handleExtractionStart -> FAIL 2 (and the guard's §2); a second
+ * `this.extractions = Object.create(null);` in index.js -> FAIL 2.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { GameRoom } from '../src/index.js';
@@ -77,9 +78,13 @@ function check(name, cond, detail) {
 
 /* ── 2. no second writer ── */
 {
+  /* a birth is its whole line, and stands ONCE: a second
+     `this.extractions = Object.create(null);` (a reset of every player's
+     record) is no birth (the guard also holds it to the constructor, `fn`) */
   const BIRTHS = [
-    { file: 'server/src/index.js', text: 'this.extractions = Object.create(null)', why: 'the map\'s birth, empty, in the room\'s constructor' },
+    { file: 'server/src/index.js', re: /^\s*this\.extractions = Object\.create\(null\);/, text: 'this.extractions = Object.create(null);', once: true, why: 'the map\'s birth, empty, in the room\'s constructor' },
   ];
+  const births = new Map();
   const ROOT = new URL('../../', import.meta.url);
   const files = [];
   (function walk(rel) {
@@ -108,8 +113,8 @@ function check(name, cond, detail) {
       }
       if (!WRITE.test(l)) continue;
       if (inDoor) { doorWrites++; continue; }
-      const b = BIRTHS.find((x) => x.file === f && l.includes(x.text));
-      if (b) { seen.add(b); continue; }
+      const b = BIRTHS.find((x) => x.file === f && x.re.test(l) && !(x.once && births.get(x)));
+      if (b) { seen.add(b); births.set(b, (births.get(b) || 0) + 1); continue; }
       outside.push(f + ':' + (i + 1) + '  ' + l.trim().slice(0, 100));
     }
   }
