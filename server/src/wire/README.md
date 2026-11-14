@@ -16,7 +16,10 @@ its column's list.
 ## The files: one a direction
 
 Every file is a leaf: no imports, plain data, so node and the worker can both
-read it.
+read it. The door tests read these files like any other in `server/src/`
+(`server/test/src-walk.mjs`), so a field named `type` is written quoted
+(`'type': 'request'`): `wire-audit` reads `type: '<name>'` as a message the
+worker sends.
 
 | File | Holds | Rows |
 |---|---|---|
@@ -32,8 +35,8 @@ read it.
 node -e "Promise.all(['in','relays','out','http'].map((f) => import('./server/src/wire/' + f + '.js'))).then((ms) => { const rows = ms.flatMap((m) => Object.values(m)[0]); const by = {}; for (const r of rows) { const k = r.dir + (r.envelope === 'http' ? ' (http)' : ''); by[k] = (by[k] || 0) + 1; } console.log(rows.length, by, 'with a note:', rows.filter((r) => r.note).length); })"
 ```
 
-which prints `436 { in: 139, relay: 26, out: 164, 'in (http)': 107 }` and
-how many rows carry a note (below).
+which prints `436 { in: 139, relay: 26, out: 164, 'in (http)': 107 } with a
+note: 118`: the census's counts, and how many rows carry a note (below).
 
 ## A row
 
