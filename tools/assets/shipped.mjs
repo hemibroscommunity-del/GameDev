@@ -196,15 +196,17 @@ function compare() {
 
 function families() {
   const rows = inReach().map((p) => rowOf(p));
+  const barOf = new Map(ASSET_FAMILIES.map((f) => [f.name, f.bar]));
   const by = new Map();
   for (const r of rows) {
     const e = by.get(r.family) || { files: 0, bytes: 0, over: 0 };
     e.files++; e.bytes += r.bytes;
-    if (withinBar(r.path) === false) e.over++;
+    /* only a family with a bar (no data, sound, video or vector) */
+    if (barOf.get(r.family) && withinBar(r.path) === false) e.over++;
     by.set(r.family, e);
   }
   const wide = Math.max(10, ...ASSET_FAMILIES.map((f) => f.name.length));
-  console.log(`${'family'.padEnd(wide)}  ${'kind'.padEnd(8)}  ${'draw'.padEnd(7)}  ${'files'.padStart(5)}  ${'MB'.padStart(7)}  over bar`);
+  console.log(`${'family'.padEnd(wide)}  ${'kind'.padEnd(8)}  ${'draw'.padEnd(7)}  ${'files'.padStart(5)}  ${'MB'.padStart(7)}  over bar (not read by png8Decode.js; the size is the gate's)`);
   const list = [...ASSET_FAMILIES].sort((a, b) => ((by.get(b.name) || {}).bytes || 0) - ((by.get(a.name) || {}).bytes || 0));
   for (const f of list) {
     const e = by.get(f.name) || { files: 0, bytes: 0, over: 0 };

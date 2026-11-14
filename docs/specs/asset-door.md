@@ -85,3 +85,68 @@ node tools/assets/shipped.mjs --write       write shipped.json again
 
 Written by `--write`, never by hand. Like `weights.mjs`, it REPORTS and
 fails nothing: the gate is part 4.
+
+### Readings taken in building the table
+
+The card's readings decide most rows. Where the code left a choice open,
+this table took one reading, recorded here so a row can be read the same way
+the next time:
+
+- **Supplied, or made by a tool from sources not kept?** A file a repository
+  tool wrote from inputs the repository does NOT keep (a ChatGPT sheet given
+  on the command line, an upload deleted after its cut, a studio's own
+  storage) is **supplied**: no tool here can make it again, and the file is
+  the only copy of art that came from outside. The importing tool is named
+  in the row's note, never as its `tool`. This is the card's own example:
+  the bro's sheets were cut by `tools/build_player_attack_sheets.py` and
+  `tools/repack-dodge-grid.mjs` from uploads that are gone, and the card
+  calls them supplied. **Made** means a tool here makes the file from
+  sources the repository keeps (under `assets/`, `tools/**/src-art`,
+  `public/` itself), named in `sources`; or that nothing shows what made it
+  (`tool: 'unknown'`: the card's "in doubt"). A made file later mended in
+  place by another tool stays made (the jog legs: "do not re-run as it is").
+- **A `.png` with a `.webp` twin is `none`.** `webpImage.js loadWebpOrPng`
+  asks for the twin first (the build lists every twin), so the `.png` is
+  fetched only if its twin fails: the twin is what is drawn. The `.png` is
+  the twin's source and the look sheets' source; `none` here means "nothing
+  draws it", not "nothing needs it".
+- **Phones and computers.** The look palette is on by default except on
+  Windows and Mac (`src/game/lookPaletteChoice.js`): a phone draws a coloured
+  body, the combat armour, the weapons and the townsfolk from the look sheets
+  and never fetches their pictures; a computer fetches them. Those families
+  are `file`, with a note saying what a phone draws instead, so that `none`
+  always means no device loads the file by default. The census (part 2) is
+  measured on the memory check's phone, so their MB there is what a phone
+  holds.
+- **Decoded, not streamed.** The ambient loops (`public/audio/ambient/`)
+  are decoded whole at 24 kHz (`BT_AUDIO.loadSample`), so they are `sfx`,
+  not `music`; only the music and the dance beat go through the music deck.
+- **The farm is `wheel`.** `paletteLoad.js` reads the farm's palette
+  pictures as colour numbers; the closed list puts that module under
+  `wheel`.
+- **A picture copied onto a canvas** (the bag's icons in `lootIcons.js`,
+  `dropIcons.js`, `nodeLabels.js`) keeps the draw path of the file itself
+  (`dom`); the canvas is a texture made in play, which the census lists as
+  `in play` and no family holds.
+
+### At tag 5241
+
+**3,225 files in reach, 157,445,958 bytes (150.2 MB), in 200 families.**
+
+| kind | files | MB on disk | over the bar (not read by `png8Decode.js`) |
+|---|--:|--:|--:|
+| supplied | 797 | 62.6 | 565 |
+| made | 2,077 | 80.7 | 1,727 |
+| data | 351 | 6.9 | (no bar) |
+| `unsorted` | **0** | 0 | |
+
+The 223 look sheets are data (nine families, `look-*`), with their nine
+`roles.json`. By draw path: `dom` 1,035 files, `file` 899, `none` 545,
+`look` 223, `wheel` 217, `data` 122, `sfx` 109, `strip` 62, `music` 13.
+
+"Over the bar" counts a picture the game's reader does not read: every WebP
+and JPEG, and every PNG that is not an 8-bit palette PNG. Most of the made
+files over it are the bot's lossless `.webp` twins of RGBA sheets. The bar's
+size (the pixel-size rule) is read by the gate (part 4), not here. Bytes on
+disk are not the measure: part 2 measures what each family holds at the
+memory check's fight.
