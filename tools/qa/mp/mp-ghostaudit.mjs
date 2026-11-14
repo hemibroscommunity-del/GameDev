@@ -232,7 +232,7 @@ const PAGE_TOOLS = () => {
            comes into view; one drawn after the action began read as its
            leftover (two pines beside the fire: the cook's and the fire's
            "after it", red once the cook ran again).  Its picture names it */
-        try { const rs = c.texture && c.texture.source && c.texture.source.resource; if (rs && /\/sprites\/trees\//.test(String(rs.src || ''))) continue; } catch (e) { /* not a picture */ }
+        if (tex && /\/sprites\/trees\//.test(String(tex))) continue;   /* (its name: a tree's picture is colour numbers, its label the file) */
         out.push({ layer: layer.label, label, w: Math.round(b.width), h: Math.round(b.height), tex, alpha: +(c.alpha || 0).toFixed(2),
           x: Math.round(b.x - px), y: Math.round(b.y - py), kids: c.children ? c.children.length : 0 });
       }
