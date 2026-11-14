@@ -1,22 +1,24 @@
 card: LB
 branch: claude/plan-lb-2-window (PR 2, begun from claude/plan-lb-1-pieces)
-prs: #1771 (5500, ready; the owner's yes); #1783 (5501, draft until questline and membudget; after #1771)
-state: working
+prs: #1771 (5500, merged); #1783 (5501, ready)
+state: ready
 
 ## Done
 
-- #1771 (5500), the pieces: the owner's sheet and two mockups under
-  `assets/ui/leaderboard/`; 27 pieces cut by the sheet's own alpha
-  (`tools/ui/cut-leaderboard.mjs`, the door's four steps, family
-  `ui-leaderboard`, draw `none`); the papers (`sources.json`, `CREDITS.md`),
-  the MEMORY-MAP slot, `docs/specs/leaderboard-look.md`, the card, LB's
-  tag block.
+- #1771 (5500, merged): the owner's sheet and two mockups; 27 pieces cut by
+  the sheet's own alpha (`tools/ui/cut-leaderboard.mjs`, family
+  `ui-leaderboard`); the papers, the MEMORY-MAP slot, the spec, LB's block.
+- #1783 (5501): the window after mockup 2 (title, pills, podium, table, no
+  pages); `mp-boardslook` 17/17, `mp-boards` 37/37, `questline` 187/187,
+  `mp-membudget` 11/11 before and after (no line moves); CI green.
 
 ## Next
 
-- #1783: `questline` and `mp-membudget` (before on main, after here), then
-  ready. PR 3 (5502): Overall and the Power rating (held in #1783:
-  caps-audit refuses a cap before #1776 sends it) and PW's stat pills.
+- PR 3 (5502), once PW's #1776 and #1781 are on main: Overall and the Power
+  rating (held in #1783: caps-audit refuses a cap before join.js sends it),
+  the "Stats" group (`caps.statboards`, `pts_dmg` "Damage"), the
+  `CAP_GATES` rows, and the caps-audit allowlist rows for `power` and
+  `statboards` deleted in the same PR (PW's reminder).
 
 ## Found
 
