@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c4871e83624683351124a87bc8fae08ca808e6a4",
+  "tree": "356beedb541e776f61dc2b724dcd0500324d9827",
+  "committedAt": "2026-11-14T00:05:40-08:00",
+  "subject": "Merge pull request #1721 from hemibroscommunity-del/claude/plan-u-1-ledger",
+  "files": 7523,
+  "bytes": 948027419,
+  "listingSha256": "c8508df08d40898dbb86bf55afbc8348d26fca40873103cf27cc7ea399550436",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

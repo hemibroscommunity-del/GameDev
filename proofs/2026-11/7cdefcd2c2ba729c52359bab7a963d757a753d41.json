@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7cdefcd2c2ba729c52359bab7a963d757a753d41",
+  "tree": "846760c8ca9032774ca916aeec913ff6593edbf0",
+  "committedAt": "2026-11-14T00:06:25-08:00",
+  "subject": "Merge pull request #1728 from hemibroscommunity-del/claude/plan-u-6-wire-combat-world",
+  "files": 7545,
+  "bytes": 948297370,
+  "listingSha256": "113a88227a0547e85cfe1cbca9bc432c0d54faf8bd724d4017b190327f1a1b36",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
