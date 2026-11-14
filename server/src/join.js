@@ -1822,6 +1822,7 @@ export const joinMethods = {
     } catch (e) { /* never block a join on a cosmetic */ }
     /* v2.3.4545: the phone starts its shot counts again at every state_sync (src/game/accuracy.js accReset), so
        the worker's copy of them does too (accuracy.js) -- a reconnect never counts a shot twice */
+    this._roomRowJoin(session.protocolVersion);   /* v2.3.5124: a join taken, by its protocol (roomrow.js) */
     if (this._accJoin) this._accJoin(session.id, Date.now());
     ws.send(JSON.stringify({
       type: 'state_sync',
