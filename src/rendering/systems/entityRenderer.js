@@ -3350,11 +3350,16 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
   /* ═══ v2.3.2874: THE PIXEL WORK LIVES IN maskedBake.js ═══
      So the same code can run in a worker (maskedBakeWorker.js) for the
      background prewarm, off the main thread.  Here it is fed draw functions
-     over the live textures, exactly the drawGearFrame calls it made inline. */
-  const _r = bakeMaskedCanvas({
+     over the live textures, exactly the drawGearFrame calls it made inline.
+     v2.3.5051 (the gatekeeper's sitting 9, review-z9.md "Card H: #1762"): a
+     piece not readable (v2.3.5000: an image, or its numbers) is not baked as
+     if not worn and kept under the whole set's key: the body is drawn plain
+     this frame and asked again, as _runBake and _runLookBakeInline refuse it
+     (server/test/worn-bake.test §5) */
+  const _r = worn.every((w) => _gearReadable(w.tex)) && bakeMaskedCanvas({
     mk: _mkBakeCanvas,
     body: (c, x, y, w, h) => drawGearFrame(c, bodyTex, x, y, w, h),
-    worn: worn.map((w) => ({ k: w.k, draw: _gearReadable(w.tex) ? (c, x, y, W, H) => drawGearFrame(c, w.tex, x, y, W, H) : null })),   /* v2.3.5000: or from its numbers */
+    worn: worn.map((w) => ({ k: w.k, draw: (c, x, y, W, H) => drawGearFrame(c, w.tex, x, y, W, H) })),
     dilate, poseInfo,
     belt: (dir, f) => {
       const bt = getGearFrame('belt', 'chainbelt', 'jog', dir, f);

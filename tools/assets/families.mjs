@@ -153,7 +153,7 @@ export const ASSET_FAMILIES = Object.freeze([
   fam('gear-dodge', 'made', 'public/sprites/gear/*/*/dodge-*.png',
     { tool: 'tools/build-dodge-gear.mjs', sources: 'tools/dodge-src/dodge-<dir>-{armored,tshirt}.png, public/sprites/player/dodge-<dir>.png', draw: 'none', note: FALLBACK }),
   fam('gear-walk-twins', 'made', 'public/sprites/gear/{belt,chest,legs,shirt,fullset}/*/{stand,jog,hit,mine,pickup,fish,dodge}-*.webp',
-    { tool: TWIN, sources: 'beside', draw: 'file', loader: 'src/rendering/gearSheets.js', px: 'frame 256x256 (128 on disk)', note: 'packed on the page (pack-page, card H\'s Found); phones draw chest, legs and fullset from look/gearwalk' }),
+    { tool: TWIN, sources: 'beside', draw: 'file', loader: 'src/rendering/gearSheets.js', px: 'frame 256x256 (128 on disk)', note: 'in play packed on the body bake\'s worker (v2.3.5253, pack-page off the debt list; ?packworker=0 on the page); phones draw chest, legs and fullset from look/gearwalk' }),
   fam('gear-combat-supplied', 'supplied', ['public/sprites/gear/{chest,legs,shirt}/*/{swing,cook,fire}-*.png', 'public/sprites/gear/{chest,legs}/*/bowshot-*.png'],
     { draw: 'file', loader: ER, note: 'the .png itself (_gearStripFrame); computers only: phones draw look/gear' }),
   fam('gear-chop-originals', 'supplied', 'public/sprites/gear/*/*/chop-west.png',

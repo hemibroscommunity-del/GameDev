@@ -219,12 +219,12 @@ box's software graphics chip, and the quarter second of game it plays in one
 frame: a phone has neither) or **the browser's** (its garbage collector: the
 game can only give it less to do). The grand plan's step 3.1 is done when no
 row is ours (`held-budget.mjs` `debtOf('ours')`, the count its scoreboard
-reads). Today (v2.3.5049): one ours (`pack-page`, card P's to bring down: card H's part of step 3.1 is done), two the box's, one the browser's. A new family is
+reads). Today (v2.3.5253): none ours (`pack-page`, the last, off the list: card P's road B), two the box's, one the browser's. A new family is
 ours until a measurement says otherwise: `held-sweep.test` 7b3 holds the
 box's and the browser's to the three below, and 7b4 holds this table to
 `KNOWN`, row for row. Their break proofs (the grand plan's rule 8), each run
 by hand: `whose` taken off `strip-made` turns 7b2, 7b3 and 7b4 red;
-`pack-page` called the box's, in the list and this table both, turns 7b3
+`pack-page` (then listed) called the box's, in the list and this table both, turned 7b3
 red; the `sweepPicsOnce` row taken out of this table turns 7b4 red.
 
 All of them (the first five by their old rank, then the rest; a family off the list is struck through):
@@ -235,7 +235,7 @@ All of them (the first five by their old rank, then the rest; a family off the l
 | ~~`gear-sheet`~~ | | off the list (v2.3.5042; was 195 ms, 12 at the crowd's d-prints) | a drawn shirt composed on the page for each pose (the crowd tour); on the body bake's worker in play since v2.3.5014 (`docs/specs/body-bake-worker.md`, "A drawn shirt") | **v2.3.5042**: what was left was the Equipment screen's figure (below, "Card H") |
 | ~~`portrait`~~ | | off the list (v2.3.5042; was 40 ms) | the Leaderboards' faces are 11 ms since v2.3.4960 (g-boards, was 149); what was left, the Equipment screen's figure drawn as armour goes on, 10 to 29 ms (armour) | **v2.3.5042**: drawn a step at a time in play, the body kept (below, "Card H") |
 | ~~`masked-bake`~~ | | off the list (v2.3.5043; was 24 ms) | the page cut each input out of its sheet for the bake's worker (`_frameInput`, `createImageBitmap`): 4 to 15 ms a bake | **v2.3.5043**: a frame of an image goes as its address, the worker reads the sheet (below, "Card H") |
-| `pack-page` | ours | 20 ms (v2.3.4873; was 80) | a gear sheet first drawn in play, now packed a few ms at a time (`gearSheets.js` `_gearPack`; was one go, 21 to 59 ms): one cell's read and the hand-off, 9 to 15 ms | the strip door for gear strips (256-colour files, packed on the worker) |
+| ~~`pack-page`~~ | | off the list (v2.3.5253; was 20 ms; 21 to 59 before v2.3.4873, 17 to 35 at `armour` at card H's Found) | a gear sheet first drawn in play, cropped and packed on the page | **v2.3.5253** (card P, the planning session's road B): packed on the body bake's worker in play, which hands back the packed sheet (`gearSheets.js` `_buildShirtOnWorker`; `?packworker=0` the page's). The sample (fight, peer and armour once; peer and armour four times more): not one hold (`docs/specs/asset-door.md` part 5, 5253) |
 | `gc` | the browser's | 60 ms | the browser's garbage collector | make less garbage a frame (OPTIMIZATION-ROADMAP's pools) |
 | `the frame itself` | the box's | 70 ms | this box plays a quarter of a second of game in each frame | `mp-phoneframe` is the measure at a phone's rate; here the line stops it growing |
 | `screen-check` | the box's | 260 ms | only with a second page on this box's one software chip; one page: 0 to 2 ms | nothing here; on a phone the frame strip names it if it is ever 4 ms |
@@ -337,6 +337,24 @@ PR's: `pack-page` at `armour` 17 to 35 ms against its 20 ms line (waits for
 card P's asset door); one `masked-bake` hold of 32.7 ms at `armour` (its own
 PR is next).
 
+**The figure's 22 ms, not yet explained (v2.3.5051; card H's second
+follow-up, withdrawn).** `gear-sheet` came back once, 22.4 ms at `armour`
+(#1733's sample, mostly `composeShirt`), and a whole main tour showed
+`portrait` 22.6 ms in `_drawGearLayer`. The follow-up took this for the
+figure composing each piece's WHOLE strip to show its first frame, and cut
+the first frame alone. Wrong: every sheet the figure loads
+(`/sprites/gear/{shirt,legs,chest,shoulders}/<item>/stand-<dir>.png`, all 15
+of them) is one 128x128 frame (the gatekeeper's sitting 10 read the PNG
+headers), so the cut built the very canvas the upscale did and saved
+nothing; its "55 of 55 the same" was a change that changed nothing, and its
+lower numbers after were the box. The cut and its switch were dropped before
+merging. The cause is open, two candidates, neither measured: the first
+draw of an image not yet decoded (the decode lands inside `drawImage`), or
+`composeShirt`'s and the tint's read-back (`getImageData`) of a canvas the
+chip holds. To settle it: the figure drawn cold and warm with each step
+timed (`loadImage`'s `decode()` awaited, and `willReadFrequently` on the
+canvases read back, one at a time).
+
 ### `masked-bake` off the list (v2.3.5043)
 
 **What was left.** Since v2.3.4870 the masked bake (armour cut to the body)
@@ -393,8 +411,15 @@ After the gatekeeper's sitting 5 (`docs/plan/census/review-z5.md`, v2.3.5050):
 - the 4 s covers the decode as well as the fetch (a decode that ends later
   has its bitmap closed), and a job's sheets start reading as it arrives,
   beside the wait for its sheets of numbers;
-- `_runBake` asks again, as `_runLookBake` did, when a piece is not readable
-  (it baked the set without it and kept that under the whole set's key);
+- `_runBake` fails a job, as `_runLookBake` did, when a piece is not
+  readable (it baked the set without it and kept that under the whole set's
+  key). Two failures send a frame to the page's own bake, which still baked
+  it without the piece (the gatekeeper's sitting 9): that bake
+  (`_maskedBodyFrameInner`) now draws the body plain and asks again, v2.3.5051
+  (`worn-bake.test` §5). Not reachable today (sitting 9: a sheet still loading
+  never enters the worn list; a `urlFail` is cut from the decoded image; the
+  chest and legs sheets are never freed), so this closes the door, it mends
+  no picture seen;
 - the refused list lets its oldest go when full (1024), and only `blob:`
   addresses go to the worker (a file's address can change under a deploy).
 
@@ -598,8 +623,9 @@ band, `town`; the gear tab 9.9 at `lands`), none over the general line.
 budget on other families: `other: wrapped` (19.4 ms twice at `lands`: the
 timer wrapper of `debug/perfTracker.js`, its own time, so this box; seen
 over the line in four earlier runs) and `gear-sheet` once at `armour`
-(22.4 ms: the Equipment screen's figure composing the WHOLE upscaled shirt
-strip, `composeShirt`, for the one frame it shows).
+(22.4 ms, mostly `composeShirt` in the Equipment screen's figure; first read
+as composing a whole strip, but its sheets are one frame each: the cause is
+open, see "The figure's 22 ms" above).
 
 ### `sweepPicsOnce` off the list (v2.3.5048)
 

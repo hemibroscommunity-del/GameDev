@@ -330,7 +330,8 @@ outside the profile.
   *Card H's part merged: #1668 to #1747 (ten PRs; the bake worker's restart
   in #1668 and #1747). Open: `pack-page`, the one row left `ours`
   (`tools/qa/mp/held-budget.mjs`), is card P's (the gatekeeper, sitting 8,
-  v2.3.5364).*
+  v2.3.5364). #1762 (sitting 9) closed sitting 5's loose ends on the bake
+  worker; `pack-page` is still open (the gatekeeper, sitting 10, v2.3.5366).*
 - [ ] **3.2 [LATER] One queue for work that is not this frame's**, with
   priorities. It takes nothing while the frames are late or the pacer is
   trying a step up. Work put off (after a fight, at a veil) joins it one a
@@ -624,6 +625,10 @@ punishes by itself.
   in the Test panel reads it. Five numbers for the economy: unexplained
   gold; gold made a player-hour against the week; the share moved one way
   for nothing; the share of new gold reaching the richest; cases waiting.
+  *Begun (card E): #1756, the book's `econ` part, minted and burned as each
+  road runs (`econ: false` its switch); the room's row is 1.6's. The box
+  waits for the owner's card (E's PR 12, #1785, held at sitting 10) and the
+  device bins (the gatekeeper, sitting 10, v2.3.5366).*
 - [ ] **10.5 [NEXT] The roads between players, one table.** Every road that
   moves value from one account to another, one row: its fee, its hold, its
   pace, its ledger. All zero today (a trade moves 999,999 gold with no fee,
