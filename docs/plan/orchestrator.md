@@ -50,6 +50,31 @@ orchestrator.
    see on their phone when it lands.
 7. Its pull requests go on the gatekeeper's list like any other.
 
+## More hands at once
+
+The owner, 2026-11-14: *"sometimes I want you to be able to have more
+compute or another browser to test simultaneously."*
+
+- **A lane shares; a session does not.** A lane (a helper inside a
+  session) shares that session's four processors and one browser. A
+  session is a machine of its own, with its own browser. So work that
+  needs more speed or another browser at the same time goes to another
+  SESSION, never to a lane. Lanes are for reading and node tests.
+- **Helper sessions for tests.** A session with many phone tests to run
+  may start helper sessions, each running its share on its own machine
+  and sending its results back by message (the full run of card J, about
+  six hours on one machine, is about one hour on six). A helper changes no
+  file and opens no PR.
+- **Files, not machines, are the limit.** Two sessions changing one file
+  at once collide, so such work goes one after another (part 11's "never
+  side by side").
+- **More than one orchestrator** is fine (one for content, one for the
+  plan). Every session an orchestrator starts is titled
+  "Grand plan · card <letter> · <what>" or "Content · <what>"; before
+  starting one, an orchestrator lists the running sessions by title and
+  reads their status files, so two never take the same files or the same
+  card letter.
+
 ## What it does not do
 
 - Ask the owner about files, tags, cards or order.
