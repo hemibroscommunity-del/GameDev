@@ -151,7 +151,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
                never both; a picture of each moment (upright: once a trade) */
             if (part.key === 'upright') {
               let off = null, pic = false;
-              const end = Date.now() + 90000;
+              const end = Date.now() + 180000;   /* a few of his rounds: the farmer's walk from the hoe to the can is a step */
               while (Date.now() < end && !pic) {
                 const q = await T.drawnOf(W.name);
                 if (!(q && q.live && q.pose && q.pose !== pose)) { await T.P.page.waitForTimeout(250); continue; }
