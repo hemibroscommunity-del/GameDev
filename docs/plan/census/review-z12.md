@@ -184,3 +184,83 @@ hold-names, switches, tests-by-system, rails; armorgrade, canvas-witness,
 fish-forearm, held-sweep, iron-waist, keep-as-image, look-load, mine-hem,
 mine-look, picture-door, strip-door, strip-slices, townsfolk-walk,
 traps-look-tables: green. CI green at each head.
+
+## Card L: #1803 (tag 5209) and #1809 (tag 5210): listed
+
+Read at cd1e239 and 59df4a9 (#1809 carries #1803; both target `main`,
+one merge base each).
+
+**#1809, the trade door (it DEPLOYS: `server/src/trade2.js`).** One
+field (`s.state`), one writer `_t2To(s, to, way)`, ways in `TRADE_WAYS`
+(own-property checks; `way` is always a server literal), both ends final.
+"Nothing a player sees changes" holds: both call sites ignore what
+`_t2To` returns; the cancel's own guard (~159, unchanged) still decides
+the staged weapons' refund, once; between `_t2SessionFor` (~260, open
+only) and the swap's `_t2To` (~351) there is no await and nothing reaches
+a cancel, so `_t2To` always writes over `open` and never refuses. `_t2To`
+is synchronous and cannot throw: the swap is still one run of writes
+(handoff rules 5 and 7). `tradedoor: false` changes a write only when the
+phase is not `open` (never today): byte for byte `main`'s messages and
+writes either way. No new message, no cap needed (`_t2Wire` unchanged),
+no storage key, no stored shape (`_trades2` is memory only).
+
+- VERIFIED (planted writes), low: the two readers' gaps. The suite's
+  regex misses `??=`, `||=`, a multi-line `Object.assign`, the shorthand
+  `{ state }`; the tree misses a spread inside `Object.assign` and a
+  nested function named `_t2To`; both miss a destructuring target,
+  `s[k]`, `Reflect.set`, `Object.assign(s, someVar)`. Each catches what
+  the other misses; what is left is unlikely code.
+- Low: `prop: 'state'` over all of `server/src` is strict on a common
+  name: a new Durable Object's `this.state = state` or a payload's
+  `Object.assign(copy, { state })` fails both, blaming the trade door
+  (fails closed; the fix is a line in `NOT_A_TRADE` and `besides`).
+- Low, for later: the swap calls `_t2To` after the debits and ignores its
+  answer, so "both ends final" can never stop a swap. If a later PR puts
+  an await before ~351, a cancel landing there refunds the staged weapons
+  while the swap still pays, and the phone reads a cancel.
+- Suites: trade-window-slot, trade-door 27, pettrade, trade, trade2,
+  trade-onewrite; the full `npm test` at 59df4a9 (408 suites) green.
+
+**#1803, the phase guard reads a suite-held door off the tree too.** Its
+four break proofs hold; the `besides` entries are right
+(monsterlife.js `m.life`, tileRenderer.js `this.currentZone`, and with
+#1809 the five Durable Objects' `this.state = state` and dungeon.js's
+`inst.state`). L's second block (5520 to 5539, `nextBlock` 5540) meets no
+other block and no tag on any branch. **It meets card O's `ladder` door:**
+the ladder's field `_rung` was a module `let`, which a property reader
+cannot see (tried: FAIL 2 "a stale door"); card O holds it on a module
+object now, so the row takes #1803's `prop` form (the planning session,
+18:00) in the next batch.
+
+## Card O: #1815 (PR 7, tag 5227): listed
+
+Read at 3b72380 by the gatekeeper (one merge base with `main`, clean;
+it DEPLOYS: `server/test/device-profile.test.mjs`). It stands alone
+(begun from #1787, merged): none of the governor's PRs is in it. The four
+askers (`paletteTex.js` the chip's name, `peerImpostor.js` the largest
+side, `bodyBake.js` the threads, `crashTrap.js` the user agent and the
+largest side) ask `deviceProfile.js` now, each getting the answer it got:
+`chipName` is the old `rendererName` (RENDERER, else the debug
+extension's, '' on a throw), `maxTextureSize(r) || 4096` and
+`(cores() || 2) - 2` keep their fallbacks. `deviceProfile.js` imports two
+leaf files only (`drawLanes.js`, `lookPaletteChoice.js`), so the crash
+trap's new import adds no cycle and no earlier evaluation. §3 now fails a
+new asker outside the profile; four are a census that only falls
+(`STILL_ASKS`, line 4: the identity's fingerprint, the `?perf=1` strip,
+the debug overlay's UA cell, `lookPalette.js` for O's PR 8). No PR on
+today's list adds an asker (their diffs read). CI: `test` green at
+3b72380.
+
+## Documents: #1808 (Z, tag 5368), #1811 (E), #1813 (K and R, tag 5180)
+
+- **#1808**: card Z's step 5b (a PR's base, and its merge bases counted
+  step by step): sitting 11's two lessons, as they happened.
+- **#1811**: card E's status marked `done`: every PR of the card is on
+  `main` (#1785, #1786, #1802 at sitting 11). Its Needs keep the owner's
+  two cost words (`arenasettleplan`, `econresetput`, both OFF).
+- **#1813**: cards K (the wire, moved) and R (roads and restore), from
+  their orchestrator; tag 5180 (K's first, as L's orchestrator took
+  5200); every tag in them bare; their shared-file order (K's two
+  `index.js` PRs first; R's 5280 and 5281 before K's 5194; R's escrow
+  ledger last), which the next lists follow. Every cost is built OFF and
+  listed for the owner.
