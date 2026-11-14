@@ -692,7 +692,7 @@ const _SHIRT_WORKER_OFF = (() => { try { return /(^|[?&])shirtworker=(0|off|fals
 const _PACK_WORKER_OFF = (() => { try { return /(^|[?&])packworker=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
 /* QA (the planning session's condition): how long a sheet waited for the
    worker, asked to answered -- it may queue behind a fish bake */
-const _workerWait = { sheets: 0, maxMs: 0, sumMs: 0, last: [] };
+const _workerWait = { sheets: 0, maxMs: 0, sumMs: 0, last: [], work: [] };   /* work: each job's own time on the worker */
 /* ...and the page's own road for the same sheets (?packworker=0), asked to
    drawable: the same piece hidden as long, so the two compare */
 const _pageWait = { sheets: 0, maxMs: 0, sumMs: 0, last: [] };
@@ -703,7 +703,7 @@ function _noteWait(W, ms) {
   W.last.push(Math.round(ms));
   if (W.last.length > 40) W.last.shift();
 }
-if (typeof window !== 'undefined') window.__btGearWorkerWait = () => ({ ..._workerWait, last: _workerWait.last.slice(), page: { ..._pageWait, last: _pageWait.last.slice() } });
+if (typeof window !== 'undefined') window.__btGearWorkerWait = () => ({ ..._workerWait, last: _workerWait.last.slice(), work: _workerWait.work.slice(), page: { ..._pageWait, last: _pageWait.last.slice() } });
 export function shirtWorkerOff() { return _SHIRT_WORKER_OFF; }   /* effectsRenderer.js's stand-ins ask too */
 /* v2.3.5014: a sheet's job while it is on its way.  Ten drawings on screen
    and eight kept (MAX_ART_KEYS): a sheet let go of while it waited was asked
@@ -732,6 +732,8 @@ function _buildShirtOnWorker(key, slot, item, pose, dir, stampArt) {
     const t0 = performance.now();
     const waited = t0 - asked;   /* v2.3.5253: the wait, for QA */
     _noteWait(_workerWait, waited);
+    _workerWait.work.push(Math.round(r.ms || 0));
+    if (_workerWait.work.length > 40) _workerWait.work.shift();
     const fw = r.fw, fh = r.fh;
     if (r.cells) { _trimStats.sheets++; _trimStats.fullBytes += r.fullW * fh * 4; _trimStats.packedBytes += r.W * r.H * 4; }
     else { _trimStats.uncropped++; }
