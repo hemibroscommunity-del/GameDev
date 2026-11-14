@@ -27,7 +27,8 @@
  * If extraction ever collapses (helper renamed, calls wrapped), the
  * >=20 floor fails loudly instead of the audit rotting into a vacuous
  * pass (24 call sites at ship time).                                  */
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { srcFiles } from './src-walk.mjs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -46,7 +47,7 @@ const OPID_ALLOWLIST = new Map([
 ]);
 
 const srcDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
-const files = readdirSync(srcDir).filter((f) => f.endsWith('.js'));
+const files = srcFiles();   /* v2.3.5060: in depth, a folder's files too (src-walk.mjs) */
 
 // A deterministic opId opens with a quoted namespace literal ending in
 // (or containing) a colon: opId: 'duelpot:' + ...  /  opId: 'x:y'.

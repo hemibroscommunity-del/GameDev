@@ -1,40 +1,38 @@
 card: Z
-branch: claude/plan-z-sitting-4
-prs: this PR, tag 5360, the last line of the list (ready)
+branch: claude/plan-z-sitting-5
+prs: this PR, tag 5361, the last line of the list (ready)
 state: ready
 
 ## Done
-- Sitting 4, `main` at 5eb94ec, 19 open PRs not drafts, each `test` green.
-  All 15 of B, P, N, H, G rehearsed together: precheck RED (B's guards beside
-  N, H, G). The 9 below: precheck 0 FAIL, build, questline 187/187 (d02b3ca).
-  Reviews with skeptics: `docs/plan/census/review-z4.md`. Ticked nothing.
+- Sitting 5, `main` at 75946b7. Rehearsed the 15 below in this order (tree
+  d00fe033): precheck, build, questline. Review: `census/review-z5.md`.
+  Ticked 5.1, 5.2, 5.2b, 5.9 (card B's eight merged). No line lowered.
 
 ## The list: merge in this order, in one sitting, each "Create a merge commit"
-1 #1687 B2 · 2 #1689 B3 · 3 #1690 B4 · 4 #1693 B5 · 5 #1696 B6 · 6 #1698 B7 ·
-7 #1702 B8 · 8 #1707 P's card · 9 #1713 P1 · 10 this PR. Stacked: no squash.
-None touches `server/**`: no deploy. No cap, live flag or record's shape.
-B, not N, H, G: B is green on `main`, each guard names the mend; held, it meets
-this red each sitting. It unblocks U, T, V and P's PR 4.
+1 #1720 T,V cards · 2 #1705 Y · 3 #1715 P2 · 4 #1716 P3 · 5 #1684 N1 ·
+6 #1695 N2 · 7 #1706 A4 · 8 #1701 G · 9 #1700 H4 · 10 #1709 H5 ·
+11 #1712 H6 · 12 #1714 H7 · 13 #1724 V1 · 14 #1726 V2 · 15 #1729 V3 ·
+16 this PR. Stacked: no squash. Nine touch `server/**` (deploys): one
+sitting, a quiet hour. One cap, one flag: #1706 (`report`). No shape.
 
-## Held (expires at sitting 5): merge `main` after the list, then mend
-- N #1684, #1695, #1697: `systems` (`server/src/wire/` has no system),
-  `shapes-once` (`wayIn`, `mayStart`, `doesWhat` have no Where),
-  `tests-by-system` (`wire-table.test` names `wsClient.js`: `lib/filesOf.mjs`).
-- H #1700, #1709, #1712: `four-lines` (`entityRenderer.js` 9006 > 8968, H4;
-  `gameDisplay.js` 4285 > 4270, H6: a line only falls). Verified: H5's plan
-  taken by colour count (scrambled monster colours); H4's reads in series.
-- G #1701: `four-lines` (`BroTown.jsx` 8372 > 8371; `BroTown()` 7802 > 7801).
-- A #1706, #1708, #1711: `systems` (`report.js`, `roomrow.js`: 13 > 11).
-  The four faults mended where `visibilitychange` fires. Verified: A5 leaves
-  each sitting's last report (or a short one's first) in memory; A6's card
-  has no cap of its own; the `dev` part fills in ~6 live builds. A cap line.
-- Y #1705: still a DRAFT (its file says ready): not ready.
+## Held (expires at sitting 6)
+- N #1697: `wire-table` on the whole: `report` (#1706) and
+  `/api/admin/dev/daybook` (#1711) have no row. Merge `main`, add `report`'s.
+- A #1708, #1711: the last one out's book put has no pace: an unjoined
+  socket into an empty room writes the day's book (~100 KB), 28,800 a day
+  an address (`roomrow.js` `bookNow`); a kick then the close: two puts.
+- P #1718, #1719: hold 6 fails a `.webp` `finish.mjs` makes (reproduced);
+  `shipped.json`'s totals lines make two `public/` PRs conflict; the
+  sprite bot's twins (on `main` too). #1719 is clean, begun from #1718.
+- U #1721, #1722 (and #1723, #1725, #1727, #1728, #1730): conflict with
+  #1706 in `docs/SYSTEMS.md`: merge `main`, `systems.test.mjs --write`,
+  take the unlisted line again. Not reviewed yet.
 
 ## Stalled
-- None.
+- None. (T's branch `plan-t-1-switches` has no PR yet.)
 ## Found
-- From sitting 5, B's guards are on `main`: a PR red against one mends it.
-- No card: `quests.js` 262, test mode takes a retired quest (`testmode.js`
-  says it is refused). `docs/WIRE-PROTOCOL.md` has no `report` row (A's).
-- The owner's answers: E (PR 5, in your own words), Y (`mp-topaudit`: a
-  second PR in `pixiRenderer.js`, yes or no), P (spec part 1's reading).
+- Card E's PR 5 plans a book save at the last one out (`leave.js`):
+  #1708 writes one there; whichever is second reads the other's.
+- No card: `quests.js` 262 (test mode takes a retired quest), sitting 4's.
+- The owner's calls: E (PR 5, in your own words), Y (`mp-topaudit`, a
+  second PR in `pixiRenderer.js`: yes or no), P (the gate's mends above).

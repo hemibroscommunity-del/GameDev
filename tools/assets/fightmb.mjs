@@ -34,7 +34,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { ASSET_FAMILIES } from './families.mjs';
-import { ROOT, readShipped, withinBar } from './shipped.mjs';
+import { ROOT, readShipped, withinBar, botTwins, rowOf } from './shipped.mjs';
 
 export const CENSUS = 'docs/plan/census/assets.md';
 
@@ -54,10 +54,14 @@ const DRAW_WAITS = { strip: 'zoneTextures.js, stripRead.js', sfx: 'soundFold.js 
 
 const mb = (n) => (n == null ? '' : (Math.round(n * 100) / 100).toFixed(2));
 
-/** every in-reach path -> its family, from the record */
+/** every in-reach path -> its family, from the record.  v2.3.5244: and the
+ *  sprite bot's .webp twins, which the record leaves out (shipped.mjs's
+ *  header) but the game fetches before their PNGs: their rows as the table
+ *  reads them today */
 function familyByPath() {
-  const rec = readShipped();
-  if (!rec) throw new Error('tools/assets/shipped.json is not written: node tools/assets/shipped.mjs --write');
+  const file = readShipped();
+  if (!file) throw new Error('tools/assets/shipped.json is not written: node tools/assets/shipped.mjs --write');
+  const rec = { ...file, rows: [...file.rows, ...botTwins(ROOT).map((p) => rowOf(p, ROOT))] };
   return { rec, of: new Map(rec.rows.map((r) => [r.path, r.family])) };
 }
 
@@ -177,7 +181,8 @@ function text(c, files) {
   L.push('run: on the graphics chip, the picture the page keeps, the colour numbers the');
   L.push('page keeps, and decoded sound (BT_AUDIO\'s own count, by file). **Atlas** is');
   L.push('the rows of the palette atlas its pictures took there. **Over bar** counts its');
-  L.push('files the game\'s reader (`png8Decode.js`) does not read. **Waits on H**: its');
+  L.push('files over 256 colours by their own bytes: a PNG the game\'s reader (`png8Decode.js`)');
+  L.push('does not read, a WebP with no colour index, a JPEG. **Waits on H**: its');
   L.push('loader is one of the files card P leaves alone while card H runs.');
   L.push('**Backlog**: whether a backlog PR may take it: never a data family (the door');
   L.push('never rewrites data: the look sheets are colour NUMBERS), never a sound (the');
