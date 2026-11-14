@@ -171,8 +171,9 @@ phone, and `plays` when it shows play (a hit, a step, a monster's move).
 
 The field's name today (`opId`, `k`, `hitSeq`); `state` (a repeat finds the
 thing done or gone); `none` (a repeat acts twice); `harmless` (a repeat
-changes nothing: a read, a set to the same value). `out`: the id the phone
-matches it by (the census's "id it echoes"), else `none`.
+changes nothing: a read, a set to the same value). `out`: the field the
+census says it echoes (its "id it echoes": `seq`, `k`, `lootId`), else
+`none`.
 
 ### `trust`
 
@@ -192,20 +193,26 @@ note.
 
 Words, never the census's. Clauses joined by `; `, each opening with
 `default`, `older phone`, `refused`, `dropped`, or `nothing` (no field can be
-missing): `dropped: no key; default: no qty is 1`.
+missing): `dropped: no key; default: no qty is 1`. On an `out` row, what the
+phone does with a frame that lacks it (the census's columns turned round, as
+its part 1 says): `dropped: no payload` is the phone ignoring it.
 
 ### `bad`
 
 A list of `clamped`, `refused` (an answer says so), `taken` (used as sent),
 `dropped:<code>` (nothing is said, with its code from `CODES` in
-`server/test/refusal-door-list.mjs`). `[]` when no field can be wrong.
+`server/test/refusal-door-list.mjs`). `[]` when no field can be wrong. On an
+`out` row, what the phone does with a wrong value: `clamped` a stand-in for
+an unknown one, `dropped:shape` a body or list of the wrong kind,
+`dropped:gone` a thing it no longer holds.
 
 ### `answer`
 
-The message that tells the sender what happened: a type, `player_state` (the
-worker's echo), `none`, or a list. A route: `http` (its own answer), with any
-message it also sends to the caller's phone. `out`: what the phone sends back
-(`ping` is answered by `pong`), else `none`.
+The message that tells the sender what happened: a type (any row's name),
+`player_state` (the worker's echo), `none`, or a list. A route: `http` (its
+own answer), with any message it also sends to the caller's phone. `out`:
+what the phone sends back (`ping` is answered by `pong`, an `in` row), else
+`none`.
 
 ### `note`
 

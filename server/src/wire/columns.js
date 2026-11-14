@@ -74,7 +74,7 @@ export const WIRE_COLUMNS = Object.freeze({
      there, never copied here) */
   bad: Object.freeze(['clamped', 'refused', 'taken']),
 
-  /* the message that tells the sender what happened: a type (an `out` row's
-     name, or a relay's), one of these, or a list of them */
+  /* the message that tells the sender what happened: a type (any row's
+     name: `ping` is answered by `pong`), one of these, or a list of them */
   answer: Object.freeze(['player_state', 'none', 'http']),
 });
