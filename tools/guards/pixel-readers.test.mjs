@@ -77,8 +77,8 @@ const READERS = {
   'src/rendering/pixiRenderer.js': 'QA probes of the player\'s own figure (a baked body), never a p256 picture',
   'src/rendering/propGround.js': 'readArtBottoms: a building\'s or prop\'s picture for its shadow, never a p256 picture',
   'src/rendering/releaseCanvasTexture.js': 'lets a canvas go; reads no pixel',
-  'src/rendering/systems/effectsRenderer.js': 'the popups\' cut, the chop strip\'s crop, the bakes\' probe (NAMES_PACKED below)',
-  'src/rendering/systems/entityRenderer.js': 'QA probes of the masked bodies (bakes made on the device), never a p256 picture',
+  'effectsRenderer.js': 'the popups\' cut, the chop strip\'s crop, the bakes\' probe (NAMES_PACKED below)',
+  'entityRenderer.js': 'QA probes of the masked bodies (bakes made on the device), never a p256 picture',
   'src/rendering/systems/minimapRenderer.js': 'names a texture\'s kind for the probe; reads no pixel',
   'src/rendering/traits/eyeStyleColorCatalog.js': 'a QA probe of the eye bakes, never a p256 picture',
   'src/rendering/weaponSprites.js': 'softBake: a weapon\'s own strip, never a p256 picture',
@@ -92,17 +92,22 @@ const READERS = {
 /* A file on READERS that names an address p256.js would pack, the reader it
    reads that picture through, and why the pack never comes first. */
 const NAMES_PACKED = {
-  'src/rendering/systems/effectsRenderer.js': '_tightPopupIcon cuts the heart popup through readSourceRect as it loads (_loadPopupIcon), before it is ever drawn: p256.js packs only what the chip already has. Its other page-copy reads are the chop strip (_cropChop) and the bakes\' probe (__btFxBakes), neither a p256 picture.',
+  'effectsRenderer.js': '_tightPopupIcon cuts the heart popup through readSourceRect as it loads (_loadPopupIcon), before it is ever drawn: p256.js packs only what the chip already has. Its other page-copy reads are the chop strip (_cropChop) and the bakes\' probe (__btFxBakes), neither a p256 picture.',
 };
 
 /* The shatter's callers, and where each one's pictures come from. */
 const SHATTERS = {
   'src/rendering/trapFx.js': 'the trap\'s box: controlsPreload.js TRAP_ICON_URL, loaded by effectsRenderer.js and handed over',
-  'src/rendering/systems/effectsRenderer.js': 'the mined-out rock: ORE_TEX, from src/data/oreArt.js',
+  'effectsRenderer.js': 'the mined-out rock: ORE_TEX, from src/data/oreArt.js',
   'src/rendering/wheelObjects.js': 'the Wheel\'s objects: their bakes under /world/objects/',
 };
 
-const code = codeOf(['src']);
+/* v2.3.5254: a big file goes by its name alone (tests-by-system: a suite never
+   names one by its folder, so it survives the big files' split); every other
+   by its path from the root */
+const BIG = ['effectsRenderer.js', 'entityRenderer.js'];
+const keyOf = (path) => { const n = path.split('/').pop(); return BIG.includes(n) ? n : path; };
+const code = new Map([...codeOf(['src']).entries()].map(([f, c]) => [keyOf(f), c]));
 const REACH = /(?:\.source\??\.resource\b|\b(?:src|_src|source)\??\.resource\b)/;
 
 /* 1: the closed list of files that reach a page copy */
@@ -147,7 +152,7 @@ check('the rule reads as p256.js means it (an obsidian ore icon is packed; a roc
 {
   const cp = text('src/rendering/controlsPreload.js');
   const trap = (cp.match(/export const TRAP_ICON_URL = '([^']+)'/) || [])[1];
-  const er = code.get('src/rendering/systems/effectsRenderer.js') || '';
+  const er = code.get('effectsRenderer.js') || '';
   const handed = !!trap && /_fxLoad\(\s*TRAP_ICON_URL\s*\)/.test(er);
   const ore = Object.values(ORE_ART).map((o) => o.url);
   /* the code is read printed tight (esbuild): no spaces to count on */
