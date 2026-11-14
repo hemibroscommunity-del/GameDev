@@ -140,8 +140,12 @@ second mockup's, the art the sheet's). What it looks like and why is
   (`?category=power`, sorted by Power, `value` the Power) and the column is
   Power; `powerCells` reads each row's `powerIndex {power, melee, bow, magic,
   v}`, and only where `v` is the worker's version: any other row is "not yet
-  ranked", a dash, never a 0. The numbers are written short (`compact`: 17,
-  1,234, 12.3k, 123k, 1.23M) because the index's scale may change. Without
+  ranked", a dash, never a 0. The Power is a rating (the owner, through the
+  planning session: the control 3,000, about 200 to 4,700), in full in a
+  38 px column ("4,712"; `compact` only past 9,999, should the scale change);
+  each style short in 24 px (`short`: "2.7k"). The head's "Power?" is a
+  button: a tap shows "400 points ahead = 10× likelier to win" under the head
+  (`POWER_HINT`, the owner's own reading; the head's tooltip too). Without
   the cap the column is Total: the row's `series` melee, bow and magic
   levels added up. The cap's row is in `CAP_GATES` (`src/ui/panels/
   DevPanel.jsx`, its own line). The first mockup's five stat boards are

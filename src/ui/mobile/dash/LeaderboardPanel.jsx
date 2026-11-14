@@ -183,10 +183,11 @@ export function boardList(S) {
 }
 
 const num = (v) => Math.max(0, Math.floor(Number(v) || 0)).toLocaleString('en-US');
-/** a Power number in at most four figures and a letter: the index's scale
- *  may change (card PW: the control is 1,000 today, the median character
- *  reads 1 to 15 at low levels and millions from level 25), so 17 and
- *  17,000,000 both fit a 34 px column -- 17, 999, 1,234, 12.3k, 123k, 1.23M */
+/** a number in at most four figures and a letter, the FALLBACK: the Power
+ *  is a rating (the owner, 2026-11-14, through the planning session: the
+ *  control 3,000, about 200 at level 1 to 4,700 at level 40), whole numbers
+ *  up to about 5,000, shown in full ("4,712"); a number past 9,999 (a scale
+ *  that changes again) still fits its column -- 12.3k, 123k, 1.23M */
 export function compact(v) {
   const n = Math.max(0, Math.floor(Number(v) || 0));
   if (n < 10000) return n.toLocaleString('en-US');
@@ -195,6 +196,12 @@ export function compact(v) {
   return (x >= 100 ? Math.floor(x) : x >= 10 ? Math.floor(x * 10) / 10 : Math.floor(x * 100) / 100) + u;
 }
 const series = (r) => (r && r.series && typeof r.series === 'object' ? r.series : {});
+/** a weapon's score in a 24 px column: in full to 999, then one decimal and
+ *  a k ("2.7k": a rating's style column runs to the thousands) */
+export function short(v) {
+  const n = Math.max(0, Math.floor(Number(v) || 0));
+  return n < 1000 ? String(n) : n < 10000 ? (Math.floor(n / 100) / 10) + 'k' : compact(n);
+}
 /** the Power cell and the three weapons' cells of a row.  With caps.power
  *  (the index's version, card PW) the row's own `powerIndex` {power, melee,
  *  bow, magic, v} -- only where its `v` is the worker's: any other row is
@@ -214,10 +221,14 @@ function powerCells(r, power) {
 /* the table's columns: [key, head, width] -- the head a word or a weapon's icon */
 const WEAPON_ICON = { melee: U + 'hero/melee.webp?v=2.3.1311', bow: U + 'hero/bow.webp?v=2.3.1311', magic: U + 'hero/magic.webp?v=2.3.1311' };
 /* sized for an upright phone's board (~260 px beside the list): the name
-   keeps ~80 px (the face and seven letters) */
-const tableOf = (board, power) => (board.table === 'power' ? [
-  ['lv', 'Lv', 32], ['total', power ? 'Power' : 'Total', 34], ['melee', 'melee', 22], ['bow', 'bow', 22], ['magic', 'magic', 22],
+   keeps ~70 px (the face and six letters).  With the power index the Power
+   is a rating in full ("4,712", 38 px) and each weapon's score is short
+   ("2.7k", 24 px) */
+const tableOf = (board, power) => (board.table === 'power' ? (power ? [
+  ['lv', 'Lv', 30], ['total', 'Power', 38], ['melee', 'melee', 24], ['bow', 'bow', 24], ['magic', 'magic', 24],
 ] : [
+  ['lv', 'Lv', 32], ['total', 'Total', 34], ['melee', 'melee', 22], ['bow', 'bow', 22], ['magic', 'magic', 22],
+]) : [
   ['lv', 'Lv', 32], ['record', board.id === 'ap' ? 'AP' : board.id === 'kills' ? 'Kills' : 'Level', 54],
 ]);
 const RANK_COL = 28;
@@ -229,11 +240,12 @@ function cellsOf(board, table, r, power) {
   const ranked = board.rank || (board.id === 'power' ? 'total' : 'record');
   return table.map(([key]) => {
     if (key === 'lv') return { key, lv, value: ranked === 'lv' };
-    /* with the index: Power and the styles compact (k, M), a dash for a row
-       not yet ranked; without it, the levels whole */
+    /* with the index: the Power in full (compact only past 9,999), each
+       style short, a dash for a row not yet ranked; without it, the levels */
     const text = key === 'record' ? (board.id === 'ap' ? num(r.ap) : board.id === 'kills' ? num(r.value ?? r.score) : 'Lv ' + num(r.value ?? r.score))
       : !p ? '-'
-      : power ? compact(p[key]) : num(p[key]);
+      : !power ? num(p[key])
+      : key === 'total' ? compact(p[key]) : short(p[key]);
     return { key, text, strong: key === 'total', value: ranked === key };
   });
 }
@@ -305,9 +317,18 @@ function Podium({ rows, faces, k, meId }) {
   );
 }
 
-/** the table's head: #, Player, then each column's word or weapon */
-function TableHead({ table }) {
+/* the owner's own reading of the rating (2026-11-14, through the planning
+   session): what a tap on the Power head says, one line */
+const POWER_HINT = '400 points ahead = 10\u00d7 likelier to win';
+
+/** the table's head: #, Player, then each column's word or weapon.  "Power"
+ *  is a button: a tap shows the rating's one-line reading under the head
+ *  (`hint`), a second tap hides it; a computer's pointer reads it as the
+ *  head's tooltip too.  Its target reaches 44 px down over the first row,
+ *  which takes no tap of its own. */
+function TableHead({ table, hint, setHint }) {
   return (
+    <>
     <div data-lb-head="" style={{
       position: 'sticky', top: 0, zIndex: 2, display: 'grid', gridTemplateColumns: colsOf(table), columnGap: 3, alignItems: 'center',
       height: 22, padding: '0 9px 0 1px', background: COL.well, borderBottom: `1px solid ${COL.divider}`,
@@ -320,10 +341,28 @@ function TableHead({ table }) {
           <img src={WEAPON_ICON[head]} alt={head} draggable={false} style={{ width: 15, height: 15, objectFit: 'contain', display: 'block' }} />
         </span>
       ) : (
-        <span key={key} data-lb-head-col={key} title={key === 'total' && head === 'Total' ? 'Melee, Bow and Magic levels added up' : undefined}
-          style={{ textAlign: key === 'lv' ? 'center' : 'right', whiteSpace: 'nowrap', overflow: 'hidden' }}>{head}</span>
+        head === 'Power' ? (
+          <button key={key} type="button" data-lb-head-col={key} data-lb-power-head="" aria-expanded={!!hint} title={POWER_HINT}
+            onClick={() => setHint(!hint)} style={{
+              position: 'relative', textAlign: 'right', whiteSpace: 'nowrap', padding: 0, margin: 0, border: 'none', background: 'transparent',
+              fontFamily: 'inherit', fontSize: 10.5, fontWeight: 800, color: hint ? COL.accent : COL.text2, cursor: 'pointer', touchAction: 'manipulation',
+            }}>
+            {head}<span aria-hidden="true" style={{ marginLeft: 2, opacity: 0.8 }}>?</span>
+            <span aria-hidden="true" style={{ position: 'absolute', left: -4, right: -4, top: -4, height: 44 }} />
+          </button>
+        ) : (
+          <span key={key} data-lb-head-col={key} title={key === 'total' && head === 'Total' ? 'Melee, Bow and Magic levels added up' : undefined}
+            style={{ textAlign: key === 'lv' ? 'center' : 'right', whiteSpace: 'nowrap', overflow: 'hidden' }}>{head}</span>
+        )
       )))}
     </div>
+    {hint ? (
+      <div data-lb-power-hint="" role="note" style={{
+        padding: '4px 8px', fontSize: 11.5, fontWeight: 700, color: COL.text, background: COL.well,
+        borderBottom: `1px solid ${COL.divider}`, textAlign: 'right',
+      }}>Power: {POWER_HINT}</div>
+    ) : null}
+    </>
   );
 }
 
@@ -332,6 +371,7 @@ function RankBoard({ board, podium }) {
   const cat = board.id;
   const [boards, setBoards] = useState(() => Object.create(null));
   const [loading, setLoading] = useState(true);
+  const [hint, setHint] = useState(false);
   /* Fetch per category, cache per category, refresh on a slow timer.  A
      hiscores page is not a live readout — the server's own report throttle
      means a row changes at most once a minute — so 20s is generous.
@@ -371,7 +411,7 @@ function RankBoard({ board, podium }) {
   return (
     <>
       {podium ? <Podium rows={rows.slice(0, 3)} faces={[faces[0], faces[1], faces[2]]} k={podium} meId={meId} /> : null}
-      <TableHead table={table} />
+      <TableHead table={table} hint={hint} setHint={setHint} />
       <div data-lb-rows="" style={{ paddingTop: 3 }}>
         {rows.map((r, i) => (
           <TableRow key={r.id || i} rank={i + 1} row={r} face={faces[i]} mine={!!meId && r.id === meId}
