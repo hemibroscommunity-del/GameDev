@@ -1,7 +1,7 @@
 card: B
-branch: claude/plan-b-7-asset-sources (one branch a PR, each begun from the one before: -1- to -8-)
-prs: #1685 (ready), #1687 (ready), #1689 (ready), #1690 (ready), #1693 (ready), #1696 (ready), PR 7 (working)
-state: working
+branch: claude/plan-b-8-pins (one branch a PR, each begun from the one before: -1- to -8-)
+prs: #1685 (ready), #1687 (ready), #1689 (ready), #1690 (ready), #1693 (ready), #1696 (ready), #1698 (ready), PR 8 (ready)
+state: ready
 
 ## Done
 - PR 1 (5100, #1685): a scenario is a file (`old-map.test` reads files,
@@ -12,10 +12,14 @@ state: working
 - PR 5 (5104, #1693): rule 2's guard, five holds, all "not built yet".
 - PR 6 (5105, #1696): rule 6's table and guard; 16 known seconds.
 
+- PR 7 (5106, #1698): `asset-sources.test.mjs`, sources.json to assets/.
+- PR 8 (5107): PixiJS pinned at 8.17.1 (the lockfile's); the game's 29
+  patches of Pixi's inside in `lib/pixiPatches.mjs`; `pixi-pins.test.mjs`.
+
 ## Next
-- PR 7 (5106): `asset-sources.test.mjs` holds `tools/assets/sources.json`
-  to `git ls-files assets` (a file with no row, a row with no file, a
-  hash or size changed, the totals); card F's Needs.
+- Nothing on the card is left: the eight PRs wait for the gatekeeper, in
+  order (#1685 first; each branch begins from the one before). Tags 5108
+  to 5119 unused.
 
 ## Found
 - `mp-topaudit` red, the GAME's (suspected): at a faked 59 px top inset the
