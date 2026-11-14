@@ -31,6 +31,7 @@
  * by byte: mp-bodyworker). */
 import { noteMade } from '../debug/madeLog.js';
 import { worldReady } from '../ui/loadingGate.js';
+import { cores } from '../game/deviceProfile.js';   /* v2.3.5227: the device asked in one place (card O PR 7) */
 
 const _OFF = (() => {
   try {
@@ -59,7 +60,7 @@ let _dead = false, _seq = 0, _started = 0;
    started at once answered only together, 19 to 25 s after the ask, and the
    watch let two busy workers go (the crowd tour's h-eight: 208 to 288 ms
    holds as the page baked what they had). */
-const POOL = (() => { try { return Math.max(1, Math.min(2, ((navigator && navigator.hardwareConcurrency) || 2) - 2)); } catch (e) { return 1; } })();
+const POOL = (() => { try { return Math.max(1, Math.min(2, (cores() || 2) - 2)); } catch (e) { return 1; } })();   /* v2.3.5227: the threads, the profile's */
 const _pool = [];   /* { w, pending: Map(id -> res), quiet: ms } */
 const _pending = { get size() { let n = 0; for (const s of _pool) n += s.pending.size; return n; } };
 let _watchT = null;

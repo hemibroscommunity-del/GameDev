@@ -1,6 +1,6 @@
 card: LB
-branch: claude/plan-lb-2-window (PR 2, begun from claude/plan-lb-1-pieces)
-prs: #1771 (5500, merged); #1783 (5501, ready again: sitting 10's list mended)
+branch: claude/plan-lb-3-power (PR 3, begun from claude/plan-lb-2-window)
+prs: #1771 (5500, merged); #1783 (5501, merged); #1798 (5502, ready)
 state: ready
 
 ## Done
@@ -14,11 +14,9 @@ state: ready
 
 ## Next
 
-- PR 3 (5502), once PW's #1776 and #1781 are on main: Overall and the Power
-  rating (held in #1783: caps-audit refuses a cap before join.js sends it),
-  the "Stats" group (`caps.statboards`, `pts_dmg` "Damage"), the
-  `CAP_GATES` rows, and the caps-audit allowlist rows for `power` and
-  `statboards` deleted in the same PR (PW's reminder).
+- #1798 (5502): Overall and the Power rating (Overall's columns only, the
+  planning session's yes), the Stats group, the caps' rows; mp-boardslook
+  24/24, mp-boards 37/37. Merges after #1783. Then the card is done.
 
 ## Found
 

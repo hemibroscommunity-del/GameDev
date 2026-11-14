@@ -295,21 +295,25 @@ export function drawLane(cls) {
 
 /* ── v2.3.5222: the rung, the governor's alone ── */
 const ROW = Object.freeze({ work: 0, chip: 0 });
-let _rung = ROW;          /* the governor's (setRung): rungs taken on each axis */
+/* the governor's (setRung): rungs taken on each axis.  v2.3.5222 (the
+   gatekeeper's sitting 12): a property of a module object, not a module
+   `let` -- card L's phase guard reads a door's writes off the syntax tree as
+   `.prop` writes (DOOR_SUITES), and only setRung and the tests' reset write it */
+const LANE = { _rung: ROW };
 
 /** Where the ladder stands now: { work, chip }, rungs taken on each axis. */
-export function ladderRung() { return _rung; }
+export function ladderRung() { return LANE._rung; }
 /** Rungs taken, both axes: 0 is the lane's row (the report's `rung`). */
-export function rungDepth(r) { const x = r || _rung; return (x.work | 0) + (x.chip | 0); }
+export function rungDepth(r) { const x = r || LANE._rung; return (x.work | 0) + (x.chip | 0); }
 /** THE ONE WRITER of the rung: the governor's (framePacer.js), never another
  *  file's.  Each axis held to its rungs.  Subscribed knobs are told. */
 export function setRung(work, chip) {
   const w = Math.max(0, Math.min(AXES.work.length, Math.floor(Number(work) || 0)));
   const c = Math.max(0, Math.min(AXES.chip.length, Math.floor(Number(chip) || 0)));
-  if (w === _rung.work && c === _rung.chip) return _rung;
-  _rung = w === 0 && c === 0 ? ROW : Object.freeze({ work: w, chip: c });
+  if (w === LANE._rung.work && c === LANE._rung.chip) return LANE._rung;
+  LANE._rung = w === 0 && c === 0 ? ROW : Object.freeze({ work: w, chip: c });
   _tell();
-  return _rung;
+  return LANE._rung;
 }
 
 /** The override pinning a knob, or null. */
@@ -323,7 +327,7 @@ export function pinOf(name) {
 export function laneKnob(name) {
   const p = pinOf(name);
   if (p) return p.value;
-  return knobAt(drawLane(), name, _rung);
+  return knobAt(drawLane(), name, LANE._rung);
 }
 
 /** Be told when a knob's value changes (a lane picked, a rung moved): fn(value,
@@ -348,7 +352,7 @@ function _tell() {
 
 /** For the tests only: forget the address, the class and the subscribers. */
 export function _resetLanes() {
-  _classOf = null; _lane = null; _laneAskedAt = -Infinity; _urlLane = undefined; _rung = ROW;
+  _classOf = null; _lane = null; _laneAskedAt = -Infinity; _urlLane = undefined; LANE._rung = ROW;
   for (const k in _subs) delete _subs[k];
   for (const k in _told) delete _told[k];
 }
@@ -358,6 +362,6 @@ if (typeof window !== 'undefined') {
   window.__btLane = () => {
     const knobs = Object.create(null);
     for (const n of KNOB_NAMES) knobs[n] = laneKnob(n);
-    return { lane: drawLane(), fromAddress: !!laneFromSearch(_search()), rung: { ..._rung }, depth: rungDepth(), knobs };
+    return { lane: drawLane(), fromAddress: !!laneFromSearch(_search()), rung: { ...LANE._rung }, depth: rungDepth(), knobs };
   };
 }
