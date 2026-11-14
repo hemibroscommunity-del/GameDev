@@ -1,18 +1,20 @@
 card: J
 branch: claude/grand-plan-J-red-on-main
-prs: census (opening)
-state: working
+prs: #1670 (ready, census), #1672 (ready, soundcues), #1674 (ready, world check)
+state: ready
 
 ## Done
 
-- The sample, run 2026-11-13/14 (the owner chose the sample):
-  `docs/plan/census/red.md`. Four reds, each red twice alone.
+- #1670 (tag 5035): the census, `docs/plan/census/red.md`. The owner chose
+  the sample. Four reds, each red twice alone.
+- #1672 (tag 5036): `mp-soundcues` 2c raises the shield with Q. 24/24 alone.
+- #1674 (tag 5037): `test-world-core --check`, four patterns and the crash.
+  544 passed, 0 failed.
 
 ## Next
 
-- Tag 5036: `mp-soundcues` 2c, the shield on Q (the test's; green alone).
-- Tag 5037: `test-world-core.mjs --check`, four stale patterns and the
-  crash at its `worldTrial.js` import (the test's).
+- Waiting on the owner's answer below (head-bake, tag 5038), and on the
+  gatekeeper for the three PRs.
 
 ## Found
 
