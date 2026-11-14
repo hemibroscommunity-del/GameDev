@@ -217,3 +217,28 @@ held first: the backlog's order.
 QA_MB_ROWS=1 node tools/qa/mp/run.mjs membudget      three times, keeping each out/membudget.json
 node tools/assets/fightmb.mjs a.json b.json c.json --write
 ```
+
+### At tag 5242: three runs
+
+Three runs of `QA_MB_ROWS=1 node tools/qa/mp/run.mjs membudget`, each 11 of
+11 assertions passed; the census is `docs/plan/census/assets.md`.
+
+- **Every fight stop's rows add up to its lines**: the chip's rows to within
+  0.3 MB of the `gpu` line (60.6 to 68.6 MB), the page's to the `artCache`
+  line (48.75 against 48.7), sound by file to BT_AUDIO's own count (17.5 to
+  18.1). So nothing the lines count is left out of the census.
+- **49 families hold something at the fight; 36 hold 1 MB or more**, where
+  the backlog's line falls. The most: the fire goblin's strips (8.1 MB:
+  2.6 on the chip, 5.5 of colour numbers in the page), the owner's sounds
+  (5.9 decoded), the tree tiers (5.6 in the page), the walking armour's twins
+  (5.0 on the chip; card H's `pack-page`), the slimes (4.6 in the page).
+- **Six look families hold 16.8 MB on the chip.** They are data: never the
+  backlog's.
+- **Made in play** (no family): unnamed textures 22.2 MB (canvases 16.6 on
+  the chip), pictures made from bytes 10.5 (`blob:`: the baked bodies,
+  `bodyBake.js`; canvases kept as images, `keepAsImage.js`), the Wheel's
+  ground pieces 8.6 (57 rows of the atlas), the look atlas's pages 5.3.
+- **The palette atlas**: 100 to 104 rows of 256 used at the fights, never
+  full (`rowsFull` 0); the monsters' bundle there, `fireGoblin`.
+- **151 families hold nothing at the fight**: another land's, a window's, a
+  computer's, or nothing's (`none`: 545 files).

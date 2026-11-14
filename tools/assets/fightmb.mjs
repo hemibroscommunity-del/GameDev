@@ -80,6 +80,9 @@ export function keyOf(label, of) {
     const f = of.get(path);
     if (f) return f;
   }
+  /* a picture made from bytes in play has a random name: one line each kind */
+  if (/^blob:/.test(l)) return 'in play: blob: (a picture made in play from bytes)';
+  if (/^data:/.test(l)) return 'in play: data: (a picture made in play from a data address)';
   const folded = l.replace(/^https?:\/\/[^/]+/, '').replace(/\d+/g, '#').slice(0, 80);
   return 'in play: ' + (folded || 'unnamed');
 }
@@ -212,7 +215,9 @@ function text(c, files) {
   L.push('');
   L.push('| label | MB at the fight | chip | page | numbers | sound | atlas |');
   L.push('|---|--:|--:|--:|--:|--:|--:|');
-  for (const f of c.inPlay) L.push(`| \`${f.name.slice(9).replace(/\|/g, '/')}\`${f.kinds ? ` (on the chip: ${f.kinds})` : ''} | ${mb(f.held)} | ${mb(f.chip)} | ${mb(f.page)} | ${mb(f.numbers)} | ${mb(f.sound)} | ${f.rows || ''} |`);
+  const small = c.inPlay.filter((f) => f.held < 0.1);
+  for (const f of c.inPlay.filter((x) => x.held >= 0.1)) L.push(`| \`${f.name.slice(9).replace(/\|/g, '/')}\`${f.kinds ? ` (on the chip: ${f.kinds})` : ''} | ${mb(f.held)} | ${mb(f.chip)} | ${mb(f.page)} | ${mb(f.numbers)} | ${mb(f.sound)} | ${f.rows || ''} |`);
+  if (small.length) L.push(`| ${small.length} more, each under 0.1 MB | ${mb(small.reduce((a, f) => a + f.held, 0))} | | | | | |`);
   L.push('');
   L.push('## The fight stops read');
   L.push('');
