@@ -492,6 +492,7 @@ export const SWITCHES = Object.freeze([
   { name: '?report', side: 'page', system: 'debug', kind: 'switch', born: 5122, thrown: '=0', risk: 'logic', needs: [], fallback: 'no', off: 'This phone sends no field report.' },
   { name: '?res', side: 'page', system: 'device', kind: 'value', born: 3339, thrown: 'a number: the drawing resolution', risk: 'chip', needs: [], fallback: 'no', off: 'Sets the drawing resolution by hand.' },
   { name: '?retrylooks', side: 'page', system: 'look', kind: 'switch', born: 3865, thrown: '=0', risk: 'logic', needs: [], fallback: 'no', off: 'No art loader asks again for a picture that failed (every loader\'s retries).' },
+  { name: '?ridecoast', side: 'page', system: 'movement', kind: 'switch', born: 5440, thrown: '=0, off, false', risk: 'logic', needs: [], fallback: 'no', off: 'The board starts at top speed and stops the moment you let go, as before: no pushes to speed up, no roll-off.' },
   { name: '?room', side: 'page', system: 'wire', kind: 'lever', born: 217, thrown: 'a room\'s name', risk: 'none', needs: [], fallback: 'no', off: 'Joins the named room, not the lobby\'s.' },
   { name: '?seacover', side: 'page', system: 'render', kind: 'switch', born: 3452, thrown: '=0', risk: 'chip', needs: [], fallback: 'no', off: 'The ground is drawn under every sea quad, as it was.' },
   { name: '?sfxahead', side: 'page', system: 'audio', kind: 'switch', born: 5006, thrown: '=0, off', risk: 'memory', needs: [], fallback: 'no', off: 'The four level sounds are pinned again, not loaded a level ahead.' },
