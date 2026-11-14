@@ -18,7 +18,7 @@ state: ready
 
 - #1837 (5305): the end date. `on` on every switch row (a day from git,
   `onBy` where a later change turned it on, `'off'` for 4 opt-ins);
-  `--due` (106 may go today, nothing reaped); the fallback hold (check 12,
+  `--due` (101 may go today, nothing reaped); the fallback hold (check 12,
   `FALLBACKS` a census of 5). Then PR 6 (5306), the page's one reader.
 
 ## Found

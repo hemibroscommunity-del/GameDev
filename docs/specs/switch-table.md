@@ -207,7 +207,7 @@ four weeks on, a device off-ramp, a fallback, an opt-in, `never`).
 - A row that others need names them: their readers ask it, so a reap
   changes them in the same PR.
 - It runs in no CI and no precheck, and changes nothing.
-- On 2026-11-14 it lists 106 that may go, and 238 under four weeks.
+- On 2026-11-14 it lists 101 that may go, and 244 under four weeks.
 - Reaping is step 7.3's, a later card: a batch a PR, each merged by the
   owner.
 
