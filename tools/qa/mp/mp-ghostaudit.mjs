@@ -777,16 +777,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
           await travel(P, wsPort, myId, me0.x, me0.y + 240);
           await page.waitForTimeout(800);
           await begin();
-          await page.evaluate(() => {
-            const bus = window._itemDetailBus;
-            const S = window._gameState && window._gameState.current;
-            if (bus && S && S.rpg) bus.open({ kind: 'inventory', key: 'wood_pine_log', count: (S.rpg.inventory || {}).wood_pine_log || 0 });
-          });
-          await page.locator('button:visible', { hasText: 'Light fire' }).first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
-          await page.evaluate(() => {
-            const b = [...document.querySelectorAll('button')].find((x) => /Light fire/.test(x.textContent || '') && x.offsetParent);
-            if (b) b.click();
-          });
+          /* v2.3.5428 (card J2): a log lit from the bag, through its item window -- one helper, as the cook below
+             may light the second (the label selector once: guards/traps-test-tools §29) */
+          const lightLog = async () => {
+            await page.evaluate(() => {
+              const bus = window._itemDetailBus;
+              const S = window._gameState && window._gameState.current;
+              if (bus && S && S.rpg) bus.open({ kind: 'inventory', key: 'wood_pine_log', count: (S.rpg.inventory || {}).wood_pine_log || 0 });
+            });
+            await page.locator('button:visible', { hasText: 'Light fire' }).first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
+            await page.evaluate(() => {
+              const b = [...document.querySelectorAll('button')].find((x) => /Light fire/.test(x.textContent || '') && x.offsetParent);
+              if (b) b.click();
+            });
+          };
+          await lightLog();
           const lit = await H.waitFor(P, (S) => !!S._firemaking && S._standInBody === true, (v) => v, { timeout: 8000, label: 'lighting' }).catch(() => null);
           summary[`${outfit}/fire`] = { frames: 0, started: !!lit };
           if (lit) {
@@ -811,16 +816,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
              again from the second log (granted above) before the cook */
           const fireUp = () => H.readState(P, (S) => !!(S._campfire && S._campfire.alive) || !!S._firemaking);
           if (want('cook') && !(await fireUp())) {
-            await page.evaluate(() => {
-              const bus = window._itemDetailBus;
-              const S = window._gameState && window._gameState.current;
-              if (bus && S && S.rpg) bus.open({ kind: 'inventory', key: 'wood_pine_log', count: (S.rpg.inventory || {}).wood_pine_log || 0 });
-            });
-            await page.locator('button:visible', { hasText: 'Light fire' }).first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
-            await page.evaluate(() => {
-              const b = [...document.querySelectorAll('button')].find((x) => /Light fire/.test(x.textContent || '') && x.offsetParent);
-              if (b) b.click();
-            });
+            await lightLog();
             await page.keyboard.press('Escape').catch(() => {});
             summary[`${outfit}/fire`].relit = true;
           }
