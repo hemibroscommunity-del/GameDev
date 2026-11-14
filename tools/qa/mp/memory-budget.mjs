@@ -252,8 +252,18 @@
  * up front at a byte a pixel (1.05 MB; `gpu` read 71.2-76.2, its line
  * unchanged) and their numbers are kept packed in the page (`buffers`
  * 22.9-23.1, within its line). */
+/* v2.3.5250, the backlog's `icons-items-world`: the icons drawn in the
+ * world (the ore and the trap's box, the nine shards, the heart and sword
+ * popups) read from 256-colour twins as colour numbers (p256.js,
+ * `?worldicons=0` the pictures).  Three runs: `artCache` at its highest
+ * 35.0 -> 33.8 and its line 98.3 -> 97.1, LOWERED by the 1.2 MB saved;
+ * `buffers` 22.9-23.1 -> 23.0-23.3 and its line 23.4 -> 23.7, RAISED by
+ * exactly the icons' numbers moved there (0.30 MB: thirteen of 128 x 128,
+ * 256 x 256 and 180 x 189 at a byte a pixel), the planning session's rule
+ * for a numbers PR; net 0.9 MB less.  The chip holds them at a byte a
+ * pixel (0.35 MB). */
 export const MEMORY_BUDGET = {
-  artCache: { name: 'art loaded from files', mb: 98.3, measured: 35.0,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB); v2.3.5247: 109.1 -> 107.0, Ace's coin strips (2.1 MB); v2.3.5248: 107.0 -> 101.4, the trees as numbers (5.6 MB); v2.3.5249: 101.4 -> 98.3, the made effects as numbers (3.1 MB), see the header */
+  artCache: { name: 'art loaded from files', mb: 97.1, measured: 33.8,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB); v2.3.5247: 109.1 -> 107.0, Ace's coin strips (2.1 MB); v2.3.5248: 107.0 -> 101.4, the trees as numbers (5.6 MB); v2.3.5249: 101.4 -> 98.3, the made effects as numbers (3.1 MB); v2.3.5250: 98.3 -> 97.1, the world's icons (1.2 MB), see the header */
     what: 'pictures loaded from files, decoded (the asset cache, window.__btTex) -- its highest at the fight, the monsters\' looks loaded' },
   gpu: { name: 'textures on the graphics chip', mb: 115, measured: 95.0,   /* v2.3.4058: 105 -> 115, approved by the owner 2026-11-03, see the header */
     what: 'textures on the graphics chip (window.__btGpuTex) -- including what was drawn in the last minute, which Pixi unloads after 60 s unused' },
@@ -263,7 +273,7 @@ export const MEMORY_BUDGET = {
     what: 'sound decoded into memory (music streams from its file and is not in it, v2.3.3073)' },
   heap: { name: 'the page\'s JavaScript objects', mb: 38.5, measured: 36.4,   /* v2.3.3595: 32 -> 33; v2.3.3657: 33 -> 34; v2.3.3807: 34 -> 36; v2.3.4005: 36 -> 38; v2.3.4080: 38 -> 37.5; v2.3.4483: 37.5 -> 38.5; v2.3.5007: unchanged, measured 37.7 -> 36.4 by the heap trim, see the header */
     what: 'the page\'s JavaScript objects' },
-  buffers: { name: 'the page\'s raw data buffers', mb: 23.4, measured: 22.6,   /* v2.3.3703: 24 -> 22, see the header; v2.3.5248: 22 -> 23.4, RAISED by the trees' colour numbers moved here (1.40 MB) as artCache fell 5.6 (net 4.2 less), see the header */
+  buffers: { name: 'the page\'s raw data buffers', mb: 23.7, measured: 23.3,   /* v2.3.3703: 24 -> 22, see the header; v2.3.5248: 22 -> 23.4, RAISED by the trees' colour numbers moved here (1.40 MB) as artCache fell 5.6 (net 4.2 less); v2.3.5250: 23.4 -> 23.7, the world's icons' numbers (0.30 MB) as artCache fell 1.2 (net 0.9 less), see the header */
     what: 'the page\'s raw data buffers (ArrayBuffers), and the text of its scripts, which the same reading counts (v2.3.3703)' },
   workers: { name: 'the background workers', mb: 36, measured: 30.5,
     what: 'the background workers (the ground builder): their objects and buffers' },
