@@ -378,7 +378,12 @@ self.onmessage = (e) => {
   /* v2.3.5050 (sitting 5): a job's sheets by address start reading as it
      arrives, beside the wait for its sheets of numbers (they read only after
      it, under the page's 6 s watch) */
-  for (const x of [j.body, j.belt, ...((j.worn || []).map((w) => w && w.inp))]) if (x && x.url) sheetOf(x.url);
+  /* ...and each said `urlRead` the moment it is in: the job's own word
+     (urlInputs) comes only after that wait, and a stuck kill during it refused
+     addresses that had read (the whole main tour's `armour`: 3 refused) */
+  for (const x of [j.body, j.belt, ...((j.worn || []).map((w) => w && w.inp))]) {
+    if (x && x.url) sheetOf(x.url).p.then((bm) => { if (bm && j.id) self.postMessage({ type: 'urlRead', id: j.id, url: x.url }); });
+  }
   const wait = waitsFor(j);
   if (wait.length) { Promise.all(wait).then(() => takeJob(j)); return; }
   takeJob(j);
