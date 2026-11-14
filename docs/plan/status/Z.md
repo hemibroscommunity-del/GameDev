@@ -34,7 +34,7 @@ owner's yes); no stored record changes its shape.
 
 ## Found
 - CLAUDE.md §7's "three sprite programs on every chip" is older than
-  v2.3.5016 (one program the default): the owner's file.
+  5016 (one program the default): the owner's file.
 - K: three wire-table edits nothing catches since the guard's §7 left.
 - L: the cook door's guards miss destructuring and literal-built bodies.
 - O: an override with no `when` never pins, and draw-lanes §8 passes it.

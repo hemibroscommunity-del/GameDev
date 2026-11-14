@@ -93,7 +93,7 @@ import { ROOT } from './lib/systems.mjs';
 /* Set 2026-11-14 at its first count.  Only the gatekeeper lowers it.
    v2.3.5371 (the gatekeeper, sitting 14, main 1cce0b2): 31 -> 30, the
    count since card L's trade door (#1809).
-   tag 5373 (the gatekeeper, sitting 16, main 64bb498): 30 -> 28, the count
+   v2.3.5373 (the gatekeeper, sitting 16, main 64bb498): 30 -> 28, the count
    since card L's duel and party doors (#1824, #1835). */
 export const TODO_LINE = 28;
 

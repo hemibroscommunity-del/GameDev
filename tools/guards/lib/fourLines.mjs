@@ -484,7 +484,7 @@ export function stateWritesFromRendering({ live = false } = {}) {
    7593b4e): effectsRenderer.js 9871 -> 9870 (card P's #1745, the trees'
    numbers).  v2.3.5371 (the gatekeeper, sitting 14, main 1cce0b2):
    entityRenderer.js 8961 -> 8955 (card TF's #1812, the townsfolk's trades
-   drawn from the `skills` set).  tag 5373 (the gatekeeper, sitting 16, main
+   drawn from the `skills` set).  v2.3.5373 (the gatekeeper, sitting 16, main
    64bb498): wsClient.js 3296 -> 3039 and its setupWebSocket 3097 -> 2839
    (card K's #1829, the action door: the send lists became the door's rows
    in src/game/actions.js). */

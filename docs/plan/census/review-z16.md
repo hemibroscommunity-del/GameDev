@@ -308,7 +308,7 @@ in one node process through the page's real call paths, 22 devices times
 (iPhone and Android: one program, the palette; Windows and a Mac: three,
 baked; SwiftShader, llvmpipe and WARP: three, software). The suspected
 high, an iPhone moved off three programs, is DISPROVED: `main` already
-gives it the one (v2.3.5016, the owner's "make 1 program the default";
+gives it the one (5016, the owner's "make 1 program the default";
 CLAUDE.md §7's line is older than that: Found, below). Load order: each
 choice the same before the device class is known and after, at every
 lane and rung. The governor's live knobs are `['rate','pixels']` on both,
@@ -441,7 +441,7 @@ readers still count on it).** `?slimewalk=0` restores both.
   `_filmStuck` and ~18322 `_filmGunk` read `getSlimeFrame('hit', 0)`, null
   unless a slime look is loaded (near Verdant's slimes, or in the Goo
   Grotto). With a bow, no arrow sticks in the demo's slime (the owner's
-  ask, v2.3.2991) and the burst is pixel pieces; `fighterCapture` keeps
+  ask, 2991) and the burst is pixel pieces; `fighterCapture` keeps
   that film (`_films`), so it stays so after slimes load.
 - **Medium, VERIFIED:** the farm's Dungeon Workshop (BroTown.jsx ~6052, 4
   fodder by default): `dungeon_started` there goes through `_enterArena()`
@@ -468,7 +468,7 @@ sitting.
 
 - CLAUDE.md §7, "three sprite programs on every chip; the one program
   (`ONE_BATCHER`) only with `?onebatch=1`", is older than `main`'s code:
-  since v2.3.5016 (the owner's "make 1 program the default") a phone draws
+  since 5016 (the owner's "make 1 program the default") a phone draws
   with the one, three only for a software renderer or a Windows or Mac
   computer (paletteTex.js ~466-471, TRAPS §260's note). CLAUDE.md is the
   owner's file: for the planning session.
