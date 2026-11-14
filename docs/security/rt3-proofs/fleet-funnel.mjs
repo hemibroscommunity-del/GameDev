@@ -1,6 +1,6 @@
 /* RT-3: what one script mints with throwaway characters and funnels to a main,
  * against the real GameRoom in memory (card E's test room).  Local only. */
-import { makeStorage, openRoom, fakeWs, baseSession, settle, seededClock } from '/home/user/GameDev/server/test/testroom.mjs';
+import { makeStorage, openRoom, fakeWs, baseSession, settle, seededClock } from '../../../server/test/testroom.mjs';
 const N = Number(process.argv[2] || 40);
 const clock = seededClock({ seed: 7 }).install();
 const S = makeStorage();

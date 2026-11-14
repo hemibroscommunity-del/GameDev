@@ -1,5 +1,5 @@
 // Proof: a report quotes only the speaker's last 3 lines in ANY lane; three harmless lines elsewhere wipe the evidence.
-import { makeStorage, openRoom, fakeWs, join, settle } from '/home/user/GameDev/server/test/testroom.mjs';
+import { makeStorage, openRoom, fakeWs, join, settle } from '../../../server/test/testroom.mjs';
 const st = makeStorage();
 const room = await openRoom(st);
 const A = fakeWs('A'), V = fakeWs('V'), F = fakeWs('F');

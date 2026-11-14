@@ -1,5 +1,5 @@
 // Proof: what a player's name can be, and whether `track` renames mid-game.
-import { makeStorage, openRoom, fakeWs, join, settle } from '/home/user/GameDev/server/test/testroom.mjs';
+import { makeStorage, openRoom, fakeWs, join, settle } from '../../../server/test/testroom.mjs';
 const st = makeStorage();
 const room = await openRoom(st);
 const A = fakeWs('A'), V = fakeWs('V');

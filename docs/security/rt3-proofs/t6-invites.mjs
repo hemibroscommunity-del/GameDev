@@ -1,5 +1,5 @@
 // Proof: how many request cards one player can push at another in ~10 s (server side; the phone's block is local only).
-import { makeStorage, openRoom, fakeWs, join, settle } from '/home/user/GameDev/server/test/testroom.mjs';
+import { makeStorage, openRoom, fakeWs, join, settle } from '../../../server/test/testroom.mjs';
 const st = makeStorage();
 const room = await openRoom(st);
 const A = fakeWs('A'), V = fakeWs('V');

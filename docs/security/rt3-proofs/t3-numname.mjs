@@ -1,5 +1,5 @@
 // Proof: a `track` that sets name to a NUMBER breaks every whisper in the room.
-import { makeStorage, openRoom, fakeWs, join, settle } from '/home/user/GameDev/server/test/testroom.mjs';
+import { makeStorage, openRoom, fakeWs, join, settle } from '../../../server/test/testroom.mjs';
 const st = makeStorage();
 const room = await openRoom(st);
 const A = fakeWs('A'), B = fakeWs('B'), C = fakeWs('C');

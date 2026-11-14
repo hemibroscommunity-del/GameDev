@@ -1,9 +1,69 @@
-# RT-3 findings: players, privacy, legal, bots (red team, 2026-11-14)
+# RT-3 findings: players, privacy, legal, bots (red team, 2026-11-14, v2.3.5592)
 
-Working file, written as the review goes (the card RT brief). Each finding:
-what, proof, harm, likelihood, covered by the plan or not, smallest fix.
-"Suspected, not proven" where no local test or quoted line proves it.
-Nothing here touched the live game: local worker and node test rooms only.
+The owner's question: three months on, BroTown is dead because players were
+harmed or driven away, the game was pulled for a privacy or legal problem, or
+bots ruined it. This is RT-3's part: players, privacy, legal and bots. Each
+finding: what, proof, harm, likelihood, covered by the plan or not, smallest fix.
+"Suspected, not proven" where no local run or quoted line proves it. Nothing here
+touched the live game: the node test rooms and the bot lab only. I am not a
+lawyer; the items marked LAWYER need one.
+
+Proof scripts: `docs/security/rt3-proofs/` (run each from the repo root with
+`node docs/security/rt3-proofs/<file>`; the React one needs `npm install`).
+
+## The ranked list (likelihood x harm, most first)
+
+| # | What | Proof | Harm | Likely | In the plan? | Smallest fix | Build / run cost |
+|---|---|---|---|---|---|---|---|
+| 1 | **S1** No word filter, no silence, a frozen player back in a second | `t4-ban.mjs`; quoted lines | Slurs and abuse reach 13-year-olds; the owner cannot remove anyone; the About panel promises otherwise | near certain once strangers play | No card (FUN-SOCIAL Phase 4 is a trigger; 10.9 has no card) | A silence lever + a freeze that refuses the frozen character's devices; a slur list (the owner's words) | ~150 lines, a new card; nothing to run |
+| 2 | **S2** A name can be anything and changed mid-game ("SYSTEM: your account is banned, send your login") | `t1-names.mjs` | Posing as the game or the owner; scams; slurs on name tags and boards | high (the honest name box allows "BroTown Admin") | No (11.4 templates mail only) | `name` out of `track`'s look keys; `cleanCharName` (as `cleanPetName`), reserved words, unique names | ~100 lines; card K (`track`'s row) or a new card |
+| 3 | **B1** A throwaway character is free and mints ~460 gold for a main: ~550,000 gold an hour from one home line | `fleet-funnel.mjs`: 200 throwaways, 91,500 gold, nothing refused | The economy (prices, market, auction house) | medium-high once anyone looks | Partly, later (R's `hold` columns at 0; K's 4.2 sees one character, not a fleet; Q not started) | OWNER turns the account check on; the login wheel waits for 10 active minutes or level 4 | ~20 lines + suite; free to run |
+| 4 | **S3** The feedback board: anyone on the internet writes to it, nobody can delete, one post blanks the game for whoever opens it | `t2-feedback.mjs`, `react-object-name.cjs` | Scam notices in the game's own board; the board a crash | medium | No (outside the room's wire door; no card holds `feedback.js`) | Name a string cut to 24; render `String()`; an owner delete; one error boundary | ~50 lines; ASKED the planning session (no card holds the files) |
+| 5 | **P1** Anyone reads who is online and when, any player's bids, every crash report | `privacy-reads.mjs` | Stalking; "the game leaks player data" | medium | `/store/mine` only (11.5, no card) | `/crashes` behind the admin key; `/top` without `lastSeen`/`playtime`; `/store/mine` asks the session | ~40 lines; PW/LB, K |
+| 6 | **P2** No privacy contact, no deletion, the notice a draft | quoted lines | A complaint or regulator pulls the game | low-medium, high harm | No | OWNER: notice, contact, controller; CODE: an admin "erase player" route | ~80 lines, a new card |
+| 7 | **L1** Hats named and drawn after Mickey, Naruto, Kermit (live; a townsperson wears one) | quoted lines | A takedown notice takes the site down | low-medium | No | Rename and redraw three hats, re-bake Gary | ~1 hour + a re-bake |
+| 8 | **S4** A harasser flushes the report's evidence with three harmless lines | `t5-evidence.mjs` | Reports useless | medium | 10.9 (no card) | Keep the lines each player RECEIVED, send those with a report | ~20 lines |
+| 9 | **P3** A permanent public chain record per character, automatic, no notice, no kill switch | quoted lines | Erasure impossible (LAWYER) | low-medium | No | OWNER checks if live; a `chainscore` kill switch + opt-in | ~20 lines |
+| 10 | **L2** Sound licences: a Freesound artist's file filed as Pixabay, unnamed; 39 CONFIRMs | ffprobe tags | A claim on a few files | breach probable, enforcement unlikely | No | OWNER reads ~25 Freesound pages; code adds names to About | an hour each |
+| 11 | **B2** A 24-hour script: 2-6x an honest hour, flagged, keeps it all; owns the Kills and skill boards and their chain record | bot lab today | Boards meaningless; honest players give up on them | medium | K 4.2 (per hour), Q (watch) | Hours: a board row and a chain write wait for a human-shaped day (Q's 10.2 card) | Q's card |
+| 12 | **S5** Trade requests spammed, each with a popup and sound | `t6-invites.mjs`: 100 in 10 s | Harassment | medium | 10.9 (no card) | party.js's `INVITE_REPEAT_MS` into `trade2.js`, `friends.js` | ~10 lines |
+| 13 | **P4** Login keys in a 2-year cookie scripts can read; old keys from the public id (device lock holds) | quoted lines; `oldkey.mjs` | Account takeover if a second wall falls | low | card S (accounts) | Ids, not keys, in the cookie; retire old keys; a CSP | small; S / RT-1 |
+| 14 | **P5** Google Fonts, wsrv.nl, GitHub raw at page load | quoted lines | German demand letters | low | No | Host fonts and CSV in `public/` | ~1 hour |
+| 15 | **B6** Eight addresses of throwaways fill the one room | quoted lines (not run) | Every real player told "room full" | low-medium | No (RT-1/RT-2) | B1's check; fresh characters give their place first | owner lever `ip_sockets` today |
+| 16 | **B3** The arena's house prize, shared, taken by walkovers | quoted lines (not run) | Honest arena prizes zeroed | low-medium | No | A walkover pays the entries back, no house gold | ~10 lines |
+| 17 | **S6** New players killed and stripped at the town's edge (the owner's design) | quoted lines | New players quit | medium | No | No player-kill under level 3 or first 30 minutes | one check |
+| 18 | **S7 / L6** Minors: 13+ only in About; open chat and whispers; gold-only gambling | quoted lines | LAWYER | - | No | A rules-and-age line at creation; whispers friends-only for new characters | small |
+| 19 | **B4** Throwaways at level 4 spend the owner's gas | quoted lines | The relayer wallet drained | low | No | A day budget of chain writes | ~15 lines |
+| 20 | **P6, P7, L3-L5, L7, B5** | below | | low | | below | |
+
+## Only the owner can do
+
+1. **Turn the account check on** (Turnstile): OPERATIONS.md "The account check".
+   It needs the site key in `server/wrangler.toml`, which only the owner may
+   approve, and the secret in the dashboard. Closes most of B1, S1's ban
+   evasion, B6.
+2. **Decide the chat rules' teeth**: whether there is a word list (and its words),
+   timeouts, and what "muted or removed" in About means; the server-kept block.
+3. **Write the privacy notice and give a contact email**; name the data
+   controller (who "Hemi Bros Community" is). Until then a deletion request has
+   nowhere private to go.
+4. **Check two secrets and two settings in the dashboard**: is the chain relayer
+   key set (writes live)? is Turnstile's secret set? are Cloudflare Web Analytics
+   or Workers Logs on (they keep addresses)?
+5. **Read ~25 Freesound pages** (CREDITS.md's CONFIRM rows; klankbeeld's shield
+   sound) and say each licence; any NonCommercial one comes out.
+6. **A written assignment from the Hemi Bros artist** (CREDITS.md:51 "No terms").
+7. **Which AI tool and plan made what** (Grok Imagine is credited nowhere; Suno's
+   receipts), so the terms can be read.
+8. **A lawyer's hour**: the hats and the collection's traits (Disney, Pepe);
+   "Hemi"/"BroTown" trademark search; gambling-like games for 13+; GDPR/PECR
+   (fonts, device token, canvas hash, cookie, chain record); COPPA and the UK
+   Children's Code; LICENSE (MIT with no carve-out for art and sound).
+9. **Before the repo goes public**: GitHub secret scanning over the FULL history
+   (this clone is shallow), raw Pixabay/Freesound sources out of `assets/`, a
+   decision on the purchased tileset in history.
+10. **Policy calls**: no player-kill for brand-new characters (S6); a hold on a
+    new character's trades (R's `hold`, B1); an hours rule for boards (B2).
 
 ## Bots (measured locally)
 
@@ -369,3 +429,124 @@ repo root against the node test room; written for this review, not suites).
   not collide); emote text (fixed lists); forging the board from outside (read-only
   route); a non-string name through `track` (the wire door refuses it,
   `t3-numname.mjs`); a stolen login key alone (the device lock).
+
+## Privacy. I am not a lawyer: the lawyer's list is at the end.
+
+Proof: `docs/security/rt3-proofs/privacy-reads.mjs` runs the repo's own GameRoom,
+Feedback and Leaderboard classes as a stranger with no key, token or socket.
+
+### P1. Anyone on the internet can read when each player is online, what they bid, and their crash reports (HIGH, proven)
+
+- `GET /api/leaderboard/top` (`leaderboard.js` ~60-65, 206-269): each row's player
+  id, name, playtime, clan tag and `lastSeen` in ms, refreshed at least every 10
+  minutes while they play (`index.js` ~1238 `LEADERBOARD_MIN_MS`/`HEARTBEAT`).
+  Polling it is a near-live "who is online, and when do they play" for every
+  active player (about 30 categories x 100 rows).
+- `GET /api/store/mine?playerId=X` (`store.js` ~597-608): any player's listings and
+  what they bid on, how much and when. Proof: a stranger read Bob's bids. (Plan
+  step 11.5 already names it, no card.) `GET /api/store/browse`: seller and bidder
+  ids and names.
+- `GET /api/feedback/crashes` (`feedback.js:61-65`, quoted above: no key check):
+  every crash report, with the full browser User-Agent, zone, log lines, and in
+  some lines the character's name (`BroTown.jsx` ~12634 `' as ' + snap.name`).
+- **Harm**: stalking (when a player is on), and an easy "this game leaks player
+  data" post. **Likelihood**: medium.
+- **Smallest fix** (~40 lines in all): `/crashes` behind the admin key (one `if`,
+  `feedback.js`); `/top` without `lastSeen` and `playtime` (or a day's
+  resolution); `/store/mine` asks the session token (`_httpAuthCheck`, as 11.5
+  says). Route: feedback.js no card holds (ask); `leaderboard.js` card PW/LB;
+  `store.js` card K (11.5 is K's pillar).
+
+### P2. No privacy contact, no deletion, and the notice is a draft (HIGH for a pull-down, owner)
+
+- The About panel (Settings, About) has a privacy section, but its own header says
+  "a plain-language starting draft written from the code, not legal advice; the
+  owner signs off on the wording (and the age line)" (`AboutPanel.jsx` ~21-23). It
+  names no controller and no contact; the only contact is "Send feedback", which
+  posts to the PUBLIC board (S3). It is shown after the device id, fingerprint and
+  font requests have happened.
+- No erasure path: "restart / delete character" (`persistence.js` ~493+) copies
+  the record to `rpgsnap:<pid>:prereset-*` first, and leaves `auth:`, `char:` (name,
+  drawings), `botstat:`, `device:`, `bro_link:` (wallet), feedback tickets, the crash
+  log and the chain record. No purge of inactive accounts.
+- **Kept forever**: `auth:`, `char:`, `rpg:`, `botstat:` (network AS number and
+  organisation, behaviour signals), `device:` (a hash including a canvas render,
+  `src/networking/index.js` ~262-283), `bro_link:`, feedback tickets, board rows
+  (filtered after 7 days, never deleted).
+- **Smallest fix**: OWNER: the notice's words, a real contact address (email), the
+  controller's name. CODE (a new card, ~80 lines + a suite): an admin "erase player"
+  route that deletes every key the storage registry lists for a player id, and the
+  player's device and feedback rows, logged in `admin_log`.
+
+### P3. A permanent public record on the chain for each character, automatic, with no notice and no kill switch (MEDIUM, owner)
+
+- `wrangler.toml` `SCORES_CONTRACT` (Hemi mainnet, "deployed 2026-08-13");
+  `chainwriter.js` ~132 `playerKey = keccak256(playerId)`; the contract emits
+  `ScoreRecorded(bytes32 indexed player, ...)`. Player ids are public in the game,
+  so anyone can hash one and read that character's level history with dates. It
+  cannot be erased (a clash with the right to erasure: LAWYER). Writes run when
+  the relayer key secret is set (`_chainScoreConfigured`); no live flag stops them.
+- **Smallest fix**: OWNER checks whether writes are live (`/api/admin/chainstatus`);
+  deleting the relayer key in the dashboard stops new ones. CODE: a lower-case
+  kill switch (`chainscore: false`) and an opt-in; the notice says it. A new card
+  with B4's day budget.
+
+### P4. Credentials: login keys in a 2-year cookie the page's scripts can read; old keys from the public id (MEDIUM, partly proven)
+
+- `rosterCookie.js` ~40-85: the cookie `bt_chars` carries the roster "INCLUDING the
+  phrase" (its own words: "The phrase IS the character ... the mirror has to carry
+  it"), `Max-Age` two years, `SameSite=Lax; Secure`, not HttpOnly, on the widest
+  domain the browser accepts. No Content-Security-Policy ships
+  (`public/_headers` has cache rules only, per the sweep).
+- Old-style ids carry two of a key's four words (`src/networking/index.js` ~95-101):
+  the privacy sweep recovered the exact key from the id in 20 of 20 synthetic
+  trials (~160 ms each, 247,500 candidates; `rt3-proofs/oldkey.mjs`). The device lock
+  (`devicelock.js`, on by default) is the wall that holds: a key alone from an
+  unknown device is refused. The owner already had this privately (antibot review
+  "One more finding reached the owner privately").
+- **Smallest fix**: the cookie keeps ids, never keys (or the page's own host only);
+  retire old-style keys (card S, accounts); a CSP header (RT-1/RT-2's area).
+
+### P5. Third parties get every player's address at page load, without consent (MEDIUM, proven by reading)
+
+- Google Fonts (`src/index.html` ~66; a Munich court, 2022, LG Muenchen 3 O
+  17493/20, and a wave of German demand letters after it), the wsrv.nl image proxy
+  (`src/networking/index.js` ~308-310), a CSV from raw.githubusercontent.com
+  (`GameApp.jsx:50`). No analytics or ad scripts found.
+- **Smallest fix (code, ~1 hour)**: host the four OFL fonts and the CSV in
+  `public/`; draw NFT avatars through the game's own path. A new small card (it
+  touches `index.html`; check the memory law for the fonts' weight).
+
+### P6. A linked wallet is findable by every nearby player (LOW-MEDIUM)
+
+- The verified token id rides the tick to nearby players (`tick.js` ~555
+  `bro: ps.bro`; `nearjoin.js` ~80); `ownerOf(tokenId)` on the public chain gives the
+  wallet and its whole history. The notice says a wallet is kept "only if you choose
+  to link one" but not that it becomes public. **Fix**: send a yes/no badge, not the
+  id; say it in the notice.
+
+### P7. If the repo goes public (LOW, owner)
+
+- No secrets in the working tree (the 64-hex strings are curve constants and test
+  digests). This clone is SHALLOW (1,081 commits): the full history was NOT
+  checked. The repo was public before 2026-10-28, so that history is already
+  copied. Exposed: the project's commit email and an AI tool's user id in a root
+  video's file name. Admin routes are listed in the page's code and all answer 404
+  without the key (proven). **OWNER**: run GitHub secret scanning over the full
+  history before going public; also L7's raw sound files.
+
+### Privacy: good practice found
+
+The admin surface fails closed and compares hashed keys; the smoothness report is
+anonymised; chat reports expire after 30 days; the transfer ledger 90 days, the
+day book 60; server logs rarely carry ids; no Workers observability block in
+wrangler.toml.
+
+### For a lawyer (privacy)
+
+GDPR / UK GDPR transparency (articles 12-14: controller, contact, basis, rights);
+erasure (17) against the chain record; ePrivacy / PECR for the device token, the
+canvas hash, the cookie and Google Fonts; transfers to Google, wsrv.nl, GitHub;
+profiling (21-22) for the bot signals; COPPA's actual-knowledge rule and the UK
+Children's Code for a 13+ game with open chat and private messages; whether the
+prize draws and contests need terms.

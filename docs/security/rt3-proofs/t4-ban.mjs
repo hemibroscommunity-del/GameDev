@@ -1,5 +1,5 @@
 // Proof: an owner freeze is keyed on the bp_ id only; the same device + same address walks back in as a new character.
-import { makeStorage, openRoom, fakeWs, baseSession, settle } from '/home/user/GameDev/server/test/testroom.mjs';
+import { makeStorage, openRoom, fakeWs, baseSession, settle } from '../../../server/test/testroom.mjs';
 const st = makeStorage();
 const room = await openRoom(st);
 const j = async (ws, id, dev) => {

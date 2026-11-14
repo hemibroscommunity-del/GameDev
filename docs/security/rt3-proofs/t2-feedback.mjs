@@ -1,5 +1,5 @@
 // Proof: the public Feedback board takes any name/text from anyone, no session, rate limit per CLAIMED id only.
-import { Feedback } from '/home/user/GameDev/server/src/feedback.js';
+import { Feedback } from '../../../server/src/feedback.js';
 const store = new Map();
 const state = { storage: { get: async k => store.get(k), put: async (k, v) => { store.set(k, v); }, list: async (o) => { const m = new Map(); for (const [k, v] of store) if (!o?.prefix || k.startsWith(o.prefix)) m.set(k, v); return m; }, delete: async k => store.delete(k) } };
 const fb = new Feedback(state, {});
