@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "2248a2818aa566adfd028e63e9b4b841b72f776c",
+  "tree": "af00df94f13df61912781a03d34c1939e64f2052",
+  "committedAt": "2026-11-13T23:11:53-08:00",
+  "subject": "Merge pull request #1720 from hemibroscommunity-del/claude/plan-tv-cards",
+  "files": 7491,
+  "bytes": 947508654,
+  "listingSha256": "99f469696e3cc02ea50c4da95255884fb287f5ea538b6a1d33f1ada1ec942023",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
