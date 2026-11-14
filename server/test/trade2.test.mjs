@@ -366,6 +366,14 @@ check('forged trade2_state / trade2_invite dropped by deny-list', room.eventBuff
   await cmd(wss.b, 'trade2_cancel');
   await cmd(wss.a, 'trade2_open', { target: P('b') });
   await cmd(wss.b, 'trade2_open', { target: P('a') });
+  /* v2.3.5184 (card K PR 4): the wire door (wire/door.js) refuses a frame
+     with a `constructor` key before any handler: the offer is never staged.
+     The stage's own filter below is played with the door's switch thrown
+     (`wiredoor: false`). */
+  await cmd(wss.a, 'trade2_set', { offer: { constructor: 7, fish_minnow: 2 } });
+  check('v2.3.5184: the wire door refuses an offer with a `constructor` key before the trade', Object.keys(room._t2SessionFor(P('a')).offers[P('a')] || {}).length === 0, room._t2SessionFor(P('a')).offers[P('a')]);
+  const _flagsT = room._liveFlags;
+  room._liveFlags = { ...(_flagsT || {}), wiredoor: false };
   await cmd(wss.a, 'trade2_set', { offer: { constructor: 7, toString: 3, hasOwnProperty: 2, fish_minnow: 2 } });
   await cmd(wss.b, 'trade2_set', { offer: { valueOf: 4, ore_iron_ore: 1 } });
 
@@ -399,6 +407,7 @@ check('forged trade2_state / trade2_invite dropped by deny-list', room.eventBuff
      anything that stringifies the bag would throw on a poisoned blob. */
   check('the bag still stringifies (a shadowed toString would throw here)',
     (() => { try { return typeof String(psB.inventory) === 'string'; } catch (e) { return false; } })());
+  room._liveFlags = _flagsT;   /* v2.3.5184: the door's switch back */
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

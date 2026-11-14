@@ -271,6 +271,7 @@ import { moveClaimMethods, guardFacing } from './moveclaims.js'; /* v2.3.4605: w
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
 import { staminaRegenMethods } from './staminaregen.js'; /* v2.3.3536: stamina regen worked out by the worker */
 import { fightLockMethods, FIGHT_GATED } from './fightlock.js'; /* v2.3.4510: one fight-lock table */
+import { wireDoorMethods } from './wire/door.js'; /* v2.3.5184: the wire door -- the table's checks before any handler */
 import { leaveMethods } from './leave.js'; /* v2.3.4830: the session door -- every way of leaving */
 import { goldMethods } from './gold.js'; /* v2.3.4670: the gold door -- every change to a player's gold */
 import { lifeMethods } from './life.js'; /* v2.3.4820: the life door -- a player's health and life phase */
@@ -4558,6 +4559,17 @@ export class GameRoom {
     if (!this._liveFlags) {
       try { await this._liveFlagsEnsure(); } catch (e) { console.warn('[liveflags] cold load failed:', e && e.message); }
     }
+    /* v2.3.5184: THE WIRE DOOR for the room's routes (wire/door.js), after
+       the switches load and before the first route: a key named like the
+       prototype's (a query's name, or at any depth of the JSON body), a body
+       that is no plain object, a field the route's row names out of its
+       form, or a request id outside SHAPES' form is answered 400 and counted.
+       Not the socket's upgrade (the router's door judges its frames).
+       `wiredoor: false` turns it off. */
+    if (url.pathname.startsWith('/api/')) {
+      const _refused = await this._wireDoorHttp(request, url);
+      if (_refused) return _refused;
+    }
     // v2.3.1118: marketplace HTTP surface (order book lives in this DO
     // now -- see market.js).  Before the Upgrade check like _room_count.
     if (url.pathname.startsWith('/api/market')) {
@@ -4777,6 +4789,13 @@ export class GameRoom {
       }
     }
     if (!session.id && msg.type !== 'join' && msg.type !== 'pong') return;
+    /* v2.3.5184: THE WIRE DOOR (wire/door.js) -- before any handler, and
+       before the AFK clock, the ride or the locks read the message: a key
+       named like the prototype's at any depth, a payload that is no plain
+       object, a field the wire table's `trust` names out of its form, or a
+       request id outside SHAPES' form is dropped and counted.  Only what no
+       page sends; `wiredoor: false` turns it off.  Synchronous (TRAPS §182). */
+    if (this._wireDoor(session, msg)) return;
     /* Reset the AFK clock on real input only.  Pong replies are
        keepalive heartbeats, not player activity -- counting them would
        mean the timeout fires only on TCP death, not on AFK players
@@ -6517,6 +6536,7 @@ Object.assign(GameRoom.prototype, moveClaimMethods); /* v2.3.4605: what a move's
 Object.assign(GameRoom.prototype, sparMethods); /* v2.3.3265: sparring clones (spar.js) */
 Object.assign(GameRoom.prototype, staminaRegenMethods); /* v2.3.3536: stamina regen from the worker's own amulet (staminaregen.js) */
 Object.assign(GameRoom.prototype, fightLockMethods); /* v2.3.4510: one fight-lock table (fightlock.js) */
+Object.assign(GameRoom.prototype, wireDoorMethods); /* v2.3.5184: the wire door (wire/door.js) */
 Object.assign(GameRoom.prototype, leaveMethods); /* v2.3.4830: the session door (leave.js) */
 Object.assign(GameRoom.prototype, goldMethods); /* v2.3.4670: the gold door (gold.js) */
 Object.assign(GameRoom.prototype, lifeMethods); /* v2.3.4820: the life door (life.js) */

@@ -47,6 +47,9 @@ export const CODES = Object.freeze({
   inner: 'the call just before decides (an intercept or a sanitizer the switch reads the result of): its own exits are listed under its name',
   nolive: 'no live phone sends this (its button is gone or its system retired): only a script reaches it',
   delta: 'answered only with `_sendPlayerState`, the v2 delta, which sends nothing when nothing changed',
+  /* v2.3.5184 (card K PR 4): the wire door (src/wire/door.js), before every
+     handler: one exit for every row, in _onMessage itself, never a case's */
+  door: 'the wire door: a key named like the prototype\'s, a payload that is no plain object, a field the wire table\'s `trust` names out of its form, or a request id outside SHAPES\' form -- only a script sends one, and an answer helps it probe (`wiredoor: false` turns it off)',
   known: 'NOT RIGHT, NOT FIXED YET: a refusal a real phone can meet in play that answers nothing (TRAPS §284); a candidate for a fix lane, whether or not the phone predicts it is not judged here',
 });
 

@@ -31,14 +31,17 @@
  * WHAT THE TABLE COSTS THE WORKER: index.js imports this file, so out.js and
  * relays.js ship in the worker's bundle: +88 KB of 2.7 MB (+12 KB gzipped),
  * measured with esbuild as wrangler runs it, v2.3.5181 (README.md beside
- * this file).  in.js and http.js are not imported yet.
+ * this file).  v2.3.5184: in.js and http.js too, for the wire door's rows
+ * (below; README.md says how much).
  *
  * A field named `type` is never written bare in this folder: wire-audit reads
  * `type: '<name>'` anywhere in server/src/ as a message the worker sends
  * (README.md beside this file). */
 
+import { WIRE_IN } from './in.js';
 import { WIRE_OUT } from './out.js';
 import { WIRE_RELAY } from './relays.js';
+import { WIRE_HTTP } from './http.js';
 
 const ECHO = 'echo';
 const isEcho = (r) => r.privileged === ECHO;
@@ -61,3 +64,17 @@ const MADE = wireLists();
 export const PRIVILEGED_EVENTS = MADE.PRIVILEGED_EVENTS;
 export const RELAY_TYPES = MADE.RELAY_TYPES;
 export const RELAY_ECHOES = MADE.RELAY_ECHOES;
+
+/* ═══ v2.3.5184 (card K PR 4): THE WIRE DOOR'S ROWS (door.js) ═══
+   Each row's `trust` column as [field's path, trust] pairs: SOCKET by the
+   message's type (every `in` and `relay` row), ROUTES by the route row's
+   name (`http:<path>` or `http:<path> <METHOD>`).  The door holds each named
+   field to its form; a field no row names passes untouched. */
+const trustPairs = (r) => Object.freeze(Object.entries(r.trust || {}).filter(([path]) => path !== 'method'));
+export function wireDoorRows({ inn = WIRE_IN, relay = WIRE_RELAY, http = WIRE_HTTP } = {}) {
+  const SOCKET = new Map(), ROUTES = new Map();
+  for (const r of [...inn, ...relay]) SOCKET.set(r.name, [...(SOCKET.get(r.name) || []), ...trustPairs(r)]);
+  for (const r of http) ROUTES.set(r.name, trustPairs(r));
+  return { SOCKET, ROUTES };
+}
+export const WIRE_DOOR_ROWS = wireDoorRows();

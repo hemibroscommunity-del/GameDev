@@ -14,6 +14,7 @@ file, `lists.js`: the one place that reads the rows and makes a list.
 | `PRIVILEGED_EVENTS` | every `out` row but those marked `privileged: 'echo'` | `index.js` (the relay's default branch drops a phone's copy) |
 | `RELAY.TYPES` | every `relay` row | `relay.js` (`_relayAllowed`) |
 | `RELAY_ECHOES` | every row marked `privileged: 'echo'`, with its why | `server/test/wire-audit.test.mjs` |
+| `WIRE_DOOR_ROWS` | every `in`, `relay` and `http` row's `trust` (v2.3.5184) | `door.js` (the wire door: each named field to its form, before any handler) |
 
 So a new message the worker sends is an `out` row and nothing else: it is
 privileged with no other edit (deny by default). A new relay is a `relay`
@@ -27,7 +28,14 @@ imports `out.js` and `relays.js`. Measured with the bundler wrangler uses
 (esbuild, no minify), v2.3.5181: the bundle grew from 2,659,358 bytes to
 2,747,149 (+88 KB, 3.3%; gzipped 788,716 to 800,369, +12 KB). The rows'
 comments ship (wrangler does not minify), but they were index.js's and
-relay.js's before: moved, not added.
+relay.js's before: moved, not added. v2.3.5184 (card K PR 4): `lists.js`
+imports `in.js` and `http.js` too, for the wire door's rows
+(`WIRE_DOOR_ROWS`: each row's `trust`, read by `door.js`, the one check
+before any handler; `docs/specs/wire-door.md`). Measured the same way on
+main 1cce0b2: 2,756,115 bytes to 2,894,606 (+138 KB, 5.0%; gzipped 799,858
+to 820,674, +21 KB, 2.6%), nearly all of it the `in` and `http` rows and
+their notes, new to the worker (card K's PR 2 ships the same two files: the
+growth is paid once).
 
 `tools/guards/wire-table.test.mjs` (card N's PR 3) holds the table to the
 code: a key with no row, a row with no key, two rows for one key, a value off

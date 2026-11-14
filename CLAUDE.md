@@ -183,10 +183,13 @@ spec. Add a line here only for a new RULE every session must follow.
   (TRAPS §316). Every new server behaviour has a kill switch in
   the live flags (`liveops.js`), named in lower case (`liveops.test` §8).
 - **Deny by default.** A new client-to-server message is handled on purpose.
-  Every type the server SENDS is in `PRIVILEGED_EVENTS` (`server/src/index.js`)
-  or a client can forge it, and the client handles it in `wsClient.js`'s DIRECT
-  switch. A phone's relay reaches others only if its type is in `RELAY.TYPES`
-  (`server/src/relay.js`), rebuilt in the sender's name.
+  Every type the server SENDS is an `out` row of the wire table
+  (`server/src/wire/`; `PRIVILEGED_EVENTS` is made from it) or a client can
+  forge it, and the client handles it in `wsClient.js`'s DIRECT switch. A
+  phone's relay reaches others only if it is a `relay` row (`RELAY.TYPES` is
+  made from them), rebuilt in the sender's name. A field a handler reads is
+  named in its row's `trust`: the wire door (`wire/door.js`) holds it to its
+  form before any handler.
 - **A reconnect**: the phone clears its copy of a worker session (a duel, a
   trade, the party) at `state_sync` only together with the worker's re-send:
   a row in `REJOIN_SLOTS` (`src/game/rejoinSlots.js`; TRAPS §278).
@@ -385,8 +388,8 @@ spec. Add a line here only for a new RULE every session must follow.
 | If you add... | ...in the same PR |
 |---|---|
 | an animation or sprite | its loader in `preloadWorldAnimations` (per zone: `preloadZoneAssets`, freed on exit); a body pose through `mp-ghostaudit` |
-| a message the server sends | `PRIVILEGED_EVENTS`; the client's direct switch |
-| a relay a phone sends | `RELAY.TYPES` |
+| a message the server sends | its `out` row in the wire table (`PRIVILEGED_EVENTS` is made from it); the client's direct switch |
+| a relay a phone sends | its `relay` row in the wire table (`RELAY.TYPES` is made from it) |
 | a server behaviour | a cap the client gates on (`CAP_GATES`) and a lower-case kill switch |
 | a `?name=` or a live flag | its row in the switch table (`tools/guards/lib/switches.mjs`; `node tools/guards/switches.test.mjs --write`) |
 | a storage key | ARCHITECTURE-HANDOFF's rule-2 registry table (precheck `storage-keys`) |
