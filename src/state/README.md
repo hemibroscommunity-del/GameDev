@@ -86,3 +86,6 @@ until the map places their file; the guard lists those files by name.
 
 - `life` (v2.3.5160), the first: the fewest rows, one (`S._deathCard`), tied
   with `liveops` (`S._testMode`); the tie went by name.
+- `liveops`, `session`, `device`, `page-thread`, `input` (v2.3.5161): the
+  next five by fewest rows, 39 in all. The census page made again with them
+  (it lagged main by 20 variables).
