@@ -262,8 +262,18 @@
  * 256 x 256 and 180 x 189 at a byte a pixel), the planning session's rule
  * for a numbers PR; net 0.9 MB less.  The chip holds them at a byte a
  * pixel (0.35 MB). */
+/* v2.3.5252, the backlog's `fx-sheets-supplied`: the effects cut from the
+ * owner's sheets read from their twins (p256.js, `?fxsheets=0` the
+ * pictures), the whirlwind's too: its pack declined, gearSheets.js kept its
+ * twin a picture (2 MB at the fight) and now reads it as numbers whole.
+ * Three runs: `artCache` 33.8 -> 31.8 and its line 97.1 -> 95.1, LOWERED by
+ * the 2.0 MB saved; `buffers` 23.0-23.3 -> 23.4-23.5 and its line 23.7 ->
+ * 24.2, RAISED by exactly the whirlwind's numbers that took its picture's
+ * place (0.50 MB, 2048 x 256 at a byte a pixel); net 1.5 MB less.  The six
+ * on the chip at a byte a pixel: 1.51 MB (`gpu` 75.0-77.2, its line
+ * unchanged). */
 export const MEMORY_BUDGET = {
-  artCache: { name: 'art loaded from files', mb: 97.1, measured: 33.8,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB); v2.3.5247: 109.1 -> 107.0, Ace's coin strips (2.1 MB); v2.3.5248: 107.0 -> 101.4, the trees as numbers (5.6 MB); v2.3.5249: 101.4 -> 98.3, the made effects as numbers (3.1 MB); v2.3.5250: 98.3 -> 97.1, the world's icons (1.2 MB), see the header */
+  artCache: { name: 'art loaded from files', mb: 95.1, measured: 31.8,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB); v2.3.5247: 109.1 -> 107.0, Ace's coin strips (2.1 MB); v2.3.5248: 107.0 -> 101.4, the trees as numbers (5.6 MB); v2.3.5249: 101.4 -> 98.3, the made effects as numbers (3.1 MB); v2.3.5250: 98.3 -> 97.1, the world's icons (1.2 MB); v2.3.5252: 97.1 -> 95.1, the whirlwind as numbers (2.0 MB), see the header */
     what: 'pictures loaded from files, decoded (the asset cache, window.__btTex) -- its highest at the fight, the monsters\' looks loaded' },
   gpu: { name: 'textures on the graphics chip', mb: 115, measured: 95.0,   /* v2.3.4058: 105 -> 115, approved by the owner 2026-11-03, see the header */
     what: 'textures on the graphics chip (window.__btGpuTex) -- including what was drawn in the last minute, which Pixi unloads after 60 s unused' },
@@ -273,7 +283,7 @@ export const MEMORY_BUDGET = {
     what: 'sound decoded into memory (music streams from its file and is not in it, v2.3.3073)' },
   heap: { name: 'the page\'s JavaScript objects', mb: 38.5, measured: 36.4,   /* v2.3.3595: 32 -> 33; v2.3.3657: 33 -> 34; v2.3.3807: 34 -> 36; v2.3.4005: 36 -> 38; v2.3.4080: 38 -> 37.5; v2.3.4483: 37.5 -> 38.5; v2.3.5007: unchanged, measured 37.7 -> 36.4 by the heap trim, see the header */
     what: 'the page\'s JavaScript objects' },
-  buffers: { name: 'the page\'s raw data buffers', mb: 23.7, measured: 23.3,   /* v2.3.3703: 24 -> 22, see the header; v2.3.5248: 22 -> 23.4, RAISED by the trees' colour numbers moved here (1.40 MB) as artCache fell 5.6 (net 4.2 less); v2.3.5250: 23.4 -> 23.7, the world's icons' numbers (0.30 MB) as artCache fell 1.2 (net 0.9 less), see the header */
+  buffers: { name: 'the page\'s raw data buffers', mb: 24.2, measured: 23.5,   /* v2.3.3703: 24 -> 22, see the header; v2.3.5248: 22 -> 23.4, RAISED by the trees' colour numbers moved here (1.40 MB) as artCache fell 5.6 (net 4.2 less); v2.3.5250: 23.4 -> 23.7, the world's icons' numbers (0.30 MB) as artCache fell 1.2 (net 0.9 less); v2.3.5252: 23.7 -> 24.2, the whirlwind's numbers (0.50 MB) as artCache fell 2.0 (net 1.5 less), see the header */
     what: 'the page\'s raw data buffers (ArrayBuffers), and the text of its scripts, which the same reading counts (v2.3.3703)' },
   workers: { name: 'the background workers', mb: 36, measured: 30.5,
     what: 'the background workers (the ground builder): their objects and buffers' },
