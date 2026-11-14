@@ -1,25 +1,24 @@
 card: A
-branch: claude/plan-a-4-report-worker (one branch a PR, each begun from the one before: -1- to -7-; merge them in order)
-prs: #1688, #1692, #1703 (merged); #1706 (5123, mended for sitting 4; ready), #1708 (5124), #1711 (5125): being mended
+branch: claude/plan-a-5-room-row (one branch a PR, each begun from the one before: -1- to -7-; merge them in order)
+prs: #1688, #1692, #1703 (merged); #1706 (5123), #1708 (5124): mended for sitting 4, ready; #1711 (5125) being mended
 state: ready
 
 ## Done
 
 - #1688, #1692, #1703 (5120 to 5122): merged at sitting 3.
-- #1706 (5123): `server/src/report.js`, into the book's `dev` part by
-  cell; `caps.report` (a new cap line: list it apart). Sitting 3's four
-  mends (tag 5127: #1703 on `main` names 5123 ahead). Sitting 4's, a test
-  each (report.test 11): `report.js` in the system map (`debug`); a cell
-  half its size (2,392 to 1,272 bytes: 19 a day, was 10); a socket's
-  reports reach at most two cells; `died` only on a socket's first
-  report; a thawed page (a late poll, `pageshow`) is a return, not seen
-  time; another tab's switch off throws the open report away. A `report`
-  row in `docs/WIRE-PROTOCOL.md`.
+- #1706 (5123): `report.js` into the book's `dev` part by cell;
+  `caps.report` (a new cap line). Sitting 3's mends (tag 5127: #1703 on
+  `main` names 5123 ahead). Sitting 4's, report.test 11: in the system
+  map (`debug`); a cell 1,272 bytes (19 a day, was 10); two cells a
+  socket; `died` once a socket; a thawed page (`pageshow`, a late poll)
+  a return; another tab's off drops the open report; a WIRE row.
+- #1708 (5124): `roomrow.js` into the `room` part. Sitting 4's: in the
+  map (`server-core`); the last one out (`leave.js`, one line) writes
+  the book at once, after a put running (roomrow.test 9).
 
 ## Next
 
-- #1708 (the room empties: its counts and the book's waiting sums are
-  written), then #1711 (the card gated on `caps.report` 2, its switch).
+- #1711 (the card gated on `caps.report` 2, its switch).
 
 ## Found
 
@@ -32,7 +31,8 @@ state: ready
 - When card Q's sitting card keeps `soft`, `seen`, `drawn`, the About
   row's "no name on it" must change with it (card Q).
 - Card E: the door reckons a part ~4 times its stored size (28 bytes a
-  number): a closer reckoning would give `dev` that much more room.
+  number): a closer reckoning would give `dev` more room; a `bookFlush`
+  export would spare `roomrow.js` reading the door's memory (test 9).
 
 ## Needs
 

@@ -18,7 +18,11 @@
  *   6. INTO THE BOOK every FLUSH_MS, under the shape's number;
  *   7. THE KILL SWITCH `roomrow: false`: nothing added;
  *   8. WHAT IT COSTS: an awake hour of nothing but the room's row writes the
- *      book at its pace only (13 rows at most, cost-guard's line).
+ *      book at its pace only (13 rows at most, cost-guard's line);
+ *   9. THE LAST ONE OUT (v2.3.5124, sitting 4's review): the last leave
+ *      writes the book at once (the report that waited, the room's last
+ *      counts), after a put already running; nothing when nothing waits,
+ *      the book is off or someone is still in.
  *
  * BREAK PROOF (rule 8), each tried by hand, 2026-11-14:
  *   2. roomrow.js rowsOf: `return 1;` for an object of entries      -> FAIL 2
@@ -26,13 +30,16 @@
  *   5. roomrow.js: `GAP_MAX_MS: 20` (every gap thrown away)         -> FAIL 5, 6
  *   8. daybook.js: `PACE_MS: 60 * 1000` (the book's pace, card E's; the
  *      row must ride it, never add a row of its own)                -> FAIL 8
+ *   9. leave.js: drop the `_roomRowLastOut` line                    -> FAIL 9 (3)
+ *      roomrow.js bookNow: `return run();` (a put beside the running
+ *      one: the first's sums lost, n 2 of 3)                         -> FAIL 9 (2)
  * And in the real runtime (wrangler dev, a phone in the world for 75 s,
  * read through a throwaway admin route): the storage wrapped, 13 rows, one
  * v2 join, the restart and 2,454 tick gaps in the book's `room` part.
  */
 import { GameRoom } from '../src/index.js';
 import { ROOMROW, rowsOf, roomRowTree } from '../src/roomrow.js';
-import { DAYBOOK, bookRead } from '../src/daybook.js';
+import { DAYBOOK, bookRead, bookAdd } from '../src/daybook.js';
 import { RPG_SCHEMA_VERSION } from '../src/migrations.js';
 import { flagNameOk } from '../src/liveops.js';
 
@@ -149,7 +156,11 @@ const roomPart = async (room) => {
   state.store.set('rpg:bp_newer', { coins: 3, _v: RPG_SCHEMA_VERSION + 1 });
   const ws = await join(room, 'bp_newer', 2);
   check('3. a newer worker\'s character: the join refused (the socket closed, no state_sync)', ws.closed === true && !ws.sent.some((m) => m.type === 'state_sync'));
-  check('3. ...and counted once, as `newer`', room._roomRow.c.refused[1] === 1 && room._savesRefused().newer === 1, room._savesRefused());
+  /* v2.3.5124: the refused socket was the room's last one out, so its
+     counts went into the book with it (THE LAST ONE OUT): read both */
+  const inBook = await roomPart(room);
+  const newer = room._roomRow.c.refused[1] + ((inBook && inBook['1'] && inBook['1'].refused) ? inBook['1'].refused[1] : 0);
+  check('3. ...and counted once, as `newer`', newer === 1 && room._savesRefused().newer === 1, { newer, s: room._savesRefused() });
 }
 
 /* ── 4. JOINS by protocol version ── */
@@ -215,6 +226,75 @@ const roomPart = async (room) => {
   }
   const rows = state.writes.slice(w0).filter((k) => k.startsWith(DAYBOOK.PREFIX));
   check(`8. an awake hour of the room's row writes the book ${rows.length} times, at most 13 (the book's pace)`, rows.length >= 1 && rows.length <= 13, rows.length);
+}
+
+/* ── 9. THE LAST ONE OUT (v2.3.5124, the gatekeeper's review, sitting 4) ── */
+{
+  /* the review's own sitting: the room wakes, a phone joins, the row's first
+     add (60 s) takes the book's at-once put; a sum added after it (a report)
+     waits for the pace -- and the phone leaves before it */
+  const t0 = NOW;
+  const { room, tick, state } = makeRoom();
+  const ws = await join(room, 'bp_last', 2);
+  NOW = t0 + 60000; tick();
+  if (room._daybook.putting) await room._daybook.putting;
+  const firstPut = state.writes.filter((k) => k.startsWith(DAYBOOK.PREFIX)).length;
+  NOW = t0 + 62300;
+  bookAdd(room, 'dev', { cell: { n: 1 } }, NOW);
+  check('9. (the review\'s case) the row\'s first add wrote at once; a report after it waits in memory',
+    firstPut === 1 && room._daybook.days.size === 1 && !room._daybook.putting, { firstPut, waiting: room._daybook.days.size });
+  NOW = t0 + 100000;
+  await room.webSocketClose(ws, 1000, 'bye', true);
+  if (room._daybook.putting) await room._daybook.putting;
+  const day = (await bookRead(room, 1)).days[0];
+  const stored = state.store.get(DAYBOOK.PREFIX + day.day);
+  check('9. the last one out writes the book at once: the report that waited is stored, no tick needed',
+    !!stored && stored.dev && stored.dev.cell && stored.dev.cell.n === 1, stored && stored.dev);
+  check('9. ...with the room\'s last counts (its leave flushed the row: the join\'s rows after the first add)',
+    !!stored.room && !!stored.room['1'] && !room._daybook.days.size && room._roomRow.flushedAt === NOW, stored.room);
+  check('9. ...in one put (and the tick is stopped)', state.writes.filter((k) => k.startsWith(DAYBOOK.PREFIX)).length === 2 && !room.tickInterval);
+}
+{
+  /* a put already running when the last leaves: the leave's put runs after
+     it, so neither's sums are lost (two read-add-puts of a day side by side
+     would keep only the second's) */
+  const { room, state } = makeRoom();
+  await join(room, 'bp_last2', 2);
+  room._liveFlags = { roomrow: false };   /* only the sums this check adds */
+  if (room._daybook && room._daybook.putting) await room._daybook.putting;
+  if (room._daybook) room._daybook.lastPut = 0;
+  const w0 = state.writes.length;
+  bookAdd(room, 'dev', { a: { n: 1 } }, NOW);   /* at once */
+  const running = room._daybook.putting;
+  bookAdd(room, 'dev', { a: { n: 2 } }, NOW);   /* waits for the pace */
+  const last = room._roomRowLastOut(NOW);
+  check('9. a put running at the last out: its put waits for it, never runs beside it', !!running && !!last && last !== running && room._daybook.putting === running);
+  await last;
+  const k = state.writes.slice(w0).filter((x) => x.startsWith(DAYBOOK.PREFIX));
+  const rec = state.store.get(k[k.length - 1]);
+  check('9. ...and both are written: 1 + 2, in two puts', k.length === 2 && rec.dev.a.n === 3 && !room._daybook.putting, { k, dev: rec && rec.dev });
+  /* the door's memory this file reads (roomrow.js bookNow): fails when card
+     E's shape moves, so the last-out write is never silently lost */
+  const mem = room._daybook;
+  check('9. the book\'s memory as roomrow.js reads it: `days` a Map, `putting`, `lastPut`',
+    !!mem && mem.days instanceof Map && 'putting' in mem && typeof mem.lastPut === 'number', mem && Object.keys(mem));
+}
+{
+  /* nothing waits, the book is off, or someone is still in: no write */
+  const { room, state } = makeRoom();
+  const a = await join(room, 'bp_last3', 2);
+  const b = await join(room, 'bp_last4', 2);
+  room._liveFlags = { roomrow: false };
+  if (room._daybook) room._daybook.days.clear();
+  await room.webSocketClose(a, 1000, 'bye', true);
+  check('9. someone still in: no last-out write', !state.writes.some((k) => k.startsWith(DAYBOOK.PREFIX)) && !(room._daybook && room._daybook.putting));
+  await room.webSocketClose(b, 1000, 'bye', true);
+  check('9. the last out with nothing waiting (`roomrow: false`, no report): no book row', !state.writes.some((k) => k.startsWith(DAYBOOK.PREFIX)));
+  const c = await join(room, 'bp_last5', 2);
+  room._liveFlags = { daybook: false };
+  bookAdd(room, 'dev', { x: { n: 1 } }, NOW);
+  await room.webSocketClose(c, 1000, 'bye', true);
+  check('9. the book switched off (`daybook: false`): the last out writes nothing', !state.writes.some((k) => k.startsWith(DAYBOOK.PREFIX)) && !(room._daybook && room._daybook.putting));
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);

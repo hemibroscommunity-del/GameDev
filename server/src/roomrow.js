@@ -40,13 +40,25 @@
  * at most FLUSH_MS of counts and the book's pace (the book is the owner's
  * summary, never what a sum is checked against).
  *
+ * THE LAST ONE OUT (v2.3.5124, the gatekeeper's review, sitting 4): a room
+ * left empty has no tick and no alarm, and is put away with whatever waits
+ * in memory.  The room row's first add takes the book's "first add writes
+ * at once" put, so every later add waits up to a pace (5 min): each
+ * sitting lost its last report and the room's last counts, and a sitting
+ * under the pace its FIRST report too, the one carrying `died`.  So the
+ * last leave (leave.js, where the tick stops) adds the counts and writes
+ * the book at once, after any put already running (_roomRowLastOut): one
+ * read and one put a room emptied, nothing when nothing waits or the book
+ * is switched off (`daybook: false`).  What it cannot carry is its own
+ * put's count in `rows`, taken after the write.
+ *
  * The part's tree, under the shape's number (a new shape never adds into an
  * old one's numbers):  room: { '1': { gap: [11], rows: [2], refused: [2],
  * joins: [2], restarts, ticks } }.
  *
  * Suite: server/test/roomrow.test.mjs.
  */
-import { bookAdd } from './daybook.js';
+import { bookAdd, bookPut } from './daybook.js';
 
 export const ROOMROW = Object.freeze({
   V: 1,
@@ -85,6 +97,25 @@ export function roomRowTree(c) {
   const out = Object.create(null);
   out[String(ROOMROW.V)] = t;
   return out;
+}
+
+/* v2.3.5124: the book written now, after the put already running if one
+   is (a second read-add-put of the same day beside it would lose the first's
+   sums).  It reads the door's own memory (daybook.js `mem`: `days` waiting,
+   `putting` the running put, `lastPut` the pace's mark): roomrow.test 9
+   fails when that shape moves.  Nothing waits, or the book is off: null. */
+function bookNow(room, now) {
+  const b = room && room._daybook;
+  if (!b || !b.days || !b.days.size) return null;
+  if (typeof room._daybookOff === 'function' && room._daybookOff()) return null;
+  const run = () => {
+    if (!b.days.size) return null;
+    b.lastPut = now;
+    const p = bookPut(room, now).finally(() => { if (b.putting === p) b.putting = null; });
+    b.putting = p;
+    return p;
+  };
+  return b.putting ? b.putting.then(run, run) : run();
 }
 
 export const roomRowMethods = {
@@ -164,6 +195,15 @@ export const roomRowMethods = {
     }
     m.lastTick = now;
     if (now - m.flushedAt >= ROOMROW.FLUSH_MS) this._roomRowFlush(now);
+  },
+
+  /** v2.3.5124: the last one out (leave.js): the counts into the book, and
+   *  the book written now, whatever its pace (the header's "THE LAST ONE
+   *  OUT").  Returns the put's promise (a test awaits it), or null. */
+  _roomRowLastOut(now) {
+    now = typeof now === 'number' ? now : Date.now();
+    this._roomRowFlush(now);
+    return bookNow(this, now);
   },
 
   /** The counts into the day's book's `room` part, and a fresh start

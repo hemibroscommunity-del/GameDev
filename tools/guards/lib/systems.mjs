@@ -99,9 +99,9 @@ export const SYSTEMS = Object.freeze({
     switches: [],
   },
   'server-core': {
-    what: 'the worker\'s spine: saving, migrations, the tick, its pace, hidden settings',
-    files: [f('server/src', 'persistence|migrations|tick|tickpace|cadence|data|grids|heapburn|hidden|daybook|storagemarks')],
-    words: ['persistence', 'migration', 'tick', 'storage', 'save', 'hidden', 'cost-guard', 'costguard', 'daybook'],
+    what: 'the worker\'s spine: saving, migrations, the tick, its pace, hidden settings, the room\'s own row',
+    files: [f('server/src', 'persistence|migrations|tick|tickpace|cadence|data|grids|heapburn|hidden|daybook|storagemarks|roomrow')],
+    words: ['persistence', 'migration', 'tick', 'storage', 'save', 'hidden', 'cost-guard', 'costguard', 'daybook', 'roomrow'],
     traps: ['server-core'],
     doors: [
       { name: 'HIDDEN_SPEC', file: 'server/src/hidden.js', what: 'a server-only number a copier would value' },
