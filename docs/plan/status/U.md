@@ -1,6 +1,6 @@
 card: U
-branch: claude/plan-u-1-ledger
-prs: #1721 (ready)
+branch: claude/plan-u-2-small (one branch a PR, each begun from the one before)
+prs: #1721 (ready), #1722 (ready)
 state: ready
 
 ## Done
@@ -11,11 +11,12 @@ state: ready
   `tools/guards/state-ledger.test.mjs` (unlisted 2128, its line 2128).
   B's map gains the system `state` for `src/state/` (the planning
   session's call: B is finished), and its empty row in `budgets.mjs`.
+- PR 2 (5161): `liveops`, `session`, `device`, `page-thread`, `input`
+  (39 rows), the census page made again (`--write`): unlisted 2109.
 
 ## Next
 
-- PR 2 (5161): the next systems by fewest rows (liveops, session, device,
-  page-thread, input), with the census page rewritten (`--write`).
+- PR 3 (5162): quests, townsfolk, desktop, monsters, audio, social.
 
 ## Found
 

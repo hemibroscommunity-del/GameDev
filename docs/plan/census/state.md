@@ -14,7 +14,7 @@ It is a census, not a guard and not a ledger: card U makes the ledger files, a s
 2. **A variable at the top of a file under `src/` that holds state**: a `let` or `var`, or a `const` Map, Set,
    array or object that is changed after it is made.
 
-How the machine reads that rule (it reads all 883 `.js` and `.jsx` files under `src/` as syntax trees, so a
+How the machine reads that rule (it reads all 886 `.js` and `.jsx` files under `src/` as syntax trees, so a
 name in a comment or a string is never counted):
 
 - **The state** is `<ref>.current`, where `<ref>` is any name or property spelt `stateRef` or `_gameState`
@@ -135,7 +135,7 @@ name in a comment or a string is never counted):
 | `_customDungeonConfig` | fly :90 | game/dungeonWaves.js | 6: game/dungeonWaves.js, networking/gameEvents.js, game/respawn.js, game/wheelDungeons.js, game/zoneTransitions.js, +1 | game/dungeonWaves.js | 2+ | zone, death | zone+rejoin |
 | `_dungeonComplete` | fly :76 | game/dungeonWaves.js | 6: game/dungeonWaves.js, networking/gameEvents.js, game/respawn.js, game/wheelDungeons.js, game/zoneTransitions.js, +1 | game/dungeonWaves.js | 2+, flag | zone, death | zone+rejoin |
 | `_inCustomDungeon` | fly :89 | game/dungeonWaves.js | 6: game/dungeonWaves.js, networking/gameEvents.js, game/respawn.js, game/wheelDungeons.js, game/zoneTransitions.js, +1 | game/dungeonWaves.js | 2+, flag | zone, death | zone+rejoin |
-| `_inDungeon` | fly :88 | game/dungeonWaves.js | 6: game/dungeonWaves.js, networking/gameEvents.js, game/respawn.js, game/wheelDungeons.js, game/zoneTransitions.js, +1 | 3: game/zoneTransitions.js, game/dungeonWaves.js, game/timeOfDay.js | 2+, flag | zone, death | zone+rejoin |
+| `_inDungeon` | fly :88 | game/dungeonWaves.js | 6: game/dungeonWaves.js, networking/gameEvents.js, game/respawn.js, game/wheelDungeons.js, game/zoneTransitions.js, +1 | 4: game/zoneTransitions.js, debug/report.js, game/dungeonWaves.js, +1 | 2+, flag | zone, death | zone+rejoin |
 | `_burnUntil` | fly :201 | game/elemHits.js | game/elemHits.js | rendering/systems/effectsRenderer.js | - | - | zone |
 | `_chillUntil` | fly :195 | game/elemHits.js | game/elemHits.js | 2: game/elemHits.js, rendering/systems/effectsRenderer.js | - | - | zone |
 | `_dazeUntil` | fly :204 | game/elemHits.js | game/elemHits.js | 2: game/elemHits.js, rendering/systems/effectsRenderer.js | - | - | zone |
@@ -199,7 +199,7 @@ name in a comment or a string is never counted):
 | `_extraction` | fly :218 | game/lifeSkillRewards.js | 6: ui/ExtractionSwipeLayer.jsx~, game/lifeSkillRewards.js, rendering/systems/effectsRenderer.js~, ui/BroTown.jsx, game/gesturePose.js~, +1 | 19: ui/BroTown.jsx, game/lifeSkillRewards.js, rendering/systems/entityRenderer.js, +16 | 2+ | zone | zone |
 | `_gatherHitSeq` | fly :253 | game/lifeSkillRewards.js | game/lifeSkillRewards.js | game/lifeSkillRewards.js | - | - | never |
 | `_lastHarvestOkAt` | fly :546 | game/lifeSkillRewards.js | game/lifeSkillRewards.js | ui/deskTeach.js | - | - | never |
-| `player` | first :1143 | game/lifeSkillRewards.js | 18: game/zoneTransitions.js~, ui/BroTown.jsx, game/monsterCombat.js, game/lifeSkillRewards.js, game/wheelHome.js~, +13 | 142: networking/gameEvents.js, ui/BroTown.jsx, networking/wsClient.js, +139 | 2+ | zone, death | never |
+| `player` | first :1143 | game/lifeSkillRewards.js | 18: game/zoneTransitions.js~, ui/BroTown.jsx, game/monsterCombat.js, game/lifeSkillRewards.js, game/wheelHome.js~, +13 | 143: networking/gameEvents.js, ui/BroTown.jsx, networking/wsClient.js, +140 | 2+ | zone, death | never |
 | `_mc` | fly :294 | game/manualCombat.js | game/manualCombat.js | 4: game/manualCombat.js, game/swordFeel.js, ui/BroTown.jsx, +1 | - | - | never |
 | `_codex` | fly :37 | game/monsterCodex.js | 2: game/monsterCodex.js, ui/panels/NewMonsterCard.jsx~ | 4: game/monsterCodex.js, game/achievements.js, ui/mobile/dash/AchievementsPanel.jsx, +1 | 2+~ | - | rejoin |
 | `_bowShotAng` | fly :1994 | game/monsterCombat.js | game/monsterCombat.js | rendering/systems/entityRenderer.js | - | - | never |
@@ -257,8 +257,8 @@ name in a comment or a string is never counted):
 | `_qcSeen` | fly :45 | game/questComplete.js | game/questComplete.js | game/questComplete.js | - | - | never |
 | `_race` | fly :75 | game/race.js | game/race.js | 4: game/race.js, rendering/systems/effectsRenderer.js, game/wheelMusic.js, +1 | - | - | zone+rejoin |
 | `_raceLil` | fly :117 | game/race.js | game/race.js | game/race.js | - | - | zone+rejoin |
-| `__pixiErrStreak` | fly :46 | game/renderFrame.js | game/renderFrame.js | game/renderFrame.js | - | - | never |
-| `_splitLog` | fly :106 | game/renderFrame.js | game/renderFrame.js | game/renderFrame.js | - | - | never |
+| `__pixiErrStreak` | fly :60 | game/renderFrame.js | game/renderFrame.js | game/renderFrame.js | - | - | never |
+| `_splitLog` | fly :120 | game/renderFrame.js | game/renderFrame.js | game/renderFrame.js | - | - | never |
 | `campfires` | never set | game/renderFrame.js | - | 2: game/renderFrame.js, ui/BroTown.jsx | no-set | - | zone |
 | `projectiles` | never set | game/renderFrame.js | - | 2: game/renderFrame.js, ui/BroTown.jsx | no-set | - | zone |
 | `_restAsked` | fly :63 | game/rest.js | game/rest.js | game/rest.js | - | - | rejoin |
@@ -358,7 +358,7 @@ name in a comment or a string is never counted):
 | `_zoneWarnAt` | fly :670 | game/zoneTransitions.js | game/zoneTransitions.js | game/zoneTransitions.js | - | - | never |
 | `_zoneWipe` | fly :1085 | game/zoneTransitions.js | 7: game/zoneTransitions.js, game/dungeonWaves.js, networking/gameEvents.js, game/farmTrip.js, game/stateCleanup.js, +2 | rendering/systems/effectsRenderer.js | 2+ | zone | never |
 | `arrows` | first :1241 | game/zoneTransitions.js | 16: game/projectiles.js, rendering/systems/effectsRenderer.js~, game/bowFeel.js~, game/playerActions.js, game/bowVolley.js~, +11 | 3: game/bowFeel.js, game/projectiles.js, rendering/systems/effectsRenderer.js | 2+ | zone | zone |
-| `currentZone` | first :1163 | game/zoneTransitions.js | game/zoneTransitions.js | 94: ui/BroTown.jsx, rendering/systems/effectsRenderer.js, game/projectiles.js, +91 | phase | zone, death | zone |
+| `currentZone` | first :1163 | game/zoneTransitions.js | game/zoneTransitions.js | 95: ui/BroTown.jsx, rendering/systems/effectsRenderer.js, game/projectiles.js, +92 | phase | zone, death | zone |
 | `deathExplosions` | first :1283 | game/zoneTransitions.js | 8: game/monsterCombat.js, game/zoneTransitions.js, game/dungeonWaves.js, networking/gameEvents.js, game/farmTrip.js, +3 | rendering/systems/effectsRenderer.js | 2+ | zone, death | zone |
 | `hitParticles` | first :1277 | game/zoneTransitions.js | 16: rendering/systems/effectsRenderer.js, game/monsterCombat.js, networking/gameEvents.js, game/projectiles.js, game/zoneMechanics.js, +11 | 7: rendering/systems/effectsRenderer.js, game/renderFrame.js, game/levelCelebration.js, +4 | 2+ | zone, death | zone |
 | `map` | first :1162 | game/zoneTransitions.js | 9: game/zoneTransitions.js, game/dungeonWaves.js, networking/gameEvents.js, game/farmTrip.js, game/monsterCombat.js, +4 | 8: game/zoneTransitions.js, game/dungeonWaves.js, ui/BroTown.jsx, +5 | 2+ | zone, death | zone |
@@ -406,50 +406,50 @@ name in a comment or a string is never counted):
 | `snowballBursts` | fly :983 | networking/gameEvents.js | 6: networking/gameEvents.js, game/projectiles.js, game/wheelDungeons.js, rendering/systems/effectsRenderer.js~, ui/BroTown.jsx, +1 | 3: game/projectiles.js, networking/gameEvents.js, rendering/systems/effectsRenderer.js | 2+ | zone | zone |
 | `_nodeResyncT` | fly :55 | networking/nodeSync.js | networking/nodeSync.js | networking/nodeSync.js | - | zone | zone |
 | `_pendingZoneNodes` | fly :36 | networking/nodeSync.js | networking/nodeSync.js | networking/nodeSync.js | - | zone, rejoin | zone+rejoin |
-| `_abilCd` | fly :3944 | networking/wsClient.js | 2: game/abilities.js, networking/wsClient.js | 2: game/abilities.js, networking/wsClient.js | 2+ | - | never |
-| `_authRejects` | fly :1576 | networking/wsClient.js | networking/wsClient.js | networking/wsClient.js | - | - | never |
-| `_characterReset` | fly :1635 | networking/wsClient.js | networking/wsClient.js | networking/wsClient.js | flag | - | never |
-| `_currentRoom` | fly :562 | networking/wsClient.js | networking/wsClient.js | 2: ui/panels/buildings/ExchangePanel.jsx, ui/storeApi.js | - | - | never |
-| `_evErrLogged` | fly :1218 | networking/wsClient.js | networking/wsClient.js | networking/wsClient.js | - | - | never |
-| `_frozenByAdmin` | fly :1563 | networking/wsClient.js | networking/wsClient.js | networking/wsClient.js | flag | - | never |
-| `_hardenedWoodSeen` | fly :2389 | networking/wsClient.js | networking/wsClient.js | ui/panels/buildings/HardenedWoodTab.jsx | - | - | never |
-| `_hpBuff` | fly :2995 | networking/wsClient.js | 3: networking/wsClient.js, ui/BroTown.jsx, ui/panels/buildings/CookPanel.jsx | ui/BroTown.jsx | 2+ | - | rejoin |
-| `_httpToken` | fly :1770 | networking/wsClient.js | networking/wsClient.js | 3: ui/panels/buildings/ExchangePanel.jsx, ui/panels/buildings/PartyPanel.jsx, ui/storeApi.js | - | rejoin | rejoin |
-| `_joinId` | fly :685 | networking/wsClient.js | networking/wsClient.js | networking/wsClient.js | - | - | never |
-| `_joinKey` | fly :696 | networking/wsClient.js | networking/wsClient.js | networking/wsClient.js | - | - | never |
-| `_joinRejectedFatal` | fly :1607 | networking/wsClient.js | networking/wsClient.js | networking/wsClient.js | flag | - | never |
-| `_joinedId` | fly :1679 | networking/wsClient.js | networking/wsClient.js | ui/BroTown.jsx | - | rejoin | rejoin |
-| `_keyFellBack` | fly :4825 | networking/wsClient.js | networking/wsClient.js | networking/wsClient.js | flag | - | never |
-| `_keyIdAsked` | fly :1678 | networking/wsClient.js | networking/wsClient.js | networking/wsClient.js | flag | rejoin | rejoin |
-| `_keyNewAt` | fly :2472 | networking/wsClient.js | networking/wsClient.js | - | no-read | - | never |
-| `_lastAbilityReject` | fly :3930 | networking/wsClient.js | networking/wsClient.js | - | no-read | - | never |
-| `_lastGhostSweep` | fly :1184 | networking/wsClient.js | networking/wsClient.js | networking/wsClient.js | - | - | never |
-| `_levelShownBaselined` | fly :3279 | networking/wsClient.js | networking/wsClient.js | networking/wsClient.js | flag | - | never |
-| `_lootFreezeUntil` | fly :4300 | networking/wsClient.js | 2: networking/wsClient.js, game/groundLoot.js | 4: rendering/systems/entityRenderer.js, game/jump.js, game/monsterCombat.js, +1 | 2+ | - | never |
-| `_manaBuff` | fly :2997 | networking/wsClient.js | 3: networking/wsClient.js, ui/BroTown.jsx, ui/panels/buildings/CookPanel.jsx | ui/BroTown.jsx | 2+ | - | rejoin |
-| `_manaFlat` | fly :2994 | networking/wsClient.js | networking/wsClient.js | ui/BroTown.jsx | - | - | rejoin |
-| `_netHold` | fly :1690 | networking/wsClient.js | 2: networking/wsClient.js, networking/serverReady.js | 8: ui/BroTown.jsx, game/achievements.js, game/dailyRewards.js, +5 | 2+, flag | rejoin | rejoin |
-| `_realtimeStatus` | fly :548 | networking/wsClient.js | networking/wsClient.js | 5: networking/wsClient.js, ui/panels/InfoPanel.jsx, game/tradeSlot.js, +2 | phase | rejoin | rejoin |
-| `_regenBuff` | fly :2982 | networking/wsClient.js | 3: networking/wsClient.js, ui/BroTown.jsx, ui/panels/buildings/CookPanel.jsx | ui/BroTown.jsx | 2+ | - | rejoin |
-| `_resetRefused` | fly :1621 | networking/wsClient.js | networking/wsClient.js | - | no-read | - | never |
-| `_resistBuff` | fly :2985 | networking/wsClient.js | 3: networking/wsClient.js, ui/BroTown.jsx, ui/panels/buildings/CookPanel.jsx | 2: ui/BroTown.jsx, game/monsterCombat.js | 2+ | - | rejoin |
-| `_rpgFromServer` | fly :3390 | networking/wsClient.js | 2: networking/wsClient.js, ui/BroTown.jsx | 4: ui/mobile/QuestCoach.jsx, game/phoneDeath.js, game/questRoute.js, +1 | 2+, flag | - | never |
-| `_serverCaps` | fly :1656 | networking/wsClient.js | networking/wsClient.js | 98: networking/wsClient.js, ui/mobile/dash/ItemDetailPopup.jsx, ui/panels/buildings/SmithyPanel.jsx, +95 | - | rejoin | rejoin |
-| `_serverGatherNodes` | fly :1966 | networking/wsClient.js | networking/wsClient.js | 5: game/lifeSkillRewards.js, game/zoneTransitions.js, networking/nodeSync.js, +2 | flag | rejoin | rejoin |
-| `_serverLoot` | fly :1997 | networking/wsClient.js | networking/wsClient.js | networking/gameEvents.js | flag | rejoin | rejoin |
-| `_serverMonsters` | fly :1952 | networking/wsClient.js | 4: networking/wsClient.js, game/wheelDungeons.js, game/zoneTransitions.js, networking/gameEvents.js | 12: game/monsterCombat.js, game/projectiles.js, networking/gameEvents.js, +9 | 2+, flag | zone, rejoin | zone+rejoin |
-| `_spdBuff` | fly :2987 | networking/wsClient.js | 3: networking/wsClient.js, ui/BroTown.jsx, ui/panels/buildings/CookPanel.jsx | ui/BroTown.jsx | 2+ | - | rejoin |
-| `_t1Seeded` | fly :3350 | networking/wsClient.js | 2: networking/wsClient.js, ui/BroTown.jsx | game/t1Sync.js | 2+, flag | - | never |
-| `_t2LocalEnd` | fly :4718 | networking/wsClient.js | networking/wsClient.js | ui/panels/TradeWindowPanel.jsx | - | - | never |
-| `_tabClaim` | fly :587 | networking/wsClient.js | networking/wsClient.js | networking/wsClient.js | flag | - | never |
+| `_abilCd` | fly :3946 | networking/wsClient.js | 2: game/abilities.js, networking/wsClient.js | 2: game/abilities.js, networking/wsClient.js | 2+ | - | never |
+| `_authRejects` | fly :1577 | networking/wsClient.js | networking/wsClient.js | networking/wsClient.js | - | - | never |
+| `_characterReset` | fly :1636 | networking/wsClient.js | networking/wsClient.js | networking/wsClient.js | flag | - | never |
+| `_currentRoom` | fly :563 | networking/wsClient.js | networking/wsClient.js | 2: ui/panels/buildings/ExchangePanel.jsx, ui/storeApi.js | - | - | never |
+| `_evErrLogged` | fly :1219 | networking/wsClient.js | networking/wsClient.js | networking/wsClient.js | - | - | never |
+| `_frozenByAdmin` | fly :1564 | networking/wsClient.js | networking/wsClient.js | networking/wsClient.js | flag | - | never |
+| `_hardenedWoodSeen` | fly :2391 | networking/wsClient.js | networking/wsClient.js | ui/panels/buildings/HardenedWoodTab.jsx | - | - | never |
+| `_hpBuff` | fly :2997 | networking/wsClient.js | 3: networking/wsClient.js, ui/BroTown.jsx, ui/panels/buildings/CookPanel.jsx | ui/BroTown.jsx | 2+ | - | rejoin |
+| `_httpToken` | fly :1772 | networking/wsClient.js | networking/wsClient.js | 3: ui/panels/buildings/ExchangePanel.jsx, ui/panels/buildings/PartyPanel.jsx, ui/storeApi.js | - | rejoin | rejoin |
+| `_joinId` | fly :686 | networking/wsClient.js | networking/wsClient.js | networking/wsClient.js | - | - | never |
+| `_joinKey` | fly :697 | networking/wsClient.js | networking/wsClient.js | networking/wsClient.js | - | - | never |
+| `_joinRejectedFatal` | fly :1608 | networking/wsClient.js | networking/wsClient.js | networking/wsClient.js | flag | - | never |
+| `_joinedId` | fly :1681 | networking/wsClient.js | networking/wsClient.js | ui/BroTown.jsx | - | rejoin | rejoin |
+| `_keyFellBack` | fly :4827 | networking/wsClient.js | networking/wsClient.js | networking/wsClient.js | flag | - | never |
+| `_keyIdAsked` | fly :1680 | networking/wsClient.js | networking/wsClient.js | networking/wsClient.js | flag | rejoin | rejoin |
+| `_keyNewAt` | fly :2474 | networking/wsClient.js | networking/wsClient.js | - | no-read | - | never |
+| `_lastAbilityReject` | fly :3932 | networking/wsClient.js | networking/wsClient.js | - | no-read | - | never |
+| `_lastGhostSweep` | fly :1185 | networking/wsClient.js | networking/wsClient.js | networking/wsClient.js | - | - | never |
+| `_levelShownBaselined` | fly :3281 | networking/wsClient.js | networking/wsClient.js | networking/wsClient.js | flag | - | never |
+| `_lootFreezeUntil` | fly :4302 | networking/wsClient.js | 2: networking/wsClient.js, game/groundLoot.js | 4: rendering/systems/entityRenderer.js, game/jump.js, game/monsterCombat.js, +1 | 2+ | - | never |
+| `_manaBuff` | fly :2999 | networking/wsClient.js | 3: networking/wsClient.js, ui/BroTown.jsx, ui/panels/buildings/CookPanel.jsx | ui/BroTown.jsx | 2+ | - | rejoin |
+| `_manaFlat` | fly :2996 | networking/wsClient.js | networking/wsClient.js | ui/BroTown.jsx | - | - | rejoin |
+| `_netHold` | fly :1692 | networking/wsClient.js | 2: networking/wsClient.js, networking/serverReady.js | 8: ui/BroTown.jsx, game/achievements.js, game/dailyRewards.js, +5 | 2+, flag | rejoin | rejoin |
+| `_realtimeStatus` | fly :549 | networking/wsClient.js | networking/wsClient.js | 5: networking/wsClient.js, ui/panels/InfoPanel.jsx, game/tradeSlot.js, +2 | phase | rejoin | rejoin |
+| `_regenBuff` | fly :2984 | networking/wsClient.js | 3: networking/wsClient.js, ui/BroTown.jsx, ui/panels/buildings/CookPanel.jsx | ui/BroTown.jsx | 2+ | - | rejoin |
+| `_resetRefused` | fly :1622 | networking/wsClient.js | networking/wsClient.js | - | no-read | - | never |
+| `_resistBuff` | fly :2987 | networking/wsClient.js | 3: networking/wsClient.js, ui/BroTown.jsx, ui/panels/buildings/CookPanel.jsx | 2: ui/BroTown.jsx, game/monsterCombat.js | 2+ | - | rejoin |
+| `_rpgFromServer` | fly :3392 | networking/wsClient.js | 2: networking/wsClient.js, ui/BroTown.jsx | 4: ui/mobile/QuestCoach.jsx, game/phoneDeath.js, game/questRoute.js, +1 | 2+, flag | - | never |
+| `_serverCaps` | fly :1657 | networking/wsClient.js | networking/wsClient.js | 98: networking/wsClient.js, ui/mobile/dash/ItemDetailPopup.jsx, ui/panels/buildings/SmithyPanel.jsx, +95 | - | rejoin | rejoin |
+| `_serverGatherNodes` | fly :1968 | networking/wsClient.js | networking/wsClient.js | 5: game/lifeSkillRewards.js, game/zoneTransitions.js, networking/nodeSync.js, +2 | flag | rejoin | rejoin |
+| `_serverLoot` | fly :1999 | networking/wsClient.js | networking/wsClient.js | networking/gameEvents.js | flag | rejoin | rejoin |
+| `_serverMonsters` | fly :1954 | networking/wsClient.js | 4: networking/wsClient.js, game/wheelDungeons.js, game/zoneTransitions.js, networking/gameEvents.js | 12: game/monsterCombat.js, game/projectiles.js, networking/gameEvents.js, +9 | 2+, flag | zone, rejoin | zone+rejoin |
+| `_spdBuff` | fly :2989 | networking/wsClient.js | 3: networking/wsClient.js, ui/BroTown.jsx, ui/panels/buildings/CookPanel.jsx | ui/BroTown.jsx | 2+ | - | rejoin |
+| `_t1Seeded` | fly :3352 | networking/wsClient.js | 2: networking/wsClient.js, ui/BroTown.jsx | game/t1Sync.js | 2+, flag | - | never |
+| `_t2LocalEnd` | fly :4720 | networking/wsClient.js | networking/wsClient.js | ui/panels/TradeWindowPanel.jsx | - | - | never |
+| `_tabClaim` | fly :588 | networking/wsClient.js | networking/wsClient.js | networking/wsClient.js | flag | - | never |
 | `_tabKey` | first :1219 | networking/wsClient.js | networking/wsClient.js | 2: networking/wsClient.js, ui/BroTown.jsx | - | - | never |
-| `_tabKeyOld` | fly :1675 | networking/wsClient.js | networking/wsClient.js | networking/wsClient.js | - | rejoin | never |
-| `_tabMoved` | fly :547 | networking/wsClient.js | networking/wsClient.js | networking/wsClient.js | flag | - | never |
-| `_verifyToken` | fly :705 | networking/wsClient.js | networking/wsClient.js | networking/wsClient.js | - | - | never |
-| `_xpBuff` | fly :3002 | networking/wsClient.js | networking/wsClient.js | ui/BroTown.jsx | - | - | rejoin |
-| `_xpBuffMul` | fly :3003 | networking/wsClient.js | networking/wsClient.js | ui/BroTown.jsx | - | - | rejoin |
-| `channel` | first :1230 | networking/wsClient.js | networking/wsClient.js | 90: ui/BroTown.jsx, game/monsterCombat.js, networking/gameEvents.js, +87 | - | - | never |
-| `gatherNodes` | fly :1974 | networking/wsClient.js | 15: rendering/nodeLabels.js~, rendering/systems/effectsRenderer.js~, game/lifeSkillRewards.js~, networking/wsClient.js, game/zoneTransitions.js, +10 | 15: ui/BroTown.jsx, rendering/systems/effectsRenderer.js, game/lifeSkillRewards.js, +12 | 2+ | zone, death, rejoin | zone+rejoin |
+| `_tabKeyOld` | fly :1677 | networking/wsClient.js | networking/wsClient.js | networking/wsClient.js | - | rejoin | never |
+| `_tabMoved` | fly :548 | networking/wsClient.js | networking/wsClient.js | networking/wsClient.js | flag | - | never |
+| `_verifyToken` | fly :706 | networking/wsClient.js | networking/wsClient.js | networking/wsClient.js | - | - | never |
+| `_xpBuff` | fly :3004 | networking/wsClient.js | networking/wsClient.js | ui/BroTown.jsx | - | - | rejoin |
+| `_xpBuffMul` | fly :3005 | networking/wsClient.js | networking/wsClient.js | ui/BroTown.jsx | - | - | rejoin |
+| `channel` | first :1230 | networking/wsClient.js | networking/wsClient.js | 91: ui/BroTown.jsx, game/monsterCombat.js, networking/gameEvents.js, +88 | - | - | never |
+| `gatherNodes` | fly :1976 | networking/wsClient.js | 15: rendering/nodeLabels.js~, rendering/systems/effectsRenderer.js~, game/lifeSkillRewards.js~, networking/wsClient.js, game/zoneTransitions.js, +10 | 15: ui/BroTown.jsx, rendering/systems/effectsRenderer.js, game/lifeSkillRewards.js, +12 | 2+ | zone, death, rejoin | zone+rejoin |
 | `groundLoot` | first :1275 | networking/wsClient.js | 18: rendering/systems/effectsRenderer.js~, networking/wsClient.js, game/groundLoot.js, networking/gameEvents.js, game/monsterCombat.js, +13 | 7: networking/gameEvents.js, networking/wsClient.js, game/renderFrame.js, +4 | 2+ | zone, rejoin | zone+rejoin |
 | `myId` | first :1185 | networking/wsClient.js | 2: networking/wsClient.js, ui/BroTown.jsx | 59: networking/gameEvents.js, networking/wsClient.js, ui/BroTown.jsx, +56 | 2+ | - | never |
 | `others` | first :1154 | networking/wsClient.js | 20: networking/wsClient.js, game/visualSystems.js~, networking/gameEvents.js, game/presence2.js, rendering/systems/entityRenderer.js~, +15 | 51: networking/gameEvents.js, ui/BroTown.jsx, networking/wsClient.js, +48 | 2+ | rejoin | rejoin |
@@ -736,6 +736,7 @@ set it (a phase with one door has one).
 | `S` | `_facing` | down, up | 8 functions |
 | game/chatChannel.js | `_mode` | area, party, whisper | 1: game/chatChannel.js setMode |
 | rendering/bodyRecolor.js | `_bakeTag` | , jog-east | 1: rendering/bodyRecolor.js setBakeTag |
+| rendering/characterPortrait.js | `_portraitForce` | every, fresh | 1: rendering/characterPortrait.js __btPortraitCompare |
 | ui/panels/TradeWindowPanel.jsx | `_tradeSide` | 0, 1 | 1: ui/panels/TradeWindowPanel.jsx tradeLanesCls |
 
 ### The plan's machines, and what carries each today (suggested, not confirmed)
@@ -837,6 +838,9 @@ The system (provisional) is the row's own file. **what** is how it is declared a
 | debug/crashTrap.js | 120 | `_rebuilds` | let number | own | own | - | - | never |
 | debug/crashTrap.js | 168 | `_aliveAt` | let number | own | own | - | - | never |
 | debug/crashTrap.js | 169 | `_aliveChan` | let null | own | own | - | - | never |
+| debug/crashTrap.js | 187 | `_markWhere` | let null | own | own | - | - | ? |
+| debug/crashTrap.js | 188 | `_death` | let null | own | own | - | - | ? |
+| debug/crashTrap.js | 189 | `_glLost` | let number | own | own | - | - | ? |
 | debug/debugBus.js | 8 | `listeners` | const Set | own | own | - | - | never |
 | debug/debugBus.js | 9 | `logs` | const array | own | own | - | - | never |
 | debug/debugBus.js | 10 | `wsFrames` | const array | own | own | - | - | never |
@@ -862,6 +866,18 @@ The system (provisional) is the row's own file. **what** is how it is declared a
 | debug/perfTracker.js | 54 | `spikeWorst` | let null | own | own | - | - | never |
 | debug/perfTracker.js | 56 | `longTaskObserver` | let null | own | own | - | - | never |
 | debug/perfTracker.js | 87 | `timersHooked` | let bool | own | own | flag | - | never |
+| debug/report.js | 122 | `_S` | let null | own | own | - | rejoin | ? |
+| debug/report.js | 123 | `_timer` | let null | own | own | - | rejoin | ? |
+| debug/report.js | 124 | `_joinedAt` | let number | own | own | - | rejoin | ? |
+| debug/report.js | 125 | `_dueAt` | let number | own | own | - | rejoin | ? |
+| debug/report.js | 126 | `_died` | let null | own | own | - | - | ? |
+| debug/report.js | 127 | `_diedOwed` | let bool | own | own | flag | rejoin | ? |
+| debug/report.js | 128 | `_lastFrameT` | let number | own | own | - | rejoin | ? |
+| debug/report.js | 128 | `_lastHoldT` | let number | own | own | - | rejoin | ? |
+| debug/report.js | 129 | `_a` | let null | own | own | - | - | ? |
+| debug/report.js | 130 | `_last` | let null | own | own | - | - | ? |
+| debug/report.js | 131 | `_dropped` | let number | own | own | - | - | ? |
+| debug/report.js | 131 | `_sent` | let number | own | own | - | - | ? |
 | game/accuracy.js | 56 | `listeners` | const Set | own | own | - | - | never |
 | game/achievements.js | 228 | `_titlePick` | let bool | own | own | flag | - | never |
 | game/alliance.js | 15 | `listeners` | const Set | own | own | - | - | never |
@@ -897,6 +913,7 @@ The system (provisional) is the row's own file. **what** is how it is declared a
 | game/dashSidePref.js | 70 | `_pref` | let call | own | own | - | - | never |
 | game/deskKeys.js | 50 | `NAV_BY_CODE` | const object | own | own | - | - | never |
 | game/deviceProfile.js | 47 | `_mq` | const object | own | own | - | - | never |
+| game/deviceProfile.js | 212 | `_chipOf` | const WeakMap | own | own | - | - | ? |
 | game/dropLook.js | 13 | `thumb` | let null | own | own | - | - | never |
 | game/dungeonArt.js | 54 | `_live` | const Set | own | own | - | - | zone |
 | game/dungeonClear.js | 20 | `subs` | const Set | own | own | - | - | never |
@@ -1099,13 +1116,14 @@ The system (provisional) is the row's own file. **what** is how it is declared a
 | rendering/blockArm.js | 144 | `_cache` | const Map | own | own | - | - | never |
 | rendering/blockArm.js | 145 | `_sleeveCache` | const Map | own | own | - | - | never |
 | rendering/blockArm.js | 189 | `_peerArmCache` | const WeakMap | own | own | - | - | never |
-| rendering/bodyBake.js | 42 | `_stats` | const object | own | own | - | - | never |
-| rendering/bodyBake.js | 44 | `_dead` | let bool | own | own | flag | - | never |
-| rendering/bodyBake.js | 44 | `_seq` | let number | own | - | no-read | - | never |
-| rendering/bodyBake.js | 44 | `_started` | let number | own | own | - | - | never |
-| rendering/bodyBake.js | 60 | `_pool` | const array | own | own | - | - | never |
-| rendering/bodyBake.js | 62 | `_watchT` | let null | own | own | - | - | never |
-| rendering/bodyBake.js | 129 | `_line` | const array | own | own | - | - | never |
+| rendering/bodyBake.js | 45 | `_stats` | const object | own | own | - | - | never |
+| rendering/bodyBake.js | 47 | `_dead` | let bool | own | own | flag | - | never |
+| rendering/bodyBake.js | 47 | `_seq` | let number | own | - | no-read | - | never |
+| rendering/bodyBake.js | 47 | `_started` | let number | own | own | - | - | never |
+| rendering/bodyBake.js | 63 | `_pool` | const array | own | own | - | - | never |
+| rendering/bodyBake.js | 65 | `_watchT` | let null | own | own | - | - | never |
+| rendering/bodyBake.js | 90 | `_watchAt` | let number | own | own | - | - | ? |
+| rendering/bodyBake.js | 183 | `_line` | const array | own | own | - | - | never |
 | rendering/bodyBakeWorker.js | 83 | `_line` | let call | own | own | - | - | never |
 | rendering/bodyRecolor.js | 95 | `_eyeT` | let null | own | own | - | - | never |
 | rendering/bodyRecolor.js | 608 | `_garmentLeft` | const object | own | own | - | - | never |
@@ -1118,9 +1136,12 @@ The system (provisional) is the row's own file. **what** is how it is declared a
 | rendering/canvasWitness.js | 71 | `_w` | const array | own | own | - | - | never |
 | rendering/canvasWitness.js | 72 | `_last` | let null | own | own | - | - | never |
 | rendering/capeSprites.js | 43 | `_sets` | const Map | own | own | - | - | never |
-| rendering/characterPortrait.js | 175 | `_imgCache` | const Map | own | own | - | - | never |
-| rendering/characterPortrait.js | 176 | `_metaCache` | const Map | own | own | - | - | never |
-| rendering/characterPortrait.js | 177 | `_bodyTopsPromise` | let null | own | own | - | - | never |
+| rendering/characterPortrait.js | 177 | `_imgCache` | const Map | own | own | - | - | never |
+| rendering/characterPortrait.js | 178 | `_metaCache` | const Map | own | own | - | - | never |
+| rendering/characterPortrait.js | 179 | `_bodyTopsPromise` | let null | own | own | - | - | never |
+| rendering/characterPortrait.js | 429 | `_bodyKeep` | const Map | own | own | - | - | ? |
+| rendering/characterPortrait.js | 450 | `_portraitStats` | const object | own | own | - | - | ? |
+| rendering/characterPortrait.js | 451 | `_portraitForce` | let null | own | own | phase | - | ? |
 | rendering/chestPreload.js | 19 | `_held` | const array | own | - | no-read | - | never |
 | rendering/chestPreload.js | 35 | `_p` | let null | own | own | - | - | never |
 | rendering/coinPileArt.js | 23 | `TEX` | const Map | own | own | - | - | never |
@@ -1178,19 +1199,19 @@ The system (provisional) is the row's own file. **what** is how it is declared a
 | rendering/gearSheets.js | 315 | `_gearLine` | let call | own | own | - | - | never |
 | rendering/gearSheets.js | 315 | `_gearPlay` | let null | own | own | - | - | never |
 | rendering/gearSheets.js | 315 | `_gearT0` | let number | own | own | - | - | never |
-| rendering/gearSheets.js | 397 | `_fxTrimStats` | const array | own | own | - | - | never |
-| rendering/gearSheets.js | 398 | `_fxTrimFrames` | const Map | own | own | - | - | never |
-| rendering/gearSheets.js | 550 | `_bodyTrimStats` | const object | own | own | - | - | never |
-| rendering/gearSheets.js | 551 | `_bodyTrimFrames` | const array | own | own | - | - | never |
-| rendering/gearSheets.js | 582 | `_sheetLoads` | const object | own | own | - | - | never |
-| rendering/gearSheets.js | 640 | `_shirtOnWay` | const Map | own | own | - | - | never |
-| rendering/gearSheets.js | 898 | `_artSeen` | const Map | own | own | - | - | never |
-| rendering/gearSheets.js | 899 | `_artTick` | let number | own | - | no-read | - | never |
-| rendering/gearSheets.js | 1013 | `_preloadSkip` | let null | own | own | - | - | never |
-| rendering/gearSheets.js | 1013 | `_skipDecided` | let null | own | own | - | - | never |
-| rendering/gearSheets.js | 1035 | `_extraSources` | const Set | own | own | - | - | never |
-| rendering/gearSheets.js | 1054 | `_drawnElsewhere` | let null | own | own | - | - | never |
-| rendering/gearSheets.js | 1056 | `_upStats` | const object | own | own | - | - | never |
+| rendering/gearSheets.js | 406 | `_fxTrimStats` | const array | own | own | - | - | never |
+| rendering/gearSheets.js | 407 | `_fxTrimFrames` | const Map | own | own | - | - | never |
+| rendering/gearSheets.js | 559 | `_bodyTrimStats` | const object | own | own | - | - | never |
+| rendering/gearSheets.js | 560 | `_bodyTrimFrames` | const array | own | own | - | - | never |
+| rendering/gearSheets.js | 591 | `_sheetLoads` | const object | own | own | - | - | never |
+| rendering/gearSheets.js | 649 | `_shirtOnWay` | const Map | own | own | - | - | never |
+| rendering/gearSheets.js | 907 | `_artSeen` | const Map | own | own | - | - | never |
+| rendering/gearSheets.js | 908 | `_artTick` | let number | own | - | no-read | - | never |
+| rendering/gearSheets.js | 1022 | `_preloadSkip` | let null | own | own | - | - | never |
+| rendering/gearSheets.js | 1022 | `_skipDecided` | let null | own | own | - | - | never |
+| rendering/gearSheets.js | 1044 | `_extraSources` | const Set | own | own | - | - | never |
+| rendering/gearSheets.js | 1063 | `_drawnElsewhere` | let null | own | own | - | - | never |
+| rendering/gearSheets.js | 1065 | `_upStats` | const object | own | own | - | - | never |
 | rendering/gearWalkFrame.js | 37 | `_stats` | const object | own | own | - | - | never |
 | rendering/gearWalkFrame.js | 39 | `_waitFrom` | let number | own | own | - | - | never |
 | rendering/gfxLean.js | 47 | `_stats` | const object | own | own | - | - | never |
@@ -2504,11 +2525,11 @@ The plan's part 2 quoted a reviewer's numbers. These replace them; each says how
 | ... that nothing sets | not counted | 25 | read, or changed inside, and never made |
 | ... marked a phase | not counted | 7 | two or more words set or compared (or one, with a phase's name); 55 more are flags, only ever set to true or false |
 | writes to `S` from `src/rendering/` | 89 | **114** | places: 92 sets and 22 changes inside, over 74 fields; 604 more through a name for the inside |
-| top-of-file variables that hold state | about 850 | **1482** | 943 `let`/`var` (209 of them never changed) and 539 changed `const` containers; 1273 when the never-changed are left out |
+| top-of-file variables that hold state | about 850 | **1502** | 960 `let`/`var` (209 of them never changed) and 542 changed `const` containers; 1293 when the never-changed are left out |
 | ... written from two or more files | not counted | 9 | through an import |
-| ... marked a phase | not counted | 3 | as for a field; 109 more are flags |
+| ... marked a phase | not counted | 4 | as for a field; 110 more are flags |
 
-Variables by folder: data 73, debug 39, game 281, lib 0, networking 18, rendering 706, ui 365, the top of `src/` 0.
+Variables by folder: data 73, debug 54, game 282, lib 0, networking 18, rendering 710, ui 365, the top of `src/` 0.
 
 Should reset (suggested, not confirmed):
 
@@ -2519,9 +2540,10 @@ Should reset (suggested, not confirmed):
 | death | 23 | 2 |
 | rejoin | 69 | 50 |
 | zone+rejoin | 19 | 0 |
+| ? | 0 | 20 |
 
-Rows not yet read (`?`): 0. Suggestions whose row is gone: 0. Suggested to reset where nothing writes it today: 369.
+Rows not yet read (`?`): 20. Suggestions whose row is gone: 0. Suggested to reset where nothing writes it today: 369.
 
 Edges read off the code: 11 blocks call `changeZone()`, 4 set `S._dying = true`, 1 `case 'state_sync'`. The flow settled in 16 rounds over 2 passes.
 
-**Totals: 647 fields and 1482 top-of-file variables, 2129 rows, from 883 files.**
+**Totals: 647 fields and 1502 top-of-file variables, 2149 rows, from 886 files.**
