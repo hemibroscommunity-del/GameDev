@@ -42,6 +42,23 @@ Each with its switch, for the planning session to read to the owner:
   card SK's #1782 (+8 to +10 move messages a ride; `?ridecoast=0`), not
   listed; card E's `arenasettleplan` and `econresetput` (both OFF).
 
+## What GitHub shows, step by step (card Z's step 5b)
+
+Every listed PR's base is `main` (`base.ref`, read at the sitting's start
+and again at the list). Merged down the list in its order in a scratch
+copy (each a merge commit), every head had ONE merge base with the `main`
+above it (`git merge-base --all`), this branch last included. Card O's
+stack (#1792, #1794, #1800, #1814) carries each PR in the next, with
+`main` 82fb78d merged into #1792 and carried up: each needs nothing
+after the one before it lands. With `main`: #1820's and #1822's merge
+base is 201734d (`main` since then: documents only), #1819's 9fd5e58,
+the rest 82fb78d.
+
+**Why not the rest (tried in the scratch copy):** card T's two conflict
+with O's stack and with TF either way round; R's #1823 and #1825 with
+#1819 (each adds R's status file); L's #1824 with #1792 (the
+`DOOR_SUITES` end). Each is held below with what its session does.
+
 ## Card K: #1822 (PR 1, tag 5181) and #1820 (PR 3, tag 5183): listed
 
 **#1822, the worker's two lists made from the wire table (it DEPLOYS),
@@ -257,3 +274,11 @@ once each merges the new `main`.
   in five) are written in card TF's status (Found), not yet J2's: no
   card owns them, and no PR is open for them.
 - P's fire goblin (A'): no branch, no PR.
+
+## The lines
+
+`tools/guards/lib/fourLines.mjs`, measured on `main` 82fb78d: every file
+and function at its line exactly (effectsRenderer 9870, entityRenderer
+8961, BroTown 8371, `BroTown#BroTown` 7801, ...), the import cycles at
+5 (29 files), the writes to `S` from rendering at 114: nothing to lower.
+The switch table's unlisted line is card T's #1816 (held).
