@@ -161,19 +161,41 @@ const ws = { sent: [], send(s) { this.sent.push(JSON.parse(s)); }, close() {} };
    second to refill (a run held at the bound's pace), and "refused" reads as
    "followed only the bound's 500 px of it". */
 const STEP_MS = 1000, STEP_PX = 640;
-const tryStep = () => {
-  rp.x = 1000; rp.y = 1000;
-  rp.lastMoveAt = Date.now() - STEP_MS;
-  rp._mvBudget = 0; rp._mvBudgetAt = Date.now() - STEP_MS;
-  room._handleMove(sess, ws, { type: 'move', x: 1000 + STEP_PX, y: 1000, z: 'meadow' });
-  return rp.x;
+/* v2.3.5423 (card J2): ON ONE CLOCK.  The step stamped its budget at
+   `Date.now() - STEP_MS` and _handleMove read `Date.now()` again: every ms
+   between the two (a loaded CI runner) refilled 0.5 px more, and the bound's
+   check allowed 2.  Server CI on 49afa068 (#1760, run 43583413925) read
+   1502: the control "failed" on a slow millisecond, not on the bound
+   (TRAPS §177, §200).  So the stamp and the move read ONE pinned clock --
+   the bound itself is checked exactly as before, to the same 500 px.
+   `wait` (ms) spends real time between the stamp and the move, as a slow
+   runner does: the break proof below. */
+const pinnedNow = (fn) => {
+  const real = Date.now, t = real();
+  Date.now = () => t;
+  try { return fn(t); } finally { Date.now = real; }
 };
-/* followed only `px` of the way: what a second of the bound refills, give or
-   take the millisecond the call itself took */
+const spin = (ms) => { if (!ms) return; const until = performance.now() + ms; while (performance.now() < until) { /* a slow runner */ } };
+const moveFrom = (px, wait) => pinnedNow((t) => {
+  rp.x = 1000; rp.y = 1000;
+  rp.lastMoveAt = t - STEP_MS;
+  rp._mvBudget = 0; rp._mvBudgetAt = t - STEP_MS;
+  spin(wait);
+  room._handleMove(sess, ws, { type: 'move', x: 1000 + px, y: 1000, z: 'meadow' });
+  return rp.x;
+});
+const tryStep = (wait) => moveFrom(STEP_PX, wait);
+/* followed only `px` of the way: what a second of the bound refills (the
+   clock pinned: exactly, the 2 px are float's room only) */
 const heldTo = (x, px) => x >= 1000 + px - 0.01 && x < 1000 + px + 2;
 
 check('un-buffed, a 640px-per-second sprint is held to the bound: followed only 500 px of it (the control)',
   heldTo(tryStep(), 500), { x: rp.x });
+/* v2.3.5423: the break proof -- 20 ms spent between the stamp and the move
+   (CI's slow millisecond, ten times over).  With the clock not pinned this
+   reads 1510 and fails, as 49afa068 did; pinned, the same 500. */
+check('...on a slow runner too: 20 ms between the stamp and the move change nothing (v2.3.5423)',
+  heldTo(tryStep(20), 500), { x: rp.x });
 
 drink('runner', 'swiftDraught');
 check('the Swift Draught arms a three-minute timer',
@@ -189,9 +211,7 @@ check('WITH it the same sprint is accepted -- the server does not rubber-band '
 
 /* The cap must widen by the buff and no further: a cheater with the potion up
    still cannot teleport. */
-rp.x = 1000; rp.y = 1000; rp.lastMoveAt = Date.now() - 1000;
-rp._mvBudget = 0; rp._mvBudgetAt = Date.now() - 1000;
-room._handleMove(sess, ws, { type: 'move', x: 1000 + 2000, y: 1000, z: 'meadow' });
+moveFrom(2000);   /* v2.3.5423: on the pinned clock, as tryStep */
 check('...but a real teleport is still refused while it is up (followed only the 1.5x bound\'s 750 px)',
   heldTo(rp.x, 750), { x: rp.x });
 
@@ -203,9 +223,7 @@ check('when the three minutes are up the sprint is refused again (500 px of it)'
 /* A tampered magnitude cannot widen the cap arbitrarily. */
 rp._buffs.spd = Date.now() + 60000;
 rp._buffs.spdMul = 99;
-rp.x = 1000; rp.y = 1000; rp.lastMoveAt = Date.now() - 1000;
-rp._mvBudget = 0; rp._mvBudgetAt = Date.now() - 1000;
-room._handleMove(sess, ws, { type: 'move', x: 1000 + 2000, y: 1000, z: 'meadow' });
+moveFrom(2000);   /* v2.3.5423: on the pinned clock, as tryStep */
 check('an absurd stored speed multiplier does not open the cap (read as the food\'s 1.15: 575 px)', heldTo(rp.x, 575), { x: rp.x });
 
 /* ═══════════════ ONE BREW AT A TIME ═══════════════
