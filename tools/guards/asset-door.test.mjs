@@ -46,17 +46,24 @@
  * it would flap.  It compares recorded hashes and reads files through the
  * game's own readers.
  *
- * BREAK PROOF (rule 8), each tried by hand, 2026-11-14 (and put back):
+ * BREAK PROOF (rule 8), each tried by hand, 2026-11-14 (and put back; tried
+ * again after the gatekeeper's sitting 5, the same day):
  *   1. cp public/sprites/ride/skateboard-top.png public/sprites/ride/zz.png && git add -f it  -> FAIL 1
  *   2. rm public/sprites/ride/skateboard-top.png (its row left)                                -> FAIL 2
  *   3. one hex digit of skateboard-top.png's sha256 changed in shipped.json                    -> FAIL 3
  *   4. a second family in families.mjs over 'public/sprites/ride/*.png'                        -> FAIL 4 (and 5:
- *      a file two families match is counted unsorted)
- *   5. the `ride` family's pattern made 'public/sprites/ride/*.gif' (its files match nothing) -> FAIL 5
+ *      a file two families match is counted unsorted; and 8: its rows' family is not the table's)
+ *   5. the `ride` family's pattern made 'public/sprites/ride/*.gif' (its files match nothing) -> FAIL 5 (and 8)
  *   6. OVER_BAR['player-sheets'] 25 -> 24                                                      -> FAIL 6
+ *      public/world/interiors/bank.webp copied to newhall.webp (no colour index), git add -f   -> FAIL 6 (and 1);
+ *      the same file put through node tools/assets/finish.mjs world-interiors                  -> green
  *   7. one texel of public/sprites/look/shirt/stand-east.png given the number 200 (39 entries),
- *      re-encoded; or a see-through texel of look/dodge-east.png made half see-through       -> FAIL 7 (and 3)
- *   8. shipped.json's "files" 3225 -> 3226                                                     -> FAIL 8
+ *      re-encoded; or a see-through texel of look/dodge-east.png made half see-through       -> FAIL 7 (and 3);
+ *      the `look-body` family's kind made 'made'                                              -> FAIL 7 (and 8)
+ *   8. a "files" line put back in shipped.json's head; or two rows swapped; or a row's
+ *      family changed by hand                                                                 -> FAIL 8
+ *   (the bot's twins) a byte added to public/sprites/gear/belt/chainbelt/jog-east.webp        -> green;
+ *      its jog-east.png removed (the twin left)                                               -> FAIL 1 (and 2)
  *
  * Run from the repository's root: node tools/guards/asset-door.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
