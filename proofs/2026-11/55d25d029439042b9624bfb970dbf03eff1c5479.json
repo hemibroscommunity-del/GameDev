@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "55d25d029439042b9624bfb970dbf03eff1c5479",
+  "tree": "6ec7731f9b6ff74910bfd404a843fb1f487a7398",
+  "committedAt": "2026-11-14T04:47:35-08:00",
+  "subject": "Merge pull request #1776 from hemibroscommunity-del/claude/plan-pw-2-boards",
+  "files": 7629,
+  "bytes": 952902969,
+  "listingSha256": "324b10282e538e7527c2af8bbf669dde59b0a75f833ae13211b558b934ec4dfb",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
