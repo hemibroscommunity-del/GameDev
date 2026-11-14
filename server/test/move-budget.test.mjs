@@ -30,7 +30,8 @@
  *   8. `movebudget: false` is all of it as before, and the name is one the
  *      live flags route takes;
  *   9. the overview's counts. */
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { srcFiles } from './src-walk.mjs';
 import { GameRoom } from '../src/index.js';
 import { MOVE_BUDGET } from '../src/movement.js';
 import { WHEEL_ZONE } from '../src/wheelzone.js';
@@ -296,7 +297,7 @@ async function walk(p, pxs, ms, gap = 33, extra) {
   check('5. ...and their first town move is taken wherever it is: town is another map, not 70,000 px from where they died', near(d.ps.x, 400) && near(d.ps.y, 300), { x: d.ps.x, y: d.ps.y });
 
   /* every writer of "the next move is a first move" is the kill switch's */
-  const src = readdirSync(new URL('../src/', import.meta.url)).filter((f) => f.endsWith('.js'));
+  const src = srcFiles();   /* v2.3.5060: in depth, a folder's files too (src-walk.mjs) */
   const writers = [];
   for (const f of src) {
     const text = readFileSync(new URL('../src/' + f, import.meta.url), 'utf8');

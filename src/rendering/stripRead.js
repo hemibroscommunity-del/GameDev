@@ -82,14 +82,22 @@ export function readPaletteBlob(blob) {
   });
 }
 
-/* one at a time */
+/* one at a time.  v2.3.5044: `rows`, a function giving the strip's bundle's
+   rows of colours, asked when this strip's read STARTS (picsNumbers.js
+   stripRowsAsk: the answers before it counted), and the answer carries the
+   strip numbered for its row too (`onRow`: stripRows.js) */
 let _line = Promise.resolve();
-export function readStrip(url, fw, fh, n) {
+export function readStrip(url, fw, fh, n, rows, rgb) {
   if (!stripReadOn()) return Promise.resolve(null);
   _stats.asked++;
   const job = async () => {
     const t0 = (typeof performance !== 'undefined' ? performance.now() : 0);
-    const m = await ask({ strip: String(url), fw, fh, n: n || 0 });
+    let sent = null;
+    try { sent = typeof rows === 'function' ? rows() : (rows || null); } catch (e) { sent = null; }
+    const msg = { strip: String(url), fw, fh, n: n || 0 };
+    if (sent) msg.rows = sent;
+    if (rgb) msg.rgb = rgb;   /* v2.3.5044: a colour variant, retinted on the worker */
+    const m = await ask(msg);
     letGoWhenIdle();
     if (!m || !m.ok || !m.idx || !m.pal) { _stats.failed++; _stats.last = (m && m.error) || 'no answer'; return null; }
     _stats.read++;
