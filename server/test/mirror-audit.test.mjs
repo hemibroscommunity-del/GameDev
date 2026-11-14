@@ -19,7 +19,10 @@
  *
  * The variant-map and speed exemptions are SELF-PRUNING: each asserts
  * the divergence still exists, so when someone closes it server-side
- * the exemption fails loudly and gets deleted instead of rotting.   */
+ * the exemption fails loudly and gets deleted instead of rotting.
+ *
+ * v2.3.5322 (grand plan card V PR 3), §8f, one trap held, its break tried:
+ * TRAPS §43 (the rule): every weapon type's base is one number, the page's WEAPON_TYPES[t].base and the worker's gear.js _weaponBase(t), for every type either side names. Break: gameSystems.js: WEAPON_TYPES.bow.base back to 7.29, the worker's 12.80 left -> FAIL (tried 2026-11-14).   */
 import { existsSync } from 'node:fs'; /* v2.3.3016: a Wheel dungeon's floor picture is in the game */
 import * as SRV from '../src/data.js';
 import { GameRoom } from '../src/index.js';
@@ -576,6 +579,25 @@ function labelMirror(name, srvLabels, cliTable) {
 labelMirror('BLACKSMITH', SRV.BLACKSMITH_TIER_LABELS, BLACKSMITH_TIERS);
 labelMirror('WOODWORKING', SRV.WOODWORKING_TIER_LABELS, WOODWORKING_TIERS);
 labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
+
+// ── 8f. v2.3.5322: A WEAPON'S BASE IS ONE NUMBER, THE PAGE'S AND THE WORKER'S
+// (TRAPS §43; grand plan card V PR 3).  The page's WEAPON_TYPES[t].base is
+// the item card; the worker's gear.js _weaponBase(t) is every point of damage
+// (_computeAttackDamage rolls from it) and the sell price.  Editing one side
+// changes the card and not the damage, or the damage and not the card
+// (v2.3.2259: the bow 7.29 -> 12.80 and the staff 8.54 -> 13.44 went into
+// both).  Every type the worker names (WEAPON_TYPE_LABELS) and every type
+// the page lists: one base, and none falls to the worker's fists fallback.
+{
+  const types = [...new Set([...Object.keys(SRV.WEAPON_TYPE_LABELS), ...Object.keys(WEAPON_TYPES)])].sort();
+  const bad = types.filter((t) => !WEAPON_TYPES[t] || room._weaponBase(t) !== WEAPON_TYPES[t].base)
+    .map((t) => ({ type: t, page: WEAPON_TYPES[t] && WEAPON_TYPES[t].base, worker: room._weaponBase(t) }));
+  check(`§43: every weapon type's base is the same number on the page and the worker (${types.join(', ')})`,
+    types.length >= 4 && bad.length === 0, bad);
+  const fallback = room._weaponBase('no-such-weapon');
+  check('§43: ...and none of them is the worker\'s fists fallback (a type the worker does not know)',
+    types.every((t) => room._weaponBase(t) !== fallback || (WEAPON_TYPES[t] && WEAPON_TYPES[t].base === fallback)), { fallback });
+}
 
 // ── 8b. v2.3.1153 damage-channel reprice: the server coefficient, the
 // client coefficient, and the allocation-panel perPt (percent per point)
