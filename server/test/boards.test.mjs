@@ -20,7 +20,7 @@
  *      retiring.
  *  10. COST: a spin that takes no place writes no board. */
 import { readFileSync } from 'node:fs';
-import { GameRoom, Leaderboard } from '../src/index.js';
+import { GameRoom, Leaderboard, PRIVILEGED_EVENTS } from '../src/index.js';
 import { BOARDS, boardFace, goneId, retireRows, normalizeSpinBoard } from '../src/boards.js';
 import { DAILY } from '../src/dailyrewards.js';
 
@@ -74,9 +74,8 @@ const a = await join('bp_bd_a', 'devbda', 'Ada');
 {
   const sync = a.sent.find((m) => m.type === 'state_sync' && m.caps);
   check('1a caps.boards2 is advertised', sync && sync.caps.boards2 === true, sync && sync.caps && sync.caps.boards2);
-  const src = readFileSync(new URL('../src/index.js', import.meta.url), 'utf8');
-  const priv = src.slice(src.indexOf('const PRIVILEGED_EVENTS'), src.indexOf('const PRIVILEGED_EVENTS') + 60000);
-  check('1b `spin_board` is a privileged event (a phone cannot forge the board)', /'spin_board'/.test(priv));
+  /* v2.3.5181: PRIVILEGED_EVENTS is made from the wire table (server/src/wire/lists.js) */
+  check('1b `spin_board` is a privileged event (a phone cannot forge the board)', PRIVILEGED_EVENTS.has('spin_board'));
   check('1c the kill switch is a lower-case name the flags route takes (TRAPS §117)', /^[a-z0-9_]{1,32}$/.test('boards2'));
   const b0 = await board(a);
   check('1d the ask is answered: two empty lists', b0 && Array.isArray(b0.wins) && Array.isArray(b0.losses) && b0.wins.length === 0 && b0.losses.length === 0, b0);

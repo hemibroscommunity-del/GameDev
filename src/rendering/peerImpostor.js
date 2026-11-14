@@ -52,6 +52,7 @@
  */
 import { Container, Graphics, Matrix, Rectangle, RenderTexture, Sprite, Texture, checkChildrenDidChange } from 'pixi.js';
 import { ONE_PIC, onePicFromQuery, onePicNearFromQuery, calmFigure, gradedWire, pickPictures, deviceSplit, slotGrid, sheetBytes } from '../game/onePic.js';
+import { maxTextureSize } from '../game/deviceProfile.js';   /* v2.3.5227: the device asked in one place (card O PR 7) */
 
 const _search = typeof location !== 'undefined' ? (location.search || '') : '';
 
@@ -111,7 +112,8 @@ export class PeerImpostors {
        offset, but 15% of the figure's edge pixels off) */
     const sw = ONE_PIC.SLOT_CSS_W, sh = ONE_PIC.SLOT_CSS_H;
     let maxTex = 4096;
-    try { const gl = R && R.gl; if (gl) maxTex = Math.min(maxTex, gl.getParameter(gl.MAX_TEXTURE_SIZE) || 4096); } catch (e) { /* keep 4096 */ }
+    /* v2.3.5227: the chip's largest side, asked of the device profile (card O PR 7) */
+    try { if (R && R.gl) maxTex = Math.min(maxTex, maxTextureSize(R) || 4096); } catch (e) { /* keep 4096 */ }
     const g = slotGrid(ONE_PIC.SLOTS, sw, sh, Math.floor(Math.min(2048, maxTex) / dpr), Math.floor(maxTex / dpr));
     if (!g) { this.on = false; return; }
     this.grid = { ...g, n: g.cols * g.rows < ONE_PIC.SLOTS ? g.cols * g.rows : ONE_PIC.SLOTS, sw, sh, swPx: sw * dpr, shPx: sh * dpr };
