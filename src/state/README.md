@@ -98,3 +98,5 @@ until the map places their file; the guard lists those files by name.
 - `wire`, `combat`, `world` (v2.3.5165): the next three, 393 rows.
 - `look` (v2.3.5166): 194 rows. Its `_bakeTag` is a phase with an empty
   word (`''` and `'jog-east'`), which the guard now takes.
+- `render` (v2.3.5167): 453 rows, the two renderers' system, near last as
+  the card says.

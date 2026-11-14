@@ -1,7 +1,7 @@
 card: U
-branch: claude/plan-u-7-look (one branch a PR, each begun from the one before)
-prs: #1721, #1722, #1723, #1725, #1727, #1728, #1730 (all ready)
-state: ready
+branch: claude/plan-u-8-render (one branch a PR, each begun from the one before)
+prs: #1721, #1722, #1723, #1725, #1727, #1728, #1730 (ready), PR 8 (working)
+state: working
 
 ## Done
 
@@ -14,11 +14,12 @@ state: ready
   social 1959; #1725 movement..memory 1760; #1727 debug, art, data 1578;
   #1728 wire, combat, world 1185.
 - PR 7 (5166, #1730): look (194), and the guard takes a phase's empty word: 991.
+- PR 8 (5167): render (453): unlisted 538.
 
 ## Next
 
-- PR 8 (5167): render. PR 9 (5168): ui. Tried: both pass the guard,
-  unlisted 16 (the unsorted rows).
+- PR 9 (5168): ui (522). Tried: it passes the guard, unlisted 16 (the
+  unsorted rows): the card's finish.
 
 ## Found
 
