@@ -33,12 +33,15 @@ const PARTS = [
   { key: 'sideways', viewport: { width: 844, height: 390 }, touch: true },
   { key: 'computer', viewport: { width: 1280, height: 800 }, touch: false, wide: true },
 ];
-/* who, the trades he works, and where he is watched from (an offset from him) */
+/* who, the trades he works, and where he is watched from (an offset from him):
+   below him upright, BESIDE him on a short screen (sideways, a computer's
+   play column), where a spot below puts him under the top bar's title */
 const WORKERS = [
-  { name: 'Chef Blaze', poses: ['cook'], from: [30, 180] },
-  { name: 'Woodworker Bro', poses: ['chop'], from: [0, 260] },
-  { name: 'Farmer Bro', poses: ['farmkneel', 'farmhoe', 'farmwater'], from: [0, 260] },
+  { name: 'Chef Blaze', poses: ['cook'], from: [30, 180], side: [140, 10] },
+  { name: 'Woodworker Bro', poses: ['chop'], from: [0, 260], side: [260, 10] },
+  { name: 'Farmer Bro', poses: ['farmkneel', 'farmhoe', 'farmwater'], from: [0, 260], side: [260, 10] },
 ];
+const watchFrom = (part, W) => (part.key === 'upright' ? W.from : W.side);
 const TOOL = { farmhoe: true, farmwater: true };
 const HIDE = '.bt-quest-banner, .bt-quest-plate, *:has(> [data-coach-dismiss]) { visibility: hidden !important; }';
 
@@ -116,7 +119,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
           live && fs.sheets.every((s) => s[1]), fs);
         for (const W of WORKERS) {
           if (process.env.BT_FOLKWORK_WHO && process.env.BT_FOLKWORK_WHO !== W.name) continue;
-          await T.goNear(W.name, W.from[0], W.from[1]);
+          const at = watchFrom(part, W);
+          await T.goNear(W.name, at[0], at[1]);
           for (const pose of W.poses) {
             let d = await T.waitPose(W.name, pose, 60000);
             /* the picture while his trade's figure is on the screen: taken, then
@@ -130,8 +134,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
             }
             const sk = d && d.skill;
             const ok = !!d && d.pose === pose && d.live && !!sk && sk.shown === 'skill' && sk.pose === pose && sk.look === true && sk.shirt === true
-              && (!TOOL[pose] || sk.prop === true) && sk.misses === 0;
+              && (!TOOL[pose] || sk.prop === true) && sk.misses === 0 && sk.both === false;
             rec.ok(`${part.key}: ${W.name} ${pose === 'cook' ? 'cooks with his pan' : pose === 'chop' ? 'chops with his axe' : pose === 'farmkneel' ? 'kneels in the soil' : pose === 'farmhoe' ? 'hoes' : 'waters'}: the skill figure from the colour numbers, his tee on${TOOL[pose] ? ', the tool in his hands' : ''} (${d && d.pose}, ${sk ? `frame ${sk.frame}, ${sk.height} px tall, ${sk.misses} frames stood` : 'no figure'})`, ok, d);
+          }
+          /* the ghost check (the ghost audit's "after it, nothing of it is
+             left"): off his trade (walking on, or at a standing stop), the
+             trade's figure is put away and his walking body is back, never
+             both at once (upright: once a trade is enough) */
+          if (part.key === 'upright') {
+            let off = null;
+            const end = Date.now() + 90000;
+            while (Date.now() < end && !off) {
+              const q = await T.drawnOf(W.name);
+              if (q && q.live && !W.poses.includes(q.pose)) off = q;
+              else await T.P.page.waitForTimeout(300);
+            }
+            const s2 = off && off.skill;
+            rec.ok(`${part.key}: ${W.name} off his trade (${off && off.pose}): the trade's figure put away, his walking body back, never both (${s2 ? s2.shown : 'not seen'})`,
+              !!s2 && s2.shown === 'figure' && s2.both === false, off);
           }
         }
       }
@@ -148,8 +168,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok('noskills: in the world (guard)', T.inWheel);
       await T.P.page.waitForFunction(() => window.__btFolkWalk && window.__btFolkWalk() && window.__btFolkWalk().on, null, { timeout: 60000 }).catch(() => {});
       await T.goNear('Chef Blaze', 30, 180);
-      const d = await T.waitPose('Chef Blaze', 'pickup', 60000);
-      await T.shot('Chef Blaze', 'folkwork-noskills-pickup.png');
+      let d = await T.waitPose('Chef Blaze', 'pickup', 60000);
+      /* the picture while he is at it (his day walks on between stops) */
+      for (let q = 0; q < 6; q++) {
+        await T.shot('Chef Blaze', 'folkwork-noskills-pickup.png');
+        const after = await T.drawnOf('Chef Blaze');
+        if (after && after.pose === 'pickup') { d = after; break; }
+        d = await T.waitPose('Chef Blaze', 'pickup', 30000);
+      }
       const fs = await T.P.page.evaluate(() => (window.__btFolkSkill ? window.__btFolkSkill() : null));
       rec.ok(`5. ?folkskills=0: Chef Blaze works in PR 1's pickup at his stop, not the cook (${d && d.pose}), and none of the trades' figures is loaded (${fs && fs.sheets.filter((x) => x[1]).length} sheets)`,
         !!d && d.pose === 'pickup' && !!d.skill && d.skill.shown === 'figure' && !!fs && fs.skillsOff && fs.sheets.every((x) => !x[1]), { d, fs });

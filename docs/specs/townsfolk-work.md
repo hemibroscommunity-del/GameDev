@@ -146,11 +146,28 @@ the figure's crown. What is different is where the figure comes from.
   none of the set; a figure with a part not in falls back the same way.
   `?folkwork=0` stands them at every stop, these included, and loads none
   of the set either.
+- **The page's thread, measured** (`mp-heldsweep`, the town's stations,
+  `stand,town`, an unminified build). The first runs read the monster
+  strip's texture (`strip-made`) over its 12 ms line twice in three
+  (20.6, 14.4, 4.1 ms; `main` 5.2, 5.4, 4.4). His figure made garbage
+  every frame (his colours' entries and their key, his head's record, the
+  frame's textures, the probe's record): now worked out once a look, the
+  rest objects reused (`folkSkill.js` `lookBits`). Three runs after: 9.1,
+  7.6, 7.6 ms, nothing over any line; the collector 45.6, 13.0, 31.9 ms
+  at worst (its line 60; `main` 18 to 37 ms in five runs). No line raised.
 - **Checked by** `townsfolk-walk.test` §2g, §2i-2k and §6 (the copies of
   `effectsRenderer`'s numbers, the set on disk, the switch, the wiring) and
   `mp-folkwork` (on a phone upright and sideways, and a computer: each trade
   drawn from the numbers, his tee on, the farmer's tools, no frame stood;
-  `?folkwork=0` loads none). Its pictures: `tools/qa/mp/out/folkwork-*.png`.
+  upright, the ghost check: off his trade his figure put away and his
+  walking body back, never both; `?folkskills=0` back to PR 1's pickup and
+  `?folkwork=0` standing, neither loading the set). Its pictures:
+  `tools/qa/mp/out/folkwork-*.png`; as they were when this shipped,
+  `docs/specs/townsfolk-work/poses-upright.png`, `poses-sideways.png`,
+  `poses-computer.png` (the cook, the chop, the farmer's kneel, hoe and
+  water) and `noskills-pickup.png`. `mp-ghostaudit` plays the PLAYER's
+  figures, which this does not change: its fire passes (61 frames) and its
+  cook starts on neither this branch nor `main` (0 frames: the test's).
 
 Not drawn yet, for the owner: the blacksmith's swing over the forge's anvil
 (the player's smithing draws `fx/smith-anvil` over the rock under the

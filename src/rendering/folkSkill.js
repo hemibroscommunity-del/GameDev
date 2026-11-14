@@ -305,7 +305,8 @@ export function dropFolkSkill(display) {
 export function folkSkillProbe(display, live) {
   if (!live) return { shown: 'photo' };
   const up = !!(display._folkSkill && display._folkSkill.visible);
-  return { shown: up ? 'skill' : (display._folk && display._folk.visible ? 'figure' : 'none'),
+  const walking = !!(display._folk && display._folk.visible);
+  return { shown: up ? 'skill' : (walking ? 'figure' : 'none'), both: up && walking,   /* both: a ghost (mp-folkwork) */
     ...(up ? display._folkSkillAt : {}), misses: display._folkSkillMisses || 0, miss: display._folkSkillMiss || null };
 }
 
