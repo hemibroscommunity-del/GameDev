@@ -1,7 +1,7 @@
 card: LB
 branch: claude/plan-lb-2-window (PR 2, begun from claude/plan-lb-1-pieces)
-prs: #1771 (5500, merged); #1783 (5501, held: mending sitting 10's list)
-state: working
+prs: #1771 (5500, merged); #1783 (5501, ready again: sitting 10's list mended)
+state: ready
 
 ## Done
 
@@ -35,5 +35,6 @@ state: working
   second mockup's; PW's fields (`powerIndex {power, melee, bow, magic, v}`,
   `caps.power` the version); the stat boards held, none built.
 - #1783 held at the gatekeeper's sitting 10 (whole names at 375 px, the
-  podium's value, two "Lv"; lows): mended in the next push. `CAP_GATES`'
+  podium's value, two "Lv"; lows): mended (mp-boardslook 18/18, mp-boards
+  37/37, the 375 px picture in the PR). `CAP_GATES`'
   `power` row is PR 3's (#1783 reads no cap).
