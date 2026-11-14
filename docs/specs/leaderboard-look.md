@@ -128,10 +128,11 @@ second mockup's, the art the sheet's). What it looks like and why is
   height less the table's head and three rows over 100, at most 1.15; under
   0.6 it is not drawn. The face sits in the field (29% down, a third of the
   shield's height), the name on the ribbon (64-79% down, 19% in from each
-  side), the BOARD's value at 79% (`podiumValue`: the level on Level, the
-  weapon's level on its board, the Power on Overall, "1,234 kills",
-  "1,234 AP", the skill's level), so the shields read in the board's order:
-  the boxes measured on the pieces.
+  side; `fitName`: measured, shrunk to fit, never under 11 px, then "..."),
+  the BOARD's value at 79% (`podiumValue`, as the row prints it: "Lv N" on
+  Level only, a plain number for a weapon's or a skill's level, "1,234
+  kills", "1,234 AP"), so the shields read in the board's order: the boxes
+  measured on the pieces.
 - **The table** (`TableHead`, `BoardRow.jsx` `TableRow`): one CSS grid, the
   rank 28 px, the player the rest, then the board's columns (`tableOf`). On a
   board narrower than `WIDE_TABLE` (330 px: an upright phone's, ~250-265 px)
