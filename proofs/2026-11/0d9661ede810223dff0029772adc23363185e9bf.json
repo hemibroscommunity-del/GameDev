@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0d9661ede810223dff0029772adc23363185e9bf",
+  "tree": "37dd67a3732120d0629d473c8f41f1c1abef9bb1",
+  "committedAt": "2026-11-13T20:51:07-08:00",
+  "subject": "Merge pull request #1699 from hemibroscommunity-del/claude/plan-e-4-econ",
+  "files": 7461,
+  "bytes": 946535837,
+  "listingSha256": "c62991412e1b3eb4593ac2e7ea5fa87be43f2e04924948e01cec38c12e7b1c35",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
