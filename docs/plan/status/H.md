@@ -19,8 +19,9 @@ state: ready
 
 ## Next
 
-- Nothing on the card. Spare tags 5050 to 5054, if the owner wants the
-  follow-ups under Needs.
+- The planning session's answers: the sweep stays off (its spikes noted in
+  `held-budget.mjs`); both follow-ups, one PR each: 5050 sitting 5's loose
+  ends on #1700, then 5051 the portrait's shirt composed for one frame.
 
 ## Found
 
@@ -31,10 +32,6 @@ state: ready
 - Pixi's render threw (`addressModeU` of null) once, a hung worker's jobs
   failing twice (the old restart rule, as on `main` until PR 10).
 
-## Needs (the owner's, asked once)
+## Needs
 
-- Follow-ups, each its own PR with a spare tag, or leave them? (a) sitting
-  5's loose ends on #1700 (review-z5.md: low, speed only); (b) the Equipment
-  screen's shirt composed whole for one frame (`gear-sheet` 22.4 ms once).
-- The sweep's turn kept off the list (box spikes 12.1 to 18.3 ms named by
-  it), or listed at 13 ms, which every run passes? Off unless told.
+- Nothing (both questions answered by the planning session, 2026-11-14).

@@ -108,7 +108,12 @@ export const KNOWN = {
      slice of 3 ms a turn (the next 100 ms later until the round ends), and a picture's address is read once, after
      the cheaper checks (its hold is now `wrapped > sweepPicsOnceTurn`).  The sample (`town`, `lands`, `peer`,
      `armour`, and the crowd's `c-armour8`, `h-eight`, `g-boards`, x3): 20 holds, 7.2 ms the longest but one of
-     12.1 that the Leaderboard's faces shared (docs/specs/held-sweep.md, "Card H") */
+     12.1 that the Leaderboard's faces shared (docs/specs/held-sweep.md, "Card H").
+     v2.3.5049, SEEN BEFORE (the planning session's call: it stays off): #1747's sample showed three holds named
+     `wrapped > sweepPicsOnceTurn` over the line, 18.3 ms once at `armour` (5 ms of it inside the browser's own
+     setTimeout) and 12.1 + 12.3 ms in one crowd run (a-ink, b-fish).  `releasable` timed call by call there: 1.4 ms at
+     most.  This box's pauses landing in the sweep's short turns, not the sweep: a line on this list says why
+     something holds, and here nothing does.  If a later sweep TIMES a turn's own work over 12 ms, it goes on the list */
   /* v2.3.5047: 'ui:*' (was 16) off the list.  One component of the band drawn in one piece: React lets a frame in
      between components, never inside one.  The gear tab built its nine equipment cells in its own body (each with its
      rows, the amulet's stat card), and its gold badge said the page's first number with commas (about 10 ms, the
