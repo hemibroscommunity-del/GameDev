@@ -106,6 +106,17 @@ export const PHASES = [
     rejoin: 'none: the join places the player again (state_sync, body_place)',
     held: { suite: 'server/test/zone-leftovers.test.mjs' },
   },
+  /* v2.3.5222 (card O PR 2): the governor's ladder, a row of its own */
+  {
+    name: 'ladder', side: 'page', status: 'door',
+    what: 'Where the governor (the frame pacer, grown) stands on the ladder below the lane\'s row: rungs taken on each axis.',
+    field: '_rung', states: ['row', 'below'],
+    fn: 'setRung', file: 'src/game/drawLanes.js',
+    clears: [{ edge: 'never', at: 'src/game/drawLanes.js setRung' }],
+    rejoin: 'none: the device\'s own, kept by lane in localStorage for the next sitting (framePacer.js makeGovernor)',
+    held: { suite: 'server/test/frame-pacer.test.mjs' },
+    note: 'Kept: the device\'s, not the zone\'s (card L\'s `reset` column, when it lands: kept). setRung is called by the governor alone (framePacer.js); frame-pacer.test §17 fails a second caller and a second write of _rung.',
+  },
 
   /* ═══ TO DO, THE WORKER (card L PR 5: trade, duel, party, cook, harvest,
      fishing, dungeon, guard, ride, pose, race, arena) ═══ */

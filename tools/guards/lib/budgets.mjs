@@ -36,6 +36,10 @@
  *   save-pace        the player's record's stamp (_saveRpg), its one owner
  *   tick-rate        the tick's interval (tickpace.js), its one owner
  *   socket-budget    a socket's messages in (flood.js), its one owner
+ *   ladder           v2.3.5222: the lane's knobs at a rung (game/drawLanes.js):
+ *                    the governor (the pacer, grown: framePacer.js), its one
+ *                    owner.  The Speed test HOLDS it while it runs
+ *                    (holdLadder): it is not a second controller
  *
  * THE SHARED THINGS and the line a sum of spends may not pass (null: no sum
  * line exists today; BUDGETS part 0's table):
@@ -120,7 +124,8 @@ export const ROWS = Object.freeze({
     reads: ['page-ms', 'lateness'],   /* renderFrame.js: the frame's sample */
     spends: {},
     controls: [
-      c('lateness', 'src/game/framePacer.js'),        /* THE pacer: how many refreshes are drawn */
+      c('lateness', 'src/game/framePacer.js'),        /* THE pacer: how many refreshes are drawn; v2.3.5222 its verdict on every screen */
+      c('ladder', 'src/game/framePacer.js'),          /* v2.3.5222: THE governor (card O): the ladder's rung, by the pacer's verdict */
       c('lateness', 'src/game/frameClock.js'),        /* the steady step: a second clock of the same frame */
       c('world-in-play', 'src/game/framePacer.js'),   /* the pacer's judge */
       c('page-ms', 'src/game/framePacer.js'),         /* beforeDraw: reads that wait for the chip, no limit */

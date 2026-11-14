@@ -35,11 +35,44 @@
  *      rebuild the renderer) -- found by mp-steadypace, its page saying
  *      "watchdog-dark screen 0% lit, strike 1".
  * The phone half is tools/qa/mp/mp-steadypace.mjs.
+ *
+ * v2.3.5222, THE GOVERNOR (card O PR 2; the grand plan's 2.3: the pacer,
+ * grown, moves the ladder of game/drawLanes.js):
+ *  12. one verdict, every screen: lateOver is the one rule, judged at 120,
+ *      60 and 30; the rate's own steps stay a fast screen's;
+ *  13. THE MODEL (2.3's own words): a phone whose frames cost more as it
+ *      heats over minutes and less as it cools, at 30, 60 and 120 -- it
+ *      SETTLES (the last five minutes at steady heat on one rung, but for
+ *      tries up that go straight back), COMES BACK (the lane's row, every
+ *      refresh, once cool) and does not SEE-SAW (each try up after a failed
+ *      one waits twice as long, to UP_WAIT_MAX_MS); the late frames' split
+ *      picks the axis;
+ *  14. pixels only behind a veil (a loading screen, a tab's return): a
+ *      phone whose chip is the cost reaches the pixel rungs, and each such
+ *      step falls inside a veil, the wanted one waiting meanwhile;
+ *  15. a full memory takes the work axis's rungs, never the chip's (never
+ *      the pixels);
+ *  16. off in the test box (`?lane=` holds it, `?govern=1` asks for it,
+ *      `?govern=0` turns it off), held by the Speed test, and kept by lane
+ *      for the next sitting (loaded at a veil);
+ *  17. THE DOOR: the rung (drawLanes.js `_rung`) has one writer, setRung,
+ *      and setRung one caller, the governor in framePacer.js; the wiring.
+ *
+ * BREAK PROOF (rule 8), tried by hand 2026-11-14:
+ *  13. framePacer.js makeGovernor down(): `upWait = Math.min(UP_WAIT_MAX_MS, upWait * 2)`
+ *      as `upWait = Math.min(UP_WAIT_MAX_MS, upWait)` (the doubling taken out)
+ *                                  -> FAIL 13 at 60, both seeds (17 and 13 failed tries: a see-saw; not settled)
+ *  14. makeGovernor step(): `if (!veil && movesPixels(ladderRung(), to))` as
+ *      `if (false && movesPixels(ladderRung(), to))`   -> FAIL 14 (both seeds) and 14b
+ *  17. `setRung(1, 0);` at the end of src/game/speedTest.js -> FAIL 17
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { framePaceOn, refreshOf, makeFramePacer, noteDrawn, whenDrawn, WHEN_DRAWN_TRIES, PACE_FAST_MS, PACE_FLOOR_MS, UP_WAIT_MS, UP_WAIT_MAX_MS, JUDGE_RUNS } from '../../src/game/framePacer.js';
+import { framePaceOn, refreshOf, makeFramePacer, noteDrawn, whenDrawn, WHEN_DRAWN_TRIES, PACE_FAST_MS, PACE_FLOOR_MS, UP_WAIT_MS, UP_WAIT_MAX_MS, JUDGE_RUNS,
+  lateOver, governOn, makeGovernor, useFrameSamples, holdLadder, lateSplit, LATE_DOWN } from '../../src/game/framePacer.js';
+import { readdirSync, statSync } from 'node:fs';
+import { AXES, KNOBS, KNOB_NAMES, knobAt, ladderRung, rungDepth, useDevClass, drawLane, _resetLanes } from '../../src/game/drawLanes.js';   /* v2.3.5222 */
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -273,6 +306,213 @@ check('1. the address: pace=0, off and false are the old way; anything else is o
   /* nothing reads the game's canvas in an animation frame of its own any more */
   const own = (bt.match(/requestAnimationFrame\(function \(\) \{[\s\S]{0,400}?drawImage\((canvas|cv), 0, 0, 32, 18\)/g) || []).length;
   check('11f. ...and no 32 x 18 read of the canvas is left in an animation frame of its own', own === 0, own);
+}
+
+/* ═══ v2.3.5222: THE GOVERNOR ═══ */
+const memStore = () => { let v = null; return { get: () => (v ? JSON.parse(JSON.stringify(v)) : null), set: (x) => { v = JSON.parse(JSON.stringify(x)); }, peek: () => v }; };
+/* 12 */
+{
+  check('12. the one rule of a late frame: more than half a refresh past its frame, at 120, 60 and 30',
+    Math.abs(lateOver(B120, 1) - 12.5) < 1e-9 && Math.abs(lateOver(B60, 1) - 25) < 1e-9 && Math.abs(lateOver(1000 / 30, 1) - 50) < 1e-9 && Math.abs(lateOver(B120, 3) - 29.1667) < 1e-3);
+  /* a 60 screen: judged now (the governor's), its own rate untouched */
+  _resetLanes();
+  const store = memStore();
+  const gov = makeGovernor({ on: true, store });
+  const mk = () => { const r = rng(21); return () => (r() < 0.6 ? 22 : 12); };
+  const { P } = play(B60, mk(), 60000, { pacer: makeFramePacer({ gov }), judge: (t) => t > 2000 });
+  check('12b. a 60 screen is judged (a verdict a few seconds), and its rate is not paced: every refresh, as before',
+    P.read().every === 1 && P.read().changes === 0 && P.read().lateShare > LATE_DOWN, P.read());
+  check('12c. ...and the governor stepped down on it (a 60 screen: no rate of its own to step)', rungDepth() > 0, gov.read());
+  _resetLanes();
+}
+
+/* 13: THE MODEL.  A screen refreshing every b ms; a drawn frame costs work + chip ms (the chip part keeps the page
+   waiting), times the heat, times a spread like the owner's meter (seven frames in ten near the mean, a quarter a
+   good deal longer, one in twenty much longer); the next call is the first refresh after it.  Each rung lowers what
+   its knob would: a crowd rung the work by a fifth, the shine, the shadows, the water a share of the chip, a pixel
+   rung a quarter of it.  The RATE's rung is modelled as nothing (it becomes a knob in card O's PR 4), so the ladder
+   must settle without it.  The frame meter's samples are the model's own: each drawn frame's gap, and the work of
+   the frame before it.  Loading screens (`veil`) now and then: the governor loads its kept rung at the first, and
+   moves the pixels only behind one. */
+const EFFECT = { crowd: [1, 0.8, 0.64], shine: [1, 0.86], shadows: [1, 0.8], water: [1, 0.9], pixels: [1, 0.78, 0.56] };
+const stepOf = (k, r) => KNOBS[k].steps.indexOf(knobAt('full', k, r));
+const costAt = (base, r) => { const v = (k) => EFFECT[k][stepOf(k, r)]; return { work: base.work * v('crowd'), chip: base.chip * v('shine') * v('shadows') * v('water') * v('pixels') }; };
+function model(b, base, heat, ms, { veil = () => false, seed = 1 } = {}) {
+  const G = makeGovernor({ on: true, store: memStore() });
+  const P = makeFramePacer({ gov: G });
+  const ring = [];
+  useFrameSamples((fromT, fn) => { let i = ring.length; while (i > 0 && ring[i - 1].t > fromT) i--; for (let j = i; j < ring.length; j++) fn(ring[j]); return ring.length ? ring[ring.length - 1].t : fromT; }, null);
+  const r = rng(seed);
+  const steps = [];
+  let seen = 0, k = 0, prevT = null, prevWork = 0;
+  while (k * b < ms) {
+    const t = k * b;
+    const v = veil(t);
+    if (P.take(t, !v)) {
+      if (prevT != null) { ring.push({ t, totalMs: t - prevT, workMs: prevWork }); if (ring.length > 600) ring.shift(); }
+      const u = r();
+      const m = heat(t) * (u < 0.7 ? 0.85 + 0.2 * r() : u < 0.95 ? 1.05 + 0.3 * r() : 1.35 + 0.35 * r());
+      const c = costAt(base, ladderRung());
+      prevWork = c.work * m; prevT = t;
+      k += Math.max(1, Math.ceil((c.work + c.chip) * m / b - 1e-9));
+    } else k += 1;
+    const L = G.read();
+    if (L.stepsN > seen) { for (const st of L.steps.slice(-(L.stepsN - seen))) steps.push({ ...st, veil: v }); seen = L.stepsN; }
+  }
+  useFrameSamples(null, null);
+  return { P, G, steps };
+}
+/* heat: cool a minute, up to `hot` by minute 4, steady to minute 20, cool again by minute 22, cool to minute 40 */
+const MIN = 60000;
+const heatOf = (hot) => (t) => (t < MIN ? 1 : t < 4 * MIN ? 1 + (hot - 1) * (t - MIN) / (3 * MIN) : t < 20 * MIN ? hot : t < 22 * MIN ? hot - (hot - 1) * (t - 20 * MIN) / (2 * MIN) : 1);
+const loadings = (t) => t < 2000 || [5, 9, 13, 24, 28, 31, 34, 37].some((m) => t >= m * MIN && t < m * MIN + 3000);
+/* a failed try: a step up whose very next step is back down the same axis */
+const failedTries = (steps, from, to) => steps.filter((x, i) => x.dir > 0 && x.t >= from && x.t < to && steps[i + 1] && steps[i + 1].dir < 0 && steps[i + 1].axis === x.axis);
+/* the most failed tries the doubled waits allow on a stretch of `ms`: 20, 40, 80, 160 s, then one each 320 s, and one */
+const triesAllowed = (ms) => { let n = 1, w = UP_WAIT_MS, t = 0; while (t + w <= ms) { t += w; n++; w = Math.min(UP_WAIT_MAX_MS, w * 2); } return n; };
+{
+  const runs = [
+    { name: '30', b: 1000 / 30, base: { work: 11, chip: 13 }, hot: 2.0 },
+    { name: '60', b: B60, base: { work: 5, chip: 6 }, hot: 2.1 },
+    { name: '120', b: B120, base: { work: 2.6, chip: 3.4 }, hot: 5.4 },
+  ];
+  for (const R of runs) {
+    for (const seed of [7, 8]) {
+      _resetLanes();
+      const { P, G, steps } = model(R.b, R.base, heatOf(R.hot), 40 * MIN, { veil: loadings, seed });
+      const tag = `at ${R.name} a second (seed ${seed})`;
+      check(`13. ${tag}: it steps down as the phone heats (${steps.filter((x) => x.dir < 0 && x.t < 9 * MIN).length} steps by minute 9)`, steps.some((x) => x.dir < 0 && x.t < 9 * MIN), steps.slice(0, 8));
+      /* settled: the last five minutes at steady heat (15 to 20), one rung but for tries up that go straight back */
+      const last = steps.filter((x) => x.t >= 15 * MIN && x.t < 20 * MIN);
+      let settled = true;
+      for (let i = 0; i < last.length; i++) {
+        const x = last[i], back = last[i + 1];
+        if (x.dir > 0 && back && back.dir < 0 && back.axis === x.axis) i++;
+        else settled = false;
+      }
+      check(`13. ${tag}: SETTLED -- the last five minutes at steady heat on one rung, but for ${last.filter((x) => x.dir > 0).length} try(s) up, each straight back`, settled, last);
+      /* no see-saw: on the 16 minutes of steady heat, no more failed tries than the doubled waits allow */
+      const fails = failedTries(steps, 4 * MIN, 20 * MIN);
+      const allowed = triesAllowed(16 * MIN);
+      check(`13. ${tag}: NO SEE-SAW -- ${fails.length} failed tries up in 16 minutes of steady heat (the doubled waits allow ${allowed}), never two inside UP_WAIT_MS`,
+        fails.length <= allowed && fails.every((x, i) => i === 0 || x.t - fails[i - 1].t >= UP_WAIT_MS), fails.map((x) => Math.round(x.t / 1000)));
+      const end = G.read();
+      check(`13. ${tag}: BACK -- cool again, the lane's row (${end.work} work, ${end.chip} chip) and every refresh (${P.read().every})`, end.depth === 0 && P.read().every === 1, { end, pace: P.read() });
+      if (R.name === '120') check(`13. ${tag}: the screen's own rate stepped first (${P.read().changes} changes of the rate)`, P.read().changes >= 2, P.read());
+    }
+  }
+  /* the split picks the axis: frames late for the game's own work take the work axis */
+  _resetLanes();
+  const workHeavy = model(B60, { work: 13, chip: 2 }, () => 1.3, 3 * MIN, { veil: (t) => t < 2000, seed: 3 });
+  _resetLanes();
+  const chipHeavy = model(B60, { work: 2, chip: 13 }, () => 1.3, 3 * MIN, { veil: (t) => t < 2000, seed: 3 });
+  check('13b. the late frames\' split picks the axis: the game\'s own work steps the work axis (the crowd first), waiting for the chip the chip axis',
+    workHeavy.steps.length > 0 && workHeavy.steps[0].axis === 'work' && workHeavy.steps[0].knobs.includes('crowd') && chipHeavy.steps.length > 0 && chipHeavy.steps[0].axis === 'chip',
+    { work: workHeavy.steps.slice(0, 2), chip: chipHeavy.steps.slice(0, 2) });
+  const sp = lateSplit([{ t: 100, totalMs: 40, workMs: 30 }, { t: 140, totalMs: 16, workMs: 10 }, { t: 180, totalMs: 40, workMs: 5 }], 25, null);
+  check('13c. ...and the split itself: the late frames\' own work against the rest (lateSplit)', sp.late === 2 && sp.work === 35 && sp.chip === 45, sp);
+  const spb = lateSplit([{ t: 100, totalMs: 40, workMs: 10 }], 25, () => 12);
+  check('13c. ...and where the busy beat runs, only the time the page WAITED is the chip\'s (the busy part is neither\'s)', spb.work === 10 && spb.chip === 18, spb);
+}
+/* 14: pixels only behind a veil */
+{
+  _resetLanes();
+  const veilAt = (t) => t < 2000 || [3, 6, 9].some((m) => t >= m * MIN && t < m * MIN + 2000);
+  for (const seed of [11, 12]) {
+    _resetLanes();
+    const { steps } = model(B60, { work: 1, chip: 13 }, () => 1.8, 11 * MIN, { veil: veilAt, seed });
+    const px = steps.filter((x) => x.knobs.includes('pixels'));
+    check(`14. a phone whose cost is the chip reaches the pixel rungs (seed ${seed}: ${px.length} step(s) moved the pixels)`, px.length >= 1, steps);
+    check('14. ...and each of them was taken behind a veil (a loading screen), never in play', px.length >= 1 && px.every((x) => x.veil), px);
+    check('14. ...and no other kind of step waited for one (the shine, the shadows, the water move in play)', steps.filter((x) => !x.knobs.includes('pixels')).some((x) => !x.veil), steps);
+  }
+  /* a wanted pixel step waits: the governor says so, and a tab's return is a veil too (veil(), as the pacer calls it) */
+  _resetLanes();
+  const g2 = makeGovernor({ on: true, store: memStore() });
+  g2.veil(0);
+  for (let i = 0; i < 4; i++) g2.verdict(0.9, 1000 + i, { axis: 'chip', atFloor: true });   /* the rate rung, then the shine */
+  for (let i = 0; i < 10; i++) g2.verdict(0.9, 2000 + i, { axis: 'chip', atFloor: true });   /* shadows, water, then the pixels: wanted */
+  const waiting = g2.read();
+  g2.veil(3000);
+  const after = g2.read();
+  check('14b. a pixel step wanted in play waits (the strip says so), and is taken at the next veil', waiting.pending && waiting.pending.dir < 0 && knobAt('full', 'pixels', { work: waiting.work, chip: waiting.chip }) === 1
+    && !after.pending && knobAt('full', 'pixels', { work: after.work, chip: after.chip }) === 0.75, { waiting, after });
+  _resetLanes();
+}
+/* 15: a full memory */
+{
+  _resetLanes();
+  const g = makeGovernor({ on: true, store: memStore() });
+  g.veil(0);
+  const was = KNOB_NAMES.map((k) => knobAt('full', k, ladderRung()));
+  for (let i = 0; i < 12; i++) g.verdict(0, 1000 * (i + 1), { axis: 'chip', atFloor: true, memFull: true });
+  const st = g.read();
+  check(`15. a full memory steps the work axis (the crowd), never the chip's: ${st.steps.map((x) => x.axis + ' ' + x.knobs.join('+')).join(', ')}`,
+    st.steps.length >= 2 && st.steps.every((x) => x.axis === 'work') && st.chip === 0 && knobAt('full', 'pixels', ladderRung()) === was[KNOB_NAMES.indexOf('pixels')], st);
+  check('15. ...and no work rung is a pixel rung (a full memory frees, never resizes)', AXES.work.every((r) => r.knob !== 'pixels'));
+  _resetLanes();
+}
+/* 16 */
+{
+  check('16. on by default; `?lane=` holds it (a test\'s page); `?govern=1` asks for it; `?govern=0` turns it off',
+    governOn('') && governOn('?perf=1') && !governOn('?lane=full') && governOn('?lane=full&govern=1') && !governOn('?govern=0') && !governOn('?x=1&govern=0&lane=light'));
+  _resetLanes();
+  const off = makeGovernor({ on: false, store: memStore() });
+  off.veil(0);
+  for (let i = 0; i < 6; i++) off.verdict(0.9, 1000 + i, { axis: 'chip', atFloor: true });
+  check('16b. off: the ladder stands at the lane\'s row however late the frames', rungDepth() === 0 && !off.read().on);
+  const store = memStore();
+  const g = makeGovernor({ on: true, store });
+  g.veil(0);
+  holdLadder(true);
+  for (let i = 0; i < 6; i++) g.verdict(0.9, 1000 + i, { axis: 'work', atFloor: true });
+  const held = rungDepth();
+  holdLadder(false);
+  for (let i = 0; i < 2; i++) g.verdict(0.9, 2000 + i, { axis: 'work', atFloor: true });
+  check('16c. held by the Speed test: no step while it runs; let go, it steps', held === 0 && rungDepth() === 1, { held, now: ladderRung() });
+  check('16d. the rung is kept by lane (localStorage, here a model of it)', JSON.stringify(store.peek()) === JSON.stringify({ full: [1, 0] }), store.peek());
+  _resetLanes();
+  const next = makeGovernor({ on: true, store });
+  const before = rungDepth();
+  next.veil(5000);
+  check('16e. the next sitting starts where the last settled, loaded at its first veil (the loading screen)', before === 0 && ladderRung().work === 1 && ladderRung().chip === 0 && next.read().lane === 'full', ladderRung());
+  for (let i = 0; i < 3; i++) next.verdict(0, 5000 + UP_WAIT_MS + i, { axis: 'work', atFloor: true });
+  check('16f. ...and tries up from there after UP_WAIT_MS of clean frames', rungDepth() === 0, ladderRung());
+  /* a 30 screen's lane keeps its own */
+  _resetLanes();
+  useDevClass(() => ({ hz: 30 }));
+  const g30 = makeGovernor({ on: true, store });
+  g30.veil(0);
+  check('16g. a 30 screen (the `thirty` lane) keeps a rung of its own, not full\'s', drawLane() === 'thirty' && g30.read().lane === 'thirty' && rungDepth() === 0, { lane: drawLane(), rung: ladderRung() });
+  _resetLanes();
+}
+/* 17: the door */
+{
+  const strip = (x) => x.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' ')).replace(/(^|[^:'"`\\])\/\/[^\n]*/g, (m, p1) => p1 + ' '.repeat(m.length - p1.length));
+  const files = [];
+  (function walk(dir) {
+    for (const name of readdirSync(join(ROOT, dir))) {
+      const rel = dir + '/' + name;
+      if (statSync(join(ROOT, rel)).isDirectory()) walk(rel);
+      else if (/\.(js|jsx|mjs)$/.test(name)) files.push(rel);
+    }
+  })('src');
+  const callers = files.filter((f) => /\bsetRung\s*\(/.test(strip(readFileSync(join(ROOT, f), 'utf8'))));
+  check('17. THE DOOR: setRung (the rung\'s one writer) is called by the governor alone (game/framePacer.js), defined in drawLanes.js',
+    callers.sort().join() === 'src/game/drawLanes.js,src/game/framePacer.js', callers);
+  const dl = strip(readFileSync(join(ROOT, 'src/game/drawLanes.js'), 'utf8'));
+  const writes = [...dl.matchAll(/\b_rung\s*=(?!=)/g)].length;
+  check('17. ...and `_rung` is written in setRung, and reset for the tests (_resetLanes), nowhere else', writes === 3
+    && /export function setRung\([^)]*\) \{[\s\S]*?_rung = w === 0 && c === 0 \? ROW : Object\.freeze/.test(dl) && /export function _resetLanes\(\) \{[^}]*_rung = ROW;/.test(dl), writes);
+  const fp = strip(readFileSync(join(ROOT, 'src/game/framePacer.js'), 'utf8'));
+  check('17b. the pacer imports the lanes\' table alone (a leaf with no imports)', [...fp.matchAll(/^import .* from '([^']+)';/gm)].map((m) => m[1]).join() === './drawLanes.js'
+    && ![...dl.matchAll(/^import /gm)].length);
+  const pt = readFileSync(join(ROOT, 'src/debug/perfTracker.js'), 'utf8');
+  check('17c. the frame meter hands the pacer its samples by a setter (no import into the pacer)', /useFrameSamples\(eachSince, busyIn\);/.test(pt));
+  const st = readFileSync(join(ROOT, 'src/game/speedTest.js'), 'utf8');
+  check('17d. the Speed test holds the ladder while it runs, and lets it go in its finally', /holdLadder\(true\);/.test(st) && /finally \{\s*restore\(was\);\s*holdLadder\(false\);/.test(st));
+  const bt = readFileSync(join(ROOT, 'src/ui/BroTown.jsx'), 'utf8');
+  check('17e. no new loop and no step of the frame: BroTown.jsx makes the pacer as before and knows nothing of the governor', !/makeGovernor|holdLadder|setRung|laneKnob/.test(bt) && /_framePacer = makeFramePacer\(\);/.test(bt));
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

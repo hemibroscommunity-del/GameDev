@@ -126,6 +126,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 
 | name | side | kind | born | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|
+| `?lane` | page | lever | v2.3.5221 | =full, =light or =thirty | none |  | no | This page draws in the named lane, whatever its device's facts pick. |
 | `lookpalette` | both | switch | v2.3.3716 | off_lookpalette: true; ?lookpalette=0 (=1 builds it anyway) | chip |  | onWindows, onMac in src/game/lookPaletteChoice.js | Each look's copy is baked on first sight again, not coloured on the chip. |
 | `?pixbudget` | page | switch | v2.3.5140 | =0 (off), or a number: the budget to try | chip |  | no | The drawing resolution is no longer held to the pixel budget. |
 | `viewcap` | both | switch | v2.3.4054 | off_viewcap: true; ?viewcap=0 (=1 forces it) | logic |  | no | A wide screen sees its old wider view of the world. |
@@ -200,6 +201,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `daybook` | worker | switch | v2.3.5080 | false | logic |  | no | The day's book adds, writes and prunes nothing; what is stored stays and its reader says it is off. |
 | `disable_bigbags` | worker | switch | v2.3.4224 | true | logic |  | no | Thrown, the weapon and gear stashes go back to 8 and 32. |
 | `report` | worker | switch | v2.3.5122 | false | logic |  | no | Un-advertises the field report, so no phone sends its smoothness, and drops any that still comes. |
+| `reportlanes` | worker | switch | v2.3.5221 | false | logic | `report`, `reportspeed` | no | The field report no longer takes a lane but full, the governor's rung or the self-test (caps.report back to 2). |
 | `reportspeed` | worker | switch | v2.3.5127 | false | logic | `report` | no | The Speed test's card is no longer taken (caps.report back to 1); the smoothness reports carry on. |
 | `roomrow` | worker | switch | v2.3.5124 | false | logic | `daybook` | no | Nothing of the room's own row is added into the day's book. |
 | `testmode` | worker | lever | v2.3.3430 | false | none |  | no | Turns every character's test mode off at once, every check back on. |
@@ -262,6 +264,12 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `sprint` | worker | switch | v2.3.3003 | false | logic |  | no | No sprint step is allowed. |
 | `steadymovers` | worker | switch | v2.3.3203 | false | logic |  | no | Every move goes out again, from the next tick. |
 | `?tapms` | page | lever | v2.3.3105 | a number of ms | none |  | no | A test's own longest tap that still counts as free. |
+
+## page-thread
+
+| name | side | kind | born | thrown | risk | needs | fallback | off |
+|---|---|---|---|---|---|---|---|---|
+| `?govern` | page | switch | v2.3.5222 | =0 (off), =1 (on where `?lane=` holds it) | logic |  | no | The governor no longer moves the ladder: the lane's row, however late the frames. |
 
 ## preload
 
