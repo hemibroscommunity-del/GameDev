@@ -355,6 +355,29 @@ chip holds. To settle it: the figure drawn cold and warm with each step
 timed (`loadImage`'s `decode()` awaited, and `willReadFrequently` on the
 canvases read back, one at a time).
 
+**Settled: the box, not the figure (v2.3.5255, card P, measured as asked).**
+A scratch build (not merged) timed every step of the figure (`_turn`'s
+pieces, a frame let in at each: `__btPortraitCompare(opts, 'every',
+'every')`), cold (its pictures never drawn) and then warm, a tee and greaves
+and then the plate on them, in four ways: as it is, `decode()` awaited in
+`loadImage`, `willReadFrequently` on `composeShirt`'s canvas, and both. Each
+way on a facing of its own, so each cold draw was cold.
+
+- **One page on the box** (the phone's own), at the sweep's scale and at 3x:
+  every step 5.2 ms at most cold and 2 ms warm. The longest is the shirt
+  (`composeShirt`) or the body, cold. Neither remedy moves it past the noise:
+  as it is 4.9 and 2.9 ms, `decode()` 3.6 and 5.1, `willReadFrequently` 2.0
+  and 5.2.
+- **A second page on the box** (an armoured player riding round nearby, as at
+  the sweep's `peer` and `armour`), twice: steps of 7 to 15.7 ms, at any step
+  (the body 14.9, the shirt 15.7, the legs 12, the chest 11.7), cold or warm,
+  and with either remedy or both as often as without.
+
+So neither candidate: the figure's steps are a few ms, and the 22 ms is a
+step that ran while the other page drew on the same four cores and the one
+software graphics chip (`screen-check`'s cause, its line the box's). On a
+phone there is one page. Nothing changed in the game for it.
+
 ### `masked-bake` off the list (v2.3.5043)
 
 **What was left.** Since v2.3.4870 the masked bake (armour cut to the body)
