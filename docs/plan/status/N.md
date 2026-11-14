@@ -1,6 +1,6 @@
 card: N
 branch: claude/grand-plan-n-3-wire-guard (one branch a PR, each begun from the one before: merge them in order)
-prs: #1684 (ready), #1695 (ready), #1697 (ready): held at sitting 4 on card B's guards, mended
+prs: #1684 (merged), #1695 (merged), #1697 (ready)
 state: ready
 
 ## Done
@@ -18,8 +18,8 @@ state: ready
 
 ## Next
 
-- Nothing: the card stops when the three merge, in order. Sitting 4's
-  holds and the review's findings mended on today's `main`.
+- Nothing: the card stops when #1697 merges. It now adds card A's
+  `report` row (#1706), so its merge deploys the worker (nothing reads it).
 
 ## Found
 
