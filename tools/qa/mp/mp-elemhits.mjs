@@ -201,6 +201,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
       pops: (S.dmgNumbers || []).filter((d) => d.text === 'Frozen!').length };
   });
   const fHeld = await walk(P, 500, 1, 0);
+  /* v2.3.5424 (card J2): the chill's slow read on THIS freeze's thaw, at
+     once.  The game holds a status 5 s at most (elemHits.js MAX_ST_MS, the
+     6000 asked is 5000), and this box draws a few frames a second: read
+     after a second freeze and its picture (a second or more), the chill had
+     gone too and the pace was full (2.5 of 2.5; TRAPS §200).  `fChill`: the
+     chill still on as the pace is taken, else the check reads nothing. */
+  await H.waitFor(P, (S) => (S._frozenUntil || 0) - Date.now(), (v) => v < 0, { timeout: 8000, label: 'the freeze to end' });
+  const fChill = await H.readState(P, (S) => (S._chillUntil || 0) - Date.now());
+  const fThaw = await pace(-1);
   /* the look on a second freeze, while it is surely on: this box draws a few
      frames a second, and after the walk above the first had ended (a picture
      taken first ate into the walk instead) */
@@ -209,18 +218,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
     window.__btDispatch({ type: 'monster_attack', payload: { monsterId: 'qa-elem', targetId: S.myId, dmg: 4, dmgTaken: 4, zone: S.currentZone,
       attackerX: S.player.x + 24, attackerY: S.player.y, ability: 'qa', elem: 'frost', st: 'chill', stMs: 6000, fz: 1800 } });
   });
-  await P.page.waitForTimeout(300);
+  /* v2.3.5424: read until the Frozen chip is up, while the freeze lasts --
+     the chips poll every 150 ms and React draws them on its own frame, which
+     here can be later than 300 ms (the read found the ice drawn and no chip
+     yet, red on main); the check stays "the chip, while frozen" */
+  let fLook = null;
+  for (let i = 0; i < 40; i++) {
+    fLook = await P.page.evaluate(() => {
+      const S = window._gameState.current;
+      return { drawn: (window.__btElemFxDrawn || {}).frozen || 0, frozenLeft: (S._frozenUntil || 0) - Date.now(),
+        chip: !!document.querySelector('[data-elem-chips] [data-chip="Frozen"]') };
+    });
+    if ((fLook.chip && fLook.drawn > 0) || fLook.frozenLeft <= 0) break;
+    await P.page.waitForTimeout(100);
+  }
   /* read before the picture: a screenshot here can take a second, and the
      freeze is over by then */
-  const fLook = await P.page.evaluate(() => ({ drawn: (window.__btElemFxDrawn || {}).frozen || 0,
-    chip: !!document.querySelector('[data-elem-chips] [data-chip="Frozen"]') }));
   await shot(P, 'a1b-frozen');
   await H.waitFor(P, (S) => (S._frozenUntil || 0) - Date.now(), (v) => v < 0, { timeout: 8000, label: 'the freeze to end' });
-  const fThaw = await pace(-1);
   rec.ok(`freeze: frozen solid first (${Math.round(fHeld.d)} px in half a second), no swing ("Frozen!"), ice drawn on you and the Frozen chip`,
-    fz.left > 0 && fz.chill > fz.left && fHeld.d < 1 && !fz.swung && fz.pops >= 1 && fLook.drawn > 0 && fLook.chip, { fz, fHeld, fLook });
-  rec.ok(`freeze: ...then the chill's slow (${fThaw.toFixed(3)} px a frame, about half of ${base.toFixed(3)})`,
-    fThaw > 0.05 && fThaw / Math.max(0.0001, base) > 0.45 && fThaw / Math.max(0.0001, base) < 0.65, { fThaw, base });
+    fz.left > 0 && fz.chill > fz.left && fHeld.d < 1 && !fz.swung && fz.pops >= 1 && fLook.drawn > 0 && fLook.chip && fLook.frozenLeft > 0, { fz, fHeld, fLook });
+  rec.ok(`freeze: ...then the chill's slow (${fThaw.toFixed(3)} px a frame, about half of ${base.toFixed(3)}; the chill ${fChill} ms left)`,
+    fChill > 300 && fThaw > 0.05 && fThaw / Math.max(0.0001, base) > 0.45 && fThaw / Math.max(0.0001, base) < 0.65, { fThaw, base, fChill });
   await clearStatuses(P);
   await H.hopTo(P, home0.x, home0.y, { step: 60, gap: 260, tries: 10 });
 
@@ -443,18 +462,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await hitMe(P, { elem: 'stone', st: 'daze', stMs: 20000 });
   await hitMe(P, { elem: 'water', st: 'soak', stMs: 20000 });
   await hitMe(P, { elem: 'venom', st: 'poison', stMs: 20000 });
-  /* any player_state re-renders the HUD; nudge one */
-  await walk(P, 120, 0, 1);
-  await P.page.waitForTimeout(400);
-  const chips = await P.page.evaluate(() => Array.from(document.querySelectorAll('img')).filter((im) => /elem-frost|elem-flame|elem-flora|elem-stone|elem-water|elem-venom/.test(im.getAttribute('src') || '')).map((im) => {
-    const r = im.getBoundingClientRect();
-    return { alt: im.alt, w: Math.round(r.width), h: Math.round(r.height), x: Math.round(r.x), y: Math.round(r.y), visible: r.width > 0 && r.height > 0 };
-  }));
+  /* v2.3.5424 (card J2): the 20 s asked is 5 s (elemHits.js MAX_ST_MS, the
+     game's cap), so the v2.3.3425 widening never widened, and the chill,
+     given first, was gone by the read again on main (every chip but
+     "Chilled").  No walk: the chips keep their own clock (ElemStatusChips
+     polls every 150 ms).  Read until all six are up, each while its status
+     lasts; `left`, each status's ms still to run as read */
+  const SIX = ['Chilled', 'Burning', 'Stuck', 'Dazed', 'Soaked', 'Poisoned'];
+  let chips = [], left = null;
+  for (let i = 0; i < 30; i++) {
+    const r = await P.page.evaluate(() => {
+      const S = window._gameState.current, now = Date.now();
+      const list = Array.from(document.querySelectorAll('img')).filter((im) => /elem-frost|elem-flame|elem-flora|elem-stone|elem-water|elem-venom/.test(im.getAttribute('src') || '')).map((im) => {
+        const b = im.getBoundingClientRect();
+        return { alt: im.alt, w: Math.round(b.width), h: Math.round(b.height), x: Math.round(b.x), y: Math.round(b.y), visible: b.width > 0 && b.height > 0 };
+      });
+      const ms = (k) => Math.max(0, (S[k] || 0) - now);
+      return { list, left: { chill: ms('_chillUntil'), burn: ms('_burnUntil'), stuck: ms('_stuckUntil'), daze: ms('_dazeUntil'), soak: ms('_soakUntil'), poison: ms('_poisonUntil') } };
+    });
+    chips = r.list; left = r.left;
+    if (SIX.every((a) => chips.some((c) => c.alt === a && c.visible))) break;
+    await P.page.waitForTimeout(100);
+  }
   await shot(P, 'a6-all');
   rec.ok(`chips: the chill, the burn and the hold each show in the HUD with its icon (${chips.map((c) => c.alt).join(', ')})`,
-    ['Chilled', 'Burning', 'Stuck'].every((a) => chips.some((c) => c.alt === a && c.visible)), chips);
+    ['Chilled', 'Burning', 'Stuck'].every((a) => chips.some((c) => c.alt === a && c.visible)), { chips, left });
   rec.ok('chips: ...and the daze, the soak and the poison (v2.3.3014)',
-    ['Dazed', 'Soaked', 'Poisoned'].every((a) => chips.some((c) => c.alt === a && c.visible)), chips);
+    ['Dazed', 'Soaked', 'Poisoned'].every((a) => chips.some((c) => c.alt === a && c.visible)), { chips, left });
   await clearStatuses(P);
   await H.devOp(wsPort, 'vitals', myId, { heal: true });
 
