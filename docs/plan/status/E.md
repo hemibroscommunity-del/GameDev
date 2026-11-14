@@ -1,7 +1,7 @@
 card: E
 branch: claude/plan-e-12-card (one branch a PR, each begun from the one before: merge #1756 to #1773 first)
-prs: #1686, #1691, #1694, #1699, #1752 (merged); #1756, #1758, #1759, #1761, #1764, #1772, #1773 (ready); PR 12 on the branch above (working)
-state: working
+prs: #1686, #1691, #1694, #1699, #1752 (merged); #1756, #1758, #1759, #1761, #1764, #1772, #1773 (ready); PR 12 on the branch above (ready)
+state: ready
 
 ## Done
 
@@ -20,10 +20,10 @@ state: working
 
 ## Next
 
-- PR 9 (5090), a value road failing closed: card A's counter is on main
-  (`_savesRefused`); its design waits on the owner (Needs).
-- PR 12 (5093), the owner's card: its frame built (`EconCard.jsx`, the
-  book's parts, the five numbers "not counted yet"); three numbers wait.
+- PR 12 (5093), the owner's card: the book's parts and the five numbers
+  (one sum in `worldsum.js`; the daily count's `world`; `/dev/econcard`).
+- PR 9 (5090): the owner's "Go recommended" (option 1); built on its own
+  branch, its handlers' lines wait on the planning session's file yes.
 
 ## Found
 
@@ -34,7 +34,5 @@ state: working
 
 ## Needs
 
-- The owner (asked 2026-11-14, through the planning session): PR 9's
-  which actions refuse, how long, what the phone says.
-- The planning session (asked 2026-11-14): how PR 12 counts unexplained
-  gold, gold a player-hour and the share to the richest.
+- The planning session (asked 2026-11-14): PR 9's files outside the card
+  (its handlers' one line each, and three client maps for the words).

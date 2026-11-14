@@ -31,7 +31,8 @@ function econOf(part) {
   const list = (o) => Object.keys(o && typeof o === 'object' ? o : {})
     .map((k) => [k, num(o[k])]).filter(([, n]) => n !== 0)
     .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]) || (a[0] < b[0] ? -1 : 1));
-  return { goldMade: num(g.mint), goldGone: num(g.burn), itemsMade: list(i.mint), itemsGone: list(i.burn) };
+  const pl = own(p, 'p') && p.p && typeof p.p === 'object' ? p.p : {};
+  return { goldMade: num(g.mint), goldGone: num(g.burn), itemsMade: list(i.mint), itemsGone: list(i.burn), playSeconds: num(pl.s) };
 }
 
 /** The `room` part (card A's roomrow.js): its numbers under the shape's
@@ -65,10 +66,10 @@ export function econDay(day) {
 /** The economy's five numbers, in the plan's order (step 10.4).  `from`:
  *  what counts it; `waits`: what it waits for while nothing does. */
 export const ECON_NUMBERS = Object.freeze([
-  Object.freeze({ id: 'unexplained', name: 'Unexplained gold', what: 'Gold held in the world that the roads do not explain (0 is right; anything else is a copy or a loss)', waits: 'the world\'s sum, counted live' }),
+  Object.freeze({ id: 'unexplained', name: 'Unexplained gold', what: 'Between the last two daily counts, gold in the world that no road explains (0 is right; anything else is a copy or a loss)', waits: 'the world\'s sum, counted live' }),
   Object.freeze({ id: 'perHour', name: 'Gold made a player-hour', what: 'Gold made in an hour of play, today against the last week', waits: 'a count of player-hours' }),
-  Object.freeze({ id: 'oneWay', name: 'Moved one way for nothing', what: 'Of the gold moved between players, the share that went one way with nothing back', waits: 'the transfer ledger\'s read' }),
-  Object.freeze({ id: 'richest', name: 'New gold to the richest', what: 'Of the gold made, the share that reached the ten richest', waits: 'each character\'s gold made over the day' }),
+  Object.freeze({ id: 'oneWay', name: 'Moved one way for nothing', what: 'Of the gold moved between players today, the share that went one way with nothing back', waits: 'the transfer ledger\'s read' }),
+  Object.freeze({ id: 'richest', name: 'New gold to the richest', what: 'Of the gold made between the last two daily counts, the share the ten richest made', waits: 'each character\'s gold made over the day' }),
   Object.freeze({ id: 'cases', name: 'Cases waiting', what: 'Cases for the owner to look at', waits: 'card Q\'s cases' }),
 ]);
 
@@ -80,6 +81,62 @@ export function econNumbers(src) {
   const s = src && typeof src === 'object' ? src : {};
   const out = Object.create(null);
   for (const n of ECON_NUMBERS) out[n.id] = typeof s[n.id] === 'number' && Number.isFinite(s[n.id]) ? s[n.id] : null;
+  return out;
+}
+
+/* ═══ v2.3.5093: THE FIVE NUMBERS, COUNTED (the planning session's reading, 2026-11-14) ═══
+   From the book (GET /dev/daybook: its days' `econ` part, gold made `g.mint`
+   and the players' seconds `p.s`) and the card's other read (GET
+   /dev/econcard: the daily snapshots' world sums, newest first, and the
+   ledger's days summed).  Each is { v, why }: `v` a number, or null with
+   `why` the words the card shows in its place.
+     unexplained  the change in (held - made less destroyed) between the two
+                  newest snapshots: gold no road explains (0 is right);
+     perHour      gold made today an hour of play, `week` the same over the
+                  other loaded days (up to 7);
+     oneWay       of the gold moved between players today, the share moved
+                  one way for nothing (a gift, or a trade with nothing back);
+     richest      of the gold made between the two newest snapshots, the
+                  share the ten richest made (their minted to date, summed: a
+                  character new to the ten brings its whole history, so it
+                  reads high on the day the ten change);
+     cases        card Q's, not counted yet. */
+const W = (o) => (o && typeof o === 'object' && typeof o.held === 'number' ? o : null);
+export function econCompute(book, card) {
+  const days = book && Array.isArray(book.days) ? book.days : [];
+  const c = card && typeof card === 'object' ? card : {};
+  const out = Object.create(null);
+  const none = (why) => ({ v: null, why });
+  if (c.on === false) {
+    for (const n of ECON_NUMBERS) out[n.id] = none('the counting is switched off (the econ flag)');
+    return out;
+  }
+  /* 1, 4: the two newest snapshots that carry a world sum */
+  const snaps = (Array.isArray(c.metrics) ? c.metrics : []).map((m) => ({ day: m && m.day, w: W(m && m.world) })).filter((m) => m.w);
+  if (snaps.length >= 2) {
+    const [a, b] = snaps;   /* newest first */
+    out.unexplained = { v: (a.w.held - a.w.net) - (b.w.held - b.w.net), why: null, since: b.day };
+    const made = num(a.w.minted) - num(b.w.minted);
+    const rich = (w) => (Array.isArray(w.richest) ? w.richest : []).reduce((t, r) => t + num(r && r[2]), 0);
+    out.richest = made > 0 ? { v: Math.max(0, Math.min(1, (rich(a.w) - rich(b.w)) / made)), why: null } : none('no gold made between the last two counts');
+  } else {
+    out.unexplained = none(snaps.length ? 'one daily count so far: it needs two' : 'no daily count yet');
+    out.richest = none(snaps.length ? 'one daily count so far: it needs two' : 'no daily count yet');
+  }
+  /* 2: gold made an hour of play, today and the other loaded days */
+  const rate = (d) => {
+    const e = d && d.econ && typeof d.econ === 'object' ? d.econ : {};
+    const h = num(e.p && e.p.s) / 3600;
+    return h > 0 ? { made: num(e.g && e.g.mint), h } : null;
+  };
+  const today = rate(days[0]);
+  const week = days.slice(1, 8).map(rate).filter(Boolean);
+  const wk = week.reduce((t, r) => ({ made: t.made + r.made, h: t.h + r.h }), { made: 0, h: 0 });
+  out.perHour = today ? { v: today.made / today.h, why: null, week: wk.h > 0 ? wk.made / wk.h : null } : none('no play counted today yet');
+  /* 3: the ledger's day */
+  const x = Array.isArray(c.xfer) && c.xfer[0] ? c.xfer[0] : null;
+  out.oneWay = x && x.gold > 0 ? { v: x.goldOneWay / x.gold, why: null } : none(x ? 'no gold moved between players today' : 'the transfer ledger not read');
+  out.cases = none('card Q\'s cases');
   return out;
 }
 

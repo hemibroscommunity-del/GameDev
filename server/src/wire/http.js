@@ -371,6 +371,10 @@ export const WIRE_HTTP = [
   { name: 'http:/api/admin/dev/daybook', dir: 'in', at: 'daybook.js bookRead', wayIn: 'admin',
     envelope: 'http', phase: ['none checked'], mayStart: 'owner', doesWhat: ['reads'], reqId: 'harmless',
     trust: { days: 'request' }, absent: 'default: no days is 7', bad: ['clamped'], answer: 'http' },
+  /* v2.3.5093 (card E, PR 12): the owner's card's other read -- the snapshots' world sums and the ledger's days (econcard.js) */
+  { name: 'http:/api/admin/dev/econcard', dir: 'in', at: 'econcard.js econCardRead', wayIn: 'admin',
+    envelope: 'http', phase: ['none checked'], mayStart: 'owner', doesWhat: ['reads'], reqId: 'harmless',
+    trust: { days: 'request' }, absent: 'default: no days is 1', bad: ['clamped'], answer: 'http' },
   { name: 'http:/api/admin/dev/lookseen', dir: 'in', at: 'charwatch.js _watchSeen', wayIn: 'admin',
     envelope: 'http', phase: ['none checked'], mayStart: 'owner', doesWhat: ['own'], reqId: 'harmless',
     trust: {}, absent: 'default: an unreadable body is an empty one', bad: [], answer: 'http' },

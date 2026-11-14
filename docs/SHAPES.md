@@ -418,7 +418,7 @@ same put). The join brings `_econ` back before any door runs (`join.js`),
 and a red skull killed by no player burns its purse by `nml_lost`.
 `server/test/world-sum.test.mjs` plays the room and holds the sum to 0;
 `server/test/storm.test.mjs` (5091) holds it to 0 under every disturbance,
-a deploy before every message (the sum shared: `server/test/worldsum.mjs`).
+a deploy before every message (the sum shared: `server/src/worldsum.js` since 5093, the live walk's too).
 
 **Where value leaves an escrow by no road** (for the sum's PR, not a class):
 a stale fine is deleted (`bounty:`, `_bountySweep`: "the gold evaporates"),

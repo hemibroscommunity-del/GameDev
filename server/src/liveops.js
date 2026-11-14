@@ -43,7 +43,8 @@
  *   liveflags            {name: boolean|number}
  *   motd                 {text, ts}
  *   metrics:<yyyymmdd>   {totalGold, playerBlobs, escrowedGold,
- *                         pendingEntries, ts}
+ *                         pendingEntries, ts, world?}  (v2.3.5093: `world`,
+ *                         the world's one sum: WORLD below)
  *
  * v2.3.5080: the day's book (`daybook:<yyyymmdd>`, daybook.js) has its kill
  * switch here, `_daybookOff`; the book itself is daybook.js's.
@@ -87,6 +88,40 @@ function boxEntries(box) {
 import { setGearStashCap, GEAR_STASH_CAP, GEAR_STASH_CAP_LEGACY, WEAPON_STASH_CAP_NEW, WEAPON_STASH_CAP_LEGACY } from './gearstash.js';   /* v2.3.4224 */
 import { setBagOneSum, setBagBook, setBagEcon } from './bag.js';   /* v2.3.4900: the bag door's step 2 switch; v2.3.5085: + its book */
 import { bookAdd } from './daybook.js';   /* v2.3.5085 */
+import { worldCtx, worldAdd } from './worldsum.js';   /* v2.3.5093: the world's one sum, in the day's snapshot */
+import { STORAGE_MARKS } from './storagemarks.js';   /* v2.3.5093: which records hold gold */
+
+/* ═══ v2.3.5093: THE WORLD'S SUM IN THE DAY'S SNAPSHOT (grand plan step 10.4, card E PR 12) ═══
+   The owner's card (EconCard.jsx) shows unexplained gold and the share of new
+   gold reaching the richest; both need what the world HOLDS against what its
+   characters MADE, read from storage once a day.  The snapshot's walk below
+   already reads every character, mailbox and General Store order a page at a
+   time; each page now also feeds the world's one sum (worldsum.js), and one
+   more stage pages the other records the registry marks as holding gold
+   (WORLD_PREFIXES).  The day's record grows by `world` -- no new row, no new
+   put (the planning session's limit).  `econ: false` (gold.js _econOff)
+   walks none of it. */
+export const WORLD = Object.freeze({
+  V: 1,
+  RICHEST: 10,
+  /* the gold-holding records the walk's own stages do not already read */
+  PREFIXES: Object.freeze(Object.keys(STORAGE_MARKS).filter((p) => (STORAGE_MARKS[p].value === 'gold' || STORAGE_MARKS[p].value === 'both')
+    && p !== 'rpg:' && p !== 'inbox:' && p !== 'mkt_order:').sort()),
+});
+const econNumOf = (rec) => { const e = rec && rec._econ; const m = e && e.g ? Number(e.g.m) : 0; return Number.isFinite(m) ? m : 0; };
+function worldJob() { return { ctx: worldCtx(), minted: 0, richest: [], i: 0, after: null }; }
+/* the ten richest by the purse on file: [pid, coins, minted to date] */
+function worldRich(w, key, rec) {
+  const coins = Math.max(0, Math.floor(Number(rec && rec.coins) || 0));
+  const m = econNumOf(rec);
+  w.minted += m;
+  const r = w.richest;
+  if (r.length < WORLD.RICHEST || coins > r[r.length - 1][1]) {
+    r.push([key.slice(4), coins, m]);
+    r.sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
+    if (r.length > WORLD.RICHEST) r.length = WORLD.RICHEST;
+  }
+}
 
 export const LIVEOPS = {
   XP_MULT_MIN: 1,
@@ -223,7 +258,7 @@ export const liveopsMethods = {
    * _economySnapshot itself is kept for the owner's /economy endpoint,
    * paged the same way so its memory is bounded; it is an explicit
    * operator request and may take as long as the table is large. */
-  async _economyPage(after) {
+  async _economyPage(after, onRec) {
     const opts = { prefix: 'rpg:', limit: METRICS.PAGE };
     if (after) opts.startAfter = after;
     const blobs = await this.state.storage.list(opts);
@@ -231,6 +266,7 @@ export const liveopsMethods = {
     const players = [];
     for (const [k, b] of blobs) {
       last = k;
+      if (onRec) onRec(k, b);   /* v2.3.5093: the world's sum, a record at a time */
       const coins = (b && b.coins) || 0;
       gold += coins;
       players.push({ id: k.slice(4), coins, level: (b && b.level) || 1 });
@@ -320,26 +356,38 @@ export const liveopsMethods = {
         const key = 'metrics:' + ymd;
         if (await this.state.storage.get(key)) { this._lastMetricsDay = ymd; this._metricsJob = null; return false; }
         job = this._metricsJob = { ymd, table: 'rpg', after: null, totalGold: 0, playerBlobs: 0,
-          pendingEntries: 0, escrowedGold: 0, pages: 0 };
+          pendingEntries: 0, escrowedGold: 0, pages: 0,
+          world: (typeof this._econOff === 'function' && this._econOff()) ? null : worldJob() };   /* v2.3.5093: `econ: false` walks none of it */
       }
+      const w = job.world;
       if (job.table === 'rpg') {
-        const pg = await this._economyPage(job.after);
+        const pg = await this._economyPage(job.after, w ? (k, b) => { worldAdd(w.ctx, k, b); worldRich(w, k, b); } : null);
         job.totalGold += pg.gold; job.playerBlobs += pg.count; job.pages++;
         if (!pg.done) { job.after = pg.last; return true; }
         job.table = 'inbox'; job.after = null;
       }
       if (job.table === 'inbox') {
         const pg = await this._metricsList('inbox:', METRICS.BOX_PAGE, job.after);
-        for (const box of pg.page.values()) job.pendingEntries += boxEntries(box);
+        for (const [k, box] of pg.page) { job.pendingEntries += boxEntries(box); if (w) worldAdd(w.ctx, k, box); }
         job.pages++;
         if (!pg.done) { job.after = pg.last; return true; }
         job.table = 'orders'; job.after = null;
       }
-      {
+      if (job.table === 'orders') {
         const pg = await this._metricsList('mkt_order:', METRICS.PAGE, job.after);
-        for (const o of pg.page.values()) job.escrowedGold += orderEscrowGold(o);
+        for (const [k, o] of pg.page) { job.escrowedGold += orderEscrowGold(o); if (w) worldAdd(w.ctx, k, o); }
         job.pages++;
         if (!pg.done) { job.after = pg.last; return true; }
+        job.table = 'world'; job.after = null;
+      }
+      /* v2.3.5093: the other records that hold gold, a page at a time, a
+         prefix after another (WORLD.PREFIXES) */
+      while (w && w.i < WORLD.PREFIXES.length) {
+        const pg = await this._metricsList(WORLD.PREFIXES[w.i], METRICS.PAGE, w.after);
+        for (const [k, v] of pg.page) worldAdd(w.ctx, k, v);
+        job.pages++;
+        if (!pg.done) { w.after = pg.last; return true; }   /* a FULL page: the rest next slot (v2.3.3368's rule) */
+        w.i++; w.after = null;
       }
       await this.state.storage.put('metrics:' + ymd, {
         totalGold: job.totalGold,
@@ -347,6 +395,8 @@ export const liveopsMethods = {
         escrowedGold: job.escrowedGold,
         pendingEntries: job.pendingEntries,
         ts: now,
+        /* v2.3.5093: what the world holds against what its characters made (worldsum.js) */
+        ...(w ? { world: { v: WORLD.V, held: w.ctx.gold, net: w.ctx.net.gold, minted: w.minted, richest: w.richest } } : {}),
       });
       this._lastMetricsDay = ymd;
       this._metricsJob = null;

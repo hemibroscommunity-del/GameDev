@@ -1954,10 +1954,13 @@ Screens: dev-econ-card
 - **A number nothing counts yet says "not counted yet"**, with what it waits for, never a 0: a 0 for unexplained gold is the reading the owner wants to see, and must never be shown by default. The five numbers are always listed in the plan's order, so the card's shape does not change as each one gets its count.
 - **Today, the last 7 or the last 30 days**, newest first, each day its own block: the same choices as the smoothness table beside it.
 
-**Still open:**
-- How unexplained gold, gold made a player-hour and the share to the richest are counted (asked through the planning session, 2026-11-14); the share moved one way for nothing waits for the transfer ledger's read (#1773); cases waiting for card Q.
+- **The numbers' sources, all read, nothing new written** (the planning session's reading, 2026-11-14): unexplained gold and the share of new gold to the richest come from the once-a-day economy count (`metrics:`), which now carries the world's one sum (`server/src/worldsum.js`) through its own paged walk; gold made a player-hour from the book (gold made, and the players' seconds added at each leave); the share moved one way for nothing from the transfer ledger (`xfer:`). The card reads them through its second route, `GET /dev/econcard`. A number that cannot be counted yet (one daily count so far, no play today, no gold moved) says why in its place.
+- **Unexplained gold in red when it is not 0**: it is the one number that means something went wrong.
 
-Sources: src/ui/panels/EconCard.jsx, src/game/econCard.js, server/test/econ-card.test.mjs, server/src/daybook.js, docs/plan/cards/E.md (PR 12).
+**Still open:**
+- Cases waiting, for card Q.
+
+Sources: src/ui/panels/EconCard.jsx, src/game/econCard.js, server/src/econcard.js, server/src/worldsum.js, server/test/econ-card.test.mjs, server/src/daybook.js, docs/plan/cards/E.md (PR 12).
 
 ## The login wheel (free daily spin)
 Screens: login-spin

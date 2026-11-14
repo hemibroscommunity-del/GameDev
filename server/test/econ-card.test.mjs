@@ -11,6 +11,17 @@
  *      (null) while nothing counts them: a 0 would look like a reading.
  *   4. THE BOOK'S DAYS from the one admin route's answer, newest first, as
  *      the doors really write them (the gold door through the book's door).
+ *   5. v2.3.5093: THE FIVE NUMBERS, counted (econCompute): unexplained gold,
+ *      gold a player-hour against the week, the share moved one way for
+ *      nothing, the share of new gold to the richest; each says why when it
+ *      cannot be counted; `econ: false` says the counting is off.
+ *   6. v2.3.5093: THE DAY'S SNAPSHOT carries the world's one sum (worldsum.js,
+ *      through liveops.js _metricsMaybe's own pages): held, made less
+ *      destroyed, minted to date, the ten richest; GET /dev/econcard reads
+ *      it; `econ: false` walks none of it.  Its cost printed: the reads a
+ *      day at 1 and 100 characters, and the largest page's time.
+ *   7. v2.3.5093: A SITTING'S SECONDS go into the book's riding `econ` part
+ *      at the leave (leave.js), for gold a player-hour.
  *
  * BREAK PROOF (rule 8), tried by hand: econNumbers returning 0 for a number
  * with no count -> FAIL 3.
@@ -90,6 +101,124 @@ function check(name, cond, detail) {
   check('4. ...an answer with no days is no days', econDays(null).length === 0 && econDays({ ok: true }).length === 0);
   const { setBagBook } = await import('../src/bag.js');
   setBagBook(null);
+}
+
+/* ── 5. the five numbers, counted (econCompute; v2.3.5093) ── */
+{
+  const { econCompute } = await import('../../src/game/econCard.js');
+  const book = { days: [{ econ: { g: { mint: 300 }, p: { s: 7200 } } }, { econ: { g: { mint: 100 }, p: { s: 3600 } } }, { econ: { g: { mint: 50 }, p: { s: 1800 } } }] };
+  const card = { on: true,
+    metrics: [{ day: '20261114', world: { held: 1500, net: 1300, minted: 2000, richest: [['a', 900, 1200], ['b', 300, 400]] } },
+      { day: '20261113', world: { held: 1000, net: 800, minted: 1500, richest: [['a', 700, 1000], ['b', 200, 300]] } }],
+    xfer: [{ day: '20261114', rows: 2, gold: 200, goldOneWay: 50 }] };
+  const n = econCompute(book, card);
+  check('5. unexplained gold: the change in held less made between the two newest daily counts (0 here)', n.unexplained.v === 0 && n.unexplained.since === '20261113', n.unexplained);
+  check('5. ...and a copy shows: 50 gold held that no road made', econCompute(book, { ...card, metrics: [{ ...card.metrics[0], world: { ...card.metrics[0].world, held: 1550 } }, card.metrics[1]] }).unexplained.v === 50);
+  check('5. gold made a player-hour: 150 today, the week 100 (150 over 1.5 hours)', n.perHour.v === 150 && n.perHour.week === 100, n.perHour);
+  check('5. moved one way for nothing: 50 of 200, a quarter', n.oneWay.v === 0.25, n.oneWay);
+  check('5. new gold to the richest: 300 of the 500 made', n.richest.v === 0.6, n.richest);
+  check('5. cases waiting: not counted (card Q)', n.cases.v === null && /card Q/.test(n.cases.why));
+  const z = econCompute({ days: [] }, { on: true, metrics: [{ day: 'x', world: { held: 1, net: 1, minted: 1, richest: [] } }], xfer: [{ gold: 0, goldOneWay: 0 }] });
+  check('5. ...with too little to count, each says why, never a 0', z.unexplained.v === null && /two/.test(z.unexplained.why) && z.perHour.v === null && z.oneWay.v === null && /no gold moved/.test(z.oneWay.why) && z.richest.v === null, z);
+  const off = econCompute(book, { on: false });
+  check('5. `econ: false`: every number says the counting is off', Object.values(off).every((x) => x.v === null && /switched off/.test(x.why)));
+}
+
+/* ── 6. the day's snapshot carries the world's sum (liveops.js _metricsMaybe; v2.3.5093) ── */
+{
+  const { GameRoom } = await import('../src/index.js');
+  const { LIVEOPS } = await import('../src/liveops.js');
+  const mk = () => {
+    const store = new Map();
+    const clone = (v) => (v === undefined ? v : structuredClone(v));
+    const log = { list: 0, read: 0 };
+    const st = {
+      _store: store, log,
+      storage: {
+        async get(k) { log.read++; return clone(store.get(k)); },
+        async put(k, v) { if (k && typeof k === 'object') { for (const [kk, vv] of Object.entries(k)) store.set(kk, clone(vv)); return; } store.set(k, clone(v)); },
+        async delete(k) { if (Array.isArray(k)) { let n = 0; for (const x of k) if (store.delete(x)) n++; return n; } return store.delete(k); },
+        async list(o) { log.list++; let ks = [...store.keys()].filter((k) => !o?.prefix || k.startsWith(o.prefix)).sort(); if (o?.startAfter) ks = ks.filter((k) => k > o.startAfter); if (o?.reverse) ks.reverse(); if (o?.limit) ks = ks.slice(0, o.limit); log.read += ks.length; return new Map(ks.map((k) => [k, clone(store.get(k))])); },
+      },
+      getWebSockets: () => [], acceptWebSocket: () => {},
+    };
+    const room = new GameRoom(st, { LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async () => new Response('{}') }) } });
+    room._liveFlags = {};
+    return { st, room };
+  };
+  const seedWorld = (store, chars) => {
+    for (let i = 0; i < chars; i++) store.set('rpg:bp_w' + String(i).padStart(3, '0'), { _v: 21, coins: 100 + i, inventory: {}, _econ: { v: 1, g: { m: 50 + i, b: 10 }, i: {} } });
+    store.set('bank:bp_w000', { gold: 40, items: [] });
+    store.set('inbox:bp_w001', [{ opId: 'season:s:x', kind: 'gold', payload: { amount: 30 } }]);
+    store.set('duelEscrow:d1', { wager: 5 });
+  };
+  const walk = async (room, now) => { let n = 0; while ((await room._metricsMaybe(now)) && n < 200) n++; return n + 1; };
+  const NOWW = Date.UTC(2026, 10, 14, 13, 0, 0);
+  {
+    const { st, room } = mk();
+    seedWorld(st._store, 3);
+    await walk(room, NOWW);
+    const rec = st._store.get('metrics:' + room._cadencePeriodDaily(NOWW));
+    const w = rec && rec.world;
+    /* held: purses 100+101+102, the vault 40, the mail 30, the duel's escrow 2 x 5; made: (50+51+52) - 30 burned, plus the mail's 30 minted */
+    check('6. the day\'s record carries the world: held, made less destroyed, minted to date', !!w && w.v === 1 && w.held === 303 + 40 + 30 + 10 && w.net === (153 - 30) + 30 && w.minted === 153, w);
+    check('6. ...the ten richest by purse, with what each made', w && w.richest.length === 3 && w.richest[0][0] === 'bp_w002' && w.richest[0][1] === 102 && w.richest[0][2] === 52, w && w.richest);
+    check('6. ...and the old fields as before', rec.totalGold === 303 && rec.playerBlobs === 3);
+    const { econCardRead } = await import('../src/econcard.js');
+    const r = await econCardRead(room, 1);
+    check('6. GET /dev/econcard\'s read: the snapshots\' world sums, newest first, and the ledger\'s day', r.ok && r.on && r.metrics.length === 1 && r.metrics[0].world.held === w.held && r.xfer.length === 1 && r.xfer[0].rows === 0, r);
+    room._liveFlags = { econ: false };
+    room._lastMetricsDay = null;
+    st._store.delete('metrics:' + room._cadencePeriodDaily(NOWW));
+    await walk(room, NOWW);
+    const off = st._store.get('metrics:' + room._cadencePeriodDaily(NOWW));
+    check('6. `econ: false`: the snapshot walks none of it (no `world`), the old fields still written', off && !('world' in off) && off.totalGold === 303, off);
+    check('6. ...and the card\'s read says the counting is off', (await econCardRead(room, 1)).on === false);
+  }
+  /* the cost, said in the PR: the reads a day, and how long the largest page takes */
+  for (const chars of [1, 100]) {
+    const { st, room } = mk();
+    seedWorld(st._store, chars);
+    const t0 = process.hrtime.bigint();
+    const calls = await walk(room, NOWW);
+    const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+    const rec = st._store.get('metrics:' + room._cadencePeriodDaily(NOWW));
+    console.log(`  (cost: ${chars} character(s): ${st.log.read} records read, ${st.log.list} lists, ${calls} housekeeping slot(s), ${ms.toFixed(1)} ms in all)`);
+    check(`6. ${chars} character(s): the walk reads each record once a day (${st.log.read} reads) and writes one record`, rec && rec.world && st.log.read <= chars + 3 + 2 * (10 + 1) && calls <= Math.ceil(chars / 200) + 2, { reads: st.log.read, calls });
+  }
+  {
+    /* the largest page: METRICS.PAGE characters in one call */
+    const { st, room } = mk();
+    const { METRICS } = await import('../src/liveops.js');
+    seedWorld(st._store, METRICS.PAGE);
+    const t0 = process.hrtime.bigint();
+    await room._metricsMaybe(NOWW);
+    const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+    console.log(`  (cost: the largest page, ${METRICS.PAGE} characters through the one sum: ${ms.toFixed(1)} ms)`);
+    check(`6. the largest page (${METRICS.PAGE} characters) is read and summed in one slot`, ms < 250, ms);
+    void LIVEOPS;
+  }
+}
+
+/* ── 7. a sitting's seconds into the book at the leave (leave.js; v2.3.5093) ── */
+{
+  const { GameRoom } = await import('../src/index.js');
+  const store = new Map();
+  const clone = (v) => (v === undefined ? v : structuredClone(v));
+  const st = { storage: { async get(k) { return clone(store.get(k)); }, async put(k, v) { if (k && typeof k === 'object') { for (const [kk, vv] of Object.entries(k)) store.set(kk, clone(vv)); return; } store.set(k, clone(v)); }, async delete(k) { return store.delete(k); }, async list() { return new Map(); } }, getWebSockets: () => [], acceptWebSocket: () => {} };
+  const room = new GameRoom(st, { LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async () => new Response('{}') }) } });
+  room._liveFlags = {};
+  const ws = { sent: [], send(x) { this.sent.push(x); }, close() {} };
+  const opened = Date.now() - 90 * 60 * 1000;
+  room.sessions.set(ws, { phase: 'open', id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now(), openedAt: opened });
+  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id: 'bp_sit', name: 'S', phrase: 'p-s', protocolVersion: 2, ws: [1, 5], data: { x: 0, y: 0, z: 'town' } }));
+  await new Promise((r) => setTimeout(r, 10));
+  await room.webSocketClose(ws, 1000, 'bye', true);
+  await new Promise((r) => setTimeout(r, 10));
+  const parts = room._daybook && [...room._daybook.days.values()].map((d) => d.parts.econ);
+  const stored = [...store.entries()].filter(([k]) => k.startsWith('daybook:')).map(([, v]) => v.econ);
+  const secs = [...(parts || []), ...stored].reduce((t, e) => t + ((e && e.p && e.p.s) || 0), 0);
+  check('7. a sitting of 90 minutes adds 5400 seconds to the book\'s econ part at the leave', Math.abs(secs - 5400) <= 2, { secs, parts, stored });
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);
