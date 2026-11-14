@@ -15,6 +15,8 @@
  *   3. THE OUTSIDE READS (a census, only falls; the gatekeeper's): the reads
  *      of `location.search` in src/ outside the reader, code only (comments
  *      blanked).  Card T's PRs 7 on lower it as reads move in.
+ *   4. The page's reader follows its address: a page may change its own
+ *      (history.replaceState), and the reader answers for it as it is now.
  *
  * BREAK PROOF (rule 8), tried by hand once, 2026-11-14:
  *   - `?nmlask`'s old test made to also take `off` (/[?&]nmlask=(0|off)/):
@@ -25,6 +27,11 @@
  *                                        -> FAIL 3 (one over the line)
  *   - `sw('lane')` in a moved file (`?lane` is a value)
  *                                        -> FAIL 2
+ *   - the reader made to keep its first address (`if (_page) return _page`)
+ *                                        -> FAIL 4 (true,true,true)
+ *   - `?gearretry` (it needs `?retrylooks`) listed as moved
+ *                                        -> FAIL 1 (?retrylooks=0: old false,
+ *                                           reader true)
  *
  * Run from the repository's root: node tools/guards/switch-reader.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
@@ -50,8 +57,18 @@ const MOVED = Object.freeze([
   { name: 'tapthrough', call: 'swHas', file: 'src/ui/swallowTapClick.js', old: (S) => /[?&]tapthrough(=|&|$)/.test(S || '') },
 ]);
 
+/* v2.3.5306 (the gatekeeper's low, sitting 18): and each switch its row
+   needs, thrown alone and beside it -- the old test never saw a need, so a
+   moved read whose row has one is held to answer as it did (a move that
+   would add a need's meaning is a change of meaning, and fails) */
+const neededWords = (n) => {
+  const r = SWITCHES.find((x) => x.name.replace(/^\?/, '') === n && x.side !== 'worker');
+  return r ? r.needs.map((m) => m.replace(/^\?/, '')).filter((m) => SWITCHES.some((x) => x.side !== 'worker' && x.name.replace(/^\?/, '') === m))
+    .map((m) => { const f = pageForm(SWITCHES.find((x) => x.name.replace(/^\?/, '') === m)); return f === '*' ? null : `${m}${f === '' ? '' : '=' + f.split('|')[0]}`; }).filter(Boolean) : [];
+};
 const ADDRESSES = (n) => ['', `?${n}`, `?${n}=`, `?${n}=0`, `?${n}=1`, `?${n}=off`, `?${n}=false`, `?${n}=7`,
-  `?x${n}=0`, `?${n}x=0`, `?a=1&${n}=0`, `?${n}=0&b=2`, `?a=1&${n}`];
+  `?x${n}=0`, `?${n}x=0`, `?a=1&${n}=0`, `?${n}=0&b=2`, `?a=1&${n}`,
+  ...neededWords(n).flatMap((w) => [`?${w}`, `?${n}=1&${w}`])];
 
 let failed = 0;
 const check = (name, ok, detail) => {
@@ -110,6 +127,26 @@ const src = new Map(files.map((f) => [f, readFileSync(join(ROOT, f), 'utf8')]));
   }
   check(`3: reads of location.search outside the reader: ${n}, the line ${OUTSIDE_LINE} (it only falls: a read moves into src/game/switches.js)`, n <= OUTSIDE_LINE, where.slice(-12));
   if (n < OUTSIDE_LINE) console.log(`     (room: ${n} under the line ${OUTSIDE_LINE}; the gatekeeper may lower it)`);
+}
+
+/* 4. the page's reader follows its address when the page changes it
+   (v2.3.5306, the gatekeeper's medium: history.replaceState drops `create`,
+   `login`, `noresume`; tests flip a switch mid-page) */
+{
+  const saved = Object.getOwnPropertyDescriptor(globalThis, 'location');
+  const mod = await import(pathToFileURL(join(ROOT, READER_FILE)).href + '?follow');
+  const seen = [];
+  try {
+    Object.defineProperty(globalThis, 'location', { value: { search: '?starcue=0' }, configurable: true, writable: true });
+    seen.push(mod.sw('starcue'));
+    globalThis.location.search = '';
+    seen.push(mod.sw('starcue'));
+    globalThis.location.search = '?a=1&starcue=0';
+    seen.push(mod.sw('starcue'));
+  } finally {
+    if (saved) Object.defineProperty(globalThis, 'location', saved); else delete globalThis.location;
+  }
+  check('4: the page\'s reader answers for the address as it is now (a page that changes its own address is read again)', seen.join() === 'true,false,true', seen);
 }
 
 console.log(failed ? `\n${failed} FAILED` : '\nall green');

@@ -224,9 +224,13 @@ in the PR that removes its trigger. The list only shrinks: a census
 
 ## The page's one reader (v2.3.5306; 7.1's "one reader")
 
-`src/game/switches.js` reads the page's address once, at the first ask, and
-answers every switch by its name. It has no imports, so node tests it and
-any file may ask it.
+`src/game/switches.js` answers every switch by its name. It reads
+`location.search` at each ask and parses it again only when it has changed.
+A page does change its own address: `BroTown.jsx` drops `create`, `login`
+and `noresume` with `history.replaceState`, and tests flip a switch
+mid-page. So the reader always answers for the address as it is now (the
+gatekeeper's medium, sitting 18; check 4 of its guard). It has no imports,
+so node tests it and any file may ask it.
 
 - **One function a form**, from the row's `thrown` on the page:
   - `sw(name)`: a row with a form (`=0`, the words its read takes like
@@ -249,7 +253,8 @@ any file may ask it.
   equal to the reader on 13 fixed addresses: the name absent, present,
   `=` empty, `=0`, `=1`, `=off`, `=false`, a value, inside a longer name
   before and after, and beside another name. Every ask names a page row,
-  and `sw` only one with a form.
+  and `sw` only one with a form. The addresses also throw each switch the
+  moved read's row needs: a move that would add a need's meaning fails.
 - **The outside reads** (a census, only falls): `location.search` in the
   page's code outside the reader, 220 at its first count (227 before the
   first seven reads moved). Card T's PRs 7 on lower it as reads move in.

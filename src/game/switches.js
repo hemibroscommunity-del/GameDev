@@ -1,7 +1,9 @@
 /* ═══ v2.3.5306: THE PAGE'S ONE READER OF ITS SWITCHES (grand plan step 7.1, card T PR 6) ═══
  *
- * Every `?name=` the page reads, read here: the address is parsed ONCE (the
- * first call), and a read anywhere else asks this file by the switch's name.
+ * Every `?name=` the page reads, read here: the address is read at each ask
+ * and parsed once for each address it holds (a page may change its own:
+ * history.replaceState), and a read anywhere else asks this file by the
+ * switch's name.
  * The table of names is tools/guards/lib/switches.mjs (docs/SWITCHES.md);
  * the rules: docs/specs/switch-table.md, "The page's one reader".
  *
@@ -333,12 +335,19 @@ export function readerFor(search) {
   };
 }
 
-/* the page's: the address read once, at the first ask */
+/* the page's: the address read at every ask, parsed again only when it
+   changed.  v2.3.5306 (the gatekeeper's medium, sitting 18): the page DOES
+   change its own address (BroTown.jsx drops `create`, `login` and
+   `noresume` with history.replaceState; tests flip a switch mid-page), so
+   one copy kept from the first ask would answer for an address gone.  A
+   string compare an ask; a parse only on a change. */
 let _page = null;
+let _search = null;
 function page() {
-  if (_page) return _page;
   let s = '';
   try { s = (typeof location !== 'undefined' && location.search) || ''; } catch (e) { s = ''; }
+  if (_page && s === _search) return _page;
+  _search = s;
   _page = readerFor(s);
   return _page;
 }
