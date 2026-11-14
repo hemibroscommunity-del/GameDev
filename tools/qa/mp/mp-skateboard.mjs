@@ -40,7 +40,12 @@
  *  11. ...ridden at the safe ground's edge and let go short of it: off at the
  *      edge, with no roll past it;
  *  12. ...and the same start and roll-off on the phone's stick, upright and
- *      sideways.
+ *      sideways;
+ *  13. (v2.3.5440, the gatekeeper's sitting 10) a REAL harvest begun with E
+ *      while the board rolls (a tree in the commons): the board stops at once,
+ *      the harvest is not cancelled by the roll, and the worker's 'fight'
+ *      reads "Off the board to chop." -- not the owner's old wrong "...to
+ *      fight." (v2.3.3875).
  * Pictures: tools/qa/mp/out/skateboard-*.png (the 8 directions, the button
  * upright, sideways and on a computer).
  */
@@ -388,6 +393,61 @@ export async function run({ browser, wsPort, webPort, rec }) {
     console.log(`    edge: ${JSON.stringify({ letGo: { spd: e0.spd, r: Math.round(Math.hypot(e0.x - G.cx, e0.y - G.cy) - R) }, off: eOff && { why: eOff.why, r: rOff }, end: rEnd, n: e11.length })}`);
     rec.ok(`11. let go at top (${e0.spd}) ${Math.round(R - Math.hypot(e0.x - G.cx, e0.y - G.cy))} px short of the safe ground's edge, a roll that would carry ~200 px: off at the edge (${eOff && eOff.why}, ${rOff} px past it), and no roll after (${rEnd} px past it 1.5 s later)`,
       e0.spd >= 0.99 && !!eOff && eOff.why === 'edge' && rOff != null && rOff >= 0 && rOff <= 20 && rEnd <= rOff + 1, { e0, eOff, eEnd, rOff, rEnd });
+
+    /* ── 13. v2.3.5440: a real harvest begun with E while the board rolls ──
+       (the gatekeeper's sitting 10: the roll's way cancelled it the next
+       frame, and the worker's 'fight' read "Off the board to fight.") */
+    await H.grant(wsPort, idB, 'item', { invKey: 'woodcutting_axe', count: 1 }).catch(() => {});
+    await H.waitFor(B, (S) => (((S.rpg || {}).inventory || {}).woodcutting_axe || 0), (v) => v > 0, { timeout: 20000, label: 'the axe' }).catch(() => null);
+    const tree = await B.page.evaluate(([cx, cy, r]) => {
+      const S = window._gameState.current, p = S.player;
+      let best = null, d = Infinity;
+      for (const n of S.gatherNodes || []) {
+        if (n.nodeType !== 'tree' || !n.alive || (n.gatherLvl || 1) !== 1) continue;
+        if (Math.hypot(n.x - cx, n.y - 130 - cy) > r - 400) continue;   /* its stand well inside the safe ground */
+        const dd = Math.hypot(n.x - p.x, n.y - p.y);
+        if (dd < d) { d = dd; best = { id: n.id, x: n.x, y: n.y }; }
+      }
+      return best;
+    }, [G.cx, G.cy, R]);
+    let h13 = { tree: !!tree };
+    if (tree) {
+      await H.hopTo(B, tree.x, tree.y - 130);   /* mp-deskharvest's stand for a tree */
+      await B.page.waitForTimeout(1200);
+      await H.closeNpcDialogue(B).catch(() => {});
+      await B.page.keyboard.press('z');
+      await H.waitFor(B, () => window.__btRideBtn(), (v) => v.on === true, { timeout: 5000, label: 'on, by the tree' }).catch(() => null);
+      await H.waitFor(B, (S) => (S._ride ? S._ride.spd : -1), (v) => v === 0, { timeout: 8000 }).catch(() => null);
+      /* a short push along the stand's line, so it rolls a little and stays in reach */
+      const look13 = () => B.page.evaluate((id) => {
+        const S = window._gameState.current, r = S._ride || {};
+        return { on: !!r.on, why: r.why || null, spd: r.spd || 0, ex: S._extraction ? { skill: S._extraction.skill, status: S._extraction.status } : null,
+          reach: !!(S._proxNode && S._proxNode.id === id), x: S.player.x,
+          line: (S.dmgNumbers || []).map((d) => d && d.text).filter((t) => typeof t === 'string' && /^Off the board/.test(t)).slice(-1)[0] || null };
+      }, tree.id);
+      let q = await look13();
+      for (let tries = 0; tries < 4 && !(q.spd > 0 && q.reach); tries++) {
+        await B.page.keyboard.down('d');
+        for (let t0 = Date.now(); Date.now() - t0 < 4000; ) { q = await look13(); if (q.spd > 0) break; await B.page.waitForTimeout(10); }
+        await B.page.keyboard.up('d');
+        q = await look13();
+      }
+      const atE = q;
+      await B.page.keyboard.press('e');
+      await B.page.waitForTimeout(300);
+      const justAfter = await look13();
+      let off = null;
+      let seen = justAfter.line;
+      for (let t0 = Date.now(); Date.now() - t0 < 8000; ) { const w = await look13(); seen = w.line || seen; if (!w.on) { off = w; break; } await B.page.waitForTimeout(100); }
+      let later = await look13();
+      for (let t0 = Date.now(); Date.now() - t0 < 1500; ) { later = await look13(); seen = later.line || seen; await B.page.waitForTimeout(100); }
+      h13 = { tree: true, atE, justAfter, off, later, seen };
+    }
+    console.log(`    harvest mid-roll: ${JSON.stringify(h13)}`);
+    rec.ok(`13. E pressed by a tree while the board rolls (at ${h13.atE && h13.atE.spd.toFixed(2)} of top): the board stops at once (${h13.justAfter && h13.justAfter.spd}) and the harvest begins (${h13.justAfter && h13.justAfter.ex && h13.justAfter.ex.skill})`,
+      !!h13.atE && h13.atE.spd > 0 && h13.atE.reach && !!h13.justAfter && h13.justAfter.spd === 0 && !!h13.justAfter.ex && h13.justAfter.ex.skill === 'woodcutting', h13);
+    rec.ok(`13. ...the worker puts you off (${h13.off && h13.off.why}) with "${h13.seen}", and the roll never cancelled the harvest (${h13.later && h13.later.ex && h13.later.ex.status} 1.5 s on)`,
+      !!h13.off && h13.off.why === 'fight' && h13.seen === 'Off the board to chop.' && !!(h13.later && h13.later.ex), h13);
 
     /* 6. sideways: back in town, the phone turned */
     await H.glideTo(A, G.arrival.x + 200, G.arrival.y, { speed: 450, timeoutMs: 30000 });

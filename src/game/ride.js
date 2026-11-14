@@ -289,9 +289,13 @@ export function rideLook(st, facing, moving, now, r) {
  *   - STOPPED AT ONCE (speed 0, no coast): off the board for any reason
  *     (rideApply: stepOff, the worker's ride_state off, a tap); a hold
  *     (`held`: the loading veils, the race line, a stun, the loot freeze,
- *     anything that made the walk 0 this frame); a step that went less than
- *     BLOCK_K of its way, judged on the next frame (a wall, a prop, a
- *     monster, the Mayor gate's hold).  The shield, a swing and a roll step
+ *     anything that made the walk 0 this frame); a harvest begun (v2.3.5440,
+ *     the gatekeeper's sitting 10: the roll's way in dx/dy cancelled it the
+ *     next frame, BroTown's "moved away" test, and the worker's 'fight' then
+ *     read "Off the board to fight." -- the owner's old wrong line); a step
+ *     that went under BLOCK_K of its length, judged on the next frame (a
+ *     wall or a prop head-on, a monster, the Mayor gate's hold: at a slant
+ *     along one it slides, as a walk does).  The shield, a swing and a roll step
  *     you off first (rideCheck).  At the safe ground's edge rideCheck steps
  *     you off the frame after you cross it, as before: no coast past it.
  * Through the walk's own step: the coast is the walk's dx/dy (the way it
@@ -309,7 +313,7 @@ export const RIDE_FEEL = Object.freeze({
   COAST_EASE: 2,        /* the roll-off's curve: 1 a straight line, 2 an ease-out (quick at first, slowest at the end) */
   STOP: 0.0025,         /* a speed under this share has stopped (under a px a second): the roll-off from top ends about 1.9 s in */
   HOLD: 0.1,            /* the stick past this either way is held (the loop's own "moving" test); under it you have let go */
-  BLOCK_K: 0.3,         /* a step that went under this share of its way was blocked: stopped at once (along a wall at 45 degrees it slides) */
+  BLOCK_K: 0.05,        /* a step that went under this share of its length was blocked (head-on): stopped at once.  At a slant into a wall the board slides along it as a walk does, the share the slant's cosine (v2.3.5440: 0.3 of the way made it crawl at 57-90 degrees, the gatekeeper's sitting 10) */
   BLOCK_MIN_PX: 0.5,    /* ...judged only on a step at least this long */
 });
 
@@ -358,12 +362,12 @@ export function rideFeel(S, dx, dy, dtMs, held, x, y) {
   /* the last step, judged: blocked, the board stops where it stands */
   if (r.tl > 0) {
     if (typeof x === 'number' && typeof y === 'number') {
-      const got = ((x - r.fx) * (r.tx - r.fx) + (y - r.fy) * (r.ty - r.fy)) / (r.tl * r.tl);
+      const got = Math.hypot(x - r.fx, y - r.fy) / r.tl;   /* how much of its length the step went, whichever way */
       if (!(got >= F.BLOCK_K)) r.spd = 0;
     }
     r.tl = 0;
   }
-  if (held) { r.spd = 0; r.push = -1; return [0, dx, dy]; }
+  if (held || S._extraction) { r.spd = 0; r.push = -1; return [0, dx, dy]; }   /* v2.3.5440: a harvest begun holds the board (above) */
   if (hold) {
     r.wx = dx; r.wy = dy;
     const L = RIDE_LOOK;

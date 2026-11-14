@@ -1,6 +1,6 @@
 card: SK
 branch: claude/plan-sk-1-rolloff
-prs: #1782 (tag 5440; ready)
+prs: #1782 (tag 5440; ready: sitting 10's hold mended)
 state: ready
 
 ## Done
@@ -16,22 +16,23 @@ state: ready
 
 ## Next
 
-- The gatekeeper's sitting for #1782. `skateboard` 26/26 with the pose
-  line; `boardwheels` 7/8, its one red main's (Found). Card T's #1768 is
-  merged into the branch (the planning session's ask), and the tag blocks
-  are TF's and PW's lines exactly.
+- Sitting 10's hold, mended: a harvest mid-roll holds the board; a slant
+  into a wall slides (BLOCK_K 0.05 by length); a rolling board's speed
+  rides the path (`pathWaits`): 80 moves -> 31 (instant 21; +10 the roll's
+  1.9 s). `skateboard` 28/28 with check 13 (a real chop mid-roll).
 
 ## Found
 
-- `mp-skateboard` (main): the phone had no keep-alive and was logged out on
-  a slow box; the button drops a tap held over 600 ms there. Fixed here.
+- `mp-skateboard` (main): the phone had no keep-alive (fixed here); the
+  button drops a tap held over 600 ms on this box (`tapOn` retries it).
 - `mp-skateboard` check 3 (main) reads `1.6` on the board whatever
   `RIDE_MULT` is: it cannot fail. Left.
 - `mp-townride` (main, same numbers on main's build): its two page-hold
   checks are red (no 50 ms bake left to find; `pages: 0`).
 - `mp-boardwheels` check 2 (main, red on main's build too): stopped, the
   drawn rider still drifts ~0.5 game px in 0.8 s (5.629 -> 5.635): card J2's.
-- The card's "dialogue" hold: there is none in the movement step.
+- `mp-skateboard` check 8 (main's): the banner's fade is seen only if a
+  sample hits its 0.25 s rise or a hit comes after 2.8 s; missed 1 run in 7.
 
 ## Needs
 

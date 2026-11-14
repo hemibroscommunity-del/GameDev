@@ -33,6 +33,8 @@ import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
 import { RIDE, RIDE_ENDS_ON } from '../src/ride.js';
 import { SPRINT } from '../src/sprint.js';
 import * as C from '../../src/game/ride.js';
+import * as D from '../../src/game/moveDiet.js';   /* v2.3.5440: §7j, the moves a rolling board sends */
+import { findIn } from '../../tools/guards/lib/filesOf.mjs';   /* §7j: the batcher's line, found by system (tests-by-system) */
 /* v2.3.4923: off retired-lands.test's FIXTURES list: "outside the Wheel" and
    "a zone change" are the farm now, never a retired old land. */
 
@@ -441,6 +443,23 @@ async function step(dx, gapMs, extra) {
     C.rideCheck(E, 6, { centre: [0, 0], safeR: 999 });
     check('7e. rolled past the safe ground\'s edge: off there (rideCheck), speed 0, no roll after it', !C.isRiding(E) && E._ride.spd === 0 && C.rideFeel(E, 0, 0, 16.667, false)[1] === 0);
   }
+  /* e2: v2.3.5440 (the gatekeeper's sitting 10): a harvest begun mid-roll
+     stops the board at once, and the stick's own (none) is the way: the
+     roll's way in dx/dy cancelled the harvest the next frame (BroTown's
+     |dx| > 0.2 "moved away"), and the worker's 'fight' then read "Off the
+     board to fight." -- the owner's old wrong line */
+  {
+    const S = board();
+    run(S, 1, 1500);
+    run(S, 0, 200);
+    const rolling = S._ride.spd;
+    S._extraction = { skill: 'woodcutting', startedAt: 1000000, status: 'waiting' };
+    const o = C.rideFeel(S, 0, 0, 16.667, false);
+    check(`7e. a harvest begun mid-roll (at ${rolling.toFixed(2)}): the board stops at once and the way is the stick's (none), so nothing moves you off it`,
+      rolling > 0.5 && S._ride.spd === 0 && o[0] === 0 && o[1] === 0 && o[2] === 0, o);
+    C.rideApply(S, { on: false, why: 'fight' }, 1000100);
+    check('7e. ...and the worker\'s "fight" then names it: "Off the board to chop."', S._ride.line === 'Off the board to chop.', S._ride.line);
+  }
   /* f: a wall stops it at once; along one it slides */
   {
     const S = board();
@@ -459,6 +478,28 @@ async function step(dx, gapMs, extra) {
     C.rideStepped(S3, 0, 0, 5, 0);
     C.rideFeel(S3, 0, 0, 16.667, false, 5, 0);
     check(`7f. ...and a step that went where it meant: rolling on (${S3._ride.spd.toFixed(2)})`, S3._ride.spd > 0.95);
+    /* v2.3.5440 (the gatekeeper's sitting 10): the stick HELD at a slant into
+       a wall that takes the across part of every step -- the board slides
+       along it as a walk does, at the board's speed times the slant's share
+       (it crawled at 10.5 px a second at 60 degrees, against 150 with the
+       switch thrown); straight into it, it stops */
+    const slide = (deg) => {
+      const W = board();
+      const a = deg * Math.PI / 180, sx = Math.sin(a), sy = Math.cos(a);   /* deg from the wall's own line: x is into the wall */
+      let y = 0, ms = 0;
+      for (let i = 0; i < 180; i++) {
+        const o = C.rideFeel(W, sx, sy, 16.667, false, 0, y);
+        const st = o[0] * 5;   /* the board's top a frame: RIDE_MULT x the walk's 2.5 */
+        C.rideStepped(W, 0, y, o[1] * st, y + o[2] * st);
+        if (i >= 120) ms += o[2] * st * 60;   /* the last second: px along the wall */
+        y += o[2] * st;   /* the wall keeps x where it was */
+      }
+      return { spd: W._ride.spd, along: Math.round(ms / 60) };
+    };
+    const s60 = slide(60), s80 = slide(80), s90 = slide(90);
+    check(`7f. ...held 60 degrees into a wall it slides along at the board's speed (${s60.along} px a second, the instant board's 150), 80 degrees at ${s80.along}`,
+      s60.spd > 0.99 && Math.abs(s60.along - 150) <= 2 && s80.spd > 0.99 && Math.abs(s80.along - 52) <= 2, { s60, s80 });
+    check(`7f. ...and straight into it, it pushes and stops (${s90.spd.toFixed(2)}, ${s90.along} px a second)`, s90.along === 0, s90);
   }
   /* g: the pose's pushes are the model's (your own figure: rideLook handed the record) */
   {
@@ -496,6 +537,72 @@ async function step(dx, gapMs, extra) {
       a[0] === 1 && a[1] === 1 && b[0] === 1 && b[1] === 0 && C.rideSpeed(S) === 0, { a, b });
     check('7h. ...and the pose as before: a push setting off, then every PUSH_EVERY_MS (no start\'s second push)', look.push && !look2.push && !look3.push);
     C.setRideFeel(null);
+  }
+  /* j: v2.3.5440 (the gatekeeper's sitting 10): THE MOVES IT SENDS.  The
+     roll-off changes the board's speed every frame, which the message diet
+     read as a change to send at once: a start, 4 s held and a stop sent 80
+     moves where the instant board sent 21.  A rolling board's speed change
+     now rides the path (moveDiet.js pathRideMayWait).  The phone's stream at
+     60 frames a second -- BroTown's move every 22 ms or more, wsClient's
+     batch every 33 ms, the path's rule as flushInputBuffer has it (held to
+     it below) -- counted by the real functions. */
+  {
+    const sim = ({ feel, rideRule, holdMs = 4000 }) => {
+      C.setRideFeel(feel);
+      const S = board();
+      const Fm = 16.667;
+      let t = 0, x = 0, lastB = -1e9, pending = null, pendingAt = 0, sent = null, sentAt = 0, lastSentAt = -1e9, n = 0, was = false, rest = false, nextFlush = 0, movingMs = 0, stopAt = 0;
+      for (let i = 0; i < 2000; i++) {
+        t += Fm;
+        const o = C.rideFeel(S, t <= holdMs ? 1 : 0, 0, Fm, false);
+        const v = 5 * o[0] * o[1];   /* px a 60 Hz frame: RIDE_MULT x the walk's 2.5 x the board's share */
+        x += v;
+        const moving = v !== 0;
+        if (moving) movingMs += Fm;
+        if (was && !moving) { rest = true; stopAt = t; }
+        was = moving;
+        if (t - lastB > 22 && (moving || rest)) { lastB = t; rest = false; pending = { x: Math.round(x * 10) / 10, y: 0, d: 'right', f: 'east', z: 'wheel', vx: Math.round(v * 100), vy: 0, pd: 1 }; pendingAt = t; }
+        if (t >= nextFlush) {
+          nextFlush = t + 33;
+          if (pending) {
+            let gap = 33;
+            if (sent && (rideRule ? D.pathWaits(true, C.isRiding(S) && C.rideFeelOn(), pending, pendingAt, sent, sentAt)
+              : D.pathMayWait(true, pending, pendingAt, sent, sentAt))) gap = D.MOVE_PATH.GAP_MS;
+            else if (sent && D.pathTurned(sent, pending)) gap = 0;
+            if (t - lastSentAt >= gap) { n++; sent = pending; sentAt = pendingAt; lastSentAt = t; pending = null; }
+          }
+        }
+        if (stopAt && t > stopAt + 500 && !pending) break;
+      }
+      C.setRideFeel(null);
+      return { moves: n, s: +(movingMs / 1000).toFixed(2), perS: +(n / (movingMs / 1000)).toFixed(2) };
+    };
+    const inst = sim({ feel: false, rideRule: false });
+    const before = sim({ feel: true, rideRule: false });
+    const now = sim({ feel: true, rideRule: true });
+    console.log(`     moves for a start, 4 s held and a stop: the instant board ${inst.moves} (${inst.s} s moving), the roll-off ${before.moves} before the mend, ${now.moves} now (${now.s} s moving: it rolls on ~1.9 s)`);
+    check(`7j. the instant board (today's): ${inst.moves} moves for a start, 4 s held and a stop`, inst.moves >= 19 && inst.moves <= 23, inst);
+    check(`7j. the roll-off sends at a walk's rate: ${now.perS} moves a second of motion against the instant board's ${inst.perS} (${before.perS} before the mend)`,
+      now.perS <= inst.perS + 0.3 && before.perS > inst.perS * 2, { inst, before, now });
+    /* the line: only falls.  The 10 over the instant board's are the ~1.9 s
+       more the board moves (the roll itself), at the walk's rate */
+    check(`7j. ...${now.moves} moves in all, at most 32 (the line; ${before.moves} before the mend)`, now.moves <= 32, now);
+    /* the sim's rule is the batcher's: flushInputBuffer asks pathWaits with
+       the path on and "riding, the roll-off on" */
+    const asks = findIn('wire', /if \(pathWaits\(movePathOn\(\), isRiding\(stateRef\.current\) && rideFeelOn\(\), _pendingMove, _pendingMoveAt, _moveSent, _moveSentMadeAt\)\)/);
+    check(`7j. ...and the batcher asks the same: pathWaits(movePathOn(), isRiding(...) && rideFeelOn(), ...) (${asks.map((a) => a.file + ':' + a.line).join(', ')})`,
+      asks.length === 1, asks);
+    /* the rule itself: a heading change, a start, a stop or another field goes at once */
+    /* 500 hundredths of a px a 60 Hz frame is 0.3 px a ms: the glide has it 30 px on after 100 ms */
+    const m0 = { x: 0, y: 0, z: 'wheel', vx: 500, vy: 0, d: 'right', pd: 1 };
+    const mv = (x, vx, vy, d) => ({ x, y: 0, z: 'wheel', vx, vy, d: d || 'right', pd: 1 });
+    const ok = D.pathRideSteady(m0, mv(25, 300, 0), 0, 100);   /* rolling off: 5 px behind the glide, slower */
+    const turned = D.pathRideSteady(m0, mv(25, 290, 60), 0, 100);
+    const stopped = D.pathRideSteady(m0, mv(25, 0, 0), 0, 100);
+    const field = D.pathRideSteady(m0, mv(25, 300, 0, 'up'), 0, 100);
+    const far = D.pathRideSteady(m0, mv(30 - D.MOVE_PATH_RIDE.RIDE_ERR_PX - 4, 300, 0), 0, 100);
+    check('7j. the rider\'s path: a speed change on the line waits; a turn, a stop, another field or a glide past RIDE_ERR_PX goes',
+      ok && !turned && !stopped && !field && !far, { ok, turned, stopped, field, far });
   }
   /* i: moved out of BroTown's loop to make room (tools/guards/four-lines) */
   {

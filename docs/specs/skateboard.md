@@ -306,8 +306,16 @@ and getting off stops you at once.
 
 - off the board for any reason: the edge, a hit, a fight, a duel, death, a zone
   change, the kill switch, a tap;
-- a wall, a prop, a monster or the Mayor gate in the way: a step that went
-  under 30% of its way (along a wall at a slant it slides on);
+- a wall, a prop, a monster or the Mayor gate head-on: a step that went
+  under 5% of its length. At a slant into a wall the board slides along it as
+  a walk does, at the board's speed times the slant's share (150 px a second
+  at 60 degrees, as the instant board did; v2.3.5440's first cut crawled
+  there at 10.5, the gatekeeper's sitting 10);
+- a harvest begun while it rolls (E, or a tap on a resource): the board
+  stops, so the roll never carries you off the harvest you started, and the
+  worker's word reads "Off the board to chop." (the gatekeeper's sitting 10:
+  the roll cancelled the harvest the next frame and the line came back as
+  the owner's old wrong "...to fight.");
 - every hold that stops the walk: the loading veils, the race line, a stun, the
   loot freeze;
 - the shield, a swing or a roll step you off the board first, as before;
@@ -325,7 +333,7 @@ number, so "longer" or "fewer pushes" is one line:
 | `COAST_EASE` | 2 | the roll-off's curve (1 a straight line) |
 | `STOP` | 0.0025 | under this share it has stopped (under a px a second) |
 | `HOLD` | 0.1 | the stick past this is held |
-| `BLOCK_K` | 0.3 | a step under this share of its way was blocked |
+| `BLOCK_K` | 0.05 | a step under this share of its length was blocked (head-on) |
 | `BLOCK_MIN_PX` | 0.5 | a step judged only from this long |
 
 A push is the pose's own length (`RIDE_LOOK.PUSH_MS`, 0.4 s), and its speed
@@ -360,6 +368,19 @@ it stopped.
 rolls: `entityRenderer.js` hands `rideLook` your ride's record (one line; the
 planning session's yes, 2026-11-14).
 
+**The moves it sends** (the gatekeeper's sitting 10): a changing speed is
+not a steady walk to the message diet, so the start and the roll-off sent a
+move nearly every batch: a start, 4 s held and a stop sent 80 moves where the
+instant board sent 21. On the board, a move that keeps its heading and its
+line now waits like a steady walk's (200 ms) however its speed changed, while
+the worker's glide at the last speed sent is within 8 px of you along the line
+(`moveDiet.js` `pathRideMayWait`, asked with `pathMayWait` through
+`pathWaits` by `wsClient.js`'s batcher). Now 31: the same 5.3 a second of motion as a walk; the 10 over
+21 are the ~1.9 s more the board moves as it rolls off. `ride.test` §7j counts
+them with the real functions at 60 frames a second and holds the line (32).
+The worker judges every move from the last one's place, as ever: nothing on
+the wire changes.
+
 **Others see it** through the moves they already get: nothing new on the wire.
 Their pose of you keeps the rule from your moves: a push setting off, the
 start's second one 0.6 s later, then one every 2 s (a push may show once in
@@ -374,15 +395,19 @@ the instant start and stop, and the old pose rule. Its row is in
 - `server/test/ride.test.mjs` §7: top within two pushes; the roll from top to a
   stop in about 2 s, slowest at the end, the same at any frame rate; stopped at
   once on a step-off, the worker's word, a hold, a wall, past the edge; at a
-  slant along a wall it slides; a resume with no new start; the pose's pushes
-  the model's; the switch thrown gives the old way. This touches
+  slant along a wall it slides (60 and 80 degrees held: the board's speed
+  times the slant's share); a harvest begun mid-roll stops it and its line
+  names the skill; a resume with no new start; the pose's pushes the model's;
+  the switch thrown gives the old way; §7j the moves sent (above). This touches
   `server/test/`, so its merge deploys the worker.
 - `node tools/qa/mp/run.mjs skateboard` checks 10 to 12, timed by the game's
   own clock (`clk`; TRAPS §200): on the computer's keys and the phone's stick,
   upright and sideways, from a stand below top early and at top by about
   1.2 s; let go, still rolling, slowing, stopped within about 2.5 s, still and
   silent; the worker followed no move; let go at top 100 px short of the edge,
-  off at the edge with nothing past it.
+  off at the edge with nothing past it; (13) a REAL chop begun with E while the
+  board rolls: the board stops, the harvest goes on, and the line reads "Off
+  the board to chop.".
 - `mp-boardwheels` check 2 ("stopped, the wheels hold still") waits for the
   board's own speed to reach 0 before it looks, never a fixed wait (TRAPS
   §177: the board rolls off now). It is red on `main` too, before this change
