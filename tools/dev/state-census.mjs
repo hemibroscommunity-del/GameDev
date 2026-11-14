@@ -2310,7 +2310,7 @@ function dossier(filter) {
  */
 const LEDGER_DIR = join(ROOT, 'src', 'state');
 /* the columns this script makes; any other column of a row is hand-made and kept */
-const LEDGER_MADE = new Set(['field', 'variable', 'file', 'system', 'suggested', 'born', 'twoFiles', 'noRead', 'noSet', 'phase', 'flag', 'unchanged', 'writers']);
+const LEDGER_MADE = new Set(['field', 'variable', 'file', 'system', 'suggested', 'born', 'twoFiles', 'noRead', 'noSet', 'phase', 'flag', 'neverChanged', 'writers']);
 const ledgerKey = (row) => (row.field !== undefined ? 'S ' + row.field : row.file + ' ' + row.variable);
 
 /* a value as a JS literal on one line: single quotes, bare keys (plain data) */
@@ -2344,7 +2344,7 @@ function ledgerFound(systemOf) {
     const made = {
       variable: v.name, file: v.file, system: systemOf(v.file), suggested: v.reset, born: v.decl + ' ' + v.init,
       twoFiles: v.marks.includes('2+') ? '2+' : '', noRead: v.marks.includes('no-read'), phase: v.phase ? v.states : null,
-      flag: v.flag, unchanged: !v.changed,
+      flag: v.flag, neverChanged: !v.changed,
       writers: v.writers.map(([f]) => f).sort(),
     };
     out.set(ledgerKey(made), { system: made.system, made });
@@ -2372,7 +2372,7 @@ function ledgerLine(made, kept) {
   row.system = made.system;
   row.lifetime = kept && kept.lifetime !== undefined ? kept.lifetime : 'sitting';
   for (const [k, x] of Object.entries(kept || {})) if (!LEDGER_MADE.has(k) && k !== 'lifetime') row[k] = x;
-  for (const k of ['suggested', 'born', 'twoFiles', 'noRead', 'noSet', 'phase', 'flag', 'unchanged', 'writers']) if (made[k] !== undefined) row[k] = made[k];
+  for (const k of ['suggested', 'born', 'twoFiles', 'noRead', 'noSet', 'phase', 'flag', 'neverChanged', 'writers']) if (made[k] !== undefined) row[k] = made[k];
   return '  ' + lit(row) + ',';
 }
 

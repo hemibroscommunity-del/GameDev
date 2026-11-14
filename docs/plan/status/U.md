@@ -1,30 +1,31 @@
 card: U
 branch: claude/plan-u-1-ledger
-prs: PR 1, tag 5160 (working)
-state: working
+prs: PR 1, tag 5160 (ready; its number is in the PR list)
+state: ready
 
 ## Done
 
-- Nothing yet.
+- PR 1 (5160): `src/state/README.md` (the form); `src/state/life.js`, the
+  first ledger (fewest rows: `life` and `liveops` one each, the tie by
+  name; `S._deathCard`); `state-census.mjs --ledger`; the guard
+  `tools/guards/state-ledger.test.mjs` (unlisted 2128, its line 2128).
+  B's map gains the system `state` for `src/state/` (the planning
+  session's call: B is finished).
 
 ## Next
 
-- PR 1 (5160): `src/state/README.md`, the first ledger, `--ledger` in
-  `state-census.mjs`, the guard `tools/guards/state-ledger.test.mjs`.
-  Fewest rows by B's map: `life` and `liveops`, one row each (the tie goes
-  by name: `life`, the field `_deathCard`).
+- PR 2 (5161): the next systems by fewest rows (liveops, session, device,
+  page-thread, input), with the census page rewritten (`--write`).
 
 ## Found
 
-- `docs/plan/census/state.md` is behind the code on main: `--check` fails
-  (885 files, not 883; 20 variables more, e.g. `debug/report.js`).
-- `tools/guards/lib/fourLines.mjs:45` says the page "is held to the code by
-  `state-census.mjs --check`": nothing runs `--check` (not precheck, not CI).
+- Nothing runs `state-census --check`, though `tools/guards/lib/fourLines.mjs:45`
+  says it does: `docs/plan/census/state.md` lags main (885 files, not 883;
+  20 variables more, e.g. `debug/report.js`). For a later card.
 
 ## Needs
 
-- Asked the planning session (once, 2026-11-14):
-  1. a file under `src/state/` is `unsorted` in B's map (11, its line 11):
-     PR 1's two files make 13 and `systems.test` fails. Who places them?
-  2. may a ledger PR rewrite the census page (`--write`) so its rows and
-     the page the guard reads in CI agree?
+- Nothing. The planning session answered (2026-11-14): (1) `state` in B's
+  map, written in PR 1; (2) a ledger PR may rewrite the census page when its
+  rows need it; (3) never-changed `let`/`var` are rows (`neverChanged`), a
+  field's system is B's of D's file, rows name file and function, not line.

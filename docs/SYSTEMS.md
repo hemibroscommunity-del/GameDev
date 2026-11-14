@@ -49,6 +49,7 @@ line), every door is in its system's files, and this page is what the table make
 | [render](#render) | drawing the world: the Pixi renderer, the entity and effects renderers, light, fx |
 | [ui](#ui) | the screens: BroTown.jsx, the band and its panels, windows, banners |
 | [data](#data) | the client's tables (src/data/): items, zones, abilities, the long display and systems tables |
+| [state](#state) | the state ledger: every field of S and top-of-file variable, a file a system |
 | [debug](#debug) | the crash ring, the perf HUD, the debug overlay |
 | [shell](#shell) | the page itself: main.jsx, index.html, the QA harness pages, the public files |
 | [vendor](#vendor) | code from outside, kept as it came (with its licence) |
@@ -357,6 +358,16 @@ The client's tables (src/data/): items, zones, abilities, the long display and s
 - **Doors**: none named yet
 - **Switches**: none
 - **Words**: `data`, `table`, `mirror`
+- **Traps**: none
+
+## state
+
+The state ledger: every field of S and top-of-file variable, a file a system.
+
+- **Files**: everything under `src/state/`
+- **Doors**: none named yet
+- **Switches**: none
+- **Words**: `ledger`
 - **Traps**: none
 
 ## debug

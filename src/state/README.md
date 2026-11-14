@@ -7,6 +7,9 @@ lifetime from a guess. This folder holds the **ledger**: one row for each of
 them, in one file per system.
 
 - **One file a system** of card B's map (`docs/SYSTEMS.md`): `src/state/<system>.js`.
+  This folder is a system of the map itself, `state` (the planning session's
+  call, 2026-11-14): a ledger file is about another system's state, and is
+  not that system's code.
 - **Made by machine, never typed.** Card D's script reads the code and makes
   the rows: `node tools/dev/state-census.mjs --ledger <system> --write`.
   `--ledger` alone prints every system's rows, listed and not, fewest first.
@@ -24,7 +27,7 @@ One line, one object. A field of `S`:
 ```
 
 A top-of-file variable has `variable` and `file` where a field has `field`,
-`unchanged` where a field has `noSet`.
+`neverChanged` where a field has `noSet`.
 
 | column | what | made by |
 |---|---|---|
@@ -37,7 +40,7 @@ A top-of-file variable has `variable` and `file` where a field has `field`,
 | `twoFiles` | D's mark: `2+` written from two or more files; `2+~` only when writes through a name for the inside count; else `''` | machine |
 | `noRead` | D's mark: `true` nothing under `src/` reads it; `'tests'` the same, but a QA tool or test names it | machine |
 | `noSet` | fields: D's mark, nothing ever sets it | machine |
-| `unchanged` | variables: a `let` or `var` never changed after it is made (a constant in fact; still a row by D's rule) | machine |
+| `neverChanged` | variables: a `let` or `var` never changed after it is made (a constant in fact; still a row by D's rule, marked so) | machine |
 | `phase` | D's mark: the words it is set to or compared with, when it looks like a state machine's one field (step 5.3b, card L); else `null` | machine |
 | `flag` | D's mark: only ever set to true or false | machine |
 | `writers` | the files that write it, from the root; `~` after a file that writes it only through a name for the inside | machine |
@@ -72,7 +75,9 @@ system has moved since it was listed stays in its file (the guard names it).
 On GitHub the guard reads the rows off the census's page
 (`docs/plan/census/state.md`): the script needs the root's packages, which the
 `test` job does not install. `node tools/guards/state-ledger.test.mjs --live`
-runs the script instead.
+runs the script instead. The page is only as true as its last
+`node tools/dev/state-census.mjs --write`: a ledger PR whose rows the page
+lacks rewrites it.
 
 Rows of files the map has not placed (`unsorted`) have no ledger to go in
 until the map places their file; the guard lists those files by name.

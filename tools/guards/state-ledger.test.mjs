@@ -27,7 +27,11 @@
  * as four-lines does, the guard reads the rows off the page the script writes
  * (docs/plan/census/state.md: a field by its name, a variable by its file and
  * name), and `--live` runs the script instead.  The page is as true as its
- * last `--write`.
+ * last `--write`: nothing holds it to the code (the four-lines guard says
+ * `--check` does; nothing runs it).  At landing it lagged main by 20
+ * variables, so `--live` counted 2,148 unlisted, over the line.  A ledger
+ * PR whose rows need it rewrites the page (`state-census.mjs --write`, the
+ * planning session's call, 2026-11-14), and its new rows offset the page's.
  *
  * BREAK PROOF (the plan's rule 8), each tried by hand, 2026-11-14:
  *   1. `import x from './y.js';` at the top of src/state/life.js  -> FAIL 1
@@ -122,7 +126,7 @@ function rowFault(row) {
   if (!['', '2+', '2+~'].includes(row.twoFiles)) return 'twoFiles';
   if (![true, false, 'tests'].includes(row.noRead)) return 'noRead';
   if (isField && typeof row.noSet !== 'boolean') return 'noSet';
-  if (!isField && typeof row.unchanged !== 'boolean') return 'unchanged';
+  if (!isField && typeof row.neverChanged !== 'boolean') return 'neverChanged';
   if (row.phase !== null && !(Array.isArray(row.phase) && row.phase.every(str))) return 'phase';
   if (typeof row.flag !== 'boolean') return 'flag';
   if (!Array.isArray(row.writers) || !row.writers.every(str)) return 'writers';
