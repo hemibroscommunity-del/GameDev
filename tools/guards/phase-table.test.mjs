@@ -236,6 +236,14 @@ const DOOR_SUITES = Object.freeze({
         .map((file) => ({ file, text: 'this.state = state', why: 'the Durable Object\'s own handle' })),
       { file: 'server/src/dungeon.js', text: 'inst.state = ', why: 'a dungeon instance: its own machine (the `dungeon` row)' },
     ] },
+  /* v2.3.5211: the duel door */
+  'server/test/duel-door.test.mjs': { field: 'd.status', fn: '_duelTo', holds: '§2: no .status written in server/src but in _duelTo and NOT_A_DUEL\'s',
+    prop: 'status', besides: [
+      { file: 'server/src/alliance.js', text: 'w.status = ', why: 'an alliance war\'s end, its own record' },
+      { file: 'server/src/clans.js', text: 'war.status = ', why: 'a clan war\'s end, its own record' },
+      { file: 'server/src/gladiator.js', text: 't.status = ', why: 'an arena tournament: the `arena` row' },
+      { file: 'server/src/arena.js', text: 'tournament.status = ', why: 'the old Arena object\'s tournament (kept for its binding)' },
+    ] },
 });
 const SCAN_DOORS = Object.freeze({
   'session (worker)': 'session-door.test plays the phases but fails no second writer of session.phase',

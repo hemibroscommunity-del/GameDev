@@ -134,21 +134,18 @@ export const PHASES = [
     note: 'fightlock.js _fightLockHolds reads the duel, this clock (10 s), the red skull (ps._nml.red with ps.lastDamageAt) and the place (No man\'s land).',
   },
   {
-    name: 'duel', side: 'worker', status: 'todo',
-    what: 'A duel: challenged, active (away for a while), resolved.',
-    field: null, states: ['challenge', 'active', 'away', 'resolved'], fn: null, file: null,
+    name: 'duel', side: 'worker', status: 'door',
+    what: 'A duel: active, then resolved; a challenge is not yet a duel (a key of _duelChallenges with its own TTL), and away is a per-player clock on an active one.',
+    field: 'd.status', states: ['active', 'resolved'],
+    fn: '_duelTo', file: 'server/src/duel.js',
     clears: [
       { edge: 'end', at: 'server/src/duel.js _resolveDuel' },
       { edge: 'death', at: 'server/src/duel.js _duelOnDeath' },
       { edge: 'leave', at: 'server/src/duel.js _duelOnDisconnect' },
     ],
     rejoin: ['duel'],
-    today: [
-      { field: 'this._duelChallenges', file: 'server/src/duel.js', writers: ['server/src/duel.js _interceptDuel', 'server/src/duel.js _tickDuels'] },
-      { field: 'this._duels', file: 'server/src/duel.js', writers: ['server/src/duel.js _interceptDuel', 'server/src/duel.js _resolveDuel', 'server/src/gladiator.js _arenaTryActivate'] },
-      { field: 'd.away', file: 'server/src/duel.js', writers: ['server/src/duel.js _duelOnDisconnect', 'server/src/duel.js _duelOnRejoin', 'server/src/duel.js _duelZoneMoved'] },
-    ],
-    note: 'The record\'s status is the natural one field (_duelFor reads `active`); the leave starts a 15 s away clock, not an end.',
+    held: { suite: 'server/test/duel-door.test.mjs' },
+    note: 'v2.3.5211: the door (DUEL_WAYS resolve; the end final; live flag dueldoor). The record\'s status was the natural one field (_duelFor reads `active`); the leave starts a 15 s away clock, not an end.',
   },
   {
     name: 'trade', side: 'worker', status: 'door',
