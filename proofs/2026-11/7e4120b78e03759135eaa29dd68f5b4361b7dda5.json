@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7e4120b78e03759135eaa29dd68f5b4361b7dda5",
+  "tree": "f3bdea6043e5468d7a2439c06050e7e2bec40732",
+  "committedAt": "2026-11-14T10:28:35-08:00",
+  "subject": "Merge pull request #1815 from hemibroscommunity-del/claude/plan-o-7-device",
+  "files": 7660,
+  "bytes": 953661864,
+  "listingSha256": "bacb0d468e774e39cc19d14bb6f34edce37b3b3c4d6d78f5edd04f1d6e53ea13",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

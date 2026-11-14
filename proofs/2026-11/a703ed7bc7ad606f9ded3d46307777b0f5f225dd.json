@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "a703ed7bc7ad606f9ded3d46307777b0f5f225dd",
+  "tree": "c8fc58eb7f6f203f1e1f76e316159a3dab00b28a",
+  "committedAt": "2026-11-14T10:28:10-08:00",
+  "subject": "Merge pull request #1803 from hemibroscommunity-del/claude/plan-l-9-door-tree",
+  "files": 7657,
+  "bytes": 953571635,
+  "listingSha256": "1facfee5eed22060146e43c149c5f11c45d2a7d354ef7d53aafb8412635a3e5d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "201734d393664d2b3eca9d48793d10caa1ab4481",
+  "tree": "c9aa92f3b83dc2ed3b97a609f89d4e8e419201e7",
+  "committedAt": "2026-11-14T10:28:52-08:00",
+  "subject": "Merge pull request #1806 from hemibroscommunity-del/claude/plan-p-13-pixel-readers",
+  "files": 7661,
+  "bytes": 953684516,
+  "listingSha256": "053c250b815ef624c2d7270ff12aca0f8963baeb8276f9bfcc2e42fd386ee27f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

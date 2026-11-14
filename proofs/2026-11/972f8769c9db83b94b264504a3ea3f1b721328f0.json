@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "972f8769c9db83b94b264504a3ea3f1b721328f0",
+  "tree": "702f1031c09624424a3c84e312ad096f493accdf",
+  "committedAt": "2026-11-14T10:28:43-08:00",
+  "subject": "Merge pull request #1805 from hemibroscommunity-del/claude/plan-p-12-pack-page",
+  "files": 7660,
+  "bytes": 953671170,
+  "listingSha256": "9f2dfe8d55b6961ae794cc5055b0e6c542cc1684a2a1faaa2f6f4bff6863cf46",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

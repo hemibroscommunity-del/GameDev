@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "be5dc7c986a6fc4639ee90a349c80aca22b30b38",
+  "tree": "03bd05b4d7141f7af0e1f6e59bae6c9da224d3fa",
+  "committedAt": "2026-11-14T10:28:02-08:00",
+  "subject": "Merge pull request #1813 from hemibroscommunity-del/claude/plan-cards-k-r",
+  "files": 7657,
+  "bytes": 953568751,
+  "listingSha256": "97265b807885bee56063c17c0ef3de0e172560885822f3729fcf6ca49de2954a",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
