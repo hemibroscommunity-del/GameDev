@@ -35,6 +35,7 @@
 import { BT_AUDIO } from '@/data/index.js';
 import { hitSoundOf } from '@/data/monsterVariants.js';
 import { shotStyleOf, shotThrowerArch } from '@/data/monsterShots.js';
+import { resetOn } from '@/game/resetOn.js';   /* v2.3.5203: the shots' ends forgotten at the zone edge's one door (card L) */
 
 /* How far a sound carries: full within EAR_NEAR world px of you, nothing past
    EAR_FAR, falling as the square in between -- so a fight beside you is heard
@@ -154,6 +155,15 @@ function shotEnds(S) {
   if (!(S._shotEnds instanceof Map)) S._shotEnds = new Map();
   return S._shotEnds;
 }
+/* v2.3.5203 (grand plan step 5.3, card L): the balls that ended belong to the
+   place they flew in.  At a change of zone they are forgotten, so a monster's
+   blow in the next place is never matched to a ball from the last
+   (shotHitMe); shotEnds() makes the map again at the next ball.  Nothing
+   plays here.  `?audioreset=0` keeps them, as before. */
+function forgetShotEnds(S) {
+  S._shotEnds = null;
+}
+resetOn('zone', forgetShotEnds, 'audio');
 
 /** A monster's ball `proj` ending.  why: 'player' (it reached you), 'shield'
  *  (it reached you with your shield raised its way), 'prop' or 'land'

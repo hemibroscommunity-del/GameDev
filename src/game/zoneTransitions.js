@@ -38,6 +38,7 @@ import { loadTownScenery, freeTownScenery, townSceneryReady, townSceneryLoading 
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2999: the Wheel's grid is read at your boots */
 import { FARM_FROM_WORKSHOP } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
 import { holdFarmUntilReady } from '@/game/farmTrip.js';
+import { runResets, resetOn } from '@/game/resetOn.js'; /* v2.3.5203: the zone edge's one door runs the state's resets (card L); v2.3.5208: + the world's own */
 
 /* ═══ v2.3.2272: FREE THE ZONE YOU LEFT, ONE BEAT LATE ═══
  *
@@ -425,6 +426,27 @@ export function clearZoneLocalFx(S) {
   S._fxBursts = [];
 }
 
+/* ═══ v2.3.5208: WHAT FLEW AND FELL IN THE PLACE YOU LEAVE (card L) ═══
+   Your arrows, the hit and death particles and the place's own air (snow,
+   leaves): world pixels with no place on them.  Today every way of changing
+   place wipes them in a clear block of its own (the town exits and the ways
+   back below, a dungeon's way in, the farm trip, a Wheel dungeon's; the
+   respawn's with its stairs trip, 0.4 s after its flip, under its veil).
+   Blocks pasted into each way are how the zone's leftovers drifted (five of
+   nine ways skipped the list, v2.3.4414 below), so the world system's reset
+   at the zone's door (resetOn.js, run by changeZone) empties them at the flip
+   itself, for every way, a new one included.  The blocks stay.
+   `?worldreset=0` leaves them to the blocks, as before.  Not in
+   clearZoneLocalFx: that is the door's own list, and the plan's resets live
+   beside their state, each under its system's switch. */
+function leavePlaceDebris(S) {
+  S.arrows = [];
+  S.hitParticles = [];
+  S.deathExplosions = [];
+  S._ambientParticles = [];
+}
+resetOn('zone', leavePlaceDebris, 'world');
+
 /* ═══ v2.3.4414: THE FLIP AND ITS WIPE, IN ONE CALL ═══
    The contract above ("called from every clear block") was written down and
    still five of nine ways of changing place skipped it (the 2026-11-03 sweep,
@@ -445,9 +467,16 @@ export function clearZoneLocalFx(S) {
    §1-2, §6 (no other writer). */
 export function changeZone(S, to) {
   if (!S) return;
+  const from = S.currentZone;
   S.currentZone = to;
   clearZoneLocalFx(S);
   S.lockedTarget = null;
+  /* v2.3.5203 (grand plan step 5.3, card L): the zone edge's one door.  The
+     state that belongs to a place, registered by its own system
+     (game/resetOn.js resetOn('zone', ...)), goes back here -- on a REAL
+     change of place only: a flip to the zone you are in keeps what belongs
+     to it (the list above still runs, as before).  docs/specs/state-resets.md */
+  if (from !== to) runResets('zone', S, { from, to });
 }
 
 /* v2.3.4802: the Test panel's zone teleport (v2.3.2308, driveDevWarp) went with
