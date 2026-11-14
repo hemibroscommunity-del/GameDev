@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "fe814373e33fa7bab902599449c1a875202e062a",
+  "tree": "091c32e16a2b707e9b455c80a2199389f6babd6a",
+  "committedAt": "2026-11-13T21:55:29-08:00",
+  "subject": "Merge pull request #1689 from hemibroscommunity-del/claude/plan-b-3-system-map",
+  "files": 7471,
+  "bytes": 946686900,
+  "listingSha256": "66985098398872f4f1442f602979ef450839bde7489c03ab583a6b0f1efdcec3",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
