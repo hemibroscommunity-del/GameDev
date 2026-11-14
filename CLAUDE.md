@@ -187,6 +187,7 @@ spec. Add a line here only for a new RULE every session must follow.
   or a client can forge it, and the client handles it in `wsClient.js`'s DIRECT
   switch. A phone's relay reaches others only if its type is in `RELAY.TYPES`
   (`server/src/relay.js`), rebuilt in the sender's name.
+- **One way out of the page**: a request leaves through `act()`, a row in `src/game/actions.js` (the action door, v2.3.5185).
 - **A reconnect**: the phone clears its copy of a worker session (a duel, a
   trade, the party) at `state_sync` only together with the worker's re-send:
   a row in `REJOIN_SLOTS` (`src/game/rejoinSlots.js`; TRAPS §278).
@@ -384,6 +385,7 @@ spec. Add a line here only for a new RULE every session must follow.
 | an animation or sprite | its loader in `preloadWorldAnimations` (per zone: `preloadZoneAssets`, freed on exit); a body pose through `mp-ghostaudit` |
 | a message the server sends | `PRIVILEGED_EVENTS`; the client's direct switch |
 | a relay a phone sends | `RELAY.TYPES` |
+| a request the page makes | its row in `src/game/actions.js` (the action door) |
 | a server behaviour | a cap the client gates on (`CAP_GATES`) and a lower-case kill switch |
 | a `?name=` or a live flag | its row in the switch table (`tools/guards/lib/switches.mjs`; `node tools/guards/switches.test.mjs --write`) |
 | a storage key | ARCHITECTURE-HANDOFF's rule-2 registry table (precheck `storage-keys`) |

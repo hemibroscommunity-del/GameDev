@@ -63,7 +63,8 @@ The socket and the messages: the router, the relay, the client's connection and 
 - **Files**: everything under `server/src/wire/`
 - **Files**: everything under `src/networking/`
 - **Files**: `src/game/`: clientOff, clientOffApply, blockedAsks, workerClock, t1Sync, tooFar
-- **Doors**: `PRIVILEGED_EVENTS` in `server/src/index.js` (every type the server sends; anything else a client could forge); `TYPES` in `server/src/relay.js` (RELAY.TYPES: the relays a phone may send, rebuilt in its name)
+- **Files**: `src/game/`: actions
+- **Doors**: `PRIVILEGED_EVENTS` in `server/src/index.js` (every type the server sends; anything else a client could forge); `TYPES` in `server/src/relay.js` (RELAY.TYPES: the relays a phone may send, rebuilt in its name); `act` in `src/game/actions.js` (ACTIONS: the one way a request leaves the page, and its request id (v2.3.5185))
 - **Switches**: none
 - **Words**: `wire`, `protocol`, `relay`, `caps`, `bundle`, `privileged`, `clientoff`, `flood`
 - **Traps**: `wire`

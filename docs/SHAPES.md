@@ -227,6 +227,7 @@ So:
 | | |
 |---|---|
 | The name | `reqId`, on the socket as `payload.reqId`, in an HTTP body as `reqId`. One name, one maker. |
+| The maker (built, v2.3.5185) | The action door, `src/game/actions.js` `makeReqId` (`rq-<clock>-<count>-<random>`), for every row whose wire row's `doesWhat` holds `value-out` or `final` (its `req` flag). It adds bytes, never a message; a worker that does not read it lets it pass. |
 | The form | A string of 1 to 64 of `A-Z a-z 0-9 _ -`. The bank's form today (`bk-<clock>-<count>-<random>`) fits. |
 | Its reach | The worker reads it only together with the actor's `pid`. One character's ids never meet another's. |
 | What it promises | A repeat with the same `reqId` acts once and gets the first answer again. An answer to a request that carried one echoes it. |
@@ -698,7 +699,7 @@ list can be made from the table and a guard can fail a second copy of it.
 | `flag` | The live flag that turns it off. **No list of flag names exists**: any name is stored, and about 120 `_xxxOff()` functions each read their own. The switch table (step 7.1) makes the list. | `server/src/liveops.js` |
 | `roads` | The gold, bag and health roads its handler names (the `at` of each road's row) | `server/src/gold.js`, `bag.js`, `life.js` |
 | `silent` | Its handler's silent exits, by code (`ALLOW`: 96 handlers, 270 exits, 19 codes) | `server/test/refusal-door-list.mjs` |
-| `phoneSend` | How the phone sends it: a send of its own (`join`, `pong`, `track`, `move`), the shim's pass-through (93 types: an allowlist), a priority event (31), the 33 ms batch; a rider (3); held for the rejoin (`node_strike`); expects an answer (`SETTLED_SENDS`, 9) | `src/networking/wsClient.js` |
+| `phoneSend` | **The action door's rows** (v2.3.5185, card K): each row's `way` (`own`: `join`, `pong`, `track`; `move`; `alone`, 91 types, the shim's old pass-through; `claim`, `monster_damage`; `aftermove`, `loot_pickup` and `ability`; `priority`, 31; `attack`, `player_attack`; `rider`, `gather_node`; `batch`, the 33 ms batch; `http`, a route) and its flags (`settled`, 9, the old `SETTLED_SENDS`; `held`, `node_strike`; `req`; `body: 'top'`; `legacy`). It lives on the page, never in the worker's table (`tools/guards/action-door.test.mjs` holds the two together) | `src/game/actions.js`; the shim reads it (`src/networking/wsClient.js`) |
 | `phoneCase` | Where the phone takes it: the direct switch (87 cases) or `processGameEvent` (106) | `src/networking/wsClient.js`, `gameEvents.js` |
 | `rejoin` | Sent again at a join: the join's own train of about 13 messages, and the two re-sends of `REJOIN.COUNT` | `server/src/join.js`, `server/src/rejoinresend.js` |
 | `pv` | The protocol version it belongs to: both, v1 only (`zone_monsters`, `zone_nodes`, `zone_loot`), v2 only (`zone_state`) | `server/src/movement.js` |

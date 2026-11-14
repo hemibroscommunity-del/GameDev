@@ -34,6 +34,7 @@
  *      it (tools/ui/achievement-badges.sha256).
  */
 import { readFileSync } from 'node:fs';
+import * as DOOR from '../../src/game/actions.js';   /* v2.3.5185: the action door's rows */
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -200,8 +201,9 @@ const freshS = (extra) => Object.assign({ chatLog: [] }, extra || {});
   check('7a wsClient takes achv_state in its direct switch, never a relayed copy',
     /case 'achv_state':(?:\s*\/\*[\s\S]*?\*\/)?\s*\{\s*if \(msg\.from\) break;\s*var _achvP = msg\.payload;\s*afterReveal\(function \(\) \{ try \{ onAchvState\(S, _achvP\); \}/.test(ws));
   const shimFrom = ws.indexOf('var channelShim = {'), shimTo = ws.indexOf('track: function track(', shimFrom);
+  /* v2.3.5185: the shim's pass-through is the action door's rows (src/game/actions.js) */
   check('7b the channel lets achv_title through to the worker (TRAPS #18)',
-    shimFrom > 0 && /if \(msg\.type === 'achv_title'\) \{\s*wsOut\(msg\);\s*return;\s*\}/.test(ws.slice(shimFrom, shimTo)));
+    shimFrom > 0 && DOOR.ACTIONS.achv_title && DOOR.ACTIONS.achv_title.way === 'alone' && /var _way = actionWay\(msg\.type\);[\s\S]*?if \(_way === 'alone'\) \{\s*wsOut\(msg\);\s*return;\s*\}/.test(ws.slice(shimFrom, shimTo)));
   check('7c the player_state echo of achievementPoints feeds the page\'s total', /noteServerAp\(S, msg\.payload\.achievementPoints\)/.test(ws));
   const more = src('src/ui/mobile/dash/MorePanel.jsx');
   /* v2.3.3773: Journey keeps a tile of its own beside it (the owner: "journey
