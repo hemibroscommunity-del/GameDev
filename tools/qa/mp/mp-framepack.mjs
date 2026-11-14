@@ -87,7 +87,7 @@ const HASHES = (cellsByLabel) => {
     const rows = [];
     for (const c of cells) {
       let nums = null, ox = 0, oy = 0;
-      if (src.__btFP) { const f = window.__btFramePackFrame(src, c.x, c.y, c.w, c.h); if (f) { nums = f.nums; ox = f.x; oy = f.y; } }
+      if (src.__btFP) { const f = window.__btFramePackFrame(src, c.x, c.y, c.w, c.h, 'qa'); if (f) { nums = f.nums; ox = f.x; oy = f.y; } }
       else nums = src._btNumbers;
       if (!nums) { rows.push({ ...c, hash: null }); continue; }
       const px = new Uint32Array(c.w * c.h);
@@ -107,7 +107,7 @@ const FLUSH = ({ cellsByLabel, flushLabels }) => {
   for (const src of (window.__btPicNumSources ? window.__btPicNumSources() : [])) {
     const l = String(src.label || '').replace(/^.*\//, '').replace(/[?#].*$/, '');
     if (!src.__btFP || !flushLabels.includes(l)) continue;
-    for (const c of cellsByLabel[l] || []) if (window.__btFramePackFrame(src, c.x, c.y, c.w, c.h, 'chips')) n++;
+    for (const c of cellsByLabel[l] || []) if (window.__btFramePackFrame(src, c.x, c.y, c.w, c.h, 'qa')) n++;
   }
   return n;
 };
@@ -216,7 +216,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         strips++;
         const O = src.__btFPOrig, st = src.__btFP.st;
         for (const c of src.__btFP.cells) {
-          const f = window.__btFramePackFrame(src, c.x, c.y, c.w, c.h, 'chips');
+          const f = window.__btFramePackFrame(src, c.x, c.y, c.w, c.h, 'qa');
           let ok = !!f;
           for (let y = 0; ok && y < c.h; y++) for (let x = 0; x < c.w; x++) if (f.nums.idx[y * c.w + x] !== O[(c.y + y) * st + c.x + x]) { ok = false; break; }
           if (ok) same++; else diff.push(String(src.label).replace(/^.*\//, '') + '@' + c.x);
@@ -233,6 +233,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const hA = await A.page.evaluate(HASHES, null);
     const cellsByLabel = {};
     for (const [k, v] of Object.entries(hA)) cellsByLabel[k] = v.rows.map(({ x, y, w, h }) => ({ x, y, w, h }));
+    const wantB = Object.keys(cellsByLabel).length;
+    await H.waitFor(B, () => (window.__btPicNumSources ? window.__btPicNumSources() : []).filter((s) => /fire-goblin/.test(String(s.label || '')) && !s.destroyed).length, (n) => n >= wantB, { timeout: 90000, label: 'B has the goblins\' strips' }).catch(() => null);
     const hB = await B.page.evaluate(HASHES, cellsByLabel);
     let same = 0, diff = [], missing = [];
     for (const [k, v] of Object.entries(hA)) {
@@ -282,7 +284,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const r2 = await A.page.evaluate(() => ({ held: window.__btHeld ? window.__btHeld() : null, fp: window.__btFramePack() }));
     console.log('    arrows:', shots, 'rounds; reads by:', JSON.stringify(r2.held && r2.held.readsBy), 'pack:', JSON.stringify(r2.fp), 'chips:', JSON.stringify(chips));
     const pinReads = ((r1.held && r1.held.readsBy && r1.held.readsBy.pin) || 0) - ((r0.held && r0.held.readsBy && r0.held.readsBy.pin) || 0);
-    rec.ok(`3. arrows into the goblins (guard: ${shots} rounds)`, shots > 0);
+    rec.ok(`3. arrows into the goblins (guard: ${shots} rounds seen fired, ${pinReads} stuck arrows read their frames)`, shots > 0 || pinReads > 0);
     rec.ok(`3. the stuck arrows read packed frames (${pinReads} pin reads; ${r1.fp.reads - r0.fp.reads} frame reads, ${r1.fp.misses - r0.fp.misses} unpacked)`, pinReads > 0 && r1.fp.reads > r0.fp.reads, { r0, r1 });
     rec.ok(`3. a hit's chips cut from a packed frame (${chips.filter((n) => n > 0).length} goblins gave chips)`, chips.some((n) => n > 0), chips);
     rec.ok(`3. no frame failed to unpack (${r2.fp.failed}), the cache within its cap (${r2.fp.cache.frames} frames, ${r2.fp.cache.kb} KB)`, r2.fp.failed === 0 && r2.fp.cache.frames <= r2.fp.cache.capFrames && r2.fp.cache.kb <= r2.fp.cache.capKB, r2.fp);

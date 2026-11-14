@@ -15,11 +15,10 @@ state: working
 ## Next
 
 - 5257 `monster-fire-goblin`, road A' (`framePack.js`, `?framepack=0`): a
-  strip's numbers deflated a frame at a time once on the chip; a reader's
-  frame unpacked at once (`inflateRaw.js`) through a cache of 12 frames or
-  1 MB. Then the worst hit timed, mp-heldsweep's fight, three runs.
-- 5256 `monster-slime` (walks; 09d1eb2e1, begun before the rule): made
-  again from main once 5257 is up, on the same road.
+  strip's numbers kept deflated a frame at a time once drawn (deflated and
+  checked on the reader's worker); census 8.10 -> 6.65 MB at the fight; no
+  line moved (`buffers`' highest is at home). The PR, then the slimes.
+- 5256 `monster-slime` (walks; made again from main): its three runs next.
 
 ## Found
 
@@ -28,6 +27,8 @@ state: working
 - `pack-page` on main (A's sample): 30.6 ms at armour, 15.9 at peer.
 - `mp-npclooks` 2 and 2b are red with PR 6's change on and off alike.
 - The Equipment figure's 22 ms (5255): the box, not the figure.
+- 5257: the fire goblin's strips not yet drawn keep their numbers (packing
+  them would unpack a whole strip at its first draw, mid-fight).
 
 ## Needs
 

@@ -295,13 +295,16 @@ function _dropCache(src) {
 }
 
 /* a frame unpacked into the readers' cache, its time on this task's count */
-function _unpackCell(src, F, c, key) {
+function _unpackCell(src, F, c, key, qa) {
   const t0 = _now();
   const b = inflateRawSync(c.z, c.w * c.h);
   const ms = _now() - t0;
-  _spent += ms;
-  if (_spent > _st.taskMsMax) _st.taskMsMax = +_spent.toFixed(2);
-  if (!_spentReset) { _spentReset = true; setTimeout(() => { _spent = 0; _spentReset = false; }, 0); }
+  /* (QA's own reads, `who` 'qa', are on no reader's count) */
+  if (!qa) {
+    _spent += ms;
+    if (_spent > _st.taskMsMax) _st.taskMsMax = +_spent.toFixed(2);
+    if (!_spentReset) { _spentReset = true; setTimeout(() => { _spent = 0; _spentReset = false; }, 0); }
+  }
   if (!b) { _st.failed++; return null; }
   _st.misses++;
   _st.readMsSum += ms;
@@ -356,7 +359,7 @@ export function packedFrame(src, sx, sy, sw, sh, who) {
       if (!_warming) { _warming = true; setTimeout(_warmSome, 0); }
       return null;
     }
-    b = _unpackCell(src, F, c, key);
+    b = _unpackCell(src, F, c, key, who === 'qa');
     if (!b) return null;
   }
   return { nums: { w: c.w, h: c.h, idx: b, pal: F.pal }, x: c.x, y: c.y };
