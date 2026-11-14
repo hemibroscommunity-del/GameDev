@@ -23,12 +23,18 @@
  *   7. STEP 3's LOG (v2.3.4903): every move noted per purse, memory only --
  *      no storage write, never a field on the purse, capped -- and the
  *      owner's /dev/goldlog reads it; `goldlog: false` notes nothing.
+ *   8. THE CLASSES (v2.3.5081, grand plan step 4.4, card E PR 2): every road
+ *      is a mint, a burn, a move or an escrow; a move names the road its
+ *      other side lands by, an escrow the record it is held in; and every
+ *      credit in server/src is classed by its opId's first word
+ *      (MAIL_CLASSES), so a new credit with no class fails here.
  *
  * A new way to change gold: a row in GOLD_ROADS, one call that names it, and
  * its longhand line in EXPECT below.
  */
 import { readdirSync, readFileSync } from 'node:fs';
-import { GOLD_ROADS, GOLD_SUMS, goldAfter, goldMethods, goldOneSum, wholeGold, GOLD_LOG, goldLogOf } from '../src/gold.js';
+import { GOLD_ROADS, GOLD_SUMS, goldAfter, goldMethods, goldOneSum, wholeGold, GOLD_LOG, goldLogOf, CLASSES, ESCROW_PLACES, MAIL_CLASSES, mailClassOf, classFaults } from '../src/gold.js';
+import { BAG_ROADS } from '../src/bag.js';
 import { flagNameOk } from '../src/liveops.js';
 import { GameRoom } from '../src/index.js';
 const NOW_SET = (t) => { Date.now = () => t; };
@@ -379,6 +385,93 @@ function callsIn(s) {
   check('7. GET /dev/goldlog?id= returns the live player\'s log', r && r.st === 200 && r.o.ok && r.o.coins === 55 && r.o.log.length === 1 && r.o.log[0].road === 'daily_chest', r && r.o);
   const r404 = await room._devFetch({ method: 'GET', url: 'https://x/dev/goldlog?id=__proto__' }, '/dev/goldlog', json);
   check('7. ...and 404 for nobody here (an Object.prototype name included)', r404 && r404.st === 404);
+}
+
+/* ── 8. THE CLASSES (v2.3.5081) ────────────────────────────────────────── */
+/* What a road row must say to be counted by the world's sum (SHAPES part 3):
+   gold.js classFaults, one checker for both tables (bag-door.test §8 runs it
+   on BAG_ROADS).  It is run on a planted table first, so a checker that
+   passes everything fails. */
+{
+  /* the checker itself: a planted row with no class, a move or an escrow with
+     none, a mint that names one, a move to nowhere, an escrow into nowhere */
+  const planted = {
+    a: { class: undefined }, b: { class: 'move', other: null }, c: { class: 'escrow', other: [] },
+    d: { class: 'mint', other: 'bank:' }, e: { class: 'move', other: 'no_road' }, f: { class: 'escrow', other: 'nowhere:' },
+    g: { class: 'gift', other: null }, ok: { class: 'escrow', other: 'bank:' },
+  };
+  const pf = classFaults(planted, GOLD_ROADS);
+  check('8. the checker fails each planted fault and passes the good row', pf.length === 7 && !pf.some((x) => x.startsWith('ok:')), pf);
+  check('8. CLASSES are the four, frozen', JSON.stringify(CLASSES) === '["mint","burn","move","escrow"]' && Object.isFrozen(CLASSES) && Object.isFrozen(ESCROW_PLACES));
+  const gf = classFaults(GOLD_ROADS, GOLD_ROADS);
+  check('8. every GOLD_ROADS row has a class, a move or an escrow its other side', gf.length === 0, gf);
+  const counts = {};
+  for (const r of Object.values(GOLD_ROADS)) counts[r.class] = (counts[r.class] || 0) + 1;
+  check('8. at v2.3.5081: 14 mints, 14 burns, 13 escrows, 3 moves (a change of class is a change here)', counts.mint === 14 && counts.burn === 14 && counts.escrow === 13 && counts.move === 3, counts);
+  /* a move lands on the other player by the mail; the mail is the escrow
+     every credit passes */
+  const moves = Object.entries(GOLD_ROADS).filter(([, r]) => r.class === 'move');
+  check('8. every gold move lands by mail_gold, the mail paid on (an escrow of inbox:)',
+    moves.every(([, r]) => r.other === 'mail_gold') && GOLD_ROADS.mail_gold.class === 'escrow' && GOLD_ROADS.mail_gold.other === 'inbox:', moves.map(([n, r]) => n + '>' + r.other));
+  /* the mail's table: every row a class, every move naming the road its
+     sender's side ran by (gold's, or the bag's of the same name) */
+  const both = Object.assign(Object.create(null), GOLD_ROADS, BAG_ROADS);
+  const mf = classFaults(MAIL_CLASSES, both);
+  check('8. every MAIL_CLASSES row has a class, and a move the road its other side ran by', mf.length === 0, mf);
+  check('8. ...each move\'s other side is itself a move that lands by the mail',
+    Object.values(MAIL_CLASSES).filter((r) => r.class === 'move').every((r) => [GOLD_ROADS[r.other], BAG_ROADS[r.other]].some((x) => x && x.class === 'move' && /^mail_/.test(x.other))));
+  check('8. edge 3: the champion\'s prize is the one credit that carries two amounts (`house`, minted)', Object.entries(MAIL_CLASSES).filter(([, r]) => r.house).map(([w]) => w).join() === 'arenapot');
+  check('8. mailClassOf reads the first word; an unknown word, a non-string and a prototype name are null',
+    mailClassOf('store:abc:gold') === MAIL_CLASSES.store && mailClassOf('trade2:s:p:gold').class === 'move' && mailClassOf('nope:1') === null && mailClassOf(7) === null && mailClassOf('constructor:x') === null && mailClassOf('__proto__:x') === null);
+}
+{
+  /* every credit in server/src, by its opId's first word: a _creditPlayer
+     call, and each `entry: {...}` a _creditLiveTogether is handed (the call
+     itself takes a list built above it).  A credit whose opId is not a
+     literal is listed here with the word it builds, and why. */
+  const NOT_LITERAL = [
+    { file: 'admin.js', word: 'admin', why: 'the operator\'s grant: `opId` is built a line above (\'admin:\' + a uuid, or the one the operator passes back to retry)' },
+  ];
+  const argText = (s, i) => {
+    let depth = 0, q = null;
+    const start = i;
+    for (; i < s.length; i++) {
+      const ch = s[i];
+      if (q) { if (ch === '\\') i++; else if (ch === q) q = null; continue; }
+      if (ch === '\'' || ch === '"' || ch === '`') q = ch;
+      else if (ch === '(' || ch === '[' || ch === '{') depth++;
+      else if (ch === ')' || ch === ']' || ch === '}') { depth--; if (depth === 0) return s.slice(start, i + 1); }
+    }
+    return s.slice(start);
+  };
+  const words = new Map(), bad = [], notLitSeen = new Set();
+  let calls = 0;
+  for (const f of files) {
+    const s = code[f];
+    for (const re of [/\b_creditPlayer\s*\(/g, /\bentry\s*:\s*\{/g]) {
+      for (const m of s.matchAll(re)) {
+        const t = argText(s, m.index + m[0].length - 1);
+        if (/^\(playerId, entry\)/.test(t)) continue;   /* the definition (inbox.js) */
+        calls++;
+        const ws = [...t.matchAll(/opId\s*:\s*['`]([A-Za-z0-9_]+):/g)].map((x) => x[1]);
+        const where = f + ':' + lineOf(s, m.index);
+        if (!ws.length) {
+          const nl = NOT_LITERAL.find((n) => n.file === f);
+          if (nl) { notLitSeen.add(nl); ws.push(nl.word); }
+          else { bad.push(where + ' a credit whose opId is not a literal word: ' + t.slice(0, 80).replace(/\s+/g, ' ')); continue; }
+        }
+        for (const w of ws) {
+          if (!mailClassOf(w + ':')) bad.push(where + ' credits under "' + w + ':", which MAIL_CLASSES has not got');
+          if (!words.has(w)) words.set(w, []);
+          words.get(w).push(where);
+        }
+      }
+    }
+  }
+  check(`8. every credit in server/src (${calls}) is classed by its opId's first word`, bad.length === 0 && calls >= 60, bad.length ? bad : calls);
+  check('8. ...every NOT_LITERAL entry still exists', notLitSeen.size === NOT_LITERAL.length);
+  const stale = Object.keys(MAIL_CLASSES).filter((w) => !words.has(w));
+  check('8. every MAIL_CLASSES row is a word some credit uses (a stale row is deleted)', stale.length === 0, stale);
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);
