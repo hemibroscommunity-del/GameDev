@@ -38,9 +38,16 @@
  * THE READER.  laneKnob(name) is the ONE way a knob's value is read: an
  * override if one pins it (OVERRIDES: none yet -- card O's PRs 8 and 12 move
  * the fallbacks and the off-ramps here), else the lane's row at the ladder's
- * rung.  The rung is the governor's (card O's PR 2, the pacer grown): until
- * then it is always the row.  A knob that must be told when it changes (a
- * resolution, a pass) subscribes: onKnob(name, fn).
+ * rung.  A knob that must be told when it changes (a resolution, a pass)
+ * subscribes: onKnob(name, fn).
+ *
+ * v2.3.5222, THE RUNG (card O PR 2): where the governor stands on the
+ * ladder, rungs taken on each axis ({ work, chip }; the row: none).  ONE
+ * WRITER: setRung, called by the governor alone (game/framePacer.js, the
+ * pacer grown); server/test/frame-pacer.test.mjs fails a second caller, and
+ * src/state/phases.js has its row (`ladder`).  Kept: the device's, not the
+ * zone's (the governor keeps it by lane in localStorage for the next
+ * sitting).  The rung moves no knob until each knob's PR reads laneKnob.
  *
  * THE LANE.  pickLane(cls) is the lane a device class picks: `thirty` where
  * the screen's rate is 30, else `full`.  FACTS ONLY, never a name (a system,
@@ -286,6 +293,25 @@ export function drawLane(cls) {
   }
 }
 
+/* ── v2.3.5222: the rung, the governor's alone ── */
+const ROW = Object.freeze({ work: 0, chip: 0 });
+let _rung = ROW;          /* the governor's (setRung): rungs taken on each axis */
+
+/** Where the ladder stands now: { work, chip }, rungs taken on each axis. */
+export function ladderRung() { return _rung; }
+/** Rungs taken, both axes: 0 is the lane's row (the report's `rung`). */
+export function rungDepth(r) { const x = r || _rung; return (x.work | 0) + (x.chip | 0); }
+/** THE ONE WRITER of the rung: the governor's (framePacer.js), never another
+ *  file's.  Each axis held to its rungs.  Subscribed knobs are told. */
+export function setRung(work, chip) {
+  const w = Math.max(0, Math.min(AXES.work.length, Math.floor(Number(work) || 0)));
+  const c = Math.max(0, Math.min(AXES.chip.length, Math.floor(Number(chip) || 0)));
+  if (w === _rung.work && c === _rung.chip) return _rung;
+  _rung = w === 0 && c === 0 ? ROW : Object.freeze({ work: w, chip: c });
+  _tell();
+  return _rung;
+}
+
 /** The override pinning a knob, or null. */
 export function pinOf(name) {
   for (const o of OVERRIDES) if (o.knob === name) return o;
@@ -293,12 +319,11 @@ export function pinOf(name) {
 }
 
 /** THE ONE WAY a knob's value is read: an override if one pins it, else this
- *  page's lane's row at the ladder's rung (the row, until the governor:
- *  card O PR 2). */
+ *  page's lane's row at the ladder's rung (v2.3.5222: the governor's). */
 export function laneKnob(name) {
   const p = pinOf(name);
   if (p) return p.value;
-  return knobAt(drawLane(), name, null);
+  return knobAt(drawLane(), name, _rung);
 }
 
 /** Be told when a knob's value changes (a lane picked, a rung moved): fn(value,
@@ -323,7 +348,7 @@ function _tell() {
 
 /** For the tests only: forget the address, the class and the subscribers. */
 export function _resetLanes() {
-  _classOf = null; _lane = null; _laneAskedAt = -Infinity; _urlLane = undefined;
+  _classOf = null; _lane = null; _laneAskedAt = -Infinity; _urlLane = undefined; _rung = ROW;
   for (const k in _subs) delete _subs[k];
   for (const k in _told) delete _told[k];
 }
@@ -333,6 +358,6 @@ if (typeof window !== 'undefined') {
   window.__btLane = () => {
     const knobs = Object.create(null);
     for (const n of KNOB_NAMES) knobs[n] = laneKnob(n);
-    return { lane: drawLane(), fromAddress: !!laneFromSearch(_search()), knobs };
+    return { lane: drawLane(), fromAddress: !!laneFromSearch(_search()), rung: { ..._rung }, depth: rungDepth(), knobs };
   };
 }

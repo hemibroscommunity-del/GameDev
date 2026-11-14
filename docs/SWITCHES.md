@@ -20,7 +20,7 @@ addresses (`tools/qa/`), `localStorage` toggles, and the worker's `env` settings
 reads it as a flag or a comment promises it as a kill switch; any other cap's override is the emergency lever of
 `docs/specs/liveops.md` ("Caps override").
 
-252 rows: 244 switches, 6 values, 2 levers, in 23 systems.
+253 rows: 245 switches, 6 values, 2 levers, in 24 systems.
 
 ## audio
 
@@ -212,6 +212,12 @@ reads it as a flag or a comment promises it as a kill switch; any other cap's ov
 | `serverdead` | worker | switch | v2.3.4373 | false | logic |  | no | A phone's move may write `dead` again (the move's write back). |
 | `sprint` | worker | switch | v2.3.3003 | false | logic |  | no | No sprint step is allowed. |
 | `steadymovers` | worker | switch | v2.3.3203 | false | logic |  | no | Every move goes out again, from the next tick. |
+
+## page-thread
+
+| name | side | kind | born | thrown | risk | needs | fallback | off |
+|---|---|---|---|---|---|---|---|---|
+| `?govern` | page | switch | v2.3.5222 | =0 (off), =1 (on where `?lane=` holds it) | logic |  | no | The governor no longer moves the ladder: the lane's row, however late the frames. |
 
 ## preload
 
