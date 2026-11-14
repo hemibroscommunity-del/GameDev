@@ -96,8 +96,18 @@ import { stateCensus, CENSUS_SCRIPT } from './lib/fourLines.mjs';
 
 /* Set 2026-11-14 at its first count (the page at main 75946b7: 647 fields
    and 1,482 variables, 2,129 rows, less the one row of src/state/life.js).
-   Only the gatekeeper lowers it. */
-export const UNLISTED_LINE = 2128;
+   Only the gatekeeper lowers it.
+   v2.3.5363 (the gatekeeper, sitting 7): 2128 -> 22, card U's nine merged.
+   The count on sitting 7's rehearsed list: 16 by the page (the four files
+   the map has not placed), 22 by the code (`--live`, and what card L's
+   #1746 reads): the list brings six top-of-file variables no ledger lists
+   yet, src/debug/report.js `_speed`, `_lastSentAt` (#1711),
+   src/rendering/picsOnce.js `_walk`, `_walkMap`, `_seen` (#1741) and
+   src/rendering/bodyBake.js `_unheard` (#1747).  The line is the code's
+   count, so the list merged with #1746 stays green; the next
+   `--ledger debug`, `--ledger preload` and `--ledger art` take them, and
+   the next sitting lowers it again. */
+export const UNLISTED_LINE = 22;
 /* v2.3.5203 (card L PR 3): the rows card D suggests a reset for that are
    still `sitting` with no `kept:` (484 at main 75946b7's ledgers).  Each of
    card L's reset PRs lowers it with what it decides (its card's PR 4). */

@@ -723,7 +723,8 @@ export class MinimapRenderer {
    *  because that rail is `50px + env(safe-area-inset-top)` — on a notched
    *  iPhone the inset is real and a constant would put the box back under the
    *  bar on exactly the primary platform.  Re-measured only when the canvas
-   *  size changes (rotation, resize), so it is not a per-frame layout read.
+   *  size changes (rotation, resize) or, since v2.3.5401, the rail's own size
+   *  does (_watchInset below), so it is not a per-frame layout read.
    *
    *  ═══ v2.3.2247: THE GAP GOES, THE RAIL CLEARANCE STAYS ═══
    *  Owner now: "anchor it to the top right corner ... right now there's some
@@ -742,6 +743,7 @@ export class MinimapRenderer {
     try {
       const cv = canvas || document.querySelector('canvas');
       const hdr = document.querySelector('.bt-zone-header');
+      this._watchInset(hdr);
       if (cv && hdr) {
         const c = cv.getBoundingClientRect();
         const h = hdr.getBoundingClientRect();
@@ -750,6 +752,32 @@ export class MinimapRenderer {
     } catch (e) { /* keep the default */ }
     this._topInset = inset;
     return inset;
+  }
+
+  /* ═══ v2.3.5401: AND AGAIN WHEN THE RAIL GROWS, NOT ONLY THE CANVAS ═══
+     The inset above was measured once a canvas height, so a rail that grew
+     with the canvas the same height -- the status bar's inset arriving after
+     the first frame, a rail mounted again -- left the Wheel's box, and the
+     World map's button over it (WorldMapOverlay.jsx, placed off the box's
+     rect), at the old inset: 53 px down under a 59 px status bar
+     (mp-topaudit, SAT=59; card Y, PR 2).  The rail's own size changing, or
+     the window's, marks it stale; the next frame measures it once, as a
+     rotation does.  Nothing is measured in the observer, nor every frame. */
+  _watchInset(hdr) {
+    if (typeof window === 'undefined') return;
+    const stale = () => { this._insetFor = null; };
+    if (!this._insetOnResize) {
+      this._insetOnResize = stale;
+      try { window.addEventListener('resize', stale); } catch (e) { /* no window */ }
+    }
+    if (!hdr || hdr === this._insetHdr || typeof ResizeObserver === 'undefined') return;
+    try { if (this._insetRO) this._insetRO.disconnect(); } catch (e) { /* gone */ }
+    this._insetHdr = hdr;
+    try {
+      /* its first call (on observe) finds the size just measured: harmless */
+      this._insetRO = new ResizeObserver(stale);
+      this._insetRO.observe(hdr);
+    } catch (e) { this._insetRO = null; }
   }
 
   /** Portal positions in world px, recomputed only when the zone's map
@@ -1133,6 +1161,11 @@ export class MinimapRenderer {
   }
 
   destroy() {
+    /* v2.3.5401: the rail's watch goes with the box */
+    try { if (this._insetRO) this._insetRO.disconnect(); } catch (e) { /* gone */ }
+    this._insetRO = null; this._insetHdr = null;
+    try { if (this._insetOnResize) window.removeEventListener('resize', this._insetOnResize); } catch (e) { /* no window */ }
+    this._insetOnResize = null;
     try { this.wheel.destroy(); } catch (e) {}
     try { this.root.destroy({ children: true }); } catch (e) {}
     this._pool = [];

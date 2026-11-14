@@ -1,6 +1,6 @@
 card: L
 branch: claude/plan-l-3-resets (one branch a PR, each begun from the one before)
-prs: #1746 (ready), #1748 (ready), PR 3 (opening)
+prs: #1746 (merged), #1748 (ready), PR 3 (opening)
 state: working
 
 ## Done
@@ -22,7 +22,8 @@ state: working
 ## Found
 
 - run.mjs: the census's two guards are not in SLOW_FIRST (81 s, not 72).
-- UNLISTED_LINE is still 2128 (16 unlisted): the gatekeeper's to set.
+- Red on main 7593b4e, not L's: ownersounds 3 (Quick Eat's munch),
+  deathzones 12 (a mire wisp's squash), mp-hitsound.mjs (6 voice checks).
 - bodytake.js ~94 cites "rejoinresend's pose row": there is none.
 - session.phase has three writers (fetch, _handleJoin, _leaveRun) and
   session-door.test fails no second: the phase table's scan holds it.
