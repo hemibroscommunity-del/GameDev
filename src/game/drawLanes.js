@@ -23,14 +23,19 @@
  *                     Mode): full's row until card O's PR 13 gives it its
  *                     step's cap.  A word, never the number: no page sends
  *                     30 where a name is checked.
- *   AXES    the LADDER: the rungs below a lane's row, on two axes -- the
+ *   AXES    the LADDER: the rungs below a lane's row, on two axes (v2.3.5225: three, below) -- the
  *           game's own work (the crowd, then the rate) and waiting for the
  *           chip (the rate, then the passes, then the pixels).  A rung
  *           lowers ONE knob ONE step (`{ knob, to }`: the step it takes the
  *           knob to); the rate's rung is on both axes, so whichever axis
  *           takes it first lowers the rate, and the other's is then taken
  *           already.  The order is data (call 16: a steady lower rate before
- *           a softer picture).
+ *           a softer picture).  v2.3.5225 (the gatekeeper's sitting 12): the
+ *           pixels are an axis of their OWN, after the chip's -- a rung is an
+ *           axis's first n, so on the chip axis the rate could not come back
+ *           while a pixel rung waited for a veil (a cooled phone at 30 until
+ *           its next loading screen); now the rate comes back in play, and
+ *           the pixels at a veil.
  *   PROGRAMS the game's own drawing programs, a name each (the report's
  *           `self`, step 1.7), read from the code (the guard holds each
  *           program's names to its file); Pixi's own are not the game's.
@@ -166,7 +171,7 @@ export const LANE_NAMES = Object.freeze(Object.keys(LANES));
 /* the lane where nothing is known yet, and the one a worker below caps.report 3 is sent */
 export const DEFAULT_LANE = 'full';
 
-/* ── the ladder: two axes, each rung one knob one step ── */
+/* ── the ladder: three axes (v2.3.5225: the pixels their own), each rung one knob one step ── */
 export const AXES = Object.freeze({
   work: Object.freeze([
     Object.freeze({ knob: 'crowd', to: 1 }),
@@ -178,6 +183,10 @@ export const AXES = Object.freeze({
     Object.freeze({ knob: 'shine', to: 1 }),
     Object.freeze({ knob: 'shadows', to: 1 }),
     Object.freeze({ knob: 'water', to: 1 }),
+  ]),
+  /* v2.3.5225: the pixels, after the chip's (a chip-bound phone's last two
+     rungs, only behind a veil); never a work-bound phone's (framePacer.js) */
+  pixels: Object.freeze([
     Object.freeze({ knob: 'pixels', to: 1 }),
     Object.freeze({ knob: 'pixels', to: 2 }),
   ]),
@@ -186,7 +195,7 @@ export const AXIS_NAMES = Object.freeze(Object.keys(AXES));
 /* the light lane's row is full's at this rung (the guard holds the two equal) */
 export const LIGHT_AT = Object.freeze({ work: 1, chip: 2 });
 
-/** The deepest the ladder goes: every rung of both axes taken.  The report's
+/** The deepest the ladder goes: every rung of every axis taken.  The report's
  *  `rung` counts rungs taken, at most this (the worker's bound is wider:
  *  mirror-audit holds this under it). */
 export function ladderDepth() {
@@ -295,7 +304,7 @@ export function drawLane(cls) {
 }
 
 /* ── v2.3.5222: the rung, the governor's alone ── */
-const ROW = Object.freeze({ work: 0, chip: 0 });
+const ROW = Object.freeze({ work: 0, chip: 0, pixels: 0 });
 let _rung = ROW;          /* the governor's (setRung): rungs taken on each axis */
 
 /* v2.3.5224: THE LIVE KNOBS -- a rung counts only if something reads its
@@ -311,14 +320,33 @@ let _rung = ROW;          /* the governor's (setRung): rungs taken on each axis 
    knobs' PRs will make it (_liveKnobs). */
 export const MOVED_KNOBS = Object.freeze(KNOB_NAMES.filter((k) => KNOBS[k].reader && KNOBS[k].reader.moved));
 let _live = MOVED_KNOBS;
-/** The knobs a rung can change today (marked moved; the tests' list while one is set). */
-export function liveKnobs() { return _live; }
+let _liveNow = null;      /* _live less the knobs this page's address takes off the ladder (read once) */
+/* v2.3.5225 (the gatekeeper's sitting 12): a knob's ladder switch takes its
+   rungs out of the governor's reach, not only out of its reader's -- with
+   `?ladderpix=0` the governor took a pixel rung nothing read and its try up
+   then held the rate (sitting 11's class); with `?ladderrate=0` a slow 60
+   computer was never paced but softened at the next veil.  The two
+   switches are read here, once (framePacer.js and renderRes.js ask these) */
+export function ladderRateOn(search) {
+  return !/(^|[?&])ladderrate=(0|off|false)(&|$)/.test(typeof search === 'string' ? search : '');
+}
+export function ladderPixOn(search) {
+  return !/(^|[?&])ladderpix=(0|off|false)(&|$)/.test(typeof search === 'string' ? search : '');
+}
+/** The knobs a rung can change today: marked moved (the tests' list while
+ *  one is set), less any this page's address takes off the ladder. */
+export function liveKnobs() {
+  if (_liveNow) return _liveNow;
+  const s = _search();
+  _liveNow = Object.freeze(_live.filter((k) => !(k === 'rate' && !ladderRateOn(s)) && !(k === 'pixels' && !ladderPixOn(s))));
+  return _liveNow;
+}
 /** For the tests only: play the ladder with these knobs live (null: the moved ones). */
-export function _liveKnobs(list) { _live = Array.isArray(list) ? Object.freeze(list.slice()) : MOVED_KNOBS; }
+export function _liveKnobs(list) { _live = Array.isArray(list) ? Object.freeze(list.slice()) : MOVED_KNOBS; _liveNow = null; }
 
-/** Where the ladder stands now: { work, chip }, rungs taken on each axis. */
+/** Where the ladder stands now: { work, chip, pixels }, rungs taken on each axis. */
 export function ladderRung() { return _rung; }
-/** Rungs taken that change something, both axes: 0 is the lane's row (the
+/** Rungs taken that change something, every axis: 0 is the lane's row (the
  *  report's `rung`).  v2.3.5224: a rung whose knob nothing reads yet counts
  *  none. */
 export function rungDepth(r) {
@@ -326,17 +354,19 @@ export function rungDepth(r) {
   let n = 0;
   for (const a of AXIS_NAMES) {
     const m = Math.max(0, Math.min(AXES[a].length, x[a] | 0));
-    for (let j = 0; j < m; j++) if (_live.includes(AXES[a][j].knob)) n++;
+    for (let j = 0; j < m; j++) if (liveKnobs().includes(AXES[a][j].knob)) n++;
   }
   return n;
 }
 /** THE ONE WRITER of the rung: the governor's (framePacer.js), never another
- *  file's.  Each axis held to its rungs.  Subscribed knobs are told. */
-export function setRung(work, chip) {
+ *  file's.  Each axis held to its rungs.  Subscribed knobs are told.
+ *  v2.3.5225: three axes (the pixels' own). */
+export function setRung(work, chip, pixels) {
   const w = Math.max(0, Math.min(AXES.work.length, Math.floor(Number(work) || 0)));
   const c = Math.max(0, Math.min(AXES.chip.length, Math.floor(Number(chip) || 0)));
-  if (w === _rung.work && c === _rung.chip) return _rung;
-  _rung = w === 0 && c === 0 ? ROW : Object.freeze({ work: w, chip: c });
+  const p = Math.max(0, Math.min(AXES.pixels.length, Math.floor(Number(pixels) || 0)));
+  if (w === _rung.work && c === _rung.chip && p === _rung.pixels) return _rung;
+  _rung = w === 0 && c === 0 && p === 0 ? ROW : Object.freeze({ work: w, chip: c, pixels: p });
   _tell();
   return _rung;
 }
@@ -377,7 +407,7 @@ function _tell() {
 
 /** For the tests only: forget the address, the class and the subscribers. */
 export function _resetLanes() {
-  _classOf = null; _lane = null; _laneAskedAt = -Infinity; _urlLane = undefined; _rung = ROW;
+  _classOf = null; _lane = null; _laneAskedAt = -Infinity; _urlLane = undefined; _rung = ROW; _liveNow = null;
   for (const k in _subs) delete _subs[k];
   for (const k in _told) delete _told[k];
 }
@@ -387,6 +417,6 @@ if (typeof window !== 'undefined') {
   window.__btLane = () => {
     const knobs = Object.create(null);
     for (const n of KNOB_NAMES) knobs[n] = laneKnob(n);
-    return { lane: drawLane(), fromAddress: !!laneFromSearch(_search()), rung: { ..._rung }, depth: rungDepth(), live: _live.slice(), knobs };
+    return { lane: drawLane(), fromAddress: !!laneFromSearch(_search()), rung: { ..._rung }, depth: rungDepth(), live: liveKnobs().slice(), knobs };
   };
 }

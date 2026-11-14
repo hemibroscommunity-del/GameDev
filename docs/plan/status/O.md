@@ -11,8 +11,9 @@ state: ready
 - #1794 (5224): the rate's knob (a 60 screen to a steady 30; a fast screen
   as before: (a)). Sitting 11's hold mended: only knobs marked moved count,
   a kept rung carries its live set; back at 60 in one try (§19).
-- #1800 (5225): the pixels' knob, (b); (A): a kept rung loads without its
-  pixel rungs (§19g).
+- #1800 (5225): the pixels' knob, (b); (A). Sitting 12's three mended: the
+  pixels an axis of their own, tried up last; a hide drops a pending step;
+  never a work-bound phone's; the switches off the live set (§21).
 - The switch (5235): `govern` on the Test panel's list, in place of the
   card's cap `ladder` (the planning session's word); §20, `mp-governor` 4.
 - PR 7 (5227): the device asked only in `deviceProfile.js`; four askers on
@@ -36,4 +37,5 @@ state: ready
 
 ## Needs
 
-- (none)
+- #1792: the rung on a module object and its row in #1803's form, once
+  #1803 and #1809 are on main (the planning session's word); then up.

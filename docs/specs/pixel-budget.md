@@ -136,8 +136,9 @@ lanes and the governor (card O), the frame pacer.
 ## The ladder's pixel rungs (v2.3.5225, card O PR 5)
 
 The budget became a knob of the lanes' table (`src/game/drawLanes.js`,
-`docs/LANES.md`, `pixels`): 1 in every lane's row; the chip axis's last two
-rungs take it to 0.75, then 0.5. `renderRes.js` reads it through the lanes'
+`docs/LANES.md`, `pixels`): 1 in every lane's row; the ladder's last two
+rungs take it to 0.75, then 0.5 (an axis of their own, after the chip's:
+below). `renderRes.js` reads it through the lanes'
 one reader, `laneKnob('pixels')`, and is told when it changes (`onKnob`).
 
 **A rung takes a quarter, then half, of the pixels actually drawn**: the
@@ -148,8 +149,32 @@ a chip-bound phone under its budget is exactly the one a rung should help
 (under "the budget times the factor" it would get nothing). The owner's
 call 16 note -- a third fewer pixels made no difference on their iPhone --
 stands: that phone is not chip-bound, so the governor's split (step 2.3)
-never takes it to these rungs, which come last on the chip axis, after a
-steady lower rate, the shine, the shadows and the water.
+never takes it to these rungs, which come after a steady lower rate, the
+shine, the shadows and the water.
+
+**The pixels' own axis** (v2.3.5225, the gatekeeper's sitting 12, three
+findings verified by probe):
+
+- A rung is an axis's first n, so with the pixels last on the chip axis the
+  rate could not come back while a pixel rung waited for a veil: a cooled
+  phone stayed at 30 until its next loading screen, in the Wheel perhaps
+  the rest of the sitting. The pixels are an axis of their own now, after
+  the chip's, and **tried up last**: every other axis comes back in play
+  (the rate first), the pixels at the next veil.
+- **Only a chip-bound phone** reaches them: the governor steps the chip's
+  axis, then the pixels', then the work's; a phone whose own work is the
+  cost steps the work's, then the chip's, never the pixels (the crowd's
+  rungs are not live until card O's PR 6, and such a phone fell to the
+  pixels after the rate). So the owner's iPhone, not chip-bound, never goes
+  there, today too.
+- A pixel step wanted before the tab hid is dropped at its return, not
+  taken however long the tab was away.
+- `?ladderpix=0` (and `?ladderrate=0`) take their knob off the governor's
+  live set (`drawLanes.js` reads both): before, the governor took a pixel
+  rung nothing read and its try up held the rate.
+- The change is carried out at the top of the next frame (`beforeDraw`),
+  never inside the frame whose verdict moved the rung: BroTown's `resize()`
+  measures the page.
 
 The governor (`framePacer.js`) moves a pixel rung only behind a veil: a
 loading screen or a tab's return (a live resize rebuilds the crowd's shared
