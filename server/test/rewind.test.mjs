@@ -22,8 +22,14 @@
  *      with the token and the hour, every socket closed with
  *      1012 and its words, each player saved first (in the undo), the restore
  *      set to the plan's target, and the restart only after the answer;
+ *      nothing awaited on the storage between the restore armed and the
+ *      answer that carries `undo` (the owner's log line written before);
  *   4. THE RESTART: a room started on the restored storage holds what it held
  *      at that time; the undo, planned and done, puts back the rest;
+ *   4b. WHAT ELSE GOES BACK (the planning session's mend, sitting 16): the
+ *      live flags, the freezes and the announcement go back too, `roomrewind`
+ *      itself included (the undo's plan answers "off" until it is set again);
+ *      the plan and the do say so, with the flags and the freezes as now;
  *   5. THE WORLD'S SUM: a room played (the trade window, a gamble won and
  *      lost, the mail, the bank) -- every moment of its storage balances
  *      (unexplained gold 0, every bag key 0), so a rewind to any time is
@@ -37,6 +43,8 @@
  *   - the sockets' loop moved after onNextSessionRestoreBookmark  -> FAIL 3 (the leavers' saves not in the undo)
  *   - `if (at >= now)` deleted from rewindTarget                  -> FAIL 1
  *   - the `b.confirm !== p.confirm` line made `if (false)`         -> FAIL 3 (the hour not typed back)
+ *   - the owner's log line moved back after the arming           -> FAIL 3 (a storage call between the two)
+ *   - `+ ' ' + also.words` deleted from the plan's words          -> FAIL 4b (the plan does not say it)
  */
 import { makeStorage, openRoom, join, fakeWs, settle, seededClock } from './testroom.mjs';
 import { REWIND, rewindTarget, rewindPlan, rewindDo, rewindOn, rewindConfirm } from '../src/restore.js';
@@ -173,7 +181,20 @@ async function playedRoom(flags) {
   const badHour = await rewindDo(room, { token: p.token, confirm: p.confirm.replace(/\d UTC$/, (m) => (m[0] === '9' ? '0' : String(+m[0] + 1)) + ' UTC') });
   check('3. the hour not typed back, or typed wrong: refused in words, nothing closed, the plan kept',
     !noHour.ok && noHour.error === 'confirm' && noHour.words.includes(p.confirm) && !badHour.ok && badHour.error === 'confirm' && !wa.closed && !wb.closed && room._rewind && room._rewind.token === p.token, { noHour, badHour });
+  /* every storage call after the restore is armed, until the answer */
+  const afterArm = [];
+  let armed = false;
+  const arm0 = st.storage.onNextSessionRestoreBookmark;
+  st.storage.onNextSessionRestoreBookmark = async (bm) => { const r = await arm0(bm); armed = true; return r; };
+  for (const fn of ['get', 'put', 'list', 'delete']) {
+    const f0 = st.storage[fn];
+    st.storage[fn] = async (...a) => { if (armed) afterArm.push(fn + ' ' + String(a[0] && a[0].prefix || a[0]).slice(0, 40)); return f0(...a); };
+  }
   const d = await rewindDo(room, { token: p.token, confirm: p.confirm });
+  armed = false;
+  check('3. nothing is awaited on the storage between the restore armed and the answer (the answer carries the only `undo`)', d.ok && afterArm.length === 0, afterArm);
+  const undoLog = (st.moments.find((m) => m.bm === d.undo) || { store: new Map() }).store.get('admin_log') || [];
+  check('3. ...the owner\'s log line is written before it, so it is in the undo\'s moment', undoLog.some((e) => e.op === 'rewind' && e.target === p.target && e.closed === 2), undoLog);
   check('3. ...the do\'s answer says what it restored and what was lost', d.ok && d.restore && d.lose && d.lose.playersHere === 2 && /RESTORED/.test(d.words) && /LOST/.test(d.words), d);
   check('3. the do: every socket closed with 1012 and its words', d.ok && d.closed === 2 && wa.closed && wa.closed.code === REWIND.CLOSE_CODE && wa.closed.why === REWIND.CLOSE_WHY && wb.closed && wb.closed.code === 1012, { d, wa: wa.closed });
   check('3. ...each player left through the leave door (out of the room), and was saved first', !room.playerState.bp_rw_a && !room.playerState.bp_rw_b && st._store.get('rpg:bp_rw_a').coins === 1007, st._store.get('rpg:bp_rw_a') && st._store.get('rpg:bp_rw_a').coins);
@@ -234,6 +255,51 @@ async function playedRoom(flags) {
   await wait(REWIND.ABORT_MS + 30);
   st.restart();
   check('4. the undo, planned and done, puts back the rest (the 500 paid); its words to type back are the bookmark\'s', u.ok && ud.ok && u.confirm === 'bookmark ' + d.undo.slice(0, 8) && st._store.get('rpg:bp_rw_a').coins === 1500, { u: u.error, a: st._store.get('rpg:bp_rw_a').coins });
+}
+
+/* ══════════ 4b. WHAT ELSE GOES BACK (the planning session's mend, sitting 16) ══════════
+   The live flags, the freezes, the logins and the announcement are in the
+   same storage: they go back too, `roomrewind` itself included.  The plan
+   and the do say so, with the flags and the freezes as they are now. */
+{
+  const { st, room, wa, wb } = await playedRoom();
+  for (const w of [wa, wb]) await room.webSocketClose(w, 1000, 'bye', true);
+  await settle();
+  clock.advance(60000);
+  const tBack = Date.now();
+  clock.advance(60000);
+  /* after that time the owner turns the lever on and a switch, freezes B, and
+     announces -- as the flags, freeze and announce routes write them */
+  room._liveFlags.roomrewind = true; room._liveFlags.xp_mult = 2;
+  await st.storage.put('liveflags', { ...room._liveFlags });
+  await st.storage.put('frozen:bp_rw_b', { ts: Date.now(), note: 'since' });
+  await st.storage.put('motd', { text: 'since', ts: Date.now() });
+  await settle();
+  clock.advance(60000);
+  const p = await rewindPlan(room, { at: tBack });
+  const a = p.alsoBack || {};
+  check('4b. the plan names what else goes back: the flags now (`roomrewind` among them) and who is frozen now',
+    p.ok && a.flags && a.flags.roomrewind === true && a.flags.xp_mult === 2 && JSON.stringify(a.frozen) === JSON.stringify(['bp_rw_b']), a);
+  check('4b. ...and says, in its words, to throw again, freeze again, set `roomrewind` again for the undo, and give a new key',
+    /live flags, the freezes, the login keys and the devices admitted, and the announcement/.test(p.words) && /re-throw any switch/.test(p.words) && /freeze again/.test(p.words)
+      && /set `roomrewind: true` again for the undo/.test(p.words) && /new key/.test(p.words) && /xp_mult=2/.test(p.words) && /Frozen now: bp_rw_b/.test(p.words), p.words);
+  const d = await rewindDo(room, { token: p.token, confirm: p.confirm });
+  check('4b. the do\'s answer says it too', d.ok && d.alsoBack && JSON.stringify(d.alsoBack.frozen) === '["bp_rw_b"]' && /set `roomrewind: true` again for the undo/.test(d.words), d.words);
+  await wait(REWIND.ABORT_MS + 30);
+  st.restart();
+  /* the room starts again, its flags read from storage as a request reads them */
+  const back = await openRoom(st);
+  check('4b. after it: the flags as they were (the switch and `roomrewind` off again), the freeze and the announcement gone',
+    !rewindOn(back) && back._liveFlags.xp_mult === undefined && !st._store.has('frozen:bp_rw_b') && !st._store.has('motd'), back._liveFlags);
+  const u0 = await rewindPlan(back, { bookmark: d.undo });
+  check('4b. ...so the undo\'s plan answers "off" until `roomrewind` is set again', !u0.ok && u0.error === 'off', u0);
+  back._liveFlags.roomrewind = true;
+  const u = await rewindPlan(back, { bookmark: d.undo });
+  const ud = await rewindDo(back, { token: u.token, confirm: u.confirm });
+  await wait(REWIND.ABORT_MS + 30);
+  st.restart();
+  check('4b. ...set again, the undo brings them all back (the flags, the freeze, the announcement)',
+    u.ok && ud.ok && st._store.get('liveflags').xp_mult === 2 && st._store.get('liveflags').roomrewind === true && st._store.has('frozen:bp_rw_b') && st._store.get('motd').text === 'since', { u: u.error, flags: st._store.get('liveflags') });
 }
 
 /* ══════════ 5. THE WORLD'S SUM ══════════ */

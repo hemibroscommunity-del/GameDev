@@ -60,7 +60,31 @@ refusal's answer), and only while `roomrewind: true` is in the live flags
      next request starts it, restored.
 
 The `undo` is written in the answer and in the worker's log line only: the
-room's own storage (its `admin_log` included) goes back with the rest.
+room's own storage (its `admin_log` included) goes back with the rest. The
+owner's log line (`op: 'rewind'`) is written BEFORE the restore is armed, and
+nothing is awaited between the arming and the answer, so a slow write can
+never lose the answer that carries `undo` while the restore still happens
+(the planning session's mend, sitting 16; `rewind.test` §3).
+
+### What else goes back
+
+Everything in the room's storage goes back, not only the players' things
+(the planning session's mend, sitting 16, found by its probe):
+
+- the live flags (`liveflags`): a switch thrown since is unthrown, and
+  `roomrewind` itself goes back to off if it was set after the target, so
+  the undo's plan answers "off" until it is set again;
+- the owner's freezes (`frozen:<pid>`);
+- the logins (`auth:`, `keyidx:`): a key handed out or a device admitted
+  since is refused after (the owner gives that character a new key,
+  `/api/admin/key-new`);
+- the announcement (`motd`).
+
+The plan and the do say so in their words and in `alsoBack`
+(`{flags, frozen, words}`): the flags as they are now (their one record,
+`liveflags`) and the frozen ids (one list of `frozen:`, at most 100), so the
+owner can set again
+what was set since. `rewind.test` §4b holds it.
 
 ### What a player sees
 

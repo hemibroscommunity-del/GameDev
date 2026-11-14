@@ -35,6 +35,14 @@
  *      (its log included) goes back with the rest, so the answer and the
  *      worker's log line are the only places it is written.
  *
+ * WHAT ELSE GOES BACK (the planning session's mend, sitting 16): everything
+ * in the room's storage, not only the players' things -- the live flags
+ * (`roomrewind` itself: the undo's plan answers "off" until it is set
+ * again), the owner's freezes, the login keys handed out and the devices
+ * admitted (a key or device given since is refused after: give that
+ * character a new key), and the announcement.  The plan and the do say so
+ * (`alsoBack`), with the flags and the freezes as they are now.
+ *
  * WHAT A PLAYER SEES: their connection drops, as at a deploy (the page treats
  * an unknown close as an ordinary drop: its veil, then a reconnect), and they
  * come back into the room as it was at that time.  No new words on a page.
@@ -114,6 +122,39 @@ function restoreLose(room, at, now) {
   };
 }
 
+/* v2.3.5288 (the planning session's mend, sitting 16): what ELSE goes back.
+   The live flags (`liveflags`), the owner's freezes (`frozen:<pid>`), the
+   logins (`auth:`, `keyidx:`: the keys handed out, the devices admitted) and
+   the announcement (`motd`) are in the same storage, so they go back with
+   the rest -- `roomrewind` itself included, so the undo's plan answers "off"
+   until it is set again.  The plan and the do say so, with the flags and the
+   freezes as they are NOW (the flags' one record; the freezes one list of a
+   few rows), so the owner can set again what was set since. */
+const ALSO_FROZEN_MAX = 100;
+async function alsoBack(room, st) {
+  /* the flags as STORED: the record that goes back (the flags route writes
+     every change to it), read whole as the storage holds it */
+  let flags = {};
+  try {
+    const rec = st && typeof st.get === 'function' ? await st.get('liveflags') : null;
+    if (rec && typeof rec === 'object') flags = JSON.parse(JSON.stringify(rec));
+  } catch (e) { flags = {}; }
+  let frozen = [];
+  try {
+    const m = st && typeof st.list === 'function' ? await st.list({ prefix: 'frozen:', limit: ALSO_FROZEN_MAX }) : null;
+    if (m) frozen = [...m.keys()].map((k) => k.slice('frozen:'.length));
+  } catch (e) { frozen = []; }
+  const names = Object.keys(flags).sort();
+  const flagWords = names.length ? names.slice(0, 60).map((k) => k + '=' + JSON.stringify(flags[k])).join(', ') + (names.length > 60 ? ', ...' : '') : 'none';
+  return {
+    flags, frozen,
+    words: 'These go back too, being in the same storage: the live flags, the freezes, the login keys and the devices admitted, and the announcement.'
+      + ' The flags now: ' + flagWords + '. Frozen now: ' + (frozen.length ? frozen.join(', ') + (frozen.length >= ALSO_FROZEN_MAX ? ', ...' : '') : 'nobody') + '.'
+      + ' After it: re-throw any switch, and freeze again anyone frozen, since that time; set `roomrewind: true` again for the undo (it goes back to off if it was set after then);'
+      + ' a login key handed out or a device admitted since is refused (give that character a new key: /api/admin/key-new); the announcement may be an older one.',
+  };
+}
+
 /** Where the plan goes back to, from the ask: a bookmark an earlier answer
  *  gave (an undo), or a time (`at` in ms since 1970, or `minutesAgo`).
  *  `{bookmark}` or `{at}`, or `{error}` in words. */
@@ -168,11 +209,13 @@ export async function rewindPlan(room, body, now = Date.now()) {
   const confirm = rewindConfirm(t);
   room._rewind = { token, target, confirm, at: t.at === undefined ? null : t.at, made: now };
   const rl = restoreLose(room, room._rewind.at, now);
+  const also = await alsoBack(room, st);
   return {
     ok: true, step: 'plan', dryRun: true, at: room._rewind.at, target, now: here, sockets, players, token, confirm,
-    restore: rl.restore, lose: rl.lose,
+    restore: rl.restore, lose: rl.lose, alsoBack: also,
     expiresAt: now + REWIND.PLAN_TTL_MS,
     words: 'A dry run: nothing has changed. It would RESTORE ' + rl.restore.words.replace(/^The whole room/, 'the whole room') + ' It would LOSE ' + rl.lose.words.replace(/^Everything/, 'everything')
+      + ' ' + also.words
       + ' It would close ' + sockets + ' connection(s) and restart the room. Keep `now`: the plan run again with {bookmark: now} comes back to this moment.'
       + ' To go ahead, send {step: "do", token, confirm: "' + confirm + '"} within ' + Math.round(REWIND.PLAN_TTL_MS / 60000) + ' minutes.',
   };
@@ -194,6 +237,7 @@ export async function rewindDo(room, body, now = Date.now()) {
   /* what it restores and what it loses, written into the answer before it acts */
   const rl = restoreLose(room, p.at, now);
   const st = room.state.storage;
+  const also = await alsoBack(room, st);
   /* 1. every socket told and closed; a player leaves through the leave door
      (admin.js _adminPutOut: the close, the leaving with its save, the
      session gone), so the undo below holds their last state */
@@ -205,17 +249,23 @@ export async function rewindDo(room, body, now = Date.now()) {
       closed++;
     } catch (e) { /* closed already */ }
   }
-  /* 2. the restore, at the room's next start; its answer is the way back */
+  /* 2. the owner's log line, BEFORE the restore is armed (the planning
+     session's mend, sitting 16): nothing is awaited between arming and the
+     answer, so a slow write can never lose the answer that carries the only
+     copy of `undo` while the restore still happens.  The line is in the
+     undo's moment (the room just before), and stays if the storage refuses */
+  try { if (typeof room._adminLog === 'function') await room._adminLog({ op: 'rewind', at: p.at, target: p.target, closed }); } catch (e) { /* the log goes back with the room anyway */ }
+  /* 3. the restore, at the room's next start; its answer is the way back */
   let undo;
   try { undo = await st.onNextSessionRestoreBookmark(p.target); } catch (e) {
     return { ok: false, error: 'restore', words: 'The storage refused the restore: ' + String(e && e.message || e).slice(0, 200) + '. Nothing was put back; the players reconnect into the room as it is.', closed };
   }
-  const out = { ok: true, step: 'do', at: p.at, target: p.target, undo, closed, restore: rl.restore, lose: rl.lose,
-    words: 'Done. RESTORED: ' + rl.restore.words + ' LOST: ' + rl.lose.words + ' The room restarts now.'
+  const out = { ok: true, step: 'do', at: p.at, target: p.target, undo, closed, restore: rl.restore, lose: rl.lose, alsoBack: also,
+    words: 'Done. RESTORED: ' + rl.restore.words + ' LOST: ' + rl.lose.words + ' ' + also.words + ' The room restarts now.'
       + ' KEEP `undo`: the plan run again with {bookmark: undo} puts back everything up to this moment.' };
-  try { if (typeof room._adminLog === 'function') await room._adminLog({ op: 'rewind', at: p.at, target: p.target, undo, closed }); } catch (e) { /* the log goes back with the room anyway */ }
+  /* the worker's log carries the undo too (synchronous: nothing awaited) */
   try { console.log(JSON.stringify({ rewind: { at: p.at, target: p.target, undo, closed } })); } catch (e) { /* no log */ }
-  /* 3. the restart, once the answer is on its way */
+  /* 4. the restart, once the answer is on its way */
   const abort = () => { try { room.state.abort('the room restored to an earlier time'); } catch (e) { /* restarting */ } };
   setTimeout(abort, REWIND.ABORT_MS);
   return out;

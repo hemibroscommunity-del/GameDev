@@ -446,9 +446,25 @@ curl -X POST -H "Authorization: Bearer YOUR_KEY" \
    Every player is disconnected (their game reconnects by itself, as after
    an update), the room restarts, and it comes back as it was then.
 
+**More than the players' things go back.** The live switches, the freezes,
+the login keys and the devices let in, and the announcement are kept in the
+same place, so they go back to that time too. Both answers list the switches
+and the frozen players as they are now, so after a rewind:
+
+- throw again any switch you set since that time, and freeze again anyone
+  you froze since;
+- **set `roomrewind` to `true` again before an undo**: it goes back to off
+  if you turned it on after that time, and the undo answers "off" until you
+  do;
+- a login key handed out, or a device let in, since that time no longer
+  works: give that character a new key ("Give it a new key", in the player
+  logins section above);
+- the announcement may be an older one: set it again if it matters.
+
 **Keep the `undo` code from step 2's answer** (copy it somewhere safe): the
 room's own storage, its log included, goes back with everything else, so the
-answer is the only place it is written. To change your mind, run step 1 with
+answer is the only place it is written (and the answer always goes out once
+the restore is set: nothing is written between the two). To change your mind, run step 1 with
 it, then step 2 (its `confirm` is then `bookmark` and the code's first eight
 characters: the answer says):
 ```
