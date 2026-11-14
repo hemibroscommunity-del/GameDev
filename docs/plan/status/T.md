@@ -1,7 +1,7 @@
 card: T
-branch: claude/plan-t-4-thrown (one branch a PR, each begun from the one before: -1- to -7-; merge them in order)
-prs: #1754 (5301, merged), #1768 (5302, merged), #1797 (5303, ready), #1804 (5304, ready: after #1797)
-state: stalled (the force-push onto #1797 and #1804 waits for leave: Needs)
+branch: claude/plan-t-4-thrown-rebuilt (PR 3: claude/plan-t-3-page-draw-rebuilt)
+prs: #1754 (5301, merged), #1768 (5302, merged), #1816 (5303, ready), #1817 (5304, ready: after #1816)
+state: ready
 
 ## Done
 
@@ -13,7 +13,7 @@ state: stalled (the force-push onto #1797 and #1804 waits for leave: Needs)
 
 ## Next
 
-- #1797 (5303): the drawing side's rows, unlisted 0; B's map reads them.
+- #1816 (5303): the drawing side's rows, unlisted 0; B's map reads them.
 - PR 4 (5304): rule 4. A row's place set by its name (check 10, sitting
   11); needs and readers (check 11); the thrown run (thrown.mjs, a preload;
   on every PR the rows born from 5301, 16 s). The sample (17 switches):
@@ -35,6 +35,5 @@ state: stalled (the force-push onto #1797 and #1804 waits for leave: Needs)
 
 ## Needs
 
-- #1797, #1804 hold card O's #1792 (merged by mistake for sitting 11, which
-  asked for #1787): main's phase guard is red on them. Rebuilt without it;
-  the force-push onto both branches waits for leave.
+- The gatekeeper: #1816, then #1817. They replace #1797 and #1804 (closed),
+  which held card O's #1792 by mistake; #1816, #1817 hold none of it.
