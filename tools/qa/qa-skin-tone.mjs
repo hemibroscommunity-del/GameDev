@@ -26,6 +26,7 @@
  */
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
+import { withLane } from './lane.mjs';   /* v2.3.5223: the game's page names its lane (card O PR 3) */
 
 const OUT = process.argv[2] || '/tmp/skin-tone-shots';
 const TONES = (process.argv[3] || 'default,aliencyan,monkeybrown').split(',');
@@ -60,7 +61,7 @@ for (const tone of TONES) {
     if (a.ws) window.BROTOWN_WS_URL = a.ws;
   }, { t: tone, ws: process.env.QA_WS || '' });
 
-  await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.goto(withLane(URL), { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.waitForTimeout(9000);
   /* v2.3.2665: the title screen stands in front of the creator (CONTINUE /
      CREATE CHARACTER), so a run that only waits shoots the splash and reports

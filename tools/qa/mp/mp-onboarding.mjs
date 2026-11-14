@@ -15,12 +15,13 @@
  * it on purpose, on a context that has never loaded the game before.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await ctx.newPage();
   await page.addInitScript((p) => { window.BROTOWN_WS_URL = `ws://127.0.0.1:${p}`; }, wsPort);
-  await page.goto(`http://localhost:${webPort}/`, { waitUntil: 'domcontentloaded' });
+  await page.goto(H.withLane(`http://localhost:${webPort}/`), { waitUntil: 'domcontentloaded' });
 
   /* ═══ v2.3.1814: A BRAND-NEW PLAYER MEETS THE LOGIN DOOR FIRST ═══
      Owner: "a new login screen needs to be made ... It should have button

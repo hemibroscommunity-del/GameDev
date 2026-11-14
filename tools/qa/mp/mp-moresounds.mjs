@@ -38,6 +38,7 @@
  *   node tools/qa/mp/run.mjs moresounds
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 /* v2.3.3434: a phone with a finger -- the third look taps the world */
 const VIEW = { width: 390, height: 844 };

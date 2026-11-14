@@ -39,7 +39,43 @@ export const DUEL = {
   STALE_ESCROW_MS: 600000, // orphaned escrow age before the sweep refunds
 };
 
+/* ═══ v2.3.5211: THE DUEL DOOR (card L PR 5; grand plan step 5.3b) ═══
+   (docs/specs/duel-door.md; held by server/test/duel-door.test.mjs and the
+   phase table's guard, tools/guards/phase-table.test.mjs)
+   A duel's phase is ONE field, `d.status`: born 'active' in _makeDuel (its
+   literal; a social duel's accept and the arena's match both make it there),
+   then 'resolved' -- a clean kill or a death (_duelOnDeath), a forfeit (the
+   away clocks) or the time running out (_tickDuels), an arena match's alike
+   -- through _resolveDuel alone.  Only _duelTo
+   writes it, by a way of DUEL_WAYS, and the end is final.  Step 1 changes
+   nothing a player sees: the one old line wrote over 'active' only, behind
+   _resolveDuel's double-resolution guard, which stays (it decides the pot).
+   `dueldoor: false` in the live flags lets _duelTo write over a resolved duel,
+   as the line would have.
+   A CHALLENGE is not a duel: a key of _duelChallenges with its own TTL; and
+   AWAY is a per-player clock on an active duel (d.away[pid]), not its phase.
+   Both stay as they are; the table's row says so. */
+export const DUEL_PHASES = Object.freeze(['active', 'resolved']);
+export const DUEL_WAYS = Object.freeze({ resolve: 'resolved' });
+
 export const duelMethods = {
+  /* v2.3.5211: the duel door's kill switch (live flag `dueldoor: false`) */
+  _duelDoorOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'dueldoor') && !f.dueldoor);
+  },
+
+  /* v2.3.5211: THE ONE WRITER of a duel's phase.  `way` is a row of
+     DUEL_WAYS and names the phase it goes to; a resolved duel stays resolved
+     (false), unless `dueldoor: false`.  True when it wrote. */
+  _duelTo(d, to, way) {
+    if (!d || typeof d !== 'object') return false;
+    if (!Object.prototype.hasOwnProperty.call(DUEL_WAYS, way) || DUEL_WAYS[way] !== to) return false;
+    if (d.status !== 'active' && !this._duelDoorOff()) return false;
+    d.status = to;
+    return true;
+  },
+
   /* v2.3.1175: single owner of the duel-record shape.  Arena matches
    * (gladiator.js _arenaTryActivate) build duel records too; before
    * this factory the field list was hand-copied there, and copies
@@ -254,7 +290,7 @@ export const duelMethods = {
 
   _resolveDuel(duel, winnerId, loserId, how) {
     if (duel.status !== 'active') return; // sync double-resolution guard
-    duel.status = 'resolved';
+    this._duelTo(duel, 'resolved', 'resolve');   /* v2.3.5211: the duel door */
     this._duels.delete(duel.id);
     if (this._pvpConsent) this._pvpConsent.delete(this._pvpPairKey(duel.a, duel.b));
     /* v2.3.3713: `arena` -- an arena match's end, which the phone leaves to

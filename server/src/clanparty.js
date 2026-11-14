@@ -158,7 +158,7 @@ export const clanPartyMethods = {
         p.meta[m] = { name: String(nm).slice(0, PARTY.NAME_MAX), level: (ps && ps.level) | 0 || 1, at: +clan.createdAt || now, seen: ps ? now : 0 };
       }
       this._parties.set(p.id, p);
-      for (const m of free) { this._partyByPlayer.set(m, p); this._partyIndexPut(m, p.id); }
+      for (const m of free) { this._partyIn(m, p, 'clan'); this._partyIndexPut(m, p.id); }   /* v2.3.5212: the party door */
       this._partyStore(p);
     }
     /* the clan's own records go in the same run */

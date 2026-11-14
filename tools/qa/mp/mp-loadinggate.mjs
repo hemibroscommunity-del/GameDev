@@ -25,6 +25,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 const POPUPS = ['[data-coach]', '[data-guide-arrow]', '[data-star-cue]', '[data-quest-banner]', '[data-store-toast]', '[data-levelup-banner]',
   '[data-achv-banner]', '[data-new-monster]', '[data-swap-hint]', '[data-install-hint]'];

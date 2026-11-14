@@ -68,10 +68,15 @@ no other edit (`wire-door.test` §4).
 Every refusal is counted:
 
 - on the socket: `session.wireDoor`;
-- in the room: `_wireDoorCounts`, by type (or route row) and why.
+- in the room: `_wireDoorCounts`, by the table's row and the why. A type or
+  a path that no row names counts as `(no row)` (`http:(no row)` on the web
+  side), never by its own name, so the keys stay at most the table's rows
+  times the five whys: a flood of random types grows nothing (the
+  gatekeeper's review, sitting 15: keyed by the name that came, 432,000
+  frames an hour grew the room by 59 MB; `wire-door.test` 2b).
 
-The first 20 of a worker's life are logged:
-`[wiredoor] refused <type>: <why> <field>`. A page that meets the door is
+The first 20 of a worker's life are logged, with what came:
+`[wiredoor] refused <type or path>: <why> <field>`. A page that meets the door is
 seen at once.
 
 **Honest play counts nothing.** Card K's PR 4 ran two kinds of honest play

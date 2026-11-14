@@ -18,6 +18,7 @@
  * Pictures: tools/qa/mp/out/gearlevel-{tab,card,worn}.png.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const shot = (P, name) => P.page.screenshot({ path: `tools/qa/mp/out/gearlevel-${name}.png` }).catch(() => {});
 const torsoInBag = (P) => H.readState(P, (S) => {

@@ -57,7 +57,9 @@ export const SYSTEMS = Object.freeze({
   wire: {
     what: 'the socket and the messages: the router, the relay, the client\'s connection and its event switch, what each side can do (caps)',
     /* v2.3.5061 (card N): server/src/wire/, the wire table (one row a message or route) */
-    files: [f('server/src', 'index|relay|bundle|clientoff|flood'), re('^server/src/wire/'), re('^src/networking/'), f('src/game', 'clientOff|clientOffApply|blockedAsks|workerClock|t1Sync|tooFar')],
+    files: [f('server/src', 'index|relay|bundle|clientoff|flood'), re('^server/src/wire/'), re('^src/networking/'), f('src/game', 'clientOff|clientOffApply|blockedAsks|workerClock|t1Sync|tooFar'),
+      f('src/game', 'actions'),   /* v2.3.5185 (card K): the action door, the one way a request leaves the page */
+    ],
     words: ['wire', 'protocol', 'relay', 'caps', 'bundle', 'privileged', 'clientoff', 'flood'],
     traps: ['wire'],
     doors: [
@@ -65,6 +67,7 @@ export const SYSTEMS = Object.freeze({
       { name: 'PRIVILEGED_EVENTS', file: 'server/src/wire/lists.js', what: 'every type the server sends (every out row of the wire table); anything else a client could forge' },
       { name: 'RELAY_TYPES', file: 'server/src/wire/lists.js', what: 'RELAY.TYPES: the relays a phone may send (every relay row), rebuilt in its name' },
       { name: 'wireDoorJudge', file: 'server/src/wire/door.js', what: 'the wire door: the table\'s checks on every message and the room\'s routes, before any handler (v2.3.5184)' },
+      { name: 'act', file: 'src/game/actions.js', what: 'ACTIONS: the one way a request leaves the page, and its request id (v2.3.5185)' },
     ],
   },
   session: {

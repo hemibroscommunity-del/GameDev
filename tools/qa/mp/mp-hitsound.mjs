@@ -32,6 +32,7 @@
  *   node tools/qa/mp/mp-hitsound.mjs        # needs dist/ built
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const WEB = 8091;
 const srv = await H.serveDist(WEB);
@@ -55,7 +56,7 @@ try {
   const p = await b.newPage();
   const errs = [];
   p.on('pageerror', (e) => errs.push(String(e).slice(0, 160)));
-  await p.goto(`http://localhost:${WEB}/`, { waitUntil: 'domcontentloaded' });
+  await p.goto(H.withLane(`http://localhost:${WEB}/`), { waitUntil: 'domcontentloaded' });
   await p.waitForFunction(() => !!(window.BT_AUDIO && window.BT_AUDIO.SFX_MANIFEST && window.BT_AUDIO.HIT_VOICES), null, { timeout: 30000 });
 
   /* ── 1. ROUTING ───────────────────────────────────────────────────────── */

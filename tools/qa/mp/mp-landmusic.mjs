@@ -29,6 +29,7 @@
  */
 import * as H from './harness.mjs';
 import { WHEEL_SPAWNS } from '../../../server/src/wheelspawns.js';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const C = (await H.wheelGeom()).cx;   /* the Wheel's middle (v2.3.3315: the one the worker plays) */

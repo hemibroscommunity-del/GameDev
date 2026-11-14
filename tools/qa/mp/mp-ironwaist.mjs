@@ -21,6 +21,7 @@
  *   node tools/qa/mp/run.mjs ironwaist      (BT_IW_SHOTS=1 keeps the photos)
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const VIEW = { width: 900, height: 700 };
 const DPR = 2;

@@ -49,6 +49,7 @@ import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { treeCrownEdge } from '../../../src/game/tierTrees.js';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', 'verdant'];

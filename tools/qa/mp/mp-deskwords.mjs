@@ -19,6 +19,7 @@
  * "TAP" in capitals (the trap button's own name) is not the word.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const DESK = { width: 1440, height: 900 };
 const PHONE = { width: 390, height: 844 };

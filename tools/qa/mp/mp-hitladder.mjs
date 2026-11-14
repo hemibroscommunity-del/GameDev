@@ -30,6 +30,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 const STAND_ORE = [0, -70];   /* where a miner stands to a vein (mp-wheelnodes STAND) */
 

@@ -51,9 +51,12 @@
  * has (rule 11: a deploy that wipes them loses nothing of value).
  */
 
+import { SOCIAL_TYPES } from './wire/lists.js';   /* v2.3.5182: from the wire table */
 export const SOCIAL = Object.freeze({
-  /* the relays this allowance pays for, in place of the relay bucket */
-  TYPES: Object.freeze(new Set(['chat', 'emote'])),
+  /* the relays this allowance pays for, in place of the relay bucket.
+     v2.3.5182 (card K PR 2): every relay row whose `pace` is `social` in the
+     wire table (server/src/wire/lists.js) */
+  TYPES: Object.freeze(SOCIAL_TYPES),
   BURST: 5,          // lines (or emotes) at once...
   REFILL_MS: 2000,   // ...then one more every 2 s: five in ten seconds
 });

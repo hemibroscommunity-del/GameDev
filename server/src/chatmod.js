@@ -61,6 +61,7 @@
  * deploy to get it).
  */
 
+import { MUTABLE_RELAY_TYPES } from './wire/lists.js';   /* v2.3.5182: from the wire table */
 import { PACE } from './flood.js';   /* v2.3.3274: the mute list is written at a pace */
 import { WIRE_DOOR } from './wire/door.js';   /* v2.3.5184: the names no player id is (the wire door's) */
 
@@ -87,7 +88,9 @@ export const CHATMOD = {
    on every one (chat.js handleEmoteEvent). */
 /* v2.3.3393: and `dice_roll` -- the worker's event, not a relay, but stamped
    with its roller as `from` (dice.js): a line in the chat in their name */
-export const MUTABLE_RELAY_TYPES = new Set(['chat', 'emote', 'dice_roll']);
+/* v2.3.5182 (card K PR 2): every row whose `muted` is `mutable` in the wire
+   table (server/src/wire/lists.js) */
+export { MUTABLE_RELAY_TYPES };
 
 /* Reason codes.  An ALLOWLIST rather than free text, on purpose: the
    report record is read by the operator, and free text from a client is

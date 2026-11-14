@@ -13,6 +13,7 @@
  *   5. by Blacksmith Bro, a flex: he flexes back.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 

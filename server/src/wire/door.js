@@ -186,14 +186,19 @@ export function wireDoorRouteRow(pathname, method, rows = WIRE_DOOR_ROWS.ROUTES)
 
 /* ── the room's methods (index.js mixes them in) ── */
 export const wireDoorMethods = {
-  /* count and (the first few) log a refusal */
-  _wireDoorCount(type, why) {
+  /* count and (the first few) log a refusal.  v2.3.5184 (the gatekeeper,
+     sitting 15): the count is keyed by the table's row (`row`), never by
+     what the client named: a type or a path no row names counts as `(no
+     row)`, so the keys are at most the table's rows times the five whys
+     (before, 432,000 frames of random types in an hour grew it by 59 MB of
+     the room's 128).  The log names what came, the first LOG_FIRST only. */
+  _wireDoorCount(row, why, came) {
     if (!this._wireDoorCounts) this._wireDoorCounts = Object.create(null);
-    const key = String(type).slice(0, 64) + ' ' + why.split(' ')[0];
+    const key = row + ' ' + why.split(' ')[0];
     this._wireDoorCounts[key] = (this._wireDoorCounts[key] || 0) + 1;
     this._wireDoorRefused = (this._wireDoorRefused || 0) + 1;
     if (this._wireDoorRefused <= WIRE_DOOR.LOG_FIRST) {
-      try { console.warn('[wiredoor] refused ' + String(type).slice(0, 64) + ': ' + why); } catch (e) { /* the count stands */ }
+      try { console.warn('[wiredoor] refused ' + String(came === undefined ? row : came).slice(0, 64) + ': ' + why); } catch (e) { /* the count stands */ }
     }
   },
 
@@ -205,7 +210,8 @@ export const wireDoorMethods = {
     const why = wireDoorJudge(msg);
     if (!why) return false;
     if (session) session.wireDoor = (session.wireDoor || 0) + 1;
-    this._wireDoorCount(msg && typeof msg.type === 'string' ? msg.type : '(no type)', why);
+    const type = msg && typeof msg.type === 'string' ? msg.type : '';
+    this._wireDoorCount(type && WIRE_DOOR_ROWS.SOCKET.has(type) ? type : '(no row)', why, type || '(no type)');
     return true;
   },
 
@@ -223,7 +229,7 @@ export const wireDoorMethods = {
     const row = wireDoorRouteRow(url.pathname, method);
     const why = wireDoorRouteJudge(row, url.searchParams, body);
     if (!why) return null;
-    this._wireDoorCount(row || ('http:' + url.pathname), why);
+    this._wireDoorCount(row || 'http:(no row)', why, 'http:' + url.pathname);
     return new Response(JSON.stringify({ ok: false, error: 'bad request' }), {
       status: 400, headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
     });

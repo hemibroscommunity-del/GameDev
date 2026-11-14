@@ -28,6 +28,8 @@
  *   1. door.js: BAD_KEYS without 'constructor'                 -> FAIL 3
  *   2. index.js: the router's `if (this._wireDoor(session, msg)) return;` removed -> FAIL 2
  *   3. liveops.js: `_wireDoorOff` returning false always        -> FAIL 6
+ *   4. door.js: `_wireDoorCount` keyed by the type that came (the old way) -> FAIL 2b
+ *      (v2.3.5184, sitting 15's review)
  *
  * Not a phone test: node, card E's test room (testroom.mjs).  Under a
  * second. */
@@ -118,8 +120,23 @@ async function roomCases(flags) {
   check('2: ...and nothing polluted', !r.polluted);
 }
 
-/* ── 3. the routes ── */
 const req = (path, method, body, headers) => new Request('https://worker.test' + path, { method, headers: { 'Content-Type': 'application/json', ...(headers || {}) }, body: body === undefined ? undefined : body });
+/* ── 2b (v2.3.5184, the gatekeeper, sitting 15). the count is keyed by the
+   table's row: a flood of random types, or of paths no row names, adds one
+   key each, never one a name ── */
+{
+  const w = await newRoom();
+  const q = console.warn; console.warn = () => {};
+  for (let i = 0; i < 2000; i++) await w.room.webSocketMessage(w.ws, JSON.stringify({ type: 'zz_' + i, payload: { reqId: '!!' } }));
+  for (let i = 0; i < 200; i++) await w.room.fetch(req('/api/store/zz' + i + '?__proto__=1', 'GET'));
+  console.warn = q;
+  const keys = Object.keys(w.room._wireDoorCounts || {});
+  check('2b: a flood of frames of random types and 200 unknown paths, refused, keep two keys (`(no row) reqId`, `http:(no row) key`)',
+    /* (the socket's message budget, flood.js, drops part of the flood before the door: the counts are what reached it) */
+    keys.length === 2 && w.room._wireDoorCounts['(no row) reqId'] >= 100 && w.room._wireDoorCounts['http:(no row) key'] === 200, [keys.slice(0, 5), w.room._wireDoorCounts['(no row) reqId']]);
+}
+
+/* ── 3. the routes ── */
 {
   const q = (s) => new URLSearchParams(s);
   check('3: judge: a query named `__proto__` -> key', wireDoorRouteJudge('http:/api/store/browse', q('__proto__=1'), undefined) === 'key');

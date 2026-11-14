@@ -72,7 +72,50 @@ export const PARTY = {
 
 const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
+/* ═══ v2.3.5212: THE PARTY DOOR (card L PR 5; grand plan step 5.3b) ═══
+   (docs/specs/party-door.md; held by server/test/party-door.test.mjs and the
+   phase table's guard, tools/guards/phase-table.test.mjs)
+   A player's place in a party is ONE field: their entry in
+   this._partyByPlayer (the party they are in, or none).  Only _partyIn writes
+   it, by a way of PARTY_WAYS: `load` (read back from storage at a join),
+   `join` (an accept: the inviter of a new party and the accepter), `clan` (a
+   clan made a party, clanparty.js), `leave` (a leave, a kick, a character
+   restart) and `disband` (the last member of a party that ends).  A member
+   always stands in the party's own list: the door refuses a party whose
+   `members` does not name them (`partydoor: false` lets it write anyway, as
+   the old lines would have).  Step 1 changes nothing a player sees: every
+   old line wrote a member already on the list, or took out one already off
+   it.
+   NOT folded here: an INVITE (a key of _partyInvites, its own TTL); the
+   LEADER (the party record's own pointer, p.leader, handed on by the
+   removal and the idle sweep); AWAY (a member whose body is offline, read
+   off playerState).  The table's row says so. */
+export const PARTY_WAYS = Object.freeze({ load: 'member', join: 'member', clan: 'member', leave: 'none', disband: 'none' });
+
 export const partyMethods = {
+  /* v2.3.5212: the party door's kill switch (live flag `partydoor: false`) */
+  _partyDoorOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && own(f, 'partydoor') && !f.partydoor);
+  },
+
+  /* v2.3.5212: THE ONE WRITER of a player's place in a party.  `p` is the
+     party for the ways to 'member' and null for the ways to 'none'.  True
+     when it wrote. */
+  _partyIn(pid, p, way) {
+    if (typeof pid !== 'string' || !pid || !own(PARTY_WAYS, way)) return false;
+    if (PARTY_WAYS[way] === 'none') {
+      if (p !== null) return false;
+      if (this._partyByPlayer) this._partyByPlayer.delete(pid);
+      return true;
+    }
+    if (!p || typeof p !== 'object') return false;
+    if (!(Array.isArray(p.members) && p.members.includes(pid)) && !this._partyDoorOff()) return false;
+    if (!this._partyByPlayer) this._partyByPlayer = new Map();
+    this._partyByPlayer.set(pid, p);
+    return true;
+  },
+
   _partySend(playerId, type, payload) {
     const ws = this._wsBySessionId(playerId);
     if (!ws) return;
@@ -236,7 +279,7 @@ export const partyMethods = {
     if (!id || typeof id !== 'string') return null;
     const live = this._parties.get(id);
     if (live) {
-      if (live.members.includes(playerId)) { this._partyByPlayer.set(playerId, live); return live; }
+      if (live.members.includes(playerId)) { this._partyIn(playerId, live, 'load'); return live; }   /* v2.3.5212: the party door */
       this._partyIndexDrop(playerId);
       return null;
     }
@@ -277,7 +320,7 @@ export const partyMethods = {
     for (const m of p.members) {
       /* a member already in another live party keeps it (a flip of the
          switch); their own index decides at their next join */
-      if (!this._partyByPlayer.has(m)) this._partyByPlayer.set(m, p);
+      if (!this._partyByPlayer.has(m)) this._partyIn(m, p, 'load');   /* v2.3.5212: the party door */
     }
     if (healed.length !== members.length || p.leader !== rec.leader) this._partyStore(p);
     return p;
@@ -494,11 +537,11 @@ export const partyMethods = {
       };
       p.meta[inviter] = { name: this._partyNameOf(inviter), level: inviterPs.level || 1, maxHp: inviterPs.maxHp || 100, at: Date.now(), seen: Date.now() };
       this._parties.set(p.id, p);
-      this._partyByPlayer.set(inviter, p);
+      this._partyIn(inviter, p, 'join');   /* v2.3.5212: the party door */
     }
     p.members.push(accepterId);
     p.meta[accepterId] = { name: this._partyNameOf(accepterId), level: ps.level || 1, maxHp: ps.maxHp || 100, at: Date.now(), seen: Date.now() };
-    this._partyByPlayer.set(accepterId, p);
+    this._partyIn(accepterId, p, 'join');   /* v2.3.5212: the party door */
     /* v2.3.3284: stored -- the indexes first, so a crash between the writes
        leaves an index the next read drops, never a member nobody can see */
     if (fresh) this._partyIndexPut(inviter, p.id);
@@ -540,7 +583,7 @@ export const partyMethods = {
   _partyRemoveMember(p, pid, reason) {
     p.members = p.members.filter((m) => m !== pid);
     delete p.meta[pid];
-    if (this._partyByPlayer) this._partyByPlayer.delete(pid);
+    this._partyIn(pid, null, 'leave');   /* v2.3.5212: the party door */
     this._partyIndexDrop(pid);   /* v2.3.3284: the index first, as at a join */
     this._partySend(pid, 'party_state', { state: 'none', reason });
     /* v2.3.3313: out of the party, out of its alliance's tag */
@@ -548,7 +591,7 @@ export const partyMethods = {
     if (p.members.length <= 1) {
       this._parties.delete(p.id);
       for (const rest of p.members) {
-        if (this._partyByPlayer) this._partyByPlayer.delete(rest);
+        this._partyIn(rest, null, 'disband');   /* v2.3.5212: the party door */
         this._partyIndexDrop(rest);
         this._partySend(rest, 'party_state', { state: 'none', reason: 'disbanded' });
         if (this._allySetTag) this._allySetTag(rest);
