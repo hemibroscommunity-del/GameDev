@@ -81,6 +81,7 @@ async function fresh(st, zone) {
   ps.maxStamina = 100; ps.stamina = st == null ? 100 : st;
   ps.blocking = false; ps._guardBrokenUntil = 0; ps.dead = false; ps.dying = false; ps.disconnected = false;
   ps._sprintAt = 0; ps._sprintOwed = 0; ps._sprintStep = false; ps._sprintLastPaid = false; ps._sprintPrevPaid = false;
+  ps._sprintBilledAt = 0; ps._mvWalk = { b: 0, at: T };   /* v2.3.5541: the walk's own budget empty, as the move's is */
   room._liveFlags = {};
   ps.lastMoveAt = T;
   ps._mvBudget = 0; ps._mvBudgetAt = T;
@@ -412,6 +413,44 @@ async function run(n, step, gapMs, extra) {
   const turns = [1, 2, 3, 4, 5].map(() => C.sprintOutBreathTurn(ran));
   check('client: running dry takes turns -- the grunt first, then the tired breath, then the grunt again',
     turns.join() === 'false,true,false,true,false' && ran._sprintRunOuts === 5, { turns, n: ran._sprintRunOuts });
+}
+
+// ── 9. v2.3.5541: THE SPRINT MARK, ON (`sprintmark: true`, an opt-in) ──────
+/* review-z16 (sitting 16): the ON path, played.  A step of 60 px every 100 ms
+   is 600 px a second: over the walk's 500, inside the sprint's 665; the
+   walk's budget starts empty (fresh), so each such move needs the sprint. */
+{
+  const on = () => { room._liveFlags = { sprintmark: true }; };
+  /* the cheat: every other move marked, all at sprint speed, 2 s */
+  await fresh(100); on();
+  for (let i = 0; i < 20; i++) { wait(100); await move(ps.x + 60, ps.y, i % 2 ? { sp: 1 } : undefined); }
+  const alt = 100 - ps.stamina;
+  await fresh(100); on();
+  for (let i = 0; i < 20; i++) { wait(100); await move(ps.x + 60, ps.y, { sp: 1 }); }
+  const full = 100 - ps.stamina;
+  check(`9: on, every other move marked pays as a sprint marked on every move (${alt} of ${full})`, full >= 15 && Math.abs(alt - full) <= 2, { alt, full });
+  /* off (as it lands), the cheat ran free */
+  await fresh(100);
+  for (let i = 0; i < 20; i++) { wait(100); await move(ps.x + 60, ps.y, i % 2 ? { sp: 1 } : undefined); }
+  check('9: off, every other move marked spent nothing (the hole, as today)', ps.stamina >= 99, { st: ps.stamina });
+  /* the review's variant: one mark every 1.5 s, the rest unmarked at sprint speed */
+  await fresh(100); on();
+  for (let i = 0; i < 40; i++) { wait(100); await move(ps.x + 60, ps.y, i % 15 === 0 ? { sp: 1 } : undefined); }
+  check('9: on, one mark every 1.5 s and the rest at sprint speed still pays for the run', 100 - ps.stamina >= 20, { st: ps.stamina });
+  /* honest: a sprint, the rest packet, a pause under a second, the keepalive, a sprint again */
+  await fresh(100); on();
+  await run(10, 6, 33, { sp: 1 });
+  const before = ps.stamina;
+  wait(40); await move(ps.x + 2, ps.y);   /* the rest packet */
+  wait(600);                                /* standing */
+  await run(1, 6, 33, { sp: 1 });           /* pressed again */
+  check('9: on, an honest pause under a second, after the rest packet, bills nothing', ps.stamina === before, { before, after: ps.stamina });
+  /* honest: let go and walk on (unmarked, at a walk) inside the grace */
+  await fresh(100); on();
+  await run(10, 6, 33, { sp: 1 });
+  const b2 = ps.stamina;
+  await run(30, 5, 33);                     /* 150 px a second: no sprint needed */
+  check('9: on, the walk after letting go is never billed', ps.stamina === b2, { b2, after: ps.stamina });
 }
 
 Date.now = realNow;

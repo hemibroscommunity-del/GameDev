@@ -409,10 +409,10 @@ export async function mover(W, ph, take, { speed, sprintHole = false, sprinter =
       const ps0 = W.ps(PID), st = ps0 && typeof ps0.stamina === 'number' ? ps0.stamina : 0;
       ph._spT = ph._spT || 0;
       const run = st >= 5 && ph._spT < 3000;
-      const sp = run ? ph.walk * 1.33 : ph.walk, ms = 500;
+      const sp = run ? ph.walk * 1.33 : ph.walk, ms = run ? 500 : 800;   /* v2.3.5541 (review-z16): the walk is 0.8 s, one piece */
       const d = Math.hypot(t.x - ph.x, t.y - ph.y), step = Math.min(d, (sp * ms) / 1000);
       if (d > 1) { const sx = ph.x + ((t.x - ph.x) / d) * step, sy = ph.y + ((t.y - ph.y) / d) * step; await ph.walkTo(() => sx, () => sy, { speed: sp, honest: true, extra: run ? () => ({ sp: 1 }) : undefined }); }
-      ph._spT = run ? ph._spT + ms : (ph._spT >= 3000 ? (ph._spT >= 3800 ? 0 : ph._spT + ms) : 0);
+      ph._spT = run ? ph._spT + ms : 0;
     } else
     await ph.walkTo(() => t.x, () => t.y, { speed: honest ? ph.walk : speed, honest, extra: sprintHole ? () => ({ sp: (k++ % 2) ? 1 : 0 }) : undefined });
     count();

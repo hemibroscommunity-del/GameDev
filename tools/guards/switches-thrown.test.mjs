@@ -21,6 +21,8 @@
  *   node tools/guards/switches-thrown.test.mjs --sample    in each system, one
  *                                                          switch of each risk
  *   node tools/guards/switches-thrown.test.mjs --only farm  one row
+ *   ...and --baseline: each suite run unthrown first, its FAIL lines set
+ *   aside (on by itself with --all, --sample and --only; v2.3.5305)
  * (`--all` is hours on a 4-core box: CLAUDE.md §6, the sample, and the full
  * run offered to the owner.)
  *
@@ -147,10 +149,18 @@ const rows = pick();
 const label = ONLY ? `--only ${ONLY}` : ALL ? '--all' : SAMPLE ? '--sample' : `rows born from ${BORN_FROM} on`;
 const t0 = Date.now();
 
-/* the baseline: each suite once, unthrown */
+/* the baseline: each suite once, unthrown.  v2.3.5305 (the gatekeeper,
+   sitting 14: the run's 30 s on every PR are paid minutes): only by hand
+   (--all, --sample, --only, --baseline), where the base may be red.  On a
+   PR, `npm test` runs every one of these suites plain in the same job and
+   fails on any FAIL, so a line that fails unthrown has already turned it
+   red: here it reads as an unexpected one, and nothing is let through.  A
+   fault of the preload's own (a suite it breaks unthrown) is red too.
+   Measured: 97 thrown runs and 67 baseline runs, 30 s; without, 18 s. */
 const allSuites = [...new Set(rows.flatMap(suitesFor))];
-const base = new Map();
-await pool(allSuites.map((s) => async () => { base.set(s, new Set((await run(s, null)).fails)); }));
+const BASELINE = ALL || SAMPLE || !!ONLY || argv.includes('--baseline');
+const base = new Map(allSuites.map((s) => [s, new Set()]));
+if (BASELINE) await pool(allSuites.map((s) => async () => { base.set(s, new Set((await run(s, null)).fails)); }));
 
 const unexpected = [];
 const stale = [];
@@ -179,7 +189,7 @@ for (const row of rows) {
   for (const w of [...listed, ...known]) if (!seen.has(w)) stale.push(`${row.name}: ${w}`);
 }
 
-check(`thrown (${label}): ${rows.length} switch(es), ${jobs.length} suite run(s), ${allSuites.length} suite(s) unthrown, ${Math.round((Date.now() - t0) / 1000)} s`, true);
+check(`thrown (${label}): ${rows.length} switch(es), ${jobs.length} suite run(s), ${BASELINE ? allSuites.length + ' suite(s) unthrown' : 'no baseline (npm test runs them plain)'}, ${Math.round((Date.now() - t0) / 1000)} s`, true);
 check('every check that fails with one switch thrown is the switch\'s own (its row\'s thrownFails) or a known second configuration (KNOWN)', unexpected.length === 0, unexpected);
 if (rows.length) check('every listed fail still fails (a mended one comes off its list)', stale.length === 0, stale);
 if (argv.includes('--verbose')) for (const l of ownFound) console.log('     own: ' + l);

@@ -54,7 +54,7 @@
  *      NOT_A_MACHINE                                       -> FAIL 5
  *   5. the `race` worker row deleted -> FAIL 1 (4 stays green: the page's
  *      `race` row still carries the wire's name)
- *   6. TODO_LINE one under the count (30)                   -> FAIL 7
+ *   6. TODO_LINE one under the count (28)                   -> FAIL 7
  * v2.3.5203 (the gatekeeper's sitting 8, its two holes), each tried by hand:
  *   7. `_sneakJoin(ws,\n msg) { ... s.phase = 'joined' }` at the end of
  *      join.js's joinMethods (its parameters over two lines)  -> FAIL 2
@@ -94,8 +94,10 @@ import { ROOT } from './lib/systems.mjs';
 
 /* Set 2026-11-14 at its first count.  Only the gatekeeper lowers it.
    v2.3.5371 (the gatekeeper, sitting 14, main 1cce0b2): 31 -> 30, the
-   count since card L's trade door (#1809). */
-export const TODO_LINE = 30;
+   count since card L's trade door (#1809).
+   v2.3.5373 (the gatekeeper, sitting 16, main 64bb498): 30 -> 28, the count
+   since card L's duel and party doors (#1824, #1835). */
+export const TODO_LINE = 28;
 
 /* the machines every side must have a row for: SHAPES part 5's names and
    step 5.3b's list (the plan's own `dungeon`, `connection`, `loading`,

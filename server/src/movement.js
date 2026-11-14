@@ -608,6 +608,7 @@ export const movementMethods = {
       this._rideEnd(ps, 'edge', session.id);
     }
     const _sprintK = typeof this._sprintK === 'function' ? this._sprintK(ps, msg, _now) : 1;
+    let _needSprint = false;   /* v2.3.5541: the move needed the sprint's wide bound (set where it is judged; sprint.js _sprintPay) */
     /* v2.3.3325: where this move is judged from -- the worker's own place in
        this zone, or, coming back into the Wheel, where the player left it
        (MOVE_BUDGET above, "THE BYPASSES") -- and where it puts them */
@@ -658,6 +659,21 @@ export const movementMethods = {
          else on the wire can raise it. */
       const dx = msg.x - _fromX;
       const dy = msg.y - _fromY;
+      /* v2.3.5541: THE SPRINT MARK (`sprintmark: true`, an opt-in): a budget
+         of the WALK's own, refilled at the walk's rate and spent by every
+         move, so a move on the sprint's wide bound knows whether it needed
+         it -- a run past the walk's speed for longer than the walk's burst
+         (sprint.js _sprintPay).  Its own: the budget below refills at the
+         sprint's rate inside the grace, and the per-message bound's slack
+         hides a step.  Kept only while the mark is on. */
+      if (typeof this._sprintMarkOn === 'function' && this._sprintMarkOn()) {
+        const _d = Math.sqrt(dx * dx + dy * dy);
+        const _wr = MOVE_BUDGET.SPEED_PX * _spdCap * _moveMult, _wcap = _wr * MOVE_BUDGET.BURST_S + MOVE_BUDGET.SLACK_PX;
+        const _w = ps._mvWalk || (ps._mvWalk = { b: _wcap, at: _now });
+        _w.b = Math.min(_wcap, _w.b + _wr * Math.max(0, (_now - _w.at) / 1000)); _w.at = _now;
+        _needSprint = _sprintK > 1 && _d > _w.b + _gust;
+        _w.b = Math.max(0, _w.b - _d);
+      }
       if (_budgetOn) {
         /* v2.3.3325: the budget (MOVE_BUDGET above), refilled since the last
            judged move at this move's own bound and spent by what it covers;
@@ -769,7 +785,7 @@ export const movementMethods = {
       /* v2.3.3325: where the bound put them -- the phone's place, or as far
          toward it as the budget reached */
       ps.x = _toX; ps.y = _toY;
-      if (ps._sprintStep && typeof this._sprintPay === 'function') this._sprintPay(ps, _stepPx, _now, session.id);
+      if (ps._sprintStep && typeof this._sprintPay === 'function') this._sprintPay(ps, _stepPx, _now, session.id, _needSprint);
       /* v2.3.1107: accept any DEFINED d/f, not just truthy -- today
          both are non-empty strings so `||` worked, but a future
          numeric encoding (0 = north) would silently stop relaying.
