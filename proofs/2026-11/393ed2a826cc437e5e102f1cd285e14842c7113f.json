@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "393ed2a826cc437e5e102f1cd285e14842c7113f",
+  "tree": "349a309146f63dff475756af67e8f67348530e1f",
+  "committedAt": "2026-11-13T20:58:20-08:00",
+  "subject": "Merge pull request #1688 from hemibroscommunity-del/claude/plan-a-1-hold-names",
+  "files": 7464,
+  "bytes": 946552730,
+  "listingSha256": "fe1ba0b92436b66bd7a51c024d022776e44dfa2e864df0147cd8134d1d49fbbb",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
