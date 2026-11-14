@@ -17,8 +17,11 @@ state: ready
 
 ## Next
 
-- PR 2 (5461) waits for `entityRenderer.js`: card H's 5050 (not on `main`
-  at 2026-11-14 10:20).
+- Sitting 9's two holds on #1770 met: `main` merged in, every block kept
+  (SK, TF, PW, LB; next 5520); the spec writes PR 2's tag bare. For
+  sitting 10.
+- PR 2 (5461): `entityRenderer.js` is free (#1762, card H's 5050, merged
+  at sitting 9). Begins from this branch.
 
 ## Found
 

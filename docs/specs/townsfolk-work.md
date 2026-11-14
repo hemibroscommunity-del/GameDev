@@ -6,7 +6,7 @@ characters. Like chef blaze should cook, not hammer like an anvil"*.
 The townsfolk of the Wheel's BroTown walk and work since v2.3.4058
 (`docs/specs/living-town.md`). This page is the audit: who each one is, what
 he did at work, what he does now, and what would make it right. Card TF PR 1
-(v2.3.5460) put every wrong tool away; PR 2 (v2.3.5461) gives the cook, the
+(v2.3.5460) put every wrong tool away; PR 2 (tag 5461) gives the cook, the
 woodworker and the farmer their own poses from the player's skill art. Where
 no art fits, the last column says what new animation would make it right:
 **that list is the owner's**, and no art is made in card TF.
@@ -72,7 +72,7 @@ giver keeps within 30 px of it. A work pose faces south (you).
 | **Bean**, the square east of where you arrive | kid streamer with no viewers: cat ears, pink everything | walks and stands | the same | walking and standing | a phone held out, filming himself |
 | **Tourist Terry**, the square below the Town Hall's steps | lost tourist: a souvenir sombrero, a monocle, orange shorts | walks and stands | the same | walking and standing | taking a photo, or turning a map round |
 
-## What PR 2 adds (v2.3.5461), and its questions
+## What PR 2 adds (tag 5461), and its questions
 
 From the player's own skill art, the way a player is drawn cooking, chopping
 and farming:
