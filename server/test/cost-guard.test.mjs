@@ -41,9 +41,11 @@
  *  15. v2.3.5080: the day's book (daybook.js) writes nothing while nothing is
  *      added, and at most one row a DAYBOOK.PACE_MS (5 minutes) while its
  *      parts are added to on every tick -- 13 in an hour at most;
- *  17. v2.3.5089: an arena match's settlement (gladiator.js) writes the old
- *      order's puts and ONE more, its plan: 6 in a 1 v 1 (16 is card E's
- *      transfer ledger, in its own PR);
+ *  17. v2.3.5089: an arena match's settlement (gladiator.js), its plan on,
+ *      writes the old order's puts and ONE more, its plan (and deletes it
+ *      once paid: two rows a match): 6 puts in a 1 v 1; off (the default
+ *      until the owner says yes) the old order's 5 (16 is card E's transfer
+ *      ledger, in its own PR);
  * A line here may move when a feature really needs the rows: say so in the
  * PR, in plain words, as the memory budget asks (CLAUDE.md).
  */
@@ -643,6 +645,7 @@ const FAST = 110;
   const puts = [];
   const real = state.storage.put;
   state.storage.put = function (k, v) { if (k && typeof k === 'object') puts.push(...Object.keys(k)); else puts.push(k); return real.call(this, k, v); };
+  room._liveFlags = Object.assign({}, room._liveFlags, { arenasettleplan: true });   /* sitting 10: on only by the owner's yes */
   await room._arenaSettleStakes('cg-t', 'cg-m', W);
   state.storage.put = real;
   const line = 6;

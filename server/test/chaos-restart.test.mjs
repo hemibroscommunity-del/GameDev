@@ -64,7 +64,10 @@ const KNOWN = new Map([
      gladiator.js _arenaSettleStakes writes the whole settlement as a plan on
      every stake record in ONE run before a coin moves, pays each leg once by
      its opId, and the sweep FINISHES a planned record rather than refunding
-     it.  KNOWN is empty: step 4.5's line. */
+     it.  KNOWN is empty: step 4.5's line.
+     Sitting 10: the plan is OFF until the owner says yes to its cost (two
+     rows a match), so case 6 runs it ON (`arenasettleplan: true`); off, the
+     old order's hole is as it was. */
 ]);
 const COUNT_KNOWN = process.env.CHAOS_KNOWN === '1';
 
@@ -427,7 +430,8 @@ const arenaRunning = (r) => {
   const path = {
     pids: [C, D, W, L],
     before: async (r) => { for (const p of [C, D, W, L]) await joinOn(r, fakeWs('s6' + p), p); },
-    act: async (r) => { await r._arenaSettleStakes('cx-t', 'cx-m', W); },
+    /* v2.3.5089 (sitting 10): the plan on, as the owner's yes would turn it */
+    act: async (r) => { r._liveFlags = Object.assign({}, r._liveFlags, { arenasettleplan: true }); await r._arenaSettleStakes('cx-t', 'cx-m', W); },
   };
   const m = await measure(s0, path);
   const whole = { c: per(m.store, C).gold, d: per(m.store, D).gold, w: per(m.store, W).gold };

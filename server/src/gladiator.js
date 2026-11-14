@@ -107,11 +107,15 @@ export const arenaMethods = {
     return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'arenastakeonewrite') && !f.arenastakeonewrite);
   },
   /* v2.3.5089: a match's stakes settle by a PLAN, one record written in one
-     run with the losers' stamps (_arenaSettleStakes); `arenasettleplan:
-     false` in the live flags puts back the old order, its hole included */
+     run with the losers' stamps (_arenaSettleStakes).  OFF unless the live
+     flags say `arenasettleplan: true` (the gatekeeper's sitting 10): the plan
+     costs two rows a match, its put and its delete, and a cost is the
+     owner's to say yes to.  Off, the old order runs, its hole included.  A
+     plan already on file is finished either way (_arenaStakeSweep,
+     _arenaSettleWait): turning it off never strands one. */
   _arenaSettlePlanOn() {
     const f = this._liveFlags;
-    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'arenasettleplan') && !f.arenasettleplan);
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'arenasettleplan') && f.arenasettleplan);
   },
 
   /* HTTP surface -- the worker routes /api/arena/* here (old DO
@@ -600,9 +604,13 @@ export const arenaMethods = {
          (market.js v2.3.4505).
          v2.3.5089 (the gatekeeper's sitting 9): the plan is ONE record, not a
          copy on every stake (that rewrote each stake: 5 puts became 7 in a
-         1 v 1, 32 became 52 in a 10 v 10).  Now a match's settlement writes
-         one put more than the old order -- the plan -- whatever its size
-         (cost-guard §17).  `arenasettleplan: false` puts back the old order. */
+         1 v 1, 32 became 52 in a 10 v 10).  Now a match's settlement costs
+         TWO rows more than the old order whatever its size -- the plan's put
+         and, when it is finished, its delete (cost-guard §17).  Sitting 10:
+         off until the owner says yes (`arenasettleplan: true` turns it on);
+         and the oplog prune waits for every open plan (_arenaSettleWait), or
+         a plan a deploy left and a join found 48 h later paid its legs
+         again. */
       if (this._arenaSettlePlanOn()) {
         const legs = [];
         if (totalW > 0) {
@@ -628,7 +636,8 @@ export const arenaMethods = {
         const writes = [this.state.storage.put(planKey, plan)];
         if (totalW > 0) for (const x of losers) writes.push(this._opStamp('arenastakeloss:' + tid + ':' + matchId + ':' + x.rec.sponsorId));
         await Promise.all(writes);   /* one run: the plan and the losers' stamps, or neither */
-        await this._arenaStakeFinish(planKey, plan);
+        if (typeof this._arenaPlansOpen === 'number') this._arenaPlansOpen++;   /* the prune waits for it (_arenaSettleWait) */
+        if (await this._arenaStakeFinish(planKey, plan) && this._arenaPlansOpen > 0) this._arenaPlansOpen--;
         for (const x of all) {
           const won = x.rec.targetId === winnerId;
           const ws = this._wsBySessionId(x.rec.sponsorId);
@@ -911,14 +920,27 @@ export const arenaMethods = {
          share, never the stake twice;
        - a leg's id is the sponsor's id as written, any string (the old order
          paid any); a leg that is not a leg (a plan a hand edited) keeps the
-         plan and its stakes on file, paying nothing more, never dropped. */
+         plan and its stakes on file, paying nothing more, never dropped.
+     Sitting 10's finds: such a plan was kept AFTER its good legs were paid,
+     so each sweep once the prune had taken their stamps paid them again (1000
+     -> 1500 -> 2000).  Now every leg is read before any is paid: a plan with
+     one it cannot read pays NOTHING and stays for the owner, stakes and all.
+     And a plan being finished in this worker is finished once at a time (the
+     settlement's own run and a sweep could meet on it). */
   async _arenaStakeFinish(planKey, plan) {
-    const legs = plan && Array.isArray(plan.legs) ? plan.legs : [];
-    let bad = false;
-    for (const leg of legs) {
+    if (!arenaPlanReadable(plan)) return false;   /* kept on file for the owner: nothing paid, nothing dropped */
+    if (!this._arenaPlansBusy) this._arenaPlansBusy = new Set();
+    if (this._arenaPlansBusy.has(planKey)) return false;   /* being finished as this reads */
+    this._arenaPlansBusy.add(planKey);
+    try {
+      return await this._arenaStakeFinishRun(planKey, plan);
+    } finally { this._arenaPlansBusy.delete(planKey); }
+  },
+
+  async _arenaStakeFinishRun(planKey, plan) {
+    for (const leg of plan.legs) {
       /* each kind of leg its own literal opId word (the opId audits: a credit's
          id is never a value read back), its id a string of a key's length */
-      if (!leg || typeof leg.to !== 'string' || !leg.to || typeof leg.id !== 'string' || !leg.id || leg.id.length > 400) { bad = true; continue; }
       let amount = Math.max(0, Math.floor(Number(leg.amount) || 0));
       const note = typeof leg.note === 'string' ? leg.note.slice(0, 60) : 'arena';
       if (leg.kind === 'win' && (await this._opSeen('arenastakerefund:' + leg.id))) {
@@ -928,9 +950,7 @@ export const arenaMethods = {
       if (leg.kind === 'cut') await this._creditPlayer(leg.to, { opId: 'arenastakecut:' + leg.id, source: 'arena', kind: 'gold', payload: { amount }, note });
       else if (leg.kind === 'win') await this._creditPlayer(leg.to, { opId: 'arenastakewin:' + leg.id, source: 'arena', kind: 'gold', payload: { amount }, note });
       else if (leg.kind === 'loss') await this._creditPlayer(leg.to, { opId: 'arenastakeloss:' + leg.id, source: 'arena', kind: 'gold', payload: { amount }, note });
-      else bad = true;
     }
-    if (bad) return false;   /* kept on file for the owner: nothing is dropped unpaid */
     const keys = (plan && Array.isArray(plan.keys) ? plan.keys : []).filter((k) => typeof k === 'string' && k.startsWith('arena_stake:'));
     await Promise.all([...keys, planKey].map((k) => this.state.storage.delete(k)));   /* every stake and the plan in one run */
     return true;
@@ -951,7 +971,7 @@ export const arenaMethods = {
         if (!plan || plan.v !== 1) { planned.add(pk.slice('arena_settle:'.length)); continue; }
         planned.add(plan.tid + ':' + plan.matchId);
         if (this._arena && this._arena.id === plan.tid) continue;
-        await this._arenaStakeFinish(pk, plan);
+        if (await this._arenaStakeFinish(pk, plan) && this._arenaPlansOpen > 0) this._arenaPlansOpen--;
       }
       const stakes = await this.state.storage.list({ prefix: 'arena_stake:' });
       for (const [k, rec] of stakes) {
@@ -967,4 +987,52 @@ export const arenaMethods = {
       }
     } catch (e) { /* best-effort */ }
   },
+
+  /* ═══ v2.3.5089: THE STAMP PRUNE WAITS FOR AN OPEN ARENA PLAN (sitting 10) ═══
+     Which legs of a plan were paid lives in their oplog stamps, and the oplog
+     prune deletes stamps 48 h old (inbox.js _opPruneMaybe; TRAPS §146).  A
+     plan a deploy left mid-settlement, found by a join's sweep after 48 h of
+     an empty room, read every leg as unpaid and paid them again (+50 g,
+     +620 g in the gatekeeper's probe; 0 at 1 h).  So the tick's housekeeping
+     slot (tick.js) asks this BEFORE the prune, as it asks the General Store's
+     (market.js _mktSettleWait) and the Auction House's: true while this
+     worker has not yet looked for open plans, or one is open.  Looking is one
+     list of `arena_settle:` a worker's life (nothing written when there is
+     none); each open plan found is finished there and then.  A plan of the
+     tournament being fought waits for its own settlement; one the sweep
+     cannot read pays nothing (_arenaStakeFinish), so it never holds the
+     prune.  Off or on, a plan on file is finished: the switch only says
+     whether new ones are written. */
+  _arenaSettleWait() {
+    if (this._arenaPlansOpen === 0) return false;
+    if (!this._arenaPlanScanP) {
+      this._arenaPlanScanP = this._arenaPlanScan().catch(() => { /* the next slot looks again */ })
+        .then(() => { this._arenaPlanScanP = null; });
+    }
+    return true;
+  },
+
+  async _arenaPlanScan() {
+    const plans = await this.state.storage.list({ prefix: 'arena_settle:' });
+    let open = 0;
+    for (const [pk, plan] of plans) {
+      if (!arenaPlanReadable(plan)) continue;   /* kept for the owner: it pays nothing */
+      if (this._arena && this._arena.id === plan.tid) { open++; continue; }   /* its own settlement finishes it */
+      if (!(await this._arenaStakeFinish(pk, plan))) open++;
+    }
+    this._arenaPlansOpen = open;
+  },
 };
+
+/* A plan the finish can pay: v1, and every leg one it can read -- to whom, its
+   id (any string a key may hold: the sponsor's id as written), its kind.  One
+   it cannot read is kept for the owner and pays nothing (sitting 10). */
+const ARENA_LEG_KINDS = new Set(['cut', 'win', 'loss']);
+function arenaPlanReadable(plan) {
+  if (!plan || plan.v !== 1 || !Array.isArray(plan.legs)) return false;
+  for (const leg of plan.legs) {
+    if (!leg || typeof leg.to !== 'string' || !leg.to || typeof leg.id !== 'string' || !leg.id || leg.id.length > 400) return false;
+    if (!ARENA_LEG_KINDS.has(leg.kind)) return false;
+  }
+  return true;
+}
