@@ -181,7 +181,18 @@ export function readSourceRect(ctx, source, sx, sy, sw, sh, dx, dy, who) {
   sx = Math.round(sx); sy = Math.round(sy); sw = Math.round(sw); sh = Math.round(sh);
   if (!(sw > 0) || !(sh > 0)) return false;
   if (res && res.width > 0) { ctx.drawImage(res, sx, sy, sw, sh, dx, dy, sw, sh); return true; }
-  const nums = source && source._btNumbers;
+  let nums = source && source._btNumbers;
+  /* v2.3.5257: a monster's strip kept deflated a frame at a time once the
+     chip has it (framePack.js, which hangs its reader on the source: this
+     module imports nothing): the frame holding the rectangle, unpacked; none
+     (no such frame, it will not unpack, or a stuck arrow's frame put off to
+     the next task) is nothing to read */
+  if (!nums && source && typeof source.__btFPRead === 'function') {
+    let f = null;
+    try { f = source.__btFPRead(source, sx, sy, sw, sh, who); } catch (e) { f = null; }
+    if (!f) return false;
+    nums = f.nums; sx -= f.x; sy -= f.y;
+  }
   if (!nums || typeof ImageData === 'undefined') return false;
   ctx.putImageData(new ImageData(pixelsOfNumbers(nums, sx, sy, sw, sh), sw, sh), Math.round(dx), Math.round(dy));
   _reads++;

@@ -16,7 +16,8 @@ import { setDrawListRoot } from './drawLists.js'; /* v2.3.3449: a live switch's 
 import { installLayerUniforms } from './layerUniforms.js'; /* v2.3.3449: a layer draws with the world's own camera numbers */
 import { SHADE } from './formShade.js';
 import { installP256Upload, startP256Pack } from './p256.js'; /* v2.3.3728: the effects' colour numbers packed once on the chip */
-import { installPicsOnceUpload, startPicsOnce, restoreAllPictures } from './picsOnce.js'; /* v2.3.3715: a picture from a file held once (?onecopy) */
+import { startFramePack } from './framePack.js'; /* v2.3.5257: a monster strip's colour numbers kept deflated a frame at a time once on the chip */
+import { installPicsOnceUpload, startPicsOnce, restoreAllPictures, addPictureRestorer } from './picsOnce.js'; /* v2.3.3715: a picture from a file held once (?onecopy) */
 import { cacheSourceBytes } from './cacheBytes.js'; /* v2.3.5248: what a cached picture holds in the page (colour numbers: nothing here) */
 import { Application, Cache, Container, GlTextureSystem, TextureSource } from 'pixi.js';
 
@@ -752,6 +753,8 @@ export async function createPixiApp(canvas) {
     try { startPicsOnce(app.renderer, canvas); } catch (e) { /* every copy kept */ }
     /* v2.3.3728: the effects' colour numbers packed once on this chip (p256.js) */
     try { startP256Pack(app.renderer, canvas); } catch (e) { /* kept as they are */ }
+    /* v2.3.5257: and the monsters' strips, a frame at a time (framePack.js) */
+    try { startFramePack(app.renderer, canvas, addPictureRestorer); } catch (e) { /* kept as they are */ }
     /* v2.3.2770: crisp character pixels without spending texture memory */
     try { installSharpPixels(app, SHADE.figure); } catch (e) { /* the default look */ }
     /* v2.3.3577: the silhouette batcher, its program built here (fillBatch.js) */

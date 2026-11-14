@@ -38,15 +38,16 @@
  * (a touchscreen laptop, an iPad with a trackpad, a small window), listed in
  * docs/specs/device-profile.md.
  *
- * No imports but the look palette's pure choice (and, v2.3.5221, the lanes'
- * table, which has none), so node can test it
- * (server/test/device-profile.test.mjs).
+ * No imports but the lanes' table (v2.3.5221; it has none), so node can test
+ * it (server/test/device-profile.test.mjs).  v2.3.5228: the look palette's
+ * choice (lookPaletteChoice.js) asks its Windows and Mac HERE, so it is handed
+ * in (useLookChoice), never imported: one way only.
  */
-import { lookPaletteChoice, onWindows, onMac } from './lookPaletteChoice.js';
 /* v2.3.5221: the lanes (card O): the class picks a lane, so it is handed to
    drawLanes.js from here, the one file that asks the device anything (that
-   file has no imports: node tests it) */
-import { useDevClass } from './drawLanes.js';
+   file has no imports: node tests it).  v2.3.5228: and the answers to its
+   overrides' questions (useDevAsk) */
+import { useDevClass, useDevAsk } from './drawLanes.js';
 
 /* the two media questions, written once (game.css carries the same two in
    its @media rules; device-profile.test holds them to it) */
@@ -108,24 +109,105 @@ export function phoneScreen(screenW, screenH, fine) {
   return !f && short > 0 && short < PHONE_SHORT_MAX;
 }
 
+/* ═══ v2.3.3838: WINDOWS, AND (v2.3.3842) A MAC ═══
+ * Moved here from lookPaletteChoice.js, v2.3.5228 (card O PR 8: no name
+ * decides a drawing choice outside this file).  The why, in the owner's
+ * words (the look palette's 75% on a Windows laptop; ANGLE's Metal on a Mac
+ * inlining as FXC does): lookPaletteChoice.js's header.  An iPad asking for
+ * the desktop site says "Macintosh" but has touch points: it is no Mac (it
+ * keeps the palette and the one program, as an iPhone does).  Linux (the QA
+ * box) is neither. */
+const WINDOWS_UA = /\bWindows\b|\bWin64\b|\bWin32\b/;
+
+/** Is this browser on Windows (its user agent, or Chromium's own platform)? */
+export function onWindows(ua, platform) {
+  if (typeof platform === 'string' && /^windows$/i.test(platform.trim())) return true;
+  return WINDOWS_UA.test(typeof ua === 'string' ? ua : '');
+}
+
+/** v2.3.3842: is this browser on a Mac -- not an iPad asking for the desktop
+ *  site (it says "Macintosh" too, but has touch points), not an iPhone (whose
+ *  "like Mac OS X" is no Macintosh)? */
+export function onMac(ua, platform, touchPoints) {
+  const s = typeof ua === 'string' ? ua : '';
+  if (/\b(iPhone|iPad|iPod)\b/.test(s) || Number(touchPoints) > 1) return false;
+  if (typeof platform === 'string' && /^macos$/i.test(platform.trim())) return true;
+  return /\bMacintosh\b/.test(s);
+}
+
+/** The page's own navigator, as the questions above read it ({ ua, platform,
+ *  touch }; empty with none). */
+function navFacts() {
+  try {
+    const nav = typeof navigator !== 'undefined' ? navigator : null;
+    if (!nav) return { ua: '', platform: undefined, touch: 0 };
+    return { ua: nav.userAgent || '', platform: nav.userAgentData ? nav.userAgentData.platform : undefined, touch: nav.maxTouchPoints };
+  } catch (e) { return { ua: '', platform: undefined, touch: 0 }; }
+}
+
+/* ═══ v2.3.5228: THE OVERRIDES' QUESTIONS (card O PR 8) ═══
+   drawLanes.js's OVERRIDES pin `program` to the three and `look` to baked
+   where a fallback's trigger lives; each row's `when` is one of its DEV_ASKS,
+   and is answered HERE, nowhere else (one-program.test §2):
+     software   the chip's name says it draws in software (SOFT_GL, below)
+     windows    onWindows()
+     mac        onMac()
+     computer   windows or mac (the three programs: v2.3.5016)
+   devAsk(facts) answers them for the facts given (the pure choices, their
+   tests, the QA probes); the page's own answers (its navigator, the game's
+   renderer) are handed to drawLanes.js below (useDevAsk). */
+/** Is a renderer, by its chip's name, drawing in software? */
+export function softRenderer(name) {
+  return SOFT_GL.test(typeof name === 'string' ? name : '');
+}
+/** The overrides' questions answered for these facts: { renderer (the chip's
+ *  name), ua, platform, touch } -- or `windows` / `mac` already asked (a
+ *  caller that holds deviceProfile()'s answers).  Returns (when) -> boolean. */
+export function devAsk(facts) {
+  const f = facts || {};
+  const ask = (when) => {
+    if (when === 'software') return softRenderer(f.renderer);
+    if (when === 'windows') return f.windows !== undefined ? !!f.windows : onWindows(f.ua, f.platform);
+    if (when === 'mac') return f.mac !== undefined ? !!f.mac : onMac(f.ua, f.platform, f.touch);
+    if (when === 'computer') return ask('windows') || ask('mac');
+    return false;
+  };
+  return ask;
+}
+/* the page's own: its navigator, and the game's renderer (its chip's name,
+   read when asked: a choice made behind the loading screen) */
+function pageAsk(when) {
+  const n = navFacts();
+  let renderer = '';
+  if (when === 'software') {
+    try { const w = typeof window !== 'undefined' ? window : null; renderer = rendererName(w && w._pixiRenderer && w._pixiRenderer.app && w._pixiRenderer.app.renderer); } catch (e) { renderer = ''; }
+  }
+  return devAsk({ renderer, ua: n.ua, platform: n.platform, touch: n.touch })(when);
+}
+useDevAsk(pageAsk);
+
+/* the look palette's choice, handed in by lookPaletteChoice.js (it imports
+   this file for its Windows and Mac: one way only) */
+let _lookChoice = null;
+/** lookPaletteChoice.js hands its choice in (the profile's `palette`). */
+export function useLookChoice(fn) { _lookChoice = typeof fn === 'function' ? fn : null; }
+
 /** Everything this file knows about the machine, in one object (the Speed
  *  test's card; QA). */
 export function deviceProfile() {
-  const nav = typeof navigator !== 'undefined' ? navigator : null;
-  const ua = nav ? nav.userAgent : '';
-  const plat = nav && nav.userAgentData ? nav.userAgentData.platform : undefined;
-  const touch = nav ? nav.maxTouchPoints : 0;
+  const n = navFacts();
   let search = '';
   try { search = typeof window !== 'undefined' ? window.location.search || '' : ''; } catch (e) { search = ''; }
-  const palette = lookPaletteChoice(search, ua, plat, touch);
+  let palette = null;
+  try { palette = _lookChoice ? _lookChoice(search, n.ua, n.platform, n.touch) : null; } catch (e) { palette = null; }
   return {
     input: fineInput() ? 'mouse' : 'touch',
     computerFrame: computerFrame(),
     ios: onIOS(),
     phone: phoneScreen(),   /* v2.3.5140 */
-    windows: onWindows(ua, plat),
-    mac: onMac(ua, plat, touch),
-    palette: palette.on ? 'on' : 'off (' + palette.why + ')',
+    windows: onWindows(n.ua, n.platform),
+    mac: onMac(n.ua, n.platform, n.touch),
+    palette: !palette ? 'not asked' : palette.on ? 'on' : 'off (' + palette.why + ')',
     dpr: (typeof window !== 'undefined' && window.devicePixelRatio) || 1,
   };
 }
@@ -175,7 +257,7 @@ export function userAgent() {
  *
  *   gl      1, 2             the WebGL the game's renderer got
  *   soft    0, 1             it draws in software (the chip's name against
- *                            SOFT_GL, paletteTex.js's own list)
+ *                            SOFT_GL, the one program's fallback too)
  *   maxTex  2048 ... 16384   the largest picture side, the power of two at or
  *                            under it (2048 or less: 2048)
  *   prec    16, 32           the bits a program keeps at middle precision
@@ -219,8 +301,9 @@ export const DEV_CLASS = Object.freeze({
 });
 export const DEV_CLASS_FIELDS = Object.freeze(Object.keys(DEV_CLASS));
 
-/* a software renderer, by the chip's name: paletteTex.js SOFTWARE_GL's own
-   list, written the same (device-profile.test §7 holds the two equal) */
+/* a software renderer, by the chip's name: the class's `soft`, and (v2.3.5228)
+   the one program's fallback (softRenderer above; paletteTex.js keeps no list
+   of its own now: device-profile.test §7) */
 export const SOFT_GL = /swiftshader|llvmpipe|softpipe|software|basic render|\bwarp\b/i;
 
 const _num = (v) => (typeof v === 'number' && isFinite(v) ? v : NaN);

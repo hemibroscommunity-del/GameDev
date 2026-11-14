@@ -18,9 +18,9 @@
  *      nothing dropped unpaid -- and NOTHING PAID, not even its good legs
  *      (sitting 10: they were, and paid again each time the prune took their
  *      stamps), across two prunes.
- *   6. OFF BY DEFAULT (sitting 10: two rows a match is the owner's yes): no
- *      flag, the old order (no plan written); `arenasettleplan: true`, the
- *      plan.
+ *   6. ON BY DEFAULT (v2.3.5095, the owner's yes: "Just go recommended"; it
+ *      was off from sitting 10 until then): no flag, the plan;
+ *      `arenasettleplan: false`, the old order (no plan written).
  *   7. 48 H IDLE, THEN A JOIN (sitting 10's probe): a plan a deploy left with
  *      one leg paid, the room empty for 49 h; the tick's housekeeping slot
  *      (the real tick) waits to prune its stamps until the plan is finished,
@@ -29,7 +29,8 @@
  * BREAK PROOFS (rule 8), tried by hand: the refund check taken out of
  * _arenaStakeFinish -> FAIL 3 (the winner paid its stake twice); the arena's
  * wait taken out of tick.js's prune line -> FAIL 7 (the cut paid twice); the
- * readable check taken out of _arenaStakeFinish -> FAIL 5.
+ * readable check taken out of _arenaStakeFinish -> FAIL 5; v2.3.5095: the
+ * default turned back off -> FAIL 1 and 6.
  */
 import { makeStorage, openRoom, join, fakeWs, settle, seededClock } from './testroom.mjs';
 import { ARENA } from '../src/gladiator.js';
@@ -91,7 +92,7 @@ for (const [w, l] of [[1, 1], [3, 2], [10, 10]]) {
   for (const on of [false, true]) {
     const { m, W } = world(w, l);
     const st = makeStorage(m);
-    const room = await openRoom(st, on ? { arenasettleplan: true } : {});   /* off: the default (sitting 10) */
+    const room = await openRoom(st, on ? {} : { arenasettleplan: false });   /* v2.3.5095: on is the default; off by its switch */
     const puts = counting(st);
     const b0 = st.batches();
     await room._arenaSettleStakes(TID, MID, W);
@@ -224,7 +225,7 @@ const staked = (store) => gold(store) - purse(store, 'bp_as_x');   /* the match'
   void ARENA;
 }
 
-/* ══════════ 6. OFF BY DEFAULT ══════════ */
+/* ══════════ 6. ON BY DEFAULT (v2.3.5095) ══════════ */
 {
   const out = {};
   for (const [name, flags] of [['none', {}], ['true', { arenasettleplan: true }], ['false', { arenasettleplan: false }]]) {
@@ -236,9 +237,9 @@ const staked = (store) => gold(store) - purse(store, 'bp_as_x');   /* the match'
     await settle();
     out[name] = { on: room._arenaSettlePlanOn(), plans: puts.filter((k) => k.startsWith('arena_settle:')).length, puts: puts.length, gold: gold(st._store) };
   }
-  check('6. no flag: the old order (no plan, 5 puts); `arenasettleplan: true`: the plan (6); `false`: the old order',
-    out.none.on === false && out.none.plans === 0 && out.none.puts === 5 && out.true.on === true && out.true.plans === 1 && out.true.puts === 6
-    && out.false.on === false && out.false.plans === 0 && out.none.gold === 200 && out.true.gold === 200, out);
+  check('6. no flag: the plan (6 puts; the owner\'s yes); `arenasettleplan: true`: the plan; `false`: the old order (5)',
+    out.none.on === true && out.none.plans === 1 && out.none.puts === 6 && out.true.on === true && out.true.plans === 1
+    && out.false.on === false && out.false.plans === 0 && out.false.puts === 5 && out.none.gold === 200 && out.false.gold === 200, out);
 }
 
 /* ══════════ 7. 48 H IDLE, THEN A JOIN ══════════ */

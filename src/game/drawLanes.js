@@ -41,8 +41,8 @@
  *           program's names to its file); Pixi's own are not the game's.
  *
  * THE READER.  laneKnob(name) is the ONE way a knob's value is read: an
- * override if one pins it (OVERRIDES: none yet -- card O's PRs 8 and 12 move
- * the fallbacks and the off-ramps here), else the lane's row at the ladder's
+ * override if one pins it (OVERRIDES: v2.3.5228 the fallbacks, card O PR 8;
+ * PR 12 moves the off-ramps here), else the lane's row at the ladder's
  * rung.  A knob that must be told when it changes (a resolution, a pass)
  * subscribes: onKnob(name, fn).
  *
@@ -93,19 +93,19 @@ export const KNOBS = Object.freeze({
     what: 'the most other players drawn in full (your party, your target, whoever fights you and your duel always)',
     steps: Object.freeze([50, 30, 15]),
     say: Object.freeze(['The 50 nearest other players drawn', 'The 30 nearest other players drawn', 'The 15 nearest other players drawn']),
-    reader: { files: Object.freeze(['src/game/crowdCap.js']), moved: false }, pr: 6, switch: '?crowd', system: 'monsters',
+    reader: { files: Object.freeze(['src/game/crowdCap.js']), moved: true }, pr: 6, switch: '?laddercrowd', system: 'monsters',
   },
   program: {
-    what: 'one drawing program for the world\'s sprites, or three (chosen behind the loading screen: never a rung)',
-    steps: Object.freeze(['one']),
-    say: Object.freeze(['One drawing program for the world\'s sprites']),
-    reader: { files: Object.freeze(['src/rendering/paletteTex.js']), moved: false }, pr: 8, switch: '?onebatch', system: 'memory',
+    what: 'one drawing program for the world\'s sprites, or three (chosen behind the loading screen: never a rung; v2.3.5228: the three an override\'s, below)',
+    steps: Object.freeze(['one', 'three']),
+    say: Object.freeze(['One drawing program for the world\'s sprites', 'Three drawing programs, as the game drew until 2026-10-18 (a software renderer; a Windows or Mac computer)']),
+    reader: { files: Object.freeze(['src/rendering/paletteTex.js']), moved: true }, pr: 8, switch: '?onebatch', system: 'memory',
   },
   look: {
-    what: 'how a character\'s look is made: coloured on the chip, or each baked (chosen behind the loading screen: never a rung)',
-    steps: Object.freeze(['palette']),
-    say: Object.freeze(['Looks coloured on the graphics chip']),
-    reader: { files: Object.freeze(['src/game/lookPaletteChoice.js']), moved: false }, pr: 8, switch: 'lookpalette', system: 'device',
+    what: 'how a character\'s look is made: coloured on the chip, or each baked (chosen behind the loading screen: never a rung; v2.3.5228: baked an override\'s, below)',
+    steps: Object.freeze(['palette', 'baked']),
+    say: Object.freeze(['Looks coloured on the graphics chip', 'Each look baked on first sight, as before the look palette (a Windows or Mac computer)']),
+    reader: { files: Object.freeze(['src/game/lookPaletteChoice.js']), moved: true }, pr: 8, switch: 'lookpalette', system: 'device',
   },
   shine: {
     what: 'the metal\'s shine on gear',
@@ -220,11 +220,36 @@ export const PROGRAMS = Object.freeze([
 export const PROGRAM_NAMES = Object.freeze(PROGRAMS.map((p) => p.name));
 
 /* ── the overrides: a row pins a knob to a value, winning over the lane and
-   the ladder; the governor never moves a pinned knob.  NONE YET: card O's
-   PR 8 moves the fallbacks here (a software renderer; the look palette on
-   Windows and a Mac), PR 12 the off-ramps (`?pixbudget=0`, `?onebatch=0`
-   ...).  A row: { knob, value, why } ── */
-export const OVERRIDES = Object.freeze([]);
+   the ladder; the governor never moves a pinned knob.  v2.3.5228 (card O PR
+   8): THE FALLBACKS -- each a known trouble, kept while its trigger lives
+   (card T's `fallback` column); PR 12 brings the off-ramps (`?pixbudget=0`,
+   `?onebatch=0` ...).  A row: { knob, value, when, why }: `when` is a
+   question the device is asked through deviceProfile.js ALONE (useDevAsk:
+   'software', 'computer', 'windows', 'mac'), never a name read here ── */
+export const OVERRIDES = Object.freeze([
+  Object.freeze({ knob: 'program', value: 'three', when: 'software', why: 'a software renderer runs every branch of the one program for every pixel (TRAPS §225: 4.1 frames a second against 9.2)' }),
+  Object.freeze({ knob: 'program', value: 'three', when: 'computer', why: 'a Windows or Mac computer builds programs through ANGLE, whose compilers took minutes over the look palette\'s; this one was never built there (v2.3.5016)' }),
+  Object.freeze({ knob: 'look', value: 'baked', when: 'windows', why: 'Windows: ANGLE\'s FXC inlines the look palette\'s program, the loading screen stood at 75% for 5-10 minutes on the owner\'s laptop (v2.3.3838)' }),
+  Object.freeze({ knob: 'look', value: 'baked', when: 'mac', why: 'a Mac: ANGLE\'s Metal inlines as FXC does, and a computer has the memory the palette saves (v2.3.3842)' }),
+]);
+/* the questions an override's `when` may ask: deviceProfile.js devAsk
+   answers each (one-program.test §2); this file reads no device's name */
+export const DEV_ASKS = Object.freeze(['software', 'computer', 'windows', 'mac']);
+/* the device's answers to an override's `when` (deviceProfile.js hands its
+   own in: useDevAsk); a pure choice asks about another device for a moment
+   (askingAs: the QA probes, the tests) */
+let _ask = null;
+let _askNow = null;
+/** deviceProfile.js hands in its answers to an override's question (the one
+ *  file that asks the device anything). */
+export function useDevAsk(fn) { _ask = typeof fn === 'function' ? fn : null; }
+/** Run fn with the overrides' questions answered by `ask` (a device other
+ *  than this page's: the pure choices, their tests and QA probes). */
+export function askingAs(ask, fn) {
+  const was = _askNow;
+  _askNow = typeof ask === 'function' ? ask : () => false;
+  try { return fn(); } finally { _askNow = was; }
+}
 
 /** The lane a device class picks: facts only.  `thirty` where the screen's
  *  rate is 30, else `full`.  Pure. */
@@ -290,7 +315,10 @@ export function drawLane(cls) {
     let c = cls;
     if (c === undefined && _classOf) {
       const t = _now();
-      if (t - _laneAskedAt >= LANE_ASK_MS) { _laneAskedAt = t; c = _classOf(); }
+      /* v2.3.5228: a class not yet known (no drawing context) spends no ask:
+         the look palette's choice reads its knob at load, before the
+         renderer, and must not hold the first real answer back 5 s */
+      if (t - _laneAskedAt >= LANE_ASK_MS) { c = _classOf(); if (c) _laneAskedAt = t; }
     }
     if (c) {
       const was = _lane;
@@ -344,12 +372,17 @@ export function ladderRateOn(search) {
 export function ladderPixOn(search) {
   return !/(^|[?&])ladderpix=(0|off|false)(&|$)/.test(typeof search === 'string' ? search : '');
 }
-/** The knobs a rung can change today: marked moved (the tests' list while
- *  one is set), less any this page's address takes off the ladder. */
+/* v2.3.5226 (card O PR 6): the crowd's rungs, out of reach under `?laddercrowd=0` (crowdCap.js asks it too) */
+export function ladderCrowdOn(search) {
+  return !/(^|[?&])laddercrowd=(0|off|false)(&|$)/.test(typeof search === 'string' ? search : '');
+}
+/** The knobs a rung can change today: marked moved and on an axis (the
+ *  tests' list while one is set), less any this page's address takes off
+ *  the ladder. */
 export function liveKnobs() {
   if (_liveNow) return _liveNow;
   const s = _search();
-  _liveNow = Object.freeze(_live.filter((k) => !(k === 'rate' && !ladderRateOn(s)) && !(k === 'pixels' && !ladderPixOn(s))));
+  _liveNow = Object.freeze(_live.filter((k) => !(k === 'rate' && !ladderRateOn(s)) && !(k === 'pixels' && !ladderPixOn(s)) && !(k === 'crowd' && !ladderCrowdOn(s))));
   return _liveNow;
 }
 /** For the tests only: play the ladder with these knobs live (null: the moved ones). */
@@ -382,10 +415,20 @@ export function setRung(work, chip, pixels) {
   return LANE._rung;
 }
 
-/** The override pinning a knob, or null. */
-export function pinOf(name) {
-  for (const o of OVERRIDES) if (o.knob === name) return o;
+/** The override pinning a knob for a device whose answers are `ask` (pure), or null. */
+export function pinFor(name, ask) {
+  if (typeof ask !== 'function') return null;
+  for (const o of OVERRIDES) {
+    if (o.knob !== name) continue;
+    let yes = false;
+    try { yes = !!ask(o.when); } catch (e) { yes = false; }
+    if (yes) return o;
+  }
   return null;
+}
+/** The override pinning a knob on this page (or the device askingAs names), or null. */
+export function pinOf(name) {
+  return pinFor(name, _askNow || _ask);
 }
 
 /** THE ONE WAY a knob's value is read: an override if one pins it, else this
@@ -394,6 +437,31 @@ export function laneKnob(name) {
   const p = pinOf(name);
   if (p) return p.value;
   return knobAt(drawLane(), name, LANE._rung);
+}
+
+/* ═══ v2.3.5226 (the gatekeeper's sitting 15 on #1836): WHAT THE SCREEN SEES OF A KNOB ═══
+   The governor counts a rung as useful when it changes what is drawn
+   (framePacer.js next(), trim()), and read that as "its knob's value
+   changes".  For the crowd it is not: with 30 or fewer players near, 50 ->
+   30 -> 15 hides no one and saves nothing, yet each rung cost two late
+   verdicts before the rate's (about 5 s more of late frames a hot spell,
+   the owner alone on his iPhone).  So a knob's reader may say what the
+   screen sees of a value (crowdCap.js: the cap, or the players near if
+   fewer), and the governor compares those: a crowd rung whose cap is at or
+   above the players near is passed, down and up (the finder's cure; the
+   planning session's word). */
+const _seen = Object.create(null);
+/** A knob's reader says what the screen sees of a value (fn(value) -> what
+ *  decides the picture).  One a knob. */
+export function seeKnob(name, fn) {
+  if (KNOBS[name] && typeof fn === 'function') _seen[name] = fn;
+}
+/** What the screen sees of a knob's value now (the value itself where its
+ *  reader says nothing). */
+export function knobSeen(name, value) {
+  const f = _seen[name];
+  if (!f) return value;
+  try { return f(value); } catch (e) { return value; }
 }
 
 /** Be told when a knob's value changes (a lane picked, a rung moved): fn(value,
