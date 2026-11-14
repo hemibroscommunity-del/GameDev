@@ -34,6 +34,7 @@
  * sounds), and each refusal site says "Swimming!" with its own popup.
  */
 import { wheelSwimOn, wheelWaterAt } from './wheelTrial.js';
+import { resetOn } from './resetOn.js';   /* v2.3.5204: out of the water at the zone door (card L) */
 
 /* the walk in the water, and the push of a stroke round it (the average is
    SWIM_MULT; the peak, SWIM_MULT * (1 + SWIM_SURGE) = 0.63 of a walk, is
@@ -92,6 +93,15 @@ export function swimNext(was, wet) {
  * happened for the caller to carry out: 'in' (waded in), 'landed' (put in
  * the water by a teleport: no splash), 'out', 'stroke' or null.
  */
+/* v2.3.5204 (grand plan step 5.3, card L): a swim is the Wheel's water's, so
+   it goes at the zone edge's one door (changeZone).  updateWheelSwim's own
+   off-the-Wheel clear below did the same a frame later; it stays, and is
+   what clears it with `?movementreset=0` thrown. */
+function leaveWheelWater(S) {
+  S._wheelSwim = null;
+}
+resetOn('zone', leaveWheelWater, 'movement');
+
 export function updateWheelSwim(S, now, inWheel, feetDy, waterAt) {
   const P = S && S.player;
   if (!P || !inWheel || !wheelSwimOn()) {

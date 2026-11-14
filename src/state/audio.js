@@ -11,7 +11,7 @@
  */
 export const SYSTEM = 'audio';
 export const ROWS = [
-  { field: '_shotEnds', system: 'audio', lifetime: 'sitting', suggested: 'zone', born: 'fly src/game/hitSounds.js shotEnds', twoFiles: '', noRead: false, noSet: false, phase: null, flag: false, writers: ['src/game/hitSounds.js'] },
+  { field: '_shotEnds', system: 'audio', lifetime: 'zone', reset: 'value null', suggested: 'zone', born: 'fly src/game/hitSounds.js shotEnds', twoFiles: '', noRead: false, noSet: false, phase: null, flag: false, writers: ['src/game/hitSounds.js'] },
   { variable: '_noise', file: 'src/data/bowFeelSound.js', system: 'audio', lifetime: 'sitting', suggested: 'never', born: 'var null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/data/bowFeelSound.js'] },
   { variable: 'FOOTSTEP_CLIPS', file: 'src/data/footstepClips.js', system: 'audio', lifetime: 'sitting', suggested: 'never', born: 'const object', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/data/footstepClips.js'] },
   { variable: '_a', file: 'src/data/soundFold.js', system: 'audio', lifetime: 'sitting', suggested: 'never', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/data/soundFold.js'] },

@@ -25,9 +25,11 @@
  * state_sync case that no row names, and a row whose re-send is missing or is
  * not called after state_sync in server/src/join.js.
  *
- * No imports but the duel lock and the trade slot, so node can test it. */
+ * No imports but the duel lock, the trade slot and the resets' door (none
+ * of their own), so node can test it. */
 import { lockOntoDuelOpponent } from './duelLock.js';
 import { t2OnStateSync } from './tradeSlot.js';
+import { runResets } from './resetOn.js';   /* v2.3.5203: the rejoin edge's one door (card L) */
 
 export const REJOIN_SLOTS = Object.freeze([
   /* v2.3.1185: the party HUD (wsClient.js setParty(null)); party.js */
@@ -88,6 +90,14 @@ export function rejoinClear(S, count, setTrade2, clearIv) {
     S._t2Live = null;
     t2OnStateSync(S, setTrade2, clearIv);
   }
+  /* v2.3.5203 (grand plan step 5.3, card L): this is the rejoin edge's ONE
+     door (wsClient.js calls it once, at every state_sync), so the state a
+     system registered for the rejoin (game/resetOn.js resetOn('rejoin', ...))
+     goes back here.  TRAPS §278 holds for each: a rejoin reset is only for a
+     field the worker says again AFTER this (the join's train) or forgets
+     too -- never one state_sync set above this call, which it would wipe
+     (docs/specs/state-resets.md). */
+  runResets('rejoin', S, { count: n });
   return done;
 }
 
