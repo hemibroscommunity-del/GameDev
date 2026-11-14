@@ -1,6 +1,6 @@
 card: O
 branch: claude/plan-o-4-rate (one branch a PR: claude/plan-o-<n>-<word>; each begun from the one before)
-prs: #1787 (5221, ready), PR 2 (5222, ready: after #1787), PR 4 (5224, ready: after PR 2)
+prs: #1787 (5221, ready), #1792 (5222, ready: after #1787), PR 4 (5224, ready: after #1792)
 state: ready
 
 ## Done
@@ -9,7 +9,7 @@ state: ready
   (`src/game/drawLanes.js`), its guard, `docs/LANES.md`, the report's lane
   (`caps.report` 3, `reportlanes`), the worker's lists for the card, the
   wire row, the class asked at the join (card P's 18.4 ms). Deploys.
-- PR 2 (5222) `claude/plan-o-2-governor`: the governor (the pacer, grown),
+- #1792 (5222) `claude/plan-o-2-governor`: the governor (the pacer, grown),
   its model (30, 60, 120), `mp-governor`. Deploys (server tests).
 
 ## Next
@@ -37,4 +37,4 @@ state: ready
 
 ## Needs
 
-- (none) Merged in order: #1787, PR 2, PR 4 (each begun from the one before).
+- (none) Merged in order: #1787, #1792, PR 4 (each begun from the one before).
