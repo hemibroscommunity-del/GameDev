@@ -219,7 +219,7 @@ box's software graphics chip, and the quarter second of game it plays in one
 frame: a phone has neither) or **the browser's** (its garbage collector: the
 game can only give it less to do). The grand plan's step 3.1 is done when no
 row is ours (`held-budget.mjs` `debtOf('ours')`, the count its scoreboard
-reads). Today (v2.3.5047): three ours, two the box's, one the browser's. A new family is
+reads). Today (v2.3.5048): two ours (`body-bake`, and `pack-page`, card P's to bring down), two the box's, one the browser's. A new family is
 ours until a measurement says otherwise: `held-sweep.test` 7b3 holds the
 box's and the browser's to the three below, and 7b4 holds this table to
 `KNOWN`, row for row. Their break proofs (the grand plan's rule 8), each run
@@ -243,7 +243,7 @@ All of them (the first five by their old rank, then the rest; a family off the l
 | ~~`ui:*`~~ | | off the list (v2.3.5047; was 16 ms) | one component drawn in one piece (the gear tab is one function of 10 ms) | **v2.3.5047**: each equipment cell a component, the number formatter readied at load (below, "Card H") |
 | ~~`other: BT_AUDIO$1._fold > foldToMono`~~ | | off the list (v2.3.5045; was 20 ms) | a two-sided sound folded to one on its first play, in one piece | **v2.3.5045**: a stretch at a time, a frame between (below, "Card H") |
 | ~~`other: R > J`~~ | | off the list (v2.3.5046; was 20 ms) | React re-rendering the game's root in one piece on every equip (`gearWornSync.js`) | **v2.3.5046**: only when a worn flag changes, and as a transition (below, "Card H") |
-| `other: wrapped > sweepPicsOnce` | ours | 16 ms (v2.3.4499) | `picsOnce.js`'s sweep of the cache's pictures, up to 15 ms with the crowd's pictures in it | sweep a slice a turn |
+| ~~`other: wrapped > sweepPicsOnce`~~ | | off the list (v2.3.5048; was 16 ms) | `picsOnce.js`'s sweep of the cache's pictures, up to 15 ms with the crowd's pictures in it | **v2.3.5048**: a slice a turn (below, "Card H") |
 | ~~`other: _flushOutbox > Wrapped.ws.send`~~ | | off the list (v2.3.4960) | 4.7 ms at most in the 2026-11-12 tours (was 18 once); `other: createObjectURL` came off too (9.3 at most) | |
 
 Not on that list because the tour cannot see them:
@@ -566,6 +566,51 @@ timer wrapper of `debug/perfTracker.js`, its own time, so this box; seen
 over the line in four earlier runs) and `gear-sheet` once at `armour`
 (22.4 ms: the Equipment screen's figure composing the WHOLE upscaled shirt
 strip, `composeShirt`, for the one frame it shows).
+
+### `sweepPicsOnce` off the list (v2.3.5048)
+
+**What it was.** Once a second `picsOnce.js` sweeps Pixi's cache of pictures
+and lets go of the page's copy of each one on the chip
+(`docs/specs/pictures-once.md`). It had a 4 ms budget, but the budget only
+stopped the work on a picture: the WALK went on over the whole cache every
+second, from its first entry (`Map.forEach` cannot stop), and the cache holds
+a texture under each of its names, a sheet's every frame among them. The
+holds named the walk's own callback, and `releasable` with `urlOf` in it:
+`releasable` read every picture's address (an `<img>`'s `currentSrc`, a
+string the page makes for each read) twice, before asking whether it was on
+the chip at all. Before, the runs of this card's earlier samples: 23.9 ms at
+`peer`, 17.6 at `armour`, 13.7 at `peer`, 11.8, 11.4 at the crowd's
+`g-boards`, and 4 to 8 ms in town and the lands.
+
+**What it does now** (`picsOnce.js` alone):
+
+- one walker over the cache's entries is kept from turn to turn (a Map
+  iterator: an entry added meanwhile is still met, one gone is not); a turn
+  walks it for 3 ms and stops, the next goes on where it stopped, 100 ms
+  later while the round is unfinished and a second after it ends; a round
+  sees each picture once;
+- `releasable` asks whether the picture is on the chip before it reads the
+  address, and reads it once (the same answer: every check must hold);
+- QA's `window.__btPicsOnceSweep()` is still one whole round at once.
+
+**After**, the sample (the main tour's `town` and `lands`, `peer` and
+`armour`, and the crowd's `c-armour8`, `h-eight` and `g-boards`, three runs
+each, on the final code): 20 holds over 4 ms, 7.2 ms the longest but one,
+12.1 at `g-boards` that the Leaderboard's faces shared (about 6 ms of it the
+sweep's). A first sample with the slice alone (before the address was read
+last): 11.9, 11.2 and 10.3 ms, mostly `releasable` and `urlOf`.
+
+**The Leaderboard's faces** (the gatekeeper's sitting 4 asked for them: they
+are drawn a step at a time since v2.3.5042): at the crowd's `g-boards`, with
+the crowd's seven players on the boards, 19 boards and 32 faces, `portrait`
+9.7 ms the longest of 16 holds in three runs; alone (no crowd: 25 faces),
+none over 4 ms.
+
+**Seen in the sample, not this PR's.** `pack-page` (card P's) over its line
+at `armour` in four of six runs (26.6 to 42.5 ms; once inside a React render,
+named `R > J`); `QuestCoach > loadDone` 23.3 ms once at `town`
+(`getBoundingClientRect`, `get cookie`, `matchMedia`); a combat tick
+(`attackTick`) 25.4 ms once; an unnamed function 20.9 ms once at `peer`.
 
 ## The standing check
 

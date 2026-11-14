@@ -106,9 +106,14 @@ export const KNOWN = {
      12.5 and 8.1 ms (the 12.5 with 3 ms of another job, prog3CharLevel, in the same hold: one hold just past the
      general line is the judge's noise) (docs/specs/held-sweep.md, "Card H") */
   /* v2.3.4960: 'other: createObjectURL' off the list: 9.3 ms at most (h-eight; was 18) */
-  'other: wrapped > sweepPicsOnce': { ms: 16, whose: 'ours',
-    why: "picsOnce.js's sweep of the cache's pictures, up to 15 ms with the crowd's pictures in it",
-    next: 'sweep a slice a turn' },
+  /* v2.3.5048: 'other: wrapped > sweepPicsOnce' (was 16) off the list.  picsOnce.js's sweep of the cache's pictures
+     had a 4 ms budget, but the budget only stopped the work on a picture: the walk went on over the WHOLE of Pixi's
+     cache every second (Map.forEach cannot stop), and the cache holds a texture under each of its names.  Before:
+     23.9, 17.6 and 13.7 ms at the main tour's `peer` and `armour`.  Now one walker is kept from turn to turn, a
+     slice of 3 ms a turn (the next 100 ms later until the round ends), and a picture's address is read once, after
+     the cheaper checks (its hold is now `wrapped > sweepPicsOnceTurn`).  The sample (`town`, `lands`, `peer`,
+     `armour`, and the crowd's `c-armour8`, `h-eight`, `g-boards`, x3): 20 holds, 7.2 ms the longest but one of
+     12.1 that the Leaderboard's faces shared (docs/specs/held-sweep.md, "Card H") */
   /* v2.3.5047: 'ui:*' (was 16) off the list.  One component of the band drawn in one piece: React lets a frame in
      between components, never inside one.  The gear tab built its nine equipment cells in its own body (each with its
      rows, the amulet's stat card), and its gold badge said the page's first number with commas (about 10 ms, the
