@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c985863265ac48e20b5001d922e271c70fc893d6",
+  "tree": "ab457347ee336bcea7b901b026193f8313e45d93",
+  "committedAt": "2026-11-14T13:06:51-08:00",
+  "subject": "Merge pull request #1835 from hemibroscommunity-del/claude/plan-l-12-party-door",
+  "files": 7705,
+  "bytes": 956316478,
+  "listingSha256": "c96b02d34e3f7584229adcc42b1006191fcd903164df433b974742b84ce493bf",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

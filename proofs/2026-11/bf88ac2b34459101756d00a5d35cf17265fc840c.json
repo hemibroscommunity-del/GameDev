@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "bf88ac2b34459101756d00a5d35cf17265fc840c",
+  "tree": "465b5c607d97da7afbae5fcc065a55d6332e5cb9",
+  "committedAt": "2026-11-14T13:06:45-08:00",
+  "subject": "Merge pull request #1824 from hemibroscommunity-del/claude/plan-l-11-duel-door",
+  "files": 7703,
+  "bytes": 956297930,
+  "listingSha256": "315c16aae86af92e69c9a93c094df935039d6803b076a55ae8e5c14b5fbc5e7a",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
