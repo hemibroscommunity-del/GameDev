@@ -61,6 +61,7 @@ why: a QA tag, a direction, an input's source, a setting.
 | `duel` | worker | a duel's `d.status` | `_duelTo` (`duel.js`, v2.3.5211) | `duel-door.test` §2, and the guard's tree |
 | `party` | worker | a player's entry in `this._partyByPlayer` | `_partyIn` (`party.js`, v2.3.5212) | `party-door.test` §2, and the guard's tree (a Map's calls too) |
 | `cook` | worker | the phone's claim on its moves, `ps.ex` (cook, fire, mine, chop, fish, a farm step) | `_exTo` (`movement.js`, v2.3.5213) | `cook-door.test` §2, and the guard's tree |
+| `harvest`, `fishing` | worker | a player's gather record, `this.extractions[pid]` (mining, woodcutting, fishing) | `_harvestTo` (`gathering.js`, v2.3.5214) | `harvest-door.test` §2, and the guard's tree (a record's keys too) |
 
 **How a door is held.** What holds a door is a closed list in the guard
 (v2.3.5203, after the gatekeeper's sitting 8 found that a suite which merely
@@ -77,6 +78,11 @@ named the field let a `todo` row turn `door` with nothing built):
   there are two: `monsterlife.js m.life` (a monster's lives) and
   `tileRenderer.js this.currentZone` (the zone it drew). A stale door (its
   function writes nothing) fails, and so does a stale `besides`.
+  **v2.3.5212:** a field that is a `Map` (the party's) is written by its
+  own `set`, `delete` and `clear` too. **v2.3.5214:** a line marked
+  `keyed` (the harvest's `this.extractions`, a record keyed by id) counts a
+  write of one of its keys as a write of the field: `x.prop[k] =`,
+  `delete x.prop[k]`, `x.prop[k]++`, `Object.assign(x.prop, ...)`.
 - `SCAN_DOORS`: the rows no suite holds. The guard runs the row's `scan`
   itself. It reads every write of the field off the syntax tree (@babel):
   `x.phase =`, `x['phase'] =`, `++`, `delete`, `Object.assign(x, { phase })`.

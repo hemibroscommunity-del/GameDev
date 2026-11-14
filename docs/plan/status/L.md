@@ -1,6 +1,6 @@
 card: L
-branch: claude/plan-l-13-cook-door (each PR on main, main merged in)
-prs: #1746 to #1809 (merged; #1791, #1796, #1801 through #1807), #1824 (5211), #1835 (5212), #1839 (5213)
+branch: claude/plan-l-14-harvest-door (each PR on main, main merged in)
+prs: #1746 to #1809 (merged; #1791, #1796, #1801 through #1807), #1824 (5211), #1835 (5212), #1839 (5213), PR 5 tag 5214: ready
 state: ready
 
 ## Done
@@ -11,13 +11,13 @@ state: ready
   (484 -> 468), state-resets.test; the phase guard's holes (sitting 8) shut.
 - PR 4 tags 5204 to 5209 (#1775 to #1803, merged): 235 rows, 468 -> 233;
   `clearElemStatuses` deleted; the guard reads DOOR_SUITES' trees.
-- PR 5 tags 5210 (#1809, merged), 5211 (#1824), 5212 (#1835), 5213: the
-  worker's trade, duel, party, cook doors (`_t2To`, `_duelTo`, `_partyIn`,
-  `_exTo`, the claim `ps.ex`); live flags `tradedoor` ... `exdoor`.
+- PR 5 tags 5210 (#1809, merged) to 5214: the worker's trade, duel, party,
+  cook, harvest+fishing doors (`_t2To`, `_duelTo`, `_partyIn`, `_exTo`,
+  `_harvestTo`); live flags `tradedoor` ... `harvestdoor`.
 
 ## Next
 
-- PR 5: harvest with fishing (5214); each page half after its worker door,
+- PR 5: the dungeon door (5215); each page half after its worker door,
   its own PR; `connection` after card K's last wsClient.js PR.
 
 ## Found

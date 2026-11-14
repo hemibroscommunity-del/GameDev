@@ -82,6 +82,11 @@
  *                                                         -> FAIL 2
  * v2.3.5213 (the cook door):
  *  18. `ps.ex = msg.ex || null;` back in _handleMove      -> FAIL 2
+ * v2.3.5214 (the harvest door: a record's keys are writes, `keyed`):
+ *  19. `this.extractions[session.id] = rec;` back in _handleExtractionStart
+ *                                                         -> FAIL 2
+ *  20. `delete room.extractions[id];` in a new function of botsig.js
+ *                                                         -> FAIL 2
  *
  * Run from the repository's root: node tools/guards/phase-table.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
@@ -269,6 +274,12 @@ const DOOR_SUITES = Object.freeze({
      farm step's) */
   'server/test/cook-door.test.mjs': { field: 'ps.ex', fn: '_exTo', holds: '§2: no write of .ex in server/src outside _exTo',
     prop: 'ex', besides: [] },
+  /* v2.3.5214: the harvest door (fishing's too) -- a record keyed by id, so
+     a write of one of its keys is a write (writesIn's `keyed`) */
+  'server/test/harvest-door.test.mjs': { field: 'this.extractions', fn: '_harvestTo', holds: '§2: no write of this.extractions or its keys in server/src outside _harvestTo but its birth',
+    prop: 'extractions', keyed: true, besides: [
+      { file: 'server/src/index.js', text: 'this.extractions = Object.create(null)', why: 'the map\'s birth, empty, in the room\'s constructor' },
+    ] },
 });
 const SCAN_DOORS = Object.freeze({
   'session (worker)': 'session-door.test plays the phases but fails no second writer of session.phase',
@@ -304,9 +315,12 @@ const propOf = (m) => (m && m.type === 'MemberExpression'
   : null);
 const keyName = (pr) => (pr && pr.type === 'ObjectProperty' ? (pr.key.type === 'Identifier' ? pr.key.name : pr.key.type === 'StringLiteral' ? pr.key.value : null) : null);
 /* every write of `.prop` in a file: [{ line, fn, text }]; with `value`, only
-   a write of that literal (alive = true) */
+   a write of that literal (alive = true); with `keyed` (v2.3.5214, a door's
+   field that is a record keyed by id, the harvest's this.extractions), a
+   write of one of its keys too: `X.prop[k] = `, `delete X.prop[k]`,
+   `X.prop[k]++`, `Object.assign(X.prop, ...)` */
 const astCache = new Map();
-function writesIn(rel, prop, value) {
+function writesIn(rel, prop, value, keyed) {
   const raw = readFileSync(join(ROOT, rel), 'utf8');
   if (!new RegExp('\\b' + prop + '\\b').test(raw)) return [];   /* a cheap look first: most files never name it */
   let ast = astCache.get(rel);
@@ -318,16 +332,18 @@ function writesIn(rel, prop, value) {
   const out = [];
   const val = (n) => value === undefined || (n && n.type === 'BooleanLiteral' && n.value === value);
   const hit = (path, n) => out.push({ line: n.loc.start.line, fn: fnName(path), text: lines[n.loc.start.line - 1] || '' });
+  const at = (m) => propOf(m) === prop || (!!keyed && !!m && m.type === 'MemberExpression' && propOf(m.object) === prop);
   babel.traverse(ast, {
-    AssignmentExpression(path) { if (propOf(path.node.left) === prop && val(path.node.right)) hit(path, path.node); },
-    UpdateExpression(path) { if (value === undefined && propOf(path.node.argument) === prop) hit(path, path.node); },
-    UnaryExpression(path) { if (value === undefined && path.node.operator === 'delete' && propOf(path.node.argument) === prop) hit(path, path.node); },
+    AssignmentExpression(path) { if (at(path.node.left) && val(path.node.right)) hit(path, path.node); },
+    UpdateExpression(path) { if (value === undefined && at(path.node.argument)) hit(path, path.node); },
+    UnaryExpression(path) { if (value === undefined && path.node.operator === 'delete' && at(path.node.argument)) hit(path, path.node); },
     CallExpression(path) {
       const c = path.node.callee;
       /* v2.3.5212: a door's field that is a Map (the party's
          this._partyByPlayer) is written by its own set, delete and clear */
       if (value === undefined && c.type === 'MemberExpression' && ['set', 'delete', 'clear'].includes(propOf(c)) && propOf(c.object) === prop) { hit(path, path.node); return; }
       if (!(c.type === 'MemberExpression' && c.object.type === 'Identifier' && c.object.name === 'Object' && propOf(c) === 'assign')) return;
+      if (keyed && value === undefined && propOf(path.node.arguments[0]) === prop) { hit(path, path.node); return; }
       for (const a of path.node.arguments.slice(1)) {
         if (a.type !== 'ObjectExpression') continue;
         for (const pr of a.properties) if (keyName(pr) === prop && val(pr.value)) hit(path, pr);
@@ -358,7 +374,7 @@ function writesIn(rel, prop, value) {
         let mine = 0;
         const seen = new Set();
         for (const f of filesUnder(SRC_OF[r.side])) {
-          for (const w of writesIn(f, want.prop)) {
+          for (const w of writesIn(f, want.prop, undefined, want.keyed)) {
             if (f === r.file && w.fn === r.fn) { mine++; continue; }
             const b = (want.besides || []).find((x) => x.file === f && w.text.includes(x.text));
             if (b) { seen.add(b); continue; }
