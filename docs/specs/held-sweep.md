@@ -381,6 +381,26 @@ to the worker). The page's side moved out of `entityRenderer.js` into
 (`tools/guards/four-lines`). The same probe after: 16 sent, 11 of 11 the
 same, none refused, no stuck kill.
 
+After the gatekeeper's sitting 5 (`docs/plan/census/review-z5.md`, v2.3.5050):
+
+- a job whose worker was let go as stuck during the page's own wait (its
+  inputs cut or addressed) is not posted to that dead worker: it fails and
+  is asked again; and the stuck clock starts when a job is POSTED (the retry
+  after `urlFail` too), so the next worker is not let go at once on an old
+  clock;
+- the worker says each address as it is read (`urlRead`), so a stuck kill
+  refuses only what was still being read, not a whole job's;
+- the 4 s covers the decode as well as the fetch (a decode that ends later
+  has its bitmap closed), and a job's sheets start reading as it arrives,
+  beside the wait for its sheets of numbers;
+- `_runBake` asks again, as `_runLookBake` did, when a piece is not readable
+  (it baked the set without it and kept that under the whole set's key);
+- the refused list lets its oldest go when full (1024), and only `blob:`
+  addresses go to the worker (a file's address can change under a deploy).
+
+The probe after (copper plate and greaves, steel plate, iron plate with steel
+greaves): 22 sent, 17 of 17 the same, none refused, none cut, no stuck kill.
+
 **The same pixels.** `window.__btBakeUrlCheck = true` before the page loads:
 the page cuts each input as well, and the worker compares its own rectangle
 with the page's cut, byte for byte (`__btBakeWorker().byUrl`). An armoured

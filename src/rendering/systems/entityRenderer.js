@@ -3440,7 +3440,7 @@ function _getBakeWorker() {
          (then its bytes go from here: lookArmour.js lookSheetForWorker) */
       if (d.type === 'lookSheetFailed') { lookSheetFetchFailed(w, d.key); return; }
       if (d.type === 'lookSheetDone') { lookSheetFetchDone(d.key, d.hash); return; }
-      if (d.type === 'urlsRead') { bakeUrlsRead(d.id); return; }   /* v2.3.5043: its addresses read (bakeByAddress.js) */
+      if (d.type === 'urlsRead' || d.type === 'urlRead') { bakeUrlsRead(d.id, d.url); return; }   /* v2.3.5043: its addresses read (bakeByAddress.js); v2.3.5050: one by one */
       const job = _bakeJobs.get(d.id);
       if (!job) return;
       _bakeJobs.delete(d.id);
@@ -3574,10 +3574,14 @@ async function _runBake(job) {
   const [body, belt, ...inps] = await Promise.all([frameInput(bodyTex), beltTex ? frameInput(beltTex) : null, ...worn.map(w => frameInput(w.tex))]);
   const _close = () => { for (const x of [body, belt, ...inps]) { try { if (x && x.bm) x.bm.close(); } catch (e) { /* gone */ } } };
   if (!body) { _close(); _bakeWorkerStats.failed++; _maskedFailed(key); return; }   /* v2.3.4870: counted, not baked here (above) */
+  /* v2.3.5050 (the gatekeeper's sitting 5): a piece not readable would be baked as not worn, and kept under the whole set's
+     key (as _runLookBake: asked again); a worker let go as stuck during the page's wait above is not posted to (it dropped
+     the job, and the next worker was let go at once on the old clock) */
+  if (inps.some((x) => !x) || wk !== _bakeWorker) { _close(); _bakeWorkerStats.failed++; _maskedFailed(key); return; }
   if (!_sendGearSheets(wk, inps)) { _close(); _bakeWorkerStats.failed++; _maskedFailed(key); return; }   /* v2.3.5000 */
   const id = ++_bakeSeq;
   const reply = await new Promise((resolve) => {
-    _bakeJobs.set(id, resolve);
+    _bakeJobs.set(id, resolve); _bakeStartedAt = performance.now();   /* v2.3.5050: the stuck clock runs from the post (sitting 5) */
     const transfer = bakeTransfer([body, belt, ...inps], id);   /* v2.3.5000: a piece from numbers carries no bitmap; v2.3.5043: nor one by address */
     try {
       wk.postMessage({ id, body, belt, worn: worn.map((w, i) => ({ k: w.k, inp: inps[i] })), dilate, poseInfo, ds: DISPLAY_DS, crop: true }, transfer);
@@ -3643,10 +3647,11 @@ async function _runLookBake(job) {
   const _close = () => { for (const x of [belt, ...inps]) { try { if (x && x.bm) x.bm.close(); } catch (e) { /* gone */ } } };
   /* a piece whose sheet is not in yet would be baked as if not worn: asked again later */
   if (inps.some((x) => !x)) { _close(); job.reply = { err: 'gear not loaded' }; return; }
+  if (wk !== _bakeWorker) { _close(); job.reply = { err: 'worker let go' }; return; }   /* v2.3.5050: as _runBake */
   if (!_sendGearSheets(wk, inps)) { _close(); job.reply = { err: 'gear numbers not sent' }; return; }   /* v2.3.5000 */
   const id = ++_bakeSeq;
   const reply = await new Promise((resolve) => {
-    _bakeJobs.set(id, resolve);
+    _bakeJobs.set(id, resolve); _bakeStartedAt = performance.now();   /* v2.3.5050: the stuck clock runs from the post */
     const transfer = bakeTransfer([belt, ...inps], id);   /* v2.3.5000: a piece from numbers carries no bitmap; v2.3.5043: nor one by address */
     try {
       wk.postMessage({ id, look: job.look, belt, worn: worn.map((w, i) => ({ k: w.k, inp: inps[i] })), dilate: job.dilate, poseInfo, ds: DISPLAY_DS }, transfer);
