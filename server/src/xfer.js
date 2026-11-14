@@ -23,7 +23,10 @@
  * run that moves the value (the trade window's `_creditLiveTogether`, or
  * the two saves' run when a side is away) -- a restart lands before the
  * whole settlement or after it, its row with it.  One row a settlement,
- * whatever it carried (`cost-guard` §16 holds the line).
+ * whatever it carried (`cost-guard` §16 holds the line), and its delete
+ * when the prune takes it KEEP_DAYS on: two rows a settlement over its
+ * life.  A settlement that moved NOTHING either way (a trade window both
+ * sides confirmed empty) writes no row (the gatekeeper's sitting 10).
  *
  * THE KEY BEGINS WITH THE DAY: `xfer:<yyyymmdd>:<id>`, the id the
  * settlement's own (a trade window's, an offer's), so a day's rows list
@@ -104,6 +107,8 @@ function sideOf(gives, ids, cut) {
   return { gold: whole(g._gold), goods: { ...goods }, ids: list };
 }
 
+const sideEmpty = (x) => !x.gold && !x.ids.length && !Object.keys(x.goods).length;
+
 /** THE ROW.  Issues the put of one settlement's row and returns its
  *  promise, for the caller to put in the settlement's own run (never
  *  awaited here: no await may come between the payment and its row).  Null
@@ -128,6 +133,7 @@ export function xferRow(room, { road, id, from, to, gives, ids, price, priceIds,
     const cut = { v: false };
     const gave = sideOf(gives, ids, cut);
     const back = sideOf(price, priceIds, cut);
+    if (sideEmpty(gave) && sideEmpty(back) && !cut.v) return null;   /* v2.3.5092 (sitting 10): nothing moved, nothing to record */
     const row = {
       v: XFER.V, at, day, road, from, to,
       gold: gave.gold, goods: gave.goods, ids: gave.ids,

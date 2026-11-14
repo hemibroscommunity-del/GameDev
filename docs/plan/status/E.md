@@ -9,9 +9,8 @@ state: ready
 - New live flags (rule 3, one line each in the switch table): PR 6 `econ`,
   PR 8c `arenasettleplan`, PR 11 `xfer`.
 - PR 7 (5086, #1758), the shared test room and `DISTURBANCES`.
-- PRs 8a to 8c (5087 to 5089: #1759, #1761, #1764), `KNOWN` empty; 8c
-  a settlement plan, ONE record in one run (sitting 9: one put more a
-  match; `arenasettleplan: false` the old order).
+- PRs 8a to 8c (5087 to 5089: #1759, #1761, #1764), `KNOWN` empty; 8c one
+  plan record a match, OFF until the owner says yes (two rows a match).
 - PR 10 (5091, #1772), the storm: the sum under every disturbance, a
   deploy before each message: all 0. Done before PR 9 (Needs below).
 - PR 11 (5092, #1773), `xfer:`: a row a trade, in its own run (`trade2.js`,
