@@ -31,6 +31,7 @@
  * job, kept).
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const LAND = { width: 844, height: 390 };
 const PORT = { width: 390, height: 844 };

@@ -11,6 +11,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 const SIZES = [{ id: '1280', width: 1280, height: 720 }, { id: '1920', width: 1920, height: 1080 }];
 const WINDOWS = ['store', 'townhall', 'bank', 'exchange', 'auctionhouse', 'cook', 'woodwork', 'forge', 'gemcut', 'enchant', 'gamble', 'arena', 'party', 'farm'];

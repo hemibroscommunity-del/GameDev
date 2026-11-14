@@ -1,4 +1,5 @@
 import { chromium } from 'playwright-core';
+import { withLane } from './lane.mjs';   /* v2.3.5223: the game's page names its lane (card O PR 3) */
 const EXE = '/tmp/chrome-headless-shell-linux64/chrome-headless-shell';
 const URL = 'http://localhost:4173/';
 const SHARED = process.argv.includes('--shared');   // two pages, one context (shared localStorage)
@@ -23,7 +24,7 @@ async function makePage(context, label) {
       localStorage.setItem('bt_rpg', JSON.stringify(rpg));
     } catch (e) {}
   });
-  await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.goto(withLane(URL), { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.waitForTimeout(9000);
   const input = page.locator('input').first();
   await input.fill(label, { timeout: 30000 });

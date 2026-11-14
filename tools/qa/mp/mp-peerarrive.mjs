@@ -18,6 +18,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 const PHONE = { width: 430, height: 932 };
 const LOOK = { skin: 'pale', pants: 'teal', shoes: 'white', hair: 'afro', haircolor: 'blonde', headwear: 'beanie' };

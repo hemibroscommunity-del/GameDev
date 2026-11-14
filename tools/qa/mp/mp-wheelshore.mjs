@@ -22,6 +22,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 const HS = 10;          /* the walk box's half-width (hs in BroTown.jsx) */
 const RUN = 150;        /* how far from the shore the walk starts, boots to bank */

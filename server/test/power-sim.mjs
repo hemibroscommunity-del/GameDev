@@ -111,7 +111,7 @@ export function randomBuild(room, opts) {
     const lv = cat === main ? L : (rnd() < 0.5 ? 1 : 1 + Math.floor(rnd() * L));
     p3.sk[cat] = { level: lv, xp: 0 };
   }
-  prog3RespecPoints(p3, false);
+  prog3RespecPoints(p3, false, 'power_control');   /* v2.3.5283: a road of the skill points' door */
   /* most spend everything; some sit on part of it */
   const part = () => (rnd() < 0.75 ? 1 : rnd());
   const sh = Math.floor(p3.shared * part());

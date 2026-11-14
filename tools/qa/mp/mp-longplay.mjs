@@ -58,6 +58,7 @@ import { join } from 'node:path';
 import { execSync } from 'node:child_process';
 import { FARM_BEDS, FARM_GATE } from '../../../src/data/farmLayout.js';
 import { QUEST_REWARDS } from '../../../server/src/data.js';
+export const lane = 'full';
 
 const SOAK_MS = +(process.env.BT_LONGPLAY_MS || 40 * 60000);
 const DPR = +(process.env.BT_LONGPLAY_DPR || 1);

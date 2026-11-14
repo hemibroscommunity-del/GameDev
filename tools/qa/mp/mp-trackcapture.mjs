@@ -18,6 +18,7 @@
 import * as H from './harness.mjs';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 function catchTrack() {
   window.__btTrackSeen = [];

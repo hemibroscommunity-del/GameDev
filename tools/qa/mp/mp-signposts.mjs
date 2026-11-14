@@ -26,6 +26,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { PLAN, SPOKES } from '../../../public/tools/world/plan.js';
 import { landLevelsText, SIGNPOST_SHOW_R } from '../../../src/data/wheelSignposts.js';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const WANT = { north: ['ember', 'frost'], east: ['hollows', 'sky'], south: ['tidal', 'thunder'], west: ['verdant', 'mist'] };

@@ -20,6 +20,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 const VIEW = { width: 1000, height: 780 };
 const RESUME_PX = 300;   /* server/src/linger.js LINGER.RESUME_PX */

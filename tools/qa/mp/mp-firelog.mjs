@@ -21,6 +21,7 @@
 import * as H from './harness.mjs';
 
 import { FIRE_STRIP_V } from '../../../src/data/fireStrip.js';
+export const lane = 'full';
 const FIRE_URL = `/sprites/skills/firemaking-strip.webp?v=${FIRE_STRIP_V}`;   /* the URL the game loads (v2.3.3666: the strip's own version) */
 const FW = 384, FH = 512, FRAMES = 8;
 

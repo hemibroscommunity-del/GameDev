@@ -30,6 +30,7 @@
  *   node tools/qa/mp/run.mjs soundcues
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const VIEW = { width: 900, height: 700 };   /* a keyboard: X, 1, 2, Q */
 const NEAR = 60, FAR = 2000;

@@ -25,6 +25,7 @@
  *   node tools/qa/mp/run.mjs groundkeep
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const DESK = { width: 1440, height: 900 };

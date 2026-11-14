@@ -75,6 +75,19 @@ law, which is correct behaviour, not slowness to optimise away.
 
 Notes for anyone extending it:
 
+- **Every scenario names its lane** (v2.3.5223, card O PR 3). A scenario
+  file exports `export const lane = 'full';` (the `full` lane is today's
+  drawing, exactly: `docs/LANES.md`), and `export const govern = true;` to
+  ask for the governor (`mp-governor`). `run.mjs` refuses one with no lane,
+  or a lane not in the table, before anything boots; the harness puts
+  `lane=<it>` (and `govern=1`) on every page `H.newPlayer` opens, so the
+  ladder holds still on a test's page. A scenario that opens the game's page
+  itself wraps the address in `H.withLane(url)` (another tool:
+  `withLane` from `tools/qa/lane.mjs`); `run.mjs` fails a game page a
+  scenario loaded with no `lane=`, and `tools/guards/scenario-lanes.test.mjs`
+  fails a file with no lane on GitHub. `node tools/dev/name-lanes.mjs`
+  writes the line where it is missing (run twice, it changes nothing).
+
 - **CLAUDE.md says the sandbox blocks `npm install`. That is stale** —
   it succeeds for both the client and `server/`, which is the only
   reason any of this is possible.

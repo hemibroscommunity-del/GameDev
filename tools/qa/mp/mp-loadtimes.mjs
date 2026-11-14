@@ -15,6 +15,7 @@
  *   4. nothing went wrong on the page.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 

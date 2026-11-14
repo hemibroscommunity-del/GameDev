@@ -24,6 +24,7 @@
  * Usage:    node tools/qa/qa-node-collision.mjs
  */
 import { chromium } from 'playwright-core';
+import { withLane } from './lane.mjs';   /* v2.3.5223: the game's page names its lane (card O PR 3) */
 
 const EXE = process.env.QA_CHROME
   || '/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell';
@@ -49,7 +50,7 @@ const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', e => { const s = String(e); if (!/EncodingError/.test(s)) errors.push(s.slice(0, 140)); });
 await page.addInitScript(`window.BROTOWN_WS_URL='ws://127.0.0.1:8799'`);   // no worker: stays offline
-await page.goto('http://127.0.0.1:4173/?noresume=1', { waitUntil: 'domcontentloaded', timeout: 60000 });
+await page.goto(withLane('http://127.0.0.1:4173/?noresume=1'), { waitUntil: 'domcontentloaded', timeout: 60000 });
 await page.waitForTimeout(9000);
 await page.locator('input').first().fill('CollideQA', { timeout: 20000 });
 await page.locator('input').first().press('Enter');

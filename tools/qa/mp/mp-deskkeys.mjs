@@ -50,6 +50,7 @@
 import * as H from './harness.mjs';
 import { join } from 'node:path';   /* v2.3.3986: the minimap's picture */
 import { mkdirSync } from 'node:fs';
+export const lane = 'full';
 const OUT = join(H.REPO, 'tools/qa/mp/out');
 
 const DESK = { width: 1440, height: 900 };

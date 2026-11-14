@@ -17,6 +17,7 @@
  *   node tools/qa/mp/run.mjs platelayer
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const VIEW = { width: 390, height: 844 };
 
