@@ -1,6 +1,6 @@
 card: E
 branch: claude/plan-e-8-known-settle (one branch a PR, each begun from the one before: merge #1756 to #1761 first)
-prs: #1686, #1691, #1694, #1699, #1752 (merged); #1756, #1758, #1759, #1761 (ready); PR 8c on the branch above (ready)
+prs: #1686, #1691, #1694, #1699, #1752 (merged); #1756, #1758, #1759, #1761 (ready); #1764 (ready, this branch)
 state: ready
 
 ## Done
