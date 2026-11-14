@@ -282,24 +282,40 @@ export async function liarSword(W, ph, take) {
   }
   take.xp = fightTake(W.ws[PID]);
 }
-/* the honest archer: in to ~600 px, a shot every 495 ms, each claim when its arrow lands */
-export async function honestBow(W, ph, take) {
+/* the honest archer: in to ~600 px, a shot every 495 ms, each claim when its arrow lands.
+   v2.3.5540: `opts.stepIn`, the stepping archer -- it walks in at a run (250
+   px a second) while its arrows fly, down to 260 px, and backs out to 600
+   when it gets there: each arrow's flight shorter than the last, so two land
+   on one monster closer together than they were shot (combat.js's archer's
+   lane, `arrowlane`) */
+export async function honestBow(W, ph, take, opts = {}) {
   await combatStart(W, ph, 'bow');
   let target = null; const flying = [];   /* each arrow's landing, on the page's clock (ph.pageNow) */
   let nextShot = ph.pageNow;
   while (!ph.over) {
     target = target && liveOf(W, target.id);
     if (!target || !hurtable(target)) { const a = alive(W); target = a.sort((p, q) => dist(p, ph) - dist(q, ph))[0]; if (!target) { await ph.wait(500); continue; } }
-    /* it steps closer only with no arrow in the air: an archer who steps in
-       between two shots can land both on one monster inside its 210 ms lane,
-       and the worker drops the second (combat.js _handleMonsterDamage's lane;
-       card K's census, Found) -- today's rule, not a claim's gain */
+    /* it steps closer only with no arrow in the air (`opts.stepIn` is the
+       archer who does not: v2.3.5540, combat.js's archer's lane) */
     if (dist(target, ph) > 620 && !flying.length) { const t = target; await ph.walkTo(() => t.x, () => t.y, { stop: 600 }); nextShot = Math.max(nextShot, ph.pageNow); continue; }
+    /* v2.3.5540: the stepping archer backs out to 600 px once in to 260, with nothing in the air */
+    if (opts.stepIn && dist(target, ph) < 270 && !flying.length) {
+      const t = target, d0 = Math.max(1, dist(t, ph)), ox = ph.x + ((ph.x - t.x) / d0) * (600 - d0), oy = ph.y + ((ph.y - t.y) / d0) * (600 - d0);
+      await ph.walkTo(() => ox, () => oy, { speed: 250 }); nextShot = Math.max(nextShot, ph.pageNow); continue;
+    }
     if (dist(target, ph) > 620) nextShot = Infinity;
     if (nextShot === Infinity && !flying.length) { nextShot = ph.pageNow; continue; }
     if (ph.pageNow >= nextShot) { flying.push({ m: target, at: ph.pageNow + (dist(target, ph) / 480) * 1000 }); nextShot = ph.pageNow + 495; }
     flying.sort((a, b) => a.at - b.at);
     const due = Math.min(nextShot, flying.length ? flying[0].at : Infinity);
+    /* v2.3.5540: the stepping archer runs in while it waits (to 260 px) */
+    if (opts.stepIn && due > ph.pageNow && due !== Infinity && dist(target, ph) > 270) {
+      /* to a point fixed now, so the step takes the wait and no longer: each
+         arrow's claim goes when it lands, as a phone's does */
+      const t = target, dt = due - ph.pageNow, d0 = dist(t, ph), step = Math.min(d0 - 260, (250 * dt) / 1000);
+      const sx = ph.x + ((t.x - ph.x) / d0) * step, sy = ph.y + ((t.y - ph.y) / d0) * step;
+      if (step > 1) await ph.walkTo(() => sx, () => sy, { speed: 250 });
+    }
     if (due > ph.pageNow) await ph.wait(due - ph.pageNow);
     while (flying.length && flying[0].at <= ph.pageNow) {
       const f = flying.shift();

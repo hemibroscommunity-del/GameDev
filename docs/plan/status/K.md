@@ -1,37 +1,40 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: #1822 (PR 1, ready), #1820 (PR 3, ready), #1826 (PR 6, ready)
+prs: #1822, #1820, #1826 merged; ready: #1829 (PR 5) c0042a9, #1831 (PR 2) cfe57ce, #1838 (PR 4) ebde374, claims 5540 this branch
 state: ready
 
 ## Done
 
-- PR 1 (5181, #1822): `PRIVILEGED_EVENTS`, `RELAY.TYPES`, the echo list
-  made from the wire table (`wire/lists.js`); column `privileged`. Deploys.
-- PR 3 (5183, #1820): `wire-hostile.test` (10,524 cases), census
-  `hostile.md`: 19 failing, the line. Deploys.
-- PR 6 (5186, #1826): `claims-gain.test`, `claimbots.mjs`, census `claims.md`:
-  reach 2.96, bow label 3.76, guard 1.37, cook shield 0.67, move 4.35,
-  harvest 1.86, cook 1.59 (quest, sale, local 1); no honest refusal.
+- PR 1 (5181, #1822), PR 3 (5183, #1820), PR 6 (5186, #1826): merged.
+- PR 5 (5185, #1829): the action door, `src/game/actions.js` (180 rows); the
+  shim reads them; guard `action-door.test` (2b: `body: 'top'`), census 203
+  sends, 25 fetches. Sitting 14's two notes mended (review-z14.md).
+- PR 2 (5182, #1831): columns `fight`, `placed`, `muted`, `pace`, `watch`,
+  `flag`; six lists made from them. Worker +137 KB (+19 gz).
+- PR 4 (5184, #1838): the wire door (`wire/door.js`, `wiredoor`); hostile
+  19 -> 1; questline and the bot lab refused nothing; chatmod's `__proto__`
+  mute; the stale pointers. Waits for sitting 15's list (it meets #1829 and
+  #1831), then main merged into it.
+- Claims (5540, the second block 5540-5559): the archer's lane
+  (`arrowlane`, ON): an arrow or bolt lets one claim in early; the stepping
+  archer keeps every arrow (off: 6 to 11 lost in 4 minutes); a liar at the
+  lane's pace takes the same on or off.
 
 ## Next
 
-- PR 5 (5185) if the planning session says yes while SK's #1782 is held
-  (asked); PR 2 (5182) after PR 1 merges; PR 4 after 1 and 3.
+- Claims 5541: the sword's reach (index.js after card R's 5281; combat.js);
+  then the move and the sprint mark (ON if the honest bots meet no refusal).
+- PR 7 (5187-5192), the action door's moves, once #1829 is merged.
+- `rideEnds` (ride.js) its own small PR when card SK says done.
 
 ## Found
 
-- Six suites read `PRIVILEGED_EVENTS` from index.js's source; PR 1 reads
-  the Set (the planning session's yes).
-- `lib/systems.mjs`: the wire doors still name index.js and relay.js.
-- `movement.js` `_handleMove` keeps 7 fields as sent (hostile, 16).
-- `chatmod.js`: a mute of `__proto__` stored as an own key (PR 4 mends).
-- `worldsum.js`: an honest restart reads as value gone with no burn.
-- `combat.js` monster lane: an archer stepping in between two shots lands
-  both inside 210 ms; the second is dropped (honest play).
-- `sprint.js`: every other move marked `sp: 1` keeps the 1.33 bound with
-  no stamina spent (the move's liar).
+- The page sends `clan_war_kill`/`clan_war_end` for an older worker; this
+  one drops both (`legacy` door rows).
+- `sprint.js`: `sp: 1` every other move costs no stamina (the move's PR).
+- The bench's bow liar sent claims 200 ms apart and lost some to the plain
+  floor's step; at 211 ms it took the lane's whole rate already.
 
 ## Needs
 
-- Card R: will it take the restart's burn (persistence.js)? Asked.
-- PR 2 waits for PR 1's merge; PR 4 for PRs 1 and 3.
+- Nothing waiting.

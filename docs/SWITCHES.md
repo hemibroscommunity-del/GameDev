@@ -66,6 +66,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 |---|---|---|---|---|---|---|---|---|
 | `accuracy` | worker | switch | v2.3.4480 | false | logic |  | no | Counts no hits for the accuracy record, answers its asks with off and un-advertises the cap (what is stored stays). |
 | `areachoice` | worker | switch | v2.3.3528 | false | logic |  | no | The PvP area rule counts a blow either way, not only one you landed. |
+| `arrowlane` | worker | switch | v2.3.5540 | false | logic |  | no | Arrows and bolts are back on the plain 210 ms floor: an archer who steps in between shots loses an arrow that lands too soon after the last. |
 | `bigorb` | worker | switch | v2.3.2849 | false | logic |  | no | Un-advertises the staff's big orb: a phone that joins after fires the old three orbs, with no blast. |
 | `?bowfeel` | page | switch | v2.3.4802 | =0 (remembered; =1 forgets) | logic |  | no | The bow's old flick, not its draw, on this device. |
 | `bowvolley` | worker | switch | v2.3.2808 | false | logic |  | no | Un-advertises the bow's volley: a phone that joins after fires the old single arrow and blast. |
