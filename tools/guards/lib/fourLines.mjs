@@ -373,17 +373,21 @@ export function stateWritesFromRendering({ live = false } = {}) {
 /* ═══ THE LINES ═══  Each only falls.  Only the gatekeeper lowers one, in a
    PR of its own; nobody raises one.  Set 2026-11-14 at main d2e096a, by the
    rules above; taken again at main 0c83972 before this landed (card A's
-   #1703 had added six code lines to wsClient.js meanwhile). */
+   #1703 had added six code lines to wsClient.js meanwhile).  v2.3.5362
+   (the gatekeeper, sitting 6, main f2351ab): entityRenderer.js 8968 -> 8961
+   (card H's #1700 moved the page's side of the masked bake into
+   bakeByAddress.js), gameDisplay.js 4270 -> 4268 (#1712: the fold into
+   src/data/soundFold.js). */
 export const LINES = Object.freeze({
   /* a file's code lines.  These files have a line of their own, at their
      count on the day; every other file under src/ stays at or under
      OTHER_FILE (a new file too) */
   FILE: Object.freeze({
     'src/rendering/systems/effectsRenderer.js': 9871,
-    'src/rendering/systems/entityRenderer.js': 8968,
+    'src/rendering/systems/entityRenderer.js': 8961,
     'src/ui/BroTown.jsx': 8371,
     'src/data/gameSystems.js': 5622,
-    'src/data/gameDisplay.js': 4270,
+    'src/data/gameDisplay.js': 4268,
     'src/networking/wsClient.js': 3296,
     'src/networking/gameEvents.js': 2639,
     'src/game/monsterCombat.js': 1792,

@@ -67,8 +67,8 @@ const NAMES = Object.freeze({
      as a field of THEIR shape, by SHAPES' design: the report's fields are
      `devClass` and `drawLane` (part 4; part 6 lists the report as a reader),
      and until card O builds lanes `drawLane` is the one value 'full' */
-  devClass: { part: 6, where: 'src/game/deviceProfile.js', carriers: ['src/debug/report.js'] },   /* part 6's row */
-  drawLane: { part: '4, 6', where: null, carriers: ['src/debug/report.js'] },   /* card O's one function, when built */
+  devClass: { part: 6, where: 'src/game/deviceProfile.js', carriers: ['src/debug/report.js', 'server/src/wire/in.js'] },   /* part 6's row; v2.3.5062: the wire table's `report` row names it as a field (card N) */
+  drawLane: { part: '4, 6', where: null, carriers: ['src/debug/report.js', 'server/src/wire/in.js'] },   /* card O's one function, when built; v2.3.5062: the wire table's `report` row names it as a field (card N) */
   mayStart: { part: 5, where: 'server/src/wire/columns.js', carriers: ['server/src/wire/in.js', 'server/src/wire/relays.js', 'server/src/wire/out.js', 'server/src/wire/http.js'] },   /* v2.3.5061 (card N): the column's closed list; each row file carries its values */
   doesWhat: { part: 5, where: 'server/src/wire/columns.js', carriers: ['server/src/wire/in.js', 'server/src/wire/relays.js', 'server/src/wire/out.js', 'server/src/wire/http.js'] },   /* v2.3.5061 (card N): the column's closed list; each row file carries its values */
   liarGain: { part: 7, where: null },
