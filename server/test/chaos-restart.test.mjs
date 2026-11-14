@@ -26,7 +26,9 @@
  *
  * The storage is inbox.test §8c's: every write of one synchronous run commits
  * as one batch, as a Durable Object's does, and the room dies before batch
- * `crashAt` (that one and every later one are lost).
+ * `crashAt` (that one and every later one are lost).  v2.3.5086: it lives in
+ * the shared test room now (testroom.mjs, card E PR 7), this the first suite
+ * moved onto it.
  *
  * KNOWN: a case found RED on today's code is listed in KNOWN with the reason
  * and kept out of the failure count (it prints KNOWN), so the suite guards
@@ -41,12 +43,11 @@
  */
 import { GameRoom } from '../src/index.js';
 import { ARENA } from '../src/gladiator.js';
-
-const mockEnv = { LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async () => ({}) }) } };
-function fakeWs(label) {
-  return { label, sent: [], send(s) { this.sent.push(JSON.parse(s)); }, close() {} };
-}
-const baseSession = () => ({ id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
+/* v2.3.5086: the shared test room (testroom.mjs, card E PR 7): this suite's
+   own storage model (every write of one synchronous run one batch, the room
+   dying before batch `crashAt`), its socket, its session and its settle moved
+   there, the first suite on it */
+import { mockEnv, fakeWs, baseSession, makeStorage, settle } from './testroom.mjs';
 
 /* v2.3.4793: what is red on today's code, each with its reason.  The ids are
    the ones the checks below pass to `verdict`. */
@@ -68,52 +69,10 @@ function verdict(id, name, cond, detail) {
   else console.log('KNOWN', name, '--', KNOWN.get(id).slice(0, 160) + '...', detail !== undefined ? JSON.stringify(detail).slice(0, 300) : '');
 }
 
-/* inbox.test §8c's storage (store-onewrite's, with its sorted list) */
-const clone = (v) => (v === undefined ? v : JSON.parse(JSON.stringify(v)));
-function mkCrashState(seed) {
-  const store = new Map(seed ? [...seed].map(([k, v]) => [k, clone(v)]) : []);
-  let pending = null, batches = 0, crashAt = Infinity, dead = false;
-  const commit = () => {
-    const w = pending; pending = null;
-    const n = batches++;
-    if (dead || n >= crashAt) { dead = true; return; }
-    for (const [op, k, v] of w) { if (op === 'put') store.set(k, v); else store.delete(k); }
-  };
-  const write = (op, k, v) => {
-    if (!pending) { pending = []; queueMicrotask(commit); }
-    pending.push([op, k, clone(v)]);
-  };
-  const view = (k) => {
-    if (pending) for (let i = pending.length - 1; i >= 0; i--) if (pending[i][1] === k) return pending[i][0] === 'put' ? clone(pending[i][2]) : undefined;
-    return clone(store.get(k));
-  };
-  return {
-    _store: store,
-    batches: () => batches,
-    crashAt(n) { crashAt = n; },
-    storage: {
-      get: async (k) => view(k),
-      put: async (k, v) => {
-        if (k && typeof k === 'object') { for (const [kk, vv] of Object.entries(k)) write('put', kk, vv); return; }
-        write('put', k, v);
-      },
-      delete: async (k) => { for (const x of (Array.isArray(k) ? k : [k])) write('del', x); return true; },
-      list: async (opts) => {
-        const out = new Map();
-        const keys = [...store.keys()].filter((k) => !opts?.prefix || k.startsWith(opts.prefix)).sort();
-        for (const k of keys) {
-          if (opts?.startAfter && k <= opts.startAfter) continue;
-          if (opts?.limit && out.size >= opts.limit) break;
-          out.set(k, clone(store.get(k)));
-        }
-        return out;
-      },
-    },
-    getWebSockets: () => [],
-    acceptWebSocket: () => {},
-  };
-}
-const settleIo = () => new Promise((r) => setTimeout(r, 5));
+/* v2.3.5086: the storage is the shared room's (testroom.mjs makeStorage): inbox.test
+   §8c's model, moved there whole */
+const mkCrashState = makeStorage;
+const settleIo = settle;   /* v2.3.5086: the shared room's */
 async function joinOn(rm, ws, pid) {
   rm.sessions.set(ws, baseSession());
   /* today's login reward already taken, so a join moves no gold (inbox.test) */
