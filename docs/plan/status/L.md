@@ -6,19 +6,20 @@ state: ready
 ## Done
 
 - PR 1, 2 (#1746, #1748): the ledger's guard; the phase table and guard.
-- PR 3 (5203, #1767): `resetOn` at the zone and rejoin doors, 16 rows
-  (484 -> 468), state-resets.test; the phase guard's holes (sitting 8) shut.
-- PR 4 tags 5204 to 5209 (#1775 to #1803, merged): 235 rows, 468 -> 233;
-  `clearElemStatuses` deleted; the guard reads DOOR_SUITES' trees.
+- PR 3, 4 (5203 to 5209, #1767 to #1803): `resetOn` at the zone and rejoin
+  doors; the resets, 484 -> 233 rows.
 - PR 5 tags 5210 to 5212 (merged), 5213 to 5216: the worker's trade, duel,
   party, cook, harvest+fishing, dungeon, pose doors (`_t2To` ... `_poseTo`);
   live flags `tradedoor` ... `posedoor`.
 
 ## Next
 
-- PR 5: race (5217); guard waits for card K (combat.js,
-  index.js), ride for SK, arena for E's e-14 (gladiator.js); each page half
-  after its worker door; `connection` after card K's last wsClient.js PR.
+- PR 5: race (5217); guard waits for card K (combat.js, index.js), ride for
+  SK, arena for E's e-14; each page half after its worker door; `connection`
+  after card K's last wsClient.js PR.
+- Backlog (J2's find): a rejoin (a stall past 5 s, RESYNC_AWAY_MS) clears the
+  party at state_sync and makes the Saloon's alliance forms afresh, empty:
+  what was typed is lost. A REJOIN_SLOTS row, with the page's party door.
 
 ## Found
 
@@ -29,12 +30,11 @@ state: ready
   fishvariants (4a-5: no Inspect on the card; 6c by run: healed before Eat).
 - bodytake.js ~94 cites a pose row that is none; session.phase: the scan's.
 - Dead: S._shieldStamina, S.shieldActive, S._iceAttack; monsterCombat.js's
-  own respawn (!S._serverMonsters), an old path.
+  own respawn (!S._serverMonsters).
 
 ## Needs
 
 - The owner: wheelMusic `_m` (a return to the Wheel's music at once) and
   deskTeach `_armed` (no "Almost!" after a change of place): `sitting`.
-- Card SK's ride.js (S._ride). S._spar: the takeover's leave, unread.
-- Card A (perfTracker.js `zoneStats`). The page's death door heads PR 5's
-  page doors; the 8 death rows land with it.
+- Card SK's ride.js (S._ride); S._spar (the takeover's leave, unread); card
+  A's perfTracker.js. The page's death door (its 8 rows) leads the page.
