@@ -203,8 +203,49 @@ re-tried (each FAIL).
 
 ## Card K: #1829 (PR 5, tag 5185)
 
-The action door (`src/game/actions.js`; the shim's chain made one
-lookup). Opened during the sitting; under review.
+**The action door (`src/game/actions.js`, 180 rows; the shim's chain one
+lookup; it DEPLOYS, five suites in `server/test/`), read at c0ca6cb
+(c096522: K's status only): clean (lows).** The finder made its own
+equivalence, not the PR's §6: `main`'s chain (66 blocks, 94 types),
+`PRIORITY_EVENTS` (31) and `SETTLED_SENDS` (9) against the door's
+rows: 0 differences; then `main`'s and the head's `channelShim.send` run
+on stubs that record every call, 1,488 cases (186 names, each as a type
+and as an event, bundling on and off, the socket open and closed): 0
+differences in return, settle stamp or call order (VERIFIED: nothing
+leaves the phone otherwise). `__proto__`, `constructor`, `toString`,
+`valueOf` read as no row; the lookup is an own-property check with no
+allocation, in place of up to 94 compares a move walked. `act()` and
+`makeReqId()` have no caller: no field is added to any live message.
+Client +1.9 KB gzipped (an esbuild estimate).
+
+- Low, VERIFIED, not live: the `item_drop` and `report` rows lack
+  `body: 'top'` (the page and the worker read their fields at the top:
+  itemDrop.js ~65, report.js ~433; itemdrop.js ~103, report.js ~275).
+  Through `act()` a drop would be refused and the field report dropped
+  unseen. It bites at K's PR 7 ("the same payload, the same way"); the
+  guard's §5 tries two rows only. Nit: on `nml_attack` (`req` and top)
+  `act()` puts `reqId` at the top, where SHAPES part 2 says
+  `payload.reqId`. For K before PR 7.
+- Low, VERIFIED, not live: the teardown sets `S.channel = null` but never
+  `setActionTransport(null)`: an `act()` after a teardown would reach the
+  dead shim (for `node_strike`, `reconnectNow()` from a torn-down set-up:
+  the zombie socket of 4367/4482). One line, before PR 7.
+- Low, VERIFIED: "every request has a row" is not yet true: SocialPanel.jsx
+  sends `friend_dm`, `friend_remove`, `friend_accept`, `friend_decline` by
+  a variable (~150, ~175, ~299, ~301), unseen by §2; they batch as
+  before.
+- Nits: CLAUDE.md's new §5 line says a request leaves through `act()`
+  (nothing calls it until PR 7; one 118-character line); TRAPS §18 still
+  describes the old chain (not K's file); `doorCounts()` copies by
+  `Object.assign({}, ...)` (a diagnostic).
+- Suites: action-door 12, state-ledger, wire-table 27, systems,
+  tests-by-system, shapes-once, four-lines, switches; the five changed
+  suites (each the same assertion, read from the door), mute-kept,
+  quiet-phone, quest-kept, wire-audit, wire-hostile green; precheck's
+  `shim-allowlist` and `town-gate` PASS; three break proofs re-tried
+  (each FAIL).
+- **Its conflict:** `docs/SYSTEMS.md`'s `wire` system with T's #1816 (T's
+  switch link beside K's new file line), either order.
 
 ## Card K: #1831 (PR 2, tag 5182): HELD (a conflict), next batch
 
