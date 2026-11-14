@@ -1,6 +1,6 @@
 card: O
 branch: claude/plan-o-10-queue (one branch a PR: claude/plan-o-<n>-<word>; main 59469b2 and #1850 merged in)
-prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836 (merged); #1850 (5229), #1854 (5230: on #1850): ready (sitting 17)
+prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836 (merged); #1850 (5229), #1854 (5230: on #1850): ready (sitting 18)
 state: ready
 
 ## Done
@@ -15,7 +15,8 @@ state: ready
   asked of `deviceProfile.js` alone; `one-program.test` (new).
 - #1850 (5229): the passes (shine, shadows, still water) knobs of the chip
   axis after the rate; `?ladderpass=0`; (A) revised: a kept rung keeps the
-  rate only (the planning session's word); `ladder-passes.test` (new).
+  rate only (the planning session's word); `ladder-passes.test` (new);
+  sitting 17's medium mended (a work-bound phone never takes a pass).
 - #1854 (5230): the strip slice the lanes' `queue` knob (4 ms; `thirty` 8),
   never the frame's length; BUDGETS part 8's #6 gone.
 

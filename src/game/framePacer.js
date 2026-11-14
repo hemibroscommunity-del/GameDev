@@ -599,8 +599,16 @@ export function makeGovernor(opts) {
            pixels: a phone whose own work is the cost is not helped by fewer
            pixels (the crowd's rungs are not live until card O's PR 6, and a
            work-bound phone fell to the pixel rungs) */
+        /* v2.3.5229 (the gatekeeper's sitting 17, a verified medium on #1850):
+           the work's axis ALONE for a phone whose own work is the cost.  With
+           the passes live on the chip axis, ['work', 'chip'] took a work-bound
+           phone still late at 30 on to the shine, the shadows and still water,
+           which save it no work, and it came back 66 s later (4 tries up).
+           The grand plan's 2.3: work, the crowd and the rate; the chip, the
+           passes and the pixels -- the chip's axis only on the chip's verdict
+           (the rate is on both axes, so a work-bound phone still reaches it) */
         const first = axis || lastAxis || 'chip';
-        const order = first === 'work' ? ['work', 'chip'] : ['chip', 'pixels', 'work'];
+        const order = first === 'work' ? ['work'] : ['chip', 'pixels', 'work'];
         for (const a of order) if (down(a, ts)) break;
         return;
       }

@@ -278,6 +278,18 @@ loading screen by the device's switch). `?ladderpass=0` takes the three
 off the ladder for one screen. Held by `ladder-passes.test` and
 `frame-pacer.test` §21.
 
+**Only the chip's verdict reaches the passes** (the gatekeeper's sitting 17,
+a verified medium): a phone whose own work makes its frames late steps the
+work's axis alone (the crowd, then the rate), never the chip's. With
+`['work', 'chip']` such a phone, still late at 30, gave up the shine, the
+shadows and the sea's motion, which save it no work, and came back 66 s
+later. **A pass that draws nothing here is no rung** (the same sitting, a
+low): with this device's own switch off (`?sheen=0`, `?lightfx=0`) or no sea
+that moves near you (`?nowaves`, WebGL 1, nothing laid), the screen sees the
+pass the same at its rung (`knobSeen`, as the crowd's), and the governor
+passes it. Held by `frame-pacer.test` §21c and §22c, and `ladder-passes.test`
+§6.
+
 Held by `frame-pacer.test` §19, with its break proofs. §13 to §16 play the
 whole ladder live (`_liveKnobs`), as card O's later PRs will make it.
 

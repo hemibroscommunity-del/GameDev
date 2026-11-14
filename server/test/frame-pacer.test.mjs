@@ -114,6 +114,8 @@
  *      ...a work-bound order `['work', 'chip', 'pixels']` -> FAIL 21c; liveKnobs() unfiltered by the switches -> FAIL 21d
  *      v2.3.5225: load() taking the kept pixel count (`pixels: 0` as the kept `v[2]`: (A) undone)
  *                                  -> FAIL 19g and 19c ([0,4,2], [3,4,2]: no step up in three cool minutes, no veil)
+ *      v2.3.5229 (the gatekeeper's sitting 17): the work-bound order `['work', 'chip']` again
+ *                                  -> FAIL 21c (work rate, then chip shine, shadows, water) and 22c (4 tries up)
  *      v2.3.5229: load() keeping the whole chip axis (`CHIP_KEPT` as `AXES.chip.length`: (A)'s revision undone)
  *                                  -> FAIL 19c ([0,4,2], [3,4,2]: 4 tries up, 60 at 85 s) and 19g (the passes kept)
  *  22. (v2.3.5226, the gatekeeper's sitting 15) vec() without knobSeen (the knob's value, not what the screen sees)
@@ -839,8 +841,11 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
      then fell to the pixels) */
   _resetLanes();
   const wb = model(B60, { work: 22, chip: 3 }, () => 2, 12 * MIN, { veil: (x) => x < 2000 || [2, 4, 6, 8, 10].some((m) => x >= m * MIN && x < m * MIN + 2000), seed: 22 });
-  check(`21c. a phone whose own work is the cost takes the rate (${wb.steps.filter((x) => x.dir < 0).map((x) => x.axis + ' ' + x.knobs.join('+')).join(', ')}) and NEVER the pixels, through five veils`,
-    wb.steps.some((x) => x.dir < 0 && x.knobs.includes('rate')) && !wb.steps.some((x) => x.knobs.includes('pixels')) && wb.G.read().pixels === 0 && !wb.G.read().pending, { steps: wb.steps.slice(0, 8), end: wb.G.read() });
+  /* v2.3.5229 (the gatekeeper's sitting 17): ...nor the passes (the chip's axis only on the chip's verdict) */
+  check(`21c. a phone whose own work is the cost takes the rate (${wb.steps.filter((x) => x.dir < 0).map((x) => x.axis + ' ' + x.knobs.join('+')).join(', ')}) and NEVER the pixels or a pass, through five veils`,
+    wb.steps.some((x) => x.dir < 0 && x.knobs.includes('rate')) && !wb.steps.some((x) => x.knobs.includes('pixels'))
+    && !wb.steps.some((x) => x.knobs.some((k) => ['shine', 'shadows', 'water'].includes(k))) && wb.G.read().chip === 0
+    && wb.G.read().pixels === 0 && !wb.G.read().pending, { steps: wb.steps.slice(0, 8), end: wb.G.read() });
   /* d: a knob's ladder switch takes its rungs out of the governor's reach */
   const hadLoc = Object.prototype.hasOwnProperty.call(globalThis, 'location');
   const was = globalThis.location;
@@ -884,11 +889,10 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
     && downs(many).slice(0, 3).join() === 'crowd,crowd,rate', { mid: mid.steps.slice(0, 4), many: many.steps.slice(0, 4) });
   const cooled = work(10, (x) => (x < 1 * MIN ? 2 : 0.3));
   const ups = cooled.steps.filter((x) => x.dir > 0);
-  /* v2.3.5229 (card O PR 9, merged with main): a work-bound phone still late at 30 goes on to the chip axis (the
-     down order ['work', 'chip']), whose passes are live now -- so it may give back a pass or three as well; what
-     §22 holds is that no try, down or up, is spent on a crowd step with 10 near */
-  check(`22c. ...and cooled with 10 near, back at the row (${ups.length} up: ${ups.map((x) => x.knobs.join('+')).join(', ')}), no try spent on a crowd step (every ${cooled.every})`,
-    ups.length >= 1 && !cooled.steps.some((x) => x.knobs.includes('crowd')) && cooled.end.depth === 0 && cooled.end.work === 0 && cooled.every === 1, { steps: cooled.steps, end: cooled.end });
+  /* v2.3.5229 (the gatekeeper's sitting 17): back to ONE try -- a work-bound phone never takes the passes (the work's
+     axis alone on the work's verdict), so nothing but the rate is given back */
+  check(`22c. ...and cooled with 10 near, back at the row in ONE try (${ups.length} up), no try spent on a crowd step (every ${cooled.every})`,
+    ups.length === 1 && cooled.end.depth === 0 && cooled.end.work === 0 && cooled.every === 1, { steps: cooled.steps, end: cooled.end });
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);
