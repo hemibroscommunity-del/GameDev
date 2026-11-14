@@ -173,3 +173,27 @@ The suite's built resets may call a module's own helper (the race's
 `raceBus.emit()`, a card told to hide). In the suite that helper is a no-op;
 the census still holds that the reset writes its state itself.
 
+## PR 5 (v2.3.5205): economy, skills
+
+17 rows decided, which takes `SITTING_LINE` from 446 to 429.
+
+| Row | Decided |
+|---|---|
+| `S._smithing` (skills) | `zone`, `value null`: `smithing.js leaveForge`, so a smelt's pose never runs on in the next place (switch `?skillsreset`) |
+| `S._extraction`, `S._farmWork` (skills) | `zone`, `fn clearZoneLocalFx`: the zone door's own list already clears them |
+| `S._farmArtHold`, `S._farmLeaving` (skills) | kept: they span the change of place by design (the farm trip) |
+| `S._nearBed` (skills) | kept: worked out every frame |
+| `S._petBook`, `S._fishBoard`, `dailyRewards.js _state`, `loginSpinWheel.js _st` | kept: the worker's last word, replaced whole by its next; a reset would blank a window on screen |
+| `S._bank`, `S._bankPending` (economy) | kept: the join does not say the vault again; an op in flight lets go by itself |
+| `S._t2Leave`, `S._t2QuietUntil` (economy) | kept: the rejoin's trade clear keeps a leave on purpose |
+| `S._dailyRewards` (economy) | kept: never read |
+| `revealBag.js _then`, `shardCrack.js _pending` | kept: asks in flight that let go by themselves |
+
+Left `sitting`:
+
+- `S._dropLines`, `S._dlCredits`, `S._trap`, `S._trapTries`: their renderers
+  (`rendering/dropLines.js`, `rendering/trapFx.js`) keep their own copies.
+  These are card H's family, and the rows are decided with it.
+- `fishWeigh.js st`: whether a lost answer blocks the next weigh needs
+  reading.
+

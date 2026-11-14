@@ -59,6 +59,7 @@ function resetSwitches(search) {
     townsfolk: q.get('townsfolkreset') !== '0',
     movement: q.get('movementreset') !== '0',   /* v2.3.5204 */
     social: q.get('socialreset') !== '0',       /* v2.3.5204 */
+    skills: q.get('skillsreset') !== '0',       /* v2.3.5205 */
   };
 }
 

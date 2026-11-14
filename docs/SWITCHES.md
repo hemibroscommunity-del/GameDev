@@ -371,6 +371,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `onetoone` | worker | switch | v2.3.3912 | false | logic |  | no | The old five-to-one smelting rows, and caps.onetoone taken back. |
 | `pvpheal` | worker | switch | v2.3.3133 | false | logic |  | no | The PvP bite rule (food held back in a fight between players) is off, and caps.pvpheal reads false. |
 | `shardcrack` | worker | switch | v2.3.3516 | false | logic |  | no | Un-advertises shard cracking, refuses every crack and combine, and puts the raw gem back on the kill roll. |
+| `?skillsreset` | page | switch | v2.3.5205 | =0 | logic |  | no | A smelt's or a forge's pose runs out its seconds after a change of place again, not ended at the zone door. |
 | `smelting` | worker | switch | v2.3.2820 | false | logic |  | no | Refuses every smelt and un-advertises the cap; ore and bars untouched. |
 | `staffgather` | worker | switch | v2.3.4801 | false | logic |  | no | No staff gather is counted and caps.staffGather is un-advertised. |
 | `strikesnap` | worker | switch | v2.3.4642 | false | logic |  | no | A refused harvest strike is silent again. |
