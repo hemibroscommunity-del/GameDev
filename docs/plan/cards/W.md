@@ -9,7 +9,7 @@ else starts until W and S are merged.
 
 ## PRs, in order
 
-1. **(v2.3.5021) A scenario is found by its file.**
+1. **(tag 5021) A scenario is found by its file.**
    - Files: `tools/qa/mp/run.mjs`, `tools/dev/precheck.mjs` (its `old-map`
      check only).
    - `run.mjs`: a name that is not in `SCENARIOS` is looked up as
@@ -17,7 +17,7 @@ else starts until W and S are merged.
      line. Precheck's `old-map` check reads the files, not the table.
    - Done when a scratch `mp-zzz.mjs` with no line runs by name, and the
      `old-map` check still refuses a scenario that names no world.
-2. **(v2.3.5022) Guards and checks in files of their own.**
+2. **(tag 5022) Guards and checks in files of their own.**
    - Files: new `tools/guards/` (with a README and one example guard),
      `server/test/run.mjs`, new `tools/dev/checks/`, `tools/dev/precheck.mjs`.
    - `server/test/run.mjs` also runs `tools/guards/*.test.mjs`. Precheck
@@ -26,7 +26,7 @@ else starts until W and S are merged.
    - This PR touches `server/test/`, so its merge deploys the worker once.
    - Done when a guard file and a check file, each added with no other
      edit, run.
-3. **(v2.3.5023) Tags, status, the scoreboard.**
+3. **(tag 5023) Tags, status, the scoreboard.**
    - Files: new `tools/dev/tag-blocks.json`, `tools/dev/session-brief.mjs`,
      new `tools/dev/scoreboard.mjs`.
    - `tag-blocks.json`: a card's letter to its first and last number, as
@@ -37,7 +37,7 @@ else starts until W and S are merged.
    - `scoreboard.mjs` prints part 3's table. A row with no counter yet
      prints "not measured"; it never guesses.
    - Done when the brief shows the blocks and the scoreboard runs clean.
-4. **(v2.3.5024) The gatekeeper's script, the baseline, the house rules.**
+4. **(tag 5024) The gatekeeper's script, the baseline, the house rules.**
    - Files: new `tools/dev/gatekeeper.mjs`, new `docs/plan/baseline.md`,
      `CLAUDE.md`.
    - `gatekeeper.mjs`, given branch names in order: a scratch worktree from

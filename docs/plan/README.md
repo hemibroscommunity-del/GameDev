@@ -1,4 +1,4 @@
-# The plan's working files (v2.3.5020)
+# The plan's working files (v2.3.5020; tags written bare, v2.3.5055)
 
 `docs/GRAND-PLAN.md` is the plan. This folder holds what its sessions read
 and write while they carry it out.
@@ -42,6 +42,9 @@ stalled.
 ## Tags
 
 A session takes its tags from its card (day one) or from
-`tools/dev/tag-blocks.json` (once wave 0 has made it), one a PR. **Not the
+`tools/dev/tag-blocks.json` (once wave 0 has made it), one a PR. A card writes
+its numbers bare (`tag 5029`, never with the `v2.3.` in front): the tag check
+counts any tag written in full on `main` as taken, so a card that wrote its
+own session's tag in full made that session's claim fail (v2.3.5055). **Not the
 number the start-up brief suggests**: the brief offers every new session
 the same one.
