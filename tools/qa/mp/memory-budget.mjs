@@ -225,8 +225,14 @@
  * shows them: now each is let go of the moment it lands (npcSprites.js,
  * `?npcheads=0` the old way).  Three runs of this check: its highest 48.7 ->
  * 45.8 (2.9 MB, the census's 2.96), `buffers` unchanged (21.1-21.3). */
+/* v2.3.5247, the backlog's next (fx-coinflip): `artCache` 109.1 -> 107.0,
+ * LOWERED by what it saved.  Ace's two coin strips (1408 x 192) were kept
+ * decoded the same way, though his window draws them as a CSS background:
+ * let go of as they land (npcSprites.js, `?coinflip=0` the old way).  Three
+ * runs: its highest 45.8 -> 43.7 (2.1 MB, the census's 2.06), `buffers`
+ * 21.1-21.4, unchanged. */
 export const MEMORY_BUDGET = {
-  artCache: { name: 'art loaded from files', mb: 109.1, measured: 45.8,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB), see the header */
+  artCache: { name: 'art loaded from files', mb: 107.0, measured: 43.7,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB); v2.3.5247: 109.1 -> 107.0, Ace's coin strips (2.1 MB), see the header */
     what: 'pictures loaded from files, decoded (the asset cache, window.__btTex) -- its highest at the fight, the monsters\' looks loaded' },
   gpu: { name: 'textures on the graphics chip', mb: 115, measured: 95.0,   /* v2.3.4058: 105 -> 115, approved by the owner 2026-11-03, see the header */
     what: 'textures on the graphics chip (window.__btGpuTex) -- including what was drawn in the last minute, which Pixi unloads after 60 s unused' },

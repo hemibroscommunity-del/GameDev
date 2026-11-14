@@ -204,11 +204,21 @@ export function hasNpcWalk(npcId) {
    address (npcArtUrl) from the HTTP cache when its window opens.  On by
    default; `?npcheads=0` keeps them as before. */
 const HEADS_LET_GO = (() => { try { return !/[?&]npcheads=0(&|$)/.test(location.search || ''); } catch (e) { return true; } })();
+/* v2.3.5247: Ace's two coin strips the same way (card P's backlog,
+   fx-coinflip: 2.06 MB held at the fight, 1408 x 192 each at four bytes a
+   pixel).  They are a CSS background in his window (AceFlipPanel.jsx), never
+   a texture, and the v2.3.2618 note above NPC_DIALOG_FX meant the load to
+   warm the HTTP cache only.  It warmed the wrong address, too: the window
+   asked for the strip without npcArtUrl's `?v=`, so the coin was fetched
+   when it first flew; the window now asks for the address warmed here.
+   `?coinflip=0` keeps the decoded copies as before. */
+const COIN_LET_GO = (() => { try { return !/[?&]coinflip=0(&|$)/.test(location.search || ''); } catch (e) { return true; } })();
 
 export function loadNpcSprites() {
   if (_done) return _done;
   const srcs = npcSpriteSources();
   const heads = HEADS_LET_GO ? new Set((NPC_DATA || []).map((n) => n && n.portrait).filter(Boolean)) : new Set();
+  if (COIN_LET_GO) for (const fx of NPC_DIALOG_FX) heads.add(fx);
   _done = Promise.allSettled(srcs.map((src) => Assets.load(npcArtUrl(src)).then((tex) => {
     if (heads.has(src)) { Assets.unload(npcArtUrl(src)).catch(() => {}); return; }
     if (!tex) return;
