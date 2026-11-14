@@ -35,6 +35,7 @@
 import { swordToGreatsword } from './swordconvert.js';   /* v2.3.3895: a sword's order is rewritten once as a greatsword */
 import { oldGreatswordToMetal } from './gscopper.js';   /* v2.3.3980: ...and a wooden or base-less greatsword's as a metal one */
 import { BLACKSMITH_TIER_LABELS } from './data.js';   /* v2.3.3980: a converted sell order's tier label */
+import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
 export const MARKET = {
   ORDER_EXPIRY: 86400000,       // 24h
   MAX_ORDERS_PER_PLAYER: 10,
@@ -59,7 +60,8 @@ export const marketMethods = {
    *    `mkt_order:<uuid>` (128 KB value ceiling).  This is the HTTP
    *    surface, not a WS frame, so nothing bounded the body: a 200 KB
    *    `playerName` makes `storage.put` THROW -- and by then
-   *    `ps.weaponStash.splice(idx, 1)` and `_saveRpg` have already run, so
+   *    the weapon's take from the bag (v2.3.5281: the stashes' door,
+   *    `market_sell`) and `_saveRpg` have already run, so
    *    the seller's weapon is gone from live state and from disk with no
    *    order to show for it and nothing for any sweep to find.  Escrow
    *    that can't be written is escrow that never existed; validate
@@ -341,7 +343,7 @@ export const marketMethods = {
          them from the weapon it escrows; a buy still names what it wants. */
       element1 = item.element1 || null;
       element2 = item.element2 || null;
-      ps.weaponStash.splice(idx, 1);
+      stashTake(ps, 'weaponStash', idx, 'market_sell');
     } else {
       if ((ps.coins || 0) < p) return { ok: false, error: 'Not enough gold' };
       this._goldTake(ps, p, 'market_order'); /* v2.3.4670: the gold door */
@@ -489,11 +491,9 @@ export const marketMethods = {
     const back = this.playerState[playerId];
     if (back) {
       if (type === 'sell' && item) {
-        if (!Array.isArray(back.weaponStash)) back.weaponStash = [];
-        // Rule 3: never push past the cap -- _saveRpg truncates there and
-        // that would destroy the very weapon this is rescuing.
-        if (back.weaponStash.length < this.WEAPON_STASH_CAP) back.weaponStash.push(item);
-        else await this._creditPlayer(playerId, { opId: 'mktunwind:' + order.id, source: 'market', kind: 'weapon', payload: { weapon: item }, note: 'listing failed' });
+        // Rule 3: never push past the cap -- v2.3.5281: the stashes' door
+        // refuses it (false), and the mail takes the weapon this is rescuing.
+        if (!stashGive(back, 'weaponStash', item, 'market_back', this)) await this._creditPlayer(playerId, { opId: 'mktunwind:' + order.id, source: 'market', kind: 'weapon', payload: { weapon: item }, note: 'listing failed' });
       } else if (type === 'buy') {
         this._goldGive(back, p, 'market_unwind'); /* v2.3.4670: the gold door */
       }

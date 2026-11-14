@@ -25,11 +25,17 @@
  * A look, here, is what one monster type is drawn from: a variant's sheets
  * (MONSTER_VARIANTS / VARIANT_SPRITES) with any recolour it asks for, the
  * mummy's with the skeleton it turns into, or the snowman's own sheets and
- * his snowball's burst.  A type with neither (the slime, the generic bodies)
- * is drawn from global art: nothing to load, always ready.
+ * his snowball's burst.  A type with neither (the generic bodies) is drawn
+ * from global art: nothing to load, always ready.
+ * v2.3.5256 (card P; the owner's "the slimes load as you walk"): the slime is
+ * a look now, `slime` -- its four strips (slimeSprites.js), for the fodder
+ * itself and every variant drawn from its sheets (useSlimeSheets: the moss
+ * slime, the blue slime, the mire wisp).  Its splat and its orb stay global
+ * (a frame each; the splat is other monsters' remnants too).
  */
-import { MONSTER_VARIANTS, variantsForZone } from '../data/monsterVariants.js';
-import { zoneHomes, wheelLandAt } from '../data/zones.js';   /* v2.3.3017: + which land you are on */
+import { MONSTER_VARIANTS, ZONE_VARIANT_MAP, variantsForZone } from '../data/monsterVariants.js';   /* v2.3.5256: + the lands' skins */
+import { ZONES, zoneHomes, wheelLandAt } from '../data/zones.js';   /* v2.3.3017: + which land you are on; v2.3.5256: + its spawns */
+import { loadSlimeSprites, unloadSlimeSprites, SLIME_WALK } from './slimeSprites.js';   /* v2.3.5256 */
 import { VARIANT_SPRITES, unloadVariantSprites, setVariantKicks } from './monsterVariantSprites.js';
 import { heldBySibling } from './artHolds.js';   /* v2.3.4416: a sibling HELD, not only one near this tick */
 import { loadMonsterRecolor, recolorFamilyOf, freeMonsterRecolor } from './monsterRecolor.js';
@@ -104,11 +110,30 @@ let _waitSince = 0;
 const _looks = new Map();
 
 /* The looks one monster type is drawn from: [] for global art. */
+/* v2.3.5256: drawn from the slime's sheets: the fodder, or a variant on them */
+const onSlime = (arch) => SLIME_WALK && (arch === 'fodder' || !!(MONSTER_VARIANTS[arch] && MONSTER_VARIANTS[arch].useSlimeSheets));
 function looksOf(arch) {
   if (arch === 'snowman') return ['snowman'];
-  if (!arch || !MONSTER_VARIANTS[arch]) return [];
+  if (!arch || !MONSTER_VARIANTS[arch]) return onSlime(arch) ? ['slime'] : [];
   /* the mummy turns into a skeleton mid-fight (MONSTER_VARIANTS.mummy) */
-  return arch === 'mummy' ? ['mummy', 'skeleton'] : [arch];
+  const own = arch === 'mummy' ? ['mummy', 'skeleton'] : [arch];
+  return onSlime(arch) ? own.concat('slime') : own;
+}
+/* v2.3.5256: does a land put a slime on screen (its spawns, each skinned as
+   the land skins it: its own variant, else ZONE_VARIANT_MAP, else as it is)? */
+function landWearsSlime(home) {
+  const z = ZONES[home];
+  const skin = ZONE_VARIANT_MAP[home] || {};
+  for (const sp of (z && z.spawns) || []) {
+    if (sp && onSlime(sp.variant || skin[sp.arch] || sp.arch)) return true;
+  }
+  return false;
+}
+/* v2.3.5256: ...and a zone: the Wheel by any of its lands, a dungeon by its own */
+export function zoneWearsSlime(zoneId) {
+  if (!zoneId) return false;
+  const homes = zoneHomes(zoneId);
+  return homes ? homes.some((h) => h !== zoneId && landWearsSlime(h)) : landWearsSlime(zoneId);
 }
 
 /* Is this running here: a zone of other zones' monsters (the Wheel)? */
@@ -126,6 +151,7 @@ export function wheelArtReady(arch) {
 
 function loadLook(k) {
   if (k === 'snowman') return Promise.all([loadSnowmanSprites(), fx().then((m) => m.ensureSnowballBurstTex())]);
+  if (k === 'slime') return loadSlimeSprites();   /* v2.3.5256 */
   const tasks = [];
   const v = VARIANT_SPRITES[k];
   if (v && v.load) tasks.push(v.load());
@@ -145,6 +171,10 @@ function loadLook(k) {
    module under a 'ready' bog lurker -- a stand-in body, or a dead texture
    that throws the frame (the sweep's V17b R6-5; artHolds.js). */
 function freeLook(k) {
+  if (k === 'slime') {   /* v2.3.5256 */
+    Promise.resolve(unloadSlimeSprites()).catch(() => []);
+    return;
+  }
   if (k === 'snowman') {
     try { unloadSnowmanSprites(); } catch (e) { /* a leak, not a crash */ }
     fx().then((m) => m.freeFrostImpactTex()).catch(() => {});
@@ -188,7 +218,7 @@ function lateFree(k) {
   if (wheelArtOn(_curZone)) return;
   const used = variantsForZone(_curZone);
   if (used.has('mummy')) used.add('skeleton');   /* co-loaded, as preloadZoneAssets does */
-  if (k === 'snowman' ? _curZone === 'frost' : used.has(k)) return;
+  if (k === 'snowman' ? _curZone === 'frost' : (k === 'slime' ? landWearsSlime(_curZone) : used.has(k))) return;
   freeLook(k);
 }
 
@@ -205,9 +235,15 @@ export function loadLandLooks(home) {
   const ks = new Set();
   for (const k of variantsForZone(home)) for (const q of looksOf(k)) ks.add(q);
   if (home === 'frost') ks.add('snowman');
+  if (landWearsSlime(home)) ks.add('slime');   /* v2.3.5256: the plain fodder has no variant to name it */
   return Promise.all([...ks].map((k) => Promise.resolve().then(() => loadLook(k)).catch(() => null)))
     .then(() => [...ks]);
 }
+
+/* v2.3.5256: for a workshop's dungeon (game/dungeonArt.js enterArenaWithLooks):
+   does any of these archetypes draw from the slime's sheets, and its look */
+export function archsWearSlime(archs) { return (archs || []).some(onSlime); }
+export function loadSlimeLook() { return loadLook('slime'); }
 
 /* Leaving the Wheel: forget what was loaded here (freeZoneAssets lets all
    of it go, a beat later, as for any zone) and let the lazy kick back on. */

@@ -60,6 +60,9 @@ why: a QA tag, a direction, an input's source, a setting.
 | `trade` | worker | a session's `s.state` | `_t2To` (`trade2.js`, v2.3.5210) | `trade-door.test` §2, and the guard's tree |
 | `duel` | worker | a duel's `d.status` | `_duelTo` (`duel.js`, v2.3.5211) | `duel-door.test` §2, and the guard's tree |
 | `party` | worker | a player's entry in `this._partyByPlayer` | `_partyIn` (`party.js`, v2.3.5212) | `party-door.test` §2, and the guard's tree (a Map's calls too) |
+| `cook` | worker | the phone's claim on its moves, `ps.ex` (cook, fire, mine, chop, fish, a farm step) | `_exTo` (`movement.js`, v2.3.5213) | `cook-door.test` §2, and the guard's tree |
+| `harvest`, `fishing` | worker | a player's gather record, `this.extractions[pid]` (mining, woodcutting, fishing) | `_harvestTo` (`gathering.js`, v2.3.5214) | `harvest-door.test` §2, and the guard's tree (a record's keys too) |
+| `dungeon` | worker | a run's `inst.runPhase` (active, boss, done); the old `state` and `bossSpawned` written by the door | `_dungeonTo` (`dungeon.js`, v2.3.5215) | `dungeon-door.test` §2, and the guard's tree |
 
 **How a door is held.** What holds a door is a closed list in the guard
 (v2.3.5203, after the gatekeeper's sitting 8 found that a suite which merely
@@ -76,6 +79,18 @@ named the field let a `todo` row turn `door` with nothing built):
   there are two: `monsterlife.js m.life` (a monster's lives) and
   `tileRenderer.js this.currentZone` (the zone it drew). A stale door (its
   function writes nothing) fails, and so does a stale `besides`.
+  **v2.3.5212:** a field that is a `Map` (the party's) is written by its
+  own `set`, `delete` and `clear` too. **v2.3.5214:** a line marked
+  `keyed` (the harvest's `this.extractions`, a record keyed by id) counts a
+  write of one of its keys as a write of the field: `x.prop[k] =`,
+  `delete x.prop[k]`, `x.prop[k]++`, `Object.assign(x.prop, ...)`.
+  **v2.3.5214 (the gatekeeper's low, sitting 15):** a `besides` entry
+  matched by its text alone let a wipe through (an unconditional
+  `this._partyByPlayer = new Map()` read as the map's birth). An entry may
+  now say where and how, read off the tree: `fn`, the function it must be
+  in (a Durable Object's `this.state = state`, the room's
+  `this.extractions`: the `constructor`), and `ifMissing`, a birth only
+  (the write is the consequent of `if (!<the same field>)`).
 - `SCAN_DOORS`: the rows no suite holds. The guard runs the row's `scan`
   itself. It reads every write of the field off the syntax tree (@babel):
   `x.phase =`, `x['phase'] =`, `++`, `delete`, `Object.assign(x, { phase })`.

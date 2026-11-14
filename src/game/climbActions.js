@@ -36,6 +36,7 @@ import {
   riseCellAt, riseShuts, feetInBand, onRamp, faceEntry, faceLanding, footOf, climbStartAt, climbWay, climbOut, CLIMB_REACH,
   startDrop, dropAt, atChest,
 } from '@/game/climb.js';
+import { act } from '@/game/actions.js';   /* v2.3.5187: the page's requests leave through the action door (card K PR 7) */
 
 /* what QA reads (__btClimb) */
 export const climbStats = {
@@ -261,7 +262,7 @@ export function openRiseChest(S, popup) {
   if (S._riseChestGot && S._riseChestGot[r.id]) { say(CHEST_WORDS.got); return true; }
   S._riseChestAsk = { id: r.id, x: (c.x0 + c.x1) / 2, y: c.y0 - 40, at: now };
   climbStats.chestAsks = (climbStats.chestAsks || 0) + 1;
-  try { S.channel.send({ type: 'rise_chest_open', payload: { id: r.id } }); } catch (e) { say(CHEST_NOTE); }
+  try { act('rise_chest_open', { id: r.id }); } catch (e) { say(CHEST_NOTE); }   /* v2.3.5187: through the action door (actions.js) */
   return true;
 }
 

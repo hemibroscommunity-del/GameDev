@@ -64,7 +64,7 @@ The socket and the messages: the router, the relay, the client's connection and 
 - **Files**: everything under `src/networking/`
 - **Files**: `src/game/`: clientOff, clientOffApply, blockedAsks, workerClock, t1Sync, tooFar
 - **Files**: `src/game/`: actions
-- **Doors**: `PRIVILEGED_EVENTS` in `server/src/index.js` (every type the server sends; anything else a client could forge); `TYPES` in `server/src/relay.js` (RELAY.TYPES: the relays a phone may send, rebuilt in its name); `act` in `src/game/actions.js` (ACTIONS: the one way a request leaves the page, and its request id (v2.3.5185))
+- **Doors**: `PRIVILEGED_EVENTS` in `server/src/wire/lists.js` (every type the server sends (every out row of the wire table); anything else a client could forge); `RELAY_TYPES` in `server/src/wire/lists.js` (RELAY.TYPES: the relays a phone may send (every relay row), rebuilt in its name); `wireDoorJudge` in `server/src/wire/door.js` (the wire door: the table's checks on every message and the room's routes, before any handler (v2.3.5184)); `act` in `src/game/actions.js` (ACTIONS: the one way a request leaves the page, and its request id (v2.3.5185))
 - **Switches**: [its rows in the switch table](SWITCHES.md#wire)
 - **Words**: `wire`, `protocol`, `relay`, `caps`, `bundle`, `privileged`, `clientoff`, `flood`
 - **Traps**: `wire`
@@ -108,6 +108,7 @@ The live flags, the admin and dev levers, test mode, feedback.
 
 - **Files**: `server/src/`: liveops, admin, devtools, testmode, feedback
 - **Files**: `src/game/`: testMode
+- **Files**: `server/src/`: restore
 - **Doors**: `flagNameOk` in `server/src/liveops.js` (the names a live flag (a kill switch) may take); `_testMode` in `server/src/testmode.js` (the one question an honesty check asks)
 - **Switches**: [its rows in the switch table](SWITCHES.md#liveops)
 - **Words**: `liveops`, `admin`, `devtools`, `test-mode`, `testmode`, `feedback`, `flags`
@@ -149,7 +150,7 @@ The monsters' lives, moves, status, spawns and the boss.
 
 Gold, the bag, the bank, the market and shops, trades, drops, chests and daily rewards.
 
-- **Files**: `server/src/`: gold, bag, bank, market, marketplace, shop, store, storechat, storegear, storeoffer, trade, trade2, xfer, econcard, worldsum, valuepause, inbox, itemdrop, deathpile, gearstash, gear, gearprov, salvage, gamble, dice, dailychest, dailyrewards, risechest, revealbag, loginspin, eventcapes
+- **Files**: `server/src/`: gold, bag, bank, market, marketplace, shop, store, storechat, storegear, storeoffer, trade, trade2, xfer, econcard, worldsum, valuepause, inbox, itemdrop, deathpile, gearstash, stash, gear, gearprov, salvage, gamble, dice, dailychest, dailyrewards, risechest, revealbag, loginspin, eventcapes
 - **Files**: `server/src/`: playerroads
 - **Files**: `src/game/`: bank, itemDrop, groundLoot, lootAsk, dropLines, dropLook, storeAnswer, storeSellTap, tradeSlot, weaponSell, salvage, postOffice, revealBag, dice, dailyRewards, bossChest, loginSpinWheel, coinArt, spinBoard, gearWornSync, arenaStakes, econCard
 - **Doors**: `_goldGive` in `server/src/gold.js` (GOLD_ROADS: every change to a player's gold (_goldGive, _goldTake, _goldSet)); `bagGive` in `server/src/bag.js` (BAG_ROADS: every change to a bag count (bagGive, bagTake, bagSet))

@@ -21,6 +21,7 @@ file, `lists.js`: the one place that reads the rows and makes a list.
 | `MUTABLE_RELAY_TYPES` | every row whose `muted` is `mutable` | `chatmod.js` |
 | `SOCIAL.TYPES` | every `relay` row whose `pace` names `social` | `chatguard.js` |
 | `WATCH_HOOKS` | every row's `watch` hook, once each | `botsig.js` (each wrapped so a throw is counted; the monster's `_sigOnWindup`, called by the tick, named there) |
+| `WIRE_DOOR_ROWS` | every `in`, `relay` and `http` row's `trust` (v2.3.5184) | `door.js` (the wire door: each named field to its form, before any handler) |
 
 So a new message the worker sends is an `out` row and nothing else: it is
 privileged with no other edit (deny by default). A new relay is a `relay`
@@ -41,6 +42,11 @@ and `http.js` too, so the whole table ships. Measured the same way on main
 818,822, +19 KB, 2.4%). Most of it is the `in` and `http` rows and their
 notes, new to the worker; the few comments moved beside them (fightlock.js's
 whys, eventplace.js's fields) were the worker's before.
+v2.3.5184 (card K PR 4): the wire door's rows (`WIRE_DOOR_ROWS`: each row's
+`trust`, read by `door.js`, the one check before any handler;
+`docs/specs/wire-door.md`) come from the same two files. Measured the same
+way on main 64bb498: 2,905,338 bytes to 2,913,626 (+8 KB; gzipped 822,108 to
+824,453, +2 KB), the door itself.
 
 `tools/guards/wire-table.test.mjs` (card N's PR 3) holds the table to the
 code: a key with no row, a row with no key, two rows for one key, a value off
@@ -304,7 +310,7 @@ with none. These rows are wire-audit's echo list.
 
 What a fight with another player does to the request (`fightlock.js`).
 `lock:<switch>`: refused or checked while in such a fight, the lock turned
-off by that live flag (`fightlocktable`, `fightlockgear`, ...); the
+off by that live flag (`fightlocktable`, `fightlockequip`, ...: fightlock.js `LOCK_SWITCHES`); the
 refusal's code is `fightlock.js`'s (`FIGHT_LOCK_HOW`), and the guard fails a
 code for a row the table does not lock. `open:<why>`: allowed in a fight,
 the why one of `fightlock.js`'s `OPEN_WHY` (`the fight itself`, `moves no

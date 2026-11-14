@@ -160,6 +160,14 @@ import { ONE_FORMULA, specialMultFor } from './oneformula.js'; /* v2.3.3260: one
 import { FREE_SWING } from './freeswing.js'; /* v2.3.4520: the free-swing trial */
 
 export const combatMethods = {
+  /* v2.3.5540: the archer's lane's kill switch (below, in
+     _handleMonsterDamage), read the lower-case way: `arrowlane: false` puts
+     every arrow and bolt back on the plain 210 ms floor */
+  _arrowLaneOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'arrowlane') && !f.arrowlane);
+  },
+
   /* ═══ v2.3.2221: THE ONE DAMAGE-DENIAL GATE ═══
    * Until now `m.alive` was the ONLY thing that could stop a monster taking
    * damage, which is why the snowman's snow-pile phase could not be built:
@@ -1402,8 +1410,37 @@ export const combatMethods = {
       } else if (_dg) {
         _dgCad = cad;   /* v2.3.4799: held below, by its worth, once its worth is known */
       } else if (!_fsOn) {   /* v2.3.4520: the trial's own floor is below */
-        if (nowTs - cad.n < 210) return; // v2.3.1343: 335 -> 210 (Tempo cap -50%)
-        cad.n = nowTs;
+        /* ═══ v2.3.5540 (card K, step 4.2: the claims' bench found it): AN
+           ARROW'S FLIGHT IS NOT A SWING ═══
+           A claim is sent when its arrow LANDS, and an arrow's flight is its
+           distance: an archer who steps in between two shots (or a monster
+           that charges) lands the second one sooner after the first than the
+           shots were apart -- inside this lane, so the worker dropped an
+           honest hit (claims-gain.test's stepping archer: arrows lost with
+           `arrowlane: false`, none with it on).  So for an arrow or a bolt the
+           lane lets ONE claim in early, and the lane's time runs on from the
+           claim it let in: two at once, then one a lane as before, so the
+           most a lane takes a minute is today's.  Only while the lane is as
+           a plain claim left it (`cad.o`): once a drawn arrow has moved it
+           (drawgather.js _dgLaneTake writes `cad.n` itself) the next plain
+           claim meets today's floor, so the mixed rhythms of
+           draw-gather.test §9 take what they took.  Measured on the claims'
+           bench: a liar sending at the lane's own pace (211 ms) kills 148,
+           146 and 144 in four minutes (three seeds) with it on or off; the
+           bench's liar, 200 ms apart, lost some to the plain floor and now
+           takes that pace's (`bowlabel` 3.76 -> 3.91, inside its spread).
+           `cad.n` stays "the lane is free from" for the
+           drawn arrow's lane (drawgather.js _dgLaneTake), which it shares.
+           A sword's blow keeps the plain floor.  `arrowlane: false`: every
+           claim on the plain floor, as before. */
+        if ((_effSlot === 'ranged' || _effSlot === 'staff') && cad.o === cad.n && !this._arrowLaneOff()) {
+          if (nowTs < cad.n) return;
+          cad.n = Math.max(cad.n + 210, nowTs);   /* v2.3.5540: two at once, then one a lane */
+        } else {
+          if (nowTs - cad.n < 210) return; // v2.3.1343: 335 -> 210 (Tempo cap -50%)
+          cad.n = nowTs;
+        }
+        cad.o = cad.n;   /* v2.3.5540: the lane as a plain claim left it */
       }
       // Bound the map (fighting packs cycles monsters; oldest-in first-out).
       if (attackerPs._monHitCad.size > 32) {

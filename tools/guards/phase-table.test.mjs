@@ -54,7 +54,7 @@
  *      NOT_A_MACHINE                                       -> FAIL 5
  *   5. the `race` worker row deleted -> FAIL 1 (4 stays green: the page's
  *      `race` row still carries the wire's name)
- *   6. TODO_LINE one under the count (30)                   -> FAIL 7
+ *   6. TODO_LINE one under the count (26; v2.3.5374)         -> FAIL 7
  * v2.3.5203 (the gatekeeper's sitting 8, its two holes), each tried by hand:
  *   7. `_sneakJoin(ws,\n msg) { ... s.phase = 'joined' }` at the end of
  *      join.js's joinMethods (its parameters over two lines)  -> FAIL 2
@@ -80,6 +80,25 @@
  *                                                         -> FAIL 2
  *  17. `room._partyByPlayer.delete(id)` in a new function of alliance.js
  *                                                         -> FAIL 2
+ * v2.3.5213 (the cook door):
+ *  18. `ps.ex = msg.ex || null;` back in _handleMove      -> FAIL 2
+ * v2.3.5214 (the harvest door: a record's keys are writes, `keyed`):
+ *  19. `this.extractions[session.id] = rec;` back in _handleExtractionStart
+ *                                                         -> FAIL 2
+ *  20. `delete room.extractions[id];` in a new function of botsig.js
+ *                                                         -> FAIL 2
+ * v2.3.5214 (the gatekeeper's low, sitting 15: a birth by its text alone
+ * let a wipe through; a `besides` entry may now say `fn` and `ifMissing`,
+ * read off the tree):
+ *  21. `this._partyByPlayer = new Map();` (no `if`) in a new function of
+ *      party.js                                          -> FAIL 2
+ *  22. `this.extractions = Object.create(null);` in a new function of
+ *      index.js (not the constructor)                    -> FAIL 2
+ * v2.3.5215 (the dungeon door):
+ *  23. `inst.runPhase = 'done';` in a new function of slimeboss.js
+ *                                                         -> FAIL 2
+ *  24. `inst.state = 'done';` back in _dungeonComplete (the trade line's
+ *      besides is the door's own, `fn`)                   -> FAIL 2
  *
  * Run from the repository's root: node tools/guards/phase-table.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
@@ -92,8 +111,12 @@ import { ROOT } from './lib/systems.mjs';
 
 /* Set 2026-11-14 at its first count.  Only the gatekeeper lowers it.
    v2.3.5371 (the gatekeeper, sitting 14, main 1cce0b2): 31 -> 30, the
-   count since card L's trade door (#1809). */
-export const TODO_LINE = 30;
+   count since card L's trade door (#1809).
+   v2.3.5373 (the gatekeeper, sitting 16, main 64bb498): 30 -> 28, the count
+   since card L's duel and party doors (#1824, #1835).
+   v2.3.5374 (the gatekeeper, sitting 17, main 59469b2): 28 -> 27, the count
+   since card L's cook door (#1839). */
+export const TODO_LINE = 27;
 
 /* the machines every side must have a row for: SHAPES part 5's names and
    step 5.3b's list (the plan's own `dungeon`, `connection`, `loading`,
@@ -240,8 +263,8 @@ const DOOR_SUITES = Object.freeze({
   'server/test/trade-door.test.mjs': { field: 's.state', fn: '_t2To', holds: '§2: no .state written in server/src but in _t2To and NOT_A_TRADE\'s',
     prop: 'state', besides: [
       ...['server/src/index.js', 'server/src/marketplace.js', 'server/src/leaderboard.js', 'server/src/arena.js', 'server/src/feedback.js']
-        .map((file) => ({ file, text: 'this.state = state', why: 'the Durable Object\'s own handle' })),
-      { file: 'server/src/dungeon.js', text: 'inst.state = ', why: 'a dungeon instance: its own machine (the `dungeon` row)' },
+        .map((file) => ({ file, text: 'this.state = state', fn: 'constructor', why: 'the Durable Object\'s own handle, in its constructor' })),
+      { file: 'server/src/dungeon.js', text: 'inst.state = ', fn: '_dungeonTo', why: 'a dungeon run\'s old state, written by its own door (the `dungeon` row, v2.3.5215)' },
     ] },
   /* v2.3.5222: card O's ladder (the governor's rung, drawLanes.js `LANE._rung`) -- the planning session's word, sitting 12:
      the rung is a property of a module object, so the tree reads its writes as every other door's */
@@ -259,9 +282,25 @@ const DOOR_SUITES = Object.freeze({
      writes too (writesIn) */
   'server/test/party-door.test.mjs': { field: 'this._partyByPlayer', fn: '_partyIn', holds: '§2: no set, delete, clear or new Map of _partyByPlayer in server/src but in _partyIn and its births',
     prop: '_partyByPlayer', besides: [
-      { file: 'server/src/party.js', text: 'this._partyByPlayer = new Map()', why: 'the map\'s birth, empty, before a load or an accept fills it (through _partyIn)' },
-      { file: 'server/src/clanparty.js', text: 'this._partyByPlayer = new Map()', why: 'the map\'s birth, empty, before a clan becomes a party (through _partyIn)' },
+      { file: 'server/src/party.js', text: 'this._partyByPlayer = new Map()', ifMissing: true, why: 'the map\'s birth, empty, before a load or an accept fills it (through _partyIn); only where it is missing (v2.3.5214)' },
+      { file: 'server/src/clanparty.js', text: 'this._partyByPlayer = new Map()', ifMissing: true, why: 'the map\'s birth, empty, before a clan becomes a party (through _partyIn); only where it is missing (v2.3.5214)' },
     ] },
+  /* v2.3.5213: the cook door -- the phone's claim on its moves, cooking's
+     only phase on the worker (and mining's, chopping's, fishing's and a
+     farm step's) */
+  'server/test/cook-door.test.mjs': { field: 'ps.ex', fn: '_exTo', holds: '§2: no write of .ex in server/src outside _exTo',
+    prop: 'ex', besides: [] },
+  /* v2.3.5214: the harvest door (fishing's too) -- a record keyed by id, so
+     a write of one of its keys is a write (writesIn's `keyed`) */
+  'server/test/harvest-door.test.mjs': { field: 'this.extractions', fn: '_harvestTo', holds: '§2: no write of this.extractions or its keys in server/src outside _harvestTo but its birth',
+    prop: 'extractions', keyed: true, besides: [
+      { file: 'server/src/index.js', text: 'this.extractions = Object.create(null)', fn: 'constructor', why: 'the map\'s birth, empty, in the room\'s constructor' },
+    ] },
+  /* v2.3.5215: the dungeon door -- a run's phase in one new field, the old
+     pair (state, bossSpawned) written by the door for their readers (the
+     suite holds those) */
+  'server/test/dungeon-door.test.mjs': { field: 'inst.runPhase', fn: '_dungeonTo', holds: '§2: no write of .runPhase or .bossSpawned in server/src, nor of a run\'s .state, outside _dungeonTo',
+    prop: 'runPhase', besides: [] },
 });
 const SCAN_DOORS = Object.freeze({
   'session (worker)': 'session-door.test plays the phases but fails no second writer of session.phase',
@@ -297,9 +336,12 @@ const propOf = (m) => (m && m.type === 'MemberExpression'
   : null);
 const keyName = (pr) => (pr && pr.type === 'ObjectProperty' ? (pr.key.type === 'Identifier' ? pr.key.name : pr.key.type === 'StringLiteral' ? pr.key.value : null) : null);
 /* every write of `.prop` in a file: [{ line, fn, text }]; with `value`, only
-   a write of that literal (alive = true) */
+   a write of that literal (alive = true); with `keyed` (v2.3.5214, a door's
+   field that is a record keyed by id, the harvest's this.extractions), a
+   write of one of its keys too: `X.prop[k] = `, `delete X.prop[k]`,
+   `X.prop[k]++`, `Object.assign(X.prop, ...)` */
 const astCache = new Map();
-function writesIn(rel, prop, value) {
+function writesIn(rel, prop, value, keyed) {
   const raw = readFileSync(join(ROOT, rel), 'utf8');
   if (!new RegExp('\\b' + prop + '\\b').test(raw)) return [];   /* a cheap look first: most files never name it */
   let ast = astCache.get(rel);
@@ -310,17 +352,36 @@ function writesIn(rel, prop, value) {
   const lines = raw.split('\n');
   const out = [];
   const val = (n) => value === undefined || (n && n.type === 'BooleanLiteral' && n.value === value);
-  const hit = (path, n) => out.push({ line: n.loc.start.line, fn: fnName(path), text: lines[n.loc.start.line - 1] || '' });
+  const hit = (path, n, missing) => out.push({ line: n.loc.start.line, fn: fnName(path), text: lines[n.loc.start.line - 1] || '', missing: !!missing });
+  /* v2.3.5214 (the gatekeeper's low, sitting 15): a birth is matched by the
+     tree, not by its text alone.  `missing`: the write is the consequent of
+     `if (!<the same field>)`, so it only ever makes a field that is not there
+     (an unconditional `this._partyByPlayer = new Map()` would wipe the map
+     and is no birth). */
+  const same = (a, b) => !!a && !!b && a.type === b.type && (a.type === 'ThisExpression'
+    || (a.type === 'Identifier' && a.name === b.name)
+    || (a.type === 'MemberExpression' && !a.computed && !b.computed && propOf(a) === propOf(b) && same(a.object, b.object)));
+  const ifMissing = (path) => {
+    const st = path.parentPath;
+    if (!st || !st.isExpressionStatement()) return false;
+    let up = st.parentPath, arm = st.node;
+    if (up && up.isBlockStatement() && up.node.body.length === 1) { arm = up.node; up = up.parentPath; }
+    if (!up || !up.isIfStatement() || up.node.consequent !== arm) return false;
+    const t = up.node.test;
+    return t.type === 'UnaryExpression' && t.operator === '!' && same(t.argument, path.node.left);
+  };
+  const at = (m) => propOf(m) === prop || (!!keyed && !!m && m.type === 'MemberExpression' && propOf(m.object) === prop);
   babel.traverse(ast, {
-    AssignmentExpression(path) { if (propOf(path.node.left) === prop && val(path.node.right)) hit(path, path.node); },
-    UpdateExpression(path) { if (value === undefined && propOf(path.node.argument) === prop) hit(path, path.node); },
-    UnaryExpression(path) { if (value === undefined && path.node.operator === 'delete' && propOf(path.node.argument) === prop) hit(path, path.node); },
+    AssignmentExpression(path) { if (at(path.node.left) && val(path.node.right)) hit(path, path.node, ifMissing(path)); },
+    UpdateExpression(path) { if (value === undefined && at(path.node.argument)) hit(path, path.node); },
+    UnaryExpression(path) { if (value === undefined && path.node.operator === 'delete' && at(path.node.argument)) hit(path, path.node); },
     CallExpression(path) {
       const c = path.node.callee;
       /* v2.3.5212: a door's field that is a Map (the party's
          this._partyByPlayer) is written by its own set, delete and clear */
       if (value === undefined && c.type === 'MemberExpression' && ['set', 'delete', 'clear'].includes(propOf(c)) && propOf(c.object) === prop) { hit(path, path.node); return; }
       if (!(c.type === 'MemberExpression' && c.object.type === 'Identifier' && c.object.name === 'Object' && propOf(c) === 'assign')) return;
+      if (keyed && value === undefined && propOf(path.node.arguments[0]) === prop) { hit(path, path.node); return; }
       for (const a of path.node.arguments.slice(1)) {
         if (a.type !== 'ObjectExpression') continue;
         for (const pr of a.properties) if (keyName(pr) === prop && val(pr.value)) hit(path, pr);
@@ -351,15 +412,17 @@ function writesIn(rel, prop, value) {
         let mine = 0;
         const seen = new Set();
         for (const f of filesUnder(SRC_OF[r.side])) {
-          for (const w of writesIn(f, want.prop)) {
+          for (const w of writesIn(f, want.prop, undefined, want.keyed)) {
             if (f === r.file && w.fn === r.fn) { mine++; continue; }
-            const b = (want.besides || []).find((x) => x.file === f && w.text.includes(x.text));
+            /* v2.3.5214: an entry may also say where (`fn`, the function the
+               tree places it in) and how (`ifMissing`, a birth only) */
+            const b = (want.besides || []).find((x) => x.file === f && w.text.includes(x.text) && (!x.fn || w.fn === x.fn) && (!x.ifMissing || w.missing));
             if (b) { seen.add(b); continue; }
             bad.push(`${keyOf(r)}: ${f}:${w.line} (in ${w.fn || 'no function'}) writes .${want.prop} outside ${r.file} ${r.fn}, read off the tree: ${w.text.trim().slice(0, 90)}`);
           }
         }
         if (!mine) bad.push(`${keyOf(r)}: ${r.file} ${r.fn} writes no .${want.prop} any more (a stale door)`);
-        for (const b of want.besides || []) if (!seen.has(b)) bad.push(`${keyOf(r)}: its besides entry ${b.file} "${b.text}" is gone (delete it)`);
+        for (const b of want.besides || []) if (!seen.has(b)) bad.push(`${keyOf(r)}: its besides entry ${b.file} "${b.text}"${b.fn ? ' in ' + b.fn : ''}${b.ifMissing ? ' (a birth only)' : ''} is gone (delete it)`);
       }
       continue;
     }

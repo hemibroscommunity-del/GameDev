@@ -1,38 +1,38 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: #1822 (PR 1), #1820 (PR 3), #1826 (PR 6): merged; #1829 (PR 5), #1831 (PR 2): ready; PR 4 tag 5184 (working)
-state: working
+prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842 merged; ready: #1848 (5541, held: two mends), 7.1 (5187) this branch
+state: ready
 
 ## Done
 
-- PR 1 (5181, #1822, merged): `PRIVILEGED_EVENTS`, `RELAY.TYPES`, the echo
-  list made from the wire table (`wire/lists.js`); column `privileged`.
-- PR 3 (5183, #1820, merged): `wire-hostile.test` (10,524 cases), census
-  `hostile.md`: 19 failing, the line.
-- PR 6 (5186, #1826, merged): `claims-gain.test`, `claimbots.mjs`, census
-  `claims.md`; no honest refusal.
-- PR 5 (5185, #1829): the action door, `src/game/actions.js` (180 rows); the
-  shim reads them; guard `action-door.test` (2b: `body: 'top'`), census 203
-  sends, 25 fetches. The gatekeeper's two notes mended (sitting 14).
-- PR 2 (5182, #1831): columns `fight`, `placed`, `muted`, `pace`, `watch`,
-  `flag`; six lists made from them. Worker +137 KB (+19 gz).
+- PR 1 (5181, #1822), PR 3 (5183, #1820), PR 6 (5186, #1826), PR 5 (5185,
+  #1829: the action door), PR 2 (5182, #1831: six lists made from the
+  table): merged.
+- PR 4 (5184, #1838, merged): the wire door (`wiredoor`); hostile 19 -> 1.
+- Claims 5540 (#1842, merged): the archer's lane (`arrowlane`, ON); the stepping
+  archer keeps every arrow. The bow cheats' rise (bowlabel 3.91, the bot
+  lab's aimbot +12%) is for the bow claim's PR to bound, without costing
+  the stepping archer an arrow (the planning session).
+- Claims 5541 (#1848): the sprint mark, OFF (the owner: "Just go
+  recommended", off for now). Held: two MEDIUMs on its ON path
+  (review-z16): mends next, OFF throughout.
+- PR 7.1 (5187): combat and moving through act(), 57 of 58 sends (census
+  203 -> 146); precheck reads an event through the door as a broadcast.
+  Scenarios: jump, shieldgem, deathzones fail on main too (not this PR).
 
 ## Next
 
-- PR 4 (5184): the wire door (`wire/door.js`, `wiredoor`), routes' door in
-  GameRoom.fetch (the planning session's yes); hostile 19 -> 1; the bot lab
-  counted nothing refused; questline running; the stale pointers
-  (systems.mjs, CLAUDE.md §5/§8) mended in it.
-- `rideEnds` (ride.js) its own small PR when card SK says done; the archer's
-  lane and the sprint mark in the claims PRs (both ON).
+- PR 7.2 to 7.5 (5188-5191): the rest of the page's sends, a family a PR.
+- #1848's two mends (bill carried moves as they move, only those faster
+  than walking; a test of the ON path); then the move's walls (movement.js
+  is free), the sword's reach (index.js, after card R's 5281), the bow claim.
+- Lows: wire-table §7's cure in K's next list PR; door.js "by type".
+- `rideEnds` (ride.js) its own small PR when card SK says done.
 
 ## Found
 
-- `combat.js`: an archer stepping in between shots loses one to the 210 ms
-  lane; `sprint.js`: `sp: 1` every other move costs no stamina (both ON).
 - The page sends `clan_war_kill`/`clan_war_end` for an older worker; this
   one drops both (`legacy` door rows).
-- `worldsum.js`: the honest restart reads as value gone (card R's PR 6).
 
 ## Needs
 

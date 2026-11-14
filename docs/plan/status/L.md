@@ -1,33 +1,33 @@
 card: L
-branch: claude/plan-l-12-party-door (each PR on main, main merged in)
-prs: #1746 to #1809 (merged; #1791, #1796, #1801 through #1807), #1824 (5211), PR 5 tag 5212: ready
+branch: claude/plan-l-15-dungeon-door (each PR on main, main merged in)
+prs: #1746 to #1839 (merged), #1851 (5214), #1855 (5215)
 state: ready
 
 ## Done
 
-- PR 1 (5201, #1746), PR 2 (5202, #1748): the ledger's guard on GitHub; the
-  phase table and its guard (36 rows, 5 door).
+- PR 1, 2 (#1746, #1748): the ledger's guard; the phase table and guard.
 - PR 3 (5203, #1767): `resetOn` at the zone and rejoin doors, 16 rows
   (484 -> 468), state-resets.test; the phase guard's holes (sitting 8) shut.
-- PR 4 tags 5204 to 5208 (#1775, #1779, #1791, #1796, #1801, all merged):
-  235 rows, 468 -> 233; `clearElemStatuses` deleted (state-resets §7).
-- PR 4 tag 5209 (#1803, merged): the guard reads DOOR_SUITES' doors' trees.
-- PR 5 tags 5210 (#1809, merged), 5211 (#1824), 5212: the trade, duel and
-  party doors (worker): `_t2To`, `_duelTo`, `_partyIn`; live flags `*door`.
+- PR 4 tags 5204 to 5209 (#1775 to #1803, merged): 235 rows, 468 -> 233;
+  `clearElemStatuses` deleted; the guard reads DOOR_SUITES' trees.
+- PR 5 tags 5210 to 5212 (merged), 5213 to 5215: the worker's trade, duel,
+  party, cook, harvest+fishing, dungeon doors (`_t2To` ... `_dungeonTo`, a
+  run's `runPhase`); live flags `tradedoor` ... `dungeondoor`.
 
 ## Next
 
-- PR 5's next worker door, cook (5213); each page half after its worker
-  door, its own PR; `connection` after card K's last wsClient.js PR.
+- PR 5: pose (5216), race (5217); guard waits for card K (combat.js,
+  index.js), ride for SK, arena for E's e-14 (gladiator.js); each page half
+  after its worker door; `connection` after card K's last wsClient.js PR.
 
 ## Found
 
 - Red on main, not L's: ownersounds 3 (Quick Eat's munch), deathzones 12
   (a mire wisp), mp-hitsound.mjs (6), race (Lil Bro's start, his jog cells),
   desklunge (1 to 4 of 12 by run), bowprops 3 (the Town Hall takes no arrow),
-  alliance (16, 14, 9 of 16 by run: the typed name or the war's tap lost).
-- bodytake.js ~94 cites "rejoinresend's pose row" (none); session.phase:
-  three writers, held by the phase table's scan (not its suite).
+  alliance (16, 14, 9 of 16 by run: the typed name or the war's tap lost),
+  fishvariants (4a-5: no Inspect on the card; 6c by run: healed before Eat).
+- bodytake.js ~94 cites a pose row that is none; session.phase: the scan's.
 - Dead: S._shieldStamina, S.shieldActive, S._iceAttack; monsterCombat.js's
   own respawn (!S._serverMonsters), an old path.
 

@@ -31,6 +31,7 @@ import { ZONES } from '@/data/zones.js';   /* v2.3.2790; v2.3.3262: + ZONES (a l
 import { isPlayerDead, pushDmgPopup, swimRefused /* v2.3.3003 */, dazeRefused /* v2.3.3014 */, staggerRefused /* v2.3.3264 */, airRefused /* v2.3.3017 */ } from '@/game/combatHelpers.js';
 import { prog3ActiveCat } from '@/data/prog3.js';   /* v2.3.2327: whirlwind is the sword's */
 import { monsterLock } from '@/game/targeting.js';  /* v2.3.2542: whirlwind wants a fight under way */
+import { act } from '@/game/actions.js';   /* v2.3.5187: the page's requests leave through the action door (card K PR 7) */
 
 /* Local cooldown clocks, keyed by our OWN constant names (never a client- or
    wire-supplied string), so a plain object is safe here. */
@@ -563,9 +564,10 @@ export function castAbility(S, kind) {
        its own shield pose. */
     if (kind === 'sworddash' && S.channel) {
       try {
-        S.channel.send({ type: 'broadcast', event: 'player_dodge', payload: {
+        /* v2.3.5187: through the action door (actions.js) */
+        act('player_dodge', {
           id: S.myId, kind: 'sworddash', angle: S._bashDash.angle, ts: now, dur: _dashWin,
-        } });
+        });
       } catch (e) {}
     }
     /* v2.3.3343: the sword's dash is heard leaving, a quick rush of air (it
@@ -630,7 +632,7 @@ export function castAbility(S, kind) {
      Gated on caps.whirlWindup (rule 19): an older worker strikes on the
      press, so against it the old instant path below is the truth. */
   if (kind === 'whirl' && cfg.windupMs > 0 && S._serverCaps && S._serverCaps.whirlWindup) {
-    try { S.channel && S.channel.send({ type: 'ability', payload: { kind: kind } }); } catch (e) {}
+    try { act('ability', { kind: kind }); } catch (e) {}
     S._whirlWindup = { t0: now, until: now + cfg.windupMs, r: cfg.radius, max: cfg.maxTargets /* v2.3.3499: who it will catch */, flushed: false };
     S.swingTimer = now;
     var _wsfx = null;
@@ -695,9 +697,8 @@ export function applyAbilityStrike(S, kind, targetId, opts) {
     /* v2.3.3262: a lunge at a player names them as `pid` (pvplunge.js) */
     var _pid = (opts && opts.pid != null) ? String(opts.pid) : null;
     try {
-      S.channel && S.channel.send({ type: 'ability',
-        payload: _pid ? { kind: kind, pid: _pid }
-          : targetId != null ? { kind: kind, targetId: targetId } : { kind: kind } });
+      act('ability', _pid ? { kind: kind, pid: _pid }   /* v2.3.5187: through the action door (actions.js) */
+          : targetId != null ? { kind: kind, targetId: targetId } : { kind: kind });
     } catch (e) {}
   }
 
@@ -752,13 +753,13 @@ export function applyAbilityStrike(S, kind, targetId, opts) {
   if (S.channel) {
     var w = getActiveWeapon(R);
     try {
-      S.channel.send({ type: 'broadcast', event: 'player_swing', payload: {
+      act('player_swing', {
         id: S.myId, ts: now, special: true, wpn: (w && w.type) || 'sword', ang: aim,
         bash: kind === 'bash',
         /* v2.3.2824: a whirlwind shows its vortex and edge ring on the
            watcher's screen too, at the size the worker tested. */
         whirl: kind === 'whirl', r: kind === 'whirl' ? cfg.radius : undefined,
-      } });
+      });
     } catch (e) {}
   }
 

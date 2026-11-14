@@ -20,7 +20,14 @@
  *      loading holds; one strip at a time; the slice is a share of the frame
  *      with a floor; nothing waits behind a loading screen; a zone left while
  *      a strip was unpacked keeps nothing; the off-ramp.
+ *   5. v2.3.5230 (card O PR 10): the slice is the lanes' `queue` knob --
+ *      `full` 4 ms, `thirty` 8 -- at every frame's length (it no longer
+ *      grows with it: docs/BUDGETS.md part 8, #6 gone), and none behind a
+ *      loading screen.
  * The phone half is tools/qa/mp/mp-stripgentle.mjs.
+ * BREAK PROOF (v2.3.5230), tried by hand 2026-11-14: stripSliceMs as the old
+ * quarter of the frame (`stripFrameMs() * 0.25`, 3 to 50) -> FAIL 4e and 5a
+ * (full 3/4.2/8.3/12.5).
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -153,8 +160,13 @@ const cellBytes = (d, W, i, fw, fh) => { const out = new Uint8ClampedArray(fw * 
   check('4c. the strip loader goes gently only in play, through the one line; else at once, as before', /if \(stripFrameMs\(\) > 0\) return _inLine\(\(\) => _stripGently\(bundle, url, fw, fh, gen, img\)\);/.test(load)
     && /const packed = packTrimmed\(img, fw, fh, n\);\s*const frames = _stripFrames\(bundle, url, fw, fh, img, n, packed, undefined\);/.test(load));
   check('4d. one strip at a time, one clock for the slice across them', /const p = _line\.then\(job, job\);/.test(zt) && /if \(_waiting\+\+ === 0\) _sliceT0 = performance\.now\(\);/.test(zt));
-  check('4e. the slice: a share of the frame, never under the floor; nothing waits once a loading screen is up', /const SLICE_MIN_MS = 3, SLICE_MAX_MS = 50, SLICE_SHARE = 0\.25/.test(zt)
-    && /if \(!frameMs\) return;/.test(zt) && /Math\.max\(SLICE_MIN_MS, Math\.min\(SLICE_MAX_MS, frameMs \* SLICE_SHARE\)\)/.test(zt));
+  /* v2.3.5230 (card O PR 10): the slice is the lane's `queue` knob, never the frame's length (BUDGETS part 8, #6 gone) */
+  const turn = zt.slice(zt.indexOf('async function stripTurn()'), zt.indexOf('async function _stripGently('));
+  check('4e. the slice: the lane\'s `queue` ms (laneKnob), held to the floor and the cap, never the frame\'s length; nothing waits once a loading screen is up',
+    /const SLICE_MIN_MS = 3, SLICE_MAX_MS = 50,/.test(zt) && !/SLICE_SHARE|frameMs \*/.test(zt)
+    && /Number\(laneKnob\('queue'\)\)/.test(zt) && /Math\.max\(SLICE_MIN_MS, Math\.min\(SLICE_MAX_MS, v\)\)/.test(zt)
+    && /const budget = stripSliceMs\(\);/.test(turn) && /if \(!budget\) return;/.test(turn)
+    && /if \(!stripFrameMs\(\)\) return 0;\s*return _sliceFixed \|\| sliceMs\(\);/.test(zt), turn.slice(0, 300));
   const gently = zt.slice(zt.indexOf('async function _stripGently'), zt.indexOf('if (typeof window !== \'undefined\') window.__btStripSlices'));
   check('4f. gently: the same pack and the same numbers, a piece at a time', /await packTrimmedSliced\(img, fw, fh, n, stripTurn\)/.test(gently) && /await numbersOfSliced\(packed\.canvas, stripTurn\)/.test(gently)
     && /return _stripFrames\(bundle, url, fw, fh, img, n, packed, read, whole\);/.test(gently));
@@ -168,6 +180,65 @@ const cellBytes = (d, W, i, fw, fh) => { const out = new Uint8ClampedArray(fw * 
     && /document\.visibilityState !== 'visible'\) return 0;/.test(play) && /return S\._frameMs > 0 \? S\._frameMs : 16\.667;/.test(play));
   const pn = readFileSync(join(ROOT, 'src/rendering/picsNumbers.js'), 'utf8');
   check('4j. the numbers already read are used as they are; none given, read whole as before', /const nums = read === undefined \? numbersOf\(canvas\) : \(read \|\| null\);/.test(pn));
+}
+
+/* ── 5. v2.3.5230 (card O PR 10): THE SLICE IS THE LANE'S, NEVER THE FRAME'S LENGTH ──
+   zoneTextures.js loaded with 'pixi.js' stood in for (Server CI installs only server/'s packages; nothing is drawn
+   here), `@/` as src/, a .json as a module of its data.  The slice at each lane, at every frame's length. */
+{
+  const { register } = await import('node:module');
+  const { readdirSync, statSync } = await import('node:fs');
+  const SRC = new URL('../../src/', import.meta.url);
+  const names = new Set();
+  (function walk(d) {
+    for (const f of readdirSync(d)) {
+      const u = new URL(f, d);
+      if (statSync(u).isDirectory()) walk(new URL(f + '/', d));
+      else if (/\.(js|jsx|mjs)$/.test(f)) {
+        for (const m of readFileSync(u, 'utf8').matchAll(/import\s*\{([^}]*)\}\s*from\s*['"]pixi\.js['"]/g)) {
+          for (const x of m[1].split(',')) { const k = x.trim().split(/\s+as\s+/)[0].trim(); if (/^[A-Za-z_$][\w$]*$/.test(k)) names.add(k); }
+        }
+      }
+    }
+  })(SRC);
+  const STUB = 'const P = new Proxy(function () {}, { get: (t, k) => (k === "prototype" ? t.prototype : k === Symbol.toPrimitive ? () => 0 : (typeof k === "symbol" ? undefined : P)), apply: () => P, construct: () => ({}) });\nexport default P;\n'
+    + [...names].map((x) => `export const ${x} = P;`).join('\n');
+  register('data:text/javascript,' + encodeURIComponent(
+    `export async function resolve(s, c, next) {
+       if (s === 'pixi.js') return { url: 'data:text/javascript,' + encodeURIComponent(${JSON.stringify(STUB)}), shortCircuit: true };
+       if (s.startsWith('@/')) return next(${JSON.stringify(SRC.href)} + s.slice(2), c);
+       return next(s, c);
+     }
+     export async function load(url, c, next) {
+       if (url.startsWith('file:') && url.endsWith('.json')) {
+         const { readFileSync } = await import('node:fs');
+         return { format: 'module', source: 'export default ' + readFileSync(new URL(url), 'utf8') + ';', shortCircuit: true };
+       }
+       return next(url, c);
+     }`));
+  const warn = console.warn, error = console.error;
+  const quiet = (f) => (...a) => { if (!/^\[fx-strips\]/.test(String(a[0]))) f(...a); };
+  console.warn = quiet(warn); console.error = quiet(error);
+  const ZT = await import('../../src/rendering/zoneTextures.js');
+  const D = await import('../../src/game/drawLanes.js');
+  const at = (search, frameMs) => {
+    globalThis.location = { search };
+    D._resetLanes();
+    ZT.setStripPlay(() => frameMs);
+    return ZT.stripSliceMs();
+  };
+  const hadLoc = Object.prototype.hasOwnProperty.call(globalThis, 'location'), wasLoc = globalThis.location;
+  const full = [1000 / 120, 1000 / 60, 1000 / 30, 50].map((f) => at('', f));
+  const thirty = [1000 / 30, 1000 / 60, 50].map((f) => at('?lane=thirty', f));
+  const behind = at('', 0);
+  ZT.setStripPlay(null);
+  if (hadLoc) globalThis.location = wasLoc; else delete globalThis.location;
+  D._resetLanes();
+  check(`5a. the slice is the lane's, whatever the frame's length: full ${full.join('/')} ms at 120, 60, 30 and 20 a second; thirty ${thirty.join('/')} (was a quarter of the frame: 3, 4.2, 8.3, 12.5)`,
+    full.every((v) => v === 4) && thirty.every((v) => v === 8), { full, thirty });
+  check('5b. behind a loading screen (the frame\'s length 0): no slice, nothing waits', behind === 0, behind);
+  check('5c. the lanes\' rows: full and light 4 ms, thirty 8 (a 60 and a 30 screen\'s quarter, as before)',
+    D.LANES.full.row.queue === 4 && D.LANES.light.row.queue === 4 && D.LANES.thirty.row.queue === 8 && D.KNOBS.queue.reader.moved === true);
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

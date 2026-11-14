@@ -271,6 +271,7 @@ import { moveClaimMethods, guardFacing } from './moveclaims.js'; /* v2.3.4605: w
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
 import { staminaRegenMethods } from './staminaregen.js'; /* v2.3.3536: stamina regen worked out by the worker */
 import { fightLockMethods, FIGHT_GATED } from './fightlock.js'; /* v2.3.4510: one fight-lock table */
+import { wireDoorMethods } from './wire/door.js'; /* v2.3.5184: the wire door -- the table's checks before any handler */
 import { leaveMethods } from './leave.js'; /* v2.3.4830: the session door -- every way of leaving */
 import { goldMethods } from './gold.js'; /* v2.3.4670: the gold door -- every change to a player's gold */
 import { lifeMethods } from './life.js'; /* v2.3.4820: the life door -- a player's health and life phase */
@@ -533,6 +534,7 @@ export function stripChatLaneMarks(name) {
    comment above its row (moved there from the literal list that stood here).
    Never written by hand again: wire-table.test fails a literal beside it. */
 import { PRIVILEGED_EVENTS } from './wire/lists.js';
+import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
 export { PRIVILEGED_EVENTS };
 
 /* v2.3.1465: `track` IS COSMETICS ONLY -- the allowlist that makes that
@@ -4360,14 +4362,12 @@ export class GameRoom {
     if (pile.weapon && !pile.weaponClaimed) {
       pile.weaponClaimed = true;
       weaponForMe = pile.weapon;
-      if (!Array.isArray(ps.weaponStash)) ps.weaponStash = [];
-      if (ps.weaponStash.length < this.WEAPON_STASH_CAP) {
+      if ((Array.isArray(ps.weaponStash) ? ps.weaponStash.length : 0) < this.WEAPON_STASH_CAP) {   /* v2.3.5281: the door makes the bag */
         /* v2.3.4012: a mystery grade waits in the bag, unrevealed, for a
            phone that can show it (revealbag.js); a blade sold for a full bag
            keeps today's at-once reveal (docs/specs/reveal-in-bag.md) */
         this._revealBagMark(session, weaponForMe);
-        ps.weaponStash.push(weaponForMe);
-        weaponStashed = true;
+        weaponStashed = stashGive(ps, 'weaponStash', weaponForMe, 'loot_weapon', this);   /* v2.3.5281: the stashes' door */
       } else {
         weaponSoldFor = this._weaponSellValue(weaponForMe);
         this._goldGive(ps, weaponSoldFor, 'loot_weapon_sold'); /* v2.3.4670: the gold door */
@@ -4408,7 +4408,7 @@ export class GameRoom {
       armorForMe = pile.armor.map((a) => this._gearProvRecord(
         session.id, (a && a.slot === 'legsArmor') ? 'legsArmor' : 'armor', this._revealBagMark(session, { ...a }), 'drop'));
       /* v2.3.4840: the worker's armour stash too (gearstash.js _gearStashLiveAdd) */
-      if (this._gearStashLiveAdd) for (const a of armorForMe) this._gearStashLiveAdd(ps, (a && a.slot === 'legsArmor') ? 'legsArmor' : 'armor', a);
+      if (this._gearStashLiveAdd) for (const a of armorForMe) this._gearStashLiveAdd(ps, (a && a.slot === 'legsArmor') ? 'legsArmor' : 'armor', a, 'gear_loot');
     }
     pile.claimedBy[session.id] = true;
 
@@ -4557,6 +4557,17 @@ export class GameRoom {
        After the lobby's count probe, which reads no switch. */
     if (!this._liveFlags) {
       try { await this._liveFlagsEnsure(); } catch (e) { console.warn('[liveflags] cold load failed:', e && e.message); }
+    }
+    /* v2.3.5184: THE WIRE DOOR for the room's routes (wire/door.js), after
+       the switches load and before the first route: a key named like the
+       prototype's (a query's name, or at any depth of the JSON body), a body
+       that is no plain object, a field the route's row names out of its
+       form, or a request id outside SHAPES' form is answered 400 and counted.
+       Not the socket's upgrade (the router's door judges its frames).
+       `wiredoor: false` turns it off. */
+    if (url.pathname.startsWith('/api/')) {
+      const _refused = await this._wireDoorHttp(request, url);
+      if (_refused) return _refused;
     }
     // v2.3.1118: marketplace HTTP surface (order book lives in this DO
     // now -- see market.js).  Before the Upgrade check like _room_count.
@@ -4777,6 +4788,13 @@ export class GameRoom {
       }
     }
     if (!session.id && msg.type !== 'join' && msg.type !== 'pong') return;
+    /* v2.3.5184: THE WIRE DOOR (wire/door.js) -- before any handler, and
+       before the AFK clock, the ride or the locks read the message: a key
+       named like the prototype's at any depth, a payload that is no plain
+       object, a field the wire table's `trust` names out of its form, or a
+       request id outside SHAPES' form is dropped and counted.  Only what no
+       page sends; `wiredoor: false` turns it off.  Synchronous (TRAPS §182). */
+    if (this._wireDoor(session, msg)) return;
     /* Reset the AFK clock on real input only.  Pong replies are
        keepalive heartbeats, not player activity -- counting them would
        mean the timeout fires only on TCP death, not on AFK players
@@ -6517,6 +6535,7 @@ Object.assign(GameRoom.prototype, moveClaimMethods); /* v2.3.4605: what a move's
 Object.assign(GameRoom.prototype, sparMethods); /* v2.3.3265: sparring clones (spar.js) */
 Object.assign(GameRoom.prototype, staminaRegenMethods); /* v2.3.3536: stamina regen from the worker's own amulet (staminaregen.js) */
 Object.assign(GameRoom.prototype, fightLockMethods); /* v2.3.4510: one fight-lock table (fightlock.js) */
+Object.assign(GameRoom.prototype, wireDoorMethods); /* v2.3.5184: the wire door (wire/door.js) */
 Object.assign(GameRoom.prototype, leaveMethods); /* v2.3.4830: the session door (leave.js) */
 Object.assign(GameRoom.prototype, goldMethods); /* v2.3.4670: the gold door (gold.js) */
 Object.assign(GameRoom.prototype, lifeMethods); /* v2.3.4820: the life door (life.js) */

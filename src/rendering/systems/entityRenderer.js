@@ -158,7 +158,7 @@ import { SHADE, propShade } from '../formShade.js'; /* v2.3.2767: light from abo
 import { fishRodAt, hasFishRodMask, fishRodMaskData } from '../toolRecolor.js';
 import { standInReady, farmFigureReady, peerStandInReady } from '../standIns.js';   /* v2.3.3077: a gathering pose hides the body only once it is made; v2.3.3314: a peer's, once made in their colours */
 import { parseFarmEx } from '@/game/farmWork.js';   /* v2.3.3439: a peer working a bed of their farm, off their `ex` */
-import { CROWD_K, crowdPick, crowdFromSearch } from '../../game/crowdCap.js';   /* v2.3.3241: at most K other players drawn in full */
+import { crowdPick, crowdK, noteCrowdNear } from '../../game/crowdCap.js';   /* v2.3.3241: at most K other players drawn in full; v2.3.5226: K the ladder's knob (crowdK) */
 import { SMALL_TEX, elemSmallKey } from '@/data/smallIcons.js';   /* v2.3.3279: the owner's party badge, threat skull and talk bubble */
 import { QUEST_PIN, QUEST_PIN_WORLD } from '@/data/ownerIcons.js';   /* v2.3.3481: the owner's quest pins over a townsperson */
 import { broBadgeOf } from '../../networking/broWallet.js';   /* v2.3.3255: the Hemi Bro checkmark -- the worn Bro verified, or a wallet holding one or more */
@@ -518,12 +518,10 @@ let _frontLayerRef = null;
    _updateOtherPlayers), and moved back into the entity layer every frame */
 const _noPeerCull = typeof location !== 'undefined' && /[?&]nopeercull\b/.test(location.search || '');
 /* v2.3.3241: the crowd cap's K -- the owner's 50, or `?crowd=K` (`?crowd=all`
-   draws everyone); `?nopeercull` draws everyone too (src/game/crowdCap.js) */
-const _crowdK = (() => {
-  if (_noPeerCull) return Infinity;
-  const q = typeof location !== 'undefined' ? crowdFromSearch(location.search) : null;
-  return q == null ? CROWD_K : q;
-})();
+   draws everyone); `?nopeercull` draws everyone too (src/game/crowdCap.js).
+   v2.3.5226 (card O PR 6): asked each frame -- the lane's crowd at the
+   governor's rung (50, 30, 15), crowdCap.js crowdK */
+const _crowdK = () => (_noPeerCull ? Infinity : crowdK());
 /* "everyone was drawn last frame", for crowdPick's shownBefore */
 const _CROWD_ALL_SHOWN = { has: () => true };
 /* ═══ v2.3.2768: WHAT THE LOCAL FIGURE IS MADE OF, AND HOW SHARP EACH PIECE IS ═══
@@ -12444,7 +12442,8 @@ export class EntityRenderer {
     _peerOut.clear();
     let _crowdKeep = null;
     let _peersCrowd = 0;
-    if (Number.isFinite(_crowdK)) {
+    const _capK = _crowdK();   /* v2.3.5226: this frame's cap (the ladder's knob) */
+    if (Number.isFinite(_capK)) {
       const _nearHere = (o) => {
         if (!o || (o.zone || o.z || 'town') !== S.currentZone) return false;
         if (!_pFar) return true;
@@ -12453,7 +12452,8 @@ export class EntityRenderer {
       };
       let _near = 0;
       for (const id in others) if (_nearHere(others[id])) _near++;
-      if (_near > _crowdK) {
+      noteCrowdNear(_near);   /* v2.3.5226: a crowd step that hides no one is passed (crowdCap.js) */
+      if (_near > _capK) {
         const me = S.player || {};
         const party = (S._party && Array.isArray(S._party.members)) ? S._party.members : null;
         const lockId = (S.lockedTarget && S.lockedTarget.type === 'player' && S.lockedTarget.id != null) ? String(S.lockedTarget.id) : null;
@@ -12484,10 +12484,10 @@ export class EntityRenderer {
         const _prev = this._crowdShown === 'all' ? _CROWD_ALL_SHOWN : this._crowdShown;
         const _sets = this._crowdSets || (this._crowdSets = [new Set(), new Set()]);
         const _out = _sets[0] === _prev ? _sets[1] : _sets[0];
-        _crowdKeep = crowdPick(cands, _crowdK, _prev, _out);
+        _crowdKeep = crowdPick(cands, _capK, _prev, _out);
         cands.length = 0;
       }
-    }
+    } else noteCrowdNear(0);   /* v2.3.5226: no cap (`?nopeercull`): no crowd step changes what is drawn */
     this._crowdShown = _crowdKeep || 'all';
 
     for (const [id, other] of Object.entries(others)) {
@@ -14713,9 +14713,11 @@ export class EntityRenderer {
     const isHit = S._hitFlash && (now - S._hitFlash) < 250;
     /* v2.3.3776: on the board you stand sideways and push now and then
        (game/ride.js rideLook) -- AFTER the facing is published above, so the
-       others are sent the way you go and turn it themselves */
+       others are sent the way you go and turn it themselves.  v2.3.5440: and
+       your ride's record, so you push exactly when the board does and glide
+       while it rolls off (rideFeel; card SK) */
     const _rideLk = (S._ride && S._ride.on && !isHit)
-      ? rideLook(display._rideLook || (display._rideLook = {}), facing, isMoving, now) : null;
+      ? rideLook(display._rideLook || (display._rideLook = {}), facing, isMoving, now, S._ride) : null;
     if (_rideLk) facing = _rideLk.facing;
     /* v2.3.3017: in the air (game/jump.js) the body holds one leaping frame of
        the jog for the way it faces -- the owner's "just use the jog

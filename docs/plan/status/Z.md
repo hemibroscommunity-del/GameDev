@@ -1,39 +1,40 @@
 card: Z
-branch: claude/plan-z-sitting-15
-prs: (this PR), tag 5372, the last line of the list (ready)
+branch: claude/plan-z-sitting-17
+prs: (this PR), tag 5374, the last line of the list (ready)
 state: ready
 
 ## Done
-- Sitting 15, `main` d6b8acd: the list rehearsed in its order (tree
-  db4ea362, this branch aside): precheck 0 FAIL, build, questline 187;
-  each base `main`, ONE merge base step by step. Review:
-  `census/review-z15.md`. Notes on 4.2, 4.3, 4.7, 7.1; no line to lower.
+- Sitting 17, `main` 59469b2: the list rehearsed in its order (tree
+  d7a02deb, this branch aside): precheck 0 FAIL (2 WARN), build, questline
+  187 of 187; each base `main`, ONE merge base step by step (each card's
+  PRs stacked at its session's hand). Review: `census/review-z17.md`.
+  4.1 and 7.2 ticked; notes on 2.3, 4.2, 4.5, 4.7, 5.3b, 8.1, 9.5;
+  `TODO_LINE` 28 -> 27; BroTown.jsx's four lines and entityRenderer.js
+  8955 -> 8953.
 
 ## The list: merge in this order, in one sitting, each "Create a merge commit"
-1 #1824 (L) · 2 #1835 (L) · 3 #1829 (K) · 4 #1831 (K) · 5 #1833 (J2) ·
-6 #1832 (O) · 7 this PR. Five deploy (1 to 4, and 6 by its old-map
-test): back to back. #1824 and #1835 each add a live flag (`dueldoor`,
-`partydoor`, ON); #1835 carries #1824.
+1 #1862 (R) · 2 #1851 (L) · 3 #1855 (L) · 4 #1861 (K) · 5 #1850 (O) ·
+6 #1854 (O) · 7 #1846 (P) · 8 #1859 (P) · 9 #1849 (J2) · 10 #1858 (J2) ·
+11 #1860 (J2) · 12 this PR. Eight deploy (1 to 7 and 10): back to back.
+New live flags `harvestdoor`, `dungeondoor` (ON, L's, stacked); new page
+switches `?ladderpass` (O), `?slimewalk` (P); no stored record changes
+its shape.
 
-## Held (expires at sitting 16)
-- #1836 O: conflict with `main` at `tools/guards/lib/switches.mjs`; next
-  sitting after T's #1837 (it merges #1837's head). Reviewed: one medium
-  (crowd rungs that hide no one delay the rate's ~5 s), for the planning
-  session.
-- #1837 T: conflict with `main` (`docs/SWITCHES.md`, `switches.mjs`);
-  next sitting FIRST, after merging the new `main`. Step 3 then.
-- #1838 K: conflicts with #1829 and #1831 either way; K merges the new
-  `main` after this list. Reviewed: one medium to mend first (the
-  refusal count keyed by the client's type or path, no bound).
-- #1782 SK: the owner's yes to +8 to +10 moves a ride.
+## Held (expires at sitting 18)
+- #1847 R: its MEDIUM (a device id in `inbox:` rows) mended at f72a19a
+  after the list was set: read it first at sitting 18.
+- #1863 T: leads sitting 18 at the head of `main` (check 13: every PR
+  adding a page switch row must write switches.js's block), and its
+  MEDIUM (the reader keeps one copy of an address the page rewrites).
+- #1848 K: `sprintmark` OFF stands; its ON path's two MEDIUMs not mended.
+- #1853 P: clean, but its head never took `main` 59469b2 (seven files
+  conflict); `artCache` 88.6 when it lands after #1846.
 
 ## Stalled
-- P `working`, its branch quiet since 17:44 (over 3 h at the list).
+- None.
 
 ## Found
-- L: the party door's births matched by text (an unconditional new map
-  in party.js passes); `?.delete` and an alias pass too.
-- K: wire/README.md ~307 names `fightlockgear` (no such switch).
-- O: crowd-cap §4 never calls the renderer's bare `crowdK()`.
-- T: the old `?crowd` row (switches.mjs ~326) says monsters; it caps
-  players.
+- K: nothing holds the `pose` row's `body: 'top'` now (#1861's reviewer).
+- O: the Speed test does not put the ladder back before it measures.
+- `power.test` red once in a full run under load (64/0 alone).
+- Not reviewed, opened during the sitting: L's #1864 (5216).

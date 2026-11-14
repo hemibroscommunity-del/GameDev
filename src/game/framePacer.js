@@ -49,7 +49,7 @@
  * GROWN -- see THE GOVERNOR below.  It imports one leaf, ./drawLanes.js (the
  * lanes' table, itself import-free), and node still tests it.
  */
-import { AXES, AXIS_NAMES, knobAt, drawLane, ladderRung, setRung, rungDepth, laneKnob, liveKnobs, ladderRateOn as laneRateOn } from './drawLanes.js';
+import { AXES, AXIS_NAMES, knobAt, knobSeen, drawLane, ladderRung, setRung, rungDepth, laneKnob, liveKnobs, ladderRateOn as laneRateOn } from './drawLanes.js';
 import { clientOff } from './clientOff.js';   /* v2.3.5235: the owner's switch for every phone (`govern`): a leaf with no imports */
 
 /* a refresh shorter than this is a fast screen (over about 70 a second) */
@@ -412,7 +412,10 @@ export function makeGovernor(opts) {
   /* v2.3.5224: the LIVE knobs only (drawLanes.js liveKnobs: those a PR
      reads through laneKnob) -- a rung that changes no knob anything reads is
      passed, going down and coming back (the gatekeeper's sitting 11) */
-  const vec = (r) => liveKnobs().map((k) => knobAt(lane || drawLane(), k, r));
+  /* v2.3.5226 (the gatekeeper's sitting 15): what the SCREEN sees of each
+     value (drawLanes.js knobSeen: a crowd cap at or above the players near
+     is the players near), so a rung that changes nothing drawn is passed */
+  const vec = (r) => liveKnobs().map((k) => knobSeen(k, knobAt(lane || drawLane(), k, r)));
   const same = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
   const movesPixels = (a, b) => liveKnobs().includes('pixels') && knobAt(lane || drawLane(), 'pixels', a) !== knobAt(lane || drawLane(), 'pixels', b);
   /* the live set, as a word: a rung kept under another (a knob moved since,
@@ -479,6 +482,9 @@ export function makeGovernor(opts) {
   /* the lane's kept rung, loaded (at a veil).  v2.3.5224: only a rung kept
      under today's live knobs (a kept rung from before is the row), and
      trimmed to what it changes; v2.3.5225, without its pixel rungs */
+  /* v2.3.5229: the chip axis's rungs a kept rung may hold: through the
+     rate's last rung (data: AXES.chip), never a pass's */
+  const CHIP_KEPT = (() => { let n = 0; AXES.chip.forEach((r, i) => { if (r.knob === 'rate') n = i + 1; }); return n; })();
   const load = (L, ts) => {
     lane = L;
     let w = 0, c = 0;
@@ -492,8 +498,17 @@ export function makeGovernor(opts) {
        heat.  If the phone is still hot, the pixels are taken again at the
        next veil.  The card's "the next sitting starts there", for pixels
        only.  (The pixels are an axis of their own: the kept pixel count is
-       not read at all.) */
-    const t = trim({ work: Math.max(0, Math.min(AXES.work.length, Math.floor(Number(w) || 0))), chip: Math.max(0, Math.min(AXES.chip.length, Math.floor(Number(c) || 0))), pixels: 0 });
+       not read at all.)
+       v2.3.5229: (A) REVISED (the planning session, 2026-11-14, card O PR 9):
+       a kept rung keeps THE RATE ONLY on the chip axis -- its passes (the
+       shine, the shadows, still water: the chip axis's rungs after the
+       rate) start drawn, as its pixels do.  A rung is an axis's first n and
+       comes back last-taken first, so a kept chip 4 gave back three passes,
+       one 20 s try each, before its rate: a cool 60 phone at 30 for ~85 s
+       after a hot sitting (sitting 11's hold, live rungs this time).  Still
+       hot, the passes are taken again within the sitting (~2 s a step
+       down).  §19c holds as written. */
+    const t = trim({ work: Math.max(0, Math.min(AXES.work.length, Math.floor(Number(w) || 0))), chip: Math.max(0, Math.min(CHIP_KEPT, Math.floor(Number(c) || 0))), pixels: 0 });
     setRung(t.work, t.chip, t.pixels);
     const r = ladderRung();
     stack = [];
@@ -584,8 +599,16 @@ export function makeGovernor(opts) {
            pixels: a phone whose own work is the cost is not helped by fewer
            pixels (the crowd's rungs are not live until card O's PR 6, and a
            work-bound phone fell to the pixel rungs) */
+        /* v2.3.5229 (the gatekeeper's sitting 17, a verified medium on #1850):
+           the work's axis ALONE for a phone whose own work is the cost.  With
+           the passes live on the chip axis, ['work', 'chip'] took a work-bound
+           phone still late at 30 on to the shine, the shadows and still water,
+           which save it no work, and it came back 66 s later (4 tries up).
+           The grand plan's 2.3: work, the crowd and the rate; the chip, the
+           passes and the pixels -- the chip's axis only on the chip's verdict
+           (the rate is on both axes, so a work-bound phone still reaches it) */
         const first = axis || lastAxis || 'chip';
-        const order = first === 'work' ? ['work', 'chip'] : ['chip', 'pixels', 'work'];
+        const order = first === 'work' ? ['work'] : ['chip', 'pixels', 'work'];
         for (const a of order) if (down(a, ts)) break;
         return;
       }

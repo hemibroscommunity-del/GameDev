@@ -83,7 +83,7 @@ kept.
 | Field | The fact | Values | Read from |
 |---|---|---|---|
 | `gl` | the WebGL the game's renderer got | `1`, `2` | the renderer's own context |
-| `soft` | it draws in software | `0`, `1` | the chip's name against `SOFT_GL`, which is `paletteTex.js`'s `SOFTWARE_GL` written the same (§7 holds the two equal) |
+| `soft` | it draws in software | `0`, `1` | the chip's name against `SOFT_GL`; v2.3.5228: the one program's fallback asks the same list (`softRenderer`), and `paletteTex.js` keeps no copy (§7) |
 | `maxTex` | the largest picture side | `2048`, `4096`, `8192`, `16384` (at or under; 2048 or less reads `2048`) | `MAX_TEXTURE_SIZE` |
 | `prec` | bits kept at middle precision | `16`, `32` | `getShaderPrecisionFormat` (fragment, medium): 23 bits or more is `32`. Only the profile asks this (§7) |
 | `units` | pictures one batch can hold | `8`, `16`, `32` (at or under) | `MAX_TEXTURE_IMAGE_UNITS` |
@@ -135,6 +135,18 @@ profile now, and each gets the answer it got by asking itself
 `chipName` is the one copy of "Firefox gives RENDERER, Chrome and Safari
 the debug extension"; the class's `soft` reads it too. `paletteTex.js`
 keeps `SOFTWARE_GL` (§7 holds the class's list to it).
+
+**The two choices' names (v2.3.5228, card O PR 8).** `onWindows` and
+`onMac` moved here from `lookPaletteChoice.js` (re-exported there), and
+`paletteTex.js`'s `SOFTWARE_GL` is gone: the one program's fallback asks
+`softRenderer`, the class's `SOFT_GL`. The lanes' overrides (`drawLanes.js`
+`OVERRIDES`) pin the `program` knob to the three and the `look` knob to
+baked; each row's `when` (`software`, `computer`, `windows`, `mac`) is
+answered by `devAsk(facts)` here, and the page's own answers are handed to
+the lanes (`useDevAsk`). `lookPalette.js` reads no navigator now (§3's
+census 4 -> 3). The look's choice is handed in for the profile's `palette`
+(`useLookChoice`), never imported: one way only. Every device gets the
+answer it got before (`server/test/one-program.test.mjs`).
 
 §3 now also fails a chip or browser question outside the profile: the
 largest side through `getParameter`, `.hardwareConcurrency`, `.userAgent`,

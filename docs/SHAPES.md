@@ -768,8 +768,8 @@ is the freeze a Windows laptop met).
 |---|---|---|
 | mouse or touch; a computer's window | `(pointer:fine)`, and the window's width | fact (`src/game/deviceProfile.js`) |
 | the "add to home screen" hint | the user agent: iPhone, iPad | name (`onIOS`; no drawing reads it) |
-| **the look palette, on or off** | the user agent: Windows, Macintosh | **name** (`src/game/lookPaletteChoice.js`: off on both) |
-| **one drawing program or three** | the same two names; and the chip's name against a list of software renderers | **name**, and one fact (`src/rendering/paletteTex.js` `oneBatchChoice`, `SOFTWARE_GL`) |
+| **the look palette, on or off** | the user agent: Windows, Macintosh | **name**, asked of `src/game/deviceProfile.js` alone (v2.3.5228: the lanes' `look` knob, pinned `baked` on both by an override; `lookPaletteChoice.js` reads `laneKnob('look')`) |
+| **one drawing program or three** | the same two names; and the chip's name against a list of software renderers | **name**, and one fact, asked of `src/game/deviceProfile.js` alone (v2.3.5228: the lanes' `program` knob, pinned `three` by an override; `paletteTex.js` `oneBatchChoice` reads `laneKnob('program')`, `softRenderer` is `SOFT_GL`) |
 | the colour numbers, the look palette, one program, moving water | WebGL 2 or not; whether the program built | fact |
 | how many bake workers | the processor's threads | fact (`src/rendering/bodyBake.js`) |
 | the crowd's shared picture's size | the largest picture the chip takes | fact (`src/rendering/peerImpostor.js`) |
@@ -1006,6 +1006,9 @@ writes them, never identifiers: `dungeon`, `connection`, `loading` and
 | `_t2To`, `TRADE_WAYS`, `TRADE_PHASES`, live flag `tradedoor` (v2.3.5210) | the trade door: a trade session's one phase writer, its ways and phases (`server/src/trade2.js`), and its kill switch; free at the commit (no hit for any in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |
 | `_duelTo`, `DUEL_WAYS`, `DUEL_PHASES`, live flag `dueldoor` (v2.3.5211) | the duel door: a duel's one phase writer, its way and phases (`server/src/duel.js`), and its kill switch; free at the commit (no hit in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |
 | `_partyIn`, `PARTY_WAYS`, live flag `partydoor` (v2.3.5212) | the party door: a player's place in a party, its one writer and its ways (`server/src/party.js`), and its kill switch; free at the commit (no hit in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |
+| `_exTo`, `_exDoorOff`, `EX_WAYS`, `EX_MAX`, live flag `exdoor` (v2.3.5213) | the cook door: the phone's claim on its moves (`ps.ex`), its one writer, its ways and its longest claim (`server/src/movement.js`), and its kill switch; free at the commit (no hit in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |
+| `_harvestTo`, `_harvestDoorOff`, `HARVEST_WAYS`, live flag `harvestdoor` (v2.3.5214) | the harvest door (fishing's too): a player's gather record, its one writer and its ways (`server/src/gathering.js`), and its kill switch; free at the commit (no hit in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |
+| `_dungeonTo`, `_dungeonPhase`, `_dungeonDoorOff`, `DUNGEON_WAYS`, `DUNGEON_PHASES`, a run's `runPhase`, live flag `dungeondoor` (v2.3.5215) | the dungeon door: a run's phase in one field, its one writer, its ways and phases (`server/src/dungeon.js`), and its kill switch; free at the commit (no hit in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |
 
 **Chosen by card R (step 10.5, tag 5280), free at its commit** (the same
 search, with `docs`): `playerroads`, `PLAYER_ROADS`, `OWN_ROADS`,

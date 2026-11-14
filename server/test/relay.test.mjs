@@ -111,10 +111,19 @@ for (const type of RELAY.TYPES) {
   const bare = one(await relay({ type: 'player_jump', id: B, x: 5 }), 'player_jump');
   check('3. no payload: an empty one in the sender\'s name (the phone read the message itself as the payload)',
     bare.length === 1 && bare[0].payload.id === A && !('x' in bare[0].payload) && !('id' in bare[0]), bare);
+  /* v2.3.5184 (card K PR 4): the wire door (wire/door.js) drops both of these
+     before the relay; with its switch thrown (`wiredoor: false`) they reach
+     the rebuild as before, which still makes them safe on its own */
+  const arrDoor = one(await relay({ type: 'player_jump', payload: [B, 'x'] }), 'player_jump');
+  const polDoor = one(await relay('{"type":"player_jump","payload":{"__proto__":{"polluted":1},"x":1}}'), 'player_jump');
+  check('3. v2.3.5184: the wire door drops an array for a payload, and a "__proto__" key in one, before the relay', arrDoor.length === 0 && polDoor.length === 0 && ({}).polluted === undefined, [arrDoor, polDoor]);
+  const _flags = room._liveFlags;
+  room._liveFlags = { ...(_flags || {}), wiredoor: false };
   const arr = one(await relay({ type: 'player_jump', payload: [B, 'x'] }), 'player_jump');
-  check('3. an array for a payload: an empty one in the sender\'s name', arr.length === 1 && !Array.isArray(arr[0].payload) && arr[0].payload.id === A, arr);
+  check('3. an array for a payload: an empty one in the sender\'s name (wiredoor: false)', arr.length === 1 && !Array.isArray(arr[0].payload) && arr[0].payload.id === A, arr);
   const pol = one(await relay('{"type":"player_jump","payload":{"__proto__":{"polluted":1},"x":1}}'), 'player_jump');
-  check('3. a "__proto__" key in the payload pollutes nothing', pol.length === 1 && ({}).polluted === undefined && pol[0].payload.id === A, pol);
+  check('3. a "__proto__" key in the payload pollutes nothing (wiredoor: false)', pol.length === 1 && ({}).polluted === undefined && pol[0].payload.id === A, pol);
+  room._liveFlags = _flags;
   const chat = one(await relay({ type: 'chat', payload: { id: B, name: 'Bob', text: 'it was me' } }), 'chat');
   check('3. chat, as since v2.3.1970: the worker\'s id and name', chat.length === 1 && chat[0].payload.id === A && chat[0].payload.name === NAME_A && chat[0].payload.text === 'it was me', chat);
   /* the copy is a copy: what the phone sent is not what is relayed */
@@ -196,8 +205,14 @@ for (const type of RELAY.TYPES) {
   };
   const files = walk(join(root, 'src'), []);
   const sent = new Map();
+  /* v2.3.5187: the send goes through the action door (act): a phone's
+     broadcast is also `act('<event>'`, a door row whose way is an event */
+  const DOOR = await import(new URL('../../src/game/actions.js', import.meta.url));
+  const doorEvent = (n) => !!DOOR.actionRow(n) && DOOR.ENV_OF_WAY[DOOR.actionRow(n).way] === 'event';
   for (const f of files) {
-    for (const m of readFileSync(f, 'utf8').matchAll(/event:\s*'([a-z_0-9]+)'/g)) {
+    const t = readFileSync(f, 'utf8');
+    const acts = relative(root, f) !== join('src', 'game', 'actions.js') ? [...t.matchAll(/\bact\(\s*'([a-z_0-9]+)'/g)].filter((m) => doorEvent(m[1])) : [];
+    for (const m of [...t.matchAll(/event:\s*'([a-z_0-9]+)'/g), ...acts]) {
       if (!sent.has(m[1])) sent.set(m[1], new Set());
       sent.get(m[1]).add(relative(root, f));
     }
