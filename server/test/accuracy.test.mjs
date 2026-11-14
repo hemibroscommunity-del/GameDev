@@ -21,7 +21,7 @@
  *      the counts ride the track without making it news; each basic swing,
  *      arrow and bolt is numbered and its hit claims carry the number. */
 import { readFileSync } from 'node:fs';
-import { GameRoom } from '../src/index.js';
+import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
 import { ACC, accAdd, accBlank, accDay, accDayKey, accKey, accNormalize, accView } from '../src/accuracy.js';
 import { accLive, accPct, accReset, accShot, accSn, accTrack, onAccState } from '../../src/game/accuracy.js';
 import { lookNews } from '../../src/game/quietPhone.js';
@@ -73,7 +73,7 @@ const a = await join('bp_acc_a', 'Ada');
   check('1a. caps.accuracy is advertised', !!(sync && sync.caps && sync.caps.accuracy === true), sync && sync.caps && sync.caps.accuracy);
   const idx = src('server/src/index.js'), jn = src('server/src/join.js'), dev = src('src/ui/panels/DevPanel.jsx');
   check('1b. `acc_state` is privileged, and the ask is routed and awaited',
-    /\n {2}'acc_state',\n/.test(idx) && /case 'acc_request':\s*if \(session\.id\) await this\._handleAccRequest\(session\);/.test(idx));
+    PRIVILEGED_EVENTS.has('acc_state') /* v2.3.5181: the list is made from the wire table */ && /case 'acc_request':\s*if \(session\.id\) await this\._handleAccRequest\(session\);/.test(idx));
   check('1c. the cap is on a line of its own in the caps literal (TRAPS §316)', /\n {8}accuracy: this\._accOn\(\) \/\*[^\n]*\*\/ \},\n/.test(jn));
   const gates = (dev.match(/const CAP_GATES = \[([\s\S]*?)\];/) || [])[1] || '';
   check('1d. ...and in CAP_GATES, on its own line', /\n {2}'accuracy' \/\*[^\n]*\*\/,\n$/.test(gates));
