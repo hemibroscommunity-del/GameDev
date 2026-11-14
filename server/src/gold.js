@@ -356,7 +356,10 @@ export function goldLogOf(rec) {
  * payout carries is counted by its own class when its credit is handed to
  * the door (`credit`, MAIL_CLASSES by its opId; `house`, the part minted). */
 export const GOLD_LOADS = Object.freeze(['join_stored']);
-export const ECON_V = 1;   /* migrations.js ECON.V: the shape the doors write into */
+/* v2.3.5085 (the gatekeeper's sitting 8): `_econ`'s shape number, in ONE
+   place -- this.  bag.js and migrations.js (ECON.V) import it: held in three
+   places by nothing, a bump in one stopped the doors' counting silently. */
+export const ECON_V = 1;
 /** The record's `_econ`, made if it has none; null for a NEWER one (never
  *  counted into: a rolled-back worker leaves a newer shape alone). */
 export function econOn(rec) {
@@ -378,6 +381,7 @@ const econNum = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
    burned as a positive `burn` (a set road's signed difference stays signed). */
 function econGold(rec, cls, d, room) {
   if (!d || (cls !== 'mint' && cls !== 'burn')) return;
+  if (room && typeof room._econOff === 'function' && room._econOff()) return;   /* v2.3.5085: `econ: false` */
   if (room) bookAdd(room, 'econ', { g: { [cls]: cls === 'mint' ? d : -d } });
   const e = econOn(rec);
   if (!e) return;
@@ -389,8 +393,14 @@ function econGold(rec, cls, d, room) {
  *  house's part of it (edge 3), a move or any other escrow nothing.  A payout
  *  whose word has no row counts nothing (gold-door.test fails such a word). */
 export function mailMinted(credit, landed) {
-  const row = credit && typeof credit === 'object' ? mailClassOf(credit.opId) : null;
-  if (!row || !(landed > 0)) return 0;
+  if (!credit || typeof credit !== 'object' || !(landed > 0)) return 0;
+  /* v2.3.5085 (the gatekeeper's sitting 8): an entry the mailbox MERGED at
+     200 (inbox.js _inboxAppend) carries payouts of other words: it says its
+     minted part itself, kept as each was merged */
+  const mp = credit.payload && typeof credit.payload === 'object' ? credit.payload.minted : undefined;
+  if (typeof mp === 'number' && Number.isFinite(mp)) return Math.max(0, Math.min(landed, Math.floor(mp)));
+  const row = mailClassOf(credit.opId);
+  if (!row) return 0;
   if (row.class === 'mint') return landed;
   if (row.house) {
     const p = credit.payload || {};
@@ -400,6 +410,16 @@ export function mailMinted(credit, landed) {
 }
 
 export const goldMethods = {
+  /** v2.3.5085 (the gatekeeper's sitting 8): the counting's kill switch --
+   *  `econ: false` in the live flags counts nothing into a character's
+   *  `_econ` and nothing into the day's book's `econ` part (both doors: the
+   *  bag's is handed down by liveops.js _syncBagCaps).  What was counted
+   *  stays; the gold moves exactly as before. */
+  _econOff() {
+    const f = this && this._liveFlags;
+    return !!(f && typeof f === 'object' && own(f, 'econ') && !f.econ);
+  },
+
   /** v2.3.4903: step 3's log switch -- on unless `goldlog: false` in the live flags */
   _goldLogOn() {
     const f = this && this._liveFlags;

@@ -18,21 +18,27 @@
  *  10. A HAND-EDITED RECORD is read safely; a full day fits a stored value.
  *  11. v2.3.5085 (the gatekeeper's finds): an array with GAPS is refused (a
  *      hole read as a number is NaN), and a `now` far from the room's clock
- *      is not believed (it would stop the puts or file under another day).
+ *      never sets the pace's mark (a far one would stop the puts); it names
+      only the day its count is filed under (card A's suite files a second
+      day that way, roomrow §10.5).
  *  12. v2.3.5085: THE `econ` PART, filled by the two doors as each road runs
  *      (gold.js, bag.js): minted and burned for the whole room, gold and each
  *      bag key; a move or an escrow adds nothing; it matches what the
  *      characters' own `_econ` counted.  BREAK PROOF: `room` dropped from
  *      _goldGive's econGold call -> FAIL 12.
- *  13. v2.3.5085: THE LAST ONE OUT writes what waits (leave.js bookFlush),
- *      inside the pace, so an empty room that sleeps loses nothing.
+ *  13. v2.3.5085: THE `econ` PART RIDES (DAYBOOK.RIDES, the gatekeeper's
+ *      sitting 8): its adds start no put of their own -- a new character's
+ *      start gold at a room's wake wrote the book at once -- and ride
+ *      another part's paced put or the last one out's (card A's writer,
+ *      roomrow.js _roomRowLastOut), so an empty room that sleeps loses none.
+ *  14. v2.3.5085: `econ: false` counts nothing into `_econ` or the book,
+ *      and the gold and goods move as before.
  */
 import { GameRoom } from '../src/index.js';
-import { DAYBOOK, bookAdd as bookAdd0, bookBytes, bookDay, bookKey, bookMaybePut as bookMaybePut0, bookNormalize, bookPut as bookPut0, bookRead, bookNow, bookFlush } from '../src/daybook.js';
+import { DAYBOOK, bookAdd as bookAdd0, bookBytes, bookDay, bookKey, bookMaybePut as bookMaybePut0, bookNormalize, bookPut as bookPut0, bookRead } from '../src/daybook.js';
 
 /* v2.3.5085: the room's clock is the test's, and it follows the time each
-   call says (the door believes a caller's `now` only near the room's own
-   clock: DAYBOOK.SKEW_MS, the gatekeeper's find) */
+   call says (the pace runs on the room's own clock, the gatekeeper's find) */
 let NOW = Date.UTC(2026, 10, 14, 12, 0, 0);
 Date.now = () => NOW;
 const at = (t) => { if (typeof t === 'number') NOW = t; return t; };
@@ -167,7 +173,7 @@ const DAY0 = '20261114';
   /* a full part: filled at the door until it refuses (inside one pace, so
      memory holds it all), then written whole */
   const st3 = makeState(); const r3 = newRoom(st3);
-  bookAdd(r3, 'econ', { x: 1 }, T0); await r3._daybook.putting;   /* the worker's first put, out of the way */
+  bookAdd(r3, 'room', { x: 1 }, T0); await r3._daybook.putting;   /* the worker's first put, out of the way (v2.3.5085: `econ` rides, it starts none) */
   let filled = 0;
   while (bookAdd(r3, 'dev', { ['n' + filled]: 1 }, T0 + 1)) filled++;
   check(`2c. a part takes numbers until it reaches PART_BYTES (${filled} numbers), then refuses`, filled > 100 && bookBytes(r3._daybook.days.get(DAY0).parts.dev) <= DAYBOOK.PART_BYTES, filled);
@@ -250,13 +256,13 @@ const DAY0 = '20261114';
 {
   const st = makeState();
   const a = newRoom(st);
-  bookAdd(a, 'econ', { mint: { gold: 100 } }, T0);
+  bookAdd(a, 'room', { mint: { gold: 100 } }, T0);   /* v2.3.5085: `room`, a part that starts its own put (`econ` rides) */
   await a._daybook.putting;
   const b = newRoom(st);   /* the deploy: a new worker, the same storage */
-  bookAdd(b, 'econ', { mint: { gold: 7 }, burn: { gold: 2 } }, T0 + 60000);
+  bookAdd(b, 'room', { mint: { gold: 7 }, burn: { gold: 2 } }, T0 + 60000);
   await b._daybook.putting;
   const rec = st._store.get(bookKey(DAY0));
-  check('5a. a new worker writes its first add at once, INTO the stored day', rec.econ.mint.gold === 107 && rec.econ.burn.gold === 2, rec.econ);
+  check('5a. a new worker writes its first add at once, INTO the stored day', rec.room.mint.gold === 107 && rec.room.burn.gold === 2, rec.room);
 }
 
 /* ── 6. a newer worker's day ── */
@@ -328,7 +334,7 @@ const DAY0 = '20261114';
   for (let i = 0; i < 10; i++) st._store.set(bookKey(bookDay(T0 - i * 86400000)), { v: 1, day: bookDay(T0 - i * 86400000), at: 1, econ: { mint: { gold: i } }, room: {}, dev: {}, speed: {} });
   const room = newRoom(st);
   bookAdd(room, 'econ', { mint: { gold: 1000 } }, T0);
-  await room._daybook.putting;
+  await bookPut(room, T0);   /* v2.3.5085: `econ` rides another's put: written here by hand */
   bookAdd(room, 'econ', { mint: { gold: 5 } }, T0 + 1000);   /* counted, not yet written */
   const r = await bookRead(room, 3);
   check('9a. three days, newest first', r.ok && r.on === true && r.days.length === 3 && r.days[0].day === DAY0 && r.days[1].day === bookDay(T0 - 86400000) && r.days[2].day === bookDay(T0 - 2 * 86400000), r.days.map((d) => d.day));
@@ -365,12 +371,16 @@ const DAY0 = '20261114';
   await bookPut(room, T + 4);
   const rec = st._store.get(bookKey(DAY0));
   check('11. nothing stored is NaN', !JSON.stringify(rec).includes('null') && rec.dev.bins.join() === '1,0,3' && rec.over.dev === 2, rec);
-  /* a far `now`: the room's clock is used */
-  NOW = T + 10000;
-  check('11. a `now` a day ahead of the room\'s clock reads as the room\'s clock', bookNow(NOW + 86400000) === NOW && bookNow(NOW - 86400000) === NOW && bookNow('x') === NOW && bookNow(NOW + 1000) === NOW + 1000);
+  /* a far `now`: the pace's mark stays on the room's clock */
+  NOW = T + DAYBOOK.PACE_MS + 10000;
   bookAdd0(room, 'room', { far: 1 }, NOW + 86400000 * 30);
-  check('11. ...so a count with a far `now` is filed under today, not a month on', room._daybook.days.has(DAY0) && !room._daybook.days.has(bookDay(NOW + 86400000 * 30)));
-  check('11. ...and the pace\'s mark is not set ahead (the next pace still writes)', room._daybook.lastPut <= NOW);
+  await room._daybook.putting;
+  check('11. a count with a far `now` is filed under the day it names', !!st._store.get(bookKey(bookDay(NOW + 86400000 * 30))));
+  check('11. ...and the pace\'s mark is the room\'s clock, not a month on', room._daybook.lastPut === NOW, room._daybook.lastPut);
+  NOW += DAYBOOK.PACE_MS + 1;
+  bookAdd0(room, 'room', { next: 1 }, 'x');   /* not a number: the room's clock */
+  await room._daybook.putting;
+  check('11. ...so the next pace still writes (today\'s day, from the room\'s clock)', (st._store.get(bookKey(DAY0)).room || {}).next === 1, st._store.get(bookKey(DAY0)));
 }
 
 /* ── 12. the `econ` part, from the two doors ── */
@@ -402,7 +412,7 @@ const DAY0 = '20261114';
   setBagBook(null);
 }
 
-/* ── 13. the last one out ── */
+/* ── 13. the `econ` part RIDES, and the last one out writes it ── */
 {
   const st = makeState(); const room = newRoom(st);
   room._syncBagCaps();
@@ -413,18 +423,48 @@ const DAY0 = '20261114';
   await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id: 'bp_book_last', name: 'L', phrase: 'p-l', protocolVersion: 2, ws: [1, 5], data: { x: 0, y: 0, z: 'town' } }));
   await new Promise((r) => setTimeout(r, 10));
   const P = room.playerState.bp_book_last;
-  if (room._daybook && room._daybook.putting) await room._daybook.putting;   /* the join's start gold: the worker's first add, written at once */
-  const start = st._store.get(bookKey(DAY0)).econ.g.mint;
-  NOW += 60000;
-  room._goldGive(P, 10, 'quest_reward');    /* inside the pace: these wait in memory */
+  const start = room._daybook && room._daybook.days.get(DAY0) ? room._daybook.days.get(DAY0).parts.econ.g.mint : 0;
+  /* v2.3.5085 (the gatekeeper's sitting 8): a new character's start gold, the
+     room's first add, wrote the book at once; the part rides now */
+  check(`13. the join's start gold (${start}) is counted and writes no row of its own (the econ part rides)`, start > 0 && !room._daybook.putting && !st._store.get(bookKey(DAY0)), st._store.get(bookKey(DAY0)));
+  NOW += 6 * 60000;   /* past a pace: still none, nothing else put */
+  room._goldGive(P, 10, 'quest_reward');
   room._goldGive(P, 7, 'quest_reward');
-  check(`13. inside the pace, the adds wait (the start gold ${start} written, 17 waiting)`, start > 0 && room._daybook.days.get(DAY0).parts.econ.g.mint === 17, start);
+  check('13. ...a pace later, gold made writes none either: it waits for another part\'s put', !room._daybook.putting && !st._store.get(bookKey(DAY0)) && room._daybook.days.get(DAY0).parts.econ.g.mint === start + 17);
   await room.webSocketClose(ws, 1000, 'bye', true);
   await new Promise((r) => setTimeout(r, 20));
   if (room._daybook.putting) await room._daybook.putting;
-  check('13. the last one out: what waited is written, the room empty', st._store.get(bookKey(DAY0)).econ.g.mint === start + 17 && room.sessions.size === 0 && room._daybook.days.size === 0, st._store.get(bookKey(DAY0)).econ);
+  const rec = st._store.get(bookKey(DAY0));
+  check('13. the last one out (roomrow.js _roomRowLastOut) writes what waited, the econ part with it', !!rec && rec.econ.g.mint === start + 17 && room.sessions.size === 0 && room._daybook.days.size === 0, rec && rec.econ);
+  /* another part's paced put carries it too */
+  const st2 = makeState(); const r2 = newRoom(st2);
+  NOW = T;
+  bookAdd(r2, 'econ', { g: { mint: 3 } }, NOW);
+  check('13. ...and a part that does not ride starts the put that carries it', !r2._daybook.putting && bookAdd(r2, 'room', { rows: 1 }, NOW) && !!r2._daybook.putting);
+  await r2._daybook.putting;
+  check('13. ...both parts in the one row', st2._store.get(bookKey(DAY0)).econ.g.mint === 3 && st2._store.get(bookKey(DAY0)).room.rows === 1, st2._store.get(bookKey(DAY0)));
   const { setBagBook } = await import('../src/bag.js');
   setBagBook(null);
+}
+
+/* ── 14. `econ: false`: the counting's kill switch (the gatekeeper's sitting 8) ── */
+{
+  const { bagGive, setBagBook, setBagEcon } = await import('../src/bag.js');
+  const st = makeState(); const room = newRoom(st);
+  room._liveFlags = { econ: false };
+  room._syncBagCaps();
+  NOW = Date.UTC(2026, 10, 14, 20, 0, 0);
+  const ps = { coins: 100, inventory: { ore_copper: 5 }, _econ: { v: 1, g: { m: 4, b: 0 }, i: {} } };
+  room._goldGive(ps, 40, 'quest_reward');
+  bagGive(ps.inventory, 'ore_copper', 3, 'harvest');
+  check('14. `econ: false` reads off', room._econOff() === true);
+  check('14. ...the gold and the goods move as before', ps.coins === 140 && ps.inventory.ore_copper === 8);
+  check('14. ...nothing counted into `_econ` (what was there stays) and nothing into the book', ps._econ.g.m === 4 && !ps._econ.i.ore_copper && !(room._daybook && room._daybook.days.size), { econ: ps._econ, book: room._daybook && [...room._daybook.days.keys()] });
+  room._liveFlags = {};
+  room._syncBagCaps();
+  room._goldGive(ps, 1, 'quest_reward');
+  check('14. ...nothing set: on again (both doors)', room._econOff() === false && ps._econ.g.m === 5);
+  setBagEcon(true); setBagBook(null);
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);

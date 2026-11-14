@@ -31,6 +31,8 @@
  *      owner's yes, 2026-11-14): the join brings `_econ` back before any
  *      door runs, a red skull killed by a monster BURNS its purse
  *      (nml_lost), and the champion's prize says the house's part.
+ *   5. v2.3.5085: A MAILBOX MERGED AT 200 counts each merged payout by its
+ *      own class (inbox.js keeps the minted part beside the entry).
  *
  * BREAK PROOF (rule 8), tried by hand: `WORLD_SUM_PLANT=1 node
  * test/world-sum.test.mjs` plants §2's vault double pay INTO §1's world,
@@ -93,8 +95,11 @@ async function world() {
   const state = makeState();
   /* the characters, on file before anyone joins (a test seeds a character
      by putting its record first: CLAUDE.md §5); D stays away */
-  const rec = (coins, inventory) => ({ _v: 21, coins, inventory, level: 5, hp: 100, maxHp: 100, _econ: { v: 1, g: { m: 0, b: 0 }, i: {} } });
-  state._store.set('rpg:bp_ws_a', rec(1000, { wood_oak: 10, fish_minnow: 20, 'slime-remnants': 10 }));
+  const rec = (coins, inventory, econ) => ({ _v: 21, coins, inventory, level: 5, hp: 100, maxHp: 100, _econ: econ || { v: 1, g: { m: 0, b: 0 }, i: {} } });
+  /* v2.3.5085 (the gatekeeper's sitting 8): A comes with counts on file, so
+     the join's line (join.js: `_econ` back before any door runs) is held --
+     with every seeded count 0, deleting it changed nothing here */
+  state._store.set('rpg:bp_ws_a', rec(1000, { wood_oak: 10, fish_minnow: 20, 'slime-remnants': 10 }, { v: 1, g: { m: 500, b: 120 }, i: { wood_oak: { m: 3, b: 1 } } }));
   state._store.set('rpg:bp_ws_b', rec(800, { ore_iron_ore: 6 }));
   state._store.set('rpg:bp_ws_d', rec(50, {}));
   const room = new GameRoom(state, mockEnv);
@@ -286,12 +291,59 @@ for (const [what, plant, wantGold, wantGoods] of [
     Object.entries(STORAGE_MARKS).filter(([, m]) => m.value !== 'none').every(([p]) => READERS[p]) && Object.keys(READERS).every((p) => STORAGE_MARKS[p] && STORAGE_MARKS[p].value !== 'none'));
 }
 
+/* ══════════════════════════ 5. A MAILBOX MERGED AT 200 ══════════════════════════ */
+/* v2.3.5085 (the gatekeeper's sitting 8): at 200 entries the mailbox merges a
+   credit into the first entry of its kind (inbox.js _inboxAppend), whatever
+   that entry's word.  A reward (a mint) merged into a parked sale (an escrow)
+   was counted by the sale's word: nothing minted, +300 unexplained.  The
+   merged entry keeps its minted part beside it now. */
+{
+  const w = await world();
+  const box = [{ opId: 'store:l1:pay', ts: 1, source: 'store', kind: 'gold', payload: { amount: 100 }, note: 'a sale, parked' }];
+  for (let i = 0; i < 199; i++) box.push({ opId: 'store:l' + i + ':goods', ts: 1, source: 'store', kind: 'item', payload: { invKey: 'fish_minnow', count: 1 }, note: 'goods, parked' });
+  w.state._store.set('inbox:bp_ws_d', box);
+  const s0 = count(w.room, w.state);
+  await w.room._creditPlayer('bp_ws_d', { opId: 'season:s1:bp_ws_d:t3', source: 'season', kind: 'gold', payload: { amount: 300 }, note: 'a season reward' });
+  await w.room._creditPlayer('bp_ws_d', { opId: 'questitem:bp_ws_d:q9:fish_minnow#1', source: 'quest', kind: 'item', payload: { invKey: 'fish_minnow', count: 2 }, note: 'a quest item' });
+  await settle();
+  const after = w.state._store.get('inbox:bp_ws_d');
+  check('5. the box was full: both credits merged into the first entry of their kind', after.length === 200 && after[0].payload.amount === 400 && after[1].payload.count === 3, { n: after.length, gold: after[0].payload, item: after[1].payload });
+  const u = unexplained(s0, count(w.room, w.state));
+  check(`5. ...a reward merged into a parked sale is still a mint: unexplained gold ${u.gold}, goods ${JSON.stringify(u.goods)}`, u.gold === 0 && Object.keys(u.goods).length === 0, u);
+  /* D comes in: the merged entries land, counted by what they say */
+  const wd = fakeWs();
+  w.room.sessions.set(wd, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
+  await w.room.webSocketMessage(wd, JSON.stringify({ type: 'join', id: 'bp_ws_d', name: 'D', phrase: 'p-d', protocolVersion: 2, ws: [1, 5], data: { x: 0, y: 0, z: 'town' } }));
+  await settle();
+  const D = w.room.playerState.bp_ws_d;
+  const u2 = unexplained(s0, count(w.room, w.state));
+  check('5. ...and when D comes in and they land: 300 of the 400 minted, nothing unexplained', D && D.coins >= 450 && D._econ.g.m >= 300 && u2.gold === 0 && Object.keys(u2.goods).length === 0, { coins: D && D.coins, econ: D && D._econ.g, u2 });
+}
+
 /* ══════════════════════════ 4. THE THREE LINES OUTSIDE ══════════════════════════ */
 {
   /* the join brings _econ back before any door runs */
   const w = await world();
   const stored = w.state._store.get('rpg:bp_ws_a');
   check('4. the join brought A\'s _econ back (it was on file; the start\'s join counted nothing over it)', !!w.A._econ && w.A._econ.g.m === stored._econ.g.m, { live: w.A._econ, stored: stored._econ });
+  {
+    /* v2.3.5085 (the gatekeeper's sitting 8): HELD at the join itself, before
+       any save -- persistence.js's adopt at the first save backs the line up,
+       so a check after the join passes without it; a door that ran between
+       the join and that save would have counted into a blank */
+    const st2 = makeState();
+    st2._store.set('rpg:bp_ws_j', { _v: 21, coins: 10, inventory: {}, level: 5, hp: 100, maxHp: 100, _econ: { v: 1, g: { m: 77, b: 7 }, i: {} } });
+    const r2 = new GameRoom(st2, mockEnv);
+    r2._liveFlags = {};
+    let seen = 'no save';
+    const save = r2._saveRpg;
+    r2._saveRpg = function (pid, ps, ...rest) { if (seen === 'no save') seen = ps && ps._econ ? JSON.stringify(ps._econ.g) : 'blank'; return save.call(this, pid, ps, ...rest); };
+    const wj = fakeWs();
+    r2.sessions.set(wj, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
+    await r2.webSocketMessage(wj, JSON.stringify({ type: 'join', id: 'bp_ws_j', name: 'J', phrase: 'p-j', protocolVersion: 2, ws: [1, 5], data: { x: 0, y: 0, z: 'town' } }));
+    await settle();
+    check('4. ...at the join itself: the counts on file are live before the first save (join.js, not the save\'s adopt)', seen === '{"m":77,"b":7}', seen);
+  }
   /* a red skull killed by a monster burns its purse; by a player it moves */
   const { NML } = await import('../src/nomansland.js').catch(() => ({}));
   const ps = w.A;

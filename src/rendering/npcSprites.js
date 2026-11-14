@@ -190,10 +190,37 @@ export function hasNpcWalk(npcId) {
   return !!((byDir && Object.keys(byDir).length) || (wd && Object.keys(wd).length));
 }
 
+/* ═══ v2.3.5246: THE DIALOGUE PORTRAITS WARM THE CACHE, AND ONLY THE CACHE ═══
+   Card P's backlog (the asset door, docs/plan/census/assets.md): the
+   portraits are <img>s in the page (NpcDialogue, the quest journal), and the
+   comment above believed Assets.load "only warms the HTTP cache" for them.
+   It does not: it decodes each into a texture and Pixi's cache keeps it --
+   2.96 MB held at the memory check's fight (21 portraits of 192 x 192 at
+   four bytes a pixel) that nothing ever draws (getNpcTexture is asked for
+   figures, never a portrait).  So a portrait is loaded behind the same
+   loading screen on the same promise (the one load picture-door.test lists),
+   and its decoded copy let go of the moment it lands (Assets.unload: the
+   texture and the cache's key, not the HTTP cache): the <img> reads the same
+   address (npcArtUrl) from the HTTP cache when its window opens.  On by
+   default; `?npcheads=0` keeps them as before. */
+const HEADS_LET_GO = (() => { try { return !/[?&]npcheads=0(&|$)/.test(location.search || ''); } catch (e) { return true; } })();
+/* v2.3.5247: Ace's two coin strips the same way (card P's backlog,
+   fx-coinflip: 2.06 MB held at the fight, 1408 x 192 each at four bytes a
+   pixel).  They are a CSS background in his window (AceFlipPanel.jsx), never
+   a texture, and the v2.3.2618 note above NPC_DIALOG_FX meant the load to
+   warm the HTTP cache only.  It warmed the wrong address, too: the window
+   asked for the strip without npcArtUrl's `?v=`, so the coin was fetched
+   when it first flew; the window now asks for the address warmed here.
+   `?coinflip=0` keeps the decoded copies as before. */
+const COIN_LET_GO = (() => { try { return !/[?&]coinflip=0(&|$)/.test(location.search || ''); } catch (e) { return true; } })();
+
 export function loadNpcSprites() {
   if (_done) return _done;
   const srcs = npcSpriteSources();
+  const heads = HEADS_LET_GO ? new Set((NPC_DATA || []).map((n) => n && n.portrait).filter(Boolean)) : new Set();
+  if (COIN_LET_GO) for (const fx of NPC_DIALOG_FX) heads.add(fx);
   _done = Promise.allSettled(srcs.map((src) => Assets.load(npcArtUrl(src)).then((tex) => {
+    if (heads.has(src)) { Assets.unload(npcArtUrl(src)).catch(() => {}); return; }
     if (!tex) return;
     /* Pixel art: NEAREST.  These are 256px frames drawn at 0.25, and a linear
        filter turns the outline into mush and makes the figure shimmer as the

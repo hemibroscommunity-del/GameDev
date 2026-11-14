@@ -2,13 +2,14 @@
 
 Card P, PR 2 (grand plan step 9.1, part two); `docs/specs/asset-door.md`
 part 2 says how it is read. Written by `node tools/assets/fightmb.mjs <runs> --write`,
-never by hand, from 3 runs of `QA_MB_ROWS=1 node tools/qa/mp/run.mjs membudget` at `8f3596990`.
+never by hand, from 3 runs of `QA_MB_ROWS=1 node tools/qa/mp/run.mjs membudget` at `0f60b348a`.
 
 **MB at the fight** is the most a family held at any one fight stop of any
 run: on the graphics chip, the picture the page keeps, the colour numbers the
 page keeps, and decoded sound (BT_AUDIO's own count, by file). **Atlas** is
 the rows of the palette atlas its pictures took there. **Over bar** counts its
-files the game's reader (`png8Decode.js`) does not read. **Waits on H**: its
+files over 256 colours by their own bytes: a PNG the game's reader (`png8Decode.js`)
+does not read, a WebP with no colour index, a JPEG. **Waits on H**: its
 loader is one of the files card P leaves alone while card H runs.
 **Backlog**: whether a backlog PR may take it: never a data family (the door
 never rewrites data: the look sheets are colour NUMBERS), never a sound (the
@@ -22,33 +23,30 @@ stops at the first family under 1 MB (the line below the table's marker).
 
 | family | kind | draw | files | MB on disk | MB at the fight | chip | page | numbers | sound | atlas | over bar | backlog | waits on H |
 |---|---|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|---|---|
-| `monster-fire-goblin` | made | strip | 14 | 1.32 | **8.11** | 2.57 | 0.00 | 5.54 | 0.00 | 14 |  | after H | zoneTextures.js, stripRead.js |
+| `monster-fire-goblin` | made | strip | 14 | 1.32 | **7.79** | 2.25 | 0.00 | 5.54 | 0.00 | 14 |  | after H | zoneTextures.js, stripRead.js |
 | `sfx-supplied` | supplied | sfx | 26 | 1.20 | **5.93** | 0.00 | 0.00 | 0.00 | 5.93 |  |  | no: sound | soundFold.js (the fold) |
-| `tree-tiers` | made | file | 5 | 0.31 | **5.57** | 0.00 | 5.57 | 0.00 | 0.00 |  |  | yes, by its tool |  |
-| `gear-walk-twins` | made | file | 69 | 1.76 | **4.99** | 4.99 | 0.00 | 0.00 | 0.00 |  | 69 | after H | gearSheets.js |
+| `gear-walk-twins` | made | file | 69 | 1.76 | **4.99** | 4.99 | 0.00 | 0.00 | 0.00 |  | 62 | after H | gearSheets.js |
 | `monster-slime` | made | file | 6 | 0.06 | **4.56** | 0.00 | 4.56 | 0.00 | 0.00 |  |  | yes, by its tool |  |
 | `look-standin` | data | look | 21 | 1.06 | **4.31** | 4.31 | 0.00 | 0.00 | 0.00 |  |  | no: data |  |
 | `look-gear` | data | look | 42 | 1.53 | **4.29** | 4.29 | 0.00 | 0.00 | 0.00 |  |  | no: data |  |
 | `sfx-m4a-twins` | made | sfx | 19 | 0.19 | **3.71** | 0.00 | 0.00 | 0.00 | 3.71 |  |  | no: sound | soundFold.js (the fold) |
 | `look-gearwalk` | data | look | 44 | 1.12 | **3.65** | 3.65 | 0.00 | 0.00 | 0.00 |  |  | no: data |  |
 | `fx-made` | made | file | 7 | 0.73 | **3.10** | 0.00 | 3.10 | 0.00 | 0.00 |  | 7 | yes, by its tool |  |
-| `npc-heads` | made | dom | 21 | 0.01 | **2.96** | 0.00 | 2.96 | 0.00 | 0.00 |  | 21 | yes, by its tool |  |
 | `sfx-footsteps` | supplied | sfx | 10 | 0.17 | **2.46** | 0.00 | 0.00 | 0.00 | 2.46 |  |  | no: sound | soundFold.js (the fold) |
 | `sfx-owner-cuts` | made | sfx | 36 | 0.38 | **2.22** | 0.00 | 0.00 | 0.00 | 2.22 |  |  | no: sound | soundFold.js (the fold) |
-| `icons-elements` | made | file | 18 | 0.12 | **2.16** | 0.02 | 2.14 | 0.00 | 0.00 |  | 18 | after H | entityRenderer.js |
+| `icons-elements` | made | file | 18 | 0.12 | **2.16** | 0.02 | 2.14 | 0.00 | 0.00 |  |  | after H | entityRenderer.js |
 | `traits-hairmasks` | made | file | 155 | 0.07 | **2.13** | 0.24 | 1.89 | 0.00 | 0.00 |  | 155 | after H | entityRenderer.js |
-| `fx-coinflip` | supplied | dom | 2 | 0.08 | **2.06** | 0.00 | 2.06 | 0.00 | 0.00 |  | 2 | yes |  |
 | `sfx-older` | made | sfx | 6 | 0.18 | **2.03** | 0.00 | 0.00 | 0.00 | 2.03 |  |  | no: sound | soundFold.js (the fold) |
 | `fx-sheets-supplied` | supplied | file | 6 | 1.16 | **2.00** | 0.00 | 2.00 | 0.00 | 0.00 |  | 6 | yes |  |
 | `look-standinlegs` | data | look | 8 | 0.42 | **2.00** | 2.00 | 0.00 | 0.00 | 0.00 |  |  | no: data |  |
 | `world-objects` | made | wheel | 40 | 5.14 | **1.78** | 0.89 | 0.00 | 0.89 | 0.00 | 1 |  | yes, by its tool |  |
-| `icons-items-world` | made | file | 19 | 0.11 | **1.62** | 0.00 | 1.62 | 0.00 | 0.00 |  | 19 | yes, by its tool |  |
-| `ambient-loops` | made | sfx | 6 | 0.33 | **1.53** | 0.00 | 0.00 | 0.00 | 1.53 |  |  | no: sound | soundFold.js (the fold) |
+| `icons-items-world` | made | file | 19 | 0.11 | **1.62** | 0.00 | 1.62 | 0.00 | 0.00 |  | 6 | yes, by its tool |  |
 | `pets` | made | file | 1 | 0.35 | **1.50** | 0.00 | 1.50 | 0.00 | 0.00 |  | 1 | yes, by its tool |  |
 | `world-fish-spot` | made | file | 1 | 0.03 | **1.50** | 0.00 | 1.50 | 0.00 | 0.00 |  | 1 | yes, by its tool |  |
 | `cape-hood` | made | file | 6 | 0.02 | **1.50** | 0.00 | 1.50 | 0.00 | 0.00 |  | 6 | yes, by its tool |  |
 | `hud-bars` | made | file | 7 | 0.08 | **1.43** | 0.28 | 1.15 | 0.00 | 0.00 |  | 7 | after H | entityRenderer.js |
 | `look-bodyheads` | data | look | 11 | 0.14 | **1.42** | 1.42 | 0.00 | 0.00 | 0.00 |  |  | no: data |  |
+| `tree-tiers` | made | file | 5 | 0.31 | **1.40** | 0.00 | 0.00 | 1.40 | 0.00 | 5 |  | yes, by its tool |  |
 | `player-death` | supplied | file | 1 | 0.34 | **1.31** | 0.00 | 1.31 | 0.00 | 0.00 |  | 1 | yes |  |
 | `cape` | supplied | file | 5 | 0.09 | **1.25** | 0.00 | 1.25 | 0.00 | 0.00 |  | 5 | yes |  |
 | `player-naked` | supplied | file | 5 | 0.08 | **1.25** | 0.00 | 1.25 | 0.00 | 0.00 |  | 5 | after H | entityRenderer.js |
@@ -56,6 +54,7 @@ stops at the first family under 1 MB (the line below the table's marker).
 | `icons-from-uploads-world` | supplied | file | 3 | 0.08 | **1.25** | 0.00 | 1.25 | 0.00 | 0.00 |  | 3 | after H | entityRenderer.js |
 | `look-weapons` | data | look | 8 | 0.09 | **1.17** | 1.17 | 0.00 | 0.00 | 0.00 |  |  | no: data |  |
 | `ore-tiers` | made | file | 5 | 0.07 | **1.15** | 0.00 | 1.15 | 0.00 | 0.00 |  |  | yes, by its tool |  |
+| `ambient-loops` | made | sfx | 6 | 0.33 | **1.10** | 0.00 | 0.00 | 0.00 | 1.10 |  |  | no: sound | soundFold.js (the fold) |
 | `props-parts` | made | file | 2 | 0.14 | **1.10** | 0.00 | 1.10 | 0.00 | 0.00 |  | 2 | yes, by its tool |  |
 | `projectile-sheets` | made | file | 3 | 0.16 | **1.06** | 0.00 | 1.06 | 0.00 | 0.00 |  | 3 | yes, by its tool |  |
 | **under 1 MB at the fight: the backlog stops here** | | | | | | | | | | | | | |
@@ -66,14 +65,14 @@ stops at the first family under 1 MB (the line below the table's marker).
 | `icons-hero-crit` | made | file | 1 | 0.04 | **0.25** | 0.00 | 0.25 | 0.00 | 0.00 |  | 1 | yes, by its tool |  |
 | `sfx-hand-cuts` | made | sfx | 5 | 0.10 | **0.19** | 0.00 | 0.00 | 0.00 | 0.19 |  |  | no: sound | soundFold.js (the fold) |
 | `weapons-wood` | made | file | 7 | 0.03 | **0.17** | 0.00 | 0.17 | 0.00 | 0.00 |  | 7 | yes, by its tool |  |
-| `icons-owner-world` | made | file | 6 | 0.02 | **0.17** | 0.00 | 0.17 | 0.00 | 0.00 |  | 6 | after H | entityRenderer.js |
+| `icons-owner-world` | made | file | 6 | 0.02 | **0.17** | 0.00 | 0.17 | 0.00 | 0.00 |  | 5 | after H | entityRenderer.js |
 | `ride` | made | file | 3 | 0.00 | **0.10** | 0.00 | 0.10 | 0.00 | 0.00 |  |  | yes, by its tool |  |
 | `icons-small-world` | made | file | 2 | 0.01 | **0.08** | 0.02 | 0.06 | 0.00 | 0.00 |  | 2 | after H | entityRenderer.js |
-| `icons-owner-items` | made | file | 2 | 0.01 | **0.06** | 0.00 | 0.06 | 0.00 | 0.00 |  | 2 | yes, by its tool |  |
+| `icons-owner-items` | made | file | 2 | 0.01 | **0.06** | 0.00 | 0.06 | 0.00 | 0.00 |  |  | yes, by its tool |  |
 | `shields` | made | file | 3 | 0.01 | **0.05** | 0.00 | 0.05 | 0.00 | 0.00 |  | 3 | yes, by its tool |  |
 | `projectile-arrow` | made | file | 1 | 0.01 | **0.02** | 0.00 | 0.02 | 0.00 | 0.00 |  | 1 | yes, by its tool |  |
 
-## Held nothing at the fight (151 families)
+## Held nothing at the fight (153 families)
 
 Loaded elsewhere (another land, a window, a computer's path), or by nothing.
 A family whose draw path is `none` is loaded by nothing on any device by
@@ -85,7 +84,7 @@ default: removing any of its files but the 19 `.m4a` is the owner's yes.
 | `music` | made | music | 12 | 14.47 |  |
 | `world-interiors` | supplied | dom | 16 | 4.85 | 16 |
 | `gear-combat-supplied` | supplied | file | 25 | 2.49 | 25 |
-| `npc-bakes` | made | file | 42 | 2.06 | 42 |
+| `npc-bakes` | made | file | 42 | 2.06 | 29 |
 | `maps-farm` | made | wheel | 1 | 1.95 |  |
 | `monster-water-frog` | made | strip | 15 | 1.72 |  |
 | `player-sheet-twins` | made | file | 25 | 1.32 | 25 |
@@ -104,14 +103,14 @@ default: removing any of its files but the 19 `.m4a` is the owner's yes.
 | `skills-strips-made` | made | file | 3 | 0.89 | 3 |
 | `ambient-wind` | supplied | sfx | 1 | 0.88 |  |
 | `ui-welcome` | made | dom | 26 | 0.88 | 25 |
-| `ui-title` | made | dom | 6 | 0.76 | 4 |
-| `icons-items` | made | dom | 111 | 0.68 | 111 |
+| `ui-title` | made | dom | 6 | 0.76 | 3 |
+| `icons-items` | made | dom | 111 | 0.68 |  |
 | `wheel-placed` | data | data | 2 | 0.68 |  |
 | `icons-hero` | made | dom | 19 | 0.67 | 19 |
 | `world-farm` | supplied | wheel | 75 | 0.63 |  |
 | `intro-clip` | supplied | dom | 1 | 0.61 |  |
 | `icons-sheets` | made | dom | 51 | 0.61 | 51 |
-| `icons-owner` | made | dom | 82 | 0.61 | 82 |
+| `icons-owner` | made | dom | 82 | 0.61 | 68 |
 | `skills-strips` | made | file | 2 | 0.60 | 2 |
 | `traits-thumbs` | supplied | dom | 48 | 0.46 | 48 |
 | `ui-daily-spin` | made | dom | 10 | 0.44 |  |
@@ -133,7 +132,7 @@ default: removing any of its files but the 19 `.m4a` is the owner's yes.
 | `music-dance` | made | music | 1 | 0.18 |  |
 | `look-heads` | data | look | 59 | 0.18 |  |
 | `ui-daily-chest` | made | dom | 1 | 0.18 | 1 |
-| `icons-made-dom` | made | dom | 15 | 0.17 | 14 |
+| `icons-made-dom` | made | dom | 15 | 0.17 | 9 |
 | `tool-gestures` | made | file | 3 | 0.15 | 3 |
 | `monster-storm-eye` | made | strip | 2 | 0.14 |  |
 | `player-sword-weapon-twins` | made | file | 3 | 0.12 | 3 |
@@ -141,6 +140,7 @@ default: removing any of its files but the 19 `.m4a` is the owner's yes.
 | `icons-ui-unknown` | made | dom | 5 | 0.11 | 5 |
 | `world-objects-data` | data | data | 41 | 0.09 |  |
 | `look-shirt` | data | look | 10 | 0.09 |  |
+| `fx-coinflip` | supplied | dom | 2 | 0.08 | 2 |
 | `icons-small` | made | dom | 14 | 0.07 | 14 |
 | `species-frames` | made | file | 53 | 0.07 | 53 |
 | `wheel-detail` | made | dom | 40 | 0.06 | 40 |
@@ -150,14 +150,15 @@ default: removing any of its files but the 19 `.m4a` is the owner's yes.
 | `player-body-anchors` | data | data | 1 | 0.04 |  |
 | `icons-frames-3x` | made | dom | 7 | 0.03 | 7 |
 | `intro-poster` | made | dom | 1 | 0.03 | 1 |
-| `icons-elements-gems` | made | dom | 2 | 0.02 | 2 |
-| `ui-controls-drawn` | made | dom | 8 | 0.02 | 8 |
+| `icons-elements-gems` | made | dom | 2 | 0.02 |  |
+| `ui-controls-drawn` | made | dom | 8 | 0.02 |  |
 | `icons-board` | made | dom | 5 | 0.02 |  |
 | `player-anchors` | data | data | 1 | 0.02 |  |
 | `ui-cc-tabs` | made | dom | 11 | 0.02 | 11 |
 | `player-bow-weapon` | made | file | 5 | 0.02 | 5 |
 | `world-ground-manifest` | data | data | 1 | 0.02 |  |
 | `wheel-overview` | made | wheel | 1 | 0.01 | 1 |
+| `npc-heads` | made | dom | 21 | 0.01 | 12 |
 | `icons-svg` | supplied | dom | 5 | 0.01 |  |
 | `player-body-tops` | data | data | 1 | 0.01 |  |
 | `traits-hi-made` | made | dom | 10 | 0.00 | 10 |
@@ -170,18 +171,18 @@ default: removing any of its files but the 19 `.m4a` is the owner's yes.
 | `props-town` | made | none | 17 | 3.55 | 17 |
 | `maps-retired` | made | none | 9 | 3.05 |  |
 | `music-retired` | made | none | 1 | 2.78 |  |
-| `gear-combat-twins` | made | none | 44 | 2.70 | 44 |
+| `gear-combat-twins` | made | none | 44 | 2.70 | 36 |
 | `gear-walk-supplied` | supplied | none | 38 | 2.51 | 38 |
 | `monster-retired` | made | none | 6 | 2.41 | 1 |
 | `player-sheets` | supplied | none | 25 | 2.05 | 25 |
 | `player-retired` | supplied | none | 17 | 1.70 | 17 |
-| `maps-farm-webp` | made | none | 1 | 1.62 | 1 |
+| `maps-farm-webp` | made | none | 1 | 1.62 |  |
 | `props-buildings` | supplied | none | 3 | 1.47 | 3 |
 | `intro-retired` | supplied | none | 2 | 1.37 |  |
 | `props-other` | made | none | 4 | 1.17 | 4 |
 | `gear-chop-originals` | supplied | none | 3 | 1.08 | 3 |
 | `player-standin-parts` | made | none | 13 | 1.03 | 13 |
-| `player-retired-twins` | made | none | 17 | 1.02 | 17 |
+| `player-retired-twins` | made | none | 17 | 1.02 | 16 |
 | `p256-twins` | made | none | 18 | 0.97 |  |
 | `world-sprites-retired` | made | none | 36 | 0.96 | 36 |
 | `minigame-mining` | supplied | none | 2 | 0.86 |  |
@@ -198,7 +199,6 @@ default: removing any of its files but the 19 `.m4a` is the owner's yes.
 | `tiles-retired` | made | none | 14 | 0.35 |  |
 | `world-arena` | made | none | 11 | 0.28 |  |
 | `player-sword-weapon` | supplied | none | 3 | 0.27 | 3 |
-| `sfx-m4a` | made | none | 19 | 0.19 |  |
 | `world-originals` | supplied | none | 3 | 0.19 | 3 |
 | `icons-sheets-unwired` | made | none | 15 | 0.18 | 15 |
 | `icons-bag-unwired` | made | none | 5 | 0.17 | 5 |
@@ -223,7 +223,7 @@ default: removing any of its files but the 19 `.m4a` is the owner's yes.
 | `icons-verified-full` | supplied | none | 1 | 0.01 | 1 |
 | `ui-welcome-cat` | supplied | none | 7 | 0.01 | 7 |
 | `portrait-atlas` | data | none | 1 | 0.01 |  |
-| `player-bow-weapon-twins` | made | none | 5 | 0.01 | 5 |
+| `player-bow-weapon-twins` | made | none | 5 | 0.01 |  |
 | `world-farm-sale-sign` | supplied | none | 1 | 0.00 |  |
 | `icons-small-unwired` | made | none | 2 | 0.00 | 2 |
 | `cape-meta` | data | none | 1 | 0.00 |  |
@@ -232,6 +232,7 @@ default: removing any of its files but the 19 `.m4a` is the owner's yes.
 | `traits-shirt-meta` | data | none | 1 | 0.00 |  |
 | `ui-cc-tab-species` | made | none | 1 | 0.00 | 1 |
 | `player-handles-stale` | data | none | 1 | 0.00 |  |
+| `sfx-m4a` | made | none | 0 | 0.00 |  |
 
 ## Made in play (no family holds these)
 
@@ -241,9 +242,9 @@ the door's to change. Digits in a label are folded to `#`.
 
 | label | MB at the fight | chip | page | numbers | sound | atlas |
 |---|--:|--:|--:|--:|--:|--:|
-| `unnamed` (on the chip: canvas 16.64, render 1.55, buffer 0.00) | 22.19 | 18.19 | 4.00 | 0.00 | 0.00 |  |
-| `blob: (a picture made in play from bytes)` | 10.46 | 10.46 | 0.00 | 0.00 | 0.00 |  |
-| `wheel-ground` | 8.55 | 8.55 | 0.00 | 0.00 | 0.00 | 57 |
+| `unnamed` (on the chip: canvas 16.64, render 0.55, buffer 0.00) | 21.19 | 17.19 | 4.00 | 0.00 | 0.00 |  |
+| `blob: (a picture made in play from bytes)` | 12.72 | 12.72 | 0.00 | 0.00 | 0.00 |  |
+| `wheel-ground` | 8.40 | 8.40 | 0.00 | 0.00 | 0.00 | 56 |
 | `bt-look:page/#-#-#` | 5.31 | 5.31 | 0.00 | 0.00 | 0.00 |  |
 | `bt-shadow-pieces` | 0.93 | 0.93 | 0.00 | 0.00 | 0.00 |  |
 | `worldfx/cloud#` | 0.47 | 0.00 | 0.47 | 0.00 | 0.00 |  |
@@ -260,12 +261,12 @@ still reach, so it can be higher.
 
 | run | stop | gpu line | chip rows | artCache line | page rows | numbers | sound line | soundHeld | sound rows | atlas rows used | rowsFull | monster bundles |
 |--:|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|---|
-| 1 | trip 1: a fight at the Flame Fields (10 swings; 0 px short a | 60.6 | 60.38 | 48.7 | 48.75 | 6.43 | 18.1 | 18.1 | 18.07 | 104 of 256 | 0 | fireGoblin |
-| 1 | trip 2: a fight at the Flame Fields (9 swings; 0 px short af | 65.9 | 65.65 | 48.7 | 48.75 | 6.43 | 18.1 | 17.6 | 17.65 | 103 of 256 | 0 | fireGoblin |
-| 1 | trip 3: a fight at the Flame Fields (5 swings; 0 px short af | 68.6 | 68.39 | 48.7 | 48.75 | 6.43 | 18.1 | 17.6 | 17.65 | 100 of 256 | 0 | fireGoblin |
-| 2 | trip 1: a fight at the Flame Fields (9 swings; 0 px short af | 60.9 | 60.68 | 48.7 | 48.75 | 6.43 | 17.9 | 17.9 | 17.91 | 104 of 256 | 0 | fireGoblin |
-| 2 | trip 2: a fight at the Flame Fields (9 swings; 0 px short af | 64.7 | 64.45 | 48.7 | 48.75 | 6.43 | 17.9 | 17.5 | 17.48 | 103 of 256 | 0 | fireGoblin |
-| 2 | trip 3: a fight at the Flame Fields (11 swings; 2 px short a | 66.7 | 66.40 | 48.7 | 48.75 | 6.43 | 17.9 | 17.5 | 17.48 | 103 of 256 | 0 | fireGoblin |
-| 3 | trip 1: a fight at the Flame Fields (10 swings; 0 px short a | 60.9 | 60.66 | 48.7 | 48.75 | 6.43 | 18.1 | 17.6 | 17.65 | 104 of 256 | 0 | fireGoblin |
-| 3 | trip 2: a fight at the Flame Fields (11 swings; 0 px short a | 65.8 | 65.57 | 48.7 | 48.75 | 6.43 | 17.6 | 17.6 | 17.65 | 102 of 256 | 0 | fireGoblin |
-| 3 | trip 3: a fight at the Flame Fields (7 swings; 0 px short af | 68.6 | 68.28 | 48.7 | 48.75 | 6.43 | 18.1 | 18.1 | 18.07 | 104 of 256 | 0 | fireGoblin |
+| 1 | trip 1: a fight at the Flame Fields (4 swings; 0 px short af | 60.6 | 60.32 | 38.1 | 38.15 | 7.82 | 17.6 | 17.6 | 17.65 | 84 of 256 | 0 | fireGoblin |
+| 1 | trip 2: a fight at the Flame Fields (4 swings; 2 px short af | 64.8 | 64.61 | 38.1 | 38.15 | 7.82 | 17.6 | 17.6 | 17.65 | 78 of 256 | 0 | fireGoblin |
+| 1 | trip 3: a fight at the Flame Fields (8 swings; 0 px short af | 65.7 | 65.41 | 38.1 | 38.15 | 7.82 | 17.6 | 17.6 | 17.65 | 107 of 256 | 0 | fireGoblin |
+| 2 | trip 1: a fight at the Flame Fields (5 swings; 0 px short af | 65 | 64.71 | 38.1 | 38.15 | 7.82 | 17.6 | 17.6 | 17.65 | 91 of 256 | 0 | fireGoblin |
+| 2 | trip 2: a fight at the Flame Fields (6 swings; 0 px short af | 68.7 | 68.39 | 38.1 | 38.15 | 7.82 | 17.6 | 17.6 | 17.65 | 85 of 256 | 0 | fireGoblin |
+| 2 | trip 3: a fight at the Flame Fields (4 swings; 0 px short af | 68.6 | 68.37 | 38.1 | 38.15 | 7.82 | 17.6 | 17.6 | 17.65 | 101 of 256 | 0 | fireGoblin |
+| 3 | trip 1: a fight at the Flame Fields (2 swings; 0 px short af | 65.6 | 65.31 | 38.1 | 38.15 | 7.82 | 17.6 | 17.6 | 17.65 | 102 of 256 | 0 | fireGoblin |
+| 3 | trip 2: a fight at the Flame Fields (0 swings; 0 px short af | 66.1 | 65.86 | 38.1 | 38.15 | 7.82 | 17.6 | 17.6 | 17.65 | 88 of 256 | 0 | fireGoblin |
+| 3 | trip 3: a fight at the Flame Fields (4 swings; 0 px short af | 69.9 | 69.60 | 38.1 | 38.15 | 7.82 | 17.6 | 17.6 | 17.65 | 105 of 256 | 0 | fireGoblin |

@@ -89,7 +89,11 @@ through `heldNumbers.js` `readSourceRect` (the hit chips, a stuck arrow).
 
 ## 2. One copy (`?onecopy`, on by default)
 
-`picsOnce.js`. Every second a sweep looks at the asset cache:
+`picsOnce.js`. Every second a sweep looks at the asset cache (v2.3.5048: a
+slice of it a turn, about 3 ms, the next slice 100 ms later until the whole
+cache has been walked; one walker kept from turn to turn, so a round sees
+every picture once and no turn walks the whole cache:
+`docs/specs/held-sweep.md`, "Card H"):
 
 - **On the chip, nothing reads it back** (the families `/sprites/fx/`,
   `/sprites/effects/`, `/ui/`, `/icons/ui/` -- `ONLY_DRAWN`; a family is added

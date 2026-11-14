@@ -351,6 +351,9 @@ play, a number 1.1 can measure.
   First PR: the door tests read `server/src/` in depth, so a new folder is
   not invisible to them. Step 2 [NEXT]: the lists and the checks at the door
   are made FROM the table as checked-in source, with a hostile-values suite.
+  *Step 1 merged: #1667 (card C's census), #1684, #1695 and #1697 (card N:
+  the walker, the table `server/src/wire/`, its guard). Step 2 is card K's;
+  the box waits for it (the gatekeeper, sitting 7, v2.3.5363).*
 - [ ] **4.1b [NEXT] The send door**: one `_send` (132 places write to a
   socket today), counting bytes by type.
 - [ ] **4.2 [NEXT] Claims, bounded.** "No claims" can be met by calling a
@@ -417,6 +420,9 @@ nothing known, and a restore copies nothing.
   Rows live in one file a system. Step 2, a system at a time, each with its
   switch: a reset is a value, a function, or "kept, and why"; state outside
   `S` joins through `resetOn(edge, fn)` at the one zone door.
+  *Step 1 merged: #1721 to #1734 (card U), the ledgers in `src/state/` and
+  `tools/guards/state-ledger.test.mjs`, 16 rows left unlisted (four files
+  the map has not placed). Step 2 is card L's; the box waits for it.*
 - [ ] **5.3b [NEXT] The phase table** (the owner, 2026-11-13: every implicit
   state machine explicit, through one door). Every state machine one row:
   its one field, its states, the one function that changes it, what clears
@@ -482,6 +488,9 @@ nothing known, and a restore copies nothing.
   reason. Never skipped.
 - [ ] **8.2 [NEXT] Traps become guards**, each with a break proof. The count
   that matters is traps held by a proof, not traps of prose.
+  *Card V merged, #1724 to #1740: 31 traps held by a proof (25 the rule, 6
+  one case; its status names what is left for the next card). The step is
+  open: most traps are still prose.*
 - [ ] **8.3 [LATER] Docs by system**, with an index that keeps every §.
 - [x] **8.6 [NOW] The shapes page** (`docs/SHAPES.md`, rule 2): the actor,
   the ids, the roads' classes, the report's sinks, the wire's columns, the
@@ -540,9 +549,12 @@ the memory a family holds as the game draws it.
   colours, encode, verify, write the row. A cut stays authored (each
   `cut_*` script holds one animal's cut): recipes are data beside it.
   *Merged: #1716 (card P), `tools/assets/finish.mjs`.*
-- [ ] **9.3 [NEXT] The gate** compares recorded hashes and reads outputs
+- [x] **9.3 [NEXT] The gate** compares recorded hashes and reads outputs
   through the game's own reader. It never makes a file again to compare:
   two machines' encoders differ, and the gate would flap.
+  *Merged: #1718 (card P), `tools/guards/asset-door.test.mjs`,
+  `tools/assets/shipped.mjs`. Ticked by the gatekeeper, sitting 7
+  (v2.3.5363).*
 - [ ] **9.5 [LATER] The backlog, a family a PR**, the most MB held first.
   Sound is folded to one channel as it is decoded, not encoded a second
   time. The 19 `.m4a` files nothing plays are checked and removed.
