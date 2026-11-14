@@ -24,7 +24,7 @@ name in a comment or a string is never counted):
   plain or destructured from a component's props; and a parameter or prop of any name that some call the
   machine can follow hands the state to, across files.
   A parameter spelt `S` is NOT the state when every call the machine can follow hands it something plainly
-  else (2 today: a sheet's record in `rendering/lookArmour.js`, a size in `rendering/sootMarks.js`).
+  else (2 today: `rendering/lookArmour.js:415`, `rendering/sootMarks.js:56`).
 - **A write** to a field is one of three kinds, counted apart:
   - *set*: `S.x = v`, `S.x += 1`, `S.x++`, `delete S.x`, `Object.assign(S, { x })`;
   - *inside*: `S.x.y = v`, `S.x[k] = v`, `S.x.push(v)` and the other changing calls (`pop shift unshift splice

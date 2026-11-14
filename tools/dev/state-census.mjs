@@ -750,6 +750,15 @@ for (;;) {
   if (solves > 12) { console.error('state-census: the name rule did not settle'); process.exit(2); }
 }
 
+/* where the dropped parameters are, for the page */
+const REFUTED_AT = [];
+for (const f of FILES.values()) {
+  for (const fn of f.funcs) {
+    for (const p of fn.get('params')) for (const id of namedStateParam(p)) if (REFUTED.has(id.node)) REFUTED_AT.push(short(f.path) + ':' + id.node.loc.start.line);
+  }
+}
+REFUTED_AT.sort();
+
 /* ─── pass 2: every touch of a field ─── */
 const FIELDS = new Map();   /* name -> record */
 function field(name) {
@@ -1433,7 +1442,7 @@ function page() {
   L.push('  plain or destructured from a component\'s props; and a parameter or prop of any name that some call the');
   L.push('  machine can follow hands the state to, across files.');
   L.push('  A parameter spelt `S` is NOT the state when every call the machine can follow hands it something plainly');
-  L.push('  else (' + REFUTED.size + ' today: a sheet\'s record in `rendering/lookArmour.js`, a size in `rendering/sootMarks.js`).');
+  L.push('  else (' + REFUTED.size + ' today' + (REFUTED_AT.length ? ': ' + REFUTED_AT.map((x) => '`' + x + '`').join(', ') : '') + ').');
   L.push('- **A write** to a field is one of three kinds, counted apart:');
   L.push('  - *set*: `S.x = v`, `S.x += 1`, `S.x++`, `delete S.x`, `Object.assign(S, { x })`;');
   L.push('  - *inside*: `S.x.y = v`, `S.x[k] = v`, `S.x.push(v)` and the other changing calls (`pop shift unshift splice');
