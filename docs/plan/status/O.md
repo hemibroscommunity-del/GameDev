@@ -1,6 +1,6 @@
 card: O
-branch: claude/plan-o-10-queue (one branch a PR: claude/plan-o-<n>-<word>; main 59469b2 merged in)
-prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836 (merged); #1850 (5229), #1854 (5230): ready (sitting 17)
+branch: claude/plan-o-10-queue (one branch a PR: claude/plan-o-<n>-<word>; main 59469b2 and #1850 merged in)
+prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836 (merged); #1850 (5229), #1854 (5230: on #1850): ready (sitting 17)
 state: ready
 
 ## Done

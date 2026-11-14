@@ -117,6 +117,7 @@ import { Sprite, Texture } from 'pixi.js';   /* v2.3.2904: the loading-screen wa
 import { SHEEN_LIFT } from './sheenLift.js';   /* v2.3.3453: the sheen's lines, shared with sheenBatch.js */
 import { sheenBatchOn, sheenParams } from './sheenBatch.js';   /* v2.3.3453: the shine drawn in the frame */
 import { isSharpPiece } from '../sharpPixels.js';
+import { laneKnob, onKnob } from '../../game/drawLanes.js';   /* v2.3.5229: the shine is a knob of the lanes (card O PR 9) */
 
 const FRAG = `
 in vec2 vTextureCoord;
@@ -489,6 +490,30 @@ export function setSheen(on, persist = true) {
   _sheen = !!on;
   if (!persist) return;
   try { localStorage.setItem(SHEEN_KEY, _sheen ? '1' : '0'); } catch (e) { /* the switch still flips for this page */ }
+}
+
+/* ═══ v2.3.5229: THE SHINE IS A KNOB OF THE LANES (card O PR 9) ═══
+   The metal's shine is the chip axis's first rung after the rate
+   (drawLanes.js AXES; docs/LANES.md): a phone whose frames wait on the
+   graphics chip, at 30 and still late, draws its metal plain.  The knob is
+   read through laneKnob('shine') and told when it moves (onKnob), so a
+   frame reads a boolean; the device's own switch (sheenOn: `?sheen=0`, the
+   Speed test's step) still wins, so the shine is drawn when BOTH say on.  A
+   rung taken or given back is one change: the shine's pieces are released
+   (or taken) once, in the next frame's update -- never one a frame (TRAPS
+   §218).  `?ladderpass=0` holds the passes off the ladder (drawLanes.js). */
+let _shineKnob = null;
+/** The lanes' shine knob is 'on' (the lane's row at the governor's rung). */
+export function shineKnobOn() {
+  if (_shineKnob === null) {
+    try { _shineKnob = laneKnob('shine') === 'on'; } catch (e) { _shineKnob = true; }
+    onKnob('shine', (v) => { _shineKnob = v === 'on'; });
+  }
+  return _shineKnob;
+}
+/** The shine drawn now: this device's switch and the lanes' knob. */
+export function sheenLive() {
+  return sheenOn() && shineKnobOn();
 }
 
 const METAL_ART = { steelplate: 1, steelgreaves: 1 };

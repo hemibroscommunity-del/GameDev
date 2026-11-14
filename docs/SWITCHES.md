@@ -402,6 +402,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?groundbg` | page | switch | v2.3.3452 | 2026-10-18 | =1 | chip |  | no | The black under the world's ground is drawn every frame, as it was. |
 | `groundkeep` | both | switch | v2.3.3775 | 2026-10-29 | off_groundkeep: true; ?groundkeep=0, off, false | chip |  | no | The world's ground is rebuilt on a return, not kept, as before. |
 | `?iconretry` | page | switch | v2.3.4431 | 2026-11-10 | =0 | logic | `?retrylooks` | no | Icons that failed are not asked for again. |
+| `?ladderpass` | page | switch | v2.3.5229 | 2026-11-15 | =0, off, false | chip | `govern` | no | The passes' rungs are off: the metal shines, the shadows are drawn and the sea moves, whatever the rung. |
 | `?layerpush` | page | switch | v2.3.3449 | 2026-10-18 | present | chip |  | no | Every layer's uniforms are pushed as Pixi does, to compare. |
 | `?legslook` | page | switch | v2.3.4450 | 2026-11-10 | =0, off, false | chip | `lookpalette` | no | Legs under greaves are baked the old way. |
 | `?lightfx` | page | switch | v2.3.2710 | 2026-09-23 (v2.3.2711) | =1, =0, on or off | chip |  | no | Turns the light effects on or off. |

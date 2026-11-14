@@ -111,19 +111,19 @@ export const KNOBS = Object.freeze({
     what: 'the metal\'s shine on gear',
     steps: Object.freeze(['on', 'off']),
     say: Object.freeze(['Metal shines', 'No shine on metal']),
-    reader: { files: Object.freeze(['src/rendering/lightfx/glint.js']), moved: false }, pr: 9, switch: '?sheen', system: 'render',
+    reader: { files: Object.freeze(['src/rendering/lightfx/glint.js']), moved: true }, pr: 9, switch: '?sheen', system: 'render',
   },
   shadows: {
     what: 'the light and the shadows',
     steps: Object.freeze(['on', 'off']),
     say: Object.freeze(['Shadows drawn', 'No shadows']),
-    reader: { files: Object.freeze(['src/rendering/lightfx/lightFx.js']), moved: false }, pr: 9, switch: '?lightfx', system: 'render',
+    reader: { files: Object.freeze(['src/rendering/lightfx/lightFx.js']), moved: true }, pr: 9, switch: '?lightfx', system: 'render',
   },
   water: {
     what: 'the sea\'s waves',
     steps: Object.freeze(['moving', 'still']),
     say: Object.freeze(['The sea moves', 'The sea is still']),
-    reader: { files: Object.freeze(['src/rendering/wheelWater.js']), moved: false }, pr: 9, switch: '?waves', system: 'render',
+    reader: { files: Object.freeze(['src/rendering/wheelWater.js']), moved: true }, pr: 9, switch: '?waves', system: 'render',
   },
   queue: {
     what: 'the ms a frame the strip queue may take loading monsters\' art in play (v2.3.5230: the lane\'s, never the frame\'s length; was a quarter of the frame, 3 to 50 ms)',
@@ -372,6 +372,15 @@ export function ladderRateOn(search) {
 export function ladderPixOn(search) {
   return !/(^|[?&])ladderpix=(0|off|false)(&|$)/.test(typeof search === 'string' ? search : '');
 }
+/* v2.3.5229 (card O PR 9): the passes -- the metal's shine, the shadows, the
+   moving sea -- are the chip axis's rungs after the rate.  `?ladderpass=0`
+   takes all three off the ladder for this screen: off the live set, so the
+   governor never takes their rungs and each is drawn as its lane's row,
+   whatever the step (as `?ladderpix=0`, sitting 12) */
+export const PASS_KNOBS = Object.freeze(['shine', 'shadows', 'water']);
+export function ladderPassOn(search) {
+  return !/(^|[?&])ladderpass=(0|off|false)(&|$)/.test(typeof search === 'string' ? search : '');
+}
 /* v2.3.5226 (card O PR 6): the crowd's rungs, out of reach under `?laddercrowd=0` (crowdCap.js asks it too) */
 export function ladderCrowdOn(search) {
   return !/(^|[?&])laddercrowd=(0|off|false)(&|$)/.test(typeof search === 'string' ? search : '');
@@ -382,7 +391,8 @@ export function ladderCrowdOn(search) {
 export function liveKnobs() {
   if (_liveNow) return _liveNow;
   const s = _search();
-  _liveNow = Object.freeze(_live.filter((k) => !(k === 'rate' && !ladderRateOn(s)) && !(k === 'pixels' && !ladderPixOn(s)) && !(k === 'crowd' && !ladderCrowdOn(s))));
+  _liveNow = Object.freeze(_live.filter((k) => !(k === 'rate' && !ladderRateOn(s)) && !(k === 'pixels' && !ladderPixOn(s)) && !(k === 'crowd' && !ladderCrowdOn(s))
+    && !(PASS_KNOBS.includes(k) && !ladderPassOn(s))));   /* v2.3.5229: the passes */
   return _liveNow;
 }
 /** For the tests only: play the ladder with these knobs live (null: the moved ones). */

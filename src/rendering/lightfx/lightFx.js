@@ -18,7 +18,8 @@
  * is how the QA pictures take a before and an after of the same moment.
  */
 import { ShadowSystem, shadowSystemCount } from './shadows.js';
-import { GlintSystem, sheenOn } from './glint.js';
+import { GlintSystem, sheenOn, sheenLive, shineKnobOn } from './glint.js';   /* v2.3.5229: sheenLive, the switch and the lanes' knob */
+import { laneKnob, onKnob } from '@/game/drawLanes.js';   /* v2.3.5229: the shadows are a knob of the lanes (card O PR 9) */
 import { collectCasters, SELF_STAND_IN_FIELDS, SELF_STAND_IN_SETS } from './casters.js';
 import { Sprite } from 'pixi.js';
 import { zoneLight, sunLeft, WHEEL_SUN, wheelLandLight } from './zoneLight.js';
@@ -55,6 +56,29 @@ export function setLightFx(on, persist = true) {
   _on = !!on;
   if (!persist) return;
   try { localStorage.setItem(KEY, _on ? '1' : '0'); } catch (e) { /* the switch still flips for this page */ }
+}
+
+/* ═══ v2.3.5229: THE SHADOWS ARE A KNOB OF THE LANES (card O PR 9) ═══
+   The light and the shadows are the chip axis's rung after the shine
+   (drawLanes.js AXES; docs/LANES.md): a phone whose frames still wait on the
+   graphics chip with its metal plain draws no shadows.  Read through
+   laneKnob('shadows'), told on a move (onKnob); the device's own switch
+   (lightFxOn: `?lightfx=0`, the Speed test's step) still wins.  Off, update()
+   clears the shadows ONCE (`_wasOn`, as the switch always did) and each
+   frame after is one boolean read; on again, they are cast the next frame.
+   One change a rung, never one a frame (TRAPS §218). */
+let _shadowKnob = null;
+/** The lanes' shadows knob is 'on' (the lane's row at the governor's rung). */
+export function shadowsKnobOn() {
+  if (_shadowKnob === null) {
+    try { _shadowKnob = laneKnob('shadows') === 'on'; } catch (e) { _shadowKnob = true; }
+    onKnob('shadows', (v) => { _shadowKnob = v === 'on'; });
+  }
+  return _shadowKnob;
+}
+/** The light and the shadows drawn now: this device's switch and the lanes' knob. */
+export function lightFxLive() {
+  return lightFxOn() && shadowsKnobOn();
 }
 
 export class LightFx {
@@ -116,7 +140,7 @@ export class LightFx {
 
   update(S, now, er, fx) {
     this._fx = fx || null;
-    if (!lightFxOn() || !S) {
+    if (!lightFxLive() || !S) {   /* v2.3.5229: the lanes' knob too */
       if (this._wasOn) { this.clear(); this._wasOn = false; }
       this.lastMs = 0;
       /* v2.3.3142: a graded piece still wears its grade with the light
@@ -144,7 +168,7 @@ export class LightFx {
       this.light = light;
       this.shadows.update(light ? collectCasters(S, er, fx, zone) : null, light, sunLeft(S), now);
     }
-    this.glint.update(S, now, er, fx, zone, sheenOn() ? this._sheenLight(S, zone, now) : null);
+    this.glint.update(S, now, er, fx, zone, sheenLive() ? this._sheenLight(S, zone, now) : null);   /* v2.3.5229: the lanes' knob too */
     this.lastMs = performance.now() - t0;
   }
 
@@ -174,6 +198,8 @@ export class LightFx {
     const layer = sh && sh.layer;
     return {
       on: lightFxOn(),
+      /* v2.3.5229: what is drawn now, the lanes' knobs with the switches */
+      live: lightFxLive(),
       zone: this.zone,
       /* v2.3.3000: the light used last frame -- the Wheel's eased one there */
       light: this.light ? { lx: this.light.lx, ly: this.light.ly, alpha: +(+this.light.alpha).toFixed(3), color: this.light.color, region: this.light.region || null } : zoneLight(this.zone),
@@ -182,7 +208,7 @@ export class LightFx {
       shadows: sh ? { ...sh.stats, keys: sh.stats.keys.slice(),
         filtered: !!(layer && layer.filters && layer.filters.length) || !!(sh.shade && sh.shade.visible), pool: sh.pools[0].length + sh.pools[1].length + sh.pools[2].length, pools: [sh.pools[0].length, sh.pools[1].length, sh.pools[2].length],   /* v2.3.4991: the pieces in three pools, one a program */
         systems: shadowSystemCount() } : null,   /* v2.3.3152: + systems, the module's (mp-sceneleak) */
-      glint: { ...this.glint.probeStats(), force: this.glint.force, sheenOn: sheenOn() },
+      glint: { ...this.glint.probeStats(), force: this.glint.force, sheenOn: sheenOn(), sheenLive: sheenLive(), shineKnob: shineKnobOn() },
       ms: +this.lastMs.toFixed(3),
       /* the stand-in names casters.js reads off the effects renderer that are
          no longer there -- a rename over there would otherwise turn a swing's
