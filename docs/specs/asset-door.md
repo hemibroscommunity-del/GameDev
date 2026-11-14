@@ -306,7 +306,9 @@ node tools/assets/finish.mjs --bounds
 
 **The three old tools keep their command lines** and call these steps:
 `tools/art/strip256.mjs` (decode, colours, encode; its read-back is now the
-game's reader, where it was ffmpeg), `tools/art/reduce256.mjs` (the same),
+game's reader, where it was ffmpeg; its `--shared` step keeps its own call
+`reduce256(all, total, 1)` on `finish.mjs`'s `joinPixels`, because
+`server/test/monster-palettes.test.mjs` reads that line), `tools/art/reduce256.mjs` (the same),
 `tools/art/npc256.mjs` (decode by ffmpeg where it was PIL, colours, encode,
 the WebP). A cut stays authored: each `cut_*` script holds one animal's cut
 and calls `strip256.mjs`.

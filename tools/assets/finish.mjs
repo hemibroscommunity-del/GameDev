@@ -100,15 +100,26 @@ export function onColours(pics) {
     const r = reduce256(p.d, p.w, p.h);
     return { pal: r.pal, n: r.n, exact: r.exact, err: r.err, idx: [r.idx] };
   }
+  const { all, total } = joinPixels(pics);
+  const r = reduce256(all, total, 1);
+  return { pal: r.pal, n: r.n, exact: r.exact, err: r.err, idx: splitIdx(r.idx, pics) };
+}
+/** every pixel of every picture, as one picture one pixel tall (the shared
+ *  colours' input: tools/art/strip256.mjs --shared, whose own call to
+ *  reduce256 server/test/monster-palettes.test.mjs reads) */
+export function joinPixels(pics) {
   const total = pics.reduce((a, p) => a + p.w * p.h, 0);
   const all = new Uint8Array(total * 4);
   let o = 0;
   for (const p of pics) { all.set(p.d, o); o += p.d.length; }
-  const r = reduce256(all, total, 1);
-  const idx = [];
+  return { all, total };
+}
+/** the joined picture's numbers, back into one array a picture */
+export function splitIdx(idx, pics) {
+  const out = [];
   let at = 0;
-  for (const p of pics) { idx.push(r.idx.subarray(at, at + p.w * p.h)); at += p.w * p.h; }
-  return { pal: r.pal, n: r.n, exact: r.exact, err: r.err, idx };
+  for (const p of pics) { out.push(idx.subarray(at, at + p.w * p.h)); at += p.w * p.h; }
+  return out;
 }
 
 /* ---- 3. encode ------------------------------------------------------------- */

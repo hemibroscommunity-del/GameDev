@@ -18,7 +18,8 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { readRgba, onColours, encodePng, verifyPng } from '../assets/finish.mjs';
+import { reduce256 } from '../../public/tools/style/quant256.js';
+import { readRgba, onColours, joinPixels, splitIdx, encodePng, verifyPng } from '../assets/finish.mjs';
 
 /* --shared: ONE list of colours for every strip named (v2.3.4359).  The game
    holds a monster's strips as colour numbers on one row of colours a bundle
@@ -40,10 +41,15 @@ async function write(name, w, h, idx, pal, note) {
 }
 if (shared) {
   const pics = names.map((name) => Object.assign({ name }, readRgba(path.join(from, name + '.png'))));
-  const r = onColours(pics);
+  /* every pixel of every strip as one picture (finish.mjs joinPixels, the
+     same join its onColours makes): server/test/monster-palettes.test.mjs
+     reads this call */
+  const { all, total } = joinPixels(pics);
+  const r = reduce256(all, total, 1);
+  const idx = splitIdx(r.idx, pics);
   for (let k = 0; k < pics.length; k++) {
     const p = pics[k];
-    await write(p.name, p.w, p.h, r.idx[k], r.pal, `the ${r.n} colours shared by all ${pics.length}`);
+    await write(p.name, p.w, p.h, idx[k], r.pal, `the ${r.n} colours shared by all ${pics.length}`);
   }
   console.log(`  ${pics.length} strips on ${r.n} colours together${r.exact ? '' : `, moved ${r.err.toFixed(4)}`}`);
 } else {
