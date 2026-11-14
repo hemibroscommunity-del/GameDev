@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d57ac200ef6a146ec6af8753d788f38e6782b4a7",
+  "tree": "db4ea36251f85599b94494610e49646f69a8663d",
+  "committedAt": "2026-11-14T13:07:21-08:00",
+  "subject": "Merge pull request #1832 from hemibroscommunity-del/claude/plan-o-3-scenario-lanes",
+  "files": 7711,
+  "bytes": 956413120,
+  "listingSha256": "11df4e80d996b14f60f4d653f9c10077c28460e785ab0e0d3bb4c2753fad5e5d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

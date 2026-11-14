@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "564868372abf2955462992b87fae830fc6b046df",
+  "tree": "d50b1beecbd6880e29f4032cbf487f683917478a",
+  "committedAt": "2026-11-14T13:07:07-08:00",
+  "subject": "Merge pull request #1831 from hemibroscommunity-del/claude/plan-k-2-wire-columns",
+  "files": 7708,
+  "bytes": 956377830,
+  "listingSha256": "d8ab2b6f6d69310d41b4ee6731b275f0dea2247735f624a216a4a1624978d754",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

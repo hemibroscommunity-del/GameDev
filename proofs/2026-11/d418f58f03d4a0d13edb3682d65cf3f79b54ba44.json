@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d418f58f03d4a0d13edb3682d65cf3f79b54ba44",
+  "tree": "356d4ff603eedcc3fc74a70c8536cc1654d80d56",
+  "committedAt": "2026-11-14T13:07:01-08:00",
+  "subject": "Merge pull request #1829 from hemibroscommunity-del/claude/plan-k-5-action-door",
+  "files": 7708,
+  "bytes": 956351032,
+  "listingSha256": "e8bbff8840b1b883bdc095faa674aa9dab130bd4ac13b9ce07990aaab795114b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
