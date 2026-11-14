@@ -372,7 +372,8 @@ export function stateWritesFromRendering({ live = false } = {}) {
 
 /* ═══ THE LINES ═══  Each only falls.  Only the gatekeeper lowers one, in a
    PR of its own; nobody raises one.  Set 2026-11-14 at main d2e096a, by the
-   rules above. */
+   rules above; taken again at main 0c83972 before this landed (card A's
+   #1703 had added six code lines to wsClient.js meanwhile). */
 export const LINES = Object.freeze({
   /* a file's code lines.  These files have a line of their own, at their
      count on the day; every other file under src/ stays at or under
@@ -383,7 +384,7 @@ export const LINES = Object.freeze({
     'src/ui/BroTown.jsx': 8371,
     'src/data/gameSystems.js': 5622,
     'src/data/gameDisplay.js': 4270,
-    'src/networking/wsClient.js': 3290,
+    'src/networking/wsClient.js': 3296,
     'src/networking/gameEvents.js': 2639,
     'src/game/monsterCombat.js': 1792,
   }),
@@ -393,13 +394,13 @@ export const LINES = Object.freeze({
      stays at or under OTHER_FUNCTION */
   FUNCTION: Object.freeze({
     'src/ui/BroTown.jsx#BroTown': 7801,
-    'src/networking/wsClient.js#setupWebSocket': 3092,
+    'src/networking/wsClient.js#setupWebSocket': 3097,
     'src/networking/gameEvents.js#processGameEvent': 2500,
     'src/ui/BroTown.jsx#(anonymous)': 2133,
-    'src/networking/wsClient.js#connect': 2054,
+    'src/networking/wsClient.js#connect': 2055,
     'src/game/monsterCombat.js#updateMonsterCombat': 1732,
     'src/ui/BroTown.jsx#gameLoop': 1584,
-    'src/networking/wsClient.js#onmessage': 1465,
+    'src/networking/wsClient.js#onmessage': 1466,
     'src/rendering/systems/entityRenderer.js#_updatePlayer': 1369,
     'src/ui/mobile/sheet/HeroExpanded.jsx#HeroExpanded': 1266,
     'src/rendering/systems/entityRenderer.js#_updateMonsters': 1086,
