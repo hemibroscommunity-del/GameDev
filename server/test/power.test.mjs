@@ -1,7 +1,7 @@
 /* ═══ v2.3.5480: THE POWER INDEX (server/src/power.js) ═══
  * Card PW, docs/specs/power-index.md.
  *
- *   1. THE CONTROL: 1,000 in every style; its points within the deal its
+ *   1. THE CONTROL: 3,000 in every style; its points within the deal its
  *      levels give, its gear through the worker's own equip gate; a build
  *      with no trained skills is not ranked; a hand with no weapon reads 0;
  *      the dice are given back; the phone's numbers it reads are the phone's.
@@ -43,8 +43,8 @@ console.log('\n1. the control');
 {
   const c = controlBuild();
   const p = powerOf(room, c);
-  check('1a. the control reads 1,000 in every style, and its Power 1,000',
-    p && p.melee === 1000 && p.bow === 1000 && p.magic === 1000 && p.power === 1000, p);
+  check('1a. the control reads 3,000 in every style, and its Power 3,000 (the rating, v2.3.5480)',
+    p && p.melee === 3000 && p.bow === 3000 && p.magic === 3000 && p.power === 3000, p);
   check('1b. ...with the table\'s version on it', p && p.v === POWER.V && Number.isInteger(POWER.V) && POWER.V >= 1, p);
   /* its points: within the deal its levels give (the worker's own deal) */
   const deal = { sk: {} };
@@ -67,7 +67,7 @@ console.log('\n1. the control');
   check('1h. a player with no trained skills on file is not ranked (null)', powerOf(room, {}) === null && powerOf(room, null) === null && powerOf(room, { prog3: {} }) === null);
   const noStaff = controlBuild(); noStaff.staffWeapon = null;
   const pn = powerOf(room, noStaff);
-  check('1i. no weapon in a hand: that style reads 0, the Power the best of the others', pn.magic === 0 && pn.melee === 1000 && pn.power === 1000, pn);
+  check('1i. no weapon in a hand: that style reads 0, the Power the best of the others', pn.magic === 0 && pn.melee === 3000 && pn.power === 3000, pn);
   const real = Math.random;
   powerOf(room, c);
   check('1j. the dice are the real ones again after a score', Math.random === real);
@@ -216,7 +216,8 @@ function acc(arr, f) {
   }
   return n ? c / n : 0;
 }
-/* Bradley-Terry: P(A wins) = SA / (SA + SB), S = 1000 r^alpha */
+/* Bradley-Terry: P(A wins) = OA / (OA + OB), O = r^alpha (the odds against
+   the control; the rating is 3,000 + 400 log10 O) */
 function logLoss(arr, a) {
   let s = 0;
   for (const p of arr) {
@@ -273,6 +274,18 @@ check('4d. POWER.ALPHA predicts the odds better than the plain time ratio (log-l
     line.push('L' + L + ' ' + ps[7]);
   }
   console.log('     the median Power by level: ' + line.join(', '));
+  /* the floor: a style the player can fight in reads at least 1 (a few
+     level-1 staffs fall under 0 unfloored), so nobody leaves the board */
+  seed(78);
+  let atFloor = 0, off = 0;
+  for (let i = 0; i < 300; i++) {
+    const b = randomBuild(room, { level: 1 });
+    const p = powerOf(room, b);
+    if (!(p.power >= 1)) off++;
+    for (const k of POWER.STYLES) if (p[k] === 1) atFloor++;
+  }
+  console.log('     300 level-1 characters: ' + atFloor + ' of their 900 styles at the floor of 1');
+  check('4e. every honest level-1 character has a Power of at least 1: none leaves the board', off === 0, off);
 }
 
 /* ═══ 5. THE BREAK PROOFS ═══ */
@@ -325,9 +338,9 @@ console.log('\n5. the break proofs: the index moves with the worker');
   check('5e. a roll that draws a third time is seen (§2z would fail)', DICE_SEEN.max === 3, DICE_SEEN.max);
   DICE_SEEN.max = 0;
   /* 5f. the control.  Red if its numbers were edited without the version. */
-  const sig = JSON.stringify([POWER.CONTROL, POWER.ALPHA, POWER.BASE, POWER.SPECIAL_GAP_MS]);
-  const SIG_V1 = '[{"sk":{"sword":20,"bow":20,"staff":20},"shared":{"hp":15,"def":12,"dodge":12,"stam":6,"mana":6,"eres":3,"move":3},"lane":{"dmg":18,"luck":15,"aspd":12,"special":9,"range":3,"elem":0},"gear":{"weapon":{"type":"greatsword","name":"Black Steel Great Sword","gearBase":"steel","tierMult":1.4,"quality":"normal"},"rangedWeapon":{"type":"bow","name":"Hardwood Bow","gearBase":"ww_hardwood","tierMult":1.25,"quality":"normal"},"staffWeapon":{"type":"staff","name":"Hardwood Staff","gearBase":"ww_hardwood","tierMult":1.25,"quality":"normal"},"armor":{"name":"Black Steel Torso","mat":"blacksteel","tierMult":3,"quality":"normal"},"legsArmor":{"name":"Black Steel Greaves","mat":"blacksteel","tierMult":3,"quality":"normal"},"shield":{"name":"Pine Shield","gearBase":"wood","tierMult":1},"amulet":null}},2,1000,1500]';
-  check('5f. the control and the exponent are version ' + POWER.V + '\'s: a change to either bumps POWER.V and this line', POWER.V !== 1 || sig === SIG_V1, sig);
+  const sig = JSON.stringify([POWER.CONTROL, POWER.ALPHA, POWER.RATING, POWER.SPECIAL_GAP_MS]);
+  const SIG_V2 = '[{"sk":{"sword":20,"bow":20,"staff":20},"shared":{"hp":15,"def":12,"dodge":12,"stam":6,"mana":6,"eres":3,"move":3},"lane":{"dmg":18,"luck":15,"aspd":12,"special":9,"range":3,"elem":0},"gear":{"weapon":{"type":"greatsword","name":"Black Steel Great Sword","gearBase":"steel","tierMult":1.4,"quality":"normal"},"rangedWeapon":{"type":"bow","name":"Hardwood Bow","gearBase":"ww_hardwood","tierMult":1.25,"quality":"normal"},"staffWeapon":{"type":"staff","name":"Hardwood Staff","gearBase":"ww_hardwood","tierMult":1.25,"quality":"normal"},"armor":{"name":"Black Steel Torso","mat":"blacksteel","tierMult":3,"quality":"normal"},"legsArmor":{"name":"Black Steel Greaves","mat":"blacksteel","tierMult":3,"quality":"normal"},"shield":{"name":"Pine Shield","gearBase":"wood","tierMult":1},"amulet":null}},2,{"CONTROL":3000,"PER_TENFOLD":400},1500]';
+  check('5f. the control, the exponent and the rating are version 2\'s: a change to any bumps POWER.V and this line', POWER.V === 2 && sig === SIG_V2, [POWER.V, sig]);
 }
 
 console.log('\n' + passes + ' passed, ' + failures + ' failed');

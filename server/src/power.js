@@ -26,17 +26,26 @@
  *   - how much it takes: the bar (prog3.js _prog3Recompute: the one
  *     formula's health).  Nothing heals in a fight: the worker's regen waits
  *     for five seconds without a hit (index.js _tickPlayerRegen).
- * That gives each side's time to beat the other.  The style's score is
- *     1,000 x (the control's time to beat you / your time to beat it) ^ ALPHA
- * so the control scores exactly 1,000 in every style, and the player's Power
- * is their best style's.  ALPHA is fitted (power.test.mjs §4) so that the
- * scores ARE the odds: a score twice another's wins two fights in three, ten
- * times another's ten in eleven (Bradley-Terry: P(A beats B) = A / (A + B)).
- * The scale is as wide as the odds are: a level-10 character reads tens, the
- * control 1,000, a level-30 one tens of thousands and up (the level edge,
- * prog3.js prog3Edge, takes a weaker player's points away five levels down).
- * A style the player can fight in reads at least 1; one with no weapon in
- * that hand reads 0.
+ * That gives each side's time to beat the other, and their ratio
+ *     r = the control's time to beat you / your time to beat it
+ * gives your ODDS against the control, r ^ ALPHA: ALPHA is fitted
+ * (power.test.mjs §4) so that the odds name who wins (Bradley-Terry: between
+ * two players, A's odds over B's are A's chance of winning over B's).
+ *
+ * ═══ v2.3.5480: THE SCORE IS A RATING, LIKE CHESS'S ═══
+ * The owner, 2026-11-14, shown the odds themselves (1 for everyone under
+ * level 15, millions from 25), a narrower power of them, and this, chose
+ * this ("Go recommended"):
+ *     a style's score = 3,000 + 400 x log10(your odds against the control)
+ * rounded.  The control reads 3,000 in every style; every 400 points ahead
+ * is ten times likelier to win (P(A beats B) = 1 / (1 + 10^((B - A) / 400)),
+ * chess's Elo); a level-1 character reads about 200, a level-40 one about
+ * 4,700.  THE FLOOR IS 1 for a style the player can fight in, and 0 is "no
+ * weapon in that hand" (the boards leave a 0 off): a level-1 staff barely
+ * scratches the control's armour, and a few such characters fall a little
+ * under ten million to one -- under 0 unfloored (the lowest of 1,500 at
+ * levels 1-5: -116 a style, -10 a Power).  At 1 they keep their place on
+ * the board.  The player's Power is their best style's.
  *
  * WHAT IT LEAVES OUT (positions: both stand and trade blows): a bow or staff
  * kiting a sword out of its reach, a roll's i-frames, the shield's block and
@@ -78,18 +87,20 @@ const STYLE = Object.freeze({
 const WEAPON_TYPE = Object.freeze({ melee: 'greatsword', bow: 'bow', magic: 'staff' });
 
 export const POWER = Object.freeze({
-  V: 1,
+  V: 2,
   STYLES: Object.freeze(['melee', 'bow', 'magic']),
-  /* The fitted exponent.  power.test.mjs §4 fits it on half the duels of
-     characters who may meet in No man's land (within five levels) and
-     reports on the other half: 1.92-2.15 over four seeds of 1,200 pairs
-     (spec "The fit").  2: a score is the square of the time ratio. */
+  /* The fitted exponent: the odds are the time ratio to this power.
+     power.test.mjs §4 fits it on half the duels of characters who may meet
+     in No man's land (within five levels) and reports on the other half:
+     1.84-2.10 over five seeds of 1,200 pairs (spec "The fit"). */
   ALPHA: 2,
-  /* What the control's own score reads, in every style. */
-  BASE: 1000,
+  /* v2.3.5480: the rating the owner chose: the control's score, and the
+     points that mean ten times the odds (version 2; version 1, the odds as
+     a number with the control at 1,000, never reached a board) */
+  RATING: Object.freeze({ CONTROL: 3000, PER_TENFOLD: 400 }),
   /* ═══ THE CONTROL: an honest mid-game character of today's game ═══
      Level 20 in all three skills, so each style meets its own mirror (the
-     control scores 1,000 in each).  Its points are the deal those levels
+     control scores 3,000 in each).  Its points are the deal those levels
      give (prog3.js prog3RespecPoints: 57 shared, 57 a lane), spent the way
      a player who has not min-maxed spends them; its gear what the lands it
      plays (levels 11-20) give: a black steel blade and armour, a hardwood
@@ -263,13 +274,15 @@ export function ratioOf(room, f, ctl, style) {
   return it.ttk / you.ttk;
 }
 
-/* a whole number; at least 1 for a style the player can fight in (0 is "no
-   weapon in that hand", never a weak one) */
-const score = (r, alpha) => (r > 0 && Number.isFinite(r)) ? Math.max(1, Math.round(POWER.BASE * Math.pow(r, alpha))) : 0;
+/* the rating: 3,000 + 400 x log10(the odds), whole, at least 1 for a style
+   the player can fight in; 0 for no weapon in that hand (r 0) */
+const score = (r, alpha) => (r > 0 && Number.isFinite(r))
+  ? Math.max(1, Math.round(POWER.RATING.CONTROL + POWER.RATING.PER_TENFOLD * alpha * Math.log10(r)))
+  : 0;
 
-/** The power index of a player's build: `{power, melee, bow, magic, v}`, or
- *  null for a player the worker holds no trained skills for.  `alpha` is
- *  for the suite's fit; everything else reads POWER.ALPHA. */
+/** The power index of a player's build: `{power, melee, bow, magic, v}` (the
+ *  ratings), or null for a player the worker holds no trained skills for.
+ *  `alpha` is for the suite; everything else reads POWER.ALPHA. */
 export function powerOf(room, ps, alpha) {
   const f = fighterOf(room, ps);
   if (!f) return null;
