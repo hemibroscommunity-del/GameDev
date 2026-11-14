@@ -24,7 +24,9 @@
  *      what it was), and with ITS SYSTEM'S SWITCH THROWN (the plan's rule
  *      4: its node suite run once with it thrown) the field stays as it was.
  *      A reset writes its state itself (the census holds that); a module
- *      helper it also calls (a card told to hide) is a no-op here.
+ *      helper it also calls (a card told to hide) is a no-op here;
+ *   7. (v2.3.5206) the worker's statuses on the phone are kept, and a clear of
+ *      them that nothing calls (the old clearElemStatuses) fails.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -178,7 +180,7 @@ function block(text, start) {
        it writes it itself */
     try { fn = body !== null ? new Function('stubs', 'with (stubs) { return function ' + c.fn + '(' + hm[1] + ') {' + body + '}; }')(STUBS) : null; } catch (e) { fn = null; }
     check(`5. ${c.file} ${c.fn}: a named function whose text builds on its own`, typeof fn === 'function');
-    if (fn) built.set(c.file + ' ' + c.fn, { ...c, fn });
+    if (fn) built.set(c.file + ' ' + c.fn, { ...c, fn, body });
   }
   const SENT = { sentinel: true };
   let played = 0;
@@ -186,7 +188,14 @@ function block(text, start) {
     for (const edge of row.lifetime.split('+')) {
       /* the edge's door's own list resets it (the pose's rejoin half,
          rejoinClear): played by its own suite (rejoin-resend.test) */
-      const mine = [...built.values()].filter((b) => b.edge === edge && row.writers.some((w) => w.replace(/~$/, '') === b.file));
+      /* v2.3.5206: the row's own reset -- `fn f` names it; a `value` row's is
+         the reset in a writer's file whose text writes it (a file can hold
+         another reset, combatHelpers.js's, beside a row the door's own list
+         clears: clearZoneLocalFx's, played by zone-leftovers.test) */
+      const named = /^fn /.test(row.reset) ? row.reset.slice(3) : null;
+      const writes = new RegExp('\\.' + row.field.replace(/\$/g, '\\$') + '\\s*=(?!=)');
+      const mine = [...built.values()].filter((b) => b.edge === edge && row.writers.some((w) => w.replace(/~$/, '') === b.file)
+        && (named ? b.fn.name === named : writes.test(b.body)));
       if (!mine.length) continue;
       for (const b of mine) {
         const msgs = [];
@@ -222,6 +231,52 @@ function runResetsOnly(edge, b, S) {
 }
 
 check('6. what is registered is listed', resetsListed().some((r) => r.fn === 'zoneProbe' && r.edge === 'zone'));
+
+/* ── 7. v2.3.5206 (card L PR 4, card D's Found): the worker's statuses ──
+   The phone's copies of the statuses the worker put on you (elemHits.js:
+   a burn, a chill, a stagger...) run out by their own clocks, and the worker
+   ends none at a change of place (server monsterstatus.js: only the safe
+   ground puts a burn out).  So the ledger keeps them, and the clear that said
+   "a zone change: every status ends" (clearElemStatuses), which nothing
+   called, is gone.  A function that clears three or more of them and that
+   nothing calls (by name, or as a registered reset) is that dead clear back:
+   FAIL.  Break proof: put clearElemStatuses back in elemHits.js -> FAIL. */
+{
+  const STATUS = ['_chillUntil', '_stuckUntil', '_burnUntil', '_gust', '_dazeUntil', '_shockUntil', '_shockFrom',
+    '_soakUntil', '_poisonUntil', '_slowUntil', '_fractureUntil', '_fractureStacks', '_thornUntil', '_staggerUntil',
+    '_frozenUntil', '_wobbleFrom', '_wobbleUntil'];
+  const files = [];
+  (function walk(rel) {
+    for (const n of readdirSync(new URL(rel, ROOT))) {
+      const r = rel + n;
+      if (statSync(new URL(r, ROOT)).isDirectory()) { if (!n.startsWith('.')) walk(r + '/'); }
+      else if (/\.(js|jsx|mjs)$/.test(n) && !r.startsWith('src/state/')) files.push(r);
+    }
+  })('src/');
+  const texts = files.map((f) => ({ f, t: src(f) }));
+  /* a call is looked for in the code, not in its comments: a note naming the
+     dead clear ("clearElemStatuses (...") is not a call (the break proof's
+     first run passed on elemHits.js's own note) */
+  const code = texts.map((x) => x.t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|\s)\/\/.*$/gm, '$1'));
+  const cleared = new RegExp('\\.(' + STATUS.join('|') + ')\\s*=\\s*(?:0|null)\\b', 'g');
+  const dead = [];
+  let clears = 0;
+  for (const { f, t } of texts) {
+    if (!STATUS.some((s) => t.includes(s))) continue;
+    for (const m of t.matchAll(/(?:^|[^\w$.])function\s+([A-Za-z_$][\w$]*)\s*\([^)]*\)\s*\{/g)) {
+      const body = block(t.slice(m.index), m[0].replace(/^[^f]*/, ''));
+      if (!body) continue;
+      const hit = new Set([...body.matchAll(cleared)].map((x) => x[1]));
+      if (hit.size < 3) continue;
+      clears++;
+      const name = m[1];
+      const called = new RegExp('(?<!function\\s+)\\b' + name.replace(/\$/g, '\\$') + '\\s*\\(|resetOn\\(\\s*\'[a-z]+\'\\s*,\\s*' + name.replace(/\$/g, '\\$') + '\\b');
+      if (!code.some((c) => called.test(c))) dead.push(f + ' ' + name + ' (' + [...hit].join(', ') + ')');
+    }
+  }
+  check(`7. no clear of the worker's statuses that nothing calls (clears of three or more: ${clears}; uncalled: ${dead.length})`, dead.length === 0, dead);
+  check('7. clearElemStatuses is gone from elemHits.js', !/function\s+clearElemStatuses\b/.test(src('src/game/elemHits.js')));
+}
 
 console.log(`\n${passes} passed, ${failures} failed`);
 if (failures) process.exit(1);

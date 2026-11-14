@@ -57,6 +57,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `bigorb` | worker | switch | v2.3.2849 | false | logic |  | no | Un-advertises the staff's big orb: a phone that joins after fires the old three orbs, with no blast. |
 | `?bowfeel` | page | switch | v2.3.4802 | =0 (remembered; =1 forgets) | logic |  | no | The bow's old flick, not its draw, on this device. |
 | `bowvolley` | worker | switch | v2.3.2808 | false | logic |  | no | Un-advertises the bow's volley: a phone that joins after fires the old single arrow and blast. |
+| `?combatreset` | page | switch | v2.3.5206 | =0 | logic |  | no | A fight you picked, a roll or a lunge, the hit marks on the ground, a kill's XP still waiting and another player's damage numbers still queued carry over a change of place again, each ending on its own clock or its own check, not at the zone door. |
 | `disable_threats` | worker | switch | v2.3.1150 | true | logic |  | no | Thrown, every relayed threat handshake is dropped. |
 | `elemup` | worker | switch | v2.3.3518 | false | logic |  | no | Un-advertises the element bonus and takes it away. |
 | `fightlockarmor` | worker | switch | v2.3.4582 | false | logic |  | no | Armour put on or taken off in a fight is no longer refused. |

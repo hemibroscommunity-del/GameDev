@@ -144,7 +144,7 @@ Left `sitting`:
 
 The 40 `?` rows (nobody has read them yet) are outside the 484.
 
-## PR 4 (v2.3.5204): desktop, social, movement
+## PR 4, tag 5204: desktop, social, movement
 
 22 rows decided, which takes `SITTING_LINE` from 468 to 446. Three systems'
 resets:
@@ -173,7 +173,7 @@ The suite's built resets may call a module's own helper (the race's
 `raceBus.emit()`, a card told to hide). In the suite that helper is a no-op;
 the census still holds that the reset writes its state itself.
 
-## PR 5 (v2.3.5205): economy, skills
+## PR 4, tag 5205: economy, skills
 
 17 rows decided, which takes `SITTING_LINE` from 446 to 429.
 
@@ -197,3 +197,42 @@ Left `sitting`:
 - `fishWeigh.js st`: whether a lost answer blocks the next weigh needs
   reading.
 
+
+## PR 4, tag 5206: data, combat (v2.3.5206)
+
+65 rows decided, which takes `SITTING_LINE` from 429 to 364. The combat
+system's resets (switch `?combatreset`) all run at the zone door, each
+beside its state:
+
+| Row | Decided |
+|---|---|
+| `S._engaged`, `S._engagedId`, `S._engagedGapAt` | `zone`: `targeting.js endEngagement`, the same three values `_updateEngagement` writes 1.5 s later when the fight's monster is not in the new list (it stays, as the off-ramp) |
+| `S.groundSplatter`, `S._peerDmgQueue`, `S._peerDmgLastRel`, `S._dmgFromMonster` | `zone`: `combatHelpers.js leavePlaceFight`. The marks carry no zone and lay on the new map for their 8 s; `releasePeerDamage`'s own zone check drops the queue a frame later (it stays); the damage mirror only grew |
+| `S._killXpWait` | `zone`: `killXp.js forgetKillWaiting`. A gain that came after the door flew its label from the old place's spot; now the bar's own "+N" shows it |
+| `S._dodgeRoll` | `zone`: `dodge.js endRollAtDoor`. A roll slid you on from the spot you arrived at, for up to 700 ms |
+| `S._debrisBursts`, `S._staffCrashes`, `S._whirlWindup` | `zone`, `fn clearZoneLocalFx`: the door's own list |
+| The 17 statuses (`S._burnUntil`, `S._chillUntil`, ... `S._staggerUntil`, `S._gust`) | kept (the planning session's call): the phone's copies of what the worker put on you. The worker clears none at a change of place: only the safe ground puts a burn out, and a respawn lands there. A worker-side clear would be a game change for the owner, not this card |
+| `S._arrowSnaps`, `S._propMarks`, `S._shotImpacts`, `S._feelFx` | kept: their renderers drain them every frame, and the first three draw a record only in the place it names |
+| `S._sparkArcs` | kept: a bolt lives 320 ms; its sparks are another row |
+| `S._bf` | kept: the bow's draw ends with the thumb, which stops its creak |
+| `S.dmgNumbers` | kept: a popup said just before a trip is for the place you arrive in (a cleared dungeon's "+N G") |
+| `S._acc`, `S._accState`, `shieldGem.js _pending`, `weaponGem.js _pending` | kept: begun again at every `state_sync`; asked for by its page; asks in flight that lapse by themselves |
+| the data system's 19 flags (`_prog3x`, `_gearQ`, ...), `WEAPON_STASH_MAX` | kept: the worker's caps say each whole at every `state_sync`, the flags just after the rejoin's door |
+| `COLS`, `ROWS`, `TOWN_W`, `TOWN_H`, `worldProps.js _blockerHook` | kept: the size of the place you are in, set on every way in; the hook its drawer sets and takes back |
+
+**Card D's Found**, `clearElemStatuses` with no caller, is acted on: the
+function is gone (it said "a zone change: every status ends", the opposite of
+the game). `state-resets.test` §7 fails a clear of three or more statuses that
+nothing calls, by name or as a registered reset. Break proofs: put it back
+(FAIL), or put it back under another name (FAIL).
+
+`state-resets.test` §5 now matches a row to the reset that writes it (`fn f`
+by name; a `value` row by the reset's text), since a file can register one
+reset beside a row the door's own list clears (`combatHelpers.js`).
+
+`S._staggerUntil`'s first writer was the dead clear; it is now
+`gameEvents.js`, so card B's map would put it in `wire`. The guard lists it as
+moved, and it stays in `combat`'s ledger.
+
+Left `sitting`: the death rows (`S._sf`, `S._stf`, `S._shieldUp`,
+`S._shieldAutoReleased`), until the page's death door (card L PR 5).

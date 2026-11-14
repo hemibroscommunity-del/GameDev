@@ -111,7 +111,7 @@ export const UNLISTED_LINE = 22;
 /* v2.3.5203 (card L PR 3): the rows card D suggests a reset for that are
    still `sitting` with no `kept:` (484 at main 75946b7's ledgers).  Each of
    card L's reset PRs lowers it with what it decides (its card's PR 4). */
-export const SITTING_LINE = 429;
+export const SITTING_LINE = 364;
 
 const LIVE = process.argv.includes('--live');
 const PAGE_ONLY = process.argv.includes('--page');
