@@ -73,6 +73,7 @@
 import { findProvRow, GEAR_PROV_FIELD } from './gearprov.js';
 import { PACE } from './flood.js';
 import { MONSTER_ARMOR_DROPS } from './data.js';
+import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
 
 const has = (o, k) => !!o && typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
 
@@ -397,9 +398,7 @@ export const revealBagMethods = {
       if (!w) return { ok: false, error: 'no blade' };
       w.quality = grade;
       this._revealBagMark(session, w);
-      if (!Array.isArray(ps.weaponStash)) ps.weaponStash = [];
-      if (ps.weaponStash.length >= this.WEAPON_STASH_CAP) return { ok: false, error: 'weapon bag full' };
-      ps.weaponStash.push(w);
+      if (!stashGive(ps, 'weaponStash', w, 'reveal_dev', this)) return { ok: false, error: 'weapon bag full' };   /* v2.3.5281: the stashes' door */
       this._saveRpg(playerId, ps);
       if (ws) this._sendPlayerState(ws, playerId);
       return { ok: true, give: 'weapon', unrevealed: !!w.unrevealed, idx: ps.weaponStash.length - 1 };
@@ -408,7 +407,7 @@ export const revealBagMethods = {
     if (!d) return { ok: false, error: 'give: armor, legsArmor or weapon' };
     const piece = this._revealBagMark(session, { name: d.name, mat: d.mat, slot: d.slot, tierMult: d.tierMult, quality: grade });
     this._gearProvRecord(playerId, d.slot, piece, 'drop');
-    if (this._gearStashLiveAdd) this._gearStashLiveAdd(ps, d.slot, piece);   /* v2.3.4840 */
+    if (this._gearStashLiveAdd) this._gearStashLiveAdd(ps, d.slot, piece, 'gear_reveal');   /* v2.3.4840; v2.3.5281: its road */
     const pub = revealPublic(piece);
     if (ws) {
       try {

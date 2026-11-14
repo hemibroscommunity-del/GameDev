@@ -46,6 +46,7 @@ import { PETBOOK, petPublic } from './petbook.js';   /* v2.3.3122: the pet lane 
 import { PACE } from './flood.js';   /* v2.3.3293: the weapon lane's pace */
 import { bagTake } from './bag.js'; /* v2.3.4810: the bag door */
 import { xferTradeWindow } from './xfer.js'; /* v2.3.5092: the transfer ledger */
+import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
 
 export const TRADE2 = {
   INVITE_TTL: 60000,    // open-toward-you offer lifetime
@@ -660,15 +661,15 @@ export const trade2Methods = {
     if (this._paceTake && !this._paceTake('t2wpn', session.id, PACE.T2WPN)) return;
     const ps = this.playerState[session.id];
     if (!ps || ps.dying || ps.dead) return;
-    if (!Array.isArray(ps.weaponStash)) ps.weaponStash = [];
+    const stash = Array.isArray(ps.weaponStash) ? ps.weaponStash : [];   /* v2.3.5281: read here; only the stashes' door writes it */
     const idx = payload && payload.stashIdx;
-    if (!Number.isInteger(idx) || idx < 0 || idx >= ps.weaponStash.length) return;
+    if (!Number.isInteger(idx) || idx < 0 || idx >= stash.length) return;
     // Stale-index guard: the client's stash view can lag a just-staged
     // weapon's removal, so an optional name check turns a stale tap into
     // a no-op instead of escrowing the wrong weapon (still take-by-index
     // from the SERVER's stash, rule 16 -- the name is only a tiebreak).
     if (typeof (payload && payload.expectName) === 'string'
-      && ps.weaponStash[idx] && ps.weaponStash[idx].name !== payload.expectName) return;
+      && stash[idx] && stash[idx].name !== payload.expectName) return;
     if (!s.weapons) s.weapons = { [s.a]: [], [s.b]: [] };
     const mine = s.weapons[session.id] || (s.weapons[session.id] = []);
     /* v2.3.4885: the staged-weapon cap -- the window offers no more, so its
@@ -679,9 +680,9 @@ export const trade2Methods = {
     // never trust a client-supplied blob), sanitized (quality/hardness/
     // temper preserved, clamped -- the credit path re-sanitizes the same
     // way on delivery/refund).
-    const weapon = this._sanitizeWeapon(ps.weaponStash[idx]);
+    const weapon = this._sanitizeWeapon(stash[idx]);
     if (!weapon) return;
-    ps.weaponStash.splice(idx, 1);
+    stashTake(ps, 'weaponStash', idx, 'trade_put');
     const seq = (this._t2WpnSeq = (this._t2WpnSeq || 0) + 1);
     /* v2.3.3294: the escrow record and the stash it left in ONE write.  The
        record was written and awaited first, the stash saved after: a

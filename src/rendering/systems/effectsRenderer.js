@@ -343,7 +343,7 @@ import { gesturePose01, extractionMeter01, gestureLoopFrame, COOK_FLICKS_PER_LOO
 import { bodyWorkerWanted, bakeOnWorker, noteWorkerSheet } from '../bodyBake.js';   /* v2.3.4930: a peer's stand-ins with drawings, baked on a worker */
 import { shirtWorkerOff } from '../gearSheets.js';   /* v2.3.5014: `?shirtworker=0` */
 import { loadWebpOrPng } from '../webpImage.js'; /* v2.3.2328: the sword/bow/legs loader asks for the smaller file too */
-import { getFrame as getSlimeFrame, hasState as hasSlimeState, SLIME_BASE_ROW, SLIME_FRAME_PX /* v2.3.2991: where a scene texel is on the world's slime */ } from '../slimeSprites.js';
+import { getFrame as getSlimeFrame, hasState as hasSlimeState, SLIME_BASE_ROW, SLIME_FRAME_PX /* v2.3.2991: where a scene texel is on the world's slime */, getHitStill as getSlimeHitStill /* v2.3.5256: the demo's films, the strip a look now */ } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
 import { getRemnantsTexture as getSnowmanRemnantsTex, getSnowballTexture } from '../snowmanSprites.js'; /* v2.3.2217 */
 import { variantSpritesFor } from '../monsterVariantSprites.js';
@@ -18319,7 +18319,7 @@ export class EffectsRenderer {
     const h = monsterBodyOffsetY(arch);
     const weapon = o.weapon === 'arrow' || o.weapon === 'bolt' ? o.weapon : 'sword';
     const tw = this._slimeTexelWorld();
-    const bodyTex = getSlimeFrame('hit', 0);
+    const bodyTex = getSlimeFrame('hit', 0) || getSlimeHitStill();   /* v2.3.5256: the still while no slime's look is in */
     const body = bodyTex ? { texture: bodyTex, scale: { x: tw, y: tw }, worldTransform: new Matrix(tw, 0, 0, tw, 0, 0), _btBaseTint: 0xffffff, tint: 0xffffff } : null;
     const front = new Container(), back = new Container();
     const fx = new HitMaterialFx(front, back, { artOf: () => body });
@@ -18391,7 +18391,7 @@ export class EffectsRenderer {
        `scale` window px per world px -- so in the bake's world units the
        arrow is arrowLen / scale long, kArrow of a world arrow */
     const kArrow = ((+o.arrowLen) || 30) / ARROW_PINE.lenPx / scale;
-    const bodyTex = getSlimeFrame('hit', 0);
+    const bodyTex = getSlimeFrame('hit', 0) || getSlimeHitStill();   /* v2.3.5256: the still while no slime's look is in */
     if (!bodyTex) return null;
     const layer = new Container();
     const body = new Sprite(bodyTex);

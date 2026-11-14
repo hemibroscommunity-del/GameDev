@@ -1,40 +1,40 @@
 card: Z
-branch: claude/plan-z-sitting-16
-prs: (this PR), tag 5373, the last line of the list (ready)
+branch: claude/plan-z-sitting-17
+prs: (this PR), tag 5374, the last line of the list (ready)
 state: ready
 
 ## Done
-- Sitting 16, `main` 64bb498: the list rehearsed in its order (tree
-  02605dd3, this branch aside): precheck 0 FAIL, build, questline 187;
-  each base `main`, ONE merge base step by step. Review:
-  `census/review-z16.md`. 2.1 ticked; notes on 4.1, 5.3b, 5.8, 8.1;
-  `TODO_LINE` 30 -> 28; wsClient.js 3296 -> 3039, setupWebSocket -> 2839.
+- Sitting 17, `main` 59469b2: the list rehearsed in its order (tree
+  d7a02deb, this branch aside): precheck 0 FAIL (2 WARN), build, questline
+  187 of 187; each base `main`, ONE merge base step by step (each card's
+  PRs stacked at its session's hand). Review: `census/review-z17.md`.
+  4.1 and 7.2 ticked; notes on 2.3, 4.2, 4.5, 4.7, 5.3b, 8.1, 9.5;
+  `TODO_LINE` 28 -> 27; BroTown.jsx's four lines and entityRenderer.js
+  8955 -> 8953.
 
 ## The list: merge in this order, in one sitting, each "Create a merge commit"
-1 #1838 (K) · 2 #1842 (K) · 3 #1839 (L) · 4 #1844 (R) · 5 #1852 (E) ·
-6 #1840 (P) · 7 #1841 (O) · 8 #1782 (SK) · 9 #1845 (J2) · 10 this PR.
-Eight deploy (1 to 8): back to back. New live flags `wiredoor`,
-`arrowlane`, `exdoor` (ON), `roomrewind` (OFF); #1852 turns two ON (the
-owner's yes); no stored record changes its shape.
+1 #1862 (R) · 2 #1851 (L) · 3 #1855 (L) · 4 #1861 (K) · 5 #1850 (O) ·
+6 #1854 (O) · 7 #1846 (P) · 8 #1859 (P) · 9 #1849 (J2) · 10 #1858 (J2) ·
+11 #1860 (J2) · 12 this PR. Eight deploy (1 to 7 and 10): back to back.
+New live flags `harvestdoor`, `dungeondoor` (ON, L's, stacked); new page
+switches `?ladderpass` (O), `?slimewalk` (P); no stored record changes
+its shape.
 
-## Held (expires at sitting 17)
-- #1837 T: the planning session's (B): it conflicts with every PR adding
-  a switch row; T merges the new `main`, `on` on the new rows, a
-  one-PR sitting next. #1836 O carries its head: right after it.
-- #1848 K, #1847 R: each its card's second this sitting. #1848: two
-  MEDIUMs on its ON path before the owner's yes; #1847: one MEDIUM (a
-  hand deny list) and device ids out. In the review.
-- #1846 P: two MEDIUMs on screen (the stat demo's slime; the Workshop's
-  circles), `?slimewalk=0` restores both.
-- Not reviewed, opened during the sitting: #1849 J2, #1850 O (conflicts
-  with `main` at O.md), #1851 L (it carries #1839).
+## Held (expires at sitting 18)
+- #1847 R: its MEDIUM (a device id in `inbox:` rows) mended at f72a19a
+  after the list was set: read it first at sitting 18.
+- #1863 T: leads sitting 18 at the head of `main` (check 13: every PR
+  adding a page switch row must write switches.js's block), and its
+  MEDIUM (the reader keeps one copy of an address the page rewrites).
+- #1848 K: `sprintmark` OFF stands; its ON path's two MEDIUMs not mended.
+- #1853 P: clean, but its head never took `main` 59469b2 (seven files
+  conflict); `artCache` 88.6 when it lands after #1846.
 
 ## Stalled
-- None: P says `working` on two branches pushed within the hour.
+- None.
 
 ## Found
-- CLAUDE.md §7's "three sprite programs on every chip" is older than
-  5016 (one program the default): the owner's file.
-- K: three wire-table edits nothing catches since the guard's §7 left.
-- L: the cook door's guards miss destructuring and literal-built bodies.
-- O: an override with no `when` never pins, and draw-lanes §8 passes it.
+- K: nothing holds the `pose` row's `body: 'top'` now (#1861's reviewer).
+- O: the Speed test does not put the ladder back before it measures.
+- `power.test` red once in a full run under load (64/0 alone).
+- Not reviewed, opened during the sitting: L's #1864 (5216).

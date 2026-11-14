@@ -219,7 +219,7 @@ box's software graphics chip, and the quarter second of game it plays in one
 frame: a phone has neither) or **the browser's** (its garbage collector: the
 game can only give it less to do). The grand plan's step 3.1 is done when no
 row is ours (`held-budget.mjs` `debtOf('ours')`, the count its scoreboard
-reads). Today (v2.3.5253): none ours (`pack-page`, the last, off the list: card P's road B), two the box's, one the browser's. A new family is
+reads). Today (v2.3.5429): one ours (`other: R > J`, back on the list: card J2, below), two the box's, one the browser's (v2.3.5253: none ours, `pack-page` the last off the list: card P's road B). A new family is
 ours until a measurement says otherwise: `held-sweep.test` 7b3 holds the
 box's and the browser's to the three below, and 7b4 holds this table to
 `KNOWN`, row for row. Their break proofs (the grand plan's rule 8), each run
@@ -243,6 +243,7 @@ All of them (the first five by their old rank, then the rest; a family off the l
 | ~~`ui:*`~~ | | off the list (v2.3.5047; was 16 ms) | one component drawn in one piece (the gear tab is one function of 10 ms) | **v2.3.5047**: each equipment cell a component, the number formatter readied at load (below, "Card H") |
 | ~~`other: BT_AUDIO$1._fold > foldToMono`~~ | | off the list (v2.3.5045; was 20 ms) | a two-sided sound folded to one on its first play, in one piece | **v2.3.5045**: a stretch at a time, a frame between (below, "Card H") |
 | ~~`other: R > J`~~ | | off the list (v2.3.5046; was 20 ms) | React re-rendering the game's root in one piece on every equip (`gearWornSync.js`) | **v2.3.5046**: only when a worn flag changes, and as a transition (below, "Card H") |
+| `other: R > J` | ours | 16 ms (v2.3.5429, card J2: back on the list) | at `stand` and `town`, React working through a redraw with no game function on its stack: 14.4 ms twice in one run of five on main (card TF), 5 to 11.3 ms in five runs here. Beside it every run, the door prompt placed over your head (`BroTown.jsx` `placeOverHead`, `XpFlyOverlay.jsx` `playerScreenPoint`) measures the canvas and itself inside React's commit: 10.7 to 12.5 ms at `town` | the prompt placed from a cached canvas box, measured at the top of a frame (`framePacer.js` `beforeDraw`), not in the commit; a development build's profile to name the rest. Off when five runs of `stand,town` hold nothing of it past 12 ms |
 | ~~`other: wrapped > sweepPicsOnce`~~ | | off the list (v2.3.5048; was 16 ms) | `picsOnce.js`'s sweep of the cache's pictures, up to 15 ms with the crowd's pictures in it | **v2.3.5048**: a slice a turn (below, "Card H") |
 | ~~`other: _flushOutbox > Wrapped.ws.send`~~ | | off the list (v2.3.4960) | 4.7 ms at most in the 2026-11-12 tours (was 18 once); `other: createObjectURL` came off too (9.3 at most) | |
 

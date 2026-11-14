@@ -352,8 +352,9 @@ export const ALLOW = {
   '_handleTrade2StageWeapon': {
     "if (!s)": "gone",
     "if (this._paceTake && !this._paceTake('t2wpn', session.id, PACE.T2WPN))": "rate",
-    "if (!Number.isInteger(idx) || idx < 0 || idx >= ps.weaponStash.length)": "shape",
-    "if (typeof (payload && payload.expectName) === 'string' && ps.weaponStash[idx] && ps.weaponStash[idx].name !== payload.expectName)": "shape",
+    /* v2.3.5281: the same two exits, the bag read through a local (only the stashes' door writes it) */
+    "if (!Number.isInteger(idx) || idx < 0 || idx >= stash.length)": "shape",
+    "if (typeof (payload && payload.expectName) === 'string' && stash[idx] && stash[idx].name !== payload.expectName)": "shape",
     "if (!weapon)": "shape",
   },
   '_handleTrade2UnstageWeapon': {
