@@ -305,7 +305,11 @@ export function drawLane(cls) {
 
 /* ── v2.3.5222: the rung, the governor's alone ── */
 const ROW = Object.freeze({ work: 0, chip: 0, pixels: 0 });
-let _rung = ROW;          /* the governor's (setRung): rungs taken on each axis */
+/* the governor's (setRung): rungs taken on each axis.  v2.3.5222 (the
+   gatekeeper's sitting 12): a property of a module object, not a module
+   `let` -- card L's phase guard reads a door's writes off the syntax tree as
+   `.prop` writes (DOOR_SUITES), and only setRung and the tests' reset write it */
+const LANE = { _rung: ROW };
 
 /* v2.3.5224: THE LIVE KNOBS -- a rung counts only if something reads its
    knob (the gatekeeper's sitting 11 on #1794, verified by a probe: the
@@ -345,12 +349,12 @@ export function liveKnobs() {
 export function _liveKnobs(list) { _live = Array.isArray(list) ? Object.freeze(list.slice()) : MOVED_KNOBS; _liveNow = null; }
 
 /** Where the ladder stands now: { work, chip, pixels }, rungs taken on each axis. */
-export function ladderRung() { return _rung; }
+export function ladderRung() { return LANE._rung; }
 /** Rungs taken that change something, every axis: 0 is the lane's row (the
  *  report's `rung`).  v2.3.5224: a rung whose knob nothing reads yet counts
  *  none. */
 export function rungDepth(r) {
-  const x = r || _rung;
+  const x = r || LANE._rung;
   let n = 0;
   for (const a of AXIS_NAMES) {
     const m = Math.max(0, Math.min(AXES[a].length, x[a] | 0));
@@ -365,10 +369,10 @@ export function setRung(work, chip, pixels) {
   const w = Math.max(0, Math.min(AXES.work.length, Math.floor(Number(work) || 0)));
   const c = Math.max(0, Math.min(AXES.chip.length, Math.floor(Number(chip) || 0)));
   const p = Math.max(0, Math.min(AXES.pixels.length, Math.floor(Number(pixels) || 0)));
-  if (w === _rung.work && c === _rung.chip && p === _rung.pixels) return _rung;
-  _rung = w === 0 && c === 0 && p === 0 ? ROW : Object.freeze({ work: w, chip: c, pixels: p });
+  if (w === LANE._rung.work && c === LANE._rung.chip && p === LANE._rung.pixels) return LANE._rung;
+  LANE._rung = w === 0 && c === 0 && p === 0 ? ROW : Object.freeze({ work: w, chip: c, pixels: p });
   _tell();
-  return _rung;
+  return LANE._rung;
 }
 
 /** The override pinning a knob, or null. */
@@ -382,7 +386,7 @@ export function pinOf(name) {
 export function laneKnob(name) {
   const p = pinOf(name);
   if (p) return p.value;
-  return knobAt(drawLane(), name, _rung);
+  return knobAt(drawLane(), name, LANE._rung);
 }
 
 /** Be told when a knob's value changes (a lane picked, a rung moved): fn(value,
@@ -407,7 +411,7 @@ function _tell() {
 
 /** For the tests only: forget the address, the class and the subscribers. */
 export function _resetLanes() {
-  _classOf = null; _lane = null; _laneAskedAt = -Infinity; _urlLane = undefined; _rung = ROW; _liveNow = null;
+  _classOf = null; _lane = null; _laneAskedAt = -Infinity; _urlLane = undefined; LANE._rung = ROW; _liveNow = null;
   for (const k in _subs) delete _subs[k];
   for (const k in _told) delete _told[k];
 }
@@ -417,6 +421,6 @@ if (typeof window !== 'undefined') {
   window.__btLane = () => {
     const knobs = Object.create(null);
     for (const n of KNOB_NAMES) knobs[n] = laneKnob(n);
-    return { lane: drawLane(), fromAddress: !!laneFromSearch(_search()), rung: { ..._rung }, depth: rungDepth(), live: liveKnobs().slice(), knobs };
+    return { lane: drawLane(), fromAddress: !!laneFromSearch(_search()), rung: { ...LANE._rung }, depth: rungDepth(), live: liveKnobs().slice(), knobs };
   };
 }
