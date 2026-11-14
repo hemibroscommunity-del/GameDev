@@ -45,6 +45,7 @@
  */
 import { extensions, ExtensionType, LoaderParserPriority, Texture, Rectangle, Cache, loadTextures } from 'pixi.js';
 import { paletteOn, makePaletteSource, isPaletteSource } from './paletteTex.js';
+import { whenPaletteDecided } from './p256.js';   /* v2.3.5247: the trees wait for the renderer's word, as the effects' twins do */
 
 /* the farm's ground and its palette twin (the address the game asks for ->
    the file read as numbers) */
@@ -62,14 +63,28 @@ function pathOf(url) {
   return m ? m[1] : p;
 }
 
+/* ═══ v2.3.5247: THE TREES' PICTURES TOO (card P's backlog, tree-tiers) ═══
+   The five woods' trees (public/sprites/trees/wood-*.png, cut on 256 colours
+   by tools/world/add-tree-art.mjs) were held as pictures, four bytes a pixel
+   in the page: 5.6 MB at the memory check's fight, where no tree is drawn.
+   Read here as their numbers, a byte a pixel (paletteTex.js, a row of the
+   atlas each), as the farm's are.  effectsRenderer.js asks for them once the
+   renderer has said whether pictures are drawn so (p256.js
+   whenPaletteDecided), still behind the loading screen.  `?treenumbers=0`: pictures, as before. */
+export const TREE_NUMBERS = (() => { try { return !/[?&]treenumbers=0(&|$)/.test(location.search || ''); } catch (e) { return true; } })();
+/** When effectsRenderer.js may ask for the trees: once the renderer has said
+ *  whether pictures are drawn as numbers here (p256.js whenPaletteDecided,
+ *  the effects' own wait: at most 20 s, then as pictures); at once when off. */
+export function treesWhenReady() { return TREE_NUMBERS ? whenPaletteDecided() : Promise.resolve(false); }
 /** What this reads for `url` -- { file, opaque } -- or null: not one of the
- *  farm's, or pictures are not drawn as numbers here. */
+ *  farm's or the trees', or pictures are not drawn as numbers here. */
 export function paletteFileFor(url) {
   if (!paletteOn()) return null;
   const { query } = split(url);
   const p = pathOf(url);
   if (TWINS[p]) return { file: TWINS[p] + query, opaque: true, kind: 'ground' };
   if (/^\/world\/farm\/[^/]+\.png$/.test(p)) return { file: String(url), opaque: false, kind: 'picture' };
+  if (TREE_NUMBERS && /^\/sprites\/trees\/wood-[^/]+\.png$/.test(p)) return { file: String(url), opaque: false, kind: 'picture' };
   if (/^\/world\/objects\/[^/]+\.png$/.test(p) && /[?&]farm=1(&|$)/.test(query)) return { file: String(url), opaque: false, kind: 'page' };
   return null;
 }

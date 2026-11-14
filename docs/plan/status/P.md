@@ -1,7 +1,7 @@
 card: P
-branch: claude/plan-p-6-npc-heads (one branch a PR, each begun from the one before)
-prs: #1713 (5241, merged); #1715, #1716, #1718, #1719 (5242-5245), PR 6 (5246): ready
-state: ready
+branch: claude/plan-p-7-tree-tiers (one branch a PR, each begun from the one before)
+prs: #1713 (5241, merged); #1715, #1716, #1718, #1719, #1736 (5242-5246) ready; PR 7 (5247) working
+state: working
 
 ## Done
 
@@ -17,12 +17,12 @@ state: ready
 - #1719 (5245): the 19 `.m4a` under `public/sfx/` removed (0.19 MB; nothing
   named them; the MP3 beside each plays); `shipped.json` 3,206 rows.
 
-- PR 6 (5246), backlog `npc-heads`: the portraits let go of once loaded;
+- #1736 (5246), backlog `npc-heads`: the portraits let go of once loaded;
   `artCache` 48.7 -> 45.8 (line 112 -> 109.1), `buffers` unchanged.
 
 ## Next
 
-- PR 7 (5247), backlog `tree-tiers` as colour numbers (load order to mend).
+- PR 7 (5247), backlog `tree-tiers` as colour numbers (`?treenumbers=0`).
 
 ## Found
 
