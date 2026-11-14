@@ -305,3 +305,55 @@ export function ratiosOf(room, ps) {
   for (const s of POWER.STYLES) out[s] = ratioOf(room, f, ctl, s);
   return out;
 }
+
+/* ═══ v2.3.5481: THE BOARDS CARRY IT (card PW, PR 2) ═══
+   A board row's `powerIndex` is `powerOf`'s answer, made by the room when a
+   board report goes (index.js reportToLeaderboard) and stored by the
+   Leaderboard object (leaderboard.js updatePlayer); the Power board
+   (`getTop('power')`) sorts by its `power`.  A row with none, or with
+   another version's, is NOT YET RANKED: off the Power board, never a 0.
+
+   NO NEW WRITE OCCASION.  The index rides the reports the room already
+   sends and is not in their change signature: a gear or points change sends
+   nothing by itself, and the next report that goes -- a level, a kill or the
+   face moving (5 min apart at most), else the heartbeat (10 min) -- carries
+   the build as it is then.  It is worked out only when a report goes (after
+   the throttle's clock, "the clock before the work"), about 2 ms.
+
+   KILL SWITCH `power: false` in the live flags: no report carries it (each
+   row loses it at its next report, so the Power board empties as players
+   play and the other boards are as they were), and `caps.power` is not
+   advertised, so the phone's panel shows no Power.  `caps.power` is the
+   index's version (POWER.V): the phone shows only rows of that version. */
+const own = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
+const whole = (v) => {
+  const n = Math.floor(Number(v));
+  return Number.isFinite(n) && n >= 0 ? Math.min(n, Number.MAX_SAFE_INTEGER) : 0;
+};
+
+/** A stored or reported power index made safe: `{power, melee, bow, magic, v}`
+ *  of whole numbers, `power` the best of the three -- or null. */
+export function cleanPowerIndex(x) {
+  if (!x || typeof x !== 'object') return null;
+  const v = whole(x.v);
+  if (!v) return null;
+  const out = { power: 0, melee: whole(x.melee), bow: whole(x.bow), magic: whole(x.magic), v };
+  out.power = Math.max(out.melee, out.bow, out.magic);
+  return out;
+}
+
+export const powerMethods = {
+  /* the kill switch, read the lower-case way (TRAPS §117): on unless written false */
+  _powerOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && own(f, 'power') && !f.power);
+  },
+  /* caps.power: the index's version, or nothing under the switch */
+  _powerCap() { return this._powerOn() ? POWER.V : undefined; },
+  /* a board row's index for this player, or null (the switch thrown, no
+     trained skills on file, or a fault: a board report never fails for it) */
+  _powerFor(ps) {
+    if (!ps || !this._powerOn()) return null;
+    try { return cleanPowerIndex(powerOf(this, ps)); } catch (e) { return null; }
+  },
+};

@@ -1488,6 +1488,14 @@ export function TradeWindowPanel(props) {
               Not while one of you is fighting a player. Try again in a few seconds.
             </div>
           )}
+          {/* v2.3.5090: nor in the minute after the storage refused a save (server
+              valuepause.js, the code `paused`, the owner's words); the window
+              stays open and the same Accept settles after */}
+          {trade2.reason === 'paused' && (
+            <div data-t2-paused="1" style={{ fontSize: 12, color: '#D8635D', marginTop: 6, textAlign: 'center' }}>
+              Saving is paused for a moment, try again.
+            </div>
+          )}
           {/* ═══ v2.3.2293: BOTH FOOTERS REMOVED ═══
               Owner: "remove all the tiny info disclaimers and explainers".
               This one stated the anti-switch rule and the live window's stated

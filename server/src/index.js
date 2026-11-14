@@ -108,6 +108,8 @@ import { deathPileMethods } from './deathpile.js';   /* v2.3.4384: a dead player
 import { fishlogMethods } from './fishlog.js';   /* v2.3.4036: the rare fish, weighed, with records */
 import { riseChestMethods } from './risechest.js';   /* v2.3.4453: the chest on a rise pays, once a character */
 import { boardMethods, boardFace } from './boards.js';   /* v2.3.4393: the daily spin's records, a face and a level on every board, the deleted stand-ins */
+import { powerMethods } from './power.js';   /* v2.3.5481: the power index on the boards (card PW) */
+import { statBoardMethods } from './statboards.js';   /* v2.3.5484: a board a shared stat's points, and the weapons' damage (card PW) */
 import { accuracyMethods } from './accuracy.js';   /* v2.3.4545: how many of your shots hit, a weapon */
 import { reportMethods, rttWaverNext, reportSiteOf } from './report.js';   /* v2.3.5123: the field report, the worker's side */
 import { roomRowMethods } from './roomrow.js';   /* v2.3.5124: the room's own row in the day's book */
@@ -273,6 +275,7 @@ import { leaveMethods } from './leave.js'; /* v2.3.4830: the session door -- eve
 import { goldMethods } from './gold.js'; /* v2.3.4670: the gold door -- every change to a player's gold */
 import { lifeMethods } from './life.js'; /* v2.3.4820: the life door -- a player's health and life phase */
 import { bagGive } from './bag.js'; /* v2.3.4810: the bag door */
+import { valuePauseMethods, PAUSE_GATED } from './valuepause.js'; /* v2.3.5090: a value road fails closed while saves are refused */
 /* v2.3.3130: the Herb Bread's out-of-combat healing multiplier, read once
    from its dish (data.js DISHES) -- 2, "twice as fast". */
 const HERB_REGEN_MULT = (DISHES.meal_herb_bread && Number(DISHES.meal_herb_bread.power) > 1) ? Number(DISHES.meal_herb_bread.power) : 2;
@@ -5164,6 +5167,11 @@ export class GameRoom {
        handler, so the fight is judged on foot */
     if (session.id && RIDE_ENDS_ON.has(msg.type)) this._rideOnInput(session.id, msg.type);
 
+    /* v2.3.5090: AN ACTION THAT HANDS VALUE ON REFUSES FOR A MINUTE AFTER THE
+       STORAGE REFUSED A SAVE (valuepause.js, card A's one count read): answered
+       with its system's own refusal and the owner's words; payouts untouched */
+    if (session.id && PAUSE_GATED.has(msg.type) && this._valuePauseGate(session, msg)) return;
+
     /* v2.3.4510: THE FIGHT LOCK'S ONE TABLE (fightlock.js) -- a message that
        would move gold or bag goods out of what a No man's land loss takes,
        sent in a fight with a player there, is answered with its handler's
@@ -6564,6 +6572,11 @@ export class GameRoom {
          went when the stamped blob changed.  The blob's 0 only where the
          room has no player state yet (none of today's callers). */
       const apOwn = lbPs ? Math.max(0, Math.floor(Number(lbPs.achievementPoints) || 0)) : null;
+      /* v2.3.5484: THE STAT BOARDS (statboards.js): the points the player has
+         allocated, the worker's prog3 record -- INSIDE the signature below, so a
+         spend goes with the next report the throttle lets through, as a level
+         does; null under `statboards: false` or with no player state yet */
+      const statPoints = lbPs ? this._statPointsFor(lbPs) : null;
 
       const sig = JSON.stringify([
         look,
@@ -6576,6 +6589,7 @@ export class GameRoom {
            string differs, and a fishing level moving is exactly the kind of
            change the old signature could not see. */
         series,
+        statPoints,   /* v2.3.5484 */
       ]);
       const now = Date.now();
       const since = now - (session._lbAt || 0);
@@ -6584,6 +6598,13 @@ export class GameRoom {
         && !(sig !== session._lbSig && since >= this.LEADERBOARD_MIN_MS)) return;
       session._lbSig = sig;
       session._lbAt = now;
+      /* v2.3.5481: THE POWER INDEX (power.js), worked out only now that a
+         report goes, and NOT in the signature above: a gear or points change
+         sends no report of its own (no new write occasion, card PW), and the
+         next one that goes -- a level, a kill or the face (MIN_MS apart at
+         most), else the heartbeat (HEARTBEAT_MS) -- carries the build as it
+         is then.  Null under `power: false`, or with no player state yet. */
+      const powerIndex = lbPs ? this._powerFor(lbPs) : null;
 
       await stub.fetch(new Request('https://internal/api/leaderboard/update', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -6592,6 +6613,8 @@ export class GameRoom {
           rpgData, series, ts: now,
           ...(look ? { look } : {}),
           ...(apOwn !== null ? { ap: apOwn } : {}),
+          ...(powerIndex ? { powerIndex } : {}),
+          ...(statPoints ? { statPoints } : {}),
         }),
       }));
     } catch {}
@@ -6705,6 +6728,8 @@ Object.assign(GameRoom.prototype, codexMethods); /* v2.3.3209 */
 Object.assign(GameRoom.prototype, deathPileMethods); /* v2.3.4384 */
 Object.assign(GameRoom.prototype, fishlogMethods); /* v2.3.4036 */
 Object.assign(GameRoom.prototype, boardMethods); /* v2.3.4393 */
+Object.assign(GameRoom.prototype, powerMethods); /* v2.3.5481: the power index on the boards (power.js) */
+Object.assign(GameRoom.prototype, statBoardMethods); /* v2.3.5484: the stat boards (statboards.js) */
 Object.assign(GameRoom.prototype, accuracyMethods); /* v2.3.4545 */
 Object.assign(GameRoom.prototype, reportMethods); /* v2.3.5123 */
 Object.assign(GameRoom.prototype, roomRowMethods); /* v2.3.5124 */
@@ -6829,3 +6854,4 @@ Object.assign(GameRoom.prototype, fightLockMethods); /* v2.3.4510: one fight-loc
 Object.assign(GameRoom.prototype, leaveMethods); /* v2.3.4830: the session door (leave.js) */
 Object.assign(GameRoom.prototype, goldMethods); /* v2.3.4670: the gold door (gold.js) */
 Object.assign(GameRoom.prototype, lifeMethods); /* v2.3.4820: the life door (life.js) */
+Object.assign(GameRoom.prototype, valuePauseMethods); /* v2.3.5090: the pause's gate (valuepause.js) */

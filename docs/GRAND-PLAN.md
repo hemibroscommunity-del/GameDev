@@ -330,7 +330,8 @@ outside the profile.
   *Card H's part merged: #1668 to #1747 (ten PRs; the bake worker's restart
   in #1668 and #1747). Open: `pack-page`, the one row left `ours`
   (`tools/qa/mp/held-budget.mjs`), is card P's (the gatekeeper, sitting 8,
-  v2.3.5364).*
+  v2.3.5364). #1762 (sitting 9) closed sitting 5's loose ends on the bake
+  worker; `pack-page` is still open (the gatekeeper, sitting 10, v2.3.5366).*
 - [ ] **3.2 [LATER] One queue for work that is not this frame's**, with
   priorities. It takes nothing while the frames are late or the pacer is
   trying a step up. Work put off (after a fight, at a veil) joins it one a
@@ -409,6 +410,10 @@ play, a number 1.1 can measure.
   deploy at any message, a hidden tab, 30, 20 and 4 frames a second, each
   lane) and ends with unexplained gold 0, no honest player flagged, no
   reload and no dead worker.
+  *Begun (card E): the shared room #1758, `KNOWN` empty #1759, #1761,
+  #1764 (the arena plan OFF until the owner's yes), the storm #1772, all
+  merged at sitting 10. The box waits for a refused save failing closed
+  (E's PR 9, #1786) (the gatekeeper, sitting 11, v2.3.5367).*
 - [ ] **4.7 [NEXT] The way back.** A player's restore made from the registry
   (every record of theirs, not the character alone); a paged export; a
   restore tried in the Cloudflare lab; the storage's size in the day's
@@ -494,7 +499,9 @@ nothing known, and a restore copies nothing.
   held here.
   *Begun (card T): #1754, the table (250 rows), its scanner and guard,
   `docs/SWITCHES.md`; 195 names still unlisted. The box waits for T's
-  PRs 2 and 3 (the gatekeeper, sitting 9, v2.3.5365).*
+  PRs 2 and 3 (the gatekeeper, sitting 9, v2.3.5365). PR 2, #1768 (the
+  page's rows, no count line), merged at sitting 10: 113 unlisted; the box
+  waits for PR 3 (the gatekeeper, sitting 11, v2.3.5367).*
 - [ ] **7.2 [NEXT] The end date** (the owner: yes). For a logic switch: four
   weeks on with no revert, then the old way goes. A device off-ramp stays
   while its risk is live. A fallback stays while its trigger lives: a guard
@@ -614,16 +621,24 @@ punishes by itself.
   over budget; hits claimed, landed, refused by reason; gold by road class;
   the hours of the day played. Its counters ride a save that is already
   paced, and a card cut by a deploy is closed at the next join. No new row.
-- [ ] **10.3 [NEXT] The transfer ledger.** One lasting row each time value
+- [x] **10.3 [NEXT] The transfer ledger.** One lasting row each time value
   settles between two players, in the settlement's own write: when, the
   road, from, to, gold, goods, their ids, the price. Kept 90 days. One row
   a settlement, none a kill, held by `cost-guard`.
+  *Done (card E): #1773, `xfer:`, merged at sitting 10 (`xfer: false` its
+  switch). It writes for the `move` roads (the trade window, a gift); the
+  escrow roads (the market, the auction house, a duel's pot) are 10.5's
+  table to say (the gatekeeper, sitting 11, v2.3.5367).*
 - [ ] **10.4 [NOW its room and device rows; NEXT the economy's] The day's
   book and the owner's card.** One book a day: minted and burned by road
   class, the room's numbers (1.6), the device bins (1.1). The owner's card
   in the Test panel reads it. Five numbers for the economy: unexplained
   gold; gold made a player-hour against the week; the share moved one way
   for nothing; the share of new gold reaching the richest; cases waiting.
+  *Begun (card E): #1756, the book's `econ` part, minted and burned as each
+  road runs (`econ: false` its switch); the room's row is 1.6's. The box
+  waits for the owner's card (E's PR 12, #1785, held at sitting 10) and the
+  device bins (the gatekeeper, sitting 10, v2.3.5366).*
 - [ ] **10.5 [NEXT] The roads between players, one table.** Every road that
   moves value from one account to another, one row: its fee, its hold, its
   pace, its ledger. All zero today (a trade moves 999,999 gold with no fee,

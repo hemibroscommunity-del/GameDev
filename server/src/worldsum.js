@@ -1,19 +1,29 @@
-/* ═══ v2.3.5091: THE WORLD'S SUM, SHARED (grand plan step 4.4; card E PR 10) ═══
+/* ═══ THE WORLD'S SUM (grand plan step 4.4; card E) ═══
  *
- * The sum world-sum.test.mjs built (card E PR 5, v2.3.5084), moved here
- * whole so the storm (storm.test.mjs, step 4.5) judges with the same one:
+ * v2.3.5084 (PR 5) built it in world-sum.test.mjs; v2.3.5091 (PR 10) moved
+ * it whole beside the suites so the storm judged with the same one; v2.3.5093
+ * (PR 12) moved it here, into the worker, so the live walk (liveops.js
+ * _metricsMaybe, the day's economy snapshot) and the suites (world-sum,
+ * storm) use ONE sum (the plan's rule 2) -- no copy stays in a test:
  *
  *     everything held  ==  the start  +  minted  -  burned
  *
- * `count(room, state)` reads every record the registry's marks say holds
- * value (storagemarks.js), the characters live in the room, and the piles
- * on the ground; `unexplained(start, now)` is how far held and net have
- * moved apart since `start` (0 everywhere when nothing went unexplained).
- * Not a `*.test.mjs` file: `npm test` never runs it by itself. */
-import { STORAGE_MARKS, marksOf } from '../src/storagemarks.js';
-import { mailMinted, wholeGold } from '../src/gold.js';
-import { bagEconPending, wholeCount } from '../src/bag.js';
-import { orderEscrowGold } from '../src/liveops.js';
+ *   worldCtx()               a fresh count;
+ *   worldAdd(ctx, key, v)    one stored record into it, by the registry's
+ *                            marks (storagemarks.js) and READERS below: a
+ *                            record of no value, or with no reader, adds
+ *                            nothing (a page at a time: the live walk's way);
+ *   count(room, store)       the whole world: the characters live in the
+ *                            room, the piles on the ground, and every stored
+ *                            record (a Map, or a suite's storage with
+ *                            `_store`), with what could not be counted;
+ *   unexplained(start, now)  how far held and net moved apart since `start`
+ *                            (0 everywhere when nothing went unexplained).
+ */
+import { STORAGE_MARKS, marksOf } from './storagemarks.js';
+import { mailMinted, wholeGold } from './gold.js';
+import { bagEconPending, wholeCount } from './bag.js';
+import { orderEscrowGold } from './liveops.js';
 
 /* One reader a marked value prefix (storagemarks.js `value` not `none`).  Each
    adds what its record HOLDS to `held`: gold, each bag key, and the ids of
@@ -96,16 +106,38 @@ export function coverage(readers, keys) {
 
 /** The world counted: held and net (minted less burned), gold and each bag
  *  key; every id held; and what could not be counted. */
+/** A fresh count: held (gold, each bag key, ids) and net (minted less burned). */
+export function worldCtx() {
+  return { gold: 0, goods: Object.create(null), net: { gold: 0, goods: Object.create(null) }, ids: [], live: new Set(), piles: new Set() };
+}
+/* the reader of a stored key: the key itself (`shop_stock`), or its longest marked prefix */
+function readerOf(readers, key) {
+  if (Object.prototype.hasOwnProperty.call(readers, key)) return readers[key];
+  let best = null;
+  for (const p of Object.keys(readers)) if (p.endsWith(':') && key.startsWith(p) && (!best || p.length > best.length)) best = p;
+  return best ? readers[best] : null;
+}
+/** One stored record into `ctx` (nothing when it holds no value or has no reader). */
+export function worldAdd(ctx, key, value, readers = READERS) {
+  const m = marksOf(key);
+  if (!m || m.value === 'none') return false;
+  const r = readerOf(readers, key);
+  if (!r) return false;
+  r(ctx, key, value);
+  return true;
+}
+
 export function count(room, state, readers = READERS) {
-  const ctx = { gold: 0, goods: Object.create(null), net: { gold: 0, goods: Object.create(null) }, ids: [], live: new Set(), piles: new Set() };
+  const ctx = worldCtx();
+  const store = state && state._store instanceof Map ? state._store : state instanceof Map ? state : new Map();
   /* the characters in the room: live (a sparring clone is no one's) */
-  for (const [pid, ps] of Object.entries(room.playerState || {})) {
+  for (const [pid, ps] of Object.entries((room && room.playerState) || {})) {
     if (!ps || ps._spar) continue;
     ctx.live.add(pid);
     holdCharacter(ctx, ps, 'live:' + pid);
   }
   /* the piles on the ground: a player's (a death's, a drop's) */
-  for (const list of Object.values(room.loot || {})) {
+  for (const list of Object.values((room && room.loot) || {})) {
     for (const pile of (list || [])) {
       if (!pile || !pile.isDeathDrop) continue;
       ctx.piles.add(pile.lootId);
@@ -113,13 +145,8 @@ export function count(room, state, readers = READERS) {
       for (const it of (pile.deathItems || [])) add(ctx.goods, it.key, Math.max(0, Math.floor(Number(it.qty) || 0)));
     }
   }
-  const keys = [...state._store.keys()].sort();
-  for (const key of keys) {
-    const m = marksOf(key);
-    if (!m || m.value === 'none') continue;
-    const prefix = Object.prototype.hasOwnProperty.call(readers, key) ? key : Object.keys(readers).filter((p) => p.endsWith(':') && key.startsWith(p)).sort((a, b) => b.length - a.length)[0];
-    if (prefix) readers[prefix](ctx, key, state._store.get(key));
-  }
+  const keys = [...store.keys()].sort();
+  for (const key of keys) worldAdd(ctx, key, store.get(key), readers);
   const dup = [];
   const seen = new Map();
   for (const [kind, id, where] of ctx.ids) { const k = kind + ':' + id; if (seen.has(k)) dup.push([k, seen.get(k), where]); else seen.set(k, where); }
