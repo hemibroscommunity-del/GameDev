@@ -126,10 +126,10 @@ export const KNOBS = Object.freeze({
     reader: { files: Object.freeze(['src/rendering/wheelWater.js']), moved: true }, pr: 9, switch: '?waves', system: 'render',
   },
   queue: {
-    what: 'the ms a frame the strip queue may take loading monsters\' art (today: a quarter of the frame, 3 to 50 ms)',
-    steps: Object.freeze(['frame']),
-    say: Object.freeze(['Monsters\' art loads a quarter of each frame at most']),
-    reader: { files: Object.freeze(['src/rendering/zoneTextures.js']), moved: false }, pr: 10, switch: '?stripslice', system: 'art',
+    what: 'the ms a frame the strip queue may take loading monsters\' art in play (v2.3.5230: the lane\'s, never the frame\'s length; was a quarter of the frame, 3 to 50 ms)',
+    steps: Object.freeze([4, 8]),
+    say: Object.freeze(['Monsters\' art loads 4 ms a frame at most (a 60 screen\'s quarter)', 'Monsters\' art loads 8 ms a frame at most (a 30 screen\'s quarter)']),
+    reader: { files: Object.freeze(['src/rendering/zoneTextures.js']), moved: true }, pr: 10, switch: '?stripslice', system: 'art',
   },
   caches: {
     what: 'the caches\' caps, as a share of each cache\'s own (docs/BUDGETS.md part 3)',
@@ -156,15 +156,15 @@ export const KNOB_NAMES = Object.freeze(Object.keys(KNOBS));
 export const LANES = Object.freeze({
   full: {
     say: 'What every device draws today',
-    row: Object.freeze({ rate: 26, pixels: 1, crowd: 50, program: 'one', look: 'palette', shine: 'on', shadows: 'on', water: 'moving', queue: 'frame', caches: 1, step: 50, prewarm: 0 }),
+    row: Object.freeze({ rate: 26, pixels: 1, crowd: 50, program: 'one', look: 'palette', shine: 'on', shadows: 'on', water: 'moving', queue: 4, caches: 1, step: 50, prewarm: 0 }),
   },
   light: {
     say: 'A lighter picture, for tests and slow devices: picked only by `?lane=light`',
-    row: Object.freeze({ rate: 34, pixels: 1, crowd: 30, program: 'one', look: 'palette', shine: 'off', shadows: 'on', water: 'moving', queue: 'frame', caches: 1, step: 50, prewarm: 0 }),
+    row: Object.freeze({ rate: 34, pixels: 1, crowd: 30, program: 'one', look: 'palette', shine: 'off', shadows: 'on', water: 'moving', queue: 4, caches: 1, step: 50, prewarm: 0 }),
   },
   thirty: {
-    say: 'A screen of 30 a second (an iPhone in Low Power Mode): the full lane\'s row until its step\'s cap (card O PR 13)',
-    row: Object.freeze({ rate: 26, pixels: 1, crowd: 50, program: 'one', look: 'palette', shine: 'on', shadows: 'on', water: 'moving', queue: 'frame', caches: 1, step: 50, prewarm: 0 }),
+    say: 'A screen of 30 a second (an iPhone in Low Power Mode): the full lane\'s row (v2.3.5230: but monsters\' art 8 ms a frame, a 30 screen\'s quarter, as before) until its step\'s cap (card O PR 13)',
+    row: Object.freeze({ rate: 26, pixels: 1, crowd: 50, program: 'one', look: 'palette', shine: 'on', shadows: 'on', water: 'moving', queue: 8, caches: 1, step: 50, prewarm: 0 }),
   },
 });
 export const LANE_NAMES = Object.freeze(Object.keys(LANES));
