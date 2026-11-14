@@ -30,10 +30,20 @@
  *      real restart, the real daily walk and the route.
  *   9. M3: GOLD A PLAYER-HOUR counts the sittings still open (the route's
  *      `open`): 100 made in a sitting open half an hour reads 200 an hour.
+ *  10. v2.3.5094 (sitting 11, F2): A RESTART BOOKS ITS MINTED TO DATE (`r.m`),
+ *      and the share of new gold to the richest adds it back to the gold
+ *      made between the two counts.
+ *  11. v2.3.5094 (sitting 11, F1): A RESTART IN AN EMPTY ROOM (the picker's,
+ *      nobody playing), `econresetput: true`: today's book is written in the
+ *      same run as the record's delete -- a restart at any batch leaves both
+ *      or neither, and the booking survives the room being put away.  Off
+ *      (the default until the owner's yes): nothing more is written.  With
+ *      anyone in the room: nothing more either (the booking rides).
  *
  * BREAK PROOFS (rule 8), tried by hand: econNumbers returning 0 for a number
  * with no count -> FAIL 3; the restart's line taken out of persistence.js ->
- * FAIL 8 (-100, then +100).
+ * FAIL 8 (-100, then +100); `booked.put()` taken out of persistence.js ->
+ * FAIL 11 (the booking lost when the room is put away).
  */
 import { econDay, econDays, econNumbers, ECON_NUMBERS } from '../../src/game/econCard.js';
 
@@ -294,6 +304,65 @@ function check(name, cond, detail) {
   const want = Math.min(1800, sinceMidnight);
   check('9. the route counts the sittings still open, today\'s part, once a player', c.open && c.open.sittings === 1 && Math.abs(c.open.s - want) <= 2, c.open);
   check('9. ...and 100 made in a sitting open half an hour reads 200 an hour (it read "not counted")', want === 1800 ? Math.abs(n.perHour.v - 200) < 1 : n.perHour.v > 0, n.perHour);
+}
+
+/* ── 10. a restart books its minted to date (sitting 11, F2) ── */
+{
+  const { econCompute } = await import('../../src/game/econCard.js');
+  /* between the counts: 1000 made, and a character who had made 300 restarted
+     (its 300 gone from `minted`); the ten richest made 600 of the 1000 */
+  const b = { day: '20261113', world: { held: 1000, net: 1000, minted: 2000, richest: [['a', 500, 900]], gone: { day: '20261113', g: 0, n: 0, m: 0 } } };
+  const a = { day: '20261114', world: { held: 1700, net: 1700, minted: 2700, richest: [['a', 900, 1500]], gone: { day: '20261114', g: 0, n: 1, m: 300 } } };
+  const n = econCompute({ days: [{ day: '20261114', econ: { r: { g: 0, n: 1, m: 300 } } }, { day: '20261113', econ: {} }] }, { on: true, metrics: [a, b], xfer: [] });
+  check('10. the share of new gold to the richest counts a restarted character\'s minted back (600 of 1000, not 600 of 700)', Math.abs(n.richest.v - 0.6) < 1e-9, n.richest);
+}
+
+/* ── 11. a restart in an empty room (sitting 11, F1) ── */
+{
+  const { makeStorage, openRoom, settle } = await import('./testroom.mjs');
+  const { bookRead } = await import('../src/daybook.js');
+  const P = 'bp_ec_empty';
+  const seed = () => new Map([['rpg:' + P, { _v: 21, coins: 500, inventory: {}, level: 3, _econ: { v: 1, g: { m: 700, b: 100 }, i: {} } }], ['bank:' + P, { gold: 50, items: [] }]]);
+  const rOf = async (st) => { const r2 = await openRoom(makeStorage(st._store)); const d = (await bookRead(r2, 1)).days[0]; return (d && d.econ && d.econ.r) || null; };
+  const puts = (st) => { const out = []; const real = st.storage.put; st.storage.put = function (k, v) { out.push(typeof k === 'string' ? k : Object.keys(k).join(',')); return real.call(this, k, v); }; return out; };
+  /* on: written now, held - made = (500 + 50) - (700 - 100) = -50, its minted 700 */
+  {
+    const st = makeStorage(seed());
+    const room = await openRoom(st, { econresetput: true });
+    const p = puts(st);
+    await room._resetCharacterData(P); await settle();
+    const r = await rOf(st);
+    check('11. `econresetput: true`, nobody in the room: the restart\'s booking is on file when the room is put away (g -50, n 1, m 700)', !!r && r.g === -50 && r.n === 1 && r.m === 700 && p.filter((k) => k.startsWith('daybook:')).length === 1, { r, puts: p });
+  }
+  {
+    /* a restart at each batch: the record deleted and the booking on file, or neither */
+    const bad = [];
+    for (let k = 0; k <= 4; k++) {
+      const st = makeStorage(seed());
+      const room = await openRoom(st, { econresetput: true });
+      st.crashAt(st.batches() + k);
+      await room._resetCharacterData(P).catch(() => {}); await settle();
+      const gone = !st._store.has('rpg:' + P);
+      const r = await rOf(st);
+      if (gone !== !!(r && r.n === 1)) bad.push({ k, gone, r });
+    }
+    check('11. ...a restart at any batch: the record\'s delete and the booking land together, or neither', bad.length === 0, bad);
+  }
+  {
+    const st = makeStorage(seed());
+    const room = await openRoom(st, {});
+    const p = puts(st);
+    await room._resetCharacterData(P); await settle();
+    check('11. off (the default until the owner\'s yes): no put more than today (the parachute copy only)', p.length === 1 && p[0].startsWith('rpgsnap:'), p);
+  }
+  {
+    const st = makeStorage(seed());
+    const room = await openRoom(st, { econresetput: true });
+    room.sessions.set({}, { id: 'bp_someone', openedAt: Date.now() });
+    const p = puts(st);
+    await room._resetCharacterData(P); await settle();
+    check('11. on, with anyone in the room: no put more (the booking rides the book\'s next write)', p.length === 1 && p[0].startsWith('rpgsnap:') && !!(room._daybook && [...room._daybook.days.values()].some((d) => d.parts.econ.r && d.parts.econ.r.n === 1)), p);
+  }
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);

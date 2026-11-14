@@ -146,6 +146,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `disable_offer_sweep_all` | worker | switch | v2.3.4412 | true | logic |  | no | Thrown, the store's offer sweep goes back to the old first-20 pass. |
 | `?droplines` | page | switch | v2.3.3627 | =0 | logic |  | no | No drop lines in the chat for what a kill drops. |
 | `econ` | worker | switch | v2.3.5085 | false | logic |  | no | Nothing is counted into a character's minted and burned (`_econ`) or the day's book's economy part; gold and items move as before. |
+| `econresetput` | worker | switch | v2.3.5094 | true | logic |  | no | Thrown (true), a character's restart with nobody in the room writes today's book at once, in the delete's own run (one put more): the owner's card then never reads it as a loss; off until the owner says yes. |
 | `?equipredraw` | page | switch | v2.3.5046 | =0 | logic |  | no | A change of worn gear is set all at once again, not in pieces a frame apart. |
 | `event_cape_rate` | worker | value | v2.3.2027 | a number | logic |  | no | The event cape's drop rate, a number in place of the shipped one. |
 | `gearlevel` | worker | switch | v2.3.3544 | false | logic | `onelevel` | no | Armour, shields and amulets ask Defense points and Magic again, not your level. |

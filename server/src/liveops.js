@@ -266,8 +266,8 @@ export const liveopsMethods = {
     try {
       const r = (await bookSoFar(this, day)).econ;
       const g = r && r.r && typeof r.r === 'object' ? r.r : {};
-      return { day, g: Number(g.g) || 0, n: Number(g.n) || 0 };
-    } catch (e) { return { day, g: 0, n: 0, unread: true }; }
+      return { day, g: Number(g.g) || 0, n: Number(g.n) || 0, m: Number(g.m) || 0 };   /* v2.3.5094: + their minted to date (F2) */
+    } catch (e) { return { day, g: 0, n: 0, m: 0, unread: true }; }
   },
 
   async _economyPage(after, onRec) {
