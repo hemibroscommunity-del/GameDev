@@ -241,6 +241,7 @@ export const marketMethods = {
         if (!this._httpAuthCheck(body && body.playerId, request)) {
           return new Response(JSON.stringify({ ok: false, settled: true, error: 'Not authorized' }), { status: 403, headers: H });
         }
+        if (this._valuePaused && this._valuePaused()) return this._valuePauseHttp(H);   /* v2.3.5090: an order's escrow waits while saves are refused (valuepause.js) */
         const result = await this._mktPlaceOrder(body);
         return new Response(JSON.stringify(result), { headers: H });
       }

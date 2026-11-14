@@ -610,6 +610,7 @@ export const storeMethods = {
         const body = await request.json();
         const pid = body && body.playerId;
         if (!this._httpAuthCheck(pid, request)) return deny();
+        if (/^\/(list|buy|bid)/.test(path) && this._valuePaused && this._valuePaused()) return this._valuePauseHttp(H);   /* v2.3.5090: a listing, a purchase or a bid waits while saves are refused (valuepause.js) */
         let result;
         if (path.startsWith('/list')) result = await this._stCreateListing(body);
         /* v2.3.3183: a purchase or a bid moves gold to another player or into

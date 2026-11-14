@@ -138,6 +138,7 @@ export const arenaMethods = {
         if (this._fightLockHolds && this._fightLockHolds(body && body.playerId, 'fightlocktable')) {
           return new Response(JSON.stringify({ ok: false, settled: true, error: 'Not while you are fighting a player' }), { headers: H });
         }
+        if (this._valuePaused && this._valuePaused()) return this._valuePauseHttp(H);   /* v2.3.5090: the fee into an escrow waits while saves are refused (valuepause.js) */
         const result = await this._arenaJoin(body && body.playerId, body && (body.playerName || body.name));
         return new Response(JSON.stringify(result), { headers: H });
       }
