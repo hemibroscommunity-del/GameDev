@@ -1,7 +1,7 @@
 card: N
-branch: claude/grand-plan-n-1-walker (one branch a PR, each begun from the one before: merge them in order)
-prs: PR 1 the walker, from the branch above (ready; its number goes here with PR 2's commit, to spare a paid run)
-state: ready
+branch: claude/grand-plan-n-2-wire-table (one branch a PR, each begun from the one before: merge them in order)
+prs: #1684 (ready), PR 2 the table (working)
+state: working
 
 ## Done
 
@@ -15,7 +15,8 @@ state: ready
 
 ## Next
 
-- PR 2 (tag 5061), the table: `server/src/wire/`.
+- PR 2 (tag 5061), the table: `server/src/wire/`. Its columns
+  (`columns.js`) and README are in; the 436 rows are being read.
 
 ## Found
 
