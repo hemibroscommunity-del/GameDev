@@ -112,9 +112,11 @@ export const KNOWN = {
   'ui:*': { ms: 16, whose: 'ours',
     why: 'one component of the band drawn in one piece (the gear tab is 10 ms of one function): React lets a frame in between components, not inside one',
     next: 'split the gear tab so no one piece of it is over 5 ms' },
-  'other: BT_AUDIO$1._fold > foldToMono': { ms: 20, whose: 'ours',   /* v2.3.4960: 30 -> 20 (18.9 ms once, lands) */
-    why: 'a sound with two sides folded to one the first time it plays: 14 to 21 ms',
-    next: 'fold as it is decoded, behind the loading screen or off the first play'},
+  /* v2.3.5045: 'other: BT_AUDIO$1._fold > foldToMono' (was 20) off the list.  A two-sided sound folded to one on its
+     first play (soundFold.js), in one piece: 8.1 / 8.9 / 13.4 ms at the main tour's `lands` and `town`, three runs
+     (18.9 once before).  Now walked a stretch at a time, a frame let in once a piece has run 4 ms (foldToMonoSliced:
+     the same buffer, sample for sample, sound-fold.test 4).  The sample (`town`, `lands` x3): 5.2 / 4.9 / 6.9 ms the
+     longest (docs/specs/held-sweep.md, "Card H") */
   /* v2.3.4872: found over the general line on main (mp-heldsweep `armour`, 15.4 and 16.5 ms, two runs; the crowd tour's
      armour stations up to 8 ms) */
   'other: R > J': { ms: 20, whose: 'ours',
