@@ -1,6 +1,6 @@
 /* ═══ v2.3.5091: THE STORM (grand plan step 4.5, card E PR 10) ═══
  *
- * Step 4.4's sum (worldsum.mjs: everything held == the start + minted -
+ * Step 4.4's sum (src/worldsum.js: everything held == the start + minted -
  * burned) replayed under the ONE closed list of disturbances (testroom.mjs
  * DISTURBANCES: what changes how an honest player looks without any
  * cheating).  Two honest players play an afternoon of the economy through
@@ -43,7 +43,7 @@
  * the deploy runs fail ("unexplained gold").
  */
 import { makeStorage, openRoom, roomQueue, seededClock, join, fakeWs, settle, DISTURBANCES, schedule } from './testroom.mjs';
-import { count, unexplained } from './worldsum.mjs';
+import { count, unexplained } from '../src/worldsum.js';   /* v2.3.5093: the one sum, in the worker */
 import { BANK } from '../src/bank.js';
 
 let failures = 0, passes = 0;
