@@ -5,35 +5,33 @@ state: working
 
 ## Done
 
-- #1770 (5460): the audit (`docs/specs/townsfolk-work.md`, 21 rows); the
-  pickaxe put away: Chef Blaze, Woodworker Bro and Gavel Greg take the
-  pickup, Farmer Bro stands (the pickup would bake his look: his eye
-  style); `townsfolk-walk.test` §2j (whose tool) and §2k (no new bake of a
-  refused look), both red with the pickaxe put back (in its header).
-  Touches `server/test/`: its merge deploys the worker.
-- With @parent's yes: `mp-folkwalk` §4 waits for the chef's pickup (12 of
-  12 on a phone); `living-town.md`'s table and two `UI-DESIGN-NOTES.md`
-  lines corrected, each pointing at the new spec.
+- #1770 (5460): the audit (`docs/specs/townsfolk-work.md`); the pickaxe
+  put away; `townsfolk-walk.test` §2j, §2k; `mp-folkwalk` §4. Sitting 9's
+  holds met (`main` merged, blocks SK/TF/PW/LB, next 5520). Green, for
+  sitting 10. Touches `server/test/`: deploys the worker.
+- PR 2 (5461), on the branch: the `skills` look set (seven sheets, ~2.7 MB
+  r8 on a phone, none on a computer; the cook at a bar of 23, its reason
+  written: @parent's A) drawn by `folkSkill.js` from `_drawFolk` (its file
+  at its line); `?folkskills=0` back to PR 1's poses (its switch row).
+  `mp-folkwork` 27 of 27 before the switch.
 
 ## Next
 
-- #1770: sitting 9's holds met (`main` merged, blocks SK/TF/PW/LB, next
-  5520; PR 2's tag bare). For sitting 10.
-- PR 2 (5461), on the branch: the `skills` look set (seven sheets, ~2.7 MB
-  r8 on a phone, none on a computer) drawn by `folkSkill.js` from
-  `_drawFolk`; Chef Blaze cooks, Woodworker Bro chops, Farmer Bro kneels,
-  hoes, waters. `mp-folkwork` 27 of 27 (upright, sideways, computer,
-  `?folkwork=0`). Now: the ghost sample, membudget off/on, heldsweep
-  (town), questline; then the PR.
+- PR 2: membudget off/on (running), the cook re-baked with his bar,
+  heldsweep (town), questline, ghost sample (cook with fire), mp-folkwork
+  again; then the PR with its pictures.
 
 ## Found
 
-- `docs/specs/living-town.md`'s quest givers paragraph still says the
-  woodworker chops and Farmer Bro hoes (the mining swing); left as asked
-  (only the table), the note under the table says what is true now.
-- `src/rendering/folkPose.js` header: the same list; PR 2's file, fixed there.
+- For card P (memory): a peer cooking, chopping or farming in other
+  colours is a 1-5 MB canvas bake (effectsRenderer `PEER_FIG_EST`); the
+  `skills` set could let peers draw from its numbers too.
+- `living-town.md`'s givers paragraph: the woodworker and farmer "swing".
+- `role-bake.mjs --hashes`: eight sets read "code changed" on `main` (a
+  look-roles WARN for any PR touching the look sets).
+- PR 2 adds a switch row (`?folkskills`): it meets other row-adding PRs on
+  `docs/SWITCHES.md`'s count line (rule 3).
 
 ## Needs
 
-- @parent: the cook's bar (A: his sheet at 23, a few lines in role-bake;
-  B: Chef Blaze keeps the pickup). Asked 2026-11-14 ~11:30.
+- Nothing: @parent answered (the cook's bar A, `?folkskills=0`, the runs).

@@ -80,7 +80,10 @@ const PROBE_AT = process.env.ROLE_BAKE_PROBE ? ((m) => [m[1], [Number(m[2]), Num
 async function pageMeta({ set }) {
   const S = (await import(`/rendering/lookSets/${set}.js`)).default;
   return { mip: S.mip !== false, kind: S.kind, bits: S.bits, refScale: S.refScale || 1, fw: S.fw || 128, fh: S.fh || 128, out: S.out || null, roleDefs: S.roleDefs,
-    sheets: S.sheets, code: S.code || [], art: Object.fromEntries(S.sheets.map((k) => [k, S.art(k)])) };
+    sheets: S.sheets, code: S.code || [], art: Object.fromEntries(S.sheets.map((k) => [k, S.art(k)])),
+    /* v2.3.5461: a sheet's own bar, written beside its reason in the set module
+       (`bars`, the skills set's cook: card TF, the planning session's answer) */
+    bars: S.bars ? Object.fromEntries(Object.entries(S.bars).map(([k, v]) => [k, v && v.bar])) : null };
 }
 async function pageBake({ set, sheet, bits, probeAt, bar, cutSrc }) {
   const CUT_BAR = bar;   /* v2.3.3750: the 8-bit cut's worst colour, in levels */
@@ -406,16 +409,19 @@ async function main() {
     if (!CHECK) fs.mkdirSync(outDir, { recursive: true });
     for (const name of sheets) {
       const t0 = Date.now();
-      let r = await page.evaluate(pageBake, { set, sheet: name, bits, probeAt: PROBE_AT, bar: CUT_BAR, cutSrc: cutPerRole.toString() });
+      /* v2.3.5461: the sheet's own bar where its set module writes one (with
+         its reason: townsfolk-walk.test 6e), else the line's */
+      const BAR = (meta.bars && meta.bars[name]) || CUT_BAR;
+      let r = await page.evaluate(pageBake, { set, sheet: name, bits, probeAt: PROBE_AT, bar: BAR, cutSrc: cutPerRole.toString() });
       /* v2.3.3750: a sheet the 8-bit cut cannot hold to the bar stays 16-bit
          (its own `bits` in the manifest; lookPalette.js reads a sheet's
          over the set's) */
       let sheetBits = bits;
       /* ...or whose self-check (three real looks against the old path's own
          canvases) shows a texel over the bar */
-      if (bits === 8 && r.quant && (r.quant.over || r.check.max > CUT_BAR)) {
-        console.log(`  ${name}: the 8-bit cut's worst colour is ${r.quant.worstMoved} levels, ${r.check.max} in the self-check (the bar ${CUT_BAR}): kept 16-bit`);
-        r = await page.evaluate(pageBake, { set, sheet: name, bits: 16, probeAt: PROBE_AT, bar: CUT_BAR, cutSrc: cutPerRole.toString() });
+      if (bits === 8 && r.quant && (r.quant.over || r.check.max > BAR)) {
+        console.log(`  ${name}: the 8-bit cut's worst colour is ${r.quant.worstMoved} levels, ${r.check.max} in the self-check (the bar ${BAR}): kept 16-bit`);
+        r = await page.evaluate(pageBake, { set, sheet: name, bits: 16, probeAt: PROBE_AT, bar: BAR, cutSrc: cutPerRole.toString() });
         sheetBits = 16;
       }
       if (r.probe) console.log(JSON.stringify(r.probe));
@@ -429,7 +435,7 @@ async function main() {
         + `  roles ${r.counts.join('/')}  unexplained ${r.unexplained}  ambiguous ${r.ambiguous}  pick ${r.pick}, ${r.split} split`
         + `  check ${r.check.texels} texels, ${r.check.over1} over 1, max ${r.check.max}, mean ${r.check.mean}${r.check.fickle ? ', ' + r.check.fickle + ' fickle' : ''}  (${Date.now() - t0} ms)`);
       const artFiles = meta.art[name] || [];
-      out.sheets[name] = { ...(sheetBits !== bits ? { bits: sheetBits } : {}), ds: r.ds, frames: r.frames, ...(r.fw !== meta.fw || r.fh !== meta.fh ? { fw: r.fw, fh: r.fh } : {}), w: r.w, h: r.h, tableRows, entries: r.entries, ends: r.ends,
+      out.sheets[name] = { ...(sheetBits !== bits ? { bits: sheetBits } : {}), ...(BAR !== CUT_BAR ? { bar: BAR } : {}), ds: r.ds, frames: r.frames, ...(r.fw !== meta.fw || r.fh !== meta.fh ? { fw: r.fw, fh: r.fh } : {}), w: r.w, h: r.h, tableRows, entries: r.entries, ends: r.ends,
         cells: r.cells, split: r.split, quant: r.quant || undefined, artFiles, art: hashFiles(artFiles), bytes: png.length };
       const file = path.join(outDir, name + '.png');
       if (CHECK) {

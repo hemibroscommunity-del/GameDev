@@ -38,7 +38,7 @@
  * The sprites are a container of his display's (drawFolkSkill): entityRenderer
  * _drawFolk asks for it, and keeps only the hooks (its file is at its line:
  * tools/guards/lib/fourLines.mjs). */
-import { registerLookSheets, getLookPartFrame, lookHas, lookPaletteOn, lookPaletteWanted } from './lookPalette.js';
+import { registerLookSheets, getLookPartFrame, lookHas, lookPaletteOn, lookPaletteWanted, lookPose } from './lookPalette.js';
 import { gearStripFrames } from './gearLookFrame.js';
 import { skinTarget, pantsTarget, shoesTarget, DEFAULT_SKIN_TARGET } from './playerSkins.js';
 import { FARM_ANIMS, FARM_ANIM_HEAD } from '@/data/farmAnims.js';
@@ -49,8 +49,13 @@ import { Container, Sprite, Texture } from 'pixi.js';
 import { shirtFill } from './traits/shirtColorCatalog.js';
 
 /* `?folkwork=0` (folkPose.js's switch, read the same way): no work poses on
-   this phone, so none of these figures is loaded either */
-const _off = (() => { try { return /(^|[?&])folkwork=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+   this phone, so none of these figures is loaded either.  `?folkskills=0`
+   (v2.3.5461, its row in tools/guards/lib/switches.mjs): these figures alone
+   off, none of the set loaded, and the three back in card TF PR 1's poses
+   (FOLK_SKILL_FALLBACK) */
+const _workOff = (() => { try { return /(^|[?&])folkwork=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+const _skillsOff = (() => { try { return /(^|[?&])folkskills=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+const _off = _workOff || _skillsOff;
 const _reg = (!_off && lookPaletteWanted()) ? registerLookSheets('skills', '/sprites/look/skills/roles.json') : Promise.resolve(false);
 
 /* effectsRenderer's numbers (held to it by townsfolk-walk.test 6) */
@@ -85,6 +90,19 @@ const SPEC = Object.freeze({
       crowns: A.crowns, gearPose: A.pose, gearDir: 'south', shirtAt: (fi) => fi })];
   })),
 });
+/* ═══ WHEN HIS TRADE'S FIGURE IS NOT DRAWN ═══
+   (`?folkskills=0`, or a part not in): card TF PR 1's pose -- the cook and
+   the woodworker the pickup, the farmer standing (the pickup's sheet blanks
+   his wide eyes: a bake of his look).  townsfolk-walk.test 2j and 2k hold
+   these as they hold every job. */
+const FOLK_SKILL_FALLBACK = Object.freeze({ cook: 'pickup', chop: 'pickup', farmhoe: null, farmwater: null, farmkneel: null });
+/** The body pose he works in when his trade's figure is not drawn, or null
+ *  (he stands): only one the look palette has in numbers (folkPose.js's rule). */
+export function folkSkillFallback(pose) {
+  const f = isFolkSkill(pose) ? FOLK_SKILL_FALLBACK[pose] : null;
+  return f && lookPose(f) ? f : null;
+}
+
 /** The skill figures a townsperson can work in. */
 export const FOLK_SKILL_POSES = Object.freeze(Object.keys(SPEC));
 export function isFolkSkill(pose) { return typeof pose === 'string' && Object.prototype.hasOwnProperty.call(SPEC, pose); }
@@ -182,6 +200,7 @@ function miss(display, why) {
   return false;
 }
 export function drawFolkSkill(display, npc, look, pose, now, size, placeTraits) {
+  if (_off) return false;   /* switched off: PR 1's pose, not a miss */
   if (!folkSkillReady(pose, look)) return miss(display, 'ready');
   const spec = SPEC[pose];
   if (display._folkBeat == null) display._folkBeat = folkBeatOf(npc.id);
@@ -267,6 +286,6 @@ export function folkSkillProbe(display, live) {
 
 if (typeof window !== 'undefined') {
   /* QA (mp-folkwork): is this phone drawing them, and which parts are in */
-  window.__btFolkSkill = () => ({ off: _off, on: lookPaletteOn(),
+  window.__btFolkSkill = () => ({ off: _off, skillsOff: _skillsOff, on: lookPaletteOn(),
     sheets: FOLK_SKILL_POSES.map((p) => [p, lookHas('skills', SPEC[p].sheet)]) });
 }

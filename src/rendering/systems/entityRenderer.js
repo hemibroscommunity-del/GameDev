@@ -92,7 +92,7 @@ import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadB
 import { lookPaletteWanted, lookPaletteOn } from '../lookPalette.js';   /* v2.3.3716: on unless `?lookpalette=0`; v2.3.3809: + drawing now */
 import { lookFolkOn, folkFaceOverride } from '../lookFolk.js';   /* v2.3.3809: the townsfolk drawn live */
 import { folkWorkPose, folkWorkFrame, folkStandFacing, folkStride } from '../folkPose.js';   /* v2.3.4058: the townsfolk at work */
-import { isFolkSkill, drawFolkSkill, hideFolkSkill, dropFolkSkill, folkSkillProbe, folkSkillPrepare } from '../folkSkill.js';   /* v2.3.5461: ...at their own trades (card TF) */
+import { isFolkSkill, drawFolkSkill, hideFolkSkill, dropFolkSkill, folkSkillProbe, folkSkillPrepare, folkSkillFallback } from '../folkSkill.js';   /* v2.3.5461: ...at their own trades (card TF) */
 import { folkBeatOf } from '../../game/townsfolkWalk.js';   /* v2.3.5461: his beat */
 import { npcLookAsPeer, npcLookByName } from '../../data/npcLooks.js';   /* v2.3.3809: their looks */
 import { lookArmourOn, lookArmourFrame, lookArmourPrewarm, lookArmourDecided, lookArmourJob, setLookArmourBaker, lookSheetForWorker, lookSheetFetchFailed, lookSheetFetchDone } from '../lookArmour.js';   /* v2.3.3752: the body under armour from the numbers */
@@ -17902,11 +17902,12 @@ export class EntityRenderer {
        stays the owner's 10% larger (v2.3.1822) and Lil Bro a child */
     const size = (NPC_SCALE_MULT[npc.sprite] || NPC_BRO_MULT) / PLAYER_SIZE_MULT * npcFigureSize(npc);
     /* v2.3.5461: ...or his own trade's figure (rendering/folkSkill.js), his
-       walking figure hidden; a part not in stands him where he works.  The
-       walking figure is shown only once he is not at it (a visible flipped
-       each frame rebuilds the layer's draw list: TRAPS §218) */
+       walking figure hidden; switched off (`?folkskills=0`) or a part not in,
+       card TF PR 1's pose (folkSkillFallback).  The walking figure is shown
+       only once he is not at it (a visible flipped each frame rebuilds the
+       layer's draw list: TRAPS §218) */
     if (work && isFolkSkill(work) && drawFolkSkill(display, npc, look, work, now, size, placeSkillTraitsFor)) return true;
-    if (isFolkSkill(work)) work = null;
+    if (isFolkSkill(work)) work = folkSkillFallback(work);
     hideFolkSkill(display);
     if (!folk.visible) folk.visible = true;
     const facing = work ? 'south' : (folkFaceOverride() || (jogging ? display._walkDir : folkStandFacing(npc, display._walkDir)) || 'south');   /* QA may turn him (lookFolk.js) */

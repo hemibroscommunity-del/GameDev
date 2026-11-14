@@ -130,6 +130,12 @@ export default {
     const A = FARM_ANIMS[s.anim];
     return recolorStandInSkin(src.img, T[1] || null, A.fh, { frameW: A.fw, minBlob: SKILL_FARM_MIN_BLOB, art: null, regions: A.ink, patK: STANDIN_GARB_K.farm, ...clothes });
   },
+  /* v2.3.5461: a sheet's own bar for the 8-bit cut (tools/art/role-bake.mjs
+     reads it; its manifest records it), never without its reason here
+     (townsfolk-walk.test 6e fails one) */
+  bars: {
+    'cook-south': { bar: 23, why: "the cook's strip has 72,439 colours (the pan, the food, his shading): cut to 256 its worst colour moves 22 levels against the line's 16 (self-check mean 4.3), and at 16 bits it is over 65,535 entries, so it has no other form. The owner's rule is 256 colours (\"I won't notice at all from anything at 256\") and Chef Blaze cooking is the owner's own request: the planning session's answer (A), 2026-11-14, decided for the owner while away, its switch ?folkskills=0" },
+  },
   display: (src, sheet, full) => full,
   ds: () => 1,
 };

@@ -34,7 +34,7 @@
    "under": 0
   }
  ],
- "code": "a948a622ce05d194",
+ "code": "a60aaba600e78c77",
  "codeFiles": [
   "src/rendering/bodyRecolor.js",
   "src/rendering/standInInk.js",
@@ -701,6 +701,7 @@
    "bytes": 19629
   },
   "cook-south": {
+   "bar": 23,
    "ds": 1,
    "frames": 24,
    "fw": 213,

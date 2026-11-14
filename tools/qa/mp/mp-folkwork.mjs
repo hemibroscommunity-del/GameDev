@@ -17,9 +17,11 @@
  *      look palette is on (this box's Chromium), the photographs standing
  *      where it is not (Windows, a Mac);
  *   4. `?folkwork=0`: Chef Blaze never cooks, and the set is not loaded;
- *   5. no page errors.
+ *   5. `?folkskills=0` (the trades' own switch): Chef Blaze back in card TF
+ *      PR 1's pickup at his stop, never the cook, and the set not loaded;
+ *   6. no page errors.
  * Run after `npm run build`: node tools/qa/mp/run.mjs folkwork
- * (BT_FOLKWORK_ONLY=upright|sideways|computer|off runs one part.)
+ * (BT_FOLKWORK_ONLY=upright|sideways|computer|off|noskills runs one part.)
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -134,6 +136,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
         }
       }
       rec.ok(`${part.key}: no page errors`, T.errors.length === 0, T.errors.slice(0, 5));
+    } finally {
+      T.alive();
+      await T.P.ctx.close().catch(() => {});
+    }
+  }
+
+  if (!ONLY || ONLY === 'noskills') {
+    const T = await play(PARTS[0], 'folkskills=0');
+    try {
+      rec.ok('noskills: in the world (guard)', T.inWheel);
+      await T.P.page.waitForFunction(() => window.__btFolkWalk && window.__btFolkWalk() && window.__btFolkWalk().on, null, { timeout: 60000 }).catch(() => {});
+      await T.goNear('Chef Blaze', 30, 180);
+      const d = await T.waitPose('Chef Blaze', 'pickup', 60000);
+      await T.shot('Chef Blaze', 'folkwork-noskills-pickup.png');
+      const fs = await T.P.page.evaluate(() => (window.__btFolkSkill ? window.__btFolkSkill() : null));
+      rec.ok(`5. ?folkskills=0: Chef Blaze works in PR 1's pickup at his stop, not the cook (${d && d.pose}), and none of the trades' figures is loaded (${fs && fs.sheets.filter((x) => x[1]).length} sheets)`,
+        !!d && d.pose === 'pickup' && !!d.skill && d.skill.shown === 'figure' && !!fs && fs.skillsOff && fs.sheets.every((x) => !x[1]), { d, fs });
+      rec.ok('noskills: no page errors', T.errors.length === 0, T.errors.slice(0, 5));
     } finally {
       T.alive();
       await T.P.ctx.close().catch(() => {});

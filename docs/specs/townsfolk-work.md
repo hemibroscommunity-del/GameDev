@@ -94,11 +94,20 @@ the figure's crown. What is different is where the figure comes from.
   against it: every pixel explained, 256 colours a sheet. Seven sheets: the
   cook (24 frames), the lumberjack (his 12 played frames), the farmer's
   three moves (8 each) and his hoe and can (8 each). No new drawing.
-- **The cook's colours.** His strip has 72,439 colours (the pan, the food,
-  his shading). Cut to 256, his worst colour moves 22 levels against the
-  bar of 16 that every other sheet keeps (mean 4.3 in the self-check).
-  Shipped at a bar of 23 for that sheet alone, with the planning session's
-  answer recorded in the PR.
+- **The cook's colours (decided for the owner while away).** His strip has
+  72,439 colours (the pan, the food, his shading). Cut to 256 his worst
+  colour moves 22 levels against the bar of 16 every other sheet keeps (a
+  mean of 4.3 in the bake's self-check), and at 16 bits he is over 65,535
+  entries, so 256 colours is his only form. The planning session's answer
+  (A, 2026-11-14): the owner's rule is 256 colours (*"I won't notice at all
+  from anything at 256"*) and Chef Blaze cooking is the owner's own
+  request, so his sheet has a bar of its own, 23, written with its reason
+  in the set module (`bars`), recorded in its manifest and reproduced by a
+  re-bake or `role-bake.mjs --check`. `townsfolk-walk.test` §6e fails any
+  sheet whose bar is raised without a written reason. His strip beside its
+  256-colour copy: `docs/specs/townsfolk-work/cook-256-frames.png`, the pan
+  close up `cook-256-pan.png`. `?folkskills=0` takes him back to the
+  pickup.
 - **His tee** is the `gear` set's strip for the pose (`gearLookFrame.js`,
   loaded already for the player's own skills), in his tee's colour without
   its print, as at any work. The cook's is pinned to frame 22, as another
@@ -118,8 +127,12 @@ the figure's crown. What is different is where the figure comes from.
   where he would have worked.
 - **A computer** (Windows, a Mac) draws the townsfolk's photographs,
   standing, as before: no look palette, so none of this is loaded there.
-- **The switch.** `?folkwork=0` stands them at every stop, these included,
-  and loads none of the set: that phone holds none of its memory.
+- **The switches.** `?folkskills=0` (its row in the switch table,
+  `tools/guards/lib/switches.mjs`) puts the three back in PR 1's poses
+  (Chef Blaze and Woodworker Bro the pickup, Farmer Bro standing) and loads
+  none of the set; a figure with a part not in falls back the same way.
+  `?folkwork=0` stands them at every stop, these included, and loads none
+  of the set either.
 - **Checked by** `townsfolk-walk.test` §2g, §2i-2k and §6 (the copies of
   `effectsRenderer`'s numbers, the set on disk, the switch, the wiring) and
   `mp-folkwork` (on a phone upright and sideways, and a computer: each trade

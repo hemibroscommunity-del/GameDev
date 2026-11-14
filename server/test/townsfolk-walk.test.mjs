@@ -156,19 +156,26 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
     'the hoe': ['Farmer Bro'],     /* the Feed & Seed */
     'the watering can': ['Farmer Bro'],
   };
+  /* v2.3.5461: a trade's figure not drawn (`?folkskills=0`, a part not in):
+     card TF PR 1's pose (folkSkill.js FOLK_SKILL_FALLBACK) -- held as every job is */
+  const fbSrc = /const FOLK_SKILL_FALLBACK = Object\.freeze\((\{[^}]*\})\);/.exec(src('src/rendering/folkSkill.js'));
+  const FALLBACK = fbSrc ? Function('return ' + fbSrc[1])() : null;
+  const jobsOf = (s) => [s[3], ...(s[3] && FALLBACK && Object.prototype.hasOwnProperty.call(FALLBACK, s[3]) && FALLBACK[s[3]] ? [FALLBACK[s[3]]] : [])];
   const untold = W.FOLK_WORK_POSES.filter((p) => !Object.prototype.hasOwnProperty.call(TOOL_OF, p) || (TOOL_OF[p] !== null && !MAY_HOLD[TOOL_OF[p]]));
   check('2j every work pose names its tool, and every tool who may hold it (a new pose adds its row)', untold.length === 0, untold);
   const wrongHands = [];
   for (const n of Object.keys(W.FOLK_DAYS)) {
     for (const giver of [false, true]) {
       for (const s of (W.folkStops(n, giver) || [])) {
-        const tool = s[3] ? TOOL_OF[s[3]] : null;
-        if (tool && !(MAY_HOLD[tool] || []).includes(n)) wrongHands.push([n, s[3], tool]);
+        for (const job of jobsOf(s)) {
+          const tool = job ? TOOL_OF[job] : null;
+          if (tool && !(MAY_HOLD[tool] || []).includes(n)) wrongHands.push([n, job, tool]);
+        }
       }
     }
   }
-  check('...and a townsperson works only with a tool that is his: nobody but the blacksmith swings the pickaxe, nobody but Old Man Reel casts the rod, the pan the cook\'s, the axe the woodworker\'s, the hoe and the can the farmer\'s',
-    wrongHands.length === 0, wrongHands);
+  check('...and a townsperson works only with a tool that is his: nobody but the blacksmith swings the pickaxe, nobody but Old Man Reel casts the rod, the pan the cook\'s, the axe the woodworker\'s, the hoe and the can the farmer\'s (a trade\'s fallback held too)',
+    wrongHands.length === 0 && !!FALLBACK && W.FOLK_WORK_POSES.filter((p) => TRADES[p]).every((p) => Object.prototype.hasOwnProperty.call(FALLBACK, p)), { wrongHands, FALLBACK });
   /* v2.3.5460: ...and no job bakes a look the colour numbers refuse (the
      memory law).  A look is refused in a pose when his eye style has a blank
      on that pose's sheet, or his trousers or shoes wear a pattern
@@ -186,12 +193,14 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
     const L = npcLookByName(n);
     for (const giver of [false, true]) {
       for (const s of (W.folkStops(n, giver) || [])) {
-        if (!s[3] || s[3] === 'fish' || !L) continue;
-        const pat = L.patterns || {};
-        /* v2.3.5461: a trade's figure takes his eye style as a piece of his
-           head (placeSkillTraitsFor), so only a pattern refuses its numbers */
-        const refused = TRADES[s[3]] ? (pat.pants || pat.shoes) : ((L.eyes && L.eyes !== 'none' && EYE_BLANK[s[3] + '-south']) || pat.pants || pat.shoes);
-        if (refused && !BAKED_BEFORE.has(n + '|' + s[3])) newBakes.push([n, s[3], L.eyes, pat.pants || pat.shoes || null]);
+        for (const job of jobsOf(s)) {
+          if (!job || job === 'fish' || !L) continue;
+          const pat = L.patterns || {};
+          /* v2.3.5461: a trade's figure takes his eye style as a piece of his
+             head (placeSkillTraitsFor), so only a pattern refuses its numbers */
+          const refused = TRADES[job] ? (pat.pants || pat.shoes) : ((L.eyes && L.eyes !== 'none' && EYE_BLANK[job + '-south']) || pat.pants || pat.shoes);
+          if (refused && !BAKED_BEFORE.has(n + '|' + job)) newBakes.push([n, job, L.eyes, pat.pants || pat.shoes || null]);
+        }
       }
     }
   }
@@ -379,10 +388,39 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
   check('...its recolour the game\'s own for another player in his colours (STANDIN_INK\'s cook and farm rows, _bakeChopStrip): no drawings, no patterns, the axe kept as painted',
     /recolorStandInSkin\(src\.img, T\[1\] \|\| null, s\.fh, \{ keepX: COOK_KEEP_X, art: null, regions: COOK_INK_REGIONS, frameW: s\.fw, patK: STANDIN_GARB_K\.cook, \.\.\.clothes \}\)/.test(set)
       && /recolorToolKeyCanvas\(cv, TOOL_SPECS\.axe, 1, src\.keyMask\)/.test(set) && /keepFromDefault: true/.test(set) && /garb: null/.test(set));
+  /* 6e (the planning session, 2026-11-14: "a sheet that needs another one
+     gets it written down, never silently"): every look set's sheet baked at a
+     bar of its own (its manifest's `bar`, tools/art/role-bake.mjs) has that
+     bar and its written reason in its set module (`bars`).  BREAK PROOF:
+     empty the cook's `why` in lookSets/skills.js -> 6e red; bake a sheet with
+     ROLE_BAKE_BAR=23 and no `bars` entry -> 6e red (its manifest's bar has
+     no reason). */
+  {
+    const { readdirSync, existsSync } = await import('node:fs');
+    const lookDir = new URL('public/sprites/look/', root);
+    const sets = readdirSync(lookDir, { withFileTypes: true }).filter((e) => e.isDirectory() && existsSync(new URL(e.name + '/roles.json', lookDir))).map((e) => e.name);
+    const unexplained = [];
+    let raised = 0;
+    for (const set of sets) {
+      const m = JSON.parse(src(`public/sprites/look/${set}/roles.json`));
+      const mod = existsSync(new URL(`src/rendering/lookSets/${set}.js`, root)) ? src(`src/rendering/lookSets/${set}.js`) : '';
+      for (const [sheet, e] of Object.entries(m.sheets || {})) {
+        if (e.bar == null) continue;
+        raised++;
+        const row = new RegExp("'" + sheet.replace(/-/g, '\\-') + "': \\{ bar: (\\d+), why: \"((?:[^\"\\\\]|\\\\.)*)\"").exec(mod);
+        const why = row ? row[2] : '';
+        if (!row || +row[1] !== e.bar || why.length < 80) unexplained.push(`${set}/${sheet} (bar ${e.bar})`);
+      }
+    }
+    check(`6e a look sheet baked at a bar of its own has it written, with its reason, in its set module (${raised} such: the cook's 23)`, unexplained.length === 0 && raised >= 1, unexplained);
+  }
   /* 6c: the switch, and the memory: no `?folkwork` work poses, none of the set loaded */
-  check('6c `?folkwork=0` stands them for the trades too, and loads none of the set (no new switch: the one the card names)',
-    /const _off = \(\(\) => \{ try \{ return \/\(\^\|\[\?&\]\)folkwork=0\(&\|\$\)\/\.test/.test(fs6) && /const _reg = \(!_off && lookPaletteWanted\(\)\) \? registerLookSheets\('skills'/.test(fs6)
-      && /folkwork=0/.test(src('src/rendering/folkPose.js')));
+  check('6c `?folkwork=0` stands them for the trades too; `?folkskills=0` (its row in the switch table) puts them back in PR 1\'s poses; either loads none of the set',
+    /const _workOff = \(\(\) => \{ try \{ return \/\(\^\|\[\?&\]\)folkwork=0\(&\|\$\)\/\.test/.test(fs6) && /const _skillsOff = \(\(\) => \{ try \{ return \/\(\^\|\[\?&\]\)folkskills=0\(&\|\$\)\/\.test/.test(fs6)
+      && /const _off = _workOff \|\| _skillsOff;/.test(fs6) && /const _reg = \(!_off && lookPaletteWanted\(\)\) \? registerLookSheets\('skills'/.test(fs6)
+      && /if \(_off\) return false;/.test(fs6) && /folkwork=0/.test(src('src/rendering/folkPose.js'))
+      && /name: '\?folkskills', side: 'page', system: 'render', kind: 'switch', born: 5461, thrown: '=0', risk: 'memory'/.test(src('tools/guards/lib/switches.mjs'))
+      && /if \(isFolkSkill\(work\)\) work = folkSkillFallback\(work\);/.test(src('src/rendering/systems/entityRenderer.js')));
   /* 6d: the renderer -- the figure from the numbers, no bake; behind the loading screen; gone when he is */
   const er6 = src('src/rendering/systems/entityRenderer.js');
   const a6 = fs6.indexOf('export function drawFolkSkill(display, npc, look, pose, now, size, placeTraits) {');
@@ -393,7 +431,7 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
       && /placeTraits\(F\._traits, \{/.test(fn6) && /\}, cwx, cwy, spec\.traitDir, false, k \* spec\.traitMul\);/.test(fn6)
       && !/getBodyFrame|getLookBodyFrame|document\.createElement|getContext|fetch\(|new Image/.test(fs6)
       && /if \(work && isFolkSkill\(work\) && drawFolkSkill\(display, npc, look, work, now, size, placeSkillTraitsFor\)\) return true;/.test(er6)
-      && /if \(isFolkSkill\(work\)\) work = null;/.test(er6), { len: fn6.length });
+      && /if \(isFolkSkill\(work\)\) work = folkSkillFallback\(work\);/.test(er6), { len: fn6.length });
   check('...behind the world\'s loading screen (prewarmFolkBodies awaits folkSkillPrepare: the set in, the crowns read), never baked as a body (a trade skipped there)',
     /if \(isFolkSkill\(j\.pose\)\) continue;/.test(er6) && /\.then\(\(n\) => folkSkillPrepare\(\)\.then\(\(\) => n, \(\) => n\)\);/.test(er6)
       && /er\.prewarmFolkBodies\(tw\.folkBakeJobs\(\)\)/.test(src('src/game/worldTrial.js')));

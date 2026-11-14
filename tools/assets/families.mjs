@@ -177,6 +177,10 @@ export const ASSET_FAMILIES = Object.freeze([
     { tool: 'tools/art/head-bake.mjs', sources: 'public/sprites/traits/{hair,headwear,facialhair,eyewear,eyestyle}/*/<dir>.png', draw: 'look', loader: 'src/rendering/lookPalette.js', bundle: 'look set heads' }),
   fam('look-shirt', 'data', 'public/sprites/look/shirt/*.png',
     { tool: 'tools/art/shirt-bake.mjs', sources: 'public/sprites/gear/shirt/tshirt/{stand,jog}-<dir>.png', draw: 'look', loader: 'src/rendering/lookPalette.js', bundle: 'look set shirt' }),
+  /* v2.3.5461: the townsfolk's trades (card TF PR 2): the cook, the lumberjack,
+     the farmer's three moves and his hoe and can, for rendering/folkSkill.js */
+  fam('look-skills', 'data', 'public/sprites/look/skills/*.png',
+    { tool: 'tools/art/role-bake.mjs', sources: 'public/sprites/skills/{cook-strip.webp,chop-strip.webp,farm-{hoe,water,kneel}.png,farm-{hoe,water}-prop.png}', draw: 'look', loader: 'src/rendering/lookPalette.js', bundle: 'look set skills' }),
   fam('look-standin', 'data', 'public/sprites/look/standin/*.png',
     { tool: 'tools/art/role-bake.mjs', sources: 'public/sprites/player/{sword,bow}-*-{body,torso}, jog-*-legs', draw: 'look', loader: 'src/rendering/lookPalette.js', bundle: 'look set standin' }),
   fam('look-standinlegs', 'data', 'public/sprites/look/standinlegs/*.png',
