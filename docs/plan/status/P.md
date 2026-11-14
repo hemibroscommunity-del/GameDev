@@ -1,6 +1,6 @@
 card: P
 branch: claude/plan-p-16-frame-pack (begun from main, as the planning session asked from the fire goblin on)
-prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766 (5241-5252, merged); #1805 (5253), #1806 (5254), #1810 (5255) ready; monster-slime (5256) built, waits; monster-fire-goblin (5257) measuring
+prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810 (5241-5255, merged); monster-slime (5256) built, waits; monster-fire-goblin (5257) measuring
 state: working
 
 ## Done
@@ -11,6 +11,8 @@ state: working
   0.80 by the census); sittings 8 and 9: not the snowball, not the trap.
 - #1766 (5252), `fx-sheets-supplied`: the whirlwind's declined twin as numbers
   (`gearSheets.js`): `artCache` 97.1 -> 95.1; 0.49 MB by the census.
+- #1805 (5253) `pack-page` on the worker; #1806 (5254) the pixel readers'
+  guard; #1810 (5255) the Equipment figure's 22 ms named (the box).
 
 ## Next
 
@@ -27,7 +29,6 @@ state: working
   22.2 MB at the fight have no label (the renderers' bakes, not card P's).
 - `pack-page` on main (A's sample): 30.6 ms at armour, 15.9 at peer.
 - `mp-npclooks` 2 and 2b are red with PR 6's change on and off alike.
-- The Equipment figure's 22 ms (5255): the box, not the figure.
 
 ## Needs
 

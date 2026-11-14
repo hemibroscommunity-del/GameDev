@@ -107,6 +107,17 @@ export const PHASES = [
     rejoin: 'none: the join places the player again (state_sync, body_place)',
     held: { suite: 'server/test/zone-leftovers.test.mjs' },
   },
+  /* v2.3.5222 (card O PR 2): the governor's ladder, a row of its own */
+  {
+    name: 'ladder', side: 'page', status: 'door',
+    what: 'Where the governor (the frame pacer, grown) stands on the ladder below the lane\'s row: rungs taken on each axis.',
+    field: '_rung', states: ['row', 'below'],
+    fn: 'setRung', file: 'src/game/drawLanes.js',
+    clears: [{ edge: 'never', at: 'src/game/drawLanes.js setRung' }],
+    rejoin: 'none: the device\'s own, kept by lane in localStorage for the next sitting (framePacer.js makeGovernor)',
+    held: { suite: 'server/test/frame-pacer.test.mjs' },
+    note: 'Kept: the device\'s, not the zone\'s (card L\'s `reset` column, when it lands: kept). setRung is called by the governor alone (framePacer.js); frame-pacer.test §17 fails a second caller and a second write of _rung.',
+  },
 
   /* ═══ TO DO, THE WORKER (card L PR 5: trade, duel, party, cook, harvest,
      fishing, dungeon, guard, ride, pose, race, arena) ═══ */
@@ -151,19 +162,17 @@ export const PHASES = [
     note: 'The record\'s status is the natural one field (_duelFor reads `active`); the leave starts a 15 s away clock, not an end.',
   },
   {
-    name: 'trade', side: 'worker', status: 'todo',
-    what: 'A trade window: invited, open (offer, review, confirmed), done or cancelled.',
-    field: null, states: ['invited', 'open', 'done', 'cancelled'], fn: null, file: null,
+    name: 'trade', side: 'worker', status: 'door',
+    what: 'A trade session: open (offer, review, confirmed), then done or cancelled; an invite is not yet a session but a key of _t2Invites with its own TTL.',
+    field: 's.state', states: ['open', 'done', 'cancelled'],
+    fn: '_t2To', file: 'server/src/trade2.js',
     clears: [
       { edge: 'end', at: 'server/src/trade2.js _t2Cancel' },
       { edge: 'leave', at: 'server/src/trade2.js _trade2OnDisconnect' },
     ],
     rejoin: ['trade', 'trade-invite'],
-    today: [
-      { field: 'this._t2Invites', file: 'server/src/trade2.js', writers: ['server/src/trade2.js _handleTrade2Open', 'server/src/trade2.js _t2ClearInvites', 'server/src/trade2.js _tickTrades2'] },
-      { field: 'this._trades2', file: 'server/src/trade2.js', writers: ['server/src/trade2.js _handleTrade2Open', 'server/src/trade2.js _t2Cancel', 'server/src/trade2.js _handleTrade2Confirm'] },
-    ],
-    note: 'A death does not cancel the window (fightlock.js); the takeover way skips the leave\'s cancel on purpose (TRAPS §162).',
+    held: { suite: 'server/test/trade-door.test.mjs' },
+    note: 'v2.3.5210: the door (TRADE_WAYS cancel, swap; both ends final; live flag tradedoor). A death does not cancel the window (fightlock.js); the takeover way skips the leave\'s cancel on purpose (TRAPS §162).',
   },
   {
     name: 'party', side: 'worker', status: 'todo',

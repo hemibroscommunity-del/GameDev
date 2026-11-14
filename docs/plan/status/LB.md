@@ -1,24 +1,21 @@
 card: LB
-branch: claude/plan-lb-2-window (PR 2, begun from claude/plan-lb-1-pieces)
-prs: #1771 (5500, merged); #1783 (5501, ready again: sitting 10's list mended)
-state: ready
+branch: claude/plan-lb-4-done (the status, done, on main)
+prs: #1771 (5500), #1783 (5501), #1798 (5502): all merged
+state: done
 
 ## Done
 
-- #1771 (5500, merged): the owner's sheet and two mockups; 27 pieces cut by
-  the sheet's own alpha (`tools/ui/cut-leaderboard.mjs`, family
-  `ui-leaderboard`); the papers, the MEMORY-MAP slot, the spec, LB's block.
-- #1783 (5501): the window after mockup 2 (title, pills, podium, table, no
-  pages); `mp-boardslook` 17/17, `mp-boards` 37/37, `questline` 187/187,
-  `mp-membudget` 11/11 before and after (no line moves); CI green.
+- #1771 (5500, merged): the owner's sheet cut into 27 pieces by its own
+  alpha (`tools/ui/cut-leaderboard.mjs`, family `ui-leaderboard`); the
+  papers, the MEMORY-MAP slot, the spec.
+- #1783 (5501, merged): the window after the second mockup (title, pills,
+  podium, table, no pages); sittings 10 and 11 mended.
+- #1798 (5502, merged): Overall and the Power rating (Overall's columns
+  only), the Stats group (`caps.statboards`), the caps' rows.
 
 ## Next
 
-- PR 3 (5502), once PW's #1776 and #1781 are on main: Overall and the Power
-  rating (held in #1783: caps-audit refuses a cap before join.js sends it),
-  the "Stats" group (`caps.statboards`, `pts_dmg` "Damage"), the
-  `CAP_GATES` rows, and the caps-audit allowlist rows for `power` and
-  `statboards` deleted in the same PR (PW's reminder).
+- Nothing: the card is done.
 
 ## Found
 

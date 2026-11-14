@@ -60,7 +60,41 @@ export const TRADE2 = {
   ACCEPT_COOLDOWN_MS: 2500,
 };
 
+/* ═══ v2.3.5210: THE TRADE DOOR (card L PR 5; grand plan step 5.3b) ═══
+   (docs/specs/trade-door.md; held by server/test/trade-door.test.mjs and the
+   phase table's guard, tools/guards/phase-table.test.mjs)
+   A trade session's phase is ONE field, `s.state`: born 'open' at the mutual
+   open (_handleTrade2Open's literal), then 'done' (the swap,
+   _handleTrade2Confirm) or 'cancelled' (_t2Cancel: a decline, a leave, the
+   idle sweep, a check that failed at the commit).  Only _t2To writes it, by a
+   way of TRADE_WAYS, and both ends are final: a finished trade never changes
+   its end.  Step 1 changes nothing a player sees: both old lines wrote over
+   'open' only (_t2Cancel's guard; the swap finds an open session and writes
+   'done' in the same synchronous run).  `tradedoor: false` in the live flags
+   lets _t2To write over a finished phase, as the two lines would have.
+   An INVITE is not a session: a key of _t2Invites (from>to -> when) with its
+   own TTL, as before; the table's row says so. */
+export const TRADE_PHASES = Object.freeze(['open', 'done', 'cancelled']);
+export const TRADE_WAYS = Object.freeze({ cancel: 'cancelled', swap: 'done' });
+
 export const trade2Methods = {
+  /* v2.3.5210: the trade door's kill switch (live flag `tradedoor: false`) */
+  _t2DoorOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'tradedoor') && !f.tradedoor);
+  },
+
+  /* v2.3.5210: THE ONE WRITER of a trade session's phase.  `way` is a row of
+     TRADE_WAYS and names the phase it goes to; a phase already finished stays
+     (false), unless `tradedoor: false`.  True when it wrote. */
+  _t2To(s, to, way) {
+    if (!s || typeof s !== 'object') return false;
+    if (!Object.prototype.hasOwnProperty.call(TRADE_WAYS, way) || TRADE_WAYS[way] !== to) return false;
+    if (s.state !== 'open' && !this._t2DoorOff()) return false;
+    s.state = to;
+    return true;
+  },
+
   _t2Send(playerId, type, payload) {
     const ws = this._wsBySessionId(playerId);
     if (!ws) return;
@@ -123,7 +157,7 @@ export const trade2Methods = {
 
   _t2Cancel(s, why) {
     if (!s || s.state !== 'open') return;
-    s.state = 'cancelled';
+    this._t2To(s, 'cancelled', 'cancel');   /* v2.3.5210: the trade door */
     this._trades2.delete(s.id);
     // v2.3.1213: return any escrowed weapons to their owners (fire-and-
     // forget; opId-idempotent + swept as a backstop).  The state guard
@@ -314,7 +348,7 @@ export const trade2Methods = {
       }
       s.petsMoved = moving.map((mv) => ({ from: mv.from, to: mv.to, pet: petPublic(mv.pet) }));
     }
-    s.state = 'done';
+    this._t2To(s, 'done', 'swap');   /* v2.3.5210: the trade door (the session was found open in this same run) */
     this._trades2.delete(s.id);
     // Credit each side what the OTHER staged (opId-idempotent; both
     // parties are online -- they just confirmed -- so these apply live).

@@ -78,7 +78,7 @@ import { BatcherPipe, DefaultBatcher, ExtensionType, extensions, BufferImageSour
 import { SHARP_SAMPLE_GLSL } from './sharpPixels.js';   /* v2.3.3447: the sharp read, for ONE_BATCHER's program */
 import { setWheelPalette } from '../game/wheelTrial.js';
 import { isPaletteSource } from './paletteDraw.js';
-import { deviceProfile } from '../game/deviceProfile.js';   /* v2.3.5016: a Windows or Mac computer keeps the three programs */
+import { deviceProfile, rendererName } from '../game/deviceProfile.js';   /* v2.3.5016: a Windows or Mac computer keeps the three programs; v2.3.5227: the chip's name asked there too */
 export { isPaletteSource, drawSourceRect, paletteRegionRGBA } from './paletteDraw.js';
 
 export const PAL_BATCHER = 'bt-palette';
@@ -470,19 +470,9 @@ export function oneBatchChoice(search, renderer, os) {
   if (os && (os.windows || os.mac)) return { on: false, why: 'computer' };
   return { on: true, why: 'default' };
 }
-/* the chip's own name: Firefox gives it as RENDERER, Chrome and Safari
-   answer "WebKit WebGL" there and the name through the debug extension
-   (read only then: Firefox warns that it is going away) */
-function rendererName(r) {
-  try {
-    const gl = r && r.gl;
-    if (!gl) return '';
-    const plain = String(gl.getParameter(gl.RENDERER) || '');
-    if (plain && !/^webkit webgl$/i.test(plain)) return plain;
-    const ext = gl.getExtension('WEBGL_debug_renderer_info');
-    return ext ? String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || '') : plain;
-  } catch (e) { return ''; }
-}
+/* the chip's own name: v2.3.5227, asked of the device profile
+   (game/deviceProfile.js rendererName: the one place a device is asked,
+   card O PR 7), the same answer as the copy that was here */
 function pageSearch() {
   try { return window.location.search || ''; } catch (e) { return ''; }
 }

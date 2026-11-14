@@ -125,35 +125,47 @@ more. Never slower than one frame in 26 ms. The step the game takes in one
 frame is at most 50 ms of game: past that it plays in slow motion. Held by
 `frame-pacer.test` and `frame-clock.test` on every PR.
 
+v2.3.5222 (card O PR 2, step 2.3): **the pacer judges on every screen whose
+refresh it knows** (120, 60, 30), by one rule (`framePacer.js lateOver`: more
+than half a refresh past its frame), and the same verdict moves the ladder
+(`docs/LANES.md`): two bad verdicts, a rung down; clean for 20 s, a try up;
+a failed try doubles the wait. The screen's own rate steps first (a fast
+screen's alone, as before); the ladder steps once that rate is at its floor.
+
 ### Reads
 
 | What | Its own definition of a late or slow frame | Acts? |
 |---|---|---|
-| the frame pacer | more than half a refresh late; **only on a screen faster than about 70 a second** | yes |
+| the frame pacer | more than half a refresh late (`lateOver`); v2.3.5222: **on every screen whose refresh it knows** (before, only faster than about 70 a second) | yes |
 | the strip | over 1.5 times the middle frame of the last 600 | no |
 | `perfTracker` | over 30 ms; a freeze over 100 ms | no |
 | the loop's slow-frame log | over 20 ms | no |
 | the frame counter | dips (`?dev=1`) | no |
 
 Five definitions, one acting. The report (step 1.1) sends the pacer's alone
-(`docs/SHAPES.md` part 4).
+(`docs/SHAPES.md` part 4): v2.3.5222, by importing its rule, on every screen.
 
 ### Controls
 
 | Controller | Reads | Changes | Where |
 |---|---|---|---|
 | **the frame pacer** | the animation frame's own timestamps | how many refreshes are drawn | `src/game/framePacer.js` |
+| **the governor** (v2.3.5222: the pacer, grown) | the pacer's verdict; the late frames' split from the frame meter's samples (handed in by `perfTracker.js`) | the ladder's rung (`drawLanes.js setRung`): no knob reads it yet (card O's PRs 4 to 13) | `src/game/framePacer.js` `makeGovernor` |
 | the steady step | `performance.now()` at the loop's start: **a second clock of the same frame** | the length of the step the game takes: the mean of 10 frames, a frame over 50 ms a break | `src/game/frameClock.js`; the cap `S._dtScale`, `src/ui/BroTown.jsx` |
 | the strip slice | the steady step's length | a monster strip's slice: a quarter of the frame | `zoneTextures.js` `stripTurn` |
 | about 20 effects | their own `now - last` | each clamps its own step: 50, 100 or 250 ms | the effects' files |
 
-- The pacer gives **no verdict at 60 a second, at 30 or on the QA box**: on
-  those it never acts. Low Power Mode's 30 is not seen at all.
+- v2.3.5222: the pacer gives a verdict at 120, 60 and 30 (Low Power Mode's
+  30 is judged); **never on the QA box**, whose frames come 400 ms and more
+  apart (every gap a break). Its own rate still steps on a fast screen
+  alone; the verdict moves the ladder on every one.
 - **SECOND**: the frame's time is measured twice in one loop, by two clocks.
 - **SECOND**, and the wrong way for a governor: the strip slice GROWS when
   frames are long. Step 2.3 (card O) makes the pacer the one controller.
 - Nothing in `src/` lowers a quality, a cap, a crowd or a send rate because
-  frames are late.
+  frames are late. v2.3.5222: the governor moves the ladder's rung, and each
+  knob reads it in its own PR (card O's 4 to 13); until then the rung shows
+  on the strip, in the report and to QA.
 - "Is the world in play" is asked four ways: the pacer's `judge`, the strip's
   `setStripPlay`, the bake's `worldReady()` (`src/ui/loadingGate.js`), and the
   black-screen watchdog's own list (all in or beside `BroTown.jsx`).

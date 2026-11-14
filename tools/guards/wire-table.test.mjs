@@ -1,15 +1,17 @@
 /* ═══ v2.3.5062: THE WIRE TABLE HOLDS TO THE CODE (grand plan 4.1; card N) ═══
  *
  * server/src/wire/ is one row for every message a phone and the worker trade
- * and every HTTP route (card N's PR 2, from card C's census).  Nothing in the
- * worker reads it yet (card K makes today's lists FROM it), so this guard is
- * what keeps it true.  It counts every key from the code, as the census's
- * part 8 counted it, and fails:
+ * and every HTTP route (card N's PR 2, from card C's census).  v2.3.5181
+ * (card K, step 4.1 step 2): the worker's lists are MADE from it
+ * (server/src/wire/lists.js): PRIVILEGED_EVENTS from the `out` rows,
+ * RELAY.TYPES from the `relay` rows, wire-audit's echo list from the rows
+ * marked `privileged: 'echo'`; wire-audit.test holds the `out` rows to every
+ * type the worker sends.  This guard keeps the rest true.  It counts every
+ * key from the code, as the census's part 8 counted it, and fails:
  *
- *   1. a key with no row: a case of the router (`_onMessage`'s switch), a
- *      type in PRIVILEGED_EVENTS or RELAY.TYPES, a type the worker sends that
- *      is on neither (wire-audit.test's RELAY_ECHO_ALLOWLIST, less the
- *      relays: today `clan_war_declare`);
+ *   1. a key with no row: a case of the router (`_onMessage`'s switch); and
+ *      a list the worker keeps by hand beside a made one (a literal
+ *      PRIVILEGED_EVENTS, RELAY.TYPES or echo list: "never both");
  *   2. a row with no key;
  *   3. two rows for one name and direction;
  *   4. a value off its column's closed list (server/src/wire/columns.js;
@@ -24,6 +26,12 @@
  *      `at` says `(fall-through)` (a handler's last answer, or a gate before
  *      any route: the lister does not look for those).
  *
+ *   7. (v2.3.5181, card K PR 1 only: PR 2 takes it out) a made list that is
+ *      not today's: TODAY below is each list as it stood on main 9fd5e58,
+ *      written by hand in the one place it may be, for one PR;
+ *   8. a row added to the table that does not reach its list with no other
+ *      edit (`wireLists` with a probe row of each kind).
+ *
  * The plan's rule 3 (a census table fails only when its count of unlisted
  * things rises): that count is 0 today, so any key with no row fails.  A new
  * message, a new relay, a new route lands WITH its row in server/src/wire/.
@@ -37,6 +45,11 @@
  *   6. server/src/market.js: `if (request.method === 'GET' && path.startsWith('/zz')) {}` -> FAIL 6
  *   7. server/src/wire/out.js: a note `"the phone reads type: 'tick'"` on a row -> FAIL 4
  *      (v2.3.5062, the gatekeeper's review: tried by hand, 2026-11-14)
+ *   8. server/src/index.js: `export const PRIVILEGED_EVENTS = new Set(['tick']);`
+ *      for its import from ./wire/lists.js                                 -> FAIL 1
+ *   9. server/src/wire/out.js: `privileged: 'echo',` on the `tick` row     -> FAIL 4 (no echo note), 7 and 8
+ *  10. server/src/wire/lists.js: `out.filter((r) => !isEcho(r))` -> `out.filter((r) => isEcho(r))` -> FAIL 2, 7 and 8
+ *      (v2.3.5181: 8 to 10 tried by hand, 2026-11-14)
  *
  * Run from the repository's root: node tools/guards/wire-table.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
@@ -101,17 +114,31 @@ function switchCases(start) {
   }
   return { file: null, cases: [], found: false };
 }
-const setOf = (file, re) => { const m = re.exec(read(file)); return m ? [...stripC(m[1]).matchAll(/'([a-z0-9_]+)'/g)].map((x) => x[1]) : []; };
+/* v2.3.5181: the worker's lists, as lists.js makes them from the rows */
+const { wireLists, PRIVILEGED_EVENTS: MADE_PRIV, RELAY_TYPES: MADE_RELAY, RELAY_ECHOES: MADE_ECHOES } = await import(W('lists.js'));
 const router = switchCases(/^ {2}async _onMessage\(/);
-const PRIV = setOf('server/src/index.js', /PRIVILEGED_EVENTS = new Set\(\[([\s\S]*?)\]\)/);
-const RELAY = setOf('server/src/relay.js', /TYPES:\s*Object\.freeze\(new Set\(\[([\s\S]*?)\]\)\)/);
-const echoes = [...(/RELAY_ECHO_ALLOWLIST = new Map\(\[([\s\S]*?)\n\]\);/.exec(read('server/test/wire-audit.test.mjs')) || [, ''])[1]
-  .matchAll(/^\s*\['([a-z0-9_]+)',/gm)].map((m) => m[1]);
+const PRIV = [...MADE_PRIV];
+const RELAY = [...MADE_RELAY];
+const echoes = [...MADE_ECHOES.keys()];
 const OUT_EXTRA = echoes.filter((t) => !RELAY.includes(t));
 const direct = switchCases(/ws\.onmessage\s*=/);
 check('0: the counts read (the router\'s switch, the two lists, the echo list, the phone\'s switch)',
   router.found && router.cases.length > 100 && PRIV.length > 100 && RELAY.length > 10 && echoes.length > 3 && direct.found && direct.cases.length > 50,
   { router: router.cases.length, priv: PRIV.length, relay: RELAY.length, echoes: echoes.length, direct: direct.cases.length });
+
+/* ── 1. never both: the worker's lists are the made ones, and no list is
+   written by hand beside them (v2.3.5181; the card's reading: "the old
+   literal goes in the PR that makes it") ── */
+{
+  const idx = stripC(read('server/src/index.js')), rel = stripC(read('server/src/relay.js'));
+  const audit = stripC(read('server/test/wire-audit.test.mjs'));
+  const byHand = [];
+  if (/PRIVILEGED_EVENTS\s*=\s*new Set\(/.test(idx)) byHand.push('index.js: PRIVILEGED_EVENTS = new Set(');
+  if (!/import \{[^}]*\bPRIVILEGED_EVENTS\b[^}]*\} from '\.\/wire\/lists\.js'/.test(idx)) byHand.push('index.js: PRIVILEGED_EVENTS not taken from ./wire/lists.js');
+  if (/TYPES:\s*Object\.freeze\(new Set\(/.test(rel) || !/TYPES:\s*Object\.freeze\(RELAY_TYPES\)/.test(rel)) byHand.push('relay.js: RELAY.TYPES is not lists.js\'s RELAY_TYPES');
+  if (/RELAY_ECHO_ALLOWLIST\s*=\s*new Map\(/.test(audit) || !/RELAY_ECHO_ALLOWLIST\s*=\s*RELAY_ECHOES\b/.test(audit)) byHand.push('wire-audit.test: RELAY_ECHO_ALLOWLIST is not lists.js\'s RELAY_ECHOES');
+  check('1: the worker\'s lists are the ones server/src/wire/lists.js makes from the table, and none is written by hand beside it', byHand.length === 0, byHand);
+}
 
 const KEYS = { in: router.cases, relay: RELAY, out: [...PRIV, ...OUT_EXTRA] };
 const socketRows = { in: WIRE_IN, relay: WIRE_RELAY, out: WIRE_OUT };
@@ -142,8 +169,14 @@ check('2: every HTTP row is an in row named http:/...', WIRE_HTTP.every((r) => r
   const answers = new Set([...C.answer, ...KEYS.in, ...KEYS.out, ...KEYS.relay]);   /* any row's name: ping is answered by pong */
   for (const r of ROWS) {
     const keys = Object.keys(r);
-    const want = C.ORDER.filter((k) => k !== 'note' || own(r, 'note'));
+    const want = C.ORDER.filter((k) => !C.OPTIONAL.includes(k) || own(r, k));
     if (keys.join() !== want.join()) e(r, 'columns ' + keys.join());
+    /* v2.3.5181: the machine's `privileged` column (lists.js), on an out or
+       relay row only, and an echo says why in a note that opens `echo: ` */
+    if (own(r, 'privileged')) {
+      if (!(r.dir === 'out' || r.dir === 'relay') || !C.privileged.includes(r.privileged)) e(r, 'privileged ' + r.privileged);
+      if (r.privileged === 'echo' && !(Array.isArray(r.note) && r.note.some((n) => typeof n === 'string' && /^echo: \S/.test(n)))) e(r, 'privileged echo with no `echo: ` note saying why');
+    }
     if (!C.dir.includes(r.dir)) e(r, 'dir ' + r.dir);
     if (typeof r.at !== 'string' || !r.at) e(r, 'at');
     const many = r.dir === 'out';
@@ -231,6 +264,79 @@ check('6: the lister finds the routes (guard)', tested.size > 60 && tested.has('
   check(`6: every path a handler tests has a row (${tested.size} paths)`, orphan.length === 0, orphan.map((p) => p + ' (' + tested.get(p) + ')'));
   const unseen = WIRE_HTTP.filter((r) => !/\(fall-through\)$/.test(r.at) && !tested.has(pathOf(r.name))).map((r) => r.name);
   check('6: every route row is a path a handler tests, or says (fall-through) in its `at`', unseen.length === 0, unseen);
+}
+
+/* ── 7. today's lists (v2.3.5181, card K PR 1 ONLY: card K's PR 2 takes this
+   copy out, and from then the table's rows are the lists) ──
+   Each list as it stood, written by hand on main 9fd5e58 (index.js's
+   PRIVILEGED_EVENTS, relay.js's RELAY.TYPES, wire-audit.test's
+   RELAY_ECHO_ALLOWLIST), sorted.  The made list equals it: the move changed
+   nothing. */
+{
+  const TODAY = {
+    PRIVILEGED_EVENTS: [
+      'ability_rejected', 'ability_windup', 'acc_state', 'ace_board', 'ace_flip_result',
+      'ace_item_flip_result', 'achv_state', 'alliance_error', 'alliance_rows', 'alliance_war_end',
+      'area_chat', 'arena_match_result', 'arena_match_start', 'arena_stake_board',
+      'arena_stake_error', 'arena_stake_placed', 'arena_stake_result', 'arena_tournament_complete',
+      'arrow_boom', 'bank_state', 'body_place', 'bro_nonce', 'bro_verify_result', 'cape_status',
+      'chain_score_recorded', 'character_reset_done', 'character_reset_refused', 'chat_mute_list',
+      'chat_report_ack', 'chest_opened', 'clan_error', 'clan_state', 'clan_war_end', 'clan_war_kill',
+      'client_off', 'codex_state', 'combat_credit', 'daily_progress', 'dice_roll', 'draw_gather',
+      'duel_end', 'duel_resume', 'dungeon_boss', 'dungeon_boss_ability', 'dungeon_complete',
+      'dungeon_error', 'dungeon_started', 'dungeon_wave', 'eat_refused', 'element_nova',
+      'essence_result', 'farm_state', 'fire_trail', 'firemaking_refused', 'fish_board', 'fish_weight',
+      'forge_armor_result', 'free_swing', 'friend_accepted', 'friend_dm', 'friend_dm_backlog',
+      'friend_error', 'friend_request_in', 'friend_sync', 'gamble_result', 'gather_hits',
+      'gear_locked', 'gem_combine_result', 'gem_cut_result', 'guild_quest_error',
+      'guild_quest_result', 'harden_result', 'hardened_wood_result', 'harvest_credit',
+      'inbox_delivered', 'item_drop_result', 'item_reveal', 'jackpot_result', 'jackpot_state',
+      'join_rejected', 'key_new', 'lifesteal_credit', 'linger_wait', 'loginspin_result',
+      'loginspin_round', 'loginspin_state', 'loot_claimed', 'loot_credit', 'loot_despawn',
+      'loot_drop', 'loot_pickup_rejected', 'make_traps_result', 'monster_ability', 'monster_attack',
+      'monster_hit', 'monster_kill', 'monster_projectile', 'monster_transform', 'move_path',
+      'nml_lock', 'nml_lock_ask', 'nml_loss', 'nml_skull', 'nml_take', 'parry', 'party_chat',
+      'party_error', 'party_invited', 'party_state', 'pet_capture_result', 'pets_state', 'ping',
+      'player_count', 'player_died', 'player_join', 'player_leave', 'player_state', 'player_update',
+      'points_reset_result', 'prog3_allocated', 'prog3_level', 'pvp_hit', 'quest_reward_stashed',
+      'race_cp', 'race_end', 'race_state', 'rest_result', 'rewards_state', 'ride_state', 'rise_chest',
+      'room_full', 'server_announce', 'shard_crack_result', 'shield_gem_result', 'shop_quoted',
+      'shop_result', 'shop_state', 'smelt_result', 'smith_salvage_result', 'spar_state', 'spin_board',
+      'stat_allocated', 'state_sync', 'store_dm', 'store_dm_error', 'store_dm_thread',
+      'store_offer_error', 'store_offer_state', 'test_mode', 'threat_expired', 'threat_penalty',
+      'tick', 'trade2_invite', 'trade2_state', 'trap_armed', 'trap_result', 'weapon_gem_result',
+      'whisper', 'whisper_error', 'zone_loot', 'zone_monsters', 'zone_nodes', 'zone_state',
+    ],
+    RELAY_TYPES: [
+      'campfire_lit', 'campfire_out', 'chat', 'clan_invite', 'duel_accept', 'duel_decline',
+      'duel_request', 'duel_wager_request', 'emote', 'gather_node', 'monster_dmg_at',
+      'player_died_to_monster', 'player_dodge', 'player_hurt_by_monster', 'player_jump',
+      'player_projectile', 'player_respawned', 'player_shield', 'player_swing', 'pvp_confirmed',
+      'pvp_threat', 'stunned', 'threat_response', 'trade_accept', 'trade_offer', 'trade_reject',
+    ],
+    RELAY_ECHOES: [
+      'clan_war_declare', 'duel_decline', 'player_died_to_monster', 'player_dodge',
+      'player_projectile', 'player_respawned', 'player_shield', 'player_swing', 'trade_reject',
+    ],
+  };
+  const same = (a, b) => { const x = [...a].sort(), y = [...b].sort(); return x.length === y.length && x.every((v, i) => v === y[i]); };
+  const diff = (a, b) => ({ more: [...a].filter((v) => !b.includes(v)), less: b.filter((v) => ![...a].includes(v)) });
+  check(`7: PRIVILEGED_EVENTS made from the table is today's (${TODAY.PRIVILEGED_EVENTS.length})`, same(MADE_PRIV, TODAY.PRIVILEGED_EVENTS), diff(MADE_PRIV, TODAY.PRIVILEGED_EVENTS));
+  check(`7: RELAY.TYPES made from the table is today's (${TODAY.RELAY_TYPES.length})`, same(MADE_RELAY, TODAY.RELAY_TYPES), diff(MADE_RELAY, TODAY.RELAY_TYPES));
+  check(`7: wire-audit's echo list made from the table is today's (${TODAY.RELAY_ECHOES.length})`, same(MADE_ECHOES.keys(), TODAY.RELAY_ECHOES), diff(MADE_ECHOES.keys(), TODAY.RELAY_ECHOES));
+}
+
+/* ── 8. a row added to the table reaches its list with no other edit ── */
+{
+  const probe = (name, dir, extra = {}) => ({ ...WIRE_OUT[0], name, dir, ...extra });
+  const L = wireLists({
+    out: [...WIRE_OUT, probe('zz_probe_out', 'out'), probe('zz_probe_echo', 'out', { privileged: 'echo', note: ['echo: a probe'] })],
+    relay: [...WIRE_RELAY, probe('zz_probe_relay', 'relay')],
+  });
+  check('8: a new out row is privileged with no other edit (deny by default)', L.PRIVILEGED_EVENTS.has('zz_probe_out') && !MADE_PRIV.has('zz_probe_out'));
+  check('8: a new relay row is a type a phone may relay', L.RELAY_TYPES.has('zz_probe_relay') && !L.PRIVILEGED_EVENTS.has('zz_probe_relay'));
+  check('8: a row marked echo is on the echo list with its why, and not privileged', L.RELAY_ECHOES.get('zz_probe_echo') === 'a probe' && !L.PRIVILEGED_EVENTS.has('zz_probe_echo'));
+  check('8: every echo has its why (the row\'s `echo:` note)', [...MADE_ECHOES.values()].every((w) => typeof w === 'string' && w.length > 10), [...MADE_ECHOES].filter(([, w]) => !w).map(([k]) => k));
 }
 
 const by = {};
