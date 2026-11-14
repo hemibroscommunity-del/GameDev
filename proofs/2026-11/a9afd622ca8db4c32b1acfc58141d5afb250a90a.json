@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "a9afd622ca8db4c32b1acfc58141d5afb250a90a",
+  "tree": "b389cd2a53ba9d5f6ac58f83e3d464422815ab91",
+  "committedAt": "2026-11-14T04:40:49-08:00",
+  "subject": "Merge pull request #1768 from hemibroscommunity-del/claude/plan-t-2-page-game",
+  "files": 7598,
+  "bytes": 952566213,
+  "listingSha256": "2b4aca75ad639223c21de5d0702f9b91627fdc09574fc398f0a606da9e828f3d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
