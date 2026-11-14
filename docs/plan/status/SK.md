@@ -1,11 +1,11 @@
 card: SK
 branch: claude/plan-sk-1-rolloff
-prs: PR 1 (tag 5440) on the branch above (working; its number with the next commit)
+prs: #1782 (tag 5440; a draft until the two questions below are answered)
 state: working
 
 ## Done
 
-- PR 1 (5440), on the branch: the push start and the roll-off.
+- #1782 (5440): the push start and the roll-off.
   - `ride.js` `RIDE_FEEL`, `rideFeel`, `rideStepped`, `rideSpeed`;
     `?ridecoast=0` (its row in `docs/SWITCHES.md`). BroTown's step; the sound.
   - Room for it in BroTown (four-lines): the fight test and the line taken
@@ -16,7 +16,8 @@ state: working
 
 ## Next
 
-- `skateboard` again after the move above; precheck; the PR, ready.
+- The planning session's answers (Needs); then #1782 ready. Precheck: OK.
+  `townride` 8/10 here, the same two red on main's build.
 
 ## Found
 
