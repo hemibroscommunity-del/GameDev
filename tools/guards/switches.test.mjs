@@ -103,7 +103,9 @@ const DUE_DAYS = 28;            /* the plan's rule: four weeks on for everyone *
    is still in the file's code (comments blanked) */
 function trigger(fb) {
   const m = /^(.+) in (\S+)$/.exec(fb);
-  const names = m[1].split(',').map((s) => s.trim());
+  /* a note in brackets is words, not a trigger (v2.3.5305: card O's
+     v2.3.5228 wrote where the overrides now live) */
+  const names = m[1].replace(/\([^)]*\)/g, '').split(',').map((s) => s.trim()).filter(Boolean);
   const path = join(ROOT, m[2]);
   const code = existsSync(path) ? blankComments(readFileSync(path, 'utf8')) : '';
   const lives = names.filter((n) => new RegExp('(^|[^\\w$])' + n.replace(/[$]/g, '\\$') + '([^\\w$]|$)').test(code));

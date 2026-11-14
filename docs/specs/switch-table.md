@@ -67,7 +67,7 @@ Every row has every column (the guard fails one without):
 | `thrown` | on the worker the value that throws it; on the page its form (`present`, `=1`, `=0` and the words its read also takes, or a value) |
 | `risk` | what the old way guards against: `logic`, `memory` or `chip`; `none` for a lever (and only a lever) |
 | `needs` | the names it needs: it turns off with them (rule 4) |
-| `fallback` | `'no'`, or the trigger that still uses its old way, as names in a file (`'onWindows, onMac in src/game/lookPaletteChoice.js'`) |
+| `fallback` | `'no'`, or the trigger that still uses its old way, as names in a file (`'onWindows, onMac in src/game/deviceProfile.js'`) |
 | `off` | one sentence: what throwing it turns off, or back on |
 
 How the worker's rows were judged (PR 1): `born` is the first commit on `main`
@@ -196,8 +196,10 @@ switch's way the default reached `main`'s first-parent line (UTC).
   - `?onepic`, `?platelayer`: 4990;
   - `?onebatch`: 5016;
   - `?p256`: 5249, the first twins on by default.
-- `'off'`: the way is not on for everyone yet. Four rows:
-  `arenasettleplan`, `botsig_reverify`, `econresetput` and `?slimesplat`.
+  - `arenasettleplan`, `econresetput`: 5095, card E's #1852 turned both
+    on (they were PR 5's first two opt-ins).
+- `'off'`: the way is not on for everyone yet. Two rows: `botsig_reverify`
+  and `?slimesplat`.
 - A row that brings an old way back (`?fishgrip=1`, `?figround=1`) has
   been on since its birth.
 
@@ -207,7 +209,7 @@ four weeks on, a device off-ramp, a fallback, an opt-in, `never`).
 - A row that others need names them: their readers ask it, so a reap
   changes them in the same PR.
 - It runs in no CI and no precheck, and changes nothing.
-- On 2026-11-14 it lists 101 that may go, and 244 under four weeks.
+- On 2026-11-14 it lists 101 that may go, and 252 under four weeks.
 - Reaping is step 7.3's, a later card: a batch a PR, each merged by the
   owner.
 
