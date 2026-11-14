@@ -66,9 +66,13 @@ export const KNOWN = {
      that is an image goes as its address and rectangle, and the worker reads the sheet itself (maskedBakeWorker.js
      sheetOf).  The sample (peer and armour x3; c-armour1, c-armour8, h-eight and d-prints x3): 7.7 ms the longest,
      5 holds in all (docs/specs/held-sweep.md, "Card H") */
-  'pack-page': { ms: 20, whose: 'ours',
-    why: "v2.3.4873: a gear sheet first drawn in play is packed a few ms at a time (gearSheets.js _gearPack > packTrimmedSliced; was one go, 21 to 59 ms).  What is left: one cell's read on this box (getImageData, up to 9 ms) and the packed sheet handed to the page as a file of its own (keepAsImage): 9 to 15 ms",
-    next: 'the strip door: gear strips as 256-colour files read and packed on the worker, as the monsters are' },
+  /* v2.3.5253: 'pack-page' (was 20; 21 to 59 ms before v2.3.4873, 17 to 35 at card H's Found) off the list (card P,
+     the planning session's road B).  A gear sheet first drawn in play is packed on the body bake's worker, which
+     hands back the packed sheet as a PNG (gearSheets.js _buildShirtOnWorker; the page's own pack only with
+     ?packworker=0, with no worker, or behind the loading screen).  The sample (the main tour's fight, peer and
+     armour once; peer and armour x4): not one pack-page hold, and no worker sheet's page part noted at 4 ms or
+     more.  The same sweeps with ?packworker=0: 27.5 and 22.2 ms the longest, 5 holds each (docs/specs/asset-door.md
+     part 5, 5253) */
   'screen-check': { ms: 260, whose: 'box',
     why: "only with a SECOND page open on this box (the other player's own browser): both pages draw on one software graphics chip, and the black-screen check's collect waits for the other page's frames too, 106 to 208 ms.  With one page it is 0 to 2 ms since the collect moved to the top of the frame (it was 110 to 206)",
     next: 'nothing here: two pages are never on one phone.  On a phone the frame strip names it ("screen check N ms") if it is ever 4 ms or more',
