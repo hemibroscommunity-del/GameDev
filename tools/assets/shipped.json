@@ -731,7 +731,7 @@
     {"path":"public/sprites/effects/jet-stream-v1.png","bytes":30144,"sha256":"84d248add5e5daa3b917dbbb32a9799079542811548740807505fddec9fed0c5","family":"fx-made","kind":"made"},
     {"path":"public/sprites/effects/rocks-burst-v1.p256.png","bytes":16827,"sha256":"88fd33f8098b2175f67f37854c4b476588b274c4b32d5d5a9f8a4b23617ce435","family":"fx-sheets-twins","kind":"made"},
     {"path":"public/sprites/effects/rocks-burst-v1.webp","bytes":37508,"sha256":"82fb957be1d2ba8ca188e0e37baa4f68893beb06cbfbfe8334778fd6ef4c1246","family":"fx-sheets-supplied","kind":"supplied"},
-    {"path":"public/sprites/effects/snowball-burst-v1.p256.png","bytes":33736,"sha256":"ca20a413b3d6b6b8dce6a9e501e0f01536a8f02cc43a74809d3be58748d2c961","family":"fx-made-twins","kind":"made"},
+    {"path":"public/sprites/effects/snowball-burst-v1.p256.png","bytes":33736,"sha256":"ca20a413b3d6b6b8dce6a9e501e0f01536a8f02cc43a74809d3be58748d2c961","family":"p256-twins","kind":"made"},
     {"path":"public/sprites/effects/snowball-burst-v1.png","bytes":107931,"sha256":"0ee4096508cc9b385d0eaa74bb56c3853627f143777722c77c0ab7359fd97be3","family":"fx-made","kind":"made"},
     {"path":"public/sprites/effects/splash-burst-v1.p256.png","bytes":22339,"sha256":"ec1c3ae7021160e2fabb220e4c6f044668184fe391e684d840ebf5264f96590a","family":"fx-sheets-twins","kind":"made"},
     {"path":"public/sprites/effects/splash-burst-v1.webp","bytes":53386,"sha256":"b2cc91f50b1224db78105a0774388e41f84cbb9abbebaf18c90b13786e3412e1","family":"fx-sheets-supplied","kind":"supplied"},

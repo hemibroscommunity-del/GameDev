@@ -1,6 +1,6 @@
 card: P
 branch: claude/plan-p-11-fx-sheets (one branch a PR, each begun from the one before)
-prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745 (5241-5248, merged); #1749, #1763, #1757 (5249-5251) ready; fx-sheets (5252) ready
+prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757 (5241-5248, 5251, merged); #1749 (5249), #1763 (5250) mended, ready; #1766 (5252) ready
 state: working
 
 ## Done
@@ -8,8 +8,9 @@ state: working
 - 5241-5248 (merged): the family table, record, census, `finish.mjs`, the
   gate; `.m4a` gone; portraits, coin strips let go; trees as numbers.
 - #1749 (5249) `fx-made`, #1763 (5250) world icons: the effects' and the
-  icons' twins on (3.1, 1.2 MB). #1757 (5251): `pack-page` noted by name.
-- 5252, `fx-sheets-supplied`: the whirlwind's declined twin as numbers
+  icons' twins on (3.1, 1.2 MB); mended at sitting 8 (not the snowball:
+  it loads in play; switch rows; the heart cut through drawSourceRect).
+- #1766 (5252), `fx-sheets-supplied`: the whirlwind's declined twin as numbers
   (`gearSheets.js`); `artCache` 97.1 -> 95.1, `buffers` 23.7 -> 24.2.
 
 ## Next

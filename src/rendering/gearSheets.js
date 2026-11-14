@@ -29,6 +29,7 @@ import { packTrimmedCore } from './trimPack.js';   /* v2.3.4930: packTrimmed's s
 import { keepAsImage } from './keepAsImage.js';   /* v2.3.3702: every strip packed here, kept as an image of itself */
 import { KEEP_GPU_COPIES } from './gpuOnly.js';
 import { gearNumbersKey, gearNumbersCanvas } from './gearNumbers.js';   /* v2.3.5000: the walking armour's pixels from its numbers */
+import { noteMade } from '../debug/madeLog.js';   /* v2.3.5251: a packing slice's time on the page, by its hold's name */
 
 /* ═══ v2.3.3702: A STRIP PACKED HERE IS KEPT AS AN IMAGE OF ITSELF ═══
  * The owner, 2026-10-28: "Memory seems to be the persistent bottleneck in
@@ -338,7 +339,12 @@ const _gearAfterFrame = () => new Promise((res) => {
 });
 async function _gearTurn() {
   if (!_gearInPlay()) return;
-  if (performance.now() - _gearT0 < GEAR_SLICE_MS) return;
+  const ms = performance.now() - _gearT0;
+  if (ms < GEAR_SLICE_MS) return;
+  /* v2.3.5251 (card P; card A's sweep): a slice's time on the page, noted
+     by its hold's name (debug/madeLog.js, holdNames.js `pack-page`) --
+     mp-heldsweep fails a hold of the debt list that leaves no note */
+  noteMade('pack-page', ms, 'pack slice');
   await _gearAfterFrame();
   _gearT0 = performance.now();
 }
