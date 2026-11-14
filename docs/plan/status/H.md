@@ -1,6 +1,6 @@
 card: H
 branch: claude/grand-plan-h-12-portrait-shirt (one branch a PR, each begun from the one before, as W's are: merge them in order)
-prs: #1668, #1675, #1681, #1700, #1709, #1712, #1714, #1733, #1741, #1747 (merged); #1762 (ready); PR 12 on the branch above (ready; its number with the next commit)
+prs: #1668, #1675, #1681, #1700, #1709, #1712, #1714, #1733, #1741, #1747 (merged); #1762 (ready); #1777 (ready, this branch; after #1762)
 state: working
 
 ## Done
@@ -18,7 +18,7 @@ state: working
 - #1762 (5050), ready: sitting 5's loose ends on #1700 (a dead worker
   not posted to, the stuck clock from the post, `urlRead` per address, the
   decode under the 4 s, blob: only). Probe: 19 of 19 the same.
-- PR 12 (5051), ready: the figure's shirt and armour from their first
+- #1777 (5051), ready: the figure's shirt and armour from their first
   frame (55 of 55 the same); `portrait` 8.2 ms the longest in two tours.
 - `masked-bake` grew back (card A: 23.7 ms): the whole tour's stuck kills
   refused addresses that had read; mended in #1762 (two whole tours: none,
