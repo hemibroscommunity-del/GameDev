@@ -75,6 +75,11 @@
  *  14. `ps.life = "alive"` in a new function of monsterlife.js -> FAIL 2
  *  15. tileRenderer.js's `this.currentZone =` renamed (its besides gone)
  *                                                         -> FAIL 2
+ * v2.3.5212 (the party door: a Map's set / delete / clear are writes):
+ *  16. `this._partyByPlayer.set(accepterId, p)` back in _handlePartyAccept
+ *                                                         -> FAIL 2
+ *  17. `room._partyByPlayer.delete(id)` in a new function of alliance.js
+ *                                                         -> FAIL 2
  *
  * Run from the repository's root: node tools/guards/phase-table.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
@@ -85,8 +90,10 @@ import { pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import { ROOT } from './lib/systems.mjs';
 
-/* Set 2026-11-14 at its first count.  Only the gatekeeper lowers it. */
-export const TODO_LINE = 31;
+/* Set 2026-11-14 at its first count.  Only the gatekeeper lowers it.
+   v2.3.5371 (the gatekeeper, sitting 14, main 1cce0b2): 31 -> 30, the
+   count since card L's trade door (#1809). */
+export const TODO_LINE = 30;
 
 /* the machines every side must have a row for: SHAPES part 5's names and
    step 5.3b's list (the plan's own `dungeon`, `connection`, `loading`,
@@ -240,6 +247,21 @@ const DOOR_SUITES = Object.freeze({
      the rung is a property of a module object, so the tree reads its writes as every other door's */
   'server/test/frame-pacer.test.mjs': { field: '_rung', fn: 'setRung', holds: '§17: setRung is called by the governor alone (framePacer.js), and the rung is written in setRung and the tests\' reset, nowhere else',
     prop: '_rung', besides: [{ file: 'src/game/drawLanes.js', text: 'LANE._rung = ROW', why: 'the tests\' reset (_resetLanes), never the page\'s' }] },
+  /* v2.3.5211: the duel door */
+  'server/test/duel-door.test.mjs': { field: 'd.status', fn: '_duelTo', holds: '§2: no .status written in server/src but in _duelTo and NOT_A_DUEL\'s',
+    prop: 'status', besides: [
+      { file: 'server/src/alliance.js', text: 'w.status = ', why: 'an alliance war\'s end, its own record' },
+      { file: 'server/src/clans.js', text: 'war.status = ', why: 'a clan war\'s end, its own record' },
+      { file: 'server/src/gladiator.js', text: ' t.status = ', why: 'an arena tournament: the `arena` row (the space before `t` keeps out `mt.status =`, the gatekeeper\'s low)' },
+      { file: 'server/src/arena.js', text: 'tournament.status = ', why: 'the old Arena object\'s tournament (kept for its binding)' },
+    ] },
+  /* v2.3.5212: the party door -- a Map, so its set / delete / clear are
+     writes too (writesIn) */
+  'server/test/party-door.test.mjs': { field: 'this._partyByPlayer', fn: '_partyIn', holds: '§2: no set, delete, clear or new Map of _partyByPlayer in server/src but in _partyIn and its births',
+    prop: '_partyByPlayer', besides: [
+      { file: 'server/src/party.js', text: 'this._partyByPlayer = new Map()', why: 'the map\'s birth, empty, before a load or an accept fills it (through _partyIn)' },
+      { file: 'server/src/clanparty.js', text: 'this._partyByPlayer = new Map()', why: 'the map\'s birth, empty, before a clan becomes a party (through _partyIn)' },
+    ] },
 });
 const SCAN_DOORS = Object.freeze({
   'session (worker)': 'session-door.test plays the phases but fails no second writer of session.phase',
@@ -295,6 +317,9 @@ function writesIn(rel, prop, value) {
     UnaryExpression(path) { if (value === undefined && path.node.operator === 'delete' && propOf(path.node.argument) === prop) hit(path, path.node); },
     CallExpression(path) {
       const c = path.node.callee;
+      /* v2.3.5212: a door's field that is a Map (the party's
+         this._partyByPlayer) is written by its own set, delete and clear */
+      if (value === undefined && c.type === 'MemberExpression' && ['set', 'delete', 'clear'].includes(propOf(c)) && propOf(c.object) === prop) { hit(path, path.node); return; }
       if (!(c.type === 'MemberExpression' && c.object.type === 'Identifier' && c.object.name === 'Object' && propOf(c) === 'assign')) return;
       for (const a of path.node.arguments.slice(1)) {
         if (a.type !== 'ObjectExpression') continue;

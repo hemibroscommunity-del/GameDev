@@ -45,6 +45,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const DPR = 2;

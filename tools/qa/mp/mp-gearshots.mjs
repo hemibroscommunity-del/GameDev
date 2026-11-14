@@ -31,6 +31,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+export const lane = 'full';
 
 const OUT = `${H.REPO}/tools/qa/mp/out/gearshots`;
 const DOCS = `${H.REPO}/docs/shots`;

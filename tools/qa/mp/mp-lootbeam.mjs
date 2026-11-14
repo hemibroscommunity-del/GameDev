@@ -33,6 +33,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const TALL = 200, LAND_MS = 400, RISE_MS = 300;   /* v2.3.4124: effectsRenderer BEAM_AT_S, BEAM_RISE_S */

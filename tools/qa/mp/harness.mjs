@@ -37,13 +37,42 @@ import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import { QUEST_REWARDS as _QR, QUEST_FIRST as _QF } from '../../../server/src/data.js';   /* v2.3.3525: FIRST_LAND */
 import { OLD_MAP_LEGACY, oldMapRefusal, OLD_MAP_STAMP_ID, stampOn, stampOff } from './oldMap.mjs';   /* v2.3.3552: the old map is retired */
+import { TEST_LANE, laneParts, withLane as _withLane } from '../lane.mjs';   /* v2.3.5223: every page names its lane (card O PR 3) */
 
 /* ═══ v2.3.3552: WHICH SCENARIO IS RUNNING ═══
    run.mjs says, so newPlayer can refuse a scenario that would play the
    retired old map by accident (oldMap.mjs).  null outside run.mjs (a probe
    or shot script run by hand), where it only warns. */
 let _scenario = null;
-export function setScenario(name) { _scenario = name || null; }
+/* v2.3.5223 (card O PR 3): the scenario's LANE (its module's `export const
+   lane`) and whether it asks for the governor (`export const govern = true`):
+   every page newPlayer opens carries `lane=<it>` (and `govern=1`), so no test
+   meets a lane or a rung by accident of the box (tools/qa/lane.mjs).  A page
+   opened with no scenario (a script of its own) plays the `full` lane. */
+let _lane = TEST_LANE, _govern = false;
+export function setScenario(name, opts) {
+  _scenario = name || null;
+  const o = opts || {};
+  _lane = name && o.lane ? o.lane : TEST_LANE;
+  _govern = !!(name && o.govern);
+}
+/** v2.3.5223: the game's address with this scenario's lane on it -- for a
+ *  scenario that opens the game's page itself (not through newPlayer). */
+export function withLane(url) { return _withLane(url, _lane, _govern); }
+/* v2.3.5223: every page of the game the browser LOADED in this scenario (a
+   navigation, not a history rewrite): run.mjs fails one with no lane */
+const _loaded = [];
+/** run.mjs: the game's pages loaded since the last ask (their addresses). */
+export function takeLoadedPages() { return _loaded.splice(0); }
+function _watchLoads(page) {
+  if (!page || page.__btLaneWatched) return;   /* browser.newPage may make its context through newContext: once a page */
+  try {
+    page.__btLaneWatched = true;
+    page.on('request', (r) => {
+      try { if (r.isNavigationRequest() && r.frame() === page.mainFrame()) { const u = r.url(); if (/^https?:\/\/[^/]+\/(?:index\.html)?(?:[?#]|$)/.test(u)) _loaded.push(u); } } catch (e) { /* not the page's own */ }
+    });
+  } catch (e) { /* a page without events: the scenario's own words stand */ }
+}
 const _oldMapWarned = new Set();
 
 /* ═══ v2.3.3525: THE LAND THE FIRST QUEST OPENS ═══
@@ -593,7 +622,9 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
      bow, `manual=3` the free-swing trial, `manual=default` whatever the game gives a new player (v2.3.5018:
      the held combat, `manual=4`: the old held attack without the tap lock; mp-manualcombat plays the swipes). */
   const _oldCombat = (/(?:^|&)manual=/.test(query) || /(?:^|&)manual=/.test(_env)) ? '' : 'manual=0';
-  const _q = [guest ? 'guest=1' : '', query, _env, _world, _narrow, _noSpin, _oldCombat].filter(Boolean).join('&');
+  /* v2.3.5223 (card O PR 3): the scenario's lane (and `govern=1` where it asks), unless the query names its own */
+  const _laneQ = laneParts([query, _env].filter(Boolean).join('&'), _lane, _govern);
+  const _q = [guest ? 'guest=1' : '', query, _env, _laneQ, _world, _narrow, _noSpin, _oldCombat].filter(Boolean).join('&');
   /* v2.3.3312: `host` -- the page's own address, for a scenario that needs a
      page somewhere else (mp-originlock: a copy of the game on another site,
      its browser launched to find that name at 127.0.0.1) */
@@ -2464,7 +2495,15 @@ export async function launch(extraArgs = []) {
     args: ['--autoplay-policy=no-user-gesture-required', '--disable-gpu', '--no-sandbox', ...extraArgs],
   };
   if (existsSync(pinned)) opts.executablePath = pinned;
-  return chromium.launch(opts);
+  const browser = await chromium.launch(opts);
+  /* v2.3.5223: every page any context of this browser opens is watched for the game's pages it loads (run.mjs) */
+  try {
+    const _newContext = browser.newContext.bind(browser);
+    browser.newContext = async (...a) => { const c = await _newContext(...a); c.on('page', _watchLoads); return c; };
+    const _newPage = browser.newPage.bind(browser);
+    browser.newPage = async (...a) => { const p = await _newPage(...a); _watchLoads(p); return p; };
+  } catch (e) { /* the scenarios' own words stand */ }
+  return browser;
 }
 
 /* ═══ v2.3.2593: OPEN THE POINTS SCREEN'S COLUMNS ═══

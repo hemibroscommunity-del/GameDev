@@ -27,6 +27,7 @@
  */
 import * as H from './harness.mjs';
 import net from 'node:net';
+export const lane = 'full';
 
 /* A plain TCP relay between the page and the worker, so a test can make the
    pipe go dead under an OPEN socket: freeze() black-holes every byte of the

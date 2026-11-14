@@ -76,6 +76,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { HOLD_MAX_MS, FRAME_JS_MAX_MS, WINDOW_MAX_MS, KNOWN, judgeHeld } from './held-budget.mjs';
 import { holdOf } from '../../../src/debug/holdNames.js';   /* v2.3.5126: the report's own reading of a note */
+export const lane = 'full';
 
 const PHONE = { width: 430, height: 932 };
 const STATION_NAMES = ['stand', 'town', 'lands', 'fight', 'windows', 'folk', 'peer', 'armour'];

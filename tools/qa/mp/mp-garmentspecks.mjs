@@ -28,6 +28,7 @@
  *      sheet judged, on the new page; off on the old.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const VIEW = { width: 900, height: 700 };
 const DPR = 2;

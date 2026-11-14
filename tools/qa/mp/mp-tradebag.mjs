@@ -32,6 +32,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';
 
 const WOOD = 'wood_pine_log';
 const PHONE = { width: 390, height: 844 };

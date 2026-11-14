@@ -22,6 +22,7 @@
  *   BT_PEERCULL_QUERY=nopeercull node tools/qa/mp/run.mjs peercull   # the old way: fails 2 and 3
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const VIEW = { width: 390, height: 844 };
 const QUERY = process.env.BT_PEERCULL_QUERY || '';

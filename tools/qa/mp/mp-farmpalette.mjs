@@ -33,6 +33,7 @@ import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { encodePNG } from '../../world/png.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const OUT = join(H.REPO, 'tools/qa/mp/out');

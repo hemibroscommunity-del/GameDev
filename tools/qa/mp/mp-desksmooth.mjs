@@ -68,6 +68,7 @@
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
+export const lane = 'full';
 
 const OUT = new URL('./out/', import.meta.url).pathname;
 const ALL = [{ width: 1366, height: 657, name: 'short laptop' }, { width: 1920, height: 1080, name: '1920x1080' }, { width: 2560, height: 1440, name: 'large monitor' }];

@@ -57,12 +57,15 @@ export const SYSTEMS = Object.freeze({
   wire: {
     what: 'the socket and the messages: the router, the relay, the client\'s connection and its event switch, what each side can do (caps)',
     /* v2.3.5061 (card N): server/src/wire/, the wire table (one row a message or route) */
-    files: [f('server/src', 'index|relay|bundle|clientoff|flood'), re('^server/src/wire/'), re('^src/networking/'), f('src/game', 'clientOff|clientOffApply|blockedAsks|workerClock|t1Sync|tooFar')],
+    files: [f('server/src', 'index|relay|bundle|clientoff|flood'), re('^server/src/wire/'), re('^src/networking/'), f('src/game', 'clientOff|clientOffApply|blockedAsks|workerClock|t1Sync|tooFar'),
+      f('src/game', 'actions'),   /* v2.3.5185 (card K): the action door, the one way a request leaves the page */
+    ],
     words: ['wire', 'protocol', 'relay', 'caps', 'bundle', 'privileged', 'clientoff', 'flood'],
     traps: ['wire'],
     doors: [
       { name: 'PRIVILEGED_EVENTS', file: 'server/src/index.js', what: 'every type the server sends; anything else a client could forge' },
       { name: 'TYPES', file: 'server/src/relay.js', what: 'RELAY.TYPES: the relays a phone may send, rebuilt in its name' },
+      { name: 'act', file: 'src/game/actions.js', what: 'ACTIONS: the one way a request leaves the page, and its request id (v2.3.5185)' },
     ],
   },
   session: {

@@ -22,6 +22,7 @@
  * Every window and button on the way is logged (the record of what the
  * player saw).  Pictures: tools/qa/mp/out/handin1-<view>{-bubble,-window,}.png. */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const VIEWS = [
   { id: 'computer', opts: { viewport: { width: 1280, height: 800 }, wide: true }, openFirst: true },

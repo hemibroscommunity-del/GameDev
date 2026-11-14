@@ -33,6 +33,7 @@
  * (inside the face both sides, spanning most of it) still hold, unchanged.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 

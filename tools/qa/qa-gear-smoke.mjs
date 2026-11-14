@@ -74,6 +74,7 @@ import { legacyLogin } from './legacy-login.mjs';
 import { existsSync } from 'node:fs';
 import { GEAR_CATALOG, GEAR_SLOTS } from '../../src/rendering/gearCatalog.js';
 import { gearArt } from '../../src/rendering/gearVariants.js'; /* v2.3.2067: a recolour draws its donor's sheets */
+import { withLane } from './lane.mjs';   /* v2.3.5223: the game's page names its lane (card O PR 3) */
 
 const SHELL = '/tmp/chrome-headless-shell-linux64/chrome-headless-shell';
 const PWCHROME = '/opt/pw-browsers/chromium';
@@ -124,7 +125,7 @@ if (process.env.QA_WS_URL) {
 }
 /* noresume=1: fresh character straight into town; nodebug=1 keeps the
    floating debug button out of the crop (window.debug stays exposed). */
-await page.goto(URL + (URL.includes('?') ? '&' : '?') + 'noresume=1&nodebug=1', { waitUntil: 'domcontentloaded', timeout: 60000 });
+await page.goto(withLane(URL + (URL.includes('?') ? '&' : '?') + 'noresume=1&nodebug=1'), { waitUntil: 'domcontentloaded', timeout: 60000 });
 await sleep(6000);
 /* v2.3.1964: the splash has no name box — it has a login door.
    legacyLogin takes the same route a player takes (see

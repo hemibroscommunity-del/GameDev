@@ -482,14 +482,16 @@ export function stateWritesFromRendering({ live = false } = {}) {
    bakeByAddress.js), gameDisplay.js 4270 -> 4268 (#1712: the fold into
    src/data/soundFold.js).  v2.3.5364 (the gatekeeper, sitting 8, main
    7593b4e): effectsRenderer.js 9871 -> 9870 (card P's #1745, the trees'
-   numbers). */
+   numbers).  v2.3.5371 (the gatekeeper, sitting 14, main 1cce0b2):
+   entityRenderer.js 8961 -> 8955 (card TF's #1812, the townsfolk's trades
+   drawn from the `skills` set). */
 export const LINES = Object.freeze({
   /* a file's code lines.  These files have a line of their own, at their
      count on the day; every other file under src/ stays at or under
      OTHER_FILE (a new file too) */
   FILE: Object.freeze({
     'src/rendering/systems/effectsRenderer.js': 9870,
-    'src/rendering/systems/entityRenderer.js': 8961,
+    'src/rendering/systems/entityRenderer.js': 8955,
     'src/ui/BroTown.jsx': 8371,
     'src/data/gameSystems.js': 5622,
     'src/data/gameDisplay.js': 4268,

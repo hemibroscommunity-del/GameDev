@@ -26,6 +26,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { MONSTER_VARIANTS } from '../../../src/data/monsterVariants.js';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const OUT = `${H.REPO}/tools/qa/mp/out/rotcap`;

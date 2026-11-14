@@ -28,6 +28,7 @@
  * Pictures: tools/qa/mp/out/weapongem-*.png.
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 /* the worker's own words, heard on the socket: its burn ticks (`status:

@@ -27,6 +27,7 @@
  *   node tools/qa/mp/run.mjs quietphone
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const VIEW = { width: 900, height: 700 };
 const ROOM = 'quietphone';

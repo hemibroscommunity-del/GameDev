@@ -18,6 +18,7 @@
  *   node tools/qa/mp/run.mjs armourflash
  */
 import * as H from './harness.mjs';
+export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
 const LAYERS = ['_spriteBody', '_hairSprite', '_headwearSprite', '_facialHairSprite', '_gearShirt', '_gearChest', '_gearLegs', '_bodyHead'];
