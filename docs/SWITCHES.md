@@ -226,6 +226,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `report` | worker | switch | v2.3.5122 | false | logic |  | no | Un-advertises the field report, so no phone sends its smoothness, and drops any that still comes. |
 | `reportlanes` | worker | switch | v2.3.5221 | false | logic | `report`, `reportspeed` | no | The field report no longer takes a lane but full, the governor's rung or the self-test (caps.report back to 2). |
 | `reportspeed` | worker | switch | v2.3.5127 | false | logic | `report` | no | The Speed test's card is no longer taken (caps.report back to 1); the smoothness reports carry on. |
+| `roomrewind` | worker | lever | v2.3.5288 | true | none |  | no | Thrown (true), the owner's lever that puts the whole room back to an earlier time works (its dry run, then its do); unset or false, the default, both its steps answer "off". |
 | `roomrow` | worker | switch | v2.3.5124 | false | logic | `daybook` | no | Nothing of the room's own row is added into the day's book. |
 | `storesize` | worker | switch | v2.3.5287 | false | logic | `daybook` | no | The storage's size is not read into the day's book (its owner's card says "not read that day"); nothing else changes. |
 | `testmode` | worker | lever | v2.3.3430 | false | none |  | no | Turns every character's test mode off at once, every check back on. |
