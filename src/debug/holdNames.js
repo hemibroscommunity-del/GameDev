@@ -92,11 +92,6 @@ export const MADE_AS = Object.freeze([
   [/^strip /, 'strip-page'],
   /* wheelObjects.js: an object page's ground lines */
   [/^page bases$/, 'object-bases'],
-  /* v2.3.5126: gearSheets.js, a gear sheet packed a few ms at a time in play
-     (_gearPack > packTrimmedSliced, a slice's page time: 'pack <...>'; its
-     noteMade line is card P's).  The debt list's `pack-page` left no note
-     anywhere: mp-heldsweep's note check found it (card A, PR 7) */
-  [/^pack /, 'pack-page'],
   /* wsClient.js's slow message ('ws.<type>'), the ring's other writer: it
      does not pass through noteMade, and the report reads the same ring */
   [/^ws\./, 'server-message'],

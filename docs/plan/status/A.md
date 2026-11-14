@@ -20,7 +20,7 @@ state: working
   phone's notes (its ring of holds); the run fails a debt-list hold the
   page runs, 12 ms or more, that left none (`noteGaps`). Begun at 09:18:
   cards H and J are finished, their `ready` files stale (the planning
-  session). `pack-page` left none: its row in `holdNames.js` MADE_AS here.
+  session). `pack-page` left none: card P's #1757 notes it; PR 7 after it.
 
 ## Found
 
@@ -35,6 +35,4 @@ state: working
 
 ## Needs
 
-- Card P's `noteMade` line in `gearSheets.js` `_gearTurn` (its own PR,
-  the planning session's call): PR 7 opens when it is up, rehearsed on
-  top of it, and merges after it.
+- #1757 (card P, 5251) merged first: PR 7's sweep is green on the pair.
