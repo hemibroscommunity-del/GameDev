@@ -78,7 +78,8 @@ import { BatcherPipe, DefaultBatcher, ExtensionType, extensions, BufferImageSour
 import { SHARP_SAMPLE_GLSL } from './sharpPixels.js';   /* v2.3.3447: the sharp read, for ONE_BATCHER's program */
 import { setWheelPalette } from '../game/wheelTrial.js';
 import { isPaletteSource } from './paletteDraw.js';
-import { deviceProfile, rendererName } from '../game/deviceProfile.js';   /* v2.3.5016: a Windows or Mac computer keeps the three programs; v2.3.5227: the chip's name asked there too */
+import { deviceProfile, rendererName, devAsk } from '../game/deviceProfile.js';   /* v2.3.5016: a Windows or Mac computer keeps the three programs; v2.3.5227: the chip's name asked there too; v2.3.5228: the fallbacks' questions too */
+import { laneKnob, pinOf, askingAs } from '../game/drawLanes.js';   /* v2.3.5228: one program or three is the lanes' `program` knob (card O PR 8) */
 export { isPaletteSource, drawSourceRect, paletteRegionRGBA } from './paletteDraw.js';
 
 export const PAL_BATCHER = 'bt-palette';
@@ -455,20 +456,26 @@ export function paletteClipMade() { return FRAG_CLIP !== FRAG; }
    `?onebatch=0` the three anywhere; `?onebatch=1` the one anywhere. */
 export const ONE_BATCHER = 'bt-one';
 const ONE_ID_K = 64;   /* the texture id: slot + 64 x code (Pixi's is 16 bits) */
-const SOFTWARE_GL = /swiftshader|llvmpipe|softpipe|software|basic render|\bwarp\b/i;
 /** v2.3.3447: one program or three, from the address (`onebatch=0|1` wins)
  *  and the renderer's name -- {on, why}.  Pure, so the QA probe asks it
  *  about chips this box is not (mp-onebatch).  v2.3.3894: the three on
  *  every chip unless the address asks for the one (`why` 'default').
  *  v2.3.5016: the one by default, but on a Windows or Mac computer (`os`:
  *  deviceProfile()'s { windows, mac }, why 'computer') and a software
- *  renderer ('software'). */
+ *  renderer ('software').
+ *  v2.3.5228 (card O PR 8): after the address, the lanes' `program` knob:
+ *  'one' in every lane, pinned to 'three' by drawLanes.js's OVERRIDES where
+ *  the renderer draws in software or the device is a computer -- each asked
+ *  of deviceProfile.js (devAsk), the software list (SOFT_GL) kept there
+ *  alone.  The same answers and whys (server/test/one-program.test.mjs). */
 export function oneBatchChoice(search, renderer, os) {
   const m = /(^|[?&])onebatch=([01])(&|$)/.exec(search || '');
   if (m) return { on: m[2] === '1', why: 'address' };
-  if (SOFTWARE_GL.test(renderer || '')) return { on: false, why: 'software' };
-  if (os && (os.windows || os.mac)) return { on: false, why: 'computer' };
-  return { on: true, why: 'default' };
+  const ask = devAsk({ renderer: renderer || '', windows: !!(os && os.windows), mac: !!(os && os.mac) });
+  return askingAs(ask, () => {
+    const pin = pinOf('program');
+    return { on: laneKnob('program') === 'one', why: pin ? pin.when : 'default' };
+  });
 }
 /* the chip's own name: v2.3.5227, asked of the device profile
    (game/deviceProfile.js rendererName: the one place a device is asked,
@@ -744,6 +751,10 @@ function patchPipes() {
     const up = U.upload;
     U.upload = function (source, glTexture, gl, webGLVersion, targetOverride, forceAllocation = false) {
       if (!source || !source._btPal) return up.call(this, source, glTexture, gl, webGLVersion, targetOverride, forceAllocation);
+      /* v2.3.5257: a strip kept deflated a frame at a time (framePack.js) is
+         whole again before a chip is sent it (a second renderer, Pixi's
+         collector having let it go); packed again once the chip has it */
+      if (typeof source.__btFPUnpack === 'function') { try { source.__btFPUnpack(source); } catch (e) { /* sent as it is */ } }
       const target = targetOverride || glTexture.target;
       const w = source.pixelWidth, h = source.pixelHeight;
       if (!forceAllocation && glTexture.width === w && glTexture.height === h) {

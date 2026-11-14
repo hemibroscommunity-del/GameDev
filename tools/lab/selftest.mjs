@@ -8,6 +8,9 @@
  *     game's 7 days -- and it exits 0;
  *   - a day 89% used: it stops before starting, says so, still writes its
  *     report, and exits 3;
+ *   - v2.3.5288: THE RESTORE TRY (--restore), on a fake Vault with fake
+ *     earlier times running the game's own rewind: balanced; a storage with
+ *     none (as wrangler dev --local); one that goes back to the wrong time;
  *   - THE LIMIT TEST (--limit), on a fake clock and a fake daily limit: one
  *     that counts every message (refused near 100,000, then the reset at
  *     midnight answered), one that counts 20 to 1 (never refused, past the
@@ -106,6 +109,31 @@ for (const [name, env, extra] of [
   const r = run('quiet', extra, Object.assign({ FAKE_COUNT: 'raw' }, env));
   const x = r.json && r.json.limit;
   check(`limit refused, ${name}: exits 4, sends nothing, says why`, r.code === 4 && !!(x && x.refused && !x.steps.length) && /\*\*Not run:\*\*/.test(r.md), js({ code: r.code, refused: x && x.refused, steps: x && x.steps.length, err: r.stderr.slice(-300) }));
+}
+
+/* v2.3.5288: the restore try (run.mjs --restore), on the fake Vault: the
+   game's own rewind, gold door and world's sum, with fake earlier times */
+{
+  const r = run('quiet', ['--restore']);
+  const x = r.json && r.json.restore;
+  const part = (n) => x && x.parts.find((p) => p.name.startsWith(n));
+  check('restore: exits 0, the verdict "balanced"', r.code === 0 && !!(x && x.verdict === 'balanced'), js({ code: r.code, verdict: x && x.verdict, err: r.stderr.slice(-400), error: r.json && r.json.error }));
+  check('restore: it waited an hour between its plays (62 minutes), and went back an hour', !!(x && x.waitMin === 62 && x.agoMin === 60), js(x && { waitMin: x.waitMin, agoMin: x.agoMin }));
+  check('restore: restored, the purses are those of before the wait, unexplained gold 0', !!(part('restored') && part('restored').samePursesAsBefore && part('restored').sum.balanced), js(part('restored')));
+  check('restore: the undo brought back the purses of after the wait, balanced', !!(part('undone') && part('undone').samePursesAsAfter && part('undone').sum.balanced), js(part('undone')));
+  check('restore: every played part balanced against the seed', !!(x && x.parts.filter((p) => p.sum).length === 4 && x.parts.every((p) => !p.sum || p.sum.balanced)), js(x && x.parts.map((p) => [p.name, p.sum])));
+  check('restore: the report says so in plain words', /\*\*The restore worked and the world's sum balanced\.\*\*/.test(r.md), r.md.slice(0, 700));
+  check('restore: no other part of the lab ran', !!(r.json && !r.json.burn && !r.json.flood && !r.json.limit), js(r.json && Object.keys(r.json)));
+}
+{
+  const r = run('quiet', ['--restore', '--restore-wait', '5'], { FAKE_PITR: 'none' });
+  const x = r.json && r.json.restore;
+  check('restore, no earlier times (as wrangler dev --local): exits 1, "no-pitr", says so', r.code === 1 && !!(x && x.verdict === 'no-pitr') && /keeps no earlier times/.test(r.md), js({ code: r.code, verdict: x && x.verdict }));
+}
+{
+  const r = run('quiet', ['--restore', '--restore-wait', '5'], { FAKE_PITR: 'wrong' });
+  const x = r.json && r.json.restore;
+  check('restore, a storage that goes back to the wrong time: exits 1, "not-balanced"', r.code === 1 && !!(x && x.verdict === 'not-balanced') && x.agoMin === 2.5, js({ code: r.code, verdict: x && x.verdict, agoMin: x && x.agoMin }));
 }
 
 console.log(failed ? `\n${failed} failed` : '\nall lab self-test checks passed');

@@ -33,12 +33,23 @@
  *
  *   { id, pngBlob } -> { id, ok: true, w, h, stride (= w), n, idx, rgb, alpha }
  *                   or { id, ok: false, error }
+ *
+ * v2.3.5257: and pieces of a strip's numbers DEFLATED (framePack.js: a
+ * monster strip's numbers kept a frame at a time once the chip has it;
+ * stripRead.js deflateOnWorker), CompressionStream's work off the page:
+ *
+ *   { id, deflate: [Uint8Array] } -> { id, ok: true, checked: true, zs:
+ *                   [Uint8Array] } (raw DEFLATE, one a piece, each inflated
+ *                   again here by the page's own inflater, inflateRaw.js, and
+ *                   found to be the very bytes it was handed) or { id, ok:
+ *                   false, error } (`no: true` when a piece did not come back)
  */
 import { decodePng8 } from './png8Decode.js';
 import { packStripNumbers } from './stripPack.js';   /* v2.3.4470: a monster's strip, cropped and packed from its own numbers */
 import { planOnRows, remapToRow } from './stripRows.js';   /* v2.3.5044: ...and numbered for its bundle's row of colours */
 import { retintPalette } from './retintPalette.js';   /* v2.3.5044: ...a colour variant's palette retinted first (the page's own rule) */
-import { bottomsOfNumbers } from './artBottoms.js';   /* v2.3.4470: each frame's ground line, read here from the page's numbers */
+import { bottomsOfNumbers } from './artBottoms.js';
+import { inflateRawSync } from './inflateRaw.js';   /* v2.3.5257: a strip's pieces checked to come back, by the page's own inflater */   /* v2.3.4470: each frame's ground line, read here from the page's numbers */
 
 function imageUrlOf(sheetUrl, image) {
   const base = new URL(sheetUrl, self.location.href);
@@ -47,9 +58,28 @@ function imageUrlOf(sheetUrl, image) {
   return u.href;
 }
 
+async function deflateRaw(u8) {
+  const s = new Blob([u8]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+  return new Uint8Array(await new Response(s).arrayBuffer());
+}
+
 self.onmessage = async (ev) => {
   const m = ev.data || {};
   try {
+    /* v2.3.5257: a strip's pieces, deflated and each checked to come back
+       (framePack.js): the page then has nothing to unpack to pack it */
+    if (m.deflate) {
+      const zs = [];
+      for (let i = 0; i < m.deflate.length; i++) {
+        const u = m.deflate[i], z = await deflateRaw(u), back = inflateRawSync(z, u.length);
+        let same = !!back && back.length === u.length;
+        for (let k = 0; same && k < u.length; k++) if (back[k] !== u[k]) same = false;
+        if (!same) { self.postMessage({ id: m.id, ok: false, no: true, error: 'piece ' + i + ' does not come back' }); return; }
+        zs.push(z);
+      }
+      self.postMessage({ id: m.id, ok: true, checked: true, zs }, zs.map((z) => z.buffer));
+      return;
+    }
     if (m.strip) {
       const pr = await fetch(new URL(m.strip, self.location.href).href);
       if (!pr.ok) throw new Error('strip ' + pr.status);

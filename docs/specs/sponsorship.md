@@ -95,8 +95,8 @@ forfeits, walkovers, shot-clock timeouts) fire-and-forgets
   48 h would otherwise read its paid legs as unpaid. The cost: TWO rows a
   match more than the old order, the plan's put and its delete (the puts:
   5 → 6 in a 1 v 1, 10 → 11 at 3 v 2, 32 → 33 at 10 v 10; `cost-guard`
-  §17). **Off until the owner says yes** (the gatekeeper's sitting 10):
-  `arenasettleplan: true` in the live flags turns it on; off, the old order
+  §17). **On since v2.3.5095, the owner's yes** ("Just go recommended", 2026-11-14; off from the gatekeeper's sitting 10 until then):
+  `arenasettleplan: false` in the live flags turns it off; off, the old order
   runs, its hole included. A plan on file is finished either way. Tests:
   `arena-settle.test`.
 

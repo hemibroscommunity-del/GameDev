@@ -48,6 +48,7 @@ import { Assets, Cache, Rectangle, Texture } from 'pixi.js';
 import { packTrimmed, packTrimmedSliced, setGearPackPlay } from './gearSheets.js';   /* v2.3.2870: monster strips load cropped; v2.3.4400: a few ms at a time in play */
 import { holdOnceDrawn, forgetHeld, numbersOfSliced, numbersOf } from './heldNumbers.js';   /* v2.3.3699: held once drawn, as colour numbers */
 import { stripAsNumbers, releaseBundleNumbers, picNumbersOn, stripRowsAsk, stripPlanAnswered, stripPlanDone } from './picsNumbers.js';   /* v2.3.3715: ?picnumbers, colour numbers on the chip; v2.3.5044: + the rows sent with a read */
+import { wantFramePack } from './framePack.js';   /* v2.3.5257: a strip's numbers kept deflated a frame at a time once the chip has it (?framepack=0) */
 import { noteMade } from '../debug/madeLog.js';   /* v2.3.4400: a strip packed on the page says its name and its time */
 import { readStrip, stripReadOn } from './stripRead.js';   /* v2.3.4470: a strip read from its 256-colour file's own numbers, off the page's thread */
 import { retintPalette } from './retintPalette.js';   /* v2.3.4470: a strip in another colour is its palette in another colour */
@@ -187,6 +188,7 @@ function _stripOfNumbers(bundle, url, fw, fh, gen, m, noImage) {
     t.__btIx = i; t.__btN = n;
     frames.push(t);
   }
+  wantFramePack(numSrc, frames.map((t) => t.frame));   /* v2.3.5257: framePack.js */
   _readStats.strips++;
   const ms = performance.now() - _madeT0;
   if (ms > _readStats.longest) _readStats.longest = ms;
@@ -407,6 +409,7 @@ function _stripFrames(bundle, url, fw, fh, img, n, packed, read, wholeCv) {
       t.__btIx = i; t.__btN = n;
       frames.push(t);
     }
+    if (numSrc) wantFramePack(numSrc, frames.map((t) => t.frame));   /* v2.3.5257: framePack.js */
     if (_verify) _verify.set(url, { frames, fw, fh });
     return frames;
 }
