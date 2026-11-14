@@ -1,40 +1,40 @@
 card: Z
-branch: claude/plan-z-sitting-10
-prs: this PR, tag 5366, the last line of the list (ready)
+branch: claude/plan-z-sitting-11
+prs: #1799, tag 5367, the last line of the list (ready)
 state: ready
 
 ## Done
-- Sitting 10, `main` 6f9e740. The list below rehearsed in its order with
-  this branch last (tree 1c823622): precheck 0 FAIL, build, questline
-  187/187; again with P's census-only heads (5805f3bc): precheck, build.
-  Mends made during the sitting: census, "What GitHub showed".
-  Review: `census/review-z10.md`. Notes on 3.1, 10.4; nothing to tick.
+- Sitting 11, `main` 90a91dbc (resumed 16:56 after the usage stop): the
+  list rehearsed in its order, this branch last (tree ba0e9e42): precheck
+  0 FAIL, build, questline 187/187; each branch ONE merge base. Review:
+  `census/review-z11.md`. 10.3 ticked; notes on 4.5, 7.1.
 
 ## The list: merge in this order, in one sitting, each "Create a merge commit"
-1 #1768 T2 · 2 #1784 (planning) · 3 #1770 TF · 4 #1774 · 5 #1778 ·
-6 #1776 · 7 #1781 (PW) · 8 #1758 · 9 #1759 · 10 #1761 · 11 #1764 ·
-12 #1772 · 13 #1773 (E) · 14 #1777 H · 15 #1749 · 16 #1763 · 17 #1766
-(P) · 18 this PR. 3 to 14 deploy (twelve): back to back. Caps `power`,
-`statboards` (8); flags `power`, `statboards`, `xfer` (ON: a row a trade,
-step 10.3), `arenasettleplan` (OFF: the owner's yes, two rows a match).
+1 #1788 · 2 #1789 · 3 #1790 · 4 #1795 (J2) · 5 #1785 · 6 #1786 ·
+7 #1802 (E) · 8 #1787 (O) · 9 #1767 · 10 #1775 · 11 #1779 · 12 #1791 ·
+13 #1796 · 14 #1801 (L) · 15 #1783 (LB) · 16 this PR. Ten deploy (2, 3,
+5 to 10, 12, 15): back to back. Flags `capeoffkept` (ON),
+`valuepause` (ON), `econresetput` (OFF: the owner's cost word),
+`reportlanes` (ON; `caps.report` 3): each on a line of its own.
 
-## Held (expires at sitting 11)
-- #1785 E12: a restart turned "unexplained gold" red; gold a player-hour
-  counted open sittings' gold, not their hours. Mended at fed858f (12:20,
-  `persistence.js` books a restart): not reviewed. #1786 E9: not reviewed.
-- #1782 SK: a harvest pressed while the board rolls is cancelled
-  (BroTown ~6928 reads the roll's dx); "Off the board to fight." again.
-- #1783 LB: top names cut to a few letters upright; the podium shows Lv
-  on every board; two "Lv" on a skill board.
-- #1767, #1775, #1779 L: not merged with #1768 (the page's count line).
-- Not reviewed (ready too late): O's #1787, #1792. No J2 PR open.
+## Held (expires at sitting 12)
+- #1792 O: red with L's #1767: `phase-table` FAIL 2 (`ladder`'s suite not
+  on `DOOR_SUITES`). Merge main, add its row there.
+- #1794 O: VERIFIED (probe), the ladder walks rungs nothing reads, kept
+  in `bt_rung`: a cool 60 phone at 30 for a sitting; steps mid-fight
+  (call 3); a cool computer too. #1800 waits on it.
+- #1797 T: conflicts at `switches.mjs`'s end after L: sitting 12.
+- #1782 SK: ready; the owner's yes to +8 to +10 moves a ride (one finding).
+- #1798 LB: ready after the rehearsal: sitting 12. TF's PR 2: none.
 
 ## Stalled
-- None (card L's last commit 11:00).
+- None (P, TF, LB-3 say `working`: cut by the usage stop at 14:38).
 
 ## Found
-- All: two branches changing the switch page's count line the same way
-  merged clean and stale (guard check 8); #1768 ends the count line.
-- E: the stamp prune's waits live at its caller (tick.js), not in it.
-- PW: the stat boards' order is pinned by an expression (statboards.js).
-- H: `worn-bake` §5 reads the source; the probe that runs it is by hand.
+- All: switch rows appended at `switches.mjs`'s end collide (O with T, L
+  with T); card T's next PR sorts them by name.
+- J2: `mp-npclooks` check 2 holds the cast to its own median, no size.
+- O: `mp-governor`, `mp-loadinggate` leak `BT_QA_CPU_THROTTLE` onward.
+
+## Rule for later sittings
+- Quote other cards' tags BARE (`5461`): a full one counts as taken on `main`.

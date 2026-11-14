@@ -275,6 +275,7 @@ import { leaveMethods } from './leave.js'; /* v2.3.4830: the session door -- eve
 import { goldMethods } from './gold.js'; /* v2.3.4670: the gold door -- every change to a player's gold */
 import { lifeMethods } from './life.js'; /* v2.3.4820: the life door -- a player's health and life phase */
 import { bagGive } from './bag.js'; /* v2.3.4810: the bag door */
+import { valuePauseMethods, PAUSE_GATED } from './valuepause.js'; /* v2.3.5090: a value road fails closed while saves are refused */
 /* v2.3.3130: the Herb Bread's out-of-combat healing multiplier, read once
    from its dish (data.js DISHES) -- 2, "twice as fast". */
 const HERB_REGEN_MULT = (DISHES.meal_herb_bread && Number(DISHES.meal_herb_bread.power) > 1) ? Number(DISHES.meal_herb_bread.power) : 2;
@@ -5166,6 +5167,11 @@ export class GameRoom {
        handler, so the fight is judged on foot */
     if (session.id && RIDE_ENDS_ON.has(msg.type)) this._rideOnInput(session.id, msg.type);
 
+    /* v2.3.5090: AN ACTION THAT HANDS VALUE ON REFUSES FOR A MINUTE AFTER THE
+       STORAGE REFUSED A SAVE (valuepause.js, card A's one count read): answered
+       with its system's own refusal and the owner's words; payouts untouched */
+    if (session.id && PAUSE_GATED.has(msg.type) && this._valuePauseGate(session, msg)) return;
+
     /* v2.3.4510: THE FIGHT LOCK'S ONE TABLE (fightlock.js) -- a message that
        would move gold or bag goods out of what a No man's land loss takes,
        sent in a fight with a player there, is answered with its handler's
@@ -6848,3 +6854,4 @@ Object.assign(GameRoom.prototype, fightLockMethods); /* v2.3.4510: one fight-loc
 Object.assign(GameRoom.prototype, leaveMethods); /* v2.3.4830: the session door (leave.js) */
 Object.assign(GameRoom.prototype, goldMethods); /* v2.3.4670: the gold door (gold.js) */
 Object.assign(GameRoom.prototype, lifeMethods); /* v2.3.4820: the life door (life.js) */
+Object.assign(GameRoom.prototype, valuePauseMethods); /* v2.3.5090: the pause's gate (valuepause.js) */

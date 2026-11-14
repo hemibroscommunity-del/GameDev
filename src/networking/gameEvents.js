@@ -843,9 +843,11 @@ export function processGameEvent(type, payload, S, deps) {
                  GamblePanel pool display + the deposit popup. */
               S._jackpotPool = payload.pool || 0;
               S._jackpotTickets = payload.yourTickets || 0;
-              if (payload.deposited) {
-                pushDmgPopup(S, S.player.x, S.player.y - 30, 'Deposited ' + payload.deposited + 'g to jackpot (' + (payload.yourTickets || 0) + ' 🎟️)', '#f5c542');
-                cue('betIn');   /* v2.3.3434: coins into the pot (it was silent) */
+              /* v2.3.5090: ...or a deposit the worker refused, with its words (the
+                 code `paused`: server valuepause.js, the owner's words) */
+              if (payload.deposited || payload.reason === 'paused') {
+                pushDmgPopup(S, S.player.x, S.player.y - 30, payload.reason === 'paused' ? 'Saving is paused for a moment, try again.' : 'Deposited ' + payload.deposited + 'g to jackpot (' + (payload.yourTickets || 0) + ' 🎟️)', payload.reason === 'paused' ? '#ff5e6c' : '#f5c542');
+                cue(payload.reason === 'paused' ? 'denied' : 'betIn');   /* v2.3.3434: coins into the pot (it was silent) */
               }
               break;
             }
@@ -4108,7 +4110,7 @@ export function processGameEvent(type, payload, S, deps) {
           case 'trade_reject':
             {
               if (payload.target === S.myId) {
-                pushDmgPopup(S, S.player.x, S.player.y - 30, 'Trade declined', '#ff5e6c');
+                pushDmgPopup(S, S.player.x, S.player.y - 30, payload.reason === 'paused' ? 'Saving is paused for a moment, try again.' : 'Trade declined', '#ff5e6c');   /* v2.3.5090: + the worker's code `paused` (server valuepause.js PAUSE.WORDS, the owner's words) */
                 cue('denied');   /* v2.3.3462 */
               }
               break;
@@ -4816,7 +4818,7 @@ export function processGameEvent(type, payload, S, deps) {
                  ends the duel its Accept tap showed, not only a popup */
               if (payload.target === S.myId) {
                 declineDropsDuel(S, payload);
-                pushDmgPopup(S, S.player.x, S.player.y - 30, 'Duel declined', '#888');
+                pushDmgPopup(S, S.player.x, S.player.y - 30, payload.reason === 'paused' ? 'Saving is paused for a moment, try again.' : 'Duel declined', '#888');   /* v2.3.5090: + the worker's code `paused` (valuepause.js) */
               }
               break;
             }

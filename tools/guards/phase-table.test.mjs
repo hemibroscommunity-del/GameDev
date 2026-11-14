@@ -11,14 +11,20 @@
  *   1. every row has its columns, each from its closed list; no machine is
  *      two rows on one side; every name the plan and SHAPES part 5 give is a
  *      row (MUST, below);
- *   2. a `door` row's field has no writer outside its function.  Where the
- *      door's OWN suite holds that today (life-door, zone-leftovers), this
- *      guard checks only that the suite names the field and the function, and
- *      never writes a second rule that could disagree.  Where nothing holds it
- *      (the session's phase, a monster's life), the row's `scan` is the rule
- *      and this guard runs it: every write of the field in the side's code is
- *      in one of the row's places (a write that is not the machine's field is
- *      in the row's `besides`, with why; a stale one fails);
+ *   2. a `door` row's field has no writer outside its function.  What holds
+ *      a door is a CLOSED LIST here (v2.3.5203, the gatekeeper's sitting 8:
+ *      a suite that only named the field let a `todo` turn `door` with
+ *      nothing built): DOOR_SUITES, the suites that fail a second writer of
+ *      that field through that function today (life-door, zone-leftovers),
+ *      for which this guard writes no second rule; and SCAN_DOORS, the rows
+ *      no suite holds, whose `scan` this guard runs.  A scan reads every
+ *      write of the field off the syntax tree (@babel: `x.phase =`,
+ *      `x['phase'] =`, `++`, `delete`, `Object.assign(x, { phase })`), in
+ *      the function the tree puts it in, and each must be in one of the
+ *      row's places (`besides`: a write that is not the machine's, with why;
+ *      a stale entry or a place that writes nothing fails).  A `door` row
+ *      carries no `today`;
+ *   2b. the table is plain data (read before it is imported);
  *   3. every slot of REJOIN_SLOTS (src/game/rejoinSlots.js) is named by a row,
  *      and every slot a row names is in REJOIN_SLOTS;
  *   4. every machine name in the wire table's `phase` column
@@ -49,6 +55,17 @@
  *   5. the `race` worker row deleted -> FAIL 1 (4 stays green: the page's
  *      `race` row still carries the wire's name)
  *   6. TODO_LINE one under the count (30)                   -> FAIL 7
+ * v2.3.5203 (the gatekeeper's sitting 8, its two holes), each tried by hand:
+ *   7. `_sneakJoin(ws,\n msg) { ... s.phase = 'joined' }` at the end of
+ *      join.js's joinMethods (its parameters over two lines)  -> FAIL 2
+ *   8. `Object.assign(_ss, { phase: 'joined' })` in duel.js _resolveDuel
+ *                                                         -> FAIL 2
+ *   9. `x.alive = true` in slimeboss.js (a monster made alive under
+ *      another name than m)                                -> FAIL 2
+ *  10. the worker `guard` row turned door (`ps.blocking`, `_hitStopped`,
+ *      shield-guard.test, its `today` left in)  -> FAIL 2 (twice: not on
+ *      DOOR_SUITES, and a door carrying today)
+ *  11. `import x from "./y.js";` at the top of phases.js    -> FAIL 2b
  *
  * Run from the repository's root: node tools/guards/phase-table.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
@@ -56,6 +73,7 @@
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { createRequire } from 'node:module';
 import { ROOT } from './lib/systems.mjs';
 
 /* Set 2026-11-14 at its first count.  Only the gatekeeper lowers it. */
@@ -87,6 +105,24 @@ const info = (s) => console.log('     ' + s);
 const str = (x) => typeof x === 'string' && x.length > 0;
 const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
+/* ── 2b. the table is plain data (v2.3.5203, the gatekeeper's sitting 8):
+   no import, no call, no expression -- the page could import it one day,
+   and a table that runs code is not a table ── */
+{
+  const rest = readFileSync(join(ROOT, 'src/state/phases.js'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/^\s*\/\/.*$/gm, ' ')
+    .replace(/'(?:[^'\\\n]|\\.)*'/g, ' ')
+    .replace(/export const (PHASES|NOT_A_MACHINE) =/g, ' ')
+    .replace(/\b[A-Za-z_$][\w$]*\s*:/g, ' ')
+    .replace(/\b(null|true|false)\b|-?\b\d+(\.\d+)?\b/g, ' ');
+  const left = rest.replace(/[\s{}[\],;]+/g, ' ').trim();
+  check('2b: src/state/phases.js is plain data (two lists of literals, nothing else)', left === '', left.slice(0, 120));
+  /* read before it is imported: a table that imports or runs anything is
+     never run here */
+  if (left !== '') { console.log('\n' + failed + ' failed'); process.exit(1); }
+}
+
 const T = await import(pathToFileURL(join(ROOT, 'src/state/phases.js')).href);
 const ROWS = Array.isArray(T.PHASES) ? T.PHASES : [];
 const NOT_A_MACHINE = Array.isArray(T.NOT_A_MACHINE) ? T.NOT_A_MACHINE : [];
@@ -104,6 +140,9 @@ function filesUnder(dir) {
   const walk = (d) => {
     for (const n of readdirSync(join(ROOT, d)).sort()) {
       if (n === 'node_modules' || n.startsWith('.')) continue;
+      /* v2.3.5203: the worker's vendored code is not the game's (src-walk.mjs
+         skips it too), and src/state/ is data about the code, never code */
+      if ((d === 'server/src' && n === 'vendor') || (d === 'src' && n === 'state')) continue;
       const p = d + '/' + n;
       if (statSync(join(ROOT, p)).isDirectory()) walk(p);
       else if (/\.(js|jsx|mjs)$/.test(n)) out.push(p);
@@ -111,26 +150,6 @@ function filesUnder(dir) {
   };
   walk(dir);
   return out;
-}
-/* the named function a line sits in: the nearest declaration above it that
-   is less indented (a method, a `function`, a `const f = (...) =>`, an
-   object's `f: (...) =>`).  An unnamed arrow inside is skipped, so a write
-   in a callback belongs to the function around it. */
-const DECL = [
-  /^(\s*)(?:export\s+)?(?:default\s+)?(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)\s*\(/,
-  /^(\s*)(?:static\s+)?(?:async\s+)?(?!(?:if|for|while|switch|catch|with|return|function)\b)([A-Za-z_$][\w$]*)\s*\([^)]*\)\s*\{/,
-  /^(\s*)(?:export\s+)?(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:function\b|\([^)]*\)\s*=>|[A-Za-z_$][\w$]*\s*=>)/,
-  /^(\s*)([A-Za-z_$][\w$]*)\s*:\s*(?:async\s*)?(?:function\b|\([^)]*\)\s*=>)/,
-];
-function fnAt(lines, i) {
-  const ind = /^\s*/.exec(lines[i])[0].length;
-  for (let j = i; j >= 0; j--) {
-    for (const re of DECL) {
-      const m = re.exec(lines[j]);
-      if (m && (m[1].length < ind || j === i)) return m[2];
-    }
-  }
-  return null;
 }
 /* "server/src/leave.js _leaveRun" -> { file, fn } */
 const place = (s) => { const m = /^(\S+)\s+(\S+)$/.exec(s || ''); return m ? { file: m[1], fn: m[2] } : null; };
@@ -175,46 +194,124 @@ const keyOf = (r) => r.name + ' (' + r.side + ')';
 }
 
 /* ── 2. a door's field has no writer outside its function ── */
+/* v2.3.5203 (the gatekeeper's sitting 8, two holes closed):
+   - WHAT HOLDS A DOOR is a closed list, here, in this file a reviewer reads:
+     the suites that fail a second writer of a door's field today
+     (DOOR_SUITES: a suite that merely NAMES the field and the function is
+     not enough -- that let a `todo` row turn `door` with nothing built), and
+     the rows whose writers this guard scans itself because no suite does
+     (SCAN_DOORS).  A row turned `door` adds its line to one of them, in its
+     machine's PR, with what holds it; a `door` row carrying `today` (the
+     fields of a machine not yet one) is refused.
+   - A WRITE IS READ OFF THE SYNTAX TREE (@babel, the root's or server/'s, as
+     the census script loads it), never off the indentation: `x.phase = `,
+     `x['phase'] = `, `++`/`--`, `delete x.phase`, and `Object.assign(x, {
+     phase })`, each in the function the tree says it is in (a method whose
+     parameters run over two lines is its own name, not the one above).
+   - every place a scan names must still write it (a stale place fails). */
+const DOOR_SUITES = Object.freeze({
+  'server/test/life-door.test.mjs': { field: 'ps.life', fn: '_lifeTo', holds: '§2: no .life / .dying / .dead written in server/src but in life.js' },
+  'server/test/zone-leftovers.test.mjs': { field: 'S.currentZone', fn: 'changeZone', holds: '§6a: the only writer of the game\'s place is changeZone' },
+});
+const SCAN_DOORS = Object.freeze({
+  'session (worker)': 'session-door.test plays the phases but fails no second writer of session.phase',
+  'monster (worker)': 'monster-newlife.test holds the reset\'s lists, not who makes a new life',
+  'monster (page)': 'monster-life.test §6 holds that both edges call the one reset, not who else writes alive',
+});
+let babel = null;
+for (const pkg of ['package.json', 'server/package.json']) {
+  try {
+    const req = createRequire(join(ROOT, pkg));
+    const t = req('@babel/traverse');
+    babel = { parser: req('@babel/parser'), traverse: t.default || t };
+    break;
+  } catch { /* the next */ }
+}
+/* the named function a node sits in (the census script's rule: the nearest
+   function with a name -- its own, a method's key, the variable or property
+   it is given to) */
+function fnName(path) {
+  for (let p = path.getFunctionParent(); p; p = p.parentPath && p.parentPath.getFunctionParent()) {
+    const n = p.node;
+    if (n.id && n.id.name) return n.id.name;
+    if (n.key && !n.computed && (n.key.name || n.key.value)) return String(n.key.name || n.key.value);
+    const pp = p.parentPath;
+    if (pp && pp.isVariableDeclarator() && pp.node.id.type === 'Identifier') return pp.node.id.name;
+    if (pp && pp.isAssignmentExpression() && pp.node.left.type === 'MemberExpression' && !pp.node.left.computed) return pp.node.left.property.name;
+    if (pp && pp.isObjectProperty() && !pp.node.computed) return String(pp.node.key.name || pp.node.key.value);
+  }
+  return null;
+}
+const propOf = (m) => (m && m.type === 'MemberExpression'
+  ? (!m.computed && m.property.type === 'Identifier' ? m.property.name : (m.property.type === 'StringLiteral' ? m.property.value : null))
+  : null);
+const keyName = (pr) => (pr && pr.type === 'ObjectProperty' ? (pr.key.type === 'Identifier' ? pr.key.name : pr.key.type === 'StringLiteral' ? pr.key.value : null) : null);
+/* every write of `.prop` in a file: [{ line, fn, text }]; with `value`, only
+   a write of that literal (alive = true) */
+const astCache = new Map();
+function writesIn(rel, prop, value) {
+  const raw = readFileSync(join(ROOT, rel), 'utf8');
+  if (!new RegExp('\\b' + prop + '\\b').test(raw)) return [];   /* a cheap look first: most files never name it */
+  let ast = astCache.get(rel);
+  if (!ast) {
+    ast = babel.parser.parse(raw, { sourceType: 'module', plugins: ['jsx'], errorRecovery: true });
+    astCache.set(rel, ast);
+  }
+  const lines = raw.split('\n');
+  const out = [];
+  const val = (n) => value === undefined || (n && n.type === 'BooleanLiteral' && n.value === value);
+  const hit = (path, n) => out.push({ line: n.loc.start.line, fn: fnName(path), text: lines[n.loc.start.line - 1] || '' });
+  babel.traverse(ast, {
+    AssignmentExpression(path) { if (propOf(path.node.left) === prop && val(path.node.right)) hit(path, path.node); },
+    UpdateExpression(path) { if (value === undefined && propOf(path.node.argument) === prop) hit(path, path.node); },
+    UnaryExpression(path) { if (value === undefined && path.node.operator === 'delete' && propOf(path.node.argument) === prop) hit(path, path.node); },
+    CallExpression(path) {
+      const c = path.node.callee;
+      if (!(c.type === 'MemberExpression' && c.object.type === 'Identifier' && c.object.name === 'Object' && propOf(c) === 'assign')) return;
+      for (const a of path.node.arguments.slice(1)) {
+        if (a.type !== 'ObjectExpression') continue;
+        for (const pr of a.properties) if (keyName(pr) === prop && val(pr.value)) hit(path, pr);
+      }
+    },
+  });
+  return out;
+}
 {
   const bad = [];
   const doors = ROWS.filter((r) => r && r.status === 'door');
-  for (const r of doors) {
+  if (!babel) bad.push('@babel/parser and @babel/traverse load from neither the root nor server/ (npm install in one of them)');
+  for (const r of babel ? doors : []) {
     const fnFile = codeOf(r.file);
     if (!fnFile || !has(fnFile, r.fn)) bad.push(`${keyOf(r)}: ${r.file} has no ${r.fn}`);
+    if (r.today !== undefined) bad.push(`${keyOf(r)}: a door carries no \`today\` (a machine with fields still to fold is a todo)`);
     const held = r.held || {};
-    const prop = String(r.field).split('.').pop();
     if (str(held.suite)) {
-      /* its own suite holds it: check only that the suite names both */
-      const s = existsSync(join(ROOT, held.suite)) ? readFileSync(join(ROOT, held.suite), 'utf8') : null;
-      if (!s) bad.push(`${keyOf(r)}: its suite ${held.suite} is gone`);
-      else if (!has(s, prop) || !has(s, r.fn)) bad.push(`${keyOf(r)}: its suite ${held.suite} does not name ${prop} and ${r.fn}`);
-      if (!/^(server\/test\/[^/]+|tools\/guards\/[^/]+)\.test\.mjs$/.test(held.suite)) bad.push(`${keyOf(r)}: ${held.suite} is not a suite npm test runs`);
+      /* its own suite holds it, and that suite is on the closed list for
+         this very field and function */
+      const want = Object.prototype.hasOwnProperty.call(DOOR_SUITES, held.suite) ? DOOR_SUITES[held.suite] : null;
+      if (!want) bad.push(`${keyOf(r)}: ${held.suite} is not on DOOR_SUITES (the suites that fail a second writer of a door\'s field): a door is built, then listed`);
+      else if (want.field !== r.field || want.fn !== r.fn) bad.push(`${keyOf(r)}: ${held.suite} holds ${want.field} through ${want.fn}, not ${r.field} through ${r.fn}`);
+      else if (!existsSync(join(ROOT, held.suite))) bad.push(`${keyOf(r)}: its suite ${held.suite} is gone`);
       continue;
     }
-    /* nothing else holds it: the row's scan is the rule.  src/state/ is
-       data about the code (this table, the ledgers), never code */
-    const files = filesUnder(SRC_OF[r.side]).filter((f) => !f.startsWith('src/state/'));
+    if (!Object.prototype.hasOwnProperty.call(SCAN_DOORS, keyOf(r))) { bad.push(`${keyOf(r)}: held by a scan, but not on SCAN_DOORS: a door is built, then listed`); continue; }
+    /* nothing else holds it: the row's scan is the rule */
+    const files = filesUnder(SRC_OF[r.side]);
     const besidesSeen = new Set();
-    for (const sc of held.scan) {
-      const re = new RegExp(sc.write, 'g');
+    for (const sc of held.scan || []) {
       const allowed = (sc.at || []).map(place);
-      if (!allowed.length || allowed.some((p) => !p)) { bad.push(`${keyOf(r)}: a scan's places are "<file> <function>"`); continue; }
-      let hits = 0;
+      if (!str(sc.prop) || !allowed.length || allowed.some((p) => !p)) { bad.push(`${keyOf(r)}: a scan is { prop, value?, at: ["<file> <function>"] }`); continue; }
+      const hits = new Map(allowed.map((p) => [p.file + ' ' + p.fn, 0]));
       for (const f of files) {
-        const src = codeOf(f);
-        if (!src || !re.test(src)) { re.lastIndex = 0; continue; }
-        re.lastIndex = 0;
-        const lines = src.split('\n');
-        for (const m of src.matchAll(re)) {
-          const i = src.slice(0, m.index).split('\n').length - 1;
-          const fn = fnAt(lines, i);
-          if (allowed.some((p) => p.file === f && p.fn === fn)) { hits++; continue; }
-          const b = (held.besides || []).find((x) => x.file === f && lines[i].includes(x.text));
+        for (const w of writesIn(f, sc.prop, sc.value)) {
+          const k = f + ' ' + w.fn;
+          if (hits.has(k)) { hits.set(k, hits.get(k) + 1); continue; }
+          const b = (held.besides || []).find((x) => x.file === f && w.text.includes(x.text));
           if (b) { besidesSeen.add(b); continue; }
-          bad.push(`${keyOf(r)}: ${f}:${i + 1} (in ${fn || 'no function'}) writes it outside ${sc.at.join(', ')}: ${lines[i].trim().slice(0, 90)}`);
+          bad.push(`${keyOf(r)}: ${f}:${w.line} (in ${w.fn || 'no function'}) writes .${sc.prop} outside ${sc.at.join(', ')}: ${w.text.trim().slice(0, 90)}`);
         }
       }
-      if (!hits) bad.push(`${keyOf(r)}: the scan /${sc.write}/ finds no write in ${sc.at.join(', ')} (a stale row)`);
+      for (const [k, n] of hits) if (!n) bad.push(`${keyOf(r)}: ${k} writes no .${sc.prop} any more (a stale place)`);
     }
     for (const b of held.besides || []) if (!besidesSeen.has(b)) bad.push(`${keyOf(r)}: its besides entry ${b.file} "${b.text}" is gone (delete it)`);
     for (const b of held.born || []) {
@@ -223,7 +320,9 @@ const keyOf = (r) => r.name + ' (' + r.side + ')';
       if (!src || !src.includes(b.text) || !has(src, p.fn)) bad.push(`${keyOf(r)}: its birth ${b.at} "${b.text}" is gone`);
     }
   }
-  check(`2: a door's field has no writer outside its function (${doors.length} doors: ${doors.map(keyOf).join(', ')})`, bad.length === 0, bad);
+  const listed = [...Object.keys(SCAN_DOORS)].filter((k) => !doors.some((r) => keyOf(r) === k));
+  if (listed.length) bad.push(`SCAN_DOORS lists rows that are not doors: ${listed.join(', ')}`);
+  check(`2: a door's field has no writer outside its function, and what holds it is on the closed lists (${doors.length} doors: ${doors.map(keyOf).join(', ')})`, bad.length === 0, bad);
 }
 
 /* ── 3. REJOIN_SLOTS, both ways ── */
