@@ -1,7 +1,7 @@
 card: H
-branch: claude/grand-plan-h-11-bake-ends (one branch a PR, each begun from the one before, as W's are: merge them in order)
-prs: #1668, #1675, #1681, #1700, #1709, #1712, #1714, #1733, #1741, #1747 (merged); PR 11 on the branch above (ready; its number with the next commit)
-state: ready
+branch: claude/grand-plan-h-12-portrait-shirt (one branch a PR, each begun from the one before, as W's are: merge them in order)
+prs: #1668, #1675, #1681, #1700, #1709, #1712, #1714, #1733, #1741, #1747 (merged); #1762 (ready); PR 12 on the branch above (working)
+state: working
 
 ## Done
 
@@ -19,11 +19,11 @@ state: ready
 
 ## Next
 
-- PR 11 (5050), ready: sitting 5's loose ends on #1700 (a dead worker
+- #1762 (5050), ready: sitting 5's loose ends on #1700 (a dead worker
   not posted to, the stuck clock from the post, `urlRead` per address, the
   decode under the 4 s, blob: only). Probe: 19 of 19 the same.
-- Then PR 12 (5051): the portrait's shirt composed for its one frame.
-  (The planning session's answers; the sweep stays off, its spikes noted.)
+- PR 12 (5051), working: the portrait's shirt composed from its one frame
+  (31 of 31 figures byte for byte the same); the sample running.
 
 ## Found
 

@@ -449,6 +449,24 @@ const _portraitAfterFrame = () => new Promise((res) => {
 });
 const _portraitStats = { draws: 0, turns: 0, stopped: 0, longest: 0, bodyKept: 0, bodyMade: 0, bodyEmptied: 0 };
 let _portraitForce = null;   /* QA (__btPortraitCompare): 'flat' one go, 'every' a frame let in at every step, 'fresh' one go with the body recoloured anew (not _bodyKeep's) */
+/* v2.3.5051: the shirt's first frame cut alone (the shirt step's note); 'whole' (QA) and `?portraitshirt=0` the old way */
+let _shirtWhole = false;
+const _shirtWholeOff = (() => { try { return /(^|[?&])portraitshirt=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+function _shirtFrame0(img) {
+  const h = (img && (img.naturalHeight || img.height)) || 0, w = (img && (img.naturalWidth || img.width)) || 0;
+  if (!h || !w) return null;
+  /* the strip's frames are square: frame 0 is x 0 to h (upscaleToFrameHeight
+     leaves a sheet FRAME tall or more as it is, and the figure reads its top
+     left FRAME) */
+  const side = Math.min(h >= FRAME ? FRAME : h, w);
+  const k = h >= FRAME ? 1 : FRAME / h;
+  const cv = document.createElement('canvas');
+  cv.width = FRAME; cv.height = FRAME;
+  const c = cv.getContext('2d');
+  c.imageSmoothingEnabled = false;   /* nearest-neighbour, as upscaleToFrameHeight */
+  c.drawImage(img, 0, 0, side, h >= FRAME ? FRAME : h, 0, 0, Math.round(side * k), FRAME);
+  return cv;
+}
 if (typeof window !== 'undefined') {
   window.__btPortraitTurns = () => ({ ..._portraitStats, off: _portraitGentleOff, kept: _bodyKeep.size, longest: Math.round(_portraitStats.longest * 10) / 10 });
   /* QA: the kept bodies emptied as Safari empties a parked tab's canvases
@@ -470,9 +488,10 @@ if (typeof window !== 'undefined') {
   window.__btPortraitCompare = async (opts, a0, b0) => {
     const one = document.createElement('canvas'), slow = document.createElement('canvas');
     const t0 = performance.now();
-    try { _portraitForce = a0 || 'flat'; await drawCharacterPortrait(one, opts); } finally { _portraitForce = null; }
+    /* v2.3.5051: 'whole' -- one go, the shirt composed from its whole strip (the old way) */
+    try { _shirtWhole = a0 === 'whole'; _portraitForce = a0 === 'whole' ? 'flat' : (a0 || 'flat'); await drawCharacterPortrait(one, opts); } finally { _portraitForce = null; _shirtWhole = false; }
     const t1 = performance.now(), turns0 = _portraitStats.turns;
-    try { _portraitForce = b0 || 'every'; await drawCharacterPortrait(slow, opts); } finally { _portraitForce = null; }
+    try { _shirtWhole = b0 === 'whole'; _portraitForce = b0 === 'whole' ? 'flat' : (b0 || 'every'); await drawCharacterPortrait(slow, opts); } finally { _portraitForce = null; _shirtWhole = false; }
     const t2 = performance.now();
     const a = one.getContext('2d').getImageData(0, 0, one.width, one.height).data;
     const b = slow.getContext('2d').getImageData(0, 0, slow.width, slow.height).data;
@@ -970,7 +989,19 @@ export async function drawCharacterPortrait(canvas, opts) {
   if (shirtImg) {
     /* v2.3.1110: restore a downscaled-on-disk shirt sheet to the 256px frame
        (these drawImage calls read a 256x256 source rect). No-op at native. */
-    const shirtUp = upscaleToFrameHeight(shirtImg, FRAME);
+    /* ═══ v2.3.5051: THE SHIRT'S ONE FRAME, NOT ITS WHOLE STRIP ═══
+       The held sweep (docs/specs/held-sweep.md, "Card H"): `gear-sheet`
+       22.4 ms once at the main tour's `armour`, `composeShirt` most of it.
+       The figure shows the shirt's FIRST frame only (the drawImage of
+       `layer` below reads 0, 0, FRAME, FRAME), but the whole strip was
+       upscaled and composed -- read back, tinted, patterned and stamped,
+       every frame of it.  Now the first frame alone is cut, at the same
+       nearest-neighbour scale, and composed: the same pixels
+       (__btPortraitCompare 'whole' against 'flat', byte for byte).  The
+       designer's grids (`reportGrids`) still take the whole strip, as do
+       `?portraitshirt=0` and QA's 'whole'. */
+    const _whole = _shirtWholeOff || _shirtWhole || !!(opts && opts.reportGrids);
+    const shirtUp = (!_whole && _shirtFrame0(shirtImg)) || upscaleToFrameHeight(shirtImg, FRAME);
     /* v2.3.1938: the player's own drawing, stamped on the fabric AFTER the
        tint, so the drawing keeps its own colours instead of being multiplied by
        the shirt colour — a print does not take the dye of the shirt under it.
