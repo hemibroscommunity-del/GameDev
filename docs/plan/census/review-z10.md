@@ -292,6 +292,8 @@ code and the PR's own `docs/shots/leaderboards-look-upright.webp`:
   #1768 (the page's count line) at the list's writing; #1775 and #1779
   wait with #1767. L's last commit 11:00 (not stalled).
 - Card J2: no PR open (PRs 2 to 4 on their branches, `ready`).
+- Card O's #1787 (PR 1, the lane table) and #1792 (PR 2, the governor):
+  ready after the last rehearsal began; sitting 11.
 
 ## The lines
 
@@ -312,5 +314,7 @@ Rehearsed with `tools/dev/gatekeeper.mjs` from `main` 6f9e740:
 3. The fourteen of the list without #1764, this branch last (d8a1f28's
    parent; tree c64f9120): precheck 0 FAIL (9 WARN), build, questline 187
    of 187.
-4. The list as written, #1764 (948dc8d) after #1761, this branch last
-   (d8a1f28): see `status/Z.md`.
+4. The same with #1764 (948dc8d) after #1761, this branch at d8a1f28
+   (tree 6748e8ed): precheck 0 FAIL (8 WARN), build, questline 187 of 187.
+5. The list as written: #1772 (a88bc9e) and #1773 (a245beb) after #1764,
+   this branch last (f905997): see `status/Z.md`.

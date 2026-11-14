@@ -26,7 +26,7 @@ step 10.3), `arenasettleplan` (OFF: the owner's yes, two rows a match).
 - #1783 LB: top names cut to a few letters upright; the podium shows Lv
   on every board; two "Lv" on a skill board.
 - #1767, #1775, #1779 L: not merged with #1768 (the page's count line).
-- No J2 PR open.
+- Not reviewed (ready too late): O's #1787, #1792. No J2 PR open.
 
 ## Stalled
 - None (card L's last commit 11:00).
