@@ -261,7 +261,9 @@
  * exactly the icons' numbers moved there (0.30 MB: thirteen of 128 x 128,
  * 256 x 256 and 180 x 189 at a byte a pixel), the planning session's rule
  * for a numbers PR; net 0.9 MB less.  The chip holds them at a byte a
- * pixel (0.35 MB). */
+ * pixel (0.35 MB).  (The gatekeeper's sitting 9: not the trap's box, whose
+ * pieces are cut from its pixels after the pack; it stays a picture, 0.06
+ * MB of the 1.2, so the line is 0.06 tighter than the saving, never looser.) */
 /* v2.3.5252, the backlog's `fx-sheets-supplied`: the effects cut from the
  * owner's sheets read from their twins (p256.js, `?fxsheets=0` the
  * pictures), the whirlwind's too: its pack declined, gearSheets.js kept its
@@ -269,9 +271,11 @@
  * Three runs: `artCache` 33.8 -> 31.8 and its line 97.1 -> 95.1, LOWERED by
  * the 2.0 MB saved; `buffers` 23.0-23.3 -> 23.4-23.5 and its line 23.7 ->
  * 24.2, RAISED by exactly the whirlwind's numbers that took its picture's
- * place (0.50 MB, 2048 x 256 at a byte a pixel); net 1.5 MB less.  The six
- * on the chip at a byte a pixel: 1.51 MB (`gpu` 75.0-77.2, its line
- * unchanged). */
+ * place (0.50 MB, 2048 x 256 at a byte a pixel): the page's two lines
+ * 1.5 MB less.  The six on the chip at a byte a pixel: 1.51 MB (`gpu`
+ * 75.0-77.2, its line unchanged).  By the census's own ruler, the chip's
+ * share counted (the gatekeeper's sitting 9), the family is 2.00 -> 1.51 MB
+ * at the fight: 0.49 MB less. */
 export const MEMORY_BUDGET = {
   artCache: { name: 'art loaded from files', mb: 95.1, measured: 31.8,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB); v2.3.5247: 109.1 -> 107.0, Ace's coin strips (2.1 MB); v2.3.5248: 107.0 -> 101.4, the trees as numbers (5.6 MB); v2.3.5249: 101.4 -> 98.3, the made effects as numbers (3.1 MB); v2.3.5250: 98.3 -> 97.1, the world's icons (1.2 MB); v2.3.5252: 97.1 -> 95.1, the whirlwind as numbers (2.0 MB), see the header */
     what: 'pictures loaded from files, decoded (the asset cache, window.__btTex) -- its highest at the fight, the monsters\' looks loaded' },

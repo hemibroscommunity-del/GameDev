@@ -61,7 +61,7 @@ const SCOPE = [
      width is not a multiple of four (the arrow, the dice, the spell, the
      xp): p256.js reads no twin that needs padding, so theirs would never be
      read. */
-  { dir: 'icons/items', only: /^(ore-iron|ore-black-steel|ore-obsidian|trap-box)\.webp$/, always: true },
+  { dir: 'icons/items', only: /^(ore-iron|ore-black-steel|ore-obsidian)\.webp$/, always: true },   /* not the trap's box: its pieces are cut from its pixels (p256.js) */
   { dir: 'icons/shards', only: /^shard_[a-z]+\.webp$/, always: true },
   { dir: 'icons/popups', only: /^(heart-256|sword)\.webp$/, always: true },
 ];

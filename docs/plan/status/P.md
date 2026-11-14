@@ -1,6 +1,6 @@
 card: P
 branch: claude/plan-p-11-fx-sheets (one branch a PR, each begun from the one before)
-prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757 (5241-5248, 5251, merged); #1749 (5249), #1763 (5250) mended, ready; #1766 (5252) ready
+prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757 (5241-5248, 5251, merged); #1749 (5249) mended, waits on T's #1768; #1763 (5250), #1766 (5252) mended at sitting 9 (the trap's box; #1766's net in the census's ruler)
 state: working
 
 ## Done
