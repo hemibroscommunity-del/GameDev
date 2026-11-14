@@ -35,6 +35,24 @@ Each with its switch, for the planning session to read to the owner:
   `lab.yml` changed (`.github/`: the owner's words only); card E's
   `arenasettleplan` and `econresetput` (both OFF).
 
+## What GitHub shows, step by step (card Z's step 5b)
+
+Every listed PR's base is `main` (`base.ref`). Merged down the list in
+its order in a scratch copy (each a merge commit), every head had ONE
+merge base with the `main` above it (`git merge-base --all`), this
+branch last included: #1824 d6b8acd; #1835 9eb8065 (#1824's head: it
+carries #1824, so it follows it, and is held if #1824 is); #1829 and
+#1831 0da805c (sitting 14's `main` before its own PR); #1833 d6b8acd;
+#1832 1cce0b2 (sitting 13's `main`). K's two each carry the same
+`docs/plan/status/K.md`, so they merge clean in either order.
+
+**Mended during the sitting**: J2's #1833 merged `main` (its status
+file's conflict), 740d058. **Not mended, held**: O's #1836 and T's #1837
+(each a conflict with `main` in the switch table), K's #1838 (conflicts
+with #1829 and #1831 either way). A chain of carried heads (#1837
+carrying #1835, #1836 carrying #1837) was offered; the planning session
+chose to hold all three for the next sitting.
+
 ## Card L: #1824 (PR 5's second, tag 5211): re-read, listed FIRST
 
 Reviewed clean at sitting 14 (80a7237). Since then: `main` d6b8acd merged
@@ -44,6 +62,57 @@ sitting 14's low mended: the gladiator.js exception is now ` t.status = `
 `mt.status = ` no longer passes. The two writes it names are
 gladiator.js 373 and 852. Nothing else in L's files changed (diffed file
 by file against 80a7237's own diff).
+
+## Card L: #1835 (PR 5's third, tag 5212): reviewed, listed right after #1824
+
+**The party door (it DEPLOYS; a live flag), read at b54ff10 (its own diff
+over #1824's head, which it carries): clean (lows).** A finder matched
+all seven old writes of `_partyByPlayer` on `main` (party.js 239, 280,
+497, 501, 543, 551; clanparty.js 161) to their `_partyIn` calls: each in
+the same place against the members list, `_partyIndexPut` /
+`_partyIndexDrop`, `_partyStore` and the broadcasts. At every write that
+puts a player in, the player is already on `p.members` (the live case
+checks `includes` first, the load walks `p.members`, a new party starts
+`[inviter]`, the accepter is pushed before the write, the clan party is
+`members: free`), so the door's check refuses nothing today (VERIFIED);
+a refusal returns false, no throw. A character reset, a kick of an
+offline member and the idle sweep all go through `_partyRemoveMember`
+(`leave`). No await (rule 9); the field is a `Map`; `PARTY_WAYS` is
+frozen and read by own property (`__proto__`, `constructor`,
+`hasOwnProperty`, `valueOf`, `toString` refused; those as ids are Map
+keys) (§4). `partydoor` reads as `dueldoor` and `tradedoor` do: on when
+missing, an inherited flag ignored, and read only on the refusal path;
+with it false, main's behaviour for every input that can arrive. The
+guard's new Map branch adds no miss and no false alarm (9 doors green).
+
+- Low, VERIFIED: the births are matched by text, `this._partyByPlayer =
+  new Map()`, so an unconditional new map anywhere in party.js or
+  clanparty.js (say in `_partyOnReset`) passes the guard (~261) and the
+  suite's `BIRTHS` (§2), and would drop every online player's place
+  while their parties still list them. The finder pinned the text to
+  `if (!this._partyByPlayer) this._partyByPlayer = new Map()` in a
+  throwaway copy: the head stays green and that break fails both. The
+  same kind as sitting 14's gladiator low; for L's next door.
+- Nit, VERIFIED: `this._partyByPlayer?.delete(id)` and a write through an
+  alias (`const m = this._partyByPlayer; m.set(...)`) pass both checks
+  (server/src has no `?.` on a Map today).
+- Nit: the spec and `PARTY_WAYS`' comment give `leave` as a leave, a kick
+  or a restart; the idle sweep's `offline` removal uses it too; "two
+  births" where the code guards three.
+- Same as `main`, not new: `_partyLoad`'s "a member already in another
+  live party keeps it" can leave the map and a list apart, as before.
+- Suites: party-door 28, duel-door 25, party 73, party-keep 63,
+  party-chip 25, party-marks 19, party-same 9, clan-party 54, clans 82,
+  alliance 96, grotto-party 31, liveops 110 (each the same count as
+  `main`'s where it has one); guards phase-table (28 `todo`, the line
+  30), switches (477 rows), switches-thrown, keep-switches green. Break
+  proofs: the PR's two (the accept's `set` back; a `delete` in a new
+  alliance.js function) FAIL both; a guarded new map in alliance.js, the
+  clan line in its old form and `this['_partyByPlayer'].set` each FAIL
+  one or both. CI `test` green at b54ff10.
+- Its phone runs, in its words: `partykeep` 11 of 11, `clanparty` 21 of
+  21, `questline` 187; `partychip` 14 of 15 (main 14 of 15, another
+  check) and `alliance` 16, 14, 9 of 16 on `main` too (L's Found).
 
 ## Card K: #1829 (PR 5, tag 5185): re-read, listed
 
@@ -96,56 +165,38 @@ load; the router still pays one Set lookup. Worker +137,549 bytes
   guards wire-table 38, switches, switches-thrown). CI `test` green at
   cfe57ce.
 
-## Card L: #1835 (PR 5's third, tag 5212): reviewed, listed right after #1824
+## Card J2: #1833 (PR 7, tag 5426): listed
 
-**The party door (it DEPLOYS; a live flag), read at b54ff10 (its own diff
-over #1824's head, which it carries): clean (lows).** A finder matched
-all seven old writes of `_partyByPlayer` on `main` (party.js 239, 280,
-497, 501, 543, 551; clanparty.js 161) to their `_partyIn` calls: each in
-the same place against the members list, `_partyIndexPut` /
-`_partyIndexDrop`, `_partyStore` and the broadcasts. At every write that
-puts a player in, the player is already on `p.members` (the live case
-checks `includes` first, the load walks `p.members`, a new party starts
-`[inviter]`, the accepter is pushed before the write, the clan party is
-`members: free`), so the door's check refuses nothing today (VERIFIED);
-a refusal returns false, no throw. A character reset, a kick of an
-offline member and the idle sweep all go through `_partyRemoveMember`
-(`leave`). No await (rule 9); the field is a `Map`; `PARTY_WAYS` is
-frozen and read by own property (`__proto__`, `constructor`,
-`hasOwnProperty`, `valueOf`, `toString` refused; those as ids are Map
-keys) (§4). `partydoor` reads as `dueldoor` and `tradedoor` do: on when
-missing, an inherited flag ignored, and read only on the refusal path;
-with it false, main's behaviour for every input that can arrive. The
-guard's new Map branch adds no miss and no false alarm (9 doors green).
+Step 3 (a test and its status; no deploy). `mp-townride`'s "as before"
+page is now `?folkbake=0&bodyworker=0` (since 4930 a body sheet bakes on a
+worker, so `?folkbake=0` alone held the page 0 to 2 ms: red on `main`),
+and "as it ships" reads the object pages' ground lines from the game's
+own probe `window.__btPageBases` (wheelObjects.js ~340, on `main`; since
+4470 no "page bases" job holds the page): `way === true`, `pages > 0`,
+none read on the page. J2's runs: 10 of 10, three times. Tag 5426 from
+J2's block; the line is its status file's own (the card's first three
+lines are its PRs 1 to 3, the rest routed by sittings). Mended during the
+sitting: its status-file conflict with `main` (740d058, `main` d6b8acd
+merged in, one base). CI `test` green at 740d058.
 
-- Low, VERIFIED: the births are matched by text, `this._partyByPlayer =
-  new Map()`, so an unconditional new map anywhere in party.js or
-  clanparty.js (say in `_partyOnReset`) passes the guard (~261) and the
-  suite's `BIRTHS` (§2), and would drop every online player's place
-  while their parties still list them. The finder pinned the text to
-  `if (!this._partyByPlayer) this._partyByPlayer = new Map()` in a
-  throwaway copy: the head stays green and that break fails both. The
-  same kind as sitting 14's gladiator low; for L's next door.
-- Nit, VERIFIED: `this._partyByPlayer?.delete(id)` and a write through an
-  alias (`const m = this._partyByPlayer; m.set(...)`) pass both checks
-  (server/src has no `?.` on a Map today).
-- Nit: the spec and `PARTY_WAYS`' comment give `leave` as a leave, a kick
-  or a restart; the idle sweep's `offline` removal uses it too; "two
-  births" where the code guards three.
-- Same as `main`, not new: `_partyLoad`'s "a member already in another
-  live party keeps it" can leave the map and a list apart, as before.
-- Suites: party-door 28, duel-door 25, party 73, party-keep 63,
-  party-chip 25, party-marks 19, party-same 9, clan-party 54, clans 82,
-  alliance 96, grotto-party 31, liveops 110 (each the same count as
-  `main`'s where it has one); guards phase-table (28 `todo`, the line
-  30), switches (477 rows), switches-thrown, keep-switches green. Break
-  proofs: the PR's two (the accept's `set` back; a `delete` in a new
-  alliance.js function) FAIL both; a guarded new map in alliance.js, the
-  clan line in its old form and `this['_partyByPlayer'].set` each FAIL
-  one or both. CI `test` green at b54ff10.
-- Its phone runs, in its words: `partykeep` 11 of 11, `clanparty` 21 of
-  21, `questline` 187; `partychip` 14 of 15 (main 14 of 15, another
-  check) and `alliance` 16, 14, 9 of 16 on `main` too (L's Found).
+## Card O: #1832 (PR 3, tag 5223): listed LAST before this PR
+
+Step 3 (tools, and one server test: it DEPLOYS). Its files are card O's
+PR 3 line: `run.mjs` refuses a scenario with no `lane` or one not in
+`LANE_NAMES` (read from drawLanes.js) before anything boots, and fails a
+game page a scenario loaded with no `lane=`; the harness puts `lane=` (and
+`govern=1` where asked) on every page `newPlayer` opens (a page with no
+scenario plays `full`); 381 scenarios each `export const lane = 'full'`
+(`tools/dev/name-lanes.mjs`, `--check` read-only); `tools/qa/lane.mjs` for
+the other tools; the guard `scenario-lanes`; CLAUDE.md §6 and §8 ("its
+`lane`", nothing else); DEV-TOOLS. One file beyond the line:
+`server/test/old-map.test.mjs`, whose check reads run.mjs's
+`H.setScenario(name)` and now allows its `{ lane, govern }`, so its merge
+deploys the worker (TRAPS §277). `ui-review/capture.mjs` opens the game
+through `H.newPlayer`, so it carries its lane; the load tools open no
+page. `name-lanes.mjs --check` on the rehearsal's tip (with #1833's
+change to `mp-townride`): every scenario names its lane. CI `test`
+green at 665f30e.
 
 ## Card O: #1836 (PR 6, tag 5226): HELD (a conflict), reviewed
 
@@ -254,39 +305,6 @@ K's status), in either order; K merges the new `main` after this list.
 - Decided for the owner while away (its body): the door ON; switch
   `wiredoor: false`. Not on this list.
 
-## Card J2: #1833 (PR 7, tag 5426): listed
-
-Step 3 (a test and its status; no deploy). `mp-townride`'s "as before"
-page is now `?folkbake=0&bodyworker=0` (since 4930 a body sheet bakes on a
-worker, so `?folkbake=0` alone held the page 0 to 2 ms: red on `main`),
-and "as it ships" reads the object pages' ground lines from the game's
-own probe `window.__btPageBases` (wheelObjects.js ~340, on `main`; since
-4470 no "page bases" job holds the page): `way === true`, `pages > 0`,
-none read on the page. J2's runs: 10 of 10, three times. Tag 5426 from
-J2's block; the line is its status file's own (the card's first three
-lines are its PRs 1 to 3, the rest routed by sittings). Mended during the
-sitting: its status-file conflict with `main` (740d058, `main` d6b8acd
-merged in, one base). CI `test` green at 740d058.
-
-## Card O: #1832 (PR 3, tag 5223): listed LAST before this PR
-
-Step 3 (tools, and one server test: it DEPLOYS). Its files are card O's
-PR 3 line: `run.mjs` refuses a scenario with no `lane` or one not in
-`LANE_NAMES` (read from drawLanes.js) before anything boots, and fails a
-game page a scenario loaded with no `lane=`; the harness puts `lane=` (and
-`govern=1` where asked) on every page `newPlayer` opens (a page with no
-scenario plays `full`); 381 scenarios each `export const lane = 'full'`
-(`tools/dev/name-lanes.mjs`, `--check` read-only); `tools/qa/lane.mjs` for
-the other tools; the guard `scenario-lanes`; CLAUDE.md §6 and §8 ("its
-`lane`", nothing else); DEV-TOOLS. One file beyond the line:
-`server/test/old-map.test.mjs`, whose check reads run.mjs's
-`H.setScenario(name)` and now allows its `{ lane, govern }`, so its merge
-deploys the worker (TRAPS §277). `ui-review/capture.mjs` opens the game
-through `H.newPlayer`, so it carries its lane; the load tools open no
-page. `name-lanes.mjs --check` on the rehearsal's tip (with #1833's
-change to `mp-townride`): every scenario names its lane. CI `test`
-green at 665f30e.
-
 ## Card T: #1837 (PR 5, tag 5305): HELD (a conflict)
 
 Opened during the sitting (the end dates: `on` on every row, `--due`,
@@ -314,3 +332,33 @@ rendering 114), and the phase table's `todo` is 30 at its line 30.
 Nothing to lower here. When #1824 and #1835 have landed, `todo` is 28:
 the next sitting lowers `TODO_LINE` 30 -> 28; the hostile census's line
 goes 19 -> 1 in #1838 itself.
+
+## The list
+
+1 #1824 (L) · 2 #1835 (L) · 3 #1829 (K) · 4 #1831 (K) · 5 #1833 (J2) ·
+6 #1832 (O) · 7 this PR; each "Create a merge commit", in one sitting.
+Five deploy the worker (#1824, #1835, #1829 and #1831 by `server/`,
+#1832 by its old-map test): back to back. #1824 and #1835 each add a
+live flag (`dueldoor`, `partydoor`, ON); #1835 carries #1824 and follows
+it at once. No stored record changes its shape. #1832 goes last of the
+game's: every scenario named its lane on the tip before it.
+
+## The whole
+
+Rehearsed with `tools/dev/gatekeeper.mjs` from `main` d6b8acd:
+
+1. #1824, #1835, #1829, #1831, #1832 at their heads (tree 1ccac812):
+   precheck 0 FAIL (3 WARN: the busy-branches count, and proto-safety
+   on party.js 239 and 636, two lines moved unchanged whose `{}` are
+   values of `p.meta`, a null-prototype map), build, questline 187 of
+   187 (609 s).
+2. **The list in its order**, #1833 at 740d058 before #1832 (tree
+   db4ea362): precheck 0 FAIL (the same 3 WARN), build, questline 187
+   of 187 (519 s); `name-lanes.mjs --check` on the tip: every scenario
+   names its lane; ONE merge base each.
+3. **The list with this branch last** (documents only): precheck on the
+   whole, 0 FAIL. Its tree is in the list sent to the planning session
+   (the file cannot carry its own tree).
+
+Each listed head's `test` is green on GitHub (and `playable`,
+`memory-budget`); each base is `main`.

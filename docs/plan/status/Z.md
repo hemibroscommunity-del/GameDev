@@ -34,5 +34,6 @@ test): back to back. #1824 and #1835 each add a live flag (`dueldoor`,
 - L: the party door's births matched by text (an unconditional new map
   in party.js passes); `?.delete` and an alias pass too.
 - K: wire/README.md ~307 names `fightlockgear` (no such switch).
-- O: crowd-cap §4 never calls the renderer's bare `crowdK()`; the old
-  `?crowd` row says monsters (it caps players).
+- O: crowd-cap §4 never calls the renderer's bare `crowdK()`.
+- T: the old `?crowd` row (switches.mjs ~326) says monsters; it caps
+  players.
