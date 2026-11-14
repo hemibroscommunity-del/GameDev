@@ -348,9 +348,12 @@ function Podium({ rows, faces, k, meId, board, power }) {
             <span style={{ position: 'absolute', left: '50%', top: '29%', transform: 'translateX(-50%)' }}>
               <BoardFace src={faces[place - 1]} name={name} gone={gone} px={facePx} />
             </span>
+            {/* the whole name on the ribbon: a long one's letters shrink to
+                fit (to 8 px, then it is cut), as the mockup shows "Chunky
+                Waffle" whole (the gatekeeper's sitting 10) */}
             <span data-lb-podium-name="" style={{
-              position: 'absolute', left: '19%', right: '19%', top: '64%', height: '15%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: Math.max(9.5, 11 * k), fontWeight: 800, color: '#FFF6E0', textShadow: '0 1px 2px rgba(0,0,0,.85)',
+              position: 'absolute', left: '12%', right: '12%', top: '64%', height: '15%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: Math.max(8, Math.min(11 * k, (W * 0.76) / (Math.max(1, name.length) * 0.6))), fontWeight: 800, color: '#FFF6E0', textShadow: '0 1px 2px rgba(0,0,0,.85)',
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1,
             }}><span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span></span>
             {pv.text || pv.lv > 0 ? (

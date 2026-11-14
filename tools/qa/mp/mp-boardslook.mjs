@@ -94,6 +94,7 @@ const look = (P) => P.page.evaluate(() => {
     return { place: +e.dataset.lbPodiumPlace, box: box(e), art: loaded(img) ? img.getAttribute('src').split('?')[0] : null,
       face: (e.querySelector('[data-board-face]') || { dataset: {} }).dataset.boardFace || null,
       name: ((e.querySelector('[data-lb-podium-name]') || {}).textContent || '').trim(),
+      nameWhole: (() => { const n = e.querySelector('[data-lb-podium-name] > span'); return !!n && n.scrollWidth <= n.clientWidth + 1; })(),
       value: ((e.querySelector('[data-lb-podium-value]') || {}).textContent || '').trim() };
   });
   /* the head's cells, a narrow table's swap button opened into its own */
@@ -108,7 +109,15 @@ const look = (P) => P.page.evaluate(() => {
       number: ((el.querySelector('[data-rank-mark="number"]') || {}).textContent || '').trim(),
       bar: bar ? bar.dataset.lbBar : null, crown: loaded(el.querySelector('[data-lb-crown]')),
       /* the whole name: not cut (one line, or two where one is too narrow) */
-      whole: (() => { const n = el.querySelector('[data-board-name]'); return !!n && n.scrollHeight <= n.clientHeight + 1 && n.scrollWidth <= n.clientWidth + 1; })(),
+      /* the name's own lines (a range over its text: the lines a clamp hides
+         still have their boxes): whole when it needs two lines or fewer */
+      whole: (() => {
+        const n = el.querySelector('[data-board-name]');
+        if (!n || !n.firstChild) return false;
+        const rg = document.createRange(); rg.selectNodeContents(n);
+        const tops = new Set([...rg.getClientRects()].map((r) => Math.round(r.top)));
+        return tops.size >= 1 && tops.size <= 2;
+      })(),
       value: ((el.querySelector('[data-lb-value]') || {}).textContent || '').trim(),
       ring: getComputedStyle(el).outlineStyle === 'solid' && parseFloat(getComputedStyle(el).outlineWidth) >= 2,
       face: (el.querySelector('[data-board-face]') || { dataset: {} }).dataset.boardFace || null,
@@ -222,8 +231,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await A.page.waitForTimeout(1200);
     const B375 = await look(A);
     await shot(A, 'upright-375');
-    rec.ok(`2f at 375 px every name is whole and every row inside the board (${B375.rows.length} rows)`,
-      B375.page === 'list' && B375.rows.length >= 5 && B375.rows.every((r) => r.whole && r.box.r <= B375.board.r + 1) && B375.pg.r <= B375.vw, B375.rows.map((r) => [r.name, r.whole]));
+    rec.ok(`2f at 375 px every name is whole, on the podium and in the table, and every row inside the board (${B375.rows.length} rows)`,
+      B375.page === 'list' && B375.rows.length >= 5 && B375.rows.every((r) => r.whole && r.box.r <= B375.board.r + 1) && B375.pg.r <= B375.vw
+      && B375.podium.length === 3 && B375.podium.every((p) => p.nameWhole), { rows: B375.rows.map((r) => [r.name, r.whole]), podium: B375.podium.map((p) => [p.name, p.nameWhole]) });
     await A.page.setViewportSize(PHONE);
     await A.page.waitForTimeout(1200);
 
