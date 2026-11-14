@@ -153,7 +153,11 @@ The plan's rule 4: all new, or exactly one switch thrown.
   - Anything else is a second configuration that breaks: listed as known in
     the guard (`KNOWN`, a census) and written under Found in card T's status
     file. Card T fixes none.
-  - On every PR only the rows born from tag 5301 on run (about 16 s today).
+  - On every PR only the rows born from tag 5301 on run, with no baseline
+    (`npm test` runs the same suites plain in that job, so a check red
+    unthrown is red there already): 17 s for 97 suite runs (v2.3.5305; 30 s
+    with the baseline). By hand, `--baseline` (on with `--all`, `--sample`,
+    `--only`) runs each suite unthrown first and sets its fails aside.
     `--sample` runs one switch of each risk in each system; `--all` every one
     (about 45 minutes here), the owner's to ask for.
 - **Page rows**: no browser run. The guard finds, for each page switch, the
