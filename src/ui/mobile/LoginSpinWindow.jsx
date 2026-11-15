@@ -8,6 +8,7 @@ import { onSafeGround } from '@/game/trapping.js';
 import { worldReady } from '@/ui/loadingGate.js';
 import { onboardingBusy, worldInMs } from '@/ui/onboardingPace.js';
 import { LOGIN_SPIN_URLS } from '@/rendering/loginSpinPreload.js';
+import { sw } from '@/game/switches.js';   /* v2.3.5306: the page's one reader (card T) */
 import {
   loginSpinBus, loginSpinTarget, loginSpinEase, LOGIN_SPIN_MS, LOGIN_SPIN_TURNS,
   LOGIN_SPIN_UNSAFE_WORDS, loginDoubleTarget, LOGIN_DOUBLE_MS, loginSpinSegAt, loginSpinParty,
@@ -58,7 +59,7 @@ const SETTLE_AFTER_WORLD_MS = 2500;
 const DRUM_MS = 750;
 /* v2.3.4295: ?loginspin=0 -- no AUTO-open on this phone (the top bar's button still opens it); the QA
    harness passes it so a scenario that does not test the wheel is never covered by it */
-const autoOpenOff = () => { try { return /(?:^|[?&])loginspin=0(?:&|$)/.test(window.location.search); } catch (e) { return false; } };
+const autoOpenOff = () => sw('loginspin');   /* v2.3.5306: the one reader (was /(?:^|[?&])loginspin=0(?:&|$)/) */
 const reduced = () => { try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; } };
 
 /* v2.3.4295: the owner: "Make sure the wheel spin is satisfying it's supposed to be a dopamine hit."

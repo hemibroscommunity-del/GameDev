@@ -1,13 +1,13 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861 merged; ready: #1848 (5541), 7.2 (5188), 7.3 (5189); 5542 this branch
+prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848 merged; ready: #1899 (5542) this branch, #1900 (5188); N10 (5543) stacks on this
 state: ready
 
 ## Done
 
 - PRs 1 to 6 (5181-5186) and 7.1 (5187, #1861, 203 -> 146): merged.
 - Claims 5540 (#1842, merged): the archer's lane (`arrowlane`, ON).
-- Claims 5541 (#1848): the sprint mark, OFF; review-z16's MEDIUMs mended.
+- Claims 5541 (#1848, merged): the sprint mark, OFF (review-z16, z18 mended).
 - PR 7.2 (5188, 41 sends), 7.3 (5189, 17): pushed. 7.4 (5190, the panels),
   7.5 (5191, the sheets and 24 fetches), 7.6 (5192, BroTown.jsx): committed,
   after N10 (the planning session's order). `nmlAsk.js` and
